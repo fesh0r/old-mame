@@ -55,8 +55,8 @@ extern size_t galpanic_fgvideoram_size;
 void galpanic_init_palette(unsigned char *game_palette, unsigned short *game_colortable,const unsigned char *color_prom);
 WRITE16_HANDLER( galpanic_bgvideoram_w );
 WRITE16_HANDLER( galpanic_paletteram_w );
-void galpanic_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-void comad_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void galpanic_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+void comad_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -428,7 +428,7 @@ static const struct MachineDriver machine_driver_##NAME =							\
 	1024 + 32768, 1024,														\
 	galpanic_init_palette,													\
 																			\
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,								\
+	VIDEO_TYPE_RASTER,								\
 	0,																		\
 	generic_bitmapped_vh_start,												\
 	generic_bitmapped_vh_stop,												\
@@ -555,7 +555,7 @@ ROM_START( missw96 )
 ROM_END
 
 
-GAMEX( 1990, galpanic, 0, galpanic, galpanic, 0, ROT90_16BIT, "Kaneko", "Gals Panic", GAME_NO_COCKTAIL )
-GAMEX( 1994, fantasia, 0, comad,    newfant,  0, ROT90_16BIT, "Comad & New Japan System", "Fantasia", GAME_NO_COCKTAIL )
-GAMEX( 1995, newfant,  0, comad,    newfant,  0, ROT90_16BIT, "Comad & New Japan System", "New Fantasia", GAME_NO_COCKTAIL )
-GAMEX( 1996, missw96,  0, comad,    missw96,  0, ROT0_16BIT,  "Comad", "Miss World '96 Nude", GAME_NO_COCKTAIL )
+GAMEX( 1990, galpanic, 0, galpanic, galpanic, 0, ROT90, "Kaneko", "Gals Panic", GAME_NO_COCKTAIL )
+GAMEX( 1994, fantasia, 0, comad,    newfant,  0, ROT90, "Comad & New Japan System", "Fantasia", GAME_NO_COCKTAIL )
+GAMEX( 1995, newfant,  0, comad,    newfant,  0, ROT90, "Comad & New Japan System", "New Fantasia", GAME_NO_COCKTAIL )
+GAMEX( 1996, missw96,  0, comad,    missw96,  0, ROT0,  "Comad", "Miss World '96 Nude", GAME_NO_COCKTAIL )

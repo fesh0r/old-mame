@@ -14,7 +14,7 @@
 unsigned char *bankp_videoram2;
 unsigned char *bankp_colorram2;
 static unsigned char *dirtybuffer2;
-static struct osd_bitmap *tmpbitmap2;
+static struct mame_bitmap *tmpbitmap2;
 static int scroll_x;
 static int flipscreen;
 static int priority;
@@ -43,7 +43,7 @@ static int priority;
   bit 0 -- 1  kohm resistor  -- RED
 
 ***************************************************************************/
-void bankp_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
+void bankp_vh_convert_color_prom(unsigned char *obsolete,unsigned short *colortable,const unsigned char *color_prom)
 {
 	int i;
 	#define TOTAL_COLORS(gfxn) (Machine->gfx[gfxn]->total_colors * Machine->gfx[gfxn]->color_granularity)
@@ -52,24 +52,26 @@ void bankp_vh_convert_color_prom(unsigned char *palette, unsigned short *colorta
 
 	for (i = 0;i < Machine->drv->total_colors;i++)
 	{
-		int bit0,bit1,bit2;
+		int bit0,bit1,bit2,r,g,b;
 
 
 		/* red component */
 		bit0 = (*color_prom >> 0) & 0x01;
 		bit1 = (*color_prom >> 1) & 0x01;
 		bit2 = (*color_prom >> 2) & 0x01;
-		*(palette++) = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 		/* green component */
 		bit0 = (*color_prom >> 3) & 0x01;
 		bit1 = (*color_prom >> 4) & 0x01;
 		bit2 = (*color_prom >> 5) & 0x01;
-		*(palette++) = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 		/* blue component */
 		bit0 = 0;
 		bit1 = (*color_prom >> 6) & 0x01;
 		bit2 = (*color_prom >> 7) & 0x01;
-		*(palette++) = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
+		palette_set_color(i,r,g,b);
 
 		color_prom++;
 	}
@@ -192,12 +194,12 @@ WRITE_HANDLER( bankp_out_w )
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
 ***************************************************************************/
-void bankp_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void bankp_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 

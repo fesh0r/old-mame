@@ -29,7 +29,7 @@ static int artwork_type;
 static const void *init_artwork;
 
 static mem_write_handler videoram_w_p;
-static void (*vh_screenrefresh_p)(struct osd_bitmap *bitmap,int full_refresh);
+static void (*vh_screenrefresh_p)(struct mame_bitmap *bitmap,int full_refresh);
 static void (*plot_pixel_p)(int x, int y, int col);
 
 static WRITE_HANDLER( bw_videoram_w );
@@ -38,14 +38,15 @@ static WRITE_HANDLER( lupin3_videoram_w );
 static WRITE_HANDLER( polaris_videoram_w );
 static WRITE_HANDLER( invadpt2_videoram_w );
 static WRITE_HANDLER( astinvad_videoram_w );
+static WRITE_HANDLER( sstrngr2_videoram_w );
 static WRITE_HANDLER( spaceint_videoram_w );
 static WRITE_HANDLER( helifire_videoram_w );
 
-static void vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-static void seawolf_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-static void blueshrk_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-static void desertgu_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-static void phantom2_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+static void vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+static void seawolf_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+static void blueshrk_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+static void desertgu_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+static void phantom2_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 static void plot_pixel_8080 (int x, int y, int col);
 static void plot_pixel_8080_tmpbitmap (int x, int y, int col);
@@ -68,14 +69,14 @@ static const struct artwork_element invaders_overlay[]=
 	END
 };
 
-//static const struct artwork_element invdpt2m_overlay[]=
-//{
-//	{{  16,  71,   0, 255}, GREEN  },
-//	{{   0,  15,  16, 133}, GREEN  },
-//	{{  72, 191,   0, 255}, YELLOW },
-//	{{ 192, 223,   0, 255}, RED    },
-//	END
-//};
+/*static const struct artwork_element invdpt2m_overlay[]= */
+/*{ */
+/*	{{  16,  71,   0, 255}, GREEN  }, */
+/*	{{   0,  15,  16, 133}, GREEN  }, */
+/*	{{  72, 191,   0, 255}, YELLOW }, */
+/*	{{ 192, 223,   0, 255}, RED    }, */
+/*	END */
+/*}; */
 
 static const struct artwork_element invrvnge_overlay[]=
 {
@@ -119,8 +120,8 @@ void init_invaders(void)
 void init_invaddlx(void)
 {
 	init_8080bw();
-	//init_overlay = invdpt2m_overlay;
-	//overlay_type = 1;
+	/*init_overlay = invdpt2m_overlay; */
+	/*overlay_type = 1; */
 }
 
 void init_invrvnge(void)
@@ -135,6 +136,13 @@ void init_invad2ct(void)
 	init_8080bw();
 	init_artwork = invad2ct_overlay;
 	artwork_type = SIMPLE_OVERLAY;
+}
+
+void init_sstrngr2(void)
+{
+	init_8080bw();
+	videoram_w_p = sstrngr2_videoram_w;
+	screen_red_enabled = 1;
 }
 
 void init_schaser(void)
@@ -229,11 +237,11 @@ void init_phantom2(void)
 
 void init_boothill(void)
 {
-//	extern struct GameDriver driver_boothill;
+/*	extern struct GameDriver driver_boothill; */
 
 	init_8080bw();
-//	init_artwork = driver_boothill.name;
-//	artwork_type = FILE_BACKDROP;
+/*	init_artwork = driver_boothill.name; */
+/*	artwork_type = FILE_BACKDROP; */
 }
 
 int invaders_vh_start(void)
@@ -242,24 +250,21 @@ int invaders_vh_start(void)
 	if (artwork_type != NO_ARTWORK)
 	{
 		int start_pen;
-		int max_pens;
-
 
 		start_pen = 2;
-		max_pens = Machine->drv->total_colors-start_pen;
 
 		switch (artwork_type)
 		{
 		case SIMPLE_OVERLAY:
-			overlay_create((const struct artwork_element *)init_artwork, start_pen, max_pens);
+			overlay_create((const struct artwork_element *)init_artwork, start_pen);
 			break;
 		case FILE_OVERLAY:
-			overlay_load((const char *)init_artwork, start_pen, max_pens);
+			overlay_load((const char *)init_artwork, start_pen);
 			break;
 		case SIMPLE_BACKDROP:
 			break;
 		case FILE_BACKDROP:
-			backdrop_load((const char *)init_artwork, start_pen, max_pens);
+			backdrop_load((const char *)init_artwork, start_pen);
 			break;
 		default:
 			logerror("Unknown artwork type.\n");
@@ -392,7 +397,7 @@ static WRITE_HANDLER( bw_videoram_w )
 
 static WRITE_HANDLER( schaser_videoram_w )
 {
-	int x,y,col;
+	UINT8 x,y,col;
 
 	videoram[offset] = data;
 
@@ -406,7 +411,7 @@ static WRITE_HANDLER( schaser_videoram_w )
 
 static WRITE_HANDLER( lupin3_videoram_w )
 {
-	int x,y,col;
+	UINT8 x,y,col;
 
 	videoram[offset] = data;
 
@@ -536,20 +541,20 @@ WRITE_HANDLER( helifire_colorram_w )
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
 ***************************************************************************/
-void invaders_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void invaders_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	vh_screenrefresh_p(bitmap, full_refresh);
 }
 
 
-static void vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+static void vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
-	if (palette_recalc() || full_refresh)
+	if (full_refresh)
 	{
 		int offs;
 
@@ -567,7 +572,7 @@ static void vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 }
 
 
-static void draw_sight(struct osd_bitmap *bitmap,int x_center, int y_center)
+static void draw_sight(struct mame_bitmap *bitmap,int x_center, int y_center)
 {
 	int x,y;
 
@@ -625,7 +630,7 @@ static void draw_sight(struct osd_bitmap *bitmap,int x_center, int y_center)
 }
 
 
-static void seawolf_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+static void seawolf_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	/* update the bitmap (and erase old cross) */
 	vh_screenrefresh(bitmap, full_refresh);
@@ -633,7 +638,7 @@ static void seawolf_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
     draw_sight(bitmap,((input_port_0_r(0) & 0x1f) * 8) + 4, 31);
 }
 
-static void blueshrk_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+static void blueshrk_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	/* update the bitmap (and erase old cross) */
 	vh_screenrefresh(bitmap, full_refresh);
@@ -641,7 +646,7 @@ static void blueshrk_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh
     draw_sight(bitmap,((input_port_0_r(0) & 0x7f) * 2) - 12, 31);
 }
 
-static void desertgu_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+static void desertgu_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	/* update the bitmap (and erase old cross) */
 	vh_screenrefresh(bitmap, full_refresh);
@@ -650,7 +655,7 @@ static void desertgu_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh
 			   ((input_port_2_r(0) & 0x7f) * 2) - 30);
 }
 
-static void phantom2_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+static void phantom2_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	unsigned char *clouds;
 	int x, y;
@@ -712,7 +717,7 @@ void helifire_vh_convert_color_prom(unsigned char *palette, unsigned short *colo
 
 static WRITE_HANDLER( invadpt2_videoram_w )
 {
-	int x,y,col;
+	UINT8 x,y,col;
 
 	videoram[offset] = data;
 
@@ -721,16 +726,50 @@ static WRITE_HANDLER( invadpt2_videoram_w )
 
 	/* 32 x 32 colormap */
 	if (!screen_red)
-		col = memory_region(REGION_PROMS)[(color_map_select ? 0x400 : 0 ) + (((y+32)/8)*32) + (x/8)] & 7;
+	{
+		UINT16 colbase;
+
+		colbase = color_map_select ? 0x400 : 0;
+		col = memory_region(REGION_PROMS)[colbase + (((y+32)/8)*32) + (x/8)] & 7;
+	}
 	else
 		col = 1;	/* red */
 
 	plot_byte(x, y, data, col, 0);
 }
 
+static WRITE_HANDLER( sstrngr2_videoram_w )
+{
+	UINT8 x,y,col;
+
+	videoram[offset] = data;
+
+	y = offset / 32;
+	x = 8 * (offset % 32);
+
+	/* 16 x 32 colormap */
+	if (!screen_red)
+	{
+		UINT16 colbase;
+
+		colbase = color_map_select ? 0 : 0x0200;
+		col = memory_region(REGION_PROMS)[colbase + ((y/16+2) & 0x0f)*32 + (x/8)] & 0x0f;
+	}
+	else
+		col = 1;	/* red */
+
+	if (color_map_select)
+	{
+		x = 240 - x;
+		y = 223 - y;
+	}
+
+	plot_byte(x, y, data, col, 0);
+}
+
 static WRITE_HANDLER( astinvad_videoram_w )
 {
-	int x,y,col;
+	UINT8 x,y,col;
 
 	videoram[offset] = data;
 
@@ -740,9 +779,9 @@ static WRITE_HANDLER( astinvad_videoram_w )
 	if (!screen_red)
 	{
 		if (flip_screen)
-			col = memory_region(REGION_PROMS)[((y+32)/8)*32+(x/8)] >> 4;
+			col = memory_region(REGION_PROMS)[((y+32)/8)*32 + (x/8)] >> 4;
 		else
-			col = memory_region(REGION_PROMS)[(31-y/8)*32+(31-x/8)] & 0x0f;
+			col = memory_region(REGION_PROMS)[(31-y/8)*32 + (31-x/8)] & 0x0f;
 	}
 	else
 		col = 1; /* red */
@@ -752,7 +791,8 @@ static WRITE_HANDLER( astinvad_videoram_w )
 
 static WRITE_HANDLER( spaceint_videoram_w )
 {
-	int i,x,y,col;
+	UINT8 x,y,col;
+	int i;
 
 	videoram[offset] = data;
 

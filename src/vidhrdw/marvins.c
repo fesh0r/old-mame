@@ -57,7 +57,7 @@ static void stuff_palette( int source_index, int dest_index, int num_colors )
 		bit3 = (color_prom[0x400] >> 1) & 0x01;
 		blue = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_change_color( dest_index++, red, green, blue );
+		palette_set_color( dest_index++, red, green, blue );
 		color_prom++;
 	}
 }
@@ -142,18 +142,30 @@ WRITE_HANDLER( marvins_text_ram_w )
 
 static void get_bg_tilemap_info(int tile_index)
 {
-	SET_TILE_INFO(2,videoram[tile_index],0);
+	SET_TILE_INFO(
+			2,
+			videoram[tile_index],
+			0,
+			0)
 }
 
 static void get_fg_tilemap_info(int tile_index)
 {
-	SET_TILE_INFO(1,videoram[tile_index+0x1000],0);
+	SET_TILE_INFO(
+			1,
+			videoram[tile_index+0x1000],
+			0,
+			0)
 }
 
 static void get_tx_tilemap_info(int tile_index)
 {
 	int tile_number = videoram[tile_index+0x2000];
-	SET_TILE_INFO(0,tile_number,(tile_number>>5));
+	SET_TILE_INFO(
+			0,
+			tile_number,
+			(tile_number>>5),
+			0)
 }
 
 /***************************************************************************
@@ -216,7 +228,7 @@ int marvins_vh_start( void )
 **
 ***************************************************************************/
 
-static void draw_status( struct osd_bitmap *bitmap )
+static void draw_status( struct mame_bitmap *bitmap )
 {
 	const unsigned char *base = videoram+0x2400;
 	struct rectangle clip = Machine->visible_area;
@@ -248,7 +260,7 @@ static void draw_status( struct osd_bitmap *bitmap )
 	}
 }
 
-static void draw_sprites( struct osd_bitmap *bitmap, int scrollx, int scrolly,
+static void draw_sprites( struct mame_bitmap *bitmap, int scrollx, int scrolly,
 		int priority, unsigned char sprite_partition )
 {
 	const struct GfxElement *gfx = Machine->gfx[3];
@@ -305,7 +317,7 @@ static void draw_sprites( struct osd_bitmap *bitmap, int scrollx, int scrolly,
 	}
 }
 
-void marvins_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
+void marvins_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh )
 {
 	unsigned char *mem = memory_region(REGION_CPU1);
 
@@ -341,9 +353,6 @@ void marvins_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
 	tilemap_set_scrollx( tx_tilemap,  0, 0 );
 	tilemap_set_scrolly( tx_tilemap,  0, 0 );
 
-	tilemap_update( ALL_TILEMAPS );
-	palette_recalc();
-
 	tilemap_draw( bitmap,fg_tilemap,TILEMAP_IGNORE_TRANSPARENCY ,0);
 	draw_sprites( bitmap, sprite_scrollx+29+1, sprite_scrolly, 0, sprite_partition );
 	tilemap_draw( bitmap,bg_tilemap,0 ,0);
@@ -352,7 +361,7 @@ void marvins_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
 	draw_status( bitmap );
 }
 
-void madcrash_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
+void madcrash_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh )
 {
 	extern int madcrash_vreg;
 	unsigned char *mem = memory_region(REGION_CPU1)+madcrash_vreg;
@@ -384,9 +393,6 @@ void madcrash_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
 	tilemap_set_scrolly( fg_tilemap, 0, fg_scrolly );
 	tilemap_set_scrollx( tx_tilemap,  0, 0 );
 	tilemap_set_scrolly( tx_tilemap,  0, 0 );
-
-	tilemap_update( ALL_TILEMAPS );
-	palette_recalc();
 
 	tilemap_draw( bitmap,bg_tilemap,TILEMAP_IGNORE_TRANSPARENCY ,0);
 	tilemap_draw( bitmap,fg_tilemap,0 ,0);

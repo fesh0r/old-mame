@@ -111,7 +111,7 @@ WRITE_HANDLER( gladiatr_paletteram_rg_w );
 WRITE_HANDLER( gladiatr_paletteram_b_w );
 extern int gladiatr_vh_start(void);
 extern void gladiatr_vh_stop(void);
-extern void gladiatr_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+extern void gladiatr_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE_HANDLER( gladiatr_spritebank_w );
 
 /*Rom bankswitching*/
@@ -596,10 +596,10 @@ static const struct MachineDriver machine_driver_gladiatr =
 	32*8, 32*8, { 0, 255, 0+16, 255-16 },
 
 	gfxdecodeinfo,
-	512+2, 512+2,
+	512+2, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	gladiatr_vh_start,
 	gladiatr_vh_stop,

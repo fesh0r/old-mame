@@ -95,7 +95,7 @@ void init_senjyo(void);
 
 int senjyo_vh_start(void);
 void senjyo_vh_stop(void);
-void senjyo_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void senjyo_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 int senjyo_sh_start(const struct MachineSound *msound);
 void senjyo_sh_stop(void);
@@ -589,10 +589,10 @@ static const struct MachineDriver machine_driver_senjyo =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	402, 402,
+	400+2, 0,	/* 400 real palette + 2 for the radar */
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	senjyo_vh_start,
 	senjyo_vh_stop,

@@ -122,7 +122,7 @@ WRITE_HANDLER( leland_gfx_port_w );
 void leland_vh_eof(void);
 int ataxx_vh_start(void);
 void ataxx_vh_stop(void);
-void ataxx_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void ataxx_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 
 
 /* Internal routines */
@@ -977,10 +977,10 @@ static const struct MachineDriver machine_driver_ataxx =
 	/* video hardware */
 	40*8, 30*8, { 0*8, 40*8-1, 0*8, 30*8-1 },
 	gfxdecodeinfo,
-	1024,1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	leland_vh_eof,
 	ataxx_vh_start,
 	ataxx_vh_stop,
@@ -1028,10 +1028,10 @@ static const struct MachineDriver machine_driver_wsf =
 	/* video hardware */
 	40*8, 30*8, { 0*8, 40*8-1, 0*8, 30*8-1 },
 	gfxdecodeinfo,
-	1024,1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	leland_vh_eof,
 	ataxx_vh_start,
 	ataxx_vh_stop,

@@ -1,7 +1,7 @@
 /*##########################################################################
 
 	atarian.h
-	
+
 	Common alphanumerics management functions for Atari raster games.
 
 ##########################################################################*/
@@ -78,8 +78,7 @@ void atarian_free(void);
 UINT32 *atarian_get_lookup(int map, int *size);
 
 /* core processing */
-void atarian_mark_palette(int map);
-void atarian_render(int map, struct osd_bitmap *bitmap);
+void atarian_render(int map, struct mame_bitmap *bitmap);
 
 /* atrribute setters */
 void atarian_set_bankbits(int map, int bankbits);

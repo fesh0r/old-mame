@@ -17,7 +17,7 @@ TO DO:
 
 /* from vidhrdw/flkatck.c */
 int flkatck_vh_start(void);
-void flkatck_vh_screenrefresh(struct osd_bitmap *bitmap,int fullrefresh);
+void flkatck_vh_screenrefresh(struct mame_bitmap *bitmap,int fullrefresh);
 WRITE_HANDLER( flkatck_k007121_w );
 WRITE_HANDLER( flkatck_k007121_regs_w );
 
@@ -306,9 +306,9 @@ static const struct MachineDriver machine_driver_flkatck =
 	/* video hardware */
 	37*8, 32*8, { 0*8, 35*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	512, 512,
+	512, 0,
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	flkatck_vh_start,
 	0,

@@ -19,7 +19,11 @@ static void get_tile_info(int tile_index)
 {
 	UINT16 code = ohmygod_videoram[2*tile_index+1];
 	UINT16 attr = ohmygod_videoram[2*tile_index];
-	SET_TILE_INFO(0,code,(attr & 0x0f00) >> 8)
+	SET_TILE_INFO(
+			0,
+			code,
+			(attr & 0x0f00) >> 8,
+			0)
 }
 
 
@@ -83,7 +87,7 @@ WRITE16_HANDLER( ohmygod_scrolly_w )
 
 ***************************************************************************/
 
-static void draw_sprites(struct osd_bitmap *bitmap)
+static void draw_sprites(struct mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -110,12 +114,8 @@ static void draw_sprites(struct osd_bitmap *bitmap)
 	}
 }
 
-void ohmygod_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void ohmygod_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
-	tilemap_update(ALL_TILEMAPS);
-
-	palette_recalc();
-
 	tilemap_draw(bitmap,bg_tilemap,0,0);
 	draw_sprites(bitmap);
 }

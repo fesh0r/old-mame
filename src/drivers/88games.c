@@ -20,7 +20,7 @@ static int videobank;
 extern int k88games_priority;
 int k88games_vh_start(void);
 void k88games_vh_stop(void);
-void k88games_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void k88games_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 static unsigned char *nvram;
@@ -329,10 +329,10 @@ static const struct MachineDriver machine_driver_88games =
 	/* video hardware */
 	64*8, 32*8, { 13*8, (64-13)*8-1, 2*8, 30*8-1 },
 	0,	/* gfx decoded by konamiic.c */
-	2048, 2048,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS,
 	0,
 	k88games_vh_start,
 	k88games_vh_stop,

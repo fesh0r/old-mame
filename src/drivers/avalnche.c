@@ -28,7 +28,7 @@ int avalnche_interrupt(void);
 /* vidhrdw/avalnche.c */
 WRITE_HANDLER( avalnche_videoram_w );
 int avalnche_vh_start(void);
-void avalnche_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void avalnche_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 static MEMORY_READ_START( readmem )
 	{ 0x0000, 0x1fff, MRA_RAM }, /* RAM SEL */
@@ -127,7 +127,7 @@ static const struct MachineDriver machine_driver_avalnche =
 	ARTWORK_COLORS,ARTWORK_COLORS,		/* Declare extra colors for the overlay */
 	init_palette,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	avalnche_vh_start,
 	generic_vh_stop,

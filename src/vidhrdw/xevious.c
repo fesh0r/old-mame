@@ -117,18 +117,22 @@ void xevious_vh_convert_color_prom(unsigned char *palette, unsigned short *color
 static void get_fg_tile_info(int tile_index)
 {
 	unsigned char attr = xevious_fg_colorram[tile_index];
-	SET_TILE_INFO(0,xevious_fg_videoram[tile_index],
-			((attr & 0x03) << 4) | ((attr & 0x3c) >> 2))
-	tile_info.flags = TILE_FLIPYX((attr & 0xc0) >> 6);
+	SET_TILE_INFO(
+			0,
+			xevious_fg_videoram[tile_index],
+			((attr & 0x03) << 4) | ((attr & 0x3c) >> 2),
+			TILE_FLIPYX((attr & 0xc0) >> 6))
 }
 
 static void get_bg_tile_info(int tile_index)
 {
 	unsigned char code = xevious_bg_videoram[tile_index];
 	unsigned char attr = xevious_bg_colorram[tile_index];
-	SET_TILE_INFO(1,code + ((attr & 0x01) << 8),
-			((attr & 0x3c) >> 2) | ((code & 0x80) >> 3) | ((attr & 0x03) << 5))
-	tile_info.flags = TILE_FLIPYX((attr & 0xc0) >> 6);
+	SET_TILE_INFO(
+			1,
+			code + ((attr & 0x01) << 8),
+			((attr & 0x3c) >> 2) | ((code & 0x80) >> 3) | ((attr & 0x03) << 5),
+			TILE_FLIPYX((attr & 0xc0) >> 6))
 }
 
 
@@ -147,6 +151,8 @@ int xevious_vh_start(void)
 	if (!bg_tilemap || !fg_tilemap)
 		return 1;
 
+	tilemap_set_scrolldx(fg_tilemap,0,-160);
+	tilemap_set_scrolldy(fg_tilemap,0,8);
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
 	return 0;
@@ -287,7 +293,7 @@ ROM 3M,3L color reprace table for sprite
 
 ***************************************************************************/
 
-static void draw_sprites(struct osd_bitmap *bitmap)
+static void draw_sprites(struct mame_bitmap *bitmap)
 {
 	int offs,sx,sy;
 
@@ -367,10 +373,8 @@ static void draw_sprites(struct osd_bitmap *bitmap)
 }
 
 
-void xevious_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void xevious_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
-	tilemap_update(ALL_TILEMAPS);
-
 	tilemap_draw(bitmap,bg_tilemap,0,0);
 	draw_sprites(bitmap);
 	tilemap_draw(bitmap,fg_tilemap,0,0);

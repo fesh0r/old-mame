@@ -35,7 +35,7 @@ Notes:
 int bladestl_spritebank;
 int bladestl_vh_start(void);
 void bladestl_vh_stop(void);
-void bladestl_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void bladestl_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 void bladestl_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 WRITE_HANDLER( bladestl_vreg_w );
 
@@ -475,7 +475,7 @@ static const struct MachineDriver machine_driver_bladestl =
 	48, 48 + 16*16,
 	bladestl_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	bladestl_vh_start,
 	bladestl_vh_stop,

@@ -19,7 +19,7 @@ static void aliens_banking( int lines );
 
 void aliens_vh_stop( void );
 int aliens_vh_start( void );
-void aliens_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void aliens_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 static int palette_selected;
@@ -287,10 +287,10 @@ static const struct MachineDriver machine_driver_aliens =
 	/* video hardware */
 	64*8, 32*8, { 14*8, (64-14)*8-1, 2*8, 30*8-1 },
 	0,	/* gfx decoded by konamiic.c */
-	512, 512,
+	512, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS,
 	0,
 	aliens_vh_start,
 	aliens_vh_stop,

@@ -1,13 +1,38 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
+/*******************************************************************************
+ Shadow Handling Notes
+********************************************************************************
+ previously shadows were handled by toggling them on and off with a
+ shadows_visible flag.
+
+ Games Not Using Shadows?
+
+ those using gwar_vh_screenrefresh (gwar, bermudat, psychos, chopper1)
+	(0-15 , 15 is transparent)
+ those using tnk3_vh_screenrefresh (tnk3, athena, fitegolf) sgladiat is similar
+	(0-7  , 7  is transparent) * these are using aso colour prom convert *
+
+ Games Using Shadows?
+
+ those using tdfever_vh_screenrefresh (tdfever)
+	(0-15 , 14 is shadow, 15 is transparent)
+ those using ftsoccer_vh_screenrefresh (ftsoccer)
+	(0-15 , 14 is shadow, 15 is transparent)
+ those using ikari_vh_screenrefresh (ikari, victroad)
+    (0-7  , 6  is shadow, 7  is transparent)
+
+*******************************************************************************/
+
+
 int snk_bg_tilemap_baseaddr, gwar_sprite_placement;
 
 #define MAX_VRAM_SIZE (64*64*2) /* 0x2000 */
 
-static int shadows_visible = 0; /* toggles rapidly to fake translucency in ikari warriors */
+// static int shadows_visible = 0; /* toggles rapidly to fake translucency in ikari warriors */
 
-static void print( struct osd_bitmap *bitmap, int num, int row ){
+static void print( struct mame_bitmap *bitmap, int num, int row ){
 	char *digit = "0123456789abcdef";
 
 	drawgfx( bitmap,Machine->uifont,
@@ -24,48 +49,36 @@ static void print( struct osd_bitmap *bitmap, int num, int row ){
 		0,TRANSPARENCY_NONE,0);
 }
 
-void snk_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom){
+void snk_3bpp_shadow_vh_convert_color_prom(unsigned char *obsolete,unsigned short *colortable,const unsigned char *color_prom){
 	int i;
-	int num_colors = 1024;
-	for( i=0; i<num_colors; i++ ){
-		int bit0,bit1,bit2,bit3;
+	palette_RRRR_GGGG_BBBB_convert_prom(obsolete, colortable, color_prom);
 
-		colortable[i] = i;
+	if (!(Machine->drv->video_attributes & VIDEO_HAS_SHADOWS))
+	usrintf_showmessage("driver should use VIDEO_HAS_SHADOWS");
 
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		*palette++ = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+	/* prepare shadow draw table */
+	for (i = 0;i < 8;i++)
+		gfx_drawmode_table[i] = DRAWMODE_SOURCE;
 
-		bit0 = (color_prom[num_colors] >> 0) & 0x01;
-		bit1 = (color_prom[num_colors] >> 1) & 0x01;
-		bit2 = (color_prom[num_colors] >> 2) & 0x01;
-		bit3 = (color_prom[num_colors] >> 3) & 0x01;
-		*palette++ = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+	gfx_drawmode_table[6] = DRAWMODE_SHADOW;
+	gfx_drawmode_table[7] = DRAWMODE_NONE;
 
-		bit0 = (color_prom[2*num_colors] >> 0) & 0x01;
-		bit1 = (color_prom[2*num_colors] >> 1) & 0x01;
-		bit2 = (color_prom[2*num_colors] >> 2) & 0x01;
-		bit3 = (color_prom[2*num_colors] >> 3) & 0x01;
-		*palette++ = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		color_prom++;
-	}
 }
 
-void ikari_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom){
+void snk_4bpp_shadow_vh_convert_color_prom(unsigned char *obsolete,unsigned short *colortable,const unsigned char *color_prom){
 	int i;
-	snk_vh_convert_color_prom( palette, colortable, color_prom);
+	palette_RRRR_GGGG_BBBB_convert_prom(obsolete, colortable, color_prom);
 
-	palette += 6*3;
-	/*
-		pen#6 is used for translucent shadows;
-		we'll just make it dark grey for now
-	*/
-	for( i=0; i<256; i+=8 ){
-		palette[i*3+0] = palette[i*3+1] = palette[i*3+2] = 14;
-	}
+	if (!(Machine->drv->video_attributes & VIDEO_HAS_SHADOWS))
+	usrintf_showmessage("driver should use VIDEO_HAS_SHADOWS");
+
+	/* prepare shadow draw table */
+	for (i = 0;i < 16;i++)
+		gfx_drawmode_table[i] = DRAWMODE_SOURCE;
+
+	gfx_drawmode_table[14] = DRAWMODE_SHADOW;
+	gfx_drawmode_table[15] = DRAWMODE_NONE;
+
 }
 
 int snk_vh_start( void ){
@@ -74,7 +87,7 @@ int snk_vh_start( void ){
 		tmpbitmap = bitmap_alloc( 512, 512 );
 		if( tmpbitmap ){
 			memset( dirtybuffer, 0xff, MAX_VRAM_SIZE  );
-			shadows_visible = 1;
+		//	shadows_visible = 1;
 			return 0;
 		}
 		free( dirtybuffer );
@@ -91,7 +104,7 @@ void snk_vh_stop( void ){
 
 /**************************************************************************************/
 
-static void tnk3_draw_background( struct osd_bitmap *bitmap, int scrollx, int scrolly )
+static void tnk3_draw_background( struct mame_bitmap *bitmap, int scrollx, int scrolly )
 {
 	const struct rectangle *clip = &Machine->visible_area;
 	const struct GfxElement *gfx = Machine->gfx[1];
@@ -126,7 +139,7 @@ static void tnk3_draw_background( struct osd_bitmap *bitmap, int scrollx, int sc
 		TRANSPARENCY_NONE,0 );
 }
 
-void tnk3_draw_text( struct osd_bitmap *bitmap, int bank, unsigned char *source ){
+void tnk3_draw_text( struct mame_bitmap *bitmap, int bank, unsigned char *source ){
 	const struct GfxElement *gfx = Machine->gfx[0];
 	int offs;
 
@@ -143,7 +156,7 @@ void tnk3_draw_text( struct osd_bitmap *bitmap, int bank, unsigned char *source 
 	}
 }
 
-void tnk3_draw_status( struct osd_bitmap *bitmap, int bank, unsigned char *source ){
+void tnk3_draw_status( struct mame_bitmap *bitmap, int bank, unsigned char *source ){
 	const struct rectangle *clip = &Machine->visible_area;
 	const struct GfxElement *gfx = Machine->gfx[0];
 	int offs;
@@ -174,7 +187,7 @@ void tnk3_draw_status( struct osd_bitmap *bitmap, int bank, unsigned char *sourc
 	}
 }
 
-void tnk3_draw_sprites( struct osd_bitmap *bitmap, int xscroll, int yscroll )
+void tnk3_draw_sprites( struct mame_bitmap *bitmap, int xscroll, int yscroll )
 {
 	const unsigned char *source = spriteram;
 	const unsigned char *finish = source+50*4;
@@ -202,7 +215,7 @@ void tnk3_draw_sprites( struct osd_bitmap *bitmap, int xscroll, int yscroll )
 	}
 }
 
-void tnk3_vh_screenrefresh( struct osd_bitmap *bitmap, int full_refresh )
+void tnk3_vh_screenrefresh( struct mame_bitmap *bitmap, int full_refresh )
 {
 	unsigned char *ram = memory_region(REGION_CPU1);
 	int attributes = ram[0xc800];
@@ -248,7 +261,7 @@ int sgladiat_vh_start( void ){
 		tmpbitmap = bitmap_alloc( 512, 256 );
 		if( tmpbitmap ){
 			memset( dirtybuffer, 0xff, MAX_VRAM_SIZE  );
-			shadows_visible = 1;
+		//	shadows_visible = 1;
 			return 0;
 		}
 		free( dirtybuffer );
@@ -256,7 +269,7 @@ int sgladiat_vh_start( void ){
 	return 1;
 }
 
-static void sgladiat_draw_background( struct osd_bitmap *bitmap, int scrollx, int scrolly )
+static void sgladiat_draw_background( struct mame_bitmap *bitmap, int scrollx, int scrolly )
 {
 	const struct rectangle *clip = &Machine->visible_area;
 	const struct GfxElement *gfx = Machine->gfx[1];
@@ -288,7 +301,7 @@ static void sgladiat_draw_background( struct osd_bitmap *bitmap, int scrollx, in
 		TRANSPARENCY_NONE,0);
 }
 
-void sgladiat_vh_screenrefresh( struct osd_bitmap *bitmap, int full_refresh )
+void sgladiat_vh_screenrefresh( struct mame_bitmap *bitmap, int full_refresh )
 {
 	unsigned char *pMem = memory_region(REGION_CPU1);
 	int attributes, scrollx, scrolly;
@@ -308,7 +321,7 @@ void sgladiat_vh_screenrefresh( struct osd_bitmap *bitmap, int full_refresh )
 
 /**************************************************************************************/
 
-static void ikari_draw_background( struct osd_bitmap *bitmap, int xscroll, int yscroll ){
+static void ikari_draw_background( struct mame_bitmap *bitmap, int xscroll, int yscroll ){
 	const struct GfxElement *gfx = Machine->gfx[1];
 	const unsigned char *source = &memory_region(REGION_CPU1)[snk_bg_tilemap_baseaddr];
 
@@ -348,7 +361,7 @@ static void ikari_draw_background( struct osd_bitmap *bitmap, int xscroll, int y
 	}
 }
 
-static void ikari_draw_text( struct osd_bitmap *bitmap ){
+static void ikari_draw_text( struct mame_bitmap *bitmap ){
 	const struct rectangle *clip = &Machine->visible_area;
 	const struct GfxElement *gfx = Machine->gfx[0];
 	const unsigned char *source = &memory_region(REGION_CPU1)[0xf800];
@@ -368,7 +381,7 @@ static void ikari_draw_text( struct osd_bitmap *bitmap ){
 	}
 }
 
-static void ikari_draw_status( struct osd_bitmap *bitmap ){
+static void ikari_draw_status( struct mame_bitmap *bitmap ){
 	/*	this is drawn above and below the main display */
 
 	const struct rectangle *clip = &Machine->visible_area;
@@ -400,10 +413,10 @@ static void ikari_draw_status( struct osd_bitmap *bitmap ){
 	}
 }
 
-static void ikari_draw_sprites_16x16( struct osd_bitmap *bitmap, int start, int quantity, int xscroll, int yscroll )
+static void ikari_draw_sprites_16x16( struct mame_bitmap *bitmap, int start, int quantity, int xscroll, int yscroll )
 {
-	int transp_mode  = shadows_visible ? TRANSPARENCY_PEN : TRANSPARENCY_PENS;
-	int transp_param = shadows_visible ? 7 : ((1<<7) | (1<<6));
+//	int transp_mode  = shadows_visible ? TRANSPARENCY_PEN : TRANSPARENCY_PENS;
+//	int transp_param = shadows_visible ? 7 : ((1<<7) | (1<<6));
 
 	int which;
 	const unsigned char *source = &memory_region(REGION_CPU1)[0xe800];
@@ -424,14 +437,14 @@ static void ikari_draw_sprites_16x16( struct osd_bitmap *bitmap, int start, int 
 			attributes&0xf, /* color */
 			0,0, /* flip */
 			-16+(sx & 0x1ff), -16+(sy & 0x1ff),
-			&clip,transp_mode,transp_param);
+			&clip,TRANSPARENCY_PEN_TABLE,7);
 	}
 }
 
-static void ikari_draw_sprites_32x32( struct osd_bitmap *bitmap, int start, int quantity, int xscroll, int yscroll )
+static void ikari_draw_sprites_32x32( struct mame_bitmap *bitmap, int start, int quantity, int xscroll, int yscroll )
 {
-	int transp_mode  = shadows_visible ? TRANSPARENCY_PEN : TRANSPARENCY_PENS;
-	int transp_param = shadows_visible ? 7 : ((1<<7) | (1<<6));
+//	int transp_mode  = shadows_visible ? TRANSPARENCY_PEN : TRANSPARENCY_PENS;
+//	int transp_param = shadows_visible ? 7 : ((1<<7) | (1<<6));
 
 	int which;
 	const unsigned char *source = &memory_region(REGION_CPU1)[0xe000];
@@ -453,15 +466,15 @@ static void ikari_draw_sprites_32x32( struct osd_bitmap *bitmap, int start, int 
 			attributes&0xf, /* color */
 			0,0, /* flip */
 			-16+(sx & 0x1ff), -16+(sy & 0x1ff),
-			&clip,transp_mode,transp_param );
+			&clip,TRANSPARENCY_PEN_TABLE,7 );
 
 	}
 }
 
-void ikari_vh_screenrefresh( struct osd_bitmap *bitmap, int full_refresh){
+void ikari_vh_screenrefresh( struct mame_bitmap *bitmap, int full_refresh){
 	const unsigned char *ram = memory_region(REGION_CPU1);
 
-	shadows_visible = !shadows_visible;
+//	shadows_visible = !shadows_visible;
 
 	{
 		int attributes = ram[0xc900];
@@ -488,7 +501,7 @@ void ikari_vh_screenrefresh( struct osd_bitmap *bitmap, int full_refresh){
 
 /**************************************************************/
 
-static void tdfever_draw_background( struct osd_bitmap *bitmap,
+static void tdfever_draw_background( struct mame_bitmap *bitmap,
 		int xscroll, int yscroll )
 {
 	const struct GfxElement *gfx = Machine->gfx[1];
@@ -530,9 +543,9 @@ static void tdfever_draw_background( struct osd_bitmap *bitmap,
 	}
 }
 
-static void tdfever_draw_sprites( struct osd_bitmap *bitmap, int xscroll, int yscroll ){
-	int transp_mode  = shadows_visible ? TRANSPARENCY_PEN : TRANSPARENCY_PENS;
-	int transp_param = shadows_visible ? 15 : ((1<<15) | (1<<14));
+static void tdfever_draw_sprites( struct mame_bitmap *bitmap, int xscroll, int yscroll ){
+//	int transp_mode  = shadows_visible ? TRANSPARENCY_PEN : TRANSPARENCY_PENS;
+//	int transp_param = shadows_visible ? 15 : ((1<<15) | (1<<14));
 
 	const struct GfxElement *gfx = Machine->gfx[2];
 	const unsigned char *source = &memory_region(REGION_CPU1)[0xe000];
@@ -558,11 +571,11 @@ static void tdfever_draw_sprites( struct osd_bitmap *bitmap, int xscroll, int ys
 			(attributes&0xf), /* color */
 			0,0, /* no flip */
 			sx,sy,
-			&clip,transp_mode,transp_param);
+			&clip,TRANSPARENCY_PEN_TABLE,15);
 	}
 }
 
-static void tdfever_draw_text( struct osd_bitmap *bitmap, int attributes, int dx, int dy, int base ){
+static void tdfever_draw_text( struct mame_bitmap *bitmap, int attributes, int dx, int dy, int base ){
 	int bank = attributes>>4;
 	int color = attributes&0xf;
 
@@ -591,9 +604,9 @@ static void tdfever_draw_text( struct osd_bitmap *bitmap, int attributes, int dx
 	}
 }
 
-void tdfever_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh ){
+void tdfever_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh ){
 	const unsigned char *ram = memory_region(REGION_CPU1);
-	shadows_visible = !shadows_visible;
+//	shadows_visible = !shadows_visible;
 
 	{
 		unsigned char bg_attributes = ram[0xc880];
@@ -615,9 +628,9 @@ void tdfever_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh ){
 	}
 }
 
-void ftsoccer_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh ){
+void ftsoccer_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh ){
 	const unsigned char *ram = memory_region(REGION_CPU1);
-	shadows_visible = !shadows_visible;
+//	shadows_visible = !shadows_visible;
 	{
 		unsigned char bg_attributes = ram[0xc880];
 		int bg_scroll_y = - ram[0xc800] - ((bg_attributes&0x01)?256:0);
@@ -638,7 +651,7 @@ void ftsoccer_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh ){
 	}
 }
 
-static void gwar_draw_sprites_16x16( struct osd_bitmap *bitmap, int xscroll, int yscroll ){
+static void gwar_draw_sprites_16x16( struct mame_bitmap *bitmap, int xscroll, int yscroll ){
 	const struct GfxElement *gfx = Machine->gfx[2];
 	const unsigned char *source = &memory_region(REGION_CPU1)[0xe800];
 
@@ -670,7 +683,7 @@ static void gwar_draw_sprites_16x16( struct osd_bitmap *bitmap, int xscroll, int
 	}
 }
 
-void gwar_draw_sprites_32x32( struct osd_bitmap *bitmap, int xscroll, int yscroll ){
+void gwar_draw_sprites_32x32( struct mame_bitmap *bitmap, int xscroll, int yscroll ){
 	const struct GfxElement *gfx = Machine->gfx[3];
 	const unsigned char *source = &memory_region(REGION_CPU1)[0xe000];
 
@@ -701,7 +714,7 @@ void gwar_draw_sprites_32x32( struct osd_bitmap *bitmap, int xscroll, int yscrol
 	}
 }
 
-void gwar_vh_screenrefresh( struct osd_bitmap *bitmap, int full_refresh ){
+void gwar_vh_screenrefresh( struct mame_bitmap *bitmap, int full_refresh ){
 	const unsigned char *ram = memory_region(REGION_CPU1);
 	unsigned char bg_attributes, sp_attributes;
 

@@ -2,7 +2,7 @@
 
 						  -= Yun Sung 8 Bit Games =-
 
-					driver by	Luca Elia (eliavit@unina.it)
+					driver by	Luca Elia (l.elia@tin.it)
 
 
 Main  CPU    :  Z80B
@@ -46,7 +46,7 @@ WRITE_HANDLER( yunsung8_videoram_w );
 WRITE_HANDLER( yunsung8_flipscreen_w );
 
 int  yunsung8_vh_start(void);
-void yunsung8_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void yunsung8_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -472,9 +472,10 @@ static const struct MachineDriver machine_driver_yunsung8 =
 	/* video hardware */
 	512, 256, { 0+64, 512-64-1, 0+8, 256-8-1 },
 	yunsung8_gfxdecodeinfo,
-	0x800, 0x800,
+	2048, 0,
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+
+	VIDEO_TYPE_RASTER,
 	0,
 	yunsung8_vh_start,
 	0,
@@ -581,5 +582,5 @@ ROM_END
 
 ***************************************************************************/
 
-GAMEX( 1995, cannball, 0, yunsung8, cannball, 0, ROT0_16BIT, "Yun Sung / Soft Vision", "Cannon Ball",  GAME_IMPERFECT_SOUND )
-GAMEX( 1995, magix,    0, yunsung8, magix,    0, ROT0_16BIT, "Yun Sung",               "Magix / Rock", GAME_IMPERFECT_SOUND ) // Title: DSW
+GAMEX( 1995, cannball, 0, yunsung8, cannball, 0, ROT0, "Yun Sung / Soft Vision", "Cannon Ball",  GAME_IMPERFECT_SOUND )
+GAMEX( 1995, magix,    0, yunsung8, magix,    0, ROT0, "Yun Sung",               "Magix / Rock", GAME_IMPERFECT_SOUND ) // Title: DSW

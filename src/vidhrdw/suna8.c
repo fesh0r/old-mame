@@ -2,7 +2,7 @@
 
 							-=  SunA 8 Bit Games =-
 
-					driver by	Luca Elia (eliavit@unina.it)
+					driver by	Luca Elia (l.elia@tin.it)
 
 	These games have only sprites, of a peculiar type:
 
@@ -74,7 +74,7 @@ WRITE_HANDLER( suna8_spriteram_w );			// for debug
 WRITE_HANDLER( suna8_banked_spriteram_w );	// for debug
 
 int  suna8_vh_start(void);
-void suna8_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void suna8_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 /***************************************************************************
@@ -94,8 +94,11 @@ static void get_tile_info(int tile_index)
 	else
 	{	code = spriteram[ 2 * tile_index + 0 ];
 		attr = spriteram[ 2 * tile_index + 1 ];	}
-	SET_TILE_INFO(0, ( (attr & 0x03) << 8 ) + code + tiles*0x400,(attr >> 2) & 0xf);
-	tile_info.flags = TILE_FLIPYX( (attr >> 6) & 3 );
+	SET_TILE_INFO(
+			0,
+			( (attr & 0x03) << 8 ) + code + tiles*0x400,
+			(attr >> 2) & 0xf,
+			TILE_FLIPYX( (attr >> 6) & 3 ))
 }
 
 
@@ -157,7 +160,7 @@ WRITE_HANDLER( brickzn_banked_paletteram_w )
 	r = (r << 4) | r;
 	g = (g << 4) | g;
 	b = (b << 4) | b;
-	palette_change_color(offset/2,r,g,b);
+	palette_set_color(offset/2,r,g,b);
 }
 
 
@@ -195,7 +198,7 @@ int suna8_vh_start_textdim12(void)	{ return suna8_vh_start_common(12); }
 
 ***************************************************************************/
 
-void suna8_draw_normal_sprites(struct osd_bitmap *bitmap)
+void suna8_draw_normal_sprites(struct mame_bitmap *bitmap)
 {
 	int i;
 	int mx = 0;	// multisprite x counter
@@ -324,7 +327,7 @@ void suna8_draw_normal_sprites(struct osd_bitmap *bitmap)
 	}
 }
 
-void suna8_draw_text_sprites(struct osd_bitmap *bitmap)
+void suna8_draw_text_sprites(struct mame_bitmap *bitmap)
 {
 	int i;
 
@@ -408,7 +411,7 @@ void suna8_draw_text_sprites(struct osd_bitmap *bitmap)
 */
 #define TILEMAPS 0
 
-void suna8_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void suna8_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 #ifdef MAME_DEBUG
 #if TILEMAPS
@@ -431,8 +434,6 @@ void suna8_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 	tilemap_set_scrollx( tilemap, 0, 0x100 * page);
 	tilemap_set_scrolly( tilemap, 0, 0);
 
-	tilemap_update(ALL_TILEMAPS);
-
 #if 1
 	sprintf(buf,	"%02X %02X %02X %02X - p%2X g%02X r%02X",
 					suna8_rombank, suna8_palettebank, suna8_spritebank, suna8_unknown,
@@ -443,10 +444,6 @@ void suna8_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 }
 #endif
 #endif
-
-	palette_init_used_colors();
-	memset(palette_used_colors, PALETTE_COLOR_USED, Machine->drv->total_colors);
-	palette_recalc();
 
 	/* see hardhead, hardhea2 test mode (press button 2 for both players) */
 	fillbitmap(bitmap,Machine->pens[0xff],&Machine->visible_area);

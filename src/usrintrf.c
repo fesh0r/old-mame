@@ -29,12 +29,13 @@ extern unsigned int coinlockedout[COIN_COUNTERS];
 #ifndef MESS
 #ifndef TINY_COMPILE
 #ifndef CPSMAME
-int 		memcard_menu(struct osd_bitmap *bitmap, int);
+int 		memcard_menu(struct mame_bitmap *bitmap, int);
 extern int	mcd_action;
 extern int	mcd_number;
 extern int	memcard_status;
 extern int	memcard_number;
 extern int	memcard_manager;
+extern struct GameDriver driver_neogeo;
 #endif
 #endif
 #endif
@@ -379,7 +380,7 @@ struct GfxElement *builduifont(void)
 	};
 
 	struct GfxElement *font;
-	static UINT32 colortable[2*2];	/* ASG 980209 */
+	static pen_t colortable[2*2];	/* ASG 980209 */
 
 
 	switch_ui_orientation();
@@ -428,7 +429,7 @@ struct GfxElement *builduifont(void)
 
 
 
-static void erase_screen(struct osd_bitmap *bitmap)
+static void erase_screen(struct mame_bitmap *bitmap)
 {
 	fillbitmap(bitmap,Machine->uifont->colortable[0],NULL);
 	schedule_full_refresh();
@@ -442,7 +443,7 @@ static void erase_screen(struct osd_bitmap *bitmap)
 
 ***************************************************************************/
 
-void displaytext(struct osd_bitmap *bitmap,const struct DisplayText *dt)
+void displaytext(struct mame_bitmap *bitmap,const struct DisplayText *dt)
 {
 	switch_ui_orientation();
 
@@ -516,7 +517,7 @@ void displaytext(struct osd_bitmap *bitmap,const struct DisplayText *dt)
 }
 
 /* Writes messages on the screen. */
-static void ui_text_ex(struct osd_bitmap *bitmap,const char* buf_begin, const char* buf_end, int x, int y, int color)
+static void ui_text_ex(struct mame_bitmap *bitmap,const char* buf_begin, const char* buf_end, int x, int y, int color)
 {
 	switch_ui_orientation();
 
@@ -532,13 +533,13 @@ static void ui_text_ex(struct osd_bitmap *bitmap,const char* buf_begin, const ch
 }
 
 /* Writes messages on the screen. */
-void ui_text(struct osd_bitmap *bitmap,const char *buf,int x,int y)
+void ui_text(struct mame_bitmap *bitmap,const char *buf,int x,int y)
 {
 	ui_text_ex(bitmap, buf, buf + strlen(buf), x, y, UI_COLOR_NORMAL);
 }
 
 
-void ui_drawbox(struct osd_bitmap *bitmap,int leftx,int topy,int width,int height)
+void ui_drawbox(struct mame_bitmap *bitmap,int leftx,int topy,int width,int height)
 {
 	UINT32 black,white;
 
@@ -565,7 +566,7 @@ void ui_drawbox(struct osd_bitmap *bitmap,int leftx,int topy,int width,int heigh
 }
 
 
-static void drawbar(struct osd_bitmap *bitmap,int leftx,int topy,int width,int height,int percentage,int default_percentage)
+static void drawbar(struct mame_bitmap *bitmap,int leftx,int topy,int width,int height,int percentage,int default_percentage)
 {
 	UINT32 black,white;
 
@@ -664,7 +665,7 @@ static void multilinebox_size(int* dx, int* dy, const char* begin, const char* e
 }
 
 /* Display a multiline string */
-static void ui_multitext_ex(struct osd_bitmap *bitmap, const char* begin, const char* end, unsigned max, int x, int y, int color)
+static void ui_multitext_ex(struct mame_bitmap *bitmap, const char* begin, const char* end, unsigned max, int x, int y, int color)
 {
 	while (begin != end)
 	{
@@ -676,7 +677,7 @@ static void ui_multitext_ex(struct osd_bitmap *bitmap, const char* begin, const 
 }
 
 /* Display a multiline string with box */
-static void ui_multitextbox_ex(struct osd_bitmap *bitmap,const char* begin, const char* end, unsigned max, int x, int y, int dx, int dy, int color)
+static void ui_multitextbox_ex(struct mame_bitmap *bitmap,const char* begin, const char* end, unsigned max, int x, int y, int dx, int dy, int color)
 {
 	ui_drawbox(bitmap,x,y,dx,dy);
 	x += Machine->uifontwidth/2;
@@ -684,7 +685,7 @@ static void ui_multitextbox_ex(struct osd_bitmap *bitmap,const char* begin, cons
 	ui_multitext_ex(bitmap,begin,end,max,x,y,color);
 }
 
-void ui_displaymenu(struct osd_bitmap *bitmap,const char **items,const char **subitems,char *flag,int selected,int arrowize_subitem)
+void ui_displaymenu(struct mame_bitmap *bitmap,const char **items,const char **subitems,char *flag,int selected,int arrowize_subitem)
 {
 	struct DisplayText dt[256];
 	int curr_dt;
@@ -859,7 +860,7 @@ void ui_displaymenu(struct osd_bitmap *bitmap,const char **items,const char **su
 }
 
 
-void ui_displaymessagewindow(struct osd_bitmap *bitmap,const char *text)
+void ui_displaymessagewindow(struct mame_bitmap *bitmap,const char *text)
 {
 	struct DisplayText dt[256];
 	int curr_dt;
@@ -963,52 +964,18 @@ void ui_displaymessagewindow(struct osd_bitmap *bitmap,const char *text)
 
 
 
-#ifndef MESS
-#ifndef TINY_COMPILE
-#ifndef CPSMAME
-extern int no_of_tiles;
-void NeoMVSDrawGfx(unsigned char **line,const struct GfxElement *gfx,
-		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
-		int zx,int zy,const struct rectangle *clip);
-void NeoMVSDrawGfx16(unsigned char **line,const struct GfxElement *gfx,
-		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
-		int zx,int zy,const struct rectangle *clip);
-extern struct GameDriver driver_neogeo;
-#endif
-#endif
-#endif
-
-static void showcharset(struct osd_bitmap *bitmap)
+static void showcharset(struct mame_bitmap *bitmap)
 {
 	int i;
 	char buf[80];
 	int bank,color,firstdrawn;
 	int palpage;
 	int changed;
-	int game_is_neogeo=0;
-	unsigned char *orig_used_colors=0;
+	int total_colors = 0;
+	pen_t *colortable = NULL;
 
 
-	if (palette_used_colors)
-	{
-		orig_used_colors = malloc(Machine->drv->total_colors * sizeof(unsigned char));
-		if (!orig_used_colors) return;
-
-		memcpy(orig_used_colors,palette_used_colors,Machine->drv->total_colors * sizeof(unsigned char));
-	}
-
-#ifndef MESS
-#ifndef TINY_COMPILE
-#ifndef CPSMAME
-	if (Machine->gamedrv->clone_of == &driver_neogeo ||
-			(Machine->gamedrv->clone_of &&
-				Machine->gamedrv->clone_of->clone_of == &driver_neogeo))
-		game_is_neogeo=1;
-#endif
-#endif
-#endif
-
-	bank = -1;
+	bank = -2;
 	color = 0;
 	firstdrawn = 0;
 	palpage = 0;
@@ -1025,7 +992,21 @@ static void showcharset(struct osd_bitmap *bitmap)
 			cpy = (Machine->uiheight - Machine->uifontheight) / Machine->gfx[bank]->height;
 			skip_chars = cpx * cpy;
 		}
-		else cpx = cpy = skip_chars = 0;
+		else
+		{
+			cpx = cpy = skip_chars = 0;
+
+			if (bank == -2)	/* palette */
+			{
+				total_colors = Machine->drv->total_colors;
+				colortable = Machine->pens;
+			}
+			else if (bank == -1)	/* clut */
+			{
+				total_colors = Machine->drv->color_table_len;
+				colortable = Machine->remapped_colortable;
+			}
+		}
 
 		if (changed)
 		{
@@ -1043,65 +1024,46 @@ static void showcharset(struct osd_bitmap *bitmap)
 				}
 			}
 
-			if(bank!=2 || !game_is_neogeo)
+			switch_ui_orientation();
+
+			if (bank >= 0)
 			{
-				switch_ui_orientation();
-
-				if (bank >= 0)
-				{
-					int table_offs;
-					int flipx,flipy;
-
-					if (palette_used_colors && Machine->gfx[bank]->colortable)
-					{
-						memset(palette_used_colors,PALETTE_COLOR_TRANSPARENT,Machine->drv->total_colors * sizeof(unsigned char));
-						table_offs = Machine->gfx[bank]->colortable - Machine->remapped_colortable
-								+ Machine->gfx[bank]->color_granularity * color;
-						for (i = 0;i < Machine->gfx[bank]->color_granularity;i++)
-							palette_used_colors[Machine->game_colortable[table_offs + i]] = PALETTE_COLOR_USED;
-						palette_recalc();	/* do it twice in case of previous overflow */
-						palette_recalc();	/*(we redraw the screen only when it changes) */
-					}
+				int flipx,flipy;
 
 #ifndef PREROTATE_GFX
-					flipx = (Machine->orientation ^ trueorientation) & ORIENTATION_FLIP_X;
-					flipy = (Machine->orientation ^ trueorientation) & ORIENTATION_FLIP_Y;
+				flipx = (Machine->orientation ^ trueorientation) & ORIENTATION_FLIP_X;
+				flipy = (Machine->orientation ^ trueorientation) & ORIENTATION_FLIP_Y;
 
-					if (Machine->orientation & ORIENTATION_SWAP_XY)
-					{
-						int t;
-						t = flipx; flipx = flipy; flipy = t;
-					}
+				if (Machine->orientation & ORIENTATION_SWAP_XY)
+				{
+					int t;
+					t = flipx; flipx = flipy; flipy = t;
+				}
 #else
-					flipx = 0;
-					flipy = 0;
+				flipx = 0;
+				flipy = 0;
 #endif
 
-					for (i = 0; i+firstdrawn < Machine->gfx[bank]->total_elements && i<cpx*cpy; i++)
-					{
-						drawgfx(bitmap,Machine->gfx[bank],
-								i+firstdrawn,color,  /*sprite num, color*/
-								flipx,flipy,
-								(i % cpx) * Machine->gfx[bank]->width + Machine->uixmin,
-								Machine->uifontheight + (i / cpx) * Machine->gfx[bank]->height + Machine->uiymin,
-								0,Machine->gfx[bank]->colortable ? TRANSPARENCY_NONE : TRANSPARENCY_NONE_RAW,0);
+				for (i = 0; i+firstdrawn < Machine->gfx[bank]->total_elements && i<cpx*cpy; i++)
+				{
+					drawgfx(bitmap,Machine->gfx[bank],
+							i+firstdrawn,color,  /*sprite num, color*/
+							flipx,flipy,
+							(i % cpx) * Machine->gfx[bank]->width + Machine->uixmin,
+							Machine->uifontheight + (i / cpx) * Machine->gfx[bank]->height + Machine->uiymin,
+							0,Machine->gfx[bank]->colortable ? TRANSPARENCY_NONE : TRANSPARENCY_NONE_RAW,0);
 
-						lastdrawn = i+firstdrawn;
-					}
+					lastdrawn = i+firstdrawn;
 				}
-				else
+			}
+			else
+			{
+				if (total_colors)
 				{
 					int sx,sy,colors;
 
-					colors = Machine->drv->total_colors - 256 * palpage;
+					colors = total_colors - 256 * palpage;
 					if (colors > 256) colors = 256;
-					if (palette_used_colors)
-					{
-						memset(palette_used_colors,PALETTE_COLOR_UNUSED,Machine->drv->total_colors * sizeof(unsigned char));
-						memset(palette_used_colors+256*palpage,PALETTE_COLOR_USED,colors * sizeof(unsigned char));
-						palette_recalc();	/* do it twice in case of previous overflow */
-						palette_recalc();	/*(we redraw the screen only when it changes) */
-					}
 
 					for (i = 0;i < 16;i++)
 					{
@@ -1122,60 +1084,21 @@ static void showcharset(struct osd_bitmap *bitmap)
 					{
 						sx = Machine->uixmin + 3*Machine->uifontwidth + (Machine->uifontwidth*4/3)*(i % 16);
 						sy = Machine->uiymin + 2*Machine->uifontheight + (Machine->uifontheight)*(i / 16) + Machine->uifontheight;
-						plot_box(bitmap,sx,sy,Machine->uifontwidth*4/3,Machine->uifontheight,Machine->pens[i + 256*palpage]);
+						plot_box(bitmap,sx,sy,Machine->uifontwidth*4/3,Machine->uifontheight,colortable[i + 256*palpage]);
 					}
 				}
-
-				switch_true_orientation();
+				else
+					ui_text(bitmap,"N/A",3*Machine->uifontwidth,2*Machine->uifontheight);
 			}
-#ifndef MESS
-#ifndef TINY_COMPILE
-#ifndef CPSMAME
-			else	/* neogeo sprite tiles */
-			{
-				struct rectangle clip;
 
-				clip.min_x = Machine->uixmin;
-				clip.max_x = Machine->uixmin + Machine->uiwidth - 1;
-				clip.min_y = Machine->uiymin;
-				clip.max_y = Machine->uiymin + Machine->uiheight - 1;
-
-				if (palette_used_colors)
-				{
-					memset(palette_used_colors,PALETTE_COLOR_TRANSPARENT,Machine->drv->total_colors * sizeof(unsigned char));
-					memset(palette_used_colors+Machine->gfx[bank]->color_granularity*color,PALETTE_COLOR_USED,Machine->gfx[bank]->color_granularity * sizeof(unsigned char));
-					palette_recalc();	/* do it twice in case of previous overflow */
-					palette_recalc();	/*(we redraw the screen only when it changes) */
-				}
-
-				for (i = 0; i+firstdrawn < no_of_tiles && i<cpx*cpy; i++)
-				{
-					if (bitmap->depth == 16)
-						NeoMVSDrawGfx16(bitmap->line,Machine->gfx[bank],
-							i+firstdrawn,color,  /*sprite num, color*/
-							0,0,
-							(i % cpx) * Machine->gfx[bank]->width + Machine->uixmin,
-							Machine->uifontheight+1 + (i / cpx) * Machine->gfx[bank]->height + Machine->uiymin,
-							16,16,&clip);
-					else
-						NeoMVSDrawGfx(bitmap->line,Machine->gfx[bank],
-							i+firstdrawn,color,  /*sprite num, color*/
-							0,0,
-							(i % cpx) * Machine->gfx[bank]->width + Machine->uixmin,
-							Machine->uifontheight+1 + (i / cpx) * Machine->gfx[bank]->height + Machine->uiymin,
-							16,16,&clip);
-
-					lastdrawn = i+firstdrawn;
-				}
-			}
-#endif
-#endif
-#endif
+			switch_true_orientation();
 
 			if (bank >= 0)
 				sprintf(buf,"GFXSET %d COLOR %2X CODE %X-%X",bank,color,firstdrawn,lastdrawn);
-			else
+			else if (bank == -2)
 				strcpy(buf,"PALETTE");
+			else if (bank == -1)
+				strcpy(buf,"CLUT");
 			ui_text(bitmap,buf,0,0);
 
 			changed = 0;
@@ -1195,9 +1118,15 @@ static void showcharset(struct osd_bitmap *bitmap)
 
 		if (input_ui_pressed_repeat(IPT_UI_RIGHT,8))
 		{
-			if (bank+1 < MAX_GFX_ELEMENTS && Machine->gfx[bank + 1])
+			int next;
+
+			next = bank+1;
+			if (next == -1 && Machine->drv->color_table_len == 0)
+				next++;
+
+			if (next < 0 || (next < MAX_GFX_ELEMENTS && Machine->gfx[next]))
 			{
-				bank++;
+				bank = next;
 //				firstdrawn = 0;
 				changed = 1;
 			}
@@ -1205,9 +1134,11 @@ static void showcharset(struct osd_bitmap *bitmap)
 
 		if (input_ui_pressed_repeat(IPT_UI_LEFT,8))
 		{
-			if (bank > -1)
+			if (bank > -2)
 			{
 				bank--;
+				if (bank == -1 && Machine->drv->color_table_len == 0)
+					bank--;
 //				firstdrawn = 0;
 				changed = 1;
 			}
@@ -1225,7 +1156,7 @@ static void showcharset(struct osd_bitmap *bitmap)
 			}
 			else
 			{
-				if (256 * (palpage + 1) < Machine->drv->total_colors)
+				if (256 * (palpage + 1) < total_colors)
 				{
 					palpage++;
 					changed = 1;
@@ -1265,10 +1196,13 @@ static void showcharset(struct osd_bitmap *bitmap)
 
 		if (input_ui_pressed_repeat(IPT_UI_DOWN,6))
 		{
-			if (color > 0)
+			if (bank >= 0)
 			{
-				color--;
-				changed = 1;
+				if (color > 0)
+				{
+					color--;
+					changed = 1;
+				}
 			}
 		}
 
@@ -1277,66 +1211,12 @@ static void showcharset(struct osd_bitmap *bitmap)
 	} while (!input_ui_pressed(IPT_UI_SHOW_GFX) &&
 			!input_ui_pressed(IPT_UI_CANCEL));
 
-	if (palette_used_colors)
-	{
-		/* this should force a full refresh by the video driver */
-		memset(palette_used_colors,PALETTE_COLOR_TRANSPARENT,Machine->drv->total_colors * sizeof(unsigned char));
-		palette_recalc();
-		/* restore the game used colors array */
-		memcpy(palette_used_colors,orig_used_colors,Machine->drv->total_colors * sizeof(unsigned char));
-		free(orig_used_colors);
-	}
-
 	schedule_full_refresh();
 }
 
 
-#ifdef MAME_DEBUG
-static void showtotalcolors(struct osd_bitmap *bitmap)
-{
-	char *used;
-	int i,l,x,y,total;
-	unsigned char r,g,b;
-	char buf[40];
 
-
-	used = malloc(64*64*64);
-	if (!used) return;
-
-	for (i = 0;i < 64*64*64;i++)
-		used[i] = 0;
-
-	for (y = 0;y < bitmap->height;y++)
-	{
-		for (x = 0;x < bitmap->width;x++)
-		{
-			osd_get_pen(read_pixel(bitmap,x,y),&r,&g,&b);
-			r >>= 2;
-			g >>= 2;
-			b >>= 2;
-			used[64*64*r+64*g+b] = 1;
-		}
-	}
-
-	total = 0;
-	for (i = 0;i < 64*64*64;i++)
-		if (used[i]) total++;
-
-	switch_ui_orientation();
-
-	sprintf(buf,"%5d colors",total);
-	l = strlen(buf);
-	for (i = 0;i < l;i++)
-		drawgfx(bitmap,Machine->uifont,buf[i],total>256?UI_COLOR_INVERSE:UI_COLOR_NORMAL,0,0,Machine->uixmin+i*Machine->uifontwidth,Machine->uiymin,0,TRANSPARENCY_NONE,0);
-
-	switch_true_orientation();
-
-	free(used);
-}
-#endif
-
-
-static int setdipswitches(struct osd_bitmap *bitmap,int selected)
+static int setdipswitches(struct mame_bitmap *bitmap,int selected)
 {
 	const char *menu_item[128];
 	const char *menu_subitem[128];
@@ -1511,7 +1391,7 @@ static int record_first_insert = 1;
 
 static char menu_subitem_buffer[400][96];
 
-static int setdefcodesettings(struct osd_bitmap *bitmap,int selected)
+static int setdefcodesettings(struct mame_bitmap *bitmap,int selected)
 {
 	const char *menu_item[400];
 	const char *menu_subitem[400];
@@ -1639,7 +1519,7 @@ static int setdefcodesettings(struct osd_bitmap *bitmap,int selected)
 
 
 
-static int setcodesettings(struct osd_bitmap *bitmap,int selected)
+static int setcodesettings(struct mame_bitmap *bitmap,int selected)
 {
 	const char *menu_item[400];
 	const char *menu_subitem[400];
@@ -1769,7 +1649,7 @@ static int setcodesettings(struct osd_bitmap *bitmap,int selected)
 }
 
 
-static int calibratejoysticks(struct osd_bitmap *bitmap,int selected)
+static int calibratejoysticks(struct mame_bitmap *bitmap,int selected)
 {
 	const char *msg;
 	static char buf[2048];
@@ -1830,7 +1710,7 @@ static int calibratejoysticks(struct osd_bitmap *bitmap,int selected)
 }
 
 
-static int settraksettings(struct osd_bitmap *bitmap,int selected)
+static int settraksettings(struct mame_bitmap *bitmap,int selected)
 {
 	const char *menu_item[40];
 	const char *menu_subitem[40];
@@ -2014,7 +1894,7 @@ static int settraksettings(struct osd_bitmap *bitmap,int selected)
 }
 
 #ifndef MESS
-static int mame_stats(struct osd_bitmap *bitmap,int selected)
+static int mame_stats(struct mame_bitmap *bitmap,int selected)
 {
 	char temp[10];
 	char buf[2048];
@@ -2087,7 +1967,7 @@ static int mame_stats(struct osd_bitmap *bitmap,int selected)
 }
 #endif
 
-int showcopyright(struct osd_bitmap *bitmap)
+int showcopyright(struct mame_bitmap *bitmap)
 {
 	int done;
 	char buf[1000];
@@ -2128,7 +2008,7 @@ int showcopyright(struct osd_bitmap *bitmap)
 	return 0;
 }
 
-static int displaygameinfo(struct osd_bitmap *bitmap,int selected)
+static int displaygameinfo(struct mame_bitmap *bitmap,int selected)
 {
 	int i;
 	char buf[2048];
@@ -2202,32 +2082,6 @@ static int displaygameinfo(struct osd_bitmap *bitmap,int selected)
 		sprintf(&buf[strlen(buf)],"\n%s\n", ui_getstring (UI_vectorgame));
 	else
 	{
-		int pixelx,pixely,tmax,tmin,rem;
-
-		pixelx = 4 * (Machine->visible_area.max_y - Machine->visible_area.min_y + 1);
-		pixely = 3 * (Machine->visible_area.max_x - Machine->visible_area.min_x + 1);
-
-		/* calculate MCD */
-		if (pixelx >= pixely)
-		{
-			tmax = pixelx;
-			tmin = pixely;
-		}
-		else
-		{
-			tmax = pixely;
-			tmin = pixelx;
-		}
-		while ( (rem = tmax % tmin) )
-		{
-			tmax = tmin;
-			tmin = rem;
-		}
-		/* tmin is now the MCD */
-
-		pixelx /= tmin;
-		pixely /= tmin;
-
 		sprintf(&buf[strlen(buf)],"\n%s:\n", ui_getstring (UI_screenres));
 		sprintf(&buf[strlen(buf)],"%d x %d (%s) %f Hz\n",
 				Machine->visible_area.max_x - Machine->visible_area.min_x + 1,
@@ -2235,14 +2089,37 @@ static int displaygameinfo(struct osd_bitmap *bitmap,int selected)
 				(Machine->gamedrv->flags & ORIENTATION_SWAP_XY) ? "V" : "H",
 				Machine->drv->frames_per_second);
 #if 0
-		sprintf(&buf[strlen(buf)],"pixel aspect ratio %d:%d\n",
-				pixelx,pixely);
+		{
+			int pixelx,pixely,tmax,tmin,rem;
+
+			pixelx = 4 * (Machine->visible_area.max_y - Machine->visible_area.min_y + 1);
+			pixely = 3 * (Machine->visible_area.max_x - Machine->visible_area.min_x + 1);
+
+			/* calculate MCD */
+			if (pixelx >= pixely)
+			{
+				tmax = pixelx;
+				tmin = pixely;
+			}
+			else
+			{
+				tmax = pixely;
+				tmin = pixelx;
+			}
+			while ( (rem = tmax % tmin) )
+			{
+				tmax = tmin;
+				tmin = rem;
+			}
+			/* tmin is now the MCD */
+
+			pixelx /= tmin;
+			pixely /= tmin;
+
+			sprintf(&buf[strlen(buf)],"pixel aspect ratio %d:%d\n",
+					pixelx,pixely);
+		}
 		sprintf(&buf[strlen(buf)],"%d colors ",Machine->drv->total_colors);
-		if (Machine->gamedrv->flags & GAME_REQUIRES_16BIT)
-			strcat(buf,"(16-bit required)\n");
-		else if (Machine->drv->video_attributes & VIDEO_MODIFIES_PALETTE)
-			strcat(buf,"(dynamic)\n");
-		else strcat(buf,"(static)\n");
 #endif
 	}
 
@@ -2295,7 +2172,7 @@ static int displaygameinfo(struct osd_bitmap *bitmap,int selected)
 }
 
 
-int showgamewarnings(struct osd_bitmap *bitmap)
+int showgamewarnings(struct mame_bitmap *bitmap)
 {
 	int i;
 	char buf[2048];
@@ -2495,7 +2372,7 @@ static int count_lines_in_buffer (char *buffer)
 }
 
 /* Display lines from buffer, starting with line 'scroll', in a width x height text window */
-static void display_scroll_message (struct osd_bitmap *bitmap, int *scroll, int width, int height, char *buf)
+static void display_scroll_message (struct mame_bitmap *bitmap, int *scroll, int width, int height, char *buf)
 {
 	struct DisplayText dt[256];
 	int curr_dt = 0;
@@ -2607,7 +2484,7 @@ static void display_scroll_message (struct osd_bitmap *bitmap, int *scroll, int 
 
 
 /* Display text entry for current driver from history.dat and mameinfo.dat. */
-static int displayhistory (struct osd_bitmap *bitmap, int selected)
+static int displayhistory (struct mame_bitmap *bitmap, int selected)
 {
 	static int scroll = 0;
 	static char *buf = 0;
@@ -2718,7 +2595,7 @@ static int displayhistory (struct osd_bitmap *bitmap, int selected)
 #ifndef MESS
 #ifndef TINY_COMPILE
 #ifndef CPSMAME
-int memcard_menu(struct osd_bitmap *bitmap, int selection)
+int memcard_menu(struct mame_bitmap *bitmap, int selection)
 {
 	int sel;
 	int menutotal = 0;
@@ -2933,7 +2810,7 @@ static void setup_menu_init(void)
 }
 
 
-static int setup_menu(struct osd_bitmap *bitmap, int selected)
+static int setup_menu(struct mame_bitmap *bitmap, int selected)
 {
 	int sel,res=-1;
 	static int menu_lastselected = 0;
@@ -3077,7 +2954,7 @@ static int setup_menu(struct osd_bitmap *bitmap, int selected)
 
 *********************************************************************/
 
-static void displayosd(struct osd_bitmap *bitmap,const char *text,int percentage,int default_percentage)
+static void displayosd(struct mame_bitmap *bitmap,const char *text,int percentage,int default_percentage)
 {
 	struct DisplayText dt[2];
 	int avail;
@@ -3108,7 +2985,7 @@ static void displayosd(struct osd_bitmap *bitmap,const char *text,int percentage
 
 
 
-static void onscrd_volume(struct osd_bitmap *bitmap,int increment,int arg)
+static void onscrd_volume(struct mame_bitmap *bitmap,int increment,int arg)
 {
 	char buf[20];
 	int attenuation;
@@ -3127,7 +3004,7 @@ static void onscrd_volume(struct osd_bitmap *bitmap,int increment,int arg)
 	displayosd(bitmap,buf,100 * (attenuation + 32) / 32,100);
 }
 
-static void onscrd_mixervol(struct osd_bitmap *bitmap,int increment,int arg)
+static void onscrd_mixervol(struct mame_bitmap *bitmap,int increment,int arg)
 {
 	static void *driver = 0;
 	char buf[40];
@@ -3210,7 +3087,7 @@ static void onscrd_mixervol(struct osd_bitmap *bitmap,int increment,int arg)
 	displayosd(bitmap,buf,volume,mixer_get_default_mixing_level(arg));
 }
 
-static void onscrd_brightness(struct osd_bitmap *bitmap,int increment,int arg)
+static void onscrd_brightness(struct mame_bitmap *bitmap,int increment,int arg)
 {
 	char buf[20];
 	int brightness;
@@ -3230,7 +3107,7 @@ static void onscrd_brightness(struct osd_bitmap *bitmap,int increment,int arg)
 	displayosd(bitmap,buf,brightness,100);
 }
 
-static void onscrd_gamma(struct osd_bitmap *bitmap,int increment,int arg)
+static void onscrd_gamma(struct mame_bitmap *bitmap,int increment,int arg)
 {
 	char buf[20];
 	float gamma_correction;
@@ -3251,7 +3128,7 @@ static void onscrd_gamma(struct osd_bitmap *bitmap,int increment,int arg)
 	displayosd(bitmap,buf,100*(gamma_correction-0.5)/(2.0-0.5),100*(1.0-0.5)/(2.0-0.5));
 }
 
-static void onscrd_vector_flicker(struct osd_bitmap *bitmap,int increment,int arg)
+static void onscrd_vector_flicker(struct mame_bitmap *bitmap,int increment,int arg)
 {
 	char buf[1000];
 	float flicker_correction;
@@ -3275,7 +3152,7 @@ static void onscrd_vector_flicker(struct osd_bitmap *bitmap,int increment,int ar
 	displayosd(bitmap,buf,flicker_correction,0);
 }
 
-static void onscrd_vector_intensity(struct osd_bitmap *bitmap,int increment,int arg)
+static void onscrd_vector_intensity(struct mame_bitmap *bitmap,int increment,int arg)
 {
 	char buf[30];
 	float intensity_correction;
@@ -3297,7 +3174,7 @@ static void onscrd_vector_intensity(struct osd_bitmap *bitmap,int increment,int 
 }
 
 
-static void onscrd_overclock(struct osd_bitmap *bitmap,int increment,int arg)
+static void onscrd_overclock(struct mame_bitmap *bitmap,int increment,int arg)
 {
 	char buf[30];
 	double overclock;
@@ -3330,7 +3207,7 @@ static void onscrd_overclock(struct osd_bitmap *bitmap,int increment,int arg)
 }
 
 #define MAX_OSD_ITEMS 30
-static void (*onscrd_fnc[MAX_OSD_ITEMS])(struct osd_bitmap *bitmap,int increment,int arg);
+static void (*onscrd_fnc[MAX_OSD_ITEMS])(struct mame_bitmap *bitmap,int increment,int arg);
 static int onscrd_arg[MAX_OSD_ITEMS];
 static int onscrd_total_items;
 
@@ -3390,7 +3267,7 @@ static void onscrd_init(void)
 	onscrd_total_items = item;
 }
 
-static int on_screen_display(struct osd_bitmap *bitmap, int selected)
+static int on_screen_display(struct mame_bitmap *bitmap, int selected)
 {
 	int increment,sel;
 	static int lastselected = 0;
@@ -3431,7 +3308,7 @@ static int on_screen_display(struct osd_bitmap *bitmap, int selected)
 *********************************************************************/
 
 
-static void displaymessage(struct osd_bitmap *bitmap,const char *text)
+static void displaymessage(struct mame_bitmap *bitmap,const char *text)
 {
 	struct DisplayText dt[2];
 	int avail;
@@ -3480,14 +3357,11 @@ void CLIB_DECL usrintf_showmessage_secs(int seconds, const char *text,...)
 	messagecounter = seconds * Machine->drv->frames_per_second;
 }
 
-int handle_user_interface(struct osd_bitmap *bitmap)
+int handle_user_interface(struct mame_bitmap *bitmap)
 {
 	static int show_profiler;
 	static int mess_pause_for_ui = 0;
 	int request_loadsave = LOADSAVE_NONE;
-#ifdef MAME_DEBUG
-	static int show_total_colors;
-#endif
 
 #ifdef MESS
 if (Machine->gamedrv->flags & GAME_COMPUTER)
@@ -3745,6 +3619,8 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 			}
 			if (osd_selected != 0) osd_selected = on_screen_display(bitmap, osd_selected);
 
+			if (options.cheat) DisplayWatches(bitmap);
+
 			/* show popup message if any */
 			if (messagecounter > 0) displaymessage(bitmap, messagetext);
 
@@ -3789,15 +3665,6 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 			schedule_full_refresh();
 		}
 	}
-#ifdef MAME_DEBUG
-	if (input_ui_pressed(IPT_UI_SHOW_COLORS))
-	{
-		show_total_colors ^= 1;
-		if (show_total_colors == 0)
-			schedule_full_refresh();
-	}
-	if (show_total_colors) showtotalcolors(bitmap);
-#endif
 
 	if (show_profiler) profiler_show(bitmap);
 

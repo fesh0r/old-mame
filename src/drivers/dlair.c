@@ -43,7 +43,7 @@ WRITE_HANDLER( dlair_led1_w )
 	led1 = data;
 }
 
-void dlair_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void dlair_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 
@@ -235,7 +235,7 @@ static const struct MachineDriver machine_driver_dlair =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 0*8, 32*8-1 },
 	gfxdecodeinfo,
-	8,8,
+	8, 0,
 	0,
 
 	VIDEO_TYPE_RASTER,

@@ -10,7 +10,7 @@
 #include "vidhrdw/generic.h"
 
 
-static struct osd_bitmap *tmpbitmap2,*charbitmap;
+static struct mame_bitmap *tmpbitmap2,*charbitmap;
 static unsigned char x,y,bmap;
 static unsigned char *tmpvideoram,*tmpvideoram2;
 
@@ -69,7 +69,7 @@ WRITE_HANDLER( cloak_paletteram_w )
 	bit2 = (b >> 2) & 0x01;
 	b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-	palette_change_color(offset & 0x3f,r,g,b);
+	palette_set_color(offset & 0x3f,r,g,b);
 }
 
 
@@ -215,7 +215,7 @@ void cloak_vh_stop(void)
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
@@ -235,18 +235,10 @@ static void refresh_bitmaps(void)
 }
 
 
-void cloak_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void cloak_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 
-
-	palette_used_colors[16] = PALETTE_COLOR_TRANSPARENT;
-	if (palette_recalc())
-	{
-		memset(dirtybuffer, 1, videoram_size);
-
-		refresh_bitmaps();
-	}
 
 	/* for every character in the Video RAM, check if it has been modified */
 	/* since last time and update it accordingly. */
@@ -272,7 +264,7 @@ void cloak_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 
 	/* copy the temporary bitmap to the screen */
     copybitmap(bitmap,charbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
-	copybitmap(bitmap, bmap ? tmpbitmap2 : tmpbitmap, 0,0,0,0,&Machine->visible_area,TRANSPARENCY_PEN,palette_transparent_pen);
+	copybitmap(bitmap, bmap ? tmpbitmap2 : tmpbitmap, 0,0,0,0,&Machine->visible_area,TRANSPARENCY_COLOR,16);
 
 
 	/* Draw the sprites */

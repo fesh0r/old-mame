@@ -69,7 +69,7 @@ WRITE_HANDLER( momoko_flipscreen_w )
 }
 /****************************************************************************/
 
-void momoko_draw_bg_pri(struct osd_bitmap *bitmap, int chr, int col, int flipx, int flipy, int x,int y, int pri)
+void momoko_draw_bg_pri(struct mame_bitmap *bitmap, int chr, int col, int flipx, int flipy, int x,int y, int pri)
 {
 	int xx,sx,sy,px,py,dot;
 	data32_t gfxadr;
@@ -101,9 +101,8 @@ void momoko_draw_bg_pri(struct osd_bitmap *bitmap, int chr, int col, int flipx, 
 
 /****************************************************************************/
 
-void momoko_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void momoko_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
-
 	int x, y, dx, dy, rx, ry, radr, chr, sy, fx, fy, px, py, offs, col, pri, flip ;
 
 	data8_t *BG_MAP     = memory_region( REGION_USER1 );
@@ -111,7 +110,6 @@ void momoko_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 	data8_t *FG_MAP     = memory_region( REGION_USER3 );
 	data8_t *TEXT_COLOR = memory_region( REGION_PROMS );
 
-	palette_recalc();
 
 	flip = momoko_flipscreen ^ (readinputport(4) & 0x01);
 

@@ -18,7 +18,7 @@ extern unsigned char *ssozumo_scroll;
 
 WRITE_HANDLER( ssozumo_paletteram_w );
 void ssozumo_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable, const unsigned char *color_prom);
-void ssozumo_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void ssozumo_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 int ssozumo_vh_start(void);
 void ssozumo_vh_stop(void);
 
@@ -272,7 +272,7 @@ static const struct MachineDriver machine_driver_ssozumo =
 	64 + 16, 64 + 16,
 	ssozumo_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER|VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	ssozumo_vh_start,
 	ssozumo_vh_stop,

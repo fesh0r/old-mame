@@ -22,19 +22,31 @@ static struct tilemap *bg_tilemap,*fg_tilemap,*tx_tilemap;
 static void get_bg_tile_info(int tile_index)
 {
 	int code = bloodbro_bgvideoram[tile_index];
-	SET_TILE_INFO(1,code & 0xfff,code >> 12)
+	SET_TILE_INFO(
+			1,
+			code & 0xfff,
+			code >> 12,
+			0)
 }
 
 static void get_fg_tile_info(int tile_index)
 {
 	int code = bloodbro_fgvideoram[tile_index];
-	SET_TILE_INFO(2,code & 0xfff,code >> 12)
+	SET_TILE_INFO(
+			2,
+			code & 0xfff,
+			code >> 12,
+			0)
 }
 
 static void get_tx_tile_info(int tile_index)
 {
 	int code = bloodbro_txvideoram[tile_index];
-	SET_TILE_INFO(0,code & 0xfff,code >> 12)
+	SET_TILE_INFO(
+			0,
+			code & 0xfff,
+			code >> 12,
+			0)
 }
 
 
@@ -98,6 +110,41 @@ WRITE16_HANDLER( bloodbro_txvideoram_w )
 
   Display refresh
 
+
+	Blood Bros / Skysmash Spriteram
+	-------------------------------
+
+	Slightly more sophisticated successor to the Toki sprite chip.
+
+	It has "big sprites" created by setting width or height >0. Tile
+	numbers are read consecutively.
+
+      +0   x....... ........  sprite disabled if set
+	+0   .x...... ........  Flip y (no evidence for this!!)
+	+0   ..x..... ........  Flip x
+	+0   ....x... ........  Priority (1=high)
+	+0   ......xx x.......  Width: do this many tiles horizontally
+	+0   ........ .xxx....  Height: do this many tiles vertically
+ 	+0   ........ ....xxxx  Color bank
+
+	+1   ...xxxxx xxxxxxxx  Tile number
+	+2   .......x xxxxxxxx  X coordinate
+	+3   .......x xxxxxxxx  Y coordinate
+
+
+	Weststry Bootleg Spriteram
+	--------------------------
+
+	Lacks the "big sprite" feature of the original. Needs some
+	tile number remapping for some reason.
+
+	+0   .......x xxxxxxxx  Sprite Y coordinate
+	+1   ...xxxxx xxxxxxxx  Sprite tile number
+ 	+2   xxxx.... ........  Sprite color bank
+ 	+2   ......x. ........  Sprite flip x
+ 	+2   ........ x.......  Priority ??
+	+3   .......x xxxxxxxx  Sprite X coordinate
+
 ***************************************************************************/
 
 /* SPRITE INFO (8 bytes)
@@ -106,7 +153,8 @@ WRITE16_HANDLER( bloodbro_txvideoram_w )
    ---TTTTT TTTTTTTT
    -------X XXXXXXXX
    -------- YYYYYYYY */
-static void bloodbro_draw_sprites( struct osd_bitmap *bitmap)
+
+static void bloodbro_draw_sprites( struct mame_bitmap *bitmap)
 {
 	int offs;
 	for (offs = 0;offs < spriteram_size/2;offs += 4)
@@ -145,30 +193,6 @@ static void bloodbro_draw_sprites( struct osd_bitmap *bitmap)
 	}
 }
 
-static void bloodbro_mark_sprite_colors(void)
-{
-	int offs,i;
-	int color, colmask[0x80];
-	int pal_base = Machine->drv->gfxdecodeinfo[0].color_codes_start;
-
-	/* Sprites */
-	pal_base = Machine->drv->gfxdecodeinfo[3].color_codes_start;
-	for (color = 0;color < 16;color++) colmask[color] = 0;
-	for (offs = 0;offs <spriteram_size/2;offs += 4 )
-	{
-		color = spriteram16[offs+0] & 0x000f;
-		colmask[color] |= 0xffff;
-	}
-	for (color = 0;color < 16;color++)
-	{
-		for (i = 0;i < 15;i++)
-		{
-			if (colmask[color] & (1 << i))
-				palette_used_colors[pal_base + 16 * color + i] |= PALETTE_COLOR_VISIBLE;
-		}
-	}
-}
-
 /* SPRITE INFO (8 bytes)
 
    D------- YYYYYYYY
@@ -177,7 +201,7 @@ static void bloodbro_mark_sprite_colors(void)
    -------X XXXXXXXX
 */
 
-static void weststry_draw_sprites( struct osd_bitmap *bitmap, int priority)
+static void weststry_draw_sprites( struct mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -211,44 +235,16 @@ static void weststry_draw_sprites( struct osd_bitmap *bitmap, int priority)
 	}
 }
 
-static void weststry_mark_sprite_colors(void)
-{
-	int offs,i;
-	int colmask[0x80],pal_base,color;
-
-	/* Sprites */
-	pal_base = Machine->drv->gfxdecodeinfo[3].color_codes_start;
-	for (color = 0;color < 16;color++) colmask[color] = 0;
-	/* TODO: the last two entries are not sprites - control registers? */
-	for (offs = 0;offs <spriteram_size/2 - 8;offs += 4 )
-	{
-		color = spriteram16[offs+2]>>12;
-		colmask[color] |= 0xffff;
-	}
-	for (color = 0;color < 16;color++)
-	{
-		for (i = 0;i < 15;i++)
-		{
-			if (colmask[color] & (1 << i))
-				palette_used_colors[pal_base + 16 * color + i] |= PALETTE_COLOR_VISIBLE;
-		}
-	}
-}
 
 
-
-void bloodbro_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
+void bloodbro_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh )
 {
 	tilemap_set_scrollx(bg_tilemap,0,bloodbro_scroll[0x10]);	/* ? */
 	tilemap_set_scrolly(bg_tilemap,0,bloodbro_scroll[0x11]);	/* ? */
 	tilemap_set_scrollx(fg_tilemap,0,bloodbro_scroll[0x12]);
 	tilemap_set_scrolly(fg_tilemap,0,bloodbro_scroll[0x13]);
 
-	tilemap_update(ALL_TILEMAPS);
-
-	palette_init_used_colors();
-	bloodbro_mark_sprite_colors();
-	palette_recalc();
+	fillbitmap(priority_bitmap,0,NULL);
 
 	tilemap_draw(bitmap,bg_tilemap,0,0);
 	tilemap_draw(bitmap,fg_tilemap,0,1);
@@ -256,21 +252,35 @@ void bloodbro_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
 	tilemap_draw(bitmap,tx_tilemap,0,0);
 }
 
-void weststry_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
+void weststry_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh )
 {
 //	tilemap_set_scrollx(bg_tilemap,0,bloodbro_scroll[0x10]);	/* ? */
 //	tilemap_set_scrolly(bg_tilemap,0,bloodbro_scroll[0x11]);	/* ? */
 //	tilemap_set_scrollx(fg_tilemap,0,bloodbro_scroll[0x12]);
 //	tilemap_set_scrolly(fg_tilemap,0,bloodbro_scroll[0x13]);
 
-	tilemap_update(ALL_TILEMAPS);
-
-	palette_init_used_colors();
-	weststry_mark_sprite_colors();
-	palette_recalc();
+	fillbitmap(priority_bitmap,0,NULL);
 
 	tilemap_draw(bitmap,bg_tilemap,0,0);
 	tilemap_draw(bitmap,fg_tilemap,0,1);
-	weststry_draw_sprites(bitmap,1);
+	weststry_draw_sprites(bitmap);
 	tilemap_draw(bitmap,tx_tilemap,0,0);
 }
+
+
+void skysmash_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh )
+{
+	tilemap_set_scrollx(bg_tilemap,0,bloodbro_scroll[0x08]);
+	tilemap_set_scrolly(bg_tilemap,0,bloodbro_scroll[0x09]);	/* ? */
+	tilemap_set_scrollx(fg_tilemap,0,bloodbro_scroll[0x0a]);
+	tilemap_set_scrolly(fg_tilemap,0,bloodbro_scroll[0x0b]);	/* ? */
+
+	fillbitmap(priority_bitmap,0,NULL);
+
+	tilemap_draw(bitmap,bg_tilemap,0,0);
+	tilemap_draw(bitmap,fg_tilemap,0,1);
+	bloodbro_draw_sprites(bitmap);
+	tilemap_draw(bitmap,tx_tilemap,0,0);
+}
+
+

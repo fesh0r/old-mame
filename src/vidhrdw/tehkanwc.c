@@ -16,7 +16,7 @@ robbiex@rocketmail.com
 
 unsigned char *tehkanwc_videoram1;
 size_t tehkanwc_videoram1_size;
-static struct osd_bitmap *tmpbitmap1 = 0;
+static struct mame_bitmap *tmpbitmap1 = 0;
 static unsigned char *dirtybuffer1;
 static unsigned char scroll_x[2],scroll_y;
 static unsigned char led0,led1;
@@ -114,7 +114,7 @@ WRITE_HANDLER( gridiron_led1_w )
    bit 7 = enable (0 = display off)
  */
 
-static void gridiron_drawled(struct osd_bitmap *bitmap,unsigned char led,int player)
+static void gridiron_drawled(struct mame_bitmap *bitmap,unsigned char led,int player)
 {
 	int i;
 
@@ -152,92 +152,9 @@ else logerror("unknown LED %02x for player %d\n",led,player);
 
 
 
-void tehkanwc_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void tehkanwc_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
-
-palette_init_used_colors();
-
-{
-	int color,code,i;
-	int colmask[16];
-	int pal_base;
-
-
-	pal_base = Machine->drv->gfxdecodeinfo[2].color_codes_start;
-
-	for (color = 0;color < 16;color++) colmask[color] = 0;
-
-	for (offs = tehkanwc_videoram1_size - 2;offs >= 0;offs-=2)
-	{
-		code = tehkanwc_videoram1[offs] + ((tehkanwc_videoram1[offs+1] & 0x30) << 4);
-		color = tehkanwc_videoram1[offs+1] & 0x0f;
-
-		colmask[color] |= Machine->gfx[2]->pen_usage[code];
-	}
-
-	for (color = 0;color < 16;color++)
-	{
-		for (i = 0;i < 16;i++)
-		{
-			if (colmask[color] & (1 << i))
-				palette_used_colors[pal_base + 16 * color + i] = PALETTE_COLOR_USED;
-		}
-	}
-
-
-	pal_base = Machine->drv->gfxdecodeinfo[1].color_codes_start;
-
-	for (color = 0;color < 16;color++) colmask[color] = 0;
-
-	for (offs = 0;offs < spriteram_size;offs += 4)
-	{
-		code = spriteram[offs+0] + ((spriteram[offs+1] & 0x08) << 5);
-		color = spriteram[offs+1] & 0x07;
-
-		colmask[color] |= Machine->gfx[1]->pen_usage[code];
-	}
-
-	for (color = 0;color < 16;color++)
-	{
-		if (colmask[color] & (1 << 0))
-			palette_used_colors[pal_base + 16 * color] = PALETTE_COLOR_TRANSPARENT;
-		for (i = 1;i < 16;i++)
-		{
-			if (colmask[color] & (1 << i))
-				palette_used_colors[pal_base + 16 * color + i] = PALETTE_COLOR_USED;
-		}
-	}
-
-
-	pal_base = Machine->drv->gfxdecodeinfo[0].color_codes_start;
-
-	for (color = 0;color < 16;color++) colmask[color] = 0;
-
-	for (offs = videoram_size - 1;offs >= 0;offs--)
-	{
-		code = videoram[offs] + ((colorram[offs] & 0x10) << 4);
-		color = colorram[offs] & 0x0f;
-		colmask[color] |= Machine->gfx[0]->pen_usage[code];
-	}
-
-	for (color = 0;color < 16;color++)
-	{
-		if (colmask[color] & (1 << 0))
-			palette_used_colors[pal_base + 16 * color] = PALETTE_COLOR_TRANSPARENT;
-		for (i = 1;i < 16;i++)
-		{
-			if (colmask[color] & (1 << i))
-				palette_used_colors[pal_base + 16 * color + i] = PALETTE_COLOR_USED;
-		}
-	}
-}
-
-	if ( palette_recalc() ) {
-		memset( dirtybuffer, 1, videoram_size );
-		memset( dirtybuffer1, 1, tehkanwc_videoram1_size );
-	}
-
 
 
 	/* draw the background */

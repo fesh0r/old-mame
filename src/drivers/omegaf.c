@@ -84,7 +84,7 @@ WRITE_HANDLER( omegaf_sprite_overdraw_w );
 int omegaf_vh_start(void);
 int robokid_vh_start(void);
 void omegaf_vh_stop(void);
-void omegaf_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void omegaf_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 
 static int omegaf_bank_latch = 2;
 
@@ -682,10 +682,10 @@ static const struct MachineDriver machine_driver_omegaf =
 
 	128*16, 32*16, { 0*8, 32*8-1, 4*8, 28*8-1 },
 	omegaf_gfxdecodeinfo,
-	64*16, 64*16,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	omegaf_vh_start,
 	omegaf_vh_stop,
@@ -723,10 +723,10 @@ static const struct MachineDriver machine_driver_robokid =
 
 	32*16, 32*16, { 0*8, 32*8-1, 4*8, 28*8-1 },
 	robokid_gfxdecodeinfo,
-	64*16, 64*16,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	robokid_vh_start,
 	omegaf_vh_stop,

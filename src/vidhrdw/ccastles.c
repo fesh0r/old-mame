@@ -9,8 +9,8 @@
 #include "vidhrdw/generic.h"
 
 
-static struct osd_bitmap *sprite_bm;
-static struct osd_bitmap *maskbitmap;
+static struct mame_bitmap *sprite_bm;
+static struct mame_bitmap *maskbitmap;
 
 unsigned char *ccastles_screen_addr;
 unsigned char *ccastles_screen_inc;
@@ -74,7 +74,7 @@ WRITE_HANDLER( ccastles_paletteram_w )
 	bit2 = (b >> 2) & 0x01;
 	b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-	palette_change_color(offset & 0x1f,r,g,b);
+	palette_set_color(offset & 0x1f,r,g,b);
 }
 
 
@@ -95,7 +95,7 @@ int ccastles_vh_start(void)
 		return 1;
 	}
 
-	if ((sprite_bm = bitmap_alloc(16,16)) == 0)
+	if ((sprite_bm = bitmap_alloc(8,16)) == 0)
 	{
 		bitmap_free(maskbitmap);
 		bitmap_free(tmpbitmap);
@@ -239,7 +239,7 @@ WRITE_HANDLER( ccastles_bitmode_w )
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
@@ -283,18 +283,17 @@ static void redraw_bitmap(void)
 }
 
 
-void ccastles_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void ccastles_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 	unsigned char *spriteaddr;
 	int scrollx,scrolly;
 
 
-	if (palette_recalc() || full_refresh)
+	if (full_refresh)
 	{
 		redraw_bitmap();
 	}
-
 
 	scrollx = 255 - *ccastles_scrollx;
 	scrolly = 255 - *ccastles_scrolly;
@@ -328,12 +327,12 @@ void ccastles_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 
 		if (spriteaddr[offs+2] & 0x80)	/* background can have priority over the sprite */
 		{
-			fillbitmap(sprite_bm,Machine->gfx[0]->colortable[7],0);
 			drawgfx(sprite_bm,Machine->gfx[0],
-					spriteaddr[offs],1,
+					spriteaddr[offs],
+					0,
 					flip_screen,flip_screen,
 					0,0,
-					0,TRANSPARENCY_PEN,7);
+					0,TRANSPARENCY_NONE,0);
 
 			for (j = 0;j < 16;j++)
 			{
@@ -344,22 +343,23 @@ void ccastles_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 						int pixa,pixb;
 
 						pixa = read_pixel(sprite_bm, i, j);
-						pixb = read_pixel(maskbitmap, (x+scrollx+i)%256, (y+scrolly+j)%232);
+						pixb = read_pixel(maskbitmap, (x-scrollx+i+256)%256, (y-scrolly+j+232)%232);
 
 						/* if background has priority over sprite, make the */
 						/* temporary bitmap transparent */
-						if (pixb != 0 && (pixa != Machine->gfx[0]->colortable[0]))
-							plot_pixel(sprite_bm, i, j, Machine->gfx[0]->colortable[7]);
+						if (pixb != 0 && (pixa != Machine->pens[0]))
+							plot_pixel(sprite_bm, i, j, Machine->pens[7]);
 					}
 				}
 			}
 
-			copybitmap(bitmap,sprite_bm,0,0,x,y,&Machine->visible_area,TRANSPARENCY_PEN,Machine->gfx[0]->colortable[7]);
+			copybitmap(bitmap,sprite_bm,0,0,x,y,&Machine->visible_area,TRANSPARENCY_PEN,Machine->pens[7]);
 		}
 		else
 		{
 			drawgfx(bitmap,Machine->gfx[0],
-					spriteaddr[offs],1,
+					spriteaddr[offs],
+					0,
 					flip_screen,flip_screen,
 					x,y,
 					&Machine->visible_area,TRANSPARENCY_PEN,7);

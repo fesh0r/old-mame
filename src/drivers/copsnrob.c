@@ -52,7 +52,7 @@ extern unsigned char *copsnrob_truckram;
 
 READ_HANDLER( copsnrob_gun_position_r );
 int copsnrob_vh_start(void);
-void copsnrob_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void copsnrob_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 static MEMORY_READ_START( readmem )
 	{ 0x0000, 0x01ff, MRA_RAM },
@@ -225,7 +225,7 @@ static const struct MachineDriver machine_driver_copsnrob =
 	2+32768, 2,
 	init_palette,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	copsnrob_vh_start,
 	0,

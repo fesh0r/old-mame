@@ -60,7 +60,7 @@ static void sortlayers(int *layer,int *pri)
 	SWAP(1,2)
 }
 
-void gijoe_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void gijoe_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	int layer[3];
 	int new_base;
@@ -92,13 +92,6 @@ void gijoe_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 	sprite_colorbase   = K053251_get_palette_index(K053251_CI0);
 
 	K054157_tilemap_update();
-
-	palette_init_used_colors();
-	K053247_mark_sprites_colors();
-
-	if(palette_used_colors)
-		palette_used_colors[0] |= PALETTE_COLOR_VISIBLE;
-	palette_recalc();
 
 	layer[0] = 1;
 	layerpri[0] = K053251_get_priority(K053251_CI2);

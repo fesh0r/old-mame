@@ -162,7 +162,7 @@ WRITE_HANDLER( wardner_exscroll_w );
 
 int  toaplan0_vh_start(void);
 void toaplan0_vh_stop(void);
-void toaplan0_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void toaplan0_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 void toaplan0_eof_callback(void);
 
 extern int twincobr_display_on;
@@ -602,10 +602,10 @@ static const struct MachineDriver machine_driver_wardner =
 	/* video hardware */
 	64*8, 32*8, { 0*8, 40*8-1, 0*8, 30*8-1 },
 	gfxdecodeinfo,
-	1792, 1792,
+	1792, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM,
 	toaplan0_eof_callback,
 	toaplan0_vh_start,
 	toaplan0_vh_stop,

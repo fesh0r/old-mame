@@ -117,7 +117,7 @@ extern data32_t *	beathead_palette_select;
 int beathead_vh_start(void);
 void beathead_vh_stop(void);
 void beathead_scanline_update(int scanline);
-void beathead_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void beathead_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 
 WRITE32_HANDLER( beathead_vram_transparent_w );
 WRITE32_HANDLER( beathead_vram_bulk_w );
@@ -363,12 +363,6 @@ static WRITE32_HANDLER( sound_reset_w )
  *
  *************************************/
 
-static WRITE32_HANDLER( watchdog_reset32_w )
-{
-	watchdog_reset_w(0,0);
-}
-
-
 static WRITE32_HANDLER( coin_count_w )
 {
 	coin_counter_w(0, !offset);
@@ -497,10 +491,10 @@ static const struct MachineDriver machine_driver_beathead =
 	/* video hardware */
 	42*8, 30*8, { 0*8, 42*8-1, 0*8, 30*8-1 },
 	0,
-	0x8000,0x8000,
+	0x8000, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER  | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	beathead_vh_start,
 	beathead_vh_stop,
@@ -612,4 +606,4 @@ static void init_beathead(void)
  *
  *************************************/
 
-GAME( 1993, beathead, 0, beathead, beathead, beathead, ROT0_16BIT, "Atari Games", "BeatHead (prototype)" )
+GAME( 1993, beathead, 0, beathead, beathead, beathead, ROT0, "Atari Games", "BeatHead (prototype)" )

@@ -107,8 +107,7 @@ Driver by Scott Kelley (wizard@tripoint.org)
 #include "cpu/z80/z80.h"
 
 
-void pinbo_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-void pinbo_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
+void pinbo_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -385,8 +384,8 @@ static const struct MachineDriver machine_driver_pinbo =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	256, 256,
-	pinbo_vh_convert_color_prom,
+	256, 0,
+	palette_RRRR_GGGG_BBBB_convert_prom,
 
 	VIDEO_TYPE_RASTER,
 	0,

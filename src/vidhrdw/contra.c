@@ -78,7 +78,11 @@ static void get_fg_tile_info(int tile_index)
 
 	bank = (bank & ~(mask << 1)) | ((K007121_ctrlram[0][0x04] & mask) << 1);
 
-	SET_TILE_INFO(0, contra_fg_vram[tile_index]+bank*256, ((K007121_ctrlram[0][6]&0x30)*2+16)+(attr&7) )
+	SET_TILE_INFO(
+			0,
+			contra_fg_vram[tile_index]+bank*256,
+			((K007121_ctrlram[0][6]&0x30)*2+16)+(attr&7),
+			0)
 }
 
 static void get_bg_tile_info(int tile_index)
@@ -98,7 +102,11 @@ static void get_bg_tile_info(int tile_index)
 
 	bank = (bank & ~(mask << 1)) | ((K007121_ctrlram[0][0x04] & mask) << 1);
 
-	SET_TILE_INFO(1, contra_bg_vram[tile_index]+bank*256, ((K007121_ctrlram[1][6]&0x30)*2+16)+(attr&7) )
+	SET_TILE_INFO(
+			1,
+			contra_bg_vram[tile_index]+bank*256,
+			((K007121_ctrlram[1][6]&0x30)*2+16)+(attr&7),
+			0)
 }
 
 static void get_tx_tile_info(int tile_index)
@@ -113,7 +121,11 @@ static void get_tx_tile_info(int tile_index)
 			((attr >> (bit1+1)) & 0x04) |
 			((attr >> (bit2  )) & 0x08) |
 			((attr >> (bit3-1)) & 0x10);
-	SET_TILE_INFO(0,contra_text_vram[tile_index]+bank*256, ((K007121_ctrlram[0][6]&0x30)*2+16)+(attr&7) )
+	SET_TILE_INFO(
+			0,
+			contra_text_vram[tile_index]+bank*256,
+			((K007121_ctrlram[0][6]&0x30)*2+16)+(attr&7),
+			0)
 }
 
 
@@ -265,7 +277,7 @@ WRITE_HANDLER( contra_K007121_ctrl_1_w )
 
 ***************************************************************************/
 
-static void draw_sprites( struct osd_bitmap *bitmap, int bank )
+static void draw_sprites( struct mame_bitmap *bitmap, int bank )
 {
 	const unsigned char *source;
 	int base_color = (K007121_ctrlram[bank][6]&0x30)*2;
@@ -276,15 +288,12 @@ static void draw_sprites( struct osd_bitmap *bitmap, int bank )
 	K007121_sprites_draw(bank,bitmap,source,base_color,40,0,-1);
 }
 
-void contra_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void contra_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	tilemap_set_scrollx( fg_tilemap,0, K007121_ctrlram[0][0x00] - 40 );
 	tilemap_set_scrolly( fg_tilemap,0, K007121_ctrlram[0][0x02] );
 	tilemap_set_scrollx( bg_tilemap,0, K007121_ctrlram[1][0x00] - 40 );
 	tilemap_set_scrolly( bg_tilemap,0, K007121_ctrlram[1][0x02] );
-
-	tilemap_update( ALL_TILEMAPS );
-	palette_recalc();
 
 	tilemap_draw( bitmap, bg_tilemap, 0 ,0);
 	tilemap_draw( bitmap, fg_tilemap, 0 ,0);

@@ -24,8 +24,8 @@ UINT8 exidy_collision_invert;
 UINT8 *exidy_palette;
 UINT16 *exidy_colortable;
 
-static struct osd_bitmap *motion_object_1_vid;
-static struct osd_bitmap *motion_object_2_vid;
+static struct mame_bitmap *motion_object_1_vid;
+static struct mame_bitmap *motion_object_2_vid;
 
 static UINT8 chardirty[256];
 static UINT8 update_complete;
@@ -57,29 +57,29 @@ UINT8 sidetrac_palette[] =
 /* Targ has different colors */
 UINT8 targ_palette[] =
 {
-					/* color   use                            */
-	0x00,0x00,0xff, /* blue    background             */
+					/* color   use                */
+	0x00,0x00,0xff, /* blue    background         */
 	0x00,0xff,0xff, /* cyan    characters 192-255 */
 	0xff,0xff,0x00, /* yellow  characters 128-191 */
 	0xff,0xff,0xff, /* white   characters  64-127 */
 	0xff,0x00,0x00, /* red     characters   0- 63 */
-	0x00,0xff,0xff, /* cyan    not used               */
-	0xff,0xff,0xff, /* white   bullet sprite          */
-	0x00,0xff,0x00, /* green   wummel sprite          */
+	0x00,0xff,0xff, /* cyan    not used           */
+	0xff,0xff,0xff, /* white   bullet sprite      */
+	0x00,0xff,0x00, /* green   wummel sprite      */
 };
 
 /* Spectar has different colors */
 UINT8 spectar_palette[] =
 {
-					/* color   use                            */
-	0x00,0x00,0xff, /* blue    background             */
+					/* color   use                */
+	0x00,0x00,0xff, /* blue    background         */
 	0x00,0xff,0x00, /* green   characters 192-255 */
 	0x00,0xff,0x00, /* green   characters 128-191 */
 	0xff,0xff,0xff, /* white   characters  64-127 */
 	0xff,0x00,0x00, /* red     characters   0- 63 */
-	0x00,0xff,0x00, /* green   not used               */
-	0xff,0xff,0x00, /* yellow  bullet sprite          */
-	0x00,0xff,0x00, /* green   wummel sprite          */
+	0x00,0xff,0x00, /* green   not used           */
+	0xff,0xff,0x00, /* yellow  bullet sprite      */
+	0x00,0xff,0x00, /* green   wummel sprite      */
 };
 
 
@@ -137,7 +137,7 @@ UINT16 exidy_2bpp_colortable[] =
 
 void exidy_vh_init_palette(UINT8 *palette, UINT16 *colortable, const UINT8 *color_prom)
 {
-	if (!(Machine->drv->video_attributes & VIDEO_MODIFIES_PALETTE))
+	if (exidy_palette)
 		memcpy(palette, exidy_palette, 3 * PALETTE_LEN);
 	memcpy(colortable, exidy_colortable, COLORTABLE_LEN * sizeof(colortable[0]));
 }
@@ -165,7 +165,7 @@ int exidy_vh_start(void)
 	motion_object_2_vid = bitmap_alloc(16, 16);
     if (!motion_object_2_vid)
     {
-        osd_free_bitmap(motion_object_1_vid);
+        bitmap_free(motion_object_1_vid);
         generic_vh_stop();
         return 1;
     }
@@ -259,7 +259,7 @@ WRITE_HANDLER( exidy_color_w )
 		int b = ((exidy_color_latch[0] >> i) & 0x01) * 0xff;
 		int g = ((exidy_color_latch[1] >> i) & 0x01) * 0xff;
 		int r = ((exidy_color_latch[2] >> i) & 0x01) * 0xff;
-		palette_change_color(i, r, g, b);
+		palette_set_color(i, r, g, b);
 	}
 }
 
@@ -421,13 +421,9 @@ void exidy_vh_eof(void)
  *
  *************************************/
 
-void exidy_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void exidy_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	int sx, sy;
-
-	/* recalc the palette */
-	if (palette_recalc())
-		memset(dirtybuffer, 1, videoram_size);
 
 	/* update the background and draw it */
 	update_background();

@@ -31,7 +31,7 @@
 
 int xybots_vh_start(void);
 void xybots_vh_stop(void);
-void xybots_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void xybots_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 
 
 
@@ -223,10 +223,10 @@ static const struct MachineDriver machine_driver_xybots =
 	/* video hardware */
 	42*8, 30*8, { 0*8, 42*8-1, 0*8, 30*8-1 },
 	gfxdecodeinfo,
-	1024,1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	xybots_vh_start,
 	xybots_vh_stop,

@@ -187,7 +187,7 @@ Sound board: uses the same board as Pooyan.
 extern unsigned char *tutankhm_scrollx;
 
 WRITE_HANDLER( tutankhm_videoram_w );
-void tutankhm_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void tutankhm_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 static WRITE_HANDLER( tutankhm_bankselect_w )
@@ -368,7 +368,7 @@ static const struct MachineDriver machine_driver_tutankhm =
 	16, 0,
 	0,
 
-	VIDEO_TYPE_RASTER|VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,						/* vh_init routine */
 	generic_vh_start,					/* vh_start routine */
 	generic_vh_stop,					/* vh_stop routine */

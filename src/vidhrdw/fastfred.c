@@ -10,7 +10,7 @@
 #include "vidhrdw/generic.h"
 
 
-extern unsigned char *galaxian_attributesram;
+unsigned char *fastfred_attributesram;
 static const unsigned char *fastfred_color_prom;
 
 
@@ -71,41 +71,56 @@ static void convert_color(int i, int* r, int* g, int* b)
 
 void fastfred_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
 {
-        int i;
-        #define TOTAL_COLORS(gfxn) (Machine->gfx[gfxn]->total_colors * Machine->gfx[gfxn]->color_granularity)
-        #define COLOR(gfxn,offs) (colortable[Machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
+	int i;
+	#define TOTAL_COLORS(gfxn) (Machine->gfx[gfxn]->total_colors * Machine->gfx[gfxn]->color_granularity)
+	#define COLOR(gfxn,offs) (colortable[Machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
 
 
-		fastfred_color_prom = color_prom;	/* we'll need this later */
+	fastfred_color_prom = color_prom;	/* we'll need this later */
 
-        for (i = 0;i < Machine->drv->total_colors;i++)
-        {
-                int r,g,b;
+	for (i = 0;i < Machine->drv->total_colors;i++)
+	{
+		int r,g,b;
 
-				convert_color(i, &r, &g, &b);
+		convert_color(i, &r, &g, &b);
 
-				*(palette++) = r;
-				*(palette++) = g;
-				*(palette++) = b;
-        }
+		*(palette++) = r;
+		*(palette++) = g;
+		*(palette++) = b;
+	}
 
 
-        /* characters and sprites use the same palette */
-        for (i = 0;i < TOTAL_COLORS(0);i++)
-        {
-			int color;
+	/* characters and sprites use the same palette */
+	for (i = 0;i < TOTAL_COLORS(0);i++)
+	{
+		int color;
 
-			if (!(i & 0x07))
-			{
-				color = 0;
-			}
-			else
-			{
-				color = i;
-			}
+		if (!(i & 0x07))
+		{
+			color = 0;
+		}
+		else
+		{
+			color = i;
+		}
 
-			COLOR(0,i) = COLOR(1,i) = color;
-        }
+		COLOR(0,i) = COLOR(1,i) = color;
+	}
+}
+
+
+WRITE_HANDLER( fastfred_attributes_w )
+{
+	if ((offset & 1) && fastfred_attributesram[offset] != data)
+	{
+		int i;
+
+
+		for (i = offset / 2;i < videoram_size;i += 32)
+			dirtybuffer[i] = 1;
+	}
+
+	fastfred_attributesram[offset] = data;
 }
 
 
@@ -130,23 +145,23 @@ WRITE_HANDLER( fastfred_background_color_w )
 
 	convert_color(data, &r, &g, &b);
 
-	palette_change_color(0,r,g,b);
+	palette_set_color(0,r,g,b);
 }
 
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
 ***************************************************************************/
-void fastfred_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void fastfred_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs, charbank, colorbank;
 
 
-	if (palette_recalc() || full_refresh)
+	if (full_refresh)
 		memset(dirtybuffer,1,videoram_size);
 
 
@@ -166,7 +181,7 @@ void fastfred_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 			sx = offs % 32;
 			sy = offs / 32;
 
-			color = colorbank | (galaxian_attributesram[2 * sx + 1] & 0x07);
+			color = colorbank | (fastfred_attributesram[2 * sx + 1] & 0x07);
 
 			if (flip_screen_x) sx = 31 - sx;
 			if (flip_screen_y) sy = 31 - sy;
@@ -189,7 +204,7 @@ void fastfred_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 		{
 			for (i = 0;i < 32;i++)
 			{
-				scroll[31-i] = -galaxian_attributesram[2 * i];
+				scroll[31-i] = -fastfred_attributesram[2 * i];
 				if (flip_screen_y) scroll[31-i] = -scroll[31-i];
 			}
 		}
@@ -197,7 +212,7 @@ void fastfred_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 		{
 			for (i = 0;i < 32;i++)
 			{
-				scroll[i] = -galaxian_attributesram[2 * i];
+				scroll[i] = -fastfred_attributesram[2 * i];
 				if (flip_screen_y) scroll[i] = -scroll[i];
 			}
 		}

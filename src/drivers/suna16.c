@@ -31,7 +31,7 @@ WRITE16_HANDLER( suna16_paletteram16_w );
 
 int  suna16_vh_start(void);
 void suna16_vh_stop(void);
-void suna16_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void suna16_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 /***************************************************************************
@@ -628,9 +628,9 @@ static const struct MachineDriver machine_driver_bssoccer =
 	/* video hardware */
 	256, 256, { 0, 256-1, 0+16, 256-16-1 },
 	suna16_gfxdecodeinfo,
-	512, 512,		/* 2 banks of 256 colors */
+	512+1, 0,		/* 2 banks of 256 colors, plus one entry for background black */
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	suna16_vh_start,
 	suna16_vh_stop,
@@ -699,9 +699,9 @@ static const struct MachineDriver machine_driver_uballoon =
 	/* video hardware */
 	256, 256, { 0, 256-1, 0+16, 256-16-1 },
 	suna16_gfxdecodeinfo,
-	512, 512,		/* 2 banks of 256 colors */
+	512+1, 0,		/* 2 banks of 256 colors, plus one entry for background black */
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	suna16_vh_start,
 	suna16_vh_stop,

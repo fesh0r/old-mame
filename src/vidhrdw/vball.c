@@ -59,7 +59,7 @@ void vb_bgprombank_w( int bank )
 
 	for (i=0;i<128;i++, color_prom++)
 	{
-		palette_change_color(i,(color_prom[0] & 0x0f) << 4,(color_prom[0] & 0xf0) >> 0,
+		palette_set_color(i,(color_prom[0] & 0x0f) << 4,(color_prom[0] & 0xf0) >> 0,
 				       (color_prom[0x800] & 0x0f) << 4);
 //		logerror("\t%d: r:%d g:%d b:%d\n",i,(color_prom[0] & 0x0f) << 4,(color_prom[0] & 0xf0) >> 0,
 //				       (color_prom[0x800] & 0x0f) << 4);
@@ -84,7 +84,7 @@ void vb_spprombank_w( int bank )
 
 	for (i=128;i<256;i++,color_prom++)
 	{
-		palette_change_color(i,(color_prom[0] & 0x0f) << 4,(color_prom[0] & 0xf0) >> 0,
+		palette_set_color(i,(color_prom[0] & 0x0f) << 4,(color_prom[0] & 0xf0) >> 0,
 				       (color_prom[0x800] & 0x0f) << 4);
 	}
 
@@ -136,7 +136,7 @@ WRITE_HANDLER( vb_attrib_w )
 	}
 }
 
-static void vb_draw_foreground( struct osd_bitmap *bitmap )
+static void vb_draw_foreground( struct mame_bitmap *bitmap )
 {
 	const struct GfxElement *gfx = Machine->gfx[0];
 	unsigned char *source = vb_videoram;
@@ -167,7 +167,7 @@ static void vb_draw_foreground( struct osd_bitmap *bitmap )
 					(which+order),color,flipx,flipy,sx,sy, \
 					clip,TRANSPARENCY_PEN,0);
 
-static void draw_sprites( struct osd_bitmap *bitmap )
+static void draw_sprites( struct mame_bitmap *bitmap )
 {
 	const struct rectangle *clip = &Machine->visible_area;
 	const struct GfxElement *gfx = Machine->gfx[1];
@@ -209,7 +209,7 @@ static void draw_sprites( struct osd_bitmap *bitmap )
 
 #undef DRAW_SPRITE
 
-static void vb_draw_background( struct osd_bitmap *bitmap )
+static void vb_draw_background( struct mame_bitmap *bitmap )
 {
 	const struct GfxElement *gfx = Machine->gfx[0];
 	unsigned char *source = videoram;
@@ -268,7 +268,7 @@ static void vb_draw_background( struct osd_bitmap *bitmap )
 }
 
 
-void vb_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void vb_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 //	Tripping the sprite funk-tastic. :-) PaulH
 /*	static int i=0;
@@ -278,9 +278,6 @@ void vb_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 
 	vb_spprombank_w(i/15);
 */
-	if (palette_recalc())
-		memset(dirtybuffer,1, 0x800);
-
 	vb_draw_background( bitmap );
 	draw_sprites( bitmap );
 //	vb_draw_foreground( bitmap ); /* So far just hides half the game screen... */

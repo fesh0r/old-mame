@@ -57,7 +57,7 @@ size_t speedbal_sprites_dataram_size;
 
 int  speedbal_vh_start(void);
 void speedbal_vh_stop(void);
-void speedbal_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void speedbal_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 READ_HANDLER( speedbal_foreground_videoram_r );
 WRITE_HANDLER( speedbal_foreground_videoram_w );
 READ_HANDLER( speedbal_background_videoram_r );
@@ -278,10 +278,10 @@ static const struct MachineDriver machine_driver_speedbal =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	768, 768,
+	768, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	speedbal_vh_start,
 	speedbal_vh_stop,

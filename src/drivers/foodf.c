@@ -89,7 +89,7 @@ WRITE16_HANDLER( foodf_playfieldram_w );
 WRITE16_HANDLER( foodf_paletteram_w );
 
 void foodf_set_flip(int flip);
-void foodf_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void foodf_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -410,10 +410,10 @@ static const struct MachineDriver machine_driver_foodf =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 0*8, 28*8-1 },
 	gfxdecodeinfo,
-	256, 256,
+	256, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	generic_vh_start,
 	generic_vh_stop,

@@ -21,7 +21,7 @@ READ_HANDLER( ttmahjng_videoram1_r );
 READ_HANDLER( ttmahjng_videoram2_r );
 WRITE_HANDLER( ttmahjng_sharedram_w );
 READ_HANDLER( ttmahjng_sharedram_r );
-void ttmahjng_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void ttmahjng_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 static int psel;
@@ -210,7 +210,7 @@ static const struct MachineDriver machine_driver_ttmahjng =
 	8, 0,
 	ttmahjng_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY ,
 	0,
 	ttmahjng_vh_start,
 	ttmahjng_vh_stop,

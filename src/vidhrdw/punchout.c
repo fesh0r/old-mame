@@ -29,7 +29,7 @@ unsigned char *punchout_bigsprite1;
 unsigned char *punchout_bigsprite2;
 unsigned char *punchout_palettebank;
 static unsigned char *dirtybuffer2,*bs1dirtybuffer,*bs2dirtybuffer;
-static struct osd_bitmap *bs1tmpbitmap,*bs2tmpbitmap;
+static struct mame_bitmap *bs1tmpbitmap,*bs2tmpbitmap;
 
 static int top_palette_bank,bottom_palette_bank;
 
@@ -427,12 +427,12 @@ WRITE_HANDLER( punchout_palettebank_w )
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
 ***************************************************************************/
-void punchout_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void punchout_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 
@@ -585,7 +585,7 @@ void punchout_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 			if (punchout_bigsprite1[7] & 2)	/* display in bottom monitor */
 			{
 				copyrozbitmap(bitmap,bs1tmpbitmap,
-					startx,starty - 0x200*(TOP_MONITOR_ROWS+2) * zoom,
+					startx,starty - 0x200*TOP_MONITOR_ROWS * zoom,
 					incxx,0,0,incyy,	/* zoom, no rotation */
 					0,	/* no wraparound */
 					&bottomvisiblearea,TRANSPARENCY_COLOR,1024,0);
@@ -611,7 +611,7 @@ void punchout_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 }
 
 
-void armwrest_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void armwrest_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 
@@ -752,7 +752,7 @@ void armwrest_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 			if (punchout_bigsprite1[7] & 2)	/* display in bottom monitor */
 			{
 				copyrozbitmap(bitmap,bs1tmpbitmap,
-					startx,starty - 0x200*(TOP_MONITOR_ROWS+2) * zoom,
+					startx,starty - 0x200*TOP_MONITOR_ROWS * zoom,
 					incxx,0,0,incyy,	/* zoom, no rotation */
 					0,	/* no wraparound */
 					&bottomvisiblearea,TRANSPARENCY_COLOR,1024,0);

@@ -44,7 +44,7 @@ ask.  - Mike Balfour (mab22@po.cwru.edu)
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-void qwakprot_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void qwakprot_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE_HANDLER( qwakprot_paletteram_w );
 
 
@@ -221,10 +221,10 @@ static const struct MachineDriver machine_driver_qwakprot =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 0*8, 30*8-1 },
 	gfxdecodeinfo,
-	16, 16,
+	16, 0,
 	0,
 
-	VIDEO_TYPE_RASTER|VIDEO_SUPPORTS_DIRTY|VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER|VIDEO_SUPPORTS_DIRTY,
 	0,
 	generic_vh_start,
 	generic_vh_stop,

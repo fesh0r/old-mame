@@ -1,23 +1,23 @@
 /***************************************************************************
 
-								-= Seta Games =-
+							-= Seta Hardware =-
 
 					driver by	Luca Elia (l.elia@tin.it)
 
 
-Seta Custom Sound Chip:
+X1-010 (Seta Custom Sound Chip):
 
-	X1-010
-	Unsigned 16 Bit PCM
-	16 Voices
+	16 Voices, 8 Bit PCM
 
-Format:
+Registers:
 
 	8 registers per channel (mapped to the lower bytes of 16 words on the 68K)
 
 	Reg:	Bits:		Meaning:
 
-	0		7654 321-
+	0		7654 3---
+			---- -2--	?
+			---- --1-	?
 			---- ---0	Key On / Off
 
 	1		7654 ----	Volume 1 (L?)
@@ -38,13 +38,31 @@ Hardcoded Values:
 	PCM ROM region:		REGION_SOUND1
 
 ***************************************************************************/
+
 #include "driver.h"
+#include "seta.h"
+
+#define LOG_SOUND 0
 
 #define SETA_NUM_CHANNELS 16
 
+
 /* Variables only used here */
+
 static int firstchannel;
 static int seta_reg[SETA_NUM_CHANNELS][8];
+
+/* Variables used elsewhere */
+
+int seta_samples_bank;
+
+struct CustomSound_interface seta_sound_interface =
+{
+	seta_sh_start,
+	0,
+	0,
+};
+
 
 
 int seta_sh_start(const struct MachineSound *msound)
@@ -85,9 +103,12 @@ READ_HANDLER( seta_sound_r )
 		switch (reg)
 		{
 			case 0:
-				return ( mixer_is_sample_playing(firstchannel + channel) ? 1 : 0 );
+				return	(seta_reg[channel][0] & ~1) |
+						(mixer_is_sample_playing(firstchannel + channel) ? 1 : 0 );
 			default:
-				logerror("PC: %06X - X1-010 channel %X, register %X read!\n",cpu_get_pc(),channel,reg);
+#if LOG_SOUND
+logerror("PC: %06X - X1-010 channel %X, register %X read!\n",cpu_get_pc(),channel,reg);
+#endif
 				return seta_reg[channel][reg];
 		}
 	}
@@ -96,15 +117,6 @@ READ_HANDLER( seta_sound_r )
 }
 
 
-
-
-#define DUMP_REGS \
-	logerror("X1-010 REGS: ch %X] %02X %02X %02X %02X - %02X %02X %02X %02X\n", \
-							channel, \
-							seta_reg[channel][0],seta_reg[channel][1], \
-							seta_reg[channel][2],seta_reg[channel][3], \
-							seta_reg[channel][4],seta_reg[channel][5], \
-							seta_reg[channel][6],seta_reg[channel][7] );
 
 
 WRITE_HANDLER( seta_sound_w )
@@ -126,10 +138,18 @@ WRITE_HANDLER( seta_sound_w )
 
 		case 0:
 
-			DUMP_REGS
+#if LOG_SOUND
+logerror("X1-010 REGS: ch %X] %02X %02X %02X %02X - %02X %02X %02X %02X\n",
+		channel,	seta_reg[channel][0],seta_reg[channel][1],
+					seta_reg[channel][2],seta_reg[channel][3],
+					seta_reg[channel][4],seta_reg[channel][5],
+					seta_reg[channel][6],seta_reg[channel][7]	);
+#endif
+
 
 			if (data & 1)	// key on
 			{
+				int volumeL, volumeR;
 				int volume	=	seta_reg[channel][1];
 
 				int start	=	seta_reg[channel][4]           * 0x1000;
@@ -155,21 +175,25 @@ WRITE_HANDLER( seta_sound_w )
 				/* These samples are probaly looped and use the 3rd & 4th register's value */
 				if (data & 2)	return;
 
-#if 1
+#if LOG_SOUND
 /* Print some more debug info */
-logerror("PC: %06X - Play 16 bit sample %06X - %06X, channel %X\n",cpu_get_pc(),start, end, channel);
+logerror("PC: %06X - Play 8 bit sample %06X - %06X, channel %X\n",cpu_get_pc(),start, end, channel);
 #endif
 
-				/* left and right speaker's volume can be set indipendently.
-				   We use a mean volume for now */
-				mixer_set_volume(firstchannel + channel, ((volume & 0xf)+(volume >> 4))*100/(2*0xf)  );
+				/* Left and right speaker's volume can be set indipendently.
+				   Some games (the mono ones, I guess) only set one of the two
+				   to a non-zero value.
+				   So we use the highest of the two volumes for now */
 
-				/* I assume the pitch is fixed for a given board. It ranges
-				   from 4 to 8 KHz for the games I've seen */
+				volumeL = (volume >> 4) & 0xf;
+				volumeR = (volume >> 0) & 0xf;
+				volume = (volumeL > volumeR) ? volumeL : volumeR;
+				mixer_set_volume(firstchannel + channel, (volume * 100) / 0xf );
 
 				/* *Preliminary* pitch selection */
 
-				if ( seta_reg[channel][3] == 0)
+				if	( ( seta_reg[channel][3] == 0) ||
+					  ( seta_reg[channel][3] == 0xff) )	// sokonuke
 				{
 					int f = seta_reg[channel][2] /*% 17*/;
 					frequency = f * 1000;
@@ -183,12 +207,12 @@ logerror("PC: %06X - Play 16 bit sample %06X - %06X, channel %X\n",cpu_get_pc(),
 				/* Meta Fox does not write the frequency register. Ever */
 				if (frequency == 0)	frequency = 4000;
 
-				mixer_play_sample_16(
-					firstchannel + channel,
-					(short *) (memory_region(REGION_SOUND1) + start),	// start
-					len,												// len
-					frequency,											// frequency
-					0);													// loop
+				mixer_play_sample(
+					firstchannel + channel,							// channel
+					(INT8 *)(memory_region(REGION_SOUND1) + start),	// start
+					len,											// len
+					frequency*2,									// frequency
+					0);												// loop
 			}
 			else
 				mixer_stop_sample(channel + firstchannel);

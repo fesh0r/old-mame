@@ -42,7 +42,7 @@ void invaders_vh_stop(void);
 
 void invadpt2_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 WRITE_HANDLER( invaders_videoram_w );
-void invaders_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void invaders_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 WRITE_HANDLER( astinvad_sh_port_4_w );
 WRITE_HANDLER( astinvad_sh_port_5_w );
@@ -184,7 +184,7 @@ static const struct MachineDriver machine_driver_astinvad =
 	8, 0,
 	invadpt2_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY ,
 	0,
 	invaders_vh_start,
 	invaders_vh_stop,
@@ -318,7 +318,7 @@ static const struct MachineDriver machine_driver_spaceint =
 	8, 0,
 	invadpt2_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY ,
 	0,
 	invaders_vh_start,
 	invaders_vh_stop,

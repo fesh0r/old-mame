@@ -70,7 +70,7 @@ Notes:
 extern int  irobot_vh_start(void);
 extern void irobot_vh_stop(void);
 extern void irobot_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-extern void irobot_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+extern void irobot_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE_HANDLER( irobot_paletteram_w );
 
 void init_irobot(void);	/* convert mathbox ROMs */
@@ -300,7 +300,7 @@ static const struct MachineDriver machine_driver_irobot =
     64 + 32,64 + 32, /* 64 for polygons, 32 for text */
     irobot_vh_convert_color_prom,
 
-    VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+    VIDEO_TYPE_RASTER,
 	0,
     irobot_vh_start,
     irobot_vh_stop,

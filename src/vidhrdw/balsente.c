@@ -217,7 +217,7 @@ WRITE_HANDLER( balsente_paletteram_w )
 	r = paletteram[(offset & ~3) + 0];
 	g = paletteram[(offset & ~3) + 1];
 	b = paletteram[(offset & ~3) + 2];
-	palette_change_color(offset / 4, (r << 4) | r, (g << 4) | g, (b << 4) | b);
+	palette_set_color(offset / 4, (r << 4) | r, (g << 4) | g, (b << 4) | b);
 }
 
 
@@ -228,7 +228,7 @@ WRITE_HANDLER( balsente_paletteram_w )
  *
  *************************************/
 
-static void draw_one_sprite(struct osd_bitmap *bitmap, UINT8 *sprite)
+static void draw_one_sprite(struct mame_bitmap *bitmap, UINT8 *sprite)
 {
 	int flags = sprite[0];
 	int image = sprite[1] | ((flags & 3) << 8);
@@ -246,7 +246,7 @@ static void draw_one_sprite(struct osd_bitmap *bitmap, UINT8 *sprite)
 	{
 		if (ypos >= 16 && ypos < 240)
 		{
-			UINT32 *pens = &Machine->pens[scanline_palette[y] * 256];
+			pen_t *pens = &Machine->pens[scanline_palette[y] * 256];
 			UINT8 *old = &local_videoram[ypos * 256 + xpos];
 			int currx = xpos;
 
@@ -314,40 +314,19 @@ static void draw_one_sprite(struct osd_bitmap *bitmap, UINT8 *sprite)
  *
  *************************************/
 
-void balsente_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void balsente_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
-	UINT8 palette_used[4];
-	int x, y, i;
+	int y, i;
 
 	/* update the remaining scanlines */
 	screen_refresh_counter++;
 	update_palette();
 
-	/* determine which palette banks were used */
-	palette_used[0] = palette_used[1] = palette_used[2] = palette_used[3] = 0;
-	for (i = 0; i < 240; i++)
-		palette_used[scanline_palette[i]] = 1;
-
-	/* make sure color 1024 is white for our crosshair */
-	palette_change_color(1024, 0xff, 0xff, 0xff);
-
-	/* set the used status of all the palette entries */
-	for (x = 0; x < 4; x++)
-		if (palette_used[x])
-			memset(&palette_used_colors[x * 256], PALETTE_COLOR_USED, 256);
-		else
-			memset(&palette_used_colors[x * 256], PALETTE_COLOR_UNUSED, 256);
-	palette_used_colors[1024] = balsente_shooter ? PALETTE_COLOR_USED : PALETTE_COLOR_UNUSED;
-
-	/* recompute the palette, and mark all scanlines dirty if we need to redraw */
-	if (palette_recalc())
-		memset(scanline_dirty, 1, 256);
-
 	/* draw any dirty scanlines from the VRAM directly */
 	for (y = 0; y < 240; y++)
 		if (scanline_dirty[y] || full_refresh)
 		{
-			UINT32 *pens = &Machine->pens[scanline_palette[y] * 256];
+			pen_t *pens = &Machine->pens[scanline_palette[y] * 256];
 			draw_scanline8(bitmap, 0, y, 256, &local_videoram[y * 256], pens, -1);
 			scanline_dirty[y] = 0;
 		}
@@ -360,20 +339,14 @@ void balsente_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 	if (balsente_shooter)
 	{
 		int beamx = balsente_shooter_x;
-		int beamy = balsente_shooter_y - 12;
+		int beamy = balsente_shooter_y - 10;
 
-		int xoffs = beamx - 3;
-		int yoffs = beamy - 3;
-
-		for (y = -3; y <= 3; y++, yoffs++, xoffs++)
+		draw_crosshair(bitmap,beamx,beamy,&Machine->visible_area);
+		for (y = -6; y <= 6; y++)
 		{
-			if (yoffs >= 0 && yoffs < 240 && beamx >= 0 && beamx < 256)
-			{
-				plot_pixel(bitmap, beamx, yoffs, Machine->pens[1024]);
+			int yoffs = beamy + y;
+			if (yoffs >= 0 && yoffs < 240)
 				scanline_dirty[yoffs] = 1;
-			}
-			if (xoffs >= 0 && xoffs < 256 && beamy >= 0 && beamy < 240)
-				plot_pixel(bitmap, xoffs, beamy, Machine->pens[1024]);
 		}
 	}
 }

@@ -94,10 +94,17 @@ tile_struct *temp_list;
 static int max_list_size[32];
 static int tile_count[32];
 
-struct osd_bitmap *tmpbitmap1;
-static struct osd_bitmap *tmpbitmap2;
-static struct osd_bitmap *tmpbitmap3;
+struct mame_bitmap *tmpbitmap1;
+static struct mame_bitmap *tmpbitmap2;
+static struct mame_bitmap *tmpbitmap3;
 
+#undef BGDBG
+
+#ifdef BGDBG
+int toaplan_dbg_sprite_only = 0;
+int	toaplan_dbg_priority = 0;
+int	toaplan_dbg_layer[4] = {1,1,1,1};
+#endif
 
 int rallybik_vh_start(void)
 {
@@ -403,63 +410,9 @@ WRITE16_HANDLER( toaplan1_layers_offset_w )
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
 
 ***************************************************************************/
-
-
-static void toaplan1_update_palette (void)
-{
-	int i;
-	int priority;
-	int color;
-	unsigned short palette_map[64*2];
-
-	memset (palette_map, 0, sizeof (palette_map));
-
-	/* extract color info from priority layers in order */
-	for (priority = 0; priority < 17; priority++ )
-	{
-		tile_struct *tinfo;
-
-		tinfo = (tile_struct *)&(tile_list[priority][0]);
-		/* draw only tiles in list */
-		for ( i = 0; i < tile_count[priority]; i++ )
-		{
-			int bank;
-
-			bank  = (tinfo->color >> 7) & 1;
-			color = (tinfo->color & 0x3f);
-			palette_map[color + bank*64] |= Machine->gfx[bank]->pen_usage[tinfo->tile_num & (Machine->gfx[bank]->total_elements-1)];
-
-			tinfo++;
-		}
-	}
-
-	/* Tell MAME about the color usage */
-	for (i = 0; i < 64*2; i++)
-	{
-		int usage = palette_map[i];
-		int j;
-
-		if (usage)
-		{
-			palette_used_colors[i * 16 + 0] = PALETTE_COLOR_TRANSPARENT;
-			for (j = 0; j < 16; j++)
-			{
-				if (usage & (1 << j))
-					palette_used_colors[i * 16 + j] = PALETTE_COLOR_USED;
-				else
-					palette_used_colors[i * 16 + j] = PALETTE_COLOR_UNUSED;
-			}
-		}
-		else
-			memset(&palette_used_colors[i * 16],PALETTE_COLOR_UNUSED,16);
-	}
-
-	palette_recalc ();
-}
-
 
 
 static void toaplan1_find_tiles(int xoffs,int yoffs)
@@ -496,6 +449,10 @@ static void toaplan1_find_tiles(int xoffs,int yoffs)
 		int scrolly,scrollx,offsetx,offsety;
 		int sx,sy,tattr;
 		int i;
+
+#ifdef BGDBG
+		if( toaplan_dbg_layer[layer] == 1 ){
+#endif
 
 		t_info = toaplan1_tileram16 + (layer * TOAPLAN1_TILERAM16_SIZE);
 		scrollx = layer_scrollx[layer];
@@ -544,12 +501,16 @@ static void toaplan1_find_tiles(int xoffs,int yoffs)
 				}
 			}
 		}
+#ifdef BGDBG
+		}
+#endif
 	}
 	for ( layer = 3; layer >= 0; layer-- )
 	{
 		layer_scrollx[layer] &= 0x7;
 		layer_scrolly[layer] &= 0x7;
 	}
+
 }
 
 static void rallybik_find_tiles(void)
@@ -760,12 +721,20 @@ static void rallybik_find_sprites (void)
 }
 
 
-void toaplan1_fillbgmask(struct osd_bitmap *dest_bmp, struct osd_bitmap *source_bmp,
- const struct rectangle *clip,int transparent_color)
+
+void toaplan1_sprite_mask
+	(
+	struct mame_bitmap *dest_bmp,
+	struct mame_bitmap *src_bmp,
+	const struct rectangle *clip
+	)
 {
 	struct rectangle myclip;
 	int sx=0;
 	int sy=0;
+	int transparent_color;
+
+	transparent_color = Machine->pens[0];
 
 	if (Machine->orientation & ORIENTATION_SWAP_XY)
 	{
@@ -809,50 +778,9 @@ void toaplan1_fillbgmask(struct osd_bitmap *dest_bmp, struct osd_bitmap *source_
 		clip = &myclip;
 	}
 
-	if (dest_bmp->depth != 16)
 	{
-		int ex = sx+source_bmp->width;
-		int ey = sy+source_bmp->height;
-
-		if( sx < clip->min_x)
-		{ /* clip left */
-			sx = clip->min_x;
-		}
-		if( sy < clip->min_y )
-		{ /* clip top */
-			sy = clip->min_y;
-		}
-		if( ex > clip->max_x+1 )
-		{ /* clip right */
-			ex = clip->max_x + 1;
-		}
-		if( ey > clip->max_y+1 )
-		{ /* clip bottom */
-			ey = clip->max_y + 1;
-		}
-
-		if( ex>sx )
-		{ /* skip if inner loop doesn't draw anything */
-			int y;
-			for( y=sy; y<ey; y++ )
-			{
-				unsigned char *dest = dest_bmp->line[y];
-				unsigned char *source = source_bmp->line[y];
-				int x;
-
-				for( x=sx; x<ex; x++ )
-				{
-					int c = source[x];
-					if( c != transparent_color )
-						dest[x] = transparent_color;
-				}
-			}
-		}
-	}
-	else
-	{
-		int ex = sx+source_bmp->width;
-		int ey = sy+source_bmp->height;
+		int ex = sx+src_bmp->width;
+		int ey = sy+src_bmp->height;
 
 		if( sx < clip->min_x)
 		{ /* clip left */
@@ -878,7 +806,7 @@ void toaplan1_fillbgmask(struct osd_bitmap *dest_bmp, struct osd_bitmap *source_
 			for( y=sy; y<ey; y++ )
 			{
 				unsigned short *dest = (unsigned short *)dest_bmp->line[y];
-				unsigned short *source = (unsigned short *)source_bmp->line[y];
+				unsigned short *source = (unsigned short *)src_bmp->line[y];
 				int x;
 
 				for( x=sx; x<ex; x++ )
@@ -893,25 +821,122 @@ void toaplan1_fillbgmask(struct osd_bitmap *dest_bmp, struct osd_bitmap *source_
 }
 
 
-//#define BGDBG
-#ifdef BGDBG
-int	toaplan_dbg_priority = 0;
-#endif
 
-
-static void toaplan1_render (struct osd_bitmap *bitmap)
+void toaplan1_sprite_copy
+	(
+	struct mame_bitmap *dest_bmp,
+	struct mame_bitmap *src_bmp,
+	struct mame_bitmap *look_bmp,
+	const struct rectangle *clip
+	)
 {
-	int i,j;
+	struct rectangle myclip;
+	int sx=0;
+	int sy=0;
+	int transparent_color;
+
+	transparent_color = Machine->pens[0];
+
+	if (Machine->orientation & ORIENTATION_SWAP_XY)
+	{
+		int temp;
+
+		/* clip and myclip might be the same, so we need a temporary storage */
+		temp = clip->min_x;
+		myclip.min_x = clip->min_y;
+		myclip.min_y = temp;
+		temp = clip->max_x;
+		myclip.max_x = clip->max_y;
+		myclip.max_y = temp;
+		clip = &myclip;
+	}
+	if (Machine->orientation & ORIENTATION_FLIP_X)
+	{
+		int temp;
+
+		sx = -sx;
+
+		/* clip and myclip might be the same, so we need a temporary storage */
+		temp = clip->min_x;
+		myclip.min_x = dest_bmp->width-1 - clip->max_x;
+		myclip.max_x = dest_bmp->width-1 - temp;
+		myclip.min_y = clip->min_y;
+		myclip.max_y = clip->max_y;
+		clip = &myclip;
+	}
+	if (Machine->orientation & ORIENTATION_FLIP_Y)
+	{
+		int temp;
+
+		sy = -sy;
+
+		myclip.min_x = clip->min_x;
+		myclip.max_x = clip->max_x;
+		/* clip and myclip might be the same, so we need a temporary storage */
+		temp = clip->min_y;
+		myclip.min_y = dest_bmp->height-1 - clip->max_y;
+		myclip.max_y = dest_bmp->height-1 - temp;
+		clip = &myclip;
+	}
+
+	{
+		int ex = sx+src_bmp->width;
+		int ey = sy+src_bmp->height;
+
+		if( sx < clip->min_x)
+		{ /* clip left */
+			sx = clip->min_x;
+		}
+		if( sy < clip->min_y )
+		{ /* clip top */
+			sy = clip->min_y;
+		}
+		if( ex > clip->max_x+1 )
+		{ /* clip right */
+			ex = clip->max_x + 1;
+		}
+		if( ey > clip->max_y+1 )
+		{ /* clip bottom */
+			ey = clip->max_y + 1;
+		}
+
+		if( ex>sx )
+		{ /* skip if inner loop doesn't draw anything */
+			int y;
+
+			for( y=sy; y<ey; y++ )
+			{
+				unsigned short *dest = (unsigned short *)dest_bmp->line[y];
+				unsigned short *source = (unsigned short *)src_bmp->line[y];
+				unsigned short *look = (unsigned short *)look_bmp->line[y];
+				int x;
+
+				for( x=sx; x<ex; x++ )
+				{
+					if( look[x] != transparent_color )
+						dest[x] = source[x];
+				}
+			}
+		}
+	}
+}
+
+
+
+static void toaplan1_render (struct mame_bitmap *bitmap)
+{
+	int i;
 	int priority,pen;
 	int flip;
 	tile_struct *tinfo;
-	tile_struct *tinfo2;
-	struct rectangle sp_rect;
 
-	fillbitmap (bitmap, palette_transparent_pen, &Machine->visible_area);
+	fillbitmap (bitmap, Machine->pens[0], &Machine->visible_area);
 
 #ifdef BGDBG
 
+if (keyboard_pressed(KEYCODE_Q)) {
+	toaplan_dbg_priority = 0;
+}
 if (keyboard_pressed(KEYCODE_Q)) { toaplan_dbg_priority = 0; }
 if (keyboard_pressed(KEYCODE_W)) { toaplan_dbg_priority = 1; }
 if (keyboard_pressed(KEYCODE_E)) { toaplan_dbg_priority = 2; }
@@ -929,6 +954,22 @@ if (keyboard_pressed(KEYCODE_H)) { toaplan_dbg_priority = 13; }
 if (keyboard_pressed(KEYCODE_J)) { toaplan_dbg_priority = 14; }
 if (keyboard_pressed(KEYCODE_K)) { toaplan_dbg_priority = 15; }
 
+if (keyboard_pressed(KEYCODE_Z)) {
+	toaplan_dbg_sprite_only ^= 1;
+}
+if (keyboard_pressed(KEYCODE_X)) {
+	toaplan_dbg_layer[0] ^= 1;
+}
+if (keyboard_pressed(KEYCODE_C)) {
+	toaplan_dbg_layer[1] ^= 1;
+}
+if (keyboard_pressed(KEYCODE_V)) {
+	toaplan_dbg_layer[2] ^= 1;
+}
+if (keyboard_pressed(KEYCODE_B)) {
+	toaplan_dbg_layer[3] ^= 1;
+}
+
 if( toaplan_dbg_priority != 0 ){
 
 	priority = toaplan_dbg_priority;
@@ -938,9 +979,6 @@ if( toaplan_dbg_priority != 0 ){
 		pen = TRANSPARENCY_NONE;
 		for ( i = 0; i < tile_count[priority]; i++ ) /* draw only tiles in list */
 		{
-			/* hack to fix blue blobs in Zero Wing attract mode */
-//			if ((pen == TRANSPARENCY_NONE) && ((tinfo->color&0x3f)==0))
-//				pen = TRANSPARENCY_PEN;
 			drawgfx(bitmap,Machine->gfx[0],
 				tinfo->tile_num,
 				(tinfo->color&0x3f),
@@ -960,6 +998,11 @@ if( toaplan_dbg_priority != 0 ){
 //	else
 		flip = 0;
 //
+
+#ifdef BGDBG
+if ( toaplan_dbg_sprite_only == 0 ){
+#endif
+
 	priority = 0;
 	while ( priority < 16 )			/* draw priority layers in order */
 	{
@@ -967,18 +1010,17 @@ if( toaplan_dbg_priority != 0 ){
 
 		tinfo = (tile_struct *)&(tile_list[priority][0]);
 		layer = (tinfo->color >> 8);
-		if ( (layer < 3) && (priority < 2))
+
+		if ( (layer == 0) && (priority >= 8 ) )
+		{
 			pen = TRANSPARENCY_NONE;
-		else
+		}else{
 			pen = TRANSPARENCY_PEN;
+		}
 
 		for ( i = 0; i < tile_count[priority]; i++ ) /* draw only tiles in list */
 		{
 			int xpos,ypos;
-
-			/* hack to fix blue blobs in Zero Wing attract mode */
-//			if ((pen == TRANSPARENCY_NONE) && ((tinfo->color&0x3f)==0))
-//				pen = TRANSPARENCY_PEN;
 
 //			if ( flip ){
 //				xpos = tinfo->xpos;
@@ -999,122 +1041,9 @@ if( toaplan_dbg_priority != 0 ){
 		}
 		priority++;
 	}
-
-	tinfo2 = (tile_struct *)&(tile_list[16][0]);
-	for ( i = 0; i < tile_count[16]; i++ )	/* draw sprite No. in order */
-	{
-		int	flipx,flipy;
-
-		sp_rect.min_x = tinfo2->xpos;
-		sp_rect.min_y = tinfo2->ypos;
-		sp_rect.max_x = tinfo2->xpos + 7;
-		sp_rect.max_y = tinfo2->ypos + 7;
-
-		fillbitmap (tmpbitmap2, palette_transparent_pen, &sp_rect);
-
-		flipx = (tinfo2->color & 0x0100);
-		flipy = (tinfo2->color & 0x0200);
-//		if (flipscreen){
-//			flipx = !flipx;
-//			flipy = !flipy;
-//		}
-		drawgfx(tmpbitmap2,Machine->gfx[1],
-			tinfo2->tile_num,
-			(tinfo2->color&0x3f), 			/* bit 7 not for colour */
-			flipx,flipy,					/* flipx,flipy */
-			tinfo2->xpos,tinfo2->ypos,
-			&Machine->visible_area,TRANSPARENCY_PEN,0);
-
-		priority = tinfo2->priority;
-		{
-		int ix0,ix1,ix2,ix3;
-		int dirty;
-
-		dirty = 0;
-		fillbitmap (tmpbitmap3, palette_transparent_pen, &sp_rect);
-		for ( j = 0; j < 4; j++ )
-		{
-			int x,y;
-
-			y = tinfo2->ypos+layer_scrolly[j];
-			x = tinfo2->xpos+layer_scrollx[j];
-			ix0 = ( y   /8) * 41 +  x   /8;
-			ix1 = ( y   /8) * 41 + (x+7)/8;
-			ix2 = ((y+7)/8) * 41 +  x   /8;
-			ix3 = ((y+7)/8) * 41 + (x+7)/8;
-
-			if(	(ix0 >= 0) && (ix0 < 32*41) ){
-				tinfo = (tile_struct *)&(bg_list[j][ix0]);
-				if( (tinfo->priority >= tinfo2->priority) ){
-					drawgfx(tmpbitmap3,Machine->gfx[0],
-//					drawgfx(tmpbitmap2,Machine->gfx[0],
-						tinfo->tile_num,
-						(tinfo->color&0x3f),
-						flip,flip,
-						tinfo->xpos,tinfo->ypos,
-						&sp_rect,TRANSPARENCY_PEN,0);
-					dirty=1;
-				}
-			}
-			if(	(ix1 >= 0) && (ix1 < 32*41) ){
-				tinfo = (tile_struct *)&(bg_list[j][ix1]);
-//				tinfo++;
-				if( (ix0 != ix1)
-				 && (tinfo->priority >= tinfo2->priority) ){
-					drawgfx(tmpbitmap3,Machine->gfx[0],
-//					drawgfx(tmpbitmap2,Machine->gfx[0],
-						tinfo->tile_num,
-						(tinfo->color&0x3f),
-						flip,flip,
-						tinfo->xpos,tinfo->ypos,
-						&sp_rect,TRANSPARENCY_PEN,0);
-					dirty=1;
-				}
-			}
-			if(	(ix2 >= 0) && (ix2 < 32*41) ){
-				tinfo = (tile_struct *)&(bg_list[j][ix2]);
-//				tinfo += 40;
-				if( (ix0 != ix2)
-				 && (tinfo->priority >= tinfo2->priority) ){
-					drawgfx(tmpbitmap3,Machine->gfx[0],
-//					drawgfx(tmpbitmap2,Machine->gfx[0],
-						tinfo->tile_num,
-						(tinfo->color&0x3f),
-						flip,flip,
-						tinfo->xpos,tinfo->ypos,
-						&sp_rect,TRANSPARENCY_PEN,0);
-					dirty=1;
-				}
-			}
-			if( (ix3 >= 0) && (ix3 < 32*41) ){
-				tinfo = (tile_struct *)&(bg_list[j][ix3]);
-//				tinfo++;
-				if( (ix0 != ix3) && (ix1 != ix3) && (ix2 != ix3)
-				 && (tinfo->priority >= tinfo2->priority) ){
-					drawgfx(tmpbitmap3,Machine->gfx[0],
-//					drawgfx(tmpbitmap2,Machine->gfx[0],
-						tinfo->tile_num,
-						(tinfo->color&0x3f),
-						flip,flip,
-						tinfo->xpos,tinfo->ypos,
-						&sp_rect,TRANSPARENCY_PEN,0);
-					dirty=1;
-				}
-			}
-		}
-		if( dirty != 0 )
-		{
-			toaplan1_fillbgmask(
-				tmpbitmap2,				// dist
-				tmpbitmap3,				// mask
-				&sp_rect,
-				palette_transparent_pen
-			);
-		}
-		copybitmap(bitmap, tmpbitmap2, 0, 0, 0, 0, &sp_rect, TRANSPARENCY_PEN, palette_transparent_pen);
-		tinfo2++;
-		}
-	}
+#ifdef BGDBG
+}
+#endif
 
 #ifdef BGDBG
 }
@@ -1123,20 +1052,108 @@ if( toaplan_dbg_priority != 0 ){
 }
 
 
-static void rallybik_render (struct osd_bitmap *bitmap)
+
+static void zerowing_render (struct mame_bitmap *bitmap)
+{
+	int i;
+	int priority,pen;
+	int flip;
+	tile_struct *tinfo;
+
+	palette_set_color(0,0x00,0x00,0x00);
+	fillbitmap (bitmap, Machine->pens[0], &Machine->visible_area);
+
+
+	flip = 0;
+
+	priority = 0;
+	while ( priority < 16 )			/* draw priority layers in order */
+	{
+		int layer;
+
+		tinfo = (tile_struct *)&(tile_list[priority][0]);
+		layer = (tinfo->color >> 8);
+		pen = TRANSPARENCY_PEN;
+
+		for ( i = 0; i < tile_count[priority]; i++ ) /* draw only tiles in list */
+		{
+			int xpos,ypos;
+
+			xpos = tinfo->xpos;
+			ypos = tinfo->ypos;
+
+			drawgfx(bitmap,Machine->gfx[0],
+				tinfo->tile_num,
+				(tinfo->color&0x3f),
+				flip,flip,							/* flipx,flipy */
+				tinfo->xpos,tinfo->ypos,
+				&Machine->visible_area,pen,0);
+			tinfo++;
+		}
+		priority++;
+	}
+
+}
+
+
+static void demonwld_render (struct mame_bitmap *bitmap)
+{
+	int i;
+	int priority,pen;
+	int flip;
+	tile_struct *tinfo;
+
+	fillbitmap (bitmap, Machine->pens[0], &Machine->visible_area);
+
+	flip = 0;
+
+	priority = 0;
+	while ( priority < 16 )			/* draw priority layers in order */
+	{
+		int layer;
+
+		tinfo = (tile_struct *)&(tile_list[priority][0]);
+		layer = (tinfo->color >> 8);
+
+		if ( priority == 1 )
+			pen = TRANSPARENCY_NONE;
+		else
+			pen = TRANSPARENCY_PEN;
+
+		for ( i = 0; i < tile_count[priority]; i++ ) /* draw only tiles in list */
+		{
+			int xpos,ypos;
+
+			xpos = tinfo->xpos;
+			ypos = tinfo->ypos;
+
+			drawgfx(bitmap,Machine->gfx[0],
+				tinfo->tile_num,
+				(tinfo->color&0x3f),
+				flip,flip,							/* flipx,flipy */
+				tinfo->xpos,tinfo->ypos,
+				&Machine->visible_area,pen,0);
+			tinfo++;
+		}
+		priority++;
+	}
+
+}
+
+
+static void rallybik_render (struct mame_bitmap *bitmap)
 {
 	int i;
 	int priority,pen;
 	tile_struct *tinfo;
 
-	fillbitmap (bitmap, palette_transparent_pen, &Machine->visible_area);
+	fillbitmap (bitmap, Machine->pens[0], &Machine->visible_area);
 
 	for ( priority = 0; priority < 16; priority++ )	/* draw priority layers in order */
 	{
 		tinfo = (tile_struct *)&(tile_list[priority][0]);
 		/* hack to fix black blobs in Demon's World sky */
 		if ( priority == 1 )
-///		if ( priority == 0 )should it be this ?///
 			pen = TRANSPARENCY_NONE;
 		else
 			pen = TRANSPARENCY_PEN;
@@ -1158,23 +1175,192 @@ static void rallybik_render (struct osd_bitmap *bitmap)
 }
 
 
-void toaplan1_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+
+static void toaplan1_sprite_render (struct mame_bitmap *bitmap)
+{
+	int i,j;
+	int priority;
+	int flip;
+	tile_struct *tinfo;
+	tile_struct *tinfo_sp;
+	struct rectangle sp_rect;
+
+	flip = 0;
+
+	fillbitmap (tmpbitmap1, Machine->pens[0],&Machine->visible_area);
+	tinfo_sp = (tile_struct *)&(tile_list[16][0]);
+	for ( i = 0; i < tile_count[16]; i++ )	/* draw sprite No. in order */
+	{
+		int	flipx,flipy;
+
+		sp_rect.min_x = tinfo_sp->xpos;
+		sp_rect.min_y = tinfo_sp->ypos;
+		sp_rect.max_x = tinfo_sp->xpos + 7;
+		sp_rect.max_y = tinfo_sp->ypos + 7;
+
+
+		flipx = (tinfo_sp->color & 0x0100);
+		flipy = (tinfo_sp->color & 0x0200);
+//		if (flipscreen){
+//			flipx = !flipx;
+//			flipy = !flipy;
+//		}
+
+		fillbitmap (tmpbitmap2, Machine->pens[0], &sp_rect);
+		drawgfx(tmpbitmap2,Machine->gfx[1],
+			tinfo_sp->tile_num,
+			(tinfo_sp->color&0x3f), 			/* bit 7 not for colour */
+			flipx,flipy,					/* flipx,flipy */
+			tinfo_sp->xpos,tinfo_sp->ypos,
+			&Machine->visible_area,TRANSPARENCY_PEN,0
+		);
+		fillbitmap (tmpbitmap3, Machine->pens[0], &sp_rect);
+
+		priority = tinfo_sp->priority;
+		{
+		int ix0,ix1,ix2,ix3;
+		int dirty;
+
+		dirty = 0;
+		for ( j = 0; j < 4; j++ )
+		{
+			int x,y;
+
+			y = tinfo_sp->ypos+layer_scrolly[j];
+			x = tinfo_sp->xpos+layer_scrollx[j];
+			ix0 = ( y   /8) * 41 +  x   /8;
+			ix1 = ( y   /8) * 41 + (x+7)/8;
+			ix2 = ((y+7)/8) * 41 +  x   /8;
+			ix3 = ((y+7)/8) * 41 + (x+7)/8;
+
+			if(	(ix0 >= 0) && (ix0 < 32*41) ){
+				tinfo = (tile_struct *)&(bg_list[j][ix0]);
+				if( tinfo->priority >= tinfo_sp->priority ){
+					drawgfx(tmpbitmap3,Machine->gfx[0],
+						tinfo->tile_num,
+						(tinfo->color&0x3f),
+						flip,flip,
+						tinfo->xpos,tinfo->ypos,
+						&Machine->visible_area,TRANSPARENCY_PEN,0
+					);
+					dirty=1;
+				}
+			}
+			if(	(ix0 != ix1) && (ix1 >= 0) && (ix1 < 32*41) ){
+				tinfo = (tile_struct *)&(bg_list[j][ix1]);
+				if( tinfo->priority >= tinfo_sp->priority ){
+					drawgfx(tmpbitmap3,Machine->gfx[0],
+						tinfo->tile_num,
+						(tinfo->color&0x3f),
+						flip,flip,
+						tinfo->xpos,tinfo->ypos,
+						&Machine->visible_area,TRANSPARENCY_PEN,0
+					);
+					dirty=1;
+				}
+			}
+			if(	(ix1 != ix2) && (ix2 >= 0) && (ix2 < 32*41) ){
+				tinfo = (tile_struct *)&(bg_list[j][ix2]);
+				if( tinfo->priority >= tinfo_sp->priority ){
+					drawgfx(tmpbitmap3,Machine->gfx[0],
+						tinfo->tile_num,
+						(tinfo->color&0x3f),
+						flip,flip,
+						tinfo->xpos,tinfo->ypos,
+						&Machine->visible_area,TRANSPARENCY_PEN,0
+					);
+					dirty=1;
+				}
+			}
+			if( (ix2 != ix3) && (ix3 >= 0) && (ix3 < 32*41) ){
+				tinfo = (tile_struct *)&(bg_list[j][ix3]);
+				if( tinfo->priority >= tinfo_sp->priority ){
+					drawgfx(tmpbitmap3,Machine->gfx[0],
+						tinfo->tile_num,
+						(tinfo->color&0x3f),
+						flip,flip,
+						tinfo->xpos,tinfo->ypos,
+						&Machine->visible_area,TRANSPARENCY_PEN,0
+					);
+					dirty=1;
+				}
+			}
+		}
+		if( dirty != 0 )
+		{
+			toaplan1_sprite_mask(
+				tmpbitmap2,
+				tmpbitmap3,
+				&sp_rect
+			);
+			fillbitmap (tmpbitmap3, Machine->pens[0], &sp_rect);
+			drawgfx(tmpbitmap3,Machine->gfx[1],
+				tinfo_sp->tile_num,
+				(tinfo_sp->color&0x3f),
+				flipx,flipy,
+				tinfo_sp->xpos,tinfo_sp->ypos,
+				&Machine->visible_area,TRANSPARENCY_PEN,0
+			);
+			toaplan1_sprite_copy(
+				tmpbitmap1,
+				tmpbitmap2,
+				tmpbitmap3,
+				&sp_rect
+			);
+		}else{
+			drawgfx(tmpbitmap1,Machine->gfx[1],
+				tinfo_sp->tile_num,
+				(tinfo_sp->color&0x3f),
+				flipx,flipy,
+				tinfo_sp->xpos,tinfo_sp->ypos,
+				&Machine->visible_area,TRANSPARENCY_PEN,0
+			);
+		}
+		tinfo_sp++;
+		}
+	}
+	copybitmap(bitmap, tmpbitmap1, 0, 0, 0, 0, &Machine->visible_area, TRANSPARENCY_PEN, 0);
+
+}
+
+
+
+void toaplan1_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	/* discover what data will be drawn */
 	toaplan1_find_sprites();
 	toaplan1_find_tiles(tiles_offsetx,tiles_offsety);
 
-	toaplan1_update_palette();
 	toaplan1_render(bitmap);
+	toaplan1_sprite_render(bitmap);
 }
 
-void rallybik_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void zerowing_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
+{
+	/* discover what data will be drawn */
+	toaplan1_find_sprites();
+	toaplan1_find_tiles(tiles_offsetx,tiles_offsety);
+
+	zerowing_render(bitmap);
+	toaplan1_sprite_render(bitmap);
+}
+
+void demonwld_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
+{
+	/* discover what data will be drawn */
+	toaplan1_find_sprites();
+	toaplan1_find_tiles(tiles_offsetx,tiles_offsety);
+
+	demonwld_render(bitmap);
+	toaplan1_sprite_render(bitmap);
+}
+
+void rallybik_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	/* discover what data will be drawn */
 	rallybik_find_tiles();
 	rallybik_find_sprites();
 
-	toaplan1_update_palette();
 	rallybik_render(bitmap);
 }
 
@@ -1203,3 +1389,4 @@ void samesame_eof_callback(void)
 	memcpy(toaplan1_buffered_spritesizeram16, toaplan1_spritesizeram16, TOAPLAN1_SPRITESIZERAM16_SIZE);
 	cpu_set_irq_line(0, MC68000_IRQ_2, HOLD_LINE);  /* Frame done */
 }
+

@@ -21,7 +21,7 @@ TODO:
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-void zerozone_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void zerozone_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 int zerozone_vh_start(void);
 void zerozone_vh_stop(void);
 WRITE16_HANDLER( zerozone_videoram_w );
@@ -221,10 +221,10 @@ static const struct MachineDriver machine_driver_zerozone =
 	/* video hardware */
 	48*8, 32*8, { 1*8, 47*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	256, 256,
+	256, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY ,
 	0,
 	zerozone_vh_start,
 	zerozone_vh_stop,

@@ -11,54 +11,12 @@
 
 
 
-unsigned char *vastar_bg1videoram;
-unsigned char *vastar_bg2videoram;
-unsigned char *vastar_fgvideoram;
-unsigned char *vastar_sprite_priority;
-unsigned char *vastar_bg1_scroll;
-unsigned char *vastar_bg2_scroll;
+data8_t *vastar_bg1videoram,*vastar_bg2videoram,*vastar_fgvideoram;
+data8_t *vastar_bg1_scroll,*vastar_bg2_scroll;
+data8_t *vastar_sprite_priority;
 
 static struct tilemap *fg_tilemap, *bg1_tilemap, *bg2_tilemap;
 
-
-
-/***************************************************************************
-
-  Convert the color PROMs into a more useable format.
-
-***************************************************************************/
-
-void vastar_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
-{
-	int i;
-
-
-	for (i = 0;i < Machine->drv->total_colors;i++)
-	{
-		int bit0,bit1,bit2,bit3;
-
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		*(palette++) =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[Machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[Machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[Machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[Machine->drv->total_colors] >> 3) & 0x01;
-		*(palette++) =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*Machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[2*Machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[2*Machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[2*Machine->drv->total_colors] >> 3) & 0x01;
-		*(palette++) =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		color_prom++;
-	}
-}
 
 
 /***************************************************************************
@@ -73,7 +31,11 @@ static void get_fg_tile_info(int tile_index)
 
 	code = vastar_fgvideoram[tile_index + 0x800] | (vastar_fgvideoram[tile_index + 0x400] << 8);
 	color = vastar_fgvideoram[tile_index];
-	SET_TILE_INFO(0, code, color);
+	SET_TILE_INFO(
+			0,
+			code,
+			color & 0x3f,
+			0)
 }
 
 static void get_bg1_tile_info(int tile_index)
@@ -82,7 +44,11 @@ static void get_bg1_tile_info(int tile_index)
 
 	code = vastar_bg1videoram[tile_index + 0x800] | (vastar_bg1videoram[tile_index] << 8);
 	color = vastar_bg1videoram[tile_index + 0xc00];
-	SET_TILE_INFO(4, code, color);
+	SET_TILE_INFO(
+			4,
+			code,
+			color & 0x3f,
+			0)
 }
 
 static void get_bg2_tile_info(int tile_index)
@@ -91,7 +57,11 @@ static void get_bg2_tile_info(int tile_index)
 
 	code = vastar_bg2videoram[tile_index + 0x800] | (vastar_bg2videoram[tile_index] << 8);
 	color = vastar_bg2videoram[tile_index + 0xc00];
-	SET_TILE_INFO(3, code, color);
+	SET_TILE_INFO(
+			3,
+			code,
+			color & 0x3f,
+			0)
 }
 
 
@@ -157,26 +127,13 @@ READ_HANDLER( vastar_bg2videoram_r )
 }
 
 
-WRITE_HANDLER( vastar_bg1_scroll_w )
-{
-	vastar_bg1_scroll[offset] = data;
-	tilemap_set_scrolly(bg1_tilemap,offset,data);
-}
-
-WRITE_HANDLER( vastar_bg2_scroll_w )
-{
-	vastar_bg2_scroll[offset] = data;
-	tilemap_set_scrolly(bg2_tilemap,offset,data);
-}
-
-
 /***************************************************************************
 
   Display refresh
 
 ***************************************************************************/
 
-static void draw_sprites(struct osd_bitmap *bitmap)
+static void draw_sprites(struct mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -207,13 +164,15 @@ static void draw_sprites(struct osd_bitmap *bitmap)
 				sy = 224 - sy;
 
 			drawgfx(bitmap,Machine->gfx[2],
-					code/2,color,
+					code/2,
+					color,
 					flipx,flipy,
 					sx,sy,
 					&Machine->visible_area,TRANSPARENCY_PEN,0);
 			/* redraw with wraparound */
 			drawgfx(bitmap,Machine->gfx[2],
-					code/2,color,
+					code/2,
+					color,
 					flipx,flipy,
 					sx,sy+256,
 					&Machine->visible_area,TRANSPARENCY_PEN,0);
@@ -224,7 +183,8 @@ static void draw_sprites(struct osd_bitmap *bitmap)
 				sy = 240 - sy;
 
 			drawgfx(bitmap,Machine->gfx[1],
-					code,color,
+					code,
+					color,
 					flipx,flipy,
 					sx,sy,
 					&Machine->visible_area,TRANSPARENCY_PEN,0);
@@ -232,9 +192,16 @@ static void draw_sprites(struct osd_bitmap *bitmap)
 	}
 }
 
-void vastar_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void vastar_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
-	tilemap_update(ALL_TILEMAPS);
+	int i;
+
+
+	for (i = 0;i < 32;i++)
+	{
+		tilemap_set_scrolly(bg1_tilemap,i,vastar_bg1_scroll[i]);
+		tilemap_set_scrolly(bg2_tilemap,i,vastar_bg2_scroll[i]);
+	}
 
 	switch (*vastar_sprite_priority)
 	{

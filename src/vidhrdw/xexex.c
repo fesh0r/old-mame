@@ -55,22 +55,7 @@ READ16_HANDLER( xexexbg_rom_r )
 	return *(xexexbg_base + 2048*xexexbg_regs[7] + (offset>>1));
 }
 
-void xexexbg_mark_colors(int colorbase)
-{
-	if(palette_used_colors) {
-		int cmap = 0;
-		int i, j;
-		for(i=0; i<512*8; i+=8)
-			if(xexexbg_ram[i] || xexexbg_ram[i+1])
-				cmap |= 1 << (xexexbg_ram[i] & 0xf);
-		for(i=0; i<16; i++)
-			if(cmap & (1<<i))
-				for(j=0; j<16; j++)
-					palette_used_colors[colorbase*16 + i * 16 + j] = PALETTE_COLOR_VISIBLE;
-	}
-}
-
-void xexexbg_draw(struct osd_bitmap *bitmap, int colorbase, int pri)
+void xexexbg_draw(struct mame_bitmap *bitmap, int colorbase, int pri)
 {
 	const struct rectangle area = Machine->visible_area;
 	data16_t *line;
@@ -281,7 +266,7 @@ static void sortlayers(int *layer, int *pri)
 	SWAP(2, 3)
 }
 int xdump = 0;
-void xexex_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void xexex_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	int layer[4];
 	int plane;
@@ -294,12 +279,6 @@ void xexex_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 	layer_colorbase[3] = K053251_get_palette_index(K053251_CI4);
 
 	K054157_tilemap_update();
-
-	palette_init_used_colors();
-	K053247_mark_sprites_colors();
-	xexexbg_mark_colors(bg_colorbase);
-
-	palette_recalc();
 
 	layer[0] = 1;
 	layerpri[0] = K053251_get_priority(K053251_CI2);

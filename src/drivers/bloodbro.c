@@ -1,16 +1,45 @@
 /**************************************************************************
 
-Blood Bros, West Story.
+Blood Bros, West Story [+Sky Smasher]
 TAD Corporation 1990
 68000 + Z80 + YM3931 + YM3812
 
 driver by Carlos A. Lozano Baides
+
+Coin inputs are handled by the sound CPU, so they don't work with sound
+disabled. Use the service switch instead.
 
 TODO:
 West Story:
 - sound
 - some bad sprites, probably bad ROMs.
 - tilemap scroll
+
+
+Sky Smasher  (c) 1990 Nihon System [Seibu hardware]
+-----------
+
+Like some other Seibu hardware games, hold P1 right at boot to
+view DIP descriptions.
+
+Game does not appear to have cocktail mode. The screen hardware
+is undoubtedly capable of flipscreen and layer priority flipping
+however.
+
+Dumpers Notes
+=============
+
+PCB is made by Seibu
+
+Sound           - Z80
+                - YM3931 SEI0100BU    (64 pin DIP)
+                - YM3812
+                - M6295
+
+GFX             - SEI0210   custom    (128 pin PQFP)
+                - SEI0220BP custom    (80 pin PQFP)
+                - SEI0200   custom    (100 pin PQFP)
+                - SEI0160   custom    (60 pin PQFP)
 
 **************************************************************************/
 
@@ -19,8 +48,9 @@ West Story:
 #include "cpu/z80/z80.h"
 #include "sndhrdw/seibu.h"
 
-extern void bloodbro_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh );
-extern void weststry_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh );
+extern void bloodbro_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh );
+extern void weststry_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh );
+extern void skysmash_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh );
 extern int bloodbro_vh_start(void);
 
 WRITE16_HANDLER( bloodbro_bgvideoram_w );
@@ -32,23 +62,6 @@ extern data16_t *bloodbro_txvideoram;
 extern data16_t *bloodbro_scroll;
 
 /***************************************************************************/
-
-static WRITE16_HANDLER( bloodbro_sound_w )
-{
-	if (ACCESSING_LSB)
-	{
-		/* Slightly different interface in this game */
-		seibu_soundlatch_w(offset<<1,data&0xff);
-	}
-}
-
-READ16_HANDLER( bloodbro_sound_r )
-{
-      return 0x0060; /* Always return sound cpu ready */
-}
-
-
-/**** Blood Bros Memory Map  *******************************************/
 
 static MEMORY_READ16_START( readmem_cpu )
 	{ 0x000000, 0x07ffff, MRA16_ROM },
@@ -62,11 +75,11 @@ static MEMORY_READ16_START( readmem_cpu )
 	{ 0x08e000, 0x08e7ff, MRA16_RAM },
 	{ 0x08e800, 0x08f7ff, MRA16_RAM },
 	{ 0x08f800, 0x08ffff, MRA16_RAM },
-	{ 0x0a0000, 0x0a001f, bloodbro_sound_r },
+	{ 0x0a0000, 0x0a000d, seibu_main_word_r },
 	{ 0x0c0000, 0x0c007f, MRA16_RAM },
-	{ 0x0e0000, 0x0e0001, input_port_0_word_r },
-	{ 0x0e0002, 0x0e0003, input_port_1_word_r },
-	{ 0x0e0004, 0x0e0005, input_port_2_word_r },
+	{ 0x0e0000, 0x0e0001, input_port_1_word_r },
+	{ 0x0e0002, 0x0e0003, input_port_2_word_r },
+	{ 0x0e0004, 0x0e0005, input_port_3_word_r },
 MEMORY_END
 
 static MEMORY_WRITE16_START( writemem_cpu )
@@ -81,7 +94,7 @@ static MEMORY_WRITE16_START( writemem_cpu )
 	{ 0x08e000, 0x08e7ff, MWA16_RAM },
 	{ 0x08e800, 0x08f7ff, paletteram16_xxxxBBBBGGGGRRRR_word_w, &paletteram16 },
 	{ 0x08f800, 0x08ffff, MWA16_RAM },
-	{ 0x0a0000, 0x0a001f, bloodbro_sound_w, (data16_t **)&seibu_shared_sound_ram },
+	{ 0x0a0000, 0x0a000d, seibu_main_word_w },
 	{ 0x0c0000, 0x0c007f, MWA16_RAM, &bloodbro_scroll },
 	{ 0x0c0080, 0x0c0081, MWA16_NOP }, /* IRQ Ack VBL? */
 	{ 0x0c00c0, 0x0c00c1, MWA16_NOP }, /* watchdog? */
@@ -121,41 +134,56 @@ static MEMORY_WRITE16_START( weststry_writemem_cpu )
 	{ 0x0c1000, 0x0c17ff, MWA16_RAM },
 	{ 0x128000, 0x1287ff, paletteram16_xxxxBBBBGGGGRRRR_word_w, &paletteram16 },
 	{ 0x120000, 0x128fff, MWA16_RAM },
-	/* the following handler is fake, it's here only to allocates ram */
-	/* for the seibu system so it doesn't crash */
-	{ 0x0a0000, 0x0a001f, bloodbro_sound_w, (data16_t **)&seibu_shared_sound_ram },
 MEMORY_END
 
 /******************************************************************************/
 
-SEIBU_SOUND_SYSTEM_YM3812_MEMORY_MAP(MRA_NOP) /* No coin port in this game */
-
-/******************************************************************************/
-
 INPUT_PORTS_START( bloodbro )
+	SEIBU_COIN_INPUTS	/* Must be port 0: coin inputs read through sound cpu */
+
 	PORT_START
-	PORT_DIPNAME( 0x0001, 0x0000, "Coin Mode" )
-	PORT_DIPSETTING(      0x0000, "Normal" )
-	PORT_DIPSETTING(      0x0100, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x0006, 0x0600, DEF_STR( Coin_A ) )
+	PORT_DIPNAME( 0x0001, 0x0001, "Coin Mode" )
+	PORT_DIPSETTING(      0x0001, "Mode 1" )
+	PORT_DIPSETTING(      0x0000, "Mode 2" )
+/* Coin Mode 1, todo Mode 2 */
+	PORT_DIPNAME( 0x001e, 0x001e, DEF_STR( Coinage ) )
+	PORT_DIPSETTING(      0x0014, DEF_STR( 6C_1C ) )
+	PORT_DIPSETTING(      0x0016, DEF_STR( 5C_1C ) )
+	PORT_DIPSETTING(      0x0018, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x001a, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( 8C_3C ) )
+	PORT_DIPSETTING(      0x001c, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( 5C_3C ) )
+	PORT_DIPSETTING(      0x0006, DEF_STR( 3C_2C ) )
+	PORT_DIPSETTING(      0x001e, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(      0x0012, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x000e, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x000c, DEF_STR( 1C_5C ) )
+	PORT_DIPSETTING(      0x000a, DEF_STR( 1C_6C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
+/* mode 2
+	PORT_DIPNAME( 0x0006, 0x0006, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 5C_1C ) )
-	PORT_DIPSETTING(      0x0200, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(      0x0400, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0x0600, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0x0018, 0x1800, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(      0x1800, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(      0x1000, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(      0x0800, DEF_STR( 1C_5C ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0006, DEF_STR( 1C_1C ) )
+	PORT_DIPNAME( 0x0018, 0x0018, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(      0x0018, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_6C ) )
-	PORT_DIPNAME( 0x0020, 0x2000, "Starting Coin" )
-	PORT_DIPSETTING(      0x2000, "Normal" )
+*/
+	PORT_DIPNAME( 0x0020, 0x0020, "Starting Coin" )
+	PORT_DIPSETTING(      0x0020, "Normal" )
 	PORT_DIPSETTING(      0x0000, "x2" )
-	PORT_DIPNAME( 0x0040, 0x4000, "Unused 1" )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x4000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x8000, "Unused 2" )
+	PORT_DIPSETTING(      0x0040, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x8000, DEF_STR( On ) )
+	PORT_DIPSETTING(      0x0080, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Lives ) )
 	PORT_DIPSETTING(      0x0000, "1" )
 	PORT_DIPSETTING(      0x0200, "2" )
@@ -203,7 +231,7 @@ INPUT_PORTS_START( bloodbro )
 	PORT_BIT( 0x00e0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0e00, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0xe000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
@@ -278,8 +306,8 @@ INPUT_PORTS_START( weststry )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1)
-	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2)
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_START2 )
@@ -287,10 +315,108 @@ INPUT_PORTS_START( weststry )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
+INPUT_PORTS_START( skysmash )
+	SEIBU_COIN_INPUTS	/* Must be port 0: coin inputs read through sound cpu */
 
-/**** Blood Bros gfx decode ********************************************/
+	PORT_START
+	PORT_DIPNAME( 0x0001, 0x0001, "Coin Mode" )
+	PORT_DIPSETTING(      0x0001, "Mode 1" )
+	PORT_DIPSETTING(      0x0000, "Mode 2" )
+/* Coin Mode 1, todo Mode 2 */
+	PORT_DIPNAME( 0x001e, 0x001e, DEF_STR( Coinage ) )
+	PORT_DIPSETTING(      0x0014, DEF_STR( 6C_1C ) )
+	PORT_DIPSETTING(      0x0016, DEF_STR( 5C_1C ) )
+	PORT_DIPSETTING(      0x0018, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x001a, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( 8C_3C ) )
+	PORT_DIPSETTING(      0x001c, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( 5C_3C ) )
+	PORT_DIPSETTING(      0x0006, DEF_STR( 3C_2C ) )
+	PORT_DIPSETTING(      0x001e, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(      0x0012, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x000e, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x000c, DEF_STR( 1C_5C ) )
+	PORT_DIPSETTING(      0x000a, DEF_STR( 1C_6C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
+/* mode 2
+	PORT_DIPNAME( 0x0006, 0x0006, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( 5C_1C ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0006, DEF_STR( 1C_1C ) )
+	PORT_DIPNAME( 0x0018, 0x0018, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(      0x0018, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( 1C_5C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_6C ) )
+*/
+	PORT_DIPNAME( 0x0020, 0x0020, "Starting Coin" )
+	PORT_DIPSETTING(      0x0020, "Normal" )
+	PORT_DIPSETTING(      0x0000, "x2" )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Lives ) )
+	PORT_BITX( 0,         0x0000, IPT_DIPSWITCH_SETTING | IPF_CHEAT, "Infinite", IP_KEY_NONE, IP_JOY_NONE )
+	PORT_DIPSETTING(      0x0200, "2" )
+	PORT_DIPSETTING(      0x0300, "3" )
+	PORT_DIPSETTING(      0x0100, "5" )
+	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(      0x0c00, "120K 200K" )
+	PORT_DIPSETTING(      0x0800, "200K 200K" )
+	PORT_DIPSETTING(      0x0400, "250K 250K" )
+	PORT_DIPSETTING(      0x0000, "200K" )
+	PORT_DIPNAME( 0x3000, 0x3000, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(      0x2000, "Hard" )
+	PORT_DIPSETTING(      0x3000, "Normal" )
+	PORT_DIPSETTING(      0x1000, "Very Hard" )
+	PORT_DIPSETTING(      0x0000, "Easy" )
+	PORT_DIPNAME( 0x4000, 0x4000, "Allow Continue" )
+	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
+	PORT_DIPSETTING(      0x4000, DEF_STR( Yes ) )
+	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x8000, DEF_STR( On ) )
 
-static struct GfxLayout textlayout = {
+	PORT_START
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER1 )
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER1 )
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER1 )
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER1 )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER1 )
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER1 )
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_PLAYER1 )	// exists?
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER2 )
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER2 )
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER2 )
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER2 )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2 )
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_PLAYER2 )	// exists?
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1)
+	PORT_BIT( 0x000e, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x00e0, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0e00, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_BIT( 0xe000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+INPUT_PORTS_END
+
+
+/**** Blood Bros, Skysmash gfx decode ************************************/
+
+static struct GfxLayout textlayout =
+{
 	8,8,	/* 8*8 characters */
 	4096,	/* 4096 characters */
 	4,	/* 4 bits per pixel */
@@ -300,7 +426,8 @@ static struct GfxLayout textlayout = {
 	16*8	/* every char takes 16 consecutive bytes */
 };
 
-static struct GfxLayout backlayout = {
+static struct GfxLayout backlayout =
+{
 	16,16,	/* 16*16 sprites  */
 	4096,	/* 4096 sprites */
 	4,	/* 4 bits per pixel */
@@ -312,9 +439,10 @@ static struct GfxLayout backlayout = {
 	128*8	/* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout spritelayout = {
+static struct GfxLayout spritelayout =
+{
 	16,16,	/* 16*16 sprites  */
-	8192,	/* 8192 sprites */
+	RGN_FRAC(1,1),
 	4,	/* 4 bits per pixel */
 	{ 8, 12, 0, 4 },
 	{ 3, 2, 1, 0, 16+3, 16+2, 16+1, 16+0,
@@ -335,7 +463,8 @@ static struct GfxDecodeInfo bloodbro_gfxdecodeinfo[] =
 
 /**** West Story gfx decode *********************************************/
 
-static struct GfxLayout weststry_textlayout = {
+static struct GfxLayout weststry_textlayout =
+{
 	8,8,	/* 8*8 sprites */
 	4096,	/* 4096 sprites */
 	4,	/* 4 bits per pixel */
@@ -345,7 +474,8 @@ static struct GfxLayout weststry_textlayout = {
 	8*8	/* every sprite takes 8 consecutive bytes */
 };
 
-static struct GfxLayout weststry_backlayout = {
+static struct GfxLayout weststry_backlayout =
+{
 	16,16,	/* 16*16 sprites */
 	4096,	/* 4096 sprites */
 	4,	/* 4 bits per pixel */
@@ -357,7 +487,8 @@ static struct GfxLayout weststry_backlayout = {
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxLayout weststry_spritelayout = {
+static struct GfxLayout weststry_spritelayout =
+{
 	16,16,	/* 16*16 sprites */
 	8192,	/* 8192 sprites */
 	4,	/* 4 bits per pixel */
@@ -403,14 +534,50 @@ static const struct MachineDriver machine_driver_bloodbro =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	bloodbro_gfxdecodeinfo,
-	2048,2048,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	bloodbro_vh_start,
 	0,
 	bloodbro_vh_screenrefresh,
+
+	/* sound hardware */
+	0,0,0,0,
+	{
+		SEIBU_SOUND_SYSTEM_YM3812_INTERFACE
+	}
+};
+
+static const struct MachineDriver machine_driver_skysmash =
+{
+	{
+		{
+			CPU_M68000,
+			10000000, /* 10 MHz */
+			readmem_cpu,writemem_cpu,0,0,
+			m68_level2_irq,1
+		},
+		{
+			SEIBU_SOUND_SYSTEM_CPU(14318180/4)
+		},
+	},
+	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,
+	1,	/* CPU slices per frame */
+	seibu_sound_init_1, /* init machine */
+
+	/* video hardware */
+	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
+	bloodbro_gfxdecodeinfo,
+	2048,0,
+	0,
+
+	VIDEO_TYPE_RASTER,
+	0,
+	bloodbro_vh_start,
+	0,
+	skysmash_vh_screenrefresh,
 
 	/* sound hardware */
 	0,0,0,0,
@@ -439,10 +606,10 @@ static const struct MachineDriver machine_driver_weststry =
 	/* video hardware */
 	256, 256, { 0, 255, 16, 239 },
 	weststry_gfxdecodeinfo,
-	1024,1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	bloodbro_vh_start,
 	0,
@@ -464,9 +631,10 @@ ROM_START( bloodbro )
 	ROM_LOAD16_BYTE( "bb_04.bin",    0x40001, 0x20000, 0xfd951c2c )
 	ROM_LOAD16_BYTE( "bb_03.bin",    0x40000, 0x20000, 0x18d3c460 )
 
-	ROM_REGION( 0x18000, REGION_CPU2, 0 )
+	ROM_REGION( 0x20000, REGION_CPU2, 0 )
 	ROM_LOAD( "bb_07.bin",    0x000000, 0x08000, 0x411b94e8 )
 	ROM_CONTINUE(             0x010000, 0x08000 )
+	ROM_COPY( REGION_CPU2, 0, 0x018000, 0x08000 )
 
 	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "bb_05.bin",    0x00000, 0x10000, 0x04ba6d19 )	/* characters */
@@ -489,9 +657,10 @@ ROM_START( weststry )
 	ROM_LOAD16_BYTE( "bb_04.bin",   0x40001, 0x20000, 0xfd951c2c )
 	ROM_LOAD16_BYTE( "bb_03.bin",   0x40000, 0x20000, 0x18d3c460 )
 
-	ROM_REGION( 0x18000, REGION_CPU2, 0 )	/* 64k for sound cpu code */
+	ROM_REGION( 0x20000, REGION_CPU2, 0 )	/* 64k for sound cpu code */
 	ROM_LOAD( "ws17.bin",    0x000000, 0x08000, 0xe00a8f09 )
 	ROM_CONTINUE(            0x010000, 0x08000 )
+	ROM_COPY( REGION_CPU2, 0, 0x018000, 0x08000 )
 
 	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "ws09.bin",    0x00000, 0x08000, 0xf05b2b3e )	/* characters */
@@ -527,19 +696,39 @@ ROM_START( weststry )
 	ROM_LOAD( "bb_08.bin",    0x00000, 0x20000, 0xdeb1b975 )
 ROM_END
 
-/***************************************************************************/
+ROM_START( skysmash )
+	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_LOAD16_BYTE( "rom5",    0x00000, 0x20000, 0x867f9897 )
+	ROM_LOAD16_BYTE( "rom6",    0x00001, 0x20000, 0xe9c1d308 )
+	ROM_LOAD16_BYTE( "rom7",    0x40000, 0x20000, 0xd209db4d )
+	ROM_LOAD16_BYTE( "rom8",    0x40001, 0x20000, 0xd3646728 )
 
-static void init_bloodbro(void)
-{
-	install_seibu_sound_speedup(1);
-}
+	ROM_REGION( 0x20000, REGION_CPU2, 0 )
+	ROM_LOAD( "rom2",    0x000000, 0x08000, 0x75b194cf )
+	ROM_CONTINUE(        0x010000, 0x08000 )
+	ROM_COPY( REGION_CPU2, 0, 0x018000, 0x08000 )
+
+	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "rom3",    0x00000, 0x10000, 0xfbb241be )	/* characters */
+	ROM_LOAD( "rom4",    0x10000, 0x10000, 0xad3cde81 )
+
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "rom9",    0x00000, 0x100000, 0xb0a5eecf )	/* Background + Foreground */
+
+	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_LOAD( "rom10",   0x00000, 0x080000, 0x1bbcda5d )	/* sprites */
+
+	ROM_REGION( 0x20000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_LOAD( "rom1",    0x00000, 0x20000, 0xe69986f6 )
+ROM_END
+
+
+/***************************************************************************/
 
 static void init_weststry(void)
 {
 	UINT8 *gfx = memory_region(REGION_GFX3);
 	int i;
-
-	install_seibu_sound_speedup(1);
 
 	/* invert sprite data */
 	for (i = 0;i < memory_region_length(REGION_GFX3);i++)
@@ -548,5 +737,6 @@ static void init_weststry(void)
 
 /***************************************************************************/
 
-GAMEX( 1990, bloodbro, 0,        bloodbro, bloodbro, bloodbro, ROT0, "Tad", "Blood Bros.", GAME_NO_COCKTAIL )
-GAMEX( 1990, weststry, bloodbro, weststry, weststry, weststry, ROT0, "bootleg", "West Story", GAME_NO_COCKTAIL | GAME_NO_SOUND )
+GAMEX(1990, bloodbro, 0,        bloodbro, bloodbro, 0,        ROT0,   "Tad", "Blood Bros.", GAME_NO_COCKTAIL )
+GAMEX(1990, weststry, bloodbro, weststry, weststry, weststry, ROT0,   "bootleg", "West Story", GAME_NO_COCKTAIL | GAME_NO_SOUND )
+GAME( 1990, skysmash, 0,        skysmash, skysmash, 0,        ROT270, "Nihon System Inc.", "Sky Smasher" )

@@ -35,7 +35,7 @@ Take the following observations with a grain of salt (might not be true):
 extern unsigned char *lkage_scroll, *lkage_vreg;
 WRITE_HANDLER( lkage_videoram_w );
 int lkage_vh_start(void);
-void lkage_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void lkage_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 READ_HANDLER( lkage_68705_portA_r );
 WRITE_HANDLER( lkage_68705_portA_w );
@@ -381,13 +381,13 @@ static const struct MachineDriver machine_driver_lkage =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	176,176,
+	176, 0,
 		/*
 			there are actually 1024 colors in paletteram, however, we use a 100% correct
 			reduced "virtual palette" to achieve some optimizations in the video driver.
 		*/
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	lkage_vh_start,
 	0,
@@ -427,13 +427,13 @@ static const struct MachineDriver machine_driver_lkageb =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	176,176,
+	176, 0,
 		/*
 			there are actually 1024 colors in paletteram, however, we use a 100% correct
 			reduced "virtual palette" to achieve some optimizations in the video driver.
 		*/
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	lkage_vh_start,
 	0,

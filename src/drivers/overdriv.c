@@ -26,7 +26,7 @@ Notes:
 
 int overdriv_vh_start(void);
 void overdriv_vh_stop(void);
-void overdriv_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void overdriv_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -159,7 +159,7 @@ static int cpuA_interrupt(void)
 static int cpuB_interrupt(void)
 {
 	if (K053246_is_IRQ_enabled()) return 4;
-	else return 0;
+	else return ignore_interrupt();
 }
 
 
@@ -440,10 +440,10 @@ static const struct MachineDriver machine_driver_overdriv =
 	/* video hardware */
 	64*8, 32*8, { 13*8, (64-13)*8-1, 0*8, 32*8-1 },
 	gfxdecodeinfo,	/* gfx decoded by konamiic.c */
-	2048, 2048,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS,
 	0,
 	overdriv_vh_start,
 	overdriv_vh_stop,
@@ -520,4 +520,4 @@ static void init_overdriv(void)
 
 
 
-GAMEX( 1990, overdriv, 0, overdriv, overdriv, overdriv, ROT90_16BIT, "Konami", "Over Drive", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1990, overdriv, 0, overdriv, overdriv, overdriv, ROT90, "Konami", "Over Drive", GAME_IMPERFECT_GRAPHICS )

@@ -10,13 +10,9 @@
 #include "vidhrdw/generic.h"
 
 
-void snowbros_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void snowbros_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int x=0,y=0,offs;
-
-
-	palette_recalc();
-	/* no need to check the return code since we redraw everything each frame */
 
 
 	/*
@@ -43,7 +39,7 @@ void snowbros_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 
 	/* This clears & redraws the entire screen each pass */
 
-  	fillbitmap(bitmap,Machine->gfx[0]->colortable[0],&Machine->visible_area);
+  	fillbitmap(bitmap,Machine->pens[0],&Machine->visible_area);
 
 	for (offs = 0;offs < spriteram_size/2;offs += 8)
 	{
@@ -84,13 +80,11 @@ void snowbros_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 	}
 }
 
-void wintbob_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void wintbob_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 
-	palette_recalc();
-
-	fillbitmap(bitmap,Machine->gfx[0]->colortable[0],&Machine->visible_area);
+	fillbitmap(bitmap,Machine->pens[0],&Machine->visible_area);
 
 	for (offs = 0;offs < spriteram_size/2;offs += 8)
 	{

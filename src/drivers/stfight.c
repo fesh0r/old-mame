@@ -255,7 +255,7 @@ WRITE_HANDLER( stfight_text_attr_w );
 WRITE_HANDLER( stfight_vh_latch_w );
 WRITE_HANDLER( stfight_sprite_bank_w );
 int  stfight_vh_start( void );
-void stfight_vh_screenrefresh( struct osd_bitmap *bitmap, int full_refresh );
+void stfight_vh_screenrefresh( struct mame_bitmap *bitmap, int full_refresh );
 
 // vidhrdw
 extern unsigned char *stfight_text_char_ram;
@@ -527,7 +527,7 @@ static const struct MachineDriver machine_driver_stfight =
 	256+1, 16*4+16*16+16*16+16*16,
 	stfight_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 
 	stfight_vh_start,

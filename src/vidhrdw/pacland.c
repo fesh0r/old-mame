@@ -2,7 +2,7 @@
 #include "vidhrdw/generic.h"
 
 
-static struct osd_bitmap *tmpbitmap2,*tmpbitmap3;
+static struct mame_bitmap *tmpbitmap2,*tmpbitmap3;
 static int scroll0,scroll1;
 static int palette_bank;
 static const unsigned char *pacland_color_prom;
@@ -83,13 +83,6 @@ void pacland_vh_convert_color_prom(unsigned char *palette, unsigned short *color
 	for (i = 0;i < TOTAL_COLORS(1);i++)
 	{
 		COLOR(1,i) = *(color_prom++);
-	}
-
-	/* Intialize transparency */
-	if (palette_used_colors)
-	{
-		memset (palette_used_colors, PALETTE_COLOR_USED, Machine->drv->total_colors * sizeof (unsigned char));
-		palette_used_colors[0xff] = PALETTE_COLOR_TRANSPARENT;
 	}
 }
 
@@ -192,10 +185,9 @@ WRITE_HANDLER( pacland_bankswitch_w )
 
 			color_prom++;
 
-			palette_change_color(i,r,g,b);
+			palette_set_color(i,r,g,b);
 		}
 	}
-	palette_change_color(0x7f,8,8,8);	/* make color 0x7f unique so we can use it for transparency */
 }
 
 
@@ -204,7 +196,7 @@ WRITE_HANDLER( pacland_bankswitch_w )
 		{ drawgfx( bitmap, Machine->gfx[ 2+gfx ], code, color, flipx, flipy, sx, sy, \
 		&spritevisiblearea, TRANSPARENCY_COLOR,0xff); }
 
-static void pacland_draw_sprites( struct osd_bitmap *bitmap,int priority)
+static void pacland_draw_sprites( struct mame_bitmap *bitmap,int priority)
 {
 	int offs;
 
@@ -279,15 +271,10 @@ static void pacland_draw_sprites( struct osd_bitmap *bitmap,int priority)
 
 
 
-void pacland_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void pacland_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 	int sx,sy, code, flipx, flipy, color;
-
-
-	/* recalc the palette if necessary */
-	if (palette_recalc ())
-		memset (dirtybuffer, 1, videoram_size);
 
 
 	/* for every character in the Video RAM, check if it has been modified */

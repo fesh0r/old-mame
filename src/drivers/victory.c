@@ -128,7 +128,7 @@ extern UINT8 *victory_charram;
 int victory_vh_start(void);
 void victory_vh_stop(void);
 void victory_vh_eof(void);
-void victory_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void victory_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 int victory_vblank_interrupt(void);
 
 READ_HANDLER( victory_video_control_r );
@@ -414,10 +414,10 @@ static const struct MachineDriver machine_driver_victory =
 	/* video hardware */
 	256, 256, { 0, 255, 0, 255 },
 	0,
-	64,64,
+	64, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	victory_vh_eof,
 	victory_vh_start,
 	victory_vh_stop,

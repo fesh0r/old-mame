@@ -74,7 +74,7 @@ NMI interrupts for music timing
 
 WRITE_HANDLER( bombjack_background_w );
 WRITE_HANDLER( bombjack_flipscreen_w );
-void bombjack_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void bombjack_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 int bombjack_vh_start(void);
 
 
@@ -333,10 +333,10 @@ static const struct MachineDriver machine_driver_bombjack =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	128, 128,
+	128, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	bombjack_vh_start,
 	generic_vh_stop,

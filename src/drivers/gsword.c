@@ -143,7 +143,7 @@ void josvolly_vh_convert_color_prom(unsigned char *palette, unsigned short *colo
 void gsword_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 int  gsword_vh_start(void);
 void gsword_vh_stop(void);
-void gsword_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void gsword_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE_HANDLER( gs_charbank_w );
 WRITE_HANDLER( gs_videoctrl_w );
 WRITE_HANDLER( gs_videoram_w );
@@ -235,7 +235,7 @@ static int gsword_snd_interrupt(void)
 		gsword_nmi_count = 0;
 		return Z80_NMI_INT;
 	}
-	return Z80_IGNORE_INT;
+	return ignore_interrupt();
 }
 
 static WRITE_HANDLER( gsword_nmi_set_w )

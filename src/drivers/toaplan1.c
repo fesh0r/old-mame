@@ -93,8 +93,10 @@ int  toaplan1_vh_start(void);
 void toaplan1_vh_stop(void);
 int  rallybik_vh_start(void);
 void rallybik_vh_stop(void);
-void toaplan1_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-void rallybik_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void toaplan1_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+void zerowing_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+void demonwld_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+void rallybik_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 extern data16_t *toaplan1_colorram1;
 extern data16_t *toaplan1_colorram2;
@@ -1375,10 +1377,10 @@ static const struct MachineDriver machine_driver_rallybik =
 	/* video hardware */
 	320, 240, { 0, 319, 0, 239 },
 	rallybik_gfxdecodeinfo,
-	64*16+64*16, 64*16+64*16,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM,
 	rallybik_eof_callback,
 	rallybik_vh_start,
 	rallybik_vh_stop,
@@ -1418,10 +1420,10 @@ static const struct MachineDriver machine_driver_truxton =
 	/* video hardware */
 	320, 240, { 0, 319, 0, 239 },
 	gfxdecodeinfo,
-	64*16+64*16, 64*16+64*16,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	toaplan1_eof_callback,
 	toaplan1_vh_start,
 	toaplan1_vh_stop,
@@ -1461,14 +1463,14 @@ static const struct MachineDriver machine_driver_hellfire =
 	/* video hardware */
 	320, 256, { 0, 319, 16, 255 },
 	gfxdecodeinfo,
-	64*16+64*16, 64*16+64*16,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	toaplan1_eof_callback,
 	toaplan1_vh_start,
 	toaplan1_vh_stop,
-	toaplan1_vh_screenrefresh,
+	zerowing_vh_screenrefresh,
 
 	/* sound hardware */
 	0,0,0,0,
@@ -1504,14 +1506,14 @@ static const struct MachineDriver machine_driver_zerowing =
 	/* video hardware */
 	320, 256, { 0, 319, 16, 255 },
 	gfxdecodeinfo,
-	64*16+64*16, 64*16+64*16,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	toaplan1_eof_callback,
 	toaplan1_vh_start,
 	toaplan1_vh_stop,
-	toaplan1_vh_screenrefresh,
+	zerowing_vh_screenrefresh,
 
 	/* sound hardware */
 	0,0,0,0,
@@ -1553,14 +1555,14 @@ static const struct MachineDriver machine_driver_demonwld =
 	/* video hardware */
 	320, 256, { 0, 319, 16, 255 },
 	gfxdecodeinfo,
-	64*16+64*16, 64*16+64*16,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	toaplan1_eof_callback,
 	toaplan1_vh_start,
 	toaplan1_vh_stop,
-	toaplan1_vh_screenrefresh,
+	demonwld_vh_screenrefresh,
 
 	/* sound hardware */
 	0,0,0,0,
@@ -1590,14 +1592,14 @@ static const struct MachineDriver machine_driver_samesame =
 	/* video hardware */
 	320, 240, { 0, 319, 0, 239 },
 	gfxdecodeinfo,
-	64*16+64*16, 64*16+64*16,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	samesame_eof_callback,
 	toaplan1_vh_start,
 	toaplan1_vh_stop,
-	toaplan1_vh_screenrefresh,
+	zerowing_vh_screenrefresh,
 
 	/* sound hardware */
 	0,0,0,0,
@@ -1633,10 +1635,10 @@ static const struct MachineDriver machine_driver_outzone =
 	/* video hardware */
 	320, 240, {0, 319, 0, 239 },
 	outzone_gfxdecodeinfo,
-	64*16+64*16, 64*16+64*16,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	toaplan1_eof_callback,
 	toaplan1_vh_start,
 	toaplan1_vh_stop,
@@ -1670,14 +1672,14 @@ static const struct MachineDriver machine_driver_vimana =
 	/* video hardware */
 	320, 240, { 0, 319, 0, 239 },
 	vm_gfxdecodeinfo,
-	64*16+64*16, 64*16+64*16,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	toaplan1_eof_callback,
 	toaplan1_vh_start,
 	toaplan1_vh_stop,
-	toaplan1_vh_screenrefresh,
+	zerowing_vh_screenrefresh,
 
 	/* sound hardware */
 	0,0,0,0,

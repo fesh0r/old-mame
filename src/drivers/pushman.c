@@ -21,7 +21,7 @@
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 
-void pushman_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void pushman_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE16_HANDLER( pushman_scroll_w );
 WRITE16_HANDLER( pushman_videoram_w );
 int pushman_vh_start(void);
@@ -320,10 +320,10 @@ static struct MachineDriver machine_driver_pushman =
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 
 	pushman_gfxdecodeinfo,
-	1024, 1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	pushman_vh_start,
 	0,

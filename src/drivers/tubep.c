@@ -118,15 +118,15 @@ TP-S.1 TP-S.2 TP-S.3 TP-B.1  8212 TP-B.2 TP-B.3          TP-B.4
 #include "cpu/z80/z80.h"
 
 void tubep_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable, const unsigned char *color_prom);
-void tubep_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void tubep_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 int tubep_vh_start(void);
 void tubep_vh_stop(void);
 
-extern data8_t * tubep_textram;
+extern data8_t *tubep_textram;
 extern WRITE_HANDLER( tubep_textram_w );
 
 static data8_t *sharedram;
-static void * scanline_timer;
+static void *scanline_timer;
 static int sound_latch;
 
 

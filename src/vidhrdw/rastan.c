@@ -120,35 +120,7 @@ WRITE16_HANDLER( rastan_spriteflip_w )
 
 /***************************************************************************/
 
-static void rastan_update_palette(void)
-{
-	int sprite_colbank = (sprite_ctrl & 0xe0) >> 1;
-	{
-		int offs,color,i;
-		int colmask[256];
-
-		memset(colmask, 0, sizeof(colmask));
-
-		for (offs = spriteram_size/2-4; offs >= 0; offs -= 4)
-		{
-			int code = spriteram16[offs+2] & 0x0fff;
-			if (code)
-			{
-				color = (spriteram16[offs] & 0x0f) | sprite_colbank;
-				colmask[color] |= Machine->gfx[0]->pen_usage[code];
-			}
-		}
-
-		for (color = 0;color < 256;color++)
-		{
-			for (i = 0; i < 16; i++)
-				if (colmask[color] & (1 << i))
-					palette_used_colors[color * 16 + i] = PALETTE_COLOR_USED;
-		}
-	}
-}
-
-static void rastan_draw_sprites(struct osd_bitmap *bitmap,int y_offs)
+static void rastan_draw_sprites(struct mame_bitmap *bitmap,int y_offs)
 {
 	int offs,tile;
 	int sprite_colbank = (sprite_ctrl & 0xe0) >> 1;
@@ -192,16 +164,11 @@ static void rastan_draw_sprites(struct osd_bitmap *bitmap,int y_offs)
 }
 
 
-void rastan_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void rastan_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int layer[2];
 
 	PC080SN_tilemap_update();
-
-	palette_init_used_colors();
-	rastan_update_palette();
-	palette_used_colors[0] |= PALETTE_COLOR_VISIBLE;
-	palette_recalc();
 
 	layer[0] = 0;
 	layer[1] = 1;
@@ -232,21 +199,11 @@ void opwolf_eof_callback(void)
 	beamy = ((input_port_6_r(0) * 256) >> 8);	//+19
 }
 
-void opwolf_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void opwolf_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int layer[2];
 
 	PC080SN_tilemap_update();
-
-	palette_init_used_colors();
-	rastan_update_palette();
-	palette_used_colors[0] |= PALETTE_COLOR_VISIBLE;
-
-	/* make sure color 4094 is white for our crosshair */
-	palette_change_color(4094, 0xff, 0xff, 0xff);
-	palette_used_colors[4094] = PALETTE_COLOR_USED;
-
-	palette_recalc();
 
 	layer[0] = 0;
 	layer[1] = 1;
@@ -275,45 +232,13 @@ void opwolf_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 
 /***************************************************************************/
 
-void rainbow_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void rainbow_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 	int sprite_colbank = (sprite_ctrl & 0xe0) >> 1;
 	int layer[2];
 
 	PC080SN_tilemap_update();
-
-	palette_init_used_colors();
-	{
-		int color,i;
-		int colmask[256];
-
-		memset(colmask, 0, sizeof(colmask));
-
-		for (offs = spriteram_size/2-4; offs >= 0; offs -= 4)
-		{
-			int code = spriteram16[offs+2];
-			if (code)
-			{
-				color = (spriteram16[offs] & 0x0f) | sprite_colbank;
-
-				if (code < 4096)
-					colmask[color] |= Machine->gfx[0]->pen_usage[code];
-				else
-					colmask[color] |= Machine->gfx[2]->pen_usage[code-4096];
-			}
-		}
-
-		for (color = 0;color < 256;color++)
-		{
-			for (i = 0; i < 16; i++)
-				if (colmask[color] & (1 << i))
-					palette_used_colors[color * 16 + i] = PALETTE_COLOR_USED;
-		}
-	}
-
-	palette_used_colors[0] |= PALETTE_COLOR_VISIBLE;
-	palette_recalc();
 
 	layer[0] = 0;
 	layer[1] = 1;
@@ -387,7 +312,7 @@ the Y settings are active low.
 
 */
 
-void jumping_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void jumping_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs,layer[2];
 	int sprite_colbank = (sprite_ctrl & 0xe0) >> 1;
@@ -396,34 +321,6 @@ void jumping_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 
 	/* Override values, or foreground layer is in wrong position */
 	PC080SN_set_scroll(0,1,16,0);
-
-	palette_init_used_colors();
-	{
-		int color,i;
-		int colmask[256];
-
-		memset(colmask, 0, sizeof(colmask));
-
-		for (offs = spriteram_size/2-8; offs >= 0; offs -= 8)
-		{
-			int code = spriteram16[offs];
-			if (code < Machine->gfx[0]->total_elements)
-			{
-				color = (spriteram16[offs+4] & 0x0f) | sprite_colbank;
-				colmask[color] |= Machine->gfx[0]->pen_usage[code];
-			}
-		}
-
-		for (color = 0;color < 256;color++)
-		{
-			for (i = 0; i < 16; i++)
-				if (colmask[color] & (1 << i))
-					palette_used_colors[color * 16 + i] = PALETTE_COLOR_USED;
-		}
-	}
-
-	palette_used_colors[0] |= PALETTE_COLOR_VISIBLE;
-	palette_recalc();
 
 	layer[0] = 0;
 	layer[1] = 1;

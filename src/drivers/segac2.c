@@ -154,7 +154,7 @@ extern int			segac2_palbank;
 int		segac2_vh_start(void);
 void	segac2_vh_stop(void);
 void	segac2_vh_eof(void);
-void	segac2_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void	segac2_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 void	segac2_update_display(int scanline);
 void	segac2_enable_display(int enable);
 
@@ -447,15 +447,7 @@ static WRITE16_HANDLER( palette_w )
 	b |= b >> 5;
 
 	/* set the color */
-	palette_change_color(offset + 0x0000, r, g, b);
-
-	/* set the half-bright color for shadow effects */
-	palette_change_color(offset + 0x0800, r / 2, g / 2, b / 2);
-
-	/* set the double-bright color for highlight effects */
-	palette_change_color(offset + 0x1000, 	(r >= 0xc0) ? 0xff : r + 0x40,
-											(g >= 0xc0) ? 0xff : g + 0x40,
-											(b >= 0xc0) ? 0xff : b + 0x40);
+	palette_set_color(offset + 0x0000, r, g, b);
 }
 
 
@@ -1488,9 +1480,10 @@ static struct MachineDriver machine_driver_segac =
 	/* video hardware */
 	336,224, { 8, 327, 0, 223 },
 	NULL,
-	0x1800, 0x1800,
+	2048, 0,
 	NULL,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+
+	VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS,
 
 	segac2_vh_eof,
 	segac2_vh_start,
@@ -1524,10 +1517,10 @@ static struct MachineDriver machine_driver_segac2 =
 	/* video hardware */
 	336,224, { 8, 327, 0, 223 },
 	NULL,
-	0x1800, 0x1800,
+	2048, 0,
 	NULL,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
 
+	VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS,
 	segac2_vh_eof,
 	segac2_vh_start,
 	segac2_vh_stop,

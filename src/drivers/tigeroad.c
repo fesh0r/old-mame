@@ -26,7 +26,7 @@ Memory Overview:
 
 WRITE16_HANDLER( tigeroad_videoctrl_w );
 WRITE16_HANDLER( tigeroad_scroll_w );
-void tigeroad_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void tigeroad_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 void tigeroad_eof_callback(void);
 
 
@@ -578,10 +578,10 @@ static const struct MachineDriver machine_driver_tigeroad =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	576, 576,
-	0, /* convert color prom routine */
+	576, 0,
+	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_BUFFERS_SPRITERAM,
+	VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM,
 	tigeroad_eof_callback,
 	0,
 	0,
@@ -629,10 +629,10 @@ static const struct MachineDriver machine_driver_toramich =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	576, 576,
-	0, /* convert color prom routine */
+	576, 0,
+	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_BUFFERS_SPRITERAM,
+	VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM,
 	tigeroad_eof_callback,
 	0,
 	0,

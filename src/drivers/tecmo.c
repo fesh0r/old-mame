@@ -62,7 +62,7 @@ WRITE_HANDLER( tecmo_bgscroll_w );
 WRITE_HANDLER( tecmo_flipscreen_w );
 
 int tecmo_vh_start(void);
-void tecmo_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void tecmo_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -596,10 +596,10 @@ static const struct MachineDriver machine_driver_##NAME =				\
 	/* video hardware */										\
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },					\
 	gfxdecodeinfo,												\
-	1024, 1024,													\
+	1024, 0,													\
 	0,															\
 																\
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,					\
+	VIDEO_TYPE_RASTER,					\
 	0,															\
 	tecmo_vh_start,												\
 	0,															\

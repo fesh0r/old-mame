@@ -85,8 +85,8 @@ Rainbowe needs dump of its c-chip.
 
 int  rainbow_vh_start(void);
 int  jumping_vh_start(void);
-void rainbow_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-void jumping_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void rainbow_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+void jumping_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 void rastan_vh_stop(void);
 int rainbow_interrupt(void);
 
@@ -549,10 +549,10 @@ static const struct MachineDriver machine_driver_rainbow =
 	/* video hardware */
 	40*8, 32*8, { 0*8, 40*8-1, 1*8, 31*8-1 }, /* is Y visible correct ? */
 	rainbow_gfxdecodeinfo,
-	8192, 8192,
+	8192, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	rainbow_vh_start,
 	rastan_vh_stop,
@@ -593,10 +593,10 @@ static const struct MachineDriver machine_driver_jumping =
 	/* video hardware */
 	40*8, 32*8, { 0*8, 40*8-1, 1*8, 31*8-1 }, /* is Y visible correct ? */
 	jumping_gfxdecodeinfo,
-	8192, 8192,
+	8192, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	jumping_vh_start,
 	rastan_vh_stop,

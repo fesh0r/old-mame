@@ -52,7 +52,7 @@ WRITE16_HANDLER( tetrisp2_vram_0_w );
 WRITE16_HANDLER( tetrisp2_vram_1_w );
 
 int  tetrisp2_vh_start(void);
-void tetrisp2_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void tetrisp2_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 /***************************************************************************
@@ -480,9 +480,9 @@ static const struct MachineDriver machine_driver_tetrisp2 =
 	/* video hardware */
 	0x140, 0xe0, { 0, 0x140-1, 0, 0xe0-1 },
 	tetrisp2_gfxdecodeinfo,
-	0x8000, 0x8000,
+	0x8000, 0,
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	tetrisp2_vh_start,
 	0,
@@ -522,7 +522,7 @@ BRIEF HARDWARE OVERVIEW
 
 Toshiba TMP68HC000P-12
 Yamaha YMZ280B-F
-OSC: 12.000Mhz, 48.000Mhz, 16.9344Mhz
+OSC: 12.000MHz, 48.000MHz, 16.9344MHz
 
 Listing of custom chips. (Some on scan are hard to read).
 
@@ -614,6 +614,5 @@ ROM_END
 
 ***************************************************************************/
 
-/* Better leave the Japanese set as parent as long as it's the only good dump */
-GAMEX( 1997, tetrisp2, 0,        tetrisp2, tetrisp2, 0, ROT0_16BIT, "Jaleco / The Tetris Company", "Tetris Plus 2 (World?)", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1997, teplus2j, tetrisp2, tetrisp2, teplus2j, 0, ROT0_16BIT, "Jaleco / The Tetris Company", "Tetris Plus 2 (Japan)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1997, tetrisp2, 0,        tetrisp2, tetrisp2, 0, ROT0, "Jaleco / The Tetris Company", "Tetris Plus 2 (World?)", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1997, teplus2j, tetrisp2, tetrisp2, teplus2j, 0, ROT0, "Jaleco / The Tetris Company", "Tetris Plus 2 (Japan)", GAME_IMPERFECT_GRAPHICS )

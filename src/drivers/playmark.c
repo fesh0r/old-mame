@@ -53,8 +53,8 @@ WRITE16_HANDLER( bigtwin_paletteram_w );
 WRITE16_HANDLER( bigtwin_bgvideoram_w );
 WRITE16_HANDLER( bigtwin_scroll_w );
 WRITE16_HANDLER( wbeachvl_scroll_w );
-void bigtwin_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-void wbeachvl_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void bigtwin_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+void wbeachvl_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -485,10 +485,10 @@ static const struct MachineDriver machine_driver_bigtwin =
 	/* video hardware */
 	64*8, 32*8, { 0*8, 40*8-1, 2*8, 32*8-1 },
 	gfxdecodeinfo,
-	1024, 1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	bigtwin_vh_start,
 	bigtwin_vh_stop,
@@ -522,10 +522,10 @@ static const struct MachineDriver machine_driver_wbeachvl =
 	/* video hardware */
 	64*8, 32*8, { 0*8, 40*8-1, 2*8, 32*8-1 },
 	wbeachvl_gfxdecodeinfo,
-	2048, 2048,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	wbeachvl_vh_start,
 	0,
@@ -603,5 +603,5 @@ ROM_END
 
 
 
-GAMEX( 1995, bigtwin,  0, bigtwin,  bigtwin,  0, ROT0_16BIT, "Playmark", "Big Twin", GAME_NO_COCKTAIL | GAME_NO_SOUND )
-GAMEX( 1995, wbeachvl, 0, wbeachvl, wbeachvl, 0, ROT0_16BIT, "Playmark", "World Beach Volley", GAME_NO_COCKTAIL | GAME_NO_SOUND )
+GAMEX( 1995, bigtwin,  0, bigtwin,  bigtwin,  0, ROT0, "Playmark", "Big Twin", GAME_NO_COCKTAIL | GAME_NO_SOUND )
+GAMEX( 1995, wbeachvl, 0, wbeachvl, wbeachvl, 0, ROT0, "Playmark", "World Beach Volley", GAME_NO_COCKTAIL | GAME_NO_SOUND )

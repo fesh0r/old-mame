@@ -146,7 +146,7 @@ WRITE_HANDLER( missile_w );
 
 int  missile_vh_start(void);
 void missile_vh_stop(void);
-void missile_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void missile_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 WRITE_HANDLER( missile_video_3rd_bit_w );
 WRITE_HANDLER( missile_video2_w );
@@ -374,7 +374,7 @@ static const struct MachineDriver machine_driver_missile =
 	8, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_SUPPORTS_DIRTY,
+	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
 	0,
 	missile_vh_start,
 	missile_vh_stop,

@@ -15,7 +15,7 @@ extern unsigned char *aeroboto_fgscroll,*aeroboto_bgscroll;
 extern int aeroboto_charbank;
 
 void aeroboto_gfxctrl_w(int ofset,int data);
-void aeroboto_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void aeroboto_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -236,7 +236,7 @@ static const struct MachineDriver machine_driver_formatz =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	256,256,
+	256, 0,
 	0,
 
 	VIDEO_TYPE_RASTER,

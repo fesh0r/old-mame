@@ -225,7 +225,7 @@ WRITE_HANDLER( exidy440_paletteram_w )
 		word = (local_paletteram[offset] << 8) + local_paletteram[offset + 1];
 
 		/* extract the 5-5-5 RGB colors */
-		palette_change_color(offset / 2, ((word >> 10) & 31) << 3, ((word >> 5) & 31) << 3, (word & 31) << 3);
+		palette_set_color(offset / 2, ((word >> 10) & 31) << 3, ((word >> 5) & 31) << 3, (word & 31) << 3);
 	}
 }
 
@@ -297,7 +297,7 @@ WRITE_HANDLER( exidy440_control_w )
 		{
 			/* extract a word and the 5-5-5 RGB components */
 			int word = (local_paletteram[offset] << 8) + local_paletteram[offset + 1];
-			palette_change_color(i, ((word >> 10) & 31) << 3, ((word >> 5) & 31) << 3, (word & 31) << 3);
+			palette_set_color(i, ((word >> 10) & 31) << 3, ((word >> 5) & 31) << 3, (word & 31) << 3);
 		}
 	}
 }
@@ -337,7 +337,7 @@ int exidy440_vblank_interrupt(void)
 	if (!exidy440_topsecret)
 		timer_set(TIME_IN_USEC(Machine->drv->vblank_duration - 50), 0, exidy440_update_callback);
 
-	return 0;
+	return ignore_interrupt();
 }
 
 
@@ -405,7 +405,7 @@ double compute_pixel_time(int x, int y)
  *
  *************************************/
 
-static void draw_sprites(struct osd_bitmap *bitmap, int scroll_offset)
+static void draw_sprites(struct mame_bitmap *bitmap, int scroll_offset)
 {
 	int scanline, i;
 
@@ -511,14 +511,10 @@ static void draw_sprites(struct osd_bitmap *bitmap, int scroll_offset)
  *
  *************************************/
 
-static void update_screen(struct osd_bitmap *bitmap, int scroll_offset)
+static void update_screen(struct mame_bitmap *bitmap, int scroll_offset)
 {
 	int y, sy;
 	int beamx, beamy;
-
-	/* recompute the palette, and mark all scanlines dirty if we need to redraw */
-	if (palette_recalc())
-		memset(scanline_dirty, 1, 256);
 
 	/* draw any dirty scanlines from the VRAM directly */
 	sy = scroll_offset;
@@ -549,7 +545,7 @@ static void update_screen(struct osd_bitmap *bitmap, int scroll_offset)
 
 		/* dirty scanlines */
 		/* we can ignore scroll (topsecret is the only game which uses scroll)  */
-		for(y = beamy - 5; y <= beamy + 5; y++)
+		for(y = beamy - 6; y <= beamy + 6; y++)
 			if((y >= 0) && (y < 256))
 				scanline_dirty[y] = 1;
 	}
@@ -569,14 +565,11 @@ void exidy440_update_callback(int param)
 		to happen at 60Hz, whether or not we're frameskipping; in order to do those, we pretty
 		much need to do all the update handling */
 
-	struct osd_bitmap *bitmap = Machine->scrbitmap;
+	struct mame_bitmap *bitmap = Machine->scrbitmap;
 
 	int i;
 	double time, increment;
 	int beamx, beamy;
-
-	/* make sure color 256 is white for our crosshair */
-	palette_change_color(256, 0xff, 0xff, 0xff);
 
 	/* redraw the screen */
 	update_screen(bitmap, 0);
@@ -605,7 +598,7 @@ void exidy440_update_callback(int param)
  *
  *************************************/
 
-void exidy440_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void exidy440_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	/* if we need a full refresh, mark all scanlines dirty */
 	if (full_refresh)

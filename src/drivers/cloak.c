@@ -100,7 +100,7 @@ WRITE_HANDLER( graph_processor_w );
 WRITE_HANDLER( cloak_clearbmp_w );
 extern int  cloak_vh_start(void);
 extern void cloak_vh_stop(void);
-extern void cloak_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+extern void cloak_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 static unsigned char *nvram;
@@ -333,11 +333,11 @@ static const struct MachineDriver machine_driver_cloak =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 3*8, 32*8-1 },
 	gfxdecodeinfo,
-	64, 64,
+	64, 0,
 	0,
 
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	cloak_vh_start,
 	cloak_vh_stop,

@@ -139,7 +139,7 @@ extern unsigned char *liberatr_bitmapram;
 
 int  liberatr_vh_start(void);
 void liberatr_vh_stop(void);
-void liberatr_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void liberatr_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE_HANDLER( liberatr_colorram_w ) ;
 WRITE_HANDLER( liberatr_bitmap_w );
 READ_HANDLER( liberatr_bitmap_xy_r );
@@ -383,7 +383,7 @@ static const struct MachineDriver machine_driver_##NAME =		\
 	32, 0,												\
 	0,													\
 														\
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,			\
+	VIDEO_TYPE_RASTER,			\
 	0,													\
 	liberatr_vh_start,									\
 	liberatr_vh_stop,									\

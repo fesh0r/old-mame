@@ -14,9 +14,9 @@ Notes:
 - Super Pang has a protection which involves copying code stored in the
   EEPROM to RAM and execute it from there. The first time the game is run,
   you have to keep the player 1 start button pressed until the title screen
-  appears to force the game to initialize the EEPROM, otherwise it will not
-  work.
-  This is simultaed with a kluge in input_r.
+  appears. This forces the game to initialize the EEPROM, otherwise it will
+  not work.
+  This is simulated with a kluge in input_r.
 
 TODO:
 - understand what bits 0 and 3 of input port 0x05 are
@@ -44,7 +44,7 @@ void block_decode(void);
 
 int  pang_vh_start(void);
 void pang_vh_stop(void);
-void pang_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void pang_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 WRITE_HANDLER( mgakuen_paletteram_w );
 READ_HANDLER( mgakuen_paletteram_r );
@@ -871,9 +871,9 @@ INPUT_PORTS_START( block )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* dial direction */
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SPECIAL )	/* dial direction */
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
 
@@ -881,9 +881,9 @@ INPUT_PORTS_START( block )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* dial direction */
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SPECIAL )	/* dial direction */
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER2 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 )
 
@@ -987,9 +987,9 @@ static const struct MachineDriver machine_driver_mgakuen =
 
 	64*8, 32*8, { 8*8, (64-8)*8-1, 1*8, 31*8-1 },
 	mgakuen_gfxdecodeinfo,
-	1024, 1024,	/* less colors than the others */
+	1024, 0,	/* less colors than the others */
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	pang_vh_start,
 	pang_vh_stop,
@@ -1025,9 +1025,9 @@ static const struct MachineDriver machine_driver_pang =
 
 	64*8, 32*8, { 8*8, (64-8)*8-1, 1*8, 31*8-1 },
 	gfxdecodeinfo,
-	2048, 2048,
+	2048, 0,
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	pang_vh_start,
 	pang_vh_stop,
@@ -1063,9 +1063,9 @@ static const struct MachineDriver machine_driver_marukin =
 
 	64*8, 32*8, { 8*8, (64-8)*8-1, 1*8, 31*8-1 },
 	marukin_gfxdecodeinfo,
-	2048, 2048,
+	2048, 0,
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	pang_vh_start,
 	pang_vh_stop,
@@ -1649,7 +1649,7 @@ GAME( 1990, sbbros,   spang,    pang,    pang,     sbbros,   ROT0,   "Mitchell +
 GAME( 1990, marukin,  0,        marukin, marukin,  marukin,  ROT0,   "Yuga", "Super Marukin-Ban" )
 GAME( 1991, qtono1,   0,        pang,    qtono1,   qtono1,   ROT0,   "Capcom", "Quiz Tonosama no Yabou (Japan)" )
 GAME( 1991, qsangoku, 0,        pang,    qtono1,   qsangoku, ROT0,   "Capcom", "Quiz Sangokushi (Japan)" )
-GAME( 1991, block,    0,        pang,    block,    block,    ROT270, "Capcom", "Block Block (World 911106)" )
+GAME( 1991, block,    0,        pang,    block,    block,    ROT270, "Capcom", "Block Block (World 911106 Joystick)" )
 GAME( 1991, blocka,   block,    pang,    block,    block,    ROT270, "Capcom", "Block Block (World 910910)" )
-GAME( 1991, blockj,   block,    pang,    block,    block,    ROT270, "Capcom", "Block Block (Japan)" )
+GAME( 1991, blockj,   block,    pang,    block,    block,    ROT270, "Capcom", "Block Block (Japan 910910)" )
 GAME( 1991, blockbl,  block,    pang,    block,    blockbl,  ROT270, "bootleg", "Block Block (bootleg)" )

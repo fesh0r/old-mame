@@ -100,7 +100,7 @@ WRITE16_HANDLER( wms_tunit_paletteram_w );
 /* external video routines */
 int wms_wolfu_vh_start(void);
 void wms_tunit_vh_stop(void);
-void wms_tunit_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void wms_tunit_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 void wms_tunit_to_shiftreg(offs_t address, unsigned short *shiftreg);
 void wms_tunit_from_shiftreg(offs_t address, unsigned short *shiftreg);
 void wms_tunit_display_addr_changed(UINT32 offs, int rowbytes, int scanline);
@@ -697,10 +697,10 @@ static const struct MachineDriver machine_driver_wolfu =
 	512, 288, { 56, 450, 1, 253 },
 
 	0,
-	65536,65536,
+	32768, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	wms_wolfu_vh_start,
 	wms_tunit_vh_stop,
@@ -1150,15 +1150,15 @@ ROM_END
  *
  *************************************/
 
-GAME( 1994, mk3,     0,         wolfu, mk3,     mk3,     ROT0_16BIT, "Midway", "Mortal Kombat 3 (rev 2.1)" )
-GAME( 1994, mk3r20,  mk3,       wolfu, mk3,     mk3r20,  ROT0_16BIT, "Midway", "Mortal Kombat 3 (rev 2.0)" )
-GAME( 1994, mk3r10,  mk3,       wolfu, mk3,     mk3r10,  ROT0_16BIT, "Midway", "Mortal Kombat 3 (rev 1.0)" )
-GAME( 1994, umk3,    mk3,       wolfu, mk3,     umk3,    ROT0_16BIT, "Midway", "Ultimate Mortal Kombat 3 (rev 1.2)" )
-GAME( 1994, umk3r11, mk3,       wolfu, mk3,     umk3r11, ROT0_16BIT, "Midway", "Ultimate Mortal Kombat 3 (rev 1.1)" )
+GAME( 1994, mk3,     0,         wolfu, mk3,     mk3,     ROT0, "Midway", "Mortal Kombat 3 (rev 2.1)" )
+GAME( 1994, mk3r20,  mk3,       wolfu, mk3,     mk3r20,  ROT0, "Midway", "Mortal Kombat 3 (rev 2.0)" )
+GAME( 1994, mk3r10,  mk3,       wolfu, mk3,     mk3r10,  ROT0, "Midway", "Mortal Kombat 3 (rev 1.0)" )
+GAME( 1994, umk3,    mk3,       wolfu, mk3,     umk3,    ROT0, "Midway", "Ultimate Mortal Kombat 3 (rev 1.2)" )
+GAME( 1994, umk3r11, mk3,       wolfu, mk3,     umk3r11, ROT0, "Midway", "Ultimate Mortal Kombat 3 (rev 1.1)" )
 
-GAME( 1995, wwfmania,0,         wolfu, wwfmania,wwfmania,ROT0_16BIT, "Midway", "WWF: Wrestlemania (rev 1.30)" )
-GAME( 1995, openice, 0,         wolfu, openice, openice, ROT0_16BIT, "Midway", "2 On 2 Open Ice Challenge (rev 1.21)" )
-GAME( 1996, nbahangt,0,         wolfu, nbahangt,nbahangt,ROT0_16BIT, "Midway", "NBA Hangtime (rev L1.1)" )
-GAME( 1996, nbamaxht,nbahangt,  wolfu, nbahangt,nbahangt,ROT0_16BIT, "Midway", "NBA Maximum Hangtime (rev 1.0)" )
-GAME( 1997, rmpgwt,  0,         wolfu, rmpgwt,  rmpgwt,  ROT0_16BIT, "Midway", "Rampage: World Tour (rev 1.3)" )
-GAME( 1997, rmpgwt11,rmpgwt,    wolfu, rmpgwt,  rmpgwt,  ROT0_16BIT, "Midway", "Rampage: World Tour (rev 1.1)" )
+GAME( 1995, wwfmania,0,         wolfu, wwfmania,wwfmania,ROT0, "Midway", "WWF: Wrestlemania (rev 1.30)" )
+GAME( 1995, openice, 0,         wolfu, openice, openice, ROT0, "Midway", "2 On 2 Open Ice Challenge (rev 1.21)" )
+GAME( 1996, nbahangt,0,         wolfu, nbahangt,nbahangt,ROT0, "Midway", "NBA Hangtime (rev L1.1)" )
+GAME( 1996, nbamaxht,nbahangt,  wolfu, nbahangt,nbahangt,ROT0, "Midway", "NBA Maximum Hangtime (rev 1.0)" )
+GAME( 1997, rmpgwt,  0,         wolfu, rmpgwt,  rmpgwt,  ROT0, "Midway", "Rampage: World Tour (rev 1.3)" )
+GAME( 1997, rmpgwt11,rmpgwt,    wolfu, rmpgwt,  rmpgwt,  ROT0, "Midway", "Rampage: World Tour (rev 1.1)" )

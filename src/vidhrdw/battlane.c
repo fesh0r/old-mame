@@ -10,7 +10,7 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-static struct osd_bitmap *screen_bitmap;
+static struct mame_bitmap *screen_bitmap;
 
 size_t battlane_bitmap_size;
 unsigned char *battlane_bitmap;
@@ -29,7 +29,7 @@ static int battlane_scrollx;
 
 extern int battlane_cpu_control;
 
-static struct osd_bitmap *bkgnd_bitmap;  /* scroll bitmap */
+static struct mame_bitmap *bkgnd_bitmap;  /* scroll bitmap */
 
 
 WRITE_HANDLER( battlane_video_ctrl_w )
@@ -72,7 +72,7 @@ WRITE_HANDLER( battlane_palette_w )
 	bit2 = (~data >> 7) & 0x01;
 	b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-	palette_change_color(offset,r,g,b);
+	palette_set_color(offset,r,g,b);
 }
 
 
@@ -138,11 +138,11 @@ WRITE_HANDLER( battlane_bitmap_w )
 	{
 		if (data & 1<<i)
 		{
-		    screen_bitmap->line[offset % 0x100][(offset / 0x100) * 8+i] |= orval;
+			((UINT8 *)screen_bitmap->line[offset % 0x100])[(offset / 0x100) * 8+i] |= orval;
 		}
 		else
 		{
-		    screen_bitmap->line[offset % 0x100][(offset / 0x100) * 8+i] &= ~orval;
+			((UINT8 *)screen_bitmap->line[offset % 0x100])[(offset / 0x100) * 8+i] &= ~orval;
 		}
 	}
 	battlane_bitmap[offset]=data;
@@ -213,12 +213,12 @@ void battlane_vh_stop(void)
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
 ***************************************************************************/
-void battlane_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void battlane_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
     int scrollx,scrolly;
 	int x,y, offs;
@@ -227,11 +227,6 @@ void battlane_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
     scrolly=256*(battlane_video_ctrl&0x01)+battlane_scrolly;
     scrollx=256*(battlane_cpu_control&0x01)+battlane_scrollx;
 
-
-	if (palette_recalc ())
-    {
-         // Mark cached layer as dirty
-    }
 
     /* Draw tile map. TODO: Cache it */
     for (offs=0; offs <0x400;  offs++)
@@ -334,7 +329,7 @@ void battlane_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 		{
 			for (x=0; x<0x20*8; x++)
 			{
-				int data=screen_bitmap->line[y][x];
+				int data=((UINT8 *)screen_bitmap->line[y])[x];
 				if (data)
 				{
 					plot_pixel(bitmap,255-x,255-y,Machine->pens[data]);
@@ -348,7 +343,7 @@ void battlane_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 		{
 			for (x=0; x<0x20*8; x++)
 			{
-				int data=screen_bitmap->line[y][x];
+				int data=((UINT8 *)screen_bitmap->line[y])[x];
 				if (data)
 				{
 					plot_pixel(bitmap,x,y,Machine->pens[data]);

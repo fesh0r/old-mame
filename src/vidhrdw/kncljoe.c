@@ -95,11 +95,11 @@ static void get_bg_tile_info(int tile_index)
 	int attr = videoram[2*tile_index+1];
 	int code = videoram[2*tile_index] + ((attr & 0xc0) << 2) + (tile_bank << 10);
 
-	SET_TILE_INFO(0,code,attr & 0xf)
-
-	tile_info.flags =
-		((attr & 0x10) ? TILE_FLIPY : 0) |
-		((attr & 0x20) ? TILE_FLIPX : 0);
+	SET_TILE_INFO(
+			0,
+			code,
+			attr & 0xf,
+			TILE_FLIPXY((attr & 0x30) >> 4))
 }
 
 
@@ -182,7 +182,7 @@ WRITE_HANDLER( kncljoe_scroll_w )
 
 ***************************************************************************/
 
-static void draw_sprites( struct osd_bitmap *bitmap )
+static void draw_sprites( struct mame_bitmap *bitmap )
 {
 	struct rectangle clip = Machine->visible_area;
 	const struct GfxElement *gfx = Machine->gfx[1 + sprite_bank];
@@ -223,12 +223,8 @@ static void draw_sprites( struct osd_bitmap *bitmap )
 	}
 }
 
-void kncljoe_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void kncljoe_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
-	tilemap_update(ALL_TILEMAPS);
-
-	palette_recalc();
-
 	tilemap_draw(bitmap,bg_tilemap,0,0);
 	draw_sprites(bitmap);
 }

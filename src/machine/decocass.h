@@ -1,7 +1,7 @@
 /* set to 1 to display tape time offset */
 #define TAPE_UI_DISPLAY 0
 
-#if MAME_DEBUG
+#ifdef MAME_DEBUG
 #define LOGLEVEL  0
 #define LOG(n,x)  if (LOGLEVEL >= n) logerror x
 #else
@@ -103,7 +103,7 @@ extern WRITE_HANDLER( decocass_center_v_shift_w );
 
 extern int decocass_vh_start (void);
 extern void decocass_vh_stop (void);
-extern void decocass_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+extern void decocass_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 extern unsigned char *decocass_charram;
 extern unsigned char *decocass_fgvideoram;

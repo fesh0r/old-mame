@@ -26,7 +26,7 @@ WRITE_HANDLER( mystston_scroll_w );
 WRITE_HANDLER( mystston_2000_w );
 int mystston_vh_start(void);
 void mystston_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-void mystston_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void mystston_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -251,7 +251,7 @@ static const struct MachineDriver machine_driver_mystston =
 	24+32, 24+32,
 	mystston_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	mystston_vh_start,
 	0,

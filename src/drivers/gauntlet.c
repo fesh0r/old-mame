@@ -133,7 +133,7 @@ WRITE16_HANDLER( gauntlet_yscroll_w );
 
 int gauntlet_vh_start(void);
 void gauntlet_vh_stop(void);
-void gauntlet_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void gauntlet_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 
 extern UINT8 vindctr2_screen_refresh;
 extern data16_t *gauntlet_yscroll;
@@ -727,10 +727,10 @@ static const struct MachineDriver machine_driver_gauntlet =
 	/* video hardware */
 	42*8, 30*8, { 0*8, 42*8-1, 0*8, 30*8-1 },
 	gfxdecodeinfo,
-	1024,1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	gauntlet_vh_start,
 	gauntlet_vh_stop,

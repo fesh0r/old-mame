@@ -107,7 +107,7 @@ WRITE16_HANDLER( badlands_pf_bank_w );
 
 int badlands_vh_start(void);
 void badlands_vh_stop(void);
-void badlands_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void badlands_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -506,10 +506,10 @@ static const struct MachineDriver machine_driver_badlands =
 	/* video hardware */
 	42*8, 30*8, { 0*8, 42*8-1, 0*8, 30*8-1 },
 	gfxdecodeinfo,
-	256,256,
+	256, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	badlands_vh_start,
 	badlands_vh_stop,

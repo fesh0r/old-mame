@@ -57,7 +57,7 @@ extern WRITE_HANDLER( mrflea_gfx_bank_w );
 extern WRITE_HANDLER( mrflea_videoram_w );
 extern WRITE_HANDLER( mrflea_spriteram_w );
 extern int mrflea_vh_start( void );
-extern void mrflea_vh_screenrefresh( struct osd_bitmap *bitmap, int full_refresh );
+extern void mrflea_vh_screenrefresh( struct mame_bitmap *bitmap, int full_refresh );
 
 static struct AY8910interface ay8910_interface = {
 	3,	/* 3 chips */
@@ -302,10 +302,10 @@ static struct MachineDriver machine_driver_mrflea = {
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 0*8, 31*8-1 },
 	gfxdecodeinfo,
-	32,32,
+	32, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	mrflea_vh_start,
 	0,

@@ -16,7 +16,7 @@ extern unsigned char *s2636ram;
 
 int  tinvader_vh_start(void);
 void tinvader_vh_stop(void);
-void tinvader_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void tinvader_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 WRITE_HANDLER( zac_s2636_w );
 WRITE_HANDLER( tinvader_sound_w );
@@ -224,7 +224,7 @@ static const struct MachineDriver machine_driver_tinvader =
 			ignore_interrupt,1,
 		}
 	},
-	60, 1041,
+	55, 1041,
 	1, /* CPU slices */
 	0, /* init machine */
 
@@ -284,7 +284,7 @@ ROM_END
 
 int  invaders_vh_start(void);
 void invaders_vh_stop(void);
-void invaders_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void invaders_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 void init_8080bw(void);
 
@@ -310,7 +310,7 @@ static struct MachineDriver machine_driver_embargo = {
 			ignore_interrupt,1
 		}
 	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,
+	55, DEFAULT_REAL_60HZ_VBLANK_DURATION,
 	1, /* CPU slices */
 	0, /* init machine */
 

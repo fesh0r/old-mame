@@ -17,7 +17,7 @@ WRITE_HANDLER( mnight_sprite_overdraw_w );
 WRITE_HANDLER( mnight_background_enable_w );
 int  mnight_vh_start(void);
 void mnight_vh_stop(void);
-void mnight_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void mnight_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 extern unsigned char    *mnight_scrolly_ram;
 extern unsigned char    *mnight_scrollx_ram;
@@ -375,10 +375,10 @@ static const struct MachineDriver machine_driver_mnight =
 
 	32*8, 32*8, { 0*8, 32*8-1, 4*8, 28*8-1},
 	gfxdecodeinfo,
-	48*16,48*16,
+	768, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	mnight_vh_start,
 	mnight_vh_stop,

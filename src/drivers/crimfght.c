@@ -19,7 +19,7 @@ static void crimfght_banking( int lines );
 
 void crimfght_vh_stop( void );
 int crimfght_vh_start( void );
-void crimfght_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void crimfght_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 static WRITE_HANDLER( crimfght_coin_w )
@@ -410,10 +410,10 @@ static const struct MachineDriver machine_driver_crimfght =
 	/* video hardware */
 	64*8, 32*8, { 13*8, (64-13)*8-1, 2*8, 30*8-1 },
 	0,	/* gfx decoded by konamiic.c */
-	512, 512,
+	512, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS,
 	0,
 	crimfght_vh_start,
 	crimfght_vh_stop,

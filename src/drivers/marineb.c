@@ -44,7 +44,7 @@ extern unsigned char *marineb_column_scroll;
 extern int marineb_active_low_flipscreen;
 
 void espial_init_machine(void);
-void espial_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
+void espial_vh_convert_color_prom(unsigned char *obsolete,unsigned short *colortable,const unsigned char *color_prom);
 
 WRITE_HANDLER( marineb_palbank0_w );
 WRITE_HANDLER( marineb_palbank1_w );
@@ -52,11 +52,11 @@ WRITE_HANDLER( marineb_palbank1_w );
 WRITE_HANDLER( marineb_flipscreen_x_w );
 WRITE_HANDLER( marineb_flipscreen_y_w );
 
-void marineb_vh_screenrefresh (struct osd_bitmap *bitmap,int full_refresh);
-void changes_vh_screenrefresh (struct osd_bitmap *bitmap,int full_refresh);
-void springer_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-void hoccer_vh_screenrefresh  (struct osd_bitmap *bitmap,int full_refresh);
-void hopprobo_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void marineb_vh_screenrefresh (struct mame_bitmap *bitmap,int full_refresh);
+void changes_vh_screenrefresh (struct mame_bitmap *bitmap,int full_refresh);
+void springer_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+void hoccer_vh_screenrefresh  (struct mame_bitmap *bitmap,int full_refresh);
+void hopprobo_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 static void marineb_init_machine(void)
@@ -584,7 +584,7 @@ static const struct MachineDriver machine_driver_##NAME =					\
 	/* video hardware */											\
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },						\
 	NAME##_gfxdecodeinfo,											\
-	256,256,														\
+	256, 0,															\
 	espial_vh_convert_color_prom,									\
 	VIDEO_TYPE_RASTER,												\
 	0,																\
@@ -629,7 +629,7 @@ static const struct MachineDriver machine_driver_bcruzm12 =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	wanted_gfxdecodeinfo,
-	256,256,
+	256, 0,
 	espial_vh_convert_color_prom,
 
 	VIDEO_TYPE_RASTER,
@@ -798,7 +798,7 @@ PCB Number: F-005A
 
 CPU: NEC D780C (Z80)
 SND 2 x AY-3-8912
-XTAL: 12.000Mhz
+XTAL: 12.000MHz
 DIPS: 2 x 8 position
 
 All roms type 2764
@@ -809,7 +809,7 @@ PCB Layout:
 
        NECD780C                      D-84_4  D-84_5  D-84_6  D-84_7
 
-8416  D-84_1  D-84_2  D-84_3                  D2125    AM9122        12.000Mhz
+8416  D-84_1  D-84_2  D-84_3                  D2125    AM9122        12.000MHz
                                               D2125
                                               M5L2114
                                               M5L2114

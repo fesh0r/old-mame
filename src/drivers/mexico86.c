@@ -33,10 +33,9 @@ WRITE_HANDLER( mexico86_68705_ddrB_w );
 /* in vidhrdw/mexico86.c */
 extern unsigned char *mexico86_videoram,*mexico86_objectram;
 extern size_t mexico86_objectram_size;
-void mexico86_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 WRITE_HANDLER( mexico86_bankswitch_w );
-void mexico86_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-void kikikai_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void mexico86_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+void kikikai_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -347,7 +346,7 @@ static struct YM2203interface ym2203_interface =
 
 
 #define MACHINEDRIVER(NAME) 														\
-static const struct MachineDriver machine_driver_##NAME = 								\
+static const struct MachineDriver machine_driver_##NAME = 							\
 {																					\
 	{																				\
 		{																			\
@@ -377,8 +376,8 @@ static const struct MachineDriver machine_driver_##NAME = 								\
 	/* video hardware */															\
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },										\
 	gfxdecodeinfo,																	\
-	256, 256,																		\
-	mexico86_vh_convert_color_prom,													\
+	256, 0,																			\
+	palette_RRRR_GGGG_BBBB_convert_prom,											\
 																					\
 	VIDEO_TYPE_RASTER,																\
 	0,																				\
@@ -419,7 +418,7 @@ ROM_START( kikikai )
 	ROM_REGION( 0x0800, REGION_CPU3, 0 )	/* 2k for the microcontroller */
 	ROM_LOAD( "knightb.uc", 0x0000, 0x0800, 0x3cc2bbe4 )
 
-	ROM_REGION( 0x40000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x40000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "a85-15.rom", 0x00000, 0x10000, 0xaebc8c32 )
 	ROM_LOAD( "a85-14.rom", 0x10000, 0x10000, 0xa9df0453 )
 	ROM_LOAD( "a85-13.rom", 0x20000, 0x10000, 0x3eeaf878 )
@@ -443,7 +442,7 @@ ROM_START( kicknrun )
 	ROM_REGION( 0x0800, REGION_CPU3, 0 )	/* 2k for the microcontroller */
 	ROM_LOAD( "knrmcu.bin",   0x0000, 0x0800, BADCRC(0x8e821fa0) )	/* manually crafted from the Mexico '86 one */
 
-	ROM_REGION( 0x40000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x40000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "a87-05.bin", 0x08000, 0x08000, 0x4eee3a8a )
 	ROM_CONTINUE(           0x00000, 0x08000 )
 	ROM_LOAD( "a87-04.bin", 0x10000, 0x08000, 0x8b438d20 )
@@ -471,7 +470,7 @@ ROM_START( mexico86 )
 	ROM_REGION( 0x0800, REGION_CPU3, 0 )	/* 2k for the microcontroller */
 	ROM_LOAD( "68_h.bin",   0x0000, 0x0800, 0xff92f816 )
 
-	ROM_REGION( 0x40000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x40000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "4_d.bin",    0x08000, 0x08000, 0x57cfdbca )
 	ROM_CONTINUE(           0x00000, 0x08000 )
 	ROM_LOAD( "5_c.bin",    0x10000, 0x08000, 0xe42fa143 )

@@ -12,7 +12,6 @@
 // standard includes
 #include <time.h>
 #include <ctype.h>
-#include <stdarg.h>
 
 // MAME headers
 #include "driver.h"
@@ -23,8 +22,8 @@
 #endif
 
 // from config.c
-int parse_config_and_cmdline(int argc, char **argv);
-extern int errorlog;
+int  cli_frontend_init (int argc, char **argv);
+void cli_frontend_exit (void);
 
 
 
@@ -38,11 +37,10 @@ int verbose;
 int _CRT_glob = 0;
 
 
+
 //============================================================
 //	LOCAL VARIABLES
 //============================================================
-
-static FILE *logfile;
 
 static char mapfile_name[MAX_PATH];
 #ifndef USE_DRMINGW
@@ -81,43 +79,24 @@ int main(int argc, char **argv)
 
 	#ifndef USE_DRMINGW
 	pass_thru_filter = SetUnhandledExceptionFilter(exception_filter);
-	#endif
 
 	// remember the initial LED states
 	original_leds = osd_get_leds();
 
 	// parse config and cmdline options
-	game_index = parse_config_and_cmdline(argc, argv);
-
-	// provide errorlog from here on
-	if (errorlog)
-	{
-		logfile = fopen("error.log","wa");
-		if (!logfile)
-		{
-			perror("unable to open log file\n");
-			exit (1);
-		}
-	}
-
-	// set the vector width based on the specified width
-	options.vector_width = gfx_width;
-	options.vector_height = gfx_height;
+	game_index = cli_frontend_init(argc, argv);
 
 	// have we decided on a game?
 	if (game_index != -1)
 		res = run_game(game_index);
 
-	// close open files
-	if (logfile) fclose(logfile);
-
-	// hmm, no better place for these three to be found?
-	if (options.playback) osd_fclose(options.playback);
-	if (options.record)   osd_fclose(options.record);
-	if (options.language_file) osd_fclose(options.language_file);
-
 	// restore the original LED state
 	osd_set_leds(original_leds);
+	win_process_events();
+
+	// close errorlog, input and playback
+	cli_frontend_exit();
+
 	exit(res);
 }
 
@@ -128,12 +107,12 @@ int main(int argc, char **argv)
 
 int osd_init(void)
 {
-	extern int win32_init_input(void);
+	extern int win_init_input(void);
 	int result;
 
-	result = win32_init_window();
+	result = win_init_window();
 	if (result == 0)
-		result = win32_init_input();
+		result = win_init_input();
 	return result;
 }
 
@@ -145,37 +124,10 @@ int osd_init(void)
 
 void osd_exit(void)
 {
-	extern void win32_shutdown_input(void);
-	win32_shutdown_input();
+	extern void win_shutdown_input(void);
+	win_shutdown_input();
 	osd_set_leds(0);
 }
-
-
-
-//============================================================
-//	logerror
-//============================================================
-
-void CLIB_DECL logerror(const char *text,...)
-{
-	va_list arg;
-
-	/* standard vfprintf stuff here */
-	va_start(arg, text);
-	if (errorlog)
-	{
-		if (!logfile)
-		{
-			fprintf(stderr, "oops no log file yet\n");
-			vfprintf (stderr, text, arg);
-		}
-		else
-			vfprintf(logfile, text, arg);
-	}
-	va_end(arg);
-}
-
-
 
 
 //============================================================

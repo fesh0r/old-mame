@@ -21,7 +21,7 @@ static void thunderx_banking(int lines);
 extern int scontra_priority;
 int scontra_vh_start(void);
 void scontra_vh_stop(void);
-void scontra_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void scontra_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 static int unknown_enable = 0;
 extern int debug_key_pressed;
@@ -647,10 +647,10 @@ static const struct MachineDriver machine_driver_scontra =
 	/* video hardware */
 	64*8, 32*8, { 14*8, (64-14)*8-1, 2*8, 30*8-1 },
 	0, /* gfx decoded by konamiic.c */
-	1024, 1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS,
 	0,
 	scontra_vh_start,
 	scontra_vh_stop,
@@ -693,10 +693,10 @@ static const struct MachineDriver machine_driver_thunderx =
 	/* video hardware */
 	64*8, 32*8, { 14*8, (64-14)*8-1, 2*8, 30*8-1 },
 	0, /* gfx decoded by konamiic.c */
-	1024, 1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS,
 	0,
 	scontra_vh_start,
 	scontra_vh_stop,

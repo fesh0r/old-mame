@@ -15,7 +15,7 @@
 
 extern int battlane_vh_start(void);
 extern void battlane_vh_stop(void);
-extern void battlane_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+extern void battlane_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 extern void battlane_vh_convert_color_prom (unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 
 extern unsigned char *battlane_bitmap;
@@ -329,10 +329,10 @@ static const struct MachineDriver machine_driver_battlane =
 	/* video hardware */
 	32*8, 32*8, { 1*8, 31*8-1, 1*8, 31*8-1 },       /* not sure */
 	gfxdecodeinfo,
-	64, 64,
+	64, 0,
 	NULL,
 
-	VIDEO_TYPE_RASTER |VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0 ,
 	battlane_vh_start,
 	battlane_vh_stop,

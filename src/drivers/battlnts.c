@@ -17,7 +17,7 @@ Preliminary driver by:
 WRITE_HANDLER( battlnts_spritebank_w );
 int battlnts_vh_start(void);
 void battlnts_vh_stop(void);
-void battlnts_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void battlnts_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 static int battlnts_interrupt( void )
 {
@@ -364,10 +364,10 @@ static const struct MachineDriver machine_driver_battlnts =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	128, 128,
+	128, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	battlnts_vh_start,
 	battlnts_vh_stop,

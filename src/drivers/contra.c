@@ -32,7 +32,7 @@ WRITE_HANDLER( contra_text_cram_w );
 
 WRITE_HANDLER( contra_K007121_ctrl_0_w );
 WRITE_HANDLER( contra_K007121_ctrl_1_w );
-void contra_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void contra_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 int contra_vh_start(void);
 void contra_vh_stop(void);
 
@@ -283,7 +283,7 @@ static const struct MachineDriver machine_driver_contra =
 	128, 2*8*16*16,
 	contra_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	contra_vh_start,
 	contra_vh_stop,

@@ -11,6 +11,7 @@ games, and the video hardware is pretty much like Irem games too. The only
 strange thing is that the screen is flipped vertically.
 
 TODO:
+- you can't play anymore after you die
 - lots of unknown dipswitches
 
 ***************************************************************************/
@@ -24,7 +25,7 @@ TODO:
 /* from vidhrdw */
 int kncljoe_vh_start(void);
 void kncljoe_vh_convert_color_prom(unsigned char *palette,unsigned short *colortable,const unsigned char *color_prom);
-void kncljoe_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void kncljoe_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE_HANDLER(kncljoe_videoram_w);
 WRITE_HANDLER(kncljoe_control_w);
 WRITE_HANDLER(kncljoe_scroll_w);
@@ -275,5 +276,5 @@ ROM_END
 
 
 
-GAME( 1985, kncljoe,  0,       kncljoe, kncljoe, 0, ROT0, "[Seibu Kaihatsu] (Taito license)", "Knuckle Joe (set 1)" )
-GAME( 1985, kncljoea, kncljoe, kncljoe, kncljoe, 0, ROT0, "[Seibu Kaihatsu] (Taito license)", "Knuckle Joe (set 2)" )
+GAMEX( 1985, kncljoe,  0,       kncljoe, kncljoe, 0, ROT0, "[Seibu Kaihatsu] (Taito license)", "Knuckle Joe (set 1)", GAME_NOT_WORKING )
+GAMEX( 1985, kncljoea, kncljoe, kncljoe, kncljoe, 0, ROT0, "[Seibu Kaihatsu] (Taito license)", "Knuckle Joe (set 2)", GAME_NOT_WORKING )

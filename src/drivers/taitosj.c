@@ -157,7 +157,7 @@ READ_HANDLER( taitosj_collision_reg_r );
 WRITE_HANDLER( taitosj_collision_reg_clear_w );
 int taitosj_vh_start(void);
 void taitosj_vh_stop(void);
-void taitosj_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void taitosj_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 static int sndnmi_disable = 1;
@@ -1694,7 +1694,7 @@ static const struct MachineDriver machine_driver_nomcu =
 	64, 16*8,
 	taitosj_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER|VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	taitosj_vh_start,
 	taitosj_vh_stop,
@@ -1754,7 +1754,7 @@ static const struct MachineDriver machine_driver_mcu =
 	64, 16*8,
 	taitosj_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER|VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	taitosj_vh_start,
 	taitosj_vh_stop,

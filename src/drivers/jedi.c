@@ -137,7 +137,7 @@ extern size_t jedi_backgroundram_size;
 
 int  jedi_vh_start(void);
 void jedi_vh_stop(void);
-void jedi_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void jedi_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE_HANDLER( jedi_alpha_banksel_w );
 WRITE_HANDLER( jedi_paletteram_w );
 WRITE_HANDLER( jedi_backgroundram_w );
@@ -609,7 +609,7 @@ static const struct MachineDriver machine_driver_jedi =
 				/* reserve color 1024 for black (disabled display) */
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	jedi_vh_start,
 	jedi_vh_stop,

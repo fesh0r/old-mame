@@ -27,8 +27,8 @@ down hardware (it doesn't write any good sound data btw, mostly zeros).
 #include "cpu/h6280/h6280.h"
 
 int  supbtime_vh_start(void);
-void supbtime_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-void chinatwn_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void supbtime_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+void chinatwn_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 WRITE16_HANDLER( supbtime_pf2_data_w );
 WRITE16_HANDLER( supbtime_pf1_data_w );
@@ -420,10 +420,10 @@ static const struct MachineDriver machine_driver_supbtime =
 	40*8, 32*8, { 0*8, 40*8-1, 1*8, 31*8-1 },
 
 	gfxdecodeinfo,
-	1024, 1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	supbtime_vh_start,
 	0,
@@ -468,10 +468,10 @@ static const struct MachineDriver machine_driver_chinatwn =
 	40*8, 32*8, { 0*8, 40*8-1, 1*8, 31*8-1 },
 
 	gfxdecodeinfo,
-	1024, 1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	supbtime_vh_start,
 	0,

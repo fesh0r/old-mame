@@ -20,7 +20,7 @@ WRITE_HANDLER( fastlane_vram1_w );
 WRITE_HANDLER( fastlane_vram2_w );
 void fastlane_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 int fastlane_vh_start(void);
-void fastlane_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void fastlane_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 static int fastlane_interrupt(void)
 {
@@ -292,7 +292,7 @@ static const struct MachineDriver machine_driver_fastlane =
 	1024, 1024*16,
 	fastlane_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	fastlane_vh_start,
 	0,

@@ -30,7 +30,7 @@ extern data16_t *galspnbl_bgvideoram,*galspnbl_videoram,*galspnbl_colorram;
 void galspnbl_init_palette(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 WRITE16_HANDLER( galspnbl_bgvideoram_w );
 WRITE16_HANDLER( galspnbl_scroll_w );
-void galspnbl_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void galspnbl_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 static WRITE16_HANDLER( soundcommand_w )
@@ -355,7 +355,7 @@ static const struct MachineDriver machine_driver_hotpinbl =
 	1024 + 32768, 1024,
 	galspnbl_init_palette,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_PIXEL_ASPECT_RATIO_1_2,
+	VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2,
 	0,
 	generic_bitmapped_vh_start,
 	generic_bitmapped_vh_stop,
@@ -437,5 +437,5 @@ ROM_END
 
 
 
-GAMEX( 1995, hotpinbl, 0, hotpinbl, hotpinbl, 0, ROT90_16BIT, "Comad & New Japan System", "Hot Pinball", GAME_NO_COCKTAIL )
-GAMEX( 1996, galspnbl, 0, hotpinbl, galspnbl, 0, ROT90_16BIT, "Comad", "Gals Pinball", GAME_NO_COCKTAIL )
+GAMEX( 1995, hotpinbl, 0, hotpinbl, hotpinbl, 0, ROT90, "Comad & New Japan System", "Hot Pinball", GAME_NO_COCKTAIL )
+GAMEX( 1996, galspnbl, 0, hotpinbl, galspnbl, 0, ROT90, "Comad", "Gals Pinball", GAME_NO_COCKTAIL )

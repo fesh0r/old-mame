@@ -49,22 +49,22 @@ WRITE_HANDLER( qwakprot_paletteram_w )
 	bit2 = (~data >> 1) & 0x01;
 	b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-	palette_change_color(offset,r,g,b);
+	palette_set_color(offset,r,g,b);
 }
 
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
 ***************************************************************************/
-void qwakprot_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void qwakprot_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 
-	if (palette_recalc() || full_refresh)
+	if (full_refresh)
 		memset (dirtybuffer, 1, videoram_size);
 
 	for (offs = videoram_size - 1;offs >= 0;offs--)

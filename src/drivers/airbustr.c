@@ -203,7 +203,7 @@ WRITE_HANDLER( airbustr_bgram_w );
 WRITE_HANDLER( airbustr_fgram_w );
 WRITE_HANDLER( airbustr_scrollregs_w );
 extern int  airbustr_vh_start(void);
-extern void airbustr_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+extern void airbustr_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 /* Debug stuff (bound to go away sometime) */
 int u1, u2, u3, u4;
@@ -388,7 +388,7 @@ WRITE_HANDLER( airbustr_paletteram_w )
 	r = (val >>  5) & 0x1f;
 	b = (val >>  0) & 0x1f;
 
-	palette_change_color(offset/2,	(r * 0xff) / 0x1f,
+	palette_set_color(offset/2,	(r * 0xff) / 0x1f,
 									(g * 0xff) / 0x1f,
 									(b * 0xff) / 0x1f );
 }
@@ -690,7 +690,7 @@ static struct YM2203interface ym2203_interface =
 static struct OKIM6295interface okim6295_interface =
 {
 	1,
-	{ 18000 },		/* ?? */
+	{ 12000000/4/165 }, /* 3MHz -> 6295 (mode A) */
 	{ REGION_SOUND1 },
 	{ 50 }
 };
@@ -726,9 +726,10 @@ static const struct MachineDriver machine_driver_airbustr =
 	/* video hardware */
 	256, 256, { 0, 256-1, 0+16, 256-16-1 },
 	gfxdecodeinfo,
-	256 * 3, 256 * 3,
+	768, 0,
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+
+	VIDEO_TYPE_RASTER,
 	0,
 	airbustr_vh_start,
 	0,

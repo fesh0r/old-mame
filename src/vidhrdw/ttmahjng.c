@@ -14,8 +14,8 @@ unsigned char *ttmahjng_videoram1;
 unsigned char *ttmahjng_videoram2;
 size_t ttmahjng_videoram_size;
 
-static struct osd_bitmap *tmpbitmap1;
-static struct osd_bitmap *tmpbitmap2;
+static struct mame_bitmap *tmpbitmap1;
+static struct mame_bitmap *tmpbitmap2;
 
 static int video_flip;
 static int video_color_select_1;
@@ -27,7 +27,7 @@ static const unsigned char *ttmahjng_color_prom;
 /* Local functions */
 static void modify_pen(int pen, int colorindex);
 static void common_videoram_w(int offset,int data,
-                              int coloroffset, struct osd_bitmap *bitmap);
+                              int coloroffset, struct mame_bitmap *bitmap);
 
 
 
@@ -171,7 +171,7 @@ WRITE_HANDLER( ttmahjng_videoram2_w )
   common_videoram_w
 ***************************************************************************/
 static void common_videoram_w(int offset,int data,
-                              int coloroffset, struct osd_bitmap *bitmap)
+                              int coloroffset, struct mame_bitmap *bitmap)
 {
 	int x, y, color1, color2, color3, color4;
 
@@ -207,12 +207,12 @@ static void common_videoram_w(int offset,int data,
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
 ***************************************************************************/
-void ttmahjng_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void ttmahjng_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	if (video_remap_1)
 	{
@@ -231,7 +231,7 @@ void ttmahjng_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 	}
 
 
-	if (palette_recalc() || full_refresh || video_remap_1 || video_remap_2)
+	if (full_refresh || video_remap_1 || video_remap_2)
 	{
 		int offs;
 
@@ -264,5 +264,5 @@ static void modify_pen(int pen, int colorindex)
 	g = ((color & 2) ? 0xff : 0x00);
 	r = ((color & 4) ? 0xff : 0x00);
 
-	palette_change_color(pen,r,g,b);
+	palette_set_color(pen,r,g,b);
 }

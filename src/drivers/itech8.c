@@ -195,7 +195,7 @@ extern UINT8 *itech8_display_page;
 int itech8_vh_start(void);
 int slikshot_vh_start(void);
 void itech8_vh_stop(void);
-void itech8_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void itech8_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 
 READ_HANDLER( itech8_tms34061_r );
 READ_HANDLER( itech8_blitter_r );
@@ -1471,10 +1471,10 @@ static struct MachineDriver machine_driver_##NAME =								\
 	/* video hardware */														\
 	512, 263, { XMIN, XMAX, 0, 239 },											\
 	0,																			\
-	256,256,																	\
+	256, 0,																		\
 	0,																			\
 																				\
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,	\
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,								\
 	0,																			\
 	itech8_vh_start,															\
 	itech8_vh_stop,																\
@@ -1532,10 +1532,10 @@ static struct MachineDriver machine_driver_slikshot =
 	/* video hardware */
 	512, 263, { 0, 255, 0, 239 },
 	0,
-	257,257,
+	256+1, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	slikshot_vh_start,
 	itech8_vh_stop,
@@ -1582,10 +1582,10 @@ static struct MachineDriver machine_driver_sstrike =
 	/* video hardware */
 	512, 263, { 0, 255, 0, 239 },
 	0,
-	257,257,
+	256+1, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	slikshot_vh_start,
 	itech8_vh_stop,

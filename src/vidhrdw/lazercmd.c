@@ -69,7 +69,7 @@ void lazercmd_marker_dirty(int marker)
 /* plot a bitmap marker */
 /* hardware has 2 marker sizes 2x2 and 4x2 selected by jumper */
 /* meadows lanes normaly use 2x2 pixels and lazer command uses either */
-static void plot_pattern(struct osd_bitmap *bitmap, int x, int y)
+static void plot_pattern(struct mame_bitmap *bitmap, int x, int y)
 {
 	int xbit, ybit, size;
 
@@ -104,14 +104,14 @@ int lazercmd_vh_start(void)
 
 	if (input_port_2_r(0) & 0x80)
 	{
-		overlay_create(overlay, 3, Machine->drv->total_colors-3);
+		overlay_create(overlay, 3);
 	}
 
 	return 0;
 }
 
 
-void lazercmd_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void lazercmd_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int i,x,y;
 
@@ -121,7 +121,7 @@ void lazercmd_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 		memset(dirtybuffer, 1, videoram_size);
 	}
 
-	if (palette_recalc() || full_refresh)
+	if (full_refresh)
         memset(dirtybuffer, 1, videoram_size);
 
 	/* The first row of characters are invisible */

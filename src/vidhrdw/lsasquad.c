@@ -3,48 +3,9 @@
 
 unsigned char *lsasquad_scrollram;
 
-void lsasquad_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
-{
-	int i;
 
 
-	for (i = 0;i < Machine->drv->total_colors;i++)
-	{
-		int bit0,bit1,bit2,bit3;
-
-
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[0x400] >> 0) & 0x01;
-		bit1 = (color_prom[0x400] >> 1) & 0x01;
-		bit2 = (color_prom[0x400] >> 2) & 0x01;
-		bit3 = (color_prom[0x400] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*0x400] >> 0) & 0x01;
-		bit1 = (color_prom[2*0x400] >> 1) & 0x01;
-		bit2 = (color_prom[2*0x400] >> 2) & 0x01;
-		bit3 = (color_prom[2*0x400] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		color_prom++;
-	}
-
-
-	/* no color PROMs here, only RAM, but the gfx data is inverted so we */
-	/* cannot use the default lookup table */
-	for (i = 0;i < Machine->drv->color_table_len;i++)
-		colortable[i] = i ^ 0x0f;
-}
-
-
-
-static void draw_layer(struct osd_bitmap *bitmap,unsigned char *scrollram)
+static void draw_layer(struct mame_bitmap *bitmap,unsigned char *scrollram)
 {
 	int offs,scrollx,scrolly;
 
@@ -78,19 +39,19 @@ static void draw_layer(struct osd_bitmap *bitmap,unsigned char *scrollram)
 					color,
 					flip_screen,flip_screen,
 					sx,sy,
-					&Machine->visible_area,TRANSPARENCY_PEN,0);
+					&Machine->visible_area,TRANSPARENCY_PEN,15);
 			if (sx > 248)	/* wraparound */
 				drawgfx(bitmap,Machine->gfx[0],
 						code,
 						color,
 						flip_screen,flip_screen,
 						sx-256,sy,
-						&Machine->visible_area,TRANSPARENCY_PEN,0);
+						&Machine->visible_area,TRANSPARENCY_PEN,15);
 		}
 	}
 }
 
-static void draw_sprites(struct osd_bitmap *bitmap)
+static void draw_sprites(struct mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -119,18 +80,18 @@ static void draw_sprites(struct osd_bitmap *bitmap)
 				color,
 				flipx,flipy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area,TRANSPARENCY_PEN,15);
 		/* wraparound */
 		drawgfx(bitmap,Machine->gfx[1],
 				code,
 				color,
 				flipx,flipy,
 				sx-256,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area,TRANSPARENCY_PEN,15);
 	}
 }
 
-void lsasquad_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void lsasquad_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	fillbitmap(bitmap,Machine->pens[511],&Machine->visible_area);
 

@@ -105,7 +105,7 @@ $8000 - $ffff	ROM
 #include "cpu/m6502/m6502.h"
 #include "cpu/m6809/m6809.h"
 
-extern void renegade_vh_screenrefresh(struct osd_bitmap *bitmap, int fullrefresh);
+extern void renegade_vh_screenrefresh(struct mame_bitmap *bitmap, int fullrefresh);
 extern int renegade_vh_start( void );
 WRITE_HANDLER( renegade_scroll0_w );
 WRITE_HANDLER( renegade_scroll1_w );
@@ -674,10 +674,10 @@ static const struct MachineDriver machine_driver_renegade =
 
 	32*8, 32*8, { 1*8, 31*8-1, 0, 30*8-1 },
 	gfxdecodeinfo,
-	256,256,
+	256, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	renegade_vh_start,0,
 	renegade_vh_screenrefresh,

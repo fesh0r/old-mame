@@ -140,7 +140,7 @@ static void sortlayers(int *layer,int *pri)
 	SWAP(1,2)
 }
 
-void simpsons_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void simpsons_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int layer[3];
 
@@ -152,12 +152,6 @@ void simpsons_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 	layer_colorbase[2] = K053251_get_palette_index(K053251_CI4);
 
 	K052109_tilemap_update();
-
-	palette_init_used_colors();
-	K053247_mark_sprites_colors();
-	if (palette_used_colors)
-		palette_used_colors[16 * bg_colorbase] |= PALETTE_COLOR_VISIBLE;
-	palette_recalc();
 
 	layer[0] = 0;
 	layerpri[0] = K053251_get_priority(K053251_CI2);

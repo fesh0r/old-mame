@@ -15,8 +15,8 @@ size_t mnight_backgroundram_size;
 unsigned char   *mnight_foreground_videoram;
 size_t mnight_foregroundram_size;
 
-static struct osd_bitmap *bitmap_bg;
-static struct osd_bitmap *bitmap_sp;
+static struct mame_bitmap *bitmap_bg;
+static struct mame_bitmap *bitmap_sp;
 
 static unsigned char     *bg_dirtybuffer;
 static int       bg_enable = 1;
@@ -24,8 +24,6 @@ static int       sp_overdraw = 0;
 
 int mnight_vh_start(void)
 {
-	int i;
-
 	if ((bg_dirtybuffer = malloc(1024)) == 0)
 	{
 		return 1;
@@ -43,14 +41,6 @@ int mnight_vh_start(void)
 	}
 	memset(bg_dirtybuffer,1,1024);
 
-	/* chars, background tiles, sprites */
-	memset(palette_used_colors,PALETTE_COLOR_USED,Machine->drv->total_colors * sizeof(unsigned char));
-
-	for (i = 0;i < GFX_COLOR_CODES(1);i++)
-	{
-		palette_used_colors[COLORTABLE_START(1,i)+15] = PALETTE_COLOR_TRANSPARENT;
-		palette_used_colors[COLORTABLE_START(2,i)+15] = PALETTE_COLOR_TRANSPARENT;
-	}
 	return 0;
 }
 
@@ -86,7 +76,7 @@ WRITE_HANDLER( mnight_background_enable_w )
 		if (bg_enable)
 			memset(bg_dirtybuffer, 1, mnight_backgroundram_size / 2);
 		else
-			fillbitmap(bitmap_bg, palette_transparent_pen,0);
+			fillbitmap(bitmap_bg, Machine->pens[0],0);
 	}
 }
 
@@ -100,7 +90,7 @@ WRITE_HANDLER( mnight_sprite_overdraw_w )
 	}
 }
 
-void mnight_draw_foreground(struct osd_bitmap *bitmap)
+void mnight_draw_foreground(struct mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -134,7 +124,7 @@ void mnight_draw_foreground(struct osd_bitmap *bitmap)
 }
 
 
-void mnight_draw_background(struct osd_bitmap *bitmap)
+void mnight_draw_background(struct mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -168,7 +158,7 @@ void mnight_draw_background(struct osd_bitmap *bitmap)
 	}
 }
 
-void mnight_draw_sprites(struct osd_bitmap *bitmap)
+void mnight_draw_sprites(struct mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -196,6 +186,10 @@ void mnight_draw_sprites(struct osd_bitmap *bitmap)
 					sx,sy,
 					&Machine->visible_area,
 					TRANSPARENCY_PEN, 15);
+
+			/* kludge to clear shots */
+			if (((spriteram[offs+2]==2) || (spriteram[offs+2]==0x12)) && (((tile>=0xd0) && (tile<=0xd5)) || ((tile>=0x20) && (tile<=0x25))))
+				spriteram[offs+2]=0;
 		}
 	}
 }
@@ -203,18 +197,15 @@ void mnight_draw_sprites(struct osd_bitmap *bitmap)
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
 ***************************************************************************/
-void mnight_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void mnight_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int scrollx,scrolly;
 
-	/* TODO: handle palette properly, it overflows */
-	if (palette_recalc ())
-		memset(bg_dirtybuffer, 1, mnight_backgroundram_size / 2);
 
 	if (bg_enable)
 		mnight_draw_background(bitmap_bg);

@@ -170,7 +170,7 @@ WRITE_HANDLER( liberatr_colorram_w )
 		offset ^= 0x0f;
 	}
 
-	palette_change_color(offset,r,g,b);
+	palette_set_color(offset,r,g,b);
 }
 
 
@@ -404,7 +404,7 @@ void liberatr_vh_stop(void)
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
@@ -455,9 +455,9 @@ static void liberatr_draw_planet(void)
 }
 
 
-void liberatr_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void liberatr_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
-	if (palette_recalc() || full_refresh)
+	if (full_refresh)
 	{
 		UINT8 liberatr_y_save = *liberatr_y;
 		UINT8 liberatr_x_save = *liberatr_x;

@@ -65,7 +65,7 @@ WRITE16_HANDLER( twin16_video_register_w ){
 
 /******************************************************************************************/
 
-static void draw_text( struct osd_bitmap *bitmap ){
+static void draw_text( struct mame_bitmap *bitmap ){
 	const struct rectangle *clip = &Machine->visible_area;
 	const data16_t *source = twin16_fixram;
 	int i;
@@ -96,9 +96,9 @@ static void draw_text( struct osd_bitmap *bitmap ){
 /******************************************************************************************/
 
 static void draw_sprite( /* slow slow slow, but it's ok for now */
-	struct osd_bitmap *bitmap,
+	struct mame_bitmap *bitmap,
 	const UINT16 *pen_data,
-	const UINT32 *pal_data,
+	const pen_t *pal_data,
 	int xpos, int ypos,
 	int width, int height,
 	int flipx, int flipy ){
@@ -219,7 +219,7 @@ void twin16_spriteram_process( void ){
  *   3  | ------------xxxx | color
  */
 
-static void draw_sprites( struct osd_bitmap *bitmap, int pri ){
+static void draw_sprites( struct mame_bitmap *bitmap, int pri ){
 	int count = 0;
 	const data16_t *source = 0x1800+spriteram16;
 	const data16_t *finish = source + 0x800;
@@ -233,7 +233,7 @@ static void draw_sprites( struct osd_bitmap *bitmap, int pri ){
 			int xpos = source[1];
 			int ypos = source[2];
 
-			const UINT32 *pal_data = Machine->pens+((attributes&0xf)+0x10)*16;
+			const pen_t *pal_data = Machine->pens+((attributes&0xf)+0x10)*16;
 			int height	= 16<<((attributes>>6)&0x3);
 			int width	= 16<<((attributes>>4)&0x3);
 			const UINT16 *pen_data = 0;
@@ -283,7 +283,7 @@ static void draw_sprites( struct osd_bitmap *bitmap, int pri ){
 	}
 }
 
-static void show_video_register( struct osd_bitmap *bitmap ){
+static void show_video_register( struct mame_bitmap *bitmap ){
 #if 0
 	int n;
 	for( n=0; n<4; n++ ){
@@ -297,7 +297,7 @@ static void show_video_register( struct osd_bitmap *bitmap ){
 #endif
 }
 
-static void draw_layer( struct osd_bitmap *bitmap, int opaque ){
+static void draw_layer( struct mame_bitmap *bitmap, int opaque ){
 	const data16_t *gfx_base;
 	const data16_t *source = videoram16;
 	int i, y1, y2, yd;
@@ -373,7 +373,7 @@ static void draw_layer( struct osd_bitmap *bitmap, int opaque ){
 			*/
 			const data16_t *gfx_data = gfx_base + (code&0x7ff)*16 + bank_table[(code>>11)&0x3]*0x8000;
 			int color = (code>>13);
-			UINT32 *pal_data = Machine->pens + 16*(0x20+color+8*palette);
+			pen_t *pal_data = Machine->pens + 16*(0x20+color+8*palette);
 
 			{
 				int y;
@@ -563,66 +563,9 @@ static void draw_layer( struct osd_bitmap *bitmap, int opaque ){
 	}
 }
 
-static void mark_used_colors( void ){
-	const data16_t *source, *finish;
-	unsigned char used[0x40], *used_ptr;
-	memset( used, 0, 0x40 );
-
-	/* text layer */
-	used_ptr = &used[0x00];
-	source = twin16_fixram;
-	finish = source + 0x1000;
-	while( source<finish ){
-		int code = *source++;
-		used_ptr[(code>>9)&0xf] = 1;
-	}
-
-	/* sprites */
-	used_ptr = &used[0x10];
-	source = 0x1800+spriteram16;
-	finish = source + 0x800;
-	while( source<finish ){
-		data16_t attributes = source[3];
-		data16_t code = source[0];
-		if( code!=0xffff && (attributes&0x8000) ) used_ptr[attributes&0xf] = 1;
-		source++;
-	}
-
-	/* plane#0 */
-	used_ptr = &used[0x20];
-	source = videoram16;
-	finish = source+0x1000;
-	while( source<finish ){
-		int code = *source++;
-		used_ptr[code>>13] = 1;
-	}
-
-	/* plane#1 */
-	used_ptr = &used[0x28];
-	source = 0x1000+videoram16;
-	finish = source+0x1000;
-	while( source<finish ){
-		int code = *source++;
-		used_ptr[code>>13] = 1;
-	}
-
-	{
-		int i;
-		memset( palette_used_colors, PALETTE_COLOR_UNUSED, 0x400 );
-		for( i=0; i<0x40; i++ ){
-			if( used[i] ){
-				memset( &palette_used_colors[i*16], PALETTE_COLOR_VISIBLE, 0x10 );
-			}
-		}
-	}
-}
-
-void twin16_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh ){
+void twin16_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh ){
 	if( twin16_spriteram_process_enable() && need_process_spriteram ) twin16_spriteram_process();
 	need_process_spriteram = 1;
-
-	mark_used_colors();
-	palette_recalc();
 
 	draw_layer( bitmap,1 );
 	draw_sprites( bitmap, 1 );

@@ -25,7 +25,11 @@ static unsigned char *dirtychar;
 static void get_tile_info(int tile_index)
 {
 	UINT16 code = tail2nos_bgvideoram[tile_index];
-	SET_TILE_INFO(0,(code & 0x1fff) + (charbank << 13),((code & 0xe000) >> 13) + charpalette * 16)
+	SET_TILE_INFO(
+			0,
+			(code & 0x1fff) + (charbank << 13),
+			((code & 0xe000) >> 13) + charpalette * 16,
+			0)
 }
 
 
@@ -54,7 +58,7 @@ int tail2nos_vh_start(void)
 	if (!bg_tilemap)
 		return 1;
 
-	if (K051316_vh_start_0(REGION_GFX3,4,zoom_callback))
+	if (K051316_vh_start_0(REGION_GFX3,4,TILEMAP_OPAQUE,0,zoom_callback))
 		return 1;
 
 	if (!(dirtychar = malloc(TOTAL_CHARS)))
@@ -151,7 +155,7 @@ WRITE16_HANDLER( tail2nos_gfxbank_w )
 
 ***************************************************************************/
 
-static void drawsprites(struct osd_bitmap *bitmap)
+static void drawsprites(struct mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -178,7 +182,7 @@ static void drawsprites(struct osd_bitmap *bitmap)
 	}
 }
 
-void tail2nos_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void tail2nos_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	static struct GfxLayout tilelayout =
 	{
@@ -218,14 +222,9 @@ void tail2nos_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 	}
 
 
-	K051316_tilemap_update_0();
-	tilemap_update(bg_tilemap);
-
-	palette_recalc();
-
 	if (video_enable)
 	{
-		K051316_zoom_draw_0(bitmap,0);
+		K051316_zoom_draw_0(bitmap,0,0);
 		drawsprites(bitmap);
 		tilemap_draw(bitmap,bg_tilemap,0,0);
 	}

@@ -27,7 +27,7 @@ WRITE16_HANDLER( othldrby_vreg_w );
 int othldrby_vh_start(void);
 void othldrby_vh_stop(void);
 void othldrby_eof_callback(void);
-void othldrby_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void othldrby_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -270,10 +270,10 @@ static const struct MachineDriver machine_driver_othldrby =
 	/* video hardware */
 	64*8, 32*8, { 12*8, (64-12)*8-1, 1*8, 31*8-1 },
 	gfxdecodeinfo,
-	0x800,0x800,
+	0x800, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	othldrby_eof_callback,
 	othldrby_vh_start,
 	othldrby_vh_stop,
@@ -310,5 +310,4 @@ ROM_START( othldrby )
 ROM_END
 
 
-
-GAME( 1995, othldrby, 0, othldrby, othldrby, 0, ROT0_16BIT, "Sunwise", "Othello Derby (Japan)" )
+GAME( 1995, othldrby, 0, othldrby, othldrby, 0, ROT0, "Sunwise", "Othello Derby (Japan)" )

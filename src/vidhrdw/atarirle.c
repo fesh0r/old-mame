@@ -144,19 +144,19 @@ static UINT16 *rle_table[8];
 static int build_rle_tables(void);
 static int count_objects(const data16_t *base, int length);
 static void prescan_rle(const struct atarirle_data *mo, int which);
-static void draw_rle(struct atarirle_data *mo, struct osd_bitmap *bitmap, int code, int color, int hflip, int vflip,
+static void draw_rle(struct atarirle_data *mo, struct mame_bitmap *bitmap, int code, int color, int hflip, int vflip,
 		int x, int y, int xscale, int yscale, const struct rectangle *clip);
-static void draw_rle_zoom(struct osd_bitmap *bitmap, const struct atarirle_info *gfx,
-		const UINT32 *palette, int flipy, int sx, int sy, int scalex, int scaley,
+static void draw_rle_zoom(struct mame_bitmap *bitmap, const struct atarirle_info *gfx,
+		const pen_t *palette, int flipy, int sx, int sy, int scalex, int scaley,
 		const struct rectangle *clip);
-static void draw_rle_zoom_16(struct osd_bitmap *bitmap, const struct atarirle_info *gfx,
-		const UINT32 *palette, int flipy, int sx, int sy, int scalex, int scaley,
+static void draw_rle_zoom_16(struct mame_bitmap *bitmap, const struct atarirle_info *gfx,
+		const pen_t *palette, int flipy, int sx, int sy, int scalex, int scaley,
 		const struct rectangle *clip);
-static void draw_rle_zoom_hflip(struct osd_bitmap *bitmap, const struct atarirle_info *gfx,
-		const UINT32 *palette, int flipy, int sx, int sy, int scalex, int scaley,
+static void draw_rle_zoom_hflip(struct mame_bitmap *bitmap, const struct atarirle_info *gfx,
+		const pen_t *palette, int flipy, int sx, int sy, int scalex, int scaley,
 		const struct rectangle *clip);
-static void draw_rle_zoom_hflip_16(struct osd_bitmap *bitmap, const struct atarirle_info *gfx,
-		const UINT32 *palette, int flipy, int sx, int sy, int scalex, int scaley,
+static void draw_rle_zoom_hflip_16(struct mame_bitmap *bitmap, const struct atarirle_info *gfx,
+		const pen_t *palette, int flipy, int sx, int sy, int scalex, int scaley,
 		const struct rectangle *clip);
 
 
@@ -379,57 +379,10 @@ void atarirle_free(void)
 
 
 /*---------------------------------------------------------------
-	atarirle_mark_palette: Marks all palette entries used
-	by the visible RLE objects.
----------------------------------------------------------------*/
-
-void atarirle_mark_palette(int map)
-{
-	struct atarirle_data *mo = &atarirle[map];
-	struct atarirle_entry *obj = mo->spriteram;
-	int i, j;
-
-	/* loop over objects in spriteram */
-	for (i = 0; i < mo->spriteramsize; i++, obj++)
-	{
-		int priority = EXTRACT_DATA(obj, mo->prioritymask);
-
-		/* only handle non-zero priority items */
-		if (priority != 0)
-		{
-			/* make sure the scale is non-zero and the code is valid */
-			int scale = EXTRACT_DATA(obj, mo->scalemask);
-			int code = EXTRACT_DATA(obj, mo->codemask);
-			if (scale > 0x0000 && code < mo->objectcount)
-			{
-				const struct atarirle_info *rle = &mo->info[code];
-				int color = EXTRACT_DATA(obj, mo->colormask);
-				UINT8 *used = &palette_used_colors[mo->palettebase + color * 16];
-				UINT32 usage = rle->pen_usage;
-
-				/* mark colors in the lower area */
-				if (usage)
-					for (j = 0; j < 32; j++, usage >>= 1)
-						if (usage & 1)
-							used[j] = PALETTE_COLOR_USED;
-
-				/* mark colors in the upper area */
-				usage = rle->pen_usage_hi;
-				if (usage)
-					for (j = 0; j < 32; j++, usage >>= 1)
-						if (usage & 1)
-							used[j + 32] = PALETTE_COLOR_USED;
-			}
-		}
-	}
-}
-
-
-/*---------------------------------------------------------------
 	atarirle_render: Render all motion objects in order.
 ---------------------------------------------------------------*/
 
-void atarirle_render(int map, struct osd_bitmap *bitmap, ataripf_overrender_cb callback)
+void atarirle_render(int map, struct mame_bitmap *bitmap, ataripf_overrender_cb callback)
 {
 	struct atarirle_data *mo = &atarirle[map];
 	struct atarirle_entry *obj = mo->spriteram;
@@ -754,10 +707,10 @@ static void prescan_rle(const struct atarirle_data *mo, int which)
 	object.
 ---------------------------------------------------------------*/
 
-void draw_rle(struct atarirle_data *mo, struct osd_bitmap *bitmap, int code, int color, int hflip, int vflip,
+void draw_rle(struct atarirle_data *mo, struct mame_bitmap *bitmap, int code, int color, int hflip, int vflip,
 	int x, int y, int xscale, int yscale, const struct rectangle *clip)
 {
-	const UINT32 *palettebase = &Machine->pens[mo->palettebase + color];
+	const pen_t *palettebase = &Machine->pens[mo->palettebase + color];
 	const struct atarirle_info *info = &mo->info[code];
 	int scaled_xoffs = (xscale * info->xoffs) >> 12;
 	int scaled_yoffs = (yscale * info->yoffs) >> 12;
@@ -799,8 +752,8 @@ void draw_rle(struct atarirle_data *mo, struct osd_bitmap *bitmap, int code, int
 	bitmap.
 ---------------------------------------------------------------*/
 
-void draw_rle_zoom(struct osd_bitmap *bitmap, const struct atarirle_info *gfx,
-		const UINT32 *palette, int flipy, int sx, int sy, int scalex, int scaley,
+void draw_rle_zoom(struct mame_bitmap *bitmap, const struct atarirle_info *gfx,
+		const pen_t *palette, int flipy, int sx, int sy, int scalex, int scaley,
 		const struct rectangle *clip)
 {
 	const UINT16 *row_start = gfx->data;
@@ -855,7 +808,7 @@ void draw_rle_zoom(struct osd_bitmap *bitmap, const struct atarirle_info *gfx,
 	/* loop top to bottom */
 	for (y = sy; y <= ey; y++, sourcey += dy)
 	{
-		UINT8 *dest = &bitmap->line[y][sx];
+		UINT8 *dest = ((UINT8 *)bitmap->line[y])+sx;
 		int j, sourcex = dx / 2, rle_end = 0;
 		const UINT16 *base;
 		int entry_count;
@@ -918,7 +871,7 @@ void draw_rle_zoom(struct osd_bitmap *bitmap, const struct atarirle_info *gfx,
 		/* clipped case */
 		else
 		{
-			const UINT8 *end = &bitmap->line[y][ex];
+			const UINT8 *end = ((UINT8 *)bitmap->line[y])+ex;
 			int to_be_skipped = pixels_to_skip;
 
 			/* decode the pixels */
@@ -988,8 +941,8 @@ void draw_rle_zoom(struct osd_bitmap *bitmap, const struct atarirle_info *gfx,
 	bitmap.
 ---------------------------------------------------------------*/
 
-void draw_rle_zoom_16(struct osd_bitmap *bitmap, const struct atarirle_info *gfx,
-		const UINT32 *palette, int flipy, int sx, int sy, int scalex, int scaley,
+void draw_rle_zoom_16(struct mame_bitmap *bitmap, const struct atarirle_info *gfx,
+		const pen_t *palette, int flipy, int sx, int sy, int scalex, int scaley,
 		const struct rectangle *clip)
 {
 	const UINT16 *row_start = gfx->data;
@@ -1044,7 +997,7 @@ void draw_rle_zoom_16(struct osd_bitmap *bitmap, const struct atarirle_info *gfx
 	/* loop top to bottom */
 	for (y = sy; y <= ey; y++, sourcey += dy)
 	{
-		UINT16 *dest = (UINT16 *)&bitmap->line[y][sx * 2];
+		UINT16 *dest = ((UINT16 *)bitmap->line[y])+sx;
 		int j, sourcex = dx / 2, rle_end = 0;
 		const UINT16 *base;
 		int entry_count;
@@ -1107,7 +1060,7 @@ void draw_rle_zoom_16(struct osd_bitmap *bitmap, const struct atarirle_info *gfx
 		/* clipped case */
 		else
 		{
-			const UINT16 *end = (const UINT16 *)&bitmap->line[y][ex * 2];
+			const UINT16 *end = ((UINT16 *)bitmap->line[y])+ex;
 			int to_be_skipped = pixels_to_skip;
 
 			/* decode the pixels */
@@ -1177,8 +1130,8 @@ void draw_rle_zoom_16(struct osd_bitmap *bitmap, const struct atarirle_info *gfx
 	8-bit bitmap with horizontal flip.
 ---------------------------------------------------------------*/
 
-void draw_rle_zoom_hflip(struct osd_bitmap *bitmap, const struct atarirle_info *gfx,
-		const UINT32 *palette, int flipy, int sx, int sy, int scalex, int scaley,
+void draw_rle_zoom_hflip(struct mame_bitmap *bitmap, const struct atarirle_info *gfx,
+		const pen_t *palette, int flipy, int sx, int sy, int scalex, int scaley,
 		const struct rectangle *clip)
 {
 	const UINT16 *row_start = gfx->data;
@@ -1232,7 +1185,7 @@ void draw_rle_zoom_hflip(struct osd_bitmap *bitmap, const struct atarirle_info *
 	/* loop top to bottom */
 	for (y = sy; y <= ey; y++, sourcey += dy)
 	{
-		UINT8 *dest = &bitmap->line[y][ex];
+		UINT8 *dest = ((UINT8 *)bitmap->line[y])+ex;
 		int j, sourcex = dx / 2, rle_end = 0;
 		const UINT16 *base;
 		int entry_count;
@@ -1295,7 +1248,7 @@ void draw_rle_zoom_hflip(struct osd_bitmap *bitmap, const struct atarirle_info *
 		/* clipped case */
 		else
 		{
-			const UINT8 *start = &bitmap->line[y][sx];
+			const UINT8 *start = ((UINT8 *)bitmap->line[y])+sx;
 			int to_be_skipped = pixels_to_skip;
 
 			/* decode the pixels */
@@ -1365,8 +1318,8 @@ void draw_rle_zoom_hflip(struct osd_bitmap *bitmap, const struct atarirle_info *
 	16-bit bitmap with horizontal flip.
 ---------------------------------------------------------------*/
 
-void draw_rle_zoom_hflip_16(struct osd_bitmap *bitmap, const struct atarirle_info *gfx,
-		const UINT32 *palette, int flipy, int sx, int sy, int scalex, int scaley,
+void draw_rle_zoom_hflip_16(struct mame_bitmap *bitmap, const struct atarirle_info *gfx,
+		const pen_t *palette, int flipy, int sx, int sy, int scalex, int scaley,
 		const struct rectangle *clip)
 {
 	const UINT16 *row_start = gfx->data;
@@ -1420,7 +1373,7 @@ void draw_rle_zoom_hflip_16(struct osd_bitmap *bitmap, const struct atarirle_inf
 	/* loop top to bottom */
 	for (y = sy; y <= ey; y++, sourcey += dy)
 	{
-		UINT16 *dest = (UINT16 *)&bitmap->line[y][ex * 2];
+		UINT16 *dest = ((UINT16 *)bitmap->line[y])+ex;
 		int j, sourcex = dx / 2, rle_end = 0;
 		const UINT16 *base;
 		int entry_count;
@@ -1483,7 +1436,7 @@ void draw_rle_zoom_hflip_16(struct osd_bitmap *bitmap, const struct atarirle_inf
 		/* clipped case */
 		else
 		{
-			const UINT16 *start = (const UINT16 *)&bitmap->line[y][sx * 2];
+			const UINT16 *start = ((UINT16 *)bitmap->line[y])+sx;
 			int to_be_skipped = pixels_to_skip;
 
 			/* decode the pixels */

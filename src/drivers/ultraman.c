@@ -17,7 +17,7 @@ Driver by Manuel Abadia <manu@teleline.es>
 WRITE16_HANDLER( ultraman_gfxctrl_w );
 int ultraman_vh_start( void );
 void ultraman_vh_stop( void );
-void ultraman_vh_screenrefresh( struct osd_bitmap *bitmap,int full_refresh );
+void ultraman_vh_screenrefresh( struct mame_bitmap *bitmap,int full_refresh );
 
 
 
@@ -301,10 +301,10 @@ static const struct MachineDriver machine_driver_ultraman =
 	/* video hardware */
 	64*8, 32*8, { 14*8, (64-14)*8-1, 2*8, 30*8-1 },
 	0,	/* decoded by KonamiIC */
-	8192, 8192,
+	8192, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS,
 	0,
 	ultraman_vh_start,
 	ultraman_vh_stop,

@@ -19,8 +19,8 @@ WRITE_HANDLER( vigilant_sprite_paletteram_w );
 WRITE_HANDLER( vigilant_horiz_scroll_w );
 WRITE_HANDLER( vigilant_rear_horiz_scroll_w );
 WRITE_HANDLER( vigilant_rear_color_w );
-void vigilant_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
-void kikcubic_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void vigilant_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+void kikcubic_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 WRITE_HANDLER( vigilant_bank_select_w )
@@ -433,10 +433,10 @@ static const struct MachineDriver machine_driver_vigilant =
 	/* video hardware */
 	64*8, 32*8, { 16*8, (64-16)*8-1, 0*8, 32*8-1 },
 	vigilant_gfxdecodeinfo,
-	512+32, 512+32,
+	512+32, 0,	/* 512 real palette, 32 virtual palette */
 	0, /* no color prom */
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	vigilant_vh_start,
 	vigilant_vh_stop,
@@ -481,10 +481,10 @@ static const struct MachineDriver machine_driver_kikcubic =
 	/* video hardware */
 	64*8, 32*8, { 8*8, (64-8)*8-1, 0*8, 32*8-1 },
 	kikcubic_gfxdecodeinfo,
-	256, 256,
-	0, /* no color prom */
+	256, 0,
+	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	vigilant_vh_start,
 	vigilant_vh_stop,

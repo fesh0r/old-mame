@@ -67,7 +67,7 @@ WRITE16_HANDLER( galspnbl_scroll_w )
  *    4    | xxxxxxxxxxxxxxxx | x position
  *    5,6,7|                  | unused
  */
-static void draw_sprites(struct osd_bitmap *bitmap,int priority)
+static void draw_sprites(struct mame_bitmap *bitmap,int priority)
 {
 	int offs;
 	const UINT8 layout[8][8] =
@@ -120,16 +120,12 @@ static void draw_sprites(struct osd_bitmap *bitmap,int priority)
 }
 
 
-void galspnbl_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void galspnbl_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 
 
-	palette_recalc();
-
 	/* copy the temporary bitmap to the screen */
-	/* it's raw RGB, so it doesn't have to be recalculated even if palette_recalc() */
-	/* returns true */
 	copyscrollbitmap(bitmap,tmpbitmap,1,&screenscroll,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
 
 	draw_sprites(bitmap,0);

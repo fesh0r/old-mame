@@ -140,14 +140,22 @@ static void get_bg_tile_info(int tile_index)
 	unsigned char *BGROM = memory_region(REGION_GFX4);
 	int attr = BGROM[tile_index + 0x4000];
 	int code = BGROM[tile_index] | ((attr & 0x03) << 8);
-	SET_TILE_INFO(1,code,(attr & 0x78) >> 3);	/* seems correct */
+	SET_TILE_INFO(
+			1,
+			code,
+			(attr & 0x78) >> 3,		/* seems correct */
+			0)
 }
 
 static void get_tx_tile_info(int tile_index)
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] | ((attr & 0x01) << 8);
-	SET_TILE_INFO(0,code,(attr & 0xe0) >> 5);	/* not sure */
+	SET_TILE_INFO(
+			0,
+			code,
+			(attr & 0xe0) >> 5,		/* not sure */
+			0)
 	tile_info.priority = attr & 8 ? 0 : 1;	/* wrong */
 }
 
@@ -156,14 +164,22 @@ static void ninjemak_get_bg_tile_info(int tile_index)
 	unsigned char *BGROM = memory_region(REGION_GFX4);
 	int attr = BGROM[tile_index + 0x4000];
 	int code = BGROM[tile_index] | ((attr & 0x03) << 8);
-	SET_TILE_INFO(1,code,((attr & 0x60) >> 3) | ((attr & 0x0c) >> 2));	/* seems correct */
+	SET_TILE_INFO(
+			1,
+			code,
+			((attr & 0x60) >> 3) | ((attr & 0x0c) >> 2),	/* seems correct */
+			0)
 }
 
 static void ninjemak_get_tx_tile_info(int tile_index)
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] | ((attr & 0x03) << 8);
-	SET_TILE_INFO(0,code,(attr & 0x1c) >> 2);	/* seems correct ? */
+	SET_TILE_INFO(
+			0,
+			code,
+			(attr & 0x1c) >> 2,		/* seems correct ? */
+			0)
 }
 
 
@@ -348,7 +364,7 @@ WRITE_HANDLER( ninjemak_scrolly_w )
 
 ***************************************************************************/
 
-static void draw_sprites(struct osd_bitmap *bitmap)
+static void draw_sprites(struct mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -385,12 +401,10 @@ static void draw_sprites(struct osd_bitmap *bitmap)
 }
 
 
-void galivan_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void galivan_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	tilemap_set_scrollx(bg_tilemap,0,scrollx[0] + 256 * (scrollx[1] & 0x07));
 	tilemap_set_scrolly(bg_tilemap,0,scrolly[0] + 256 * (scrolly[1] & 0x07));
-
-	tilemap_update (ALL_TILEMAPS);
 
 	if (layers & 0x40)
 		fillbitmap(bitmap,Machine->pens[0],&Machine->visible_area);
@@ -404,13 +418,11 @@ void galivan_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 	tilemap_draw(bitmap,tx_tilemap,1,0);
 }
 
-void ninjemak_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void ninjemak_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	/* (scrollx[1] & 0x40) does something */
 	tilemap_set_scrollx(bg_tilemap,0,scrollx[0] + 256 * (scrollx[1] & 0x1f));
 	tilemap_set_scrolly(bg_tilemap,0,scrolly[0] + 256 * (scrolly[1] & 0xff));
-
-	tilemap_update(ALL_TILEMAPS);
 
 	if (ninjemak_dispdisable)
 		fillbitmap(bitmap,Machine->pens[0],&Machine->visible_area);

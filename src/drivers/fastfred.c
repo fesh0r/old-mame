@@ -61,11 +61,11 @@ I/O write:
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-extern unsigned char *galaxian_attributesram;
-WRITE_HANDLER( galaxian_attributes_w );
+extern unsigned char *fastfred_attributesram;
+WRITE_HANDLER( fastfred_attributes_w );
 
 void fastfred_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-void fastfred_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void fastfred_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE_HANDLER( fastfred_character_bank_select_w );
 WRITE_HANDLER( fastfred_color_bank_select_w );
 WRITE_HANDLER( fastfred_background_color_w );
@@ -148,7 +148,7 @@ static MEMORY_WRITE_START( fastfred_writemem )
 	{ 0xc800, 0xcfff, MWA_NOP },
 	{ 0xd000, 0xd3ff, videoram_w, &videoram, &videoram_size },
 	{ 0xd400, 0xd7ff, videoram_w },  // Mirrored for above
-	{ 0xd800, 0xd83f, galaxian_attributes_w, &galaxian_attributesram },
+	{ 0xd800, 0xd83f, fastfred_attributes_w, &fastfred_attributesram },
 	{ 0xd840, 0xd85f, MWA_RAM, &spriteram, &spriteram_size },
 	{ 0xd860, 0xdbff, MWA_RAM }, // Unused, but initialized
 	{ 0xe000, 0xe000, fastfred_background_color_w },
@@ -181,7 +181,7 @@ static MEMORY_WRITE_START( jumpcoas_writemem )
 	{ 0x0000, 0x7fff, MWA_ROM },
 	{ 0xc000, 0xc7ff, MWA_RAM },
 	{ 0xc800, 0xcfff, MWA_NOP },
-	{ 0xd000, 0xd03f, galaxian_attributes_w, &galaxian_attributesram },
+	{ 0xd000, 0xd03f, fastfred_attributes_w, &fastfred_attributesram },
 	{ 0xd040, 0xd05f, MWA_RAM, &spriteram, &spriteram_size },
 	{ 0xd060, 0xd3ff, MWA_NOP },
 	{ 0xd800, 0xdbff, videoram_w, &videoram, &videoram_size },
@@ -307,9 +307,9 @@ INPUT_PORTS_START( flyboy )
 	PORT_DIPSETTING(    0x10, "5" )
 	PORT_DIPSETTING(    0x20, "7" )
 	PORT_BITX( 0,       0x30, IPT_DIPSWITCH_SETTING | IPF_CHEAT, "255", IP_KEY_NONE, IP_JOY_NONE )
-	PORT_DIPNAME( 0x40, 0x00, "Invincibility" )
+	PORT_BITX(    0x40, 0x00, IPT_DIPSWITCH_NAME | IPF_CHEAT, "Invulnerability", IP_KEY_NONE, IP_JOY_NONE )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_BITX( 0,       0x40, IPT_DIPSWITCH_SETTING | IPF_CHEAT, DEF_STR( On ), IP_KEY_NONE, IP_JOY_NONE )
+	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
@@ -332,7 +332,7 @@ INPUT_PORTS_START( jumpcoas )
 	PORT_DIPSETTING(    0x10, "5" )
 	PORT_DIPSETTING(    0x20, "7" )
 	PORT_BITX( 0,       0x30, IPT_DIPSWITCH_SETTING | IPF_CHEAT, "255", IP_KEY_NONE, IP_JOY_NONE )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) )
@@ -466,7 +466,7 @@ static const struct MachineDriver machine_driver_fastfred =
 			nmi_interrupt,4
 		}
 	},
-	60, CLOCK/16/60,       /* frames per second, vblank duration */
+	60, 0,//CLOCK/16/60,       /* frames per second, vblank duration */
 	1,      /* 1 CPU slice per frame - interleaving is forced when a sound command is written */
 	0,
 
@@ -476,7 +476,7 @@ static const struct MachineDriver machine_driver_fastfred =
 	256,32*8,
 	fastfred_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	generic_vh_start,
 	generic_vh_stop,
@@ -503,7 +503,7 @@ static const struct MachineDriver machine_driver_jumpcoas =
 			nmi_interrupt,1
 		}
 	},
-	60, CLOCK/16/60,       /* frames per second, vblank duration */
+	60, 0,//CLOCK/16/60,       /* frames per second, vblank duration */
 	1,      /* Single CPU game */
 	jumpcoas_init_machine,
 

@@ -20,7 +20,7 @@ MAB 05 MAR 99 - changed overlay support to use artwork functions
 #include "vidhrdw/generic.h"
 
 /* vidhrdw/sbrkout.c */
-void sbrkout_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void sbrkout_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 int sbrkout_vh_start(void);
 extern unsigned char *sbrkout_horiz_ram;
 extern unsigned char *sbrkout_vert_ram;
@@ -231,7 +231,7 @@ static const struct MachineDriver machine_driver_sbrkout =
 	ARTWORK_COLORS,ARTWORK_COLORS,		/* Declare extra colors for the overlay */
 	init_palette,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	sbrkout_vh_start,
 	generic_vh_stop,

@@ -109,7 +109,7 @@
 /*************************************************************/
 int deadeye_vh_start(void);
 int gypsyjug_vh_start(void);
-void meadows_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void meadows_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE_HANDLER( meadows_videoram_w );
 WRITE_HANDLER( meadows_sprite_w );
 
@@ -464,7 +464,7 @@ static const struct MachineDriver machine_driver_deadeye =
 	ARTWORK_COLORS,ARTWORK_COLORS,		/* Leave extra colors for the overlay */
 	init_palette,
 
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY ,
     0,
 	deadeye_vh_start,
 	generic_vh_stop,
@@ -513,7 +513,7 @@ static const struct MachineDriver machine_driver_gypsyjug =
 	ARTWORK_COLORS,ARTWORK_COLORS,		/* Leave extra colors for the overlay */
 	init_palette,
 
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY ,
     0,
 	gypsyjug_vh_start,
 	generic_vh_stop,

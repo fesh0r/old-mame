@@ -19,7 +19,7 @@ WRITE16_HANDLER( rastan_spriteflip_w );
 
 int  rastan_vh_start(void);
 void rastan_vh_stop(void);
-void rastan_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void rastan_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 WRITE_HANDLER( rastan_adpcm_trigger_w );
 WRITE_HANDLER( rastan_c000_w );
@@ -353,10 +353,10 @@ static const struct MachineDriver machine_driver_rastan =
 	/* video hardware */
 	40*8, 32*8, { 0*8, 40*8-1, 1*8, 31*8-1 },
 	gfxdecodeinfo,
-	8192, 8192,
+	8192, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	rastan_vh_start,
 	rastan_vh_stop,

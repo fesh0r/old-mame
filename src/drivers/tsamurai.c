@@ -53,8 +53,7 @@ WRITE_HANDLER( tsamurai_textbank2_w );
 
 WRITE_HANDLER( tsamurai_scrolly_w );
 WRITE_HANDLER( tsamurai_scrollx_w );
-extern void tsamurai_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh );
-extern void tsamurai_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
+extern void tsamurai_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh );
 WRITE_HANDLER( tsamurai_bg_videoram_w );
 WRITE_HANDLER( tsamurai_fg_videoram_w );
 WRITE_HANDLER( tsamurai_fg_colorram_w );
@@ -62,7 +61,7 @@ extern int tsamurai_vh_start( void );
 extern unsigned char *tsamurai_videoram;
 
 extern int vsgongf_vh_start( void );
-extern void vsgongf_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh );
+extern void vsgongf_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh );
 
 static struct AY8910interface ay8910_interface =
 {
@@ -929,8 +928,8 @@ static struct MachineDriver machine_driver_tsamurai =
 	/* video hardware */
 	32*8, 32*8, { 0, 255, 8, 255-8 },
 	gfxdecodeinfo,
-	256,256,
-	tsamurai_convert_color_prom,
+	256, 0,
+	palette_RRRR_GGGG_BBBB_convert_prom,
 
 	VIDEO_TYPE_RASTER,
 	0,
@@ -987,8 +986,8 @@ static struct MachineDriver machine_driver_m660 =
 	/* video hardware */
 	32*8, 32*8, { 0, 255, 8, 255-8 },
 	gfxdecodeinfo,
-	256,256,
-	tsamurai_convert_color_prom,
+	256, 0,
+	palette_RRRR_GGGG_BBBB_convert_prom,
 
 	VIDEO_TYPE_RASTER,
 	0,
@@ -1034,8 +1033,8 @@ static struct MachineDriver machine_driver_vsgongf =
 	/* video hardware */
 	32*8, 32*8, { 0, 255, 8, 255-8 },
 	gfxdecodeinfo,
-	256,256,
-	tsamurai_convert_color_prom,
+	256, 0,
+	palette_RRRR_GGGG_BBBB_convert_prom,
 
 	VIDEO_TYPE_RASTER,
 	0,
@@ -1209,110 +1208,147 @@ ROM_END
 
 ROM_START( m660 )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code  - main CPU */
-	ROM_LOAD( "660l.bin", 0x0000, 0x4000, 0x57c0d1cc )
-	ROM_LOAD( "660m.bin", 0x4000, 0x4000, 0x628c6686 )
-	ROM_LOAD( "660n.bin", 0x8000, 0x4000, 0x1b418a97 )
+	ROM_LOAD( "660l.bin",    0x0000, 0x4000, 0x57c0d1cc )
+	ROM_LOAD( "660m.bin",    0x4000, 0x4000, 0x628c6686 )
+	ROM_LOAD( "660n.bin",    0x8000, 0x4000, 0x1b418a97 )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code - sample player */
-	ROM_LOAD( "660z.bin", 0x0000, 0x4000, 0x5734db5a )
+	ROM_LOAD( "14.4n",       0x0000, 0x4000, 0x5734db5a )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* Z80 code - sample player */
-	ROM_LOAD( "660y.bin", 0x0000, 0x4000, 0xfba51cf7 )
+	ROM_LOAD( "13.4j",       0x0000, 0x4000, 0xfba51cf7 )
 
 	ROM_REGION( 0x10000, REGION_CPU4, 0 ) /* Z80 code AY driver */
-	ROM_LOAD( "660x.bin", 0x0000, 0x8000, 0xb82f0cfa )
+	ROM_LOAD( "660x.bin",    0x0000, 0x8000, 0xb82f0cfa )
 
 	ROM_REGION( 0x0C000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "660q.bin", 0x0000, 0x4000, 0xe24e431a ) // tiles
-	ROM_LOAD( "660p.bin", 0x4000, 0x4000, 0xb2c93d46 )
-	ROM_LOAD( "660o.bin", 0x8000, 0x4000, 0x763c5983 )
+	ROM_LOAD( "4.7k",        0x0000, 0x4000, 0xe24e431a ) // tiles
+	ROM_LOAD( "5.6k",        0x4000, 0x4000, 0xb2c93d46 )
+	ROM_LOAD( "6.5k",        0x8000, 0x4000, 0x763c5983 )
 
 	ROM_REGION( 0x06000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "660u.bin", 0x0000, 0x2000, 0x030af716 ) // characters
-	ROM_LOAD( "660v.bin", 0x2000, 0x2000, 0x51a6e160 )
-	ROM_LOAD( "660w.bin", 0x4000, 0x2000, 0x8a45b469 )
+	ROM_LOAD( "660u.bin",    0x0000, 0x2000, 0x030af716 ) // characters
+	ROM_LOAD( "660v.bin",    0x2000, 0x2000, 0x51a6e160 )
+	ROM_LOAD( "660w.bin",    0x4000, 0x2000, 0x8a45b469 )
 
 	ROM_REGION( 0x0C000, REGION_GFX3, ROMREGION_DISPOSE )
-	ROM_LOAD( "660t.bin", 0x0000, 0x4000, 0x990c0cee ) // sprites
-	ROM_LOAD( "660s.bin", 0x4000, 0x4000, 0xd9aa7834 )
-	ROM_LOAD( "660r.bin", 0x8000, 0x4000, 0x27b26905 )
+	ROM_LOAD( "7.15e",       0x0000, 0x4000, 0x990c0cee ) // sprites
+	ROM_LOAD( "8.15d",       0x4000, 0x4000, 0xd9aa7834 )
+	ROM_LOAD( "9.15b",       0x8000, 0x4000, 0x27b26905 )
 
 	ROM_REGION( 0x0300, REGION_PROMS, 0 )
-	ROM_LOAD( "az-rrr.bin", 0x000, 0x100, 0xcd16d0f1 )
-	ROM_LOAD( "az-ggg.bin", 0x100, 0x100, 0x22e8b22c )
-	ROM_LOAD( "az-bbb.bin", 0x200, 0x100, 0xb7d6fdb5 )
+	ROM_LOAD( "4r.bpr",      0x000, 0x100, 0xcd16d0f1 )
+	ROM_LOAD( "4p.bpr",      0x100, 0x100, 0x22e8b22c )
+	ROM_LOAD( "5r.bpr",      0x200, 0x100, 0xb7d6fdb5 )
+ROM_END
+
+ROM_START( m660j )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code  - main CPU */
+	ROM_LOAD( "1.3c",        0x0000, 0x4000, 0x4c8f96aa )
+	ROM_LOAD( "2.3d",        0x4000, 0x4000, 0xe6661504 )
+	ROM_LOAD( "3.3f",        0x8000, 0x4000, 0x3a389ccd )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code - sample player */
+	ROM_LOAD( "14.4n",       0x0000, 0x4000, 0x5734db5a )
+
+	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* Z80 code - sample player */
+	ROM_LOAD( "13.4j",       0x0000, 0x4000, 0xfba51cf7 )
+
+	ROM_REGION( 0x10000, REGION_CPU4, 0 ) /* Z80 code AY driver */
+	ROM_LOAD( "d.4e",        0x0000, 0x4000, 0x93f3d852 )
+	ROM_LOAD( "e.4d",        0x4000, 0x4000, 0x12f5c077 )
+
+	ROM_REGION( 0x0C000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "4.7k",        0x0000, 0x4000, 0xe24e431a ) // tiles
+	ROM_LOAD( "5.6k",        0x4000, 0x4000, 0xb2c93d46 )
+	ROM_LOAD( "6.5k",        0x8000, 0x4000, 0x763c5983 )
+
+	ROM_REGION( 0x06000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "a.16j",       0x0000, 0x2000, 0x06f44c8c ) // characters
+	ROM_LOAD( "b.16k",       0x2000, 0x2000, 0x94b8b69f )
+	ROM_LOAD( "c.16m",       0x4000, 0x2000, 0xd6768c68 )
+
+	ROM_REGION( 0x0C000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_LOAD( "7.15e",       0x0000, 0x4000, 0x990c0cee ) // sprites
+	ROM_LOAD( "8.15d",       0x4000, 0x4000, 0xd9aa7834 )
+	ROM_LOAD( "9.15b",       0x8000, 0x4000, 0x27b26905 )
+
+	ROM_REGION( 0x0300, REGION_PROMS, 0 )
+	ROM_LOAD( "4r.bpr",      0x000, 0x100, 0xcd16d0f1 )
+	ROM_LOAD( "4p.bpr",      0x100, 0x100, 0x22e8b22c )
+	ROM_LOAD( "5r.bpr",      0x200, 0x100, 0xb7d6fdb5 )
 ROM_END
 
 ROM_START( m660b )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code  - main CPU */
-	ROM_LOAD( "m660-1.bin", 0x0000, 0x4000, 0x18f6c4be )
-	ROM_LOAD( "m660-2.bin", 0x4000, 0x4000, 0xe6661504 )
-	ROM_LOAD( "m660-3.bin", 0x8000, 0x4000, 0x3a389ccd )
+	ROM_LOAD( "m660-1.bin",  0x0000, 0x4000, 0x18f6c4be )
+	ROM_LOAD( "2.3d",        0x4000, 0x4000, 0xe6661504 )
+	ROM_LOAD( "3.3f",        0x8000, 0x4000, 0x3a389ccd )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code - sample player */
-	ROM_LOAD( "660z.bin", 0x0000, 0x4000, 0x5734db5a )
+	ROM_LOAD( "14.4n",       0x0000, 0x4000, 0x5734db5a )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* Z80 code - sample player */
-	ROM_LOAD( "660y.bin", 0x0000, 0x4000, 0xfba51cf7 )
+	ROM_LOAD( "13.4j",       0x0000, 0x4000, 0xfba51cf7 )
 
 	ROM_REGION( 0x10000, REGION_CPU4, 0 ) /* Z80 code AY driver */
-	ROM_LOAD( "660x.bin", 0x0000, 0x8000, 0xb82f0cfa )
+	ROM_LOAD( "660x.bin",    0x0000, 0x8000, 0xb82f0cfa )
 
 	ROM_REGION( 0x0C000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "660q.bin", 0x0000, 0x4000, 0xe24e431a ) // tiles
-	ROM_LOAD( "660p.bin", 0x4000, 0x4000, 0xb2c93d46 )
-	ROM_LOAD( "660o.bin", 0x8000, 0x4000, 0x763c5983 )
+	ROM_LOAD( "4.7k",        0x0000, 0x4000, 0xe24e431a ) // tiles
+	ROM_LOAD( "5.6k",        0x4000, 0x4000, 0xb2c93d46 )
+	ROM_LOAD( "6.5k",        0x8000, 0x4000, 0x763c5983 )
 
 	ROM_REGION( 0x06000, REGION_GFX2, ROMREGION_DISPOSE )
 	ROM_LOAD( "m660-10.bin", 0x0000, 0x2000, 0xb11405a6 ) // characters
-	ROM_LOAD( "m660-11.bin", 0x2000, 0x2000, 0x94b8b69f )
-	ROM_LOAD( "m660-12.bin", 0x4000, 0x2000, 0xd6768c68 )
+	ROM_LOAD( "b.16k",       0x2000, 0x2000, 0x94b8b69f )
+	ROM_LOAD( "c.16m",       0x4000, 0x2000, 0xd6768c68 )
 
 	ROM_REGION( 0x0C000, REGION_GFX3, ROMREGION_DISPOSE )
-	ROM_LOAD( "660t.bin", 0x0000, 0x4000, 0x990c0cee ) // sprites
-	ROM_LOAD( "660s.bin", 0x4000, 0x4000, 0xd9aa7834 )
-	ROM_LOAD( "660r.bin", 0x8000, 0x4000, 0x27b26905 )
+	ROM_LOAD( "7.15e",       0x0000, 0x4000, 0x990c0cee ) // sprites
+	ROM_LOAD( "8.15d",       0x4000, 0x4000, 0xd9aa7834 )
+	ROM_LOAD( "9.15b",       0x8000, 0x4000, 0x27b26905 )
 
-	ROM_REGION( 0x0300, REGION_PROMS, 0 )
-	ROM_LOAD( "az-rrr.bin", 0x000, 0x100, 0xcd16d0f1 )
-	ROM_LOAD( "az-ggg.bin", 0x100, 0x100, 0x22e8b22c )
-	ROM_LOAD( "az-bbb.bin", 0x200, 0x100, 0xb7d6fdb5 )
+	ROM_REGION( 0x300, REGION_PROMS, 0 )
+	ROM_LOAD( "4r.bpr",      0x000, 0x100, 0xcd16d0f1 )
+	ROM_LOAD( "4p.bpr",      0x100, 0x100, 0x22e8b22c )
+	ROM_LOAD( "5r.bpr",      0x200, 0x100, 0xb7d6fdb5 )
 ROM_END
 
 ROM_START( alphaxz )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code  - main CPU */
-	ROM_LOAD( "az-01.bin", 0x0000, 0x4000, 0x5336f842 )
-	ROM_LOAD( "az-02.bin", 0x4000, 0x4000, 0xa0779b6b )
-	ROM_LOAD( "az-03.bin", 0x8000, 0x4000, 0x2797bc7b )
+	ROM_LOAD( "az-01.bin",   0x0000, 0x4000, 0x5336f842 )
+	ROM_LOAD( "az-02.bin",   0x4000, 0x4000, 0xa0779b6b )
+	ROM_LOAD( "az-03.bin",   0x8000, 0x4000, 0x2797bc7b )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code - sample player */
-	ROM_LOAD( "660z.bin", 0x0000, 0x4000, 0x5734db5a )
+	ROM_LOAD( "14.4n",       0x0000, 0x4000, 0x5734db5a )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* Z80 code - sample player */
-	ROM_LOAD( "660y.bin", 0x0000, 0x4000, 0xfba51cf7 )
+	ROM_LOAD( "13.4j",       0x0000, 0x4000, 0xfba51cf7 )
 
 	ROM_REGION( 0x10000, REGION_CPU4, 0 ) /* Z80 code AY driver */
-	ROM_LOAD( "660x.bin", 0x0000, 0x8000, 0xb82f0cfa )
+	ROM_LOAD( "660x.bin",    0x0000, 0x8000, 0xb82f0cfa )
 
 	ROM_REGION( 0xC000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "az-04.bin", 0x00000, 0x4000, 0x23da4e3d ) // tiles
-	ROM_LOAD( "az-05.bin", 0x04000, 0x4000, 0x8746ff69 )
-	ROM_LOAD( "az-06.bin", 0x08000, 0x4000, 0x6e494964 )
+	ROM_LOAD( "az-04.bin",   0x00000, 0x4000, 0x23da4e3d ) // tiles
+	ROM_LOAD( "az-05.bin",   0x04000, 0x4000, 0x8746ff69 )
+	ROM_LOAD( "az-06.bin",   0x08000, 0x4000, 0x6e494964 )
 
 	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "az-10.bin", 0x00000, 0x2000, 0x10b499bb ) // characters
-	ROM_LOAD( "az-11.bin", 0x02000, 0x2000, 0xd91993f6 )
-	ROM_LOAD( "az-12.bin", 0x04000, 0x2000, 0x8ea48ef3 )
+	ROM_LOAD( "az-10.bin",   0x00000, 0x2000, 0x10b499bb ) // characters
+	ROM_LOAD( "az-11.bin",   0x02000, 0x2000, 0xd91993f6 )
+	ROM_LOAD( "az-12.bin",   0x04000, 0x2000, 0x8ea48ef3 )
 
 	ROM_REGION( 0xC000, REGION_GFX3, ROMREGION_DISPOSE )
-	ROM_LOAD( "az-07.bin", 0x00000, 0x4000, 0x5f9cc65e ) // sprites
-	ROM_LOAD( "az-08.bin", 0x04000, 0x4000, 0x23e3a6ba )
-	ROM_LOAD( "az-09.bin", 0x08000, 0x4000, 0x7096fa71 )
+	ROM_LOAD( "az-07.bin",   0x00000, 0x4000, 0x5f9cc65e ) // sprites
+	ROM_LOAD( "az-08.bin",   0x04000, 0x4000, 0x23e3a6ba )
+	ROM_LOAD( "az-09.bin",   0x08000, 0x4000, 0x7096fa71 )
 
 	ROM_REGION( 0x300, REGION_PROMS, 0 )
-	ROM_LOAD( "az-rrr.bin", 0x000, 0x100, 0xcd16d0f1 )
-	ROM_LOAD( "az-ggg.bin", 0x100, 0x100, 0x22e8b22c )
-	ROM_LOAD( "az-bbb.bin", 0x200, 0x100, 0xb7d6fdb5 )
+	ROM_LOAD( "4r.bpr",      0x000, 0x100, 0xcd16d0f1 )
+	ROM_LOAD( "4p.bpr",      0x100, 0x100, 0x22e8b22c )
+	ROM_LOAD( "5r.bpr",      0x200, 0x100, 0xb7d6fdb5 )
 ROM_END
 
 ROM_START( vsgongf )
@@ -1349,6 +1385,8 @@ GAME( 1985, tsamurai, 0,        tsamurai, tsamurai, 0, ROT90, "Taito", "Samurai 
 GAME( 1985, tsamura2, tsamurai, tsamurai, tsamurai, 0, ROT90, "Taito", "Samurai Nihon-ichi (set 2)" )
 GAMEX(1985, nunchaku, 0,        tsamurai, nunchaku, 0, ROT90, "Taito", "Nunchackun", GAME_IMPERFECT_COLORS )
 GAMEX(1985, yamagchi, 0,        tsamurai, yamagchi, 0, ROT90, "Taito", "Go Go Mr. Yamaguchi / Yuke Yuke Yamaguchi-kun", GAME_IMPERFECT_COLORS )
-GAME( 1986, m660,     0,        m660,     m660    , 0, ROT90, "Taito", "Mission 660" )
+
+GAME( 1986, m660,     0,        m660,     m660    , 0, ROT90, "[Wood Place] Taito America Corporation", "Mission 660" )
+GAME( 1986, m660j,    m660,     m660,     m660    , 0, ROT90, "[Wood Place] Taito Corporation", "Mission 660 (Japan)" )
 GAME( 1986, m660b,    m660,     m660,     m660    , 0, ROT90, "bootleg", "Mission 660 (bootleg)" )
 GAME( 1986, alphaxz,  m660,     m660,     m660    , 0, ROT90, "Ed/Wood Place", "Alphax Z" )

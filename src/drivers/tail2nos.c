@@ -23,7 +23,7 @@ WRITE16_HANDLER( tail2nos_zoomdata_w );
 WRITE16_HANDLER( tail2nos_gfxbank_w );
 int tail2nos_vh_start(void);
 void tail2nos_vh_stop(void);
-void tail2nos_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void tail2nos_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 static READ_HANDLER( pip )
@@ -295,10 +295,10 @@ static const struct MachineDriver machine_driver_tail2nos =
 	/* video hardware */
 	64*8, 32*8, { 0*8, 40*8-1, 1*8, 31*8-1 },
 	tail2nos_gfxdecodeinfo,
-	2048, 2048,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	tail2nos_vh_start,
 	tail2nos_vh_stop,

@@ -201,9 +201,15 @@ void swimmer_vh_convert_color_prom(unsigned char *palette, unsigned short *color
 	*(palette++) = 0;
 	*(palette++) = 0;
 	/* side panel background color */
+#if 0
+	// values calculated from the resistors don't seem to match the real board
 	*(palette++) = 0x24;
 	*(palette++) = 0x5d;
 	*(palette++) = 0x4e;
+#endif
+	*(palette++) = 0x20;
+	*(palette++) = 0x98;
+	*(palette++) = 0x79;
 }
 
 
@@ -248,7 +254,7 @@ WRITE_HANDLER( swimmer_bgcolor_w )
 	bit2 = (data >> 2) & 0x01;
 	b = 0x20 * bit0 + 0x40 * bit1 + 0x80 * bit2;
 
-	palette_change_color(BGPEN,r,g,b);
+	palette_set_color(BGPEN,r,g,b);
 }
 
 
@@ -322,12 +328,12 @@ WRITE_HANDLER( swimmer_sidepanel_enable_w )
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
 ***************************************************************************/
-static void drawbigsprite(struct osd_bitmap *bitmap)
+static void drawbigsprite(struct mame_bitmap *bitmap)
 {
 	int offs;
 	int ox,oy,sx,sy,flipx,flipy;
@@ -373,12 +379,12 @@ static void drawbigsprite(struct osd_bitmap *bitmap)
 }
 
 
-void cclimber_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void cclimber_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 
 
-	if (palette_recalc() || full_refresh)
+	if (full_refresh)
 	{
 		memset(dirtybuffer,1,videoram_size);
 	}
@@ -491,12 +497,12 @@ void cclimber_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 
 
 
-void swimmer_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void swimmer_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 
 
-	if (palette_recalc() || full_refresh)
+	if (full_refresh)
 	{
 		memset(dirtybuffer,1,videoram_size);
 	}

@@ -52,7 +52,7 @@ TODO:
 
 void taitol_eof_callback(void);
 int taitol_vh_start(void);
-void taitol_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void taitol_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 
 void taitol_chardef14_m(int offset);
 void taitol_chardef15_m(int offset);
@@ -130,7 +130,7 @@ logerror("Large palette ? %03x (%04x)\n", addr, cpu_get_pc());
 	else
 	{
 		//		r = g = b = ((addr & 0x1e) != 0)*255;
-		palette_change_color(addr/2, r, g, b);
+		palette_set_color(addr/2, r, g, b);
 	}
 }
 
@@ -255,7 +255,7 @@ static void horshoes_init(void)
 static int vbl_interrupt(void)
 {
 	/* kludge to make plgirls boot */
-	if (cpunum_get_reg(0,Z80_IM) != 2) return Z80_IGNORE_INT;
+	if (cpunum_get_reg(0,Z80_IM) != 2) return ignore_interrupt();
 
 	// What is really generating interrupts 0 and 1 is still to be found
 
@@ -266,7 +266,7 @@ static int vbl_interrupt(void)
 	if (cpu_getiloops() == 0 && (irq_enable & 4))
 		return irq_adr_table[2];
 
-	return Z80_IGNORE_INT;
+	return ignore_interrupt();
 }
 
 static WRITE_HANDLER( irq_adr_w )
@@ -2018,7 +2018,7 @@ static struct YM2610interface ym2610_interface =
 {
 	1,	/* 1 chip */
 	8000000,	/* 8 MHz */
-	{ 30 },
+	{ 25 },
 	{ 0 },
 	{ 0 },
 	{ 0 },
@@ -2026,7 +2026,7 @@ static struct YM2610interface ym2610_interface =
 	{ irqhandler },
 	{ REGION_SOUND1 },
 	{ REGION_SOUND1 },
-	{ YM3012_VOL(60,MIXER_PAN_LEFT,60,MIXER_PAN_RIGHT) }
+	{ YM3012_VOL(100,MIXER_PAN_LEFT,100,MIXER_PAN_RIGHT) }
 };
 
 static struct YM2203interface ym2203_interface_double =
@@ -2083,10 +2083,10 @@ static const struct MachineDriver machine_driver_##name =		\
 															\
 	40*8, 32*8, { 0*8, 40*8-1, 2*8, 30*8-1 },				\
 	gfxdecodeinfo2,											\
-	256, 256,												\
+	256, 0,													\
 	0,														\
 															\
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,				\
+	VIDEO_TYPE_RASTER,										\
 	taitol_eof_callback,									\
 	taitol_vh_start,										\
 	0,														\
@@ -2130,10 +2130,10 @@ static const struct MachineDriver machine_driver_##name =		\
 															\
 	40*8, 32*8, { 0*8, 40*8-1, 2*8, 30*8-1 },				\
 	gfxdecodeinfo2,											\
-	256, 256,												\
+	256, 0,													\
 	0,														\
 															\
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,				\
+	VIDEO_TYPE_RASTER,										\
 	taitol_eof_callback,									\
 	taitol_vh_start,										\
 	0,														\
@@ -2181,10 +2181,10 @@ static const struct MachineDriver machine_driver_##name =		\
 															\
 	40*8, 32*8, { 0*8, 40*8-1, 2*8, 30*8-1 },				\
 	gfxdecodeinfo2,											\
-	256, 256,												\
+	256, 0,													\
 	0,														\
 															\
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,				\
+	VIDEO_TYPE_RASTER,										\
 	taitol_eof_callback,									\
 	taitol_vh_start,										\
 	0,														\
@@ -2221,11 +2221,11 @@ static const struct MachineDriver machine_driver_##name =		\
 	name ## _init,											\
 															\
 	40*8, 32*8, { 0*8, 40*8-1, 2*8, 30*8-1 },				\
-	gfxdecodeinfo1,											\
-	256, 256,												\
+	gfxdecodeinfo2,											\
+	256, 0,													\
 	0,														\
 															\
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,				\
+	VIDEO_TYPE_RASTER,										\
 	taitol_eof_callback,									\
 	taitol_vh_start,										\
 	0,														\
@@ -2257,10 +2257,10 @@ static const struct MachineDriver machine_driver_##name =	\
 														\
 	40*8, 32*8, { 0*8, 40*8-1, 2*8, 30*8-1 },			\
 	gfxdecodeinfo1,										\
-	256, 256,											\
+	256, 0,												\
 	0,													\
 														\
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,			\
+	VIDEO_TYPE_RASTER,									\
 	taitol_eof_callback,								\
 	taitol_vh_start,									\
 	0,													\
@@ -2410,14 +2410,36 @@ ROM_START( kurikint )
 	ROM_LOAD( "b42-07.22",   0x00000, 0x10000, 0x0f2719c0 )
 
 	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "kk_1-1l.rom", 0x00000, 0x20000, 0xdf1d4fcd )
-	ROM_LOAD( "kk_2-2l.rom", 0x20000, 0x20000, 0xfca7f647 )
-	ROM_LOAD( "kk_5-3l.rom", 0x40000, 0x20000, 0xd080fde1 )
-	ROM_LOAD( "kk_7-4l.rom", 0x60000, 0x20000, 0xf5bf6829 )
-	ROM_LOAD( "kk_3-1h.rom", 0x80000, 0x20000, 0x71af848e )
-	ROM_LOAD( "kk_4-2h.rom", 0xa0000, 0x20000, 0xcebb5bac )
-	ROM_LOAD( "kk_6-3h.rom", 0xc0000, 0x20000, 0x322e3752 )
-	ROM_LOAD( "kk_8-4h.rom", 0xe0000, 0x20000, 0x117bde99 )
+	ROM_LOAD( "b42-01.1",    0x00000, 0x80000, 0x7d1a1fec )
+	ROM_LOAD( "b42-02.5",    0x80000, 0x80000, 0x1a52e65c )
+ROM_END
+
+ROM_START( kurikinu )
+	ROM_REGION( 0xb0000, REGION_CPU1, 0 )
+	ROM_LOAD( "b42-08.2",    0x00000, 0x20000, 0x7075122e )
+	ROM_RELOAD(              0x10000, 0x20000 )
+	ROM_LOAD( "b42-06.6",    0x30000, 0x20000, 0xfa15fd65 )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_LOAD( "b42-07.22",   0x00000, 0x10000, 0x0f2719c0 )
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "b42-01.1",    0x00000, 0x80000, 0x7d1a1fec )
+	ROM_LOAD( "b42-02.5",    0x80000, 0x80000, 0x1a52e65c )
+ROM_END
+
+ROM_START( kurikinj )
+	ROM_REGION( 0xb0000, REGION_CPU1, 0 )
+	ROM_LOAD( "b42_05.2",    0x00000, 0x20000, 0x077222b8 )
+	ROM_RELOAD(              0x10000, 0x20000 )
+	ROM_LOAD( "b42-06.6",    0x30000, 0x20000, 0xfa15fd65 )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_LOAD( "b42-07.22",   0x00000, 0x10000, 0x0f2719c0 )
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "b42-01.1",    0x00000, 0x80000, 0x7d1a1fec )
+	ROM_LOAD( "b42-02.5",    0x80000, 0x80000, 0x1a52e65c )
 ROM_END
 
 ROM_START( kurikina )
@@ -2577,6 +2599,8 @@ GAME( 1989, champwru, champwr,  champwr,  champwru, 0,        ROT0,   "Taito Ame
 GAME( 1989, champwrj, champwr,  champwr,  champwrj, 0,        ROT0,   "Taito Corporation", "Champion Wrestler (Japan)" )
 
 GAME( 1988, kurikint, 0,        kurikint, kurikint, 0,        ROT0,   "Taito Corporation Japan", "Kuri Kinton (World)" )
+GAME( 1988, kurikinu, kurikint, kurikint, kurikint, 0,        ROT0,   "Taito America Corporation", "Kuri Kinton (US)" )
+GAME( 1988, kurikinj, kurikint, kurikint, kurikint, 0,        ROT0,   "Taito Corporation", "Kuri Kinton (Japan)" )
 GAME( 1988, kurikina, kurikint, kurikint, kurikina, 0,        ROT0,   "Taito Corporation Japan", "Kuri Kinton (prototype?)" )
 
 GAME( 1989, plotting, 0,        plotting, plotting, plotting, ROT0,   "Taito Corporation Japan", "Plotting (World)" )

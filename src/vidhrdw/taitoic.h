@@ -23,24 +23,31 @@ WRITE16_HANDLER( PC080SN_ctrl_word_1_w );
 void PC080SN_set_scroll(int chip,int tilemap_num,int scrollx,int scrolly);
 void PC080SN_set_trans_pen(int chip,int tilemap_num,int pen);
 void PC080SN_tilemap_update(void);
-void PC080SN_tilemap_draw(struct osd_bitmap *bitmap,int chip,int layer,int flags,UINT32 priority);
+void PC080SN_tilemap_draw(struct mame_bitmap *bitmap,int chip,int layer,int flags,UINT32 priority);
+
+/* For Topspeed */
+void PC080SN_tilemap_draw_special(struct mame_bitmap *bitmap,int chip,int layer,int flags,UINT32 priority,data16_t *ram);
 
 /***************************************************************************/
 
-int TC0080VCO_vh_start(int gfxnum,int has_text_layer,int zoom_xoffs,int zoom_yoffs);
+int TC0080VCO_vh_start(int gfxnum,int has_fg0,int bg_xoffs,int bg_yoffs,int bg_flip_yoffs);
 void TC0080VCO_vh_stop(void);
 
 READ16_HANDLER ( TC0080VCO_word_r );
 WRITE16_HANDLER( TC0080VCO_word_w );
 
 void TC0080VCO_tilemap_update(void);
-void TC0080VCO_tilemap_draw(struct osd_bitmap *bitmap,int layer,int flags,UINT32 priority);
+void TC0080VCO_tilemap_draw(struct mame_bitmap *bitmap,int layer,int flags,UINT32 priority);
 void TC0080VCO_draw_sprites(void);
 
 
 /***************************************************************************/
 
-int TC0100SCN_vh_start(int chips,int gfxnum,int x_offset);
+/* When writing a driver pass zero for all the offsets initially then
+   tweak them later. Most TC0100SCN games have y_offset=0 */
+
+int TC0100SCN_vh_start(int chips,int gfxnum,int x_offset,int y_offset,int flip_xoffs,
+		int flip_yoffs,int flip_text_xoffs,int flip_text_yoffs,int multiscrn_xoffs);
 
 /* Function to set separate color banks for the three tilemapped layers.
    To change from the default (0,0,0) use after calling TC0100SCN_vh_start */
@@ -81,7 +88,7 @@ WRITE16_HANDLER( TC0100SCN_dual_screen_w );
 WRITE16_HANDLER( TC0100SCN_triple_screen_w );
 
 void TC0100SCN_tilemap_update(void);
-void TC0100SCN_tilemap_draw(struct osd_bitmap *bitmap,int chip,int layer,int flags,UINT32 priority);
+void TC0100SCN_tilemap_draw(struct mame_bitmap *bitmap,int chip,int layer,int flags,UINT32 priority);
 
 /* returns 0 or 1 depending on the lowest priority tilemap set in the internal
    register. Use this function to draw tilemaps in the correct order. */
@@ -96,7 +103,7 @@ READ16_HANDLER ( TC0280GRD_word_r );
 WRITE16_HANDLER( TC0280GRD_word_w );
 WRITE16_HANDLER( TC0280GRD_ctrl_word_w );
 void TC0280GRD_tilemap_update(int base_color);
-void TC0280GRD_zoom_draw(struct osd_bitmap *bitmap,int xoffset,int yoffset,UINT32 priority);
+void TC0280GRD_zoom_draw(struct mame_bitmap *bitmap,int xoffset,int yoffset,UINT32 priority);
 
 int TC0430GRW_vh_start(int gfxnum);
 void TC0430GRW_vh_stop(void);
@@ -104,7 +111,7 @@ READ16_HANDLER ( TC0430GRW_word_r );
 WRITE16_HANDLER( TC0430GRW_word_w );
 WRITE16_HANDLER( TC0430GRW_ctrl_word_w );
 void TC0430GRW_tilemap_update(int base_color);
-void TC0430GRW_zoom_draw(struct osd_bitmap *bitmap,int xoffset,int yoffset,UINT32 priority);
+void TC0430GRW_zoom_draw(struct mame_bitmap *bitmap,int xoffset,int yoffset,UINT32 priority);
 
 /***************************************************************************/
 
@@ -125,14 +132,16 @@ WRITE32_HANDLER( TC0480SCP_long_w );
 READ32_HANDLER ( TC0480SCP_ctrl_long_r );
 WRITE32_HANDLER( TC0480SCP_ctrl_long_w );
 
-void TC0480SCP_mark_transparent_colors(int opaque_layer);
 void TC0480SCP_tilemap_update(void);
-void TC0480SCP_tilemap_draw(struct osd_bitmap *bitmap,int layer,int flags,UINT32 priority);
+void TC0480SCP_tilemap_draw(struct mame_bitmap *bitmap,int layer,int flags,UINT32 priority);
 
 /* Returns the priority order of the bg tilemaps set in the internal
    register. The order in which the four layers should be drawn is
    returned in the lowest four nibbles  (msn = bottom layer; lsn = top) */
 int TC0480SCP_get_bg_priority(void);
+
+/* Undrfire needs to read this for a sprite/tile priority hack */
+extern int TC0480SCP_pri_reg;
 
 
 /***************************************************************************/
@@ -161,6 +170,9 @@ WRITE16_HANDLER( TC0360PRI_halfword_swap_w );
 
 /***************************************************************************/
 
+/* I/O chips, all extremely similar. The TC0220IOC was sometimes addressed
+   through a port, typically on earlier games. */
+
 READ_HANDLER ( TC0220IOC_r );
 WRITE_HANDLER( TC0220IOC_w );
 READ_HANDLER ( TC0220IOC_port_r );
@@ -168,5 +180,32 @@ WRITE_HANDLER( TC0220IOC_port_w );
 READ_HANDLER ( TC0220IOC_portreg_r );
 WRITE_HANDLER( TC0220IOC_portreg_w );
 
+READ16_HANDLER ( TC0220IOC_halfword_port_r );
+WRITE16_HANDLER( TC0220IOC_halfword_port_w );
+READ16_HANDLER ( TC0220IOC_halfword_portreg_r );
+WRITE16_HANDLER( TC0220IOC_halfword_portreg_w );
+READ16_HANDLER ( TC0220IOC_halfword_byteswap_port_r );
+WRITE16_HANDLER( TC0220IOC_halfword_byteswap_port_w );
+READ16_HANDLER ( TC0220IOC_halfword_byteswap_portreg_r );
+WRITE16_HANDLER( TC0220IOC_halfword_byteswap_portreg_w );
+READ16_HANDLER ( TC0220IOC_halfword_r );
+WRITE16_HANDLER( TC0220IOC_halfword_w );
+READ16_HANDLER ( TC0220IOC_halfword_byteswap_r );
+WRITE16_HANDLER( TC0220IOC_halfword_byteswap_w );
+
 READ_HANDLER ( TC0510NIO_r );
 WRITE_HANDLER( TC0510NIO_w );
+
+READ16_HANDLER ( TC0510NIO_halfword_r );
+WRITE16_HANDLER( TC0510NIO_halfword_w );
+READ16_HANDLER ( TC0510NIO_halfword_wordswap_r );
+WRITE16_HANDLER( TC0510NIO_halfword_wordswap_w );
+
+READ_HANDLER ( TC0640FIO_r );
+WRITE_HANDLER( TC0640FIO_W );
+
+READ16_HANDLER ( TC0640FIO_halfword_r );
+WRITE16_HANDLER( TC0640FIO_halfword_w );
+READ16_HANDLER ( TC0640FIO_halfword_byteswap_r );
+WRITE16_HANDLER( TC0640FIO_halfword_byteswap_w );
+

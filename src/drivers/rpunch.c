@@ -118,7 +118,7 @@
 /* video driver data & functions */
 int rpunch_vh_start(void);
 void rpunch_vh_stop(void);
-void rpunch_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void rpunch_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 
 extern data16_t *rpunch_bitmapram;
 extern size_t rpunch_bitmapram_size;
@@ -649,10 +649,10 @@ static const struct MachineDriver machine_driver_rpunch =
 	/* video hardware */
 	304, 224, { 8, 303-8, 0, 223-8 },
 	gfxdecodeinfo,
-	1024,1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	rpunch_vh_start,
 	rpunch_vh_stop,

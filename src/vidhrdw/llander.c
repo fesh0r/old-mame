@@ -47,13 +47,10 @@ void llander_init_colors (unsigned char *palette, unsigned short *colortable,con
 
 	nextcol = 24;
 
-	artwork_load_size(&llander_panel, "llander.png", nextcol, Machine->drv->total_colors-nextcol, width, height);
+	artwork_load_size(&llander_panel, "llander.png", nextcol, width, height);
 	if (llander_panel != NULL)
 	{
-		if (Machine->scrbitmap->depth == 8)
-			nextcol += llander_panel->num_pens_used;
-
-		artwork_load_size(&llander_lit_panel, "llander1.png", nextcol, Machine->drv->total_colors-nextcol, width, height);
+		artwork_load_size(&llander_lit_panel, "llander1.png", nextcol, width, height);
 		if (llander_lit_panel == NULL)
 		{
 			artwork_free (&llander_panel);
@@ -65,11 +62,6 @@ void llander_init_colors (unsigned char *palette, unsigned short *colortable,con
 
 	for (i = 0; i < 16; i++)
 		palette[3*(i+8)]=palette[3*(i+8)+1]=palette[3*(i+8)+2]= (255*i)/15;
-
-	memcpy (palette+3*llander_panel->start_pen, llander_panel->orig_palette,
-			3*llander_panel->num_pens_used);
-	memcpy (palette+3*llander_lit_panel->start_pen, llander_lit_panel->orig_palette,
-			3*llander_lit_panel->num_pens_used);
 }
 
 int llander_start(void)
@@ -87,8 +79,6 @@ int llander_start(void)
 		lights[i] = 0;
 		lights_changed[i] = 1;
 	}
-	if (llander_panel) backdrop_refresh(llander_panel);
-	if (llander_lit_panel) backdrop_refresh(llander_lit_panel);
 	return 0;
 }
 
@@ -104,11 +94,11 @@ void llander_stop(void)
 
 }
 
-void llander_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void llander_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int i, pwidth, pheight;
 	float scale;
-	struct osd_bitmap vector_bitmap;
+	struct mame_bitmap vector_bitmap;
 	struct rectangle rect;
 
 	if (llander_panel == NULL)
@@ -120,10 +110,7 @@ void llander_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 	pwidth = llander_panel->artwork->width;
 	pheight = llander_panel->artwork->height;
 
-	vector_bitmap.width = bitmap->width;
-	vector_bitmap.height = bitmap->height - pheight;
-	vector_bitmap._private = bitmap->_private;
-	vector_bitmap.line = bitmap->line;
+	vector_bitmap = *bitmap;
 
 	vector_vh_screenrefresh(&vector_bitmap,full_refresh);
 

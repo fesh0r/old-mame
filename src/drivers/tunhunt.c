@@ -234,7 +234,7 @@ static void update_palette( void )
 		green	= APPLY_SHADE(green,shade);
 		blue	= APPLY_SHADE(blue,shade);
 
-		palette_change_color( i,red,green,blue );
+		palette_set_color( i,red,green,blue );
 	}
 }
 
@@ -280,7 +280,7 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 	{ -1 }
 };
 
-static void draw_text( struct osd_bitmap *bitmap )
+static void draw_text( struct mame_bitmap *bitmap )
 {
 	/* 8 columns, 32 rows */
 	int offs;
@@ -305,7 +305,7 @@ static void draw_text( struct osd_bitmap *bitmap )
 	}
 }
 
-static void draw_motion_object( struct osd_bitmap *bitmap )
+static void draw_motion_object( struct mame_bitmap *bitmap )
 {
 /*
  *		VSTRLO	0x1202
@@ -386,7 +386,7 @@ static void draw_motion_object( struct osd_bitmap *bitmap )
 	);
 }
 
-static void draw_box( struct osd_bitmap *bitmap )
+static void draw_box( struct mame_bitmap *bitmap )
 {
 /*
 	This is unnecessarily slow, but the box priorities aren't completely understood,
@@ -442,7 +442,7 @@ static void draw_box( struct osd_bitmap *bitmap )
 
 /* "shell" graphics are 16x16 pixel tiles used for player shots and targeting cursor */
 static void draw_shell(
-		struct osd_bitmap *bitmap,
+		struct mame_bitmap *bitmap,
 		int picture_code,
 		int hposition,
 		int vstart,
@@ -492,12 +492,11 @@ static void draw_shell(
 			TRANSPARENCY_PEN,0 );
 }
 
-void tunhunt_vh_screenrefresh( struct osd_bitmap *bitmap, int full_refresh )
+void tunhunt_vh_screenrefresh( struct mame_bitmap *bitmap, int full_refresh )
 {
 	const UINT8 *pMem = memory_region( REGION_CPU1 );
 
 	update_palette();
-	palette_recalc();
 
 	draw_box( bitmap );
 
@@ -659,7 +658,7 @@ static struct MachineDriver machine_driver_tunhunt =
 	{
 		{
 			CPU_M6502,
-			2000000, /* ? CPU speed in Mhz */
+			2000000, /* ??? */
 			readmem,writemem,0,0,
 			interrupt,2 /* ? probably wrong */
 		}
@@ -672,7 +671,7 @@ static struct MachineDriver machine_driver_tunhunt =
 	gfxdecodeinfo,
 	16,16, /* number of colors, colortable size */
 	tunhunt_vh_convert_color_prom,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	tunhunt_vh_start,
 	tunhunt_vh_stop,

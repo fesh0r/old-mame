@@ -67,7 +67,7 @@ WRITE16_HANDLER( rastan_spriteflip_w );
 
 int  opwolf_vh_start(void);
 void opwolf_eof_callback(void);
-void opwolf_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void opwolf_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 void rastan_vh_stop(void);
 
 static int opwolf_gun_xoffs,opwolf_gun_yoffs;
@@ -510,10 +510,10 @@ static struct MachineDriver machine_driver_opwolf =
 	/* video hardware */
 	40*8, 32*8, { 0*8, 40*8-1, 1*8, 31*8-1 },
 	opwolf_gfxdecodeinfo,
-	8192, 8192,
+	8192, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	opwolf_eof_callback,
 	opwolf_vh_start,
 	rastan_vh_stop,
@@ -563,10 +563,10 @@ static struct MachineDriver machine_driver_opwolfb =
 	/* video hardware */
 	40*8, 32*8, { 0*8, 40*8-1, 1*8, 31*8-1 },
 	opwolfb_gfxdecodeinfo,
-	8192, 8192,
+	8192, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	opwolf_eof_callback,
 	opwolf_vh_start,
 	rastan_vh_stop,

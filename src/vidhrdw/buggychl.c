@@ -9,7 +9,7 @@ unsigned char *buggychl_character_ram;
 
 static int *dirtychar;
 
-static struct osd_bitmap *tmpbitmap1,*tmpbitmap2;
+static struct mame_bitmap *tmpbitmap1,*tmpbitmap2;
 static int sl_bank,bg_on,sky_on,sprite_color_base,bg_scrollx;
 
 
@@ -119,7 +119,7 @@ WRITE_HANDLER( buggychl_bg_scrollx_w )
 
 
 
-static void draw_sky(struct osd_bitmap *bitmap)
+static void draw_sky(struct mame_bitmap *bitmap)
 {
 	int x,y;
 
@@ -133,7 +133,7 @@ static void draw_sky(struct osd_bitmap *bitmap)
 }
 
 
-static void draw_bg(struct osd_bitmap *bitmap)
+static void draw_bg(struct mame_bitmap *bitmap)
 {
 	int offs;
 	int scroll[256];
@@ -171,11 +171,11 @@ static void draw_bg(struct osd_bitmap *bitmap)
 	for (offs = 0;offs < 256;offs++)
 		scroll[offs] = -buggychl_scrollh[offs];
 
-	copyscrollbitmap(bitmap,tmpbitmap2,256,scroll,0,0,&Machine->visible_area,TRANSPARENCY_PEN,palette_transparent_pen);
+	copyscrollbitmap(bitmap,tmpbitmap2,256,scroll,0,0,&Machine->visible_area,TRANSPARENCY_COLOR,32);
 }
 
 
-static void draw_fg(struct osd_bitmap *bitmap)
+static void draw_fg(struct mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -202,7 +202,7 @@ static void draw_fg(struct osd_bitmap *bitmap)
 }
 
 
-static void draw_sprites(struct osd_bitmap *bitmap)
+static void draw_sprites(struct mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -273,20 +273,15 @@ static void draw_sprites(struct osd_bitmap *bitmap)
 }
 
 
-void buggychl_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void buggychl_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int code;
 
 
-	palette_used_colors[2*16] = PALETTE_COLOR_TRANSPARENT;
-
-	if (palette_recalc())
-		memset(dirtybuffer,1,videoram_size);
-
 	if (sky_on)
 		draw_sky(bitmap);
 	else
-		fillbitmap(bitmap,palette_transparent_pen,&Machine->visible_area);
+		fillbitmap(bitmap,Machine->pens[0],&Machine->visible_area);
 
 	/* decode modified characters */
 	for (code = 0;code < 256;code++)

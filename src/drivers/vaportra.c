@@ -13,7 +13,7 @@
 #include "cpu/h6280/h6280.h"
 
 int  vaportra_vh_start(void);
-void vaportra_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void vaportra_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 WRITE16_HANDLER( vaportra_pf1_data_w );
 WRITE16_HANDLER( vaportra_pf2_data_w );
@@ -348,10 +348,10 @@ static const struct MachineDriver machine_driver_vaportra =
 	32*8, 32*8, { 0*8, 32*8-1, 1*8, 31*8-1 },
 
 	gfxdecodeinfo,
-	1280, 1280,
+	1280, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_BUFFERS_SPRITERAM,
+	VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_BUFFERS_SPRITERAM,
 	0,
 	vaportra_vh_start,
 	0,

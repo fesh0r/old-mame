@@ -68,7 +68,7 @@ static void modify_palette(void)
 
 		col_index++;
 
-		palette_change_color(i,r,g,b);
+		palette_set_color(i,r,g,b);
 	}
 }
 
@@ -232,12 +232,12 @@ READ_HANDLER( tomahawk_protection_r )
 }
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
 ***************************************************************************/
-void astrof_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void astrof_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	if (do_modify_palette)
 	{
@@ -246,7 +246,7 @@ void astrof_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 		do_modify_palette = 0;
 	}
 
-	if (palette_recalc() || full_refresh)
+	if (full_refresh)
 	{
 		int offs;
 

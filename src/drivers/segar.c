@@ -40,6 +40,7 @@ TODO:
 #include "vidhrdw/generic.h"
 #include "cpu/i8039/i8039.h"
 #include "cpu/z80/z80.h"
+#include "machine/segacrpt.h"
 
 /* sndhrdw/segar.c */
 
@@ -76,10 +77,6 @@ WRITE_HANDLER( segar_w );
 
 extern unsigned char *segar_mem;
 
-/* machine/segacrpt.c */
-
-void sindbadm_decode(void);
-
 /* vidhrdw/segar.c */
 
 extern unsigned char *segar_characterram;
@@ -94,11 +91,11 @@ WRITE_HANDLER( segar_bcolortable_w );
 void segar_init_colors(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 WRITE_HANDLER( segar_video_port_w );
 int  segar_vh_start(void);
-void segar_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void segar_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 WRITE_HANDLER( monsterb_back_port_w );
 int  monsterb_vh_start(void);
-void monsterb_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void monsterb_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 int  spaceod_vh_start(void);
 void spaceod_vh_stop(void);
@@ -107,13 +104,13 @@ WRITE_HANDLER( spaceod_backshift_w );
 WRITE_HANDLER( spaceod_backshift_clear_w );
 WRITE_HANDLER( spaceod_backfill_w );
 WRITE_HANDLER( spaceod_nobackfill_w );
-void spaceod_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void spaceod_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 WRITE_HANDLER( pignewt_back_color_w );
 WRITE_HANDLER( pignewt_back_ports_w );
 
 WRITE_HANDLER( sindbadm_back_port_w );
-void sindbadm_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void sindbadm_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 /***************************************************************************
 
@@ -1162,7 +1159,7 @@ static const struct MachineDriver machine_driver_astrob =
 	16*4+1,16*4+1,      // 16 2-bit colors + 1 transparent black
 	segar_init_colors,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	segar_vh_start,
 	generic_vh_stop,
@@ -1210,7 +1207,7 @@ static const struct MachineDriver machine_driver_spaceod =
 	16*4*2+1,16*4*2+1,          // 16 2-bit colors for foreground, 1 6-bit color for background
 	segar_init_colors,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	spaceod_vh_start,
 	spaceod_vh_stop,
@@ -1254,7 +1251,7 @@ static const struct MachineDriver machine_driver_005 =
 	16*4+1,16*4+1,      // 16 2-bit colors for foreground and background
 	segar_init_colors,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	segar_vh_start,
 	generic_vh_stop,
@@ -1319,7 +1316,7 @@ static const struct MachineDriver machine_driver_monsterb =
 	16*4*2+1,16*4*2+1,          // 16 2-bit colors for foreground and background
 	segar_init_colors,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	monsterb_vh_start,
 	generic_vh_stop,
@@ -1364,7 +1361,7 @@ static const struct MachineDriver machine_driver_pignewt =
 	16*4*2+1,16*4*2+1,          // 16 2-bit colors for foreground and background
 	segar_init_colors,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	monsterb_vh_start,
 	generic_vh_stop,
@@ -1409,7 +1406,7 @@ static const struct MachineDriver machine_driver_sindbadm =
 	16*4*2+1,16*4*2+1,          // 16 2-bit colors for foreground and background
 	segar_init_colors,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	monsterb_vh_start,
 	generic_vh_stop,

@@ -25,7 +25,7 @@ extern unsigned char *spdodgeb_videoram;
 
 void spdodgeb_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 int spdodgeb_vh_start(void);
-void spdodgeb_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void spdodgeb_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 int spdodgeb_interrupt(void);
 WRITE_HANDLER( spdodgeb_scrollx_lo_w );
 WRITE_HANDLER( spdodgeb_ctrl_w );
@@ -396,7 +396,7 @@ static struct MachineDriver machine_driver_spdodgeb =
 	1024, 1024,
 	spdodgeb_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,	/* palette is static, but doesn't fit in 256 colors */
+	VIDEO_TYPE_RASTER,	/* palette is static, but doesn't fit in 256 colors */
 	0,
 	spdodgeb_vh_start,
 	0,

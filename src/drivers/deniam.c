@@ -47,7 +47,7 @@ WRITE16_HANDLER( deniam_palette_w );
 READ16_HANDLER( deniam_coinctrl_r );
 WRITE16_HANDLER( deniam_coinctrl_w );
 int deniam_vh_start(void);
-void deniam_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void deniam_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 
@@ -356,10 +356,10 @@ static const struct MachineDriver machine_driver_deniam16b =
 	/* video hardware */
 	512, 256, { 24*8, 64*8-1, 0*8, 28*8-1 },
 	gfxdecodeinfo,
-	2048, 2048,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	deniam_vh_start,
 	0,
@@ -397,10 +397,10 @@ static const struct MachineDriver machine_driver_deniam16c =
 	/* video hardware */
 	512, 256, { 24*8, 64*8-1, 0*8, 28*8-1 },
 	gfxdecodeinfo,
-	2048, 2048,
+	2048, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	deniam_vh_start,
 	0,
@@ -493,6 +493,6 @@ ROM_END
 
 
 
-GAME( 1996, logicpro, 0, deniam16b, logicpr2, logicpro, ROT0,       "Deniam", "Logic Pro" )
-GAME( 1996, karianx,  0, deniam16b, karianx,  karianx,  ROT0,       "Deniam", "Karian Cross" )
-GAMEX(1997, logicpr2, 0, deniam16c, logicpr2, logicpro, ROT0_16BIT, "Deniam", "Logic Pro 2 (Japan)", GAME_IMPERFECT_SOUND )
+GAME( 1996, logicpro, 0, deniam16b, logicpr2, logicpro, ROT0, "Deniam", "Logic Pro" )
+GAME( 1996, karianx,  0, deniam16b, karianx,  karianx,  ROT0, "Deniam", "Karian Cross" )
+GAMEX(1997, logicpr2, 0, deniam16c, logicpr2, logicpro, ROT0, "Deniam", "Logic Pro 2 (Japan)", GAME_IMPERFECT_SOUND )

@@ -17,7 +17,7 @@ extern int rockrage_irq_enable;
 /* from vidhrdw */
 int rockrage_vh_start(void);
 void rockrage_vh_stop(void);
-void rockrage_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void rockrage_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE_HANDLER( rockrage_vreg_w );
 void rockrage_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 
@@ -291,7 +291,7 @@ static const struct MachineDriver machine_driver_rockrage =
 	64, 64 + 2*16*16,
 	rockrage_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	rockrage_vh_start,
 	rockrage_vh_stop,

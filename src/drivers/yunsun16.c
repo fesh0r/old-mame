@@ -2,7 +2,7 @@
 
 						  -= Yun Sung 16 Bit Games =-
 
-					driver by	Luca Elia (eliavit@unina.it)
+					driver by	Luca Elia (l.elia@tin.it)
 
 
 Main  CPU    :  MC68000
@@ -45,7 +45,7 @@ WRITE16_HANDLER( yunsun16_vram_0_w );
 WRITE16_HANDLER( yunsun16_vram_1_w );
 
 int  yunsun16_vh_start(void);
-void yunsun16_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void yunsun16_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 /***************************************************************************
@@ -438,9 +438,9 @@ static const struct MachineDriver machine_driver_magicbub =
 	/* video hardware */
 	0x180, 0xe0, { 0+0x20, 0x180-1-0x20, 0, 0xe0-1 },
 	yunsun16_gfxdecodeinfo,
-	0x2000, 0x2000,
+	8192, 0,
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	yunsun16_vh_start,
 	0,
@@ -484,9 +484,9 @@ static const struct MachineDriver machine_driver_shocking =
 	/* video hardware */
 	0x180, 0xe0, { 0, 0x180-1-4, 0, 0xe0-1 },
 	yunsun16_gfxdecodeinfo,
-	0x2000, 0x2000,
+	8192, 0,
 	0,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	yunsun16_vh_start,
 	0,
@@ -529,7 +529,7 @@ A1020b is close to U67-70
 
 68HC000 p16 is close to  U32,33
 
-16.000000 Mhz
+16.000000 MHz
 
 Sound section uses "KS8001" and "KS8002" and SMD --> Z80
 and SMD "AD-65"
@@ -602,5 +602,5 @@ ROM_END
 
 ***************************************************************************/
 
-GAMEX( 19??, magicbub, 0, magicbub, magicbub, magicbub, ROT0_16BIT, "Yun Sung", "Magic Bubble", GAME_NO_COCKTAIL )
-GAMEX( 1997, shocking, 0, shocking, shocking, 0,        ROT0_16BIT, "Yun Sung", "Shocking",     GAME_NO_COCKTAIL )
+GAMEX( 19??, magicbub, 0, magicbub, magicbub, magicbub, ROT0, "Yun Sung", "Magic Bubble", GAME_NO_COCKTAIL )
+GAMEX( 1997, shocking, 0, shocking, shocking, 0,        ROT0, "Yun Sung", "Shocking",     GAME_NO_COCKTAIL )

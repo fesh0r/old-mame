@@ -88,7 +88,7 @@ extern unsigned char *ccastles_scrolly;
 WRITE_HANDLER( ccastles_paletteram_w );
 int ccastles_vh_start(void);
 void ccastles_vh_stop(void);
-void ccastles_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void ccastles_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 READ_HANDLER( ccastles_bitmode_r );
 WRITE_HANDLER( ccastles_bitmode_w );
@@ -267,10 +267,10 @@ static const struct MachineDriver machine_driver_ccastles =
 	0,
 	256, 232, { 0, 255, 0, 231 },
 	gfxdecodeinfo,
-	32, 32,
+	32, 0,
 	0,
 
-	VIDEO_TYPE_RASTER|VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	ccastles_vh_start,
 	ccastles_vh_stop,

@@ -2,6 +2,8 @@
 #include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 
+#define TC0480SCP_GFX_NUM 1
+
 struct tempsprite
 {
 	int gfx;
@@ -29,7 +31,7 @@ int gunbustr_vh_start (void)
 	if (!spritelist)
 		return 1;
 
-	if (TC0480SCP_vh_start(1,0,0x20,0x07,-1,-1,-1,0,0))
+	if (TC0480SCP_vh_start(TC0480SCP_GFX_NUM,0,0x20,0x07,-1,-1,-1,0,0))
 		return 1;
 
 	return 0;
@@ -81,7 +83,7 @@ Heavy use is made of sprite zooming.
 
 ********************************************************/
 
-static void gunbustr_draw_sprites_16x16(struct osd_bitmap *bitmap,int *primasks,int x_offs,int y_offs)
+static void gunbustr_draw_sprites_16x16(struct mame_bitmap *bitmap,int *primasks,int x_offs,int y_offs)
 {
 	data16_t *spritemap = (data16_t *)memory_region(REGION_USER1);
 	int offs, data, tilenum, color, flipx, flipy;
@@ -227,7 +229,7 @@ logerror("Sprite number %04x had %02x invalid chunks\n",tilenum,bad_chunks);
 				SCREEN REFRESH
 **************************************************************/
 
-void gunbustr_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void gunbustr_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	UINT8 layer[5];
 	UINT16 priority;
@@ -241,11 +243,6 @@ void gunbustr_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 	layer[2] = (priority &0x00f0) >>  4;
 	layer[3] = (priority &0x000f) >>  0;	/* tells us which is top */
 	layer[4] = 4;   /* text layer always over bg layers */
-
-	palette_init_used_colors();
-	memset(palette_used_colors,PALETTE_COLOR_USED,Machine->drv->total_colors);
-	TC0480SCP_mark_transparent_colors(layer[0]);
-	palette_recalc();
 
 	fillbitmap(priority_bitmap,0,NULL);
 

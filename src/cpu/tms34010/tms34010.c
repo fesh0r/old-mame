@@ -317,7 +317,13 @@ static data32_t (*rfield_functions_s[32])(offs_t offset) =
 **#################################################################################################*/
 
 /* context finder */
-#define FINDCONTEXT(_cpu) (cpu_is_saving_context(_cpu) ? cpu_getcontext(_cpu) : &state)
+INLINE tms34010_regs *FINDCONTEXT(int cpu)
+{
+	tms34010_regs *context = cpunum_get_context_ptr(cpu);
+	if (!context)
+		context = &state;
+	return context;
+}
 
 /* register definitions and shortcuts */
 #define PC				(state.pc)
@@ -391,7 +397,6 @@ static data32_t (*rfield_functions_s[32])(offs_t offset) =
 #define INC2_Y			BREG_Y(BINDEX(12))
 #define PATTRN			BREG(BINDEX(13))
 #define TEMP			BREG(BINDEX(14))
-
 
 
 /*###################################################################################################
@@ -1009,71 +1014,6 @@ void tms34020_set_context(void *src)
 
 
 /*###################################################################################################
-**	Return program counter
-**#################################################################################################*/
-
-unsigned tms34010_get_pc(void)
-{
-	return PC;
-}
-
-unsigned tms34020_get_pc(void)
-{
-	return tms34010_get_pc();
-}
-
-
-
-/*###################################################################################################
-**	Set program counter
-**#################################################################################################*/
-
-void tms34010_set_pc(unsigned val)
-{
-	PC = val;
-	change_pc29lew(TOBYTE(PC));
-}
-
-void tms34020_set_pc(unsigned val)
-{
-	tms34010_set_pc(val);
-}
-
-
-
-/*###################################################################################################
-**	Return stack pointer
-**#################################################################################################*/
-
-unsigned tms34010_get_sp(void)
-{
-	return SP;
-}
-
-unsigned tms34020_get_sp(void)
-{
-	return tms34010_get_sp();
-}
-
-
-
-/*###################################################################################################
-**	Set stack pointer
-**#################################################################################################*/
-
-void tms34010_set_sp(unsigned val)
-{
-	SP = val;
-}
-
-void tms34020_set_sp(unsigned val)
-{
-	tms34010_set_sp(val);
-}
-
-
-
-/*###################################################################################################
 **	Return a specific register
 **#################################################################################################*/
 
@@ -1081,7 +1021,9 @@ unsigned tms34010_get_reg(int regnum)
 {
 	switch (regnum)
 	{
+		case REG_PC:
 		case TMS34010_PC:  return PC;
+		case REG_SP:
 		case TMS34010_SP:  return SP;
 		case TMS34010_ST:  return ST;
 		case TMS34010_A0:  return AREG(0);
@@ -1140,7 +1082,9 @@ void tms34010_set_reg(int regnum, unsigned val)
 {
 	switch (regnum)
 	{
+		case REG_PC:       PC = val; change_pc29lew(TOBYTE(PC)); break;
 		case TMS34010_PC:  PC = val; break;
+		case REG_SP:
 		case TMS34010_SP:  SP = val; break;
 		case TMS34010_ST:  ST = val; break;
 		case TMS34010_A0:  AREG(0) = val; break;
@@ -1191,22 +1135,6 @@ void tms34020_set_reg(int regnum, unsigned val)
 
 
 /*###################################################################################################
-**	Set NMI line state
-**#################################################################################################*/
-
-void tms34010_set_nmi_line(int linestate)
-{
-	/* Does not apply: the NMI is an internal interrupt for the TMS34010 */
-}
-
-void tms34020_set_nmi_line(int linestate)
-{
-	tms34010_set_nmi_line(linestate);
-}
-
-
-
-/*###################################################################################################
 **	Set IRQ line state
 **#################################################################################################*/
 
@@ -1223,6 +1151,7 @@ void tms34010_set_irq_line(int irqline, int linestate)
 			else
 				IOREG(REG_INTPEND) &= ~TMS34010_INT1;
 			break;
+			
 		case 1:
 			if (linestate != CLEAR_LINE)
 				IOREG(REG_INTPEND) |= TMS34010_INT2;
@@ -1260,16 +1189,20 @@ void tms34020_set_irq_callback(int (*callback)(int irqline))
 **	Generate internal interrupt
 *#################################################################################################*/
 
-void tms34010_internal_interrupt(int type)
+static void internal_interrupt_callback(int param)
 {
-	LOG(("TMS34010#%d set internal interrupt $%04x\n", cpu_getactivecpu(), type));
-	IOREG(REG_INTPEND) |= type;
-	check_interrupt();
-}
+	int cpunum = param & 0xff;
+	int type = param >> 8;
 
-void tms34020_internal_interrupt(int type)
-{
-	tms34010_internal_interrupt(type);
+	/* call through to the CPU to generate the int */
+	cpuintrf_push_context(cpunum);
+	IOREG(REG_INTPEND) |= type;
+	LOG(("TMS34010#%d set internal interrupt $%04x\n", cpu_getactivecpu(), type));
+	check_interrupt();
+	cpuintrf_pop_context();
+	
+	/* generate triggers so that spin loops can key off them */
+	cpu_triggerint(cpunum);
 }
 
 
@@ -1621,7 +1554,7 @@ static void dpyint_callback(int cpunum)
 	tms34010_regs *context = FINDCONTEXT(cpunum);
 	double interval = TIME_IN_HZ(Machine->drv->frames_per_second);
 	dpyint_timer[cpunum] = timer_set(interval, cpunum, dpyint_callback);
-	cpu_generate_internal_interrupt(cpunum, TMS34010_DI);
+	timer_set(TIME_NOW, cpunum | (TMS34010_DI << 8), internal_interrupt_callback);
 
 	/* allow a callback so we can update before they are likely to do nasty things */
 	if (context->config->display_int_callback)
@@ -1711,7 +1644,7 @@ static void common_io_register_w(int cpunum, tms34010_regs *context, int reg, in
 			break;
 
 		case REG_PMASK:
-			if (data) logerror("Plane masking not supported. PC=%08X\n", cpu_get_pc());
+			if (data) logerror("Plane masking not supported. PC=%08X\n", activecpu_get_pc());
 			break;
 
 		case REG_DPYCTL:
@@ -1746,7 +1679,7 @@ static void common_io_register_w(int cpunum, tms34010_regs *context, int reg, in
 
 			/* NMI issued? */
 			if (data & 0x0100)
-				cpu_generate_internal_interrupt(cpunum, TMS34010_NMI);
+				timer_set(TIME_NOW, cpunum | (TMS34010_NMI << 8), internal_interrupt_callback);
 			break;
 
 		case REG_HSTCTLL:
@@ -1781,7 +1714,7 @@ static void common_io_register_w(int cpunum, tms34010_regs *context, int reg, in
 
 			/* input interrupt? (should really be state-based, but the functions don't exist!) */
 			if (!(oldreg & 0x0008) && (newreg & 0x0008))
-				cpu_generate_internal_interrupt(cpunum, TMS34010_HI);
+				timer_set(TIME_NOW, cpunum | (TMS34010_HI << 8), internal_interrupt_callback);
 			else if ((oldreg & 0x0008) && !(newreg & 0x0008))
 				CONTEXT_IOREG(context, REG_INTPEND) &= ~TMS34010_HI;
 			break;
@@ -2080,9 +2013,7 @@ static void tms34010_state_postload(void)
 void tms34010_host_w(int cpunum, int reg, int data)
 {
 	tms34010_regs *context = FINDCONTEXT(cpunum);
-	const struct cpu_interface *interface;
 	unsigned int addr;
-	int oldcpu;
 
 	switch (reg)
 	{
@@ -2100,8 +2031,7 @@ void tms34010_host_w(int cpunum, int reg, int data)
 		case TMS34010_HOST_DATA:
 
 			/* swap to the target cpu */
-			oldcpu = cpu_getactivecpu();
-			memory_set_context(cpunum);
+			cpuintrf_push_context(cpunum);
 
 			/* write to the address */
 			host_interface_cpu = cpunum;
@@ -2119,9 +2049,8 @@ void tms34010_host_w(int cpunum, int reg, int data)
 			}
 
 			/* swap back */
-			memory_set_context(oldcpu);
-			interface = &cpuintf[Machine->drv->cpu[oldcpu].cpu_type & ~CPU_FLAGS_MASK];
-			(*interface->set_op_base)((*interface->get_pc)());
+			cpuintrf_pop_context();
+			activecpu_reset_banking();
 			break;
 
 		/* control register */
@@ -2146,9 +2075,8 @@ void tms34010_host_w(int cpunum, int reg, int data)
 int tms34010_host_r(int cpunum, int reg)
 {
 	tms34010_regs *context = FINDCONTEXT(cpunum);
-	const struct cpu_interface *interface;
 	unsigned int addr;
-	int oldcpu, result;
+	int result;
 
 	switch (reg)
 	{
@@ -2164,8 +2092,7 @@ int tms34010_host_r(int cpunum, int reg)
 		case TMS34010_HOST_DATA:
 
 			/* swap to the target cpu */
-			oldcpu = cpu_getactivecpu();
-			memory_set_context(cpunum);
+			cpuintrf_push_context(cpunum);
 
 			/* read from the address */
 			host_interface_cpu = cpunum;
@@ -2184,9 +2111,8 @@ int tms34010_host_r(int cpunum, int reg)
 			}
 
 			/* swap back */
-			memory_set_context(oldcpu);
-			interface = &cpuintf[Machine->drv->cpu[oldcpu].cpu_type & ~CPU_FLAGS_MASK];
-			(*interface->set_op_base)((*interface->get_pc)());
+			cpuintrf_pop_context();
+			activecpu_reset_banking();
 			return result;
 
 		/* control register */

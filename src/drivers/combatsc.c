@@ -120,8 +120,8 @@ WRITE_HANDLER( combasc_pf_control_w );
 READ_HANDLER( combasc_scrollram_r );
 WRITE_HANDLER( combasc_scrollram_w );
 
-void combascb_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh );
-void combasc_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh );
+void combascb_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh );
+void combasc_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh );
 WRITE_HANDLER( combasc_io_w );
 WRITE_HANDLER( combasc_vreg_w );
 
@@ -652,7 +652,7 @@ static const struct MachineDriver machine_driver_combasc =
 	combasc_gfxdecodeinfo,
 	128,8*16*16,
 	combasc_convert_color_prom,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	combasc_vh_start,
 	combasc_vh_stop,
@@ -698,7 +698,7 @@ static const struct MachineDriver machine_driver_combascb =
 	combascb_gfxdecodeinfo,
 	128,8*16*16,
 	combascb_convert_color_prom,
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	combascb_vh_start,
 	combasc_vh_stop,

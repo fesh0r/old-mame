@@ -5,21 +5,6 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-/*
-** prototypes
-*/
-WRITE_HANDLER( tsamurai_bgcolor_w );
-WRITE_HANDLER( tsamurai_textbank1_w );
-WRITE_HANDLER( tsamurai_textbank2_w );
-WRITE_HANDLER( tsamurai_scrolly_w );
-WRITE_HANDLER( tsamurai_scrollx_w );
-
-WRITE_HANDLER( tsamurai_bg_videoram_w );
-WRITE_HANDLER( tsamurai_fg_videoram_w );
-
-void tsamurai_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-void tsamurai_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh );
-int tsamurai_vh_start( void );
 
 /*
 ** variables
@@ -30,43 +15,6 @@ static int textbank1, textbank2;
 
 static struct tilemap *background, *foreground;
 
-
-/*
-** color prom decoding
-*/
-
-void tsamurai_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
-{
-	int i;
-
-	for (i = 0;i < Machine->drv->total_colors;i++)
-	{
-		int bit0,bit1,bit2,bit3;
-
-
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[Machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[Machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[Machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[Machine->drv->total_colors] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*Machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[2*Machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[2*Machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[2*Machine->drv->total_colors] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		color_prom++;
-	}
-
-}
 
 
 /***************************************************************************
@@ -81,7 +29,11 @@ static void get_bg_tile_info(int tile_index)
 	int tile_number = tsamurai_videoram[2*tile_index];
 	tile_number += (( attributes & 0xc0 ) >> 6 ) * 256;	 /* legacy */
 	tile_number += (( attributes & 0x20 ) >> 5 ) * 1024; /* Mission 660 add-on*/
-	SET_TILE_INFO(0,tile_number,attributes & 0x1f)
+	SET_TILE_INFO(
+			0,
+			tile_number,
+			attributes & 0x1f,
+			0)
 }
 
 static void get_fg_tile_info(int tile_index)
@@ -89,7 +41,11 @@ static void get_fg_tile_info(int tile_index)
 	int tile_number = videoram[tile_index];
 	if (textbank1 & 0x01) tile_number += 256; /* legacy */
 	if (textbank2 & 0x01) tile_number += 512; /* Mission 660 add-on */
-	SET_TILE_INFO(1,tile_number,colorram[((tile_index&0x1f)*2)+1] & 0x1f )
+	SET_TILE_INFO(
+			1,
+			tile_number,
+			colorram[((tile_index&0x1f)*2)+1] & 0x1f,
+			0)
 }
 
 
@@ -192,7 +148,7 @@ WRITE_HANDLER( tsamurai_fg_colorram_w )
 
 ***************************************************************************/
 
-static void draw_sprites( struct osd_bitmap *bitmap )
+static void draw_sprites( struct mame_bitmap *bitmap )
 {
 	struct GfxElement *gfx = Machine->gfx[2];
 	const struct rectangle *clip = &Machine->visible_area;
@@ -235,7 +191,7 @@ static void draw_sprites( struct osd_bitmap *bitmap )
 	}
 }
 
-void tsamurai_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
+void tsamurai_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh )
 {
 	int i;
 
@@ -246,8 +202,6 @@ void tsamurai_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
 		tilemap_set_scrolly(foreground, i, colorram[i*2]);
 	}
 /* end of column scroll code */
-
-	tilemap_update( ALL_TILEMAPS );
 
 	/*
 		This following isn't particularly efficient.  We'd be better off to
@@ -285,7 +239,11 @@ static void get_vsgongf_tile_info(int tile_index)
 	int tile_number = videoram[tile_index];
 	int color = vsgongf_color&0x1f;
 	if( textbank1 ) tile_number += 0x100;
-	SET_TILE_INFO(1,tile_number,color )
+	SET_TILE_INFO(
+			1,
+			tile_number,
+			color,
+			0)
 }
 
 int vsgongf_vh_start(void)
@@ -295,7 +253,7 @@ int vsgongf_vh_start(void)
 	return 0;
 }
 
-void vsgongf_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
+void vsgongf_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh )
 {
 	static int k;
 	if( keyboard_pressed( KEYCODE_Q ) ){
@@ -305,7 +263,6 @@ void vsgongf_vh_screenrefresh( struct osd_bitmap *bitmap, int fullrefresh )
 		tilemap_mark_all_tiles_dirty( foreground );
 	}
 
-	tilemap_update( ALL_TILEMAPS );
 	tilemap_draw(bitmap,foreground,0,0);
 	draw_sprites(bitmap);
 }

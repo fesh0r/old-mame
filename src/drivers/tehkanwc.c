@@ -28,7 +28,7 @@ extern size_t tehkanwc_videoram1_size;
 /* from vidhrdw */
 int tehkanwc_vh_start(void);
 void tehkanwc_vh_stop(void);
-void tehkanwc_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void tehkanwc_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 READ_HANDLER( tehkanwc_videoram1_r );
 WRITE_HANDLER( tehkanwc_videoram1_w );
 READ_HANDLER( tehkanwc_scroll_x_r );
@@ -665,10 +665,10 @@ static const struct MachineDriver machine_driver_tehkanwc =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	768, 768,
+	768, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	tehkanwc_vh_start,
 	tehkanwc_vh_stop,

@@ -8,7 +8,6 @@ driver by Nicola Salmoria
 
 To Do:
 Sprite Priorities in Dommy
-Is the Colour Decoding in Dommy Ok?
 
 ***************************************************************************/
 
@@ -19,7 +18,7 @@ Is the Colour Decoding in Dommy Ok?
 /* from vidhrdw/btime.c */
 void btime_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 int  btime_vh_start (void);
-void eggs_vh_screenrefresh    (struct osd_bitmap *bitmap,int full_refresh);
+void eggs_vh_screenrefresh    (struct mame_bitmap *bitmap,int full_refresh);
 
 READ_HANDLER( btime_mirrorvideoram_r );
 WRITE_HANDLER( btime_mirrorvideoram_w );
@@ -81,6 +80,8 @@ static MEMORY_WRITE_START( eggs_writemem )
 	{ 0x3000, 0x7fff, MWA_ROM },
 MEMORY_END
 
+
+
 INPUT_PORTS_START( scregg )
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_4WAY )
@@ -113,7 +114,12 @@ INPUT_PORTS_START( scregg )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_3C ) )
-	PORT_BIT( 0x30, 0x30, IPT_UNKNOWN )     /* almost certainly unused */
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Cocktail ) )
@@ -128,16 +134,16 @@ INPUT_PORTS_START( scregg )
 	PORT_DIPSETTING(    0x02, "50000" )
 	PORT_DIPSETTING(    0x00, "70000"  )
 	PORT_DIPSETTING(    0x06, "Never"  )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Unknown ) )   /* almost certainly unused */
+	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Unknown ) )   /* almost certainly unused */
+	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Unknown ) )   /* almost certainly unused */
+	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unknown ) )   /* almost certainly unused */
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Difficulty ) )
@@ -201,7 +207,7 @@ static const struct MachineDriver machine_driver_dommy =
 			CPU_M6502,
 			1500000,
 			dommy_readmem,dommy_writemem,0,0,
-			interrupt,1
+			interrupt,16
 		}
 	},
 	57, 3072,        /* frames per second, vblank duration taken from Burger Time */
@@ -209,12 +215,12 @@ static const struct MachineDriver machine_driver_dommy =
 	0,
 
 	/* video hardware */
-	32*8, 32*8, { 1*8, 31*8-1, 1*8, 31*8-1 },
+	32*8, 32*8, { 0*8, 31*8-1, 1*8, 31*8-1 },
 	gfxdecodeinfo,
 	8, 8,
 	btime_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER|VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	btime_vh_start,
 	generic_vh_stop,
@@ -238,7 +244,7 @@ static const struct MachineDriver machine_driver_scregg =
 			CPU_M6502,
 			1500000,
 			eggs_readmem,eggs_writemem,0,0,
-			interrupt,1
+			interrupt,16
 		}
 	},
 	57, 3072,        /* frames per second, vblank duration taken from Burger Time */
@@ -251,7 +257,7 @@ static const struct MachineDriver machine_driver_scregg =
 	8, 8,
 	btime_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER|VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	btime_vh_start,
 	generic_vh_stop,
@@ -274,9 +280,9 @@ ROM_START( dommy )
 	ROM_LOAD( "dommy.e21",  0xe000, 0x2000, 0xcd1a4d55 )
 
 	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "dommy.e30",  0x0000, 0x2000, 0x4e68bb12 )
+	ROM_LOAD( "dommy.e50",  0x0000, 0x2000, 0x5e9db0a4 )
 	ROM_LOAD( "dommy.e40",  0x2000, 0x2000, 0x4d1c36fb )
-	ROM_LOAD( "dommy.e50",  0x4000, 0x2000, 0x5e9db0a4 )
+	ROM_LOAD( "dommy.e30",  0x4000, 0x2000, 0x4e68bb12 )
 
 	ROM_REGION( 0x0040, REGION_PROMS, 0 ) /* palette decoding is probably wrong */
 	ROM_LOAD( "dommy.e70",  0x0018, 0x0008, 0x50c1d86e )	/* palette */
@@ -329,6 +335,6 @@ ROM_START( eggs )
 ROM_END
 
 
-GAMEX(198?, dommy,  0,      dommy,  scregg, 0, ROT270, "Technos", "Dommy", GAME_IMPERFECT_COLORS )
+GAME( 198?, dommy,  0,      dommy,  scregg, 0, ROT270, "Technos", "Dommy" )
 GAME( 1983, scregg, 0,      scregg, scregg, 0, ROT270, "Technos", "Scrambled Egg" )
 GAME( 1983, eggs,   scregg, scregg, scregg, 0, ROT270, "[Technos] Universal USA", "Eggs" )

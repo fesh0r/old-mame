@@ -33,13 +33,13 @@ static void update_color(int offset)
 	g = (g << 3) | (g >> 2);
 	b = (b << 3) | (b >> 2);
 
-	palette_change_color(offset,r,g,b);
+	palette_set_color(offset,r,g,b);
 
 	/* the text layer might use the other 512 entries in the palette RAM */
 	/* (which are all set to 0x07ff = white). I don't know, so I just set */
 	/* it to white. */
-	palette_change_color(512,0x00,0x00,0x00);
-	palette_change_color(513,0xff,0xff,0xff);
+	palette_set_color(512,0x00,0x00,0x00);
+	palette_set_color(513,0xff,0xff,0xff);
 }
 
 WRITE_HANDLER( gladiatr_paletteram_rg_w )
@@ -105,8 +105,8 @@ void gladiatr_vh_stop(void){
 }
 
 
-static void render_background( struct osd_bitmap *bitmap );
-static void render_background( struct osd_bitmap *bitmap ){
+static void render_background( struct mame_bitmap *bitmap );
+static void render_background( struct mame_bitmap *bitmap ){
 	int i;
 	static int tile_bank_select = 0;
 
@@ -167,8 +167,8 @@ static void render_background( struct osd_bitmap *bitmap ){
 		&Machine->visible_area,TRANSPARENCY_NONE,0);
 }
 
-static void render_text( struct osd_bitmap *bitmap );
-static void render_text( struct osd_bitmap *bitmap ){
+static void render_text( struct mame_bitmap *bitmap );
+static void render_text( struct mame_bitmap *bitmap ){
 	const struct rectangle *clip = &Machine->visible_area;
 	const struct GfxElement *gfx = Machine->gfx[0];
 
@@ -202,8 +202,8 @@ static void render_text( struct osd_bitmap *bitmap ){
 	}
 }
 
-static void draw_sprite( struct osd_bitmap *bitmap, int tile_number, int color, int sx, int sy, int xflip, int yflip, int big );
-static void draw_sprite( struct osd_bitmap *bitmap, int tile_number, int color, int sx, int sy, int xflip, int yflip, int big ){
+static void draw_sprite( struct mame_bitmap *bitmap, int tile_number, int color, int sx, int sy, int xflip, int yflip, int big );
+static void draw_sprite( struct mame_bitmap *bitmap, int tile_number, int color, int sx, int sy, int xflip, int yflip, int big ){
 	const struct rectangle *clip = &Machine->visible_area;
 
 	static int tile_offset[4][4] = {
@@ -235,8 +235,8 @@ static void draw_sprite( struct osd_bitmap *bitmap, int tile_number, int color, 
 	}
 }
 
-static void render_sprites(struct osd_bitmap *bitmap);
-static void render_sprites(struct osd_bitmap *bitmap){
+static void render_sprites(struct mame_bitmap *bitmap);
+static void render_sprites(struct mame_bitmap *bitmap){
 	unsigned char *source = spriteram;
 	unsigned char *finish = source+0x400;
 
@@ -264,13 +264,10 @@ static void render_sprites(struct osd_bitmap *bitmap){
 
 
 
-void gladiatr_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void gladiatr_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	if (video_attributes & 0x20)	/* screen refresh enable? */
 	{
-		if (palette_recalc())
-			memset(dirtybuffer,1,64*32);
-
 		render_background( bitmap );
 		render_sprites( bitmap );
 		render_text( bitmap );

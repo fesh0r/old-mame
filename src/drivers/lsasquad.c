@@ -29,8 +29,7 @@ TODO:
 
 /* in vidhrdw/lsasquad.c */
 extern unsigned char *lsasquad_scrollram;
-void lsasquad_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-void lsasquad_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void lsasquad_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 /* in machine/lsasquad.c */
 extern int lsasquad_invertcoin;
@@ -359,8 +358,8 @@ static const struct MachineDriver machine_driver_lsasquad =
 	/* video hardware */
 	32*8, 32*8,	{ 0, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	512, 512,
-	lsasquad_vh_convert_color_prom,
+	512, 0,
+	palette_RRRR_GGGG_BBBB_convert_prom,
 
 	VIDEO_TYPE_RASTER,
 	0,
@@ -398,23 +397,23 @@ ROM_START( lsasquad )
 	ROM_REGION( 0x0800, REGION_CPU3, 0 )	/* 2k for the microcontroller */
 	ROM_LOAD( "a64-05.35",    0x0000, 0x0800, 0x572677b9 )
 
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "a64-10.27",    0x00000, 0x8000, 0xbb4f1b37 )
 	ROM_LOAD( "a64-22.28",    0x08000, 0x8000, 0x58e03b89 )
 	ROM_LOAD( "a64-11.40",    0x10000, 0x8000, 0xa3bbc0b3 )
 	ROM_LOAD( "a64-23.41",    0x18000, 0x8000, 0x377a538b )
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "a64-14.2",     0x00000, 0x8000, 0xa72e2041 )
 	ROM_LOAD( "a64-16.3",     0x08000, 0x8000, 0x05206333 )
 	ROM_LOAD( "a64-15.25",    0x10000, 0x8000, 0x01ed5851 )
 	ROM_LOAD( "a64-17.26",    0x18000, 0x8000, 0x6eaf3735 )
 
-	ROM_REGION( 0x1000, REGION_PROMS, 0 )
+	ROM_REGION( 0x0a00, REGION_PROMS, 0 )
 	ROM_LOAD( "a64-07.22",    0x0000, 0x0400, 0x82802bbb )	/* red   (bottom half unused) */
-	ROM_LOAD( "a64-08.23",    0x0400, 0x0400, 0xaa9e1dbd )	/* green (bottom half unused) */
-	ROM_LOAD( "a64-09.24",    0x0800, 0x0400, 0xdca86295 )	/* blue  (bottom half unused) */
-	ROM_LOAD( "a64-06.9",     0x0c00, 0x0400, 0x7ced30ba )	/* priority */
+	ROM_LOAD( "a64-08.23",    0x0200, 0x0400, 0xaa9e1dbd )	/* green (bottom half unused) */
+	ROM_LOAD( "a64-09.24",    0x0400, 0x0400, 0xdca86295 )	/* blue  (bottom half unused) */
+	ROM_LOAD( "a64-06.9",     0x0600, 0x0400, 0x7ced30ba )	/* priority */
 ROM_END
 
 ROM_START( storming )
@@ -430,23 +429,23 @@ ROM_START( storming )
 	ROM_REGION( 0x0800, REGION_CPU3, 0 )	/* 2k for the microcontroller */
 	ROM_LOAD( "a64-05.35",    0x0000, 0x0800, 0x572677b9 )
 
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "a64-10.27",    0x00000, 0x8000, 0xbb4f1b37 )
 	ROM_LOAD( "stpartyj.009", 0x08000, 0x8000, 0x8ee2443b )
 	ROM_LOAD( "a64-11.40",    0x10000, 0x8000, 0xa3bbc0b3 )
 	ROM_LOAD( "stpartyj.011", 0x18000, 0x8000, 0xf342d42f )
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "a64-14.2",     0x00000, 0x8000, 0xa72e2041 )
 	ROM_LOAD( "a64-16.3",     0x08000, 0x8000, 0x05206333 )
 	ROM_LOAD( "a64-15.25",    0x10000, 0x8000, 0x01ed5851 )
 	ROM_LOAD( "a64-17.26",    0x18000, 0x8000, 0x6eaf3735 )
 
-	ROM_REGION( 0x1000, REGION_PROMS, 0 )
+	ROM_REGION( 0x0a00, REGION_PROMS, 0 )
 	ROM_LOAD( "a64-07.22",    0x0000, 0x0400, 0x82802bbb )	/* red   (bottom half unused) */
-	ROM_LOAD( "a64-08.23",    0x0400, 0x0400, 0xaa9e1dbd )	/* green (bottom half unused) */
-	ROM_LOAD( "a64-09.24",    0x0800, 0x0400, 0xdca86295 )	/* blue  (bottom half unused) */
-	ROM_LOAD( "a64-06.9",     0x0c00, 0x0400, 0x7ced30ba )	/* priority */
+	ROM_LOAD( "a64-08.23",    0x0200, 0x0400, 0xaa9e1dbd )	/* green (bottom half unused) */
+	ROM_LOAD( "a64-09.24",    0x0400, 0x0400, 0xdca86295 )	/* blue  (bottom half unused) */
+	ROM_LOAD( "a64-06.9",     0x0600, 0x0400, 0x7ced30ba )	/* priority */
 ROM_END
 
 
@@ -466,5 +465,5 @@ static void init_lsasquad(void) { lsasquad_invertcoin = 0x00; init_common(); }
 static void init_storming(void) { lsasquad_invertcoin = 0x0c; init_common(); }
 
 
-GAME( 1986, lsasquad, 0,        lsasquad, lsasquad, lsasquad, ROT270, "Taito", "Land Sea Air Squad / Riku Kai Kuu Saizensen" )
-GAME( 1986, storming, lsasquad, lsasquad, lsasquad, storming, ROT270, "Taito", "Storming Party / Riku Kai Kuu Saizensen" )
+GAMEX( 1986, lsasquad, 0,        lsasquad, lsasquad, lsasquad, ROT270, "Taito", "Land Sea Air Squad / Riku Kai Kuu Saizensen", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1986, storming, lsasquad, lsasquad, lsasquad, storming, ROT270, "Taito", "Storming Party / Riku Kai Kuu Saizensen", GAME_IMPERFECT_GRAPHICS )

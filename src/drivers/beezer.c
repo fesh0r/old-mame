@@ -14,7 +14,7 @@
 /* from vidhrdw/beezer.c */
 extern UINT8 *beezer_ram;
 int beezer_interrupt (void);
-void beezer_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void beezer_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 WRITE_HANDLER( beezer_ram_w );
 
 /* from machine/beezer.c */
@@ -119,10 +119,10 @@ static const struct MachineDriver machine_driver_beezer =
 	/* video hardware */
 	256, 384, { 0, 256-1, 16, 303 },
 	0,
-	16,16,
+	16, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	0,
 	0,

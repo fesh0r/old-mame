@@ -11,30 +11,30 @@ UINT8 *mnchmobl_sprite_tile;
 static int mnchmobl_palette_bank;
 static int flipscreen;
 
-void mnchmobl_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
+void mnchmobl_convert_color_prom(unsigned char *obsolete,unsigned short *colortable,const unsigned char *color_prom)
 {
 	int i;
 
 	for (i = 0;i < Machine->drv->total_colors;i++)
 	{
-		int bit0,bit1,bit2;
+		int bit0,bit1,bit2,r,g,b;
 
 		/* red component */
-		bit0 = (*color_prom >> 0) & 0x01;
-		bit1 = (*color_prom >> 1) & 0x01;
-		bit2 = (*color_prom >> 2) & 0x01;
-		*(palette++) = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit0 = (color_prom[i] >> 0) & 0x01;
+		bit1 = (color_prom[i] >> 1) & 0x01;
+		bit2 = (color_prom[i] >> 2) & 0x01;
+		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 		/* green component */
-		bit0 = (*color_prom >> 3) & 0x01;
-		bit1 = (*color_prom >> 4) & 0x01;
-		bit2 = (*color_prom >> 5) & 0x01;
-		*(palette++) = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit0 = (color_prom[i] >> 3) & 0x01;
+		bit1 = (color_prom[i] >> 4) & 0x01;
+		bit2 = (color_prom[i] >> 5) & 0x01;
+		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 		/* blue component */
-		bit0 = (*color_prom >> 6) & 0x01;
-		bit1 = (*color_prom >> 7) & 0x01;
-		*(palette++) = 0x4f * bit0 + 0xa8 * bit1;
+		bit0 = (color_prom[i] >> 6) & 0x01;
+		bit1 = (color_prom[i] >> 7) & 0x01;
+		b = 0x4f * bit0 + 0xa8 * bit1;
 
-		color_prom++;
+		palette_set_color(i,r,g,b);
 	}
 }
 
@@ -100,7 +100,7 @@ WRITE_HANDLER( mnchmobl_videoram_w )
 	}
 }
 
-static void draw_status( struct osd_bitmap *bitmap )
+static void draw_status( struct mame_bitmap *bitmap )
 {
 	struct rectangle clip = Machine->visible_area;
 	const struct GfxElement *gfx = Machine->gfx[0];
@@ -128,7 +128,7 @@ static void draw_status( struct osd_bitmap *bitmap )
 	}
 }
 
-static void draw_background( struct osd_bitmap *bitmap )
+static void draw_background( struct mame_bitmap *bitmap )
 {
 /*
 	ROM B1.2C contains 256 tilemaps defining 4x4 configurations of
@@ -172,7 +172,7 @@ static void draw_background( struct osd_bitmap *bitmap )
 	}
 }
 
-static void draw_sprites( struct osd_bitmap *bitmap )
+static void draw_sprites( struct mame_bitmap *bitmap )
 {
 	const struct rectangle *clip = &Machine->visible_area;
 	int scroll = mnchmobl_vreg[6];
@@ -203,7 +203,7 @@ static void draw_sprites( struct osd_bitmap *bitmap )
 	}
 }
 
-void mnchmobl_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void mnchmobl_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	draw_background( bitmap );
 	draw_sprites( bitmap );

@@ -35,8 +35,6 @@ void playch10_vh_convert_color_prom( unsigned char *palette, unsigned short *col
 		*palette++ = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		color_prom++;
-
-		colortable[i] = i;
 	}
 
 	ppu2c03b_init_palette( palette );
@@ -85,7 +83,7 @@ void playch10_vh_stop( void )
 
 ***************************************************************************/
 
-void playch10_vh_screenrefresh( struct osd_bitmap *bitmap,int full_refresh )
+void playch10_vh_screenrefresh( struct mame_bitmap *bitmap,int full_refresh )
 {
 	int offs;
 
@@ -95,7 +93,7 @@ void playch10_vh_screenrefresh( struct osd_bitmap *bitmap,int full_refresh )
 	top_monitor.max_y = ( top_monitor.max_y - top_monitor.min_y ) / 2;
 	bottom_monitor.min_y = ( bottom_monitor.max_y - bottom_monitor.min_y ) / 2;
 
-	if ( palette_recalc() || full_refresh )
+	if ( full_refresh )
 		memset( dirtybuffer, 1, videoram_size );
 
 	/* On Playchoice 10 single monitor, this bit toggles	*/

@@ -230,7 +230,7 @@ WRITE_HANDLER( xevious_bg_videoram_w );
 WRITE_HANDLER( xevious_bg_colorram_w );
 int  xevious_vh_start( void );
 void xevious_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-void xevious_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void xevious_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 WRITE_HANDLER( pengo_sound_w );
 extern unsigned char *pengo_soundregs;
@@ -623,6 +623,8 @@ static const char *xevious_sample_names[] =
 	"*xevious",
 	"explo1.wav",	/* ground target explosion */
 	"explo2.wav",	/* Solvalou explosion */
+	"explo3.wav",	/* credit */
+	"explo4.wav",	/* Garu Zakato explosion */
 	0	/* end of array */
 };
 
@@ -641,21 +643,22 @@ static const struct MachineDriver machine_driver_xevious =
 	{
 		{
 			CPU_Z80,
-			3125000,	/* 3.125 MHz (?) */
+			3072000,	/* 3.125 MHz (?) */
 			readmem_cpu1,writemem_cpu1,0,0,
 			xevious_interrupt_1,1
 		},
 		{
 			CPU_Z80,
-			3125000,	/* 3.125 MHz */
+			3072000,	/* 3.125 MHz */
 			readmem_cpu2,writemem_cpu2,0,0,
 			xevious_interrupt_2,1
 		},
 		{
 			CPU_Z80,
-			3125000,	/* 3.125 MHz */
+			3072000,	/* 3.125 MHz */
 			readmem_cpu3,writemem_cpu3,0,0,
-			xevious_interrupt_3,2
+			0,0,
+			xevious_interrupt_3,16000.0/128
 		}
 	},
 	60.606060, DEFAULT_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */
@@ -942,5 +945,5 @@ static void init_xevios(void)
 
 GAME( 1982, xevious,  0,       xevious, xevious,  0,      ROT90, "Namco", "Xevious (Namco)" )
 GAME( 1982, xeviousa, xevious, xevious, xeviousa, 0,      ROT90, "Namco (Atari license)", "Xevious (Atari)" )
-GAME( 1983, xevios,   xevious, xevious, xevious,  xevios, ROT90, "bootleg", "Xevios" )
+GAME( 1982, xevios,   xevious, xevious, xevious,  xevios, ROT90, "bootleg", "Xevios" )
 GAME( 1984, sxevious, xevious, xevious, sxevious, 0,      ROT90, "Namco", "Super Xevious" )

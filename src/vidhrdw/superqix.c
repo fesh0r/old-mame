@@ -13,7 +13,7 @@
 
 static int gfxbank;
 static unsigned char *superqix_bitmapram,*superqix_bitmapram2,*superqix_bitmapram_dirty,*superqix_bitmapram2_dirty;
-static struct osd_bitmap *tmpbitmap2;
+static struct mame_bitmap *tmpbitmap2;
 int sqix_minx,sqix_maxx,sqix_miny,sqix_maxy;
 int sqix_last_bitmap;
 int sqix_current_bitmap;
@@ -191,25 +191,15 @@ WRITE_HANDLER( superqix_0410_w )
 
 /***************************************************************************
 
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function, it will be called by
   the main emulation engine.
 
 ***************************************************************************/
-void superqix_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void superqix_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs,i;
 	unsigned char pens[16];
-
-
-	/* recalc the palette if necessary */
-	if (palette_recalc())
-	{
-		memset(dirtybuffer,1,videoram_size);
-		memset(superqix_bitmapram_dirty,1,0x7000);
-		memset(superqix_bitmapram2_dirty,1,0x7000);
-		sqix_minx=0;sqix_maxx=127;sqix_miny=0;sqix_maxy=223;
-	}
 
 
 	/* for every character in the Video RAM, check if it has been modified */
@@ -241,7 +231,7 @@ void superqix_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 
 	for(i=1;i<16;i++)
 		pens[i]=Machine->pens[i];
-	pens[0]=palette_transparent_pen;
+	pens[0]=0;
 
 	if(sqix_current_bitmap==0)		/* Bitmap 1 */
 	{
@@ -291,7 +281,7 @@ void superqix_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 			}
 		}
 	}
-	copybitmap(bitmap,tmpbitmap2,0,0,0,0,&Machine->visible_area,TRANSPARENCY_PEN,palette_transparent_pen);
+	copybitmap(bitmap,tmpbitmap2,0,0,0,0,&Machine->visible_area,TRANSPARENCY_PEN,0);
 
 	/* Draw the sprites. Note that it is important to draw them exactly in this */
 	/* order, to have the correct priorities. */

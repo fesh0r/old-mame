@@ -20,7 +20,7 @@ TODO:
 
 static unsigned char *xain_sharedram;
 
-void xain_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void xain_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 int xain_vh_start(void);
 WRITE_HANDLER( xain_scrollxP0_w );
 WRITE_HANDLER( xain_scrollyP0_w );
@@ -116,7 +116,7 @@ static int xainA_interrupt(void)
 		cpu_set_nmi_line(0,PULSE_LINE);
 	else
 		cpu_set_irq_line(0,M6809_FIRQ_LINE,ASSERT_LINE);
-	return M6809_INT_NONE;
+	return ignore_interrupt();
 }
 
 
@@ -357,10 +357,10 @@ static const struct MachineDriver machine_driver_xsleena =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	512, 512,
+	512, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	xain_vh_start,
 	0,

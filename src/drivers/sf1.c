@@ -26,7 +26,7 @@ WRITE16_HANDLER( sf1_fg_scroll_w );
 WRITE16_HANDLER( sf1_videoram_w );
 WRITE16_HANDLER( sf1_gfxctrl_w );
 int sf1_vh_start(void);
-void sf1_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void sf1_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 
 
 static READ16_HANDLER( dummy_r )
@@ -878,10 +878,10 @@ static const struct MachineDriver machine_driver_sf1 =
 	/* video hardware */
 	64*8, 32*8, { 8*8, (64-8)*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	1024, 1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	sf1_vh_start,
 	0,
@@ -933,10 +933,10 @@ static const struct MachineDriver machine_driver_sf1us =
 	/* video hardware */
 	64*8, 32*8, { 8*8, (64-8)*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	1024, 1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	sf1_vh_start,
 	0,
@@ -988,10 +988,10 @@ static const struct MachineDriver machine_driver_sf1jp =
 	/* video hardware */
 	64*8, 32*8, { 8*8, (64-8)*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	1024, 1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	sf1_vh_start,
 	0,

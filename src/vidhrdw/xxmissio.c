@@ -76,7 +76,7 @@ WRITE_HANDLER( xxmissio_paletteram_w )
 
 /****************************************************************************/
 
-void xxmissio_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void xxmissio_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 	int chr,col;
@@ -86,8 +86,6 @@ void xxmissio_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 
 	if (xxmissio_bg_redraw==1)
 		memset(dirtybuffer,1,size);
-
-	palette_recalc();
 
 /* draw BG layer */
 

@@ -5,45 +5,6 @@ size_t mexico86_objectram_size;
 static int charbank;
 
 
-void mexico86_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
-{
-	int i;
-
-
-	for (i = 0;i < Machine->drv->total_colors;i++)
-	{
-		int bit0,bit1,bit2,bit3;
-
-
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[Machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[Machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[Machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[Machine->drv->total_colors] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*Machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[2*Machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[2*Machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[2*Machine->drv->total_colors] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		color_prom++;
-	}
-
-	/* the gfx data is inverted so we */
-	/* cannot use the default lookup table */
-	for (i = 0;i < Machine->drv->color_table_len;i++)
-		colortable[i] = i ^ 0x0f;
-}
-
-
 
 WRITE_HANDLER( mexico86_bankswitch_w )
 {
@@ -59,7 +20,7 @@ WRITE_HANDLER( mexico86_bankswitch_w )
 
 
 
-void mexico86_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void mexico86_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 	int sx,sy,xc,yc;
@@ -71,7 +32,7 @@ void mexico86_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 	/* the background character columns is stored inthe area dd00-dd3f */
 
 	/* This clears & redraws the entire screen each pass */
-	fillbitmap(bitmap,Machine->gfx[0]->colortable[0],&Machine->visible_area);
+	fillbitmap(bitmap,Machine->pens[255],&Machine->visible_area);
 
 	sx = 0;
 /* the score display seems to be outside of the main objectram. */
@@ -132,13 +93,13 @@ if (offs >= mexico86_objectram_size+0x1c0) continue;
 						color,
 						flipx,flipy,
 						x,y,
-						&Machine->visible_area,TRANSPARENCY_PEN,0);
+						&Machine->visible_area,TRANSPARENCY_PEN,15);
 			}
 		}
 	}
 }
 
-void kikikai_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void kikikai_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 	int sx,sy,xc,yc;
@@ -150,7 +111,7 @@ void kikikai_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 	/* the background character columns is stored inthe area dd00-dd3f */
 
 	/* This clears & redraws the entire screen each pass */
-	fillbitmap(bitmap,Machine->gfx[0]->colortable[0],&Machine->visible_area);
+	fillbitmap(bitmap,Machine->pens[255],&Machine->visible_area);
 
 	sx = 0;
 /* the score display seems to be outside of the main objectram. */
@@ -210,7 +171,7 @@ if (offs >= mexico86_objectram_size+0x1c0) continue;
 						color,
 						flipx,flipy,
 						x,y,
-						&Machine->visible_area,TRANSPARENCY_PEN,0);
+						&Machine->visible_area,TRANSPARENCY_PEN,15);
 			}
 		}
 	}

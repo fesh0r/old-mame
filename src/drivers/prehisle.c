@@ -11,7 +11,7 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-void prehisle_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+void prehisle_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 WRITE16_HANDLER( prehisle_video16_w );
 WRITE16_HANDLER( prehisle_control16_w );
 READ16_HANDLER( prehisle_control16_r );
@@ -120,7 +120,7 @@ INPUT_PORTS_START( prehisle )
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x02, 0x02, "Level Select" )
 	PORT_DIPSETTING(	0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Bonus_Life ) )
@@ -263,10 +263,10 @@ static const struct MachineDriver machine_driver_prehisle =
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 
 	gfxdecodeinfo,
-	1024, 1024,
+	1024, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	0,
 	prehisle_vh_start,
 	prehisle_vh_stop,
@@ -430,4 +430,3 @@ static void init_gensitou(void)
 GAMEX( 1989, prehisle, 0,		 prehisle, prehisle, prehisle, ROT0, "SNK", "Prehistoric Isle in 1930 (World)", GAME_NO_COCKTAIL )
 GAMEX( 1989, prehislu, prehisle, prehisle, prehisle, prehislu, ROT0, "SNK of America", "Prehistoric Isle in 1930 (US)", GAME_NO_COCKTAIL )
 GAMEX( 1989, gensitou, prehisle, prehisle, prehisle, gensitou, ROT0, "SNK", "Genshi-Tou 1930's", GAME_NO_COCKTAIL )
-

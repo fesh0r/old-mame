@@ -31,7 +31,7 @@ WRITE_HANDLER( gng_bgscrollx_w );
 WRITE_HANDLER( gng_bgscrolly_w );
 WRITE_HANDLER( gng_flipscreen_w );
 int gng_vh_start(void);
-void gng_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh);
+void gng_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
 void gng_eof_callback(void);
 
 
@@ -440,10 +440,10 @@ static const struct MachineDriver machine_driver_gng =
 	/* video hardware */
 	32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
 	gfxdecodeinfo,
-	256, 256,
+	256, 0,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_BUFFERS_SPRITERAM,
+	VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM,
 	gng_eof_callback,
 	gng_vh_start,
 	0,

@@ -92,7 +92,7 @@ int geebee_vh_start(void)
 
 	if( (readinputport(2) & 0x01) == 0 )
 	{
-		overlay_create(geebee_overlay, 3, Machine->drv->total_colors-3);
+		overlay_create(geebee_overlay, 3);
 	}
 
 	return 0;
@@ -143,7 +143,7 @@ void navalone_init_palette(unsigned char *sys_palette, unsigned short *sys_color
 }
 
 
-INLINE void geebee_plot(struct osd_bitmap *bitmap, int x, int y)
+INLINE void geebee_plot(struct mame_bitmap *bitmap, int x, int y)
 {
 	struct rectangle r = Machine->visible_area;
 	if (x >= r.min_x && x <= r.max_x && y >= r.min_y && y <= r.max_y)
@@ -173,7 +173,7 @@ INLINE void geebee_mark_dirty(int x, int y)
 	}
 }
 
-void geebee_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void geebee_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	int offs;
 
@@ -186,7 +186,7 @@ void geebee_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
     }
 #endif
 
-	if (palette_recalc() || full_refresh )
+	if (full_refresh)
         memset(dirtybuffer, 1, videoram_size);
 
 	for( offs = 0; offs < videoram_size; offs++ )

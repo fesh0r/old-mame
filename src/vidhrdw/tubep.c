@@ -10,6 +10,9 @@
 #include "vidhrdw/generic.h"
 
 
+data8_t *tubep_textram;
+static data8_t *dirtybuff;
+
 /***************************************************************************
 
   Convert the color PROMs into a more useable format.
@@ -75,11 +78,6 @@ void tubep_vh_convert_color_prom(unsigned char *palette, unsigned short *colorta
 }
 
 
-data8_t * tubep_textram;
-
-data8_t * dirtybuff;
-struct osd_bitmap *tmpbitmap;
-
 int tubep_vh_start(void)
 {
 	if ((dirtybuff = malloc(0x800/2)) == 0)
@@ -115,7 +113,7 @@ WRITE_HANDLER( tubep_textram_w )
 	}
 }
 
-void tubep_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
+void tubep_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 {
 	int offs;
 

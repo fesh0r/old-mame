@@ -26,13 +26,7 @@ enum {
 #endif
 };
 
-//#define LAZY_FLAGS  1
-
-#define H6280_INT_NONE	0
-#define H6280_INT_NMI	1
-#define H6280_INT_TIMER	2
-#define H6280_INT_IRQ1	3
-#define H6280_INT_IRQ2	4
+#define LAZY_FLAGS  0
 
 #define H6280_RESET_VEC	0xfffe
 #define H6280_NMI_VEC	0xfffc
@@ -48,13 +42,8 @@ extern void h6280_exit(void);					/* Shut down CPU */
 extern int h6280_execute(int cycles);			/* Execute cycles - returns number of cycles actually run */
 extern unsigned h6280_get_context(void *dst);	/* Get registers, return context size */
 extern void h6280_set_context(void *src);		/* Set registers */
-extern unsigned h6280_get_pc(void); 			/* Get program counter */
-extern void h6280_set_pc(unsigned val); 		/* Set program counter */
-extern unsigned h6280_get_sp(void); 			/* Get stack pointer */
-extern void h6280_set_sp(unsigned val); 		/* Set stack pointer */
 extern unsigned h6280_get_reg (int regnum);
 extern void h6280_set_reg (int regnum, unsigned val);
-extern void h6280_set_nmi_line(int state);
 extern void h6280_set_irq_line(int irqline, int state);
 extern void h6280_set_irq_callback(int (*callback)(int irqline));
 extern const char *h6280_info(void *context, int regnum);

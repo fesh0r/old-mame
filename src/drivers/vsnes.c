@@ -68,9 +68,9 @@ Can't Rotate
 extern int vsnes_vh_start( void );
 extern void vsnes_vh_stop( void );
 extern void vsnes_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-extern void vsnes_vh_screenrefresh( struct osd_bitmap *bitmap, int full_refresh );
+extern void vsnes_vh_screenrefresh( struct mame_bitmap *bitmap, int full_refresh );
 extern int vsdual_vh_start( void );
-extern void vsdual_vh_screenrefresh( struct osd_bitmap *bitmap, int full_refresh );
+extern void vsdual_vh_screenrefresh( struct mame_bitmap *bitmap, int full_refresh );
 extern void vsdual_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 
 /* from machine */
@@ -1988,7 +1988,7 @@ GAME( 1986, rbibb,	  0,	    vsnes,   rbibb,    rbibb,    ROT0, "Namco",  	   "At
 GAME( 1986, suprmrio, 0,        vsnes,   suprmrio, suprmrio, ROT0, "Nintendo",  "Vs. Super Mario Bros" )
 GAME( 1985, vsskykid, 0,	    vsnes,   vsskykid, vsskykid, ROT0, "Namco",     "Super SkyKid"  )
 GAMEX(1987,tkoboxng, 0,         vsnes,   vsnes,    tkoboxng, ROT0, "Namco LTD.", "Vs. TKO Boxing", GAME_WRONG_COLORS )
-GAME( 1984, smgolf,   0,        vsnes,   golf,     machridr, ROT0, "Nintendo",  "Stroke and Match Golf (Men's Version" )
+GAME( 1984, smgolf,   0,        vsnes,   golf,     machridr, ROT0, "Nintendo",  "Stroke and Match Golf (Men's Version)" )
 GAME( 1984, smgolfj,  smgolf,   vsnes,   golf,     vsnormal, ROT0, "Nintendo", "Stroke and Match Golf (Japan)" )
 GAME( 1984, vspinbal, 0,        vsnes,   vsnes,    vspinbal, ROT0, "Nintendo",  "Pinball" )
 GAME( 1984, vspinblj, vspinbal, vsnes,   vsnes,    vsnormal, ROT0, "Nintendo",  "Pinball (Japan)" )

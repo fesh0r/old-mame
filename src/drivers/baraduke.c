@@ -22,8 +22,8 @@ extern unsigned char *baraduke_textram, *spriteram, *baraduke_videoram;
 int baraduke_vh_start( void );
 int metrocrs_vh_start( void );
 void baraduke_vh_stop( void );
-void baraduke_vh_screenrefresh( struct osd_bitmap *bitmap,int full_refresh );
-void metrocrs_vh_screenrefresh( struct osd_bitmap *bitmap,int full_refresh );
+void baraduke_vh_screenrefresh( struct mame_bitmap *bitmap,int full_refresh );
+void metrocrs_vh_screenrefresh( struct mame_bitmap *bitmap,int full_refresh );
 READ_HANDLER( baraduke_textlayer_r );
 READ_HANDLER( baraduke_videoram_r );
 WRITE_HANDLER( baraduke_textlayer_w );
@@ -455,7 +455,7 @@ static const struct MachineDriver machine_driver_baraduke =
 	2048,2048*4,
 	baraduke_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,	/* palette is static but doesn't fit in 256 colors */
+	VIDEO_TYPE_RASTER,	/* palette is static but doesn't fit in 256 colors */
 	0,
 	baraduke_vh_start,
 	0,
