@@ -331,9 +331,6 @@ enum
 #if (HAS_Z80GB)
 	CPU_Z80GB,
 #endif
-#if (HAS_Z80_MSX)
-	CPU_Z80_MSX,
-#endif
 #endif
     CPU_COUNT
 };
@@ -494,6 +491,9 @@ void cpuintrf_push_context(int cpunum);
 
 /* restore the previous context */
 void cpuintrf_pop_context(void);
+
+/* set the dasm override handler */
+void cpuintrf_set_dasm_override(unsigned (*dasm_override)(int cpunum, char *buffer, unsigned pc));
 
 
 

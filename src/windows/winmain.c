@@ -19,15 +19,7 @@
 #include "driver.h"
 #include "window.h"
 #include "input.h"
-
-#ifdef MESS
-#include "messwin.h"
-#include "parallel.h"
-#endif
-
-// from config.c
-int  cli_frontend_init (int argc, char **argv);
-void cli_frontend_exit (void);
+#include "config.h"
 
 
 #define ENABLE_PROFILER		0

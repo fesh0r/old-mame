@@ -123,7 +123,7 @@
 #include "cpu/adsp2100/adsp2100.h"
 #endif
 #if (HAS_PSXCPU)
-#include "cpu/mips/mips.h"
+#include "cpu/mips/psx.h"
 #endif
 #if (HAS_ASAP)
 #include "cpu/asap/asap.h"
@@ -190,9 +190,6 @@
 #endif
 #if (HAS_Z80GB)
 #include "cpu/z80gb/z80gb.h"
-#endif
-#if (HAS_Z80_MSX)
-#include "cpu/z80/z80_msx.h"
 #endif
 
 #endif
@@ -703,9 +700,6 @@ const struct cpu_interface cpuintrf[] =
 #if (HAS_Z80GB)
 	CPU0(Z80GB,    z80gb,	 5,255,1.00, 8, 16,	  0,16,LE,1, 4	),
 #endif
-#if (HAS_Z80_MSX)
-	CPU1(Z80_MSX,  z80_msx,	 1,255,1.00, 8, 16,	  0,16,LE,1, 4	),
-#endif
 #endif
 };
 
@@ -743,6 +737,8 @@ static struct cpuinfo cpu[MAX_CPU];
 static int cpu_active_context[CPU_COUNT];
 static int cpu_context_stack[4];
 static int cpu_context_stack_ptr;
+
+static unsigned (*cpu_dasm_override)(int cpunum, char *buffer, unsigned pc);
 
 
 
@@ -837,6 +833,7 @@ int cpuintrf_init(void)
 	/* zap the CPU data structure */
 	memset(cpu, 0, sizeof(cpu));
 	totalcpu = 0;
+	cpu_dasm_override = NULL;
 
 	/* reset the context stack */
 	memset(cpu_context_stack, -1, sizeof(cpu_context_stack));
@@ -847,6 +844,19 @@ int cpuintrf_init(void)
 	executingcpu = -1;
 
 	return 0;
+}
+
+
+
+/*************************************
+ *
+ *	Set the disassembly override proc
+ *
+ *************************************/
+
+void cpuintrf_set_dasm_override(unsigned (*dasm_override)(int cpunum, char *buffer, unsigned pc))
+{
+	cpu_dasm_override = dasm_override;
 }
 
 
@@ -1048,10 +1058,24 @@ void activecpu_set_op_base(unsigned val)
  	Disassembly
 --------------------------*/
 
+static unsigned internal_dasm(int cpunum, char *buffer, unsigned pc)
+{
+	unsigned result;
+	if (cpu_dasm_override)
+	{
+		result = cpu_dasm_override(cpunum, buffer, pc);
+		if (result)
+			return result;
+	}
+	return (*cpu[cpunum].intf.cpu_dasm)(buffer, pc);
+}
+
+
+
 unsigned activecpu_dasm(char *buffer, unsigned pc)
 {
 	VERIFY_ACTIVECPU(1, activecpu_dasm);
-	return (*cpu[activecpu].intf.cpu_dasm)(buffer, pc);
+	return internal_dasm(activecpu, buffer, pc);
 }
 
 
@@ -1315,7 +1339,7 @@ unsigned cpunum_dasm(int cpunum, char *buffer, unsigned pc)
 	unsigned result;
 	VERIFY_CPUNUM(1, cpunum_dasm);
 	cpuintrf_push_context(cpunum);
-	result = (*cpu[cpunum].intf.cpu_dasm)(buffer, pc);
+	result = internal_dasm(cpunum, buffer, pc);
 	cpuintrf_pop_context();
 	return result;
 }

@@ -91,12 +91,12 @@ int q = I.AF.b.h+R; 							\
  :"q" (R), "0" (I.AF.b.h)                                       	\
  )
 #else
-#define M_ADD(R) {							\
-int q = I.AF.b.h+R; 							\
+#define M_ADD(R) {												\
+int q = I.AF.b.h+R; 											\
 	I.AF.b.l=ZSP[q&255]|((q>>8)&CF)| 				\
-		((I.AF.b.h^q^R)&HF)|					\
-		(((R^I.AF.b.h^SF)&(R^q)&SF)>>5);			\
-	I.AF.b.h=q; 							\
+		((I.AF.b.h^q^R)&HF)|									\
+		(((R^I.AF.b.h^SF)&(R^q)&SF)>>5);						\
+	I.AF.b.h=q; 												\
 }
 #endif
 #endif
@@ -157,12 +157,12 @@ int q = I.AF.b.h+R; 							\
  :"q" (R), "0" (I.AF.b.h)                                       	\
  )
 #else
-#define M_SUB(R) {							\
-	int q = I.AF.b.h-R; 						\
+#define M_SUB(R) {												\
+	int q = I.AF.b.h-R; 										\
 	I.AF.b.l=ZSP[q&255]|((q>>8)&CF)|NF|				\
-		((I.AF.b.h^q^R)&HF)|					\
-		(((R^I.AF.b.h)&(I.AF.b.h^q)&SF)>>5);			\
-	I.AF.b.h=q; 							\
+		((I.AF.b.h^q^R)&HF)|									\
+		(((R^I.AF.b.h)&(I.AF.b.h^q)&SF)>>5);					\
+	I.AF.b.h=q; 												\
 }
 #endif
 #endif
@@ -223,11 +223,11 @@ int q = I.AF.b.h+R; 							\
  :"q" (R), "0" (I.AF.b.h)                                       	\
  )
 #else
-#define M_CMP(R) {                                              	\
-	int q = I.AF.b.h-R;						\
+#define M_CMP(R) {                                              \
+	int q = I.AF.b.h-R; 										\
 	I.AF.b.l=ZSP[q&255]|((q>>8)&CF)|NF|				\
-		((I.AF.b.h^q^R)&HF)|					\
-		(((R^I.AF.b.h)&(I.AF.b.h^q)&SF)>>5);			\
+		((I.AF.b.h^q^R)&HF)|									\
+		(((R^I.AF.b.h)&(I.AF.b.h^q)&SF)>>5);					\
 }
 #endif
 #endif
@@ -308,15 +308,15 @@ int q = I.AF.b.h+R; 							\
 	change_pc16(I.PC.d);						\
 }
 
-#define M_DSUB() {							\
-	int q = I.HL.b.l-I.BC.b.l;					\
-	I.AF.b.l=ZS[q&255]|((q>>8)&CF)|NF|				\
-		((I.HL.b.l^q^I.BC.b.l)&HF)|				\
-		(((I.BC.b.l^I.HL.b.l)&(I.HL.b.l^q)&SF)>>5);		\
-	I.HL.b.l=q; 							\
-	q = I.HL.b.h-I.BC.b.h-(I.AF.b.l&CF);				\
-	I.AF.b.l=ZS[q&255]|((q>>8)&CF)|NF|				\
-		((I.HL.b.h^q^I.BC.b.h)&HF)|				\
-		(((I.BC.b.h^I.HL.b.h)&(I.HL.b.h^q)&SF)>>5);		\
-	if (I.HL.b.l!=0) I.AF.b.l&=~ZF;					\
+#define M_DSUB() {												\
+	int q = I.HL.b.l-I.BC.b.l;									\
+	I.AF.b.l=ZS[q&255]|((q>>8)&CF)|NF|							\
+		((I.HL.b.l^q^I.BC.b.l)&HF)|								\
+		(((I.BC.b.l^I.HL.b.l)&(I.HL.b.l^q)&SF)>>5);				\
+	I.HL.b.l=q; 												\
+	q = I.HL.b.h-I.BC.b.h-(I.AF.b.l&CF);						\
+	I.AF.b.l=ZS[q&255]|((q>>8)&CF)|NF|							\
+		((I.HL.b.h^q^I.BC.b.h)&HF)|								\
+		(((I.BC.b.h^I.HL.b.h)&(I.HL.b.h^q)&SF)>>5);				\
+	if (I.HL.b.l!=0) I.AF.b.l&=~ZF;								\
 }

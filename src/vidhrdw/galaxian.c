@@ -65,7 +65,6 @@ static void mooncrst_modify_spritecode(data8_t *spriteram,int *code,int *flipx,i
 static void mooncrgx_modify_spritecode(data8_t *spriteram,int *code,int *flipx,int *flipy,int offs);
 static void  moonqsr_modify_spritecode(data8_t *spriteram,int *code,int *flipx,int *flipy,int offs);
 static void mshuttle_modify_spritecode(data8_t *spriteram,int *code,int *flipx,int *flipy,int offs);
-static void   ckongs_modify_spritecode(data8_t *spriteram,int *code,int *flipx,int *flipy,int offs);
 static void  calipso_modify_spritecode(data8_t *spriteram,int *code,int *flipx,int *flipy,int offs);
 static void   pisces_modify_spritecode(data8_t *spriteram,int *code,int *flipx,int *flipy,int offs);
 static void mimonkey_modify_spritecode(data8_t *spriteram,int *code,int *flipx,int *flipy,int offs);
@@ -680,7 +679,7 @@ VIDEO_START( ckongs )
 {
 	int ret = video_start_scramble();
 
-	modify_spritecode = ckongs_modify_spritecode;
+	modify_spritecode = mshuttle_modify_spritecode;
 
 	return ret;
 }
@@ -806,7 +805,59 @@ VIDEO_START( rockclim )
 	return ret;
 }
 
+static void drivfrcg_get_tile_info(int tile_index)
+{
+	int code = galaxian_videoram[tile_index];
+	UINT8 x = tile_index & 0x1f;
+	UINT8 color = galaxian_attributesram[(x << 1) | 1] & color_mask;
+	UINT8 bank = galaxian_attributesram[(x << 1) | 1] & 0x30;
 
+	code |= (bank << 4);
+//	color |= ((galaxian_attributesram[(x << 1) | 1] & 0x40) >> 2);
+
+	SET_TILE_INFO(0,code,color,0)
+}
+
+VIDEO_START( drivfrcg )
+{
+	tilemap = tilemap_create(drivfrcg_get_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,32,32);
+
+	if (!tilemap)
+		return 1;
+
+	tilemap_set_transparent_pen(tilemap,0);
+	tilemap_set_scroll_cols(tilemap, 32);
+	tilemap_set_scroll = tilemap_set_scrolly;
+
+	modify_charcode = 0;
+	modify_spritecode = mshuttle_modify_spritecode;
+	modify_color = 0;
+	modify_ypos = 0;
+
+	mooncrst_gfxextend = 0;
+
+	draw_bullets = 0;
+
+	draw_background = galaxian_draw_background;
+	background_enable = 0;
+	background_blue = 0;
+	background_red = 0;
+	background_green = 0;
+
+	draw_stars = noop_draw_stars;
+
+	flip_screen_x = 0;
+	flip_screen_y = 0;
+
+	spriteram2_present = 0;
+
+	spritevisiblearea      = &_spritevisiblearea;
+	spritevisibleareaflipx = &_spritevisibleareaflipx;
+
+	color_mask = (Machine->gfx[0]->color_granularity == 4) ? 7 : 3;
+
+	return 0;
+}
 
 
 WRITE_HANDLER( galaxian_videoram_w )
@@ -1079,11 +1130,6 @@ static void moonqsr_modify_spritecode(data8_t *spriteram,int *code,int *flipx,in
 static void mshuttle_modify_spritecode(data8_t *spriteram,int *code,int *flipx,int *flipy,int offs)
 {
 	*code |= ((spriteram[offs + 2] & 0x30) << 2);
-}
-
-static void ckongs_modify_spritecode(data8_t *spriteram,int *code,int *flipx,int *flipy,int offs)
-{
-	*code |= ((spriteram[offs + 2] & 0x10) << 3);
 }
 
 static void calipso_modify_spritecode(data8_t *spriteram,int *code,int *flipx,int *flipy,int offs)

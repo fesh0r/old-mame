@@ -86,6 +86,7 @@ static mame_timer *timer_free_tail;
 static double global_offset;
 static mame_timer *callback_timer;
 static int callback_timer_modified;
+static double callback_timer_expire_time;
 
 
 
@@ -96,8 +97,19 @@ static int callback_timer_modified;
 
 INLINE double get_relative_time(void)
 {
-	int activecpu = cpu_getactivecpu();
-	return (activecpu >= 0) ? cpunum_get_localtime(activecpu) : 0;
+	int activecpu;
+
+	/* if we're executing as a particular CPU, use its local time as a base */
+	activecpu = cpu_getactivecpu();
+	if (activecpu >= 0)
+		return cpunum_get_localtime(activecpu);
+	
+	/* if we're currently in a callback, use the timer's expiration time as a base */
+	if (callback_timer)
+		return callback_timer_expire_time;
+	
+	/* otherwise, return 0 */
+	return 0;
 }
 
 
@@ -314,6 +326,7 @@ void timer_adjust_global_time(double delta)
 		/* set the global state of which callback we're in */
 		callback_timer_modified = 0;
 		callback_timer = timer;
+		callback_timer_expire_time = timer->expire;
 
 		/* call the callback */
 		if (was_enabled && timer->callback)
