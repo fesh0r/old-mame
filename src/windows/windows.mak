@@ -21,6 +21,7 @@ OSOBJS += \
 	$(OBJ)/mess/windows/messopts.o	\
 	$(OBJ)/mess/windows/menu.o		\
 	$(OBJ)/mess/windows/dialog.o	\
+	$(OBJ)/mess/windows/tapedlg.o	\
 	$(OBJ)/mess/windows/parallel.o	\
 	$(OBJ)/mess/windows/strconv.o
 endif 
@@ -60,6 +61,7 @@ endif
 CURPATH = ./
 
 # if building with a UI, set the C flags and include the ui.mak
-ifdef MESS
-include src/windowsui/windowsui.mak
+ifneq ($(WINUI),)
+CFLAGS+= -DWINUI=1
+include src/ui/ui.mak
 endif

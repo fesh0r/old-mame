@@ -2827,11 +2827,7 @@ static int displayhistory (struct mame_bitmap *bitmap, int selected)
 		if (buf)
 		{
 			/* try to load entry */
-			#ifndef MESS
-			if (load_driver_history (Machine->gamedrv, buf, 8192) == 0)
-			#else
 			if (load_driver_history (Machine->gamedrv, buf, 200*1024) == 0)
-			#endif
 			{
 				scroll = 0;
 				wordwrap_text_buffer (buf, maxcols);
