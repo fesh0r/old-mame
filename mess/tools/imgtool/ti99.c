@@ -546,7 +546,7 @@ typedef struct ti99_lvl1_imgref
 {
 	ti99_img_format img_format;	/* tells the image format */
 	imgtool_stream *file_handle;		/* imgtool file handle */
-	void *harddisk_handle;		/* MAME harddisk handle (harddisk format) */
+	struct mess_hard_disk_file harddisk_handle;		/* MAME harddisk handle (harddisk format) */
 	ti99_geometry geometry;		/* geometry */
 	unsigned pc99_track_len;		/* unformatted track lenght (pc99 format) */
 	UINT32 *pc99_data_offset_array;	/* offset for each sector (pc99 format) */
@@ -962,8 +962,9 @@ static int read_image_vib_no_geometry(imgtool_stream *file_handle, ti99_img_form
 
 	Return imgtool error code
 */
-static int open_image_lvl1(imgtool_stream *file_handle, ti99_img_format img_format, ti99_lvl1_imgref *l1_img, dsk_vib *vib)
+static imgtoolerr_t open_image_lvl1(imgtool_stream *file_handle, ti99_img_format img_format, ti99_lvl1_imgref *l1_img, dsk_vib *vib)
 {
+	imgtoolerr_t err;
 	int reply;
 	int totphysrecs;
 
@@ -975,18 +976,17 @@ static int open_image_lvl1(imgtool_stream *file_handle, ti99_img_format img_form
 	{
 		const struct hard_disk_info *info; 
 
-		l1_img->harddisk_handle = imghd_open(file_handle);
-		if (!l1_img->harddisk_handle)
-			return IMGTOOLERR_CORRUPTIMAGE;	/* most likely error */
+		err = imghd_open(file_handle, &l1_img->harddisk_handle);
+		if (err)
+			return err;
 
-		info = imghd_get_header(l1_img->harddisk_handle);
+		info = imghd_get_header(&l1_img->harddisk_handle);
 		l1_img->geometry.cylinders = info->cylinders;
 		l1_img->geometry.heads = info->heads;
 		l1_img->geometry.secspertrack = info->sectors;
 		if (info->sectorbytes != 256)
 		{
-			imghd_close(l1_img->harddisk_handle);
-			l1_img->harddisk_handle = NULL;
+			imghd_close(&l1_img->harddisk_handle);
 			return IMGTOOLERR_CORRUPTIMAGE;	/* TODO: support 512-byte sectors */
 		}
 
@@ -1056,7 +1056,9 @@ static int open_image_lvl1(imgtool_stream *file_handle, ti99_img_format img_form
 static void close_image_lvl1(ti99_lvl1_imgref *l1_img)
 {
 	if (l1_img->img_format == if_harddisk)
-		imghd_close(l1_img->harddisk_handle);
+	{
+		imghd_close(&l1_img->harddisk_handle);
+	}
 
 	stream_close(l1_img->file_handle);
 
@@ -1320,7 +1322,7 @@ static int read_absolute_physrec(ti99_lvl1_imgref *l1_img, unsigned aphysrec, vo
 
 		return read_sector(l1_img, & address, dest);*/
 
-		return imghd_read(l1_img->harddisk_handle, aphysrec, 1, dest) != 1;
+		return imghd_read(&l1_img->harddisk_handle, aphysrec, 1, dest) != IMGTOOLERR_SUCCESS;
 	}
 	else
 	{
@@ -1350,7 +1352,7 @@ static int write_absolute_physrec(ti99_lvl1_imgref *l1_img, unsigned aphysrec, c
 
 		return write_sector(l1_img, & address, dest);*/
 
-		return imghd_write(l1_img->harddisk_handle, aphysrec, 1, src) != 1;
+		return imghd_write(&l1_img->harddisk_handle, aphysrec, 1, src) != IMGTOOLERR_SUCCESS;
 	}
 	else
 	{
@@ -4277,10 +4279,10 @@ static imgtoolerr_t dsk_image_nextenum(imgtool_imageenum *enumeration, imgtool_d
 	{
 		if (iter->listing_subdirs)
 		{
-			fname_to_str(ent->filename, iter->image->u.dsk.catalogs[0].subdirs[iter->index[iter->level]].name, ent->filename_len);
+			fname_to_str(ent->filename, iter->image->u.dsk.catalogs[0].subdirs[iter->index[iter->level]].name, sizeof(ent->filename) / sizeof(ent->filename[0]));
 
 			/* set type of DIR */
-			snprintf(ent->attr, ent->attr_len, "DIR");
+			snprintf(ent->attr, sizeof(ent->attr) / sizeof(ent->attr[0]), "DIR");
 
 			/* len in physrecs */
 			ent->filesize = 1;
@@ -4299,30 +4301,27 @@ static imgtoolerr_t dsk_image_nextenum(imgtool_imageenum *enumeration, imgtool_d
 			if (reply)
 				return IMGTOOLERR_READERROR;
 #if 0
-			fname_to_str(ent->filename, fdr.name, ent->filename_len);
+			fname_to_str(ent->filename, fdr.name, sizeof(ent->filename) / sizeof(ent->filename[0]));
 #else
 			{
 				char buf[11];
 
-				if (ent->filename_len)
+				ent->filename[0] = '\0';
+				if (iter->level)
 				{
-					ent->filename[0] = '\0';
-					if (iter->level)
-					{
-						fname_to_str(ent->filename, iter->image->u.dsk.catalogs[0].subdirs[iter->index[0]].name, ent->filename_len);
-						strncat(ent->filename, ".", ent->filename_len);
-					}
-					fname_to_str(buf, fdr.name, 11);
-					strncat(ent->filename, buf, ent->filename_len);
+					fname_to_str(ent->filename, iter->image->u.dsk.catalogs[0].subdirs[iter->index[0]].name, sizeof(ent->filename) / sizeof(ent->filename[0]));
+					strncat(ent->filename, ".", sizeof(ent->filename) / sizeof(ent->filename[0]));
 				}
+				fname_to_str(buf, fdr.name, 11);
+				strncat(ent->filename, buf, sizeof(ent->filename) / sizeof(ent->filename[0]));
 			}
 #endif
 			/* parse flags */
 			if (fdr.flags & fdr99_f_program)
-				snprintf(ent->attr, ent->attr_len, "PGM%s",
+				snprintf(ent->attr, sizeof(ent->attr) / sizeof(ent->attr[0]), "PGM%s",
 							(fdr.flags & fdr99_f_wp) ? " R/O" : "");
 			else
-				snprintf(ent->attr, ent->attr_len, "%c/%c %d%s",
+				snprintf(ent->attr, sizeof(ent->attr) / sizeof(ent->attr[0]), "%c/%c %d%s",
 							(fdr.flags & fdr99_f_int) ? 'I' : 'D',
 							(fdr.flags & fdr99_f_var) ? 'V' : 'F',
 							fdr.reclen,
@@ -4402,28 +4401,25 @@ static imgtoolerr_t win_image_nextenum(imgtool_imageenum *enumeration, imgtool_d
 		if (iter->listing_subdirs)
 		{
 #if 0
-			fname_to_str(ent->filename, iter->catalog[iter->level].subdirs[iter->index[iter->level]].name, ent->filename_len);
+			fname_to_str(ent->filename, iter->catalog[iter->level].subdirs[iter->index[iter->level]].name, sizeof(ent->filename) / sizeof(ent->filename[0]));
 #else
 			{
 				char buf[11];
 
-				if (ent->filename_len)
+				ent->filename[0] = '\0';
+				for (i=0; i<iter->level; i++)
 				{
-					ent->filename[0] = '\0';
-					for (i=0; i<iter->level; i++)
-					{
-						fname_to_str(buf, iter->catalog[i].subdirs[iter->index[i]].name, 11);
-						strncat(ent->filename, buf, ent->filename_len);
-						strncat(ent->filename, ".", ent->filename_len);
-					}
-					fname_to_str(buf, iter->catalog[iter->level].subdirs[iter->index[iter->level]].name, 11);
-					strncat(ent->filename, buf, ent->filename_len);
+					fname_to_str(buf, iter->catalog[i].subdirs[iter->index[i]].name, 11);
+					strncat(ent->filename, buf, sizeof(ent->filename) / sizeof(ent->filename[0]));
+					strncat(ent->filename, ".", sizeof(ent->filename) / sizeof(ent->filename[0]));
 				}
+				fname_to_str(buf, iter->catalog[iter->level].subdirs[iter->index[iter->level]].name, 11);
+				strncat(ent->filename, buf, sizeof(ent->filename) / sizeof(ent->filename[0]));
 			}
 #endif
 
 			/* set type of DIR */
-			snprintf(ent->attr, ent->attr_len, "DIR");
+			snprintf(ent->attr, sizeof(ent->attr) / sizeof(ent->attr[0]), "DIR");
 
 			/* len in physrecs */
 			ent->filesize = 2;
@@ -4446,31 +4442,28 @@ static imgtoolerr_t win_image_nextenum(imgtool_imageenum *enumeration, imgtool_d
 			if (reply)
 				return IMGTOOLERR_READERROR;
 #if 0
-			fname_to_str(ent->filename, iter->catalog[iter->level].files[iter->index[iter->level]].name, ent->filename_len);
+			fname_to_str(ent->filename, iter->catalog[iter->level].files[iter->index[iter->level]].name, sizeof(ent->filename) / sizeof(ent->filename[0]));
 #else
 			{
 				char buf[11];
 
-				if (ent->filename_len)
+				ent->filename[0] = '\0';
+				for (i=0; i<iter->level; i++)
 				{
-					ent->filename[0] = '\0';
-					for (i=0; i<iter->level; i++)
-					{
-						fname_to_str(buf, iter->catalog[i].subdirs[iter->index[i]].name, 11);
-						strncat(ent->filename, buf, ent->filename_len);
-						strncat(ent->filename, ".", ent->filename_len);
-					}
-					fname_to_str(buf, iter->catalog[iter->level].files[iter->index[iter->level]].name, 11);
-					strncat(ent->filename, buf, ent->filename_len);
+					fname_to_str(buf, iter->catalog[i].subdirs[iter->index[i]].name, 11);
+					strncat(ent->filename, buf, sizeof(ent->filename) / sizeof(ent->filename[0]));
+					strncat(ent->filename, ".", sizeof(ent->filename) / sizeof(ent->filename[0]));
 				}
+				fname_to_str(buf, iter->catalog[iter->level].files[iter->index[iter->level]].name, 11);
+				strncat(ent->filename, buf, sizeof(ent->filename) / sizeof(ent->filename[0]));
 			}
 #endif
 			/* parse flags */
 			if (fdr.flags & fdr99_f_program)
-				snprintf(ent->attr, ent->attr_len, "PGM%s",
+				snprintf(ent->attr, sizeof(ent->attr) / sizeof(ent->attr[0]), "PGM%s",
 							(fdr.flags & fdr99_f_wp) ? " R/O" : "");
 			else
-				snprintf(ent->attr, ent->attr_len, "%c/%c %d%s",
+				snprintf(ent->attr, sizeof(ent->attr) / sizeof(ent->attr[0]), "%c/%c %d%s",
 							(fdr.flags & fdr99_f_int) ? 'I' : 'D',
 							(fdr.flags & fdr99_f_var) ? 'V' : 'F',
 							fdr.reclen,

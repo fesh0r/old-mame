@@ -15,6 +15,7 @@
 #include "pool.h"
 #include "strconv.h"
 #include "attrdlg.h"
+#include "secview.h"
 
 const TCHAR wimgtool_class[] = TEXT("wimgtool_class");
 const TCHAR wimgtool_producttext[] = TEXT("MESS Image Tool");
@@ -44,13 +45,6 @@ struct wimgtool_info
 
 
 
-static void nyi(HWND window)
-{
-	MessageBox(window, TEXT("Not yet implemented"), wimgtool_producttext, MB_OK);
-}
-
-
-
 static struct wimgtool_info *get_wimgtool_info(HWND window)
 {
 	struct wimgtool_info *info;
@@ -62,75 +56,122 @@ static struct wimgtool_info *get_wimgtool_info(HWND window)
 
 
 
-static int get_selected_item(HWND window)
+struct foreach_entry
+{
+	imgtool_dirent dirent;
+	struct foreach_entry *next;
+};
+
+static imgtoolerr_t foreach_selected_item(HWND window,
+	imgtoolerr_t (*proc)(HWND, const imgtool_dirent *, void *), void *param)
 {
 	struct wimgtool_info *info;
-	LVITEM item;
-	int selected_index;
-
-	info = get_wimgtool_info(window);
-	if (!info->image)
-		return -1;
-
-	selected_index = ListView_GetNextItem(info->listview, -1, LVIS_SELECTED | LVIS_FOCUSED);
-	if (selected_index < 0)
-		return -1;
-
-	item.mask = LVIF_PARAM;
-	item.iItem = selected_index;
-	ListView_GetItem(info->listview, &item);
-
-	if (item.lParam < 0)
-		return -1;
-
-	return item.lParam;
-}
-
-
-
-static imgtoolerr_t get_selected_dirent(HWND window, imgtool_dirent *entry)
-{
-	struct wimgtool_info *info;
-	int selected_item;
 	imgtoolerr_t err;
-	size_t filename_sz, curdir_sz;
+	int selected_item;
+	int selected_index = -1;
+	size_t curdir_sz;
+	size_t filename_sz;
 	char *s;
+	LVITEM item;
+	struct foreach_entry *first_entry = NULL;
+	struct foreach_entry *last_entry = NULL;
+	struct foreach_entry *entry;
 	
 	info = get_wimgtool_info(window);
 
-	selected_item = get_selected_item(window);
-	if (selected_item < 0)
+	if (info->image)
 	{
-		err = IMGTOOLERR_UNEXPECTED;
-		goto done;
+		do
+		{
+			do
+			{
+				selected_index = ListView_GetNextItem(info->listview, selected_index, LVIS_SELECTED);
+				if (selected_index < 0)
+				{
+					selected_item = -1;
+				}
+				else
+				{
+					item.mask = LVIF_PARAM;
+					item.iItem = selected_index;
+					ListView_GetItem(info->listview, &item);
+					selected_item = item.lParam;
+				}
+			}
+			while((selected_index >= 0) && (selected_item < 0));
+
+			if (selected_item >= 0)
+			{
+				entry = alloca(sizeof(*entry));
+				entry->next = NULL;
+
+				// retrieve the directory entry
+				err = img_getdirent(info->image, info->current_directory, selected_item, &entry->dirent);
+				if (err)
+					return err;
+
+				// if we have a path, prepend the path 
+				if (info->current_directory && info->current_directory[0])
+				{
+					curdir_sz = strlen(info->current_directory);
+					filename_sz = strlen(entry->dirent.filename);
+
+					s = (char *) alloca((curdir_sz + filename_sz + 1) * sizeof(*s));
+					strcpy(s, info->current_directory);
+					strcpy(s + curdir_sz, entry->dirent.filename);
+					snprintf(entry->dirent.filename, sizeof(entry->dirent.filename) / sizeof(entry->dirent.filename[0]), "%s", s);
+				}
+
+				// append to list
+				if (last_entry)
+					last_entry->next = entry;
+				else
+					first_entry = entry;
+				last_entry = entry;
+			}
+		}
+		while(selected_item >= 0);
 	}
 
-	/* retrieve the directory entry */
-	err = img_getdirent(info->image, info->current_directory, selected_item, entry);
-	if (err)
-		goto done;
-
-	/* if we have a path, prepend the path */
-	if (info->current_directory && info->current_directory[0])
+	// now that we have the list, call the callbacks
+	for (entry = first_entry; entry; entry = entry->next)
 	{
-		curdir_sz = strlen(info->current_directory);
-		filename_sz = strlen(entry->filename);
-
-		s = (char *) alloca((curdir_sz + filename_sz + 1) * sizeof(*s));
-		strcpy(s, info->current_directory);
-		strcpy(s + curdir_sz, entry->filename);
-		snprintf(entry->filename, entry->filename_len, "%s", s);
+		err = proc(window, &entry->dirent, param);
+		if (err)
+			return err;
 	}
-
-done:
-	return err;
+	return IMGTOOLERR_SUCCESS;
 }
 
 
 
-static void report_error(HWND window, imgtoolerr_t err)
+void wimgtool_report_error(HWND window, imgtoolerr_t err, const char *imagename, const char *filename)
 {
-	MessageBox(window, imgtool_error(err), wimgtool_producttext, MB_OK);
+	const char *error_text;
+	const char *source;
+	char buffer[512];
+	const char *message = buffer;
+
+	error_text = imgtool_error(err);
+
+	switch(ERRORSOURCE(err))
+	{
+		case IMGTOOLERR_SRC_IMAGEFILE:
+			source = osd_basename((char *) imagename);
+			break;
+		case IMGTOOLERR_SRC_FILEONIMAGE:
+			source = filename;
+			break;
+		default:
+			source = NULL;
+			break;
+	}
+
+	if (source)
+		snprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), "%s: %s", source, error_text);
+	else
+		message = error_text;
+	MessageBox(window, message, wimgtool_producttext, MB_OK);
 }
 
 
@@ -185,15 +226,18 @@ static int append_associated_icon(HWND window, const char *extension)
 static imgtoolerr_t append_dirent(HWND window, int index, const imgtool_dirent *entry)
 {
 	LVITEM lvi;
-	int new_index;
+	int new_index, column_index;
 	struct wimgtool_info *info;
 	TCHAR buffer[32];
 	int icon_index;
 	const char *extension;
 	const char *ptr;
 	size_t size, i;
+	struct imgtool_module_features features;
+	struct tm *local_time;
 
 	info = get_wimgtool_info(window);
+	features = img_get_module_features(img_module(info->image));
 
 	if (entry->directory)
 	{
@@ -230,7 +274,7 @@ static imgtoolerr_t append_dirent(HWND window, int index, const imgtool_dirent *
 	memset(&lvi, 0, sizeof(lvi));
 	lvi.iItem = ListView_GetItemCount(info->listview);
 	lvi.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
-	lvi.pszText = U2T(entry->filename);
+	lvi.pszText = U2T((char *) entry->filename);
 	lvi.iImage = icon_index;
 	lvi.lParam = index;
 	new_index = ListView_InsertItem(info->listview, &lvi);
@@ -241,15 +285,36 @@ static imgtoolerr_t append_dirent(HWND window, int index, const imgtool_dirent *
 	}
 	else
 	{
+		// set the file size
 		_sntprintf(buffer, sizeof(buffer) / sizeof(buffer[0]),
 			TEXT("%d"), entry->filesize);
 	}
-	ListView_SetItemText(info->listview, new_index, 1, buffer);
+	column_index = 1;
+	ListView_SetItemText(info->listview, new_index, column_index++, buffer);
 
+	// set creation time, if supported
+	if (features.supports_creation_time && (entry->creation_time != 0))
+	{
+		local_time = localtime(&entry->creation_time);
+		_sntprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), _tasctime(local_time));
+		rtrim(buffer);
+		ListView_SetItemText(info->listview, new_index, column_index++, buffer);
+	}
+
+	// set last modified time, if supported
+	if (features.supports_lastmodified_time && (entry->lastmodified_time != 0))
+	{
+		local_time = localtime(&entry->lastmodified_time);
+		_sntprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), _tasctime(local_time));
+		rtrim(buffer);
+		ListView_SetItemText(info->listview, new_index, column_index++, buffer);
+	}
+
+	// set attributes and corruption notice
 	if (entry->attr)
-		ListView_SetItemText(info->listview, new_index, 2, U2T(entry->attr));
+		ListView_SetItemText(info->listview, new_index, column_index++, U2T((char *) entry->attr));
 	if (entry->corrupt)
-		ListView_SetItemText(info->listview, new_index, 3, (LPTSTR) TEXT("Corrupt"));
+		ListView_SetItemText(info->listview, new_index, column_index++, (LPTSTR) TEXT("Corrupt"));
 	return 0;
 }
 
@@ -260,8 +325,6 @@ static imgtoolerr_t refresh_image(HWND window)
 	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
 	struct wimgtool_info *info;
 	imgtool_imageenum *imageenum = NULL;
-	char filename_buf[256];
-	char attributes_buf[256];
 	char size_buf[32];
 	imgtool_dirent entry;
 	UINT64 filesize;
@@ -293,10 +356,6 @@ static imgtoolerr_t refresh_image(HWND window)
 		}
 
 		memset(&entry, 0, sizeof(entry));
-		entry.filename = filename_buf;
-		entry.filename_len = sizeof(filename_buf) / sizeof(filename_buf[0]);
-		entry.attr = attributes_buf;
-		entry.attr_len = sizeof(attributes_buf) / sizeof(attributes_buf[0]);
 
 		if (!is_root_directory)
 		{
@@ -358,10 +417,17 @@ static imgtoolerr_t full_refresh_image(HWND window)
 	char buf[256];
 	TCHAR file_title[MAX_PATH];
 	const char *statusbar_text[2];
+	struct imgtool_module_features features;
 
 	info = get_wimgtool_info(window);
 
+	// get the modules and features
 	module = info->image ? img_module(info->image) : NULL;
+	if (module)
+		features = img_get_module_features(module);
+	else
+		memset(&features, 0, sizeof(features));
+
 	if (info->filename)
 	{
 		GetFileTitle(U2T(info->filename), file_title, sizeof(file_title) / sizeof(file_title[0]));
@@ -397,14 +463,39 @@ static imgtoolerr_t full_refresh_image(HWND window)
 	col.pszText = (LPTSTR) TEXT("Filename");
 	if (ListView_InsertColumn(info->listview, column_index++, &col) < 0)
 		return IMGTOOLERR_OUTOFMEMORY;
+
+	col.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT;
 	col.cx = 60;
 	col.pszText = (LPTSTR) TEXT("Size");
+	col.fmt = LVCFMT_RIGHT;
 	if (ListView_InsertColumn(info->listview, column_index++, &col) < 0)
 		return IMGTOOLERR_OUTOFMEMORY;
+
+	if (features.supports_creation_time)
+	{
+		col.mask = LVCF_TEXT | LVCF_WIDTH;
+		col.cx = 160;
+		col.pszText = (LPTSTR) TEXT("Creation time");
+		if (ListView_InsertColumn(info->listview, column_index++, &col) < 0)
+			return IMGTOOLERR_OUTOFMEMORY;
+	}
+
+	if (features.supports_lastmodified_time)
+	{
+		col.mask = LVCF_TEXT | LVCF_WIDTH;
+		col.cx = 160;
+		col.pszText = (LPTSTR) TEXT("Last modified time");
+		if (ListView_InsertColumn(info->listview, column_index++, &col) < 0)
+			return IMGTOOLERR_OUTOFMEMORY;
+	}
+
+	col.mask = LVCF_TEXT | LVCF_WIDTH;
 	col.cx = 60;
 	col.pszText = (LPTSTR) TEXT("Attributes");
 	if (ListView_InsertColumn(info->listview, column_index++, &col) < 0)
 		return IMGTOOLERR_OUTOFMEMORY;
+
+	col.mask = LVCF_TEXT | LVCF_WIDTH;
 	col.cx = 60;
 	col.pszText = (LPTSTR) TEXT("Notes");
 	if (ListView_InsertColumn(info->listview, column_index++, &col) < 0)
@@ -545,6 +636,103 @@ const struct ImageModule *find_filter_module(int filter_index,
 
 
 
+static imgtoolerr_t get_recursive_directory(imgtool_image *image, const char *path, LPCTSTR local_path)
+{
+	imgtoolerr_t err;
+	imgtool_imageenum *imageenum;
+	imgtool_dirent entry;
+	char subpath[1024];
+	TCHAR local_subpath[MAX_PATH];
+	char path_separator;
+
+	path_separator = img_module(image)->path_separator;
+
+	if (!CreateDirectory(local_path, NULL))
+	{
+		err = IMGTOOLERR_UNEXPECTED;
+		goto done;
+	}
+
+	err = img_beginenum(image, path, &imageenum);
+	if (err)
+		goto done;
+
+	do
+	{
+		err = img_nextenum(imageenum, &entry);
+		if (err)
+			goto done;
+
+		if (!entry.eof)
+		{
+			_sntprintf(local_subpath, sizeof(local_subpath) / sizeof(local_subpath[0]), TEXT("%s\\%s"), local_path, U2T(entry.filename));
+			snprintf(subpath, sizeof(subpath) / sizeof(subpath[0]), "%s%c%s", path, path_separator, entry.filename);
+			
+			if (entry.directory)
+				err = get_recursive_directory(image, subpath, local_subpath);
+			else
+				err = img_getfile(image, subpath, T2A(local_subpath), NULL);
+			if (err)
+				goto done;
+		}
+	}
+	while(!entry.eof);
+
+done:
+	if (imageenum)
+		img_closeenum(imageenum);
+	return err;
+}
+
+
+
+
+static imgtoolerr_t put_recursive_directory(imgtool_image *image, LPCTSTR local_path, const char *path)
+{
+	imgtoolerr_t err;
+	HANDLE h = INVALID_HANDLE_VALUE;
+	WIN32_FIND_DATA wfd;
+	char subpath[1024];
+	TCHAR local_subpath[MAX_PATH];
+	char path_separator;
+
+	path_separator = img_module(image)->path_separator;
+
+	err = img_createdir(image, path);
+	if (err)
+		goto done;
+
+	_sntprintf(local_subpath, sizeof(local_subpath) / sizeof(local_subpath[0]), TEXT("%s\\*.*"), local_path, wfd.cFileName);
+
+	h = FindFirstFile(local_subpath, &wfd);
+	if (h && (h != INVALID_HANDLE_VALUE))
+	{
+		do
+		{
+			if (_tcscmp(wfd.cFileName, TEXT(".")) && _tcscmp(wfd.cFileName, TEXT("..")))
+			{
+				_sntprintf(local_subpath, sizeof(local_subpath) / sizeof(local_subpath[0]), TEXT("%s\\%s"), local_path, wfd.cFileName);
+				snprintf(subpath, sizeof(subpath) / sizeof(subpath[0]), "%s%c%s", path, path_separator, T2U(wfd.cFileName));
+
+				if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+					err = put_recursive_directory(image, local_subpath, subpath);
+				else
+					err = img_putfile(image, subpath, T2A(local_subpath), NULL, NULL);
+				if (err)
+					goto done;
+			}
+		}
+		while(FindNextFile(h, &wfd));
+	}
+
+done:
+	if (h && (h != INVALID_HANDLE_VALUE))
+		FindClose(h);
+	return err;
+}
+
+
+
 imgtoolerr_t wimgtool_open_image(HWND window, const struct ImageModule *module,
 	const char *filename, int read_or_write)
 {
@@ -556,7 +744,7 @@ imgtoolerr_t wimgtool_open_image(HWND window, const struct ImageModule *module,
 
 	info = get_wimgtool_info(window);
 
-	/* if the module is not specified, auto detect the format */
+	// if the module is not specified, auto detect the format
 	if (!module)
 	{
 		err = img_identify(library, filename, &module, 1);
@@ -564,7 +752,7 @@ imgtoolerr_t wimgtool_open_image(HWND window, const struct ImageModule *module,
 			goto done;
 	}
 
-	/* check to see if this module actually supports writing */
+	// check to see if this module actually supports writing
 	if (read_or_write != OSD_FOPEN_READ)
 	{
 		features = img_get_module_features(module);
@@ -580,9 +768,16 @@ imgtoolerr_t wimgtool_open_image(HWND window, const struct ImageModule *module,
 	}
 	
 	err = img_open(module, filename, read_or_write, &image);
+	if ((ERRORCODE(err) == IMGTOOLERR_READONLY) && read_or_write)
+	{
+		// if we failed when open a read/write image, try again
+		read_or_write = OSD_FOPEN_READ;
+		err = img_open(module, filename, read_or_write, &image);
+	}
 	if (err)
 		goto done;
 
+	// unload current image
 	if (info->image)
 		img_close(info->image);
 	info->image = image;
@@ -592,6 +787,7 @@ imgtoolerr_t wimgtool_open_image(HWND window, const struct ImageModule *module,
 		free(info->current_directory);
 		info->current_directory = NULL;
 	}
+
 
 	// do we support directories?
 	if (features.supports_directories)
@@ -628,7 +824,7 @@ static void menu_new(HWND window)
 	memory_pool pool;
 	OPENFILENAME ofn;
 	const struct ImageModule *module;
-	const char *filename;
+	const char *filename = NULL;
 	option_resolution *resolution = NULL;
 
 	pool_init(&pool);
@@ -658,7 +854,7 @@ static void menu_new(HWND window)
 
 done:
 	if (err)
-		report_error(window, err);
+		wimgtool_report_error(window, err, filename, NULL);
 	if (resolution)
 		option_resolution_close(resolution);
 	pool_exit(&pool);
@@ -672,8 +868,9 @@ static void menu_open(HWND window)
 	memory_pool pool;
 	OPENFILENAME ofn;
 	const struct ImageModule *module;
-	const char *filename;
+	const char *filename = NULL;
 	struct wimgtool_info *info;
+	int read_or_write;
 
 	pool_init(&pool);
 
@@ -687,17 +884,21 @@ static void menu_open(HWND window)
 		goto done;
 
 	filename = T2A(ofn.lpstrFile);
-
 	module = find_filter_module(ofn.nFilterIndex, FALSE);
 
-	err = wimgtool_open_image(window, module, filename, (ofn.Flags & OFN_READONLY)
-		? OSD_FOPEN_READ : OSD_FOPEN_RW);
+	// is this file read only?
+	if ((ofn.Flags & OFN_READONLY) || (GetFileAttributes(ofn.lpstrFile) & FILE_ATTRIBUTE_READONLY))
+		read_or_write = OSD_FOPEN_READ;
+	else
+		read_or_write = OSD_FOPEN_RW;
+
+	err = wimgtool_open_image(window, module, filename, read_or_write);
 	if (err)
 		goto done;
 
 done:
 	if (err)
-		report_error(window, err);
+		wimgtool_report_error(window, err, filename, NULL);
 	pool_exit(&pool);
 }
 
@@ -706,7 +907,7 @@ done:
 static void menu_insert(HWND window)
 {
 	imgtoolerr_t err;
-	const char *image_filename;
+	const char *image_filename = NULL;
 	TCHAR host_filename[MAX_PATH] = { 0 };
 	const TCHAR *s1;
 	char *s2;
@@ -761,16 +962,14 @@ done:
 	if (opts)
 		option_resolution_close(opts);
 	if (err)
-		report_error(window, err);
+		wimgtool_report_error(window, err, image_filename, ofn.lpstrFile);
 }
 
 
 
-static void menu_extract(HWND window)
+static imgtoolerr_t menu_extract_proc(HWND window, const imgtool_dirent *entry, void *param)
 {
-	imgtoolerr_t err;
-	imgtool_dirent entry;
-	char image_filename[MAX_PATH];
+	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
 	TCHAR host_filename[MAX_PATH];
 	OPENFILENAME ofn;
 	struct wimgtool_info *info;
@@ -780,19 +979,13 @@ static void menu_extract(HWND window)
 
 	info = get_wimgtool_info(window);
 
-	memset(&entry, 0, sizeof(entry));
-	entry.filename = image_filename;
-	entry.filename_len = sizeof(image_filename) / sizeof(image_filename[0]);
-	err = get_selected_dirent(window, &entry);
-	if (err)
-		goto done;
-	filename = entry.filename;
+	filename = entry->filename;
 
-	image_basename = image_filename;
-	for (i = 0; image_filename[i]; i++)
+	image_basename = entry->filename;
+	for (i = 0; entry->filename[i]; i++)
 	{
-		if (image_filename[i] == img_module(info->image)->path_separator)
-			image_basename = &image_filename[i + 1];
+		if (entry->filename[i] == img_module(info->image)->path_separator)
+			image_basename = &entry->filename[i + 1];
 	}
 
 	_tcscpy(host_filename, U2T(image_basename));
@@ -805,13 +998,30 @@ static void menu_extract(HWND window)
 	if (!GetSaveFileName(&ofn))
 		goto done;
 
-	err = img_getfile(info->image, filename, ofn.lpstrFile, NULL);
-	if (err)
-		goto done;
+	if (entry->directory)
+	{
+		err = get_recursive_directory(info->image, filename, ofn.lpstrFile);
+		if (err)
+			goto done;
+	}
+	else
+	{
+		err = img_getfile(info->image, filename, ofn.lpstrFile, NULL);
+		if (err)
+			goto done;
+	}
 
 done:
 	if (err)
-		report_error(window, err);
+		wimgtool_report_error(window, err, filename, ofn.lpstrFile);
+	return err;
+}
+
+
+
+static void menu_extract(HWND window)
+{
+	foreach_selected_item(window, menu_extract_proc, NULL);
 }
 
 
@@ -819,7 +1029,7 @@ done:
 struct createdir_dialog_info
 {
 	HWND ok_button;
-	HWND edit_button;
+	HWND edit_box;
 	TCHAR buf[256];
 };
 
@@ -840,7 +1050,8 @@ static INT_PTR CALLBACK createdir_dialog_proc(HWND dialog, UINT message, WPARAM 
 			info = (struct createdir_dialog_info *) lparam;
 
 			info->ok_button = GetDlgItem(dialog, IDOK);
-			info->edit_button = GetDlgItem(dialog, IDC_EDIT);
+			info->edit_box = GetDlgItem(dialog, IDC_EDIT);
+			SetFocus(info->edit_box);
 			break;
 
 		case WM_COMMAND:
@@ -857,7 +1068,7 @@ static INT_PTR CALLBACK createdir_dialog_proc(HWND dialog, UINT message, WPARAM 
 					break;
 
 				case EN_CHANGE:
-					GetWindowText(info->edit_button,
+					GetWindowText(info->edit_box,
 						info->buf, sizeof(info->buf) / sizeof(info->buf[0]));
 					EnableWindow(info->ok_button, info->buf[0] != '\0');
 					break;
@@ -874,7 +1085,7 @@ static void menu_createdir(HWND window)
 	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
 	struct createdir_dialog_info cdi;
 	struct wimgtool_info *info;
-	char *dirname;
+	char *dirname = NULL;
 	char *s;
 
 	info = get_wimgtool_info(window);
@@ -905,7 +1116,29 @@ static void menu_createdir(HWND window)
 
 done:
 	if (err)
-		report_error(window, err);
+		wimgtool_report_error(window, err, NULL, dirname);
+}
+
+
+
+static imgtoolerr_t menu_delete_proc(HWND window, const imgtool_dirent *entry, void *param)
+{
+	imgtoolerr_t err;
+	struct wimgtool_info *info;
+
+	info = get_wimgtool_info(window);
+
+	if (entry->directory)
+		err = img_deletedir(info->image, entry->filename);
+	else
+		err = img_deletefile(info->image, entry->filename);
+	if (err)
+		goto done;
+
+done:
+	if (err)
+		wimgtool_report_error(window, err, NULL, entry->filename);
+	return err;
 }
 
 
@@ -913,33 +1146,21 @@ done:
 static void menu_delete(HWND window)
 {
 	imgtoolerr_t err;
-	imgtool_dirent entry;
-	char image_filename[MAX_PATH];
-	struct wimgtool_info *info;
 
-	info = get_wimgtool_info(window);
-
-	memset(&entry, 0, sizeof(entry));
-	entry.filename = image_filename;
-	entry.filename_len = sizeof(image_filename) / sizeof(image_filename[0]);
-	err = get_selected_dirent(window, &entry);
-	if (err)
-		goto done;
-
-	if (entry.directory)
-		err = img_deletedir(info->image, image_filename);
-	else
-		err = img_deletefile(info->image, image_filename);
-	if (err)
-		goto done;
+	foreach_selected_item(window, menu_delete_proc, NULL);
 
 	err = refresh_image(window);
 	if (err)
-		goto done;
+		wimgtool_report_error(window, err, NULL, NULL);
+}
 
-done:
-	if (err)
-		report_error(window, err);
+
+
+static void menu_sectorview(HWND window)
+{
+	struct wimgtool_info *info;
+	info = get_wimgtool_info(window);
+	win_sectorview_dialog(window, info->image);
 }
 
 
@@ -1029,6 +1250,7 @@ static void drop_files(HWND window, HDROP drop)
 	struct wimgtool_info *info;
 	UINT count, i;
 	TCHAR buffer[MAX_PATH];
+	char subpath[1024];
 	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
 
 	info = get_wimgtool_info(window);
@@ -1038,7 +1260,14 @@ static void drop_files(HWND window, HDROP drop)
 	{
 		DragQueryFile(drop, i, buffer, sizeof(buffer) / sizeof(buffer[0]));
 
-		err = img_putfile(info->image, NULL, buffer, NULL, NULL);
+		// figure out the file/dir name on the image
+		snprintf(subpath, sizeof(subpath) / sizeof(subpath[0]), "%s%s",
+			info->current_directory ? info->current_directory : "", osd_basename(T2U(buffer)));
+
+		if (GetFileAttributes(buffer) & FILE_ATTRIBUTE_DIRECTORY)
+			err = put_recursive_directory(info->image, buffer, subpath);
+		else
+			err = img_putfile(info->image, subpath, T2A(buffer), NULL, NULL);
 		if (err)
 			goto done;
 	}
@@ -1046,7 +1275,7 @@ static void drop_files(HWND window, HDROP drop)
 done:
 	refresh_image(window);
 	if (err)
-		report_error(window, err);
+		wimgtool_report_error(window, err, NULL, NULL);
 }
 
 
@@ -1101,7 +1330,6 @@ static imgtoolerr_t double_click(HWND window)
 	DWORD pos;
 	imgtool_dirent entry;
 	int selected_item;
-	char buf[256];
 
 	info = get_wimgtool_info(window);
 
@@ -1116,8 +1344,6 @@ static imgtoolerr_t double_click(HWND window)
 	if (htinfo.flags & LVHT_ONITEM)
 	{
 		memset(&entry, 0, sizeof(entry));
-		entry.filename = buf;
-		entry.filename_len = sizeof(buf) / sizeof(buf[0]);
 
 		item.mask = LVIF_PARAM;
 		item.iItem = htinfo.iItem;
@@ -1176,6 +1402,77 @@ static BOOL context_menu(HWND window, LONG x, LONG y)
 
 
 
+struct selection_info
+{
+	unsigned int has_files : 1;
+	unsigned int has_directories : 1;
+};
+
+
+
+static imgtoolerr_t init_menu_proc(HWND window, const imgtool_dirent *entry, void *param)
+{
+	struct selection_info *si;
+	si = (struct selection_info *) param;
+	if (entry->directory)
+		si->has_directories = 1;
+	else
+		si->has_files = 1;
+	return IMGTOOLERR_SUCCESS;
+}
+
+
+
+static void init_menu(HWND window, HMENU menu)
+{
+	struct wimgtool_info *info;
+	struct imgtool_module_features features;
+	struct selection_info si;
+	unsigned int can_read, can_write, can_createdir, can_delete;
+	LONG lvstyle;
+
+	memset(&features, 0, sizeof(features));
+	memset(&si, 0, sizeof(si));
+
+	info = get_wimgtool_info(window);
+
+	if (info->image)
+	{
+		features = img_get_module_features(img_module(info->image));
+
+		foreach_selected_item(window, init_menu_proc, &si);
+	}
+
+	can_read      = features.supports_reading && (si.has_files || si.has_directories);
+	can_write     = features.supports_writing && (info->open_mode != OSD_FOPEN_READ);
+	can_createdir = features.supports_createdir && (info->open_mode != OSD_FOPEN_READ);
+	can_delete    = (si.has_files || si.has_directories)
+						&& (!si.has_files || features.supports_deletefile)
+						&& (!si.has_directories || features.supports_deletedir)
+						&& (info->open_mode != OSD_FOPEN_READ);
+
+	EnableMenuItem(menu, ID_IMAGE_INSERT,
+		MF_BYCOMMAND | (can_write ? MF_ENABLED : MF_GRAYED));
+	EnableMenuItem(menu, ID_IMAGE_EXTRACT,
+		MF_BYCOMMAND | (can_read ? MF_ENABLED : MF_GRAYED));
+	EnableMenuItem(menu, ID_IMAGE_CREATEDIR,
+		MF_BYCOMMAND | (can_createdir ? MF_ENABLED : MF_GRAYED));
+	EnableMenuItem(menu, ID_IMAGE_DELETE,
+		MF_BYCOMMAND | (can_delete ? MF_ENABLED : MF_GRAYED));
+	EnableMenuItem(menu, ID_IMAGE_SECTORVIEW,
+		MF_BYCOMMAND | (features.supports_readsector ? MF_ENABLED : MF_GRAYED));
+
+	lvstyle = GetWindowLong(info->listview, GWL_STYLE) & LVS_TYPEMASK;
+	CheckMenuItem(menu, ID_VIEW_ICONS,
+		MF_BYCOMMAND | (lvstyle == LVS_ICON) ? MF_CHECKED : MF_UNCHECKED);
+	CheckMenuItem(menu, ID_VIEW_LIST,
+		MF_BYCOMMAND | (lvstyle == LVS_LIST) ? MF_CHECKED : MF_UNCHECKED);
+	CheckMenuItem(menu, ID_VIEW_DETAILS,
+		MF_BYCOMMAND | (lvstyle == LVS_REPORT) ? MF_CHECKED : MF_UNCHECKED);
+}
+
+
+
 static LRESULT CALLBACK wimgtool_wndproc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	struct wimgtool_info *info;
@@ -1184,14 +1481,11 @@ static LRESULT CALLBACK wimgtool_wndproc(HWND window, UINT message, WPARAM wpara
 	int window_width;
 	int window_height;
 	int status_height;
-	int selected_item;
 	NMHDR *notify;
 	POINT pt;
 	LRESULT lres;
 	HWND target_window;
 	DWORD style;
-	HMENU menu;
-	struct imgtool_module_features features;
 
 	info = get_wimgtool_info(window);
 
@@ -1221,31 +1515,7 @@ static LRESULT CALLBACK wimgtool_wndproc(HWND window, UINT message, WPARAM wpara
 			break;
 
 		case WM_INITMENU:
-			menu = (HMENU) wparam;
-			if (info->image)
-				features = img_get_module_features(img_module(info->image));
-			else
-				memset(&features, 0, sizeof(features));
-
-			selected_item = get_selected_item(window);
-			if (selected_item < 0)
-			{
-				features.supports_reading = 0;
-				features.supports_deletefile = 0;
-				features.supports_deletedir = 0;
-			}
-
-			/* TODO - At some point, we need to enabled ID_IMAGE_DELETE
-			 * conditionally based on whether the current selection is a
-			 * file or a directory, but for now I'm being lazy */
-			EnableMenuItem(menu, ID_IMAGE_INSERT,
-				MF_BYCOMMAND | (features.supports_writing ? MF_ENABLED : MF_GRAYED));
-			EnableMenuItem(menu, ID_IMAGE_EXTRACT,
-				MF_BYCOMMAND | (features.supports_reading ? MF_ENABLED : MF_GRAYED));
-			EnableMenuItem(menu, ID_IMAGE_CREATEDIR,
-				MF_BYCOMMAND | (features.supports_createdir ? MF_ENABLED : MF_GRAYED));
-			EnableMenuItem(menu, ID_IMAGE_DELETE,
-				MF_BYCOMMAND | (features.supports_deletefile ? MF_ENABLED : MF_GRAYED));
+			init_menu(window, (HMENU) wparam);
 			break;
 
 		case WM_DROPFILES:
@@ -1281,6 +1551,10 @@ static LRESULT CALLBACK wimgtool_wndproc(HWND window, UINT message, WPARAM wpara
 
 				case ID_IMAGE_DELETE:
 					menu_delete(window);
+					break;
+
+				case ID_IMAGE_SECTORVIEW:
+					menu_sectorview(window);
 					break;
 
 				case ID_VIEW_ICONS:

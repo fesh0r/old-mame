@@ -63,9 +63,10 @@ BEGIN
     POPUP "&Image"
     BEGIN
         MENUITEM "&Insert File...\tCtrl+I",     ID_IMAGE_INSERT
-        MENUITEM "&Extract File...\tCtrl+E",    ID_IMAGE_EXTRACT
+        MENUITEM "&Extract...\tCtrl+E",         ID_IMAGE_EXTRACT
         MENUITEM "&New Directory...\tCtrl+Y",   ID_IMAGE_CREATEDIR
         MENUITEM "&Delete\tDel",                ID_IMAGE_DELETE
+        MENUITEM "&View Sector Data...\tCtrl+V", ID_IMAGE_SECTORVIEW
     END
     POPUP "&View"
     BEGIN
@@ -81,7 +82,7 @@ IDR_FILECONTEXT_MENU MENU
 BEGIN
     POPUP "Context Menu"
     BEGIN
-        MENUITEM "&Extract File...",            ID_IMAGE_EXTRACT
+        MENUITEM "&Extract...",                 ID_IMAGE_EXTRACT
         MENUITEM "&New Directory...",           ID_IMAGE_CREATEDIR
         MENUITEM "&Delete",                     ID_IMAGE_DELETE
     END
@@ -101,6 +102,7 @@ BEGIN
     "I",            ID_IMAGE_INSERT,        VIRTKEY, CONTROL, NOINVERT
     "E",            ID_IMAGE_EXTRACT,       VIRTKEY, CONTROL, NOINVERT
     "Y",            ID_IMAGE_CREATEDIR,     VIRTKEY, CONTROL, NOINVERT
+    "V",            ID_IMAGE_SECTORVIEW,    VIRTKEY, CONTROL, NOINVERT
     VK_DELETE,      ID_IMAGE_DELETE,        VIRTKEY, NOINVERT
 END
 
@@ -147,8 +149,29 @@ FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,129,26,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,7,26,50,14
-    LTEXT           "Directory Name:",IDC_STATIC,7,7,53,8
+    LTEXT           "Directory Name:",IDC_STATIC,7,8,53,8
     EDITTEXT        IDC_EDIT,63,7,116,14,ES_AUTOHSCROLL
+END
+
+IDD_SECTORVIEW DIALOGEX 0, 0, 345, 126
+STYLE DS_SETFONT | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Sector Viewer"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,288,105,50,14
+    LTEXT           "Track:",IDC_TRACKLABEL,7,108,23,11
+    EDITTEXT        IDC_TRACKEDIT,33,106,26,13,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Side:",IDC_HEADLABEL,71,108,17,11
+    EDITTEXT        IDC_HEADEDIT,93,106,26,13,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Sector:",IDC_SECTORLABEL,129,108,23,11
+    EDITTEXT        IDC_SECTOREDIT,155,106,26,13,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_HEXVIEW,"hexview_class",0x0,7,6,330,96,0x200000L
+    CONTROL         "",IDC_TRACKSPIN,"msctls_updown32",UDS_SETBUDDYINT | 
+                    UDS_ARROWKEYS,59,106,9,12
+    CONTROL         "",IDC_HEADSPIN,"msctls_updown32",UDS_SETBUDDYINT | 
+                    UDS_ARROWKEYS,119,106,9,12
+    CONTROL         "",IDC_SECTORSPIN,"msctls_updown32",UDS_SETBUDDYINT | 
+                    UDS_ARROWKEYS,181,106,9,12
 END
 
 
@@ -190,6 +213,14 @@ BEGIN
         RIGHTMARGIN, 179
         TOPMARGIN, 7
         BOTTOMMARGIN, 40
+    END
+
+    IDD_SECTORVIEW, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 338
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 119
     END
 END
 #endif    // APSTUDIO_INVOKED

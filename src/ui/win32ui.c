@@ -1383,7 +1383,7 @@ static void ResizeTreeAndListViews(BOOL bResizeHidden)
 	int i;
 	int nLastWidth = 0;
 	int nLastWidth2 = 0;
-	int nLeftWindowWidth;
+	int nLeftWindowWidth = 0;
 	RECT rect;
 	BOOL bVisible;
 
@@ -1913,6 +1913,12 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 
 	strcpy(last_directory, GetInpDir());
 	hMain = CreateDialog(hInstance, MAKEINTRESOURCE(IDD_MAIN), 0, NULL);
+	if (hMain == NULL)
+	{
+		dprintf("error creating main dialog, aborting");
+		return FALSE;
+	}
+
 	SetMainTitle();
 	hTabCtrl = GetDlgItem(hMain, IDC_SSTAB);
 	

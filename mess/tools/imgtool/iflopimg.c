@@ -204,6 +204,45 @@ static void imgtool_floppy_close(imgtool_image *img)
 
 
 
+imgtoolerr_t imgtool_floppy_get_sector_size(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, UINT32 *sector_size)
+{
+	floperr_t ferr;
+
+	ferr = floppy_get_sector_length(get_floppy(image), head, track, sector, sector_size);
+	if (ferr)
+		return imgtool_floppy_error(ferr);
+
+	return IMGTOOLERR_SUCCESS;
+}
+
+
+
+imgtoolerr_t imgtool_floppy_read_sector(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, void *buffer, size_t len)
+{
+	floperr_t ferr;
+
+	ferr = floppy_read_sector(get_floppy(image), head, track, sector, 0, buffer, len);
+	if (ferr)
+		return imgtool_floppy_error(ferr);
+
+	return IMGTOOLERR_SUCCESS;
+}
+
+
+
+imgtoolerr_t imgtool_floppy_write_sector(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, const void *buffer, size_t len)
+{
+	floperr_t ferr;
+
+	ferr = floppy_write_sector(get_floppy(image), head, track, sector, 0, buffer, len);
+	if (ferr)
+		return imgtool_floppy_error(ferr);
+
+	return IMGTOOLERR_SUCCESS;
+}
+
+
+
 imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *format_name,
 	const char *description, const struct FloppyFormat *format,
 	imgtoolerr_t (*populate)(imgtool_library *library, struct ImgtoolFloppyCallbacks *module))
@@ -242,6 +281,9 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 		module->extra					= extra;
 		module->createimage_optguide	= floppy_option_guide;
 		module->createimage_optspec		= format[format_index].param_guidelines;
+		module->get_sector_size			= imgtool_floppy_get_sector_size;
+		module->read_sector				= imgtool_floppy_read_sector;
+		module->write_sector			= imgtool_floppy_write_sector;
 
 		if (populate)
 		{
@@ -251,27 +293,29 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 			
 			populate(library, &floppy_callbacks);
 
-			extra->create					= floppy_callbacks.create;
-			extra->open						= floppy_callbacks.open;
-			module->eoln					= floppy_callbacks.eoln;
-			module->path_separator			= floppy_callbacks.path_separator;
+			extra->create						= floppy_callbacks.create;
+			extra->open							= floppy_callbacks.open;
+			module->eoln						= floppy_callbacks.eoln;
+			module->path_separator				= floppy_callbacks.path_separator;
 			module->alternate_path_separator	= floppy_callbacks.alternate_path_separator;
-			module->prefer_ucase			= floppy_callbacks.prefer_ucase;
-			module->initial_path_separator	= floppy_callbacks.initial_path_separator;
+			module->prefer_ucase				= floppy_callbacks.prefer_ucase;
+			module->initial_path_separator		= floppy_callbacks.initial_path_separator;
 			module->open_is_strict				= floppy_callbacks.open_is_strict;
-			module->begin_enum				= floppy_callbacks.begin_enum;
-			module->next_enum				= floppy_callbacks.next_enum;
-			module->close_enum				= floppy_callbacks.close_enum;
-			module->free_space				= floppy_callbacks.free_space;
-			module->read_file				= floppy_callbacks.read_file;
-			module->write_file				= floppy_callbacks.write_file;
-			module->delete_file				= floppy_callbacks.delete_file;
+			module->supports_creation_time		= floppy_callbacks.supports_creation_time;
+			module->supports_lastmodified_time	= floppy_callbacks.supports_lastmodified_time;
+			module->begin_enum					= floppy_callbacks.begin_enum;
+			module->next_enum					= floppy_callbacks.next_enum;
+			module->close_enum					= floppy_callbacks.close_enum;
+			module->free_space					= floppy_callbacks.free_space;
+			module->read_file					= floppy_callbacks.read_file;
+			module->write_file					= floppy_callbacks.write_file;
+			module->delete_file					= floppy_callbacks.delete_file;
 			module->create_dir					= floppy_callbacks.create_dir;
 			module->delete_dir					= floppy_callbacks.delete_dir;
-			module->writefile_optguide		= floppy_callbacks.writefile_optguide;
-			module->writefile_optspec		= floppy_callbacks.writefile_optspec;
-			module->image_extra_bytes		= floppy_callbacks.image_extra_bytes;
-			module->imageenum_extra_bytes	= floppy_callbacks.imageenum_extra_bytes;
+			module->writefile_optguide			= floppy_callbacks.writefile_optguide;
+			module->writefile_optspec			= floppy_callbacks.writefile_optspec;
+			module->image_extra_bytes			= floppy_callbacks.image_extra_bytes;
+			module->imageenum_extra_bytes		= floppy_callbacks.imageenum_extra_bytes;
 		}
 	}
 	return IMGTOOLERR_SUCCESS;

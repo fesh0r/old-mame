@@ -27,7 +27,8 @@ OSOBJS += \
 	$(OBJ)/mess/windows/dialog.o	\
 	$(OBJ)/mess/windows/tapedlg.o	\
 	$(OBJ)/mess/windows/parallel.o	\
-	$(OBJ)/mess/windows/strconv.o
+	$(OBJ)/mess/windows/strconv.o	\
+	$(OBJ)/mess/windows/winutils.o
 endif 
 
 # add resource file
@@ -43,8 +44,10 @@ RESFILE=$(OBJ)/mess/windows/mess.res
 
 # enable guard pages on all memory allocations in the debug build
 ifdef DEBUG
+ifndef MESS
 #OSOBJS += $(OBJ)/windows/winalloc.o
 #LDFLAGS += -Wl,--allow-multiple-definition
+endif
 endif
 
 # video blitting functions

@@ -267,18 +267,26 @@ done:
 imgtoolerr_t img_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent)
 {
 	imgtoolerr_t err;
+	const struct ImageModule *module;
+
+	module = img_enum_module(enumeration);
 
 	/* This makes it so that drivers don't have to take care of clearing
 	 * the attributes if they don't apply
 	 */
-	if (ent->filename_len)
-		ent->filename[0] = '\0';
-	if (ent->attr_len)
-		ent->attr[0] = '\0';
+	memset(ent, 0, sizeof(*ent));
 
-	err = img_enum_module(enumeration)->next_enum(enumeration, ent);
+	err = module->next_enum(enumeration, ent);
 	if (err)
 		return markerrorsource(err);
+
+	/* don't trust the module! */
+	if (!module->supports_creation_time && (ent->creation_time != 0))
+		return IMGTOOLERR_UNEXPECTED;
+	if (!module->supports_lastmodified_time && (ent->lastmodified_time != 0))
+		return IMGTOOLERR_UNEXPECTED;
+	if (!module->path_separator && ent->directory)
+		return IMGTOOLERR_UNEXPECTED;
 
 	return IMGTOOLERR_SUCCESS;
 }
@@ -316,7 +324,7 @@ imgtoolerr_t img_getdirent(imgtool_image *img, const char *path, int index, imgt
 
 done:
 	if (err)
-		memset(ent->filename, 0, ent->filename_len);
+		memset(ent->filename, 0, sizeof(ent->filename));
 	if (imgenum)
 		img_closeenum(imgenum);
 	return err;
@@ -340,12 +348,9 @@ imgtoolerr_t img_countfiles(imgtool_image *img, int *totalfiles)
 	int err;
 	imgtool_imageenum *imgenum;
 	imgtool_dirent ent;
-	char fnamebuf[256];
 
 	*totalfiles = 0;
 	memset(&ent, 0, sizeof(ent));
-	ent.filename = fnamebuf;
-	ent.filename_len = sizeof(fnamebuf) / sizeof(fnamebuf[0]);
 
 	err = img_beginenum(img, NULL, &imgenum);
 	if (err)
@@ -374,15 +379,12 @@ imgtoolerr_t img_filesize(imgtool_image *img, const char *fname, UINT64 *filesiz
 	int err;
 	imgtool_imageenum *imgenum;
 	imgtool_dirent ent;
-	char fnamebuf[256];
 	const char *path;
 
 	path = NULL;	/* TODO: Need to parse off the path */
 
 	*filesize = -1;
 	memset(&ent, 0, sizeof(ent));
-	ent.filename = fnamebuf;
-	ent.filename_len = sizeof(fnamebuf) / sizeof(fnamebuf[0]);
 
 	err = img_beginenum(img, path, &imgenum);
 	if (err)
@@ -775,60 +777,40 @@ imgtoolerr_t img_create_byname(imgtool_library *library, const char *modulename,
 	return img_create(module, fname, opts, image);
 }
 
-static char *nextentry(char **s)
+
+
+imgtoolerr_t img_getsectorsize(imgtool_image *image, UINT32 track, UINT32 head,
+	UINT32 sector, UINT32 *length)
 {
-	char *result;
-	char *p;
-	char *beginspace;
-	int parendeep;
+	/* implemented? */
+	if (!image->module->get_sector_size)
+		return IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
 
-	p = *s;
+	return image->module->get_sector_size(image, track, head, sector, length);
+}
 
-	if (*p)
-	{
-		beginspace = NULL;
-		result = p;
-		parendeep = 0;
 
-		while(*p && ((*p != '|') || parendeep))
-		{
-			switch(*p) {
-			case '(':
-				parendeep++;
-				beginspace = NULL;
-				break;
 
-			case ')':
-				parendeep--;
-				beginspace = NULL;
-				break;
+imgtoolerr_t img_readsector(imgtool_image *image, UINT32 track, UINT32 head,
+	UINT32 sector, void *buffer, size_t len)
+{
+	/* implemented? */
+	if (!image->module->read_sector)
+		return IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
 
-			case ' ':
-				if (!beginspace)
-					beginspace = p;
-				break;
+	return image->module->read_sector(image, track, head, sector, buffer, len);
+}
 
-			default:
-				beginspace = NULL;
-				break;
-			}
-			p++;
-		}
-		if (*p)
-		{
-			if (!beginspace)
-				beginspace = p;
-			p++;
-		}
-		*s = p;
-		if (beginspace)
-			*beginspace = '\0';
-	}
-	else
-	{
-		result = NULL;
-	}
-	return result;
+
+
+imgtoolerr_t img_writesector(imgtool_image *image, UINT32 track, UINT32 head,
+	UINT32 sector, const void *buffer, size_t len)
+{
+	/* implemented? */
+	if (!image->module->write_sector)
+		return IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
+
+	return image->module->write_sector(image, track, head, sector, buffer, len);
 }
 
 

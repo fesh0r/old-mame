@@ -324,6 +324,20 @@ imgtoolerr_t img_create(const struct ImageModule *module, const char *fname,
 imgtoolerr_t img_create_byname(imgtool_library *library, const char *modulename, const char *fname,
 	option_resolution *opts, imgtool_image **image);
 
+/* img_getsectorsize
+ * img_readsector
+ * img_writesector
+ *
+ * Description:
+ *		Functions for reading/writing sector data
+ */
+imgtoolerr_t img_getsectorsize(imgtool_image *image, UINT32 track, UINT32 head,
+	UINT32 sector, UINT32 *length);
+imgtoolerr_t img_readsector(imgtool_image *image, UINT32 track, UINT32 head,
+	UINT32 sector, void *buffer, size_t len);
+imgtoolerr_t img_writesector(imgtool_image *image, UINT32 track, UINT32 head,
+	UINT32 sector, const void *buffer, size_t len);
+
 /* img_module
  * img_enum_module
  *
@@ -365,6 +379,10 @@ struct imgtool_module_features
 	unsigned int supports_freespace : 1;
 	unsigned int supports_createdir : 1;
 	unsigned int supports_deletedir : 1;
+	unsigned int supports_creation_time : 1;
+	unsigned int supports_lastmodified_time : 1;
+	unsigned int supports_readsector : 1;
+	unsigned int supports_writesector : 1;
 };
 
 struct imgtool_module_features img_get_module_features(const struct ImageModule *module);

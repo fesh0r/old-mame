@@ -15,6 +15,8 @@
 #ifndef LIBRARY_H
 #define LIBRARY_H
 
+#include <time.h>
+
 #include "osd_cpu.h"
 #include "opresolv.h"
 #include "stream.h"
@@ -34,11 +36,12 @@ imgtool_libsort_t;
 
 typedef struct
 {
-	char *filename;
-	size_t filename_len;
-	char *attr;
-	size_t attr_len;
+	char filename[1024];
+	char attr[64];
 	UINT64 filesize;
+
+	time_t creation_time;
+	time_t lastmodified_time;
 
 	/* flags */
 	unsigned int eof : 1;
@@ -67,6 +70,9 @@ struct ImageModule
 	unsigned int prefer_ucase : 1;
 	unsigned int initial_path_separator : 1;
 	unsigned int open_is_strict : 1;
+	unsigned int supports_creation_time : 1;
+	unsigned int supports_lastmodified_time : 1;
+	unsigned int tracks_are_called_cylinders : 1;
 
 	imgtoolerr_t	(*open)			(imgtool_image *image, imgtool_stream *f);
 	void			(*close)		(imgtool_image *image);
@@ -81,6 +87,9 @@ struct ImageModule
 	imgtoolerr_t	(*create_dir)	(imgtool_image *image, const char *path);
 	imgtoolerr_t	(*delete_dir)	(imgtool_image *image, const char *path);
 	imgtoolerr_t	(*create)		(imgtool_image *image, imgtool_stream *f, option_resolution *opts);
+	imgtoolerr_t	(*get_sector_size)(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, UINT32 *sector_size);
+	imgtoolerr_t	(*read_sector)	(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, void *buffer, size_t len);
+	imgtoolerr_t	(*write_sector)	(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, const void *buffer, size_t len);
 	int				(*approve_filename_char)(unicode_char_t ch);
 
 	const struct OptionGuide *createimage_optguide;

@@ -17,6 +17,7 @@
 #include "utils.h"
 
 
+/* this structure mirrors the structure of an RS-DOS directory entry on disk */
 struct rsdos_dirent
 {
 	char fname[8];
@@ -26,6 +27,7 @@ struct rsdos_dirent
 	unsigned char first_granule;
 	unsigned char lastsectorbytes_msb;
 	unsigned char lastsectorbytes_lsb;
+	unsigned char unused[16];
 };
 
 struct rsdos_direnum
@@ -230,12 +232,14 @@ static imgtoolerr_t process_rsdos_file(struct rsdos_dirent *ent, imgtool_image *
 
 
 
+/* create a new directory entry with a specified name */
 static imgtoolerr_t prepare_dirent(struct rsdos_dirent *ent, const char *fname)
 {
 	const char *fname_end;
 	const char *fname_ext;
 	int fname_ext_len;
 
+	memset(ent, '\0', sizeof(*ent));
 	memset(ent->fname, ' ', sizeof(ent->fname));
 	memset(ent->fext, ' ', sizeof(ent->fext));
 
@@ -292,11 +296,7 @@ static imgtoolerr_t rsdos_diskimage_nextenum(imgtool_imageenum *enumeration, img
 	{
 		rsenum->eof = 1;
 eof:
-		ent->filesize = 0;
-		ent->corrupt = 0;
 		ent->eof = 1;
-		if (ent->filename_len > 0)
-			ent->filename[0] = '\0';
 	}
 	else
 	{
@@ -320,10 +320,8 @@ eof:
 
 		get_dirent_fname(fname, &rsent);
 
-		if (ent->filename_len)
-			snprintf(ent->filename, ent->filename_len, "%s", fname);
-		if (ent->attr_len)
-			snprintf(ent->attr, ent->attr_len, "%d %c", (int) rsent.ftype, (char) (rsent.asciiflag + 'B'));
+		snprintf(ent->filename, sizeof(ent->filename) / sizeof(ent->filename[0]), "%s", fname);
+		snprintf(ent->attr, sizeof(ent->attr) / sizeof(ent->attr[0]), "%d %c", (int) rsent.ftype, (char) (rsent.asciiflag + 'B'));
 	}
 	return IMGTOOLERR_SUCCESS;
 }

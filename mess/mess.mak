@@ -333,8 +333,9 @@ $(OBJ)/nintendo.a:					\
 	$(OBJ)/mess/systems/snes.o	 
 
 $(OBJ)/amiga.a: \
-	$(OBJ)/mess/vidhrdw/amiga.o	 \
-	$(OBJ)/mess/machine/amiga.o	 \
+	$(OBJ)/vidhrdw/amiga.o			\
+	$(OBJ)/machine/amiga.o			\
+	$(OBJ)/mess/machine/amigafdc.o	\
 	$(OBJ)/mess/systems/amiga.o
 
 $(OBJ)/cbmshare.a: \
@@ -520,6 +521,7 @@ $(OBJ)/pcshare.a:					\
 	$(OBJ)/mess/vidhrdw/pc_video.o	\
 	$(OBJ)/mess/vidhrdw/pc_mda.o	\
 	$(OBJ)/mess/vidhrdw/pc_cga.o	\
+	$(OBJ)/mess/vidhrdw/cgapal.o	\
 	$(OBJ)/mess/vidhrdw/pc_vga.o	\
 
 $(OBJ)/pc.a:	   \

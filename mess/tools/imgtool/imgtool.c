@@ -41,6 +41,14 @@ struct imgtool_module_features img_get_module_features(const struct ImageModule 
 		features.supports_createdir = 1;
 	if (module->delete_dir)
 		features.supports_deletedir = 1;
+	if (module->supports_creation_time)
+		features.supports_creation_time = 1;
+	if (module->supports_lastmodified_time)
+		features.supports_lastmodified_time = 1;
+	if (module->read_sector)
+		features.supports_readsector = 1;
+	if (module->write_sector)
+		features.supports_writesector = 1;
 	return features;
 }
 
@@ -52,8 +60,6 @@ static imgtoolerr_t evaluate_module(const char *fname,
 	imgtoolerr_t err;
 	imgtool_image *image = NULL;
 	imgtool_imageenum *imageenum = NULL;
-	char filename[256];
-	char attr[32];
 	imgtool_dirent ent;
 	float current_result;
 
@@ -72,11 +78,6 @@ static imgtoolerr_t evaluate_module(const char *fname,
 			goto done;
 
 		memset(&ent, 0, sizeof(ent));
-		ent.filename = filename;
-		ent.filename_len = sizeof(filename) / sizeof(filename[0]);
-		ent.attr = attr;
-		ent.attr_len = sizeof(attr) / sizeof(attr[0]);
-
 		do
 		{
 			err = img_nextenum(imageenum, &ent);
@@ -167,7 +168,7 @@ imgtoolerr_t img_identify(imgtool_library *library, const char *fname,
 	}
 
 	if (!modules[0])
-		err = IMGTOOLERR_MODULENOTFOUND;
+		err = IMGTOOLERR_MODULENOTFOUND | IMGTOOLERR_SRC_IMAGEFILE;
 
 done:
 	if (values)
@@ -236,6 +237,18 @@ int imgtool_validitychecks(void)
 				printf("imgtool module %s implements delete_dir without directory support\n", module->name);
 				error = 1;
 			}
+		}
+
+		/* sanity checks on sector operations */
+		if (module->read_sector && !module->get_sector_size)
+		{
+			printf("imgtool module %s implements read_sector without supporting get_sector_size\n", module->name);
+			error = 1;
+		}
+		if (module->write_sector && !module->get_sector_size)
+		{
+			printf("imgtool module %s implements write_sector without supporting get_sector_size\n", module->name);
+			error = 1;
 		}
 
 		/* sanity checks on creation options */

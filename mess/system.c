@@ -119,7 +119,7 @@ const struct GameDriver *test_drivers[] =
 	DRIVER( snespal )	/* Nintendo Super Nintendo PAL						*/
 
 	DRIVER( megaduck )	/* Megaduck											*/
-	
+
 	/* SEGA */
 	DRIVER( gamegear )	/* Sega GameGear									*/
 	DRIVER( gamegj )	/* Sega GameGear (Japanese)							*/
@@ -205,10 +205,9 @@ TESTDRIVER( wscolor )	/* Bandai WonderSwan Color Handheld					*/
 	DRIVER( atomeb )    /* 1979 Acorn Atom									*/
 	DRIVER( bbca )      /* 1981 BBC Micro Model A							*/
 	DRIVER( bbcb )      /* 1981 BBC Micro Model B							*/
-	DRIVER( bbcb1770 )  /* 1981 BBC Micro Model B with WD 1770 disc			*/
 	DRIVER( bbcbp )     /* 198? BBC Micro Model B+ 64K						*/
 	DRIVER( bbcbp128 )  /* 198? BBC Micro Model B+ 128K						*/
-TESTDRIVER( bbcb6502 )	/* 198? BBC B WD1770 with a 6502 second processor	*/
+	DRIVER( bbcm)		/* 198? BBC Master									*/
 TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
 
 	/* CAMBRIDGE COMPUTERS */
@@ -367,7 +366,7 @@ TESTDRIVER( c128nor )	/* Commodore 128 - PAL (norwegian)					*/
 TESTDRIVER( c128d )		/* Commodore 128D - NTSC 							*/
 TESTDRIVER( c128dita )	/* Commodore 128D - PAL (italian) cost reduced set	*/
 
-TESTDRIVER( amiga ) 	/* Commodore Amiga									*/
+	DRIVER( amiga ) 	/* Commodore Amiga									*/
 TESTDRIVER( cdtv )
 
 	DRIVER( c65 )		/* C65 / C64DX (Prototype, NTSC, 911001)			*/

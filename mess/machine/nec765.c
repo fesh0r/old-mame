@@ -32,7 +32,7 @@ typedef enum
 } NEC765_PHASE;
 
 /* uncomment the following line for verbose information */
-//#define VERBOSE
+#define VERBOSE
 
 /* uncomment this to not allow end of cylinder "error" */
 #define NO_END_OF_CYLINDER
@@ -134,7 +134,7 @@ static char nec765_data_buffer[32*1024];
 nec765_interface nec765_iface;
 
 
-static INT8 nec765_cmd_size[32] =
+static const INT8 nec765_cmd_size[32] =
 {
 	1,1,9,3,2,9,9,2,1,9,2,1,9,6,1,3,
 	1,9,1,1,1,1,9,1,1,9,1,1,1,9,1,1
@@ -144,6 +144,8 @@ static INT8 nec765_cmd_size[32] =
 
 static mess_image *current_image(void)
 {
+	if (fdc.drive >= device_count(IO_FLOPPY))
+		return NULL;
 	return image_from_devtype_and_index(IO_FLOPPY, fdc.drive);
 }
 
@@ -248,6 +250,9 @@ static void nec765_seek_complete(void)
 	*/
 
 	mess_image *img = current_image();
+
+	if (!img)
+		return;
 
 	fdc.pcn[fdc.drive] = fdc.ncn;
 
@@ -799,6 +804,7 @@ static void nec765_get_next_id(chrn_id *id)
 static int nec765_get_matching_sector(void)
 {
 	mess_image *img = current_image();
+	chrn_id id;
 
 	/* number of times we have seen index hole */
 	int index_count = 0;
@@ -806,8 +812,6 @@ static int nec765_get_matching_sector(void)
 	/* get sector id's */
 	do
     {
-		chrn_id id;
-
 		nec765_get_next_id(&id);
 
 		/* tested on Amstrad CPC - All bytes must match, otherwise
@@ -1601,7 +1605,7 @@ void nec765_update_state(void)
 		fdc.FDC_main |= 0x10;                      /* set BUSY */
 
 #ifdef VERBOSE
-		logerror("NEC765: COMMAND: %02x\n",fdc.nec765_data_reg);
+		logerror("nec765(): pc=0x%08x command=0x%02x\n", activecpu_get_pc(), fdc.nec765_data_reg);
 #endif
 		/* seek in progress? */
 		if (fdc.nec765_flags & NEC765_SEEK_ACTIVE)
@@ -1632,7 +1636,7 @@ void nec765_update_state(void)
 
     case NEC765_COMMAND_PHASE_BYTES:
 #ifdef VERBOSE
-		logerror("NEC765: COMMAND: %02x\n",fdc.nec765_data_reg);
+		logerror("nec765(): pc=0x%08x command=0x%02x\n", activecpu_get_pc(), fdc.nec765_data_reg);
 #endif
 		fdc.nec765_command_bytes[fdc.nec765_transfer_bytes_count] = fdc.nec765_data_reg;
 		fdc.nec765_transfer_bytes_count++;
@@ -1893,7 +1897,7 @@ static void nec765_setup_command(void)
 		}
 		break;
 
-		case 0x06:  /* read data */
+	case 0x06:  /* read data */
 		nec765_setup_drive_and_side();
 
 		fdc.nec765_status[0] = fdc.drive | (fdc.side<<2);

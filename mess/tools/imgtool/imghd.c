@@ -14,13 +14,6 @@
 #include "imghd.h"
 
 
-#define MESSHDTAG "mess_hd"
-
-typedef struct mess_hd
-{
-	void *hard_disk_handle;
-} mess_hd;
-
 /* Encoded mess_image: in order to have hard_disk_open handle mess_image
 pointers, we encode the reference as an ASCII string and pass it as a file
 name.  mess_hard_disk_open then decodes the file name to get the original
@@ -35,6 +28,38 @@ enum
 	encoded_image_ref_len_len = 3,
 	encoded_image_ref_max_len = sizeof(encoded_image_ref_prefix)-1+encoded_image_ref_len_len+1+ptr_max_len+1
 };
+
+
+
+static imgtoolerr_t imghd_chd_getlasterror(void)
+{
+	int chderr;
+	imgtoolerr_t err;
+
+	chderr = chd_get_last_error();
+
+	switch(chderr)
+	{
+		case CHDERR_NONE:
+			err = IMGTOOLERR_SUCCESS;
+			break;
+		case CHDERR_OUT_OF_MEMORY:
+			err = IMGTOOLERR_OUTOFMEMORY;
+			break;
+		case CHDERR_FILE_NOT_WRITEABLE:
+			err = IMGTOOLERR_READONLY;
+			break;
+		case CHDERR_NOT_SUPPORTED:
+			err = IMGTOOLERR_UNIMPLEMENTED;
+			break;
+		default:
+			err = IMGTOOLERR_UNEXPECTED;
+			break;
+	}
+	return err;
+}
+
+
 
 /*
 	encode_image_ref()
@@ -86,13 +111,15 @@ static struct chd_interface_file *imgtool_chd_open(const char *filename, const c
 static void imgtool_chd_close(struct chd_interface_file *file);
 static UINT32 imgtool_chd_read(struct chd_interface_file *file, UINT64 offset, UINT32 count, void *buffer);
 static UINT32 imgtool_chd_write(struct chd_interface_file *file, UINT64 offset, UINT32 count, const void *buffer);
+static UINT64 imgtool_chd_length(struct chd_interface_file *file);
 
 static struct chd_interface imgtool_chd_interface =
 {
 	imgtool_chd_open,
 	imgtool_chd_close,
 	imgtool_chd_read,
-	imgtool_chd_write
+	imgtool_chd_write,
+	imgtool_chd_length
 };
 
 /*
@@ -146,163 +173,235 @@ static UINT32 imgtool_chd_write(struct chd_interface_file *file, UINT64 offset, 
 }
 
 /*
+	imgtool_chd_write - interface for determining the length of a hard disk image
+*/
+static UINT64 imgtool_chd_length(struct chd_interface_file *file)
+{
+	return stream_size((imgtool_stream *)file);
+}
+
+
+/*
 	imghd_create()
 
 	Create a MAME HD image
 */
-static imgtoolerr_t imghd_create(imgtool_stream *stream, UINT64 logicalbytes, UINT32 hunkbytes, UINT32 compression)
+imgtoolerr_t imghd_create(imgtool_stream *stream, UINT32 hunksize, UINT32 cylinders, UINT32 heads, UINT32 sectors, UINT32 seclen)
 {
+	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
 	char encoded_image_ref[encoded_image_ref_max_len];
 	struct chd_interface interface_save;
-	int reply;
+	UINT8 *cache = NULL;
+	struct chd_file *chd = NULL;
+	int rc;
+	UINT64 logicalbytes;
+	int hunknum, totalhunks;
+	char metadata[256];
 
-	if (stream_isreadonly(stream))
-		return IMGTOOLERR_WRITEERROR;
-
+	/* jump through the hoops as required by the CHD system */
 	encode_image_ref(stream, encoded_image_ref);
-
 	chd_save_interface(&interface_save);
 	chd_set_interface(&imgtool_chd_interface);
-	reply = chd_create(encoded_image_ref, logicalbytes, hunkbytes, compression, NULL);
+
+	/* sanity check args */
+	if (hunksize >= 2048)
+	{
+		err = IMGTOOLERR_PARAMCORRUPT;
+		goto done;
+	}
+	if (hunksize <= 0)
+		hunksize = 1024;	/* default value */
+
+	/* bail if we are read only */
+	if (stream_isreadonly(stream))
+	{
+		err = IMGTOOLERR_READONLY;
+		goto done;
+	}
+
+	/* calculations */
+	logicalbytes = (UINT64)cylinders * heads * sectors * seclen;
+
+	/* create the new hard drive */
+	rc = chd_create(encoded_image_ref, logicalbytes, hunksize, CHDCOMPRESSION_NONE, NULL);
+	if (rc != CHDERR_NONE)
+	{
+		err = imghd_chd_getlasterror();
+		goto done;
+	}
+
+	/* open the new hard drive */
+	chd = chd_open(encoded_image_ref, 1, NULL);
+	if (!chd)
+	{
+		err = imghd_chd_getlasterror();
+		goto done;
+	}
+
+	/* write the metadata */
+	sprintf(metadata, HARD_DISK_METADATA_FORMAT, cylinders, heads, sectors, seclen);
+	err = chd_set_metadata(chd, HARD_DISK_STANDARD_METADATA, 0, metadata, strlen(metadata) + 1);
+	if (rc != CHDERR_NONE)
+	{
+		err = imghd_chd_getlasterror();
+		goto done;
+	}
+
+	/* alloc and zero buffer */
+	cache = malloc(hunksize);
+	if (!cache)
+	{
+		err = IMGTOOLERR_OUTOFMEMORY;
+		goto done;
+	}
+	memset(cache, '\0', hunksize);
+
+	/* zero out every hunk */
+	totalhunks = (logicalbytes + hunksize - 1) / hunksize;
+	for (hunknum = 0; hunknum < totalhunks; hunknum++)
+	{
+		if (chd_write(chd, hunknum, 1, cache) != 1)
+		{
+			err = IMGTOOLERR_WRITEERROR;
+			goto done;
+		}
+	}
+
+	
+done:
+	if (cache)
+		free(cache);
+	if (chd)
+		chd_close(chd);
 	chd_set_interface(&interface_save);
-
-	return reply ? IMGTOOLERR_UNEXPECTED : 0;
+	return err;
 }
 
 
-
-imgtoolerr_t imghd_create_base_v1_v2(imgtool_stream *stream, UINT32 version, UINT32 blocksize, UINT32 cylinders, UINT32 heads, UINT32 sectors, UINT32 seclen)
-{
-	imgtoolerr_t errorcode;
-	char *buf;
-	void *disk;
-	UINT32 tot_sectors;
-	UINT32 i;
-
-
-	if ((version != 1) && (version != 2))
-		return IMGTOOLERR_PARAMCORRUPT;
-
-	if ((version == 1) && (seclen != 512))
-		return IMGTOOLERR_PARAMCORRUPT;
-
-	if ((blocksize == 0)|| (blocksize >= 2048))
-		return IMGTOOLERR_PARAMCORRUPT;
-
-	errorcode = imghd_create(stream, cylinders * heads * sectors * seclen, blocksize, CHDCOMPRESSION_NONE);
-	if (errorcode)
-		return errorcode;
-
-	/* fill with 0s */
-	buf = malloc(seclen);
-	if (!buf)
-		return IMGTOOLERR_OUTOFMEMORY;
-	memset(buf, 0, seclen);
-
-	disk = imghd_open(stream);
-	if (!disk)
-		return IMGTOOLERR_UNEXPECTED;
-
-	tot_sectors = cylinders*heads*sectors;
-
-	for (i=0; i<tot_sectors; i++)
-		if (imghd_write(disk, i, 1, buf) != 1)
-			break;
-
-	imghd_close(stream);
-	if (i < tot_sectors)
-		return IMGTOOLERR_WRITEERROR;
-
-	return 0;
-}
 
 /*
 	imghd_open()
 
 	Open stream as a MAME HD image
 */
-void *imghd_open(imgtool_stream *stream)
+imgtoolerr_t imghd_open(imgtool_stream *stream, struct mess_hard_disk_file *hard_disk)
 {
-	struct chd_file *chd;
+	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
 	char encoded_image_ref[encoded_image_ref_max_len];
 	struct chd_interface interface_save;
-	void *hard_disk_handle;
 
+	hard_disk->hard_disk = NULL;
+	hard_disk->chd = NULL;
 	encode_image_ref(stream, encoded_image_ref);
 
+	/* use our CHD interface */
 	chd_save_interface(&interface_save);
 	chd_set_interface(&imgtool_chd_interface);
-	chd = chd_open(encoded_image_ref, !stream_isreadonly(stream), NULL);
-	hard_disk_handle = hard_disk_open(chd);
-	chd_set_interface(&interface_save);
 
-	return hard_disk_handle;
+	hard_disk->chd = chd_open(encoded_image_ref, !stream_isreadonly(stream), NULL);
+	if (!hard_disk->chd)
+	{
+		err = imghd_chd_getlasterror();
+		goto done;
+	}
+
+	hard_disk->hard_disk = hard_disk_open(hard_disk->chd);
+	if (!hard_disk->hard_disk)
+	{
+		err = IMGTOOLERR_UNEXPECTED;
+		goto done;
+	}
+
+done:
+	if (err)
+		imghd_close(hard_disk);
+	chd_set_interface(&interface_save);
+	return err;
 }
+
+
 
 /*
 	imghd_close()
 
 	Close MAME HD image
 */
-void imghd_close(void *disk)
+void imghd_close(struct mess_hard_disk_file *disk)
 {
 	struct chd_interface interface_save;
 
 	chd_save_interface(&interface_save);
 	chd_set_interface(&imgtool_chd_interface);
-	hard_disk_close(disk);
+
+	if (disk->hard_disk)
+	{
+		hard_disk_close(disk->hard_disk);
+		disk->hard_disk = NULL;
+	}
+	if (disk->chd)
+	{
+		chd_close(disk->chd);
+		disk->chd = NULL;
+	}
+
 	chd_set_interface(&interface_save);
 }
+
+
 
 /*
 	imghd_read()
 
 	Read sector(s) from MAME HD image
 */
-UINT32 imghd_read(void *disk, UINT32 lbasector, UINT32 numsectors, void *buffer)
+imgtoolerr_t imghd_read(struct mess_hard_disk_file *disk, UINT32 lbasector, UINT32 numsectors, void *buffer)
 {
 	struct chd_interface interface_save;
 	UINT32 reply;
 
 	chd_save_interface(&interface_save);
 	chd_set_interface(&imgtool_chd_interface);
-	reply = hard_disk_read(disk, lbasector, numsectors, buffer);
+	reply = hard_disk_read(disk->hard_disk, lbasector, numsectors, buffer);
 	chd_set_interface(&interface_save);
 
-	return reply;
+	return reply ? IMGTOOLERR_SUCCESS : imghd_chd_getlasterror();
 }
+
+
 
 /*
 	imghd_write()
 
 	Write sector(s) from MAME HD image
 */
-UINT32 imghd_write(void *disk, UINT32 lbasector, UINT32 numsectors, const void *buffer)
+imgtoolerr_t imghd_write(struct mess_hard_disk_file *disk, UINT32 lbasector, UINT32 numsectors, const void *buffer)
 {
 	struct chd_interface interface_save;
 	UINT32 reply;
 
 	chd_save_interface(&interface_save);
 	chd_set_interface(&imgtool_chd_interface);
-	reply = hard_disk_write(disk, lbasector, numsectors, buffer);
+	reply = hard_disk_write(disk->hard_disk, lbasector, numsectors, buffer);
 	chd_set_interface(&interface_save);
 
-	return reply;
+	return reply ? IMGTOOLERR_SUCCESS : imghd_chd_getlasterror();
 }
+
+
 
 /*
 	imghd_get_header()
 
 	Return pointer to the header of MAME HD image
 */
-const struct hard_disk_info *imghd_get_header(struct hard_disk_file *disk)
+const struct hard_disk_info *imghd_get_header(struct mess_hard_disk_file *disk)
 {
 	struct chd_interface interface_save;
 	const struct hard_disk_info *reply;
 
 	chd_save_interface(&interface_save);
 	chd_set_interface(&imgtool_chd_interface);
-	reply = hard_disk_get_info(disk);
+	reply = hard_disk_get_info(disk->hard_disk);
 	chd_set_interface(&interface_save);
 
 	return reply;
@@ -355,7 +454,7 @@ imgtoolerr_t mess_hd_createmodule(imgtool_library *library)
 
 static imgtoolerr_t mess_hd_image_create(imgtool_image *image, imgtool_stream *f, option_resolution *createoptions)
 {
-	UINT32  version, blocksize, cylinders, heads, sectors, seclen;
+	UINT32  blocksize, cylinders, heads, sectors, seclen;
 
 	/* read options */
 	blocksize = option_resolution_lookup_int(createoptions, mess_hd_createopts_blocksize);
@@ -364,6 +463,5 @@ static imgtoolerr_t mess_hd_image_create(imgtool_image *image, imgtool_stream *f
 	sectors = option_resolution_lookup_int(createoptions, mess_hd_createopts_sectors);
 	seclen = option_resolution_lookup_int(createoptions, mess_hd_createopts_seclen);
 
-	version = (seclen == 512) ? 1 : 2;
-	return imghd_create_base_v1_v2(f, version, blocksize, cylinders, heads, sectors, seclen);
+	return imghd_create(f, blocksize, cylinders, heads, sectors, seclen);
 }

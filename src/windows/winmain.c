@@ -240,11 +240,13 @@ int main(int argc, char **argv)
 	free_symbol_map();
 
 #ifdef MAME_DEBUG
+#ifndef MESS
 	{
 		void check_unfreed_mem(void);
 
 		check_unfreed_mem();
 	}
+#endif
 #endif
 
 	return res;
