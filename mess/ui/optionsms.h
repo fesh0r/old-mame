@@ -11,6 +11,8 @@ enum
 	MESS_COLUMN_YEAR,
 	MESS_COLUMN_PLAYABLE,
 	MESS_COLUMN_CRC,
+	MESS_COLUMN_SHA1,
+	MESS_COLUMN_MD5,
 	MESS_COLUMN_MAX
 };
 
@@ -34,7 +36,7 @@ struct mess_specific_settings
 	int      mess_column_shown[MESS_COLUMN_MAX];
 
 	char*    softwaredirs;
-	char*    crcdir;	
+	char*    hashdir;	
 };
 
 void SetMessColumnWidths(int widths[]);

@@ -1,6 +1,0 @@
-# Apple1 Snapshot CRC file
-# crc= Game Name | Year | Manufacturer | Emulation Status
-
-[apple1]
-d25da095 = Getting The System Running | 1976 | Apple (Steve Wozniak) | WORKING ('0R' to Execute) 
-86972653 = ASCII Hex Keyboard Print | ???? | Pom1 | WORKING ('700R' to Execute) 

@@ -18,9 +18,9 @@
 #include "strconv.h"
 #include "snprintf.h"
 
-#if HAS_CRC
-#include "crcfile.h"
-#endif /* HAS_CRC */
+#if HAS_HASH
+#include "hashfile.h"
+#endif /* HAS_HASH */
 
 /* from src/mess/win32.c */
 char *strncatz(char *dest, const char *source, size_t len);
@@ -59,33 +59,32 @@ extern unsigned int ZEXPORT crc32 (unsigned int crc, const unsigned char *buf, u
  * Type declarations                                                 *
  * ----------------------------------------------------------------- */
 
-enum RealizeLevel {
+enum RealizeLevel
+{
 	REALIZE_IMMEDIATE,	/* Calculate the file type when the extension is known */
 	REALIZE_ZIPS,		/* Open up ZIPs, and calculate their extensions and CRCs */
-	REALIZE_ALL			/* Open up all files, and calculate their CRCs */
+	REALIZE_ALL,		/* Open up all files, and calculate their full hashes */
+	REALIZE_DONE
 };
 
-struct deviceentry {
+struct deviceentry
+{
 	int icon;
 	const char *dlgname;
 };
 
-typedef struct tagImageData {
+typedef struct tagImageData
+{
     struct tagImageData *next;
     const TCHAR *name;
     TCHAR *fullname;
-    int type;
+    const struct IODevice *dev;
+	int realized;
 
-	/* CRC info */
-#if HAS_CRC
-	char *crcline;
-	int crc;
-	const char *longname;
-	const char *manufacturer;
-	const char *year;
-	const char *playable;
-	const char *extrainfo;
-#endif /* HAS_CRC */
+#if HAS_HASH
+	char hash[HASH_BUF_SIZE];
+	const struct hash_info *hashinfo;
+#endif /* HAS_HASH */
 } ImageData;
 
 /* ----------------------------------------------------------------- *
@@ -103,15 +102,16 @@ static UINT s_nIdleImageNum;
 static enum RealizeLevel s_eRealizeLevel;
 #endif /* HAS_IDLING */
 
-#if HAS_CRC
-static crc_file *mess_crc_file;
-static char mess_crc_category[64];
-#endif /* HAS_CRC */
+#if HAS_HASH
+static hash_file *mess_hash_file;
+#endif /* HAS_HASH */
 
 static void AssertValidDevice(int d)
 {
 	assert(((d >= 0) && (d < IO_COUNT)) || (d == IO_UNKNOWN) || (d == IO_BAD) || (d == IO_ZIP));
 }
+
+
 
 /* ************************************************************************ */
 /* Code for manipulation of image list                                      */
@@ -129,6 +129,7 @@ void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL bZip, 
     if (bZip)
 	{
 		types[num_extensions].ext = "zip";
+		types[num_extensions].dev = NULL;
 		num_extensions++;
     }
 
@@ -145,11 +146,8 @@ void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL bZip, 
 					{
 						if (num_extensions < count)
 						{
-							types[num_extensions].type = dev->type;
+							types[num_extensions].dev = dev;
 							types[num_extensions].ext = ext;
-#if HAS_CRC
-							types[num_extensions].partialcrc = dev->partialcrc;
-#endif
 							num_extensions++;
 						}
 					}
@@ -159,6 +157,8 @@ void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL bZip, 
 		}
     }
 }
+
+
 
 static mess_image_type *MessLookupImageType(mess_image_type *imagetypes, const char *extension)
 {
@@ -170,96 +170,83 @@ static mess_image_type *MessLookupImageType(mess_image_type *imagetypes, const c
 	return NULL;
 }
 
-static int MessDiscoverImageType(const char *filename, mess_image_type *imagetypes, BOOL bReadZip, UINT32 *crc)
+
+
+static void MessDiscoverImageType(ImageData *img, mess_image_type *imagetypes, BOOL bReadZip, char *hash)
 {
-	int type;
 	char *lpExt;
 	ZIP *pZip = NULL;
 	UINT32 zipcrc = 0;
 	struct zipent *pZipEnt = NULL;
 	mess_image_type *imgtype;
+	const char *filename = T2A(img->fullname);
 
-	if (crc)
-		*crc = 0;
+	if (hash)
+		*hash = '\0';
 	lpExt = strrchr(filename, '.');
-	type = IO_COUNT;
 
-    if (lpExt) {
-        /* Are we a ZIP file? */
-        if (!stricmp(lpExt, ".ZIP")) {
-			lpExt = NULL;
-            if (bReadZip) {
-                pZip = openzip(0, 0, filename);
-            }
-            else {
-                /* IO_UNKNOWN represents uncalculated zips */
-                type = IO_UNKNOWN;
-            }
-        }
-
-		do
+	/* are we a ZIP file? */
+	if (lpExt && !stricmp(lpExt, ".zip"))
+	{
+		lpExt = NULL;
+		if (bReadZip)
 		{
-            if (pZip) {
+			img->realized = 1;
+			pZip = openzip(0, 0, filename);
+			if (pZip)
+			{
 				lpExt = NULL;
-                pZipEnt = readzip(pZip);
-                if (pZipEnt) {
-                    lpExt = strrchr(pZipEnt->name, '.');
-					zipcrc = pZipEnt->crc32;
-                }
-            }
-			if (lpExt) {
-				lpExt++;
-				imgtype = MessLookupImageType(imagetypes, lpExt);
-				if (imgtype)
+				pZipEnt = readzip(pZip);
+				if (pZipEnt)
 				{
-					type = imgtype->type;
-#if HAS_CRC
-					if (crc && zipcrc)
-					{
-						if (imgtype->partialcrc)
-						{
-							unsigned char *buf = NULL;
-							assert(pZipEnt);
-							buf = malloc(pZipEnt->uncompressed_size);
-							if (buf)
-							{
-								readuncompresszip(pZip, pZipEnt, (char *) buf);
-								*crc = imgtype->partialcrc(buf, (unsigned int) pZipEnt->uncompressed_size);
-								free(buf);
-							}
-						}
-						else
-						{
-							*crc = zipcrc;
-						}
-					}
-#endif /* HAS_CRC */
+					lpExt = strrchr(pZipEnt->name, '.');
+					zipcrc = pZipEnt->crc32;
 				}
 			}
-		} while( pZip && pZipEnt );
+		}
+	}
+	else
+		img->realized = 1;
 
-        if (pZip)
-            closezip(pZip);
-    }
+	if (lpExt)
+	{
+		lpExt++;
+		imgtype = MessLookupImageType(imagetypes, lpExt);
+		if (imgtype)
+		{
+			img->dev = imgtype->dev;
+#if HAS_HASH
+			/* while we have the ZIP file open, we have a convenient opportunity
+				* to specify the CRC */
+			if (hash && zipcrc && (!imgtype->dev || !imgtype->dev->partialhash))
+				sprintf(hash, "c:%08x#", zipcrc);
+#endif /* HAS_HASH */
+		}
+	}
 
-	if ((type != IO_UNKNOWN) && (type != IO_ZIP))
-		AssertValidDevice(type);
-    return type;
+    if (pZip)
+        closezip(pZip);
 }
+
+
 
 static void MessRemoveImage(int imagenum)
 {
     int i, j;
 
-    for (i = 0, j = 0; i < options.image_count; i++) {
-        if ((imagenum >= 0) && (imagenum != mess_image_nums[i])) {
-            if (i != j) {
+    for (i = 0, j = 0; i < options.image_count; i++)
+	{
+        if ((imagenum >= 0) && (imagenum != mess_image_nums[i]))
+		{
+            if (i != j)
+			{
                 options.image_files[j] = options.image_files[i];
                 mess_image_nums[j] = mess_image_nums[i];
             }
             j++;
         }
-        else {
+        else
+		{
             free((char *) options.image_files[i].name);
 			options.image_files[i].name = NULL;
         }
@@ -267,11 +254,12 @@ static void MessRemoveImage(int imagenum)
     options.image_count = j;
 }
 
+
+
 static BOOL MessSetImage(int nDriver, int imagenum, int entry)
 {
     char *filename;
     mess_image_type imagetypes[64];
-	int nDeviceType;
 
     if (!mess_images_index || (imagenum >= mess_images_count))
         return FALSE;		/* Invalid image index */
@@ -281,23 +269,21 @@ static BOOL MessSetImage(int nDriver, int imagenum, int entry)
 
     SetupImageTypes(nDriver, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, IO_COUNT);
 
-	nDeviceType = MessDiscoverImageType(filename, imagetypes, TRUE, NULL);
-	if ((nDeviceType == IO_UNKNOWN) || (nDeviceType == IO_BAD) || (nDeviceType == IO_ZIP))
-	{
-		free(filename);
+	MessDiscoverImageType(mess_images_index[imagenum], imagetypes, TRUE, NULL);
+
+	if (!mess_images_index[imagenum]->dev)
 		return FALSE;
-	}
-	assert(nDeviceType >= 0);
-	assert(nDeviceType < IO_COUNT);
 
 	if (options.image_files[entry].name)
 		free((void *) options.image_files[entry].name);
-    options.image_files[entry].type = nDeviceType;
+    options.image_files[entry].type = mess_images_index[imagenum]->dev->type;
     options.image_files[entry].name = filename;
 
     mess_image_nums[entry] = imagenum;
 	return TRUE;
 }
+
+
 
 static BOOL MessAddImage(int nGame, int imagenum)
 {
@@ -312,6 +298,8 @@ static BOOL MessAddImage(int nGame, int imagenum)
 	options.image_count++;
 	return TRUE;
 }
+
+
 
 static ImageData *ImageData_Alloc(const char *fullname)
 {
@@ -331,140 +319,113 @@ static ImageData *ImageData_Alloc(const char *fullname)
 
     separator_pos = _tcsrchr(newimg->fullname, '\\');
     newimg->name = separator_pos ? (separator_pos+1) : newimg->fullname;
-	newimg->type = IO_UNKNOWN;
 	return newimg;
 }
 
+
+
 static void ImageData_Free(ImageData *img)
 {
-#if HAS_CRC
-	if (img->crcline)
-		free(img->crcline);
-#endif
 	free((void *) img);
 }
 
+
+
 static BOOL ImageData_IsBad(ImageData *img)
 {
-	return img->type == IO_COUNT;
+	return img->realized && !img->dev;
 }
 
-#if HAS_CRC
-static BOOL ImageData_SetCrcLine(ImageData *img, UINT32 crc, const char *crcline)
+
+
+#if HAS_HASH
+extern char *mess_try_image_file_as_zip(int pathindex, const char *path,
+	const struct IODevice *dev);
+
+static void CalculateHash(char *hash, const char *filename, unsigned int functions, const struct IODevice *dev)
 {
-	char *newcrcline;
-
-	newcrcline = strdup(crcline);
-	if (!newcrcline)
-		return FALSE;
-
-	if (img->crcline)
-		free(img->crcline);
-	img->crcline = newcrcline;
-	img->crc = crc;
-	img->longname = strtok(newcrcline, "|");
-	img->year = strtok(NULL, "|");
-	img->manufacturer = strtok(NULL, "|");
-	img->playable = strtok(NULL, "|");
-	img->extrainfo = strtok(NULL, "|");
-	return TRUE;
-}
-
-static UINT32 CalculateCrc(const char *file, UINT32 (*partialcrc)(const unsigned char *buf, unsigned int size))
-{
-	UINT32 crc = 0;
-	int length;
+	UINT32 length;
+	char *new_filename;
 	unsigned char *data = NULL;
-	FILE *f = NULL;
+	mame_file *file = NULL;
 
-	f = fopen (file, "rb");
-	if (!f)
+	/* check to see if we are a ZIP file */
+	new_filename = mess_try_image_file_as_zip(0, filename, dev);
+	if (new_filename)
+		filename = new_filename;
+
+	/* open file */
+	file = mame_fopen(drivers[s_nGame]->name, filename, FILETYPE_IMAGE, OSD_FOPEN_READ);
+	if (!file)
 		goto done;
 
 	/* determine length of file */
-	if (fseek (f, 0L, SEEK_END) != 0)
-		goto done;
-
-	length = ftell(f);
-	if (length == -1)
-		goto done;
+	length = (UINT32) mame_fsize(file);
 
 	/* allocate space for entire file */
-	data = (unsigned char *) malloc(length);
+	data = malloc(length);
 	if (!data)
 		goto done;
 
 	/* read entire file into memory */
-	if (fseek (f, 0L, SEEK_SET) != 0)
+	if (mame_fread(file, data, length) != length)
 		goto done;
 
-	if (fread(data, sizeof(unsigned char), length, f) != (size_t)length)
-		goto done;
-
-	if (partialcrc)
-		crc = partialcrc(data, length);
+	if (dev->partialhash)
+		dev->partialhash(hash, data, length, functions);
 	else
-		crc = crc32(0, data, length);
+		hash_compute(hash, data, length, functions);
 
 done:
+	if (file)
+		mame_fclose(file);
+	if (new_filename)
+		free(new_filename);
 	if (data)
 		free(data);
-	if (f)
-		fclose(f);
-	return crc;
 }
-#endif /* HAS_CRC */
+#endif /* HAS_HASH */
+
+
 
 static BOOL ImageData_Realize(ImageData *img, enum RealizeLevel eRealize, mess_image_type *imagetypes)
 {
 	BOOL bLearnedSomething = FALSE;
-
-#if HAS_CRC
-	char crcstr[9];
-	char line[1024];
-	UINT32 crc = 0;
-	UINT32 *pzipcrc = &crc;
-	mess_image_type *imgtype;
-	const char *extension;
-#else
-	UINT32 *pzipcrc = NULL;
-#endif
+	char *hash_ptr = NULL;
 
 	/* Calculate image type */
-	if (img->type == IO_UNKNOWN)
+	if (!img->realized)
 	{
-		img->type = MessDiscoverImageType(T2A(img->fullname), imagetypes, eRealize > REALIZE_IMMEDIATE, pzipcrc);
-		if (img->type != IO_UNKNOWN)
+#if HAS_HASH
+		hash_ptr = img->hash;
+#endif
+		MessDiscoverImageType(img, imagetypes, eRealize > REALIZE_IMMEDIATE, hash_ptr);
+		if (img->realized)
 			bLearnedSomething = TRUE;
 	}
 
-#if HAS_CRC
-	/* Calculate a CRC file? */
-	if ((eRealize >= REALIZE_ALL) && !crc && !img->crc)
+#if HAS_HASH
+	/* Calculate a hash? */
+	if (mess_hash_file && (eRealize >= REALIZE_ALL) && img->dev &&
+		(hashfile_functions_used(mess_hash_file) & ~hash_data_used_functions(img->hash)))
 	{
-		extension = strrchr(img->fullname, '.');
-		if (extension)
-		{
-			extension++;
-			imgtype = MessLookupImageType(imagetypes, extension);
-			if (imgtype)
-			{
-				crc = CalculateCrc(img->fullname, imgtype->partialcrc);
-				bLearnedSomething = TRUE;
-			}
-		}
+		CalculateHash(img->hash, img->fullname,
+			hashfile_functions_used(mess_hash_file),
+			img->dev);
+		bLearnedSomething = TRUE;
 	}
 
-	/* Load CRC information? */
-	if (mess_crc_file && crc && !img->crc)
+	/* Load hash information? */
+	if (mess_hash_file && img->hash[0] && !img->hashinfo)
 	{
-		snprintf(crcstr, sizeof(crcstr) / sizeof(crcstr[0]), "%08x", crc);
-		crcfile_load_string(mess_crc_file, mess_crc_category, 0, crcstr, line, sizeof(line));
-		ImageData_SetCrcLine(img, crc, line);
+		img->hashinfo = hashfile_lookup(mess_hash_file, img->hash);
 	}
-#endif
+#endif /* HAS_HASH */
+
 	return bLearnedSomething;
 }
+	
+
 
 static BOOL AppendNewImage(const char *fullname, enum RealizeLevel eRealize, ImageData ***listend, mess_image_type *imagetypes)
 {
@@ -530,7 +491,10 @@ static void AddImagesFromDirectory(int nDriver, const char *dir, BOOL bRecurse, 
     }
 }
 
-static void InternalFillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nPaths, LPCSTR *plpPaths)
+
+
+static void InternalFillSoftwareList(struct SmartListView *pSoftwareListView, int nGame,
+	int nPaths, LPCSTR *plpPaths, void (*error_proc)(const char *message))
 {
     int i;
     ImageData *imgd;
@@ -542,19 +506,19 @@ static void InternalFillSoftwareList(struct SmartListView *pSoftwareListView, in
 
 	s_nGame = nGame;
 
-	/* Update the CRC file */
-#if HAS_CRC
-	if (mess_crc_file)
-		crcfile_close(mess_crc_file);
-
-	mess_crc_file = NULL;
-	for (drv = drivers[nGame]; !mess_crc_file && drv; drv = mess_next_compatible_driver(drv))
+#if HAS_HASH
+	/* update the hash file */
+	if (mess_hash_file)
 	{
-		mess_crc_file = crcfile_open(drv->name, drv->name, FILETYPE_CRC);
-		if (mess_crc_file)
-			strcpy(mess_crc_category, drv->name);
+		hashfile_close(mess_hash_file);
+		mess_hash_file = NULL;
 	}
-#endif
+
+	for (drv = drivers[nGame]; !mess_hash_file && drv; drv = mess_next_compatible_driver(drv))
+	{
+		mess_hash_file = hashfile_open(drv->name, TRUE, error_proc);
+	}
+#endif /* HAS_HASH */
 
     /* This fixes any changes the file manager may have introduced */
     resetdir();
@@ -566,7 +530,8 @@ static void InternalFillSoftwareList(struct SmartListView *pSoftwareListView, in
     if (mess_images_index)
         free(mess_images_index);
     imgd = mess_images;
-    while(imgd) {
+    while(imgd)
+	{
         ImageData *next = imgd->next;
 		ImageData_Free(imgd);
         imgd = next;
@@ -627,7 +592,10 @@ static void InternalFillSoftwareList(struct SmartListView *pSoftwareListView, in
 #endif /* HAS_IDLING */
 }
 
-void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nBasePaths, LPCSTR *plpBasePaths, LPCSTR lpExtraPath)
+
+
+void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nBasePaths,
+	LPCSTR *plpBasePaths, LPCSTR lpExtraPath, void (*error_proc)(const char *message))
 {
 	LPCSTR s;
 	LPSTR *plpPaths;
@@ -642,7 +610,8 @@ void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nB
 	assert(pSoftwareListView);
 
 	/* Count the number of extra paths */
-	if (lpExtraPath && *lpExtraPath) {
+	if (lpExtraPath && *lpExtraPath)
+	{
 		s = lpExtraPath;
 		while(s) {
 			nExtraPaths++;
@@ -679,15 +648,19 @@ void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nB
 	}
 
 	s = lpExtraPath;
-	for (i = 0; i < nExtraPaths; i++) {
+	for (i = 0; i < nExtraPaths; i++)
+	{
 		plpPaths[nPath++] = (LPSTR) s;
 		s = strchr(s, ';') + 1;
 	}
 
 	assert(nPath == nTotalPaths);
 
-	InternalFillSoftwareList(pSoftwareListView, nGame, nTotalPaths, (LPCSTR*)plpPaths);
+	InternalFillSoftwareList(pSoftwareListView, nGame, nTotalPaths, (LPCSTR*)plpPaths,
+		error_proc);
 }
+
+
 
 int MessLookupByFilename(const TCHAR *filename)
 {
@@ -762,11 +735,11 @@ void MessIntroduceItem(struct SmartListView *pListView, const char *filename, me
     return;
 
 unknownsoftware:
-    MessageBox(NULL, TEXT("Unknown type of software"), TEXT(MAME32NAME), MB_OK);
+    MessageBox(pListView->hwndParent, TEXT("Unknown type of software"), TEXT(MAME32NAME), MB_OK);
     return;
 
 outofmemory:
-    MessageBox(NULL, TEXT("Out of memory"), TEXT(MAME32NAME), MB_OK);
+    MessageBox(pListView->hwndParent, TEXT("Out of memory"), TEXT(MAME32NAME), MB_OK);
     return;
 }
 
@@ -805,6 +778,8 @@ BOOL MessApproveImageList(HWND hParent, int nDriver)
 	return TRUE;
 }
 
+
+
 /* ************************************************************************ *
  * Accessors                                                                *
  * ************************************************************************ */
@@ -814,42 +789,82 @@ int MessImageCount(void)
 	return mess_images_count;
 }
 
+
+
 int GetImageType(int nItem)
 {
-	return mess_images_index[nItem]->type;
+	const ImageData *img = mess_images_index[nItem];
+	return img->dev ? img->dev->type : img->realized ? IO_BAD : IO_UNKNOWN;
 }
+
+
 
 LPCTSTR GetImageName(int nItem)
 {
 	return mess_images_index[nItem]->name;
 }
 
+
+
 LPCTSTR GetImageFullName(int nItem)
 {
 	return mess_images_index[nItem]->fullname;
 }
 
+
+
+static void TstringFromUtf8(TCHAR *buf, size_t bufsize, const char *utf8string)
+{
+	unicode_char_t c;
+	utf16_char_t wc[UTF16_CHAR_MAX];
+	int wclen, rc;
+
+	if (!utf8string)
+	{
+		buf[0] = 0;
+		return;
+	}
+
+	while(*utf8string)
+	{
+		rc = uchar_from_utf8(&c, utf8string, UTF8_CHAR_MAX);
+		if (rc < 0)
+		{
+			c = '?';
+			rc = 1;
+		}
+		utf8string += rc;
+
+		wclen = utf16_from_uchar(wc, sizeof(wc) / sizeof(wc[0]), c);
+
+		rc = WideCharToMultiByte(CP_ACP, 0, wc, wclen, buf, bufsize, NULL, NULL);
+		buf += rc;
+		bufsize -= rc;
+	}
+
+	/* terminate the string */
+	if (bufsize == 0)
+	{
+		buf--;
+		bufsize++;
+	}
+	*buf = 0;
+}
+
+
+
 /* ************************************************************************ *
  * SoftwareListView class code                                              *
  * ************************************************************************ */
-/*
-enum {
-	MESS_COLUMN_IMAGES,
-	MESS_COLUMN_GOODNAME,
-	MESS_COLUMN_MANUFACTURER,
-	MESS_COLUMN_YEAR,
-	MESS_COLUMN_PLAYABLE,
-	MESS_COLUMN_CRC,
-	MESS_COLUMN_MAX
-};
-*/
+
 LPCTSTR SoftwareList_GetText(struct SmartListView *pListView, int nRow, int nColumn)
 {
 	LPCTSTR s = NULL;
 	ImageData *imgd;
-#if HAS_CRC
-	static char crcstr[9];
-#endif
+#if HAS_HASH
+	static TCHAR buf[128];
+	unsigned int hash_function = 0;
+#endif /* HAS_HASH */
 
 	imgd = mess_images_index[nRow];
 
@@ -858,34 +873,49 @@ LPCTSTR SoftwareList_GetText(struct SmartListView *pListView, int nRow, int nCol
 	    s = imgd->name;
 		break;
 
-#if HAS_CRC
+#if HAS_HASH
 	case MESS_COLUMN_GOODNAME:
-		s = imgd->longname;
+		TstringFromUtf8(buf, sizeof(buf) / sizeof(buf[0]), imgd->hashinfo ? imgd->hashinfo->longname : NULL);
+		s = buf[0] ? buf : NULL;
 		break;
 
 	case MESS_COLUMN_MANUFACTURER:
-		s = imgd->manufacturer;
+		TstringFromUtf8(buf, sizeof(buf) / sizeof(buf[0]), imgd->hashinfo ? imgd->hashinfo->manufacturer : NULL);
+		s = buf[0] ? buf : NULL;
 		break;
 
 	case MESS_COLUMN_YEAR:
-		s = imgd->year;
+		TstringFromUtf8(buf, sizeof(buf) / sizeof(buf[0]), imgd->hashinfo ? imgd->hashinfo->year : NULL);
+		s = buf[0] ? buf : NULL;
 		break;
 
 	case MESS_COLUMN_PLAYABLE:
-		s = imgd->playable;
+		TstringFromUtf8(buf, sizeof(buf) / sizeof(buf[0]), imgd->hashinfo ? imgd->hashinfo->playable : NULL);
+		s = buf[0] ? buf : NULL;
 		break;
 
 	case MESS_COLUMN_CRC:
-		if (imgd->crc)
-			snprintf(crcstr, sizeof(crcstr) / sizeof(crcstr[0]), "%08x", imgd->crc);
-		else
-			crcstr[0] = '\0';
-		s = crcstr;
+	case MESS_COLUMN_MD5:
+	case MESS_COLUMN_SHA1:
+		switch (nColumn)
+		{
+			case MESS_COLUMN_CRC:	hash_function = HASH_CRC;	break;
+			case MESS_COLUMN_MD5:	hash_function = HASH_MD5;	break;
+			case MESS_COLUMN_SHA1:	hash_function = HASH_SHA1;	break;
+		}
+
+		buf[0] = '\0';
+		if (imgd->hashinfo)
+			hash_data_extract_printable_checksum(imgd->hashinfo->hash, hash_function, buf);
+		s = buf;
 		break;
-#endif /* HAS_CRC */
+
+#endif /* HAS_HASH */
 	}
 	return s;
 }
+
+
 
 BOOL SoftwareList_IsItemSelected(struct SmartListView *pListView, int nItem)
 {
@@ -954,7 +984,8 @@ void SoftwareList_Idle(struct SmartListView *pListView)
         s_nIdleImageNum++;
     }
 
-    if (s_nIdleImageNum >= mess_images_count) {
+    if (s_nIdleImageNum >= mess_images_count)
+	{
         s_nIdleImageNum = 0;
 
 		switch(s_eRealizeLevel) {
@@ -963,14 +994,18 @@ void SoftwareList_Idle(struct SmartListView *pListView)
 			break;
 
 		case REALIZE_ALL:
-			s_eRealizeLevel = REALIZE_ZIPS;
-			mess_idle_work = FALSE;
+			s_eRealizeLevel = REALIZE_DONE;
+			break;
+
+		case REALIZE_DONE:
+			/* we are done */
 			break;
 
 		default:
 			assert(0);
 			break;
 		}
+		mess_idle_work = (s_eRealizeLevel != REALIZE_DONE);
     }
 }
 #endif /* HAS_IDLING */
@@ -983,8 +1018,9 @@ void SoftwareList_Idle(struct SmartListView *pListView)
 
 static const char *MessGui_getfodderimage(unsigned int i, int *foddertype)
 {
-	if (i < mess_images_count) {
-		*foddertype = mess_images_index[i]->type;
+	if (i < mess_images_count)
+	{
+		*foddertype = mess_images_index[i]->dev->type;
 		return mess_images_index[i]->name;
 	}
 	return NULL;
@@ -1007,21 +1043,25 @@ void MessTestsFlex(struct SmartListView *pListView, const struct GameDriver *gam
 	SetupImageTypes(s_nGame, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, IO_COUNT);
 
 	/* Try appending an item to the list */
-	for (i = 0; i < nItemsToAdd; i++) {
+	for (i = 0; i < nItemsToAdd; i++)
+	{
 		nItem = i * nItemsToAddSkip;
-		if ((nItem < mess_images_count) && (mess_images_index[nItem]->type != IO_COUNT)) {
+		if ((nItem < mess_images_count) && (GetImageType(nItem) < IO_COUNT))
+		{
 			MessIntroduceItem(pListView, T2A(mess_images_index[nItem]->fullname), imagetypes);
 		}
 	}
 
 	/* Assert that we have resolved all the types */
-	for (i = 0; i < mess_images_count; i++) {
+	for (i = 0; i < mess_images_count; i++)
+	{
 		img = mess_images_index[i];
-		assert(img->type != IO_UNKNOWN);
+		assert(img->realized);
 	}
 
 	/* Now lets try to see if we can load everything */
-	for (i = 0; i < mess_images_count; i++) {
+	for (i = 0; i < mess_images_count; i++)
+	{
 		SmartListView_SelectItem(pListView, i, FALSE);
 		messtestdriver(gamedrv, MessGui_getfodderimage);
 	}

@@ -3,6 +3,7 @@
 #include "rc.h"
 #include "messtest.h"
 #include "parallel.h"
+#include "hashfile.h"
 #include "glob.h"
 
 extern struct rc_option fileio_opts[];
@@ -10,12 +11,14 @@ extern struct rc_option fileio_opts[];
 static int dump_screenshots;
 static int test_count, failure_count;
 static int run_differing_ram_test;
+static int run_hash_test;
 
 static struct rc_option opts[] =
 {
 	{ NULL, NULL, rc_link, fileio_opts, NULL, 0, 0, NULL, NULL },
 	{ "dumpscreenshots",	"ds",	rc_bool,	&dump_screenshots,			"0", 0, 0, NULL,	"always dump screenshots" },
 	{ "difframtest",		"drt",	rc_set_int,	&run_differing_ram_test,	NULL, 1, 0, NULL,	"run a differing ram test" },
+	{ "hashtest",			"h",	rc_set_int, &run_hash_test,				NULL, 1, 0, NULL,	"test all hash files" },
 	{ NULL,	NULL, rc_end, NULL, NULL, 0, 0,	NULL, NULL }
 };
 
@@ -97,6 +100,26 @@ static void differing_ram_test(void)
 
 
 
+static void my_puts(const char *msg)
+{
+	puts(msg);
+}
+
+
+
+static void hash_test(void)
+{
+	int i;
+
+	for (i = 0; drivers[i]; i++)
+	{
+		printf("%s\n", drivers[i]->name);
+		hashfile_verify(drivers[i]->name, my_puts);
+	}
+}
+
+
+
 /* ----------------------------------------------------------------------- */
 
 static int handle_arg(char *arg)
@@ -141,6 +164,9 @@ int main(int argc, char *argv[])
 	int result = -1;
 	clock_t begin_time;
 	double elapsed_time;
+	extern int mess_ghost_images;
+
+	mess_ghost_images = 1;
 
 	/* expand wildcards so '*' can be used; this is not UNIX */
 	win_expand_wildcards(&argc, &argv);
@@ -179,6 +205,8 @@ int main(int argc, char *argv[])
 
 	if (run_differing_ram_test)
 		differing_ram_test();
+	if (run_hash_test)
+		hash_test();
 
 	if (test_count > 0)
 	{

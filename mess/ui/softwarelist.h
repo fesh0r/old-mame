@@ -3,21 +3,20 @@
 
 #include <tchar.h>
 #include "SmartListView.h"
+#include "messdrv.h"
 
 #ifdef UNDER_CE
 #define HAS_IDLING	0
-#define HAS_CRC		0
+#define HAS_HASH	0
 #else
 #define HAS_IDLING	1
-#define HAS_CRC		1
+#define HAS_HASH	1
 #endif
 
-typedef struct {
-    int type;
+typedef struct
+{
+	const struct IODevice *dev;
     const char *ext;
-#if HAS_CRC
-	UINT32 (*partialcrc)(const unsigned char *buf, unsigned int size);
-#endif
 } mess_image_type;
 
 /* SoftwareListView Class calls */
@@ -32,7 +31,8 @@ void SoftwareList_Idle(struct SmartListView *pListView);
 
 /* External calls */
 void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL bZip, int type);
-void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nBasePaths, LPCSTR *plpBasePaths, LPCSTR lpExtraPath);
+void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nBasePaths,
+	LPCSTR *plpBasePaths, LPCSTR lpExtraPath, void (*hash_error_proc)(const char *message));
 int MessLookupByFilename(const TCHAR *filename);
 int MessImageCount(void);
 void MessIntroduceItem(struct SmartListView *pListView, const char *filename, mess_image_type *imagetypes);

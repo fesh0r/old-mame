@@ -66,6 +66,7 @@
 #include "history.h"
 #include "options.h"
 #include "dialogs.h"
+#include "state.h"
 
 #include "DirectDraw.h"
 #include "DirectInput.h"
@@ -597,6 +598,7 @@ static GUISequence GUISequenceControl[]=
 	{"gui_key_view_tab_marquee",     SEQ_DEF_0,  ID_VIEW_TAB_MARQUEE,       Get_ui_key_view_tab_marquee },
 	{"gui_key_view_tab_screenshot",  SEQ_DEF_0,  ID_VIEW_TAB_SCREENSHOT,    Get_ui_key_view_tab_screenshot },
 	{"gui_key_view_tab_title",       SEQ_DEF_0,  ID_VIEW_TAB_TITLE,         Get_ui_key_view_tab_title },
+	{"gui_key_quit",                 SEQ_DEF_0,  ID_FILE_EXIT,              Get_ui_key_quit },
 };
 
 
@@ -1485,7 +1487,7 @@ void UpdateScreenShot(void)
 		// - we have history for the game
 		// - we're on the first tab
 		// - we DON'T have a separate history tab
-		showing_history = (have_history && GetCurrentTab() == TAB_SCREENSHOT &&
+		showing_history = (have_history && (GetCurrentTab() == GetHistoryTab() || GetHistoryTab() == TAB_ALL ) &&
 						   GetShowTab(TAB_HISTORY) == FALSE);
 		CalculateBestScreenShotRect(GetDlgItem(hMain, IDC_SSFRAME), &rect,showing_history);
 			
@@ -1730,7 +1732,7 @@ static void ResetBackground(char *szFile)
 	char szDestFile[MAX_PATH];
 
 	/* The MAME core load the .png file first, so we only need replace this file */
-	sprintf(szDestFile, "%s\\bkground.png", GetImgDir());
+	sprintf(szDestFile, "%s\\bkground.png", GetBgDir());
 	SetFileAttributes(szDestFile, FILE_ATTRIBUTE_NORMAL);
 	CopyFileA(szFile, szDestFile, FALSE);
 }
@@ -2643,7 +2645,7 @@ static BOOL FolderCheck(void)
 	}
 	ProgressBarHide();
 	pDescription = ModifyThe(drivers[GetSelectedPickItem()]->description);
-	SendMessage(hStatusBar, SB_SETTEXT, (WPARAM)0, (LPARAM)pDescription);
+	SetStatusBarText(0, pDescription);
 	UpdateStatusBar();
 	return TRUE;
 }
@@ -2718,7 +2720,7 @@ static void OnIdle()
 	driver_index = GetSelectedPickItem();
 
 	pDescription = ModifyThe(drivers[driver_index]->description);
-	SendMessage(hStatusBar, SB_SETTEXT, (WPARAM)0, (LPARAM)pDescription);
+	SetStatusBarText(0, pDescription);
 	idle_work = FALSE;
 	UpdateStatusBar();
 	bFirstTime = TRUE;
@@ -2894,26 +2896,18 @@ static void ResizeProgressBar()
 	}
 }
 
-static void ProgressBarStep()
+static void ProgressBarStepParam(int iGameIndex, int nGameCount)
 {
-	char tmp[80];
-	sprintf(tmp, "Game search %d%% complete",
-			((game_index + 1) * 100) / game_count);
-	SendMessage(hStatusBar, SB_SETTEXT, 0, (LPARAM)tmp);
-	if (game_index == 0)
+	SetStatusBarTextF(0, "Game search %d%% complete",
+			((iGameIndex + 1) * 100) / nGameCount);
+	if (iGameIndex == 0)
 		ShowWindow(hProgWnd, SW_SHOW);
 	SendMessage(hProgWnd, PBM_STEPIT, 0, 0);
 }
 
-static void ProgressBarStepParam(int iGameIndex, int nGameCount)
+static void ProgressBarStep()
 {
-	char tmp[80];
-	sprintf(tmp, "Game search %d%% complete",
-			((iGameIndex + 1) * 100) / nGameCount);
-	SendMessage(hStatusBar, SB_SETTEXT, 0, (LPARAM)tmp);
-	if (iGameIndex == 0)
-		ShowWindow(hProgWnd, SW_SHOW);
-	SendMessage(hProgWnd, PBM_STEPIT, 0, 0);
+	ProgressBarStepParam(game_index, game_count);
 }
 
 static HWND InitProgressBar(HWND hParent)
@@ -2975,7 +2969,7 @@ static void CopyToolTipText(LPTOOLTIPTEXT lpttt)
 			SendMessage(hStatusBar, SB_GETTEXT, (WPARAM)iButton, (LPARAM)(LPSTR) &String );
 		else
 			//for first pane we get the Status directly, to get the line breaks
-			strcpy(String, GameInfoStatus(GetSelectedPickItem()) );
+			strcpy(String, GameInfoStatus(GetSelectedPickItem(), FALSE) );
 	}
 	else
 		strcpy(String,"Invalid Button Index");
@@ -3062,7 +3056,6 @@ static void UpdateStatusBar()
 {
 	LPTREEFOLDER lpFolder = GetCurrentFolder();
 	int 		 games_shown = 0;
-	char		 game_text[20];
 	int 		 i = -1;
 
 	if (!lpFolder)
@@ -3079,8 +3072,7 @@ static void UpdateStatusBar()
 	}
 
 	/* Show number of games in the current 'View' in the status bar */
-	snprintf(game_text, sizeof(game_text) / sizeof(game_text[0]), g_szGameCountString, games_shown);
-	SendMessage(hStatusBar, SB_SETTEXT, (WPARAM)2, (LPARAM)game_text);
+	SetStatusBarTextF(2, g_szGameCountString, games_shown);
 
 	i = GetSelectedPickItem();
 
@@ -3088,8 +3080,8 @@ static void UpdateStatusBar()
 		DisableSelection();
 	else
 	{
-		const char* pStatus = GameInfoStatus(i);
-		SendMessage(hStatusBar, SB_SETTEXT, (WPARAM)1, (LPARAM)pStatus);
+		const char* pStatus = GameInfoStatus(i, FALSE);
+		SetStatusBarText(1, pStatus);
 	}
 }
 
@@ -3113,7 +3105,8 @@ static void UpdateHistory(void)
 
 	if (have_history && GetShowScreenShot()
 		&& ((GetCurrentTab() == TAB_HISTORY) || 
-			(GetCurrentTab() == TAB_SCREENSHOT && GetShowTab(TAB_HISTORY) == FALSE)))
+			(GetCurrentTab() == GetHistoryTab() && GetShowTab(TAB_HISTORY) == FALSE) ||
+			(TAB_ALL == GetHistoryTab() && GetShowTab(TAB_HISTORY) == FALSE) ))
 	{
 		Edit_GetRect(GetDlgItem(hMain, IDC_HISTORY),&rect);
 		nLines = Edit_GetLineCount(GetDlgItem(hMain, IDC_HISTORY) );
@@ -3157,9 +3150,9 @@ static void DisableSelection()
 	EnableMenuItem(hMenu, ID_FILE_PLAY_RECORD,	   MF_GRAYED);
 	EnableMenuItem(hMenu, ID_GAME_PROPERTIES,	   MF_GRAYED);
 
-	SendMessage(hStatusBar, SB_SETTEXT, (WPARAM)0, (LPARAM)"No Selection");
-	SendMessage(hStatusBar, SB_SETTEXT, (WPARAM)1, (LPARAM)"");
-	SendMessage(hStatusBar, SB_SETTEXT, (WPARAM)3, (LPARAM)"");
+	SetStatusBarText(0, "No Selection");
+	SetStatusBarText(1, "");
+	SetStatusBarText(3, "");
 
 	have_selection = FALSE;
 
@@ -3187,11 +3180,11 @@ static void EnableSelection(int nGame)
 	SetMenuItemInfo(hMenu, ID_FILE_PLAY, FALSE, &mmi);
 
 	pText = ModifyThe(drivers[nGame]->description);
-	SendMessage(hStatusBar, SB_SETTEXT, (WPARAM)0, (LPARAM)pText);
+	SetStatusBarText(0, pText);
 	/* Add this game's status to the status bar */
-	pText = GameInfoStatus(nGame);
-	SendMessage(hStatusBar, SB_SETTEXT, (WPARAM)1, (LPARAM)pText);
-	SendMessage(hStatusBar, SB_SETTEXT, (WPARAM)3, (LPARAM)"");
+	pText = GameInfoStatus(nGame, FALSE);
+	SetStatusBarText(1, pText);
+	SetStatusBarText(3, "");
 
 	/* If doing updating game status and the game name is NOT pacman.... */
 
@@ -4801,7 +4794,7 @@ static void LoadBackgroundBitmap()
 		/*nResource = IDB_BKGROUND;*/
 	}
 
-	if (LoadDIB(pFileName, &hDIBbg, &hPALbg, TAB_SCREENSHOT))
+	if (LoadDIB(pFileName, &hDIBbg, &hPALbg, BACKGROUND))
 	{
 		HDC hDC = GetDC(hwndList);
 		hBackground = DIBToDDB(hDC, hDIBbg, &bmDesc);
@@ -5600,6 +5593,34 @@ static INT_PTR CALLBACK LanguageDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 	return 0;
 }
 
+void SetStatusBarText(int part_index, const char *message)
+{
+	SendMessage(hStatusBar, SB_SETTEXT, (WPARAM) part_index, (LPARAM) message);
+}
+
+void SetStatusBarTextF(int part_index, const char *fmt, ...)
+{
+	char buf[256];
+	va_list va;
+
+	va_start(va, fmt);
+	vsprintf(buf, fmt, va);
+	va_end(va);
+
+	SetStatusBarText(part_index, buf);
+}
+
+static void MameMessageBox(const char *fmt, ...)
+{
+	char buf[2048];
+	va_list va;
+
+	va_start(va, fmt);
+	vsprintf(buf, fmt, va);
+	MessageBox(GetMainWindow(), buf, MAME32NAME, MB_OK | MB_ICONERROR);
+	va_end(va);
+}
+
 static void MamePlayBackGame()
 {
 	int nGame;
@@ -5633,9 +5654,7 @@ static void MamePlayBackGame()
 		pPlayBack = mame_fopen(fname,NULL,FILETYPE_INPUTLOG,0);
 		if (pPlayBack == NULL)
 		{
-			char buf[MAX_PATH + 64];
-			sprintf(buf, "Could not open '%s' as a valid input file.", filename);
-			MessageBox(NULL, buf, MAME32NAME, MB_OK | MB_ICONERROR);
+			MameMessageBox("Could not open '%s' as a valid input file.", filename);
 			return;
 		}
 
@@ -5689,73 +5708,76 @@ static void MameLoadState()
 	if (CommonFileDialog(GetOpenFileName, filename, FALSE, FALSE))
 	{
 		mame_file* pSaveState;
-		char *cPos=0;
-		int  iPos=0;
 		char drive[_MAX_DRIVE];
 		char dir[_MAX_DIR];
-		char bare_fname[_MAX_FNAME];
 		char ext[_MAX_EXT];
 
 		char path[MAX_PATH];
 		char fname[MAX_PATH];
-		char romname[MAX_PATH];
+		char bare_fname[_MAX_FNAME];
+		char *state_fname;
+		int rc;
 
 		_splitpath(filename, drive, dir, bare_fname, ext);
 
+		// parse path
 		sprintf(path,"%s%s",drive,dir);
 		sprintf(fname,"%s%s",bare_fname,ext);
 		if (path[strlen(path)-1] == '\\')
 			path[strlen(path)-1] = 0; // take off trailing back slash
-		cPos = strchr(bare_fname, '-' );
-		iPos = cPos ? cPos - bare_fname : strlen(bare_fname);
-		strncpy(romname, bare_fname, iPos );
-		romname[iPos] = '\0';
-		if( strcmp(selected_filename,romname) != 0 )
+
+#ifdef MESS
 		{
-			char buf[2*MAX_PATH + 64];
-			sprintf(buf, "'%s' is not a valid savestate file for game '%s'.", filename, selected_filename);
-			MessageBox(NULL, buf, MAME32NAME, MB_OK | MB_ICONERROR);
-			return;
+			state_fname = filename;
 		}
-		set_pathlist(FILETYPE_STATE,path);
-		pSaveState = mame_fopen(NULL,fname,FILETYPE_STATE,0);
+#else // !MESS
+		{
+			char *cPos=0;
+			int  iPos=0;
+			char romname[MAX_PATH];
+
+			cPos = strchr(bare_fname, '-' );
+			iPos = cPos ? cPos - bare_fname : strlen(bare_fname);
+			strncpy(romname, bare_fname, iPos );
+			romname[iPos] = '\0';
+			if( strcmp(selected_filename,romname) != 0 )
+			{
+				MameMessageBox("'%s' is not a valid savestate file for game '%s'.", filename, selected_filename);
+				return;
+			}
+			set_pathlist(FILETYPE_STATE,path);
+			state_fname = fname;
+		}
+#endif // MESS
+
+		pSaveState = mame_fopen(NULL,state_fname,FILETYPE_STATE,0);
 		if (pSaveState == NULL)
 		{
-			char buf[MAX_PATH + 64];
-			sprintf(buf, "Could not open '%s' as a valid savestate file.", filename);
-			MessageBox(NULL, buf, MAME32NAME, MB_OK | MB_ICONERROR);
+			MameMessageBox("Could not open '%s' as a valid savestate file.", filename);
 			return;
 		}
 
-		// check for "MAMESAVE" and VersionNo embedded in .sta header
-		if (pSaveState)
-		{
-			unsigned char state[10];
-
-			mame_fread(pSaveState, state, 10);
-
-			if(memcmp(state, "MAMESAVE", 8)) {
-				char buf[MAX_PATH + 64];
-				sprintf(buf, "Could not open '%s' as a valid savestate file.", filename);
-				MessageBox(NULL, buf, MAME32NAME, MB_OK | MB_ICONERROR);
-				return;
-			}
-
-			if(state[8] != STATESAVE_VERSION) {
-				char buf[MAX_PATH + 64];
-				sprintf(buf, "Wrong version in save file (%d, %d expected)", state[8], STATESAVE_VERSION);
-				MessageBox(NULL, buf, MAME32NAME, MB_OK | MB_ICONERROR);
-				return;
-			}
-		}
+		// call the MAME core function to check the save state file
+		rc = state_save_check_file(pSaveState, selected_filename, MameMessageBox);
 		mame_fclose(pSaveState);
-		cPos = strrchr(bare_fname, '-' );
-		cPos = cPos+1;
-		if( strlen(cPos) >0)
+		if (rc)
+			return;
+
+#ifdef MESS
+		g_pSaveStateName = state_fname;
+#else
 		{
-			g_pSaveStateName = cPos;
-			override_savestate_directory = path;
+			char *cPos;
+			cPos = strrchr(bare_fname, '-' );
+			cPos = cPos+1;
+			if( strlen(cPos) >0)
+			{
+				g_pSaveStateName = cPos;
+				override_savestate_directory = path;
+			}
 		}
+#endif
+
 		MamePlayGameWithOptions(nGame);
 		g_pSaveStateName = NULL;
 		override_savestate_directory = NULL;

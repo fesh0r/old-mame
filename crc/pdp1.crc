@@ -1,9 +1,0 @@
-# PDP1 - Spacewar CRC
-# Note: This list is provided as a record of known dumps for this system.  
-#       These checksums have not been validated and cannot be assumed correct.  
-#       They are provided here as a database to help the emulation of this system.  
-
-[pdp1]
-b3504cbb = PDP-1 LISP.rim | 1963 | Peter L. Deutsch
-f0c4436e = Munching Squares.rim | | Daniel P. B. Smith
-b4ea9c04 = Spacewar!.rim | 1962 | Wayne Witanen, J. Martin Graetz, Stephen R. Russell

@@ -158,7 +158,7 @@ CFLAGSPEDANTIC = $(CFLAGS) -pedantic
 ifdef SYMBOLS
 LDFLAGS =
 else
-#LDFLAGS = -s -Wl,--warn-common
+#LDFLAGS = -Wl,--warn-common
 LDFLAGS = -s
 endif
 
@@ -175,11 +175,11 @@ OBJDIRS = obj $(OBJ) $(OBJ)/cpu $(OBJ)/sound $(OBJ)/$(MAMEOS) \
 	$(OBJ)/drivers $(OBJ)/machine $(OBJ)/vidhrdw $(OBJ)/sndhrdw $(OBJ)/xml2info
 
 OBJDIRS += 	$(OBJ)/mess         $(OBJ)/mess/$(MAMEOS)			\
-		$(OBJ)/mess/cpu											\
+		$(OBJ)/mess/expat										\
+		$(OBJ)/mess/cpu		$(OBJ)/mess/devices					\
 		$(OBJ)/mess/systems $(OBJ)/mess/machine					\
 		$(OBJ)/mess/vidhrdw $(OBJ)/mess/sndhrdw					\
 		$(OBJ)/mess/formats $(OBJ)/mess/tools					\
-		$(OBJ)/mess/devices										\
 		$(OBJ)/mess/tools/dat2html $(OBJ)/mess/tools/mkhdimg	\
 		$(OBJ)/mess/tools/messroms $(OBJ)/mess/tools/imgtool	\
 		$(OBJ)/mess/tools/messdocs $(OBJ)/mess/tools/messtest	\
@@ -255,7 +255,7 @@ romcmp$(EXE): $(OBJ)/romcmp.o $(OBJ)/unzip.o
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $^ -lz -o $@
 
-chdman$(EXE): $(OBJ)/chdman.o $(OBJ)/chd.o $(OBJ)/md5.o $(OBJ)/sha1.o $(OBJ)/version.o
+chdman$(EXE): $(OBJ)/chdman.o $(OBJ)/chd.o $(OBJ)/chdcd.o $(OBJ)/md5.o $(OBJ)/sha1.o $(OBJ)/version.o
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $^ -lz -o $@
 
@@ -281,12 +281,13 @@ messtest$(EXE):	$(OBJS) $(COREOBJS) $(DRVLIBS) $(MESSTEST_OBJS) \
 		$(OBJ)/windows/fileio.o					\
 		$(OBJ)/windows/rc.o						\
 		$(OBJ)/windows/misc.o					\
+		$(OBJ)/windows/winalloc.o				\
 		$(OBJ)/mess/windows/dirio.o				\
 		$(OBJ)/mess/windows/dirutils.o			\
 		$(OBJ)/mess/windows/glob.o				\
 		$(OBJ)/mess/windows/parallel.o
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(CONSOLE_PROGRAM) $^ -lz -lwinmm -o $@
+	$(LD) $(LDFLAGS) $(CONSOLE_PROGRAM) $^ -Wl,--allow-multiple-definition -lz -lwinmm -o $@
 
 
 
@@ -310,6 +311,13 @@ endif
 $(OBJ)/xml2info/%.o: src/xml2info/%.c
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS_BASE) -c $< -o $@
+ifdef DISASSEMBLY
+	$(DASM) $(CDEFS) $(CFLAGS_BASE) $< -o $(@:%.o=%.S)
+endif
+
+$(OBJ)/mess/expat/%.o: mess/expat/%.c
+	@echo Compiling $<...
+	$(CC) $(CDEFS) $(CFLAGS_BASE) -c $< -DHAVE_MEMMOVE -o $@
 ifdef DISASSEMBLY
 	$(DASM) $(CDEFS) $(CFLAGS_BASE) $< -o $(@:%.o=%.S)
 endif

@@ -598,26 +598,62 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 			*/
 
 	/* ASCII & MICROSOFT */
 	DRIVER( msx )		/* 1983 MSX 										*/
-	DRIVER( msxj )		/* 1983 MSX Jap 									*/
-	DRIVER( cf2000 )	/* 1983 MSX Jap 									*/
-	DRIVER( cf1200 )	/* 1984 MSX Jap 									*/
-	DRIVER( cf2700 )	/* 1984 MSX Jap 									*/
-	DRIVER( cf3000 )	/* 1984 MSX Jap 									*/
-	DRIVER( fs4000 )	/* 1985 MSX Jap 									*/
-	DRIVER( fs1300 )	/* 1985 MSX Jap 									*/
-	DRIVER( msxkr ) 	/* 1983 MSX Korean									*/
-	DRIVER( hb75p ) 	/* 1983 MSX UK										*/
-	DRIVER( hotbit11 )	/* 198? ???											*/
-	DRIVER( hotbit12 )	/* 198? ???											*/
-	DRIVER( expert10 )	/* 198? ???											*/
-	DRIVER( expert11 )	/* 198? ???											*/
+	DRIVER( cf2000 )	/* 1983 MSX Japan 									*/
+	DRIVER( cf1200 )	/* 1984 MSX Japan 									*/
+	DRIVER( cf2700 )	/* 1984 MSX Japan 									*/
+	DRIVER( cf3000 )	/* 1984 MSX Japan 									*/
+	DRIVER( cf3300 )	/* 1985 MSX Japan 									*/
+	DRIVER( fs4000 )	/* 1985 MSX Japan 									*/
+	DRIVER( fs1300 )	/* 1985 MSX Japan 									*/
+	DRIVER( hb201 ) 	/* 1985 MSX Japan 									*/
+	DRIVER( dpc100 ) 	/* 1984 MSX Korea									*/
+	DRIVER( dpc180 ) 	/* 1984 MSX Korea									*/
+	DRIVER( dpc200 ) 	/* 1984 MSX Korea									*/
+	DRIVER( hb75d ) 	/* 1983 MSX Germany									*/
+	DRIVER( hb75p ) 	/* 1983 MSX   										*/
+	DRIVER( hb501p ) 	/* 1984 MSX   										*/
+	DRIVER( hb201p ) 	/* 1985 MSX   										*/
+	DRIVER( svi738 )	/* 1985 MSX       									*/
+	DRIVER( hotbit11 )	/* 1985 MSX Brazil									*/
+	DRIVER( hotbit12 )	/* 1985 MSX	Brazil									*/
+	DRIVER( expert10 )	/* 1983 MSX Brazil									*/
+	DRIVER( expert11 )	/* 1984 MSX Brazil									*/
+	DRIVER( expertdp )	/* 1985 MSX Brazil									*/
 	DRIVER( msx2 ) 		/* 1985 MSX2										*/
-	DRIVER( hbf700p )	/* 1985 MSX2 Sony									*/
-	DRIVER( nms8245 )	/* 1985 MSX2										*/
-	DRIVER( nms8255 )	/* 1985 MSX2										*/
-	DRIVER( msx2j ) 	/* 1985 MSX2 Jap									*/
-	DRIVER( fsa1 )  	/* 1986 MSX2 Jap 									*/
-	DRIVER( fsa1mk2 )  	/* 1987 MSX2 Jap 									*/
+	DRIVER( hbf9p )  	/* 1985 MSX2     									*/
+	DRIVER( hbf500p )	/* 1985 MSX2     									*/
+	DRIVER( hbf700d )	/* 1985 MSX2 Germany								*/
+	DRIVER( hbf700p )	/* 1985 MSX2     									*/
+	DRIVER( hbf700s )	/* 1985 MSX2 Spain									*/
+	DRIVER( hbg900p )  	/* 1986 MSX2      									*/
+	DRIVER( nms8220 )	/* 1986 MSX2										*/
+	DRIVER( nms8220a )	/* 1986 MSX2										*/
+	DRIVER( vg8235 )	/* 1986 MSX2										*/
+	DRIVER( nms8245 )	/* 1986 MSX2										*/
+	DRIVER( nms8250 )	/* 1986 MSX2       									*/
+	DRIVER( nms8255 )	/* 1986 MSX2										*/
+	DRIVER( nms8280 )	/* 1986 MSX2										*/
+	DRIVER( fs5500 )  	/* 1985 MSX2 Japan 									*/
+	DRIVER( fs4500 )  	/* 1986 MSX2 Japan 									*/
+	DRIVER( fs4700 )  	/* 1986 MSX2 Japan 									*/
+	DRIVER( fs5000 )  	/* 1986 MSX2 Japan 									*/
+	DRIVER( fs4600 )  	/* 1986 MSX2 Japan 									*/
+	DRIVER( fsa1 )  	/* 1986 MSX2 Japan 									*/
+	DRIVER( fsa1a )  	/* 1986 MSX2 Japan 									*/
+	DRIVER( fsa1mk2 )  	/* 1987 MSX2 Japan 									*/
+	DRIVER( fsa1f )  	/* 1987 MSX2 Japan 									*/
+	DRIVER( fsa1fm )  	/* 1988 MSX2 Japan 									*/
+	DRIVER( hbf500 )  	/* 1986 MSX2 Japan 									*/
+	DRIVER( hbf900 )  	/* 1986 MSX2 Japan 									*/
+	DRIVER( hbf900a )  	/* 1986 MSX2 Japan 									*/
+	DRIVER( hbf1 )  	/* 1986 MSX2 Japan 									*/
+	DRIVER( hbf12 )  	/* 1987 MSX2 Japan 									*/
+	DRIVER( hbf1xd )  	/* 1987 MSX2 Japan 									*/
+	DRIVER( hbf1xdm2 ) 	/* 1988 MSX2 Japan 									*/
+	DRIVER( phc23 ) 	/* 1986 MSX2 Japan 									*/
+	DRIVER( cpc300 )  	/* 1986 MSX2 Korea 									*/
+	DRIVER( cpc400 )  	/* 1986 MSX2 Korea 									*/
+	DRIVER( cpc400s )  	/* 1986 MSX2 Korea 									*/
 
 
 	/* NASCOM MICROCOMPUTERS */
@@ -657,7 +693,18 @@ TESTDRIVER( mekd2 )		/* 1977 Motorola Evaluation Kit						*/
 	DRIVER( lvivp )		/* PK-01 Lviv (early)								*/
 
 	/* Tesla */
-TESTDRIVER( pmd85 )		/* PMD-85.1											*/
+	DRIVER( pmd851 )	/* PMD-85.1											*/
+	DRIVER( pmd852 )	/* PMD-85.2											*/
+	DRIVER( pmd852a )	/* PMD-85.2A											*/
+	DRIVER( pmd852b )	/* PMD-85.2B											*/
+	DRIVER( pmd853 )	/* PMD-85.3											*/
+
+	/* Didaktik */
+	DRIVER( alfa )		/* Alfa (PMD-85.1 clone)									*/
+
+	/* Statny */
+	DRIVER( mato )		/* Mato (Basic ROM) (PMD-85.2 clone)								*/
+	DRIVER( matoh )		/* Mato (Games ROM) (PMD-85.2 clone)								*/
 
 	/* Team Concepts */
 	/* CPU not known, else should be easy, look into systems/comquest.c */
@@ -697,6 +744,10 @@ TESTDRIVER( hp48g ) 	/* HP48 G/GX										*/
 
 	/* Telenova */
 	DRIVER(compis)		/* 1985 Telenova Compis								*/
+
+	/* Multitech */
+	DRIVER(mpf1)		/* 1979 Multitech Micro Professor 1					*/
+	DRIVER(mpf1b)		/* 1979 Multitech Micro Professor 1B				*/
 
 /****************Games*******************************************************/
 	/* Computer Electronic */

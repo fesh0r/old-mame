@@ -181,7 +181,7 @@ int pit8253_init(int count)
 	{
 		for (timer = 0; timer < MAX_TIMER; timer++)
 		{
-			pit[i].timer[timer].timer = timer_alloc(pit8253_update);
+			pit[i].timer[timer].timer = mame_timer_alloc(pit8253_update);
 			if (!pit[i].timer[timer].timer)
 				goto error;
 			pit[i].timer[timer].update_all = 1;
@@ -459,11 +459,11 @@ static void pit8253_update(int param)
 	mame_timer_reset(p->timer[timer].timer, time_never);
 	p->timer[timer].event_time = TIMER_TIME_NEVER;
 
-	LOG2(("pit8253_update(): PIT #%d timer %d: [%10d] mode=%d phase=%d\n", which,
-		timer, (int) current_time, mode, phase));
-
 	/* update the latch value */
 	counter = pit8253_get_counter(which, timer, event_time);
+
+	LOG2(("pit8253_update(): PIT #%d timer %d: [%10d] mode=%d phase=%d counter=0x%04x\n", which,
+		timer, (int) current_time, mode, phase, (unsigned) counter));
 
 	/* here is where we readjust the clock */
 	if (p->timer[timer].clockin != p->timer[timer].new_clockin)
@@ -486,19 +486,20 @@ static void pit8253_update(int param)
 			switch(phase) {
 			case 0:
 				output				= 0;
-				counter_adjustment	= 0;
-				wake				= WAKE_IDLE;
+				counter_adjustment	= counter ? 1 : 0;
+				phase				= counter ? 1 : 0;
+				wake				= counter ? WAKE_BYCOUNTER : WAKE_IDLE;
 				break;
 
 			case 1:
-				output				= 1;
+				output				= 0;
 				counter_adjustment	= 1;
 				phase				= 2;
 				wake				= WAKE_BYCOUNTER;
 				break;
 
 			case 2:
-				output				= counter ? 1 : 0;
+				output				= counter ? 0 : 1;
 				counter_adjustment	= counter ? 1 : 0;
 				wake				= counter ? WAKE_BYCOUNTER : WAKE_IDLE;
 				break;
@@ -739,7 +740,7 @@ static data8_t pit8253_read(int which, offs_t offset)
 	case 0:
 	case 1:
 	case 2:
-		counter = pit8253_get_counter(which, timer, timer_get_time());
+		counter = p->timer[timer].latch;
 
 		switch(CTRL_ACCESS(p->timer[timer].control)) {
 		case 0:
@@ -747,12 +748,12 @@ static data8_t pit8253_read(int which, offs_t offset)
 			if (p->timer[timer].msb)
 			{
 				data = (p->timer[timer].latch >> 8) & 0xff;
-				LOG1(("pit8253_read(): latch #%d MSB $%02x\n", timer, data));
+				LOG2(("pit8253_read(): latch #%d MSB $%02x\n", timer, data));
 			}
 			else
 			{
 				data = (p->timer[timer].latch >> 0) & 0xff;
-				LOG1(("pit8253_read(): latch #%d LSB $%02x\n", timer, data));
+				LOG2(("pit8253_read(): latch #%d LSB $%02x\n", timer, data));
 			}
 			p->timer[timer].msb ^= 1;
 			break;
@@ -760,13 +761,13 @@ static data8_t pit8253_read(int which, offs_t offset)
 		case 1:
 			/* read/write counter bits 0-7 only */
 			data = (counter >> 0) & 0xff;
-			LOG1(("pit8253_read(): counter #%d LSB only $%02x\n", timer, data));
+			LOG2(("pit8253_read(): counter #%d LSB only $%02x\n", timer, data));
 			break;
 
 		case 2:
 			/* read/write counter bits 8-15 only */
 			data = (counter >> 8) & 0xff;
-			LOG1(("pit8253_read(): counter #%d MSB only $%02x\n", timer, data));
+			LOG2(("pit8253_read(): counter #%d MSB only $%02x\n", timer, data));
 			break;
 
 		case 3:
@@ -777,6 +778,8 @@ static data8_t pit8253_read(int which, offs_t offset)
         }
         break;
     }
+
+	LOG2(("pit8253_read(): PIT #%d offset=%d data=0x%02x\n", which, (int) offset, (unsigned) data));
 	return data;
 }
 
@@ -789,10 +792,11 @@ static void pit8253_write(int which, offs_t offset, int data)
 	int clock_val;
 	int clock_mask;
 	counter_write_t counter_write;
+	UINT64 current_time;
 
 	offset %= 4;
 
-	LOG1(("pit8253_write(): PIT #d offset=%d data=0x%02x\n", (int) offset, (unsigned) data));
+	LOG2(("pit8253_write(): PIT #%d offset=%d data=0x%02x\n", which, (int) offset, (unsigned) data));
 
 	switch( offset ) {
 	case 0:
@@ -855,12 +859,19 @@ static void pit8253_write(int which, offs_t offset, int data)
     case 3:
 		/* PIT mode port */
 		timer = (data >> 6) & 3;
+
 		if (timer < MAX_TIMER)
 		{
+			/* pc1512 seems to expect the timer to relatch itself */
+			current_time = get_timer_time(which, timer);
+			p->timer[timer].latch = pit8253_get_counter(which, timer, current_time);
+
+			/* prepare an update */
 			p->timer[timer].control = data & 0x3F;
 			p->timer[timer].phase = 0;
 			p->timer[timer].msb = (CTRL_ACCESS(p->timer[timer].control) == 2) ? 1 : 0;
 			pit8253_prepare_update(which, timer, 0);
+			LOG1(("pit8253_write(): PIT #%d timer=%d control=0x%02x\n", which, timer, p->timer[timer].control));
 		}
 		break;
     }
@@ -897,7 +908,9 @@ int pit8253_get_frequency(int which, int timer)
 int pit8253_get_output(int which, int timer)
 {
     struct pit8253 *p = get_pit(which);
-	return (int) p->timer[timer].output;
+	int result = (int) p->timer[timer].output;
+	LOG2(("pit8253_get_output(): PIT #%d timer=%d result=%d\n", which, timer, result));
+	return result;
 }
 
 

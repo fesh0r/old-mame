@@ -335,8 +335,10 @@ WRITE_HANDLER (v9938_vram_w)
 
     address = ((int)vdp.contReg[14] << 14) | vdp.address_latch;
 
-    if (vdp.contReg[47] & 0x20)
+    if (vdp.contReg[45] & 0x40)
         {
+		if ( (vdp.mode == V9938_MODE_GRAPHIC6) || (vdp.mode == V9938_MODE_GRAPHIC7) )
+			address >>= 1;	/* correct? */
         if (vdp.vram_exp && address < 0x10000)
             vdp.vram_exp[address] = data;
         }
@@ -363,8 +365,10 @@ READ_HANDLER (v9938_vram_r)
 
 	ret = vdp.read_ahead;
 
-	if (vdp.contReg[47] & 0x20)
+	if (vdp.contReg[45] & 0x40)
 		{
+		if ( (vdp.mode == V9938_MODE_GRAPHIC6) || (vdp.mode == V9938_MODE_GRAPHIC7) )
+			address >>= 1;	/* correct? */
 		/* correct? */
 		if (vdp.vram_exp && address < 0x10000)
 			vdp.read_ahead = vdp.vram_exp[address];
@@ -457,8 +461,8 @@ void v9938_reset (void)
 	int i;
 
 	/* offset reset */
-	vdp.offset_x = 7;
-	vdp.offset_y = 7 + 10;
+	vdp.offset_x = 8;
+	vdp.offset_y = 8 + 16;
 	vdp.visible_y = 192;
 	/* register reset */
 	v9938_reset_palette (); /* palette registers */
@@ -568,8 +572,8 @@ static void v9938_register_write (int reg, int data)
 	case 9:
 		vdp.contReg[reg] = data;
 		/* recalc offset */
-		vdp.offset_x = ( (~vdp.contReg[18] - 8) & 0x0f);
-		vdp.offset_y = (~(vdp.contReg[18]>>4) - 8) & 0x0f;
+		vdp.offset_x = (( (~vdp.contReg[18] - 8) & 0x0f) + 1);
+		vdp.offset_y = ((~(vdp.contReg[18]>>4) - 8) & 0x0f) + 7;
 		if (vdp.contReg[9] & 0x80)
 		{
 			vdp.visible_y = 212;
@@ -1305,9 +1309,9 @@ static void v9938_interrupt_start_vblank (void)
 	if (vdp.size != vdp.size_old)
 		{
 		if (vdp.size == RENDER_HIGH)
-			set_visible_area (0, 512 + 32 - 1, 0, 424 + 32 - 1);
+			set_visible_area (0, 512 + 32 - 1, 0, 424 + 56 - 1);
 		else
-			set_visible_area (0, 256 + 16 - 1, 0, 212 + 16 - 1);
+			set_visible_area (0, 256 + 16 - 1, 0, 212 + 28 - 1);
 
 		vdp.size_old = vdp.size;
 		}
@@ -1323,7 +1327,7 @@ int v9938_interrupt (void)
 	v9938_update_command ();
 
 	pal = vdp.contReg[9] & 2;
-	if (pal) scanline_start = 53; else scanline_start = 26;
+	if (pal) scanline_start = 53; else scanline_start = 22;
 
 	/* set flags */
 	if (vdp.scanline == (vdp.offset_y + scanline_start) )
@@ -1355,7 +1359,7 @@ int v9938_interrupt (void)
 		v9938_interrupt_start_vblank ();
 
 	/* render the current line */
-	if ((vdp.scanline >= scanline_start) && (vdp.scanline < (212 + 16 + scanline_start)))
+	if ((vdp.scanline >= scanline_start) && (vdp.scanline < (212 + 28 + scanline_start)))
 		{
 		scanline = (vdp.scanline - scanline_start) & 255;
 
@@ -1425,9 +1429,9 @@ void v9938_update_mouse_state(int mx_delta, int my_delta, int button_state)
 #define VDP_VRMP5(MX, X, Y) ((!MX) ? (VRAM + ((Y&1023)<<7) + ((X&255)>>1)) : (VRAM_EXP + ((Y&511)<<7) + ((X&255)>>1)))
 #define VDP_VRMP6(MX, X, Y) ((!MX) ? (VRAM + ((Y&1023)<<7) + ((X&511)>>2)) : (VRAM_EXP + ((Y&511)<<7) + ((X&511)>>2)))
 //#define VDP_VRMP7(MX, X, Y) ((!MX) ? (VRAM + ((Y&511)<<8) + ((X&511)>>1)) : (VRAM_EXP + ((Y&255)<<8) + ((X&511)>>1)))
-#define VDP_VRMP7(MX, X, Y) ((!MX) ? (VRAM + ((X&2)<<15) + ((Y&511)<<7) + ((X&511)>>2)) : /*(VRAM_EXP + ((Y&511)<<7) + ((X&511)>>2))*/(VRAM_EXP + ((Y&255)<<8) + ((X&511)>>1)))
+#define VDP_VRMP7(MX, X, Y) ((!MX) ? (VRAM + ((X&2)<<15) + ((Y&511)<<7) + ((X&511)>>2)) : (VRAM_EXP + ((Y&511)<<7) + ((X&511)>>2))/*(VRAM_EXP + ((Y&255)<<8) + ((X&511)>>1))*/)
 //#define VDP_VRMP8(MX, X, Y) ((!MX) ? (VRAM + ((Y&511)<<8) + (X&255)) : (VRAM_EXP + ((Y&255)<<8) + (X&255)))
-#define VDP_VRMP8(MX, X, Y) ((!MX) ? (VRAM + ((X&1)<<16) + ((Y&511)<<7) + ((X>>1)&127)) : /*(VRAM_EXP + ((X&1)<<16) + ((Y&511)<<7) + ((X>>1)&127))*/(VRAM_EXP + ((Y&255)<<8) + (X&255)))
+#define VDP_VRMP8(MX, X, Y) ((!MX) ? (VRAM + ((X&1)<<16) + ((Y&511)<<7) + ((X>>1)&127)) : (VRAM_EXP + ((Y&511)<<7) + ((X>>1)&127))/*(VRAM_EXP + ((Y&255)<<8) + (X&255))*/)
 
 #define VDP_VRMP(M, MX, X, Y) VDPVRMP(M, MX, X, Y)
 #define VDP_POINT(M, MX, X, Y) VDPpoint(M, MX, X, Y)

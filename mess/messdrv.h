@@ -5,6 +5,7 @@
 #include "formats/flopimg.h"
 #include "fileio.h"
 #include "osdepend.h"
+#include "unicode.h"
 
 #define MAX_DEV_INSTANCES 5
 
@@ -38,6 +39,8 @@ typedef void (*device_exit_handler)(mess_image *img);
 typedef int (*device_load_handler)(mess_image *img, mame_file *fp);
 typedef int (*device_create_handler)(mess_image *img, mame_file *fp, int format_type, option_resolution *format_options);
 typedef void (*device_unload_handler)(mess_image *img);
+typedef void (*device_partialhash_handler)(char *, const unsigned char *, unsigned long, unsigned int);
+
 
 struct IODevice
 {
@@ -60,7 +63,7 @@ struct IODevice
     int (*tell)(mess_image *img);
 	int (*input)(mess_image *img);
 	void (*output)(mess_image *img, int data);
-	UINT32 (*partialcrc)(const UINT8 *buf, size_t size);
+	device_partialhash_handler partialhash;
 	void (*display)(mess_image *img, struct mame_bitmap *bitmap);
 	void *user1;
 	void *user2;
@@ -128,12 +131,12 @@ struct SystemConfigurationParamBlock
 
 #define CONFIG_DEVICE_BASE(type, count, file_extensions, flags, open_mode, init, exit,		\
 		load, unload, imgverify, info, open, close, status, seek, tell, input, output,			\
-		partialcrc, display)																\
+		partialhash, display)																\
 	if (cfg->device_num-- == 0)																\
 	{																						\
 		static struct IODevice device = { (type), (count), (file_extensions), (flags),		\
 			(open_mode), (init), (exit), (load), NULL, (unload), (imgverify), (info), (open),		\
-			(close), (status), (seek), (tell), (input), (output), (partialcrc), (display)};	\
+			(close), (status), (seek), (tell), (input), (output), (partialhash), (display)};	\
 		cfg->dev = &device;																	\
 	}																						\
 

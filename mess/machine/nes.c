@@ -85,23 +85,19 @@ static void init_nes_core (void)
 
 	/* Set up the mapper callbacks */
 	{
-		int i = 0;
+		const mmc *mapper;
 
-		while (mmc_list[i].iNesMapper != -1)
+		mapper = nes_mapper_lookup(nes.mapper);
+		if (mapper)
 		{
-			if (mmc_list[i].iNesMapper == nes.mapper)
-			{
-				mmc_write_low = mmc_list[i].mmc_write_low;
-				mmc_read_low = mmc_list[i].mmc_read_low;
-				mmc_write_mid = mmc_list[i].mmc_write_mid;
-				mmc_write = mmc_list[i].mmc_write;
-				ppu_latch = mmc_list[i].ppu_latch;
-//				mmc_irq = mmc_list[i].mmc_irq;
-				break;
-			}
-			i ++;
+			mmc_write_low = mapper->mmc_write_low;
+			mmc_read_low = mapper->mmc_read_low;
+			mmc_write_mid = mapper->mmc_write_mid;
+			mmc_write = mapper->mmc_write;
+			ppu_latch = mapper->ppu_latch;
+//			mmc_irq = mmc_list[i].mmc_irq;
 		}
-		if (mmc_list[i].iNesMapper == -1)
+		else
 		{
 			logerror ("Mapper %d is not yet supported, defaulting to no mapper.\n",nes.mapper);
 			mmc_write_low = mmc_write_mid = mmc_write = NULL;
@@ -532,15 +528,17 @@ bad:
 	return INIT_FAIL;
 }
 
-UINT32 nes_partialcrc(const unsigned char *buf, size_t size)
+
+
+void nes_partialhash(char *dest, const unsigned char *data,
+	unsigned long length, unsigned int functions)
 {
-	UINT32 crc;
-	if (size < 17)
-		return 0;
-	crc = (UINT32) crc32(0L, &buf[16], size-16);
-	logerror("NES Partial CRC: %08lx %d\n", (long) crc, (int)size);
-	return crc;
+	if (length <= 16)
+		return;
+	hash_compute(dest, &data[16], length - 16, functions);
 }
+
+
 
 DEVICE_LOAD(nes_disk)
 {

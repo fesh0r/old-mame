@@ -120,6 +120,8 @@ enum messtest_result run_test(const struct messtest_testcase *testcase, int flag
 	options.skip_warnings = 1;
 	options.disable_normal_ui = 1;
 	options.ram = testcase->ram;
+	options.vector_intensity = 1.5;
+	options.use_artwork = 1;
 
 	/* preload any needed images */
 	while(current_command->command_type == MESSTEST_COMMAND_IMAGE_PRELOAD)
@@ -243,7 +245,8 @@ static void command_input(void)
 			return;
 		}
 
-		inputx_post_utf8(current_command->u.input_chars);
+		inputx_post_utf8_rate(current_command->u.input_args.input_chars,
+			current_command->u.input_args.rate);
 	}
 	state = inputx_is_posting() ? STATE_INCOMMAND : STATE_READY;
 }
@@ -263,7 +266,7 @@ static void command_rawinput(void)
 	{
 		/* beginning of a raw input command */
 		parts = 1;
-		position = current_command->u.input_chars;
+		position = current_command->u.input_args.input_chars;
 		wait_target = current_time;
 		state = STATE_INCOMMAND;
 	}
