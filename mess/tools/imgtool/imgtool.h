@@ -70,19 +70,6 @@ imgtool_stream *stream_open_filter(imgtool_stream *s, imgtool_filter *f);
 #define EOLN_LF		"\x0a"
 #define EOLN_CRLF	"\x0d\x0a"
 
-struct tagIMAGE
-{
-	const struct ImageModule *module;
-};
-
-struct tagIMAGEENUM
-{
-	const struct ImageModule *module;
-};
-
-typedef struct tagIMAGE imgtool_image;
-typedef struct tagIMAGEENUM imgtool_imageenum;
-
 /* ---------------------------------------------------------------------------
  * Image calls
  *
@@ -297,6 +284,28 @@ imgtoolerr_t img_putfile(imgtool_image *img, const char *newfname, const char *s
  */
 imgtoolerr_t img_deletefile(imgtool_image *img, const char *fname);
 
+/* img_createdir
+ *
+ * Description:
+ *		Delete a directory on an image
+ *
+ * Parameters:
+ *		img:				The image to read from
+ *		path:				The path to the directory to delete
+ */
+imgtoolerr_t img_createdir(imgtool_image *img, const char *path);
+
+/* img_deletedir
+ *
+ * Description:
+ *		Delete a directory on an image
+ *
+ * Parameters:
+ *		img:				The image to read from
+ *		path:				The path to the directory to delete
+ */
+imgtoolerr_t img_deletedir(imgtool_image *img, const char *path);
+
 /* img_create
  * img_create_byname
  *
@@ -316,15 +325,29 @@ imgtoolerr_t img_create_byname(imgtool_library *library, const char *modulename,
 	option_resolution *opts, imgtool_image **image);
 
 /* img_module
+ * img_enum_module
  *
  * Description:
  *		Retrieves the module associated with an image
  */
-INLINE const struct ImageModule *img_module(imgtool_image *img)
-{
-	return img->module;
-}
+const struct ImageModule *img_module(imgtool_image *img);
+const struct ImageModule *img_enum_module(imgtool_imageenum *enumeration);
 
+/* img_extrabytes
+ * img_enum_extrabytes
+ *
+ * Description:
+ *		Retrieves the extra bytes associated with an image
+ */
+void *img_extrabytes(imgtool_image *img);
+void *img_enum_extrabytes(imgtool_imageenum *enumeration);
+
+/* img_enum_image
+ *
+ * Description:
+ *		Retrieves the image associated with an image enumeration
+ */
+imgtool_image *img_enum_image(imgtool_imageenum *enumeration);
 
 /* img_get_module_features
  *
@@ -337,8 +360,11 @@ struct imgtool_module_features
 	unsigned int supports_open : 1;
 	unsigned int supports_reading : 1;
 	unsigned int supports_writing : 1;
-	unsigned int supports_deleting : 1;
+	unsigned int supports_deletefile : 1;
 	unsigned int supports_directories : 1;
+	unsigned int supports_freespace : 1;
+	unsigned int supports_createdir : 1;
+	unsigned int supports_deletedir : 1;
 };
 
 struct imgtool_module_features img_get_module_features(const struct ImageModule *module);

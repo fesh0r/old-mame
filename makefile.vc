@@ -32,6 +32,8 @@ BSCMAKE = @-bscmake.exe
 # uncomment next line to use DRC MIPS3 engine
 X86_MIPS3_DRC = 1
 
+# uncomment next line to use the new multiwindow debugger
+NEW_DEBUGGER = 1
 
 # uncomment next line to build expat as part of MAME build
 BUILD_EXPAT = 1
@@ -137,6 +139,10 @@ ifndef DEBUG
 DEFS += -DNDEBUG
 endif
 
+ifdef NEW_DEBUGGER
+DEFS += -DNEW_DEBUGGER
+endif
+
 ifdef MESS
 DEFS += -DMESS=1 -DMAME32NAME='"MESS"' -DMAMENAME='"MESS"'
 endif
@@ -158,6 +164,7 @@ INCLUDES += \
 	-Isrc/expat \
 	-Isrc/zlib \
 	-Isrc/includes \
+	-Isrc/debug \
 	-Isrc/windows \
 	-Isrc/ui \
 
@@ -173,9 +180,9 @@ CFLAGS = -nologo -MT $(INCLUDES) -DDECL_SPEC=__cdecl \
 	-Dsnprintf=_snprintf -Dvsnprintf=_vsnprintf
 
 ifdef DEBUG
-CFLAGS += -Zi -Od -DMAME_VALIDITYCHECKS=1
+CFLAGS += -Zi -Od
 else
-CFLAGS += -Ox -G5 -Ob2 -DMAME_VALIDITYCHECKS=0
+CFLAGS += -Ox -G5 -Ob2
 endif
 
 #####################################################################
@@ -254,6 +261,7 @@ OBJDIRS = \
 	obj				\
 	$(OBJ)			\
 	$(OBJ)/cpu		\
+	$(OBJ)/debug	\
 	$(OBJ)/sound	\
 	$(OBJ)/drivers	\
 	$(OBJ)/machine	\
@@ -300,7 +308,7 @@ PLATFORM_TOOL_OBJS =				\
 	
 #####################################################################
 
-all:	maketree $(EMULATORCLI) $(EMULATORGUI) $(MESSTEST) $(MESSDOCS) chdman.exe imgtool$(EXE) wimgtool$(EXE)
+all:	maketree $(EMULATORCLI) $(EMULATORGUI) messtest$(EXE) messdocs$(EXE) chdman$(EXE) imgtool$(EXE) wimgtool$(EXE)
 
 # include the various .mak files
 include src/core.mak
@@ -387,19 +395,10 @@ imgtool$(EXE): $(IMGTOOL_OBJS) $(PLATFORM_TOOL_OBJS) $(OBJ)/mess/ui/dirent.o
 	$(LD) $(LDFLAGS) $^ $(ZLIB) -out:$@
 
 wimgtool$(EXE): \
-		$(IMGTOOL_LIB_OBJS)								\
+		$(ZLIB)											\
+		$(WIMGTOOL_OBJS)								\
 		$(PLATFORM_TOOL_OBJS)							\
-		$(OBJ)/mess/pile.o								\
-		$(OBJ)/mess/ui/dirent.o							\
-		$(OBJ)/mess/windows/opcntrl.o					\
-		$(OBJ)/mess/windows/strconv.o					\
-		$(OBJ)/mess/tools/imgtool/stubs.o				\
-		$(OBJ)/mess/tools/imgtool/windows/wmain.o		\
-		$(OBJ)/mess/tools/imgtool/windows/wimgtool.o	\
-		$(OBJ)/mess/tools/imgtool/windows/attrdlg.o		\
-		$(OBJ)/mess/tools/imgtool/windows/assoc.o		\
-		$(OBJ)/mess/tools/imgtool/windows/assocdlg.o	\
-		$(OBJ)/mess/tools/imgtool/windows/wimgtool.res
+		$(OBJ)/mess/ui/dirent.o							
 	@echo Compiling $@...
 	$(LD) $(LDFLAGS) $(LIBS) $(WINDOWS_PROGRAM) shlwapi.lib $^ $(ZLIB) -out:$@
 

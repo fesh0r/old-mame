@@ -113,6 +113,7 @@ CPUS+=CP1610@
 CPUS+=PDP1@
 #CPUS+=TMS7000@
 CPUS+=TMS7000_EXL@
+CPUS+=TX0@
 
 # SOUND cores used in MESS
 SOUNDS+=CUSTOM@
@@ -264,6 +265,7 @@ DRVLIBS = \
 	$(OBJ)/rca.a	  \
 	$(OBJ)/multitch.a	\
 	$(OBJ)/telmac.a		\
+	$(OBJ)/tx0.a		\
 
 
 $(OBJ)/neocd.a:						\
@@ -296,11 +298,11 @@ $(OBJ)/sega.a:						\
 
 $(OBJ)/atari.a:						\
 	$(OBJ)/vidhrdw/tia.o			\
-	$(OBJ)/mess/machine/atari.o		\
-	$(OBJ)/mess/vidhrdw/antic.o		\
-	$(OBJ)/mess/vidhrdw/gtia.o		\
+	$(OBJ)/machine/atari.o			\
+	$(OBJ)/vidhrdw/atari.o			\
+	$(OBJ)/vidhrdw/antic.o			\
+	$(OBJ)/vidhrdw/gtia.o			\
 	$(OBJ)/mess/systems/atari.o		\
-	$(OBJ)/mess/vidhrdw/atari.o		\
 	$(OBJ)/mess/machine/a7800.o		\
 	$(OBJ)/mess/systems/a7800.o		\
 	$(OBJ)/mess/vidhrdw/a7800.o		\
@@ -401,9 +403,9 @@ $(OBJ)/cgenie.a:   \
 	$(OBJ)/mess/machine/cgenie.o	 \
 
 $(OBJ)/pdp1.a:	   \
-	$(OBJ)/mess/vidhrdw/pdp1.o	 \
-	$(OBJ)/mess/machine/pdp1.o	 \
-	$(OBJ)/mess/systems/pdp1.o
+	$(OBJ)/mess/vidhrdw/pdp1.o	\
+	$(OBJ)/mess/machine/pdp1.o	\
+	$(OBJ)/mess/systems/pdp1.o	\
 
 $(OBJ)/apexc.a:     \
 	$(OBJ)/mess/systems/apexc.o
@@ -820,6 +822,12 @@ $(OBJ)/telmac.a:					\
 
 $(OBJ)/exeltel.a:					\
 	$(OBJ)/mess/systems/exelv.o		\
+
+$(OBJ)/tx0.a:				\
+	$(OBJ)/mess/vidhrdw/crt.o	\
+	$(OBJ)/mess/systems/tx0.o	\
+	$(OBJ)/mess/machine/tx0.o	\
+	$(OBJ)/mess/vidhrdw/tx0.o	\
 
 
 

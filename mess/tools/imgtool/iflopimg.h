@@ -17,20 +17,29 @@
 struct ImgtoolFloppyCallbacks
 {
 	const char *eoln;
+	
+	int image_extra_bytes;
+	int imageenum_extra_bytes;
+	
 	char path_separator;
+	char alternate_path_separator;
 	
 	/* flags */
 	unsigned int prefer_ucase : 1;
 	unsigned int initial_path_separator : 1;
+	unsigned int open_is_strict : 1;
 
-	imgtoolerr_t	(*create)		(struct tagIMAGE *img, option_resolution *opts);
-	imgtoolerr_t	(*begin_enum)	(struct tagIMAGE *img, const char *path, struct tagIMAGEENUM **outenum);
-	imgtoolerr_t	(*next_enum)	(struct tagIMAGEENUM *enumeration, imgtool_dirent *ent);
-	void			(*close_enum)	(struct tagIMAGEENUM *enumeration);
-	imgtoolerr_t	(*free_space)	(struct tagIMAGE *img, UINT64 *size);
-	imgtoolerr_t	(*read_file)	(struct tagIMAGE *img, const char *fname, imgtool_stream *destf);
-	imgtoolerr_t	(*write_file)	(struct tagIMAGE *img, const char *fname, imgtool_stream *sourcef, option_resolution *opts);
-	imgtoolerr_t	(*delete_file)	(struct tagIMAGE *img, const char *fname);
+	imgtoolerr_t	(*create)		(imgtool_image *img, option_resolution *opts);
+	imgtoolerr_t	(*open)			(imgtool_image *img);
+	imgtoolerr_t	(*begin_enum)	(imgtool_imageenum *enumeration, const char *path);
+	imgtoolerr_t	(*next_enum)	(imgtool_imageenum *enumeration, imgtool_dirent *ent);
+	void			(*close_enum)	(imgtool_imageenum *enumeration);
+	imgtoolerr_t	(*free_space)	(imgtool_image *img, UINT64 *size);
+	imgtoolerr_t	(*read_file)	(imgtool_image *img, const char *fname, imgtool_stream *destf);
+	imgtoolerr_t	(*write_file)	(imgtool_image *img, const char *fname, imgtool_stream *sourcef, option_resolution *opts);
+	imgtoolerr_t	(*delete_file)	(imgtool_image *img, const char *fname);
+	imgtoolerr_t	(*create_dir)	(imgtool_image *image, const char *path);
+	imgtoolerr_t	(*delete_dir)	(imgtool_image *image, const char *path);
 
 	const struct OptionGuide *writefile_optguide;
 	const char *writefile_optspec;
@@ -55,6 +64,7 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 	const char *description, const struct FloppyFormat *format,
 	imgtoolerr_t (*populate)(imgtool_library *library, struct ImgtoolFloppyCallbacks *module));
 
+void *imgtool_floppy_extrabytes(imgtool_image *img);
 
 #define FLOPPYMODULE(name, description, format, populate)			\
 	imgtoolerr_t name##_createmodule(imgtool_library *library)		\

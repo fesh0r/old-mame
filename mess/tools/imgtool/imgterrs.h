@@ -1,3 +1,11 @@
+/***************************************************************************
+
+	imgterrs.h
+
+	Imgtool errors
+
+***************************************************************************/
+
 #ifndef IMGTERRS_H
 #define IMGTERRS_H
 
@@ -12,6 +20,8 @@ typedef enum
 	IMGTOOLERR_WRITEERROR,
 	IMGTOOLERR_READONLY,
 	IMGTOOLERR_CORRUPTIMAGE,
+	IMGTOOLERR_CORRUPTFILE,
+	IMGTOOLERR_CORRUPTDIR,
 	IMGTOOLERR_FILENOTFOUND,
 	IMGTOOLERR_MODULENOTFOUND,
 	IMGTOOLERR_UNIMPLEMENTED,
@@ -25,7 +35,9 @@ typedef enum
 	IMGTOOLERR_INPUTPASTEND,
 	IMGTOOLERR_CANNOTUSEPATH,
 	IMGTOOLERR_INVALIDPATH,
-	IMGTOOLERR_PATHNOTFOUND
+	IMGTOOLERR_PATHNOTFOUND,
+	IMGTOOLERR_DIRNOTEMPTY,
+	IMGTOOLERR_SEEKERROR
 } imgtoolerr_t;
 
 

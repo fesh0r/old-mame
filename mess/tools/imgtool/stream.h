@@ -1,3 +1,11 @@
+/***************************************************************************
+
+	stream.h
+
+	Code for implementing Imgtool streams
+
+***************************************************************************/
+
 #ifndef STREAM_H
 #define STREAM_H
 
@@ -11,14 +19,11 @@ imgtool_stream *stream_open_mem(void *buf, size_t sz);
 void stream_close(imgtool_stream *f);
 size_t stream_read(imgtool_stream *f, void *buf, size_t sz);
 size_t stream_write(imgtool_stream *f, const void *buf, size_t sz);
-size_t stream_size(imgtool_stream *f);
+UINT64 stream_size(imgtool_stream *f);
 int stream_seek(imgtool_stream *f, size_t pos, int where);
 size_t stream_tell(imgtool_stream *s);
-/* works currently only for IMG_FILE
-   clears FILE on harddisk! */
 void stream_clear(imgtool_stream *f);
-/* truncate with ansi c library not easy to implement */
-//void stream_truncate(imgtool_stream *f, size_t newsize);
+void *stream_getptr(imgtool_stream *f);
 
 /* Transfers sz bytes from source to dest */
 size_t stream_transfer(imgtool_stream *dest, imgtool_stream *source, size_t sz);

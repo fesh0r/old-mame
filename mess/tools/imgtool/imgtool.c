@@ -32,9 +32,15 @@ struct imgtool_module_features img_get_module_features(const struct ImageModule 
 	if (module->write_file)
 		features.supports_writing = 1;
 	if (module->delete_file)
-		features.supports_deleting = 1;
+		features.supports_deletefile = 1;
 	if (module->path_separator)
 		features.supports_directories = 1;
+	if (module->free_space)
+		features.supports_freespace = 1;
+	if (module->create_dir)
+		features.supports_createdir = 1;
+	if (module->delete_dir)
+		features.supports_deletedir = 1;
 	return features;
 }
 
@@ -59,7 +65,7 @@ static imgtoolerr_t evaluate_module(const char *fname,
 
 	if (image)
 	{
-		current_result = 0.5;
+		current_result = module->open_is_strict ? 0.9 : 0.5;
 
 		err = img_beginenum(image, NULL, &imageenum);
 		if (err)
@@ -207,17 +213,27 @@ int imgtool_validitychecks(void)
 			error = 1;
 		}
 
-		if (features.supports_directories)
+		/* sanity checks on modules that do not support directories */
+		if (!module->path_separator)
 		{
-			if (module->write_file)
+			if (module->alternate_path_separator)
 			{
-				printf("imgtool module %s supports directories and write_file without core support\n", module->name);
+				printf("imgtool module %s specified alternate_path_separator but not path_separator\n", module->name);
 				error = 1;
 			}
-
-			if (module->delete_file)
+			if (module->initial_path_separator)
 			{
-				printf("imgtool module %s supports directories and delete_file without core support\n", module->name);
+				printf("imgtool module %s specified initial_path_separator without directory support\n", module->name);
+				error = 1;
+			}
+			if (module->create_dir)
+			{
+				printf("imgtool module %s implements create_dir without directory support\n", module->name);
+				error = 1;
+			}
+			if (module->delete_dir)
+			{
+				printf("imgtool module %s implements delete_dir without directory support\n", module->name);
 				error = 1;
 			}
 		}

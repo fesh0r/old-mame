@@ -26,6 +26,7 @@
 #include "artwork.h"
 #include "tapedlg.h"
 #include "artworkx.h"
+#include "debugcpu.h"
 #include "devices/cassette.h"
 
 #ifdef UNDER_CE
@@ -40,9 +41,6 @@
 
 // from input.c
 extern UINT8 win_trying_to_quit;
-
-// from mamedbg.c
-extern int debug_key_pressed;
 
 // from timer.c
 extern void win_timer_enable(int enabled);
@@ -952,7 +950,7 @@ static void pause(void)
 		{
 			update_video_and_audio();
 			WaitMessage();
-			win_process_events();
+			win_process_events(1);
 		}
 		mame_pause(0);
 	}
@@ -1560,7 +1558,7 @@ static int invoke_command(UINT command)
 
 #if HAS_DEBUGGER
 	case ID_OPTIONS_DEBUGGER:
-		debug_key_pressed = 1;
+		debug_halt_on_next_instruction();
 		break;
 #endif
 

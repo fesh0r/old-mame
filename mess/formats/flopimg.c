@@ -239,6 +239,8 @@ floperr_t floppy_create(void *fp, const struct io_procs *procs, const struct Flo
 	int heads, tracks, h, t;
 	option_resolution *alloc_resolution = NULL;
 
+	assert(format);
+
 	/* create the new image */
 	floppy = floppy_init(fp, procs, 0);
 	if (!floppy)
@@ -546,6 +548,37 @@ floperr_t floppy_read_sector(floppy_image *floppy, int head, int track, int sect
 floperr_t floppy_write_sector(floppy_image *floppy, int head, int track, int sector, int offset, const void *buffer, size_t buffer_len)
 {
 	return floppy_readwrite_sector(floppy, head, track, sector, offset, (void *) buffer, buffer_len, TRUE);
+}
+
+
+
+floperr_t floppy_clear_sector(floppy_image *floppy, int head, int track, int sector, UINT8 data)
+{
+	floperr_t err;
+	UINT32 length;
+	UINT8 *buffer = NULL;
+
+	err = floppy_get_sector_length(floppy, head, track, sector, &length);
+	if (err)
+		goto done;
+
+	buffer = malloc(length);
+	if (err)
+	{
+		err = FLOPPY_ERROR_OUTOFMEMORY;
+		goto done;
+	}
+
+	memset(buffer, data, length);
+
+	err = floppy_write_sector(floppy, head, track, sector, 0, buffer, length); 
+	if (err)
+		goto done;
+
+done:
+	if (buffer)
+		free(buffer);
+	return err;
 }
 
 

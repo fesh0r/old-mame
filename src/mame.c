@@ -1266,7 +1266,7 @@ void update_video_and_audio(void)
 			current_display.vector_dirty_pixels = vector_dirty_list;
 			current_display.changed_flags |= VECTOR_PIXELS_CHANGED;
 		}
-
+	
 #if defined(MAME_DEBUG) && !defined(NEW_DEBUGGER)
 	/* set the debugger bitmap */
 	current_display.debug_bitmap = Machine->debug_bitmap;

@@ -15,23 +15,28 @@ struct ImgtoolFloppyExtra
 {
 	const struct FloppyFormat *format;
 	imgtoolerr_t (*create)(imgtool_image *image, option_resolution *opts);
+	imgtoolerr_t (*open)(imgtool_image *img);
 };
 
 
 imgtoolerr_t imgtool_floppy_error(floperr_t err)
 {
-	switch(err) {
-	case FLOPPY_ERROR_SUCCESS:
-		return IMGTOOLERR_SUCCESS;
+	switch(err)
+	{
+		case FLOPPY_ERROR_SUCCESS:
+			return IMGTOOLERR_SUCCESS;
 
-	case FLOPPY_ERROR_OUTOFMEMORY:
-		return IMGTOOLERR_OUTOFMEMORY;
+		case FLOPPY_ERROR_OUTOFMEMORY:
+			return IMGTOOLERR_OUTOFMEMORY;
 
-	case FLOPPY_ERROR_INVALIDIMAGE:
-		return IMGTOOLERR_CORRUPTIMAGE;
-		
-	default:
-		return IMGTOOLERR_UNEXPECTED;
+		case FLOPPY_ERROR_INVALIDIMAGE:
+			return IMGTOOLERR_CORRUPTIMAGE;
+
+		case FLOPPY_ERROR_SEEKERROR:
+			return IMGTOOLERR_SEEKERROR;
+			
+		default:
+			return IMGTOOLERR_UNEXPECTED;
 	}
 }
 
@@ -101,105 +106,100 @@ static const struct ImgtoolFloppyExtra *get_extra(const struct ImageModule *modu
 
 struct imgtool_floppy_image
 {
-	imgtool_image base;
 	floppy_image *floppy;
 };
 
 static floppy_image *get_floppy(imgtool_image *img)
 {
-	struct imgtool_floppy_image *fimg = (struct imgtool_floppy_image *) img;
+	struct imgtool_floppy_image *fimg = (struct imgtool_floppy_image *) img_extrabytes(img);
 	return fimg->floppy;
 }
 
 
 
-static imgtoolerr_t imgtool_floppy_open_internal(const struct ImageModule *mod, imgtool_stream *f,
-	int noclose, imgtool_image **outimg)
+static imgtoolerr_t imgtool_floppy_open_internal(imgtool_image *image, imgtool_stream *f, int noclose)
 {
 	floperr_t ferr;
 	imgtoolerr_t err;
 	struct imgtool_floppy_image *fimg;
-	const struct FloppyFormat *format;
+	const struct ImgtoolFloppyExtra *extra;
 
-	format = get_extra(mod)->format;
-
-	/* allocate space for our image */
-	fimg = (struct imgtool_floppy_image *) malloc(sizeof(struct imgtool_floppy_image));
-	if (!fimg)
-	{
-		err = IMGTOOLERR_OUTOFMEMORY;
-		goto error;
-	}
+	extra = get_extra(img_module(image));
+	fimg = (struct imgtool_floppy_image *) img_extrabytes(image);
 
 	/* open up the floppy */
 	ferr = floppy_open(f, noclose ? &imgtool_noclose_ioprocs : &imgtool_ioprocs,
-		NULL, format, FLOPPY_FLAGS_READWRITE, &fimg->floppy);
+		NULL, extra->format, FLOPPY_FLAGS_READWRITE, &fimg->floppy);
 	if (ferr)
 	{
 		err = imgtool_floppy_error(ferr);
-		goto error;
+		return err;
 	}
 
-	fimg->base.module = mod;
-	*outimg = &fimg->base;
+	if (extra->open)
+	{
+		err = extra->open(image);
+		if (err)
+			return err;
+	}
+
 	return IMGTOOLERR_SUCCESS;
-
-error:
-	if (fimg)
-		free(fimg);
-	return err;
 }
 
 
 
-static imgtoolerr_t imgtool_floppy_open(const struct ImageModule *mod, imgtool_stream *f,
-	imgtool_image **outimg)
+static imgtoolerr_t imgtool_floppy_open(imgtool_image *image, imgtool_stream *f)
 {
-	return imgtool_floppy_open_internal(mod, f, FALSE, outimg);
+	return imgtool_floppy_open_internal(image, f, FALSE);
 }
 
 
 
-static void imgtool_floppy_close(imgtool_image *img)
-{
-	struct imgtool_floppy_image *fimg = (struct imgtool_floppy_image *) img;
-	floppy_close(fimg->floppy);
-}
-
-
-
-static imgtoolerr_t imgtool_floppy_create(const struct ImageModule *mod, imgtool_stream *f, option_resolution *opts)
+static imgtoolerr_t imgtool_floppy_create(imgtool_image *image, imgtool_stream *f, option_resolution *opts)
 {
 	floperr_t ferr;
 	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
 	const struct FloppyFormat *format;
-	imgtool_image *image = NULL;
+	const struct ImgtoolFloppyExtra *extra;
+	struct imgtool_floppy_image *fimg;
 
-	format = get_extra(mod)->format;
+	extra = get_extra(img_module(image));
+	format = extra->format;
+	fimg = (struct imgtool_floppy_image *) img_extrabytes(image);
 
 	/* open up the floppy */
-	ferr = floppy_create(f, &imgtool_ioprocs, format, opts, NULL);
+	ferr = floppy_create(f, &imgtool_ioprocs, format, opts, &fimg->floppy);
 	if (ferr)
 	{
 		err = imgtool_floppy_error(ferr);
 		goto done;
 	}
 
-	if (get_extra(mod)->create)
+	/* do we have to do extra stuff when creating the image? */
+	if (extra->create)
 	{
-		err = imgtool_floppy_open_internal(mod, f, TRUE, &image);
+		err = extra->create(image, opts);
 		if (err)
 			goto done;
+	}
 
-		err = get_extra(mod)->create(image, opts);
+	/* do we have to do extra stuff when opening the image? */
+	if (extra->open)
+	{
+		err = extra->open(image);
 		if (err)
 			goto done;
 	}
 
 done:
-	if (image)
-		img_close(image);
 	return err;
+}
+
+
+
+static void imgtool_floppy_close(imgtool_image *img)
+{
+	floppy_close(get_floppy(img));
 }
 
 
@@ -221,6 +221,7 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 		if (!extra)
 			return IMGTOOLERR_OUTOFMEMORY;
 		memset(extra, 0, sizeof(*extra));
+		extra->format = &format[format_index];
 
 		snprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), "%s_%s",
 			format[format_index].name, format_name);
@@ -232,8 +233,7 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 		snprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), "%s (%s)",
 			format[format_index].description, description);
 
-		extra->format = &format[format_index];
-
+		module->image_extra_bytes		= sizeof(struct imgtool_floppy_image);
 		module->description				= imgtool_library_strdup(library, buffer);
 		module->open					= imgtool_floppy_open;
 		module->create					= imgtool_floppy_create;
@@ -246,13 +246,19 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 		if (populate)
 		{
 			memset(&floppy_callbacks, 0, sizeof(floppy_callbacks));
+			floppy_callbacks.image_extra_bytes = module->image_extra_bytes;
+			floppy_callbacks.imageenum_extra_bytes = module->imageenum_extra_bytes;
+			
 			populate(library, &floppy_callbacks);
 
 			extra->create					= floppy_callbacks.create;
+			extra->open						= floppy_callbacks.open;
 			module->eoln					= floppy_callbacks.eoln;
 			module->path_separator			= floppy_callbacks.path_separator;
+			module->alternate_path_separator	= floppy_callbacks.alternate_path_separator;
 			module->prefer_ucase			= floppy_callbacks.prefer_ucase;
 			module->initial_path_separator	= floppy_callbacks.initial_path_separator;
+			module->open_is_strict				= floppy_callbacks.open_is_strict;
 			module->begin_enum				= floppy_callbacks.begin_enum;
 			module->next_enum				= floppy_callbacks.next_enum;
 			module->close_enum				= floppy_callbacks.close_enum;
@@ -260,8 +266,12 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 			module->read_file				= floppy_callbacks.read_file;
 			module->write_file				= floppy_callbacks.write_file;
 			module->delete_file				= floppy_callbacks.delete_file;
+			module->create_dir					= floppy_callbacks.create_dir;
+			module->delete_dir					= floppy_callbacks.delete_dir;
 			module->writefile_optguide		= floppy_callbacks.writefile_optguide;
 			module->writefile_optspec		= floppy_callbacks.writefile_optspec;
+			module->image_extra_bytes		= floppy_callbacks.image_extra_bytes;
+			module->imageenum_extra_bytes	= floppy_callbacks.imageenum_extra_bytes;
 		}
 	}
 	return IMGTOOLERR_SUCCESS;
@@ -271,7 +281,8 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 
 floppy_image *imgtool_floppy(imgtool_image *img)
 {
-	struct imgtool_floppy_image *fimg = (struct imgtool_floppy_image *) img;
+	struct imgtool_floppy_image *fimg;
+	fimg = (struct imgtool_floppy_image *) img_extrabytes(img);
 	return fimg->floppy;
 }
 
@@ -328,4 +339,15 @@ imgtoolerr_t imgtool_floppy_write_sector_from_stream(imgtool_image *img, int hea
 {
 	return imgtool_floppy_transfer_sector_tofrom_stream(img, head, track, sector, offset, length, f, 0);
 }
+
+
+
+void *imgtool_floppy_extrabytes(imgtool_image *img)
+{
+	struct imgtool_floppy_image *fimg;
+	fimg = (struct imgtool_floppy_image *) img_extrabytes(img);
+	return fimg + 1;
+}
+
+
 
