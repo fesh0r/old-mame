@@ -17,8 +17,6 @@
   #include "mess.h"
 #endif
 
-extern int mame_debug;
-
 extern int bitmap_dirty;	/* set by osd_clearbitmap() */
 
 /* Variables for stat menu */
@@ -58,7 +56,7 @@ static int trueorientation;
 static int orientation_count;
 
 
-static void switch_ui_orientation(void)
+void switch_ui_orientation(void)
 {
 	if (orientation_count == 0)
 	{
@@ -70,7 +68,7 @@ static void switch_ui_orientation(void)
 	orientation_count++;
 }
 
-static void switch_true_orientation(void)
+void switch_true_orientation(void)
 {
 	orientation_count--;
 
@@ -360,9 +358,19 @@ struct GfxElement *builduifont(void)
 		{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 		8*8 /* every char takes 8 consecutive bytes */
 	};
+	static struct GfxLayout fontlayout6x16 =
+	{
+		6,16,	/* 6*8 characters */
+		256,	/* 256 characters */
+		1,	/* 1 bit per pixel */
+		{ 0 },
+		{ 0, 1, 2, 3, 4, 5, 6, 7 }, /* straightforward layout */
+		{ 0*8,0*8, 1*8,1*8, 2*8,2*8, 3*8,3*8, 4*8,4*8, 5*8,5*8, 6*8,6*8, 7*8,7*8 },
+		8*8 /* every char takes 8 consecutive bytes */
+	};
 	static struct GfxLayout fontlayout12x16 =
 	{
-		12,16,	/* 6*8 characters */
+		12,16,	/* 12*16 characters */
 		256,	/* 256 characters */
 		1,	/* 1 bit per pixel */
 		{ 0 },
@@ -380,9 +388,18 @@ struct GfxElement *builduifont(void)
 	if ((Machine->drv->video_attributes & VIDEO_PIXEL_ASPECT_RATIO_MASK)
 			== VIDEO_PIXEL_ASPECT_RATIO_1_2)
 	{
-		font = decodegfx(fontdata6x8,&fontlayout12x8);
-		Machine->uifontwidth = 12;
-		Machine->uifontheight = 8;
+		if (Machine->gamedrv->flags & ORIENTATION_SWAP_XY)
+		{
+			font = decodegfx(fontdata6x8,&fontlayout6x16);
+			Machine->uifontwidth = 6;
+			Machine->uifontheight = 16;
+		}
+		else
+		{
+			font = decodegfx(fontdata6x8,&fontlayout12x8);
+			Machine->uifontwidth = 12;
+			Machine->uifontheight = 8;
+		}
 	}
 	else if (Machine->uiwidth >= 420 && Machine->uiheight >= 420)
 	{
@@ -776,9 +793,18 @@ void ui_displaymenu(struct osd_bitmap *bitmap,const char **items,const char **su
 	{
 		if (arrowize_subitem & 1)
 		{
+			int sublen;
+
+			len = strlen(items[selected]);
+
 			dt[curr_dt].text = leftarrow;
 			dt[curr_dt].color = UI_COLOR_NORMAL;
-			dt[curr_dt].x = leftoffs + Machine->uifontwidth * (maxlen-2 - strlen(subitems[selected])) - Machine->uifontwidth/2 - 1;
+
+			sublen = strlen(subitems[selected]);
+			if (sublen > maxlen-5-len)
+				sublen = strlen("...");
+
+			dt[curr_dt].x = leftoffs + Machine->uifontwidth * (maxlen-2 - sublen) - Machine->uifontwidth/2 - 1;
 			dt[curr_dt].y = topoffs + (3*i+1)*Machine->uifontheight/2;
 			curr_dt++;
 		}
@@ -2088,7 +2114,6 @@ int showcopyright(struct osd_bitmap *bitmap)
 	do
 	{
 		update_video_and_audio();
-		osd_poll_joysticks();
 		if (input_ui_pressed(IPT_UI_CANCEL))
 		{
 			setup_selected = 0;////
@@ -2337,9 +2362,15 @@ int showgamewarnings(struct osd_bitmap *bitmap)
 			int foundworking;
 
 			if (Machine->gamedrv->flags & GAME_NOT_WORKING)
+			{
 				strcpy(buf, ui_getstring (UI_brokengame));
+				strcat(buf, "\n");
+			}
 			if (Machine->gamedrv->flags & GAME_UNEMULATED_PROTECTION)
+			{
 				strcat(buf, ui_getstring (UI_brokenprotection));
+				strcat(buf, "\n");
+			}
 
 			if (Machine->gamedrv->clone_of && !(Machine->gamedrv->clone_of->flags & NOT_A_DRIVER))
 				maindrv = Machine->gamedrv->clone_of;
@@ -2377,7 +2408,6 @@ int showgamewarnings(struct osd_bitmap *bitmap)
 		do
 		{
 			update_video_and_audio();
-			osd_poll_joysticks();
 			if (input_ui_pressed(IPT_UI_CANCEL))
 				return 1;
 			if (code_pressed_memory(KEYCODE_O) ||
@@ -2398,14 +2428,12 @@ int showgamewarnings(struct osd_bitmap *bitmap)
 	while (displaygameinfo(bitmap,0) == 1)
 	{
 		update_video_and_audio();
-		osd_poll_joysticks();
 	}
 
 	#ifdef MESS
 	while (displayimageinfo(bitmap,0) == 1)
 	{
 		update_video_and_audio();
-		osd_poll_joysticks();
 	}
 	#endif
 
@@ -3280,17 +3308,20 @@ static void onscrd_init(void)
 
 	item = 0;
 
-	onscrd_fnc[item] = onscrd_volume;
-	onscrd_arg[item] = 0;
-	item++;
-
-	for (ch = 0;ch < MIXER_MAX_CHANNELS;ch++)
+	if (Machine->sample_rate)
 	{
-		if (mixer_get_name(ch) != 0)
+		onscrd_fnc[item] = onscrd_volume;
+		onscrd_arg[item] = 0;
+		item++;
+
+		for (ch = 0;ch < MIXER_MAX_CHANNELS;ch++)
 		{
-			onscrd_fnc[item] = onscrd_mixervol;
-			onscrd_arg[item] = ch;
-			item++;
+			if (mixer_get_name(ch) != 0)
+			{
+				onscrd_fnc[item] = onscrd_mixervol;
+				onscrd_arg[item] = ch;
+				item++;
+			}
 		}
 	}
 
@@ -3638,7 +3669,6 @@ draw_screen(bitmap_dirty);
 			if (messagecounter > 0) displaymessage(bitmap, messagetext);
 
 			update_video_and_audio();
-			osd_poll_joysticks();
 		}
 
 		if (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT))

@@ -3,6 +3,7 @@
 
 #include "osd_cpu.h"
 #include "memory.h"
+#include "mamedbg.h"
 #include "osdepend.h"
 #include "mame.h"
 #include "common.h"
@@ -186,6 +187,9 @@ enum
 #if (HAS_S2650)
 	CPU_S2650,
 #endif
+#if (HAS_F8)
+	CPU_F8,
+#endif
 #if (HAS_TMS34010)
 	CPU_TMS34010,
 #endif
@@ -239,6 +243,12 @@ enum
 #endif
 #if (HAS_ARM)
 	CPU_ARM,
+#endif
+#if (HAS_G65816)
+	CPU_G65C816,
+#endif
+#if (HAS_SPC700)
+	CPU_SPC700,
 #endif
     CPU_COUNT
 };
