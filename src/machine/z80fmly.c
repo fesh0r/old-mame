@@ -545,7 +545,7 @@ void z80pio_reset (int which)
 		z80pio_set_rdy(pio,i,0);	/* RDY = low   */
 		pio->out[i]    = 0x00;	/* outdata = 0 */
 		pio->int_state[i] = 0;
-		pio->strobe[i] = 0;		
+		pio->strobe[i] = 0;
 	}
 	z80pio_interrupt_check( pio );
 }
@@ -796,7 +796,7 @@ static void z80pio_update_strobe(int which, int ch, int state)
 					}
 				}
 			}
-		
+
 			/* store strobe state */
 			pio->strobe[ch] = state;
 
@@ -804,7 +804,7 @@ static void z80pio_update_strobe(int which, int ch, int state)
 			z80pio_interrupt_check( pio );
 		}
 		break;
-	
+
 		default:
 			break;
 	}

@@ -2735,7 +2735,7 @@ INLINE void divd_im( void )
 {
 	UINT8   t;
 	INT16   v;
-	
+
 	IMMBYTE( t );
 
 	if( t != 0 )
@@ -2743,13 +2743,13 @@ INLINE void divd_im( void )
 		v = (INT16) D / (INT8) t;
 		A = (INT16) D % (INT8) t;
 		B = v;
-		
+
 		CLR_NZVC;
 		SET_NZ8(B);
-		
+
 		if( B & 0x01 )
 			SEC;
-		
+
 		if ( (v > 127) || (v < -128) )
 			SEV;
 	}
@@ -2776,9 +2776,15 @@ INLINE void divq_im( void )
 		D = (INT32) q.d % (INT16) t.w.l;
 		W = v;
 
+	if( t.w.l != 0 )
+	{
+		v = (INT32) q.d / (INT16) t.w.l;
+		D = (INT32) q.d % (INT16) t.w.l;
+		W = v;
+
 		CLR_NZVC;
 		SET_NZ16(W);
-		
+
 		if( W & 0x0001 )
 			SEC;
 
@@ -3055,13 +3061,13 @@ INLINE void divd_di( void )
 		v = (INT16) D / (INT8) t;
 		A = (INT16) D % (INT8) t;
 		B = v;
-		
+
 		CLR_NZVC;
 		SET_NZ8(B);
-		
+
 		if( B & 0x01 )
 			SEC;
-		
+
 		if ( (v > 127) || (v < -128) )
 			SEV;
 	}
@@ -3091,7 +3097,7 @@ INLINE void divq_di( void )
 
 		CLR_NZVC;
 		SET_NZ16(W);
-		
+
 		if( W & 0x0001 )
 			SEC;
 
@@ -3423,19 +3429,19 @@ INLINE void divd_ix( void )
 
 	fetch_effective_address();
 	t=RM(EAD);
-	
+
 	if( t != 0 )
 	{
 		v = (INT16) D / (INT8) t;
 		A = (INT16) D % (INT8) t;
 		B = v;
-		
+
 		CLR_NZVC;
 		SET_NZ8(B);
-		
+
 		if( B & 0x01 )
 			SEC;
-		
+
 		if ( (v > 127) || (v < -128) )
 			SEV;
 	}
@@ -3467,7 +3473,7 @@ INLINE void divq_ix( void )
 
 		CLR_NZVC;
 		SET_NZ16(W);
-		
+
 		if( W & 0x0001 )
 			SEC;
 
@@ -3791,13 +3797,13 @@ INLINE void divd_ex( void )
 		v = (INT16) D / (INT8) t;
 		A = (INT16) D % (INT8) t;
 		B = v;
-		
+
 		CLR_NZVC;
 		SET_NZ8(B);
-		
+
 		if( B & 0x01 )
 			SEC;
-		
+
 		if ( (v > 127) || (v < -128) )
 			SEV;
 	}
@@ -3813,7 +3819,7 @@ INLINE void divq_ex( void )
 {
 	PAIR	t, q;
 	INT32	v;
-	
+
 	q.w.h = D;
 	q.w.l = W;
 
@@ -3827,7 +3833,7 @@ INLINE void divq_ex( void )
 
 		CLR_NZVC;
 		SET_NZ16(W);
-		
+
 		if( W & 0x0001 )
 			SEC;
 
