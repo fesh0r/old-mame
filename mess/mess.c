@@ -36,9 +36,13 @@ static const char *typename[IO_COUNT] = {
 	"Cartridge ",
 	"Floppydisk",
 	"Harddisk  ",
+	"Cylinder  ",
 	"Cassette  ",
+	"Punchcard ",
+	"Punchtape ",
 	"Printer   ",
 	"Serial    ",
+	"Parallel  ",
 	"Snapshot  ",
 	"Quickload "
 };
@@ -48,9 +52,13 @@ static const char *brieftypename[IO_COUNT] = {
 	"Cart",
 	"Flop",
 	"Hard",
+	"Cyln",
 	"Cass",
+	"Pcrd",
+	"Ptap",
 	"Prin",
 	"Serl",
+	"Parl",
 	"Dump",
 	"Quik"
 };

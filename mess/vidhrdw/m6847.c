@@ -18,8 +18,13 @@
 /* The "Back doors" are declared here */
 #include "includes/dragon.h"
 
+#ifdef MAME_DEBUG
+#define LOG_FS	1
+#define LOG_HS	0
+#else /* !MAME_DEBUG */
 #define LOG_FS	0
 #define LOG_HS	0
+#endif /* MAME_DEBUG */
 
 struct m6847_state {
 	struct m6847_init_params initparams;
@@ -278,6 +283,14 @@ static unsigned char fontdata8x12[] =
  * Initialization and termination
  * -------------------------------------------------- */
 
+void m6847_vh_normalparams(struct m6847_init_params *params)
+{
+	memset(params, '\0', sizeof(struct m6847_init_params));
+	params->version = M6847_VERSION_ORIGINAL;
+	params->artifactdipswitch = -1;
+	params->clock = TIME_IN_HZ(3588545.0);
+}
+
 void m6847_vh_init_palette(unsigned char *sys_palette, unsigned short *sys_colortable,const unsigned char *color_prom)
 {
 	assert((sizeof(artifactfactors) / (sizeof(artifactfactors[0]) * 3)) == M6847_ARTIFACT_COLOR_COUNT);
@@ -341,18 +354,26 @@ int m6847_vh_start(const struct m6847_init_params *params)
  *		...	
  *   
  * FS:	Total Period 262*227.5 clock cycles
- *		@ CLK(0) + DFS_R			- rising edge (low to high)
- *      @ CLK(230) + DFS_F			- falling edge (high to low) (230.5 for the M6847Y)
- *		@ CLK(262*227.5) + DFS_R	- rising edge (low to high) (262.5 for the M6847Y)
+ *		@ CLK(0) + DFS_F			- falling edge (high to low)
+ *      @ CLK(32*227.5) + DFS_R		- rising edge (low to high)
+ *		@ CLK(262*227.5) + DFS_F	- falling edge (high to low) (262.5 for the M6847Y)
  *
  * Source: Motorola M6847 Manual
  * -------------------------------------------------- */
 
-#define CLK		TIME_IN_HZ(3588545.0)
+#define CLK		(the_state.initparams.clock)
 #define DHS_F	TIME_IN_NSEC(550)
 #define DHS_R	TIME_IN_NSEC(740)
 #define DFS_F	TIME_IN_NSEC(520)
 #define DFS_R	TIME_IN_NSEC(600)
+
+/* TO BE RESOLVED:  The M6847 Manual says that HSYNCs occur every 227.5 clock
+ * cycles; however every indication with the CoCo 3 seems to imply that HSYNCs
+ * happen every 228 clock cycles.  To be honest, I'm not sure what the truth
+ * really is... maybe they were different?  (Remember that the CoCo 3 did not
+ * actually use the m6847 */
+#define HSYNC	(CLK * 228)
+/*#define HSYNC	(CLK * 227.5)*/
 
 /* The reason we have a delay is because of a very fine point in MAME/MESS's
  * emulation.  In the CoCo, fs/hs are tied to interrupts, and the game "Popcorn"
@@ -399,7 +420,7 @@ static void hs_fall(int hsyncsleft)
 	invoke_callback(the_state.initparams.hs_func, the_state.initparams.callback_delay, the_state.hs);
 
 	if (hsyncsleft)
-		timer_set(CLK * 227.5, hsyncsleft - 1, hs_fall);
+		timer_set(HSYNC, hsyncsleft - 1, hs_fall);
 
 #if LOG_HS
 	logerror("hs_fall(): hs=0 time=%g\n", timer_get_time());
@@ -412,7 +433,7 @@ static void hs_rise(int hsyncsleft)
 	invoke_callback(the_state.initparams.hs_func, the_state.initparams.callback_delay, the_state.hs);
 
 	if (hsyncsleft)
-		timer_set(CLK * 227.5, hsyncsleft - 1, hs_rise);
+		timer_set(HSYNC, hsyncsleft - 1, hs_rise);
 
 #if LOG_HS
 	logerror("hs_rise(): hs=1 time=%g\n", timer_get_time());
@@ -439,42 +460,64 @@ static void fs_rise(int dummy)
 #endif
 }
 
-int internal_m6847_vblank(int hsyncs, double trailingedgerow)
+struct newlineproc_info {
+	void (*newlineproc)(void);
+	int hsyncsleft;
+};
+
+static void call_newlineproc(int data)
 {
-	timer_set(CLK * 0                       + DHS_F,	hsyncs-1,	hs_fall);
-	timer_set(CLK * 16.5                    + DHS_R,	hsyncs-1,	hs_rise);
-	timer_set(CLK * 0                       + DFS_R,	0,			fs_rise);
-	timer_set(CLK * 227.5 * trailingedgerow + DFS_F,	0,			fs_fall);
+	struct newlineproc_info *ni;
+	ni = (struct newlineproc_info *) data;
+	ni->newlineproc();
+	if (ni->hsyncsleft--)
+		timer_set(HSYNC, (int) ni, call_newlineproc);
+	else
+		free(ni);
+}
+
+int internal_m6847_vblank(int hsyncs, double trailingedgerow, void (*newlineproc)(void))
+{
+	if (newlineproc) {
+		struct newlineproc_info *ni;
+		ni = malloc(sizeof(struct newlineproc_info));
+		if (ni) {
+			ni->newlineproc = newlineproc;
+			ni->hsyncsleft = hsyncs - 2;
+			timer_set(HSYNC, (int) ni, call_newlineproc);
+		}
+	}
+
+	timer_set(CLK * 0                   + DHS_F,	hsyncs-1,	hs_fall);
+	timer_set(CLK * 16.5                + DHS_R,	hsyncs-1,	hs_rise);
+	timer_set(CLK * 0                   + DFS_F,	0,			fs_fall);
+	timer_set(HSYNC * trailingedgerow	+ DFS_R,	0,			fs_rise);
 
 	return ignore_interrupt();
 }
 
 int m6847_vblank(void)
 {
-	double adjustment;
 	int hsyncs;
 
 	switch(the_state.initparams.version) {
 	case M6847_VERSION_ORIGINAL:
-		adjustment = 0.0;
 		hsyncs = 262;
 		break;
 
 	case M6847_VERSION_M6847T1:
 	case M6847_VERSION_M6847Y:
-		adjustment = 0.5;
 		hsyncs = 263;
 		break;
 
 	default:
 		/* Not allowed */
-		adjustment = 0.0;
 		hsyncs = 0;
 		assert(0);
 		break;
 	}
 
-	return internal_m6847_vblank(hsyncs, 230.0 + adjustment);
+	return internal_m6847_vblank(hsyncs, 32.0, NULL);
 }
 
 /* --------------------------------------------------
@@ -583,7 +626,7 @@ static UINT8 *mapper_alphanumeric(UINT8 *mem, int param, int *fg, int *bg, int *
  */
 void internal_m6847_vh_screenrefresh(struct rasterbits_source *rs,
 	struct rasterbits_videomode *rvm, struct rasterbits_frame *rf, int full_refresh,
-	UINT16 *pens, UINT8 *vrambase,
+	UINT32 *pens, UINT8 *vrambase,
 	int skew_up, int border_color, int wf,
 	int artifact_value, int artifact_palettebase,
 	void (*getcolorrgb)(int c, UINT8 *red, UINT8 *green, UINT8 *blue))
@@ -615,7 +658,14 @@ void internal_m6847_vh_screenrefresh(struct rasterbits_source *rs,
 			rvm->bytesperrow = ((the_state.modebits & (M6847_MODEBIT_GM2|M6847_MODEBIT_GM1)) == (M6847_MODEBIT_GM2|M6847_MODEBIT_GM1)) ? 32 : 16;
 			rvm->width = rvm->bytesperrow * 8;
 			rvm->depth = 1;
-			rvm->pens = &pens[the_state.modebits & M6847_MODEBIT_CSS ? 10 : 8];
+			if (the_state.modebits & M6847_MODEBIT_CSS) {
+				rvm->pens[0] = pens[10];
+				rvm->pens[1] = pens[11];
+			}
+			else {
+				rvm->pens[0] = pens[8];
+				rvm->pens[1] = pens[9];
+			}
 
 			if (artifact_value && (rvm->bytesperrow == 32)) {
 				/* I am here because we are doing PMODE 4 artifact colors */
@@ -644,7 +694,18 @@ void internal_m6847_vh_screenrefresh(struct rasterbits_source *rs,
 			rvm->bytesperrow = ((the_state.modebits & (M6847_MODEBIT_GM2|M6847_MODEBIT_GM1)) != 0) ? 32 : 16;
 			rvm->width = rvm->bytesperrow * 4;
 			rvm->depth = 2;
-			rvm->pens = &pens[the_state.modebits & M6847_MODEBIT_CSS ? 4: 0];
+			if (the_state.modebits & M6847_MODEBIT_CSS) {
+				rvm->pens[0] = pens[4];
+				rvm->pens[1] = pens[5];
+				rvm->pens[2] = pens[6];
+				rvm->pens[3] = pens[7];
+			}
+			else {
+				rvm->pens[0] = pens[0];
+				rvm->pens[1] = pens[1];
+				rvm->pens[2] = pens[2];
+				rvm->pens[3] = pens[3];
+			}
 		}
 	}
 	else
@@ -653,7 +714,7 @@ void internal_m6847_vh_screenrefresh(struct rasterbits_source *rs,
 		rvm->bytesperrow = 32;
 		rvm->width = 32;
 		rvm->depth = 8;
-		rvm->pens = pens;
+		memcpy(rvm->pens, pens, sizeof(rvm->pens));
 		rvm->u.text.mapper = mapper_alphanumeric;
 		rvm->u.text.mapper_param = skew_up;
 		rvm->u.text.fontheight = 12;
@@ -710,7 +771,7 @@ static int m6847_bordercolor(void)
 
 void m6847_vh_update(struct osd_bitmap *bitmap,int full_refresh)
 {
-	static UINT16 m6847_metapalette[] = {
+	static UINT32 m6847_metapalette[] = {
 		1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 0, 5, 9, 10, 11, 12
 	};
 /*	static artifactproc artifacts[] = {

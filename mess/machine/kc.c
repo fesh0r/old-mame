@@ -28,7 +28,7 @@ bit 0: CAOS ROM E
 */
 
 /* PIO PORT B: port 0x089:
-bit 7: BLINK
+bit 7: BLINK ENABLE (1=blink, 0=no blink)
 bit 6: WRITE PROTECT RAM 8
 bit 5: ACCESS RAM 8
 bit 4: TONE 4
@@ -168,8 +168,6 @@ int kc_quickload_load(int id)
 /* bit 4: Index pulse from disc */
 static unsigned char kc85_disc_hw_input_gate;
 
-static unsigned char *kc85_disc_interface_ram;
-
 int kc85_floppy_init(int id)
 {
 	if (basicdsk_floppy_init(id)==INIT_OK)
@@ -268,23 +266,143 @@ void	kc_disc_interface_init(void)
 	nec765_init(&kc_fdc_interface,NEC765A);
 
 	/* reset ctc */
-	z80ctc_reset(1);
+	/*z80ctc_reset(1); */
 
-	kc85_disc_interface_ram = malloc(1024);
+	/* hold cpu at reset */
+	cpu_set_reset_line(1,ASSERT_LINE);
 }
 
 
 void	kc_disc_interface_exit(void)
 {
 	nec765_stop();
-
-	if (kc85_disc_interface_ram)
-	{
-		free(kc85_disc_interface_ram);
-		kc85_disc_interface_ram = NULL;
-	}
 }
 
+
+/*****************/
+/* MODULE SYSTEM */
+/*****************/
+
+/* The KC85/4 and KC85/3 are "modular systems". These computers can be expanded with modules.
+*/
+
+/*
+	Module ID		Module Name			Module Description
+
+
+					D001				Basis Device
+					D002				Bus Driver device
+	a7				D004				Floppy Disk Interface Device
+
+
+	ef				M001				Digital IN/OUT
+	ee				M003				V24
+					M005				User (empty)
+					M007				Adapter (empty)
+	e7				M010				ADU1
+	f6				M011				64k RAM
+	fb				M012				Texor
+	f4				M022				Expander RAM (16k)
+	f7				M025				User PROM (8k)
+	fb				M026				Forth
+	fb				M027				Development
+	e3				M029				DAU1
+*/ 
+
+
+static unsigned char *kc85_module_rom;
+
+struct kc85_module
+{
+	/* id of module */
+	int id;
+	/* name */
+	char *module_name;
+	/* description */
+	char *module_description;
+	/* enable module */
+	void	(*enable)(int state);
+};
+/*
+static struct kc85_module kc85_v24_module=
+{
+	0x0ee,
+	"M003",
+	"V24"
+};
+*/
+static struct kc85_module kc85_disk_interface_device=
+{
+	0x0a7,
+	"D004",
+	"Disk Interface"
+};
+
+static struct kc85_module	*modules[256>>2];
+/*	
+
+	port xx80
+
+	- xx is module id.
+
+
+	Only addressess divisible by 4 are checked.
+	If module does not exist, 0x0ff is returned.
+
+	When xx80 is read, if a module exists a id will be returned.
+	Id's for known modules are listed above.
+  */
+
+/* bus drivers 4 */
+
+READ_HANDLER(kc85_module_r)
+{
+	int port_upper;
+	int module_index;
+#ifdef KC_DEBUG
+	logerror("kc85 module r: %04x\n",offset);
+#endif
+
+	port_upper = (offset>>8) & 0x0ff;
+
+	/* module is accessed at every 4th address. 0x00,0x04,0x08,0x0c etc */
+	if ((port_upper & 0x03)!=0)
+	{
+		return 0x0ff;
+	}
+
+	module_index = (port_upper>>2) & 0x03f;
+
+	if (modules[module_index])
+	{
+		return modules[module_index]->id;
+	}
+
+	return 0x0ff;
+}
+
+WRITE_HANDLER(kc85_module_w)
+{
+	logerror("kc85 module w: %04x %02x\n",offset,data);
+}
+ 
+
+static void kc85_module_system_init(void)
+{
+	int i;
+
+	kc85_module_rom = NULL;
+	for (i=0; i<64; i++)
+	{
+		modules[i] = NULL;
+	}
+
+	modules[30] = &kc85_disk_interface_device;
+}
+
+static void kc85_module_system_exit(void)
+{
+}
 
 
 
@@ -305,7 +423,7 @@ void	kc_disc_interface_exit(void)
 */
 
 
-#define KC_CASSETTE_TIMER_FREQUENCY TIME_IN_HZ(22050)
+#define KC_CASSETTE_TIMER_FREQUENCY TIME_IN_HZ(4800)
 
 int kc_cassette_device_init(int id)
 {
@@ -462,7 +580,7 @@ static void	kc_cassette_set_motor(int motor_state)
 /* The basic transmit proceedure is working, keys are received */
 /* Todo: Key-repeat, and allowing the same key to be pressed twice! */
 
-#define KC_KEYBOARD_DEBUG
+//#define KC_KEYBOARD_DEBUG
 
 /*
 
@@ -1370,10 +1488,22 @@ static void kc85_4_update_0x0c000(void)
 	}
 	else
 	{
+		if (kc85_module_rom)
+		{
+			logerror("module rom at 0xc000\n");
+
+			cpu_setbank(5, kc85_module_rom);
+			memory_set_bankhandler_r(5,0,MRA_BANK5);
+		}
+		else
+		{
+
 #ifdef KC_DEBUG
-		logerror("No roms 0x0c000\n");
+			logerror("No roms 0x0c000\n");
 #endif
-		memory_set_bankhandler_r(5, 0, MRA_NOP);
+
+			memory_set_bankhandler_r(5, 0, MRA_NOP);
+		}
 	}
 }
 
@@ -1425,7 +1555,6 @@ WRITE_HANDLER ( kc85_4_pio_data_w )
 {
 	kc85_pio_data[offset] = data;
 	z80pio_d_w(0, offset, data);
-	logerror("PIO W: PC: %04x offs: %04x data: %02x\n",cpu_get_pc(),offset,data);
 
 	switch (offset)
 	{
@@ -1461,8 +1590,9 @@ WRITE_HANDLER ( kc85_4_pio_data_w )
 
 WRITE_HANDLER ( kc85_4_86_w )
 {
+#ifdef KC_DEBUG
 	logerror("0x086 W: %02x\n",data);
-	logerror("PIO W: PC: %04x offs: %04x data: %02x\n",cpu_get_pc(),offset,data);
+#endif
 
 	kc85_86_data = data;
 
@@ -1478,9 +1608,9 @@ READ_HANDLER ( kc85_4_86_r )
 
 WRITE_HANDLER ( kc85_4_84_w )
 {
+#ifdef KC_DEBUG
 	logerror("0x084 W: %02x\n",data);
-	logerror("PIO W: PC: %04x offs: %04x data: %02x\n",cpu_get_pc(),offset,data);
-
+#endif
 	kc85_84_data = data;
 
 	kc85_4_video_ram_select_bank(data & 0x01);
@@ -1662,7 +1792,7 @@ bit 0: CAOS ROM E
 */
 
 /* PIO PORT B: port 0x089:
-bit 7: BLINK
+bit 7: BLINK ENABLE
 bit 6: WRITE PROTECT RAM 8
 bit 5: ACCESS RAM 8
 bit 4: TONE 4
@@ -1710,6 +1840,10 @@ WRITE_HANDLER ( kc85_3_pio_data_w )
 /*****************************************************************/
 
 /* used by KC85/4 and KC85/3 */
+static void *kc85_15khz_timer;
+static int kc85_50hz_state;
+static int kc85_15khz_state;
+static int kc85_15khz_count;
 
 READ_HANDLER ( kc85_unmapped_r )
 {
@@ -1720,7 +1854,8 @@ static OPBASE_HANDLER( kc85_opbaseoverride )
 {
 	memory_set_opbase_handler(0,0);
 
-	cpu_set_reg(Z80_PC, 0x0f000);
+	cpu_set_pc(0x0f000);
+//	cpu_set_reg(Z80_PC, 0x0f000);
 
 	return (cpu_get_pc() & 0x0ffff);
 }
@@ -1749,14 +1884,16 @@ READ_HANDLER ( kc85_ctc_r )
 	unsigned char data;
 
 	data = z80ctc_0_r(offset);
-#ifdef KC_KEYBOARD_DEBUG
-	logerror("ctc data:%02x\n",data);
-#endif
+//#ifdef KC_KEYBOARD_DEBUG
+	//logerror("ctc data r:%02x\n",data);
+//#endif
 	return data;
 }
 
 WRITE_HANDLER ( kc85_ctc_w )
 {
+	//logerror("ctc data w:%02x\n",data);
+
 	z80ctc_0_w(offset,data);
 }
 
@@ -1798,7 +1935,6 @@ static void kc85_pio_brdy_callback(int state)
 #endif
 }
 
-
 static z80pio_interface kc85_pio_intf =
 {
 	1,					/* number of PIOs to emulate */
@@ -1811,6 +1947,7 @@ static z80pio_interface kc85_pio_intf =
 static WRITE_HANDLER(kc85_zc0_callback)
 {
 
+
 }
 
 /* used in cassette write -> K1 */
@@ -1819,10 +1956,41 @@ static WRITE_HANDLER(kc85_zc1_callback)
 
 }
 
+
+static void kc85_15khz_timer_callback(int dummy)
+{
+	/* toggle state of square wave */
+	kc85_15khz_state^=1;
+
+	/* set clock input for channel 2 and 3 to ctc */
+	z80ctc_0_trg0_w(0,kc85_15khz_state);
+	z80ctc_0_trg1_w(0,kc85_15khz_state);
+
+	kc85_15khz_count++;
+
+	if (kc85_15khz_count>=312)
+	{
+		kc85_15khz_count = 0;
+
+		/* toggle state of square wave */
+		kc85_50hz_state^=1;
+
+		/* set clock input for channel 2 and 3 to ctc */
+		z80ctc_0_trg2_w(0,kc85_50hz_state);
+		z80ctc_0_trg3_w(0,kc85_50hz_state);
+	}
+}
+
 /* video blink */
 static WRITE_HANDLER(kc85_zc2_callback)
 {
-
+	/* is blink enabled? */
+	if (kc85_pio_data[1] & (1<<7))
+	{
+		/* yes */
+		/* toggle state of blink to video hardware */
+		kc85_video_set_blink_state(data);
+	}
 }
 
 static z80ctc_interface	kc85_ctc_intf =
@@ -1853,12 +2021,32 @@ static void	kc85_common_init(void)
 	can't see yet where it disables it later!!!! so for now
 	here will be a override */
 	memory_set_opbase_handler(0, kc85_opbaseoverride);
+
+	/* kc85 has a 50hz input to the ctc channel 2 and 3 */
+	/* channel 2 this controls the video colour flash */
+	/* kc85 has a 15khz (?) input to the ctc channel 0 and 1 */
+	/* channel 0 and channel 1 are used for cassette write */
+	kc85_50hz_state = 0;
+	kc85_15khz_state = 0;
+	kc85_15khz_count = 0;
+	kc85_15khz_timer = timer_pulse(TIME_IN_HZ(15625), 0, kc85_15khz_timer_callback);
+
+	kc85_module_system_init();
 }
 
 static void	kc85_common_shutdown_machine(void)
 {
+	kc85_module_system_exit();
+
+	if (kc85_15khz_timer)
+	{
+		timer_remove(kc85_15khz_timer);
+		kc85_15khz_timer = NULL;
+	}
+
 	kc_keyboard_exit();
 	kc_cassette_exit();
+
 }
 
 /*****************************************************************/
@@ -1894,6 +2082,19 @@ void kc85_4_shutdown_machine(void)
 
 	kc85_common_shutdown_machine();
 }
+
+void kc85_4d_init_machine(void)
+{
+	kc85_4_init_machine();
+	kc_disc_interface_init();
+}
+
+void kc85_4d_shutdown_machine(void)
+{
+	kc85_4_shutdown_machine();
+	kc_disc_interface_exit();
+}
+
 
 void kc85_3_init_machine(void)
 {

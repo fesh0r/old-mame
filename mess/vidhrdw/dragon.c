@@ -45,18 +45,25 @@
 
 static int coco3_hires;
 static int coco3_gimevhreg[8];
-static int coco3_borderred, coco3_bordergreen, coco3_borderblue;
 static int sam_videomode;
 static int coco3_blinkstatus;
 static int coco3_vidbase;
 
 #define MAX_HIRES_VRAM	57600
 
+#ifdef MAME_DEBUG
+#define LOG_BORDER	0
+#define LOG_PALETTE	0
+#define LOG_GIME	1
+#define LOG_VIDEO	0
+#else /* !MAME_DEBUG */
+#define LOG_BORDER	0
 #define LOG_PALETTE	0
 #define LOG_GIME	0
 #define LOG_VIDEO	0
+#endif /* MAME_DEBUG */
 
-#define COLORSLOT_BORDER 16
+static int coco3_palette_recalc(int force);
 
 /* -------------------------------------------------- */
 
@@ -64,7 +71,7 @@ static void coco3_getvideoinfo(int full_refresh, struct rasterbits_source *rs,
 	struct rasterbits_videomode *rvm, struct rasterbits_frame *rf);
 
 static const struct rastertrack_info coco3_ri = {
-	262,
+	263,
 	240,
 	coco3_getvideoinfo
 };
@@ -107,8 +114,9 @@ static int internal_dragon_vh_start(int m6847_version, void (*charproc)(UINT8))
 {
 	struct m6847_init_params p;
 
-	memset(&p, '\0', sizeof(p));
+	m6847_vh_normalparams(&p);
 	p.version = m6847_version;
+	p.clock = COCO_TIMER_CMPCARRIER;
 	p.artifactdipswitch = 12;
 	p.ram = memory_region(REGION_CPU1);
 	p.ramsize = 0x10000;
@@ -198,8 +206,9 @@ int coco3_vh_start(void)
     int i;
 	struct m6847_init_params p;
 
-	memset(&p, '\0', sizeof(p));
+	m6847_vh_normalparams(&p);
 	p.version = M6847_VERSION_M6847T1;
+	p.clock = COCO_TIMER_CMPCARRIER;
 	p.artifactdipswitch = 12;
 	p.ram = memory_region(REGION_CPU1);
 	p.ramsize = 0x10000;
@@ -217,14 +226,13 @@ int coco3_vh_start(void)
 		return 1;
 
 	memset(paletteram, 0, 16 * sizeof(int));
-	for (i = 0; i < 16; i++)
-		palette_change_color(i, 0, 0, 0);
+
 
 	for (i = 0; i < (sizeof(coco3_gimevhreg) / sizeof(coco3_gimevhreg[0])); i++)
 		coco3_gimevhreg[i] = 0;
 
 	coco3_hires = coco3_blinkstatus = 0;
-	coco3_borderred = coco3_bordergreen = coco3_borderblue = -1;
+	coco3_palette_recalc(1);
 
 	rastertrack_init(&coco3_ri);
 	return 0;
@@ -243,7 +251,7 @@ static void coco3_compute_color(int color, int *red, int *green, int *blue)
 {
 	int r, g, b;
 
-	if ((readinputport(12) & 0x08) == 0) {
+	if ((readinputport(COCO3_DIP_MONITORTYPE) & COCO3_DIP_MONITORTYPE_MASK) == 0) {
 		/* CMP colors
 		 *
 		 * These colors are of the format IICCCC, where II is the intensity and
@@ -365,33 +373,23 @@ static void coco3_compute_color(int color, int *red, int *green, int *blue)
 	*blue = b;
 }
 
-static void coco3_vh_palette_change_color(int color, int data)
+static int coco3_palette_recalc(int force)
 {
-	int red, green, blue;
-	coco3_compute_color(data, &red, &green, &blue);
-	palette_change_color(color, red, green, blue);
-}
+	int flag;
+	int i, r, g, b;
+	static int lastflag;
 
-static void coco3_vh_palette_recompute(void)
-{
-	int i;
-	for (i = 0; i < 16; i++)
-		coco3_vh_palette_change_color(i, paletteram[i]);
-}
+	flag = readinputport(COCO3_DIP_MONITORTYPE) & (COCO3_DIP_MONITORTYPE_MASK | ((coco3_gimevhreg[0] & 0x10) << 16));
+	if (force || (flag != lastflag)) {
+		lastflag = flag;
 
-static int coco3_vh_setborder(int red, int green, int blue)
-{
-	int full_refresh = 0;
-
-	if ((coco3_borderred != red) || (coco3_bordergreen != green) || (coco3_borderblue != blue)) {
-		coco3_borderred = red;
-		coco3_bordergreen = green;
-		coco3_borderblue = blue;
-		palette_change_color(COLORSLOT_BORDER, red, green, blue);
-
-		full_refresh = palette_recalc() ? 1 : 0;
+		for (i = 0; i < 64; i++) {
+			coco3_compute_color(i, &r, &g, &b);
+			palette_change_color(i, r, g, b);
+		}
+		return 1;
 	}
-	return full_refresh;
+	return 0;
 }
 
 void coco3_vh_blink(void)
@@ -402,7 +400,7 @@ void coco3_vh_blink(void)
 int coco3_vblank(void)
 {
 	int newvidbase;
-	int top, rows;
+	int bottom, rows;
 
 	/* Latch in new values for $FF9D:$FF9E */
 	newvidbase = (((coco3_gimevhreg[5] * 0x800) + (coco3_gimevhreg[6] * 8)));
@@ -411,44 +409,19 @@ int coco3_vblank(void)
 		coco3_vidbase = newvidbase;
 	}
 
-	rastertrack_vblank();
-
-	rows = coco3_calculate_rows(&top, NULL);
-
-	return internal_m6847_vblank(263, ((double) (top + rows - 15)));
+	rows = coco3_calculate_rows(NULL, &bottom);
+	return internal_m6847_vblank(263, (double) bottom, rastertrack_newline);
 }
 
 WRITE_HANDLER(coco3_palette_w)
 {
+	rastertrack_touchvideomode();
 	paletteram[offset] = data;
-	coco3_vh_palette_change_color(offset, data);
 
 #if LOG_PALETTE
 	logerror("CoCo3 Palette: %i <== $%02x\n", offset, data);
 #endif
 }
-
-#if 0
-static void coco3_artifact(UINT16 *artifactcolors, UINT16 p0, UINT16 p1)
-{
-	int c1, c2, r1, r2, g1, g2, b1, b2;
-	static int oldc1, oldc2;
-
-	artifactcolors[0] = p0;
-	artifactcolors[3] = p1;
-
-	c1 = paletteram[p0];
-	c2 = paletteram[p1];
-
-	/* Have the colors actually changed? */
-	if ((oldc1 != c1) || (oldc2 != c2)) {
-		coco3_compute_color(c1, &r1, &g1, &b1);
-		coco3_compute_color(c2, &r2, &g2, &b2);
-		palette_change_color(17, r2, (g1+g2)/2, b1);
-		palette_change_color(18, r1, (g1+g2)/2, b2);
-	}
-}
-#endif
 
 int coco3_calculate_rows(int *bordertop, int *borderbottom)
 {
@@ -470,25 +443,26 @@ int coco3_calculate_rows(int *bordertop, int *borderbottom)
 	 * settings most likely has a different set of values.  Here is a summary
 	 * of what I know from different sources:
 	 *
-	 * SockMaster:       43/192/28, 41/199/23, 132/0/131, 26/225/12
-	 * m6847 reference:  38/192/32
-	 *
 	 * In the January 1987 issue of Rainbow Magazine, there is a program called
 	 * COLOR3 that uses midframe palette rotation to show all 64 colors on the
-	 * screen at once.  The firxt box is at line 40, but it waits for 70 HSYNC
+	 * screen at once.  The first box is at line 32, but it waits for 70 HSYNC
 	 * transitions before changing
+	 *
+	 * SockMaster:       43/192/28, 41/199/23, 132/0/131, 26/225/12
+	 * m6847 reference:  38/192/32
+	 * COLOR3            38/192/32
 	 */
 
 	switch((coco3_gimevhreg[1] & 0x60) >> 5) {
 	case 0:
 		rows = 192;
-		t = 43;
-		b = 28;
+		t = 38;
+		b = 33;
 		break;
 	case 1:
 		rows = 199;
-		t = 41;
-		b = 23;
+		t = 33;
+		b = 31;
 		break;
 	case 2:
 		rows = 0;	/* NYI - This is "zero/infinite" lines, according to Sock Master */
@@ -585,7 +559,7 @@ static UINT8 *coco3_textmapper_noattr(UINT8 *mem, int param, int *fg, int *bg, i
 	UINT8 *result;
 	UINT8 *RAM;
 	int b;
-	
+
 	RAM = (UINT8 *) param;
 	b = (*mem) & 0x7f;
 	if (b < 32) {
@@ -614,14 +588,14 @@ static UINT8 *coco3_textmapper_attr(UINT8 *mem, int param, int *fg, int *bg, int
 	if (b & 0x40)
 		a |= RASTERBITS_CHARATTR_UNDERLINE;
 	*attr = a;
-	
+
 	return coco3_textmapper_noattr(mem, param, NULL, NULL, NULL);
 }
 
 static void coco3_getcolorrgb(int color, UINT8 *red, UINT8 *green, UINT8 *blue)
 {
 	int r, g, b;
-	coco3_compute_color(paletteram[color], &r, &g, &b);
+	coco3_compute_color(color, &r, &g, &b);
 	*red = (UINT8) r;
 	*green = (UINT8) g;
 	*blue = (UINT8) b;
@@ -633,6 +607,8 @@ static void coco3_getcolorrgb(int color, UINT8 *red, UINT8 *green, UINT8 *blue)
  */
 void coco3_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 {
+	if (coco3_palette_recalc(0))
+		full_refresh = 1;
 	rastertrack_refresh(bitmap, full_refresh);
 }
 
@@ -640,36 +616,24 @@ static void coco3_getvideoinfo(int full_refresh, struct rasterbits_source *rs,
 	struct rasterbits_videomode *rvm, struct rasterbits_frame *rf)
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
-	static UINT16 coco3_pens[] = {
+	static UINT32 coco3_pens[] = {
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 	};
-	static int old_cmprgb;
-	int cmprgb, i;
 
-	/* Did the user change between CMP and RGB? */
-	cmprgb = readinputport(12) & 0x08;
-	if (cmprgb != old_cmprgb) {
-		old_cmprgb = cmprgb;
+	int i;
 
-		/* Reset all colors and border */
-		coco3_borderred = -1;	/* force border to redraw */
-		for (i = 0; i < 16; i++)
-			coco3_vh_palette_change_color(i, paletteram[i]);
-	}
+	/* Initialize the pens array */
+	for (i = 0; i < (sizeof(rvm->pens) / sizeof(rvm->pens[0])); i++)
+		rvm->pens[i] = i;
 
 	if (coco3_hires) {
 		static int last_blink;
 		int linesperrow, rows = 0;
-		int borderred, bordergreen, borderblue;
 		int visualbytesperrow;
 		int bordertop, borderbottom;
 
 		rows = coco3_calculate_rows(&bordertop, &borderbottom);
 		linesperrow = coco3_hires_linesperrow();
-
-		/* check border */
-		coco3_compute_color(coco3_gimevhreg[2] & 0x3f, &borderred, &bordergreen, &borderblue);
-		full_refresh += coco3_vh_setborder(borderred, bordergreen, borderblue);
 
 		/* check palette recalc */
 		if (palette_recalc() || full_refresh) {
@@ -690,7 +654,6 @@ static void coco3_getvideoinfo(int full_refresh, struct rasterbits_source *rs,
 		rs->position = coco3_vidbase;
 		rs->db = full_refresh ? NULL : dirtybuffer;
 		rvm->height = (rows + linesperrow - 1) / linesperrow;
-		rvm->pens = NULL;
 		rvm->flags = (coco3_gimevhreg[0] & 0x80) ? RASTERBITS_FLAG_GRAPHICS : RASTERBITS_FLAG_TEXT;
 		if (coco3_gimevhreg[7]) {
 			rvm->flags |= RASTERBITS_FLAG_WRAPINROW;
@@ -702,7 +665,7 @@ static void coco3_getvideoinfo(int full_refresh, struct rasterbits_source *rs,
 		}
 		rf->width = (coco3_gimevhreg[1] & 0x04) ? 640 : 512;
 		rf->height = rows;
-		rf->border_pen = full_refresh ? Machine->pens[COLORSLOT_BORDER] : -1;
+		rf->border_pen = full_refresh ? Machine->pens[coco3_gimevhreg[2] & 0x3f] : -1;
 		rf->total_scanlines = 263;
 		rf->top_scanline = bordertop;
 
@@ -743,7 +706,7 @@ static void coco3_getvideoinfo(int full_refresh, struct rasterbits_source *rs,
 					rvm->flags |= RASTERBITS_FLAG_BLINKNOW;
 				if (coco3_blinkstatus)
 					rvm->flags |= RASTERBITS_FLAG_BLINKING;
-				last_blink = coco3_blinkstatus;				
+				last_blink = coco3_blinkstatus;
 			}
 			else {
 				/* Without attributes */
@@ -783,7 +746,7 @@ static void coco3_getvideoinfo(int full_refresh, struct rasterbits_source *rs,
 			memset(dirtybuffer, 0, ((rows + linesperrow - 1) / linesperrow) * rvm->bytesperrow);
 	}
 	else {
-		int bordercolor = 0, r, g, b;
+		int bordercolor = 0;
 
 		switch(m6847_get_bordercolor()) {
 		case M6847_BORDERCOLOR_BLACK:
@@ -803,19 +766,20 @@ static void coco3_getvideoinfo(int full_refresh, struct rasterbits_source *rs,
 			break;
 		}
 
-		coco3_compute_color(bordercolor, &r, &g, &b);
-
-		full_refresh += coco3_vh_setborder(r, g, b);
 		if (palette_recalc())
 			full_refresh = 1;
 
 		internal_m6847_vh_screenrefresh(rs, rvm, rf,
 			full_refresh, coco3_pens,
 			&RAM[coco3_vidbase],
-			1, (full_refresh ? COLORSLOT_BORDER : -1), 2,
+			1, (full_refresh ? bordercolor : -1), 2,
 			readinputport(12) & 3,
 			17, coco3_getcolorrgb);
 	}
+
+	/* Now translate the pens */
+	for (i = 0; i < (sizeof(rvm->pens) / sizeof(rvm->pens[0])); i++)
+		rvm->pens[i] = paletteram[rvm->pens[i]];
 }
 
 static void coco3_ram_w(int offset, int data, int block)
@@ -900,6 +864,18 @@ WRITE_HANDLER(coco3_gimevh_w)
 	/* Features marked with '!' are not yet implemented */
 
 	xorval = coco3_gimevhreg[offset] ^ data;
+	if (!xorval)
+		return;
+
+	switch(offset) {
+	case 0:
+	case 1:
+	case 4:
+	case 7:
+		rastertrack_touchvideomode();
+		break;
+	};
+
 	coco3_gimevhreg[offset] = data;
 
 	switch(offset) {
@@ -913,14 +889,10 @@ WRITE_HANDLER(coco3_gimevh_w)
 		 *		  Bits 0-2 LPR Lines per row
 		 */
 		if (xorval & 0xB7) {
-			coco3_borderred = -1;	/* force border to redraw */
-			rastertrack_touchvideomode();
+			schedule_full_refresh();
 #if LOG_GIME
 			logerror("CoCo3 GIME: $ff98 forcing refresh\n");
 #endif
-		}
-		if (xorval & 0x10) {
-			coco3_vh_palette_recompute();
 		}
 		break;
 
@@ -931,10 +903,7 @@ WRITE_HANDLER(coco3_gimevh_w)
 		 *		  Bits 2-4 HRES Horizontal Resolution
 		 *		  Bits 0-1 CRES Color Resolution
 		 */
-		if (xorval) {
-			coco3_borderred = -1;	/* force border to redraw */
-			rastertrack_touchvideomode();
-		}
+		rastertrack_touchvideomode();
 		break;
 
 	case 2:
@@ -942,6 +911,9 @@ WRITE_HANDLER(coco3_gimevh_w)
 		 *		  Bits 6,7 Unused
 		 *		  Bits 0-5 BRDR Border color
 		 */
+#if LOG_BORDER
+		logerror("CoCo3 GIME: Writing $%02x into border; scanline=%i\n", data, rastertrack_scanline());
+#endif
 		break;
 
 	case 4:
@@ -949,8 +921,7 @@ WRITE_HANDLER(coco3_gimevh_w)
 		 *		  Bits 4-7 Reserved
 		 *		! Bits 0-3 VSC Vertical Scroll bits
 		 */
-		if (xorval)
-			rastertrack_touchvideomode();
+		rastertrack_touchvideomode();
 		break;
 
 	case 5:
@@ -977,8 +948,7 @@ WRITE_HANDLER(coco3_gimevh_w)
 		 *
 		 *  Unline $FF9D-E, this value can be modified mid frame
 		 */
-		if (xorval)
-			rastertrack_touchvideomode();
+		rastertrack_touchvideomode();
 		break;
 	}
 }

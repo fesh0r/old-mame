@@ -720,7 +720,7 @@ INLINE void lble( void )
 		case 14: if (promote) dst16Reg = &W; else dst8Reg = &E; break;		\
 		default: if (promote) dst16Reg = &W; else dst8Reg = &F; break;		\
 	}																		\
-	
+
 /* $1030 addr_r r1 + r2 -> r2 */
 
 INLINE void addr_r( void )
@@ -985,9 +985,9 @@ INLINE void tfmpp( void )
 {
 	UINT8	tb, srcValue = 0;
 	int 	done = FALSE;
-	
+
 	IMMBYTE(tb);
-	
+
 	if ( W != 0 )
 	{
 		switch(tb>>4) {
@@ -1008,7 +1008,7 @@ INLINE void tfmpp( void )
 			case 14: /* E  */ done = TRUE; break;
 			default: /* F  */ done = TRUE; break;
 		}
-		
+
 		if ( !done )
 		{
 			switch(tb&15) {
@@ -1029,7 +1029,7 @@ INLINE void tfmpp( void )
 				case 14: /* E  */ done = TRUE; break;
 				default: /* F  */ done = TRUE; break;
 			}
-		
+
 			PCD = PCD - 3;
 			CHANGE_PC;
 			W--;
@@ -1046,7 +1046,7 @@ INLINE void tfmmm( void )
 	int 	done = FALSE;
 
 	IMMBYTE(tb);
-	
+
 	if ( W != 0 )
 	{
 		switch(tb>>4) {
@@ -1067,7 +1067,7 @@ INLINE void tfmmm( void )
 			case 14: /* E  */ done = TRUE; break;
 			default: /* F  */ done = TRUE; break;
 		}
-		
+
 		if ( !done )
 		{
 			switch(tb&15) {
@@ -1088,7 +1088,7 @@ INLINE void tfmmm( void )
 				case 14: /* E  */ done = TRUE; break;
 				default: /* F  */ done = TRUE; break;
 			}
-		
+
 			PCD = PCD - 3;
 			CHANGE_PC;
 			W--;
@@ -1105,7 +1105,7 @@ INLINE void tfmpc( void )
 	int 	done = FALSE;
 
 	IMMBYTE(tb);
-	
+
 	if ( W != 0 )
 	{
 		switch(tb>>4) {
@@ -1126,7 +1126,7 @@ INLINE void tfmpc( void )
 			case 14: /* E  */ done = TRUE; break;
 			default: /* F  */ done = TRUE; break;
 		}
-		
+
 		if ( !done )
 		{
 			switch(tb&15) {
@@ -1147,7 +1147,7 @@ INLINE void tfmpc( void )
 				case 14: /* E  */ done = TRUE; break;
 				default: /* F  */ done = TRUE; break;
 			}
-		
+
 			PCD = PCD - 3;
 			CHANGE_PC;
 			W--;
@@ -1164,7 +1164,7 @@ INLINE void tfmcp( void )
 	int 	done = FALSE;
 
 	IMMBYTE(tb);
-	
+
 	if ( W != 0 )
 	{
 		switch(tb>>4) {
@@ -1185,7 +1185,7 @@ INLINE void tfmcp( void )
 			case 14: /* E  */ done = TRUE; break;
 			default: /* F  */ done = TRUE; break;
 		}
-		
+
 		if ( !done )
 		{
 			switch(tb&15) {
@@ -2769,12 +2769,6 @@ INLINE void divq_im( void )
 	IMMWORD( t );
 	q.w.h = D;
 	q.w.l = W;
-	
-	if( t.w.l != 0 )
-	{
-		v = (INT32) q.d / (INT16) t.w.l;
-		D = (INT32) q.d % (INT16) t.w.l;
-		W = v;
 
 	if( t.w.l != 0 )
 	{

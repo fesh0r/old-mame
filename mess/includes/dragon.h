@@ -3,6 +3,13 @@
 
 #include "vidhrdw/m6847.h"
 #include "includes/rstrbits.h"
+
+#define COCO_CPU_SPEED	(TIME_IN_HZ(894886))
+#define COCO_TIMER_CMPCARRIER	(COCO_CPU_SPEED * 0.25)
+
+#define COCO3_DIP_MONITORTYPE		12
+#define COCO3_DIP_MONITORTYPE_MASK	0x08
+
 /* ----------------------------------------------------------------------- *
  * Backdoors into mess/vidhrdw/m6847.c                                     *
  * ----------------------------------------------------------------------- */
@@ -10,10 +17,10 @@
 int internal_m6847_vh_start(const struct m6847_init_params *params, int dirtyramsize);
 void internal_m6847_vh_screenrefresh(struct rasterbits_source *rs,
 	struct rasterbits_videomode *rvm, struct rasterbits_frame *rf, int full_refresh,
-	UINT16 *pens, UINT8 *vrambase, int skew_up, int border_color, int wf,
+	UINT32 *pens, UINT8 *vrambase, int skew_up, int border_color, int wf,
 	int artifact_value, int artifact_palettebase,
 	void (*getcolorrgb)(int c, UINT8 *red, UINT8 *green, UINT8 *blue));
-int internal_m6847_vblank(int hsyncs, double trailingedgerow);
+int internal_m6847_vblank(int hsyncs, double trailingedgerow, void (*newlineproc)(void));
 
 /* ----------------------------------------------------------------------- *
  * from vidhrdw/dragon.c                                                   *

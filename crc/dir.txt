@@ -1,1 +1,1 @@
-CRC files are stored here.
+Store CRC files here.

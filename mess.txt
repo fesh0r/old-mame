@@ -5,7 +5,7 @@
                     Official Page at: http://mess.emuverse.com
                    ==========================================
 
-This document is generated for MESS 0.37 BETA 11 (Jan 29 2001)
+This document is generated for MESS 0.37 BETA 12 (Mar  3 2001)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.37 BETA 11 (Jan 29 2001)
+Here is the list of systems supported by MESS 0.37 BETA 12 (Mar  3 2001)
 
 The meanings of the columns are as follows:
 Working - "No" means that the emulation has shortcomings that cause the system
@@ -240,6 +240,13 @@ dat2html.exe.
 | TI99/4A Home Computer (US)              |  Yes  |  Yes  |  Yes  | ti99_4a  |
 | TI99/4A Home Computer (Europe)          |  Yes  |  Yes  |  Yes  | ti99_4ae |
 | TI Avigo 100 PDA                        |   No  |  Yes  |  Yes  | avigo    |
+| TI-85 ver. 3.0a                         |  Yes  |  Yes  |  Yes  | ti85     |
+| TI-85 ver. 4.0                          |  Yes  |  Yes  |  Yes  | ti85v40  |
+| TI-85 ver. 5.0                          |  Yes  |  Yes  |  Yes  | ti85v50  |
+| TI-85 ver. 6.0                          |  Yes  |  Yes  |  Yes  | ti85v60  |
+| TI-85 ver. 8.0                          |  Yes  |  Yes  |  Yes  | ti85v80  |
+| TI-85 ver. 9.0                          |  Yes  |  Yes  |  Yes  | ti85v90  |
+| TI-85 ver. 10.0                         |  Yes  |  Yes  |  Yes  | ti85v100 |
 | Jupiter Ace                             |  Yes  |  Yes  |  Yes  | jupiter  |
 | Enterprise 128                          |  Yes  |  Yes  |Partial| ep128    |
 | Enterprise 128 (EXOS 2.1)               |  Yes  |  Yes  |Partial| ep128a   |
@@ -308,6 +315,7 @@ dat2html.exe.
 | SVI-318                                 |  Yes  |  Yes  |  Yes  | svi318   |
 | SVI-328                                 |  Yes  |  Yes  |  Yes  | svi328   |
 | SVI-328 (BASIC 1.11)                    |  Yes  |  Yes  |  Yes  | svi328a  |
+| APEXC                                   |  Yes  |  Yes  |  Yes  | apexc    |
 | Chess Champion MK II                    |  Yes  |  Yes  |  Yes  | mk2      |
 +-----------------------------------------+-------+-------+-------+----------+
 (1) There are variants of the system that work correctly
@@ -775,6 +783,13 @@ ti99_4ae     Cartridge   (Cart)   .bin  .c    .d    .g    .m    .crom .drom .gro
              Cassette    (Cass)   .wav  
              Floppydisk  (Flop)   .dsk  
 avigo        UNKNOWN     
+ti85         UNKNOWN     
+ti85v40      UNKNOWN     
+ti85v50      UNKNOWN     
+ti85v60      UNKNOWN     
+ti85v80      UNKNOWN     
+ti85v90      UNKNOWN     
+ti85v100     UNKNOWN     
 jupiter      Cartridge   (Cart)   .ace  
              Cassette    (Cass)   .tap  
 ep128        Floppydisk  (Flop)   .dsk  
@@ -960,4 +975,6 @@ svi328       Cartridge   (Cart)   .rom
 svi328a      Cartridge   (Cart)   .rom  
              Cassette    (Cass)   .cas  .wav  
              Printer     (Prin)   .prn  
+apexc        Cylinder    (Cyln)   .apc  
+             Punchtape   (Ptap)   .tap  
 mk2          UNKNOWN     

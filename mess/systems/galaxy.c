@@ -1,12 +1,13 @@
 /***************************************************************************
-Galaksija driver by Krzyszof Strzecha
+Galaksija driver by Krzysztof Strzecha
 
 Only source of knowladge about Galaksja is emulator of this machine created by
-emulator by Miodrag Jevremovic.
+Miodrag Jevremovic.
 
 There is the need to find more information about this system, without it the 
 progress in developing driver is nearly impossible.
 
+31/01/2001 Snapshot loading corrected
 09/01/2001 Fast mode implemented (many thanks to Kevin Thacker)
 07/01/2001 Keyboard corrected (still some kays unknown)
            Horizontal screen positioning in video subsystem added
@@ -91,7 +92,7 @@ struct GfxLayout galaxy_charlayout =
 	{0*128*8, 1*128*8,  2*128*8,  3*128*8,
 	 4*128*8, 5*128*8,  6*128*8,  7*128*8,
 	 8*128*8, 9*128*8, 10*8*128, 11*128*8, 12*128*8},
-	8 	/* each character takes 1 consecutive bytes */
+	8 	/* each character takes 1 consecutive byte */
 };
 
 static struct GfxDecodeInfo galaxy_gfxdecodeinfo[] =
@@ -231,7 +232,7 @@ ROM_START (galaxy)
 	ROM_LOAD ("galrom1.bin", 0x0000, 0x1000, 0x365f3e24)
 	ROM_LOAD ("galrom2.bin", 0x1000, 0x1000, 0x5dc5a100)
 	ROM_REGION(0x0800, REGION_GFX1,0)
-	ROM_LOAD ("galchr.bin", 0x0000, 0x0800, 0x5c3b5bb5)
+	ROM_LOAD ("galchr.bin", 0x0000, 0x0800, BADCRC(0x5c3b5bb5))
 ROM_END
 
 
