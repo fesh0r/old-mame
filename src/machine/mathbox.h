@@ -3,7 +3,6 @@
  *
  * Copyright 1991, 1992, 1993, 1996 Eric Smith
  *
- * $Header: /home/cvs/mess/src/machine/mathbox.h,v 1.7 2000/10/14 04:32:59 ben Exp $
  */
 
 typedef short s16;

@@ -112,8 +112,6 @@ extern struct GameDriver driver_neogeo;
 #endif
 #endif
 
-extern unsigned char *memory_find_base (int cpu, int offset);
-
 /******************************************
  *
  * Cheats
@@ -1637,21 +1635,21 @@ static int build_tables (int cpu)
     xprintf(0, 0, yPos, "Allocating Memory...");
 #endif
 
-    NoMemArea = 0;
-    while (!IS_MEMORY_END(mwa))
-    {
-        if (!IS_MEMORY_MARKER(mwa))
-        {
-            /* int (*handler)(int) = mra->handler; */
-            mem_write_handler handler = mwa->handler;
-            int size = (mwa->end - mwa->start) + 1;
+	NoMemArea = 0;
+	while (!IS_MEMPORT_END(mwa))
+	{
+		if (!IS_MEMPORT_MARKER(mwa))
+		{
+			/* int (*handler)(int) = mra->handler; */
+			mem_write_handler handler = mwa->handler;
+			int size = (mwa->end - mwa->start) + 1;
 
-            if (SkipBank(CpuToScan, BankToScanTable, handler))
-            {
-                NoMemArea++;
-                mwa++;
-                continue;
-            }
+			if (SkipBank(CpuToScan, BankToScanTable, handler))
+			{
+				NoMemArea++;
+				mwa++;
+				continue;
+			}
 
 #if 0
             if ((fastsearch == 3) && (!MemToScanTable[NoMemArea].Enabled))

@@ -150,7 +150,7 @@ void m6502_set_context (void *src)
 	if( src )
 	{
 		m6502 = *(m6502_Regs*)src;
-		change_pc(PCD);
+		change_pc16(PCD);
 	}
 }
 
@@ -162,7 +162,7 @@ unsigned m6502_get_pc (void)
 void m6502_set_pc (unsigned val)
 {
 	PCW = val;
-	change_pc(PCD);
+	change_pc16(PCD);
 }
 
 unsigned m6502_get_sp (void)

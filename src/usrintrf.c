@@ -2079,42 +2079,43 @@ static int mame_stats(struct osd_bitmap *bitmap,int selected)
 
 int showcopyright(struct osd_bitmap *bitmap)
 {
-    int done;
-    char buf[1000];
-    char buf2[256];
+	int done;
+	char buf[1000];
+	char buf2[256];
 
-    strcpy (buf, ui_getstring(UI_copyright1));
-    strcat (buf, "\n\n");
-    sprintf(buf2, ui_getstring(UI_copyright2), Machine->gamedrv->description);
-    strcat (buf, buf2);
-    strcat (buf, "\n\n");
-    strcat (buf, ui_getstring(UI_copyright3));
+	strcpy (buf, ui_getstring(UI_copyright1));
+	strcat (buf, "\n\n");
+	sprintf(buf2, ui_getstring(UI_copyright2), Machine->gamedrv->description);
+	strcat (buf, buf2);
+	strcat (buf, "\n\n");
+	strcat (buf, ui_getstring(UI_copyright3));
 
-    ui_displaymessagewindow(bitmap,buf);
+	erase_screen(bitmap);
+	ui_displaymessagewindow(bitmap,buf);
 
-    setup_selected = -1;////
-    done = 0;
-    do
-    {
-        update_video_and_audio();
-        if (input_ui_pressed(IPT_UI_CANCEL))
-        {
-            setup_selected = 0;////
-            return 1;
-        }
-        if (keyboard_pressed_memory(KEYCODE_O) ||
-                input_ui_pressed(IPT_UI_LEFT))
-            done = 1;
-        if (done == 1 && (keyboard_pressed_memory(KEYCODE_K) ||
-                input_ui_pressed(IPT_UI_RIGHT)))
-            done = 2;
-    } while (done < 2);
+	setup_selected = -1;////
+	done = 0;
+	do
+	{
+		update_video_and_audio();
+		if (input_ui_pressed(IPT_UI_CANCEL))
+		{
+			setup_selected = 0;////
+			return 1;
+		}
+		if (keyboard_pressed_memory(KEYCODE_O) ||
+				input_ui_pressed(IPT_UI_LEFT))
+			done = 1;
+		if (done == 1 && (keyboard_pressed_memory(KEYCODE_K) ||
+				input_ui_pressed(IPT_UI_RIGHT)))
+			done = 2;
+	} while (done < 2);
 
-    setup_selected = 0;////
-    erase_screen(bitmap);
-    update_video_and_audio();
+	setup_selected = 0;////
+	erase_screen(bitmap);
+	update_video_and_audio();
 
-    return 0;
+	return 0;
 }
 
 static int displaygameinfo(struct osd_bitmap *bitmap,int selected)
@@ -2308,125 +2309,126 @@ int showgamewarnings(struct osd_bitmap *bitmap)
         }
 #endif
 
-        if (Machine->gamedrv->flags & GAME_IMPERFECT_COLORS)
-        {
-            strcat(buf, ui_getstring (UI_imperfectcolors));
-            strcat(buf, "\n");
-        }
+		if (Machine->gamedrv->flags & GAME_IMPERFECT_COLORS)
+		{
+			strcat(buf, ui_getstring (UI_imperfectcolors));
+			strcat(buf, "\n");
+		}
 
-        if (Machine->gamedrv->flags & GAME_WRONG_COLORS)
-        {
-            strcat(buf, ui_getstring (UI_wrongcolors));
-            strcat(buf, "\n");
-        }
+		if (Machine->gamedrv->flags & GAME_WRONG_COLORS)
+		{
+			strcat(buf, ui_getstring (UI_wrongcolors));
+			strcat(buf, "\n");
+		}
 
-        if (Machine->gamedrv->flags & GAME_IMPERFECT_SOUND)
-        {
-            strcat(buf, ui_getstring (UI_imperfectsound));
-            strcat(buf, "\n");
-        }
+		if (Machine->gamedrv->flags & GAME_IMPERFECT_SOUND)
+		{
+			strcat(buf, ui_getstring (UI_imperfectsound));
+			strcat(buf, "\n");
+		}
 
-        if (Machine->gamedrv->flags & GAME_NO_SOUND)
-        {
-            strcat(buf, ui_getstring (UI_nosound));
-            strcat(buf, "\n");
-        }
+		if (Machine->gamedrv->flags & GAME_NO_SOUND)
+		{
+			strcat(buf, ui_getstring (UI_nosound));
+			strcat(buf, "\n");
+		}
 
-        if (Machine->gamedrv->flags & GAME_NO_COCKTAIL)
-        {
-            strcat(buf, ui_getstring (UI_nococktail));
-            strcat(buf, "\n");
-        }
+		if (Machine->gamedrv->flags & GAME_NO_COCKTAIL)
+		{
+			strcat(buf, ui_getstring (UI_nococktail));
+			strcat(buf, "\n");
+		}
 
-        if (Machine->gamedrv->flags & (GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION))
-        {
-            const struct GameDriver *maindrv;
-            int foundworking;
+		if (Machine->gamedrv->flags & (GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION))
+		{
+			const struct GameDriver *maindrv;
+			int foundworking;
 
-            if (Machine->gamedrv->flags & GAME_NOT_WORKING)
-            {
-                strcpy(buf, ui_getstring (UI_brokengame));
-                strcat(buf, "\n");
-            }
-            if (Machine->gamedrv->flags & GAME_UNEMULATED_PROTECTION)
-            {
-                strcat(buf, ui_getstring (UI_brokenprotection));
-                strcat(buf, "\n");
-            }
+			if (Machine->gamedrv->flags & GAME_NOT_WORKING)
+			{
+				strcpy(buf, ui_getstring (UI_brokengame));
+				strcat(buf, "\n");
+			}
+			if (Machine->gamedrv->flags & GAME_UNEMULATED_PROTECTION)
+			{
+				strcat(buf, ui_getstring (UI_brokenprotection));
+				strcat(buf, "\n");
+			}
 
-            if (Machine->gamedrv->clone_of && !(Machine->gamedrv->clone_of->flags & NOT_A_DRIVER))
-                maindrv = Machine->gamedrv->clone_of;
-            else maindrv = Machine->gamedrv;
+			if (Machine->gamedrv->clone_of && !(Machine->gamedrv->clone_of->flags & NOT_A_DRIVER))
+				maindrv = Machine->gamedrv->clone_of;
+			else maindrv = Machine->gamedrv;
 
-            foundworking = 0;
-            i = 0;
-            while (drivers[i])
-            {
-                if (drivers[i] == maindrv || drivers[i]->clone_of == maindrv)
-                {
-                    if ((drivers[i]->flags & (GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION)) == 0)
-                    {
-                        if (foundworking == 0)
-                        {
-                            strcat(buf,"\n\n");
-                            strcat(buf, ui_getstring (UI_workingclones));
-                            strcat(buf,"\n\n");
-                        }
-                        foundworking = 1;
+			foundworking = 0;
+			i = 0;
+			while (drivers[i])
+			{
+				if (drivers[i] == maindrv || drivers[i]->clone_of == maindrv)
+				{
+					if ((drivers[i]->flags & (GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION)) == 0)
+					{
+						if (foundworking == 0)
+						{
+							strcat(buf,"\n\n");
+							strcat(buf, ui_getstring (UI_workingclones));
+							strcat(buf,"\n\n");
+						}
+						foundworking = 1;
 
-                        sprintf(&buf[strlen(buf)],"%s\n",drivers[i]->name);
-                    }
-                }
-                i++;
-            }
-        }
+						sprintf(&buf[strlen(buf)],"%s\n",drivers[i]->name);
+					}
+				}
+				i++;
+			}
+		}
 
-        strcat(buf,"\n\n");
-        strcat(buf,ui_getstring (UI_typeok));
+		strcat(buf,"\n\n");
+		strcat(buf,ui_getstring (UI_typeok));
 
-        ui_displaymessagewindow(bitmap,buf);
+		erase_screen(bitmap);
+		ui_displaymessagewindow(bitmap,buf);
 
-        done = 0;
-        do
-        {
-            update_video_and_audio();
-            if (input_ui_pressed(IPT_UI_CANCEL))
-                return 1;
-            if (code_pressed_memory(KEYCODE_O) ||
-                    input_ui_pressed(IPT_UI_LEFT))
-                done = 1;
-            if (done == 1 && (code_pressed_memory(KEYCODE_K) ||
-                    input_ui_pressed(IPT_UI_RIGHT)))
-                done = 2;
-        } while (done < 2);
-    }
+		done = 0;
+		do
+		{
+			update_video_and_audio();
+			if (input_ui_pressed(IPT_UI_CANCEL))
+				return 1;
+			if (code_pressed_memory(KEYCODE_O) ||
+					input_ui_pressed(IPT_UI_LEFT))
+				done = 1;
+			if (done == 1 && (code_pressed_memory(KEYCODE_K) ||
+					input_ui_pressed(IPT_UI_RIGHT)))
+				done = 2;
+		} while (done < 2);
+	}
 
 
-    erase_screen(bitmap);
+	erase_screen(bitmap);
 
-    /* clear the input memory */
-    while (code_read_async() != CODE_NONE) {};
+	/* clear the input memory */
+	while (code_read_async() != CODE_NONE) {};
 
-    while (displaygameinfo(bitmap,0) == 1)
-    {
-        update_video_and_audio();
-    }
+	while (displaygameinfo(bitmap,0) == 1)
+	{
+		update_video_and_audio();
+	}
 
-    #ifdef MESS
-    while (displayimageinfo(bitmap,0) == 1)
-    {
-        update_video_and_audio();
-    }
-    #endif
+	#ifdef MESS
+	while (displayimageinfo(bitmap,0) == 1)
+	{
+		update_video_and_audio();
+	}
+	#endif
 
-    erase_screen(bitmap);
-    /* make sure that the screen is really cleared, in case autoframeskip kicked in */
-    update_video_and_audio();
-    update_video_and_audio();
-    update_video_and_audio();
-    update_video_and_audio();
+	erase_screen(bitmap);
+	/* make sure that the screen is really cleared, in case autoframeskip kicked in */
+	update_video_and_audio();
+	update_video_and_audio();
+	update_video_and_audio();
+	update_video_and_audio();
 
-    return 0;
+	return 0;
 }
 
 /* Word-wraps the text in the specified buffer to fit in maxwidth characters per line.
