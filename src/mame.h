@@ -140,8 +140,9 @@ struct RunningMachine
 	/* ----- user interface-related information ----- */
 
 	/* font used by the user interface */
-	struct GfxElement *uifont;
-	
+	struct GfxElement *		uifont;
+	struct GfxElement *		uirotfont;
+
 	/* font parameters */
 	int uifontwidth,uifontheight;
 
