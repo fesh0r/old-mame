@@ -29,8 +29,8 @@ static UINT16 vram_fg_count;	/* Fullgraphic increase count */
 static UINT16 vram_fg_incr;		/* Fullgraphic increase */
 static UINT16 vram_fg_cntr;		/* Fullgraphic counter */
 static INT16 vram_fg_offset;	/* Fullgraphic offset */
-UINT8  spc_port_in[4];	/* Port for sending data to the SPC700 */
-UINT8  spc_port_out[4];	/* Port for receiving data from the SPC700 */
+UINT8  spc_port_in[4];			/* Port for sending data to the SPC700 */
+UINT8  spc_port_out[4];			/* Port for receiving data from the SPC700 */
 static UINT8 snes_hdma_chnl;	/* channels enabled for HDMA */
 static struct
 {
@@ -513,7 +513,7 @@ READ_HANDLER( snes_r_io )
 			if( spc_usefakeapu )
 				return fakespc_port_r( offset & 0x3 );
 			else
-			return spc_port_out[offset & 0x3];
+				return spc_port_out[offset & 0x3];
 		case WMDATA:	/* Data to read from WRAM */
 			{
 				UINT32 addr = ((snes_ram[WMADDH] & 0x1) << 16) | (snes_ram[WMADDM] << 8) | snes_ram[WMADDL];
@@ -999,7 +999,7 @@ WRITE_HANDLER( snes_w_io )
 			else
 			{
 				cpu_boost_interleave(0, TIME_IN_USEC(20));
-			spc_port_in[offset & 0x3] = data;
+				spc_port_in[offset & 0x3] = data;
 			}
 			return;
 		case WMDATA:	/* Data to write to WRAM */
@@ -1099,7 +1099,7 @@ WRITE_HANDLER( snes_w_io )
 		case JOY4H:
 #ifdef MAME_DEBUG
 			logerror( "Write to read-only register: %X value: %X", offset, data );
-#endif /* MAME_DEBUG */
+#endif	/* MAME_DEBUG */
 			return;
 	/* Below is all DMA related */
 		case DMAP0: case BBAD0: case A1T0L: case A1T0H: case A1B0: case DAS0L:
@@ -1177,8 +1177,8 @@ DEVICE_LOAD(snes_cart)
 	/* Cart types */
 	static struct
 	{
-		INT8 Code;
-		char *Name;
+		INT16 Code;
+		const char *Name;
 	} CartTypes[] =
 	{
 		{  0, "ROM"             },

@@ -139,11 +139,6 @@ struct SNES_MODE_CONFIG
 	void (*drawLayer[5])(UINT8 screen, UINT8 layer, UINT16 curline);
 	UINT8 count;
 };
-struct SNES_MODE_CONFIG
-{
-	void (*drawLayer[5])(UINT8 screen, UINT8 layer, UINT16 curline);
-	UINT8 count;
-};
 
 static struct SCANLINE scanlines[2];
 struct SNES_PPU_STRUCT snes_ppu;
@@ -898,16 +893,11 @@ static void snes_update_line_4( UINT8 screen, UINT8 layer, UINT16 curline )
 	UINT32 basevmap;
 	UINT16 vscroll, hscroll, vtilescroll;
 	UINT8 vshift, hshift, tile_size;
-	UINT8 bg3_pty = 0;
 
 #ifdef SNES_DBG_VIDHRDW
 	if( debug_options.bg_disabled[layer] )
 		return;
 #endif /* SNES_DBG_VIDHRDW */
-
-	/* set special priority bit */
-	if( snes_ppu.mode == 1 && snes_ram[BGMODE] & 0x8 )
-		bg3_pty = 1;
 
 	/* Handle Mosaic effects */
 	if( snes_ram[MOSAIC] & (1 << layer) )
@@ -966,12 +956,6 @@ static void snes_update_line_4( UINT8 screen, UINT8 layer, UINT16 curline )
 		pal = (snes_vram[tilemap + ii + 1] & 0x1c) << 2;	/* 8 palettes of 16 colours */
 		tile = (snes_vram[tilemap + ii + 1] & 0x3) << 8;
 		tile |= snes_vram[tilemap + ii];
-
-		/* Mode 0 palettes are layer specific */
-		if( snes_ppu.mode == 0 )
-		{
-			pal += (layer << 5);
-		}
 
 		tile_line = line;
 		if( vflip )

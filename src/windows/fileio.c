@@ -749,7 +749,7 @@ void set_pathlist(int file_type, const char *new_rawpath)
 	// by default, start with an empty list
 	list->path = NULL;
 	list->pathcount = 0;
-		
+
 	list->rawpath = new_rawpath;
 
 }

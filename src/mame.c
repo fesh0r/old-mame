@@ -2007,7 +2007,7 @@ static int validitychecks(void)
 									printf("%s: %s wrong port read handler start = %08x, end = %08x ALIGN = %d\n",drivers[i]->source_file,drivers[i]->name,pra->start,pra->end,alignunit);
 									error = 1;
 								}
-
+							
 							}
 							pra++;
 						}
@@ -2063,7 +2063,7 @@ static int validitychecks(void)
 									printf("%s: %s wrong port write handler start = %08x, end = %08x ALIGN = %d\n",drivers[i]->source_file,drivers[i]->name,pwa->start,pwa->end,alignunit);
 									error = 1;
 								}
-
+						
 							}
 							pwa++;
 						}

@@ -1,5 +1,5 @@
 /*****************************************************************************
- *
+ * 
  *	 f8.c
  *	 Portable F8 emulator (Fairchild 3850)
  *
@@ -94,7 +94,14 @@ static UINT8 timer_shifter[256];
 /* Layout of the registers in the debugger */
 static UINT8 f8_reg_layout[] = {
 	F8_PC0, F8_PC1, F8_DC0, F8_DC1, F8_W, F8_A, F8_IS, -1,
-	F8_J, F8_HU, F8_HL, F8_KU, F8_KL, F8_QU, F8_QL, 0
+        F8_J, F8_HU, F8_HL, F8_KU, F8_KL, F8_QU, F8_QL, -1,
+        F8_R0, F8_R1, F8_R2, F8_R3, F8_R4, F8_R5, F8_R6, F8_R7, F8_R8, -1,
+        F8_R16, F8_R17, F8_R18, F8_R19, F8_R20, F8_R21, F8_R22, F8_R23, -1,
+        F8_R24, F8_R25, F8_R26, F8_R27, F8_R28, F8_R29, F8_R30, F8_R31, -1,
+        F8_R32, F8_R33, F8_R34, F8_R35, F8_R36, F8_R37, F8_R38, F8_R39, -1,
+        F8_R40, F8_R41, F8_R42, F8_R43, F8_R44, F8_R45, F8_R46, F8_R47, -1,
+        F8_R48, F8_R49, F8_R50, F8_R51, F8_R52, F8_R53, F8_R54, F8_R55, -1,
+        F8_R56, F8_R57, F8_R58, F8_R59, F8_R60, F8_R61, F8_R62, F8_R63, 0
 };
 
 /* Layout of the debugger windows x,y,w,h */
@@ -215,7 +222,6 @@ static void ROMC_08(void)
     f8.pc1 = f8.pc0;
     f8.dbus = 0;
     f8.pc0 = 0;
-    f8.w&=~I;
     f8_icount -= cL;
 }
 
@@ -762,7 +768,6 @@ static void f8_lnk(void)
     else
     {
 	CLR_OZCS;
-	SET_OC(f8.a,0);
     }
     SET_SZ(f8.a);
 }
@@ -892,12 +897,12 @@ static void f8_ai(void)
  ***************************************************/
 static void f8_ci(void)
 {
-    UINT8 tmp = ~f8.a + 1;
+    UINT16 tmp =((UINT8)~f8.a)+1;
     ROMC_03();
     CLR_OZCS;
     SET_OC(tmp,f8.dbus);
     tmp += f8.dbus;
-    SET_SZ(tmp);
+    SET_SZ((UINT8)tmp);
 }
 
 /***************************************************
@@ -1552,6 +1557,7 @@ void f8_reset(void *param)
 	int i;
 
 	memset(&f8, 0, sizeof(F8));
+    f8.w&=~I;
 
 	/* save PC0 to PC1 and reset PC0 */
 	ROMC_08();
@@ -1614,7 +1620,7 @@ int f8_execute(int cycles)
 	case 0x0d: /* 0000 1101 */	f8_lr_p0_q();		break;
 	case 0x0e: /* 0000 1110 */	f8_lr_q_dc();		break;
 	case 0x0f: /* 0000 1111 */	f8_lr_dc_q();		break;
-	    
+
         case 0x10: /* 0001 0000 */  f8_lr_dc_h();       break;
 	case 0x11: /* 0001 0001 */	f8_lr_h_dc();		break;
 	case 0x12: /* 0001 0010 */	f8_sr_1();			break;
@@ -1631,7 +1637,7 @@ int f8_execute(int cycles)
 	case 0x1d: /* 0001 1101 */	f8_lr_w_j();		break;
 	case 0x1e: /* 0001 1110 */	f8_lr_j_w();		break;
 	case 0x1f: /* 0001 1111 */	f8_inc();			break;
-	    
+
         case 0x20: /* 0010 0000 */  f8_li();            break;
 	case 0x21: /* 0010 0001 */	f8_ni();			break;
 	case 0x22: /* 0010 0010 */	f8_oi();			break;
@@ -1648,7 +1654,7 @@ int f8_execute(int cycles)
 	case 0x2d: /* 0010 1101 */	illegal();			break;
 	case 0x2e: /* 0010 1110 */	illegal();			break;
 	case 0x2f: /* 0010 1111 */	illegal();			break;
-	    
+
         case 0x30: /* 0011 0000 */  f8_ds_r( 0);        break;
 	case 0x31: /* 0011 0001 */	f8_ds_r( 1);		break;
 	case 0x32: /* 0011 0010 */	f8_ds_r( 2);		break;
@@ -1665,7 +1671,7 @@ int f8_execute(int cycles)
 	case 0x3d: /* 0011 1101 */	f8_ds_isar_i(); 	break;
 	case 0x3e: /* 0011 1110 */	f8_ds_isar_d(); 	break;
 	case 0x3f: /* 0011 1111 */	illegal();			break;
-	    
+
         case 0x40: /* 0100 0000 */  f8_lr_a_r( 0);      break;
 	case 0x41: /* 0100 0001 */	f8_lr_a_r( 1);		break;
 	case 0x42: /* 0100 0010 */	f8_lr_a_r( 2);		break;
@@ -1682,7 +1688,7 @@ int f8_execute(int cycles)
 	case 0x4d: /* 0100 1101 */	f8_lr_a_isar_i();	break;
 	case 0x4e: /* 0100 1110 */	f8_lr_a_isar_d();	break;
 	case 0x4f: /* 0100 1111 */	illegal();			break;
-	    
+
 	case 0x50: /* 0101 0000 */	f8_lr_r_a( 0);		break;
 	case 0x51: /* 0101 0001 */	f8_lr_r_a( 1);		break;
 	case 0x52: /* 0101 0010 */	f8_lr_r_a( 2);		break;
@@ -1699,7 +1705,7 @@ int f8_execute(int cycles)
 	case 0x5d: /* 0101 1101 */	f8_lr_isar_i_a();	break;
 	case 0x5e: /* 0101 1110 */	f8_lr_isar_d_a();	break;
 	case 0x5f: /* 0101 1111 */	illegal();			break;
-	    
+
 	case 0x60: /* 0110 0000 */	f8_lisu(0x00);		break;
 	case 0x61: /* 0110 0001 */	f8_lisu(0x08);		break;
 	case 0x62: /* 0110 0010 */	f8_lisu(0x10);		break;
@@ -1716,7 +1722,7 @@ int f8_execute(int cycles)
 	case 0x6d: /* 0110 1101 */	f8_lisl(0x05);		break;
 	case 0x6e: /* 0110 1110 */	f8_lisl(0x06);		break;
 	case 0x6f: /* 0110 1111 */	f8_lisl(0x07);		break;
-	    
+
 	case 0x70: /* 0111 0000 */	f8_lis(0x0);		break;
 	case 0x71: /* 0111 0001 */	f8_lis(0x1);		break;
 	case 0x72: /* 0111 0010 */	f8_lis(0x2);		break;
@@ -1733,7 +1739,7 @@ int f8_execute(int cycles)
 	case 0x7d: /* 0111 1101 */	f8_lis(0xd);		break;
 	case 0x7e: /* 0111 1110 */	f8_lis(0xe);		break;
 	case 0x7f: /* 0111 1111 */	f8_lis(0xf);		break;
-	    
+
 	case 0x80: /* 1000 0000 */	f8_bt(0);			break;
 	case 0x81: /* 1000 0001 */	f8_bt(1);			break;
 	case 0x82: /* 1000 0010 */	f8_bt(2);			break;
@@ -1750,7 +1756,7 @@ int f8_execute(int cycles)
 	case 0x8d: /* 1000 1101 */	f8_cm();			break;
 	case 0x8e: /* 1000 1110 */	f8_adc();			break;
 	case 0x8f: /* 1000 1111 */	f8_br7();			break;
-	    
+
 	case 0x90: /* 1001 0000 */	f8_bf(0x0); 		break;
 	case 0x91: /* 1001 0001 */	f8_bf(0x1); 		break;
 	case 0x92: /* 1001 0010 */	f8_bf(0x2); 		break;
@@ -1767,7 +1773,7 @@ int f8_execute(int cycles)
 	case 0x9d: /* 1001 1101 */	f8_bf(0xd); 		break;
 	case 0x9e: /* 1001 1110 */	f8_bf(0xe); 		break;
 	case 0x9f: /* 1001 1111 */	f8_bf(0xf); 		break;
-	    
+
 	case 0xa0: /* 1010 0000 */	f8_ins_0(0x0);		break;
 	case 0xa1: /* 1010 0001 */	f8_ins_0(0x1);		break;
 	case 0xa2: /* 1010 0010 */	illegal();			break;
@@ -1784,7 +1790,7 @@ int f8_execute(int cycles)
 	case 0xad: /* 1010 1101 */	f8_ins_1(0xd);		break;
 	case 0xae: /* 1010 1110 */	f8_ins_1(0xe);		break;
 	case 0xaf: /* 1010 1111 */	f8_ins_1(0xf);		break;
-	    
+
 	case 0xb0: /* 1011 0000 */	f8_outs_0(0x0); 	break;
 	case 0xb1: /* 1011 0001 */	f8_outs_0(0x1); 	break;
 	case 0xb2: /* 1011 0010 */	illegal();			break;
@@ -1801,7 +1807,7 @@ int f8_execute(int cycles)
 	case 0xbd: /* 1011 1101 */	f8_outs_1(0xd); 	break;
 	case 0xbe: /* 1011 1110 */	f8_outs_1(0xe); 	break;
 	case 0xbf: /* 1011 1111 */	f8_outs_1(0xf); 	break;
-	    
+
 	case 0xc0: /* 1100 0000 */	f8_as(0x0); 		break;
 	case 0xc1: /* 1100 0001 */	f8_as(0x1); 		break;
 	case 0xc2: /* 1100 0010 */	f8_as(0x2); 		break;
@@ -1818,7 +1824,7 @@ int f8_execute(int cycles)
 	case 0xcd: /* 1100 1101 */	f8_as_isar_i(); 	break;
 	case 0xce: /* 1100 1110 */	f8_as_isar_d(); 	break;
 	case 0xcf: /* 1100 1111 */	illegal(); 			break;
-	    
+
 	case 0xd0: /* 1101 0000 */	f8_asd(0x0);		break;
 	case 0xd1: /* 1101 0001 */	f8_asd(0x1);		break;
 	case 0xd2: /* 1101 0010 */	f8_asd(0x2);		break;
@@ -1835,7 +1841,7 @@ int f8_execute(int cycles)
 	case 0xdd: /* 1101 1101 */	f8_asd_isar_i();	break;
 	case 0xde: /* 1101 1110 */	f8_asd_isar_d();	break;
 	case 0xdf: /* 1101 1111 */	illegal();			break;
-	    
+
 	case 0xe0: /* 1110 0000 */	f8_xs(0x0); 		break;
 	case 0xe1: /* 1110 0001 */	f8_xs(0x1); 		break;
 	case 0xe2: /* 1110 0010 */	f8_xs(0x2); 		break;
@@ -1852,7 +1858,7 @@ int f8_execute(int cycles)
 	case 0xed: /* 1110 1101 */	f8_xs_isar_i();		break;
 	case 0xee: /* 1110 1110 */	f8_xs_isar_d();		break;
 	case 0xef: /* 1110 1111 */	illegal();			break;
-	    
+
 	case 0xf0: /* 1111 0000 */	f8_ns(0x0); 		break;
 	case 0xf1: /* 1111 0001 */	f8_ns(0x1); 		break;
 	case 0xf2: /* 1111 0010 */	f8_ns(0x2); 		break;
@@ -1908,32 +1914,6 @@ void f8_set_context(void *src)
 		memcpy(&f8, src, sizeof(F8));
 }
 
-/* Get program counter */
-unsigned f8_get_pc(void)
-{
-	return (f8.pc0 - 1) & 0xffff;
-}
-
-/* Set program counter */
-void f8_set_pc(unsigned val)
-{
-	f8.pc0 = val;
-	ROMC_00();
-}
-
-/* Get stack pointer */
-unsigned f8_get_sp(void)
-{
-	return f8.pc1;
-}
-
-/* Set stack pointer */
-void f8_set_sp(unsigned val)
-{
-	f8.pc1 = val;
-}
-
-
 WRITE_HANDLER( f8_internal_w )
 {
     f8.r[ offset & 0x3f ] = data;
@@ -1948,7 +1928,9 @@ unsigned f8_get_reg(int regnum)
 {
 	switch( regnum )
 	{
-	case F8_PC0: return f8.pc0;
+	case REG_PC:
+	case F8_PC0: return (f8.pc0 - 1) & 0xffff;
+	case REG_SP:
 	case F8_PC1: return f8.pc1;
 	case F8_DC0: return f8.dc0;
 	case F8_DC1: return f8.dc1;
@@ -1962,6 +1944,66 @@ unsigned f8_get_reg(int regnum)
 	case F8_KL:  return f8.r[13];
 	case F8_QU:  return f8.r[14];
 	case F8_QL:  return f8.r[15];
+	
+    case F8_R0:  return f8.r[0];
+    case F8_R1:  return f8.r[1];
+    case F8_R2:  return f8.r[2];
+    case F8_R3:  return f8.r[3];
+    case F8_R4:  return f8.r[4];
+    case F8_R5:  return f8.r[5];
+    case F8_R6:  return f8.r[6];
+    case F8_R7:  return f8.r[7];
+    case F8_R8:  return f8.r[8];
+
+    case F8_R16:  return f8.r[16];
+    case F8_R17:  return f8.r[17];
+    case F8_R18:  return f8.r[18];
+    case F8_R19:  return f8.r[19];
+    case F8_R20:  return f8.r[20];
+    case F8_R21:  return f8.r[21];
+    case F8_R22:  return f8.r[22];
+    case F8_R23:  return f8.r[23];
+    case F8_R24:  return f8.r[24];
+    case F8_R25:  return f8.r[25];
+    case F8_R26:  return f8.r[26];
+    case F8_R27:  return f8.r[27];
+    case F8_R28:  return f8.r[28];
+    case F8_R29:  return f8.r[29];
+    case F8_R30:  return f8.r[30];
+    case F8_R31:  return f8.r[31];
+    case F8_R32:  return f8.r[32];
+    case F8_R33:  return f8.r[33];
+    case F8_R34:  return f8.r[34];
+    case F8_R35:  return f8.r[35];
+    case F8_R36:  return f8.r[36];
+    case F8_R37:  return f8.r[37];
+    case F8_R38:  return f8.r[38];
+    case F8_R39:  return f8.r[39];
+    case F8_R40:  return f8.r[40];
+    case F8_R41:  return f8.r[41];
+    case F8_R42:  return f8.r[42];
+    case F8_R43:  return f8.r[43];
+    case F8_R44:  return f8.r[44];
+    case F8_R45:  return f8.r[45];
+    case F8_R46:  return f8.r[46];
+    case F8_R47:  return f8.r[47];
+    case F8_R48:  return f8.r[48];
+    case F8_R49:  return f8.r[49];
+    case F8_R50:  return f8.r[50];
+    case F8_R51:  return f8.r[51];
+    case F8_R52:  return f8.r[52];
+    case F8_R53:  return f8.r[53];
+    case F8_R54:  return f8.r[54];
+    case F8_R55:  return f8.r[55];
+    case F8_R56:  return f8.r[56];
+    case F8_R57:  return f8.r[57];
+    case F8_R58:  return f8.r[58];
+    case F8_R59:  return f8.r[59];
+    case F8_R60:  return f8.r[60];
+    case F8_R61:  return f8.r[61];
+    case F8_R62:  return f8.r[62];
+    case F8_R63:  return f8.r[63];
+
 	}
 	return 0;
 }
@@ -1970,7 +2012,12 @@ void f8_set_reg (int regnum, unsigned val)
 {
 	switch( regnum )
 	{
-	case F8_PC0: f8.pc0 = val; break;
+	case REG_PC:
+	case F8_PC0: f8.pc0 = val;
+		f8.dbus = cpu_readop(f8.pc0);
+    	f8.pc0 += 1;
+		break;
+	case REG_SP:
 	case F8_PC1: f8.pc1 = val; break;
 	case F8_DC0: f8.dc0 = val; break;
 	case F8_DC1: f8.dc1 = val; break;
@@ -1984,6 +2031,65 @@ void f8_set_reg (int regnum, unsigned val)
 	case F8_KL:  f8.r[13] = val; break;
 	case F8_QU:  f8.r[14] = val; break;
 	case F8_QL:  f8.r[15] = val; break;
+	
+	case F8_R0:  f8.r[0]=val; break;
+	case F8_R1:  f8.r[1]=val; break;
+	case F8_R2:  f8.r[2]=val; break;
+	case F8_R3:  f8.r[3]=val; break;
+	case F8_R4:  f8.r[4]=val; break;
+	case F8_R5:  f8.r[5]=val; break;
+	case F8_R6:  f8.r[6]=val; break;
+	case F8_R7:  f8.r[7]=val; break;
+	case F8_R8:  f8.r[8]=val; break;
+
+	case F8_R16:  f8.r[16]=val; break;
+	case F8_R17:  f8.r[17]=val; break;
+	case F8_R18:  f8.r[18]=val; break;
+	case F8_R19:  f8.r[19]=val; break;
+	case F8_R20:  f8.r[20]=val; break;
+	case F8_R21:  f8.r[21]=val; break;
+	case F8_R22:  f8.r[22]=val; break;
+	case F8_R23:  f8.r[23]=val; break;
+	case F8_R24:  f8.r[24]=val; break;
+	case F8_R25:  f8.r[25]=val; break;
+	case F8_R26:  f8.r[26]=val; break;
+	case F8_R27:  f8.r[27]=val; break;
+	case F8_R28:  f8.r[28]=val; break;
+	case F8_R29:  f8.r[29]=val; break;
+	case F8_R30:  f8.r[30]=val; break;
+	case F8_R31:  f8.r[31]=val; break;
+	case F8_R32:  f8.r[32]=val; break;
+	case F8_R33:  f8.r[33]=val; break;
+	case F8_R34:  f8.r[34]=val; break;
+	case F8_R35:  f8.r[35]=val; break;
+	case F8_R36:  f8.r[36]=val; break;
+	case F8_R37:  f8.r[37]=val; break;
+	case F8_R38:  f8.r[38]=val; break;
+	case F8_R39:  f8.r[39]=val; break;
+	case F8_R40:  f8.r[40]=val; break;
+	case F8_R41:  f8.r[41]=val; break;
+	case F8_R42:  f8.r[42]=val; break;
+	case F8_R43:  f8.r[43]=val; break;
+	case F8_R44:  f8.r[44]=val; break;
+	case F8_R45:  f8.r[45]=val; break;
+	case F8_R46:  f8.r[46]=val; break;
+	case F8_R47:  f8.r[47]=val; break;
+	case F8_R48:  f8.r[48]=val; break;
+	case F8_R49:  f8.r[49]=val; break;
+	case F8_R50:  f8.r[50]=val; break;
+	case F8_R51:  f8.r[51]=val; break;
+	case F8_R52:  f8.r[52]=val; break;
+	case F8_R53:  f8.r[53]=val; break;
+	case F8_R54:  f8.r[54]=val; break;
+	case F8_R55:  f8.r[55]=val; break;
+	case F8_R56:  f8.r[56]=val; break;
+	case F8_R57:  f8.r[57]=val; break;
+	case F8_R58:  f8.r[58]=val; break;
+	case F8_R59:  f8.r[59]=val; break;
+	case F8_R60:  f8.r[60]=val; break;
+	case F8_R61:  f8.r[61]=val; break;
+	case F8_R62:  f8.r[62]=val; break;
+	case F8_R63:  f8.r[63]=val; break;
     }
 }
 
@@ -2027,7 +2133,7 @@ const char *f8_info(void *context, int regnum)
 
     switch( regnum )
 	{
-		case CPU_INFO_REG+F8_PC0:sprintf(buffer[which], "PC0:%04X", r->pc0); break;
+		case CPU_INFO_REG+F8_PC0:sprintf(buffer[which], "PC0:%04X", ((r->pc0) - 1) & 0xffff); break;
 		case CPU_INFO_REG+F8_PC1:sprintf(buffer[which], "PC1:%04X", r->pc1); break;
 		case CPU_INFO_REG+F8_DC0:sprintf(buffer[which], "DC0:%04X", r->dc0); break;
 		case CPU_INFO_REG+F8_DC1:sprintf(buffer[which], "DC1:%04X", r->dc1); break;
@@ -2041,6 +2147,66 @@ const char *f8_info(void *context, int regnum)
 		case CPU_INFO_REG+F8_KL: sprintf(buffer[which], "KL :%02X", r->r[13]); break;
 		case CPU_INFO_REG+F8_QU: sprintf(buffer[which], "QU :%02X", r->r[14]); break;
 		case CPU_INFO_REG+F8_QL: sprintf(buffer[which], "QL :%02X", r->r[15]); break;
+		
+		case CPU_INFO_REG+F8_R0: sprintf(buffer[which], "R0 :%02X", r->r[0]); break;
+		case CPU_INFO_REG+F8_R1: sprintf(buffer[which], "R1 :%02X", r->r[1]); break;
+		case CPU_INFO_REG+F8_R2: sprintf(buffer[which], "R2 :%02X", r->r[2]); break;
+		case CPU_INFO_REG+F8_R3: sprintf(buffer[which], "R3 :%02X", r->r[3]); break;
+		case CPU_INFO_REG+F8_R4: sprintf(buffer[which], "R4 :%02X", r->r[4]); break;
+		case CPU_INFO_REG+F8_R5: sprintf(buffer[which], "R5 :%02X", r->r[5]); break;
+		case CPU_INFO_REG+F8_R6: sprintf(buffer[which], "R6 :%02X", r->r[6]); break;
+		case CPU_INFO_REG+F8_R7: sprintf(buffer[which], "R7 :%02X", r->r[7]); break;
+		case CPU_INFO_REG+F8_R8: sprintf(buffer[which], "R8 :%02X", r->r[8]); break;
+
+		case CPU_INFO_REG+F8_R16: sprintf(buffer[which], "R16 :%02X", r->r[16]); break;
+		case CPU_INFO_REG+F8_R17: sprintf(buffer[which], "R17 :%02X", r->r[17]); break;
+		case CPU_INFO_REG+F8_R18: sprintf(buffer[which], "R18 :%02X", r->r[18]); break;
+		case CPU_INFO_REG+F8_R19: sprintf(buffer[which], "R19 :%02X", r->r[19]); break;
+		case CPU_INFO_REG+F8_R20: sprintf(buffer[which], "R20 :%02X", r->r[20]); break;
+		case CPU_INFO_REG+F8_R21: sprintf(buffer[which], "R21 :%02X", r->r[21]); break;
+		case CPU_INFO_REG+F8_R22: sprintf(buffer[which], "R22 :%02X", r->r[22]); break;
+		case CPU_INFO_REG+F8_R23: sprintf(buffer[which], "R23 :%02X", r->r[23]); break;
+		case CPU_INFO_REG+F8_R24: sprintf(buffer[which], "R24 :%02X", r->r[24]); break;
+		case CPU_INFO_REG+F8_R25: sprintf(buffer[which], "R25 :%02X", r->r[25]); break;
+		case CPU_INFO_REG+F8_R26: sprintf(buffer[which], "R26 :%02X", r->r[26]); break;
+		case CPU_INFO_REG+F8_R27: sprintf(buffer[which], "R27 :%02X", r->r[27]); break;
+		case CPU_INFO_REG+F8_R28: sprintf(buffer[which], "R28 :%02X", r->r[28]); break;
+		case CPU_INFO_REG+F8_R29: sprintf(buffer[which], "R29 :%02X", r->r[29]); break;
+		case CPU_INFO_REG+F8_R30: sprintf(buffer[which], "R30 :%02X", r->r[30]); break;
+		case CPU_INFO_REG+F8_R31: sprintf(buffer[which], "R31 :%02X", r->r[31]); break;
+		case CPU_INFO_REG+F8_R32: sprintf(buffer[which], "R32 :%02X", r->r[32]); break;
+		case CPU_INFO_REG+F8_R33: sprintf(buffer[which], "R33 :%02X", r->r[33]); break;
+		case CPU_INFO_REG+F8_R34: sprintf(buffer[which], "R34 :%02X", r->r[34]); break;
+		case CPU_INFO_REG+F8_R35: sprintf(buffer[which], "R35 :%02X", r->r[35]); break;
+		case CPU_INFO_REG+F8_R36: sprintf(buffer[which], "R36 :%02X", r->r[36]); break;
+		case CPU_INFO_REG+F8_R37: sprintf(buffer[which], "R37 :%02X", r->r[37]); break;
+		case CPU_INFO_REG+F8_R38: sprintf(buffer[which], "R38 :%02X", r->r[38]); break;
+		case CPU_INFO_REG+F8_R39: sprintf(buffer[which], "R39 :%02X", r->r[39]); break;
+		case CPU_INFO_REG+F8_R40: sprintf(buffer[which], "R40 :%02X", r->r[40]); break;
+		case CPU_INFO_REG+F8_R41: sprintf(buffer[which], "R41 :%02X", r->r[41]); break;
+		case CPU_INFO_REG+F8_R42: sprintf(buffer[which], "R42 :%02X", r->r[42]); break;
+		case CPU_INFO_REG+F8_R43: sprintf(buffer[which], "R43 :%02X", r->r[43]); break;
+		case CPU_INFO_REG+F8_R44: sprintf(buffer[which], "R44 :%02X", r->r[44]); break;
+		case CPU_INFO_REG+F8_R45: sprintf(buffer[which], "R45 :%02X", r->r[45]); break;
+		case CPU_INFO_REG+F8_R46: sprintf(buffer[which], "R46 :%02X", r->r[46]); break;
+		case CPU_INFO_REG+F8_R47: sprintf(buffer[which], "R47 :%02X", r->r[47]); break;
+		case CPU_INFO_REG+F8_R48: sprintf(buffer[which], "R48 :%02X", r->r[48]); break;
+		case CPU_INFO_REG+F8_R49: sprintf(buffer[which], "R49 :%02X", r->r[49]); break;
+		case CPU_INFO_REG+F8_R50: sprintf(buffer[which], "R50 :%02X", r->r[50]); break;
+		case CPU_INFO_REG+F8_R51: sprintf(buffer[which], "R51 :%02X", r->r[51]); break;
+		case CPU_INFO_REG+F8_R52: sprintf(buffer[which], "R52 :%02X", r->r[52]); break;
+		case CPU_INFO_REG+F8_R53: sprintf(buffer[which], "R53 :%02X", r->r[53]); break;
+		case CPU_INFO_REG+F8_R54: sprintf(buffer[which], "R54 :%02X", r->r[54]); break;
+		case CPU_INFO_REG+F8_R55: sprintf(buffer[which], "R55 :%02X", r->r[55]); break;
+		case CPU_INFO_REG+F8_R56: sprintf(buffer[which], "R56 :%02X", r->r[56]); break;
+		case CPU_INFO_REG+F8_R57: sprintf(buffer[which], "R57 :%02X", r->r[57]); break;
+		case CPU_INFO_REG+F8_R58: sprintf(buffer[which], "R58 :%02X", r->r[58]); break;
+		case CPU_INFO_REG+F8_R59: sprintf(buffer[which], "R59 :%02X", r->r[59]); break;
+		case CPU_INFO_REG+F8_R60: sprintf(buffer[which], "R60 :%02X", r->r[60]); break;
+		case CPU_INFO_REG+F8_R61: sprintf(buffer[which], "R61 :%02X", r->r[61]); break;
+		case CPU_INFO_REG+F8_R62: sprintf(buffer[which], "R62 :%02X", r->r[62]); break;
+		case CPU_INFO_REG+F8_R63: sprintf(buffer[which], "R63 :%02X", r->r[63]); break;
+
         case CPU_INFO_FLAGS:
 			sprintf(buffer[which], "%c%c%c%c%c",
 				r->w & 0x10 ? 'I':'.',
@@ -2082,4 +2248,6 @@ extern void f8_runtime_loader_init(void)
 #endif
 
 void f8_init (void) { }
+
+
 

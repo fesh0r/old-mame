@@ -16,7 +16,7 @@
 #include "state.h"
 
 #ifdef MESS
-#include "mess.h"
+  #include "mess.h"
 #include "mesintrf.h"
 #endif
 
@@ -2656,14 +2656,12 @@ int showgameinfo(struct mame_bitmap *bitmap)
 		update_video_and_audio();
 	}
 
-#ifdef MESS
-#if 0
+	#ifdef MESS
 	while (displayimageinfo(bitmap,0) == 1)
 	{
 		update_video_and_audio();
 	}
-#endif
-#endif
+	#endif
 
 	erase_screen(bitmap);
 	/* make sure that the screen is really cleared, in case autoframeskip kicked in */
@@ -3327,10 +3325,10 @@ static int setup_menu(struct mame_bitmap *bitmap, int selected)
 			case UI_CODE:
 			case UI_ANALOG:
 			case UI_CALIBRATE:
-#ifndef MESS
+			#ifndef MESS
 			case UI_STATS:
 			case UI_GAMEINFO:
-#else
+			#else
 			case UI_GAMEINFO:
 			case UI_IMAGEINFO:
 			case UI_FILEMANAGER:

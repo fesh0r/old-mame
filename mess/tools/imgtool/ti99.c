@@ -973,7 +973,7 @@ static int open_image_lvl1(STREAM *file_handle, ti99_img_format img_format, ti99
 
 	if (img_format == if_harddisk)
 	{
-		const struct hard_disk_header *info; 
+		const struct hard_disk_info *info; 
 
 		l1_img->harddisk_handle = imghd_open(file_handle);
 		if (!l1_img->harddisk_handle)
@@ -983,7 +983,7 @@ static int open_image_lvl1(STREAM *file_handle, ti99_img_format img_format, ti99
 		l1_img->geometry.cylinders = info->cylinders;
 		l1_img->geometry.heads = info->heads;
 		l1_img->geometry.secspertrack = info->sectors;
-		if (info->seclen != 256)
+		if (info->sectorbytes != 256)
 		{
 			imghd_close(l1_img->harddisk_handle);
 			l1_img->harddisk_handle = NULL;
@@ -5304,6 +5304,10 @@ static int dsk_image_create(const struct ImageModule *mod, STREAM *f, option_res
 	l1_img.geometry.secspertrack = option_resolution_lookup_int(createoptions, dsk_createopts_sectors);
 	protected = option_resolution_lookup_int(createoptions, dsk_createopts_protection);
 	density = option_resolution_lookup_int(createoptions, dsk_createopts_density);
+
+	/* NPW 03-DEC-2003 - Fixes a crash if volname is NULL */
+	if (!volname)
+		volname = "";
 
 	totphysrecs = l1_img.geometry.secspertrack * l1_img.geometry.cylinders * l1_img.geometry.heads;
 	physrecsperAU = (totphysrecs + 1599) / 1600;

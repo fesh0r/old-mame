@@ -161,6 +161,7 @@ TESTDRIVER( studio2 )	/* Studio II										*/
 	/* COLECO */
 	DRIVER( coleco )	/* ColecoVision (Original BIOS)						*/
 	DRIVER( colecoa )	/* ColecoVision (Thick Characters)					*/
+	DRIVER( adam )		/* Coleco Adam										*/
 
 	/* NEC */
 	DRIVER( pce )		/* PC/Engine - Turbo Graphics-16  NEC 1989-1993		*/
@@ -461,7 +462,7 @@ TESTDRIVER( mz800  )	/* 1982 Sharp MZ800 								*/
 
 	/* TEXAS INSTRUMENTS */
 	DRIVER( ti990_10 )	/* 1975 TI 990/10									*/
-//TESTDRIVER( ti990_4 )	/* 1976 TI 990/4									*/
+	DRIVER( ti990_4 )	/* 1976 TI 990/4									*/
 	DRIVER( 990189 )	/* 1978 TM 990/189									*/
 	DRIVER( 990189v )	/* 1980 TM 990/189 with Color Video Board			*/
 
@@ -684,7 +685,10 @@ TESTDRIVER( psxe41 )
 	DRIVER(concept)		/* 1982 Corvus Concept								*/
 
 	/* DAI */
-	DRIVER(dai)			/* DAI									*/
+	DRIVER(dai)			/* DAI												*/
+
+	/* Telenova */
+	DRIVER(compis)		/* 1985 Telenova Compis								*/
 
 /****************Games*******************************************************/
 	/* Computer Electronic */

@@ -18,6 +18,7 @@
 #include "cpu/m6502/m6502.h"
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
+#include "devices/flopdrv.h"
 
 #ifdef MAME_DEBUG
 #define LOG(x)	logerror x
@@ -140,7 +141,7 @@ static void apple2_setvar(UINT32 val, UINT32 mask)
 		cpu_setbank(7,  &mess_ram[(a2 & othermask) ? 0x10400 : 0x00400]);
 
 		othermask = ((a2 & (VAR_80STORE|VAR_HIRES)) == (VAR_80STORE|VAR_HIRES)) ? VAR_PAGE2 : VAR_RAMWRT;
-		cpu_setbank(9,  &mess_ram[(a2 & VAR_RAMRD) ? 0x12000 : 0x02000]);
+		cpu_setbank(9,  &mess_ram[(a2 & othermask) ? 0x12000 : 0x02000]);
 	}
 
 	if (mask & (VAR_80STORE|VAR_PAGE2|VAR_HIRES|VAR_RAMWRT))
@@ -153,7 +154,7 @@ static void apple2_setvar(UINT32 val, UINT32 mask)
 		memory_set_bankhandler_w(7,  0, (a2 & othermask) ? apple2_auxram0400_w : apple2_mainram0400_w);
 
 		othermask = ((a2 & (VAR_80STORE|VAR_HIRES)) == (VAR_80STORE|VAR_HIRES)) ? VAR_PAGE2 : VAR_RAMWRT;
-		memory_set_bankhandler_w(9,  0, (a2 & VAR_RAMWRT) ? apple2_auxram2000_w : apple2_mainram2000_w);
+		memory_set_bankhandler_w(9,  0, (a2 & othermask) ? apple2_auxram2000_w : apple2_mainram2000_w);
 	}
 
 	if (mask & (VAR_INTCXROM|VAR_ROMSWITCH))
@@ -376,6 +377,9 @@ DRIVER_INIT( apple2 )
 ***************************************************************************/
 MACHINE_INIT( apple2 )
 {
+	mess_image *image;
+	int i;
+
 	/* --------------------------------------------- *
 	 * set up the softswitch mask/set                *
 	 * --------------------------------------------- */
@@ -420,6 +424,17 @@ MACHINE_INIT( apple2 )
 
 	joystick_x1_time = joystick_y1_time = 0;
 	joystick_x2_time = joystick_y2_time = 0;
+
+	/* seek middle sector */
+	for (i = 0; i < device_count(IO_FLOPPY); i++)
+	{
+		image = image_from_devtype_and_index(IO_FLOPPY, i);
+		if (image_exists(image))
+		{
+			floppy_drive_seek(image, -999);
+			floppy_drive_seek(image, +35/2);
+		}
+	}
 }
 
 /***************************************************************************

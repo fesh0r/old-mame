@@ -24,7 +24,7 @@ CPUS+=M4510@
 CPUS+=H6280@
 CPUS+=I86@
 CPUS+=I88@
-#CPUS+=I186@
+CPUS+=I186@
 #CPUS+=I188@
 CPUS+=I286@
 CPUS+=V20@
@@ -73,6 +73,7 @@ CPUS+=TMS9995@
 #CPUS+=CCPU@
 #CPUS+=ADSP2100@
 #CPUS+=ADSP2101@
+#CPUS+=ADSP2104@
 #CPUS+=ADSP2105@
 #CPUS+=ADSP2115@
 CPUS+=PSXCPU@
@@ -96,6 +97,7 @@ CPUS+=CDP1802@
 CPUS+=SC61860@
 CPUS+=G65816@
 CPUS+=SPC700@
+#CPUS+=E132XS@
 CPUS+=SATURN@
 CPUS+=APEXC@
 CPUS+=F8@
@@ -130,6 +132,7 @@ SOUNDS+=TIA@
 SOUNDS+=NES@
 SOUNDS+=ASTROCADE@
 #SOUNDS+=NAMCO@
+#SOUNDS+=NAMCONA@
 #SOUNDS+=TMS36XX@
 SOUNDS+=TMS5110@
 SOUNDS+=TMS5220@
@@ -137,12 +140,14 @@ SOUNDS+=TMS5220@
 #SOUNDS+=ADPCM@
 SOUNDS+=OKIM6295@
 #SOUNDS+=MSM5205@
+#SOUNDS+=MSM5232@
 #SOUNDS+=UPD7759@
 #SOUNDS+=HC55516@
 #SOUNDS+=K005289@
 #SOUNDS+=K007232@
 SOUNDS+=K051649@
 #SOUNDS+=K053260@
+#SOUNDS+=K054539@
 #SOUNDS+=SEGAPCM@
 #SOUNDS+=RF5C68@
 #SOUNDS+=CEM3394@
@@ -153,14 +158,20 @@ SOUNDS+=SAA1099@
 #SOUNDS+=ES5505@
 #SOUNDS+=ES5506@
 #SOUNDS+=BSMT2000@
+#SOUNDS+=YMF262@
 #SOUNDS+=YMF278B@
 #SOUNDS+=GAELCO_CG1V@
 #SOUNDS+=GAELCO_GAE1@
 #SOUNDS+=X1_010@
+#SOUNDS+=MULTIPCM@
+#SOUNDS+=C6280@
+#SOUNDS+=SP0250@
+#SOUNDS+=SCSP@
+#SOUNDS+=YMF271@
+SOUNDS+=PSXSPU@
 SOUNDS+=SPEAKER@
 SOUNDS+=WAVE@
 SOUNDS+=BEEP@
-#SOUNDS+=SP0250@
 
 # Archive definitions
 DRVLIBS = \
@@ -235,7 +246,8 @@ DRVLIBS = \
 	$(OBJ)/sony.a     \
 	$(OBJ)/concept.a  \
 	$(OBJ)/dai.a      \
-	$(OBJ)/bandai.a   \
+	$(OBJ)/bandai.a		\
+	$(OBJ)/compis.a		\
 
 
 $(OBJ)/neocd.a:						\
@@ -246,7 +258,11 @@ $(OBJ)/neocd.a:						\
 
 $(OBJ)/coleco.a:   \
 	$(OBJ)/mess/machine/coleco.o	\
-	$(OBJ)/mess/systems/coleco.o
+	$(OBJ)/mess/systems/coleco.o	\
+	$(OBJ)/mess/machine/adam.o		\
+	$(OBJ)/mess/systems/adam.o		\
+	$(OBJ)/mess/formats/adam_dsk.o	\
+	
 
 $(OBJ)/arcadia.a:  \
 	$(OBJ)/mess/sndhrdw/arcadia.o	\
@@ -347,10 +363,9 @@ $(OBJ)/coco.a:   \
 	$(OBJ)/mess/machine/6883sam.o	\
 	$(OBJ)/mess/machine/cococart.o	\
 	$(OBJ)/mess/machine/ds1315.o	\
-	$(OBJ)/mess/machine/ds1315.o	\
 	$(OBJ)/mess/machine/m6242b.o	\
-	$(OBJ)/mess/machine/mc10.o		\
-	$(OBJ)/mess/systems/mc10.o		\
+	$(OBJ)/mess/machine/mc10.o	\
+	$(OBJ)/mess/systems/mc10.o	\
 	$(OBJ)/mess/machine/dragon.o	\
 	$(OBJ)/mess/vidhrdw/dragon.o	\
 	$(OBJ)/mess/systems/dragon.o	\
@@ -435,32 +450,34 @@ $(OBJ)/fairch.a: \
 	$(OBJ)/mess/systems/channelf.o 
 
 $(OBJ)/ti99.a:	   \
-	$(OBJ)/mess/machine/tms9901.o  \
-	$(OBJ)/mess/machine/tms9902.o \
-	$(OBJ)/mess/sndhrdw/spchroms.o \
-	$(OBJ)/mess/machine/ti99_4x.o  \
-	$(OBJ)/mess/systems/ti99_4x.o  \
-	$(OBJ)/mess/machine/990_hd.o	 \
-	$(OBJ)/mess/machine/990_tap.o	 \
-	$(OBJ)/mess/vidhrdw/911_vdt.o  \
-	$(OBJ)/mess/systems/ti990_10.o \
-	$(OBJ)/mess/machine/ti990.o \
-	$(OBJ)/mess/machine/mm58274c.o \
-	$(OBJ)/mess/machine/994x_ser.o \
-	$(OBJ)/mess/systems/ti99_4p.o  \
-	$(OBJ)/mess/machine/at29040.o  \
-	$(OBJ)/mess/machine/99_dsk.o   \
-	$(OBJ)/mess/machine/99_ide.o   \
-	$(OBJ)/mess/machine/99_peb.o   \
-	$(OBJ)/mess/machine/99_hsgpl.o \
-	$(OBJ)/mess/machine/smc92x4.o  \
-	$(OBJ)/mess/machine/rtc65271.o \
-	$(OBJ)/mess/systems/geneve.o   \
-	$(OBJ)/mess/machine/geneve.o   \
-	$(OBJ)/mess/systems/tm990189.o \
+	$(OBJ)/mess/machine/tms9901.o	\
+	$(OBJ)/mess/machine/tms9902.o	\
+	$(OBJ)/mess/machine/ti99_4x.o	\
+	$(OBJ)/mess/machine/990_hd.o	\
+	$(OBJ)/mess/machine/990_tap.o	\
+	$(OBJ)/mess/machine/ti990.o		\
+	$(OBJ)/mess/machine/mm58274c.o	\
+	$(OBJ)/mess/machine/994x_ser.o	\
+	$(OBJ)/mess/machine/at29040.o	\
+	$(OBJ)/mess/machine/99_dsk.o	\
+	$(OBJ)/mess/machine/99_ide.o	\
+	$(OBJ)/mess/machine/99_peb.o	\
+	$(OBJ)/mess/machine/99_hsgpl.o	\
+	$(OBJ)/mess/machine/smc92x4.o	\
+	$(OBJ)/mess/machine/rtc65271.o	\
+	$(OBJ)/mess/machine/geneve.o	\
+	$(OBJ)/mess/machine/990_dk.o	\
+	$(OBJ)/mess/sndhrdw/spchroms.o	\
+	$(OBJ)/mess/systems/ti990_4.o	\
+	$(OBJ)/mess/systems/ti990_10.o	\
+	$(OBJ)/mess/systems/ti99_4x.o	\
+	$(OBJ)/mess/systems/ti99_4p.o	\
+	$(OBJ)/mess/systems/geneve.o	\
+	$(OBJ)/mess/systems/tm990189.o	\
 	$(OBJ)/mess/systems/ti99_8.o	\
-#	$(OBJ)/mess/systems/ti99_2.o	 \
-#	$(OBJ)/mess/systems/ti990_4.o  \
+	$(OBJ)/mess/vidhrdw/911_vdt.o	\
+	$(OBJ)/mess/vidhrdw/733_asr.o	\
+#	$(OBJ)/mess/systems/ti99_2.o	\
 
 $(OBJ)/tutor.a:   \
 	$(OBJ)/mess/systems/tutor.o
@@ -767,6 +784,13 @@ $(OBJ)/bandai.a:     \
 	$(OBJ)/mess/vidhrdw/wswan.o   \
 	$(OBJ)/mess/sndhrdw/wswan.o
 
+$(OBJ)/compis.a:					\
+	$(OBJ)/mess/systems/compis.o	\
+	$(OBJ)/mess/machine/compis.o	\
+	$(OBJ)/mess/machine/mm58274c.o	\
+	$(OBJ)/mess/formats/cpis_dsk.o	\
+	$(OBJ)/mess/vidhrdw/i82720.o 
+
 # MESS specific core $(OBJ)s
 COREOBJS += \
 	$(OBJ)/cheat.o					\
@@ -789,6 +813,7 @@ COREOBJS += \
 	$(OBJ)/mess/pool.o				\
 	$(OBJ)/mess/cheatms.o			\
 	$(OBJ)/mess/opresolv.o			\
+	$(OBJ)/mess/mui_text.o			\
 	$(OBJ)/mess/formats/ioprocs.o	\
 	$(OBJ)/mess/formats/flopimg.o	\
 	$(OBJ)/mess/formats/cassimg.o	\
@@ -875,11 +900,13 @@ tools/messdocs$(EXE):						\
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $^ $(LIBS) $(OUTOPT)
 
-tools/imgtool$(EXE):	                   \
-	$(PLATFORM_IMGTOOL_OBJS)	           \
+tools/imgtool$(EXE):						\
+	$(PLATFORM_IMGTOOL_OBJS)				\
 	$(OBJ)/unzip.o							\
-	$(OBJ)/harddisk.o	                   \
-	$(OBJ)/md5.o					       \
+	$(OBJ)/chd.o							\
+	$(OBJ)/harddisk.o						\
+	$(OBJ)/md5.o							\
+	$(OBJ)/sha1.o							\
 	$(OBJ)/mess/crcfile.o	               \
 	$(OBJ)/mess/utils.o						\
 	$(OBJ)/mess/pool.o						\
