@@ -693,13 +693,13 @@ else
 CPUDEFS += -DHAS_TMS9995=0
 endif
 
-CPU=$(strip $(findstring TMS99000@,$(CPUS)))
+CPU=$(strip $(findstring TMS9900@,$(CPUS)))
 ifneq ($(CPU),)
 OBJDIRS += $(OBJ)/cpu/tms9900
 CPUDEFS += -DHAS_TMS99000=1
-CPUOBJS += $(OBJ)/cpu/tms9900/tms9995.o
+CPUOBJS += $(OBJ)/cpu/tms9900/tms9900.o
 DBGOBJS += $(OBJ)/cpu/tms9900/9900dasm.o
-$(OBJ)/cpu/tms9900/tms9995.o: tms9995.c tms9900.h 99xxcore.h 99xxstat.h
+$(OBJ)/cpu/tms9900/tms9900.o: tms9900.c tms9900.h 99xxcore.h 9900stat.h
 else
 CPUDEFS += -DHAS_TMS99000=0
 endif
@@ -1112,6 +1112,14 @@ else
 SOUNDDEFS += -DHAS_DAC=0
 endif
 
+SOUND=$(strip $(findstring DMADAC@,$(SOUNDS)))
+ifneq ($(SOUND),)
+SOUNDDEFS += -DHAS_DMADAC=1
+SOUNDOBJS += $(OBJ)/sound/dmadac.o
+else
+SOUNDDEFS += -DHAS_DMADAC=0
+endif
+
 SOUND=$(strip $(findstring DISCRETE@,$(SOUNDS)))
 ifneq ($(SOUND),)
 SOUNDDEFS += -DHAS_DISCRETE=1
@@ -1303,6 +1311,14 @@ else
 SOUNDDEFS += -DHAS_NAMCO_15XX=0
 endif
 
+SOUND=$(strip $(findstring NAMCO_CUS30@,$(SOUNDS)))
+ifneq ($(SOUND),)
+SOUNDDEFS += -DHAS_NAMCO_CUS30=1
+SOUNDOBJS += $(OBJ)/sound/namco.o
+else
+SOUNDDEFS += -DHAS_NAMCO_CUS30=0
+endif
+
 SOUND=$(strip $(findstring NAMCO_52XX@,$(SOUNDS)))
 ifneq ($(SOUND),)
 SOUNDDEFS += -DHAS_NAMCO_52XX=1
@@ -1317,6 +1333,14 @@ SOUNDDEFS += -DHAS_NAMCO_54XX=1
 SOUNDOBJS += $(OBJ)/sound/namco54.o
 else
 SOUNDDEFS += -DHAS_NAMCO_54XX=0
+endif
+
+SOUND=$(strip $(findstring NAMCO_63701X@,$(SOUNDS)))
+ifneq ($(SOUND),)
+SOUNDDEFS += -DHAS_NAMCO_63701X=1
+SOUNDOBJS += $(OBJ)/sound/n63701x.o
+else
+SOUNDDEFS += -DHAS_NAMCO_63701X=0
 endif
 
 SOUND=$(strip $(findstring NAMCONA@,$(SOUNDS)))

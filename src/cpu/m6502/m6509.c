@@ -125,8 +125,8 @@ static READ_HANDLER( m6509_read_00001 )
 
 static WRITE_HANDLER( m6509_write_00000 )
 {
-	m6509.pc_bank.b.h2 = data & 0xf;
-	m6509.pc.w.h = m6509.pc_bank.w.h;
+	m6509.pc_bank.b.h2=data&0xf;
+	m6509.pc.w.h=m6509.pc_bank.w.h;
 	change_pc(PCD);
 }
 

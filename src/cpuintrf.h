@@ -88,7 +88,7 @@ enum
 	CPU_TMS9985,
 	CPU_TMS9989,
 	CPU_TMS9995,
-	CPU_TMS99000,
+	CPU_TMS99100,
 	CPU_TMS99105A,
 	CPU_TMS99110A,
 	CPU_Z8000,
@@ -183,7 +183,7 @@ enum
 {
 	/* --- the following bits of info are returned as 64-bit signed integers --- */
 	CPUINFO_INT_FIRST = 0x00000,
-
+	
 	CPUINFO_INT_CONTEXT_SIZE = CPUINFO_INT_FIRST,		/* R/O: size of CPU context in bytes */
 	CPUINFO_INT_IRQ_LINES,								/* R/O: number of IRQ lines */
 	CPUINFO_INT_DEFAULT_IRQ_VECTOR,						/* R/O: default IRQ vector */
@@ -208,12 +208,12 @@ enum
 	CPUINFO_INT_IRQ_STATE_LAST = CPUINFO_INT_IRQ_STATE + MAX_IRQ_LINES - 1,
 	CPUINFO_INT_REGISTER,								/* R/W: values of up to MAX_REGs registers */
 	CPUINFO_INT_REGISTER_LAST = CPUINFO_INT_REGISTER + MAX_REGS - 1,
-
+	
 	CPUINFO_INT_CPU_SPECIFIC = 0x08000,					/* R/W: CPU-specific values start here */
-
+	
 	/* --- the following bits of info are returned as pointers to data or functions --- */
 	CPUINFO_PTR_FIRST = 0x10000,
-
+	
 	CPUINFO_PTR_SET_INFO = CPUINFO_PTR_FIRST,			/* R/O: void (*set_info)(UINT32 state, INT64 data, void *ptr) */
 	CPUINFO_PTR_GET_CONTEXT,							/* R/O: void (*get_context)(void *buffer) */
 	CPUINFO_PTR_SET_CONTEXT,							/* R/O: void (*set_context)(void *buffer) */
@@ -228,12 +228,13 @@ enum
 	CPUINFO_PTR_REGISTER_LAYOUT,						/* R/O: struct debug_register_layout *layout */
 	CPUINFO_PTR_WINDOW_LAYOUT,							/* R/O: struct debug_window_layout *layout */
 	CPUINFO_PTR_INTERNAL_MEMORY_MAP,					/* R/O: construct_map_t map */
+	CPUINFO_PTR_INTERNAL_MEMORY_MAP_LAST = CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACES - 1,
 
 	CPUINFO_PTR_CPU_SPECIFIC = 0x18000,					/* R/W: CPU-specific values start here */
-
+	
 	/* --- the following bits of info are returned as NULL-terminated strings --- */
 	CPUINFO_STR_FIRST = 0x20000,
-
+	
 	CPUINFO_STR_NAME = CPUINFO_STR_FIRST,				/* R/O: name of the CPU */
 	CPUINFO_STR_CORE_FAMILY,							/* R/O: family of the CPU */
 	CPUINFO_STR_CORE_VERSION,							/* R/O: version of the CPU core */
@@ -565,7 +566,7 @@ void cpu_set_m68k_reset(int cpunum, void (*resetfn)(void));
 /* return a pointer to the interface struct for a given CPU type */
 INLINE const struct cpu_interface *cputype_get_interface(int cputype)
 {
-	extern const struct cpu_interface cpuintrf[];
+	extern struct cpu_interface cpuintrf[];
 	return &cpuintrf[cputype];
 }
 
