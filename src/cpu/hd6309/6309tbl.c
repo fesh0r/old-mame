@@ -501,7 +501,7 @@ static UINT8 index_cycle_em[256] = {        /* Index Loopup cycle counts, emulat
 
 static UINT8 index_cycle_na[256] = {         /* Index Loopup cycle counts,
 native 6309 */
-/*	        X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, XA, XB, XC, XD, XE, XF */
+/*	     X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, XA, XB, XC, XD, XE, XF */
 
 /* 0x0X */   1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
 /* 0x1X */   1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,

@@ -5628,7 +5628,7 @@ INLINE void pref11( void )
 		case 0xf6: ldf_ex();		break;
 		case 0xf7: stf_ex();		break;
 		case 0xfb: addf_ex();		break;
-		
+
 		default:   IIError();		break;
 	}
 #else

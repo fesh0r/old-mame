@@ -24,7 +24,6 @@
 
 #include "includes/uart8250.h"
 #include "includes/pic8259.h"
-#include "includes/dma8237.h"
 #include "includes/pit8253.h"
 #include "includes/mc146818.h"
 #include "includes/pc_vga.h"
@@ -49,10 +48,13 @@
 #include "includes/pcshare.h"
 #include "includes/pc.h"
 
-#include "devices/pc_hdc.h"
+#include "machine/pc_hdc.h"
 #include "devices/printer.h"
 #include "devices/mflopimg.h"
+#include "devices/harddriv.h"
 #include "formats/pc_dsk.h"
+
+#include "machine/8237dma.h"
 
 #define ym3812_StdClock 3579545
 
@@ -77,6 +79,8 @@
   jumperable? normally 0x220
 */
 #define GAMEBLASTER
+
+
 
 // IO Expansion, only a little bit for ibm bios self tests
 //#define EXP_ON
@@ -1583,9 +1587,10 @@ SYSTEM_CONFIG_START(ibmpc)
 	CONFIG_RAM_DEFAULT( 640 * 1024 )
 	CONFIG_DEVICE_PRINTER(3)
 	CONFIG_DEVICE_FLOPPY(2, pc)
-	CONFIG_DEVICE_PC_HARDDISK(4)
+	CONFIG_DEVICE_HARDDISK(4)
 	CONFIG_QUEUE_CHARS( at_keyboard )
 	CONFIG_ACCEPT_CHAR( at_keyboard )
+	CONFIG_CHARQUEUE_EMPTY( at_keyboard )
 SYSTEM_CONFIG_END
 
 /***************************************************************************

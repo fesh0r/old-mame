@@ -65,7 +65,7 @@ CPUS+=TMS9980@
 #CPUS+=TMS9985@
 #CPUS+=TMS9989@
 CPUS+=TMS9995@
-CPUS+=TMS99000@
+#CPUS+=TMS99000@
 CPUS+=TMS99010@
 #CPUS+=TMS99105A@
 #CPUS+=TMS99110A@
@@ -113,6 +113,7 @@ CPUS+=PDP1@
 SOUNDS+=CUSTOM@
 SOUNDS+=SAMPLES@
 SOUNDS+=DAC@
+#SOUNDS+=DMADAC@
 #SOUNDS+=DISCRETE@
 SOUNDS+=AY8910@
 SOUNDS+=YM2203@
@@ -188,8 +189,8 @@ DRVLIBS = \
 	$(OBJ)/pdp1.a	  \
 	$(OBJ)/sony.a     \
 	$(OBJ)/nintendo.a \
-	$(OBJ)/at.a       \
 	$(OBJ)/pc.a       \
+	$(OBJ)/at.a       \
 	$(OBJ)/pcshare.a  \
 	$(OBJ)/ti99.a     \
 	$(OBJ)/amstrad.a  \
@@ -497,12 +498,12 @@ $(OBJ)/bally.a:    \
 	$(OBJ)/mess/systems/astrocde.o
 
 $(OBJ)/pcshare.a:					\
-	$(OBJ)/mess/machine/dma8237.o	\
+	$(OBJ)/mess/machine/8237dma.o	\
 	$(OBJ)/mess/machine/pic8259.o	\
 	$(OBJ)/mess/sndhrdw/pc.o		\
 	$(OBJ)/mess/sndhrdw/sblaster.o	\
 	$(OBJ)/mess/machine/pc_fdc.o	\
-	$(OBJ)/mess/devices/pc_hdc.o	\
+	$(OBJ)/mess/machine/pc_hdc.o	\
 	$(OBJ)/mess/machine/pcshare.o	\
 	$(OBJ)/mess/vidhrdw/pc_video.o	\
 	$(OBJ)/mess/vidhrdw/pc_mda.o	\
@@ -829,18 +830,18 @@ COREOBJS += \
 	$(OBJ)/mess/formats/pc_dsk.o	\
 	$(OBJ)/mess/devices/mflopimg.o	\
 	$(OBJ)/mess/devices/cassette.o	\
-	$(OBJ)/mess/devices/cartslot.o \
-	$(OBJ)/mess/devices/printer.o  \
-	$(OBJ)/mess/devices/bitbngr.o  \
-	$(OBJ)/mess/devices/snapquik.o \
-	$(OBJ)/mess/devices/basicdsk.o \
-	$(OBJ)/mess/devices/flopdrv.o  \
-	$(OBJ)/mess/devices/mess_hd.o  \
-	$(OBJ)/mess/devices/idedrive.o \
-	$(OBJ)/mess/devices/dsk.o      \
-	$(OBJ)/mess/machine/6551.o     \
-	$(OBJ)/mess/vidhrdw/m6847.o    \
-	$(OBJ)/mess/vidhrdw/m6845.o    \
+	$(OBJ)/mess/devices/cartslot.o	\
+	$(OBJ)/mess/devices/printer.o	\
+	$(OBJ)/mess/devices/bitbngr.o	\
+	$(OBJ)/mess/devices/snapquik.o	\
+	$(OBJ)/mess/devices/basicdsk.o	\
+	$(OBJ)/mess/devices/flopdrv.o	\
+	$(OBJ)/mess/devices/harddriv.o	\
+	$(OBJ)/mess/devices/idedrive.o	\
+	$(OBJ)/mess/devices/dsk.o		\
+	$(OBJ)/mess/machine/6551.o		\
+	$(OBJ)/mess/vidhrdw/m6847.o		\
+	$(OBJ)/mess/vidhrdw/m6845.o		\
 	$(OBJ)/mess/machine/msm8251.o  \
 	$(OBJ)/mess/machine/tc8521.o   \
 	$(OBJ)/mess/vidhrdw/v9938.o    \
@@ -865,57 +866,39 @@ COREOBJS += \
 
 
 # additional tools
-TOOLS =  dat2html$(EXE)		\
-	tools/mkhdimg$(EXE)	\
-	tools/imgtool$(EXE)	\
-	tools/mkimage$(EXE)
+TOOLS = dat2html$(EXE) messtest$(EXE) chdman$(EXE) messdocs$(EXE) imgtool$(EXE)
 
 
-ifdef MSVC
-OUTOPT = $(DIRENTOBJS) -out:$@
-else
-OUTOPT = -o $@
-endif
-
-dat2html$(EXE):								\
-	$(PLATFORM_IMGTOOL_OBJS)				\
+DAT2HTML_OBJS =								\
 	$(OBJ)/mess/tools/dat2html/dat2html.o	\
 	$(OBJ)/mess/tools/imgtool/stubs.o		\
 	$(OBJ)/mess/utils.o
-	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) $(OUTOPT)
 
-tools/mkhdimg$(EXE):	$(OBJ)/mess/tools/mkhdimg/mkhdimg.o
-	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) $(OUTOPT)
-
-tools/mkimage$(EXE):	$(OBJ)/mess/tools/mkimage/mkimage.o $(OBJ)/mess/utils.o
-	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) $(OUTOPT)
-
-tools/messroms$(EXE):	$(OBJ)/mess/tools/messroms/main.o $(OBJ)/unzip.o
-	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) $(IMGTOOL_LIBS) $(OUTOPT)
-
-tools/messdocs$(EXE):						\
+MESSDOCS_OBJS =								\
 	$(OBJ)/mess/tools/messdocs/messdocs.o	\
 	$(OBJ)/mess/utils.o						\
 	$(OBJ)/mess/pool.o						\
-	$(OBJ)/mess/windows/dirutils.o			\
 	$(OBJ)/xml2info/xmlrole.o				\
 	$(OBJ)/xml2info/xmltok.o				\
 	$(OBJ)/xml2info/xmlparse.o
-	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) $(OUTOPT)
 
-tools/imgtool$(EXE):						\
-	$(PLATFORM_IMGTOOL_OBJS)				\
+MESSTEST_OBJS =								\
+	$(OBJ)/mess/tools/messtest/main.o		\
+	$(OBJ)/mess/tools/messtest/messtest.o	\
+	$(OBJ)/mess/tools/messtest/testexec.o	\
+	$(OBJ)/mess/tools/messtest/tststubs.o	\
+	$(OBJ)/mess/tools/messtest/tstutils.o	\
+	$(OBJ)/xml2info/xmlrole.o				\
+	$(OBJ)/xml2info/xmltok.o				\
+	$(OBJ)/xml2info/xmlparse.o
+
+IMGTOOL_OBJS =								\
 	$(OBJ)/unzip.o							\
 	$(OBJ)/chd.o							\
 	$(OBJ)/harddisk.o						\
 	$(OBJ)/md5.o							\
 	$(OBJ)/sha1.o							\
-	$(OBJ)/mess/crcfile.o	               \
+	$(OBJ)/mess/crcfile.o					\
 	$(OBJ)/mess/utils.o						\
 	$(OBJ)/mess/pool.o						\
 	$(OBJ)/mess/opresolv.o					\
@@ -967,8 +950,6 @@ tools/imgtool$(EXE):						\
 #	  $(OBJ)/mess/tools/imgtool/rom16.o    \
 #	  $(OBJ)/mess/tools/imgtool/nccard.o   \
 #	  $(OBJ)/mess/tools/imgtool/ti85.o     \
-	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) $(IMGTOOL_LIBS) $(OUTOPT)
 
 # text files
 TEXTS = sysinfo.htm
@@ -983,20 +964,3 @@ sysinfo.htm: dat2html$(EXE)
 
 mess/makedep/makedep$(EXE): $(wildcard mess/makedep/*.c) $(wildcard mess/makedep/*.h)
 	make -Cmess/makedep
-
-src/$(NAME).dep depend: mess/makedep/makedep$(EXE) src/$(TARGET).mak src/rules.mak src/core.mak
-	mess/makedep/makedep$(EXE) -f - -p$(NAME).obj/ -DMESS -q -- $(INCLUDE_PATH) -- \
-	src/*.c src/cpu/*/*.c src/sound/*.c \
-	mess/*.c mess/systems/*.c* mess/machine/*.c* mess/vidhrdw/*.c* mess/sndhrdw/*.c* \
-	mess/tools/*.c mess/formats/*.c mess/messroms/*.c >src/$(NAME).dep
-
-# add following to dependancy generation if you want the few files in these
-# directories
-#	src/drivers/*.c src/machine/*.c src/vidhrdw/*.c src/sndhrdw/*.c \
-
-## uncomment the following line to include dependencies
-ifeq (src/$(NAME).dep,$(wildcard src/$(NAME).dep))
-include src/$(NAME).dep
-endif
-
-

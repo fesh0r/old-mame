@@ -99,13 +99,13 @@ static const tms5501_init_param dai_tms5501_init_param =
 
 static ppi8255_interface dai_ppi82555_intf =
 {
-	1, 					/* 1 chip */
+	1, 			/* 1 chip */
 	{ NULL, NULL },		/* Port A read */
 	{ NULL, NULL },		/* Port B read */
 	{ NULL, NULL },		/* Port C read */
 };
 
-static PIT8253_CONFIG dai_pit8253_intf =
+static struct pit8253_config dai_pit8253_intf =
 {
 	TYPE8253,
 	{
@@ -127,6 +127,12 @@ static PIT8253_CONFIG dai_pit8253_intf =
 	}
 };
 
+DRIVER_INIT( dai )
+{
+	pit8253_init(1);
+	pit8253_config(0, &dai_pit8253_intf);
+}
+
 MACHINE_INIT( dai )
 {
 	memory_set_opbase_handler(0, dai_opbaseoverride);
@@ -136,7 +142,6 @@ MACHINE_INIT( dai )
 
 	tms5501_init(0, &dai_tms5501_init_param);
 	ppi8255_init(&dai_ppi82555_intf);
-	pit8253_config(0, &dai_pit8253_intf);
 
 	timer_set(0, 0, dai_bootstrap_callback);
 }
@@ -180,7 +185,7 @@ READ_HANDLER( dai_io_discrete_devices_r )
 		data |= 0x08;			// serial ready
 		if (mame_rand()&0x01)
 			data |= 0x40;		// random number generator
-		if (device_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 255)
+		if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.01)
 			data |= 0x80;		// tape input
 		break;
 
@@ -224,7 +229,7 @@ WRITE_HANDLER( dai_io_discrete_devices_w )
 #endif
 		dai_cassette_motor[0] = (data&0x10)>>4;
 		dai_cassette_motor[1] = (data&0x20)>>5;
-		cassette_set_state(image_from_devtype_and_index(IO_CASSETTE, 0), !dai_cassette_motor[0]);
+		cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0), dai_cassette_motor[0]?CASSETTE_MOTOR_DISABLED:CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 		cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0), (data & 0x01) ? -1.0 : 1.0);
 #if LOG_TAPE
 		logerror ("Cassette: motor 1: %02x motor 2: %02x\n", dai_cassette_motor[0], dai_cassette_motor[1]);

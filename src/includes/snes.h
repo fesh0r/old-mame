@@ -347,10 +347,10 @@ extern void snes_hdma(void);
 extern void snes_refresh_scanline( UINT16 curline );
 
 /* (PPU) Video related */
-extern UINT8  *snes_vram;		/* Video RAM (Should be 16-bit, but it's easier this way) */
-extern UINT16 *snes_cgram;		/* Colour RAM */
-extern UINT16 *snes_oam;		/* Object Attribute Memory */
-extern UINT8  *snes_ram;		/* Main memory */
+extern UINT8  *snes_vram;			/* Video RAM (Should be 16-bit, but it's easier this way) */
+extern UINT16 *snes_cgram;			/* Colour RAM */
+extern UINT16 *snes_oam;			/* Object Attribute Memory */
+extern UINT8  *snes_ram;			/* Main memory */
 extern VIDEO_UPDATE( snes );
 struct SNES_PPU_STRUCT
 {

@@ -66,7 +66,7 @@ TODO:
 
 #include "sound/tms5220.h"	/* for tms5220_set_variant() */
 
-#include "devices/mess_hd.h"	/* for device_init_mess_hd() */
+#include "devices/harddriv.h"	/* for device_init_mess_hd() */
 #include "smc92x4.h"	/* for smc92x4_hd_load()/smc92x4_hd_unload() */
 
 
@@ -380,9 +380,8 @@ static UINT8 *ROM3_ptr_8;
 static UINT8 *sRAM_ptr_8;
 
 /* tms9900_ICount: used to implement memory waitstates (hack) */
-extern int tms9900_ICount;
 /* tms9995_ICount: used to implement memory waitstates (hack) */
-extern int tms9995_ICount;
+/* NPW 23-Feb-2004 - externs no longer needed because we now use activecpu_adjust_icount() */
 
 
 
@@ -679,9 +678,11 @@ DEVICE_UNLOAD( ti99_hd )
 	case 1:
 	case 2:
 		smc92x4_hd_unload(image, id);
+		break;
 
 	case 3:
 		device_unload_ti99_ide(image);
+		break;
 	}
 }
 
@@ -937,14 +938,14 @@ void set_hsgpl_crdena(int data)
 */
 READ16_HANDLER ( ti99_nop_8_r )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	return (0);
 }
 
 WRITE16_HANDLER ( ti99_nop_8_w )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 }
 
 /*
@@ -962,7 +963,7 @@ WRITE16_HANDLER ( ti99_nop_8_w )
 */
 READ16_HANDLER ( ti99_cart_r )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	if (hsgpl_crdena)
 		/* hsgpl is enabled */
@@ -976,7 +977,7 @@ READ16_HANDLER ( ti99_cart_r )
 
 WRITE16_HANDLER ( ti99_cart_w )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	if (hsgpl_crdena)
 		/* hsgpl is enabled */
@@ -1006,7 +1007,7 @@ READ16_HANDLER ( ti99_4p_cart_r )
 	if (ti99_4p_internal_rom6_enable)
 		return ti99_4p_internal_ROM6[offset];
 
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	if (hsgpl_crdena)
 		/* hsgpl is enabled */
@@ -1023,7 +1024,7 @@ WRITE16_HANDLER ( ti99_4p_cart_w )
 		return;
 	}
 
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	if (hsgpl_crdena)
 		/* hsgpl is enabled */
@@ -1065,7 +1066,7 @@ Theory:
 */
 WRITE16_HANDLER ( ti99_wsnd_w )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	SN76496_0_w(offset, (data >> 8) & 0xff);
 }
@@ -1075,7 +1076,7 @@ WRITE16_HANDLER ( ti99_wsnd_w )
 */
 READ16_HANDLER ( ti99_rvdp_r )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	if (offset & 1)
 	{	/* read VDP status */
@@ -1092,7 +1093,7 @@ READ16_HANDLER ( ti99_rvdp_r )
 */
 WRITE16_HANDLER ( ti99_wvdp_w )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	if (offset & 1)
 	{	/* write VDP address */
@@ -1109,7 +1110,7 @@ WRITE16_HANDLER ( ti99_wvdp_w )
 */
 READ16_HANDLER ( ti99_rv38_r )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	if (offset & 1)
 	{	/* read VDP status */
@@ -1126,7 +1127,7 @@ READ16_HANDLER ( ti99_rv38_r )
 */
 WRITE16_HANDLER ( ti99_wv38_w )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	switch (offset & 3)
 	{
@@ -1154,7 +1155,7 @@ WRITE16_HANDLER ( ti99_wv38_w )
 */
 static READ16_HANDLER ( ti99_rspeech_r )
 {
-	tms9900_ICount -= 18+3;		/* this is just a minimum, it can be more */
+	activecpu_adjust_icount(-(18+3));		/* this is just a minimum, it can be more */
 
 	return ((int) tms5220_status_r(offset)) << 8;
 }
@@ -1180,7 +1181,7 @@ static void speech_kludge_callback(int dummy)
 */
 static WRITE16_HANDLER ( ti99_wspeech_w )
 {
-	tms9900_ICount -= 54+3;		/* this is just an approx. minimum, it can be much more */
+	activecpu_adjust_icount(-(54+3));		/* this is just an approx. minimum, it can be much more */
 
 #if 1
 	/* the stupid design of the tms5220 core means that ready is cleared when
@@ -1194,7 +1195,7 @@ static WRITE16_HANDLER ( ti99_wspeech_w )
 
 		logerror("time to ready: %f -> %d\n", time_to_ready, (int) cycles_to_ready);
 
-		tms9900_ICount -= cycles_to_ready;
+		activecpu_adjust_icount(-cycles_to_ready);
 		timer_set(TIME_NOW, 0, /*speech_kludge_callback*/NULL);
 	}
 #endif
@@ -1210,7 +1211,7 @@ READ16_HANDLER ( ti99_rgpl_r )
 	int reply;
 
 
-	tms9900_ICount -= 4/*20+3*/;		/* from 4 to 23? */
+	activecpu_adjust_icount(-4 /*20+3*/);		/* from 4 to 23? */
 
 	if (offset & 1)
 	{	/* read GPL address */
@@ -1251,7 +1252,7 @@ READ16_HANDLER ( ti99_rgpl_r )
 */
 WRITE16_HANDLER ( ti99_wgpl_w )
 {
-	tms9900_ICount -= 4/*20+3*/;		/* from 4 to 23? */
+	activecpu_adjust_icount(-4/*20+3*/);		/* from 4 to 23? */
 
 	if (offset & 1)
 	{	/* write GPL address */
@@ -1297,7 +1298,7 @@ WRITE16_HANDLER ( ti99_wgpl_w )
 */
 READ16_HANDLER ( ti99_4p_rgpl_r )
 {
-	tms9900_ICount -= 4;		/* HSGPL is located on 8-bit bus? */
+	activecpu_adjust_icount(-4);		/* HSGPL is located on 8-bit bus? */
 
 	return /*hsgpl_crdena ?*/ ti99_hsgpl_gpl_r(offset, mem_mask) /*: 0*/;
 }
@@ -1307,7 +1308,7 @@ READ16_HANDLER ( ti99_4p_rgpl_r )
 */
 WRITE16_HANDLER ( ti99_4p_wgpl_w )
 {
-	tms9900_ICount -= 4;		/* HSGPL is located on 8-bit bus? */
+	activecpu_adjust_icount(-4);		/* HSGPL is located on 8-bit bus? */
 
 	/*if (hsgpl_crdena)*/
 		ti99_hsgpl_gpl_w(offset, data, mem_mask);
@@ -1374,7 +1375,7 @@ READ_HANDLER ( ti99_8_r )
 				/* speech read */
 				if (! (offset & 1))
 				{
-					tms9995_ICount -= 16*4;		/* this is just a minimum, it can be more */
+					activecpu_adjust_icount(-16*4);		/* this is just a minimum, it can be more */
 					reply = tms5220_status_r(0);
 				}
 				break;
@@ -1538,7 +1539,7 @@ WRITE_HANDLER ( ti99_8_w )
 				/* speech write */
 				if (! (offset & 1))
 				{
-					tms9995_ICount -= 48*4;		/* this is just an approx. minimum, it can be much more */
+					activecpu_adjust_icount(-48*4);		/* this is just an approx. minimum, it can be much more */
 
 					/* the stupid design of the tms5220 core means that ready is cleared when
 					there are 15 bytes in FIFO.  It should be 16.  Of course, if it were the
@@ -1552,7 +1553,7 @@ WRITE_HANDLER ( ti99_8_w )
 
 						logerror("time to ready: %f -> %d\n", time_to_ready, (int) cycles_to_ready);
 
-						tms9995_ICount -= cycles_to_ready;
+						activecpu_adjust_icount(-cycles_to_ready);
 						timer_set(TIME_NOW, 0, /*speech_kludge_callback*/NULL);
 					}
 
@@ -1683,7 +1684,7 @@ static int ti99_handset_poll_bus(void)
 	ti99_handset_ack_callback()
 
 	Handle data acknowledge sent by the ti-99/4 handset ISR (through tms9901
-	line P0).  This function is called by a delayed timer 30ms after the state
+	line P0).  This function is called by a delayed timer 30us after the state
 	of P0 is changed, because, in one occasion, the ISR asserts the line before
 	it reads the data, so we need to delay the acknowledge process.
 */
@@ -2500,14 +2501,14 @@ static void ti99_TIxram_init(void)
 /* low 8 kb: 0x2000-0x3fff */
 static READ16_HANDLER ( ti99_TIxramlow_r )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	return xRAM_ptr[offset];
 }
 
 static WRITE16_HANDLER ( ti99_TIxramlow_w )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	COMBINE_DATA(xRAM_ptr + offset);
 }
@@ -2515,14 +2516,14 @@ static WRITE16_HANDLER ( ti99_TIxramlow_w )
 /* high 24 kb: 0xa000-0xffff */
 static READ16_HANDLER ( ti99_TIxramhigh_r )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	return xRAM_ptr[offset+0x1000];
 }
 
 static WRITE16_HANDLER ( ti99_TIxramhigh_w )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	COMBINE_DATA(xRAM_ptr + offset+0x1000);
 }
@@ -2603,7 +2604,7 @@ static WRITE_HANDLER(sAMS_mapper_w)
 /* low 8 kb: 0x2000-0x3fff */
 static READ16_HANDLER ( ti99_sAMSxramlow_r )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	if (sAMS_mapper_on)
 		return xRAM_ptr[(offset&0x7ff)+sAMSlookup[(0x1000+offset)>>11]];
@@ -2613,7 +2614,7 @@ static READ16_HANDLER ( ti99_sAMSxramlow_r )
 
 static WRITE16_HANDLER ( ti99_sAMSxramlow_w )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	if (sAMS_mapper_on)
 		COMBINE_DATA(xRAM_ptr + (offset&0x7ff)+sAMSlookup[(0x1000+offset)>>11]);
@@ -2624,7 +2625,7 @@ static WRITE16_HANDLER ( ti99_sAMSxramlow_w )
 /* high 24 kb: 0xa000-0xffff */
 static READ16_HANDLER ( ti99_sAMSxramhigh_r )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	if (sAMS_mapper_on)
 		return xRAM_ptr[(offset&0x7ff)+sAMSlookup[(0x5000+offset)>>11]];
@@ -2634,7 +2635,7 @@ static READ16_HANDLER ( ti99_sAMSxramhigh_r )
 
 static WRITE16_HANDLER ( ti99_sAMSxramhigh_w )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	if (sAMS_mapper_on)
 		COMBINE_DATA(xRAM_ptr + (offset&0x7ff)+sAMSlookup[(0x5000+offset)>>11]);
@@ -2895,14 +2896,14 @@ static void myarc_cru_w(int offset, int data)
 /* low 8 kb: 0x2000-0x3fff */
 static READ16_HANDLER ( ti99_myarcxramlow_r )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	return xRAM_ptr[myarc_cur_page_offset + offset];
 }
 
 static WRITE16_HANDLER ( ti99_myarcxramlow_w )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	COMBINE_DATA(xRAM_ptr + myarc_cur_page_offset + offset);
 }
@@ -2910,14 +2911,14 @@ static WRITE16_HANDLER ( ti99_myarcxramlow_w )
 /* high 24 kb: 0xa000-0xffff */
 static READ16_HANDLER ( ti99_myarcxramhigh_r )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	return xRAM_ptr[myarc_cur_page_offset + offset+0x1000];
 }
 
 static WRITE16_HANDLER ( ti99_myarcxramhigh_w )
 {
-	tms9900_ICount -= 4;
+	activecpu_adjust_icount(-4);
 
 	COMBINE_DATA(xRAM_ptr + myarc_cur_page_offset + offset+0x1000);
 }

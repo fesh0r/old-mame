@@ -359,6 +359,7 @@ static ADDRESS_MAP_START( writemem_kbd , ADDRESS_SPACE_PROGRAM, 16)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem2 , ADDRESS_SPACE_PROGRAM, 8)
+	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0xff) )  /* Required because of probing */
 	AM_RANGE( 0x0000, 0x3fff) AM_READ( intvkbd_dualport8_lsb_r ) /* Dual-port RAM */
 	AM_RANGE( 0x4000, 0x7fff) AM_READ( intvkbd_dualport8_msb_r ) /* Dual-port RAM */
 	AM_RANGE( 0xb7f8, 0xb7ff) AM_READ( MRA8_RAM ) /* ??? */
@@ -440,7 +441,7 @@ ROM_START(intvkbd)
 	ROM_REGION(0x10000<<1,REGION_CPU1,0)
 		ROM_LOAD16_WORD( "exec.bin", 0x1000<<1, 0x2000, CRC(cbce86f7 ))
 		ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, CRC(683a4158 ))
-		ROM_LOAD16_WORD( "024.u60", 0x7000<<1, 0x1000, CRC(4f7998ec ))
+		ROM_LOAD16_WORD( "024.u60",  0x7000<<1, 0x1000, CRC(4f7998ec ))
 		ROM_LOAD16_BYTE( "4d72.u62", 0x7800<<1, 0x0800, CRC(aa57c594 ))
 		ROM_LOAD16_BYTE( "4d71.u63", (0x7800<<1)+1, 0x0800, CRC(069b2f0b ))
 

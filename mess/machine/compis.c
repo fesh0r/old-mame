@@ -53,8 +53,8 @@ struct timer_state
 	UINT16	maxA;
 	UINT16	maxB;
 	UINT16	count;
-	void *	int_timer;
-	void *	time_timer;
+	mame_timer *	int_timer;
+	mame_timer *	time_timer;
 	UINT8	time_timer_active;
 	double	last_time;
 };
@@ -66,7 +66,7 @@ struct dma_state
 	UINT16	count;
 	UINT16	control;
 	UINT8	finished;
-	void *	finish_timer;
+	mame_timer *	finish_timer;
 };
 
 struct intr_state
@@ -454,7 +454,8 @@ WRITE_HANDLER ( compis_ppi_w )
 /*-------------------------------------------------------------------------*/
 /*  PIT 8253                                                               */
 /*-------------------------------------------------------------------------*/
-static PIT8253_CONFIG compis_pit_config =
+
+static struct pit8253_config compis_pit_config =
 {
 	TYPE8253,
 	{
@@ -480,7 +481,8 @@ WRITE_HANDLER ( compis_pit_w )
 /*-------------------------------------------------------------------------*/
 /*  OSP PIT 8254                                                           */
 /*-------------------------------------------------------------------------*/
-static PIT8253_CONFIG compis_osp_pit_config =
+
+static struct pit8253_config compis_osp_pit_config =
 {
 	TYPE8254,
 	{
@@ -1575,7 +1577,8 @@ void compis_cpu_init(void)
 /*-------------------------------------------------------------------------*/
 DRIVER_INIT( compis )
 {
-    	memset (&compis, 0, sizeof (compis) );
+	pic8259_init(2);
+	memset (&compis, 0, sizeof (compis) );
 }
 
 /*-------------------------------------------------------------------------*/
@@ -1588,14 +1591,13 @@ MACHINE_INIT( compis )
 	compis_cpu_init();
 
 	/* OSP PIT 8254 */
-	pit8253_config(0, &compis_osp_pit_config);
+	pit8253_init(2);
+	pit8253_config(0, &compis_pit_config);
+	pit8253_config(1, &compis_osp_pit_config);
 		
 	/* PPI */
 	ppi8255_init(&compis_ppi_interface);
 	    
-	/* PIT */
-	pit8253_config(0, &compis_pit_config);
-
 	/* FDC */
 	nec765_init(&compis_fdc_interface, NEC765A);
 	compis_fdc_reset();

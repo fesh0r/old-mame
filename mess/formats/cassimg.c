@@ -361,6 +361,16 @@ struct manipulation_ranges
 
 
 
+static size_t my_round(double d)
+{
+	size_t result;
+	d += 0.5;
+	result = (size_t) d;
+	return result;
+}
+
+
+
 static casserr_t compute_manipulation_ranges(cassette_image *cassette, int channel,
 	double time_index, double sample_period, struct manipulation_ranges *ranges)
 {
@@ -375,9 +385,12 @@ static casserr_t compute_manipulation_ranges(cassette_image *cassette, int chann
 		ranges->channel_last = channel;
 	}
 
-	ranges->sample_first = (size_t) (time_index * cassette->sample_frequency);
-	ranges->sample_last = ((size_t) ((time_index + sample_period) * cassette->sample_frequency)) - 1;
-//	ranges->sample_last = ranges->sample_first - 1 + ((size_t) (sample_period * cassette->sample_frequency));
+	ranges->sample_first = my_round(time_index * cassette->sample_frequency);
+	ranges->sample_last = my_round((time_index + sample_period) * cassette->sample_frequency);
+
+	if (ranges->sample_last > ranges->sample_first)
+		ranges->sample_last--;
+
 	return CASSETTE_ERROR_SUCCESS;
 }
 
@@ -814,6 +827,37 @@ casserr_t cassette_read_modulated_data(cassette_image *cassette, int channel, do
 	if (time_displacement)
 		*time_displacement = total_displacement;
 	return CASSETTE_ERROR_SUCCESS;
+}
+
+
+
+casserr_t cassette_put_modulated_data_bit(cassette_image *cassette, int channel, double time_index,
+	UINT8 data, const struct CassetteModulation *modulation,
+	double *time_displacement)
+{
+	casserr_t err;
+	const INT8 *wave_bytes;
+	size_t wave_bytes_length;
+	double total_displacement = 0.0;
+	double pulse_period;
+	double pulse_frequency;
+
+	wave_bytes = choose_wave(modulation, &wave_bytes_length);
+
+	pulse_frequency = (data) ? modulation->one_frequency_cannonical : modulation->zero_frequency_cannonical;
+	pulse_period = 1 / pulse_frequency;
+	err = cassette_put_samples(cassette, 0, time_index, pulse_period, wave_bytes_length, 1, wave_bytes, CASSETTE_WAVEFORM_8BIT);
+	if (err)
+		goto done;	
+	time_index += pulse_period;
+	total_displacement += pulse_period;
+
+	err = CASSETTE_ERROR_SUCCESS;
+
+done:
+	if (time_displacement)
+		*time_displacement = total_displacement;
+	return err;
 }
 
 

@@ -19,6 +19,7 @@
 	maybe SoundBlaster? EGA? VGA?
 
 ***************************************************************************/
+
 #include <assert.h>
 #include "driver.h"
 #include "machine/8255ppi.h"
@@ -27,7 +28,6 @@
 #include "includes/pic8259.h"
 #include "includes/pit8253.h"
 #include "includes/mc146818.h"
-#include "includes/dma8237.h"
 #include "includes/uart8250.h"
 #include "includes/pc_vga.h"
 #include "includes/pc_cga.h"
@@ -41,11 +41,13 @@
 #include "includes/pclpt.h"
 #include "includes/centroni.h"
 
-#include "devices/pc_hdc.h"
+#include "machine/pc_hdc.h"
 #include "includes/nec765.h"
 
 #include "includes/pcshare.h"
 #include "mscommon.h"
+
+#include "machine/8237dma.h"
 
 #define VERBOSE_DBG 0       /* general debug messages */
 #if VERBOSE_DBG
@@ -66,6 +68,15 @@
 #endif
 
 #define FDC_DMA 2
+
+
+static mame_timer *pc_keyboard_timer;
+
+static void pc_keyb_timer(int param);
+
+
+
+/* ---------------------------------------------------------------------- */
 
 /* called when a interrupt is set/cleared from com hardware */
 static void pc_com_interrupt(int nr, int state)
@@ -121,17 +132,28 @@ static uart8250_interface com_interface[4]=
 	}
 };
 
+
+
+static void pc_timer0_w(int state)
+{
+	if (state)
+		pic8259_0_issue_irq(0);
+}
+
+
+
 /*
  * timer0	heartbeat IRQ
  * timer1	DRAM refresh (ignored)
  * timer2	PIO port C pin 4 and speaker polling
  */
-static PIT8253_CONFIG pc_pit8253_config={
+static struct pit8253_config pc_pit8253_config =
+{
 	TYPE8253,
 	{
 		{
 			4770000/4,				/* heartbeat IRQ */
-			pic8259_0_issue_irq,
+			pc_timer0_w,
 			NULL
 		}, {
 			4770000/4,				/* dram refresh */
@@ -144,6 +166,8 @@ static PIT8253_CONFIG pc_pit8253_config={
 		}
 	}
 };
+
+
 
 static PC_LPT_CONFIG lpt_config[3]={
 	{
@@ -178,6 +202,110 @@ static CENTRONICS_CONFIG cent_config[3]={
 	}
 };
 
+
+
+/*************************************************************************
+ *
+ *		PC DMA stuff
+ *
+ *************************************************************************/
+
+static data8_t dma_offset[2][4];
+static data8_t at_pages[0x10];
+static offs_t pc_page_offset_mask;
+
+READ_HANDLER(pc_page_r)
+{
+	return 0xFF;
+}
+
+WRITE_HANDLER(pc_page_w)
+{
+	switch(offset % 4) {
+	case 1:
+		dma_offset[0][2] = data;
+		break;
+	case 2:
+		dma_offset[0][3] = data;
+		break;
+	case 3:
+		dma_offset[0][0] = dma_offset[0][1] = data;
+		break;
+	}
+}
+
+READ_HANDLER(at_page_r)
+{
+	data8_t data = at_pages[offset % 0x10];
+
+	switch(offset % 8) {
+	case 1:
+		data = dma_offset[(offset / 8) & 1][2];
+		break;
+	case 2:
+		data = dma_offset[(offset / 8) & 1][3];
+		break;
+	case 3:
+		data = dma_offset[(offset / 8) & 1][1];
+		break;
+	case 7:
+		data = dma_offset[(offset / 8) & 1][0];
+		break;
+	}
+	return data;
+}
+
+WRITE_HANDLER(at_page_w)
+{
+	at_pages[offset % 0x10] = data;
+
+	switch(offset % 8) {
+	case 1:
+		dma_offset[(offset / 8) & 1][2] = data;
+		break;
+	case 2:
+		dma_offset[(offset / 8) & 1][3] = data;
+		break;
+	case 3:
+		dma_offset[(offset / 8) & 1][1] = data;
+		break;
+	case 7:
+		dma_offset[(offset / 8) & 1][0] = data;
+		break;
+	}
+}
+
+static data8_t pc_dma_read_byte(int channel, offs_t offset)
+{
+	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
+		& pc_page_offset_mask;
+	return program_read_byte(page_offset + offset);
+}
+
+static void pc_dma_write_byte(int channel, offs_t offset, data8_t data)
+{
+	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
+		& pc_page_offset_mask;
+	program_write_byte(page_offset + offset, data);
+}
+
+static struct dma8237_interface pc_dma =
+{
+	0,
+	TIME_IN_USEC(1),
+
+	pc_dma_read_byte,
+	pc_dma_write_byte,
+
+	{ 0, 0, pc_fdc_dack_r, pc_hdc_dack_r },
+	{ 0, 0, pc_fdc_dack_w, pc_hdc_dack_w },
+	pc_fdc_set_tc_state
+};
+
+
+
+/* ----------------------------------------------------------------------- */
+
 void init_pc_common(UINT32 flags)
 {
 	/* MESS managed RAM */
@@ -185,10 +313,12 @@ void init_pc_common(UINT32 flags)
 		cpu_setbank(10, mess_ram);
 
 	/* PIT */
+	pit8253_init(1);
 	pit8253_config(0, &pc_pit8253_config);
 
-	/* FDC hardware */
+	/* FDC/HDC hardware */
 	pc_fdc_setup();
+	pc_hdc_setup();
 
 	/* com hardware */
 	uart8250_init(0, com_interface);
@@ -224,21 +354,27 @@ void init_pc_common(UINT32 flags)
 	at_keyboard_set_scan_code_set(1);
 	at_keyboard_set_input_port_base(4);
 
+	/* PIC */
+	pic8259_init(2);
 
 	/* DMA */
 	if (flags & PCCOMMON_DMA8237_AT)
 	{
-		static DMA8237_CONFIG at_dma = { DMA8237_AT };
-		dma8237_config(dma8237 + 0, &at_dma);
-		dma8237_config(dma8237 + 1, &at_dma);
+		dma8237_init(2);
+		dma8237_config(0, &pc_dma);
+		pc_page_offset_mask = 0xFF0000;
 	}
 	else
 	{
-		static DMA8237_CONFIG pc_dma = { DMA8237_PC };
-		dma8237_config(dma8237 + 0, &pc_dma);
+		dma8237_init(1);
+		dma8237_config(0, &pc_dma);
+		pc_page_offset_mask = 0x0F0000;
 	}
-	dma8237_reset(dma8237);
+
+	pc_keyboard_timer = mame_timer_alloc(pc_keyb_timer);
 }
+
+
 
 void pc_mda_init(void)
 {
@@ -363,16 +499,24 @@ UINT8 pc_keyb_read(void)
 	return pc_keyb.data;
 }
 
+
+
 static void pc_keyb_timer(int param)
 {
 	at_keyboard_reset();
 	pc_keyboard();
 }
 
+
+
 void pc_keyb_set_clock(int on)
 {
+	mame_time keyb_delay = double_to_mame_time(1/200.0);
+
 	if (!pc_keyb.on && on)
-		timer_set(1/200.0, 0, pc_keyb_timer);
+		mame_timer_adjust(pc_keyboard_timer, time_zero, 0, keyb_delay);
+	else
+		mame_timer_reset(pc_keyboard_timer, time_never);
 
 	pc_keyb.on = on;
 }
@@ -388,7 +532,6 @@ void pc_keyboard(void)
 
 	at_keyboard_polling();
 
-//	if( !pic8259_0_irq_pending(1) && ((pc_port[0x61]&0xc0)==0xc0) ) // amstrad problems
 	if( !pic8259_0_irq_pending(1) && pc_keyb.on)
 	{
 		if ( (data=at_keyboard_read())!=-1) {
@@ -398,6 +541,8 @@ void pc_keyboard(void)
 		}
 	}
 }
+
+
 
 /*************************************************************************
  *
@@ -468,3 +613,60 @@ READ_HANDLER ( pc_JOY_r )
 	return data;
 }
 #endif
+
+
+
+/*************************************************************************
+ *
+ *		Turbo handling
+ *
+ *************************************************************************/
+
+struct pc_turbo_info
+{
+	int cpunum;
+	int port;
+	int mask;
+	int cur_val;
+	double off_speed;
+	double on_speed;
+};
+
+
+
+static void pc_turbo_callback(int param)
+{
+	struct pc_turbo_info *ti;
+	int val;
+	
+	ti = (struct pc_turbo_info *) param;
+	val = readinputport(ti->port) & ti->mask;
+
+	if (val != ti->cur_val)
+	{
+		ti->cur_val = val;
+		cpunum_set_clockscale(ti->cpunum, val ? ti->on_speed : ti->off_speed);
+	}
+}
+
+
+
+int pc_turbo_setup(int cpunum, int port, int mask, double off_speed, double on_speed)
+{
+	struct pc_turbo_info *ti;
+
+	ti = auto_malloc(sizeof(struct pc_turbo_info));
+	if (!ti)
+		return 1;
+
+	ti->cpunum = cpunum;
+	ti->port = port;
+	ti->mask = mask;
+	ti->cur_val = -1;
+	ti->off_speed = off_speed;
+	ti->on_speed = on_speed;
+	timer_pulse(TIME_IN_SEC(0.1), (int) ti, pc_turbo_callback);
+	return 0;
+}
+
+

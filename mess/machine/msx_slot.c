@@ -5,9 +5,13 @@
  *
  * Missing:
  * - Holy Qu'ran
+ *   like ascii8, with switch address 5000h/5400h/5800h/5c00h, not working.
  * - Harry Fox
+ *   16kb banks, 6000h and 7000h switch address; isn't it really an ascii16?
  * - Halnote
+ *   writes to page 0?
  * - Playball
+ *   Has sample ROM.
  * - Some ascii8 w/ sram need 32kb sram?
  * - MegaRAM
  * - fmsx painter.rom
@@ -1393,8 +1397,13 @@ MSX_SLOT_RESET(fmpac)
 	for (i=0; i<=state->bank_mask; i++) {
 		state->mem[0x3ff6 + i * 0x4000] = 0;
 	}
-	state->cart.fmpac.mem[0x3ff6] = 0;
-	state->cart.fmpac.mem[0x3ff7] = 0;
+
+	/* NPW 21-Feb-2004 - Adding check for null */
+	if (state->cart.fmpac.mem)
+	{
+		state->cart.fmpac.mem[0x3ff6] = 0;
+		state->cart.fmpac.mem[0x3ff7] = 0;
+	}
 
 	/* IMPROVE: reset sound chip */
 }

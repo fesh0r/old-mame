@@ -42,6 +42,7 @@ X86_MIPS3_DRC = 1
 # uncomment next line to use cygwin compiler
 # COMPILESYSTEM_CYGWIN	= 1
 
+
 # set this the operating system you're building for
 # MAMEOS = msdos
 # MAMEOS = windows
@@ -143,7 +144,7 @@ CFLAGS_WARNINGS = -Wall -Werror -Wno-unused
 else
 CFLAGS_BASE += -DNDEBUG $(ARCH) -O3 -fomit-frame-pointer -fstrict-aliasing
 CFLAGS_WARNINGS = -Werror -Wall -Wno-sign-compare -Wunused \
-	-Wpointer-arith -Wbad-function-cast -Wcast-align -Waggregate-return \
+	-Wpointer-arith -Wbad-function-cast -Wcast-align \
 	-Wshadow -Wstrict-prototypes -Wundef \
 	-Wformat-security -Wwrite-strings \
 	-Wdisabled-optimization
@@ -151,6 +152,7 @@ endif
 
 CFLAGS = $(CFLAGS_BASE) $(CFLAGS_WARNINGS)
 
+# the windows osd code at least cannot be compiled with -pedantic
 CFLAGSPEDANTIC = $(CFLAGS) -pedantic
 
 ifdef SYMBOLS
@@ -173,29 +175,27 @@ OBJDIRS = obj $(OBJ) $(OBJ)/cpu $(OBJ)/sound $(OBJ)/$(MAMEOS) \
 	$(OBJ)/drivers $(OBJ)/machine $(OBJ)/vidhrdw $(OBJ)/sndhrdw $(OBJ)/xml2info
 
 OBJDIRS += 	$(OBJ)/mess         $(OBJ)/mess/$(MAMEOS)			\
+		$(OBJ)/mess/cpu											\
 		$(OBJ)/mess/systems $(OBJ)/mess/machine					\
 		$(OBJ)/mess/vidhrdw $(OBJ)/mess/sndhrdw					\
 		$(OBJ)/mess/formats $(OBJ)/mess/tools					\
 		$(OBJ)/mess/devices										\
 		$(OBJ)/mess/tools/dat2html $(OBJ)/mess/tools/mkhdimg	\
 		$(OBJ)/mess/tools/messroms $(OBJ)/mess/tools/imgtool	\
-		$(OBJ)/mess/tools/messdocs $(OBJ)/mess/tools/messtest	\								\
+		$(OBJ)/mess/tools/messdocs $(OBJ)/mess/tools/messtest	\
 		$(OBJ)/mess/tools/mkimage  $(OBJ)/mess/sound			\
 		$(OBJ)/ui $(OBJ)/mess/ui
 
 ifeq ($(MAMEOS),windows)
-PLATFORM_IMGTOOL_OBJS =				\
+PLATFORM_TOOL_OBJS =				\
 	$(OBJ)/mess/windows/glob.o		\
 	$(OBJ)/mess/windows/dirutils.o	\
 	$(OBJ)/windows/fileio.o
 else
-PLATFORM_IMGTOOL_OBJS = $(OBJ)/$(MAMEOS)/fileio.o
+PLATFORM_TOOL_OBJS = $(OBJ)/$(MAMEOS)/fileio.o
 endif
 
-#MESS CPU's
-OBJDIRS += $(OBJ)/mess/cpu
-
-all:	maketree $(EMULATORCLI) $(EMULATORGUI) extra
+all:	maketree $(EMULATORCLI) $(EMULATORGUI) messtest.exe chdman.exe messdocs.exe imgtool.exe
 
 # include the various .mak files
 include src/core.mak
@@ -215,8 +215,6 @@ ifdef COMPILESYSTEM_CYGWIN
 CFLAGS	+= -mno-cygwin
 LDFLAGS	+= -mno-cygwin
 endif
-
-extra:	$(TOOLS) $(TEXTS)
 
 # combine the various definitions to one
 CDEFS = $(DEFS) $(COREDEFS) $(CPUDEFS) $(SOUNDDEFS) $(ASMDEFS) $(DBGDEFS)
@@ -249,24 +247,35 @@ $(EMULATORCLI):	$(OBJS) $(COREOBJS) $(OSOBJS) $(DRVLIBS) $(LIBS)
 
 endif
 
+
+
+#############################################################################
+
 romcmp$(EXE): $(OBJ)/romcmp.o $(OBJ)/unzip.o
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $^ -lz -o $@
 
-hdcomp$(EXE): $(OBJ)/hdcomp.o $(OBJ)/harddisk.o $(OBJ)/md5.o
+chdman$(EXE): $(OBJ)/chdman.o $(OBJ)/chd.o $(OBJ)/md5.o $(OBJ)/sha1.o $(OBJ)/version.o
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $^ -lz -o $@
 
 xml2info$(EXE): src/xml2info/xml2info.c
 	@echo Compiling $@...
-	$(CC) -O1 -o xml2info$(EXE) $<
+	$(CC) -O1 -o $@ $^
 
-messtest$(EXE):	$(OBJS) $(COREOBJS) $(DRVLIBS)	\
-		$(OBJ)/mess/tools/messtest/main.o		\
-		$(OBJ)/mess/tools/messtest/messtest.o	\
-		$(OBJ)/mess/tools/messtest/testexec.o	\
-		$(OBJ)/mess/tools/messtest/tststubs.o	\
-		$(OBJ)/mess/tools/messtest/tstutils.o	\
+dat2html$(EXE): $(DAT2HTML_OBJS)
+	@echo Compiling $@...
+	$(LD) $(LDFLAGS) $^ -o $@
+
+messdocs$(EXE): $(MESSDOCS_OBJS) $(OBJ)/mess/windows/dirutils.o
+	@echo Compiling $@...
+	$(LD) $(LDFLAGS) $^ -o $@
+
+imgtool$(EXE): $(IMGTOOL_OBJS) $(PLATFORM_TOOL_OBJS)
+	@echo Compiling $@...
+	$(LD) $(LDFLAGS) $^ -lz -o $@
+
+messtest$(EXE):	$(OBJS) $(COREOBJS) $(DRVLIBS) $(MESSTEST_OBJS) \
 		$(OBJ)/windows/asmtile.o				\
 		$(OBJ)/windows/ticker.o					\
 		$(OBJ)/windows/fileio.o					\
@@ -275,19 +284,13 @@ messtest$(EXE):	$(OBJS) $(COREOBJS) $(DRVLIBS)	\
 		$(OBJ)/mess/windows/dirio.o				\
 		$(OBJ)/mess/windows/dirutils.o			\
 		$(OBJ)/mess/windows/glob.o				\
-		$(OBJ)/mess/windows/parallel.o			\
-		$(OBJ)/xml2info/xmlrole.o				\
-		$(OBJ)/xml2info/xmltok.o				\
-		$(OBJ)/xml2info/xmlparse.o
+		$(OBJ)/mess/windows/parallel.o
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $(CONSOLE_PROGRAM) $^ -lz -lwinmm -o $@
 
-ifdef PERL
-$(OBJ)/cpuintrf.o: src/cpuintrf.c rules.mak
-	$(PERL) src/makelist.pl
-	@echo Compiling $<...
-	$(CC) $(CDEFS) $(CFLAGSPEDANTIC) -c $< -o $@
-endif
+
+
+#############################################################################
 
 # for Windows at least, we can't compile OS-specific code with -pedantic
 $(OBJ)/$(MAMEOS)/%.o: src/$(MAMEOS)/%.c
@@ -384,8 +387,8 @@ $(OBJ)/%.a:
 	$(RM) $@
 	$(AR) cr $@ $^
 
-mess.chm:	tools/messdocs.exe
-	tools/messdocs.exe docs/wintoc.xml obj/help
+mess.chm:	messdocs.exe
+	messdocs.exe docs/wintoc.xml obj/help
 	$(HHC) obj\\help\\mess.hhp
 	@cp obj/help/mess.chm $@
 	

@@ -18,7 +18,6 @@
 #include "includes/pic8259.h"
 #include "includes/pit8253.h"
 #include "includes/mc146818.h"
-#include "includes/dma8237.h"
 #include "includes/uart8250.h"
 #include "includes/pc_vga.h"
 #include "includes/pc_cga.h"
@@ -32,7 +31,7 @@
 #include "includes/pclpt.h"
 #include "includes/centroni.h"
 
-#include "devices/pc_hdc.h"
+#include "machine/pc_hdc.h"
 #include "includes/nec765.h"
 #include "includes/amstr_pc.h"
 #include "includes/europc.h"
@@ -42,12 +41,15 @@
 #include "includes/pc.h"
 #include "mscommon.h"
 
+#include "machine/8237dma.h"
+
 DRIVER_INIT( pccga )
 {
 	pc_cga_init();
 	init_pc_common(PCCOMMON_KEYBOARD_PC | PCCOMMON_DMA8237_PC);
 	ppi8255_init(&pc_ppi8255_interface);
 	pc_rtc_init();
+	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
 }
 
 DRIVER_INIT( bondwell )
@@ -55,6 +57,7 @@ DRIVER_INIT( bondwell )
 	pc_cga_init();
 	init_pc_common(PCCOMMON_KEYBOARD_PC | PCCOMMON_DMA8237_PC);
 	ppi8255_init(&pc_ppi8255_interface);
+	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
 }
 
 DRIVER_INIT( pcmda )
@@ -62,6 +65,7 @@ DRIVER_INIT( pcmda )
 	pc_mda_init();
 	init_pc_common(PCCOMMON_KEYBOARD_PC | PCCOMMON_DMA8237_PC);
 	ppi8255_init(&pc_ppi8255_interface);
+	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
 }
 
 DRIVER_INIT( europc ) 
@@ -99,6 +103,7 @@ DRIVER_INIT( t1000hx )
     for (i = 0; i < 256; i++)
 		gfx[i] = i;
 	init_pc_common(PCCOMMON_KEYBOARD_PC | PCCOMMON_DMA8237_PC);
+	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
 }
 
 DRIVER_INIT( pc200 )
@@ -186,29 +191,29 @@ DRIVER_INIT( pc_vga )
 
 MACHINE_INIT( pc_mda )
 {
-	dma8237_reset(dma8237);
+	dma8237_reset();
 }
 
 MACHINE_INIT( pc_cga )
 {
-	dma8237_reset(dma8237);
+	dma8237_reset();
 }
 
 MACHINE_INIT( pc_t1t )
 {
 	pc_t1t_reset();
-	dma8237_reset(dma8237);
+	dma8237_reset();
 }
 
 MACHINE_INIT( pc_aga )
 {
-	dma8237_reset(dma8237);
+	dma8237_reset();
 }
 
 MACHINE_INIT( pc_vga )
 {
 	vga_reset();
-	dma8237_reset(dma8237);
+	dma8237_reset();
 }
 
 /**************************************************************************
@@ -216,50 +221,36 @@ MACHINE_INIT( pc_vga )
  *      Interrupt handlers.
  *
  **************************************************************************/
-static void pc_generic_frame_interrupt(int has_turbo, void (*pc_timer)(void))
+static void pc_generic_frame_interrupt(void (*pc_timer)(void))
 {
-	if (has_turbo)
-	{
-		static int turboswitch = -1;
-		if (turboswitch !=(input_port_3_r(0)&2) )
-		{
-			if (input_port_3_r(0)&2)
-				cpunum_set_clockscale(0, 1);
-			else
-				cpunum_set_clockscale(0, 4.77/12);
-			turboswitch=input_port_3_r(0)&2;
-		}
-	}
-
 	if (pc_timer)
 		pc_timer();
 
-    if( !onscrd_active() && !setup_active() )
-		pc_keyboard();
+	pc_keyboard();
 }
 
 void pc_mda_frame_interrupt (void)
 {
-	pc_generic_frame_interrupt(TRUE, pc_mda_timer);
+	pc_generic_frame_interrupt(pc_mda_timer);
 }
 
 void pc_cga_frame_interrupt (void)
 {
-	pc_generic_frame_interrupt(TRUE, pc_cga_timer);
+	pc_generic_frame_interrupt(pc_cga_timer);
 }
 
 void tandy1000_frame_interrupt (void)
 {
-	pc_generic_frame_interrupt(TRUE, pc_t1t_timer);
+	pc_generic_frame_interrupt(pc_t1t_timer);
 }
 
 void pc_aga_frame_interrupt (void)
 {
-	pc_generic_frame_interrupt(FALSE, pc_aga_timer);
+	pc_generic_frame_interrupt(pc_aga_timer);
 }
 
 void pc_vga_frame_interrupt (void)
 {
-	pc_generic_frame_interrupt(TRUE, NULL /* vga_timer */);
+	pc_generic_frame_interrupt(NULL /* vga_timer */);
 }
 

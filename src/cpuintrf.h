@@ -253,7 +253,7 @@ union cpuinfo
 	INT64	i;											/* generic integers */
 	void *	p;											/* generic pointers */
 	char *	s;											/* generic strings */
-
+	
 	void	(*setinfo)(UINT32 state, union cpuinfo *info);/* CPUINFO_PTR_SET_INFO */
 	void	(*getcontext)(void *context);				/* CPUINFO_PTR_GET_CONTEXT */
 	void	(*setcontext)(void *context);				/* CPUINFO_PTR_SET_CONTEXT */
@@ -315,7 +315,7 @@ struct cpu_interface
 	int			(*execute)(int cycles);
 	void		(*burn)(int cycles);
 	offs_t		(*disassemble)(char *buffer, offs_t pc);
-
+	
 	/* other info */
 	size_t		context_size;
 	int			address_shift;

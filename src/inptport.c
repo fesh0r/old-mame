@@ -551,7 +551,7 @@ struct ipd inputport_defaults[] =
 	{ (IPT_TRACKBALL_X | IPF_PLAYER7)+IPT_EXTENSION,                 "Track X 7", SEQ_DEF_1(JOYCODE_7_RIGHT) },
 	{ IPT_TRACKBALL_X | IPF_PLAYER8, "Track X 8", SEQ_DEF_1(JOYCODE_8_LEFT) },
 	{ (IPT_TRACKBALL_X | IPF_PLAYER8)+IPT_EXTENSION,                 "Track X 8", SEQ_DEF_1(JOYCODE_8_RIGHT) },
-
+	
 	{ IPT_TRACKBALL_Y | IPF_PLAYER1, "Track Y",   SEQ_DEF_3(KEYCODE_UP, CODE_OR, JOYCODE_1_UP) },
 	{ (IPT_TRACKBALL_Y | IPF_PLAYER1)+IPT_EXTENSION,                 "Track Y",   SEQ_DEF_3(KEYCODE_DOWN, CODE_OR, JOYCODE_1_DOWN) },
 	{ IPT_TRACKBALL_Y | IPF_PLAYER2, "Track Y 2", SEQ_DEF_3(KEYCODE_R, CODE_OR, JOYCODE_2_UP) },
@@ -632,7 +632,7 @@ struct ipd inputport_defaults[] =
 	{ (IPT_LIGHTGUN_X | IPF_PLAYER5)+IPT_EXTENSION,                "Lightgun X 5", SEQ_DEF_1(JOYCODE_5_RIGHT) },
 	{ IPT_LIGHTGUN_X | IPF_PLAYER6, "Lightgun X 6", SEQ_DEF_1(JOYCODE_6_LEFT) },
 	{ (IPT_LIGHTGUN_X | IPF_PLAYER6)+IPT_EXTENSION,                "Lightgun X 6", SEQ_DEF_1(JOYCODE_6_RIGHT) },
-	{ IPT_LIGHTGUN_X | IPF_PLAYER7, "Lightgun X 7", SEQ_DEF_1(JOYCODE_7_LEFT) },
+	{ IPT_LIGHTGUN_X | IPF_PLAYER7, "Lightgun X 7", SEQ_DEF_1(JOYCODE_7_LEFT) },				   
 	{ (IPT_LIGHTGUN_X | IPF_PLAYER7)+IPT_EXTENSION,                "Lightgun X 7", SEQ_DEF_1(JOYCODE_7_RIGHT) },
 	{ IPT_LIGHTGUN_X | IPF_PLAYER8, "Lightgun X 8", SEQ_DEF_1(JOYCODE_8_LEFT) },
 	{ (IPT_LIGHTGUN_X | IPF_PLAYER8)+IPT_EXTENSION,                "Lightgun X 8", SEQ_DEF_1(JOYCODE_8_RIGHT) },
@@ -1600,7 +1600,7 @@ static void save_default_keys(void)
 	{
 		config_write_default_ports(cfg, inputport_defaults_backup, inputport_defaults);
 		config_close(cfg);
-			}
+	}
 
 	memcpy(inputport_defaults,inputport_defaults_backup,sizeof(inputport_defaults_backup));
 }
@@ -2047,6 +2047,12 @@ void update_analog_port(int port)
 			axis = PEDAL_AXIS; is_stick = 1; is_gun=0; check_bounds = 1; break;
 		case IPT_PEDAL2:
 			axis = Z_AXIS; is_stick = 1; is_gun=0; check_bounds = 1; break;
+#ifdef MESS
+		case IPT_MOUSE_X:
+			axis = X_AXIS; is_stick = 0; is_gun=0; check_bounds = 0; break;
+		case IPT_MOUSE_Y:
+			axis = Y_AXIS; is_stick = 0; is_gun=0; check_bounds = 0; break;
+#endif
 		default:
 			/* Use some defaults to prevent crash */
 			axis = X_AXIS; is_stick = 0; is_gun=0; check_bounds = 0;
@@ -2912,6 +2918,11 @@ struct InputPort* input_port_allocate(const struct InputPortTiny *src)
 			++dst;
 		}
 
+#ifdef MESS
+		while((ext->type & ~IPF_MASK) == IPT_UCHAR)
+			ext++;
+#endif
+
 		src = ext;
 	}
 
@@ -3077,6 +3088,9 @@ void init_analog_seq()
 					case IPT_TRACKBALL_X:
 					case IPT_LIGHTGUN_X:
 					case IPT_AD_STICK_X:
+#ifdef MESS
+					case IPT_MOUSE_X:
+#endif
 						axis = X_AXIS;
 						break;
 					case IPT_DIAL_V:
@@ -3084,6 +3098,9 @@ void init_analog_seq()
 					case IPT_TRACKBALL_Y:
 					case IPT_LIGHTGUN_Y:
 					case IPT_AD_STICK_Y:
+#ifdef MESS
+					case IPT_MOUSE_Y:
+#endif
 						axis = Y_AXIS;
 						break;
 					case IPT_AD_STICK_Z:

@@ -793,7 +793,7 @@ static UINT8 unicode_char_to_at_keycode(unicode_char_t ch)
 {
 	UINT8 b;
 	switch(ch) {
-	case '`':						b = 1;		break;
+	case '\032':					b = 1;		break;
 	case '1':						b = 2;		break;
 	case '2':						b = 3;		break;
 	case '3':						b = 4;		break;
@@ -833,7 +833,7 @@ static UINT8 unicode_char_to_at_keycode(unicode_char_t ch)
 	case 'l':						b = 38;		break;
 	case ';':						b = 39;		break;
 	case '\'':						b = 40;		break;
-	case '\032':					b = 41;		break;
+	case '`':						b = 41;		break;
 	case '\\':						b = 43;		break;
 	case 'z':						b = 44;		break;
 	case 'x':						b = 45;		break;
@@ -953,11 +953,20 @@ QUEUE_CHARS( at_keyboard )
 }
 
 /***************************************************************************
-  ACCEPT_CHAR( at_keyboard )
+  Inputx stuff
 ***************************************************************************/
 
 ACCEPT_CHAR( at_keyboard )
 {
 	return unicode_char_to_at_keycode(ch) != 0;
 }
+
+
+
+CHARQUEUE_EMPTY( at_keyboard )
+{
+	return at_keyboard_queue_size() == 0;
+}
+
+
 

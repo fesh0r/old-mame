@@ -288,14 +288,15 @@ static void field_interrupt(void);
 
 
 static UINT8 tms9900_reg_layout[] = {
-	TMS9900_PC, TMS9900_WP, TMS9900_STATUS, TMS9900_IR
+	TMS9900_PC, TMS9900_WP, TMS9900_STATUS, TMS9900_IR,
 #ifdef MAME_DEBUG
-	, -1,
+	-1,
 	TMS9900_R0, TMS9900_R1, TMS9900_R2, TMS9900_R3,
 	TMS9900_R4, TMS9900_R5, TMS9900_R6, TMS9900_R7, -1,
 	TMS9900_R8, TMS9900_R9, TMS9900_R10, TMS9900_R11,
-	TMS9900_R12, TMS9900_R13, TMS9900_R14, TMS9900_R15, -1,
+	TMS9900_R12, TMS9900_R13, TMS9900_R14, TMS9900_R15,
 #endif
+	0
 };
 
 /* Layout of the debugger windows x,y,w,h */
@@ -307,7 +308,7 @@ static UINT8 tms9900_win_layout[] = {
 	 0,23,80, 1,	/* command line window (bottom rows) */
 };
 
-int TMS99XX_ICOUNT = 0;
+static int TMS99XX_ICOUNT = 0;
 
 
 /* tms9900 ST register bits. */

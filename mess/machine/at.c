@@ -6,7 +6,6 @@
 #include "includes/pic8259.h"
 #include "includes/pit8253.h"
 #include "includes/mc146818.h"
-#include "includes/dma8237.h"
 #include "includes/pc_vga.h"
 #include "includes/pc_cga.h"
 #include "includes/pcshare.h"
@@ -15,9 +14,11 @@
 #include "includes/pckeybrd.h"
 #include "includes/sblaster.h"
 
+#include "8237dma.h"
+
 static SOUNDBLASTER_CONFIG soundblaster = { 1,5, {1,0} };
 
-static PIT8253_CONFIG at_pit8253_config=
+static struct pit8253_config at_pit8253_config =
 {
 	TYPE8254,
 	{
@@ -45,7 +46,9 @@ void init_atcga(void)
 
 	init_pc_common(PCCOMMON_KEYBOARD_AT | PCCOMMON_DMA8237_AT);
 
-	pit8253_config(0,&at_pit8253_config);
+	pit8253_init(1);
+	pit8253_config(0, &at_pit8253_config);
+
 	pc_cga_init();
 	mc146818_init(MC146818_STANDARD);
 
@@ -71,8 +74,10 @@ void init_at_vga(void)
 	};
 
 	init_pc_common(PCCOMMON_KEYBOARD_AT | PCCOMMON_DMA8237_AT);
+	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
 
-	pit8253_config(0,&at_pit8253_config);
+	pit8253_init(1);
+	pit8253_config(0, &at_pit8253_config);
 
 	mc146818_init(MC146818_STANDARD);
 
@@ -92,55 +97,27 @@ void init_ps2m30286(void)
 
 MACHINE_INIT( at )
 {
-	dma8237_reset(dma8237);
-	dma8237_reset(dma8237+1);
+	dma8237_reset();
 }
 
 MACHINE_INIT( at_vga )
 {
 	vga_reset();
-	dma8237_reset(dma8237);
-	dma8237_reset(dma8237+1);
+	dma8237_reset();
 }
 
 void at_cga_frame_interrupt (void)
 {
-	static int turboswitch=-1;
-
-	if (turboswitch !=(input_port_3_r(0)&2))
-	{
-		if (input_port_3_r(0)&2)
-			cpunum_set_clockscale(0, 1);
-		else
-			cpunum_set_clockscale(0, 4.77/12);
-		turboswitch=input_port_3_r(0)&2;
-	}
-
 	pc_cga_timer();
 
-    if( !onscrd_active() && !setup_active() )
-	{
-		at_keyboard_polling();
-		at_8042_time();
-	}
+	at_keyboard_polling();
+	at_8042_time();
 }
 
 void at_vga_frame_interrupt (void)
 {
-	static int turboswitch=-1;
-
-	if (turboswitch !=(input_port_3_r(0)&2)) {
-		if (input_port_3_r(0)&2)
-			cpunum_set_clockscale(0, 1);
-		else
-			cpunum_set_clockscale(0, 4.77/12);
-		turboswitch=input_port_3_r(0)&2;
-	}
-
 //	vga_timer();
 
-    if( !onscrd_active() && !setup_active() ) {
-		at_keyboard_polling();
-		at_8042_time();
-	}
+	at_keyboard_polling();
+	at_8042_time();
 }

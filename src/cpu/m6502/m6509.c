@@ -132,7 +132,7 @@ static WRITE_HANDLER( m6509_write_00000 )
 
 static WRITE_HANDLER( m6509_write_00001 )
 {
-	m6509.ind_bank.b.h2 = data & 0xf;
+	m6509.ind_bank.b.h2=data&0xf;
 }
 
 static ADDRESS_MAP_START(m6509_mem, ADDRESS_SPACE_PROGRAM, 8)

@@ -1,0 +1,53 @@
+# PS-X Executable CRC file
+# single file demos
+#
+# crc = Name | Year | Author | Emulation Status
+
+[psx]
+0ee10ace = Xerox | 1998 | Legend | ?
+e1e91931 = Bitmaster's 1st | 1998 | Bitmaster | requires libps.exe
+c0bb623c = Second Demo | 1999 | AUMatt | ?
+23804eff = BakaTro | 1998 | K-Comm | ?
+55844af2 = Recycling | 1998 | Birdhouse Projects | ?
+9e179a15 = Lametro | 1999 | Birdhouse Projects | ?
+9d4107e9 = bufftr0 | 1998 | bufferman | ?
+1ce6979d = carnival99intro | 1999 | Birdhouse Projects | ?
+ebfa60e8 = PlayStation - Op.1 | 1999 | Crazy Cellist | ?
+3a8cd3c7 = A Y2K Demo | 1999 | Crazy Cellist | ?
+c4d57f4d = Eurasia PSX Intro #1 | 1999 | Eurasia | ?
+66f24b98 = Anime Demo (PAL) | 1998 | Hitmen | ?
+13c52cbd = Full Effect | 1998 | Hitmen | ?
+496fdcf4 = DrugTro | 1998 | Hitmen | ?
+361ce9e4 = GreenTro | 1998 | Hitmen | ?
+88f9d1df = HitWorld | 1998 | Hitmen | ?
+ac70e28e = Mother | 1997 | Hitmen | ?
+621dc244 = Minimum | 2000 | Hitmen | ?
+5aadc930 = Pactro | 1999 | Hitmen | ?
+7755191b = A Peacey Intro | 1998 | Hitmen | ?
+bc88b1fc = Remembers Amiga | 1998 | Hitmen | requires libps.exe
+dd8b9325 = The Roots | 1999 | Hitmen | ?
+57dfc662 = SadTro | 1998 | Hitmen | ?
+d8b0ffd8 = Silpheed's Contribution | 1998 | Hitmen | requires libps.exe
+dfc11c9f = TranceTro | 1997 | Hitmen | ?
+8b2e8ca1 = 1st ASM Production | 1999 | Jammy Bit | ?
+0fcbc375 = Fractal Landscape Gen. (ntsc) | 1998 | Davide Pasca | ?
+b233cb70 = Fractal Landscape Gen. (pal) | 1998 | Davide Pasca | ?
+50962a79 = first intro | 1998 | madman | ?
+2b6acee6 = mahjongg | 1998 | ? | ?
+1674cf33 = Newbie Intro | 1998 | Stdragut | ?
+7a70b2f1 = Bitz-n-Pieceez | 1998 | Napalm | ?
+10c17a90 = FlapTro (ntsc) | Napalm | ? | ?
+f93989c3 = FlapTro (pal) | 1999 | Napalm | ?
+a0c2441c = JaneyTro | 1998 | Napalm | ?
+4097c707 = Lightastic Intro | 1999 | Napalm | ?
+d9507dff = Monotone Introduction | 1999 | Napalm | ?
+a9995d15 = WebTro | 1998 | Napalm | ?
+6bff8dbc = Hypnopup (pal) | 1997 | Gadget | ?
+01529f14 = Comtro | 1999 | Paradox | ?
+f300075e = Rogue | 1999 | Da Swieep | ?
+de078e91 = ROLE Intro #1 | 1999 | Raiders Of the Lost Empire | ?
+7806600f = Sand | 1999 | Tursi | ?
+a2ba6d5e = Tribute | 1998 | Napalm | ?
+0c645fd5 = zeldademo | 1999 | ? | ?
+5d49c456 = Space Lemmings | 1998 | High Society | ?
+298d754b = High Society 1st | 1998 | High Society | ?

@@ -10,7 +10,7 @@
 #include "state.h"
 #include "includes/psx.h"
 
-#define VERBOSE_LEVEL ( 0 )
+#define VERBOSE_LEVEL ( 1 )
 
 INLINE void verboselog( int n_level, const char *s_fmt, ... )
 {
