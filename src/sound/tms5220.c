@@ -119,15 +119,6 @@ static int schedule_dummy_read;			/* set after each load address, so that next r
 static UINT8 data_register;				/* data register, used by read command */
 static int RDB_flag;					/* whether we should read data register or status register */
 
-#if 0
-
-static void (* ready_func)(int state);	/* called when the chip receive data whereas its FIFO is full */
-/* This results into the chip clearing its ready line until next frame ; if
-the ready pin is connected to the halt pin of the CPU, this results into
-locking the CPU, and you should provide a callback which asserts the CPU
-halt line to lock the CPU. */
-
-#endif
 
 /**********************************************************************************************
 
@@ -224,18 +215,6 @@ void tms5220_set_read_and_branch(void (*func)(void))
 
 /**********************************************************************************************
 
-     tms5220_set_ready_func -- sets the chip halt handler
-
-***********************************************************************************************/
-
-/*void tms5220_set_ready_func (void (*func)(int state))
-{
-	ready_func = func;
-}*/
-
-
-/**********************************************************************************************
-
      tms5220_data_write -- handle a write to the TMS5220
 
 ***********************************************************************************************/
@@ -324,6 +303,46 @@ int tms5220_ready_read(void)
     return (fifo_count < FIFO_SIZE-1);
 }
 
+
+/**********************************************************************************************
+
+     tms5220_ready_read -- returns the number of cycles until ready is asserted
+
+***********************************************************************************************/
+
+int tms5220_cycles_to_ready(void)
+{
+	int answer;
+
+
+	if (tms5220_ready_read())
+		answer = 0;
+	else
+	{
+		int val;
+
+		answer = 200-sample_count;
+
+		/* total number of bits available in current byte is (8 - fifo_bits_taken) */
+		/* if more than 4 are available, we need to check the energy */
+		if (fifo_bits_taken < 4)
+		{
+			/* read energy */
+			val = (fifo[fifo_head] >> fifo_bits_taken) & 0xf;
+			if (val == 0)
+				/* 0 -> silence frame: we will only read 4 bits, and we will
+				therefore need to read another frame before the FIFO is not
+				full any more */
+				answer += 200;
+			/* 15 -> stop frame, we will only read 4 bits, but the FIFO will
+			we cleared */
+			/* otherwise, we need to parse the repeat flag (1 bit) and the
+			pitch (6 bits), so everything will be OK. */
+		}
+	}
+
+	return answer;
+}
 
 
 /**********************************************************************************************

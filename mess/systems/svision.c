@@ -380,7 +380,7 @@ ROM_END
  dd6a clear 0x2000 at ($57/58) (0x4000)
  */
 
-static int svision_load_rom(int id, void *cartfile, int open_mode)
+static int svision_load_rom(int id, mame_file *cartfile, int open_mode)
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
 	int size;
@@ -391,13 +391,13 @@ static int svision_load_rom(int id, void *cartfile, int open_mode)
 		return 0;
 	}
 
-	size = osd_fsize(cartfile);
+	size = mame_fsize(cartfile);
 	if (size>0x10000) {
 	    logerror("%s: size %d not yet supported\n",image_filename(IO_CARTSLOT,id), size);
 	    return 1;
 	}
 
-	if (osd_fread(cartfile, rom+0x20000-size, size)!=size) {
+	if (mame_fread(cartfile, rom+0x20000-size, size)!=size) {
 		logerror("%s load error\n",image_filename(IO_CARTSLOT,id));
 		return 1;
 	}

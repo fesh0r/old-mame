@@ -34,6 +34,7 @@
 
 #include <driver.h>
 #include <info.h>
+#include "audit.h"
 #include "audit32.h"
 #include "options.h"
 #include "file.h"
@@ -58,7 +59,6 @@
  * Imported function prototypes
  ***************************************************************/
 
-extern BOOL GameUsesTrackball(int game);
 extern int load_driver_history(const struct GameDriver *drv, char *buffer, int bufsize);
 
 /**************************************************************
@@ -79,6 +79,7 @@ static void BeamSelectionChange(HWND hwnd);
 static void FlickerSelectionChange(HWND hwnd);
 static void GammaSelectionChange(HWND hwnd);
 static void BrightCorrectSelectionChange(HWND hwnd);
+static void PauseBrightSelectionChange(HWND hwnd);
 static void BrightnessSelectionChange(HWND hwnd);
 static void IntensitySelectionChange(HWND hwnd);
 static void A2DSelectionChange(HWND hwnd);
@@ -119,6 +120,7 @@ static int  g_nSampleRateIndex = 0;
 static int  g_nVolumeIndex     = 0;
 static int  g_nGammaIndex      = 0;
 static int  g_nBrightCorrectIndex = 0;
+static int  g_nPauseBrightIndex = 0;
 static int  g_nBeamIndex       = 0;
 static int  g_nFlickerIndex    = 0;
 static int  g_nIntensityIndex  = 0;
@@ -192,9 +194,6 @@ static DWORD dwHelpIDs[] =
 	IDC_EFFECT,             HIDC_EFFECT,
 	IDC_FILTER_CLONES,      HIDC_FILTER_CLONES,
 	IDC_FILTER_EDIT,        HIDC_FILTER_EDIT,
-#ifndef NEOFREE
-	IDC_FILTER_NEOGEO,      HIDC_FILTER_NEOGEO,
-#endif
 	IDC_FILTER_NONWORKING,  HIDC_FILTER_NONWORKING,
 	IDC_FILTER_ORIGINALS,   HIDC_FILTER_ORIGINALS,
 	IDC_FILTER_RASTER,      HIDC_FILTER_RASTER,
@@ -247,6 +246,15 @@ static DWORD dwHelpIDs[] =
 	IDC_VOLUME,             HIDC_VOLUME,
 	IDC_WAITVSYNC,          HIDC_WAITVSYNC,
 	IDC_WINDOWED,           HIDC_WINDOWED,
+	IDC_PAUSEBRIGHT,        HIDC_PAUSEBRIGHT,
+	IDC_LIGHTGUN,           HIDC_LIGHTGUN,
+	IDC_STEADYKEY,          HIDC_STEADYKEY,
+	IDC_OLD_TIMING,         HIDC_OLD_TIMING,
+	IDC_JOY_GUI,            HIDC_JOY_GUI,
+	IDC_RANDOM_BG,          HIDC_RANDOM_BG,
+	IDC_SHOW_DISCLAIMER,    HIDC_SHOW_DISCLAIMER,
+	IDC_SHOW_GAME_INFO,     HIDC_SHOW_GAME_INFO,
+
 	0,                      0
 };
 
@@ -281,91 +289,18 @@ DWORD GetHelpIDs(void)
 	return (DWORD) (LPSTR) dwHelpIDs;
 }
 
+static void CLIB_DECL DetailsPrintf(const char *fmt, ...)
+{
+	// throw it away
+}
+
 /* Checks of all ROMs are available for 'game' and returns result
  * Returns TRUE if all ROMs found, 0 if any ROMs are missing.
  */
 BOOL FindRomSet(int game)
 {
-	const struct RomModule	*region, *rom;
-	const struct GameDriver *gamedrv;
-	const char				*name;
-	int 					err;
-	unsigned int			length, icrc;
-
-	gamedrv = drivers[game];
-
-	if (!osd_faccess(gamedrv->name, OSD_FILETYPE_ROM))
-	{
-		/* if the game is a clone, try loading the ROM from the main version */
-		if (gamedrv->clone_of == 0
-		||	(gamedrv->clone_of->flags & NOT_A_DRIVER)
-		||	!osd_faccess(gamedrv->clone_of->name, OSD_FILETYPE_ROM))
-			return FALSE;
-	}
-
-	/* loop over regions, then over files */
-	for (region = rom_first_region(gamedrv); region; region = rom_next_region(region))
-	{
-		for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
-		{
-			extern struct GameDriver driver_0;
-			const struct GameDriver *drv;
-
-			name = ROM_GETNAME(rom);
-			icrc = ROM_GETCRC(rom);
-			length = 0;
-
-			/* obtain CRC-32 and length of ROM file */
-			drv = gamedrv;
-			do
-			{
-				err = osd_fchecksum(drv->name, name, &length, &icrc);
-				drv = drv->clone_of;
-			}
-			while (err && drv && drv != &driver_0);
-
-			if (err)
-				return FALSE;
-		}
-	}
-
-	return TRUE;
-}
-
-/* Checks if the game uses external samples at all
- * Returns TRUE if this driver expects samples
- */
-BOOL GameUsesSamples(int game)
-{
-#if (HAS_SAMPLES == 1) || (HAS_VLM5030 == 1)
-
-	int i;
-    struct InternalMachineDriver drv;
-
-	expand_machine_driver(drivers[game]->drv,&drv);
-
-	for (i = 0; drv.sound[i].sound_type && i < MAX_SOUND; i++)
-	{
-		const char **samplenames = NULL;
-
-#if (HAS_SAMPLES == 1)
-		if (drv.sound[i].sound_type == SOUND_SAMPLES)
-			samplenames = ((struct Samplesinterface *)drv.sound[i].sound_interface)->samplenames;
-#endif
-
-        /*
-#if (HAS_VLM5030 == 1)
-		if (drv.sound[i].sound_type == SOUND_VLM5030)
-			samplenames = ((struct VLM5030interface *)drv.sound[i].sound_interface)->samplenames;
-#endif
-        */
-		if (samplenames != 0 && samplenames[0] != 0)
-			return TRUE;
-	}
-
-#endif
-
-	return FALSE;
+    int audit = VerifyRomSet(game,(verify_printf_proc)DetailsPrintf);
+	return (audit == CORRECT) || (audit == BEST_AVAILABLE);
 }
 
 /* Checks for all samples in a sample set.
@@ -373,88 +308,8 @@ BOOL GameUsesSamples(int game)
  */
 BOOL FindSampleSet(int game)
 {
-#if (HAS_SAMPLES == 1) || (HAS_VLM5030 == 1)
-
-	static const struct GameDriver *gamedrv;
-
-	const char* sharedname;
-	BOOL bStatus;
-	int  skipfirst;
-	int  j, i;
-    struct InternalMachineDriver drv;
-    expand_machine_driver(drivers[game]->drv,&drv);
-	gamedrv = drivers[game];
-
-	if (GameUsesSamples(game) == FALSE)
-		return TRUE;
-
-	for (i = 0; drv.sound[i].sound_type && i < MAX_SOUND; i++)
-	{
-		const char **samplenames = NULL;
-
-#if (HAS_SAMPLES == 1)
-		if (drv.sound[i].sound_type == SOUND_SAMPLES)
-			samplenames = ((struct Samplesinterface *)drv.sound[i].sound_interface)->samplenames;
-#endif
-        /*
-#if (HAS_VLM5030 == 1)
-		if (drv.sound[i].sound_type == SOUND_VLM5030)
-			samplenames = ((struct VLM5030interface *)drv.sound[i].sound_interface)->samplenames;
-#endif
-        */
-		if (samplenames != 0 && samplenames[0] != 0)
-		{
-			BOOL have_samples = FALSE;
-			BOOL have_shared  = FALSE;
-
-			if (samplenames[0][0]=='*')
-			{
-				sharedname = samplenames[0]+1;
-				skipfirst = 1;
-			}
-			else
-			{
-				sharedname = NULL;
-				skipfirst = 0;
-			}
-
-			/* do we have samples for this game? */
-			have_samples = osd_faccess(gamedrv->name, OSD_FILETYPE_SAMPLE);
-
-			/* try shared samples */
-			if (skipfirst)
-				have_shared = osd_faccess(sharedname, OSD_FILETYPE_SAMPLE);
-
-			/* if still not found, we're done */
-			if (!have_samples && !have_shared)
-				return FALSE;
-
-			for (j = skipfirst; samplenames[j] != 0; j++)
-			{
-				bStatus = FALSE;
-
-				/* skip empty definitions */
-				if (strlen(samplenames[j]) == 0)
-					continue;
-
-				if (have_samples)
-					bStatus = File_Status(gamedrv->name, samplenames[j], OSD_FILETYPE_SAMPLE);
-
-				if (!bStatus && have_shared)
-				{
-					bStatus = File_Status(sharedname, samplenames[j], OSD_FILETYPE_SAMPLE);
-					if (!bStatus)
-					{
-						return FALSE;
-					}
-				}
-			}
-		}
-	}
-
-#endif
-
-	return TRUE;
+    int audit = VerifySampleSet(game,(verify_printf_proc)DetailsPrintf);
+	return (audit == CORRECT) || (audit == BEST_AVAILABLE);
 }
 
 void InitDefaultPropertyPage(HINSTANCE hInst, HWND hWnd)
@@ -708,7 +563,7 @@ const char *GameInfoStatus(UINT nIndex)
 		return "ROMs missing";
 
 	case 1:
-		if (drivers[nIndex]->flags & GAME_BROKEN)
+		if (DriverIsBroken(nIndex))
 			return "Not working";
 		if (drivers[nIndex]->flags & GAME_WRONG_COLORS)
 			return "Colors are totally wrong";
@@ -751,8 +606,7 @@ static char *GameInfoCloneOf(UINT nIndex)
 
 	buf[0] = '\0';
 
-	if (drivers[nIndex]->clone_of != 0
-	&&  !(drivers[nIndex]->clone_of->flags & NOT_A_DRIVER))
+	if (DriverIsClone(nIndex))
 	{
 		sprintf(buf, "%s - \"%s\"",
 				ConvertAmpersandString(ModifyThe(drivers[nIndex]->clone_of->description)),
@@ -760,6 +614,11 @@ static char *GameInfoCloneOf(UINT nIndex)
 	}
 
 	return buf;
+}
+
+static const char * GameInfoSource(UINT nIndex)
+{
+	return GetDriverFilename(nIndex);
 }
 
 /* Handle the information property page */
@@ -786,8 +645,9 @@ static INT_PTR CALLBACK GamePropertiesDialogProc(HWND hDlg, UINT Msg, WPARAM wPa
 		Static_SetText(GetDlgItem(hDlg, IDC_PROP_SCREEN),        GameInfoScreen(g_nGame));
 		Static_SetText(GetDlgItem(hDlg, IDC_PROP_COLORS),        GameInfoColors(g_nGame));
 		Static_SetText(GetDlgItem(hDlg, IDC_PROP_CLONEOF),       GameInfoCloneOf(g_nGame));
-		if (drivers[g_nGame]->clone_of != 0
-		&& !(drivers[g_nGame]->clone_of->flags & NOT_A_DRIVER))
+		Static_SetText(GetDlgItem(hDlg, IDC_PROP_SOURCE),        GameInfoSource(g_nGame));
+		
+		if (DriverIsClone(g_nGame))
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_PROP_CLONEOF_TEXT), SW_SHOW);
 		}
@@ -1052,11 +912,11 @@ static INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPAR
 
 	case WM_HELP:
 		/* User clicked the ? from the upper right on a control */
-		Help_HtmlHelp(((LPHELPINFO)lParam)->hItemHandle, MAME32CONTEXTHELP, HH_TP_HELP_WM_HELP, GetHelpIDs());
+		HelpFunction(((LPHELPINFO)lParam)->hItemHandle, MAME32CONTEXTHELP, HH_TP_HELP_WM_HELP, GetHelpIDs());
 		break;
 
 	case WM_CONTEXTMENU:
-		Help_HtmlHelp((HWND)wParam, MAME32CONTEXTHELP, HH_TP_HELP_CONTEXTMENU, GetHelpIDs());
+		HelpFunction((HWND)wParam, MAME32CONTEXTHELP, HH_TP_HELP_CONTEXTMENU, GetHelpIDs());
 		break;
 
 	}
@@ -1354,6 +1214,13 @@ static void OptionsToProp(HWND hWnd, options_type* o)
 		Static_SetText(hCtrl, buf);
 	}
 
+	hCtrl = GetDlgItem(hWnd, IDC_PAUSEBRIGHTDISP);
+	if (hCtrl)
+	{
+		sprintf(buf, "%03.02f", o->f_pause_bright);
+		Static_SetText(hCtrl, buf);
+	}
+
 	/* Input */
 	hCtrl = GetDlgItem(hWnd, IDC_A2DDISP);
 	if (hCtrl)
@@ -1428,11 +1295,17 @@ static void SetPropEnabledControls(HWND hWnd)
 	int  ddraw = 0;
 	int  useart = 0;
 	int joystick_attached = 9;
+	int in_window = 0;
 
 	nIndex = g_nGame;
 
 	hCtrl = GetDlgItem(hWnd, IDC_DDRAW);
 	ddraw = Button_GetCheck(hCtrl);
+
+	in_window = pGameOpts->window_mode;
+
+	EnableWindow(GetDlgItem(hWnd, IDC_RESDEPTH), !in_window);
+	EnableWindow(GetDlgItem(hWnd, IDC_RESDEPTHTEXT), !in_window);
 
 	EnableWindow(GetDlgItem(hWnd, IDC_WAITVSYNC),       ddraw);
 	EnableWindow(GetDlgItem(hWnd, IDC_TRIPLE_BUFFER),   ddraw);
@@ -1441,8 +1314,8 @@ static void SetPropEnabledControls(HWND hWnd)
 	EnableWindow(GetDlgItem(hWnd, IDC_SWITCHBPP),       ddraw);
 	EnableWindow(GetDlgItem(hWnd, IDC_MATCHREFRESH),    ddraw);
 	EnableWindow(GetDlgItem(hWnd, IDC_SYNCREFRESH),     ddraw);
-	EnableWindow(GetDlgItem(hWnd, IDC_REFRESH),         ddraw && DirectDraw_HasRefresh());
-	EnableWindow(GetDlgItem(hWnd, IDC_REFRESHTEXT),     ddraw && DirectDraw_HasRefresh());
+	EnableWindow(GetDlgItem(hWnd, IDC_REFRESH),         !in_window && ddraw && DirectDraw_HasRefresh());
+	EnableWindow(GetDlgItem(hWnd, IDC_REFRESHTEXT),     !in_window && ddraw && DirectDraw_HasRefresh());
 	EnableWindow(GetDlgItem(hWnd, IDC_BRIGHTNESS),      ddraw);
 	EnableWindow(GetDlgItem(hWnd, IDC_BRIGHTNESSTEXT),  ddraw);
 	EnableWindow(GetDlgItem(hWnd, IDC_BRIGHTNESSDISP),  ddraw);
@@ -1460,6 +1333,7 @@ static void SetPropEnabledControls(HWND hWnd)
 	EnableWindow(GetDlgItem(hWnd, IDC_OVERLAYS),		useart);
 	EnableWindow(GetDlgItem(hWnd, IDC_ARTRES),			useart);
 	EnableWindow(GetDlgItem(hWnd, IDC_ARTRESTEXT),		useart);
+	EnableWindow(GetDlgItem(hWnd, IDC_ARTMISCTEXT),		useart);
 
 	/* Joystick options */
 	joystick_attached = DIJoystick.Available();
@@ -1470,14 +1344,16 @@ static void SetPropEnabledControls(HWND hWnd)
 	EnableWindow(GetDlgItem(hWnd, IDC_A2D),				joystick_attached);
 
 	/* Trackball / Mouse options */
-	if (nIndex == -1 || GameUsesTrackball(nIndex))
-	{
-		Button_Enable(GetDlgItem(hWnd, IDC_USE_MOUSE), TRUE);
-	}
+	if (nIndex == -1 || DriverUsesTrackball(nIndex) || DriverUsesLightGun(nIndex))
+		Button_Enable(GetDlgItem(hWnd,IDC_USE_MOUSE),TRUE);
 	else
-	{
-		Button_Enable(GetDlgItem(hWnd, IDC_USE_MOUSE), FALSE);
-	}
+		Button_Enable(GetDlgItem(hWnd,IDC_USE_MOUSE),FALSE);
+
+	if (nIndex == -1 || DriverUsesLightGun(nIndex))
+		Button_Enable(GetDlgItem(hWnd,IDC_LIGHTGUN),TRUE);
+	else
+		Button_Enable(GetDlgItem(hWnd,IDC_LIGHTGUN),FALSE);
+
 
 	/* Sound options */
 	hCtrl = GetDlgItem(hWnd, IDC_USE_SOUND);
@@ -1500,6 +1376,7 @@ static void SetPropEnabledControls(HWND hWnd)
 		EnableWindow(GetDlgItem(hWnd, IDC_FRAMESKIP), FALSE);
 	else
 		EnableWindow(GetDlgItem(hWnd, IDC_FRAMESKIP), TRUE);
+
 }
 
 /**************************************************************
@@ -1526,6 +1403,13 @@ static void AssignBrightCorrect(HWND hWnd)
 {
 	/* "1.0", 0.5, 2.0 */
 	pGameOpts->f_bright_correct = g_nBrightCorrectIndex / 20.0 + 0.5;
+	
+}
+
+static void AssignPauseBright(HWND hWnd)
+{
+	/* "0.65", 0.5, 2.0 */
+	pGameOpts->f_pause_bright = g_nPauseBrightIndex / 20.0 + 0.5;
 	
 }
 
@@ -1595,6 +1479,7 @@ static void ResetDataMap(void)
 	g_nGammaIndex			= (int)((pGameOpts->f_gamma_correct  - 0.5) * 20.0);
 	g_nBrightnessIndex = (int)((pGameOpts->gfx_brightness - 0.1) * 20.0);
 	g_nBrightCorrectIndex	= (int)((pGameOpts->f_bright_correct - 0.5) * 20.0);
+	g_nPauseBrightIndex   	= (int)((pGameOpts->f_pause_bright   - 0.5) * 20.0);
 	g_nBeamIndex       = (int)((pGameOpts->f_beam         - 1.0) * 20.0);
 	g_nFlickerIndex    = (int)(pGameOpts->f_flicker);
 	g_nIntensityIndex		= (int)((pGameOpts->f_intensity      - 0.5) * 20.0);
@@ -1684,6 +1569,7 @@ static void BuildDataMap(void)
 
 	/* core video */
 	DataMapAdd(IDC_BRIGHTCORRECT, DM_INT,  CT_SLIDER,   &g_nBrightCorrectIndex,    0, 0, AssignBrightCorrect);
+	DataMapAdd(IDC_PAUSEBRIGHT,   DM_INT,  CT_SLIDER,   &g_nPauseBrightIndex,      0, 0, AssignPauseBright);
 	DataMapAdd(IDC_NOROTATE,      DM_BOOL, CT_BUTTON,   &pGameOpts->norotate,      0, 0, 0);
 	DataMapAdd(IDC_ROTATE,        DM_INT,  CT_COMBOBOX, &g_nRotateIndex, 0, 0, AssignRotate);
 	DataMapAdd(IDC_FLIPX,         DM_BOOL, CT_BUTTON,   &pGameOpts->flipx,         0, 0, 0);
@@ -1718,6 +1604,7 @@ static void BuildDataMap(void)
 /*	DataMapAdd(IDC_DEBUG,         DM_BOOL, CT_BUTTON,   &pGameOpts->mame_debug,    0, 0, 0);*/
 	DataMapAdd(IDC_LOG,           DM_BOOL, CT_BUTTON,   &pGameOpts->errorlog,      0, 0, 0);
 	DataMapAdd(IDC_SLEEP,         DM_BOOL, CT_BUTTON,   &pGameOpts->sleep,         0, 0, 0);
+	DataMapAdd(IDC_OLD_TIMING,    DM_BOOL, CT_BUTTON,   &pGameOpts->old_timing,    0, 0, 0);
 	DataMapAdd(IDC_LEDS,          DM_BOOL, CT_BUTTON,   &pGameOpts->leds,          0, 0, 0);
 #ifdef MESS
 	DataMapAdd(IDC_USE_NEW_UI,    DM_BOOL, CT_BUTTON,   &pGameOpts->use_new_ui, 0, 0, 0);
@@ -1835,6 +1722,10 @@ static void InitializeMisc(HWND hDlg)
 				(WPARAM)FALSE,
 				(LPARAM)MAKELONG(0, 30)); /* [0.50, 2.00] in .05 increments */
 
+	SendMessage(GetDlgItem(hDlg, IDC_PAUSEBRIGHT), TBM_SETRANGE,
+				(WPARAM)FALSE,
+				(LPARAM)MAKELONG(0, 30)); /* [0.50, 2.00] in .05 increments */
+
 	SendMessage(GetDlgItem(hDlg, IDC_BRIGHTNESS), TBM_SETRANGE,
 				(WPARAM)FALSE,
 				(LPARAM)MAKELONG(0, 38)); /* [0.10, 2.00] in .05 increments */
@@ -1875,6 +1766,10 @@ static void OptOnHScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 	if (hwndCtl == GetDlgItem(hwnd, IDC_BRIGHTCORRECT))
 	{
 		BrightCorrectSelectionChange(hwnd);
+	}
+	if (hwndCtl == GetDlgItem(hwnd, IDC_PAUSEBRIGHT))
+	{
+		PauseBrightSelectionChange(hwnd);
 	}
 	else
 	if (hwndCtl == GetDlgItem(hwnd, IDC_BRIGHTNESS))
@@ -1974,6 +1869,23 @@ static void BrightCorrectSelectionChange(HWND hwnd)
 	/* Set the static display to the new value */
 	sprintf(buf, "%03.02f", dValue);
 	Static_SetText(GetDlgItem(hwnd, IDC_BRIGHTCORRECTDISP), buf);
+}
+
+/* Handle changes to the Pause Brightness slider */
+static void PauseBrightSelectionChange(HWND hwnd)
+{
+	char   buf[100];
+	UINT   nValue;
+	double dValue;
+
+	/* Get the current value of the control */
+	nValue = SendMessage(GetDlgItem(hwnd, IDC_PAUSEBRIGHT), TBM_GETPOS, 0, 0);
+
+	dValue = nValue / 20.0 + 0.5;
+
+	/* Set the static display to the new value */
+	sprintf(buf, "%03.02f", dValue);
+	Static_SetText(GetDlgItem(hwnd, IDC_PAUSEBRIGHTDISP), buf);
 }
 
 /* Handle changes to the Brightness slider */

@@ -22,13 +22,13 @@ static int screen_interrupt_mode;
 static int lightpen_interrupts_enabled;
 static int lightpen_interrupt_mode;
 
-int astrocade_load_rom(int id, void *file, int open_mode)
+int astrocade_load_rom(int id, mame_file *file, int open_mode)
 {
 	int size = 0;
 
     /* load a cartidge  */
 	if (file)
-		size = osd_fread(file, memory_region(REGION_CPU1) + 0x2000, 0x8000);
+		size = mame_fread(file, memory_region(REGION_CPU1) + 0x2000, 0x8000);
 	return 0;
 }
 

@@ -9,9 +9,10 @@
 #include "driver.h"
 
 /* Our private wave file structure */
-struct wave_file {
+struct wave_file
+{
 	int channel;			/* channel for playback */
-	void *file; 			/* osd file handle */
+	mame_file *file; 		/* mame file handle */
 	int mode;				/* write mode? */
 	int (*fill_wave)(INT16 *,int,UINT8*);
 	void *timer;			/* timer (TIME_NEVER) for reading sample values */
@@ -59,7 +60,7 @@ static int wave_read(int id)
 		return WAVE_ERR;
 
     /* read the core header and make sure it's a WAVE file */
-	offset += osd_fread(w->file, buf, 4);
+	offset += mame_fread(w->file, buf, 4);
 	if( offset < 4 )
 	{
 		logerror("WAVE read error at offs %d\n", offset);
@@ -72,7 +73,7 @@ static int wave_read(int id)
     }
 
 	/* get the total size */
-	offset += osd_fread(w->file, &temp32, 4);
+	offset += mame_fread(w->file, &temp32, 4);
 	if( offset < 8 )
 	{
 		logerror("WAVE read error at offs %d\n", offset);
@@ -82,7 +83,7 @@ static int wave_read(int id)
 	logerror("WAVE filesize %u bytes\n", filesize);
 
 	/* read the RIFF file type and make sure it's a WAVE file */
-	offset += osd_fread(w->file, buf, 4);
+	offset += mame_fread(w->file, buf, 4);
 	if( offset < 12 )
 	{
 		logerror("WAVE read error at offs %d\n", offset);
@@ -97,14 +98,14 @@ static int wave_read(int id)
 	/* seek until we find a format tag */
 	while( 1 )
 	{
-		offset += osd_fread(w->file, buf, 4);
-		offset += osd_fread(w->file, &temp32, 4);
+		offset += mame_fread(w->file, buf, 4);
+		offset += mame_fread(w->file, &temp32, 4);
 		w->length = LITTLE_ENDIANIZE_INT32(temp32);
 		if( memcmp(&buf[0], "fmt ", 4) == 0 )
 			break;
 
 		/* seek to the next block */
-		osd_fseek(w->file, w->length, SEEK_CUR);
+		mame_fseek(w->file, w->length, SEEK_CUR);
 		offset += w->length;
 		if( offset >= filesize )
 		{
@@ -114,36 +115,36 @@ static int wave_read(int id)
 	}
 
 	/* read the format -- make sure it is PCM */
-	offset += osd_fread_lsbfirst(w->file, &temp16, 2);
+	offset += mame_fread_lsbfirst(w->file, &temp16, 2);
 	if( temp16 != 1 )
 	{
 		logerror("WAVE format %d not supported (not = 1 PCM)\n", temp16);
-			return WAVE_ERR;
+		return WAVE_ERR;
     }
 	logerror("WAVE format %d (PCM)\n", temp16);
 
 	/* number of channels -- only mono is supported, but we can mix multi-channel to mono */
-	offset += osd_fread_lsbfirst(w->file, &channels, 2);
+	offset += mame_fread_lsbfirst(w->file, &channels, 2);
 	logerror("WAVE channels %d\n", channels);
 
 	/* sample rate */
-	offset += osd_fread(w->file, &temp32, 4);
+	offset += mame_fread(w->file, &temp32, 4);
 	w->smpfreq = LITTLE_ENDIANIZE_INT32(temp32);
 	logerror("WAVE sample rate %d Hz\n", w->smpfreq);
 
 	/* bytes/second and block alignment are ignored */
-	offset += osd_fread(w->file, buf, 4);
+	offset += mame_fread(w->file, buf, 4);
 	/* read block alignment */
-	offset += osd_fread_lsbfirst(w->file, &blockAlign, 2);
+	offset += mame_fread_lsbfirst(w->file, &blockAlign, 2);
 
 	/***Field specific to PCM***/
 	/* read bits/sample */
-	offset += osd_fread_lsbfirst(w->file, &bitsPerSample, 2);
+	offset += mame_fread_lsbfirst(w->file, &bitsPerSample, 2);
 	logerror("WAVE bits/sample %d\n", bitsPerSample);
 	w->resolution = bitsPerSample;
 
 	/* seek past any extra data */
-	osd_fseek(w->file, w->length - 16, SEEK_CUR);
+	mame_fseek(w->file, w->length - 16, SEEK_CUR);
 	offset += w->length - 16;
 
 	/* Compute a few constants */
@@ -159,14 +160,14 @@ static int wave_read(int id)
 	/* seek until we find a data tag */
 	while( 1 )
 	{
-		offset += osd_fread(w->file, buf, 4);
-		offset += osd_fread(w->file, &temp32, 4);
+		offset += mame_fread(w->file, buf, 4);
+		offset += mame_fread(w->file, &temp32, 4);
 		w->length = LITTLE_ENDIANIZE_INT32(temp32);
 		if( memcmp(&buf[0], "data", 4) == 0 )
 			break;
 
 		/* seek to the next block */
-		osd_fseek(w->file, w->length, SEEK_CUR);
+		mame_fseek(w->file, w->length, SEEK_CUR);
 		offset += w->length;
 		if( offset >= filesize )
 		{
@@ -210,11 +211,11 @@ static int wave_read(int id)
 				sample_buf = 0;
 				/* skip pad bytes */
 				if (sample_padding)
-					osd_fseek(w->file, sample_padding, SEEK_CUR);
+					mame_fseek(w->file, sample_padding, SEEK_CUR);
 				/* read ceil(wave_file->bitsPerSample/8) bits */
 				for (bit=0; bit<bitsPerSample; bit+=8)
 				{
-					ch = osd_fgetc(w->file);
+					ch = mame_fgetc(w->file);
 					if (ch == EOF)
 						return WAVE_ERR;
 
@@ -274,7 +275,7 @@ static int wave_write(int id)
 		data_length;
 
     /* write the core header for a WAVE file */
-	offset += osd_fwrite(w->file, "RIFF", 4);
+	offset += mame_fwrite(w->file, "RIFF", 4);
     if( offset < 4 )
     {
 		logerror("WAVE write error at offs %d\n", offset);
@@ -282,10 +283,10 @@ static int wave_write(int id)
     }
 
 	temp32 = LITTLE_ENDIANIZE_INT32(filesize) - 8;
-	offset += osd_fwrite(w->file, &temp32, 4);
+	offset += mame_fwrite(w->file, &temp32, 4);
 
 	/* read the RIFF file type and make sure it's a WAVE file */
-	offset += osd_fwrite(w->file, "WAVE", 4);
+	offset += mame_fwrite(w->file, "WAVE", 4);
 	if( offset < 12 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -293,14 +294,14 @@ static int wave_write(int id)
 	}
 
 	/* write a format tag */
-	offset += osd_fwrite(w->file, "fmt ", 4);
+	offset += mame_fwrite(w->file, "fmt ", 4);
     if( offset < 12 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
 		return WAVE_ERR;
     }
     /* size of the following 'fmt ' fields */
-    offset += osd_fwrite(w->file, "\x10\x00\x00\x00", 4);
+    offset += mame_fwrite(w->file, "\x10\x00\x00\x00", 4);
 	if( offset < 16 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -309,7 +310,7 @@ static int wave_write(int id)
 
 	/* format: PCM */
 	temp16 = 1;
-	offset += osd_fwrite_lsbfirst(w->file, &temp16, 2);
+	offset += mame_fwrite_lsbfirst(w->file, &temp16, 2);
 	if( offset < 18 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -318,7 +319,7 @@ static int wave_write(int id)
 
 	/* channels: 1 (mono) */
 	temp16 = 1;
-    offset += osd_fwrite_lsbfirst(w->file, &temp16, 2);
+    offset += mame_fwrite_lsbfirst(w->file, &temp16, 2);
 	if( offset < 20 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -327,7 +328,7 @@ static int wave_write(int id)
 
 	/* sample rate */
 	temp32 = LITTLE_ENDIANIZE_INT32(w->smpfreq);
-	offset += osd_fwrite(w->file, &temp32, 4);
+	offset += mame_fwrite(w->file, &temp32, 4);
 	if( offset < 24 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -336,7 +337,7 @@ static int wave_write(int id)
 
 	/* byte rate */
 	temp32 = LITTLE_ENDIANIZE_INT32(w->smpfreq * w->resolution / 8);
-	offset += osd_fwrite(w->file, &temp32, 4);
+	offset += mame_fwrite(w->file, &temp32, 4);
 	if( offset < 28 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -345,7 +346,7 @@ static int wave_write(int id)
 
 	/* block align (size of one `sample') */
 	temp16 = w->resolution / 8;
-	offset += osd_fwrite_lsbfirst(w->file, &temp16, 2);
+	offset += mame_fwrite_lsbfirst(w->file, &temp16, 2);
 	if( offset < 30 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -354,7 +355,7 @@ static int wave_write(int id)
 
 	/* block align */
 	temp16 = w->resolution;
-	offset += osd_fwrite_lsbfirst(w->file, &temp16, 2);
+	offset += mame_fwrite_lsbfirst(w->file, &temp16, 2);
 	if( offset < 32 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -362,7 +363,7 @@ static int wave_write(int id)
     }
 
 	/* 'data' tag */
-	offset += osd_fwrite(w->file, "data", 4);
+	offset += mame_fwrite(w->file, "data", 4);
 	if( offset < 36 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -371,14 +372,14 @@ static int wave_write(int id)
 
 	/* data size */
 	temp32 = LITTLE_ENDIANIZE_INT32(data_length);
-	offset += osd_fwrite(w->file, &temp32, 4);
+	offset += mame_fwrite(w->file, &temp32, 4);
 	if( offset < 40 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
 		return WAVE_ERR;
     }
 
-	if( osd_fwrite_lsbfirst(w->file, w->data, data_length) != data_length )
+	if( mame_fwrite_lsbfirst(w->file, w->data, data_length) != data_length )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
 		return WAVE_ERR;
@@ -681,7 +682,7 @@ int wave_open(int id, int mode, void *args)
 			/* determine number of samples */
 			length =
 				wa->header_samples +
-				((osd_fsize(w->file) + wa->chunk_size - 1) / wa->chunk_size) * wa->chunk_samples +
+				((mame_fsize(w->file) + wa->chunk_size - 1) / wa->chunk_size) * wa->chunk_samples +
 				wa->trailer_samples;
 
 			w->smpfreq = wa->smpfreq;
@@ -719,10 +720,10 @@ int wave_open(int id, int mode, void *args)
 
 			/* convert the file data to samples */
 			bytes = 0;
-			osd_fseek(w->file, 0, SEEK_SET);
+			mame_fseek(w->file, 0, SEEK_SET);
 			while( pos < w->max_samples )
 			{
-				length = osd_fread(w->file, data, wa->chunk_size);
+				length = mame_fread(w->file, data, wa->chunk_size);
 				if( length == 0 )
 					break;
 				bytes += length;
@@ -1041,7 +1042,7 @@ int wave_output_chunk(int id, void *src, int count)
 /* ----------------------------------------------------------------------- */
 
 void wave_specify(struct IODevice *iodev, int count, char *actualext, const char *fileext,
-	int (*init)(int id, void *fp, int open_mode), void (*exit_)(int id))
+	int (*init)(int id, mame_file *fp, int open_mode), void (*exit_)(int id))
 {
 	strcpy(actualext, "wav");
 	strcpy(actualext + 4, fileext);

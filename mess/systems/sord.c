@@ -336,7 +336,7 @@ static ppi8255_interface sord_ppi8255_interface =
 
 static char cart_data[0x06fff-0x02000];
 
-static int sord_cartslot_init(int id, void *file, int open_mode)
+static int sord_cartslot_init(int id, mame_file *file, int open_mode)
 {
 	if (file == NULL)
 		return INIT_FAIL;
@@ -346,12 +346,12 @@ static int sord_cartslot_init(int id, void *file, int open_mode)
 		int datasize;
 
 		/* get file size */
-		datasize = osd_fsize(file);
+		datasize = mame_fsize(file);
 
 		if (datasize!=0)
 		{
 			/* read whole file */
-			osd_fread(file, cart_data, datasize);
+			mame_fread(file, cart_data, datasize);
 		}
 		return INIT_PASS;
 
@@ -359,7 +359,7 @@ static int sord_cartslot_init(int id, void *file, int open_mode)
 	return INIT_FAIL;
 }
 
-static int sord_floppy_init(int id, void *fp, int open_mode)
+static int sord_floppy_init(int id, mame_file *fp, int open_mode)
 {
 	if (!image_exists(IO_FLOPPY, id))
 		return INIT_PASS;
@@ -376,7 +376,7 @@ static int sord_floppy_init(int id, void *fp, int open_mode)
 
 
 
-static int sord_cassette_init(int id, void *fp, int open_mode)
+static int sord_cassette_init(int id, mame_file *fp, int open_mode)
 {
 	struct cassette_args args;
 	memset(&args, 0, sizeof(args));
@@ -613,9 +613,9 @@ static MACHINE_INIT( sord_m5 )
 #ifdef SORD_DUMP_RAM
 static void sord_dump_ram(void)
 {
-	void *file;
+	mame_file *file;
 
-	file = osd_fopen(Machine->gamedrv->name, "sord.bin", OSD_FILETYPE_MEMCARD,OSD_FOPEN_WRITE);
+	file = mame_fopen(Machine->gamedrv->name, "sord.bin", FILETYPE_MEMCARD,OSD_FOPEN_WRITE);
  
 	if (file)
 	{
@@ -627,19 +627,19 @@ static void sord_dump_ram(void)
 
 			data[0] = cpunum_read_byte(0,i);
 
-			osd_fwrite(file, data, 1);
+			mame_fwrite(file, data, 1);
 		}
 
 		/* close file */
-		osd_fclose(file);
+		mame_fclose(file);
 	}
 }
 
 static void sordfd5_dump_ram(void)
 {
-	void *file;
+	mame_file *file;
 
-	file = osd_fopen(Machine->gamedrv->name, "sordfd5.bin", OSD_FILETYPE_MEMCARD,OSD_FOPEN_WRITE);
+	file = mame_fopen(Machine->gamedrv->name, "sordfd5.bin", FILETYPE_MEMCARD,OSD_FOPEN_WRITE);
  
 	if (file)
 	{
@@ -651,11 +651,11 @@ static void sordfd5_dump_ram(void)
 
 			data[0] = cpunum_read_byte(1,i);
 			
-			osd_fwrite(file, data, 1);
+			mame_fwrite(file, data, 1);
 		}
 
 		/* close file */
-		osd_fclose(file);
+		mame_fclose(file);
 	}
 }
 #endif

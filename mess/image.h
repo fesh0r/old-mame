@@ -2,6 +2,7 @@
 #define IMAGE_H
 
 #include <stdlib.h>
+#include "fileio.h"
 
 extern int images_is_running;
 
@@ -9,14 +10,14 @@ extern int image_load(int type, int id, const char *name);
 extern void image_unload(int type, int id);
 extern void image_unload_all(void);
 
-extern void *image_fp(int type, int id);
+extern mame_file *image_fp(int type, int id);
 
 extern void *image_malloc(int type, int id, size_t size);
 extern char *image_strdup(int type, int id, const char *src);
 extern void *image_realloc(int type, int id, void *ptr, size_t size);
 
 /* needs to be phased out */
-extern void *image_fopen_custom(int type, int id, int filetype, int read_or_write);
+extern mame_file *image_fopen_custom(int type, int id, int filetype, int read_or_write);
 
 extern const char *image_typename_id(int type, int id);
 extern const char *image_filename(int type, int id);

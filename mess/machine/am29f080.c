@@ -112,7 +112,7 @@ void	amd_flash_reset(int index1)
 	amd_flash[index1].amd_autoselect_state = 0;
 }
 	
-void	amd_flash_init(int index1)
+void amd_flash_init(int index1)
 {
 	/* all groups are write enabled! */
 	amd_flash[index1].sector_group_protection = 0;
@@ -126,7 +126,7 @@ void	amd_flash_init(int index1)
 	amd_flash_reset(index1);
 }
 
-void	amd_flash_finish(int index1)
+void amd_flash_finish(int index1)
 {
 	if (amd_flash[index1].base!=NULL)
 	{
@@ -135,34 +135,34 @@ void	amd_flash_finish(int index1)
 	}
 }
 
-void	amd_flash_store(int index1, char *flash_name)
+void amd_flash_store(int index1, const char *flash_name)
 {
-	void *file;
+	mame_file *file;
 
 	if (amd_flash[index1].base!=NULL)
 	{
-		file = osd_fopen(Machine->gamedrv->name, flash_name, OSD_FILETYPE_MEMCARD,OSD_FOPEN_WRITE);
+		file = mame_fopen(Machine->gamedrv->name, flash_name, FILETYPE_MEMCARD,OSD_FOPEN_WRITE);
 		if (file)
 		{
-			osd_fwrite(file, amd_flash[index1].base, (1024*1024));
-			osd_fclose(file);
+			mame_fwrite(file, amd_flash[index1].base, (1024*1024));
+			mame_fclose(file);
 		}
 	}
 }
 
 
 
-void	amd_flash_restore(int index1, char *flash_name)
+void	amd_flash_restore(int index1, const char *flash_name)
 {
-	void *file;
+	mame_file *file;
 
 	if (amd_flash[index1].base!=NULL)
 	{
-		file = osd_fopen(Machine->gamedrv->name, flash_name, OSD_FILETYPE_MEMCARD,OSD_FOPEN_READ);
+		file = mame_fopen(Machine->gamedrv->name, flash_name, FILETYPE_MEMCARD,OSD_FOPEN_READ);
 		if (file)
 		{
-			osd_fread(file, amd_flash[index1].base, (1024*1024));
-			osd_fclose(file);
+			mame_fread(file, amd_flash[index1].base, (1024*1024));
+			mame_fclose(file);
 		}
 	}
 }

@@ -1,5 +1,5 @@
 /*
-	Machine code for TI99/4, TI-99/4A, TI99/4P.
+	Machine code for TI99/4, TI-99/4A, and SNUG SGCPU (a.k.a. 99/4P).
 	Raphael Nabet, 1999-2002.
 	Some code was originally derived from Ed Swartz's V9T9.
 
@@ -54,9 +54,8 @@ TODO:
 #include "sndhrdw/spchroms.h"
 #include "includes/basicdsk.h"
 #include "cassette.h"
-#include "image.h"
-#include "mscommon.h"
 #include "ti99_4x.h"
+#include "994x_ser.h"
 
 
 /* prototypes */
@@ -77,7 +76,7 @@ static void ti99_CS2_motor(int offset, int data);
 static void ti99_audio_gate(int offset, int data);
 static void ti99_CS_output(int offset, int data);
 
-static void ti99_expansion_card_init(void);
+static void ti99_exp_init(void);
 static void ti99_4p_internal_dsr_init(void);
 static void ti99_TIxram_init(void);
 static void ti99_sAMSxram_init(void);
@@ -109,10 +108,12 @@ static enum
 static xRAM_kind_t xRAM_kind;
 /* TRUE if speech synthesizer present */
 static char has_speech;
-/* TRUE if floppy disk controller present */
+/* floppy disk controller type */
 static fdc_kind_t fdc_kind;
 /* TRUE if evpc card present */
 static char has_evpc;
+/* TRUE if rs232 card present */
+static char has_rs232;
 
 
 /* tms9901 setup */
@@ -168,12 +169,13 @@ In short:
 	faster when reading consecutive bytes, although the address pointer can be
 	read and written at any time.
 
-	They are generally used to store programs in GPL (a proprietary, interpreted language -
-	the interpreter take most of a TI99/4(a) CPU ROMs).  They can used to store large pieces
-	of data, too.
+	They are generally used to store programs in GPL (Graphic Programming
+	Language: a proprietary, interpreted language - the interpreter takes most
+	of a TI99/4(a) CPU ROMs).  They can used to store large pieces of data,
+	too.
 
 	Both TI99/4 and TI99/4a include three GROMs, with some start-up code,
-	system routines and TI-Basic.  TI99/4 reportedly includes an additionnal
+	system routines and TI-Basic.  TI99/4 reportedly includes an additional
 	Equation Editor.  Maybe a part of the Hand Held Unit DSR lurks there, too
 	(this is only a supposition).  TI99/8 includes the three standard GROMs and
 	16 GROMs for the UCSD p-system.  TI99/2 does not include GROMs at all, and
@@ -316,7 +318,7 @@ void init_ti99_4p(void)
 	has_evpc = TRUE;
 }
 
-int ti99_floppy_init(int id, void *fp, int open_mode)
+int ti99_floppy_init(int id, mame_file *fp, int open_mode)
 {
 	if (basicdsk_floppy_init(id, fp, open_mode)==INIT_PASS)
 	{
@@ -337,7 +339,7 @@ int ti99_floppy_init(int id, void *fp, int open_mode)
 	return INIT_FAIL;
 }
 
-int ti99_cassette_init(int id, void *fp, int open_mode)
+int ti99_cassette_init(int id, mame_file *fp, int open_mode)
 {
 	struct cassette_args args;
 	memset(&args, 0, sizeof(args));
@@ -353,7 +355,7 @@ int ti99_cassette_init(int id, void *fp, int open_mode)
 
 	We don't need to support 99/4p, as it has no cartridge port.
 */
-int ti99_load_rom(int id, void *cartfile, int open_mode)
+int ti99_load_rom(int id, mame_file *cartfile, int open_mode)
 {
 	const char *name = image_filename(IO_CARTSLOT,id);
 
@@ -411,19 +413,19 @@ int ti99_load_rom(int id, void *cartfile, int open_mode)
 			break;
 
 		case SLOT_GROM:
-			osd_fread(cartfile, memory_region(region_grom) + 0x6000, 0xA000);
+			mame_fread(cartfile, memory_region(region_grom) + 0x6000, 0xA000);
 			break;
 
 		case SLOT_MINIMEM:
 			cartridge_minimemory = TRUE;
 		case SLOT_CROM:
-			osd_fread_msbfirst(cartfile, cartridge_pages[0], 0x2000);
+			mame_fread_msbfirst(cartfile, cartridge_pages[0], 0x2000);
 			current_page_ptr = cartridge_pages[0];
 			break;
 
 		case SLOT_DROM:
 			cartridge_paged = TRUE;
-			osd_fread_msbfirst(cartfile, cartridge_pages[1], 0x2000);
+			mame_fread_msbfirst(cartfile, cartridge_pages[1], 0x2000);
 			current_page_ptr = cartridge_pages[0];
 			break;
 		}
@@ -509,7 +511,7 @@ void machine_init_ti99(void)
 	current_page_ptr = cartridge_pages[0];
 
 	/* init tms9901 */
-	tms9901_init(& tms9901reset_param_ti99);
+	tms9901_init(0, & tms9901reset_param_ti99);
 
 	if (! has_evpc)
 		TMS9928A_reset();
@@ -527,9 +529,10 @@ void machine_init_ti99(void)
 		xRAM_kind = (readinputport(input_port_config) >> config_xRAM_bit) & config_xRAM_mask;
 	has_speech = (readinputport(input_port_config) >> config_speech_bit) & config_speech_mask;
 	fdc_kind = (readinputport(input_port_config) >> config_fdc_bit) & config_fdc_mask;
+	has_rs232 = (readinputport(input_port_config) >> config_rs232_bit) & config_rs232_mask;
 
 	/* set up optional expansion hardware */
-	ti99_expansion_card_init();
+	ti99_exp_init();
 
 	if (ti99_model == model_99_4p)
 		ti99_4p_internal_dsr_init();
@@ -588,6 +591,9 @@ void machine_init_ti99(void)
 		break;
 	}
 
+	if (has_rs232)
+		ti99_rs232_init();
+
 	if (has_evpc)
 	{
 		ti99_evpc_init();
@@ -596,7 +602,10 @@ void machine_init_ti99(void)
 
 void machine_stop_ti99(void)
 {
-	tms9901_cleanup();
+	if (has_rs232)
+		ti99_rs232_cleanup();
+
+	tms9901_cleanup(0);
 }
 
 
@@ -682,9 +691,10 @@ Theory:
 	These are registers to communicate with several peripherals.
 	These registers are all 8-bit-wide, and are located at even adresses between
 	0x8400 and 0x9FFE.
-	The registers are identified by (addr & 1C00), and, for VDP and GPL access, by (addr & 2).
-	These registers are either read-only or write-only.  (Or, more accurately,
-	(addr & 4000) disables register read, whereas !(addr & 4000) disables register read.)
+	The registers are identified by (addr & 1C00), and, for VDP and GPL access,
+	by (addr & 2).  These registers are either read-only or write-only.  (Or,
+	more accurately, (addr & 4000) disables register read, whereas
+	!(addr & 4000) disables register write.)
 
 	Memory mapped registers list:
 	- write sound chip. (8400-87FE)
@@ -803,12 +813,45 @@ static READ16_HANDLER ( ti99_rw_rspeech )
 	return ((int) tms5220_status_r(offset)) << 8;
 }
 
+#if 0
+
+static void speech_kludge_callback(int dummy)
+{
+	if (! tms5220_ready_r())
+	{
+		/* Weirdly enough, we are always seeing some problems even though
+		everything is working fine. */
+		/*double time_to_ready = tms5220_time_to_ready();
+		logerror("ti99/4a speech says aaargh!\n");
+		logerror("(time to ready: %f -> %d)\n", time_to_ready, (int) ceil(3000000*time_to_ready));*/
+	}
+}
+
+#endif
+
 /*
 	TMS5200 speech chip write
 */
 static WRITE16_HANDLER ( ti99_ww_wspeech )
 {
 	tms9900_ICount -= 30;		/* this is just an approx. minimum, it can be much more */
+
+#if 1
+	/* the stupid design of the tms5220 core means that ready is cleared when
+	there are 15 bytes in FIFO.  It should be 16.  Of course, if it were the
+	case, we would need to store the value on the bus, which would be more
+	complex. */
+	if (! tms5220_ready_r())
+	{
+		double time_to_ready = tms5220_time_to_ready();
+		int cycles_to_ready = ceil(TIME_TO_CYCLES(0, time_to_ready));
+
+		logerror("time to ready: %f -> %d\n", time_to_ready, (int) cycles_to_ready);
+
+		tms9900_ICount -= cycles_to_ready;
+		timer_set(TIME_NOW, 0, /*speech_kludge_callback*/NULL);
+	}
+#endif
 
 	tms5220_data_w(offset, (data >> 8) & 0xff);
 }
@@ -1009,7 +1052,7 @@ nota:
 */
 void tms9901_set_int2(int state)
 {
-	tms9901_set_single_int(2, state);
+	tms9901_set_single_int(0, 2, state);
 }
 
 /*
@@ -1181,11 +1224,24 @@ static void ti99_CS_output(int offset, int data)
 
 /*===========================================================================*/
 /*
-	Extension card support code
+	Peripheral expansion card support.
 
-In short:
-	16 CRU address intervals are reserved for expansion.  I appended known TI peripherals which
-	use each port (appended '???' when I don't know what the peripheral is :-) ).
+	ti99/4, ti99/4a, geneve, snug sgcpu (a.k.a. 99/4p), and ti99/8 systems have
+	a bus connector that enables the connection of extension cards.  (Although
+	the hexbus is the preferred peripheral expansion bus for ti99/8, ti99/8 is
+	believed to be compatible with the PEB system.)
+
+	While a few cards (e.g. TI speech synthesizer) are to be connected to the
+	side port of the console, most extension cards were designed to be inserted
+	in a PEB instead.  The PEB (Peripheral Expansion Box) is a big box with an
+	alimentation, a few drivers, and several card slots, that connects to the
+	ti99/4(a) side port.  The reason for using the PEB is that daisy-chaining
+	many modules caused the system to be unreliable due to the noise produced
+	by the successive contacts.
+
+	Each expansion card is assigned to one of 16 CRU address ranges.
+	I appended the names of known TI peripherals that use each port (I appended
+	'???' when I don't know what the peripheral is :-) ).
 	* 0x1000-0x10FE "For test equipment use on production line"
 	* 0x1100-0x11FE disk controller
 	* 0x1200-0x12FE modem???
@@ -1198,14 +1254,17 @@ In short:
 	* 0x1900-0x19FE EPROM programmer??? (Mezzanine board in July 1981's TI99/7 prototype)
 	* 0x1A00-0x1AFE unassigned
 	* 0x1B00-0x1BFE TI GPL debugger card
-	* 0x1C00-0x1CFE Video Controller Card (Possibly the weirdest device.  The card is connected to
-		the computer video output, a VCR video output, and a monitor.  It can control the VCR,
-		connect the display to either VCR output or computer video output, and it can read or save
-		binary data to video tape.  I think it can act as a genlock interface (i.e. TMS9918
-		transparent background shows the video signal), too, but I am not sure.)
-	* 0x1D00-0x1DFE IEEE 488 Controller Card (parallel port, schematics on ftp.whtech.com)
+	* 0x1C00-0x1CFE Video Controller Card (Possibly the weirdest device.  This
+		card is connected to the video output of the computer, to a VCR, and a
+		video monitor.  It can control the VCR, connect the display to either
+		VCR output or computer video output, and it can read or save binary
+		data to video tape.  I think it can act as a genlock interface (i.e.
+		TMS9918 transparent background shows the video signal), too, but I am
+		not sure about this.)
+	* 0x1D00-0x1DFE IEEE 488 Controller Card ('intelligent' parallel bus,
+		schematics on ftp.whtech.com)
 	* 0x1E00-0x1EFE unassigned
-	* 0x1F00-0x1FFE P-code card
+	* 0x1F00-0x1FFE P-code card (part of a complete development system)
 
 	Known mappings for 3rd party cards:
 	* Horizon RAMdisk: any ports from 0 to 7 (port 0 is most common).
@@ -1242,24 +1301,12 @@ In short:
 	Only the floppy disk controller card is supported for now.
 */
 
-typedef int (*cru_read_handler)(int offset);
-typedef void (*cru_write_handler)(int offset, int data);
-
-typedef struct expansion_port_t
-{
-	cru_read_handler cru_read;		/* card CRU read handler */
-	cru_write_handler cru_write;	/* card CRU handler */
-
-	mem_read_handler mem_read;		/* card mem read handler (8 bits) */
-	mem_write_handler mem_write;	/* card mem write handler (8 bits) */
-} expansion_port_t;
-
 /* handlers for each of 16 slots */
-static expansion_port_t expansion_ports[16];
+static ti99_exp_card_handlers_t expansion_ports[16];
 
 /* expansion port for the 99/4p system, which supports dynamical 16-bit accesses */
 /* (TI did not design this!) */
-typedef struct ti99_4p_expansion_port_t
+typedef struct ti99_4p_exp_card_handlers_t
 {
 	cru_read_handler cru_read;		/* card CRU read handler */
 	cru_write_handler cru_write;	/* card CRU handler */
@@ -1278,19 +1325,10 @@ typedef struct ti99_4p_expansion_port_t
 			mem_write16_handler mem_write;	/* card mem write handler (8 bits) */
 		} width_16bit;
 	} w;
-} ti99_4p_expansion_port_t;
-
-typedef struct ti99_4p_16bit_expansion_port_t
-{
-	cru_read_handler cru_read;		/* card CRU read handler */
-	cru_write_handler cru_write;	/* card CRU handler */
-
-	mem_read16_handler mem_read;	/* card mem read handler (16 bits) */
-	mem_write16_handler mem_write;	/* card mem write handler (16 bits) */
-} ti99_4p_16bit_expansion_port_t;
+} ti99_4p_exp_card_handlers_t;
 
 /* handlers for each of 28 slots */
-static ti99_4p_expansion_port_t ti99_4p_expansion_ports[28];
+static ti99_4p_exp_card_handlers_t ti99_4p_expansion_ports[28];
 
 /* index of the currently active card (-1 if none) */
 static int active_card;
@@ -1310,25 +1348,8 @@ static int ila;
 connected) */
 static int ilb;
 
-/* only supported by ti99/4p */
+/* only supported by the SNUG SGCPU (a.k.a. 99/4p) */
 static int senila, senilb;
-
-/* masks for ila and ilb (from actual ILA and ILB registers) */
-enum
-{
-	inta_rs232_1_bit = 0,
-	inta_rs232_2_bit = 1,
-	inta_rs232_3_bit = 4,
-	inta_rs232_4_bit = 5,
-
-	/*inta_rs232_1_mask = (0x80 >> inta_rs232_1_bit),
-	inta_rs232_2_mask = (0x80 >> inta_rs232_2_bit),
-	inta_rs232_3_mask = (0x80 >> inta_rs232_3_bit),
-	inta_rs232_4_mask = (0x80 >> inta_rs232_4_bit),*/
-
-	intb_fdc_bit     = 0,
-	intb_ieee488_bit = 1
-};
 
 /* hack to simulate TMS9900 byte write */
 static int tmp_buffer;
@@ -1337,9 +1358,10 @@ static int tmp_buffer;
 /*
 	Resets the expansion card handlers
 */
-static void ti99_expansion_card_init(void)
+static void ti99_exp_init(void)
 {
 	memset(expansion_ports, 0, sizeof(expansion_ports));
+	memset(ti99_4p_expansion_ports, 0, sizeof(ti99_4p_expansion_ports));
 
 	active_card = -1;
 #if ACTIVATE_BIT_EMULATE
@@ -1354,7 +1376,7 @@ static void ti99_expansion_card_init(void)
 
 	cru_base: CRU base address (any of 0x1000, 0x1100, 0x1200, ..., 0x1F00)
 */
-static void ti99_set_expansion_card_handlers(int cru_base, const expansion_port_t *handler)
+void ti99_exp_set_card_handlers(int cru_base, const ti99_exp_card_handlers_t *handler)
 {
 	int port;
 
@@ -1390,7 +1412,7 @@ static void ti99_set_expansion_card_handlers(int cru_base, const expansion_port_
 
 	cru_base: CRU base address (any of 0x1000, 0x1100, 0x1200, ..., 0x1F00)
 */
-static void ti99_4p_set_16bit_expansion_card_handlers(int cru_base, const ti99_4p_16bit_expansion_port_t *handler)
+void ti99_4p_exp_set_16bit_card_handlers(int cru_base, const ti99_4p_exp_16bit_card_handlers_t *handler)
 {
 	int port;
 
@@ -1418,18 +1440,18 @@ static void ti99_4p_set_16bit_expansion_card_handlers(int cru_base, const ti99_4
 	bit: bit number [0,7]
 	state: 1 to assert bit, 0 to clear
 */
-static void set_ila_bit(int bit, int state)
+void ti99_exp_set_ila_bit(int bit, int state)
 {
 	if (state)
 	{
 		ila |= 0x80 >> bit;
-		tms9901_set_single_int(1, 1);
+		tms9901_set_single_int(0, 1, 1);
 	}
 	else
 	{
 		ila &= ~(0x80 >> bit);
 		if (! ila)
-			tms9901_set_single_int(1, 0);
+			tms9901_set_single_int(0, 1, 0);
 	}
 }
 
@@ -1439,7 +1461,7 @@ static void set_ila_bit(int bit, int state)
 	bit: bit number [0,7]
 	state: 1 to assert bit, 0 to clear
 */
-static void set_ilb_bit(int bit, int state)
+void ti99_exp_set_ilb_bit(int bit, int state)
 {
 	if (state)
 		ilb |= 0x80 >> bit;
@@ -1702,7 +1724,7 @@ WRITE16_HANDLER ( ti99_4p_ww_expansion )
 
 /*===========================================================================*/
 /*
-	TI99/4p internal DSR support.
+	SNUG SGCPU (a.k.a. 99/4p) internal DSR support.
 
 	Includes a few specific signals, and an extra ROM.
 */
@@ -1712,7 +1734,7 @@ static void ti99_4p_internal_dsr_cru_w(int offset, int data);
 static READ16_HANDLER(ti99_4p_rw_internal_dsr);
 
 
-static const ti99_4p_16bit_expansion_port_t ti99_4p_internal_dsr_handlers =
+static const ti99_4p_exp_16bit_card_handlers_t ti99_4p_internal_dsr_handlers =
 {
 	NULL,
 	ti99_4p_internal_dsr_cru_w,
@@ -1731,7 +1753,7 @@ static void ti99_4p_internal_dsr_init(void)
 {
 	ti99_4p_internal_DSR = (UINT16 *) (memory_region(REGION_CPU1) + offset_rom4_4p);
 
-	ti99_4p_set_16bit_expansion_card_handlers(0x0f00, & ti99_4p_internal_dsr_handlers);
+	ti99_4p_exp_set_16bit_card_handlers(0x0f00, & ti99_4p_internal_dsr_handlers);
 
 	internal_rom6_enable = 0;
 	senila = 0;
@@ -1846,7 +1868,7 @@ static READ16_HANDLER ( ti99_rw_sAMSxramhigh );
 static WRITE16_HANDLER ( ti99_ww_sAMSxramhigh );
 
 
-static const expansion_port_t sAMS_expansion_handlers =
+static const ti99_exp_card_handlers_t sAMS_expansion_handlers =
 {
 	NULL,
 	sAMS_cru_w,
@@ -1870,7 +1892,7 @@ static void ti99_sAMSxram_init(void)
 	install_mem_read16_handler(0, 0xa000, 0xffff, ti99_rw_sAMSxramhigh);
 	install_mem_write16_handler(0, 0xa000, 0xffff, ti99_ww_sAMSxramhigh);
 
-	ti99_set_expansion_card_handlers(0x1e00, & sAMS_expansion_handlers);
+	ti99_exp_set_card_handlers(0x1e00, & sAMS_expansion_handlers);
 
 	sAMS_mapper_on = 0;
 
@@ -1944,7 +1966,8 @@ static WRITE16_HANDLER ( ti99_ww_sAMSxramhigh )
 
 /*===========================================================================*/
 /*
-	TI99/4p Super AMS clone support.  Compatible with Super AMS, but uses a 16-bit bus.
+	SNUG SGCPU (a.k.a. 99/4p) Super AMS clone support.
+	Compatible with Super AMS, but uses a 16-bit bus.
 
 	Up to 1Mb of SRAM.  Straightforward mapper, works with 4kb chunks.
 */
@@ -1955,7 +1978,7 @@ static READ16_HANDLER(ti99_4p_rw_mapper);
 static WRITE16_HANDLER(ti99_4p_ww_mapper);
 
 
-static const ti99_4p_16bit_expansion_port_t ti99_4p_mapper_handlers =
+static const ti99_4p_exp_16bit_card_handlers_t ti99_4p_mapper_handlers =
 {
 	NULL,
 	ti99_4p_mapper_cru_w,
@@ -1991,7 +2014,7 @@ static void ti99_4p_mapper_init(void)
 	install_mem_read16_handler(0, 0xf000, 0xffff, MRA16_BANK10);
 	install_mem_write16_handler(0, 0xf000, 0xffff, MWA16_BANK10);*/
 
-	ti99_4p_set_16bit_expansion_card_handlers(0x1e00, & ti99_4p_mapper_handlers);
+	ti99_4p_exp_set_16bit_card_handlers(0x1e00, & ti99_4p_mapper_handlers);
 
 	ti99_4p_mapper_on = 0;
 
@@ -2109,7 +2132,7 @@ static READ16_HANDLER ( ti99_rw_myarcxramhigh );
 static WRITE16_HANDLER ( ti99_ww_myarcxramhigh );
 
 
-static const expansion_port_t myarc_expansion_handlers =
+static const ti99_exp_card_handlers_t myarc_expansion_handlers =
 {
 	myarc_cru_r,
 	myarc_cru_w,
@@ -2148,12 +2171,12 @@ static void ti99_myarcxram_init(void)
 	{
 	case xRAM_kind_foundation_128k:	/* 128kb foundation */
 	case xRAM_kind_foundation_512k:	/* 512kb foundation */
-		ti99_set_expansion_card_handlers(0x1e00, & myarc_expansion_handlers);
+		ti99_exp_set_card_handlers(0x1e00, & myarc_expansion_handlers);
 		break;
 	case xRAM_kind_myarc_128k:		/* 128kb myarc clone */
 	case xRAM_kind_myarc_512k:		/* 512kb myarc clone */
-		ti99_set_expansion_card_handlers(0x1000, & myarc_expansion_handlers);
-		ti99_set_expansion_card_handlers(0x1900, & myarc_expansion_handlers);
+		ti99_exp_set_card_handlers(0x1000, & myarc_expansion_handlers);
+		ti99_exp_set_card_handlers(0x1900, & myarc_expansion_handlers);
 		break;
 	default:
 		break;	/* let's just keep GCC's big mouth shut */
@@ -2264,7 +2287,7 @@ static int motor_on;
 /* count 4.23s from rising edge of motor_on */
 void *motor_on_timer;
 
-static const expansion_port_t fdc_handlers =
+static const ti99_exp_card_handlers_t fdc_handlers =
 {
 	fdc_cru_r,
 	fdc_cru_w,
@@ -2288,7 +2311,7 @@ static void ti99_fdc_init(void)
 	motor_on = 0;
 	motor_on_timer = timer_alloc(motor_on_timer_callback);
 
-	ti99_set_expansion_card_handlers(0x1100, & fdc_handlers);
+	ti99_exp_set_card_handlers(0x1100, & fdc_handlers);
 
 	wd179x_init(WD_TYPE_179X, fdc_callback);		/* initialize the floppy disk controller */
 	wd179x_set_density(DEN_FM_LO);
@@ -2318,11 +2341,11 @@ static void fdc_callback(int event)
 	{
 	case WD179X_IRQ_CLR:
 		DRQ_IRQ_status &= ~fdc_IRQ;
-		set_ilb_bit(intb_fdc_bit, 0);
+		ti99_exp_set_ilb_bit(intb_fdc_bit, 0);
 		break;
 	case WD179X_IRQ_SET:
 		DRQ_IRQ_status |= fdc_IRQ;
-		set_ilb_bit(intb_fdc_bit, 1);
+		ti99_exp_set_ilb_bit(intb_fdc_bit, 1);
 		break;
 	case WD179X_DRQ_CLR:
 		DRQ_IRQ_status &= ~fdc_DRQ;
@@ -2527,7 +2550,7 @@ static void bwg_cru_w(int offset, int data);
 static READ_HANDLER(bwg_mem_r);
 static WRITE_HANDLER(bwg_mem_w);
 
-static const expansion_port_t bwg_handlers =
+static const ti99_exp_card_handlers_t bwg_handlers =
 {
 	bwg_cru_r,
 	bwg_cru_w,
@@ -2560,7 +2583,7 @@ static void ti99_bwg_init(void)
 	motor_on = 0;
 	motor_on_timer = timer_alloc(motor_on_timer_callback);
 
-	ti99_set_expansion_card_handlers(0x1100, & bwg_handlers);
+	ti99_exp_set_card_handlers(0x1100, & bwg_handlers);
 
 	wd179x_init(WD_TYPE_179X, fdc_callback);		/* initialize the floppy disk controller */
 	wd179x_set_density(DEN_MFM_LO);
@@ -2821,7 +2844,7 @@ enum
 	page_mask = /*0xff*/0x3f
 };
 
-static const expansion_port_t ide_handlers =
+static const ti99_exp_card_handlers_t ide_handlers =
 {
 	ide_cru_r,
 	ide_cru_w,
@@ -3053,7 +3076,7 @@ static int RAMEN;
 
 static int evpc_dsr_page;
 
-static const expansion_port_t evpc_handlers =
+static const ti99_exp_card_handlers_t evpc_handlers =
 {
 	evpc_cru_r,
 	evpc_cru_w,
@@ -3072,7 +3095,7 @@ static void ti99_evpc_init(void)
 	RAMEN = 0;
 	evpc_dsr_page = 0;
 
-	ti99_set_expansion_card_handlers(0x1400, & evpc_handlers);
+	ti99_exp_set_card_handlers(0x1400, & evpc_handlers);
 }
 
 /*

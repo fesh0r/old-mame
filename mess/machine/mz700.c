@@ -13,12 +13,12 @@
 #include "cassette.h"
 
 #ifndef VERBOSE
-#define VERBOSE 1
+#define VERBOSE 0
 #endif
 
 #if VERBOSE
 #define LOG(N,M,A)	\
-	if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",timer_get_time(),(char*)M ); logerror A; }
+	if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",timer_get_time(), (const char*)M ); logerror A; }
 #else
 #define LOG(N,M,A)
 #endif
@@ -810,7 +810,7 @@ static struct cassette_args mz700_cassette_args =
 	0												/* create_smpfreq */
 };
 
-int mz700_cassette_init(int id, void *fp, int open_mode)
+int mz700_cassette_init(int id, mame_file *fp, int open_mode)
 {
 	return cassette_init(id, fp, open_mode, &mz700_cassette_args);
 }

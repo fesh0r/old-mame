@@ -29,7 +29,7 @@ static UINT8 keyline[10] =
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 };
 
-static void *rom_fp[2] = {0};
+static mame_file *rom_fp[2] = {0};
 
 /*
  * tia6523
@@ -695,7 +695,7 @@ MACHINE_INIT( c16 )
 
 }
 
-static int c16_rom_id (int id, void *romfile)
+static int c16_rom_id (int id, mame_file *romfile)
 {
     /* magic lowrom at offset 7: $43 $42 $4d */
 	/* if at offset 6 stands 1 it will immediatly jumped to offset 0 (0x8000) */
@@ -707,8 +707,8 @@ static int c16_rom_id (int id, void *romfile)
 	logerror("c16_rom_id %s\n", name);
 	retval = 0;
 
-	osd_fseek (romfile, 7, SEEK_SET);
-	osd_fread (romfile, buffer, sizeof (magic));
+	mame_fseek (romfile, 7, SEEK_SET);
+	mame_fread (romfile, buffer, sizeof (magic));
 
 	if (memcmp (magic, buffer, sizeof (magic)) == 0)
 	{
@@ -729,7 +729,7 @@ static int c16_rom_id (int id, void *romfile)
 	return retval;
 }
 
-int c16_rom_init (int id, void *fp, int open_mode)
+int c16_rom_init (int id, mame_file *fp, int open_mode)
 {
 	rom_fp[id] = fp;
 	return (rom_fp[id] && !c16_rom_id(id, rom_fp[id])) ? INIT_FAIL : INIT_PASS;
@@ -744,7 +744,7 @@ int c16_rom_load (int id)
 {
 	const char *name = image_filename(IO_CARTSLOT,id);
     UINT8 *mem = memory_region (REGION_CPU1);
-	void *fp = rom_fp[id];
+	mame_file *fp = rom_fp[id];
 	int size, read;
 	char *cp;
 	static unsigned int addr = 0;
@@ -754,7 +754,7 @@ int c16_rom_load (int id)
 	if (!c16_rom_id (id, fp))
 		return 1;
 
-	size = osd_fsize (fp);
+	size = mame_fsize (fp);
 
 	if ((cp = strrchr (name, '.')) != NULL)
 	{
@@ -762,7 +762,7 @@ int c16_rom_load (int id)
 		{
 			unsigned short in;
 
-			osd_fread_lsbfirst (fp, &in, 2);
+			mame_fread_lsbfirst (fp, &in, 2);
 			logerror("rom prg %.4x\n", in);
 			addr = in+0x20000;
 			size -= 2;
@@ -773,7 +773,7 @@ int c16_rom_load (int id)
 		addr = 0x20000;
 	}
 	logerror("loading rom %s at %.5x size:%.4x\n", name, addr, size);
-	read = osd_fread (fp, mem + addr, size);
+	read = mame_fread (fp, mem + addr, size);
 	addr += size;
 	if (read != size)
 		return 1;

@@ -520,7 +520,7 @@ UINT8	vhdStatus;
 
 void coco_vhd_readwrite( UINT8 data );
 
-int coco_vhd_init(int id, void *fp, int open_mode)
+int coco_vhd_init(int id, mame_file *fp, int open_mode)
 {
 	vhdFile = NULL;
 	vhdStatus = 0xff; /* -1, Power on state */
@@ -602,7 +602,7 @@ void coco_vhd_readwrite( UINT8 data )
 		return;
 	}
 
-	result = osd_fseek(vhdFile, ((logicalRecordNumber)) * 256, SEEK_SET);
+	result = mame_fseek(vhdFile, ((logicalRecordNumber)) * 256, SEEK_SET);
 
 	if( result < 0 )
 	{
@@ -615,7 +615,7 @@ void coco_vhd_readwrite( UINT8 data )
 	switch( data )
 	{
 		case 0: /* Read sector */
-			result = osd_fread(vhdFile, &(mess_ram[phyOffset]), 256);
+			result = mame_fread(vhdFile, &(mess_ram[phyOffset]), 256);
 
 			if( result != 256 )
 			{
@@ -627,7 +627,7 @@ void coco_vhd_readwrite( UINT8 data )
 			break;
 
 		case 1: /* Write Sector */
-			result = osd_fwrite(vhdFile, &(mess_ram[phyOffset]), 256);
+			result = mame_fwrite(vhdFile, &(mess_ram[phyOffset]), 256);
 
 			if( result != 256 )
 			{

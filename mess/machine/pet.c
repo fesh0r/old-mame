@@ -554,7 +554,7 @@ int pet_rom_id (int id)
 	int retval = 0;
 	unsigned char magic[] =
 	{0xc3, 0xc2, 0xcd, 0x38, 0x30}, buffer[sizeof (magic)];
-	void *romfile;
+	mame_file *romfile;
 	char *cp;
 
 	logerror("c64_rom_id %s\n", image_filename(IO_CARTSLOT,id));
@@ -565,9 +565,9 @@ int pet_rom_id (int id)
 		return 0;
 	}
 
-	osd_fseek (romfile, 3, SEEK_SET);
-	osd_fread (romfile, buffer, sizeof (magic));
-	osd_fclose (romfile);
+	mame_fseek (romfile, 3, SEEK_SET);
+	mame_fread (romfile, buffer, sizeof (magic));
+	mame_fclose (romfile);
 #endif
 	return 1;
 }

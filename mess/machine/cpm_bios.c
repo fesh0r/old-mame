@@ -38,11 +38,11 @@ static int fmt[NDSK] = {0,};		/* index of disk formats */
 static int mode[NDSK] = {0,};		/* 0 read only, !0 read/write */
 static int bdos_trk[NDSK] = {0,};	/* BDOS track number */
 static int bdos_sec[NDSK] = {0,};	/* BDOS sector number */
-static void *fp[NDSK] = {NULL, };	/* image file pointer */
+static mame_file *fp[NDSK] = {NULL, };	/* image file pointer */
 static int ff[NDSK] = {0, };            /* image filenames specified flags */
-static void *lp = NULL; 			/* list file handle (ie. PIP LST:=X:FILE.EXT) */
-//static void *pp = NULL;			/* punch file handle (ie. PIP PUN:=X:FILE.EXT) */
-//static void *rp = NULL;			/* reader file handle (ie. PIP X:FILE.EXE=RDR:) */
+static mame_file *lp = NULL; 			/* list file handle (ie. PIP LST:=X:FILE.EXT) */
+//static mame_file *pp = NULL;			/* punch file handle (ie. PIP PUN:=X:FILE.EXT) */
+//static mame_file *rp = NULL;			/* reader file handle (ie. PIP X:FILE.EXE=RDR:) */
 static int dma = 0; 				/* DMA transfer address */
 
 static UINT8 zeropage0[8] =
@@ -109,7 +109,7 @@ static void cpm_jumptable(void)
 	RAM[BIOS_EXEC + 2] = 0xc9;			/* RET */
 }
 
-int cpm_floppy_init(int id, void *file, int open_mode)
+int cpm_floppy_init(int id, mame_file *file, int open_mode)
 {
 	ff[id] = (file != NULL);
 
@@ -264,7 +264,7 @@ int cpm_init(int n, const char *ids[])
 	}
 
 	/* create a file to receive list output (ie. PIP LST:=FILE.EXT) */
-	lp = osd_fopen(Machine->gamedrv->name, "cpm.lst", OSD_FILETYPE_IMAGE, 1);
+	lp = mame_fopen(Machine->gamedrv->name, "cpm.lst", FILETYPE_IMAGE, 1);
 
 	cpm_jumptable();
 
@@ -282,7 +282,7 @@ void cpm_exit(void)
 	/* if a list file is still open close it now */
 	if (lp)
 	{
-		osd_fclose(lp);
+		mame_fclose(lp);
 		lp = NULL;
 	}
 
@@ -309,7 +309,7 @@ static void cpm_conout_chr(int data)
  * cpm_conout_str
  * send a zero terminated string to the console
  *****************************************************************************/
-static void cpm_conout_str(char *src)
+static void cpm_conout_str(const char *src)
 {
 	while (*src)
 		cpm_conout_chr(*src++);
@@ -452,7 +452,7 @@ static void cpm_disk_image_seek(void)
 		break;
 
 	}
-	osd_fseek(fp[curdisk], offs, SEEK_SET);
+	mame_fseek(fp[curdisk], offs, SEEK_SET);
 }
 
 
@@ -550,7 +550,7 @@ int cpm_disk_read_sector(void)
 			if (fp[curdisk])
 			{
 				cpm_disk_image_seek();
-				if (osd_fread(fp[curdisk], &RAM[dma], RECL) == RECL)
+				if (mame_fread(fp[curdisk], &RAM[dma], RECL) == RECL)
 					result = 0;
 			}
 		}
@@ -580,7 +580,7 @@ int cpm_disk_write_sector(void)
 			if (fp[curdisk])
 			{
 				cpm_disk_image_seek();
-				if (osd_fwrite(fp[curdisk], &RAM[dma], RECL) == RECL)
+				if (mame_fwrite(fp[curdisk], &RAM[dma], RECL) == RECL)
 					result = 0;
 			}
 		}
@@ -697,7 +697,7 @@ WRITE_HANDLER ( cpm_bios_command_w )
 #endif
 		/* If the line printer file is created */
 		if (lp)
-			osd_fwrite(lp, &tmp, 1);
+			mame_fwrite(lp, &tmp, 1);
 		break;
 
 

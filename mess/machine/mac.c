@@ -1389,7 +1389,7 @@ static void rtc_execute_cmd(int data)
 			break;
 
 		default:
-			logerror("Unknown RTC write command : %X, data = \n", (int) rtc_cmd, (int) rtc_data_byte);
+			logerror("Unknown RTC write command : %X, data = %d\n", (int) rtc_cmd, (int) rtc_data_byte);
 			break;
 		}
 		//rtc_write_cmd_in_progress = FALSE;
@@ -1464,7 +1464,7 @@ NVRAM_HANDLER( mac )
 #if LOG_RTC
 		logerror("Writing PRAM to file\n");
 #endif
-		osd_fwrite(file, rtc_ram, sizeof(rtc_ram));
+		mame_fwrite(file, rtc_ram, sizeof(rtc_ram));
 	}
 	else
 	{
@@ -1473,7 +1473,7 @@ NVRAM_HANDLER( mac )
 #if LOG_RTC
 			logerror("Reading PRAM from file\n");
 #endif
-			osd_fread(file, rtc_ram, sizeof(rtc_ram));
+			mame_fread(file, rtc_ram, sizeof(rtc_ram));
 		}
 		else
 		{
@@ -1560,7 +1560,7 @@ WRITE16_HANDLER ( mac_iwm_w )
 		iwm_w(offset >> 8, data & 0xff);
 }
 
-int mac_floppy_init(int id, void *fp, int open_mode)
+int mac_floppy_init(int id, mame_file *fp, int open_mode)
 {
 #if 0
 	if ((mac_model == model_Mac128k512k) && (id == 0))

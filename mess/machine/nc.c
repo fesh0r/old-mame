@@ -25,7 +25,7 @@ extern int nc_membank_card_ram_mask;
 /* save card data back */
 static void	nc_card_save(int id)
 {
-	void *file;
+	mame_file *file;
 
 	/* if there is no data to write, quit */
 	if ((nc_card_ram==NULL) || (nc_card_size==0))
@@ -36,15 +36,15 @@ static void	nc_card_save(int id)
 	logerror("attempting card save\n");
 
 	/* open file for writing */
-	file = image_fopen_custom(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_WRITE);
+	file = image_fopen_custom(IO_CARTSLOT, id, FILETYPE_IMAGE, OSD_FOPEN_WRITE);
 
 	if (file)
 	{
 		/* write data */
-		osd_fwrite(file, nc_card_ram, nc_card_size);
+		mame_fwrite(file, nc_card_ram, nc_card_size);
 
 		/* close file */
-		osd_fclose(file);
+		mame_fclose(file);
 
 		logerror("write succeeded!\r\n");
 	}
@@ -71,7 +71,7 @@ static int nc_card_calculate_mask(int size)
 
 
 /* load card image */
-static int nc_card_load(int id, void *file, unsigned char **ptr)
+static int nc_card_load(int id, mame_file *file, unsigned char **ptr)
 {
 	if (file)
 	{
@@ -79,7 +79,7 @@ static int nc_card_load(int id, void *file, unsigned char **ptr)
 		unsigned char *data;
 
 		/* get file size */
-		datasize = osd_fsize(file);
+		datasize = mame_fsize(file);
 
 		if (datasize!=0)
 		{
@@ -91,7 +91,7 @@ static int nc_card_load(int id, void *file, unsigned char **ptr)
 				nc_card_size = datasize;
 
 				/* read whole file */
-				osd_fread(file, data, datasize);
+				mame_fread(file, data, datasize);
 
 				*ptr = data;
 
@@ -111,7 +111,7 @@ static int nc_card_load(int id, void *file, unsigned char **ptr)
 }
 
 /* load pcmcia card */
-int nc_pcmcia_card_load(int id, void *fp, int open_mode)
+int nc_pcmcia_card_load(int id, mame_file *fp, int open_mode)
 {
 	/* a pcmcia card is not required for this machine,
 	so if no image is specified, initialisation has succeeded */
@@ -167,7 +167,7 @@ void nc_pcmcia_card_exit(int id)
 /*************************************************************************************************/
 /* Serial */
 
-int	nc_serial_init(int id, void *fp, int open_mode)
+int	nc_serial_init(int id, mame_file *fp, int open_mode)
 {
 	/* serial device is not require for this machine, so if no image
 	is specified, initialisation has succeeded */

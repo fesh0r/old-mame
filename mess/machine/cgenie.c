@@ -83,7 +83,7 @@ static UINT8 head = 0;
 
 /* current tape file handles */
 static char tape_name[12+1];
-static void *tape_get_file = 0;
+static mame_file *tape_get_file = 0;
 
 /* tape buffer for the first eight bytes at write (to extract a filename) */
 static UINT8 tape_buffer[9];
@@ -127,23 +127,23 @@ static OPBASE_HANDLER (opbaseoverride)
 		{
 			UINT8 *buff = (UINT8*)malloc(65536), *s, data;
 			UINT16 size, entry = 0, block_len, block_ofs = 0;
-			void *cmd;
+			mame_file *cmd;
 
 			if( !buff )
 			{
 				logerror("failed to allocate 64K buff\n");
 				return address;
 			}
-			cmd = image_fopen_custom(IO_CASSETTE, 0, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
+			cmd = image_fopen_custom(IO_CASSETTE, 0, FILETYPE_IMAGE, OSD_FOPEN_READ);
 			if( !cmd )
-				  cmd = image_fopen_custom(IO_SNAPSHOT, 0, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
+				  cmd = image_fopen_custom(IO_SNAPSHOT, 0, FILETYPE_IMAGE, OSD_FOPEN_READ);
 			if( !cmd )
 			{
 				logerror("failed to open '%s'\n", image_filename(IO_CASSETTE,0));
 			}
 			else
 			{
-				size = osd_fread(cmd, buff, 65536);
+				size = mame_fread(cmd, buff, 65536);
 				s = buff;
 				if( memcmp(s, TAPE_HEADER, sizeof(TAPE_HEADER)-1) == 0 )
 				{
@@ -214,7 +214,7 @@ static OPBASE_HANDLER (opbaseoverride)
 						}
 					}
 				}
-				osd_fclose(cmd);
+				mame_fclose(cmd);
 				cpunum_set_pc(0,entry);
 			}
 			free(buff);
@@ -339,7 +339,7 @@ MACHINE_STOP( cgenie )
 	tape_put_close();
 }
 
-int cgenie_cassette_init(int id, void *fp, int open_mode)
+int cgenie_cassette_init(int id, mame_file *fp, int open_mode)
 {
 	return INIT_PASS;
 }
@@ -369,7 +369,7 @@ int cgenie_cassette_init(int id, void *fp, int open_mode)
  * of tracks, number of sides, number of sectors etc, so we need to
  * set that up here
  */
-int cgenie_floppy_init(int id, void *fp, int open_mode)
+int cgenie_floppy_init(int id, mame_file *fp, int open_mode)
 {
 	/* A Floppy Isnt manditory, so return if none */
 	if (fp == NULL)
@@ -392,13 +392,13 @@ int cgenie_floppy_init(int id, void *fp, int open_mode)
 		short dir_sector = 0;
 		short dir_length = 0;
 
-		osd_fseek(fp, 0, SEEK_SET);
+		mame_fseek(fp, 0, SEEK_SET);
 
 		/* determine geometry from disk contents */
 		for( i = 0; i < 12; i++ )
 		{
-			osd_fseek(fp, pd_list[i].SPT * 256, SEEK_SET);
-			osd_fread(fp, buff, 16);
+			mame_fseek(fp, pd_list[i].SPT * 256, SEEK_SET);
+			mame_fread(fp, buff, 16);
 			/* find an entry with matching DDSL */
 			if (buff[0] != 0x00 || buff[1] != 0xfe || buff[2] != pd_list[i].DDSL)
 				continue;
@@ -412,9 +412,9 @@ int cgenie_floppy_init(int id, void *fp, int open_mode)
 			for( j = 16; j < 32; j += 8 )
 			{
 				dir_offset = dir_sector * 256 + j * 32;
-				if( osd_fseek(fp, dir_offset, SEEK_SET) < 0 )
+				if( mame_fseek(fp, dir_offset, SEEK_SET) < 0 )
 					break;
-				if( osd_fread(fp, buff, 16) != 16 )
+				if( mame_fread(fp, buff, 16) != 16 )
 					break;
 				if( !strncmp((char*)buff + 5, "DIR     SYS", 11) ||
 					!strncmp((char*)buff + 5, "NCW1983 JHL", 11) )
@@ -471,22 +471,22 @@ int cgenie_floppy_init(int id, void *fp, int open_mode)
 	return INIT_FAIL;
 }
 
-int cgenie_rom_load(int id, void *fp, int open_mode)
+int cgenie_rom_load(int id, mame_file *fp, int open_mode)
 {
 	int result = 0;
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	void *rom;
+	mame_file *rom;
 	const char *filename;
 
 	/* Initialize memory */
 	memset(&ROM[0x4000], 0xff, 0xc000);
 
 	filename = "newe000.rom";
-	rom = osd_fopen(Machine->gamedrv->name, filename, OSD_FILETYPE_IMAGE, 0);
+	rom = mame_fopen(Machine->gamedrv->name, filename, FILETYPE_IMAGE, 0);
 	if( rom )
 	{
 		logerror("%s found '%s' ROM\n", Machine->gamedrv->name, filename);
-		osd_fread(rom, &ROM[0x12000], 0x1000);
+		mame_fread(rom, &ROM[0x12000], 0x1000);
 	}
 	else
 	{
@@ -524,7 +524,7 @@ static void tape_put_byte(UINT8 value)
 				sprintf(tape_name, "%-6.6s.cas", tape_buffer + 2);
 			else
 				strcpy(tape_name, "unknown.cas");
-			osd_fopen(Machine->gamedrv->name, tape_name, OSD_FILETYPE_IMAGE, OSD_FOPEN_WRITE);
+			mame_fopen(Machine->gamedrv->name, tape_name, FILETYPE_IMAGE, OSD_FOPEN_WRITE);
 		}
 	}
 	else
@@ -671,7 +671,7 @@ static void tape_get_byte(void)
 		{
 			cgenie_frame_time = 30;
 			sprintf(cgenie_frame_message, "Tape load '%s' $%04X bytes", tape_name, tape_count);
-			osd_fread(tape_get_file, &value, 1);
+			mame_fread(tape_get_file, &value, 1);
 		}
 		tape_bits |= 0xaaaa;
 		if( value & 0x80 )
@@ -716,26 +716,26 @@ static void tape_get_open(void)
 		if (tape_name[0] != ' ')
 		{
 			logerror("tape_get_open '%s'\n", tape_name);
-			tape_get_file = osd_fopen(Machine->gamedrv->name, tape_name, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
+			tape_get_file = mame_fopen(Machine->gamedrv->name, tape_name, FILETYPE_IMAGE, OSD_FOPEN_READ);
 		}
 		if( tape_get_file )
 		{
 			cgenie_frame_time = 30;
 			sprintf(cgenie_frame_message, "Tape load '%s'", tape_name);
-			osd_fread(tape_get_file, buffer, sizeof(TAPE_HEADER));
+			mame_fread(tape_get_file, buffer, sizeof(TAPE_HEADER));
 			if( strncmp(buffer, TAPE_HEADER, sizeof(TAPE_HEADER) - 1) == 0 )
 			{
 				UINT8 data;
 				/* skip data until zero byte */
 				do
 				{
-					osd_fread(tape_get_file, &data, 1);
+					mame_fread(tape_get_file, &data, 1);
 				} while( data );
 			}
 			else
 			{
 				/* seek back to start of tape */
-				osd_fseek(tape_get_file, 0, SEEK_SET);
+				mame_fseek(tape_get_file, 0, SEEK_SET);
 			}
 		}
 		tape_count = 0;
@@ -753,7 +753,7 @@ static void tape_get_bit(void)
 	{
 		if( tape_get_file )
 		{
-			osd_fclose(tape_get_file);
+			mame_fclose(tape_get_file);
 			tape_get_file = NULL;
 			cgenie_frame_time = 30;
 			sprintf(cgenie_frame_message, "Tape file closed");

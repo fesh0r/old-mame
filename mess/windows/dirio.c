@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <ctype.h>
 #include "driver.h"
 #include "mess.h"
 #include "unzip.h"
@@ -277,3 +278,4 @@ const char *osd_get_cwd(void)
 	checkinit_curdir();
 	return szCurrentDirectory;
 }
+

@@ -5285,7 +5285,6 @@ void mame_debug_init(void)
 	debug_key_pressed = 1;
 
 	first_time = 1;
-	dbg_show_scanline = 0;
 }
 
 /**************************************************************************

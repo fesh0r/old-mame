@@ -31,7 +31,7 @@ floppy_interface svi318dsk_floppy_interface=
 };
 
 /* attempt to insert a disk into the drive specified with id */
-int svi318dsk_floppy_init(int id, void *fp, int open_mode)
+int svi318dsk_floppy_init(int id, mame_file *fp, int open_mode)
 {
 	if (id < svi318dsk_MAX_DRIVES)
 	{
@@ -73,7 +73,7 @@ void svi318dsk_floppy_exit(int id)
 	/* if file was opened, close it */
 	if (pDisk->image_file!=NULL)
 	{
-		osd_fclose(pDisk->image_file);
+		mame_fclose(pDisk->image_file);
 		pDisk->image_file = NULL;
 	}
 
@@ -285,7 +285,7 @@ unsigned long offset;
 		return 0;
 	}
 
-	if (osd_fseek(w->image_file, offset, SEEK_SET) < 0)
+	if (mame_fseek(w->image_file, offset, SEEK_SET) < 0)
 	{
 		logerror("svi318dsk seek failed\n");
 		return 0;
@@ -344,7 +344,7 @@ unsigned long offset;
         return;
     }
 	else
-	if (osd_fread(w->image_file, w->buffer, w->sector_length) != w->sector_length)
+	if (mame_fread(w->image_file, w->buffer, w->sector_length) != w->sector_length)
 	{
 		w->status = STA_2_LOST_DAT;
 		return;
@@ -372,7 +372,7 @@ static void svi318dsk_write_sector(svi318dsk *w)
 	}
 
         seek(w, w->track, w->head, w->sector);
-        osd_fwrite(w->image_file, w->buffer, w->data_offset)
+        mame_fwrite(w->image_file, w->buffer, w->data_offset)
 }
 
 
@@ -478,7 +478,7 @@ int cnt;
 			w->status = seek(w, w->track, w->head, w->dam_list[cnt][2]);
 			if (w->status == 0)
 			{
-				if (osd_fwrite(w->image_file, &w->buffer[w->dam_data[cnt]], w->sector_length) != w->sector_length)
+				if (mame_fwrite(w->image_file, &w->buffer[w->dam_data[cnt]], w->sector_length) != w->sector_length)
 				{
 					w->status = STA_2_LOST_DAT;
 					return;
@@ -559,7 +559,7 @@ void svi318dsk_write_sector_data_from_buffer(int drive, int side, int index1, ch
 
 	if (svi318dsk_seek(w, w->track, side, index1)&&w->mode)
 	{
-		osd_fwrite(w->image_file, ptr, length);
+		mame_fwrite(w->image_file, ptr, length);
 	}
 
 	svi318dsk_set_ddam(drive, w->track, side, index1, ddam);
@@ -571,7 +571,7 @@ void svi318dsk_read_sector_data_into_buffer(int drive, int side, int index1, cha
 
 	if (svi318dsk_seek(w, w->track, side, index1))
 	{
-		osd_fread(w->image_file, ptr, length);
+		mame_fread(w->image_file, ptr, length);
 	}
 }
 

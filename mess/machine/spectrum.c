@@ -102,7 +102,7 @@ SNAPSHOT_LOAD(spectrum)
 	if (!snapshot_data)
 		goto error;
 
-	osd_fread(fp, snapshot_data, snapshot_size);
+	mame_fread(fp, snapshot_data, snapshot_size);
 
 	if (!strcmpi(file_type, "sna"))
 	{
@@ -287,7 +287,7 @@ static int spectrum_setup_tap(offs_t address, UINT8 *snapshot_data, int snapshot
 				logerror("No valid data loaded! - disabling .TAP support\n");
 				cassette_snapshot = NULL;
 				cassette_snapshot_size = 0;
-				
+
 			}
 		}
 		else
@@ -304,7 +304,7 @@ static int spectrum_setup_tap(offs_t address, UINT8 *snapshot_data, int snapshot
 	 */
 	do
 	{
-		return_addr = cpu_geturnpc();
+		return_addr = cpunum_get_reg(0, REG_SP_CONTENTS);
 		cpunum_set_reg(0, Z80_PC, (return_addr & 0x0ffff));
 
 		sp_reg = cpunum_get_reg(0, Z80_SP);
@@ -643,7 +643,7 @@ void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	if (SnapshotSize == 49179)
 	{
 		/* get pc from stack */
-		addr = cpu_geturnpc();
+		addr = cpunum_get_reg(0, REG_SP_CONTENTS);
 		cpunum_set_reg(0, Z80_PC, (addr & 0x0ffff));
 
 		addr = cpunum_get_reg(0, Z80_SP);
@@ -788,7 +788,7 @@ static SPECTRUM_Z80_SNAPSHOT_TYPE spectrum_identify_z80 (unsigned char *pSnapsho
 			case 0:
 			case 1:	return SPECTRUM_Z80_SNAPSHOT_48K;
 			case 2:	return SPECTRUM_Z80_SNAPSHOT_SAMRAM;
-			case 3:	
+			case 3:
 			case 4:	return SPECTRUM_Z80_SNAPSHOT_128K;
 			case 128: return SPECTRUM_Z80_SNAPSHOT_TS2068;
 		}
@@ -919,12 +919,12 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	if (pSnapshot[27] == 0)
 	{
 		cpunum_set_reg(0, Z80_IFF1, 0);
-		//cpunum_set_reg(0, Z80_IRQ_STATE, 0);
+		/* cpunum_set_reg(0, Z80_IRQ_STATE, 0); */
 	}
 	else
 	{
 		cpunum_set_reg(0, Z80_IFF1, 1);
-		//cpunum_set_reg(0, Z80_IRQ_STATE, 1);
+		/* cpunum_set_reg(0, Z80_IRQ_STATE, 1); */
 	}
 
 	cpunum_set_reg(0, Z80_NMI_STATE, 0);
@@ -952,7 +952,7 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		cpunum_set_reg(0, Z80_PC, (hi << 8) | lo);
 
 		spectrum_page_basicrom();
-                
+
 		if ((pSnapshot[12] & 0x020) == 0)
 		{
 			logerror("Not compressed\n");	/* not compressed */
@@ -1078,18 +1078,18 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
  SPECTRUM WAVE CASSETTE SUPPORT
 --------------------------------------------------*/
 
-int spectrum_cassette_init(int id, void *fp, int open_mode)
+int spectrum_cassette_init(int id, mame_file *fp, int open_mode)
 {
 	struct cassette_args args;
 
 	TapePosition = 0;
 	if (fp && !is_effective_mode_create(open_mode) && !strcmpi(image_filetype(IO_CASSETTE, id), "tap"))
 	{
-		cassette_snapshot_size = osd_fsize(fp);
+		cassette_snapshot_size = mame_fsize(fp);
 		cassette_snapshot = image_malloc(IO_CASSETTE, id, cassette_snapshot_size);
 		if (!cassette_snapshot)
 			return INIT_FAIL;
-		osd_fread(fp, cassette_snapshot, cassette_snapshot_size);
+		mame_fread(fp, cassette_snapshot, cassette_snapshot_size);
 		return INIT_PASS;
 	}
 	else
@@ -1128,12 +1128,12 @@ QUICKLOAD_LOAD(spectrum)
 	UINT8 *quick_data;
 	int read_;
 
-	quick_length = osd_fsize(fp);
+	quick_length = mame_fsize(fp);
 	quick_data = malloc(quick_length);
 	if (!quick_data)
 		return INIT_FAIL;
 
-	read_ = osd_fread(fp, quick_data, quick_length);
+	read_ = mame_fread(fp, quick_data, quick_length);
 	if (read_ != quick_length)
 		return INIT_FAIL;
 
@@ -1144,7 +1144,7 @@ QUICKLOAD_LOAD(spectrum)
 	return INIT_PASS;
 }
 
-int spectrum_cart_load(int id, void *file, int open_mode)
+int spectrum_cart_load(int id, mame_file *file, int open_mode)
 {
 	logerror("Trying to load cartridge!\n");
 	if (file)
@@ -1152,7 +1152,7 @@ int spectrum_cart_load(int id, void *file, int open_mode)
 		int datasize;
 		unsigned char *data, *ROM = memory_region(REGION_CPU1);
 
-		datasize = osd_fsize(file);
+		datasize = mame_fsize(file);
 
 		/* Cartridges are always 16K in size (as they replace the BASIC ROM)*/
 		if (datasize == 0x4000)
@@ -1160,7 +1160,7 @@ int spectrum_cart_load(int id, void *file, int open_mode)
 			data = malloc(datasize);
 			if (data != NULL)
 			{
-				osd_fread(file, data, datasize);
+				mame_fread(file, data, datasize);
 				memcpy(ROM, data, 0x4000);
 				free(data);
 				logerror("Cart loaded!\n");
@@ -1172,7 +1172,7 @@ int spectrum_cart_load(int id, void *file, int open_mode)
 	return 0;
 }
 
-int timex_cart_load(int id, void *file, int open_mode)
+int timex_cart_load(int id, mame_file *file, int open_mode)
 {
 	int file_size;
 	UINT8 * file_data;
@@ -1186,7 +1186,7 @@ int timex_cart_load(int id, void *file, int open_mode)
 
 	logerror ("Trying to load cart\n");
 
-	file_size = osd_fsize(file);
+	file_size = mame_fsize(file);
 
 	if (file_size < 0x09)
 	{
@@ -1201,7 +1201,7 @@ int timex_cart_load(int id, void *file, int open_mode)
 		return INIT_FAIL;
 	}
 
-	osd_fread(file, file_data, file_size);
+	mame_fread(file, file_data, file_size);
 
 	for (i=0; i<8; i++)
 		if(file_data[i+1]&0x02)	chunks_in_file++;

@@ -15,7 +15,7 @@
 #include "image.h"
 
 #if 0
-int apf_cassette_init(int id, void *fp, int open_mode)
+int apf_cassette_init(int id, mame_file *fp, int open_mode)
 {
 	struct cassette_args args;
 	memset(&args, 0, sizeof(args));
@@ -24,7 +24,7 @@ int apf_cassette_init(int id, void *fp, int open_mode)
 }
 #endif
 
-int apf_cassette_init(int id, void *file, int effective_mode)
+int apf_cassette_init(int id, mame_file *file, int effective_mode)
 {
 	struct wave_args_legacy wa;
 
@@ -40,7 +40,7 @@ int apf_cassette_init(int id, void *file, int effective_mode)
 			int apf_apt_size;
 
 			/* get size of .tap file */
-			apf_apt_size = osd_fsize(file);
+			apf_apt_size = mame_fsize(file);
 
 			logerror("apf .apt size: %04x\n",apf_apt_size);
 
@@ -59,13 +59,13 @@ int apf_cassette_init(int id, void *file, int effective_mode)
 					int size_in_samples;
 
 					/* read data into temporary buffer */
-					osd_fread(file, apf_apt_data, apf_apt_size);
+					mame_fread(file, apf_apt_data, apf_apt_size);
 
 					/* calculate size in samples */
 					size_in_samples = apf_cassette_calculate_size_in_samples(apf_apt_size, apf_apt_data);
 
 					/* seek back to start */
-					osd_fseek(file, 0, SEEK_SET);
+					mame_fseek(file, 0, SEEK_SET);
 
 					/* free temporary buffer */
 					free(apf_apt_data);
@@ -77,7 +77,7 @@ int apf_cassette_init(int id, void *file, int effective_mode)
 
 					length =
 						wa->header_samples +
-						((osd_fsize(w->file) + wa->chunk_size - 1) / wa->chunk_size) * wa->chunk_samples +
+						((mame_fsize(w->file) + wa->chunk_size - 1) / wa->chunk_size) * wa->chunk_samples +
 						wa->trailer_samples;
 					*/
 
@@ -115,7 +115,7 @@ int apf_cassette_init(int id, void *file, int effective_mode)
 }
 
 /* 256 bytes per sector, single sided, single density, 40 track  */
-int apfimag_floppy_init(int id, void *fp, int open_mode)
+int apfimag_floppy_init(int id, mame_file *fp, int open_mode)
 {
 	if (fp == NULL)
 		return INIT_PASS;

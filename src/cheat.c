@@ -10426,7 +10426,6 @@ static void BuildCPUInfoList(void)
 }
 
 #ifdef MESS
-#include "image.h"
 
 static void BuildCRCTable(void)
 {

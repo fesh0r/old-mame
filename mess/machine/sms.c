@@ -289,10 +289,10 @@ NVRAM_HANDLER(sms) {
 	if (file) {
 		if (read_or_write) {
 			if (smsNVRAMSaved) {
-				osd_fwrite(file, &smsNVRam[0x0000], sizeof(UINT8) * NVRAM_SIZE);
+				mame_fwrite(file, &smsNVRam[0x0000], sizeof(UINT8) * NVRAM_SIZE);
 			}
 		} else {
-			osd_fread(file, &smsNVRam[0x0000], sizeof(UINT8) * NVRAM_SIZE);
+			mame_fread(file, &smsNVRam[0x0000], sizeof(UINT8) * NVRAM_SIZE);
 		}
 	} else {
 		/* initially zero out SRAM */
@@ -485,7 +485,7 @@ static int sms_verify_cart(char * magic, int size) {
 	return retval;
 }
 
-int sms_init_cart(int id, void *handle, int open_mode)
+int sms_init_cart(int id, mame_file *handle, int open_mode)
 {
 	int size;
 	UINT8 *USER_RAM, *RAM;
@@ -575,11 +575,11 @@ int sms_init_cart(int id, void *handle, int open_mode)
 		}
 	} else {
 		/* Get file size */
-		size = osd_fsize(handle);
+		size = mame_fsize(handle);
 
 		/* Check for 512-byte header */
 		if ((size / 512) & 1) {
-			osd_fseek(handle, 512, SEEK_SET);
+			mame_fseek(handle, 512, SEEK_SET);
 			size -= 512;
 		}
 
@@ -591,7 +591,7 @@ int sms_init_cart(int id, void *handle, int open_mode)
 		USER_RAM = memory_region(REGION_USER2);
 
 		/* Load ROM banks */
-		size = osd_fread(handle, &USER_RAM[0x0000], size);
+		size = mame_fread(handle, &USER_RAM[0x0000], size);
 
 		/* check the image */
 		if (!IS_SMS && !IS_SMS_PAL && !IS_GG_UE && !IS_GG_J) {

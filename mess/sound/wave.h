@@ -43,7 +43,7 @@ extern int wave_output_chunk(int id, void *src, int chunks);
 extern void cassette_exit(int id);
 
 extern void wave_specify(struct IODevice *iodev, int count, char *actualext, const char *fileext,
-	int (*init)(int id, void *fp, int open_mode), void (*exit_)(int id));
+	int (*init)(int id, mame_file *fp, int open_mode), void (*exit_)(int id));
 
 #define CONFIG_DEVICE_CASSETTEX(count,fileext,init,exit)					\
 	if (cfg->device_num-- == 0)												\
@@ -60,7 +60,7 @@ extern void wave_specify(struct IODevice *iodev, int count, char *actualext, con
 /*****************************************************************************
  * Use this structure for the "void *args" argument of device_open()
  * file
- *	  file handle returned by osd_fopen() (mandatory)
+ *	  file handle returned by mame_fopen() (mandatory)
  * display
  *	  display cassette icon, playing time and total time on screen
  * fill_wave
@@ -79,7 +79,7 @@ extern void wave_specify(struct IODevice *iodev, int count, char *actualext, con
  *****************************************************************************/
 struct wave_args_legacy
 {
-    void *file;
+    mame_file *file;
 	int (*fill_wave)(INT16 *buffer, int length, UINT8 *bytes);
 	int smpfreq;
     int header_samples;

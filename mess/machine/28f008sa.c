@@ -192,44 +192,44 @@ void	flash_init(int index1)
 	flash[index1].flash_erase_status = FLASH_ERASE_STATUS_NONE;
 }
 
-void	flash_finish(int index1)
+void flash_finish(int index1)
 {
 	if (flash[index1].base!=NULL)
 		flash[index1].base = NULL;
 }
 
-void	flash_store(int index1, char *flash_name)
+void flash_store(int index1, const char *flash_name)
 {
-	void *file;
+	mame_file *file;
 
 	if (flash[index1].base!=NULL)
 	{
-		file = osd_fopen(Machine->gamedrv->name, flash_name, OSD_FILETYPE_MEMCARD,OSD_FOPEN_WRITE);
+		file = mame_fopen(Machine->gamedrv->name, flash_name, FILETYPE_MEMCARD,OSD_FOPEN_WRITE);
 
 		if (file)
 		{
-			osd_fwrite(file, flash[index1].base, (1024*1024));
+			mame_fwrite(file, flash[index1].base, (1024*1024));
 	
-			osd_fclose(file);
+			mame_fclose(file);
 		}
 	}
 }
 
 
 
-void	flash_restore(int index1, char *flash_name)
+void flash_restore(int index1, const char *flash_name)
 {
-	void *file;
+	mame_file *file;
 
 	if (flash[index1].base!=NULL)
 	{
-		file = osd_fopen(Machine->gamedrv->name, flash_name, OSD_FILETYPE_MEMCARD,OSD_FOPEN_READ);
+		file = mame_fopen(Machine->gamedrv->name, flash_name, FILETYPE_MEMCARD,OSD_FOPEN_READ);
 
 		if (file)
 		{
-			osd_fread(file, flash[index1].base, (1024*1024));
+			mame_fread(file, flash[index1].base, (1024*1024));
 	
-			osd_fclose(file);
+			mame_fclose(file);
 		}
 	}
 }

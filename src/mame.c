@@ -503,7 +503,7 @@ void run_machine_core(void)
 {
 	/* disable artwork for the start */
 	artwork_enable(0);
-	
+
 	/* if we didn't find a settings file, show the disclaimer */
 	if (settingsloaded || options.skip_disclaimer || showcopyright(artwork_get_ui_bitmap()) == 0)
 	{
@@ -1364,6 +1364,24 @@ void set_led_status(int num, int on)
 const struct performance_info *mame_get_performance_info(void)
 {
 	return &performance;
+}
+
+
+
+/*-------------------------------------------------
+	mame_find_cpu_index - return the index of the
+	given CPU, or -1 if not found
+-------------------------------------------------*/
+
+int mame_find_cpu_index(const char *tag)
+{
+	int cpunum;
+
+	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
+		if (Machine->drv->cpu[cpunum].tag && strcmp(Machine->drv->cpu[cpunum].tag, tag) == 0)
+			return cpunum;
+
+	return -1;
 }
 
 

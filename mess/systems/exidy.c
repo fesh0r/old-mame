@@ -71,7 +71,7 @@
 #include "includes/basicdsk.h"
 #include "image.h"
 
-static int exidy_floppy_init(int id, void *fp, int open_mode)
+static int exidy_floppy_init(int id, mame_file *fp, int open_mode)
 {
 	if (!image_exists(IO_FLOPPY, id))
 		return INIT_PASS;
@@ -296,7 +296,7 @@ static READ_HANDLER(exidy_unmapped_r)
 
 static WRITE_HANDLER(exidy_unmapped_w)
 {
-	logerror("unmapped r: %04x\r\n",offset,data);
+	logerror("unmapped r: %04x %d\r\n", offset, data);
 }
 
 

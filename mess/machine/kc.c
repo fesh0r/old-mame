@@ -42,9 +42,9 @@ bit 0: TRUCK */
 /* load image */
 static void kc_dump_ram(void)
 {
-	void *file;
+	mame_file *file;
 
-	file = osd_fopen(Machine->gamedrv->name, "kcram.bin", OSD_FILETYPE_MEMCARD,OSD_FOPEN_WRITE);
+	file = mame_fopen(Machine->gamedrv->name, "kcram.bin", FILETYPE_MEMCARD,OSD_FOPEN_WRITE);
 
 	if (file)
 	{
@@ -55,17 +55,17 @@ static void kc_dump_ram(void)
 
 			data = kc85_ram[i];
 
-			osd_fwrite(file, &data, 1);
+			mame_fwrite(file, &data, 1);
 
 		}
 
 		/* close file */
-		osd_fclose(file);
+		mame_fclose(file);
 	}
 }
 
 /* load image */
-static int kc_load(void *file, unsigned char **ptr)
+static int kc_load(mame_file *file, unsigned char **ptr)
 {
 	if (file)
 	{
@@ -73,7 +73,7 @@ static int kc_load(void *file, unsigned char **ptr)
 		unsigned char *data;
 
 		/* get file size */
-		datasize = osd_fsize(file);
+		datasize = mame_fsize(file);
 
 		if (datasize!=0)
 		{
@@ -83,7 +83,7 @@ static int kc_load(void *file, unsigned char **ptr)
 			if (data!=NULL)
 			{
 				/* read whole file */
-				osd_fread(file, data, datasize);
+				mame_fread(file, data, datasize);
 
 				*ptr = data;
 
@@ -155,7 +155,7 @@ QUICKLOAD_LOAD(kc)
 /* bit 4: Index pulse from disc */
 static unsigned char kc85_disc_hw_input_gate;
 
-int kc85_floppy_init(int id, void *fp, int open_mode)
+int kc85_floppy_init(int id, mame_file *fp, int open_mode)
 {
 	if (fp == NULL)
 		return INIT_PASS;
@@ -321,9 +321,9 @@ struct kc85_module
 	/* id of module */
 	int id;
 	/* name */
-	char *module_name;
+	const char *module_name;
 	/* description */
-	char *module_description;
+	const char *module_description;
 	/* enable module */
 	void	(*enable)(int state);
 };
@@ -425,7 +425,7 @@ static void kc85_module_system_init(void)
 
 #define KC_CASSETTE_TIMER_FREQUENCY TIME_IN_HZ(4800)
 
-int kc_cassette_device_init(int id, void *file, int open_mode)
+int kc_cassette_device_init(int id, mame_file *file, int open_mode)
 {
 	if (file == NULL)
 		return INIT_PASS;

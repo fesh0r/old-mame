@@ -46,6 +46,18 @@ void osd_parallelize(void (*task)(void *param, int task_num, int task_count), vo
 
 ******************************************************************************/
 
+/* Returns non-zero if a path is absolute, or zero if relative */
+int osd_is_absolute_path(const char *path);
+
+/* Returns the path separator */
+const char *osd_path_separator(void);
+
+/* Returns non-zero if the char is a path separator */
+int osd_is_path_separator(char ch);
+
+/* Creates a directory; returns zero if successful, non-zero otherwise */
+int osd_create_directory(int pathtype, int pathindex, const char *dirname);
+
 int osd_num_devices(void);
 const char *osd_get_device_name(int i);
 void osd_change_device(const char *vol);
@@ -59,7 +71,13 @@ const char *osd_get_cwd(void);
 /* and Lisa drivers, as implemented in machine/sonydrive.c), so that it can,	*/
 /* in addition to calling "device_filename_change(type, id, NULL);", update its	*/
 /* internal osd caches as needed.												*/
-void osd_device_eject(int type, int id);
+/* NPW 22-Jan-2003 - Is this really needed anymore?  If so, only image.c should
+ * be calling it
+	void osd_device_eject(int type, int id);
+*/
+
+char *osd_dirname(const char *filename);
+char *osd_basename(char *filename);
 
 #endif /* OSD_MESS_H */
 

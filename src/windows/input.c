@@ -580,7 +580,7 @@ static BOOL CALLBACK enum_joystick_callback(LPCDIDEVICEINSTANCE instance, LPVOID
 	flags = DISCL_FOREGROUND | DISCL_EXCLUSIVE;
 #else
 	flags = DISCL_BACKGROUND | DISCL_EXCLUSIVE;
-#endif;
+#endif
 	result = IDirectInputDevice_SetCooperativeLevel(joystick_device[joystick_count], win_video_window, 
 					flags);
 	if (result != DI_OK)

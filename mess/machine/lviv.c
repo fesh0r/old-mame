@@ -234,7 +234,7 @@ MACHINE_INIT( lviv )
 	/*memset(mess_ram, 0, sizeof(unsigned char)*0xffff);*/
 }
 
-int lviv_tape_init(int id, void *file, int open_mode)
+int lviv_tape_init(int id, mame_file *file, int open_mode)
 {
 	struct wave_args_legacy wa;
 
@@ -247,7 +247,7 @@ int lviv_tape_init(int id, void *file, int open_mode)
 		{
 			int lviv_lvt_size;
 
-			lviv_lvt_size = osd_fsize(file);
+			lviv_lvt_size = mame_fsize(file);
 
 			logerror("Lviv .lvt size: %04x\n",lviv_lvt_size);
 
@@ -261,7 +261,7 @@ int lviv_tape_init(int id, void *file, int open_mode)
 				{
 					int size_in_samples;
 
-					osd_fread(file, lviv_lvt_data, lviv_lvt_size);
+					mame_fread(file, lviv_lvt_data, lviv_lvt_size);
 					if (strncmp ((char *)lviv_lvt_data, "LVOV/2.0/", 9))
 					{
 						free(lviv_lvt_data);
@@ -269,7 +269,7 @@ int lviv_tape_init(int id, void *file, int open_mode)
 						return INIT_FAIL;
 					}
 					size_in_samples = lviv_cassette_calculate_size_in_samples(lviv_lvt_size, lviv_lvt_data);
-					osd_fseek(file, 0, SEEK_SET);
+					mame_fseek(file, 0, SEEK_SET);
 					free(lviv_lvt_data);
 					logerror("size in samples: %d\n",size_in_samples);
 

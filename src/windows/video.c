@@ -196,6 +196,9 @@ struct rc_option video_opts[] =
 	{ "screen_aspect", NULL, rc_string, &aspect, "4:3", 0, 0, decode_aspect, "specify an alternate monitor aspect ratio" },
 #ifndef MESS
 	{ "sleep", NULL, rc_bool, &allow_sleep, "1", 0, 0, NULL, "allow MAME to give back time to the system when it's not needed" },
+#else
+	{ "sleep", NULL, rc_bool, &allow_sleep, "1", 0, 0, NULL, "allow MESS to give back time to the system when it's not needed" },
+#endif
 	{ "rdtsc", NULL, rc_bool, &win_force_rdtsc, "0", 0, 0, NULL, "prefer RDTSC over QueryPerformanceCounter for timing" },
 	{ NULL,	NULL, rc_end, NULL, NULL, 0, 0,	NULL, NULL }
 };

@@ -34,7 +34,7 @@ const char * default_text[] =
 	"Press Any Key",
 	"On",
 	"Off",
-	"N/A",
+	"NA",
 	"OK",
 	"INVALID",
 	"(none)",

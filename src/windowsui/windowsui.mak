@@ -25,7 +25,6 @@ OSOBJS += \
 	$(OBJ)/windowsui/DirectInput.o \
 	$(OBJ)/windowsui/DIJoystick.o \
 	$(OBJ)/windowsui/DirectDraw.o \
-	$(OBJ)/windowsui/file.o \
 	$(OBJ)/windowsui/directories.o \
 	$(OBJ)/windowsui/audit32.o \
 	$(OBJ)/windowsui/ColumnEdit.o \
@@ -35,9 +34,10 @@ OSOBJS += \
 	$(OBJ)/windowsui/Bitmask.o \
 	$(OBJ)/windowsui/DataMap.o \
 	$(OBJ)/windowsui/dxdecode.o \
-	$(OBJ)/windowsui/ChildOutputStream.o \
 	$(OBJ)/windowsui/help.o \
+	$(OBJ)/mess/windowsui/layoutms.o \
 	$(OBJ)/mess/windowsui/mess32ui.o \
+	$(OBJ)/mess/windowsui/ms32util.o \
 	$(OBJ)/mess/windowsui/MessOptions.o \
 	$(OBJ)/mess/windowsui/MessProperties.o \
 	$(OBJ)/mess/windowsui/SmartListView.o \
@@ -86,6 +86,10 @@ RCFLAGS = -O coff --include-dir src --include-dir mess/windowsui --include-dir s
 ifdef DEBUG
 RCFLAGS += -DMAME_DEBUG
 endif
+
+$(OBJ)/windowsui/%.res: src/windowsui/%.rc
+	@echo Compiling resources $<...
+	$(RC) $(RCDEFS) $(RCFLAGS) -o $@ -i $<
 
 $(OBJ)/mess/windows/%.res: mess/windows/%.rc
 	@echo Compiling resources $<...

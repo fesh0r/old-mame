@@ -25,8 +25,8 @@
 
 #include "tms9900.h"
 
-#define RDOP(A) (cpu_readop(A) << 8) + (cpu_readop(A+1))
-#define RDWORD(A) (cpu_readop_arg(A) << 8) + (cpu_readop_arg(A+1))
+#define RDOP(A) (cpu_readop(A) << 8) + (cpu_readop((A+1) & 0xffff))
+#define RDWORD(A) (cpu_readop_arg(A) << 8) + (cpu_readop_arg((A+1) & 0xffff))
 
 #define BITS_0to3	((OP>>12) & 0xf)
 #define BITS_2to5	((OP>>10) & 0xf)
@@ -89,7 +89,7 @@ enum
 
 typedef struct description_t
 {
-	char *mnemonic;
+	const char *mnemonic;
 	format_t format;
 	int flags;
 } description_t;
@@ -354,7 +354,7 @@ unsigned Dasm9900 (char *buffer, unsigned pc, int model_id)
 	int byte_count, checkpoint;
 	int bit_position, bit_width;
 
-	char *mnemonic;
+	const char *mnemonic;
 	format_t format;
 	int flags;
 

@@ -15,10 +15,7 @@
 	#if 0	// 1 with new tms5220 core
 		spchroms_read,				// speech ROM read handler
 		spchroms_load_address,		// speech ROM load address handler
-		spchroms_read_and_branch,	// speech ROM read and branch handler
-	#endif
-	#if 0
-		tms5220_ready_callback
+		spchroms_read_and_branch	// speech ROM read and branch handler
 	#endif
 	};
 */
@@ -144,14 +141,14 @@ MEMORY_END
 
 static PORT_WRITE16_START(writecru)
 
-	{0x0000<<1, 0x07ff<<1, tms9901_CRU_write},
+	{0x0000<<1, 0x07ff<<1, tms9901_0_CRU_write16},
 	{0x0800<<1, 0x0fff<<1, ti99_expansion_CRU_w},
 
 PORT_END
 
 static PORT_READ16_START(readcru)
 
-	{0x0000<<1, 0x00ff<<1, tms9901_CRU_read},
+	{0x0000<<1, 0x00ff<<1, tms9901_0_CRU_read16},
 	{0x0100<<1, 0x01ff<<1, ti99_expansion_CRU_r},
 
 PORT_END
@@ -180,6 +177,9 @@ INPUT_PORTS_START(ti99_4a)
 			PORT_DIPSETTING( fdc_kind_none << config_fdc_bit, "none" )
 			PORT_DIPSETTING( fdc_kind_TI << config_fdc_bit, "Texas Instruments" )
 			PORT_DIPSETTING( fdc_kind_BwG << config_fdc_bit, "SNUG's BwG" )
+		PORT_BITX( config_rs232_mask << config_rs232_bit, 1 << config_rs232_bit, IPT_DIPSWITCH_NAME, "TI RS232 card", KEYCODE_NONE, IP_JOY_NONE )
+			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
+			PORT_DIPSETTING( 1 << config_rs232_bit, DEF_STR( On ) )
 
 	PORT_START	/* col 0 */
 		PORT_BITX(0x88, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)
@@ -188,46 +188,46 @@ INPUT_PORTS_START(ti99_4a)
 		PORT_KEY1(0x20, IP_ACTIVE_LOW, "SHIFT", KEYCODE_LSHIFT, IP_JOY_NONE,	UCHAR_SHIFT_1)
 		/* TI99/4a has a second shift key which maps the same */
 		PORT_KEY1(0x20, IP_ACTIVE_LOW, "SHIFT", KEYCODE_RSHIFT, IP_JOY_NONE,	UCHAR_SHIFT_1)
-		PORT_BITX(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD, "FCTN", KEYCODE_RALT, IP_JOY_NONE)
-		PORT_BITX(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD, "FCTN", KEYCODE_LALT, IP_JOY_NONE)
+		PORT_KEY1(0x10, IP_ACTIVE_LOW, "FCTN", KEYCODE_RALT, IP_JOY_NONE,		UCHAR_SHIFT_2)
+		PORT_KEY1(0x10, IP_ACTIVE_LOW, "FCTN", KEYCODE_LALT, IP_JOY_NONE,		UCHAR_SHIFT_2)
 		PORT_KEY1(0x04, IP_ACTIVE_LOW, "ENTER", KEYCODE_ENTER, IP_JOY_NONE,		13)
 		PORT_KEY1(0x02, IP_ACTIVE_LOW, "(SPACE)", KEYCODE_SPACE, IP_JOY_NONE,	' ')
 		PORT_KEY2(0x01, IP_ACTIVE_LOW, "= + QUIT", KEYCODE_EQUALS, IP_JOY_NONE,	'=',	'+')
 
 	PORT_START	/* col 1 */
 		PORT_KEY2(0x80, IP_ACTIVE_LOW, "x X (DOWN)", KEYCODE_X, IP_JOY_NONE,	'x',	'X')
-		PORT_KEY2(0x40, IP_ACTIVE_LOW, "w W ~", KEYCODE_W, IP_JOY_NONE,			'w',	'W')
+		PORT_KEY3(0x40, IP_ACTIVE_LOW, "w W ~", KEYCODE_W, IP_JOY_NONE,			'w',	'W',	'~')
 		PORT_KEY2(0x20, IP_ACTIVE_LOW, "s S (LEFT)", KEYCODE_S, IP_JOY_NONE,	's',	'S')
 		PORT_KEY2(0x10, IP_ACTIVE_LOW, "2 @ INS", KEYCODE_2, IP_JOY_NONE,		'2',	'@')
 		PORT_KEY2(0x08, IP_ACTIVE_LOW, "9 ( BACK", KEYCODE_9, IP_JOY_NONE,		'9',	'(')
-		PORT_KEY2(0x04, IP_ACTIVE_LOW, "o O '", KEYCODE_O, IP_JOY_NONE,			'o',	'O')
+		PORT_KEY3(0x04, IP_ACTIVE_LOW, "o O '", KEYCODE_O, IP_JOY_NONE,			'o',	'O',	'\'')
 		PORT_KEY2(0x02, IP_ACTIVE_LOW, "l L", KEYCODE_L, IP_JOY_NONE,			'l',	'L')
 		PORT_KEY2(0x01, IP_ACTIVE_LOW, ". >", KEYCODE_STOP, IP_JOY_NONE,		'.',	'>')
 
 	PORT_START	/* col 2 */
-		PORT_KEY2(0x80, IP_ACTIVE_LOW, "c C `", KEYCODE_C, IP_JOY_NONE,			'c',	'C')
+		PORT_KEY3(0x80, IP_ACTIVE_LOW, "c C `", KEYCODE_C, IP_JOY_NONE,			'c',	'C',	'`')
 		PORT_KEY2(0x40, IP_ACTIVE_LOW, "e E (UP)", KEYCODE_E, IP_JOY_NONE,		'e',	'E')
 		PORT_KEY2(0x20, IP_ACTIVE_LOW, "d D (RIGHT)", KEYCODE_D, IP_JOY_NONE,	'd',	'D')
 		PORT_KEY2(0x10, IP_ACTIVE_LOW, "3 # ERASE", KEYCODE_3, IP_JOY_NONE,		'3',	'#')
 		PORT_KEY2(0x08, IP_ACTIVE_LOW, "8 * REDO", KEYCODE_8, IP_JOY_NONE,		'8',	'*')
-		PORT_KEY2(0x04, IP_ACTIVE_LOW, "i I ?", KEYCODE_I, IP_JOY_NONE,			'i',	'I')
+		PORT_KEY3(0x04, IP_ACTIVE_LOW, "i I ?", KEYCODE_I, IP_JOY_NONE,			'i',	'I',	'?')
 		PORT_KEY2(0x02, IP_ACTIVE_LOW, "k K", KEYCODE_K, IP_JOY_NONE,			'k',	'K')
 		PORT_KEY2(0x01, IP_ACTIVE_LOW, ", <", KEYCODE_COMMA, IP_JOY_NONE,		',',	'<')
 
 	PORT_START	/* col 3 */
 		PORT_KEY2(0x80, IP_ACTIVE_LOW, "v V", KEYCODE_V, IP_JOY_NONE,			'v',	'V')
-		PORT_KEY2(0x40, IP_ACTIVE_LOW, "r R [", KEYCODE_R, IP_JOY_NONE,			'r',	'R')
-		PORT_KEY2(0x20, IP_ACTIVE_LOW, "f F {", KEYCODE_F, IP_JOY_NONE,			'f',	'F')
+		PORT_KEY3(0x40, IP_ACTIVE_LOW, "r R [", KEYCODE_R, IP_JOY_NONE,			'r',	'R',	'[')
+		PORT_KEY3(0x20, IP_ACTIVE_LOW, "f F {", KEYCODE_F, IP_JOY_NONE,			'f',	'F',	'{')
 		PORT_KEY2(0x10, IP_ACTIVE_LOW, "4 $ CLEAR", KEYCODE_4, IP_JOY_NONE,		'4',	'$')
 		PORT_KEY2(0x08, IP_ACTIVE_LOW, "7 & AID", KEYCODE_7, IP_JOY_NONE,		'7',	'&')
-		PORT_KEY2(0x04, IP_ACTIVE_LOW, "u U _", KEYCODE_U, IP_JOY_NONE,			'u',	'U')
+		PORT_KEY3(0x04, IP_ACTIVE_LOW, "u U _", KEYCODE_U, IP_JOY_NONE,			'u',	'U',	'_')
 		PORT_KEY2(0x02, IP_ACTIVE_LOW, "j J", KEYCODE_J, IP_JOY_NONE,			'j',	'J')
 		PORT_KEY2(0x01, IP_ACTIVE_LOW, "m M", KEYCODE_M, IP_JOY_NONE,			'm',	'M')
 
 	PORT_START	/* col 4 */
 		PORT_KEY2(0x80, IP_ACTIVE_LOW, "b B", KEYCODE_B, IP_JOY_NONE,			'b',	'B')
-		PORT_KEY2(0x40, IP_ACTIVE_LOW, "t T ]", KEYCODE_T, IP_JOY_NONE,			't',	'T')
-		PORT_KEY2(0x20, IP_ACTIVE_LOW, "g G }", KEYCODE_G, IP_JOY_NONE,			'g',	'G')
+		PORT_KEY3(0x40, IP_ACTIVE_LOW, "t T ]", KEYCODE_T, IP_JOY_NONE,			't',	'T',	']')
+		PORT_KEY3(0x20, IP_ACTIVE_LOW, "g G }", KEYCODE_G, IP_JOY_NONE,			'g',	'G',	'}')
 		PORT_KEY2(0x10, IP_ACTIVE_LOW, "5 % BEGIN", KEYCODE_5, IP_JOY_NONE,		'5',	'%')
 		PORT_KEY2(0x08, IP_ACTIVE_LOW, "6 ^ PROC'D", KEYCODE_6, IP_JOY_NONE,	'6',	'^')
 		PORT_KEY2(0x04, IP_ACTIVE_LOW, "y Y", KEYCODE_Y, IP_JOY_NONE,			'y',	'Y')
@@ -235,12 +235,12 @@ INPUT_PORTS_START(ti99_4a)
 		PORT_KEY2(0x01, IP_ACTIVE_LOW, "n N", KEYCODE_N, IP_JOY_NONE,			'n',	'N')
 
 	PORT_START	/* col 5 */
-		PORT_KEY2(0x80, IP_ACTIVE_LOW, "z Z \\", KEYCODE_Z, IP_JOY_NONE,		'z',	'Z')
+		PORT_KEY3(0x80, IP_ACTIVE_LOW, "z Z \\", KEYCODE_Z, IP_JOY_NONE,		'z',	'Z',	'\\')
 		PORT_KEY2(0x40, IP_ACTIVE_LOW, "q Q", KEYCODE_Q, IP_JOY_NONE,			'q',	'Q')
-		PORT_KEY2(0x20, IP_ACTIVE_LOW, "a A |", KEYCODE_A, IP_JOY_NONE,			'a',	'A')
+		PORT_KEY3(0x20, IP_ACTIVE_LOW, "a A |", KEYCODE_A, IP_JOY_NONE,			'a',	'A',	'|')
 		PORT_KEY2(0x10, IP_ACTIVE_LOW,  "1 ! DEL", KEYCODE_1, IP_JOY_NONE,		'1',	'!')
 		PORT_KEY2(0x08, IP_ACTIVE_LOW, "0 )", KEYCODE_0, IP_JOY_NONE,			'0',	')')
-		PORT_KEY2(0x04, IP_ACTIVE_LOW, "p P \"", KEYCODE_P, IP_JOY_NONE,		'p',	'P')
+		PORT_KEY3(0x04, IP_ACTIVE_LOW, "p P \"", KEYCODE_P, IP_JOY_NONE,		'p',	'P',	'\"')
 		PORT_KEY2(0x02, IP_ACTIVE_LOW, "; :", KEYCODE_COLON, IP_JOY_NONE,		';',	':')
 		PORT_KEY2(0x01, IP_ACTIVE_LOW, "/ -", KEYCODE_SLASH, IP_JOY_NONE,		'/',	'-')
 
@@ -367,11 +367,6 @@ static struct SN76496interface tms9919interface =
 	{ 75 }			/* Volume.  I don't know the best value. */
 };
 
-/*static void tms5220_ready_callback(int state)
-{
-	cpu_set_halt_line(0, state ? CLEAR_LINE : ASSERT_LINE);
-}*/
-
 static struct TMS5220interface tms5220interface =
 {
 	680000L,					/* 640kHz -> 8kHz output */
@@ -380,10 +375,7 @@ static struct TMS5220interface tms5220interface =
 #if 1
 	spchroms_read,				/* speech ROM read handler */
 	spchroms_load_address,		/* speech ROM load address handler */
-	spchroms_read_and_branch/*,*/	/* speech ROM read and branch handler */
-#endif
-#if 0
-	tms5220_ready_callback
+	spchroms_read_and_branch	/* speech ROM read and branch handler */
 #endif
 };
 

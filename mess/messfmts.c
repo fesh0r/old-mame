@@ -97,13 +97,40 @@ static void bdf_write_sector_data_from_buffer(int drive, int side, int index1, c
 
 /* ----------------------------------------------------------------------- */
 
+static void mame_fclose_thunk(void *file)
+{
+	mame_fclose((mame_file *) file);
+}
+
+static int mame_fseek_thunk(void *file, INT64 offset, int whence)
+{
+	return mame_fseek((mame_file *) file, offset, whence);
+}
+
+static UINT32 mame_fread_thunk(void *file, void *buffer, UINT32 length)
+{
+	return mame_fread((mame_file *) file, buffer, length);
+}
+
+static UINT32 mame_fwrite_thunk(void *file, const void *buffer, UINT32 length)
+{
+	return mame_fwrite((mame_file *) file, buffer, length);
+}
+
+static UINT64 mame_fsize_thunk(void *file)
+{
+	return mame_fsize((mame_file *) file);
+}
+
+/* ----------------------------------------------------------------------- */
+
 static struct bdf_procs mess_bdf_procs =
 {
-	osd_fclose,
-	osd_fseek,
-	osd_fread,
-	osd_fwrite,
-	osd_fsize
+	mame_fclose_thunk,
+	mame_fseek_thunk,
+	mame_fread_thunk,
+	mame_fwrite_thunk,
+	mame_fsize_thunk
 };
 
 static floppy_interface bdf_floppy_interface =
@@ -117,7 +144,7 @@ static floppy_interface bdf_floppy_interface =
 	NULL
 };
 
-static int bdf_floppy_init_internal(int id, void *file, int mode, const formatdriver_ctor *open_formats, formatdriver_ctor create_format, void *fp, int open_mode)
+static int bdf_floppy_init_internal(int id, void *file, int mode, const formatdriver_ctor *open_formats, formatdriver_ctor create_format, mame_file *fp, int open_mode)
 {
 	const char *name;
 	const char *ext;
@@ -155,7 +182,7 @@ static int bdf_floppy_init_internal(int id, void *file, int mode, const formatdr
 	return INIT_PASS;
 }
 
-static int bdf_floppy_init(int id, void *fp, int open_mode)
+static int bdf_floppy_init(int id, mame_file *fp, int open_mode)
 {
 	const struct IODevice *dev;
 	const formatdriver_ctor *open_formats;

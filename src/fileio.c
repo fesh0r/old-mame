@@ -44,6 +44,13 @@
 #define FILEFLAG_VERIFY_ONLY	0x10
 #define FILEFLAG_NOZIP			0x20
 
+#ifdef MESS
+#define FILEFLAG_ALLOW_ABSOLUTE	0x40
+#define FILEFLAG_ZIP_PATHS		0x80
+#define FILEFLAG_CREATE_GAMEDIR	0x100
+#define FILEFLAG_MUST_EXIST		0x200
+#endif
+
 
 
 /***************************************************************************
@@ -56,6 +63,7 @@ struct _mame_file
 	UINT8 *data;
 	UINT64 offset;
 	UINT64 length;
+	UINT8 eof;
 	UINT8 type;
 	UINT32 crc;
 };
@@ -66,7 +74,15 @@ struct _mame_file
 	PROTOTYPES
 ***************************************************************************/
 
-extern unsigned int crc32(unsigned int crc, const UINT8 *buf, unsigned int len);
+#ifndef ZEXPORT
+#ifdef _MSC_VER
+#define ZEXPORT __stdcall
+#else
+#define ZEXPORT
+#endif
+#endif
+
+extern unsigned int ZEXPORT crc32(unsigned int crc, const UINT8 *buf, unsigned int len);
 
 static mame_file *generic_fopen(int pathtype, const char *gamename, const char *filename, UINT32 crc, UINT32 flags);
 static const char *get_extension_for_filetype(int filetype);
@@ -86,7 +102,9 @@ mame_file *mame_fopen(const char *gamename, const char *filename, int filetype, 
 		/* read-only cases */
 		case FILETYPE_ROM:
 		case FILETYPE_ROM_NOCRC:
+#ifndef MESS
 		case FILETYPE_IMAGE:
+#endif
 		case FILETYPE_SAMPLE:
 		case FILETYPE_HIGHSCORE_DB:
 		case FILETYPE_ARTWORK:
@@ -123,7 +141,28 @@ mame_file *mame_fopen(const char *gamename, const char *filename, int filetype, 
 
 		/* read-only disk images */
 		case FILETYPE_IMAGE:
+#ifndef MESS
 			return generic_fopen(filetype, gamename, filename, 0, FILEFLAG_OPENREAD | FILEFLAG_NOZIP);
+#else
+			{
+				int flags = FILEFLAG_ALLOW_ABSOLUTE | FILEFLAG_ZIP_PATHS;
+				switch(openforwrite) {
+				case OSD_FOPEN_READ:   
+					flags |= FILEFLAG_OPENREAD | FILEFLAG_CRC;   
+					break;   
+				case OSD_FOPEN_WRITE:   
+					flags |= FILEFLAG_OPENWRITE;   
+					break;
+				case OSD_FOPEN_RW:   
+					flags |= FILEFLAG_OPENREAD | FILEFLAG_OPENWRITE | FILEFLAG_MUST_EXIST;   
+					break;   
+				case OSD_FOPEN_RW_CREATE:
+					flags |= FILEFLAG_OPENREAD | FILEFLAG_OPENWRITE;
+					break;
+				} 
+				return generic_fopen(filetype, gamename, filename, 0, flags);
+			}
+#endif
 
 		/* differencing disk images */
 		case FILETYPE_IMAGE_DIFF:
@@ -139,7 +178,12 @@ mame_file *mame_fopen(const char *gamename, const char *filename, int filetype, 
 
 		/* NVRAM files */
 		case FILETYPE_NVRAM:
+#ifdef MESS
+			if (filename)
+				return generic_fopen(filetype, gamename, filename, 0, openforwrite ? FILEFLAG_OPENWRITE | FILEFLAG_CREATE_GAMEDIR : FILEFLAG_OPENREAD);
+#else
 			return generic_fopen(filetype, NULL, gamename, 0, openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD);
+#endif
 
 		/* high score files */
 		case FILETYPE_HIGHSCORE:
@@ -161,11 +205,11 @@ mame_file *mame_fopen(const char *gamename, const char *filename, int filetype, 
 
 		/* save state files */
 		case FILETYPE_STATE:
-		{
-			char temp[256];
-			sprintf(temp, "%s-%s", gamename, filename);
-			return generic_fopen(filetype, NULL, temp, 0, openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD);
-		}
+#ifndef MESS
+			return generic_fopen(filetype, NULL, filename, 0, openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD);
+#else
+			return generic_fopen(filetype, NULL, filename, 0, FILEFLAG_ALLOW_ABSOLUTE | (openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD));
+#endif
 
 		/* memory card files */
 		case FILETYPE_MEMCARD:
@@ -303,7 +347,10 @@ UINT32 mame_fread(mame_file *file, void *buffer, UINT32 length)
 			if (file->data)
 			{
 				if (file->offset + length > file->length)
+				{
 					length = file->length - file->offset;
+					file->eof = 1;
+				}
 				memcpy(buffer, file->data + file->offset, length);
 				file->offset += length;
 				return length;
@@ -362,6 +409,7 @@ int mame_fseek(mame_file *file, INT64 offset, int whence)
 					file->offset = file->length + offset;
 					break;
 			}
+			file->eof = 0;
 			break;
 	}
 
@@ -454,6 +502,8 @@ int mame_fgetc(mame_file *file)
 		case ZIPPED_FILE:
 			if (file->offset < file->length)
 				return file->data[file->offset++];
+			else
+				file->eof = 1;
 			return EOF;
 	}
 	return EOF;
@@ -471,13 +521,23 @@ int mame_ungetc(int c, mame_file *file)
 	switch (file->type)
 	{
 		case PLAIN_FILE:
-			if (osd_fseek(file->file, -1, SEEK_CUR))
-				return c;
+			if (osd_feof(file->file))
+			{
+				if (osd_fseek(file->file, 0, SEEK_CUR))
+					return c;
+			}
+			else
+			{
+				if (osd_fseek(file->file, -1, SEEK_CUR))
+					return c;
+			}
 			return EOF;
 
 		case RAM_FILE:
 		case ZIPPED_FILE:
-			if (file->offset > 0)
+			if (file->eof)
+				file->eof = 0;
+			else if (file->offset > 0)
 			{
 				file->offset--;
 				return c;
@@ -554,7 +614,7 @@ int mame_feof(mame_file *file)
 
 		case RAM_FILE:
 		case ZIPPED_FILE:
-			return (file->offset >= file->length);
+			return (file->eof);
 	}
 
 	return 1;
@@ -655,6 +715,14 @@ INLINE void compose_path(char *output, const char *gamename, const char *filenam
 	char *filename_base = output;
 	*output = 0;
 
+#ifdef MESS
+	if (filename && osd_is_absolute_path(filename))
+	{
+		strcpy(output, filename);
+		return;
+	}
+#endif
+
 	/* if there's a gamename, add that; only add a '/' if there is a filename as well */
 	if (gamename)
 	{
@@ -701,9 +769,11 @@ static const char *get_extension_for_filetype(int filetype)
 			extension = NULL;
 			break;
 
+#ifndef MESS
 		case FILETYPE_IMAGE:		/* disk image files */
 			extension = "chd";
 			break;
+#endif
 
 		case FILETYPE_IMAGE_DIFF:	/* differencing drive images */
 			extension = "dif";
@@ -769,6 +839,16 @@ static mame_file *generic_fopen(int pathtype, const char *gamename, const char *
 	mame_file file, *newfile;
 	char tempname[256];
 
+#ifdef MESS
+	int is_absolute_path = osd_is_absolute_path(filename);
+	if (is_absolute_path)
+	{
+		if ((flags & FILEFLAG_ALLOW_ABSOLUTE) == 0)
+			return NULL;
+		pathcount = 1;
+	}
+#endif
+
 	LOG(("generic_fopen(%d, %s, %s, %s, %X)\n", pathc, gamename, filename, extension, flags));
 
 	/* reset the file handle */
@@ -803,6 +883,18 @@ static mame_file *generic_fopen(int pathtype, const char *gamename, const char *
 		compose_path(name, gamename, NULL, NULL);
 		LOG(("Trying %s\n", name));
 
+#ifdef MESS
+		if (is_absolute_path)
+		{
+			*name = 0;
+		}
+		else if (flags & FILEFLAG_CREATE_GAMEDIR)
+		{
+			if (osd_get_path_info(pathtype, pathindex, name) == PATH_NOT_FOUND)
+				osd_create_directory(pathtype, pathindex, name);
+		}
+#endif
+
 		/* if the directory exists, proceed */
 		if (*name == 0 || osd_get_path_info(pathtype, pathindex, name) == PATH_IS_DIRECTORY)
 		{
@@ -819,6 +911,13 @@ static mame_file *generic_fopen(int pathtype, const char *gamename, const char *
 				}
 			}
 
+#ifdef MESS
+			else if ((flags & FILEFLAG_MUST_EXIST) && (osd_get_path_info(pathtype, pathindex, name) == PATH_NOT_FOUND))
+			{
+				/* if FILEFLAG_MUST_EXIST is set and the file isn't there, don't open it */
+			}
+#endif
+
 			/* otherwise, just open it straight */
 			else
 			{
@@ -829,6 +928,54 @@ static mame_file *generic_fopen(int pathtype, const char *gamename, const char *
 				if (file.file != NULL)
 					break;
 			}
+
+#ifdef MESS
+			if (flags & FILEFLAG_ZIP_PATHS)
+			{
+				int path_info;
+				const char *oldname = name;
+				const char *zipentryname;
+				char *newname = NULL;
+				char *oldnewname = NULL;
+				char *s;
+				UINT32 ziplength;
+
+				while((path_info = osd_get_path_info(pathtype, pathindex, oldname)) == PATH_NOT_FOUND)
+				{
+					newname = osd_dirname(oldname);
+					if (oldnewname)
+						free(oldnewname);
+					oldname = oldnewname = newname;
+					if (!newname)
+						break;
+					
+					for (s = newname + strlen(newname) - 1; s >= newname && osd_is_path_separator(*s); s--)
+						*s = '\0';
+				}
+
+				if (newname)
+				{
+					if (path_info == PATH_IS_FILE)
+					{
+						zipentryname = name + strlen(newname);
+						while(osd_is_path_separator(*zipentryname))
+							zipentryname++;
+
+						if (load_zipped_file(pathtype, pathindex, newname, zipentryname, &file.data, &ziplength) == 0)
+						{
+							LOG(("Using (mame_fopen) zip file for %s\n", filename));
+							file.length = ziplength;
+							file.type = ZIPPED_FILE;
+							file.crc = crc32(0L, file.data, file.length);
+							break;
+						}
+					}
+					free(newname);
+				}
+			}
+			if (is_absolute_path)
+				continue;
+#endif
 		}
 
 		/* ----------------- STEP 2: OPEN THE FILE IN A ZIP -------------------- */

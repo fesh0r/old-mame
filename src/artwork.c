@@ -627,7 +627,6 @@ int artwork_create_display(struct osd_create_params *params, UINT32 *rgb_compone
 	/* reset UI */
 	uioverlay = NULL;
 	uioverlayhint = NULL;
-	gamescale = 0;
 
 	/* first load the artwork; if none, quit now */
 	artwork_list = NULL;
@@ -756,7 +755,7 @@ void artwork_update_video_and_audio(struct mame_display *display)
 	int artwork_changed = 0, ui_visible = 0;
 
 	/* do nothing if no artwork */
-	if (!artwork_list && !gamescale)
+	if (!artwork_list)
 	{
 		osd_update_video_and_audio(display);
 		return;
@@ -1987,17 +1986,28 @@ static char *override_artfile;
 void artwork_use_device_art(int device_type, int device_id, const char *defaultartfile)
 {
 	const char *fname;
+	const char *ext;
+	int len = -1;
+
 	fname = image_filename(device_type, device_id);
 	if (fname)
 	{
-		override_artfile = osd_strip_extension(osd_basename((char *) fname));
+		ext = strrchr(fname, '.');
+		if (ext)
+			len = ext - fname;
 	}
 	else
 	{
-		override_artfile = malloc(strlen(defaultartfile)+1);
-		if (override_artfile)
-			strcpy(override_artfile, defaultartfile);
+		fname = defaultartfile;
 	}
+	if (len == -1)
+		len = strlen(fname);
+
+	override_artfile = malloc(len + 1);
+	if (!override_artfile)
+		return;
+	memcpy(override_artfile, fname, len);
+	override_artfile[len] = 0;
 }
 #endif
 
@@ -2736,18 +2746,13 @@ static void sort_pieces(void)
 		qsort(array, num_pieces, sizeof(array[0]), artwork_sort_compare);
 
 	/* now reassemble the list */
-	if (num_pieces == 0)
-		artwork_list = NULL;
-	else
+	artwork_list = piece = array[0];
+	for (i = 1; i < num_pieces; i++)
 	{
-		artwork_list = piece = array[0];
-		for (i = 1; i < num_pieces; i++)
-		{
-			piece->next = array[i];
-			piece = piece->next;
-		}
-		piece->next = NULL;
+		piece->next = array[i];
+		piece = piece->next;
 	}
+	piece->next = NULL;
 }
 
 

@@ -5,7 +5,7 @@
                     Official Page at: http://www.mess.org
                    ==========================================
 
-This document is generated for MESS 0.62.1 (Dec 30 2002)
+This document is generated for MESS 0.64 (Feb  4 2003)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.62.1 (Dec 30 2002)
+Here is the list of systems supported by MESS 0.64 (Feb  4 2003)
 Variants of the same system are not included, you can use the -listclones command
 to get a list of the alternate versions of a given system.
 
@@ -164,7 +164,7 @@ dat2html.exe.
 | Sam Coupe                               |  Yes  |  Yes  |  Yes  | coupe    |
 | Sorcerer                                |   No  |  Yes  |   No  | exidy    |
 | Sord M5                                 |  Yes  |  Yes  |  Yes  | sordm5   |
-| Super Nintendo Entertainment System     |   No  |  Yes  |  Yes  | snes     |
+| Super Nintendo Entertainment System     |   No  |  Yes  |   No  | snes     |
 | Super Vision                            |  Yes  |  Yes  |Partial| svision  |
 | TI Avigo 100 PDA                        |   No  |  Yes  |  Yes  | avigo    |
 | TI Model 990/10 Minicomputer System     |  Yes  |  Yes  |  Yes  | ti990_10 |

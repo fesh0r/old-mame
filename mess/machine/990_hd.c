@@ -54,7 +54,7 @@ enum
 /* disk drive unit descriptor */
 typedef struct hd_unit_t
 {
-	void *fd;			/* file descriptor */
+	mame_file *fd;				/* file descriptor */
 	unsigned int wp : 1;		/* TRUE if disk is write-protected */
 	unsigned int unsafe : 1;	/* TRUE when a disk has just been connected */
 
@@ -145,7 +145,7 @@ INLINE UINT32 get_bigendian_uint32(UINT8 *base)
 /*
 	Initialize hard disk unit and open a hard disk image
 */
-int ti990_hd_init(int id, void *fp, int open_mode)
+int ti990_hd_init(int id, mame_file *fp, int open_mode)
 {
 	hd_unit_t *d;
 	disk_image_header header;
@@ -173,7 +173,7 @@ int ti990_hd_init(int id, void *fp, int open_mode)
 	/* set geometry: use new headered disk image format. */
 	/* to convert old images to new format, insert a 16-byte header as follow:
 	00 00 03 8f  00 00 00 05  00 00 00 21  00 00 01 00 */
-	bytes_read = osd_fread(d->fd, &header, sizeof(header));
+	bytes_read = mame_fread(d->fd, &header, sizeof(header));
 	if (bytes_read != sizeof(header))
 	{
 		ti990_hd_exit(id);
@@ -322,7 +322,7 @@ static int seek_to_sector(int unit, unsigned int cylinder, unsigned int head, un
 
 	byte_position = ((cylinder*hdc.d[unit].heads + head)*hdc.d[unit].sectors_per_track + sector)*hdc.d[unit].bytes_per_sector + header_len;
 
-	if (osd_fseek(hdc.d[unit].fd, byte_position, SEEK_SET))
+	if (mame_fseek(hdc.d[unit].fd, byte_position, SEEK_SET))
 	{
 			hdc.w[0] |= w0_unsafe | w0_pack_change;
 			hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
@@ -443,7 +443,7 @@ static void write_format(void)
 
 	for (sector=0; sector<hdc.d[dsk_sel].sectors_per_track; sector++)
 	{
-		bytes_written = osd_fwrite(hdc.d[dsk_sel].fd, buffer, hdc.d[dsk_sel].bytes_per_sector);
+		bytes_written = mame_fwrite(hdc.d[dsk_sel].fd, buffer, hdc.d[dsk_sel].bytes_per_sector);
 
 		if (bytes_written != hdc.d[dsk_sel].bytes_per_sector)
 		{
@@ -519,7 +519,7 @@ static void read_data(void)
 		}
 
 		bytes_to_read = (byte_count < hdc.d[dsk_sel].bytes_per_sector) ? byte_count : hdc.d[dsk_sel].bytes_per_sector;
-		bytes_read = osd_fread(hdc.d[dsk_sel].fd, buffer, bytes_to_read);
+		bytes_read = mame_fread(hdc.d[dsk_sel].fd, buffer, bytes_to_read);
 
 		if (bytes_read != bytes_to_read)
 		{	/* behave as if the controller could not found the sector ID mark */
@@ -636,7 +636,7 @@ static void write_data(void)
 		for (; i<hdc.d[dsk_sel].bytes_per_sector; i+=2)
 			buffer[i] = buffer[i+1] = 0;
 
-		bytes_written = osd_fwrite(hdc.d[dsk_sel].fd, buffer, hdc.d[dsk_sel].bytes_per_sector);
+		bytes_written = mame_fwrite(hdc.d[dsk_sel].fd, buffer, hdc.d[dsk_sel].bytes_per_sector);
 
 		if (bytes_written != hdc.d[dsk_sel].bytes_per_sector)
 		{

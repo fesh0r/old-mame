@@ -116,7 +116,7 @@ int cbm_drive_attach_fs (int id)
 	return 0;
 }
 
-static int d64_open (int id, void *in)
+static int d64_open (int id, mame_file *in)
 {
 	int size;
 
@@ -124,11 +124,11 @@ static int d64_open (int id, void *in)
 
 	cbm_drive[id].d.d64.image_type = IO_FLOPPY;
 	cbm_drive[id].d.d64.image_id = id;
-	size = osd_fsize (in);
+	size = mame_fsize (in);
 	if (!(cbm_drive[id].d.d64.image = (UINT8*)malloc (size)))
 		return 1;
 
-	if (size != osd_fread (in, cbm_drive[id].d.d64.image, size))
+	if (size != mame_fread (in, cbm_drive[id].d.d64.image, size))
 	{
 		free (cbm_drive[id].d.d64.image);
 		return 1;
@@ -142,7 +142,7 @@ static int d64_open (int id, void *in)
 }
 
 /* open an d64 image */
-int cbm_drive_attach_image (int id, void *fp, int open_mode)
+int cbm_drive_attach_image (int id, mame_file *fp, int open_mode)
 {
 #if 1
 	if (!image_exists(IO_FLOPPY, id))

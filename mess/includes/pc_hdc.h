@@ -1,12 +1,12 @@
 #include "driver.h"
 
 
-extern int	pc_harddisk_init(int id, void *fp, int open_mode);
+extern int	pc_harddisk_init(int id, mame_file *fp, int open_mode);
 extern void pc_harddisk_exit(int id);
 
 #if 0
 /* from machine/pc_hdc.c */
-extern void *pc_hdc_file[4];
+extern mame_file *pc_hdc_file[4];
 
 extern void pc_hdc_data_w(int n, int data);
 extern void pc_hdc_reset_w(int n, int data);

@@ -65,14 +65,6 @@ struct _osd_file
 static struct pathdata pathlist[FILETYPE_end];
 static osd_file openfile[MAX_OPEN_FILES];
 
-#ifdef MESS
-static const char *softwarepath;
-const char *crcdir;
-static char crcfilename[256] = "";
-const char *crcfile = crcfilename;
-static char pcrcfilename[256] = "";
-const char *pcrcfile = pcrcfilename;
-#endif
 
 
 //============================================================
@@ -80,25 +72,13 @@ const char *pcrcfile = pcrcfilename;
 //============================================================
 
 #ifdef MESS
-static const char **softwarepath = NULL;
-static int softwarepathc = 0;
-static int softwarepath_needs_decomposition = 1;
-
-static const char *softwarepath;
-const char *crcdir;
 static char crcfilename[256] = "";
 const char *crcfile = crcfilename;
 static char pcrcfilename[256] = "";
 const char *pcrcfile = pcrcfilename;
+char crcdir[256];
 #endif
 
-
-#ifdef MESS
-#ifndef _MSC_VER
-#include <io.h>
-#endif
-#define osd_mkdir(dir)	mkdir(dir)
-#endif
 
 //============================================================
 //	FILE PATH OPTIONS
@@ -108,7 +88,13 @@ struct rc_option fileio_opts[] =
 {
 	// name, shortname, type, dest, deflt, min, max, func, help
 	{ "Windows path and directory options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
+#ifndef MESS
 	{ "rompath", "rp", rc_string, &pathlist[FILETYPE_ROM].rawpath, "roms", 0, 0, NULL, "path to romsets" },
+#else
+	{ "biospath", "bp", rc_string, &pathlist[FILETYPE_ROM].rawpath, "bios", 0, 0, NULL, "path to BIOS sets" },
+	{ "softwarepath", "swp", rc_string, &pathlist[FILETYPE_IMAGE].rawpath, "software", 0, 0, NULL, "path to software" },
+	{ "CRC_directory", "crc", rc_string, &pathlist[FILETYPE_CRC].rawpath, "crc", 0, 0, NULL, "path to CRC files" },
+#endif
 	{ "samplepath", "sp", rc_string, &pathlist[FILETYPE_SAMPLE].rawpath, "samples", 0, 0, NULL, "path to samplesets" },
 #ifdef __WIN32__
 	{ "inipath", NULL, rc_string, &pathlist[FILETYPE_INI].rawpath, ".;ini", 0, 0, NULL, "path to ini files" },
@@ -360,7 +346,9 @@ static const char *get_path_for_filetype(int filetype, int pathindex, DWORD *cou
 	switch (filetype)
 	{
 		case FILETYPE_ROM_NOCRC:
+#ifndef MESS
 		case FILETYPE_IMAGE:
+#endif
 			list = &pathlist[FILETYPE_ROM];
 			break;
 
@@ -404,6 +392,11 @@ static void compose_path(char *output, int pathtype, int pathindex, const char *
 {
 	const char *basepath = get_path_for_filetype(pathtype, pathindex, NULL);
 	char *p;
+
+#ifdef MESS
+	if (osd_is_absolute_path(filename))
+		basepath = NULL;
+#endif
 
 	/* compose the full path */
 	*output = 0;
@@ -688,30 +681,17 @@ void osd_fclose(osd_file *file)
 
 #ifdef MESS
 //============================================================
-//	stuff for processing absolute file paths (only applicable
-//	in MESS)
+//	osd_create_directory
 //============================================================
-static int is_zipfile(const char *filename)
-{
-	const char *extension;
-	extension = strrchr(filename, '.');
-	return extension && !stricmp(extension, ".zip");
-}
 
-static int is_path_separator(char c)
+int osd_create_directory(int pathtype, int pathindex, const char *dirname)
 {
-	return (c == '/') || (c == '\\');
-}
+	char fullpath[1024];
 
-static int is_absolute_path(const char *filename)
-{
-	if ((filename[0] == '.') || (is_path_separator(filename[0])))
-		return 1;
-#ifndef UNDER_CE
-	if (filename[0] && (filename[1] == ':'))
-		return 1;
-#endif
-	return 0;
+	/* compose the full path */
+	compose_path(fullpath, pathtype, pathindex, dirname);
+
+	return CreateDirectory(fullpath, NULL) ? 0 : 1;
 }
 #endif
 
@@ -759,8 +739,24 @@ void set_pathlist(int file_type, const char *new_rawpath)
 	// by default, start with an empty list
 	list->path = NULL;
 	list->pathcount = 0;
-
+		
 	list->rawpath = new_rawpath;
 
+}
+#endif
+
+#ifdef MESS
+//============================================================
+//	build_crc_database_filename
+//============================================================
+
+void build_crc_database_filename(int game_index)
+{
+	/* Build the CRC database filename */
+	sprintf(crcfilename, "%s/%s.crc", crcdir, drivers[game_index]->name);
+	if (drivers[game_index]->clone_of->name)
+		sprintf (pcrcfilename, "%s/%s.crc", crcdir, drivers[game_index]->clone_of->name);
+	else
+		pcrcfilename[0] = 0;
 }
 #endif

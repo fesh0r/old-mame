@@ -46,8 +46,8 @@ static UINT8 *cas_buff = NULL;
 static UINT32 cas_size = 0;
 
 /* current tape file handles */
-static void *tape_put_file = NULL;
-static void *tape_get_file = NULL;
+static mame_file *tape_put_file = NULL;
+static mame_file *tape_get_file = NULL;
 
 /* tape buffer for the first eight bytes at write (to extract a filename) */
 static UINT8 tape_buffer[8];
@@ -145,16 +145,16 @@ static void cas_copy_callback(int param)
 	activecpu_set_reg(Z80_PC, entry);
 }
 
-int trs80_cas_init(int id, void *file, int open_mode)
+int trs80_cas_init(int id, mame_file *file, int open_mode)
 {
 	if (file)
 	{
-		cas_size = osd_fsize(file);
+		cas_size = mame_fsize(file);
 		cas_buff = malloc(cas_size);
 		if (cas_buff)
 		{
-			osd_fread(file, cas_buff, cas_size);
-			osd_fclose(file);
+			mame_fread(file, cas_buff, cas_size);
+			mame_fclose(file);
 			if (cas_buff[1] == 0x55)
 			{
 				LOG(("trs80_cas_init: loading %s size %d\n", image_filename(IO_CASSETTE,id), cas_size));
@@ -249,7 +249,7 @@ extern QUICKLOAD_LOAD( trs80_cmd )
 	return INIT_PASS;
 }
 
-int trs80_floppy_init(int id, void *fp, int open_mode)
+int trs80_floppy_init(int id, mame_file *fp, int open_mode)
 {
 	static UINT8 pdrive[4*16];
 	int i;
@@ -267,8 +267,8 @@ int trs80_floppy_init(int id, void *fp, int open_mode)
 		if (fp)
 		{
 
-            osd_fseek(fp, 0, SEEK_SET);
-			osd_fread(fp, pdrive, 2);
+            mame_fseek(fp, 0, SEEK_SET);
+			mame_fread(fp, pdrive, 2);
 #if 0
 			if (pdrive[0] != 0x00 || pdrive[1] != 0xfe)
 			{
@@ -277,8 +277,8 @@ int trs80_floppy_init(int id, void *fp, int open_mode)
 			else
 #endif
 
-			osd_fseek(fp, 2 * 256, SEEK_SET);
-			osd_fread(fp, pdrive, 4*16);
+			mame_fseek(fp, 2 * 256, SEEK_SET);
+			mame_fread(fp, pdrive, 4*16);
 		}
 	}
 
@@ -357,9 +357,9 @@ static void tape_put_byte(UINT8 value)
 				UINT8 zeroes[256] = {0,};
 
 				sprintf(filename, "basic%c.cas", tape_buffer[4]);
-				tape_put_file = osd_fopen(Machine->gamedrv->name, filename, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
-				osd_fwrite(tape_put_file, zeroes, 256);
-				osd_fwrite(tape_put_file, tape_buffer, 8);
+				tape_put_file = mame_fopen(Machine->gamedrv->name, filename, FILETYPE_IMAGE, OSD_FOPEN_RW);
+				mame_fwrite(tape_put_file, zeroes, 256);
+				mame_fwrite(tape_put_file, tape_buffer, 8);
 			}
 			else
 			/* SYSTEM tape ? */
@@ -369,16 +369,16 @@ static void tape_put_byte(UINT8 value)
 				UINT8 zeroes[256] = {0,};
 
 				sprintf(filename, "%-6.6s.cas", tape_buffer+2);
-				tape_put_file = osd_fopen(Machine->gamedrv->name, filename, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
-				osd_fwrite(tape_put_file, zeroes, 256);
-				osd_fwrite(tape_put_file, tape_buffer, 8);
+				tape_put_file = mame_fopen(Machine->gamedrv->name, filename, FILETYPE_IMAGE, OSD_FOPEN_RW);
+				mame_fwrite(tape_put_file, zeroes, 256);
+				mame_fwrite(tape_put_file, tape_buffer, 8);
 			}
 		}
 	}
 	else
 	{
 		if (tape_put_file)
-			osd_fwrite(tape_put_file, &value, 1);
+			mame_fwrite(tape_put_file, &value, 1);
 	}
 }
 
@@ -406,7 +406,7 @@ static void tape_put_close(void)
 			if (tape_bits & 0x0002) value |= 0x01;
 			tape_put_byte(value);
 		}
-		osd_fclose(tape_put_file);
+		mame_fclose(tape_put_file);
 	}
 	tape_count = 0;
 	tape_put_file = 0;
@@ -418,11 +418,11 @@ static void tape_get_byte(void)
 	UINT8	value;
 	if (tape_get_file)
 	{
-		count = osd_fread(tape_get_file, &value, 1);
+		count = mame_fread(tape_get_file, &value, 1);
 		if (count == 0)
 		{
 				value = 0;
-				osd_fclose(tape_get_file);
+				mame_fclose(tape_get_file);
 				tape_get_file = 0;
 		}
 		tape_bits |= 0xaaaa;
@@ -450,7 +450,7 @@ static void tape_get_open(void)
 
 		sprintf(filename, "%-6.6s.cas", RAM + 0x41e8);
 		logerror("filename %s\n", filename);
-		tape_get_file = osd_fopen(Machine->gamedrv->name, filename, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
+		tape_get_file = mame_fopen(Machine->gamedrv->name, filename, FILETYPE_IMAGE, OSD_FOPEN_READ);
 		tape_count = 0;
 	}
 }
@@ -577,7 +577,7 @@ READ_HANDLER( trs80_port_ff_r )
 		{
 			if (tape_get_file)
 			{
-				osd_fclose(tape_get_file);
+				mame_fclose(tape_get_file);
 				tape_get_file = 0;
 			}
 			get_bit_count = tape_bits = tape_time = 0;

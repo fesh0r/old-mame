@@ -601,7 +601,7 @@ void	serial_device_connect(int id, struct serial_connection *connection)
 
 
 /* load image */
-static int serial_device_load(int type, int id, void *file, unsigned char **ptr, int *pDataSize)
+static int serial_device_load(int type, int id, mame_file *file, unsigned char **ptr, int *pDataSize)
 {
 	if (file)
 	{
@@ -609,7 +609,7 @@ static int serial_device_load(int type, int id, void *file, unsigned char **ptr,
 		unsigned char *data;
 
 		/* get file size */
-		datasize = osd_fsize(file);
+		datasize = mame_fsize(file);
 
 		if (datasize!=0)
 		{
@@ -619,13 +619,13 @@ static int serial_device_load(int type, int id, void *file, unsigned char **ptr,
 			if (data!=NULL)
 			{
 				/* read whole file */
-				osd_fread(file, data, datasize);
+				mame_fread(file, data, datasize);
 
 				*ptr = data;
 				*pDataSize = datasize;
 
 				/* close file */
-				osd_fclose(file);
+				mame_fclose(file);
 
 				logerror("File loaded!\r\n");
 
@@ -667,7 +667,7 @@ static void data_stream_init(struct data_stream *stream, unsigned char *pData, u
 }
 
 
-int		serial_device_init(int id, void *fp)
+int		serial_device_init(int id, mame_file *fp)
 {
 	int data_length;
 	unsigned char *data;

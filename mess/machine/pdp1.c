@@ -76,7 +76,7 @@ enum
 /* tape reader registers */
 typedef struct tape_reader_t
 {
-	void *fd;		/* file descriptor of tape image */
+	mame_file *fd;	/* file descriptor of tape image */
 
 	int motor_on;	/* 1-bit reader motor on */
 
@@ -95,7 +95,7 @@ static tape_reader_t tape_reader;
 /* tape puncher registers */
 typedef struct tape_puncher_t
 {
-	void *fd;		/* file descriptor of tape image */
+	mame_file *fd;	/* file descriptor of tape image */
 
 	void *timer;	/* timer to generate completion pulses */
 } tape_puncher_t;
@@ -106,7 +106,7 @@ static tape_puncher_t tape_puncher;
 /* typewriter registers */
 typedef struct typewriter_t
 {
-	void *fd;		/* file descriptor of output image */
+	mame_file *fd;	/* file descriptor of output image */
 
 	int tb;			/* typewriter buffer */
 
@@ -325,14 +325,14 @@ WRITE18_HANDLER(pdp1_write_mem)
 
 	unit 0 is reader (read-only), unit 1 is puncher (write-only)
 */
-int pdp1_tape_init(int id, void *fp, int open_mode  )
+int pdp1_tape_init(int id, mame_file *fp, int open_mode  )
 {
 	switch (id)
 	{
 	case 0:
 		/* reader unit */
 		/* open file */
-		tape_reader.fd = image_fopen_custom(IO_PUNCHTAPE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
+		tape_reader.fd = image_fopen_custom(IO_PUNCHTAPE, id, FILETYPE_IMAGE, OSD_FOPEN_READ);
 
 		/* start motor if image actually inserted */
 		tape_reader.motor_on = tape_reader.fd ? 1 : 0;
@@ -357,7 +357,7 @@ int pdp1_tape_init(int id, void *fp, int open_mode  )
 
 	case 1:
 		/* punch unit */
-		tape_puncher.fd = image_fopen_custom(IO_PUNCHTAPE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_WRITE);
+		tape_puncher.fd = image_fopen_custom(IO_PUNCHTAPE, id, FILETYPE_IMAGE, OSD_FOPEN_WRITE);
 		break;
 	}
 
@@ -376,7 +376,7 @@ void pdp1_tape_exit(int id)
 */
 static int tape_read(UINT8 *reply)
 {
-	if (tape_reader.fd && (osd_fread(tape_reader.fd, reply, 1) == 1))
+	if (tape_reader.fd && (mame_fread(tape_reader.fd, reply, 1) == 1))
 		return 0;	/* unit OK */
 	else
 		return 1;	/* unit not ready */
@@ -388,7 +388,7 @@ static int tape_read(UINT8 *reply)
 static void tape_write(UINT8 data)
 {
 	if (tape_puncher.fd)
-		osd_fwrite(tape_puncher.fd, & data, 1);
+		mame_fwrite(tape_puncher.fd, & data, 1);
 }
 
 /*
@@ -643,7 +643,7 @@ void iot_ppb(int op2, int nac, int mb, int *io, int ac)
 /*
 	Open a file for typewriter output
 */
-int pdp1_typewriter_init(int id, void *fp, int open_mode)
+int pdp1_typewriter_init(int id, mame_file *fp, int open_mode)
 {
 	/* open file */
 	typewriter.fd = fp;
@@ -671,7 +671,7 @@ static void typewriter_out(UINT8 data)
 	pdp1_typewriter_drawchar(data);
 	if (typewriter.fd)
 #if 1
-		osd_fwrite(typewriter.fd, & data, 1);
+		mame_fwrite(typewriter.fd, & data, 1);
 #else
 	{
 		static const char ascii_table[2][64] =
@@ -724,7 +724,7 @@ static void typewriter_out(UINT8 data)
 			//color = color_typewriter_black;
 			{
 				static char black[5] = { '\033', '[', '3', '0', 'm' };
-				osd_fwrite(typewriter.fd, black, sizeof(black));
+				mame_fwrite(typewriter.fd, black, sizeof(black));
 			}
 			break;
 
@@ -733,7 +733,7 @@ static void typewriter_out(UINT8 data)
 			//color = color_typewriter_red;
 			{
 				static char red[5] = { '\033', '[', '3', '1', 'm' };
-				osd_fwrite(typewriter.fd, red, sizeof(red));
+				mame_fwrite(typewriter.fd, red, sizeof(red));
 			}
 			break;
 
@@ -751,7 +751,7 @@ static void typewriter_out(UINT8 data)
 			/* Carriage Return */
 			{
 				static char line_end[2] = { '\r', '\n' };
-				osd_fwrite(typewriter.fd, line_end, sizeof(line_end));
+				mame_fwrite(typewriter.fd, line_end, sizeof(line_end));
 			}
 			break;
 
@@ -760,7 +760,7 @@ static void typewriter_out(UINT8 data)
 
 			if ((data != 040) && (data != 056))	/* 040 and 056 are non-spacing characters: don't try to print right now */
 				/* print character (lookup ASCII equivalent in table) */
-				osd_fwrite(typewriter.fd, & ascii_table[case_shift][data], 1);
+				mame_fwrite(typewriter.fd, & ascii_table[case_shift][data], 1);
 
 			break;
 		}

@@ -42,7 +42,7 @@ static int svi318_verify_cart (UINT8 magic[2])
 
 
 
-int svi318_load_rom (int id, void *f, int open_mode)
+int svi318_load_rom (int id, mame_file *f, int open_mode)
 {
 	UINT8 *p;
 	int size;
@@ -64,8 +64,8 @@ int svi318_load_rom (int id, void *f, int open_mode)
 		}
 
 		memset (p, 0xff, 0x8000);
-		size = osd_fsize (f);
-		if (osd_fread (f, p, size) != size)
+		size = mame_fsize (f);
+		if (mame_fread (f, p, size) != size)
 		{
 			logerror ("can't read file %s\n", image_filename (IO_CASSETTE, id) );
 			return INIT_FAIL;
@@ -369,7 +369,7 @@ READ_HANDLER (svi318_fdc_status_r)
 }
 
 
-int svi318_floppy_init(int id, void *fp, int open_mode)
+int svi318_floppy_init(int id, mame_file *fp, int open_mode)
 {
 	int size;
 
@@ -378,7 +378,7 @@ int svi318_floppy_init(int id, void *fp, int open_mode)
 
 	if (fp && ! is_effective_mode_create(open_mode))
 		{
-		size = osd_fsize (fp);
+		size = mame_fsize (fp);
 
 		switch (size)
 			{
@@ -633,12 +633,12 @@ static int svi318_cassette_fill_wave (INT16* samples, int wavlen, UINT8* casdata
 	return cas_len;
 	}
 
-static int check_svi_cas (void *f)
+static int check_svi_cas (mame_file *f)
 	{
 	UINT8* casdata;
 	int caslen, ret;
 
-    caslen = osd_fsize (f);
+    caslen = mame_fsize (f);
 	if (caslen < 9) return -1;
 
     casdata = (UINT8*)malloc (caslen);
@@ -648,9 +648,9 @@ static int check_svi_cas (void *f)
        	return -1;
    		}
 
-    osd_fseek (f, 0, SEEK_SET);
- 	if (caslen != osd_fread (f, casdata, caslen) ) return -1;
-   	osd_fseek (f, 0, SEEK_SET);
+    mame_fseek (f, 0, SEEK_SET);
+ 	if (caslen != mame_fread (f, casdata, caslen) ) return -1;
+   	mame_fseek (f, 0, SEEK_SET);
 
     ret = svi_cas_to_wav (casdata, caslen, &cas_samples, &cas_len);
     if (ret == 2)
@@ -663,10 +663,9 @@ static int check_svi_cas (void *f)
     return ret;
 	}
 
-int svi318_cassette_init(int id, void *file, int open_mode)
-	{
+int svi318_cassette_init(int id, mame_file *file, int open_mode)
+{
 	int ret;
-
 
    	/* A cassette isn't mandatory */
 	if (file == NULL)

@@ -129,9 +129,9 @@ typedef struct {
 } cpm_dpb;
 
 typedef struct {
-	char	*id;			/* short name */
-	char	*name;			/* long name */
-	char	*ref;			/* id reference */
+	const char	*id;		/* short name */
+	const char	*name;		/* long name */
+	const char	*ref;		/* id reference */
 	DENSITY density;		/* fdd density */
 	UINT16	cylinders;		/* number of cylinders */
 	UINT8	sides;			/* number of sides */
@@ -141,14 +141,14 @@ typedef struct {
 	UINT8	side1[32];		/* side number, sector numbers */
 	UINT8	side2[32];		/* side number, sector numbers */
 	ORDER	order;			/* sector ordering */
-	char	*label; 		/* disk label */
+	const char	*label; 	/* disk label */
 	cpm_dpb dpb;			/* associated dpb */
 } dsk_fmt;
 
 extern dsk_fmt formats[];
 
 /* these are in cpm_bios.c */
-extern int cpm_floppy_init(int id, void *file, int open_mode);
+extern int cpm_floppy_init(int id, mame_file *file, int open_mode);
 extern int  cpm_init(int n, const char *ids[]);
 extern void cpm_exit(void);
 

@@ -1081,7 +1081,7 @@ end:
 	PPU_address += PPU_add;
 }
 
-int nes_init_cart (int id, void *romfile, int open_mode)
+int nes_init_cart (int id, mame_file *romfile, int open_mode)
 {
 	const char *mapinfo;
 	int mapint1=0,mapint2=0,mapint3=0,mapint4=0,goodcrcinfo = 0;
@@ -1103,7 +1103,7 @@ int nes_init_cart (int id, void *romfile, int open_mode)
 	}
 
 	/* Verify the file is in iNES format */
-	osd_fread (romfile, magic, 4);
+	mame_fread (romfile, magic, 4);
 
 	if ((magic[0] != 'N') ||
 		(magic[1] != 'E') ||
@@ -1131,10 +1131,10 @@ int nes_init_cart (int id, void *romfile, int open_mode)
 	}
 	if (!goodcrcinfo)
 	{
-		osd_fread (romfile, &nes.prg_chunks, 1);
-		osd_fread (romfile, &nes.chr_chunks, 1);
+		mame_fread (romfile, &nes.prg_chunks, 1);
+		mame_fread (romfile, &nes.chr_chunks, 1);
 		/* Read the first ROM option byte (offset 6) */
-		osd_fread (romfile, &m, 1);
+		mame_fread (romfile, &m, 1);
 
 		/* Interpret the iNES header flags */
 		nes.mapper = (m & 0xf0) >> 4;
@@ -1142,10 +1142,10 @@ int nes_init_cart (int id, void *romfile, int open_mode)
 
 
 		/* Read the second ROM option byte (offset 7) */
-		osd_fread (romfile, &m, 1);
+		mame_fread (romfile, &m, 1);
 
 		/* Check for skanky headers */
-		osd_fread (romfile, &skank, 8);
+		mame_fread (romfile, &skank, 8);
 
 		/* If the header has junk in the unused bytes, assume the extra mapper byte is also invalid */
 		/* We only check the first 4 unused bytes for now */
@@ -1190,23 +1190,23 @@ int nes_init_cart (int id, void *romfile, int open_mode)
 	nes.wram = memory_region(REGION_USER1);
 
 	/* Position past the header */
-	osd_fseek (romfile, 16, SEEK_SET);
+	mame_fseek (romfile, 16, SEEK_SET);
 
 	/* Load the 0x200 byte trainer at 0x7000 if it exists */
 	if (nes.trainer)
 	{
-		osd_fread (romfile, &nes.wram[0x1000], 0x200);
+		mame_fread (romfile, &nes.wram[0x1000], 0x200);
 	}
 
 	/* Read in the program chunks */
 	if (nes.prg_chunks == 1)
 	{
-		osd_fread (romfile, &nes.rom[0x14000], 0x4000);
+		mame_fread (romfile, &nes.rom[0x14000], 0x4000);
 		/* Mirror this bank into $8000 */
 		memcpy (&nes.rom[0x10000], &nes.rom [0x14000], 0x4000);
 	}
 	else
-		osd_fread (romfile, &nes.rom[0x10000], 0x4000 * nes.prg_chunks);
+		mame_fread (romfile, &nes.rom[0x10000], 0x4000 * nes.prg_chunks);
 
 #ifdef SPLIT_PRG
 {
@@ -1233,7 +1233,7 @@ int nes_init_cart (int id, void *romfile, int open_mode)
 	/* Read in any chr chunks */
 	if (nes.chr_chunks > 0)
 	{
-		osd_fread (romfile, nes.vrom, 0x2000*nes.chr_chunks);
+		mame_fread (romfile, nes.vrom, 0x2000*nes.chr_chunks);
 
 		/* Mark each char as not existing in VRAM */
 		for (i = 0; i < 512; i ++)
@@ -1274,14 +1274,15 @@ bad:
 
 UINT32 nes_partialcrc(const unsigned char *buf,unsigned int size)
 {
-UINT32 crc;
-if (size < 17) return 0;
-crc = (UINT32) crc32(0L,&buf[16],size-16);
-logerror("NES Partial CRC: %08lx %d\n",crc,size);
-return crc;
+	UINT32 crc;
+	if (size < 17)
+		return 0;
+	crc = (UINT32) crc32(0L, &buf[16], size-16);
+	logerror("NES Partial CRC: %08lx %d\n", (long) crc, size);
+	return crc;
 }
 
-int nes_load_disk (int id, void *diskfile, int open_mode)
+int nes_load_disk (int id, mame_file *diskfile, int open_mode)
 {
 	unsigned char magic[4];
 
@@ -1298,17 +1299,17 @@ int nes_load_disk (int id, void *diskfile, int open_mode)
 	}
 
 	/* See if it has a fucking redundant header on it */
-	osd_fread (diskfile, magic, 4);
+	mame_fread (diskfile, magic, 4);
 	if ((magic[0] == 'F') &&
 		(magic[1] == 'D') &&
 		(magic[2] == 'S'))
 	{
 		/* Skip past the fucking redundant header */
-		osd_fseek (diskfile, 0x10, SEEK_SET);
+		mame_fseek (diskfile, 0x10, SEEK_SET);
 	}
 	else
 		/* otherwise, point to the start of the image */
-		osd_fseek (diskfile, 0, SEEK_SET);
+		mame_fseek (diskfile, 0, SEEK_SET);
 
 	/* clear some of the cart variables we don't use */
 	nes.trainer = 0;
@@ -1323,11 +1324,11 @@ int nes_load_disk (int id, void *diskfile, int open_mode)
 	nes_fds.data = NULL;
 
 	/* read in all the sides */
-	while (!osd_feof (diskfile))
+	while (!mame_feof (diskfile))
 	{
 		nes_fds.sides ++;
 		nes_fds.data = realloc (nes_fds.data, nes_fds.sides * 65500);
-		osd_fread (diskfile, nes_fds.data + ((nes_fds.sides-1) * 65500), 65500);
+		mame_fread (diskfile, nes_fds.data + ((nes_fds.sides-1) * 65500), 65500);
 	}
 
 	/* adjust for eof */
