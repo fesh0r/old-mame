@@ -1,3 +1,183 @@
+0.37b5
+
+Note: .inp record/playback does still not work currently.
+
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- NES (pal) [Brad Oliver]
+- Famicom [Brad Oliver]
+- Mattel Aquarius [Paul Daniels]
+- PCW8256, and many clones [Kev Thacker]
+- PCW16 [Kev Thacker]
+- PC 1512, PC1640 [Peter Trauner]
+- Microtan-65 [Juergen Buchmueller]
+- IBM PC [Peter Trauner]
+- TRS80 alt [Juergen Buchmueller]
+- Sharp Mz700, Mz700J [Juergen Buchmueller] 
+- Enterprise 128 (with EXOS 2.1) [Stefano Priore]
+- Some ZX Spectrum ROM mods, Spectrum 128 (Spain) [Stefano Priore]
+- Sharp PC1402, PC1350 [Peter Trauner]
+- Atari2600 (preliminary) [Lee Ward]
+
+
+System Driver Changes:
+----------------------
+- NES: Now features battery support and vastly improved PPU emulation - compare Kirby and 
+  RC Pro Am. 
+  * Palette is no longer hardcoded - it is mathematically generated. It may need some 
+  formulaic tweaking, but it's pretty accurate.  
+  * Games like GI Joe Atlantis Factor are working again, the NES Test cartridge no longer fails.  
+  * There is a compile switch to emulate the color intensity used in Chris Covell's "Wall" demo. 
+  It's off by default because it requires 16-bit mode and the sprite blitters need rewriting to 
+  support 16-bit. Still, you can enable it to see the demo run as it was intended.  
+  * Many mapper fixes: mapper 18 irqs should be close, mapper 19 added, the mid-20 Konami 
+  mappers are nearly 100%, and some of the mappers in the 60's are much more accurate.  
+  *Super Mario 3  _finally_ works! Excitebike also works again, and elite and PAL games, 
+  Elite will draw properly -- but only using the PAL NES emulation.  
+  * Fixed some more timing errors, Bayou Billy sine wave looks perfect now. 
+  * low/high sprite priorities fixed. Super Mario 3 uses low priority sprites to mask out 
+  pieces of high priority ones.
+  * low-priority sprite/background transparency problem fixed (see Jaleco's Bases Loaded 3)
+  * Mapper 5 is much better, although some interrupt problems remain.
+  * Mappers 9/10 are _almost_ perfect.
+  * Fixed mapper 16 - it was completely wrong.
+  * Fixed rendering problems in mapper 68 (Afterburner 2).
+  * Fixed mapper 69 (Batman: Return of the Joker).
+  * Mapper 70 (arkanoid 2 j) works, but is it right? It starts up on round 0, which appears 
+  to be the last round and not the first.
+  * Implemented some Taito mappers (80, 82).
+  * Implemented Konami VRC7, minus OPL (mapper 85).
+  * Preliminary support for the zapper via a fake dipswitch. Collision detection isn't 
+  working yet.
+  * Modified sound core to read dpcm samples from the right place in memory. Added clock 
+  specifier and read/write callbacks for register $14. NES driver now hooks into this for 
+  sprite DMA. 
+  * Zapper support, configurable via the fake dipswitches. Most games look for it connected 
+  to the 2nd input port, not the first. Tested it with Duck Hunt and Hogan's Alley. If any 
+  other zapper games don't work, let me know and I'll beat them down.
+  * 4-player joypad support, also configurable via the fake dipswitches. For best results, 
+  set both ports to the double setting. I tested it in Gauntlet 2 and RC Pro Am 2. Again, 
+  let me know if it's busted in any other 4p games.
+  * Fixed sprite priorities for the last time. I swear it's really working now. ;-) As a 
+  side effect, the rendering code is a bit faster than before. 
+  * More mapper fixes/additions.  
+  * Added support for Famicom Disk System. Split up the main NES driver into NES and 
+  Famicom. Only the Famicom supports the disk system, because that's the way it is in real 
+  life. Press p1 button 3 to cycle amongst the disk sides. Once you switch a side, you may 
+  need to wait a second or two for the switch to be recognized. Let me know if any games 
+  fail to see the switch. Disk writing is not yet supported.
+  * Added preliminary support for the Arkanoid paddle. It's pretty busted at the moment.
+  * Fixed a small PPU bug regarding reads from the chr-gen ram portion of the ppu.
+  * Correct display of left-most column when it has been programmatically disabled - 
+  see SMB3.
+  * Added some more mappers, some of which aren't working fully.
+  * Fixed mapper 40 (SMB2j pirate) - it should be close to 100%
+  * Fixed some issues with the disk support. It now supports that stupid padded format with 
+  the useless header in addition to the other format.
+  * DPCM samples fixed (now hear SMB3 in all it's steel drum glory).
+  [Brad Oliver]
+
+- COCO: Now using schedule_full_refresh() and PAK loader fixes applied [Nate Woods]
+
+- KAYPRO: Keyboard fixed [Juergen Buchmueller]
+
+- PCW16: emulation is fully working. To run this you need the "OS rescue disk". The system 
+  rom is contained on the OS rescue disc and you will need this to install the OS. This 
+  disc is available on the net, do a search to find it. [Kev Thacker]
+
+- PC: improved PC-AT keyboard emulation to work with PCW16. Should work better with PC 
+  emulation too.  Improved PC-Serial Mouse emulation to work with PCW16, improved PC FDC 
+  emulation to work with PCW16. FDC now works as before but uses same nec765 code as the 
+  Amstrad and Spectrum drivers. More software that programs the FDC directly should work.
+  Changed PIO code in PC-XT to use 8255 emulation. Seperated PC-LPT code to be used with 
+  PCW16. seperated and improved PC-Serial code. Works with PCW16 now, and interrupts are 
+  set/cleared correctly. seperated pc floppy disc handling code for use with PCW16.
+  Fixed tandy1000 problem, pc's changed to use pckeybrd, split pc_cga, pc_mda, pc_t1t from 
+  pc and fixed atcga, xtvga init/blink problems.  changed uart8250 and pc_mouse interface, 
+  realtime clock fixes and improvements (starts with current time) better vga retrace 
+  emulation, fixed mouse problem in pc's (was a simple inputport configuration problem)
+  [Kev Thacker, Peter Trauner]
+
+- SPECTRUM: The border displaying code is now includes a full refresh flag. 128K port 
+  decoding updated (still not exact on +3) - Sound now works on Zub 128K.
+  [David Robertson]
+
+- A7800: TIA sound update, which replaced the fixed/rand() polynome initializations to 
+  ones based on the same algorithms that are used in the Pokey driver.
+  [Juergen Buchmueller]
+
+- TRS80: Split the ROMs into the 4K sizes they originally had 
+  trs80.rom -> trs80.z33, trs80.z34 and trs80.zl2
+  sys80.rom -> sys80rom.1 sys80rom.2 and sys80rom.3
+  added an trs80alt driver for the 'R/S L2 BASIC' (its an original ROM with a shorter 
+  bootstrap message and some code modifications). IO_CASSETTE now only loads *.cas files in 
+  SYSTEM format and IO_QUICKLOAD is used for files in *.cmd format (disk excerpts)
+  [Juergen Buchmueller]
+
+- Commodore: m65ce02/m4510 timing corrected, fixed rtn, plp, rti, eom, added m65ce02 aug
+  c65 speed improvements, ega/vga speed improvements [Peter Trauner]
+
+- AMSTRAD: Changed video hardware code to use 6845 CRTC code.  Also added Eventlist code to 
+  the Amstrad video hardware code. It will record colour changes, mode changes and crtc 
+  register writes.  This means support for multi-modes on the same screen, colour changing 
+  effects, and demos. There is a second method which updates between I/O writes that
+  would affect the screen. The rendering method can be chosen with a compile switch.
+  Also added correct opcode timings for Amstrad using new cpu_setcycletable, this
+  means raster effects are now correct. Also added emulation of the Multiface hardware.
+  It requires a rom (optionally loaded). You must enable it in the dipswitches. When
+  enabled F1 will be the "stop" button. [Kev Thacker]
+
+- ZX: Fixed ZX80 palette: it's black on white, and not viceversa. [Stefano Priore]
+
+- CoCo/Dragon: Fixed a bug the CoCo 3 horizontal scroll so Crystal City is partially 
+  playable now, converted the CoCo/Dragon driver to use an include file, moved PAK loading 
+  code into a new src/mess/formats directory [Nate Woods]
+
+- PDP/1: Fixed a null pointer access if no image is loaded. [Nate Woods]
+
+- PC1401/1402/1350: Artwork support added [Peter Trauner]
+
+- PCW: Added sound emulation. [Kev Thacker]
+
+- PCW/CPC/SPECTRUM: Fixed some bugs in the disk image handling code used in
+the Amstrad CPC, Amstrad PCW, and Spectrum+3 drivers [Kev Thacker]
+
+
+Other Changes:
+--------------
+- The core is based on MAME 0.37b5. This incorporates all 
+  features of the update to this core.  [MAME team] 
+
+- NEC765: improved and more commands added, supports DMA access. Can handle
+  images with copyprotection. A lot more software should now run on the 
+  systems that use it (PCW,Spectrum, Amstrad,PC and PCW16). [Kev Thacker]
+
+- 6522via Bug fix [Gordon Jefferyes]
+
+- Optional ROM support. It can be used in MESS for BIOS ROMs for peripherals for which 
+  you'd like to provide a valid crc32 without requiring the ROM. [Brad Oliver]
+
+- Imgtool: Added a CRC command to imgtool so output image information in .crc format 
+  basename()'s the command name when printing error info, Fixed a typo in the usage 
+  examples, added a very rough imgtool.txt to document imgtool [Nate Woods]
+
+- Added new endian macros [Nate Woods]
+
+- DeviceIO bug fixed for most drivers [Juergen Buchmueller]
+
+- CRC and sysinfo updates will now be appearing at the official MESS homepage:
+  http://mess.emuverse.com
+  Please send all CRC/sysinfo file contributions to Chris Henry. 
+  (battlepriest@hotmail.com).
+
+
+
+
+
+
+------------------------------
+
 0.37b4
 
 Note: .inp record/playback does still not work currently.

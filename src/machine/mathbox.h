@@ -3,7 +3,7 @@
  *
  * Copyright 1991, 1992, 1993, 1996 Eric Smith
  *
- * $Header: /usr2/eric/vg/atari/vecsim/RCS/mathbox.h,v 1.1 1996/08/29 07:23:59 eric Exp eric $
+ * $Header: /home/cvs/mess/src/machine/mathbox.h,v 1.1.1.1 2000/07/16 22:42:21 hjb Exp $
  */
 
 typedef short s16;

@@ -1,4 +1,4 @@
-# MESS System Information Data File
+# MESS System Information Data File v37b4.1
 # Maintained by Chris Henry
 # Send corrections/submissions to: battlepriest@hotmail.com
 
@@ -7,7 +7,9 @@
 
 # This file contains the basic documentation for most of the drivers presented in the MESS
 # distribution. Please read the readme.txt, mess.txt and messnew.txt prior to reading this
-# supplementary documentation.
+# supplementary documentation. This file should be placed in the same directory as the MESS
+# executable when using the DOS version of MESS. This file must be renamed HISTORY.DAT to
+# be used with MESS32.
 
 # Driver entries are (usually) broken into three sections, Usage, Known Issues, and 
 # History and Trivia.
@@ -842,6 +844,19 @@ are used, the 6809 is used then for i/o, display and keyboard management. It wor
 Commodore DOS or CP/M and MSDOS when the computer use the other processors. 
 
 
+$end
+
+#---------------------------------------------------------------------------------------------#
+
+$info=cbm710
+$bio
+Commodore B-128/80 Series
+
+
+History and Trivia:
+ 
+The CPU in the CBM B series was a MOS/Commodore 6509, which is basically a m6502 with 1 
+megabyte address space and weird bankswitching.
 
 $end
 
@@ -1508,6 +1523,72 @@ came with a few software titles."
 
 $end
 
+#---------------------------------------------------------------------------------------------#
+
+$info=lisa2
+$bio
+Apple Lisa
+
+
+History and Trivia:
+
+The Lisa project started in the summer of 1979.  At the time, the idea was merely designing
+a powerful business computer, with scheduled release in march 1981.  After its legendary visit
+to the Xerox PARC research center, Steve Jobs realized the GUI was the future of computing.
+So, in March 1980, a GUI was added to the Lisa specs. As a consequence, Lisa borrowed many ideas
+from the Macintosh project, which included a GUI from the beginning.
+
+In spite of huge support from Apple, the project got behind schedule, and Lisa was introduced
+on January, 19th, 1983.
+
+
+The Lisa was an impressive computer for its time. It had TONS of memory (1Mb on Lisa 1),
+a high-resolution graphic display, and it was fairly expandable.  Its OS (weirdly called
+"Lisa 7/7 Office System") featured a complete GUI, and full preemptive multitasking
+with memory protection (something neither Windows 98 nor MacOS offer !).
+Its 68000 CPU was one of the fastest microprocessor in its time.
+
+Unfortunately, Lisa was never too successful. It was quite expensive. Little software was developped
+for it. Also, it was extremely ressource hungry : it was reportedly slow, and its memory
+requirement was the major cause for its high price.
+
+
+In January 1984, Lisa 1 was replaced by Lisa 2, with 3.5'' floppies and several small
+hardware changes. In January 1985, Lisa 2 was replaced by Macintosh XL, which had a modified video
+hardware, and used a variant of the Macintosh system instead of the 7/7 Lisa OS. Mac XL was
+discontinued in May 1985.
+
+
+The significance of Lisa :
+
+Lisa is a milestone in the history of computing. Arguably, the Xerox PARC research center invented
+most GUI concepts (along with Object Oriented programming and Ethernet) 10 years before Lisa was
+introduced. However, although Xerox research was public, and some Xerox Altos were actually sold,
+or given to universities, these experiments remained little known, and raised little interest.
+I guess this was because computing was mostly the field of highly-trained professionnals who did
+not care about ease of use (you know, the same kind of guys who laughed at Macintosh and worshipped
+the early IBM-PCs). So, Lisa made the world aware that GUI could exist, all the more since Apple
+was a major computer maker. Also, Lisa (along with Macintosh, Atari ST and Commodore Amiga)
+introduced GUI to the hobbyists and home computer users, which enabled GUI to live.
+
+$end
+
+#---------------------------------------------------------------------------------------------#
+
+$info=mac512ke
+$bio
+Apple Macintosh 512ke
+
+
+History and Trivia:
+
+The Macintosh 512ke was essentially a Mac512k with the same 128k ROMs and double-sided
+800 KB internal floppy drive as the Mac Plus.
+
+It was sold as a poor man's Macintosh.  Also, Mac512k could be upgraded to a 512ke.
+(It could be upgraded to a Mac Plus, too, but it involved changing the motherbord.)
+
+$end
 
 #---------------------------------------------------------------------------------------------#
 
@@ -1519,14 +1600,17 @@ Apple Macintosh Plus
 History and Trivia:
 
 The Macintosh Plus was the first real improvement of the Macintosh 128 (The Macintosh 512 was 
-only a Mac 128 with 512 KB RAM). It had a lot of new features: the extended ROM held the new 
+only a Mac 128 with 512 KB RAM). It had a lot of new features : the extended ROM held the new 
 version of MAC OS : enhanced graphic libraries, drivers for hard disk and external floppy disk 
-units, SCSI bus and AppleTalk network and the new files manager: HFS (Hierarchical File System).
+units, SCSI bus and AppleTalk network and the new file system : HFS (Hierarchical File System -
+which actually had with Hard Disk-20 months before).
 
 The new floppy disk unit could use double-sided 800 KB disks (compared to only one-sided 400 
 KB for the 128). It has an enhanced keyboard with a numeric pad and last but not least, it 
-had a SCSI 1 (1.5 MB/s) interface. This computer was replaced in 1988 by the new Macintosh 
-series: the Macintosh SE and the Macintosh II.
+had a SCSI 1 (1.5 MB/s) interface. This computer was introduced in early 1986.
+This computer was superseeded in 1987 by the new Macintosh series : the Macintosh SE and the
+Macintosh II ; but it remained in production as a cheaper alternative until the introduction of
+Mac Classic.
 
 
 $end
@@ -2071,33 +2155,10 @@ $bio
 Nintendo Entertainment System/Famicom
 
 
-Usage:
-
-Under the "Options" menu, accessible by hitting TAB, are two settings.
-
-
-"Renderer" - can be set to Scanline or Experimental. 
-
-The Scanline renderer gives the most accurate display, but can be slow. 
-
-The Experimental option is much faster, but still needs quite a bit of work before it 
-displays properly in all cases. It's best used for games with no scrolling playfields, 
-like Donkey Kong, etc.
-
-
-"Split-Screen fix" - defaults to off. Turn it on to see proper split screens in games 
-like Kirby's Adventure and Airwolf. This will most likely go away in the future as we 
-figure out how these split screens really work.
-
-
 Known Issues:
 
-The NES driver should run 99% of the images currently out there with very little problem. 
-It doesn't yet support a lot of the obscure mappers used in fwNES, but this is being 
-worked on. For the record, it supports mappers 1, 2, 3, 4, 5 (incomplete), 7, 8, 9 & 10 
-(incomplete), 11, 15, 16, 18 (vrom probs), 25 (vrom probs), 33, 34, 64, 65, 66, 
-68 (incomplete), 69 (incomplete), 71, 78, 79. Some of the mappers over 63 haven't been fully 
-tested yet. See nes.crc for a partial compatibility list.
+The NES driver should run most of the images currently out there with very little problem.
+It doesn't yet support the obscure one-game mappers used by many "pirate carts".
 
 The NES driver has quite accurate sound and sample playback. For example, you can hear speech 
 samples in Bayou Billy, Gauntlet, Dirty Harry, and Skate or Die that are not present in a 
@@ -2184,6 +2245,90 @@ the PC series became a standard and IBM dominated the computer market up until t
 80's. Clones of the XT, such as the Tandy 1000 became commonplace by the end of the decade.
 
 
+The following PC's and compatibles are supported by, or currently under development in MESS:
+
+
+IBM PC
+
+Intel 8088 process with 4.77 Mhz clock.
+
+
+IBM PC Junior
+
+based on IBM PC
+Special keyboard
+CGA with 160x200x16, 320x200x16 and 640x200x4? colors
+3 channel sound chip
+
+
+IBM PC/XT
+
+based on IBM PC
+Intel 8086 instead of 8088, but only ram memory data bus
+enhanced to 16 bit.
+
+
+Tandy1000 Series
+
+IBM PC Junior compatible graphic system.
+Later the 640x200x16 graphic mode was also available.
+Later models were delivered with EGA/VGA compatible graphic system/card.
+IBM PC Junior compatible sound system.
+In later models there was also a DAC channel available.
+First series with own keyboard (own layout, different keys)
+
+
+
+Tandy1000HX
+
+First Tandy 1000 with EEPROM memory for configuration.
+Delivered with 3,5 inch  double density disk drive (720kb).
+
+
+
+Amstrad PC1512/PC1640/PC6400/PPC664?/PC2086?
+
+Packed IBM PC/XT functionality in few custom chips.
+Power supply in the monitor was also used for the computer.
+Serial Port,
+Parallel Port,
+Real Time clock with battery buffered cmos ram,
+Graphics adapter,
+mouse port for included mouse integrated in the motherboard.
+Joystick port for cpc-joystick in the keyboard.
+
+
+
+Amstrad PC 1512
+(Schneider in Germany/Austria)
+
+CGA compatible graphics system with special 640x200x16 graphics mode.
+512 KB ram on board, sockets for additional 128 kb on board.
+
+delivered as
+PC1512SD (1 5,25 inch double density disk drive (360kb))
+PC1512DD (2 5,25 inch double density disk drives)
+PC1512HD10 (1 5,25 inch double density disk driver, harddisk controller and 10MB harddisk)
+PC1512HD20 (....20 MB harddisk)
+(monochrome (about 16 levels grays) or color monitor)
+
+
+
+Amstrad PC 1640
+(PC6400 in the US)
+(Schneider in Germany/Austria)
+
+EGA compatible graphics card and monitor
+
+
+
+Amstrad PC2086
+(Schneider in Germany/Austria)
+
+VGA compatible graphics card and monitors?
+
+
+
 $end
 
 #---------------------------------------------------------------------------------------------#
@@ -2196,6 +2341,84 @@ NEC PC Engine/TurboGrafx-16
 Known Issues:
 
 Preliminary...  Xevious and Raiden8x work OK.
+
+$end
+
+#---------------------------------------------------------------------------------------------#
+
+$info=pcw8256
+$bio
+PCW8256/8512/9512/9512+/10
+
+(Information and Driver by Kev Thacker)
+
+These machines were designed primiarly for wordprocessing (hence the name
+"Personal Computer Wordprocessor"), but are capable of a lot more.
+
+The original PCW8256 system had a green screen monitor, with 2 3" disc
+drives mounted vertically in it, a keyboard and a special printer. (The CPU and other 
+hardware was also contained in the base of the monitor)
+
+Later models changed the case design, but also allowed the use of any printer that 
+was available. (The original 8256 had a proprietry printer and interface).
+
+The hardware is simple, a Z80 running at 4Mhz, slowed to 3.3 with wait states, an Amstrad 
+ASIC custom chip for driving the display (2 colours, 720x256 in PAL, 720x200 in NTSC), a 
+beep for sound, and a NEC765 floppy disc controller.
+
+The boot-program is contained on the printer chip, and is enabled at power-on or reset. 
+The data is passed through a Amstrad custom ASIC chip, and is executed by the Z80. The 
+program is simple, and just loads track 0, side 0,sector &01 to &f000 where it is then 
+executed at &f010. (The first 16 bytes appear to contain some format parameters which 
+are used to initialise CPM). I don't own a PCW machine so I don't know the exact display 
+that the PCW shows on boot-up.
+
+AFAIK, no dumps are available for this program. The MESS driver uses a program coded by 
+myself. This program waits for a key to be pressed and then starts the boot procedure. If 
+an error occurs, the screen will flash 6 times, and then it will repeat the procedure. If 
+all is well, you will see some lines appear on the screen, and the boot will continue.
+
+The original computer came with CP/M and Locoscript (a special wordprocessor).
+
+Since it was able to use CP/M there was a lot of public domain and CP/M programs available 
+that would run on it.
+
+A few games were written for it, two of these are "Head Over Heels" and "Hitchhikers Guide 
+to the Galaxy".
+
+To use this system you will need the boot discs.
+
+$end
+
+#---------------------------------------------------------------------------------------------#
+
+$info=pcw16
+$bio
+PCW16
+
+(Information and Driver by Kev Thacker)
+
+This is a successor to the PCW 8256 series.
+
+It is a re-designed machine, with a 16Mhz Z80 CPU, improved graphics and improved hardware, 
+and a nice GUI system.
+
+This system takes advantage of a Super I/O chip, as used in many PCs, which provides PC 
+Floppy Disc Controller, Serial and Parallel port hardware. As a result, the system uses 
+a PC-AT keyboard and PC Serial Mouse.
+
+The OS comes on a rescue disc and is installed into flash-file memory. This is also used 
+for storing documents and files. The main purpose of this machine, like the original is 
+wordprocessing, spreadsheet and other business tasks.
+
+Other programs have been written for it, including a CP/M "shell" by John Elliot 
+(www.seasip.demon.co.uk), a route-planner and more. You can run these by selecting 
+"Run External Program" from the "Tasks" menu.
+
+This system contains the "Anne" ASIC custom chip designed by Amstrad. Technical 
+information is still available at Cliff Lawsons website. (web.ukonline.co.uk/cliff.lawson/).
+
+In my opinion it's a nice machine.
 
 $end
 
@@ -2697,14 +2920,8 @@ Loading a cart:
 
 No cartidge is required, as TI99/4a has a built-in small basic interpreter.
 
-V9t9-format cart images are split into up to 3 files.  You have to put the
-GROM in first position, the CPU ROM in second position, and the second page
-of CPU ROM in third position.
-
-If the cart is GROM-less and you are using a command-line interface, you
-need to use a place-holder, and type something like "mess /dev/null
-cartC.bin" under *NIX, and "mess Dummy cartC.bin", where Dummy is an empty
-or all-0s file, under DOS.
+V9t9-format cart images are typically split into up to 3 files. These can be
+loaded in any order, so long as all necessary portions are loaded. 
 
 
 History and Trivia:

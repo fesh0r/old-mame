@@ -503,6 +503,7 @@ extern int no_of_tiles;
 extern struct GameDriver driver_neogeo;
 #endif
 #endif
+#endif
 
 void osd_customize_inputport_defaults(struct ipd *defaults)
 {
@@ -568,6 +569,7 @@ void osd_customize_inputport_defaults(struct ipd *defaults)
 				if (defaults->type == (IPT_BUTTON7 | IPF_PLAYER2)) seq_set_1(&defaults->seq,KEYCODE_NONE);
 				if (defaults->type == (IPT_BUTTON8 | IPF_PLAYER2)) seq_set_1(&defaults->seq,KEYCODE_NONE);
 			}
+#endif
 #endif
 #endif
 

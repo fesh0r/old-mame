@@ -13,3 +13,5 @@ eg.  roms\coleco
      roms\a7800
      roms\vectrex
 
+
+Images (software) go into the system subdirectory.

@@ -423,17 +423,21 @@ static int8 apu_dpcm(dpcm_t *chan)
          bit_pos = 7 - (chan->bits_left & 7);
          if (7 == bit_pos)
          {
-            chan->cur_byte = chan->cpu_mem[chan->address];
+//            chan->cur_byte = chan->cpu_mem[chan->address];
+            chan->cur_byte = cpu_readmem16(chan->address);
+//            chan->cur_byte = computer_readmem_byte(0, chan->address); /* LBO - hack */
             chan->address++;
             chan->length--;
          }
 
+
          if (chan->cur_byte & (1 << bit_pos))
 //            chan->regs[1]++;
-            chan->vol++;
+            chan->vol+= 4; // LBO - change this line
          else
 //            chan->regs[1]--;
-            chan->vol--;
+            chan->vol-= 4; // LBO - change this line
+
       }
    }
 
@@ -442,7 +446,7 @@ static int8 apu_dpcm(dpcm_t *chan)
    else if (chan->vol < -64)
       chan->vol = -64;
 
-   return (int8) (chan->vol >> 1);
+   return (int8) (chan->vol);
 }
 
 /* WRITE REGISTER VALUE */
@@ -580,6 +584,13 @@ INLINE void apu_regwrite(int chip,int address, uint8 value)
       cur->dpcm.regs[3] = value;
       //apu_dpcmreset(cur->dpcm);
       break;
+
+	case APU_USER: /* LBO */
+		if (cur->apu_callback_w)
+			(*cur->apu_callback_w)(0, value);
+		else
+			logerror ("NES apu reg %d write uncaught, data: %02x\n", address, value);
+		break;
 
    case APU_SMASK:
       if (value & 0x01)
@@ -730,7 +741,7 @@ int NESPSG_sh_start(const struct MachineSound *msound)
   buffer_size = samps_per_sync;
   real_rate = samps_per_sync * Machine->drv->frames_per_second;
   chip_max = intf->num;
-  apu_incsize = (float) (N2A03_DEFAULTCLOCK / (float) real_rate);
+  apu_incsize = (float) (intf->baseclock / (float) real_rate);
 
   /* Use initializer calls */
   create_noise(noise_lut, 13, NOISE_LONG);
@@ -757,7 +768,10 @@ int NESPSG_sh_start(const struct MachineSound *msound)
 #ifdef USE_QUEUE
      cur->head=0;cur->tail=QUEUE_MAX;
 #endif
-     (cur->dpcm).cpu_mem=memory_region(intf->region[i]);
+//     (cur->dpcm).cpu_mem=memory_region(intf->region[i]);
+     (cur->dpcm).mem_region = intf->region[i]; /* LBO */
+     cur->apu_callback_w = intf->apu_callback_w[i];
+     cur->apu_callback_r = intf->apu_callback_r[i];
   }
 
   channel = mixer_allocate_channels(chip_max,intf->volume);

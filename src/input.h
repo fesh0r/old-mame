@@ -97,13 +97,12 @@ InputCode code_read_async(void);
 InputCode code_read_sync(void);
 INT8 code_read_hex_async(void);
 
-/* Wrappers for compatibility */
-#define keyboard_name                   code_name
-#define keyboard_pressed                code_pressed
-#define keyboard_pressed_memory         code_pressed_memory
-#define keyboard_pressed_memory_repeat  code_pressed_memory_repeat
-#define keyboard_read_async	        code_read_async
-#define keyboard_read_sync              code_read_sync
+#define keyboard_name code_name
+#define	keyboard_pressed code_pressed
+#define	keyboard_pressed_memory code_pressed_memory
+#define	keyboard_pressed_memory_repeat code_pressed_memory_repeat
+#define	keyboard_read_async code_read_async
+#define	keyboard_read_sync code_read_sync
 
 /***************************************************************************/
 /* Sequence code funtions */
@@ -112,10 +111,7 @@ INT8 code_read_hex_async(void);
 #define SEQ_MAX 16
 
 typedef InputCode InputSeq[SEQ_MAX];
-
-INLINE InputCode seq_get_1(InputSeq* a) {
-	return (*a)[0];
-}
+#define seq_get_1(a)	(*a)[0]
 
 void seq_set_0(InputSeq* seq);
 void seq_set_1(InputSeq* seq, InputCode code);

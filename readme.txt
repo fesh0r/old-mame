@@ -1,4 +1,5 @@
 
+
                  M.A.M.E.  -  Multiple Arcade Machine Emulator
           Copyright (C) 1997-2000 by Nicola Salmoria and The MAME Team
 
@@ -105,7 +106,7 @@ worked on. Also, a totally legal and free ROM set of Robby Roto is available
 on the same page.
 
 If you have bugs to report, check the MAME Testing Project at
-http://www.mametesters.com
+http://www.mameworld.net/mametesters
 
 Here are some of the people contributing to MAME. If you have comments,
 suggestions, or bug reports about an existing driver, check the driver's

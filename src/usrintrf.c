@@ -14,7 +14,7 @@
 #include "ui_text.h"
 
 #ifdef MESS
-  #include "mess/mess.h"
+  #include "mess.h"
 #endif
 
 extern int mame_debug;
@@ -28,6 +28,8 @@ extern unsigned int coins[COIN_COUNTERS];
 extern unsigned int coinlockedout[COIN_COUNTERS];
 
 /* MARTINEZ.F 990207 Memory Card */
+#ifndef MESS
+
 #ifndef MESS
 #ifndef TINY_COMPILE
 int 		memcard_menu(struct osd_bitmap *bitmap, int);
@@ -947,6 +949,7 @@ void NeoMVSDrawGfx16(unsigned char **line,const struct GfxElement *gfx,
 extern struct GameDriver driver_neogeo;
 #endif
 #endif
+#endif
 
 static void showcharset(struct osd_bitmap *bitmap)
 {
@@ -974,6 +977,7 @@ static void showcharset(struct osd_bitmap *bitmap)
 			(Machine->gamedrv->clone_of &&
 				Machine->gamedrv->clone_of->clone_of == &driver_neogeo))
 		game_is_neogeo=1;
+#endif
 #endif
 #endif
 
@@ -1137,6 +1141,7 @@ static void showcharset(struct osd_bitmap *bitmap)
 					lastdrawn = i+firstdrawn;
 				}
 			}
+#endif
 #endif
 #endif
 
@@ -2798,6 +2803,7 @@ int memcard_menu(struct osd_bitmap *bitmap, int selection)
 }
 #endif
 #endif
+#endif
 
 
 #ifndef MESS
@@ -2880,6 +2886,7 @@ static void setup_menu_init(void)
 	}
 #endif
 #endif
+#endif
 
 	menu_item[menu_total] = ui_getstring (UI_resetgame); menu_action[menu_total++] = UI_RESET;
 	menu_item[menu_total] = ui_getstring (UI_returntogame); menu_action[menu_total++] = UI_EXIT;
@@ -2947,6 +2954,7 @@ static int setup_menu(struct osd_bitmap *bitmap, int selected)
 			case UI_MEMCARD:
 				res = memcard_menu(bitmap, sel >> SEL_BITS);
 				break;
+#endif
 #endif
 #endif
 		}
@@ -3383,17 +3391,16 @@ static void displaymessage(struct osd_bitmap *bitmap,const char *text)
 	displaytext(bitmap,dt,0,0);
 }
 
-
 static char messagetext[80];
 static int messagecounter;
 
 void CLIB_DECL usrintf_showmessage(const char *text,...)
 {
-	va_list arg;
-	va_start(arg,text);
-	vsprintf(messagetext,text,arg);
-	va_end(arg);
-	messagecounter = 2 * Machine->drv->frames_per_second;
+    va_list arg;
+    va_start(arg,text);
+    vsprintf(messagetext,text,arg);
+    va_end(arg);
+    messagecounter = 2 * Machine->drv->frames_per_second;
 }
 
 void CLIB_DECL usrintf_showmessage_secs(int seconds, const char *text,...)
@@ -3404,7 +3411,6 @@ void CLIB_DECL usrintf_showmessage_secs(int seconds, const char *text,...)
 	va_end(arg);
 	messagecounter = seconds * Machine->drv->frames_per_second;
 }
-
 
 
 int handle_user_interface(struct osd_bitmap *bitmap)

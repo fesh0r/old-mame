@@ -296,7 +296,7 @@ static unsigned Dummy_dasm(char *buffer, unsigned pc);
 		name##_get_sp, name##_set_sp, name##_get_reg, name##_set_reg,			   \
 		name##_set_nmi_line, name##_set_irq_line, name##_set_irq_callback,		   \
 		NULL,NULL,NULL, name##_info, name##_dasm,								   \
-		nirq, dirq, &##name##_ICount, oc, i0, i1, i2,							   \
+		nirq, dirq, &name##_ICount, oc, i0, i1, i2, 							 \
 		cpu_readmem##mem, cpu_writemem##mem, cpu_setOPbase##mem,				   \
 		shift, bits, CPU_IS_##endian, align, maxinst,							   \
 		ABITS1_##MEM, ABITS2_##MEM, ABITS_MIN_##MEM 							   \
@@ -314,7 +314,7 @@ static unsigned Dummy_dasm(char *buffer, unsigned pc);
 		name##_get_sp, name##_set_sp, name##_get_reg, name##_set_reg,			   \
 		name##_set_nmi_line, name##_set_irq_line, name##_set_irq_callback,		   \
 		NULL,name##_state_save,name##_state_load, name##_info, name##_dasm, 	   \
-		nirq, dirq, &##name##_ICount, oc, i0, i1, i2,							   \
+		nirq, dirq, &name##_ICount, oc, i0, i1, i2, 							 \
 		cpu_readmem##mem, cpu_writemem##mem, cpu_setOPbase##mem,				   \
 		shift, bits, CPU_IS_##endian, align, maxinst,							   \
 		ABITS1_##MEM, ABITS2_##MEM, ABITS_MIN_##MEM 							   \
@@ -331,7 +331,7 @@ static unsigned Dummy_dasm(char *buffer, unsigned pc);
 		name##_get_sp, name##_set_sp, name##_get_reg, name##_set_reg,			   \
 		name##_set_nmi_line, name##_set_irq_line, name##_set_irq_callback,		   \
 		name##_internal_interrupt,NULL,NULL, name##_info, name##_dasm,			   \
-		nirq, dirq, &##name##_ICount, oc, i0, i1, i2,							   \
+		nirq, dirq, &name##_ICount, oc, i0, i1, i2, 							 \
 		cpu_readmem##mem, cpu_writemem##mem, cpu_setOPbase##mem,				   \
 		shift, bits, CPU_IS_##endian, align, maxinst,							   \
 		ABITS1_##MEM, ABITS2_##MEM, ABITS_MIN_##MEM 							   \
@@ -839,23 +839,18 @@ logerror("Machine reset\n");
   Use this function to initialize, and later maintain, the watchdog. For
   convenience, when the machine is reset, the watchdog is disabled. If you
   call this function, the watchdog is initialized, and from that point
-  onwards, if you don't call it at least once every 2 seconds, the machine
-  will be reset.
-
-  The 2 seconds delay is targeted at dondokod, which during boot stays more
-  than 1 second without resetting the watchdog.
+  onwards, if you don't call it at least once every 10 video frames, the
+  machine will be reset.
 
 ***************************************************************************/
 WRITE_HANDLER( watchdog_reset_w )
 {
-	if (watchdog_counter == -1) logerror("watchdog armed\n");
-	watchdog_counter = 2*Machine->drv->frames_per_second;
+	watchdog_counter = Machine->drv->frames_per_second;
 }
 
 READ_HANDLER( watchdog_reset_r )
 {
-	if (watchdog_counter == -1) logerror("watchdog armed\n");
-	watchdog_counter = 2*Machine->drv->frames_per_second;
+	watchdog_counter = Machine->drv->frames_per_second;
 	return 0;
 }
 

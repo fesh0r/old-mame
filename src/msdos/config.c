@@ -1,3 +1,4 @@
+
 /*
  * Configuration routines.
  *
@@ -74,7 +75,6 @@ extern char *cheatdir;
 #ifdef MESS
 /* path to the CRC database files */
 char *crcdir;
-char *cheatdir;
 #endif
 
 /* from video.c, for centering tweaked modes */
@@ -410,6 +410,7 @@ void parse_cmdline (int argc, char **argv, int game_index)
 	options.flipy     = get_bool ("config", "flipy",     NULL, 0);
 
 	/* read sound configuration */
+
 	soundcard           = get_int  ("config", "soundcard",  NULL, -1);
 	options.use_emulated_ym3812 = !get_bool ("config", "ym3812opl",  NULL,  0);
 	options.samplerate = get_int  ("config", "samplerate", "sr", 22050);
@@ -431,17 +432,14 @@ void parse_cmdline (int argc, char **argv, int game_index)
 	options.cheat      = get_bool ("config", "cheat", NULL, 0);
 	options.mame_debug = get_bool ("config", "debug", NULL, 0);
 
+	/* Steph 20000730 - Now all stuff is in function InitCheat in src/cheat.c */
 	#ifndef MESS
-	cheatfile  = get_string ("config", "cheatfile", "cf", "CHEAT.DAT");
+	tmpstr = get_string ("config", "cheatfile", "cf", "CHEAT.DAT");
 	#else
-	tmpstr  = get_string ("config", "cheatfile", "cf", "CHEAT.CDB");
-	/* I assume that CHEAT.DAT (in old MESS.CFG files) and CHEAT.CDB are default filenames */
-	if ((!stricmp(tmpstr,"cheat.dat")) || (!stricmp(tmpstr,"cheat.cdb")))
-		sprintf(cheatfile,"%s.cdb",drivers[game_index]->name);
-	else
-		sprintf(cheatfile,"%s",tmpstr);
+	tmpstr = get_string ("config", "cheatfile", "cf", "CHEAT.CDB");
 	#endif
-
+	cheatfile = malloc(strlen(tmpstr) + 1);
+	strcpy(cheatfile,tmpstr);
 
  	#ifndef MESS
  	history_filename  = get_string ("config", "historyfile", NULL, "HISTORY.DAT");    /* JCK 980917 */

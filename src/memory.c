@@ -3,6 +3,16 @@
   memory.c
 
   Functions which handle the CPU memory and I/O port access.
+  
+  Caveats:
+  
+  * The install_mem/port_*_handler functions are only intended to be
+    called at driver init time. Do not call them after this time.
+  
+  * If your driver executes an opcode which crosses a bank-switched
+    boundary, it will pull the wrong data out of memory. Although not
+    a common case, you may need to revert to memcpy to work around this.
+    See machine/tnzs.c for an example.
 
   Caveats:
 
@@ -22,7 +32,7 @@
 
 #define VERBOSE 0
 
-/* #define MEM_DUMP */
+#define MEM_DUMP
 
 #ifdef MEM_DUMP
 static void mem_dump( void );
@@ -574,7 +584,9 @@ int memory_init(void)
 	for( i = 0 ; i < MH_HARDMAX ; i++ ){
 		memoryreadoffset[i] = 0;
 		memorywriteoffset[i] = 0;
-	}
+		memoryreadhandler[i] = NULL;
+		memorywritehandler[i] = NULL;
+    }
 	/* bank memory */
 	for (i = 1; i <= MAX_BANKS; i++)
 	{
@@ -1174,7 +1186,7 @@ WRITEBYTE(cpu_writemem26lew, TYPE_16BIT_LE, 26LEW)
 WRITEWORD(cpu_writemem26lew, TYPE_16BIT_LE, 26LEW, ALWAYS_ALIGNED)
 WRITELONG(cpu_writemem26lew, TYPE_16BIT_LE, 26LEW, ALWAYS_ALIGNED)
 
-WRITEBYTE(cpu_writemem29,	 TYPE_16BIT_LE, 29)
+WRITEBYTE(cpu_writemem29,    TYPE_16BIT_LE, 29)
 WRITEWORD(cpu_writemem29,	 TYPE_16BIT_LE, 29,    CAN_BE_MISALIGNED)
 WRITELONG(cpu_writemem29,	 TYPE_16BIT_LE, 29,    CAN_BE_MISALIGNED)
 
@@ -1239,6 +1251,7 @@ SETOPBASE(cpu_setOPbase20,	  20,	 0)
 SETOPBASE(cpu_setOPbase21,	  21,	 0)
 SETOPBASE(cpu_setOPbase24,	  24,	 0)
 SETOPBASE(cpu_setOPbase24bew, 24BEW, 0)
+SETOPBASE(cpu_setOPbase26lew, 26LEW, 0)
 SETOPBASE(cpu_setOPbase29,	  29,	 3)
 SETOPBASE(cpu_setOPbase32,	  32,	 0)
 SETOPBASE(cpu_setOPbase32lew, 32LEW, 0)
@@ -1416,7 +1429,6 @@ void *install_mem_read_handler(int cpu, int start, int end, mem_read_handler han
 	MHELE hardware = 0;
 	int abitsmin;
 	int i, hw_set;
-#if VERBOSE
 	logerror("Install new memory read handler:\n");
 	logerror("             cpu: %d\n", cpu);
 	logerror("           start: 0x%08x\n", start);
@@ -1425,7 +1437,6 @@ void *install_mem_read_handler(int cpu, int start, int end, mem_read_handler han
 	logerror(" handler address: 0x%016lx\n", (unsigned long) handler);
 #else
 	logerror(" handler address: 0x%08x\n", (unsigned int) handler);
-#endif
 #endif
 	abitsmin = ABITSMIN (cpu);
 
@@ -1437,9 +1448,7 @@ void *install_mem_read_handler(int cpu, int start, int end, mem_read_handler han
 		if (( memoryreadhandler[i] == handler ) &&
 			(  memoryreadoffset[i] == start))
 		{
-#if VERBOSE
 			logerror("handler match - use old one\n");
-#endif
 			hardware = i;
 			hw_set = 1;
 		}
@@ -1501,11 +1510,9 @@ void *install_mem_read_handler(int cpu, int start, int end, mem_read_handler han
 		(((unsigned int) start) >> abitsmin) ,
 		(((unsigned int) end) >> abitsmin) ,
 		hardware , readhardware , &rdelement_max );
-#if VERBOSE
 	logerror("Done installing new memory handler.\n");
 	logerror("used read  elements %d/%d , functions %d/%d\n"
 			,rdelement_max,MH_ELEMAX , rdhard_max,MH_HARDMAX );
-#endif
 	return memory_find_base(cpu, start);
 }
 
@@ -1514,7 +1521,6 @@ void *install_mem_write_handler(int cpu, int start, int end, mem_write_handler h
 	MHELE hardware = 0;
 	int abitsmin;
 	int i, hw_set;
-#if VERBOSE
 	logerror("Install new memory write handler:\n");
 	logerror("             cpu: %d\n", cpu);
 	logerror("           start: 0x%08x\n", start);
@@ -1523,7 +1529,6 @@ void *install_mem_write_handler(int cpu, int start, int end, mem_write_handler h
 	logerror(" handler address: 0x%016lx\n", (unsigned long) handler);
 #else
 	logerror(" handler address: 0x%08x\n", (unsigned int) handler);
-#endif
 #endif
 	abitsmin = ABITSMIN (cpu);
 
@@ -1535,9 +1540,7 @@ void *install_mem_write_handler(int cpu, int start, int end, mem_write_handler h
 		if (( memorywritehandler[i] == handler ) &&
 			(  memorywriteoffset[i] == start))
 		{
-#if VERBOSE
 			logerror("handler match - use old one\n");
-#endif
 			hardware = i;
 			hw_set = 1;
 		}
@@ -1608,11 +1611,9 @@ void *install_mem_write_handler(int cpu, int start, int end, mem_write_handler h
 		(((unsigned int) start) >> abitsmin) ,
 		(((unsigned int) end) >> abitsmin) ,
 		hardware , writehardware , &wrelement_max );
-#if VERBOSE
 	logerror("Done installing new memory handler.\n");
 	logerror("used write elements %d/%d , functions %d/%d\n"
 			,wrelement_max,MH_ELEMAX , wrhard_max,MH_HARDMAX );
-#endif
 	return memory_find_base(cpu, start);
 }
 
@@ -1719,7 +1720,6 @@ static void *install_port_write_handler_common(int cpu, int start, int end,
 #ifdef MEM_DUMP
 static void mem_dump( void )
 {
-	extern int totalcpu;
 	int cpu;
 	int naddr,addr;
 	MHELE nhw,hw;
