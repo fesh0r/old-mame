@@ -11,15 +11,60 @@ the data will be accessed correctly */
 
 #define basicdsk_MAX_DRIVES 4
 #define VERBOSE 1
-static basicdsk     basicdsk_drives[basicdsk_MAX_DRIVES];
 
-static void basicdsk_seek_callback(int,int);
-static int basicdsk_get_sectors_per_track(int,int);
-static void basicdsk_get_id_callback(int, chrn_id *, int, int);
-static void basicdsk_read_sector_data_into_buffer(int drive, int side, int index1, char *ptr, int length);
-static void basicdsk_write_sector_data_from_buffer(int drive, int side, int index1, char *ptr, int length,int ddam);
 
-floppy_interface basicdsk_floppy_interface=
+typedef struct
+{
+	UINT8	 track;
+	UINT8	 sector;
+	UINT8	 status;
+}	SECMAP;
+
+typedef struct
+{
+	const char *image_name; 		/* file name for disc image */
+	void	*image_file;			/* file handle for disc image */
+	int 	mode;					/* open mode == 0 read only, != 0 read/write */
+	unsigned long image_size;		/* size of image file */
+
+	SECMAP	*secmap;
+
+	UINT8	unit;					/* unit number if image_file == REAL_FDD */
+
+	UINT8	tracks; 				/* maximum # of tracks */
+	UINT8	heads;					/* maximum # of heads */
+
+	UINT16	offset; 				/* track 0 offset */
+	UINT8	first_sector_id;		/* id of first sector */
+	UINT8	sec_per_track;			/* sectors per track */
+
+	UINT8	head;					/* current head # */
+	UINT8	track;					/* current track # */
+
+    UINT8   N;
+	UINT16	sector_length;			/* sector length (byte) */
+
+	int		track_divider;			/* 2 if using a 40-track image in a 80-track drive, 1 otherwise */
+
+	/* a bit for each sector in the image. If the bit is set, this sector
+	has a deleted data address mark. If the bit is not set, this sector
+	has a data address mark */
+	UINT8	*ddam_map;
+	unsigned long ddam_map_size;
+
+	unsigned long (*calcoffset)(UINT8 t, UINT8 h, UINT8 s,
+		UINT8 heads, UINT16 offset, UINT8 first_sector_id, UINT8 sec_per_track, UINT16 sector_length);
+} basicdsk;
+
+static basicdsk basicdsk_drives[basicdsk_MAX_DRIVES];
+
+static void basicdsk_seek_callback(mess_image *img, int);
+static int basicdsk_get_sectors_per_track(mess_image *img, int);
+static void basicdsk_get_id_callback(mess_image *img,  chrn_id *, int, int);
+static void basicdsk_read_sector_data_into_buffer(mess_image *img, int side, int index1, char *ptr, int length);
+static void basicdsk_write_sector_data_from_buffer(mess_image *img, int side, int index1, char *ptr, int length,int ddam);
+
+static floppy_interface basicdsk_floppy_interface =
 {
 	basicdsk_seek_callback,
 	basicdsk_get_sectors_per_track,             /* done */
@@ -30,17 +75,23 @@ floppy_interface basicdsk_floppy_interface=
 	NULL
 };
 
-int basicdsk_floppy_init(int id)
+static basicdsk *get_basicdsk(mess_image *img)
 {
-	return floppy_drive_init(id, &basicdsk_floppy_interface);
+	int drive = image_index_in_device(img);
+	assert(drive >= 0);
+	assert(drive < (sizeof(basicdsk_drives) / sizeof(basicdsk_drives[0])));
+	return &basicdsk_drives[drive];
+}
+
+int basicdsk_floppy_init(mess_image *img)
+{
+	return floppy_drive_init(img, &basicdsk_floppy_interface);
 }
 
 /* attempt to insert a disk into the drive specified with id */
-int basicdsk_floppy_load(int id, mame_file *fp, int open_mode)
+int basicdsk_floppy_load(mess_image *img, mame_file *fp, int open_mode)
 {
-	basicdsk *w = &basicdsk_drives[id];
-
-	assert(id < basicdsk_MAX_DRIVES);
+	basicdsk *w = get_basicdsk(img);
 
 	w->image_file = fp;
 	w->mode = is_effective_mode_writable(open_mode);
@@ -52,38 +103,29 @@ int basicdsk_floppy_load(int id, mame_file *fp, int open_mode)
 	so we need to reflect this */
 	w->track = 0;
 
-	floppy_drive_set_disk_image_interface(id, &basicdsk_floppy_interface);
+	floppy_drive_set_disk_image_interface(img, &basicdsk_floppy_interface);
 
 	return INIT_PASS;
 }
 
-void basicdsk_floppy_unload(int id)
+void basicdsk_floppy_unload(mess_image *img)
 {
-	basicdsk *w = &basicdsk_drives[id];
-
-	assert(id < basicdsk_MAX_DRIVES);
-
+	basicdsk *w = get_basicdsk(img);
 	w->image_file = NULL;
 	w->mode = 0;
 }
 
 /* set data mark/deleted data mark for the sector specified. If ddam!=0, the sector will
 have a deleted data mark, if ddam==0, the sector will have a data mark */
-void	basicdsk_set_ddam(UINT8 id, UINT8 physical_track, UINT8 physical_side, UINT8 sector_id,UINT8 ddam)
+void basicdsk_set_ddam(mess_image *img, UINT8 physical_track, UINT8 physical_side, UINT8 sector_id,UINT8 ddam)
 {
 	unsigned long ddam_bit_offset, ddam_bit_index, ddam_byte_offset;
-	basicdsk *pDisk;
-
-	/* sanity check */
-	if (id>=basicdsk_MAX_DRIVES)
-		return;
-
-	pDisk = &basicdsk_drives[id];
+	basicdsk *pDisk = get_basicdsk(img);
 
 	if (!pDisk->ddam_map)
 		return;
 
-	logerror("basicdsk_set_ddam: #%d T:$%02x H:%d S:$%02x = %d\n",id, physical_track, physical_side, sector_id,ddam);
+	logerror("basicdsk_set_ddam: T:$%02x H:%d S:$%02x = %d\n", physical_track, physical_side, sector_id,ddam);
 
     /* calculate bit-offset into map */
 	ddam_bit_offset = (((physical_track * pDisk->heads) + physical_side)*pDisk->sec_per_track) +
@@ -110,16 +152,10 @@ void	basicdsk_set_ddam(UINT8 id, UINT8 physical_track, UINT8 physical_side, UINT
 }
 
 /* get dam state for specified sector */
-static int basicdsk_get_ddam(UINT8 id, UINT8 physical_track, UINT8 physical_side, UINT8 sector_id)
+static int basicdsk_get_ddam(mess_image *img, UINT8 physical_track, UINT8 physical_side, UINT8 sector_id)
 {
 	unsigned long ddam_bit_offset, ddam_bit_index, ddam_byte_offset;
-	basicdsk *pDisk;
-
-	/* sanity check */
-	if (id>=basicdsk_MAX_DRIVES)
-		return 0;
-
-	pDisk = &basicdsk_drives[id];
+	basicdsk *pDisk = get_basicdsk(img);
 
 	if (!pDisk->ddam_map)
 		return 0;
@@ -142,28 +178,20 @@ static int basicdsk_get_ddam(UINT8 id, UINT8 physical_track, UINT8 physical_side
 }
 
 
+void basicdsk_set_calcoffset(mess_image *img, unsigned long (*calcoffset)(UINT8 t, UINT8 h, UINT8 s,
+	UINT8 heads, UINT16 offset, UINT8 first_sector_id, UINT8 sec_per_track, UINT16 sector_length))
+{
+	basicdsk *pDisk = get_basicdsk(img);
+	pDisk->calcoffset = calcoffset;
+}
+
 /* dir_sector is a relative offset from the start of the disc,
 dir_length is a relative offset from the start of the disc */
-void basicdsk_set_geometry(UINT8 drive, UINT16 tracks, UINT8 heads, UINT8 sec_per_track, UINT16 sector_length, UINT8 first_sector_id, UINT16 offset_track_zero)
+void basicdsk_set_geometry(mess_image *img, UINT16 tracks, UINT8 heads, UINT8 sec_per_track, UINT16 sector_length, UINT8 first_sector_id, UINT16 offset_track_zero, int track_skipping)
 {
-	basicdsk *pDisk;
 	unsigned long N;
 	unsigned long ShiftCount;
-
-
-	if (drive >= basicdsk_MAX_DRIVES)
-	{
-		logerror("basicdsk drive #%d not supported!\n", drive);
-		return;
-	}
-
-	pDisk = &basicdsk_drives[drive];
-
-
-#if VERBOSE
-	logerror("basicdsk geometry for drive #%d is %d tracks, %d heads, %d sec/track, %d bytes per sector, first sector id: %d, file offset to track 0: %d\n",
-		drive, tracks, heads, sec_per_track, sector_length, first_sector_id, offset_track_zero);
-#endif
+	basicdsk *pDisk = get_basicdsk(img);
 
 	pDisk->tracks = tracks;
 	pDisk->heads = heads;
@@ -171,20 +199,16 @@ void basicdsk_set_geometry(UINT8 drive, UINT16 tracks, UINT8 heads, UINT8 sec_pe
 	pDisk->sec_per_track = sec_per_track;
 	pDisk->sector_length = sector_length;
 	pDisk->offset = offset_track_zero;
-	
-	floppy_drive_set_geometry_absolute( drive, tracks, heads );
+
+	pDisk->track_divider = track_skipping ? 2 : 1;
+
+	floppy_drive_set_geometry_absolute(img, tracks * pDisk->track_divider, heads );
 	
 	pDisk->image_size = pDisk->tracks * pDisk->heads * pDisk->sec_per_track * pDisk->sector_length;
 
-	/* if a ddam map was already set up clear it */
-	if (pDisk->ddam_map!=NULL)
-	{
-		free(pDisk->ddam_map);
-		pDisk->ddam_map = NULL;
-	}
 	/* setup a new ddam map */
 	pDisk->ddam_map_size = ((pDisk->tracks * pDisk->heads * pDisk->sec_per_track)+7)>>3;
-	pDisk->ddam_map = (UINT8 *) image_realloc(IO_FLOPPY, drive, pDisk->ddam_map, pDisk->ddam_map_size);
+	pDisk->ddam_map = (UINT8 *) image_realloc(img, pDisk->ddam_map, pDisk->ddam_map_size);
 
 	if (pDisk->ddam_map!=NULL)
 	{
@@ -220,7 +244,8 @@ void basicdsk_set_geometry(UINT8 drive, UINT16 tracks, UINT8 heads, UINT8 sec_pe
 /* seek to track/head/sector relative position in image file */
 static int basicdsk_seek(basicdsk * w, UINT8 t, UINT8 h, UINT8 s)
 {
-unsigned long offset;
+	unsigned long offset;
+
 	/* allow two additional tracks */
     if (t >= w->tracks + 2)
 	{
@@ -240,14 +265,21 @@ unsigned long offset;
 		return 0;
 	}
 
-	offset = 0;
-	offset += t;
-	offset *= w->heads;
-	offset += h;
-	offset *= w->sec_per_track;
-	offset += (s-w->first_sector_id);
-	offset *= w->sector_length;
-	offset += w->offset;
+	if (w->calcoffset)
+	{
+		offset = w->calcoffset(t, h, s, w->heads, w->sec_per_track, w->first_sector_id, w->sector_length, w->offset);
+	}
+	else
+	{
+		offset = 0;
+		offset += t;
+		offset *= w->heads;
+		offset += h;
+		offset *= w->sec_per_track;
+		offset += (s-w->first_sector_id);
+		offset *= w->sector_length;
+		offset += w->offset;
+	}
 
 
 #if VERBOSE
@@ -331,10 +363,10 @@ unsigned long offset;
 
 
 
-void    basicdsk_step_callback(basicdsk *w, int drive, int direction)
+/*void    basicdsk_step_callback(basicdsk *w, int drive, int direction)
 {
 			w->track += direction;
-}
+}*/
 
 #if 0
 /* write a sector */
@@ -488,9 +520,9 @@ int cnt;
 #endif
 
 
-void    basicdsk_get_id_callback(int drive, chrn_id *id, int id_index, int side)
+static void basicdsk_get_id_callback(mess_image *img, chrn_id *id, int id_index, int side)
 {
-	basicdsk *w = &basicdsk_drives[drive];
+	basicdsk *w = get_basicdsk(img);
 
 	/* construct a id value */
 	id->C = w->track;
@@ -501,16 +533,16 @@ void    basicdsk_get_id_callback(int drive, chrn_id *id, int id_index, int side)
 	id->flags = 0;
 
 	/* get dam */
-	if (basicdsk_get_ddam(drive, w->track, side, id->R))
+	if (basicdsk_get_ddam(img, w->track, side, id->R))
 	{
 		id->flags |= ID_FLAG_DELETED_DATA;
 	}
 
 }
 
-int  basicdsk_get_sectors_per_track(int drive, int side)
+static int basicdsk_get_sectors_per_track(mess_image *img, int side)
 {
-	basicdsk *w = &basicdsk_drives[drive];
+	basicdsk *w = get_basicdsk(img);
 
 	/* attempting to access an invalid side or track? */
 	if ((side>=w->heads) || (w->track>=w->tracks))
@@ -522,28 +554,28 @@ int  basicdsk_get_sectors_per_track(int drive, int side)
 	return w->sec_per_track;
 }
 
-void    basicdsk_seek_callback(int drive, int physical_track)
+static void basicdsk_seek_callback(mess_image *img, int physical_track)
 {
-	basicdsk *w = &basicdsk_drives[drive];
-
-	w->track = physical_track;
+	basicdsk *w = get_basicdsk(img);
+	assert(w->track_divider);
+	w->track = physical_track / w->track_divider;
 }
 
-void basicdsk_write_sector_data_from_buffer(int drive, int side, int index1, char *ptr, int length, int ddam)
+static void basicdsk_write_sector_data_from_buffer(mess_image *img, int side, int index1, char *ptr, int length, int ddam)
 {
-	basicdsk *w = &basicdsk_drives[drive];
+	basicdsk *w = get_basicdsk(img);
 
 	if (basicdsk_seek(w, w->track, side, index1)&&w->mode)
 	{
 		mame_fwrite(w->image_file, ptr, length);
 	}
 
-	basicdsk_set_ddam(drive, w->track, side, index1, ddam);
+	basicdsk_set_ddam(img, w->track, side, index1, ddam);
 }
 
-void basicdsk_read_sector_data_into_buffer(int drive, int side, int index1, char *ptr, int length)
+static void basicdsk_read_sector_data_into_buffer(mess_image *img, int side, int index1, char *ptr, int length)
 {
-	basicdsk *w = &basicdsk_drives[drive];
+	basicdsk *w = get_basicdsk(img);
 
 	if (basicdsk_seek(w, w->track, side, index1))
 	{

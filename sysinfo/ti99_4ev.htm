@@ -14,20 +14,24 @@
 See the TI99/4a driver for non-EVPC information.<br>
 <p><b>Known Issues:</b><br>
 EVPC emulation is not complete.  The palette chip is not emulated.<br>
-Also, TI BASIC will not run under this driver, though it might be normal<br>
-(I know there are some bugs in the TI's system ROMs which prevent them<br>
-from running with a v9938).<br>
+The computer may crash on soft reset, though I have no idea why.<br>
 <p><b>History and Trivia:</b><br>
 A common hack on the ti99/4a is replacing the old tms9918/9928/9929a with<br>
-a higher-end, upward-compatible v9938. This enhanced vdp supports true 16-<br>
+an improved, upward-compatible v9938.  This enhanced vdp supports true 16-<br>
 and 256-color graphic modes, high-res 512*192 graphic and 80-column text<br>
-modes, accelerated 2D graphics, etc. The only drawback is that some programs<br>
-(including TI's system ROMs) will not run with the v9938.<br>
+modes, accelerated 2D graphics, etc.  The only drawback is that some programs<br>
+(including TI's own TI BASIC) will not run with the v9938.  Also, only<br>
+specially designed programs can take advantage of the improved graphic modes.<br>
 The EVPC card does just that: it includes a v9938 with 128kb of VRAM, 64kb of<br>
 extended RAM, an additional palette chip to program the palette in 256-color<br>
 mode, and a DSR ROM with various useful subroutines.<br>
+Also, this driver uses a hacked TI BASIC GROM so that TI BASIC will work<br>
+normally with the v9938.  Only two bytes were modified to derive file<br>
+"994agr38.bin" from file "994agrom.bin": the bytes &gt;F0 &gt;0C &gt;F8 at offset &gt;216C<br>
+of the file were changed to &gt;00 &gt;0C &gt;00.  (This fix was contributed by Tony<br>
+Knerr, but I have no idea who invented it first.)<br>
 <hr>
-<center><font size=-2>created on Tue Apr 15 18:52:03 2003
+<center><font size=-2>created on Mon May 19 14:44:27 2003
 </font></center>
 </body>
 </html>

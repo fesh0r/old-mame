@@ -544,7 +544,7 @@ void hash_compute(char* dst, const unsigned char* data, unsigned long length, un
 
 void hash_data_print(const char* data, unsigned int functions, char* buffer)
 {
-	int i;
+	int i, j;
 	char first = 1;
 
 	if (functions == 0)
@@ -565,7 +565,8 @@ void hash_data_print(const char* data, unsigned int functions, char* buffer)
 			first = 0;
 			
 			strcpy(temp, hash_function_name(func));
-			strupr(temp);
+			for (j = 0; temp[j]; j++)
+				temp[j] = toupper(temp[j]);
 			strcat(buffer, temp);
 			strcat(buffer, "(");
             
@@ -582,7 +583,14 @@ void hash_data_print(const char* data, unsigned int functions, char* buffer)
  *********************************************************************/
 
 static UINT32 crc;
-extern unsigned int crc32(unsigned int curcrc, const UINT8 *buf, unsigned int len);
+
+#ifdef _MSC_VER
+#define ZEXPORT __stdcall
+#else
+#define ZEXPORT
+#endif
+
+extern unsigned int ZEXPORT crc32 (unsigned int crc_, const unsigned char *buf, unsigned int len);
 
 static void h_crc_begin(void)
 {

@@ -371,81 +371,81 @@ MACHINE_DRIVER_END
 
 ROM_START(trs80)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("level1.rom",  0x0000, 0x1000, 0x70d06dff)
+	ROM_LOAD("level1.rom",  0x0000, 0x1000, CRC(70d06dff))
 
 	ROM_REGION(0x00c00, REGION_GFX1,0)
-	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, 0x0033f2b9)
+	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, CRC(0033f2b9))
 ROM_END
 
 
 ROM_START(trs80l2)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("trs80.z33",   0x0000, 0x1000, 0x83dbbbe2)
-	ROM_LOAD("trs80.z34",   0x1000, 0x1000, 0x05818718)
-	ROM_LOAD("trs80.zl2",   0x2000, 0x1000, 0x306e5d66)
+	ROM_LOAD("trs80.z33",   0x0000, 0x1000, CRC(83dbbbe2))
+	ROM_LOAD("trs80.z34",   0x1000, 0x1000, CRC(05818718))
+	ROM_LOAD("trs80.zl2",   0x2000, 0x1000, CRC(306e5d66))
 
 	ROM_REGION(0x00c00, REGION_GFX1,0)
-	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, 0x0033f2b9)
+	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, CRC(0033f2b9))
 ROM_END
 
 
 ROM_START(trs80l2a)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("trs80alt.z33",0x0000, 0x1000, 0xbe46faf5)
-	ROM_LOAD("trs80alt.z34",0x1000, 0x1000, 0x6c791c2d)
-	ROM_LOAD("trs80alt.zl2",0x2000, 0x1000, 0x55b3ad13)
+	ROM_LOAD("trs80alt.z33",0x0000, 0x1000, CRC(be46faf5))
+	ROM_LOAD("trs80alt.z34",0x1000, 0x1000, CRC(6c791c2d))
+	ROM_LOAD("trs80alt.zl2",0x2000, 0x1000, CRC(55b3ad13))
 
 	ROM_REGION(0x00c00, REGION_GFX1,0)
-	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, 0x0033f2b9)
+	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, CRC(0033f2b9))
 ROM_END
 
 
 ROM_START(sys80)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("sys80rom.1",  0x0000, 0x1000, 0x8f5214de)
-	ROM_LOAD("sys80rom.2",  0x1000, 0x1000, 0x46e88fbf)
-	ROM_LOAD("trs80.zl2",  0x2000, 0x1000, 0x306e5d66)
+	ROM_LOAD("sys80rom.1",  0x0000, 0x1000, CRC(8f5214de))
+	ROM_LOAD("sys80rom.2",  0x1000, 0x1000, CRC(46e88fbf))
+	ROM_LOAD("trs80.zl2",  0x2000, 0x1000, CRC(306e5d66))
 
 	ROM_REGION(0x00c00, REGION_GFX1,0)
-	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, 0x0033f2b9)
+	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, CRC(0033f2b9))
 ROM_END
 
 ROM_START(lnw80)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("lnw_a.bin",  0x0000, 0x0800, 0xe09f7e91)
-	ROM_LOAD("lnw_a1.bin", 0x0800, 0x0800, 0xac297d99)
-	ROM_LOAD("lnw_b.bin",  0x1000, 0x0800, 0xc4303568)
-	ROM_LOAD("lnw_b1.bin", 0x1800, 0x0800, 0x3a5ea239)
-	ROM_LOAD("lnw_c.bin",  0x2000, 0x0800, 0x2ba025d7)
-	ROM_LOAD("lnw_c1.bin", 0x2800, 0x0800, 0xed547445)
+	ROM_LOAD("lnw_a.bin",  0x0000, 0x0800, CRC(e09f7e91))
+	ROM_LOAD("lnw_a1.bin", 0x0800, 0x0800, CRC(ac297d99))
+	ROM_LOAD("lnw_b.bin",  0x1000, 0x0800, CRC(c4303568))
+	ROM_LOAD("lnw_b1.bin", 0x1800, 0x0800, CRC(3a5ea239))
+	ROM_LOAD("lnw_c.bin",  0x2000, 0x0800, CRC(2ba025d7))
+	ROM_LOAD("lnw_c1.bin", 0x2800, 0x0800, CRC(ed547445))
 
 	ROM_REGION(0x01000, REGION_GFX1,0)
-	ROM_LOAD("lnw_chr.bin",0x0800, 0x0800, 0xc89b27df)
+	ROM_LOAD("lnw_chr.bin",0x0800, 0x0800, CRC(c89b27df))
 ROM_END
 
 ROM_START(trs80m3)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("trs80m3.rom", 0x0000, 0x3800, 0x00000000)
+	ROM_LOAD("trs80m3.rom", 0x0000, 0x3800, NO_DUMP)
 
 	ROM_REGION(0x00c00, REGION_GFX1,0)
-	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, 0x0033f2b9)
+	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, CRC(0033f2b9))
 ROM_END
 
 SYSTEM_CONFIG_START(trs80)
 	CONFIG_DEVICE_QUICKLOAD_DELAY(		"cmd\0", trs80_cmd,	0.5)
-	CONFIG_DEVICE_LEGACY(IO_CASSETTE,1,	"cas\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, trs80_cas_load, trs80_cas_unload, NULL)
+	CONFIG_DEVICE_LEGACY(IO_CASSETTE,1,	"cas\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, device_load_trs80_cas, device_unload_trs80_cas, NULL)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(trs8012)
 	CONFIG_IMPORT_FROM(trs80)
-	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	trs80_floppy_init)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	device_load_trs80_floppy)
 SYSTEM_CONFIG_END
 
-/*	   YEAR  NAME	   PARENT	 MACHINE   INPUT	 INIT	   CONFIG	COMPANY	 FULLNAME */
-COMP ( 1977, trs80,    0,		 level1,   trs80,	 trs80,    trs80,	"Tandy Radio Shack",  "TRS-80 Model I (Level I Basic)" )
-COMP ( 1978, trs80l2,  trs80,	 model1,   trs80,	 trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (Radio Shack Level II Basic)" )
-COMP ( 1978, trs80l2a, trs80,	 model1,   trs80,	 trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (R/S L2 Basic)" )
-COMP ( 1980, sys80,    trs80,	 model1,   trs80,	 trs80,    trs8012,	"EACA Computers Ltd.","System-80" )
-COMPX( 1981, lnw80,    trs80,	 model1,   trs80,	 trs80,    trs8012,	"LNW Research","LNW-80", GAME_NOT_WORKING )
-COMPX( 19??, trs80m3,  trs80,	 model3,   trs80,	 trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model III", GAME_NOT_WORKING )
+/*	   YEAR  NAME	   PARENT	 COMPAT	MACHINE   INPUT	 INIT	   CONFIG	COMPANY	 FULLNAME */
+COMP ( 1977, trs80,    0,		 0,		level1,   trs80,	 trs80,    trs80,	"Tandy Radio Shack",  "TRS-80 Model I (Level I Basic)" )
+COMP ( 1978, trs80l2,  trs80,	 0,		model1,   trs80,	 trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (Radio Shack Level II Basic)" )
+COMP ( 1978, trs80l2a, trs80,	 0,		model1,   trs80,	 trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (R/S L2 Basic)" )
+COMP ( 1980, sys80,    trs80,	 0,		model1,   trs80,	 trs80,    trs8012,	"EACA Computers Ltd.","System-80" )
+COMPX( 1981, lnw80,    trs80,	 0,		model1,   trs80,	 trs80,    trs8012,	"LNW Research","LNW-80", GAME_NOT_WORKING )
+COMPX( 19??, trs80m3,  trs80,	 0,		model3,   trs80,	 trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model III", GAME_NOT_WORKING )
 

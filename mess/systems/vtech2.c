@@ -482,15 +482,20 @@ static struct Wave_interface wave_interface = {
 	{ 50 }
 };
 
+static mess_image *cassette_image(void)
+{
+	return image_from_devtype_and_index(IO_CASSETTE, 0);
+}
+
 static INTERRUPT_GEN( vtech2_interrupt )
 {
 	int tape_control = readinputport(12);
 	if( tape_control & 0x80 )
-		device_status(IO_CASSETTE, 0, 1);
+		device_status(cassette_image(), 1);
 	if( tape_control & 0x40 )
-		device_status(IO_CASSETTE, 0, 0);
+		device_status(cassette_image(), 0);
 	if( tape_control & 0x20 )
-		device_seek(IO_CASSETTE, 0, 0, SEEK_SET);
+		device_seek(cassette_image(), 0, SEEK_SET);
 
 	cpu_set_irq_line(0, 0, PULSE_LINE);
 }
@@ -539,9 +544,9 @@ MACHINE_DRIVER_END
 
 ROM_START(laser350)
 	ROM_REGION(0x40000,REGION_CPU1,0)
-	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, 0x9bed01f7)
+	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7))
 	ROM_REGION(0x00800,REGION_GFX1,0)
-	ROM_LOAD("laser.fnt",   0x00000, 0x00800, 0xed6bfb2a)
+	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a))
 	ROM_REGION(0x00100,REGION_GFX2,0)
     /* initialized in init_laser */
 ROM_END
@@ -549,18 +554,18 @@ ROM_END
 
 ROM_START(laser500)
 	ROM_REGION(0x40000,REGION_CPU1,0)
-	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, 0x9bed01f7)
+	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7))
 	ROM_REGION(0x00800,REGION_GFX1,0)
-	ROM_LOAD("laser.fnt",   0x00000, 0x00800, 0xed6bfb2a)
+	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a))
 	ROM_REGION(0x00100,REGION_GFX2,0)
 	/* initialized in init_laser */
 ROM_END
 
 ROM_START(laser700)
 	ROM_REGION(0x40000,REGION_CPU1,0)
-	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, 0x9bed01f7)
+	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7))
 	ROM_REGION(0x00800,REGION_GFX1,0)
-	ROM_LOAD("laser.fnt",   0x00000, 0x00800, 0xed6bfb2a)
+	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a))
 	ROM_REGION(0x00100,REGION_GFX2,0)
 	/* initialized in init_laser */
 ROM_END
@@ -573,12 +578,12 @@ ROM_END
 ***************************************************************************/
 
 SYSTEM_CONFIG_START(laser)
-	CONFIG_DEVICE_CASSETTE(1, "cas\0", laser_cassette_init)
-	CONFIG_DEVICE_CARTSLOT_OPT(1, "rom\0", NULL, NULL, laser_cart_load, laser_cart_unload, NULL, NULL)
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 2, "dsk\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, laser_floppy_load, NULL, NULL)
+	CONFIG_DEVICE_CASSETTE(1, "cas\0", device_load_laser_cassette)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "rom\0", NULL, NULL, device_load_laser_cart, device_unload_laser_cart, NULL, NULL)
+	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 2, "dsk\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, device_load_laser_floppy, NULL, NULL)
 SYSTEM_CONFIG_END
 
-/*	  YEAR	 NAME	   PARENT	 MACHINE   INPUT	 INIT	   CONFIG	COMPANY	 FULLNAME */
-COMP( 1984?, laser350, 0,		 laser350, laser350, laser,    laser,	"Video Technology",  "Laser 350" )
-COMP( 1984?, laser500, laser350, laser500, laser500, laser,    laser,	"Video Technology",  "Laser 500" )
-COMP( 1984?, laser700, laser350, laser700, laser500, laser,    laser,	"Video Technology",  "Laser 700" )
+/*	  YEAR	 NAME	   PARENT	 COMPAT	MACHINE   INPUT	 INIT	   CONFIG	COMPANY	 FULLNAME */
+COMP( 1984?, laser350, 0,		 0,		laser350, laser350, laser,    laser,	"Video Technology",  "Laser 350" )
+COMP( 1984?, laser500, laser350, 0,		laser500, laser500, laser,    laser,	"Video Technology",  "Laser 500" )
+COMP( 1984?, laser700, laser350, 0,		laser700, laser500, laser,    laser,	"Video Technology",  "Laser 700" )

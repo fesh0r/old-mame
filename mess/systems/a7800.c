@@ -363,23 +363,23 @@ MACHINE_DRIVER_END
 
 ROM_START (a7800)
     ROM_REGION(0x30000,REGION_CPU1,0)
-    ROM_LOAD ("7800.rom", 0xf000, 0x1000, 0x649913e5)
-/*      ROM_LOAD ("7800a.rom", 0xc000, 0x4000, 0x649913e5) */
+    ROM_LOAD ("7800.rom", 0xf000, 0x1000, CRC(649913e5))
+/*      ROM_LOAD ("7800a.rom", 0xc000, 0x4000, CRC(649913e5)) */
 
 ROM_END
 
 ROM_START (a7800p)
     ROM_REGION(0x30000,REGION_CPU1,0)
-    //ROM_LOAD ("7800pal.rom", 0xF000, 0x1000, 0xd5b61170 )
-    ROM_LOAD ("7800pal.rom", 0xc000, 0x4000, 0xd5b61170 )
+    //ROM_LOAD ("7800pal.rom", 0xF000, 0x1000, CRC(d5b61170 ))
+    ROM_LOAD ("7800pal.rom", 0xc000, 0x4000, CRC(d5b61170 ))
 ROM_END
 
 SYSTEM_CONFIG_START(a7800)
-	CONFIG_DEVICE_CARTSLOT_REQ( 1, "a78\0", NULL, NULL, a7800_cart_load, NULL, NULL, a7800_partialcrc)
+	CONFIG_DEVICE_CARTSLOT_REQ( 1, "a78\0", NULL, NULL, device_load_a7800, NULL, NULL, a7800_partialcrc)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(a7800p)
-	CONFIG_DEVICE_CARTSLOT_REQ( 1, "a78\0", NULL, NULL, a7800p_cart_load, NULL, NULL, a7800_partialcrc)
+	CONFIG_DEVICE_CARTSLOT_REQ( 1, "a78\0", NULL, NULL, device_load_a7800p, NULL, NULL, a7800_partialcrc)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -388,6 +388,6 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT	CONFIG	COMPANY   FULLNAME */
-CONS( 1986, a7800,    0,        a7800,    a7800,    0,		a7800,	"Atari",  "Atari 7800 NTSC" )
-CONS( 1986, a7800p,   a7800,    a7800p,   a7800,    0,		a7800p,	"Atari",  "Atari 7800 PAL" )
+/*    YEAR  NAME      PARENT    COMPAT	MACHINE   INPUT     INIT	CONFIG	COMPANY   FULLNAME */
+CONS( 1986, a7800,    0,        0,		a7800,    a7800,    0,		a7800,	"Atari",  "Atari 7800 NTSC" )
+CONS( 1986, a7800p,   a7800,    0,		a7800p,   a7800,    0,		a7800p,	"Atari",  "Atari 7800 PAL" )

@@ -121,8 +121,8 @@ MACHINE_DRIVER_END
 
 ROM_START(sym1)
 	ROM_REGION(0x10000,REGION_CPU1, 0)
-//	ROM_LOAD("basicv11", 0xc000, 0x2000, 0x075b0bbd)
-	ROM_LOAD("sym1", 0x8000, 0x1000, 0x7a4b1e12)
+//	ROM_LOAD("basicv11", 0xc000, 0x2000, CRC(075b0bbd))
+	ROM_LOAD("sym1", 0x8000, 0x1000, CRC(7a4b1e12))
 	ROM_RELOAD(0xf000, 0x1000)
 ROM_END
 
@@ -133,5 +133,5 @@ SYSTEM_CONFIG_START(sym1)
 #endif
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT	CONFIG	COMPANY   FULLNAME */
-COMPX( 1978, sym1,	  0, 		sym1,	  sym1, 	sym1,	sym1,	"Synertek Systems Corp",  "SYM-1/SY-VIM-1", GAME_NOT_WORKING)
+/*    YEAR  NAME      PARENT	COMPAT	MACHINE   INPUT     INIT	CONFIG	COMPANY   FULLNAME */
+COMPX( 1978, sym1,	  0, 		0,		sym1,	  sym1, 	sym1,	sym1,	"Synertek Systems Corp",  "SYM-1/SY-VIM-1", GAME_NOT_WORKING)

@@ -46,7 +46,7 @@ cylinder apexc_cylinder;
 /*
 	Open cylinder image and read RAM
 */
-static int apexc_cylinder_load(int id, mame_file *fp, int open_mode)
+static int apexc_cylinder_load(mess_image *img, mame_file *fp, int open_mode)
 {
 	/* open file */
 	apexc_cylinder.fd = fp;
@@ -76,7 +76,7 @@ static int apexc_cylinder_load(int id, mame_file *fp, int open_mode)
 /*
 	Save RAM to cylinder image and close it
 */
-static void apexc_cylinder_unload(int id)
+static void apexc_cylinder_unload(mess_image *img)
 {
 	if (apexc_cylinder.fd && apexc_cylinder.writable)
 	{	/* save RAM contents */
@@ -154,13 +154,14 @@ tape apexc_tapes[2];
 /*
 	Open a tape image
 */
-static int apexc_tape_load(int id, mame_file *fp, int open_mode)
+static int apexc_tape_load(mess_image *img, mame_file *fp, int open_mode)
 {
+	int id = image_index_in_device(img);
 	tape *t = &apexc_tapes[id];
 
 	/* open file */
 	/* unit 0 is read-only, unit 1 is write-only */
-	t->fd = image_fopen_custom(IO_PUNCHTAPE, id, FILETYPE_IMAGE,
+	t->fd = image_fopen_custom(img, FILETYPE_IMAGE,
 								(id==0) ? OSD_FOPEN_READ : OSD_FOPEN_WRITE);
 
 	return INIT_PASS;
@@ -841,6 +842,6 @@ SYSTEM_CONFIG_START(apexc)
 	CONFIG_DEVICE_LEGACY(IO_PUNCHTAPE, 2, "tap\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_NONE, NULL, NULL, apexc_tape_load, NULL, NULL)
 SYSTEM_CONFIG_END
 
-/*		   YEAR		NAME		PARENT			MACHINE		INPUT	INIT	CONFIG	COMPANY		FULLNAME */
-/*COMP( c. 1951,	apexc53,	0,				apexc53,	apexc,	apexc,	apexc,	"Booth",	"APEXC (as described in 1953)" )*/
-COMP(      1955,	apexc,		/*apexc53*/0,	apexc,		apexc,	apexc,	apexc,	"Booth",	"APEXC (as described in 1957)" )
+/*		   YEAR		NAME		PARENT			COMPAT	MACHINE		INPUT	INIT	CONFIG	COMPANY		FULLNAME */
+/*COMP( c. 1951,	apexc53,	0,				0,		apexc53,	apexc,	apexc,	apexc,	"Booth",	"APEXC (as described in 1953)" )*/
+COMP(      1955,	apexc,		/*apexc53*/0,	0,		apexc,		apexc,	apexc,	apexc,	"Booth",	"APEXC (as described in 1957)" )

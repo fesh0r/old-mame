@@ -13,6 +13,7 @@
 
 /* common.h included for the RomModule definition */
 #include "driver.h"
+#include "state.h"
 #include "vidhrdw/generic.h"
 #include "cpu/m6502/m6502.h"
 #include "includes/apple2.h"
@@ -29,18 +30,13 @@
 #define PROFILER_C08X	PROFILER_USER2
 #define PROFILER_A2INT	PROFILER_USER2
 
-UINT8 *apple2_slot_rom;
-UINT8 *apple2_slot1;
-UINT8 *apple2_slot2;
-UINT8 *apple2_slot3;
-UINT8 *apple2_slot4;
-UINT8 *apple2_slot5;
-UINT8 *apple2_slot6;
-UINT8 *apple2_slot7;
+/* softswitch */
+UINT32 a2;
 
-/*UINT8 *apple2_rom;*/
+/* before the softswitch is changed, these are applied */
+static UINT32 a2_mask;
+static UINT32 a2_set;
 
-APPLE2_STRUCT a2;
 
 /* local */
 static int a2_speaker_state;
@@ -48,17 +44,180 @@ static int a2_speaker_state;
 static void mockingboard_init (int slot);
 static int mockingboard_r (int offset);
 static void mockingboard_w (int offset, int data);
-static WRITE_HANDLER ( apple2_mainram_w );
-static WRITE_HANDLER ( apple2_auxram_w );
+static WRITE_HANDLER ( apple2_mainram0200_w );
+static WRITE_HANDLER ( apple2_mainram0400_w );
+static WRITE_HANDLER ( apple2_mainram0800_w );
+static WRITE_HANDLER ( apple2_mainram2000_w );
+static WRITE_HANDLER ( apple2_mainram4000_w );
+static WRITE_HANDLER ( apple2_auxram0200_w );
+static WRITE_HANDLER ( apple2_auxram0400_w );
+static WRITE_HANDLER ( apple2_auxram0800_w );
+static WRITE_HANDLER ( apple2_auxram2000_w );
+static WRITE_HANDLER ( apple2_auxram4000_w );
+static WRITE_HANDLER ( apple2_LC_ram_w );
+static WRITE_HANDLER ( apple2_LC_ram1_w );
+static WRITE_HANDLER ( apple2_LC_ram2_w );
 
-static double joystick_x_time;
-static double joystick_y_time;
+static double joystick_x1_time;
+static double joystick_y1_time;
+static double joystick_x2_time;
+static double joystick_y2_time;
+
+static UINT8 *apple_rom;
+
+/***************************************************************************
+  apple2_slotrom
+  returns a pointer to a slot ROM
+***************************************************************************/
+static UINT8 *apple2_slotrom(int slot)
+{
+	UINT8 *rom;
+	UINT8 *slotrom;
+	size_t rom_size;
+	size_t slot_rom_pos;
+	size_t slot_rom_size = 0x100;
+	size_t slot_count;
+	
+	rom = memory_region(REGION_CPU1);
+	rom_size = memory_region_length(REGION_CPU1);
+	slot_rom_pos = rom_size - (rom_size % 0x1000);
+	slot_count = (rom_size - slot_rom_pos) / slot_rom_size;
+
+	/* slots are one-counted */
+	slot--;
+
+	assert(slot >= 0);
+	assert(slot < slot_count);
+
+	slotrom = &rom[slot_rom_pos + (slot * slot_rom_size)];
+	return slotrom;
+}
+
+/***************************************************************************
+  apple2_hasslots
+***************************************************************************/
+static int apple2_hasslots(void)
+{
+	return (memory_region_length(REGION_CPU1) % 0x1000) != 0;
+}
+
+/***************************************************************************
+  apple2_setvar
+  sets the 'a2' var, and adjusts banking accordingly
+***************************************************************************/
+static void apple2_setvar(UINT32 val, UINT32 mask)
+{
+	UINT32 offset;
+	UINT32 othermask;
+
+	LOG(("apple2_setvar(): val=0x%06x mask=0x%06x pc=0x%04x\n", val, mask, activecpu_get_pc()));
+
+	assert((val & mask) == val);
+
+	/* apply mask and set */
+	val &= a2_mask;
+	val |= a2_set;
+
+	/* change the softswitch */
+	a2 &= ~mask;
+	a2 |= val;
+
+	if (mask & VAR_ROMSWITCH)
+	{
+		apple_rom = &memory_region(REGION_CPU1)[(a2 & VAR_ROMSWITCH) ? 0x4000 : 0x0000];
+	}
+
+	if (mask & VAR_RAMRD)
+	{
+		cpu_setbank(5,  &mess_ram[(a2 & VAR_RAMRD) ? 0x10200 : 0x00200]);
+		cpu_setbank(8,  &mess_ram[(a2 & VAR_RAMRD) ? 0x10800 : 0x00800]);
+		cpu_setbank(10, &mess_ram[(a2 & VAR_RAMRD) ? 0x14000 : 0x04000]);
+	}
+
+	if (mask & (VAR_80STORE|VAR_PAGE2|VAR_HIRES|VAR_RAMRD))
+	{
+		othermask = (a2 & VAR_80STORE) ? VAR_PAGE2 : VAR_RAMRD;
+		cpu_setbank(7,  &mess_ram[(a2 & othermask) ? 0x10400 : 0x00400]);
+
+		othermask = ((a2 & (VAR_80STORE|VAR_HIRES)) == (VAR_80STORE|VAR_HIRES)) ? VAR_PAGE2 : VAR_RAMWRT;
+		cpu_setbank(9,  &mess_ram[(a2 & VAR_RAMRD) ? 0x12000 : 0x02000]);
+	}
+
+	if (mask & (VAR_80STORE|VAR_PAGE2|VAR_HIRES|VAR_RAMWRT))
+	{
+		memory_set_bankhandler_w(5,  0, (a2 & VAR_RAMWRT) ? apple2_auxram0200_w : apple2_mainram0200_w);
+		memory_set_bankhandler_w(8,  0, (a2 & VAR_RAMWRT) ? apple2_auxram0800_w : apple2_mainram0800_w);
+		memory_set_bankhandler_w(10, 0, (a2 & VAR_RAMWRT) ? apple2_auxram4000_w : apple2_mainram4000_w);
+
+		othermask = (a2 & VAR_80STORE) ? VAR_PAGE2 : VAR_RAMWRT;
+		memory_set_bankhandler_w(7,  0, (a2 & othermask) ? apple2_auxram0400_w : apple2_mainram0400_w);
+
+		othermask = ((a2 & (VAR_80STORE|VAR_HIRES)) == (VAR_80STORE|VAR_HIRES)) ? VAR_PAGE2 : VAR_RAMWRT;
+		memory_set_bankhandler_w(9,  0, (a2 & VAR_RAMWRT) ? apple2_auxram2000_w : apple2_mainram2000_w);
+	}
+
+	if (mask & (VAR_INTCXROM|VAR_ROMSWITCH))
+	{
+		cpu_setbank(3,	(a2 & VAR_INTCXROM)		? &apple_rom[0x100] : apple2_slotrom(1));
+		cpu_setbank(12,	(a2 & VAR_INTCXROM)		? &apple_rom[0x400] : apple2_slotrom(4));
+	}
+
+	if (mask & (VAR_INTCXROM|VAR_SLOTC3ROM|VAR_ROMSWITCH))
+	{
+		cpu_setbank(11,	((a2 & (VAR_INTCXROM|VAR_SLOTC3ROM)) == VAR_SLOTC3ROM) ? apple2_slotrom(3) : &apple_rom[0x300]);
+	}
+
+	if (mask & (VAR_ALTZP))
+	{
+		cpu_setbank(4, &mess_ram[(a2 & VAR_ALTZP) ? 0x10000 : 0x00000]);
+	}
+
+	if (mask & (VAR_ALTZP|VAR_LCRAM|VAR_LCRAM2|VAR_ROMSWITCH))
+	{
+		if (a2 & VAR_LCRAM)
+		{
+			cpu_setbank(2, &mess_ram[(a2 & VAR_ALTZP) ? 0x1e000 : 0xe000]);
+			if (a2 & VAR_LCRAM2)
+				offset = (a2 & VAR_ALTZP) ? 0x1d000 : 0xd000;
+			else
+				offset = (a2 & VAR_ALTZP) ? 0x1c000 : 0xc000;
+			cpu_setbank(1, &mess_ram[offset]);
+		}
+		else
+		{
+			cpu_setbank(1, &apple_rom[0x1000]);
+			cpu_setbank(2, &apple_rom[0x2000]);
+		}
+	}
+
+	if (mask & (VAR_LCWRITE|VAR_LCRAM2))
+	{
+		if (a2 & VAR_LCWRITE)
+		{
+			memory_set_bankhandler_w(2, 0, apple2_LC_ram_w);
+			if (a2 & VAR_LCRAM2)
+				memory_set_bankhandler_w(1, 0, apple2_LC_ram2_w);
+			else
+				memory_set_bankhandler_w(1, 0, apple2_LC_ram1_w);
+		}
+		else
+		{
+			memory_set_bankhandler_w(1, 0, MWA_ROM);
+			memory_set_bankhandler_w(2, 0, MWA_ROM);
+		}
+	}
+}
+
+static void apple2_updatevar(void)
+{
+	apple2_setvar(a2, ~0);
+}
 
 /***************************************************************************
   apple2_getfloatingbusvalue
   preliminary floating bus video scanner code - look for comments with FIX:
 ***************************************************************************/
-data8_t apple2_getfloatingbusvalue(void)
+static data8_t apple2_getfloatingbusvalue(void)
 {
 	enum
 	{
@@ -97,10 +256,10 @@ data8_t apple2_getfloatingbusvalue(void)
 
 	// machine state switches
 	//
-	Hires    = (a2.HIRES) ? 1 : 0;
-	Mixed    = (a2.MIXED) ? 1 : 0;
-	Page2    = (a2.PAGE2) ? 1 : 0;
-	_80Store = (a2.STORE80) ? 1 : 0;
+	Hires    = (a2 & VAR_HIRES) ? 1 : 0;
+	Mixed    = (a2 & VAR_MIXED) ? 1 : 0;
+	Page2    = (a2 & VAR_PAGE2) ? 1 : 0;
+	_80Store = (a2 & VAR_80STORE) ? 1 : 0;
 
 	// calculate video parameters according to display standard
 	//
@@ -199,41 +358,68 @@ data8_t apple2_getfloatingbusvalue(void)
 }
 
 /***************************************************************************
-  apple2_init_machine
+  driver init
 ***************************************************************************/
-MACHINE_INIT( apple2e )
+DRIVER_INIT( apple2 )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	mess_ram = RAM;
+	state_save_register_UINT32("apple2", 0, "softswitch", &a2, 1);
+	state_save_register_func_postload(apple2_updatevar);
 
-	/* Init our language card banks to initially point to ROM */
-	memory_set_bankhandler_w (1, 0, MWA_ROM);
-	cpu_setbank (1, &RAM[0x21000]);
-	memory_set_bankhandler_w (2, 0, MWA_ROM);
-	cpu_setbank (2, &RAM[0x22000]);
-	/* Use built-in slot ROM ($c100-$c7ff) */
-	cpu_setbank (3, &RAM[0x20100]);
-	/* Use main zp/stack */
-	cpu_setbank (4, &RAM[0x0000]);
-	/* Use main RAM */
-	memory_set_bankhandler_w (5, 0, apple2_mainram_w);
-	cpu_setbank (5, &RAM[0x0200]);
+	/* apple2 behaves much better when the default memory is zero */
+	memset(mess_ram, 0, mess_ram_size);
+}
+
+/***************************************************************************
+  machine init
+***************************************************************************/
+MACHINE_INIT( apple2 )
+{
+	/* --------------------------------------------- *
+	 * set up the softswitch mask/set                *
+	 * --------------------------------------------- */
+	a2_mask = ~0;
+	a2_set = 0;
+
+	/* disable VAR_ROMSWITCH if the ROM is only 16k */
+	if (memory_region_length(REGION_CPU1) < 0x8000)
+		a2_mask &= ~VAR_ROMSWITCH;
+
+	/* always internal ROM if no slots exist */
+	if (!apple2_hasslots())
+	{
+		a2_mask &= ~VAR_SLOTC3ROM;
+		a2_set |= VAR_INTCXROM;
+	}
+
+	if (mess_ram_size <= 64*1024)
+		a2_mask &= ~(VAR_RAMRD | VAR_RAMWRT | VAR_80STORE | VAR_ALTZP | VAR_80COL);
+
+	/* --------------------------------------------- */
+
+	apple2_setvar(0, ~0);
+
+	if (apple2_hasslots())
+	{
+		/* Slot 3 is funky - it isn't mapped like the other slot ROMs */
+		cpu_setbank(3, &apple_rom[0x0100]);
+		memcpy (apple2_slotrom(3), &apple_rom[0x0300], 0x100);
+	}
+
 	/* Use built-in slot ROM ($c800) */
-	cpu_setbank (6, &RAM[0x20800]);
-
-	/* Slot 3 is funky - it isn't mapped like the other slot ROMs */
-	memcpy (&RAM[0x24200], &RAM[0x20300], 0x100);
+	cpu_setbank(6, &apple_rom[0x0800]);
 
 	AY3600_init();
 
-	memset (&a2, 0, sizeof (APPLE2_STRUCT));
 	a2_speaker_state = 0;
 
 	/* TODO: add more initializers as we add more slots */
-	mockingboard_init (4);
+	if (apple2_hasslots())
+		mockingboard_init(4);
+
 	apple2_slot6_init();
 
-	joystick_x_time = joystick_y_time = 0;
+	joystick_x1_time = joystick_y1_time = 0;
+	joystick_x2_time = joystick_y2_time = 0;
 }
 
 /***************************************************************************
@@ -254,10 +440,6 @@ void apple2_interrupt(void)
 		if (irq_freq < 0)
 			irq_freq = 1;
 
-		/* We poll the keyboard periodically to scan the keys.  This is
-		actually consistent with how the AY-3600 keyboard controller works. */
-		AY3600_interrupt();
-
 		if (irq_freq)
 			cpu_set_irq_line(0, M6502_IRQ_LINE, PULSE_LINE);
 	}
@@ -272,11 +454,9 @@ void apple2_interrupt(void)
 ***************************************************************************/
 static WRITE_HANDLER ( apple2_LC_ram1_w )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
 	/* If the aux switch is set, use the aux language card bank as well */
-	int aux_offset = a2.ALTZP ? 0x10000 : 0x0000;
-
-	RAM[0xc000 + offset + aux_offset] = data;
+	int aux_offset = (a2 & VAR_ALTZP) ? 0x10000 : 0x0000;
+	mess_ram[0xc000 + offset + aux_offset] = data;
 }
 
 /***************************************************************************
@@ -284,11 +464,9 @@ static WRITE_HANDLER ( apple2_LC_ram1_w )
 ***************************************************************************/
 static WRITE_HANDLER ( apple2_LC_ram2_w )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
 	/* If the aux switch is set, use the aux language card bank as well */
-	int aux_offset = a2.ALTZP ? 0x10000 : 0x0000;
-
-	RAM[0xd000 + offset + aux_offset] = data;
+	int aux_offset = (a2 & VAR_ALTZP) ? 0x10000 : 0x0000;
+	mess_ram[0xd000 + offset + aux_offset] = data;
 }
 
 /***************************************************************************
@@ -296,36 +474,87 @@ static WRITE_HANDLER ( apple2_LC_ram2_w )
 ***************************************************************************/
 static WRITE_HANDLER ( apple2_LC_ram_w )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
 	/* If the aux switch is set, use the aux language card bank as well */
-	int aux_offset = a2.ALTZP ? 0x10000 : 0x0000;
-
-	RAM[0xe000 + offset + aux_offset] = data;
+	int aux_offset = (a2 & VAR_ALTZP) ? 0x10000 : 0x0000;
+	mess_ram[0xe000 + offset + aux_offset] = data;
 }
 
 /***************************************************************************
-  apple2_mainram_w
+  apple2_mainram0200_w
+  apple2_mainram0400_w
+  apple2_mainram0800_w
+  apple2_mainram2000_w
+  apple2_mainram4000_w
 ***************************************************************************/
-WRITE_HANDLER ( apple2_mainram_w )
+static WRITE_HANDLER ( apple2_mainram0200_w )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	RAM[0x0200 + offset] = data;
-	apple2_video_touch(0x0200 + offset);
+	offset += 0x200;
+	mess_ram[offset] = data;
+}
+
+static WRITE_HANDLER ( apple2_mainram0400_w )
+{
+	offset += 0x400;
+	mess_ram[offset] = data;
+	apple2_video_touch(offset);
+}
+
+static WRITE_HANDLER ( apple2_mainram0800_w )
+{
+	offset += 0x800;
+	mess_ram[offset] = data;
+}
+
+static WRITE_HANDLER ( apple2_mainram2000_w )
+{
+	offset += 0x2000;
+	mess_ram[offset] = data;
+	apple2_video_touch(offset);
+}
+
+static WRITE_HANDLER ( apple2_mainram4000_w )
+{
+	offset += 0x4000;
+	mess_ram[offset] = data;
 }
 
 /***************************************************************************
-  apple2_auxram_w
+  apple2_auxram0200_w
+  apple2_auxram0400_w
+  apple2_auxram0800_w
+  apple2_auxram2000_w
+  apple2_auxram4000_w
 ***************************************************************************/
-WRITE_HANDLER ( apple2_auxram_w )
+static WRITE_HANDLER ( apple2_auxram0200_w )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	RAM[0x10200 + offset] = data;
-	apple2_video_touch(0x10200 + offset);
+	offset += 0x10200;
+	mess_ram[offset] = data;
 }
 
-void apple2_slotrom_disable (int offset, int data)
+static WRITE_HANDLER ( apple2_auxram0400_w )
 {
-//	a2_RDCXROM = 1;
+	offset += 0x10400;
+	mess_ram[offset] = data;
+	apple2_video_touch(offset);
+}
+
+static WRITE_HANDLER ( apple2_auxram0800_w )
+{
+	offset += 0x10800;
+	mess_ram[offset] = data;
+}
+
+static WRITE_HANDLER ( apple2_auxram2000_w )
+{
+	offset += 0x12000;
+	mess_ram[offset] = data;
+	apple2_video_touch(offset);
+}
+
+static WRITE_HANDLER ( apple2_auxram4000_w )
+{
+	offset += 0x14000;
+	mess_ram[offset] = data;
 }
 
 /***************************************************************************
@@ -345,101 +574,29 @@ READ_HANDLER ( apple2_c00x_r )
 
 /***************************************************************************
   apple2_c00x_w
+
+  C000	80STOREOFF
+  C001	80STOREON - use 80-column memory mapping
+  C002	RAMRDOFF
+  C003	RAMRDON - read from aux 48k
+  C004	RAMWRTOFF
+  C005	RAMWRTON - write to aux 48k
+  C006	INTCXROMOFF
+  C007	INTCXROMON
+  C008	ALTZPOFF
+  C009	ALTZPON - use aux ZP, stack and language card area
+  C00A	SLOTC3ROMOFF
+  C00B	SLOTC3ROMON - use external slot 3 ROM
+  C00C	80COLOFF
+  C00D	80COLON - use 80-column display mode
+  C00E	ALTCHARSETOFF
+  C00F	ALTCHARSETON - use alt character set
 ***************************************************************************/
 WRITE_HANDLER ( apple2_c00x_w )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
-
-	profiler_mark(PROFILER_C00X);
-
-	switch (offset)
-	{
-		/* 80STOREOFF */
-		case 0x00:		a2.STORE80 = 0x00;		break;
-		/* 80STOREON - use 80-column memory mapping */
-		case 0x01:		a2.STORE80 = 0x80;		break;
-		/* RAMRDOFF */
-		case 0x02:
-			a2.RAMRD = 0x00;
-			cpu_setbank (5, &RAM[0x0200]);
-			break;
-		/* RAMRDON - read from aux 48k */
-		case 0x03:
-			a2.RAMRD = 0x80;
-			cpu_setbank (5, &RAM[0x10200]);
-			break;
-		/* RAMWRTOFF */
-		case 0x04:
-			a2.RAMWRT = 0x00;
-			memory_set_bankhandler_w (5, 0, apple2_mainram_w);
-			break;
-		/* RAMWRTON - write to aux 48k */
-		case 0x05:
-			a2.RAMWRT = 0x80;
-			memory_set_bankhandler_w (5, 0, apple2_auxram_w);
-			break;
-		/* INTCXROMOFF */
-		case 0x06:
-			a2.INTCXROM = 0x00;
-			/* TODO: don't switch slot 3 */
-			cpu_setbank (3, &RAM[0x24000]);
-			break;
-		/* INTCXROMON */
-		case 0x07:
-			a2.INTCXROM = 0x80;
-			/* TODO: don't switch slot 3 */
-			cpu_setbank (3, &RAM[0x20100]);
-			break;
-		/* ALTZPOFF */
-		case 0x08:
-			a2.ALTZP = 0x00;
-			cpu_setbank (4, &RAM[0x00000]);
-			if (a2.LC_RAM)
-			{
-				cpu_setbank (2, &RAM[0xe000]);
-				if (a2.LC_RAM2)
-				{
-					cpu_setbank (1, &RAM[0xd000]);
-				}
-				else
-				{
-					cpu_setbank (1, &RAM[0xc000]);
-				}
-			}
-			break;
-		/* ALTZPON - use aux ZP, stack and language card area */
-		case 0x09:
-			a2.ALTZP = 0x80;
-			cpu_setbank (4, &RAM[0x10000]);
-			if (a2.LC_RAM)
-			{
-				cpu_setbank (2, &RAM[0x1e000]);
-				if (a2.LC_RAM2)
-				{
-					cpu_setbank (1, &RAM[0x1d000]);
-				}
-				else
-				{
-					cpu_setbank (1, &RAM[0x1c000]);
-				}
-			}
-			break;
-		/* SLOTC3ROMOFF */
-		case 0x0A:		a2.SLOTC3ROM = 0x00;	break;
-		/* SLOTC3ROMON - use external slot 3 ROM */
-		case 0x0B:		a2.SLOTC3ROM = 0x80;	break;
-		/* 80COLOFF */
-		case 0x0C:		a2.COL80 = 0x00;		break;
-		/* 80COLON - use 80-column display mode */
-		case 0x0D:		a2.COL80 = 0x80;		break;
-		/* ALTCHARSETOFF */
-		case 0x0E:		a2.ALTCHARSET = 0x00;	break;
-		/* ALTCHARSETON - use alt character set */
-		case 0x0F:		a2.ALTCHARSET = 0x80;	break;
-	}
-
-	LOG(("a2 softswitch_w: %04x\n", offset + 0xc000));
-	profiler_mark(PROFILER_END);
+	UINT32 mask;
+	mask = 1 << (offset / 2);
+	apple2_setvar((offset & 1) ? mask : 0, mask);
 }
 
 /***************************************************************************
@@ -452,39 +609,59 @@ READ_HANDLER ( apple2_c01x_r )
 	profiler_mark(PROFILER_C01X);
 
 	LOG(("a2 softswitch_r: %04x\n", offset + 0xc010));
-	switch (offset)
-	{
-		case 0x00:			result |= AY3600_anykey_clearstrobe_r();		break;
-		case 0x01:			result |= a2.LC_RAM2;						break;
-		case 0x02:			result |= a2.LC_RAM;							break;
-		case 0x03:			result |= a2.RAMRD;							break;
-		case 0x04:			result |= a2.RAMWRT;							break;
-		case 0x05:			result |= a2.INTCXROM;						break;
-		case 0x06:			result |= a2.ALTZP;							break;
-		case 0x07:			result |= a2.SLOTC3ROM;						break;
-		case 0x08:			result |= a2.STORE80;						break;
-		case 0x09:			result |= input_port_0_r(0);	/* RDVBLBAR */	break;
-		case 0x0A:			result |= a2.TEXT;							break;
-		case 0x0B:			result |= a2.MIXED;							break;
-		case 0x0C:			result |= a2.PAGE2;							break;
-		case 0x0D:			result |= a2.HIRES;							break;
-		case 0x0E:			result |= a2.ALTCHARSET;						break;
-		case 0x0F:			result |= a2.COL80;							break;
+	switch (offset) {
+	case 0x00:			result |= AY3600_anykey_clearstrobe_r();		break;
+	case 0x01:			result |= (a2 & VAR_LCRAM2)		? 0x80 : 0x00;	break;
+	case 0x02:			result |= (a2 & VAR_LCRAM)		? 0x80 : 0x00;	break;
+	case 0x03:			result |= (a2 & VAR_RAMRD)		? 0x80 : 0x00;	break;
+	case 0x04:			result |= (a2 & VAR_RAMWRT)		? 0x80 : 0x00;	break;
+	case 0x05:			result |= (a2 & VAR_INTCXROM)	? 0x80 : 0x00;	break;
+	case 0x06:			result |= (a2 & VAR_ALTZP)		? 0x80 : 0x00;	break;
+	case 0x07:			result |= (a2 & VAR_SLOTC3ROM)	? 0x80 : 0x00;	break;
+	case 0x08:			result |= (a2 & VAR_80STORE)	? 0x80 : 0x00;	break;
+	case 0x09:			result |= input_port_0_r(0);	/* RDVBLBAR */	break;
+	case 0x0A:			result |= (a2 & VAR_TEXT)		? 0x80 : 0x00;	break;
+	case 0x0B:			result |= (a2 & VAR_MIXED)		? 0x80 : 0x00;	break;
+	case 0x0C:			result |= (a2 & VAR_PAGE2)		? 0x80 : 0x00;	break;
+	case 0x0D:			result |= (a2 & VAR_HIRES)		? 0x80 : 0x00;	break;
+	case 0x0E:			result |= (a2 & VAR_ALTCHARSET)	? 0x80 : 0x00;	break;
+	case 0x0F:			result |= (a2 & VAR_80COL)		? 0x80 : 0x00;	break;
 	}
 
 	profiler_mark(PROFILER_END);
-	return 0;
+	return result;
 }
 
 /***************************************************************************
   apple2_c01x_w
 ***************************************************************************/
-WRITE_HANDLER ( apple2_c01x_w )
+WRITE_HANDLER( apple2_c01x_w )
 {
 	/* Clear the keyboard strobe - ignore the returned results */
 	profiler_mark(PROFILER_C01X);
 	AY3600_anykey_clearstrobe_r();
 	profiler_mark(PROFILER_END);
+}
+
+/***************************************************************************
+  apple2_c02x_r
+***************************************************************************/
+READ_HANDLER( apple2_c02x_r )
+{
+	apple2_c02x_w(offset, 0);
+	return apple2_getfloatingbusvalue();
+}
+
+/***************************************************************************
+  apple2_c02x_w
+***************************************************************************/
+WRITE_HANDLER( apple2_c02x_w )
+{
+	switch(offset) {
+	case 0x08:
+		apple2_setvar((a2 & VAR_ROMSWITCH) ^ VAR_ROMSWITCH, VAR_ROMSWITCH);
+		break;
+	}
 }
 
 /***************************************************************************
@@ -513,27 +690,14 @@ WRITE_HANDLER ( apple2_c03x_w )
 ***************************************************************************/
 READ_HANDLER ( apple2_c05x_r )
 {
-	switch (offset)
-	{
-		case 0x00:		a2.TEXT  = 0x00; break;
-		case 0x01:		a2.TEXT  = 0x80; break;
-		case 0x02:		a2.MIXED = 0x00; break;
-		case 0x03:		a2.MIXED = 0x80; break;
-		case 0x04:		a2.PAGE2 = 0x00; break;
-		case 0x05:		a2.PAGE2 = 0x80; break;
-		case 0x06:		a2.HIRES = 0x00; break;
-		case 0x07:		a2.HIRES = 0x80; break;
-		/* Joystick/paddle pots */
-		case 0x08:		a2.AN0   = 0x80; break;	/* AN0 has reverse SET logic */
-		case 0x09:		a2.AN0   = 0x00; break;
-		case 0x0A:		a2.AN1   = 0x80; break; /* AN1 has reverse SET logic */
-		case 0x0B:		a2.AN1   = 0x00; break;
-		case 0x0C:		a2.AN2   = 0x80; break; /* AN2 has reverse SET logic */
-		case 0x0D:		a2.AN2   = 0x00; break;
-		case 0x0E:		a2.AN3   = 0x80; break; /* AN3 has reverse SET logic */
-		case 0x0F:		a2.AN3   = 0x00; break;
-	}
+	UINT32 mask;
 
+	/* ANx has reverse SET logic */
+	if (offset >= 8)
+		offset ^= 1;
+
+	mask = 0x100 << (offset / 2);
+	apple2_setvar((offset & 1) ? mask : 0, mask);
 	return apple2_getfloatingbusvalue();
 }
 
@@ -542,17 +706,7 @@ READ_HANDLER ( apple2_c05x_r )
 ***************************************************************************/
 WRITE_HANDLER ( apple2_c05x_w )
 {
-	switch (offset)
-	{
-		case 0x00:		a2.TEXT  = 0x00; break;
-		case 0x01:		a2.TEXT  = 0x80; break;
-		case 0x02:		a2.MIXED = 0x00; break;
-		case 0x03:		a2.MIXED = 0x80; break;
-		case 0x04:		a2.PAGE2 = 0x00; break;
-		case 0x05:		a2.PAGE2 = 0x80; break;
-		case 0x06:		a2.HIRES = 0x00; break;
-		case 0x07:		a2.HIRES = 0x80; break;
-	}
+	apple2_c05x_r(offset);
 }
 
 /***************************************************************************
@@ -561,7 +715,7 @@ WRITE_HANDLER ( apple2_c05x_w )
 READ_HANDLER ( apple2_c06x_r )
 {
 	int result = 0;
-	switch (offset) {
+	switch (offset & 0x07) {
 	case 0x01:
 		/* Open-Apple/Joystick button 0 */
 		result = pressed_specialkey(SPECIALKEY_BUTTON0);
@@ -575,12 +729,20 @@ READ_HANDLER ( apple2_c06x_r )
 		result = pressed_specialkey(SPECIALKEY_BUTTON2);
 		break;
 	case 0x04:
-		/* X Joystick axis */
-		result = timer_get_time() < joystick_x_time;
+		/* X Joystick 1 axis */
+		result = timer_get_time() < joystick_x1_time;
 		break;
 	case 0x05:
-		/* Y Joystick axis */
-		result = timer_get_time() < joystick_y_time;
+		/* Y Joystick 1 axis */
+		result = timer_get_time() < joystick_y1_time;
+		break;
+	case 0x06:
+		/* X Joystick 2 axis */
+		result = timer_get_time() < joystick_x2_time;
+		break;
+	case 0x07:
+		/* Y Joystick 2 axis */
+		result = timer_get_time() < joystick_y2_time;
 		break;
 	}
 	return result ? 0x80 : 0x00;
@@ -593,8 +755,10 @@ READ_HANDLER ( apple2_c07x_r )
 {
 	if (offset == 0)
 	{
-		joystick_x_time = timer_get_time() + TIME_IN_USEC(12.0) * readinputport(9);
-		joystick_y_time = timer_get_time() + TIME_IN_USEC(12.0) * readinputport(10);
+		joystick_x1_time = timer_get_time() + TIME_IN_USEC(12.0) * readinputport(9);
+		joystick_y1_time = timer_get_time() + TIME_IN_USEC(12.0) * readinputport(10);
+		joystick_x2_time = timer_get_time() + TIME_IN_USEC(12.0) * readinputport(11);
+		joystick_y2_time = timer_get_time() + TIME_IN_USEC(12.0) * readinputport(12);
 	}
 	return 0;
 }
@@ -612,54 +776,28 @@ WRITE_HANDLER ( apple2_c07x_w )
 ***************************************************************************/
 READ_HANDLER ( apple2_c08x_r )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	/* If the aux switch is set, use the aux language card bank as well */
-	int aux_offset = a2.ALTZP ? 0x10000 : 0x0000;
+	UINT32 val, mask;
 
 	profiler_mark(PROFILER_C08X);
 	LOG(("language card bankswitch read, offset: $c08%0x\n", offset));
 
-	if ((offset & 0x01)==0x00)
-	{
-		memory_set_bankhandler_w (1, 0, MWA_ROM);
-		memory_set_bankhandler_w (2, 0, MWA_ROM);
-		a2.LC_WRITE = 0x00;
-	}
-	else
-	{
-		memory_set_bankhandler_w (2, 0, apple2_LC_ram_w);
+	mask = VAR_LCWRITE | VAR_LCRAM | VAR_LCRAM2;
+	val = 0;
 
-		if ((offset & 0x08)==0x00)
-			memory_set_bankhandler_w (1, 0, apple2_LC_ram2_w);
-		else
-			memory_set_bankhandler_w (1, 0, apple2_LC_ram1_w);
-		a2.LC_WRITE = 0x80;
+	if (offset & 0x01)
+		val |= VAR_LCWRITE;
+
+	switch(offset & 0x03) {
+	case 0x00:
+	case 0x03:
+		val |= VAR_LCRAM;
+		break;
 	}
 
-	switch (offset & 0x03)
-	{
-		case 0x00:
-		case 0x03:
-			cpu_setbank (2, &RAM[0xe000 + aux_offset]);
-			a2.LC_RAM = 0x80;
-			if ((offset & 0x08)==0x00)
-			{
-				cpu_setbank (1, &RAM[0xd000 + aux_offset]);
-				a2.LC_RAM2 = 0x80;
-			}
-			else
-			{
-				cpu_setbank (1, &RAM[0xc000 + aux_offset]);
-				a2.LC_RAM2 = 0x00;
-			}
-			break;
-		case 0x01:
-		case 0x02:
-			cpu_setbank (1, &RAM[0x21000]);
-			cpu_setbank (2, &RAM[0x22000]);
-			a2.LC_RAM = a2.LC_RAM2 = 0;
-			break;
-	}
+	if (offset & 0x08)
+		val |= VAR_LCRAM2;
+
+	apple2_setvar(val, mask);
 
 	profiler_mark(PROFILER_END);
 	return 0;
@@ -814,16 +952,13 @@ WRITE_HANDLER ( apple2_slot5_w )
 ***************************************************************************/
 WRITE_HANDLER ( apple2_slot7_w )
 {
-	return;
 }
 
 READ_HANDLER ( apple2_slot4_r )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
-
-	if (a2.INTCXROM)
+	if (a2 & VAR_INTCXROM)
 		/* Read the built-in ROM */
-		return RAM[0x20400 + offset];
+		return apple_rom[0x0400 + offset];
 	else
 		/* Read the slot ROM */
 		return mockingboard_r (offset);
@@ -831,8 +966,6 @@ READ_HANDLER ( apple2_slot4_r )
 
 static void mockingboard_init (int slot)
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
-
 	/* TODO: fix this */
 	/* What follows is pure filth. It abuses the core like an angry pimp on a bad hair day. */
 
@@ -841,7 +974,7 @@ static void mockingboard_init (int slot)
 	   the proper stuff. Without this, it will choke and try to use the memory handler above, and
 	   fail miserably. That should really be fixed. I beg you -- if you are reading this comment,
 	   fix this :) */
-	memcpy (&RAM[0x24000 + (slot-1) * 0x100], &RAM[0x20000 + (slot * 0x100)], 0x100);
+	memcpy (apple2_slotrom(slot), &apple_rom[0x0000 + (slot * 0x100)], 0x100);
 }
 
 static int mockingboard_r (int offset)

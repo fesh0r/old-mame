@@ -7,16 +7,17 @@
 	documentation to refer to either (or both) TI99/5 and TI99/8 projects),
 	is a reimplementation of the old ti99/4a console.
 
-	It was designed by Michael Becker for the hardware part and Harald Glaab for
-	the software part.  It has no relationship with TI.
+	It was designed by Michael Becker for the hardware part and Harald Glaab
+	for the software part.  It has no relationship with TI.
 
-	The card is architectured around a 16-bit bus (vs. an 8-bit bus in every other
-	TI99 system).  It includes 64kb of ROM, including a GPL interpreter, an internal
-	DSR ROM which contains system-specific code, and part of the TI extended Basic
-	interpreter, and up to 1Mbyte of RAM.  It still includes a 16-bit to 8-bit multiplexer
-	in order to support extension cards designed for TI99/4a, but it can support 16-bit
-	cards, too.  It does not include GROMs, video or sound: instead, it relies on the HSGPL
-	and EVPC cards to do the job.
+	The card is architectured around a 16-bit bus (vs. an 8-bit bus in every
+	other TI99 system).  It includes 64kb of ROM, including a GPL interpreter,
+	an internal DSR ROM which contains system-specific code, part of the TI
+	extended Basic interpreter, and up to 1Mbyte of RAM.  It still includes a
+	16-bit to 8-bit multiplexer in order to support extension cards designed
+	for TI99/4a, but it can support 16-bit cards, too.  It does not include
+	GROMs, video or sound: instead, it relies on the HSGPL and EVPC cards to
+	do the job.
 
 	TODO:
 	* write support for HSGPL, as it is actually required.
@@ -30,7 +31,10 @@
 #include "machine/ti99_4x.h"
 #include "machine/tms9901.h"
 #include "sndhrdw/spchroms.h"
+#include "machine/99_peb.h"
 #include "machine/994x_ser.h"
+#include "machine/99_dsk.h"
+#include "machine/99_ide.h"
 #include "devices/basicdsk.h"
 
 static MEMORY_READ16_START (readmem)
@@ -38,7 +42,7 @@ static MEMORY_READ16_START (readmem)
 	{ 0x0000, 0x1fff, MRA16_BANK1 },		/*system ROM*/
 	{ 0x2000, 0x2fff, MRA16_BANK3 },		/*lower 8kb of RAM extension: AMS bank 2*/
 	{ 0x3000, 0x3fff, MRA16_BANK4 },		/*lower 8kb of RAM extension: AMS bank 3*/
-	{ 0x4000, 0x5fff, ti99_4p_rw_expansion },	/*DSR ROM space*/
+	{ 0x4000, 0x5fff, ti99_4p_peb_r },		/*DSR ROM space*/
 	{ 0x6000, 0x7fff, ti99_rw_cartmem },	/*cartridge memory*/
 	{ 0x8000, 0x83ff, MRA16_BANK2 },		/*RAM PAD*/
 	{ 0x8400, 0x87ff, ti99_rw_null8bits },	/*soundchip write*/
@@ -62,7 +66,7 @@ static MEMORY_WRITE16_START (writemem)
 	{ 0x0000, 0x1fff, MWA16_BANK1 },		/*system ROM*/
 	{ 0x2000, 0x2fff, MWA16_BANK3 },		/*lower 8kb of RAM extension: AMS bank 2*/
 	{ 0x3000, 0x3fff, MWA16_BANK4 },		/*lower 8kb of RAM extension: AMS bank 3*/
-	{ 0x4000, 0x5fff, ti99_4p_ww_expansion },	/*DSR ROM space*/
+	{ 0x4000, 0x5fff, ti99_4p_peb_w },		/*DSR ROM space*/
 	{ 0x6000, 0x7fff, ti99_ww_cartmem },	/*cartridge memory (some carts include RAM or a pager chip)*/
 	{ 0x8000, 0x83ff, MWA16_BANK2 },		/*RAM PAD*/
 	{ 0x8400, 0x87ff, ti99_ww_wsnd },		/*soundchip write*/
@@ -84,14 +88,14 @@ MEMORY_END
 static PORT_WRITE16_START(writecru)
 
 	{0x0000<<1, 0x01ff<<1, tms9901_0_CRU_write16},
-	{0x0200<<1, 0x0fff<<1, ti99_4p_expansion_CRU_w},
+	{0x0200<<1, 0x0fff<<1, ti99_4p_peb_CRU_w},
 
 PORT_END
 
 static PORT_READ16_START(readcru)
 
 	{0x0000<<1, 0x003f<<1, tms9901_0_CRU_read16},
-	{0x0040<<1, 0x01ff<<1, ti99_4p_expansion_CRU_r},
+	{0x0040<<1, 0x01ff<<1, ti99_4p_peb_CRU_r},
 
 PORT_END
 
@@ -304,30 +308,31 @@ MACHINE_DRIVER_END
 ROM_START(ti99_4p)
 	/*CPU memory space*/
 	ROM_REGION16_BE(region_cpu1_len_4p, REGION_CPU1, 0)
-	ROM_LOAD16_BYTE("sgcpu_hb.bin", 0x0000, 0x8000, 0xaa100730) /* system ROMs */
-	ROM_LOAD16_BYTE("sgcpu_lb.bin", 0x0001, 0x8000, 0x2a5dc818) /* system ROMs */
+	ROM_LOAD16_BYTE("sgcpu_hb.bin", 0x0000, 0x8000, CRC(aa100730)) /* system ROMs */
+	ROM_LOAD16_BYTE("sgcpu_lb.bin", 0x0001, 0x8000, CRC(2a5dc818)) /* system ROMs */
 
 	/*GROM memory space*/
 	ROM_REGION(0x10000, region_grom, 0)
-	ROM_LOAD("grom0.grm", 0x0000, /*0x6000*/0x2000, 0xc56b86a5) /* system GROMs */
+	ROM_LOAD("grom0.grm", 0x0000, /*0x6000*/0x2000, CRC(c56b86a5)) /* system GROMs */
 
 	/*DSR ROM space*/
 	ROM_REGION(region_dsr_len, region_dsr, 0)
-	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, 0x8f7df93f) /* TI disk DSR ROM */
-	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, 0x06f1ec89) /* BwG disk DSR ROM */
-	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, 0xeab382fb) /* TI rs232 DSR ROM */
+	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f)) /* TI disk DSR ROM */
+	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89)) /* BwG disk DSR ROM */
+	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb)) /* TI rs232 DSR ROM */
 
 	/*TMS5220 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
-	ROM_LOAD("spchrom.bin", 0x0000, 0x8000, 0x58b155f7) /* system speech ROM */
+	ROM_LOAD("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7)) /* system speech ROM */
 ROM_END
 
 SYSTEM_CONFIG_START(ti99_4p)
-	CONFIG_DEVICE_CASSETTE			(2, "",												ti99_cassette_load)
-	CONFIG_DEVICE_FLOPPY_BASICDSK	(3,	"dsk\0",										ti99_floppy_load)
-	CONFIG_DEVICE_LEGACY			(IO_PARALLEL,	1, "",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	ti99_4_pio_load,	ti99_4_pio_unload,		NULL)
-	CONFIG_DEVICE_LEGACY			(IO_SERIAL,		1, "",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	ti99_4_rs232_load,	ti99_4_rs232_unload,	NULL)
+	CONFIG_DEVICE_CASSETTE			(2, "",												device_load_ti99_cassette)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",										device_load_ti99_floppy)
+	CONFIG_DEVICE_LEGACY			(IO_HARDDISK, 	1, "hd\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_OR_READ, NULL, NULL, device_load_ti99_ide, device_unload_ti99_ide, NULL)
+	CONFIG_DEVICE_LEGACY			(IO_PARALLEL,	1, "",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	device_load_ti99_4_pio,	device_unload_ti99_4_pio,		NULL)
+	CONFIG_DEVICE_LEGACY			(IO_SERIAL,		1, "",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	device_load_ti99_4_rs232,	device_unload_ti99_4_rs232,	NULL)
 SYSTEM_CONFIG_END
 
-/*	  YEAR	NAME	  PARENT   MACHINE		ÊINPUT	  INIT	   CONFIG	COMPANY		FULLNAME */
-COMP( 1996, ti99_4p,  0,	   ti99_4p_60hz, ti99_4p, ti99_4p, ti99_4p,	"snug",		"TI99/4P (60 Hz only)" )
+/*	  YEAR	NAME	  PARENT   COMPAT	MACHINE		ÊINPUT	  INIT	   CONFIG	COMPANY		FULLNAME */
+COMP( 1996, ti99_4p,  0,	   0,		ti99_4p_60hz, ti99_4p, ti99_4p, ti99_4p,	"snug",		"TI99/4P (60 Hz only)" )

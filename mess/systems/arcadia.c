@@ -270,18 +270,18 @@ ROM_START(vcg)
 	ROM_REGION(0x100,REGION_GFX1, 0)
 ROM_END
 
-static int arcadia_cart_load(int id, mame_file *cartfile, int open_mode)
+static DEVICE_LOAD( arcadia_cart )
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
 	int size;
 
 	memset(rom, 0, 0x8000);
-	size = mame_fsize(cartfile);
+	size = mame_fsize(file);
 
 	if (size > memory_region_length(REGION_CPU1))
 		size = memory_region_length(REGION_CPU1);
 
-	if (mame_fread(cartfile, rom, size) != size)
+	if (mame_fread(file, rom, size) != size)
 		return INIT_FAIL;
 
 	if (size > 0x1000)
@@ -320,7 +320,7 @@ static int arcadia_cart_load(int id, mame_file *cartfile, int open_mode)
 }
 
 SYSTEM_CONFIG_START(arcadia)
-	CONFIG_DEVICE_CARTSLOT_REQ( 1, "bin\0", NULL, NULL, arcadia_cart_load, NULL, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_REQ( 1, "bin\0", NULL, NULL, device_load_arcadia_cart, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -463,10 +463,10 @@ static void init_arcadia(void)
 #endif
 }
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
+/*    YEAR	NAME		PARENT		COMPAT	MACHINE   INPUT     INIT		COMPANY		FULLNAME */
 // marketed from several firms/names
 
-CONSX( 1982, arcadia,	0,	arcadia,  arcadia,  arcadia,	arcadia,		"Emerson",		"Arcadia 2001", GAME_IMPERFECT_SOUND )
+CONSX(1982,	arcadia,	0,			0,		arcadia,  arcadia,  arcadia,	arcadia,	"Emerson",		"Arcadia 2001", GAME_IMPERFECT_SOUND )
 // schmid tvg 2000 (developer? PAL)
 
 // different cartridge connector
@@ -474,4 +474,4 @@ CONSX( 1982, arcadia,	0,	arcadia,  arcadia,  arcadia,	arcadia,		"Emerson",		"Arc
 
 // different cartridge connector (same size as mpt03, but different pinout!)
 // 16 keys instead of 12
-CONSX( 198?, vcg,	arcadia,arcadia,  vcg,  arcadia,	arcadia,		"Palladium",		"VIDEO - COMPUTER - GAME", GAME_IMPERFECT_SOUND )
+CONSX(198?, vcg,		arcadia,	0,		arcadia,  vcg,		arcadia,	arcadia,	"Palladium",		"VIDEO - COMPUTER - GAME", GAME_IMPERFECT_SOUND )

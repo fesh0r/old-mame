@@ -192,7 +192,7 @@ MACHINE_DRIVER_END
 
 ROM_START (odyssey2)
     ROM_REGION(0x10000,REGION_CPU1,0)    /* safer for the memory handler/bankswitching??? */
-    ROM_LOAD ("o2bios.rom", 0x0000, 0x0400, 0x8016a315)
+    ROM_LOAD ("o2bios.rom", 0x0000, 0x0400, CRC(8016a315))
     ROM_REGION(0x100, REGION_GFX1, 0)
     ROM_REGION(0x2000, REGION_USER1, 0)
 ROM_END
@@ -206,9 +206,9 @@ static DRIVER_INIT( odyssey2 )
 }
 
 SYSTEM_CONFIG_START(odyssey2)
-	CONFIG_DEVICE_CARTSLOT_REQ(1, "bin\0", NULL, NULL, odyssey2_cart_load, NULL, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_REQ(1, "bin\0", NULL, NULL, device_load_odyssey2_cart, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
-/*     YEAR  NAME      PARENT  MACHINE   INPUT     INIT      CONFIG    COMPANY     FULLNAME     FLAGS */
-COMPX( 1982, odyssey2, 0,      odyssey2, odyssey2, odyssey2, odyssey2, "Magnavox", "Odyssey 2", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
+/*     YEAR  NAME      PARENT	COMPAT	MACHINE   INPUT     INIT      CONFIG    COMPANY     FULLNAME     FLAGS */
+COMPX( 1982, odyssey2, 0,		0,		odyssey2, odyssey2, odyssey2, odyssey2, "Magnavox", "Odyssey 2", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
 /* philips g7000/videopac */

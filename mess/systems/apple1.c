@@ -203,14 +203,14 @@ MACHINE_DRIVER_END
 
 ROM_START(apple1)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("apple1.rom", 0xff00, 0x0100, 0xa30b6af5)
+	ROM_LOAD("apple1.rom", 0xff00, 0x0100, CRC(a30b6af5))
 	ROM_REGION(0x0400, REGION_GFX1,0)
-	ROM_LOAD("apple1.vid", 0x0000, 0x0400, 0xa3f2d66f)
+	ROM_LOAD("apple1.vid", 0x0000, 0x0400, CRC(a3f2d66f))
 ROM_END
 
 SYSTEM_CONFIG_START(apple1)
 	CONFIG_DEVICE_SNAPSHOT("snp\0", apple1)
 SYSTEM_CONFIG_END
 
-/*    YEAR	NAME	PARENT	MACHINE		INPUT		INIT	CONFIG	COMPANY				FULLNAME */
-COMP( 1976,	apple1,	0,		apple1,		apple1,		0,		apple1,	"Apple Computer",	"Apple I" )
+/*    YEAR	NAME	PARENT	COMPAT	MACHINE		INPUT		INIT	CONFIG	COMPANY				FULLNAME */
+COMP( 1976,	apple1,	0,		0,		apple1,		apple1,		0,		apple1,	"Apple Computer",	"Apple I" )

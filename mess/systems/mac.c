@@ -325,7 +325,7 @@ INPUT_PORTS_END
 
 ROM_START( mac512ke )
 	ROM_REGION(0x420000,REGION_CPU1,0) /* for ram, etc */
-	ROM_LOAD16_WORD( "macplus.rom",  0x400000, 0x20000, 0xb2102e8e)
+	ROM_LOAD16_WORD( "macplus.rom",  0x400000, 0x20000, CRC(b2102e8e))
 ROM_END
 
 #else
@@ -336,7 +336,7 @@ ROM_END
 
 ROM_START( macplus )
 	ROM_REGION(0x420000,REGION_CPU1,0) /* for ram, etc */
-	ROM_LOAD16_WORD( "macplus.rom",  0x400000, 0x20000, 0xb2102e8e)
+	ROM_LOAD16_WORD( "macplus.rom",  0x400000, 0x20000, CRC(b2102e8e))
 ROM_END
 
 SYSTEM_CONFIG_START(macplus)
@@ -344,11 +344,11 @@ SYSTEM_CONFIG_START(macplus)
 	/* MacPlus should eventually support hard disks, possibly CD-ROMs, etc. */
 SYSTEM_CONFIG_END
 
-/*	   YEAR		NAME	  PARENT	MACHINE   INPUT		INIT		CONFIG		COMPANY				FULLNAME */
-/*COMPX( 1984,	mac128k,  0, 		mac128k,  macplus,	mac128k,	macplus,	"Apple Computer",	"Macintosh 128k",  0 )
-COMPX( 1984,	mac512k,  mac128k,	mac128k,  macplus,  mac512k,	macplus,	"Apple Computer",	"Macintosh 512k",  0 )*/
-COMPX( 1986,	mac512ke, macplus,  mac512ke, macplus,  mac512ke,	macplus,	"Apple Computer",	"Macintosh 512ke", 0 )
-COMPX( 1986,	macplus,  0,		macplus,  macplus,  macplus,	macplus,	"Apple Computer",	"Macintosh Plus",  0 )
+/*	   YEAR		NAME	  PARENT	COMPAT	MACHINE   INPUT		INIT		CONFIG		COMPANY				FULLNAME */
+/*COMPX( 1984,	mac128k,  0, 		0,		mac128k,  macplus,	mac128k,	macplus,	"Apple Computer",	"Macintosh 128k",  0 )
+COMPX( 1984,	mac512k,  mac128k,	0,		mac128k,  macplus,  mac512k,	macplus,	"Apple Computer",	"Macintosh 512k",  0 )*/
+COMPX( 1986,	mac512ke, macplus,  0,		mac512ke, macplus,  mac512ke,	macplus,	"Apple Computer",	"Macintosh 512ke", 0 )
+COMPX( 1986,	macplus,  0,		0,		macplus,  macplus,  macplus,	macplus,	"Apple Computer",	"Macintosh Plus",  0 )
 
 #if 0
 
@@ -423,7 +423,7 @@ INPUT_PORTS_END
 
 ROM_START( mac2 )
 	ROM_REGION(0x00900000,REGION_CPU1,0) /* for ram, etc */
-	ROM_LOAD_WIDE( "256k.rom",  0x800000, 0x40000, 0x00000000)
+	ROM_LOAD_WIDE( "256k.rom",  0x800000, 0x40000, NO_DUMP)
 ROM_END
 
 COMPX( 1987, mac2,	   0,		 mac2,	   mac2,	 0/*mac2*/,  "Apple Computer",    "Macintosh II",  GAME_NOT_WORKING )

@@ -64,6 +64,7 @@ BEGIN
         MENUITEM "&Hide Menubar\tScrLk",        ID_OPTIONS_TOGGLEMENUBAR
         MENUITEM "&Full Screen\tAlt+Enter",     ID_OPTIONS_FULLSCREEN
         MENUITEM "Show P&rofiler",              ID_OPTIONS_PROFILER, GRAYED
+        MENUITEM "&Debugger...",                ID_OPTIONS_DEBUGGER
     END
     POPUP "&Devices"
     BEGIN
@@ -107,6 +108,7 @@ END
 // Dialog
 //
 
+#ifndef UNDER_CE
 IDD_TAPEDIALOG DIALOGEX 0, 0, 172, 65
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
     WS_SYSMENU
@@ -121,6 +123,7 @@ BEGIN
     LTEXT           "",IDC_CAPTION,12,6,102,12
     LTEXT           "",IDC_STATUS,126,6,42,12
 END
+#endif
 
 
 /////////////////////////////////////////////////////////////////////////////

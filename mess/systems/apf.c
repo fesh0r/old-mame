@@ -218,7 +218,7 @@ static READ_HANDLER(apf_imagination_pia_in_b_func)
 
 	data = 0x000;
 
-	if (device_input(IO_CASSETTE,0) > 255)
+	if (device_input(image_from_devtype_and_index(IO_CASSETTE,0)) > 255)
 		data =(1<<7);
 
 	return data;
@@ -275,9 +275,9 @@ static WRITE_HANDLER(apf_imagination_pia_out_b_func)
 	keyboard_data = readinputport(keyboard_line+4);
 
 	/* bit 4: cassette motor control */
-	device_status(IO_CASSETTE, 0, ((data>>4) & 0x01));
+	device_status(image_from_devtype_and_index(IO_CASSETTE,0), ((data>>4) & 0x01));
 	/* bit 6: cassette write */
-	device_output(IO_CASSETTE, 0, (data & (1<<6)) ? -32768 : 32767);
+	device_output(image_from_devtype_and_index(IO_CASSETTE,0), (data & (1<<6)) ? -32768 : 32767);
 
 
 	logerror("pia 1 b w: %04x %02x\n",offset,data);
@@ -768,19 +768,19 @@ MACHINE_DRIVER_END
 
 ROM_START(apfimag)
 	ROM_REGION(0x10000+0x0800,REGION_CPU1,0)
-	ROM_LOAD("apf_4000.rom",0x010000, 0x00800, 0x2a331a33)
-	ROM_LOAD("basic_68.rom",0x06800, 0x01000, 0xef049ab8)
-	ROM_LOAD("basic_80.rom",0x08000, 0x02000, 0xa4c69fae)
+	ROM_LOAD("apf_4000.rom",0x010000, 0x00800, CRC(2a331a33))
+	ROM_LOAD("basic_68.rom",0x06800, 0x01000, CRC(ef049ab8))
+	ROM_LOAD("basic_80.rom",0x08000, 0x02000, CRC(a4c69fae))
 ROM_END
 
 ROM_START(apfm1000)
 	ROM_REGION(0x10000+0x0800,REGION_CPU1,0)
-	ROM_LOAD("apf_4000.rom",0x010000, 0x0800, 0x2a331a33)
+	ROM_LOAD("apf_4000.rom",0x010000, 0x0800, CRC(2a331a33))
 ROM_END
 
 SYSTEM_CONFIG_START( apfimag )
-	CONFIG_DEVICE_CASSETTE			(1, "apt\0", apf_cassette_init)
-	CONFIG_DEVICE_FLOPPY_BASICDSK	(2, "apd\0", apfimag_floppy_init)
+	CONFIG_DEVICE_CASSETTE			(1, "apt\0", device_load_apf_cassette)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(2, "apd\0", device_load_apfimag_floppy)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -789,6 +789,6 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR	NAME		PARENT	MACHINE				INPUT				INIT    CONFIG		COMPANY               FULLNAME */
-COMPX(1977, apfimag,	0,		apf_imagination,	apf_imagination,	0,		apfimag,	"APF Electronics Inc",  "APF Imagination Machine" ,GAME_NOT_WORKING)
-COMPX(1978,	apfm1000,	0,		apf_m1000,			apf_m1000,			0,		NULL,		"APF Electronics inc",  "APF M-1000" ,GAME_NOT_WORKING)
+/*    YEAR	NAME		PARENT	COMPAT	MACHINE				INPUT				INIT    CONFIG		COMPANY               FULLNAME */
+COMPX(1977, apfimag,	0,		0,		apf_imagination,	apf_imagination,	0,		apfimag,	"APF Electronics Inc",  "APF Imagination Machine" ,GAME_NOT_WORKING)
+COMPX(1978,	apfm1000,	0,		0,		apf_m1000,			apf_m1000,			0,		NULL,		"APF Electronics Inc",  "APF M-1000" ,GAME_NOT_WORKING)

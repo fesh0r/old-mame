@@ -1767,23 +1767,23 @@ MACHINE_DRIVER_END
 
 ROM_START(nc100)
         ROM_REGION(((64*1024)+(256*1024)), REGION_CPU1,0)
-        ROM_LOAD("nc100.rom", 0x010000, 0x040000, 0x0a699eca3)
+        ROM_LOAD("nc100.rom", 0x010000, 0x040000, CRC(a699eca3))
 ROM_END
 
 ROM_START(nc100a)
         ROM_REGION(((64*1024)+(256*1024)), REGION_CPU1,0)
-        ROM_LOAD("nc100a.rom", 0x010000, 0x040000, 0x0849884f9)
+        ROM_LOAD("nc100a.rom", 0x010000, 0x040000, CRC(849884f9))
 ROM_END
 
 ROM_START(nc200)
         ROM_REGION(((64*1024)+(512*1024)), REGION_CPU1,0)
-        ROM_LOAD("nc200.rom", 0x010000, 0x080000, 0x0bb8180e7)
+        ROM_LOAD("nc200.rom", 0x010000, 0x080000, CRC(bb8180e7))
 ROM_END
 
 SYSTEM_CONFIG_START(nc_common)
 	CONFIG_DEVICE_PRINTER(1)
-	CONFIG_DEVICE_CARTSLOT_OPT(1, "crd\0card\0", nc_pcmcia_card_init, NULL, nc_pcmcia_card_load, nc_pcmcia_card_exit,  NULL, NULL)
-	CONFIG_DEVICE_LEGACY(IO_SERIAL, 1, "txt\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, serial_device_init, NULL, nc_serial_load, serial_device_unload, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "crd\0card\0", device_init_nc_pcmcia_card, NULL, device_load_nc_pcmcia_card, device_unload_nc_pcmcia_card,  NULL, NULL)
+	CONFIG_DEVICE_LEGACY(IO_SERIAL, 1, "txt\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, serial_device_init, NULL, device_load_nc_serial, serial_device_unload, NULL)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(nc100)
@@ -1797,7 +1797,7 @@ SYSTEM_CONFIG_START(nc200)
 	CONFIG_DEVICE_PC_FLOPPY(1)
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME       PARENT  MACHINE    INPUT     INIT     CONFIG,  COMPANY               FULLNAME */
-COMP( 1992, nc100,     0,      nc100,     nc100,    0,       nc100,   "Amstrad plc", "NC100")
-COMP( 1992, nc100a,    nc100,  nc100,     nc100,    0,       nc100,   "Amstrad plc", "NC100 (Version 1.09)")
-COMP( 1993, nc200,     0,      nc200,     nc200,    0,       nc200,   "Amstrad plc", "NC200")
+/*    YEAR  NAME       PARENT  COMPAT	MACHINE    INPUT     INIT     CONFIG,  COMPANY               FULLNAME */
+COMP( 1992, nc100,     0,      0,		nc100,     nc100,    0,       nc100,   "Amstrad plc", "NC100")
+COMP( 1992, nc100a,    nc100,  0,		nc100,     nc100,    0,       nc100,   "Amstrad plc", "NC100 (Version 1.09)")
+COMP( 1993, nc200,     0,      0,		nc200,     nc200,    0,       nc200,   "Amstrad plc", "NC200")

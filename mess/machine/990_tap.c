@@ -39,6 +39,7 @@ static void update_interrupt(void);
 
 typedef struct tape_unit_t
 {
+	mess_image *img;		/* image descriptor */
 	mame_file *fd;			/* file descriptor */
 	unsigned int bot : 1;	/* TRUE if we are at the beginning of tape */
 	unsigned int eot : 1;	/* TRUE if we are at the end of tape */
@@ -106,12 +107,10 @@ static const UINT16 w_mask[8] =
 static tpc_t tpc;
 
 
-/*
-	Open a tape image
-*/
-int ti990_tape_load(int id, mame_file *fp, int open_mode)
+DEVICE_INIT( ti990_tape )
 {
 	tape_unit_t *t;
+	int id = image_index_in_device(image);
 
 
 	if ((id < 0) || (id >= MAX_TAPE_UNIT))
@@ -120,11 +119,37 @@ int ti990_tape_load(int id, mame_file *fp, int open_mode)
 	t = &tpc.t[id];
 	memset(t, 0, sizeof(*t));
 
-	if (fp == NULL)
-		return INIT_PASS;
+	t->img = image;
+	t->fd = NULL;
+	t->wp = 0;
+	t->bot = 0;
+	t->eot = 0;
+
+	return INIT_PASS;
+}
+
+/*DEVICE_EXIT( ti990_tape )
+{
+	d->img = NULL;
+}*/
+
+/*
+	Open a tape image
+*/
+DEVICE_LOAD( ti990_tape )
+{
+	tape_unit_t *t;
+	int id = image_index_in_device(image);
+
+
+	if ((id < 0) || (id >= MAX_TAPE_UNIT))
+		return INIT_FAIL;
+
+	t = &tpc.t[id];
+	memset(t, 0, sizeof(*t));
 
 	/* open file */
-	t->fd = fp;
+	t->fd = file;
 	/* tell whether the image is writable */
 	t->wp = ! ((t->fd) && is_effective_mode_writable(open_mode));
 
@@ -136,9 +161,10 @@ int ti990_tape_load(int id, mame_file *fp, int open_mode)
 /*
 	Close a tape image
 */
-void ti990_tape_unload(int id)
+DEVICE_UNLOAD( ti990_tape )
 {
 	tape_unit_t *t;
+	int id = image_index_in_device(image);
 
 	if ((id < 0) || (id >= MAX_TAPE_UNIT))
 		return;
@@ -279,7 +305,7 @@ static void cmd_read_binary_forward(void)
 			/* No idea what to report... */
 			/* eject tape to avoid catastrophes */
 			logerror("Tape error\n");
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -292,7 +318,7 @@ static void cmd_read_binary_forward(void)
 		logerror("Tape error\n");
 		logerror("Tape format looks gooofy\n");
 		/* eject tape to avoid catastrophes */
-		image_unload(IO_CASSETTE, tap_sel);
+		image_unload(tpc.t[tap_sel].img);
 		tpc.w[0] |= w0_offline;
 		tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 		update_interrupt();
@@ -319,7 +345,7 @@ static void cmd_read_binary_forward(void)
 	if (mame_fseek(tpc.t[tap_sel].fd, chunk_len, SEEK_CUR))
 	{	/* eject tape */
 		logerror("Tape error\n");
-		image_unload(IO_CASSETTE, tap_sel);
+		image_unload(tpc.t[tap_sel].img);
 		tpc.w[0] |= w0_offline;
 		tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 		update_interrupt();
@@ -363,7 +389,7 @@ static void cmd_read_binary_forward(void)
 		if (bytes_read != bytes_to_read)
 		{	/* eject tape */
 			logerror("Tape error\n");
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -384,7 +410,7 @@ static void cmd_read_binary_forward(void)
 		if (mame_fseek(tpc.t[tap_sel].fd, rec_count, SEEK_CUR))
 		{	/* eject tape */
 			logerror("Tape error\n");
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -396,7 +422,7 @@ skip_trailer:
 	if (mame_fread(tpc.t[tap_sel].fd, buffer, 4) != 4)
 	{	/* eject tape */
 		logerror("Tape error\n");
-		image_unload(IO_CASSETTE, tap_sel);
+		image_unload(tpc.t[tap_sel].img);
 		tpc.w[0] |= w0_offline;
 		tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 		update_interrupt();
@@ -406,7 +432,7 @@ skip_trailer:
 	if (reclen != ((((int) buffer[1]) << 8) | buffer[0]))
 	{	/* eject tape */
 		logerror("Tape error\n");
-		image_unload(IO_CASSETTE, tap_sel);
+		image_unload(tpc.t[tap_sel].img);
 		tpc.w[0] |= w0_offline;
 		tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 		update_interrupt();
@@ -417,7 +443,7 @@ skip_trailer:
 		logerror("Tape error\n");
 		logerror("Tape format looks gooofy\n");
 		/* eject tape to avoid catastrophes */
-		image_unload(IO_CASSETTE, tap_sel);
+		image_unload(tpc.t[tap_sel].img);
 		tpc.w[0] |= w0_offline;
 		tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 		update_interrupt();
@@ -498,7 +524,7 @@ static void cmd_record_skip_forward(void)
 			{	/* illegitimate EOF */
 				/* No idea what to report... */
 				/* eject tape to avoid catastrophes */
-				image_unload(IO_CASSETTE, tap_sel);
+				image_unload(tpc.t[tap_sel].img);
 				tpc.w[0] |= w0_offline;
 				tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 				update_interrupt();
@@ -510,7 +536,7 @@ static void cmd_record_skip_forward(void)
 		{	/* no idea what these bytes mean */
 			logerror("Tape format looks gooofy\n");
 			/* eject tape to avoid catastrophes */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -530,7 +556,7 @@ static void cmd_record_skip_forward(void)
 		/* skip record data */
 		if (mame_fseek(tpc.t[tap_sel].fd, reclen, SEEK_CUR))
 		{	/* eject tape */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -539,7 +565,7 @@ static void cmd_record_skip_forward(void)
 
 		if (mame_fread(tpc.t[tap_sel].fd, buffer, 4) != 4)
 		{	/* eject tape */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -548,7 +574,7 @@ static void cmd_record_skip_forward(void)
 
 		if (reclen != ((((int) buffer[1]) << 8) | buffer[0]))
 		{	/* eject tape */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -558,7 +584,7 @@ static void cmd_record_skip_forward(void)
 		{	/* no idea what these bytes mean */
 			logerror("Tape format looks gooofy\n");
 			/* eject tape to avoid catastrophes */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -630,7 +656,7 @@ static void cmd_record_skip_reverse(void)
 		}
 		if (mame_fseek(tpc.t[tap_sel].fd, -4, SEEK_CUR))
 		{	/* eject tape */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -642,7 +668,7 @@ static void cmd_record_skip_reverse(void)
 			/* illegitimate EOF */
 			/* No idea what to report... */
 			/* eject tape to avoid catastrophes */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -653,7 +679,7 @@ static void cmd_record_skip_reverse(void)
 		{	/* no idea what these bytes mean */
 			logerror("Tape format looks gooofy\n");
 			/* eject tape to avoid catastrophes */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -666,7 +692,7 @@ static void cmd_record_skip_reverse(void)
 			logerror("record skip reverse: found EOF\n");
 			if (mame_fseek(tpc.t[tap_sel].fd, -4, SEEK_CUR))
 			{	/* eject tape */
-				image_unload(IO_CASSETTE, tap_sel);
+				image_unload(tpc.t[tap_sel].img);
 				tpc.w[0] |= w0_offline;
 				tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 				update_interrupt();
@@ -680,7 +706,7 @@ static void cmd_record_skip_reverse(void)
 
 		if (mame_fseek(tpc.t[tap_sel].fd, -reclen-8, SEEK_CUR))
 		{	/* eject tape */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -689,7 +715,7 @@ static void cmd_record_skip_reverse(void)
 
 		if (mame_fread(tpc.t[tap_sel].fd, buffer, 4) != 4)
 		{	/* eject tape */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -697,7 +723,7 @@ static void cmd_record_skip_reverse(void)
 		}
 		if (reclen != ((((int) buffer[1]) << 8) | buffer[0]))
 		{	/* eject tape */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -707,7 +733,7 @@ static void cmd_record_skip_reverse(void)
 		{	/* no idea what these bytes mean */
 			logerror("Tape format looks gooofy\n");
 			/* eject tape to avoid catastrophes */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -716,7 +742,7 @@ static void cmd_record_skip_reverse(void)
 
 		if (mame_fseek(tpc.t[tap_sel].fd, -4, SEEK_CUR))
 		{	/* eject tape */
-			image_unload(IO_CASSETTE, tap_sel);
+			image_unload(tpc.t[tap_sel].img);
 			tpc.w[0] |= w0_offline;
 			tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 			update_interrupt();
@@ -768,7 +794,7 @@ static void cmd_rewind(void)
 
 	if (mame_fseek(tpc.t[tap_sel].fd, 0, SEEK_SET))
 	{	/* eject tape */
-		image_unload(IO_CASSETTE, tap_sel);
+		image_unload(tpc.t[tap_sel].img);
 		tpc.w[0] |= w0_offline;
 		tpc.w[7] |= w7_idle | w7_error | w7_hard_error;
 		update_interrupt();
@@ -812,7 +838,7 @@ static void cmd_rewind_and_offline(void)
 #endif
 
 	/* eject tape */
-	image_unload(IO_CASSETTE, tap_sel);
+	image_unload(tpc.t[tap_sel].img);
 
 	tpc.w[7] |= w7_idle | w7_complete;
 	update_interrupt();

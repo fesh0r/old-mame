@@ -197,7 +197,7 @@ MACHINE_DRIVER_END
 
 ROM_START(mekd2)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-		ROM_LOAD("jbug.rom",    0xe000, 0x0400, 0xa2a56502)
+		ROM_LOAD("jbug.rom",    0xe000, 0x0400, CRC(a2a56502))
 	ROM_REGION(128 * 24 * 3,REGION_GFX1,0)
 		/* space filled with 7segement graphics by mekd2_init_driver */
 	ROM_REGION( 24 * 18 * 3 * 2,REGION_GFX2,0)
@@ -205,7 +205,7 @@ ROM_START(mekd2)
 ROM_END
 
 SYSTEM_CONFIG_START(mekd2)
-	CONFIG_DEVICE_CARTSLOT_OPT(1, "d2\0", NULL, NULL, mekd2_cart_load, NULL, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "d2\0", NULL, NULL, device_load_mekd2_cart, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -214,5 +214,5 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	CONFIG	COMPANY		FULLNAME */
-CONS( 1977, mekd2,	   0,		mekd2,	  mekd2,	mekd2,	mekd2,	"Motorola",	"MEK6800D2" )
+/*	  YEAR	NAME	PARENT	COMPAT	MACHINE   INPUT 	INIT	CONFIG	COMPANY		FULLNAME */
+CONS( 1977, mekd2,	0,		0,		mekd2,	  mekd2,	mekd2,	mekd2,	"Motorola",	"MEK6800D2" )

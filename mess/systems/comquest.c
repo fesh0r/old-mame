@@ -290,7 +290,7 @@ ROM_START(comquest)
 //	ROM_REGION(0x10000,REGION_CPU1,0)
 //	ROM_REGION(0x80000,REGION_USER1,0)
 	ROM_REGION(0x100000,REGION_CPU1,0)
-	ROM_LOAD("comquest.bin", 0x00000, 0x80000, 0x2bf4b1a8)
+	ROM_LOAD("comquest.bin", 0x00000, 0x80000, CRC(2bf4b1a8))
 /*
 000 +16kbyte graphics data?
 040 16kbyte code
@@ -317,7 +317,7 @@ ROM_START(comquest)
 
 //	ROM_REGION(0x100,REGION_GFX1,0)
 	ROM_REGION(0x80000,REGION_GFX1,0)
-	ROM_LOAD("comquest.bin", 0x00000, 0x80000, 0x2bf4b1a8)
+	ROM_LOAD("comquest.bin", 0x00000, 0x80000, CRC(2bf4b1a8))
 ROM_END
 
 SYSTEM_CONFIG_START(comquest)
@@ -330,12 +330,5 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-static DRIVER_INIT( comquest )
-{
-//	int i;
-//	UINT8 *gfx=memory_region(REGION_GFX1);
-//	for (i=0; i<256; i++) gfx[i]=i;
-}
-
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT		CONFIG		MONITOR	COMPANY   FULLNAME */
-CONS( 19??, comquest, 0, 		comquest, comquest, comquest,	comquest,	"Data Concepts",  "Comquest Plus German")
+/*    YEAR  NAME      PARENT	COMPAT	MACHINE   INPUT     INIT	CONFIG		MONITOR	COMPANY   FULLNAME */
+CONS( 19??, comquest, 0, 		0,		comquest, comquest, 0,		comquest,	"Data Concepts",  "Comquest Plus German")

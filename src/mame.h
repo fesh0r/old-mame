@@ -246,6 +246,7 @@ struct GameOptions
 #define GAME_OPTIONAL_FRAMESKIP     0x00000100
 #endif
 
+
 /* the main mame_display structure, containing the current state of the */
 /* video display */
 struct mame_display

@@ -47,21 +47,24 @@ TODO:
 
 #include <math.h>
 #include "driver.h"
-#include "includes/wd179x.h"
 #include "tms9901.h"
 #include "vidhrdw/tms9928a.h"
 #include "vidhrdw/v9938.h"
 #include "sndhrdw/spchroms.h"
-#include "devices/basicdsk.h"
 #include "devices/cassette.h"
 #include "ti99_4x.h"
+#include "99_peb.h"
 #include "994x_ser.h"
+#include "99_dsk.h"
+#include "99_ide.h"
+#include "99_hsgpl.h"
 
 
 /* prototypes */
 static READ16_HANDLER ( ti99_rw_rspeech );
 static WRITE16_HANDLER ( ti99_ww_wspeech );
 
+static void tms9901_set_int1(int state);
 static void tms9901_interrupt_callback(int intreq, int ic);
 static int ti99_R9901_0(int offset);
 static int ti99_R9901_1(int offset);
@@ -79,14 +82,11 @@ static void ti99_CS2_motor(int offset, int data);
 static void ti99_audio_gate(int offset, int data);
 static void ti99_CS_output(int offset, int data);
 
-static void ti99_exp_init(void);
 static void ti99_4p_internal_dsr_init(void);
 static void ti99_TIxram_init(void);
 static void ti99_sAMSxram_init(void);
 static void ti99_4p_mapper_init(void);
 static void ti99_myarcxram_init(void);
-static void ti99_fdc_init(void);
-static void ti99_bwg_init(void);
 static void ti99_evpc_init(void);
 
 /*
@@ -113,12 +113,16 @@ static xRAM_kind_t xRAM_kind;
 static char has_speech;
 /* floppy disk controller type */
 static fdc_kind_t fdc_kind;
+/* TRUE if ide card present */
+static char has_ide;
 /* TRUE if evpc card present */
 static char has_evpc;
 /* TRUE if rs232 card present */
 static char has_rs232;
 /* TRUE if ti99/4 IR remote handset present */
 static char has_handset;
+/* TRUE if hsgpl card present */
+static char has_hsgpl;
 
 
 /* tms9901 setup */
@@ -189,13 +193,13 @@ In short:
 	of a TI99/4(a) CPU ROMs).  They can used to store large pieces of data,
 	too.
 
-	Both TI99/4 and TI99/4a include three GROMs, with some start-up code,
-	system routines and TI-Basic.  TI99/4 reportedly includes an additional
-	Equation Editor.  Maybe a part of the Hand Held Unit DSR lurks there, too
-	(this is only a supposition).  TI99/8 includes the three standard GROMs and
-	16 GROMs for the UCSD p-system.  TI99/2 does not include GROMs at all, and
-	was not designed to support any, although it should be relatively easy to
-	create an expansion card with the GPL interpreter and a /4a cartridge port.
+	Both TI-99/4 and TI-99/4a include three GROMs, with some start-up code,
+	system routines and TI-Basic.  TI99/4 includes an additional Equation
+	Editor.  According to the preliminary schematics found on ftp.whtech.com,
+	TI-99/8 includes the three standard GROMs and 16 GROMs for the UCSD
+	p-system.  TI99/2 does not include GROMs at all, and was not designed to
+	support any, although it should be relatively easy to create an expansion
+	card with the GPL interpreter and a /4a cartridge port.
 
 The simple way:
 
@@ -248,39 +252,27 @@ GPL ports:
 	in the range recognized by the TI ROMs (0-15), and therefore it is used by the p-code DSR ROMs
 	as custom data.  Additionally, some hackers used the extra ports to implement "GRAM" devices.
 */
-/* defines for GROM_flags */
-enum
-{
-	gf_has_look_ahead = 0x01,	/* has a look-ahead buffer - true with original GROMs */
-	gf_is_GRAM = 0x02			/* is a GRAM - false with original GROMs */
-};
-
 /* GROM_port_t: descriptor for a port of 8 GROMs */
 typedef struct GROM_port_t
 {
 	/* pointer to GROM data */
 	UINT8 *data_ptr;
-	/* active GROM in port (3 bits: 0-7) */
-	//int active_GROM;
 	/* current address pointer for the active GROM in port (16 bits) */
 	unsigned int addr;
 	/* GROM data buffer */
 	UINT8 buf;
-	/* internal flip-flops which are set after the first access to GROM address, so that next access
-	is mapped LSB, and cleared after each data access */
+	/* internal flip-flops that are set after the first access to the GROM
+	address so that next access is mapped to the LSB, and cleared after each
+	data access */
 	char raddr_LSB, waddr_LSB;
-	/* flags for active GROM */
-	char cur_flags;
-	/* flags for each GROM chip */
-	char GROM_flags[8];
 } GROM_port_t;
-
-/* GPL_port_lookup[n]: points to specific GROM_port_t structure when console GROMs are overriden
-	by another GROM in port n, NULL otherwise */
-static GROM_port_t *GPL_port_lookup[256];
 
 /* descriptor for console GROMs */
 GROM_port_t console_GROMs;
+
+/* true if hsgpl is enabled (i.e. has_hsgpl is true and hsgpl cru bit crdena is
+set) */
+static char hsgpl_crdena;
 
 /*
 	Cartridge support
@@ -291,10 +283,12 @@ static UINT16 *cartridge_pages[2] = {NULL, NULL};
 static char cartridge_minimemory = FALSE;
 /* flag: TRUE if the cartridge is paged */
 static char cartridge_paged = FALSE;
+/* flag: TRUE if the cartridge is MBX-style */
+static char cartridge_mbx = FALSE;
 /* flag on the data for the current page (cartridge_pages[0] if cartridge is not paged) */
 static UINT16 *current_page_ptr;
 /* keep track of cart file types - required for cleanup... */
-typedef enum slot_type_t { SLOT_EMPTY = -1, SLOT_GROM = 0, SLOT_CROM = 1, SLOT_DROM = 2, SLOT_MINIMEM = 3 } slot_type_t;
+typedef enum slot_type_t { SLOT_EMPTY = -1, SLOT_GROM = 0, SLOT_CROM = 1, SLOT_DROM = 2, SLOT_MINIMEM = 3, SLOT_MBX = 4 } slot_type_t;
 static slot_type_t slot_type[3] = { SLOT_EMPTY, SLOT_EMPTY, SLOT_EMPTY};
 
 
@@ -312,17 +306,24 @@ extern int tms9900_ICount;
 void init_ti99_4(void)
 {
 	int i, j;
-	UINT8 *GROM;
 
 
 	ti99_model = model_99_4;
 	has_evpc = FALSE;
 
-	GROM = memory_region(region_grom);
+	/* set up RAM pointers */
+	sRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_sram);
+	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram);
+	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
+	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
+	console_GROMs.data_ptr = memory_region(region_grom);
+
+	/* Generate missing chunk of each console GROMs */
 	for (i=0; i<2; i++)
 		for (j=0; j<0x800; j++)
 		{
-			GROM[0x2000*i+0x1800+j] = GROM[0x2000*i+0x0800+j] | GROM[0x2000*i+0x1000+j];
+			console_GROMs.data_ptr[0x2000*i+0x1800+j] = console_GROMs.data_ptr[0x2000*i+0x0800+j]
+															| console_GROMs.data_ptr[0x2000*i+0x1000+j];
 		}
 }
 
@@ -330,121 +331,45 @@ void init_ti99_4a(void)
 {
 	ti99_model = model_99_4a;
 	has_evpc = FALSE;
+
+	/* set up RAM pointers */
+	sRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_sram);
+	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram);
+	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
+	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
+	console_GROMs.data_ptr = memory_region(region_grom);
 }
 
 void init_ti99_4ev(void)
 {
 	ti99_model = model_99_4a;
 	has_evpc = TRUE;
+
+	/* set up RAM pointers */
+	sRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_sram);
+	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram);
+	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
+	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
+	console_GROMs.data_ptr = memory_region(region_grom);
 }
 
 void init_ti99_4p(void)
 {
 	ti99_model = model_99_4p;
 	has_evpc = TRUE;
+
+	/* set up RAM pointers */
+	sRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_sram_4p);
+	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram_4p);
+	console_GROMs.data_ptr = memory_region(region_grom);
 }
 
-int ti99_floppy_load(int id, mame_file *fp, int open_mode)
-{
-	typedef struct ti99_sc0
-	{
-		char	name[10];			/* volume name (10 characters, pad with spaces) */
-		UINT8	totsecsMSB;			/* disk length in sectors (big-endian) (usually 360, 720 or 1440) */
-		UINT8	totsecsLSB;
-		UINT8	secspertrack;		/* sectors per track (usually 9 (FM) or 18 (MFM)) */
-		UINT8	id[4];				/* 'DSK ' */
-		UINT8	tracksperside;		/* tracks per side (usually 40) */
-		UINT8	sides;				/* sides (1 or 2) */
-		UINT8	density;			/* 1 (FM) or 2 (MFM) */
-		UINT8	res[36];			/* reserved */
-		UINT8	abm[200];			/* allocation bitmap: a 1 for each sector in use (sector 0 is LSBit of byte 0, sector 7 is MSBit of byte 0, sector 8 is LSBit of byte 1, etc.) */
-	} ti99_sc0;
-
-	ti99_sc0 sec0;
-	int totsecs;
-	int done;
-
-
-	if (basicdsk_floppy_load(id, fp, open_mode)==INIT_PASS)
-	{
-		done = FALSE;
-
-		/* Read sector 0 to identify format */
-		if (fp && (! mame_fseek(fp, 0, SEEK_SET)) && (mame_fread(fp, & sec0, sizeof(sec0)) == sizeof(sec0)))
-		{
-			/* If we have read the sector successfully, let us parse it */
-			totsecs = (sec0.totsecsMSB << 8) | sec0.totsecsLSB;
-			if (sec0.tracksperside == 0)
-				/* Some images are like this, because the TI controller always assumes 40. */
-				sec0.tracksperside = 40;
-			if (sec0.sides == 0)
-				/* Some images are like this, because the TI controller always assumes
-				tracks beyond 40 are on side 2. */
-				sec0.sides = totsecs / (sec0.secspertrack * sec0.tracksperside);
-			/* check that the format makes sense */
-			if (((sec0.secspertrack * sec0.tracksperside * sec0.sides) == totsecs)
-				&& (totsecs >= 2) && (totsecs <= 1600) && (! memcmp(sec0.id, "DSK", 3))
-				&& (image_length(IO_FLOPPY, id) == totsecs*256))
-			{
-				/* set geometry */
-				basicdsk_set_geometry(id, sec0.tracksperside, sec0.sides, sec0.secspertrack, 256, 0, 0);
-				done = TRUE;
-			}
-		}
-
-		/* If we have been unable to parse the format, let us guess according
-		to file lenght */
-		if (! done)
-		{
-			switch (image_length(IO_FLOPPY, id))
-			{
-			case 1*40*9*256:	/* 90kbytes: SSSD */
-			default:
-				basicdsk_set_geometry(id, 40, 1, 9, 256, 0, 0);
-				break;
-
-			case 2*40*9*256:	/* 180kbytes: either DSSD or 18-sector-per-track
-								SSDD.  We assume DSSD since DSSD is more common
-								and is supported by the original TI SD disk
-								controller. */
-				basicdsk_set_geometry(id, 40, 2, 9, 256, 0, 0);
-				break;
-
-			case 1*40*16*256:	/* 160kbytes: 16-sector-per-track SSDD (standard
-								format for TI DD disk controller prototype (PHP
-								1240), TI hexbus disk controller, and possibly
-								some Myarc disk controller) */
-				basicdsk_set_geometry(id, 40, 1, 16, 256, 0, 0);
-				break;
-
-			case 2*40*16*256:	/* 320kbytes: 16-sector-per-track DSDD (standard
-								format for TI DD disk controller prototype (PHP
-								1240), TI hexbus disk controller, and possibly
-								some Myarc disk controller) */
-				basicdsk_set_geometry(id, 40, 2, 16, 256, 0, 0);
-				break;
-
-			case 2*40*18*256:	/* 360kbytes: 18-sector-per-track DSDD (standard
-								format for most third-party DD disk controllers,
-								but reportedly not supported by the original TI
-								DD disk controller) */
-				basicdsk_set_geometry(id, 40, 2, 18, 256, 0, 0);
-				break;
-			}
-		}
-
-		return INIT_PASS;
-	}
-
-	return INIT_FAIL;
-}
-
-int ti99_cassette_load(int id, mame_file *fp, int open_mode)
+DEVICE_LOAD( ti99_cassette )
 {
 	struct cassette_args args;
 	memset(&args, 0, sizeof(args));
 	args.create_smpfreq = 22050;	/* maybe 11025 Hz would be sufficient? */
-	return cassette_init(id, fp, open_mode, &args);
+	return cassette_init(image, file, open_mode, &args);
 }
 
 /*
@@ -455,26 +380,27 @@ int ti99_cassette_load(int id, mame_file *fp, int open_mode)
 
 	We don't need to support 99/4p, as it has no cartridge port.
 */
-int ti99_rom_load(int id, mame_file *cartfile, int open_mode)
+DEVICE_LOAD( ti99_cart )
 {
 	/* Trick - we identify file types according to their extension */
 	/* Note that if we do not recognize the extension, we revert to the slot location <-> type
 	scheme.  I do this because the extension concept is quite unfamiliar to mac people
 	(I am dead serious). */
 	/* Original idea by Norberto Bensa */
-	const char *name = image_filename(IO_CARTSLOT,id);
+	const char *name = image_filename(image);
 	const char *ch, *ch2;
+	int id = image_index_in_device(image);
 	slot_type_t type = (slot_type_t) id;
 
 	/* There is a circuitry in TI99/4(a) that resets the console when a
 	cartridge is inserted or removed.  We emulate this instead of resetting the
 	emulator (which is the default in MESS). */
-	cpu_set_reset_line(0, PULSE_LINE);
+	/*cpu_set_reset_line(0, PULSE_LINE);
 	tms9901_reset(0);
 	if (! has_evpc)
 		TMS9928A_reset();
 	if (has_evpc)
-		v9938_reset();
+		v9938_reset();*/
 
 	ch = strrchr(name, '.');
 	ch2 = (ch-1 >= name) ? ch-1 : "";
@@ -501,6 +427,11 @@ int ti99_rom_load(int id, mame_file *cartfile, int open_mode)
 			/* rom minimemory  */
 			type = SLOT_MINIMEM;
 		}
+		else if ((! stricmp(ch2, "b.bin")) || (! stricmp(ch, ".brom")) || (! stricmp(ch, ".b")))
+		{
+			/* rom MBX  */
+			type = SLOT_MBX;
+		}
 	}
 
 	slot_type[id] = type;
@@ -511,19 +442,22 @@ int ti99_rom_load(int id, mame_file *cartfile, int open_mode)
 		break;
 
 	case SLOT_GROM:
-		mame_fread(cartfile, memory_region(region_grom) + 0x6000, 0xA000);
+		mame_fread(file, memory_region(region_grom) + 0x6000, 0xA000);
 		break;
 
 	case SLOT_MINIMEM:
 		cartridge_minimemory = TRUE;
+	case SLOT_MBX:
+		if (type == SLOT_MBX)
+			cartridge_mbx = TRUE;
 	case SLOT_CROM:
-		mame_fread_msbfirst(cartfile, cartridge_pages[0], 0x2000);
+		mame_fread_msbfirst(file, cartridge_pages[0], 0x2000);
 		current_page_ptr = cartridge_pages[0];
 		break;
 
 	case SLOT_DROM:
 		cartridge_paged = TRUE;
-		mame_fread_msbfirst(cartfile, cartridge_pages[1], 0x2000);
+		mame_fread_msbfirst(file, cartridge_pages[1], 0x2000);
 		current_page_ptr = cartridge_pages[0];
 		break;
 	}
@@ -531,17 +465,19 @@ int ti99_rom_load(int id, mame_file *cartfile, int open_mode)
 	return INIT_PASS;
 }
 
-void ti99_rom_unload(int id)
+DEVICE_UNLOAD( ti99_cart )
 {
+	int id = image_index_in_device(image);
+
 	/* There is a circuitry in TI99/4(a) that resets the console when a
 	cartridge is inserted or removed.  We emulate this instead of resetting the
 	emulator (which is the default in MESS). */
-	cpu_set_reset_line(0, PULSE_LINE);
+	/*cpu_set_reset_line(0, PULSE_LINE);
 	tms9901_reset(0);
 	if (! has_evpc)
 		TMS9928A_reset();
 	if (has_evpc)
-		v9938_reset();
+		v9938_reset();*/
 
 	switch (slot_type[id])
 	{
@@ -555,6 +491,10 @@ void ti99_rom_unload(int id)
 	case SLOT_MINIMEM:
 		cartridge_minimemory = FALSE;
 		/* we should insert some code to save the minimem contents... */
+	case SLOT_MBX:
+		if (slot_type[id] == SLOT_MBX)
+			cartridge_mbx = FALSE;
+			/* maybe we should insert some code to save the memory contents... */
 	case SLOT_CROM:
 		memset(cartridge_pages[0], 0, 0x2000);
 		break;
@@ -570,34 +510,12 @@ void ti99_rom_unload(int id)
 
 
 /*
-	ti99_init_machine(); called AFTER ti99_load_rom...
+	ti99_init_machine(); called before ti99_load_rom...
 */
 void machine_init_ti99(void)
 {
-	int i;
-
-
-	/* set up RAM pointers */
-	if (ti99_model == model_99_4p)
-	{
-		sRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_sram_4p);
-		xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram_4p);
-	}
-	else
-	{
-		sRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_sram);
-		xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram);
-	}
-
-	/* erase GPL_port_lookup, so that only console_GROMs are installed by default */
-	memset(GPL_port_lookup, 0, sizeof(GPL_port_lookup));
-
-	for (i=0; i<8;i++)
-		console_GROMs.GROM_flags[i] = gf_has_look_ahead;
-
 	console_GROMs.data_ptr = memory_region(region_grom);
 	console_GROMs.addr = 0;
-	console_GROMs.cur_flags = console_GROMs.GROM_flags[0];
 
 	if (ti99_model == model_99_4p)
 	{
@@ -614,8 +532,6 @@ void machine_init_ti99(void)
 		cpu_setbank(4, sRAM_ptr);
 	}
 
-	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
-	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
 	/* reset cartridge mapper */
 	current_page_ptr = cartridge_pages[0];
 
@@ -645,11 +561,13 @@ void machine_init_ti99(void)
 		xRAM_kind = (readinputport(input_port_config) >> config_xRAM_bit) & config_xRAM_mask;
 	has_speech = (readinputport(input_port_config) >> config_speech_bit) & config_speech_mask;
 	fdc_kind = (readinputport(input_port_config) >> config_fdc_bit) & config_fdc_mask;
+	has_ide = (readinputport(input_port_config) >> config_ide_bit) & config_ide_mask;
 	has_rs232 = (readinputport(input_port_config) >> config_rs232_bit) & config_rs232_mask;
 	has_handset = (ti99_model == model_99_4) && ((readinputport(input_port_config) >> config_handsets_bit) & config_handsets_mask);
+	has_hsgpl = (ti99_model == model_99_4p) || ((readinputport(input_port_config) >> config_hsgpl_bit) & config_hsgpl_mask);
 
 	/* set up optional expansion hardware */
-	ti99_exp_init();
+	ti99_peb_init(ti99_model == model_99_4p, tms9901_set_int1, NULL);
 
 	if (ti99_model == model_99_4p)
 		ti99_4p_internal_dsr_init();
@@ -704,21 +622,36 @@ void machine_init_ti99(void)
 	case fdc_kind_BwG:
 		ti99_bwg_init();
 		break;
+	case fdc_kind_hfdc:
+		ti99_hfdc_init();
+		break;
 	case fdc_kind_none:
 		break;
 	}
 
+	if (has_ide)
+		ti99_ide_init();
+
 	if (has_rs232)
 		ti99_rs232_init();
 
-	if (has_evpc)
+	if (has_hsgpl)
 	{
-		ti99_evpc_init();
+		ti99_hsgpl_init();
+		ti99_hsgpl_load_memcard();
 	}
+	else
+		hsgpl_crdena = 0;
+
+	if (has_evpc)
+		ti99_evpc_init();
 }
 
 void machine_stop_ti99(void)
 {
+	if (has_hsgpl)
+		ti99_hsgpl_save_memcard();
+
 	if (has_rs232)
 		ti99_rs232_cleanup();
 
@@ -750,8 +683,20 @@ void ti99_4ev_hblank_interrupt(void)
 	v9938_interrupt();
 }
 
+/*
+	Backdoor function that is called by hsgpl, so that the machine code knows
+	whether hsgpl or console GROMs are active
+*/
+void set_hsgpl_crdena(int data)
+{
+	hsgpl_crdena = (data != 0);
+}
 
 /*===========================================================================*/
+#if 0
+#pragma mark -
+#pragma mark MEMORY HANDLERS
+#endif
 /*
 	Memory handlers.
 
@@ -782,6 +727,13 @@ READ16_HANDLER ( ti99_rw_cartmem )
 {
 	tms9900_ICount -= 4;
 
+	if (hsgpl_crdena)
+		/* hsgpl is enabled */
+		return ti99_hsgpl_rom6_r(offset, mem_mask);
+
+	if (cartridge_mbx && (offset >= 0x0600) && (offset <= 0x07fe))
+		return (cartridge_pages[0])[offset];
+
 	return current_page_ptr[offset];
 }
 
@@ -792,9 +744,21 @@ WRITE16_HANDLER ( ti99_ww_cartmem )
 {
 	tms9900_ICount -= 4;
 
-	if (cartridge_minimemory && offset >= 0x800)
+	if (hsgpl_crdena)
+		/* hsgpl is enabled */
+		ti99_hsgpl_rom6_w(offset, data, mem_mask);
+	else if (cartridge_minimemory && offset >= 0x800)
 		/* handle minimem RAM */
 		COMBINE_DATA(current_page_ptr+offset);
+	else if (cartridge_mbx)
+	{	/* handle MBX cart */
+		/* RAM in 0x6c00-0x6ffd (presumably non-paged) */
+		/* mapper at 0x6ffe */
+		if ((offset >= 0x0600) && (offset <= 0x07fe))
+			COMBINE_DATA(cartridge_pages[0]+offset);
+		else if ((offset == 0x07ff) && ACCESSING_MSB16)
+			current_page_ptr = cartridge_paged ? cartridge_pages[(data >> 8) & 1] : 0;
+	}
 	else if (cartridge_paged)
 		/* handle pager */
 		current_page_ptr = cartridge_pages[offset & 1];
@@ -980,7 +944,6 @@ static WRITE16_HANDLER ( ti99_ww_wspeech )
 */
 READ16_HANDLER ( ti99_rw_rgpl )
 {
-	GROM_port_t *port = GPL_port_lookup[(offset & 0x1FE) >> 1];	/* GROM/GRAM can be paged */
 	int reply;
 
 
@@ -1001,22 +964,6 @@ READ16_HANDLER ( ti99_rw_rgpl )
 			reply = console_GROMs.addr & 0xff00;
 			console_GROMs.raddr_LSB = TRUE;
 		}
-
-		if (port)
-		{
-			port->waddr_LSB = FALSE;
-
-			if (port->raddr_LSB)
-			{
-				reply = (port->addr << 8) & 0xff00;
-				port->raddr_LSB = FALSE;
-			}
-			else
-			{
-				reply = port->addr & 0xff00;
-				port->raddr_LSB = TRUE;
-			}
-		}
 	}
 	else
 	{	/* read GPL data */
@@ -1027,17 +974,11 @@ READ16_HANDLER ( ti99_rw_rgpl )
 		console_GROMs.buf = console_GROMs.data_ptr[console_GROMs.addr];
 		console_GROMs.addr = ((console_GROMs.addr + 1) & 0x1FFF) | (console_GROMs.addr & 0xE000);
 		console_GROMs.raddr_LSB = console_GROMs.waddr_LSB = FALSE;
-
-		if (port)
-		{
-			reply = ((int) port->buf) << 8;	/* retreive buffer */
-
-			/* read ahead */
-			port->buf = port->data_ptr[port->addr];
-			port->addr = ((port->addr + 1) & 0x1FFF) | (port->addr & 0xE000);
-			port->raddr_LSB = port->waddr_LSB = FALSE;
-		}
 	}
+
+	if (hsgpl_crdena)
+		/* hsgpl buffers are stronger than console GROM buffers */
+		reply = ti99_hsgpl_gpl_r(offset, mem_mask);
 
 	return reply;
 }
@@ -1047,13 +988,10 @@ READ16_HANDLER ( ti99_rw_rgpl )
 */
 WRITE16_HANDLER ( ti99_ww_wgpl )
 {
-	GROM_port_t *port = GPL_port_lookup[(offset & 0x1FE) >> 1];	/* GROM/GRAM can be paged */
-
-
 	tms9900_ICount -= 4/*16*/;		/* from 4 to 16? */
 
 	if (offset & 1)
-	{	/* write GPL adress */
+	{	/* write GPL address */
 		/* the console GROMs are always affected */
 		console_GROMs.raddr_LSB = FALSE;
 
@@ -1070,59 +1008,33 @@ WRITE16_HANDLER ( ti99_ww_wgpl )
 		else
 		{
 			console_GROMs.addr = (data & 0xFF00) | (console_GROMs.addr & 0xFF);
-			console_GROMs.cur_flags = console_GROMs.GROM_flags[data >> 13];
 
 			console_GROMs.waddr_LSB = TRUE;
 		}
 
-		if (port)
-		{
-			port->raddr_LSB = FALSE;
-
-			if (port->waddr_LSB)
-			{
-				port->addr = (port->addr & 0xFF00) | ((data >> 8) & 0xFF);
-
-				/* read ahead */
-				port->buf = port->data_ptr[port->addr];
-				port->addr = ((port->addr + 1) & 0x1FFF) | (port->addr & 0xE000);
-
-				port->waddr_LSB = FALSE;
-			}
-			else
-			{
-				port->addr = (data & 0xFF00) | (port->addr & 0xFF);
-				port->cur_flags = port->GROM_flags[data >> 13];
-
-				port->waddr_LSB = TRUE;
-			}
-		}
 	}
 	else
-	{	/* write GPL byte */
+	{	/* write GPL data */
 		/* the console GROMs are always affected */
-		/* BTW, console GROMs are never GRAMs, therefore there is no need to check */
+		/* BTW, console GROMs are never GRAMs, therefore there is no need to
+		actually write anything */
 		/* read ahead */
 		console_GROMs.buf = console_GROMs.data_ptr[console_GROMs.addr];
 		console_GROMs.addr = ((console_GROMs.addr + 1) & 0x1FFF) | (console_GROMs.addr & 0xE000);
 		console_GROMs.raddr_LSB = console_GROMs.waddr_LSB = FALSE;
 
-		if (port)
-		{
-			/* GRAM support is almost ready, but we need to support imitation "GROMs" with no read-ahead */
-			if (port->GROM_flags[port->addr >> 13])
-				port->data_ptr[port->addr] = ((data >> 8) & 0xFF);
-
-			/* read ahead */
-			port->buf = port->data_ptr[port->addr];
-			port->addr = ((port->addr + 1) & 0x1FFF) | (port->addr & 0xE000);
-			port->raddr_LSB = port->waddr_LSB = FALSE;
-		}
 	}
+
+	if (hsgpl_crdena)
+		ti99_hsgpl_gpl_w(offset, data, mem_mask);
 }
 
 
 /*===========================================================================*/
+#if 0
+#pragma mark -
+#pragma mark TI-99/4 HANDSETS
+#endif
 /*
 	Handset support (TI99/4 only)
 
@@ -1141,11 +1053,25 @@ WRITE16_HANDLER ( ti99_ww_wgpl )
 	joysticks), according to which was currently active.
 */
 
+/*
+	ti99_handset_poll_bus()
+
+	Poll the current state of the 4-bit data bus that goes from the I/R
+	receiver to the tms9901.
+*/
 static int ti99_handset_poll_bus(void)
 {
 	return (has_handset) ? (handset_buf & 0xf) : 0;
 }
 
+/*
+	ti99_handset_ack_callback()
+
+	Handle data acknowledge sent by the ti-99/4 handset ISR (through tms9901
+	line P0).  This function is called by a delayed timer 30ms after the state
+	of P0 is changed, because, in one occasion, the ISR asserts the line before
+	it reads the data, so we need to delay the acknowledge process.
+*/
 static void ti99_handset_ack_callback(int dummy)
 {
 	handset_clock = ! handset_clock;
@@ -1168,6 +1094,11 @@ static void ti99_handset_ack_callback(int dummy)
 		ti99_handset_task();
 }
 
+/*
+	ti99_handset_set_ack()
+
+	Handler for tms9901 P0 pin (handset data acknowledge)
+*/
 static void ti99_handset_set_ack(int offset, int data)
 {
 	if (has_handset && handset_buflen && (data != handset_ack))
@@ -1179,6 +1110,15 @@ static void ti99_handset_set_ack(int offset, int data)
 	}
 }
 
+/*
+	ti99_handset_post_message()
+
+	Post a 12-bit message: trigger an interrupt on the tms9901, and store the
+	message in the I/R receiver buffer so that the handset ISR will read this
+	message.
+
+	message: 12-bit message to post (only the 12 LSBits are meaningful)
+*/
 static void ti99_handset_post_message(int message)
 {
 	/* post message and assert interrupt */
@@ -1188,6 +1128,15 @@ static void ti99_handset_post_message(int message)
 	tms9901_set_single_int(0, 12, 1);
 }
 
+/*
+	ti99_handset_poll_keyboard()
+
+	Poll the current state of one given handset keypad.
+
+	num: number of the keypad to poll (0-3)
+
+	Returns TRUE if the handset state has changed and a message was posted.
+*/
 static int ti99_handset_poll_keyboard(int num)
 {
 	static UINT8 previous_key[max_handsets];
@@ -1202,8 +1151,7 @@ static int ti99_handset_poll_keyboard(int num)
 					| (readinputport(input_port_IR_keypads+num+1) << 16) ) >> (4*num);
 
 	/* If a key was previously pressed, this key was not shift, and this key is
-	still down, then don't change
-	the current key press. */
+	still down, then don't change the current key press. */
 	if (previous_key[num] && (previous_key[num] != 0x24)
 			&& (key_buf & (1 << (previous_key[num] & 0x1f))))
 	{
@@ -1261,6 +1209,15 @@ static int ti99_handset_poll_keyboard(int num)
 	return FALSE;
 }
 
+/*
+	ti99_handset_poll_joystick()
+
+	Poll the current state of one given handset joystick.
+
+	num: number of the joystick to poll (0-3)
+
+	Returns TRUE if the handset state has changed and a message was posted.
+*/
 static int ti99_handset_poll_joystick(int num)
 {
 	static UINT8 previous_joy[max_handsets];
@@ -1324,6 +1281,11 @@ static int ti99_handset_poll_joystick(int num)
 	return FALSE;
 }
 
+/*
+	ti99_handset_task()
+
+	Manage handsets, posting an event if the state of any handset has changed.
+*/
 static void ti99_handset_task(void)
 {
 	int i;
@@ -1352,6 +1314,10 @@ static void ti99_handset_task(void)
 
 
 /*===========================================================================*/
+#if 0
+#pragma mark -
+#pragma mark TMS9901 INTERFACE
+#endif
 /*
 	TI99/4x-specific tms9901 I/O handlers
 
@@ -1373,10 +1339,13 @@ KNOWN PROBLEMS:
 	INT1: external interrupt (used by RS232 controller, for instance)
 	INT2: VDP interrupt
 	TMS9901 timer interrupt (overrides INT3)
+	INT12: handset interrupt (only on a TI-99/4 with the handset prototypes)
 
-	Three interrupts are used by the system (INT1, INT2, and timer), out of 15/16 possible
-	interrupt.  Keyboard pins can be used as interrupt pins, too, but this is not emulated
-	(it's a trick, anyway, and I don't know of any program which uses it).
+	Three (occasionally four) interrupts are used by the system (INT1, INT2,
+	timer, and INT12 on a TI-99/4 with remote handset prototypes), out of 15/16
+	possible interrupts.  Keyboard pins can be used as interrupt pins, too, but
+	this is not emulated (it's a trick, anyway, and I don't know any program
+	which uses it).
 
 	When an interrupt line is set (and the corresponding bit in the interrupt mask is set),
 	a level 1 interrupt is requested from the TMS9900.  This interrupt request lasts as long as
@@ -1395,7 +1364,15 @@ nota:
 */
 
 /*
-	set the state of int2 (called by tms9928 core)
+	set the state of int1 (called by the peb core)
+*/
+static void tms9901_set_int1(int state)
+{
+	tms9901_set_single_int(0, 1, state);
+}
+
+/*
+	set the state of int2 (called by the tms9928 core)
 */
 void tms9901_set_int2(int state)
 {
@@ -1483,7 +1460,7 @@ static int ti99_R9901_2(int offset)
 /*
 	Read pins P8-P15 of TI99's 9901.
 
-	 bit 26: IR handset interrupt (not emulated)
+	 bit 26: IR handset interrupt
 	 bit 27: tape input
 */
 static int ti99_R9901_3(int offset)
@@ -1496,7 +1473,7 @@ static int ti99_R9901_3(int offset)
 		answer = 4;	/* on systems without handset, the pin is pulled up to avoid spurious interrupts */
 
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
-	if (device_input(IO_CASSETTE, 0) > 0)
+	if (device_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0)
 		answer |= 8;
 
 	return answer;
@@ -1545,15 +1522,21 @@ static void ti99_AlphaW(int offset, int data)
 		AlphaLockLine = data;
 }
 
+static void ti99_CSx_motor(int data, int cassette_id)
+{
+	mess_image *img = image_from_devtype_and_index(IO_CASSETTE, cassette_id);
+	if (data)
+		device_status(img, device_status(img, -1) & ~ WAVE_STATUS_MOTOR_INHIBIT);
+	else
+		device_status(img, device_status(img, -1) | WAVE_STATUS_MOTOR_INHIBIT);
+}
+
 /*
 	command CS1 tape unit motor (P6)
 */
 static void ti99_CS1_motor(int offset, int data)
 {
-	if (data)
-		device_status(IO_CASSETTE, 0, device_status(IO_CASSETTE, 0, -1) & ~ WAVE_STATUS_MOTOR_INHIBIT);
-	else
-		device_status(IO_CASSETTE, 0, device_status(IO_CASSETTE, 0, -1) | WAVE_STATUS_MOTOR_INHIBIT);
+	ti99_CSx_motor(data, 0);
 }
 
 /*
@@ -1561,10 +1544,7 @@ static void ti99_CS1_motor(int offset, int data)
 */
 static void ti99_CS2_motor(int offset, int data)
 {
-	if (data)
-		device_status(IO_CASSETTE, 1, device_status(IO_CASSETTE, 1, -1) & ~ WAVE_STATUS_MOTOR_INHIBIT);
-	else
-		device_status(IO_CASSETTE, 1, device_status(IO_CASSETTE, 1, -1) | WAVE_STATUS_MOTOR_INHIBIT);
+	ti99_CSx_motor(data, 1);
 }
 
 /*
@@ -1591,513 +1571,17 @@ static void ti99_audio_gate(int offset, int data)
 */
 static void ti99_CS_output(int offset, int data)
 {
-	device_output(IO_CASSETTE, 0, data ? 32767 : -32767);
-	device_output(IO_CASSETTE, 1, data ? 32767 : -32767);
+	device_output(image_from_devtype_and_index(IO_CASSETTE, 0), data ? 32767 : -32767);
+	device_output(image_from_devtype_and_index(IO_CASSETTE, 1), data ? 32767 : -32767);
 }
 
 
 
 /*===========================================================================*/
-/*
-	Peripheral expansion card support.
-
-	ti99/4, ti99/4a, geneve, snug sgcpu (a.k.a. 99/4p), and ti99/8 systems have
-	a bus connector that enables the connection of extension cards.  (Although
-	the hexbus is the preferred peripheral expansion bus for ti99/8, ti99/8 is
-	believed to be compatible with the PEB system.)
-
-	While a few cards (e.g. TI speech synthesizer) are to be connected to the
-	side port of the console, most extension cards were designed to be inserted
-	in a PEB instead.  The PEB (Peripheral Expansion Box) is a big box with an
-	alimentation, a few drivers, and several card slots, that connects to the
-	ti99/4(a) side port.  The reason for using the PEB is that daisy-chaining
-	many modules caused the system to be unreliable due to the noise produced
-	by the successive contacts.
-
-	Each expansion card is assigned to one of 16 CRU address ranges.
-	I appended the names of known TI peripherals that use each port (I appended
-	'???' when I don't know what the peripheral is :-) ).
-	* 0x1000-0x10FE "For test equipment use on production line"
-	* 0x1100-0x11FE disk controller
-	* 0x1200-0x12FE modem???
-	* 0x1300-0x13FE RS232 1&2, PIO 1
-	* 0x1400-0x14FE unassigned
-	* 0x1500-0x15FE RS232 3&4, PIO 2
-	* 0x1600-0x16FE unassigned
-	* 0x1700-0x17FE hex-bus (prototypes)
-	* 0x1800-0x18FE thermal printer (early peripheral)
-	* 0x1900-0x19FE EPROM programmer??? (Mezzanine board in July 1981's TI99/7 prototype)
-	* 0x1A00-0x1AFE unassigned
-	* 0x1B00-0x1BFE TI GPL debugger card
-	* 0x1C00-0x1CFE Video Controller Card (Possibly the weirdest device.  This
-		card is connected to the video output of the computer, to a VCR, and a
-		video monitor.  It can control the VCR, connect the display to either
-		VCR output or computer video output, and it can read or save binary
-		data to video tape.  I think it can act as a genlock interface (i.e.
-		TMS9918 transparent background shows the video signal), too, but I am
-		not sure about this.)
-	* 0x1D00-0x1DFE IEEE 488 Controller Card ('intelligent' parallel bus,
-		schematics on ftp.whtech.com)
-	* 0x1E00-0x1EFE unassigned
-	* 0x1F00-0x1FFE P-code card (part of a complete development system)
-
-	Known mappings for 3rd party cards:
-	* Horizon RAMdisk: any ports from 0 to 7 (port 0 is most common).
-	* Myarc 128k/512k (RAM and DSR ROM): port 0 (0x1000-0x11FE)
-	* Corcomp 512k (RAM and DSR ROM): port unknown
-	* Super AMS 128k/512k: port 14 (0x1E00-0x1EFE)
-	* Foundation 128k/512k: port 14 (0x1E00-0x1EFE)
-	* Gram Karte: any port (0-15)
-	* EVPC (video card): 0x1400-0x14FE
-	* HSGPL (GROM replacement): 0x1B00-0x1BFE
-
-	Of course, these devices additionally need some support routines, and possibly memory-mapped
-	registers.  To do this, memory range 0x4000-5FFF is shared by all cards.  The system enables
-	each card as needed by writing a 1 to the first CRU bit: when this happens the card can safely
-	enable its ROM, RAM, memory-mapped registers, etc.  Provided the ROM uses the proper ROM header,
-	the system will recognize and call peripheral I/O functions, interrupt service routines,
-	and startup routines (all these routines are generally called DSR = Device Service Routine).
-
-	Also, the cards can trigger level-1 ("INTA") interrupts.  (A LOAD interrupt is possible, too,
-	but it was never used by TI, AFAIK.  Also, an interrupt line called "INTB" is found on several
-	cards built by TI, but it is not connected: I am quite unsure whether it was intended to be
-	connected to the LOAD line, to the INT2 line of TMS9985, or it was only to be used with the
-	TI99/4(a) development system running on a TI990/10.  This is not the only unused feature:
-	cards built by TI support sensing of an interrupt status register and 19-bit addressing,
-	even though TI99/4(A) does not take advantage of these feature.  TI documentation tells that
-	some of these features are used by the "Personal Computer PCC at Texas Instrument",
-	which is not very explicit (What on earth does "PCC" stand for?).  Maybe it refers to
-	the TI99/4(a) development system running on a TI990/10, or to the TI99/7 and TI99/8 prototypes.
-
-	Note that I use 8-bit handlers.  Obviously, using 16-bit handlers would be equivalent and
-	quite faster, but I wanted to be able to interface the extension cards to a future 99/8
-	emulator (which was possible with several PEB boards).
-
-	Only the floppy disk controller card is supported for now.
-*/
-
-/* handlers for each of 16 slots */
-static ti99_exp_card_handlers_t expansion_ports[16];
-
-/* expansion port for the 99/4p system, which supports dynamical 16-bit accesses */
-/* (TI did not design this!) */
-typedef struct ti99_4p_exp_card_handlers_t
-{
-	cru_read_handler cru_read;		/* card CRU read handler */
-	cru_write_handler cru_write;	/* card CRU handler */
-
-	enum {width_8bit = 0, width_16bit} width;
-	union
-	{
-		struct
-		{
-			mem_read_handler mem_read;		/* card mem read handler (8 bits) */
-			mem_write_handler mem_write;	/* card mem write handler (8 bits) */
-		} width_8bit;
-		struct
-		{
-			mem_read16_handler mem_read;		/* card mem read handler (8 bits) */
-			mem_write16_handler mem_write;	/* card mem write handler (8 bits) */
-		} width_16bit;
-	} w;
-} ti99_4p_exp_card_handlers_t;
-
-/* handlers for each of 28 slots */
-static ti99_4p_exp_card_handlers_t ti99_4p_expansion_ports[28];
-
-/* index of the currently active card (-1 if none) */
-static int active_card;
-
-/* when 1, enable a workaround required by 99/4p, which mistakenly enables 2
-cards simultaneously */
-#define ACTIVATE_BIT_EMULATE 1
-
-#if ACTIVATE_BIT_EMULATE
-/* activate mask: 1 bit set for each card enable CRU bit set */
-static int active_card_mask;
+#if 0
+#pragma mark -
+#pragma mark SGCPU INTERNAL DSR
 #endif
-
-/* ila: inta status register (not actually used on TI99/4(A), but still present) */
-static int ila;
-/* ilb: intb status register (completely pointless on TI99/4(A), as neither ilb nor senilb are
-connected) */
-static int ilb;
-
-/* only supported by the SNUG SGCPU (a.k.a. 99/4p) */
-static int senila, senilb;
-
-/* hack to simulate TMS9900 byte write */
-static int tmp_buffer;
-
-
-/*
-	Resets the expansion card handlers
-*/
-static void ti99_exp_init(void)
-{
-	memset(expansion_ports, 0, sizeof(expansion_ports));
-	memset(ti99_4p_expansion_ports, 0, sizeof(ti99_4p_expansion_ports));
-
-	active_card = -1;
-#if ACTIVATE_BIT_EMULATE
-	active_card_mask = 0;
-#endif
-	ila = 0;
-	ilb = 0;
-}
-
-/*
-	Sets the handlers for one expansion port
-
-	cru_base: CRU base address (any of 0x1000, 0x1100, 0x1200, ..., 0x1F00)
-*/
-void ti99_exp_set_card_handlers(int cru_base, const ti99_exp_card_handlers_t *handler)
-{
-	int port;
-
-	if (cru_base & 0xff)
-		return;
-
-	if (ti99_model == model_99_4p)
-	{
-		port = (cru_base - 0x0400) >> 8;
-
-		if ((port>=0) && (port<28))
-		{
-			ti99_4p_expansion_ports[port].cru_read = handler->cru_read;
-			ti99_4p_expansion_ports[port].cru_write = handler->cru_write;
-			ti99_4p_expansion_ports[port].width = width_8bit;
-			ti99_4p_expansion_ports[port].w.width_8bit.mem_read = handler->mem_read;
-			ti99_4p_expansion_ports[port].w.width_8bit.mem_write = handler->mem_write;
-		}
-	}
-	else
-	{
-		port = (cru_base - 0x1000) >> 8;
-
-		if ((port>=0) && (port<16))
-		{
-			expansion_ports[port] = *handler;
-		}
-	}
-}
-
-/*
-	Sets the handlers for one expansion port
-
-	cru_base: CRU base address (any of 0x1000, 0x1100, 0x1200, ..., 0x1F00)
-*/
-void ti99_4p_exp_set_16bit_card_handlers(int cru_base, const ti99_4p_exp_16bit_card_handlers_t *handler)
-{
-	int port;
-
-	if (cru_base & 0xff)
-		return;
-
-	if (ti99_model == model_99_4p)
-	{
-		port = (cru_base - 0x0400) >> 8;
-
-		if ((port>=0) && (port<28))
-		{
-			ti99_4p_expansion_ports[port].cru_read = handler->cru_read;
-			ti99_4p_expansion_ports[port].cru_write = handler->cru_write;
-			ti99_4p_expansion_ports[port].width = width_16bit;
-			ti99_4p_expansion_ports[port].w.width_16bit.mem_read = handler->mem_read;
-			ti99_4p_expansion_ports[port].w.width_16bit.mem_write = handler->mem_write;
-		}
-	}
-}
-
-/*
-	Update ila status register and asserts or clear interrupt line accordingly.
-
-	bit: bit number [0,7]
-	state: 1 to assert bit, 0 to clear
-*/
-void ti99_exp_set_ila_bit(int bit, int state)
-{
-	if (state)
-	{
-		ila |= 0x80 >> bit;
-		tms9901_set_single_int(0, 1, 1);
-	}
-	else
-	{
-		ila &= ~(0x80 >> bit);
-		if (! ila)
-			tms9901_set_single_int(0, 1, 0);
-	}
-}
-
-/*
-	Update ilb status register.
-
-	bit: bit number [0,7]
-	state: 1 to assert bit, 0 to clear
-*/
-void ti99_exp_set_ilb_bit(int bit, int state)
-{
-	if (state)
-		ilb |= 0x80 >> bit;
-	else
-		ilb &= ~(0x80 >> bit);
-}
-
-
-/*
-	Read CRU in range >1000->1ffe (>800->8ff)
-*/
-READ16_HANDLER ( ti99_expansion_CRU_r )
-{
-	int port;
-	cru_read_handler handler;
-	int reply;
-
-	port = (offset & 0x00f0) >> 4;
-	handler = expansion_ports[port].cru_read;
-
-	reply = (handler) ? (*handler)(offset & 0xf) : 0;
-
-	return reply;
-}
-
-/*
-	Write CRU in range >1000->1ffe (>800->8ff)
-*/
-WRITE16_HANDLER ( ti99_expansion_CRU_w )
-{
-	int port;
-	cru_write_handler handler;
-
-	port = (offset & 0x0780) >> 7;
-	handler = expansion_ports[port].cru_write;
-
-	if (handler)
-		(*handler)(offset & 0x7f, data);
-
-	/* expansion card enable? */
-	if ((offset & 0x7f) == 0)
-	{
-		if (data & 1)
-		{
-			/* enable */
-			active_card = port;
-		}
-		else
-		{
-			if (port == active_card)	/* geez... who cares? */
-			{
-				active_card = -1;			/* no port selected */
-			}
-		}
-	}
-}
-
-/*
-	Read mem in range >4000->5ffe
-*/
-READ16_HANDLER ( ti99_rw_expansion )
-{
-	int reply = 0;
-	mem_read_handler handler;
-
-	tms9900_ICount -= 4;
-
-	if (active_card != -1)
-	{
-		handler = expansion_ports[active_card].mem_read;
-		if (handler)
-		{
-			reply = (*handler)((offset << 1) + 1);
-			reply |= ((unsigned) (*handler)(offset << 1)) << 8;
-		}
-	}
-
-	return tmp_buffer = reply;
-}
-
-/*
-	Write mem in range >4000->5ffe
-*/
-WRITE16_HANDLER ( ti99_ww_expansion )
-{
-	mem_write_handler handler;
-
-	tms9900_ICount -= 4;
-
-	/* simulate byte write */
-	data = (tmp_buffer & mem_mask) | (data & ~mem_mask);
-
-	if (active_card != -1)
-	{
-		handler = expansion_ports[active_card].mem_write;
-		if (handler)
-		{
-			(*handler)((offset << 1) + 1, data & 0xff);
-			(*handler)(offset << 1, (data >> 8) & 0xff);
-		}
-	}
-}
-
-
-/*
-	Read CRU in range >0400->1ffe (>200->8ff)
-*/
-READ16_HANDLER ( ti99_4p_expansion_CRU_r )
-{
-	int port;
-	cru_read_handler handler;
-	int reply;
-
-	port = offset >> 4;
-	handler = ti99_4p_expansion_ports[port].cru_read;
-
-	reply = (handler) ? (*handler)(offset & 0xf) : 0;
-
-	return reply;
-}
-
-/*
-	Write CRU in range >0400->1ffe (>200->8ff)
-*/
-WRITE16_HANDLER ( ti99_4p_expansion_CRU_w )
-{
-	int port;
-	cru_write_handler handler;
-
-	port = offset >> 7;
-	handler = ti99_4p_expansion_ports[port].cru_write;
-
-	if (handler)
-		(*handler)(offset & 0x7f, data);
-
-	/* expansion card enable? */
-	if ((offset & 0x7f) == 0)
-	{
-		if (data & 1)
-		{
-			/* enable */
-			active_card = port;
-#if ACTIVATE_BIT_EMULATE
-			active_card_mask |= (1 << port);
-#endif
-		}
-		else
-		{
-#if ACTIVATE_BIT_EMULATE
-			active_card_mask &= ~(1 << port);
-#endif
-			if (port == active_card)	/* geez... who cares? */
-			{
-				active_card = -1;			/* no port selected */
-#if ACTIVATE_BIT_EMULATE
-				active_card_mask &= ~(1 << port);
-
-				if (active_card_mask)
-				{
-					int i;
-					logerror("Extension card error, trying to recover\n");
-					for (i = 0; i<28; i++)
-						if (active_card_mask & (1 << i))
-							active_card = i;
-				}
-#endif
-			}
-		}
-	}
-}
-
-/*
-	Read mem in range >4000->5ffe
-*/
-READ16_HANDLER ( ti99_4p_rw_expansion )
-{
-	int reply = 0;
-	mem_read_handler handler;
-	mem_read16_handler handler16;
-
-
-	if (active_card == -1)
-		tms9900_ICount -= 4;	/* ??? */
-	else
-	{
-
-		if (ti99_4p_expansion_ports[active_card].width == width_8bit)
-		{
-			tms9900_ICount -= 4;
-
-			handler = ti99_4p_expansion_ports[active_card].w.width_8bit.mem_read;
-			if (handler)
-			{
-				reply = (*handler)((offset << 1) + 1);
-				reply |= ((unsigned) (*handler)(offset << 1)) << 8;
-			}
-		}
-		else
-		{
-			tms9900_ICount -= 1;	/* ??? */
-
-			handler16 = ti99_4p_expansion_ports[active_card].w.width_16bit.mem_read;
-			if (handler16)
-				reply = (*handler16)(offset, /*mem_mask*/0);
-		}
-	}
-
-	if (senila || senilb)
-	{
-		if ((active_card != -1) || (senila && senilb))
-			/* ah, the smell of burnt silicon... */
-			logerror("<Scrrrrr>: your computer has just burnt (maybe).\n");
-
-		if (senila)
-			reply = ila | (ila << 8);
-		else if (senilb)
-			reply = ilb | (ilb << 8);
-	}
-
-	return tmp_buffer = reply;
-}
-
-/*
-	Write mem in range >4000->5ffe
-*/
-WRITE16_HANDLER ( ti99_4p_ww_expansion )
-{
-	mem_write_handler handler;
-	mem_write16_handler handler16;
-
-	if (active_card == -1)
-		tms9900_ICount -= 4;	/* ??? */
-	else
-	{
-		/* simulate byte write */
-		data = (tmp_buffer & mem_mask) | (data & ~mem_mask);
-
-		if (ti99_4p_expansion_ports[active_card].width == width_8bit)
-		{
-			tms9900_ICount -= 4;
-
-			handler = ti99_4p_expansion_ports[active_card].w.width_8bit.mem_write;
-			if (handler)
-			{
-				(*handler)((offset << 1) + 1, data & 0xff);
-				(*handler)(offset << 1, (data >> 8) & 0xff);
-			}
-		}
-		else
-		{
-			tms9900_ICount -= 1;	/* ??? */
-
-			handler16 = ti99_4p_expansion_ports[active_card].w.width_16bit.mem_write;
-			if (handler16)
-				(*handler16)(offset, data, /*mem_mask*/0);
-		}
-	}
-}
-
-
-/*===========================================================================*/
 /*
 	SNUG SGCPU (a.k.a. 99/4p) internal DSR support.
 
@@ -2109,7 +1593,7 @@ static void ti99_4p_internal_dsr_cru_w(int offset, int data);
 static READ16_HANDLER(ti99_4p_rw_internal_dsr);
 
 
-static const ti99_4p_exp_16bit_card_handlers_t ti99_4p_internal_dsr_handlers =
+static const ti99_peb_16bit_card_handlers_t ti99_4p_internal_dsr_handlers =
 {
 	NULL,
 	ti99_4p_internal_dsr_cru_w,
@@ -2128,11 +1612,11 @@ static void ti99_4p_internal_dsr_init(void)
 {
 	ti99_4p_internal_DSR = (UINT16 *) (memory_region(REGION_CPU1) + offset_rom4_4p);
 
-	ti99_4p_exp_set_16bit_card_handlers(0x0f00, & ti99_4p_internal_dsr_handlers);
+	ti99_peb_set_16bit_card_handlers(0x0f00, & ti99_4p_internal_dsr_handlers);
 
 	internal_rom6_enable = 0;
-	senila = 0;
-	senilb = 0;
+	ti99_4p_peb_set_senila(0);
+	ti99_4p_peb_set_senilb(0);
 }
 
 /* write CRU bit:
@@ -2149,10 +1633,10 @@ static void ti99_4p_internal_dsr_cru_w(int offset, int data)
 		/* ... */
 		break;
 	case 2:
-		senila = data;
+		ti99_4p_peb_set_senila(data);
 		break;
 	case 3:
-		senilb = data;
+		ti99_4p_peb_set_senilb(data);
 		break;
 	case 4:
 		/* 0: 16-bit (fast) memory timings */
@@ -2172,6 +1656,11 @@ static READ16_HANDLER(ti99_4p_rw_internal_dsr)
 }
 
 
+
+#if 0
+#pragma mark -
+#pragma mark MEMORY EXPANSION CARDS
+#endif
 /*===========================================================================*/
 /*
 	TI memory extension support.
@@ -2243,7 +1732,7 @@ static READ16_HANDLER ( ti99_rw_sAMSxramhigh );
 static WRITE16_HANDLER ( ti99_ww_sAMSxramhigh );
 
 
-static const ti99_exp_card_handlers_t sAMS_expansion_handlers =
+static const ti99_peb_card_handlers_t sAMS_expansion_handlers =
 {
 	NULL,
 	sAMS_cru_w,
@@ -2267,12 +1756,12 @@ static void ti99_sAMSxram_init(void)
 	install_mem_read16_handler(0, 0xa000, 0xffff, ti99_rw_sAMSxramhigh);
 	install_mem_write16_handler(0, 0xa000, 0xffff, ti99_ww_sAMSxramhigh);
 
-	ti99_exp_set_card_handlers(0x1e00, & sAMS_expansion_handlers);
+	ti99_peb_set_card_handlers(0x1e00, & sAMS_expansion_handlers);
 
 	sAMS_mapper_on = 0;
 
 	for (i=0; i<16; i++)
-		sAMSlookup[i] = i << 1;
+		sAMSlookup[i] = i << 11;
 }
 
 /* write CRU bit:
@@ -2304,7 +1793,7 @@ static READ16_HANDLER ( ti99_rw_sAMSxramlow )
 	if (sAMS_mapper_on)
 		return xRAM_ptr[(offset&0x7ff)+sAMSlookup[(0x1000+offset)>>11]];
 	else
-		return xRAM_ptr[offset];
+		return xRAM_ptr[offset+0x1000];
 }
 
 static WRITE16_HANDLER ( ti99_ww_sAMSxramlow )
@@ -2314,7 +1803,7 @@ static WRITE16_HANDLER ( ti99_ww_sAMSxramlow )
 	if (sAMS_mapper_on)
 		COMBINE_DATA(xRAM_ptr + (offset&0x7ff)+sAMSlookup[(0x1000+offset)>>11]);
 	else
-		COMBINE_DATA(xRAM_ptr + offset);
+		COMBINE_DATA(xRAM_ptr + offset+0x1000);
 }
 
 /* high 24 kb: 0xa000-0xffff */
@@ -2325,7 +1814,7 @@ static READ16_HANDLER ( ti99_rw_sAMSxramhigh )
 	if (sAMS_mapper_on)
 		return xRAM_ptr[(offset&0x7ff)+sAMSlookup[(0x5000+offset)>>11]];
 	else
-		return xRAM_ptr[offset+0x1000];
+		return xRAM_ptr[offset+0x5000];
 }
 
 static WRITE16_HANDLER ( ti99_ww_sAMSxramhigh )
@@ -2335,7 +1824,7 @@ static WRITE16_HANDLER ( ti99_ww_sAMSxramhigh )
 	if (sAMS_mapper_on)
 		COMBINE_DATA(xRAM_ptr + (offset&0x7ff)+sAMSlookup[(0x5000+offset)>>11]);
 	else
-		COMBINE_DATA(xRAM_ptr + offset+0x1000);
+		COMBINE_DATA(xRAM_ptr + offset+0x5000);
 }
 
 
@@ -2353,7 +1842,7 @@ static READ16_HANDLER(ti99_4p_rw_mapper);
 static WRITE16_HANDLER(ti99_4p_ww_mapper);
 
 
-static const ti99_4p_exp_16bit_card_handlers_t ti99_4p_mapper_handlers =
+static const ti99_peb_16bit_card_handlers_t ti99_4p_mapper_handlers =
 {
 	NULL,
 	ti99_4p_mapper_cru_w,
@@ -2389,7 +1878,7 @@ static void ti99_4p_mapper_init(void)
 	install_mem_read16_handler(0, 0xf000, 0xffff, MRA16_BANK10);
 	install_mem_write16_handler(0, 0xf000, 0xffff, MWA16_BANK10);*/
 
-	ti99_4p_exp_set_16bit_card_handlers(0x1e00, & ti99_4p_mapper_handlers);
+	ti99_peb_set_16bit_card_handlers(0x1e00, & ti99_4p_mapper_handlers);
 
 	ti99_4p_mapper_on = 0;
 
@@ -2507,7 +1996,7 @@ static READ16_HANDLER ( ti99_rw_myarcxramhigh );
 static WRITE16_HANDLER ( ti99_ww_myarcxramhigh );
 
 
-static const ti99_exp_card_handlers_t myarc_expansion_handlers =
+static const ti99_peb_card_handlers_t myarc_expansion_handlers =
 {
 	myarc_cru_r,
 	myarc_cru_w,
@@ -2546,12 +2035,12 @@ static void ti99_myarcxram_init(void)
 	{
 	case xRAM_kind_foundation_128k:	/* 128kb foundation */
 	case xRAM_kind_foundation_512k:	/* 512kb foundation */
-		ti99_exp_set_card_handlers(0x1e00, & myarc_expansion_handlers);
+		ti99_peb_set_card_handlers(0x1e00, & myarc_expansion_handlers);
 		break;
 	case xRAM_kind_myarc_128k:		/* 128kb myarc clone */
 	case xRAM_kind_myarc_512k:		/* 512kb myarc clone */
-		ti99_exp_set_card_handlers(0x1000, & myarc_expansion_handlers);
-		ti99_exp_set_card_handlers(0x1900, & myarc_expansion_handlers);
+		ti99_peb_set_card_handlers(0x1000, & myarc_expansion_handlers);
+		ti99_peb_set_card_handlers(0x1900, & myarc_expansion_handlers);
 		break;
 	default:
 		break;	/* let's just keep GCC's big mouth shut */
@@ -2620,817 +2109,10 @@ static WRITE16_HANDLER ( ti99_ww_myarcxramhigh )
 
 
 /*===========================================================================*/
-/*
-	TI99/4(a) Floppy disk controller card emulation
-*/
-
-/* prototypes */
-static void fdc_callback(int);
-static void motor_on_timer_callback(int dummy);
-static int fdc_cru_r(int offset);
-static void fdc_cru_w(int offset, int data);
-static READ_HANDLER(fdc_mem_r);
-static WRITE_HANDLER(fdc_mem_w);
-
-/* pointer to the fdc ROM data */
-static UINT8 *ti99_disk_DSR;
-
-/* when TRUE the CPU is halted while DRQ/IRQ are true */
-static int DSKhold;
-
-/* defines for DRQ_IRQ_status */
-enum
-{
-	fdc_IRQ = 1,
-	fdc_DRQ = 2
-};
-
-/* current state of the DRQ and IRQ lines */
-static int DRQ_IRQ_status;
-
-/* disk selection bits */
-static int DSEL;
-/* currently selected disk unit */
-static int DSKnum;
-/* current side */
-static int DSKside;
-
-/* 1 if motor is on */
-static int DVENA;
-/* on rising edge, sets DVENA for 4.23 seconds on rising edge */
-static int motor_on;
-/* count 4.23s from rising edge of motor_on */
-void *motor_on_timer;
-
-static const ti99_exp_card_handlers_t fdc_handlers =
-{
-	fdc_cru_r,
-	fdc_cru_w,
-	fdc_mem_r,
-	fdc_mem_w
-};
-
-
-/*
-	Reset fdc card, set up handlers
-*/
-static void ti99_fdc_init(void)
-{
-	ti99_disk_DSR = memory_region(region_dsr) + offset_fdc_dsr;
-
-	DSEL = 0;
-	DSKnum = -1;
-	DSKside = 0;
-
-	DVENA = 0;
-	motor_on = 0;
-	motor_on_timer = timer_alloc(motor_on_timer_callback);
-
-	ti99_exp_set_card_handlers(0x1100, & fdc_handlers);
-
-	wd179x_init(WD_TYPE_179X, fdc_callback);		/* initialize the floppy disk controller */
-	wd179x_set_density(DEN_FM_LO);
-}
-
-
-/*
-	call this when the state of DSKhold or DRQ/IRQ or DVENA change
-
-	Emulation is faulty because the CPU is actually stopped in the midst of instruction, at
-	the end of the memory access
-*/
-static void fdc_handle_hold(void)
-{
-	if (DSKhold && (!DRQ_IRQ_status) && DVENA)
-		cpu_set_halt_line(0, ASSERT_LINE);
-	else
-		cpu_set_halt_line(0, CLEAR_LINE);
-}
-
-/*
-	callback called whenever DRQ/IRQ state change
-*/
-static void fdc_callback(int event)
-{
-	switch (event)
-	{
-	case WD179X_IRQ_CLR:
-		DRQ_IRQ_status &= ~fdc_IRQ;
-		ti99_exp_set_ilb_bit(intb_fdc_bit, 0);
-		break;
-	case WD179X_IRQ_SET:
-		DRQ_IRQ_status |= fdc_IRQ;
-		ti99_exp_set_ilb_bit(intb_fdc_bit, 1);
-		break;
-	case WD179X_DRQ_CLR:
-		DRQ_IRQ_status &= ~fdc_DRQ;
-		break;
-	case WD179X_DRQ_SET:
-		DRQ_IRQ_status |= fdc_DRQ;
-		break;
-	}
-
-	fdc_handle_hold();
-}
-
-/*
-	callback called at the end of DVENA pulse
-*/
-static void motor_on_timer_callback(int dummy)
-{
-	DVENA = 0;
-	fdc_handle_hold();
-}
-
-/*
-	Read disk CRU interface
-
-	bit 0: HLD pin
-	bit 1-3: drive n active
-	bit 4: 0: motor strobe on
-	bit 5: always 0
-	bit 6: always 1
-	bit 7: selected side
-*/
-static int fdc_cru_r(int offset)
-{
-	int reply;
-
-	switch (offset)
-	{
-	case 0:
-		reply = 0x40;
-		if (DSKside)
-			reply |= 0x80;
-		if (DVENA)
-			reply |= (DSEL << 1);
-		if (! DVENA)
-			reply |= 0x10;
-		break;
-
-	default:
-		reply = 0;
-		break;
-	}
-
-	return reply;
-}
-
-/*
-	Write disk CRU interface
-*/
-static void fdc_cru_w(int offset, int data)
-{
-	switch (offset)
-	{
-	case 0:
-		/* WRITE to DISK DSR ROM bit (bit 0) */
-		/* handled in ti99_expansion_CRU_w() */
-		break;
-
-	case 1:
-		/* Strobe motor (motor is on for 4.23 sec) */
-		if (data && !motor_on)
-		{	/* on rising edge, set DVENA for 4.23s */
-			DVENA = 1;
-			fdc_handle_hold();
-			timer_adjust(motor_on_timer, 4.23, 0, 0.);
-		}
-		motor_on = data;
-		break;
-
-	case 2:
-		/* Set disk ready/hold (bit 2)
-			0: ignore IRQ and DRQ
-			1: TMS9900 is stopped until IRQ or DRQ are set (OR the motor stops rotating - rotates
-			  for 4.23s after write to revelant CRU bit, this is not emulated and could cause
-			  the TI99 to lock...) */
-		DSKhold = data;
-		fdc_handle_hold();
-		break;
-
-	case 3:
-		/* Load disk heads (HLT pin) (bit 3) */
-		/* ... */
-		break;
-
-	case 4:
-	case 5:
-	case 6:
-		/* Select drive X (bits 4-6) */
-		{
-			int drive = offset-4;					/* drive # (0-2) */
-
-			if (data)
-			{
-				DSEL |= 1 << drive;
-
-				if (drive != DSKnum)			/* turn on drive... already on ? */
-				{
-					DSKnum = drive;
-
-					wd179x_set_drive(DSKnum);
-					wd179x_set_side(DSKside);
-				}
-			}
-			else
-			{
-				DSEL &= ~ (1 << drive);
-
-				if (drive == DSKnum)			/* geez... who cares? */
-				{
-					DSKnum = -1;				/* no drive selected */
-				}
-			}
-		}
-		break;
-
-	case 7:
-		/* Select side of disk (bit 7) */
-		DSKside = data;
-		wd179x_set_side(DSKside);
-		break;
-	}
-}
-
-
-/*
-	read a byte in disk DSR space
-*/
-static READ_HANDLER(fdc_mem_r)
-{
-	switch (offset)
-	{
-	case 0x1FF0:					/* Status register */
-		return (wd179x_status_r(offset) ^ 0xFF);
-		break;
-	case 0x1FF2:					/* Track register */
-		return wd179x_track_r(offset) ^ 0xFF;
-		break;
-	case 0x1FF4:					/* Sector register */
-		return wd179x_sector_r(offset) ^ 0xFF;
-		break;
-	case 0x1FF6:					/* Data register */
-		return wd179x_data_r(offset) ^ 0xFF;
-		break;
-	default:						/* DSR ROM */
-		return ti99_disk_DSR[offset];
-		break;
-	}
-}
-
-/*
-	write a byte in disk DSR space
-*/
-static WRITE_HANDLER(fdc_mem_w)
-{
-	data ^= 0xFF;	/* inverted data bus */
-
-	switch (offset)
-	{
-	case 0x1FF8:					/* Command register */
-		wd179x_command_w(offset, data);
-		break;
-	case 0x1FFA:					/* Track register */
-		wd179x_track_w(offset, data);
-		break;
-	case 0x1FFC:					/* Sector register */
-		wd179x_sector_w(offset, data);
-		break;
-	case 0x1FFE:					/* Data register */
-		wd179x_data_w(offset, data);
-		break;
-	}
-}
-
-/*
-	Alternate fdc: BwG card from SNUG
-
-	Advantages:
-	* this card supports Double Density.
-	* as this card includes its own RAM, it does not need to allocate a portion
-	of VDP RAM to store I/O buffers.
-	* this card includes a MM58274C RTC.
-
-	Reference:
-	* BwG Disketten-Controller: Beschreibung der DSR
-		<http://home.t-online.de/home/harald.glaab/snug/bwg.pdf>
-*/
-
-#include "mm58274c.h"
-
-/* prototypes */
-static int bwg_cru_r(int offset);
-static void bwg_cru_w(int offset, int data);
-static READ_HANDLER(bwg_mem_r);
-static WRITE_HANDLER(bwg_mem_w);
-
-static const ti99_exp_card_handlers_t bwg_handlers =
-{
-	bwg_cru_r,
-	bwg_cru_w,
-	bwg_mem_r,
-	bwg_mem_w
-};
-
-static int bwg_rtc_enable;
-static int bwg_ram_offset;
-static int bwg_rom_offset;
-static UINT8 *bwg_ram;
-
-
-/*
-	Reset fdc card, set up handlers
-*/
-static void ti99_bwg_init(void)
-{
-	ti99_disk_DSR = memory_region(region_dsr) + offset_bwg_dsr;
-	bwg_ram = memory_region(region_dsr) + offset_bwg_ram;
-	bwg_ram_offset = 0;
-	bwg_rom_offset = 0;
-	bwg_rtc_enable = 0;
-
-	DSEL = 0;
-	DSKnum = -1;
-	DSKside = 0;
-
-	DVENA = 0;
-	motor_on = 0;
-	motor_on_timer = timer_alloc(motor_on_timer_callback);
-
-	ti99_exp_set_card_handlers(0x1100, & bwg_handlers);
-
-	wd179x_init(WD_TYPE_179X, fdc_callback);		/* initialize the floppy disk controller */
-	wd179x_set_density(DEN_MFM_LO);
-
-
-	mm58274c_init();	/* initialize the RTC */
-}
-
-
-/*
-	Read disk CRU interface
-
-	bit 0: drive 4 active (not emulated)
-	bit 1-3: drive n active
-	bit 4-7: dip switches 1-4
-*/
-static int bwg_cru_r(int offset)
-{
-	int reply;
-
-	switch (offset)
-	{
-	case 0:
-		/* CRU bits: beware, logic levels of DIP-switches are inverted  */
-		reply = 0x50;
-		if (DVENA)
-			reply |= ((DSEL << 1) | (DSEL >> 3)) & 0x0f;
-		break;
-
-	default:
-		reply = 0;
-		break;
-	}
-
-	return reply;
-}
-
-
-/*
-	Write disk CRU interface
-*/
-static void bwg_cru_w(int offset, int data)
-{
-	switch (offset)
-	{
-	case 0:
-		/* WRITE to DISK DSR ROM bit (bit 0) */
-		/* handled in ti99_expansion_CRU_w() */
-		break;
-
-	case 1:
-		/* Strobe motor (motor is on for 4.23 sec) */
-		if (data && !motor_on)
-		{	/* on rising edge, set DVENA for 4.23s */
-			DVENA = 1;
-			fdc_handle_hold();
-			timer_adjust(motor_on_timer, 4.23, 0, 0.);
-		}
-		motor_on = data;
-		break;
-
-	case 2:
-		/* Set disk ready/hold (bit 2)
-			0: ignore IRQ and DRQ
-			1: TMS9900 is stopped until IRQ or DRQ are set (OR the motor stops rotating - rotates
-			  for 4.23s after write to revelant CRU bit, this is not emulated and could cause
-			  the TI99 to lock...) */
-		DSKhold = data;
-		fdc_handle_hold();
-		break;
-
-	case 4:
-	case 5:
-	case 6:
-		/* Select drive X (bits 4-6) */
-		{
-			int drive = offset-4;					/* drive # (0-2) */
-
-			if (data)
-			{
-				DSEL |= 1 << drive;
-
-				if (drive != DSKnum)			/* turn on drive... already on ? */
-				{
-					DSKnum = drive;
-
-					wd179x_set_drive(DSKnum);
-					wd179x_set_side(DSKside);
-				}
-			}
-			else
-			{
-				DSEL &= ~ (1 << drive);
-
-				if (drive == DSKnum)			/* geez... who cares? */
-				{
-					DSKnum = -1;				/* no drive selected */
-				}
-			}
-		}
-		break;
-
-	case 7:
-		/* Select side of disk (bit 7) */
-		DSKside = data;
-		wd179x_set_side(DSKside);
-		break;
-
-	case 8:
-		/* Select drive 3 (DSK4) */
-		break;
-
-	case 10:
-		/* double density enable (active low) */
-		wd179x_set_density(data ? DEN_FM_LO : DEN_MFM_LO);
-		break;
-
-	case 11:
-		/* EPROM A13 */
-		if (data)
-			bwg_rom_offset |= 0x2000;
-		else
-			bwg_rom_offset &= ~0x2000;
-		break;
-
-	case 13:
-		/* RAM A10 */
-		if (data)
-			bwg_ram_offset = 0x0400;
-		else
-			bwg_ram_offset = 0x0000;
-		break;
-
-	case 14:
-		/* override FDC with RTC (active high) */
-		bwg_rtc_enable = data;
-		break;
-
-	case 15:
-		/* EPROM A14 */
-		if (data)
-			bwg_rom_offset |= 0x4000;
-		else
-			bwg_rom_offset &= ~0x4000;
-		break;
-
-	case 3:
-	case 9:
-	case 12:
-		/* Unused (bit 3, 9 & 12) */
-		break;
-	}
-}
-
-
-/*
-	read a byte in disk DSR space
-*/
-static READ_HANDLER(bwg_mem_r)
-{
-	int reply = 0;
-
-	if (offset < 0x1c00)
-		reply = ti99_disk_DSR[bwg_rom_offset+offset];
-	else if (offset < 0x1fe0)
-		reply = bwg_ram[bwg_ram_offset+(offset-0x1c00)];
-	else if (bwg_rtc_enable)
-	{
-		if (! (offset & 1))
-			reply = mm58274c_r((offset - 0x1FE0) >> 1);
-	}
-	else
-	{
-		if (offset < 0x1ff0)
-			reply = bwg_ram[bwg_ram_offset+(offset-0x1c00)];
-		else
-			switch (offset)
-			{
-			case 0x1FF0:					/* Status register */
-				reply = wd179x_status_r(offset);
-				break;
-			case 0x1FF2:					/* Track register */
-				reply = wd179x_track_r(offset);
-				break;
-			case 0x1FF4:					/* Sector register */
-				reply = wd179x_sector_r(offset);
-				break;
-			case 0x1FF6:					/* Data register */
-				reply = wd179x_data_r(offset);
-				break;
-			default:
-				reply = 0;
-				break;
-			}
-	}
-
-	return reply;
-}
-
-/*
-	write a byte in disk DSR space
-*/
-static WRITE_HANDLER(bwg_mem_w)
-{
-	if (offset < 0x1c00)
-		;
-	else if (offset < 0x1fe0)
-		bwg_ram[bwg_ram_offset+(offset-0x1c00)] = data;
-	else if (bwg_rtc_enable)
-	{
-		if (! (offset & 1))
-			mm58274c_w((offset - 0x1FE0) >> 1, data);
-	}
-	else
-	{
-		if (offset < 0x1ff0)
-		{
-			bwg_ram[bwg_ram_offset+(offset-0x1c00)] = data;
-		}
-		else
-		{
-			switch (offset)
-			{
-			case 0x1FF8:					/* Command register */
-				wd179x_command_w(offset, data);
-				break;
-			case 0x1FFA:					/* Track register */
-				wd179x_track_w(offset, data);
-				break;
-			case 0x1FFC:					/* Sector register */
-				wd179x_sector_w(offset, data);
-				break;
-			case 0x1FFE:					/* Data register */
-				wd179x_data_w(offset, data);
-				break;
-			}
-		}
-	}
-}
-
-/*===========================================================================*/
-/*
-	Thierry Nouspikel's IDE card emulation
-*/
-
-/* prototypes */
-static int ide_cru_r(int offset);
-static void ide_cru_w(int offset, int data);
-static READ_HANDLER(ide_mem_r);
-static WRITE_HANDLER(ide_mem_w);
-
-/* pointer to the IDE RAM area */
-static UINT8 *ti99_ide_RAM;
-
-static int cur_page;
-enum
-{	/* 0xff for 2 mbytes, 0x3f for 512kbytes, 0x03 for 32 kbytes */
-	page_mask = /*0xff*/0x3f
-};
-
-static const ti99_exp_card_handlers_t ide_handlers =
-{
-	ide_cru_r,
-	ide_cru_w,
-	ide_mem_r,
-	ide_mem_w
-};
-
-static int sram_enable;
-static int sram_enable_dip = 0;
-static int cru_register;
-enum
-{
-	cru_reg_page_switching = 0x04,
-	cru_reg_page_0 = 0x08,
-	/*cru_reg_rambo = 0x10,*/	/* not emulated */
-	cru_reg_wp = 0x20,
-	/*cru_reg_unused = 0x40,*/
-	cru_reg_reset = 0x80
-};
-static int input_latch, output_latch;
-
-/*
-	Reset ide card, set up handlers
-*/
-/* NPW 08-Oct-2002 - Commenting out because it appears to be unused; and GCC whines
-static void ti99_ide_init(void)
-{
-	ti99_ide_RAM = memory_region(region_dsr) + offset_ide_ram;
-
-	ti99_set_expansion_card_handlers(0x1000, & ide_handlers);
-}
-*/
-
-/*
-	Read ide CRU interface
-*/
-static int ide_cru_r(int offset)
-{
-	int reply;
-
-	switch (offset)
-	{
-	default:
-		reply = cru_register;
-		if (sram_enable_dip)
-			reply |= 2;
-		/*if (! ide_irq)
-			reply |= 1;*/
-		break;
-	}
-
-	return reply;
-}
-
-/*
-	Write ide CRU interface
-*/
-static void ide_cru_w(int offset, int data)
-{
-	offset &= 7;
-
-
-	switch (offset)
-	{
-	case 0:			/* turn card on: handled by core */
-		break;
-
-	case 1:			/* enable SRAM or registers in 0x4000-0x40ff */
-		sram_enable = data;
-		break;
-
-	case 2:			/* enable SRAM page switching */
-	case 3:			/* force SRAM page 0 */
-	case 4:			/* enable SRAM in 0x6000-0x7000 ("RAMBO" mode) */
-	case 5:			/* write-protect RAM */
-	case 6:			/* not used */
-	case 7:			/* reset drive */
-		if (data)
-			cru_register |= 1 << offset;
-		else
-			cru_register &= ~ (1 << offset);
-
-		if ((offset == 7) && data)
-			/*ide_reset()*/;
-		break;
-	}
-}
-
-
-/*
-	read a byte in ide DSR space
-*/
-static READ_HANDLER(ide_mem_r)
-{
-	int reply = 0;
-
-
-	if ((offset <= 0xff) && (sram_enable == sram_enable_dip))
-	{	/* registers */
-		switch ((offset >> 5) & 0x3)
-		{
-		case 0:		/* RTC RAM */
-			if (offset & 0x80)
-				/* RTC RAM page register */
-				;
-			else
-				/* RTC RAM write */
-				;
-			break;
-		case 1:		/* RTC registers */
-			if (offset == 0x20)
-				/* register data */
-				;
-			else if (offset == 0x30)
-				/* register select */
-				;
-			break;
-		case 2:		/* IDE registers set 1 (CS1Fx) */
-			if (offset & 1)
-			{
-				if (! (offset & 0x10))
-					/*reply = ide_r((offset >> 1) & 0x7)*/;
-
-				input_latch = (reply >> 8) & 0xff;
-				reply &= 0xff;
-			}
-			else
-				reply = input_latch;
-			break;
-		case 3:		/* IDE registers set 2 (CS3Fx) */
-			if (offset & 1)
-			{
-				if (! (offset & 0x10))
-					/*reply = ide_r(((offset >> 1) & 0x7) + 0x8)*/;
-
-				input_latch = (reply >> 8) & 0xff;
-				reply &= 0xff;
-			}
-			else
-				reply = input_latch;
-			break;
-		}
-	}
-	else
-	{	/* sram */
-		if (! (cru_register & cru_reg_page_0))
-			reply = ti99_ide_RAM[offset+0x2000*cur_page];
-		else
-			reply = ti99_ide_RAM[offset];
-	}
-
-	return reply;
-}
-
-/*
-	write a byte in ide DSR space
-*/
-static WRITE_HANDLER(ide_mem_w)
-{
-	if (cru_register & cru_reg_page_switching)
-	{
-		cur_page = (offset >> 1) & page_mask;//0xff
-	}
-
-	if ((offset <= 0xff) && (sram_enable == sram_enable_dip))
-	{	/* registers */
-		switch ((offset >> 5) & 0x3)
-		{
-		case 0:		/* RTC RAM */
-			if (offset & 0x80)
-				/* RTC RAM page register */
-				;
-			else
-				/* RTC RAM write */
-				;
-			break;
-		case 1:		/* RTC registers */
-			if (offset == 0x20)
-				/* register data */
-				;
-			else if (offset == 0x30)
-				/* register select */
-				;
-			break;
-		case 2:		/* IDE registers set 1 (CS1Fx) */
-			if (offset & 1)
-				output_latch = data;
-			else
-				/*ide_w((offset >> 1) & 0x7, ((int) data << 8) | output_latch);*/
-			break;
-		case 3:		/* IDE registers set 2 (CS3Fx) */
-			if (offset & 1)
-				output_latch = data;
-			else
-				/*ide_w(((offset >> 1) & 0x7) + 0x8, ((int) data << 8) | output_latch);*/
-			break;
-		}
-	}
-	else
-	{	/* sram */
-		if (! (cru_register & cru_reg_wp))
-		{
-			if (! (cru_register & cru_reg_page_0))
-				ti99_ide_RAM[offset+0x2000*cur_page] = data;
-			else
-				ti99_ide_RAM[offset] = data;
-		}
-	}
-}
-
-/*===========================================================================*/
+#if 0
+#pragma mark -
+#pragma mark EVPC VIDEO CARD
+#endif
 /*
 	SNUG's EVPC emulation
 */
@@ -3451,7 +2133,7 @@ static int RAMEN;
 
 static int evpc_dsr_page;
 
-static const ti99_exp_card_handlers_t evpc_handlers =
+static const ti99_peb_card_handlers_t evpc_handlers =
 {
 	evpc_cru_r,
 	evpc_cru_w,
@@ -3470,7 +2152,7 @@ static void ti99_evpc_init(void)
 	RAMEN = 0;
 	evpc_dsr_page = 0;
 
-	ti99_exp_set_card_handlers(0x1400, & evpc_handlers);
+	ti99_peb_set_card_handlers(0x1400, & evpc_handlers);
 }
 
 /*

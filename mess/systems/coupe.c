@@ -461,16 +461,16 @@ MACHINE_DRIVER_END
 
 ROM_START(coupe)
 	ROM_REGION(0x8000,REGION_CPU1,0)
-	ROM_LOAD("sam_rom0.rom", 0x0000, 0x4000, 0x9954CF1A)
-	ROM_LOAD("sam_rom1.rom", 0x4000, 0x4000, 0xF031AED4)
+	ROM_LOAD("sam_rom0.rom", 0x0000, 0x4000, CRC(9954CF1A))
+	ROM_LOAD("sam_rom1.rom", 0x4000, 0x4000, CRC(F031AED4))
 ROM_END
 
 SYSTEM_CONFIG_START(coupe)
 	CONFIG_RAM_DEFAULT(256 * 1024)
 	CONFIG_RAM(512 * 1024)
 
-	CONFIG_DEVICE_FLOPPY_BASICDSK	(2, "dsk\0", coupe_floppy_init)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(2, "dsk\0", device_load_coupe_floppy)
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT    MACHINE         INPUT     INIT  CONFIG  COMPANY                 		  FULLNAME */
-COMP( 1989, coupe,	  0,		coupe,			coupe,	  0,	coupe,	"Miles Gordon Technology plc",    "Sam Coupe" )
+/*    YEAR  NAME      PARENT	COMPAT	MACHINE         INPUT     INIT  CONFIG  COMPANY                 		  FULLNAME */
+COMP( 1989, coupe,	  0,		0,		coupe,			coupe,	  0,	coupe,	"Miles Gordon Technology plc",    "Sam Coupe" )

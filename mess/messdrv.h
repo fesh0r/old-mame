@@ -4,6 +4,9 @@
 #include <assert.h>
 #include "formats.h"
 #include "fileio.h"
+#include "osdepend.h"
+
+#define MAX_DEV_INSTANCES 5
 
 /******************************************************************************
  * This is a start at the proposed peripheral structure.
@@ -37,21 +40,21 @@ struct IODevice
 	const char *file_extensions;
 	int flags;
 	int open_mode;
-	int (*init)(int id);
-	void (*exit)(int id);
-	int (*load)(int id, mame_file *fp, int open_mode);
-	void (*unload)(int id);
-	int (*verify)(const UINT8 *buf, size_t size);
-	const void *(*info)(int id, int whatinfo);
-	int (*open)(int id, int mode, void *args);
-	void (*close)(int id);
-	int (*status)(int id, int newstatus);
-    int (*seek)(int id, int offset, int whence);
-    int (*tell)(int id);
-	int (*input)(int id);
-	void (*output)(int id, int data);
+	int (*init)(mess_image *img);
+	void (*exit)(mess_image *img);
+	int (*load)(mess_image *img, mame_file *fp, int open_mode);
+	void (*unload)(mess_image *img);
+	int (*imgverify)(const UINT8 *buf, size_t size);
+	const void *(*info)(mess_image *img, int whatinfo);
+	int (*open)(mess_image *img, int mode, void *args);
+	void (*close)(mess_image *img);
+	int (*status)(mess_image *img, int newstatus);
+    int (*seek)(mess_image *img, int offset, int whence);
+    int (*tell)(mess_image *img);
+	int (*input)(mess_image *img);
+	void (*output)(mess_image *img, int data);
 	UINT32 (*partialcrc)(const UINT8 *buf, size_t size);
-	void (*display)(struct mame_bitmap *bitmap, int id);
+	void (*display)(mess_image *img, struct mame_bitmap *bitmap);
 	void *user1;
 	void *user2;
 };
@@ -64,7 +67,9 @@ struct SystemConfigurationParamBlock
 	UINT32 *ram_options;
 	int device_num;
 	const struct IODevice *dev;
-	const char *(*get_custom_devicename)(int type, int id, char *buf, size_t bufsize);
+	const char *(*get_custom_devicename)(mess_image *img, char *buf, size_t bufsize);
+	int (*queue_chars)(const unicode_char_t *text, size_t text_len);
+	int (*accept_char)(unicode_char_t ch);
 };
 
 #define SYSTEM_CONFIG_START(name)															\
@@ -95,13 +100,19 @@ struct SystemConfigurationParamBlock
 #define CONFIG_GET_CUSTOM_DEVICENAME(get_custom_devicename__)								\
 	cfg->get_custom_devicename = get_custom_devicename_##get_custom_devicename__;			\
 
+#define CONFIG_QUEUE_CHARS(queue_chars_)													\
+	cfg->queue_chars = inputx_queue_chars_##queue_chars_;									\
+
+#define CONFIG_ACCEPT_CHAR(accept_char_)													\
+	cfg->accept_char = inputx_accept_char_##accept_char_;									\
+
 #define CONFIG_DEVICE_BASE(type, count, file_extensions, flags, open_mode, init, exit,		\
-		load, unload, verify, info, open, close, status, seek, tell, input, output,			\
+		load, unload, imgverify, info, open, close, status, seek, tell, input, output,			\
 		partialcrc, display)																\
 	if (cfg->device_num-- == 0)																\
 	{																						\
 		static struct IODevice device = { (type), (count), (file_extensions), (flags),		\
-			(open_mode), (init), (exit), (load), (unload), (verify), (info), (open),		\
+			(open_mode), (init), (exit), (load), (unload), (imgverify), (info), (open),		\
 			(close), (status), (seek), (tell), (input), (output), (partialcrc), (display),	\
 			NULL, NULL };																	\
 		cfg->dev = &device;																	\
@@ -121,15 +132,22 @@ struct SystemConfigurationParamBlock
 /*****************************************************************************/
 
 #define GET_CUSTOM_DEVICENAME(name)															\
-	const char *get_custom_devicename_##name(int type, int id, char *buf, size_t bufsize)	\
+	const char *get_custom_devicename_##name(mess_image *img, char *buf, size_t bufsize)	\
+
+#define QUEUE_CHARS(name)																	\
+	int inputx_queue_chars_##name(const unicode_char_t *text, size_t text_len)				\
+
+#define ACCEPT_CHAR(name)																	\
+	int inputx_accept_char_##name(unicode_char_t ch)										\
 
 /******************************************************************************
  * MESS' version of the GAME() and GAMEX() macros of MAME
  * CONS and CONSX are for consoles
  * COMP and COMPX are for computers
  ******************************************************************************/
-#define CONS(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME)	\
+#define CONS(YEAR,NAME,PARENT,COMPAT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME)	\
 extern const struct GameDriver driver_##PARENT; \
+extern const struct GameDriver driver_##COMPAT;   \
 extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
 {											\
@@ -144,11 +162,13 @@ const struct GameDriver driver_##NAME = 	\
 	init_##INIT,							\
 	rom_##NAME,								\
 	construct_sysconfig_##CONFIG,			\
+	&driver_##COMPAT,						\
 	ROT0									\
 };
 
-#define CONSX(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME,FLAGS)	\
+#define CONSX(YEAR,NAME,PARENT,COMPAT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME,FLAGS)	\
 extern const struct GameDriver driver_##PARENT;   \
+extern const struct GameDriver driver_##COMPAT;   \
 extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
 {											\
@@ -163,11 +183,13 @@ const struct GameDriver driver_##NAME = 	\
 	init_##INIT,							\
 	rom_##NAME,								\
 	construct_sysconfig_##CONFIG,			\
+	&driver_##COMPAT,						\
 	ROT0|(FLAGS)							\
 };
 
-#define COMP(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME)	\
+#define COMP(YEAR,NAME,PARENT,COMPAT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME)	\
 extern const struct GameDriver driver_##PARENT;   \
+extern const struct GameDriver driver_##COMPAT;   \
 extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
 {											\
@@ -182,11 +204,13 @@ const struct GameDriver driver_##NAME = 	\
 	init_##INIT,							\
 	rom_##NAME,								\
 	construct_sysconfig_##CONFIG,			\
+	&driver_##COMPAT,						\
 	ROT0|GAME_COMPUTER 						\
 };
 
-#define COMPX(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME,FLAGS)	\
+#define COMPX(YEAR,NAME,PARENT,COMPAT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME,FLAGS)	\
 extern const struct GameDriver driver_##PARENT;   \
+extern const struct GameDriver driver_##COMPAT;   \
 extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
 {											\
@@ -201,6 +225,7 @@ const struct GameDriver driver_##NAME = 	\
 	init_##INIT,							\
 	rom_##NAME,								\
 	construct_sysconfig_##CONFIG,			\
+	&driver_##COMPAT,						\
 	ROT0|GAME_COMPUTER|(FLAGS)	 			\
 };
 

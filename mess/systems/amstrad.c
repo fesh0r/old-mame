@@ -230,11 +230,11 @@ static READ_HANDLER (amstrad_ppi_portb_r)
 	data = 0x0;
 
 	/* cassette read */
-	if (device_input(IO_CASSETTE,0) > 255)
+	if (device_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 255)
 		data |=0x080;
 
 	/* printer busy */
-	if (device_status (IO_PRINTER, 0, 0)==0 )
+	if (device_status(image_from_devtype_and_index(IO_PRINTER, 0), 0)==0 )
 		data |=0x040;
 
 	/* vsync state from CRTC */
@@ -269,14 +269,14 @@ static WRITE_HANDLER ( amstrad_ppi_portc_w )
 	/* cassette motor changed state */
 	if ((changed_data & (1<<4))!=0)
 	{
-			/* cassette motor control */
-			device_status(IO_CASSETTE, 0, ((data>>4) & 0x01));
+		/* cassette motor control */
+		device_status(image_from_devtype_and_index(IO_CASSETTE, 0), ((data>>4) & 0x01));
 	}
 
 	/* cassette write data changed state */
 	if ((changed_data & (1<<5))!=0)
 	{
-			device_output(IO_CASSETTE, 0, (data & (1<<5)) ? -32768 : 32767);
+		device_output(image_from_devtype_and_index(IO_CASSETTE, 0), (data & (1<<5)) ? -32768 : 32767);
 	}
 
 	/* psg operation */
@@ -715,7 +715,7 @@ static WRITE_HANDLER ( AmstradCPC_WritePortHandler )
 			if ((data & 0x080)==0)
 			{
 				/* output data to printer */
-				device_output (IO_PRINTER, 0, data & 0x07f);
+				device_output(image_from_devtype_and_index(IO_PRINTER, 0), data & 0x07f);
 			}
 		}
 		previous_printer_data_byte = data;
@@ -748,10 +748,10 @@ static WRITE_HANDLER ( AmstradCPC_WritePortHandler )
 			case 0:
 				{
 					/* fdc motor on */
-					floppy_drive_set_motor_state(0,data & 0x01);
-					floppy_drive_set_motor_state(1,data & 0x01);
-					floppy_drive_set_ready_state(0,1,1);
-					floppy_drive_set_ready_state(1,1,1);
+					floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), data & 0x01);
+					floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 1), data & 0x01);
+					floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1,1);
+					floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1,1);
 				}
 				break;
 
@@ -2308,8 +2308,8 @@ static void amstrad_common_init(void)
 
 	nec765_init(&amstrad_nec765_interface,NEC765A/*?*/);
 
-	floppy_drive_set_geometry(0, FLOPPY_DRIVE_SS_40);
-	floppy_drive_set_geometry(1, FLOPPY_DRIVE_SS_40);
+	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0),  FLOPPY_DRIVE_SS_40);
+	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1),  FLOPPY_DRIVE_SS_40);
 
 	/* Juergen is a cool dude! */
 	cpu_set_irq_callback(0, amstrad_cpu_acknowledge_int);
@@ -2341,8 +2341,6 @@ static void amstrad_common_init(void)
 
 static MACHINE_STOP( amstrad )
 {
-	nec765_stop();
-
 	/* restore previous tables */
 	cpunum_set_cycle_tbl(0,Z80_TABLE_op, (void *) previous_op_table);
 	cpunum_set_cycle_tbl(0,Z80_TABLE_cb, (void *) previous_cb_table);
@@ -2718,11 +2716,11 @@ ROM_START(cpc6128)
 	/* this defines the total memory size - 64k ram, 16k OS, 16k BASIC, 16k DOS */
 	ROM_REGION(0x020000, REGION_CPU1,0)
 	/* load the os to offset 0x01000 from memory base */
-	ROM_LOAD("cpc6128.rom", 0x10000, 0x8000, 0x9e827fe1)
-	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, 0x1fe22ecd)
+	ROM_LOAD("cpc6128.rom", 0x10000, 0x8000, CRC(9e827fe1))
+	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, CRC(1fe22ecd))
 
 	/* optional Multiface hardware */
-		ROM_LOAD_OPTIONAL("multface.rom", 0x01c000, 0x02000, 0xf36086de)
+		ROM_LOAD_OPTIONAL("multface.rom", 0x01c000, 0x02000, CRC(f36086de))
 
 	/* fake region - required by graphics decode structure */
 	/*ROM_REGION(0x0100,REGION_GFX1) */
@@ -2732,8 +2730,8 @@ ROM_START(cpc464)
 	/* this defines the total memory size - 64k ram, 16k OS, 16k BASIC, 16k DOS */
 	ROM_REGION(0x01c000, REGION_CPU1,0)
 	/* load the os to offset 0x01000 from memory base */
-	ROM_LOAD("cpc464.rom", 0x10000, 0x8000, 0x040852f25)
-	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, 0x1fe22ecd)
+	ROM_LOAD("cpc464.rom", 0x10000, 0x8000, CRC(40852f25))
+	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, CRC(1fe22ecd))
 
 	/* fake region - required by graphics decode structure */
 	/*ROM_REGION(0x0100,REGION_GFX1) */
@@ -2743,8 +2741,8 @@ ROM_START(cpc664)
 	/* this defines the total memory size - 64k ram, 16k OS, 16k BASIC, 16k DOS */
 	ROM_REGION(0x01c000, REGION_CPU1,0)
 	/* load the os to offset 0x01000 from memory base */
-	ROM_LOAD("cpc664.rom", 0x10000, 0x8000, 0x09AB5A036)
-	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, 0x1fe22ecd)
+	ROM_LOAD("cpc664.rom", 0x10000, 0x8000, CRC(9AB5A036))
+	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, CRC(1fe22ecd))
 
 	/* fake region - required by graphics decode structure */
 	/*ROM_REGION(0x0100,REGION_GFX1) */
@@ -2753,10 +2751,10 @@ ROM_END
 
 ROM_START(kccomp)
 	ROM_REGION(0x018000, REGION_CPU1,0)
-	ROM_LOAD("kccos.rom", 0x10000, 0x04000, 0x7f9ab3f7)
-	ROM_LOAD("kccbas.rom", 0x14000, 0x04000, 0xca6af63d)
+	ROM_LOAD("kccos.rom", 0x10000, 0x04000, CRC(7f9ab3f7))
+	ROM_LOAD("kccbas.rom", 0x14000, 0x04000, CRC(ca6af63d))
 	ROM_REGION(0x018000+0x0800, REGION_PROMS, 0 )
-	ROM_LOAD("farben.rom", 0x018000, 0x0800, 0xa50fa3cf)
+	ROM_LOAD("farben.rom", 0x018000, 0x0800, CRC(a50fa3cf))
 
 	/* fake region - required by graphics decode structure */
 	/*ROM_REGION(0x0c00, REGION_GFX1) */
@@ -2777,7 +2775,7 @@ ROM_END
 SYSTEM_CONFIG_START(cpc6128)
 	CONFIG_RAM_DEFAULT(128 * 1024)
 	CONFIG_DEVICE_LEGACY_DSK(2)
-	CONFIG_DEVICE_CASSETTE(1, "", amstrad_cassette_init)
+	CONFIG_DEVICE_CASSETTE(1, "", device_load_amstrad_cassette)
 	CONFIG_DEVICE_PRINTER(1)
 SYSTEM_CONFIG_END
 
@@ -2787,11 +2785,11 @@ SYSTEM_CONFIG_START(cpcplus)
 	CONFIG_DEVICE_SNAPSHOT(			"sna\0", amstrad)
 SYSTEM_CONFIG_END
 
-/*      YEAR  NAME       PARENT  MACHINE    INPUT    INIT    CONFIG,  COMPANY               FULLNAME */
-COMP( 1984, cpc464,   0,		amstrad,  amstrad,	0,		cpc6128, "Amstrad plc", "Amstrad/Schneider CPC464")
-COMP( 1985, cpc664,   cpc464,	amstrad,  amstrad,	0,	    cpc6128, "Amstrad plc", "Amstrad/Schneider CPC664")
-COMP( 1985, cpc6128,  cpc464,	amstrad,  amstrad,	0,	    cpc6128, "Amstrad plc", "Amstrad/Schneider CPC6128")
-COMP( 1990, cpc464p,  0,		cpcplus,  amstrad,	0,	    cpcplus, "Amstrad plc", "Amstrad 464plus")
-COMP( 1990, cpc6128p, 0,		cpcplus,  amstrad,	0,	    cpcplus, "Amstrad plc", "Amstrad 6128plus")
-COMP( 1989, kccomp,   cpc464,	kccomp,   kccomp,	0,	    cpc6128, "VEB Mikroelektronik", "KC Compact")
+/*      YEAR  NAME    PARENT	COMPAT  MACHINE    INPUT    INIT    CONFIG,  COMPANY               FULLNAME */
+COMP( 1984, cpc464,   0,		0,		amstrad,  amstrad,	0,		cpc6128, "Amstrad plc", "Amstrad/Schneider CPC464")
+COMP( 1985, cpc664,   cpc464,	0,		amstrad,  amstrad,	0,	    cpc6128, "Amstrad plc", "Amstrad/Schneider CPC664")
+COMP( 1985, cpc6128,  cpc464,	0,		amstrad,  amstrad,	0,	    cpc6128, "Amstrad plc", "Amstrad/Schneider CPC6128")
+COMP( 1990, cpc464p,  0,		0,		cpcplus,  amstrad,	0,	    cpcplus, "Amstrad plc", "Amstrad 464plus")
+COMP( 1990, cpc6128p, 0,		0,		cpcplus,  amstrad,	0,	    cpcplus, "Amstrad plc", "Amstrad 6128plus")
+COMP( 1989, kccomp,   cpc464,	0,		kccomp,   kccomp,	0,	    cpc6128, "VEB Mikroelektronik", "KC Compact")
 

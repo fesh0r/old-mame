@@ -649,20 +649,20 @@ static WRITE_HANDLER(pcw_system_control_w)
 		/* disc motor on */
 		case 9:
 		{
-			floppy_drive_set_motor_state(0,1);
-			floppy_drive_set_motor_state(1,1);
-			floppy_drive_set_ready_state(0,1,1);
-			floppy_drive_set_ready_state(1,1,1);
+			floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1);
+			floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1);
+			floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1,1);
+			floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1,1);
 		}
 		break;
 
 		/* disc motor off */
 		case 10:
 		{
-			floppy_drive_set_motor_state(0,0);
-			floppy_drive_set_motor_state(1,0);
-			floppy_drive_set_ready_state(0,1,1);
-			floppy_drive_set_ready_state(1,1,1);
+			floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), 0);
+			floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 1), 0);
+			floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1,1);
+			floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1,1);
 		}
 		break;
 
@@ -1216,7 +1216,7 @@ is banked. */
 #define ROM_PCW(model)												\
 	ROM_START(model)												\
 		ROM_REGION(0x014000, REGION_CPU1,0)							\
-		ROM_LOAD("pcwboot.bin", 0x010000, 608, BADCRC(0x679b0287))	\
+		ROM_LOAD("pcwboot.bin", 0x010000, 608, BAD_DUMP CRC(679b0287))	\
 	ROM_END															\
 
 ROM_PCW(pcw8256)
@@ -1231,10 +1231,10 @@ SYSTEM_CONFIG_END
 
 /* these are all variants on the pcw design */
 /* major difference is memory configuration and drive type */
-/*     YEAR	NAME	    PARENT		MACHINE   INPUT INIT		CONFIG	COMPANY 	   FULLNAME */
-COMPX( 1985, pcw8256,   0,			pcw,	  pcw,	pcw8256,	pcw,	"Amstrad plc", "PCW8256",		GAME_NOT_WORKING)
-COMPX( 1985, pcw8512,   pcw8256,	pcw,	  pcw,	pcw8512,	pcw,	"Amstrad plc", "PCW8512",		GAME_NOT_WORKING)
-COMPX( 1987, pcw9256,   pcw8256,	pcw,	  pcw,	pcw9256,	pcw,	"Amstrad plc", "PCW9256",		GAME_NOT_WORKING)
-COMPX( 1987, pcw9512,   pcw8256,	pcw9512,  pcw,	pcw9512,	pcw,	"Amstrad plc", "PCW9512 (+)",	GAME_NOT_WORKING)
-COMPX( 1993, pcw10,	    pcw8256,	pcw9512,  pcw,	pcw10,		pcw,	"Amstrad plc", "PCW10",			GAME_NOT_WORKING)
+/*     YEAR	NAME	    PARENT		COMPAT	MACHINE   INPUT INIT		CONFIG	COMPANY 	   FULLNAME */
+COMPX( 1985, pcw8256,   0,			0,		pcw,	  pcw,	pcw8256,	pcw,	"Amstrad plc", "PCW8256",		GAME_NOT_WORKING)
+COMPX( 1985, pcw8512,   pcw8256,	0,		pcw,	  pcw,	pcw8512,	pcw,	"Amstrad plc", "PCW8512",		GAME_NOT_WORKING)
+COMPX( 1987, pcw9256,   pcw8256,	0,		pcw,	  pcw,	pcw9256,	pcw,	"Amstrad plc", "PCW9256",		GAME_NOT_WORKING)
+COMPX( 1987, pcw9512,   pcw8256,	0,		pcw9512,  pcw,	pcw9512,	pcw,	"Amstrad plc", "PCW9512 (+)",	GAME_NOT_WORKING)
+COMPX( 1993, pcw10,	    pcw8256,	0,		pcw9512,  pcw,	pcw10,		pcw,	"Amstrad plc", "PCW10",			GAME_NOT_WORKING)
 

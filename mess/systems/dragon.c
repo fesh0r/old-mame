@@ -622,61 +622,61 @@ MACHINE_DRIVER_END
 
 ROM_START(dragon32)
 	ROM_REGION(0x8000,REGION_CPU1,0)
-	ROM_LOAD(           "d32.rom",      0x0000,  0x4000, 0xe3879310)
-	ROM_LOAD_OPTIONAL(  "ddos10.rom",   0x4000,  0x2000, 0xb44536f6)
+	ROM_LOAD(           "d32.rom",      0x0000,  0x4000, CRC(e3879310))
+	ROM_LOAD_OPTIONAL(  "ddos10.rom",   0x4000,  0x2000, CRC(b44536f6))
 ROM_END
 
 ROM_START(dragon64)
 	ROM_REGION(0xC000,REGION_CPU1,0)
-	ROM_LOAD(           "d64_1.rom",    0x0000,  0x4000, 0x60a4634c)
-	ROM_LOAD(           "d64_2.rom",    0x8000,  0x4000, 0x17893a42)
-	ROM_LOAD_OPTIONAL(  "ddos10.rom",   0x4000,  0x2000, 0xb44536f6)
+	ROM_LOAD(           "d64_1.rom",    0x0000,  0x4000, CRC(60a4634c))
+	ROM_LOAD(           "d64_2.rom",    0x8000,  0x4000, CRC(17893a42))
+	ROM_LOAD_OPTIONAL(  "ddos10.rom",   0x4000,  0x2000, CRC(b44536f6))
 ROM_END
 
 ROM_START(coco)
      ROM_REGION(0x8000,REGION_CPU1,0)
-     ROM_LOAD(			"bas10.rom",	0x2000, 0x2000, 0x00b50aaa)
+     ROM_LOAD(			"bas10.rom",	0x2000, 0x2000, CRC(00b50aaa))
 ROM_END
 
 ROM_START(cocoe)
      ROM_REGION(0x8000,REGION_CPU1,0)
-     ROM_LOAD(			"bas11.rom",	0x2000, 0x2000, 0x6270955a)
-     ROM_LOAD(	        "extbas10.rom",	0x0000, 0x2000, 0x6111a086)
-     ROM_LOAD_OPTIONAL(	"disk10.rom",	0x4000, 0x2000, 0xb4f9968e)
+     ROM_LOAD(			"bas11.rom",	0x2000, 0x2000, CRC(6270955a))
+     ROM_LOAD(	        "extbas10.rom",	0x0000, 0x2000, CRC(6111a086))
+     ROM_LOAD_OPTIONAL(	"disk10.rom",	0x4000, 0x2000, CRC(b4f9968e))
 ROM_END
 
 ROM_START(coco2)
      ROM_REGION(0x8000,REGION_CPU1,0)
-     ROM_LOAD(			"bas12.rom",	0x2000, 0x2000, 0x54368805)
-     ROM_LOAD(      	"extbas11.rom",	0x0000, 0x2000, 0xa82a6254)
-     ROM_LOAD_OPTIONAL(	"disk11.rom",	0x4000, 0x2000, 0x0b9c5415)
+     ROM_LOAD(			"bas12.rom",	0x2000, 0x2000, CRC(54368805))
+     ROM_LOAD(      	"extbas11.rom",	0x0000, 0x2000, CRC(a82a6254))
+     ROM_LOAD_OPTIONAL(	"disk11.rom",	0x4000, 0x2000, CRC(0b9c5415))
 ROM_END
 
 ROM_START(coco2b)
      ROM_REGION(0x8000,REGION_CPU1,0)
-     ROM_LOAD(			"bas13.rom",	0x2000, 0x2000, 0xd8f4d15e)
-     ROM_LOAD(      	"extbas11.rom",	0x0000, 0x2000, 0xa82a6254)
-     ROM_LOAD_OPTIONAL(	"disk11.rom",	0x4000, 0x2000, 0x0b9c5415)
+     ROM_LOAD(			"bas13.rom",	0x2000, 0x2000, CRC(d8f4d15e))
+     ROM_LOAD(      	"extbas11.rom",	0x0000, 0x2000, CRC(a82a6254))
+     ROM_LOAD_OPTIONAL(	"disk11.rom",	0x4000, 0x2000, CRC(0b9c5415))
 ROM_END
 
 ROM_START(coco3)
      ROM_REGION(0x10000,REGION_CPU1,0)
-	 ROM_LOAD(			"coco3.rom",	0x0000, 0x8000, 0xb4c88d6c)
-     ROM_LOAD_OPTIONAL(	"disk11.rom",	0xC000, 0x2000, 0x0b9c5415)
-     ROM_LOAD_OPTIONAL(	"disk11.rom",	0xE000, 0x2000, 0x0b9c5415)
+	 ROM_LOAD(			"coco3.rom",	0x0000, 0x8000, CRC(b4c88d6c))
+     ROM_LOAD_OPTIONAL(	"disk11.rom",	0xC000, 0x2000, CRC(0b9c5415))
+     ROM_LOAD_OPTIONAL(	"disk11.rom",	0xE000, 0x2000, CRC(0b9c5415))
 ROM_END
 
 ROM_START(coco3p)
      ROM_REGION(0x10000,REGION_CPU1,0)
-	 ROM_LOAD(			"coco3p.rom",	0x0000, 0x8000, 0xff050d80)
-     ROM_LOAD_OPTIONAL(	"disk11.rom",	0xC000, 0x2000, 0x0b9c5415)
-     ROM_LOAD_OPTIONAL(	"disk11.rom",	0xE000, 0x2000, 0x0b9c5415)
+	 ROM_LOAD(			"coco3p.rom",	0x0000, 0x8000, CRC(ff050d80))
+     ROM_LOAD_OPTIONAL(	"disk11.rom",	0xC000, 0x2000, CRC(0b9c5415))
+     ROM_LOAD_OPTIONAL(	"disk11.rom",	0xE000, 0x2000, CRC(0b9c5415))
 ROM_END
 
 ROM_START(cp400)
      ROM_REGION(0x8000,REGION_CPU1,0)
-     ROM_LOAD("cp400bas.rom",  0x0000, 0x4000, 0x878396a5)
-     ROM_LOAD("cp400dsk.rom",  0x4000, 0x2000, 0xe9ad60a0)
+     ROM_LOAD("cp400bas.rom",  0x0000, 0x4000, CRC(878396a5))
+     ROM_LOAD("cp400dsk.rom",  0x4000, 0x2000, CRC(e9ad60a0))
 ROM_END
 
 #define rom_coco3h	rom_coco3
@@ -685,7 +685,7 @@ ROM_END
   Bitbanger port
 ***************************************************************************/
 
-static int coco_bitbanger_filter(int id, const int *pulses, int total_pulses, int total_duration)
+static int coco_bitbanger_filter(mess_image *img, const int *pulses, int total_pulses, int total_duration)
 {
 	int i;
 	int result = 0;
@@ -710,7 +710,7 @@ static int coco_bitbanger_filter(int id, const int *pulses, int total_pulses, in
 		}
 
 		c = (word >> 1) & 0xff;
-		printer_output(id, c);
+		printer_output(img, c);
 	}
 	return result;
 }
@@ -728,17 +728,17 @@ static const struct bitbanger_config coco_bitbanger_config =
 
 /* ----------------------------------------------------------------------- */
 
-GET_CUSTOM_DEVICENAME( coco )
+static GET_CUSTOM_DEVICENAME( coco )
 {
 	const char *name = NULL;
-	switch(type) {
+	switch(image_devtype(img)) {
 	case IO_VHD:
 		name = "Virtual Hard Disk";
 		break;
 
 	case IO_FLOPPY:
 		/* CoCo people like their floppy drives zero counted */
-		snprintf(buf, bufsize, "Floppy #%d", id);
+		snprintf(buf, bufsize, "Floppy #%d", image_index_in_devtype(img));
 		name = buf;
 		break;
 	}
@@ -803,14 +803,14 @@ SYSTEM_CONFIG_START(dragon64)
 	CONFIG_RAM_DEFAULT		(64 * 1024)
 SYSTEM_CONFIG_END
 
-/*     YEAR  NAME       PARENT  MACHINE    INPUT     INIT     CONFIG,  COMPANY               FULLNAME */
-COMP(  1980, coco,      0,		coco,      coco,     0,		  coco,    "Tandy Radio Shack",  "Color Computer" )
-COMP(  1981, cocoe,     coco,	coco,      coco,     0,		  coco,    "Tandy Radio Shack",  "Color Computer (Extended BASIC 1.0)" )
-COMP(  1983, coco2,     coco,	coco2,     coco,     0,		  coco2,   "Tandy Radio Shack",  "Color Computer 2" )
-COMP(  1985?, coco2b,    coco,	coco2b,    coco,     0,		  coco2,   "Tandy Radio Shack",  "Color Computer 2B" )
-COMP(  1986, coco3,     coco, 	coco3,	   coco3,    0,		  coco3,   "Tandy Radio Shack",  "Color Computer 3 (NTSC)" )
-COMP(  1986, coco3p,    coco, 	coco3,	   coco3,    0,		  coco3,   "Tandy Radio Shack",  "Color Computer 3 (PAL)" )
-COMPX( 19??, coco3h,	 coco,	coco3h,    coco3,	 0, 	  coco3,   "Tandy Radio Shack",  "Color Computer 3 (NTSC; HD6309)", GAME_COMPUTER_MODIFIED|GAME_ALIAS)
-COMP(  1982, dragon32,  coco, 	dragon32,  dragon32, 0,		  dragon32,"Dragon Data Ltd",    "Dragon 32" )
-COMP(  1983, dragon64,  coco, 	dragon64,  dragon32, 0,		  dragon64,"Dragon Data Ltd",    "Dragon 64" )
-COMP(  1984, cp400,     coco, 	coco,      coco,     0,		  coco,    "Prologica",          "CP400" )
+/*     YEAR		NAME		PARENT	COMPAT	MACHINE    INPUT     INIT     CONFIG	COMPANY					FULLNAME */
+COMP(  1980,	coco,		0,		0,		coco,      coco,     0,		  coco,		"Tandy Radio Shack",	"Color Computer" )
+COMP(  1981,	cocoe,		coco,	0,		coco,      coco,     0,		  coco,		"Tandy Radio Shack",	"Color Computer (Extended BASIC 1.0)" )
+COMP(  1983,	coco2,		coco,	0,		coco2,     coco,     0,		  coco2,	"Tandy Radio Shack",	"Color Computer 2" )
+COMP(  1985?,	coco2b,		coco,	0,		coco2b,    coco,     0,		  coco2,	"Tandy Radio Shack",	"Color Computer 2B" )
+COMP(  1986,	coco3,		coco,	0,	 	coco3,	   coco3,    0,		  coco3,	"Tandy Radio Shack",	"Color Computer 3 (NTSC)" )
+COMP(  1986,	coco3p,		coco, 	0,		coco3,	   coco3,    0,		  coco3,	"Tandy Radio Shack",	"Color Computer 3 (PAL)" )
+COMPX( 19??,	coco3h,		coco,	0,		coco3h,    coco3,	 0, 	  coco3,	"Tandy Radio Shack",	"Color Computer 3 (NTSC; HD6309)", GAME_COMPUTER_MODIFIED|GAME_ALIAS)
+COMP(  1982,	dragon32,	coco,	0,		dragon32,  dragon32, 0,		  dragon32,	"Dragon Data Ltd",    "Dragon 32" )
+COMP(  1983,	dragon64,	coco,	0,		dragon64,  dragon32, 0,		  dragon64,	"Dragon Data Ltd",    "Dragon 64" )
+COMP(  1984,	cp400,		coco, 	0,		coco,	coco,     0,		  coco,		"Prologica",          "CP400" )

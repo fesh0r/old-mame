@@ -527,7 +527,7 @@ MACHINE_DRIVER_END
 
 ROM_START(zx80)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("zx80.rom",    0x0000, 0x1000, 0x4c7fc597)
+	ROM_LOAD("zx80.rom",    0x0000, 0x1000, CRC(4c7fc597))
     ROM_REGION(0x00100, REGION_GFX1,0)
 	/* filled in by zx_init_driver */
 ROM_END
@@ -535,72 +535,72 @@ ROM_END
 
 ROM_START(aszmic)
     ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("aszmic.rom",  0x0000, 0x1000, 0x6c123536)
+	ROM_LOAD("aszmic.rom",  0x0000, 0x1000, CRC(6c123536))
     ROM_REGION(0x00100, REGION_GFX1,0)
     /* filled in by zx_init_driver */
 ROM_END
 
 ROM_START(zx81)
         ROM_REGION(0x10000, REGION_CPU1,0)
-        ROM_LOAD("zx81.rom",    0x0000, 0x2000, 0xfcbbd617)
+        ROM_LOAD("zx81.rom",    0x0000, 0x2000, CRC(fcbbd617))
         ROM_REGION(0x00100, REGION_GFX1,0)
         /* filled in by zx_init_driver */
 ROM_END                                                                                                                                       
 
 ROM_START(zx81a)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("zx81a.rom",    0x0000, 0x2000, 0x4b1dd6eb)
+	ROM_LOAD("zx81a.rom",    0x0000, 0x2000, CRC(4b1dd6eb))
 	ROM_REGION(0x00100, REGION_GFX1,0)
 	/* filled in by zx_init_driver */
 ROM_END
 
 ROM_START(zx81b)
         ROM_REGION(0x10000, REGION_CPU1,0)
-        ROM_LOAD("zx81b.rom",    0x0000, 0x2000, 0x522c37b8)
+        ROM_LOAD("zx81b.rom",    0x0000, 0x2000, CRC(522c37b8))
         ROM_REGION(0x00100, REGION_GFX1,0)
         /* filled in by zx_init_driver */
 ROM_END                                                                                                                                       
 
 ROM_START(ts1000)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("zx81a.rom",  0x0000, 0x2000, 0x4b1dd6eb)
+	ROM_LOAD("zx81a.rom",  0x0000, 0x2000, CRC(4b1dd6eb))
 	ROM_REGION(0x00100, REGION_GFX1,0)
 	/* filled in by zx_init_driver */
 ROM_END
 
 ROM_START(pc8300)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("8300_org.rom",0x0000, 0x2000, 0xa350f2b1)
+	ROM_LOAD("8300_org.rom",0x0000, 0x2000, CRC(a350f2b1))
 	ROM_REGION(0x00100, REGION_GFX1,0)
 	/* filled in by zx_init_driver */
 	ROM_REGION(0x00200, REGION_GFX2,0)
-	ROM_LOAD("8300_fnt.bin",0x0000, 0x0200, 0x6bd0408c)
+	ROM_LOAD("8300_fnt.bin",0x0000, 0x0200, CRC(6bd0408c))
 ROM_END
 
 ROM_START(pow3000)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("pow3000.rom", 0x0000, 0x2000, 0x8a49b2c3)
+	ROM_LOAD("pow3000.rom", 0x0000, 0x2000, CRC(8a49b2c3))
 	ROM_REGION(0x00100, REGION_GFX1,0)
 	/* filled in by zx_init_driver */
 	ROM_REGION(0x00200, REGION_GFX2,0)
-	ROM_LOAD("pow3000.chr", 0x0000, 0x0200, 0x1c42fe46)
+	ROM_LOAD("pow3000.chr", 0x0000, 0x0200, CRC(1c42fe46))
 ROM_END
 
 ROM_START(lambda)
         ROM_REGION(0x10000, REGION_CPU1,0)
-        ROM_LOAD("lambda.rom",0x0000, 0x2000, 0x8a49b2c3)
+        ROM_LOAD("lambda.rom",0x0000, 0x2000, CRC(8a49b2c3))
         ROM_REGION(0x00100, REGION_GFX1,0)
         /* filled in by zx_init_driver */
         ROM_REGION(0x00200, REGION_GFX2,0)
-        ROM_LOAD("8300_fnt.bin",0x0000, 0x0200, 0x6bd0408c)
+        ROM_LOAD("8300_fnt.bin",0x0000, 0x0200, CRC(6bd0408c))
 ROM_END                                                                                                                                       
 
 SYSTEM_CONFIG_START(zx80)
-	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "80\0o\0", DEVICE_LOAD_RESETS_CPU, OSD_FOPEN_READ, NULL, NULL, zx_cassette_load, zx_cassette_unload, NULL)
+	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "80\0o\0", DEVICE_LOAD_RESETS_CPU, OSD_FOPEN_READ, NULL, NULL, device_load_zx_cassette, device_unload_zx_cassette, NULL)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(zx81)
-	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "81\0p\0", DEVICE_LOAD_RESETS_CPU, OSD_FOPEN_READ, NULL, NULL, zx_cassette_load, zx_cassette_unload, NULL)
+	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "81\0p\0", DEVICE_LOAD_RESETS_CPU, OSD_FOPEN_READ, NULL, NULL, device_load_zx_cassette, device_unload_zx_cassette, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -608,13 +608,13 @@ SYSTEM_CONFIG_END
   Game driver(s)
 
 ***************************************************************************/
-/*	  YEAR 	NAME	 PARENT	MACHINE		INPUT		INIT	CONFIG	COMPANY		FULLNAME */
-COMPX(1980,	zx80,    0,		zx80,		zx80,		zx,		zx80,	"Sinclair Research", "ZX-80",		GAME_NOT_WORKING)
-COMPX(1981,	aszmic,  zx80,	zx80,		zx80,		zx,		zx80,	"Sinclair Research", "ZX.Aszmic",	GAME_NOT_WORKING)
-COMPX(1981,	zx81,    0,		zx81,		zx81,       zx,		zx81,	"Sinclair Research", "ZX-81",           GAME_NOT_WORKING)
-COMPX(198?,	zx81a,   zx81,	zx81,		zx81,		zx,		zx81,	"Sinclair Research", "ZX-81 (2nd rev)",	GAME_NOT_WORKING)
-COMPX(198?,	zx81b,   zx81,	zx81,		zx81,		zx,		zx81,	"Sinclair Research", "ZX-81 (3rd rev)", GAME_NOT_WORKING)
-COMPX(1982,	ts1000,  zx81,	ts1000,		zx81,		zx,		zx81,	"Timex Sinclair",    "Timex Sinclair 1000",		GAME_NOT_WORKING | GAME_ALIAS)
-COMPX(1984,	pc8300,  zx81,	pc8300,		pow3000,	zx,		zx81,	"Your Computer",     "PC8300",		GAME_NOT_WORKING)
-COMPX(1983,	pow3000, zx81,	pow3000,	pow3000,  	zx,		zx81,	"Creon Enterprises", "Power 3000",	GAME_NOT_WORKING)
-COMPX(1982,	lambda,  zx81,	pc8300,		pow3000,	zx,		zx81,	"Lambda Electronics Ltd","Lambda 8300",	GAME_NOT_WORKING)
+/*	  YEAR 	NAME	 PARENT	COMPAT	MACHINE		INPUT		INIT	CONFIG	COMPANY		FULLNAME */
+COMPX(1980,	zx80,    0,		0,		zx80,		zx80,		zx,		zx80,	"Sinclair Research", "ZX-80",		GAME_NOT_WORKING)
+COMPX(1981,	aszmic,  zx80,	0,		zx80,		zx80,		zx,		zx80,	"Sinclair Research", "ZX.Aszmic",	GAME_NOT_WORKING)
+COMPX(1981,	zx81,    0,		0,		zx81,		zx81,       zx,		zx81,	"Sinclair Research", "ZX-81",           GAME_NOT_WORKING)
+COMPX(198?,	zx81a,   zx81,	0,		zx81,		zx81,		zx,		zx81,	"Sinclair Research", "ZX-81 (2nd rev)",	GAME_NOT_WORKING)
+COMPX(198?,	zx81b,   zx81,	0,		zx81,		zx81,		zx,		zx81,	"Sinclair Research", "ZX-81 (3rd rev)", GAME_NOT_WORKING)
+COMPX(1982,	ts1000,  zx81,	0,		ts1000,		zx81,		zx,		zx81,	"Timex Sinclair",    "Timex Sinclair 1000",		GAME_NOT_WORKING | GAME_ALIAS)
+COMPX(1984,	pc8300,  zx81,	0,		pc8300,		pow3000,	zx,		zx81,	"Your Computer",     "PC8300",		GAME_NOT_WORKING)
+COMPX(1983,	pow3000, zx81,	0,		pow3000,	pow3000,  	zx,		zx81,	"Creon Enterprises", "Power 3000",	GAME_NOT_WORKING)
+COMPX(1982,	lambda,  zx81,	0,		pc8300,		pow3000,	zx,		zx81,	"Lambda Electronics Ltd","Lambda 8300",	GAME_NOT_WORKING)

@@ -186,7 +186,7 @@ MACHINE_DRIVER_END
 
 ROM_START(mk1)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("82c210-1", 0x0000, 0x800, 0x278f7bf3)
+	ROM_LOAD("82c210-1", 0x0000, 0x800, CRC(278f7bf3))
 ROM_END
 
 static void mk1_interrupt(UINT16 addr, bool level)
@@ -215,6 +215,6 @@ static DRIVER_INIT( mk1 )
 ***************************************************************************/
 
 // seams to be developed by mostek (MK)
-/*     YEAR   NAME  PARENT  MACHINE INPUT   INIT	CONFIG	COMPANY                 FULLNAME */
-CONSX( 1979,  mk1,  0, 		mk1,	mk1,	mk1,	NULL,	"Computer Electronic",  "Chess Champion MK I", GAME_NOT_WORKING)
+/*     YEAR   NAME  PARENT  COMPAT	MACHINE INPUT   INIT	CONFIG	COMPANY                 FULLNAME */
+CONSX( 1979,  mk1,  0, 		0,		mk1,	mk1,	mk1,	NULL,	"Computer Electronic",  "Chess Champion MK I", GAME_NOT_WORKING)
 

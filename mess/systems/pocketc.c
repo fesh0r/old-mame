@@ -717,10 +717,10 @@ MACHINE_DRIVER_END
 ROM_START(pc1401)
 	ROM_REGION(0x10000,REGION_CPU1,0)
 	/* SC61860A08 5H 13LD cpu with integrated rom*/
-	ROM_LOAD("sc61860.a08", 0x0000, 0x2000, 0x44bee438)
+	ROM_LOAD("sc61860.a08", 0x0000, 0x2000, CRC(44bee438))
 /* 5S1 SC613256 D30
    or SC43536LD 5G 13 (LCD chip?) */
-	ROM_LOAD("sc613256.d30", 0x8000, 0x8000, 0x69b9d587)
+	ROM_LOAD("sc613256.d30", 0x8000, 0x8000, CRC(69b9d587))
 	ROM_REGION(0x80,REGION_GFX1,0)
 ROM_END
 
@@ -729,8 +729,8 @@ ROM_END
 ROM_START(pc1251)
 	ROM_REGION(0x10000,REGION_CPU1,0)
 	/* sc61860a13 6c 13 ld */
-	ROM_LOAD("cpu1251.rom", 0x0000, 0x2000, 0xf7287aca)
-	ROM_LOAD("bas1251.rom", 0x4000, 0x4000, 0x93ecb629)
+	ROM_LOAD("cpu1251.rom", 0x0000, 0x2000, CRC(f7287aca))
+	ROM_LOAD("bas1251.rom", 0x4000, 0x4000, CRC(93ecb629))
 	ROM_REGION(0x80,REGION_GFX1,0)
 ROM_END
 
@@ -739,19 +739,19 @@ ROM_END
 ROM_START(pc1350)
 	ROM_REGION(0x10000,REGION_CPU1,0)
 	/* sc61860a13 6c 13 ld */
-	ROM_LOAD("cpu.rom", 0x0000, 0x2000, 0x79a924bc)
-	ROM_LOAD("basic.rom", 0x8000, 0x8000, 0x158b28e2)
+	ROM_LOAD("cpu.rom", 0x0000, 0x2000, CRC(79a924bc))
+	ROM_LOAD("basic.rom", 0x8000, 0x8000, CRC(158b28e2))
 	ROM_REGION(0x100,REGION_GFX1,0)
 ROM_END
 
 ROM_START(pc1403)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-    ROM_LOAD("introm.bin", 0x0000, 0x2000, 0x588c500b )
+    ROM_LOAD("introm.bin", 0x0000, 0x2000, CRC(588c500b ))
 	ROM_REGION(0x10000,REGION_USER1,0)
-    ROM_LOAD("extrom08.bin", 0x0000, 0x4000, 0x1fa65140 )
-    ROM_LOAD("extrom09.bin", 0x4000, 0x4000, 0x4a7da6ab )
-    ROM_LOAD("extrom0a.bin", 0x8000, 0x4000, 0x9925174f )
-    ROM_LOAD("extrom0b.bin", 0xc000, 0x4000, 0xfa5df9ec )
+    ROM_LOAD("extrom08.bin", 0x0000, 0x4000, CRC(1fa65140 ))
+    ROM_LOAD("extrom09.bin", 0x4000, 0x4000, CRC(4a7da6ab ))
+    ROM_LOAD("extrom0a.bin", 0x8000, 0x4000, CRC(9925174f ))
+    ROM_LOAD("extrom0b.bin", 0xc000, 0x4000, CRC(fa5df9ec ))
 	ROM_REGION(0x100,REGION_GFX1,0)
 ROM_END
 
@@ -779,15 +779,16 @@ SYSTEM_CONFIG_END
    pc1600
 */
 
+/*    YEAR  NAME		PARENT	COMPAT	MACHINE			INPUT		INIT	CONFIG		COMPANY		FULLNAME */
 /* cpu sc61860 */
-COMPX( 1982, pc1251,	0, 		pc1251,	pc1251,	pc1251,	pocketc,	"Sharp",  "Pocket Computer 1251", GAME_NOT_WORKING)
-COMPX( 198?, trs80pc3,	pc1251,	pc1251,	pc1251,	pc1251,	pocketc,	"Tandy",  "TRS80 PC-3", GAME_ALIAS|GAME_NOT_WORKING)
+COMPX( 1982, pc1251,	0, 		0,		pc1251,	pc1251,	pc1251,	pocketc,	"Sharp",  "Pocket Computer 1251", GAME_NOT_WORKING)
+COMPX( 198?, trs80pc3,	pc1251,	0,		pc1251,	pc1251,	pc1251,	pocketc,	"Tandy",  "TRS80 PC-3", GAME_ALIAS|GAME_NOT_WORKING)
 
 /* pc1261/pc1262 */
-COMPX( 1984, pc1350,	0, 		pc1350,	pc1350,	pc1350,	pocketc,	"Sharp",  "Pocket Computer 1350", GAME_NOT_WORKING)
-COMPX( 1983, pc1401,	0, 		pc1401,	pc1401,	pc1401,	pocketc,	"Sharp",  "Pocket Computer 1401", GAME_NOT_WORKING)
-COMPX( 1984, pc1402,	pc1401,	pc1401,	pc1401,	pc1401,	pocketc,	"Sharp",  "Pocket Computer 1402", GAME_ALIAS|GAME_NOT_WORKING)
+COMPX( 1984, pc1350,	0, 		0,		pc1350,	pc1350,	pc1350,	pocketc,	"Sharp",  "Pocket Computer 1350", GAME_NOT_WORKING)
+COMPX( 1983, pc1401,	0, 		0,		pc1401,	pc1401,	pc1401,	pocketc,	"Sharp",  "Pocket Computer 1401", GAME_NOT_WORKING)
+COMPX( 1984, pc1402,	pc1401,	0,		pc1401,	pc1401,	pc1401,	pocketc,	"Sharp",  "Pocket Computer 1402", GAME_ALIAS|GAME_NOT_WORKING)
 
 /* 72kb rom, 32kb ram, cpu? pc1360 */
-COMPX( 198?, pc1403,	0,		pc1403,	pc1403,	pc1403,	pocketc,	"Sharp", "Pocket Computer 1403", GAME_NOT_WORKING)
-COMPX( 198?, pc1403h,	pc1403,	pc1403,	pc1403,	pc1403,	pocketc,	"Sharp", "Pocket Computer 1403H", GAME_ALIAS|GAME_NOT_WORKING)
+COMPX( 198?, pc1403,	0,		0,		pc1403,	pc1403,	pc1403,	pocketc,	"Sharp", "Pocket Computer 1403", GAME_NOT_WORKING)
+COMPX( 198?, pc1403h,	pc1403,	0,		pc1403,	pc1403,	pc1403,	pocketc,	"Sharp", "Pocket Computer 1403H", GAME_ALIAS|GAME_NOT_WORKING)

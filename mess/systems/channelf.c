@@ -35,7 +35,7 @@ static void init_channelf(void)
 		mem[i] = i;
 }
 
-static int channelf_cart_load(int id, mame_file *file, int open_mode)
+static DEVICE_LOAD( channelf_cart )
 {
 	return cartslot_load_generic(file, REGION_CPU1, 0x800, 0x800, 0x800, 0);
 }
@@ -210,14 +210,14 @@ MACHINE_DRIVER_END
 
 ROM_START(channelf)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-		ROM_LOAD("sl31253.rom",  0x0000, 0x0400, 0x04694ed9)
-		ROM_LOAD("sl31254.rom",  0x0400, 0x0400, 0x9c047ba3)
+		ROM_LOAD("sl31253.rom",  0x0000, 0x0400, CRC(04694ed9))
+		ROM_LOAD("sl31254.rom",  0x0400, 0x0400, CRC(9c047ba3))
 	ROM_REGION(0x00100,REGION_GFX1,0)
 		/* bit pattern is stored here */
 ROM_END
 
 SYSTEM_CONFIG_START(channelf)
-	CONFIG_DEVICE_CARTSLOT_OPT( 1, "bin\0", NULL, NULL, channelf_cart_load, NULL, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT( 1, "bin\0", NULL, NULL, device_load_channelf_cart, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -226,7 +226,7 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT		COMPANY		FULLNAME */
-CONS( 1976, channelf, 0,		channelf, channelf, channelf,	channelf,	"Fairchild", "Channel F" )
+/*    YEAR  NAME      PARENT	COMPAT	MACHINE   INPUT     INIT		COMPANY		FULLNAME */
+CONS( 1976, channelf, 0,		0,		channelf, channelf, channelf,	channelf,	"Fairchild", "Channel F" )
 
 

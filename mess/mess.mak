@@ -63,7 +63,7 @@ CPUS+=TMS9900@
 #CPUS+=TMS9980@
 #CPUS+=TMS9985@
 #CPUS+=TMS9989@
-#CPUS+=TMS9995@
+CPUS+=TMS9995@
 #CPUS+=TMS99105A@
 #CPUS+=TMS99110A@
 #CPUS+=Z8000@
@@ -164,20 +164,15 @@ SOUNDS+=BEEP@
 
 # Archive definitions
 DRVLIBS = \
-	$(OBJ)/cbm.a      \
-	$(OBJ)/cbmshare.a \
 	$(OBJ)/coco.a     \
 	$(OBJ)/nintendo.a \
 	$(OBJ)/apple.a    \
-	$(OBJ)/ti99.a     \
-	$(OBJ)/apexc.a	  \
-	$(OBJ)/pdp1.a	  \
-	$(OBJ)/sega.a     \
-	$(OBJ)/acorn.a    \
-	$(OBJ)/atari.a    \
 	$(OBJ)/at.a       \
 	$(OBJ)/pc.a       \
 	$(OBJ)/pcshare.a  \
+	$(OBJ)/sega.a     \
+	$(OBJ)/acorn.a    \
+	$(OBJ)/atari.a    \
 	$(OBJ)/advision.a \
 	$(OBJ)/mbee.a	  \
 	$(OBJ)/vtech.a	  \
@@ -185,27 +180,26 @@ DRVLIBS = \
 	$(OBJ)/trs80.a	  \
 	$(OBJ)/gce.a	  \
 	$(OBJ)/arcadia.a  \
-	$(OBJ)/tangerin.a \
 	$(OBJ)/kaypro.a   \
 	$(OBJ)/cgenie.a   \
 	$(OBJ)/aquarius.a \
-	$(OBJ)/kim1.a     \
-	$(OBJ)/sym1.a     \
-	$(OBJ)/p2000.a	  \
-	$(OBJ)/veb.a	  \
-	$(OBJ)/amstrad.a  \
-	$(OBJ)/tatung.a   \
+	$(OBJ)/tangerin.a \
 	$(OBJ)/sord.a     \
 	$(OBJ)/exidy.a    \
+	$(OBJ)/samcoupe.a \
+	$(OBJ)/p2000.a	  \
+	$(OBJ)/tatung.a   \
+	$(OBJ)/ep128.a	  \
+	$(OBJ)/cpschngr.a \
+	$(OBJ)/veb.a	  \
+	$(OBJ)/amstrad.a  \
 	$(OBJ)/necpc.a	  \
 	$(OBJ)/nec.a	  \
 	$(OBJ)/fairch.a   \
 	$(OBJ)/ascii.a	  \
 	$(OBJ)/nascom1.a  \
-	$(OBJ)/samcoupe.a \
 	$(OBJ)/magnavox.a \
 	$(OBJ)/mtx.a	  \
-	$(OBJ)/ep128.a	  \
 	$(OBJ)/mk1.a      \
 	$(OBJ)/mk2.a      \
 	$(OBJ)/ti85.a     \
@@ -216,21 +210,27 @@ DRVLIBS = \
 	$(OBJ)/sinclair.a \
 	$(OBJ)/lynx.a     \
 	$(OBJ)/intv.a     \
-	$(OBJ)/cpschngr.a \
-	$(OBJ)/bally.a	  \
 	$(OBJ)/svision.a  \
 	$(OBJ)/coleco.a   \
 	$(OBJ)/apf.a      \
+	$(OBJ)/bally.a	  \
 	$(OBJ)/rca.a	  \
 	$(OBJ)/teamconc.a \
 	$(OBJ)/amiga.a    \
 	$(OBJ)/svi.a      \
+	$(OBJ)/ti99.a     \
+	$(OBJ)/apexc.a	  \
+	$(OBJ)/pdp1.a	  \
 	$(OBJ)/sharp.a    \
 	$(OBJ)/aim65.a    \
 	$(OBJ)/avigo.a    \
 	$(OBJ)/motorola.a \
 	$(OBJ)/ssystem3.a \
 	$(OBJ)/hp48.a     \
+	$(OBJ)/cbm.a      \
+	$(OBJ)/cbmshare.a \
+	$(OBJ)/kim1.a     \
+	$(OBJ)/sym1.a     \
 
 
 
@@ -254,6 +254,7 @@ $(OBJ)/sega.a:                       \
 	  $(OBJ)/mess/systems/sms.o
 
 $(OBJ)/atari.a:                      \
+	  $(OBJ)/vidhrdw/tia.o           \
 	  $(OBJ)/mess/machine/atari.o	 \
 	  $(OBJ)/mess/vidhrdw/antic.o	 \
 	  $(OBJ)/mess/vidhrdw/gtia.o	 \
@@ -262,7 +263,6 @@ $(OBJ)/atari.a:                      \
 	  $(OBJ)/mess/machine/a7800.o	 \
 	  $(OBJ)/mess/systems/a7800.o	 \
 	  $(OBJ)/mess/vidhrdw/a7800.o	 \
-	  $(OBJ)/mess/machine/a2600.o	 \
 	  $(OBJ)/mess/systems/a2600.o    \
 #	  $(OBJ)/mess/systems/atarist.o
 
@@ -434,6 +434,15 @@ $(OBJ)/ti99.a:	   \
 	  $(OBJ)/mess/machine/mm58274c.o \
 	  $(OBJ)/mess/machine/994x_ser.o \
 	  $(OBJ)/mess/systems/ti99_4p.o  \
+	  $(OBJ)/mess/machine/at29040.o  \
+	  $(OBJ)/mess/machine/99_dsk.o   \
+	  $(OBJ)/mess/machine/99_ide.o   \
+	  $(OBJ)/mess/machine/99_peb.o   \
+	  $(OBJ)/mess/machine/99_hsgpl.o \
+	  $(OBJ)/mess/machine/smc92x4.o  \
+	  $(OBJ)/mess/machine/rtc65271.o \
+	  $(OBJ)/mess/systems/geneve.o   \
+	  $(OBJ)/mess/machine/geneve.o   \
 #	  $(OBJ)/mess/systems/ti99_2.o	 \
 #	  $(OBJ)/mess/systems/ti990_4.o  \
 
@@ -453,7 +462,8 @@ $(OBJ)/pcshare.a:	   \
 	  $(OBJ)/mess/machine/pcshare.o	 \
 	  $(OBJ)/mess/vidhrdw/pc_mda.o	 \
 	  $(OBJ)/mess/vidhrdw/pc_cga.o	 \
-	  $(OBJ)/mess/vidhrdw/vga.o	     \
+	  $(OBJ)/mess/vidhrdw/pc_vga.o	 \
+	  $(OBJ)/mess/vidhrdw/pc_video.o \
 
 $(OBJ)/pc.a:	   \
 	  $(OBJ)/mess/vidhrdw/pc_aga.o	 \
@@ -693,7 +703,6 @@ $(OBJ)/motorola.a: \
 $(OBJ)/svi.a:      \
 	  $(OBJ)/mess/machine/svi318.o   \
 	  $(OBJ)/mess/systems/svi318.o   \
-	  $(OBJ)/mess/machine/svi318dk.o \
 	  $(OBJ)/mess/formats/svi_cas.o
 
 $(OBJ)/exidy.a:    \
@@ -724,6 +733,7 @@ $(OBJ)/tatung.a:     \
 # MESS specific core $(OBJ)s
 COREOBJS += \
 	$(OBJ)/cheat.o  			   \
+	$(OBJ)/vidhrdw/tms9928a.o      \
 	$(OBJ)/mess/mess.o			   \
 	$(OBJ)/mess/image.o		       \
 	$(OBJ)/mess/system.o	       \
@@ -747,6 +757,9 @@ COREOBJS += \
 	$(OBJ)/mess/devices/snapquik.o \
 	$(OBJ)/mess/devices/basicdsk.o \
 	$(OBJ)/mess/devices/flopdrv.o  \
+	$(OBJ)/mess/devices/idedrive.o \
+	$(OBJ)/mess/devices/pc_flopp.o \
+	$(OBJ)/mess/devices/dsk.o      \
 	$(OBJ)/mess/machine/6551.o     \
 	$(OBJ)/mess/vidhrdw/m6847.o    \
 	$(OBJ)/mess/vidhrdw/m6845.o    \
@@ -754,7 +767,6 @@ COREOBJS += \
 	$(OBJ)/mess/machine/tc8521.o   \
 	$(OBJ)/mess/vidhrdw/v9938.o    \
 	$(OBJ)/mess/vidhrdw/crtc6845.o \
-	$(OBJ)/mess/vidhrdw/tms9928a.o \
 	$(OBJ)/mess/machine/28f008sa.o \
 	$(OBJ)/mess/machine/am29f080.o \
 	$(OBJ)/mess/machine/rriot.o    \
@@ -767,12 +779,11 @@ COREOBJS += \
 	$(OBJ)/mess/machine/centroni.o \
 	$(OBJ)/mess/machine/pckeybrd.o \
 	$(OBJ)/mess/machine/pc_fdc_h.o \
-	$(OBJ)/mess/devices/pc_flopp.o \
-	$(OBJ)/mess/devices/dsk.o      \
 	$(OBJ)/mess/machine/d88.o      \
 	$(OBJ)/mess/machine/nec765.o   \
 	$(OBJ)/mess/machine/wd179x.o   \
-	$(OBJ)/mess/machine/serial.o
+	$(OBJ)/mess/machine/serial.o   \
+	$(OBJ)/mess/formats/wavfile.o
 
 
 # additional tools
@@ -788,7 +799,7 @@ else
 OUTOPT = -o $@
 endif
 
-dat2html$(EXE): $(OBJ)/mess/tools/dat2html/dat2html.o $(OBJ)/mess/utils.o
+dat2html$(EXE): $(OBJ)/mess/tools/dat2html/dat2html.o $(OBJ)/mess/utils.o 
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $^ $(LIBS) $(OUTOPT)
 

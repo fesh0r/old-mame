@@ -155,24 +155,23 @@ QUICKLOAD_LOAD(kc)
 /* bit 4: Index pulse from disc */
 static unsigned char kc85_disc_hw_input_gate;
 
-int kc85_floppy_init(int id, mame_file *fp, int open_mode)
+DEVICE_LOAD( kc85_floppy )
 {
-	if (fp == NULL)
-		return INIT_PASS;
-
-	if (basicdsk_floppy_load(id, fp, open_mode)==INIT_PASS)
+	if (basicdsk_floppy_load(image, file, open_mode)==INIT_PASS)
 	{
-		basicdsk_set_geometry(id, 80, 2, 9, 512, 1, 0);
+		basicdsk_set_geometry(image, 80, 2, 9, 512, 1, 0, FALSE);
 		return INIT_PASS;
 	}
 
 	return INIT_FAIL;
 }
 
+#if 0
 static void kc85_disc_hw_ctc_interrupt(int state)
 {
 	cpu_set_irq_line(1, 0, state);
 }
+#endif
 
 READ_HANDLER(kc85_disk_hw_ctc_r)
 {
@@ -269,13 +268,6 @@ static void kc_disc_interface_init(void)
 	/* hold cpu at reset */
 	cpu_set_reset_line(1,ASSERT_LINE);
 }
-
-
-static void kc_disc_interface_exit(void)
-{
-	nec765_stop();
-}
-
 
 /*****************/
 /* MODULE SYSTEM */
@@ -419,37 +411,27 @@ static void kc85_module_system_init(void)
 
 #define KC_CASSETTE_TIMER_FREQUENCY TIME_IN_HZ(4800)
 
-int kc_cassette_device_init(int id, mame_file *file, int open_mode)
+DEVICE_LOAD( kc_cassette )
 {
-	if (file == NULL)
-		return INIT_PASS;
-
-	if( file )
+	if (! is_effective_mode_create(open_mode))
 	{
-		if (! is_effective_mode_create(open_mode))
-		{
-			struct wave_args_legacy wa = {0,};
-			wa.file = file;
+		struct wave_args_legacy wa = {0,};
+		wa.file = file;
 
-			if (device_open(IO_CASSETTE, id, 0, &wa))
-				return INIT_FAIL;
-
-			return INIT_PASS;
-		}
-		else
-		/* HJB 02/18: no file, created a new file instead */
-		{
-			struct wave_args_legacy wa = {0,};
-			wa.file = file;
-			wa.smpfreq = 22050; /* maybe 11025 Hz would be sufficient? */
-			/* open in write mode */
-			if (device_open(IO_CASSETTE, id, 1, &wa))
-				return INIT_FAIL;
-			return INIT_PASS;
-		}
+		if (device_open(image, 0, &wa))
+			return INIT_FAIL;
 	}
-
-	return INIT_FAIL;
+	else
+	/* HJB 02/18: no file, created a new file instead */
+	{
+		struct wave_args_legacy wa = {0,};
+		wa.file = file;
+		wa.smpfreq = 22050; /* maybe 11025 Hz would be sufficient? */
+		/* open in write mode */
+		if (device_open(image, 1, &wa))
+			return INIT_FAIL;
+	}
+	return INIT_PASS;
 }
 
 /* this timer is used to update the cassette */
@@ -469,7 +451,7 @@ static void kc_cassette_timer_callback(int dummy)
 	bit = 0;
 
 	/* get data from cassette */
-	if (device_input(IO_CASSETTE,0) > 255)
+	if (device_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 255)
 		bit = 1;
 
 	/* update astb with bit */
@@ -487,7 +469,7 @@ static void	kc_cassette_set_motor(int motor_state)
 	if (((kc_cassette_motor_state^motor_state)&0x01)!=0)
 	{
 		/* set new motor state in cassette device */
-		device_status(IO_CASSETTE, 0, motor_state);
+		device_status(image_from_devtype_and_index(IO_CASSETTE, 0), motor_state);
 
 		if (motor_state)
 		{
@@ -2025,12 +2007,6 @@ MACHINE_INIT( kc85_4d )
 	machine_init_kc85_4();
 	kc_disc_interface_init();
 }
-
-MACHINE_STOP( kc85_4d )
-{
-	kc_disc_interface_exit();
-}
-
 
 MACHINE_INIT( kc85_3 )
 {

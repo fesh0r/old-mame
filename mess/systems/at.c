@@ -12,9 +12,11 @@
 #include "includes/dma8237.h"
 #include "includes/pit8253.h"
 #include "includes/mc146818.h"
-#include "includes/vga.h"
+#include "includes/pc_vga.h"
 #include "includes/pc_cga.h"
 #include "includes/pc_mda.h"
+#include "includes/pc_video.h"
+#include "includes/pc.h"
 
 #include "devices/pc_hdc.h"
 #include "includes/pc_ide.h"
@@ -32,7 +34,6 @@
 #include "includes/pcshare.h"
 
 /* window resizing with dirtybuffering traping in xmess window */
-//#define RESIZING_WORKING
 
 #define ym3812_StdClock 3579545
 
@@ -429,20 +430,7 @@ static MACHINE_DRIVER_START( atcga )
 
 	MDRV_MACHINE_INIT( at )
 
-#ifdef RESIZING_WORKING
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-#else
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-#endif
-	MDRV_SCREEN_SIZE(80*8, 25*8)
-	MDRV_VISIBLE_AREA(0,80*8-1, 0,25*8-1)
-	MDRV_GFXDECODE(CGA_gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
-	MDRV_COLORTABLE_LENGTH(sizeof(cga_colortable) / sizeof(cga_colortable[0]))
-	MDRV_PALETTE_INIT(pc_cga)
-
-	MDRV_VIDEO_START(pc_cga)
-	MDRV_VIDEO_UPDATE(pc_cga)
+	MDRV_IMPORT_FROM( pcvideo_cga )
 
 	/* sound hardware */
 	MDRV_SOUND_ADD(CUSTOM, pc_sound_interface)
@@ -466,20 +454,7 @@ static MACHINE_DRIVER_START( ps2m30286 )
 
 	MDRV_MACHINE_INIT( at_vga )
 
-#ifdef RESIZING_WORKING
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-#else
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-#endif
-	MDRV_SCREEN_SIZE(720, 480)
-	MDRV_VISIBLE_AREA(0,720-1, 0,480-1)
-	MDRV_GFXDECODE(vga_gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(sizeof(vga_palette) / sizeof(vga_palette[0]))
-	MDRV_COLORTABLE_LENGTH(0x100*2)
-	MDRV_PALETTE_INIT(vga)
-
-	MDRV_VIDEO_START(vga)
-	MDRV_VIDEO_UPDATE(vga)
+	MDRV_IMPORT_FROM( pcvideo_vga )
 
 	/* sound hardware */
 	MDRV_SOUND_ADD(CUSTOM, pc_sound_interface)
@@ -496,27 +471,14 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( atvga )
 	/* basic machine hardware */
-	MDRV_CPU_ATPC(at, at, I286, 12000000, at_cga_frame_interrupt)
+	MDRV_CPU_ATPC(at, at, I286, 12000000, at_vga_frame_interrupt)
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_INIT( at_vga )
 
-#ifdef RESIZING_WORKING
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-#else
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-#endif
-	MDRV_SCREEN_SIZE(720, 480)
-	MDRV_VISIBLE_AREA(0,720-1, 0,480-1)
-	MDRV_GFXDECODE(vga_gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(sizeof(vga_palette) / sizeof(vga_palette[0]))
-	MDRV_COLORTABLE_LENGTH(0x100*2)
-	MDRV_PALETTE_INIT(vga)
-
-	MDRV_VIDEO_START(vga)
-	MDRV_VIDEO_UPDATE(vga)
+	MDRV_IMPORT_FROM( pcvideo_vga )
 
 	/* sound hardware */
 	MDRV_SOUND_ADD(CUSTOM, pc_sound_interface)
@@ -586,102 +548,102 @@ static struct MachineDriver machine_driver_at386 =
 #if 0
 	// ibm at
 	// most likely 2 32 kbyte chips for 16 bit access
-    ROM_LOAD("atbios.bin", 0xf0000, 0x10000, 0x674426be) // BASIC C1.1, beeps
+    ROM_LOAD("atbios.bin", 0xf0000, 0x10000, CRC(674426be)) // BASIC C1.1, beeps
 	// split into 2 chips for 16 bit access
-    ROM_LOAD_EVEN("ibmat.0", 0xf0000, 0x8000, 0x4995be7a)
-    ROM_LOAD_ODD("ibmat.1", 0xf0000, 0x8000, 0xc32713e4)
+    ROM_LOAD_EVEN("ibmat.0", 0xf0000, 0x8000, CRC(4995be7a))
+    ROM_LOAD_ODD("ibmat.1", 0xf0000, 0x8000, CRC(c32713e4))
 
 	/* I know about a 1984 version in 2 32kb roms */
 
 	/* at, ami bios and diagnostics */
-    ROM_LOAD_EVEN("rom01.bin", 0xf0000, 0x8000, 0x679296a7)
-    ROM_LOAD_ODD("rom02.bin", 0xf0000, 0x8000, 0x65ae1f97)
+    ROM_LOAD_EVEN("rom01.bin", 0xf0000, 0x8000, CRC(679296a7))
+    ROM_LOAD_ODD("rom02.bin", 0xf0000, 0x8000, CRC(65ae1f97))
 
 	/* */
-    ROM_LOAD("neat286.bin", 0xf0000, 0x10000, 0x07985d9b)
+    ROM_LOAD("neat286.bin", 0xf0000, 0x10000, CRC(07985d9b))
 	// split into 2 chips for 16 bit access
-    ROM_LOAD_EVEN("neat.0", 0xf0000, 0x8000, 0x4c36e61d)
-    ROM_LOAD_ODD("neat.1", 0xf0000, 0x8000, 0x4e90f294)
+    ROM_LOAD_EVEN("neat.0", 0xf0000, 0x8000, CRC(4c36e61d))
+    ROM_LOAD_ODD("neat.1", 0xf0000, 0x8000, CRC(4e90f294))
 
 	/* most likely 1 chip!, for lower costs */
-    ROM_LOAD("at386.bin", 0xf0000, 0x10000, 0x3df9732a)
+    ROM_LOAD("at386.bin", 0xf0000, 0x10000, CRC(3df9732a))
 
 	/* at486 */
-    ROM_LOAD("at486.bin", 0xf0000, 0x10000, 0x31214616)
+    ROM_LOAD("at486.bin", 0xf0000, 0x10000, CRC(31214616))
 
-    ROM_LOAD("", 0x??000, 0x2000, 0x)
+    ROM_LOAD("", 0x??000, 0x2000, CRC())
 #endif
 
 ROM_START( ibmat )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, 0x8e9e2bd4)
-    ROM_LOAD16_BYTE("at111585.0", 0xf0000, 0x8000, 0x4995be7a)
+    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
+    ROM_LOAD16_BYTE("at111585.0", 0xf0000, 0x8000, CRC(4995be7a))
 	ROM_RELOAD(0xff0000,0x8000)
-    ROM_LOAD16_BYTE("at111585.1", 0xf0001, 0x8000, 0xc32713e4)
+    ROM_LOAD16_BYTE("at111585.1", 0xf0001, 0x8000, CRC(c32713e4))
 	ROM_RELOAD(0xff0001,0x8000)
 	ROM_REGION(0x01100,REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, 0x42009069)
+    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069))
 ROM_END
 
 ROM_START( i8530286 )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, 0x8e9e2bd4)
+    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
 	// saved from running machine
-    ROM_LOAD16_BYTE("ps2m30.0", 0xe0000, 0x10000, 0x9965a634)
+    ROM_LOAD16_BYTE("ps2m30.0", 0xe0000, 0x10000, CRC(9965a634))
 	ROM_RELOAD(0xfe0000,0x10000)
-    ROM_LOAD16_BYTE("ps2m30.1", 0xe0001, 0x10000, 0x1448d3cb)
+    ROM_LOAD16_BYTE("ps2m30.1", 0xe0001, 0x10000, CRC(1448d3cb))
 	ROM_RELOAD(0xfe0001,0x10000)
 ROM_END
 
 ROM_START( at )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, 0x8e9e2bd4)
-    ROM_LOAD16_BYTE("at110387.1", 0xf0001, 0x8000, 0x679296a7)
+    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
+    ROM_LOAD16_BYTE("at110387.1", 0xf0001, 0x8000, CRC(679296a7))
 	ROM_RELOAD(0xff0001,0x8000)
-    ROM_LOAD16_BYTE("at110387.0", 0xf0000, 0x8000, 0x65ae1f97)
+    ROM_LOAD16_BYTE("at110387.0", 0xf0000, 0x8000, CRC(65ae1f97))
 	ROM_RELOAD(0xff0000,0x8000)
 	ROM_REGION(0x01100,REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, 0x42009069)
+    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069))
 ROM_END
 
 ROM_START( atvga )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
-    ROM_LOAD("et4000.bin", 0xc0000, 0x8000, 0xf01e4be0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, 0x8e9e2bd4)
-    ROM_LOAD16_BYTE("at110387.1", 0xf0001, 0x8000, 0x679296a7)
+    ROM_LOAD("et4000.bin", 0xc0000, 0x8000, CRC(f01e4be0))
+    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
+    ROM_LOAD16_BYTE("at110387.1", 0xf0001, 0x8000, CRC(679296a7))
 	ROM_RELOAD(0xff0001,0x8000)
-    ROM_LOAD16_BYTE("at110387.0", 0xf0000, 0x8000, 0x65ae1f97)
+    ROM_LOAD16_BYTE("at110387.0", 0xf0000, 0x8000, CRC(65ae1f97))
 	ROM_RELOAD(0xff0000,0x8000)
 ROM_END
 
 ROM_START( neat )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, 0x8e9e2bd4)
-    ROM_LOAD16_BYTE("at030389.0", 0xf0000, 0x8000, 0x4c36e61d)
+    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
+    ROM_LOAD16_BYTE("at030389.0", 0xf0000, 0x8000, CRC(4c36e61d))
 	ROM_RELOAD(0xff0000,0x8000)
-    ROM_LOAD16_BYTE("at030389.1", 0xf0001, 0x8000, 0x4e90f294)
+    ROM_LOAD16_BYTE("at030389.1", 0xf0001, 0x8000, CRC(4e90f294))
 	ROM_RELOAD(0xff0001,0x8000)
 	ROM_REGION(0x01100,REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, 0x42009069)
+    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069))
 ROM_END
 
 #ifdef HAS_I386
 ROM_START( at386 )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, 0x8e9e2bd4)
-    ROM_LOAD("at386.bin", 0xf0000, 0x10000, 0x3df9732a)
+    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
+    ROM_LOAD("at386.bin", 0xf0000, 0x10000, CRC(3df9732a))
 	ROM_RELOAD(0xff0000,0x10000)
 	ROM_REGION(0x01100,REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, 0x42009069)
+    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069))
 ROM_END
 
 ROM_START( at486 )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, 0x8e9e2bd4)
-    ROM_LOAD("at486.bin", 0xf0000, 0x10000, 0x31214616)
+    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
+    ROM_LOAD("at486.bin", 0xf0000, 0x10000, CRC(31214616))
 	ROM_RELOAD(0xff0000,0x10000)
 	ROM_REGION(0x01100,REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, 0x42009069)
+    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069))
 ROM_END
 #endif
 
@@ -697,19 +659,18 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*	   YEAR		NAME		PARENT	MACHINE     INPUT	    INIT	    CONFIG   COMPANY	 FULLNAME */
-COMPX ( 1985,	ibmat,		0,		atcga,		atcga,		atcga,	    ibmat,   "International Business Machines",  "IBM PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMPX ( 1988,	i8530286,	ibmat,	ps2m30286,	atvga,		ps2m30286,	ibmat,   "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
+/*	   YEAR		NAME		PARENT	COMPAT	MACHINE     INPUT	    INIT	    CONFIG   COMPANY	 FULLNAME */
+COMPX ( 1985,	ibmat,		0,		0,		atcga,		atcga,		atcga,	    ibmat,   "International Business Machines",  "IBM PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMPX ( 1988,	i8530286,	ibmat,	0,		ps2m30286,	atvga,		ps2m30286,	ibmat,   "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
 #ifdef MESS_DEBUG
-COMPX ( 1987,	at,			ibmat,	atcga,      atcga,		atcga,	    ibmat,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMPX ( 1987,	at,			ibmat,	0,		atcga,      atcga,		atcga,	    ibmat,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
 #else
-COMPX ( 1987,	at,			0,	    atcga,      atcga,		atcga,	    ibmat,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMPX ( 1987,	at,			0,	    0,		atcga,      atcga,		atcga,	    ibmat,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
 #endif
-COMPX ( 1989,	neat,		ibmat,	atcga,      atcga,		atcga,	    ibmat,   "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMPX ( 1989,	neat,		ibmat,	0,		atcga,      atcga,		atcga,	    ibmat,   "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
 #ifdef HAS_I386
-COMPX ( 1988,	at386,		ibmat,	at386,      atcga,		at386,	    ibmat,   "MITAC INC",  "PC/AT 386(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMPX ( 1990,	at486,		ibmat,	at386,      atcga,		at386,	    ibmat,   "",  "PC/AT 486(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMPX ( 1988,	at386,		ibmat,	0,		at386,      atcga,		at386,	    ibmat,   "MITAC INC",  "PC/AT 386(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMPX ( 1990,	at486,		ibmat,	0,		at386,      atcga,		at386,	    ibmat,   "",  "PC/AT 486(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
 #endif
 
-// these drivers will be discarded soon
-COMPX ( 1987,	atvga,		ibmat,	atvga,      atvga,		at_vga,     ibmat,   "",  "PC/AT (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP  ( 1987,	atvga,		0,		0,		atvga,      atvga,		at_vga,     ibmat,   "",  "PC/AT (VGA, MF2 Keyboard)" )

@@ -268,15 +268,15 @@ ROM_START (kaypro)
     /* totally empty :) */
 
     ROM_REGION(0x04000,REGION_GFX1,0)  /* 4 * 4K font ram */
-    ROM_LOAD ("kaypro2x.fnt", 0x0000, 0x1000, 0x5f72da5b)
+    ROM_LOAD ("kaypro2x.fnt", 0x0000, 0x1000, CRC(5f72da5b))
 
     ROM_REGION(0x01600,REGION_CPU2,0)  /* 5,5K for CCP and BDOS buffer */
-    ROM_LOAD ("cpm62k.sys",   0x0000, 0x1600, 0xd10cd036)
+    ROM_LOAD ("cpm62k.sys",   0x0000, 0x1600, CRC(d10cd036))
 ROM_END
 
 SYSTEM_CONFIG_START(kaypro)
-	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	kaypro_floppy_init)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	device_load_cpm_floppy)
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
-COMP( 1982, kaypro,   0,        kaypro,   kaypro,   kaypro,   kaypro,   "Non Linear Systems",  "Kaypro 2x" )
+/*    YEAR  NAME      PARENT	COMPAT	MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
+COMP( 1982, kaypro,   0,		0,		kaypro,   kaypro,   kaypro,   kaypro,   "Non Linear Systems",  "Kaypro 2x" )

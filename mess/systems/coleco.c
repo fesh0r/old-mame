@@ -193,12 +193,12 @@ MACHINE_DRIVER_END
 
 ROM_START (coleco)
     ROM_REGION(0x10000,REGION_CPU1,0)
-    ROM_LOAD ("coleco.rom", 0x0000, 0x2000, 0x3aa93ef3)
+    ROM_LOAD ("coleco.rom", 0x0000, 0x2000, CRC(3aa93ef3))
 ROM_END
 
 ROM_START (colecoa)
     ROM_REGION(0x10000,REGION_CPU1, 0)
-    ROM_LOAD ("colecoa.rom", 0x0000, 0x2000, 0x39bb16fc)
+    ROM_LOAD ("colecoa.rom", 0x0000, 0x2000, CRC(39bb16fc))
 
 	/* differences to 0x3aa93ef3
 	   modified characters, added a pad 2 related fix */
@@ -206,16 +206,16 @@ ROM_END
 
 //ROM_START (colecofb_rom)
 //  ROM_REGIONX(0x10000,REGION_CPU1, 0)
-//  ROM_LOAD ("colecofb.rom", 0x0000, 0x2000, 0x640cf85b) /* no pause after title screen */
+//  ROM_LOAD ("colecofb.rom", 0x0000, 0x2000, CRC(640cf85b)) /* no pause after title screen */
 //ROM_END
 
 //ROM_START (coleconb_rom)
 //  ROM_REGIONX(0x10000,REGION_CPU1, 0)
-//  ROM_LOAD ("coleconb.rom", 0x0000, 0x2000, 0x66cda476) /* no title screen */
+//  ROM_LOAD ("coleconb.rom", 0x0000, 0x2000, CRC(66cda476)) /* no title screen */
 //ROM_END
 
 SYSTEM_CONFIG_START(coleco)
-	CONFIG_DEVICE_CARTSLOT_OPT( 1, "rom\0col\0bin\0", NULL, NULL, coleco_cart_load, NULL, coleco_cart_verify, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT( 1, "rom\0col\0bin\0", NULL, NULL, device_load_coleco_cart, NULL, coleco_cart_verify, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -224,14 +224,14 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT	CONFIG	COMPANY   FULLNAME */
-CONS( 1982, coleco,   0,        coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision" )
-CONS( 1982, colecoa,  coleco,   coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision (Thick Characters)" )
+/*    YEAR  NAME      PARENT	COMPAT	MACHINE   INPUT     INIT	CONFIG	COMPANY   FULLNAME */
+CONS( 1982, coleco,   0,		0,		coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision" )
+CONS( 1982, colecoa,  coleco,	0,		coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision (Thick Characters)" )
 
 #ifdef COLECO_HACKS
-CONSX(1982, colecofb, coleco,   coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision (Fast BIOS Hack)"
+CONSX(1982, colecofb, coleco,	0,		coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision (Fast BIOS Hack)"
 , GAME_COMPUTER_MODIFIED )
-CONSX(1982, coleconb, coleco,   coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision (NO BIOS Hack)"
+CONSX(1982, coleconb, coleco,	0,		coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision (NO BIOS Hack)"
 , GAME_COMPUTER_MODIFIED )
 #endif
 

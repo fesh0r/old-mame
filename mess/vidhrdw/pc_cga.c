@@ -2,12 +2,36 @@
 
   Color Graphics Adapter (CGA) section
 
+
+  Notes on Port 3D8
+  (http://www.clipx.net/ng/interrupts_and_ports/ng2d045.php)
+
+	Port 3D8  -  Color/VGA Mode control register
+
+			xx1x xxxx  Attribute bit 7. 0=blink, 1=Intesity
+			xxx1 xxxx  640x200 mode
+			xxxx 1xxx  Enable video signal
+			xxxx x1xx  Select B/W mode
+			xxxx xx1x  Select graphics
+			xxxx xxx1  80x25 text
+
+
+	The usage of the above control register for various modes is:
+			xx10 1100  40x25 alpha B/W
+			xx10 1000  40x25 alpha color
+			xx10 1101  80x25 alpha B/W
+			xx10 1001  80x25 alpha color
+			xxx0 1110  320x200 graph B/W
+			xxx0 1010  320x200 graph color
+			xxx1 1110  640x200 graph B/W
+
 ***************************************************************************/
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
 #include "includes/crtc6845.h"
 #include "includes/pc_cga.h"
+#include "includes/pc_video.h"
 #include "mscommon.h"
 
 #define VERBOSE_CGA 0		/* CGA (Color Graphics Adapter) */
@@ -19,9 +43,29 @@
 #define CGA_LOG(n,m,a)
 #endif
 
-/* window resizing with dirtybuffering traping in xmess window */
-//#define GFX_ZOOMING
+/***************************************************************************
 
+	Static declarations
+
+***************************************************************************/
+
+static VIDEO_START( pc_cga );
+static PALETTE_INIT( pc_cga );
+
+/***************************************************************************
+
+	MachineDriver stuff
+
+	Note - two character ROMs needed:
+
+		// cutted from some aga char rom
+		// 256 8x8 thick chars
+		// 256 8x8 thin chars
+		ROM_LOAD("cga.chr",     0x00000, 0x01000, 0x42009069)
+		// first font of above
+		ROM_LOAD("cga2.chr", 0x00000, 0x800, 0xa362ffe6)
+
+***************************************************************************/
 
 unsigned char cga_palette[16][3] = {
 /*  normal colors */
@@ -44,7 +88,8 @@ unsigned char cga_palette[16][3] = {
 	{ 0xff,0xff,0xff }
 };
 
-unsigned short cga_colortable[] = {
+unsigned short cga_colortable[] =
+{
      0, 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0,10, 0,11, 0,12, 0,13, 0,14, 0,15,
      1, 0, 1, 1, 1, 2, 1, 3, 1, 4, 1, 5, 1, 6, 1, 7, 1, 8, 1, 9, 1,10, 1,11, 1,12, 1,13, 1,14, 1,15,
      2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 2, 5, 2, 6, 2, 7, 2, 8, 2, 9, 2,10, 2,11, 2,12, 2,13, 2,14, 2,15,
@@ -112,13 +157,37 @@ struct GfxLayout CGA_gfxlayout_2bpp =
     8                       /* every code takes 1 byte */
 };
 
-struct GfxDecodeInfo CGA_gfxdecodeinfo[] =
+static struct GfxDecodeInfo CGA_gfxdecodeinfo[] =
 {
 	{ 1, 0x0000, &CGA_charlayout,			  0, 256 },   /* single width */
 	{ 1, 0x1000, &CGA_gfxlayout_1bpp,	  256*2,  16 },   /* 640x400x1 gfx */
 	{ 1, 0x1000, &CGA_gfxlayout_2bpp, 256*2+16*2,   2 },   /* 320x200x4 gfx */
     { -1 } /* end of array */
 };
+
+MACHINE_DRIVER_START( pcvideo_cga )
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(80*8, 25*8)
+	MDRV_VISIBLE_AREA(0,80*8-1, 0,25*8-1)
+	MDRV_GFXDECODE(CGA_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
+	MDRV_COLORTABLE_LENGTH(sizeof(cga_colortable) / sizeof(cga_colortable[0]))
+	MDRV_PALETTE_INIT(pc_cga)
+
+	MDRV_VIDEO_START(pc_cga)
+	MDRV_VIDEO_UPDATE(pc_video)
+MACHINE_DRIVER_END
+
+MACHINE_DRIVER_START( pcvideo_pc1512 )
+	MDRV_IMPORT_FROM( pcvideo_cga )
+	MDRV_VIDEO_START( pc1512 )
+MACHINE_DRIVER_END
+
+/***************************************************************************
+
+	Methods
+
+***************************************************************************/
 
 /* Initialise the cga palette */
 PALETTE_INIT( pc_cga )
@@ -139,37 +208,37 @@ static struct {
 		color_select, //wo 0x3d9
 		status; //ro 0x3da
 	
-	int full_refresh;
-
 	int pc_blink;
 	int pc_framecnt;
 } cga= { TYPE_CGA };
 
 void pc_cga_cursor(CRTC6845_CURSOR *cursor)
 {
-	dirtybuffer[cursor->pos*2]=1;
+	if (dirtybuffer && (videoram_size > cursor->pos*2))
+		dirtybuffer[cursor->pos*2]=1;
 }
 
 static CRTC6845_CONFIG config= { 14318180 /*?*/, pc_cga_cursor };
 
-extern void pc_cga_init_video(struct _CRTC6845 *crtc)
+void pc_cga_init_video(struct _CRTC6845 *crtc)
 {
-	cga.crtc=crtc;
+	cga.crtc = crtc;
 }
 
 VIDEO_START( pc_cga )
 {
-	cga.crtc=crtc6845;
-	crtc6845_init(cga.crtc, &config);
-
-    return video_start_generic();
+	cga.crtc = crtc6845;
+	return pc_video_start(cga.crtc, &config, pc_cga_choosevideomode);
 }
 
 WRITE_HANDLER ( pc_cga_videoram_w )
 {
-	if (videoram[offset] == data) return;
-	videoram[offset] = data;
-	dirtybuffer[offset] = 1;
+	if (videoram[offset] != data)
+	{
+		videoram[offset] = data;
+		if (dirtybuffer)
+			dirtybuffer[offset] = 1;
+	}
 }
 
 /*
@@ -179,8 +248,10 @@ static void pc_cga_mode_control_w(int data)
 {
 	CGA_LOG(1,"CGA_mode_control_w",(errorlog, "$%02x: colums %d, gfx %d, hires %d, blink %d\n",
 		data, (data&1)?80:40, (data>>1)&1, (data>>4)&1, (data>>5)&1));
+
 	if ((cga.mode_control ^ data) & 0x3b)    /* text/gfx/width change */
-		cga.full_refresh=1;
+		schedule_full_refresh();
+
     cga.mode_control = data;
 }
 
@@ -193,7 +264,7 @@ static void pc_cga_color_select_w(int data)
 	if( cga.color_select == data )
 		return;
 	cga.color_select = data;
-	cga.full_refresh=1;
+	schedule_full_refresh();
 }
 
 /*	Bitfields for CGA status register:
@@ -265,11 +336,7 @@ READ_HANDLER ( pc_CGA_r )
   Draw text mode with 40x25 characters (default) with high intensity bg.
   The character cell size is 16x8
 ***************************************************************************/
-#ifndef GFX_ZOOMING
 static void cga_text_inten(struct mame_bitmap *bitmap)
-#else
-static void cga_text_inten(struct mame_bitmap *bitmap, int width)
-#endif
 {
 	int sx, sy;
 	int	offs = crtc6845_get_start(cga.crtc)*2;
@@ -282,44 +349,30 @@ static void cga_text_inten(struct mame_bitmap *bitmap, int width)
 	crtc6845_time(cga.crtc);
 	crtc6845_get_cursor(cga.crtc, &cursor);
 
-	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height) {
-
-#ifndef GFX_ZOOMING
+	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height)
+	{
 		for (sx=0, r.min_x=0, r.max_x=7; sx<columns; 
-			 sx++, offs=(offs+2)&0x3fff, r.min_x+=8, r.max_x+=8) {
-#else
-		for (sx=0, r.min_x=0, r.max_x=7; sx<columns; 
-			 sx++, offs=(offs+2)&0x3fff, r.min_x+=8*width, r.max_x+=8*width) {
-#endif
-			if (dirtybuffer[offs] || dirtybuffer[offs+1]) {
-#ifndef GFX_ZOOMING
+			 sx++, offs=(offs+2)&0x3fff, r.min_x+=8, r.max_x+=8)
+		{
+			if (!dirtybuffer || dirtybuffer[offs] || dirtybuffer[offs+1])
+			{
 				drawgfx(bitmap, Machine->gfx[0], videoram[offs], videoram[offs+1], 
 						0,0,r.min_x,r.min_y,&r,TRANSPARENCY_NONE,0);
-#else
-				drawgfxzoom(bitmap, Machine->gfx[0], videoram[offs], videoram[offs+1], 
-						0,0,r.min_x,r.min_y,&r,TRANSPARENCY_PEN,16,0x10000*width,1<<16);
-#endif
-//				if ((cursor.on)&&(offs==cursor.pos*2)) {
-				if (cursor.on&&(cga.pc_framecnt&32)&&(offs==cursor.pos*2)) {
+				if (cursor.on&&(cga.pc_framecnt&32)&&(offs==cursor.pos*2))
+				{
 					int k=height-cursor.top;
-					struct rectangle rect2=r;
-					rect2.min_y+=cursor.top; 
 					if (cursor.bottom<height) k=cursor.bottom-cursor.top+1;
 
-					if (k>0) {
-#ifndef GFX_ZOOMING
+					if (k>0)
+					{
 						plot_box(Machine->scrbitmap, r.min_x, 
 								 r.min_y+cursor.top, 
 								 8, k, Machine->pens[7]);
-#else
-						plot_box(Machine->scrbitmap, r.min_x*width, 
-								 r.min_y+cursor.top, 
-								 8*width, k, Machine->pens[7]);
-#endif
 					}
 				}
 
-				dirtybuffer[offs]=dirtybuffer[offs+1]=0;
+				if (!dirtybuffer)
+					dirtybuffer[offs] = dirtybuffer[offs+1] = 0;
 			}
 		}
 	}
@@ -329,11 +382,7 @@ static void cga_text_inten(struct mame_bitmap *bitmap, int width)
   Draw text mode with 40x25 characters (default) and blinking colors.
   The character cell size is 16x8
 ***************************************************************************/
-#ifndef GFX_ZOOMING
 static void cga_text_blink(struct mame_bitmap *bitmap)
-#else
-static void cga_text_blink(struct mame_bitmap *bitmap, int width)
-#endif
 {
 	int sx, sy;
 	int	offs = crtc6845_get_start(cga.crtc)*2;
@@ -346,16 +395,16 @@ static void cga_text_blink(struct mame_bitmap *bitmap, int width)
 	crtc6845_time(cga.crtc);
 	crtc6845_get_cursor(cga.crtc, &cursor);
 
-	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height) {
+	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height)
+	{
+		if (r.min_y >= Machine->scrbitmap->height)
+			break;
 
-#ifndef GFX_ZOOMING
 		for (sx=0, r.min_x=0, r.max_x=7; sx<columns; 
-			 sx++, offs=(offs+2)&0x3fff, r.min_x+=8, r.max_x+=8) {
-#else
-		for (sx=0, r.min_x=0, r.max_x=8*width-1; sx<columns; 
-			 sx++, offs=(offs+2)&0x3fff, r.min_x+=8*width, r.max_x+=8*width) {
-#endif
-			if (dirtybuffer[offs] || dirtybuffer[offs+1]) {
+			 sx++, offs=(offs+2)&0x3fff, r.min_x+=8, r.max_x+=8)
+		{
+			if (!dirtybuffer || dirtybuffer[offs] || dirtybuffer[offs+1])
+			{
 				
 				int attr = videoram[offs+1];
 				
@@ -367,35 +416,24 @@ static void cga_text_blink(struct mame_bitmap *bitmap, int width)
 						attr = attr & 0x7f;
 				}
 
-#ifndef GFX_ZOOMING
 				drawgfx(bitmap, Machine->gfx[0], videoram[offs], attr, 
 						0,0,r.min_x,r.min_y,&r,TRANSPARENCY_NONE,0);
-#else
-				drawgfxzoom(bitmap, Machine->gfx[0], videoram[offs], attr, 
-						0,0,r.min_x,r.min_y,&r,TRANSPARENCY_PEN,16,0x10000*width,1<<16);
-#endif
 
-//				if ((cursor.on)&&(offs==cursor.pos*2)) {
-				if (cursor.on&&(cga.pc_framecnt&32)&&(offs==cursor.pos*2)) {
+				if (cursor.on&&(cga.pc_framecnt&32)&&(offs==cursor.pos*2))
+				{
 					int k=height-cursor.top;
-					struct rectangle rect2=r;
-					rect2.min_y+=cursor.top; 
 					if (cursor.bottom<height) k=cursor.bottom-cursor.top+1;
 
-					if (k>0) {
-#ifndef GFX_ZOOMING
+					if (k > 0)
+					{
 						plot_box(Machine->scrbitmap, r.min_x, 
 								 r.min_y+cursor.top, 
 								 8, k, Machine->pens[7]);
-#else
-						plot_box(Machine->scrbitmap, r.min_x, 
-								 r.min_y+cursor.top, 
-								 8*width, k, Machine->pens[7]);
-#endif
 					}
 				}
 
-				dirtybuffer[offs]=dirtybuffer[offs+1]=0;
+				if (!dirtybuffer)
+					dirtybuffer[offs]=dirtybuffer[offs+1]=0;
 			}
 		}
 	}
@@ -416,31 +454,30 @@ static void cga_gfx_2bpp(struct mame_bitmap *bitmap)
 
 	for (sy=0; sy<lines; sy++,offs=(offs+columns)&0x1fff) {
 
-		for (sh=0; sh<height; sh++) { 
+		for (sh=0; sh<height; sh++)
+		{
 			if (!(sh&1)) { // char line 0 used as a12 line in graphic mode
-				for (i=offs, sx=0; sx<columns; sx++, i=(i+1)&0x1fff) {
-					if (dirtybuffer[i]) {
-#ifndef GFX_ZOOMING
+				for (i=offs, sx=0; sx<columns; sx++, i=(i+1)&0x1fff)
+				{
+					if (!dirtybuffer || dirtybuffer[i])
+					{
 						drawgfx(bitmap, Machine->gfx[2], videoram[i], (cga.color_select&0x20?1:0),
 								0,0,sx*4,sy*height+sh, 0,TRANSPARENCY_NONE,0);
-#else
-						drawgfxzoom(bitmap, Machine->gfx[2], videoram[i], (cga.color_select&0x20?1:0),
-								0,0,sx*8,sy*height+sh, 0,TRANSPARENCY_PEN,16,0x10000*2,1<<16);
-#endif
-						dirtybuffer[i]=0;
+						if (dirtybuffer)
+							dirtybuffer[i]=0;
 					}
 				}
-			} else {
-				for (i=offs|0x2000, sx=0; sx<columns; sx++, i=((i+1)&0x1fff)|0x2000) {
-					if (dirtybuffer[i]) {
-#ifndef GFX_ZOOMING
+			}
+			else
+			{
+				for (i=offs|0x2000, sx=0; sx<columns; sx++, i=((i+1)&0x1fff)|0x2000)
+				{
+					if (!dirtybuffer || dirtybuffer[i])
+					{
 						drawgfx(bitmap, Machine->gfx[2], videoram[i], (cga.color_select&0x20?1:0),
 								0,0,sx*4,sy*height+sh, 0,TRANSPARENCY_NONE,0);
-#else
-						drawgfxzoom(bitmap, Machine->gfx[2], videoram[i], (cga.color_select&0x20?1:0),
-								0,0,sx*8,sy*height+sh, 0,TRANSPARENCY_PEN,16,0x10000*2,1<<16);
-#endif
-						dirtybuffer[i]=0;
+						if (dirtybuffer)
+							dirtybuffer[i]=0;
 					}
 				}
 			}
@@ -461,28 +498,61 @@ static void cga_gfx_1bpp(struct mame_bitmap *bitmap)
 	int height = crtc6845_get_char_height(cga.crtc);
 	int columns = crtc6845_get_char_columns(cga.crtc)*2;
 
-	for (sy=0; sy<lines; sy++,offs=(offs+columns)&0x1fff) {
-
-		for (sh=0; sh<height; sh++, offs|=0x2000) { // char line 0 used as a12 line in graphic mode
-			if (!(sh&1)) { // char line 0 used as a12 line in graphic mode
-				for (i=offs, sx=0; sx<columns; sx++, i=(i+1)&0x1fff) {
-					if (dirtybuffer[i]) {
+	for (sy=0; sy<lines; sy++,offs=(offs+columns)&0x1fff)
+	{
+		for (sh=0; sh<height; sh++, offs|=0x2000)
+		{
+			// char line 0 used as a12 line in graphic mode
+			if (!(sh&1))
+			{
+				// char line 0 used as a12 line in graphic mode
+				for (i=offs, sx=0; sx<columns; sx++, i=(i+1)&0x1fff)
+				{
+					if (!dirtybuffer || dirtybuffer[i])
+					{
 						drawgfx(bitmap, Machine->gfx[1], videoram[i], cga.color_select&0xf, 0,0,sx*8,sy*height+sh,
 								0,TRANSPARENCY_NONE,0);
-						dirtybuffer[i]=0;
+						if (dirtybuffer)
+							dirtybuffer[i] = 0;
 					}
 				}
-			} else {
-				for (i=offs|0x2000, sx=0; sx<columns; sx++, i=((i+1)&0x1fff)|0x2000) {
-					if (dirtybuffer[i]) {
+			}
+			else
+			{
+				for (i=offs|0x2000, sx=0; sx<columns; sx++, i=((i+1)&0x1fff)|0x2000)
+				{
+					if (!dirtybuffer || dirtybuffer[i])
+					{
 						drawgfx(bitmap, Machine->gfx[1], videoram[i], cga.color_select&0xf, 0,0,sx*8,sy*height+sh,
 								0,TRANSPARENCY_NONE,0);
-						dirtybuffer[i]=0;
+						if (dirtybuffer)
+							dirtybuffer[i] = 0;
 					}
 				}
 			}
 		}
 	}
+}
+
+/***************************************************************************
+  Black and white versions not yet implemented
+***************************************************************************/
+static void cga_text_inten_bw(struct mame_bitmap *bitmap)
+{
+	/* NYI */
+	cga_text_inten(bitmap);
+}
+
+static void cga_text_blink_bw(struct mame_bitmap *bitmap)
+{
+	/* NYI */
+	cga_text_blink(bitmap);
+}
+
+static void cga_gfx_2bpp_bw(struct mame_bitmap *bitmap)
+{
+	/* NYI */
+	cga_gfx_2bpp(bitmap);
 }
 
 // amstrad pc1512 video hardware
@@ -500,8 +570,9 @@ INLINE void pc1512_plot_unit(struct mame_bitmap *bitmap,
 	values[2]=videoram[offs|videoram_offset[2]]<<2; // blue
 	values[3]=videoram[offs|videoram_offset[3]]<<3; // intensity
 
-	for (i=7; i>=0; i--) {
-		color=(values[0]&1)|(values[1]&2)|(values[2]&4)|(values[3]&8);
+	for (i=7; i>=0; i--)
+	{
+		color = (values[0]&1)|(values[1]&2)|(values[2]&4)|(values[3]&8);
 		plot_pixel(bitmap, x+i, y, Machine->pens[color]);
 		values[0]>>=1;
 		values[1]>>=1;
@@ -528,9 +599,10 @@ static void pc1512_gfx_4bpp(struct mame_bitmap *bitmap)
 		for (sh=0; sh<height; sh++, offs|=0x2000) { // char line 0 used as a12 line in graphic mode
 
 			for (i=offs, sx=0; sx<columns; sx++, i=(i+1)&0x1fff) {
-				if (dirtybuffer[i]) {
+				if (!dirtybuffer || dirtybuffer[i]) {
 					pc1512_plot_unit(bitmap, sx*8, sy*height+sh, i);
-					dirtybuffer[i]=0;
+					if (dirtybuffer)
+						dirtybuffer[i]=0;
 				}
 			}
 		}
@@ -550,11 +622,14 @@ static void pc_cga_blink_textcolors(int on)
 	offs = (crtc6845_get_start(cga.crtc)*2) & 0x3fff;
 	size = crtc6845_get_char_lines(cga.crtc)*crtc6845_get_char_columns(cga.crtc);
 
-	for (i = 0; i < size; i++)
+	if (dirtybuffer)
 	{
-		if (videoram[offs+1] & 0x80) dirtybuffer[offs+1] = 1;
-		offs=(offs+2)&0x3fff;
-    }
+		for (i = 0; i < size; i++)
+		{
+			if (videoram[offs+1] & 0x80) dirtybuffer[offs+1] = 1;
+			offs=(offs+2)&0x3fff;
+	    }
+	}
 }
 
 extern void pc_cga_timer(void)
@@ -566,94 +641,62 @@ extern void pc_cga_timer(void)
 	
 
 /***************************************************************************
-  Draw the game screen in the given mame_bitmap.
-  Do NOT call osd_update_display() from this function,
-  it will be called by the main emulation engine.
+  Choose the appropriate video mode
 ***************************************************************************/
-VIDEO_UPDATE( pc_cga )
+pc_video_update_proc pc_cga_choosevideomode(int *xfactor, int *yfactor)
 {
-	static int video_active = 0;
-	static int width=0, height=0;
-	int w,h;
+	pc_video_update_proc proc = NULL;
+	void (**procarray)(struct mame_bitmap *);
+	UINT8 mode;
 
-    /* draw entire scrbitmap because of usrintrf functions
-	   called osd_clearbitmap or attr change / scanline change */
-	/*if( crtc6845_do_full_refresh(cga.crtc)||full_refresh||cga.full_refresh )*/
+	static void (*videoprocs_cga[])(struct mame_bitmap *) =
 	{
-		cga.full_refresh=0;
-		memset(dirtybuffer, 1, videoram_size);
-		fillbitmap(bitmap, Machine->pens[0], &Machine->visible_area);
-		video_active = 0;
-    }
+		/* 0x08 - 0x0f */
+		cga_text_inten,		cga_text_inten,		cga_gfx_2bpp,		cga_gfx_2bpp,
+		cga_text_inten_bw,	cga_text_inten_bw,	cga_gfx_2bpp_bw,	cga_gfx_2bpp_bw,
 
-	w=crtc6845_get_char_columns(cga.crtc)*8;
-	h=crtc6845_get_char_height(cga.crtc)*crtc6845_get_char_lines(cga.crtc);
-	switch( cga.mode_control & 0x3b )	/* text and gfx modes */
+		/* 0x10 - 0x1f */
+		cga_text_inten,		cga_text_inten,		cga_gfx_2bpp,		cga_gfx_2bpp,
+		cga_gfx_1bpp,		cga_gfx_1bpp,		cga_gfx_1bpp,		cga_gfx_1bpp,
+
+		/* 0x20 - 0x2f */
+		cga_text_blink,		cga_text_blink,		cga_gfx_2bpp,		cga_gfx_2bpp,
+		cga_text_blink_bw,	cga_text_blink_bw,	cga_gfx_2bpp_bw,	cga_gfx_2bpp_bw,
+
+		/* 0x30 - 0x3f */
+		cga_text_blink,		cga_text_blink,		cga_gfx_2bpp,		cga_gfx_2bpp,
+		cga_gfx_1bpp,		cga_gfx_1bpp,		cga_gfx_1bpp,		cga_gfx_1bpp
+	};
+
+	static void (*videoprocs_pc1512[])(struct mame_bitmap *) =
 	{
-		case 0x08: // half frequency
-			video_active = 10; 
-#ifndef GFX_ZOOMING
-			cga_text_inten(bitmap);
-#else
-			cga_text_inten(bitmap,2);
-#endif
-			break;
-		case 0x09:
-			video_active = 10;
-#ifndef GFX_ZOOMING
-			cga_text_inten(bitmap);
-#else
-			cga_text_inten(bitmap,1);
-#endif
-			break;
-		case 0x28: // half frequency
-			video_active = 10; 
-#ifndef GFX_ZOOMING
-			cga_text_blink(bitmap);
-#else
-			cga_text_blink(bitmap,2);
-#endif
-			break;
-		case 0x29:
-			video_active = 10;
-#ifndef GFX_ZOOMING
-			cga_text_blink(bitmap);
-#else
-			cga_text_blink(bitmap,1);
-#endif
-			break;
-        case 0x0a: case 0x0b: case 0x2a: case 0x2b:
-			video_active = 10;
-			cga_gfx_2bpp(bitmap);
-			break;
-		case 0x18: case 0x19: case 0x1a: case 0x1b:
-		case 0x38: case 0x39: case 0x3a: case 0x3b:
-			video_active = 10;
-			if (cga.type==TYPE_PC1512) {
-				pc1512_gfx_4bpp(bitmap);
-			} else {
-				cga_gfx_1bpp(bitmap);w*=2;
-			}
-			break;
+		/* 0x08 - 0x0f */
+		cga_text_inten,		cga_text_inten,		cga_gfx_2bpp,		cga_gfx_2bpp,
+		cga_text_inten_bw,	cga_text_inten_bw,	cga_gfx_2bpp_bw,	cga_gfx_2bpp_bw,
 
-        default:
-			if (video_active && --video_active == 0)
-				fillbitmap(bitmap, Machine->pens[0], &Machine->visible_area);
-    }
+		/* 0x10 - 0x1f */
+		pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,
+		pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,
 
-	if ( (width!=w)||(height!=h) ) 
+		/* 0x20 - 0x2f */
+		cga_text_blink,		cga_text_blink,		cga_gfx_2bpp,		cga_gfx_2bpp,
+		cga_text_blink_bw,	cga_text_blink_bw,	cga_gfx_2bpp_bw,	cga_gfx_2bpp_bw,
+
+		/* 0x30 - 0x3f */
+		pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,
+		pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp
+	};
+
+	if (cga.mode_control & 0x08)
 	{
-		width=w;
-		height=h;
-		if (width>Machine->visible_area.max_x) width=Machine->visible_area.max_x+1;
-		if (height>Machine->visible_area.max_y) height=Machine->visible_area.max_y+1;
-#ifndef GFX_ZOOMING
-		if ((width>100)&&(height>100))
-			set_visible_area(0,width-1,0, height-1);
-		else logerror("video %d %d\n",width, height);
-#endif
+		mode = (cga.mode_control & 0x07) | ((cga.mode_control & 0x30) / 2);
+
+		procarray = (cga.type == TYPE_PC1512) ? videoprocs_pc1512 : videoprocs_cga;
+		proc = procarray[mode];
+
+		*xfactor = (proc == cga_gfx_1bpp) ? 16 : 8;
 	}
-//	statetext_display(bitmap);
+	return proc;
 }
 
 static struct {
@@ -703,9 +746,4 @@ VIDEO_START( pc1512 )
 	pc1512.write = 0xf;
 	pc1512.read = 0;
 	return video_start_pc_cga();
-}
-
-VIDEO_UPDATE( pc1512 )
-{
-	video_update_pc_cga(bitmap, cliprect, do_skip);
 }

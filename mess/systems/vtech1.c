@@ -378,11 +378,11 @@ MACHINE_DRIVER_END
 
 ROM_START( laser110 )
     ROM_REGION(0x10000,REGION_CPU1,0)
-    ROM_LOAD("vtechv12.lo",  0x0000, 0x2000, 0x99412d43)
-    ROM_LOAD("vtechv12.hi",  0x2000, 0x2000, 0xe4c24e8b)
+    ROM_LOAD("vtechv12.lo",  0x0000, 0x2000, CRC(99412d43))
+    ROM_LOAD("vtechv12.hi",  0x2000, 0x2000, CRC(e4c24e8b))
 #ifdef OLD_VIDEO
     ROM_REGION(0x0d00,REGION_GFX1,0)
-    ROM_LOAD("vtech1.chr",   0x0000, 0x0c00, 0xead006a1)
+    ROM_LOAD("vtech1.chr",   0x0000, 0x0c00, CRC(ead006a1))
 #endif
 ROM_END
 #define rom_laser200    rom_laser110
@@ -390,11 +390,11 @@ ROM_END
 
 ROM_START( laser210 )
     ROM_REGION(0x10000,REGION_CPU1,0)
-    ROM_LOAD("vtechv20.lo",  0x0000, 0x2000, 0xcc854fe9)
-    ROM_LOAD("vtechv20.hi",  0x2000, 0x2000, 0x7060f91a)
+    ROM_LOAD("vtechv20.lo",  0x0000, 0x2000, CRC(cc854fe9))
+    ROM_LOAD("vtechv20.hi",  0x2000, 0x2000, CRC(7060f91a))
 #ifdef OLD_VIDEO
     ROM_REGION(0x0d00,REGION_GFX1,0)
-    ROM_LOAD("vtech1.chr",   0x0000, 0x0c00, 0xead006a1)
+    ROM_LOAD("vtech1.chr",   0x0000, 0x0c00, CRC(ead006a1))
 #endif
 ROM_END
 #define rom_vz200       rom_laser210
@@ -402,10 +402,10 @@ ROM_END
 
 ROM_START( laser310 )
     ROM_REGION(0x10000,REGION_CPU1,0)
-    ROM_LOAD("vtechv20.rom", 0x0000, 0x4000, 0x613de12c)
+    ROM_LOAD("vtechv20.rom", 0x0000, 0x4000, CRC(613de12c))
 #ifdef OLD_VIDEO
     ROM_REGION(0x0d00,REGION_GFX1,0)
-    ROM_LOAD("vtech1.chr",   0x0000, 0x0c00, 0xead006a1)
+    ROM_LOAD("vtech1.chr",   0x0000, 0x0c00, CRC(ead006a1))
 #endif
 ROM_END
 #define rom_vz300       rom_laser310
@@ -417,17 +417,17 @@ ROM_END
 ***************************************************************************/
 
 SYSTEM_CONFIG_START(vtech1)
-	CONFIG_DEVICE_CASSETTE(			1,	"cas\0", vtech1_cassette_init)
-	CONFIG_DEVICE_SNAPSHOT_DELAY(		"vz\0", vtech1, 0.5)
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 2,	"dsk\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_CREATE_OR_READ, NULL, NULL, vtech1_floppy_load, NULL, NULL)
+	CONFIG_DEVICE_CASSETTE(			1,	"cas\0", device_load_vtech1_cassette )
+	CONFIG_DEVICE_SNAPSHOT_DELAY(		"vz\0",  vtech1, 0.5)
+	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 2,	"dsk\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_CREATE_OR_READ, NULL, NULL, device_load_vtech1_floppy, NULL, NULL)
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT    CONFIG,	COMPANY   FULLNAME */
-COMP ( 1983, laser110, 0,        laser110, vtech1,  NULL,   vtech1,	"Video Technology", "Laser 110" )
-COMP ( 1983, laser210, 0,        laser210, vtech1,  NULL,   vtech1,	"Video Technology", "Laser 210" )
-COMPX( 1983, laser200, laser210, laser210, vtech1,  NULL,   vtech1,	"Video Technology", "Laser 200", GAME_ALIAS )
-COMPX( 1983, vz200,    laser210, laser210, vtech1,  NULL,   vtech1,	"Video Technology", "Sanyo / Dick Smith VZ200", GAME_ALIAS )
-COMPX( 1983, fellow,   laser210, laser210, vtech1,  NULL,   vtech1,	"Video Technology", "Salora Fellow", GAME_ALIAS )
-COMPX( 1983, tx8000,   laser210, laser210, vtech1,  NULL,   vtech1,	"Video Technology", "Texet TX8000", GAME_ALIAS )
-COMP ( 1983, laser310, 0,        laser310, vtech1,  NULL,   vtech1,	"Video Technology", "Laser 310" )
-COMPX( 1983, vz300,    laser310, laser310, vtech1,  NULL,   vtech1,	"Video Technology", "Sanyo / Dick Smith VZ300", GAME_ALIAS )
+/*     YEAR  NAME      PARENT		COMPAT	MACHINE   INPUT     INIT    CONFIG,	COMPANY   FULLNAME */
+COMP ( 1983, laser110, 0,			0,		laser110, vtech1,  NULL,   vtech1,	"Video Technology", "Laser 110" )
+COMP ( 1983, laser210, 0,			0,		laser210, vtech1,  NULL,   vtech1,	"Video Technology", "Laser 210" )
+COMPX( 1983, laser200, laser210,	0,		laser210, vtech1,  NULL,   vtech1,	"Video Technology", "Laser 200", GAME_ALIAS )
+COMPX( 1983, vz200,    laser210,	0,		laser210, vtech1,  NULL,   vtech1,	"Video Technology", "Sanyo / Dick Smith VZ200", GAME_ALIAS )
+COMPX( 1983, fellow,   laser210,	0,		laser210, vtech1,  NULL,   vtech1,	"Video Technology", "Salora Fellow", GAME_ALIAS )
+COMPX( 1983, tx8000,   laser210,	0,		laser210, vtech1,  NULL,   vtech1,	"Video Technology", "Texet TX8000", GAME_ALIAS )
+COMP ( 1983, laser310, 0,			0,		laser310, vtech1,  NULL,   vtech1,	"Video Technology", "Laser 310" )
+COMPX( 1983, vz300,    laser310,	0,		laser310, vtech1,  NULL,   vtech1,	"Video Technology", "Sanyo / Dick Smith VZ300", GAME_ALIAS )

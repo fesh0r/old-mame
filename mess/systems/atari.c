@@ -920,56 +920,56 @@ MACHINE_DRIVER_END
 
 ROM_START(a400)
 	ROM_REGION(0x14000,REGION_CPU1,0) /* 64K for the CPU + 2 * 8K for cartridges */
-	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, 0x6a5d766e)
-	ROM_LOAD("atari400.rom", 0xe000, 0x2000, 0xcb4db9af)
+	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e))
+	ROM_LOAD("atari400.rom", 0xe000, 0x2000, CRC(cb4db9af))
 ROM_END
 
 ROM_START(a400pal)
 	ROM_REGION(0x14000,REGION_CPU1,0) /* 64K for the CPU + 2 * 8K for cartridges */
-	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, 0x6a5d766e)
-	ROM_LOAD("atari400.rom", 0xe000, 0x2000, 0xcb4db9af)
+	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e))
+	ROM_LOAD("atari400.rom", 0xe000, 0x2000, CRC(cb4db9af))
 ROM_END
 
 ROM_START(a800)
 	ROM_REGION(0x14000,REGION_CPU1,0) /* 64K for the CPU + 2 * 8K for cartridges */
-	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, 0x6a5d766e)
-	ROM_LOAD("atari800.rom", 0xe000, 0x2000, 0xcb4db9af)
+	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e))
+	ROM_LOAD("atari800.rom", 0xe000, 0x2000, CRC(cb4db9af))
 ROM_END
 
 ROM_START(a800pal)
 	ROM_REGION(0x14000,REGION_CPU1,0) /* 64K for the CPU + 2 * 8K for cartridges */
-	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, 0x6a5d766e)
-	ROM_LOAD("atari800.rom", 0xe000, 0x2000, 0xcb4db9af)
+	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e))
+	ROM_LOAD("atari800.rom", 0xe000, 0x2000, CRC(cb4db9af))
 ROM_END
 
 ROM_START(a800xl)
 	ROM_REGION(0x18000,REGION_CPU1,0) /* 64K for the CPU + 16K + 2 * 8K for cartridges */
-	ROM_LOAD("basic.rom",   0x10000, 0x2000, 0x7d684184)
-    ROM_LOAD("atarixl.rom", 0x14000, 0x4000, 0x1f9cd270)
+	ROM_LOAD("basic.rom",   0x10000, 0x2000, CRC(7d684184))
+    ROM_LOAD("atarixl.rom", 0x14000, 0x4000, CRC(1f9cd270))
 ROM_END
 
 ROM_START(a5200)
 	ROM_REGION(0x14000,REGION_CPU1,0) /* 64K for the CPU + 16K for cartridges */
-	ROM_LOAD("5200.rom", 0xf800, 0x0800, 0x4248d3e3)
+	ROM_LOAD("5200.rom", 0xf800, 0x0800, CRC(4248d3e3))
 ROM_END
 
 SYSTEM_CONFIG_START(atari)
 	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 4, "atr\0dsk\0xfd\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_CREATE_OR_READ,
-		NULL, NULL, a800_floppy_load, NULL, NULL)
+		NULL, NULL, device_load_a800_floppy, NULL, NULL)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(a400)
 	CONFIG_IMPORT_FROM(atari)
-	CONFIG_DEVICE_CARTSLOT_OPT(1, "rom\0bin\0", NULL, NULL, a800_rom_load, a800_rom_unload, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "rom\0bin\0", NULL, NULL, device_load_a800_cart, device_unload_a800_cart, NULL, NULL)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(a800)
 	CONFIG_IMPORT_FROM(atari)
-	CONFIG_DEVICE_CARTSLOT_OPT(2, "rom\0bin\0", NULL, NULL, a800_rom_load, a800_rom_unload, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(2, "rom\0bin\0", NULL, NULL, device_load_a800_cart, device_unload_a800_cart, NULL, NULL)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(a5200)
-	CONFIG_DEVICE_CARTSLOT_OPT(1, "rom\0bin\0a52\0", NULL, NULL, a5200_rom_load, a5200_rom_unload, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "rom\0bin\0a52\0", NULL, NULL, device_load_a5200_cart, device_unload_a5200_cart, NULL, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -978,10 +978,10 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT	CONFIG	COMPANY   FULLNAME */
-COMP ( 1979, a400,	   0,		 a400,	   a800,	 0, 	a400,	"Atari",  "Atari 400 (NTSC)" )
-COMP ( 1979, a400pal,  a400,	 a400pal,  a800,	 0, 	a400,	"Atari",  "Atari 400 (PAL)" )
-COMP ( 1979, a800,	   0,		 a800,	   a800,	 0, 	a800,	"Atari",  "Atari 800 (NTSC)" )
-COMP ( 1979, a800pal,  a800,	 a800pal,  a800,	 0,		a800,	"Atari",  "Atari 800 (PAL)" )
-COMPX( 1983, a800xl,   a800,	 a800xl,   a800xl,	 0, 	a800,	"Atari",  "Atari 800XL", GAME_NOT_WORKING )
-CONS ( 1982, a5200,    0,		 a5200,    a5200,	 0, 	a5200,	"Atari",  "Atari 5200")
+/*     YEAR  NAME      PARENT    COMPAT	MACHINE   INPUT     INIT	CONFIG	COMPANY   FULLNAME */
+COMP ( 1979, a400,	   0,		 0,		a400,	   a800,	 0, 	a400,	"Atari",  "Atari 400 (NTSC)" )
+COMP ( 1979, a400pal,  a400,	 0,		a400pal,  a800,	 0, 	a400,	"Atari",  "Atari 400 (PAL)" )
+COMP ( 1979, a800,	   0,		 0,		a800,	   a800,	 0, 	a800,	"Atari",  "Atari 800 (NTSC)" )
+COMP ( 1979, a800pal,  a800,	 0,		a800pal,  a800,	 0,		a800,	"Atari",  "Atari 800 (PAL)" )
+COMPX( 1983, a800xl,   a800,	 0,		a800xl,   a800xl,	 0, 	a800,	"Atari",  "Atari 800XL", GAME_NOT_WORKING )
+CONS ( 1982, a5200,    0,		 0,		a5200,    a5200,	 0, 	a5200,	"Atari",  "Atari 5200")

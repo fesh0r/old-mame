@@ -181,10 +181,10 @@ ROM_START(tm990189)
 	ROM_REGION(0x4000, REGION_CPU1,0)
 
 	/* extra ROM - not dumped */
-	ROM_LOAD("unibasi2.bin", 0x0800, 0x0800, 0x00000000)
+	ROM_LOAD("unibasi2.bin", 0x0800, 0x0800, NO_DUMP)
 
 	/* boot ROM */
-	ROM_LOAD("unibasic.bin", 0x3000, 0x1000, 0xde4d9744)
+	ROM_LOAD("unibasic.bin", 0x3000, 0x1000, CRC(de4d9744))
 
 ROM_END
 
@@ -203,5 +203,5 @@ SYSTEM_CONFIG_START(tm990_189)
 	/* a tape interface and a rs232 interface... */
 SYSTEM_CONFIG_END
 
-/*	  YEAR	NAME		PARENT	MACHINE		INPUT		INIT		CONFIG		COMPANY					FULLNAME */
-COMP( 1980,	tm990189,	0,		tm990_189,	tm990_189,	tm990_189,	tm990_189,	"Texas Instruments",	"TM990/189 (and 189-1) University Board microcomputer" )
+/*	  YEAR	NAME		PARENT	COMPAT	MACHINE		INPUT		INIT		CONFIG		COMPANY					FULLNAME */
+COMP( 1980,	tm990189,	0,		0,		tm990_189,	tm990_189,	tm990_189,	tm990_189,	"Texas Instruments",	"TM990/189 (and 189-1) University Board microcomputer" )

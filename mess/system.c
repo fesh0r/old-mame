@@ -20,18 +20,19 @@
 /* The "root" driver, defined so we can have &driver_##NAME in macros. */
 struct GameDriver driver_0 =
 {
-  __FILE__,
-  0,
-  "root",
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  NOT_A_DRIVER,
+	__FILE__,
+	0,
+	"root",
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	NOT_A_DRIVER,
 };
 
 #endif
@@ -114,6 +115,7 @@ const struct GameDriver *test_drivers[] =
 	DRIVER( famicom )
 	DRIVER( gameboy )	/* Nintendo GameBoy Handheld						*/
 	DRIVER( supergb )	/* Nintendo Super GameBoy SNES Cartridge			*/
+	DRIVER( gbpocket )	/* Nintendo GameBoy Pocket Handheld					*/
 	DRIVER( gbcolor )	/* Nintendo GameBoy Color Handheld					*/
 	DRIVER( snes )		/* Nintendo Super Nintendo NTSC						*/
 	DRIVER( snespal )	/* Nintendo Super Nintendo PAL						*/
@@ -145,6 +147,7 @@ TESTDRIVER( saturn )	/* Sega Saturn										*/
 
 	/* BALLY */
 	DRIVER( astrocde )	/* Bally Astrocade									*/
+	DRIVER( astrocdw )	/* Bally Astrocade (white case)									*/
 
 	/* RCA */
 TESTDRIVER( vip )		/* Cosmac VIP										*/
@@ -242,6 +245,8 @@ TESTDRIVER( nc200 )     /* 19?? NC200										*/
  * Apple IIgs ROM 3 	 August 			 1989
  */
 	DRIVER( apple1 )	/* 1976 Apple 1 									*/
+	DRIVER( apple2 )	/* 1977 Apple ][ 									*/
+	DRIVER( apple2p )	/* 1979 Apple ][+ 									*/
 	DRIVER( apple2c )	/* 1984 Apple //c									*/
 	DRIVER( apple2c0 )	/* 1986 Apple //c (3.5 ROM) 						*/
 	DRIVER( apple2cp )	/* 1988 Apple //c+									*/
@@ -379,7 +384,8 @@ TESTDRIVER( t1000sx )	/* 1987 Tandy 1000SX (similiar to PCJr)				*/
 	DRIVER( ibmxt )		/* 1986	IBM XT										*/
 	DRIVER( pc200 )     /* 1988 Sinclair PC200								*/
 	DRIVER( pc20 )      /* 1988 Amstrad PC20								*/
-	DRIVER( pc1512 )	/* 1986 Amstrad PC1512 (CGA compatible)				*/
+	DRIVER( pc1512 )	/* 1986 Amstrad PC1512 v1 (CGA compatible)			*/
+	DRIVER( pc1512v2 )	/* 1986 Amstrad PC1512 v2 (CGA compatible)			*/
 	DRIVER( pc1640 )	/* 1987 Amstrad PC1640 (EGA compatible)				*/
 
 	DRIVER( xtvga ) 	/* 198? PC-XT (VGA, MF2 Keyboard)					*/
@@ -388,7 +394,7 @@ TESTDRIVER( t1000sx )	/* 1987 Tandy 1000SX (similiar to PCJr)				*/
 TESTDRIVER( ibmat )		/* 1985	IBM AT										*/
 TESTDRIVER( i8530286 )	/* 1988 IBM PS2 Model 30 286 (VGA)					*/
 	DRIVER( at )		/* 1987 AMI Bios and Diagnostics					*/
-TESTDRIVER( atvga ) 	/*													*/
+	DRIVER( atvga ) 	/*													*/
 TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 
 	/* SINCLAIR */
@@ -451,11 +457,13 @@ TESTDRIVER( mz800  )	/* 1982 Sharp MZ800 								*/
 
 //TESTDRIVER( ti99_224 )	/* 1983 TI 99/2 (24kb ROMs) 						*/
 //TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 (32kb ROMs) 						*/
-	DRIVER( ti99_4 )	/* 1979 TI 99/4 									*/
-	DRIVER( ti99_4e )	/* 1980 TI 99/4 with 50Hz video						*/
-	DRIVER( ti99_4a )	/* 1981 TI 99/4A									*/
-	DRIVER( ti99_4ae )	/* 1981 TI 99/4A with 50Hz video					*/
-	DRIVER( ti99_4ev)	/* 1994 TI 99/4A with EVPC video card				*/
+	DRIVER( ti99_4 )	/* 1979 TI-99/4 									*/
+	DRIVER( ti99_4e )	/* 1980 TI-99/4 with 50Hz video						*/
+	DRIVER( ti99_4a )	/* 1981 TI-99/4A									*/
+	DRIVER( ti99_4ae )	/* 1981 TI-99/4A with 50Hz video					*/
+	DRIVER( ti99_4ev)	/* 1994 TI-99/4A with EVPC video card				*/
+	DRIVER( geneve )	/* 1987? Myarc Geneve 9640							*/
+TESTDRIVER( genmod )	/* 199?? Myarc Geneve 9640							*/
 TESTDRIVER( ti99_4p )	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
 
 	DRIVER( avigo )     /*												    */

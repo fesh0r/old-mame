@@ -321,10 +321,10 @@ MACHINE_DRIVER_END
 
 ROM_START( mbee )
     ROM_REGION(0x10000,REGION_CPU1,0)
-    ROM_LOAD("bas522a.rom",  0x8000, 0x2000, 0x7896a696)
-    ROM_LOAD("bas522b.rom",  0xa000, 0x2000, 0xb21d9679)
-    ROM_LOAD("edasm.rom",    0xc000, 0x2000, 0x1af1b3a9)
-    ROM_LOAD("charrom.bin",  0xf000, 0x1000, 0x1f9fcee4)
+    ROM_LOAD("bas522a.rom",  0x8000, 0x2000, CRC(7896a696))
+    ROM_LOAD("bas522b.rom",  0xa000, 0x2000, CRC(b21d9679))
+    ROM_LOAD("edasm.rom",    0xc000, 0x2000, CRC(1af1b3a9))
+    ROM_LOAD("charrom.bin",  0xf000, 0x1000, CRC(1f9fcee4))
 
     ROM_REGION(0x1000,REGION_GFX1,0)
     /* videoram and colorram are remapped here */
@@ -332,10 +332,10 @@ ROM_END
 
 ROM_START( mbeepc85 )
     ROM_REGION(0x10000,REGION_CPU1,0)
-    ROM_LOAD("bas522a.rom",  0x8000, 0x2000, 0x7896a696)
-    ROM_LOAD("bas522b.rom",  0xa000, 0x2000, 0xb21d9679)
-    ROM_LOAD("wbee12.rom",   0xc000, 0x2000, 0x0fc21cb5)
-    ROM_LOAD("charrom.bin",  0xf000, 0x1000, 0x1f9fcee4)
+    ROM_LOAD("bas522a.rom",  0x8000, 0x2000, CRC(7896a696))
+    ROM_LOAD("bas522b.rom",  0xa000, 0x2000, CRC(b21d9679))
+    ROM_LOAD("wbee12.rom",   0xc000, 0x2000, CRC(0fc21cb5))
+    ROM_LOAD("charrom.bin",  0xf000, 0x1000, CRC(1f9fcee4))
 
     ROM_REGION(0x1000,REGION_GFX1,0)
     /* videoram and colorram are remapped here */
@@ -343,10 +343,10 @@ ROM_END
 
 ROM_START( mbeepc )
     ROM_REGION(0x10000,REGION_CPU1,0)
-    ROM_LOAD("bas522a.rom",  0x8000, 0x2000, 0x7896a696)
-    ROM_LOAD("bas522b.rom",  0xa000, 0x2000, 0xb21d9679)
-    ROM_LOAD("telc321.rom",  0xe000, 0x2000, 0x15b9d2df)
-    ROM_LOAD("charrom.bin",  0xf000, 0x1000, 0x1f9fcee4)
+    ROM_LOAD("bas522a.rom",  0x8000, 0x2000, CRC(7896a696))
+    ROM_LOAD("bas522b.rom",  0xa000, 0x2000, CRC(b21d9679))
+    ROM_LOAD("telc321.rom",  0xe000, 0x2000, CRC(15b9d2df))
+    ROM_LOAD("charrom.bin",  0xf000, 0x1000, CRC(1f9fcee4))
 
     ROM_REGION(0x1000,REGION_GFX1,0)
     /* videoram and colorram are remapped here */
@@ -354,8 +354,8 @@ ROM_END
 
 ROM_START( mbee56 )
     ROM_REGION(0x10000,REGION_CPU1,0)
-    ROM_LOAD("56kb.rom",     0xe000, 0x1000, 0x28211224)
-    ROM_LOAD("charrom.bin",  0xf000, 0x1000, 0x1f9fcee4)
+    ROM_LOAD("56kb.rom",     0xe000, 0x1000, CRC(28211224))
+    ROM_LOAD("charrom.bin",  0xf000, 0x1000, CRC(1f9fcee4))
 
     ROM_REGION(0x1000,REGION_GFX1,0)
     /* videoram and colorram are remapped here */
@@ -368,14 +368,14 @@ ROM_END
 ***************************************************************************/
 
 SYSTEM_CONFIG_START(mbee)
-	CONFIG_DEVICE_CASSETTE			(1, "",			mbee_cassette_init)
-	CONFIG_DEVICE_CARTSLOT_OPT		(1, "rom\0",	NULL, NULL, mbee_cart_load, NULL, NULL, NULL)
+	CONFIG_DEVICE_CASSETTE			(1, "",			device_load_mbee_cassette)
+	CONFIG_DEVICE_CARTSLOT_OPT		(1, "rom\0",	NULL, NULL, device_load_mbee_cart, NULL, NULL, NULL)
 	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	basicdsk_floppy_load)
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      CONFIG	COMPANY   FULLNAME */
-COMP( 1982, mbee,     0,        mbee,     mbee,     0,        mbee,		"Applied Technology",  "Microbee 32 IC" )
-COMP( 1982, mbeepc,   mbee,     mbee,     mbee,     0,        mbee,		"Applied Technology",  "Microbee 32 PC" )
-COMP( 1985?,mbeepc85, mbee,     mbee,     mbee,     0,        mbee,		"Applied Technology",  "Microbee 32 PC85" )
-COMP( 1983, mbee56,   mbee,     mbee56 ,  mbee,     0,        mbee,		"Applied Technology",  "Microbee 56" )
+/*    YEAR  NAME      PARENT	COMPAT	MACHINE   INPUT     INIT      CONFIG	COMPANY   FULLNAME */
+COMP( 1982, mbee,     0,		0,		mbee,     mbee,     0,        mbee,		"Applied Technology",  "Microbee 32 IC" )
+COMP( 1982, mbeepc,   mbee,		0,		mbee,     mbee,     0,        mbee,		"Applied Technology",  "Microbee 32 PC" )
+COMP( 1985?,mbeepc85, mbee,		0,		mbee,     mbee,     0,        mbee,		"Applied Technology",  "Microbee 32 PC85" )
+COMP( 1983, mbee56,   mbee,		0,		mbee56,   mbee,     0,        mbee,		"Applied Technology",  "Microbee 56" )
 

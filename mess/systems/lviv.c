@@ -463,27 +463,27 @@ MACHINE_DRIVER_END
 
 ROM_START(lviv)
 	ROM_REGION(0x14000,REGION_CPU1,0)
-	ROM_LOAD("lviv.bin", 0x10000, 0x4000, 0x44a347d9)
+	ROM_LOAD("lviv.bin", 0x10000, 0x4000, CRC(44a347d9))
 ROM_END
 
 ROM_START(lviva)
 	ROM_REGION(0x14000,REGION_CPU1,0)
-	ROM_LOAD("lviva.bin", 0x10000, 0x4000, 0x551622f5)
+	ROM_LOAD("lviva.bin", 0x10000, 0x4000, CRC(551622f5))
 ROM_END
 
 ROM_START(lvivp)
 	ROM_REGION(0x14000,REGION_CPU1,0)
-	ROM_LOAD("lvive.bin", 0x10000, 0x4000, 0xf171c282)
+	ROM_LOAD("lvive.bin", 0x10000, 0x4000, CRC(f171c282))
 ROM_END
 
 SYSTEM_CONFIG_START(lviv)
 	CONFIG_RAM_DEFAULT(64 * 1024)
-	CONFIG_DEVICE_CASSETTE(1, "lv?\0", lviv_cassette_init)
+	CONFIG_DEVICE_CASSETTE(1, "lv?\0", device_load_lviv_cassette)
 	CONFIG_DEVICE_SNAPSHOT( "sav\0", lviv )
 SYSTEM_CONFIG_END
 
 
-/*    YEAR  NAME       PARENT  MACHINE    INPUT     INIT     CONFIG,  COMPANY	FULLNAME */
-COMP( 1989, lviv,      0,      lviv,      lviv,     0,       lviv,    "",	"PK-01 Lviv" )
-COMP( 1989, lviva,     lviv,   lviv,      lviv,     0,       lviv,    "",	"PK-01 Lviv (alternate)" )
-COMP( 1986, lvivp,     lviv,   lviv,      lviv,     0,       lviv,    "",	"PK-01 Lviv (prototype)" )
+/*    YEAR  NAME       PARENT  COMPAT	MACHINE    INPUT     INIT     CONFIG,  COMPANY	FULLNAME */
+COMP( 1989, lviv,      0,      0,		lviv,      lviv,     0,       lviv,    "",	"PK-01 Lviv" )
+COMP( 1989, lviva,     lviv,   0,		lviv,      lviv,     0,       lviv,    "",	"PK-01 Lviv (alternate)" )
+COMP( 1986, lvivp,     lviv,   0,		lviv,      lviv,     0,       lviv,    "",	"PK-01 Lviv (prototype)" )

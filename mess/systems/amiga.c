@@ -108,18 +108,18 @@ MACHINE_DRIVER_END
 
 ROM_START( amiga )
     ROM_REGION(0x200000,REGION_CPU1,ROMREGION_16BIT) /* for ram, etc */
-    ROM_LOAD ( "kick13.rom",  0x180000, 0x80000, 0xf6290043)
+    ROM_LOAD ( "kick13.rom",  0x180000, 0x80000, CRC(f6290043))
 ROM_END
 
 ROM_START( cdtv )
     ROM_REGION(0x200000,REGION_CPU1,ROMREGION_16BIT) /* for ram, etc */
-    ROM_LOAD ( "cdtv13.rom",  0x180000, 0x80000, 0x42BAA124)
+    ROM_LOAD ( "cdtv13.rom",  0x180000, 0x80000, CRC(42BAA124))
 ROM_END
 
 SYSTEM_CONFIG_START(amiga)
 	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 4, "adf\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, amiga_fdc_init, NULL, amiga_fdc_load, NULL, NULL)
 SYSTEM_CONFIG_END
 
-/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT	CONFIG	COMPANY	FULLNAME */
-COMPX( 1984, amiga,    0,        ntsc,     amiga,    0,		amiga,	"Commodore Business Machines Co.",  "Amiga 500 (NTSC)", GAME_NOT_WORKING )
-COMPX( 1990, cdtv,     0,        ntsc,     amiga,    0,		amiga,	"Commodore Business Machines Co.",  "Amiga CDTV (NTSC)", GAME_NOT_WORKING )
+/*     YEAR  NAME      PARENT	COMPAT	MACHINE   INPUT     INIT	CONFIG	COMPANY	FULLNAME */
+COMPX( 1984, amiga,    0,		0,		ntsc,     amiga,    0,		amiga,	"Commodore Business Machines Co.",  "Amiga 500 (NTSC)", GAME_NOT_WORKING )
+COMPX( 1990, cdtv,     0,       0,		ntsc,     amiga,    0,		amiga,	"Commodore Business Machines Co.",  "Amiga CDTV (NTSC)", GAME_NOT_WORKING )

@@ -16,79 +16,34 @@
 #define A2_DISK_PO  1 /* ProDOS/Pascal order */
 #define A2_DISK_NIB 2 /* Raw nibble format */
 
-typedef struct
-{
-	/* IOU Variables */
-	int PAGE2;
-	int HIRES;
-	int MIXED;
-	int TEXT;
-	int COL80;
-	int ALTCHARSET;
+#define VAR_80STORE		0x000001
+#define VAR_RAMRD		0x000002
+#define VAR_RAMWRT		0x000004
+#define VAR_INTCXROM	0x000008
+#define VAR_ALTZP		0x000010
+#define VAR_SLOTC3ROM	0x000020
+#define VAR_80COL		0x000040
+#define VAR_ALTCHARSET	0x000080
+#define VAR_TEXT		0x000100
+#define VAR_MIXED		0x000200
+#define VAR_PAGE2		0x000400
+#define VAR_HIRES		0x000800
+#define VAR_AN0			0x001000
+#define VAR_AN1			0x002000
+#define VAR_AN2			0x004000
+#define VAR_AN3			0x008000
+#define VAR_LCRAM		0x010000
+#define VAR_LCRAM2		0x020000
+#define VAR_LCWRITE		0x040000
+#define VAR_ROMSWITCH	0x080000
 
-	/* MMU Variables */
-	int STORE80;
-	int RAMRD;
-	int RAMWRT;
-	int INTCXROM;
-	int ALTZP;
-	int SLOTC3ROM;
-	int LC_RAM;
-	int LC_RAM2;
-	int LC_WRITE;
+#define VAR_DHIRES		VAR_AN3
 
-	/* Annunciators */
-	int AN0;
-	int AN1;
-	int AN2;
-	int AN3;
-
-} APPLE2_STRUCT;
-
-extern APPLE2_STRUCT a2;
-
-typedef struct
-{
-	/* Drive stepper motor phase magnets */
-	char phase[4];
-
-	char Q6;
-	char Q7;
-	
-	unsigned char *data;
-	
-	int track;
-	int sector; /* not needed? */
-	int volume;
-	int bytepos;
-	int trackpos;
-	int write_protect;
-	int image_type;
-
-	/* Misc controller latches */
-	char drive_num;
-	char motor;
-
-} APPLE_DISKII_STRUCT;
-
-
-
+extern UINT32 a2;
 
 /* machine/apple2.c */
-
-extern UINT8 *apple2_slot_rom;
-extern UINT8 *apple2_slot1;
-extern UINT8 *apple2_slot2;
-extern UINT8 *apple2_slot3;
-extern UINT8 *apple2_slot4;
-extern UINT8 *apple2_slot5;
-extern UINT8 *apple2_slot6;
-extern UINT8 *apple2_slot7;
-
-extern APPLE2_STRUCT a2;
-
-
-extern MACHINE_INIT( apple2e );
+extern DRIVER_INIT( apple2 );
+extern MACHINE_INIT( apple2 );
 
 extern int  apple2_id_rom(int id);
 
@@ -96,13 +51,15 @@ extern int	apple2e_load_rom(int id);
 extern int	apple2ee_load_rom(int id);
 
 extern void apple2_interrupt(void);
-extern void apple2_slotrom_disable(int offset, int data);
 
 extern READ_HANDLER ( apple2_c00x_r );
 extern WRITE_HANDLER ( apple2_c00x_w );
 
 extern READ_HANDLER ( apple2_c01x_r );
 extern WRITE_HANDLER ( apple2_c01x_w );
+
+extern READ_HANDLER ( apple2_c02x_r );
+extern WRITE_HANDLER ( apple2_c02x_w );
 
 extern READ_HANDLER ( apple2_c03x_r );
 extern WRITE_HANDLER ( apple2_c03x_w );
@@ -147,7 +104,9 @@ extern READ_HANDLER ( apple2_slot7_r );
 
 /* machine/ap_disk2.c */
 extern void apple2_slot6_init(void);
-extern int apple2_floppy_load(int id, mame_file *fp, int open_mode);
+
+extern int apple2_floppy_init(mess_image *img);
+extern int apple2_floppy_load(mess_image *img, mame_file *fp, int open_mode);
 
 extern READ_HANDLER ( apple2_c0xx_slot6_r );
 extern WRITE_HANDLER ( apple2_c0xx_slot6_w );

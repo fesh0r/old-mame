@@ -13,7 +13,7 @@
 	Long description: see 2234398-9701 and 2306140-9701.
 
 
-	Raphael Nabet 2002
+	Raphael Nabet 2002-2003
 */
 
 #include "driver.h"
@@ -34,16 +34,35 @@ standard 512-byte-long sectors. */
 for TI990. */
 #define MAX_SECTOR_SIZE 512
 
+/* machine-independant big-endian 32-bit integer */
+typedef struct UINT32BE
+{
+	UINT8 bytes[4];
+} UINT32BE;
+
+INLINE UINT32 get_UINT32BE(UINT32BE word)
+{
+	return (word.bytes[0] << 24) | (word.bytes[1] << 16) | (word.bytes[2] << 8) | word.bytes[3];
+}
+
+/*INLINE void set_UINT32BE(UINT32BE *word, UINT32 data)
+{
+	word->bytes[0] = (data >> 24) & 0xff;
+	word->bytes[1] = (data >> 16) & 0xff;
+	word->bytes[2] = (data >> 8) & 0xff;
+	word->bytes[3] = data & 0xff;
+}*/
+
 /* disk image header */
 /* I had rather I used MAME's harddisk.c image handler, but this format only
 supports 512-byte-long sectors (whereas TI990 generally uses 256- or
 288-byte-long sectors). */
 typedef struct disk_image_header
 {
-	UINT8 cylinders[4];			/* number of cylinders on hard disk (big-endian) */
-	UINT8 heads[4];				/* number of heads on hard disk (big-endian) */
-	UINT8 sectors_per_track[4];	/* number of sectors per track on hard disk (big-endian) */
-	UINT8 bytes_per_sector[4];	/* number of bytes of data per sector on hard disk (big-endian) */
+	UINT32BE cylinders;			/* number of cylinders on hard disk (big-endian) */
+	UINT32BE heads;				/* number of heads on hard disk (big-endian) */
+	UINT32BE sectors_per_track;	/* number of sectors per track on hard disk (big-endian) */
+	UINT32BE bytes_per_sector;	/* number of bytes of data per sector on hard disk (big-endian) */
 } disk_image_header;
 
 enum
@@ -54,6 +73,7 @@ enum
 /* disk drive unit descriptor */
 typedef struct hd_unit_t
 {
+	mess_image *img;			/* image descriptor */
 	mame_file *fd;				/* file descriptor */
 	unsigned int wp : 1;		/* TRUE if disk is write-protected */
 	unsigned int unsafe : 1;	/* TRUE when a disk has just been connected */
@@ -136,20 +156,10 @@ static const UINT16 w_mask[8] =
 static hdc_t hdc;
 
 
-
-INLINE UINT32 get_bigendian_uint32(UINT8 *base)
-{
-	return (base[0] << 24) | (base[1] << 16) | (base[2] << 8) | base[3];
-}
-
-/*
-	Initialize hard disk unit and open a hard disk image
-*/
-int ti990_hd_load(int id, mame_file *fp, int open_mode)
+DEVICE_INIT( ti990_hd )
 {
 	hd_unit_t *d;
-	disk_image_header header;
-	int bytes_read;
+	int id = image_index_in_device(image);
 
 
 	if ((id < 0) || (id >= MAX_DISK_UNIT))
@@ -158,13 +168,42 @@ int ti990_hd_load(int id, mame_file *fp, int open_mode)
 	d = &hdc.d[id];
 	memset(d, 0, sizeof(*d));
 
-	if (fp == NULL)
-		return INIT_PASS;
+	d->img = image;
+	d->fd = NULL;
+	d->wp = 1;
+	d->unsafe = 1;
+
+	/* clear attention line */
+	/*hdc.w[0] &= ~ (0x80 >> id);*/
+
+	return INIT_PASS;
+}
+
+/*DEVICE_EXIT( ti990_hd )
+{
+	d->img = NULL;
+}*/
+
+/*
+	Initialize hard disk unit and open a hard disk image
+*/
+DEVICE_LOAD( ti990_hd )
+{
+	hd_unit_t *d;
+	disk_image_header header;
+	int bytes_read;
+	int id = image_index_in_device(image);
+
+
+	if ((id < 0) || (id >= MAX_DISK_UNIT))
+		return INIT_FAIL;
+
+	d = &hdc.d[id];
 
 	/* open file */
-	d->fd = fp;
+	d->fd = file;
 	/* tell whether the image is writable */
-	d->wp = ! ((d->fd) && is_effective_mode_writable(open_mode));
+	d->wp = ! is_effective_mode_writable(open_mode);
 
 	d->unsafe = 1;
 	/* set attention line */
@@ -176,18 +215,18 @@ int ti990_hd_load(int id, mame_file *fp, int open_mode)
 	bytes_read = mame_fread(d->fd, &header, sizeof(header));
 	if (bytes_read != sizeof(header))
 	{
-		ti990_hd_unload(id);
+		device_unload_ti990_hd(image);
 		return INIT_FAIL;
 	}
 
-	d->cylinders = get_bigendian_uint32(header.cylinders);
-	d->heads = get_bigendian_uint32(header.heads);
-	d->sectors_per_track = get_bigendian_uint32(header.sectors_per_track);
-	d->bytes_per_sector = get_bigendian_uint32(header.bytes_per_sector);
+	d->cylinders = get_UINT32BE(header.cylinders);
+	d->heads = get_UINT32BE(header.heads);
+	d->sectors_per_track = get_UINT32BE(header.sectors_per_track);
+	d->bytes_per_sector = get_UINT32BE(header.bytes_per_sector);
 
 	if (d->bytes_per_sector > MAX_SECTOR_SIZE)
 	{
-		ti990_hd_unload(id);
+		device_unload_ti990_hd(image);
 		return INIT_FAIL;
 	}
 
@@ -197,8 +236,9 @@ int ti990_hd_load(int id, mame_file *fp, int open_mode)
 /*
 	close a hard disk image
 */
-void ti990_hd_unload(int id)
+DEVICE_UNLOAD( ti990_hd )
 {
+	int id = image_index_in_device(image);
 	hd_unit_t *d;
 
 	if ((id < 0) || (id >= MAX_DISK_UNIT))
@@ -209,8 +249,8 @@ void ti990_hd_unload(int id)
 	if (d->fd)
 	{
 		d->fd = NULL;
-		d->wp = 0;
-		d->unsafe = /*1*/0;
+		d->wp = 1;
+		d->unsafe = 1;
 
 		/* clear attention line */
 		hdc.w[0] &= ~ (0x80 >> id);

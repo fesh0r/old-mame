@@ -1726,13 +1726,13 @@ MACHINE_DRIVER_END
 
 ROM_START(einstein)
 	ROM_REGION(0x010000+0x02000, REGION_CPU1,0)
-	ROM_LOAD("einstein.rom",0x10000, 0x02000, 0x0ec134953)
+	ROM_LOAD("einstein.rom",0x10000, 0x02000, CRC(ec134953))
 ROM_END
 
 ROM_START(einstei2)
 	ROM_REGION(0x010000+0x02000+0x0800, REGION_CPU1,0)
-	ROM_LOAD("einstein.rom",0x10000, 0x02000, 0x0ec134953)
-	ROM_LOAD("charrom.rom",0x012000, 0x0800, 0x0)
+	ROM_LOAD("einstein.rom",0x10000, 0x02000, CRC(ec134953))
+	ROM_LOAD("charrom.rom",0x012000, 0x0800, NO_DUMP)
 ROM_END
 
 SYSTEM_CONFIG_START(einstein)
@@ -1741,7 +1741,7 @@ SYSTEM_CONFIG_START(einstein)
 	CONFIG_DEVICE_LEGACY_DSK(4)
 SYSTEM_CONFIG_END
 
-/*     YEAR  NAME       PARENT  MACHINE    INPUT     INIT  CONFIG,   COMPANY   FULLNAME */
-COMP( 1984, einstein,  0,      einstein,  einstein, 0,    einstein, "Tatung", "Tatung Einstein TC-01")
-COMP( 1984, einstei2,  0,      einstei2,  einstein, 0,    einstein, "Tatung", "Tatung Einstein TC-01 + 80 column device")
+/*     YEAR  NAME		PARENT	COMPAT	MACHINE    INPUT     INIT  CONFIG,   COMPANY   FULLNAME */
+COMP( 1984, einstein,	0,      0,		einstein,  einstein, 0,    einstein, "Tatung", "Tatung Einstein TC-01")
+COMP( 1984, einstei2,	0,      0,		einstei2,  einstein, 0,    einstein, "Tatung", "Tatung Einstein TC-01 + 80 column device")
 

@@ -259,7 +259,7 @@ static MACHINE_DRIVER_START( nascom1 )
 	MDRV_COLORTABLE_LENGTH( sizeof (nascom1_colortable) )
 	MDRV_PALETTE_INIT( nascom1 )
 
-	MDRV_VIDEO_START( nascom1 )
+	MDRV_VIDEO_START( generic )
 	MDRV_VIDEO_UPDATE( nascom1 )
 MACHINE_DRIVER_END
 
@@ -275,41 +275,41 @@ MACHINE_DRIVER_END
 
 ROM_START(nascom1)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("nasbugt1.rom", 0x0000, 0x0400, 0x0)
+	ROM_LOAD("nasbugt1.rom", 0x0000, 0x0400, BAD_DUMP)
 	ROM_REGION(0x0800, REGION_GFX1,0)
-	ROM_LOAD("nascom1.chr", 0x0000, 0x0800, 0x33e92a04)
+	ROM_LOAD("nascom1.chr", 0x0000, 0x0800, CRC(33e92a04))
 ROM_END
 
 ROM_START(nascom1a)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("nasbugt2.rom", 0x0000, 0x0400, 0xe371b58a)
+	ROM_LOAD("nasbugt2.rom", 0x0000, 0x0400, CRC(e371b58a))
 	ROM_REGION(0x0800, REGION_GFX1,0)
-	ROM_LOAD("nascom1.chr", 0x0000, 0x0800, 0x33e92a04)
+	ROM_LOAD("nascom1.chr", 0x0000, 0x0800, CRC(33e92a04))
 ROM_END
 
 ROM_START(nascom1b)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("nasbugt4.rom", 0x0000, 0x0800, 0xf391df68)
+	ROM_LOAD("nasbugt4.rom", 0x0000, 0x0800, CRC(f391df68))
 	ROM_REGION(0x0800, REGION_GFX1,0)
-	ROM_LOAD("nascom1.chr", 0x0000, 0x0800, 0x33e92a04)
+	ROM_LOAD("nascom1.chr", 0x0000, 0x0800, CRC(33e92a04))
 ROM_END
 
 ROM_START(nascom2)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("nassys1.rom", 0x0000, 0x0800, 0xb6300716)
-	ROM_LOAD("basic.rom", 0xe000, 0x2000, 0x5cb5197b)
+	ROM_LOAD("nassys1.rom", 0x0000, 0x0800, CRC(b6300716))
+	ROM_LOAD("basic.rom", 0xe000, 0x2000, CRC(5cb5197b))
 	ROM_REGION(0x1000, REGION_GFX1,0)
-	ROM_LOAD("nascom1.chr", 0x0000, 0x0800, 0x33e92a04)
-	ROM_LOAD("nasgra.chr", 0x0800, 0x0800, 0x2bc09d32)
+	ROM_LOAD("nascom1.chr", 0x0000, 0x0800, CRC(33e92a04))
+	ROM_LOAD("nasgra.chr", 0x0800, 0x0800, CRC(2bc09d32))
 ROM_END
 
 ROM_START(nascom2a)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("nassys3.rom", 0x0000, 0x0800, 0x3da17373)
-	ROM_LOAD("basic.rom", 0xe000, 0x2000, 0x5cb5197b)
+	ROM_LOAD("nassys3.rom", 0x0000, 0x0800, CRC(3da17373))
+	ROM_LOAD("basic.rom", 0xe000, 0x2000, CRC(5cb5197b))
 	ROM_REGION(0x1000, REGION_GFX1,0)
-	ROM_LOAD("nascom1.chr", 0x0000, 0x0800, 0x33e92a04)
-	ROM_LOAD("nasgra.chr", 0x0800, 0x0800, 0x2bc09d32)
+	ROM_LOAD("nascom1.chr", 0x0000, 0x0800, CRC(33e92a04))
+	ROM_LOAD("nasgra.chr", 0x0800, 0x0800, CRC(2bc09d32))
 ROM_END
 
 SYSTEM_CONFIG_START(nascom)
@@ -320,17 +320,17 @@ SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(nascom1)
 	CONFIG_IMPORT_FROM(nascom)
-	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "nas\0bin\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, nascom1_cassette_load, nascom1_cassette_unload, NULL)
+	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "nas\0bin\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, device_load_nascom1_cassette, device_unload_nascom1_cassette, NULL)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(nascom2)
 	CONFIG_IMPORT_FROM(nascom)
-	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "cas\0nas\0bin\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, nascom1_cassette_load, nascom1_cassette_unload, NULL)
+	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "cas\0nas\0bin\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, device_load_nascom1_cassette, device_unload_nascom1_cassette, NULL)
 SYSTEM_CONFIG_END
 
-/*	  YEAR	NAME		PARENT		MACHINE		INPUT		INIT	CONFIG		COMPANY		FULLNAME */
-COMP( 1978,	nascom1,	0,			nascom1,	nascom1,	0,		nascom1,	"Nascom Microcomputers",	"Nascom 1 (NasBug T1)" )
-COMP( 1978,	nascom1a,	nascom1,	nascom1,	nascom1,	0,		nascom1,	"Nascom Microcomputers",	"Nascom 1 (NasBug T2)" )
-COMP( 1978,	nascom1b,	nascom1,	nascom1,	nascom1,	0,		nascom1,	"Nascom Microcomputers",	"Nascom 1 (NasBug T4)" )
-COMP( 1979,	nascom2,	nascom1,	nascom2,	nascom1,	0,		nascom2,	"Nascom Microcomputers",	"Nascom 2 (NasSys 1)" )
-COMP( 1979,	nascom2a,	nascom1,	nascom2,	nascom1,	0,		nascom2,	"Nascom Microcomputers",	"Nascom 2 (NasSys 3)" )
+/*	  YEAR	NAME		PARENT		COMPAT	MACHINE		INPUT		INIT	CONFIG		COMPANY		FULLNAME */
+COMP( 1978,	nascom1,	0,			0,		nascom1,	nascom1,	0,		nascom1,	"Nascom Microcomputers",	"Nascom 1 (NasBug T1)" )
+COMP( 1978,	nascom1a,	nascom1,	0,		nascom1,	nascom1,	0,		nascom1,	"Nascom Microcomputers",	"Nascom 1 (NasBug T2)" )
+COMP( 1978,	nascom1b,	nascom1,	0,		nascom1,	nascom1,	0,		nascom1,	"Nascom Microcomputers",	"Nascom 1 (NasBug T4)" )
+COMP( 1979,	nascom2,	nascom1,	0,		nascom2,	nascom1,	0,		nascom2,	"Nascom Microcomputers",	"Nascom 2 (NasSys 1)" )
+COMP( 1979,	nascom2a,	nascom1,	0,		nascom2,	nascom1,	0,		nascom2,	"Nascom Microcomputers",	"Nascom 2 (NasSys 3)" )

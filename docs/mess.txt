@@ -5,7 +5,7 @@
                     Official Page at: http://www.mess.org
                    ==========================================
 
-This document is generated for MESS 0.67 (Apr 15 2003)
+This document is generated for MESS 0.68 (May 19 2003)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.67 (Apr 15 2003)
+Here is the list of systems supported by MESS 0.68 (May 19 2003)
 Variants of the same system are not included, you can use the -listclones command
 to get a list of the alternate versions of a given system.
 
@@ -94,9 +94,10 @@ dat2html.exe.
 | Apple //c                               |  Yes  |  Yes  |  Yes  | apple2c  |
 | Apple //e                               |  Yes  |  Yes  |  Yes  | apple2e  |
 | Apple I                                 |  Yes  |  Yes  |  Yes  | apple1   |
+| Apple ][                                |  Yes  | Close |  Yes  | apple2   |
 | Aquarius                                |  Yes  |  Yes  |  Yes  | aquarius |
 | Arcadia 2001                            |  Yes  |  Yes  |Partial| arcadia  |
-| Atari 2600                              |   No  |  Yes  |  Yes  | a2600    |
+| Atari 2600                              |  Yes  |  Yes  |  Yes  | a2600    |
 | Atari 400                               |  Yes  |  Yes  |  Yes  | a400     |
 | Atari 5200                              |  Yes  |  Yes  |  Yes  | a5200    |
 | Atari 7800 NTSC                         |  Yes  |  Yes  |  Yes  | a7800    |
@@ -113,18 +114,30 @@ dat2html.exe.
 | Colour Genie EG2000                     |  Yes  |  Yes  |  Yes  | cgenie   |
 | Commodore 128 NTSC                      |  Yes  |  Yes  |  Yes  | c128     |
 | Commodore 16/116/232/264                |  Yes  |  Yes  |  Yes  | c16      |
+| Commodore 30xx                          |  Yes  |  Yes  |   No  | cbm30b   |
+| Commodore 30xx                          |  Yes  |  Yes  |   No  | cbm30    |
+| Commodore 40xx FAT                      |  Yes  |  Yes  |   No  | cbm40pal |
+| Commodore 40xx FAT                      |  Yes  |  Yes  |   No  | cbm40    |
+| Commodore 40xx THIN                     |  Yes  |  Yes  |   No  | cbm40b   |
 | Commodore 64                            |  Yes  |  Yes  |  Yes  | c64      |
+| Commodore 80xx 50Hz                     |  Yes  |  Yes  |   No  | cbm80pal |
+| Commodore 80xx 60Hz                     |  Yes  |  Yes  |   No  | cbm80    |
+| Commodore 80xx German                   |  Yes  |  Yes  |   No  | cbm80ger |
+| Commodore 80xx Swedish                  |  Yes  |  Yes  |   No  | cbm80swe |
 | Commodore B128-40/Pet-II/P500 60Hz      |   No  |  Yes  |  Yes  | cbm500   |
 | Commodore B128-80LP/610 60Hz            |   No  |  Yes  |  Yes  | cbm610   |
 | Commodore Max                           |  Yes  |  Yes  |  Yes  | max      |
+| Commodore SP9000/MMF9000                |   No  |  Yes  |   No  | superpet |
 | Enterprise 128                          |  Yes  |  Yes  |Partial| ep128    |
 | Famicom                                 |  Yes  |  Yes  |  Yes  | famicom  |
 | Galaksija                               |  Yes  |  Yes  |   No  | galaxy   |
 | Game Gear - European/American           |  Yes  |  Yes  |  Yes  | gamegear |
 | GameBoy                                 |  Yes  |  Yes  |  Yes  | gameboy  |
+| GameBoy Color                           |  Yes  |  Yes  |  Yes  | gbcolor  |
+| Geneve 9640                             |  Yes  |  Yes  |  Yes  | geneve   |
 | IBM PC 10/27/82                         |  Yes  |  Yes  |  Yes  | ibmpc    |
-| Intellivision                           |   No  |  Yes  |  Yes  | intv     |
 | Intellivision                           |   No  |  Yes  |  Yes  | intvsrs  |
+| Intellivision                           |   No  |  Yes  |  Yes  | intv     |
 | Intellivision Keyboard Component        |   No  |  Yes  |  Yes  | intvkbd  |
 | Jupiter Ace                             |  Yes  |  Yes  |  Yes  | jupiter  |
 | KC 85/3                                 |   No  |  Yes  |  Yes  | kc85_3   |
@@ -151,6 +164,7 @@ dat2html.exe.
 | Oric 1                                  |  Yes  |  Yes  |  Yes  | oric1    |
 | PC Engine/TurboGrafx 16                 |   No  |  Yes  |   No  | pce      |
 | PC-8801 MKIISR                          |  Yes  |  Yes  |  Yes  | pc88srl  |
+| PC/AT                                   |  Yes  |  Yes  |  Yes  | atvga    |
 | PC/AT                                   |   No  |  Yes  |  Yes  | at       |
 | PDP-1                                   |  Yes  |  Yes  |  Yes  | pdp1     |
 | PET2001/CBM20xx Series                  |  Yes  |  Yes  |   No  | pet      |
@@ -164,6 +178,7 @@ dat2html.exe.
 | Sam Coupe                               |  Yes  |  Yes  |  Yes  | coupe    |
 | Sorcerer                                |   No  |  Yes  |   No  | exidy    |
 | Sord M5                                 |  Yes  |  Yes  |  Yes  | sordm5   |
+| Super GameBoy                           |  Yes  |  Yes  |  Yes  | supergb  |
 | Super Nintendo Entertainment System     |   No  |  Yes  |   No  | snes     |
 | Super Vision                            |  Yes  |  Yes  |Partial| svision  |
 | TI Avigo 100 PDA                        |   No  |  Yes  |  Yes  | avigo    |

@@ -882,12 +882,12 @@ ROM_START(bbca)
 	ROM_REGION(0x04000,REGION_CPU1,0) /* RAM */
 
 	ROM_REGION(0x14000,REGION_USER1,0) /* ROM */
-	ROM_LOAD("os12.rom",    0x10000,  0x4000, 0x3c14fc70)
+	ROM_LOAD("os12.rom",    0x10000,  0x4000, CRC(3c14fc70))
 
 														  /* rom page 0  00000 */
 														  /* rom page 1  04000 */
 														  /* rom page 2  08000 */
-	ROM_LOAD("basic2.rom",  0x0c000, 0x4000, 0x79434781 ) /* rom page 3  0c000 */
+	ROM_LOAD("basic2.rom",  0x0c000, 0x4000, CRC(79434781 )) /* rom page 3  0c000 */
 ROM_END
 
 
@@ -901,7 +901,7 @@ ROM_START(bbcb)
 	ROM_REGION(0x08000,REGION_CPU1,0) /* RAM */
 
 	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
-	ROM_LOAD("os12.rom", 0x40000,0x4000, 0x3c14fc70)
+	ROM_LOAD("os12.rom", 0x40000,0x4000, CRC(3c14fc70))
 
 
 	                                                      /* rom page 0  00000 */
@@ -923,16 +923,16 @@ ROM_START(bbcb)
 	/* just use one of the following DFS roms */
 
 	/* dnfs is acorns disc and network filing system rom it replaced dfs 0.9  */
-//	ROM_LOAD("dnfs.rom",    0x38000, 0x4000, 0x8ccd2157 ) /* rom page 14 38000 */
+//	ROM_LOAD("dnfs.rom",    0x38000, 0x4000, CRC(8ccd2157 )) /* rom page 14 38000 */
 
 	/* dfs 0.9 was the standard acorn dfs rom before it was replaced with the dnfs rom */
-//	ROM_LOAD("dfs09.rom",   0x38000, 0x2000, 0x3ce609cf ) /* rom page 14 38000 */
+//	ROM_LOAD("dfs09.rom",   0x38000, 0x2000, CRC(3ce609cf )) /* rom page 14 38000 */
 //	ROM_RELOAD(             0x3a000, 0x2000             )
 
 	/* dfs 1.44 from watford electronics, this is the best of the non-acorn dfs roms */
-	ROM_LOAD("dfs144.rom",  0x38000, 0x4000, 0x9fb8d13f ) /* rom page 14 38000 */
+	ROM_LOAD("dfs144.rom",  0x38000, 0x4000, CRC(9fb8d13f )) /* rom page 14 38000 */
 
-	ROM_LOAD("basic2.rom",  0x3c000, 0x4000, 0x79434781 ) /* rom page 15 3c000 */
+	ROM_LOAD("basic2.rom",  0x3c000, 0x4000, CRC(79434781 )) /* rom page 15 3c000 */
 
 
 ROM_END
@@ -943,7 +943,7 @@ ROM_START(bbcb1770)
 	ROM_REGION(0x08000,REGION_CPU1,0) /* RAM */
 
 	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
-	ROM_LOAD("os12.rom", 0x40000,0x4000, 0x3c14fc70)
+	ROM_LOAD("os12.rom", 0x40000,0x4000, CRC(3c14fc70))
 
 	                                                      /* rom page 0  00000 */
 	                                                      /* rom page 1  04000 */
@@ -961,9 +961,9 @@ ROM_START(bbcb1770)
 														  /* rom page 13 34000 */
 
 /* ddfs 2.23 this is acorns 1770 disc controller Double density disc filing system */
-    ROM_LOAD("ddfs223.rom", 0x38000, 0x4000, 0x7891f9b7 ) /* rom page 14 38000 */
+    ROM_LOAD("ddfs223.rom", 0x38000, 0x4000, CRC(7891f9b7 )) /* rom page 14 38000 */
 
-	ROM_LOAD("basic2.rom",  0x3c000, 0x4000, 0x79434781 ) /* rom page 15 3c000 */
+	ROM_LOAD("basic2.rom",  0x3c000, 0x4000, CRC(79434781 )) /* rom page 15 3c000 */
 
 ROM_END
 
@@ -974,7 +974,7 @@ ROM_START(bbcbp)
 	ROM_REGION(0x10000,REGION_CPU1,0) /* ROM MEMORY */
 
 	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
-	ROM_LOAD("bpos2.rom",   0x3c000, 0x4000, 0x9f356396 )  /* basic rom */
+	ROM_LOAD("bpos2.rom",   0x3c000, 0x4000, CRC(9f356396 ))  /* basic rom */
 	ROM_CONTINUE(           0x40000, 0x4000)  /* OS */
 
 	                                                      /* rom page 0  00000 */
@@ -993,7 +993,7 @@ ROM_START(bbcbp)
 														  /* rom page 13 34000 */
 
     /* ddfs 2.23 this is acorns 1770 disc controller Double density disc filing system */
-    ROM_LOAD("ddfs223.rom", 0x38000, 0x4000, 0x7891f9b7 ) /* rom page 14 38000 */
+    ROM_LOAD("ddfs223.rom", 0x38000, 0x4000, CRC(7891f9b7 )) /* rom page 14 38000 */
 
 ROM_END
 
@@ -1002,7 +1002,7 @@ ROM_START(bbcbp128)
 	ROM_REGION(0x10000,REGION_CPU1,0) /* ROM MEMORY */
 
 	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
-	ROM_LOAD("bpos2.rom",   0x3c000, 0x4000, 0x9f356396 )  /* basic rom */
+	ROM_LOAD("bpos2.rom",   0x3c000, 0x4000, CRC(9f356396 ))  /* basic rom */
 	ROM_CONTINUE(           0x40000, 0x4000)  /* OS */
 
 	                                                      /* rom page 0  00000 */
@@ -1021,7 +1021,7 @@ ROM_START(bbcbp128)
 														  /* rom page 13 34000 */
 
     /* ddfs 2.23 this is acorns 1770 disc controller Double density disc filing system */
-    ROM_LOAD("ddfs223.rom", 0x38000, 0x4000, 0x7891f9b7 ) /* rom page 14 38000 */
+    ROM_LOAD("ddfs223.rom", 0x38000, 0x4000, CRC(7891f9b7 )) /* rom page 14 38000 */
 
 ROM_END
 
@@ -1031,7 +1031,7 @@ ROM_START(bbcb6502)
 	ROM_REGION(0x08000,REGION_CPU1,0) /* RAM */
 
 	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
-	ROM_LOAD("os12.rom", 0x40000,0x4000, 0x3c14fc70)
+	ROM_LOAD("os12.rom", 0x40000,0x4000, CRC(3c14fc70))
 
 	                                                      /* rom page 0  00000 */
 	                                                      /* rom page 1  04000 */
@@ -1049,12 +1049,12 @@ ROM_START(bbcb6502)
 														  /* rom page 13 34000 */
 
 /* ddfs 2.23 this is acorns 1770 disc controller Double density disc filing system */
-    ROM_LOAD("ddfs223.rom", 0x38000, 0x4000, 0x7891f9b7 ) /* rom page 14 38000 */
+    ROM_LOAD("ddfs223.rom", 0x38000, 0x4000, CRC(7891f9b7 )) /* rom page 14 38000 */
 
-	ROM_LOAD("basic2.rom",  0x3c000, 0x4000, 0x79434781 ) /* rom page 15 3c000 */
+	ROM_LOAD("basic2.rom",  0x3c000, 0x4000, CRC(79434781 )) /* rom page 15 3c000 */
 
 	ROM_REGION(0x11000,REGION_CPU2,0)
-	ROM_LOAD("6502tube.rom" , 0x10000,0x1000,0x98b5fe42)
+	ROM_LOAD("6502tube.rom" , 0x10000,0x1000, CRC(98b5fe42))
 
 ROM_END
 
@@ -1152,22 +1152,22 @@ static MACHINE_DRIVER_START( bbcb6502 )
 MACHINE_DRIVER_END
 
 SYSTEM_CONFIG_START(bbc)
-	CONFIG_DEVICE_CARTSLOT_OPT		(4, "rom\0",			NULL, NULL, bbcb_load_rom, NULL, NULL, NULL)
-	CONFIG_DEVICE_FLOPPY_BASICDSK	(2, "ssd\0bbc\0img\0",	bbc_floppy_init)
+	CONFIG_DEVICE_CARTSLOT_OPT		(4, "rom\0",			NULL, NULL, device_load_bbcb_cart, NULL, NULL, NULL)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(2, "ssd\0bbc\0img\0",	device_load_bbc_floppy )
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(bbc6502)
-	CONFIG_DEVICE_FLOPPY_BASICDSK	(2, "ssd\0bbc\0img\0",	bbc_floppy_init)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(2, "ssd\0bbc\0img\0",	device_load_bbc_floppy )
 SYSTEM_CONFIG_END
 
-/*	   YEAR  NAME	   PARENT	 MACHINE   INPUT	 INIT	   CONFIG	COMPANY	 FULLNAME */
-COMP ( 1981, bbca,	   0,		 bbca,     bbca,     0,        NULL,	"Acorn","BBC Micro Model A" )
-COMP ( 1981, bbcb,     bbca,	 bbcb,     bbca,     0,	       bbc,		"Acorn","BBC Micro Model B" )
-COMP ( 1981, bbcb1770, bbca, 	 bbcb1770, bbca,     0,	       bbc,		"Acorn","BBC Micro Model B with WD1770 disc controller" )
-COMP ( 1985, bbcbp,    bbca,	 bbcbp,    bbca,     0,        bbc,		"Acorn","BBC Micro Model B+ 64K" )
-COMP ( 1985, bbcbp128, bbca,     bbcbp128, bbca,     0,        bbc,		"Acorn","BBC Micro Model B+ 128k" )
+/*	   YEAR  NAME	   PARENT	 COMPAT	MACHINE   INPUT	 INIT	   CONFIG	COMPANY	 FULLNAME */
+COMP ( 1981, bbca,	   0,		 0,		bbca,     bbca,     0,        NULL,	"Acorn","BBC Micro Model A" )
+COMP ( 1981, bbcb,     bbca,	 0,		bbcb,     bbca,     0,	       bbc,		"Acorn","BBC Micro Model B" )
+COMP ( 1981, bbcb1770, bbca, 	 0,		bbcb1770, bbca,     0,	       bbc,		"Acorn","BBC Micro Model B with WD1770 disc controller" )
+COMP ( 1985, bbcbp,    bbca,	 0,		bbcbp,    bbca,     0,        bbc,		"Acorn","BBC Micro Model B+ 64K" )
+COMP ( 1985, bbcbp128, bbca,     0,		bbcbp128, bbca,     0,        bbc,		"Acorn","BBC Micro Model B+ 128k" )
 /*
-COMP ( 198?, bbcm,     0,        bbcm,     bbcm,     0,        bbc,		"Acorn","BBC Master" )
+COMP ( 198?, bbcm,     0,        0,		bbcm,     bbcm,     0,        bbc,		"Acorn","BBC Master" )
 */
 
 
@@ -1178,5 +1178,5 @@ COMP ( 198?, bbcm,     0,        bbcm,     bbcm,     0,        bbc,		"Acorn","BB
 // The code for this second processor upgrade is more or less complete here now.
 // It just needs a TUBE driver made to connect it to the BBC
 
-COMP (198?,bbcb6502,    bbca,     bbcb6502, bbca,    0,        bbc6502,	"Acorn","BBC Micro Model B with a 6502 Second Processor")
+COMP (198?,bbcb6502,    bbca,     0,		bbcb6502, bbca,    0,        bbc6502,	"Acorn","BBC Micro Model B with a 6502 Second Processor")
 

@@ -10,7 +10,7 @@
 #include "vidhrdw/tms9928a.h"
 #include "includes/svi318.h"
 #include "includes/wd179x.h"
-#include "includes/svi318dk.h"
+#include "devices/basicdsk.h"
 #include "devices/printer.h"
 #include "devices/cartslot.h"
 
@@ -359,29 +359,29 @@ MACHINE_DRIVER_END
 
 ROM_START (svi318)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("svi100.rom", 0x0000, 0x8000, 0x98d48655)
+    ROM_LOAD ("svi100.rom", 0x0000, 0x8000, CRC(98d48655))
 ROM_END
 
 ROM_START (svi328)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("svi110.rom", 0x0000, 0x8000, 0x709904e9)
+    ROM_LOAD ("svi110.rom", 0x0000, 0x8000, CRC(709904e9))
 ROM_END
 
 ROM_START (svi328a)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("svi111.rom", 0x0000, 0x8000, 0xbc433df6)
+    ROM_LOAD ("svi111.rom", 0x0000, 0x8000, CRC(bc433df6))
 ROM_END
 
 SYSTEM_CONFIG_START(svi318)
 	CONFIG_DEVICE_PRINTER			(1)
-	CONFIG_DEVICE_CASSETTE			(1,	"cas\0",	svi318_cassette_init)
-	CONFIG_DEVICE_CARTSLOT_OPT		(1,	"rom\0",	NULL, NULL, svi318_cart_load, svi318_cart_unload, NULL, NULL)
+	CONFIG_DEVICE_CASSETTE			(1,	"cas\0",	device_load_svi318_cassette)
+	CONFIG_DEVICE_CARTSLOT_OPT		(1,	"rom\0",	NULL, NULL, device_load_svi318_cart, device_unload_svi318_cart, NULL, NULL)
 #ifdef SVI_DISK
-	CONFIG_DEVICE_FLOPPY_SVI318DSK	(2,	"dsk\0")
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(2,	"dsk\0",	device_load_svi318_floppy)
 #endif
 SYSTEM_CONFIG_END
 
-/*   YEAR	NAME		PARENT	MACHINE	INPUT	INIT	CONFIG	COMPANY FULLNAME */
-COMP(1983,	svi318,		0,		svi318,	svi318,	svi318, svi318,	"Spectravideo", "SVI-318" )
-COMP(1983,	svi328,		svi318,	svi318,	svi328,	svi318, svi318,	"Spectravideo", "SVI-328" )
-COMP(1983,	svi328a,	svi318,	svi318,	svi328,	svi318, svi318,	"Spectravideo", "SVI-328 (BASIC 1.11)" )
+/*   YEAR	NAME		PARENT	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY FULLNAME */
+COMP(1983,	svi318,		0,		0,		svi318,	svi318,	svi318, svi318,	"Spectravideo", "SVI-318" )
+COMP(1983,	svi328,		svi318,	0,		svi318,	svi328,	svi318, svi318,	"Spectravideo", "SVI-328" )
+COMP(1983,	svi328a,	svi318,	0,		svi318,	svi328,	svi318, svi318,	"Spectravideo", "SVI-328 (BASIC 1.11)" )

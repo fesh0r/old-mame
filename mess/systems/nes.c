@@ -290,7 +290,7 @@ ROM_END
 
 ROM_START( famicom )
     ROM_REGION( 0x10000, REGION_CPU1,0 )  /* Main RAM + program banks */
-    ROM_LOAD_OPTIONAL ("disksys.rom", 0xe000, 0x2000, 0x5e607dcf)
+    ROM_LOAD_OPTIONAL ("disksys.rom", 0xe000, 0x2000, CRC(5e607dcf))
 
     ROM_REGION( 0x2000,  REGION_GFX1,0 )  /* VROM */
 
@@ -390,8 +390,8 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT      CONFIG	COMPANY   FULLNAME */
-CONS( 1983, famicom,   0,        nes,      famicom,  nes,      famicom,	"Nintendo", "Famicom" )
-CONS( 1985, nes,       0,        nes,      nes,      nes,      nes,		"Nintendo", "Nintendo Entertainment System (NTSC)" )
-CONS( 1987, nespal,    nes,      nespal,   nes,      nespal,   nes,		"Nintendo", "Nintendo Entertainment System (PAL)" )
+/*     YEAR  NAME      PARENT    COMPAT	MACHINE   INPUT     INIT      CONFIG	COMPANY   FULLNAME */
+CONS( 1983, famicom,   0,        0,		nes,      famicom,  nes,      famicom,	"Nintendo", "Famicom" )
+CONS( 1985, nes,       0,        0,		nes,      nes,      nes,      nes,		"Nintendo", "Nintendo Entertainment System (NTSC)" )
+CONS( 1987, nespal,    nes,      0,		nespal,   nes,      nespal,   nes,		"Nintendo", "Nintendo Entertainment System (PAL)" )
 

@@ -20,8 +20,9 @@
 	Raphael Nabet, 2003.
 */
 
-
+#include "driver.h"
 #include "ti99_4x.h"
+#include "99_peb.h"
 #include "tms9902.h"
 #include "994x_ser.h"
 
@@ -57,7 +58,7 @@ static int pio_write = 1/*0*/;	// 1 if image is to be written to
 
 static mame_file *rs232_fp;
 
-static const ti99_exp_card_handlers_t rs232_handlers =
+static const ti99_peb_card_handlers_t rs232_handlers =
 {
 	rs232_cru_r,
 	rs232_cru_w,
@@ -79,12 +80,13 @@ static const tms9902reset_param tms9902_params =
 /*
 	Initialize pio unit and open image
 */
-int ti99_4_pio_load(int id, mame_file *fp, int open_mode)
+DEVICE_LOAD( ti99_4_pio )
 {
+	int id = image_index_in_device(image);
 	if ((id < 0) || (id >= MAX_RS232_CARDS))
 		return INIT_FAIL;
 
-	pio_fp = fp;
+	pio_fp = file;
 	/* tell whether the image is writable */
 	pio_readable = (pio_fp && !is_effective_mode_create(open_mode));
 	/* tell whether the image is writable */
@@ -100,8 +102,9 @@ int ti99_4_pio_load(int id, mame_file *fp, int open_mode)
 /*
 	close a pio image
 */
-void ti99_4_pio_unload(int id)
+DEVICE_UNLOAD( ti99_4_pio )
 {
+	int id = image_index_in_device(image);
 	if ((id < 0) || (id >= MAX_RS232_CARDS))
 		return;
 
@@ -114,14 +117,16 @@ void ti99_4_pio_unload(int id)
 /*
 	Initialize rs232 unit and open image
 */
-int ti99_4_rs232_load(int id, mame_file *fp, int open_mode)
+DEVICE_LOAD( ti99_4_rs232 )
 {
+	int id = image_index_in_device(image);
+
 	/*if ((id < 0) || (id >= 2*MAX_RS232_CARDS))
 		return INIT_FAIL;*/
 	if (id != 0)
 		return INIT_FAIL;
 
-	rs232_fp = fp;
+	rs232_fp = file;
 
 	if (rs232_fp)
 	{
@@ -140,12 +145,14 @@ int ti99_4_rs232_load(int id, mame_file *fp, int open_mode)
 /*
 	close a rs232 image
 */
-void ti99_4_rs232_unload(int id)
+DEVICE_UNLOAD( ti99_4_rs232 )
 {
+	/*int id = image_index_in_device(image);*/
+
 	/*if ((id < 0) || (id >= 2*MAX_RS232_CARDS))
 		return;*/
-	if (id != 0)
-		return;
+	/*if (id != 0)
+		return;*/
 
 	rs232_fp = NULL;
 }
@@ -157,7 +164,7 @@ void ti99_rs232_init(void)
 {
 	rs232_DSR = memory_region(region_dsr) + offset_rs232_dsr;
 
-	ti99_exp_set_card_handlers(0x1300, & rs232_handlers);
+	ti99_peb_set_card_handlers(0x1300, & rs232_handlers);
 
 	pio_direction = 0;
 	pio_handshakeout = 0;
@@ -188,19 +195,19 @@ static void int_callback(int which, int INT)
 	switch (which)
 	{
 	case 0:
-		ti99_exp_set_ila_bit(inta_rs232_1_bit, INT);
+		ti99_peb_set_ila_bit(inta_rs232_1_bit, INT);
 		break;
 
 	case 1:
-		ti99_exp_set_ila_bit(inta_rs232_2_bit, INT);
+		ti99_peb_set_ila_bit(inta_rs232_2_bit, INT);
 		break;
 
 	case 2:
-		ti99_exp_set_ila_bit(inta_rs232_3_bit, INT);
+		ti99_peb_set_ila_bit(inta_rs232_3_bit, INT);
 		break;
 
 	case 3:
-		ti99_exp_set_ila_bit(inta_rs232_4_bit, INT);
+		ti99_peb_set_ila_bit(inta_rs232_4_bit, INT);
 		break;
 	}
 }

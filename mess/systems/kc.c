@@ -422,25 +422,24 @@ static MACHINE_DRIVER_START( kc85_4d )
 	MDRV_IMPORT_FROM( cpu_kc_disc )
 	MDRV_INTERLEAVE( 2 )
 	MDRV_MACHINE_INIT( kc85_4d )
-	MDRV_MACHINE_STOP( kc85_4d )
 MACHINE_DRIVER_END
 
 
 ROM_START(kc85_4)
 	ROM_REGION(0x015000, REGION_CPU1,0)
 
-    ROM_LOAD("basic_c0.854", 0x10000, 0x2000, 0xdfe34b08)
-    ROM_LOAD("caos__c0.854", 0x12000, 0x1000, 0x57d9ab02)
-    ROM_LOAD("caos__e0.854", 0x13000, 0x2000, 0xd64cd50b)
+    ROM_LOAD("basic_c0.854", 0x10000, 0x2000, CRC(dfe34b08))
+    ROM_LOAD("caos__c0.854", 0x12000, 0x1000, CRC(57d9ab02))
+    ROM_LOAD("caos__e0.854", 0x13000, 0x2000, CRC(d64cd50b))
 ROM_END
 
 
 ROM_START(kc85_4d)
 	ROM_REGION(0x015000, REGION_CPU1,0)
 
-    ROM_LOAD("basic_c0.854", 0x10000, 0x2000, 0xdfe34b08)
-    ROM_LOAD("caos__c0.854", 0x12000, 0x1000, 0x57d9ab02)
-    ROM_LOAD("caos__e0.854", 0x13000, 0x2000, 0xd64cd50b)
+    ROM_LOAD("basic_c0.854", 0x10000, 0x2000, CRC(dfe34b08))
+    ROM_LOAD("caos__c0.854", 0x12000, 0x1000, CRC(57d9ab02))
+    ROM_LOAD("caos__e0.854", 0x13000, 0x2000, CRC(d64cd50b))
 
 	ROM_REGION(0x010000, REGION_CPU2,0)
 ROM_END
@@ -448,21 +447,21 @@ ROM_END
 ROM_START(kc85_3)
 	ROM_REGION(0x014000, REGION_CPU1,0)
 
-    ROM_LOAD("basic_c0.854", 0x10000, 0x2000, 0xdfe34b08)
-	ROM_LOAD("caos__e0.853", 0x12000, 0x2000, 0x52bc2199)
+    ROM_LOAD("basic_c0.854", 0x10000, 0x2000, CRC(dfe34b08))
+	ROM_LOAD("caos__e0.853", 0x12000, 0x2000, CRC(52bc2199))
 ROM_END
 
 SYSTEM_CONFIG_START(kc85)
-	CONFIG_DEVICE_CASSETTE	(1, "",			kc_cassette_device_init)
+	CONFIG_DEVICE_CASSETTE	(1, "",			device_load_kc_cassette)
 	CONFIG_DEVICE_QUICKLOAD	(	"kcc\0",	kc)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(kc85d)
 	CONFIG_IMPORT_FROM(kc85)
-	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	kc85_floppy_init)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	device_load_kc85_floppy)
 SYSTEM_CONFIG_END
 
-/*     YEAR  NAME      PARENT   MACHINE  INPUT     INIT  CONFIG  COMPANY   FULLNAME */
-COMPX( 1987, kc85_3,   0,		kc85_3,  kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/3", GAME_NOT_WORKING)
-COMPX( 1989, kc85_4,   kc85_3,  kc85_4,  kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/4", GAME_NOT_WORKING)
-COMPX( 1989, kc85_4d,  kc85_3,  kc85_4d, kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/4 + Disk Interface Module (D004)", GAME_NOT_WORKING)
+/*     YEAR  NAME      PARENT	COMPAT	MACHINE  INPUT     INIT  CONFIG  COMPANY   FULLNAME */
+COMPX( 1987, kc85_3,   0,		0,		kc85_3,  kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/3", GAME_NOT_WORKING)
+COMPX( 1989, kc85_4,   kc85_3,  0,		kc85_4,  kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/4", GAME_NOT_WORKING)
+COMPX( 1989, kc85_4d,  kc85_3,  0,		kc85_4d, kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/4 + Disk Interface Module (D004)", GAME_NOT_WORKING)

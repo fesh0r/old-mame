@@ -429,41 +429,41 @@ MACHINE_DRIVER_END
 
 ROM_START(intv)
 	ROM_REGION(0x10000<<1,REGION_CPU1,0)
-		ROM_LOAD16_WORD( "exec.bin", 0x1000<<1, 0x2000, 0xcbce86f7 )
-		ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, 0x683a4158 )
+		ROM_LOAD16_WORD( "exec.bin", 0x1000<<1, 0x2000, CRC(cbce86f7 ))
+		ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, CRC(683a4158 ))
 ROM_END
 
 ROM_START(intvsrs)
 	ROM_REGION(0x10000<<1,REGION_CPU1,0)
-		ROM_LOAD16_WORD( "searsexc.bin", 0x1000<<1, 0x2000, 0xea552a22 )
-		ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, 0x683a4158 )
+		ROM_LOAD16_WORD( "searsexc.bin", 0x1000<<1, 0x2000, CRC(ea552a22 ))
+		ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, CRC(683a4158 ))
 ROM_END
 
 ROM_START(intvkbd)
 	ROM_REGION(0x10000<<1,REGION_CPU1,0)
-		ROM_LOAD16_WORD( "exec.bin", 0x1000<<1, 0x2000, 0xcbce86f7 )
-		ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, 0x683a4158 )
-		ROM_LOAD16_WORD( "024.u60", 0x7000<<1, 0x1000, 0x4f7998ec )
-		ROM_LOAD16_BYTE( "4d72.u62", 0x7800<<1, 0x0800, 0xaa57c594 )
-		ROM_LOAD16_BYTE( "4d71.u63", (0x7800<<1)+1, 0x0800, 0x069b2f0b )
+		ROM_LOAD16_WORD( "exec.bin", 0x1000<<1, 0x2000, CRC(cbce86f7 ))
+		ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, CRC(683a4158 ))
+		ROM_LOAD16_WORD( "024.u60", 0x7000<<1, 0x1000, CRC(4f7998ec ))
+		ROM_LOAD16_BYTE( "4d72.u62", 0x7800<<1, 0x0800, CRC(aa57c594 ))
+		ROM_LOAD16_BYTE( "4d71.u63", (0x7800<<1)+1, 0x0800, CRC(069b2f0b ))
 
 	ROM_REGION(0x10000,REGION_CPU2,0)
-		ROM_LOAD( "0104.u20",  0xc000, 0x1000, 0x5c6f1256)
+		ROM_LOAD( "0104.u20",  0xc000, 0x1000, CRC(5c6f1256))
 		ROM_RELOAD( 0xe000, 0x1000 )
-		ROM_LOAD("cpu2d.u21",  0xd000, 0x1000, 0x2c2dba33)
+		ROM_LOAD("cpu2d.u21",  0xd000, 0x1000, CRC(2c2dba33))
 		ROM_RELOAD( 0xf000, 0x1000 )
 
 	ROM_REGION(0x00800,REGION_GFX1,0)
-		ROM_LOAD( "4c52.u34",  0x0000, 0x0800, 0xcbeb2e96)
+		ROM_LOAD( "4c52.u34",  0x0000, 0x0800, CRC(cbeb2e96))
 
 ROM_END
 
 SYSTEM_CONFIG_START(intv)
-	CONFIG_DEVICE_CARTSLOT_REQ( 1, "int\0rom\0", intv_cart_init, NULL, intv_cart_load, NULL, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_REQ( 1, "int\0rom\0", device_init_intv_cart, NULL, device_load_intv_cart, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(intvkbd)
-	CONFIG_DEVICE_CARTSLOT_OPT( 2, "int\0rom\0bin\0", NULL, NULL, intvkbd_cart_load, NULL, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT( 2, "int\0rom\0bin\0", NULL, NULL, device_load_intvkbd_cart, NULL, NULL, NULL)
 #if 0
 	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "tap\0", DEVICE_LOAD_RESETS_CPU, 0, NULL, NULL, NULL, NULL, NULL)
 #endif
@@ -475,7 +475,7 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT		CONFIG		COMPANY      FULLNAME */
-CONSX( 1979, intv,     0,		intv,     intv, 	intv,		intv,		"Mattel",    "Intellivision", GAME_NOT_WORKING )
-CONSX( 19??, intvsrs,  0,		intv,     intv, 	intv,		intv,		"Mattel",    "Intellivision (Sears)", GAME_NOT_WORKING )
-COMPX( 1981, intvkbd,  0,		intvkbd,  intvkbd, 	intvkbd,	intvkbd,	"Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)
+/*    YEAR  NAME		PARENT	COMPAT	MACHINE   INPUT     INIT		CONFIG		COMPANY      FULLNAME */
+CONSX( 1979, intv,		0,		0,		intv,     intv, 	intv,		intv,		"Mattel",    "Intellivision", GAME_NOT_WORKING )
+CONSX( 19??, intvsrs,	0,		0,		intv,     intv, 	intv,		intv,		"Mattel",    "Intellivision (Sears)", GAME_NOT_WORKING )
+COMPX( 1981, intvkbd,	0,		0,		intvkbd,  intvkbd, 	intvkbd,	intvkbd,	"Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)

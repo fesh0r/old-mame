@@ -157,13 +157,13 @@ MACHINE_DRIVER_END
 
 ROM_START(mc10)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("mc10.rom", 0xE000, 0x2000, 0x11fda97e)
+	ROM_LOAD("mc10.rom", 0xE000, 0x2000, CRC(11fda97e))
 ROM_END
 
 SYSTEM_CONFIG_START(mc10)
 	CONFIG_DEVICE_CASSETTE(1, "cas\0", coco_cassette_init)
 SYSTEM_CONFIG_END
 
-/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	  CONFIG   COMPANY               FULLNAME */
-COMP( 1983, mc10,     0,        mc10,     mc10,     0,        mc10,    "Tandy Radio Shack",  "MC-10" )
+/*	  YEAR	NAME	  PARENT	COMPAT	MACHINE   INPUT 	INIT	  CONFIG   COMPANY               FULLNAME */
+COMP( 1983, mc10,     0,		0,		mc10,     mc10,     0,        mc10,    "Tandy Radio Shack",  "MC-10" )
 

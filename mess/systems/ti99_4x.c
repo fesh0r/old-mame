@@ -41,8 +41,12 @@ Historical notes: TI made several last minute design changes.
 #include "machine/ti99_4x.h"
 #include "machine/tms9901.h"
 #include "sndhrdw/spchroms.h"
+#include "machine/99_peb.h"
 #include "machine/994x_ser.h"
-#include "devices/cartslot.h"
+#include "machine/99_dsk.h"
+#include "machine/99_ide.h"
+#include "machine/99_hsgpl.h"
+/*#include "devices/cartslot.h"*/
 #include "devices/basicdsk.h"
 
 /*
@@ -53,7 +57,7 @@ static MEMORY_READ16_START (readmem)
 
 	{ 0x0000, 0x1fff, MRA16_ROM },			/*system ROM*/
 	{ 0x2000, 0x3fff, ti99_rw_null8bits },	/*lower 8kb of RAM extension - installed dynamically*/
-	{ 0x4000, 0x5fff, ti99_rw_expansion },	/*DSR ROM space*/
+	{ 0x4000, 0x5fff, ti99_4x_peb_r },		/*DSR ROM space*/
 	{ 0x6000, 0x7fff, ti99_rw_cartmem },	/*cartridge memory*/
 	{ 0x8000, 0x80ff, MRA16_BANK1 },		/*RAM PAD, mirrors 0x8300-0x83ff*/
 	{ 0x8100, 0x81ff, MRA16_BANK2 },		/*RAM PAD, mirrors 0x8300-0x83ff*/
@@ -74,7 +78,7 @@ static MEMORY_WRITE16_START (writemem)
 
 	{ 0x0000, 0x1fff, MWA16_ROM },			/*system ROM*/
 	{ 0x2000, 0x3fff, ti99_ww_null8bits },	/*lower 8kb of RAM extension - installed dynamically*/
-	{ 0x4000, 0x5fff, ti99_ww_expansion },	/*DSR ROM space*/
+	{ 0x4000, 0x5fff, ti99_4x_peb_w },		/*DSR ROM space*/
 	{ 0x6000, 0x7fff, ti99_ww_cartmem },	/*cartridge memory (some carts include RAM or a pager chip)*/
 	{ 0x8000, 0x80ff, MWA16_BANK1 },		/*RAM PAD, mirrors 0x8300-0x83ff*/
 	{ 0x8100, 0x81ff, MWA16_BANK2 },		/*RAM PAD, mirrors 0x8300-0x83ff*/
@@ -96,7 +100,7 @@ static MEMORY_READ16_START (readmem_4ev)
 
 	{ 0x0000, 0x1fff, MRA16_ROM },			/*system ROM*/
 	{ 0x2000, 0x3fff, ti99_rw_null8bits },	/*lower 8kb of RAM extension - installed dynamically*/
-	{ 0x4000, 0x5fff, ti99_rw_expansion },	/*DSR ROM space*/
+	{ 0x4000, 0x5fff, ti99_4x_peb_r },		/*DSR ROM space*/
 	{ 0x6000, 0x7fff, ti99_rw_cartmem },	/*cartridge memory*/
 	{ 0x8000, 0x80ff, MRA16_BANK1 },		/*RAM PAD, mirrors 0x8300-0x83ff*/
 	{ 0x8100, 0x81ff, MRA16_BANK2 },		/*RAM PAD, mirrors 0x8300-0x83ff*/
@@ -117,7 +121,7 @@ static MEMORY_WRITE16_START (writemem_4ev)
 
 	{ 0x0000, 0x1fff, MWA16_ROM },			/*system ROM*/
 	{ 0x2000, 0x3fff, ti99_ww_null8bits },	/*lower 8kb of RAM extension - installed dynamically*/
-	{ 0x4000, 0x5fff, ti99_ww_expansion },	/*DSR ROM space*/
+	{ 0x4000, 0x5fff, ti99_4x_peb_w },		/*DSR ROM space*/
 	{ 0x6000, 0x7fff, ti99_ww_cartmem },	/*cartridge memory (some carts include RAM or a pager chip)*/
 	{ 0x8000, 0x80ff, MWA16_BANK1 },		/*RAM PAD, mirrors 0x8300-0x83ff*/
 	{ 0x8100, 0x81ff, MWA16_BANK2 },		/*RAM PAD, mirrors 0x8300-0x83ff*/
@@ -141,14 +145,14 @@ MEMORY_END
 static PORT_WRITE16_START(writecru)
 
 	{0x0000<<1, 0x07ff<<1, tms9901_0_CRU_write16},
-	{0x0800<<1, 0x0fff<<1, ti99_expansion_CRU_w},
+	{0x0800<<1, 0x0fff<<1, ti99_4x_peb_CRU_w},
 
 PORT_END
 
 static PORT_READ16_START(readcru)
 
 	{0x0000<<1, 0x00ff<<1, tms9901_0_CRU_read16},
-	{0x0100<<1, 0x01ff<<1, ti99_expansion_CRU_r},
+	{0x0100<<1, 0x01ff<<1, ti99_4x_peb_CRU_r},
 
 PORT_END
 
@@ -162,23 +166,30 @@ INPUT_PORTS_START(ti99_4a)
 
 	PORT_START	/* config */
 		PORT_BITX( config_xRAM_mask << config_xRAM_bit, xRAM_kind_TI << config_xRAM_bit, IPT_DIPSWITCH_NAME, "RAM extension", KEYCODE_NONE, IP_JOY_NONE )
-		    PORT_DIPSETTING( xRAM_kind_none << config_xRAM_bit,				"none" )
-		    PORT_DIPSETTING( xRAM_kind_TI << config_xRAM_bit,				"Texas Instruments 32kb")
-		    PORT_DIPSETTING( xRAM_kind_super_AMS << config_xRAM_bit,		"Super AMS 1Mb")
-		    PORT_DIPSETTING( xRAM_kind_foundation_128k << config_xRAM_bit,	"Foundation 128kb")
-		    PORT_DIPSETTING( xRAM_kind_foundation_512k << config_xRAM_bit,	"Foundation 512kb")
-		    PORT_DIPSETTING( xRAM_kind_myarc_128k << config_xRAM_bit,		"Myarc look-alike 128kb")
-		    PORT_DIPSETTING( xRAM_kind_myarc_512k << config_xRAM_bit,		"Myarc look-alike 512kb")
+			PORT_DIPSETTING( xRAM_kind_none << config_xRAM_bit,				"none" )
+			PORT_DIPSETTING( xRAM_kind_TI << config_xRAM_bit,				"Texas Instruments 32kb")
+			PORT_DIPSETTING( xRAM_kind_super_AMS << config_xRAM_bit,		"Super AMS 1Mb")
+			PORT_DIPSETTING( xRAM_kind_foundation_128k << config_xRAM_bit,	"Foundation 128kb")
+			PORT_DIPSETTING( xRAM_kind_foundation_512k << config_xRAM_bit,	"Foundation 512kb")
+			PORT_DIPSETTING( xRAM_kind_myarc_128k << config_xRAM_bit,		"Myarc look-alike 128kb")
+			PORT_DIPSETTING( xRAM_kind_myarc_512k << config_xRAM_bit,		"Myarc look-alike 512kb")
 		PORT_BITX( config_speech_mask << config_speech_bit, 1 << config_speech_bit, IPT_DIPSWITCH_NAME, "Speech synthesis", KEYCODE_NONE, IP_JOY_NONE )
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_speech_bit, DEF_STR( On ) )
-		PORT_BITX( config_fdc_mask << config_fdc_bit, fdc_kind_BwG << config_fdc_bit, IPT_DIPSWITCH_NAME, "Floppy disk controller", KEYCODE_NONE, IP_JOY_NONE )
+		PORT_BITX( config_fdc_mask << config_fdc_bit, fdc_kind_hfdc << config_fdc_bit, IPT_DIPSWITCH_NAME, "Floppy disk controller", KEYCODE_NONE, IP_JOY_NONE )
 			PORT_DIPSETTING( fdc_kind_none << config_fdc_bit, "none" )
-			PORT_DIPSETTING( fdc_kind_TI << config_fdc_bit, "Texas Instruments" )
+			PORT_DIPSETTING( fdc_kind_TI << config_fdc_bit, "Texas Instruments SD" )
 			PORT_DIPSETTING( fdc_kind_BwG << config_fdc_bit, "SNUG's BwG" )
+			PORT_DIPSETTING( fdc_kind_hfdc << config_fdc_bit, "Myarc's HFDC" )
+		PORT_BITX( config_ide_mask << config_ide_bit, 1 << config_ide_bit, IPT_DIPSWITCH_NAME, "Nouspickel's IDE card", KEYCODE_NONE, IP_JOY_NONE )
+			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
+			PORT_DIPSETTING( 1 << config_ide_bit, DEF_STR( On ) )
 		PORT_BITX( config_rs232_mask << config_rs232_bit, 1 << config_rs232_bit, IPT_DIPSWITCH_NAME, "TI RS232 card", KEYCODE_NONE, IP_JOY_NONE )
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_rs232_bit, DEF_STR( On ) )
+		PORT_BITX( config_hsgpl_mask << config_hsgpl_bit, 0/*1 << config_hsgpl_bit*/, IPT_DIPSWITCH_NAME, "SNUG HSGPL card", KEYCODE_NONE, IP_JOY_NONE )
+			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
+			PORT_DIPSETTING( 1 << config_hsgpl_bit, DEF_STR( On ) )
 
 	PORT_START	/* col 0 */
 		PORT_BITX(0x0088, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)
@@ -188,8 +199,8 @@ INPUT_PORTS_START(ti99_4a)
 		PORT_KEY1(0x0020, IP_ACTIVE_LOW, "SHIFT", KEYCODE_LSHIFT, IP_JOY_NONE,		UCHAR_SHIFT_1)
 		/* TI99/4a has a second shift key which maps the same */
 		PORT_KEY1(0x0020, IP_ACTIVE_LOW, "SHIFT", KEYCODE_RSHIFT, IP_JOY_NONE,		UCHAR_SHIFT_1)
-		/* The original control key is located on the right, but we accept the
-		left function key as well */
+		/* The original function key is located on the right, but we accept the
+		left alt key as well */
 		PORT_KEY1(0x0010, IP_ACTIVE_LOW, "FCTN", KEYCODE_RALT, KEYCODE_LALT,		UCHAR_SHIFT_2)
 		PORT_KEY1(0x0004, IP_ACTIVE_LOW, "ENTER", KEYCODE_ENTER, IP_JOY_NONE,		13)
 		PORT_KEY1(0x0002, IP_ACTIVE_LOW, "(SPACE)", KEYCODE_SPACE, IP_JOY_NONE,		' ')
@@ -271,26 +282,33 @@ INPUT_PORTS_START(ti99_4)
 
 	PORT_START	/* config */
 		PORT_BITX( config_xRAM_mask << config_xRAM_bit, xRAM_kind_TI << config_xRAM_bit, IPT_DIPSWITCH_NAME, "RAM extension", KEYCODE_NONE, IP_JOY_NONE )
-		    PORT_DIPSETTING( xRAM_kind_none << config_xRAM_bit,				"none" )
-		    PORT_DIPSETTING( xRAM_kind_TI << config_xRAM_bit,				"Texas Instruments 32kb")
-		    PORT_DIPSETTING( xRAM_kind_super_AMS << config_xRAM_bit,		"Super AMS 1Mb")
-		    PORT_DIPSETTING( xRAM_kind_foundation_128k << config_xRAM_bit,	"Foundation 128kb")
-		    PORT_DIPSETTING( xRAM_kind_foundation_512k << config_xRAM_bit,	"Foundation 512kb")
-		    PORT_DIPSETTING( xRAM_kind_myarc_128k << config_xRAM_bit,		"Myarc look-alike 128kb")
-		    PORT_DIPSETTING( xRAM_kind_myarc_512k << config_xRAM_bit,		"Myarc look-alike 512kb")
+			PORT_DIPSETTING( xRAM_kind_none << config_xRAM_bit,				"none" )
+			PORT_DIPSETTING( xRAM_kind_TI << config_xRAM_bit,				"Texas Instruments 32kb")
+			PORT_DIPSETTING( xRAM_kind_super_AMS << config_xRAM_bit,		"Super AMS 1Mb")
+			PORT_DIPSETTING( xRAM_kind_foundation_128k << config_xRAM_bit,	"Foundation 128kb")
+			PORT_DIPSETTING( xRAM_kind_foundation_512k << config_xRAM_bit,	"Foundation 512kb")
+			PORT_DIPSETTING( xRAM_kind_myarc_128k << config_xRAM_bit,		"Myarc look-alike 128kb")
+			PORT_DIPSETTING( xRAM_kind_myarc_512k << config_xRAM_bit,		"Myarc look-alike 512kb")
 		PORT_BITX( config_speech_mask << config_speech_bit, 1 << config_speech_bit, IPT_DIPSWITCH_NAME, "Speech synthesis", KEYCODE_NONE, IP_JOY_NONE )
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_speech_bit, DEF_STR( On ) )
-		PORT_BITX( config_fdc_mask << config_fdc_bit, fdc_kind_BwG << config_fdc_bit, IPT_DIPSWITCH_NAME, "Floppy disk controller", KEYCODE_NONE, IP_JOY_NONE )
+		PORT_BITX( config_fdc_mask << config_fdc_bit, fdc_kind_hfdc << config_fdc_bit, IPT_DIPSWITCH_NAME, "Floppy disk controller", KEYCODE_NONE, IP_JOY_NONE )
 			PORT_DIPSETTING( fdc_kind_none << config_fdc_bit, "none" )
-			PORT_DIPSETTING( fdc_kind_TI << config_fdc_bit, "Texas Instruments" )
+			PORT_DIPSETTING( fdc_kind_TI << config_fdc_bit, "Texas Instruments SD" )
 			PORT_DIPSETTING( fdc_kind_BwG << config_fdc_bit, "SNUG's BwG" )
+			PORT_DIPSETTING( fdc_kind_hfdc << config_fdc_bit, "Myarc's HFDC" )
+		PORT_BITX( config_ide_mask << config_ide_bit, /*1 << config_ide_bit*/0, IPT_DIPSWITCH_NAME, "Nouspickel's IDE card", KEYCODE_NONE, IP_JOY_NONE )
+			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
+			PORT_DIPSETTING( 1 << config_ide_bit, DEF_STR( On ) )
 		PORT_BITX( config_rs232_mask << config_rs232_bit, 1 << config_rs232_bit, IPT_DIPSWITCH_NAME, "TI RS232 card", KEYCODE_NONE, IP_JOY_NONE )
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_rs232_bit, DEF_STR( On ) )
 		PORT_BITX( config_handsets_mask << config_handsets_bit, /*1 << config_handsets_bit*/0, IPT_DIPSWITCH_NAME, "I/R remote handset", KEYCODE_NONE, IP_JOY_NONE )
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_handsets_bit, DEF_STR( On ) )
+		PORT_BITX( config_hsgpl_mask << config_hsgpl_bit, 0/*1 << config_hsgpl_bit*/, IPT_DIPSWITCH_NAME, "SNUG HSGPL card", KEYCODE_NONE, IP_JOY_NONE )
+			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
+			PORT_DIPSETTING( 1 << config_hsgpl_bit, DEF_STR( On ) )
 
 	PORT_START	/* col 0 */
 		PORT_KEY2(0x0080, IP_ACTIVE_LOW, "1 !", KEYCODE_1, IP_JOY_NONE,			'1',	'!')
@@ -736,65 +754,77 @@ MACHINE_DRIVER_END
 ROM_START(ti99_4)
 	/*CPU memory space*/
 	ROM_REGION16_BE(region_cpu1_len, REGION_CPU1, 0)
-	ROM_LOAD16_BYTE("u610.bin", 0x0000, 0x1000, 0x6fcf4b15) /* CPU ROMs high */
-	ROM_LOAD16_BYTE("u611.bin", 0x0001, 0x1000, 0x491c21d1) /* CPU ROMs low */
+	ROM_LOAD16_BYTE("u610.bin", 0x0000, 0x1000, CRC(6fcf4b15)) /* CPU ROMs high */
+	ROM_LOAD16_BYTE("u611.bin", 0x0001, 0x1000, CRC(491c21d1)) /* CPU ROMs low */
 
 	/*GROM memory space*/
 	ROM_REGION(0x10000, region_grom, 0)
-	ROM_LOAD("u500.bin", 0x0000, 0x1800, 0xaa757e13) /* system GROM 0 */
-	ROM_LOAD("u501.bin", 0x2000, 0x1800, 0xc863e460) /* system GROM 1 */
-	ROM_LOAD("u502.bin", 0x4000, 0x1800, 0xb0eda548) /* system GROM 1 */
+	ROM_LOAD("u500.bin", 0x0000, 0x1800, CRC(aa757e13)) /* system GROM 0 */
+	ROM_LOAD("u501.bin", 0x2000, 0x1800, CRC(c863e460)) /* system GROM 1 */
+	ROM_LOAD("u502.bin", 0x4000, 0x1800, CRC(b0eda548)) /* system GROM 1 */
 
 	/*DSR ROM space*/
 	ROM_REGION(region_dsr_len, region_dsr, 0)
-	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, 0x8f7df93f) /* TI disk DSR ROM */
-	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, 0x06f1ec89) /* BwG disk DSR ROM */
-	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, 0xeab382fb) /* TI rs232 DSR ROM */
+	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f)) /* TI disk DSR ROM */
+	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89)) /* BwG disk DSR ROM */
+	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed)) /* HFDC disk DSR ROM */
+	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb)) /* TI rs232 DSR ROM */
+
+	/* HSGPL memory space */
+	ROM_REGION(region_hsgpl_len, region_hsgpl, 0)
 
 	/*TMS5220 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
-	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, 0x58b155f7) /* system speech ROM */
+	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7)) /* system speech ROM */
 ROM_END
 
 ROM_START(ti99_4a)
 	/*CPU memory space*/
 	ROM_REGION16_BE(region_cpu1_len, REGION_CPU1, 0)
-	ROM_LOAD16_WORD("994arom.bin", 0x0000, 0x2000, 0xdb8f33e5) /* system ROMs */
+	ROM_LOAD16_WORD("994arom.bin", 0x0000, 0x2000, CRC(db8f33e5)) /* system ROMs */
 
 	/*GROM memory space*/
 	ROM_REGION(0x10000, region_grom, 0)
-	ROM_LOAD("994agrom.bin", 0x0000, 0x6000, 0xaf5c2449) /* system GROMs */
+	ROM_LOAD("994agrom.bin", 0x0000, 0x6000, CRC(af5c2449)) /* system GROMs */
 
 	/*DSR ROM space*/
 	ROM_REGION(region_dsr_len, region_dsr, 0)
-	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, 0x8f7df93f) /* TI disk DSR ROM */
-	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, 0x06f1ec89) /* BwG disk DSR ROM */
-	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, 0xeab382fb) /* TI rs232 DSR ROM */
+	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f)) /* TI disk DSR ROM */
+	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89)) /* BwG disk DSR ROM */
+	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed)) /* HFDC disk DSR ROM */
+	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb)) /* TI rs232 DSR ROM */
+
+	/* HSGPL memory space */
+	ROM_REGION(region_hsgpl_len, region_hsgpl, 0)
 
 	/*TMS5220 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
-	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, 0x58b155f7) /* system speech ROM */
+	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7)) /* system speech ROM */
 ROM_END
 
 ROM_START(ti99_4ev)
 	/*CPU memory space*/
 	ROM_REGION16_BE(region_cpu1_len, REGION_CPU1, 0)
-	ROM_LOAD16_WORD("994arom.bin", 0x0000, 0x2000, 0xdb8f33e5) /* system ROMs */
+	ROM_LOAD16_WORD("994arom.bin", 0x0000, 0x2000, CRC(db8f33e5)) /* system ROMs */
 
 	/*GROM memory space*/
 	ROM_REGION(0x10000, region_grom, 0)
-	ROM_LOAD("994agrom.bin", 0x0000, 0x6000, 0xaf5c2449) /* system GROMs */
+	ROM_LOAD("994agr38.bin", 0x0000, 0x6000, CRC(bdd9f09b)) /* system GROMs */
 
 	/*DSR ROM space*/
 	ROM_REGION(region_dsr_len, region_dsr, 0)
-	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, 0x8f7df93f) /* TI disk DSR ROM */
-	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, 0x06f1ec89) /* BwG disk DSR ROM */
-	ROM_LOAD("evpcdsr.bin", offset_evpc_dsr, 0x10000, 0xa062b75d) /* evpc DSR ROM */
-	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, 0xeab382fb) /* TI rs232 DSR ROM */
+	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f)) /* TI disk DSR ROM */
+	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89)) /* BwG disk DSR ROM */
+	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed)) /* HFDC disk DSR ROM */
+	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb)) /* TI rs232 DSR ROM */
+	ROM_LOAD("evpcdsr.bin", offset_evpc_dsr, 0x10000, CRC(a062b75d)) /* evpc DSR ROM */
+
+	/* HSGPL memory space */
+	ROM_REGION(region_hsgpl_len, region_hsgpl, 0)
 
 	/*TMS5220 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
-	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, 0x58b155f7) /* system speech ROM */
+	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7)) /* system speech ROM */
 ROM_END
 
 /* a TI99 console only had one cartridge slot, but cutting the ROMs
@@ -809,16 +839,18 @@ ROM_END
 #define rom_ti99_4ae rom_ti99_4a
 
 SYSTEM_CONFIG_START(ti99_4)
-	CONFIG_DEVICE_CASSETTE			(2, "",												ti99_cassette_load)
-	CONFIG_DEVICE_LEGACY			(IO_CARTSLOT,	3,	"bin\0c\0d\0g\0m\0crom\0drom\0grom\0mrom\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_READ,	NULL,	NULL,	ti99_rom_load,	ti99_rom_unload,	NULL)
-	CONFIG_DEVICE_FLOPPY_BASICDSK	(3,	"dsk\0",										ti99_floppy_load)
-	CONFIG_DEVICE_LEGACY			(IO_PARALLEL,	1, "",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	ti99_4_pio_load,	ti99_4_pio_unload,		NULL)
-	CONFIG_DEVICE_LEGACY			(IO_SERIAL,		1, "",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	ti99_4_rs232_load,	ti99_4_rs232_unload,	NULL)
+	CONFIG_DEVICE_CASSETTE			(2, "",												device_load_ti99_cassette)
+	CONFIG_DEVICE_LEGACY			(IO_CARTSLOT,	3,	"bin\0c\0d\0g\0m\0crom\0drom\0grom\0mrom\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_READ,	NULL,	NULL,	device_load_ti99_cart,	device_unload_ti99_cart,	NULL)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",										device_load_ti99_floppy)
+	CONFIG_DEVICE_LEGACY			(IO_HARDDISK, 	1, "hd\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_OR_READ, NULL, NULL, device_load_ti99_ide, device_unload_ti99_ide, NULL)
+	CONFIG_DEVICE_LEGACY			(IO_PARALLEL,	1, "\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	device_load_ti99_4_pio,	device_unload_ti99_4_pio,		NULL)
+	CONFIG_DEVICE_LEGACY			(IO_SERIAL,		1, "\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	device_load_ti99_4_rs232,	device_unload_ti99_4_rs232,	NULL)
+	/*CONFIG_DEVICE_LEGACY			(IO_QUICKLOAD,	1, "\0",	DEVICE_LOAD_RESETS_CPU,		OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	device_load_ti99_hsgpl,		device_unload_ti99_hsgpl,	NULL)*/
 SYSTEM_CONFIG_END
 
-/*	  YEAR	NAME	  PARENT   MACHINE		 INPUT	  INIT		CONFIG	COMPANY				FULLNAME */
-COMP( 1979, ti99_4,   0,	   ti99_4_60hz,  ti99_4,  ti99_4,	ti99_4,	"Texas Instruments", "TI99/4 Home Computer (US)" )
-COMPX(1980, ti99_4e,  ti99_4,  ti99_4_50hz,  ti99_4,  ti99_4,	ti99_4,	"Texas Instruments", "TI99/4 Home Computer (Europe)", GAME_ALIAS )
-COMP( 1981, ti99_4a,  0,	   ti99_4a_60hz, ti99_4a, ti99_4a,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer (US)" )
-COMPX(1981, ti99_4ae, ti99_4a, ti99_4a_50hz, ti99_4a, ti99_4a,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer (Europe)", GAME_ALIAS )
-COMPX(1994, ti99_4ev, ti99_4a, ti99_4ev_60hz,ti99_4a, ti99_4ev,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer with EVPC", GAME_ALIAS )
+/*	  YEAR	NAME	  PARENT   COMPAT	MACHINE		 INPUT	  INIT		CONFIG	COMPANY				FULLNAME */
+COMP( 1979, ti99_4,   0,	   0,		ti99_4_60hz,  ti99_4,  ti99_4,	ti99_4,	"Texas Instruments", "TI99/4 Home Computer (US)" )
+COMPX(1980, ti99_4e,  ti99_4,  0,		ti99_4_50hz,  ti99_4,  ti99_4,	ti99_4,	"Texas Instruments", "TI99/4 Home Computer (Europe)", GAME_ALIAS )
+COMP( 1981, ti99_4a,  0,	   0,		ti99_4a_60hz, ti99_4a, ti99_4a,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer (US)" )
+COMPX(1981, ti99_4ae, ti99_4a, 0,		ti99_4a_50hz, ti99_4a, ti99_4a,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer (Europe)", GAME_ALIAS )
+COMPX(1994, ti99_4ev, ti99_4a, 0,		ti99_4ev_60hz,ti99_4a, ti99_4ev,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer with EVPC", GAME_ALIAS )

@@ -150,7 +150,7 @@ mame_file *mame_fopen(const char *gamename, const char *filename, int filetype, 
 				int flags = FILEFLAG_ALLOW_ABSOLUTE | FILEFLAG_ZIP_PATHS;
 				switch(openforwrite) {
 				case OSD_FOPEN_READ:   
-					flags |= FILEFLAG_OPENREAD | FILEFLAG_CRC;   
+					flags |= FILEFLAG_OPENREAD | FILEFLAG_HASH;   
 					break;   
 				case OSD_FOPEN_WRITE:   
 					flags |= FILEFLAG_OPENWRITE;   
@@ -997,10 +997,12 @@ static mame_file *generic_fopen(int pathtype, const char *gamename, const char *
 
 						if (load_zipped_file(pathtype, pathindex, newname, zipentryname, &file.data, &ziplength) == 0)
 						{
+							unsigned functions;
+							functions = hash_data_used_functions(hash);
 							LOG(("Using (mame_fopen) zip file for %s\n", filename));
 							file.length = ziplength;
 							file.type = ZIPPED_FILE;
-							file.crc = crc32(0L, file.data, file.length);
+							hash_compute(file.hash, file.data, file.length, functions);
 							break;
 						}
 					}
@@ -1206,7 +1208,6 @@ static int checksum_file(int pathtype, int pathindex, const char *file, UINT8 **
 
 
 
-#ifdef MESS
 /***************************************************************************
 	mame_fputs
 ***************************************************************************/
@@ -1244,4 +1245,4 @@ int CLIB_DECL mame_fprintf(mame_file *f, const char *fmt, ...)
 	va_end(va);
 	return rc;
 }
-#endif /* MESS */
+

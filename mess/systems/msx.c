@@ -772,88 +772,88 @@ MACHINE_DRIVER_END
 
 ROM_START (msx)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("msx.rom", 0x0000, 0x8000, 0x94ee12f3)
+    ROM_LOAD ("msx.rom", 0x0000, 0x8000, CRC(94ee12f3))
 ROM_END
 
 ROM_START (msxj)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("msxj.rom", 0x0000, 0x8000, 0xee229390)
+    ROM_LOAD ("msxj.rom", 0x0000, 0x8000, CRC(ee229390))
 ROM_END
 
 ROM_START (msxuk)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("msxuk.rom", 0x0000, 0x8000, 0xe9ccd789)
+    ROM_LOAD ("msxuk.rom", 0x0000, 0x8000, CRC(e9ccd789))
 ROM_END
 
 ROM_START (msxkr)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("msxkr.rom", 0x0000, 0x8000, 0x3ab0cd3b)
-    ROM_LOAD_OPTIONAL ("msxhan.rom", 0x8000, 0x4000, 0x97478efb)
+    ROM_LOAD ("msxkr.rom", 0x0000, 0x8000, CRC(3ab0cd3b))
+    ROM_LOAD_OPTIONAL ("msxhan.rom", 0x8000, 0x4000, CRC(97478efb))
 ROM_END
 
 ROM_START (hotbit11)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("hotbit11.rom", 0x0000, 0x8000, 0xb6942694)
+    ROM_LOAD ("hotbit11.rom", 0x0000, 0x8000, CRC(b6942694))
 ROM_END
 
 ROM_START (hotbit12)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("hotbit12.rom", 0x0000, 0x8000, 0xf59a4a0c)
+    ROM_LOAD ("hotbit12.rom", 0x0000, 0x8000, CRC(f59a4a0c))
 ROM_END
 
 ROM_START (expert10)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("expert10.rom", 0x0000, 0x8000, 0x07610d77)
+    ROM_LOAD ("expert10.rom", 0x0000, 0x8000, CRC(07610d77))
 ROM_END
 
 ROM_START (expert11)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("expert11.rom", 0x0000, 0x8000, 0xefb4b972)
+    ROM_LOAD ("expert11.rom", 0x0000, 0x8000, CRC(efb4b972))
 ROM_END
 
 ROM_START (msx2)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("msx20.rom", 0x0000, 0x8000, 0xf05ed518)
-    ROM_LOAD ("msx20ext.rom", 0x8000, 0x4000, 0x95db2959)
+    ROM_LOAD ("msx20.rom", 0x0000, 0x8000, CRC(f05ed518))
+    ROM_LOAD ("msx20ext.rom", 0x8000, 0x4000, CRC(95db2959))
 ROM_END
 
 ROM_START (msx2a)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("msx21.rom", 0x0000, 0x8000, 0x6cdaf3a5)
-    ROM_LOAD ("msx21ext.rom", 0x8000, 0x4000, 0x66237ecf)
+    ROM_LOAD ("msx21.rom", 0x0000, 0x8000, CRC(6cdaf3a5))
+    ROM_LOAD ("msx21ext.rom", 0x8000, 0x4000, CRC(66237ecf))
 ROM_END
 
 ROM_START (msx2j)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("msx20j.rom", 0x0000, 0x8000, 0x9b3e7b97)
-    ROM_LOAD ("msx20xtj.rom", 0x8000, 0x4000, 0x43e7a7fc)
+    ROM_LOAD ("msx20j.rom", 0x0000, 0x8000, CRC(9b3e7b97))
+    ROM_LOAD ("msx20xtj.rom", 0x8000, 0x4000, CRC(43e7a7fc))
 ROM_END
 /*
 ROM_START (msxkra)
     ROM_REGION (0x10000, REGION_CPU1,0)
-    ROM_LOAD ("msxkra.rom", 0x0000, 0x8000, 0xa781f7ca)
-    ROM_LOAD_OPTIONAL ("msxhan.rom", 0x8000, 0x4000, 0x97478efb)
+    ROM_LOAD ("msxkra.rom", 0x0000, 0x8000, CRC(a781f7ca))
+    ROM_LOAD_OPTIONAL ("msxhan.rom", 0x8000, 0x4000, CRC(97478efb))
 ROM_END
 */
 
 SYSTEM_CONFIG_START(msx)
-	CONFIG_DEVICE_CASSETTE(1, "cas\0", msx_cassette_init)
+	CONFIG_DEVICE_CASSETTE(1, "cas\0", device_load_msx_cassette)
 	CONFIG_DEVICE_PRINTER(1)
-	CONFIG_DEVICE_CARTSLOT_OPT(MSX_MAX_CARTS, "mx1\0rom\0", NULL, NULL, msx_cart_load, msx_cart_unload, NULL, NULL)
-	CONFIG_DEVICE_FLOPPY_BASICDSK(2, "dsk\0", msx_floppy_init)
+	CONFIG_DEVICE_CARTSLOT_OPT(MSX_MAX_CARTS, "mx1\0rom\0", NULL, NULL, device_load_msx_cart, device_unload_msx_cart, NULL, NULL)
+	CONFIG_DEVICE_FLOPPY_BASICDSK(2, "dsk\0", device_load_msx_floppy)
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT  MACHINE  INPUT     INIT   CONFIG  COMPANY              FULLNAME */
-COMP( 1983,	msx,      0,      msx_pal, msx,      msx,	msx,	"ASCII & Microsoft", "MSX 1" )
-COMP( 1983, msxj,     msx,    msx,     msxj,     msx,	msx,	"ASCII & Microsoft", "MSX 1 (Japan)" )
-COMP( 1983, msxkr,    msx,    msx,     msxkr,    msx,	msx,	"ASCII & Microsoft", "MSX 1 (Korea)" )
+/*    YEAR  NAME      PARENT	COMPAT	MACHINE  INPUT     INIT   CONFIG  COMPANY              FULLNAME */
+COMP( 1983,	msx,      0,		0,		msx_pal, msx,      msx,	msx,	"ASCII & Microsoft", "MSX 1" )
+COMP( 1983, msxj,     msx,		0,		msx,     msxj,     msx,	msx,	"ASCII & Microsoft", "MSX 1 (Japan)" )
+COMP( 1983, msxkr,    msx,		0,		msx,     msxkr,    msx,	msx,	"ASCII & Microsoft", "MSX 1 (Korea)" )
 /*COMP(1983,msxkra, msx, msx, msxkr, msx, "ASCII & Microsoft", "MSX 1 (Korea ALT)" ) */
-COMP( 1983, msxuk,    msx,    msx_pal, msxuk,    msx,	msx,	"ASCII & Microsoft", "MSX 1 (UK)" )
-COMP( 1985, hotbit11, msx,    msx,     hotbit,   msx,	msx,	"Sharp / Epcom",     "HB-8000 Hotbit 1.1" )
-COMP( 1985, hotbit12, msx,    msx,     hotbit,   msx,	msx,	"Sharp / Epcom",     "HB-8000 Hotbit 1.2" )
-COMP( 1985, expert10, msx,    msx,     expert10, msx,	msx,	"Gradiente",         "XP-800 Expert 1.0" )
-COMP( 1985, expert11, msx,    msx,     expert11, msx,	msx,	"Gradiente",         "XP-800 Expert 1.1" )
-COMPX(1985, msx2,     msx,    msx2,    msx2,     msx2,	msx,	"ASCII & Microsoft", "MSX 2", GAME_NOT_WORKING )
-COMPX(1985, msx2a,    msx,    msx2,    msx2,     msx2,	msx,	"ASCII & Microsoft", "MSX 2 (BASIC 2.1)", GAME_NOT_WORKING )
-COMPX(1985, msx2j,    msx,    msx2,     msx2j,   msx2,	msx,	"ASCII & Microsoft", "MSX 2 (Japan)", GAME_NOT_WORKING )
+COMP( 1983, msxuk,    msx,		0,		msx_pal, msxuk,    msx,	msx,	"ASCII & Microsoft", "MSX 1 (UK)" )
+COMP( 1985, hotbit11, msx,		0,		msx,     hotbit,   msx,	msx,	"Sharp / Epcom",     "HB-8000 Hotbit 1.1" )
+COMP( 1985, hotbit12, msx,		0,		msx,     hotbit,   msx,	msx,	"Sharp / Epcom",     "HB-8000 Hotbit 1.2" )
+COMP( 1985, expert10, msx,		0,		msx,     expert10, msx,	msx,	"Gradiente",         "XP-800 Expert 1.0" )
+COMP( 1985, expert11, msx,		0,		msx,     expert11, msx,	msx,	"Gradiente",         "XP-800 Expert 1.1" )
+COMPX(1985, msx2,     msx,		0,		msx2,    msx2,     msx2,	msx,	"ASCII & Microsoft", "MSX 2", GAME_NOT_WORKING )
+COMPX(1985, msx2a,    msx,		0,		msx2,    msx2,     msx2,	msx,	"ASCII & Microsoft", "MSX 2 (BASIC 2.1)", GAME_NOT_WORKING )
+COMPX(1985, msx2j,    msx,		0,		msx2,     msx2j,   msx2,	msx,	"ASCII & Microsoft", "MSX 2 (Japan)", GAME_NOT_WORKING )
 

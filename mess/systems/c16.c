@@ -637,87 +637,87 @@ static PALETTE_INIT( c16 )
    0x80 means pal version */
 
 	 /* basic */
-	 ROM_LOAD ("318006.01", 0x10000, 0x4000, 0x74eaae87)
+	 ROM_LOAD ("318006.01", 0x10000, 0x4000, CRC(74eaae87))
 
 	 /* kernal pal */
-	 ROM_LOAD("318004.05",    0x14000, 0x4000, 0x71c07bd4)
-	 ROM_LOAD ("318004.03", 0x14000, 0x4000, 0x77bab934)
+	 ROM_LOAD("318004.05",    0x14000, 0x4000, CRC(71c07bd4))
+	 ROM_LOAD ("318004.03", 0x14000, 0x4000, CRC(77bab934))
 
 	 /* kernal ntsc */
-	 ROM_LOAD ("318005.05", 0x14000, 0x4000, 0x70295038)
-	 ROM_LOAD ("318005.04", 0x14000, 0x4000, 0x799a633d)
+	 ROM_LOAD ("318005.05", 0x14000, 0x4000, CRC(70295038))
+	 ROM_LOAD ("318005.04", 0x14000, 0x4000, CRC(799a633d))
 
 	 /* 3plus1 program */
-	 ROM_LOAD ("317053.01", 0x18000, 0x4000, 0x4fd1d8cb)
-	 ROM_LOAD ("317054.01", 0x1c000, 0x4000, 0x109de2fc)
+	 ROM_LOAD ("317053.01", 0x18000, 0x4000, CRC(4fd1d8cb))
+	 ROM_LOAD ("317054.01", 0x1c000, 0x4000, CRC(109de2fc))
 
 	 /* same as 109de2fc, but saved from running machine, so
 		io area different ! */
-	 ROM_LOAD ("3plus1hi.rom", 0x1c000, 0x4000, 0xaab61387)
+	 ROM_LOAD ("3plus1hi.rom", 0x1c000, 0x4000, CRC(aab61387))
 	 /* same but lo and hi in one rom */
-	 ROM_LOAD ("3plus1.rom", 0x18000, 0x8000, 0x7d464449)
+	 ROM_LOAD ("3plus1.rom", 0x18000, 0x8000, CRC(7d464449))
 #endif
 
 ROM_START (c16)
 	 ROM_REGION (0x40000, REGION_CPU1, 0)
-	 ROM_LOAD ("318006.01", 0x10000, 0x4000, 0x74eaae87)
-	 ROM_LOAD("318004.05",    0x14000, 0x4000, 0x71c07bd4)
+	 ROM_LOAD ("318006.01", 0x10000, 0x4000, CRC(74eaae87))
+	 ROM_LOAD("318004.05",    0x14000, 0x4000, CRC(71c07bd4))
 ROM_END
 
 ROM_START (c16hun)
 	 ROM_REGION (0x40000, REGION_CPU1, 0)
-	 ROM_LOAD ("318006.01", 0x10000, 0x4000, 0x74eaae87)
-	 ROM_LOAD("hungary.bin",    0x14000, 0x4000, 0x775f60c5)
+	 ROM_LOAD ("318006.01", 0x10000, 0x4000, CRC(74eaae87))
+	 ROM_LOAD("hungary.bin",    0x14000, 0x4000, CRC(775f60c5))
 ROM_END
 
 ROM_START (c16c)
 	 ROM_REGION (0x40000, REGION_CPU1, 0)
-	 ROM_LOAD ("318006.01", 0x10000, 0x4000, 0x74eaae87)
-	 ROM_LOAD("318004.05",    0x14000, 0x4000, 0x71c07bd4)
+	 ROM_LOAD ("318006.01", 0x10000, 0x4000, CRC(74eaae87))
+	 ROM_LOAD("318004.05",    0x14000, 0x4000, CRC(71c07bd4))
 	 C1551_ROM (REGION_CPU2)
 ROM_END
 
 ROM_START (c16v)
 	 ROM_REGION (0x40000, REGION_CPU1, 0)
-	 ROM_LOAD ("318006.01", 0x10000, 0x4000, 0x74eaae87)
-	 ROM_LOAD("318004.05",    0x14000, 0x4000, 0x71c07bd4)
+	 ROM_LOAD ("318006.01", 0x10000, 0x4000, CRC(74eaae87))
+	 ROM_LOAD("318004.05",    0x14000, 0x4000, CRC(71c07bd4))
 	 VC1541_ROM (REGION_CPU2)
 ROM_END
 
 ROM_START (plus4)
 	 ROM_REGION (0x40000, REGION_CPU1, 0)
-	 ROM_LOAD ("318006.01", 0x10000, 0x4000, 0x74eaae87)
-	 ROM_LOAD ("318005.05", 0x14000, 0x4000, 0x70295038)
-	 ROM_LOAD ("317053.01", 0x18000, 0x4000, 0x4fd1d8cb)
-	 ROM_LOAD ("317054.01", 0x1c000, 0x4000, 0x109de2fc)
+	 ROM_LOAD ("318006.01", 0x10000, 0x4000, CRC(74eaae87))
+	 ROM_LOAD ("318005.05", 0x14000, 0x4000, CRC(70295038))
+	 ROM_LOAD ("317053.01", 0x18000, 0x4000, CRC(4fd1d8cb))
+	 ROM_LOAD ("317054.01", 0x1c000, 0x4000, CRC(109de2fc))
 ROM_END
 
 ROM_START (plus4c)
 	 ROM_REGION (0x40000, REGION_CPU1, 0)
-	 ROM_LOAD ("318006.01", 0x10000, 0x4000, 0x74eaae87)
-	 ROM_LOAD ("318005.05", 0x14000, 0x4000, 0x70295038)
-	 ROM_LOAD ("317053.01", 0x18000, 0x4000, 0x4fd1d8cb)
-	 ROM_LOAD ("317054.01", 0x1c000, 0x4000, 0x109de2fc)
+	 ROM_LOAD ("318006.01", 0x10000, 0x4000, CRC(74eaae87))
+	 ROM_LOAD ("318005.05", 0x14000, 0x4000, CRC(70295038))
+	 ROM_LOAD ("317053.01", 0x18000, 0x4000, CRC(4fd1d8cb))
+	 ROM_LOAD ("317054.01", 0x1c000, 0x4000, CRC(109de2fc))
 	 C1551_ROM (REGION_CPU2)
 ROM_END
 
 ROM_START (plus4v)
 	 ROM_REGION (0x40000, REGION_CPU1, 0)
-	 ROM_LOAD ("318006.01", 0x10000, 0x4000, 0x74eaae87)
-	 ROM_LOAD ("318005.05", 0x14000, 0x4000, 0x70295038)
-	 ROM_LOAD ("317053.01", 0x18000, 0x4000, 0x4fd1d8cb)
-	 ROM_LOAD ("317054.01", 0x1c000, 0x4000, 0x109de2fc)
+	 ROM_LOAD ("318006.01", 0x10000, 0x4000, CRC(74eaae87))
+	 ROM_LOAD ("318005.05", 0x14000, 0x4000, CRC(70295038))
+	 ROM_LOAD ("317053.01", 0x18000, 0x4000, CRC(4fd1d8cb))
+	 ROM_LOAD ("317054.01", 0x1c000, 0x4000, CRC(109de2fc))
 	 VC1541_ROM (REGION_CPU2)
 ROM_END
 
 ROM_START (c364)
 	 ROM_REGION (0x40000, REGION_CPU1, 0)
-	 ROM_LOAD ("318006.01", 0x10000, 0x4000, 0x74eaae87)
-	 ROM_LOAD ("kern364p.bin", 0x14000, 0x4000, 0x84fd4f7a)
-	 ROM_LOAD ("317053.01", 0x18000, 0x4000, 0x4fd1d8cb)
-	 ROM_LOAD ("317054.01", 0x1c000, 0x4000, 0x109de2fc)
+	 ROM_LOAD ("318006.01", 0x10000, 0x4000, CRC(74eaae87))
+	 ROM_LOAD ("kern364p.bin", 0x14000, 0x4000, CRC(84fd4f7a))
+	 ROM_LOAD ("317053.01", 0x18000, 0x4000, CRC(4fd1d8cb))
+	 ROM_LOAD ("317054.01", 0x1c000, 0x4000, CRC(109de2fc))
 	 /* at address 0x20000 not so good */
-	 ROM_LOAD ("spk3cc4.bin", 0x28000, 0x4000, 0x5227c2ee)
+	 ROM_LOAD ("spk3cc4.bin", 0x28000, 0x4000, CRC(5227c2ee))
 ROM_END
 
 static SID6581_interface sidc16_sound_interface =
@@ -882,13 +882,12 @@ SYSTEM_CONFIG_START(c16v)
 	CONFIG_DEVICE_VC1541
 SYSTEM_CONFIG_END
 
-/*		YEAR	NAME	PARENT	MACHINE INPUT	INIT	CONFIG   COMPANY 								FULLNAME */
-COMP ( 1984,	c16,	0,		c16,	c16,	c16,	c16,     "Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL)")
-COMP ( 1984,	c16hun, c16,	c16,	c16,	c16,	c16,     "Commodore Business Machines Co.",      "Commodore 16 Novotrade (PAL, Hungarian Character Set)")
-COMPX ( 1984,	c16c,	c16,	c16c,	c16c,	c16,	c16c,    "Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL), 1551", GAME_NOT_WORKING)
-COMP ( 1984,	plus4,	c16,	plus4,	plus4,	plus4,	c16,     "Commodore Business Machines Co.",      "Commodore +4 (NTSC)")
-COMPX ( 1984,	plus4c, c16,	plus4c, plus4c, plus4,	c16c,    "Commodore Business Machines Co.",      "Commodore +4 (NTSC), 1551", GAME_NOT_WORKING)
-COMPX ( 1984,	c364,	c16,	c364,	plus4,	plus4,	c16,     "Commodore Business Machines Co.",      "Commodore 364 (Prototype)", GAME_IMPERFECT_SOUND)
-// please leave the following as testdriver only
-COMPX ( 1984,	c16v,	c16,	c16v,	c16v,	c16,	c16v,     "Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL), VC1541", GAME_NOT_WORKING)
-COMPX ( 1984,	plus4v, c16,	plus4v, plus4v, plus4,	c16v,    "Commodore Business Machines Co.",      "Commodore +4 (NTSC), VC1541", GAME_NOT_WORKING)
+/*		YEAR	NAME	PARENT	COMPAT	MACHINE INPUT	INIT	CONFIG   COMPANY 								FULLNAME */
+COMP ( 1984,	c16,	0,		0,		c16,	c16,	c16,	c16,     "Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL)")
+COMP ( 1984,	c16hun, c16,	0,		c16,	c16,	c16,	c16,     "Commodore Business Machines Co.",      "Commodore 16 Novotrade (PAL, Hungarian Character Set)")
+COMPX ( 1984,	c16c,	c16,	0,		c16c,	c16c,	c16,	c16c,    "Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL), 1551", GAME_NOT_WORKING)
+COMP ( 1984,	plus4,	c16,	0,		plus4,	plus4,	plus4,	c16,     "Commodore Business Machines Co.",      "Commodore +4 (NTSC)")
+COMPX ( 1984,	plus4c, c16,	0,		plus4c, plus4c, plus4,	c16c,    "Commodore Business Machines Co.",      "Commodore +4 (NTSC), 1551", GAME_NOT_WORKING)
+COMPX ( 1984,	c364,	c16,	0,		c364,	plus4,	plus4,	c16,     "Commodore Business Machines Co.",      "Commodore 364 (Prototype)", GAME_IMPERFECT_SOUND)
+COMPX ( 1984,	c16v,	c16,	0,		c16v,	c16v,	c16,	c16v,    "Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL), VC1541", GAME_NOT_WORKING)
+COMPX ( 1984,	plus4v, c16,	0,		plus4v, plus4v, plus4,	c16v,    "Commodore Business Machines Co.",      "Commodore +4 (NTSC), VC1541", GAME_NOT_WORKING)

@@ -445,11 +445,11 @@ MACHINE_DRIVER_END
 
 ROM_START (cgenie)
 	ROM_REGION(0x13000,REGION_CPU1,0)
-	ROM_LOAD ("cgenie.rom",  0x00000, 0x4000, 0xd359ead7)
-	ROM_LOAD ("cgdos.rom",   0x10000, 0x2000, 0x2a96cf74)
+	ROM_LOAD ("cgenie.rom",  0x00000, 0x4000, CRC(d359ead7))
+	ROM_LOAD ("cgdos.rom",   0x10000, 0x2000, CRC(2a96cf74))
 
 	ROM_REGION(0x0c00,REGION_GFX1,0)
-	ROM_LOAD ("cgenie1.fnt", 0x0000, 0x0800, 0x4fed774a)
+	ROM_LOAD ("cgenie1.fnt", 0x0000, 0x0800, CRC(4fed774a))
 
 	/* Empty memory region for the character generator */
 	ROM_REGION(0x0800,REGION_GFX2,0)
@@ -457,10 +457,10 @@ ROM_START (cgenie)
 ROM_END
 
 SYSTEM_CONFIG_START(cgenie)
-	CONFIG_DEVICE_CARTSLOT_OPT		(1, "rom\0", NULL, NULL, cgenie_rom_load, NULL, NULL, NULL)
-	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0", cgenie_floppy_init)
-	CONFIG_DEVICE_LEGACY			(IO_CASSETTE, 1, "cas\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_NONE, NULL, NULL, cgenie_cassette_load, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT		(1, "rom\0", NULL, NULL, device_load_cgenie_cart, NULL, NULL, NULL)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0", device_load_cgenie_floppy)
+	CONFIG_DEVICE_LEGACY			(IO_CASSETTE, 1, "cas\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_NONE, NULL, NULL, device_load_cgenie_cassette, NULL, NULL)
 SYSTEM_CONFIG_END
 
-/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	  CONFIG     COMPANY	FULLNAME */
-COMP( 1982, cgenie,   0,		cgenie,   cgenie,	cgenie,   cgenie,    "EACA Computers Ltd.",  "Colour Genie EG2000" )
+/*	  YEAR	NAME	  PARENT	COMPAT	MACHINE   INPUT 	INIT	  CONFIG     COMPANY	FULLNAME */
+COMP( 1982, cgenie,   0,		0,		cgenie,   cgenie,	cgenie,   cgenie,    "EACA Computers Ltd.",  "Colour Genie EG2000" )

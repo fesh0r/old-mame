@@ -20,11 +20,11 @@ unsigned char *pce_save_ram;    /* battery backed RAM at F7 */
 static int joystick_port_select;        /* internal index of joystick ports */
 static int joystick_data_select;        /* which nibble of joystick data we want */
 
-int pce_cart_load(int id, mame_file *fp, int open_mode)
+int pce_cart_load(mess_image *img, mame_file *fp, int open_mode)
 {
 	int size;
 	unsigned char *ROM;
-	logerror("*** pce_load_rom : %s\n", image_filename(IO_CARTSLOT,id));
+	logerror("*** pce_load_rom : %s\n", image_filename(img));
 
     /* open file to get size */
 	if( new_memory_region(REGION_CPU1,PCE_ROM_MAXSIZE,0) )

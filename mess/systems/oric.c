@@ -493,55 +493,55 @@ MACHINE_DRIVER_END
 
 ROM_START(oric1)
 	ROM_REGION(0x10000+0x04000+0x02000+0x0800,REGION_CPU1,0)
-	ROM_LOAD ("basic10.rom", 0x10000, 0x4000, 0xf18710b4)
-	ROM_LOAD_OPTIONAL ("microdis.rom",0x014000, 0x02000, 0xa9664a9c)
-	ROM_LOAD_OPTIONAL ("jasmin.rom", 0x016000, 0x800, 0x37220e89)
+	ROM_LOAD ("basic10.rom", 0x10000, 0x4000, CRC(f18710b4))
+	ROM_LOAD_OPTIONAL ("microdis.rom",0x014000, 0x02000, CRC(a9664a9c))
+	ROM_LOAD_OPTIONAL ("jasmin.rom", 0x016000, 0x800, CRC(37220e89))
 ROM_END
 
 ROM_START(orica)
 	ROM_REGION(0x10000+0x04000+0x02000+0x0800,REGION_CPU1,0)
-	ROM_LOAD ("basic11b.rom", 0x10000, 0x4000, 0xc3a92bef)
-	ROM_LOAD_OPTIONAL ("microdis.rom",0x014000, 0x02000, 0xa9664a9c)
-	ROM_LOAD_OPTIONAL ("jasmin.rom", 0x016000, 0x800, 0x37220e89)
+	ROM_LOAD ("basic11b.rom", 0x10000, 0x4000, CRC(c3a92bef))
+	ROM_LOAD_OPTIONAL ("microdis.rom",0x014000, 0x02000, CRC(a9664a9c))
+	ROM_LOAD_OPTIONAL ("jasmin.rom", 0x016000, 0x800, CRC(37220e89))
 ROM_END
 
 ROM_START(telstrat)
 	ROM_REGION(0x010000+(0x04000*4), REGION_CPU1,0)
-	ROM_LOAD ("telmatic.rom", 0x010000, 0x02000, 0x94358dc6)
-	ROM_LOAD ("teleass.rom", 0x014000, 0x04000, 0x68b0fde6)
-	ROM_LOAD ("hyperbas.rom", 0x018000, 0x04000, 0x1d96ab50)
-	ROM_LOAD ("telmon24.rom", 0x01c000, 0x04000, 0xaa727c5d)
+	ROM_LOAD ("telmatic.rom", 0x010000, 0x02000, CRC(94358dc6))
+	ROM_LOAD ("teleass.rom", 0x014000, 0x04000, CRC(68b0fde6))
+	ROM_LOAD ("hyperbas.rom", 0x018000, 0x04000, CRC(1d96ab50))
+	ROM_LOAD ("telmon24.rom", 0x01c000, 0x04000, CRC(aa727c5d))
 ROM_END
 
 ROM_START(prav8d)
     ROM_REGION (0x10000+0x4000+0x0100+0x200,REGION_CPU1,0)
-    ROM_LOAD ("pravetzt.rom", 0x10000, 0x4000, 0x58079502)
-	ROM_LOAD_OPTIONAL ("8ddoslo.rom", 0x014000, 0x0100, 0x0c82f636)
-    ROM_LOAD_OPTIONAL ("8ddoshi.rom",0x014100, 0x0200, 0x66309641)
+    ROM_LOAD ("pravetzt.rom", 0x10000, 0x4000, CRC(58079502))
+	ROM_LOAD_OPTIONAL ("8ddoslo.rom", 0x014000, 0x0100, CRC(0c82f636))
+    ROM_LOAD_OPTIONAL ("8ddoshi.rom",0x014100, 0x0200, CRC(66309641))
 ROM_END
 
 ROM_START(prav8dd)
     ROM_REGION (0x10000+0x4000+0x0100+0x0200,REGION_CPU1,0)
-    ROM_LOAD ("8d.rom", 0x10000, 0x4000, 0xb48973ef)
-    ROM_LOAD_OPTIONAL ("8ddoslo.rom", 0x014000, 0x0100, 0x0c82f636)
-    ROM_LOAD_OPTIONAL ("8ddoshi.rom",0x014100, 0x0200, 0x66309641)
+    ROM_LOAD ("8d.rom", 0x10000, 0x4000, CRC(b48973ef))
+    ROM_LOAD_OPTIONAL ("8ddoslo.rom", 0x014000, 0x0100, CRC(0c82f636))
+    ROM_LOAD_OPTIONAL ("8ddoshi.rom",0x014100, 0x0200, CRC(66309641))
 ROM_END
 
 ROM_START(prav8dda)
     ROM_REGION (0x10000+0x4000+0x0100+0x200,REGION_CPU1,0)
-    ROM_LOAD ("pravetzd.rom", 0x10000, 0x4000, 0xf8d23821)
-	ROM_LOAD_OPTIONAL ("8ddoslo.rom", 0x014000, 0x0100, 0x0c82f636)
-    ROM_LOAD_OPTIONAL ("8ddoshi.rom",0x014100, 0x0200, 0x66309641)
+    ROM_LOAD ("pravetzd.rom", 0x10000, 0x4000, CRC(f8d23821))
+	ROM_LOAD_OPTIONAL ("8ddoslo.rom", 0x014000, 0x0100, CRC(0c82f636))
+    ROM_LOAD_OPTIONAL ("8ddoshi.rom",0x014100, 0x0200, CRC(66309641))
 ROM_END
 
 SYSTEM_CONFIG_START(oric_common)
-	CONFIG_DEVICE_CASSETTE(1, "tap\0", oric_cassette_init)
+	CONFIG_DEVICE_CASSETTE(1, "tap\0", device_load_oric_cassette)
 	CONFIG_DEVICE_PRINTER(1)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(oric1)
 	CONFIG_IMPORT_FROM(oric_common)
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 4, "dsk\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_CREATE_OR_READ, NULL, NULL, oric_floppy_load, oric_floppy_unload, floppy_status)
+	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 4, "dsk\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_CREATE_OR_READ, NULL, NULL, device_load_oric_floppy, device_unload_oric_floppy, floppy_status)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(prav8)
@@ -550,10 +550,10 @@ SYSTEM_CONFIG_START(prav8)
 SYSTEM_CONFIG_END
 
 
-/*    YEAR   NAME       PARENT  MACHINE     INPUT       INIT    CONFIG    COMPANY         FULLNAME */
-COMP( 1983,  oric1,     0,      oric,       oric,	    0,	    oric1,    "Tangerine",    "Oric 1" )
-COMP( 1984,  orica,     oric1,	oric,	    orica,	    0,	    oric1,    "Tangerine",    "Oric Atmos" )
-COMP( 1985,  prav8d,    oric1,  oric,       prav8d,     0,      prav8,    "Pravetz",      "Pravetz 8D")
-COMPX( 1989, prav8dd,   oric1,  oric,       prav8d,     0,      prav8,    "Pravetz",      "Pravetz 8D (Disk ROM)", GAME_COMPUTER_MODIFIED)
-COMPX( 1992, prav8dda,  oric1,  oric,       prav8d,     0,      prav8,    "Pravetz",      "Pravetz 8D (Disk ROM, RadoSoft)", GAME_COMPUTER_MODIFIED)
-COMPX( 1986, telstrat,  oric1,  telstrat,   telstrat,   0,      oric1,    "Tangerine",    "Oric Telestrat", GAME_NOT_WORKING )
+/*    YEAR   NAME       PARENT	COMPAT	MACHINE     INPUT       INIT    CONFIG    COMPANY         FULLNAME */
+COMP( 1983,  oric1,     0,      0,		oric,       oric,	    0,	    oric1,    "Tangerine",    "Oric 1" )
+COMP( 1984,  orica,     oric1,	0,		oric,	    orica,	    0,	    oric1,    "Tangerine",    "Oric Atmos" )
+COMP( 1985,  prav8d,    oric1,  0,		oric,       prav8d,     0,      prav8,    "Pravetz",      "Pravetz 8D")
+COMPX( 1989, prav8dd,   oric1,  0,		oric,       prav8d,     0,      prav8,    "Pravetz",      "Pravetz 8D (Disk ROM)", GAME_COMPUTER_MODIFIED)
+COMPX( 1992, prav8dda,  oric1,  0,		oric,       prav8d,     0,      prav8,    "Pravetz",      "Pravetz 8D (Disk ROM, RadoSoft)", GAME_COMPUTER_MODIFIED)
+COMPX( 1986, telstrat,  oric1,  0,		telstrat,   telstrat,   0,      oric1,    "Tangerine",    "Oric Telestrat", GAME_NOT_WORKING )

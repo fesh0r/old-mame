@@ -153,11 +153,11 @@ MACHINE_DRIVER_END
 ROM_START(mk2)
 	ROM_REGION(0x10000,REGION_CPU1,0)
 #ifdef M6504_MEMORY_LAYOUT
-	ROM_LOAD("024_1879", 0x0c00, 0x0400, 0x4f28c443)
-	ROM_LOAD("005_2179", 0x1000, 0x1000, 0x6f10991b) // chess mate 7.5
+	ROM_LOAD("024_1879", 0x0c00, 0x0400, CRC(4f28c443))
+	ROM_LOAD("005_2179", 0x1000, 0x1000, CRC(6f10991b)) // chess mate 7.5
 #else
-	ROM_LOAD("024_1879", 0x8c00, 0x0400, 0x4f28c443)
-	ROM_LOAD("005_2179", 0xf000, 0x1000, 0x6f10991b) // chess mate 7.5
+	ROM_LOAD("024_1879", 0x8c00, 0x0400, CRC(4f28c443))
+	ROM_LOAD("005_2179", 0xf000, 0x1000, CRC(6f10991b)) // chess mate 7.5
 #endif
 ROM_END
 
@@ -255,6 +255,6 @@ static void init_mk2(void)
 	rriot_init(0,&riot);
 }
 
-/*    YEAR  NAME    PARENT  MACHINE INPUT   INIT    CONFIG    COMPANY   FULLNAME */
-CONS( 1979,	mk2,	0, 		mk2,	mk2,	mk2,	NULL,	  "Quelle International",  "Chess Champion MK II")
+/*    YEAR  NAME    PARENT	COMPAT	MACHINE INPUT   INIT    CONFIG    COMPANY   FULLNAME */
+CONS( 1979,	mk2,	0,		0,		mk2,	mk2,	mk2,	NULL,	  "Quelle International",  "Chess Champion MK II")
 // second design sold (same computer/program?)

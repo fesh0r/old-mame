@@ -686,75 +686,75 @@ static PALETTE_INIT( vc20 )
 
 #if 0
 	/* chargen */
-	ROM_LOAD ("901460.03", 0x8000, 0x1000, 0x83e032a6)
+	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6))
 	/* basic */
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, 0xdb4c43c1)
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
 	/* kernel ntsc-m of vic1001? */
-	ROM_LOAD ("901486.02", 0xe000, 0x2000, 0x336900d7)
+	ROM_LOAD ("901486.02", 0xe000, 0x2000, CRC(336900d7))
 	/* kernel ntsc */
-	ROM_LOAD ("901486.06", 0xe000, 0x2000, 0xe5e7c174)
+	ROM_LOAD ("901486.06", 0xe000, 0x2000, CRC(e5e7c174))
 	/* kernel pal */
-	ROM_LOAD ("901486.07", 0xe000, 0x2000, 0x4be07cb4)
+	ROM_LOAD ("901486.07", 0xe000, 0x2000, CRC(4be07cb4))
 
 	/* patched pal system for swedish/finish keyboard and chars */
 	/* but in rom? (maybe patched means in this case nec version) */
-	ROM_LOAD ("nec22101.207", 0x8000, 0x1000, 0xd808551d)
-	ROM_LOAD ("nec22081.206", 0xe000, 0x2000, 0xb2a60662)
+	ROM_LOAD ("nec22101.207", 0x8000, 0x1000, CRC(d808551d))
+	ROM_LOAD ("nec22081.206", 0xe000, 0x2000, CRC(b2a60662))
 
 	/* ieee488 cartridge */
-	ROM_LOAD ("325329-04.bin", 0xb000, 0x800, 0xd37b6335)
+	ROM_LOAD ("325329-04.bin", 0xb000, 0x800, CRC(d37b6335))
 #endif
 
 ROM_START (vic20)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.03", 0x8000, 0x1000, 0x83e032a6)
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, 0xdb4c43c1)
-	ROM_LOAD ("901486.06", 0xe000, 0x2000, 0xe5e7c174)
+	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
+	ROM_LOAD ("901486.06", 0xe000, 0x2000, CRC(e5e7c174))
 ROM_END
 
 ROM_START (vic1001)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.02", 0x8000, 0x1000, 0xfcfd8a4b)
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, 0xdb4c43c1)
-	ROM_LOAD ("901486.02", 0xe000, 0x2000, 0x336900d7)
+	ROM_LOAD ("901460.02", 0x8000, 0x1000, CRC(fcfd8a4b))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
+	ROM_LOAD ("901486.02", 0xe000, 0x2000, CRC(336900d7))
 ROM_END
 
 ROM_START (vic20swe)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("nec22101.207", 0x8000, 0x1000, 0xd808551d)
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, 0xdb4c43c1)
-	ROM_LOAD ("nec22081.206", 0xe000, 0x2000, 0xb2a60662)
+	ROM_LOAD ("nec22101.207", 0x8000, 0x1000, CRC(d808551d))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
+	ROM_LOAD ("nec22081.206", 0xe000, 0x2000, CRC(b2a60662))
 ROM_END
 
 ROM_START (vic20v)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.03", 0x8000, 0x1000, 0x83e032a6)
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, 0xdb4c43c1)
-	ROM_LOAD ("901486.06", 0xe000, 0x2000, 0xe5e7c174)
+	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
+	ROM_LOAD ("901486.06", 0xe000, 0x2000, CRC(e5e7c174))
 	VC1540_ROM (REGION_CPU2)
 ROM_END
 
 ROM_START (vic20i)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.03", 0x8000, 0x1000, 0x83e032a6)
-	ROM_LOAD ("325329.04", 0xb000, 0x800, 0xd37b6335)
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, 0xdb4c43c1)
-	ROM_LOAD ("901486.06", 0xe000, 0x2000, 0xe5e7c174)
+	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6))
+	ROM_LOAD ("325329.04", 0xb000, 0x800, CRC(d37b6335))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
+	ROM_LOAD ("901486.06", 0xe000, 0x2000, CRC(e5e7c174))
 /*	C2031_ROM (REGION_CPU2) */
 ROM_END
 
 ROM_START (vc20)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.03", 0x8000, 0x1000, 0x83e032a6)
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, 0xdb4c43c1)
-	ROM_LOAD ("901486.07", 0xe000, 0x2000, 0x4be07cb4)
+	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
+	ROM_LOAD ("901486.07", 0xe000, 0x2000, CRC(4be07cb4))
 ROM_END
 
 ROM_START (vc20v)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.03", 0x8000, 0x1000, 0x83e032a6)
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, 0xdb4c43c1)
-	ROM_LOAD ("901486.07", 0xe000, 0x2000, 0x4be07cb4)
+	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
+	ROM_LOAD ("901486.07", 0xe000, 0x2000, CRC(4be07cb4))
 	VC1541_ROM (REGION_CPU2)
 ROM_END
 
@@ -865,12 +865,12 @@ SYSTEM_CONFIG_START(vc20i)
 SYSTEM_CONFIG_END
 #endif
 
-/*		YEAR	NAME		PARENT	MACHINE INPUT		INIT	CONFIG     COMPANY 							FULLNAME */
-COMPX ( 1981,	vic20,		0,		vic20,	vic20,		vic20,	vc20,      "Commodore Business Machines Co.",  "VIC20 (NTSC)", GAME_IMPERFECT_SOUND)
-COMPX ( 1981,	vic20i, 	vic20,	vic20i, vic20i, 	vic20i, vc20,      "Commodore Business Machines Co.",  "VIC20 (NTSC), IEEE488 Interface (SYS45065)",   GAME_IMPERFECT_SOUND)
-COMPX ( 1981,	vic1001,	vic20,	vic20,	vic1001,	vic20,	vc20,      "Commodore Business Machines Co.",  "VIC1001 (NTSC)", GAME_IMPERFECT_SOUND)
-COMPX ( 1981,	vc20,		vic20,	vc20,	vc20,		vc20,	vc20,      "Commodore Business Machines Co.",  "VIC20/VC20(German) PAL",       GAME_IMPERFECT_SOUND)
-COMPX ( 1981,	vic20swe,	vic20,	vc20,	vic20swe,	vc20,	vc20,      "Commodore Business Machines Co.",  "VIC20 PAL, Swedish Expansion Kit", GAME_IMPERFECT_SOUND)
+/*		YEAR	NAME		PARENT	COMPAT	MACHINE INPUT		INIT	CONFIG     COMPANY 							FULLNAME */
+COMPX ( 1981,	vic20,		0,		0,		vic20,	vic20,		vic20,	vc20,      "Commodore Business Machines Co.",  "VIC20 (NTSC)", GAME_IMPERFECT_SOUND)
+COMPX ( 1981,	vic20i, 	vic20,	0,		vic20i, vic20i, 	vic20i, vc20,      "Commodore Business Machines Co.",  "VIC20 (NTSC), IEEE488 Interface (SYS45065)",   GAME_IMPERFECT_SOUND)
+COMPX ( 1981,	vic1001,	vic20,	0,		vic20,	vic1001,	vic20,	vc20,      "Commodore Business Machines Co.",  "VIC1001 (NTSC)", GAME_IMPERFECT_SOUND)
+COMPX ( 1981,	vc20,		vic20,	0,		vc20,	vc20,		vc20,	vc20,      "Commodore Business Machines Co.",  "VIC20/VC20(German) PAL",       GAME_IMPERFECT_SOUND)
+COMPX ( 1981,	vic20swe,	vic20,	0,		vc20,	vic20swe,	vc20,	vc20,      "Commodore Business Machines Co.",  "VIC20 PAL, Swedish Expansion Kit", GAME_IMPERFECT_SOUND)
 // please leave the following as testdriver only
-COMPX ( 1981,	vic20v, 	vic20,	vic20v, vic20,		vic20,	vc20v,     "Commodore Business Machines Co.",  "VIC20 (NTSC), VC1540", GAME_IMPERFECT_SOUND)
-COMPX ( 1981,	vc20v,		vic20,	vc20v,	vic20,		vc20,	vc20v,     "Commodore Business Machines Co.",  "VC20 (PAL), VC1541", GAME_IMPERFECT_SOUND)
+COMPX ( 1981,	vic20v, 	vic20,	0,		vic20v, vic20,		vic20,	vc20v,     "Commodore Business Machines Co.",  "VIC20 (NTSC), VC1540", GAME_IMPERFECT_SOUND)
+COMPX ( 1981,	vc20v,		vic20,	0,		vc20v,	vic20,		vc20,	vc20v,     "Commodore Business Machines Co.",  "VC20 (PAL), VC1541", GAME_IMPERFECT_SOUND)

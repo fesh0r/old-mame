@@ -438,78 +438,78 @@ MACHINE_DRIVER_END
 
 ROM_START (ti81)
 	ROM_REGION (0x18000, REGION_CPU1,0)
-	ROM_LOAD ("ti81.bin", 0x10000, 0x8000, 0x94ac58e2)
+	ROM_LOAD ("ti81.bin", 0x10000, 0x8000, CRC(94ac58e2))
 ROM_END
 
 ROM_START (ti85)
 	ROM_REGION (0x30000, REGION_CPU1,0)
-	ROM_LOAD ("ti85v30a.bin", 0x10000, 0x20000, 0xde4c0b1a)
+	ROM_LOAD ("ti85v30a.bin", 0x10000, 0x20000, CRC(de4c0b1a))
 ROM_END
 
 ROM_START (ti85v40)
 	ROM_REGION (0x30000, REGION_CPU1,0)
-	ROM_LOAD ("ti85v40.bin", 0x10000, 0x20000, 0xa1723a17)
+	ROM_LOAD ("ti85v40.bin", 0x10000, 0x20000, CRC(a1723a17))
 ROM_END
 
 ROM_START (ti85v50)
 	ROM_REGION (0x30000, REGION_CPU1,0)
-	ROM_LOAD ("ti85v50.bin", 0x10000, 0x20000, 0x781fa403)
+	ROM_LOAD ("ti85v50.bin", 0x10000, 0x20000, CRC(781fa403))
 ROM_END
 
 ROM_START (ti85v60)
 	ROM_REGION (0x30000, REGION_CPU1,0)
-	ROM_LOAD ("ti85v60.bin", 0x10000, 0x20000, 0xb694a117)
+	ROM_LOAD ("ti85v60.bin", 0x10000, 0x20000, CRC(b694a117))
 ROM_END
 
 ROM_START (ti85v80)
 	ROM_REGION (0x30000, REGION_CPU1,0)
-	ROM_LOAD ("ti85v80.bin", 0x10000, 0x20000, 0x7f296338)
+	ROM_LOAD ("ti85v80.bin", 0x10000, 0x20000, CRC(7f296338))
 ROM_END
 
 ROM_START (ti85v90)
 	ROM_REGION (0x30000, REGION_CPU1,0)
-	ROM_LOAD ("ti85v90.bin", 0x10000, 0x20000, 0x6a0a94d0)
+	ROM_LOAD ("ti85v90.bin", 0x10000, 0x20000, CRC(6a0a94d0))
 ROM_END
 
 ROM_START (ti85v100)
 	ROM_REGION (0x30000, REGION_CPU1,0)
-	ROM_LOAD ("ti85v100.bin", 0x10000, 0x20000, 0x053325b0)
+	ROM_LOAD ("ti85v100.bin", 0x10000, 0x20000, CRC(053325b0))
 ROM_END
 
 ROM_START (ti86)
 	ROM_REGION (0x50000, REGION_CPU1,0)
-	ROM_LOAD ("ti86v12.bin", 0x10000, 0x40000, 0xbdf16105)
+	ROM_LOAD ("ti86v12.bin", 0x10000, 0x40000, CRC(bdf16105))
 ROM_END
 
 ROM_START (ti86v13)
 	ROM_REGION (0x50000, REGION_CPU1,0)
-	ROM_LOAD ("ti86v13.bin", 0x10000, 0x40000, 0x073ef70f)
+	ROM_LOAD ("ti86v13.bin", 0x10000, 0x40000, CRC(073ef70f))
 ROM_END
 
 ROM_START (ti86v14)
 	ROM_REGION (0x50000, REGION_CPU1,0)
-	ROM_LOAD ("ti86v14.bin", 0x10000, 0x40000, 0xfe6e2986)
+	ROM_LOAD ("ti86v14.bin", 0x10000, 0x40000, CRC(fe6e2986))
 ROM_END
 
 ROM_START (ti86v15)
 	ROM_REGION (0x50000, REGION_CPU1,0)
-	ROM_LOAD ("ti86v15.bin", 0x10000, 0x40000, BADCRC(0xe6e10546))
+	ROM_LOAD ("ti86v15.bin", 0x10000, 0x40000, BAD_DUMP CRC(e6e10546))
 ROM_END
 
 ROM_START (ti86v16)
 	ROM_REGION (0x50000, REGION_CPU1,0)
-	ROM_LOAD ("ti86v16.bin", 0x10000, 0x40000, 0x37e02acc)
+	ROM_LOAD ("ti86v16.bin", 0x10000, 0x40000, CRC(37e02acc))
 ROM_END
 
 ROM_START (ti86grom)
 	ROM_REGION (0x50000, REGION_CPU1,0)
-	ROM_LOAD ("ti86grom.bin", 0x10000, 0x40000, 0xd2c67280)
+	ROM_LOAD ("ti86grom.bin", 0x10000, 0x40000, CRC(d2c67280))
 ROM_END
 
 SYSTEM_CONFIG_START(ti85)
 	CONFIG_DEVICE_BASE ( IO_SERIAL, 1,
 			"85p\085s\085i\085n\085c\085l\085k\085m\085v\085d\085e\085r\085g\085b\0",
-			DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, ti85_serial_init, NULL, ti85_serial_load, ti85_serial_unload,
+			DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, device_init_ti85_serial, NULL, device_load_ti85_serial, device_unload_ti85_serial,
 			NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL )
 	CONFIG_DEVICE_SNAPSHOT( "sav\0", ti8x )
 SYSTEM_CONFIG_END
@@ -517,25 +517,25 @@ SYSTEM_CONFIG_END
 SYSTEM_CONFIG_START(ti86)
 	CONFIG_DEVICE_BASE ( IO_SERIAL, 1,
 			"86p\086s\086i\086n\086c\086l\086k\086m\086v\086d\086e\086r\086g\0",
-			DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, ti85_serial_init, NULL, ti85_serial_load, ti85_serial_unload,
+			DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, device_init_ti85_serial, NULL, device_load_ti85_serial, device_unload_ti85_serial,
 			NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL )
 	CONFIG_DEVICE_SNAPSHOT( "sav\0", ti8x )
 SYSTEM_CONFIG_END
                             
-/*    YEAR  NAME		PARENT	MACHINE INPUT	INIT	CONFIG	COMPANY        FULLNAME */
-COMP( 1990, ti81,          0,   ti81,	ti81,	0,		NULL,	"Texas Instruments", "TI-81 Ver. 1.8" )
+/*    YEAR  NAME		PARENT	COMPAT	MACHINE INPUT	INIT	CONFIG	COMPANY        FULLNAME */
+COMP( 1990, ti81,          0,   0,		ti81,	ti81,	0,		NULL,	"Texas Instruments", "TI-81 Ver. 1.8" )
 
-COMP( 1992, ti85,          0,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 3.0a" )
-COMP( 1992, ti85v40,    ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 4.0" )
-COMP( 1992, ti85v50,    ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 5.0" )
-COMP( 1992, ti85v60,    ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 6.0" )
-COMP( 1992, ti85v80,    ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 8.0" )
-COMP( 1992, ti85v90,    ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 9.0" )
-COMP( 1992, ti85v100,   ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 10.0" )
+COMP( 1992, ti85,          0,   0,		ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 3.0a" )
+COMP( 1992, ti85v40,    ti85,   0,		ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 4.0" )
+COMP( 1992, ti85v50,    ti85,   0,		ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 5.0" )
+COMP( 1992, ti85v60,    ti85,   0,		ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 6.0" )
+COMP( 1992, ti85v80,    ti85,   0,		ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 8.0" )
+COMP( 1992, ti85v90,    ti85,   0,		ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 9.0" )
+COMP( 1992, ti85v100,   ti85,   0,		ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 10.0" )
 
-COMP( 1997, ti86,   	   0,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.2" )
-COMP( 1997, ti86v13,   	ti86,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.3" )
-COMP( 1997, ti86v14,   	ti86,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.4" )
-COMP( 1997, ti86v15,   	ti86,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.5" )
-COMP( 1997, ti86v16,   	ti86,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.6" )
-COMP( 1997, ti86grom,   ti86,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 homebrew rom by Daniel Foesch" )
+COMP( 1997, ti86,   	   0,   0,		ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.2" )
+COMP( 1997, ti86v13,   	ti86,   0,		ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.3" )
+COMP( 1997, ti86v14,   	ti86,   0,		ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.4" )
+COMP( 1997, ti86v15,   	ti86,   0,		ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.5" )
+COMP( 1997, ti86v16,   	ti86,   0,		ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.6" )
+COMP( 1997, ti86grom,   ti86,   0,		ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 homebrew rom by Daniel Foesch" )

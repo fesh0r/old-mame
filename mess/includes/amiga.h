@@ -97,8 +97,8 @@ WRITE16_HANDLER ( amiga_custom_w );
 MACHINE_INIT( amiga );
 INTERRUPT_GEN( amiga_vblank_irq );
 
-int amiga_fdc_init(int id);
-int amiga_fdc_load(int id, mame_file *fp, int open_mode);
+int amiga_fdc_init(mess_image *img);
+int amiga_fdc_load(mess_image *img, mame_file *fp, int open_mode);
 
 /* from vidhrdw/amiga.c */
 VIDEO_START( amiga );

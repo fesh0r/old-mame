@@ -117,12 +117,12 @@ static MACHINE_DRIVER_START( vectrex )
 MACHINE_DRIVER_END
 
 SYSTEM_CONFIG_START(vectrex)
-	CONFIG_DEVICE_CARTSLOT_OPT(1, "bin\0gam\0vec\0", NULL, NULL, vectrex_cart_load, NULL, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "bin\0gam\0vec\0", NULL, NULL, device_load_vectrex_cart, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 ROM_START(vectrex)
     ROM_REGION(0x10000,REGION_CPU1, 0)
-    ROM_LOAD("system.img", 0xe000, 0x2000, 0xba13fb57)
+    ROM_LOAD("system.img", 0xe000, 0x2000, CRC(ba13fb57))
 ROM_END
 
 
@@ -191,8 +191,8 @@ MACHINE_DRIVER_END
 
 ROM_START(raaspec)
 	ROM_REGION(0x10000,REGION_CPU1, 0)
-	ROM_LOAD("spectrum.bin", 0x0000, 0x8000, 0x20af7f3f)
-	ROM_LOAD("system.img", 0xe000, 0x2000, 0xba13fb57)
+	ROM_LOAD("spectrum.bin", 0x0000, 0x8000, CRC(20af7f3f))
+	ROM_LOAD("system.img", 0xe000, 0x2000, CRC(ba13fb57))
 ROM_END
 
 /***************************************************************************
@@ -201,6 +201,6 @@ ROM_END
 
 ***************************************************************************/
 
-/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	CONFIG		COMPANY	FULLNAME */
-CONS( 1982, vectrex,  0, 		vectrex,  vectrex,	0,		vectrex,	"General Consumer Electronics",   "Vectrex" )
-CONS( 1984, raaspec,  vectrex,	raaspec,  raaspec,	0,		NULL,		"Roy Abel & Associates",   "Spectrum I+" )
+/*	  YEAR	NAME	  PARENT	COMPAT	MACHINE   INPUT 	INIT	CONFIG		COMPANY	FULLNAME */
+CONS( 1982, vectrex,  0, 		0,		vectrex,  vectrex,	0,		vectrex,	"General Consumer Electronics",   "Vectrex" )
+CONS( 1984, raaspec,  vectrex,	0,		raaspec,  raaspec,	0,		NULL,		"Roy Abel & Associates",   "Spectrum I+" )

@@ -222,13 +222,13 @@ ROM_START(vc4000)
 	ROM_REGION(0x100,REGION_GFX1, 0)
 ROM_END
 
-static int vc4000_cart_load(int id, mame_file *cartfile, int open_mode)
+static DEVICE_LOAD( vc4000_cart )
 {
-	return cartslot_load_generic(cartfile, REGION_CPU1, 0, 0x0001, memory_region_length(REGION_CPU1), 0);
+	return cartslot_load_generic(file, REGION_CPU1, 0, 0x0001, memory_region_length(REGION_CPU1), 0);
 }
 
 SYSTEM_CONFIG_START(vc4000)
-	CONFIG_DEVICE_CARTSLOT_REQ(1, "bin\0", NULL, NULL, vc4000_cart_load, NULL, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_REQ(1, "bin\0", NULL, NULL, device_load_vc4000_cart, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -244,5 +244,5 @@ static DRIVER_INIT( vc4000 )
 	for (i=0; i<256; i++) gfx[i]=i;
 }
 
-/*    YEAR	NAME	PARENT	MACHINE	INPUT	INIT	CONFIG	COMPANY		FULLNAME */
-CONSX(1978,	vc4000,	0,		vc4000,	vc4000,	vc4000,	vc4000,	"Interton",	"VC4000", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND )
+/*    YEAR	NAME	PARENT	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY		FULLNAME */
+CONSX(1978,	vc4000,	0,		0,		vc4000,	vc4000,	vc4000,	vc4000,	"Interton",	"VC4000", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND )

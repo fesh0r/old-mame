@@ -11,19 +11,67 @@
 </table>
 <hr>
 <h4>Texas Instruments TI-99/4a Home Computer</h4>
+<br>
 <p><b>Known Issues:</b><br>
 Requires full keyboard emulation.  At startup, full keyboard emulation mode is<br>
 enabled by default.  Whilst in full keyboard emulation mode, some key<br>
 associated functionality may be disabled (like the ESC key for EXIT).<br>
 The keyboard emulation mode is toggled using the scroll_lock key.<br>
+<br>
 <p><b>Usage:</b><br>
-This TI99/4a driver offers a high level of compatibility.  It currently<br>
-supports V9t9-format cartridge images, sampled tapes in wave format<br>
-(CS1 and CS2), and up to 3 SSSD or DSDD disk images.  Speech synthesis should<br>
-now emulated completely.  Both TI and BwG disk controllers are supported.<br>
-TI, Super AMS and Foundation memory expansion cards are supported.  Serial port<br>
-and PIO emulation is incomplete, but it enables you to redirect PIO output to a<br>
-file and save listings to this file by "printing" them to PIO.<br>
+This TI-99/4a driver offers a high level of compatibility, and implements<br>
+<p><b>several optional extensions:</b><br>
+* Image cartridges are in V9t9 format (see below for instructions).<br>
+* Speech synthesis is emulated completely.  The speech synthesizer occasionally<br>
+generates some weird noises instead of the expected phonemes.  I think the<br>
+actual reason for this issue is the original ti-99/4(a) speech synthesizer did<br>
+not use the tms5220 chip that is used under emulation: I think I have read<br>
+somewhere that TI 99/8, which did use a tms5220, was affected by similar bugs.<br>
+* Three types of memory expansion cards are emulated: the original TI 32kbyte<br>
+card, and the Super AMS card, and the Foundation card.<br>
+* Any of three different floppy disk controllers can be emulated: TI's original<br>
+SD disk controller, SNUG's BwG disk controller, and Myarc's HFDC disk<br>
+controller.  Note that neither the hard disk nor tape interface of the HFDC<br>
+card are emulated.  These disk controllers have different abilities: TI's<br>
+controller only supports single density disks with 9 sectors per track and 40<br>
+tracks per sides; the BwG controller supports double density, and it uses no<br>
+VDP RAM at all; the HFDC controller supports 80-track disks as well (high<br>
+density support is incomplete and non-functional because of TI99 bugs).  Four<br>
+floppy disk drives are emulated, but the TI controller only supports three of<br>
+them (the fourth disk drive will be ignored if the TI controller is selected).<br>
+Floppy disk images are in a MESS-specific format that is compatible with<br>
+single-sided V9T9 disk images (but not double-sided ones).<br>
+* Thierry Nouspickel's IDE card prototype is emulated.  A description can be<br>
+found on Thierry's page along with the required disk-based DSR.  Note that<br>
+there are two minor errors in the DSR disk image: the byte at offset &gt;12 must<br>
+be edited from &gt;02 to &gt;01, and the byte at offset &gt;7601 must be edited from &gt;21<br>
+to &gt;20; the byte at offset &gt;13 should be edited from &gt;02 to &gt;01, too, but this<br>
+is not a critical issue at present.  Note that the disk image does not work<br>
+very well with the BwG disk controller, though I cannot figure out why (it<br>
+works fine with both the TI controller and the HFDC controller).  The hard disk<br>
+image is a standard MAME disk image; since MESS does not support image diff<br>
+file currently, only un-compressed images can be written to (compressed images<br>
+ARE supported, but only as read-only disks).<br>
+* Serial port and PIO emulation is incomplete.  On the one hand, nothing useful<br>
+can be done with the RS232 interface, but, on the other hand, the PIO interface<br>
+enables you to redirect PIO output to a file and save listings to this file by<br>
+"printing" them to PIO.<br>
+* SNUG's HSGPL support is incomplete, but you can already play with it if you<br>
+want to.  You will need the HSGPL DSR (and probably the software manual, too)<br>
+from the SNUG web site to do anything useful.  The FEEPROM is saved to a file<br>
+<p><b>called "hsgpl.mem", in the memcard folder.  Its format is relatively simple:</b><br>
+byte 0 is always 0, and the rest of the file is made of four similar sections<br>
+for each Flash EEPROM (DSR, GROM0, GROM1, and ROM6); the first byte of each<br>
+section is 0, the second should be 1, and the next 512kbytes is the raw FEEPROM<br>
+data.   The DSR and system GROM0 needs to be loaded into the FEEPROM: to do so,<br>
+you can use a hex editor to create a hsgpl.mem file in correct format.<br>
+Afterwards, you may write extra GROM using the HSGPL DSR.  Note that Supercart<br>
+and MBX paging are not emulated correctly, and there must be other issues.<br>
+* The tape interface is emulated.  The CS1 unit is read/write, whereas CS2 is<br>
+write-only.   Tapes are stored as sampled wave files.  You may find that the<br>
+emulated tape interface is a relatively simple way to exchange files with<br>
+real-world TI99s.<br>
+<br>
 <p><b>Loading a cartridge:</b><br>
 You do not need a cartridge image to run the computer, since TI99/4a has<br>
 a small built-in basic interpreter.<br>
@@ -32,13 +80,30 @@ all individual files.  Loading a single zip archive containing all the<br>
 cartridge files will NOT work, you must uncompress the archive and select every<br>
 file instead.  These files can be loaded in any order, as long as all necessary<br>
 files are loaded.<br>
+<p><b>The following file name extensions are recognized for cartridges dumps:</b><br>
+* "g.bin", ".grom" or ".g": GROM dump<br>
+* "c.bin", ".crom" or ".c": CPU ROM dump<br>
+* "d.bin", ".drom" or ".d": CPU ROM dump for second page (pages cartridges<br>
+	only), to be loaded alongside a CPU ROM dump<br>
+The following two types are supported as alternatives to the CPU ROM type<br>
+<p><b>(these extensions are only found in MESS, not V9T9):</b><br>
+* "m.bin", ".mrom" or ".m": minimemory CPU ROM dump; similar to CPU ROM dump,<br>
+	but the address range &gt;7000-&gt;7fff is set up as RAM (paging is not<br>
+	supporting); unfortunately, there is no way you can save the contents of<br>
+	minimemory to disk<br>
+* "b.bin", ".brom" or ".b": MBX CPU ROM dump; similar to CPU ROM dump, but the<br>
+	address range &gt;6c00-&gt;6ffd is set up as RAM, and the paging scheme is<br>
+	different; unfortunately, I do not have any correct dump of a MBX cart to<br>
+	test emulation with<br>
+<br>
 <p><b>Setting up the system configuration:</b><br>
-A few dip switches enable or disable computer extensions. These switches are<br>
-only read at reset. Therefore, if you edit them, you must reset the emulator<br>
+A few dip switches enable or disable computer extensions.  These switches are<br>
+only read at reset.  Therefore, if you edit them, you must reset the emulator<br>
 (press F3 in partial keyboard emulation mode) for the changes to be taken<br>
 into account.<br>
+<br>
 <p><b>History and Trivia:</b><br>
-The TI99/4a Home Computer was a TI99/4 with improved keyboard, revised<br>
+The TI-99/4a Home Computer was a TI-99/4 with improved keyboard, revised<br>
 ROMs, and an additional graphics mode.  It was officially introduced in<br>
 June 1981, and was retired in late 1983.<br>
 TI99/4a was quite successful in Europe and US (possibly hundreds of<br>
@@ -48,7 +113,7 @@ than $100, while suffering heavy losses.  So, by the end of 1983, TI had<br>
 abandoned TI99/4a, its prototype successors, and withdrawn from the home<br>
 computer market.<br>
 <hr>
-<center><font size=-2>created on Tue Apr 15 18:52:03 2003
+<center><font size=-2>created on Mon May 19 14:44:27 2003
 </font></center>
 </body>
 </html>

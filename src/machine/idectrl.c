@@ -160,7 +160,7 @@ INLINE void clear_interrupt(struct ide_state *ide)
  *
  *************************************/
 
-int ide_controller_init(int which, struct ide_interface *intf)
+int ide_controller_init_custom(int which, struct ide_interface *intf, void *diskhandle)
 {
 	struct ide_state *ide = &idestate[which];
 	const struct hard_disk_header *header;
@@ -173,8 +173,8 @@ int ide_controller_init(int which, struct ide_interface *intf)
 	memset(ide, 0, sizeof(*ide));
 	ide->intf = intf;
 
-	/* we only support one hard disk right now; get a handle to it */
-	ide->disk = get_disk_handle(0);
+	/* set MAME harddisk handle */
+	ide->disk = diskhandle;
 
 	/* get and copy the geometry */
 	if (ide->disk)
@@ -194,6 +194,12 @@ int ide_controller_init(int which, struct ide_interface *intf)
 	/* create a timer for timing status */
 	ide->last_status_timer = timer_alloc(NULL);
 	return 0;
+}
+
+int ide_controller_init(int which, struct ide_interface *intf)
+{
+	/* we only support one hard disk right now; get a handle to it */
+	return ide_controller_init_custom(which, intf, get_disk_handle(0));
 }
 
 
@@ -551,7 +557,7 @@ static void write_cur_sector(struct ide_state *ide)
  *
  *************************************/
 
-void handle_command(struct ide_state *ide, UINT8 command)
+static void handle_command(struct ide_state *ide, UINT8 command)
 {
 	/* implicitly clear interrupts here */
 	clear_interrupt(ide);
@@ -884,6 +890,68 @@ static void ide_controller_write(struct ide_state *ide, offs_t offset, int size,
 
 /*************************************
  *
+ *	IDE direct handlers (16-bit)
+ *
+ *************************************/
+
+/*
+	ide_bus_0_r()
+
+	Read a 16-bit word from the IDE bus directly.
+
+	select: 0->CS1Fx active, 1->CS3Fx active
+	offset: register offset (state of DA2-DA0)
+*/
+int ide_bus_0_r(int select, int offset)
+{
+	/*int shift;*/
+
+	offset += select ? 0x3f0 : 0x1f0;
+	/*if (offset == 0x1f0)
+	{
+		return ide_controller32_0_r(offset >> 2, 0xffff0000);
+	}
+	else
+	{
+		shift = (offset & 3) * 8;
+		return (ide_controller32_0_r(offset >> 2, ~ (0xff << shift)) >> shift);
+	}*/
+	return ide_controller_read(&idestate[0], offset, (offset == 0x1f0) ? 2 : 1);
+}
+
+/*
+	ide_bus_0_w()
+
+	Write a 16-bit word to the IDE bus directly.
+
+	select: 0->CS1Fx active, 1->CS3Fx active
+	offset: register offset (state of DA2-DA0)
+	data: data written (state of D0-D15 or D0-D7)
+*/
+void ide_bus_0_w(int select, int offset, int data)
+{
+	/*int shift;*/
+
+	offset += select ? 0x3f0 : 0x1f0;
+	/*if (offset == 0x1f0)
+	{
+		ide_controller32_0_w(offset >> 2, data, 0xffff0000);
+	}
+	else
+	{
+		shift = (offset & 3) * 8;
+		ide_controller32_0_w(offset >> 2, data << shift, ~ (0xff << shift));
+	}*/
+	if (offset == 0x1f0)
+		ide_controller_write(&idestate[0], offset, 2, data);
+	else
+		ide_controller_write(&idestate[0], offset, 1, data & 0xff);
+}
+
+
+
+/*************************************
+ *
  *	32-bit IDE handlers
  *
  *************************************/
@@ -922,7 +990,7 @@ READ16_HANDLER( ide_controller16_0_r )
 	int size;
 
 	offset *= 2;
-	size = convert_to_offset_and_size(&offset, mem_mask);
+	size = convert_to_offset_and_size(&offset, 0xffff0000 | mem_mask);
 
 	return ide_controller_read(&idestate[0], offset, size) << ((offset & 1) * 8);
 }
@@ -933,7 +1001,7 @@ WRITE16_HANDLER( ide_controller16_0_w )
 	int size;
 
 	offset *= 2;
-	size = convert_to_offset_and_size(&offset, mem_mask);
+	size = convert_to_offset_and_size(&offset, 0xffff0000 | mem_mask);
 
 	ide_controller_write(&idestate[0], offset, size, data >> ((offset & 1) * 8));
 }

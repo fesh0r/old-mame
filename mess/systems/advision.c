@@ -89,11 +89,11 @@ MACHINE_DRIVER_END
 
 ROM_START (advision)
 	ROM_REGION(0x2800,REGION_CPU1, 0)
-    ROM_LOAD ("avbios.rom", 0x1000, 0x400, 0x279e33d1)
+    ROM_LOAD ("avbios.rom", 0x1000, 0x400, CRC(279e33d1))
 ROM_END
 
 SYSTEM_CONFIG_START(advision)
-	CONFIG_DEVICE_CARTSLOT_REQ( 1, "bin\0", NULL, NULL, advision_cart_load, NULL, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_REQ( 1, "bin\0", NULL, NULL, device_load_advision_cart, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -102,6 +102,6 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT	CONFIG		COMPANY   FULLNAME */
-CONSX( 1982, advision, 0,		advision, advision,	0,		advision,	"Entex",  "Adventurevision", GAME_NO_SOUND )
+/*    YEAR  NAME		PARENT	COMPAT	MACHINE   INPUT     INIT	CONFIG		COMPANY   FULLNAME */
+CONSX(1982, advision,	0,		0,		advision, advision,	0,		advision,	"Entex",  "Adventurevision", GAME_NO_SOUND )
 

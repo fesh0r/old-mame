@@ -1471,8 +1471,6 @@ static MACHINE_INIT( pcw16 )
 
 static MACHINE_STOP( pcw16 )
 {
-	pc_fdc_exit();
-
 	/* flash 0 */
 	flash_store(0,"pcw16f1.nv");
 	flash_finish(0);
@@ -1539,7 +1537,7 @@ MACHINE_DRIVER_END
 	rom. The boot rom is also on the OS rescue disc. Handy! */
 ROM_START(pcw16)
 	ROM_REGION((0x010000+524288), REGION_CPU1,0)
-	ROM_LOAD("pcw045.sys",0x10000, 524288, 0xc642f498)
+	ROM_LOAD("pcw045.sys",0x10000, 524288, CRC(c642f498))
 ROM_END
 
 SYSTEM_CONFIG_START(pcw16)
@@ -1548,5 +1546,5 @@ SYSTEM_CONFIG_START(pcw16)
 	CONFIG_DEVICE_PC_FLOPPY(2)
 SYSTEM_CONFIG_END
 
-/*     YEAR  NAME     PARENT    MACHINE    INPUT     INIT   CONFIG,  COMPANY          FULLNAME */
-COMP( 1995, pcw16,	  0,		pcw16,	   pcw16,    0,	    pcw16,   "Amstrad plc",   "PCW16")
+/*     YEAR  NAME     PARENT	COMPAT	MACHINE    INPUT     INIT   CONFIG,  COMPANY          FULLNAME */
+COMP( 1995, pcw16,	  0,		0,		pcw16,	   pcw16,    0,	    pcw16,   "Amstrad plc",   "PCW16")

@@ -142,6 +142,7 @@ static REG_OPTION regSettings[] =
 	{"ShowStatusBar",      "show_status_bar",    RO_BOOL,    &settings.show_statusbar,   0, 0},
 	{"ShowFolderList",     "show_folder_section",RO_BOOL,    &settings.show_folderlist,  0, 0},
 	{"ShowTabCtrl",        "show_tabs",          RO_BOOL,    &settings.show_tabctrl,     0, 0},
+	{"ShowTabFlags",       "show_tab_flags",     RO_INT,     &settings.show_tab_flags,   0, 0},
 	{"GameCheck",          "check_game",         RO_BOOL,    &settings.game_check,       0, 0},
 	{"VersionCheck",       "check_version",      RO_BOOL,    &settings.version_check,    0, 0},
 	{"JoyGUI",             "joystick_in_interface",RO_BOOL,&settings.use_joygui,     0, 0},
@@ -294,6 +295,7 @@ static REG_OPTION regGameOpts[] =
 	,
 	{ "use_new_ui",		"newui",                      RO_BOOL,    &gOpts.use_new_ui,		0, 0, FALSE},
 	{ "ram_size",		"ramsize",                    RO_INT,     &gOpts.ram_size,			0, 0, TRUE},
+
 	{ "cartridge",		"cartridge",                  RO_STRING,  &gOpts.software[IO_CARTSLOT],	0, 0, TRUE},
 	{ "floppydisk",		"floppydisk",                 RO_STRING,  &gOpts.software[IO_FLOPPY],	0, 0, TRUE},
 	{ "harddisk",		"harddisk",                   RO_STRING,  &gOpts.software[IO_HARDDISK],	0, 0, TRUE},
@@ -305,7 +307,20 @@ static REG_OPTION regGameOpts[] =
 	{ "serial",			"serial",                     RO_STRING,  &gOpts.software[IO_SERIAL],	0, 0, TRUE},
 	{ "parallel",		"parallel",                   RO_STRING,  &gOpts.software[IO_PARALLEL],	0, 0, TRUE},
 	{ "snapshot",		"snapshot",                   RO_STRING,  &gOpts.software[IO_SNAPSHOT],	0, 0, TRUE},
-	{ "quickload",		"quickload",                  RO_STRING,  &gOpts.software[IO_QUICKLOAD],0, 0, TRUE}
+	{ "quickload",		"quickload",                  RO_STRING,  &gOpts.software[IO_QUICKLOAD],0, 0, TRUE},
+
+	{ "cartridge_dir",	"cartridge_dir",              RO_STRING,  &gOpts.softwaredirs[IO_CARTSLOT],	0, 0, TRUE},
+	{ "floppydisk_dir",	"floppydisk_dir",             RO_STRING,  &gOpts.softwaredirs[IO_FLOPPY],	0, 0, TRUE},
+	{ "harddisk_dir",	"harddisk_dir",               RO_STRING,  &gOpts.softwaredirs[IO_HARDDISK],	0, 0, TRUE},
+	{ "cylinder_dir",	"cylinder_dir",               RO_STRING,  &gOpts.softwaredirs[IO_CYLINDER],	0, 0, TRUE},
+	{ "cassette_dir",	"cassette_dir",               RO_STRING,  &gOpts.softwaredirs[IO_CASSETTE],	0, 0, TRUE},
+	{ "punchcard_dir",	"punchcard_dir",              RO_STRING,  &gOpts.softwaredirs[IO_PUNCHCARD],	0, 0, TRUE},
+	{ "punchtape_dir",	"punchtape_dir",              RO_STRING,  &gOpts.softwaredirs[IO_PUNCHTAPE],	0, 0, TRUE},
+	{ "printer_dir",	"printer_dir",                RO_STRING,  &gOpts.softwaredirs[IO_PRINTER],	0, 0, TRUE},
+	{ "serial_dir",		"serial_dir",                 RO_STRING,  &gOpts.softwaredirs[IO_SERIAL],	0, 0, TRUE},
+	{ "parallel_dir",	"parallel_dir",               RO_STRING,  &gOpts.softwaredirs[IO_PARALLEL],	0, 0, TRUE},
+	{ "snapshot_dir",	"snapshot_dir",               RO_STRING,  &gOpts.softwaredirs[IO_SNAPSHOT],	0, 0, TRUE},
+	{ "quickload_dir",	"quickload_dir",              RO_STRING,  &gOpts.softwaredirs[IO_QUICKLOAD],0, 0, TRUE}
 #endif /* MESS */
 };
 #define NUM_GAME_OPTIONS (sizeof(regGameOpts) / sizeof(regGameOpts[0]))
@@ -352,6 +367,18 @@ static REG_OPTION global_game_options[] =
 };
 #define NUM_GLOBAL_GAME_OPTIONS (sizeof(global_game_options) / sizeof(global_game_options[0]))
 
+// Screen shot Page tab control text
+// these must match the order of the options flags in options.h
+// (SHOW_TAB_...)
+const char* tab_texts[MAX_PICT_TYPES] =
+{
+	"Snapshot",
+	"Flyer",
+	"Cabinet",
+	"Marquee",
+	"Title"
+};
+
 
 static int  num_games = 0;
 static BOOL save_gui_settings = TRUE;
@@ -389,6 +416,8 @@ BOOL OptionsInit()
 	settings.show_statusbar  = TRUE;
 	settings.show_screenshot = TRUE;
 	settings.show_tabctrl    = TRUE;
+	settings.show_tab_flags = SHOW_TAB_SNAPSHOT | SHOW_TAB_FLYER | SHOW_TAB_CABINET |
+		SHOW_TAB_MARQUEE | SHOW_TAB_TITLE;
 	settings.game_check      = TRUE;
 	settings.version_check   = TRUE;
 	settings.use_joygui      = FALSE;
@@ -566,7 +595,10 @@ BOOL OptionsInit()
 #ifdef MESS
 	global.use_new_ui = TRUE;
 	for (i = 0; i < IO_COUNT; i++)
+	{
 		global.software[i] = strdup("");
+		global.softwaredirs[i] = strdup("");
+	}
 #endif
 
 	// game_options[x] is valid iff game_variables[i].options_loaded == true
@@ -753,6 +785,11 @@ void LoadFolderFilter(int folder_index,int filters)
 void ResetGUI(void)
 {
 	save_gui_settings = FALSE;
+}
+
+const char * GetTabName(int tab_index)
+{
+	return tab_texts[tab_index];
 }
 
 void SetViewMode(int val)
@@ -989,6 +1026,16 @@ COLORREF GetListCloneColor(void)
 
 	return settings.list_clone_color;
 
+}
+
+int GetShowTabFlags(void)
+{
+	return settings.show_tab_flags;
+}
+
+void SetShowTabFlags(int new_flags)
+{
+	settings.show_tab_flags = new_flags;
 }
 
 void SetColumnWidths(int width[])
@@ -1681,9 +1728,8 @@ static void LoadOption(REG_OPTION *option,const char *value_str)
 	case RO_COLOR :
 	{
 		unsigned int r,g,b;
-		if (sscanf(value_str,"%ui,%ui,%ui",&r,&g,&b) == 3)
+		if (sscanf(value_str,"%u,%u,%u",&r,&g,&b) == 3)
 			*((COLORREF *)option->m_vpData) = RGB(r,g,b);
-
 		break;
 	}
 
@@ -2486,7 +2532,7 @@ static void SaveSettings(void)
 #ifdef MESS
 			if (game_variables[driver_index].extra_software_paths && game_variables[driver_index].extra_software_paths[0])
 			{
-				fprintf(fptr,"%s_extra_software %s\n",
+				fprintf(fptr,"%s_extra_software \"%s\"\n",
 						drivers[driver_index]->name,game_variables[driver_index].extra_software_paths);
 			}
 #endif

@@ -233,21 +233,21 @@ MACHINE_DRIVER_END
 */
 ROM_START(lynx)
 	ROM_REGION(0x10200,REGION_CPU1, 0)
-	ROM_LOAD("lynx.bin", 0x10000, 0x200, 0xe1ffecb6)
+	ROM_LOAD("lynx.bin", 0x10000, 0x200, CRC(e1ffecb6))
 	ROM_REGION(0x100,REGION_GFX1, 0)
 	ROM_REGION(0x100000, REGION_USER1, 0)
 ROM_END
 
 ROM_START(lynxa)
 	ROM_REGION(0x10200,REGION_CPU1, 0)
-	ROM_LOAD("lynxa.bin", 0x10000, 0x200, 0x0d973c9d)
+	ROM_LOAD("lynxa.bin", 0x10000, 0x200, CRC(0d973c9d))
 	ROM_REGION(0x100,REGION_GFX1, 0)
 	ROM_REGION(0x100000, REGION_USER1, 0)
 ROM_END
 
 ROM_START(lynx2)
 	ROM_REGION(0x10200,REGION_CPU1, 0)
-	ROM_LOAD("lynx2.bin", 0x10000, 0x200, 0x0)
+	ROM_LOAD("lynx2.bin", 0x10000, 0x200, BAD_DUMP)
 	ROM_REGION(0x100,REGION_GFX1, 0)
 	ROM_REGION(0x100000, REGION_USER1, 0)
 ROM_END
@@ -276,19 +276,23 @@ static int lynx_verify_cart (char *header)
 	return IMAGE_VERIFY_PASS;
 }
 
-static void lynx_crc_keyword(int io_device, int id)
+static void lynx_crc_keyword(mess_image *image)
 {
     const char *info;
-    info=image_extrainfo(io_device, id);
-    rotate=0;
-    if (info!=NULL) {
-		if (strcmp(info, "ROTATE90DEGREE")==0) rotate=1;
-		else if (strcmp(info, "ROTATE270DEGREE")==0) rotate=2;
+
+    info = image_extrainfo(image);
+    rotate = 0;
+
+    if (info)
+	{
+		if(strcmp(info, "ROTATE90DEGREE")==0)
+			rotate = 1;
+		else if (strcmp(info, "ROTATE270DEGREE")==0)
+			rotate = 2;
     }
 }
 
-
-static int lynx_cart_load(int id, mame_file *cartfile, int open_mode)
+static DEVICE_LOAD( lynx_cart )
 {
 	UINT8 *rom = memory_region(REGION_USER1);
 	int size;
@@ -301,9 +305,10 @@ static int lynx_cart_load(int id, mame_file *cartfile, int open_mode)
    22 chars manufacturer
 */
 
-	size=mame_fsize(cartfile);
-	if (mame_fread(cartfile, header, 0x40)!=0x40) {
-		logerror("%s load error\n",image_filename(IO_CARTSLOT,id));
+	size = mame_fsize(file);
+	if (mame_fread(file, header, 0x40)!=0x40)
+	{
+		logerror("%s load error\n", image_filename(image));
 		return 1;
 	}
 
@@ -319,12 +324,13 @@ static int lynx_cart_load(int id, mame_file *cartfile, int open_mode)
 	logerror ("%s %dkb cartridge with %dbyte granularity from %s\n",
 			  header+10,size/1024,lynx_granularity, header+42);
 
-	if (mame_fread(cartfile, rom, size)!=size) {
-		logerror("%s load error\n",image_filename(IO_CARTSLOT,id));
+	if (mame_fread(file, rom, size) != size)
+	{
+		logerror("%s load error\n", image_filename(image));
 		return 1;
 	}
 
-	lynx_crc_keyword(IO_CARTSLOT, id);
+	lynx_crc_keyword(image);
 
 	return 0;
 }
@@ -348,12 +354,12 @@ static QUICKLOAD_LOAD( lynx )
 	rom[0xfffc+0x200] = start&0xff;
 	rom[0xfffd+0x200] = start>>8;
 
-	lynx_crc_keyword(IO_QUICKLOAD, 0);
+	lynx_crc_keyword(image_from_devtype_and_index(IO_QUICKLOAD, 0));
 	return 0;
 }
 
 SYSTEM_CONFIG_START(lynx)
-	CONFIG_DEVICE_CARTSLOT_OPT(1, "lnx\0", NULL, NULL, lynx_cart_load, NULL, NULL, lynx_partialcrc)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "lnx\0", NULL, NULL, device_load_lynx_cart, NULL, NULL, lynx_partialcrc)
 	CONFIG_DEVICE_QUICKLOAD(  "o\0", lynx )
 SYSTEM_CONFIG_END
 
@@ -372,7 +378,7 @@ static DRIVER_INIT( lynx )
 		gfx[i]=i;
 }
 
-/*    YEAR  NAME      PARENT    MACHINE	INPUT	INIT	CONFIG	MONITOR	COMPANY   FULLNAME */
-CONSX( 1989, lynx,	  0, 		lynx,	lynx,	lynx,	lynx,	"Atari",  "Lynx", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-CONSX( 1989, lynxa,	  lynx, 	lynx,	lynx,	lynx,	lynx,	"Atari",  "Lynx (alternate rom save!)", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-CONSX( 1991, lynx2,	  lynx, 	lynx2,	lynx,	lynx,	lynx,	"Atari",  "Lynx II", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+/*    YEAR  NAME      PARENT    COMPAT	MACHINE	INPUT	INIT	CONFIG	MONITOR	COMPANY   FULLNAME */
+CONSX( 1989, lynx,	  0, 		0,		lynx,	lynx,	lynx,	lynx,	"Atari",  "Lynx", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+CONSX( 1989, lynxa,	  lynx, 	0,		lynx,	lynx,	lynx,	lynx,	"Atari",  "Lynx (alternate rom save!)", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+CONSX( 1991, lynx2,	  lynx, 	0,		lynx2,	lynx,	lynx,	lynx,	"Atari",  "Lynx II", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)

@@ -230,14 +230,14 @@ MACHINE_DRIVER_END
 
 ROM_START (jupiter)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("jupiter.lo", 0x0000, 0x1000, 0xdc8438a5)
-	ROM_LOAD ("jupiter.hi", 0x1000, 0x1000, 0x4009f636)
+	ROM_LOAD ("jupiter.lo", 0x0000, 0x1000, CRC(dc8438a5))
+	ROM_LOAD ("jupiter.hi", 0x1000, 0x1000, CRC(4009f636))
 ROM_END
 
 SYSTEM_CONFIG_START(jupiter)
-	CONFIG_DEVICE_CARTSLOT_OPT(1, "ace\0", NULL, NULL, jupiter_ace_load, NULL, NULL, NULL)
-	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "tap\0", DEVICE_LOAD_RESETS_CPU, OSD_FOPEN_READ, NULL, NULL, jupiter_tap_load, jupiter_tap_unload, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "ace\0", NULL, NULL, device_load_jupiter_ace, NULL, NULL, NULL)
+	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "tap\0", DEVICE_LOAD_RESETS_CPU, OSD_FOPEN_READ, NULL, NULL, device_load_jupiter_tap, device_unload_jupiter_tap, NULL)
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      CONFIG	COMPANY   FULLNAME */
-COMP( 1981, jupiter,  0,		jupiter,  jupiter,	0,		  jupiter,	"Cantab",  "Jupiter Ace" )
+/*    YEAR  NAME      PARENT    COMPAT	MACHINE   INPUT     INIT      CONFIG	COMPANY   FULLNAME */
+COMP( 1981, jupiter,  0,		0,		jupiter,  jupiter,	0,		  jupiter,	"Cantab",  "Jupiter Ace" )

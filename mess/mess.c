@@ -13,6 +13,7 @@ This file is a set of function calls and defs required for MESS.
 #include "state.h"
 #include "image.h"
 #include "inputx.h"
+#include "snprintf.h"
 
 extern struct GameOptions options;
 
@@ -20,6 +21,7 @@ extern struct GameOptions options;
 const char *mess_path;
 UINT32 mess_ram_size;
 UINT8 *mess_ram;
+int devices_inited;
 
 int DECL_SPEC mess_printf(const char *fmt, ...)
 {
@@ -221,8 +223,12 @@ int devices_init(const struct GameDriver *gamedrv)
 	{
 		/* all instances */
 		for( id = 0; id < dev->count; id++ )
-			image_init(dev->type, id);
+		{
+			mess_image *img = image_from_devtype_and_index(dev->type, id);
+			image_init(img);
+		}
 	}
+	devices_inited = TRUE;
 
 	return 0;
 }
@@ -235,6 +241,7 @@ int devices_initialload(const struct GameDriver *gamedrv, int ispreload)
 	struct distributed_images images;
 	const struct IODevice *dev;
 	const char *imagename;
+	mess_image *img;
 
 	/* normalize ispreload */
 	ispreload = ispreload ? DEVICE_LOAD_AT_INIT : 0;
@@ -263,8 +270,10 @@ int devices_initialload(const struct GameDriver *gamedrv, int ispreload)
 				imagename = images.names[dev->type][id];
 				if (imagename)
 				{
+					img = image_from_devtype_and_index(dev->type, id);
+
 					/* load this image */
-					result = image_load(dev->type, id, images.names[dev->type][id]);
+					result = image_load(img, images.names[dev->type][id]);
 
 					if (result != INIT_PASS)
 					{
@@ -287,8 +296,10 @@ void devices_exit(void)
 {
 	const struct IODevice *dev;
 	int id;
+	mess_image *img;
 
 	/* unload all devices */
+	image_unload_all(FALSE);
 	image_unload_all(TRUE);
 
 	/* exit all devices */
@@ -296,8 +307,13 @@ void devices_exit(void)
 	{
 		/* all instances */
 		for( id = 0; id < dev->count; id++ )
-			image_exit(dev->type, id);
+		{
+			img = image_from_devtype_and_index(dev->type, id);
+			image_exit(img);
+		}
 	}
+
+	devices_inited = FALSE;
 }
 
 void showmessdisclaimer(void)
@@ -332,75 +348,6 @@ void showmessinfo(void)
 
 }
 
-static char *battery_nvramfilename(const char *filename)
-{
-	return strip_extension(osd_basename((char *) filename));
-}
-
-/* load battery backed nvram from a driver subdir. in the nvram dir. */
-int battery_load(const char *filename, void *buffer, int length)
-{
-	mame_file *f;
-	int bytes_read = 0;
-	int result = FALSE;
-	char *nvram_filename;
-
-	/* some sanity checking */
-	if( buffer != NULL && length > 0 )
-	{
-		nvram_filename = battery_nvramfilename(filename);
-		if (nvram_filename)
-		{
-			f = mame_fopen(Machine->gamedrv->name, nvram_filename, FILETYPE_NVRAM, 0);
-			if (f)
-			{
-				bytes_read = mame_fread(f, buffer, length);
-				mame_fclose(f);
-				result = TRUE;
-			}
-			free(nvram_filename);
-		}
-
-		/* fill remaining bytes (if necessary) */
-		memset(((char *) buffer) + bytes_read, '\0', length - bytes_read);
-	}
-	return result;
-}
-
-/* save battery backed nvram to a driver subdir. in the nvram dir. */
-int battery_save(const char *filename, void *buffer, int length)
-{
-	mame_file *f;
-	char *nvram_filename;
-
-	/* some sanity checking */
-	if( buffer != NULL && length > 0 )
-	{
-		nvram_filename = battery_nvramfilename(filename);
-		if (nvram_filename)
-		{
-			f = mame_fopen(Machine->gamedrv->name, nvram_filename, FILETYPE_NVRAM, 1);
-			if (f)
-			{
-				mame_fwrite(f, buffer, length);
-				mame_fclose(f);
-				return TRUE;
-			}
-			free(nvram_filename);
-		}
-	}
-	return FALSE;
-}
-
-void palette_set_colors(pen_t color_base, const UINT8 *colors, int color_count)
-{
-	while(color_count--)
-	{
-		palette_set_color(color_base++, colors[0], colors[1], colors[2]);
-		colors += 3;
-	}
-}
-
 void ram_dump(const char *filename)
 {
 	mame_file *file;
@@ -419,9 +366,43 @@ void ram_dump(const char *filename)
 }
 
 #ifdef MAME_DEBUG
+static int hash_verify_string(const char *hash)
+{
+	int len, i;
+
+	if (!hash)
+		return FALSE;
+
+	switch(*hash){
+	case '$':
+		if (memcmp(hash, NO_DUMP, 4) && memcmp(hash, BAD_DUMP, 4))
+			return FALSE;
+		hash += 4;
+		break;
+
+	case 'c':
+	case 's':
+		if (hash[1] != ':')
+			return FALSE;
+		len = (*hash == 'c') ? 8 : 40;
+		hash += 2;
+		
+		for (i = 0; (hash[i] != '#') && (i < len); i++)
+		{
+			if (!strchr("0123456789abcdefABCDEF", hash[i]))
+				return FALSE;
+		}
+		if (hash[i] != '#')
+			return FALSE;
+		hash += i+1;
+		break;
+	}
+	return TRUE;
+}
+
 int messvaliditychecks(void)
 {
-	int i;
+	int i, j;
 	int error = 0;
 	const struct RomModule *region, *rom;
 	const struct IODevice *dev;
@@ -432,6 +413,42 @@ int messvaliditychecks(void)
 	/* MESS specific driver validity checks */
 	for(i = 0; drivers[i]; i++)
 	{
+		/* make sure that there are no clones that reference nonexistant drivers */
+		if (drivers[i]->clone_of && !(drivers[i]->clone_of->flags & NOT_A_DRIVER))
+		{
+			if (drivers[i]->compatible_with && !(drivers[i]->compatible_with->flags & NOT_A_DRIVER))
+			{
+				printf("%s: both compatbile_with and clone_of are specified\n", drivers[i]->name);
+				error = 1;
+			}
+
+			for (j = 0; drivers[j]; j++)
+			{
+				if (drivers[i]->clone_of == drivers[j])
+					break;
+			}
+			if (!drivers[j])
+			{
+				printf("%s: is a clone of %s, which is not in drivers[]\n", drivers[i]->name, drivers[i]->clone_of->name);
+				error = 1;
+			}
+		}
+
+		/* make sure that there are no clones that reference nonexistant drivers */
+		if (drivers[i]->compatible_with && !(drivers[i]->compatible_with->flags & NOT_A_DRIVER))
+		{
+			for (j = 0; drivers[j]; j++)
+			{
+				if (drivers[i]->compatible_with == drivers[j])
+					break;
+			}
+			if (!drivers[j])
+			{
+				printf("%s: is compatible with %s, which is not in drivers[]\n", drivers[i]->name, drivers[i]->compatible_with->name);
+				error = 1;
+			}
+		}
+
 		/* check device array */
 		used_devices = 0;
 		for(dev = device_first(drivers[i]); dev; dev = device_next(drivers[i], dev))
@@ -481,8 +498,17 @@ int messvaliditychecks(void)
 		{
 			for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
 			{
+				const char *hash;
 				char name[100];
 				snprintf(name, sizeof(name) / sizeof(name[0]), "%s", ROM_GETNAME(rom));
+
+				hash = ROM_GETHASHDATA(rom);
+
+				if (!hash_verify_string(hash))
+				{
+					printf("%s: rom '%s' has an invalid hash string '%s'\n", drivers[i]->name, ROM_GETNAME(rom), hash);
+					error = 1;
+				}
 			}
 		}
 

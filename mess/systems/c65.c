@@ -298,59 +298,59 @@ static PALETTE_INIT( c65 )
 #if 0
 	/* caff */
 	/* dma routine alpha 1 (0x400000 reversed copy)*/
-	ROM_LOAD ("910111.bin", 0x20000, 0x20000, 0xc5d8d32e)
+	ROM_LOAD ("910111.bin", 0x20000, 0x20000, CRC(c5d8d32e))
 	/* b96b */
 	/* dma routine alpha 2 */
-	ROM_LOAD ("910523.bin", 0x20000, 0x20000, 0xe8235dd4)
+	ROM_LOAD ("910523.bin", 0x20000, 0x20000, CRC(e8235dd4))
 	/* 888c */
 	/* dma routine alpha 2 */
-	ROM_LOAD ("910626.bin", 0x20000, 0x20000, 0x12527742)
+	ROM_LOAD ("910626.bin", 0x20000, 0x20000, CRC(12527742))
 	/* c9cd */
 	/* dma routine alpha 2 */
-	ROM_LOAD ("910828.bin", 0x20000, 0x20000, 0x3ee40b06)
+	ROM_LOAD ("910828.bin", 0x20000, 0x20000, CRC(3ee40b06))
 	/* 4bcf loading demo disk??? */
 	/* basic program stored at 0x4000 ? */
 	/* dma routine alpha 2 */
-	ROM_LOAD ("911001.bin", 0x20000, 0x20000, 0x0888b50f)
+	ROM_LOAD ("911001.bin", 0x20000, 0x20000, CRC(0888b50f))
 	/* german e96a */
 	/* dma routine alpha 1 */
-	ROM_LOAD ("910429.bin", 0x20000, 0x20000, 0xb025805c)
+	ROM_LOAD ("910429.bin", 0x20000, 0x20000, CRC(b025805c))
 #endif
 
 ROM_START (c65)
 	ROM_REGION (0x800000, REGION_CPU1, 0)
 /*	ROM_REGION (0x100000, REGION_CPU1, 0) */
-	ROM_LOAD ("911001.bin", 0x20000, 0x20000, 0x0888b50f)
+	ROM_LOAD ("911001.bin", 0x20000, 0x20000, CRC(0888b50f))
 ROM_END
 
 ROM_START (c65e)
 	ROM_REGION (0x800000, REGION_CPU1, 0)
 /*	ROM_REGION (0x100000, REGION_CPU1, 0) */
-	ROM_LOAD ("910828.bin", 0x20000, 0x20000, 0x3ee40b06)
+	ROM_LOAD ("910828.bin", 0x20000, 0x20000, CRC(3ee40b06))
 ROM_END
 
 ROM_START (c65d)
 	ROM_REGION (0x800000, REGION_CPU1, 0)
 /*	ROM_REGION (0x100000, REGION_CPU1, 0) */
-	ROM_LOAD ("910626.bin", 0x20000, 0x20000, 0x12527742)
+	ROM_LOAD ("910626.bin", 0x20000, 0x20000, CRC(12527742))
 ROM_END
 
 ROM_START (c65c)
 	ROM_REGION (0x800000, REGION_CPU1, 0)
 /*	ROM_REGION (0x100000, REGION_CPU1, 0) */
-	ROM_LOAD ("910523.bin", 0x20000, 0x20000, 0xe8235dd4)
+	ROM_LOAD ("910523.bin", 0x20000, 0x20000, CRC(e8235dd4))
 ROM_END
 
 ROM_START (c65ger)
 	ROM_REGION (0x800000, REGION_CPU1, 0)
 /*	ROM_REGION (0x100000, REGION_CPU1, 0) */
-	ROM_LOAD ("910429.bin", 0x20000, 0x20000, 0xb025805c)
+	ROM_LOAD ("910429.bin", 0x20000, 0x20000, CRC(b025805c))
 ROM_END
 
 ROM_START (c65a)
 	ROM_REGION (0x800000, REGION_CPU1, 0)
 /*	ROM_REGION (0x100000, REGION_CPU1, 0) */
-	ROM_LOAD ("910111.bin", 0x20000, 0x20000, 0xc5d8d32e)
+	ROM_LOAD ("910111.bin", 0x20000, 0x20000, CRC(c5d8d32e))
 ROM_END
 
 
@@ -441,10 +441,10 @@ SYSTEM_CONFIG_START(c65)
 	CONFIG_DEVICE_C65QUICK
 SYSTEM_CONFIG_END
 
-/*		YEAR	NAME	PARENT	MACHINE INPUT	INIT		CONFIG  COMPANY 							FULLNAME */
-COMPX ( 1991,	c65,	0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 911001)",        GAME_NOT_WORKING)
-COMPX ( 1991,	c65e,	c65,	c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910828)",        GAME_NOT_WORKING)
-COMPX ( 1991,	c65d,	c65,	c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910626)",        GAME_NOT_WORKING)
-COMPX ( 1991,	c65c,	c65,	c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910523)",        GAME_NOT_WORKING)
-COMPX ( 1991,	c65ger, c65,	c65pal, c65ger, c65pal, 	c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, German PAL, 910429)",  GAME_NOT_WORKING)
-COMPX ( 1991,	c65a,	c65,	c65,	c65,	c65_alpha1, c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910111)",        GAME_NOT_WORKING)
+/*		YEAR	NAME	PARENT	COMPAT	MACHINE INPUT	INIT		CONFIG  COMPANY 							FULLNAME */
+COMPX ( 1991,	c65,	0,		0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 911001)",        GAME_NOT_WORKING)
+COMPX ( 1991,	c65e,	c65,	0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910828)",        GAME_NOT_WORKING)
+COMPX ( 1991,	c65d,	c65,	0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910626)",        GAME_NOT_WORKING)
+COMPX ( 1991,	c65c,	c65,	0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910523)",        GAME_NOT_WORKING)
+COMPX ( 1991,	c65ger, c65,	0,		c65pal, c65ger, c65pal, 	c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, German PAL, 910429)",  GAME_NOT_WORKING)
+COMPX ( 1991,	c65a,	c65,	0,		c65,	c65,	c65_alpha1, c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910111)",        GAME_NOT_WORKING)

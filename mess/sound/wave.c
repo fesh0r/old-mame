@@ -7,12 +7,13 @@
 
 ****************************************************************************/
 #include "driver.h"
+#include "formats/wavfile.h"
 
 /* Our private wave file structure */
 struct wave_file
 {
+	mess_image *img; 		/* mess image */
 	int channel;			/* channel for playback */
-	mame_file *file; 		/* mame file handle */
 	int mode;				/* write mode? */
 	int (*fill_wave)(INT16 *,int,UINT8*);
 	void *timer;			/* timer (TIME_NEVER) for reading sample values */
@@ -26,86 +27,78 @@ struct wave_file
 	int resolution; 		/* sample resolution in bits/sample (8 or 16) */
 	int max_samples;		/* number of samples that could be stored in data */
 	int samples;
-	int length; 			/* length in bytes (max_samples * resolution / 8) */
+	UINT32 length; 			/* length in bytes (max_samples * resolution / 8) */
 	void *data; 			/* sample data */
 	int status;				/* other status (mute, motor inhibit) */
 };
 
 static struct Wave_interface *intf;
-static struct wave_file wave[MAX_WAVE] = {{-1,},{-1,}};
 
-static void wave_update_output_buffer(int id);
+static void wave_update_output_buffer(mess_image *img);
+static int wave_status(mess_image *img, int newstatus);
+static int wave_tell(mess_image *img);
+static void wave_output(mess_image *img, int data);
 
 
 #define WAVE_OK    0
 #define WAVE_ERR   1
 #define WAVE_FMT   2
 
+#define WAVETAG	"wave"
+
 /*****************************************************************************
  * helper functions
  *****************************************************************************/
+
+static struct wave_file *get_wave(mess_image *img)
+{
+	return image_lookuptag(img, WAVETAG);
+}
+
+static int wave_init(mess_image *img)
+{
+	if (!image_alloctag(img, WAVETAG, sizeof(struct wave_file)))
+		return INIT_FAIL;
+	return INIT_PASS;
+}
+
 /*
 	load an existing wave file from disk to memory
 */
-static int wave_read(int id)
+static int wave_read(mess_image *img)
 {
-	struct wave_file *w = &wave[id];
+	struct wave_file *w = get_wave(img);
     UINT32 offset = 0;
 	UINT32 filesize, temp32;
 	UINT16 channels, blockAlign, bitsPerSample, temp16;
 	unsigned sample_padding;
 	char buf[32];
-
-	if( !w->file )
-		return WAVE_ERR;
+	struct wav_header hdr;
+	struct wav_tag tag;
 
     /* read the core header and make sure it's a WAVE file */
-	offset += mame_fread(w->file, buf, 4);
-	if( offset < 4 )
+	offset += mame_fread(image_fp(img), &hdr, sizeof(hdr));
+	if (offset < sizeof(hdr))
 	{
 		logerror("WAVE read error at offs %d\n", offset);
 		return WAVE_ERR;
 	}
-	if( memcmp (&buf[0], "RIFF", 4) != 0 )
+	filesize = wavfile_decode_header(&hdr);
+	if (filesize == 0)
 	{
-		logerror("WAVE header not 'RIFF'\n");
+		logerror("WAVE header error\n");
 		return WAVE_FMT;
     }
-
-	/* get the total size */
-	offset += mame_fread(w->file, &temp32, 4);
-	if( offset < 8 )
-	{
-		logerror("WAVE read error at offs %d\n", offset);
-		return WAVE_ERR;
-	}
-	filesize = LITTLE_ENDIANIZE_INT32(temp32);
-	logerror("WAVE filesize %u bytes\n", filesize);
-
-	/* read the RIFF file type and make sure it's a WAVE file */
-	offset += mame_fread(w->file, buf, 4);
-	if( offset < 12 )
-	{
-		logerror("WAVE read error at offs %d\n", offset);
-		return WAVE_ERR;
-	}
-	if( memcmp (&buf[0], "WAVE", 4) != 0 )
-	{
-		logerror("WAVE RIFF type not 'WAVE'\n");
-		return WAVE_FMT;
-	}
 
 	/* seek until we find a format tag */
 	while( 1 )
 	{
-		offset += mame_fread(w->file, buf, 4);
-		offset += mame_fread(w->file, &temp32, 4);
-		w->length = LITTLE_ENDIANIZE_INT32(temp32);
-		if( memcmp(&buf[0], "fmt ", 4) == 0 )
+		offset += mame_fread(image_fp(img), &tag, sizeof(tag));
+		if (wavfile_decode_tag(&tag, &w->length) == WAV_TAGTYPE_FMT)
 			break;
 
 		/* seek to the next block */
-		mame_fseek(w->file, w->length, SEEK_CUR);
+		mame_fseek(image_fp(img), w->length, SEEK_CUR);
 		offset += w->length;
 		if( offset >= filesize )
 		{
@@ -115,8 +108,8 @@ static int wave_read(int id)
 	}
 
 	/* read the format -- make sure it is PCM */
-	offset += mame_fread_lsbfirst(w->file, &temp16, 2);
-	if( temp16 != 1 )
+	offset += mame_fread_lsbfirst(image_fp(img), &temp16, 2);
+	if( temp16 != WAV_FORMAT_PCM )
 	{
 		logerror("WAVE format %d not supported (not = 1 PCM)\n", temp16);
 		return WAVE_ERR;
@@ -124,27 +117,27 @@ static int wave_read(int id)
 	logerror("WAVE format %d (PCM)\n", temp16);
 
 	/* number of channels -- only mono is supported, but we can mix multi-channel to mono */
-	offset += mame_fread_lsbfirst(w->file, &channels, 2);
+	offset += mame_fread_lsbfirst(image_fp(img), &channels, 2);
 	logerror("WAVE channels %d\n", channels);
 
 	/* sample rate */
-	offset += mame_fread(w->file, &temp32, 4);
+	offset += mame_fread(image_fp(img), &temp32, 4);
 	w->smpfreq = LITTLE_ENDIANIZE_INT32(temp32);
 	logerror("WAVE sample rate %d Hz\n", w->smpfreq);
 
 	/* bytes/second and block alignment are ignored */
-	offset += mame_fread(w->file, buf, 4);
+	offset += mame_fread(image_fp(img), buf, 4);
 	/* read block alignment */
-	offset += mame_fread_lsbfirst(w->file, &blockAlign, 2);
+	offset += mame_fread_lsbfirst(image_fp(img), &blockAlign, 2);
 
 	/***Field specific to PCM***/
 	/* read bits/sample */
-	offset += mame_fread_lsbfirst(w->file, &bitsPerSample, 2);
+	offset += mame_fread_lsbfirst(image_fp(img), &bitsPerSample, 2);
 	logerror("WAVE bits/sample %d\n", bitsPerSample);
 	w->resolution = bitsPerSample;
 
 	/* seek past any extra data */
-	mame_fseek(w->file, w->length - 16, SEEK_CUR);
+	mame_fseek(image_fp(img), w->length - 16, SEEK_CUR);
 	offset += w->length - 16;
 
 	/* Compute a few constants */
@@ -160,14 +153,14 @@ static int wave_read(int id)
 	/* seek until we find a data tag */
 	while( 1 )
 	{
-		offset += mame_fread(w->file, buf, 4);
-		offset += mame_fread(w->file, &temp32, 4);
+		offset += mame_fread(image_fp(img), buf, 4);
+		offset += mame_fread(image_fp(img), &temp32, 4);
 		w->length = LITTLE_ENDIANIZE_INT32(temp32);
 		if( memcmp(&buf[0], "data", 4) == 0 )
 			break;
 
 		/* seek to the next block */
-		mame_fseek(w->file, w->length, SEEK_CUR);
+		mame_fseek(image_fp(img), w->length, SEEK_CUR);
 		offset += w->length;
 		if( offset >= filesize )
 		{
@@ -211,11 +204,11 @@ static int wave_read(int id)
 				sample_buf = 0;
 				/* skip pad bytes */
 				if (sample_padding)
-					mame_fseek(w->file, sample_padding, SEEK_CUR);
+					mame_fseek(image_fp(img), sample_padding, SEEK_CUR);
 				/* read ceil(wave_file->bitsPerSample/8) bits */
 				for (bit=0; bit<bitsPerSample; bit+=8)
 				{
-					ch = mame_fgetc(w->file);
+					ch = mame_fgetc(image_fp(img));
 					if (ch == EOF)
 						return WAVE_ERR;
 
@@ -253,15 +246,12 @@ static int wave_read(int id)
 /*
 	write the complete sampled tape image from memory to disk
 */
-static int wave_write(int id)
+static int wave_write(mess_image *img)
 {
-	struct wave_file *w = &wave[id];
+	struct wave_file *w = get_wave(img);
 	UINT32 filesize, offset = 0, temp32;
 	UINT16 temp16;
 	UINT32 data_length;
-
-	if( !w->file )
-        return WAVE_ERR;
 
 	data_length = w->samples * w->resolution / 8;
 
@@ -275,7 +265,7 @@ static int wave_write(int id)
 		data_length;
 
     /* write the core header for a WAVE file */
-	offset += mame_fwrite(w->file, "RIFF", 4);
+	offset += mame_fwrite(image_fp(img), "RIFF", 4);
     if( offset < 4 )
     {
 		logerror("WAVE write error at offs %d\n", offset);
@@ -283,10 +273,10 @@ static int wave_write(int id)
     }
 
 	temp32 = LITTLE_ENDIANIZE_INT32(filesize) - 8;
-	offset += mame_fwrite(w->file, &temp32, 4);
+	offset += mame_fwrite(image_fp(img), &temp32, 4);
 
 	/* read the RIFF file type and make sure it's a WAVE file */
-	offset += mame_fwrite(w->file, "WAVE", 4);
+	offset += mame_fwrite(image_fp(img), "WAVE", 4);
 	if( offset < 12 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -294,14 +284,14 @@ static int wave_write(int id)
 	}
 
 	/* write a format tag */
-	offset += mame_fwrite(w->file, "fmt ", 4);
+	offset += mame_fwrite(image_fp(img), "fmt ", 4);
     if( offset < 12 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
 		return WAVE_ERR;
     }
     /* size of the following 'fmt ' fields */
-    offset += mame_fwrite(w->file, "\x10\x00\x00\x00", 4);
+    offset += mame_fwrite(image_fp(img), "\x10\x00\x00\x00", 4);
 	if( offset < 16 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -310,7 +300,7 @@ static int wave_write(int id)
 
 	/* format: PCM */
 	temp16 = 1;
-	offset += mame_fwrite_lsbfirst(w->file, &temp16, 2);
+	offset += mame_fwrite_lsbfirst(image_fp(img), &temp16, 2);
 	if( offset < 18 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -319,7 +309,7 @@ static int wave_write(int id)
 
 	/* channels: 1 (mono) */
 	temp16 = 1;
-    offset += mame_fwrite_lsbfirst(w->file, &temp16, 2);
+    offset += mame_fwrite_lsbfirst(image_fp(img), &temp16, 2);
 	if( offset < 20 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -328,7 +318,7 @@ static int wave_write(int id)
 
 	/* sample rate */
 	temp32 = LITTLE_ENDIANIZE_INT32(w->smpfreq);
-	offset += mame_fwrite(w->file, &temp32, 4);
+	offset += mame_fwrite(image_fp(img), &temp32, 4);
 	if( offset < 24 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -337,7 +327,7 @@ static int wave_write(int id)
 
 	/* byte rate */
 	temp32 = LITTLE_ENDIANIZE_INT32(w->smpfreq * w->resolution / 8);
-	offset += mame_fwrite(w->file, &temp32, 4);
+	offset += mame_fwrite(image_fp(img), &temp32, 4);
 	if( offset < 28 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -346,7 +336,7 @@ static int wave_write(int id)
 
 	/* block align (size of one `sample') */
 	temp16 = w->resolution / 8;
-	offset += mame_fwrite_lsbfirst(w->file, &temp16, 2);
+	offset += mame_fwrite_lsbfirst(image_fp(img), &temp16, 2);
 	if( offset < 30 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -355,7 +345,7 @@ static int wave_write(int id)
 
 	/* block align */
 	temp16 = w->resolution;
-	offset += mame_fwrite_lsbfirst(w->file, &temp16, 2);
+	offset += mame_fwrite_lsbfirst(image_fp(img), &temp16, 2);
 	if( offset < 32 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -363,7 +353,7 @@ static int wave_write(int id)
     }
 
 	/* 'data' tag */
-	offset += mame_fwrite(w->file, "data", 4);
+	offset += mame_fwrite(image_fp(img), "data", 4);
 	if( offset < 36 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
@@ -372,14 +362,14 @@ static int wave_write(int id)
 
 	/* data size */
 	temp32 = LITTLE_ENDIANIZE_INT32(data_length);
-	offset += mame_fwrite(w->file, &temp32, 4);
+	offset += mame_fwrite(image_fp(img), &temp32, 4);
 	if( offset < 40 )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
 		return WAVE_ERR;
     }
 
-	if( mame_fwrite_lsbfirst(w->file, w->data, data_length) != data_length )
+	if( mame_fwrite_lsbfirst(image_fp(img), w->data, data_length) != data_length )
 	{
 		logerror("WAVE write error at offs %d\n", offset);
 		return WAVE_ERR;
@@ -391,20 +381,20 @@ static int wave_write(int id)
 /*
 	display a small tape icon, with the current position in the tape image
 */
-static void wave_display(struct mame_bitmap *bitmap, int id)
+static void wave_display(mess_image *img, struct mame_bitmap *bitmap)
 {
-    struct wave_file *w = &wave[id];
+    struct wave_file *w = get_wave(img);
 
-	if (image_exists(IO_CASSETTE, id))
+	if (image_exists(img))
 	{
-		if ((wave_status(id, -1) & (WAVE_STATUS_MOTOR_ENABLE|WAVE_STATUS_MOTOR_INHIBIT)) == WAVE_STATUS_MOTOR_ENABLE)
+		if ((wave_status(img, -1) & (WAVE_STATUS_MOTOR_ENABLE|WAVE_STATUS_MOTOR_INHIBIT)) == WAVE_STATUS_MOTOR_ENABLE)
 		{
 			if (w->smpfreq)
 			{
 				char buf[32];
 				int x, y, n, t0, t1;
 
-				x = id * Machine->uifontwidth * 16 + 1;
+				x = image_index_in_devtype(img) * Machine->uifontwidth * 16 + 1;
 				y = Machine->uiheight - 9;
 				n = (w->play_pos * 4 / w->smpfreq) & 3;
 				t0 = w->play_pos / w->smpfreq;
@@ -429,7 +419,7 @@ TODO:
 */
 static void wave_sound_update(int id, INT16 *buffer, int length)
 {
-	struct wave_file *w = &wave[id];
+	struct wave_file *w = get_wave(image_from_devtype_and_index(IO_CASSETTE, id));
 	int pos = w->play_pos;
 	int count = w->counter;
 	INT16 sample = w->play_sample;
@@ -448,7 +438,7 @@ static void wave_sound_update(int id, INT16 *buffer, int length)
 				pos = 0;
 		}*/
 		if (w->mode)
-			wave_update_output_buffer(id);
+			wave_update_output_buffer(w->img);
 
 		while (length--)
 		{
@@ -490,7 +480,7 @@ int wave_sh_start(const struct MachineSound *msound)
 
     for( i = 0; i < intf->num; i++ )
 	{
-		struct wave_file *w = &wave[i];
+		struct wave_file *w = get_wave(image_from_devtype_and_index(IO_CASSETTE, i));
 		char buf[32];
 
         if( intf->num > 1 )
@@ -512,17 +502,19 @@ void wave_sh_stop(void)
 	int i;
 
     for( i = 0; i < intf->num; i++ )
-		wave[i].channel = -1;
+		get_wave(image_from_devtype_and_index(IO_CASSETTE, i))->channel = -1;
 }
 
 void wave_sh_update(void)
 {
 	int i;
+	struct wave_file *w;
 
 	for( i = 0; i < intf->num; i++ )
 	{
-		if( wave[i].channel != -1 )
-			stream_update(wave[i].channel, 0);
+		w = get_wave(image_from_devtype_and_index(IO_CASSETTE, i));
+		if( w->channel != -1 )
+			stream_update(w->channel, 0);
 	}
 }
 
@@ -530,15 +522,7 @@ void wave_sh_update(void)
  * IODevice interface functions
  *****************************************************************************/
 
-/*
- * return info about a wave device
- */
-const void *wave_info(int id, int whatinfo)
-{
-	return NULL;
-}
-
-int wave_status(int id, int newstatus)
+static int wave_status(mess_image *img, int newstatus)
 {
 	/* wave status has the following bitfields:
 	 *
@@ -552,10 +536,10 @@ int wave_status(int id, int newstatus)
 	 *
 	 *	Also, you can pass -1 to have it simply return the status
 	 */
-	struct wave_file *w = &wave[id];
+	struct wave_file *w = get_wave(img);
 	int reply;
 
-	if( !w->file )
+	if (!image_exists(img))
 		return 0;
 
     if( newstatus != -1 )
@@ -576,8 +560,8 @@ int wave_status(int id, int newstatus)
 		if( !newstatus && w->timer )
 		{
 			if (w->mode)
-				wave_update_output_buffer(id);
-			w->offset = wave_tell(id);
+				wave_update_output_buffer(img);
+			w->offset = wave_tell(img);
 			timer_remove(w->timer);
 			w->timer = NULL;
 			schedule_full_refresh();
@@ -595,23 +579,13 @@ int wave_status(int id, int newstatus)
 	return reply;
 }
 
-int wave_open(int id, int mode, void *args)
+static int wave_open(mess_image *img, int mode, void *args)
 {
-	struct wave_file *w = &wave[id];
+	struct wave_file *w = get_wave(img);
     struct wave_args_legacy *wa = args;
 	int result;
 
-    /* wave already opened? */
-	if( w->file )
-		wave_close(id);
-
-	if (! wa->file)
-	{
-		w->file = NULL;
-		return INIT_PASS;
-	}
-
-    w->file = wa->file;
+    w->img = img;
 	w->mode = mode;
 	w->fill_wave = wa->fill_wave;
 	w->smpfreq = wa->smpfreq;
@@ -634,7 +608,7 @@ int wave_open(int id, int mode, void *args)
     }
 	else
 	{
-		result = wave_read(id);
+		result = wave_read(img);
 		if( result == WAVE_OK )
 		{
 			/* return sample frequency in the user supplied structure */
@@ -675,14 +649,14 @@ int wave_open(int id, int mode, void *args)
 			{
 				free(w->data);
 				/* zap the wave structure */
-				memset(&wave[id], 0, sizeof(struct wave_file));
+				memset(get_wave(img), 0, sizeof(struct wave_file));
 				return WAVE_ERR;
 			}
 
 			/* determine number of samples */
 			length =
 				wa->header_samples +
-				((mame_fsize(w->file) + wa->chunk_size - 1) / wa->chunk_size) * wa->chunk_samples +
+				((mame_fsize(image_fp(img)) + wa->chunk_size - 1) / wa->chunk_size) * wa->chunk_samples +
 				wa->trailer_samples;
 
 			w->smpfreq = wa->smpfreq;
@@ -696,7 +670,7 @@ int wave_open(int id, int mode, void *args)
 			{
 				logerror("WAVE failed to malloc %d bytes\n", w->length);
 				/* zap the wave structure */
-				memset(&wave[id], 0, sizeof(struct wave_file));
+				memset(get_wave(img), 0, sizeof(struct wave_file));
 				return WAVE_ERR;
 			}
 			logerror("WAVE creating max %d:%02d samples (%d) at %d Hz\n", (w->max_samples/w->smpfreq)/60, (w->max_samples/w->smpfreq)%60, w->max_samples, w->smpfreq);
@@ -711,7 +685,7 @@ int wave_open(int id, int mode, void *args)
 					logerror("WAVE conversion aborted at header\n");
 					free(w->data);
 					/* zap the wave structure */
-					memset(&wave[id], 0, sizeof(struct wave_file));
+					memset(get_wave(img), 0, sizeof(struct wave_file));
 					return WAVE_ERR;
 				}
 				logerror("WAVE header %d samples\n", length);
@@ -720,10 +694,10 @@ int wave_open(int id, int mode, void *args)
 
 			/* convert the file data to samples */
 			bytes = 0;
-			mame_fseek(w->file, 0, SEEK_SET);
+			mame_fseek(image_fp(img), 0, SEEK_SET);
 			while( pos < w->max_samples )
 			{
-				length = mame_fread(w->file, data, wa->chunk_size);
+				length = mame_fread(image_fp(img), data, wa->chunk_size);
 				if( length == 0 )
 					break;
 				bytes += length;
@@ -733,7 +707,7 @@ int wave_open(int id, int mode, void *args)
 					logerror("WAVE conversion aborted at %d bytes (%d samples)\n", bytes, pos);
 					free(w->data);
 					/* zap the wave structure */
-					memset(&wave[id], 0, sizeof(struct wave_file));
+					memset(get_wave(img), 0, sizeof(struct wave_file));
 					return WAVE_ERR;
 				}
 				pos += length;
@@ -751,7 +725,7 @@ int wave_open(int id, int mode, void *args)
 						logerror("WAVE conversion aborted at trailer\n");
 						free(w->data);
 						/* zap the wave structure */
-						memset(&wave[id], 0, sizeof(struct wave_file));
+						memset(get_wave(img), 0, sizeof(struct wave_file));
 						return WAVE_ERR;
 					}
 					logerror("WAVE trailer %d samples\n", length);
@@ -773,7 +747,7 @@ int wave_open(int id, int mode, void *args)
 				{
 					logerror("WAVE realloc(%d) failed\n", w->length);
 					/* zap the wave structure */
-					memset(&wave[id], 0, sizeof(struct wave_file));
+					memset(get_wave(img), 0, sizeof(struct wave_file));
 					return WAVE_ERR;
 				}
 			}
@@ -785,11 +759,11 @@ int wave_open(int id, int mode, void *args)
 	return WAVE_ERR;
 }
 
-void wave_close(int id)
+static void wave_close(mess_image *img)
 {
-	struct wave_file *w = &wave[id];
+	struct wave_file *w = get_wave(img);
 
-    if( !w->file )
+	if (!image_exists(img))
 		return;
 
 #if 0
@@ -804,13 +778,13 @@ void wave_close(int id)
 	}
 #else
 	/* turn motor off */
-	wave_status(id, wave_status(id, -1) & ~ WAVE_STATUS_MOTOR_ENABLE);
+	wave_status(img, wave_status(img, -1) & ~ WAVE_STATUS_MOTOR_ENABLE);
 #endif
 
     if( w->mode )
 	{	/* if image is writable, we do write it to disk */
-		wave_output(id,0);
-		wave_write(id);
+		wave_output(img,0);
+		wave_write(img);
 		w->mode = 0;
 	}
 
@@ -818,7 +792,7 @@ void wave_close(int id)
 		free(w->data);
 
     w->data = NULL;
-	w->file = NULL;
+	w->img = NULL;
 	w->offset = 0;
 	w->play_pos = 0;
 	w->record_pos = 0;
@@ -829,12 +803,12 @@ void wave_close(int id)
 	w->length = 0;
 }
 
-int wave_seek(int id, int offset, int whence)
+static int wave_seek(mess_image *img, int offset, int whence)
 {
-	struct wave_file *w = &wave[id];
+	struct wave_file *w = get_wave(img);
     UINT32 pos = 0;
 
-	if( !w->file )
+	if (!image_exists(img))
 		return pos;
 
     switch( whence )
@@ -846,7 +820,7 @@ int wave_seek(int id, int offset, int whence)
 		pos = w->samples - 1;
 		break;
 	case SEEK_CUR:
-		pos = wave_tell(id);
+		pos = wave_tell(img);
 		break;
 	}
 	w->offset = pos + offset;
@@ -861,9 +835,9 @@ int wave_seek(int id, int offset, int whence)
 	return w->offset;
 }
 
-static int internal_wave_tell(int id, int allow_overflow)
+static int internal_wave_tell(mess_image *img, int allow_overflow)
 {
-	struct wave_file *w = &wave[id];
+	struct wave_file *w = get_wave(img);
     UINT32 pos = w->offset;
 	if (w->timer)
 		pos += (timer_timeelapsed(w->timer) * w->smpfreq + 0.5);
@@ -872,18 +846,18 @@ static int internal_wave_tell(int id, int allow_overflow)
     return pos;
 }
 
-int wave_tell(int id)
+static int wave_tell(mess_image *img)
 {
-	return internal_wave_tell(id, 0);
+	return internal_wave_tell(img, 0);
 }
 
-int wave_input(int id)
+static int wave_input(mess_image *img)
 {
-	struct wave_file *w = &wave[id];
+	struct wave_file *w = get_wave(img);
 	UINT32 pos = 0;
     int level = 0;
 
-	if( !w->file )
+	if (!image_exists(img))
 		return level;
 
     if( w->channel != -1 )
@@ -891,7 +865,7 @@ int wave_input(int id)
 
     if( w->timer )
 	{
-		pos = wave_tell(id);
+		pos = wave_tell(img);
 		if( pos >= 0 )
 		{
 			if( w->resolution == 16 )
@@ -903,15 +877,15 @@ int wave_input(int id)
     return level;
 }
 
-static void wave_update_output_buffer(int id)
+static void wave_update_output_buffer(mess_image *img)
 {
-	struct wave_file *w = &wave[id];
+	struct wave_file *w = get_wave(img);
 	UINT32 pos = 0;
 	void *new_data;
 
     if( w->timer )
     {
-		pos = internal_wave_tell(id, 1);
+		pos = internal_wave_tell(img, 1);
 		if( pos >= w->max_samples )
         {
 			/* add at least one second of data */
@@ -926,7 +900,7 @@ static void wave_update_output_buffer(int id)
                 logerror("WAVE realloc(%d) failed\n", w->length);
 				/* turn motor off (as this is the kind of the thing we can expect from
 				a tape recorder which has reached the physical end of the tape) */
-				wave_status(id, wave_status(id, -1) & ~ WAVE_STATUS_MOTOR_ENABLE);
+				wave_status(img, wave_status(img, -1) & ~ WAVE_STATUS_MOTOR_ENABLE);
                 return;
             }
 			w->data = new_data;
@@ -944,11 +918,11 @@ static void wave_update_output_buffer(int id)
     }
 }
 
-void wave_output(int id, int data)
+static void wave_output(mess_image *img, int data)
 {
-	struct wave_file *w = &wave[id];
+	struct wave_file *w = get_wave(img);
 
-	if( !w->file )
+	if (!image_exists(img))
 	{
 	    w->record_sample = data;
 		return;
@@ -966,7 +940,7 @@ void wave_output(int id, int data)
 	if( w->channel != -1 )
 		stream_update(w->channel, 0);
 
-	wave_update_output_buffer(id);
+	wave_update_output_buffer(img);
 
     w->record_sample = data;
 }
@@ -974,7 +948,7 @@ void wave_output(int id, int data)
 /* ----------------------------------------------------------------------- */
 
 void wave_specify(struct IODevice *iodev, int count, char *actualext, const char *fileext,
-	int (*loadproc)(int id, mame_file *fp, int open_mode), void (*unloadproc)(int id))
+	int (*loadproc)(mess_image *img, mame_file *fp, int open_mode), void (*unloadproc)(mess_image *img))
 {
 	strcpy(actualext, "wav");
 	strcpy(actualext + 4, fileext);
@@ -984,9 +958,9 @@ void wave_specify(struct IODevice *iodev, int count, char *actualext, const char
 	iodev->file_extensions = actualext;
 	iodev->flags = DEVICE_LOAD_RESETS_NONE;
 	iodev->open_mode = OSD_FOPEN_READ_OR_WRITE;
+	iodev->init = wave_init;
 	iodev->load = loadproc;
 	iodev->unload = unloadproc;
-	iodev->info = wave_info;
 	iodev->open = wave_open;
 	iodev->close = wave_close;
 	iodev->status = wave_status;

@@ -2150,14 +2150,14 @@ ROM_START( atarist )
 	/* Up to 4 Meg Main RAM */
 
 	ROM_REGION(0x40000, REGION_USER1,ROMREGION_16BIT) /* System rom */
-//	ROM_LOAD_WIDE( "tos_206.img", 0x00000, 0x30000,  0x3b5cd0c5 )
+//	ROM_LOAD_WIDE( "tos_206.img", 0x00000, 0x30000,CRC(  0x3b5cd0c5 ))
 
-	ROM_LOAD ( "tos_104.img", 0x00000, 0x30000,  0x3b5cd0c5 )
-//	ROM_LOAD_WIDE( "tos102uk.rom", 0x00000, 0x30000,  0x3b5cd0c5 )
-//	ROM_LOAD_WIDE( "tos100.img", 0x00000, 0x30000,  0xd331af30 )
+	ROM_LOAD ( "tos_104.img", 0x00000, 0x30000,CRC(  0x3b5cd0c5 ))
+//	ROM_LOAD_WIDE( "tos102uk.rom", 0x00000, 0x30000,CRC(  0x3b5cd0c5 ))
+//	ROM_LOAD_WIDE( "tos100.img", 0x00000, 0x30000,CRC(  0xd331af30 ))
 
 	ROM_REGION(0x40000, REGION_USER2,0) /* Cartridge rom */
-	//ROM_LOAD_WIDE( "cart.exe", 0x00000, 0x30000,  0xb997f9cb )
+	//ROM_LOAD_WIDE( "cart.exe", 0x00000, 0x30000,CRC(  0xb997f9cb ))
 ROM_END
 
 /***************************************************************************/
@@ -2256,7 +2256,7 @@ void msa_read_sector_data_into_buffer(int drive, int side, int index1, char *ptr
 	memcpy(ptr, pDataPtr, length);
 }
 
-int atarist_msa_floppy_init(int id, mame_file *file, int open_mode)
+int atarist_msa_floppy_init(mess_image *img, mame_file *file, int open_mode)
 {
 	/* load whole file into memory */
 	if (atarist_load(file, &msa_images_data[id])!=NULL)
@@ -2270,7 +2270,7 @@ int atarist_msa_floppy_init(int id, mame_file *file, int open_mode)
 		atari_st_image_type[id] = ATARI_ST_IMAGE_TYPE_MSA;
 
 		/* tell floppy drive code to use these functions for accessing disk image in this drive */
-		floppy_drive_set_disk_image_interface(id,&msa_floppy_interface);
+		floppy_drive_set_disk_image_interface(img,&msa_floppy_interface);
 
 		return INIT_PASS;
 	}
@@ -2361,5 +2361,5 @@ http://home.wanadoo.nl/jarod/museum/megaste.htm
 /* 1987 : Mega STf - Seperate keyboard, blitter, 1/2/4 Meg ram options */
 /* 1989 : Mega STe - Seperate keyboard, 16MHz 68000 (switchable to 8MHz), memory cache, VME bus, TOS 2.05 & 2.06 */
 
-/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT	CONFIG   COMPANY    FULLNAME */
-COMP ( 1985, atarist,  0,        atarist,  atarist,  0,     atarist, "atarist", "atarist" )
+/*     YEAR  NAME      PARENT    COMPAT	MACHINE   INPUT     INIT	CONFIG   COMPANY    FULLNAME */
+COMP ( 1985, atarist,  0,        0,		atarist,  atarist,  0,     atarist, "atarist", "atarist" )
