@@ -75,11 +75,6 @@ static osd_file openfile[MAX_OPEN_FILES];
 
 
 //============================================================
-//	GLOBAL VARIABLES
-//============================================================
-
-
-//============================================================
 //	FILE PATH OPTIONS
 //============================================================
 
@@ -395,11 +390,6 @@ static void compose_path(TCHAR *output, int pathtype, int pathindex, const char 
 {
 	const char *basepath = get_path_for_filetype(pathtype, pathindex, NULL);
 	TCHAR *p;
-
-#ifdef MESS
-	if (osd_is_absolute_path(filename))
-		basepath = NULL;
-#endif
 
 	/* compose the full path */
 	*output = 0;

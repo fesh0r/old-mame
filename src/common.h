@@ -59,6 +59,14 @@ struct GameSample
 };
 
 
+struct SystemBios
+{
+	int value;			/* value of mask to apply to ROM_BIOSFLAGS is chosen */
+	const char *_name;	/* name of the bios, e.g "default","japan" */
+	const char *_description;	/* long name of the bios, e.g "Europe MVS (Ver. 2)" */
+};
+
+
 struct rom_load_data
 {
 	int warnings;				/* warning count during processing */
@@ -263,7 +271,10 @@ enum
 #define ROM_INHERITFLAGSMASK		0x08000000			/* inherit all flags from previous definition */
 #define		ROM_INHERITFLAGS		0x08000000
 
-#define ROM_INHERITEDFLAGS			(ROM_GROUPMASK | ROM_SKIPMASK | ROM_REVERSEMASK | ROM_BITWIDTHMASK | ROM_BITSHIFTMASK)
+#define ROM_BIOSFLAGSMASK			0xf0000000			/* only loaded if value matches global bios value */
+#define 	ROM_BIOS(n)				(((n) & 15) << 28)
+
+#define ROM_INHERITEDFLAGS			(ROM_GROUPMASK | ROM_SKIPMASK | ROM_REVERSEMASK | ROM_BITWIDTHMASK | ROM_BITSHIFTMASK | ROM_BIOSFLAGSMASK)
 
 /* ----- per-ROM macros ----- */
 #define ROM_GETNAME(r)				((r)->_name)
@@ -279,6 +290,7 @@ enum
 #define ROM_GETBITWIDTH(r)			(((ROM_GETFLAGS(r) & ROM_BITWIDTHMASK) >> 21) + 8 * ((ROM_GETFLAGS(r) & ROM_BITWIDTHMASK) == 0))
 #define ROM_GETBITSHIFT(r)			((ROM_GETFLAGS(r) & ROM_BITSHIFTMASK) >> 24)
 #define ROM_INHERITSFLAGS(r)		((ROM_GETFLAGS(r) & ROM_INHERITFLAGSMASK) == ROM_INHERITFLAGS)
+#define ROM_GETBIOSFLAGS(r)			((ROM_GETFLAGS(r) & ROM_BIOSFLAGSMASK) >> 28)
 #define ROM_NOGOODDUMP(r)			(hash_data_has_info((r)->_hashdata, HASH_INFO_NO_DUMP))
 
 /* ----- per-disk macros ----- */
@@ -341,6 +353,22 @@ enum
 // @@@ FF: Remove this when we use the final SHA1Merger
 #define NOT_DUMPED NO_DUMP
 #define BADROM BAD_DUMP
+
+/***************************************************************************
+
+	Derived macros for the alternate BIOS loading system
+
+***************************************************************************/
+
+#define BIOSENTRY_ISEND(b)		((b)->_name == NULL)
+
+/* ----- start/stop macros ----- */
+#define SYSTEM_BIOS_START(name)			static const struct SystemBios system_bios_##name[] = {
+#define SYSTEM_BIOS_END					{ 0, NULL } };
+
+/* ----- ROM region macros ----- */
+#define SYSTEM_BIOS_ADD(value,name,description)		{ (int)value, (const char*)name, (const char*)description },
+#define BIOS_DEFAULT			"default"
 
 
 /***************************************************************************

@@ -37,11 +37,11 @@ extern int			win_triple_buffer;
 extern int			win_use_ddraw;
 extern int			win_use_d3d;
 extern int			win_dd_hw_stretch;
-extern int			win_d3d_filter;
-extern int          win_d3d_tex_manage;
+extern int			win_force_int_stretch;
 extern int			win_gfx_width;
 extern int			win_gfx_height;
 extern int			win_gfx_depth;
+extern int			win_gfx_zoom;
 extern int			win_old_scanlines;
 extern int			win_switch_res;
 extern int			win_switch_bpp;
@@ -62,6 +62,7 @@ extern HWND			win_debug_window;
 
 // video bounds
 extern double		win_aspect_ratio_adjust;
+extern int 			win_default_constraints;
 
 // visible bounds
 extern RECT			win_visible_rect;
@@ -84,6 +85,23 @@ extern int			win_color32_bdst_shift;
 
 
 //============================================================
+//	DEFINES
+//============================================================
+
+// win_constrain_to_aspect_ratio() constraints parameter
+#define CONSTRAIN_INTEGER_WIDTH 1
+#define CONSTRAIN_INTEGER_HEIGHT 2
+
+// win_force_int_stretch values
+#define FORCE_INT_STRECT_NONE 0
+#define FORCE_INT_STRECT_FULL 1
+#define FORCE_INT_STRECT_AUTO 2
+#define FORCE_INT_STRECT_HOR 3
+#define FORCE_INT_STRECT_VER 4
+
+
+
+//============================================================
 //	PROTOTYPES
 //============================================================
 
@@ -95,7 +113,7 @@ void win_toggle_maximize(void);
 void win_toggle_full_screen(void);
 void win_adjust_window(void);
 
-void win_constrain_to_aspect_ratio(RECT *rect, int adjustment);
+void win_constrain_to_aspect_ratio(RECT *rect, int adjustment, int constraints);
 void win_adjust_window_for_visible(int min_x, int max_x, int min_y, int max_y);
 void win_wait_for_vsync(void);
 

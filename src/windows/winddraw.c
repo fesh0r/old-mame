@@ -410,13 +410,13 @@ static double compute_mode_score(int width, int height, int depth, int refresh)
 	if (pixel_aspect_ratio == VIDEO_PIXEL_ASPECT_RATIO_2_1)
 		target_width *= 2;
 
-	// hardware stretch modes prefer at least 2x expansion
+	// hardware stretch modes prefer at least win_gfx_zoom times expansion (default is 2)
 	if (win_dd_hw_stretch)
 	{
-		if (target_width < max_width * 2 + 2)
-			target_width = max_width * 2 + 2;
-		if (target_height < max_height * 2 + 2)
-			target_height = max_height * 2 + 2;
+		if (target_width < max_width * win_gfx_zoom + 2)
+			target_width = max_width * win_gfx_zoom + 2;
+		if (target_height < max_height * win_gfx_zoom + 2)
+			target_height = max_height * win_gfx_zoom + 2;
 	}
 
 	// compute initial score based on difference between target and current
@@ -1143,7 +1143,7 @@ tryagain:
 		dst.left = dst.top = 0;
 		dst.right = primary_desc.dwWidth;
 		dst.bottom = primary_desc.dwHeight;
-		win_constrain_to_aspect_ratio(&dst, WMSZ_BOTTOMRIGHT);
+		win_constrain_to_aspect_ratio(&dst, WMSZ_BOTTOMRIGHT, 0);
 
 		// center
 		dst.left += (primary_desc.dwWidth - (dst.right - dst.left)) / 2;
@@ -1307,7 +1307,7 @@ tryagain:
 		outer.right = primary_desc.dwWidth;
 		outer.bottom = primary_desc.dwHeight;
 		inner = outer;
-		win_constrain_to_aspect_ratio(&inner, WMSZ_BOTTOMRIGHT);
+		win_constrain_to_aspect_ratio(&inner, WMSZ_BOTTOMRIGHT, 0);
 
 		// target surface is the back buffer
 		target_surface = back_surface ? back_surface : primary_surface;

@@ -68,11 +68,11 @@ mapped at:
 CUSTOM: ALPHA 8201 (42 pin DIP)
 DIPSW : 6 position (x1)
        Positions 1, 5 & 6 not used
-       
+
 	4	3	2
        ------------------------------
        OFF	OFF	OFF	1 minutes (time for the opponent to make his decision)
-       OFF	OFF	ON	2 
+       OFF	OFF	ON	2
        OFF	ON	OFF	3
        OFF	ON	ON	4
        ON	OFF	OFF	5
@@ -87,7 +87,7 @@ PROM  : Type MB7051
 
 
 **************************************************************************/
- 
+
 
 
 #include <math.h>
@@ -365,13 +365,13 @@ INPUT_PORTS_END
 
 static struct AY8910interface ay8910_interface =
 {
-	1,	
+	1,
 	10000000/8,	/* ??? */
-	{ 30,}, 
+	{ 30,},
 	{ 0 },
 	{ 0 },
 	{ 0 },
-	{ 0 } 
+	{ 0 }
 };
 
 static MACHINE_DRIVER_START( shougi )
@@ -380,7 +380,7 @@ static MACHINE_DRIVER_START( shougi )
 	MDRV_CPU_MEMORY(readmem,writemem)
 	MDRV_CPU_VBLANK_INT(shougi_vblank_nmi,1)
 
-	MDRV_CPU_ADD(Z80,10000000/4)		
+	MDRV_CPU_ADD(Z80,10000000/4)
 	MDRV_CPU_MEMORY(readmem_sub,writemem_sub)
 	MDRV_CPU_PORTS(readport_sub,0)
 	/* NMIs triggered in shougi_vblank_nmi() */
@@ -426,22 +426,22 @@ ROM_END
 
 ROM_START( shougi2 )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_LOAD( "1.3a",    0x0000, 0x1000, CRC(16d75306) )
-	ROM_LOAD( "3.3c",    0x1000, 0x1000, CRC(35b6d98b) )
-	ROM_LOAD( "2.3b",    0x2000, 0x1000, CRC(b38affed) )
-	ROM_LOAD( "4.3d",    0x3000, 0x1000, CRC(1abdb6bf) )
+	ROM_LOAD( "1-2.3a",    0x0000, 0x1000, CRC(16d75306) )
+	ROM_LOAD( "3-2.3c",    0x1000, 0x1000, CRC(35b6d98b) )
+	ROM_LOAD( "2-2.3b",    0x2000, 0x1000, CRC(b38affed) )
+	ROM_LOAD( "4-2.3d",    0x3000, 0x1000, CRC(1abdb6bf) )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "5.3e",    0x0000, 0x1000, CRC(0ba89dd4) )
-	ROM_LOAD( "8.3j",    0x1000, 0x1000, CRC(0ae0c8c1) )
-	ROM_LOAD( "6.3f",    0x2000, 0x1000, CRC(d98abcae) )
-	ROM_LOAD( "9.3k",    0x3000, 0x1000, CRC(4e0e6c90) )
-	ROM_LOAD( "7.3h",    0x4000, 0x1000, CRC(5f37ebc6) )
-	ROM_LOAD( "10.3l",   0x5000, 0x1000, CRC(a26385fd) )
+	ROM_LOAD( "5-2.3e",    0x0000, 0x1000, CRC(0ba89dd4) )
+	ROM_LOAD( "8-2.3j",    0x1000, 0x1000, CRC(0ae0c8c1) )
+	ROM_LOAD( "6-2.3f",    0x2000, 0x1000, CRC(d98abcae) )
+	ROM_LOAD( "9-2.3k",    0x3000, 0x1000, CRC(4e0e6c90) )
+	ROM_LOAD( "7-2.3h",    0x4000, 0x1000, CRC(5f37ebc6) )
+	ROM_LOAD( "10-2.3l",   0x5000, 0x1000, CRC(a26385fd) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
 	ROM_LOAD( "pr.2l",   0x0000, 0x0020, CRC(cd3559ff) )
 ROM_END
 
-GAMEX( 198?, shougi,  0,        shougi,  shougi,  0, ROT0, "Alpha", "Shougi", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
-GAMEX( 198?, shougi2, shougi,   shougi,  shougi,  0, ROT0, "Alpha", "Shougi 2", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
+GAMEX( 198?, shougi,  0,        shougi,  shougi,  0, ROT0, "Alpha Denshi", "Shougi", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
+GAMEX( 198?, shougi2, shougi,   shougi,  shougi,  0, ROT0, "Alpha Denshi", "Shougi 2", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )

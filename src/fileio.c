@@ -4,7 +4,8 @@
 
 ***************************************************************************/
 
-#include <assert.h>
+#include <zlib.h>
+
 #include "driver.h"
 #include "unzip.h"
 
@@ -79,16 +80,6 @@ struct _mame_file
 /***************************************************************************
 	PROTOTYPES
 ***************************************************************************/
-
-#ifndef ZEXPORT
-#ifdef _MSC_VER
-#define ZEXPORT __stdcall
-#else
-#define ZEXPORT
-#endif
-#endif
-
-extern unsigned int ZEXPORT crc32(unsigned int crc, const UINT8 *buf, unsigned int len);
 
 static mame_file *generic_fopen(int pathtype, const char *gamename, const char *filename, const char* hash, UINT32 flags);
 static const char *get_extension_for_filetype(int filetype);
@@ -1038,11 +1029,11 @@ static mame_file *generic_fopen(int pathtype, const char *gamename, const char *
 					UINT32 crc = 0;
 
 					/* Since this is a .ZIP file, we extract the CRC from the expected hash
-					   (if any), so that we can load by CRC if needed. */
-					if (hash)
+					   (if any), so that we can load by CRC if needed. We must check that
+					   the hash really contains a CRC, because it could be a NO_DUMP rom
+					   for which we do not know the CRC yet. */
+					if (hash && hash_data_extract_binary_checksum(hash, HASH_CRC, crcs) != 0)
 					{
-						hash_data_extract_binary_checksum(hash, HASH_CRC, crcs);
-
 						/* Store the CRC in a single DWORD */
 						crc = ((unsigned long)crcs[0] << 24) |
 							  ((unsigned long)crcs[1] << 16) |
