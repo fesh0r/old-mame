@@ -1,5 +1,5 @@
 #############################################################################
-# MESS Visual C++ makefile														#
+# MESS Visual C++ makefile                                                  #
 #																			#
 # MESS build commands:														#
 #																			#
@@ -148,6 +148,7 @@ INCLUDES = \
 ifeq "$(TARGET)" "mess"
 INCLUDES += \
 	-Imess \
+	-Imess/ui \
 	-Imess/includes \
 	-Imess/windows
 endif
@@ -168,12 +169,13 @@ endif
 # C Compiler flags
 #
 
-CFLAGS = -nologo -MT $(INCLUDES) -DDECL_SPEC=__cdecl -Dsnprintf=_snprintf
+CFLAGS = -nologo -MT $(INCLUDES) -DDECL_SPEC=__cdecl \
+	-Dsnprintf=_snprintf -Dvsnprintf=_vsnprintf
 
 ifdef DEBUG
-CFLAGS += -Zi -Od
+CFLAGS += -Zi -Od -DMAME_VALIDITYCHECKS=1
 else
-CFLAGS += -Ox -G5 -Ob2
+CFLAGS += -Ox -G5 -Ob2 -DMAME_VALIDITYCHECKS=0
 endif
 
 #####################################################################
@@ -278,6 +280,8 @@ OBJDIRS += \
 	$(OBJ)/mess/tools \
 	$(OBJ)/mess/tools/dat2html \
 	$(OBJ)/mess/tools/imgtool \
+	$(OBJ)/mess/tools/imgtool/windows \
+	$(OBJ)/mess/tools/imgtool/windows/res \
 	$(OBJ)/mess/tools/mkhdimg \
 	$(OBJ)/mess/tools/messroms \
 	$(OBJ)/mess/tools/messdocs \
@@ -296,12 +300,13 @@ PLATFORM_TOOL_OBJS =				\
 	
 #####################################################################
 
-all: maketree $(EMULATORCLI) $(EMULATORGUI) extra
+all:	maketree $(EMULATORCLI) $(EMULATORGUI) $(MESSTEST) $(MESSDOCS) chdman.exe imgtool$(EXE) wimgtool$(EXE)
 
 # include the various .mak files
 include src/core.mak
 ifdef MESS
 include mess/$(TARGET).mak
+include mess/tools/imgtool/windows/wimgtool.mak
 else
 include src/$(TARGET).mak
 endif
@@ -319,8 +324,6 @@ DBGOBJS =
 endif
 
 DIRENTOBJS = $(OBJ)/mess/ui/dirent.o
-
-extra:	$(TOOLS) $(HELPFILES)
 
 # combine the various definitions to one
 CDEFS = $(DEFS) $(COREDEFS) $(CPUDEFS) $(SOUNDDEFS) $(ASMDEFS) $(DBGDEFS) $(BSCDEFS)
@@ -383,6 +386,23 @@ imgtool$(EXE): $(IMGTOOL_OBJS) $(PLATFORM_TOOL_OBJS) $(OBJ)/mess/ui/dirent.o
 	@echo Compiling $@...
 	$(LD) $(LDFLAGS) $^ $(ZLIB) -out:$@
 
+wimgtool$(EXE): \
+		$(IMGTOOL_LIB_OBJS)								\
+		$(PLATFORM_TOOL_OBJS)							\
+		$(OBJ)/mess/pile.o								\
+		$(OBJ)/mess/ui/dirent.o							\
+		$(OBJ)/mess/windows/opcntrl.o					\
+		$(OBJ)/mess/windows/strconv.o					\
+		$(OBJ)/mess/tools/imgtool/stubs.o				\
+		$(OBJ)/mess/tools/imgtool/windows/wmain.o		\
+		$(OBJ)/mess/tools/imgtool/windows/wimgtool.o	\
+		$(OBJ)/mess/tools/imgtool/windows/attrdlg.o		\
+		$(OBJ)/mess/tools/imgtool/windows/assoc.o		\
+		$(OBJ)/mess/tools/imgtool/windows/assocdlg.o	\
+		$(OBJ)/mess/tools/imgtool/windows/wimgtool.res
+	@echo Compiling $@...
+	$(LD) $(LDFLAGS) $(LIBS) $(WINDOWS_PROGRAM) shlwapi.lib $^ $(ZLIB) -out:$@
+
 messtest$(EXE):	$(OBJS) $(COREOBJS) $(DRVLIBS) $(MESSTEST_OBJS) \
 		$(OBJ)/windows/asmtile.o				\
 		$(OBJ)/windows/ticker.o					\
@@ -394,8 +414,8 @@ messtest$(EXE):	$(OBJS) $(COREOBJS) $(DRVLIBS) $(MESSTEST_OBJS) \
 		$(OBJ)/mess/windows/dirutils.o			\
 		$(OBJ)/mess/windows/glob.o				\
 		$(OBJ)/mess/windows/parallel.o			\
-		$(OBJ)/mess/ui/dirent.o					\
-		$(OBJ)/mess/snprintf.o
+		$(OBJ)/mess/windows/strconv.o			\
+		$(OBJ)/mess/ui/dirent.o					
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $(CONSOLE_PROGRAM) $^ $(ZLIB) winmm.lib user32.lib -out:$@
 
@@ -457,6 +477,10 @@ $(OBJ)/mess/windows/%.res: mess/windows/%.rc
 	$(RC) $(RCDEFS) $(RCFLAGS) -Fo$@ $<
 
 $(OBJ)/mess/ui/%.res: mess/ui/%.rc
+	@echo Compiling resources $<...
+	$(RC) $(RCDEFS) $(RCFLAGS) -Fo$@ $<
+
+$(OBJ)/mess/%.res: mess/%.rc
 	@echo Compiling resources $<...
 	$(RC) $(RCDEFS) $(RCFLAGS) -Fo$@ $<
 

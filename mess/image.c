@@ -5,7 +5,6 @@
 #include "utils.h"
 #include "pool.h"
 #include "hashfile.h"
-#include "snprintf.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -202,6 +201,7 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 			if (!file && creatable)
 			{
 				file = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
+				img->writeable = file ? 1 : 0;
 				img->created = file ? 1 : 0;
 			}
 		}

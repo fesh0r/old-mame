@@ -14,8 +14,6 @@
 #include "osdepend.h"
 #include "imgtoolx.h"
 
-#include "snprintf.h"
-
 /* Max sector lenght is bytes.  Generally 256, except for a few older disk
 units which use 288-byte-long sectors, and SCSI units which generally use
 standard 512-byte-long sectors. */
@@ -342,7 +340,7 @@ typedef struct tifile_header
 typedef struct catalog_entry
 {
 	UINT16 fdr_secnum;
-	char fname[10];
+	char filename[10];
 } catalog_entry;
 
 #endif
@@ -370,8 +368,8 @@ typedef struct ti990_phys_sec_address
 */
 typedef struct ti990_image
 {
-	IMAGE base;
-	STREAM *file_handle;		/* imgtool file handle */
+	imgtool_image base;
+	imgtool_stream *file_handle;		/* imgtool file handle */
 	ti990_geometry geometry;	/* geometry */
 	ti990_sc0 sec0;				/* cached copy of sector 0 */
 } ti990_image;
@@ -381,7 +379,7 @@ typedef struct ti990_image
 */
 typedef struct ti990_iterator
 {
-	IMAGEENUM base;
+	imgtool_imageenum base;
 	ti990_image *image;
 	int level;							/* current recursion level */
 	int nrc[MAX_DIR_LEVEL];				/* length of disk catalogs in records */
@@ -390,17 +388,17 @@ typedef struct ti990_iterator
 } ti990_iterator;
 
 
-static imgtoolerr_t ti990_image_init(const struct ImageModule *mod, STREAM *f, IMAGE **outimg);
-static void ti990_image_exit(IMAGE *img);
-static void ti990_image_info(IMAGE *img, char *string, const int len);
-static imgtoolerr_t ti990_image_beginenum(IMAGE *img, IMAGEENUM **outenum);
-static imgtoolerr_t ti990_image_nextenum(IMAGEENUM *enumeration, imgtool_dirent *ent);
-static void ti990_image_closeenum(IMAGEENUM *enumeration);
-static imgtoolerr_t ti990_image_freespace(IMAGE *img, size_t *size);
-static imgtoolerr_t ti990_image_readfile(IMAGE *img, const char *fpath, STREAM *destf);
-static imgtoolerr_t ti990_image_writefile(IMAGE *img, const char *fpath, STREAM *sourcef, option_resolution *writeoptions);
-static imgtoolerr_t ti990_image_deletefile(IMAGE *img, const char *fpath);
-static imgtoolerr_t ti990_image_create(const struct ImageModule *mod, STREAM *f, option_resolution *createoptions);
+static imgtoolerr_t ti990_image_init(const struct ImageModule *mod, imgtool_stream *f, imgtool_image **outimg);
+static void ti990_image_exit(imgtool_image *img);
+static void ti990_image_info(imgtool_image *img, char *string, size_t len);
+static imgtoolerr_t ti990_image_beginenum(imgtool_image *img, const char *path, imgtool_imageenum **outenum);
+static imgtoolerr_t ti990_image_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent);
+static void ti990_image_closeenum(imgtool_imageenum *enumeration);
+static imgtoolerr_t ti990_image_freespace(imgtool_image *img, UINT64 *size);
+static imgtoolerr_t ti990_image_readfile(imgtool_image *img, const char *fpath, imgtool_stream *destf);
+static imgtoolerr_t ti990_image_writefile(imgtool_image *img, const char *fpath, imgtool_stream *sourcef, option_resolution *writeoptions);
+static imgtoolerr_t ti990_image_deletefile(imgtool_image *img, const char *fpath);
+static imgtoolerr_t ti990_image_create(const struct ImageModule *mod, imgtool_stream *f, option_resolution *createoptions);
 
 enum
 {
@@ -413,10 +411,10 @@ enum
 
 OPTION_GUIDE_START( ti990_create_optionguide )
 	/*OPTION_STRING(ti990_createopts_volname, "label",	"Volume name" )*/
-	OPTION_INT(ti990_createopts_cylinders, "cylinders", NULL )
-	OPTION_INT(ti990_createopts_heads, "heads", NULL )
-	OPTION_INT(ti990_createopts_sectors, "sectors", NULL )
-	OPTION_INT(ti990_createopts_sectorsize, "bytes per sector (typically 256)", NULL )
+	OPTION_INT(ti990_createopts_cylinders, "cylinders", "Cylinders" )
+	OPTION_INT(ti990_createopts_heads, "heads", "Heads" )
+	OPTION_INT(ti990_createopts_sectors, "sectors", "Sectors" )
+	OPTION_INT(ti990_createopts_sectorsize, "bytes per sector (typically 256)", "Bytes Per Sector" )
 OPTION_GUIDE_END
 
 #define symb2str2(a) #a
@@ -535,7 +533,7 @@ static unsigned phys_address_to_offset(const ti990_phys_sec_address *address, co
 	dest: pointer to destination buffer
 	len: lenght of data to read
 */
-static int read_sector_physical_len(STREAM *file_handle, const ti990_phys_sec_address *address, const ti990_geometry *geometry, void *dest, int len)
+static int read_sector_physical_len(imgtool_stream *file_handle, const ti990_phys_sec_address *address, const ti990_geometry *geometry, void *dest, int len)
 {
 	int reply;
 
@@ -562,7 +560,7 @@ static int read_sector_physical_len(STREAM *file_handle, const ti990_phys_sec_ad
 	geometry: disk geometry (sectors per track, tracks per side, sides)
 	dest: pointer to a destination buffer of geometry->bytes_per_sector bytes
 */
-static int read_sector_physical(STREAM *file_handle, const ti990_phys_sec_address *address, const ti990_geometry *geometry, void *dest)
+static int read_sector_physical(imgtool_stream *file_handle, const ti990_phys_sec_address *address, const ti990_geometry *geometry, void *dest)
 {
 	return read_sector_physical_len(file_handle, address, geometry, dest, geometry->bytes_per_sector);
 }
@@ -576,7 +574,7 @@ static int read_sector_physical(STREAM *file_handle, const ti990_phys_sec_addres
 	src: pointer to source buffer
 	len: lenght of source buffer
 */
-static int write_sector_physical_len(STREAM *file_handle, const ti990_phys_sec_address *address, const ti990_geometry *geometry, const void *src, int len)
+static int write_sector_physical_len(imgtool_stream *file_handle, const ti990_phys_sec_address *address, const ti990_geometry *geometry, const void *src, int len)
 {
 	int reply;
 
@@ -611,7 +609,7 @@ static int write_sector_physical_len(STREAM *file_handle, const ti990_phys_sec_a
 	geometry: disk geometry (sectors per track, tracks per side, sides)
 	dest: pointer to a source buffer of geometry->bytes_per_sector bytes
 */
-static int write_sector_physical(STREAM *file_handle, const ti990_phys_sec_address *address, const ti990_geometry *geometry, const void *src)
+static int write_sector_physical(imgtool_stream *file_handle, const ti990_phys_sec_address *address, const ti990_geometry *geometry, const void *src)
 {
 	return write_sector_physical_len(file_handle, address, geometry, src, geometry->bytes_per_sector);
 }
@@ -636,7 +634,7 @@ static void log_address_to_phys_address(int secnum, const ti990_geometry *geomet
 	dest: pointer to destination buffer
 	len: lenght of data to read
 */
-static int read_sector_logical_len(STREAM *file_handle, int secnum, const ti990_geometry *geometry, void *dest, int len)
+static int read_sector_logical_len(imgtool_stream *file_handle, int secnum, const ti990_geometry *geometry, void *dest, int len)
 {
 	ti990_phys_sec_address address;
 
@@ -654,7 +652,7 @@ static int read_sector_logical_len(STREAM *file_handle, int secnum, const ti990_
 	geometry: disk geometry (sectors per track, tracks per side, sides)
 	dest: pointer to a destination buffer of geometry->bytes_per_sector bytes
 */
-static int read_sector_logical(STREAM *file_handle, int secnum, const ti990_geometry *geometry, void *dest)
+static int read_sector_logical(imgtool_stream *file_handle, int secnum, const ti990_geometry *geometry, void *dest)
 {
 	return read_sector_logical_len(file_handle, secnum, geometry, dest, geometry->bytes_per_sector);
 }
@@ -668,7 +666,7 @@ static int read_sector_logical(STREAM *file_handle, int secnum, const ti990_geom
 	src: pointer to source buffer
 	len: lenght of source buffer
 */
-static int write_sector_logical_len(STREAM *file_handle, int secnum, const ti990_geometry *geometry, const void *src, int len)
+static int write_sector_logical_len(imgtool_stream *file_handle, int secnum, const ti990_geometry *geometry, const void *src, int len)
 {
 	ti990_phys_sec_address address;
 
@@ -686,7 +684,7 @@ static int write_sector_logical_len(STREAM *file_handle, int secnum, const ti990
 	geometry: disk geometry (sectors per track, tracks per side, sides)
 	dest: pointer to a source buffer of geometry->bytes_per_sector bytes
 */
-static int write_sector_logical(STREAM *file_handle, int secnum, const ti990_geometry *geometry, const void *src)
+static int write_sector_logical(imgtool_stream *file_handle, int secnum, const ti990_geometry *geometry, const void *src)
 {
 	return write_sector_logical_len(file_handle, secnum, geometry, src, geometry->bytes_per_sector);
 }
@@ -1025,7 +1023,7 @@ static int alloc_file_sectors(ti99_image *image, ti99_fdr *fdr, int nb_alloc_sec
 /*
 	Allocate a new (empty) file
 */
-static int new_file(ti99_image *image, char fname[10], int *out_fdr_secnum/*, ti99_fdr *fdr,*/)
+static int new_file(ti99_image *image, char filename[10], int *out_fdr_secnum/*, ti99_fdr *fdr,*/)
 {
 	int fdr_secnum;
 	int catalog_index, i;
@@ -1037,7 +1035,7 @@ static int new_file(ti99_image *image, char fname[10], int *out_fdr_secnum/*, ti
 	if ((image->catalog[0].fdr_secnum == 0) && (image->catalog[1].fdr_secnum != 0))
 		i = 1;	/* skip empty entry 0 (it must be a non-listable catalog) */
 
-	for (; (i<128) && ((fdr_secnum = image->catalog[i].fdr_secnum) != 0) && ((reply = memcmp(image->catalog[i].fname, fname, 10)) < 0); i++)
+	for (; (i<128) && ((fdr_secnum = image->catalog[i].fdr_secnum) != 0) && ((reply = memcmp(image->catalog[i].filename, filename, 10)) < 0); i++)
 		;
 
 	if (i == 128)
@@ -1067,7 +1065,7 @@ static int new_file(ti99_image *image, char fname[10], int *out_fdr_secnum/*, ti
 
 		/* write new catalog entry */
 		image->catalog[catalog_index].fdr_secnum = fdr_secnum;
-		memcpy(image->catalog[catalog_index].fname, fname, 10);
+		memcpy(image->catalog[catalog_index].filename, filename, 10);
 		if (out_fdr_secnum)
 			*out_fdr_secnum = fdr_secnum;
 	}
@@ -1090,14 +1088,14 @@ static int qsort_catalog_compare(const void *p1, const void *p2)
 	else if (entry2->fdr_secnum == 0)
 		return -1;
 	else
-		return memcmp(entry1->fname, entry2->fname, 10);
+		return memcmp(entry1->filename, entry2->filename, 10);
 }
 #endif
 
 /*
 	Open a file as a ti990_image.
 */
-static imgtoolerr_t ti990_image_init(const struct ImageModule *mod, STREAM *f, IMAGE **outimg)
+static imgtoolerr_t ti990_image_init(const struct ImageModule *mod, imgtool_stream *f, imgtool_image **outimg)
 {
 	ti990_image *image;
 	disk_image_header header;
@@ -1172,7 +1170,7 @@ static imgtoolerr_t ti990_image_init(const struct ImageModule *mod, STREAM *f, I
 /*
 	close a ti990_image
 */
-static void ti990_image_exit(IMAGE *img)
+static void ti990_image_exit(imgtool_image *img)
 {
 	ti990_image *image = (ti990_image *) img;
 
@@ -1185,7 +1183,7 @@ static void ti990_image_exit(IMAGE *img)
 
 	Currently returns the volume name
 */
-static void ti990_image_info(IMAGE *img, char *string, const int len)
+static void ti990_image_info(imgtool_image *img, char *string, size_t len)
 {
 	ti990_image *image = (ti990_image *) img;
 	char vol_name[9];
@@ -1198,7 +1196,7 @@ static void ti990_image_info(IMAGE *img, char *string, const int len)
 /*
 	Open the disk catalog for enumeration 
 */
-static imgtoolerr_t ti990_image_beginenum(IMAGE *img, IMAGEENUM **outenum)
+static imgtoolerr_t ti990_image_beginenum(imgtool_image *img, const char *path, imgtool_imageenum **outenum)
 {
 	ti990_image *image = (ti990_image*) img;
 	ti990_iterator *iter;
@@ -1234,11 +1232,11 @@ static imgtoolerr_t ti990_image_beginenum(IMAGE *img, IMAGEENUM **outenum)
 /*
 	Enumerate disk catalog next entry
 */
-static imgtoolerr_t ti990_image_nextenum(IMAGEENUM *enumeration, imgtool_dirent *ent)
+static imgtoolerr_t ti990_image_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent)
 {
 	ti990_iterator *iter = (ti990_iterator*) enumeration;
 	int flag;
-	int reply;
+	int reply = 0;
 
 
 	ent->corrupt = 0;
@@ -1267,23 +1265,23 @@ static imgtoolerr_t ti990_image_nextenum(IMAGEENUM *enumeration, imgtool_dirent 
 	else
 	{
 #if 0
-		fname_to_str(ent->fname, iter->xdr[iter->level].fdr.fnm, ent->fname_len);
+		fname_to_str(ent->filename, iter->xdr[iter->level].fdr.fnm, ent->filename_len);
 #else
 		{
 			int i;
 			char buf[9];
 
-			if (ent->fname_len)
+			if (ent->filename_len)
 			{
-				ent->fname[0] = '\0';
+				ent->filename[0] = '\0';
 				for (i=0; i<iter->level; i++)
 				{
 					fname_to_str(buf, iter->xdr[i].fdr.fnm, 9);
-					strncat(ent->fname, buf, ent->fname_len);
-					strncat(ent->fname, ".", ent->fname_len);
+					strncat(ent->filename, buf, ent->filename_len);
+					strncat(ent->filename, ".", ent->filename_len);
 				}
 				fname_to_str(buf, iter->xdr[iter->level].fdr.fnm, 9);
-				strncat(ent->fname, buf, ent->fname_len);
+				strncat(ent->filename, buf, ent->filename_len);
 			}
 		}
 #endif
@@ -1429,7 +1427,7 @@ static imgtoolerr_t ti990_image_nextenum(IMAGEENUM *enumeration, imgtool_dirent 
 /*
 	Free enumerator
 */
-static void ti990_image_closeenum(IMAGEENUM *enumeration)
+static void ti990_image_closeenum(imgtool_imageenum *enumeration)
 {
 	free(enumeration);
 }
@@ -1437,7 +1435,7 @@ static void ti990_image_closeenum(IMAGEENUM *enumeration)
 /*
 	Compute free space on disk image (in ADUs)
 */
-static imgtoolerr_t ti990_image_freespace(IMAGE *img, size_t *size)
+static imgtoolerr_t ti990_image_freespace(imgtool_image *img, UINT64 *size)
 {
 	ti990_image *image = (ti990_image*) img;
 	int totadus = get_UINT16BE(image->sec0.tna);
@@ -1475,7 +1473,7 @@ static imgtoolerr_t ti990_image_freespace(IMAGE *img, size_t *size)
 /*
 	Extract a file from a ti990_image.
 */
-static imgtoolerr_t ti990_image_readfile(IMAGE *img, const char *fpath, STREAM *destf)
+static imgtoolerr_t ti990_image_readfile(imgtool_image *img, const char *fpath, imgtool_stream *destf)
 {
 	ti990_image *image = (ti990_image*) img;
 	int catalog_index, fdr_secnum, parent_fdr_secnum;
@@ -1502,7 +1500,7 @@ static imgtoolerr_t ti990_image_readfile(IMAGE *img, const char *fpath, STREAM *
 	UINT8 buf[256];
 	int reply;
 
-	str_to_fname(ti_fname, fname);
+	str_to_fname(ti_fname, filename);
 
 	reply = find_fdr(image, ti_fname, &fdr, NULL);
 	if (reply)
@@ -1571,7 +1569,7 @@ static imgtoolerr_t ti990_image_readfile(IMAGE *img, const char *fpath, STREAM *
 /*
 	Add a file to a ti990_image.
 */
-static imgtoolerr_t ti990_image_writefile(IMAGE *img, const char *fpath, STREAM *sourcef, option_resolution *writeoptions)
+static imgtoolerr_t ti990_image_writefile(imgtool_image *img, const char *fpath, imgtool_stream *sourcef, option_resolution *writeoptions)
 {
 	ti990_image *image = (ti990_image*) img;
 	int catalog_index, fdr_secnum, parent_fdr_secnum;
@@ -1600,7 +1598,7 @@ static imgtoolerr_t ti990_image_writefile(IMAGE *img, const char *fpath, STREAM 
 	int reply;
 	int fdr_secnum;
 
-	str_to_fname(ti_fname, fname);
+	str_to_fname(ti_fname, filename);
 
 	reply = find_fdr(image, ti_fname, &fdr, NULL);
 	if (reply == 0)
@@ -1694,7 +1692,7 @@ static imgtoolerr_t ti990_image_writefile(IMAGE *img, const char *fpath, STREAM 
 /*
 	Delete a file from a ti990_image.
 */
-static imgtoolerr_t ti990_image_deletefile(IMAGE *img, const char *fpath)
+static imgtoolerr_t ti990_image_deletefile(imgtool_image *img, const char *fpath)
 {
 	ti990_image *image = (ti990_image*) img;
 	int catalog_index, fdr_secnum, parent_fdr_secnum;
@@ -1721,7 +1719,7 @@ static imgtoolerr_t ti990_image_deletefile(IMAGE *img, const char *fpath)
 	int reply;
 	UINT8 buf[256];
 
-	str_to_fname(ti_fname, fname);
+	str_to_fname(ti_fname, filename);
 
 	reply = find_fdr(image, ti_fname, &fdr, &catalog_index);
 	if (reply)
@@ -1782,7 +1780,7 @@ static imgtoolerr_t ti990_image_deletefile(IMAGE *img, const char *fpath)
 /*
 	Create a blank ti990_image.
 */
-static imgtoolerr_t ti990_image_create(const struct ImageModule *mod, STREAM *f, option_resolution *createoptions)
+static imgtoolerr_t ti990_image_create(const struct ImageModule *mod, imgtool_stream *f, option_resolution *createoptions)
 {
 	//const char *volname;
 	ti990_geometry geometry;

@@ -1,3 +1,11 @@
+/***************************************************************************
+
+	imgtool.c
+
+	Miscellaneous stuff in the Imgtool core
+
+***************************************************************************/
+
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
@@ -6,158 +14,275 @@
 #include "osd_cpu.h"
 #include "utils.h"
 #include "library.h"
-
-/* Arbitrary */
-#define MAX_OPTIONS	32
+#include "modules.h"
 
 /* ----------------------------------------------------------------------- */
 
-#if 0
-IMAGEMODULE_EXTERN(coco_rsdos);			/* CoCo RS-DOS disks */
-IMAGEMODULE_EXTERN(cococas);			/* CoCo cassettes */
-IMAGEMODULE_EXTERN(concept);			/* Concept Disks */
-IMAGEMODULE_EXTERN(msdos);				/* FAT/MSDOS diskett images */
-IMAGEMODULE_EXTERN(msdoshd);			/* FAT/MSDOS harddisk images */
-IMAGEMODULE_EXTERN(lynx);				/* c64 archive */
-IMAGEMODULE_EXTERN(t64);				/* c64 archive */
-IMAGEMODULE_EXTERN(d64);				/* commodore sx64/vc1541/2031/1551 diskettes */
-IMAGEMODULE_EXTERN(x64);				/* commodore vc1541 diskettes */
-IMAGEMODULE_EXTERN(d71);				/* commodore 128d/1571 diskettes */
-IMAGEMODULE_EXTERN(d81);				/* commodore 65/1565/1581 diskettes */
-IMAGEMODULE_EXTERN(c64crt);				/* c64 cartridge */
-IMAGEMODULE_EXTERN(vmsx_tap);			/* vMSX .tap archiv */
-IMAGEMODULE_EXTERN(vmsx_gm2);			/* vMSX gmaster2.ram file */
-IMAGEMODULE_EXTERN(fmsx_cas);			/* fMSX style .cas file */
-/* IMAGEMODULE_EXTERN(svi_cas);		 */	/* SVI .cas file */
-IMAGEMODULE_EXTERN(xsa);				/* XelaSoft Archive */
-IMAGEMODULE_EXTERN(msx_img);			/* bogus MSX images */
-IMAGEMODULE_EXTERN(msx_ddi);			/* bogus MSX images */
-IMAGEMODULE_EXTERN(msx_msx);			/* bogus MSX images */
-IMAGEMODULE_EXTERN(msx_mul);			/* bogus MSX images */
-IMAGEMODULE_EXTERN(rom16);
-IMAGEMODULE_EXTERN(nccard);				/* NC100/NC150/NC200 PCMCIA Card ram image */
-IMAGEMODULE_EXTERN(ti85p);				/* TI-85 program file */
-IMAGEMODULE_EXTERN(ti85s);				/* TI-85 string file */
-IMAGEMODULE_EXTERN(ti85i);				/* TI-85 picture file */
-IMAGEMODULE_EXTERN(ti85n);		/* TI-85 real number file */
-IMAGEMODULE_EXTERN(ti85c);		/* TI-85 complex number file */
-IMAGEMODULE_EXTERN(ti85l);		/* TI-85 list file */
-IMAGEMODULE_EXTERN(ti85k);		/* TI-85 constant file */
-IMAGEMODULE_EXTERN(ti85m);		/* TI-85 matrix file */
-IMAGEMODULE_EXTERN(ti85v);		/* TI-85 vector file */
-IMAGEMODULE_EXTERN(ti85d);		/* TI-85 graphics database file */
-IMAGEMODULE_EXTERN(ti85e);		/* TI-85 equation file */
-IMAGEMODULE_EXTERN(ti85r);		/* TI-85 range settings file */
-IMAGEMODULE_EXTERN(ti85g);		/* TI-85 grouped file */
-IMAGEMODULE_EXTERN(ti85);		/* TI-85 file */
-IMAGEMODULE_EXTERN(ti85b);		/* TI-85 memory backup file */
-IMAGEMODULE_EXTERN(ti86p);		/* TI-86 program file */
-IMAGEMODULE_EXTERN(ti86s);		/* TI-86 string file */
-IMAGEMODULE_EXTERN(ti86i);		/* TI-86 picture file */
-IMAGEMODULE_EXTERN(ti86n);		/* TI-86 real number file */
-IMAGEMODULE_EXTERN(ti86c);		/* TI-86 complex number file */
-IMAGEMODULE_EXTERN(ti86l);		/* TI-86 list file */
-IMAGEMODULE_EXTERN(ti86k);		/* TI-86 constant file */
-IMAGEMODULE_EXTERN(ti86m);		/* TI-86 matrix file */
-IMAGEMODULE_EXTERN(ti86v);		/* TI-86 vector file */
-IMAGEMODULE_EXTERN(ti86d);		/* TI-86 graphics database file */
-IMAGEMODULE_EXTERN(ti86e);		/* TI-86 equation file */
-IMAGEMODULE_EXTERN(ti86r);		/* TI-86 range settings file */
-IMAGEMODULE_EXTERN(ti86g);		/* TI-86 grouped file */
-IMAGEMODULE_EXTERN(ti86);		/* TI-86 file */
-IMAGEMODULE_EXTERN(ti99_old);	/* TI99 floppy (old MESS format) */
-IMAGEMODULE_EXTERN(v9t9);		/* TI99 floppy (V9T9 format) */
-IMAGEMODULE_EXTERN(pc99fm);		/* TI99 floppy (PC99 FM format) */
-IMAGEMODULE_EXTERN(pc99mfm);	/* TI99 floppy (PC99 MFM format) */
-IMAGEMODULE_EXTERN(ti99hd);		/* TI99 hard disk */
-IMAGEMODULE_EXTERN(ti990dsk);	/* TI990 disk */
-IMAGEMODULE_EXTERN(mac);		/* macintosh disk image */
-IMAGEMODULE_EXTERN(sord_cas);	/* Sord M5 cassettes */
-
-static const ImageModule_ctor module_ctors[] =
+struct imgtool_module_features img_get_module_features(const struct ImageModule *module)
 {
-	IMAGEMODULE_DECL(coco_rsdos),
-	IMAGEMODULE_DECL(cococas),
-	IMAGEMODULE_DECL(concept),
-	IMAGEMODULE_DECL(msdos),
-	IMAGEMODULE_DECL(msdoshd),
-	IMAGEMODULE_DECL(nes),
-	IMAGEMODULE_DECL(a5200),
-	IMAGEMODULE_DECL(a7800),
-	IMAGEMODULE_DECL(advision),
-	IMAGEMODULE_DECL(astrocde),
-	IMAGEMODULE_DECL(c16),
-	IMAGEMODULE_DECL(c64crt),
-	IMAGEMODULE_DECL(t64),
-	IMAGEMODULE_DECL(lynx),
-	IMAGEMODULE_DECL(d64),
-	IMAGEMODULE_DECL(x64),
-	IMAGEMODULE_DECL(d71),
-	IMAGEMODULE_DECL(d81),
-	IMAGEMODULE_DECL(coleco),
-	IMAGEMODULE_DECL(gameboy),
-	IMAGEMODULE_DECL(gamegear),
-	IMAGEMODULE_DECL(genesis),
-	IMAGEMODULE_DECL(max),
-	IMAGEMODULE_DECL(msx),
-	IMAGEMODULE_DECL(pdp1),
-	IMAGEMODULE_DECL(plus4),
-	IMAGEMODULE_DECL(sms),
-	IMAGEMODULE_DECL(ti99_4a),
-	IMAGEMODULE_DECL(vc20),
-	IMAGEMODULE_DECL(vectrex),
-	IMAGEMODULE_DECL(vic20),
-	IMAGEMODULE_DECL(vmsx_tap),
-	IMAGEMODULE_DECL(vmsx_gm2),
-	IMAGEMODULE_DECL(fmsx_cas),
-	IMAGEMODULE_DECL(msx_img),
-	IMAGEMODULE_DECL(msx_ddi),
-	IMAGEMODULE_DECL(msx_msx),
-	IMAGEMODULE_DECL(msx_mul),
-	IMAGEMODULE_DECL(xsa),
-/*	IMAGEMODULE_DECL(svi_cas),  -- doesn't work yet! */
-	IMAGEMODULE_DECL(rom16),
-	IMAGEMODULE_DECL(nccard),
-	IMAGEMODULE_DECL(ti85p),
-	IMAGEMODULE_DECL(ti85s),
-	IMAGEMODULE_DECL(ti85i),
-	IMAGEMODULE_DECL(ti85n),
-	IMAGEMODULE_DECL(ti85c),
-	IMAGEMODULE_DECL(ti85l),
-	IMAGEMODULE_DECL(ti85k),
-	IMAGEMODULE_DECL(ti85m),
-	IMAGEMODULE_DECL(ti85v),
-	IMAGEMODULE_DECL(ti85d),
-	IMAGEMODULE_DECL(ti85e),
-	IMAGEMODULE_DECL(ti85r),
-	IMAGEMODULE_DECL(ti85g),
-	IMAGEMODULE_DECL(ti85),
-	IMAGEMODULE_DECL(ti85b),
-	IMAGEMODULE_DECL(ti86p),
-	IMAGEMODULE_DECL(ti86s),
-	IMAGEMODULE_DECL(ti86i),
-	IMAGEMODULE_DECL(ti86n),
-	IMAGEMODULE_DECL(ti86c),
-	IMAGEMODULE_DECL(ti86l),
-	IMAGEMODULE_DECL(ti86k),
-	IMAGEMODULE_DECL(ti86m),
-	IMAGEMODULE_DECL(ti86v),
-	IMAGEMODULE_DECL(ti86d),
-	IMAGEMODULE_DECL(ti86e),
-	IMAGEMODULE_DECL(ti86r),
-	IMAGEMODULE_DECL(ti86g),
-	IMAGEMODULE_DECL(ti86),
-	IMAGEMODULE_DECL(ti99_old),
-	IMAGEMODULE_DECL(v9t9),
-	IMAGEMODULE_DECL(pc99fm),
-	IMAGEMODULE_DECL(pc99mfm),
-	IMAGEMODULE_DECL(ti99hd),
-	IMAGEMODULE_DECL(ti990dsk),
-	IMAGEMODULE_DECL(mac),
-	IMAGEMODULE_DECL(sord_cas)
-};
-#endif
+	struct imgtool_module_features features;
+	memset(&features, 0, sizeof(features));
+
+	if (module->create)
+		features.supports_create = 1;
+	if (module->open)
+		features.supports_open = 1;
+	if (module->read_file)
+		features.supports_reading = 1;
+	if (module->write_file)
+		features.supports_writing = 1;
+	if (module->delete_file)
+		features.supports_deleting = 1;
+	if (module->path_separator)
+		features.supports_directories = 1;
+	return features;
+}
+
+
+
+static imgtoolerr_t evaluate_module(const char *fname,
+	const struct ImageModule *module, float *result)
+{
+	imgtoolerr_t err;
+	imgtool_image *image = NULL;
+	imgtool_imageenum *imageenum = NULL;
+	char filename[256];
+	char attr[32];
+	imgtool_dirent ent;
+	float current_result;
+
+	*result = 0.0;
+
+	err = img_open(module, fname, OSD_FOPEN_READ, &image);
+	if (err)
+		goto done;
+
+	if (image)
+	{
+		current_result = 0.5;
+
+		err = img_beginenum(image, NULL, &imageenum);
+		if (err)
+			goto done;
+
+		memset(&ent, 0, sizeof(ent));
+		ent.filename = filename;
+		ent.filename_len = sizeof(filename) / sizeof(filename[0]);
+		ent.attr = attr;
+		ent.attr_len = sizeof(attr) / sizeof(attr[0]);
+
+		do
+		{
+			err = img_nextenum(imageenum, &ent);
+			if (err)
+				goto done;
+
+			if (ent.corrupt)
+				current_result = (current_result * 99 + 1.00) / 100;
+			else
+				current_result = (current_result + 1.00) / 2;
+		}
+		while(!ent.eof);
+
+		*result = current_result;
+	}
+
+done:
+	if (ERRORCODE(err) == IMGTOOLERR_CORRUPTIMAGE)
+		err = IMGTOOLERR_SUCCESS;
+	if (imageenum)
+		img_closeenum(imageenum);
+	if (image)
+		img_close(image);
+	return err;
+}
+
+
+
+imgtoolerr_t img_identify(imgtool_library *library, const char *fname,
+	ImageModuleConstPtr *modules, size_t count)
+{
+	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
+	const struct ImageModule *module = NULL;
+	const struct ImageModule *insert_module;
+	const struct ImageModule *temp_module;
+	size_t i = 0;
+	const char *extension;
+	float val, temp_val, *values = NULL;
+
+	if (count <= 0)
+	{
+		err = IMGTOOLERR_UNEXPECTED;
+		goto done;
+	}
+
+	for (i = 0; i < count; i++)
+		modules[i] = NULL;
+	if (count > 1)
+		count--;		/* null terminate */
+
+	values = (float *) malloc(count * sizeof(*values));
+	if (!values)
+	{
+		err = IMGTOOLERR_OUTOFMEMORY;
+		goto done;
+	}
+	for (i = 0; i < count; i++)
+		values[i] = 0.0;
+
+	/* figure out the file extension, if any */
+	extension = strrchr(fname, '.');
+	if (extension)
+		extension++;
+
+	/* iterate through all modules */
+	while((module = imgtool_library_iterate(library, module)) != NULL)
+	{
+		if (!extension || findextension(module->extensions, extension))
+		{
+			err = evaluate_module(fname, module, &val);
+			if (err)
+				goto done;
+
+			insert_module = module;
+			for (i = 0; (val > 0.0) && (i < count); i++)
+			{
+				if (val > values[i])
+				{
+					temp_val = values[i];
+					temp_module = modules[i];
+					values[i] = val;
+					modules[i] = insert_module;
+					val = temp_val;
+					insert_module = temp_module;
+				}
+			}
+		}
+	}
+
+	if (!modules[0])
+		err = IMGTOOLERR_MODULENOTFOUND;
+
+done:
+	if (values)
+		free(values);
+	return err;
+}
+
+
 
 /* ----------------------------------------------------------------------- */
 
+int imgtool_validitychecks(void)
+{
+	int error = 0;
+	int val;
+	imgtoolerr_t err;
+	imgtool_library *library;
+	const struct ImageModule *module = NULL;
+	const struct OptionGuide *guide_entry;
+	struct imgtool_module_features features;
+
+	err = imgtool_create_cannonical_library(&library);
+	if (err)
+		goto done;
+
+	while((module = imgtool_library_iterate(library, module)) != NULL)
+	{
+		features = img_get_module_features(module);
+
+		if (!module->name)
+		{
+			printf("imgtool module %s has null 'name'\n", module->name);
+			error = 1;
+		}
+		if (!module->description)
+		{
+			printf("imgtool module %s has null 'description'\n", module->name);
+			error = 1;
+		}
+		if (!module->extensions)
+		{
+			printf("imgtool module %s has null 'extensions'\n", module->extensions);
+			error = 1;
+		}
+
+		if (features.supports_directories)
+		{
+			if (module->write_file)
+			{
+				printf("imgtool module %s supports directories and write_file without core support\n", module->name);
+				error = 1;
+			}
+
+			if (module->delete_file)
+			{
+				printf("imgtool module %s supports directories and delete_file without core support\n", module->name);
+				error = 1;
+			}
+		}
+
+		/* sanity checks on creation options */
+		if (module->createimage_optguide || module->createimage_optspec)
+		{
+			if (!module->create)
+			{
+				printf("imgtool module %s has creation options without supporting create\n", module->name);
+				error = 1;
+			}
+			if (!module->createimage_optguide || !module->createimage_optspec)
+			{
+				printf("imgtool module %s does has partially incomplete creation options\n", module->name);
+				error = 1;
+			}
+
+			if (module->createimage_optguide && module->createimage_optspec)
+			{
+				guide_entry = module->createimage_optguide;
+				while(guide_entry->option_type != OPTIONTYPE_END)
+				{
+					if (option_resolution_contains(module->createimage_optspec, guide_entry->parameter))
+					{
+						switch(guide_entry->option_type)
+						{
+							case OPTIONTYPE_INT:
+							case OPTIONTYPE_ENUM_BEGIN:
+								err = option_resolution_getdefault(module->createimage_optspec,
+									guide_entry->parameter, &val);
+								if (err)
+									goto done;
+								break;
+
+							default:
+								break;
+						}
+						if (!guide_entry->identifier)
+						{
+							printf("imgtool module %s creation option %d has null identifier\n",
+								module->name, guide_entry - module->createimage_optguide);
+							error = 1;
+						}
+						if (!guide_entry->display_name)
+						{
+							printf("imgtool module %s creation option %d has null display_name\n",
+								module->name, guide_entry - module->createimage_optguide);
+							error = 1;
+						}
+					}
+					guide_entry++;
+				}
+			}
+		}
+	}
+
+done:
+	if (err)
+	{
+		printf("imgtool: %s\n", imgtool_error(err));
+		error = 1;
+	}
+	if (library)
+		imgtool_library_close(library);
+	return error;
+}
 

@@ -22,9 +22,10 @@ typedef struct
 
 void pile_init(mess_pile *pile);
 void pile_delete(mess_pile *pile);
+void pile_clear(mess_pile *pile);
 void *pile_detach(mess_pile *pile);
-void *pile_getptr(mess_pile *pile);
 int pile_write(mess_pile *pile, const void *ptr, size_t size);
+int pile_writebyte(mess_pile *pile, char byte, size_t size);
 
 INLINE void *pile_getptr(mess_pile *pile)
 {

@@ -5,7 +5,6 @@
 #include <time.h>
 #include <assert.h>
 #include "imgtool.h"
-#include "snprintf.h"
 #include "utils.h"
 #include "mess.h"
 #include "main.h"
@@ -24,6 +23,8 @@ static void writeusage(FILE *f, int write_word_usage, struct command *c, char *a
 		c->name,
 		c->usage ? c->usage : "");
 }
+
+
 
 /* ----------------------------------------------------------------------- */
 
@@ -101,6 +102,8 @@ error:
 	return -1;
 }
 
+
+
 void reporterror(imgtoolerr_t err, const struct command *c, const char *format, const char *imagename,
 	const char *filename, const char *newname, option_resolution *opts)
 {
@@ -134,32 +137,36 @@ void reporterror(imgtoolerr_t err, const struct command *c, const char *format, 
 	fprintf(stderr, "%s: %s\n", src, err_name);
 }
 
+
+
 /* ----------------------------------------------------------------------- */
 
 static int cmd_dir(const struct command *c, int argc, char *argv[])
 {
-	int err, total_count, total_size, freespace_err;
-	int freespace;
-	IMAGE *img;
-	IMAGEENUM *imgenum;
+	imgtoolerr_t err;
+	int total_count, total_size, freespace_err;
+	UINT64 freespace;
+	imgtool_image *img = NULL;
+	imgtool_imageenum *imgenum = NULL;
 	imgtool_dirent ent;
 	char buf[512];
 	char attrbuf[50];
+	const char *path;
 
 	/* attempt to open image */
 	err = img_open_byname(library, argv[0], argv[1], OSD_FOPEN_READ, &img);
 	if (err)
-		goto error;
+		goto done;
 
-	err = img_beginenum(img, &imgenum);
-	if (err) {
-		img_close(img);
-		goto error;
-	}
+	path = argc > 2 ? argv[2] : NULL;
+
+	err = img_beginenum(img, path, &imgenum);
+	if (err)
+		goto done;
 
 	memset(&ent, 0, sizeof(ent));
-	ent.fname = buf;
-	ent.fname_len = sizeof(buf);
+	ent.filename = buf;
+	ent.filename_len = sizeof(buf);
 	ent.attr = attrbuf;
 	ent.attr_len = sizeof(attrbuf);
 
@@ -175,34 +182,37 @@ static int cmd_dir(const struct command *c, int argc, char *argv[])
 
 	while (((err = img_nextenum(imgenum, &ent)) == 0) && !ent.eof)
 	{
-		fprintf(stdout, "%-20s\t%8d %15s\n", ent.fname, ent.filesize, ent.attr);
+		fprintf(stdout, "%-20s\t%8u %15s\n", ent.filename, (unsigned int) ent.filesize, ent.attr);
 		total_count++;
 		total_size += ent.filesize;
 	}
 
 	freespace_err = img_freespace(img, &freespace);
 
-	img_closeenum(imgenum);
-	img_close(img);
-
 	if (err)
-		goto error;
+		goto done;
 
 	fprintf(stdout, "------------------------  ------ ---------------\n");
 	fprintf(stdout, "%8i File(s)        %8i bytes\n", total_count, total_size);
 	if (!freespace_err)
-		fprintf(stdout, "                        %8d bytes free\n", freespace);
-	return 0;
+		fprintf(stdout, "                        %8u bytes free\n", (unsigned int) freespace);
 
-error:
-	reporterror(err, c, argv[0], argv[1], NULL, NULL, NULL);
-	return -1;
+done:
+	if (imgenum)
+		img_closeenum(imgenum);
+	if (img)
+		img_close(img);
+	if (err)
+		reporterror(err, c, argv[0], argv[1], NULL, NULL, NULL);
+	return err ? -1 : 0;
 }
+
+
 
 static int cmd_get(const struct command *c, int argc, char *argv[])
 {
-	int err;
-	IMAGE *img;
+	imgtoolerr_t err;
+	imgtool_image *img;
 	char *newfname;
 	int unnamedargs;
 	FILTERMODULE filter;
@@ -228,11 +238,14 @@ error:
 	return -1;
 }
 
+
+
 static int cmd_put(const struct command *c, int argc, char *argv[])
 {
-	int err, i;
-	IMAGE *img;
-	const char *fname = NULL;
+	imgtoolerr_t err;
+	int i;
+	imgtool_image *img;
+	const char *filename = NULL;
 	int unnamedargs;
 	FILTERMODULE filter;
 	const struct ImageModule *module;
@@ -266,9 +279,9 @@ static int cmd_put(const struct command *c, int argc, char *argv[])
 
 	for (i = 2; i < unnamedargs; i++)
 	{
-		fname = argv[i];
-		printf("Putting file '%s'...\n", fname);
-		err = img_putfile(img, NULL, fname, resolution, filter);
+		filename = argv[i];
+		printf("Putting file '%s'...\n", filename);
+		err = img_putfile(img, NULL, filename, resolution, filter);
 		if (err)
 			goto error;
 	}
@@ -283,64 +296,71 @@ error:
 		img_close(img);
 	if (resolution)
 		option_resolution_close(resolution);
-	reporterror(err, c, argv[0], argv[1], fname, NULL, resolution);
+	reporterror(err, c, argv[0], argv[1], filename, NULL, resolution);
 	return -1;
 }
 
+
+
 static int cmd_getall(const struct command *c, int argc, char *argv[])
 {
-	int err;
-	IMAGE *img;
-	IMAGEENUM *imgenum;
+	imgtoolerr_t err;
+	imgtool_image *img = NULL;
+	imgtool_imageenum *imgenum;
 	imgtool_dirent ent;
 	FILTERMODULE filter;
 	int unnamedargs;
 	char buf[128];
+	const char *path = NULL;
+	int arg;
 
 	err = img_open_byname(library, argv[0], argv[1], OSD_FOPEN_READ, &img);
 	if (err)
-		goto error;
+		goto done;
 
-	unnamedargs = parse_options(argc, argv, 2, 2, NULL, &filter);
-	if (unnamedargs < 0)
-		return -1;
-
-	err = img_beginenum(img, &imgenum);
-	if (err) {
-		img_close(img);
-		goto error;
+	arg = 2;
+	if ((argc > 2) && (argv[2][0] != '-'))
+	{
+		path = argv[arg++];
 	}
 
+	unnamedargs = parse_options(argc, argv, arg, arg, NULL, &filter);
+	if (unnamedargs < 0)
+		goto done;
+
+	err = img_beginenum(img, path, &imgenum);
+	if (err)
+		goto done;
+
 	memset(&ent, 0, sizeof(ent));
-	ent.fname = buf;
-	ent.fname_len = sizeof(buf);
+	ent.filename = buf;
+	ent.filename_len = sizeof(buf);
 
 	while (((err = img_nextenum(imgenum, &ent)) == 0) && !ent.eof)
 	{
-		fprintf(stdout, "Retrieving %s (%i bytes)\n", ent.fname, ent.filesize);
+		fprintf(stdout, "Retrieving %s (%u bytes)\n", ent.filename, (unsigned int) ent.filesize);
 
-		err = img_getfile(img, ent.fname, NULL, filter);
+		err = img_getfile(img, ent.filename, NULL, filter);
 		if (err)
-			break;
+			goto done;
 	}
 
-	img_closeenum(imgenum);
-	img_close(img);
-
+done:
+	if (imgenum)
+		img_closeenum(imgenum);
+	if (img)
+		img_close(img);
 	if (err)
-		goto error;
-
-	return 0;
-
-error:
-	reporterror(err, c, argv[0], argv[1], NULL, NULL, NULL);
-	return -1;
+		reporterror(err, c, argv[0], argv[1], NULL, NULL, NULL);
+	return err ? -1 : 0;
 }
+
+
 
 static int cmd_del(const struct command *c, int argc, char *argv[])
 {
 	imgtoolerr_t err;
-	IMAGE *img;
+	imgtool_image *img;
 
 	err = img_open_byname(library, argv[0], argv[1], OSD_FOPEN_RW, &img);
 	if (err)
@@ -357,6 +377,32 @@ error:
 	reporterror(err, c, argv[0], argv[1], argv[2], argv[3], NULL);
 	return -1;
 }
+
+
+
+static int cmd_identify(const struct command *c, int argc, char *argv[])
+{
+	const struct ImageModule *modules[128];
+	imgtoolerr_t err;
+	int i;
+
+	err = img_identify(library, argv[0], modules, sizeof(modules) / sizeof(modules[0]));
+	if (err)
+		goto error;
+
+	for (i = 0; modules[i]; i++)
+	{
+		printf("%.16s %s\n", modules[i]->name, modules[i]->description);
+	}
+
+	return 0;
+
+error:
+	reporterror(err, c, NULL, argv[0], NULL, NULL, 0);
+	return -1;
+}
+
+
 
 static int cmd_create(const struct command *c, int argc, char *argv[])
 {
@@ -386,7 +432,7 @@ static int cmd_create(const struct command *c, int argc, char *argv[])
 	if (unnamedargs < 0)
 		return -1;
 
-	err = img_create(module, argv[1], resolution);
+	err = img_create(module, argv[1], resolution, NULL);
 	if (err)
 		goto error;
 
@@ -400,6 +446,8 @@ error:
 	reporterror(err, c, argv[0], argv[1], NULL, NULL, 0);
 	return -1;
 }
+
+
 
 static int cmd_listformats(const struct command *c, int argc, char *argv[])
 {
@@ -416,6 +464,8 @@ static int cmd_listformats(const struct command *c, int argc, char *argv[])
 
 	return 0;
 }
+
+
 
 static int cmd_listfilters(const struct command *c, int argc, char *argv[])
 {
@@ -551,12 +601,14 @@ error:
 	return -1;
 }
 
+
+
 /* ----------------------------------------------------------------------- */
 
 #ifdef MAME_DEBUG
 static int cmd_test(const struct command *c, int argc, char *argv[])
 {
-	int err;
+	imgtoolerr_t err;
 	const char *module_name;
 
 	module_name = (argc > 0) ? argv[0] : NULL;
@@ -579,6 +631,8 @@ error:
 }
 #endif
 
+
+
 /* ----------------------------------------------------------------------- */
 
 static struct command cmds[] =
@@ -588,11 +642,12 @@ static struct command cmds[] =
 //	{ "testsuite",			cmd_testsuite,			"<testsuitefile>", 1, 1, 0 },
 #endif
 	{ "create",				cmd_create,				"<format> <imagename>", 2, 8, 0},
-	{ "dir",				cmd_dir,				"<format> <imagename>...", 2, 2, 1 },
+	{ "dir",				cmd_dir,				"<format> <imagename> [path]", 2, 3, 0 },
 	{ "get",				cmd_get,				"<format> <imagename> <filename> [newname] [--filter=filter]", 3, 4, 0 },
 	{ "put",				cmd_put,				"<format> <imagename> <filename>...[--(fileoption)==value] [--filter=filter]", 3, 0xffff, 0 },
-	{ "getall",				cmd_getall,				"<format> <imagename> [--filter=filter]", 2, 2, 0 },
+	{ "getall",				cmd_getall,				"<format> <imagename> [path] [--filter=filter]", 2, 3, 0 },
 	{ "del",				cmd_del,				"<format> <imagename> <filename>...", 3, 3, 1 },
+	{ "identify",			cmd_identify,			"<imagename>", 1, 1 },
 	{ "listformats",		cmd_listformats,		NULL, 0, 0, 0 },
 	{ "listfilters",		cmd_listfilters,		NULL, 0, 0, 0 },
 	{ "listdriveroptions",	cmd_listdriveroptions, "<format>", 1, 1, 0 }
@@ -615,12 +670,19 @@ void win_expand_wildcards(int *argc, char **argv[])
 }
 #endif
 
+
+
 int CLIB_DECL main(int argc, char *argv[])
 {
 	int i;
 	int result;
 	struct command *c;
 	imgtoolerr_t err;
+
+#ifdef MAME_DEBUG
+	if (imgtool_validitychecks())
+		return -1;
+#endif /* MAME_DEBUG */
 
 #ifdef WIN32
 	win_expand_wildcards(&argc, &argv);

@@ -320,6 +320,10 @@ static floperr_t coco_os9_readheader(floppy_image *floppy, struct basicdsk_geome
 	geometry->sector_length = 256;
 	geometry->sectors = (header[0x11] << 8) + header[0x12];
 	geometry->heads = (header[0x10] & 0x01) ? 2 : 1;
+
+	if (!geometry->sectors)
+		return FLOPPY_ERROR_INVALIDIMAGE;
+
 	geometry->tracks = total_sectors / geometry->sectors / geometry->heads;
 
 	if (total_sectors != geometry->tracks * geometry->sectors * geometry->heads)
@@ -725,6 +729,7 @@ static floperr_t coco_dmk_format_track(floppy_image *floppy, int head, int track
 	UINT16 idam_offset;
 	UINT16 crc;
 	UINT8 *track_data;
+	void *track_data_v;
 	UINT32 max_track_size;
 	int *sector_map = NULL;
             
@@ -747,9 +752,10 @@ static floperr_t coco_dmk_format_track(floppy_image *floppy, int head, int track
 		goto done;
 	}
 		
-	err = floppy_load_track(floppy, head, track, TRUE, (void **) &track_data, NULL);
+	err = floppy_load_track(floppy, head, track, TRUE, &track_data_v, NULL);
 	if (err)
 		goto done;
+	track_data = (UINT8 *) track_data_v;
 
 	/* set up sector map */
 	sector_map = malloc(sectors * sizeof(*sector_map));
@@ -881,12 +887,14 @@ static floperr_t coco_dmk_seek_sector_in_track(floppy_image *floppy, int head, i
 	size_t offs;
 	int state;
 	UINT8 *track_data;
+	void *track_data_v;
 	size_t track_length;
 	size_t sec_len;
 
-	err = floppy_load_track(floppy, head, track, dirtify, (void **) &track_data, &track_length);
+	err = floppy_load_track(floppy, head, track, dirtify, &track_data_v, &track_length);
 	if (err)
 		return err;
+	track_data = (UINT8 *) track_data_v;
 		
 	/* search for matching IDAM */
 	for (i = 0; i < DMK_TOC_LEN; i++)
@@ -910,8 +918,8 @@ static floperr_t coco_dmk_seek_sector_in_track(floppy_image *floppy, int head, i
 
 		/* check IDAM integrity and check for matching sector */
 		if ((calculated_crc == dmk_idam_crc(&track_data[idam_offset]))
-				&& (track == dmk_idam_track(&track_data[idam_offset]))
-				&& (head == dmk_idam_side(&track_data[idam_offset]))
+/*				&& (track == dmk_idam_track(&track_data[idam_offset]))	*/
+/*				&& (head == dmk_idam_side(&track_data[idam_offset]))	*/
 				&& (sector == dmk_idam_sector(&track_data[idam_offset])))
 			break;
 	}
@@ -962,18 +970,20 @@ static floperr_t coco_dmk_get_sector_length(floppy_image *floppy, int head, int 
 
 
 
-static floperr_t coco_dmk_get_indexed_sector_info(floppy_image *floppy, int head, int track, int sector_index, int *sector, UINT32 *sector_length)
+static floperr_t coco_dmk_get_indexed_sector_info(floppy_image *floppy, int head, int track, int sector_index, int *cylinder, int *sector, UINT32 *sector_length)
 {
 	floperr_t err;
 	UINT32 idam_offset;
 	const UINT8 *track_data;
+	void *track_data_v;
 
 	if (sector_index*2 >= DMK_TOC_LEN)
 		return FLOPPY_ERROR_SEEKERROR;
 
-	err = floppy_load_track(floppy, head, track, FALSE, (void **) &track_data, NULL);
+	err = floppy_load_track(floppy, head, track, FALSE, &track_data_v, NULL);
 	if (err)
 		return err;
+	track_data = (UINT8 *) track_data_v;
 
 	idam_offset = track_data[sector_index * 2 + 1];
 	idam_offset <<= 8;
@@ -983,6 +993,8 @@ static floperr_t coco_dmk_get_indexed_sector_info(floppy_image *floppy, int head
 	if (idam_offset == 0)
 		return FLOPPY_ERROR_SEEKERROR;
 
+	if (cylinder)
+		*cylinder = dmk_idam_track(&track_data[idam_offset]);
 	if (sector)
 		*sector = dmk_idam_sector(&track_data[idam_offset]);
 	if (sector_length)

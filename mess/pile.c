@@ -7,6 +7,9 @@
 
 ****************************************************************************/
 
+#include <string.h>
+#include <stdio.h>
+
 #include "pile.h"
 
 void pile_init(mess_pile *pile)
@@ -25,6 +28,13 @@ void pile_delete(mess_pile *pile)
 		free(pile->ptr);
 		pile_init(pile);
 	}
+}
+
+
+
+void pile_clear(mess_pile *pile)
+{
+	pile_delete(pile);
 }
 
 
@@ -66,6 +76,21 @@ int pile_write(mess_pile *pile, const void *ptr, size_t size)
 	memcpy(((char *) pile->ptr) + pile->logical_size, ptr, size);
 	pile->logical_size = new_logical_size;
 	return 0;
+}
+
+
+
+int pile_writebyte(mess_pile *pile, char byte, size_t size)
+{
+	int rc = 0;
+
+	while(size--)
+	{
+		rc = pile_write(pile, &byte, 1);
+		if (rc)
+			return rc;
+	}
+	return rc;
 }
 
 
