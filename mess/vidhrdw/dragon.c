@@ -133,12 +133,17 @@ static int internal_dragon_vh_start(int m6847_version, void (*charproc)(UINT8))
 
 int dragon_vh_start(void)
 {
-	return internal_dragon_vh_start(M6847_VERSION_ORIGINAL, dragon_charproc);
+	return internal_dragon_vh_start(M6847_VERSION_ORIGINAL_PAL, dragon_charproc );
+}
+
+int coco_vh_start(void)
+{
+	return internal_dragon_vh_start(M6847_VERSION_ORIGINAL_NTSC, dragon_charproc );
 }
 
 int coco2b_vh_start(void)
 {
-	return internal_dragon_vh_start(M6847_VERSION_M6847T1, coco2b_charproc);
+	return internal_dragon_vh_start(M6847_VERSION_M6847T1_NTSC, coco2b_charproc);
 }
 
 WRITE_HANDLER(coco_ram_w)
@@ -174,7 +179,7 @@ int coco3_vh_start(void)
 	struct m6847_init_params p;
 
 	m6847_vh_normalparams(&p);
-	p.version = M6847_VERSION_M6847T1;
+	p.version = M6847_VERSION_M6847T1_NTSC;
 	p.artifactdipswitch = COCO_DIP_ARTIFACTING;
 	p.ram = memory_region(REGION_CPU1);
 	p.ramsize = 0x80000;
@@ -340,17 +345,17 @@ static void coco3_compute_color(int color, int *red, int *green, int *blue)
 static int coco3_palette_recalc(int force)
 {
 	int flag;
-	int i, r, g, b;
+	int i, r, g, b;   
 	static int lastflag;
 
 	flag = readinputport(COCO3_DIP_MONITORTYPE) & (COCO3_DIP_MONITORTYPE_MASK | ((coco3_gimevhreg[0] & 0x10) << 16));
 	if (force || (flag != lastflag)) {
 		lastflag = flag;
 
-		for (i = 0; i < 64; i++) {
-			coco3_compute_color(i, &r, &g, &b);
-			palette_change_color(i, r, g, b);
-		}
+		for (i = 0; i < 64; i++) {   
+			coco3_compute_color(i, &r, &g, &b);   
+			palette_set_color(i, r, g, b);   
+		}   
 		return 1;
 	}
 	return 0;
@@ -364,6 +369,9 @@ void coco3_vh_blink(void)
 WRITE_HANDLER(coco3_palette_w)
 {
 	rastertrack_touchvideomode();
+
+	data &= 0x3f;
+
 	paletteram[offset] = data;
 
 #if LOG_PALETTE
@@ -554,7 +562,7 @@ static void coco3_getcolorrgb(int color, UINT8 *red, UINT8 *green, UINT8 *blue)
  * All models of the CoCo has 262.5 scan lines.  However, we pretend that it has
  * 240 so that the emulation fits on a 640x480 screen
  */
-void coco3_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void coco3_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	if (coco3_palette_recalc(0))
 		full_refresh = 1;
@@ -665,7 +673,7 @@ static void coco3_rastertrack_getvideomode(struct rastertrack_hvars *hvars)
 
 		hvars->mode.width = visualbytesperrow * 8 / hvars->mode.depth;
 		hvars->mode.bytesperrow = (coco3_gimevhreg[7] & 0x80) ? 256 : visualbytesperrow;
-		hvars->border_pen = Machine->pens[coco3_gimevhreg[2] & 0x3f];
+		hvars->border_pen = coco3_gimevhreg[2] & 0x3f;
 		hvars->frame_width = (coco3_gimevhreg[1] & 0x04) ? 640 : 512;
 		hvars->frame_height = rows;
 	}

@@ -42,6 +42,7 @@ void floppy_drives_init(void)
 		/* initialise flags */
 		pDrive->flags = FLOPPY_DRIVE_HEAD_AT_TRACK_0;
 		pDrive->index_pulse_callback = NULL;
+		pDrive->ready_state_change_callback = NULL;
 		pDrive->index_timer = NULL;
 
 		if (i==0)
@@ -63,7 +64,7 @@ void floppy_drives_init(void)
 		/* initialise id index - not so important */
 		pDrive->id_index = 0;
 		/* initialise track */
-		pDrive->current_track = 0;
+		pDrive->current_track = 1;
 	}
 }
 
@@ -107,6 +108,7 @@ static void	floppy_drive_index_callback(int id)
 	}
 }
 
+
 /* set the callback for the index pulse */
 void floppy_drive_set_index_pulse_callback(int id, void (*callback)(int id))
 {
@@ -119,6 +121,20 @@ void floppy_drive_set_index_pulse_callback(int id, void (*callback)(int id))
 	pDrive = &drives[id];
 
 	pDrive->index_pulse_callback = callback;
+}
+
+
+void floppy_drive_set_ready_state_change_callback(int id, void (*callback)(int drive, int state))
+{
+	struct floppy_drive *pDrive;
+
+	/* check it's in range */
+	if ((id<0) || (id>=MAX_DRIVES))
+		return;
+
+	pDrive = &drives[id];
+
+	pDrive->ready_state_change_callback = callback;
 }
 
 /*************************************************************************/
@@ -179,13 +195,33 @@ void floppy_drive_set_disk_image_interface(int id, floppy_interface *iface)
 /* set flag state */
 void floppy_drive_set_flag_state(int id, int flag, int state)
 {
+	int prev_state;
+	int new_state;
+
 	if ((id<0) || (id>=MAX_DRIVES))
 		return;
 
-	drives[id].flags &= ~flag;
+	/* get old state */
+	prev_state = drives[id].flags & flag;
 
+	/* set new state */
+	drives[id].flags &= ~flag;
 	if (state)
 		drives[id].flags |= flag;
+
+	/* get new state */
+	new_state = drives[id].flags & flag;
+
+	/* changed state? */
+	if ((prev_state^new_state)!=0)
+	{
+		if (flag & FLOPPY_DRIVE_READY)
+		{
+			/* trigger state change callback */
+			if (drives[id].ready_state_change_callback)
+				drives[id].ready_state_change_callback(id, new_state);
+		}
+	}
 }
 
 void floppy_drive_set_motor_state(int drive, int state)
@@ -267,12 +303,14 @@ void floppy_drive_set_ready_state(int drive, int state, int flag)
 			{
 				if (floppy_drive_get_flag_state(drive, FLOPPY_DRIVE_MOTOR_ON))
 				{
+
 					/* set state */
 					floppy_drive_set_flag_state(drive, FLOPPY_DRIVE_READY, state);
                     return;
 				}
 			}
 		}
+
 		floppy_drive_set_flag_state(drive, FLOPPY_DRIVE_READY, 0);
 	}
 	else
@@ -302,6 +340,8 @@ int	floppy_drive_get_flag_state(int id, int flag)
     flags |= drive_flags & (FLOPPY_DRIVE_CONNECTED | FLOPPY_DRIVE_READY | FLOPPY_DRIVE_MOTOR_ON | FLOPPY_DRIVE_INDEX);
 
 	flags |= drive_flags & FLOPPY_DRIVE_DISK_INSERTED;
+
+	flags |= drive_flags & FLOPPY_DRIVE_HEAD_AT_TRACK_0;
 
 	/* if disk image is read-only return write protected all the time */
 	if (drive_flags & FLOPPY_DRIVE_DISK_IMAGE_READ_ONLY)
@@ -351,6 +391,12 @@ void	floppy_drive_set_geometry(int id, floppy_type type)
 		}
 		break;
 	}
+}
+
+void	floppy_drive_set_geometry_absolute(int id, int tracks, int sides)
+{
+	drives[id].max_track = tracks;
+	drives[id].num_sides = sides;
 }
 
 void    floppy_drive_seek(int id, signed int signed_tracks)

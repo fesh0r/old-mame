@@ -8,12 +8,6 @@
 #define BLANK_DELAY 0
 #define SH_DELAY 6.333e-6
 
-#define BLACK 0x00
-#define RED   0x04
-#define GREEN 0x02
-#define BLUE  0x01
-#define WHITE RED|GREEN|BLUE
-#define DARKRED 0x08
 #define VEC_SHIFT 16
 #define INT_PER_CLOCK 900
 #define VECTREX_CLOCK 1500000
@@ -43,7 +37,7 @@ static struct via6522_interface vectrex_via6522_interface =
 	vectrex_shift_reg_w, vectrex_screen_update
 };
 
-static struct osd_bitmap *tmpbitmap;
+static struct mame_bitmap *tmpbitmap;
 
 static int x_center, y_center, x_max;
 static int x_int, y_int; /* X, Y integrators IC LF347*/
@@ -97,11 +91,10 @@ static void vectrex_screen_update_backup (int param)
 	}
 }
 
-void vectrex_vh_update (struct osd_bitmap *bitmap, int full_refresh)
+void vectrex_vh_update (struct mame_bitmap *bitmap, int full_refresh)
 {
 	vectrex_full_refresh = full_refresh;
 
-	palette_recalc();
 	vectrex_configuration();
 	copybitmap(bitmap, tmpbitmap,0,0,0,0,0,TRANSPARENCY_NONE,0);
 }
@@ -195,39 +188,11 @@ INLINE void vectrex_solid_line(double time_, int pattern)
 /*********************************************************************
   Color init.
  *********************************************************************/
-static void shade_fill (unsigned char *palette, int rgb, int start_index, int end_index, int start_inten, int end_inten)
-{
-	int i, inten, index_range, inten_range;
 
-	index_range = end_index - start_index;
-	inten_range = end_inten - start_inten;
-	for (i = start_index; i <= end_index; i++)
-	{
-		inten = start_inten + (inten_range) * (i-start_index) / (index_range);
-		palette[3*i  ] = (rgb & RED  )? inten : 0;
-		palette[3*i+1] = (rgb & GREEN)? inten : 0;
-		palette[3*i+2] = (rgb & BLUE )? inten : 0;
-	}
-}
-
-void vectrex_new_palette (unsigned char *palette)
+void vectrex_init_overlay (void)
 {
-	int i, nextfree;
 	char overlay_name[1024];
 	const struct IODevice *dev = Machine->gamedrv->dev;
-
-	/* initialize the first 8 colors with the basic colors */
-	for (i = 0; i < 8; i++)
-	{
-		palette[3*i+0] = (i & RED  ) ? 0xff : 0;
-		palette[3*i+1] = (i & GREEN) ? 0xff : 0;
-		palette[3*i+2] = (i & BLUE ) ? 0xff : 0;
-	}
-	nextfree = 8;
-
-	/* 16 shades of gray for the vector functions */
-	shade_fill (palette, WHITE, nextfree, nextfree+15, 0, 255);
-	nextfree +=16;
 
 	/* try to load an overlay for game.bin named game.png */
 	if (device_filename(dev->type,0))
@@ -239,66 +204,10 @@ void vectrex_new_palette (unsigned char *palette)
 		sprintf(overlay_name,"mine.png"); /* load the minestorm overlay (built in game) */
 
 	artwork_kill(); /* remove existing overlay */
-	overlay_load(overlay_name, nextfree, Machine->drv->total_colors-nextfree);
+	overlay_load(overlay_name, 0);
 
-	if ((artwork_overlay != NULL))
-	{
-		overlay_set_palette (palette, MIN(256, Machine->drv->total_colors) - nextfree);
-	}
-	else
-	{
-		/* Dark red for red/blue glasses mode */
-		palette[3 * 8 + 0] = 160;
-		palette[3 * 8 + 1] = palette[3 * 8 + 2] = 0;
-
-		/* some more white */
-		nextfree -=15;
-		shade_fill (palette, WHITE, nextfree, nextfree + 31, 0, 255);
-		nextfree +=32;
-
-		/* No overlay, so we just put shades of '3D colors' into the palette */
-		shade_fill (palette, RED, nextfree, nextfree + 31, 0, 255);
-		nextfree += 32;
-		shade_fill (palette, GREEN, nextfree, nextfree + 31, 0, 255);
-		nextfree += 32;
-		shade_fill (palette, BLUE, nextfree, nextfree + 31, 0, 255);
-		nextfree += 32;
-		shade_fill (palette, RED|GREEN, nextfree, nextfree + 15, 0, 255);
-		nextfree += 16;
-		shade_fill (palette, RED|BLUE, nextfree, nextfree + 15, 0, 255);
-		nextfree += 16;
-		shade_fill (palette, GREEN|BLUE, nextfree, nextfree + 15, 0, 255);
-	}
 }
 
-void vectrex_set_palette (void)
-{
-	unsigned char *palette;
-	int i;
-
-	palette = (unsigned char *)malloc(Machine->drv->total_colors * 3);
-
-	if (palette == 0)
-	{
-		logerror("Not enough memory!\n");
-		return;
-	}
-
-	memset (palette, 0, Machine->drv->total_colors * 3);
-	vectrex_new_palette (palette);
-
-	i = (Machine->scrbitmap->depth == 8) ? MIN(256,Machine->drv->total_colors)
-		: Machine->drv->total_colors;
-
-	while (--i >= 0)
-		palette_change_color(i, palette[i*3], palette[i*3+1], palette[i*3+2]);
-
-	palette_recalc();
-	artwork_remap(); /* this should be done in the core */
-
-	free (palette);
-	return;
-}
 
 /*********************************************************************
   Startup and stop
@@ -307,7 +216,7 @@ int vectrex_start (void)
 {
 	int width, height;
 
-	vectrex_set_palette ();
+	vectrex_init_overlay ();
 
 	if (Machine->orientation & ORIENTATION_SWAP_XY)
 	{
@@ -353,7 +262,7 @@ int vectrex_start (void)
 
 void vectrex_stop(void)
 {
-	if (tmpbitmap) osd_free_bitmap (tmpbitmap);
+	if (tmpbitmap) bitmap_free (tmpbitmap);
 	vector_clear_list();
 	vector_vh_stop();
 	if (backup_timer) timer_remove (backup_timer);
@@ -472,7 +381,7 @@ static WRITE_HANDLER ( v_via_ca2_w )
 
 *****************************************************************/
 
-extern int png_read_artwork(const char *file_name, struct osd_bitmap **bitmap, unsigned char **palette, int *num_palette, unsigned char **trans, int *num_trans);
+extern int png_read_artwork(const char *file_name, struct mame_bitmap **bitmap, unsigned char **palette, int *num_palette, unsigned char **trans, int *num_trans);
 extern READ_HANDLER ( s1_via_pb_r );
 
 static struct via6522_interface spectrum1_via6522_interface =
@@ -487,46 +396,25 @@ static struct via6522_interface spectrum1_via6522_interface =
 static struct artwork_info *buttons, *led;
 static int transparent_pen;
 
-void raaspec_init_colors (unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
+void raaspec_init_artwork (unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
 {
-	int i;
-
-	/* initialize the first 8 colors with the basic colors */
-	for (i = 0; i < 8; i++)
-	{
-		palette[3*i+0] = (i & RED  ) ? 0xff : 0;
-		palette[3*i+1] = (i & GREEN) ? 0xff : 0;
-		palette[3*i+2] = (i & BLUE ) ? 0xff : 0;
-	}
-
-	/* 16 shades of gray for the vector functions */
-	shade_fill (palette, WHITE, 8, 63, 0, 255);
 	vectrex_refresh_with_T2=1;
 
 	/* artwork */
 	if (Machine->orientation & ORIENTATION_SWAP_XY)
 	{
-		artwork_load_size(&buttons, "spec_bt.png", 64, Machine->drv->total_colors - 64, 
+		artwork_load_size(&buttons, "spec_bt.png", 0, 
 						  (int)(Machine->scrbitmap->height * 0.1151961), Machine->scrbitmap->height);
 		if (buttons)
-			artwork_load_size(&led, "led.png", buttons->start_pen + buttons->num_pens_used, Machine->drv->total_colors - 64 - buttons->num_pens_used, buttons->artwork->width, buttons->artwork->height / 8);
+			artwork_load_size(&led, "led.png", 0, buttons->artwork->width, buttons->artwork->height / 8);
 	}
 	else
 	{
-		artwork_load_size(&buttons, "spec_bt.png", 64, Machine->drv->total_colors - 64, 
+		artwork_load_size(&buttons, "spec_bt.png", 0, 
 						  Machine->scrbitmap->width, (int)(Machine->scrbitmap->width * 0.1151961));
 		if (buttons)
-			artwork_load_size(&led, "led.png", buttons->start_pen + buttons->num_pens_used, Machine->drv->total_colors - 64 - buttons->num_pens_used, buttons->artwork->width / 8, buttons->artwork->height);
+			artwork_load_size(&led, "led.png", 0, buttons->artwork->width / 8, buttons->artwork->height);
 	}
-
-	if (buttons && led)
-	{
-		memcpy (palette+(buttons->start_pen * 3), buttons->orig_palette, 3 * buttons->num_pens_used);
-		memcpy (palette+(led->start_pen * 3), led->orig_palette, 3 * led->num_pens_used);
-		for (i = 0; i < led->num_pens_used; i++)
-			if (led->orig_palette[i*3]+led->orig_palette[i*3+1]+led->orig_palette[i*3+2] == 0)
-				transparent_pen = buttons->start_pen + buttons->num_pens_used + i;
-		}
 }
 
 WRITE_HANDLER( raaspec_led_w )
@@ -604,15 +492,12 @@ int raaspec_start (void)
 		return 1;
 
 	if (led && buttons)
-	{
-		backdrop_refresh(buttons);
-		backdrop_refresh(led);
 		raaspec_led_w (0, 0xff);
-	}
+
 	return 0;
 }
 
-void raaspec_vh_update (struct osd_bitmap *bitmap, int full_refresh)
+void raaspec_vh_update (struct mame_bitmap *bitmap, int full_refresh)
 {
 	copybitmap(bitmap, tmpbitmap,0,0,0,0,0,TRANSPARENCY_NONE,0);
 }

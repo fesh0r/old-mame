@@ -23,11 +23,11 @@ caa5f449 = space_squadron | | | c020 |
 8bf2dfa9 = grand_slam_tennis | | | c022 |
 77c19320 = funky_fish | | | c023 |
 4f19fd9b = pleiades | 1983 | UA | c024 |
-f9d9ec5b = spiders | | | c025 | rasterline effect
-06a86f4a = red_clash | | | c026 |
+bb88daea = spiders | | | c025 | rasterline effect
+a06f284b = red_clash | | | c026 |
 e66f362d = the_end | | | c027 | rasterline effect
-df0bf3fb = astro_invaders | | | c028 | rasterline effect
-306e39c1 = turtles | | | c029 |
+ddcf5b2c = astro_invaders | | | c028 | rasterline effect
+7046e0bc = turtles | | | c029 |
 97060a54 = jumpbug | | | c030 |
 a0626e23 = r2d_tank | | | c031 |
 1cec4b21 = hobo | | | c032 | controls??, rasterline effect
@@ -39,13 +39,29 @@ e93938f6 = basketball | | | |
 83e6e40b = star_chess | | | | how to play?
 1cf08155 = 2001_baseball | | | | how to play?
 449e80cb = ocean_battle | | | | how to play?
-28ad5bcf = autorace | | | |
-82d049d7 = combat | | | |
+99ac48ca = autorace | | | |
+a6bffa9e = combat | | | |
 76e773fa = crazy_climber | | | |
 22624414 = football | | | | sound
 8169864e = route16 | | | |
+6818c8bd = tankgame
+5e033f9c = grand prix de monaco | | | | use keys for steering
+560daa7f = horse_racing | | | | how to play?
+#Hit "0" then "enter" on the keypad, to start the horses racing. That's the big thing to know.
+#
+#Before the race, multiple players can bid. Hit player number (1-6) then
+#enter, type in bet amount then enter, then pick "W" or "E" -- I have no idea
+#what that is, other than maybe Win or Place or Show? -- and then the color
+#of the horse (listed at the bottom). Then start the race.
 
 #[baddumps]
+f9d9ec5b = spiders | | | c025 | overdumped, remove last 4kbyte
+06a86f4a = red_clash | | | c026 | overdumped, remove last 4kbyte
+df0bf3fb = astro_invaders | | | c028 | overdumped, remove last 4kbyte
+306e39c1 = turtles | | | c029 | overdumped, remove last 4kbyte
+28ad5bcf = autorace | | | | overdumped, remove last 4kbyte
+82d049d7 = combat | | | | overdumped, remove last 4kbyte
+9da024d3 = golf | | | | overdumped, remove last 2 kbyte
 8c0c456e = soccer | | | c013 | overdumped, remove last 4kbyte
 dd1facab = super_gobbler | | | c005 | overdumped, remove last 4kbyte
 cca7a60b= golf 0000| | | | 1st of 2 parts, merge with golf 4000

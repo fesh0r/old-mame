@@ -6,8 +6,8 @@
 #include "includes/apf.h"
 
 #include "machine/6821pia.h"
-//#include "includes/i8271.h"
 #include "includes/wd179x.h"
+#include "includes/basicdsk.h"
 
  /*
 0000- 2000-2003 PIA of M1000. is itself repeated until 3fff. 
@@ -34,7 +34,7 @@ static unsigned char pad_data;
 
 READ_HANDLER(apf_m1000_pia_in_a_func)
 {
-	//logerror("pia 0 a r: %04x\n",offset);
+	logerror("pia 0 a r: %04x\n",offset);
 
 	return pad_data;
 }
@@ -98,15 +98,22 @@ WRITE_HANDLER(apf_m1000_pia_out_b_func)
 	if (data & 0x01)
 		pad_data &= readinputport(0);
 
+	/* 1b standard, 5b, db */
+	/* 0001 */
+	/* 0101 */
+	/* 1101 */
 
-//	if (((previous_mode^data) & 0x0f0)!=0)
+	/* multi colour graphics mode */
+	/* 158 = 1001 multi-colour graphics */
+	/* 222 = 1101 mono graphics */
+	//	if (((previous_mode^data) & 0x0f0)!=0)
 	{
 		/* not sure if this is correct - need to check */
 		m6847_ag_w(0,	data & 0x80);
-		m6847_gm2_w(0,	data & 0x40);
-		m6847_gm1_w(0,	data & 0x20);
 		m6847_gm0_w(0,	data & 0x10);
-		m6847_set_cannonical_row_height();
+		m6847_gm1_w(0,	data & 0x20);
+		m6847_gm2_w(0,	data & 0x40);
+/*		m6847_set_cannonical_row_height(); */
 		previous_mode = data;
 	}
 	//	schedule_full_refresh();
@@ -124,17 +131,25 @@ WRITE_HANDLER(apf_m1000_pia_out_cb2_func)
 	speaker_level_w(0, data);
 }
 
-static unsigned char apf_ints;
+/* use bit 0 to identify state of irq from pia 0 */
+/* use bit 1 to identify state of irq from pia 0 */
+/* use bit 2 to identify state of irq from pia 1 */
+/* use bit 3 to identify state of irq from pia 1 */
+/* use bit 4 to identify state of irq from video */
 
-static void apf_update_ints(void)
+unsigned char apf_ints;
+
+void apf_update_ints(void)
 {
 	if (apf_ints!=0)
 	{
 		cpu_set_irq_line(0,0,HOLD_LINE);
+		logerror("set int\n");
 	}
 	else
 	{
 		cpu_set_irq_line(0,0,CLEAR_LINE);
+		logerror("clear int\n");
 	}
 }
 
@@ -191,42 +206,49 @@ struct pia6821_interface apf_m1000_pia_interface=
 
 READ_HANDLER(apf_imagination_pia_in_a_func)
 {
-	//logerror("pia 1 a r: %04x\n",offset);
+	logerror("pia 1 a r: %04x\n",offset);
 
 	return keyboard_data;
 }
 
 READ_HANDLER(apf_imagination_pia_in_b_func)
 {
-	//logerror("pia 1 b r: %04x\n",offset);
+//	logerror("pia 1 b r: %04x\n",offset);
+	unsigned char data;
 
-	return 0x0ff;
+	data = 0x000;
+
+	if (device_input(IO_CASSETTE,0) > 255)
+		data =(1<<7);
+
+	return data;
+//	return 0x0ff;
 }
 
 READ_HANDLER(apf_imagination_pia_in_ca1_func)
 {
-	//logerror("pia 1 ca1 r: %04x\n",offset);
+	logerror("pia 1 ca1 r: %04x\n",offset);
 
 	return 0x00;
 }
 
 READ_HANDLER(apf_imagination_pia_in_cb1_func)
 {
-	//logerror("pia 1 cb1 r: %04x\n",offset);
+	logerror("pia 1 cb1 r: %04x\n",offset);
 
 	return 0x00;
 }
 
 READ_HANDLER(apf_imagination_pia_in_ca2_func)
 {
-	//logerror("pia 1 ca2 r: %04x\n",offset);
+	logerror("pia 1 ca2 r: %04x\n",offset);
 
 	return 0x00;
 }
 
 READ_HANDLER(apf_imagination_pia_in_cb2_func)
 {
-	//logerror("pia 1 cb2 r: %04x\n",offset);
+	logerror("pia 1 cb2 r: %04x\n",offset);
 
 	return 0x00;
 }
@@ -234,23 +256,31 @@ READ_HANDLER(apf_imagination_pia_in_cb2_func)
 
 WRITE_HANDLER(apf_imagination_pia_out_a_func)
 {
-	//logerror("pia 1 a w: %04x %02x\n",offset,data);
+	logerror("pia 1 a w: %04x %02x\n",offset,data);
 }
 
 WRITE_HANDLER(apf_imagination_pia_out_b_func)
 {
 	/* bits 2..0 = keyboard line */
-	/* bit 3 ?? */
+	/* bit 3 = ??? */
 	/* bit 4 = cassette motor */
-	/* bit 5 = activate/deactivate recording */
-	/* bit 5 = level of recording */
+	/* bit 5 = ?? */
+	/* bit 6 = cassette write data */
+	/* bit 7 = ??? */
+
 	int keyboard_line;
 
 	keyboard_line = data & 0x07;
 
 	keyboard_data = readinputport(keyboard_line+4);
 
-	//logerror("pia 1 b w: %04x %02x\n",offset,data);
+	/* bit 4: cassette motor control */
+	device_status(IO_CASSETTE, 0, ((data>>4) & 0x01));
+	/* bit 6: cassette write */
+	device_output(IO_CASSETTE, 0, (data & (1<<6)) ? -32768 : 32767);
+
+
+	logerror("pia 1 b w: %04x %02x\n",offset,data);
 }
 
 WRITE_HANDLER(apf_imagination_pia_out_ca2_func)
@@ -366,13 +396,15 @@ void apf_imagination_init_machine(void)
 	pia_config(1, PIA_STANDARD_ORDERING,&apf_imagination_pia_interface);
 
 	apf_common_init();
+
+	wd179x_init(WD_TYPE_179X,NULL);
 }
 
 void apf_imagination_stop_machine(void)
 {
 	apf_common_exit();
 
-	wd179x_init(WD_TYPE_179X,NULL);
+	wd179x_exit();
 }
 
 void apf_m1000_init_machine(void)
@@ -385,6 +417,71 @@ void apf_m1000_stop_machine(void)
 	apf_common_exit();
 }
 
+
+static WRITE_HANDLER(apf_dischw_w)
+{
+	int drive;
+
+	/* bit 3 is index of drive to select */
+	drive = (data>>3) & 0x01;
+
+	wd179x_set_drive(drive);
+
+	logerror("disc w %04x %04x\n",offset,data);
+}
+
+
+
+READ_HANDLER(serial_r)
+{
+	logerror("serial r %04x\n",offset);
+	return 0x00;
+}
+
+WRITE_HANDLER(serial_w)
+{
+	logerror("serial w %04x %04x\n",offset,data);
+}
+
+static WRITE_HANDLER(apf_wd179x_command_w)
+{
+	wd179x_command_w(offset,~data);
+}
+
+static WRITE_HANDLER(apf_wd179x_track_w)
+{
+	wd179x_track_w(offset,~data);
+}
+
+static WRITE_HANDLER(apf_wd179x_sector_w)
+{
+	wd179x_sector_w(offset,~data);
+}
+
+static WRITE_HANDLER(apf_wd179x_data_w)
+{
+	wd179x_data_w(offset,~data);
+}
+
+static READ_HANDLER(apf_wd179x_status_r)
+{
+	return ~wd179x_status_r(offset);
+}
+
+static READ_HANDLER(apf_wd179x_track_r)
+{
+	return ~wd179x_track_r(offset);
+}
+
+static READ_HANDLER(apf_wd179x_sector_r)
+{
+	return ~wd179x_sector_r(offset);
+}
+
+static READ_HANDLER(apf_wd179x_data_r)
+{
+	return wd179x_data_r(offset);
+}
 
 static MEMORY_READ_START( apf_imagination_readmem )
 	{ 0x00000, 0x003ff, apf_video_r},
@@ -402,10 +499,11 @@ static MEMORY_READ_START( apf_imagination_readmem )
 	{ 0x05000, 0x057ff, MRA_BANK3},
 	{ 0x05800, 0x05fff, MRA_BANK4},
 	{ 0x06000, 0x063ff, apf_pia_1_r},
-	{ 0x06500, 0x06500, wd179x_status_r},
-	{ 0x06501, 0x06501, wd179x_track_r},
-	{ 0x06502, 0x06502, wd179x_sector_r},
-	{ 0x06503, 0x06503, wd179x_data_r},
+	{ 0x06400, 0x064ff, serial_r},
+	{ 0x06500, 0x06500, apf_wd179x_status_r},
+	{ 0x06501, 0x06501, apf_wd179x_track_r},
+	{ 0x06502, 0x06502, apf_wd179x_sector_r},
+	{ 0x06503, 0x06503, apf_wd179x_data_r},
 	{ 0x06800, 0x077ff, MRA_ROM},
 	{ 0x07800, 0x07fff, MRA_NOP},
 	{ 0x08000, 0x09fff, MRA_ROM},
@@ -415,6 +513,7 @@ static MEMORY_READ_START( apf_imagination_readmem )
 	{ 0x0f000, 0x0f7ff, MRA_BANK7},
 	{ 0x0f800, 0x0ffff, MRA_BANK8},
 MEMORY_END
+
 
 static MEMORY_WRITE_START( apf_imagination_writemem )
 	{ 0x00000, 0x003ff, apf_video_w},
@@ -429,10 +528,12 @@ static MEMORY_WRITE_START( apf_imagination_writemem )
 	{ 0x02000, 0x02003, pia_0_w},
 	{ 0x04000, 0x05fff, MWA_ROM},
 	{ 0x06000, 0x063ff, apf_pia_1_w},
-	{ 0x06500, 0x06500, wd179x_command_w},
-	{ 0x06501, 0x06501, wd179x_track_w},
-	{ 0x06502, 0x06502, wd179x_sector_w},
-	{ 0x06503, 0x06503, wd179x_data_w},
+	{ 0x06400, 0x064ff, serial_w},
+	{ 0x06500, 0x06500, apf_wd179x_command_w},
+	{ 0x06501, 0x06501, apf_wd179x_track_w},
+	{ 0x06502, 0x06502, apf_wd179x_sector_w},
+	{ 0x06503, 0x06503, apf_wd179x_data_w},
+	{ 0x06600, 0x06600, apf_dischw_w},
 	{ 0x0a000, 0x0dfff, MWA_RAM},
 	{ 0x0e000, 0x0ffff, MWA_ROM},
 MEMORY_END
@@ -530,21 +631,10 @@ INPUT_PORTS_START( apf_imagination)
 	PORT_BITX( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD, "q", KEYCODE_0_PAD, IP_JOY_NONE)
 	PORT_BITX( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD, "w", KEYCODE_1_PAD, IP_JOY_NONE)
 	PORT_BITX( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD, "e", KEYCODE_2_PAD, IP_JOY_NONE)
-	PORT_BITX( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD, "r", KEYCODE_3_PAD, IP_JOY_NONE)
-	PORT_BITX( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD, "t", KEYCODE_4_PAD, IP_JOY_NONE)
-	PORT_BITX( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD, "y", KEYCODE_5_PAD, IP_JOY_NONE)
-	PORT_BITX( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD, "u", KEYCODE_6_PAD, IP_JOY_NONE)
-	PORT_BITX( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD, "i", KEYCODE_7_PAD, IP_JOY_NONE)
+    PORT_BIT (0x0f8, 0xf8, IPT_UNUSED)
 
 	PORT_START
-	PORT_BITX( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD, "q", KEYCODE_8_PAD, IP_JOY_NONE)
-	PORT_BITX( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD, "w", KEYCODE_9_PAD, IP_JOY_NONE)
-	PORT_BITX( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD, "e", KEYCODE_UP, IP_JOY_NONE)
-	PORT_BITX( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD, "e", KEYCODE_DEL, IP_JOY_NONE)
-	PORT_BITX( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD, "e", KEYCODE_INSERT, IP_JOY_NONE)
-	PORT_BITX( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD, "y", KEYCODE_DOWN, IP_JOY_NONE)
-	PORT_BITX( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD, "u", KEYCODE_LEFT, IP_JOY_NONE)
-	PORT_BITX( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD, "i", KEYCODE_RIGHT, IP_JOY_NONE)
+    PORT_BIT (0x0ff, 0xff, IPT_UNUSED)
 
 	PORT_START
     PORT_BIT (0x0ff, 0xff, IPT_UNUSED)
@@ -615,27 +705,34 @@ INPUT_PORTS_START( apf_imagination)
 	PORT_BITX( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD, ":", KEYCODE_QUOTE, IP_JOY_NONE) /**/
 	PORT_BITX( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD, "ENTER", KEYCODE_ENTER, IP_JOY_NONE) /**/
 	PORT_BIT (0x08, 0x08, IPT_UNUSED)
-	PORT_BIT (0x10, 0x10, IPT_UNUSED)
+	PORT_BIT (0x10, 0x10, IPT_UNUSED) 
 	PORT_BITX( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD, "-", KEYCODE_MINUS, IP_JOY_NONE) /**/
-	PORT_BIT (0x40, 0x40, IPT_UNUSED)
+	PORT_BIT (0x40, 0x40, IPT_UNUSED) 
 	PORT_BITX( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD, "DEL", KEYCODE_BACKSPACE, IP_JOY_NONE) /**/
 
 	/* line 6 */
 	PORT_START
-	PORT_BIT (0x01, 0x01, IPT_UNUSED)
+	PORT_BITX( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD, "SHIFT", KEYCODE_RSHIFT, IP_JOY_NONE) /**/
+	PORT_BITX( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD, "SHIFT", KEYCODE_LSHIFT, IP_JOY_NONE) /**/
 	PORT_BITX( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD, "[", KEYCODE_OPENBRACE, IP_JOY_NONE) /**/
-	PORT_BIT (0x04, 0x04, IPT_UNUSED)
-	PORT_BIT (0x08, 0x08, IPT_UNUSED)
-	PORT_BIT (0x10, 0x10, IPT_UNUSED)
-	PORT_BIT (0x20, 0x20, IPT_UNUSED)
-	PORT_BIT (0x40, 0x40, IPT_UNUSED)
-	PORT_BIT (0x80, 0x80, IPT_UNUSED)
+	PORT_BITX( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD, "FUNCTION?", KEYCODE_LCONTROL, IP_JOY_NONE) /**/
+	PORT_BITX( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD, "REPEAT", KEYCODE_TAB, IP_JOY_NONE) /**/
+
+	PORT_BITX( 0x010, IP_ACTIVE_LOW, IPT_KEYBOARD, "SHIFT", KEYCODE_3_PAD, IP_JOY_NONE) 
+	PORT_BITX( 0x020, IP_ACTIVE_LOW, IPT_KEYBOARD, "SHIFT", KEYCODE_4_PAD, IP_JOY_NONE) 
+	PORT_BITX( 0x040, IP_ACTIVE_LOW, IPT_KEYBOARD, "SHIFT", KEYCODE_5_PAD, IP_JOY_NONE) /* same as X */
+	PORT_BITX( 0x080, IP_ACTIVE_LOW, IPT_KEYBOARD, "SHIFT", KEYCODE_6_PAD, IP_JOY_NONE) /* same as Z */
 
 	/* line 7 */
 	PORT_START
+	PORT_BITX( 0x001, IP_ACTIVE_LOW, IPT_KEYBOARD, "SHIFT", KEYCODE_7_PAD, IP_JOY_NONE) 
+	PORT_BITX( 0x002, IP_ACTIVE_LOW, IPT_KEYBOARD, "SHIFT", KEYCODE_8_PAD, IP_JOY_NONE) 
+	PORT_BITX( 0x004, IP_ACTIVE_LOW, IPT_KEYBOARD, "SHIFT", KEYCODE_9_PAD, IP_JOY_NONE) 
+
+	/*
 	PORT_BIT (0x01, 0x01, IPT_UNUSED)
 	PORT_BIT (0x02, 0x02, IPT_UNUSED)
-	PORT_BIT (0x04, 0x04, IPT_UNUSED)
+	PORT_BIT (0x04, 0x04, IPT_UNUSED) */
 	PORT_BIT (0x08, 0x08, IPT_UNUSED)
 	PORT_BIT (0x10, 0x10, IPT_UNUSED)
 	PORT_BIT (0x20, 0x20, IPT_UNUSED)
@@ -661,7 +758,7 @@ static struct MachineDriver machine_driver_apf_imagination =
 	{
 		{
 			CPU_M6800,
-			3570000,
+			3750000,
 			apf_imagination_readmem,apf_imagination_writemem,
 			0, 0,
 			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
@@ -705,7 +802,7 @@ static struct MachineDriver machine_driver_apf_m1000 =
 	{
 		{
 			CPU_M6800,
-			3570000,
+			3750000,
 			apf_m1000_readmem,apf_m1000_writemem,
 			0, 0,
 			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
@@ -767,7 +864,26 @@ static const struct IODevice io_apfm1000[] =
 
 static const struct IODevice io_apfimag[] =
 {
-	IO_CASSETTE_WAVE(1,"wav\0",NULL,apf_cassette_init,apf_cassette_exit),
+	IO_CASSETTE_WAVE(1,"apt\0wav\0",NULL,apf_cassette_init,apf_cassette_exit),
+	{
+		IO_FLOPPY,					/* type */
+		2,							/* count */
+		"apd\0",                    /* file extensions */
+		IO_RESET_NONE,				/* reset if file changed */
+		0,
+		apfimag_floppy_init,			/* init */
+		basicdsk_floppy_exit,			/* exit */
+		NULL,						/* info */
+		NULL,						/* open */
+		NULL,						/* close */
+		floppy_status,                                           /* status */
+		NULL,                                           /* seek */
+		NULL,						/* tell */
+		NULL,						/* input */
+		NULL,						/* output */
+		NULL,						/* input_chunk */
+		NULL						/* output_chunk */
+	},
 	{ IO_END }
 };
 

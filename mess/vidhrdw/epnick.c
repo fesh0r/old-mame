@@ -97,9 +97,6 @@ void nick_init_palette(unsigned char *palette, unsigned short *colortable,const 
     memcpy(palette, nick_colour_palette , sizeof(nick_colour_palette));
         memcpy(colortable, nick_colour_table, sizeof(nick_colour_table));
         //color_prom=malloc(0*sizeof(char));
-
-        //palette_recalc();
-
 }
 
 /* first clock visible on left hand side */
@@ -943,7 +940,7 @@ void	Nick_reg_w(int RegIndex, int Data)
   }
 }
 
-void    Nick_DoScreen(struct osd_bitmap *bm)
+void    Nick_DoScreen(struct mame_bitmap *bm)
 {
   int line = 0;
 

@@ -185,7 +185,7 @@ static struct {
 
 	int chargenaddr, videoaddr;
 
-	struct osd_bitmap *bitmap;		   /* Machine->scrbitmap for speedup */
+	struct mame_bitmap *bitmap;		   /* Machine->scrbitmap for speedup */
 	int x_begin, x_end;
 	int y_begin, y_end;
 
@@ -749,7 +749,7 @@ static void vic2_draw_character (int ybegin, int yend, int ch,
 {
 	int y, code;
 
-	if (Machine->color_depth == 8)
+/*	if (Machine->color_depth == 8)
 	{
 		for (y = ybegin; y <= yend; y++)
 		{
@@ -766,7 +766,7 @@ static void vic2_draw_character (int ybegin, int yend, int ch,
 		}
 	}
 	else
-	{
+*/	{
 		for (y = ybegin; y <= yend; y++)
 		{
 			code = vic2.dma_read (vic2.chargenaddr + ch * 8 + y);
@@ -788,7 +788,7 @@ static void vic2_draw_character_multi (int ybegin, int yend, int ch,
 {
 	int y, code;
 
-	if (Machine->color_depth == 8)
+/*	if (Machine->color_depth == 8)
 	{
 		for (y = ybegin; y <= yend; y++)
 		{
@@ -805,7 +805,7 @@ static void vic2_draw_character_multi (int ybegin, int yend, int ch,
 		}
 	}
 	else
-	{
+*/	{
 		for (y = ybegin; y <= yend; y++)
 		{
 			code = vic2.dma_read (vic2.chargenaddr + ch * 8 + y);
@@ -827,7 +827,7 @@ static void vic2_draw_bitmap (int ybegin, int yend,
 {
 	int y, code;
 
-	if (Machine->color_depth == 8)
+/*	if (Machine->color_depth == 8)
 	{
 		for (y = ybegin; y <= yend; y++)
 		{
@@ -844,7 +844,7 @@ static void vic2_draw_bitmap (int ybegin, int yend,
 		}
 	}
 	else
-	{
+*/	{
 		for (y = ybegin; y <= yend; y++)
 		{
 			code = vic2.dma_read ((vic2.chargenaddr&0x2000) + ch * 8 + y);
@@ -866,7 +866,7 @@ static void vic2_draw_bitmap_multi (int ybegin, int yend,
 {
 	int y, code;
 
-	if (Machine->color_depth == 8)
+/*	if (Machine->color_depth == 8)
 	{
 		for (y = ybegin; y <= yend; y++)
 		{
@@ -883,7 +883,7 @@ static void vic2_draw_bitmap_multi (int ybegin, int yend,
 		}
 	}
 	else
-	{
+*/	{
 		for (y = ybegin; y <= yend; y++)
 		{
 			code = vic2.dma_read ((vic2.chargenaddr&0x2000) + ch * 8 + y);
@@ -907,7 +907,7 @@ static void vic2_draw_sprite_code_multi (int y, int xbegin,
 
 	if ((y < YPOS) || (y >= 208) || (xbegin <= 1) || (xbegin >= 328))
 		return;
-	if (Machine->color_depth == 8)
+/*	if (Machine->color_depth == 8)
 	{
 		for (x = 0, mask = 0xc0, shift = 6; x < 8; x += 2, mask >>= 2, shift -= 2)
 		{
@@ -933,7 +933,7 @@ static void vic2_draw_sprite_code_multi (int y, int xbegin,
 		}
 	}
 	else
-	{
+*/	{
 		for (x = 0, mask = 0xc0, shift = 6; x < 8; x += 2, mask >>= 2, shift -= 2)
 		{
 			if (code & mask)
@@ -965,7 +965,7 @@ static void vic2_draw_sprite_code (int y, int xbegin, int code, int color)
 
 	if ((y < YPOS) || (y >= 208) || (xbegin <= 1) || (xbegin >= 328))
 		return;
-	if (Machine->color_depth == 8)
+/*	if (Machine->color_depth == 8)
 	{
 		for (x = 0, mask = 0x80; x < 8; x++, mask >>= 1)
 		{
@@ -976,7 +976,7 @@ static void vic2_draw_sprite_code (int y, int xbegin, int code, int color)
 		}
 	}
 	else
-	{
+*/	{
 		for (x = 0, mask = 0x80; x < 8; x++, mask >>= 1)
 		{
 			if (code & mask)
@@ -1250,7 +1250,7 @@ static void vic2_drawlines (int first, int last)
 	if (osd_skip_this_frame ())
 		return;
 
-	
+
 	/* top part of display not rastered */
 	first -= VIC2_YPOS - YPOS;
 	last -= VIC2_YPOS - YPOS;
@@ -1265,13 +1265,13 @@ static void vic2_drawlines (int first, int last)
 
 	if (!SCREENON)
 	{
-		if (Machine->color_depth == 8)
+/*		if (Machine->color_depth == 8)
 		{
 			for (line = first; (line < last) && (line < vic2.bitmap->height); line++)
 				memset (vic2.bitmap->line[line], Machine->pens[0], vic2.bitmap->width);
 		}
 		else
-		{
+*/		{
 			for (line = first; (line < last) && (line < vic2.bitmap->height); line++)
 				memset16 (vic2.bitmap->line[line], Machine->pens[0], vic2.bitmap->width);
 		}
@@ -1290,7 +1290,7 @@ static void vic2_drawlines (int first, int last)
 
 	line=first;
 	if (line<end) {
-		plot_box(vic2.bitmap, 0, line, vic2.bitmap->width, end-line, 
+		plot_box(vic2.bitmap, 0, line, vic2.bitmap->width, end-line,
 				 Machine->pens[FRAMECOLOR]);
 		line=end;
 	}
@@ -1422,9 +1422,9 @@ static void vic2_drawlines (int first, int last)
 				memset (vic2.sprites[i].paintedline, 0, sizeof (vic2.sprites[i].paintedline));
 			}
 		}
-		plot_box(vic2.bitmap, 0, yoff+ybegin, xbegin, yend-ybegin+1, 
+		plot_box(vic2.bitmap, 0, yoff+ybegin, xbegin, yend-ybegin+1,
 				 Machine->pens[FRAMECOLOR]);
-		plot_box(vic2.bitmap, xend, yoff+ybegin, vic2.bitmap->width - xend, yend-ybegin+1, 
+		plot_box(vic2.bitmap, xend, yoff+ybegin, vic2.bitmap->width - xend, yend-ybegin+1,
 				 Machine->pens[FRAMECOLOR]);
 	}
 	if (last < vic2.bitmap->height)
@@ -1432,7 +1432,7 @@ static void vic2_drawlines (int first, int last)
 	else
 		end = vic2.bitmap->height;
 	if (line<end) {
-		plot_box(vic2.bitmap, 0, line, vic2.bitmap->width, end-line, 
+		plot_box(vic2.bitmap, 0, line, vic2.bitmap->width, end-line,
 				 Machine->pens[FRAMECOLOR]);
 		line=end;
 	}
@@ -1468,10 +1468,10 @@ int vic2_raster_irq (void)
 			vic2_drawlines (vic2.lastline, vic2.rasterline);
 		vic2_set_interrupt (1);
 	}
-	return 0;
+	return ignore_interrupt();
 }
 
-void vic2_vh_screenrefresh (struct osd_bitmap *bitmap, int full_refresh)
+void vic2_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
 {
 #if 0
     char text[40];
@@ -1481,7 +1481,7 @@ void vic2_vh_screenrefresh (struct osd_bitmap *bitmap, int full_refresh)
 	    sprintf(text,"%d x:%d y:%d",i,
 		    SPRITE_X_POS(i), SPRITE_Y_POS(i) );
 
-	    ui_text(bitmap,text,0,y); 
+	    ui_text(bitmap,text,0,y);
 	    y+=8;
 	}
     }

@@ -111,7 +111,9 @@ void nes_init_palette(unsigned char *palette, unsigned short *colortable,const u
 	/* Loop through the emphasis modes (8 total) */
 	for (x = 0; x < 8; x ++)
 	{
-		double r_mod, g_mod, b_mod;
+		double r_mod = 0;
+		double g_mod = 0;
+		double b_mod = 0;
 
 		switch (x)
 		{
@@ -222,10 +224,10 @@ int nes_vh_start(void)
 		return 1;
 
 	/* We use an offscreen bitmap that's 4 times as large as the visible one */
-	if ((tmpbitmap = osd_alloc_bitmap(2 * 32*8, 2 * 30*8,Machine->scrbitmap->depth)) == 0)
+	if ((tmpbitmap = bitmap_alloc_depth(2 * 32*8, 2 * 30*8,Machine->scrbitmap->depth)) == 0)
 	{
 		free (videoram);
-		osd_free_bitmap (tmpbitmap);
+		bitmap_free (tmpbitmap);
 		return 1;
 	}
 
@@ -233,7 +235,7 @@ int nes_vh_start(void)
 	if ((spriteram = calloc (SPRITERAM_SIZE,1)) == 0)
 	{
 		free (videoram);
-		osd_free_bitmap (tmpbitmap);
+		bitmap_free (tmpbitmap);
 		return 1;
 	}
 
@@ -246,7 +248,7 @@ int nes_vh_start(void)
 	if ((!dirtybuffer) || (!dirtybuffer2) || (!dirtybuffer3) || (!dirtybuffer4))
 	{
 		free (videoram);
-		osd_free_bitmap (tmpbitmap);
+		bitmap_free (tmpbitmap);
 		free (spriteram);
 		if (dirtybuffer)  free (dirtybuffer);
 		if (dirtybuffer2) free (dirtybuffer2);
@@ -295,7 +297,7 @@ void nes_vh_stop(void)
 	free (dirtybuffer3);
 	free (dirtybuffer4);
 #endif
-	osd_free_bitmap (tmpbitmap);
+	bitmap_free (tmpbitmap);
 
 #ifdef LOG_VIDEO
 	if (videolog) fclose (videolog);
@@ -444,12 +446,12 @@ if (videolog) fprintf (videolog, "%02x ", ppu_page[page][address]);
 		{
 			const UINT32 *paldata;
 			const unsigned char *sd;
-			unsigned char *bm;
+//			unsigned char *bm;
 			int start;
 
 //			paldata = &Machine->gfx[gfx_bank]->colortable[4 * (((color_byte >> color_bits) & 0x03)/* % 8*/)];
 			paldata = &paldata_1[4 * (((color_byte >> color_bits) & 0x03))];
-			bm = Machine->scrbitmap->line[scanline] + start_x;
+//			bm = Machine->scrbitmap->line[scanline] + start_x;
 //			sd = &Machine->gfx[gfx_bank]->gfxdata[start * Machine->gfx[gfx_bank]->width];
 			start = (index2 % total_elements) * 8 + scroll_y_fine;
 			sd = &Machine->gfx[gfx_bank]->gfxdata[start * 8];
@@ -617,7 +619,7 @@ static void render_sprites (int scanline)
 			int drawn = 0;
 			const UINT32 *paldata;
 			const unsigned char *sd;
-			unsigned char *bm;
+//			unsigned char *bm;
 			int start;
 
 			sprite_line = scanline - y;
@@ -634,7 +636,7 @@ if ((i == 0) /*&& (spriteram[i+2] & 0x20)*/)
 
 			paldata = &Machine->gfx[gfx_bank]->colortable[4 * color];
 			start = (index1 % Machine->gfx[gfx_bank]->total_elements) * 8 + sprite_line;
-			bm = Machine->scrbitmap->line[scanline] + x;
+//			bm = Machine->scrbitmap->line[scanline] + x;
 			sd = &Machine->gfx[gfx_bank]->gfxdata[start * Machine->gfx[gfx_bank]->width];
 
 			if (pri)
@@ -793,7 +795,7 @@ static void draw_sight(int playerNum, int x_center, int y_center)
 }
 
 /* This routine is called at the start of vblank to refresh the screen */
-void nes_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void nes_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 #ifdef BIG_SCREEN
 	int page;

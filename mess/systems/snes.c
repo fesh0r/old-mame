@@ -60,7 +60,7 @@ int brightnessValue[16]={0x00,0x02,0x04,0x06,0x08,0x0A,0x0C,0x0E,0x10,0x13,0x15,
 
 int snes_line_interrupt(void)
 {
-    struct osd_bitmap *bitmap = Machine->scrbitmap;
+    struct mame_bitmap *bitmap = Machine->scrbitmap;
     unsigned short pal,bri;
     static int CURLINE=0,a;
     int maxLines,r,g,b;
@@ -1069,4 +1069,4 @@ static const struct IODevice io_snes[] =
 };
 
 /*    YEAR  NAME      PARENT    MACHINE         INPUT     INIT          COMPANY                           FULLNAME */
-CONSX( 1989, snes,    0,        snes,          snes,    0,            "Nintendo",    "Super Nintendo Entertainment System" ,GAME_NOT_WORKING|GAME_REQUIRES_16BIT|GAME_NO_SOUND)
+CONSX( 1989, snes,    0,        snes,          snes,    0,            "Nintendo",    "Super Nintendo Entertainment System" ,GAME_NOT_WORKING|GAME_NO_SOUND)

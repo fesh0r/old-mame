@@ -23,6 +23,7 @@
  * - get rid of #ifdef MESS's by providing appropriate hooks
  */
 
+#include <windows.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <time.h>
@@ -38,6 +39,7 @@ extern struct rc_option video_opts[];
 
 #ifdef MESS
 extern struct rc_option mess_opts[];
+void build_crc_database_filename(int game_index);
 #endif
 
 extern int frontend_help(char *gamename);
@@ -45,6 +47,7 @@ static int config_handle_arg(char *arg);
 
 static FILE *logfile;
 static int errorlog;
+static int erroroslog;
 static int showconfig;
 static int showusage;
 static int readconfig;
@@ -152,7 +155,9 @@ static struct rc_option opts[] = {
 	{ NULL, NULL, rc_link, video_opts, NULL, 0,	0, NULL, NULL },
 	{ NULL, NULL, rc_link, sound_opts, NULL, 0,	0, NULL, NULL },
 	{ NULL, NULL, rc_link, input_opts, NULL, 0,	0, NULL, NULL },
-
+#ifdef MESS
+	{ NULL, NULL, rc_link, mess_opts, NULL, 0,	0, NULL, NULL },
+#endif
 	/* options supported by the mame core */
 	/* video */
 	{ "Mame CORE video options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
@@ -189,7 +194,9 @@ static struct rc_option opts[] = {
 #ifndef MESS
 	{ "playback", "pb", rc_string, &playbackname, NULL, 0, 0, NULL, "playback an input file" },
 	{ "record", "rec", rc_string, &recordname, NULL, 0, 0, NULL, "record an input file" },
+#endif
 	{ "log", NULL, rc_bool, &errorlog, "0", 0, 0, init_errorlog, "generate error.log" },
+	{ "oslog", NULL, rc_bool, &erroroslog, "0", 0, 0, NULL, "output error log to debugger" },
 
 	/* config options */
 	{ "Configuration options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
@@ -418,7 +425,11 @@ int cli_frontend_init (int argc, char **argv)
 
 	if (showusage)
 	{
+		#ifndef MESS
 		fprintf(stdout, "Usage: %s [game] [options]\n" "Options:\n", cmd_name);
+		#else
+		fprintf(stdout, "Usage: %s [system] [device] [software] [options]\n" "Options:\n", cmd_name);
+		#endif
 
 		/* actual help message */
 		rc_print_help(rc, stdout);
@@ -478,7 +489,7 @@ int cli_frontend_init (int argc, char **argv)
 	{
 		/* do we have a driver for this? */
 		for (i = 0; drivers[i]; i++)
-			if (strcasecmp(gamename,drivers[i]->name) == 0)
+			if (stricmp(gamename,drivers[i]->name) == 0)
 			{
 				game_index = i;
 				break;
@@ -506,8 +517,13 @@ int cli_frontend_init (int argc, char **argv)
 	/* we give up. print a few approximate matches */
 	if (game_index == -1)
 	{
+		#ifndef MESS
 		fprintf(stderr, "\n\"%s\" approximately matches the following\n"
 				"supported games (best match first):\n\n", gamename);
+		#else
+		fprintf(stderr, "\n\"%s\" approximately matches the following\n"
+				"supported systems (best match first):\n\n", gamename);
+		#endif
 		show_approx_matches();
 		exit(1);
 	}
@@ -560,6 +576,10 @@ int cli_frontend_init (int argc, char **argv)
 		osd_fwrite(options.record, &inp_header, sizeof(INP_HEADER));
 	}
 
+#ifdef MESS
+	build_crc_database_filename(game_index);
+#endif
+
 	/* need a decent default for debug width/height */
 	if (options.debug_width == 0)
 		options.debug_width = 640;
@@ -577,9 +597,10 @@ void cli_frontend_exit(void)
 {
 	/* close open files */
 	if (logfile) fclose(logfile);
-
+#ifndef MESS
 	if (options.playback) osd_fclose(options.playback);
 	if (options.record)   osd_fclose(options.record);
+#endif
 	if (options.language_file) osd_fclose(options.language_file);
 }
 
@@ -628,6 +649,16 @@ void CLIB_DECL logerror(const char *text,...)
 
 	if (errorlog && logfile)
 		vfprintf(logfile, text, arg);
+
+	/* NPW 5-Nov-2001 - support for logging to OutputDebugString() */
+	if (erroroslog)
+	{
+		extern int vsnprintf(char *s, size_t maxlen, const char *fmt, va_list _arg);
+		char buffer[256];
+		vsnprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), text, arg);
+		OutputDebugString(buffer);
+	}
+
 	va_end(arg);
 }
 

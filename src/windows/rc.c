@@ -32,7 +32,6 @@ Version 0.3, Februari 2000
 #include <stdlib.h>
 #include <string.h>
 //#include <pwd.h>
-#include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -40,6 +39,10 @@ Version 0.3, Februari 2000
 #include "misc.h"
 
 #include "rc.h"
+
+#ifndef _MSC_VER
+#include <unistd.h>
+#endif
 
 #define BUF_SIZE 512
 
@@ -99,12 +102,12 @@ static void rc_free_stuff(struct rc_option *option)
             rc_free_stuff(option[i].dest);
             break;
          case rc_string:
-            /* if(*(char **)option[i].dest)
-               free(*(char **)option[i].dest);*/
+            if(*(char **)option[i].dest)
+               free(*(char **)option[i].dest);
             break;
          case rc_file:
-            /* if(*(FILE **)option[i].dest)
-               fclose(*(FILE **)option[i].dest); */
+            if(*(FILE **)option[i].dest)
+               fclose(*(FILE **)option[i].dest);
             break;
       }
    }
@@ -131,8 +134,8 @@ void rc_destroy(struct rc_struct *rc)
       rc_free_stuff(rc->option);
       free (rc->option);
    }
-   /* if(rc->arg)
-      free(rc->arg); */
+   if(rc->arg)
+      free(rc->arg);
    free(rc);
 }
 
@@ -601,8 +604,8 @@ int rc_set_option3(struct rc_option *option, const char *arg, int priority)
                return -1;
             }
             strcpy(str, arg);
-            /* if(*(char **)option->dest)
-               free(*(char **)option->dest);*/
+            if(*(char **)option->dest)
+               free(*(char **)option->dest);
             *(char **)option->dest = str;
          }
          break;

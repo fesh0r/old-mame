@@ -1,15 +1,19 @@
-/* The book of Revelations according to LollypopMan */
-/*                      aka                         */
-/*         Machine functions for the a2600          */
-/*      The Blaggers Guide to Emu Programming       */
-/*                                                  */
-/*  Thanks to Cowering for the research efforts ;)  */
+/***************************************************************************
 
-/* TODO: Better Comments ;) */
+	          The book of Revelations according to LollypopMan
+
+                                  aka
+                      Machine functions for the a2600
+                  The Blaggers Guide to Emu Programming
+
+              Thanks to Cowering for the research efforts ;)
+
+                         TODO: Better Comments ;)
+
+***************************************************************************/
 
 
 #include "driver.h"
-//#include "includes/riot6532.h"
 #include "sound/tiaintf.h"
 #include "sound/tiasound.h"
 #include "cpuintrf.h"
@@ -18,6 +22,10 @@
 #include "zlib.h"
 
 #include "includes/a2600.h"
+
+/* This code is not to be used yet */
+//#define USE_SCANLINE_WSYNC
+
 
 UINT8 Bankswitch_Method = 0;
 static union {
@@ -79,14 +87,12 @@ UINT8 bit_flip_table[] = {
 		0x1f,0x9f,0x5f,0xdf,0x3f,0xbf,0x7f,0xff
 };
 
-
-struct rectangle stella_size = {0, 227, 0, 281};
+/* Back buffer */
+struct rectangle stella_size = {0, 227, 0, 261};
 
 /* for detailed logging */
 #define TIA_VERBOSE 0
 #define RIOT_VERBOSE 0
-
-#define TRIGGER_HSYNC 65532
 
 UINT8 PF_Ref = 0;
 UINT8 TIA_player_0_reflect = 0;
@@ -98,7 +104,6 @@ UINT8 TIA_player_1_tick = 8;
 
 UINT8 PF_Data[160];
 
-
 TIA tia;
 
 UINT8 TMR_Intim = 0;
@@ -109,13 +114,10 @@ UINT8 PF1_Rendered = 0;
 UINT8 PF2_Rendered = 0;
 UINT8 TIA_hmp0 = 0;
 UINT8 TIA_hmp1 = 0;
-static char TIA_movement_table[] =
-{0, 1, 2, 3, 4, 5, 6, 7, -8, -7, -6, -5, -4, -3, -2, -1};
+static char TIA_movement_table[] = {0, 1, 2, 3, 4, 5, 6, 7, -8, -7, -6, -5, -4, -3, -2, -1};
 static char TIA_motion_player_0 = 0;
 static char TIA_motion_player_1 = 0;
-UINT32 a2600_Cycle_Count = 0;
 UINT8 TIA_vblank;
-UINT8 halted = 0;
 UINT32 global_tia_cycle = 0;
 UINT32 previous_tia_cycle = 0;
 
@@ -152,50 +154,19 @@ UINT8 TIA_player_pattern_1_tmp = 0;
 UINT8 TIA_player_delay_1 = 0;
 
 UINT8 HSYNC_colour_clock = 3;
-int flashycolour = 0;
-
-UINT8 RIOT_passedzero = 0;
 
 static void a2600_main_cb(int param);
 
 static void a2600_scanline_cb(void);
-static void a2600_Cycle_cb(int param);
-
-/*static int cpu_current_state;*/
+static void a2600_Cycle_cb(int riotdiff);
 
 static void *HSYNC_timer;
-
-#ifdef USE_RIOT
-static int a2600_riot_a_r(int chip);
-static int a2600_riot_b_r(int chip);
-static void a2600_riot_a_w(int chip, int offset, int data);
-static void a2600_riot_b_w(int chip, int offset, int data);
-
-
-
-static struct RIOTinterface a2600_riot =
-{
-	1,									/* number of chips */
-	{1190000},							/* baseclock of chip */
-	{a2600_riot_a_r},					/* port a input */
-	{a2600_riot_b_r},					/* port b input */
-	{a2600_riot_a_w},					/* port a output */
-	{a2600_riot_b_w},					/* port b output */
-	{NULL}								/* interrupt callback */
-};
-
-#endif
-
 
 static int msize0 = 0;
 static int msize1 = 0;
 
-static int cpu_current_state = 1;		/*running */
-
 /* bitmap */
-static struct osd_bitmap *stella_bitmap = NULL;
-static struct osd_bitmap *stella_backbuffer = NULL;
-
+static struct mame_bitmap *stella_bitmap = NULL;
 
 /* local */
 static unsigned char *a2600_cartridge_rom;
@@ -203,35 +174,17 @@ static unsigned char *a2600_cartridge_rom;
 /* scanline */
 static int currentline = 0;
 
-#ifdef USE_RIOT
-static int a2600_riot_a_r(int chip)
-{
-	/* joystick !? */
-	return readinputport(0);
-}
-
-static int a2600_riot_b_r(int chip)
-{
-	/* console switches !? */
-	return readinputport(1);
-}
-
-static void a2600_riot_a_w(int chip, int offset, int data)
-{
-	UINT8 *ROM = memory_region(REGION_CPU1);
-
-	ROM[offset] = data;
-}
-
-static void a2600_riot_b_w(int chip, int offset, int data)
-{
-	UINT8 *ROM = memory_region(REGION_CPU1);
-
-	ROM[offset] = data;
-}
+#ifdef USE_SCANLINE_WSYNC
+/* wsync */
+#define WSYNC_TRIGGER 2600
+static int TIA_wsync = 0;
 #endif
 
-/* Bankswitching stuff */
+/***************************************************************************
+
+  Bankswitching stuff
+
+***************************************************************************/
 READ_HANDLER  ( a2600_bs_r )
 {
 	UINT8 value;
@@ -373,34 +326,24 @@ READ_HANDLER( a2600_riot_r )
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
 	INT32 riotdiff = (global_tia_cycle + TIME_TO_CYCLES(0, timer_timeelapsed(HSYNC_timer))) - previous_tia_cycle;
-
-		/* resync the riot timer */
+	/* resync */
 	previous_tia_cycle = global_tia_cycle + TIME_TO_CYCLES(0, timer_timeelapsed(HSYNC_timer));
 	riotdiff *= 3;
-	for (; riotdiff > 0; riotdiff--)
-	{
-		a2600_Cycle_cb(0);
-	}
+	a2600_Cycle_cb(riotdiff);
 
 	switch (offset)
 	{
 	case 0x00:
 		return readinputport(0);
 
-
 	case 0x01:
 		return readinputport(1);
-
 
 	case 0x02:
 		return readinputport(2);
 
-
 	case 0x04:							/*TIMER READ */
-
-		{
-			return TMR_Intim;
-		}
+		return TMR_Intim;
 
 	}
 
@@ -412,22 +355,17 @@ READ_HANDLER( a2600_riot_r )
   RIOT Writes.
 
 ***************************************************************************/
-
 WRITE_HANDLER( a2600_riot_w )
 {
 
 	UINT8 *ROM = memory_region(REGION_CPU1);
-
 	{
 		INT32 riotdiff = (global_tia_cycle + TIME_TO_CYCLES(0, timer_timeelapsed(HSYNC_timer))) - previous_tia_cycle;
 
 		/* resync the riot timer */
 		previous_tia_cycle = global_tia_cycle + TIME_TO_CYCLES(0, timer_timeelapsed(HSYNC_timer));
 		riotdiff *= 3;
-		for (; riotdiff > 0; riotdiff--)
-		{
-			a2600_Cycle_cb(0);
-		}
+		a2600_Cycle_cb(riotdiff);
 	}
 
 	switch (offset)
@@ -438,7 +376,6 @@ WRITE_HANDLER( a2600_riot_w )
 		TMR_tmp = 1;
 		ROM[0x284] = (int) data;
 		previous_tia_cycle = global_tia_cycle + TIME_TO_CYCLES(0, timer_timeelapsed(HSYNC_timer));
-
 		break;
 
 
@@ -456,7 +393,6 @@ WRITE_HANDLER( a2600_riot_w )
 		TMR_tmp = 64;
 		ROM[0x284] = (int) data;
 		previous_tia_cycle = global_tia_cycle + TIME_TO_CYCLES(0, timer_timeelapsed(HSYNC_timer));
-
 		break;
 
 	case 0x17:							/* Timer 1024 Start */
@@ -465,22 +401,11 @@ WRITE_HANDLER( a2600_riot_w )
 		TMR_tmp = 1024;
 		ROM[0x284] = (int) data;
 		previous_tia_cycle = global_tia_cycle + TIME_TO_CYCLES(0, timer_timeelapsed(HSYNC_timer));
-
 		break;
-
-
-
-
-
 	}
+
 	ROM[offset] = data;
-
 }
-
-
-
-
-
 
 
 /***************************************************************************
@@ -488,7 +413,6 @@ WRITE_HANDLER( a2600_riot_w )
   TIA Reads.
 
 ***************************************************************************/
-
 READ_HANDLER( a2600_TIA_r )
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
@@ -501,10 +425,7 @@ READ_HANDLER( a2600_TIA_r )
 		/* resync the riot timer */
 		previous_tia_cycle = global_tia_cycle + TIME_TO_CYCLES(0, timer_timeelapsed(HSYNC_timer));
 		riotdiff *= 3;
-		for (; riotdiff > 0; riotdiff--)
-		{
-			a2600_Cycle_cb(0);
-		}
+		a2600_Cycle_cb(riotdiff);
 	}
 
 	switch (offset)
@@ -570,7 +491,6 @@ READ_HANDLER( a2600_TIA_r )
   TIA Writes.
 
 ***************************************************************************/
-
 WRITE_HANDLER( a2600_TIA_w )
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
@@ -584,10 +504,7 @@ WRITE_HANDLER( a2600_TIA_w )
 		/* resync the riot timer */
 		previous_tia_cycle = global_tia_cycle + TIME_TO_CYCLES(0, timer_timeelapsed(HSYNC_timer));
 		riotdiff *= 3;
-		for (; riotdiff > 0; riotdiff--)
-		{
-			a2600_Cycle_cb(0);
-		}
+		a2600_Cycle_cb(riotdiff);
 	}
 
 	switch (offset)
@@ -596,15 +513,13 @@ WRITE_HANDLER( a2600_TIA_w )
 	case VSYNC:
 		if (!(data & 0x02))
 		{
-			/* plot_pixel(stella_backbuffer, 69, currentline + Machine->visible_area.min_y, Machine->pens[flashycolour]); */
-
 			logerror("TIA_w - VSYNC Stop\n");
 
 		}
 		else if (data & 0x02)
 		{
 			logerror("TIA_w - VSYNC Start\n");
-			/* plot_pixel(stella_backbuffer, 69, currentline + Machine->visible_area.min_y, Machine->pens[flashycolour]); */
+			currentline = 0;
 		}
 		break;
 
@@ -614,21 +529,12 @@ WRITE_HANDLER( a2600_TIA_w )
 		{
 
 			TIA_vblank = 0;
-			/* plot_pixel(stella_backbuffer, 69, currentline + Machine->visible_area.min_y, Machine->pens[flashycolour]); */
-			flashycolour++;
-			flashycolour = flashycolour & 0x0f;
-
-			currentline = 0;
-			copybitmap(stella_bitmap, stella_backbuffer, 0, 0, 0, 0, &stella_size, TRANSPARENCY_NONE, 0);
-
-
 			logerror("TIA_w - VBLANK Stop\n");
 
 		}
 		else if (data & 0x02)
 		{
 			TIA_vblank = 1;
-			/* plot_pixel(stella_backbuffer, 69, currentline + Machine->visible_area.min_y, Machine->pens[flashycolour]); */
 			logerror("TIA_w - VBLANK Start\n");
 
 		}
@@ -639,11 +545,13 @@ WRITE_HANDLER( a2600_TIA_w )
 		if (!(data & 0x01))
 		{
 			logerror("TIA_w - WSYNC \n");
+		#ifndef USE_SCANLINE_WSYNC
 			timer_reset(HSYNC_timer, TIME_IN_CYCLES(76, 0));
-			halted = 1;
-
 			a2600_main_cb(0);
-
+		#else
+			TIA_wsync = 1;
+			cpu_spinuntil_trigger(WSYNC_TRIGGER);
+		#endif
 		}
 
 		else
@@ -651,7 +559,7 @@ WRITE_HANDLER( a2600_TIA_w )
 			if (TIA_VERBOSE)
 				logerror("TIA_w - WSYNC Write Error! offset $%02x & data $%02x\n", offset, data);
 		}
-		break;
+		return;
 
 
 
@@ -832,11 +740,6 @@ WRITE_HANDLER( a2600_TIA_w )
 		break;
 
 
-
-
-
-
-
 	case AUDC0:						/* audio control */
 	case AUDC1:						/* audio control */
 	case AUDF0:						/* audio frequency */
@@ -856,7 +759,6 @@ WRITE_HANDLER( a2600_TIA_w )
 	case GRP1:							/* 0x1C Graphics Register Player 0 */
 		TIA_player_pattern_1 = data;
 		TIA_player_pattern_1_tmp = data;
-
 		break;
 
 	case ENAM0:						/* 0x1D Graphics Enable Missle 0 */
@@ -930,10 +832,15 @@ WRITE_HANDLER( a2600_TIA_w )
 	}
 }
 
+
+/***************************************************************************
+
+  Stop MAchine
+
+***************************************************************************/
 void a2600_stop_machine(void)
 {
-	/* Make sane the hardware ;) */
-
+	/* Make sane the hardware */
 	timer_reset(HSYNC_timer, TIME_IN_CYCLES(76, 0));
 	TIA_pixel_clock = 0;
 	TIA_player_0_finished = 0;
@@ -957,9 +864,7 @@ void a2600_stop_machine(void)
 	TIA_hmp1 = 0;
 	TIA_motion_player_0 = 0;
 	TIA_motion_player_1 = 0;
-	a2600_Cycle_Count = 0;
 
-	halted = 0;
 	global_tia_cycle = 0;
 	previous_tia_cycle = 0;
 	TIA_player_0_mask_bit = 10;
@@ -991,14 +896,473 @@ void a2600_stop_machine(void)
 	TIA_player_delay_1 = 0;
 
 	HSYNC_colour_clock = 3;
-	flashycolour = 0;
 
-	RIOT_passedzero = 0;
 	currentline = 0;
 	msize0 = 0;
 	msize1 = 0;
 }
 
+
+
+
+/* Video functions for the a2600         */
+/* Since all software drivern, have here */
+
+
+/***************************************************************************
+
+  Start the video hardware emulation.
+
+***************************************************************************/
+int a2600_vh_start(void)
+{
+	if ((stella_bitmap = bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height)) == 0)
+		return 1;
+	return 0;
+}
+
+void a2600_vh_stop(void)
+{
+	if (stella_bitmap)
+		bitmap_free(stella_bitmap);
+	stella_bitmap = NULL;
+}
+
+
+/***************************************************************************
+
+  Update Bitmap When called
+
+***************************************************************************/
+static void a2600_scanline_cb(void)
+{
+	int regpos;
+	int xs = Machine->visible_area.min_x;
+	int backcolor;
+
+	profiler_mark(PROFILER_VIDEO);
+
+	/* set color to background */
+	backcolor = tia.colreg.BK % Machine->drv->color_table_len;
+
+	if (!osd_skip_this_frame())
+	{
+		if ((currentline <= 261) && (TIA_vblank == 0))
+		{
+		/* now we have color, plot for 4 color cycles */
+		for (regpos = 0; regpos < 160; regpos++)
+		{
+			int i = PF_Data[regpos] % Machine->drv->color_table_len;
+
+				plot_pixel(stella_bitmap, regpos + xs, currentline, Machine->pens[0]);
+
+				if (i == 0)
+				{
+					plot_pixel(stella_bitmap, regpos + xs, currentline, Machine->pens[backcolor]);
+				}
+				else
+				{
+					plot_pixel(stella_bitmap, regpos + xs, currentline, Machine->pens[i]);
+				}
+			}
+		}
+	}
+	#ifndef USE_SCANLINE_WSYNC
+	currentline++;
+	#endif
+
+/*bail:*/
+	PF0_Rendered = 0;
+	PF1_Rendered = 0;
+	PF2_Rendered = 0;
+
+	profiler_mark(PROFILER_END);
+}
+
+
+/***************************************************************************
+
+  Main callback - 76 Cycle Timer callback!
+
+***************************************************************************/
+static void a2600_main_cb(int param)
+{
+	INT32 riotdiff = (global_tia_cycle + 76) - previous_tia_cycle;
+
+	profiler_mark(PROFILER_USER1);
+
+	/* resync the riot timer */
+	previous_tia_cycle = global_tia_cycle + 76;
+	riotdiff *= 3;
+	a2600_Cycle_cb(riotdiff);
+	TIA_pixel_clock = 0;
+	TIA_pf_mask.shiftreg = 0x080000;
+	TIA_player_pattern_0_delayed = TIA_player_pattern_0;
+	TIA_player_pattern_1_delayed = TIA_player_pattern_1;
+	TIA_player_0_offset=0;
+	TIA_player_1_offset=0;
+	TIA_player_0_mask_tmp = TIA_player_0_mask;
+	TIA_player_1_mask_tmp = TIA_player_1_mask;
+	TIA_player_0_mask_bit = 10;
+	TIA_player_1_mask_bit = 10;
+	TIA_player_0_block = 0;
+	TIA_player_1_block = 0;
+	TIA_player_0_finished = 0;
+	TIA_player_1_finished = 0;
+	a2600_scanline_cb();
+	global_tia_cycle += 76;
+
+	profiler_mark(PROFILER_END);
+}
+
+
+/***************************************************************************
+
+  Cycle Callback to Provide accurate timing
+
+***************************************************************************/
+static void a2600_Cycle_cb(int riotdiff)
+{
+	int i, forecolour;
+	int plyr0 = TIA_reset_player_0 + TIA_motion_player_0 + TIA_player_0_offset;
+
+	logerror("Cycle Callback - RIOTDIFF = %d\n", riotdiff);
+
+	for (i=0; i<riotdiff; i++)
+	{
+
+		/* Hsync Timing */
+
+		HSYNC_Period++;
+		HSYNC_colour_clock--;
+
+
+		profiler_mark(PROFILER_USER2);
+
+		if(HSYNC_Period >= 68)
+		{
+			if(HSYNC_Period <= 147)
+			{
+				UINT8 pix = (TIA_playfield.shiftreg & TIA_pf_mask.shiftreg)? 1:0;
+
+				if (PF_Score)
+				{
+					forecolour = tia.colreg.P0;
+				}
+				else
+				{
+					forecolour = tia.colreg.PF;
+				}
+
+				PF_Data[HSYNC_Period - 68] = forecolour * pix;
+
+				TIA_pixel_clock++;
+
+				if(TIA_pixel_clock == 4)
+				{
+					SHIFT_RIGHT20(TIA_pf_mask)
+
+					TIA_pixel_clock = 0;
+				}
+			}
+			else
+			{
+				if(HSYNC_Period == 148 && PF_Ref)
+				{
+					TIA_pf_mask.shiftreg = 0x000001;
+				}
+
+				{
+					UINT8 pix = (TIA_playfield.shiftreg & TIA_pf_mask.shiftreg)? 1:0;
+
+					if (PF_Score)
+					{
+						forecolour = tia.colreg.P1;
+					}
+					else
+					{
+						forecolour = tia.colreg.PF;
+					}
+
+
+					PF_Data[HSYNC_Period - 68] = forecolour * pix;
+
+					TIA_pixel_clock++;
+
+					if(TIA_pixel_clock == 4)
+					{
+						if(!PF_Ref)
+						{
+							SHIFT_RIGHT20(TIA_pf_mask)
+						}
+						else
+						{
+							SHIFT_LEFT20(TIA_pf_mask)
+						}
+						TIA_pixel_clock = 0;
+					}
+				}
+			}
+		}
+
+		if ((HSYNC_Period - 1) == 0)
+		{
+			TIA_player_pattern_0_tmp = TIA_player_pattern_0;
+			TIA_player_0_tick = 8;
+			TIA_player_pattern_1_tmp = TIA_player_pattern_1;
+			TIA_player_1_tick = 8;
+		}
+		profiler_mark(PROFILER_END);
+
+
+		profiler_mark(PROFILER_USER3);
+	/* Player 0 stuff */
+		if ((TIA_player_0_mask_tmp & 0x01) && (TIA_reset_player_0) && (((HSYNC_Period - 1) >= (plyr0)) && ((HSYNC_Period - 1) <= ((TIA_reset_player_0 + 7) + TIA_motion_player_0 + TIA_player_0_offset))) && (!TIA_player_0_finished))
+		{
+			//logerror("motion player 0 %d \n", TIA_motion_player_0);
+			if (!TIA_player_0_reflect)
+			{
+				UINT8 tmpbit = 0;
+				if (!TIA_player_delay_0)
+				{
+					if ((TIA_player_pattern_0_tmp & 0x80))
+					{
+						PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P0;
+						tmpbit = 0x01;
+					}
+				}
+				else
+				{
+					if ((TIA_player_pattern_0_delayed & 0x80))
+					{
+						PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P0;
+						tmpbit = 0x01;
+					}
+				}
+				//logerror("Hsync Period = %02x\n", HSYNC_Period);
+				TIA_player_0_pixel_delay_tmp--;
+				if(!TIA_player_0_pixel_delay_tmp)
+				{
+					TIA_player_0_pixel_delay_tmp = TIA_player_0_pixel_delay;
+					SHIFT_LEFT8(TIA_player_pattern_0_tmp)
+					SHIFT_LEFT8(TIA_player_pattern_0_delayed)
+					TIA_player_0_tick--;
+					if (!TIA_player_0_tick)
+					{
+					TIA_player_0_tick = 8;
+					}
+				}
+			}
+			else
+			{
+				UINT8 tmpbit = 0;
+				if (!TIA_player_delay_0)
+				{
+					if ((TIA_player_pattern_0_tmp & 0x01))
+					{
+						PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P0;
+						tmpbit = 0x80;
+					}
+				}
+				else
+				{
+					if ((TIA_player_pattern_0_delayed & 0x01))
+					{
+						PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P0;
+						tmpbit = 0x80;
+					}
+				}
+				//logerror("Hsync Period = %02x\n", HSYNC_Period);
+				TIA_player_0_pixel_delay_tmp--;
+				if(!TIA_player_0_pixel_delay_tmp)
+				{
+					TIA_player_0_pixel_delay_tmp = TIA_player_0_pixel_delay;
+					SHIFT_RIGHT8(TIA_player_pattern_0_tmp)
+					SHIFT_RIGHT8(TIA_player_pattern_0_delayed)
+					TIA_player_0_tick--;
+					if (!TIA_player_0_tick)
+					{
+						TIA_player_0_tick = 8;
+					}
+				}
+			}
+		}
+		profiler_mark(PROFILER_END);
+
+		profiler_mark(PROFILER_USER4);
+	/* Player 1 stuff */
+		if ((TIA_player_1_mask_tmp & 0x01) && (TIA_reset_player_1) && (((HSYNC_Period - 1) >= (TIA_reset_player_1 + TIA_motion_player_1 + TIA_player_1_offset)) && ((HSYNC_Period - 1) <= ((TIA_reset_player_1 + 7) + TIA_motion_player_1 + TIA_player_1_offset))) && (!TIA_player_1_finished))
+		{
+			//logerror("motion player 1 %d \n", TIA_motion_player_1);
+			if (!TIA_player_1_reflect)
+			{
+				UINT8 tmpbit = 0;
+				if (!TIA_player_delay_1)
+				{
+					if ((TIA_player_pattern_1_tmp & 0x80))
+					{
+						PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P1;
+						tmpbit = 0x01;
+					}
+				}
+				else
+				{
+					if ((TIA_player_pattern_1_delayed & 0x80))
+					{
+						PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P1;
+						tmpbit = 0x01;
+					}
+				}
+				//logerror("Hsync Period = %02x\n", HSYNC_Period);
+				TIA_player_1_pixel_delay_tmp--;
+				if(!TIA_player_1_pixel_delay_tmp)
+				{
+					TIA_player_1_pixel_delay_tmp = TIA_player_1_pixel_delay;
+					SHIFT_LEFT8(TIA_player_pattern_1_tmp)
+					SHIFT_LEFT8(TIA_player_pattern_1_delayed)
+					TIA_player_1_tick--;
+					if (!TIA_player_1_tick)
+					{
+					TIA_player_1_tick = 8;
+					}
+				}
+			}
+			else
+			{
+				UINT8 tmpbit = 0;
+				if (!TIA_player_delay_1)
+				{
+					if ((TIA_player_pattern_1_tmp & 0x01))
+					{
+						PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P1;
+						tmpbit = 0x80;
+					}
+				}
+				else
+				{
+					if ((TIA_player_pattern_1_delayed & 0x01))
+					{
+						PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P1;
+						tmpbit = 0x80;
+					}
+				}
+				//logerror("Hsync Period = %02x\n", HSYNC_Period);
+				TIA_player_1_pixel_delay_tmp--;
+				if(!TIA_player_1_pixel_delay_tmp)
+				{
+					TIA_player_1_pixel_delay_tmp = TIA_player_1_pixel_delay;
+					SHIFT_RIGHT8(TIA_player_pattern_1_tmp)
+					SHIFT_RIGHT8(TIA_player_pattern_1_delayed)
+					TIA_player_1_tick--;
+					if (!TIA_player_1_tick)
+					{
+						TIA_player_1_tick = 8;
+					}
+				}
+			}
+		}
+
+		if((HSYNC_Period >= 68) && ((HSYNC_Period - 1)>=TIA_reset_player_0 + TIA_motion_player_0))
+		{
+			TIA_player_0_block++;
+
+			if(TIA_player_0_block == 8)
+			{
+				TIA_player_0_offset+=8;
+				SHIFT_RIGHT10(TIA_player_0_mask_tmp)
+				TIA_player_0_mask_bit--;
+				TIA_player_0_block = 0;
+				if(!TIA_player_0_mask_bit)
+				{
+					TIA_player_0_mask_bit = 10;
+					TIA_player_0_finished = 1;
+				}
+
+			}
+		}
+		if((HSYNC_Period >= 68) && ((HSYNC_Period - 1)>=TIA_reset_player_1 + TIA_motion_player_1))
+		{
+			TIA_player_1_block++;
+
+			if(TIA_player_1_block == 8)
+			{
+				TIA_player_1_offset+=8;
+
+				SHIFT_RIGHT10(TIA_player_1_mask_tmp)
+				TIA_player_1_mask_bit--;
+				TIA_player_1_block = 0;
+				if(!TIA_player_1_mask_bit)
+				{
+					TIA_player_1_mask_bit = 10;
+					TIA_player_1_finished = 1;
+				}
+
+			}
+		}
+		if (HSYNC_Period >= 228)
+		{
+			HSYNC_Period = 0;
+		}
+
+		/* Deal with the RIOT Timer */
+		if (!HSYNC_colour_clock)
+		{
+			if (TMR_Period)
+			{
+				TMR_tmp--;
+				if (!TMR_tmp)
+				{
+					TMR_tmp = TMR_Period;
+					TMR_Intim--;
+					if (TMR_Intim == 0)
+					{
+						TMR_Period = 1;		/* Deals with the zero passing stuff */
+					}
+				}
+			}
+			HSYNC_colour_clock = 3;
+		}
+
+		profiler_mark(PROFILER_END);
+	}
+}
+
+
+/***************************************************************************
+
+  Machine Initialisation
+
+***************************************************************************/
+void a2600_init_machine(void)
+{
+
+	/* start RIOT interface */
+
+	currentline = 0;
+	HSYNC_timer = timer_pulse(TIME_IN_CYCLES(76, 0), 0, a2600_main_cb);
+	TIA_pf_mask.shiftreg = 0x080000;
+	return;
+
+}
+
+/***************************************************************************
+
+  Refresh the video screen
+	This routine is called at the start of vblank to refresh the screen
+
+***************************************************************************/
+void a2600_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
+{
+	if (!osd_skip_this_frame())
+		copybitmap(bitmap, stella_bitmap, 0, 0, 0, 0, &Machine->visible_area, TRANSPARENCY_NONE, 0);
+}
+
+
+/***************************************************************************
+
+  Cartridge Loading
+
+***************************************************************************/
 int a2600_load_rom(int id)
 {
 	FILE *cartfile;
@@ -1012,7 +1376,7 @@ int a2600_load_rom(int id)
 
 	/* A cartridge isn't strictly mandatory, but it's recommended */
 	cartfile = NULL;
-	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
+	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
 	{
 		return 1;
 	}
@@ -1166,468 +1530,34 @@ int a2600_load_rom(int id)
 	return 0;
 }
 
-/* Video functions for the a2600         */
-/* Since all software drivern, have here */
 
-
+#ifdef USE_SCANLINE_WSYNC
 /***************************************************************************
 
-  Start the video hardware emulation.
+  Fake Scanline Interrupt - for timing only
 
 ***************************************************************************/
-
-int a2600_vh_start(void)
-{
-	if ((stella_bitmap = bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height)) == 0)
-		return 1;
-	if ((stella_backbuffer = bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height)) == 0)
-		return 1;
-	return 0;
-}
-
-void a2600_vh_stop(void)
-{
-	if (stella_bitmap)
-		bitmap_free(stella_bitmap);
-	stella_bitmap = NULL;
-	if (stella_backbuffer)
-		bitmap_free(stella_backbuffer);
-	stella_bitmap = NULL;
-}
-
-
-/* when called, update the bitmap. */
-static void a2600_scanline_cb(void)
-{
-	int regpos;
-
-	int xs = Machine->visible_area.min_x;
-	int yys = Machine->visible_area.min_y;
-
-	int backcolor;
-
-	profiler_mark(PROFILER_VIDEO);
-
-/*if (osd_skip_this_frame()) goto bail;*/
-
-	/* plot the playfield and background for now               */
-	/* each register value is 4 color clocks                   */
-	/* to pick the color, need to bit check the playfield regs */
-
-	/* set color to background */
-	backcolor = tia.colreg.BK % Machine->drv->color_table_len;
-
-	if (((currentline + yys) <= 299) && (TIA_vblank == 0))
-	{
-		/* now we have color, plot for 4 color cycles */
-		for (regpos = 0; regpos < 160; regpos++)
-		{
-			int i = PF_Data[regpos] % Machine->drv->color_table_len;
-
-
-			plot_pixel(stella_backbuffer, regpos + xs, currentline + yys, Machine->pens[0]);
-
-			if (i == 0)
-			{
-				plot_pixel(stella_backbuffer, regpos + xs, currentline + yys, Machine->pens[backcolor]);
-			}
-			else
-			{
-				plot_pixel(stella_backbuffer, regpos + xs, currentline + yys, Machine->pens[i]);
-			}
-		}
-		currentline++;
-	}
-
-/*bail:*/
-	PF0_Rendered = 0;
-	PF1_Rendered = 0;
-	PF2_Rendered = 0;
-
-	profiler_mark(PROFILER_END);
-}
-
-static void a2600_main_cb(int param)
-{
-	INT32 riotdiff = (global_tia_cycle + 76) - previous_tia_cycle;
-
-	/* resync the riot timer */
-	previous_tia_cycle = global_tia_cycle + 76;
-	riotdiff *= 3;
-	for (; riotdiff > 0; riotdiff--)
-	{
-		a2600_Cycle_cb(0);
-	}
-	TIA_pixel_clock = 0;
-	TIA_pf_mask.shiftreg = 0x080000;
-	TIA_player_pattern_0_delayed = TIA_player_pattern_0;
-	TIA_player_pattern_1_delayed = TIA_player_pattern_1;
-	TIA_player_0_offset=0;
-	TIA_player_1_offset=0;
-	TIA_player_0_mask_tmp = TIA_player_0_mask;
-	TIA_player_1_mask_tmp = TIA_player_1_mask;
-	TIA_player_0_mask_bit = 10;
-	TIA_player_1_mask_bit = 10;
-	TIA_player_0_block = 0;
-	TIA_player_1_block = 0;
-	TIA_player_0_finished = 0;
-	TIA_player_1_finished = 0;
-	a2600_scanline_cb();
-	global_tia_cycle += 76;
-
-}
-
-static void a2600_Cycle_cb(int param)
-{
-	int forecolour;
-	int plyr0 = TIA_reset_player_0 + TIA_motion_player_0 + TIA_player_0_offset;
-
-	a2600_Cycle_Count++;
-
-	/* Hsync Timing */
-
-	HSYNC_Period++;
-	HSYNC_colour_clock--;
-
-	if(HSYNC_Period >= 68)
-	{
-		if(HSYNC_Period <= 147)
-		{
-			UINT8 pix = (TIA_playfield.shiftreg & TIA_pf_mask.shiftreg)? 1:0;
-
-			if (PF_Score)
-			{
-				forecolour = tia.colreg.P0;
-			}
-			else
-			{
-				forecolour = tia.colreg.PF;
-			}
-
-			PF_Data[HSYNC_Period - 68] = forecolour * pix;
-
-			TIA_pixel_clock++;
-
-			if(TIA_pixel_clock == 4)
-			{
-				SHIFT_RIGHT20(TIA_pf_mask)
-
-				TIA_pixel_clock = 0;
-			}
-		}
-		else
-		{
-			if(HSYNC_Period == 148 && PF_Ref) TIA_pf_mask.shiftreg = 0x000001;
-
-			if(!PF_Ref)
-			{
-				UINT8 pix = (TIA_playfield.shiftreg & TIA_pf_mask.shiftreg)? 1:0;
-
-				if (PF_Score)
-				{
-					forecolour = tia.colreg.P1;
-				}
-				else
-				{
-					forecolour = tia.colreg.PF;
-				}
-
-
-				PF_Data[HSYNC_Period - 68] = forecolour * pix;
-
-				TIA_pixel_clock++;
-
-				if(TIA_pixel_clock == 4)
-				{
-					SHIFT_RIGHT20(TIA_pf_mask)
-					TIA_pixel_clock = 0;
-				}
-			}
-			else
-			{
-				UINT8 pix = (TIA_playfield.shiftreg & TIA_pf_mask.shiftreg)? 1:0;
-
-				if (PF_Score)
-				{
-					forecolour = tia.colreg.P1;
-				}
-				else
-				{
-					forecolour = tia.colreg.PF;
-				}
-
-				PF_Data[HSYNC_Period - 68] = forecolour * pix;
-
-				TIA_pixel_clock++;
-
-				if(TIA_pixel_clock == 4)
-				{
-					SHIFT_LEFT20(TIA_pf_mask)
-					TIA_pixel_clock = 0;
-				}
-			}
-		}
-	}
-
-	/* raster stuff. it should hopefully be in sync :) */
-
-/*	if (PF_Score)
-	{
-		forecolour = tia.colreg.P0;
-	}
-	else
-	{
-		forecolour = tia.colreg.PF;
-	}
-
-
-	if (PF_Score)
-	{
-		forecolour = tia.colreg.P1;
-	}
-	else
-	{
-		forecolour = tia.colreg.PF;
-	}
-
-
-
-*/
-	if ((HSYNC_Period - 1) == 0)
-	{
-		TIA_player_pattern_0_tmp = TIA_player_pattern_0;
-		TIA_player_0_tick = 8;
-		TIA_player_pattern_1_tmp = TIA_player_pattern_1;
-		TIA_player_1_tick = 8;
-
-
-	}
-/* Player 0 stuff */
-	if ((TIA_player_0_mask_tmp & 0x01) && (TIA_reset_player_0) && (((HSYNC_Period - 1) >= (plyr0)) && ((HSYNC_Period - 1) <= ((TIA_reset_player_0 + 7) + TIA_motion_player_0 + TIA_player_0_offset))) && (!TIA_player_0_finished))
-	{
-		logerror("motion player 0 %d \n", TIA_motion_player_0);
-		if (!TIA_player_0_reflect)
-		{
-			UINT8 tmpbit = 0;
-			if (!TIA_player_delay_0)
-			{
-				if ((TIA_player_pattern_0_tmp & 0x80))
-				{
-					PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P0;
-					tmpbit = 0x01;
-				}
-			}
-			else
-			{
-				if ((TIA_player_pattern_0_delayed & 0x80))
-				{
-					PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P0;
-					tmpbit = 0x01;
-				}
-			}
-			logerror("Hsync Period = %02x\n", HSYNC_Period);
-			TIA_player_0_pixel_delay_tmp--;
-			if(!TIA_player_0_pixel_delay_tmp)
-			{
-				TIA_player_0_pixel_delay_tmp = TIA_player_0_pixel_delay;
-				SHIFT_LEFT8(TIA_player_pattern_0_tmp)
-				SHIFT_LEFT8(TIA_player_pattern_0_delayed)
-				TIA_player_0_tick--;
-				if (!TIA_player_0_tick)
-				{
-				TIA_player_0_tick = 8;
-				}
-			}
-		}
-		else
-		{
-			UINT8 tmpbit = 0;
-			if (!TIA_player_delay_0)
-			{
-				if ((TIA_player_pattern_0_tmp & 0x01))
-				{
-					PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P0;
-					tmpbit = 0x80;
-				}
-			}
-			else
-			{
-				if ((TIA_player_pattern_0_delayed & 0x01))
-				{
-					PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P0;
-					tmpbit = 0x80;
-				}
-			}
-			logerror("Hsync Period = %02x\n", HSYNC_Period);
-			TIA_player_0_pixel_delay_tmp--;
-			if(!TIA_player_0_pixel_delay_tmp)
-			{
-				TIA_player_0_pixel_delay_tmp = TIA_player_0_pixel_delay;
-				SHIFT_RIGHT8(TIA_player_pattern_0_tmp)
-				SHIFT_RIGHT8(TIA_player_pattern_0_delayed)
-				TIA_player_0_tick--;
-				if (!TIA_player_0_tick)
-				{
-					TIA_player_0_tick = 8;
-				}
-			}
-		}
-	}
-
-/* Player 1 stuff */
-	if ((TIA_player_1_mask_tmp & 0x01) && (TIA_reset_player_1) && (((HSYNC_Period - 1) >= (TIA_reset_player_1 + TIA_motion_player_1 + TIA_player_1_offset)) && ((HSYNC_Period - 1) <= ((TIA_reset_player_1 + 7) + TIA_motion_player_1 + TIA_player_1_offset))) && (!TIA_player_1_finished))
-	{
-		logerror("motion player 1 %d \n", TIA_motion_player_1);
-		if (!TIA_player_1_reflect)
-		{
-			UINT8 tmpbit = 0;
-			if (!TIA_player_delay_1)
-			{
-				if ((TIA_player_pattern_1_tmp & 0x80))
-				{
-					PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P1;
-					tmpbit = 0x01;
-				}
-			}
-			else
-			{
-				if ((TIA_player_pattern_1_delayed & 0x80))
-				{
-					PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P1;
-					tmpbit = 0x01;
-				}
-			}
-			logerror("Hsync Period = %02x\n", HSYNC_Period);
-			TIA_player_1_pixel_delay_tmp--;
-			if(!TIA_player_1_pixel_delay_tmp)
-			{
-				TIA_player_1_pixel_delay_tmp = TIA_player_1_pixel_delay;
-				SHIFT_LEFT8(TIA_player_pattern_1_tmp)
-				SHIFT_LEFT8(TIA_player_pattern_1_delayed)
-				TIA_player_1_tick--;
-				if (!TIA_player_1_tick)
-				{
-				TIA_player_1_tick = 8;
-				}
-			}
-		}
-		else
-		{
-			UINT8 tmpbit = 0;
-			if (!TIA_player_delay_1)
-			{
-				if ((TIA_player_pattern_1_tmp & 0x01))
-				{
-					PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P1;
-					tmpbit = 0x80;
-				}
-			}
-			else
-			{
-				if ((TIA_player_pattern_1_delayed & 0x01))
-				{
-					PF_Data[((HSYNC_Period - 1) - 68)] = tia.colreg.P1;
-					tmpbit = 0x80;
-				}
-			}
-			logerror("Hsync Period = %02x\n", HSYNC_Period);
-			TIA_player_1_pixel_delay_tmp--;
-			if(!TIA_player_1_pixel_delay_tmp)
-			{
-				TIA_player_1_pixel_delay_tmp = TIA_player_1_pixel_delay;
-				SHIFT_RIGHT8(TIA_player_pattern_1_tmp)
-				SHIFT_RIGHT8(TIA_player_pattern_1_delayed)
-				TIA_player_1_tick--;
-				if (!TIA_player_1_tick)
-				{
-					TIA_player_1_tick = 8;
-				}
-			}
-		}
-	}
-	if((HSYNC_Period >= 68) && ((HSYNC_Period - 1)>=TIA_reset_player_0 + TIA_motion_player_0))
-	{
-		TIA_player_0_block++;
-
-		if(TIA_player_0_block == 8)
-		{
-			TIA_player_0_offset+=8;
-			SHIFT_RIGHT10(TIA_player_0_mask_tmp)
-			TIA_player_0_mask_bit--;
-			TIA_player_0_block = 0;
-			if(!TIA_player_0_mask_bit)
-			{
-				TIA_player_0_mask_bit = 10;
-				TIA_player_0_finished = 1;
-			}
-
-		}
-	}
-	if((HSYNC_Period >= 68) && ((HSYNC_Period - 1)>=TIA_reset_player_1 + TIA_motion_player_1))
-	{
-		TIA_player_1_block++;
-
-		if(TIA_player_1_block == 8)
-		{
-			TIA_player_1_offset+=8;
-
-			SHIFT_RIGHT10(TIA_player_1_mask_tmp)
-			TIA_player_1_mask_bit--;
-			TIA_player_1_block = 0;
-			if(!TIA_player_1_mask_bit)
-			{
-				TIA_player_1_mask_bit = 10;
-				TIA_player_1_finished = 1;
-			}
-
-		}
-	}
-	if (HSYNC_Period >= 228)
-	{
-		HSYNC_Period = 0;
-	}
-
-	/* Deal with the RIOT Timer */
-	if (!HSYNC_colour_clock)
-	{
-		if (TMR_Period)
-		{
-			TMR_tmp--;
-			if (!TMR_tmp)
-			{
-				TMR_tmp = TMR_Period;
-				TMR_Intim--;
-				if (TMR_Intim == 0)
-				{
-					TMR_Period = 1;		/* Deals with the zero passing stuff */
-				}
-			}
-		}
-		HSYNC_colour_clock = 3;
-	}
-}
-
-
-void a2600_init_machine(void)
+int a2600_scanline_int(void)
 {
 
-	/* start RIOT interface */
+	/* Increment the Scanline Counter */
+	currentline++;
 
-	cpu_current_state = 1;
-	currentline = 0;
-	HSYNC_timer = timer_pulse(TIME_IN_CYCLES(76, 0), 0, a2600_main_cb);
-	TIA_pf_mask.shiftreg = 0x080000;
-	return;
+	/* Restart the CPU if WSYNC has been written to and reset wsync */
+	if (TIA_wsync == 1)
+	{
+	logerror("WSYNC SCANLINE INT - Expected Cycles=%d, Frame #%d, Scanline #%d HorizPos=%d \n",
+				TIME_TO_CYCLES(0,cpu_getscanlineperiod()),
+				cpu_getcurrentframe(),
+				cpu_getscanline(),
+				cpu_gethorzbeampos() );
 
+		cpu_trigger(WSYNC_TRIGGER);
+		TIA_wsync = 0;
+	}
+
+	/* Fake Interrupt - return ignore */
+	return ignore_interrupt();
 }
+#endif
 
-/***************************************************************************
-
-  Refresh the video screen
-
-***************************************************************************/
-/* This routine is called at the start of vblank to refresh the screen */
-void a2600_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
-{
-	copybitmap(bitmap, stella_bitmap, 0, 0, 0, 0, &Machine->visible_area, TRANSPARENCY_NONE, 0);
-}

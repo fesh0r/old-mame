@@ -29,6 +29,7 @@
 #include "includes/spectrum.h"
 #include "eventlst.h"
 #include "vidhrdw/border.h"
+#include "cassette.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
@@ -39,9 +40,13 @@ static unsigned long SnapshotDataSize = 0;
 static unsigned long TapePosition = 0;
 static void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize);
 static void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize);
-static int is48k_z80snapshot(unsigned char *pSnapshot, unsigned long SnapshotSize);
+//static int is48k_z80snapshot(unsigned char *pSnapshot, unsigned long SnapshotSize);
 static OPBASE_HANDLER(spectrum_opbaseoverride);
 static OPBASE_HANDLER(spectrum_tape_opbaseoverride);
+
+TIMEX_CART_TYPE timex_cart_type = TIMEX_CART_NONE;
+UINT8 timex_cart_chunks = 0x00;
+UINT8 * timex_cart_data;
 
 typedef enum
 {
@@ -84,7 +89,7 @@ int spectrum_snap_load(int id)
 {
 	void *file;
 
-	file = image_fopen(IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+	file = image_fopen(IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 
 	if (file)
 	{
@@ -331,7 +336,7 @@ static OPBASE_HANDLER(spectrum_tape_opbaseoverride)
 		sp_reg = cpu_get_reg(Z80_SP);
 		sp_reg += 2;
 		cpu_set_reg(Z80_SP, (sp_reg & 0x0ffff));
-		cpu_set_sp((sp_reg & 0x0ffff));
+		activecpu_set_sp((sp_reg & 0x0ffff));
 	}
 	while (((return_addr != 0x053f) && (return_addr < 0x0605) && (ts2068_port_f4_data == -1)) ||
 		   ((return_addr != 0x00e5) && (return_addr < 0x01aa) && (ts2068_port_f4_data != -1)));
@@ -485,7 +490,7 @@ void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	lo = pSnapshot[23] & 0x0ff;
 	hi = pSnapshot[24] & 0x0ff;
 	cpu_set_reg(Z80_SP, (hi << 8) | lo);
-	cpu_set_sp((hi << 8) | lo);
+	activecpu_set_sp((hi << 8) | lo);
 	data = (pSnapshot[25] & 0x0ff);
 	cpu_set_reg(Z80_IM, data);
 
@@ -524,7 +529,7 @@ void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		addr = cpu_get_reg(Z80_SP);
 		addr += 2;
 		cpu_set_reg(Z80_SP, (addr & 0x0ffff));
-		cpu_set_sp((addr & 0x0ffff));
+		activecpu_set_sp((addr & 0x0ffff));
 	}
 	else
 	{
@@ -630,17 +635,104 @@ static void spectrum_z80_decompress_block(unsigned char *pSource, int Dest, int 
 	while (size > 0);
 }
 
+typedef enum {
+	SPECTRUM_Z80_SNAPSHOT_INVALID,
+	SPECTRUM_Z80_SNAPSHOT_48K_OLD,
+	SPECTRUM_Z80_SNAPSHOT_48K,
+	SPECTRUM_Z80_SNAPSHOT_SAMRAM,
+	SPECTRUM_Z80_SNAPSHOT_128K,
+	SPECTRUM_Z80_SNAPSHOT_TS2068
+}
+SPECTRUM_Z80_SNAPSHOT_TYPE;
+
+SPECTRUM_Z80_SNAPSHOT_TYPE spectrum_identify_z80 (unsigned char *pSnapshot, unsigned long SnapshotSize)
+{
+	unsigned char lo, hi, data;
+
+	if (SnapshotSize < 30)
+		return SPECTRUM_Z80_SNAPSHOT_INVALID;	/* Invalid file */
+
+	lo = pSnapshot[6] & 0x0ff;
+	hi = pSnapshot[7] & 0x0ff;
+	if (hi || lo)
+		return SPECTRUM_Z80_SNAPSHOT_48K_OLD;	/* V1.45 - 48K only */
+
+	lo = pSnapshot[30] & 0x0ff;
+	hi = pSnapshot[31] & 0x0ff;
+	data = pSnapshot[34] & 0x0ff;			/* Hardware mode */
+
+	if ((hi == 0) && (lo == 23))
+	{						/* V2.01 */							/* V2.01 format */
+		switch (data)
+		{
+			case 0:
+			case 1:	return SPECTRUM_Z80_SNAPSHOT_48K;
+			case 2:	return SPECTRUM_Z80_SNAPSHOT_SAMRAM;
+			case 3:	
+			case 4:	return SPECTRUM_Z80_SNAPSHOT_128K;
+			case 128: return SPECTRUM_Z80_SNAPSHOT_TS2068;
+		}
+	}
+
+	if ((hi == 0) && (lo == 54))
+	{						/* V3.0x */							/* V2.01 format */
+		switch (data)
+		{
+			case 0:
+			case 1:
+			case 3:	return SPECTRUM_Z80_SNAPSHOT_48K;
+			case 2:	return SPECTRUM_Z80_SNAPSHOT_SAMRAM;
+			case 4:
+			case 5:
+			case 6:	return SPECTRUM_Z80_SNAPSHOT_128K;
+			case 128: return SPECTRUM_Z80_SNAPSHOT_TS2068;
+		}
+	}
+
+	return SPECTRUM_Z80_SNAPSHOT_INVALID;
+}
+
 /* now supports 48k & 128k .Z80 files */
 void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 {
-	int i, is48ksnap;
+	int i;
 	unsigned char lo, hi, data;
+	SPECTRUM_Z80_SNAPSHOT_TYPE z80_type;
 
-	is48ksnap = is48k_z80snapshot(pSnapshotData, SnapshotDataSize);
-	if ((spectrum_128_port_7ffd_data == -1) && !is48ksnap)
+	z80_type = spectrum_identify_z80(pSnapshotData, SnapshotDataSize);
+
+	switch (z80_type)
 	{
-		logerror("Not a 48K .Z80 file\n");
-		return;
+		case SPECTRUM_Z80_SNAPSHOT_INVALID:
+				logerror("Invalid .Z80 file\n");
+				return;
+		case SPECTRUM_Z80_SNAPSHOT_48K_OLD:
+		case SPECTRUM_Z80_SNAPSHOT_48K:
+				logerror("48K .Z80 file\n");
+				if (!strcmp(Machine->gamedrv->name,"ts2068"))
+					logerror("48K .Z80 file in TS2068\n");
+				break;
+		case SPECTRUM_Z80_SNAPSHOT_128K:
+				logerror("128K .Z80 file\n");
+				if (spectrum_128_port_7ffd_data == -1)
+				{
+					logerror("Not a 48K .Z80 file\n");
+					return;
+				}
+				if (!strcmp(Machine->gamedrv->name,"ts2068"))
+				{
+					logerror("Not a TS2068 .Z80 file\n");
+					return;
+				}
+				break;
+		case SPECTRUM_Z80_SNAPSHOT_TS2068:
+				logerror("TS2068 .Z80 file\n");				if (strcmp(Machine->gamedrv->name,"ts2068"))
+				if (strcmp(Machine->gamedrv->name,"ts2068"))
+					logerror("Not a TS2068 machine\n");
+				break;
+		case SPECTRUM_Z80_SNAPSHOT_SAMRAM:
+				logerror("Hardware not supported - .Z80 file\n");
+				return;
 	}
 
 	/* AF */
@@ -656,13 +748,11 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	hi = pSnapshot[5] & 0x0ff;
 	cpu_set_reg(Z80_HL, (hi << 8) | lo);
 
-	/* program counter - 0 if not version 1.45 */
-
 	/* SP */
 	lo = pSnapshot[8] & 0x0ff;
 	hi = pSnapshot[9] & 0x0ff;
 	cpu_set_reg(Z80_SP, (hi << 8) | lo);
-	cpu_set_sp((hi << 8) | lo);
+	activecpu_set_sp((hi << 8) | lo);
 
 	/* I */
 	cpu_set_reg(Z80_I, (pSnapshot[10] & 0x0ff));
@@ -721,7 +811,6 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	cpu_set_reg(Z80_IRQ_STATE, 0);
 	cpu_set_reg(Z80_HALT, 0);
 
-
 	/* IFF2 */
 	if (pSnapshot[28] != 0)
 	{
@@ -736,32 +825,23 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	/* Interrupt Mode */
 	cpu_set_reg(Z80_IM, (pSnapshot[29] & 0x03));
 
-	if ((pSnapshot[6] | pSnapshot[7]) != 0)
+	if (z80_type == SPECTRUM_Z80_SNAPSHOT_48K_OLD)
 	{
-		logerror("Old 1.45 V of Z80 snapshot found!\n");
-
-		/* program counter is specified. Old 1.45 */
 		lo = pSnapshot[6] & 0x0ff;
 		hi = pSnapshot[7] & 0x0ff;
 		cpu_set_reg(Z80_PC, (hi << 8) | lo);
 
 		spectrum_page_basicrom();
-
+                
 		if ((pSnapshot[12] & 0x020) == 0)
 		{
-			logerror("Not compressed\n");
-
-			/* not compressed */
+			logerror("Not compressed\n");	/* not compressed */
 			for (i = 0; i < 49152; i++)
-			{
 				cpu_writemem16(i + 16384, pSnapshot[30 + i]);
-			}
 		}
 		else
 		{
-			logerror("Compressed\n");
-
-			/* compressed */
+			logerror("Compressed\n");	/* compressed */
 			spectrum_z80_decompress_block(pSnapshot + 30, 16384, 49152);
 		}
 	}
@@ -770,17 +850,15 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		unsigned char *pSource;
 		int header_size;
 
-		logerror("v2.0+ V of Z80 snapshot found!\n");
-
 		header_size = 30 + 2 + ((pSnapshot[30] & 0x0ff) | ((pSnapshot[31] & 0x0ff) << 8));
 
 		lo = pSnapshot[32] & 0x0ff;
 		hi = pSnapshot[33] & 0x0ff;
 		cpu_set_reg(Z80_PC, (hi << 8) | lo);
 
-		if (spectrum_128_port_7ffd_data != -1)
+		if ((z80_type == SPECTRUM_Z80_SNAPSHOT_128K) || ((z80_type == SPECTRUM_Z80_SNAPSHOT_TS2068) && !strcmp(Machine->gamedrv->name,"ts2068")))
 		{
-			/* Only set up sound registers for 128K machine! */
+			/* Only set up sound registers for 128K machine or TS2068! */
 			for (i = 0; i < 16; i++)
 			{
 				AY8910_control_port_0_w(0, i);
@@ -791,7 +869,7 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 
 		pSource = pSnapshot + header_size;
 
-		if (is48ksnap)
+		if (z80_type == SPECTRUM_Z80_SNAPSHOT_48K)
 			/* Ensure 48K Basic ROM is used */
 			spectrum_page_basicrom();
 
@@ -804,25 +882,14 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 			length = (pSource[0] & 0x0ff) | ((pSource[1] & 0x0ff) << 8);
 			page = pSource[2];
 
-			if (is48ksnap)
+			if (z80_type == SPECTRUM_Z80_SNAPSHOT_48K || z80_type == SPECTRUM_Z80_SNAPSHOT_TS2068)
 			{
 				switch (page)
 				{
-				case 4:
-					Dest = 0x08000;
-					break;
-
-				case 5:
-					Dest = 0x0c000;
-					break;
-
-				case 8:
-					Dest = 0x04000;
-					break;
-
-				default:
-					Dest = 0;
-					break;
+					case 4:	Dest = 0x08000;	break;
+					case 5:	Dest = 0x0c000;	break;
+					case 8:	Dest = 0x04000;	break;
+					default: Dest = 0; break;
 				}
 			}
 			else
@@ -849,11 +916,7 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 
 					/* not compressed */
 					for (i = 0; i < 16384; i++)
-					{
 						cpu_writemem16(i + Dest, pSource[i]);
-					}
-
-
 				}
 				else
 				{
@@ -869,49 +932,26 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		}
 		while (((unsigned long) pSource - (unsigned long) pSnapshot) < SnapshotDataSize);
 
-		if ((spectrum_128_port_7ffd_data != -1) && !is48ksnap)
+		if ((spectrum_128_port_7ffd_data != -1) && (z80_type != SPECTRUM_Z80_SNAPSHOT_48K))
 		{
 			/* Set up paging */
 			spectrum_128_port_7ffd_data = (pSnapshot[35] & 0x0ff);
 			spectrum_update_paging();
 		}
+		if ((z80_type == SPECTRUM_Z80_SNAPSHOT_48K) && !strcmp(Machine->gamedrv->name,"ts2068"))
+		{
+			ts2068_port_f4_data = 0x03;
+			ts2068_port_ff_data = 0x00;
+			ts2068_update_memory();
+		}
+		if (z80_type == SPECTRUM_Z80_SNAPSHOT_TS2068 && !strcmp(Machine->gamedrv->name,"ts2068"))
+		{
+			ts2068_port_f4_data = pSnapshot[35];
+			ts2068_port_ff_data = pSnapshot[36];
+			ts2068_update_memory();
+		}
 	}
 	dump_registers();
-}
-
-/*******************************************************************
- *
- *      Returns 1 if the specified z80 snapshot is a 48K snapshot
- *      and 0 if it is a Spectrum 128K or SamRam snapshot.
- *
- *******************************************************************/
-int is48k_z80snapshot(unsigned char *pSnapshot, unsigned long SnapshotSize)
-{
-	unsigned char lo, hi, data;
-
-	if (SnapshotSize < 30)
-		return 0;						/* Invalid file */
-
-	lo = pSnapshot[6] & 0x0ff;
-	hi = pSnapshot[7] & 0x0ff;
-	if (hi || lo)
-		return 1;						/* V1.45 - 48K only */
-
-	lo = pSnapshot[30] & 0x0ff;
-	hi = pSnapshot[31] & 0x0ff;
-	data = pSnapshot[34] & 0x0ff;		/* Hardware mode */
-
-	if ((hi == 0) && (lo == 23))
-	{									/* V2.01 format */
-		if ((data == 0) || (data == 1))
-			return 1;
-	}
-	else
-	{									/* V3.0 format */
-		if ((data == 0) || (data == 1) || (data == 3))
-			return 1;
-	}
-	return 0;
 }
 
 /*-----------------27/02/00 10:54-------------------
@@ -921,6 +961,7 @@ int is48k_z80snapshot(unsigned char *pSnapshot, unsigned long SnapshotSize)
 int spectrum_cassette_init(int id)
 {
 	void *file;
+	struct cassette_args args;
 
 	if ((device_filename(IO_CASSETTE, id) != NULL) &&
 		!stricmp(device_filename(IO_CASSETTE, id) + strlen(device_filename(IO_CASSETTE, id) ) - 4, ".tap"))
@@ -928,7 +969,7 @@ int spectrum_cassette_init(int id)
 		int datasize;
 		unsigned char *data;
 
-		file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+		file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 		logerror(".TAP file found\n");
 		if (file)
 			datasize = osd_fsize(file);
@@ -958,38 +999,9 @@ int spectrum_cassette_init(int id)
 		return INIT_FAIL;
 	}
 
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
-	if (file)
-	{
-		struct wave_args wa =
-		{0,};
-
-		wa.file = file;
-		wa.display = 1;
-
-		if (device_open(IO_CASSETTE, id, 0, &wa))
-			return INIT_FAIL;
-
-		return INIT_PASS;
-	}
-
-	/* HJB 02/18: no file, create a new file instead */
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_WRITE);
-	if (file)
-	{
-		struct wave_args wa =
-		{0,};
-
-		wa.file = file;
-		wa.display = 1;
-		wa.smpfreq = 22050;				/* maybe 11025 Hz would be sufficient? */
-		/* open in write mode */
-		if (device_open(IO_CASSETTE, id, 1, &wa))
-			return INIT_FAIL;
-		return INIT_PASS;
-	}
-
-	return INIT_PASS;
+	memset(&args, 0, sizeof(args));
+	args.create_smpfreq = 22050;	/* maybe 11025 Hz would be sufficient? */
+	return cassette_init(id, &args);
 }
 
 void spectrum_cassette_exit(int id)
@@ -1021,7 +1033,7 @@ int spec_quick_init(int id)
 
 /*	quick.name = name; */
 
-	fp = image_fopen(IO_QUICKLOAD, id, OSD_FILETYPE_IMAGE_R, 0);
+	fp = image_fopen(IO_QUICKLOAD, id, OSD_FILETYPE_IMAGE, 0);
 	if (!fp)
 		return INIT_FAIL;
 
@@ -1066,7 +1078,7 @@ int spectrum_cart_load(int id)
 	void *file;
 
 	logerror("Trying to load cartridge!\n");
-	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if (file)
 	{
 		int datasize;
@@ -1092,4 +1104,112 @@ int spectrum_cart_load(int id)
 		return 1;
 	}
 	return 0;
+}
+
+int timex_cart_load(int id)
+{
+	void *file;
+	int file_size;
+	UINT8 * file_data;
+
+	int chunks_in_file = 0;
+
+	int i;
+
+	if (device_filename(IO_CARTSLOT, id) == NULL)
+	{
+		return INIT_PASS;
+	}
+
+	logerror ("Trying to load cart\n");
+
+	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
+	if (file==NULL)
+	{
+		logerror ("Error opening cart file\n");
+		return INIT_FAIL;
+	}
+
+	file_size = osd_fsize(file);
+
+	if (file_size < 0x09)
+	{
+		osd_fclose(file);
+		logerror ("Bad file size\n");
+		return INIT_FAIL;
+	}
+
+	file_data = malloc(file_size);
+	if (file_data == NULL)
+        {
+		osd_fclose(file);
+		logerror ("Memory allocating error\n");
+		return INIT_FAIL;
+	}
+
+	osd_fread(file, file_data, file_size);
+	osd_fclose(file);
+
+	for (i=0; i<8; i++)
+		if(file_data[i+1]&0x02)	chunks_in_file++;
+
+	if (chunks_in_file*0x2000+0x09 != file_size)
+	{
+		free (file_data);
+		logerror ("File corrupted\n");
+		return INIT_FAIL;
+	}
+
+	switch (file_data[0x00])
+	{
+		case 0x00:	logerror ("DOCK cart\n");
+				timex_cart_type = TIMEX_CART_DOCK;
+				timex_cart_data = (UINT8*) malloc (0x10000);
+				if (!timex_cart_data)
+				{
+					free (file_data);
+					logerror ("Memory allocate error\n");
+					return INIT_FAIL;
+				}
+				chunks_in_file = 0;
+				for (i=0; i<8; i++)
+				{
+					timex_cart_chunks = timex_cart_chunks | ((file_data[i+1]&0x01)<<i);
+					if (file_data[i+1]&0x02)
+					{
+						memcpy (timex_cart_data+i*0x2000, file_data+0x09+chunks_in_file*0x2000, 0x2000);
+						chunks_in_file++;
+					}
+					else
+					{
+						if (file_data[i+1]&0x01)
+							memset (timex_cart_data+i*0x2000, 0x00, 0x2000);
+						else
+							memset (timex_cart_data+i*0x2000, 0xff, 0x2000);
+					}
+				}
+				free (file_data);
+				break;
+
+		default:	logerror ("Cart type not supported\n");
+				free (file_data);
+				timex_cart_type = TIMEX_CART_NONE;
+				return INIT_FAIL;
+				break;
+	}
+
+	logerror ("Cart loaded\n");
+	logerror ("Chunks %02x\n", timex_cart_chunks);
+	return INIT_PASS;
+}
+
+void timex_cart_exit(int id)
+{
+	if (timex_cart_data)
+	{
+		free (timex_cart_data);
+		timex_cart_data = NULL;
+	}
+	timex_cart_type = TIMEX_CART_NONE;
+	timex_cart_chunks = 0x00;
 }

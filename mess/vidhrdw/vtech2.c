@@ -133,12 +133,9 @@ static int offs_0[96] = {
 	0x26a0,0x2ea0,0x36a0,0x3ea0,0x27a0,0x2fa0,0x37a0,0x3fa0
 };
 
-void laser_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void laser_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	int offs, x, y;
-
-	if( palette_recalc() )
-		full_refresh = 1;
 
     if( full_refresh )
 	{

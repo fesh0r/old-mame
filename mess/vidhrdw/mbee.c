@@ -508,7 +508,7 @@ void mbee_vh_stop(void)
 	generic_vh_stop();
 }
 
-void mbee_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void mbee_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	int offs, cursor;
 
@@ -526,9 +526,6 @@ void mbee_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 			ui_text(bitmap, mbee_frame_message, 0, Machine->uiheight - 10);
 		}
     }
-
-    if( palette_recalc() )
-		full_refresh = 1;
 
     if( full_refresh )
 	{

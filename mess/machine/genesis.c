@@ -101,7 +101,7 @@ int genesis_init_cart (int id)
     }
 	genesis_soundram = memory_region(REGION_CPU2);
 
-	romfile = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
+	romfile = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
 	if (!romfile)
     {
         printf("Genesis Requires Cartridge!\n");
@@ -619,16 +619,3 @@ WRITE16_HANDLER(genesis_ctrl_w)
 		break;
 	}
 }
-
-#if 0
-READ_HANDLER(cartridge_ram_r)
-{
-/*	logerror("cartridge ram read.. %x\n", offset); */
-	return cartridge_ram[offset];
-}
-WRITE_HANDLER(cartridge_ram_w)
-{
-/*	logerror("cartridge ram write.. %x to %x\n", data, offset); */
-	cartridge_ram[offset] = data;
-}
-#endif

@@ -62,6 +62,7 @@
 #include "formats/cococas.h"
 #include "includes/6883sam.h"
 #include "includes/cococart.h"
+#include "cassette.h"
 
 static UINT8 *coco_rom;
 static int coco3_enable_64k;
@@ -72,7 +73,7 @@ static int pia0_irq_a, pia0_irq_b;
 static int pia1_firq_a, pia1_firq_b;
 static int gime_firq, gime_irq;
 static int cart_line, cart_inserted;
-static UINT8 pia0_pb, soundmux_status, tape_motor;
+static UINT8 pia0_pb, pia1_pb1, soundmux_status, tape_motor;
 static UINT8 joystick_axis, joystick;
 static int d_dac;
 
@@ -84,6 +85,8 @@ static READ_HANDLER (  d_pia0_ca1_r );
 static READ_HANDLER (  d_pia0_cb1_r );
 static READ_HANDLER (  d_pia0_pa_r );
 static READ_HANDLER (  d_pia1_pa_r );
+static READ_HANDLER (  d_pia1_pb_r_dragon );
+static READ_HANDLER (  d_pia1_pb_r_coco2 );
 static WRITE_HANDLER ( d_pia0_pa_w );
 static WRITE_HANDLER ( d_pia0_pb_w );
 static WRITE_HANDLER ( d_pia1_cb2_w);
@@ -122,16 +125,16 @@ static void coco3_setcartline(int data);
 #define LOG_INT_MASKING	1	/* [Sparse]   Logging on changing GIME interrupt masks */
 #define LOG_CASSETTE	1	/* [Sparse]   Logging when cassette motor changes state */
 #define LOG_TIMER_SET	1	/* [Sparse]   Logging when setting the timer */
-#define LOG_INT_TMR		1	/* [Frequent] Logging when timer interrupt is invoked */
+#define LOG_INT_TMR		0	/* [Frequent] Logging when timer interrupt is invoked */
 #define LOG_FLOPPY		0	/* [Frequent] Set when floppy interrupts occur */
-#define LOG_INT_COCO3	1
+#define LOG_INT_COCO3	0
 #define LOG_GIME		0
 #define LOG_MMU			0
-#define LOG_VBORD		1   /* [Frequent] Occurs when VBORD is changed */
+#define LOG_VBORD		0   /* [Frequent] Occurs when VBORD is changed */
 #define LOG_OS9         0
 #define LOG_TIMER       0
 #define LOG_DEC_TIMER	0
-#define LOG_IRQ_RECALC	1
+#define LOG_IRQ_RECALC	0
 #else /* !MAME_DEBUG */
 #define LOG_PAK			0
 #define LOG_CASSETTE	0
@@ -164,7 +167,24 @@ static struct pia6821_interface dragon_pia_intf[] =
 
 	/* PIA 1 */
 	{
-		/*inputs : A/B,CA/B1,CA/B2 */ d_pia1_pa_r, 0, 0, d_pia1_cb1_r, 0, 0,
+		/*inputs : A/B,CA/B1,CA/B2 */ d_pia1_pa_r, d_pia1_pb_r_dragon, 0, d_pia1_cb1_r, 0, 0,
+		/*outputs: A/B,CA/B2	   */ d_pia1_pa_w, d_pia1_pb_w, d_pia1_ca2_w, d_pia1_cb2_w,
+		/*irqs	 : A/B			   */ d_pia1_firq_a, d_pia1_firq_b
+	}
+};
+
+static struct pia6821_interface coco2_pia_intf[] =
+{
+	/* PIA 0 */
+	{
+		/*inputs : A/B,CA/B1,CA/B2 */ d_pia0_pa_r, 0, d_pia0_ca1_r, d_pia0_cb1_r, 0, 0,
+		/*outputs: A/B,CA/B2	   */ d_pia0_pa_w, d_pia0_pb_w, d_pia0_ca2_w, d_pia0_cb2_w,
+		/*irqs	 : A/B			   */ d_pia0_irq_a, d_pia0_irq_b
+	},
+
+	/* PIA 1 */
+	{
+		/*inputs : A/B,CA/B1,CA/B2 */ d_pia1_pa_r, d_pia1_pb_r_coco2, 0, d_pia1_cb1_r, 0, 0,
 		/*outputs: A/B,CA/B2	   */ d_pia1_pa_w, d_pia1_pb_w, d_pia1_ca2_w, d_pia1_cb2_w,
 		/*irqs	 : A/B			   */ d_pia1_firq_a, d_pia1_firq_b
 	}
@@ -174,7 +194,7 @@ static struct pia6821_interface coco3_pia_intf[] =
 {
 	/* PIA 0 */
 	{
-		/*inputs : A/B,CA/B1,CA/B2 */ d_pia0_pa_r, 0, d_pia0_ca1_r, d_pia0_cb1_r, 0, 0,
+		/*inputs : A/B,CA/B1,CA/B2 */ d_pia0_pa_r, d_pia1_pb_r_coco2, d_pia0_ca1_r, d_pia0_cb1_r, 0, 0,
 		/*outputs: A/B,CA/B2	   */ d_pia0_pa_w, d_pia0_pb_w, d_pia0_ca2_w, d_pia0_cb2_w,
 		/*irqs	 : A/B			   */ coco3_pia0_irq_a, coco3_pia0_irq_b
 	},
@@ -323,7 +343,7 @@ static int generic_pak_load(int id, UINT8 *rambase, UINT8 *rombase, UINT8 *pakba
 {
 	void *fp;
 
-	fp = image_fopen (IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE_R, 0);
+	fp = image_fopen (IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE, 0);
 	if (fp)
 	{
 		int paklength;
@@ -454,9 +474,9 @@ static int generic_rom_load(int id, UINT8 *dest, UINT16 destlength)
 
 	cart_inserted = 0;
 
-	fp = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
+	fp = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
 	if (fp) {
-		
+
 		romsize = osd_fsize(fp);
 
 		/* The following hack is for Arkanoid running on the CoCo2.
@@ -465,7 +485,7 @@ static int generic_rom_load(int id, UINT8 *dest, UINT16 destlength)
 		   32K starting at 0x8000. The first 16K is totally inaccessable
 		   from a CoCo2. Thus we need to skip ahead in the ROM file. On
 		   the CoCo3 the entire 32K ROM is accessable. */
-		
+
 		if ( device_crc(IO_CARTSLOT, 0) == 0x25C3AA70 )     /* Test for Arkanoid  */
 		{
 			if ( destlength == 0x4000 )						/* Test if CoCo2      */
@@ -474,7 +494,7 @@ static int generic_rom_load(int id, UINT8 *dest, UINT16 destlength)
 				romsize -= 0x4000;							/* Adjust ROM size    */
 			}
 		}
-		
+
 		if (romsize > destlength)
 			romsize = destlength;
 
@@ -515,12 +535,12 @@ int coco3_rom_load(int id)
 	UINT8 	*ROM = memory_region(REGION_CPU1);
 	int		count;
 	void	*fp;
-	
-	fp = image_fopen(IO_CARTSLOT, 0, OSD_FILETYPE_IMAGE_R, 0);
+
+	fp = image_fopen(IO_CARTSLOT, 0, OSD_FILETYPE_IMAGE, 0);
 	count = count_bank();
 	if (fp)
 		osd_fclose(fp);
-	
+
 	if( count == 0 )
 		/* Load roms starting at 0x8000 and mirror upwards. */
 		/* ROM size is 32K max */
@@ -817,32 +837,24 @@ static int coco_hiresjoy_ry(void)
 
 static void soundmux_update(void)
 {
+	/* This function is called whenever the MUX (selector switch) is changed
+	 * It mainly turns on and off the cassette audio depending on the switch.
+	 * It also calls a function into the cartridges device to tell it if it is
+	 * switch on or off.
+	 */
+
 	int casstatus, new_casstatus;
 
 	casstatus = device_status(IO_CASSETTE, 0, -1);
 	new_casstatus = casstatus | WAVE_STATUS_MUTED;
 
-	/* We only write to the DAC if we are enabled; otherwise we let it be.  If
-	 * we write 0 to the DAC when disabled, Popcorn has a very annoying buzz
-	 * not present on an actual CoCo
-	 */
-	if (soundmux_status & SOUNDMUX_STATUS_ENABLE) {
-		switch(soundmux_status) {
-		case SOUNDMUX_STATUS_ENABLE:
-			/* DAC */
-			DAC_data_w(0, d_dac);
-			break;
-
-		case SOUNDMUX_STATUS_ENABLE | SOUNDMUX_STATUS_SEL1:
-			/* CSN */
-			new_casstatus &= ~WAVE_STATUS_MUTED;
-			break;
-
-		default:
-			/* Other */
-			DAC_data_w(0, 0);
-			break;
-		}
+	switch(soundmux_status) {
+	case SOUNDMUX_STATUS_ENABLE | SOUNDMUX_STATUS_SEL1:
+		/* CSN */
+		new_casstatus &= ~WAVE_STATUS_MUTED;
+		break;
+	default:
+		break;
 	}
 
 	coco_cartridge_enablesound(soundmux_status == (SOUNDMUX_STATUS_ENABLE|SOUNDMUX_STATUS_SEL2));
@@ -852,6 +864,34 @@ static void soundmux_update(void)
 		logerror("CoCo: Turning cassette speaker %s\n", new_casstatus ? "on" : "off");
 #endif
 		device_status(IO_CASSETTE, 0, new_casstatus);
+	}
+}
+
+void dragon_sound_update(void)
+{
+	/* Call this function whenever you need to update the sound. It will
+	 * automatically mute any devices that are switched out.
+	 */
+
+	if (soundmux_status & SOUNDMUX_STATUS_ENABLE) {
+		switch(soundmux_status) {
+		case SOUNDMUX_STATUS_ENABLE:
+			/* DAC */
+			DAC_data_w(0, pia1_pb1 + (d_dac >> 1) );  /* Mixing the two sources */
+			break;
+		case SOUNDMUX_STATUS_ENABLE | SOUNDMUX_STATUS_SEL1:
+			/* CSN */
+			DAC_data_w(0, pia1_pb1); /* Mixing happens elsewhere */
+			break;
+		case SOUNDMUX_STATUS_ENABLE | SOUNDMUX_STATUS_SEL2:
+			/* CART Sound */
+			DAC_data_w(0, pia1_pb1); /* To do: mix in cart signal */
+			break;
+		default:
+			/* This pia line is always connected to the output */
+			DAC_data_w(0, pia1_pb1);
+			break;
+		}
 	}
 }
 
@@ -1004,7 +1044,7 @@ READ_HANDLER( coco3_pia_1_r )
   PIA1 PA2-PA7	- DAC
   PIA1 PB0		- RS232 IN
   PIA1 PB1		- Single bit sound
-  PIA1 PB2		- RAMSZ (I believe this was a jumper cable?)
+  PIA1 PB2		- RAMSZ (32/64K, 16K, and 4K three position switch)
   PIA1 PB3		- M6847 CSS
   PIA1 PB4		- M6847 INT/EXT and M6847 GM0
   PIA1 PB5		- M6847 GM1
@@ -1032,11 +1072,11 @@ static WRITE_HANDLER ( d_pia1_pa_w )
 	 *	This port appears at $FF20
 	 *
 	 *	Bits
-	 *  7-2:	DAC or cassette
+	 *  7-2:	DAC to speaker or cassette
 	 *    1:	Serial out
 	 */
 	d_dac = data & 0xfc;
-	soundmux_update();
+	dragon_sound_update();
 
 	if (joystick_mode() == JOYSTICKMODE_HIRES)
 		coco_hiresjoy_w(d_dac >= 0x80);
@@ -1064,13 +1104,15 @@ static WRITE_HANDLER( d_pia1_pb_w )
 	m6847_css_w(0,		data & 0x08);
 	schedule_full_refresh();
 
-	/* When SNDEN if false, PB1 will drive the sound output.  This is a rarely
-	 * used single bit sound mode
+	/* PB1 will drive the sound output.  This is a rarely
+	 * used single bit sound mode. It is always connected thus
+	 * cannot be disabled.
 	 *
 	 * Source:  Page 31 of the Tandy Color Computer Serice Manual
 	 */
-	if ((soundmux_status & SOUNDMUX_STATUS_ENABLE) == 0)
-		DAC_data_w(0, (data & 0x02) ? 0xff : 0x00);
+
+	 pia1_pb1 = ((data & 0x02) ? 127 : 0);
+	 dragon_sound_update();
 }
 
 static WRITE_HANDLER( coco3_pia1_pb_w )
@@ -1097,6 +1139,48 @@ static WRITE_HANDLER ( d_pia1_ca2_w )
 static READ_HANDLER ( d_pia1_pa_r )
 {
 	return (device_input(IO_CASSETTE, 0) >= 0) ? 1 : 0;
+}
+
+static READ_HANDLER ( d_pia1_pb_r_dragon )
+{
+	/* This handles the reading of the memory sense switch (pb2) for the Dragon and CoCo 1,
+	 * and serial-in (pb0). Serial-in not yet implemented.
+	 */
+
+	switch( readinputport(12) & 0x18 )		/* Read dip switch setting "on motherboard" */
+	{
+		case 0x00: /* 32/64K: wire output of pia0_pb7 to input pia1_pb2  */
+			return (pia0_pb & 0x80) >> 5;
+			break;
+		case 0x08: /* 16K: wire pia1_pb2 high */
+			return 0x04;
+			break;
+		case 0x10: /* 4K: wire pia1_pb2 low */
+			return 0x00;
+			break;
+	}
+	return 0;
+}
+
+static READ_HANDLER ( d_pia1_pb_r_coco2 )
+{
+	/* This handles the reading of the memory sense switch (pb2) for the CoCo 2 and 3,
+	 * and serial-in (pb0). Serial-in not yet implemented.
+	 */
+
+	switch( readinputport(12) & 0x18 )		/* Read dip switch setting "on motherboard" */
+	{
+		case 0x00: /* 32/64K: wire output of pia0_pb6 to input pia1_pb2  */
+			return (pia0_pb & 0x40) >> 4;
+			break;
+		case 0x08: /* 16K: wire pia1_pb2 high */
+			return 0x04;
+			break;
+		case 0x10: /* 4K: wire pia1_pb2 low */
+			return 0x00;
+			break;
+	}
+	return 0;
 }
 
 /***************************************************************************
@@ -1684,48 +1768,31 @@ static void autocenter_init(int dipport, int dipmask)
   Cassette support
 ***************************************************************************/
 
+static void coco_cassette_calcchunkinfo(void *file, int *chunk_size,
+	int *chunk_samples)
+{
+	coco_wave_size = osd_fsize(file);
+	*chunk_size = coco_wave_size;
+	*chunk_samples = 8*8 * coco_wave_size;	/* 8 bits * 4 samples */
+}
+
+static struct cassette_args coco_cassette_args =
+{
+	WAVE_STATUS_MOTOR_ENABLE | WAVE_STATUS_MUTED
+		| WAVE_STATUS_MOTOR_INHIBIT,				/* initial_status */
+	coco_cassette_fill_wave,									/* fill_wave */
+	coco_cassette_calcchunkinfo,					/* calc_chunk_info */
+	4800,											/* input_smpfreq */
+	COCO_WAVESAMPLES_HEADER,						/* header_samples */
+	COCO_WAVESAMPLES_TRAILER,						/* trailer_samples */
+	0,												/* NA */
+	0,												/* NA */
+	19200											/* create_smpfreq */
+};
+
 int coco_cassette_init(int id)
 {
-	void *file;
-	struct wave_args wa;
-
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
-	if( file )
-	{
-		coco_wave_size = osd_fsize(file);
-
-		memset(&wa, 0, sizeof(&wa));
-		wa.file = file;
-		wa.chunk_size = coco_wave_size;
-		wa.chunk_samples = 8*8 * coco_wave_size;	/* 8 bits * 4 samples */
-		wa.smpfreq = 4800; /* cassette samples go at 4800 baud */
-		wa.fill_wave = coco_cassette_fill_wave;
-		wa.header_samples = COCO_WAVESAMPLES_HEADER;
-		wa.trailer_samples = COCO_WAVESAMPLES_TRAILER;
-		wa.display = 1;
-		if( device_open(IO_CASSETTE,id,0,&wa) )
-			return INIT_FAIL;
-
-		/* immediately inhibit/mute/play the output */
-        device_status(IO_CASSETTE,id, WAVE_STATUS_MOTOR_ENABLE|WAVE_STATUS_MUTED|WAVE_STATUS_MOTOR_INHIBIT);
-		return INIT_PASS;
-	}
-
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
-	if( file )
-    {
-		memset(&wa, 0, sizeof(&wa));
-		wa.file = file;
-		wa.display = 1;
-		wa.smpfreq = 19200;
-		if( device_open(IO_CASSETTE,id,1,&wa) )
-            return INIT_FAIL;
-
-		/* immediately inhibit/mute/play the output */
-        device_status(IO_CASSETTE,id, WAVE_STATUS_MOTOR_ENABLE|WAVE_STATUS_MUTED|WAVE_STATUS_MOTOR_INHIBIT);
-		return INIT_PASS;
-    }
-	return INIT_PASS;
+	return cassette_init(id, &coco_cassette_args);
 }
 
 void coco_cassette_exit(int id)
@@ -1804,7 +1871,7 @@ int coco_bitbanger_init (int id)
 {
 	bitbanger_word = 0;
 	bitbanger_line = 0;
-	bitbanger_file = image_fopen (IO_BITBANGER, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
+	bitbanger_file = image_fopen (IO_BITBANGER, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
 	return INIT_PASS;
 }
 
@@ -1840,9 +1907,9 @@ static int count_bank(void)
 {
 	unsigned int	crc;
 	/* This function, and all calls of it, are hacks for bankswitched games */
-	
+
 	crc = device_crc(IO_CARTSLOT, 0);
-	
+
 	switch( crc )
 	{
 		case 0x83bd6056:		/* Mind-Roll */
@@ -1864,9 +1931,9 @@ static int is_Orch90(void)
 {
 	unsigned int	crc;
 	/* This function, and all calls of it, are hacks for bankswitched games */
-	
+
 	crc = device_crc(IO_CARTSLOT, 0);
-	
+
 	return crc == 0x15FB39AF;
 }
 
@@ -1877,7 +1944,7 @@ static void generic_setcartbank(int bank, UINT8 *cartpos)
 	if (count_bank() > 0) {
 		/* Pin variable to proper bit width */
 		bank &= count_bank();
-		fp = image_fopen(IO_CARTSLOT, 0, OSD_FILETYPE_IMAGE_R, 0);
+		fp = image_fopen(IO_CARTSLOT, 0, OSD_FILETYPE_IMAGE, 0);
 		if (fp) {
 			if (bank)
 				osd_fseek(fp, 0x4000 * bank, SEEK_SET);
@@ -1921,7 +1988,7 @@ static void generic_init_machine(struct pia6821_interface *piaintf, struct sam68
 	pia1_firq_a = CLEAR_LINE;
 	pia1_firq_b = CLEAR_LINE;
 
-	pia0_pb = soundmux_status = tape_motor = 0;
+	pia0_pb = pia1_pb1 = soundmux_status = tape_motor = 0;
 	joystick_axis = joystick = 0;
 	d_dac = 0;
 
@@ -1958,6 +2025,12 @@ void coco_init_machine(void)
 {
 	coco_rom = memory_region(REGION_CPU1) + 0x10000;
 	generic_init_machine(dragon_pia_intf, &dragon64_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks);
+}
+
+void coco2_init_machine(void)
+{
+	coco_rom = memory_region(REGION_CPU1) + 0x10000;
+	generic_init_machine(coco2_pia_intf, &dragon64_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks);
 }
 
 void coco3_init_machine(void)

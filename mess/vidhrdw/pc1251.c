@@ -117,7 +117,7 @@ WRITE_HANDLER(pc1251_lcd_write)
 
 #define DOWN 62
 #define RIGHT 68
-void pc1251_vh_screenrefresh (struct osd_bitmap *bitmap, int full_refresh)
+void pc1251_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
 {
 	int x, y, i, j;
 	int color[2];
@@ -129,11 +129,6 @@ void pc1251_vh_screenrefresh (struct osd_bitmap *bitmap, int full_refresh)
     {
         osd_mark_dirty (0, 0, bitmap->width, bitmap->height);
     }
-    if (pocketc_backdrop)
-		copybitmap (bitmap, pocketc_backdrop->artwork, 0, 0, 0, 0, NULL,
-					TRANSPARENCY_NONE, 0);
-	else
-		fillbitmap (bitmap, Machine->pens[0], &Machine->visible_area);
 
 	for (x=RIGHT,y=DOWN,i=0; i<60;x+=3) {
 		for (j=0; j<5;j++,i++,x+=3)

@@ -5,6 +5,8 @@
 #include "machine/nes_mmc.h"
 #include "zlib.h"
 
+#define M6502_INT_NONE	0
+
 /* Uncomment this to dump reams of ppu state info to the errorlog */
 //#define LOG_PPU
 
@@ -255,7 +257,7 @@ READ_HANDLER ( nes_IN0_r )
 				retVal |= ((in_0[0] & 0x01) << 4);
 
 				/* Look at the screen and see if the cursor is over a bright pixel */
-				pix = Machine->scrbitmap->line[in_0[2]][in_0[1]];
+				pix = read_pixel(Machine->scrbitmap, in_0[1], in_0[2]);
 				if ((pix == Machine->pens[0x20]) || (pix == Machine->pens[0x30]) ||
 					(pix == Machine->pens[0x33]) || (pix == Machine->pens[0x34]))
 				{
@@ -303,7 +305,7 @@ READ_HANDLER ( nes_IN1_r )
 				retVal |= ((in_1[0] & 0x01) << 4);
 
 				/* Look at the screen and see if the cursor is over a bright pixel */
-				pix = Machine->scrbitmap->line[in_1[2]][in_1[1]];
+				pix = read_pixel(Machine->scrbitmap, in_1[1], in_1[2]);
 				if ((pix == Machine->pens[0x20]) || (pix == Machine->pens[0x30]) ||
 					(pix == Machine->pens[0x33]) || (pix == Machine->pens[0x34]))
 				{
@@ -505,7 +507,7 @@ int nes_interrupt (void)
 	if ((ret != M6502_INT_NONE))
 	{
     	logerror("--- scanline %d", current_scanline);
-    	if (ret == M6502_INT_IRQ)
+    	if (ret == M6502_IRQ_LINE)
     		logerror(" IRQ\n");
     	else logerror(" NMI\n");
     }
@@ -1115,7 +1117,7 @@ int nes_init_cart (int id)
 		logerror ("battery name (minus extension): %s\n", battery_name);
 	}
 
-	if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
+	if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
 	{
 		logerror("image_fopen failed in nes_init_cart.\n");
 			return INIT_FAIL;
@@ -1330,7 +1332,7 @@ int nes_load_disk (int id)
 			return INIT_PASS;
 	}
 
-	if (!(diskfile = image_fopen (IO_FLOPPY, id, OSD_FILETYPE_IMAGE_R, 0)))
+	if (!(diskfile = image_fopen (IO_FLOPPY, id, OSD_FILETYPE_IMAGE, 0)))
 	{
 		logerror("image_fopen failed in nes_load_disk for [%s].\n",device_filename(IO_FLOPPY,id));
 			return INIT_FAIL;

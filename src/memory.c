@@ -977,10 +977,10 @@ static int init_cpudata(void)
 #endif
 #ifdef MESS
 #if HAS_Z80_MSX
-		/* Z80-MSX port mask kludge */
-		if ((Machine->drv->cpu[cpu].cpu_type & ~CPU_FLAGS_MASK) == CPU_Z80_MSX)
-			if (!(Machine->drv->cpu[cpu].cpu_type & CPU_16BIT_PORT))
-				cpudata[cpu].port.mask = 0xff;
+		/* Z80_MSX port mask kludge */
+		if (cputype == CPU_Z80_MSX)
+			if (!(Machine->drv->cpu[cpunum].cpu_type & CPU_16BIT_PORT))
+				cpudata[cpunum].port.mask = 0xff;
 #endif
 #endif
 	}

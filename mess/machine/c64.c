@@ -278,10 +278,10 @@ static void c64_irq (int level)
 			if (0&&(cpu_getactivecpu()==0)) {
 				cpu_set_irq_line (0, Z80_IRQ_INT, level);
 			} else {
-				cpu_set_irq_line (1, M6510_INT_IRQ, level);
+				cpu_set_irq_line (1, M6510_IRQ_LINE, level);
 			}
 		} else {
-			cpu_set_irq_line (0, M6510_INT_IRQ, level);
+			cpu_set_irq_line (0, M6510_IRQ_LINE, level);
 		}
 		old_level = level;
 	}
@@ -945,7 +945,7 @@ int c64_rom_id (int id)
 
 	logerror("c64_rom_id %s\n", device_filename(IO_CARTSLOT,id));
 	retval = 0;
-	if (!(romfile = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
+	if (!(romfile = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
 	{
 		logerror("rom %s not found\n", device_filename(IO_CARTSLOT,id));
 		return 0;

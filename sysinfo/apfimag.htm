@@ -11,11 +11,52 @@
 </table>
 <hr>
 <h4>APF Imagination Machine</h4>
------------------------<br>
-The APF Imagination is the same as an APF-M1000 with the additional keyboard unit attached.<br>
-<br>
+The APF Imagination has the same hardware as the APF-M1000, but it is a computer.<br>
+It has a keyboard and built in cassette player.<br>
+An additional disc interface was available.<br>
+In basic, pressing "FUNCTION" (currently mapped to CTRL) and a letter/number will display<br>
+a basic keyword making it easier to enter programs.<br>
+FUNCTION+Q = IF<br>
+FUNCTION+W = STEP<br>
+FUNCTION+E = STOP<br>
+FUNCTION+R = READ<br>
+FUNCTION+T = NEXT<br>
+FUNCTION+Y = PRINT<br>
+FUNCTION+U = END<br>
+FUNCTION+I = LIST<br>
+FUNCTION+O = REM<br>
+FUNCTION+P = USING<br>
+FUNCTION+1 = GOSUB<br>
+FUNCTION+2 = LET<br>
+FUNCTION+3 = DATA<br>
+FUNCTION+4 = INPUT<br>
+FUNCTION+5 = DIM<br>
+FUNCTION+6 = FOR<br>
+FUNCTION+7 = RETURN<br>
+FUNCTION+8 = THEN<br>
+FUNCTION+9 = ON<br>
+FUNCTION+0 = GOTO<br>
+FUNCTION+- = RESTORE<br>
+FUNCTION+ENTER = CLOAD<br>
+<p><b>For cassette:</b><br>
+Use CSAVE"&lt;filename&gt;" to save a file, and CLOAD"" to load the file back.<br>
+<p><b>For disc:</b><br>
+Use SAVE"&lt;filename&gt;" to save a file, and LOAD"&lt;filename&gt;" to load the file back.<br>
+You can use "DIR &lt;drive number&gt;" e.g. "DIR 0" and "DIR 1" to give a directory of the<br>
+disc.<br>
+Basic disk images with the ".APD" extension are supported.<br>
+<p><b>Emulation state:</b><br>
+- cassette loading and saving is working<br>
+- interrupts are not exact. I don't know enough about them, any info would<br>
+be appreciated.<br>
+- disc interface is working, but there may be some bugs.<br>
+- keyboard is mostly working but some keys may be missing<br>
+- keypad is not emulated<br>
+- the M6847 emulation is very advanced *BUT* I don't think I have set it up<br>
+correctly for the APF Imagination, therefore the graphics are wrong.<br>
+- memory emulation is not complete<br>
 <hr>
-<center><font size=-2>created on Thu Aug 16 22:55:01 2001
+<center><font size=-2>created on Tue Jan 01 12:56:01 2002
 </font></center>
 </body>
 </html>

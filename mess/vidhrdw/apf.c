@@ -43,6 +43,25 @@ READ_HANDLER(apf_video_r)
 WRITE_HANDLER(apf_video_w)
 {
 	apf_video_ram[offset] = data;
+	m6847_touch_vram(offset);
+	
+	schedule_full_refresh();
+}
+
+extern int apf_ints;
+
+WRITE_HANDLER(apf_vsync_int)
+{
+	if (data!=0)
+	{
+		apf_ints|=(1<<4);
+	}
+	else
+	{
+		apf_ints&=~(1<<4);
+	}
+
+	apf_update_ints();
 }
 
 int apf_vh_start(void)
@@ -53,10 +72,11 @@ int apf_vh_start(void)
 	apf_video_ram = (unsigned char *)malloc(0x0400);
 
 	m6847_vh_normalparams(&p);
-	p.version = M6847_VERSION_ORIGINAL;
+	p.version = M6847_VERSION_ORIGINAL_NTSC;
 	p.ram = apf_video_ram+0x0200;
 	p.ramsize = 0x0400;
 	p.charproc = apf_charproc;
+	p.fs_func = apf_vsync_int;
 
 	if (m6847_vh_start(&p))
 		return 1;

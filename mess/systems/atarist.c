@@ -113,7 +113,7 @@ int atarist_vh_start(void)
 	int i;
 
 	for (i=0; i<512; i++)
-		palette_change_color(i,((i>>6)&7)*0x24,((i>>3)&7)*0x24,(i&7)*0x24);
+		palette_set_color(i,((i>>6)&7)*0x24,((i>>3)&7)*0x24,(i&7)*0x24);
 
 	return 0;
 }
@@ -270,9 +270,8 @@ void atarist_pixel_update(void)
 //	}
 }
 
-void atarist_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void atarist_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
-	palette_recalc();
 }
 
 /***************************************************************************/
@@ -1844,7 +1843,7 @@ static int atarist_basic_floppy_init(int id)
 	if (basicdsk_floppy_init(id)==INIT_PASS)
 	{
 		/* Figure out correct disk format, try standard formats first */
-		file=image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+		file=image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 		if (file) {
 			int s=osd_fsize(file),i,f=0;
 			int table[][4]={
@@ -1906,7 +1905,7 @@ int atarist_load(int type, int id, unsigned char **ptr)
 {
 	void *file;
 
-	file = image_fopen(type, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+	file = image_fopen(type, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 
 	if (file)
 	{
@@ -2125,7 +2124,7 @@ static struct MachineDriver machine_driver_atarist =
 	512,512,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	atarist_eof_callback,
 	atarist_vh_start,
 	atarist_vh_stop,
@@ -2166,7 +2165,7 @@ static struct MachineDriver machine_driver_stmono =
 	2,2,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	atarist_keyboard_update,
 	atarist_vh_start,
 	atarist_vh_stop,
@@ -2422,4 +2421,4 @@ http://home.wanadoo.nl/jarod/museum/megaste.htm
 /* 1987 : Mega STf - Seperate keyboard, blitter, 1/2/4 Meg ram options */
 /* 1989 : Mega STe - Seperate keyboard, 16MHz 68000 (switchable to 8MHz), memory cache, VME bus, TOS 2.05 & 2.06 */
 
-COMPX(1985, atarist,0, atarist, atarist,0, "atarist", "atarist", GAME_REQUIRES_16BIT )
+COMP(1985, atarist,0, atarist, atarist,0, "atarist", "atarist" )

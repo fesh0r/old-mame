@@ -44,15 +44,15 @@ int basicdsk_floppy_init(int id)
 			return INIT_PASS;
 		}
 		w->mode = 1;
-		w->image_file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW);
+		w->image_file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
 		if( !w->image_file )
 		{
 			w->mode = 0;
-			w->image_file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+			w->image_file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 			if( !w->image_file )
 			{
 				w->mode = 1;
-				w->image_file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
+				w->image_file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
 			}
 		}
 
@@ -174,7 +174,7 @@ static int basicdsk_get_ddam(UINT8 id, UINT8 physical_track, UINT8 physical_side
 
 /* dir_sector is a relative offset from the start of the disc,
 dir_length is a relative offset from the start of the disc */
-void basicdsk_set_geometry(UINT8 drive, UINT8 tracks, UINT8 heads, UINT8 sec_per_track, UINT16 sector_length, UINT8 first_sector_id)
+void basicdsk_set_geometry(UINT8 drive, UINT16 tracks, UINT8 heads, UINT8 sec_per_track, UINT16 sector_length, UINT8 first_sector_id, UINT16 offset_track_zero)
 {
 	basicdsk *pDisk;
 	unsigned long N;
@@ -191,8 +191,8 @@ void basicdsk_set_geometry(UINT8 drive, UINT8 tracks, UINT8 heads, UINT8 sec_per
 
 
 #if VERBOSE
-	logerror("basicdsk geometry for drive #%d is %d tracks, %d heads, %d sec/track\n",
-		drive, tracks, heads, sec_per_track);
+	logerror("basicdsk geometry for drive #%d is %d tracks, %d heads, %d sec/track, %d bytes per sector, first sector id: %d, file offset to track 0: %d\n",
+		drive, tracks, heads, sec_per_track, sector_length, first_sector_id, offset_track_zero);
 #endif
 
 	pDisk->tracks = tracks;
@@ -200,7 +200,10 @@ void basicdsk_set_geometry(UINT8 drive, UINT8 tracks, UINT8 heads, UINT8 sec_per
 	pDisk->first_sector_id = first_sector_id;
 	pDisk->sec_per_track = sec_per_track;
 	pDisk->sector_length = sector_length;
-
+	pDisk->offset = offset_track_zero;
+	
+	floppy_drive_set_geometry_absolute( drive, tracks, heads );
+	
 	pDisk->image_size = pDisk->tracks * pDisk->heads * pDisk->sec_per_track * pDisk->sector_length;
 
 	/* if a ddam map was already set up clear it */
@@ -267,12 +270,14 @@ unsigned long offset;
 		return 0;
 	}
 
-	offset = t;
+	offset = 0;
+	offset += t;
 	offset *= w->heads;
 	offset += h;
 	offset *= w->sec_per_track;
 	offset += (s-w->first_sector_id);
 	offset *= w->sector_length;
+	offset += w->offset;
 
 
 #if VERBOSE
@@ -558,7 +563,7 @@ void basicdsk_write_sector_data_from_buffer(int drive, int side, int index1, cha
 {
 	basicdsk *w = &basicdsk_drives[drive];
 
-	if (basicdsk_seek(w, w->track, side, index1))
+	if (basicdsk_seek(w, w->track, side, index1)&&w->mode)
 	{
 		osd_fwrite(w->image_file, ptr, length);
 	}

@@ -34,7 +34,7 @@ void set_last_border_color (int NewColor)
         CurrBorderColor = NewColor;
 }
 
-void draw_border(struct osd_bitmap *bitmap,
+void draw_border(struct mame_bitmap *bitmap,
         int full_refresh,               /* Full refresh flag */
         int TopBorderLines,             /* Border lines before actual screen */
         int ScreenLines,                /* Screen height in pixels */
@@ -65,7 +65,7 @@ void draw_border(struct osd_bitmap *bitmap,
         if (NumItems)
         {
                 int CyclesPerFrame = (int)(Machine->drv->cpu[0].cpu_clock / Machine->drv->frames_per_second);
-                logerror ("Event count = %d, curr cycle = %ld, total cycles = %ld \n", NumItems, cpu_getcurrentcycles(), CyclesPerFrame);
+                logerror ("Event count = %d, curr cycle = %ld, total cycles = %ld \n", NumItems, TIME_TO_CYCLES(0,cpu_getscanline()*cpu_getscanlineperiod()), CyclesPerFrame);
         }
         for (Count = 0; Count < NumItems; Count++)
                 logerror ("Event no %05d, ID = %04x, data = %04x, time = %ld\n", Count, pItem[Count].Event_ID, pItem[Count].Event_Data, pItem[Count].Event_Time);
@@ -344,5 +344,5 @@ void draw_border(struct osd_bitmap *bitmap,
 
         /* Assume all other routines have processed their data from the list */
         EventList_Reset();
-        EventList_SetOffsetStartTime ( cpu_getcurrentcycles() );
+        EventList_SetOffsetStartTime ( TIME_TO_CYCLES(0,cpu_getscanline()*cpu_getscanlineperiod()) );
 }

@@ -12,6 +12,11 @@
 #define myMIN(a, b) ((a) < (b) ? (a) : (b))
 #define myMAX(a, b) ((a) > (b) ? (a) : (b))
 
+#define PROFILER_RASTERBITS_MAIN			PROFILER_USER1
+#define PROFILER_RASTERBITS_INNERLOOP		PROFILER_USER2
+#define PROFILER_RASTERBITS_BUILDSCANLINE	PROFILER_USER3
+#define PROFILER_RASTERBITS_DRAWSCANLINE	PROFILER_USER4
+
 /* -------------------------------------------------------------------------
  * New raster_graphic call
  * ------------------------------------------------------------------------- */
@@ -32,7 +37,7 @@ static int isrowdirty(UINT8 *db, int rowbytes)
 	return FALSE;
 }
 
-static void build_scanline4_4(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT32 *pens)
+static void build_scanline4_4(UINT8 *scanline, UINT8 *vram, int length, int scale, pen_t *pens)
 {
 	UINT8 c;
 	int i;
@@ -45,7 +50,7 @@ static void build_scanline4_4(UINT8 *scanline, UINT8 *vram, int length, int scal
 	}
 }
 
-static void build_scanline4_2(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT32 *pens)
+static void build_scanline4_2(UINT8 *scanline, UINT8 *vram, int length, int scale, pen_t *pens)
 {
 	UINT8 c;
 	int i;
@@ -58,7 +63,7 @@ static void build_scanline4_2(UINT8 *scanline, UINT8 *vram, int length, int scal
 	}
 }
 
-static void build_scanline4_1(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT32 *pens)
+static void build_scanline4_1(UINT8 *scanline, UINT8 *vram, int length, int scale, pen_t *pens)
 {
 	UINT8 c;
 	int i;
@@ -71,7 +76,7 @@ static void build_scanline4_1(UINT8 *scanline, UINT8 *vram, int length, int scal
 	}
 }
 
-static void build_scanline4(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT32 *pens)
+static void build_scanline4(UINT8 *scanline, UINT8 *vram, int length, int scale, pen_t *pens)
 {
 	UINT8 c;
 	int i;
@@ -83,7 +88,7 @@ static void build_scanline4(UINT8 *scanline, UINT8 *vram, int length, int scale,
 	}
 }
 
-static void build_scanline2(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT32 *pens)
+static void build_scanline2(UINT8 *scanline, UINT8 *vram, int length, int scale, pen_t *pens)
 {
 	UINT8 c;
 	int i;
@@ -97,7 +102,7 @@ static void build_scanline2(UINT8 *scanline, UINT8 *vram, int length, int scale,
 	}
 }
 
-static void build_scanline1a(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT32 *pens)
+static void build_scanline1a(UINT8 *scanline, UINT8 *vram, int length, int scale, pen_t *pens)
 {
 	/* Arifacting isn't truely the same resolution as PMODE 3
 	 * it has a bias to the higher resolution.	We need to
@@ -192,11 +197,11 @@ static void build_scanline1a(UINT8 *scanline, UINT8 *vram, int length, int scale
 	 * never happen
 	 */
 
-	UINT32 w;
+	pen_t w;
 	int i;
 	int *b;
 
-	w = ((UINT32) vram[0]) | 0xff00;
+	w = ((pen_t) vram[0]) | 0xff00;
 
 	for (i = 0; i < length; i++) {
 		w <<= 8;
@@ -231,7 +236,7 @@ static void build_scanline1a(UINT8 *scanline, UINT8 *vram, int length, int scale
 	}
 }
 
-static void build_scanline1(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT32 *pens)
+static void build_scanline1(UINT8 *scanline, UINT8 *vram, int length, int scale, pen_t *pens)
 {
 	UINT8 c;
 	int i;
@@ -264,7 +269,7 @@ static void mix_colors(UINT8 *dest, const double *val, const UINT8 *c0, const UI
 	}
 }
 
-static void map_artifact_palette(UINT32 c0, UINT32 c1, const struct rasterbits_artifacting *artifact, UINT32 *artifactpens)
+static void map_artifact_palette(pen_t c0, pen_t c1, const struct rasterbits_artifacting *artifact, pen_t *artifactpens)
 {
 	int i, ii, j;
 	int totalcolors, palettebase;
@@ -310,8 +315,8 @@ static void map_artifact_palette(UINT32 c0, UINT32 c1, const struct rasterbits_a
 			artifactpens[i] = j;
 		}
 		else {
-			/* We can use palette_change_color */
-			palette_change_color(palettebase + i - 1, myrgb[0], myrgb[1], myrgb[2]);
+			/* We can use palette_set_color */
+			palette_set_color(palettebase + i - 1, myrgb[0], myrgb[1], myrgb[2]);
 			artifactpens[i] = palettebase + i - 1;
 		}
 	}
@@ -338,13 +343,13 @@ void setup_artifact_palette(UINT8 *destpalette, int destcolor, UINT16 c0, UINT16
 	}
 }
 
-static void raster_graphics(struct osd_bitmap *bitmap, struct rasterbits_source *src,
+static void raster_graphics(struct mame_bitmap *bitmap, struct rasterbits_source *src,
 	struct rasterbits_videomode *mode, struct rasterbits_clip *clip,
 	int scalex, int scaley, int basex, int basey, int firstrow, int lastrow)
 {
-	UINT32 artifactpens[16];
-	UINT32 *pens;
-	UINT32 *mappedpens = NULL;
+	pen_t artifactpens[16];
+	pen_t *pens;
+	pen_t *mappedpens = NULL;
 	UINT8 *vram;
 	UINT8 *vramtop;
 	UINT8 *scanline = NULL;
@@ -354,7 +359,7 @@ static void raster_graphics(struct osd_bitmap *bitmap, struct rasterbits_source 
 	int loopbackpixels;
 	int visualbytes;
 	int y, r, i;
-	void (*build_scanline)(UINT8 *, UINT8 *, int , int , UINT32 *) = NULL;
+	void (*build_scanline)(UINT8 *, UINT8 *, int , int , pen_t *) = NULL;
 
 	scanline = malloc(mode->width * scalex);
 	if (!scanline)
@@ -426,7 +431,7 @@ static void raster_graphics(struct osd_bitmap *bitmap, struct rasterbits_source 
 		else
 			num_colors = 1 << mode->depth;
 
-		mappedpens = malloc(num_colors * sizeof(UINT32));
+		mappedpens = malloc(num_colors * sizeof(pen_t));
 		if (!mappedpens)
 			goto done; /* PANIC */
 
@@ -439,6 +444,8 @@ static void raster_graphics(struct osd_bitmap *bitmap, struct rasterbits_source 
 		pens = Machine->pens;
 	}
 
+	profiler_mark(PROFILER_RASTERBITS_INNERLOOP);
+
 	for (y = firstrow; y <= lastrow; y++) {
 		pixtop = basey + y * scaley;
 		pixbottom = pixtop + scaley - 1;
@@ -447,6 +454,7 @@ static void raster_graphics(struct osd_bitmap *bitmap, struct rasterbits_source 
 		if ((pixbottom >= pixtop) && isrowdirty(db, mode->bytesperrow)) {
 			/* We have to draw this scanline */
 
+			profiler_mark(PROFILER_RASTERBITS_BUILDSCANLINE);
 			if (loopbackpos >= 0) {
 				build_scanline(scanline,				  vram + mode->offset, loopbackpos, 			  scalex, pens);
 				build_scanline(scanline + loopbackpixels, vram, 			   visualbytes - loopbackpos, scalex, pens);
@@ -454,11 +462,14 @@ static void raster_graphics(struct osd_bitmap *bitmap, struct rasterbits_source 
 			else {
 				build_scanline(scanline,				  vram + mode->offset, visualbytes, 			  scalex, pens);
 			}
+			profiler_mark(PROFILER_END);
 
 			/* We have the scanline, now draw it */
+			profiler_mark(PROFILER_RASTERBITS_DRAWSCANLINE);
 			for (r = pixtop; r <= pixbottom; r++) {
 				draw_scanline8(bitmap, basex, r, mode->width * scalex, scanline, NULL, -1);
 			}
+			profiler_mark(PROFILER_END);
 
 			mark_dirty(basex, pixtop, basex + mode->width * scalex - 1, pixbottom);
 		}
@@ -467,7 +478,7 @@ static void raster_graphics(struct osd_bitmap *bitmap, struct rasterbits_source 
 			db += mode->bytesperrow;
 	}
 
-
+	profiler_mark(PROFILER_END);
 
 done:
 	if (scanline)
@@ -482,7 +493,7 @@ done:
 
 #define COUNTDIRTYCHARS 0
 
-static void raster_text(struct osd_bitmap *bitmap, struct rasterbits_source *src,
+static void raster_text(struct mame_bitmap *bitmap, struct rasterbits_source *src,
 	struct rasterbits_videomode *mode, struct rasterbits_clip *clip,
 	int scalex, int scaley, int basex, int basey, int firstrow, int lastrow)
 {
@@ -557,6 +568,8 @@ static void raster_text(struct osd_bitmap *bitmap, struct rasterbits_source *src
 		loopbackpos = -1;
 		loopbackadj = 0;
 	}
+
+	profiler_mark(PROFILER_RASTERBITS_INNERLOOP);
 
 	for (y = firstrow; y <= lastrow; y++) {
 		chartop = basey + y * scaley;
@@ -665,6 +678,8 @@ drawchar:
 			vram -= src->size;
 	}
 
+	profiler_mark(PROFILER_END);
+
 #if COUNTDIRTYCHARS
 	logerror("%i / %i chars dirty\n", dirtychars, mode->height * mode->width);
 #endif
@@ -680,7 +695,7 @@ drawchar:
  * basey is the logical beginning of content
  * ------------------------------------------------------------------------- */
 
-int raster_bits(struct osd_bitmap *bitmap, struct rasterbits_source *src, struct rasterbits_videomode *mode,
+int raster_bits(struct mame_bitmap *bitmap, struct rasterbits_source *src, struct rasterbits_videomode *mode,
 	struct rasterbits_frame *frame, struct rasterbits_clip *clip, int basey)
 {
 	int scalex, scaley;
@@ -690,6 +705,8 @@ int raster_bits(struct osd_bitmap *bitmap, struct rasterbits_source *src, struct
 	int drawingbody;
 	int totalcoverage;
 	struct rasterbits_clip myclip;
+
+	profiler_mark(PROFILER_RASTERBITS_MAIN);
 
 	assert(bitmap);
 	assert(src);
@@ -825,6 +842,9 @@ int raster_bits(struct osd_bitmap *bitmap, struct rasterbits_source *src, struct
 	else {
 		totalcoverage = 0;
 	}
+
+	profiler_mark(PROFILER_END);
+
 	return totalcoverage;
 }
 

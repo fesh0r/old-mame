@@ -198,7 +198,7 @@ of the render colours - these may be different to the current colour palette val
 static unsigned long amstrad_render_colours[17];
 
 #ifndef AMSTRAD_VIDEO_EVENT_LIST
-static struct osd_bitmap	*amstrad_bitmap;
+static struct mame_bitmap	*amstrad_bitmap;
 #endif
 
 /* the mode is re-loaded at each HSYNC */
@@ -257,14 +257,14 @@ static int amstrad_DE=0;
 
 
 //static unsigned char *amstrad_Video_RAM;
-static unsigned char *amstrad_display;
-//static struct osd_bitmap *amstrad_bitmap;
+static UINT16 *amstrad_display;
+//static struct mame_bitmap *amstrad_bitmap;
 
 static int x_screen_pos;
 static int y_screen_pos;
 
 static void (*draw_function)(void);
-
+#if 0
 void amstrad_draw_screen_enabled(void)
 {
 	int sc1;
@@ -496,7 +496,242 @@ void amstrad_draw_screen_enabled(void)
 
 
 }
+#endif
+void amstrad_draw_screen_enabled(void)
+{
+	struct mame_bitmap *bitmap = amstrad_bitmap;
+	int x = x_screen_pos;
+	int y = y_screen_pos;
 
+	int ma, ra;
+	int addr;
+	int byte1, byte2;
+
+	ma = crtc6845_memory_address_r(0);
+	ra = crtc6845_row_address_r(0);
+
+	/* calc mem addr to fetch data from
+	based on ma, and ra */
+	addr = (((ma>>(4+8)) & 0x03)<<14) |
+			((ra & 0x07)<<11) |
+			((ma & 0x03ff)<<1);
+
+	/* amstrad fetches two bytes per CRTC clock. */
+	byte1 = Amstrad_Memory[addr];
+	byte2 = Amstrad_Memory[addr+1];
+
+    /* depending on the mode! */
+	switch (amstrad_render_mode)		
+	{
+    
+		/* mode 0 - low resolution - 16 colours */
+		case 0:
+		{
+			int cpcpen,messpen;
+			unsigned char data;
+
+			data = byte1;
+
+			{
+				cpcpen = Mode0Lookup[data];
+				messpen = amstrad_render_colours[cpcpen];
+
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+
+				data = data<<1;
+
+				cpcpen = Mode0Lookup[data];
+				messpen = amstrad_render_colours[cpcpen];
+			
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;                
+			}
+
+			data = byte2;
+
+			{
+				cpcpen = Mode0Lookup[data];
+				messpen = amstrad_render_colours[cpcpen];
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+
+                
+
+				data = data<<1;
+
+				cpcpen = Mode0Lookup[data];
+				messpen = amstrad_render_colours[cpcpen];
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+
+                
+                	}
+		}
+		break;
+
+        /* mode 1 - medium resolution - 4 colours */
+		case 1:
+		{
+                        int i;
+                        int cpcpen;
+                        int messpen;
+                        unsigned char data;
+
+                        data = byte1;
+
+                        for (i=0; i<4; i++)
+                        {
+				cpcpen = Mode1Lookup[data & 0x0ff];
+				messpen = amstrad_render_colours[cpcpen];
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+                
+				data = data<<1;
+			}
+
+                        data = byte2;
+
+                        for (i=0; i<4; i++)
+			{
+				cpcpen = Mode1Lookup[data & 0x0ff];
+				messpen = amstrad_render_colours[cpcpen];
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+                
+				data = data<<1;
+			}
+
+		}
+		break;
+
+		/* mode 2: high resolution - 2 colours */
+		case 2:
+		{
+			int i;
+			unsigned long Data = (byte1<<8) | byte2;
+			int cpcpen,messpen;
+
+			for (i=0; i<16; i++)
+			{
+				cpcpen = (Data>>15) & 0x01;
+				messpen = amstrad_render_colours[cpcpen];
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+                
+				Data = Data<<1;
+
+			}
+
+		}
+		break;
+
+		/* undocumented mode. low resolution - 4 colours */
+		case 3:
+		{
+			int cpcpen,messpen;
+			unsigned char data;
+
+			data = byte1;
+
+			{
+				cpcpen = Mode3Lookup[data];
+				messpen = amstrad_render_colours[cpcpen];
+
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				data = data<<1;
+
+				cpcpen = Mode3Lookup[data];
+				messpen = amstrad_render_colours[cpcpen];
+			
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+                
+			}
+
+			data = byte2;
+
+			{
+				cpcpen = Mode3Lookup[data];
+				messpen = amstrad_render_colours[cpcpen];
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+                
+
+				data = data<<1;
+
+				cpcpen = Mode3Lookup[data];
+				messpen = amstrad_render_colours[cpcpen];
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+				plot_pixel(bitmap,x,y,messpen);
+				x++;
+                
+                	}
+
+
+		}
+		break;
+
+		default:
+			break;
+	}
+
+
+}
+
+#if 0
 void amstrad_draw_screen_disabled(void)
 {
 	int sc1;
@@ -510,6 +745,19 @@ void amstrad_draw_screen_disabled(void)
 		amstrad_display[sc1]=border_colour;	
 	}
 }
+#endif
+void amstrad_draw_screen_disabled(void)
+{
+	struct mame_bitmap *bitmap = amstrad_bitmap;
+	int x = x_screen_pos;
+	int y = y_screen_pos;
+	int border_colour;
+
+	border_colour = amstrad_render_colours[16];	
+	
+	plot_box(bitmap,x,y,16,1,border_colour);
+}
+
 
 /* Select the Function to draw the screen area */
 void amstrad_Set_VideoULA_DE(void)
@@ -570,7 +818,7 @@ void amstrad_Set_HSync(int offset, int data)
 							if ((y_screen_pos>=0) && (y_screen_pos<AMSTRAD_SCREEN_HEIGHT))
 							{
 									x_screen_pos=x_screen_offset;
-									amstrad_display=(amstrad_bitmap->line[y_screen_pos])+x_screen_pos;
+									amstrad_display=(UINT16 *)((unsigned long)(amstrad_bitmap->line[y_screen_pos])+(unsigned long)(x_screen_pos<<1));
 							}
 					}
 		}
@@ -598,7 +846,7 @@ void amstrad_Set_VSync(int offset, int data)
 
 			   if ((y_screen_pos>=0) && (y_screen_pos<=AMSTRAD_SCREEN_HEIGHT))
 			   {
-					amstrad_display=(amstrad_bitmap->line[y_screen_pos])+x_screen_pos;
+					amstrad_display=(UINT16 *)((unsigned long)(amstrad_bitmap->line[y_screen_pos])+(unsigned long)(x_screen_pos<<1));
 				}
 	//		}
 	//		else
@@ -683,19 +931,19 @@ void amstrad_vh_execute_crtc_cycles(int crtc_execute_cycles)
  * resfresh the amstrad video screen
  ************************************************************************/
 
-void amstrad_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void amstrad_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 #ifndef AMSTRAD_VIDEO_EVENT_LIST
 	struct rectangle rect;
 
 	rect.min_x = 0;
-	rect.max_x = AMSTRAD_SCREEN_WIDTH;
+	rect.max_x = AMSTRAD_SCREEN_WIDTH-1;
 	rect.min_y = 0;
-	rect.max_y = AMSTRAD_SCREEN_HEIGHT;
+	rect.max_y = AMSTRAD_SCREEN_HEIGHT-1;
 
-    copybitmap(bitmap, amstrad_bitmap, 0,0,0,0,&rect, TRANSPARENCY_NONE,0);
-	
-	
+
+    copybitmap(bitmap, amstrad_bitmap, 0,0,0,0,&rect, TRANSPARENCY_NONE,0); 
+
 #else
 	int c;
 
@@ -710,7 +958,7 @@ void amstrad_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 	crtc6845_set_state(0, &amstrad_vidhrdw_6845_state);
 
 	previous_time = 0;
-        num_cycles_remaining = cpu_getcurrentcycles()>>2;	//get19968; //cpu_getfperiod();
+        num_cycles_remaining = cycles_currently_ran()>>2;	//get19968; //cpu_getfperiod();
 
 	amstrad_bitmap=bitmap;
 	amstrad_display = amstrad_bitmap->line[0];
@@ -791,7 +1039,7 @@ void amstrad_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 
     /* Assume all other routines have processed their data from the list */
     EventList_Reset();
-    EventList_SetOffsetStartTime ( cpu_getcurrentcycles() );
+    EventList_SetOffsetStartTime ( cycles_currently_ran() );
 
 	crtc6845_get_state(0, &amstrad_vidhrdw_6845_state);
 	amstrad_rendering = 0;
@@ -830,7 +1078,7 @@ int amstrad_vh_start(void)
 	amstrad_rendering = 0;
 	EventList_Initialise(19968);
 #else
-	amstrad_bitmap = osd_alloc_bitmap(AMSTRAD_SCREEN_WIDTH, AMSTRAD_SCREEN_HEIGHT,8);
+	amstrad_bitmap = bitmap_alloc_depth(AMSTRAD_SCREEN_WIDTH, AMSTRAD_SCREEN_HEIGHT,16);
 	amstrad_display = amstrad_bitmap->line[0];
 #endif
 
@@ -851,7 +1099,7 @@ void amstrad_vh_stop(void)
 #else
 	if (amstrad_bitmap)
 	{
-		osd_free_bitmap(amstrad_bitmap);
+		bitmap_free(amstrad_bitmap);
 		amstrad_bitmap = NULL;
 	}
 #endif

@@ -504,8 +504,6 @@ void displaytext(struct mame_bitmap *bitmap,const struct DisplayText *dt)
 				drawgfx(bitmap,Machine->uifont,*c,dt->color,0,0,x+Machine->uixmin,y+Machine->uiymin,0,TRANSPARENCY_NONE,0);
 				x += Machine->uifontwidth;
 			}
-			else
-				break;
 
 			c++;
 		}
@@ -3357,11 +3355,21 @@ void CLIB_DECL usrintf_showmessage_secs(int seconds, const char *text,...)
 	messagecounter = seconds * Machine->drv->frames_per_second;
 }
 
+#ifdef MESS
+#ifdef SUPPRESS_UI_WARNING
+#define HAVE_UI_WARNING 0
+#else
+#define HAVE_UI_WARNING 1
+#endif
+#endif /* MESS */
+
 int handle_user_interface(struct mame_bitmap *bitmap)
 {
 	static int show_profiler;
-	static int mess_pause_for_ui = 0;
 	int request_loadsave = LOADSAVE_NONE;
+#ifdef MESS   
+	static int mess_pause_for_ui = 0;
+#endif	
 
 #ifdef MESS
 if (Machine->gamedrv->flags & GAME_COMPUTER)
@@ -3386,28 +3394,28 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 
 	if( ui_active )
 	{
-		if( ui_display_count > 0 )
+			if( HAVE_UI_WARNING && ui_display_count > 0 )
 		{
-			ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
-											"-------------------------\n"\
-											"Mode: PARTIAL Emulation\n"\
-											"UI:   ENABLED\n"\
-											"-------------------------\n"\
-											"**Use SCRLOCK to toggle**\n");
+				ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
+												"-------------------------\n"\
+												"Mode: PARTIAL Emulation\n"\
+												"UI:   ENABLED\n"\
+												"-------------------------\n"\
+												"**Use SCRLOCK to toggle**\n");
 			if( --ui_display_count == 0 )
 				schedule_full_refresh();
 		}
 	}
 	else
 	{
-		if( ui_display_count > 0 )
+			if( HAVE_UI_WARNING && ui_display_count > 0 )
 		{
-			ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
-											"-------------------------\n"\
-											"Mode: FULL Emulation\n"\
-											"UI:   DISABLED\n"\
-											"-------------------------\n"\
-											"**Use SCRLOCK to toggle**\n");
+				ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
+												"-------------------------\n"\
+												"Mode: FULL Emulation\n"\
+												"UI:   DISABLED\n"\
+												"-------------------------\n"\
+												"**Use SCRLOCK to toggle**\n");
 
 			if( --ui_display_count == 0 )
 				schedule_full_refresh();
@@ -3563,11 +3571,16 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 		}
 	}
 
+#ifndef MESS
+	if (single_step || input_ui_pressed(IPT_UI_PAUSE)) /* pause the game */
+	{
+#else
 	if (setup_selected)
 		mess_pause_for_ui = 1;
 
 	if (single_step || input_ui_pressed(IPT_UI_PAUSE) || mess_pause_for_ui) /* pause the game */
 	{
+#endif
 /*		osd_selected = 0;	   disable on screen display, since we are going   */
 							/* to change parameters affected by it */
 
@@ -3625,12 +3638,13 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 			if (messagecounter > 0) displaymessage(bitmap, messagetext);
 
 			update_video_and_audio();
-
+#ifdef MESS
 			if (!setup_selected && mess_pause_for_ui)
 			{
 				mess_pause_for_ui = 0;
 				break;
 			}
+#endif
 		}
 
 		if (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT))

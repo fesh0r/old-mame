@@ -120,7 +120,7 @@ static WRITE_HANDLER( vc20_via0_write_porta )
  */
 static void vc20_via1_irq (int level)
 {
-	cpu_set_irq_line (0, M6502_INT_IRQ, level);
+	cpu_set_irq_line (0, M6502_IRQ_LINE, level);
 }
 
 static READ_HANDLER( vc20_via1_read_porta )
@@ -613,7 +613,7 @@ static int vc20_rom_id (int id)
 	int retval;
 
 	logerror("vc20_rom_id %s\n", device_filename(IO_CARTSLOT,id));
-	if (!(romfile = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
+	if (!(romfile = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
 	{
 		logerror("rom %s not found\n", device_filename(IO_CARTSLOT,id));
 		return 0;
@@ -662,7 +662,7 @@ int vc20_rom_load (int id)
 
 	if (!vc20_rom_id (id))
 		return 1;
-	fp = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
+	fp = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
 	if (!fp)
 	{
 		logerror("%s file not found\n", device_filename(IO_CARTSLOT,id));

@@ -86,7 +86,7 @@ const struct GameDriver *drivers[] =
 	DRIVER( lynx )		/* Atari Lynx Handheld					*/
 	DRIVER( lynxa )		/* Atari Lynx Handheld alternate rom save		*/
 	DRIVER( lynx2 )		/* Atari Lynx II Handheld redesigned, no additions      */
-//      DRIVER( jaguar )	/* Atari Jaguar 					*/
+//	DRIVER( jaguar )	/* Atari Jaguar 					*/
 
 	/* NINTENDO */
 	DRIVER( nes )		/* Nintendo Entertainment System			*/
@@ -179,6 +179,7 @@ TESTDRIVER( vc4000 )		/* interton vc4000 */
     DRIVER( bbcb1770 )  /* 1981 BBC Micro Model B with WD 1770 disc       */
     DRIVER( bbcbp )     /* 198? BBC Micro Model B+ 64K                    */
     DRIVER( bbcbp128 )  /* 198? BBC Micro Model B+ 128K                   */
+TESTDRIVER( bbcb6502 )  /* 198? BBC B WD1770 with a 6502 second processor */
 /*	DRIVER( electron )*//* 198? Acorn Electron							  */
 
 TESTDRIVER( a310 )      /* 1988 Acorn Archimedes 310                      */
@@ -302,7 +303,7 @@ TESTDRIVER( aim65 )		/* Rockwell AIM65								  */
 TESTDRIVER( mmf9000 )	/* Commodore MMF9000 Swedish					  */
 
 	DRIVER( vic20 ) 	/* Commodore Vic-20 NTSC						  */
-/*	DRIVER( vic1001 )*/	/* Commodore VIC-1001 (VIC20 Japan)				  */
+	DRIVER( vic1001 )	/* Commodore VIC-1001 (VIC20 Japan)				  */
 	DRIVER( vc20 )		/* Commodore Vic-20 PAL 						  */
 	DRIVER( vic20swe )	/* Commodore Vic-20 Sweden						  */
 TESTDRIVER( vic20v ) 	/* Commodore Vic-20 NTSC, VC1540				  */
@@ -401,6 +402,7 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS		  */
 /*	DRIVER( ibm8580 )*/	/* 1987 IBM PS2 Model 80 (80386)					*/
 
 	/* SINCLAIR */
+
 	DRIVER( zx80 )		/* Sinclair ZX-80								  */
 	DRIVER( zx81 )		/* Sinclair ZX-81								  */
 	DRIVER( ts1000 )	/* Timex Sinclair 1000							  */
@@ -410,7 +412,8 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS		  */
 
 	DRIVER( spectrum )	/* 1982 ZX Spectrum 							  */
 	DRIVER( specpls4 )	/* 2000 ZX Spectrum +4							  */
-	DRIVER( specbusy )	/* 1994 ZX Spectrum (BusySoft Upgrade)			  */
+	DRIVER( specbusy )	/* 1994 ZX Spectrum (BusySoft Upgrade v1.18)			  */
+	DRIVER( specpsch )	/* 19?? ZX Spectrum (Maly's Psycho Upgrade)			  */
 	DRIVER( specgrot )	/* ???? ZX Spectrum (De Groot's Upgrade)          */
 	DRIVER( specimc )	/* 1985 ZX Spectrum (Collier's Upgrade)           */
 	DRIVER( speclec )	/* 1987 ZX Spectrum (LEC Upgrade)				  */
@@ -419,6 +422,7 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS		  */
 	DRIVER( tk95 )		/* 1986 TK95 Color Computer 					  */
 	DRIVER( tc2048 )	/* 198? TC2048									  */
 	DRIVER( ts2068 )	/* 1983 TS2068									  */
+	DRIVER( uk2086 )	/* 1986 UK2086									  */
 
 	DRIVER( spec128 )	/* 1986 ZX Spectrum 128"                          */
 	DRIVER( spec128s )	/* 1985 ZX Spectrum 128 (Spain) 				  */
@@ -434,13 +438,10 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS		  */
 	/* sinclair pc200 professional series ibmxt compatible*/
 
 	/* SHARP */
-#if 0
-TESTDRIVER( pc1500 )	/* 1982 Pocket Computer 1500						*/
-TESTDRIVER( trs80pc2 )	/* 1982 Tandy TRS80 PC 2							*/
-TESTDRIVER( pc1500a )	/* 1984 Pocket Computer 1500A						*/
+//TESTDRIVER( pc1500 )	/* 1982 Pocket Computer 1500						*/
+//TESTDRIVER( trs80pc2 )	/* 1982 Tandy TRS80 PC 2							*/
+//TESTDRIVER( pc1500a )	/* 1984 Pocket Computer 1500A						*/
 /*	DRIVER( pc1600 )*/	/* 1986 Pocket Computer 1600						*/
-#endif
-
 	DRIVER( pc1251 )	/* Pocket Computer 1251 						  */
 TESTDRIVER( trs80pc3 )	/* Tandy TRS80 PC-3									*/
 
@@ -593,8 +594,8 @@ TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 								  */
 
 	/* VEB MIKROELEKTRONIK */
 	/* KC compact is partial CPC compatible */
-	DRIVER( kc85_4 )	/* VEB KC 85/4									  */
-    DRIVER( kc85_3 )    /* VEB KC 85/3                                    */
+//	DRIVER( kc85_4 )	/* VEB KC 85/4									  */
+//    DRIVER( kc85_3 )    /* VEB KC 85/3                                    */
 TESTDRIVER( kc85_4d )   /* VEB KC 85/4 with disk interface                */
     /* pc1715 z80/u880 based */
 	/* pc1715w z80/u880 based */
@@ -646,6 +647,7 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 		  */
 	DRIVER( laser350 )	/* 1984? Laser 350								  */
 	DRIVER( laser500 )	/* 1984? Laser 500								  */
 	DRIVER( laser700 )	/* 1984? Laser 700								  */
+
 	/* Creativision console */
 
 	/* TANGERINE */
@@ -719,10 +721,8 @@ TESTDRIVER( mekd2 )     /* 1977 Motorola Evaluation Kit                   */
 TESTDRIVER( comquest )	/* Comquest Plus German							*/
 
 	/* Hewlett Packard */
-#if 0
 TESTDRIVER( hp48s ) 	/* HP48 S/SX										*/
 TESTDRIVER( hp48g ) 	/* HP48 G/GX										*/
-#endif
 
 	/* SpectraVideo */
 	DRIVER( svi318 ) 	/* SVI-318										  */

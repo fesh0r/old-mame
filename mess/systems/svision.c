@@ -151,7 +151,7 @@ static void svision_timer(int param)
 {
     svision.timer1_shot=TRUE;
     svision.timer1=NULL;
-    cpu_set_irq_line(0, M65C02_INT_IRQ, ASSERT_LINE);
+    cpu_set_irq_line(0, M65C02_IRQ_LINE, ASSERT_LINE);
 }
 
 static READ_HANDLER(svision_r)
@@ -182,7 +182,7 @@ static WRITE_HANDLER(svision_w)
 	cpu_setbank(1,memory_region(REGION_CPU1)+0x10000+((data&0x60)<<9) );
 	break;
     case 0x23: //delta hero irq routine write
-	cpu_set_irq_line(0, M65C02_INT_IRQ, CLEAR_LINE);
+	cpu_set_irq_line(0, M65C02_IRQ_LINE, CLEAR_LINE);
 	svision.timer1_shot=FALSE;
 	if (svision.timer1)
 	    timer_reset(svision.timer1, TIME_IN_CYCLES(data*256, 0));
@@ -269,10 +269,11 @@ static unsigned char svision_palette[4][3] =
 	{ 22, 42, 51 },
 	{ 22, 25, 32 }
 #else
-	{ 0xff, 0xff, 0xff },
-	{ 0xa8, 0xa8, 0xa8 },
-	{ 0x60, 0x60, 0x60 },
-	{ 0, 0, 0 }
+	// grabbed from chris covell's black white pics
+	{ 0xe0, 0xe0, 0xe0 },
+	{ 0xb9, 0xb9, 0xb9 },
+	{ 0x54, 0x54, 0x54 },
+	{ 0x12, 0x12, 0x12 }
 #endif
 };
 
@@ -289,14 +290,14 @@ static void svision_init_colors (unsigned char *sys_palette,
 	memcpy(sys_colortable,svision_colortable,sizeof(svision_colortable));
 }
 
-static void svision_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+static void svision_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	int x, y, i, j;
-	UINT8 *vram=memory_region(REGION_CPU1)+0x4000;
+	UINT8 *vram=memory_region(REGION_CPU1)+0x4000+XPOS/4;
 
 	for (y=0,i=0; y<160; y++,i+=0x30) {
 		for (x=0,j=i; x<160; x+=4,j++) {
-			drawgfx(bitmap, Machine->gfx[0], vram[XPOS/4+j],0,0,0,
+			drawgfx(bitmap, Machine->gfx[0], vram[j],0,0,0,
 					x,y, 0, TRANSPARENCY_NONE,0);
 		}
 	}
@@ -305,7 +306,7 @@ static void svision_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh
 static int svision_frame_int(void)
 {
 	cpu_set_nmi_line(0, PULSE_LINE);
-	return 0;
+	return ignore_interrupt();
 }
 
 static void init_svision(void)
@@ -401,17 +402,24 @@ static int svision_load_rom(int id)
 		return 0;
 	}
 
-	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
+	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
 	{
 		logerror("%s not found\n",device_filename(IO_CARTSLOT,id));
 		return 1;
 	}
 	size=osd_fsize(cartfile);
+	if (size>0x10000) {
+	    logerror("%s: size %d not yet supported\n",device_filename(IO_CARTSLOT,id), size);
+	    return 1;
+	}
 
-	if (osd_fread(cartfile, rom+0x10000, size)!=size) {
+	if (osd_fread(cartfile, rom+0x20000-size, size)!=size) {
 		logerror("%s load error\n",device_filename(IO_CARTSLOT,id));
 		osd_fclose(cartfile);
 		return 1;
+	}
+	if (size==0x8000) {
+	    memcpy(rom+0x10000, rom+0x20000-size, size);
 	}
 	memcpy(rom+0xc000, rom+0x1c000, 0x10000-0xc000);
 	osd_fclose(cartfile);

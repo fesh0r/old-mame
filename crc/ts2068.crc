@@ -1,0 +1,30 @@
+# Timex Sinclair TS-2068 cartridges CRC List
+# Compiled by Krzysztof Strzecha
+# Note: This list is provided as a record of known dumps for this system.  
+#       These checksums have not been validated and cannot be assumed correct.  
+#       They are provided here as a database to help the emulation of this system.
+# Send corrections/submissions to: strzecha@kis.p.lodz.pl
+
+# crc= Game Name | Year | Manufacturer | Emulation Status
+
+[ts2068]
+
+# DOCK cartridges
+# all of them were tested and work good with MESS
+ad8ae914 = 64kB RAM Expansion (DOCK) | | |
+ada25d7d = BASIC Toolkit EPROM (AROS) | | |
+30178d8c = Super Hot Z Disassembler (AROS) v2.51 | 1984 | Ray Kingsley |
+0e8be299 = Zebra OS 64 (LROS) | 1985 | Zebra Systems Inc |
+41ef3381 = ZX Spectrum Emulator for TS-2068 (DOCK) | | |
+4bef7012 = ZX Spectrum Emulator for UK-2086 (DOCK) | 1986 | S.P.M. "Spektrum" |
+
+# EXROM cartridges
+# this type of cartridges are not supported in MESS
+6f5f0023 = 32kB RAM Expansion (EXROM) | | | Not supported
+3e69c1f0 = Super Hot Z Disassembler (EXROM) v2.51 | 1984 | Ray Kingsley | Not supported
+
+# HOME cartridges
+# all of them were made for Warajevo to expand its possibilities
+# they are totally useless in MESS
+b97eebd0 = Modified Timex and Series 1 Interface ROMs (HOME) | | Keith Watson | Useless
+13db21fc = Timex Sinclair 2048 Emulator (HOME) | | |

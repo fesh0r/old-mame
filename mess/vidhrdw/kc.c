@@ -109,12 +109,12 @@ enum
 /* set new blink state - record blink state in event list */
 void	kc85_video_set_blink_state(int data)
 {
-	EventList_AddItemOffset(KC85_VIDEO_EVENT_SET_BLINK_STATE, ((data & 0x01)<<7), cpu_getcurrentcycles());
+	EventList_AddItemOffset(KC85_VIDEO_EVENT_SET_BLINK_STATE, ((data & 0x01)<<7), TIME_TO_CYCLES(0,cpu_getscanline()*cpu_getscanlineperiod()));
 }
 
 
 /* draw 8 pixels */
-static void kc85_draw_8_pixels(struct osd_bitmap *bitmap,int x,int y, unsigned char colour_byte, unsigned char gfx_byte)
+static void kc85_draw_8_pixels(struct mame_bitmap *bitmap,int x,int y, unsigned char colour_byte, unsigned char gfx_byte)
 {
 	int a;
 	int background_pen;
@@ -268,7 +268,7 @@ struct grab_info
 struct video_update_state
 {
 	/* bitmap to render to */
-	struct osd_bitmap *bitmap;
+	struct mame_bitmap *bitmap;
 	/* grab colour and pixel information for 8-pixels referenced by x,y coordinate */
 	void (*pixel_grab_callback)(struct grab_info *,int x,int y, unsigned char *colour_ptr, unsigned char *pixel_ptr);
 	/* current coords */
@@ -488,7 +488,7 @@ static void kc85_common_vh_process_lines(struct video_update_state *video_update
 
 /* the kc85 screen is 320 pixels wide and 256 pixels tall */
 /* if we assume a 50hz display, there are 312 lines for the complete frame, leaving 56 lines not visible */
-static void kc85_common_process_frame(struct osd_bitmap *bitmap, void (*pixel_grab_callback)(struct grab_info *,int x,int y,unsigned char *, unsigned char *),struct grab_info *grab_data)
+static void kc85_common_process_frame(struct mame_bitmap *bitmap, void (*pixel_grab_callback)(struct grab_info *,int x,int y,unsigned char *, unsigned char *),struct grab_info *grab_data)
 {
 	int cycles_remaining_in_frame = KC85_CYCLES_PER_FRAME;
 
@@ -544,7 +544,7 @@ static void kc85_common_process_frame(struct osd_bitmap *bitmap, void (*pixel_gr
 	/* process remainder */
 	kc85_common_vh_process_lines(&video_update, cycles_remaining_in_frame);
 	EventList_Reset();
-	EventList_SetOffsetStartTime ( cpu_getcurrentcycles() );
+	EventList_SetOffsetStartTime ( TIME_TO_CYCLES(0,cpu_getscanline()*cpu_getscanlineperiod()) );
 }
 
 
@@ -555,6 +555,20 @@ static void kc85_common_process_frame(struct osd_bitmap *bitmap, void (*pixel_gr
 
 static void kc85_common_vh_eof_callback(void)
 {
+		EVENT_LIST_ITEM *pItem;
+		int NumItems;
+
+		/* Empty event buffer */
+		NumItems = EventList_NumEvents();
+
+		/* to do: the entries in this buffer are ignored. OK? */
+		if (NumItems)
+		{
+			pItem = EventList_GetFirstItem();
+			EventList_Reset();
+			EventList_SetOffsetStartTime ( TIME_TO_CYCLES(0,cpu_getscanline()*cpu_getscanlineperiod()) );
+			logerror ("Event log reset in callback fn.\n");
+		}
 }
 
 
@@ -650,11 +664,11 @@ static void kc85_4_pixel_grab_callback(struct grab_info *grab_data,int x,int y, 
 
 
 /***************************************************************************
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function,
   it will be called by the main emulation engine.
 ***************************************************************************/
-void kc85_4_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void kc85_4_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 #if 0
     unsigned char *pixel_ram = kc85_4_display_video_ram;
@@ -738,11 +752,11 @@ static void kc85_3_pixel_grab_callback(struct grab_info *grab_data,int x,int y, 
 }
 
 /***************************************************************************
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function,
   it will be called by the main emulation engine.
 ***************************************************************************/
-void kc85_3_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void kc85_3_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 #if 0
 	/* colour ram takes up 0x02800 bytes */

@@ -1565,9 +1565,9 @@ static struct MachineDriver machine_driver_xtvga =
 	0x100*2, //sizeof(vga_colortable) / sizeof(vga_colortable[0]),
 	vga_init_palette,							/* init palette */
 #ifdef RESIZING_WORKING
-	VIDEO_TYPE_RASTER|VIDEO_MODIFIES_PALETTE|VIDEO_SUPPORTS_DIRTY,
+	VIDEO_TYPE_RASTER|VIDEO_SUPPORTS_DIRTY,
 #else
-	VIDEO_TYPE_RASTER|VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 #endif
 	0,
 	vga_vh_start,
@@ -1616,9 +1616,9 @@ static struct MachineDriver machine_driver_t1000hx =
 	pcjr_init_palette,							/* init palette */
 
 #ifdef RESIZING_WORKING
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
 #else
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 #endif
 	0,
 	pc_t1t_vh_start,
@@ -1766,6 +1766,8 @@ ROM_END
 ROM_START( t1000hx )
     ROM_REGION(0x100000,REGION_CPU1, 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, 0x8e9e2bd4)
+    // partlist says it has 1 128kbyte rom
+    ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, 0x61dbf242)
     ROM_LOAD("tandy1t.rom", 0xf0000, 0x10000, 0xd37a1d5f)
 //	ROM_REGION(0x01100,REGION_GFX1, 0)
 	ROM_REGION(0x02000,REGION_GFX1, 0)

@@ -3,8 +3,24 @@ extern void spectrum_snap_exit(int id);
 
 extern int  load_snap(void);
 
+typedef enum
+{
+	TIMEX_CART_NONE,
+	TIMEX_CART_DOCK,
+	TIMEX_CART_EXROM,
+	TIMEX_CART_HOME
+}
+TIMEX_CART_TYPE;
+
+extern TIMEX_CART_TYPE timex_cart_type;
+extern UINT8 timex_cart_chunks;
+extern UINT8 * timex_cart_data;
 extern int  spectrum_cart_load(int id);
 extern void spectrum_cart_exit(int id);
+
+extern int  timex_cart_load(int id);
+extern void timex_cart_exit(int id);
+extern void ts2068_update_memory(void);
 
 extern void spectrum_init_machine(void);
 extern void spectrum_shutdown_machine(void);
@@ -34,17 +50,17 @@ extern void spectrum_plus3_update_memory(void);
 
 extern int  spectrum_vh_start(void);
 extern void spectrum_vh_stop(void);
-extern void spectrum_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+extern void spectrum_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 extern void spectrum_eof_callback(void);
 
 extern int spectrum_128_vh_start(void);
 extern void spectrum_128_vh_stop(void);
-extern void spectrum_128_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+extern void spectrum_128_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 
 extern void ts2068_eof_callback(void);
-extern void ts2068_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+extern void ts2068_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 
-extern void tc2048_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+extern void tc2048_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 
 extern WRITE_HANDLER ( spectrum_characterram_w );
 extern READ_HANDLER  ( spectrum_characterram_r );

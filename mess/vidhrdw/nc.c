@@ -33,8 +33,8 @@ static unsigned short nc_colour_table[NC_NUM_COLOURS] =
 /* black/white */
 static unsigned char nc_palette[NC_NUM_COLOURS * 3] =
 {
-	0x060, 0x060, 0x060,
-    0x040, 0x040, 0x040,
+	0x080, 0x0a0, 0x060,
+    0x000, 0x000, 0x000,
 	0x060, 0x060, 0x060,
 	0x000, 0x000, 0x000
 };
@@ -60,11 +60,11 @@ void nc200_video_set_backlight(int state)
 
 
 /***************************************************************************
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function,
   it will be called by the main emulation engine.
 ***************************************************************************/
-void nc_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void nc_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	int y;
 	int b;

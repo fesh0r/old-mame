@@ -448,35 +448,43 @@ static void wave_sound_update(int id, INT16 *buffer, int length)
 	int count = w->counter;
 	INT16 sample = w->play_sample;
 
-	if( !w->timer || (w->status & WAVE_STATUS_MUTED) )
+	if( !w->timer )
 	{
 		while( length-- > 0 )
 			*buffer++ = sample;
-		return;
 	}
-
-    while (length--)
+	else
 	{
-		count -= w->smpfreq;
-		while (count <= 0)
+		while (length--)
 		{
-			count += Machine->sample_rate;
-			if (w->resolution == 16)
-				sample = *((INT16 *)w->data + pos);
-			else
-				sample = *((INT8 *)w->data + pos)*256;
-			if (++pos >= w->samples)
+			count -= w->smpfreq;
+			while (count <= 0)
 			{
-				pos = w->samples - 1;
-				if (pos < 0)
-					pos = 0;
+				count += Machine->sample_rate;
+
+				/* get the sample (unless we are muted) */
+				if (!(w->status & WAVE_STATUS_MUTED))
+				{
+					if (w->resolution == 16)
+						sample = *((INT16 *)w->data + pos);
+					else
+						sample = *((INT8 *)w->data + pos)*256;
+				}
+
+				if (++pos >= w->samples)
+				{
+					pos = w->samples - 1;
+					if (pos < 0)
+						pos = 0;
+				}
 			}
-        }
-		*buffer++ = sample;
+			*buffer++ = sample;
+		}
+
+		w->counter = count;
+		w->play_pos = pos;
+		w->play_sample = sample;
 	}
-	w->counter = count;
-	w->play_pos = pos;
-	w->play_sample = sample;
 
 	if( w->display )
 		wave_display(id);
@@ -551,7 +559,7 @@ int wave_init(int id, const char *name)
 	void *file;
 	if( !name || strlen(name) == 0 )
 		return INIT_PASS;
-	file = osd_fopen(Machine->gamedrv->name, name, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+	file = osd_fopen(Machine->gamedrv->name, name, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if( file )
 	{
 		struct wave_args wa = {0,};

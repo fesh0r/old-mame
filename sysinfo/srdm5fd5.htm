@@ -1,0 +1,83 @@
+<html>
+<head>
+<title>Info for srdm5fd5</title>
+</head>
+<body>
+<table width=100%>
+<tr>
+<td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
+<td><h1>Info for srdm5fd5</h1></td>
+</tr>
+</table>
+<hr>
+<h4>Sord M5 with PI-5 parallel interface and FD-5 disc interface</h4>
+This computer used cartridges. You can insert game cartridges, or if you want<br>
+<p><b>to use basic, you can insert one of 3 basic cartridges:</b><br>
+"BASIC-I" a integer based basic, "BASIC-G" a basic for graphics, "BASIC-F" a basic<br>
+for floating point operations.<br>
+To use the disc interface, use the floating point basic "BASIC-F". This has support<br>
+for the disc interface built-in.<br>
+<p><b>This driver consists of:</b><br>
+- a Sord M5 computer<br>
+- a Sord FD-5 disc interface<br>
+- a Sord PI-5 parallel interface<br>
+The Sord M5 computer communicates with the FD-5 through the parallel interface.<br>
+<p><b>The parallel interface has:</b><br>
+- a Intel 8255 parallel peripheral interface chip<br>
+Communication with the FD-5 is done using mode-2 operation. i.e. port A is<br>
+a bi-directional 8-bit port, port C upper is a control port.<br>
+<p><b>The floppy disc interface:</b><br>
+- Z80<br>
+- 16k ROM<br>
+- RAM<br>
+- NEC765 compatible disc controller<br>
+- internally the disc interface uses interrupts to transfer data into it's own<br>
+ram.<br>
+The floppy disc drives are 3" and are believed to use 40 track, double density, double sided discs,<br>
+giving 360K per disc.<br>
+The M5 sends 3 character commands, with parameters to the disc interface using the following<br>
+<p><b>command:</b><br>
+fx 0,&lt;command&gt;<br>
+<p><b>&lt;command&gt; can be:</b><br>
+TDA<br>
+TRA<br>
+WBI<br>
+RBI<br>
+WTX<br>
+RTX<br>
+WBL<br>
+RBL<br>
+WMM<br>
+RMM<br>
+EXC<br>
+SDR<br>
+WDR<br>
+RDR<br>
+RDC<br>
+OPN<br>
+CLS<br>
+CHN<br>
+MAP<br>
+SAP<br>
+CAP<br>
+ATR<br>
+NAM<br>
+DEL<br>
+FMT	- Format disc<br>
+CPY<br>
+GEN<br>
+VPR<br>
+RVI<br>
+IDV<br>
+FNM<br>
+RDB<br>
+WDB<br>
+WHO<br>
+DOM<br>
+<p><b>Known issues:</b><br>
+- See sordm5 description<br>
+<hr>
+<center><font size=-2>created on Tue Jan 01 12:56:01 2002
+</font></center>
+</body>
+</html>

@@ -61,7 +61,8 @@ int deb = 0;
 unsigned int	z80_68000_latch			= 0;
 unsigned int	z80_latch_bitcount		= 0;
 
-unsigned char cartridge_ram[0x1000]; /* any cartridge RAM */
+#define EASPORTS_HACK
+UINT16 cartridge_ram[0x10000]; /* any cartridge RAM */
 
 
 #if LSB_FIRST
@@ -158,12 +159,22 @@ static int genesis_sharedram_r (int offset)
 }*/
 
 
-
-
-
+#ifdef EASPORTS_HACK
+READ16_HANDLER(cartridge_ram_r)
+{
+	logerror("cartridge ram read.. %x\n", offset);
+	return cartridge_ram[(offset&0xffff)>>1];
+}
+WRITE16_HANDLER(cartridge_ram_w)
+{
+	logerror("cartridge ram write.. %x to %x\n", data, offset);
+	cartridge_ram[offset] = data;
+}
+#endif
 
 static MEMORY_READ16_START(genesis_readmem)
-	{ 0x000000, 0x3fffff, MRA16_ROM },
+	// { 0x000000, 0x3fffff, MRA16_ROM },
+	{ 0x000000, 0x1fffff, MRA16_ROM },
 	{ 0xff0000, 0xffffff, MRA16_BANK2}, /* RAM */
 	{ 0xc00014, 0xfeffff, MRA16_NOP },
 
@@ -178,9 +189,9 @@ static MEMORY_READ16_START(genesis_readmem)
 	{ 0xa00000, 0xa01fff, genesis_soundram_r },
 	{ 0xa04000, 0xa04003, YM2612_68000_r },
 
-
-
-/*	{ 0x200000, 0x200fff, cartridge_ram_r},*/
+#ifdef EASPORTS_HACK
+	{ 0x200000, 0x20ffff, MRA16_ROM},
+#endif
 MEMORY_END
 
 
@@ -199,11 +210,15 @@ static MEMORY_WRITE16_START(genesis_writemem)
 	{ 0xa06000, 0xa06003, genesis_ramlatch_68000_w },
 	{ 0xa00000, 0xa01fff, genesis_soundram_w },
 	{ 0xa04000, 0xa04003, YM2612_68000_w },
-/*	{ 0x200000, 0x200fff, cartridge_ram_w },	*/
-	{ 0x000000, 0x3fffff, MWA16_ROM },
+#ifdef EASPORTS_HACK
+	{ 0x200000, 0x20ffff, MWA16_RAM /*cartridge_ram_w*/ },
+	{ 0x000000, 0x1fffff, MWA16_ROM },
+#endif
+#ifndef EASPORT_HACK
+	// { 0x000000, 0x3fffff, MWA16_ROM },
+	{ 0x000000, 0x1fffff, MWA16_ROM },
+#endif
 MEMORY_END
-
-
 
 
 static MEMORY_READ_START(genesis_s_readmem)
@@ -297,8 +312,6 @@ static struct YM2612interface ym2612_interface =
 };
 
 
-
-
 static struct MachineDriver machine_driver_genesis =
 {
 	/* basic machine hardware */
@@ -326,7 +339,7 @@ static struct MachineDriver machine_driver_genesis =
 	64,64/sizeof(unsigned short), /* genesis uses 4 color schemes of 16 colors each, 0 of each bank is transparent*/
 	genesis_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER /*| VIDEO_MODIFIES_PALETTE*/,
 	0,
 	genesis_vh_start,
 	genesis_vh_stop,
@@ -348,7 +361,7 @@ static struct MachineDriver machine_driver_genesis =
 
 
 ROM_START(genesis)
-	ROM_REGION(0x405000,REGION_CPU1,0)
+	ROM_REGION(0x415000,REGION_CPU1,0)
 ROM_END
 
 static const struct IODevice io_genesis[] = {

@@ -564,7 +564,7 @@ static WRITE_HANDLER ( mtx_trap_write )
 
                                                                 filename[i + 1] = '\0';
 								logerror("%s\n", filename);
-                                                                if ((f = osd_fopen(Machine->gamedrv->name, filename,OSD_FILETYPE_IMAGE_RW,1)) != 0)
+                                                                if ((f = osd_fopen(Machine->gamedrv->name, filename,OSD_FILETYPE_IMAGE,1)) != 0)
 									{
                                                                                     osd_fwrite(f,mtx_savebuffer,mtx_saveindex);
                                                                                     osd_fclose(f);
@@ -588,7 +588,7 @@ static WRITE_HANDLER ( mtx_trap_write )
 								}
 								for(i=15; i>0 && filename[i] == 0x20;i--)
 								filename[i+1] = '\0';
-								if ((f = osd_fopen(Machine->gamedrv->name, filename,OSD_FILETYPE_IMAGE_R,0)) != 0)
+								if ((f = osd_fopen(Machine->gamedrv->name, filename,OSD_FILETYPE_IMAGE,0)) != 0)
 									{
 										filesize=osd_fsize(f);
                                                                                 mtx_loadindex = filesize;
@@ -911,7 +911,7 @@ static struct MachineDriver machine_driver_mtx512 =
 	mtx_gfxdecodeinfo,
 	TMS9928A_PALETTE_SIZE, TMS9928A_COLORTABLE_SIZE,
 	tms9928A_init_palette,
-	VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_TYPE_RASTER,
+	VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_TYPE_RASTER,
 	0,
 	mtx_vh_init,
 	TMS9928A_stop,

@@ -15,8 +15,8 @@
 
 #include "includes/a7800.h"
 
-unsigned char *a7800_cart_f000;
-unsigned char *a7800_bios_f000;
+unsigned char *a7800_cart_f000 = NULL;
+unsigned char *a7800_bios_f000 = NULL;
 int a7800_ctrl_lock;
 int a7800_ctrl_reg;
 int maria_flag;
@@ -39,16 +39,11 @@ void a7800_init_machine(void) {
 
 void a7800_stop_machine(void)
 {
-	return;
 
-	/*
-	if (a7800_bios_f000)
-		free(a7800_bios_f000);
+	if (a7800_bios_f000) free(a7800_bios_f000);
 	a7800_bios_f000 = NULL;
-	if (a7800_cart_f000)
-		free(a7800_cart_f000);
+	if (a7800_cart_f000) free(a7800_cart_f000);
 	a7800_cart_f000 = NULL;
-	*/
 }
 
 /*    Header format
@@ -80,7 +75,6 @@ Versions:
                Changed 53 bit 2, added bit 3
 
 */
-// extern unsigned int crc32 (unsigned int crc, const unsigned char *buf, unsigned int len);
 
 UINT32 a7800_partialcrc(const unsigned char *buf,unsigned int size)
 {
@@ -94,11 +88,9 @@ return crc;
 
 void a7800_exit_rom (int id)
 {
-	if (a7800_bios_f000)
-		free(a7800_bios_f000);
+	if (a7800_bios_f000) free(a7800_bios_f000);
 	a7800_bios_f000 = NULL;
-	if (a7800_cart_f000)
-		free(a7800_cart_f000);
+	if (a7800_cart_f000) free(a7800_cart_f000);
     a7800_cart_f000 = NULL;
 }
 
@@ -132,7 +124,7 @@ int a7800_init_cart (int id)
         return INIT_FAIL;
     }
 
-	if (!(cartfile = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
+	if (!(cartfile = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
     {
 		logerror("A7800 - Unable to locate cartridge: %s\n",device_filename(IO_CARTSLOT,id) == NULL);
         return INIT_FAIL;
@@ -310,7 +302,7 @@ WRITE_HANDLER( a7800_cart_w ) {
 
     if (offset < 0x4000) {
         if (a7800_cart_type & 0x04) {
-            ROM[0x8000 + offset] = data;
+            ROM[0x4000 + offset] = data;
         }
         else if (a7800_cart_type & 0x01) {
             pokey1_w(offset,data);
@@ -323,7 +315,7 @@ WRITE_HANDLER( a7800_cart_w ) {
         if (a7800_cart_type & 0x02) {
             data &= 0x07;
             cpu_setbank(1,memory_region(REGION_CPU1) + 0x10000 + (data << 14));
-//            logerror("BANK SEL: %d\n",data);
+/*            logerror("BANK SEL: %d\n",data); */
        }
     }
 }

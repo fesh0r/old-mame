@@ -302,7 +302,7 @@ void pc_t1t_vga_data_w(int data)
         case 0x18: case 0x19: case 0x1a: case 0x1b:
         case 0x1c: case 0x1d: case 0x1e: case 0x1f:
 			T1T_LOG(1,"T1T_vga_palette_w",("[$%02x] $%02x\n", pcjr.reg.index - 0x10, data));
-			palette_change_color(pcjr.reg.index-0x10, 
+			palette_set_color(pcjr.reg.index-0x10, 
 								 cga_palette[data&0xf][0],
 								 cga_palette[data&0xf][1],
 								 cga_palette[data&0xf][2]);
@@ -467,7 +467,7 @@ READ_HANDLER ( pc_T1T_r )
 /***************************************************************************
   Draw text mode with 40x25 characters (default) with high intensity bg.
 ***************************************************************************/
-static void t1t_text_inten(struct osd_bitmap *bitmap)
+static void t1t_text_inten(struct mame_bitmap *bitmap)
 {
 	int sx, sy;
 	int	offs = crtc6845_get_start(pcjr.crtc)*2;
@@ -511,7 +511,7 @@ static void t1t_text_inten(struct osd_bitmap *bitmap)
 /***************************************************************************
   Draw text mode with 40x25 characters (default) and blinking colors.
 ***************************************************************************/
-static void t1t_text_blink(struct osd_bitmap *bitmap)
+static void t1t_text_blink(struct mame_bitmap *bitmap)
 {
 	int sx, sy;
 	int	offs = crtc6845_get_start(pcjr.crtc)*2;
@@ -569,7 +569,7 @@ static void t1t_text_blink(struct osd_bitmap *bitmap)
   default but up to 32 are possible).
   Even scanlines are from T1T_base + 0x0000, odd from T1T_base + 0x2000
 ***************************************************************************/
-static void t1t_gfx_2bpp(struct osd_bitmap *bitmap)
+static void t1t_gfx_2bpp(struct mame_bitmap *bitmap)
 {
 	int i, sx, sy, sh;
 	int	offs = crtc6845_get_start(pcjr.crtc)*2;
@@ -627,7 +627,7 @@ static void t1t_gfx_2bpp(struct osd_bitmap *bitmap)
   The cell size is 1x1 (1 scanline is the real default)
   Even scanlines are from T1T_base + 0x0000, odd from T1T_base + 0x2000
 ***************************************************************************/
-static void t1t_gfx_1bpp(struct osd_bitmap *bitmap)
+static void t1t_gfx_1bpp(struct mame_bitmap *bitmap)
 {
 	int i, sx, sy, sh;
 	int	offs = crtc6845_get_start(pcjr.crtc)*2;
@@ -666,7 +666,7 @@ static void t1t_gfx_1bpp(struct osd_bitmap *bitmap)
   Scanlines (scanline % 4) are from CGA_base + 0x0000,
   CGA_base + 0x2000
 ***************************************************************************/
-static void t1t_gfx_4bpp(struct osd_bitmap *bitmap)
+static void t1t_gfx_4bpp(struct mame_bitmap *bitmap)
 {
 	int i, sx, sy, sh;
 	int	offs = crtc6845_get_start(pcjr.crtc)*2;
@@ -720,20 +720,17 @@ static void t1t_gfx_4bpp(struct osd_bitmap *bitmap)
 }
 
 /***************************************************************************
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function,
   it will be called by the main emulation engine.
 ***************************************************************************/
-void pc_t1t_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void pc_t1t_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	static int video_active = 0;
 	static int width=0, height=0;
 	int w,h;
 
 	if (!pcjr.displayram) return;
-
-	if( palette_recalc() )
-		full_refresh = 1;
 
     /* draw entire scrbitmap because of usrintrf functions
 	   called osd_clearbitmap or attr change / scanline change */

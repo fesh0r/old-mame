@@ -32,24 +32,53 @@ static struct {
 	{ 0x5e607dcf, 0x2000, "FAMICOM disk" },
 	{ 0x38000b6b, 0x40, "SNES" },
 
-	{ 0x3b601fc8, 0x80000, "PSX scph1000" },
-	{ 0x318178bf, 0x80000, "PSX 41A" },
-
 	{ 0xcbce86f7, 0x2000, "INTV" },
 	{ 0x683a4158, 0x800, "INTV" },
 
-/* Sega ***********************************************************************/
+	{ 0xe6ef1ee1, 0x800, "TV-Spielcomputer" },
+
+	{ 0x05602697, 0x800, "FUNVISION/CREATIVISION" },
+
+/* Sony Playstation ***********************************************************/
+	{ 0x37157331, 0x80000, "Sony Playstation DTHL-3000 v2.2A (95.12.04)" },
+	{ 0x1e26792f, 0x80000, "Sony Playstation DTHL-3002 v2.2E (95.12.04)" },
+	{ 0x3b601fc8, 0x80000, "Sony Playstation SCPH-1000 J (94.09.22)" },
+	{ 0x37157331, 0x80000, "Sony Playstation SCPH-1001 v2.2A (95.12.04)" },
+	{ 0x24fc7e17, 0x80000, "Sony Playstation SCPH-5000 v2.2J (95.12.04)" },
+	{ 0x8c93a399, 0x80000, "Sony Playstation SCPH-5000 v2.2J (95.12.04) (alt)" },
+	{ 0xff3eeb8c, 0x80000, "Sony Playstation SCPH-5500 v3.0J (96.09.09)" },
+	{ 0x4d9e7c86, 0x80000, "Sony Playstation SCPH-5502 v3.0E (97.01.06)" },
+	{ 0xec541cd0, 0x80000, "Sony Playstation SCPH-7000 v4.0J (97.08.18)" },
+	{ 0x502224b6, 0x80000, "Sony Playstation SCPH-7001 v4.1A (97.12.16)" },
+	{ 0x8d8cb7e4, 0x80000, "Sony Playstation SCPH-7003 v3.0A (97.11.18)" },
+	{ 0x318178bf, 0x80000, "Sony Playstation SCPH-7502 v4.1E (97.12.16)" },
+
+	{ 0x39bff762, 0x80000, "Sony Playstation Bleem! v5.1" },
+
+
+/* Sega Consoles **************************************************************/
 	{ 0xf691f9c7, 0x8000, "SC3000 basic 2j" },
 	{ 0x155fd01f, 0x8000, "SC3000 basic 31" },
 
-	{ 0x5c12eae8, 0x100, "SYS32X" },
-	{ 0xdd9c46b8, 0x800, "SYS32X" },
-	{ 0xbfda1fe5, 0x400, "SYS32X" },
+	{ 0x3f888cf4, 0x800, "Sega Genesis" },                    	
 
-	{ 0x2aba43c2, 0x80000, "SATURN 100" },
-	{ 0x224b752c, 0x80000, "SATURN 101" },
+	{ 0x5c12eae8, 0x100, "Sega 32X (M68000)" },
+	{ 0xdd9c46b8, 0x800, "Sega 32X (master SH2)" },                    	
+	{ 0xbfda1fe5, 0x400, "Sega 32X (slave SH2)" },
 
-/* NEC ***********************************************************************/
+	{ 0x9d2da8f2, 0x20000, "Sega Mega CD 1.00J (911217)" },
+	{ 0xd344f125, 0x20000, "Sega Mega CD 2.00E (930106)" },
+
+	{ 0xc6d10268, 0x20000, "Sega CD 1.10U (921110)" },
+
+	{ 0x2aba43c2, 0x80000, "Sega Saturn 1.00 (940921)" },
+	{ 0x4afcf0fa, 0x80000, "Sega Saturn 1.00 (941115)" },
+	{ 0x224b752c, 0x80000, "Sega Saturn 1.01 (941228)" },
+
+	{ 0x574fd2c3, 0x80000, "Sega ST-V 1.13J (950425)" },
+	{ 0xbf7dbdd7, 0x80000, "Sega ST-V 1.13U (950425)" },
+
+/* NEC ***********(************************************************************/
 	{ 0xf82771f1, 0x2000, "PCEngine cdrom bios" },
 
 	{ 0xe983ad21, 0x8000, "BAD DUMP PC6001 (2nd half 0xff)" },
@@ -71,19 +100,20 @@ static struct {
 	{ 0x07318218, 0x2000, "PC6601 system2" },
 	{ 0x37ff3829, 0x4000, "PC6601 voice" },
 
-	{ 0x27e1857d , 0x8000, "PC8801mk2sr" },
-	{ 0xa0fc0473 , 0x8000, "PC8801mk2sr" },
-	{ 0x710a63ec , 0x2000, "PC8801mk2sr" },
-	{ 0xc0bd2aa6 , 0x2000, "PC8801mk2sr" },
-	{ 0xaf2b6efa , 0x2000, "PC8801mk2sr" },
-	{ 0x7713c519 , 0x2000, "PC8801mk2sr" },
+	{ 0x27e1857d , 0x8000, "PC8801mk2sr 00000 PC-8001 basic 1.5 debug 1.0c" },
+	{ 0xa0fc0473 , 0x8000, "PC8801mk2sr 08000 N-88 basic 1.4" },
+	{ 0x710a63ec , 0x2000, "PC8801mk2sr 10000" },
+	{ 0xc0bd2aa6 , 0x2000, "PC8801mk2sr 12000" },
+	{ 0xaf2b6efa , 0x2000, "PC8801mk2sr 14000" },
+	{ 0x7713c519 , 0x2000, "PC8801mk2sr 16000" },
 	{ 0x2158d307 , 0x800, "PC8801 disk" },
 	{ 0x6178bd43 , 0x20000, "PC8801 charrom" },
-	{ 0x154803cc , 0x20000, "PC8801 charrom" },
-	{ 0xeb1d90ca, 0x1c000, "PC8801?" },
+	{ 0x154803cc , 0x20000, "PC8801 charrom (empty 0xff)" },
+	{ 0xeb1d90ca, 0x1c000, "PC8801? (32kb N-88 basic 1.9 08000,8kb 0e000, 8kb?, 8kb 10000, 8kb 12000,8kb 14000,8kb 16000,8kb ?,24kb PC-8001 Basic 1.8 00000" },
 	{ 0x7a6edb47, 0x1800, "PC8801 char?" },
 	{ 0x0f60c51f, 0x20000, "PC8801 kanji1?" },
 	{ 0x8e67a330, 0x20000, "PC8801 kanji2?" },
+	{ 0x04f60f50 , 0x420, "OVERDUMP PC8801 disk extension? (remove first 32 bytes)" },
 
 	{ 0x6e299128 , 0x8000, "BAD DUMP/ROM? PC9821 00000" },
 	{ 0xf2a262b0 , 0x8000, "BAD DUMP/ROM? PC9821 c8000" },
@@ -92,11 +122,14 @@ static struct {
 	{ 0x4da85a6c , 0x8000, "PC9821 f0000" },
 	{ 0x2b1e45b1 , 0x8000, "MODIFIED? PC9821 f8000" },
 
-/* apple ******************************************************************************/
+/* Apple Computers ************************************************************/
+
+/* apple I */
 	{ 0xa30b6af5 , 0x100, "APPLE1 bios" },
 	{ 0xbe70bb85 , 0x400, "APPLE1 characterset bad dump?" },
 	{ 0xa3f2d66f , 0x400, "APPLE1 characterset" },
 
+/* apple II */
 	{ 0x24d73c7b, 0x1000, "APPLE2 d000" },
 	{ 0x0d494efd, 0x1000, "APPLE2 e000" },
 	{ 0xb58f1ca1, 0x1000, "APPLE2 f000" },
@@ -125,6 +158,9 @@ static struct {
 	{ 0x2b6da315 , 0x1000, "BAD DUMP? APPLE characterset 0xc506efb9+0xc506efb9!" },
 	{ 0x0b0759cc , 0x1000, "BAD DUMP? APPLE characterset (first half 0xff)+0xc506efb9" },
 
+/* apple III */
+
+/* lisa */
 	{ 0xadfd4516 , 0x2000, "LISA2 hi" },
 	{ 0x546d6603 , 0x2000, "LISA2 lo" },
 	{ 0xbc6364f1 , 0x1000, "LISA2 6504" },
@@ -141,27 +177,35 @@ static struct {
 	{ 0x80add605, 0x2000, "lisa 68000 hi??" },
 	{ 0xedf5222f, 0x2000, "lisa 68000 lo??" },
 
-	{ 0xf69697e6 , 0x10000, "? MAC + v1 even" },
-	{ 0x49f25913 , 0x10000, "? MAC + v1 odd" },
-	{ 0xb2102e8e , 0x20000, "COMBINED MAC + v1" },
-	{ 0xe133094a , 0x21d50, "COMBINED MAC + v1 and additional data!?" },
-	{ 0x6eb97aff , 0x10000, "342-0341 MAC + v2 even" },
-	{ 0xbfdc37d1 , 0x10000, "342-0342 MAC + v2 odd" },
-	{ 0x7624ef58 , 0x20000, "COMBINED MAC 342-0341+342-0342" },
-	{ 0xf7c4b876 , 0x1ffff, "INCOMPLETE COMBINED MAC 342-0341+342-0342" },
+/* macintosh */
+	{ 0x7cacd18f , 0x020000, "Macintosh Plus v2 Lonely Heifers 342-0341+342-0342 (4d1eeae1)" },
+	{ 0xb2102e8e , 0x020000, "Macintosh Plus v3 Loud Harmonicas 342-0341+342-0342 (4d1f8172)" },
+	{ 0xf69697e6 , 0x010000, "Macintosh Plus v3 Loud Harmonicas 342-0341 (4d1f8172) EVEN" },
+	{ 0x49f25913 , 0x010000, "Macintosh Plus v3 Loud Harmonicas 342-0342 (4d1f8172) ODD" },
+	{ 0xce3b966f , 0x040000, "Macintosh II(HDFD), IIx, IIcx, SE/30 342-0639+342-0640+342-0641+342-0642 (97221136)" },
+	{ 0x71681726 , 0x080000, "Macintosh LC 342-0392+342-0393+342-0394+342-0395 (350eacf0)" },
+	{ 0xa92145b3 , 0x080000, "Macintosh IIci, LC-II 342-0476+342-0475+342-0474+342-0473 (35c28f5f)" },
+	{ 0x46adbf74 , 0x080000, "Macintosh IIci 342-0736+342-0735+342-0734+342-0733 (368cadfe)" },
+	{ 0x1735e7a5 , 0x100000, "Macintosh LC 630, Performa 630 (06684214)" },
+	{ 0x88ea2081 , 0x100000, "Macintosh Quadra 700, Quadra 900 (420dbff3)" },
+	{ 0xa893cb0f , 0x100000, "Macintosh Performa 450, Performa 550 (?) (ede66cbd)" },
+	{ 0xb8514689 , 0x100000, "Macintosh LC 475, Performa 475, Quadra 605 (ff7439ee)" },
+	{ 0x4e70e3c0 , 0x100000, "Macintosh Centris 650, Quadra 650 (f1acad13)" },
+	{ 0xe578f5f3 , 0x100000, "Macintosh LC-III, Performa 460 (ecbbc41c)" },
+	{ 0x59e6960f , 0x100000, "Macintosh LC 580, Performa 580 (064dc91d)" },
+	{ 0x66cf9f2f , 0x200000, "Macintosh PowerBook 520 (b6909089)" },
 
-	{ 0xce3b966f , 0x40000, "MAC 256k" },
+	{ 0xb86ed854 , 0x100000, "Macintosh Unknown (ecfa989b)" },
 
-	{ 0x71681726 , 0x80000, "MAC 512k 350EACF0" },
-	{ 0xa92145b3 , 0x80000, "MAC 512k 35C28F5F" },
-	{ 0x46adbf74 , 0x80000, "MAC 512k 368cadfe" },
+	{ 0x6eb97aff , 0x010000, "BAD DUMP Macintosh Plus v2 Lonely Heifers 342-0341 (4d1eeae1) EVEN" },
+	{ 0xbfdc37d1 , 0x010000, "BAD DUMP Macintosh Plus v2 Lonely Heifers 342-0342 (4d1eeae1) ODD" },
+	{ 0x7624ef58 , 0x020000, "BAD DUMP Macintosh Plus v2 Lonely Heifers 342-0341+342-0342 (4d1eeae1)" },
+	{ 0xf7c4b876 , 0x01ffff, "INCOMPLETE BAD DUMP Macintosh Plus v2 Lonely Heifers 342-0341+342-0342 (4d1eeae1)" },
+	{ 0xe133094a , 0x021d50, "OVER DUMP Macintosh Plus v3 Loud Harmonicas 342-0341+342-0342 (4d1f8172)" },
+	{ 0xa39fb2b9 , 0x400000, "BAD DUMP Power Mac (96cd923d)" },
 
-	{ 0x88ea2081 , 0x100000, "MAC 1M 420DBFF3" },
-	{ 0xa893cb0f , 0x100000, "MAC 1M EDE66CBD" },
-	{ 0xb8514689 , 0x100000, "MAC 1M FF7439EE" },
-	{ 0x4e70e3c0 , 0x100000, "MAC Quad 650" },
 
-/* acorn **********************************************************************/
+/* Acorn **********************************************************************/
 	{ 0xc604db3d , 0x1000, "ATOM kernel" },
 	{ 0x81d86af7 , 0x1000, "ATOM floating point" },
 	{ 0x43798b9b , 0x1000, "ATOM basic" },
@@ -174,10 +218,6 @@ static struct {
 	{ 0x557ce483 , 0x4000, "PROTON toolkit" },
 	{ 0x4345359f , 0x4000, "PROTON view" },
 	{ 0x9fb8d13f , 0x4000, "PROTON dfs144" },
-
-	{ 0x1356d440, 0x20000, "Z88 v4.00" },
-	{ 0x802cb9aa, 0x20000, "Z88 ???" },
-	{ 0xad0c407d, 0x20000, "Z88 ???" },
 
 	{ 0xc1adde84 , 0x80000, "ARCHIMEDES 310 bios 20000" },
 	{ 0x15d89664 , 0x80000, "ARCHIMEDES 310 bios 28000" },
@@ -221,6 +261,7 @@ static struct {
 	{ 0x64ccfc53 , 0x4000 , "Atari 800XL Qmeg OS ver. 4.2" },
 	{ 0xbe2242da , 0x4000 , "Atari 800XL Qmeg OS ver. 4.3" },
 
+/* Atari 8-bit computers external devices **************************************/
 	{ 0xf10064a3 , 0x1000 , "Atari 1060 CP/M Module boot ROM"},
 	{ 0xd1c68dda , 0x1000 , "Atari 1060 CP/M Module character set ROM"},
 
@@ -274,7 +315,8 @@ static struct {
 	{ 0x0d973c9d, 0x200, "Atari Lynx saved (fff9 not authentic) (alt)" },
 	{ 0x7a91840c, 0x200, "Atari Lynx dummy boot image" },
 
-	{ 0xfb731aaa, 0x20000, "Atari Jaguar" },
+	{ 0xfb731aaa, 0x20000, "Atari Jaguar (boot)" },
+	{ 0x687068d5, 0x40000, "Atari Jaguar (cd)" },
 
 /* amstrad *********************************************************************/
 	{ 0x0219bb74 , 0x4000, "CPC6128 os" },
@@ -363,6 +405,7 @@ static struct {
 
 /* Commodore C16/C116/Plus4/1551 *************************************************************/
 	{ 0x74eaae87, 0x4000, "318006.01 PLUS4 Basic 8000" },
+	{ 0xdbdc3319, 0x4000, "318004.01 PLUS4 Kernel PAL R1 c000" },
 	{ 0x77bab934, 0x4000, "318004.03 PLUS4 Kernel Pal R3 c000" },
 	{ 0xbe54ed79, 0x4000, "318004.04 PLUS4 Kernel Pal R4 c000" },
 	{ 0x71c07bd4, 0x4000, "318004.05 PLUS4 Kernel Pal R5 c000" },
@@ -385,7 +428,9 @@ static struct {
 	{ 0x4be07cb4, 0x2000, "901486.07 VIC20 Kernel PAL e000" },
 	{ 0x83e032a6, 0x1000, "901460.03 VIC20 character set 8000" },
 	{ 0xd808551d, 0x1000, "nec22101.207 VIC20 swedish character set 8000" },
-	{ 0xb2a60662, 0x2000, "nec22081.206 VIC20 swedish Kernel e0000" },
+	{ 0xb2a60662, 0x2000, "nec22081.206 VIC20 swedish Kernel e000" },
+	{ 0xfcfd8a4b, 0x1000, "901460.02 VIC1001 character set 8000" },
+	{ 0x336900d7, 0x2000, "901486.02 VIC1001 NTSC-M e000" },
 	{ 0xd37b6335, 0x800, "325329-04 VIC20 IEEE Cartridge b000" },
 
 /* Commodore 65 Prototype ******************************************************************/
@@ -420,6 +465,7 @@ static struct {
 	{ 0x20b7df33, 0x2000, "901235-02 CBM500 basic 128kb fa000" },
 	{ 0xf46bbd2b, 0x2000, "901234-02 CBM500 kernal monitor instead of type fe000" },
 	{ 0xec4272ee, 0x1000, "901225-01 CBM500 8x8 character set" },
+	{ 0x9a468e5d, 0x4000, "MERGED! CBM500 901236-02 + 901235-02" },
 	{ 0xdf83bbb9, 0x4000, "MERGED! CBMB 901243-02b + 901242-02b" },
 	{ 0xa8ff9372, 0x4000, "MERGED! CBMB 901243-04a + 901242-04a" },
 	{ 0x5db15870, 0x4000, "MERGED! CBMB 901241-03 + 901240-03" },
@@ -452,12 +498,12 @@ static struct {
 	{ 0xc9bb21bc , 0x2000, "??? C64 kernel Dolphin mager" },
 	{ 0xffaeb9bc , 0x2000, "??? C64 kernel Dolphin dos20" },
 	{ 0x8438e77b , 0x2000, "??? C64 kernel speeddos plus" },
-	{ 0x10aee0ae , 0x2000, "??? C64 kernel speeddos plus +" },
+	{ 0x10aee0ae , 0x2000, "??? C64 kernel speeddos plus + 2.0" },
 	{ 0xe801dadc , 0x2000, "??? C64 kernel 80 column" },
 	{ 0xe6c763a2 , 0x2000, "??? C64 kernel cockroach turbo-rom v1" },
 	{ 0x41dad9fe , 0x2000, "??? C64 kernel mikrotronic system professional dos" },
 	{ 0x0010ec31 , 0x4000, "251913-01 C64 cost reduced (901225-01 + 901227-03)" },
-	{ 0xb0a9c2da , 0x4000, "390852.01 C64GS a000,c000" },
+	{ 0xb0a9c2da , 0x4000, "390852.01 C64GS a000,e000" },
 	{ 0xec4272ee , 0x1000, "901225.01 C64 8x8 character set d000" },
 	{ 0x2bc73556 , 0x1000, "BAD DUMP, UNUSEABLE PART! C64 901225.01" },
 	{ 0xbee9b3fd , 0x1000, "325018-02 C64 swedish character set d000" },
@@ -484,6 +530,8 @@ static struct {
 	{ 0xcc6bdb69 , 0x8000, "252343-04 C128 c64+kernel (252913-01+0x98f2a2ed maybe 318020-04)" },
 	{ 0xeb6e2c8f , 0x8000, "318077-01 C128 c64+kernel german(251913-01+0xbff7550b)" },
 	{ 0xcb4e1719 , 0x8000, "318034-01 Ker.Sw/Fi C128 c64+kernel swedish (901226.01+ 0xf10c2c25 +0x1cf7f729)" },
+	{ 0x0a5928b0 , 0x9000, "UNUSEABLE PART! C128 318022-01+kernal ? c000" },
+	{ 0xd65ebc56 , 0x2000, "UNUSEABLE PART! C128 Kernel ? e000" },
 	{ 0x3e086a24 , 0x1000, "UNUSEABLE PART! C128 Kernel french c000" },
 	{ 0xca5e1179 , 0x2000, "UNUSEABLE PART! C128 Kernel french e000" },
 	{ 0x71002a97 , 0x1000, "UNUSEABLE PART! C128 Kernel finish1 c000" },
@@ -497,6 +545,7 @@ static struct {
 	{ 0x84c55911 , 0x1000, "UNUSEABLE PART! C128 Kernel norwegian c000" },
 	{ 0x3ba48012 , 0x2000, "UNUSEABLE PART! C128 Kernel norwegian e000" },
 	{ 0xc38d83c6 , 0x1000, "UNUSEABLE PART! C128 Z80 Bios d000" },
+	{ 0xae33c5a3 , 0x1000, "UNUSEABLE PART! C128 character set (2nd half 390059-01)" },
 	{ 0x6aaaafe6 , 0x2000, "390059-01 C128 8x8 character set c64, c128" },
 	{ 0xfe5a2db1 , 0x2000, "315079-01 C128 8x8 character set c64, c128 german" },
 	{ 0x7a70d9b8 , 0x2000, "325181-01 C128 8x8 character set c64, c128 swedish" },
@@ -652,11 +701,24 @@ static struct {
 	{ 0xe88792b3 , 0x2000, "IBM PC bios fe000 1501-476 10/27/82" },
 	{ 0x031aafad , 0x2000, "PC bios fe000" },
 	{ 0xd435a405 , 0x2000, "Bondwell PC fe000" },
-	{ 0x1775a11d , 0x8000, "50145 Europc bios f8000" },
+	{ 0x1775a11d , 0x8000, "50145 Europc bios f8000 V2.07" },
 	{ 0x1305dcf5 , 0x2000, "50146 Europc character sets" },
+	{ 0xecca89c8 , 0x8000, "50145? Europc II bios V3.01" },
 	{ 0x0c19c1a8 , 0x8000, "INCOMPLETE IBM PC Junior basic c1.2 f6000 (f0000-f5fff missing)" },
 	{ 0x98463f95 , 0x2000, "INCOMPLETE IBM PC Junior bios fe000 (f0000-f5fff missing)" },
-	{ 0xd37a1d5f , 0x10000, "Tandy 1000 HX bios f0000" },
+	{ 0xc3bcb418 , 0x8002, "OVERDUMP IBM PC Junior basic cartridge (additional 2 bytes)" },
+	{ 0x850276fc , 0x4000, "Tandy 1000/a/hd 1.01.00" },
+	{ 0xb6760881 , 0x10000, "OVERDUMP Tandy 1000 1.01.00" },
+	{ 0x7cde748a , 0x4000, "Tandy 1000ex/sx 1.02.00" },
+	{ 0x0e016ecf , 0x10000, "OVERDUMP Tandy 1000 1.02.00 (last 16kbyte)" },
+	{ 0x1ae69276 , 0x10000, "OVERDUMP Tandy 1000 1.02.00 (last 16kbyte)(different fillbyte)" },
+	{ 0x9b34765c , 0x8000, "Tandy 1000tx 1.03.00" }, // most likely 2 16kbyte chips
+	{ 0xf607533b , 0x10000, "OVERDUMP Tandy 1000 1.03.00 (last 32kbyte)" },
+	{ 0x6f3acd80 , 0x20000, "Tandy 1000 HX bios (2.00.00)" },
+	// tandy 1000rl 2.00.01
+	{ 0xe5e534e6 , 0x1000, "RECONSTRUCTED Tandy 1000 HX characterset" },
+	{ 0x61dbf242 , 0x10000, "UNUSEABLE PART Tandy 1000 HX bios (1st half of 0x6f3acd80)" },
+	{ 0xd37a1d5f , 0x10000, "UNUSEABLE PART Tandy 1000 HX bios (2nd half of 0x6f3acd80)" },
 	{ 0x83727c42 , 0x8000, "IBM XT bios even f0000" },
 	{ 0x2a629953 , 0x8000, "IBM XT bios odd f0000" },
 	{ 0x71b84616 , 0x2000, "Amstrad PC20 bios even fc000 (v2)" },
@@ -666,12 +728,18 @@ static struct {
 	{ 0xd2d1f1ae,  0x8000, "40100 Amstrad PC1640 ega bios c0000" },
 	{ 0xe40a1513 , 0x2000, "40043 Amstrad PC1640 bios odd fc000 (v3)" },
 	{ 0xf1c074f3 , 0x2000, "40044 Amstrad PC1640 bios even fc000 (v3)" },
+	{ 0x664f5360 , 0x80000, "Tandy 1000 RLX (2.00.00)" },
+	{ 0x11cb1983, 0x10000, "UNUSEABLE PART TANDY 1000 RLX (last 64kbyte)" },
+	{ 0xf518ab17 , 0x10000, "INCOMPLETE Tandy1td? (DAC) (2.00.00)" },
+	{ 0xe288f12c , 0x10000, "INCOMPLETE Tandy 1000TL/2? (2.00.00)" },
 	{ 0x4995be7a , 0x8000, "IBM AT bios even f0000" },
 	{ 0xc32713e4 , 0x8000, "IBM AT bios odd f0000" },
 	{ 0x679296a7 , 0x8000, "AT ami bios even f0000" },
 	{ 0x65ae1f97 , 0x8000, "AT ami bios odd f0000" },
 	{ 0x4c36e61d , 0x8000, "NEAT ami bios even f0000" },
 	{ 0x4e90f294 , 0x8000, "NEAT ami bios odd f0000" },
+	{ 0x1a81237c , 0x8000, "INCOMPLETE Tandy 2500XL" },
+	{ 0x819377af , 0x20000, "INCOMPLETE Tandy 2500XL" },
 	{ 0x3df9732a , 0x10000, "AT386 bios f0000" },
 	{ 0x31214616 , 0x10000, "AT486 bios f0000" },
 	{ 0x8e9e2bd4 , 0x2000, "PC harddisk controller bios c8000" },
@@ -685,6 +753,16 @@ static struct {
 	{ 0xa362ffe6 , 0x800, "AUTHENTIC? PC cga character set" },
 	{ 0x42009069 , 0x1000, "AUTHENTIC? PC cga character set" },
 
+/* applied computer techniques (act)/ apricot */
+	{ 0x30b3f803 , 0x1000, "Sirius1 rom fe000" },
+	{ 0x2bf3c0e4 , 0x1000, "Sirius1 rom ff000" },
+	{ 0x0da581b7 , 0x2000, "Sirius1 rom newer" },
+	{ 0x9bf49f7d , 0x400, "Sirius1 disk controller" },
+	{ 0xadc601bd , 0x800, "Sirius1 gcr en-/decoder? rom" },
+
+	{ 0xbfd46ada, 0x4000, "Apricot F bios 3.1.1 even" },
+	{ 0x67ad5b3a, 0x4000, "Apricot F Bios 3.1.1 odd" },
+	{ 0xfecfad9b, 0x8000, "COMBINED Apricot F bios 3.1.1" },
 
 /* Sinclair ZX-80 Computer and Clones ******************************************/
 	{ 0x4c7fc597 , 0x1000 , "Sinclair ZX-80" },
@@ -774,6 +852,7 @@ static struct {
 	{ 0xe585879d , 0x10000, "MERGED ZX Spectrum 128K Plus 3e by Gary Lancaster v0.87 for HD EIDE (8bit)" },
 
 /* homebrew roms replacemts ****************************************************/
+	{ 0xea8c760b , 0x4000 , "Mr Gluk Reset Service v5.1 128K (Edit)" },
 	{ 0xfe44b86a , 0x4000 , "Mr Gluk Reset Service v5.2i 128K (Edit)" },
 	{ 0x479515ef , 0x4000 , "Mr Gluk Reset Service v5.3 128K (Edit)" },
 
@@ -798,6 +877,7 @@ static struct {
 
 /* clones */
 	{ 0x8ff7a4d1 , 0x4000 , "INVES Spectrum 48K+ (spanish)" },
+	{ 0x1a401bbc , 0x4000 , "Halley Computaction SP v4.1" },
 
 	{ 0x3e785f6f , 0x4000 , "Micro Digital TK-90x Color Computer" },
 	{ 0x17368e07 , 0x4000 , "Micro Digital TK-95 Color Computer" },
@@ -810,6 +890,9 @@ static struct {
 
 	{ 0xbf44ec3f , 0x4000 , "Timex TS-2068 (main)" },
 	{ 0xae16233a , 0x2000 , "Timex TS-2068 (shadow)" },
+
+	{ 0x5ddc0ca2 , 0x4000 , "Unipolbrit UK-2086 (main)" },
+	{ 0xae16233a , 0x2000 , "Unipolbrit UK-2086 (shadow)" },
 
 	{ 0x2ee3a992 , 0x4000 , "Didaktik Gama" },
 	{ 0x5e3f1f66 , 0x4000 , "Didaktik Gama Polak" },
@@ -885,11 +968,13 @@ static struct {
 
 	{ 0x9954cf1a , 0x4000 , "Sam Coupe (part 1)" },
 	{ 0xf031aed4 , 0x4000 , "Sam Coupe (part 2)" },
-	{ 0x262bd888 , 0x4000 , "Sam Coupe (part 1) (alt)" },
-	{ 0x793b7eb7 , 0x4000 , "Sam Coupe (part 2) (alt)" },
 	{ 0xc8310db2 , 0x4000 , "Sam Coupe ZXVGS 0.16 by Yarek" },
 
 /* external devices ************************************************************/
+	{ 0x262bd888 , 0x4000 , "SamRam (part 1)" },
+	{ 0x793b7eb7 , 0x4000 , "SamRam (part 2)" },
+	{ 0x60efaf07 , 0x4000 , "SamRam (part 2) (alt)" },
+
 	{ 0xe72a12ae , 0x2000 , "Interface 1 v1" },
 	{ 0xbb66dd1e , 0x2000 , "Interface 1 v2" },
 	{ 0x85ae5586 , 0x4000 , "Interface 1 v2 modified by Ian Collier 1985" },
@@ -904,17 +989,16 @@ static struct {
 	{ 0x3b9bbca3 , 0x4000 , "Genie 128K Disassembler v2.1" },
 
 	{ 0x82047489 , 0x2000 , "Disciple GDOS3 v3.0" },
-	{ 0xff83b282 , 0x4000 , "Disciple GDOS3 v3.0 with System 3b" },
- 	{ 0x27d4c5f6 , 0x4000 , "Disciple GDOS3 v3.0 with system files & Epson printer code" },
-	{ 0x4250c4cd , 0x4000 , "Disciple GDOS3 v3.0 with system files & HP printer code" },
 	{ 0x569f7e55 , 0x2000 , "Disciple +D G+DOS v1.A" },
-	{ 0x6edbf20a , 0x4000 , "Disciple +D G+DOS v1.A with System 2a" },
+	{ 0x1fe7f4fa , 0x2000 , "Disciple Uni-DOS" },
+	{ 0x60920496 , 0x2000 , "Disciple +D Uni-DOS" },
 
 	{ 0x619973f9 , 0x2000 , "Opus Discovery v1.2" },
 	{ 0x50f0eae0 , 0x2000 , "Opus Discovery v2.2" },
 	{ 0xd042b32a , 0x2000 , "Opus Discovery QuickDOS for FDD 720Kb" },
 
 	{ 0x1ccf4add , 0x0800 , "Timex FDD-3000 Internal ROM" },
+	{ 0xe9db941c , 0x1000 , "Timex FDD-3000 Interface" },
 	{ 0xa0a9779c , 0x1000 , "Timex FDD-3000 Interface modified for +3" },
 	{ 0x77c517f4 , 0x1000 , "Timex FDD-3000 Interface with square ULA modified for 128K" },
 
@@ -932,6 +1016,8 @@ static struct {
 	{ 0xc43d717f , 0x4000 , "Beta 128 TR-DOS v5.03 (supplied with x128)" },
 	{ 0x561662f2 , 0x4000 , "Beta 128 TR-DOS v5.03 (supplied with speccy)" },
 	{ 0x23dbc387 , 0x4000 , "Beta 128 TR-DOS v5.03 (supplied with z80)" },
+	{ 0x1c5a25b1 , 0x4000 , "Beta 128 TR-DOS v5.03 (supplied with z80) (alt)" },
+	{ 0x2f97fe06 , 0x4000 , "Beta 128 TR-DOS v5.03M" },
  	{ 0xba310874 , 0x4000 , "Beta 128 TR-DOS v5.04" },
  	{ 0xda170c65 , 0x4000 , "Beta 128 TR-DOS v5.04.1 & LPrint-III for Profi by Michael Markowsky" },
 	{ 0x0d3f8b43 , 0x4000 , "Beta 128 TR-DOS v5.04EM by Elsy Corp" },
@@ -964,14 +1050,36 @@ static struct {
  	{ 0xe938a510 , 0x1000 , "ZS Scorpion 256K AT-XT Keyboard & Mouse Interface" },
 
 /* probably useless roms *******************************************************/
-	{ 0xe55b40f8 , 0xc000 , "MERGED ZX Spectrum 48K + ZX Spectrum 128K" },
-	{ 0x545f8520 , 0x4000 , "MODIFIED ZX Spectrum 48K by Lec v1.6 for 80kB (modified for Psim)" },
-	{ 0x996bc458 , 0x4000 , "MODIFIED ZX Spectrum 48K (modified for ZX Spectrum Simulator)" },
-	{ 0x705192c7 , 0x4000 , "MODIFIED ZX Spectrum 128K (4000h) (modified to be use as 48K ROM in SpecEm)" },
-	{ 0x9e5392aa , 0x2000 , "MODIFIED Interface 1 v2 (modified for z80 pre-v4)" },
-	{ 0xeed3e349 , 0x4000 , "MODIFIED ISO-ROM 128K (Ramramis 128K) (8000h) (modified for X128)" },
-	{ 0x2fa2acbb , 0x4000 , "First quater of unknown ROM supplied with Speccy" },
-	{ 0xe640a642 , 0x10000, "Unknown ROM supplied with Speccy" },
+	{ 0x2959719b , 0x02000 , "PART ZX Spectrum 48K (0000h-1fffh)" },
+	{ 0x87369b50 , 0x03000 , "MERGED Sinclair ZX-80 & ZX-81" },
+	{ 0x05ad8750 , 0x0a000 , "MERGED ZX Spectrum roms (262bd888+60efaf07+9e5392aa)" },
+	{ 0x6d96f172 , 0x10000 , "MERGED ZX Spectrum roms (help screen+124ad9e0+b96a36be+c43d717f)" },
+	{ 0xe640a642 , 0x10000 , "MERGED ZX Spectrum roms (help screen+124ad9e0+b96a36be+561662f2)" },
+	{ 0x863c7e0b , 0x10000 , "MERGED ZX Spectrum roms (help screen+124ad9e0+b96a36be+2f97fe06)" },
+	{ 0xf8a79acc , 0x16000 , "MERGED ZX Spectrum roms (ddee531f+9e5392aa+262bd888+793b7eb7+b96a36be+e76799d2)" },
+	{ 0x23af5893 , 0x20000 , "MERGED ZX Spectrum roms (ddee531f+9e5392aa+262bd888+793b7eb7+b96a36be+e76799d2+8c7e6a55+9191480c+78ec8cfd)" },
+	{ 0x9f54a710 , 0x20000 , "MERGED ZX Spectrum roms (ddee531f+9e5392aa+262bd888+793b7eb7+b96a36be+e76799d2+dd6f66ca+05b041fc+78ec8cfd)" },
+	{ 0xad99f054 , 0x20000 , "MERGED ZX Spectrum roms (ddee531f+9e5392aa+262bd888+793b7eb7+b96a36be+e76799d2+27d4c5f6+4250c4cd+78ec8cfd)" },
+	{ 0xf8635431 , 0x20000 , "MERGED ZX Spectrum roms (ddee531f+bb66dd1e+262bd888+793b7eb7+b96a36be+e76799d2+dd6f66ca+05b041fc+78ec8cfd)" },
+	{ 0xe0fda867 , 0x20000 , "MERGED ZX Spectrum roms (ddee531f+9e5392aa+262bd888+793b7eb7+b96a36be+124ad9e0+8c7e6a55+9191480c+78ec8cfd)" },
+	{ 0x2ae772ba , 0x30000 , "MERGED ZX Spectrum roms (ddee531f+e76799d2+b96a36be+5d2e8c66+98b1320b+17373da2+f1d1d99e+3dbf351d+04448eaa+bf44ec3f+ae16233a+filled with 00h)" },
+	{ 0xe55b40f8 , 0x0c000 , "MERGED ZX Spectrum 48K + ZX Spectrum 128K" },
+	{ 0x545f8520 , 0x04000 , "MODIFIED ZX Spectrum 48K by Lec v1.6 for 80kB (modified for Psim)" },
+	{ 0x996bc458 , 0x04000 , "MODIFIED ZX Spectrum 48K (modified for ZX Spectrum Simulator)" },
+	{ 0x705192c7 , 0x04000 , "MODIFIED ZX Spectrum 128K (4000h) (modified to be use as 48K ROM in SpecEm)" },
+	{ 0x9e5392aa , 0x02000 , "MODIFIED Interface 1 v2 (modified for z80 pre-v4)" },
+	{ 0xeed3e349 , 0x04000 , "MODIFIED ISO-ROM 128K (Ramramis 128K) (8000h) (modified for X128)" },
+	{ 0xf473991e , 0x02000 , "MODIFIED Multiface 128 v3.6 (87.2) (Romantic Robot)" },
+	{ 0xca7622c1 , 0x04000 , "OVERDUMP Multiface 1 (Romantic Robot)" },
+	{ 0xff83b282 , 0x04000 , "Disciple GDOS3 v3.0 with System 3b" },
+ 	{ 0x27d4c5f6 , 0x04000 , "Disciple GDOS3 v3.0 with System 3b & Epson printer code" },
+	{ 0x4250c4cd , 0x04000 , "Disciple GDOS3 v3.0 with System 3b & HP printer code" },
+ 	{ 0xdd6f66ca , 0x04000 , "Disciple GDOS3 v3.0 with System 3b & Epson printer code (alt)" },
+	{ 0x05b041fc , 0x04000 , "Disciple GDOS3 v3.0 with System 3b & HP printer code (alt)" },
+ 	{ 0x8c7e6a55 , 0x04000 , "Disciple GDOS3 v3.0 with System 3b & Epson printer code (alt 2)" },
+	{ 0x9191480c , 0x04000 , "Disciple GDOS3 v3.0 with System 3b & HP printer code (alt 2)" },
+	{ 0x6edbf20a , 0x04000 , "Disciple +D G+DOS v1.A with System 2a" },
+	{ 0x44c8e6ce , 0x04000 , "Disciple +D G+DOS v1.A with System 2a (alt)" },
  
 
 /* Sinclair QL Computer ********************************************************/
@@ -988,6 +1096,21 @@ static struct {
 	{ 0x930befe3, 0xc000 , "Sinclair QL Minerva 1.89 (QDOS replacement)" },
 
 
+/* Cambridge Computer Z88 Personal Organiser *********************************************/
+	{ 0x0ae7d0fc, 0x20000, "Cambridge Computer Z88 v2.2" },
+	{ 0xdad01338, 0x20000, "Cambridge Computer Z88 v2.5 (swedish)" },
+	{ 0x293f35c8, 0x20000, "Cambridge Computer Z88 v2.6 (norwegian)" },
+	{ 0x802cb9aa, 0x20000, "Cambridge Computer Z88 v3.0" },
+	{ 0xa56d732c, 0x20000, "Cambridge Computer Z88 v3.13 (swiss)" },
+	{ 0x9468d677, 0x20000, "Cambridge Computer Z88 v3.17 (turkish)" },
+	{ 0xd7eaf937, 0x20000, "Cambridge Computer Z88 v3.18 (german)" },
+	{ 0x7a08af73, 0x20000, "Cambridge Computer Z88 v3.19 (spanish)" },
+	{ 0xbaa80408, 0x20000, "Cambridge Computer Z88 v3.21 (danish)" },
+	{ 0x13f54308, 0x20000, "Cambridge Computer Z88 v3.23 (italian)" },
+	{ 0x218fbb72, 0x20000, "Cambridge Computer Z88 v3.26 (french)" },
+	{ 0x1356d440, 0x20000, "Cambridge Computer Z88 v4.0" },
+
+
 /* tandy *************************************************************************/
 	{ 0x73316e3e , 0x2000, "NOT AUTHENTIC? COCO basic 1.0" },
 	{ 0x6270955a , 0x2000, "COCO basic 1.1" },
@@ -996,7 +1119,8 @@ static struct {
 	{ 0xa04a8732 , 0x2000, "COCO basic 1.3 (1byte different to 0xd8f4d15e" },
 	{ 0x6111a086 , 0x2000, "NOT AUTHENTIC? COCO extbasic 1.0" },
 	{ 0xa82a6254 , 0x2000, "COCO extbasic 1.1" },
-	{ 0x2ea0fb7f , 0x4000, "MERGED! 0xa82a6254+0x54368805" },
+	{ 0x2ea0fb7f , 0x4000, "MERGED! COCO extbasic 1.1 0xa82a6254+0x54368805" },
+	{ 0x318ba789 , 0x4010, "OVERDUMP COCO extbasic 1.1 (remove first 16bytes)=0x2ea0fb7f" },
 	{ 0xb4f9968e , 0x2000, "COCO disk 1.0" },
 	{ 0x0b9c5415 , 0x2000, "COCO disk 1.1" },
 	{ 0x7eaa44e3 , 0x2000, "COCO disk (2bytes different to 0x0b9c5415" },
@@ -1006,10 +1130,15 @@ static struct {
 	{ 0xdfce21e5 , 0x7f00, "INCOMPLETE COCO3 saved from running machine" },
 	{ 0x7d48ba8e , 0x2000, "??? COCO3 disk?" },
 	{ 0xe3879310 , 0x4000, "DRAGON32" },
+	{ 0xdcab048d , 0x4010, "Overdump DRAGON32 (remove first 16bytes)=0xe3879310" },
 	{ 0xb44536f6 , 0x2000, "DRAGON DOS 1.0" },
 	{ 0x878396a5 , 0x4000, "CP400 basic" },
 	{ 0xe9ad60a0 , 0x2000, "CP400 disk" },
 	{ 0x11fda97e , 0x2000, "MC10" },
+	{ 0x17893a42 , 0x4000, "Dragon64? d64rom2 1.0 1983" },
+	{ 0x84f68bf9 , 0x4000, "Dragon64? dragrom 1.0 1982" },
+	{ 0xcedc6a52 , 0x4010, "Overdump Dragon64? (remove first 16bytes)=0x17893a42" },
+	{ 0x615236cc , 0x4010, "Overdump Dragon64? (remove first 16bytes)=0x84f68bf9" },
 
 	{ 0x70d06dff , 0x1000, "TRS80 Level1 0000" },
 	{ 0x83dbbbe2 , 0x1000, "TRS80 0000" },
@@ -1146,6 +1275,8 @@ static struct {
 	{ 0x24b4076f , 0x160000, "Texas Instruments AVIGO v1.004 (italian)" },
 
 /* Texas Instruments Calculators ***********************************************/
+	{ 0x94ac58e2 , 0x08000 , "Texas Instruments TI-81 v1.8" },
+
 	{ 0xe2f5721c , 0x20000 , "Texas Instruments TI-82 v16.0" },
 	{ 0x0fc956d4 , 0x20000 , "Texas Instruments TI-82 v17.0" },
 	{ 0x6a320f03 , 0x20000 , "Texas Instruments TI-82 v18.0" },
@@ -1312,7 +1443,8 @@ static struct {
 	{ 0xaa727c5d , 0x4000, "STRATOS telmon24" },
 	{ 0xcda92497 , 0x4000, "STRATOS telmon24 fr" },
 
-	{ 0x32f0d1ef , 0x4000, "MODIFIED? Einstein" },
+	{ 0x32f0d1ef , 0x4000, "Scrap Einstein" },
+	{ 0xec134953 , 0x2000, "Einstein" },
 
 	{ 0x5c3b5bb5, 0x800, "BAD DUMP? Galaxy char" },
 	{ 0x365f3e24, 0x1000, "Galaxy" },
@@ -1338,8 +1470,14 @@ static struct {
 	/* the rest have flash memory, which can be mmodified by user */
 
 	{ 0x82030062 , 0x080000, "USR Pilot 1000/5000 OS v1.0" },
+	{ 0x6ed137b1 , 0x080000, "USR Pilot 1000/5000 OS v1.0.3 (german)" },
 	{ 0xbaa5b36a , 0x100000, "Palm Pilot Professional OS v2.0 Pro" },
+	{ 0x40ea8baa , 0x100000, "Palm Pilot Professional OS v2.0 Pro (modified)" },
+	{ 0x0c6f533e , 0x0ea000, "Palm Pilot Professional OS v2.0.2+ Pro (debug)" },
 	{ 0x4f31e1c9 , 0x119000, "Palm III OS v3.0" },
+	{ 0xfaaafc62 , 0x130000, "Palm III OS v3.0 (french)" },
+	{ 0x8a2f7468 , 0x130000, "Palm III OS v3.0 (german)" },
+	{ 0x60cb2ae7 , 0x130000, "Palm III OS v3.0 (spanish)" },
 	{ 0xa0b059f9 , 0x119000, "Palm III OS v3.0 (debug)" },
 	{ 0x467ff0de , 0x148000, "Palm III OS v3.3" },
 	{ 0x785e771b , 0x150000, "Palm III OS v3.3 (german) (ID 00X00XX00XXX-C)" },
@@ -1356,6 +1494,7 @@ static struct {
 	{ 0x006a977f , 0x268000, "Palm IIIc OS v4.0 (japanese)" },
 	{ 0x53cb10a2 , 0x280000, "Palm IIIc OS v4.0 (japanese) (debug)" },
 	{ 0x5a64ef2b , 0x128000, "Palm IIIe/IIIx/V OS v3.1" },
+	{ 0xb1db61b8 , 0x128000, "Palm IIIe/IIIx/V OS v3.1 E31" },
 	{ 0xdc560ed1 , 0x138000, "Palm IIIx/V/Vx OS v3.3" },
 	{ 0x0011f920 , 0x140000, "Palm IIIx/V/Vx OS v3.3 (ID 00X000X00000-R)" },
 	{ 0x08ee205e , 0x150000, "Palm IIIx/V/Vx OS v3.3 (german) (ID 00X000X00000-R)" },
@@ -1383,11 +1522,16 @@ static struct {
 	{ 0x93cded38 , 0x200000, "Handspring Visor OS v3.1H2" },
 	{ 0xc9e55271 , 0x200000, "Handspring Visor Platinum/Prism/Edge OS v3.5.2H1.1" },
 
+	{ 0x482c4e3b , 0x190000, "Sony CLIE PEG-S300 OS v3.5.0" },
 	{ 0x361ba712 , 0x190000, "Sony CLIE PEG-S300 OS v3.5.1" },
 	{ 0xd39dc1e2 , 0x3b0000, "Sony CLIE PEG-S300 OS v3.5.1 (japanese)" },
 	{ 0x566d18ec , 0x3b0000, "Sony CLIE PEG-S500c OS v3.5.1 (japanese)" },
 
-	{ 0xdd93b80f , 0x1f0000, "TRG Pro OS v3.5.2" },
+	{ 0x382e2432 , 0x1c0000, "TRG Pro OS v3.5.3 (16.07.2001)" },
+	{ 0x7aa24b38 , 0x1c0000, "TRG Pro OS v3.5.3 (21.06.2000)" },
+	{ 0xfab125a9 , 0x1f8000, "HandEra 330 OS v3.5.3" },
+
+	{ 0xd0bdba79 , 0x1f8000, "IBM WorkPad OS v3.1 (japanese)" },
 
 
 /* Hewlett Packard Calculators *************************************************/

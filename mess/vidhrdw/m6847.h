@@ -19,9 +19,12 @@ extern "C" {
 #define M6847_INTERRUPTS_PER_FRAME	263
 
 enum {
-	M6847_VERSION_ORIGINAL,
-	M6847_VERSION_M6847Y,
-	M6847_VERSION_M6847T1
+	M6847_VERSION_ORIGINAL_PAL,
+	M6847_VERSION_ORIGINAL_NTSC,
+	M6847_VERSION_M6847Y_PAL,
+	M6847_VERSION_M6847Y_NTSC,
+	M6847_VERSION_M6847T1_PAL,
+	M6847_VERSION_M6847T1_NTSC
 };
 
 struct m6847_init_params {
@@ -42,9 +45,10 @@ void m6847_vh_normalparams(struct m6847_init_params *params);
 
 void m6847_vh_init_palette(unsigned char *palette, unsigned short *colortable, const unsigned char *color_prom);
 int m6847_vh_start(const struct m6847_init_params *params);
-void m6847_vh_update(struct osd_bitmap *bitmap,int full_refresh);
+void m6847_vh_update(struct mame_bitmap *bitmap,int full_refresh);
 void m6847_vh_stop(void);
 int m6847_vh_interrupt(void);
+int m6847_is_t1(int version);
 
 
 /******************* Modifiers *******************/

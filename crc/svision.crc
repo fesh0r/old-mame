@@ -1,48 +1,48 @@
 # watara supervision
 [SVISION]
-10dcc110 = Cryst Ball | 199? | Travell Mate
+10dcc110 = Cryst Ball | 199? |
 #SV10001         Blockbuster
 #SV10002         Hash Blocks
-#SV10004         Carrier
-#SV10005         Eagle Plan
-#SV10006         P52 Sea Battle
-6f8abaf9 = Linear Racing | 199? | Travell Mate | SV10007
+5ecfb674 = Carrier | | | SV10004
+01cb8364 = Eagle Plan | | | SV10005
+748f9dae = P-52 Sea Battle | | | SV10006
+6f8abaf9 = Linear Racing | 199? || SV10007
 #SV10008         PacBoy & Mouse
 #SV10009         Sssnake
 8dbb2c53 = Alien | | | SV10010
 25ddd6e1 = Hero Kid | | | SV10011
 #SV10012         MahJongg
 #SV10013         Challenger Tank
-#SV10014         Police Bust
-#SV10015         Tennis Pro `92
-#SV10016         Chimera
+531f0b51 = Police Bust | | Bon Treasure | SV10014
+bd004cb7 = Tennis Pro '92 | | | SV10015
+4a458aa8 = Chimera | | | SV10016
 #SV10017         Space Fighter
 #SV10018         Honey Bee
-#SV10019         Olympic Trails
+85dc8111 = Olympic Trials | | | SV10019
 #SV10020         Matta Blatta
 cef3f295 = Grand Prix | 199? | Bon Treasure | SV10021 | noise
-#SV10022         Super Block
-#SV10023         Brain Power
+02e2c7ad = Super Block | 1992 | Bon Treasure | SV10022
+5e6706b9 = Brain Power | | | SV10023
 #SV10024         2 in 1 (Eagle Plan & Hash Blocks)
 aa4372d4 = Jaguar Bomber | 1992 | Bon Treasure | SV10025
-#SV10026         TASAC 2010
+3d5f3964 = Tasac 2010 | 1992 | Thin Chen Enterprise | SV10026
 #SV10027         Happy Race
 #SV10028         Super Pang
 #SV10029         Galactic Crusader
 #SV10030         Dancing Blocks
 #SV10031         Final Combat
-#SV10032         Penguin Hideout
+fe5f9774 = Penguin Hideout | 1992 | Thin Chen Enterprise| SV10032
 7e05d84f = Block Buster & Cross High | | | SV10033
 #SV10034         Soccer Champion
 #SV10035         Happy Pair
 #SV10036         John Adventure
 #SV10037         PaPo Team
 #SV10038         Chinese Checkers
-#SV10039         Magincross
+e406a91c = Magincross | 1992 Thin Chen Enterprise | | SV10039
 32ccdf89 = Delta Hero | 1992 | Bon Treasure | SV10040
 #SV10041         Recycle Design
-#SV10042         Super Kong
-#SV10043         Juggler
+59c7ff64 = Super Kong | 1992 | Thin Chen Enterprise | SV10042
+32e68d6f = Juggler | 1992 | Bon Treasure | SV10043
 
 #hash block, jacky lucky, challenger tank, brain power
 #b52 battle
@@ -53,7 +53,7 @@ aa4372d4 = Jaguar Bomber | 1992 | Bon Treasure | SV10025
 #dream world
 #earth defender
 917cab48 = fatalcraft | 1992 | Bon Treasure
-#galaxy fighter
+581703be = galaxy fighter | 1992 | Thin Chen Enterprise
 #hero hawk
 #money bee
 #jade legend
@@ -69,6 +69,12 @@ aa4372d4 = Jaguar Bomber | 1992 | Bon Treasure | SV10025
 #usa sea battle
 #witty kitty
 
+#overdumps
+17a4ca40 = Penguin Hideout | Overdump, 2 identical halves
+d46ab5e0 = Super Block | Overdump, 1st half empty
+8847c439 = Carrier | Overdump, 1st half empty
+
+
 #[baddump]
 62f39f8b = Delta Hero (bad dump)
-
+b7d5db89 = Chimera eprom read (scrambled)

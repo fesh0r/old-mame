@@ -1,11 +1,14 @@
 /***************************************************************************
 
-  $Id: pc8801.c,v 1.4 2001/05/25 07:06:17 PeT Exp $
+  $Id: pc8801.c,v 1.8 2001/11/16 05:02:58 npwoods Exp $
 
 ***************************************************************************/
 
 #include "driver.h"
 #include "includes/pc8801.h"
+
+/* NPW 23-Oct-2001 - Adding this so that it compiles */
+#define palette_transparent_pen	0
 
 unsigned char *pc88sr_textRAM=NULL;
 int pc8801_is_24KHz;
@@ -67,7 +70,7 @@ static int disp_plane[3];
 
 static char *graph_dirty=NULL;
 static unsigned short *attr_tmp=NULL,*attr_old=NULL,*text_old=NULL;
-static struct osd_bitmap *wbm1,*wbm2;
+static struct mame_bitmap *wbm1,*wbm2;
 
 #define TRAM(x,y) (pc88sr_is_highspeed ? \
 	pc88sr_textRAM[(dmac_addr[2]+(x)+(y)*120)&0xfff] : \
@@ -360,12 +363,11 @@ void pc8801_vh_exit(void){}
 
 #define BLOCK_YSIZE (pc8801_is_24KHz ? 4 : 2)
 
-void pc8801_vh_refresh(struct osd_bitmap *bitmap,int full_refresh)
+void pc8801_vh_refresh(struct mame_bitmap *bitmap,int full_refresh)
 {
   int x,y,attr_new,text_new,i,a,tx,ty,oy,gx,gy,ct,cg;
   static int blink_count;
 
-  full_refresh = full_refresh || palette_recalc();
   blink_count=(blink_count+1)%(blink_period*4);
   /* attribute expand */
   for(y=0;y<25;y++) {
@@ -927,5 +929,5 @@ WRITE_HANDLER(pc8801_palette_out)
 	r[offset] = (data & 2) ? 0xff : 0x00;
 	g[offset] = (data & 4) ? 0xff : 0x00;
   }
-  palette_change_color(palno,r[offset],g[offset],b[offset]);
+  palette_set_color(palno,r[offset],g[offset],b[offset]);
 }

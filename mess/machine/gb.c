@@ -24,7 +24,7 @@ static int RAMBanks;				   /* Total number of RAM banks                   */
 static UINT32 TCount, TStep;		   /* Timer counter and increment            */
 static UINT32 SIOCount;				   /* Serial I/O counter                     */
 
-#define Verbose 0x01
+#define Verbose 0x00
 #define SGB 0
 #define CheckCRC 1
 #define LineDelay 0
@@ -490,7 +490,7 @@ int gb_load_rom (int id)
 	memset (ROM, 0, 0x10000);
 
 	/* FIXME should check first if a file is given, should give a more clear error */
-	if (!(F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, OSD_FOPEN_READ)))
+	if (!(F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ)))
 	{
 		logerror("image_fopen failed in gb_load_rom.\n");
 		return 1;
@@ -507,7 +507,7 @@ int gb_load_rom (int id)
 	osd_fclose (F);
 
 	/* FIXME should check first if a file is given, should give a more clear error */
-	if (!(F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, OSD_FOPEN_READ)))
+	if (!(F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ)))
 	{
 		logerror("image_fopen failed in gb_load_rom.\n");
         return 1;
@@ -687,10 +687,10 @@ int gb_scanline_interrupt (void)
 		break;
 	case 1:
 		gb_scanline_interrupt_set_mode2 (0);
-		return Z80GB_IGNORE_INT;
+		return ignore_interrupt();
 	case 2:
 		gb_scanline_interrupt_set_mode3 (0);
-		return Z80GB_IGNORE_INT;
+		return ignore_interrupt();
 	}
 
 	/* first lett's draw the current scanline */

@@ -1,3 +1,5 @@
+#include <stdarg.h>
+
 #ifndef MESS_H
 #define MESS_H
 
@@ -5,6 +7,12 @@
 #include "device.h"
 
 #define ARRAY_LENGTH(x) (sizeof(x)/sizeof(x[0]))
+
+/* MESS_DEBUG is a debug switch (for developers only) for
+   debug code, which should not be found in distributions, like testdrivers,...
+   contrary to MAME_DEBUG, NDEBUG it should not be found in the makefiles of distributions
+   use it in your private root makefile */
+//#define MESS_DEBUG
 
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 	#include <stdbool.h>
@@ -57,9 +65,9 @@ extern "C" {
 int DECL_SPEC mess_printf(char *fmt, ...);
 
 extern void showmessinfo(void);
-extern int displayimageinfo(struct osd_bitmap *bitmap, int selected);
-extern int filemanager(struct osd_bitmap *bitmap, int selected);
-extern int tapecontrol(struct osd_bitmap *bitmap, int selected);
+extern int displayimageinfo(struct mame_bitmap *bitmap, int selected);
+extern int filemanager(struct mame_bitmap *bitmap, int selected);
+extern int tapecontrol(struct mame_bitmap *bitmap, int selected);
 
 /* driver.h - begin */
 #define IPT_SELECT1		IPT_COIN1

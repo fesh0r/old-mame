@@ -11,7 +11,6 @@
 
 extern unsigned char pocketc_palette[248][3];
 extern unsigned short pocketc_colortable[8][2];
-extern struct artwork_info *pocketc_backdrop;
 
 
 void pocketc_init_colors (unsigned char *sys_palette,
@@ -22,5 +21,5 @@ int pocketc_vh_start(void);
 void pocketc_vh_stop(void);
 
 typedef char *POCKETC_FIGURE[];
-void pocketc_draw_special(struct osd_bitmap *bitmap,
+void pocketc_draw_special(struct mame_bitmap *bitmap,
 						  int x, int y, const POCKETC_FIGURE fig, int color);

@@ -358,7 +358,7 @@ int laser_rom_init(int id)
 	if (device_filename(IO_CARTSLOT,id) == NULL)
 		return INIT_PASS;
 
-	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
     if( file )
     {
 		size = osd_fread(file, &mem[0x30000], 0x10000);
@@ -522,7 +522,7 @@ int laser_cassette_init(int id)
 	if (device_filename(IO_CASSETTE,id) == NULL)
 		return INIT_PASS;
 
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if( file )
 	{
 		struct wave_args wa = {0,};
@@ -538,7 +538,7 @@ int laser_cassette_init(int id)
 			return INIT_FAIL;
 		return INIT_PASS;
     }
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
+	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
 	if( file )
     {
 		struct wave_args wa = {0,};
@@ -573,7 +573,7 @@ int laser_floppy_init(int id)
 	else
 		flop_specified[id] = 1;
 
-	file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+	file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
     if( file )
     {
         osd_fread(file, buff, sizeof(buff));
@@ -657,7 +657,7 @@ READ_HANDLER( laser_fdc_r )
             if( laser_fdc_status & 0x80 )
             {
                 laser_fdc_bits = 8;
-                laser_fdc_offs = ++laser_fdc_offs % TRKSIZE_FM;
+                laser_fdc_offs = (laser_fdc_offs + 1) % TRKSIZE_FM;
             }
             laser_fdc_status &= ~0x80;
         }
@@ -737,7 +737,7 @@ WRITE_HANDLER( laser_fdc_w )
                         if( laser_data & 0x0001 ) value |= 0x01;
                         logerror("laser_fdc_w(%d) data($%04X) $%02X <- $%02X ($%04X)\n", offset, laser_fdc_offs, laser_fdc_data[laser_fdc_offs], value, laser_data);
                         laser_fdc_data[laser_fdc_offs] = value;
-                        laser_fdc_offs = ++laser_fdc_offs % TRKSIZE_FM;
+                        laser_fdc_offs = (laser_fdc_offs + 1) % TRKSIZE_FM;
                         laser_fdc_write++;
                         laser_fdc_bits = 8;
                     }

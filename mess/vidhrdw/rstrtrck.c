@@ -7,12 +7,12 @@ static UINT8 *vram;
 static int vramwrap;
 static struct rastertrack_vvars vvars;
 static struct rastertrack_hvars hvars;
-static struct osd_bitmap *bitmap;
+static struct mame_bitmap *bitmap;
 static UINT8 *dirtybuffer_position;
 
 #ifdef MAME_DEBUG
-#define LOG_LINES		1
-#define LOG_FRAMES		1
+#define LOG_LINES		0
+#define LOG_FRAMES		0
 #define LOG_POSITIONS	0
 #else
 #define LOG_LINES		0
@@ -186,7 +186,7 @@ int rastertrack_hblank(void)
 	return ignore_interrupt();
 }
 
-void rastertrack_refresh(struct osd_bitmap *bmap, int full_refresh)
+void rastertrack_refresh(struct mame_bitmap *bmap, int full_refresh)
 {
 	bitmap = bmap;
 
@@ -194,7 +194,7 @@ void rastertrack_refresh(struct osd_bitmap *bmap, int full_refresh)
 	logerror("rastertrack_refresh(): full_refresh=%i frame_state=%i\n", full_refresh, frame_state);
 #endif
 
-	if ((intf->flags & RI_PALETTERECALC) && palette_recalc())
+	if ((intf->flags & RI_PALETTERECALC) && full_refresh)
 		full_refresh = 1;
 
 	switch(frame_state) {

@@ -60,7 +60,7 @@ static int lynx_frame_int(void)
 {
     lynx_rotate=rotate;
     if ((readinputport(2)&3)!=3) lynx_rotate=readinputport(2)&3;
-    return 0;
+    return ignore_interrupt();
 }
 
 int lynx_vh_start(void)
@@ -153,11 +153,9 @@ void lynx_draw_lines(int newline)
     }
 }
 
-void lynx_vh_screenrefresh (struct osd_bitmap *bitmap, int full_refresh)
+void lynx_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
 {
     int j;
-
-    if( palette_recalc() ) full_refresh = 1;
 
     lynx_audio_debug(bitmap);
 
@@ -228,7 +226,6 @@ static struct MachineDriver machine_driver_lynx =
 	0, //sizeof (lynx_colortable) / sizeof(lynx_colortable[0][0]),
 	lynx_init_colors,		/* convert color prom */
 
-//	VIDEO_TYPE_RASTER|VIDEO_MODIFIES_PALETTE,	/* video flags */
 	VIDEO_TYPE_RASTER,	/* video flags */
 	0,						/* obsolete */
     lynx_vh_start,
@@ -269,7 +266,6 @@ static struct MachineDriver machine_driver_lynx2 =
 	0, //sizeof (lynx_colortable) / sizeof(lynx_colortable[0][0]),
 	lynx_init_colors,		/* convert color prom */
 
-//	VIDEO_TYPE_RASTER|VIDEO_MODIFIES_PALETTE,	/* video flags */
 	VIDEO_TYPE_RASTER,	/* video flags */
 	0,						/* obsolete */
     lynx_vh_start,
@@ -365,7 +361,7 @@ static int lynx_init_cart(int id)
 		return 0;
 	}
 
-	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
+	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
 	{
 		logerror("%s not found\n",device_filename(IO_CARTSLOT,id));
 		return 1;
@@ -416,7 +412,7 @@ static int lynx_quickload(int id)
 		return 0;
 	}
 
-	if (!(cartfile = (FILE*)image_fopen(IO_QUICKLOAD, id, OSD_FILETYPE_IMAGE_R, 0)))
+	if (!(cartfile = (FILE*)image_fopen(IO_QUICKLOAD, id, OSD_FILETYPE_IMAGE, 0)))
 	{
 		logerror("%s not found\n",device_filename(IO_QUICKLOAD,id));
 		return 1;
@@ -505,9 +501,9 @@ void init_lynx(void)
 #define io_lynx2 io_lynx
 
 /*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      MONITOR	COMPANY   FULLNAME */
-CONSX( 1989, lynx,	  0, 		lynx,  lynx, 	lynx,	  "Atari",  "Lynx", GAME_REQUIRES_16BIT|GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-CONSX( 1989, lynxa,	  lynx, 	lynx,  lynx, 	lynx,	  "Atari",  "Lynx (alternate rom save!)", GAME_REQUIRES_16BIT|GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-CONSX( 1991, lynx2,	  lynx, 	lynx2,  lynx, 	lynx,	  "Atari",  "Lynx II", GAME_REQUIRES_16BIT|GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+CONSX( 1989, lynx,	  0, 		lynx,  lynx, 	lynx,	  "Atari",  "Lynx", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+CONSX( 1989, lynxa,	  lynx, 	lynx,  lynx, 	lynx,	  "Atari",  "Lynx (alternate rom save!)", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+CONSX( 1991, lynx2,	  lynx, 	lynx2,  lynx, 	lynx,	  "Atari",  "Lynx II", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
 
 #ifdef RUNTIME_LOADER
 extern void lynx_runtime_loader_init(void)

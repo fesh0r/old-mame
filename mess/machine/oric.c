@@ -29,7 +29,8 @@
 #include "printer.h"
 #include "formats/orictap.h"
 
-
+static int enable_logging = 0;
+/* static int save_done = 0; */
 
 
 /* timer used to refresh via cb input, which will trigger ints on pulses
@@ -103,7 +104,14 @@ static char oric_keyboard_mask;
 
 static unsigned char oric_via_port_a_data;
 
-//#define ORIC_DUMP_RAM
+#define ORIC_DUMP_RAM
+
+
+#ifdef ORIC_DUMP_RAM
+static int previous_input_port5;
+#endif
+
+
 
 #ifdef ORIC_DUMP_RAM
 /* load image */
@@ -130,6 +138,51 @@ void oric_dump_ram(void)
 		osd_fclose(file);
 	}
 }
+
+void    oric_dump_video(void)
+{
+        FILE *fh;
+
+        fh = fopen("e:\\oricvid.txt","wb");
+
+        if (fh!=NULL)
+        {
+                int i,j, addr;
+
+                addr = 0x08000;
+                for (j=0; j<1024; j++)
+                {
+
+			fprintf(fh,"%04x: ",addr);
+
+                for (i=0; i<16; i++)
+                {
+                  fprintf(fh,"%02x ",cpu_readmem16(addr+i));
+                }
+		    fprintf(fh,"   ");
+		    for (i=0; i<16; i++)
+			{
+				int code;
+
+				code = cpu_readmem16(addr+i);
+
+				if ((code<32) || (code>127))
+				{
+					code = '.';
+				}
+
+				fprintf(fh,"%c",code);
+			}
+			addr+=16;
+                fprintf(fh,"\r\n");
+
+                }
+
+
+                fclose(fh);
+        }
+}
+
 #endif
 /* refresh keyboard sense */
 static void oric_keyboard_sense_refresh(void)
@@ -141,8 +194,11 @@ static void oric_keyboard_sense_refresh(void)
 	int i;
 	unsigned char key_bit = 0;
 
+
 	/* what if data is 0, can it sense if any of the keys on a line are pressed? */
-	int input_port_data = readinputport(1+oric_keyboard_line);
+	int input_port_data;
+
+ 	input_port_data = readinputport(1+oric_keyboard_line);
 
 	/* go through all bits in line */
 	for (i=0; i<8; i++)
@@ -185,7 +241,7 @@ static char oric_psg_control;
 /* this port is also used to read printer data */
 READ_HANDLER ( oric_via_in_a_func )
 {
-	logerror("port a read\r\n");
+	/*logerror("port a read\r\n"); */
 
 	/* access psg? */
 	if (oric_psg_control!=0)
@@ -261,28 +317,24 @@ WRITE_HANDLER ( oric_via_out_a_func )
 
 /*
 PB0..PB2
- keyboard lines-demultiplexer
+ keyboard lines-demultiplexer line 7
 
 PB3
- keyboard sense line
+ keyboard sense line 0
 
 PB4
- printer strobe line
+ printer strobe line 1
 
 PB5
- (not connected)
+ (not connected) ?? 1
 
 PB6
- tape connector motor control
+ tape connector motor control 0
 
-PB7
- tape connector output
+PB7 
+ tape connector output high 1
 
  */
-
-#ifdef ORIC_DUMP_RAM
-static int previous_input_port5;
-#endif
 
 /* not called yet - this will update the via with the state of the tape data.
 This allows the via to trigger on bit changes and issue interrupts */
@@ -313,23 +365,23 @@ static void    oric_refresh_tape(int dummy)
 
 #ifdef ORIC_DUMP_RAM
 	{
-		int input_port_data = readinputport(5);
+		int input_port_data = readinputport(0);
 
 		if (((previous_input_port5^input_port_data) & 0x01)!=0)
 		{
 			if (input_port_data & 0x01)
 			{
 				logerror("do dump");
-				oric_dump_ram();
+                                oric_dump_video();
 			}
 		}
 		previous_input_port5 = input_port_data;
 	}
 #endif
+
 }
 
 static unsigned char previous_portb_data = 0;
-
 WRITE_HANDLER ( oric_via_out_b_func )
 {
 	int printer_handshake;
@@ -339,6 +391,14 @@ WRITE_HANDLER ( oric_via_out_b_func )
 
 	/* CASSETTE */
 	/* cassette motor control */
+	if ((previous_portb_data^data) & (1<<6))
+	{
+		if (data & (1<<6))
+		{
+                        enable_logging = 1;
+		}
+	}
+
 	device_status(IO_CASSETTE, 0, ((data>>6) & 0x01));
 
 	/* cassette data out */
@@ -429,7 +489,10 @@ void	oric_via_irq_func(int state)
 
 	if (state)
 	{
-		logerror("oric via1 interrupt\n");
+		if (enable_logging)
+		{
+			logerror("oric via1 interrupt\r\n");
+		}
 
 		oric_irqs |=(1<<0);
 	}
@@ -670,7 +733,7 @@ static void oric_jasmin_set_mem_0x0c000(void)
 			unsigned char *rom_ptr;
 
 			/* no it is disabled */
-			logerror("&c000-&ffff is os rom\n");
+			/*logerror("&c000-&ffff is os rom\n"); */
 
 			memory_set_bankhandler_r(1, 0, MRA_BANK1);
 			memory_set_bankhandler_r(2, 0, MRA_BANK2);
@@ -686,7 +749,7 @@ static void oric_jasmin_set_mem_0x0c000(void)
 		}
 		else
 		{
-			logerror("&c000-&ffff is ram\n");
+			/*logerror("&c000-&ffff is ram\n"); */
 
 			memory_set_bankhandler_r(1, 0, MRA_BANK1);
 			memory_set_bankhandler_r(2, 0, MRA_BANK2);
@@ -711,7 +774,7 @@ static void oric_jasmin_set_mem_0x0c000(void)
 		{
 			/* overlay ram disabled */
 
-			logerror("&c000-&f8ff is nothing!\n");
+			/*logerror("&c000-&f8ff is nothing!\n"); */
 
 			memory_set_bankhandler_r(1, 0, MRA_NOP);
 			memory_set_bankhandler_r(2, 0, MRA_NOP);
@@ -722,7 +785,7 @@ static void oric_jasmin_set_mem_0x0c000(void)
 		}
 		else
 		{
-			logerror("&c000-&f8ff is ram!\n");
+			/*logerror("&c000-&f8ff is ram!\n"); */
 
 			memory_set_bankhandler_r(1, 0, MRA_BANK1);
 			memory_set_bankhandler_r(2, 0, MRA_BANK2);
@@ -739,7 +802,7 @@ static void oric_jasmin_set_mem_0x0c000(void)
 			/* basic rom disabled */
 			unsigned char *rom_ptr;
 
-			logerror("&f800-&ffff is jasmin rom\n");
+			/*logerror("&f800-&ffff is jasmin rom\n"); */
 			/* jasmin rom enabled */
 			memory_set_bankhandler_r(3, 0, MRA_BANK3);
 			memory_set_bankhandler_w(7, 0, MWA_BANK7);
@@ -811,7 +874,7 @@ static WRITE_HANDLER(oric_jasmin_w)
 	{
 		/* microdisc floppy disc interface */
 		case 0x04:
-			logerror("cycles: %d\n",cpu_getcurrentcycles());
+			logerror("cycles: %d\n",cycles_currently_ran());
 			wd179x_command_w(0,data);
 			break;
 		case 0x05:
@@ -892,7 +955,7 @@ static void oric_microdisc_refresh_wd179x_ints(void)
 
 	if ((oric_wd179x_int_state) && (port_314_w & (1<<0)))
 	{
-		logerror("oric microdisc interrupt\n");
+		/*logerror("oric microdisc interrupt\n"); */
 
 		oric_irqs |=(1<<1);
 	}
@@ -949,7 +1012,7 @@ void	oric_microdisc_set_mem_0x0c000(void)
 	/* /ROMDIS */
 	if ((port_314_w & (1<<1))==0)
 	{
-		logerror("&c000-&dfff is ram\n");
+		/*logerror("&c000-&dfff is ram\n"); */
 		/* rom disabled enable ram */
 		memory_set_bankhandler_r(1, 0, MRA_BANK1);
 		memory_set_bankhandler_w(5, 0, MWA_BANK5);
@@ -959,7 +1022,7 @@ void	oric_microdisc_set_mem_0x0c000(void)
 	else
 	{
 		unsigned char *rom_ptr;
-		logerror("&c000-&dfff is os rom\n");
+		/*logerror("&c000-&dfff is os rom\n"); */
 		/* basic rom */
 		memory_set_bankhandler_r(1, 0, MRA_BANK1);
 		memory_set_bankhandler_w(5, 0, MWA_NOP);
@@ -973,7 +1036,7 @@ void	oric_microdisc_set_mem_0x0c000(void)
 	if ((port_314_w & (1<<1))!=0)
 	{
 		unsigned char *rom_ptr;
-		logerror("&e000-&ffff is os rom\n");
+		/*logerror("&e000-&ffff is os rom\n"); */
 		/* basic rom */
 		memory_set_bankhandler_r(2, 0, MRA_BANK2);
 		memory_set_bankhandler_r(3, 0, MRA_BANK3);
@@ -992,7 +1055,7 @@ void	oric_microdisc_set_mem_0x0c000(void)
 		if ((port_314_w & (1<<7))==0)
 		{
 			unsigned char *rom_ptr;
-			logerror("&e000-&ffff is disk rom\n");
+			/*logerror("&e000-&ffff is disk rom\n"); */
 			memory_set_bankhandler_r(2, 0, MRA_BANK2);
 			memory_set_bankhandler_r(3, 0, MRA_BANK3);
 			memory_set_bankhandler_w(6, 0, MWA_NOP);
@@ -1004,7 +1067,7 @@ void	oric_microdisc_set_mem_0x0c000(void)
 		}
 		else
 		{
-			logerror("&e000-&ffff is ram\n");
+			/*logerror("&e000-&ffff is ram\n"); */
 			/* rom disabled enable ram */
 			memory_set_bankhandler_r(2, 0, MRA_BANK2);
 			memory_set_bankhandler_r(3, 0, MRA_BANK3);
@@ -1170,7 +1233,7 @@ int oric_floppy_init(int id)
 	{
 		/* I don't know what the geometry of the disc image should be, so the
 		default is 80 tracks, 2 sides, 9 sectors per track */
-		basicdsk_set_geometry(id, 80, 2, 9, 512, 1);
+		basicdsk_set_geometry(id, 80, 2, 9, 512, 1, 0);
 
 		oric_floppy_type[id] = ORIC_FLOPPY_BASIC_DISK;
 
@@ -1209,7 +1272,7 @@ void oric_common_init_machine(void)
 	oric_irqs = 0;
 	oric_ram_0x0c000 = NULL;
 
-    oric_tape_timer = timer_pulse(TIME_IN_HZ(11025), 0, oric_refresh_tape);
+    oric_tape_timer = timer_pulse(TIME_IN_HZ(4800), 0, oric_refresh_tape);
 
 	via_reset();
 	via_config(0, &oric_6522_interface);
@@ -1232,7 +1295,7 @@ void oric_init_machine (void)
 	int disc_interface_id;
 
 	oric_common_init_machine();
-
+	
 	oric_is_telestrat = 0;
 
 	oric_ram_0x0c000 = malloc(16384);
@@ -1306,6 +1369,10 @@ void oric_init_machine (void)
 
 void oric_shutdown_machine (void)
 {
+#ifdef ORIC_DUMP_RAM
+	oric_dump_ram();
+#endif
+
 	if (oric_ram_0x0c000)
 		free(oric_ram_0x0c000);
 	oric_ram_0x0c000 = NULL;
@@ -1349,8 +1416,13 @@ READ_HANDLER ( oric_IO_r )
 		break;
 	}
 #endif
-	/*logerror("via 0 r: %04x\n",offset); */
-
+	if (enable_logging)
+	{
+		if ((offset & 0x0f)!=0x0d)
+		{
+			logerror("via 0 r: %04x %04x\n",offset,cpunum_get_pc(0)); 
+		}
+	}
 	/* it is repeated */
 	return via_0_r(offset & 0x0f);
 }
@@ -1386,7 +1458,10 @@ WRITE_HANDLER ( oric_IO_w )
 		break;
 	}
 #endif
-	/*logerror("via 0 w: %04x %02x\n",offset,data); */
+	if (enable_logging)
+	{
+		logerror("via 0 w: %04x %02x %04x\n",offset,data,cpunum_get_pc(0)); 
+	}
 
 	via_0_w(offset & 0x0f,data);
 }
@@ -1401,7 +1476,7 @@ int oric_cassette_init(int id)
 		return INIT_PASS;
 
 
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if( file )
 	{
 		int oric_tap_size;
@@ -1456,10 +1531,10 @@ int oric_cassette_init(int id)
 				wa.file = file;
 				wa.chunk_size = oric_tap_size;
 				wa.chunk_samples = size_in_samples;
-				wa.smpfreq = ORIC_WAV_FREQUENCY;
+                                wa.smpfreq = ORIC_WAV_FREQUENCY;
 				wa.fill_wave = oric_cassette_fill_wave;
-				wa.header_samples = 0;
-				wa.trailer_samples = 0;
+				wa.header_samples = ORIC_WAVESAMPLES_HEADER;
+				wa.trailer_samples = ORIC_WAVESAMPLES_TRAILER;
 				wa.display = 1;
 				if( device_open(IO_CASSETTE,id,0,&wa) )
 					return INIT_FAIL;
@@ -1471,7 +1546,7 @@ int oric_cassette_init(int id)
 		}
 	}
 
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
+	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
 	if( file )
     {
 		memset(&wa, 0, sizeof(&wa));
@@ -1494,7 +1569,7 @@ int oric_cassette_init(int id)
 {
 	void *file;
 
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if (file)
 	{
 		struct wave_args wa = {0,};
@@ -1508,7 +1583,7 @@ int oric_cassette_init(int id)
 	}
 
 	/* HJB 02/18: no file, create a new file instead */
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_WRITE);
+	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_WRITE);
 	if (file)
 	{
 		struct wave_args wa = {0,};

@@ -94,7 +94,7 @@ static void pet_irq (int level)
 		DBG_LOG (3, "mos6502", ("irq %s\n", level ? "start" : "end"));
 		if (superpet)
 			cpu_set_irq_line (1, M6809_IRQ_LINE, level);
-		cpu_set_irq_line (0, M6502_INT_IRQ, level);
+		cpu_set_irq_line (0, M6502_IRQ_LINE, level);
 		old_level = level;
 	}
 }
@@ -567,7 +567,7 @@ int pet_rom_id (int id)
 
 	logerror("c64_rom_id %s\n", device_filename(IO_CARTSLOT,id));
 	retval = 0;
-	if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
+	if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
 	{
 		logerror("rom %s not found\n", device_filename(IO_CARTSLOT,id));
 		return 0;

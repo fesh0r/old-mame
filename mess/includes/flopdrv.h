@@ -95,6 +95,7 @@ struct floppy_drive
 	/* index pulse callback */
 	void	(*index_pulse_callback)(int id);
 
+	void	(*ready_state_change_callback)(int drive, int state);
     /* physical real drive unit */
     int fdd_unit;
 
@@ -106,6 +107,8 @@ struct floppy_drive
 	floppy_interface interface;
 };
 
+/* a callback which will be executed if the ready state of the drive changes e.g. not ready->ready, ready->not ready */
+void	floppy_drive_set_ready_state_change_callback(int drive, void (*callback)(int drive, int state));
 
 /* floppy drive types */
 typedef enum
@@ -124,6 +127,7 @@ void floppy_drive_set_flag_state(int drive, int flag, int state);
 int floppy_drive_get_current_track(int drive);
 
 void	floppy_drive_set_geometry(int,floppy_type type);
+void	floppy_drive_set_geometry_absolute(int id, int tracks, int sides);
 
 void	floppy_drives_init(void);
 void	floppy_drives_exit(void);

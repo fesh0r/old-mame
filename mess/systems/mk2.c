@@ -119,7 +119,7 @@ INPUT_PORTS_END
 
 static int mk2_frame_int(void)
 {
-	return 0;
+	return ignore_interrupt();
 }
 
 static void mk2_machine_init(void)
@@ -148,7 +148,7 @@ static struct MachineDriver machine_driver_mk2 =
 
 	252, 559, { 0, 252 - 1, 0, 559 - 1},
 	0, 			   /* graphics decode info */
-	sizeof (mk2_palette) / sizeof (mk2_palette[0]) ,
+	sizeof (mk2_palette) / sizeof (mk2_palette[0]) + 32768,
 	sizeof (mk2_colortable) / sizeof(mk2_colortable[0][0]),
 	mk2_init_colors,		/* convert color prom */
 
@@ -253,7 +253,7 @@ static void mk2_write_b(int chip, int value)
 
 static void mk2_irq(int chip, int level)
 {
-	cpu_set_irq_line(0, M6502_INT_IRQ, level);
+	cpu_set_irq_line(0, M6502_IRQ_LINE, level);
 }
 
 static RRIOT_CONFIG riot={

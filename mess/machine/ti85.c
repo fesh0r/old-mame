@@ -12,6 +12,16 @@
 #include "includes/ti85.h"
 #include "formats/ti85_ser.h"
 
+enum
+{
+	TI_NOT_INITIALIZED,
+	TI_81,
+	TI_85,
+	TI_86
+};
+
+static UINT8 ti_calculator_model = TI_NOT_INITIALIZED;
+
 UINT8 ti85_timer_interrupt_mask;
 static UINT8 ti85_timer_interrupt_status;
 
@@ -34,11 +44,16 @@ static UINT8 ti85_video_buffer_width;
 static UINT8 ti85_interrupt_speed;
 static UINT8 ti85_port4_bit0;
 
+static UINT8 ti81_port_7_data;
+
 static UINT8 *ti86_ram = NULL;
 
-#define	TI85_NONE	0
-#define	TI85_SAV	1
-#define	TI86_SAV	2
+enum
+{
+	TI85_NONE,
+	TI85_SAV,
+	TI86_SAV
+};
 
 static UINT8 *ti85_snap_data = NULL;
 static unsigned long ti85_snap_data_size = 0;
@@ -47,11 +62,6 @@ static UINT8 ti85_snap_data_type = TI85_NONE;
 static ti85_serial_data ti85_serial_stream;
 
 static void * ti85_timer;
-
-static int ti85_load_nvram (void);
-static void ti85_save_nvram (void);
-static int ti86_load_nvram (void);
-static void ti86_save_nvram (void);
 
 static void ti85_setup_sav(UINT8*, unsigned long);
 static void ti86_setup_sav(UINT8*, unsigned long);
@@ -65,30 +75,33 @@ static UINT8 ti85_white_in = 0x01;
 static UINT8 ti85_red_out = 0x00;
 static UINT8 ti85_white_out = 0x00;
 
-#define TI85_SEND_STOP			0
-#define TI85_SEND_HEADER		1
-#define TI85_RECEIVE_OK_1		2
-#define TI85_RECEIVE_ANSWER_1		3
-#define TI85_RECEIVE_ANSWER_2		4
-#define TI85_RECEIVE_ANSWER_3		5
-#define TI85_SEND_OK			6
-#define TI85_SEND_DATA			7
-#define TI85_RECEIVE_OK_2		8
-#define TI85_SEND_END			9
-#define TI85_RECEIVE_OK_3		10
-#define TI85_RECEIVE_HEADER_1		11
-#define TI85_PREPARE_VARIABLE_DATA	12
-#define TI85_RECEIVE_HEADER_2		13
-#define TI85_SEND_OK_1			14
-#define TI85_SEND_CONTINUE		15
-#define TI85_RECEIVE_OK			16
-#define TI85_RECEIVE_DATA		17
-#define TI85_SEND_OK_2			18
-#define TI85_RECEIVE_END_OR_HEADER_1	19
-#define TI85_SEND_OK_3			20
-#define TI85_PREPARE_SCREEN_REQUEST	21
-#define TI85_SEND_SCREEN_REQUEST	22
-#define TI85_SEND_RESET			23
+enum
+{
+	TI85_SEND_STOP,
+	TI85_SEND_HEADER,
+	TI85_RECEIVE_OK_1,
+	TI85_RECEIVE_ANSWER_1,
+	TI85_RECEIVE_ANSWER_2,
+	TI85_RECEIVE_ANSWER_3,
+	TI85_SEND_OK,
+	TI85_SEND_DATA,
+	TI85_RECEIVE_OK_2,
+	TI85_SEND_END,
+	TI85_RECEIVE_OK_3,
+	TI85_RECEIVE_HEADER_1,
+	TI85_PREPARE_VARIABLE_DATA,
+	TI85_RECEIVE_HEADER_2,
+	TI85_SEND_OK_1,
+	TI85_SEND_CONTINUE,
+	TI85_RECEIVE_OK,
+	TI85_RECEIVE_DATA,
+	TI85_SEND_OK_2,
+	TI85_RECEIVE_END_OR_HEADER_1,
+	TI85_SEND_OK_3,
+	TI85_PREPARE_SCREEN_REQUEST,
+	TI85_SEND_SCREEN_REQUEST,
+	TI85_SEND_RESET
+};
 
 static UINT8 ti85_serial_status = TI85_SEND_STOP;
 
@@ -163,10 +176,35 @@ void update_ti86_memory (void)
 
 void ti81_init_machine(void)
 {
+	ti85_timer_interrupt_mask = 0;
+	ti85_timer_interrupt_status = 0;
+	ti85_ON_interrupt_mask = 0;
+	ti85_ON_interrupt_status = 0;
+	ti85_ON_pressed = 0;
+	ti85_power_mode = 0;
+	ti85_keypad_mask = 0;
+	ti85_memory_page_0x4000 = 0;
+	ti85_LCD_memory_base = 0;
+	ti85_LCD_status = 0;
+	ti85_LCD_mask = 0;
+	ti85_video_buffer_width = 0;
+	ti85_interrupt_speed = 0;
+	ti85_port4_bit0 = 0;
+	ti81_port_7_data = 0;
+
+	if (ti_calculator_model == TI_81)
+		memset(memory_region(REGION_CPU1)+0x8000, 0, sizeof(unsigned char)*0x8000);
+
+	ti_calculator_model = TI_81;
+
 	ti85_timer = timer_pulse(TIME_IN_HZ(200), 0, ti85_timer_callback);
 
-	ti85_timer_interrupt_mask = 0;
-	ti85_power_mode = 0;
+	memory_set_bankhandler_r(1, 0, MRA_BANK1);
+	memory_set_bankhandler_w(3, 0, MWA_ROM);
+	memory_set_bankhandler_r(2, 0, MRA_BANK2);
+	memory_set_bankhandler_w(4, 0, MWA_ROM);
+	cpu_setbank(1,memory_region(REGION_CPU1) + 0x010000);
+	cpu_setbank(2,memory_region(REGION_CPU1) + 0x014000);
 }
 
 void ti81_stop_machine(void)
@@ -180,10 +218,27 @@ void ti81_stop_machine(void)
 
 void ti85_init_machine(void)
 {
-	ti85_timer = timer_pulse(TIME_IN_HZ(200), 0, ti85_timer_callback);
-
 	ti85_timer_interrupt_mask = 0;
+	ti85_timer_interrupt_status = 0;
+	ti85_ON_interrupt_mask = 0;
+	ti85_ON_interrupt_status = 0;
+	ti85_ON_pressed = 0;
+	ti85_memory_page_0x4000 = 0;
+	ti85_LCD_memory_base = 0;
+	ti85_LCD_status = 0;
+	ti85_LCD_mask = 0;
 	ti85_power_mode = 0;
+	ti85_keypad_mask = 0;
+	ti85_video_buffer_width = 0;
+	ti85_interrupt_speed = 0;
+	ti85_port4_bit0 = 0;
+
+	if (ti_calculator_model == TI_85)
+		memset(memory_region(REGION_CPU1)+0x8000, 0, sizeof(unsigned char)*0x8000);
+
+	ti_calculator_model = TI_85;
+
+	ti85_timer = timer_pulse(TIME_IN_HZ(200), 0, ti85_timer_callback);
 
 	ti85_reset_serial();
 
@@ -194,20 +249,17 @@ void ti85_init_machine(void)
 	cpu_setbank(1,memory_region(REGION_CPU1) + 0x010000);
 	cpu_setbank(2,memory_region(REGION_CPU1) + 0x014000);
 
+	logerror ("Reset\n");
+
 	if (ti85_snap_data)
 	{
 		memory_set_opbase_handler(0, ti85_opbaseoverride);
 		return;
 	}
-
-	if (ti85_load_nvram())
-		cpu_set_reg(Z80_PC,0x0b5f);
 }
 
 void ti85_stop_machine(void)
 {
-	ti85_save_nvram();
-
 	ti85_free_serial_data_memory();
 
 	if (ti85_timer)
@@ -220,17 +272,24 @@ void ti85_stop_machine(void)
 void ti86_init_machine(void)
 {
 	ti85_timer_interrupt_mask = 0;
-	ti85_power_mode = 0;
+	ti85_timer_interrupt_status = 0;
+	ti85_ON_interrupt_mask = 0;
+	ti85_ON_interrupt_status = 0;
+	ti85_ON_pressed = 0;
 	ti85_memory_page_0x4000 = 0;
 	ti86_memory_page_0x8000 = 0;
-
+	ti85_LCD_memory_base = 0;
+	ti85_LCD_status = 0;
+	ti85_LCD_mask = 0;
+	ti85_power_mode = 0;
+	ti85_keypad_mask = 0;
+	ti85_video_buffer_width = 0;
+	ti85_interrupt_speed = 0;
+	ti85_port4_bit0 = 0;
 	ti85_reset_serial();
 
-	ti86_ram = (unsigned char *)malloc(128*1024);
 	if (ti86_ram)
 	{
-		memset(ti86_ram, 0, 128*1024);
-
 		memory_set_bankhandler_r(1, 0, MRA_BANK1);
 		memory_set_bankhandler_r(2, 0, MRA_BANK2);
 		memory_set_bankhandler_r(3, 0, MRA_BANK3);
@@ -247,6 +306,11 @@ void ti86_init_machine(void)
 		cpu_setbank(4, ti86_ram);
 		cpu_setbank(8, ti86_ram);
 
+		if (ti_calculator_model == TI_86)
+			memset(ti86_ram, 0, sizeof(unsigned char)*128*1024);
+
+		ti_calculator_model = TI_86;
+
 		ti85_timer = timer_pulse(TIME_IN_HZ(200), 0, ti85_timer_callback);
 
 		if (ti85_snap_data)
@@ -254,28 +318,21 @@ void ti86_init_machine(void)
 			memory_set_opbase_handler(0, ti85_opbaseoverride);
 			return;
 		}
-
-		if (ti86_load_nvram()) cpu_set_reg(Z80_PC,0x0c59);
 	}
 }
 
 void ti86_stop_machine(void)
 {
 	ti85_free_serial_data_memory();
-
-	ti86_save_nvram();
 	if (ti85_timer!=NULL)
 	{
 		timer_remove(ti85_timer);
 		ti85_timer = NULL;
 	}
-	if (ti86_ram)
-	{
-		free (ti86_ram);
-		ti86_ram = NULL;
-	}
 }
 
+
+/* I/O ports handlers */
 
 READ_HANDLER ( ti85_port_0000_r )
 {
@@ -294,7 +351,6 @@ READ_HANDLER ( ti85_port_0001_r )
 		if (~ti85_keypad_mask&(0x01<<bit))
 			for (port = 0; port < 8; port++)
 				data ^= readinputport(port)&(0x01<<bit) ? 0x01<<port : 0x00;
-
 	return data;
 }
 
@@ -355,6 +411,11 @@ READ_HANDLER ( ti86_port_0006_r )
 	return ti86_memory_page_0x8000;
 }
 
+WRITE_HANDLER ( ti81_port_0007_w )
+{
+	ti81_port_7_data = data;
+}
+
 WRITE_HANDLER ( ti85_port_0000_w )
 {
 	ti85_LCD_memory_base = data;
@@ -408,63 +469,76 @@ WRITE_HANDLER ( ti85_port_0007_w )
 
 WRITE_HANDLER ( ti86_port_0005_w )
 {
-	ti85_memory_page_0x4000 = data&0x4f;
+	ti85_memory_page_0x4000 = data&((data&0x40)?0x47:0x4f);
 	update_ti86_memory();
 }
 
 WRITE_HANDLER ( ti86_port_0006_w )
 {
-	ti86_memory_page_0x8000 = data&0x4f;
+	ti86_memory_page_0x8000 = data&((data&0x40)?0x47:0x4f);
 	update_ti86_memory();
 }
 
 
 /* NVRAM functions */
 
-static int ti85_load_nvram(void)
+void ti81_nvram_handler (void *file,int read_or_write)
 {
-	FILE *file;
-
-	if ( (file=osd_fopen(Machine->gamedrv->name,
-						 Machine->gamedrv->name, OSD_FILETYPE_NVRAM, 0))==NULL)
-		return 0;
-
-	osd_fread(file, memory_region(REGION_CPU1)+0x8000, sizeof(unsigned char)*0x8000);
-	osd_fclose(file);
-	return 1;
+	if (read_or_write)
+		osd_fwrite(file, memory_region(REGION_CPU1)+0x8000, sizeof(unsigned char)*0x8000);
+	else
+	{
+		if (file)
+		{
+			osd_fread(file, memory_region(REGION_CPU1)+0x8000, sizeof(unsigned char)*0x8000);
+			cpu_set_reg(Z80_PC,0x0239);
+		}
+		else
+			memset(memory_region(REGION_CPU1)+0x8000, 0, sizeof(unsigned char)*0x8000);
+	}
 }
 
-static void ti85_save_nvram(void)
+void ti85_nvram_handler (void *file,int read_or_write)
 {
-	FILE *file;
-	if ( (file=osd_fopen(Machine->gamedrv->name,
-						 Machine->gamedrv->name, OSD_FILETYPE_NVRAM, 1))==NULL)
-		return;
-	osd_fwrite(file, memory_region(REGION_CPU1)+0x8000, sizeof(unsigned char)*0x8000);
-	osd_fclose(file);
+	if (read_or_write)
+		osd_fwrite(file, memory_region(REGION_CPU1)+0x8000, sizeof(unsigned char)*0x8000);
+	else
+	{
+		if (file)
+		{
+			osd_fread(file, memory_region(REGION_CPU1)+0x8000, sizeof(unsigned char)*0x8000);
+			cpu_set_reg(Z80_PC,0x0b5f);
+		}
+		else
+			memset(memory_region(REGION_CPU1)+0x8000, 0, sizeof(unsigned char)*0x8000);
+	}
 }
 
-static int ti86_load_nvram(void)
+void ti86_nvram_handler (void *file,int read_or_write)
 {
-	FILE *file;
-
-	if ( (file=osd_fopen(Machine->gamedrv->name,
-						 Machine->gamedrv->name, OSD_FILETYPE_NVRAM, 0))==NULL)
-		return 0;
-
-	osd_fread(file, ti86_ram, sizeof(unsigned char)*128*1024);
-	osd_fclose(file);
-	return 1;
-}
-
-static void ti86_save_nvram(void)
-{
-	FILE *file;
-	if ( (file=osd_fopen(Machine->gamedrv->name,
-						 Machine->gamedrv->name, OSD_FILETYPE_NVRAM, 1))==NULL)
-		return;
-	osd_fwrite(file, ti86_ram, sizeof(unsigned char)*128*1024);
-	osd_fclose(file);
+	if (read_or_write)
+	{
+		if (ti86_ram)
+		{
+			osd_fwrite(file, ti86_ram, sizeof(unsigned char)*128*1024);
+			free (ti86_ram);
+			ti86_ram = NULL;
+		}
+	}
+	else
+	{
+		ti86_ram = (unsigned char *)malloc(128*1024);
+		if (ti86_ram)
+		{
+			if (file)
+			{
+				osd_fread(file, ti86_ram, sizeof(unsigned char)*128*1024);
+				cpu_set_reg(Z80_PC,0x0c59);
+			}
+			else
+				memset(ti86_ram, 0, sizeof(unsigned char)*128*1024);
+		}
+	}
 }
 
 /* Snapshot loading functions */
@@ -473,7 +547,7 @@ int ti85_load_snap(int id)
 {
 	void *file;
 
-	file = image_fopen(IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+	file = image_fopen(IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 
 	if (file)
 	{
@@ -537,6 +611,8 @@ static void ti85_setup_sav(unsigned char *data, unsigned long data_size)
 	unsigned char * reg = data + 0x40;
 	unsigned char * hdw = data + 0x8000 + 0x94;
 
+	logerror ("Snapshot setup\n");
+	
 	/* Set registers */
 	lo = reg[0x00] & 0x0ff;
 	hi = reg[0x01] & 0x0ff;
@@ -612,6 +688,9 @@ static void ti85_setup_sav(unsigned char *data, unsigned long data_size)
 	ti85_ON_interrupt_mask = !ti85_LCD_status && ti85_timer_interrupt_status;
 	ti85_ON_interrupt_status = 0;
 	ti85_ON_pressed = 0;
+
+	ti85_video_buffer_width = 0x02;
+	ti85_interrupt_speed = 0x03;
 }
 
 static void ti86_setup_sav(unsigned char *data, unsigned long data_size)
@@ -697,6 +776,9 @@ static void ti86_setup_sav(unsigned char *data, unsigned long data_size)
 	ti85_ON_interrupt_mask = !ti85_LCD_status && ti85_timer_interrupt_status;
 	ti85_ON_interrupt_status = 0;
 	ti85_ON_pressed = 0;
+
+	ti85_video_buffer_width = 0x02;
+	ti85_interrupt_speed = 0x03;
 }
 
 /* TI calculator serial link transmission functions */
@@ -712,7 +794,7 @@ int ti85_serial_init (int id)
 	ti85_free_serial_data_memory();
 	ti85_receive_serial (NULL,0);
 
-	file = image_fopen(IO_SERIAL, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+	file = image_fopen(IO_SERIAL, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 
 	if (file)
 	{
@@ -733,7 +815,7 @@ int ti85_serial_init (int id)
 					free (file_data);
 					return INIT_FAIL;
 				}
-
+				
 				free (file_data);
 
 				ti85_serial_status = TI85_SEND_HEADER;
@@ -1021,6 +1103,7 @@ static void ti85_send_variables (void)
 		case TI85_SEND_END:
 			if(!ti85_send_serial(ti85_serial_stream.end,ti85_serial_stream.end_size))
 			{
+				logerror ("End sended\n");
 				variable_number = 0;
 				ti85_serial_status = TI85_RECEIVE_OK_3;
 			}
@@ -1028,6 +1111,7 @@ static void ti85_send_variables (void)
 		case TI85_RECEIVE_OK_3:
 			if(!ti85_receive_serial (ti85_receive_buffer, 4*8))
 			{
+				logerror ("OK received\n");
 				ti85_convert_stream_to_data (ti85_receive_buffer, 4*8, ti85_receive_data);
 				ti85_free_serial_data_memory();
 				ti85_serial_status = TI85_SEND_STOP;
@@ -1291,7 +1375,7 @@ static void ti85_receive_variables (void)
 				variable_number = 0;
 				ti85_serial_status =  TI85_SEND_STOP;
 				sprintf (var_file_name, "%08d.85g", var_file_number);
-				var_file = osd_fopen(Machine->gamedrv->name, var_file_name, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
+				var_file = osd_fopen(Machine->gamedrv->name, var_file_name, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
 				if( var_file )
 				{
 					osd_fwrite(var_file, var_file_data, var_file_size);
@@ -1446,7 +1530,7 @@ static void ti85_receive_backup (void)
 					backup_file_data[0x42+0x06+backup_data_size[0]+backup_data_size[1]+backup_data_size[2]] = ti85_calculate_checksum(backup_file_data+0x37, 0x42+backup_data_size[0]+backup_data_size[1]+backup_data_size[2]+0x06-0x37)&0x00ff;
 					backup_file_data[0x42+0x06+backup_data_size[0]+backup_data_size[1]+backup_data_size[2]+0x01] = (ti85_calculate_checksum(backup_file_data+0x37, 0x42+backup_data_size[0]+backup_data_size[1]+backup_data_size[2]+0x06-0x37)&0xff00)>>8;
 					sprintf (backup_file_name, "%08d.85b", backup_file_number);
-					backup_file = osd_fopen(Machine->gamedrv->name, backup_file_name, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
+					backup_file = osd_fopen(Machine->gamedrv->name, backup_file_name, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
 					if( backup_file )
 					{
 						osd_fwrite(backup_file, backup_file_data, 0x42+0x06+backup_data_size[0]+backup_data_size[1]+backup_data_size[2]+0x02);
@@ -1516,7 +1600,7 @@ static void ti85_receive_screen (void)
 			{
 				ti85_convert_stream_to_data (ti85_receive_buffer, 1030*8, ti85_receive_data);
 				sprintf (image_file_name, "%08d.85i", image_file_number);
-				image_file = osd_fopen(Machine->gamedrv->name, image_file_name, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
+				image_file = osd_fopen(Machine->gamedrv->name, image_file_name, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
 				if( image_file )
 				{
 					image_file_data = malloc (0x49+1008);

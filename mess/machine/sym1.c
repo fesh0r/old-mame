@@ -1,7 +1,7 @@
 /******************************************************************************
 	SYM-1
 
-	Peter.Trauner@jk.uni-linz.ac.at May 2000
+	PeT mess@utanet.at May 2000
 
 ******************************************************************************/
 #include "driver.h"
@@ -80,7 +80,7 @@ static RIOT_CONFIG riot={
 
 static void sym1_irq(int level)
 {
-	cpu_set_irq_line(0, M6502_INT_IRQ, level);
+	cpu_set_irq_line(0, M6502_IRQ_LINE, level);
 }
 
 static struct via6522_interface via0={
@@ -138,7 +138,7 @@ int kim1_cassette_init(int id)
 	char buff[4];
 	void *file;
 
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, 0);
+	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, 0);
 	if (file)
 	{
 		UINT16 addr, size;

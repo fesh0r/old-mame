@@ -1,0 +1,147 @@
+<html>
+<head>
+<title>Info for apexc</title>
+</head>
+<body>
+<table width=100%>
+<tr>
+<td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
+<td><h1>Info for apexc</h1></td>
+</tr>
+</table>
+<hr>
+<h4>APEXC (All Purpose Electronic X-Ray Computer)</h4>
+<p><b>Usage Notes:</b><br>
+You should specify a cylinder image with code to run in it. Arguably, APEXC does not require such<br>
+an image, since you may enter code in the control panel, but this would be a pain in the ass.<br>
+If the program you run use punched tape I/O, you may specify tape image file. The first unit is<br>
+read-only, the second unit is write-only.<br>
+<p><b>On a CLI MESS port, the resulting MESS command line may look like this :</b><br>
+	mess apexc -cyln ram_image.apc -ptap input.tap output.tap<br>
+Note that, when you quit MESS or the APEXC driver, the contents of the cylinder are saved<br>
+to the image you specified. This simulates the behavior of the APEXC, where the cylinder image<br>
+IS the working memory. If you don't like this behavior, you may either write-protect<br>
+the cylinder image file, or keep a backup copy elsewhere on your hard disk (highly recommended).<br>
+Note that the APEXC CPU is stopped on start-up, so that you may check the machine state and enter<br>
+the start-up program address.<br>
+On start-up, the instruction at address 0 is loaded into the Control Register, then the machine<br>
+is stopped. To run the program starting at address 0, just press the Run/stop switch<br>
+(the Run/stop switch is mapped to the Return key on the main keyboard).<br>
+To start a program at another address, you need to load the first instruction into the Control<br>
+register with the control panel. To do so, use keys 1 through 0 on the main keyboard to enter<br>
+the 10-bit address into the 10 most significant bits of the Control Panel display, and set<br>
+other bits to 0 with the three rows of keys under 1 through 0 (each key toggles a bit in the<br>
+control panel display ; don't be intimidated if it sounds complicated, it should eventually<br>
+appear straight-forward when you try, provided you know what binary scale is). You have thus<br>
+generated a Stop instruction pointing to the first instruction of the program. Write this<br>
+instruction into the Control Register, by holding Left Shift pressed and pressing 1 on<br>
+the numeric keypad. You should now press the Run/stop switch twice (mapped to the Return key<br>
+on the main keyboard). First press executes the stop order, but fetches the first<br>
+instruction of the program into the control register. Second press starts running the program,<br>
+starting with the first instruction.<br>
+<p><b>Control panel usage:</b><br>
+This is relatively simple. The Control Panel may hold and display a 32-bit value. Display is made<br>
+of 32 lamps, which show the current value in binary scale (each lamp represents one bit). Hence,<br>
+the normal usage is loading the value you want to edit into the control panel, editing it,<br>
+then saving it to the proper location.<br>
+<p><b>Default key map :</b><br>
+ Run/stop switch : Return key on main keypad<br>
+The next 6 keys may be used alone to read the register into the control panel display, or<br>
+in combination with the Left Shift key to write the value in the control panel display into the<br>
+register.<br>
+ Read/write Control Register : 1 key on numeric keypad<br>
+ Read /write Accumulator : 2 key on numeric keypad<br>
+ Read/write Register : 3 key on numeric keypad<br>
+ Read/write current Head Block (never used on APEXC - used for bank switching) : 4 key on numeric keypad<br>
+ Read/write Memory Location : 5 key on numeric keypad<br>
+ Read/write memory location pointed to by ML register : 6 key on numeric keypad<br>
+ write instead of reading : Left Shift key (when you press one of the 6 keys above, the<br>
+designated register is read into the control panel display, unless this key is being pressed,<br>
+in which case the value in the control panel display is written into the register)<br>
+ Toggle bits 1 through 10 in display : keys 1 through 0 on the main keyboard<br>
+ Toggle bits 11 through 20 in display : key row directly below the former on the main keyboard<br>
+(Q through P if your keyboard is QWERTY)<br>
+ Toggle bits 21 through 30 in display : key row directly below the former on the main keyboard<br>
+(A through ; if your keyboard is QWERTY)<br>
+ Toggle bits 31 and 32 in display : key row directly below the former on the main keyboard<br>
+(W and X if your keyboard is QWERTY)<br>
+<p><b>Known Issues:</b><br>
+The driver should work correctly as of MESS .37b15. Still, it needs development tools, sample<br>
+code and usage instructions desperately. I have tons of sample code (which was the reason for<br>
+starting to write this driver), but still need to re-type it.  I have started work on an assembler,<br>
+too.<br>
+Since I have no description of the control panel of an actual APEXC, I implemented a common-place<br>
+control panel, so this part of the emulation is not accurate. I don't even know how an actual<br>
+APEXC was operated, and the procedures I describe above are not accurate, either.<br>
+<p><b>History and Trivia:</b><br>
+The APEXC was designed by Andrew D. Booth and his team at Birkbeck College, London, in the early<br>
+50's. Booth had designed an electromechanical computer, the ARC, in the late 40's. Along with<br>
+his collaborator and future spouse Kathleen Booth, he spent a few months with von Neumann's team,<br>
+which was the leading edge in computer research at the time. Later on, they built an experimental<br>
+electronic computer, the SEC (Simple Electronic Computer), and finally the APEC (All-Purpose<br>
+Electronic Computer) series.<br>
+<p><b>According to a 1956 document, the APEC series included the following machines :</b><br>
+ * APE(X)C : Birkbeck College, London (before 1955)<br>
+ * APE(N)C : Board of Mathematical Machines, Oslo ('N' must stand for 'Norway')<br>
+ * APE(H)C : British Tabulating Machine Company (No idea what 'H' can stand for)<br>
+ * APE(R)C : British Rayon Research Association ('R' must stand for 'Rayon')<br>
+ * UCC : University College, London (circa january 1956)<br>
+ * MAC (Magnetic Automatic Calculator) : "built by Wharf Engineering Laboratories" (february 1955)<br>
+ * The HEC (H... Electronic Computer - still no idea what 'H' can stand for), built by the British<br>
+Tabulating Machine Company (later to become International Computers and Tabulators (ICT),<br>
+then International Computers Limited (ICL)), a commercial machine sold in at least two models<br>
+(HEC 2M and HEC 4) (before 1955)<br>
+Only one of each of these machines was built, with the exception of HEC (and possibly MAC)<br>
+which were commercial machines produced in small series. They were similar in design,<br>
+with various small differences, mostly in I/O equipment (either punched-card machines - APEXC,<br>
+APEHC - or teletypers (keyboard and printer, and paper tape reader and puncher) - APERC, APENC).<br>
+Also, the UCC had 8k words of storage, instead of 1k word for other machines, and the MAC<br>
+used germanium diodes in replacement of many tubes.<br>
+I am sorry I know little more about Booth, his team, and the history of these machines.<br>
+<p><b>Technical Description:</b><br>
+The APEXC is an incredibly simple machine.<br>
+Instruction and Data words are always 32-bit-long. The processor uses integer arithmetic with 2's<br>
+complement representation. Addresses are 10-bit-long. The APEXC has no RAM, except a 32-bit<br>
+accumulator and a 32-bit data register (used along with the 32-bit accumulator to implement 64-bit<br>
+shift instructions and hold the 64-bit result of a multiplication). Instructions and data are<br>
+stored in two magnetic drums, for a total of 32 circular magnetic tracks of 32 words. Since<br>
+the rotation rate is 3750rpm (62.5 rotations per second), the program execution speed can go<br>
+from as high as the theoretical maximum of 1 kIPS to lower than 100IPS if program instructions<br>
+and data are not contiguous. Nowadays, many a pocket calculator is faster.<br>
+One oddity is that there is no program counter : each machine instruction includes the address<br>
+of the next instruction. This design may sound weird, but it is the only way to achieve optimal<br>
+performance with this cylinder-based memory.<br>
+The machine code is made of 15 instructions only, namely addition, subtraction, multiplication,<br>
+load (3 variants), store (2 variants), conditional branch, right arithmetic bit shift,<br>
+right bit rotation, punched-card input, punched-card output, machine stop, and bank-switching<br>
+(which is never used on the APEXC, since it only has 1024 words of storage, and addresses are<br>
+10-bit-long). A so-called vector mode enables to repeat the same operation 32 times with 32<br>
+successive memory locations. Note the lack of bitwise and/or/xor and machine division. Also, note<br>
+the lack of indirect addressing modes : dynamic modification of opcodes is the only way one may<br>
+simulate it.<br>
+Another oddity is that the memory bus and the ALU are 1-bit-wide. There is a 64kHz bit-clock and<br>
+a 2kHz word-clock, and each word memory and arithmetic operation is decomposed into 32 1-bit<br>
+memory and arithmetic operations : this takes 32 bit cycles, for a total of 1 word cycle.<br>
+The processor is fairly efficient : most instructions take only 2 word cycles (1 for fetch,<br>
+1 for read operand and execute), with the exception of stores, shifts and multiplications.<br>
+Yes, the APEXC CPU is a RISC : there is no other adequate word.<br>
+Note there is no ROM, and therefore no 'bootstrap loader' or default start-up program whatever.<br>
+As far as I know, no executive or operating system was ever written for the APEXC, although<br>
+there were subroutine libraries of sorts for common arithmetic, I/O and debug tasks.<br>
+Operation of the machine is normally done through a control panel which allows the user to start,<br>
+stop and resume the CPU, and to alter registers and memory when the CPU is stopped. When starting<br>
+the machine, the address of the first instruction of the program to be executed must be entered<br>
+in the control panel, then the run switch must be pressed. Most program end with a stop<br>
+instruction, which enables to check the state of the machine, possibly run some post-mortem<br>
+debugging procedures (a core dump routine is described in an APEXC programmation book), then enter<br>
+the address of another program and run it.<br>
+Two I/O devices were supported : a paper tape reader, and a paper tape puncher. The puncher output<br>
+could be fed to a printer ('teletyper') unit when desirable. Printer output is emulated and is<br>
+displayed on screen. Tape input was either computer-generated by the APEXC, or hand-typed with<br>
+a special 32-key keyboard (each tape row had 5 data holes (&lt;-&gt; bits), which makes 32 different<br>
+values).<br>
+<hr>
+<center><font size=-2>created on Tue Jan 01 12:56:01 2002
+</font></center>
+</body>
+</html>

@@ -18,6 +18,7 @@ extern const char *pcrcfile;
 
 /* Globals */
 int mess_keep_going;
+char *renamed_image;
 
 struct image_info {
 	char *name;
@@ -70,12 +71,14 @@ int DECL_SPEC mess_printf(char *fmt, ...)
 	va_list arg;
 	int length = 0;
 
-	if( !options.gui_host )
-	{
-		va_start(arg,fmt);
+	va_start(arg,fmt);
+
+	if (options.mess_printf_output)
+		length = options.mess_printf_output(fmt, arg);
+	else if (!options.gui_host)
 		length = vprintf(fmt, arg);
-		va_end(arg);
-	}
+
+	va_end(arg);
 
 	return length;
 }
@@ -138,95 +141,38 @@ void *image_fopen(int type, int id, int filetype, int read_or_write)
 	/* remember original file name */
 	original_len = strlen(img->name);
 
-	while (1)
 	{
 		extern struct GameDriver driver_0;
-		const char *ext;
-		int p;
-		int extension_storage = -1;
 
 		sysname = Machine->gamedrv->name;
 		logerror("image_fopen: trying %s for system %s\n", img->name, sysname);
 		file = osd_fopen(sysname, img->name, filetype, read_or_write);
 		/* file found, break out */
-		if( file )
-			break;
-
-		if( Machine->gamedrv->clone_of &&
-			Machine->gamedrv->clone_of != &driver_0 )
-		{	/* R Nabet : Shouldn't this be moved to osd code ??? Mac osd code does such a retry
-			whenever it makes sense, and I think this is the correct way. */
-			sysname = Machine->gamedrv->clone_of->name;
-			logerror("image_fopen: now trying %s for system %s\n", img->name, sysname);
-			file = osd_fopen(sysname, img->name, filetype, read_or_write);
-		}
-		if( file )
-			break;
-
-		if (options.append_no_file_extension)
-		{	/* do not try file extension substitutions */
-			break;
-		}
-
-		if (! ((read_or_write == 0) || (read_or_write == 2) /*|| (read_or_write == 3)*/))
-		{	/* Other modes do not require that the file exists, so we must not triffle with extensions */
-			/* If fopen ever failed, it was for a completely different reason... */
-			break;
-		}
-
-		ext = device_file_extension(type,extnum);
-		extnum++;
-
-		/* no (more) extensions, break out */
-		if( !ext )
-			break;
-
-		p = original_len;	/* overwrite any extension we may have appended so far */
-		/* does the file name already have an extension appended ? */
-		if (img->name[p])
+		if (!file)
 		{
-			++p; /* skip the dot */
-			/* new extension won't fit? */
-			if (strlen(ext) > extension_storage)
-			{
-				extension_storage = strlen(ext);
-				img->name = realloc(img->name, original_len + 1 + extension_storage + 1);
-				if( !img->name )
-				{
-					logerror("image_fopen: realloc failed.. damn it!\n");
-					return NULL;
-				}
+			if( Machine->gamedrv->clone_of &&
+				Machine->gamedrv->clone_of != &driver_0 )
+			{	/* R Nabet : Shouldn't this be moved to osd code ??? Mac osd code does such a retry
+				whenever it makes sense, and I think this is the correct way. */
+				sysname = Machine->gamedrv->clone_of->name;
+				logerror("image_fopen: now trying %s for system %s\n", img->name, sysname);
+				file = osd_fopen(sysname, img->name, filetype, read_or_write);
 			}
-			strcpy(img->name+p, ext);
-		}
-		else
-		{
-			extension_storage = strlen(ext);
-			if (extension_storage < 5)
-				extension_storage = 5;	/* this is intended to avoid too many realloc */
-			img->name = realloc(img->name, original_len + 1 + extension_storage + 1);
-			if( !img->name )
-			{
-				logerror("image_fopen: realloc failed.. damn it!\n");
-				return NULL;
-			}
-			sprintf(img->name+p, ".%s", ext);
 		}
 	}
 
-	if ((! file) && (strlen(img->name) != original_len))
-	{	/* restore original file name, so that we do not mess everything up. (Ha !) */
-		if (img->name)	/* safety check */
-		{
-			img->name = realloc(img->name, original_len+1);
-			img->name[original_len] = '\0';
-		}
-	}
-
-	if( file )
+	if (file)
 	{
 		void *config;
 		const struct IODevice *pc_dev = Machine->gamedrv->dev;
+
+		/* did osd_fopen() rename the image? (yes, I know this is a hack) */
+		if (renamed_image)
+		{
+			free(img->name);
+			img->name = renamed_image;
+			renamed_image = NULL;
+		}
 
 		logerror("image_fopen: found image %s for system %s\n", img->name, sysname);
 		img->length = osd_fsize(file);
@@ -337,7 +283,7 @@ const char *device_typename_id(int type, int id)
 	static int which = 0;
 	if (type < IO_COUNT)
 	{
-		which = ++which % 40;
+		which = (which + 1) % 40;
 		/* for the average user counting starts at #1 ;-) */
 		sprintf(typename_id[which], "%s #%d", devices[type].name, id+1);
 		return typename_id[which];
@@ -828,7 +774,7 @@ int messvaliditychecks(void)
 #endif
 
 
-int displayimageinfo(struct osd_bitmap *bitmap, int selected)
+int displayimageinfo(struct mame_bitmap *bitmap, int selected)
 {
 	char buf[2048], *dst = buf;
 	int type, id, sel = selected - 1;
@@ -843,7 +789,11 @@ int displayimageinfo(struct osd_bitmap *bitmap, int selected)
 			if( name )
 			{
 				const char *info;
-				dst += sprintf(dst,"%s: %s\n", device_typename_id(type,id), device_filename(type,id));
+				char *filename;
+
+				filename = (char *) device_filename(type, id);
+
+				dst += sprintf(dst,"%s: %s\n", device_typename_id(type,id), osd_basename(filename));
 				info = device_longname(type,id);
 				if( info )
 					dst += sprintf(dst,"%s\n", info);

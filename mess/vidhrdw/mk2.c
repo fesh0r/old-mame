@@ -4,12 +4,11 @@
 #include "driver.h"
 #include "artwork.h"
 #include "vidhrdw/generic.h"
+#include "led.h"
 
 #include "includes/mk2.h"
 
 UINT8 mk2_led[5]= {0};
-
-static struct artwork_info *backdrop;
 
 unsigned char mk2_palette[242][3] =
 {
@@ -25,54 +24,31 @@ void mk2_init_colors (unsigned char *sys_palette,
 						  unsigned short *sys_colortable,
 						  const unsigned char *color_prom)
 {
-	char backdrop_name[200];
-	int used=2;
-
 	memcpy (sys_palette, mk2_palette, sizeof (mk2_palette));
 	memcpy(sys_colortable,mk2_colortable,sizeof(mk2_colortable));
-
-    /* try to load a backdrop for the machine */
-    sprintf (backdrop_name, "%s.png", Machine->gamedrv->name);
-
-    artwork_load (&backdrop, backdrop_name, used, Machine->drv->total_colors - used);
-
-	if (backdrop)
-    {
-        logerror("backdrop %s successfully loaded\n", backdrop_name);
-        memcpy (&sys_palette[used * 3], backdrop->orig_palette, 
-				backdrop->num_pens_used * 3 * sizeof (unsigned char));
-    }
-    else
-    {
-        logerror("no backdrop loaded\n");
-    }
 }
 
 int mk2_vh_start(void)
 {
-#if 1
 	// artwork seams to need this
     videoram_size = 6 * 2 + 24;
-    videoram = (UINT8*)malloc (videoram_size);
+    videoram = (UINT8*)auto_malloc (videoram_size);
 	if (!videoram)
         return 1;
 
-    if (backdrop)
-        backdrop_refresh (backdrop);
+	{
+		char backdrop_name[200];
+	    /* try to load a backdrop for the machine */
+		sprintf(backdrop_name, "%s.png", Machine->gamedrv->name);
+		backdrop_load(backdrop_name, 2);
+	}
 
 	return generic_vh_start();
-#else
-	return 0;
-#endif
 }
 
 void mk2_vh_stop(void)
 {
-    if (backdrop)
-        artwork_free (&backdrop);
-#if 1
 	generic_vh_stop();
-#endif
 }
 
 static const char led[]={
@@ -105,34 +81,9 @@ static const char led[]={
     " ddddddddddddddd   hh"
 };
 
-static void mk2_draw_7segment(struct osd_bitmap *bitmap,int value, int x, int y)
+static void mk2_draw_7segment(struct mame_bitmap *bitmap,int value, int x, int y)
 {
-	int i, xi, yi, mask, color;
-
-	for (i=0, xi=0, yi=0; led[i]; i++) {
-		mask=0;
-		switch (led[i]) {
-		case 'a': mask=1; break;
-		case 'b': mask=2; break;
-		case 'c': mask=4; break;
-		case 'd': mask=8; break;
-		case 'e': mask=0x10; break;
-		case 'f': mask=0x20; break;
-		case 'g': mask=0x40; break;
-		case 'h': 
-			// this is more likely wired to the separate leds
-			mask=0x80; 
-			break;
-		}
-		
-		if (mask!=0) {
-			color=Machine->pens[(value&mask)?1:0];
-			plot_pixel(bitmap, x+xi, y+yi, color);
-			osd_mark_dirty(x+xi,y+yi,x+xi,y+yi);
-		}
-		if (led[i]!='\r') xi++;
-		else { yi++, xi=0; }
-	}
+	draw_led(bitmap, led, value, x, y);
 }
 
 static const struct {
@@ -148,44 +99,14 @@ static const struct {
 	{162,223}
 };
 
-static const char* single_led=
-" 111\r"
-"11111\r"
-"11111\r"
-"11111\r"
-" 111"
-;
-
-static void mk2_draw_led(struct osd_bitmap *bitmap,INT16 color, int x, int y)
+static void mk2_draw_led(struct mame_bitmap *bitmap,INT16 color, int x, int y)
 {
-	int j, xi=0;
-	for (j=0; single_led[j]; j++) {
-		switch (single_led[j]) {
-		case '1': 
-			plot_pixel(bitmap, x+xi, y, color);
-			osd_mark_dirty(x+xi,y,x+xi,y);
-			xi++;
-			break;
-		case ' ': 
-			xi++;
-			break;
-		case '\r':
-			xi=0;
-			y++;
-			break;				
-		};
-	}
+	draw_led(bitmap, radius_2_led, color, x, y);
 }
 
-void mk2_vh_screenrefresh (struct osd_bitmap *bitmap, int full_refresh)
+void mk2_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
 {
 	int i;
-
-    if (backdrop)
-        copybitmap (bitmap, backdrop->artwork, 0, 0, 0, 0, NULL, 
-					TRANSPARENCY_NONE, 0);
-	else
-		fillbitmap (bitmap, Machine->pens[0], &Machine->visible_area);
 
 	for (i=0; i<4; i++) {
 		mk2_draw_7segment(bitmap, mk2_led[i]&0x7f, mk2_led_pos[i].x, mk2_led_pos[i].y);

@@ -31,7 +31,7 @@ void mc10_init_machine(void)
 	/* Install DOS ROM ? */
 	if( readinputport(7) & 0x40 )
 	{
-		void *rom = osd_fopen(Machine->gamedrv->name, "mc10ext.rom", OSD_FILETYPE_IMAGE_R, 0);
+		void *rom = osd_fopen(Machine->gamedrv->name, "mc10ext.rom", OSD_FILETYPE_IMAGE, 0);
 		if( rom )
 		{
 			osd_fread(rom, memory_region(REGION_CPU1) + 0xc000, 0x2000);
@@ -133,7 +133,7 @@ int mc10_vh_start(void)
 	struct m6847_init_params p;
 
 	m6847_vh_normalparams(&p);
-	p.version = M6847_VERSION_ORIGINAL;
+	p.version = M6847_VERSION_ORIGINAL_NTSC;
 	p.artifactdipswitch = 7;
 	p.ram = memory_region(REGION_CPU1);
 	p.ramsize = 0x8000;

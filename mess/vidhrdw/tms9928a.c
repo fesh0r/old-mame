@@ -25,16 +25,16 @@
 ** - fixed bug in tms.patternmask
 **
 ** 3 nov 2000, Raphael Nabet:
-** - fixed a nasty bug in _TMS9928A_sprites. A transparent sprite caused 
+** - fixed a nasty bug in _TMS9928A_sprites. A transparent sprite caused
 **   sprites at lower levels not to be displayed, which is wrong.
 **
 ** 3 jan 2001, Sean Young:
 ** - A few minor cleanups
-** - Changed TMS9928A_vram_[rw] and  TMS9928A_register_[rw] to READ_HANDLER 
+** - Changed TMS9928A_vram_[rw] and  TMS9928A_register_[rw] to READ_HANDLER
 **   and WRITE_HANDLER.
 ** - Got rid of the color table, unused. Also got rid of the old colors,
 **   which where commented out anyways.
-** 
+**
 **
 ** Todo:
 ** - The screen image is rendered in `one go'. Modifications during
@@ -130,18 +130,18 @@ unsigned short TMS9928A_colortable[] =
 /*
 ** Forward declarations of internal functions.
 */
-static void _TMS9928A_mode0 (struct osd_bitmap*);
-static void _TMS9928A_mode1 (struct osd_bitmap*);
-static void _TMS9928A_mode2 (struct osd_bitmap*);
-static void _TMS9928A_mode12 (struct osd_bitmap*);
-static void _TMS9928A_mode3 (struct osd_bitmap*);
-static void _TMS9928A_mode23 (struct osd_bitmap*);
-static void _TMS9928A_modebogus (struct osd_bitmap*);
-static void _TMS9928A_sprites (struct osd_bitmap*);
+static void _TMS9928A_mode0 (struct mame_bitmap*);
+static void _TMS9928A_mode1 (struct mame_bitmap*);
+static void _TMS9928A_mode2 (struct mame_bitmap*);
+static void _TMS9928A_mode12 (struct mame_bitmap*);
+static void _TMS9928A_mode3 (struct mame_bitmap*);
+static void _TMS9928A_mode23 (struct mame_bitmap*);
+static void _TMS9928A_modebogus (struct mame_bitmap*);
+static void _TMS9928A_sprites (struct mame_bitmap*);
 static void _TMS9928A_change_register (int reg, UINT8 data);
 static void _TMS9928A_set_dirty (char);
 
-static void (*ModeHandlers[])(struct osd_bitmap*) = {
+static void (*ModeHandlers[])(struct mame_bitmap*) = {
         _TMS9928A_mode0, _TMS9928A_mode1, _TMS9928A_mode2,  _TMS9928A_mode12,
         _TMS9928A_mode3, _TMS9928A_modebogus, _TMS9928A_mode23,
         _TMS9928A_modebogus };
@@ -161,7 +161,7 @@ typedef struct {
     void (*INTCallback)(int);
     /* memory */
     UINT8 *vMem, *dBackMem;
-    struct osd_bitmap *tmpbmp;
+    struct mame_bitmap *tmpbmp;
     int vramsize, model;
     /* emulation settings */
     int LimitSprites; /* max 4 sprites on a row, like original TMS9918A */
@@ -173,9 +173,9 @@ typedef struct {
 static TMS9928A tms;
 
 /*
-** initialize the palette 
+** initialize the palette
 */
-void tms9928A_init_palette (unsigned char *palette, 
+void tms9928A_init_palette (unsigned char *palette,
 	unsigned short *colortable,const unsigned char *color_prom) {
     memcpy (palette, &TMS9928A_palette, sizeof(TMS9928A_palette));
 }
@@ -301,7 +301,7 @@ void TMS9928A_stop () {
     free (tms.DirtyColour); tms.DirtyColour = NULL;
     free (tms.DirtyName); tms.DirtyName = NULL;
     free (tms.DirtyPattern); tms.DirtyPattern = NULL;
-    osd_free_bitmap (tms.tmpbmp); tms.tmpbmp = NULL;
+    bitmap_free (tms.tmpbmp); tms.tmpbmp = NULL;
 }
 
 /*
@@ -495,20 +495,20 @@ void TMS9928A_set_spriteslimit (int limit) {
 /*
 ** Updates the screen (the dMem memory area).
 */
-void TMS9928A_refresh (struct osd_bitmap *bmp, int full_refresh) {
+void TMS9928A_refresh (struct mame_bitmap *bmp, int full_refresh) {
     int c;
 
     if (tms.Change) {
         c = tms.Regs[7] & 15; if (!c) c=1;
         if (tms.BackColour != c) {
             tms.BackColour = c;
-            palette_change_color (0,
+            palette_set_color (0,
                 TMS9928A_palette[c * 3], TMS9928A_palette[c * 3 + 1],
                 TMS9928A_palette[c * 3 + 2]);
         }
     }
 
-	if (palette_recalc() ) {
+	if (full_refresh) {
 		_TMS9928A_set_dirty (1);
 		tms.Change = 1;
 	}
@@ -560,7 +560,7 @@ int TMS9928A_interrupt () {
     return b;
 }
 
-static void _TMS9928A_mode1 (struct osd_bitmap *bmp) {
+static void _TMS9928A_mode1 (struct mame_bitmap *bmp) {
     int pattern,x,y,yy,xx,name,charcode;
     UINT8 fg,bg,*patternptr;
 	struct rectangle rt;
@@ -602,7 +602,7 @@ static void _TMS9928A_mode1 (struct osd_bitmap *bmp) {
     _TMS9928A_set_dirty (0);
 }
 
-static void _TMS9928A_mode12 (struct osd_bitmap *bmp) {
+static void _TMS9928A_mode12 (struct mame_bitmap *bmp) {
     int pattern,x,y,yy,xx,name,charcode;
     UINT8 fg,bg,*patternptr;
 	struct rectangle rt;
@@ -644,7 +644,7 @@ static void _TMS9928A_mode12 (struct osd_bitmap *bmp) {
     _TMS9928A_set_dirty (0);
 }
 
-static void _TMS9928A_mode0 (struct osd_bitmap *bmp) {
+static void _TMS9928A_mode0 (struct mame_bitmap *bmp) {
     int pattern,x,y,yy,xx,name,charcode,colour;
     UINT8 fg,bg,*patternptr;
 
@@ -672,7 +672,7 @@ static void _TMS9928A_mode0 (struct osd_bitmap *bmp) {
     _TMS9928A_set_dirty (0);
 }
 
-static void _TMS9928A_mode2 (struct osd_bitmap *bmp) {
+static void _TMS9928A_mode2 (struct mame_bitmap *bmp) {
     int colour,name,x,y,yy,pattern,xx,charcode;
     UINT8 fg,bg;
     UINT8 *colourptr,*patternptr;
@@ -707,7 +707,7 @@ static void _TMS9928A_mode2 (struct osd_bitmap *bmp) {
     _TMS9928A_set_dirty (0);
 }
 
-static void _TMS9928A_mode3 (struct osd_bitmap *bmp) {
+static void _TMS9928A_mode3 (struct mame_bitmap *bmp) {
     int x,y,yy,yyy,name,charcode;
     UINT8 fg,bg,*patternptr;
 
@@ -741,7 +741,7 @@ static void _TMS9928A_mode3 (struct osd_bitmap *bmp) {
     _TMS9928A_set_dirty (0);
 }
 
-static void _TMS9928A_mode23 (struct osd_bitmap *bmp) {
+static void _TMS9928A_mode23 (struct mame_bitmap *bmp) {
     int x,y,yy,yyy,name,charcode;
     UINT8 fg,bg,*patternptr;
 
@@ -776,7 +776,7 @@ static void _TMS9928A_mode23 (struct osd_bitmap *bmp) {
     _TMS9928A_set_dirty (0);
 }
 
-static void _TMS9928A_modebogus (struct osd_bitmap *bmp) {
+static void _TMS9928A_modebogus (struct mame_bitmap *bmp) {
     UINT8 fg,bg;
     int x,y,n,xx;
 
@@ -808,7 +808,7 @@ static void _TMS9928A_modebogus (struct osd_bitmap *bmp) {
 **
 ** This code should be optimized. One day.
 */
-static void _TMS9928A_sprites (struct osd_bitmap *bmp) {
+static void _TMS9928A_sprites (struct mame_bitmap *bmp) {
     UINT8 *attributeptr,*patternptr,c;
     int p,x,y,size,i,j,large,yy,xx,limit[192],
         illegalsprite,illegalspriteline;

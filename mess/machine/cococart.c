@@ -2,6 +2,9 @@
 #include "includes/wd179x.h"
 #include "includes/basicdsk.h"
 #include "formats/dmkdsk.h"
+#include "formats/cocovdk.h"
+#include "ds1315.h"
+#include "m6242b.h"
 #include "includes/dragon.h"
 
 static const struct cartridge_callback *cartcallbacks;
@@ -13,46 +16,55 @@ static const struct cartridge_callback *cartcallbacks;
  * controller.  The wd1793's variables are mapped to $ff48-$ff4b on the CoCo
  * and on $ff40-$ff43 on the Dragon.  In addition, there is another register
  * called DSKREG that controls the interface with the wd1793.  DSKREG is
- * detailed below:.  But they appear to be
+ * detailed below:  But they appear to be
  *
  * References:
  *		CoCo:	Disk Basic Unravelled
  *		Dragon:	Inferences from the PC-Dragon source code
  *              DragonDos Controller, Disk and File Formats by Graham E Kinns
  *
- * TODO
- *		- Make the wd179x DRQ and IRQ work the way they did in reality.  The
- *		  problem is that the wd179x code doesn't implement any timing, and as
- *		  such behaves differently then the real thing.
- *
  * ---------------------------------------------------------------------------
  * DSKREG - the control register
- * CoCo ($ff40)                            Dragon ($ff48)
+ * CoCo ($ff40)                                    Dragon ($ff48)
  *
- * Bit                                     Bit
- *	7 halt enable flag                      7 not used
- *	6 drive select #3                       6 not used
- *	5 density flag (0=single, 1=double)     5 NMI enable flag
- *	4 write precompensation                 4 write precompensation
- *	3 drive motor activation                3 single density enable
- *	2 drive select #2                       2 drive motor activation
- *	1 drive select #1                       1 drive select high bit
- *	0 drive select #0                       0 drive select low bit
+ * Bit                                              Bit
+ *	7 halt enable flag                               7 not used
+ *	6 drive select #3                                6 not used
+ *	5 density (0=single, 1=double)                   5 NMI enable flag
+ *    and NMI enable flag
+ *	4 write precompensation                          4 write precompensation
+ *	3 drive motor activation                         3 single density enable
+ *	2 drive select #2                                2 drive motor activation
+ *	1 drive select #1                                1 drive select high bit
+ *	0 drive select #0                                0 drive select low bit
+ *
+ * Reading from $ff48-$ff4f clears bit 7
+ * of DSKREG ($ff40)
  * ---------------------------------------------------------------------------
  */
 
-static int haltenable;
-static int nmienable;
+#define VERBOSE 0
+
+#if VERBOSE
+#define LOG(x)	logerror x
+#else
+#define LOG(x)
+#endif
+
 static int dskreg;
 static int diskKind[4];
 static void coco_fdc_callback(int event);
 static void dragon_fdc_callback(int event);
-static int ff4b_count;
+static int drq_state;
+static int intrq_state;
 
-enum {
-	HW_COCO,
-	HW_DRAGON
-};
+#define       COCO_HALTENABLE   (dskreg & 0x80)
+#define   SET_COCO_HALTENABLE    dskreg &= 0x80
+#define CLEAR_COCO_HALTENABLE    dskreg &= ~0x80
+
+#define        COCO_NMIENABLE   (dskreg & 0x20)
+
+#define      DRAGON_NMIENABLE   (dskreg & 0x20)
 
 enum {
 	DSK_DMK,
@@ -62,82 +74,83 @@ enum {
 static void coco_fdc_init(const struct cartridge_callback *callbacks)
 {
     wd179x_init(WD_TYPE_179X,coco_fdc_callback);
-	dskreg = -1;
-	ff4b_count = 0x100;
-	nmienable = 1;
+	dskreg = 0;
 	cartcallbacks = callbacks;
+	drq_state = CLEAR_LINE;
+	intrq_state = CLEAR_LINE;
 }
 
 static void dragon_fdc_init(const struct cartridge_callback *callbacks)
 {
     wd179x_init(WD_TYPE_179X,dragon_fdc_callback);
-	dskreg = -1;
-	ff4b_count = 0x100;
-	nmienable = 1;
+	dskreg = 0;
 	cartcallbacks = callbacks;
+
 }
 
 static void raise_nmi(int dummy)
 {
-#if LOG_FLOPPY
-	logerror("raise_nmi(): Raising NMI from floppy controller\n");
-#endif
+	LOG(("cococart: Raising NMI (and clearing halt), source: wd179x INTRQ\n" ));
+
 	cpu_set_nmi_line(0, ASSERT_LINE);
+}
+
+static void raise_halt(int dummy)
+{
+	LOG(("cococart: Raising HALT\n" ));
+
+	cpu_set_halt_line(0, ASSERT_LINE);
 }
 
 static void coco_fdc_callback(int event)
 {
-	/* In all honesty, I believe that I should be able to tie the WD179X IRQ
-	 * directly to the 6809 NMI input.  But it seems that if I do that, the NMI
-	 * occurs when the last byte of a read is made without any delay.  This
-	 * means that we drop the last byte of every sector read or written.  Thus,
-	 * we will delay the NMI
-	 */
 	switch(event) {
 	case WD179X_IRQ_CLR:
+		intrq_state = CLEAR_LINE;
 		cpu_set_nmi_line(0, CLEAR_LINE);
 		break;
 	case WD179X_IRQ_SET:
-#if LOG_FLOPPY
-		logerror("coco_fdc_callback(): Called with WD179X_IRQ_SET; but not raising NMI because of hack (ff4b_count=$%04x)\n", ff4b_count);
-#endif
-		/* timer_set(COCO_CPU_SPEED * 11 / timer_get_overclock(0), 0, raise_nmi); */
+		intrq_state = ASSERT_LINE;
+		CLEAR_COCO_HALTENABLE;
+		cpu_set_halt_line(0, CLEAR_LINE);
+		if( COCO_NMIENABLE )
+			timer_set( TIME_IN_USEC(0), 0, raise_nmi);
+		else
+			cpu_set_nmi_line(0, CLEAR_LINE);
 		break;
 	case WD179X_DRQ_CLR:
-		cpu_set_halt_line(0, CLEAR_LINE);
+		drq_state = CLEAR_LINE;
+		if( COCO_HALTENABLE )
+			timer_set( TIME_IN_CYCLES(7,0), 0, raise_halt);
+/*			cpu_set_halt_line(0, ASSERT_LINE);*/
+		else
+			cpu_set_halt_line(0, CLEAR_LINE);
 		break;
 	case WD179X_DRQ_SET:
-		/* I should be able to specify haltenable instead of zero, but several
-		 * programs don't appear to work
-		 */
-		cpu_set_halt_line(0, 0 /*haltenable*/ ? ASSERT_LINE : CLEAR_LINE);
+		drq_state = ASSERT_LINE;
+		cpu_set_halt_line(0, CLEAR_LINE);
 		break;
 	}
 }
 
 static void dragon_fdc_callback(int event)
 {
-	/* In all honesty, I believe that I should be able to tie the WD179X IRQ
-	 * directly to the 6809 NMI input.  But it seems that if I do that, the NMI
-	 * occurs when the last byte of a read is made without any delay.  This
-	 * means that we drop the last byte of every sector read or written.  Thus,
-	 * we will delay the NMI
-	 */
 	switch(event) {
 	case WD179X_IRQ_CLR:
+		LOG(("dragon_fdc_callback(): WD179X_IRQ_CLR\n" ));
 		cpu_set_nmi_line(0, CLEAR_LINE);
 		break;
 	case WD179X_IRQ_SET:
-#if LOG_FLOPPY
-		logerror("dragon_fdc_callback(): Called with WD179X_IRQ_SET; but not raising NMI because of hack (ff4b_count=$%04x)\n", ff4b_count);
-#endif
-		if (nmienable)
-			timer_set(COCO_CPU_SPEED * 11 / timer_get_overclock(0), 0, raise_nmi);
+		LOG(("dragon_fdc_callback(): WD179X_IRQ_SET\n" ));
+		if (DRAGON_NMIENABLE)
+			timer_set( TIME_IN_USEC(0), 0, raise_nmi);
 		break;
 	case WD179X_DRQ_CLR:
+		LOG(("dragon_fdc_callback(): WD179X_DRQ_CLR\n" ));
 		cartcallbacks->setcartline(CARTLINE_CLEAR);
 		break;
 	case WD179X_DRQ_SET:
+		LOG(("dragon_fdc_callback(): WD179X_DRQ_SET\n" ));
 		cartcallbacks->setcartline(CARTLINE_ASSERTED);
 		break;
 	}
@@ -166,41 +179,85 @@ int dragon_floppy_init(int id)
 		return INIT_PASS;
 	}
 	
+	if(cocovdk_floppy_init(id)==INIT_PASS)
+	{
+		diskKind[ id ] = DSK_BASIC;
+		return INIT_PASS;
+	}
+
 	if (basicdsk_floppy_init(id)==INIT_PASS)
 	{
 		void *file;
-		int tracks;
-		int heads;
 
 		diskKind[ id ] = DSK_BASIC;
-		file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE_R, OSD_FOPEN_READ);
+		file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 		if (file) {
-			tracks = osd_fsize(file) / (18*256);
-			heads = (tracks > 80) ? 2 : 1;
-			tracks /= heads;
+			int 	filesize = osd_fsize(file),
+					headerSize = filesize % 256,
+					sectorPerTrack = 18,
+					sectorSizeCode = 1,
+					firstSectorID = 1,
+					sideCount = 1,
+					attributeFlag,
+					tracks;
+			UINT8	*buffer = malloc( headerSize+1 );
+			
+			if( buffer == NULL )
+				return INIT_FAIL;
+				
+			osd_fread(file, buffer, headerSize);
 
-			basicdsk_set_geometry(id, tracks, heads, 18, 256, 1);
+			if( headerSize > 0 )
+				sectorPerTrack = buffer[0];
 
+			if( headerSize > 1 )
+				sideCount = buffer[1];
+
+			if( headerSize > 2 )
+				sectorSizeCode = buffer[2];
+
+			if( headerSize > 3 )
+				firstSectorID = buffer[3];
+
+			if( headerSize > 4 )
+			{
+				attributeFlag = buffer[4];
+				
+				if( attributeFlag != 0 )
+				{
+					osd_fclose(file);
+					free( buffer );
+					logerror("JVC: Attribute bytes not supported.\n");
+					return INIT_FAIL;
+				}
+			}
+
+			tracks = (filesize - headerSize) / (sectorPerTrack * (128 << sectorSizeCode)) / sideCount;
+
+			if( (filesize - headerSize) != (tracks * sectorPerTrack * (128 << sectorSizeCode) * sideCount) )
+			{
+				osd_fclose(file);
+				free( buffer );
+				logerror("JVC: Not a JVC disk.\n");
+				return INIT_FAIL;
+			}
+
+			basicdsk_set_geometry(id, tracks, sideCount, sectorPerTrack, (128 << sectorSizeCode), firstSectorID, headerSize);
+			
+			free( buffer );
 			osd_fclose(file);
 		}
 	}
 	return INIT_PASS;
 }
 
-static void set_dskreg(int data, int hardware)
+static void set_coco_dskreg(int data)
 {
 	UINT8 drive = 0;
 	UINT8 head = 0;
 	int motor_mask = 0;
-	int haltenable_mask = 0;
 
-	switch(hardware) {
-	case HW_COCO:
-		if ((dskreg & 0x1cf) == (data & 0xcf))
-			return;
-
-#if LOG_FLOPPY
-		logerror("set_dskreg(): %c%c%c%c%c%c%c%c ($%02x)\n",  
+	LOG(("set_coco_dskreg(): %c%c%c%c%c%c%c%c ($%02x)\n",  
 									data & 0x80 ? 'H' : 'h',
 									data & 0x40 ? '3' : '.',
 									data & 0x20 ? 'D' : 'S',
@@ -209,8 +266,7 @@ static void set_dskreg(int data, int hardware)
 									data & 0x04 ? '2' : '.',
 									data & 0x02 ? '1' : '.',
 									data & 0x01 ? '0' : '.',
-									data );
-#endif
+								data ));
 
 		/* An email from John Kowalski informed me that if the DS3 is
 		 * high, and one of the other drive bits is selected (DS0-DS2), then the
@@ -218,8 +274,8 @@ static void set_dskreg(int data, int hardware)
 		 * selected in other situations, then both drives are selected, and any
 		 * read signals get yucky.
 		 */
+	 
 		motor_mask = 0x08;
-		haltenable_mask = 0x80;
 
 		if (data & 0x04)
 			drive = 2;
@@ -233,33 +289,54 @@ static void set_dskreg(int data, int hardware)
 			motor_mask = 0;
 
 		head = ((data & 0x40) && (drive != 3)) ? 1 : 0;
-		break;
 
-	case HW_DRAGON:
-
-#if LOG_FLOPPY
-	logerror("set_dskreg(): data=$%02x\n", data);
-#endif
-
-		if ((dskreg & 0x127) == (data & 0x27))
-			return;
-		drive = data & 0x03;
-		motor_mask = 0x04;
-		haltenable_mask = 0x00;
-		nmienable = data & 0x20;
-		break;
-	}
-
-	haltenable = data & haltenable_mask;
 	dskreg = data;
 
-	if (data & motor_mask) {
-		wd179x_set_drive(drive);
-		wd179x_set_side(head);
+	if( COCO_HALTENABLE && (drq_state == CLEAR_LINE) )
+		timer_set( TIME_IN_CYCLES(7,0), 0, raise_halt);
+/*		cpu_set_halt_line(0, ASSERT_LINE);*/
+	else
+		cpu_set_halt_line(0, CLEAR_LINE);
+	
+	if( COCO_NMIENABLE  && (intrq_state == ASSERT_LINE) )
+	{
+		CLEAR_COCO_HALTENABLE;
+		cpu_set_halt_line(0, CLEAR_LINE);
+		timer_set( TIME_IN_USEC(0), 0, raise_nmi);
 	}
+	else
+		cpu_set_nmi_line(0, CLEAR_LINE);
+
+	wd179x_set_drive(drive);
+	wd179x_set_side(head);
+	wd179x_set_density( (dskreg & 0x20) ? DEN_MFM_LO : DEN_FM_LO );
 }
 
-static int dc_floppy_r(int offset)
+static void set_dragon_dskreg(int data)
+{
+	LOG(("set_dragon_dskreg(): %c%c%c%c%c%c%c%c ($%02x)\n",  
+								data & 0x80 ? 'X' : 'x',
+								data & 0x40 ? 'X' : 'x',
+								data & 0x20 ? 'N' : 'n',
+								data & 0x10 ? 'P' : 'p',
+								data & 0x08 ? 'S' : 'D',
+								data & 0x04 ? 'M' : 'm',
+								data & 0x02 ? '1' : '0',
+								data & 0x01 ? '1' : '0',
+								data ));
+
+	if (data & 0x04) {
+		wd179x_set_drive( data & 0x03 );
+		wd179x_set_side( 0 );
+	}
+	wd179x_set_density( (data & 0x08) ? DEN_FM_LO: DEN_MFM_LO );
+	dskreg = data;
+}
+
+/* ---------------------------------------------------- */
+
+READ_HANDLER(coco_floppy_r);
+READ_HANDLER(coco_floppy_r)
 {
 	int result = 0;
 
@@ -274,15 +351,41 @@ static int dc_floppy_r(int offset)
 		result = wd179x_sector_r(0);
 		break;
 	case 11:
-		if (ff4b_count-- == 0)
-			raise_nmi(0);
 		result = wd179x_data_r(0);
 		break;
 	}
+
+	if( (readinputport(13) & 0x03) == 0 )
+	{
+		/* This is the real time clock in Disto's many products */
+
+		if( offset == ( 0xff50-0xff40 ) )
+			result = m6242_data_r(0);
+			
+		if( offset == ( 0xff51-0xff40 ) )
+			result = m6242_address_r(0);
+	}
+	else
+	{
+		/* This is the realtime clock in the TC^3 SCSI Controller */
+
+		if( offset == ( 0xff79-0xff40 ) )
+			ds1315_r_1( offset );
+			
+		if( offset == ( 0xff78-0xff40 ) )
+			ds1315_r_0( offset );
+			
+		if( offset == ( 0xff7c-0xff40 ) )
+			result = ds1315_r_data( offset );
+	}
+
+/*	logerror("SCS read:  address %4.4X, data %2.2X\n", 0xff40+offset, result );*/
+	
 	return result;
 }
 
-static void dc_floppy_w(int offset, int data, int hardware)
+WRITE_HANDLER(coco_floppy_w);
+WRITE_HANDLER(coco_floppy_w)
 {
 	switch(offset & 0xef) {
 	case 0:
@@ -293,11 +396,10 @@ static void dc_floppy_w(int offset, int data, int hardware)
 	case 5:
 	case 6:
 	case 7:
-		set_dskreg(data, hardware);
+		set_coco_dskreg(data);
 		break;
 	case 8:
 		wd179x_command_w(0, data);
-		ff4b_count = 0x100;
 		break;
 	case 9:
 		wd179x_track_w(0, data);
@@ -306,38 +408,73 @@ static void dc_floppy_w(int offset, int data, int hardware)
 		wd179x_sector_w(0, data);
 		break;
 	case 11:
-		if (ff4b_count-- == 0)
-			raise_nmi(0);
-		else
-			wd179x_data_w(0, data);
+		wd179x_data_w(0, data);
 		break;
 	};
-}
 
-/* ---------------------------------------------------- */
+	if( (readinputport(13) & 0x03) == 0 )
+	{
+		/* This is the real time clock in Disto's many products */
 
-READ_HANDLER(coco_floppy_r);
-READ_HANDLER(coco_floppy_r)
-{
-	return dc_floppy_r(offset);
-}
-
-WRITE_HANDLER(coco_floppy_w);
-WRITE_HANDLER(coco_floppy_w)
-{
-	dc_floppy_w(offset, data, HW_COCO);
+		if( offset == ( 0xff50-0xff40 ) )
+			m6242_data_w( 0, data );
+			
+		if( offset == ( 0xff51-0xff40 ) )
+			m6242_address_w( 0, data );
+	}
+	
+/*	logerror("SCS write: address %4.4X, data %2.2X\n", 0xff40+offset, data );*/
 }
 
 READ_HANDLER(dragon_floppy_r);
 READ_HANDLER(dragon_floppy_r)
 {
-	return dc_floppy_r(offset ^ 8);
+	int result = 0;
+
+	switch(offset & 0xef) {
+	case 0:
+		result = wd179x_status_r(0);
+		break;
+	case 1:
+		result = wd179x_track_r(0);
+		break;
+	case 2:
+		result = wd179x_sector_r(0);
+		break;
+	case 3:
+		result = wd179x_data_r(0);
+		break;
+	}
+	return result;
 }
 
 WRITE_HANDLER(dragon_floppy_w);
 WRITE_HANDLER(dragon_floppy_w)
 {
-	dc_floppy_w(offset ^ 8, data, HW_DRAGON);
+	switch(offset & 0xef) {
+	case 0:
+		wd179x_command_w(0, data);
+		break;
+	case 1:
+		wd179x_track_w(0, data);
+		break;
+	case 2:
+		wd179x_sector_w(0, data);
+		break;
+	case 3:
+		wd179x_data_w(0, data);
+		break;
+	case 8:
+	case 9:
+	case 10:
+	case 11:
+	case 12:
+	case 13:
+	case 14:
+	case 15:
+		set_dragon_dskreg(data);
+		break;
+	};
 }
 
 /* ---------------------------------------------------- */
@@ -434,8 +571,5 @@ const struct cartridge_slot cartridge_Orch90 =
 
 		All of these directly map to the IDE standard equivalents. No drivers
 		use	the IRQ's... they all use Polled I/O.
-
-  ORCH-90 STEREO SOUND PACK - This is simply 2 8 bit DACs, with the left and
-  right channels at $ff7a & $ff7b respectively (info courtesy: LCB).
 
 ***************************************************************************/

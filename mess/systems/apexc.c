@@ -49,13 +49,13 @@ static int apexc_cylinder_init(int id)
 {
 	/* open file */
 	/* first try read/write mode */
-	apexc_cylinder.fd = image_fopen(IO_CYLINDER, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW);
+	apexc_cylinder.fd = image_fopen(IO_CYLINDER, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
 	if (apexc_cylinder.fd)
 		apexc_cylinder.writable = 1;
 	else
 	{	/* else try read-only mode */
 		apexc_cylinder.writable = 0;
-		apexc_cylinder.fd = image_fopen(IO_CYLINDER, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
+		apexc_cylinder.fd = image_fopen(IO_CYLINDER, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	}
 
 	if (apexc_cylinder.fd)
@@ -169,7 +169,7 @@ static int apexc_tape_init(int id)
 
 	/* open file */
 	/* unit 0 is read-only, unit 1 is write-only */
-	t->fd = image_fopen(IO_PUNCHTAPE, id, OSD_FILETYPE_IMAGE_RW,
+	t->fd = image_fopen(IO_PUNCHTAPE, id, OSD_FILETYPE_IMAGE,
 							(id==0) ? OSD_FOPEN_READ : OSD_FOPEN_WRITE);
 
 	return INIT_PASS;
@@ -441,8 +441,8 @@ static unsigned short apexc_colortable[] =
 #define APEXC_PALETTE_SIZE sizeof(apexc_palette)/3
 #define APEXC_COLORTABLE_SIZE sizeof(apexc_colortable)/2
 
-static struct osd_bitmap *apexc_bitmap1;
-static struct osd_bitmap *apexc_bitmap2;
+static struct mame_bitmap *apexc_bitmap1;
+static struct mame_bitmap *apexc_bitmap2;
 
 static const struct rectangle panel_window =
 {
@@ -498,7 +498,7 @@ static void apexc_vh_stop(void)
 }
 
 /* draw a small 8*8 LED (well, there were no LEDs at the time, so let's call this a lamp ;-) ) */
-static void apexc_draw_led(struct osd_bitmap *bitmap, int x, int y, int state)
+static void apexc_draw_led(struct mame_bitmap *bitmap, int x, int y, int state)
 {
 	int xx, yy;
 
@@ -508,14 +508,14 @@ static void apexc_draw_led(struct osd_bitmap *bitmap, int x, int y, int state)
 }
 
 /* write a single char on screen */
-static void apexc_draw_char(struct osd_bitmap *bitmap, char character, int x, int y, int color)
+static void apexc_draw_char(struct mame_bitmap *bitmap, char character, int x, int y, int color)
 {
 	drawgfx(bitmap, Machine->gfx[0], character-32, color, 0, 0,
 				x+1, y, &Machine->visible_area, TRANSPARENCY_PEN, 0);
 }
 
 /* write a string on screen */
-static void apexc_draw_string(struct osd_bitmap *bitmap, const char *buf, int x, int y, int color)
+static void apexc_draw_string(struct mame_bitmap *bitmap, const char *buf, int x, int y, int color)
 {
 	while (* buf)
 	{
@@ -527,7 +527,7 @@ static void apexc_draw_string(struct osd_bitmap *bitmap, const char *buf, int x,
 }
 
 
-static void apexc_vh_refresh(struct osd_bitmap *bitmap, int full_refresh)
+static void apexc_vh_refresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 	int i;
 	char the_char;
@@ -571,7 +571,7 @@ static void apexc_teletyper_init(void)
 
 static void apexc_teletyper_linefeed(void)
 {
-	struct osd_bitmap *tmp;
+	struct mame_bitmap *tmp;
 
 	copyscrollbitmap(apexc_bitmap2, apexc_bitmap1, 0, NULL, 1, &var_teletyper_scroll_step,
 						&Machine->visible_area, TRANSPARENCY_NONE, 0);
@@ -909,4 +909,4 @@ ROM_END
 
 /*		YEAR	NAME		PARENT	MACHINE		INPUT	INIT	COMPANY		FULLNAME */
 /*COMP( c. 1951,	apexc53,	0,		apexc53,	apexc,	apexc,	"Booth",	"APEXC (as described in 1953)" )*/
-COMP( c. 1955,	apexc,		/*apexc53*/0,		apexc,		apexc,	apexc,	"Booth",	"APEXC (as described in 1957)" )
+COMP( 1955,	apexc,		/*apexc53*/0,		apexc,		apexc,	apexc,	"Booth",	"APEXC (as described in 1957)" )

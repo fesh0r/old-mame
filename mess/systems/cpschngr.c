@@ -19,7 +19,7 @@ merged Street Fighter Zero for MESS
 #include "vidhrdw/generic.h"
 #include "machine/eeprom.h"
 
-#include "drivers/cps1.h"       /* External CPS1 definitions */
+#include "includes/cps1.h"       /* External CPS1 definitions */
 
 
 WRITE16_HANDLER( qsound_sharedram1_w );
@@ -492,7 +492,7 @@ static struct MachineDriver machine_driver_sfzch =
 	4096, 4096,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	VIDEO_TYPE_RASTER,
 	cps1_eof_callback,
 	cps1_vh_start,
 	cps1_vh_stop,

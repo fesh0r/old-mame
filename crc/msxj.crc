@@ -1,6 +1,6 @@
 #
 # MSX-1 Japanese Cartridge CRC List
-# Compiled by Jirou Kaneda
+# Compiled by Kaneda (*This list include only original ROMs from Japan*)
 # Note: This list is provided as a record of known dumps for this system.  
 #       These checksums have not been validated and cannot be assumed correct.  
 #       They are provided here as a database to help the emulation of this system.  
@@ -30,13 +30,16 @@
 
 [msxj]
 
+#(1) Games
+
 4e20d256 = 10-yard Fight | 1986 | Irem |  | 0
 e54ee601 = 1942 | 1986 | Ascii |  | 4
 cb935a50 = 3d Golf Simulation - High-speed Edition | 1984 | T&E Soft |  | 0
 0c989ad1 = 3d Golf Simulation - Normal Edition | 1983 | T&E Soft |  | 0
 fb00f21b = 3d Tennis | 1983 | Ascii |  | 0
-fa8f9bbc = A Life M36 Planet | 1987 | Pixel | (Not Playable) | 4
+fa8f9bbc = A Life M36 Planet | 1987 | Pixel |  | 4
 2608c959 = A1 Spirit | 1987 | Konami |  | 2
+e4dbcdbd = Actman | 1984 | Mass Tael |  | 0
 96e02df3 = Adven'chuta! | 1983 | Mia |  | 0
 2e1b3dd4 = A.E. | 1983 | Toshiba Emi |  | 0
 3ee454b0 = Alcazar | 1985 | Pony Cannon |  | 0
@@ -64,6 +67,7 @@ dbdb64ac = Back To The Future | 1985 | Pony Cannon |  | 0
 cdabd75b = Balance | 1984 | Hal |  | 0
 6aa7cbe0 = Banana | 1984 | Studio Gen |  | 0
 d5e18df0 = Bank Panic | 1985 | Pony Cannon |  | 0
+637f0494 = Batman - Rescue The Rovin | 1987 | Pack In Video |  | 4
 e403ebea = Batten Tanuki No Daibouken | 1985 | Tecno Soft |  | 0
 25e675ea = Battle Cross | 1984 | Sony |  | 0
 85f4767b = Battle Ship Clapton 2 | 1983 | T&E Soft |  | 0
@@ -72,7 +76,6 @@ d6a6bee6 = Beam Rider | 1984 | Pony Cannon |  | 0
 a580b72a = Becky | 1983 | Mia |  | 0
 0ad3707d = Bee & Flower | 1983 | Raison |  | 0
 f3c1119a = Bifamu | 1984 | Bandai |  | 0
-67a613b5 = Birdie | 1984 | Sony |  | 0
 50475a7c = Blagger | 1986 | Micro Cabin |  | 0
 8334b431 = Blockade Runner | 1984 | Toshiba Emi |  | 0
 ec089246 = Boggy'84 | 1984 | Nippon Columbia |  | 0
@@ -98,14 +101,16 @@ a667ad8a = Cannon Ball | 1983 | Hudson |  | 0
 8e985857 = Captain Chef | 1984 | Nippon Columbia |  | 0
 5780acfd = Captain Cosmo | 1984 | Nexa |  | 0
 303187f5 = Car Fighter | 1985 | Casio |  | 0
-94fc9169 = Car Jamboree |  1984 | Sony | (Not Playable) | 0
+94fc9169 = Car Jamboree |  1984 | Sony |  | 0
 3f0db564 = Car Race | 1983 | Ample |  | 0
 5312db08 = Casio Daishogai Keiba | 1984 | Casio |  | 0
 338491f5 = Casio Worldopen | 1985 | Casio |  | 0
 90f38029 = Castle Excellent | 1986 | Ascii |  | 0
 04f7e0b1 = Chack'n Pop | 1984 | Taito |  | 0
+a90daa22 = Challenge Durby | 1985 | Pony Cannon |  | 0
 a3a56524 = Champion Boulder Dash | 1985 | Comptiq |  | 0
 c4b7a5b9 = Champion Boxing | 1985 | Pony Cannon |  | 0
+bf4b018f = Champion Ice Hockey | 1986 | Pony Cannon |  | 0
 6f05e6bf = Champion Kendo | 1986 | Pony Cannon |  | 0
 6686c84e = Champion Pro Wrestling | 1985 | Pony Cannon |  | 0
 67ab6f8f = Champion Soccer | 1985 | Pony Cannon |  | 0
@@ -125,7 +130,6 @@ a4097e41 = Comic Bakery | 1984 | Konami |  | 0
 9098682d = Computer Billiards | 1983 | Sony |  | 0
 11eed1c7 = Computer Chess | 1984 | Sony |  | 0
 6936c965 = Computer Othello | 1984 | Sony |  | 0
-1bd2c6b3 = Computer Pachinko | 1984 | Sony | (Not Playable) | 0
 d9006ebe = Con-dori | 1983 | Raison |  | 0
 3f534824 = Cosmo Explorer | 1985 | Sony |  | 0
 b6d707c7 = Courageous Perseus | 1985 | Cosmos |  | 0
@@ -156,6 +160,7 @@ db803e8a = Drainer | 1987 | Victor |  | 0
 2526e568 = Dungeon Hunter | 1989 | Ascii |  | 5
 33700744 = Dungeon Master | 1986 | Ascii |  | 0
 6c366b32 = Dunk Shot | 1986 | Hal |  | 0
+47ec57da = Dynamite Bowl | 1988 | Toshiba Emi |  | 5
 5c808e73 = Eagle Fighter | 1985 | Casio |  | 0
 232b1050 = Eggerland Mystery | 1985 | Hal |  | 0
 4ff88059 = E.I. - Exa Innova | 1984 | Sony |  | 0
@@ -225,12 +230,12 @@ f1637c31 = Hayabusa - Moonsweeper | 1985 | Toshiba Emi |  | 0
 11e46700 = Heavy Boxing | 1983 | Hal |  | 0
 cd63cd50 = Heli Tank | 1983 | Nabu Network |  | 0
 97ab0d70 = Hero | 1984 | Pony Cannon |  | 0
+24851440 = High Way Star | 1983 | Way Limit |  | 0
 136bba04 = Hisya | 1985 | Micro Cabin |  | 0
-724d04ab = Hitsuji Yai | 1984 | Hudson |  | 0
+11502a96 = Hitsuji Yai - Preety Sheep | 1984 | Hudson |  | 0
 98e7b01b = Hole In One | 1984 | Hal |  | 0
 acfcbba6 = Hole In One Professional | 1985 | Hal |  | 0
 99518a12 = Hustle Chummy | 1984 | Paxon |  | 0
-24851440 = High Way Star | 1983 | Way Limit |  | 0
 0f9d6f56 = Hydlide 1 | 1985 | T&E Soft |  | 0
 d8055f5f = Hydlide 2 | 1986 | T&E Soft |  | 7
 00c5d5b5 = Hydlide 3 | 1987 | T&E Soft |  | 7
@@ -272,7 +277,6 @@ b575c44a = Knight Lore | 1986 | Jaleco |  | 0
 a3b2fe71 = Knither Special | 1987 | Dempa |  | 5
 b660494b = Konami's Baseball | 1984 | Konami |  | 0
 3a442408 = Konami's Boxing | 1985 | Konami |  | 0
-bd1c5a59 = Konami's Game Master 1 | 1985 | Konami |  | 0
 08c7e406 = Konami's Golf | 1985 | Konami |  | 0
 114198e5 = Konami's Mahjong Dojo | 1984 | Konami |  | 0
 3f200491 = Konami's Ping Pong | 1985 | Konami |  | 0
@@ -316,10 +320,10 @@ d0e39c9b = Mole | 1983 | Ascii |  | 0
 98cd6912 = Monkey Academy | 1984 | Konami |  | 0
 1ba6e461 = Monster's Fair | 1986 | Toho |  | 0
 8a2c11da = Moon Landing | 1983 | Ascii |  | 0
+febb1155 = Moon Patrol | 1984 | Dempa |  | 0
 9d73e4c5 = Mopiranger | 1985 | Konami |  | 0
 a94d7d08 = Morita Kazurou No Othello | 1986 | Toshiba Emi |  | 0
 06a64527 = Mouser | 1983 | Sony |  | 0
-febb1155 = Moon Patrol | 1984 | Dempa |  | 0
 414d29bc = Mr.chin | 1984 | Hal |  | 0
 4098d71d = Mr.do | 1984 | Nippon Columbia |  | 0
 09090135 = Mr.do V.s Unicorns | 1984 | Sony |  | 0
@@ -337,6 +341,7 @@ f79d3088 = MSX Baseball 1 | 1984 | Panasoft |  | 0
 e84994f7 = Nausicaa | 1984 | Tecnopolis Soft |  | 0
 2afbf7d1 = Nessen Koushiyen | 1984 | Casio |  | 0
 72ddb449 = Night Shade | 1985 | Jaleco |  | 0
+f06a58da = Ningyo Densetsu - Fathom | 1985 | Toshiba Emi |  | 0
 2a28ff97 = Ninja Jajamaru Kun | 1986 | Jaleco |  | 0
 b202f481 = Ninja Kage | 1984 | Hudson |  | 0
 d388cfd1 = Ninja Kun | 1983 | Micro Cabin |  | 0
@@ -366,7 +371,7 @@ c23fa0d5 = Pegasus | 1986 | Victor |  | 0
 2eff15e7 = Pinball Maker | 1985 | Nippon Columbia |  | 0
 7411c6f2 = Pine Applin | 1984 | Zap |  | 0
 6f172cd8 = Pipi | 1984 | Jaleco |  | 0
-Be6a5e19 = Pippols | 1985 | Konami |  | 0
+be6a5e19 = Pippols | 1985 | Konami |  | 0
 5a009c55 = Pitfall 1 | 1984 | Pony Cannon |  | 0
 d307a7b8 = Pitfall 2 | 1984 | Pony Cannon |  | 0
 d178833b = Playball | 1986 | Sony |  | 0
@@ -375,11 +380,11 @@ d178833b = Playball | 1986 | Sony |  | 0
 bd387377 = Poppaq The Fish | 1984 | Mass Tael |  | 0
 8ca4cd58 = Professional Baseball | 1986 | Tecnopolis Soft |  | 0
 f1ec5e18 = Professional Mahjong | 1985 | Chatnoir |  | 0
+b8fc19a4 = Psychic War | 1987 | Kogado |  | 4
 1313c0c7 = Puzzle Panic | 1986 | Pony Cannon |  | 0
 0aec8ddb = Pyramid Warp | 1983 | T&E Soft |  | 0
 0e988f0e = Q-bert | 1986 | Konami |  | 0
 40eef5cd = Queen's Golf | 1984 | Ascii |  | 0
-d9e93e94 = Queen's Golf Training Center | 1985 | Ascii |  | 0
 a884911c = R-Type | 1988 | Irem |  | 9
 a87a666d = Raid On Bungeling Bay | 1984 | Sony |  | 0
 63413493 = Rally-x | 1984 | Namcot |  | 0
@@ -413,6 +418,7 @@ ece16709 = Shougi | 1985 | Pony Cannon |  | 0
 b90dee1d = Shougi Meijin | 1985 | Toshiba Emi |  | 0
 ead8e29c = Shougi Sinan 1 | 1986 | Pony Cannon |  | 0
 729d2540 = Shout Match | 1987 | Victor |  | 0
+8273fd0e = Sinbad | 1986 | Casio |  | 0
 d8750242 = Ski Command | 1984 | Casio |  | 0
 53b87deb = Skooter | 1987 | Pony Cannon |  | 0
 54f84047 = Sky Galdo | 1986 | Magical Zoo |  | 0
@@ -451,7 +457,7 @@ c93fadf4 = Swing | 1985 | Pony Cannon |  | 0
 0e691c47 = Syougun | 1987 | Jaleco |  | 7
 892266ca = Takahasi Meijin No Boukenjima | 1986 | Hudson |  | 0
 c57272c3 = Takeru Densetsu | 1987 | Takeru |  | 0
-f48a0c3b = Tank Battalien  | 1984 | Namcot |  | 0
+f48a0c3b = Tank Battalion  | 1984 | Namcot |  | 0
 7914f7a6 = Tatica | 1984 | Mass Tael |  | 0
 589ce03e = Tawarakun | 1984 | Ascii |  | 0
 867ba302 = Tear Of Nile | 1986 | Victor |  | 0
@@ -515,3 +521,10 @@ beccf133 = Zaider - Battle Of Peguss | 1986 | Cosmos |  | 0
 77b3b0b9 = Zenji | 1984 | Pony Cannon |  | 0
 efefa02a = Zexas Limited | 1985 | dB-Soft |  | 0
 64283863 = Zoom 909 | 1985 | Pony Cannon |  | 0
+
+
+#(2) Applications (Education / Utility / Business / Etc.)
+
+1b10cf79 = MSX Eiwajiten (English <--> Japanese Dictionary) | 1988 | Hi-Score |  | 4
+bd1c5a59 = Konami's Game Master 1 | 1985 | Konami |  | 0
+084c5803 = Konami's Game Master 2 | 1987 | Konami |  | 6

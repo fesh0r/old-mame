@@ -85,7 +85,6 @@ Horace and the Spiders cartridge doesn't run properly.
 128K emulation is not perfect - the 128K machines crash and hang while
 running quite a lot of games.
 Disk errors occur on some +3 games.
-TS2068 sound emulation not working.
 
 The TK90X and TK95 roms output 0 to port #df on start up.
 The purpose of this port is unknown (probably display mode as TS2068) and
@@ -106,13 +105,12 @@ thus is not emulated.
 
 extern void spectrum_128_update_memory(void);
 extern void spectrum_plus3_update_memory(void);
-extern void ts2068_update_memory(void);
 
 
 static struct AY8910interface spectrum_ay_interface =
 {
 	1,
-	1000000,
+	1773400,
 	{25,25},
 	{0},
 	{0},
@@ -142,7 +140,7 @@ WRITE_HANDLER(spectrum_port_fe_w)
 	if ((Changed & 0x07)!=0)
 	{
 		/* yes - send event */
-		EventList_AddItemOffset(0x0fe, data & 0x07, cpu_getcurrentcycles());
+		EventList_AddItemOffset(0x0fe, data & 0x07, TIME_TO_CYCLES(0,cpu_getscanline()*cpu_getscanlineperiod()));
 	}
 
 	if ((Changed & (1<<4))!=0)
@@ -861,7 +859,7 @@ static WRITE_HANDLER(ts2068_port_f4_w)
 
 static WRITE_HANDLER(ts2068_port_f5_w)
 {
-		AY8910_write_port_0_w(0, data);
+		AY8910_control_port_0_w(0, data);
 }
 
 static READ_HANDLER(ts2068_port_f6_r)
@@ -877,7 +875,7 @@ static READ_HANDLER(ts2068_port_f6_r)
 
 static WRITE_HANDLER(ts2068_port_f6_w)
 {
-		AY8910_control_port_0_w(0, data);
+		AY8910_write_port_0_w(0, data);
 }
 
 static READ_HANDLER(ts2068_port_ff_r)
@@ -960,21 +958,37 @@ WRITE_HANDLER ( ts2068_port_w )
  *******************************************************************/
 extern void ts2068_update_memory(void)
 {
-		unsigned char *ChosenROM, *ExROM;
+		unsigned char *ChosenROM, *ExROM, *DOCK;
+
+		DOCK = timex_cart_data;
 
 		ExROM = memory_region(REGION_CPU1) + 0x014000;
+
 		if (ts2068_port_f4_data & 0x01)
 		{
 				if (ts2068_port_ff_data & 0x80)
 				{
 						cpu_setbank(1, ExROM);
 						memory_set_bankhandler_r(1, 0, MRA_BANK1);
+						memory_set_bankhandler_w(9, 0, MWA_ROM);
 						logerror("0000-1fff EXROM\n");
 				}
 				else
 				{
-						/* Cartridges not implemented so assume absent */
-						memory_set_bankhandler_r(1, 0, MRA_NOP);
+						if (timex_cart_type == TIMEX_CART_DOCK)
+						{
+							cpu_setbank(1, DOCK);
+							memory_set_bankhandler_r(1, 0, MRA_BANK1);
+							if (timex_cart_chunks&0x01)
+								memory_set_bankhandler_w(9, 0, MWA_BANK9);
+							else
+								memory_set_bankhandler_w(9, 0, MWA_ROM);
+						}
+						else
+						{
+							memory_set_bankhandler_r(1, 0, MRA_NOP);
+							memory_set_bankhandler_w(9, 0, MWA_ROM);
+						}
 						logerror("0000-1fff Cartridge\n");
 				}
 		}
@@ -983,6 +997,7 @@ extern void ts2068_update_memory(void)
 				ChosenROM = memory_region(REGION_CPU1) + 0x010000;
 				cpu_setbank(1, ChosenROM);
 				memory_set_bankhandler_r(1, 0, MRA_BANK1);
+				memory_set_bankhandler_w(9, 0, MWA_ROM);
 				logerror("0000-1fff HOME\n");
 		}
 
@@ -992,11 +1007,25 @@ extern void ts2068_update_memory(void)
 				{
 						cpu_setbank(2, ExROM);
 						memory_set_bankhandler_r(2, 0, MRA_BANK2);
+						memory_set_bankhandler_w(10, 0, MWA_ROM);
 						logerror("2000-3fff EXROM\n");
 				}
 				else
 				{
-						memory_set_bankhandler_r(2, 0, MRA_NOP);
+						if (timex_cart_type == TIMEX_CART_DOCK)
+						{
+							cpu_setbank(2, DOCK+0x2000);
+							memory_set_bankhandler_r(2, 0, MRA_BANK2);
+							if (timex_cart_chunks&0x02)
+								memory_set_bankhandler_w(10, 0, MWA_BANK10);
+							else
+								memory_set_bankhandler_w(10, 0, MWA_ROM);
+						}
+						else
+						{
+							memory_set_bankhandler_r(2, 0, MRA_NOP);
+							memory_set_bankhandler_w(10, 0, MWA_ROM);
+						}
 						logerror("2000-3fff Cartridge\n");
 				}
 		}
@@ -1005,6 +1034,7 @@ extern void ts2068_update_memory(void)
 				ChosenROM = memory_region(REGION_CPU1) + 0x012000;
 				cpu_setbank(2, ChosenROM);
 				memory_set_bankhandler_r(2, 0, MRA_BANK2);
+				memory_set_bankhandler_w(10, 0, MWA_ROM);
 				logerror("2000-3fff HOME\n");
 		}
 
@@ -1019,8 +1049,20 @@ extern void ts2068_update_memory(void)
 				}
 				else
 				{
-						memory_set_bankhandler_r(3, 0, MRA_NOP);
-						memory_set_bankhandler_w(11, 0, MWA_ROM);
+						if (timex_cart_type == TIMEX_CART_DOCK)
+						{
+							cpu_setbank(3, DOCK+0x4000);
+							memory_set_bankhandler_r(3, 0, MRA_BANK3);
+							if (timex_cart_chunks&0x04)
+								memory_set_bankhandler_w(11, 0, MWA_BANK11);
+							else
+								memory_set_bankhandler_w(11, 0, MWA_ROM);
+						}
+						else
+						{
+							memory_set_bankhandler_r(3, 0, MRA_NOP);
+							memory_set_bankhandler_w(11, 0, MWA_ROM);
+						}
 						logerror("4000-5fff Cartridge\n");
 				}
 		}
@@ -1044,8 +1086,20 @@ extern void ts2068_update_memory(void)
 				}
 				else
 				{
-						memory_set_bankhandler_r(4, 0, MRA_NOP);
-						memory_set_bankhandler_w(12, 0, MWA_ROM);
+						if (timex_cart_type == TIMEX_CART_DOCK)
+						{
+							cpu_setbank(4, DOCK+0x6000);
+							memory_set_bankhandler_r(4, 0, MRA_BANK4);
+							if (timex_cart_chunks&0x08)
+								memory_set_bankhandler_w(12, 0, MWA_BANK12);
+							else
+								memory_set_bankhandler_w(12, 0, MWA_ROM);
+						}
+						else
+						{
+							memory_set_bankhandler_r(4, 0, MRA_NOP);
+							memory_set_bankhandler_w(12, 0, MWA_ROM);
+						}
 						logerror("6000-7fff Cartridge\n");
 				}
 		}
@@ -1069,8 +1123,20 @@ extern void ts2068_update_memory(void)
 				}
 				else
 				{
-						memory_set_bankhandler_r(5, 0, MRA_NOP);
-						memory_set_bankhandler_w(13, 0, MWA_ROM);
+						if (timex_cart_type == TIMEX_CART_DOCK)
+						{
+							cpu_setbank(5, DOCK+0x8000);
+							memory_set_bankhandler_r(5, 0, MRA_BANK5);
+							if (timex_cart_chunks&0x10)
+								memory_set_bankhandler_w(13, 0, MWA_BANK13);
+							else
+								memory_set_bankhandler_w(13, 0, MWA_ROM);
+						}
+						else
+						{
+							memory_set_bankhandler_r(5, 0, MRA_NOP);
+							memory_set_bankhandler_w(13, 0, MWA_ROM);
+						}
 						logerror("8000-9fff Cartridge\n");
 				}
 		}
@@ -1094,8 +1160,20 @@ extern void ts2068_update_memory(void)
 				}
 				else
 				{
-						memory_set_bankhandler_r(6, 0, MRA_NOP);
-						memory_set_bankhandler_w(14, 0, MWA_ROM);
+						if (timex_cart_type == TIMEX_CART_DOCK)
+						{
+							cpu_setbank(6, DOCK+0xa000);
+							memory_set_bankhandler_r(6, 0, MRA_BANK6);
+							if (timex_cart_chunks&0x20)
+								memory_set_bankhandler_w(14, 0, MWA_BANK14);
+							else
+								memory_set_bankhandler_w(14, 0, MWA_ROM);
+						}
+						else
+						{
+							memory_set_bankhandler_r(6, 0, MRA_NOP);
+							memory_set_bankhandler_w(14, 0, MWA_ROM);
+						}
 						logerror("a000-bfff Cartridge\n");
 				}
 		}
@@ -1119,8 +1197,20 @@ extern void ts2068_update_memory(void)
 				}
 				else
 				{
-						memory_set_bankhandler_r(7, 0, MRA_NOP);
-						memory_set_bankhandler_w(15, 0, MWA_ROM);
+						if (timex_cart_type == TIMEX_CART_DOCK)
+						{
+							cpu_setbank(7, DOCK+0xc000);
+							memory_set_bankhandler_r(7, 0, MRA_BANK7);
+							if (timex_cart_chunks&0x40)
+								memory_set_bankhandler_w(15, 0, MWA_BANK15);
+							else
+								memory_set_bankhandler_w(15, 0, MWA_ROM);
+						}
+						else
+						{
+							memory_set_bankhandler_r(7, 0, MRA_NOP);
+							memory_set_bankhandler_w(15, 0, MWA_ROM);
+						}
 						logerror("c000-dfff Cartridge\n");
 				}
 		}
@@ -1144,8 +1234,20 @@ extern void ts2068_update_memory(void)
 				}
 				else
 				{
-						memory_set_bankhandler_r(8, 0, MRA_NOP);
-						memory_set_bankhandler_w(16, 0, MWA_ROM);
+						if (timex_cart_type == TIMEX_CART_DOCK)
+						{
+							cpu_setbank(8, DOCK+0xe000);
+							memory_set_bankhandler_r(8, 0, MRA_BANK8);
+							if (timex_cart_chunks&0x80)
+								memory_set_bankhandler_w(16, 0, MWA_BANK16);
+							else
+								memory_set_bankhandler_w(16, 0, MWA_ROM);
+						}
+						else
+						{
+							memory_set_bankhandler_r(8, 0, MRA_NOP);
+							memory_set_bankhandler_w(16, 0, MWA_ROM);
+						}
 						logerror("e000-ffff Cartridge\n");
 				}
 		}
@@ -1208,8 +1310,8 @@ void ts2068_init_machine(void)
 		memory_set_bankhandler_r(8, 0, MRA_BANK8);
 
 		/* 0x0000-0x3fff always holds ROM */
-		memory_set_bankhandler_w(9, 0, MWA_ROM);
-		memory_set_bankhandler_w(10, 0, MWA_ROM);
+		memory_set_bankhandler_w(9, 0, MWA_BANK9);
+		memory_set_bankhandler_w(10, 0, MWA_BANK10);
 		memory_set_bankhandler_w(11, 0, MWA_BANK11);
 		memory_set_bankhandler_w(12, 0, MWA_BANK12);
 		memory_set_bankhandler_w(13, 0, MWA_BANK13);
@@ -2211,7 +2313,59 @@ static struct MachineDriver machine_driver_ts2068 =
 	16, 256,							 /* colors used for the characters */
 	spectrum_init_palette,				 /* initialise palette */
 
-	VIDEO_TYPE_RASTER,
+	VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2,
+	ts2068_eof_callback,
+	spectrum_128_vh_start,
+	spectrum_128_vh_stop,
+	ts2068_vh_screenrefresh,
+
+	/* sound hardware */
+	0,0,0,0,
+	{
+		/*  Ay-3-8912 sound */
+		{
+				SOUND_AY8910,
+				&spectrum_ay_interface,
+		},
+		/* standard spectrum sound */
+		{
+				SOUND_SPEAKER,
+				&spectrum_speaker_interface
+		},
+		/* cassette wave sound */
+		{
+				SOUND_WAVE,
+				&spectrum_wave_interface,
+		}
+	}
+};
+
+static struct MachineDriver machine_driver_uk2086 =
+{
+	/* basic machine hardware */
+	{
+		{
+			CPU_Z80|CPU_16BIT_PORT,
+			3580000,		/* 3.58 Mhz */
+			ts2068_readmem,ts2068_writemem,
+			ts2068_readport,ts2068_writeport,
+			spec_interrupt,1,
+		},
+	},
+		50, 2500,		/* frames per second, vblank duration */
+	1,
+	ts2068_init_machine,
+	ts2068_exit_machine,
+
+	/* video hardware */
+	TS2068_SCREEN_WIDTH,			/* screen width */
+	TS2068_SCREEN_HEIGHT,			/* screen height */
+	{ 0, TS2068_SCREEN_WIDTH-1, 0, TS2068_SCREEN_HEIGHT-1},  /* visible_area */
+	spectrum_gfxdecodeinfo, 			 /* graphics decode info */
+	16, 256,							 /* colors used for the characters */
+	spectrum_init_palette,				 /* initialise palette */
+
+	VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2,
 	ts2068_eof_callback,
 	spectrum_128_vh_start,
 	spectrum_128_vh_stop,
@@ -2263,7 +2417,7 @@ static struct MachineDriver machine_driver_tc2048 =
 	16, 256,							 /* colors used for the characters */
 	spectrum_init_palette,				 /* initialise palette */
 
-	VIDEO_TYPE_RASTER,
+	VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2,
 	spectrum_eof_callback,
 	spectrum_128_vh_start,
 	spectrum_128_vh_stop,
@@ -2407,6 +2561,11 @@ ROM_START(specbusy)
 	ROM_LOAD("48-busy.rom", 0x0000, 0x4000, 0x1511cddb)
 ROM_END
 
+ROM_START(specpsch)
+	ROM_REGION(0x10000,REGION_CPU1,0)
+	ROM_LOAD("48-psych.rom", 0x0000, 0x4000, 0xcd60b589)
+ROM_END
+
 ROM_START(specgrot)
 	ROM_REGION(0x10000,REGION_CPU1,0)
 	ROM_LOAD("48-groot.rom", 0x0000, 0x4000, 0xabf18c45)
@@ -2484,6 +2643,12 @@ ROM_END
 ROM_START(ts2068)
 		ROM_REGION(0x16000,REGION_CPU1,0)
 		ROM_LOAD("ts2068_h.rom",0x10000,0x4000, 0xbf44ec3f)
+		ROM_LOAD("ts2068_x.rom",0x14000,0x2000, 0xae16233a)
+ROM_END
+
+ROM_START(uk2086)
+		ROM_REGION(0x16000,REGION_CPU1,0)
+		ROM_LOAD("uk2086_h.rom",0x10000,0x4000, 0x5ddc0ca2)
 		ROM_LOAD("ts2068_x.rom",0x14000,0x2000, 0xae16233a)
 ROM_END
 
@@ -2650,41 +2815,63 @@ static const struct IODevice io_ts2068[] = {
 	},
 		IODEVICE_SPEC_QUICK,
 		IO_CASSETTE_WAVE(1,"wav\0tap\0", NULL,spectrum_cassette_init, spectrum_cassette_exit),
+	{
+		IO_CARTSLOT,			/* type */
+		1,				/* count */
+		"dck\0",			/* file extensions */
+		IO_RESET_ALL,			/* reset if file changed */
+		0,
+		timex_cart_load,		/* init */
+		timex_cart_exit,		/* exit */
+		NULL,				/* info */
+		NULL,				/* open */
+		NULL,				/* close */
+		NULL,				/* status */
+		NULL,				/* seek */
+		NULL,				/* input */
+		NULL,				/* output */
+		NULL,				/* input_chunk */
+		NULL				/* output_chunk */
+	},
 		{ IO_END }
 };
 
 #define io_spec128	io_spectrum
-#define io_spec128s io_spectrum
-#define io_specpls2 io_spectrum
-#define io_specbusy io_spectrum
-#define io_specgrot io_spectrum
+#define io_spec128s	io_spectrum
+#define io_specpls2	io_spectrum
+#define io_specbusy	io_spectrum
+#define io_specpsch	io_spectrum
+#define io_specgrot	io_spectrum
 #define io_specimc	io_spectrum
 #define io_speclec	io_spectrum
-#define io_specpls4 io_spectrum
+#define io_specpls4	io_spectrum
 #define io_inves	io_spectrum
 #define io_tk90x	io_spectrum
 #define io_tk95 	io_spectrum
 #define io_tc2048	io_spectrum
-#define io_specpl2a io_specpls3
-#define io_specp2fr io_spectrum
-#define io_specp2sp io_spectrum
-#define io_specp3sp io_specpls3
-#define io_specpl3e io_specpls3
-#define io_scorpion io_specpls3
-#define io_pentagon io_specpls3
+#define io_uk2086	io_ts2068
+#define io_specpl2a	io_specpls3
+#define io_specp2fr	io_spectrum
+#define io_specp2sp	io_spectrum
+#define io_specp3sp	io_specpls3
+#define io_specpl3e	io_specpls3
+#define io_scorpion	io_specpls3
+#define io_pentagon	io_specpls3
 
-/*	   YEAR  NAME	   PARENT	 MACHINE		 INPUT	   INIT 		 COMPANY				 FULLNAME */
-COMP ( 1982, spectrum, 0,		 spectrum,		 spectrum, 0,			 "Sinclair Research",    "ZX Spectrum" )
-COMPX( 2000, specpls4, spectrum, spectrum,		 spectrum, 0,			 "Amstrad plc",          "ZX Spectrum +4", GAME_COMPUTER_MODIFIED )
-COMPX( 1994, specbusy, spectrum, spectrum,		 spectrum, 0,			 "Amstrad plc",          "ZX Spectrum (BusySoft Upgrade)", GAME_COMPUTER_MODIFIED )
-COMPX( ????, specgrot, spectrum, spectrum,		 spectrum, 0,			 "Amstrad plc",          "ZX Spectrum (De Groot's Upgrade)", GAME_COMPUTER_MODIFIED )
-COMPX( 1985, specimc,  spectrum, spectrum,		 spectrum, 0,			 "Amstrad plc",          "ZX Spectrum (Collier's Upgrade)", GAME_COMPUTER_MODIFIED )
-COMPX( 1987, speclec,  spectrum, spectrum,		 spectrum, 0,			 "Amstrad plc",          "ZX Spectrum (LEC Upgrade)", GAME_COMPUTER_MODIFIED )
-COMP ( 1986, inves,    spectrum, spectrum,		 spectrum, 0,			 "Investronica",         "Inves Spectrum 48K+" )
-COMP ( 1985, tk90x,    spectrum, spectrum,		 spectrum, 0,			 "Micro Digital",        "TK90x Color Computer" )
-COMP ( 1986, tk95,	   spectrum, spectrum,		 spectrum, 0,			 "Micro Digital",        "TK95 Color Computer" )
-COMP ( 198?, tc2048,   spectrum, tc2048,		 spectrum, 0,			 "Timex of Portugal",    "TC2048" )
-COMP ( 1983, ts2068,   spectrum, ts2068,		 spectrum, 0,			 "Timex Sinclair",       "TS2068" )
+/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT  COMPANY		FULLNAME */
+COMP ( 1982, spectrum, 0,	 spectrum, spectrum,	0, "Sinclair Research",	"ZX Spectrum" )
+COMPX( 2000, specpls4, spectrum, spectrum, spectrum,	0, "Sinclair Research",	"ZX Spectrum +4", GAME_COMPUTER_MODIFIED )
+COMPX( 1994, specbusy, spectrum, spectrum, spectrum,	0, "Sinclair Research",	"ZX Spectrum (BusySoft Upgrade v1.18)", GAME_COMPUTER_MODIFIED )
+COMPX( ????, specpsch, spectrum, spectrum, spectrum,	0, "Sinclair Research",	"ZX Spectrum (Maly's Psycho Upgrade)", GAME_COMPUTER_MODIFIED )
+COMPX( ????, specgrot, spectrum, spectrum, spectrum,	0, "Sinclair Research",	"ZX Spectrum (De Groot's Upgrade)", GAME_COMPUTER_MODIFIED )
+COMPX( 1985, specimc,  spectrum, spectrum, spectrum,	0, "Sinclair Research",	"ZX Spectrum (Collier's Upgrade)", GAME_COMPUTER_MODIFIED )
+COMPX( 1987, speclec,  spectrum, spectrum, spectrum,	0, "Sinclair Research",	"ZX Spectrum (LEC Upgrade)", GAME_COMPUTER_MODIFIED )
+COMP ( 1986, inves,    spectrum, spectrum, spectrum,	0, "Investronica",	"Inves Spectrum 48K+" )
+COMP ( 1985, tk90x,    spectrum, spectrum, spectrum,	0, "Micro Digital",	"TK-90x Color Computer" )
+COMP ( 1986, tk95,     spectrum, spectrum, spectrum,	0, "Micro Digital",	"TK-95 Color Computer" )
+COMP ( 198?, tc2048,   spectrum, tc2048,   spectrum,	0, "Timex of Portugal",	"TC-2048" )
+COMP ( 1983, ts2068,   spectrum, ts2068,   spectrum,	0, "Timex Sinclair",	"TS-2068" )
+COMP ( 1986, uk2086,   spectrum, uk2086,   spectrum,	0, "Unipolbrit",	"UK-2086 ver. 1.2" )
 
 COMPX( 1986, spec128,  0,		 spectrum_128,	 spectrum, 0,			 "Sinclair Research",    "ZX Spectrum 128" ,GAME_NOT_WORKING)
 COMPX( 1985, spec128s, spec128,  spectrum_128,	 spectrum, 0,			 "Sinclair Research",    "ZX Spectrum 128 (Spain)" ,GAME_NOT_WORKING)

@@ -17,13 +17,12 @@ enum { LIST_SHORT = 1, LIST_INFO, LIST_FULL, LIST_SAMDIR, LIST_ROMS, LIST_SAMPLE
 		LIST_WRONGORIENTATION, LIST_WRONGFPS, LIST_CRC, LIST_DUPCRC, LIST_WRONGMERGE,
 		LIST_ROMSIZE, LIST_PALETTESIZE, LIST_CPU, LIST_SOURCEFILE };
 #else
-
 #include "messwin.h"
 enum { LIST_SHORT = 1, LIST_INFO, LIST_FULL, LIST_SAMDIR, LIST_ROMS, LIST_SAMPLES,
 		LIST_LMR, LIST_DETAILS, LIST_GAMELIST,
 		LIST_GAMES, LIST_CLONES,
 		LIST_WRONGORIENTATION, LIST_WRONGFPS, LIST_CRC, LIST_DUPCRC, LIST_WRONGMERGE,
-		LIST_ROMSIZE, LIST_PALETTESIZE, LIST_CPU, LIST_SOURCEFILE, LIST_MESSINFO };
+		LIST_ROMSIZE, LIST_PALETTESIZE, LIST_CPU, LIST_SOURCEFILE, LIST_MESSTEXT, LIST_MESSDEVICES, LIST_MESSCREATEDIR };
 #endif
 
 #define VERIFY_ROMS		0x00000001
@@ -93,7 +92,13 @@ struct rc_option frontend_opts[] = {
 
 int silentident,knownstatus;
 
-extern unsigned int crc32 (unsigned int crc, const unsigned char *buf, unsigned int len);
+#ifdef _MSC_VER
+#define ZEXPORT WINAPI
+#else
+#define ZEXPORT
+#endif
+
+extern unsigned int ZEXPORT crc32 (unsigned int crc, const unsigned char *buf, unsigned int len);
 
 void get_rom_sample_path (int argc, char **argv, int game_index, char *override_default_rompath);
 
@@ -485,7 +490,6 @@ int frontend_help (char *gamename)
 	{
 
         #ifdef MESS
-		//#if 0
 		case LIST_MESSTEXT: /* all mess specific calls here */
 		{
 					/* send the gamename and arg to mess.c */
@@ -494,20 +498,20 @@ int frontend_help (char *gamename)
 			break;
 		}
 		case LIST_MESSDEVICES:
-		{
+			{
 					/* send the gamename and arg to mess.c */
 			list_mess_info(gamename, "-listdevices", listclones);
 			return 0;
 			break;
 		}
 		case LIST_MESSCREATEDIR:
-		{
+			 	{
 					/* send the gamename and arg to mess.c */
 			list_mess_info(gamename, "-createdir", listclones);
 			return 0;
 			break;
 		}
-	#endif
+		#endif
 
 		case LIST_SHORT: /* simple games list */
 			#ifndef MESS

@@ -1,6 +1,6 @@
 /******************************************************************************
 
-	Peter.Trauner@jk.uni-linz.ac.at Nov 2000
+	PeT mess@utanet.at Nov 2000
 
 ******************************************************************************/
 #include "driver.h"
@@ -8,8 +8,6 @@
 #include "vidhrdw/generic.h"
 
 #include "includes/aim65.h"
-
-static struct artwork_info *aim65_backdrop;
 
 typedef struct {
 	int digit[4]; // 16 segment digit, decoded from 7 bit data!
@@ -76,38 +74,24 @@ unsigned char aim65_palette[242][3] =
 
 void aim65_init_colors (unsigned char *palette, unsigned short *colortable, const unsigned char *color_prom)
 {
-	char backdrop_name[200];
-    int nextfree;
-
-    /* try to load a backdrop for the machine */
-    sprintf (backdrop_name, "%s.png", Machine->gamedrv->name);
-
 	memcpy (palette, aim65_palette, sizeof (aim65_palette));
-
-    nextfree = 2;
-
-    artwork_load (&aim65_backdrop, backdrop_name, nextfree, Machine->drv->total_colors - nextfree);
-	if (aim65_backdrop)
-    {
-        logerror("backdrop %s successfully loaded\n", backdrop_name);
-        memcpy (&palette[nextfree * 3], aim65_backdrop->orig_palette, aim65_backdrop->num_pens_used * 3 * sizeof (unsigned char));
-    }
-    else
-    {
-        logerror("no backdrop loaded\n");
-    }
-
 }
 
 int aim65_vh_start (void)
 {
     videoram_size = 6 * 2 + 24;
-    videoram = (UINT8*)malloc (videoram_size);
+    videoram = (UINT8*)auto_malloc (videoram_size);
 	if (!videoram)
         return 1;
-    if (aim65_backdrop)
-        backdrop_refresh (aim65_backdrop);
-    if (generic_vh_start () != 0)
+
+	{
+		char backdrop_name[200];
+	    /* try to load a backdrop for the machine */
+		sprintf(backdrop_name, "%s.png", Machine->gamedrv->name);
+		backdrop_load(backdrop_name, 2);
+	}
+    
+	if (generic_vh_start () != 0)
         return 1;
 
     return 0;
@@ -115,11 +99,6 @@ int aim65_vh_start (void)
 
 void aim65_vh_stop (void)
 {
-    if (aim65_backdrop)
-        artwork_free (&aim65_backdrop);
-    aim65_backdrop = NULL;
-    if (videoram)
-        free (videoram);
     videoram = NULL;
     generic_vh_stop ();
 }
@@ -149,7 +128,7 @@ static const char led[] = {
 	"   fffffff    eeeeee" 
 };
 
-static void aim65_draw_7segment(struct osd_bitmap *bitmap,int value, int x, int y)
+static void aim65_draw_7segment(struct mame_bitmap *bitmap,int value, int x, int y)
 {
 	int i, xi, yi, mask, color;
 
@@ -221,7 +200,7 @@ static const char* single_led=
 " 111"
 ;
 
-static void aim65_draw_led(struct osd_bitmap *bitmap,INT16 color, int x, int y)
+static void aim65_draw_led(struct mame_bitmap *bitmap,INT16 color, int x, int y)
 {
 	int j, xi=0;
 	for (j=0; single_led[j]; j++) {
@@ -243,7 +222,7 @@ static void aim65_draw_led(struct osd_bitmap *bitmap,INT16 color, int x, int y)
 }
 #endif
 
-void aim65_vh_screenrefresh (struct osd_bitmap *bitmap, int full_refresh)
+void aim65_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
 {
 	int i, j;
 
@@ -251,11 +230,6 @@ void aim65_vh_screenrefresh (struct osd_bitmap *bitmap, int full_refresh)
     {
         osd_mark_dirty (0, 0, bitmap->width, bitmap->height);
     }
-    if (aim65_backdrop)
-        copybitmap (bitmap, aim65_backdrop->artwork, 0, 0, 0, 0, NULL, 
-					TRANSPARENCY_NONE, 0);
-	else
-		fillbitmap (bitmap, Machine->pens[2], &Machine->visible_area);
 
 	for (j=0; j<5; j++) {
 		for (i=0; i<4; i++) {

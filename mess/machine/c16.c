@@ -453,7 +453,7 @@ void c16_interrupt (int level)
 	if (level != old_level)
 	{
 		DBG_LOG (3, "mos7501", ("irq %s\n", level ? "start" : "end"));
-		cpu_set_irq_line (0, M6510_INT_IRQ, level);
+		cpu_set_irq_line (0, M6510_IRQ_LINE, level);
 		old_level = level;
 	}
 }
@@ -709,7 +709,7 @@ int c16_rom_id (int id)
 
 	logerror("c16_rom_id %s\n", name);
 	retval = 0;
-	if (!(romfile = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
+	if (!(romfile = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
 	{
 		logerror("rom %s not found\n", name);
 		return 0;
@@ -757,7 +757,7 @@ int c16_rom_load (int id)
 	if (name==NULL) return 1;
 	if (!c16_rom_id (id))
 		return 1;
-	fp = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
+	fp = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
 	if (!fp)
 	{
 		logerror("%s file not found\n", name);

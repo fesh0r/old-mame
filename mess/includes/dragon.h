@@ -45,10 +45,11 @@ extern void coco3_ram_b8_w (offs_t offset, data8_t data);
 extern void coco3_ram_b9_w (offs_t offset, data8_t data);
 extern void coco3_vh_sethires(int hires);
 extern int dragon_vh_start(void);
+extern int coco_vh_start(void);
 extern int coco2b_vh_start(void);
 extern int coco3_vh_start(void);
 extern void coco3_vh_stop(void);
-extern void coco3_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
+extern void coco3_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
 extern WRITE_HANDLER ( coco_ram_w );
 extern READ_HANDLER ( coco3_gimevh_r );
 extern WRITE_HANDLER ( coco3_gimevh_w );
@@ -62,6 +63,7 @@ extern void coco3_vh_blink(void);
 extern void dragon32_init_machine(void);
 extern void dragon64_init_machine(void);
 extern void coco_init_machine(void);
+extern void coco2_init_machine(void);
 extern void coco3_init_machine(void);
 extern void dragon_stop_machine(void);
 extern int coco_cassette_init(int id);
@@ -98,6 +100,7 @@ extern void coco_bitbanger_exit (int id);
 extern void coco_bitbanger_output (int id, int data);
 extern READ_HANDLER( coco_pia_1_r );
 extern READ_HANDLER( coco3_pia_1_r );
+extern void dragon_sound_update(void);
 
 /* Returns whether a given piece of logical memory is contiguous or not */
 extern int coco3_mmu_ismemorycontiguous(int logicaladdr, int len);

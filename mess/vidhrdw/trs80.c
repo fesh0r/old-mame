@@ -32,11 +32,11 @@ void trs80_vh_stop(void)
 }
 
 /***************************************************************************
-  Draw the game screen in the given osd_bitmap.
+  Draw the game screen in the given mame_bitmap.
   Do NOT call osd_update_display() from this function,
   it will be called by the main emulation engine.
 ***************************************************************************/
-void trs80_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
+void trs80_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 {
 /* Special translation if video RAM with only 7 bits is present
  * I don't know if it's entirely correct, but it's close ;-)
@@ -91,12 +91,6 @@ static UINT8 translate_videoram[2][256] = {
 		color = readinputport(0) & 3;
 		full_refresh = 1;
     }
-
-    /* draw entire scrbitmap because of usrintrf functions
-	 * called osd_clearbitmap or color change / scanline change
-	 */
-	if( palette_recalc() || full_refresh )
-		memset(dirtybuffer, 1, videoram_size);
 
 	/* do we have double width characters enabled ? */
 	if( trs80_port_ff & 0x08 )
