@@ -34,6 +34,9 @@ imgtoolerr_t imgtool_floppy_error(floperr_t err)
 
 		case FLOPPY_ERROR_SEEKERROR:
 			return IMGTOOLERR_SEEKERROR;
+
+		case FLOPPY_ERROR_UNSUPPORTED:
+			return IMGTOOLERR_UNIMPLEMENTED;
 			
 		default:
 			return IMGTOOLERR_UNEXPECTED;
@@ -303,6 +306,9 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 			module->open_is_strict				= floppy_callbacks.open_is_strict;
 			module->supports_creation_time		= floppy_callbacks.supports_creation_time;
 			module->supports_lastmodified_time	= floppy_callbacks.supports_lastmodified_time;
+			module->tracks_are_called_cylinders	= floppy_callbacks.tracks_are_called_cylinders;
+			module->writing_untested			= floppy_callbacks.writing_untested;
+			module->creation_untested			= floppy_callbacks.creation_untested;
 			module->begin_enum					= floppy_callbacks.begin_enum;
 			module->next_enum					= floppy_callbacks.next_enum;
 			module->close_enum					= floppy_callbacks.close_enum;
@@ -312,6 +318,7 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 			module->delete_file					= floppy_callbacks.delete_file;
 			module->create_dir					= floppy_callbacks.create_dir;
 			module->delete_dir					= floppy_callbacks.delete_dir;
+			module->get_chain					= floppy_callbacks.get_chain;
 			module->writefile_optguide			= floppy_callbacks.writefile_optguide;
 			module->writefile_optspec			= floppy_callbacks.writefile_optspec;
 			module->image_extra_bytes			= floppy_callbacks.image_extra_bytes;

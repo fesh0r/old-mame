@@ -108,6 +108,7 @@ void apple2_slot6_writebyte(mess_image *image, UINT8 byte);
 void apple2_slot6_set_lines(mess_image *image, UINT8 new_state);
 
 /* vidhrdw/apple2.c */
+int apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo);
 VIDEO_START( apple2 );
 VIDEO_START( apple2p );
 VIDEO_START( apple2e );
@@ -121,6 +122,7 @@ int apple2_get_bgcolor(void);
 /* keyboard wrappers */
 #define pressed_specialkey(key)	(readinputportbytag("keyb_special") & (key))
 #define SPECIALKEY_CAPSLOCK		0x01
+#define SPECIALKEY_REPT			0x01
 #define SPECIALKEY_SHIFT		0x06
 #define SPECIALKEY_CONTROL		0x08
 #define SPECIALKEY_BUTTON0		0x10	/* open apple */
@@ -171,10 +173,5 @@ struct apple2_memmap_config
 
 void apple2_setup_memory(const struct apple2_memmap_config *config);
 void apple2_update_memory(void);
-
-WRITE8_HANDLER( apple2_mainram0400_w );
-WRITE8_HANDLER( apple2_auxram0400_w );
-WRITE8_HANDLER( apple2_mainram2000_w );
-WRITE8_HANDLER( apple2_auxram2000_w );
 
 #endif /* APPLE2_H */

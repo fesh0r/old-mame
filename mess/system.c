@@ -262,6 +262,7 @@ TESTDRIVER( nc200 )		/* 19?? NC200										*/
 	DRIVER( apple2e )	/* 1983 Apple //e									*/
 	DRIVER( apple2ee )	/* 1985 Apple //e Enhanced							*/
 	DRIVER( apple2ep )	/* 1987 Apple //e Platinum							*/
+	DRIVER( ace100 )    /* 1982 Apple ][ clone								*/
 /*
  * Lisa 				 January			 1983
  * Lisa 2 				 January			 1984
@@ -446,6 +447,18 @@ TESTDRIVER( tree4th )		/* Sinclair ZX-81 Tree-Forth by Tree Systems			*/
 	DRIVER( specp3sp )	/* 1987 ZX Spectrum +3 (Spain)					*/
 	DRIVER( specpl3e )	/* 2000 ZX Spectrum +3e 					*/
 	DRIVER( specp3es )	/* 2000 ZX Spectrum +3e (Spain)					*/
+
+	DRIVER( ql )		/* Sinclair QL							*/
+	DRIVER( ql_jm )
+	DRIVER( ql_tb )
+	DRIVER( ql_js )
+	DRIVER( ql_jsu )
+	DRIVER( ql_mge )
+	DRIVER( ql_mgf )
+	DRIVER( ql_mgg )
+	DRIVER( ql_mgi )
+	DRIVER( ql_mgs )
+	DRIVER( ql_efp )
 
 	/* SHARP */
 	DRIVER( pc1251 )	/* Pocket Computer 1251 							*/
@@ -780,6 +793,13 @@ TESTDRIVER( hp48g ) 	/* HP48 G/GX										*/
 	/* MIT */
 	DRIVER( tx0_64kw )	/* April 1956 MIT TX-0 (64kw RAM)                   */
 	DRIVER( tx0_8kw )	/* 1962 MIT TX-0 (8kw RAM)                          */
+
+	/* Luxor Datorer AB */
+	DRIVER( abc80 )
+	DRIVER( abc802 )
+	DRIVER( abc800m )
+	DRIVER( abc800c )
+	DRIVER( abc806 )
 
 /****************Games*******************************************************/
 	/* Computer Electronic */

@@ -47,6 +47,7 @@ static floperr_t apple2_nib_read_track(floppy_image *floppy, int head, int track
 static floperr_t apple2_nib_write_track(floppy_image *floppy, int head, int track, UINT64 offset, const void *buffer, size_t buflen);
 static floperr_t apple2_nib_read_sector(floppy_image *floppy, int head, int track, int sector, void *buffer, size_t buflen);
 static floperr_t apple2_nib_write_sector(floppy_image *floppy, int head, int track, int sector, const void *buffer, size_t buflen);
+static floperr_t apple2_nib_get_sector_length(floppy_image *floppy, int head, int track, int sector, UINT32 *sector_length);
 
 
 static const UINT8 translate6[0x40] =
@@ -121,6 +122,7 @@ static floperr_t apple2_general_construct(floppy_image *floppy, int floppy_type)
 		format->write_track = apple2_nib_write_track;
 		format->read_sector = apple2_nib_read_sector;
 		format->write_sector = apple2_nib_write_sector;
+		format->get_sector_length = apple2_nib_get_sector_length;
 		break;
 
 	default:
@@ -480,6 +482,14 @@ static floperr_t apple2_nib_write_sector(floppy_image *floppy, int head, int tra
 
 
 
+static floperr_t apple2_nib_get_sector_length(floppy_image *floppy, int head, int track, int sector, UINT32 *sector_length)
+{
+	*sector_length = APPLE2_SECTOR_SIZE;
+	return FLOPPY_ERROR_SUCCESS;
+}
+
+
+
 static UINT32 apple2_get_track_size(floppy_image *floppy, int head, int track)
 {
 	return APPLE2_NIBBLE_SIZE * APPLE2_SECTOR_COUNT;
@@ -490,7 +500,22 @@ static UINT32 apple2_get_track_size(floppy_image *floppy, int head, int track)
 /* ----------------------------------------------------------------------- */
 
 FLOPPY_OPTIONS_START( apple2 )
-	FLOPPY_OPTION( apple2_do, "do\0dsk\0bin\0",	"Apple ][ DOS order disk image",	apple2_dsk_identify,	apple2_do_construct,	NULL )
-	FLOPPY_OPTION( apple2_po, "po\0dsk\0bin\0",	"Apple ][ ProDOS order disk image",	apple2_dsk_identify,	apple2_po_construct,	NULL )
-	FLOPPY_OPTION( apple2_nib, "dsk\0nib\0",	"Apple ][ Nibble order disk image",	apple2_nib_identify,	apple2_nib_construct,	NULL )
+	FLOPPY_OPTION( apple2_do, "do\0dsk\0bin\0",	"Apple ][ DOS order disk image",	apple2_dsk_identify,	apple2_do_construct,
+		HEADS([1])
+		TRACKS([35])
+		SECTORS([16])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+	FLOPPY_OPTION( apple2_po, "po\0dsk\0bin\0",	"Apple ][ ProDOS order disk image",	apple2_dsk_identify,	apple2_po_construct,
+		HEADS([1])
+		TRACKS([35])
+		SECTORS([16])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+	FLOPPY_OPTION( apple2_nib, "dsk\0nib\0",	"Apple ][ Nibble order disk image",	apple2_nib_identify,	apple2_nib_construct,
+		HEADS([1])
+		TRACKS([35])
+		SECTORS([16])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
 FLOPPY_OPTIONS_END

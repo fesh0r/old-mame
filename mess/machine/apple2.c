@@ -19,6 +19,8 @@
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
 #include "devices/flopdrv.h"
+#include "sound/dac.h"
+#include "sound/ay8910.h"
 
 #ifdef MAME_DEBUG
 #define LOG(x)	logerror x
@@ -50,6 +52,11 @@ static double joystick_x1_time;
 static double joystick_y1_time;
 static double joystick_x2_time;
 static double joystick_y2_time;
+
+static WRITE8_HANDLER ( apple2_mainram0400_w );
+static WRITE8_HANDLER ( apple2_mainram2000_w );
+static WRITE8_HANDLER ( apple2_auxram0400_w );
+static WRITE8_HANDLER ( apple2_auxram2000_w );
 
 
 
@@ -731,13 +738,19 @@ MACHINE_INIT( apple2 )
 	mess_image *image;
 	int i;
 	int need_intcxrom;
+	int keyboard_type = AP2_KEYBOARD_2E;
 
 	need_intcxrom = !strcmp(Machine->gamedrv->name, "apple2c")
 		|| !strcmp(Machine->gamedrv->name, "apple2c0")
 		|| !strcmp(Machine->gamedrv->name, "apple2cp");
 	apple2_setvar(need_intcxrom ? VAR_INTCXROM : 0, ~0);
 
-	AY3600_init();
+	if (!strcmp(Machine->gamedrv->name, "apple2")
+		|| !strcmp(Machine->gamedrv->name, "apple2p"))
+		keyboard_type = AP2_KEYBOARD_2;
+	if (!strcmp(Machine->gamedrv->name, "apple2ep"))
+		keyboard_type = AP2_KEYBOARD_2GS;
+	AY3600_init(keyboard_type);
 
 	a2_speaker_state = 0;
 
@@ -799,28 +812,28 @@ void apple2_interrupt(void)
 	apple2_auxram2000_w
 ***************************************************************************/
 
-WRITE8_HANDLER ( apple2_mainram0400_w )
+static WRITE8_HANDLER ( apple2_mainram0400_w )
 {
 	offset += 0x400;
 	mess_ram[offset] = data;
 	apple2_video_touch(offset);
 }
 
-WRITE8_HANDLER ( apple2_mainram2000_w )
+static WRITE8_HANDLER ( apple2_mainram2000_w )
 {
 	offset += 0x2000;
 	mess_ram[offset] = data;
 	apple2_video_touch(offset);
 }
 
-WRITE8_HANDLER ( apple2_auxram0400_w )
+static WRITE8_HANDLER ( apple2_auxram0400_w )
 {
 	offset += 0x10400;
 	mess_ram[offset] = data;
 	apple2_video_touch(offset);
 }
 
-WRITE8_HANDLER ( apple2_auxram2000_w )
+static WRITE8_HANDLER ( apple2_auxram2000_w )
 {
 	offset += 0x12000;
 	mess_ram[offset] = data;
@@ -1062,12 +1075,15 @@ READ8_HANDLER ( apple2_c06x_r )
 
 READ8_HANDLER ( apple2_c07x_r )
 {
+	double x_calibration = TIME_IN_USEC(12.0);
+	double y_calibration = TIME_IN_USEC(13.0);
+
 	if (offset == 0)
 	{
-		joystick_x1_time = timer_get_time() + TIME_IN_USEC(12.0) * readinputportbytag("joystick_1_x");
-		joystick_y1_time = timer_get_time() + TIME_IN_USEC(12.0) * readinputportbytag("joystick_1_y");
-		joystick_x2_time = timer_get_time() + TIME_IN_USEC(12.0) * readinputportbytag("joystick_2_x");
-		joystick_y2_time = timer_get_time() + TIME_IN_USEC(12.0) * readinputportbytag("joystick_2_y");
+		joystick_x1_time = timer_get_time() + x_calibration * readinputportbytag("joystick_1_x");
+		joystick_y1_time = timer_get_time() + y_calibration * readinputportbytag("joystick_1_y");
+		joystick_x2_time = timer_get_time() + x_calibration * readinputportbytag("joystick_2_x");
+		joystick_y2_time = timer_get_time() + y_calibration * readinputportbytag("joystick_2_y");
 	}
 	return 0;
 }
@@ -1377,7 +1393,7 @@ static void mockingboard_w (int offset, int data)
 			switch (data)
 			{
 				case 0x00: /* reset */
-					AY8910_reset (0);
+					sndti_reset(SOUND_AY8910, 0);
 					break;
 				case 0x04: /* make inactive */
 					break;
@@ -1402,7 +1418,7 @@ static void mockingboard_w (int offset, int data)
 			switch (data)
 			{
 				case 0x00: /* reset */
-					AY8910_reset (1);
+					sndti_reset(SOUND_AY8910, 1);
 					break;
 				case 0x04: /* make inactive */
 					break;

@@ -3251,7 +3251,8 @@ static void setup_menu_init(void)
 	append_menu(UI_imageinfo, UI_IMAGEINFO);
 	append_menu(UI_filemanager, UI_FILEMANAGER);
 #if HAS_WAVE
-	append_menu(UI_tapecontrol, UI_TAPECONTROL);
+	if (device_find(Machine->devices, IO_CASSETTE))
+		append_menu(UI_tapecontrol, UI_TAPECONTROL);
 #endif /* HAS_WAVE */
 	append_menu(UI_history, UI_HISTORY);
 #endif /* !MESS */

@@ -31,10 +31,6 @@
 #define FRAC_MASK						(FRAC_ONE - 1)
 
 
-#define SAMPLES_THIS_FRAME(channel) \
-	mixer_need_samples_this_frame((channel),stream[channel].sample_rate)
-
-
 
 /*************************************
  *
@@ -652,15 +648,30 @@ static void resample_input_stream(struct stream_input *input, int samples)
 	/* input is oversampled: sum the energy */
 	else
 	{
+		/* use 8 bits to allow some extra headroom */
+		int smallstep = step >> (FRAC_BITS - 8);
+
 		/* no or low gain */
 		if (gain <= 0x100)
 		{
 			while (samples--)
 			{
+				int tpos = pos >> FRAC_BITS;
+				int remainder = smallstep;
+				int scale;
+				
 				/* compute the sample */
-				sample  = source[(pos >> FRAC_BITS) + 0] * (FRAC_ONE - (pos & FRAC_MASK));
-				sample += source[(pos >> FRAC_BITS) + 1] * (pos & FRAC_MASK);
-				sample >>= FRAC_BITS;
+				scale = (FRAC_ONE - (pos & FRAC_MASK)) >> (FRAC_BITS - 8);
+				sample = source[tpos++] * scale;
+				remainder -= scale;
+				while (remainder > 0x100)
+				{
+					sample += source[tpos++] * 0x100;
+					remainder -= 0x100;
+				}
+				sample += source[tpos] * remainder;
+				sample /= smallstep;
+				
 				*dest++ = (sample * gain) >> 8;
 				pos += step;
 			}
@@ -671,10 +682,22 @@ static void resample_input_stream(struct stream_input *input, int samples)
 		{
 			while (samples--)
 			{
+				int tpos = pos >> FRAC_BITS;
+				int remainder = smallstep;
+				int scale;
+				
 				/* compute the sample */
-				sample  = source[(pos >> FRAC_BITS) + 0] * (FRAC_ONE - (pos & FRAC_MASK));
-				sample += source[(pos >> FRAC_BITS) + 1] * (pos & FRAC_MASK);
-				sample >>= FRAC_BITS;
+				scale = (FRAC_ONE - (pos & FRAC_MASK)) >> (FRAC_BITS - 8);
+				sample = source[tpos++] * scale;
+				remainder -= scale;
+				while (remainder > 0x100)
+				{
+					sample += source[tpos++] * 0x100;
+					remainder -= 0x100;
+				}
+				sample += source[tpos] * remainder;
+				sample /= smallstep;
+
 				sample = (sample * gain) >> 8;
 				pos += step;
 
@@ -692,67 +715,3 @@ static void resample_input_stream(struct stream_input *input, int samples)
 	input->resample_in_pos = dest - input->resample;
 	input->source_frac = pos;
 }
-
-
-
-
-
-#if 0
-/*
-signal >--R1--+--R2--+
-              |      |
-              C      R3---> amp
-              |      |
-             GND    GND
-*/
-
-/* R1, R2, R3 in Ohm; C in pF */
-/* set C = 0 to disable the filter */
-void set_RC_filter(sound_stream *stream,int R1,int R2,int R3,int C)
-{
-	struct sound_stream *st = &stream[channel];
-	float f_R1,f_R2,f_R3,f_C;
-	float Req;
-
-	stream_update(channel, 0);
-
-	if (C == 0)
-	{
-		/* filter disabled */
-		st->k = 0;
-		return;
-	}
-
-	f_R1 = R1;
-	f_R2 = R2;
-	f_R3 = R3;
-	f_C = (float)C * 1E-12;	/* convert pF to F */
-
-	/* Cut Frequency = 1/(2*Pi*Req*C) */
-
-	Req = (f_R1 * (f_R2 + f_R3)) / (f_R1 + f_R2 + f_R3);
-
-	/* k = (1-(EXP(-TIMEDELTA/RC)))    */
-	st->k = 0x10000 * (1 - (exp(-1 / (Req * f_C) / st->sample_rate)));
-}
-
-
-void apply_RC_filter(int channel,int len)
-{
-	struct sound_stream *st = &stream[channel];
-	int i;
-	INT16 *buf = st->buffer;
-
-	if (len == 0 || st->k == 0) return;
-
-	/* Next Value = PREV + (INPUT_VALUE - PREV) * k    */
-	buf[0] = st->memory + ((int)(buf[0] - st->memory) * st->k / 0x10000);
-
-	for (i = 1;i < len;i++)
-		buf[i] = buf[i-1] + ((int)(buf[i] - buf[i-1]) * st->k / 0x10000);
-
-	st->memory = buf[len-1];
-}
-
-
-#endif

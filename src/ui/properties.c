@@ -133,7 +133,6 @@ static void SetPropEnabledControls(HWND hWnd);
 static void BuildDataMap(void);
 static void ResetDataMap(void);
 
-static BOOL IsControlDefaultValue(HWND hDlg,HWND hwnd_ctrl);
 static BOOL IsControlOptionValue(HWND hDlg,HWND hwnd_ctrl, options_type *opts );
 
 static void UpdateBackgroundBrush(HWND hwndTab);
@@ -269,10 +268,12 @@ static DWORD dwHelpIDs[] =
 	IDC_LIGHTGUN,           HIDC_LIGHTGUN,
 	IDC_STEADYKEY,          HIDC_STEADYKEY,
 	IDC_OLD_TIMING,         HIDC_OLD_TIMING,
+	IDC_CRC_ONLY,           HIDC_CRC_ONLY,
 	IDC_JOY_GUI,            HIDC_JOY_GUI,
 	IDC_RANDOM_BG,          HIDC_RANDOM_BG,
 	IDC_SKIP_DISCLAIMER,    HIDC_SKIP_DISCLAIMER,
 	IDC_SKIP_GAME_INFO,     HIDC_SKIP_GAME_INFO,
+	IDC_SKIP_VALIDITY_CHECKS, HIDC_SKIP_VALIDITY_CHECKS,
 	IDC_HIGH_PRIORITY,      HIDC_HIGH_PRIORITY,
 	IDC_D3D,                HIDC_D3D,
 	IDC_D3D_FILTER,         HIDC_D3D_FILTER,
@@ -352,11 +353,6 @@ void PropertiesInit(void)
 DWORD GetHelpIDs(void)
 {
 	return (DWORD) (LPSTR) dwHelpIDs;
-}
-
-static void CLIB_DECL DetailsPrintf(const char *fmt, ...)
-{
-	// throw it away
 }
 
 static PROPSHEETPAGE *CreatePropSheetPages(HINSTANCE hInst, BOOL bOnlyDefault,
@@ -647,36 +643,33 @@ static char *GameInfoCPU(UINT nIndex)
 /* Build Sound system info string */
 static char *GameInfoSound(UINT nIndex)
 {
-	int i;
-	static char buf[1024] = "";
+	int soundnum;
+	static char buf[1024];
     struct InternalMachineDriver drv;
     expand_machine_driver(drivers[nIndex]->drv,&drv);
 
-	ZeroMemory(buf, sizeof(buf));
-	i = 0;
-	while (i < MAX_SOUND && drv.sound[i].sound_type)
-	{
-		if (1 < sound_num(&drv.sound[i]))
-			sprintf(&buf[strlen(buf)], "%d x ", sound_num(&drv.sound[i]));
+	buf[0] = 0;
 
-		sprintf(&buf[strlen(buf)], "%s", sound_name(&drv.sound[i]));
-
-		if (sound_clock(&drv.sound[i]))
+	for (soundnum = 0; soundnum < MAX_SOUND; soundnum++)
+		if (drv.sound[soundnum].sound_type != 0)
 		{
-			if (sound_clock(&drv.sound[i]) >= 1000000)
-				sprintf(&buf[strlen(buf)], " %d.%06d MHz",
-						sound_clock(&drv.sound[i]) / 1000000,
-						sound_clock(&drv.sound[i]) % 1000000);
-			else
-				sprintf(&buf[strlen(buf)], " %d.%03d kHz",
-						sound_clock(&drv.sound[i]) / 1000,
-						sound_clock(&drv.sound[i]) % 1000);
+			sprintf(&buf[strlen(buf)], "%s", sndtype_name(drv.sound[soundnum].sound_type));
+
+			if (drv.sound[soundnum].clock)
+			{
+				if (drv.sound[soundnum].clock >= 1000000)
+					sprintf(&buf[strlen(buf)], " %d.%06d MHz",
+							drv.sound[soundnum].clock / 1000000,
+							drv.sound[soundnum].clock % 1000000);
+				else
+					sprintf(&buf[strlen(buf)], " %d.%03d kHz",
+							drv.sound[soundnum].clock / 1000,
+							drv.sound[soundnum].clock % 1000);
+			}
+			strcat(buf,"\n");
 		}
 
-		strcat(buf,"\n");
 
-		i++;
-	}
 	return buf;
 }
 
@@ -981,24 +974,6 @@ HWND hWnd;
 
 	}
     return 0;
-}
-
-static BOOL ReadSkipCtrl(HWND hWnd, UINT nCtrlID, int *value)
-{
-	HWND hCtrl;
-	char buf[100];
-	int  nValue = *value;
-
-	hCtrl = GetDlgItem(hWnd, nCtrlID);
-	if (hCtrl)
-	{
-		/* Skip lines control */
-		Edit_GetText(hCtrl, buf, 100);
-		if (sscanf(buf, "%d", value) != 1)
-			*value = 0;
-	}
-
-	return (nValue == *value) ? FALSE : TRUE;
 }
 
 /* Handle all options property pages */
@@ -2320,85 +2295,16 @@ static void BuildDataMap(void)
 	DataMapAdd(IDC_OLD_TIMING,    DM_BOOL, CT_BUTTON,   &pGameOpts->old_timing,    DM_BOOL, &pGameOpts->old_timing,    0, 0, 0);
 	DataMapAdd(IDC_LEDS,          DM_BOOL, CT_BUTTON,   &pGameOpts->leds,          DM_BOOL, &pGameOpts->leds,          0, 0, 0);
 	DataMapAdd(IDC_LEDMODE,       DM_INT,  CT_COMBOBOX, &g_nLedmodeIndex,		   DM_STRING, &pGameOpts->ledmode,  0, 0, AssignLedmode);
+	DataMapAdd(IDC_HIGH_PRIORITY, DM_BOOL, CT_BUTTON,   &pGameOpts->high_priority, DM_BOOL, &pGameOpts->high_priority, 0, 0, 0);
+	DataMapAdd(IDC_SKIP_DISCLAIMER, DM_BOOL, CT_BUTTON, &pGameOpts->skip_disclaimer, DM_BOOL, &pGameOpts->skip_disclaimer, 0, 0, 0);
+	DataMapAdd(IDC_SKIP_GAME_INFO, DM_BOOL, CT_BUTTON,  &pGameOpts->skip_gameinfo, DM_BOOL, &pGameOpts->skip_gameinfo, 0, 0, 0);
+	DataMapAdd(IDC_SKIP_VALIDITY_CHECKS, DM_BOOL, CT_BUTTON, &pGameOpts->skip_validitychecks, DM_BOOL, &pGameOpts->skip_validitychecks, 0, 0, 0);
+	DataMapAdd(IDC_CRC_ONLY,      DM_BOOL, CT_BUTTON,   &pGameOpts->crc_only,      DM_BOOL, &pGameOpts->crc_only,      0, 0, 0);
 	DataMapAdd(IDC_BIOS,          DM_INT,  CT_COMBOBOX, &pGameOpts->bios,          DM_INT, &pGameOpts->bios,        0, 0, 0);
 #ifdef MESS
 	DataMapAdd(IDC_USE_NEW_UI,    DM_BOOL, CT_BUTTON,   &pGameOpts->mess.use_new_ui,DM_BOOL, &pGameOpts->mess.use_new_ui, 0, 0, 0);
 #endif
 
-}
-
-BOOL IsControlDefaultValue(HWND hDlg,HWND hwnd_ctrl)
-{
-	int control_id = GetControlID(hDlg,hwnd_ctrl);
-
-	options_type *default_options;
-	
-	if( g_nFolder == FOLDER_VECTOR)
-		default_options = GetDefaultOptions(g_nGame, TRUE);
-	else
-		default_options = GetDefaultOptions(g_nGame, FALSE);
-
-	// certain controls we need to handle specially
-	switch (control_id)
-	{
-	case IDC_ASPECTRATION :
-	{
-		int n1=0, n2=0;
-
-		sscanf(pGameOpts->aspect,"%i",&n1);
-		sscanf(default_options->aspect,"%i",&n2);
-
-		return n1 == n2;
-	}
-	case IDC_ASPECTRATIOD :
-	{
-		int temp, d1=0, d2=0;
-
-		sscanf(pGameOpts->aspect,"%i:%i",&temp,&d1);
-		sscanf(default_options->aspect,"%i:%i",&temp,&d2);
-
-		return d1 == d2;
-	}
-	case IDC_SIZES :
-	{
-		int x1=0,y1=0,x2=0,y2=0;
-
-		if (strcmp(pGameOpts->resolution,"auto") == 0 &&
-			strcmp(default_options->resolution,"auto") == 0)
-			return TRUE;
-		
-		sscanf(pGameOpts->resolution,"%d x %d",&x1,&y1);
-		sscanf(default_options->resolution,"%d x %d",&x2,&y2);
-
-		return x1 == x2 && y1 == y2;		
-	}
-	case IDC_RESDEPTH :
-	{
-		int temp,d1=0,d2=0;
-
-		if (strcmp(pGameOpts->resolution,"auto") == 0 &&
-			strcmp(default_options->resolution,"auto") == 0)
-			return TRUE;
-		
-		sscanf(pGameOpts->resolution,"%d x %d x %d",&temp,&temp,&d1);
-		sscanf(default_options->resolution,"%d x %d x %d",&temp,&temp,&d2);
-
-		return d1 == d2;
-	}
-	case IDC_ROTATE :
-	{
-		ReadControl(hDlg,control_id);
-	
-		return pGameOpts->ror == default_options->ror &&
-			pGameOpts->rol == default_options->rol;
-
-	}
-	}
-	// most options we can compare using data in the data map
-	if (IsControlDifferent(hDlg,hwnd_ctrl,pGameOpts,default_options))
-		return FALSE;
-
-	return TRUE;
 }
 
 BOOL IsControlOptionValue(HWND hDlg,HWND hwnd_ctrl, options_type *opts )
@@ -2474,14 +2380,22 @@ static void SetStereoEnabled(HWND hWnd, int nIndex)
 	BOOL enabled = FALSE;
 	HWND hCtrl;
     struct InternalMachineDriver drv;
+	int speakernum, num_speakers;
+
+	num_speakers = 0;
 
 	if ( nIndex > -1)
+	{
 		expand_machine_driver(drivers[nIndex]->drv,&drv);
+		for (speakernum = 0; speakernum < MAX_SPEAKER; speakernum++)
+			if (drv.speaker[speakernum].tag != NULL)
+				num_speakers++;
+	}
 
 	hCtrl = GetDlgItem(hWnd, IDC_STEREO);
 	if (hCtrl)
 	{
-		if (nIndex <= -1 || drv.sound_attributes & SOUND_SUPPORTS_STEREO)
+		if (nIndex <= -1 || num_speakers == 2)
 			enabled = TRUE;
 
 		EnableWindow(hCtrl, enabled);

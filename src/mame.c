@@ -1606,7 +1606,7 @@ void machine_remove_speaker(struct InternalMachineDriver *machine, const char *t
 
 
 /*-------------------------------------------------
-	machine_add_sound - add a sound system during
+	machine_add_sound - add a sound system during 
 	machine driver expansion
 -------------------------------------------------*/
 

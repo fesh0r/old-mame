@@ -57,6 +57,7 @@ CPUS+=M6809@
 CPUS+=M6809E@
 #CPUS+=KONAMI@
 CPUS+=M68000@
+CPUS+=M68008@
 CPUS+=M68010@
 CPUS+=M68EC020@
 CPUS+=M68020@
@@ -154,7 +155,7 @@ SOUNDS+=DAC@
 SOUNDS+=AY8910@
 SOUNDS+=YM2203@
 # enable only one of the following two
-#SOUNDS+=YM2151@
+SOUNDS+=YM2151@
 SOUNDS+=YM2151_ALT@
 SOUNDS+=YM2608@
 SOUNDS+=YM2610@
@@ -166,7 +167,7 @@ SOUNDS+=YM3812@
 #SOUNDS+=YMZ280B@
 #SOUNDS+=YM3526@
 #SOUNDS+=Y8950@
-#SOUNDS+=SN76477@
+SOUNDS+=SN76477@
 SOUNDS+=SN76496@
 SOUNDS+=POKEY@
 SOUNDS+=TIA@
@@ -284,24 +285,25 @@ DRVLIBS = \
 	$(OBJ)/sharp.a    \
 	$(OBJ)/aim65.a    \
 	$(OBJ)/avigo.a    \
-	$(OBJ)/motorola.a \
-	$(OBJ)/ssystem3.a \
-	$(OBJ)/hp48.a     \
-	$(OBJ)/cbm.a      \
-	$(OBJ)/cbmshare.a \
-	$(OBJ)/kim1.a     \
-	$(OBJ)/sym1.a     \
-	$(OBJ)/dai.a      \
+	$(OBJ)/motorola.a	\
+	$(OBJ)/ssystem3.a	\
+	$(OBJ)/hp48.a		\
+	$(OBJ)/cbm.a		\
+	$(OBJ)/cbmshare.a	\
+	$(OBJ)/kim1.a		\
+	$(OBJ)/sym1.a		\
+	$(OBJ)/dai.a		\
 	$(OBJ)/bandai.a		\
 	$(OBJ)/compis.a		\
-	$(OBJ)/necpc.a	  \
-	$(OBJ)/ascii.a	  \
-	$(OBJ)/mtx.a	  \
-	$(OBJ)/intv.a     \
-	$(OBJ)/rca.a	  \
+	$(OBJ)/necpc.a		\
+	$(OBJ)/ascii.a		\
+	$(OBJ)/mtx.a		\
+	$(OBJ)/intv.a		\
+	$(OBJ)/rca.a		\
 	$(OBJ)/multitch.a	\
 	$(OBJ)/telmac.a		\
 	$(OBJ)/tx0.a		\
+	$(OBJ)/luxor.a		\
 
 
 $(OBJ)/neocd.a:						\
@@ -462,7 +464,8 @@ $(OBJ)/sinclair.a: \
 	$(OBJ)/mess/machine/zx.o		\
 	$(OBJ)/mess/systems/spectrum.o		\
 	$(OBJ)/mess/machine/spectrum.o		\
-	$(OBJ)/mess/formats/zx81_p.o
+	$(OBJ)/mess/formats/zx81_p.o		\
+	$(OBJ)/mess/systems/ql.o		\
 
 $(OBJ)/apple.a:   \
 	$(OBJ)/mess/vidhrdw/apple2.o		\
@@ -869,6 +872,8 @@ $(OBJ)/tx0.a:				\
 	$(OBJ)/mess/machine/tx0.o	\
 	$(OBJ)/mess/vidhrdw/tx0.o	\
 
+$(OBJ)/luxor.a:					\
+	$(OBJ)/mess/systems/abc80.o	\
 
 
 # MESS specific core $(OBJ)s
