@@ -70,5 +70,7 @@ MODULE(ti99)
 MODULE(ti990)
 MODULE(fat)
 MODULE(pc_chd)
+MODULE(prodos_525)
+MODULE(prodos_35)
 
 #endif /* MODULES_RECURSIVE */

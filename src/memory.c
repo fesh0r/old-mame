@@ -360,6 +360,7 @@ static UINT8 get_handler_index(struct handler_data_t *table, genf *handler, offs
 static void populate_table_range(struct addrspace_data_t *space, int iswrite, offs_t start, offs_t stop, UINT8 handler);
 static void populate_table_match(struct addrspace_data_t *space, int iswrite, offs_t matchval, offs_t matchmask, UINT8 handler);
 static UINT8 allocate_subtable(struct table_data_t *tabledata);
+static void reallocate_subtable(struct table_data_t *tabledata, UINT8 subentry);
 static int merge_subtables(struct table_data_t *tabledata);
 static void release_subtable(struct table_data_t *tabledata, UINT8 subentry);
 static UINT8 *open_subtable(struct table_data_t *tabledata, offs_t l1index);
@@ -1193,8 +1194,8 @@ static void install_mem_handler(struct addrspace_data_t *space, int iswrite, int
 {
 	offs_t lmirrorbit[LEVEL1_BITS], lmirrorbits, hmirrorbit[LEVEL2_BITS], hmirrorbits, lmirrorcount, hmirrorcount;
 	struct table_data_t *tabledata = iswrite ? &space->write : &space->read;
-	UINT8 idx;//, prev_entry = STATIC_INVALID;
-//	int cur_index, prev_index = 0;
+	UINT8 idx, prev_entry = STATIC_INVALID;
+	int cur_index, prev_index = 0;
 	offs_t original_mask = mask;
 	int i;
 
@@ -1240,10 +1241,10 @@ static void install_mem_handler(struct addrspace_data_t *space, int iswrite, int
 
 	/* determine the mirror bits */
 	hmirrorbits = lmirrorbits = 0;
-	for (i = 0; i < LEVEL1_BITS; i++)
+	for (i = 0; i < LEVEL2_BITS; i++)
 		if (mirror & (1 << i))
 			lmirrorbit[lmirrorbits++] = 1 << i;
-	for (i = LEVEL1_BITS; i < 32; i++)
+	for (i = LEVEL2_BITS; i < 32; i++)
 		if (mirror & (1 << i))
 			hmirrorbit[hmirrorbits++] = 1 << i;
 
@@ -1550,6 +1551,24 @@ static UINT8 allocate_subtable(struct table_data_t *tabledata)
 
 
 /*-------------------------------------------------
+	reallocate_subtable - increment the usecount on
+	a subtable
+-------------------------------------------------*/
+
+static void reallocate_subtable(struct table_data_t *tabledata, UINT8 subentry)
+{
+	UINT8 subindex = subentry - SUBTABLE_BASE;
+
+	/* sanity check */
+	if (tabledata->subtable[subindex].usecount <= 0)
+		osd_die("Called reallocate_subtable on a table with a usecount of 0\n");
+
+	/* increment the usecount */
+	tabledata->subtable[subindex].usecount++;
+}
+
+
+/*-------------------------------------------------
 	merge_subtables - merge any duplicate
 	subtables
 -------------------------------------------------*/
@@ -1563,7 +1582,7 @@ static int merge_subtables(struct table_data_t *tabledata)
 
 	/* okay, we failed; update all the checksums and merge tables */
 	for (subindex = 0; subindex < SUBTABLE_COUNT; subindex++)
-		if (!tabledata->subtable[subindex].checksum_valid)
+		if (!tabledata->subtable[subindex].checksum_valid && tabledata->subtable[subindex].usecount != 0)
 		{
 			UINT32 *subtable = (UINT32 *)SUBTABLE_PTR(tabledata, subindex + SUBTABLE_BASE);
 			UINT32 checksum = 0;
@@ -1578,31 +1597,32 @@ static int merge_subtables(struct table_data_t *tabledata)
 
 	/* see if there's a matching checksum */
 	for (subindex = 0; subindex < SUBTABLE_COUNT; subindex++)
-	{
-		UINT8 *subtable = SUBTABLE_PTR(tabledata, subindex + SUBTABLE_BASE);
-		UINT32 checksum = tabledata->subtable[subindex].checksum;
-		UINT8 sumindex;
+		if (tabledata->subtable[subindex].usecount != 0)
+		{
+			UINT8 *subtable = SUBTABLE_PTR(tabledata, subindex + SUBTABLE_BASE);
+			UINT32 checksum = tabledata->subtable[subindex].checksum;
+			UINT8 sumindex;
 
-		for (sumindex = subindex + 1; sumindex < SUBTABLE_COUNT; sumindex++)
-			if (tabledata->subtable[sumindex].checksum == checksum &&
-				!memcmp(subtable, SUBTABLE_PTR(tabledata, sumindex + SUBTABLE_BASE), 1 << LEVEL2_BITS))
-			{
-				int l1index;
+			for (sumindex = subindex + 1; sumindex < SUBTABLE_COUNT; sumindex++)
+				if (tabledata->subtable[sumindex].usecount != 0 &&
+					tabledata->subtable[sumindex].checksum == checksum &&
+					!memcmp(subtable, SUBTABLE_PTR(tabledata, sumindex + SUBTABLE_BASE), 1 << LEVEL2_BITS))
+				{
+					int l1index;
 
-				VPRINTF(("Merging subtable %d and %d....\n", subindex, sumindex));
+					VPRINTF(("Merging subtable %d and %d....\n", subindex, sumindex));
 
-				/* got a match -- merge the tables */
-				tabledata->subtable[sumindex].usecount++;
-				release_subtable(tabledata, subindex + SUBTABLE_BASE);
-				merged++;
-
-				/* find all the entries in the L1 tables that pointed to the old one, and point them to the merged table */
-				for (l1index = 0; l1index <= (0xffffffffUL >> LEVEL2_BITS); l1index++)
-					if (tabledata->table[l1index] == subindex + SUBTABLE_BASE)
-						tabledata->table[l1index] = sumindex + SUBTABLE_BASE;
-				break;
-			}
-	}
+					/* find all the entries in the L1 tables that pointed to the old one, and point them to the merged table */
+					for (l1index = 0; l1index <= (0xffffffffUL >> LEVEL2_BITS); l1index++)
+						if (tabledata->table[l1index] == sumindex + SUBTABLE_BASE)
+						{
+							release_subtable(tabledata, sumindex + SUBTABLE_BASE);
+							reallocate_subtable(tabledata, subindex + SUBTABLE_BASE);
+							tabledata->table[l1index] = subindex + SUBTABLE_BASE;
+							merged++;
+						}
+				}
+		}
 
 	return merged;
 }
