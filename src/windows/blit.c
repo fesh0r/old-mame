@@ -1484,6 +1484,10 @@ static void generate_blitter(const struct win_blit_params *blit)
 	UINT32 valuefixups[32];
 	int middle, last;
 
+	// determine MMX/XMM support
+	if (use_mmx == -1)
+		check_for_mmx();
+
 #if DEBUG_BLITTERS
 	fprintf(stderr, "Generating blitter\n");
 #endif
