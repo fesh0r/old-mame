@@ -2088,7 +2088,7 @@ int mame_validitychecks(void)
 							error = 1;
 						}
 					}
-
+					
 					if (port_type_is_analog(inp->type))
 					{
 						if (inp->analog.sensitivity == 0)

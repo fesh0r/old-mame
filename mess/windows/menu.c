@@ -9,6 +9,7 @@
 #include <commdlg.h>
 #include <winuser.h>
 #include <ctype.h>
+#include <tchar.h>
 
 // MAME/MESS headers
 #include "mame.h"
@@ -57,7 +58,7 @@ extern void win_timer_enable(int enabled);
 #define ID_JOYSTICK_0				12000
 #define ID_INPUT_0					13000
 
-#define MAX_JOYSTICKS				((IPF_PLAYERMASK / IPF_PLAYER2) + 1)
+#define MAX_JOYSTICKS				(8)
 
 #define USE_TAPEDLG	0
 
@@ -180,7 +181,7 @@ static void customize_input(const char *title, int cust_type, int player, int in
 				pr = NULL;
 				for (i = 0; customizations[i].ipt != IPT_END; i++)
 				{
-					if ((in->type & ~IPF_MASK) == customizations[i].ipt)
+					if (in->type == customizations[i].ipt)
 					{
 						pr = (RECT *) alloca(sizeof(*pr));
 						pr->left = customizations[i].x;
@@ -295,7 +296,7 @@ static void storeval_inputport(void *param, int val)
 
 static void customize_switches(int title_string_num, UINT32 ipt_name, UINT32 ipt_setting)
 {
-	void *dlg;
+	dialog_box *dlg;
 	struct InputPort *in;
 	const char *switch_name = NULL;
 	UINT32 type;
@@ -306,11 +307,11 @@ static void customize_switches(int title_string_num, UINT32 ipt_name, UINT32 ipt
 
 	for (in = Machine->input_ports; in->type != IPT_END; in++)
 	{
-		type = in->type & ~IPF_MASK;
+		type = in->type;
 
 		if (type == ipt_name)
 		{
-			if ((in->type & IPF_UNUSED) == 0 && !(!options.cheat && (in->type & IPF_CHEAT)))
+			if (input_port_active(in))
 			{
 				switch_name = input_port_name(in);
 				if (win_dialog_add_combobox(dlg, switch_name, in->default_value, storeval_inputport, in))
@@ -361,6 +362,97 @@ static void customize_dipswitches(void)
 static void customize_configuration(void)
 {
 	customize_switches(UI_configuration, IPT_CONFIG_NAME, IPT_CONFIG_SETTING);
+}
+
+
+
+//============================================================
+//	customize_analogcontrols
+//============================================================
+
+static void store_delta(void *param, int val)
+{
+	((struct InputPort *) param)->analog.delta = val;
+}
+
+
+
+static void store_centerdelta(void *param, int val)
+{
+	((struct InputPort *) param)->analog.centerdelta = val;
+}
+
+
+
+static void store_reverse(void *param, int val)
+{
+	((struct InputPort *) param)->analog.reverse = val;
+}
+
+
+
+static void store_sensitivity(void *param, int val)
+{
+	((struct InputPort *) param)->analog.sensitivity = val;
+}
+
+
+
+static void customize_analogcontrols(void)
+{
+	dialog_box *dlg;
+	struct InputPort *in;
+	const char *name;
+	char buf[255];
+	static const struct dialog_layout layout = { 120, 52 };
+	
+	dlg = win_dialog_init(ui_getstring(UI_analogcontrols), &layout);
+	if (!dlg)
+		goto done;
+
+	in = Machine->input_ports;
+
+	while (in->type != IPT_END)
+	{
+		if (port_type_is_analog(in->type))
+		{
+			name = input_port_name(in);
+
+			_snprintf(buf, sizeof(buf) / sizeof(buf[0]),
+				"%s %s", name, ui_getstring(UI_keyjoyspeed));
+			if (win_dialog_add_adjuster(dlg, buf, in->analog.delta, 1, 255, FALSE, store_delta, in))
+				goto done;
+
+			_snprintf(buf, sizeof(buf) / sizeof(buf[0]),
+				"%s %s", name, ui_getstring(UI_centerspeed));
+			if (win_dialog_add_adjuster(dlg, buf, in->analog.centerdelta, 1, 255, FALSE, store_centerdelta, in))
+				goto done;
+
+			_snprintf(buf, sizeof(buf) / sizeof(buf[0]),
+				"%s %s", name, ui_getstring(UI_reverse));
+			if (win_dialog_add_combobox(dlg, buf, in->analog.reverse ? 1 : 0, store_reverse, in))
+				goto done;
+			if (win_dialog_add_combobox_item(dlg, ui_getstring(UI_off), 0))
+				goto done;
+			if (win_dialog_add_combobox_item(dlg, ui_getstring(UI_on), 1))
+				goto done;
+
+			_snprintf(buf, sizeof(buf) / sizeof(buf[0]),
+				"%s %s", name, ui_getstring(UI_sensitivity));
+			if (win_dialog_add_adjuster(dlg, buf, in->analog.sensitivity, 1, 255, TRUE, store_sensitivity, in))
+				goto done;
+		}
+		in++;
+	}
+
+	if (win_dialog_add_standard_buttons(dlg))
+		goto done;
+
+	win_dialog_runmodal(dlg);
+
+done:
+	if (dlg)
+		win_dialog_exit(dlg);
 }
 
 
@@ -480,6 +572,11 @@ static void format_combo_changed(dialog_box *dialog, HWND dlgwnd, NMHDR *notific
 	guide = dev->createimage_optguide;	
 	optspec = dev->createimage_options[format_combo_val].optspec;
 
+	// set the default extension
+	CommDlg_OpenSave_SetDefExt(GetParent(dlgwnd),
+		dev->createimage_options[format_combo_val].extensions);
+
+	// enumerate through all of the child windows
 	wnd = NULL;
 	while((wnd = FindWindowEx(dlgwnd, wnd, NULL, NULL)) != NULL)
 	{
@@ -762,12 +859,14 @@ static void change_device(mess_image *img, int is_save)
 	dialog_box *dialog = NULL;
 	char filter[2048];
 	char filename[MAX_PATH];
+	TCHAR buffer[512];
 	char *s;
 	const struct IODevice *dev = image_device(img);
 	const char *initial_dir;
 	BOOL result;
 	int create_format;
 	option_resolution *create_args = NULL;
+	image_error_t err;
 
 	assert(dev);
 
@@ -817,9 +916,19 @@ static void change_device(mess_image *img, int is_save)
 
 		// mount the image
 		if (is_save)
-			image_create(img, filename, create_format, create_args);
+			err = image_create(img, filename, create_format, create_args);
 		else
-			image_load(img, filename);
+			err = image_load(img, filename);
+
+		// error?
+		if (err)
+		{
+			_sntprintf(buffer, sizeof(buffer) / sizeof(buffer[0]),
+				TEXT("Error when %s the image: %s"),
+				is_save ? TEXT("creating") : TEXT("loading"),
+				image_error(img));
+			MessageBox(win_video_window, buffer, MAMENAME, MB_OK);
+		}
 	}
 
 done:
@@ -996,14 +1105,14 @@ static void append_category_menus(HMENU menu)
 	for (i = 0; Machine->input_ports[i].type != IPT_END; i++)
 	{
 		in = &Machine->input_ports[i];
-		if ((in->type & ~IPF_MASK) == IPT_CATEGORY_NAME)
+		if (in->type == IPT_CATEGORY_NAME)
 		{
 			submenu = CreateMenu();
 			if (!submenu)
 				return;
 
 			// append all of the category settings
-			for (j = i + 1; (Machine->input_ports[j].type & ~IPF_MASK) == IPT_CATEGORY_SETTING; j++)
+			for (j = i + 1; (Machine->input_ports[j].type) == IPT_CATEGORY_SETTING; j++)
 			{
 				in_setting = &Machine->input_ports[j];
 				flags = MF_STRING;
@@ -1051,7 +1160,7 @@ static void setup_joystick_menu(void)
 	use_input_categories = 0;
 	while(in->type != IPT_END)
 	{
-		if ((in->type & ~IPF_MASK) == IPT_CATEGORY_NAME)
+		if (in->type == IPT_CATEGORY_NAME)
 		{
 			use_input_categories = 1;
 			break;
@@ -1069,14 +1178,14 @@ static void setup_joystick_menu(void)
 		for (i = 0; Machine->input_ports[i].type != IPT_END; i++)
 		{
 			in = &Machine->input_ports[i];
-			if ((in->type & ~IPF_MASK) == IPT_CATEGORY_NAME)
+			if ((in->type) == IPT_CATEGORY_NAME)
 			{
 				submenu = CreateMenu();
 				if (!submenu)
 					return;
 
 				// append all of the category settings
-				for (j = i + 1; (Machine->input_ports[j].type & ~IPF_MASK) == IPT_CATEGORY_SETTING; j++)
+				for (j = i + 1; (Machine->input_ports[j].type) == IPT_CATEGORY_SETTING; j++)
 				{
 					in_setting = &Machine->input_ports[j];
 					AppendMenu(submenu, MF_STRING, ID_INPUT_0 + j, A2T(in_setting->name));
@@ -1180,7 +1289,7 @@ static void prepare_menus(void)
 		for (i = 0; Machine->input_ports[i].type != IPT_END; i++)
 		{
 			in = &Machine->input_ports[i];
-			switch(in->type & ~IPF_MASK) {
+			switch(in->type) {
 			case IPT_CATEGORY_NAME:
 				in_cat_value = in->default_value;
 				break;
@@ -1501,6 +1610,10 @@ static int invoke_command(UINT command)
 		customize_miscinput();
 		break;
 
+	case ID_OPTIONS_ANALOGCONTROLS:
+		customize_analogcontrols();
+		break;
+
 #if HAS_TOGGLEFULLSCREEN
 	case ID_OPTIONS_FULLSCREEN:
 		win_toggle_full_screen();
@@ -1564,12 +1677,12 @@ static int invoke_command(UINT command)
 		{
 			// customize categorized input
 			in = &Machine->input_ports[command - ID_INPUT_0];
-			switch(in->type & ~IPF_MASK) {
+			switch(in->type) {
 			case IPT_CATEGORY_NAME:
 				// customize the input type
 				category = 0;
 				section = NULL;
-				for (i = 1; (in[i].type & ~IPF_MASK) == IPT_CATEGORY_SETTING; i++)
+				for (i = 1; (in[i].type) == IPT_CATEGORY_SETTING; i++)
 				{
 					if (in[i].default_value == in[0].default_value)
 					{
@@ -1583,7 +1696,7 @@ static int invoke_command(UINT command)
 			case IPT_CATEGORY_SETTING:
 				// change the input type for this category
 				setting = in->default_value;
-				while((in->type & ~IPF_MASK) != IPT_CATEGORY_NAME)
+				while((in->type) != IPT_CATEGORY_NAME)
 					in--;
 				in->default_value = setting;
 				break;

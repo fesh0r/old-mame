@@ -846,7 +846,10 @@ void machine_init_ti99(void)
 	}
 
 	if (has_ide)
+	{
 		ti99_ide_init(ti99_model == model_99_8);
+		ti99_ide_load_memcard();
+	}
 
 	if (has_rs232)
 		ti99_rs232_init();
@@ -876,6 +879,9 @@ void machine_stop_ti99(void)
 {
 	if (has_speech)
 		tms5220_set_variant(variant_tms5220);
+
+	if (has_ide)
+		ti99_ide_save_memcard();
 
 	if (has_hsgpl)
 		ti99_hsgpl_save_memcard();
@@ -2120,7 +2126,7 @@ static int ti99_R9901_0(int offset)
 		answer = (ti99_handset_poll_bus() << 3) | 0x80;
 	else if (has_mecmouse && (KeyCol == ((ti99_model == model_99_4) ? 6 : 7)))
 	{
-		int buttons = (readinputport(input_port_mouse_buttons) >> input_port_mouse_buttons_shift) & 3;
+		int buttons = readinputport(input_port_mouse_buttons) & 3;
 
 		answer = (mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 4;
 
@@ -2242,7 +2248,7 @@ static int ti99_8_R9901_0(int offset)
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
-		int buttons = (readinputport(input_port_mouse_buttons_8) >> input_port_mouse_buttons_shift) & 3;
+		int buttons = readinputport(input_port_mouse_buttons) & 3;
 
 		answer = ((mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 7) & 0x80;
 
@@ -2251,7 +2257,7 @@ static int ti99_8_R9901_0(int offset)
 			answer |= 0x40;
 	}
 	else
-		answer = (readinputport(input_port_keyboard_8 + KeyCol) << 6) & 0xC0;
+		answer = (readinputport(input_port_keyboard + KeyCol) << 6) & 0xC0;
 
 	return answer;
 }
@@ -2272,7 +2278,7 @@ static int ti99_8_R9901_1(int offset)
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
-		int buttons = (readinputport(input_port_mouse_buttons_8) >> input_port_mouse_buttons_shift) & 3;
+		int buttons = readinputport(input_port_mouse_buttons) & 3;
 
 		answer = ((mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 1) & 0x03;
 
@@ -2281,8 +2287,7 @@ static int ti99_8_R9901_1(int offset)
 			answer |= 0x04;
 	}
 	else
-
-		answer = (readinputport(input_port_keyboard_8 + KeyCol) >> 2) & 0x07;
+		answer = (readinputport(input_port_keyboard + KeyCol) >> 2) & 0x07;
 
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
 	/*if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0)

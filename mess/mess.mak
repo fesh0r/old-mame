@@ -276,6 +276,7 @@ $(OBJ)/coleco.a:   \
 	$(OBJ)/mess/machine/adam.o		\
 	$(OBJ)/mess/systems/adam.o		\
 	$(OBJ)/mess/formats/adam_dsk.o	\
+	$(OBJ)/mess/systems/fnvision.o	\
 	
 
 $(OBJ)/arcadia.a:  \
@@ -817,16 +818,10 @@ $(OBJ)/telmac.a:					\
 
 
 
-EXPATOBJS =							\
-	$(OBJ)/mess/expat/xmlrole.o		\
-	$(OBJ)/mess/expat/xmltok.o		\
-	$(OBJ)/mess/expat/xmlparse.o	\
-
-
-
 # MESS specific core $(OBJ)s
 COREOBJS +=							\
-	$(EXPATOBJS)					\
+	$(EXPAT)						\
+	$(ZLIB)							\
 	$(OBJ)/cheat.o					\
 	$(OBJ)/vidhrdw/tms9928a.o		\
 	$(OBJ)/mess/mess.o				\
@@ -903,13 +898,13 @@ DAT2HTML_OBJS =								\
 	$(OBJ)/mess/utils.o
 
 MESSDOCS_OBJS =								\
-	$(EXPATOBJS)							\
 	$(OBJ)/mess/tools/messdocs/messdocs.o	\
 	$(OBJ)/mess/utils.o						\
 	$(OBJ)/mess/pool.o						\
+	$(EXPAT)								\
 
 MESSTEST_OBJS =								\
-	$(EXPATOBJS)							\
+	$(EXPAT)								\
 	$(OBJ)/mess/tools/messtest/main.o		\
 	$(OBJ)/mess/tools/messtest/messtest.o	\
 	$(OBJ)/mess/tools/messtest/testexec.o	\

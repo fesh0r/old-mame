@@ -54,8 +54,7 @@ static const UINT32 games[][2] =
 	{ 0x2452adab, modeAV }, // Decathlon PAL
 	{ 0xe127c012, modeAV }, // Robot Tank
 	{ 0xcded5569, modeAV }, // Robot Tank PAL
-	{ 0xdd210cf3, modeAV }, // Space Shuttle
-	{ 0x600e7c77, modeAV }, // Space Shuttle PAL
+	{ 0x600e7c77, modeAV }, // Space Shuttle PAL (Only the PAL version uses Activision style banking, the US release is regular 8K banking)
 	{ 0xb60ab310, modeAV }, // Thwocker Prototype
 	{ 0x3ba0d9bf, modePB }, // Frogger II
 	{ 0x09cdd3ea, modePB }, // Frogger II PAL
@@ -206,6 +205,62 @@ static WRITE8_HANDLER(modeTV_switch_w) { modeTV_switch(offset, data); }
 static WRITE8_HANDLER(modeUA_switch_w) { modeUA_switch(offset, data); }
 static WRITE8_HANDLER(modeDC_switch_w) { modeDC_switch(offset, data); }
 
+/*
+
+There seems to be a kind of lag between the writing to address 0x1FE and the
+Activision switcher springing into action. It waits for the next byte to arrive
+on the data bus, which is the new PCH in the case of a JSR, and the PCH of the
+stored PC on the stack in the case of an RTS.
+
+depending on last byte & 0x20 -> 0x00 -> switch to bank #1
+                              -> 0x20 -> switch to bank #0
+
+ */
+
+static opbase_handler AV_old_opbase_handler;
+static int AVTimer;
+
+OPBASE_HANDLER(modeAV_opbase_handler)
+{
+	if ( ! AVTimer )
+	{
+		/* Still cheating a bit here by looking bit 13 of the address..., but the high byte of the
+		   cpu should be the last byte that was on the data bus and so should determine the bank
+		   we should switch in. */
+		cpu_setbank( 1, CART + 0x1000 * ( ( address & 0x2000) ? 0 : 1 ) );
+		/* and restore old opbase handler */
+		memory_set_opbase_handler(0, AV_old_opbase_handler);
+	}
+	else
+	{
+		/* Wait for one memory access to have passed (reading of new PCH either from
+code or from stack) */
+		AVTimer--;
+	}
+	return address;
+}
+
+void modeAV_switch(UINT16 offset, UINT8 data)
+{
+	/* Retrieve last byte read by the cpu (for this mapping scheme this
+	   should be the last byte that was on the data bus
+	*/
+	AVTimer = 1;
+	AV_old_opbase_handler = memory_set_opbase_handler(0, modeAV_opbase_handler);
+	catch_nextBranch();
+}
+
+static READ8_HANDLER(modeAV_switch_r)
+{
+	modeAV_switch(offset, 0 );
+	return program_read_byte_8( 0xFE );
+}
+
+static WRITE8_HANDLER(modeAV_switch_w)
+{
+	program_write_byte_8( 0xFE, data );
+	modeAV_switch(offset, 0 );
+}
 
 static  READ8_HANDLER(current_bank_r)
 {
@@ -463,6 +518,11 @@ static MACHINE_INIT( a2600 )
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff0, 0x1ff0, 0, 0, modeDC_switch_w);
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff0, 0x1ff0, 0, 0, modeDC_switch_r);
 		break;
+
+	case modeAV:
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01fe, 0x01fe, 0, 0, modeAV_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01fe, 0x01fe, 0, 0, modeAV_switch_r);
+		break;
 	}
 
 	/* set up extra RAM */
@@ -496,43 +556,43 @@ static MACHINE_INIT( a2600 )
 INPUT_PORTS_START( a2600 )
 
 	PORT_START /* [0] */
-	PORT_ANALOG( 0xff, 0x80, IPT_PADDLE | IPF_PLAYER1 | IPF_REVERSE, 40, 10, 0, 255 ) PORT_CATEGORY(2)
+	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_MINMAX(0,255 ) PORT_CATEGORY(2) PORT_PLAYER(1) PORT_REVERSE
 	PORT_START /* [1] */
-	PORT_ANALOG( 0xff, 0x80, IPT_PADDLE | IPF_PLAYER2 | IPF_REVERSE, 40, 10, 0, 255 ) PORT_CATEGORY(2)
+	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_MINMAX(0,255 ) PORT_CATEGORY(2) PORT_PLAYER(2) PORT_REVERSE
 	PORT_START /* [2] */
-	PORT_ANALOG( 0xff, 0x80, IPT_PADDLE | IPF_PLAYER3 | IPF_REVERSE, 40, 10, 0, 255 ) PORT_CATEGORY(4)
+	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_MINMAX(0,255 ) PORT_CATEGORY(4) PORT_PLAYER(3) PORT_REVERSE
 	PORT_START /* [3] */
-	PORT_ANALOG( 0xff, 0x80, IPT_PADDLE | IPF_PLAYER4 | IPF_REVERSE, 40, 10, 0, 255 ) PORT_CATEGORY(4)
+	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_MINMAX(0,255 ) PORT_CATEGORY(4) PORT_PLAYER(4) PORT_REVERSE
 
 	PORT_START /* [4] */
-	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER1 ) PORT_CATEGORY(1)
+	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(1) PORT_PLAYER(1)
 
 	PORT_START /* [5] */
-	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 ) PORT_CATEGORY(3)
+	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(3) PORT_PLAYER(2)
 
 	PORT_START /* [6] SWCHA joystick */
-	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_PLAYER2 ) PORT_CATEGORY(3)
-	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_PLAYER2 ) PORT_CATEGORY(3)
-	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_PLAYER2 ) PORT_CATEGORY(3)
-	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER2 ) PORT_CATEGORY(3)
-	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_PLAYER1 ) PORT_CATEGORY(1)
-	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_PLAYER1 ) PORT_CATEGORY(1)
-	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_PLAYER1 ) PORT_CATEGORY(1)
-	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER1 ) PORT_CATEGORY(1)
+	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_CATEGORY(3) PORT_PLAYER(2)
+	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CATEGORY(3) PORT_PLAYER(2)
+	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CATEGORY(3) PORT_PLAYER(2)
+	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_CATEGORY(3) PORT_PLAYER(2)
+	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_CATEGORY(1) PORT_PLAYER(1)
+	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CATEGORY(1) PORT_PLAYER(1)
+	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CATEGORY(1) PORT_PLAYER(1)
+	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_CATEGORY(1) PORT_PLAYER(1)
 
 	PORT_START /* [7] SWCHA paddles */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER4 ) PORT_CATEGORY(4)
-	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER3 ) PORT_CATEGORY(4)
+	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(4) PORT_PLAYER(4)
+	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(4) PORT_PLAYER(3)
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 ) PORT_CATEGORY(2)
-	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER1 ) PORT_CATEGORY(2)
+	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(2) PORT_PLAYER(2)
+	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(2) PORT_PLAYER(1)
 
 	PORT_START /* [8] SWCHB */
-	PORT_BITX( 0x01, IP_ACTIVE_LOW, 0, "Reset Game", KEYCODE_ENTER, IP_JOY_DEFAULT )
-	PORT_BITX( 0x02, IP_ACTIVE_LOW, 0, "Select Game", KEYCODE_BACKSPACE, IP_JOY_DEFAULT )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Reset Game") PORT_CODE(KEYCODE_ENTER)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Select Game") PORT_CODE(KEYCODE_BACKSPACE)
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_DIPNAME( 0x08, 0x08, "TV Type" )
 	PORT_DIPSETTING(    0x08, "Color" )
@@ -548,10 +608,10 @@ INPUT_PORTS_START( a2600 )
 
 	PORT_START /* [9] */
 	PORT_CATEGORY_CLASS( 0xf0, 0x00, "Left Controller" )
-	PORT_CATEGORY_ITEM(    0x00, "Joystick", 1 )
+	PORT_CATEGORY_ITEM(    0x00, DEF_STR( Joystick ), 1 )
 	PORT_CATEGORY_ITEM(    0x10, "Paddles", 2 )
 	PORT_CATEGORY_CLASS( 0x0f, 0x00, "Right Controller" )
-	PORT_CATEGORY_ITEM(    0x00, "Joystick", 3 )
+	PORT_CATEGORY_ITEM(    0x00, DEF_STR( Joystick ), 3 )
 	PORT_CATEGORY_ITEM(    0x01, "Paddles", 4 )
 
 	PORT_START /* [10] */

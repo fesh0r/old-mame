@@ -76,6 +76,7 @@ void CreateCPUFolders(int parent_index);
 void CreateSoundFolders(int parent_index);
 void CreateOrientationFolders(int parent_index);
 void CreateDeficiencyFolders(int parent_index);
+void CreateDumpingFolders(int parent_index);
 
 /***************************************************************************/
 
@@ -90,11 +91,6 @@ enum
 	FOLDER_AVAILABLE,
 #ifdef SHOW_UNAVAILABLE_FOLDER
 	FOLDER_UNAVAILABLE,
-#endif
-#ifdef MESS
-	FOLDER_CONSOLE,
-	FOLDER_COMPUTER,
-	FOLDER_MODIFIED,
 #endif
 	FOLDER_MANUFACTURER,
 	FOLDER_YEAR,
@@ -115,6 +111,13 @@ enum
  	FOLDER_MULTIMON,
 	FOLDER_HARDDISK,
 	FOLDER_SAMPLES,
+	FOLDER_DUMPING,
+#ifdef MESS
+	FOLDER_CONSOLE,
+	FOLDER_COMPUTER,
+	FOLDER_MODIFIED,
+	FOLDER_MOUSE,
+#endif
 	MAX_FOLDERS,
 };
 
@@ -167,7 +170,7 @@ LPTREEFOLDER GetCurrentFolder(void);
 int GetNumFolders(void);
 LPTREEFOLDER GetFolder(UINT nFolder);
 LPTREEFOLDER GetFolderByID(UINT nID);
-LPTREEFOLDER GetFolderByName(int iParentIndex, char *cFolderName);
+LPTREEFOLDER GetFolderByName(int nParentId, const char *pszFolderName);
 
 void AddGame(LPTREEFOLDER lpFolder, UINT nGame);
 void RemoveGame(LPTREEFOLDER lpFolder, UINT nGame);

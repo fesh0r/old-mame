@@ -162,6 +162,7 @@ TESTDRIVER( studio2 )	/* Studio II										*/
 	DRIVER( coleco )	/* ColecoVision (Original BIOS)						*/
 	DRIVER( colecoa )	/* ColecoVision (Thick Characters)					*/
 	DRIVER( adam )		/* Coleco Adam										*/
+	DRIVER( fnvision )  /* Coleco FunVision                                 */
 
 	/* NEC */
 	DRIVER( pce )		/* PC/Engine - Turbo Graphics-16  NEC 1989-1993		*/
@@ -217,7 +218,7 @@ TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
 	DRIVER( cpc464 )	/* Amstrad (Schneider in Germany) 1984				*/
 	DRIVER( cpc664 )	/* Amstrad (Schneider in Germany) 1985				*/
 	DRIVER( cpc6128 )	/* Amstrad (Schneider in Germany) 1985				*/
-	DRIVER( cpc6128fr )	/* Amstrad (Schneider in Germany) 1985 (AZERTY)		*/
+	DRIVER( cpc6128f )	/* Amstrad (Schneider in Germany) 1985 (AZERTY)		*/
 	DRIVER( cpc464p )	/* Amstrad CPC464  Plus - 1987						*/
 	DRIVER( cpc6128p )	/* Amstrad CPC6128 Plus - 1987						*/
 	DRIVER( kccomp )	/* VEB KC compact									*/

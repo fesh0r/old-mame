@@ -86,6 +86,9 @@ static void  JoyInfoDecodeString(const char *str, void* data);
 
 static void  ColumnDecodeWidths(const char *ptr, void* data);
 
+static void  CusColorEncodeString(void* data, char* str);
+static void  CusColorDecodeString(const char* str, void* data);
+
 static void  SplitterEncodeString(void* data, char* str);
 static void  SplitterDecodeString(const char* str, void* data);
 
@@ -103,9 +106,6 @@ static void D3DPrescaleDecodeString(const char *str,void *data);
 
 static void CleanStretchEncodeString(void *data,char *str);
 static void CleanStretchDecodeString(const char *str,void *data);
-
-static void CurrentTabEncodeString(void *data,char *str);
-static void CurrentTabDecodeString(const char *str,void *data);
 
 static void FolderFlagsEncodeString(void *data,char *str);
 static void FolderFlagsDecodeString(const char *str,void *data);
@@ -151,21 +151,31 @@ static game_variables_type *game_variables;  // Array of game specific extra dat
 static REG_OPTION regSettings[] =
 {
 #ifdef MESS
-	{ "default_system",             RO_STRING,  &settings.default_game,              "pacman" },
+	{ "default_system",             RO_STRING,  &settings.default_game,              "nes" },
 #else
-	{ "default_game",               RO_STRING,  &settings.default_game,              "nes" },
+	{ "default_game",               RO_STRING,  &settings.default_game,              "puckman" },
 #endif
 	{ "default_folder_id",          RO_INT,     &settings.folder_id,		         "0" },
 	{ "show_image_section",         RO_BOOL,    &settings.show_screenshot,           "1" },
-	{ "current_tab",                RO_ENCODE,  &settings.current_tab,               "0", FALSE, CurrentTabEncodeString, CurrentTabDecodeString },
+	{ "current_tab",                RO_STRING,  &settings.current_tab,               "0" },
 	{ "show_tool_bar",              RO_BOOL,    &settings.show_toolbar,              "1" },
 	{ "show_status_bar",            RO_BOOL,    &settings.show_statusbar,            "1" },
+#ifdef MESS
+	{ "show_folder_section",        RO_BOOL,    &settings.show_folderlist,           "0" },
+#else
 	{ "show_folder_section",        RO_BOOL,    &settings.show_folderlist,           "1" },
+#endif
 	{ "hide_folders",               RO_ENCODE,  &settings.show_folder_flags,         NULL, FALSE, FolderFlagsEncodeString, FolderFlagsDecodeString },
 
+#ifdef MESS
+	{ "show_tabs",                  RO_BOOL,    &settings.show_tabctrl,              "0" },
+	{ "hide_tabs",                  RO_ENCODE,  &settings.show_tab_flags,            "flyer, cabinet, marquee, title, cpanel", FALSE, TabFlagsEncodeString, TabFlagsDecodeString },
+	{ "history_tab",				RO_INT,		&settings.history_tab,				 "1" },
+#else
 	{ "show_tabs",                  RO_BOOL,    &settings.show_tabctrl,              "1" },
 	{ "hide_tabs",                  RO_ENCODE,  &settings.show_tab_flags,            "marquee, title, cpanel, history", FALSE, TabFlagsEncodeString, TabFlagsDecodeString },
 	{ "history_tab",				RO_INT,		&settings.history_tab,				 0, 0},
+#endif
 
 	{ "check_game",                 RO_BOOL,    &settings.game_check,                "1" },
 	{ "joystick_in_interface",      RO_BOOL,    &settings.use_joygui,                "0" },
@@ -183,6 +193,7 @@ static REG_OPTION regSettings[] =
 
 	{ "text_color",                 RO_COLOR,   &settings.list_font_color,           "-1",                          FALSE },
 	{ "clone_color",                RO_COLOR,   &settings.list_clone_color,          "-1",                          FALSE },
+	{ "custom_color",               RO_ENCODE,  settings.custom_color,               "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0", FALSE, CusColorEncodeString, CusColorDecodeString},
 	/* ListMode needs to be before ColumnWidths settings */
 	{ "list_mode",                  RO_ENCODE,  &settings.view,                      "5",                           FALSE, ListEncodeString,     ListDecodeString},
 #ifdef MESS
@@ -248,7 +259,9 @@ static REG_OPTION regSettings[] =
 	{ "hide_mouse",                 RO_BOOL,    &settings.hide_mouse,                 "0" },
 	{ "full_screen",                RO_BOOL,    &settings.full_screen,                "0" },
 	{ "cycle_screenshot",           RO_INT,     &settings.cycle_screenshot,           "0" },
-	{ "stretch_screenshot_larger",  RO_BOOL,    &settings.stretch_screenshot_larger,  "1" },
+	{ "stretch_screenshot_larger",  RO_BOOL,    &settings.stretch_screenshot_larger,  "0" },
+ 	{ "screenshot_bordersize",      RO_INT,     &settings.screenshot_bordersize,      "11" },
+ 	{ "screenshot_bordercolor",	  RO_COLOR,   &settings.screenshot_bordercolor,     "-1",	FALSE },
 	{ "inherit_filter",             RO_BOOL,    &settings.inherit_filter,             "0" },
 	{ "offset_clones",              RO_BOOL,    &settings.offset_clones,              "0" },
 	{ "game_caption",               RO_BOOL,    &settings.game_caption,               "1" },
@@ -270,6 +283,8 @@ static REG_OPTION regSettings[] =
 
 	{ "mess_sort_column",           RO_INT,     &settings.mess.mess_sort_column,    "0" },
 	{ "mess_sort_reversed",         RO_BOOL,    &settings.mess.mess_sort_reverse,   "0" },
+
+	{ "current_software_tab",       RO_STRING,  &settings.mess.software_tab,        "0" },
 #endif
 	{ "" }
 };
@@ -1123,6 +1138,33 @@ BOOL GetStretchScreenShotLarger(void)
 {
 	return settings.stretch_screenshot_larger;
 }
+
+void SetScreenshotBorderSize(int size)
+{
+	settings.screenshot_bordersize = size;
+}
+
+int GetScreenshotBorderSize(void)
+{
+	return settings.screenshot_bordersize;
+}
+
+void SetScreenshotBorderColor(COLORREF uColor)
+{
+	if (settings.screenshot_bordercolor == GetSysColor(COLOR_3DFACE))
+		settings.screenshot_bordercolor = (COLORREF)-1;
+	else
+		settings.screenshot_bordercolor = uColor;
+}
+
+COLORREF GetScreenshotBorderColor(void)
+{
+	if (settings.screenshot_bordercolor == (COLORREF)-1)
+		return (GetSysColor(COLOR_3DFACE));
+
+	return settings.screenshot_bordercolor;
+}
+
 void SetFilterInherit(BOOL inherit)
 {
 	settings.inherit_filter = inherit;
@@ -1277,12 +1319,14 @@ BOOL GetShowToolBar(void)
 	return settings.show_toolbar;
 }
 
-void SetCurrentTab(int val)
+void SetCurrentTab(const char *shortname)
 {
-	settings.current_tab = val;
+	FreeIfAllocated(&settings.current_tab);
+	if (shortname != NULL)
+		settings.current_tab = strdup(shortname);
 }
 
-int GetCurrentTab(void)
+const char *GetCurrentTab(void)
 {
 	return settings.current_tab;
 }
@@ -1318,6 +1362,19 @@ void SetWindowState(UINT state)
 UINT GetWindowState(void)
 {
 	return settings.windowstate;
+}
+
+void SetCustomColor(int iIndex, COLORREF uColor)
+{
+	settings.custom_color[iIndex] = uColor;
+}
+
+COLORREF GetCustomColor(int iIndex)
+{
+	if (settings.custom_color[iIndex] == (COLORREF)-1)
+		return (COLORREF)RGB(0,0,0);
+
+	return settings.custom_color[iIndex];
 }
 
 void SetListFont(LOGFONT *font)
@@ -1987,134 +2044,134 @@ void GetTextPlayTime(int driver_index,char *buf)
 }
 
 
-InputSeq* Get_ui_key_up(void)
+input_seq_t* Get_ui_key_up(void)
 {
 	return &settings.ui_key_up.is;
 }
-InputSeq* Get_ui_key_down(void)
+input_seq_t* Get_ui_key_down(void)
 {
 	return &settings.ui_key_down.is;
 }
-InputSeq* Get_ui_key_left(void)
+input_seq_t* Get_ui_key_left(void)
 {
 	return &settings.ui_key_left.is;
 }
-InputSeq* Get_ui_key_right(void)
+input_seq_t* Get_ui_key_right(void)
 {
 	return &settings.ui_key_right.is;
 }
-InputSeq* Get_ui_key_start(void)
+input_seq_t* Get_ui_key_start(void)
 {
 	return &settings.ui_key_start.is;
 }
-InputSeq* Get_ui_key_pgup(void)
+input_seq_t* Get_ui_key_pgup(void)
 {
 	return &settings.ui_key_pgup.is;
 }
-InputSeq* Get_ui_key_pgdwn(void)
+input_seq_t* Get_ui_key_pgdwn(void)
 {
 	return &settings.ui_key_pgdwn.is;
 }
-InputSeq* Get_ui_key_home(void)
+input_seq_t* Get_ui_key_home(void)
 {
 	return &settings.ui_key_home.is;
 }
-InputSeq* Get_ui_key_end(void)
+input_seq_t* Get_ui_key_end(void)
 {
 	return &settings.ui_key_end.is;
 }
-InputSeq* Get_ui_key_ss_change(void)
+input_seq_t* Get_ui_key_ss_change(void)
 {
 	return &settings.ui_key_ss_change.is;
 }
-InputSeq* Get_ui_key_history_up(void)
+input_seq_t* Get_ui_key_history_up(void)
 {
 	return &settings.ui_key_history_up.is;
 }
-InputSeq* Get_ui_key_history_down(void)
+input_seq_t* Get_ui_key_history_down(void)
 {
 	return &settings.ui_key_history_down.is;
 }
 
 
-InputSeq* Get_ui_key_context_filters(void)
+input_seq_t* Get_ui_key_context_filters(void)
 {
 	return &settings.ui_key_context_filters.is;
 }
-InputSeq* Get_ui_key_select_random(void)
+input_seq_t* Get_ui_key_select_random(void)
 {
 	return &settings.ui_key_select_random.is;
 }
-InputSeq* Get_ui_key_game_audit(void)
+input_seq_t* Get_ui_key_game_audit(void)
 {
 	return &settings.ui_key_game_audit.is;
 }
-InputSeq* Get_ui_key_game_properties(void)
+input_seq_t* Get_ui_key_game_properties(void)
 {
 	return &settings.ui_key_game_properties.is;
 }
-InputSeq* Get_ui_key_help_contents(void)
+input_seq_t* Get_ui_key_help_contents(void)
 {
 	return &settings.ui_key_help_contents.is;
 }
-InputSeq* Get_ui_key_update_gamelist(void)
+input_seq_t* Get_ui_key_update_gamelist(void)
 {
 	return &settings.ui_key_update_gamelist.is;
 }
-InputSeq* Get_ui_key_view_folders(void)
+input_seq_t* Get_ui_key_view_folders(void)
 {
 	return &settings.ui_key_view_folders.is;
 }
-InputSeq* Get_ui_key_view_fullscreen(void)
+input_seq_t* Get_ui_key_view_fullscreen(void)
 {
 	return &settings.ui_key_view_fullscreen.is;
 }
-InputSeq* Get_ui_key_view_pagetab(void)
+input_seq_t* Get_ui_key_view_pagetab(void)
 {
 	return &settings.ui_key_view_pagetab.is;
 }
-InputSeq* Get_ui_key_view_picture_area(void)
+input_seq_t* Get_ui_key_view_picture_area(void)
 {
 	return &settings.ui_key_view_picture_area.is;
 }
-InputSeq* Get_ui_key_view_status(void)
+input_seq_t* Get_ui_key_view_status(void)
 {
 	return &settings.ui_key_view_status.is;
 }
-InputSeq* Get_ui_key_view_toolbars(void)
+input_seq_t* Get_ui_key_view_toolbars(void)
 {
 	return &settings.ui_key_view_toolbars.is;
 }
 
-InputSeq* Get_ui_key_view_tab_cabinet(void)
+input_seq_t* Get_ui_key_view_tab_cabinet(void)
 {
 	return &settings.ui_key_view_tab_cabinet.is;
 }
-InputSeq* Get_ui_key_view_tab_cpanel(void)
+input_seq_t* Get_ui_key_view_tab_cpanel(void)
 {
 	return &settings.ui_key_view_tab_cpanel.is;
 }
-InputSeq* Get_ui_key_view_tab_flyer(void)
+input_seq_t* Get_ui_key_view_tab_flyer(void)
 {
 	return &settings.ui_key_view_tab_flyer.is;
 }
-InputSeq* Get_ui_key_view_tab_history(void)
+input_seq_t* Get_ui_key_view_tab_history(void)
 {
 	return &settings.ui_key_view_tab_history.is;
 }
-InputSeq* Get_ui_key_view_tab_marquee(void)
+input_seq_t* Get_ui_key_view_tab_marquee(void)
 {
 	return &settings.ui_key_view_tab_marquee.is;
 }
-InputSeq* Get_ui_key_view_tab_screenshot(void)
+input_seq_t* Get_ui_key_view_tab_screenshot(void)
 {
 	return &settings.ui_key_view_tab_screenshot.is;
 }
-InputSeq* Get_ui_key_view_tab_title(void)
+input_seq_t* Get_ui_key_view_tab_title(void)
 {
 	return &settings.ui_key_view_tab_title.is;
 }
-InputSeq* Get_ui_key_quit(void)
+input_seq_t* Get_ui_key_quit(void)
 {
 	return &settings.ui_key_quit.is;
 }
@@ -2347,6 +2404,50 @@ void SetRunFullScreen(BOOL fullScreen)
     Internal functions
  ***************************************************************************/
 
+static void CusColorEncodeString(void* data, char* str)
+{
+	int* value = (int*)data;
+	int  i;
+	char tmpStr[256];
+
+	sprintf(tmpStr, "%d", value[0]);
+	
+	strcpy(str, tmpStr);
+
+	for (i = 1; i < 16; i++)
+	{
+		sprintf(tmpStr, ",%d", value[i]);
+		strcat(str, tmpStr);
+	}
+}
+
+static void CusColorDecodeString(const char* str, void* data)
+{
+	int* value = (int*)data;
+	int  i;
+	char *s, *p;
+	char tmpStr[256];
+
+	if (str == NULL)
+		return;
+
+	strcpy(tmpStr, str);
+	p = tmpStr;
+	
+	for (i = 0; p && i < 16; i++)
+	{
+		s = p;
+		
+		if ((p = strchr(s,',')) != NULL && *p == ',')
+		{
+			*p = '\0';
+			p++;
+		}
+		value[i] = atoi(s);
+	}
+}
+
+
 static void ColumnEncodeStringWithCount(void* data, char *str, int count)
 {
 	int* value = (int*)data;
@@ -2410,13 +2511,13 @@ static void KeySeqEncodeString(void *data, char* str)
 static void KeySeqDecodeString(const char *str, void* data)
 {
 	KeySeq *ks = (KeySeq*)data;
-	InputSeq *is = &(ks->is);
+	input_seq_t *is = &(ks->is);
 
 	FreeIfAllocated(&ks->seq_string);
 	ks->seq_string = strdup(str);
 
 	//get the new input sequence
-	seq_set_string (is, str);
+	string_to_seq(str,is);
 	//dprintf("seq=%s,,,%04i %04i %04i %04i \n",str,(*is)[0],(*is)[1],(*is)[2],(*is)[3]);
 }
 
@@ -2622,30 +2723,6 @@ static void CleanStretchDecodeString(const char *str,void *data)
 		}
 	}
 	dprintf("invalid clean stretch string %s",str);
-}
-
-static void CurrentTabEncodeString(void *data,char *str)
-{
-	int tab_index = *(int *)data;
-
-	strcpy(str,GetImageTabShortName(tab_index));
-}
-
-static void CurrentTabDecodeString(const char *str,void *data)
-{
-	int i;
-
-	*(int *)data = TAB_SCREENSHOT;
-
-	for (i=0;i<MAX_TAB_TYPES;i++)
-	{
-		if (stricmp(GetImageTabShortName(i),str) == 0)
-		{
-			*(int *)data = i;
-			return;
-		}
-	}
-	dprintf("invalid tab index string %s",str);
 }
 
 static void FolderFlagsEncodeString(void *data,char *str)

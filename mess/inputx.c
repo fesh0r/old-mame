@@ -16,7 +16,7 @@
 
 struct InputCode
 {
-	UINT16 port[NUM_SIMUL_KEYS];
+	UINT32 port[NUM_SIMUL_KEYS];
 	const struct InputPort *ipt[NUM_SIMUL_KEYS];
 };
 
@@ -248,7 +248,7 @@ static int scan_keys(const struct InputPort *input_ports, struct InputCode *code
 		case IPT_KEYBOARD:
 			ipt_key = ipt;
 
-			code = ipt->u.keyboard.chars[shift];
+			code = ipt->keyboard.chars[shift];
 			if (code)
 			{
 				/* mark that we have found some natural keyboard codes */
@@ -337,7 +337,6 @@ done:
 
 ***************************************************************************/
 
-#ifdef MAME_DEBUG
 int inputx_validitycheck(const struct GameDriver *gamedrv)
 {
 	char buf[CODE_BUFFER_SIZE];
@@ -408,7 +407,6 @@ int inputx_validitycheck(const struct GameDriver *gamedrv)
 	}
 	return error;
 }
-#endif /* MAME_DEBUG */
 
 
 
@@ -684,7 +682,7 @@ static void inputx_timerproc(int dummy)
 
 
 
-void inputx_update(unsigned short *ports)
+void inputx_update(UINT32 *ports)
 {
 	const struct KeyBuffer *keybuf;
 	const struct InputCode *code;
@@ -696,24 +694,26 @@ void inputx_update(unsigned short *ports)
 	if (inputx_can_post())
 	{
 		keybuf = get_buffer();
+
+		/* is the key down right now? */
 		if ((keybuf->status & STATUS_KEYDOWN) && (keybuf->begin_pos != keybuf->end_pos))
 		{
+			/* identify the character that is down right now, and its component codes */
 			ch = keybuf->buffer[keybuf->begin_pos];
 			code = &codes[ch];
 
+			/* loop through this character's component codes */
 			for (i = 0; code->ipt[i] && (i < sizeof(code->ipt) / sizeof(code->ipt[0])); i++)
 			{
 				ipt = code->ipt[i];
 				value = ports[code->port[i]];
 
-				switch(ipt->default_value) {
-				case IP_ACTIVE_LOW:
+				/* toggle this value */
+				if (ipt->default_value & ipt->mask)
 					value &= ~ipt->mask;
-					break;
-				case IP_ACTIVE_HIGH:
+				else
 					value |= ipt->mask;
-					break;
-				}
+
 				ports[code->port[i]] = value;
 			}
 		}
@@ -734,10 +734,10 @@ void inputx_handle_mess_extensions(struct InputPort *ipt)
 	/* is this a keyboard port with the default name? */
 	if (ipt->type == IPT_KEYBOARD && (ipt->name == IP_NAME_DEFAULT))
 	{
-		for (i = 0; ipt->u.keyboard.chars[i] && (i < sizeof(ipt->u.keyboard.chars)
-			/ sizeof(ipt->u.keyboard.chars[0])); i++)
+		for (i = 0; ipt->keyboard.chars[i] && (i < sizeof(ipt->keyboard.chars)
+			/ sizeof(ipt->keyboard.chars[0])); i++)
 		{
-			ch = ipt->u.keyboard.chars[i];
+			ch = ipt->keyboard.chars[i];
 			pos += sprintf(&buf[pos], "%s ", inputx_key_name(ch));
 		}
 
@@ -1045,9 +1045,7 @@ int input_classify_port(const struct InputPort *port)
 
 int input_player_number(const struct InputPort *port)
 {
-	if ((port->type & ~IPF_MASK) == IPT_EXTENSION)
-		port--;
-	return (port->type & IPF_PLAYERMASK) / IPF_PLAYER2;
+	return port->player;
 }
 
 

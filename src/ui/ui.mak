@@ -20,6 +20,8 @@ OBJDIRS += $(OBJ)/ui
 
 $(OBJ)/mess/ui/mess32ui.o: src/ui/win32ui.c mess/ui/mess32ui.c
 
+$(OBJ)/mess/ui/mess32.res:	src/ui/mame32.rc mess/ui/mess32.rc src/ui/resource.h mess/ui/resourcems.h
+
 # only OS specific output files and rules
 OSOBJS += \
         $(OBJ)/ui/m32util.o \
@@ -35,18 +37,20 @@ OSOBJS += \
         $(OBJ)/ui/bitmask.o \
         $(OBJ)/ui/datamap.o \
         $(OBJ)/ui/dxdecode.o \
+		$(OBJ)/ui/picker.o \
+		$(OBJ)/ui/tabview.o \
+		$(OBJ)/ui/properties.o \
 		$(OBJ)/ui/help.o \
 		$(OBJ)/ui/history.o \
 		$(OBJ)/ui/dialogs.o \
-		$(OBJ)/ui/properties.o \
-		$(OBJ)/ui/picker.o \
  		$(OBJ)/mess/ui/ms32main.o \
  		$(OBJ)/mess/ui/layoutms.o \
 		$(OBJ)/mess/ui/mess32ui.o \
 		$(OBJ)/mess/ui/ms32util.o \
 		$(OBJ)/mess/ui/optionsms.o \
 		$(OBJ)/mess/ui/propertiesms.o \
-		$(OBJ)/mess/ui/softwarelist.o
+		$(OBJ)/mess/ui/softwarelist.o \
+		$(OBJ)/mess/ui/devview.o
 
 # add resource file
 GUIRESFILE = $(OBJ)/mess/ui/mess32.res

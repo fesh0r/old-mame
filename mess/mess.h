@@ -147,7 +147,6 @@ enum
 	DEVICE_LOAD_AT_INIT		= 4
 };
 
-#ifdef MAME_DEBUG
 /* runs checks to see if device code is proper */
 int messvaliditychecks(void);
 
@@ -155,12 +154,13 @@ int messvaliditychecks(void);
  * to provide a way to identify images to test with
  */
 void messtestdriver(const struct GameDriver *gamedrv, const char *(*getfodderimage)(unsigned int index, int *foddertype));
-#endif
 
 /* these are called from mame.c*/
 int devices_init(const struct GameDriver *gamedrv);
 int devices_initialload(const struct GameDriver *gamedrv, int ispreload);
 void devices_exit(void);
+
+struct IODevice;
 
 /* access mess.c internal fields for a device type (instance id) */
 extern int			device_count(int type);
@@ -169,6 +169,7 @@ extern const char  *device_brieftypename(int type);
 extern int          device_typeid(const char *name);
 extern const char  *device_typename_id(mess_image *img);
 extern const char  *device_file_extension(int type, int extnum);
+extern const char *device_typename_devtypeid(const struct GameDriver *drv, const struct IODevice *dev, int id);
 
 /* access functions from the struct IODevice arrays of a driver */
 extern const void *device_info(int type, int id);

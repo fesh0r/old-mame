@@ -18,7 +18,7 @@
 #endif
 
 #include "osd_cpu.h"
-#include "input.h" /* for InputSeq definition */
+#include "input.h" /* for input_seq_t definition */
 
 
 enum 
@@ -121,7 +121,7 @@ typedef struct
 typedef struct
 {
 	char *seq_string;	/* KEYCODE_LALT KEYCODE_A, etc... */
-	InputSeq is;		/* sequence definition in MAME's internal keycodes */
+	input_seq_t is;		/* sequence definition in MAME's internal keycodes */
 } KeySeq;
 
 typedef struct
@@ -279,7 +279,7 @@ typedef struct
     BOOL     show_tabctrl;
 	int      show_tab_flags;
 	int      history_tab;
-    int      current_tab;
+    char     *current_tab;
     BOOL     game_check;        /* Startup GameCheck */
     BOOL     use_joygui;
 	BOOL     use_keygui;
@@ -287,6 +287,8 @@ typedef struct
     BOOL     random_bg;
     int      cycle_screenshot;
 	BOOL     stretch_screenshot_larger;
+    int      screenshot_bordersize;
+    COLORREF screenshot_bordercolor;
 	BOOL     inherit_filter;
 	BOOL     offset_clones;
 	BOOL	 game_caption;
@@ -300,6 +302,7 @@ typedef struct
     AREA     area;
     UINT     windowstate;
     int      splitter[4];		/* NPW 5-Feb-2003 - I don't like hard coding this, but I don't have a choice */
+    COLORREF custom_color[16]; /* This is how many custom colors can be shown on the standard ColorPicker */
     LOGFONT  list_font;
     COLORREF list_font_color;
     COLORREF list_clone_color;
@@ -461,6 +464,12 @@ int GetCycleScreenshot(void);
 void SetStretchScreenShotLarger(BOOL stretch);
 BOOL GetStretchScreenShotLarger(void);
 
+void SetScreenshotBorderSize(int size);
+int GetScreenshotBorderSize(void);
+
+void SetScreenshotBorderColor(COLORREF uColor);
+COLORREF GetScreenshotBorderColor(void);
+
 void SetFilterInherit(BOOL inherit);
 BOOL GetFilterInherit(void);
 
@@ -507,8 +516,8 @@ BOOL GetShowToolBar(void);
 void SetShowTabCtrl(BOOL val);
 BOOL GetShowTabCtrl(void);
 
-void SetCurrentTab(int val);
-int  GetCurrentTab(void);
+void SetCurrentTab(const char *shortname);
+const char *GetCurrentTab(void);
 
 void SetDefaultGame(const char *name);
 const char *GetDefaultGame(void);
@@ -530,6 +539,9 @@ void GetColumnShown(int shown[]);
 
 void SetSplitterPos(int splitterId, int pos);
 int  GetSplitterPos(int splitterId);
+
+void SetCustomColor(int iIndex, COLORREF uColor);
+COLORREF GetCustomColor(int iIndex);
 
 void SetListFont(LOGFONT *font);
 void GetListFont(LOGFONT *font);
@@ -654,40 +666,40 @@ void SaveDefaultOptions(void);
 
 
 // Keyboard control of ui
-InputSeq* Get_ui_key_up(void);
-InputSeq* Get_ui_key_down(void);
-InputSeq* Get_ui_key_left(void);
-InputSeq* Get_ui_key_right(void);
-InputSeq* Get_ui_key_start(void);
-InputSeq* Get_ui_key_pgup(void);
-InputSeq* Get_ui_key_pgdwn(void);
-InputSeq* Get_ui_key_home(void);
-InputSeq* Get_ui_key_end(void);
-InputSeq* Get_ui_key_ss_change(void);
-InputSeq* Get_ui_key_history_up(void);
-InputSeq* Get_ui_key_history_down(void);
+input_seq_t* Get_ui_key_up(void);
+input_seq_t* Get_ui_key_down(void);
+input_seq_t* Get_ui_key_left(void);
+input_seq_t* Get_ui_key_right(void);
+input_seq_t* Get_ui_key_start(void);
+input_seq_t* Get_ui_key_pgup(void);
+input_seq_t* Get_ui_key_pgdwn(void);
+input_seq_t* Get_ui_key_home(void);
+input_seq_t* Get_ui_key_end(void);
+input_seq_t* Get_ui_key_ss_change(void);
+input_seq_t* Get_ui_key_history_up(void);
+input_seq_t* Get_ui_key_history_down(void);
 
-InputSeq* Get_ui_key_context_filters(void);
-InputSeq* Get_ui_key_select_random(void);
-InputSeq* Get_ui_key_game_audit(void);
-InputSeq* Get_ui_key_game_properties(void);
-InputSeq* Get_ui_key_help_contents(void);
-InputSeq* Get_ui_key_update_gamelist(void);
-InputSeq* Get_ui_key_view_folders(void);
-InputSeq* Get_ui_key_view_fullscreen(void);
-InputSeq* Get_ui_key_view_pagetab(void);
-InputSeq* Get_ui_key_view_picture_area(void);
-InputSeq* Get_ui_key_view_status(void);
-InputSeq* Get_ui_key_view_toolbars(void);
+input_seq_t* Get_ui_key_context_filters(void);
+input_seq_t* Get_ui_key_select_random(void);
+input_seq_t* Get_ui_key_game_audit(void);
+input_seq_t* Get_ui_key_game_properties(void);
+input_seq_t* Get_ui_key_help_contents(void);
+input_seq_t* Get_ui_key_update_gamelist(void);
+input_seq_t* Get_ui_key_view_folders(void);
+input_seq_t* Get_ui_key_view_fullscreen(void);
+input_seq_t* Get_ui_key_view_pagetab(void);
+input_seq_t* Get_ui_key_view_picture_area(void);
+input_seq_t* Get_ui_key_view_status(void);
+input_seq_t* Get_ui_key_view_toolbars(void);
 
-InputSeq* Get_ui_key_view_tab_cabinet(void);
-InputSeq* Get_ui_key_view_tab_cpanel(void);
-InputSeq* Get_ui_key_view_tab_flyer(void);
-InputSeq* Get_ui_key_view_tab_history(void);
-InputSeq* Get_ui_key_view_tab_marquee(void);
-InputSeq* Get_ui_key_view_tab_screenshot(void);
-InputSeq* Get_ui_key_view_tab_title(void);
-InputSeq* Get_ui_key_quit(void);
+input_seq_t* Get_ui_key_view_tab_cabinet(void);
+input_seq_t* Get_ui_key_view_tab_cpanel(void);
+input_seq_t* Get_ui_key_view_tab_flyer(void);
+input_seq_t* Get_ui_key_view_tab_history(void);
+input_seq_t* Get_ui_key_view_tab_marquee(void);
+input_seq_t* Get_ui_key_view_tab_screenshot(void);
+input_seq_t* Get_ui_key_view_tab_title(void);
+input_seq_t* Get_ui_key_quit(void);
 
 
 int GetUIJoyUp(int joycodeIndex);
