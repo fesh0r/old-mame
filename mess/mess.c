@@ -19,9 +19,11 @@ extern struct GameOptions options;
 
 /* Globals */
 const char *mess_path;
-UINT32 mess_ram_size;
-UINT8 *mess_ram;
 int devices_inited;
+
+UINT32 mess_ram_size;
+data8_t *mess_ram;
+data8_t mess_ram_default_value = 0xCD;
 
 int DECL_SPEC mess_printf(const char *fmt, ...)
 {
@@ -96,35 +98,7 @@ static int supported_device(const struct GameDriver *gamedrv, int type)
 	return FALSE;
 }
 
-#if 0
-extern void cpu_setbank_fromram(int bank, UINT32 ramposition, mem_read_handler rhandler, mem_write_handler whandler)
-{
-	assert(mess_ram_size > 0);
-	assert(mess_ram);
-	assert((rhandler && whandler) || (!rhandler && !whandler));
 
-	if (ramposition >= mess_ram_size && rhandler)
-	{
-		memory_set_bankhandler_r(bank, MRA_NOP);
-		memory_set_bankhandler_w(bank, MWA_NOP);
-	}
-	else
-	{
-		if (rhandler)
-		{
-			/* this is only necessary if not mirroring */
-			memory_set_bankhandler_r(bank, rhandler);
-			memory_set_bankhandler_w(bank, whandler);
-		}
-		else
-		{
-			/* NULL handlers imply mirroring */
-			ramposition %= mess_ram_size;
-		}
-		cpu_setbank(bank, &mess_ram[ramposition]);
-	}
-}
-#endif
 
 static int ram_init(const struct GameDriver *gamedrv)
 {
@@ -167,7 +141,7 @@ static int ram_init(const struct GameDriver *gamedrv)
 		mess_ram = (UINT8 *) auto_malloc(mess_ram_size);
 		if (!mess_ram)
 			return 1;
-		memset(mess_ram, 0xcd, mess_ram_size);
+		memset(mess_ram, mess_ram_default_value, mess_ram_size);
 
 		state_save_register_UINT32("mess", 0, "ramsize", &mess_ram_size, 1);
 		state_save_register_UINT8("mess", 0, "ram", mess_ram, mess_ram_size);
@@ -367,9 +341,47 @@ void ram_dump(const char *filename)
 
 void machine_hard_reset(void)
 {
-	memset(mess_ram, 0xcd, mess_ram_size);
+	memset(mess_ram, mess_ram_default_value, mess_ram_size);
 	machine_reset();
 }
+
+
+
+const struct GameDriver *mess_next_compatible_driver(const struct GameDriver *drv)
+{
+	if (drv->clone_of && !(drv->clone_of->flags & NOT_A_DRIVER))
+		drv = drv->clone_of;
+	else if (drv->compatible_with && !(drv->compatible_with->flags & NOT_A_DRIVER))
+		drv = drv->compatible_with;
+	else
+		drv = NULL;
+	return drv;
+}
+
+
+
+int mess_count_compatible_drivers(const struct GameDriver *drv)
+{
+	int count = 0;
+	while(drv)
+	{
+		count++;
+		drv = mess_next_compatible_driver(drv);
+	}
+	return count;
+}
+
+
+
+/***************************************************************************
+
+	Dummy read handlers
+
+***************************************************************************/
+
+READ_HANDLER( return8_00 )	{ return 0x00; }
+READ_HANDLER( return8_FE )	{ return 0xFE; }
+READ_HANDLER( return8_FF )	{ return 0xFF; }
 
 
 

@@ -44,16 +44,16 @@ internal expansion/cartridge port
 
 struct via6522_interface config=
 {
-	0,//mem_read_handler in_a_func;
-	0,//mem_read_handler in_b_func;
-	0,//mem_read_handler in_ca1_func;
-	0,//mem_read_handler in_cb1_func;
-	0,//mem_read_handler in_ca2_func;
-	0,//mem_read_handler in_cb2_func;
-	0,//mem_write_handler out_a_func;
-	0,//mem_write_handler out_b_func;
-	0,//mem_write_handler out_ca2_func;
-	0,//mem_write_handler out_cb2_func;
+	0,//read8_handler in_a_func;
+	0,//read8_handler in_b_func;
+	0,//read8_handler in_ca1_func;
+	0,//read8_handler in_cb1_func;
+	0,//read8_handler in_ca2_func;
+	0,//read8_handler in_cb2_func;
+	0,//write8_handler out_a_func;
+	0,//write8_handler out_b_func;
+	0,//write8_handler out_ca2_func;
+	0,//write8_handler out_cb2_func;
 	0,//void (*irq_func)(int state);
 };
 
@@ -74,18 +74,18 @@ static MACHINE_INIT( ssystem3 )
 	via_reset();
 }
 
-static MEMORY_READ_START( ssystem3_readmem )
-	{ 0x0000, 0x03ff, MRA_RAM },
-	{ 0x6000, 0x600f, via_0_r },
-	{ 0xc000, 0xffff, MRA_ROM },
-MEMORY_END
+static ADDRESS_MAP_START( ssystem3_readmem , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE( 0x0000, 0x03ff) AM_READ( MRA8_RAM )
+	AM_RANGE( 0x6000, 0x600f) AM_READ( via_0_r )
+	AM_RANGE( 0xc000, 0xffff) AM_READ( MRA8_ROM )
+ADDRESS_MAP_END
 
-static MEMORY_WRITE_START( ssystem3_writemem )
-	{ 0x0000, 0x03ff, MWA_RAM },
+static ADDRESS_MAP_START( ssystem3_writemem , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE( 0x0000, 0x03ff) AM_WRITE( MWA8_RAM )
 // 0x4000, 0x40ff, lcd chip!?
-	{ 0x6000, 0x600f, via_0_w },
-	{ 0xc000, 0xffff, MWA_ROM },
-MEMORY_END
+	AM_RANGE( 0x6000, 0x600f) AM_WRITE( via_0_w )
+	AM_RANGE( 0xc000, 0xffff) AM_WRITE( MWA8_ROM )
+ADDRESS_MAP_END
 
 #define DIPS_HELPER(bit, name, keycode, r) \
    PORT_BITX(bit, IP_ACTIVE_HIGH, IPT_KEYBOARD, name, keycode, r)
@@ -132,7 +132,7 @@ static struct DACinterface ssystem3_dac={ 1, {80}}; // silence is golden
 static MACHINE_DRIVER_START( ssystem3 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 1000000)
-	MDRV_CPU_MEMORY(ssystem3_readmem, ssystem3_writemem)
+	MDRV_CPU_PROGRAM_MAP(ssystem3_readmem, ssystem3_writemem)
 	MDRV_CPU_VBLANK_INT(ssystem3_frame_int, 1)
 	MDRV_FRAMES_PER_SECOND(LCD_FRAMES_PER_SECOND)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)

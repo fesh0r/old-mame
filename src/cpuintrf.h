@@ -88,6 +88,7 @@ enum
 	CPU_TMS9985,
 	CPU_TMS9989,
 	CPU_TMS9995,
+	CPU_TMS99000,
 	CPU_TMS99105A,
 	CPU_TMS99110A,
 	CPU_Z8000,
@@ -128,7 +129,7 @@ enum
 #ifdef MESS
 	CPU_APEXC,
 	CPU_CDP1802,
-	CPU_CP1600,
+	CPU_CP1610,
 	CPU_F8,
 	CPU_LH5801,
 	CPU_PDP1,
@@ -181,8 +182,8 @@ enum
 enum
 {
 	/* --- the following bits of info are returned as 64-bit signed integers --- */
-	CPUINFO_INT_FIRST = (0 << 16),
-	
+	CPUINFO_INT_FIRST = 0x00000,
+
 	CPUINFO_INT_CONTEXT_SIZE = CPUINFO_INT_FIRST,		/* R/O: size of CPU context in bytes */
 	CPUINFO_INT_IRQ_LINES,								/* R/O: number of IRQ lines */
 	CPUINFO_INT_DEFAULT_IRQ_VECTOR,						/* R/O: default IRQ vector */
@@ -207,12 +208,12 @@ enum
 	CPUINFO_INT_IRQ_STATE_LAST = CPUINFO_INT_IRQ_STATE + MAX_IRQ_LINES - 1,
 	CPUINFO_INT_REGISTER,								/* R/W: values of up to MAX_REGs registers */
 	CPUINFO_INT_REGISTER_LAST = CPUINFO_INT_REGISTER + MAX_REGS - 1,
-	
-	CPUINFO_INT_CPU_SPECIFIC,							/* R/W: CPU-specific values start here */
-	
+
+	CPUINFO_INT_CPU_SPECIFIC = 0x08000,					/* R/W: CPU-specific values start here */
+
 	/* --- the following bits of info are returned as pointers to data or functions --- */
-	CPUINFO_PTR_FIRST = (1 << 16),
-	
+	CPUINFO_PTR_FIRST = 0x10000,
+
 	CPUINFO_PTR_SET_INFO = CPUINFO_PTR_FIRST,			/* R/O: void (*set_info)(UINT32 state, INT64 data, void *ptr) */
 	CPUINFO_PTR_GET_CONTEXT,							/* R/O: void (*get_context)(void *buffer) */
 	CPUINFO_PTR_SET_CONTEXT,							/* R/O: void (*set_context)(void *buffer) */
@@ -226,12 +227,13 @@ enum
 	CPUINFO_PTR_INSTRUCTION_COUNTER,					/* R/O: int *icount */
 	CPUINFO_PTR_REGISTER_LAYOUT,						/* R/O: struct debug_register_layout *layout */
 	CPUINFO_PTR_WINDOW_LAYOUT,							/* R/O: struct debug_window_layout *layout */
+	CPUINFO_PTR_INTERNAL_MEMORY_MAP,					/* R/O: construct_map_t map */
 
-	CPUINFO_PTR_CPU_SPECIFIC,							/* R/W: CPU-specific values start here */
-	
+	CPUINFO_PTR_CPU_SPECIFIC = 0x18000,					/* R/W: CPU-specific values start here */
+
 	/* --- the following bits of info are returned as NULL-terminated strings --- */
-	CPUINFO_STR_FIRST = (2 << 16),
-	
+	CPUINFO_STR_FIRST = 0x20000,
+
 	CPUINFO_STR_NAME = CPUINFO_STR_FIRST,				/* R/O: name of the CPU */
 	CPUINFO_STR_CORE_FAMILY,							/* R/O: family of the CPU */
 	CPUINFO_STR_CORE_VERSION,							/* R/O: version of the CPU core */
@@ -241,7 +243,7 @@ enum
 	CPUINFO_STR_REGISTER,								/* R/O: string representation of up to MAX_REGs registers */
 	CPUINFO_STR_REGISTER_LAST = CPUINFO_STR_REGISTER + MAX_REGS - 1,
 
-	CPUINFO_STR_CPU_SPECIFIC							/* R/W: CPU-specific values start here */
+	CPUINFO_STR_CPU_SPECIFIC = 0x28000					/* R/W: CPU-specific values start here */
 };
 
 
@@ -250,7 +252,7 @@ union cpuinfo
 	INT64	i;											/* generic integers */
 	void *	p;											/* generic pointers */
 	char *	s;											/* generic strings */
-	
+
 	void	(*setinfo)(UINT32 state, union cpuinfo *info);/* CPUINFO_PTR_SET_INFO */
 	void	(*getcontext)(void *context);				/* CPUINFO_PTR_GET_CONTEXT */
 	void	(*setcontext)(void *context);				/* CPUINFO_PTR_SET_CONTEXT */
@@ -262,6 +264,7 @@ union cpuinfo
 	offs_t	(*disassemble)(char *buffer, offs_t pc);	/* CPUINFO_PTR_DISASSEMBLE */
 	int		(*irqcallback)(int state);					/* CPUINFO_PTR_IRQCALLBACK */
 	int *	icount;										/* CPUINFO_PTR_INSTRUCTION_COUNTER */
+	construct_map_t internal_map;						/* CPUINFO_PTR_INTERNAL_MEMORY_MAP */
 };
 
 
@@ -311,7 +314,7 @@ struct cpu_interface
 	int			(*execute)(int cycles);
 	void		(*burn)(int cycles);
 	offs_t		(*disassemble)(char *buffer, offs_t pc);
-	
+
 	/* other info */
 	size_t		context_size;
 	int			address_shift;
@@ -417,7 +420,7 @@ const char *activecpu_dump_state(void);
 #define activecpu_reg_string(reg)				activecpu_get_info_string(CPUINFO_STR_REGISTER + (reg))
 
 #define activecpu_set_reg(reg, val)				activecpu_set_info_int(CPUINFO_INT_REGISTER + (reg), (val))
-#define activecpu_set_irq_callback(val)			activecpu_set_info_ptr(CPUINFO_PTR_IRQ_CALLBACK, (val)
+#define activecpu_set_irq_callback(val)			activecpu_set_info_ptr(CPUINFO_PTR_IRQ_CALLBACK, (void *) (val))
 
 
 

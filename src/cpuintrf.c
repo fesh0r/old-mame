@@ -34,17 +34,17 @@ void z180_get_info(UINT32 state, union cpuinfo *info);
 #if (HAS_8080 || HAS_8085A)
 #include "cpu/i8085/i8085.h"
 #endif
-#if (HAS_M6502 || HAS_M65C02 || HAS_M65SC02 || HAS_M6510 || HAS_M6510T || HAS_M7501 || HAS_M8502 || HAS_N2A03 || HAS_DECO16)
+#if (HAS_M6502 || HAS_M65C02 || HAS_M65SC02 || HAS_M6510 || HAS_M6510T || HAS_M7501 || HAS_M8502 || HAS_N2A03 || HAS_DECO16 || HAS_M6509)
 #include "cpu/m6502/m6502.h"
+#endif
+#if (HAS_M6509)
+#include "cpu/m6502/m6509.h"
 #endif
 #if (HAS_M4510)
 #include "cpu/m6502/m4510.h"
 #endif
 #if (HAS_M65CE02)
 #include "cpu/m6502/m65ce02.h"
-#endif
-#if (HAS_M6509)
-#include "cpu/m6502/m6509.h"
 #endif
 #if (HAS_H6280)
 #include "cpu/h6280/h6280.h"
@@ -184,8 +184,8 @@ void adsp2115_get_info(UINT32 state, union cpuinfo *info);
 #if (HAS_CDP1802)
 #include "cpu/cdp1802/cdp1802.h"
 #endif
-#if (HAS_CP1600)
-#include "cpu/cp1600/cp1600.h"
+#if (HAS_CP1610)
+#include "cpu/cp1610/cp1610.h"
 #endif
 #if (HAS_F8)
 #include "cpu/f8/f8.h"
@@ -546,7 +546,7 @@ const struct
 	{ CPU_ADSP2115, adsp2115_get_info },
 #endif
 #if (HAS_PSXCPU)
-	{ CPU_PSXCPU, mips_get_info },
+	{ CPU_PSXCPU, psxcpu_get_info },
 #endif
 #if (HAS_ASAP)
 	{ CPU_ASAP, asap_get_info },
@@ -614,8 +614,8 @@ const struct
 #if (HAS_CDP1802)
 	{ CPU_CDP1802, cdp1802_get_info },
 #endif
-#if (HAS_CP1600)
-	{ CPU_CP1600, cp1600_get_info },
+#if (HAS_CP1610)
+	{ CPU_CP1610, cp1610_get_info },
 #endif
 #if (HAS_F8)
 	{ CPU_F8, f8_get_info },
@@ -770,7 +770,7 @@ char *cpuintrf_temp_str(void)
 int cpuintrf_init(void)
 {
 	int mapindex;
-	
+
 	/* reset the cpuintrf array */
 	memset(cpuintrf, 0, sizeof(cpuintrf));
 
@@ -780,10 +780,10 @@ int cpuintrf_init(void)
 		int cputype = cpuintrf_map[mapindex].cputype;
 		struct cpu_interface *intf = &cpuintrf[cputype];
 		union cpuinfo info;
-		
+
 		/* start with the get_info routine */
 		intf->get_info = cpuintrf_map[mapindex].get_info;
-		
+
 		/* bootstrap the rest of the function pointers */
 		(*intf->get_info)(CPUINFO_PTR_SET_INFO,    &info);	intf->set_info = info.setinfo;
 		(*intf->get_info)(CPUINFO_PTR_GET_CONTEXT, &info);	intf->get_context = info.getcontext;
@@ -797,7 +797,7 @@ int cpuintrf_init(void)
 
 		/* get the instruction count pointer */
 		(*intf->get_info)(CPUINFO_PTR_INSTRUCTION_COUNTER, &info);	intf->icount = info.icount;
-		
+
 		/* get other miscellaneous stuff */
 		intf->context_size = cputype_context_size(cputype);
 		intf->address_shift = cputype_addrbus_shift(cputype, ADDRESS_SPACE_PROGRAM);
@@ -805,7 +805,7 @@ int cpuintrf_init(void)
 		/* also reset the active CPU context info */
 		cpu_active_context[cputype] = -1;
 	}
-	
+
 	/* fill in any empty entries with the dummy CPU */
 	for (mapindex = 0; mapindex < CPU_COUNT; mapindex++)
 		if (cpuintrf[mapindex].get_info == NULL)
@@ -871,7 +871,7 @@ int cpuintrf_init_cpu(int cpunum, int cputype)
 	if (cpu[cpunum].context == NULL)
 	{
 		/* that's really bad :( */
-		logerror("CPU #%d failed to allocate context buffer (%d bytes)!\n", cpunum, cpu[cpunum].intf.context_size);
+		logerror("CPU #%d failed to allocate context buffer (%d bytes)!\n", cpunum, (int)cpu[cpunum].intf.context_size);
 		return 1;
 	}
 
@@ -928,8 +928,9 @@ void cpuintrf_exit_cpu(int cpunum)
 INT64 activecpu_get_info_int(UINT32 state)
 {
 	union cpuinfo info;
-	
+
 	VERIFY_ACTIVECPU(0, activecpu_get_info_int);
+	info.i = 0;
 	(*cpu[activecpu].intf.get_info)(state, &info);
 	return info.i;
 }
@@ -937,8 +938,9 @@ INT64 activecpu_get_info_int(UINT32 state)
 void *activecpu_get_info_ptr(UINT32 state)
 {
 	union cpuinfo info;
-	
+
 	VERIFY_ACTIVECPU(0, activecpu_get_info_ptr);
+	info.p = NULL;
 	(*cpu[activecpu].intf.get_info)(state, &info);
 	return info.p;
 }
@@ -946,8 +948,9 @@ void *activecpu_get_info_ptr(UINT32 state)
 const char *activecpu_get_info_string(UINT32 state)
 {
 	union cpuinfo info;
-	
+
 	VERIFY_ACTIVECPU(0, activecpu_get_info_string);
+	info.s = NULL;
 	(*cpu[activecpu].intf.get_info)(state, &info);
 	return info.s;
 }
@@ -1130,9 +1133,10 @@ const char *activecpu_dump_state(void)
 INT64 cpunum_get_info_int(int cpunum, UINT32 state)
 {
 	union cpuinfo info;
-	
+
 	VERIFY_CPUNUM(0, cpunum_get_info_int);
 	cpuintrf_push_context(cpunum);
+	info.i = 0;
 	(*cpu[cpunum].intf.get_info)(state, &info);
 	cpuintrf_pop_context();
 	return info.i;
@@ -1141,9 +1145,10 @@ INT64 cpunum_get_info_int(int cpunum, UINT32 state)
 void *cpunum_get_info_ptr(int cpunum, UINT32 state)
 {
 	union cpuinfo info;
-	
+
 	VERIFY_CPUNUM(0, cpunum_get_info_ptr);
 	cpuintrf_push_context(cpunum);
+	info.p = NULL;
 	(*cpu[cpunum].intf.get_info)(state, &info);
 	cpuintrf_pop_context();
 	return info.p;
@@ -1152,9 +1157,10 @@ void *cpunum_get_info_ptr(int cpunum, UINT32 state)
 const char *cpunum_get_info_string(int cpunum, UINT32 state)
 {
 	union cpuinfo info;
-	
+
 	VERIFY_CPUNUM(0, cpunum_get_info_string);
 	cpuintrf_push_context(cpunum);
+	info.s = NULL;
 	(*cpu[cpunum].intf.get_info)(state, &info);
 	cpuintrf_pop_context();
 	return info.s;
@@ -1215,7 +1221,7 @@ void cpunum_reset(int cpunum, void *param, int (*irqack)(int))
 	memory_set_opbase(0);
 	(*cpu[cpunum].intf.reset)(param);
 	if (irqack)
-		activecpu_set_info_ptr(CPUINFO_PTR_IRQ_CALLBACK, (void *)irqack);
+		activecpu_set_info_ptr(CPUINFO_PTR_IRQ_CALLBACK, (void *) irqack);
 	cpuintrf_pop_context();
 }
 
@@ -1330,8 +1336,9 @@ const char *cpunum_dump_state(int cpunum)
 INT64 cputype_get_info_int(int cputype, UINT32 state)
 {
 	union cpuinfo info;
-	
+
 	VERIFY_CPUTYPE(0, cputype_get_info_int);
+	info.i = 0;
 	(*cpuintrf[cputype].get_info)(state, &info);
 	return info.i;
 }
@@ -1339,8 +1346,9 @@ INT64 cputype_get_info_int(int cputype, UINT32 state)
 void *cputype_get_info_ptr(int cputype, UINT32 state)
 {
 	union cpuinfo info;
-	
+
 	VERIFY_CPUTYPE(0, cputype_get_info_ptr);
+	info.p = NULL;
 	(*cpuintrf[cputype].get_info)(state, &info);
 	return info.p;
 }
@@ -1348,8 +1356,9 @@ void *cputype_get_info_ptr(int cputype, UINT32 state)
 const char *cputype_get_info_string(int cputype, UINT32 state)
 {
 	union cpuinfo info;
-	
+
 	VERIFY_CPUTYPE(0, cputype_get_info_string);
+	info.s = NULL;
 	(*cpuintrf[cputype].get_info)(state, &info);
 	return info.s;
 }
@@ -1418,7 +1427,7 @@ void dummy_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1;							break;
 		case CPUINFO_INT_MAX_CYCLES:					info->i = 1;							break;
-		
+
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 8;					break;
 		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_PROGRAM: info->i = 16;					break;
 		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_PROGRAM: info->i = 0;					break;
@@ -1428,13 +1437,13 @@ void dummy_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 0;					break;
 		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO: 		info->i = 0;					break;
 		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_IO: 		info->i = 0;					break;
-		
+
 		case CPUINFO_INT_IRQ_STATE + 0:					info->i = 0;							break;
 
 		case CPUINFO_INT_PREVIOUSPC:					info->i = 0;							break;
 		case CPUINFO_INT_PC:							info->i = 0;							break;
 		case CPUINFO_INT_SP:							info->i = 0;							break;
-		
+
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_SET_INFO:						info->setinfo = dummy_set_info;			break;
 		case CPUINFO_PTR_GET_CONTEXT:					info->getcontext = dummy_get_context;	break;

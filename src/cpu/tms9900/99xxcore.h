@@ -106,44 +106,65 @@ Other references can be found on spies.com:
 
 #if (TMS99XX_MODEL == TI990_10_ID)
 
-	#define TMS99XX_GET_INFO tms9900_get_info
+	#define TMS99XX_PREFIX ti990_10
+	#define TMS99XX_CPU_NAME "TI990/10"
+
+#elif (TMS99XX_MODEL == TMS9900_ID)
+
+	#define TMS99XX_PREFIX tms9900
 	#define TMS99XX_CPU_NAME "TMS9900"
 
 #elif (TMS99XX_MODEL == TMS9940_ID)
 
-	#define TMS99XX_GET_INFO tms9940_get_info
+	#define TMS99XX_PREFIX tms9940
 	#define TMS99XX_CPU_NAME "TMS9940"
 
 	#error "tms9940 is not yet supported"
 
 #elif (TMS99XX_MODEL == TMS9980_ID)
 
-	#define TMS99XX_GET_INFO tms9980a_get_info
+	#define TMS99XX_PREFIX tms9980a
 	#define TMS99XX_CPU_NAME "TMS9980A/TMS9981"
 
 #elif (TMS99XX_MODEL == TMS9985_ID)
 
-	#define TMS99XX_GET_INFO tms9985_get_info
+	#define TMS99XX_PREFIX tms9985
 	#define TMS99XX_CPU_NAME "TMS9985"
 
 	#error "tms9985 is not yet supported"
 
 #elif (TMS99XX_MODEL == TMS9989_ID)
 
-	#define TMS99XX_GET_INFO tms9989_get_info
+	#define TMS99XX_PREFIX tms9989
 	#define TMS99XX_CPU_NAME "TMS9989"
 
 	#error "tms9989 is not yet supported"
 
 #elif (TMS99XX_MODEL == TMS9995_ID)
 
-	#define TMS99XX_GET_INFO tms9995_get_info
+	#define TMS99XX_PREFIX tms9995
 	#define TMS99XX_CPU_NAME "TMS9995"
 
 #elif (TMS99XX_MODEL == TMS99000_ID)
 
-	#define TMS99XX_GET_INFO tms99105a_get_info
+	#define TMS99XX_PREFIX tms99000
+	#define TMS99XX_CPU_NAME "TMS99000"
+
+	#error "tms99000 is not yet supported"
+
+#elif (TMS99XX_MODEL == TMS99105A_ID)
+
+	#define TMS99XX_PREFIX tms99105a
 	#define TMS99XX_CPU_NAME "TMS99105A"
+
+	#error "tms99105a is not yet supported"
+
+#elif (TMS99XX_MODEL == TMS99110A_ID)
+
+	#define TMS99XX_PREFIX tms99110a
+	#define TMS99XX_CPU_NAME "TMS99110A"
+
+	#error "tms99110a is not yet supported"
 
 #endif
 
@@ -153,35 +174,14 @@ Other references can be found on spies.com:
 #define concat2(a,b) a##b
 
 #define ICOUNT(prefix)				concat2(prefix,_ICount)
-#define INIT(prefix)				concat2(prefix,_init)
-#define RESET(prefix)				concat2(prefix,_reset)
-#define EXIT(prefix)				concat2(prefix,_exit)
-#define EXECUTE(prefix)				concat2(prefix,_execute)
-#define GET_CONTEXT(prefix)			concat2(prefix,_get_context)
-#define SET_CONTEXT(prefix)			concat2(prefix,_set_context)
-#define GET_REG(prefix)				concat2(prefix,_get_reg)
-#define SET_REG(prefix)				concat2(prefix,_set_reg)
-#define SET_IRQ_CALLBACK(prefix)	concat2(prefix,_set_irq_callback)
-#define INFO(prefix)				concat2(prefix,_info)
-#define DASM(prefix)				concat2(prefix,_dasm)
+#define GET_INFO(prefix)			concat2(prefix,_get_info)
 #define RESET_PARAM(prefix)			concat2(prefix,reset_param)
 
 #define TMS99XX_ICOUNT				ICOUNT(TMS99XX_PREFIX)
-#define TMS99XX_INIT				INIT(TMS99XX_PREFIX)
-#define TMS99XX_RESET				RESET(TMS99XX_PREFIX)
-#define TMS99XX_EXIT				EXIT(TMS99XX_PREFIX)
-#define TMS99XX_EXECUTE				EXECUTE(TMS99XX_PREFIX)
-#define TMS99XX_GET_CONTEXT			GET_CONTEXT(TMS99XX_PREFIX)
-#define TMS99XX_SET_CONTEXT			SET_CONTEXT(TMS99XX_PREFIX)
-#define TMS99XX_GET_REG				GET_REG(TMS99XX_PREFIX)
-#define TMS99XX_SET_REG				SET_REG(TMS99XX_PREFIX)
-#define TMS99XX_SET_IRQ_CALLBACK	SET_IRQ_CALLBACK(TMS99XX_PREFIX)
-#define TMS99XX_INFO				INFO(TMS99XX_PREFIX)
-#define TMS99XX_DASM				DASM(TMS99XX_PREFIX)
+#define TMS99XX_GET_INFO			GET_INFO(TMS99XX_PREFIX)
 #define TMS99XX_RESET_PARAM			RESET_PARAM(TMS99XX_PREFIX)
 
-	#define TMS99XX_GET_INFO tms99110a_get_info
-	#define TMS99XX_CPU_NAME "TMS99110A"
+
 
 /*
 	I include this macro because we may eventually support other 99000 variants such as tms99110,
@@ -307,7 +307,7 @@ static UINT8 tms9900_win_layout[] = {
 	 0,23,80, 1,	/* command line window (bottom rows) */
 };
 
-static int TMS99XX_ICOUNT = 0;
+int TMS99XX_ICOUNT = 0;
 
 
 /* tms9900 ST register bits. */
@@ -561,7 +561,7 @@ static void reset_decrementer(void);
 READ16_HANDLER(ti990_10_internal_r)
 {
 	//return I.ROM[offset];
-	return cpu_readmem24bew_word(0x1ffc00+offset);
+	return program_read_word_16be(0x1ffc00+offset);
 }
 
 #endif
@@ -609,14 +609,14 @@ WRITE_HANDLER(tms9995_internal2_w)
 		{	/* intercept TPCS and CPU ROM */
 			if (addr < 0xfc00)
 				/* TPCS */
-				return cpu_readmem24bew_word(0x1f0000+addr);
+				return program_read_word_16be(0x1f0000+addr);
 			else
 				/* CPU ROM */
-				return cpu_readmem24bew_word(0x1f0000+addr);	/* hack... */
+				return program_read_word_16be(0x1f0000+addr);	/* hack... */
 		}
 		else if (! I.mapping_on)
 		{
-			return cpu_readmem24bew_word(addr);
+			return program_read_word_16be(addr);
 		}
 		else
 		{
@@ -637,13 +637,13 @@ WRITE_HANDLER(tms9995_internal2_w)
 					I.error_interrupt_register |= EIR_MAPERR;
 					write_inhibit = 1;
 				}
-				return cpu_readmem24bew_word(addr);
+				return program_read_word_16be(addr);
 			}
 			if ((! (I.error_interrupt_register & EIR_MAPERR)) && ! (I.diaglat))
 				I.mapper_address_latch = I.map_files[map_file].bias[map_index]+addr;
 			if ((I.latch_control[map_index]) && (! I.reset_maperr))
 				I.diaglat = 1;
-			return cpu_readmem24bew_word(I.map_files[map_file].bias[map_index]+addr);
+			return program_read_word_16be(I.map_files[map_file].bias[map_index]+addr);
 		}
 	}
 
@@ -654,14 +654,14 @@ WRITE_HANDLER(tms9995_internal2_w)
 		{	/* intercept TPCS and CPU ROM */
 			if (addr < 0xfc00)
 				/* TPCS */
-				cpu_writemem24bew_word(0x1f0000+addr, data);
+				program_write_word_16be(0x1f0000+addr, data);
 			else
 				/* CPU ROM */
-				cpu_writemem24bew_word(0x1f0000+addr, data);	/* hack... */
+				program_write_word_16be(0x1f0000+addr, data);	/* hack... */
 		}
 		else if (! I.mapping_on)
 		{
-			cpu_writemem24bew_word(addr, data);
+			program_write_word_16be(addr, data);
 		}
 		else
 		{
@@ -683,16 +683,16 @@ WRITE_HANDLER(tms9995_internal2_w)
 					write_inhibit = 1;
 				}
 				if (write_inhibit)
-					(void)cpu_readmem24bew_word(addr);
+					(void)program_read_word_16be(addr);
 				else
-					cpu_writemem24bew_word(addr, data);
+					program_write_word_16be(addr, data);
 				return;
 			}
 			if ((! (I.error_interrupt_register & EIR_MAPERR)) && ! (I.diaglat))
 				I.mapper_address_latch = I.map_files[map_file].bias[map_index]+addr;
 			if ((I.latch_control[map_index]) && (! I.reset_maperr))
 				I.diaglat = 1;
-			cpu_writemem24bew_word(I.map_files[map_file].bias[map_index]+addr, data);
+			program_write_word_16be(I.map_files[map_file].bias[map_index]+addr, data);
 		}
 	}
 
@@ -703,14 +703,14 @@ WRITE_HANDLER(tms9995_internal2_w)
 		{	/* intercept TPCS and CPU ROM */
 			if (addr < 0xfc00)
 				/* TPCS */
-				return cpu_readmem24bew(0x1f0000+addr);
+				return program_read_byte_16be(0x1f0000+addr);
 			else
 				/* CPU ROM */
-				return cpu_readmem24bew(0x1f0000+addr);	/* hack... */
+				return program_read_byte_16be(0x1f0000+addr);	/* hack... */
 		}
 		else if (! I.mapping_on)
 		{
-			return cpu_readmem24bew(addr);
+			return program_read_byte_16be(addr);
 		}
 		else
 		{
@@ -731,13 +731,13 @@ WRITE_HANDLER(tms9995_internal2_w)
 					I.error_interrupt_register |= EIR_MAPERR;
 					write_inhibit = 1;
 				}
-				return cpu_readmem24bew(addr);
+				return program_read_byte_16be(addr);
 			}
 			if ((! (I.error_interrupt_register & EIR_MAPERR)) && ! (I.diaglat))
 				I.mapper_address_latch = I.map_files[map_file].bias[map_index]+addr;
 			if ((I.latch_control[map_index]) && (! I.reset_maperr))
 				I.diaglat = 1;
-			return cpu_readmem24bew(I.map_files[map_file].bias[map_index]+addr);
+			return program_read_byte_16be(I.map_files[map_file].bias[map_index]+addr);
 		}
 	}
 
@@ -748,14 +748,14 @@ WRITE_HANDLER(tms9995_internal2_w)
 		{	/* intercept TPCS and CPU ROM */
 			if (addr < 0xfc00)
 				/* TPCS */
-				cpu_writemem24bew(0x1f0000+addr, data);
+				program_write_byte_16be(0x1f0000+addr, data);
 			else
 				/* CPU ROM */
-				cpu_writemem24bew(0x1f0000+addr, data);	/* hack... */
+				program_write_byte_16be(0x1f0000+addr, data);	/* hack... */
 		}
 		else if (! I.mapping_on)
 		{
-			cpu_writemem24bew(addr, data);
+			program_write_byte_16be(addr, data);
 		}
 		else
 		{
@@ -777,21 +777,21 @@ WRITE_HANDLER(tms9995_internal2_w)
 					write_inhibit = 1;
 				}
 				if (write_inhibit)
-					(void)cpu_readmem24bew(addr);
+					(void)program_read_byte_16be(addr);
 				else
-					cpu_writemem24bew(addr, data);
+					program_write_byte_16be(addr, data);
 				return;
 			}
 			if ((! (I.error_interrupt_register & EIR_MAPERR)) && ! (I.diaglat))
 				I.mapper_address_latch = I.map_files[map_file].bias[map_index]+addr;
 			if ((I.latch_control[map_index]) && (! I.reset_maperr))
 				I.diaglat = 1;
-			cpu_writemem24bew(I.map_files[map_file].bias[map_index]+addr, data);
+			program_write_byte_16be(I.map_files[map_file].bias[map_index]+addr, data);
 		}
 	}
 
 #ifdef MAME_DEBUG
-	#define dasm_readop cpu_readmem24bew_word
+	#define dasm_readop program_read_word_16be
 #endif
 
 #elif (TMS99XX_MODEL == TMS9900_ID) || (TMS99XX_MODEL == TMS9940_ID)
@@ -807,22 +807,29 @@ WRITE_HANDLER(tms9995_internal2_w)
 	#define readbyte(addr)        program_read_byte_16be(addr)
 	#define writebyte(addr,data)  program_write_byte_16be((addr),(data))
 
+#ifdef MAME_DEBUG
+	#define dasm_readop program_read_word_16be
+#endif
+
 #elif (TMS99XX_MODEL == TMS9980_ID)
 	/*8-bit data bus, 14-bit address*/
 	/*Note that tms9980 never accesses a single byte (however crazy it may seem).  Although this
 	makes memory access slower, I have emulated this feature, because if I did otherwise,
 	there would be some implementation problems in some driver sooner or later.*/
 
-	/*Macros instead of true 14-bit handlers.  You may want to change this*/
-	#define cpu_readmem14(addr) program_read_byte_8((addr) & 0x3fff)
-	#define cpu_writemem14(addr, data) program_write_byte_8((addr) & 0x3fff, data)
+	INLINE int readword(int addr)
+	{
+		int val;
 
-	#define readword(addr)        ( TMS99XX_ICOUNT -= 2, (cpu_readmem14(addr) << 8) + cpu_readmem14((addr)+1) )
-	#define writeword(addr,data)  { TMS99XX_ICOUNT -= 2; cpu_writemem14((addr), (data) >> 8); cpu_writemem14((addr) + 1, (data) & 0xff); }
+		TMS99XX_ICOUNT -= 2;
+		val = program_read_byte_8(addr);
+		return (val << 8) | program_read_byte_8(addr+1);
+	}
+	#define writeword(addr,data)  { TMS99XX_ICOUNT -= 2; program_write_byte_8((addr), (data) >> 8); program_write_byte_8((addr) + 1, (data) & 0xff); }
 
 #if 0
-	#define readbyte(addr)        (TMS99XX_ICOUNT -= 2, cpu_readmem14(addr))
-	#define writebyte(addr,data)  { TMS99XX_ICOUNT -= 2; cpu_writemem14((addr),(data)); }
+	#define readbyte(addr)        (TMS99XX_ICOUNT -= 2, program_read_byte_8(addr))
+	#define writebyte(addr,data)  { TMS99XX_ICOUNT -= 2; program_write_byte_8((addr),(data)); }
 #else
 	/*This is how it really works*/
 	/*Note that every writebyte must match a readbyte (which is indeed the case)*/
@@ -833,13 +840,13 @@ WRITE_HANDLER(tms9995_internal2_w)
 		TMS99XX_ICOUNT -= 2;
 		if (addr & 1)
 		{
-			extra_byte = cpu_readmem14(addr-1);
-			return cpu_readmem14(addr);
+			extra_byte = program_read_byte_8(addr-1);
+			return program_read_byte_8(addr);
 		}
 		else
 		{
-			int val = cpu_readmem14(addr);
-			extra_byte = cpu_readmem14(addr+1);
+			int val = program_read_byte_8(addr);
+			extra_byte = program_read_byte_8(addr+1);
 			return val;
 		}
 	}
@@ -848,13 +855,13 @@ WRITE_HANDLER(tms9995_internal2_w)
 		TMS99XX_ICOUNT -= 2;
 		if (addr & 1)
 		{
-			cpu_writemem14(addr-1, extra_byte);
-			cpu_writemem14(addr, data);
+			program_write_byte_8(addr-1, extra_byte);
+			program_write_byte_8(addr, data);
 		}
 		else
 		{
-			cpu_writemem14(addr, data);
-			cpu_writemem14(addr+1, extra_byte);
+			program_write_byte_8(addr, data);
+			program_write_byte_8(addr+1, extra_byte);
 		}
 	}
 #endif
@@ -862,7 +869,11 @@ WRITE_HANDLER(tms9995_internal2_w)
 #ifdef MAME_DEBUG
 	static data16_t dasm_readop(offs_t addr)
 	{
-		return (cpu_readmem14(addr) << 8) | cpu_readmem14(addr+1);
+		int val;
+
+		TMS99XX_ICOUNT -= 2;
+		val = program_read_byte_8(addr);
+		return (val << 8) | program_read_byte_8(addr+1);
 	}
 #endif
 
@@ -881,7 +892,7 @@ WRITE_HANDLER(tms9995_internal2_w)
 		else
 		{
 			TMS99XX_ICOUNT -= 2;
-			return (cpu_readmem16(addr) << 8) + cpu_readmem16(addr + 1);
+			return (program_read_byte_8(addr) << 8) + program_read_byte_8(addr + 1);
 		}
 	}
 	static void writeword(int addr, int data)
@@ -892,8 +903,8 @@ WRITE_HANDLER(tms9995_internal2_w)
 		else if (!(addr < 0x2000))
 		{
 			TMS99XX_ICOUNT -= 2;
-			cpu_writemem16(addr, data >> 8);
-			cpu_writemem16(addr + 1, data & 0xff);
+			program_write_byte_8(addr, data >> 8);
+			program_write_byte_8(addr + 1, data & 0xff);
 		}
 	}
 
@@ -910,13 +921,13 @@ WRITE_HANDLER(tms9995_internal2_w)
 			TMS99XX_ICOUNT -= 2;
 			if (addr & 1)
 			{
-				extra_byte = cpu_readmem14(addr-1);
-				return cpu_readmem14(addr);
+				extra_byte = program_read_byte_8(addr-1);
+				return program_read_byte_8(addr);
 			}
 			else
 			{
-				int val = cpu_readmem14(addr);
-				extra_byte = cpu_readmem14(addr+1);
+				int val = program_read_byte_8(addr);
+				extra_byte = program_read_byte_8(addr+1);
 				return val;
 			}
 		}
@@ -931,13 +942,13 @@ WRITE_HANDLER(tms9995_internal2_w)
 			TMS99XX_ICOUNT -= 2;
 			if (addr & 1)
 			{
-				cpu_writemem14(addr-1, extra_byte);
-				cpu_writemem14(addr, data);
+				program_write_byte_8(addr-1, extra_byte);
+				program_write_byte_8(addr, data);
 			}
 			else
 			{
-				cpu_writemem14(addr, data);
-				cpu_writemem14(addr+1, extra_byte);
+				program_write_byte_8(addr, data);
+				program_write_byte_8(addr+1, extra_byte);
 			}
 		}
 	}
@@ -961,7 +972,8 @@ WRITE_HANDLER(tms9995_internal2_w)
 		{
 			int reply;
 			TMS99XX_ICOUNT -= I.memory_wait_states_word;
-			return (program_read_byte_8(addr) << 8) + program_read_byte_8(addr + 1);
+			reply = program_read_byte_8(addr);
+			return (reply << 8) | program_read_byte_8(addr + 1);
 		}
 		else if (addr < 0xf0fc)
 		{
@@ -971,7 +983,8 @@ WRITE_HANDLER(tms9995_internal2_w)
 		{
 			int reply;
 			TMS99XX_ICOUNT -= I.memory_wait_states_word;
-			return (program_read_byte_8(addr) << 8) + program_read_byte_8(addr + 1);
+			reply = program_read_byte_8(addr);
+			return (reply << 8) | program_read_byte_8(addr + 1);
 		}
 		else if (addr < 0xfffc)
 		{
@@ -1111,7 +1124,7 @@ WRITE_HANDLER(tms9995_internal2_w)
 #define WRITEREG(reg, data)  writeword((I.WP+(reg)) & 0xffff, (data))
 
 #if (TMS99XX_MODEL == TI990_10_ID)
-	READ16_HANDLER(ti990_10_mapper_cru_r)
+	READ_HANDLER(ti990_10_mapper_cru_r)
 	{
 		int reply = 0;
 
@@ -1149,7 +1162,7 @@ WRITE_HANDLER(tms9995_internal2_w)
 			return reply & 0xff;
 	}
 
-	WRITE16_HANDLER(ti990_10_mapper_cru_w)
+	WRITE_HANDLER(ti990_10_mapper_cru_w)
 	{
 		switch (offset)
 		{
@@ -1190,12 +1203,12 @@ WRITE_HANDLER(tms9995_internal2_w)
 			(*I.error_interrupt_callback)(I.error_interrupt_register ? 1 : 0);
 	}
 
-	READ16_HANDLER(ti990_10_eir_cru_r)
+	READ_HANDLER(ti990_10_eir_cru_r)
 	{
 		return (offset == 1) ? (I.error_interrupt_register & 0xff) : 0;
 	}
 
-	WRITE16_HANDLER(ti990_10_eir_cru_w)
+	WRITE_HANDLER(ti990_10_eir_cru_w)
 	{
 		if (offset < 4)	/* does not work for EIR_MAPERR */
 		{
@@ -1241,17 +1254,17 @@ static void set_flag1(int val);
 
 /**************************************************************************/
 
-/*
-	TMS9900 hard reset
-*/
-static void TMS99XX_INIT(void)
+static void tms99xx_init(void)
 {
 #if (TMS99XX_MODEL == TMS9995_ID)
 	I.timer = timer_alloc(decrementer_callback);
 #endif
 }
 
-static void TMS99XX_RESET(void *param)
+/*
+	TMS9900 hard reset
+*/
+static void tms99xx_reset(void *p)
 {
 	TMS99XX_RESET_PARAM *param = (TMS99XX_RESET_PARAM *) p;
 
@@ -1264,8 +1277,6 @@ static void TMS99XX_RESET(void *param)
 		I.error_interrupt_callback = param ? param->error_interrupt_callback : NULL;
 	#endif
 
-
-	contextswitchX(0x0000);
 
 	I.STATUS = 0; /* TMS9980 and TMS9995 Data Books say so */
 	getstat();
@@ -1327,15 +1338,26 @@ static void TMS99XX_RESET(void *param)
 	/* The ST register and interrupt latches changed, didn't they ? */
 	field_interrupt();
 
+	contextswitchX(0x0000);
+
 	CYCLES(6, 26, 14);
 }
 
-static void TMS99XX_EXIT(void)
+static void tms99xx_exit(void)
 {
 	/* nothing to do ? */
 }
 
-static int TMS99XX_EXECUTE(int cycles)
+/* fetch : read one word at * PC, and increment PC. */
+INLINE UINT16 fetch(void)
+{
+	UINT16 value = readword(I.PC);
+	I.PC += 2;
+	return value;
+}
+
+
+static int tms99xx_execute(int cycles)
 {
 	TMS99XX_ICOUNT = cycles;
 
@@ -1467,12 +1489,29 @@ static int TMS99XX_EXECUTE(int cycles)
 				#if 0		/* Trace */
 				logerror("> PC %4.4x :%4.4x %4.4x : R=%4.4x %4.4x %4.4x %4.4x %4.4x %4.4x %4.4x %4.4x %4.4x %4.4x%4.4x %4.4x %4.4x %4.4x %4.4x %4.4x :T=%d\n",I.PC,I.STATUS,I.WP,I.FR[0],I.FR[1],I.FR[2],I.FR[3],I.FR[4],I.FR[5],I.FR[6],I.FR[7],I.FR[8],I.FR[9],I.FR[10],I.FR[11],I.FR[12],I.FR[13],I.FR[14],I.FR[15],TMS99XX_ICOUNT);
 					#if 0	/* useful with TI99/4a driver */
+					#ifdef MESS
+					if (I.PC == 0x0078)
 					{
-						extern int gpl_addr;
-						logerror("> GPL pointer %4.4x\n", gpl_addr);
+						extern struct
+						{
+							/* pointer to GROM data */
+							UINT8 *data_ptr;
+							/* current address pointer for the active GROM in port (16 bits) */
+							unsigned int addr;
+							/* GROM data buffer */
+							UINT8 buf;
+							/* internal flip-flops that are set after the first access to the GROM
+							address so that next access is mapped to the LSB, and cleared after each
+							data access */
+							char raddr_LSB, waddr_LSB;
+						} console_GROMs;
+						logerror("> GPL pointer %4.4X\n", console_GROMs.addr);
 					}
 					#endif
+					#endif
 				#endif
+
+				TMS99XX_ICOUNT = icount_save;
 
 				MAME_Debug();
 
@@ -1532,7 +1571,7 @@ static int TMS99XX_EXECUTE(int cycles)
 	return cycles - TMS99XX_ICOUNT;
 }
 
-static void TMS99XX_GET_CONTEXT(void *dst)
+static void tms99xx_get_context(void *dst)
 {
 	setstat();
 
@@ -1540,7 +1579,7 @@ static void TMS99XX_GET_CONTEXT(void *dst)
 		*(tms99xx_Regs*)dst = I;
 }
 
-static void TMS99XX_SET_CONTEXT(void *src)
+static void tms99xx_set_context(void *src)
 {
 	if( src )
 	{
@@ -1565,10 +1604,9 @@ static void TMS99XX_SET_CONTEXT(void *src)
 	}
 }
 
-
 #if (TMS99XX_MODEL == TI990_10_ID)
 
-void ti990_10_set_irq_line(int irqline, int state)
+static void tms99xx_set_irq_line(int irqline, int state)
 {
 	if (irqline == IRQ_LINE_NMI)
 	{
@@ -1602,7 +1640,7 @@ void ti990_10_set_irq_line(int irqline, int state)
 #elif (TMS99XX_MODEL == TMS9900_ID)
 
 /*
-void tms9900_set_irq_line(IRQ_LINE_NMI, int state) : change the state of the LOAD* line
+void tms99xx_set_irq_line(IRQ_LINE_NMI, int state) : change the state of the LOAD* line
 
 	state == 0 -> LOAD* goes high (inactive)
 	state != 0 -> LOAD* goes low (active)
@@ -1616,7 +1654,7 @@ void tms9900_set_irq_line(IRQ_LINE_NMI, int state) : change the state of the LOA
 */
 
 /*
-void tms9900_set_irq_line(int irqline, int state) : sets the state of the interrupt line.
+void tms99xx_set_irq_line(int irqline, int state) : sets the state of the interrupt line.
 
 	irqline is ignored, and should always be 0.
 
@@ -1670,7 +1708,7 @@ void tms9900_set_irq_line(int irqline, int state) : sets the state of the interr
  *
  * Note that this does not apply to tms9995.
 */
-static void set_irq_line(int irqline, int state)
+static void tms99xx_set_irq_line(int irqline, int state)
 {
 	if (irqline == IRQ_LINE_NMI)
 	{
@@ -1701,22 +1739,12 @@ static void set_irq_line(int irqline, int state)
 	}
 }
 
-static int get_irq_line(int irqline)
-{
-	switch (irqline)
-	{
-		case IRQ_LINE_NMI: 	return I.load_state;
-		case 0:				return I.irq_state;
-	}
-	return CLEAR_LINE;
-}
-
 #elif (TMS99XX_MODEL == TMS9980_ID)
 /*
 	interrupt system similar to tms9900, but only 3 interrupt pins (IC0-IC2)
 */
 
-static void set_irq_line(int irqline, int state)
+static void tms99xx_set_irq_line(int irqline, int state)
 {
 	if (state == CLEAR_LINE)
 	{
@@ -1747,7 +1775,7 @@ static void set_irq_line(int irqline, int state)
 			I.load_state = 0;
 			I.irq_state = 0;
 			I.irq_level = 16;
-			TMS99XX_RESET(NULL);
+			tms99xx_reset(NULL);
 			break;
 		case 2:
 			I.load_state = 1;
@@ -1776,11 +1804,7 @@ static void set_irq_line(int irqline, int state)
 	2 interrupt pins (int1 and int2)
 */
 
-#if (TMS99XX_MODEL == TMS9940_ID)
-void tms9940_set_irq_line(int irqline, int state)
-#else
-void tms9985_set_irq_line(int irqline, int state)
-#endif
+static void tms99xx_set_irq_line(int irqline, int state)
 {
 	int mask;
 
@@ -1800,15 +1824,6 @@ void tms9985_set_irq_line(int irqline, int state)
 		I.irq_state &= ~mask;
 
 	field_interrupt();  /* interrupt state is likely to have changed */
-}
-
-static int get_irq_line(int irqline)
-{
-	switch (irqline)
-	{
-		case 0:				return I.irq_state ? ASSERT_LINE : CLEAR_LINE;
-	}
-	return CLEAR_LINE;
 }
 
 #elif (TMS99XX_MODEL == TMS9995_ID)
@@ -1855,7 +1870,7 @@ static void reset_decrementer(void)
 	(level-triggered interrupts).  Edge-triggered interrupts are way simpler, but if multiple devices
 	share the same line, they must use level-triggered interrupts.
 */
-static void set_irq_line(int irqline, int state)
+static void tms99xx_set_irq_line(int irqline, int state)
 {
 	if (irqline == IRQ_LINE_NMI)
 	{
@@ -1899,17 +1914,6 @@ static void set_irq_line(int irqline, int state)
 			field_interrupt();  /* interrupt status changed */
 		}
 	}
-}
-
-static int get_irq_line(int irqline)
-{
-	switch (irqline)
-	{
-		case IRQ_LINE_NMI: 	return I.load_state;
-		case 0:				return (I.int_state & 0x2) ? ASSERT_LINE : CLEAR_LINE;
-		case 1:				return (I.int_state & 0x10) ? ASSERT_LINE : CLEAR_LINE;
-	}
-	return CLEAR_LINE;
 }
 
 #else
@@ -1994,8 +1998,7 @@ static void field_interrupt(void)
 
 #endif
 
-
-static offs_t TMS99XX_DASM(char *buffer, offs_t pc)
+static unsigned tms99xx_dasm(char *buffer, unsigned pc)
 {
 
 #ifdef MAME_DEBUG
@@ -2038,7 +2041,7 @@ enum
 	/* no such problem here : data bus lines D0-D2 provide the external instruction code */
 	CRUAddrBit = 15
 #else
-	#warning "I don't know how your processor handle CRU."
+	#warning "I don't know how your processor handles CRU."
 	CRUAddrBit = 15
 #endif
 };
@@ -2076,11 +2079,13 @@ static void set_flag1(int val)
 
 #endif
 
-#if (TMS99XX_MODEL == TMS9900_ID)
-#define WRITEPORT(Port, data) io_write_word_16be((Port)<<1, (data))
-#else
-#define WRITEPORT(Port, data) io_write_byte_8(Port, data)
-#endif
+typedef enum
+{
+	CRU_OK = 0,
+	CRU_PRIVILEGE_VIOLATION = -1
+} cru_error_code;
+
+#define WRITEPORT(port, data) io_write_byte_8(port, data)
 
 #if (TMS99XX_MODEL == TMS9940_ID) || (TMS99XX_MODEL == TMS9985_ID)
 /* on tms9940, we have to handle internal CRU ports */
@@ -2251,15 +2256,15 @@ static void external_instruction_notify(int ext_op_ID)
 {
 #if 1
 	/* I guess we can support this like normal CRU operations */
-#if (TMS99XX_MODEL == TMS9900_ID)
-	WRITEPORT(ext_op_ID << 12, 0); /* or is it 1 ??? */
-#elif (TMS99XX_MODEL == TMS9980_ID)
-	io_write_byte_8((ext_op_ID & 3) << 11, (ext_op_ID & 4) ? 1 : 0);
-#elif (TMS99XX_MODEL == TMS9995_ID)
-	io_write_byte_8(ext_op_ID << 15, 0); /* or is it 1 ??? */
-#else
-	#warning "I don't know how your processor handle external opcodes (maybe you don't need them, though)."
-#endif
+	#if (TMS99XX_MODEL == TMS9900_ID)
+		WRITEPORT(ext_op_ID << 12, 0); /* or is it 1 ??? */
+	#elif (TMS99XX_MODEL == TMS9980_ID)
+		WRITEPORT((ext_op_ID & 3) << 11, (ext_op_ID & 4) ? 1 : 0);
+	#elif (TMS99XX_MODEL == TMS9995_ID)
+		WRITEPORT(ext_op_ID << 15, 0); /* or is it 1 ??? */
+	#else
+		#warning "I don't know how your processor handles external opcodes (maybe you don't need them, though)."
+	#endif
 
 #else
 	switch (ext_op_ID)
@@ -2299,13 +2304,7 @@ static void external_instruction_notify(int ext_op_ID)
 	read at the same address.  This seems to be impossible to emulate efficiently, so, if you need
 	to emulate this, you're in trouble.
 */
-#if (TMS99XX_MODEL == TMS9900_ID)
-#define READPORT(Port) io_read_word_16be((Port)<<1)
-#elif (TMS99XX_MODEL != TMS9995_ID)
-#define READPORT(Port) io_read_byte_8(Port)
-#else
-#define READPORT(port) cpu_readport16(port)
-#endif
+#define READPORT(port) io_read_byte_8(port)
 
 
 #if (TMS99XX_MODEL == TMS9940_ID) || (TMS99XX_MODEL == TMS9985_ID)
@@ -2399,12 +2398,13 @@ static int read_single_CRU(int port)
 	case 0x1FD:
 		/* MID flag, and external devices */
 		if (I.MID_flag)
-			return io_read_byte_8(Port) | 0x10;
+			return READPORT(port) | 0x10;
 		else
-			return io_read_byte_8(Port) & ~ 0x10;
-	else
-		/* extrernal devices */
-		return io_read_byte_8(Port);
+			return READPORT(port) & ~ 0x10;
+	default:
+		/* external devices */
+		return READPORT(port);
+	}
 }
 #else
 #define read_single_CRU(port) READPORT(port)
@@ -2515,10 +2515,10 @@ static void load_map_file(UINT16 src_addr, int src_map_file, int dst_file)
 
 	for (i=0; i<3; i++)
 	{
-		I.map_files[dst_file].L[i] = cpu_readmem24bew_word(I.mapper_address_latch) & 0xffe0;
+		I.map_files[dst_file].L[i] = program_read_word_16be(I.mapper_address_latch) & 0xffe0;
 		I.map_files[dst_file].limit[i] = (I.map_files[dst_file].L[i] ^ 0xffe0) | 0x001f;
 		I.mapper_address_latch = (I.mapper_address_latch+2) & 0x1fffff;
-		I.map_files[dst_file].B[i] = cpu_readmem24bew_word(I.mapper_address_latch);
+		I.map_files[dst_file].B[i] = program_read_word_16be(I.mapper_address_latch);
 		I.map_files[dst_file].bias[i] = ((unsigned int) I.map_files[dst_file].B[i]) << 5;
 		I.mapper_address_latch = (I.mapper_address_latch+2) & 0x1fffff;
 	}
@@ -2547,9 +2547,9 @@ static void contextswitch(UINT16 addr)
 
 #if HAS_MAPPING || HAS_PRIVILEGE
 
-/* priviledged context switch, that accurs after a reset, interrupt or XOP:
+/* priviledged context switch, that occurs after a reset, interrupt or XOP:
 we enter priviledged mode and select map file 0 before doing the context switch */
-/* For CPU that have no priviledge support, contextswitchX would behave the
+/* For CPU that have no priviledge support, contextswitchX would behave
 identically to contextswitch, so we can call contextswitch in all cases. */
 static void contextswitchX(UINT16 addr)
 {
@@ -2848,7 +2848,7 @@ static void h0040(UINT16 opcode)
 	case 9:   /* LWP */
 		/* LWP --- Load Workspace Pointer */
 		/* WP = *Reg */
-		I.WP = readword(addr);
+		I.WP = readword(addr) & ~1;
 		break;
 
 #if 0	/* 990/12 opcodes */
@@ -2912,7 +2912,7 @@ static void h0100(UINT16 opcode)
 #if HAS_BIND_OPCODE
 	case 1:   /* BIND */
 		/* BIND -- Branch INDirect */
-		I.PC = readwordX(src, src_map);
+		I.PC = readwordX(src, src_map) & ~1;
 		CYCLES(Mooof!, Mooof!, 4 /*don't know*/);
 		break;
 #endif
@@ -3035,11 +3035,14 @@ static void h0200(UINT16 opcode)
 		/* full instruction decoding on tms9995 */
 		if (((opcode < 0x2E0) && (opcode & 0x10)) || ((opcode >= 0x2E0) && (opcode & 0x1F)))
 		{
-		#if 0	/* Origin unknown */
+		#if 0
+			/* tms99110 opcode (not supported by 990/12) */
 			if (opcode == 0x0301)
 			{	/* CR ---- Compare Reals */
 			}
-			else if (opcode == 0x0302)
+			else
+			/* tms99105+tms99110 opcode (not supported by 990/12) */
+			if (opcode == 0x0302)
 			{	/* MM ---- Multiply Multiple */
 			}
 			else
@@ -3121,7 +3124,7 @@ static void h0200(UINT16 opcode)
 	case 7:   /* LWPI */
 		/* LWPI -- Load Workspace Pointer Immediate */
 		/* WP = *PC+ */
-		I.WP = fetch();
+		I.WP = fetch() & ~1;
 		CYCLES(3, 10, 4);
 		break;
 
@@ -3171,9 +3174,9 @@ static void h0200(UINT16 opcode)
 		/* RTWP -- Return with Workspace Pointer */
 		/* WP = R13, PC = R14, ST = R15 */
 		addr = (I.WP + R13) & ~1;
-		I.WP = readword(addr);
+		I.WP = readword(addr) & ~1;
 		addr += 2;
-		I.PC = readword(addr);
+		I.PC = readword(addr) & ~1;
 		addr += 2;
 		#if HAS_PRIVILEGE
 			if (I.STATUS & ST_PR)
@@ -3248,7 +3251,7 @@ static void h0200(UINT16 opcode)
 	case 15:  /* LREX */
 		/* CKON -- ClocK ON */
 		/* Perform a special CRU write (code 5). */
-		/* An external circuitery could, for instance, enable the line clock interrupt (100Hz or 120Hz, depending on voltage). */
+		/* An external circuitery could, for instance, enable the line clock interrupt (100Hz or 120Hz, depending on the electrical alimentation frequency). */
 		/* CKOF -- ClocK OFf */
 		/* Perform a special CRU write (code 6). */
 		/* An external circuitery could, for instance, disable the line clock interrupt. */
@@ -3278,11 +3281,11 @@ static void h0200(UINT16 opcode)
 	case 13:  /* CKON */
 	case 14:  /* CKOF */
 		/* CKON -- ClocK ON */
-		/* Perform a special CRU write (code 5). */
-		/* An external circuitery could, for instance, enable the line clock interrupt (100Hz or 120Hz, depending on voltage). */
+		/* Enable the line clock interrupt (100Hz or 120Hz, depending on the electrical alimentation frequency). */
 		/* CKOF -- ClocK OFf */
-		/* Perform a special CRU write (code 6). */
-		/* An external circuitery could, for instance, disable the line clock interrupt. */
+		/* Disable the line clock interrupt. */
+		/* We use a callback because the line clock is implemented in machine
+		   code, not in the CPU core. */
 		#if HAS_PRIVILEGE
 			if (I.STATUS & ST_PR)
 			{
@@ -3300,9 +3303,8 @@ static void h0200(UINT16 opcode)
 
 	case 15:  /* LREX */
 		/* LREX -- Load or REstart eXecution */
-		/* Perform a special CRU write (code 7). */
-		/* An external circuitery could, for instance, activate the LOAD* line,
-		   causing a non-maskable LOAD interrupt (vector -1). */
+		/* Trigger a LOAD interrupt (vector -1).  (We use a callback, and I
+		   have forgotten the reason why.) */
 		#if HAS_PRIVILEGE
 			if (I.STATUS & ST_PR)
 			{
@@ -3361,6 +3363,9 @@ static void h0400(UINT16 opcode)
 	case 1:   /* B */
 		/* B ----- Branch */
 		/* PC = S */
+#if ((TMS99XX_MODEL == TMS9900_ID) || (TMS99XX_MODEL == TMS9980_ID))
+		(void) readwordX(addr, src_map);
+#endif
 		I.PC = addr;
 		CYCLES(2, 8, 3);
 		break;
@@ -3368,13 +3373,16 @@ static void h0400(UINT16 opcode)
 		/* X ----- eXecute */
 		/* Executes instruction *S */
 		execute(readwordX(addr, src_map));
-		/* On tms9900, the X instruction actually takes 8 cycles, but we gain 4 cycles on the next
+		/* On tms9900, the X instruction actually takes 8 cycles, but we gain 2 cycles on the next
 		instruction, as we don't need to fetch it. */
-		CYCLES(1, 4, 2);
+		CYCLES(1, 6, 2);
 		break;
 	case 3:   /* CLR */
 		/* CLR --- CLeaR */
 		/* *S = 0 */
+#if ((TMS99XX_MODEL == TMS9900_ID) || (TMS99XX_MODEL == TMS9980_ID))
+		(void) readwordX(addr, src_map);
+#endif
 		writewordX(addr, 0, src_map);
 		CYCLES(2, 10, 3);
 		break;
@@ -3437,6 +3445,9 @@ static void h0400(UINT16 opcode)
 	case 10:  /* BL */
 		/* BL ---- Branch and Link */
 		/* IP=S, R11=old IP */
+#if ((TMS99XX_MODEL == TMS9900_ID) || (TMS99XX_MODEL == TMS9980_ID))
+		(void) readwordX(addr, src_map);
+#endif
 		WRITEREG(R11, I.PC);
 		I.PC = addr;
 		CYCLES(3, 12, 5);
@@ -3452,6 +3463,9 @@ static void h0400(UINT16 opcode)
 	case 12:  /* SETO */
 		/* SETO -- SET to Ones */
 		/* *S = #$FFFF */
+#if ((TMS99XX_MODEL == TMS9900_ID) || (TMS99XX_MODEL == TMS9980_ID))
+		(void) readwordX(addr, src_map);
+#endif
 		writewordX(addr, 0xFFFF, src_map);
 		CYCLES(2, 10, 3);
 		break;
@@ -4616,27 +4630,66 @@ INLINE void execute(UINT16 opcode)
 #endif
 }
 
-
 /**************************************************************************
  * Generic set_info
  **************************************************************************/
 
-static void TMS99XX_SET_INFO(UINT32 state, union cpuinfo *info)
+static void tms99xx_set_info(UINT32 state, union cpuinfo *info)
 {
 	switch (state)
 	{
 		/* --- the following bits of info are set as 64-bit signed integers --- */
-		case CPUINFO_INT_IRQ_STATE + IRQ_LINE_NMI:		set_irq_line(IRQ_LINE_NMI, info->i);	break;
-		case CPUINFO_INT_IRQ_STATE + 0:					set_irq_line(0, info->i);				break;
-		case CPUINFO_INT_IRQ_STATE + 1:					set_irq_line(1, info->i);				break;
-		case CPUINFO_INT_IRQ_STATE + 2:					set_irq_line(2, info->i);				break;
+		case CPUINFO_INT_IRQ_STATE + IRQ_LINE_NMI:		tms99xx_set_irq_line(IRQ_LINE_NMI, info->i); break;
+		case CPUINFO_INT_IRQ_STATE + 0:					tms99xx_set_irq_line(0, info->i);		break;
+		case CPUINFO_INT_IRQ_STATE + 1:					tms99xx_set_irq_line(1, info->i);		break;
+		case CPUINFO_INT_IRQ_STATE + 2:					tms99xx_set_irq_line(2, info->i);		break;
 
+#if (TMS99XX_MODEL == TI990_10_ID)
 		case CPUINFO_INT_PC:
-		case CPUINFO_INT_REGISTER + TMS9900_PC:			I.PC = info->i;							break;
+			{
+				const unsigned top = (I.cur_map == 0) ? 0xf800 : 0x10000;
+
+				if ((I.cur_map == 0) && (info->i >= 0x1ff800))
+					/* intercept TPCS and CPU ROM */
+					I.PC = info->i - 0x1f0000;
+				else if (! I.mapping_on)
+					I.PC = (info->i < top) ? info->i : 0;
+				else
+				{
+					if ((info->i >= I.map_files[I.cur_map].bias[0])
+							&& (info->i <= (I.map_files[I.cur_map].bias[0]+I.map_files[I.cur_map].limit[0])))
+						I.PC = info->i - I.map_files[I.cur_map].bias[0];
+					else if ((info->i > (I.map_files[I.cur_map].bias[1]+I.map_files[I.cur_map].limit[0]))
+							&& (info->i <= (I.map_files[I.cur_map].bias[1]+I.map_files[I.cur_map].limit[1])))
+						I.PC = info->i - I.map_files[I.cur_map].bias[1];
+					else if ((info->i > (I.map_files[I.cur_map].bias[2]+I.map_files[I.cur_map].limit[0]))
+							&& (info->i > (I.map_files[I.cur_map].bias[2]+I.map_files[I.cur_map].limit[1]))
+							&& (info->i <= (I.map_files[I.cur_map].bias[2]+I.map_files[I.cur_map].limit[2])))
+						I.PC = info->i - I.map_files[I.cur_map].bias[2];
+					else
+					{
+						/*if ((info->i < top)
+								&& (info->i > I.map_files[I.cur_map].limit[0])
+								&& (info->i > I.map_files[I.cur_map].limit[1])
+								&& (info->i > I.map_files[I.cur_map].limit[2]))
+							I.PC = info->i;
+						else*/
+							I.PC = 0;
+					}
+					/*if (info->i >= top)
+						I.PC = 0;*/
+				}
+				I.PC &= 0xfffe;
+			}
+			break;
+#else
+		case CPUINFO_INT_PC:
+#endif
+		case CPUINFO_INT_REGISTER + TMS9900_PC:			I.PC = info->i & 0xfffe;				break;
 		case CPUINFO_INT_REGISTER + TMS9900_IR:			I.IR = info->i;							break;
 		case CPUINFO_INT_SP:
-		case CPUINFO_INT_REGISTER + TMS9900_WP:			I.WP = info->i;							break;
-		case CPUINFO_INT_REGISTER + TMS9900_STATUS:		I.STATUS = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS9900_WP:			I.WP = info->i & 0xfffe;				break;
+		case CPUINFO_INT_REGISTER + TMS9900_STATUS:		I.STATUS = info->i; getstat();			break;
 #ifdef MAME_DEBUG
 		case CPUINFO_INT_REGISTER + TMS9900_R0:			I.FR[0]= info->i;						break;
 		case CPUINFO_INT_REGISTER + TMS9900_R1:			I.FR[1]= info->i;						break;
@@ -4677,41 +4730,100 @@ void TMS99XX_GET_INFO(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 2;							break;
-		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 6;							break;
+		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 6;/*8 with 990/12, 99105, 99110*/break;
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1;							break;
-		case CPUINFO_INT_MAX_CYCLES:					info->i = 10;							break;
+		case CPUINFO_INT_MAX_CYCLES:					info->i = 10;/*TODO: compute this value*/break;
 		
-#if (TMS99XX_MODEL == TMS9900_ID)
+#if (USE_16_BIT_ACCESSORS)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 16;					break;
 #else
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 8;					break;
 #endif
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_PROGRAM: info->i = 16;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_PROGRAM:
+#if (TMS99XX_MODEL == TI990_10_ID)
+			/* this CPU has a mapper to expand the address space */
+			info->i = 21;
+#elif (TMS99XX_MODEL == TMS9900_ID) || (TMS99XX_MODEL == TMS9940_ID) || (TMS99XX_MODEL == TMS9985_ID) || (TMS99XX_MODEL == TMS9995_ID)
+			/* basic 16-bit address bus */
+			info->i = 16;
+#elif (TMS99XX_MODEL == TMS9980_ID)
+			/* 2 address MSBits are unconnected */
+			info->i = 14;
+#else
+			#warning "Please check how many address bits your CPU has."
+			info->i = 16;
+#endif
+			break;
 		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_PROGRAM: info->i = 0;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_DATA:	info->i = 0;					break;
 		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_DATA: 	info->i = 0;					break;
 		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_DATA: 	info->i = 0;					break;
-#if (TMS99XX_MODEL == TMS9900_ID)
-		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 16;					break;
-#else
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 8;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO:
+#if (TMS99XX_MODEL == TI990_10_ID)
+			/* 3 MSBs do exist, although they are not connected (don't ask...) */
+			info->i = 15;
+#elif (TMS99XX_MODEL == TMS9900_ID)
+			/* 3 MSBs are external instruction code */
+			info->i = 12;
+#elif (TMS99XX_MODEL == TMS9980_ID)
+			/* 2 bits unused, and 2 MSBs are external instruction code */
+			info->i = 13;
+#elif (TMS99XX_MODEL == TMS9940_ID)
+			/* 9 internal address lines (8 external) */
+			info->i = 9;
+#elif (TMS99XX_MODEL == TMS9995_ID)
+			/* 15-bit address and data bus lines D0-D2 provide the external instruction code */
+			info->i = 15+3;
+#else
+			#warning "I don't know how your processor handles CRU."
+			info->i = 15;
 #endif
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO: 		info->i = 16;					break;
+			break;
 		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_IO: 		info->i = 0;					break;
 
-		case CPUINFO_INT_IRQ_STATE + IRQ_LINE_NMI:		info->i = get_irq_line(IRQ_LINE_NMI);	break;
+/* not implemented */
+/*		case CPUINFO_INT_IRQ_STATE + IRQ_LINE_NMI:		info->i = get_irq_line(IRQ_LINE_NMI);	break;
 		case CPUINFO_INT_IRQ_STATE + 0:					info->i = get_irq_line(0);				break;
 		case CPUINFO_INT_IRQ_STATE + 1:					info->i = get_irq_line(1);				break;
-		case CPUINFO_INT_IRQ_STATE + 2:					info->i = get_irq_line(2);				break;
+		case CPUINFO_INT_IRQ_STATE + 2:					info->i = get_irq_line(2);				break;*/
 
 		case CPUINFO_INT_PREVIOUSPC:					/* not implemented */					break;
 
+#if (TMS99XX_MODEL == TI990_10_ID)
 		case CPUINFO_INT_PC:
+			if ((I.cur_map == 0) && (I.PC >= 0xf800))
+				/* intercept TPCS and CPU ROM */
+				info->i = 0x1f0000+I.PC;
+			else if (! I.mapping_on)
+				info->i = I.PC;
+			else
+			{
+				int map_index;
+
+				if (I.PC <= I.map_files[I.cur_map].limit[0])
+					map_index = 0;
+				else if (I.PC <= I.map_files[I.cur_map].limit[1])
+					map_index = 1;
+				else if (I.PC <= I.map_files[I.cur_map].limit[2])
+					map_index = 2;
+				else
+				{
+					info->i = I.PC;
+					break;
+				}
+
+				info->i = I.map_files[I.cur_map].bias[map_index]+I.PC;
+			}
+			break;
+#else
+		case CPUINFO_INT_PC:
+#endif
 		case CPUINFO_INT_REGISTER + TMS9900_PC:			info->i = I.PC;							break;
 		case CPUINFO_INT_REGISTER + TMS9900_IR:			info->i = I.IR;							break;
 		case CPUINFO_INT_SP:
 		case CPUINFO_INT_REGISTER + TMS9900_WP:			info->i = I.WP;							break;
-		case CPUINFO_INT_REGISTER + TMS9900_STATUS:		info->i = I.STATUS;						break;
+		case CPUINFO_INT_REGISTER + TMS9900_STATUS:		setstat(); info->i = I.STATUS;			break;
 #ifdef MAME_DEBUG
 		case CPUINFO_INT_REGISTER + TMS9900_R0:			info->i = I.FR[0];						break;
 		case CPUINFO_INT_REGISTER + TMS9900_R1:			info->i = I.FR[1];						break;
@@ -4731,15 +4843,15 @@ void TMS99XX_GET_INFO(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + TMS9900_R15:		info->i = I.FR[15];						break;
 #endif
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case CPUINFO_PTR_SET_INFO:						info->setinfo = TMS99XX_SET_INFO;		break;
-		case CPUINFO_PTR_GET_CONTEXT:					info->getcontext = TMS99XX_GET_CONTEXT;	break;
-		case CPUINFO_PTR_SET_CONTEXT:					info->setcontext = TMS99XX_SET_CONTEXT;	break;
-		case CPUINFO_PTR_INIT:							info->init = TMS99XX_INIT;				break;
-		case CPUINFO_PTR_RESET:							info->reset = TMS99XX_RESET;			break;
-		case CPUINFO_PTR_EXIT:							info->exit = TMS99XX_EXIT;				break;
-		case CPUINFO_PTR_EXECUTE:						info->execute = TMS99XX_EXECUTE;		break;
+		case CPUINFO_PTR_SET_INFO:						info->setinfo = tms99xx_set_info;		break;
+		case CPUINFO_PTR_GET_CONTEXT:					info->getcontext = tms99xx_get_context;	break;
+		case CPUINFO_PTR_SET_CONTEXT:					info->setcontext = tms99xx_set_context;	break;
+		case CPUINFO_PTR_INIT:							info->init = tms99xx_init;				break;
+		case CPUINFO_PTR_RESET:							info->reset = tms99xx_reset;			break;
+		case CPUINFO_PTR_EXIT:							info->exit = tms99xx_exit;				break;
+		case CPUINFO_PTR_EXECUTE:						info->execute = tms99xx_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = TMS99XX_DASM;		break;
+		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = tms99xx_dasm;		break;
 		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = I.irq_callback;		break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &TMS99XX_ICOUNT;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = tms9900_reg_layout;			break;

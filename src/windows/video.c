@@ -301,7 +301,7 @@ static int video_set_resolution(struct rc_option *option, const char *arg, int p
 static int decode_ftr(struct rc_option *option, const char *arg, int priority)
 {
 	int ftr;
-
+	
 	if (sscanf(arg, "%d", &ftr) != 1)
 	{
 		fprintf(stderr, "error: invalid value for frames_to_run: %s\n", arg);
@@ -866,10 +866,10 @@ static void render_frame(struct mame_bitmap *bitmap, const struct rectangle *bou
 		{
 			char name[20];
 			mame_file *fp;
-
+			
 			// make a filename with an underscore prefix
 			sprintf(name, "_%.8s", Machine->gamedrv->name);
-
+			
 			// write out the screenshot
 			if ((fp = mame_fopen(Machine->gamedrv->name, name, FILETYPE_SCREENSHOT, 1)) != NULL)
 			{

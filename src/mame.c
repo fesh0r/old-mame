@@ -1117,10 +1117,10 @@ void set_refresh_rate(float fps)
 	/* bail if already equal */
 	if (Machine->refresh_rate == fps)
 		return;
-
+	
 	/* "dirty" the rate for the next display update */
 	refresh_rate_changed = 1;
-
+	
 	/* set the new values in the Machine struct */
 	Machine->refresh_rate = fps;
 
@@ -1262,7 +1262,7 @@ void update_video_and_audio(void)
 	current_display.game_visible_area = Machine->absolute_visible_area;
 	if (visible_area_changed)
 		current_display.changed_flags |= GAME_VISIBLE_AREA_CHANGED;
-
+	
 	/* set the refresh rate */
 	current_display.game_refresh_rate = Machine->refresh_rate;
 	if (refresh_rate_changed)
@@ -1817,6 +1817,7 @@ static int validitychecks(void)
 				region_length[j] = 0;
 			}
 
+			/* consistency checks on ROMs */
 			while (!ROMENTRY_ISEND(romp))
 			{
 				const char *c;
@@ -1878,11 +1879,69 @@ static int validitychecks(void)
 			}
 
 
+			/* consistency checks on CPUs */
 			for (cpu = 0;cpu < MAX_CPU;cpu++)
 			{
 				if (drv.cpu[cpu].cpu_type)
 				{
 					int space,mapnum;
+					extern void dummy_get_info(UINT32 state, union cpuinfo *info);
+
+					/* checks to see if this driver is using a dummy CPU */
+					if (cputype_get_interface(drv.cpu[cpu].cpu_type)->get_info == dummy_get_info)
+					{
+						printf("%s: %s uses non-present CPU\n",drivers[i]->source_file,drivers[i]->name);
+						error = 1;
+					}
+					else
+					{
+						/* check to make sure that this CPU core has the necessities filled out */
+						const struct cpu_interface *cpuintrf;
+						union cpuinfo info;
+						const INT8 *reg;
+						int incomplete_cpu_core = 0;
+						static const int required_info[] =
+						{
+							CPUINFO_STR_NAME, CPUINFO_STR_CORE_FAMILY, CPUINFO_STR_CORE_FILE,
+							CPUINFO_PTR_REGISTER_LAYOUT
+						};
+
+						cpuintrf = cputype_get_interface(drv.cpu[cpu].cpu_type);
+						for (j = 0; j < sizeof(required_info) / sizeof(required_info[0]); j++)
+						{
+							memset(&info, 0, sizeof(info));
+							cpuintrf->get_info(required_info[j], &info);
+							if (!info.s)
+								incomplete_cpu_core = 1;
+						}
+
+						memset(&info, 0, sizeof(info));
+						cpuintrf->get_info(CPUINFO_PTR_REGISTER_LAYOUT, &info);
+						reg = (const INT8 *) info.p;
+						if (reg)
+						{
+							for (j = 0; reg[j]; j++)
+							{
+								if (reg[j] != -1)
+								{
+									memset(&info, 0, sizeof(info));
+									cpuintrf->get_info(CPUINFO_STR_REGISTER + reg[j], &info);
+									if (!info.s)
+										incomplete_cpu_core = 1;
+								}
+							}
+						}
+
+						if (incomplete_cpu_core)
+						{
+							memset(&info, 0, sizeof(info));
+							cpuintrf->get_info(CPUINFO_STR_NAME, &info);
+							printf("%s: %s uses incomplete CPU core %s\n",drivers[i]->source_file, drivers[i]->name,
+								info.s);
+							error = 1;
+						}
+					}
+
 					for (space = 0;space < ADDRESS_SPACES;space++)
 						for (mapnum = 0;mapnum < 2;mapnum++)
 						{
@@ -1900,10 +1959,10 @@ static int validitychecks(void)
 								struct address_map_t address_map[MAX_ADDRESS_MAP_SIZE];
 								const struct address_map_t *map = address_map;
 								UINT32 flags, val;
-
+								
 								memset(address_map, 0, sizeof(address_map));
 								(*drv.cpu[cpu].construct_map[space][mapnum])(address_map);
-
+								
 								if (IS_AMENTRY_END(map))
 									continue;
 								if (!IS_AMENTRY_EXTENDED(map))
@@ -1950,6 +2009,7 @@ static int validitychecks(void)
 			}
 
 
+			/* consistency chekcs on GfxDecodeInfo */
 			if (drv.gfxdecodeinfo)
 			{
 				for (j = 0;j < MAX_GFX_ELEMENTS && drv.gfxdecodeinfo[j].memory_region != -1;j++)

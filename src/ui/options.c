@@ -48,13 +48,18 @@
 #ifdef _MSC_VER
 #define snprintf _snprintf
 #endif
+
 /***************************************************************************
     Internal function prototypes
  ***************************************************************************/
 
+#ifdef MAME_DEBUG
+static BOOL CheckOptions(REG_OPTION *opts, BOOL bPassedToMAME);
+#endif // MAME_DEBUG
+
 static void LoadFolderFilter(int folder_index,int filters);
 
-static REG_OPTION * GetOption(REG_OPTION *option_array,int num_options,const char *key);
+static REG_OPTION * GetOption(REG_OPTION *option_array, const char *key);
 static void LoadOption(REG_OPTION *option,const char *value_str);
 static BOOL LoadGameVariableOrFolderFilter(char *key,const char *value);
 static void ParseKeyValueStrings(char *buffer,char **key,char **value);
@@ -71,6 +76,9 @@ static void WriteOptionToFile(FILE *fptr,REG_OPTION *regOpt);
 
 static void  ColumnEncodeString(void* data, char* str);
 static void  ColumnDecodeString(const char* str, void* data);
+
+static void  KeySeqEncodeString(void *data, char* str);
+static void  KeySeqDecodeString(const char *str, void* data);
 
 static void  JoyInfoEncodeString(void *data, char* str);
 static void  JoyInfoDecodeString(const char *str, void* data);
@@ -141,250 +149,291 @@ static game_variables_type *game_variables;  // Array of game specific extra dat
 // UI options in mame32ui.ini
 static REG_OPTION regSettings[] =
 {
-	{"default_game",       RO_STRING,  &settings.default_game,      0, 0},
-	{"default_folder_id",  RO_INT,     &settings.folder_id,        0, 0},
-	{"show_image_section", RO_BOOL,    &settings.show_screenshot,  0, 0},
-	{"current_tab",          RO_ENCODE,&settings.current_tab,
-	 CurrentTabEncodeString, CurrentTabDecodeString },
-	{"show_tool_bar",      RO_BOOL,    &settings.show_toolbar,     0, 0},
-	{"show_status_bar",    RO_BOOL,    &settings.show_statusbar,   0, 0},
-	{"show_folder_section",RO_BOOL,    &settings.show_folderlist,  0, 0},
-	{"hide_folders",       RO_ENCODE,  &settings.show_folder_flags,
-	 FolderFlagsEncodeString, FolderFlagsDecodeString },
+#ifdef MESS
+	{ "default_system",             RO_STRING,  &settings.default_game,              "pacman" },
+#else
+	{ "default_game",               RO_STRING,  &settings.default_game,              "nes" },
+#endif
+	{ "default_folder_id",          RO_INT,     &settings.folder_id,		         "0" },
+	{ "show_image_section",         RO_BOOL,    &settings.show_screenshot,           "1" },
+	{ "current_tab",                RO_ENCODE,  &settings.current_tab,               "0", FALSE, CurrentTabEncodeString, CurrentTabDecodeString },
+	{ "show_tool_bar",              RO_BOOL,    &settings.show_toolbar,              "1" },
+	{ "show_status_bar",            RO_BOOL,    &settings.show_statusbar,            "1" },
+	{ "show_folder_section",        RO_BOOL,    &settings.show_folderlist,           "1" },
+	{ "hide_folders",               RO_ENCODE,  &settings.show_folder_flags,         NULL, FALSE, FolderFlagsEncodeString, FolderFlagsDecodeString },
 
-	{"show_tabs",          RO_BOOL,    &settings.show_tabctrl,     0, 0},
-	{"hide_tabs",          RO_ENCODE,  &settings.show_tab_flags,
-	 TabFlagsEncodeString, TabFlagsDecodeString },
+	{ "show_tabs",                  RO_BOOL,    &settings.show_tabctrl,              "1" },
+	{ "hide_tabs",                  RO_ENCODE,  &settings.show_tab_flags,            "snapshot,flyer,cabinet,marquee,title", FALSE, TabFlagsEncodeString, TabFlagsDecodeString },
 
-	{"check_game",         RO_BOOL,    &settings.game_check,       0, 0},
-	{"joystick_in_interface",RO_BOOL,&settings.use_joygui,     0, 0},
-	{"broadcast_game_name",RO_BOOL,    &settings.broadcast,        0, 0},
-	{"random_background",  RO_BOOL,    &settings.random_bg,        0, 0},
+	{ "check_game",                 RO_BOOL,    &settings.game_check,                "1" },
+	{ "joystick_in_interface",      RO_BOOL,    &settings.use_joygui,                "0" },
+	{ "keyboard_in_interface",      RO_BOOL,    &settings.use_keygui,                "0" },
+	{ "broadcast_game_name",        RO_BOOL,    &settings.broadcast,                 "0" },
+	{ "random_background",          RO_BOOL,    &settings.random_bg,                 "0" },
 
-	{"sort_column",        RO_INT,     &settings.sort_column,      0, 0},
-	{"sort_reversed",      RO_BOOL,    &settings.sort_reverse,     0, 0},
-	{"window_x",           RO_INT,     &settings.area.x,           0, 0},
-	{"window_y",           RO_INT,     &settings.area.y,           0, 0},
-	{"window_width",       RO_INT,     &settings.area.width,       0, 0},
-	{"window_height",      RO_INT,     &settings.area.height,      0, 0},
-	{"window_state",       RO_INT,     &settings.windowstate,      0, 0},
+	{ "sort_column",                RO_INT,     &settings.sort_column,               "0" },
+	{ "sort_reversed",              RO_BOOL,    &settings.sort_reverse,              "0" },
+	{ "window_x",                   RO_INT,     &settings.area.x,                    "0" },
+	{ "window_y",                   RO_INT,     &settings.area.y,                    "0" },
+	{ "window_width",               RO_INT,     &settings.area.width,                "640" },
+	{ "window_height",              RO_INT,     &settings.area.height,		         "400" },
+	{ "window_state",               RO_INT,     &settings.windowstate,               "1" },
 
-	{"text_color",         RO_COLOR,   &settings.list_font_color,  0, 0},
-	{"clone_color",        RO_COLOR,   &settings.list_clone_color,  0, 0},
+	{ "text_color",                 RO_COLOR,   &settings.list_font_color,           "-1",                          FALSE },
+	{ "clone_color",                RO_COLOR,   &settings.list_clone_color,          "-1",                          FALSE },
 	/* ListMode needs to be before ColumnWidths settings */
-	{"list_mode",          RO_ENCODE,  &settings.view,             ListEncodeString,     ListDecodeString},
-	{"splitters",          RO_ENCODE,  settings.splitter,          SplitterEncodeString, SplitterDecodeString},
-	{"list_font",          RO_ENCODE,  &settings.list_font,        FontEncodeString,     FontDecodeString},
-	{"column_widths",      RO_ENCODE,  &settings.column_width,     ColumnEncodeString,   ColumnDecodeWidths},
-	{"column_order",       RO_ENCODE,  &settings.column_order,     ColumnEncodeString,   ColumnDecodeString},
-	{"column_shown",       RO_ENCODE,  &settings.column_shown,     ColumnEncodeString,   ColumnDecodeString},
-	{"ui_joy_up",          RO_ENCODE,  &settings.ui_joy_up,        JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_down",        RO_ENCODE,  &settings.ui_joy_down,      JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_left",        RO_ENCODE,  &settings.ui_joy_left,      JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_right",       RO_ENCODE,  &settings.ui_joy_right,     JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_start",       RO_ENCODE,  &settings.ui_joy_start,     JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_pgup",        RO_ENCODE,  &settings.ui_joy_pgup,      JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_pgdwn",       RO_ENCODE,  &settings.ui_joy_pgdwn,     JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_home",        RO_ENCODE,  &settings.ui_joy_home,      JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_end",         RO_ENCODE,  &settings.ui_joy_end,       JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_ss_change",   RO_ENCODE,  &settings.ui_joy_ss_change, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_history_up",  RO_ENCODE,  &settings.ui_joy_history_up, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_history_down",RO_ENCODE,  &settings.ui_joy_history_down, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"ui_joy_exec",        RO_ENCODE,  &settings.ui_joy_exec,      JoyInfoEncodeString,  JoyInfoDecodeString},
-	{"exec_command",       RO_STRING,  &settings.exec_command,  0, 0},
-	{"exec_wait",          RO_INT,     &settings.exec_wait,  0, 0},
-	{"hide_mouse",         RO_BOOL,    &settings.hide_mouse,  0, 0},
-	{"full_screen",        RO_BOOL,    &settings.full_screen,  0, 0},
-	{"cycle_screenshot",   RO_INT,     &settings.cycle_screenshot,  0, 0},
-	{"stretch_screenshot_larger", RO_BOOL, &settings.stretch_screenshot_larger,  0, 0},
-	{"inherit_filter",     RO_BOOL,    &settings.inherit_filter,   0, 0},
+	{ "list_mode",                  RO_ENCODE,  &settings.view,                      "5",                           FALSE, ListEncodeString,     ListDecodeString},
+#ifdef MESS
+	{ "splitters",                  RO_ENCODE,  settings.splitter,                   "152,310,468",                 FALSE, SplitterEncodeString, SplitterDecodeString},
+#else
+	{ "splitters",                  RO_ENCODE,  settings.splitter,                   "152,362",                     FALSE, SplitterEncodeString, SplitterDecodeString},
+#endif
+	{ "list_font",                  RO_ENCODE,  &settings.list_font,                 "-8,0,0,0,400,0,0,0,0,0,0,0,0,MS Sans Serif", FALSE, FontEncodeString,     FontDecodeString},
+	{ "column_widths",              RO_ENCODE,  &settings.column_width,              "185,68,84,84,64,88,74,108,60,144,84,60", FALSE, ColumnEncodeString,   ColumnDecodeWidths},
+	{ "column_order",               RO_ENCODE,  &settings.column_order,              "0,2,3,4,5,6,7,8,9,1,10,11",   FALSE, ColumnEncodeString,   ColumnDecodeString},
+	{ "column_shown",               RO_ENCODE,  &settings.column_shown,              "1,0,1,1,1,1,1,1,1,1,0,0",     FALSE, ColumnEncodeString,   ColumnDecodeString},
 
-	{"language",           RO_STRING,  &settings.language,         0, 0},
-	{"flyer_directory",    RO_STRING,  &settings.flyerdir,         0, 0},
-	{"cabinet_directory",  RO_STRING,  &settings.cabinetdir,       0, 0},
-	{"marquee_directory",  RO_STRING,  &settings.marqueedir,       0, 0},
-	{"title_directory",    RO_STRING,  &settings.titlesdir,        0, 0},
-	{"cpanel_directory",   RO_STRING,  &settings.cpaneldir,        0, 0},
-	{"background_directory",RO_STRING, &settings.bgdir,            0, 0},
-	{"folder_directory",   RO_STRING,  &settings.folderdir,        0, 0},
-	{"icons_directory",    RO_STRING,  &settings.iconsdir,         0, 0},
+	{ "ui_key_up",                  RO_ENCODE,  &settings.ui_key_up,                 "KEYCODE_UP",                  FALSE, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_down",                RO_ENCODE,  &settings.ui_key_down,               "KEYCODE_DOWN",                FALSE, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_left",                RO_ENCODE,  &settings.ui_key_left,               "KEYCODE_LEFT",                FALSE, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_right",               RO_ENCODE,  &settings.ui_key_right,              "KEYCODE_RIGHT",               FALSE, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_start",               RO_ENCODE,  &settings.ui_key_start,              "KEYCODE_ENTER ! KEYCODE_LALT",FALSE, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_pgup",                RO_ENCODE,  &settings.ui_key_pgup,               "KEYCODE_PGUP",                FALSE, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_pgdwn",               RO_ENCODE,  &settings.ui_key_pgdwn,              "KEYCODE_PGDN",                FALSE, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_home",                RO_ENCODE,  &settings.ui_key_home,               "KEYCODE_HOME",                FALSE, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_end",                 RO_ENCODE,  &settings.ui_key_end,                "KEYCODE_END",                 FALSE, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_ss_change",           RO_ENCODE,  &settings.ui_key_ss_change,          "KEYCODE_INSERT",              FALSE, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_history_up",          RO_ENCODE,  &settings.ui_key_history_up,         "KEYCODE_DEL",                 FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+	{ "ui_key_history_down",        RO_ENCODE,  &settings.ui_key_history_down,       "KEYCODE_LALT KEYCODE_0",      FALSE, KeySeqEncodeString,  KeySeqDecodeString},
 
+    { "ui_key_context_filters",     RO_ENCODE,  &settings.ui_key_context_filters,     "KEYCODE_LCONTROL KEYCODE_F", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_select_random",       RO_ENCODE,  &settings.ui_key_select_random,       "KEYCODE_LCONTROL KEYCODE_R", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_game_audit",          RO_ENCODE,  &settings.ui_key_game_audit,          "KEYCODE_LALT KEYCODE_A",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_game_properties",     RO_ENCODE,  &settings.ui_key_game_properties,     "KEYCODE_LALT KEYCODE_ENTER", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_help_contents",       RO_ENCODE,  &settings.ui_key_help_contents,       "KEYCODE_F1",                 FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_update_gamelist",     RO_ENCODE,  &settings.ui_key_update_gamelist,     "KEYCODE_F5",                 FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_folders",        RO_ENCODE,  &settings.ui_key_view_folders,        "KEYCODE_LALT KEYCODE_D",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_fullscreen",     RO_ENCODE,  &settings.ui_key_view_fullscreen,     "KEYCODE_F11",                FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_pagetab",        RO_ENCODE,  &settings.ui_key_view_pagetab,        "KEYCODE_LALT KEYCODE_B",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_picture_area",   RO_ENCODE,  &settings.ui_key_view_picture_area,   "KEYCODE_LALT KEYCODE_P",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_status",         RO_ENCODE,  &settings.ui_key_view_status,         "KEYCODE_LALT KEYCODE_S",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_toolbars",       RO_ENCODE,  &settings.ui_key_view_toolbars,       "KEYCODE_LALT KEYCODE_T",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+ 
+    { "ui_key_view_tab_cabinet",    RO_ENCODE,  &settings.ui_key_view_tab_cabinet,    "KEYCODE_LALT KEYCODE_3", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_cpanel",     RO_ENCODE,  &settings.ui_key_view_tab_cpanel,     "KEYCODE_LALT KEYCODE_6", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_flyer",      RO_ENCODE,  &settings.ui_key_view_tab_flyer,      "KEYCODE_LALT KEYCODE_2", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_history",    RO_ENCODE,  &settings.ui_key_view_tab_history,    "KEYCODE_LALT KEYCODE_7", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_marquee",    RO_ENCODE,  &settings.ui_key_view_tab_marquee,    "KEYCODE_LALT KEYCODE_4", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_screenshot", RO_ENCODE,  &settings.ui_key_view_tab_screenshot, "KEYCODE_LALT KEYCODE_1", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_title",      RO_ENCODE,  &settings.ui_key_view_tab_title,      "KEYCODE_LALT KEYCODE_5", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+
+	{ "ui_joy_up",                  RO_ENCODE,  &settings.ui_joy_up,                  NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_down",                RO_ENCODE,  &settings.ui_joy_down,                NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_left",                RO_ENCODE,  &settings.ui_joy_left,                NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_right",               RO_ENCODE,  &settings.ui_joy_right,               NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_start",               RO_ENCODE,  &settings.ui_joy_start,               NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_pgup",                RO_ENCODE,  &settings.ui_joy_pgup,                NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_pgdwn",               RO_ENCODE,  &settings.ui_joy_pgdwn,               NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_home",                RO_ENCODE,  &settings.ui_joy_home,                "0,0,0,0", FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_end",                 RO_ENCODE,  &settings.ui_joy_end,                 "0,0,0,0", FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_ss_change",           RO_ENCODE,  &settings.ui_joy_ss_change,           NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_history_up",          RO_ENCODE,  &settings.ui_joy_history_up,          NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_history_down",        RO_ENCODE,  &settings.ui_joy_history_down,        NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_exec",                RO_ENCODE,  &settings.ui_joy_exec,                "0,0,0,0", FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "exec_command",               RO_STRING,  &settings.exec_command,               "" },
+	{ "exec_wait",                  RO_INT,     &settings.exec_wait,                  "0" },
+	{ "hide_mouse",                 RO_BOOL,    &settings.hide_mouse,                 "0" },
+	{ "full_screen",                RO_BOOL,    &settings.full_screen,                "0" },
+	{ "cycle_screenshot",           RO_INT,     &settings.cycle_screenshot,           "0" },
+	{ "stretch_screenshot_larger",  RO_BOOL,    &settings.stretch_screenshot_larger,  "1" },
+	{ "inherit_filter",             RO_BOOL,    &settings.inherit_filter,             "0" },
+	{ "offset_clones",              RO_BOOL,    &settings.offset_clones,              "0" },
+
+	{ "language",                   RO_STRING,  &settings.language,         "english" },
+	{ "flyer_directory",            RO_STRING,  &settings.flyerdir,         "flyers" },
+	{ "cabinet_directory",          RO_STRING,  &settings.cabinetdir,       "cabinets" },
+	{ "marquee_directory",          RO_STRING,  &settings.marqueedir,       "marquees" },
+	{ "title_directory",            RO_STRING,  &settings.titlesdir,        "titles" },
+	{ "cpanel_directory",           RO_STRING,  &settings.cpaneldir,        "cpanel" },
+	{ "background_directory",       RO_STRING,  &settings.bgdir,            "bkground" },
+	{ "folder_directory",           RO_STRING,  &settings.folderdir,        "folders" },
+	{ "icons_directory",            RO_STRING,  &settings.iconsdir,         "icons" },
 
 #ifdef MESS
-	{"mess_column_widths", RO_ENCODE,  &settings.mess_column_width,MessColumnEncodeString, MessColumnDecodeWidths},
-	{"mess_column_order",  RO_ENCODE,  &settings.mess_column_order,MessColumnEncodeString, MessColumnDecodeString},
-	{"mess_column_shown",  RO_ENCODE,  &settings.mess_column_shown,MessColumnEncodeString, MessColumnDecodeString}
+	{ "mess_column_widths",         RO_ENCODE,  &settings.mess.mess_column_width, "186, 230, 88, 84, 84, 68", FALSE, MessColumnEncodeString, MessColumnDecodeWidths},
+	{ "mess_column_order",          RO_ENCODE,  &settings.mess.mess_column_order, "0,   1,  2,  3,  4,  5",   FALSE, MessColumnEncodeString, MessColumnDecodeString},
+	{ "mess_column_shown",          RO_ENCODE,  &settings.mess.mess_column_shown, "1,   1,  1,  1,  1,  1",   FALSE, MessColumnEncodeString, MessColumnDecodeString},
 #endif
+	{ "" }
 };
-#define NUM_SETTINGS (sizeof(regSettings) / sizeof(regSettings[0]))
 
 // options in mame32.ini or (gamename).ini
 static REG_OPTION regGameOpts[] =
 {
 	// video
-	{ "autoframeskip",          RO_BOOL,    &gOpts.autoframeskip,     0, 0},
-	{ "frameskip",              RO_INT,     &gOpts.frameskip,         0, 0},
-	{ "waitvsync",              RO_BOOL,    &gOpts.wait_vsync,        0, 0},
-	{ "triplebuffer",           RO_BOOL,    &gOpts.use_triplebuf,     0, 0},
-	{ "window",                 RO_BOOL,    &gOpts.window_mode,       0, 0},
-	{ "ddraw",                  RO_BOOL,    &gOpts.use_ddraw,         0, 0},
-	{ "hwstretch",              RO_BOOL,    &gOpts.ddraw_stretch,     0, 0},
-	{ "resolution",             RO_STRING,  &gOpts.resolution,        0, 0},
-	{ "refresh",                RO_INT,     &gOpts.gfx_refresh,       0, 0},
-	{ "scanlines",              RO_BOOL,    &gOpts.scanlines,         0, 0},
-	{ "switchres",              RO_BOOL,    &gOpts.switchres,         0, 0},
-	{ "switchbpp",              RO_BOOL,    &gOpts.switchbpp,         0, 0},
-	{ "maximize",               RO_BOOL,    &gOpts.maximize,          0, 0},
-	{ "keepaspect",             RO_BOOL,    &gOpts.keepaspect,        0, 0},
-	{ "matchrefresh",           RO_BOOL,    &gOpts.matchrefresh,      0, 0},
-	{ "syncrefresh",            RO_BOOL,    &gOpts.syncrefresh,       0, 0},
-	{ "throttle",               RO_BOOL,    &gOpts.throttle,          0, 0},
-	{ "full_screen_brightness", RO_DOUBLE,  &gOpts.gfx_brightness,    0, 0},
-	{ "frames_to_run",          RO_INT,     &gOpts.frames_to_display, 0, 0},
-	{ "effect",                 RO_STRING,  &gOpts.effect,            0, 0},
-	{ "screen_aspect",          RO_STRING,  &gOpts.aspect,            0, 0},
-	{ "cleanstretch",           RO_ENCODE,  &gOpts.clean_stretch,
-	  CleanStretchEncodeString, CleanStretchDecodeString },
-	{ "zoom",                   RO_INT,     &gOpts.zoom,              0, 0},
+	{ "autoframeskip",          RO_BOOL,    &gOpts.autoframeskip,                   "0" },
+	{ "frameskip",              RO_INT,     &gOpts.frameskip,                       "0" },
+	{ "waitvsync",              RO_BOOL,    &gOpts.wait_vsync,                      "0" },
+	{ "triplebuffer",           RO_BOOL,    &gOpts.use_triplebuf,                   "0" },
+	{ "window",                 RO_BOOL,    &gOpts.window_mode,                     "0" },
+	{ "ddraw",                  RO_BOOL,    &gOpts.use_ddraw,                       "1" },
+	{ "hwstretch",              RO_BOOL,    &gOpts.ddraw_stretch,                   "1" },
+	{ "resolution",             RO_STRING,  &gOpts.resolution,                      "auto" },
+	{ "refresh",                RO_INT,     &gOpts.gfx_refresh,                     "0" },
+	{ "scanlines",              RO_BOOL,    &gOpts.scanlines,                       "0" },
+	{ "switchres",              RO_BOOL,    &gOpts.switchres,                       "1" },
+	{ "switchbpp",              RO_BOOL,    &gOpts.switchbpp,                       "1" },
+	{ "maximize",               RO_BOOL,    &gOpts.maximize,                        "1" },
+	{ "keepaspect",             RO_BOOL,    &gOpts.keepaspect,                      "1" },
+	{ "matchrefresh",           RO_BOOL,    &gOpts.matchrefresh,                    "0" },
+	{ "syncrefresh",            RO_BOOL,    &gOpts.syncrefresh,                     "0" },
+	{ "throttle",               RO_BOOL,    &gOpts.throttle,                        "1" },
+	{ "full_screen_brightness", RO_DOUBLE,  &gOpts.gfx_brightness,                  "1.0" },
+	{ "frames_to_run",          RO_INT,     &gOpts.frames_to_display,               "0" },
+	{ "effect",                 RO_STRING,  &gOpts.effect,                          "none" },
+	{ "screen_aspect",          RO_STRING,  &gOpts.aspect,                          "4:3" },
+	{ "cleanstretch",           RO_ENCODE,  &gOpts.clean_stretch,                   "auto", FALSE, CleanStretchEncodeString, CleanStretchDecodeString },
+	{ "zoom",                   RO_INT,     &gOpts.zoom,                            "2" },
 
 	// d3d
-	{ "d3d",                    RO_BOOL,    &gOpts.use_d3d,           0, 0},
-	{ "d3dtexmanage",           RO_BOOL,    &gOpts.d3d_texture_management,0, 0},
-	{ "d3dfilter",              RO_INT,     &gOpts.d3d_filter,        0, 0},
-	{ "d3deffect",              RO_ENCODE,  &gOpts.d3d_effect,
-	  D3DEffectEncodeString, D3DEffectDecodeString },
-	{ "d3dprescale",            RO_ENCODE,  &gOpts.d3d_prescale,
-	  D3DPrescaleEncodeString, D3DPrescaleDecodeString },
-	{ "d3deffectrotate",        RO_BOOL,    &gOpts.d3d_rotate_effects,0, 0},
-	{ "#*d3dscan_enable",        RO_BOOL,    &gOpts.d3d_scanlines_enable,0,0},
-	{ "#*d3dscan",               RO_INT,     &gOpts.d3d_scanlines,     0, 0},
-	{ "#*d3dfeedback_enable",    RO_BOOL,    &gOpts.d3d_feedback_enable,0,0},
-	{ "#*d3dfeedback",           RO_INT,     &gOpts.d3d_feedback,      0, 0},
+	{ "d3d",                    RO_BOOL,    &gOpts.use_d3d,                         "0" },
+	{ "d3dtexmanage",           RO_BOOL,    &gOpts.d3d_texture_management,          "1" },
+	{ "d3dfilter",              RO_INT,     &gOpts.d3d_filter,                      "1" },
+	{ "d3deffect",              RO_ENCODE,  &gOpts.d3d_effect,                      "auto", FALSE, D3DEffectEncodeString,   D3DEffectDecodeString },
+	{ "d3dprescale",            RO_ENCODE,  &gOpts.d3d_prescale,                    "auto", FALSE, D3DPrescaleEncodeString, D3DPrescaleDecodeString },
+	{ "d3deffectrotate",        RO_BOOL,    &gOpts.d3d_rotate_effects,              "1" },
+	{ "#*d3dscan_enable",       RO_BOOL,    &gOpts.d3d_scanlines_enable,            "0" },
+	{ "#*d3dscan",              RO_INT,     &gOpts.d3d_scanlines,                   "50" },
+	{ "#*d3dfeedback_enable",   RO_BOOL,    &gOpts.d3d_feedback_enable,             "0" },
+	{ "#*d3dfeedback",          RO_INT,     &gOpts.d3d_feedback,                    "50" },
 
-	{ "mouse",                  RO_BOOL,    &gOpts.use_mouse,         0, 0},
-	{ "joystick",               RO_BOOL,    &gOpts.use_joystick,      0, 0},
-	{ "a2d",                    RO_DOUBLE,  &gOpts.f_a2d,             0, 0},
-	{ "steadykey",              RO_BOOL,    &gOpts.steadykey,         0, 0},
-	{ "lightgun",               RO_BOOL,    &gOpts.lightgun,          0, 0},
-	{ "ctrlr",                  RO_STRING,  &gOpts.ctrlr,             0, 0},
+	{ "mouse",                  RO_BOOL,    &gOpts.use_mouse,                       "0" },
+	{ "joystick",               RO_BOOL,    &gOpts.use_joystick,                    "0" },
+	{ "a2d",                    RO_DOUBLE,  &gOpts.f_a2d,                           "0.3" },
+	{ "steadykey",              RO_BOOL,    &gOpts.steadykey,                       "0" },
+	{ "lightgun",               RO_BOOL,    &gOpts.lightgun,                        "0" },
+	{ "dual_lightgun",          RO_BOOL,    &gOpts.dual_lightgun,                   "0" },
+	{ "offscreen_reload",       RO_BOOL,    &gOpts.offscreen_reload,                "0" },
+	{ "ctrlr",                  RO_STRING,  &gOpts.ctrlr,                           "Standard" },
 
 	// core video
-	{ "brightness",             RO_DOUBLE,  &gOpts.f_bright_correct,  0, 0}, 
-	{ "pause_brightness",       RO_DOUBLE,  &gOpts.f_pause_bright    ,0, 0}, 
-	{ "norotate",               RO_BOOL,    &gOpts.norotate,          0, 0},
-	{ "ror",                    RO_BOOL,    &gOpts.ror,               0, 0},
-	{ "rol",                    RO_BOOL,    &gOpts.rol,               0, 0},
-	{ "autoror",                RO_BOOL,    &gOpts.auto_ror,          0, 0},
-	{ "autorol",                RO_BOOL,    &gOpts.auto_rol,          0, 0},
-	{ "flipx",                  RO_BOOL,    &gOpts.flipx,             0, 0},
-	{ "flipy",                  RO_BOOL,    &gOpts.flipy,             0, 0},
-	{ "debug_resolution",       RO_STRING,  &gOpts.debugres,          0, 0}, 
-	{ "gamma",                  RO_DOUBLE,  &gOpts.f_gamma_correct,   0, 0},
+	{ "brightness",             RO_DOUBLE,  &gOpts.f_bright_correct,                "1.0" }, 
+	{ "pause_brightness",       RO_DOUBLE,  &gOpts.f_pause_bright,                  "0.65" }, 
+	{ "norotate",               RO_BOOL,    &gOpts.norotate,                        "0" },
+	{ "ror",                    RO_BOOL,    &gOpts.ror,                             "0" },
+	{ "rol",                    RO_BOOL,    &gOpts.rol,                             "0" },
+	{ "autoror",                RO_BOOL,    &gOpts.auto_ror,                        "0" },
+	{ "autorol",                RO_BOOL,    &gOpts.auto_rol,                        "0" },
+	{ "flipx",                  RO_BOOL,    &gOpts.flipx,                           "0" },
+	{ "flipy",                  RO_BOOL,    &gOpts.flipy,                           "0" },
+	{ "debug_resolution",       RO_STRING,  &gOpts.debugres,                        "auto" },
+	{ "gamma",                  RO_DOUBLE,  &gOpts.f_gamma_correct,                 "1.0" },
 
 	// vector
-	{ "antialias",              RO_BOOL,    &gOpts.antialias,         0, 0},
-	{ "translucency",           RO_BOOL,    &gOpts.translucency,      0, 0},
-	{ "beam",                   RO_DOUBLE,  &gOpts.f_beam,            0, 0},
-	{ "flicker",                RO_DOUBLE,  &gOpts.f_flicker,         0, 0},
-	{ "intensity",              RO_DOUBLE,  &gOpts.f_intensity,       0, 0},
+	{ "antialias",              RO_BOOL,    &gOpts.antialias,                       "1" },
+	{ "translucency",           RO_BOOL,    &gOpts.translucency,                    "1" },
+	{ "beam",                   RO_DOUBLE,  &gOpts.f_beam,                          "1.0" },
+	{ "flicker",                RO_DOUBLE,  &gOpts.f_flicker,                       "0.0" },
+	{ "intensity",              RO_DOUBLE,  &gOpts.f_intensity,                     "1.5" },
 
 	// sound
-	{ "samplerate",             RO_INT,     &gOpts.samplerate,        0, 0},
-	{ "samples",                RO_BOOL,    &gOpts.use_samples,       0, 0},
-	{ "resamplefilter",         RO_BOOL,    &gOpts.use_filter,        0, 0},
-	{ "sound",                  RO_BOOL,    &gOpts.enable_sound,      0, 0},
-	{ "volume",                 RO_INT,     &gOpts.attenuation,       0, 0},
-	{ "audio_latency",          RO_INT,     &gOpts.audio_latency,     0, 0},
+	{ "samplerate",             RO_INT,     &gOpts.samplerate,                      "44100" },
+	{ "samples",                RO_BOOL,    &gOpts.use_samples,                     "1" },
+	{ "resamplefilter",         RO_BOOL,    &gOpts.use_filter,                      "1" },
+	{ "sound",                  RO_BOOL,    &gOpts.enable_sound,                    "1" },
+	{ "volume",                 RO_INT,     &gOpts.attenuation,                     "0" },
+	{ "audio_latency",          RO_INT,     &gOpts.audio_latency,                   "1" },
 
 	// misc artwork options
-	{ "artwork",                RO_BOOL,    &gOpts.use_artwork,       0, 0},
-	{ "backdrop",               RO_BOOL,    &gOpts.backdrops,         0, 0},
-	{ "overlay",                RO_BOOL,    &gOpts.overlays,          0, 0},
-	{ "bezel",                  RO_BOOL,    &gOpts.bezels,            0, 0},
-	{ "artwork_crop",           RO_BOOL,    &gOpts.artwork_crop,      0, 0},
-	{ "artres",                 RO_INT,     &gOpts.artres,            0, 0},
+	{ "artwork",                RO_BOOL,    &gOpts.use_artwork,                     "1" },
+	{ "backdrop",               RO_BOOL,    &gOpts.backdrops,                       "1" },
+	{ "overlay",                RO_BOOL,    &gOpts.overlays,                        "1" },
+	{ "bezel",                  RO_BOOL,    &gOpts.bezels,                          "1" },
+	{ "artwork_crop",           RO_BOOL,    &gOpts.artwork_crop,                    "0" },
+	{ "artres",                 RO_INT,     &gOpts.artres,                          "0" },
 
 	// misc
-	{ "cheat",                  RO_BOOL,    &gOpts.cheat,             0, 0},
-	{ "debug",                  RO_BOOL,    &gOpts.mame_debug,        0, 0},
-	{ "log",                    RO_BOOL,    &gOpts.errorlog,          0, 0},
-	{ "sleep",                  RO_BOOL,    &gOpts.sleep,             0, 0},
-	{ "rdtsc",                  RO_BOOL,    &gOpts.old_timing,        0, 0},
-	{ "leds",                   RO_BOOL,    &gOpts.leds,              0, 0},
-	{ "bios",                   RO_INT,     &gOpts.bios,              0, 0},
+	{ "cheat",                  RO_BOOL,    &gOpts.cheat,                           "0" },
+	{ "debug",                  RO_BOOL,    &gOpts.mame_debug,                      "0" },
+	{ "log",                    RO_BOOL,    &gOpts.errorlog,                        "0" },
+	{ "sleep",                  RO_BOOL,    &gOpts.sleep,                           "0" },
+	{ "rdtsc",                  RO_BOOL,    &gOpts.old_timing,                      "1" },
+	{ "leds",                   RO_BOOL,    &gOpts.leds,                            "0" },
+	{ "led_mode",               RO_STRING,  &gOpts.ledmode,                         "ps/2" },
+	{ "bios",                   RO_INT,     &gOpts.bios,                            "0" },
 
 #ifdef MESS
 	/* mess options */
-	{ "newui",               RO_BOOL,    &gOpts.use_new_ui,		0, 0, FALSE},
-	{ "ramsize",             RO_INT,     &gOpts.ram_size,			0, 0, TRUE},
+	{ "newui",                  RO_BOOL,    &gOpts.mess.use_new_ui,                 "1" },
+	{ "ramsize",                RO_INT,     &gOpts.mess.ram_size,                   NULL, TRUE},
 
-	{ "cartridge",                  RO_STRING,  &gOpts.software[IO_CARTSLOT],	0, 0, TRUE},
-	{ "floppydisk",                 RO_STRING,  &gOpts.software[IO_FLOPPY],	0, 0, TRUE},
-	{ "harddisk",                   RO_STRING,  &gOpts.software[IO_HARDDISK],	0, 0, TRUE},
-	{ "cylinder",                   RO_STRING,  &gOpts.software[IO_CYLINDER],	0, 0, TRUE},
-	{ "cassette",                   RO_STRING,  &gOpts.software[IO_CASSETTE],	0, 0, TRUE},
-	{ "punchcard",                  RO_STRING,  &gOpts.software[IO_PUNCHCARD],	0, 0, TRUE},
-	{ "punchtape",                  RO_STRING,  &gOpts.software[IO_PUNCHTAPE],	0, 0, TRUE},
-	{ "printer",                    RO_STRING,  &gOpts.software[IO_PRINTER],	0, 0, TRUE},
-	{ "serial",                     RO_STRING,  &gOpts.software[IO_SERIAL],	0, 0, TRUE},
-	{ "parallel",                   RO_STRING,  &gOpts.software[IO_PARALLEL],	0, 0, TRUE},
-	{ "snapshot",                   RO_STRING,  &gOpts.software[IO_SNAPSHOT],	0, 0, TRUE},
-	{ "quickload",                  RO_STRING,  &gOpts.software[IO_QUICKLOAD],0, 0, TRUE},
+	{ "cartridge",              RO_STRING,  &gOpts.mess.software[IO_CARTSLOT],      "", TRUE },
+	{ "floppydisk",             RO_STRING,  &gOpts.mess.software[IO_FLOPPY],        "", TRUE },
+	{ "harddisk",               RO_STRING,  &gOpts.mess.software[IO_HARDDISK],      "", TRUE },
+	{ "cylinder",               RO_STRING,  &gOpts.mess.software[IO_CYLINDER],      "", TRUE },
+	{ "cassette",               RO_STRING,  &gOpts.mess.software[IO_CASSETTE],      "", TRUE },
+	{ "punchcard",              RO_STRING,  &gOpts.mess.software[IO_PUNCHCARD],     "", TRUE },
+	{ "punchtape",              RO_STRING,  &gOpts.mess.software[IO_PUNCHTAPE],     "", TRUE },
+	{ "printer",                RO_STRING,  &gOpts.mess.software[IO_PRINTER],       "", TRUE },
+	{ "serial",                 RO_STRING,  &gOpts.mess.software[IO_SERIAL],        "", TRUE },
+	{ "parallel",               RO_STRING,  &gOpts.mess.software[IO_PARALLEL],      "", TRUE },
+	{ "snapshot",               RO_STRING,  &gOpts.mess.software[IO_SNAPSHOT],      "", TRUE },
+	{ "quickload",              RO_STRING,  &gOpts.mess.software[IO_QUICKLOAD],     "", TRUE },
 
-	{ "cartridge_dir",              RO_STRING,  &gOpts.softwaredirs[IO_CARTSLOT],	0, 0, TRUE},
-	{ "floppydisk_dir",             RO_STRING,  &gOpts.softwaredirs[IO_FLOPPY],	0, 0, TRUE},
-	{ "harddisk_dir",               RO_STRING,  &gOpts.softwaredirs[IO_HARDDISK],	0, 0, TRUE},
-	{ "cylinder_dir",               RO_STRING,  &gOpts.softwaredirs[IO_CYLINDER],	0, 0, TRUE},
-	{ "cassette_dir",               RO_STRING,  &gOpts.softwaredirs[IO_CASSETTE],	0, 0, TRUE},
-	{ "punchcard_dir",              RO_STRING,  &gOpts.softwaredirs[IO_PUNCHCARD],	0, 0, TRUE},
-	{ "punchtape_dir",              RO_STRING,  &gOpts.softwaredirs[IO_PUNCHTAPE],	0, 0, TRUE},
-	{ "printer_dir",                RO_STRING,  &gOpts.softwaredirs[IO_PRINTER],	0, 0, TRUE},
-	{ "serial_dir",                 RO_STRING,  &gOpts.softwaredirs[IO_SERIAL],	0, 0, TRUE},
-	{ "parallel_dir",               RO_STRING,  &gOpts.softwaredirs[IO_PARALLEL],	0, 0, TRUE},
-	{ "snapshot_dir",               RO_STRING,  &gOpts.softwaredirs[IO_SNAPSHOT],	0, 0, TRUE},
-	{ "quickload_dir",              RO_STRING,  &gOpts.softwaredirs[IO_QUICKLOAD],0, 0, TRUE}
+	{ "cartridge_dir",          RO_STRING,  &gOpts.mess.softwaredirs[IO_CARTSLOT],  "", TRUE },
+	{ "floppydisk_dir",         RO_STRING,  &gOpts.mess.softwaredirs[IO_FLOPPY],    "", TRUE },
+	{ "harddisk_dir",           RO_STRING,  &gOpts.mess.softwaredirs[IO_HARDDISK],  "", TRUE },
+	{ "cylinder_dir",           RO_STRING,  &gOpts.mess.softwaredirs[IO_CYLINDER],  "", TRUE },
+	{ "cassette_dir",           RO_STRING,  &gOpts.mess.softwaredirs[IO_CASSETTE],  "", TRUE },
+	{ "punchcard_dir",          RO_STRING,  &gOpts.mess.softwaredirs[IO_PUNCHCARD], "", TRUE },
+	{ "punchtape_dir",          RO_STRING,  &gOpts.mess.softwaredirs[IO_PUNCHTAPE], "", TRUE },
+	{ "printer_dir",            RO_STRING,  &gOpts.mess.softwaredirs[IO_PRINTER],   "", TRUE },
+	{ "serial_dir",             RO_STRING,  &gOpts.mess.softwaredirs[IO_SERIAL],    "", TRUE },
+	{ "parallel_dir",           RO_STRING,  &gOpts.mess.softwaredirs[IO_PARALLEL],  "", TRUE },
+	{ "snapshot_dir",           RO_STRING,  &gOpts.mess.softwaredirs[IO_SNAPSHOT],  "", TRUE },
+	{ "quickload_dir",          RO_STRING,  &gOpts.mess.softwaredirs[IO_QUICKLOAD], "", TRUE },
 #endif /* MESS */
+	{ "" }
 };
-#define NUM_GAME_OPTIONS (sizeof(regGameOpts) / sizeof(regGameOpts[0]))
 
 // options in mame32.ini that we'll never override with with game-specific options
 static REG_OPTION global_game_options[] =
 {
-	{"skip_disclaimer",    RO_BOOL,    &settings.skip_disclaimer,  0, 0},
-	{"skip_gameinfo",      RO_BOOL,    &settings.skip_gameinfo,    0, 0},
-	{"high_priority",      RO_BOOL,    &settings.high_priority,    0, 0},
+	{"skip_disclaimer",         RO_BOOL,    &settings.skip_disclaimer,   "0" },
+	{"skip_gameinfo",           RO_BOOL,    &settings.skip_gameinfo,     "0" },
+	{"high_priority",           RO_BOOL,    &settings.high_priority,     "0" },
 
 
 #ifdef MESS
-	{"biospath",           RO_STRING,  &settings.romdirs,          0, 0},
-	{"softwarepath",       RO_STRING,  &settings.softwaredirs,     0, 0},
-	{"CRC_directory",      RO_STRING,  &settings.crcdir,           0, 0},
+	{ "biospath",               RO_STRING,  &settings.romdirs,          "bios" },
+	{ "softwarepath",           RO_STRING,  &settings.mess.softwaredirs,"software" },
+	{ "CRC_directory",          RO_STRING,  &settings.mess.crcdir,      "crc" },
 #else
-	{"rompath",            RO_STRING,  &settings.romdirs,          0, 0},
+	{ "rompath",                RO_STRING,  &settings.romdirs,          "roms" },
 #endif
-	{"samplepath",         RO_STRING,  &settings.sampledirs,       0, 0},
-	{"inipath",            RO_STRING,  &settings.inidir,           0, 0},
-	{"cfg_directory",      RO_STRING,  &settings.cfgdir,           0, 0},
-	{"nvram_directory",    RO_STRING,  &settings.nvramdir,         0, 0},
-	{"memcard_directory",  RO_STRING,  &settings.memcarddir,       0, 0},
-	{"input_directory",    RO_STRING,  &settings.inpdir,           0, 0},
-	{"hiscore_directory",  RO_STRING,  &settings.hidir,            0, 0},
-	{"state_directory",    RO_STRING,  &settings.statedir,         0, 0},
-	{"artwork_directory",  RO_STRING,  &settings.artdir,           0, 0},
-	{"snapshot_directory", RO_STRING,  &settings.imgdir,           0, 0},
-	{"diff_directory",     RO_STRING,  &settings.diffdir,          0, 0},
-	{"cheat_file",         RO_STRING,  &settings.cheat_filename,   0, 0},
+	{ "samplepath",             RO_STRING,  &settings.sampledirs,       "samples", },
+	{ "inipath",                RO_STRING,  &settings.inidir,           "ini" },
+	{ "cfg_directory",          RO_STRING,  &settings.cfgdir,           "cfg" },
+	{ "nvram_directory",        RO_STRING,  &settings.nvramdir,         "nvram" },
+	{ "memcard_directory",      RO_STRING,  &settings.memcarddir,       "memcard" },
+	{ "input_directory",        RO_STRING,  &settings.inpdir,           "inp" },
+	{ "hiscore_directory",      RO_STRING,  &settings.hidir,            "hi" },
+	{ "state_directory",        RO_STRING,  &settings.statedir,         "sta" },
+	{ "artwork_directory",      RO_STRING,  &settings.artdir,           "artwork" },
+	{ "snapshot_directory",     RO_STRING,  &settings.imgdir,           "snap" },
+	{ "diff_directory",         RO_STRING,  &settings.diffdir,          "diff" },
+	{ "cheat_file",             RO_STRING,  &settings.cheat_filename,   "cheat.dat" },
 #ifdef MESS
-	{"sysinfo_file",       RO_STRING,  &settings.history_filename, 0, 0},
-	{"messinfo_file",      RO_STRING,  &settings.mameinfo_filename,0, 0},
+	{ "sysinfo_file",           RO_STRING,  &settings.history_filename, "sysinfo.dat" },
+	{ "messinfo_file",          RO_STRING,  &settings.mameinfo_filename,"messinfo.dat" },
 #else
-	{"history_file",       RO_STRING,  &settings.history_filename, 0, 0},
-	{"mameinfo_file",      RO_STRING,  &settings.mameinfo_filename,0, 0},
+	{ "history_file",           RO_STRING,  &settings.history_filename, "history.dat" },
+	{ "mameinfo_file",          RO_STRING,  &settings.mameinfo_filename,"mameinfo.dat" },
 #endif
-	{"ctrlr_directory",    RO_STRING,  &settings.ctrlrdir,         0, 0},
+	{ "ctrlr_directory",        RO_STRING,  &settings.ctrlrdir,         "ctrlr" },
+	{ "" }
 
 };
-#define NUM_GLOBAL_GAME_OPTIONS (sizeof(global_game_options) / sizeof(global_game_options[0]))
 
 typedef struct
 {
@@ -402,7 +451,7 @@ static GAMEVARIABLE_OPTION gamevariable_options[] =
 	{ "rom_audit",		RO_INT,		offsetof(game_variables_type, rom_audit_results),		NULL,				(const void *) UNKNOWN },
 	{ "samples_audit",	RO_INT,		offsetof(game_variables_type, samples_audit_results),	DriverUsesSamples,	(const void *) UNKNOWN },
 #ifdef MESS
-	{ "extra_software",	RO_STRING,	offsetof(game_variables_type, extra_software_paths),	NULL,				(const void *) "" }
+	{ "extra_software",	RO_STRING,	offsetof(game_variables_type, mess.extra_software_paths),	NULL,				(const void *) "" }
 #endif
 };
 
@@ -535,13 +584,6 @@ static int  num_games = 0;
 static BOOL save_gui_settings = TRUE;
 static BOOL save_default_options = TRUE;
 
-// Default sizes based on 8pt font w/sort arrow in that column
-static int default_column_width[] = { 185, 68, 84, 84, 64, 88, 74,108, 60,144, 84, 60 };
-static int default_column_shown[] = {   1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  0, 0 };
-
-// Hidden columns need to go at the end of the order array
-static int default_column_order[] = {   0,  2,  3,  4,  5,  6,  7,  8,  9,  1, 10, 11 };
-
 static const char *view_modes[VIEW_MAX] = { "Large Icons", "Small Icons", "List", "Details", "Grouped" };
 
 folder_filter_type *folder_filters;
@@ -549,37 +591,17 @@ int size_folder_filters;
 int num_folder_filters;
 
 
-/***************************************************************************
-	Consistency checking functions
- ***************************************************************************/
 
-#ifdef MAME_DEBUG
-BOOL CheckOptions(REG_OPTION *reg_options, int option_count)
+static void LoadDefaultOptions(REG_OPTION *opts)
 {
-	struct rc_struct *rc;
 	int i;
-	int nBadOptions = 0;
-
-	rc = cli_rc_create();
-
-	for (i = 0; i < option_count; i++)
+	for (i = 0; opts[i].ini_name[0]; i++)
 	{
-		if ((reg_options[i].ini_name[0] != '#') || (reg_options[i].ini_name[1] != '*'))
-		{
-			if (!rc_get_option(rc, reg_options[i].ini_name))
-			{
-				dprintf("CheckOptions(): Option '%s' is not represented in the MAME core\n", reg_options[i].ini_name);
-				nBadOptions++;
-			}
-		}
+		if (opts[i].m_pDefaultValue)
+			LoadOption(&opts[i], opts[i].m_pDefaultValue);
 	}
-
-	assert(nBadOptions == 0);
-
-	rc_destroy(rc);
-	return nBadOptions == 0;
 }
-#endif /* MAME_DEBUG */
+
 
 
 /***************************************************************************
@@ -590,68 +612,27 @@ BOOL OptionsInit()
 {
 	int i;
 
-	extern const char g_szDefaultGame[];
-
 #ifdef MAME_DEBUG
-	if (!CheckOptions(regGameOpts, sizeof(regGameOpts) / sizeof(regGameOpts[0])))
+	if (!CheckOptions(regSettings, FALSE))
 		return FALSE;
-	if (!CheckOptions(global_game_options, sizeof(global_game_options) / sizeof(global_game_options[0])))
+	if (!CheckOptions(regGameOpts, TRUE))
+		return FALSE;
+	if (!CheckOptions(global_game_options, TRUE))
 		return FALSE;
 #endif /* MAME_DEBUG */
 
 	num_games = GetNumGames();
+	
+	// Load all default settings
+	LoadDefaultOptions(regSettings);
+	LoadDefaultOptions(global_game_options);
+	LoadDefaultOptions(regGameOpts);
+	memcpy(&global, &gOpts, sizeof(global));
+	memset(&gOpts, 0, sizeof(gOpts));
 
-	settings.default_game    = strdup(g_szDefaultGame);
-	settings.folder_id       = 0;
 	settings.view            = VIEW_GROUPED;
-	settings.show_folderlist = TRUE;
 	settings.show_folder_flags = NewBits(MAX_FOLDERS);
 	SetAllBits(settings.show_folder_flags,TRUE);
-
-	settings.show_toolbar    = TRUE;
-	settings.show_statusbar  = TRUE;
-	settings.show_screenshot = TRUE;
-	settings.show_tabctrl    = TRUE;
-	settings.show_tab_flags = (1 << TAB_SCREENSHOT) | (1 << TAB_FLYER)
-		| (1 << TAB_CABINET) | (1 << TAB_MARQUEE) | (1 << TAB_TITLE) | (1 << TAB_CONTROL_PANEL);
-	settings.game_check      = TRUE;
-	settings.use_joygui      = FALSE;
-	settings.broadcast       = FALSE;
-	settings.random_bg       = FALSE;
-
-	for (i = 0; i < COLUMN_MAX; i++)
-	{
-		settings.column_width[i] = default_column_width[i];
-		settings.column_order[i] = default_column_order[i];
-		settings.column_shown[i] = default_column_shown[i];
-	}
-
-#ifdef MESS
-	for (i = 0; i < MESS_COLUMN_MAX; i++)
-	{
-		settings.mess_column_width[i] = default_mess_column_width[i];
-		settings.mess_column_order[i] = default_mess_column_order[i];
-		settings.mess_column_shown[i] = default_mess_column_shown[i];
-	}
-#endif
-	settings.sort_column = 0;
-	settings.sort_reverse= FALSE;
-	settings.area.x      = 0;
-	settings.area.y      = 0;
-	settings.area.width  = 640;
-	settings.area.height = 400;
-	settings.windowstate = 1;
-	settings.splitter[0] = 152;
-	settings.splitter[1] = 362;
-#ifdef MESS
-	/* an algorithm to adjust for the fact that we need a larger window for the
-	 * software picker
-	 */
-	settings.splitter[1] -= (settings.splitter[1] - settings.splitter[0]) / 4;
-	settings.area.width += settings.splitter[1] - settings.splitter[0];
-	settings.splitter[2] = settings.splitter[1] + (settings.splitter[1] - settings.splitter[0]);
-#endif
-
 
 	settings.ui_joy_up[0] = 1;
 	settings.ui_joy_up[1] = JOYCODE_STICK_AXIS;
@@ -688,16 +669,6 @@ BOOL OptionsInit()
 	settings.ui_joy_pgdwn[2] = 2;
 	settings.ui_joy_pgdwn[3] = JOYCODE_DIR_POS;
 
-	settings.ui_joy_home[0] = 0;
-	settings.ui_joy_home[1] = 0;
-	settings.ui_joy_home[2] = 0;
-	settings.ui_joy_home[3] = 0;
-
-	settings.ui_joy_end[0] = 0;
-	settings.ui_joy_end[1] = 0;
-	settings.ui_joy_end[2] = 0;
-	settings.ui_joy_end[3] = 0;
-
 	settings.ui_joy_history_up[0] = 2;
 	settings.ui_joy_history_up[1] = JOYCODE_STICK_BTN;
 	settings.ui_joy_history_up[2] = 4;
@@ -713,179 +684,6 @@ BOOL OptionsInit()
 	settings.ui_joy_ss_change[2] = 3;
 	settings.ui_joy_ss_change[3] = JOYCODE_DIR_BTN;
 
-	settings.ui_joy_exec[0] = 0;
-	settings.ui_joy_exec[1] = 0;
-	settings.ui_joy_exec[2] = 0;
-	settings.ui_joy_exec[3] = 0;
-
-	settings.exec_command             = strdup("");
-	settings.exec_wait                = 0;
-	settings.hide_mouse               = FALSE;
-	settings.full_screen              = FALSE;
-	settings.cycle_screenshot = 0;
-	settings.stretch_screenshot_larger = TRUE;
-
-	settings.language          = strdup("english");
-	settings.flyerdir          = strdup("flyers");
-	settings.cabinetdir        = strdup("cabinets");
-	settings.marqueedir        = strdup("marquees");
-	settings.titlesdir         = strdup("titles");
-	settings.cpaneldir         = strdup("cpanel");
-
-#ifdef MESS
-	settings.romdirs           = strdup("bios");
-#else
-	settings.romdirs           = strdup("roms");
-#endif
-	settings.sampledirs        = strdup("samples");
-#ifdef MESS
-	settings.softwaredirs      = strdup("software");
-	settings.crcdir            = strdup("crc");
-#endif
-	settings.inidir 		   = strdup("ini");
-	settings.cfgdir            = strdup("cfg");
-	settings.nvramdir          = strdup("nvram");
-	settings.memcarddir        = strdup("memcard");
-	settings.inpdir            = strdup("inp");
-	settings.hidir             = strdup("hi");
-	settings.statedir          = strdup("sta");
-	settings.artdir            = strdup("artwork");
-	settings.imgdir            = strdup("snap");
-	settings.diffdir           = strdup("diff");
-	settings.iconsdir          = strdup("icons");
-	settings.bgdir             = strdup("bkground");
-	settings.cheat_filename    = strdup("cheat.dat");
-#ifdef MESS
-	settings.history_filename  = strdup("sysinfo.dat");
-	settings.mameinfo_filename = strdup("messinfo.dat");
-#else
-	settings.history_filename  = strdup("history.dat");
-	settings.mameinfo_filename = strdup("mameinfo.dat");
-#endif
-	settings.ctrlrdir          = strdup("ctrlr");
-	settings.folderdir         = strdup("folders");
-
-	settings.list_font.lfHeight         = -8;
-	settings.list_font.lfWidth          = 0;
-	settings.list_font.lfEscapement     = 0;
-	settings.list_font.lfOrientation    = 0;
-	settings.list_font.lfWeight         = FW_NORMAL;
-	settings.list_font.lfItalic         = FALSE;
-	settings.list_font.lfUnderline      = FALSE;
-	settings.list_font.lfStrikeOut      = FALSE;
-	settings.list_font.lfCharSet        = ANSI_CHARSET;
-	settings.list_font.lfOutPrecision   = OUT_DEFAULT_PRECIS;
-	settings.list_font.lfClipPrecision  = CLIP_DEFAULT_PRECIS;
-	settings.list_font.lfQuality        = DEFAULT_QUALITY;
-	settings.list_font.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
-
-	strcpy(settings.list_font.lfFaceName, "MS Sans Serif");
-
-	settings.list_font_color = (COLORREF)-1;
-	settings.list_clone_color = (COLORREF)-1;
-
-	settings.skip_disclaimer = FALSE;
-	settings.skip_gameinfo = FALSE;
-	settings.high_priority = FALSE;
-
-	/* video */
-	global.autoframeskip     = TRUE;
-	global.frameskip         = 0;
-	global.wait_vsync        = FALSE;
-	global.use_triplebuf     = FALSE;
-	global.window_mode       = FALSE;
-	global.use_ddraw         = TRUE;
-	global.ddraw_stretch     = TRUE;
-	global.resolution        = strdup("auto");
-	global.gfx_refresh       = 0;
-	global.scanlines         = FALSE;
-	global.switchres         = TRUE;
-	global.switchbpp         = TRUE;
-	global.maximize          = TRUE;
-	global.keepaspect        = TRUE;
-	global.matchrefresh      = FALSE;
-	global.syncrefresh       = FALSE;
-	global.throttle          = TRUE;
-	global.gfx_brightness    = 1.0;
-	global.frames_to_display = 0;
-	global.effect            = strdup("none");
-	global.aspect            = strdup("4:3");
-	global.clean_stretch     = CLEAN_STRETCH_AUTO;
-	global.zoom              = 2;
-
-	// d3d
-	global.use_d3d = FALSE;
-	global.d3d_filter = 1;
-	global.d3d_texture_management = TRUE;
-	global.d3d_effect = D3D_EFFECT_AUTO;
-	global.d3d_prescale = D3D_PRESCALE_AUTO;
-	global.d3d_rotate_effects = TRUE;
-	global.d3d_scanlines_enable = FALSE;
-	global.d3d_scanlines = 50;
-	global.d3d_feedback_enable = FALSE;
-	global.d3d_feedback = 50;
-
-	/* input */
-	global.use_mouse         = FALSE;
-	global.use_joystick      = FALSE;
-	global.f_a2d             = 0.3;
-	global.steadykey         = FALSE;
-	global.lightgun          = FALSE;
-	global.ctrlr             = strdup("Standard");
-
-	/* Core video */
-	global.f_bright_correct  = 1.0;
-	global.f_pause_bright    = 0.65;
-	global.norotate          = FALSE;
-	global.ror               = FALSE;
-	global.rol               = FALSE;
-	global.auto_ror          = FALSE;
-	global.auto_rol          = FALSE;
-	global.flipx             = FALSE;
-	global.flipy             = FALSE;
-	global.debugres          = strdup("auto");
-	global.f_gamma_correct   = 1.0;
-
-	/* Core vector */
-	global.antialias         = TRUE;
-	global.translucency      = TRUE;
-	global.f_beam            = 1.0;
-	global.f_flicker         = 0.0;
-	global.f_intensity		 = 1.5;
-
-	/* Sound */
-	global.samplerate        = 44100;
-	global.use_samples       = TRUE;
-	global.use_filter        = TRUE;
-	global.enable_sound      = TRUE;
-	global.attenuation       = 0;
-	global.audio_latency     = 1;
-
-	/* misc artwork options */
-	global.use_artwork       = TRUE;
-	global.backdrops         = TRUE;
-	global.overlays          = TRUE;
-	global.bezels            = TRUE;
-	global.artwork_crop      = FALSE;
-	global.artres            = 0; /* auto */
-
-	/* misc */
-	global.cheat             = FALSE;
-	global.mame_debug        = FALSE;
-	global.errorlog          = FALSE;
-	global.sleep             = FALSE;
-	global.old_timing        = TRUE;
-	global.leds				 = FALSE;
-	global.bios              = 0;
-
-#ifdef MESS
-	global.use_new_ui = TRUE;
-	for (i = 0; i < IO_COUNT; i++)
-	{
-		global.software[i] = strdup("");
-		global.softwaredirs[i] = strdup("");
-	}
-#endif
 
 	// game_options[x] is valid iff game_variables[i].options_loaded == true
 	game_options = (options_type *)malloc(num_games * sizeof(options_type));
@@ -919,10 +717,10 @@ BOOL OptionsInit()
 
 	// have our mame core (file code) know about our rom path
 	// this leaks a little, but the win32 file core writes to this string
-	set_pathlist(FILETYPE_ROM,strdup(settings.romdirs));
-	set_pathlist(FILETYPE_SAMPLE,strdup(settings.sampledirs));
+	set_pathlist(FILETYPE_ROM, strdup(settings.romdirs));
+	set_pathlist(FILETYPE_SAMPLE, strdup(settings.sampledirs));
 #ifdef MESS
-	set_pathlist(FILETYPE_CRC,strdup(settings.crcdir));
+	set_pathlist(FILETYPE_CRC, strdup(settings.mess.crcdir));
 #endif
 	return TRUE;
 
@@ -932,7 +730,7 @@ void OptionsExit(void)
 {
 	int i;
 
-	for (i=0;i<num_games;i++)
+	for (i = 0; i < num_games; i++)
 	{
 		FreeGameOptions(&game_options[i]);
 	}
@@ -947,32 +745,11 @@ void OptionsExit(void)
 
 	FreeGameOptions(&global);
 
-    FreeIfAllocated(&settings.default_game);
-    FreeIfAllocated(&settings.language);
-    FreeIfAllocated(&settings.romdirs);
-    FreeIfAllocated(&settings.sampledirs);
-    FreeIfAllocated(&settings.inidir);
-    FreeIfAllocated(&settings.cfgdir);
-    FreeIfAllocated(&settings.hidir);
-    FreeIfAllocated(&settings.inpdir);
-    FreeIfAllocated(&settings.imgdir);
-    FreeIfAllocated(&settings.statedir);
-    FreeIfAllocated(&settings.artdir);
-    FreeIfAllocated(&settings.memcarddir);
-    FreeIfAllocated(&settings.flyerdir);
-    FreeIfAllocated(&settings.cabinetdir);
-    FreeIfAllocated(&settings.marqueedir);
-    FreeIfAllocated(&settings.titlesdir);
-    FreeIfAllocated(&settings.cpaneldir);
-    FreeIfAllocated(&settings.nvramdir);
-    FreeIfAllocated(&settings.diffdir);
-    FreeIfAllocated(&settings.iconsdir);
-    FreeIfAllocated(&settings.bgdir);
-	FreeIfAllocated(&settings.cheat_filename);
-	FreeIfAllocated(&settings.history_filename);
-	FreeIfAllocated(&settings.mameinfo_filename);
-    FreeIfAllocated(&settings.ctrlrdir);
-	FreeIfAllocated(&settings.folderdir);
+	for (i = 0; regSettings[i].ini_name[0]; i++)
+	{
+		if (regSettings[i].m_iType == RO_STRING)
+			FreeIfAllocated(regSettings[i].m_vpData);
+	}
 
 	DeleteBits(settings.show_folder_flags);
 	settings.show_folder_flags = NULL;
@@ -984,7 +761,7 @@ void FreeGameOptions(options_type *o)
 {
 	int i;
 
-	for (i=0;i<NUM_GAME_OPTIONS;i++)
+	for (i = 0; regGameOpts[i].ini_name[0]; i++)
 	{
 		if (regGameOpts[i].m_iType == RO_STRING)
 		{
@@ -1008,7 +785,7 @@ void CopyGameOptions(options_type *source,options_type *dest)
 
 	// now there's a bunch of strings in dest that need to be reallocated
 	// to be a separate copy
-	for (i=0;i<NUM_GAME_OPTIONS;i++)
+	for (i = 0; regGameOpts[i].ini_name[0]; i++)
 	{
 		if (regGameOpts[i].m_iType == RO_STRING)
 		{
@@ -1022,12 +799,93 @@ void CopyGameOptions(options_type *source,options_type *dest)
 	}
 }
 
-options_type * GetDefaultOptions(void)
+// sync in the options specified in filename
+void SyncInGameOptions(options_type *opts, const char *filename)
 {
-	return &global;
+	LoadOptions(filename, opts, FALSE);
 }
 
-options_type * GetFolderOptions(int folder_index)
+// sync in the options specified in filename
+void SyncInFolderOptions(options_type *opts, int folder_index)
+{
+	char buffer[512];
+	char title[512];
+	int i;
+	extern FOLDERDATA g_folderData[];
+	extern LPEXFOLDERDATA ExtraFolderData[];
+	extern int numExtraFolders;
+	const char *pParent;
+
+	for( i = 0; i<=folder_index; i++ )
+	{
+		if( folder_index < MAX_FOLDERS)
+		{
+			if( g_folderData[i].m_nFolderId == folder_index )
+			{
+				snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),g_folderData[i].m_lpTitle );
+				break;
+			}
+		}
+		else if( folder_index < MAX_FOLDERS + numExtraFolders)
+		{
+			
+			if( ExtraFolderData[i] )
+			{
+				if( ExtraFolderData[i]->m_nFolderId == folder_index )
+				{
+					snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),ExtraFolderData[i]->m_szTitle );
+					break;
+				}
+			}
+		}
+		else
+		{
+			//we jump to the corresponding folderData
+			if( ExtraFolderData[folder_index] )
+			{
+				//SubDirName is ParentFolderName
+				pParent = GetFolderNameByID(ExtraFolderData[folder_index]->m_nParent);
+				if( pParent )
+				{
+					if( ExtraFolderData[folder_index]->m_nParent == FOLDER_SOURCE )
+					{
+						//we have a source ini to create, so remove the ".c" at the end of the title
+						strncpy(title, ExtraFolderData[folder_index]->m_szTitle, strlen(ExtraFolderData[folder_index]->m_szTitle)-2 );
+						title[strlen(ExtraFolderData[folder_index]->m_szTitle)-2] = '\0';
+						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, title );
+					}
+					else
+					{
+						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, ExtraFolderData[folder_index]->m_szTitle );
+					}
+					break;
+				}
+			}
+		}
+	}
+	SyncInGameOptions(opts, buffer);
+}
+
+
+options_type * GetDefaultOptions(int iProperty, BOOL bVectorFolder )
+{
+	if( iProperty == -1)
+		return &global;
+	else if( iProperty == -2)
+	{
+		if (bVectorFolder)
+			return &global;
+		else
+			return GetVectorOptions();
+	}
+	else
+	{
+		assert(0 <= iProperty && iProperty < num_games);
+		return GetSourceOptions( iProperty );
+	}
+}
+
+options_type * GetFolderOptions(int folder_index, BOOL bIsVector)
 {
 	if( folder_index >= (MAX_FOLDERS + (MAX_EXTRA_FOLDERS * MAX_EXTRA_SUBFOLDERS) ) )
 	{
@@ -1036,37 +894,72 @@ options_type * GetFolderOptions(int folder_index)
 	}
 	CopyGameOptions(&global,&folder_options[folder_index]);
 	LoadFolderOptions(folder_index);
+	if( bIsVector)
+	{
+		SyncInFolderOptions(&folder_options[folder_index], FOLDER_VECTOR);
+		CopyGameOptions(&gOpts, &folder_options[folder_index] );
+	}
 	return &folder_options[folder_index];
+}
+
+options_type * GetVectorOptions(void)
+{
+	//initialize gOpts with global settings, we accumulate all settings there and copy them 
+	//to game_options[driver_index] in the end
+	CopyGameOptions(&global,&gOpts);
+	
+	//If it is a Vector game sync in the Vector.ini settings
+	SyncInFolderOptions(&gOpts, FOLDER_VECTOR);
+
+	return &gOpts;
+}
+
+options_type * GetSourceOptions(int driver_index )
+{
+	char buffer[512];
+	char title[512];
+	assert(0 <= driver_index && driver_index < num_games);
+	//initialize gOpts with global settings, we accumulate all settings there and copy them 
+	//to game_options[driver_index] in the end
+	CopyGameOptions(&global,&gOpts);
+	
+	if( DriverIsVector(driver_index) )
+	{
+		//If it is a Vector game sync in the Vector.ini settings
+		SyncInFolderOptions(&game_options[driver_index], FOLDER_VECTOR);
+	}
+	//If it has source folder settings sync in the source\sourcefile.ini settings
+	strcpy(title, GetDriverFilename(driver_index) );
+	title[strlen(title)-2] = '\0';
+	snprintf(buffer,sizeof(buffer),"%s\\Source\\%s.ini",GetIniDir(),title );
+	SyncInGameOptions(&game_options[driver_index], buffer);
+	return &gOpts;
 }
 
 options_type * GetGameOptions(int driver_index, int folder_index )
 {
-	options_type *opts;
+	char buffer[512];
+	char title[512];
 	assert(0 <= driver_index && driver_index < num_games);
+	//initialize gOpts with global settings, we accumulate all settings there and copy them 
+	//to game_options[driver_index] in the end
+	CopyGameOptions(&global,&gOpts);
+	
 	if( DriverIsVector(driver_index) )
 	{
-		//if there is a special Vector.ini load settings, else the globals are loaded
-		opts = GetFolderOptions( FOLDER_VECTOR );
-		CopyGameOptions(opts,&game_options[driver_index]);
+		//If it is a Vector game sync in the Vector.ini settings
+		SyncInFolderOptions(&game_options[driver_index], FOLDER_VECTOR);
 	}
-	if (game_variables[driver_index].use_default)
-	{
-		if( folder_index >= 0 )
-		{
-			opts = GetFolderOptions( folder_index );
-			CopyGameOptions(opts,&game_options[driver_index]);
-		}
-		else
-		{
-			CopyGameOptions(&global,&game_options[driver_index]);
-		}
-	}
-
-	if (game_variables[driver_index].options_loaded == FALSE)
-	{
-		LoadGameOptions(driver_index);
-		game_variables[driver_index].options_loaded = TRUE;
-	}
+	//If it has source folder settings sync in the source\sourcefile.ini settings
+	strcpy(title, GetDriverFilename(driver_index) );
+	title[strlen(title)-2] = '\0';
+	snprintf(buffer,sizeof(buffer),"%s\\Source\\%s.ini",GetIniDir(),title );
+	SyncInGameOptions(&game_options[driver_index], buffer);
+	//last but not least, sync in game specific settings
+	snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),drivers[driver_index]->name );
+	SyncInGameOptions(&game_options[driver_index], buffer);
+	//now copy the synced up settings in game options
+	CopyGameOptions(&gOpts,&game_options[driver_index]);
 
 	return &game_options[driver_index];
 }
@@ -1078,7 +971,10 @@ BOOL GetGameUsesDefaults(int driver_index)
 		dprintf("got getgameusesdefaults with driver index %i",driver_index);
 		return TRUE;
 	}
-	return game_variables[driver_index].use_default;
+	//This returns always true, because it is not saved in a file just initialized
+	//We use the in mem check for the moment
+	return ! GetGameUsesDefaultsMem(driver_index );
+	//return game_variables[driver_index].use_default;
 }
 
 void SetGameUsesDefaults(int driver_index,BOOL use_defaults)
@@ -1187,6 +1083,16 @@ BOOL GetJoyGUI(void)
 	return settings.use_joygui;
 }
 
+void SetKeyGUI(BOOL use_keygui)
+{
+	settings.use_keygui = use_keygui;
+}
+
+BOOL GetKeyGUI(void)
+{
+	return settings.use_keygui;
+}
+
 void SetCycleScreenshot(int cycle_screenshot)
 {
 	settings.cycle_screenshot = cycle_screenshot;
@@ -1214,6 +1120,16 @@ void SetFilterInherit(BOOL inherit)
 BOOL GetFilterInherit(void)
 {
 	return settings.inherit_filter;
+ }
+
+void SetOffsetClones(BOOL offset)
+{
+	settings.offset_clones = offset;
+}
+
+BOOL GetOffsetClones(void)
+{
+	return settings.offset_clones;
  }
 
 void SetBroadcast(BOOL broadcast)
@@ -1258,6 +1174,7 @@ BOOL GetHighPriority(void)
 
 void SetRandomBackground(BOOL random_bg)
 {
+
 	settings.random_bg = random_bg;
 }
 
@@ -1894,11 +1811,24 @@ void ResetGameDefaults(void)
 
 void ResetAllGameOptions(void)
 {
+	extern LPEXFOLDERDATA ExtraFolderData[];
 	int i;
 
 	for (i = 0; i < num_games; i++)
 	{
 		ResetGameOptions(i);
+	}
+
+	//with our new code we also need to delete the Source Folder Options and the Vector Options
+	//Reset the Folder Options, can be done in one step
+	for (i=0;i<(MAX_FOLDERS + (MAX_EXTRA_FOLDERS *MAX_EXTRA_SUBFOLDERS));i++)
+	{
+		if( (i == FOLDER_VECTOR) || (ExtraFolderData[i] &&
+									 (ExtraFolderData[i]->m_nParent == FOLDER_SOURCE) ) )
+		{
+			CopyGameOptions(GetDefaultOptions(-1, FALSE),&folder_options[i]);
+			SaveFolderOptions(i, 0);
+		}
 	}
 }
 
@@ -2013,6 +1943,137 @@ void GetTextPlayTime(int driver_index,char *buf)
 	else
 		sprintf(buf, "%d:%02d:%02d", hour, minute, second );
 }
+
+
+InputSeq* Get_ui_key_up(void)
+{
+	return &settings.ui_key_up.is;
+}
+InputSeq* Get_ui_key_down(void)
+{
+	return &settings.ui_key_down.is;
+}
+InputSeq* Get_ui_key_left(void)
+{
+	return &settings.ui_key_left.is;
+}
+InputSeq* Get_ui_key_right(void)
+{
+	return &settings.ui_key_right.is;
+}
+InputSeq* Get_ui_key_start(void)
+{
+	return &settings.ui_key_start.is;
+}
+InputSeq* Get_ui_key_pgup(void)
+{
+	return &settings.ui_key_pgup.is;
+}
+InputSeq* Get_ui_key_pgdwn(void)
+{
+	return &settings.ui_key_pgdwn.is;
+}
+InputSeq* Get_ui_key_home(void)
+{
+	return &settings.ui_key_home.is;
+}
+InputSeq* Get_ui_key_end(void)
+{
+	return &settings.ui_key_end.is;
+}
+InputSeq* Get_ui_key_ss_change(void)
+{
+	return &settings.ui_key_ss_change.is;
+}
+InputSeq* Get_ui_key_history_up(void)
+{
+	return &settings.ui_key_history_up.is;
+}
+InputSeq* Get_ui_key_history_down(void)
+{
+	return &settings.ui_key_history_down.is;
+}
+
+
+InputSeq* Get_ui_key_context_filters(void)
+{
+	return &settings.ui_key_context_filters.is;
+}
+InputSeq* Get_ui_key_select_random(void)
+{
+	return &settings.ui_key_select_random.is;
+}
+InputSeq* Get_ui_key_game_audit(void)
+{
+	return &settings.ui_key_game_audit.is;
+}
+InputSeq* Get_ui_key_game_properties(void)
+{
+	return &settings.ui_key_game_properties.is;
+}
+InputSeq* Get_ui_key_help_contents(void)
+{
+	return &settings.ui_key_help_contents.is;
+}
+InputSeq* Get_ui_key_update_gamelist(void)
+{
+	return &settings.ui_key_update_gamelist.is;
+}
+InputSeq* Get_ui_key_view_folders(void)
+{
+	return &settings.ui_key_view_folders.is;
+}
+InputSeq* Get_ui_key_view_fullscreen(void)
+{
+	return &settings.ui_key_view_fullscreen.is;
+}
+InputSeq* Get_ui_key_view_pagetab(void)
+{
+	return &settings.ui_key_view_pagetab.is;
+}
+InputSeq* Get_ui_key_view_picture_area(void)
+{
+	return &settings.ui_key_view_picture_area.is;
+}
+InputSeq* Get_ui_key_view_status(void)
+{
+	return &settings.ui_key_view_status.is;
+}
+InputSeq* Get_ui_key_view_toolbars(void)
+{
+	return &settings.ui_key_view_toolbars.is;
+}
+
+InputSeq* Get_ui_key_view_tab_cabinet(void)
+{
+	return &settings.ui_key_view_tab_cabinet.is;
+}
+InputSeq* Get_ui_key_view_tab_cpanel(void)
+{
+	return &settings.ui_key_view_tab_cpanel.is;
+}
+InputSeq* Get_ui_key_view_tab_flyer(void)
+{
+	return &settings.ui_key_view_tab_flyer.is;
+}
+InputSeq* Get_ui_key_view_tab_history(void)
+{
+	return &settings.ui_key_view_tab_history.is;
+}
+InputSeq* Get_ui_key_view_tab_marquee(void)
+{
+	return &settings.ui_key_view_tab_marquee.is;
+}
+InputSeq* Get_ui_key_view_tab_screenshot(void)
+{
+	return &settings.ui_key_view_tab_screenshot.is;
+}
+InputSeq* Get_ui_key_view_tab_title(void)
+{
+	return &settings.ui_key_view_tab_title.is;
+}
+
+
 
 int GetUIJoyUp(int joycodeIndex)
 {
@@ -2291,6 +2352,26 @@ static void ColumnEncodeString(void* data, char *str)
 static void ColumnDecodeString(const char* str, void* data)
 {
 	ColumnDecodeStringWithCount(str, data, COLUMN_MAX);
+}
+
+static void KeySeqEncodeString(void *data, char* str)
+{
+	KeySeq* ks = (KeySeq*)data;
+
+	sprintf(str, "%s", ks->seq_string);
+}
+
+static void KeySeqDecodeString(const char *str, void* data)
+{
+	KeySeq *ks = (KeySeq*)data;
+	InputSeq *is = &(ks->is);
+
+	FreeIfAllocated(&ks->seq_string);
+	ks->seq_string = strdup(str);
+
+	//get the new input sequence
+	seq_set_string (is, str);
+	//dprintf("seq=%s,,,%04i %04i %04i %04i \n",str,(*is)[0],(*is)[1],(*is)[2],(*is)[3]);
 }
 
 static void JoyInfoEncodeString(void* data, char *str)
@@ -2634,17 +2715,14 @@ static void TabFlagsDecodeString(const char *str,void *data)
 	}
 }
 
-static REG_OPTION * GetOption(REG_OPTION *option_array,int num_options,const char *key)
+static REG_OPTION * GetOption(REG_OPTION *option_array, const char *key)
 {
 	int i;
 
-	for (i=0;i<num_options;i++)
+	for (i = 0; option_array[i].ini_name[0]; i++)
 	{
-		if (option_array[i].ini_name[0] != '\0')
-		{
-			if (strcmp(option_array[i].ini_name,key) == 0)
-				return &option_array[i];
-		}
+		if (strcmp(option_array[i].ini_name,key) == 0)
+			return &option_array[i];
 	}
 	return NULL;
 }
@@ -2664,6 +2742,8 @@ static void LoadOption(REG_OPTION *option,const char *value_str)
 		unsigned int r,g,b;
 		if (sscanf(value_str,"%u,%u,%u",&r,&g,&b) == 3)
 			*((COLORREF *)option->m_vpData) = RGB(r,g,b);
+		else if (!strchr(value_str, ',') && (atoi(value_str) == -1))
+			*((COLORREF *)option->m_vpData) = -1;
 		break;
 	}
 
@@ -2845,7 +2925,7 @@ static void LoadOptionsAndSettings(void)
 				continue;
 			}
 
-			option = GetOption(regSettings,NUM_SETTINGS,key);
+			option = GetOption(regSettings, key);
 			if (option == NULL)
 			{
 				// search for game_have_rom/have_sample/play_count/play_time thing
@@ -2919,6 +2999,7 @@ const char * GetFolderNameByID(UINT nID)
 void LoadFolderOptions(int folder_index )
 {
 	char buffer[512];
+	char title[512];
 	int i;
 	extern FOLDERDATA g_folderData[];
 	extern LPEXFOLDERDATA ExtraFolderData[];
@@ -2957,7 +3038,17 @@ void LoadFolderOptions(int folder_index )
 				pParent = GetFolderNameByID(ExtraFolderData[folder_index]->m_nParent);
 				if( pParent )
 				{
-					snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, ExtraFolderData[folder_index]->m_szTitle );
+					if( ExtraFolderData[folder_index]->m_nParent == FOLDER_SOURCE )
+					{
+						//we have a source ini to create, so remove the ".c" at the end of the title
+						strncpy(title, ExtraFolderData[folder_index]->m_szTitle, strlen(ExtraFolderData[folder_index]->m_szTitle)-2 );
+						title[strlen(ExtraFolderData[folder_index]->m_szTitle)-2] = '\0';
+						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, title );
+					}
+					else
+					{
+						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, ExtraFolderData[folder_index]->m_szTitle );
+					}
 					break;
 				}
 			}
@@ -2982,7 +3073,12 @@ void LoadFolderOptions(int folder_index )
 	if (LoadOptions(buffer,&folder_options[folder_index],FALSE))
 	{
 		// successfully loaded
-		folder_options[folder_index] = gOpts;
+		CopyGameOptions(&gOpts, &folder_options[folder_index] );
+	}
+	else
+	{
+		// uses globals
+		CopyGameOptions(&global, &folder_options[folder_index] );
 	}
 }
 
@@ -3005,7 +3101,12 @@ static BOOL LoadOptions(const char *filename,options_type *o,BOOL load_global_ga
 			continue;
 
 		// we're guaranteed that strlen(buffer) >= 1 now
+		// strip new-line
 		buffer[strlen(buffer)-1] = '\0';
+
+		// continue if it was an empty line
+		if (buffer[0] == '\0')
+			continue;
 		
 		// # starts a comment, but #* is a special MAME32 code
 		// saying it's an option for us, but NOT for the main
@@ -3022,11 +3123,11 @@ static BOOL LoadOptions(const char *filename,options_type *o,BOOL load_global_ga
 			dprintf("invalid line [%s]",buffer);
 			continue;
 		}
-		option = GetOption(regGameOpts,NUM_GAME_OPTIONS,key);
+		option = GetOption(regGameOpts, key);
 		if (option == NULL)
 		{
 			if (load_global_game_options)
-				option = GetOption(global_game_options,NUM_GLOBAL_GAME_OPTIONS,key);
+				option = GetOption(global_game_options, key);
 			
 			if (option == NULL)
 			{
@@ -3069,7 +3170,7 @@ void SaveOptions(void)
 		
 		if (save_gui_settings)
 		{
-			for (i=0;i<NUM_SETTINGS;i++)
+			for (i = 0; regSettings[i].ini_name[0]; i++)
 			{
 				if ((regSettings[i].ini_name[0] != '\0') && !regSettings[i].m_bOnlyOnGame)
 					WriteOptionToFile(fptr,&regSettings[i]);
@@ -3145,6 +3246,64 @@ void SaveOptions(void)
 	}
 }
 
+//returns true if different
+BOOL GetVectorUsesDefaultsMem(void)
+{
+	BOOL options_different = FALSE;
+	options_type Opts;
+	int i;
+	CopyGameOptions( &global, &Opts );
+
+	for (i = 0; regGameOpts[i].ini_name[0]; i++)
+	{
+		if (IsOptionEqual(i,&folder_options[FOLDER_VECTOR], &Opts ) == FALSE)
+		{
+			options_different = TRUE;
+		}
+
+	}
+	return options_different;
+}
+
+//returns true if different
+BOOL GetFolderUsesDefaultsMem(int folder_index, int driver_index)
+{
+	BOOL options_different = FALSE;
+	options_type Opts;
+	int i;
+	if( DriverIsVector(driver_index) )
+		CopyGameOptions( GetVectorOptions(), &Opts );
+	else
+		CopyGameOptions( &global, &Opts );
+
+	for (i = 0; regGameOpts[i].ini_name[0]; i++)
+	{
+		if (IsOptionEqual(i,&folder_options[folder_index], &Opts ) == FALSE)
+		{
+			options_different = TRUE;
+		}
+
+	}
+	return options_different;
+}
+
+//returns true if different
+BOOL GetGameUsesDefaultsMem(int driver_index)
+{
+	BOOL options_different = FALSE;
+	options_type Opts;
+	int i;
+	CopyGameOptions( GetSourceOptions(driver_index), &Opts );
+	for (i = 0; regGameOpts[i].ini_name[0]; i++)
+	{
+		if (IsOptionEqual(i,&game_options[driver_index], &Opts ) == FALSE)
+		{
+			options_different = TRUE;
+		}
+
+	}
+	return options_different;
+}
 
 void SaveGameOptions(int driver_index)
 {
@@ -3152,12 +3311,13 @@ void SaveGameOptions(int driver_index)
 	FILE *fptr;
 	char buffer[512];
 	BOOL options_different = FALSE;
-
+	options_type Opts;
+	CopyGameOptions( GetSourceOptions(driver_index), &Opts );
 	if (game_variables[driver_index].use_default == FALSE)
 	{
-		for (i=0;i<NUM_GAME_OPTIONS;i++)
+		for (i = 0; regGameOpts[i].ini_name[0]; i++)
 		{
-			if (IsOptionEqual(i,&game_options[driver_index],&global) == FALSE)
+			if (IsOptionEqual(i,&game_options[driver_index], &Opts ) == FALSE)
 			{
 				options_different = TRUE;
 			}
@@ -3175,9 +3335,9 @@ void SaveGameOptions(int driver_index)
 			fprintf(fptr,"%s",drivers[driver_index]->name);
 			fprintf(fptr," ###\n\n");
 
-			for (i=0;i<NUM_GAME_OPTIONS;i++)
+			for (i = 0; regGameOpts[i].ini_name[0]; i++)
 			{
-				if (IsOptionEqual(i,&game_options[driver_index],&global) == FALSE)
+				if (IsOptionEqual(i,&game_options[driver_index],&Opts) == FALSE)
 				{
 					gOpts = game_options[driver_index];
 					WriteOptionToFile(fptr,&regGameOpts[i]);
@@ -3196,23 +3356,35 @@ void SaveGameOptions(int driver_index)
 	}
 }
 
-void SaveFolderOptions(int folder_index)
+void SaveFolderOptions(int folder_index, int game_index)
 {
 	int i;
 	FILE *fptr;
 	char buffer[512];
 	char subdir[512];
+	char title[512];
 	extern FOLDERDATA g_folderData[];
 	extern LPEXFOLDERDATA ExtraFolderData[];
 	extern int numExtraFolders;
 	BOOL options_different = FALSE;
 	const char *pParent;
+	options_type *pOpts;
+	options_type Opts;
 	struct stat file_stat;
 	*buffer = 0;
 	*subdir = 0;
-	for (i=0;i<NUM_GAME_OPTIONS;i++)
+	if( DriverIsVector(game_index) && folder_index != FOLDER_VECTOR )
 	{
-		if (IsOptionEqual(i,&folder_options[folder_index],&global) == FALSE)
+		//CopyGameOptions(&gOpts,&folder_options[folder_index] );
+		CopyGameOptions( GetVectorOptions(), &Opts );
+		pOpts = &Opts;
+	}
+	else
+		pOpts = &global;
+
+	for (i = 0; regGameOpts[i].ini_name[0]; i++)
+	{
+		if (IsOptionEqual(i,&folder_options[folder_index],pOpts) == FALSE)
 		{
 			options_different = TRUE;
 		}
@@ -3250,7 +3422,17 @@ void SaveFolderOptions(int folder_index)
 				pParent = GetFolderNameByID(ExtraFolderData[folder_index]->m_nParent);
 				if( pParent )
 				{
-					snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, ExtraFolderData[folder_index]->m_szTitle );
+					if( ExtraFolderData[folder_index]->m_nParent == FOLDER_SOURCE )
+					{
+						//we have a source ini to create, so remove the ".c" at the end of the title
+						strncpy(title, ExtraFolderData[folder_index]->m_szTitle, strlen(ExtraFolderData[folder_index]->m_szTitle)-2 );
+						title[strlen(ExtraFolderData[folder_index]->m_szTitle)-2] = '\0';
+						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, title );
+					}
+					else
+					{
+						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, ExtraFolderData[folder_index]->m_szTitle );
+					}
 					snprintf(subdir,sizeof(subdir),"%s\\%s",GetIniDir(),pParent );
 					//need to check if Subdirectory Exists
 					/* Don't allow empty entries. */
@@ -3281,9 +3463,9 @@ void SaveFolderOptions(int folder_index)
 				fprintf(fptr,"%s",ExtraFolderData[i]->m_szTitle);
 			fprintf(fptr," ###\n\n");
 
-			for (i=0;i<NUM_GAME_OPTIONS;i++)
+			for (i = 0; regGameOpts[i].ini_name[0]; i++)
 			{
-				if (IsOptionEqual(i,&folder_options[folder_index],&global) == FALSE)
+				if (IsOptionEqual(i,&folder_options[folder_index],pOpts) == FALSE)
 				{
 					gOpts = folder_options[folder_index];
 					WriteOptionToFile(fptr,&regGameOpts[i]);
@@ -3303,7 +3485,7 @@ void SaveFolderOptions(int folder_index)
 		//Check if SubDir
 		if( subdir )
 		{
-			//we just acll rmdir on the subdir, if it is empty, it gets deleted, 
+			//we just call rmdir on the subdir, if it is empty, it gets deleted, 
 			//otherwise it just stays as is
 			_rmdir( subdir );
  		}
@@ -3328,7 +3510,7 @@ void SaveDefaultOptions(void)
 		{
 			fprintf(fptr,"### global-only options ###\n\n");
 		
-			for (i=0;i<NUM_GLOBAL_GAME_OPTIONS;i++)
+			for (i = 0; global_game_options[i].ini_name[0]; i++)
 			{
 				if (!global_game_options[i].m_bOnlyOnGame)
 					WriteOptionToFile(fptr,&global_game_options[i]);
@@ -3339,7 +3521,8 @@ void SaveDefaultOptions(void)
 		{
 			fprintf(fptr,"\n### default game options ###\n\n");
 			gOpts = global;
-			for (i = 0; i < NUM_GAME_OPTIONS; i++)
+
+			for (i = 0; regGameOpts[i].ini_name[0]; i++)
 			{
 				if (!regGameOpts[i].m_bOnlyOnGame)
 					WriteOptionToFile(fptr,&regGameOpts[i]);
@@ -3497,5 +3680,60 @@ char* GetVersionString(void)
 {
 	return build_version;
 }
+
+
+
+/***************************************************************************
+	Consistency checking functions
+ ***************************************************************************/
+
+#ifdef MAME_DEBUG
+static BOOL CheckOptions(REG_OPTION *opts, BOOL bPassedToMAME)
+{
+	struct rc_struct *rc;
+	int i;
+	int nBadOptions = 0;
+
+	rc = cli_rc_create();
+
+	for (i = 0; opts[i].ini_name[0]; i++)
+	{
+		// check to see that all non-'#*' options are present in the MAME core
+		if ((opts[i].ini_name[0] != '#') || (opts[i].ini_name[1] != '*'))
+		{
+			if (bPassedToMAME && !rc_get_option(rc, opts[i].ini_name))
+			{
+				dprintf("CheckOptions(): Option '%s' is not represented in the MAME core\n", opts[i].ini_name);
+				nBadOptions++;
+			}
+		}
+
+		// some consistency checks
+		switch(opts[i].m_iType) {
+		case RO_STRING:
+			if (!opts[i].m_pDefaultValue)
+			{
+				dprintf("CheckOptions(): Option '%s' needs a default value\n", opts[i].ini_name);
+				nBadOptions++;
+			}
+			break;
+
+		case RO_ENCODE:
+			if (!opts[i].encode || !opts[i].decode)
+			{
+				dprintf("CheckOptions(): Option '%s' needs both an encode and a decode callback\n", opts[i].ini_name);
+				nBadOptions++;
+			}
+			break;
+		}
+	}
+
+	assert(nBadOptions == 0);
+
+	rc_destroy(rc);
+	return nBadOptions == 0;
+}
+#endif /* MAME_DEBUG */
+
 
 /* End of options.c */

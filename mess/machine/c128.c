@@ -1,10 +1,12 @@
 /***************************************************************************
-    commodore c128 home computer
+
+	commodore c128 home computer
 
 	peter.trauner@jk.uni-linz.ac.at
     documentation:
  	 iDOC (http://www.softwolves.pp.se/idoc)
            Christian Janoff  mepk@c64.org
+
 ***************************************************************************/
 #include <ctype.h>
 #include "driver.h"
@@ -145,6 +147,7 @@ void c128_bankswitch_64 (int reset)
 {
 	static int old, exrom, game;
 	int data, loram, hiram, charen;
+	read8_handler rh;
 
 	if (!c64mode)
 		return;
@@ -185,22 +188,19 @@ void c128_bankswitch_64 (int reset)
 	if ((!c64_game && c64_exrom)
 		|| (charen && (loram || hiram)))
 	{
-		memory_set_bankhandler_r (13, 0, c128_read_io);
+		rh = c128_read_io;
 		c128_write_io = 1;
 	}
 	else
 	{
-		memory_set_bankhandler_r (13, 0, MRA_BANK5);
+		rh = MRA8_BANK5;
 		c128_write_io = 0;
 		if ((!charen && (loram || hiram)))
-		{
 			cpu_setbank (13, c64_chargen);
-		}
 		else
-		{
 			cpu_setbank (13, c64_memory + 0xd000);
-		}
 	}
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, rh);
 
 	if (!c64_game && c64_exrom)
 	{
@@ -315,8 +315,10 @@ static int mmu_page0, mmu_page1;
 #endif
  }
 
- static void c128_bankswitch_128 (int reset)
- {
+static void c128_bankswitch_128 (int reset)
+{
+	read8_handler rh;
+
 	c64mode = MMU_64MODE;
 	if (c64mode)
 	{
@@ -388,94 +390,95 @@ static int mmu_page0, mmu_page1;
 			}
 
 		if (MMU_TOP)
-			{
-				c128_ram_top = 0x10000 - MMU_SIZE;
-			}
+		{
+			c128_ram_top = 0x10000 - MMU_SIZE;
+		}
 		else
 			c128_ram_top = 0x10000;
 
-		memory_set_bankhandler_r (15, 0, c128_mmu8722_ff00_r);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xff00, 0xff04, 0, c128_mmu8722_ff00_r);
 
 		if (MMU_IO_ON)
-			{
-				memory_set_bankhandler_r (13, 0, c128_read_io);
-				c128_write_io = 1;
-			}
+		{
+			rh = c128_read_io;
+			c128_write_io = 1;
+		}
 		else
-			{
-				c128_write_io = 0;
-				memory_set_bankhandler_r (13, 0, MRA_BANK13);
-			}
+		{
+			c128_write_io = 0;
+			rh = MRA8_BANK13;
+		}
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, rh);
 
 		if (MMU_RAM_HI)
+		{
+			if (c128_ram_top > 0xc000)
 			{
-				if (c128_ram_top > 0xc000)
-					{
-						cpu_setbank (12, c128_ram + 0xc000);
-					}
-				else
-					{
-						cpu_setbank (12, c64_memory + 0xc000);
-					}
-				if (!MMU_IO_ON) {
-					if (c128_ram_top > 0xd000)
-						{
-							cpu_setbank (13, c128_ram + 0xd000);
-						}
-					else
-						{
-							cpu_setbank (13, c64_memory + 0xd000);
-						}
-				}
-				if (c128_ram_top > 0xe000)
-					{
-						cpu_setbank (14, c128_ram + 0xe000);
-					}
-				else
-					{
-						cpu_setbank (14, c64_memory + 0xe000);
-					}
-				if (c128_ram_top > 0xff05)
-					{
-						cpu_setbank (16, c128_ram + 0xff05);
-					}
-				else
-					{
-						cpu_setbank (16, c64_memory + 0xff05);
-					}
+				cpu_setbank (12, c128_ram + 0xc000);
 			}
+			else
+			{
+				cpu_setbank (12, c64_memory + 0xc000);
+			}
+			if (!MMU_IO_ON)
+			{
+				if (c128_ram_top > 0xd000)
+				{
+					cpu_setbank (13, c128_ram + 0xd000);
+				}
+				else
+				{
+					cpu_setbank (13, c64_memory + 0xd000);
+				}
+			}
+			if (c128_ram_top > 0xe000)
+			{
+				cpu_setbank (14, c128_ram + 0xe000);
+			}
+			else
+			{
+				cpu_setbank (14, c64_memory + 0xe000);
+			}
+			if (c128_ram_top > 0xff05)
+			{
+				cpu_setbank (16, c128_ram + 0xff05);
+			}
+			else
+			{
+				cpu_setbank (16, c64_memory + 0xff05);
+			}
+		}
 		else if (MMU_ROM_HI)
-			{
-				cpu_setbank (12, c128_editor);
-				if (!MMU_IO_ON) {
-					cpu_setbank (13, c128_chargen);
-				}
-				cpu_setbank (14, c128_kernal);
-				cpu_setbank (16, c128_kernal + 0x1f05);
+		{
+			cpu_setbank (12, c128_editor);
+			if (!MMU_IO_ON) {
+				cpu_setbank (13, c128_chargen);
 			}
+			cpu_setbank (14, c128_kernal);
+			cpu_setbank (16, c128_kernal + 0x1f05);
+		}
 		else if (MMU_INTERNAL_ROM_HI)
-			{
-				cpu_setbank (12, c128_internal_function);
-				if (!MMU_IO_ON) {
-					cpu_setbank (13, c128_internal_function + 0x1000);
-				}
-				cpu_setbank (14, c128_internal_function + 0x2000);
-				cpu_setbank (16, c128_internal_function + 0x3f05);
+		{
+			cpu_setbank (12, c128_internal_function);
+			if (!MMU_IO_ON) {
+				cpu_setbank (13, c128_internal_function + 0x1000);
 			}
+			cpu_setbank (14, c128_internal_function + 0x2000);
+			cpu_setbank (16, c128_internal_function + 0x3f05);
+		}
 		else					   /*if (MMU_EXTERNAL_ROM_HI) */
-			{
-				cpu_setbank (12, c128_external_function);
-				if (!MMU_IO_ON) {
-					cpu_setbank (13, c128_external_function + 0x1000);
-				}
-				cpu_setbank (14, c128_external_function + 0x2000);
-				cpu_setbank (16, c128_external_function + 0x3f05);
+		{
+			cpu_setbank (12, c128_external_function);
+			if (!MMU_IO_ON) {
+				cpu_setbank (13, c128_external_function + 0x1000);
 			}
+			cpu_setbank (14, c128_external_function + 0x2000);
+			cpu_setbank (16, c128_external_function + 0x3f05);
+		}
 		if ( ((C128_MAIN_MEMORY==RAM256KB)&&(MMU_RAM_ADDR>=0x40000))
 			 ||((C128_MAIN_MEMORY==RAM128KB)&&(MMU_RAM_ADDR>=0x20000)) ) c128_ram=NULL;
 	}
-
- }
+}
 
 
 static void c128_bankswitch (int reset)
@@ -736,18 +739,18 @@ static void c128_common_driver_init (void)
 	int i;
 
 #if 0
-	{0x100000, 0x107fff, MWA_ROM, &c128_basic},	/* maps to 0x4000 */
-	{0x108000, 0x109fff, MWA_ROM, &c64_basic},	/* maps to 0xa000 */
-	{0x10a000, 0x10bfff, MWA_ROM, &c64_kernal},	/* maps to 0xe000 */
-	{0x10c000, 0x10cfff, MWA_ROM, &c128_editor},
-	{0x10d000, 0x10dfff, MWA_ROM, &c128_z80},		/* maps to z80 0 */
-	{0x10e000, 0x10ffff, MWA_ROM, &c128_kernal},
-	{0x110000, 0x117fff, MWA_ROM, &c128_internal_function},
-	{0x118000, 0x11ffff, MWA_ROM, &c128_external_function},
-	{0x120000, 0x120fff, MWA_ROM, &c64_chargen},
-	{0x121000, 0x121fff, MWA_ROM, &c128_chargen},
-	{0x122000, 0x1227ff, MWA_RAM, &c64_colorram},
-	{0x122800, 0x1327ff, MWA_RAM, &c128_vdcram},
+	{0x100000, 0x107fff, MWA8_ROM, &c128_basic},	/* maps to 0x4000 */
+	{0x108000, 0x109fff, MWA8_ROM, &c64_basic},	/* maps to 0xa000 */
+	{0x10a000, 0x10bfff, MWA8_ROM, &c64_kernal},	/* maps to 0xe000 */
+	{0x10c000, 0x10cfff, MWA8_ROM, &c128_editor},
+	{0x10d000, 0x10dfff, MWA8_ROM, &c128_z80},		/* maps to z80 0 */
+	{0x10e000, 0x10ffff, MWA8_ROM, &c128_kernal},
+	{0x110000, 0x117fff, MWA8_ROM, &c128_internal_function},
+	{0x118000, 0x11ffff, MWA8_ROM, &c128_external_function},
+	{0x120000, 0x120fff, MWA8_ROM, &c64_chargen},
+	{0x121000, 0x121fff, MWA8_ROM, &c128_chargen},
+	{0x122000, 0x1227ff, MWA8_RAM, &c64_colorram},
+	{0x122800, 0x1327ff, MWA8_RAM, &c128_vdcram},
 #endif
 		c128_basic=memory_region(REGION_CPU1)+0x100000;
 		c64_basic=memory_region(REGION_CPU1)+0x108000;

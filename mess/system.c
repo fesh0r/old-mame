@@ -95,11 +95,7 @@ const struct GameDriver *test_drivers[] =
 
 #else /* DRIVER_RECURSIVE */
 
-#ifndef NEOMAME
-
 /****************CONSOLES****************************************************/
-
-/* for pong style games look into docs/pong.txt */
 
 	/* ATARI */
 	DRIVER( a2600 ) 	/* Atari 2600										*/
@@ -194,8 +190,8 @@ TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
 TESTDRIVER( vc4000 )	/* Interton vc4000									*/
 
 	/* BANDAI */
-//TESTDRIVER( wswan )		/* Bandai WonderSwan Handheld						*/
-//TESTDRIVER( wscolor )	/* Bandai WonderSwan Color Handheld					*/
+TESTDRIVER( wswan )		/* Bandai WonderSwan Handheld						*/
+TESTDRIVER( wscolor )	/* Bandai WonderSwan Color Handheld					*/
 
 
 /****************COMPUTERS***************************************************/
@@ -401,7 +397,7 @@ TESTDRIVER( ppc640 )	/* 1987 Amstrad PPC640								*/
 	DRIVER( xtvga ) 	/* 198? PC-XT (VGA, MF2 Keyboard)					*/
 
 	/* at */
-TESTDRIVER( ibmat )		/* 1985	IBM AT										*/
+	DRIVER( ibmat )		/* 1985	IBM AT										*/
 TESTDRIVER( i8530286 )	/* 1988 IBM PS2 Model 30 286 (VGA)					*/
 	DRIVER( at )		/* 1987 AMI Bios and Diagnostics					*/
 	DRIVER( atvga ) 	/*													*/
@@ -437,7 +433,6 @@ TESTDRIVER( lambda )	/* Lambda 8300										*/
 	DRIVER( specpls2 )	/* 1986 ZX Spectrum +2								*/
 	DRIVER( specpl2a )	/* 1987 ZX Spectrum +2a 							*/
 	DRIVER( specpls3 )	/* 1987 ZX Spectrum +3								*/
-
 	DRIVER( specp2fr )	/* 1986 ZX Spectrum +2 (France) 					*/
 	DRIVER( specp2sp )	/* 1986 ZX Spectrum +2 (Spain)						*/
 	DRIVER( specp3sp )	/* 1987 ZX Spectrum +3 (Spain)						*/
@@ -466,8 +461,8 @@ TESTDRIVER( mz800  )	/* 1982 Sharp MZ800 								*/
 	DRIVER( 990189 )	/* 1978 TM 990/189									*/
 	DRIVER( 990189v )	/* 1980 TM 990/189 with Color Video Board			*/
 
-//TESTDRIVER( ti99_224 )	/* 1983 TI 99/2 (24kb ROMs) 					*/
-//TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 (32kb ROMs) 					*/
+TESTDRIVER( ti99_224 )	/* 1983 TI 99/2 (24kb ROMs) 					*/
+TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 (32kb ROMs) 					*/
 	DRIVER( ti99_4 )	/* 1979 TI-99/4 									*/
 	DRIVER( ti99_4e )	/* 1980 TI-99/4 with 50Hz video						*/
 	DRIVER( ti99_4a )	/* 1981 TI-99/4A									*/
@@ -604,14 +599,17 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 			*/
 	/* ASCII & MICROSOFT */
 	DRIVER( msx )		/* 1983 MSX 										*/
 	DRIVER( msxj )		/* 1983 MSX Jap 									*/
+	DRIVER( fs4000 )	/* 1985 MSX Jap 									*/
 	DRIVER( msxkr ) 	/* 1983 MSX Korean									*/
-	DRIVER( msxuk ) 	/* 1983 MSX UK										*/
+	DRIVER( hb75p ) 	/* 1983 MSX UK										*/
 	DRIVER( hotbit11 )	/* 198? ???											*/
 	DRIVER( hotbit12 )	/* 198? ???											*/
 	DRIVER( expert10 )	/* 198? ???											*/
 	DRIVER( expert11 )	/* 198? ???											*/
 	DRIVER( msx2 ) 		/* 1985 MSX2										*/
-	DRIVER( msx2a )		/* 1985 MSX2										*/
+	DRIVER( hbf700p )	/* 1985 MSX2 Sony									*/
+	DRIVER( nms8245 )	/* 1985 MSX2										*/
+	DRIVER( nms8255 )	/* 1985 MSX2										*/
 	DRIVER( msx2j ) 	/* 1983 MSX2 Jap									*/
 
 	/* NASCOM MICROCOMPUTERS */
@@ -670,16 +668,18 @@ TESTDRIVER( hp48g ) 	/* HP48 G/GX										*/
 	DRIVER( apexc )		/* 1951(?) APEXC: All-Purpose Electronic X-ray Computer */
 
 	/* Sony */
-TESTDRIVER( psx )
-TESTDRIVER( psxj22 )
-TESTDRIVER( psxa22 )
-TESTDRIVER( psxe22 )
-TESTDRIVER( psxj30 )
-TESTDRIVER( psxa30 )
-TESTDRIVER( psxe30 )
-TESTDRIVER( psxj40 )
-TESTDRIVER( psxa41 )
-TESTDRIVER( psxe41 )
+	DRIVER( psx )
+	DRIVER( psxe20 )
+	DRIVER( psxa22 )
+	DRIVER( psxe22 )
+	DRIVER( psxj22 )
+	DRIVER( psxj30 )
+	DRIVER( psxe30 )
+	DRIVER( psxa30 )
+	DRIVER( psxj40 )
+	DRIVER( psxa41 )
+	DRIVER( psxe41 )
+	DRIVER( psxa45 )
 
 	/* Corvus */
 	DRIVER(concept)		/* 1982 Corvus Concept								*/
@@ -697,8 +697,6 @@ TESTDRIVER( mk1 )		/* Chess Champion MK I								*/
 	DRIVER( mk2 )		/* Chess Champion MK II								*/
 	/* NOVAG Industries Ltd. */
 TESTDRIVER( ssystem3 )	/* Chess Champion Super System III / MK III			*/
-
-#endif /* NEOMAME */
 
 #endif /* DRIVER_RECURSIVE */
 

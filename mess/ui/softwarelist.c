@@ -187,15 +187,9 @@ static int MessDiscoverImageType(const char *filename, mess_image_type *imagetyp
     if (lpExt) {
         /* Are we a ZIP file? */
         if (!stricmp(lpExt, ".ZIP")) {
+			lpExt = NULL;
             if (bReadZip) {
                 pZip = openzip(0, 0, filename);
-                if (pZip) {
-                    pZipEnt = readzip(pZip);
-                    if (pZipEnt) {
-                        lpExt = strrchr(pZipEnt->name, '.');
-						zipcrc = pZipEnt->crc32;
-                    }
-                }
             }
             else {
                 /* IO_UNKNOWN represents uncalculated zips */
@@ -203,35 +197,46 @@ static int MessDiscoverImageType(const char *filename, mess_image_type *imagetyp
             }
         }
 
-        if (lpExt && stricmp(lpExt, ".ZIP")) {
-            lpExt++;
-			imgtype = MessLookupImageType(imagetypes, lpExt);
-			if (imgtype)
-			{
-                type = imgtype->type;
-#if HAS_CRC
-				if (crc && zipcrc)
+		do
+		{
+            if (pZip) {
+				lpExt = NULL;
+                pZipEnt = readzip(pZip);
+                if (pZipEnt) {
+                    lpExt = strrchr(pZipEnt->name, '.');
+					zipcrc = pZipEnt->crc32;
+                }
+            }
+			if (lpExt) {
+				lpExt++;
+				imgtype = MessLookupImageType(imagetypes, lpExt);
+				if (imgtype)
 				{
-					if (imgtype->partialcrc)
+					type = imgtype->type;
+#if HAS_CRC
+					if (crc && zipcrc)
 					{
-						unsigned char *buf = NULL;
-						assert(pZipEnt);
-						buf = malloc(pZipEnt->uncompressed_size);
-						if (buf)
+						if (imgtype->partialcrc)
 						{
-							readuncompresszip(pZip, pZipEnt, (char *) buf);
-							*crc = imgtype->partialcrc(buf, (unsigned int) pZipEnt->uncompressed_size);
-							free(buf);
+							unsigned char *buf = NULL;
+							assert(pZipEnt);
+							buf = malloc(pZipEnt->uncompressed_size);
+							if (buf)
+							{
+								readuncompresszip(pZip, pZipEnt, (char *) buf);
+								*crc = imgtype->partialcrc(buf, (unsigned int) pZipEnt->uncompressed_size);
+								free(buf);
+							}
+						}
+						else
+						{
+							*crc = zipcrc;
 						}
 					}
-					else
-					{
-						*crc = zipcrc;
-					}
-				}
 #endif /* HAS_CRC */
+				}
 			}
-        }
+		} while( pZip && pZipEnt );
 
         if (pZip)
             closezip(pZip);
@@ -533,6 +538,7 @@ static void InternalFillSoftwareList(struct SmartListView *pSoftwareListView, in
     char *s;
 	const char *path;
     char buffer[2000];
+	const struct GameDriver *drv;
 
 	s_nGame = nGame;
 
@@ -540,9 +546,14 @@ static void InternalFillSoftwareList(struct SmartListView *pSoftwareListView, in
 #if HAS_CRC
 	if (mess_crc_file)
 		crcfile_close(mess_crc_file);
-	mess_crc_file = crcfile_open(drivers[nGame]->name, drivers[nGame]->name, FILETYPE_CRC);
-	if (mess_crc_file)
-		strcpy(mess_crc_category, drivers[nGame]->name);
+
+	mess_crc_file = NULL;
+	for (drv = drivers[nGame]; !mess_crc_file && drv; drv = mess_next_compatible_driver(drv))
+	{
+		mess_crc_file = crcfile_open(drv->name, drv->name, FILETYPE_CRC);
+		if (mess_crc_file)
+			strcpy(mess_crc_category, drv->name);
+	}
 #endif
 
     /* This fixes any changes the file manager may have introduced */
@@ -616,15 +627,6 @@ static void InternalFillSoftwareList(struct SmartListView *pSoftwareListView, in
 #endif /* HAS_IDLING */
 }
 
-static const struct GameDriver *NextCompatibleDriver(const struct GameDriver *drv)
-{
-	if (drv->clone_of && !(drv->clone_of->flags && NOT_A_DRIVER))
-		return drv->clone_of;
-	if (drv->compatible_with && !(drv->compatible_with->flags && NOT_A_DRIVER))
-		return drv->compatible_with;
-	return NULL;
-}
-
 void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nBasePaths, LPCSTR *plpBasePaths, LPCSTR lpExtraPath)
 {
 	LPCSTR s;
@@ -652,11 +654,7 @@ void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nB
 
 	nChainCount = 0;
 	drv = drivers[nGame];
-	while(drv)
-	{
-		nChainCount++;
-		drv = NextCompatibleDriver(drv);
-	}
+	nChainCount = mess_count_compatible_drivers(drv);
 
 	nTotalPaths = (nBasePaths * nChainCount + nExtraPaths);
 
@@ -676,7 +674,7 @@ void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nB
 			strcpy(plpPaths[nPath], buffer);
 			nPath++;
 
-			drv = NextCompatibleDriver(drv);
+			drv = mess_next_compatible_driver(drv);
 		}
 	}
 

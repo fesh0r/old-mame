@@ -328,7 +328,6 @@
 #define DSP_FIR_C7		0x7F
 
 extern MACHINE_INIT( snes );
-extern MACHINE_STOP( snes );
 
 extern READ_HANDLER( snes_r_bank1 );
 extern READ_HANDLER( snes_r_bank2 );
@@ -341,10 +340,6 @@ extern WRITE_HANDLER( snes_w_bank2 );
 extern WRITE_HANDLER( snes_w_bank4 );
 extern WRITE_HANDLER( snes_w_io );
 
-#ifdef MESS
-extern DEVICE_LOAD(snes_cart);
-#endif
-
 extern INTERRUPT_GEN(snes_scanline_interrupt);
 extern void snes_gdma( UINT8 channels );
 extern void snes_hdma_init(void);
@@ -352,10 +347,10 @@ extern void snes_hdma(void);
 extern void snes_refresh_scanline( UINT16 curline );
 
 /* (PPU) Video related */
-extern UINT8  *snes_vram;			/* Video RAM (Should be 16-bit, but it's easier this way) */
-extern UINT16 *snes_cgram;			/* Colour RAM */
-extern UINT16 *snes_oam;			/* Object Attribute Memory */
-extern UINT8  *snes_ram;			/* Main memory */
+extern UINT8  *snes_vram;		/* Video RAM (Should be 16-bit, but it's easier this way) */
+extern UINT16 *snes_cgram;		/* Colour RAM */
+extern UINT16 *snes_oam;		/* Object Attribute Memory */
+extern UINT8  *snes_ram;		/* Main memory */
 extern VIDEO_UPDATE( snes );
 struct SNES_PPU_STRUCT
 {
@@ -430,5 +425,15 @@ extern void snes_sh_update( int param, INT16 **buffer, int length );
 /* Fake APU functions for when sound is disabled */
 extern READ_HANDLER( fakespc_port_r );
 extern WRITE_HANDLER( fakespc_port_w );
+extern int snes_validate_infoblock( UINT8 *infoblock, UINT16 offset );
+
+struct snes_cart_info
+{
+	UINT8  mode;		/* ROM memory mode */
+	UINT32 sram;		/* Amount of sram in cart */
+	UINT32 sram_max;	/* Maximum amount sram in cart (based on ROM mode) */
+};
+
+extern struct snes_cart_info snes_cart;
 
 #endif /* _SNES_H_ */

@@ -74,7 +74,7 @@ static int scan_keys(const struct GameDriver *gamedrv, struct InputCode *codes, 
 	ipt = gamedrv->input_ports;
 	while(ipt->type != IPT_END)
 	{
-		switch(ipt->type) {
+		switch(ipt->type & ~IPF_MASK) {
 		case IPT_EXTENSION:
 			break;
 
@@ -671,6 +671,17 @@ void inputx_update(unsigned short *ports)
 		}
 	}
 }
+
+
+
+int inputx_is_posting(void)
+{
+	const struct KeyBuffer *keybuf;
+	keybuf = get_buffer();
+	return keybuf->begin_pos != keybuf->end_pos;
+}
+
+
 
 /***************************************************************************
 

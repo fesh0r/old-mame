@@ -70,12 +70,12 @@ static OPBASE_HANDLER(spectrum_opbaseoverride)
 	{
 		if (address>=0x4000 && address<=0x57ff)
 		{
-			OP_ROM = OP_RAM = spectrum_characterram-0x4000;
+			opcode_base = opcode_arg_base = spectrum_characterram-0x4000;
 			return -1;
 		}
 		if (address>=0x5800 && address<=0x5aff)
 		{
-			OP_ROM = OP_RAM = spectrum_colorram-0x5800;
+			opcode_base = opcode_arg_base = spectrum_colorram-0x5800;
 			return -1;
 		}
 	}
@@ -128,7 +128,7 @@ SNAPSHOT_LOAD(spectrum)
 		spectrum_setup_z80(snapshot_data, snapshot_size);
 	}
 	free(snapshot_data);
-	logerror("Snapshot loaded - new PC = %04x\n", cpunum_get_reg(0, Z80_PC) & 0x0ffff);
+	logerror("Snapshot loaded - new PC = %04x\n", (unsigned) cpunum_get_reg(0, Z80_PC) & 0x0ffff);
 	return INIT_PASS;
 
 error:
@@ -175,12 +175,12 @@ static int spectrum_setup_tap(offs_t address, UINT8 *snapshot_data, int snapshot
 	{
 		if (address>=0x4000 && address<=0x57ff)
 		{
-			OP_ROM = OP_RAM = spectrum_characterram-0x4000;
+			opcode_base = opcode_arg_base = spectrum_characterram-0x4000;
 			return -1;
 		}
 		if (address>=0x5800 && address<=0x5aff)
 		{
-			OP_ROM = OP_RAM = spectrum_colorram-0x5800;
+			opcode_base = opcode_arg_base = spectrum_colorram-0x5800;
 			return -1;
 		}
 	}
@@ -239,7 +239,7 @@ static int spectrum_setup_tap(offs_t address, UINT8 *snapshot_data, int snapshot
 		 * Don't try to load past the end of memory */
 
 		for (i = 0; i < load_length; i++)
-			cpu_writemem16(load_addr + i, snapshot_data[TapePosition + i + 3]);
+			program_write_byte(load_addr + i, snapshot_data[TapePosition + i + 3]);
 		cpunum_set_reg(0, Z80_IX, load_addr + load_length);
 		cpunum_set_reg(0, Z80_DE, de_reg - load_length);
 		if (de_reg == (tap_block_length - 2))
@@ -305,13 +305,14 @@ static int spectrum_setup_tap(offs_t address, UINT8 *snapshot_data, int snapshot
 	 */
 	do
 	{
-		return_addr = cpunum_get_reg(0, REG_SP_CONTENTS);
-		cpunum_set_reg(0, Z80_PC, (return_addr & 0x0ffff));
-
 		sp_reg = cpunum_get_reg(0, Z80_SP);
+		return_addr =
+			((UINT16) program_read_byte_8(sp_reg + 0) ) >> 8 |
+			((UINT16) program_read_byte_8(sp_reg + 1) ) >> 0;
+
 		sp_reg += 2;
 		cpunum_set_reg(0, Z80_SP, (sp_reg & 0x0ffff));
-		cpunum_set_sp(0, (sp_reg & 0x0ffff));
+		cpunum_set_reg(0, Z80_PC, (return_addr & 0x0ffff));
 	}
 	while (((return_addr != 0x053f) && (return_addr < 0x0605) && (ts2068_port_f4_data == -1)) ||
 		   ((return_addr != 0x00e5) && (return_addr < 0x01aa) && (ts2068_port_f4_data != -1)));
@@ -359,30 +360,6 @@ static void spectrum_page_basicrom(void)
 		return;
 	spectrum_128_port_7ffd_data |= 0x10;
 	spectrum_update_paging();
-}
-
-/* Dump the state of registers after loading a snapshot to the log file for debugging */
-static void dump_registers(void)
-{
-	logerror("PC   = %04x\n", cpunum_get_reg(0, Z80_PC));
-	logerror("SP   = %04x\n", cpunum_get_reg(0, Z80_SP));
-	logerror("AF   = %04x\n", cpunum_get_reg(0, Z80_AF));
-	logerror("BC   = %04x\n", cpunum_get_reg(0, Z80_BC));
-	logerror("DE   = %04x\n", cpunum_get_reg(0, Z80_DE));
-	logerror("HL   = %04x\n", cpunum_get_reg(0, Z80_HL));
-	logerror("IX   = %04x\n", cpunum_get_reg(0, Z80_IX));
-	logerror("IY   = %04x\n", cpunum_get_reg(0, Z80_IY));
-	logerror("AF'  = %04x\n", cpunum_get_reg(0, Z80_AF2));
-	logerror("BC'  = %04x\n", cpunum_get_reg(0, Z80_BC2));
-	logerror("DE'  = %04x\n", cpunum_get_reg(0, Z80_DE2));
-	logerror("HL'  = %04x\n", cpunum_get_reg(0, Z80_HL2));
-	logerror("I    = %02x\n", cpunum_get_reg(0, Z80_I));
-	logerror("R    = %02x\n", cpunum_get_reg(0, Z80_R));
-	logerror("IFF1 = %02x\n", cpunum_get_reg(0, Z80_IFF1));
-	logerror("IFF2 = %02x\n", cpunum_get_reg(0, Z80_IFF2));
-	logerror("IM   = %02x\n", cpunum_get_reg(0, Z80_IM));
-	logerror("NMI  = %02x\n", cpunum_get_reg(0, Z80_NMI_STATE));
-	logerror("IRQ  = %02x\n", cpunum_get_reg(0, Z80_IRQ_STATE));
 }
 
 /*******************************************************************
@@ -514,18 +491,15 @@ void spectrum_setup_sp(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	}
 
 	data = (status & 0x10)>>4;
-	cpunum_set_reg(0, Z80_IRQ_STATE, data);
-
-	cpunum_set_reg(0, Z80_NMI_STATE, 0);
-	cpunum_set_reg(0, Z80_HALT, 0);
+	activecpu_set_irq_line(0, data);
+	activecpu_set_irq_line(IRQ_LINE_NMI, data);
+	cpunum_set_halt_line(0, 0);
 
 	spectrum_page_basicrom();
 
 	/* memory dump */
 	for (i = 0; i < size; i++)
-		cpu_writemem16(i + offset, pSnapshot[38 + i]);
-
-	dump_registers();
+		program_write_byte(i + offset, pSnapshot[38 + i]);
 }
 
 /*******************************************************************
@@ -611,7 +585,6 @@ void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	lo = pSnapshot[23] & 0x0ff;
 	hi = pSnapshot[24] & 0x0ff;
 	cpunum_set_reg(0, Z80_SP, (hi << 8) | lo);
-	cpunum_set_sp(0, (hi << 8) | lo);
 	data = (pSnapshot[25] & 0x0ff);
 	cpunum_set_reg(0, Z80_IM, data);
 
@@ -621,9 +594,9 @@ void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	set_last_border_color(pSnapshot[26] & 0x07);
 	force_border_redraw();
 
-	cpunum_set_reg(0, Z80_NMI_STATE, 0);
-	cpunum_set_reg(0, Z80_IRQ_STATE, 0);
-	cpunum_set_reg(0, Z80_HALT, 0);
+	activecpu_set_irq_line(0, data);
+	activecpu_set_irq_line(IRQ_LINE_NMI, data);
+	cpunum_set_halt_line(0, 0);
 
 	if (SnapshotSize == 49179)
 		/* 48K Snapshot */
@@ -638,19 +611,22 @@ void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	/* memory dump */
 	for (i = 0; i < 49152; i++)
 	{
-		cpu_writemem16(i + 16384, pSnapshot[27 + i]);
+		program_write_byte(i + 16384, pSnapshot[27 + i]);
 	}
 
 	if (SnapshotSize == 49179)
 	{
 		/* get pc from stack */
-		addr = cpunum_get_reg(0, REG_SP_CONTENTS);
-		cpunum_set_reg(0, Z80_PC, (addr & 0x0ffff));
+		addr = cpunum_get_reg(0, Z80_SP) & 0xFFFF;
 
-		addr = cpunum_get_reg(0, Z80_SP);
+		cpunum_set_reg(0, Z80_PC,
+			((UINT16) program_read_byte_8(addr + 0) ) >> 8 |
+			((UINT16) program_read_byte_8(addr + 1) ) >> 0);
+
 		addr += 2;
 		cpunum_set_reg(0, Z80_SP, (addr & 0x0ffff));
-		cpunum_set_sp(0, (addr & 0x0ffff));
+
+
 	}
 	else
 	{
@@ -672,7 +648,7 @@ void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
 				spectrum_128_port_7ffd_data += i;
 				spectrum_update_paging();
 				for (j = 0; j < 16384; j++)
-					cpu_writemem16(j + 49152, pSnapshot[bank_offset + j]);
+					program_write_byte(j + 49152, pSnapshot[bank_offset + j]);
 				bank_offset += 16384;
 			}
 		}
@@ -686,7 +662,6 @@ void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		hi = pSnapshot[49180] & 0x0ff;
 		cpunum_set_reg(0, Z80_PC, (hi << 8) | lo);
 	}
-	dump_registers();
 }
 
 
@@ -729,14 +704,14 @@ static void spectrum_z80_decompress_block(unsigned char *pSource, int Dest, int 
 
 				for (i = 0; i < count; i++)
 				{
-					cpu_writemem16(Dest, data);
+					program_write_byte(Dest, data);
 					Dest++;
 				}
 			}
 			else
 			{
 				/* single 0x0ed */
-				cpu_writemem16(Dest, ch);
+				program_write_byte(Dest, ch);
 				Dest++;
 				pSource++;
 				size--;
@@ -746,7 +721,7 @@ static void spectrum_z80_decompress_block(unsigned char *pSource, int Dest, int 
 		else
 		{
 			/* not 0x0ed */
-			cpu_writemem16(Dest, ch);
+			program_write_byte(Dest, ch);
 			Dest++;
 			pSource++;
 			size--;
@@ -873,7 +848,6 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	lo = pSnapshot[8] & 0x0ff;
 	hi = pSnapshot[9] & 0x0ff;
 	cpunum_set_reg(0, Z80_SP, (hi << 8) | lo);
-	cpunum_set_sp(0, (hi << 8) | lo);
 
 	/* I */
 	cpunum_set_reg(0, Z80_I, (pSnapshot[10] & 0x0ff));
@@ -928,9 +902,9 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		/* cpunum_set_reg(0, Z80_IRQ_STATE, 1); */
 	}
 
-	cpunum_set_reg(0, Z80_NMI_STATE, 0);
-	cpunum_set_reg(0, Z80_IRQ_STATE, 0);
-	cpunum_set_reg(0, Z80_HALT, 0);
+	activecpu_set_irq_line(0, data);
+	activecpu_set_irq_line(IRQ_LINE_NMI, data);
+	cpu_set_halt_line(0, 0);
 
 	/* IFF2 */
 	if (pSnapshot[28] != 0)
@@ -958,7 +932,7 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		{
 			logerror("Not compressed\n");	/* not compressed */
 			for (i = 0; i < 49152; i++)
-				cpu_writemem16(i + 16384, pSnapshot[30 + i]);
+				program_write_byte(i + 16384, pSnapshot[30 + i]);
 		}
 		else
 		{
@@ -1037,7 +1011,7 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 
 					/* not compressed */
 					for (i = 0; i < 16384; i++)
-						cpu_writemem16(i + Dest, pSource[i]);
+						program_write_byte(i + Dest, pSource[i]);
 				}
 				else
 				{
@@ -1072,7 +1046,6 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 			ts2068_update_memory();
 		}
 	}
-	dump_registers();
 }
 
 /*-----------------27/02/00 10:54-------------------
@@ -1110,7 +1083,7 @@ QUICKLOAD_LOAD(spectrum)
 		return INIT_FAIL;
 
 	for (i = 0; i < quick_length; i++)
-		cpu_writemem16(i + quick_addr, quick_data[i]);
+		program_write_byte(i + quick_addr, quick_data[i]);
 
 	logerror("quick loading at %.4x size:%.4x\n", quick_addr, quick_length);
 	return INIT_PASS;

@@ -170,20 +170,40 @@ const struct IODevice *device_first(const struct GameDriver *gamedrv);
 const struct IODevice *device_next(const struct GameDriver *gamedrv, const struct IODevice *dev);
 const struct IODevice *device_find(const struct GameDriver *gamedrv, int type);
 
-/* RAM configuration calls */
-#define RAM_STRING_BUFLEN 16
-extern UINT32 mess_ram_size;
-extern UINT8 *mess_ram;
-UINT32 ram_option(const struct GameDriver *gamedrv, unsigned int i);
-int ram_option_count(const struct GameDriver *gamedrv);
-int ram_is_valid_option(const struct GameDriver *gamedrv, UINT32 ram);
-UINT32 ram_default(const struct GameDriver *gamedrv);
-UINT32 ram_parse_string(const char *s);
-const char *ram_string(char *buffer, UINT32 ram);
-int ram_validate_option(void);
-void cpu_setbank_fromram(int bank, UINT32 ramposition, mem_read_handler rhandler, mem_write_handler whandler);
+/* --------------------------------------------------------------------------------------------- */
 
-extern void ram_dump(const char *filename);
+/* This call is used to return the next compatible driver with respect to
+ * software images.  It is usable both internally and from front ends
+ */
+const struct GameDriver *mess_next_compatible_driver(const struct GameDriver *drv);
+int mess_count_compatible_drivers(const struct GameDriver *drv);
+
+/* --------------------------------------------------------------------------------------------- */
+
+/* RAM configuration calls */
+extern UINT32 mess_ram_size;
+extern data8_t *mess_ram;
+extern data8_t mess_ram_default_value;
+
+/* RAM parsing options */
+#define RAM_STRING_BUFLEN 16
+UINT32		ram_option(const struct GameDriver *gamedrv, unsigned int i);
+int			ram_option_count(const struct GameDriver *gamedrv);
+int			ram_is_valid_option(const struct GameDriver *gamedrv, UINT32 ram);
+UINT32		ram_default(const struct GameDriver *gamedrv);
+UINT32		ram_parse_string(const char *s);
+const char *ram_string(char *buffer, UINT32 ram);
+int			ram_validate_option(void);
+void		ram_dump(const char *filename);
+
+data8_t *memory_install_ram8_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t ram_offset, int bank);
+
+/* --------------------------------------------------------------------------------------------- */
+
+/* dummy read handlers */
+READ_HANDLER(return8_00);
+READ_HANDLER(return8_FE);
+READ_HANDLER(return8_FF);
 
 /* gets the path to the MESS executable */
 extern const char *mess_path;

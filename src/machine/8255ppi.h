@@ -61,9 +61,9 @@ WRITE_HANDLER( ppi8255_7_w );
 /* interface for mode 2 */
 typedef struct 
 {
-	mem_write_handler	obfa_write[MAX_8255];
-	mem_write_handler	intra_write[MAX_8255];
-	mem_write_handler	ibfa_write[MAX_8255];
+	write8_handler	obfa_write[MAX_8255];
+	write8_handler	intra_write[MAX_8255];
+	write8_handler	ibfa_write[MAX_8255];
 } ppi8255_mode2_interface;
 
 /* set interface to use for mode 2 */

@@ -36,9 +36,9 @@ typedef struct
 	int latch[3];	/* data written to ports */
 	
 	/* mode 2 mode data */
-	mem_write_handler obfa_write;
-	mem_write_handler intra_write;
-	mem_write_handler ibfa_write;
+	write8_handler obfa_write;
+	write8_handler intra_write;
+	write8_handler ibfa_write;
 	int inte_flags;
 } ppi8255;
 

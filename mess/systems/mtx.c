@@ -42,7 +42,7 @@ static READ_HANDLER ( mtx_psg_r )
 
 static WRITE_HANDLER ( mtx_psg_w )
 {
-        SN76496_0_w(offset,data);
+	SN76496_0_w(offset,data);
 }
 
 static READ_HANDLER ( mtx_vdp_r )
@@ -631,25 +631,6 @@ static MACHINE_INIT( mtx512 )
 
 	z80ctc_init(&mtx_ctc_intf);
 
-	memory_set_bankhandler_r(1, 0, MRA_BANK1);
-	memory_set_bankhandler_r(2, 0, MRA_BANK2);
-	memory_set_bankhandler_r(3, 0, MRA_BANK3);
-	memory_set_bankhandler_r(4, 0, MRA_BANK4);
-	memory_set_bankhandler_r(5, 0, MRA_BANK5);
-	memory_set_bankhandler_r(6, 0, MRA_BANK6);
-	memory_set_bankhandler_r(7, 0, MRA_BANK7);
-	memory_set_bankhandler_r(8, 0, MRA_BANK8);
-
-
-	memory_set_bankhandler_w(9, 0, mtx_trap_write);
-	memory_set_bankhandler_w(10, 0, MWA_NOP);
-	memory_set_bankhandler_w(11, 0, MWA_BANK11);
-	memory_set_bankhandler_w(12, 0, MWA_BANK12);
-	memory_set_bankhandler_w(13, 0, MWA_BANK13);
-	memory_set_bankhandler_w(14, 0, MWA_BANK14);
-	memory_set_bankhandler_w(15, 0, MWA_BANK15);
-	memory_set_bankhandler_w(16, 0, MWA_BANK16);
-
 	// set up memory configuration
 
 	romoffset = memory_region(REGION_CPU1) + 0x10000;
@@ -690,43 +671,43 @@ static INTERRUPT_GEN( mtx_interrupt )
 	TMS9928A_interrupt();
 }
 
-MEMORY_READ_START( mtx_readmem )
-	{ 0x0000, 0x1fff, MRA_BANK1 },
-	{ 0x2000, 0x3fff, MRA_BANK2 },
-	{ 0x4000, 0x5fff, MRA_BANK3 },
-	{ 0x6000, 0x7fff, MRA_BANK4 },
-	{ 0x8000, 0x9fff, MRA_BANK5 },
-	{ 0xa000, 0xbfff, MRA_BANK6 },
-	{ 0xc000, 0xdfff, MRA_BANK7 },
-	{ 0xe000, 0xffff, MRA_BANK8 },
-MEMORY_END
+ADDRESS_MAP_START( mtx_readmem , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE( 0x0000, 0x1fff) AM_READ( MRA8_BANK1 )
+	AM_RANGE( 0x2000, 0x3fff) AM_READ( MRA8_BANK2 )
+	AM_RANGE( 0x4000, 0x5fff) AM_READ( MRA8_BANK3 )
+	AM_RANGE( 0x6000, 0x7fff) AM_READ( MRA8_BANK4 )
+	AM_RANGE( 0x8000, 0x9fff) AM_READ( MRA8_BANK5 )
+	AM_RANGE( 0xa000, 0xbfff) AM_READ( MRA8_BANK6 )
+	AM_RANGE( 0xc000, 0xdfff) AM_READ( MRA8_BANK7 )
+	AM_RANGE( 0xe000, 0xffff) AM_READ( MRA8_BANK8 )
+ADDRESS_MAP_END
 
-MEMORY_WRITE_START( mtx_writemem )
-	{ 0x0000, 0x1fff, MWA_BANK9 },
-	{ 0x2000, 0x3fff, MWA_BANK10 },
-        { 0x4000, 0x5fff, MWA_BANK11 },
-        { 0x6000, 0x7fff, MWA_BANK12 },
-        { 0x8000, 0x9fff, MWA_BANK13 },
-        { 0xa000, 0xbfff, MWA_BANK14 },
-        { 0xc000, 0xdfff, MWA_BANK15 },
-        { 0xe000, 0xffff, MWA_BANK16 },
-MEMORY_END
+ADDRESS_MAP_START( mtx_writemem , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE( 0x0000, 0x1fff) AM_WRITE( mtx_trap_write )
+	AM_RANGE( 0x2000, 0x3fff) AM_WRITE( MWA8_NOP )
+	AM_RANGE( 0x4000, 0x5fff) AM_WRITE( MWA8_BANK11 )
+	AM_RANGE( 0x6000, 0x7fff) AM_WRITE( MWA8_BANK12 )
+	AM_RANGE( 0x8000, 0x9fff) AM_WRITE( MWA8_BANK13 )
+	AM_RANGE( 0xa000, 0xbfff) AM_WRITE( MWA8_BANK14 )
+	AM_RANGE( 0xc000, 0xdfff) AM_WRITE( MWA8_BANK15 )
+	AM_RANGE( 0xe000, 0xffff) AM_WRITE( MWA8_BANK16 )
+ADDRESS_MAP_END
 
-PORT_READ_START( mtx_readport )
-	{ 0x01, 0x02, mtx_vdp_r },
-	{ 0x03, 0x03, mtx_psg_r },
-	{ 0x05, 0x05, mtx_key_lo_r },
-	{ 0x06, 0x06, mtx_key_hi_r },
-	{ 0x08, 0x0b, mtx_ctc_r },
-PORT_END
+ADDRESS_MAP_START( mtx_readport , ADDRESS_SPACE_IO, 8)
+	AM_RANGE( 0x01, 0x02) AM_READ( mtx_vdp_r )
+	AM_RANGE( 0x03, 0x03) AM_READ( mtx_psg_r )
+	AM_RANGE( 0x05, 0x05) AM_READ( mtx_key_lo_r )
+	AM_RANGE( 0x06, 0x06) AM_READ( mtx_key_hi_r )
+	AM_RANGE( 0x08, 0x0b) AM_READ( mtx_ctc_r )
+ADDRESS_MAP_END
 
-PORT_WRITE_START( mtx_writeport )
-	{ 0x00, 0x00, mtx_bankswitch_w },
-	{ 0x01, 0x02, mtx_vdp_w },
-	{ 0x05, 0x05, mtx_sense_w },
-	{ 0x06, 0x06, mtx_psg_w },
-	{ 0x08, 0x0a, mtx_ctc_w },
-PORT_END
+ADDRESS_MAP_START( mtx_writeport , ADDRESS_SPACE_IO, 8)
+	AM_RANGE( 0x00, 0x00) AM_WRITE( mtx_bankswitch_w )
+	AM_RANGE( 0x01, 0x02) AM_WRITE( mtx_vdp_w )
+	AM_RANGE( 0x05, 0x05) AM_WRITE( mtx_sense_w )
+	AM_RANGE( 0x06, 0x06) AM_WRITE( mtx_psg_w )
+	AM_RANGE( 0x08, 0x0a) AM_WRITE( mtx_ctc_w )
+ADDRESS_MAP_END
 
 INPUT_PORTS_START( mtx512 )
  PORT_START /* 0 */
@@ -858,8 +839,8 @@ static const TMS9928a_interface tms9928a_interface =
 static MACHINE_DRIVER_START( mtx512 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, MTX_SYSTEM_CLOCK)
-	MDRV_CPU_MEMORY(mtx_readmem, mtx_writemem)
-	MDRV_CPU_PORTS(mtx_readport, mtx_writeport)
+	MDRV_CPU_PROGRAM_MAP(mtx_readmem, mtx_writemem)
+	MDRV_CPU_IO_MAP(mtx_readport, mtx_writeport)
 	MDRV_CPU_VBLANK_INT(mtx_interrupt, 1)
 	MDRV_CPU_CONFIG(mtx_daisy_chain)
 	MDRV_FRAMES_PER_SECOND(50)

@@ -68,10 +68,6 @@ pc 8bit
 extern "C" {
 #endif
 
-#ifdef RUNTIME_LOADER
-	extern void lh5801_runtime_loader_init(void);
-#endif
-
 
 typedef struct {
 	UINT8 (*in)(void);
@@ -88,10 +84,6 @@ extern void lh5801_exit(void);
 extern int lh5801_execute(int cycles);
 extern unsigned lh5801_get_context(void *dst);
 extern void lh5801_set_context(void *src);
-extern unsigned lh5801_get_pc(void);
-extern void lh5801_set_pc(unsigned val);
-extern unsigned lh5801_get_sp(void);
-extern void lh5801_set_sp(unsigned val);
 extern unsigned lh5801_get_reg(int regnum);
 extern void lh5801_set_reg(int regnum, unsigned val);
 extern void lh5801_set_nmi_line(int state);

@@ -1,5 +1,6 @@
 #include "image.h"
 #include "mess.h"
+#include "unzip.h"
 #include "devices/flopdrv.h"
 #include "crcfile.h"
 #include "utils.h"
@@ -20,6 +21,10 @@ struct _mess_image
 	/* variables that persist across image mounts */
 	tag_pool tagpool;
 	int (*get_open_mode)(mess_image *);
+
+	/* error related info */
+	image_error_t err;
+	char *err_message;
 
 	/* variables that are only non-zero when an image is mounted */
 	mame_file *fp;
@@ -91,6 +96,16 @@ void image_exit(mess_image *img)
   Mac floppy drives) may call this from within a driver.
 ****************************************************************************/
 
+static void image_clear_error(mess_image *img)
+{
+	img->err = IMAGE_ERROR_SUCCESS;
+	if (img->err_message)
+	{
+		free(img->err_message);
+		img->err_message = NULL;
+	}
+}
+
 static int image_load_internal(mess_image *img, const char *name, int is_create, int create_format, option_resolution *create_args)
 {
 	const struct IODevice *dev;
@@ -129,6 +144,9 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 	/* unload if we are loaded */
 	if (img->status & IMAGE_STATUS_ISLOADED)
 		image_unload(img);
+
+	/* clear out the error */
+	image_clear_error(img);
 	
 	/* if we are attempting to "load" NULL, then exit at this point */
 	if (!name)
@@ -143,7 +161,10 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 	{
 		newname = image_strdup(img, name);
 		if (!newname)
+		{
+			err = IMAGE_ERROR_OUTOFMEMORY;
 			goto error;
+		}
 	}
 	else
 		newname = NULL;
@@ -153,6 +174,7 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 
 	osd_image_load_status_changed(img, 0);
 
+	/* do we need to reset the CPU? */
 	if ((timer_get_time() > 0) && (dev->flags & DEVICE_LOAD_RESETS_CPU))
 		machine_reset();
 
@@ -167,7 +189,10 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 			file = image_fopen_custom(img, FILETYPE_IMAGE, img->effective_mode);
 		}
 		if (!file)
+		{
+			img->err = IMAGE_ERROR_FILENOTFOUND;
 			goto error;
+		}
 
 		/* if applicable, call device verify */
 		if (dev->imgverify && !image_has_been_created(img))
@@ -175,14 +200,23 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 			size = mame_fsize(file);
 			buffer = malloc(size);
 			if (!buffer)
+			{
+				img->err = IMAGE_ERROR_OUTOFMEMORY;
 				goto error;
+			}
 
 			if (mame_fread(file, buffer, (UINT32) size) != size)
+			{
+				img->err = IMAGE_ERROR_INVALIDIMAGE;
 				goto error;
+			}
 
 			err = dev->imgverify(buffer, size);
 			if (err)
+			{
+				img->err = IMAGE_ERROR_INVALIDIMAGE;
 				goto error;
+			}
 
 			mame_fseek(file, 0, SEEK_SET);
 
@@ -194,17 +228,24 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 	/* call device load or create */
 	if (image_has_been_created(img) && dev->create)
 	{
-		/* using device create */
 		err = dev->create(img, file, create_format, create_args);
 		if (err)
+		{
+			if (!img->err)
+				img->err = IMAGE_ERROR_UNSPECIFIED;
 			goto error;
+		}
 	}
 	else if (dev->load)
 	{
 		/* using device load */
 		err = dev->load(img, file);
 		if (err)
+		{
+			if (!img->err)
+				img->err = IMAGE_ERROR_UNSPECIFIED;
 			goto error;
+		}
 	}
 
 	img->status &= ~IMAGE_STATUS_ISLOADING;
@@ -265,6 +306,7 @@ static void image_unload_internal(mess_image *img, int is_final_unload)
 	}
 	pool_exit(&img->mempool);
 
+	image_clear_error(img);
 	img->status = 0;
 	img->name = NULL;
 	img->dir = NULL;
@@ -311,6 +353,42 @@ void image_unload_all(int ispreload)
 				image_unload_internal(img, TRUE);
 			}
 		}
+	}
+}
+
+
+
+/****************************************************************************
+  Error handling calls
+****************************************************************************/
+
+const char *image_error(mess_image *img)
+{
+	const char *messages[] =
+	{
+		NULL,
+		"Internal error",
+		"Unsupported",
+		"Out of memory",
+		"File not found",
+		"Invalid image",
+		"Unspecified error"
+	};
+
+	return img->err_message ? img->err_message : messages[img->err];
+}
+
+
+
+void image_seterror(mess_image *img, image_error_t err, const char *message)
+{
+	image_clear_error(img);
+	img->err = err;
+	if (message)
+	{
+		img->err_message = malloc(strlen(message) + 1);
+		if (img->err_message)
+			strcpy(img->err_message, message);
 	}
 }
 
@@ -464,12 +542,7 @@ static int image_checkcrc(mess_image *img)
 		do
 		{
 			rc = read_crc_config(drv->name, img);
-			if (drv->clone_of && !(drv->clone_of->flags & NOT_A_DRIVER))
-				drv = drv->clone_of;
-			else if (drv->compatible_with && !(drv->compatible_with->flags & NOT_A_DRIVER))
-				drv = drv->compatible_with;
-			else
-				drv = NULL;
+			drv = mess_next_compatible_driver(drv);
 		}
 		while(rc && drv);
 		
@@ -791,8 +864,8 @@ int image_index_in_devtype(mess_image *img)
 static mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_write)
 {
 	const char *sysname;
-	mame_file *file;
-	char buffer[512];
+	char *lpExt;
+	const struct GameDriver *gamedrv = Machine->gamedrv;
 
 	assert(img);
 
@@ -803,52 +876,114 @@ static mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_
 		/* If already open, we won't open the file again until it is closed. */
 		return NULL;
 
-	sysname = Machine->gamedrv->name;
-	logerror("image_fopen: trying %s for system %s\n", img->name, sysname);
-	img->fp = file = mame_fopen(sysname, img->name, filetype, read_or_write);
-
-	if ((file) && ! is_effective_mode_create(read_or_write))
+	do
 	{
-		/* is this file actually a zip file? */
-		if ((mame_fread(file, buffer, 4) == 4) && (buffer[0] == 0x50)
-			&& (buffer[1] == 0x4B) && (buffer[2] == 0x03) && (buffer[3] == 0x04))
+		sysname = gamedrv->name;
+		logerror("image_fopen: trying %s for system %s\n", img->name, sysname);
+
+		img->fp = mame_fopen(sysname, img->name, filetype, read_or_write);
+
+		if( img->fp && !is_effective_mode_create( read_or_write ) )
 		{
-			mame_fseek(file, 26, SEEK_SET);
-			if (mame_fread(file, buffer, 2) == 2)
+			lpExt = strrchr( img->name, '.' );
+			if( stricmp( lpExt, ".ZIP" ) == 0 )
 			{
-				int fname_length = buffer[0];
+				int pathindex;
+				int pathcount = osd_get_path_count(filetype);
+				ZIP *zipfile;
+				struct zipent *zipentry;
 				char *newname;
+				char *name;
+				char *zipname;
+				const char *ext;
+				const struct IODevice *dev;
 
-				mame_fseek(file, 30, SEEK_SET);
-				mame_fread(file, buffer, fname_length);
-				mame_fclose(file);
-				img->fp = file = NULL;
+				mame_fclose( img->fp );
+				img->fp = NULL;
 
-				buffer[fname_length] = '\0';
+				dev = image_device(img);
+				assert(dev);
 
-				newname = image_malloc(img, strlen(img->name) + 1 + fname_length + 1);
-				if (!newname)
-					return NULL;
+				newname = NULL;
 
-				strcpy(newname, img->name);
-				strcat(newname, osd_path_separator());
-				strcat(newname, buffer);
-				img->fp = file = mame_fopen(sysname, newname, filetype, read_or_write);
-				if (!file)
-					return NULL;
+				zipname = image_malloc( img, strlen( sysname ) + 1 + strlen( img->name ) + 1 );
+				if( osd_is_absolute_path( img->name ) )
+				{
+					strcpy( zipname, img->name );
+				}
+				else
+				{
+					strcpy( zipname, sysname );
+					strcat( zipname, osd_path_separator() );
+					strcat( zipname, img->name );
+				}
 
-				image_freeptr(img, img->name);
-				img->name = newname;
+				for (pathindex = 0; pathindex < pathcount; pathindex++)
+				{
+					zipfile = openzip(filetype, pathindex, zipname);
+					if (zipfile)
+					{
+						zipentry = readzip(zipfile);
+						while( zipentry )
+						{
+							/* mess doesn't support paths in zip files */
+							name = osd_basename( zipentry->name );
+							lpExt = strrchr(name, '.');
+							if (lpExt)
+							{
+								lpExt++;
+
+								ext = dev->file_extensions;
+								while(*ext)
+								{
+									if( stricmp( lpExt, ext ) == 0 )
+									{
+										if( newname )
+										{
+											image_freeptr( img, newname );
+										}
+										newname = image_malloc(img, strlen(img->name) + 1 + strlen(name) + 1);
+										if (!newname)
+											return NULL;
+
+										strcpy(newname, img->name);
+										strcat(newname, osd_path_separator());
+										strcat(newname, name);
+									}
+									ext += strlen(ext) + 1;
+								}
+							}
+							zipentry = readzip(zipfile);
+						}
+						closezip(zipfile);
+					}
+					if( !newname )
+					{
+						return NULL;
+					}
+					img->fp = mame_fopen(sysname, newname, filetype, read_or_write);
+					if (img->fp)
+					{
+						image_freeptr(img, img->name);
+						img->name = newname;
+						break;
+					}
+				}
+				image_freeptr( img, zipname );
 			}
 		}
-		mame_fseek(file, 0, SEEK_SET);
+		gamedrv = mess_next_compatible_driver(gamedrv);
+	}
+	while(!img->fp && gamedrv);
 
+	if( img->fp && ! is_effective_mode_create(read_or_write))
+	{
 		logerror("image_fopen: found image %s for system %s\n", img->name, sysname);
-		img->length = mame_fsize(file);
+		img->length = mame_fsize(img->fp);
 		img->crc = 0;
 		img->status &= ~IMAGE_STATUS_CRCCALCULATED;
 	}
 
-	return file;
+	return img->fp;
 }
 

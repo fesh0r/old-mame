@@ -121,13 +121,13 @@ typedef struct ti99_4p_exp_card_handlers_t
 	{
 		struct
 		{
-			mem_read_handler mem_read;		/* card mem read handler (8 bits) */
-			mem_write_handler mem_write;	/* card mem write handler (8 bits) */
+			read8_handler mem_read;		/* card mem read handler (8 bits) */
+			write8_handler mem_write;	/* card mem write handler (8 bits) */
 		} width_8bit;
 		struct
 		{
-			mem_read16_handler mem_read;		/* card mem read handler (8 bits) */
-			mem_write16_handler mem_write;	/* card mem write handler (8 bits) */
+			read16_handler mem_read;	/* card mem read handler (8 bits) */
+			write16_handler mem_write;	/* card mem write handler (8 bits) */
 		} width_16bit;
 	} w;
 } ti99_4p_exp_card_handlers_t;
@@ -299,7 +299,7 @@ void ti99_peb_set_ilb_bit(int bit, int state)
 /*
 	Read CRU in range >1000->1ffe (>800->fff)
 */
-READ16_HANDLER ( ti99_4x_peb_CRU_r )
+READ_HANDLER ( ti99_4x_peb_cru_r )
 {
 	int port;
 	cru_read_handler handler;
@@ -316,7 +316,7 @@ READ16_HANDLER ( ti99_4x_peb_CRU_r )
 /*
 	Write CRU in range >1000->1ffe (>800->fff)
 */
-WRITE16_HANDLER ( ti99_4x_peb_CRU_w )
+WRITE_HANDLER ( ti99_4x_peb_cru_w )
 {
 	int port;
 	cru_write_handler handler;
@@ -351,7 +351,7 @@ WRITE16_HANDLER ( ti99_4x_peb_CRU_w )
 READ16_HANDLER ( ti99_4x_peb_r )
 {
 	int reply = 0;
-	mem_read_handler handler;
+	read8_handler handler;
 
 	tms9900_ICount -= 4;
 
@@ -373,7 +373,7 @@ READ16_HANDLER ( ti99_4x_peb_r )
 */
 WRITE16_HANDLER ( ti99_4x_peb_w )
 {
-	mem_write_handler handler;
+	write8_handler handler;
 
 	tms9900_ICount -= 4;
 
@@ -395,7 +395,7 @@ WRITE16_HANDLER ( ti99_4x_peb_w )
 /*
 	Read CRU in range >1000->1ffe (>800->fff)
 */
-READ_HANDLER ( geneve_peb_CRU_r )
+READ_HANDLER ( geneve_peb_cru_r )
 {
 	int port;
 	cru_read_handler handler;
@@ -412,7 +412,7 @@ READ_HANDLER ( geneve_peb_CRU_r )
 /*
 	Write CRU in range >1000->1ffe (>800->fff)
 */
-WRITE_HANDLER ( geneve_peb_CRU_w )
+WRITE_HANDLER ( geneve_peb_cru_w )
 {
 	int port;
 	cru_write_handler handler;
@@ -447,7 +447,7 @@ WRITE_HANDLER ( geneve_peb_CRU_w )
 READ_HANDLER ( geneve_peb_r )
 {
 	int reply = 0;
-	mem_read_handler handler;
+	read8_handler handler;
 
 	tms9995_ICount -= 8;
 
@@ -466,7 +466,7 @@ READ_HANDLER ( geneve_peb_r )
 */
 WRITE_HANDLER ( geneve_peb_w )
 {
-	mem_write_handler handler;
+	write8_handler handler;
 
 	tms9995_ICount -= 8;
 
@@ -481,7 +481,7 @@ WRITE_HANDLER ( geneve_peb_w )
 /*
 	Read CRU in range >1000->2ffe (>0800->17ff)
 */
-READ_HANDLER ( ti99_8_peb_CRU_r )
+READ_HANDLER ( ti99_8_peb_cru_r )
 {
 	int port;
 	cru_read_handler handler;
@@ -498,7 +498,7 @@ READ_HANDLER ( ti99_8_peb_CRU_r )
 /*
 	Write CRU in range >1000->2ffe (>0800->17ff)
 */
-WRITE_HANDLER ( ti99_8_peb_CRU_w )
+WRITE_HANDLER ( ti99_8_peb_cru_w )
 {
 	int port;
 	cru_write_handler handler;
@@ -533,7 +533,7 @@ WRITE_HANDLER ( ti99_8_peb_CRU_w )
 READ_HANDLER ( ti99_8_peb_r )
 {
 	int reply = 0;
-	mem_read_handler handler;
+	read8_handler handler;
 
 	tms9995_ICount -= 4;
 
@@ -552,7 +552,7 @@ READ_HANDLER ( ti99_8_peb_r )
 */
 WRITE_HANDLER ( ti99_8_peb_w )
 {
-	mem_write_handler handler;
+	write8_handler handler;
 
 	tms9995_ICount -= 4;
 
@@ -567,7 +567,7 @@ WRITE_HANDLER ( ti99_8_peb_w )
 /*
 	Read CRU in range >0400->1ffe (>200->fff)
 */
-READ16_HANDLER ( ti99_4p_peb_CRU_r )
+READ_HANDLER ( ti99_4p_peb_cru_r )
 {
 	int port;
 	cru_read_handler handler;
@@ -584,7 +584,7 @@ READ16_HANDLER ( ti99_4p_peb_CRU_r )
 /*
 	Write CRU in range >0400->1ffe (>200->fff)
 */
-WRITE16_HANDLER ( ti99_4p_peb_CRU_w )
+WRITE_HANDLER ( ti99_4p_peb_cru_w )
 {
 	int port;
 	cru_write_handler handler;
@@ -637,8 +637,8 @@ WRITE16_HANDLER ( ti99_4p_peb_CRU_w )
 READ16_HANDLER ( ti99_4p_peb_r )
 {
 	int reply = 0;
-	mem_read_handler handler;
-	mem_read16_handler handler16;
+	read8_handler handler;
+	read16_handler handler16;
 
 
 	if (active_card == -1)
@@ -687,8 +687,8 @@ READ16_HANDLER ( ti99_4p_peb_r )
 */
 WRITE16_HANDLER ( ti99_4p_peb_w )
 {
-	mem_write_handler handler;
-	mem_write16_handler handler16;
+	write8_handler handler;
+	write16_handler handler16;
 
 	if (active_card == -1)
 		tms9900_ICount -= 4;	/* ??? */

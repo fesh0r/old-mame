@@ -20,7 +20,7 @@ extern "C" {
 #endif
 
 /* I would like to have more than one wd177x aaiable but MESS' floppy disk
-   system will need to be enhanced to support for than one FDC. */
+   system will need to be enhanced to support more than one FDC. */
    
 #define wd177x_MAX_wd177x 1
 
@@ -39,8 +39,9 @@ typedef enum wd177x_chip_type
 	wd177x_wd1773
 } wd177x_chip_type_t;
 
-/* wd1793 is 100% software compaiible with the wd1773 */
+/* Here are some defines to specify 100% software compatibility */
 #define wd177x_wd1793 wd177x_wd1773
+#define wd177x_wd2793 wd177x_wd1773
 
 typedef enum wd177x_mode
 {
@@ -76,6 +77,7 @@ typedef struct wd177x {
 	UINT8	data_shift_reg;
 	UINT8	command_reg;
 	UINT8	status_reg;
+        UINT8	intrq_set_flags;
 	UINT16	crc_reg;
 	wd177x_mode_t	mode;
         int	ready;

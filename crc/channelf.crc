@@ -1,4 +1,3 @@
-# This MESS CRC file was compiled by Discord.
 # Please keep this notice intact if editing this file
 # crc= Game Name | Year | Manufacturer | Emulation Status
 
@@ -6,29 +5,29 @@
 [channelf]
 ff4768b0= Videocart 01 - Tic Tac Toe & Shooting Gallery & Doodle & Quadra Doodle | 1976 | Fairchild |
 1570934b= Videocart 02 - Desert Fox & Shooting Gallery | 1976 | Fairchild |
-########= Videocart 03 - Video Blackjack | 1976 | Fairchild |
+e98d4456= Videocart 03 - Video Blackjack | 1976 | Fairchild |
 5357c5f6= Videocart 04 - Spitfire | 1976 | Fairchild |
-########= Videocart 05 - Space War | 1976 | Fairchild |
+22ef49e8= Videocart 05 - Space War | 1976 | Fairchild |
 bb4c24a2= Videocart 06 - Math Quiz 1 (Addition & Subtraction) | 1976 | Fairchild |
-########= Videocart 07 - Math Quiz 2 | 197? | Fairchild |
-########= Videocart 08 - Magic Numbers | 197? | Fairchild |
-########= Videocart 09 - Drag Race | 197? | Fairchild |
-########= Videocart 10 - Maze & Cat and Mouse | 197? | Fairchild |
-########= Videocart 11 - Backgammon & Acey Ducey | 197? | Fairchild |
-########= Videocart 12 - Baseball | 197? | Fairchild |
-########= Videocart 13 - Robot War | 197? | Fairchild |
-########= Videocart 14 - Sonar Search | 197? | Fairchild |
-########= Videocart 15 - Memory Match | 197? | Fairchild |
-########= Videocart 16 - Dodge It | 197? | Fairchild |
-########= Videocart 17 - Pinball Challenge | 197? | Fairchild |
-########= Videocart 18 - Hangman | 197? | Fairchild |
+4aa7ea97= Videocart 07 - Math Quiz II & Multiplication & Division | 1977 | Fairchild |
+24da0529= Videocart 08 - Magic Numbers & Mind Reader & Nim | 1977 | Fairchild |
+6a64dda3= Videocart 09 - Drag Race | 197? | Fairchild |
+4d42b296= Videocart 10 - Maze & Cat and Mouse | 197? | Fairchild |
+a1731b52= Videocart 11 - Backgammon & Acey-Ducey | 1977 | Fairchild |
+01129bcd= Videocart 12 - Baseball | 197? | Fairchild |
+38241e4f= Videocart 13 - Robot War & Torpedo Ally | 1977 | Fairchild |
+dbdc56bf= Videocart 14 - Sonar Search | 197? | Fairchild |
+104b5e18= Videocart 15 - Memory Match 1 & 2 | 1978 | Fairchild |
+e3c1811c= Videocart 16 - Dodge It | 197? | Fairchild |
+c610b330= Videocart 17 - Pinball Challenge | 197? | Fairchild |
+9238d6ce= Videocart 18 - Hangman | 1978 | Fairchild |
 ########= Videocart 19 - Checkers | 197? | Zircon |
 ########= Videocart 20 - Video Whizball | 197? | Fairchild |
-########= Videocart 21 - Bowling | 197? | Fairchild |
+94322c79= Videocart 21 - Bowling | 1978 | Fairchild |
 ########= Videocart 22 - Slot Machine | 197? | Zircon |
 ########= Videocart 23 - Galactic Space Wars | 197? | Zircon |
-########= Videocart 24 - Pro Football | 197? | Zircon |
+a1ae99be= Videocart 24 - Pro Football | | Zircon |
 ########= Videocart 25 - Casino Poker | 197? | Zircon |
-########= Videocart 26 - Alien Invasion | 197? | Zircon |
+85e00865= Videocart 26 - Alien Invasion | | Zircon |
 ########= Democart 1
 ########= Democart 2

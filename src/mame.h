@@ -268,33 +268,36 @@ struct GameOptions
 #define DEBUG_FOCUS_CHANGED			0x00000040
 #define LED_STATE_CHANGED			0x00000080
 #define GAME_REFRESH_RATE_CHANGED	0x00000100
+#ifdef MESS
+#define GAME_OPTIONAL_FRAMESKIP     0x00000200
+#endif
 
 
 /* the main mame_display structure, containing the current state of the */
 /* video display */
 struct mame_display
 {
-	/* bitfield indicating which states have changed */
-	UINT32					changed_flags;
+    /* bitfield indicating which states have changed */
+    UINT32					changed_flags;
 
-	/* game bitmap and display information */
-	struct mame_bitmap *	game_bitmap;			/* points to game's bitmap */
-	struct rectangle		game_bitmap_update;		/* bounds that need to be updated */
-	const rgb_t *			game_palette;			/* points to game's adjusted palette */
-	UINT32					game_palette_entries;	/* number of palette entries in game's palette */
-	UINT32 *				game_palette_dirty;		/* points to game's dirty palette bitfield */
-	struct rectangle 		game_visible_area;		/* the game's visible area */
+    /* game bitmap and display information */
+    struct mame_bitmap *	game_bitmap;			/* points to game's bitmap */
+    struct rectangle		game_bitmap_update;		/* bounds that need to be updated */
+    const rgb_t *			game_palette;			/* points to game's adjusted palette */
+    UINT32					game_palette_entries;	/* number of palette entries in game's palette */
+    UINT32 *				game_palette_dirty;		/* points to game's dirty palette bitfield */
+    struct rectangle 		game_visible_area;		/* the game's visible area */
 	float					game_refresh_rate;		/* refresh rate */
-	void *					vector_dirty_pixels;	/* points to X,Y pairs of dirty vector pixels */
+    void *					vector_dirty_pixels;	/* points to X,Y pairs of dirty vector pixels */
 
-	/* debugger bitmap and display information */
-	struct mame_bitmap *	debug_bitmap;			/* points to debugger's bitmap */
-	const rgb_t *			debug_palette;			/* points to debugger's palette */
-	UINT32					debug_palette_entries;	/* number of palette entries in debugger's palette */
-	UINT8					debug_focus;			/* set to 1 if debugger has focus */
+    /* debugger bitmap and display information */
+    struct mame_bitmap *	debug_bitmap;			/* points to debugger's bitmap */
+    const rgb_t *			debug_palette;			/* points to debugger's palette */
+    UINT32					debug_palette_entries;	/* number of palette entries in debugger's palette */
+    UINT8					debug_focus;			/* set to 1 if debugger has focus */
 
-	/* other misc information */
-	UINT8					led_state;				/* bitfield of current LED states */
+    /* other misc information */
+    UINT8					led_state;				/* bitfield of current LED states */
 };
 
 
