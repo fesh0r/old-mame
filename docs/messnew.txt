@@ -1,3 +1,70 @@
+0.94
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Apple IIgs [Nate Woods]
+
+
+
+System Driver Changes:
+----------------------
+- [A2600,A7800] Add keys to toggle switches.  New keyboard mappings are:
+
+  1 - Select
+  2 - Reset
+  3 - Toggle Left Difficulty switch
+  4 - Toggle Right Difficulty switch
+  C - Toggle Black & White switch (a2600 only)
+  ] - Toggle Pause switch (a7800 only)
+
+  [Christopher Stone]
+
+- [APPLE2] Reset key fixes:
+
+  + The default Apple RESET key is now F12.
+  + The apple2 driver no longer requires a CTRL key to reset.  (bug #642)
+  + The apple2+ driver now has a DIP switch to switch between RESET and
+    CTRL-RESET. (bug #645)
+
+  [Christopher Stone]
+
+- [CBM FAMILY] Fixed SID regressions introduced in 0.93.  SID chips now
+  packaged as actual MAME/MESS sound cores.  (bug #658) [Nate Woods]
+
+- [GAMEBOY] Fixed crash regression introduced in 0.93.  [Nate Woods]
+
+- [TI99] Fixed crash regression introduced in 0.92.  (bug #662) [Nate Woods]
+
+- [VIC20] Fixed crash regression introduced in 0.93.  (bug #659) [Nate Woods]
+
+
+
+User Interface Changes:
+-----------------------
+- Classic MESS UI now performs hard resets instead of soft resets.
+  [Christopher Stone]
+
+- [Windows GUI] If MESS crashes at runtime, an error message will now be
+  displayed.  Previously, the emulation would end and the user would be sent
+  back into the GUI without explanation.  [Nate Woods]
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.94.  This incorporates all features of the
+  update to this core.  [MAME team]  
+
+- Devices can now be marked as 'not working'.  [Nate Woods]
+  
+
+
 0.93
 
 New System Drivers Supported (in no particular order):

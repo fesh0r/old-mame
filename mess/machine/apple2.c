@@ -43,6 +43,7 @@ static UINT32 a2_set;
 
 /* local */
 static int a2_speaker_state;
+static int a2_keyboard_type;
 
 static void mockingboard_init (int slot);
 static int mockingboard_r (int offset);
@@ -173,7 +174,8 @@ void apple2_update_memory(void)
 				if (end_r >= mess_ram_size)
 					end_r = mess_ram_size - 1;
 				offset = meminfo.read_mem & APPLE2_MEM_MASK;
-				rbase = &mess_ram[offset];
+				if (end_r >= begin)
+					rbase = &mess_ram[offset];
 			}
 
 			/* install the actual handlers */
@@ -246,7 +248,8 @@ void apple2_update_memory(void)
 				if (end_w >= mess_ram_size)
 					end_w = mess_ram_size - 1;
 				offset = meminfo.write_mem & APPLE2_MEM_MASK;
-				wbase = &mess_ram[offset];
+				if (end_w >= begin)
+					wbase = &mess_ram[offset];
 			}
 
 
@@ -680,8 +683,10 @@ data8_t apple2_getfloatingbusvalue(void)
  * Driver init
  * ----------------------------------------------------------------------- */
 
-void apple2_init_common(void)
+void apple2_init_common(int keyboard_type)
 {
+	a2_keyboard_type = keyboard_type;
+
 	/* state save registers */
 	state_save_register_UINT32("apple2", 0, "softswitch", &a2, 1);
 	state_save_register_func_postload(apple2_update_memory);
@@ -711,8 +716,17 @@ void apple2_init_common(void)
 DRIVER_INIT( apple2 )
 {
 	struct apple2_memmap_config cfg;
+	int keyboard_type;
 
-	apple2_init_common();
+	keyboard_type = AP2_KEYBOARD_2E;
+	if (!strcmp(Machine->gamedrv->name, "apple2"))
+		keyboard_type = AP2_KEYBOARD_2;
+	if (!strcmp(Machine->gamedrv->name, "apple2p"))
+		keyboard_type = AP2_KEYBOARD_2P;
+	if (!strcmp(Machine->gamedrv->name, "apple2ep"))
+		keyboard_type = AP2_KEYBOARD_2GS;
+
+	apple2_init_common(keyboard_type);
 
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.first_bank = 1;
@@ -738,19 +752,13 @@ MACHINE_INIT( apple2 )
 	mess_image *image;
 	int i;
 	int need_intcxrom;
-	int keyboard_type = AP2_KEYBOARD_2E;
 
 	need_intcxrom = !strcmp(Machine->gamedrv->name, "apple2c")
 		|| !strcmp(Machine->gamedrv->name, "apple2c0")
 		|| !strcmp(Machine->gamedrv->name, "apple2cp");
 	apple2_setvar(need_intcxrom ? VAR_INTCXROM : 0, ~0);
 
-	if (!strcmp(Machine->gamedrv->name, "apple2")
-		|| !strcmp(Machine->gamedrv->name, "apple2p"))
-		keyboard_type = AP2_KEYBOARD_2;
-	if (!strcmp(Machine->gamedrv->name, "apple2ep"))
-		keyboard_type = AP2_KEYBOARD_2GS;
-	AY3600_init(keyboard_type);
+	AY3600_init(a2_keyboard_type);
 
 	a2_speaker_state = 0;
 
