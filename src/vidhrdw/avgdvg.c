@@ -120,14 +120,16 @@ static unsigned char *vectorbank[NUM_BANKS];
 #define memrdwd(offset) (VECTORRAM(offset) | (VECTORRAM(offset+1)<<8))
 /* The AVG used by Star Wars reads the bytes in the opposite order */
 #define memrdwd_flip(offset) (VECTORRAM(offset+1) | (VECTORRAM(offset)<<8))
-#define max(x,y) (((x)>(y))?(x):(y))
 
 
 INLINE void vector_timer (int deltax, int deltay)
 {
 	deltax = abs (deltax);
 	deltay = abs (deltay);
-	total_length += max (deltax, deltay) >> VEC_SHIFT;
+	if (deltax > deltay)
+		total_length += deltax >> VEC_SHIFT;
+	else
+		total_length += deltay >> VEC_SHIFT;
 }
 
 INLINE void dvg_vector_timer (int scale)
@@ -1008,8 +1010,8 @@ void avg_init_palette (int paltype, unsigned char *palette, unsigned short *colo
 
 /* A macro for the palette_init functions */
 #define VEC_PAL_INIT(name, paltype) \
-void avg_init_palette_##name## (unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom) \
-{ avg_init_palette (##paltype##, palette, colortable, color_prom); }
+void avg_init_palette_##name (unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom) \
+{ avg_init_palette (paltype, palette, colortable, color_prom); }
 
 /* The functions referenced from gamedriver */
 VEC_PAL_INIT(white,    VEC_PAL_WHITE)

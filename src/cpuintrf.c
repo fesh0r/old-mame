@@ -154,6 +154,9 @@
 #if (HAS_Z80GB)
 #include "mess/cpu/z80gb/z80gb.h"
 #endif
+#if (HAS_Z80_MSX)
+#include "cpu/z80/z80_msx.h"
+#endif
 
 #endif
 
@@ -673,6 +676,9 @@ struct cpu_interface cpuintf[] =
 #if (HAS_Z80GB)
 	CPU0(Z80GB,    z80gb,	 5,255,1.00,Z80GB_IGNORE_INT,  0,			   1,			   8, 16,	  0,16,LE,1, 4	),
 #endif
+#if (HAS_Z80_MSX)
+	CPU1(Z80_MSX,  z80_msx,	 1,255,1.00,Z80_IGNORE_INT,    Z80_IRQ_INT,    Z80_NMI_INT,    8, 16,	  0,16,LE,1, 4	),
+#endif
 #endif
 };
 
@@ -755,7 +761,6 @@ logerror("CPU #%d failed to allocate context buffer (%d bytes)!\n", i, size);
 			irq_line_vector[i * MAX_IRQ_LINES + j] = cpuintf[CPU_TYPE(i)].default_vector;
 		}
 
-		if (cpu[i].save_context) SETCONTEXT(i, cpu[i].context);
 		state_save_set_current_tag(i+1);
 		INIT(i);
 		if (cpu[i].save_context) GETCONTEXT(i, cpu[i].context);
@@ -1035,7 +1040,7 @@ WRITE_HANDLER( watchdog_reset_w )
 READ_HANDLER( watchdog_reset_r )
 {
 	watchdog_reset();
-	return 0;
+	return 0xff;
 }
 
 WRITE16_HANDLER( watchdog_reset16_w )
@@ -1046,7 +1051,7 @@ WRITE16_HANDLER( watchdog_reset16_w )
 READ16_HANDLER( watchdog_reset16_r )
 {
 	watchdog_reset();
-	return 0;
+	return 0xffff;
 }
 
 
@@ -1488,13 +1493,18 @@ void cpu_clear_pending_interrupts(int cpunum)
 
 
 
+void cpu_interrupt_enable(int cpunum,int enabled)
+{
+	interrupt_enable[cpunum] = enabled;
+
+	/* make sure there are no queued interrupts */
+	if (enabled == 0) cpu_clear_pending_interrupts(cpunum);
+}
+
 WRITE_HANDLER( interrupt_enable_w )
 {
 	int cpunum = (activecpu < 0) ? 0 : activecpu;
-	interrupt_enable[cpunum] = data;
-
-	/* make sure there are no queued interrupts */
-	if (data == 0) cpu_clear_pending_interrupts(cpunum);
+	cpu_interrupt_enable(cpunum,data);
 }
 
 
@@ -3419,3 +3429,46 @@ static unsigned Dummy_dasm(char *buffer, unsigned pc)
 	return 1;
 }
 
+#if (HAS_M68000 || HAS_M68010 || HAS_M68020 || HAS_M68EC020)
+void cpu_set_m68k_reset(int cpunum, void (*resetfn)(void))
+{
+	void m68k_set_reset_instr_callback(void  (*callback)(void));
+
+	if ( 1
+#if (HAS_M68000)
+		&& CPU_TYPE(cpunum) != CPU_M68000
+#endif
+#if (HAS_M68010)
+		&& CPU_TYPE(cpunum) != CPU_M68010
+#endif
+#if (HAS_M68020)
+		&& CPU_TYPE(cpunum) != CPU_M68020
+#endif
+#if (HAS_M68EC020)
+		&& CPU_TYPE(cpunum) != CPU_M68EC020
+#endif
+		)
+	{
+		logerror("Trying to set m68k reset vector on non-68k cpu\n");
+		exit(1);
+	}
+
+	if (cpunum != activecpu)
+	{
+		if(activecpu != -1)
+			if (cpu[activecpu].save_context) GETCONTEXT(activecpu, cpu[activecpu].context);
+		memory_set_context(cpunum);
+		if (cpu[cpunum].save_context) SETCONTEXT(cpunum, cpu[cpunum].context);
+	}
+
+	m68k_set_reset_instr_callback(resetfn);
+
+	if(cpunum != activecpu)
+	{
+		memory_set_context(cpunum);
+		if (cpu[cpunum].save_context) GETCONTEXT(cpunum, cpu[cpunum].context);
+		if(activecpu != -1)
+			if (cpu[activecpu].save_context) SETCONTEXT(activecpu, cpu[activecpu].context);
+	}
+}
+#endif

@@ -6,6 +6,7 @@ TODO:
 - Implement shadows properly. Moreover, in chqflag and ssriders they are
   highlights, not shadows.
 - scrollcontrol = 30 in Golfing Greats (leader board)
+- detatwin: sprites are left on screen during attract mode
 
 
                       Emulated
@@ -17,12 +18,12 @@ Twinbee             GX412*1985   68000           GX400
 Yie Ar Kung Fu      GX407*1985    6809
 Gradius / Nemesis   GX456*1985   68000           GX400
 Shao-lins Road      GX477*1985    6809
-Jail Break          GX507*1986 KONAMI-1          005849
-Finalizer           GX523*1985 KONAMI-1          005885
+Jail Break          GX507*1986 KONAMI-1          005849                   PROMs
+Finalizer           GX523*1985 KONAMI-1          005885                   PROMs
 Konami's Ping Pong  GX555*1985     Z80
-Iron Horse          GX560*1986    6809           005885
+Iron Horse          GX560*1986    6809           005885                   PROMs
 Konami GT           GX561*1985   68000           GX400
-Green Beret         GX577*1985     Z80           005849
+Green Beret         GX577*1985     Z80           005849                   PROMs
 Galactic Warriors   GX578*1985   68000           GX400
 Salamander          GX587*1986   68000           GX400
 WEC Le Mans 24      GX602*1986 2x68000
@@ -48,7 +49,8 @@ Rack 'Em Up /       GX765*1987    6309 007342        007420               007327
 Haunted Castle      GX768*1988  052001           007121(x2)               007327
 Ajax / Typhoon      GX770*1987   6309+ 052109 051962 051960 051937  PROM  007327 051316 (zoom/rotation)
                                 052001
-Labyrinth Runner    GX771*1987    6309           007121                   007593 051733 (protection) 051550
+Labyrinth Runner /  GX771*1987    6309           007121                   007593 051733 (protection) 051550
+  Trick Trap
 Super Contra        GX775*1988  052001 052109 051962 051960 051937  PROM  007327
 Battlantis          GX777*1987    6309 007342        007420               007327 007324
 Vulcan Venture /    GX785*1988 2x68000           TWIN16
@@ -85,7 +87,7 @@ Rollergames         GX999*1991  053248 ------ ------ 053245 053244              
 Bells & Whistles /  GX060*1991   68000 052109 051962 053245 053244 053251        054000 (collision)
   Detana!! Twin Bee
 Golfing Greats      GX061*1991   68000 052109 051962 053245 053244 053251        053936 (3D)
-TMNT 2              GX063*1991   68000 052109 051962 053245 053244 053251        053990
+TMNT 2              GX063*1991   68000 052109 051962 053245 053244 053251        053990 051550
 Sunset Riders       GX064*1991   68000 052109 051962 053245 053244 053251        054358
 X-Men               GX065*1992   68000 052109 051962 053247 053246 053251        054539 (sound)
 XEXEX               GX067*1991   68000 054157 054156 053247 053246 053251        053250?("road") 054338 054539 (sound)
@@ -95,8 +97,8 @@ The Simpsons        GX072*1991  053248 052109 051962 053247 053246 053251
 Thunder Cross 2     GX073*1991   68000 052109 051962 051960 051937 053251        054000 (collision)
 Vendetta /          GX081*1991  053248 052109 051962 053247 053246 053251        054000 (collision)
   Crime Fighters 2
-Premier Soccer      GX101 1993   68000 052109 051962 053245 053244 053251        053936 (3D)
-Hexion              GX122+1992     Z80                                           052591 (protection) 053252(*)
+Premier Soccer      GX101+1993   68000 052109 051962 053245 053244 053251        053936 (3D) 054986
+Hexion              GX122*1992     Z80                                           052591 (protection) 053252(*)
 Entapous /          GX123+1993   68000 054157 054156 055673 053246               053252(*) 054000 055555
   Gaiapolis
 Mystic Warrior      GX128+1993   68000 054157 054156 055673 053246               054338 054539(x2) 053252(*) 055555
@@ -108,6 +110,8 @@ Lethal Enforcers    GX191+1992    6309 054157(x2) 054156 053245 053244(x2)      
 Metamorphic Force   GX224+1993
 Martial Champion    GX234+1993   68000 054157 054156 055673 053246               053252(*) 054338 054539 055555 053990 054986 054573
 Run and Gun         GX247+1993   68000               055673 053246               053253(x2) 054539(x2) 053252(*) 053936 (3D)
+Quiz Gakumon no     GX248*1993   68000 052109 051962 053245 053244 053251        053990 051550 - same board as TMNT2
+  Susume
 Polygonet CommandersGX305+1993   68020                                           056230?063936?054539?054986?
 
 
@@ -154,25 +158,91 @@ Sunset Riders       pass
 X-Men               pass
 The Simpsons        pass
 Thunder Cross 2     pass
-Vendetta            pass
 Xexex               pass
 Asterix             pass
 GiJoe				pass
+Vendetta            pass
+Hexion              pass
 
 
 THE FOLLOWING INFORMATION IS PRELIMINARY AND INACCURATE. DON'T RELY ON IT.
 
 
+005885
+------
+Some games use two of these in pair. Jackal even puts together the two 4bpp
+tilemaps to form a single 8bpp one.
+It manages sprites and 32x32 or 64x32 tilemap (only Double Dribble uses the
+64x32 one).
+The chip also generates clock and interrupt signals suitable for a 6809.
+It uses 0x2000 bytes of RAM for the tilemaps and sprites, and an additional
+0x100 bytes, maybe for scroll RAM and line buffers. The maximum addressable
+ROM is 0x20000 bytes (addressed 16 bits at a time). Tile and sprite data both
+come from the same ROM space. Double Dribble and Jackal have external circuitry
+to extend the limits and use separated addressing spaces for sprites and tiles.
+All games use external circuitry to reuse one or both the tile flip attributes
+as an additional address bit.
+Two 256x4 lookup PROMs are also used to increase the color combinations.
+All tilemap / sprite priority handling is done internally and the chip exports
+5 bits of color code, composed of 1 bit indicating tile or sprite, and 4 bits
+of ROM data remapped through the PROM.
+
+inputs:
+- address lines (A0-A13)
+- data lines (DB0-DB7)
+- misc interface stuff
+- data from the gfx ROMs (RDL0-RDL7, RDU0-RDU7)
+- data from the tile lookup PROMs (VCD0-VCD3)
+- data from the sprite lookup PROMs (OCD0-OCD3)
+
+outputs:
+- address lines for tilemap RAM (AX0-AX12)
+- data lines for tilemap RAM (VO0-VO7)
+- address lines for the small RAM (FA0-FA7)
+- data lines for the small RAM (FD0-FD7)
+- address lines for the gfx ROMs (R0-R15)
+- address lines for the tile lookup PROMs (VCF0-VCF3, VCB0-VCB3)
+- address lines for the sprite lookup PROMs (OCB0-OCB3, OCF0-OCF3)
+- NNMI, NIRQ, NFIR, NCPE, NCPQ, NEQ for the main CPU
+- misc interface stuff
+- color code to be output on screen (COL0-COL4)
+
+
+control registers
+000:          scroll y
+001:          scroll x (low 8 bits)
+002: -------x scroll x (high bit)
+     ----xxx- row/colscroll control
+              000 = solid scroll (finalizr, ddribble bg)
+              100 = solid scroll (jackal)
+              001 = ? (ddribble fg)
+              011 = colscroll (jackal high scores)
+              101 = rowscroll (ironhors, jackal map)
+003: ------xx high bits of the tile code
+     -----x-- unknown (finalizr)
+     ----x--- selects sprite buffer (and makes a copy to a private buffer?)
+     --x----- unknown (ironhors)
+     -x------ unknown (ironhors)
+     x------- unknown (ironhors, jackal)
+004: -------x nmi enable
+     ------x- irq enable
+     -----x-- firq enable
+     ----x--- flip screen
+
+
+
 007121
 ------
-This is an interesting beast. Many games use two of these in pair.
+This is an interesting beast. It is an evolution of the 005885, with more
+features. Many games use two of these in pair.
 It manages sprites and two 32x32 tilemaps. The tilemaps can be joined to form
 a single 64x32 one, or one of them can be moved to the side of screen, giving
 a high score display suitable for vertical games.
 The chip also generates clock and interrupt signals suitable for a 6809.
 It uses 0x2000 bytes of RAM for the tilemaps and sprites, and an additional
 0x100 bytes, maybe for scroll RAM and line buffers. The maximum addressable
-ROM is 0x80000 bytes (addressed 16 bits at a time).
+ROM is 0x80000 bytes (addressed 16 bits at a time). Tile and sprite data both
+come from the same ROM space.
 Two 256x4 lookup PROMs are also used to increase the color combinations.
 All tilemap / sprite priority handling is done internally and the chip exports
 7 bits of color code, composed of 2 bits of palette bank, 1 bit indicating tile
@@ -240,9 +310,7 @@ control registers
      output to pins R12-R15. The bit of the attribute byte to use is the
      specified bit (0-3) + 3, that is one of bits 3-6. Bit 7 is hardcoded as
      bit 8 of the code. Bits 0-2 are used for the color, however note that
-     some games (combat school, flak attack, maybe fast lane) use bit 3 as well,
-     and indeed there are 4 lines going to the color lookup PROM, so there has
-     to be a way to select this.
+     some games use bit 3 as well (see below).
      ------xx attribute bit to use for tile code bit  9
      ----xx-- attribute bit to use for tile code bit 10
      --xx---- attribute bit to use for tile code bit 11
@@ -258,14 +326,14 @@ control registers
               labyrunr)
               Note that hcastle sets this bit for layer 0, and bit 6 of the
               attribute is also used as bit 12 of the tile code, however that
-              bit is ALWAYS set thoughout the game.
-              combasc uses the bit inthe "graduation" scene during attract mode,
+              bit is ALWAYS set throughout the game.
+              combasc uses the bit in the "graduation" scene during attract mode,
               to place soldiers behind the stand.
               Use in labyrunr has not been investigated yet.
      --xx---- palette bank (both tiles and sprites, see contra)
 007: -------x nmi enable
      ------x- irq enable
-     -----x-- firq enable (probably)
+     -----x-- firq enable
      ----x--- flip screen
      ---x---- unknown (contra, labyrunr)
 
@@ -965,8 +1033,6 @@ void konami_rom_deinterleave_4(int mem_region)
 
 
 
-/*#define MAX_K007121 2*/
-
 /*static*/ unsigned char K007121_ctrlram[MAX_K007121][8];
 static int K007121_flipscreen[MAX_K007121];
 
@@ -1021,7 +1087,7 @@ WRITE_HANDLER( K007121_ctrl_1_w )
  *   4  | ----xxx- | sprite size 000=16x16 001=16x8 010=8x16 011=8x8 100=32x32
  *   4  | -------x | x position (high bit)
  *
- * Flack Attack uses a different, "wider" layout with 32 bytes per sprites,
+ * Flack Attack uses a different, "wider" layout with 32 bytes per sprite,
  * mapped as follows, and the priority order is reversed. Maybe it is a
  * compatibility mode with an older custom IC. It is not known how this
  * alternate layout is selected.
@@ -2792,7 +2858,7 @@ static int K053245_ramsize;
 static data16_t *K053245_ram, *K053245_buffer;
 static data8_t K053244_regs[0x10];
 
-int K053245_vh_start(int gfx_memory_region,int big,int plane0,int plane1,int plane2,int plane3,
+int K053245_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int plane3,
 		void (*callback)(int *code,int *color,int *priority))
 {
 	int gfx_index;
@@ -2837,7 +2903,7 @@ int K053245_vh_start(int gfx_memory_region,int big,int plane0,int plane1,int pla
 	K053245_gfx = Machine->gfx[gfx_index];
 	K053245_callback = callback;
 	K053244_rombank = 0;
-	K053245_ramsize = big ? 0x1000 : 0x800;
+	K053245_ramsize = 0x800;
 	K053245_ram = malloc(K053245_ramsize);
 	if (!K053245_ram) return 1;
 
@@ -3004,7 +3070,7 @@ void K053244_bankselect(int bank)
 
 void K053245_sprites_draw(struct osd_bitmap *bitmap)
 {
-#define NUM_SPRITES 256
+#define NUM_SPRITES 128
 	int offs,pri_code;
 	int sortedlist[NUM_SPRITES];
 	int flipscreenX, flipscreenY, spriteoffsX, spriteoffsY;
@@ -3026,7 +3092,7 @@ void K053245_sprites_draw(struct osd_bitmap *bitmap)
 		}
 	}
 
-	for (pri_code = K053245_ramsize/16-1;pri_code >= 0;pri_code--)
+	for (pri_code = NUM_SPRITES-1;pri_code >= 0;pri_code--)
 	{
 		int ox,oy,color,code,size,w,h,x,y,flipx,flipy,mirrorx,mirrory,zoomx,zoomy,pri;
 
@@ -3519,7 +3585,7 @@ void K053247_sprites_draw(struct osd_bitmap *bitmap)
 	/* prebuild a sorted table */
 	for (offs = 0;offs < 0x800;offs += 8)
 	{
-//		if (READ_WORD(&K053247_ram[offs]) & 0x8000)
+//		if (K053247_ram[offs] & 0x8000)
 		sortedlist[K053247_ram[offs] & 0x00ff] = offs;
 	}
 
@@ -3960,7 +4026,6 @@ logerror("K051316_vh_start supports only 4, 7 and 8 bpp\n");
 	K051316_callback[chip] = callback;
 
 	K051316_tilemap[chip] = tilemap_create(K051316_get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,16,16,32,32);
-	tilemap_set_depth(K051316_tilemap[chip], bpp, bpp);
 
 	K051316_ram[chip] = malloc(0x800);
 
@@ -3970,7 +4035,8 @@ logerror("K051316_vh_start supports only 4, 7 and 8 bpp\n");
 		return 1;
 	}
 
-	tilemap_set_clip(K051316_tilemap[chip],0);
+	tilemap_set_depth(K051316_tilemap[chip], bpp, bpp);
+	tilemap_set_clip(K051316_tilemap[chip],NULL);
 
 	K051316_wraparound[chip] = 0;	/* default = no wraparound */
 	K051316_offset[chip][0] = K051316_offset[chip][1] = 0;

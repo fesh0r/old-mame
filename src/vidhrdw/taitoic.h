@@ -25,6 +25,18 @@ void PC080SN_set_trans_pen(int chip,int tilemap_num,int pen);
 void PC080SN_tilemap_update(void);
 void PC080SN_tilemap_draw(struct osd_bitmap *bitmap,int chip,int layer,int flags,UINT32 priority);
 
+/***************************************************************************/
+
+int TC0080VCO_vh_start(int gfxnum,int has_text_layer,int zoom_xoffs,int zoom_yoffs);
+void TC0080VCO_vh_stop(void);
+
+READ16_HANDLER ( TC0080VCO_word_r );
+WRITE16_HANDLER( TC0080VCO_word_w );
+
+void TC0080VCO_tilemap_update(void);
+void TC0080VCO_tilemap_draw(struct osd_bitmap *bitmap,int layer,int flags,UINT32 priority);
+void TC0080VCO_draw_sprites(void);
+
 
 /***************************************************************************/
 
@@ -40,6 +52,9 @@ void TC0100SCN_set_chip_colbanks(int chip0,int chip1,int chip2);
 
 /* Function to set bg tilemask < 0xffff */
 void TC0100SCN_set_bg_tilemask(int mask);
+
+/* Function to for Mjnquest to select gfx bank */
+WRITE16_HANDLER( TC0100SCN_gfxbank_w );
 
 void TC0100SCN_vh_stop(void);
 READ16_HANDLER ( TC0100SCN_word_0_r );
@@ -138,6 +153,7 @@ WRITE16_HANDLER( TC0110PCR_step1_word_2_w );	/* 3rd chip */
 WRITE16_HANDLER( TC0110PCR_step1_rbswap_word_w );	/* swaps red and blue components */
 WRITE16_HANDLER( TC0110PCR_step1_4bpg_word_w );	/* only 4 bits per color gun */
 
+int TC0360PRI_vh_start(void);	/* must be called to ensure regs saved in state.c */
 WRITE_HANDLER( TC0360PRI_w );
 WRITE16_HANDLER( TC0360PRI_halfword_w );
 WRITE16_HANDLER( TC0360PRI_halfword_swap_w );

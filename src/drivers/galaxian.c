@@ -192,11 +192,6 @@ static WRITE_HANDLER( galaxian_leds_w )
 	set_led_status(offset,data & 1);
 }
 
-static READ_HANDLER( galapx_funky_r )
-{
-	return 0xff;
-}
-
 
 /* Send sound data to the sound cpu and cause an nmi */
 static int kingball_speech_dip;
@@ -234,13 +229,6 @@ static WRITE_HANDLER( kingball_sound2_w )
 static void machine_init_galaxian(void)
 {
 	install_mem_write_handler(0, 0x6002, 0x6002, galaxian_coin_lockout_w);
-}
-
-static void machine_init_galapx(void)
-{
-    /* for the title screen */
-	install_mem_read_handler(0, 0x7800, 0x78ff, galapx_funky_r);
-	machine_init_galaxian();
 }
 
 static void machine_init_kingball(void)
@@ -314,7 +302,7 @@ static MEMORY_READ_START( galaxian_readmem )
 	{ 0x6000, 0x6000, input_port_0_r },	/* IN0 */
 	{ 0x6800, 0x6800, input_port_1_r },	/* IN1 */
 	{ 0x7000, 0x7000, input_port_2_r },	/* DSW */
-	{ 0x7800, 0x7800, watchdog_reset_r },
+	{ 0x7800, 0x78ff, watchdog_reset_r },	/* galapx title screen relies on this to return 0xff */
 MEMORY_END
 
 static MEMORY_WRITE_START( galaxian_writemem )
@@ -858,6 +846,49 @@ INPUT_PORTS_START( redufo )
 	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
+INPUT_PORTS_START( exodus )
+	PORT_START      /* IN0 */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_2WAY )
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_2WAY )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
+	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Cocktail ) )
+	PORT_SERVICE( 0x40, IP_ACTIVE_HIGH )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SERVICE1 )
+
+	PORT_START      /* IN1 */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_2WAY | IPF_COCKTAIL )
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_2WAY | IPF_COCKTAIL )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( 1C_1C ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_5C ) )
+
+	PORT_START      /* DSW0 */
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x00, "7000" )
+	PORT_DIPSETTING(    0x01, "None" )
+	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Lives ) )
+	PORT_DIPSETTING(    0x00, "3" )
+	PORT_DIPSETTING(    0x04, "5" )
+	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
+	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_UNUSED )
+INPUT_PORTS_END
+
 INPUT_PORTS_START( pacmanbl )
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
@@ -865,9 +896,9 @@ INPUT_PORTS_START( pacmanbl )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_4WAY )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_4WAY )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN | IPF_4WAY )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP | IPF_4WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP | IPF_4WAY )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_4WAY )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_4WAY | IPF_COCKTAIL )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_4WAY )
 
 	PORT_START      /* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
@@ -907,8 +938,8 @@ INPUT_PORTS_START( devilfsg )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_4WAY )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_4WAY )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP | IPF_4WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP | IPF_4WAY )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_4WAY | IPF_COCKTAIL )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_4WAY )
 
 	PORT_START      /* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
@@ -1216,7 +1247,7 @@ INPUT_PORTS_START( orbitron )
 	PORT_START      /* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_COCKTAIL )
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_COCKTAIL )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_COCKTAIL )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL )
 	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Unknown ) )
@@ -1259,7 +1290,7 @@ INPUT_PORTS_START( checkmaj )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_COCKTAIL )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_COCKTAIL )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP | IPF_COCKTAIL )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_COCKTAIL )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL) /* p2 tiles left */
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, "A 1/1 B 1/6" )
@@ -1346,10 +1377,10 @@ INPUT_PORTS_START( streakng )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_4WAY | IPF_COCKTAIL )
 	PORT_DIPNAME( 0xc0, 0x40, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x00, "None" )
 	PORT_DIPSETTING(    0x40, "10000" )
 	PORT_DIPSETTING(    0x80, "15000" )
 	PORT_DIPSETTING(    0xc0, "20000" )
+	PORT_DIPSETTING(    0x00, "None" )
 
 	PORT_START      /* DSW0 */
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Coinage ) )
@@ -1883,7 +1914,6 @@ static const struct MachineDriver machine_driver_##NAME =								\
 /*			 MEM  	   INTERRUPT  MACHINE_INIT           GFXDECODE  VH_START */
 MACHINE_DRIVER(galaxian, galaxian, galaxian,  machine_init_galaxian, galaxian,  galaxian)
 MACHINE_DRIVER(warofbug, galaxian, galaxian,  0,                     galaxian,  galaxian)
-MACHINE_DRIVER(galapx,   galaxian, galaxian,  machine_init_galapx,   galaxian,  galaxian)
 MACHINE_DRIVER(pisces,   galaxian, galaxian,  0,                     galaxian,  pisces)
 MACHINE_DRIVER(mooncrgx, galaxian, galaxian,  0,                     galaxian,  mooncrgx)
 MACHINE_DRIVER(pacmanbl, galaxian, galaxian,  0,                     pacmanbl,  galaxian)
@@ -3130,19 +3160,19 @@ GAME( 1979, galaxian, 0,        galaxian, galaxian, 0,        ROT90,  "Namco", "
 GAME( 1979, galaxiaj, galaxian, galaxian, superg,   0,        ROT90,  "Namco", "Galaxian (Namco set 2)" )
 GAME( 1979, galmidw,  galaxian, galaxian, galaxian, 0,        ROT90,  "[Namco] (Midway license)", "Galaxian (Midway)" )
 GAME( 1979, superg,   galaxian, galaxian, superg,   0,        ROT90,  "hack", "Super Galaxians" )
-GAME( 1979, galapx,   galaxian, galapx,   superg,   0,        ROT90,  "hack", "Galaxian Part X" )
+GAME( 1979, galapx,   galaxian, galaxian, superg,   0,        ROT90,  "hack", "Galaxian Part X" )
 GAME( 1979, galap1,   galaxian, galaxian, superg,   0,        ROT90,  "hack", "Space Invaders Galactica" )
 GAME( 1979, galap4,   galaxian, galaxian, superg,   0,        ROT90,  "hack", "Galaxian Part 4" )
 GAME( 1979, galturbo, galaxian, galaxian, superg,   0,        ROT90,  "hack", "Galaxian Turbo" )
 GAME( 1979, swarm,    galaxian, galaxian, swarm,    0,        ROT90,  "hack", "Swarm" )
 GAME( 1979, zerotime, galaxian, galaxian, zerotime, 0,        ROT90,  "Petaco S.A.", "Zero Time" )
-GAME( ????, pisces,   0,        pisces,   pisces,   pisces,   ROT90,  "<unknown>", "Pisces" )
+GAME( 19??, pisces,   0,        pisces,   pisces,   pisces,   ROT90,  "<unknown>", "Pisces" )
 GAME( 1980, uniwars,  0,        pisces,   superg,   pisces,   ROT90,  "Irem", "UniWar S" )
 GAME( 1980, gteikoku, uniwars,  pisces,   superg,   pisces,   ROT90,  "Irem", "Gingateikoku No Gyakushu" )
 GAME( 1980, spacbatt, uniwars,  pisces,   superg,   pisces,   ROT90,  "bootleg", "Space Battle" )
 GAME( 1981, warofbug, 0,        warofbug, warofbug, 0,        ROT90,  "Armenia", "War of the Bugs" )
-GAME( ????, redufo,   0,        warofbug, redufo,   0,        ROT90,  "bootleg", "Defend the Terra Attack on the Red UFO (bootleg)" )
-GAME( ????, exodus,   redufo,   warofbug, redufo,   0,        ROT90,  "Subelectro", "Exodus (bootleg?)" )
+GAME( 19??, redufo,   0,        warofbug, redufo,   0,        ROT90,  "bootleg", "Defend the Terra Attack on the Red UFO (bootleg)" )
+GAME( 19??, exodus,   redufo,   warofbug, exodus,   0,        ROT90,  "Subelectro", "Exodus (bootleg?)" )
 GAME( 1980, streakng, 0,        pacmanbl, streakng, 0,        ROT90,  "Shoei", "Streaking" )
 GAME( 1981, pacmanbl, pacman,   pacmanbl, pacmanbl, 0,        ROT270, "bootleg", "Pac-Man (bootleg on Galaxian hardware)" )
 GAME( 1981, ghostmun, pacman,   pacmanbl, streakng, 0,        ROT90,  "bootleg", "Ghost Muncher" )
@@ -3154,10 +3184,10 @@ GAME( 1981, jumpbug,  0,        jumpbug,  jumpbug,  0,        ROT90,  "Rock-ola"
 GAME( 1981, jumpbugb, jumpbug,  jumpbug,  jumpbug,  0,        ROT90,  "bootleg", "Jump Bug (bootleg)" )
 GAME( 1983, levers,   0,        jumpbug,  levers,   0,        ROT90,  "Rock-ola", "Levers" )
 GAME( 1982, azurian,  0,        azurian,  azurian,  0,        ROT90,  "Rait Electronics Ltd", "Azurian Attack" )
-GAME( ????, orbitron, 0,        azurian,  orbitron, 0,        ROT270, "Signatron USA", "Orbitron" )
+GAME( 19??, orbitron, 0,        azurian,  orbitron, 0,        ROT270, "Signatron USA", "Orbitron" )
 GAME( 1982, checkman, 0,        checkman, checkman, checkman, ROT90,  "Zilec-Zenitone", "Checkman" )
 GAME( 1982, checkmaj, checkman, checkmaj, checkmaj, checkmaj, ROT90,  "Jaleco", "Checkman (Japan)" )
-GAME( ????, blkhole,  0,        galaxian, blkhole,  0,        ROT90,  "TDS", "Black Hole" )
+GAME( 19??, blkhole,  0,        galaxian, blkhole,  0,        ROT90,  "TDS", "Black Hole" )
 GAME( 1980, mooncrst, 0,        mooncrst, mooncrst, mooncrst, ROT90,  "Nichibutsu", "Moon Cresta (Nichibutsu)" )
 GAME( 1980, mooncrsg, mooncrst, mooncrst, mooncrst, 0,        ROT90,  "Gremlin", "Moon Cresta (Gremlin)" )
 GAME( 1980?,smooncrs, mooncrst, mooncrst, mooncrst, 0,        ROT90,  "Gremlin", "Super Moon Cresta" )

@@ -34,7 +34,7 @@ INLINE UINT32 read_dword(void *address)
   		return	(*((UINT8 *)address  ) << SHIFT0) +
 				(*((UINT8 *)address+1) << SHIFT1) +
 				(*((UINT8 *)address+2) << SHIFT2) +
-				(*((UINT8 *)address+3) << SHIFT3) );
+				(*((UINT8 *)address+3) << SHIFT3);
 	}
 	else
 		return *(UINT32 *)address;
@@ -549,7 +549,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);pridata += (n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = (n);} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy_raw_pri8 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy_raw_pri8 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -559,7 +559,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata,UINT8 *pridata,UINT32 pmask
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = (n);} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy_pri8 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy_pri8 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -571,7 +571,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy_raw8 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy_raw8 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -581,7 +581,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy8 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy8 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -604,7 +604,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);pridata += (n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = (n);} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_raw_pri8 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_raw_pri8 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -614,7 +614,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata,UINT8 *pridata,UINT32 pmask
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = (n);} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_pri8 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_pri8 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -626,7 +626,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_raw8 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_raw8 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -636,7 +636,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##8 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##8 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -650,7 +650,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #undef DECLARE
 #undef DECLAREG
 
-#define DECLARE(function,args,body) INLINE void function##8 args body
+#define DECLARE(function,args,body) void function##8 args body
 #define DECLAREG(function,args,body) void function##8 args body
 #define DECLARE_SWAP_RAW_PRI(function,args,body)
 #define BLOCKMOVE(function,flipx,args) \
@@ -700,7 +700,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);pridata += (n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = n;} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy_raw_pri16 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy_raw_pri16 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -710,7 +710,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata,UINT8 *pridata,UINT32 pmask
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = (n);} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy_pri16 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy_pri16 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -722,7 +722,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy_raw16 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy_raw16 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -732,7 +732,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy16 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy16 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -755,7 +755,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);pridata += (n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = n;} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_raw_pri16 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_raw_pri16 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -765,7 +765,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata,UINT8 *pridata,UINT32 pmask
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = (n);} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_pri16 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_pri16 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -777,7 +777,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_raw16 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_raw16 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -787,7 +787,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##16 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##16 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -801,7 +801,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #undef DECLARE
 #undef DECLAREG
 
-#define DECLARE(function,args,body) INLINE void function##16 args body
+#define DECLARE(function,args,body) void function##16 args body
 #define DECLAREG(function,args,body) void function##16 args body
 #define DECLARE_SWAP_RAW_PRI(function,args,body)
 #define BLOCKMOVE(function,flipx,args) \
@@ -852,7 +852,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);pridata += (n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = (n);} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy_raw_pri32 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy_raw_pri32 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -862,7 +862,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata,UINT8 *pridata,UINT32 pmask
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = (n);} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy_pri32 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy_pri32 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -874,7 +874,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy_raw32 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy_raw32 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -884,7 +884,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_swapxy32 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_swapxy32 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -907,7 +907,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);pridata += (n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = (n);} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_raw_pri32 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_raw_pri32 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -917,7 +917,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata,UINT8 *pridata,UINT32 pmask
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) { if (((1 << pridata[dest]) & pmask) == 0) { dstdata[dest] = (n);} pridata[dest] = 31; }
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_pri32 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_pri32 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -929,7 +929,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define INCREMENT_DST(n) {dstdata+=(n);}
 #define LOOKUP(n) (colorbase + (n))
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##_raw32 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##_raw32 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -939,7 +939,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #define COLOR_ARG const UINT32 *paldata
 #define LOOKUP(n) (paldata[n])
 #define SETPIXELCOLOR(dest,n) {dstdata[dest] = (n);}
-#define DECLARE_SWAP_RAW_PRI(function,args,body) INLINE void function##32 args body
+#define DECLARE_SWAP_RAW_PRI(function,args,body) void function##32 args body
 #include "drawgfx.c"
 #undef DECLARE_SWAP_RAW_PRI
 #undef COLOR_ARG
@@ -953,7 +953,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx32(
 #undef DECLARE
 #undef DECLAREG
 
-#define DECLARE(function,args,body) INLINE void function##32 args body
+#define DECLARE(function,args,body) void function##32 args body
 #define DECLAREG(function,args,body) void function##32 args body
 #define DECLARE_SWAP_RAW_PRI(function,args,body)
 #define BLOCKMOVE(function,flipx,args) \
@@ -4146,7 +4146,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_transblend,(COMMON_ARGS,
 
 		while (dstheight)
 		{
-			end = dstdata + dstwidth*HMODULO;
+			end = dstdata - dstwidth*HMODULO;
 			while (((long)srcdata & 3) && dstdata > end)	/* longword align */
 			{
 				int col;
@@ -4183,7 +4183,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_transblend,(COMMON_ARGS,
 			}
 
 			srcdata += srcmodulo;
-			INCREMENT_DST(ydir*HMODULO + dstwidth*HMODULO);
+			INCREMENT_DST(ydir*VMODULO + dstwidth*HMODULO);
 			dstheight--;
 		}
 	}
@@ -4234,7 +4234,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_transblend,(COMMON_ARGS,
 			}
 
 			srcdata += srcmodulo;
-			INCREMENT_DST(ydir*HMODULO - dstwidth*HMODULO);
+			INCREMENT_DST(ydir*VMODULO - dstwidth*HMODULO);
 			dstheight--;
 		}
 	}
@@ -5737,7 +5737,7 @@ DECLARE(copyrozbitmap_core,(struct osd_bitmap *bitmap,struct osd_bitmap *srcbitm
 
 DECLAREG(draw_scanline, (
 		struct osd_bitmap *bitmap,int x,int y,int length,
-		DATA_TYPE *src,UINT32 *pens,int transparent_pen),
+		const DATA_TYPE *src,UINT32 *pens,int transparent_pen),
 {
 	/* 8bpp destination */
 	if (bitmap->depth == 8)
@@ -5907,7 +5907,7 @@ DECLAREG(draw_scanline, (
 
 DECLAREG(pdraw_scanline, (
 		struct osd_bitmap *bitmap,int x,int y,int length,
-		DATA_TYPE *src,UINT32 *pens,int transparent_pen,UINT32 orient,int pri),
+		const DATA_TYPE *src,UINT32 *pens,int transparent_pen,UINT32 orient,int pri),
 {
 	/* 8bpp destination */
 	if (bitmap->depth == 8)
@@ -6079,6 +6079,78 @@ DECLAREG(pdraw_scanline, (
 	}
 }
 )
+
+#undef ADJUST_FOR_ORIENTATION
+
+#define ADJUST_FOR_ORIENTATION(type, orientation, bitmap, x, y)				\
+	type *src = &((type *)bitmap->line[y])[x];								\
+	int xadv = 1;															\
+	if (orientation)														\
+	{																		\
+		int dy = bitmap->line[1] - bitmap->line[0];							\
+		int tx = x, ty = y, temp;											\
+		if (orientation & ORIENTATION_SWAP_XY)								\
+		{																	\
+			temp = tx; tx = ty; ty = temp;									\
+			xadv = dy / sizeof(type);										\
+		}																	\
+		if (orientation & ORIENTATION_FLIP_X)								\
+		{																	\
+			tx = bitmap->width - 1 - tx;									\
+			if (!(orientation & ORIENTATION_SWAP_XY)) xadv = -xadv;			\
+		}																	\
+		if (orientation & ORIENTATION_FLIP_Y)								\
+		{																	\
+			ty = bitmap->height - 1 - ty;									\
+			if (orientation & ORIENTATION_SWAP_XY) xadv = -xadv;			\
+		}																	\
+		/* can't lookup line because it may be negative! */					\
+		src = (type *)(bitmap->line[0] + dy * ty) + tx;						\
+	}
+
+DECLAREG(extract_scanline, (
+		struct osd_bitmap *bitmap,int x,int y,int length,
+		DATA_TYPE *dst),
+{
+	/* 8bpp destination */
+	if (bitmap->depth == 8)
+	{
+		/* adjust in case we're oddly oriented */
+		ADJUST_FOR_ORIENTATION(UINT8, Machine->orientation, bitmap, x, y);
+
+		while (length--)
+		{
+			*dst++ = *src;
+			src += xadv;
+		}
+	}
+
+	/* 16bpp destination */
+	else if(bitmap->depth == 15 || bitmap->depth == 16)
+	{
+		/* adjust in case we're oddly oriented */
+		ADJUST_FOR_ORIENTATION(UINT16, Machine->orientation, bitmap, x, y);
+
+		while (length--)
+		{
+			*dst++ = *src;
+			src += xadv;
+		}
+	}
+
+	/* 32bpp destination */
+	else
+	{
+		/* adjust in case we're oddly oriented */
+		ADJUST_FOR_ORIENTATION(UINT32, Machine->orientation, bitmap, x, y);
+
+		while (length--)
+		{
+			*dst++ = *src;
+			src += xadv;
+		}
+	}
+})
 
 #undef ADJUST_FOR_ORIENTATION
 

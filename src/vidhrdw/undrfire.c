@@ -31,10 +31,10 @@ int undrfire_vh_start (void)
 	if (!spritelist)
 		return 1;
 
-	if (TC0100SCN_vh_start(1,TC0100SCN_GFX_NUM,50))	// aligns piv layers with window
+	/* aligns piv layers with window but vertical align may be bad */
+	if (TC0100SCN_vh_start(1,TC0100SCN_GFX_NUM,50))
 		return 1;
 
-//	if (TC0480SCP_vh_start(1,0,0x24,0,-1,0,0))
 	if (TC0480SCP_vh_start(1,0,0x24,0,-1,0,0,0,0))
 		return 1;
 
@@ -55,13 +55,14 @@ from the spritemap rom, creating a 64x64 sprite like this:
 	12 13 14 15
 
 (where the number is the word offset into the spritemap rom).
+It can also create 32x32 sprites.
 
 NB: unused portions of the spritemap rom contain hex FF's.
 It is a useful coding check to warn in the log if these
 are being accessed. [They can be inadvertently while
 spriteram is being tested, take no notice of that.]
 
-The games make heavy use of sprite zooming.
+Heavy use is made of sprite zooming.
 
 		***
 
@@ -245,41 +246,36 @@ void undrfire_vh_screenrefresh(struct osd_bitmap *bitmap,int full_refresh)
 #endif
 
 #ifdef MAME_DEBUG
-	if (keyboard_pressed (KEYCODE_C))
+	if (keyboard_pressed_memory (KEYCODE_C))
 	{
-		while (keyboard_pressed (KEYCODE_C) != 0) {};
 		dislayer[0] ^= 1;
 		sprintf(buf,"bg0: %01x",dislayer[0]);
 		usrintf_showmessage(buf);
 	}
 
-	if (keyboard_pressed (KEYCODE_V))
+	if (keyboard_pressed_memory (KEYCODE_V))
 	{
-		while (keyboard_pressed (KEYCODE_V) != 0) {};
 		dislayer[1] ^= 1;
 		sprintf(buf,"bg1: %01x",dislayer[1]);
 		usrintf_showmessage(buf);
 	}
 
-	if (keyboard_pressed (KEYCODE_B))
+	if (keyboard_pressed_memory (KEYCODE_B))
 	{
-		while (keyboard_pressed (KEYCODE_B) != 0) {};
 		dislayer[2] ^= 1;
 			sprintf(buf,"bg2: %01x",dislayer[2]);
 		usrintf_showmessage(buf);
 	}
 
-	if (keyboard_pressed (KEYCODE_N))
+	if (keyboard_pressed_memory (KEYCODE_N))
 	{
-		while (keyboard_pressed (KEYCODE_N) != 0) {};
 		dislayer[3] ^= 1;
 		sprintf(buf,"bg3: %01x",dislayer[3]);
 		usrintf_showmessage(buf);
 	}
 
-	if (keyboard_pressed (KEYCODE_M))
+	if (keyboard_pressed_memory (KEYCODE_M))
 	{
-		while (keyboard_pressed (KEYCODE_M) != 0) {};
 		dislayer[4] ^= 1;
 		sprintf(buf,"sprites: %01x",dislayer[4]);
 		usrintf_showmessage(buf);

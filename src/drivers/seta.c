@@ -2,7 +2,7 @@
 
 								-= Seta Games =-
 
-					driver by	Luca Elia (eliavit@unina.it)
+					driver by	Luca Elia (l.elia@tin.it)
 
 
 CPU    :	68000 + 65C02 [Optional]
@@ -17,35 +17,36 @@ Custom :	X1-001A  X1-002A			Sprites
 			X1-007
 			X1-010						Sound: 16 Bit PCM
 			X1-011 x2  X1-012 x2		Tilemaps
+			X1-014						Sprites?
 
 ---------------------------------------------------------------------------
 Year + Game                  Licensed To            Board
 ---------------------------------------------------------------------------
-87 Super Real Mahjong P2 (J)                        P0-023-B
 88 Thundercade /
    Twin Formation            Taito                  P0-029-A (M6100287A)
-88 Twin Eagle(1)         (J) Taito                  M6100326A
-88 Caliber 50                Taito / RomStar
+   Twin Eagle(1)         (J) Taito                  M6100326A
+   Caliber 50                Taito / RomStar
 89 DownTown                  Taito / RomStar
-89 Meta Fox                  Taito / RomStar        P0-045-A + P1-049-A + P1-036-A
-89 Castle of Dragon /
+   Meta Fox                  Taito / RomStar        P0-045-A + P1-049-A + P1-036-A
+   Castle of Dragon /
    Dragon Unit               Athena/Taito/RomStar   P0-053-1
-89 U.S. Classic(2)           Taito / RomStar        M6100430A
-89 Arbalester                Taito / RomStar
+   U.S. Classic(2)           Taito / RomStar        M6100430A
+   Arbalester                Taito / RomStar
 90 Thunder & Lightning       Romstar / Visco        P0-055-D
 91 Rezon                     Allumer                P0-063-A
 91 Strike Gunner S.T.G       Athena / Tecmo         P0-053-A
 92 Block Carnival            Visco                  P0-068-B (M6100723A)
-92 Blandia                   Allumer                P0-072-2 (prototype)
-92 Quiz Kokology             Tecmo                  P0-053-A
-92 Zing Zing Zip             Allumer + Tecmo        P0-079-A
+   Blandia                   Allumer                P0-072-2 (prototype)
+   Quiz Kokology             Tecmo                  P0-053-A
+   Zing Zing Zip             Allumer + Tecmo        P0-079-A
 93 Mobile Suit Gundam(3)     Banpresto              P0-081-A
-93 War Of Aero               Yang Cheng             93111A
-93 Athena no Hatena ?        Athena
-93 Oishii Puzzle ..	         Sunsoft + Atlus        P0-097-A
+   War Of Aero               Yang Cheng             93111A
+   Athena no Hatena ?        Athena
+   Oishii Puzzle ..	         Sunsoft + Atlus        P0-097-A
+   J.J.Squawkers             Athena / Able
 94 Eight Forces              Tecmo					Same As Zing Zing Zip
-94 Pro Mahjong Kiwame        Athena                 P0-101-1
-94 Krazy Bowl                American Sammy         P0-114-A (SKB-001)
+   Pro Mahjong Kiwame        Athena                 P0-101-1
+   Krazy Bowl                American Sammy         P0-114-A (SKB-001)
 ---------------------------------------------------------------------------
 (1)	some wrong tiles	(2) wrong colors
 (3) not working: if the demo modes runs long enough, the colors will screw up.
@@ -83,6 +84,7 @@ WRITE16_HANDLER( seta_vram_3_w );
 WRITE16_HANDLER( seta_vregs_w );
 
 void blandia_vh_init_palette(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
+void jjsquawk_vh_init_palette(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 void zingzip_vh_init_palette(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 void usclssic_vh_init_palette(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 
@@ -317,7 +319,7 @@ MEMORY_END
 
 
 /***************************************************************************
-				Blandia, Rezon, War of Aero, Zing Zing Zip
+		Blandia, J.J.Squawkers, Rezon, War of Aero, Zing Zing Zip
 						(with slight variations)
 ***************************************************************************/
 
@@ -330,11 +332,13 @@ static MEMORY_READ16_START( wrofaero_readmem )
 	{ 0x400002, 0x400003, input_port_1_word_r	},	// P2
 	{ 0x400004, 0x400005, input_port_2_word_r	},	// Coins
 	{ 0x600000, 0x600003, seta_dsw_r			},	// DSW
-	{ 0x700000, 0x7003ff, MRA16_RAM				},	// (rezon)
+	{ 0x700000, 0x7003ff, MRA16_RAM				},	// (rezon,jjsquawk)
 	{ 0x700400, 0x700fff, MRA16_RAM				},	// Palette
-	{ 0x701000, 0x7013ff, MRA16_RAM				},	//
+	{ 0x701000, 0x70ffff, MRA16_RAM				},	//
 	{ 0x800000, 0x803fff, MRA16_RAM				},	// VRAM 0&1
+	{ 0x804000, 0x80ffff, MRA16_RAM				},	// (jjsquawk)
 	{ 0x880000, 0x883fff, MRA16_RAM				},	// VRAM 2&3
+	{ 0x884000, 0x88ffff, MRA16_RAM				},	// (jjsquawk)
 /**/{ 0x900000, 0x900005, MRA16_RAM				},	// VRAM 0&1 Ctrl
 /**/{ 0x980000, 0x980005, MRA16_RAM				},	// VRAM 2&3 Ctrl
 /**/{ 0xa00000, 0xa00607, MRA16_RAM				},	// Sprites Y
@@ -350,13 +354,15 @@ static MEMORY_WRITE16_START( wrofaero_writemem )
 	{ 0x200000, 0x20ffff, MWA16_RAM						},	// RAM
 	{ 0x300000, 0x30ffff, MWA16_RAM						},	// RAM (wrofaero only?)
 	{ 0x500000, 0x500005, seta_vregs_w, &seta_vregs		},	// Coin Lockout + Video Registers
-	{ 0x700000, 0x7003ff, MWA16_RAM						},	// (rezon)
+	{ 0x700000, 0x7003ff, MWA16_RAM						},	// (rezon,jjsquawk)
 	{ 0x700400, 0x700fff, paletteram16_xRRRRRGGGGGBBBBB_word_w, &paletteram16	},	// Palette
-	{ 0x701000, 0x7013ff, MWA16_RAM						},	//
+	{ 0x701000, 0x70ffff, MWA16_RAM						},	//
 	{ 0x800000, 0x801fff, seta_vram_0_w, &seta_vram_0	},	// VRAM 0
 	{ 0x802000, 0x803fff, seta_vram_1_w, &seta_vram_1	},	// VRAM 1
+	{ 0x804000, 0x80ffff, MWA16_RAM						},	// (jjsquawk)
 	{ 0x880000, 0x881fff, seta_vram_2_w, &seta_vram_2	},	// VRAM 2
 	{ 0x882000, 0x883fff, seta_vram_3_w, &seta_vram_3	},	// VRAM 3
+	{ 0x884000, 0x88ffff, MWA16_RAM						},	// (jjsquawk)
 	{ 0x900000, 0x900005, MWA16_RAM, &seta_vctrl_0		},	// VRAM 0&1 Ctrl
 	{ 0x980000, 0x980005, MWA16_RAM, &seta_vctrl_2		},	// VRAM 2&3 Ctrl
 	{ 0xa00000, 0xa00607, MWA16_RAM, &spriteram16		},	// Sprites Y
@@ -986,48 +992,6 @@ static MEMORY_WRITE16_START( usclssic_writemem )
 	{ 0xd04000, 0xd04fff, MWA16_RAM						},	//
 	{ 0xe00000, 0xe00fff, MWA16_RAM						},	// NVRAM? (odd bytes)
 MEMORY_END
-
-
-
-/***************************************************************************
-							Super Real Mahjong P2
-***************************************************************************/
-
-static MEMORY_READ16_START( srmp2_readmem )
-	{ 0x000000, 0x03ffff, MRA16_ROM					},	// ROM
-	{ 0x0c0000, 0x0c3fff, MRA16_RAM					},	// RAM
-	{ 0x140000, 0x143fff, MRA16_RAM					},	// Sprites Code + X + Attr
-/**/{ 0x180000, 0x180607, MRA16_RAM					},	// Sprites Y
-	{ 0x900000, 0x900001, input_port_2_word_r		},	// coins
-	{ 0xa00000, 0xa00001, MRA16_NOP					},	// io?
-	{ 0xa00002, 0xa00003, MRA16_NOP					},	// io?
-	{ 0xb00000, 0xb00001, MRA16_NOP					},	// msm5205
-	{ 0xb00002, 0xb00003, MRA16_NOP					},	// msm5205?
-	{ 0xf00000, 0xf00001, AY8910_read_port_0_lsb_r	},
-MEMORY_END
-
-static MEMORY_WRITE16_START( srmp2_writemem )
-	{ 0x000000, 0x03ffff, MWA16_ROM							},	// ROM
-	{ 0x0c0000, 0x0c3fff, MWA16_RAM							},	// RAM
-	{ 0x140000, 0x143fff, MWA16_RAM, &spriteram16_2			},	// Sprites Code + X + Attr
-	{ 0x180000, 0x180607, MWA16_RAM, &spriteram16			},	// Sprites Y
-	{ 0x1c0000, 0x1c0001, MWA16_NOP							},	// ?
-	{ 0xa00000, 0xa00001, MWA16_NOP							},	// io?
-	{ 0xa00002, 0xa00003, MWA16_NOP							},	// io?
-	{ 0x800000, 0x800001, MWA16_NOP							},	// msm5205?
-	{ 0x900000, 0x900001, MWA16_NOP							},	// lev 4
-	{ 0xb00000, 0xb00001, MWA16_NOP							},	// msm5205
-	{ 0xc00000, 0xc00001, MWA16_NOP							},	// lev 2 (c+e)
-	{ 0xd00000, 0xd00001, MWA16_NOP							},	// lev 4 (d+e+9)
-	{ 0xe00000, 0xe00001, MWA16_NOP							},	// lev 1 (e)
-	{ 0xf00000, 0xf00001, AY8910_control_port_0_lsb_w		},
-	{ 0xf00002, 0xf00003, AY8910_write_port_0_lsb_w			},
-MEMORY_END
-
-
-
-
-
 
 
 
@@ -1903,6 +1867,78 @@ INPUT_PORTS_END
 
 
 /***************************************************************************
+								J.J.Squawkers
+***************************************************************************/
+
+INPUT_PORTS_START( jjsquawk )
+
+	PORT_START	// IN0 - Player 1 - $400000.w
+	JOY_TYPE1_2BUTTONS(1)
+
+	PORT_START	// IN1 - Player 2 - $400002.w
+	JOY_TYPE1_2BUTTONS(2)
+
+	PORT_START	// IN2 - Coins - $400004.w
+	PORT_BIT_IMPULSE( 0x0001, IP_ACTIVE_LOW, IPT_COIN1, 5 )
+	PORT_BIT_IMPULSE( 0x0002, IP_ACTIVE_LOW, IPT_COIN2, 5 )
+	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+
+	PORT_START	// IN3 - 2 DSWs - $600001 & 3.b
+	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(      0x0001, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0007, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0003, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(      0x0006, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0005, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
+	PORT_DIPNAME( 0x0038, 0x0038, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0020, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0038, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0018, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(      0x0030, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0028, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
+	PORT_DIPNAME( 0x0040, 0x0000, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0080, 0x0080, "Unknown 2-7" )	// ?? screen related
+	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+
+	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Flip_Screen ) )
+	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_SERVICE( 0x0200, IP_ACTIVE_LOW )
+	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(      0x0800, "Easy"    )
+	PORT_DIPSETTING(      0x0c00, "Normal"  )
+	PORT_DIPSETTING(      0x0400, "Hard"    )
+	PORT_DIPSETTING(      0x0000, "Hardest" )
+	PORT_DIPNAME( 0x3000, 0x3000, DEF_STR( Lives ) )
+	PORT_DIPSETTING(      0x2000, "2" )
+	PORT_DIPSETTING(      0x3000, "3" )
+	PORT_DIPSETTING(      0x1000, "4" )
+	PORT_DIPSETTING(      0x0000, "5" )
+	PORT_DIPNAME( 0xc000, 0xc000, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(      0x8000, "20K, Every 100K" )
+	PORT_DIPSETTING(      0xc000, "50K, Every 200K" )
+	PORT_DIPSETTING(      0x4000, "70K, Every 200K" )
+	PORT_DIPSETTING(      0x0000, "100K Only" )
+
+INPUT_PORTS_END
+
+
+
+/***************************************************************************
 								Krazy Bowl
 ***************************************************************************/
 
@@ -2558,80 +2594,6 @@ INPUT_PORTS_END
 
 
 /***************************************************************************
-							Super Real Mahjong P2
-***************************************************************************/
-
-INPUT_PORTS_START( srmp2 )
-
-	PORT_START	// IN0 - Player 1
-	JOY_TYPE1_2BUTTONS(1)
-
-	PORT_START	// IN1 - Player 2
-	JOY_TYPE1_2BUTTONS(2)
-
-	PORT_START	// IN2 - Coins
-	PORT_BIT(  0x0001, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
-	PORT_BIT(  0x0002, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
-	PORT_BIT(  0x0004, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
-	PORT_BIT(  0x0008, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
-	PORT_BIT_IMPULSE( 0x0010, IP_ACTIVE_HIGH, IPT_COIN1, 5 )
-	PORT_BIT_IMPULSE( 0x0020, IP_ACTIVE_HIGH, IPT_COIN2, 5 )
-	PORT_BIT(  0x0040, IP_ACTIVE_HIGH, IPT_SERVICE1 )
-	PORT_BIT(  0x0080, IP_ACTIVE_HIGH, IPT_TILT     )
-
-	PORT_START	// IN3 - 2 DSWs - $600001 & 3.b
-	PORT_DIPNAME( 0x0001, 0x0001, "Unknown 1-0" )
-	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0002, 0x0002, "Unknown 1-1" )
-	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0004, 0x0004, "Unknown 1-2" )
-	PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0008, 0x0008, "Unknown 1-3" )
-	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0010, 0x0010, "Unknown 1-4" )
-	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020, 0x0020, "Unknown 1-5" )
-	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0040, 0x0040, "Unknown 1-6" )
-	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x0080, "Unknown 1-7" )
-	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-
-	PORT_DIPNAME( 0x0100, 0x0100, "Free play?" )
-	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_SERVICE( 0x0200, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(      0x0000, "2C_1C" )
-	PORT_DIPSETTING(      0x0400, "1C_2C" )
-	PORT_DIPSETTING(      0x0800, "1C_3C" )
-	PORT_DIPSETTING(      0x0c00, "1C_1C" )
-	PORT_DIPNAME( 0x1000, 0x1000, "Unknown 2-4*" )
-	PORT_DIPSETTING(      0x1000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(      0x2000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x4000, 0x4000, "Cabinet?" )
-	PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x8000, 0x8000, "Unknown 2-7" )
-	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-
-INPUT_PORTS_END
-
-
-
-/***************************************************************************
 							Thunder & Lightning
 ***************************************************************************/
 
@@ -3266,9 +3228,9 @@ static struct GfxLayout layout_packed_6bits_3roms =
 static struct GfxLayout layout_packed_6bits_2roms =
 {
 	16,16,
-	RGN_FRAC(6,8),	// use 6 of the "8 planes"
+	RGN_FRAC(1,2),
 	6,
-	{RGN_FRAC(4,8), RGN_FRAC(4,8)+1*4, 2*4,3*4,0*4,1*4},
+	{RGN_FRAC(1,2)+0*4, RGN_FRAC(1,2)+1*4, 2*4,3*4,0*4,1*4},
 	{256+128,256+129,256+130,256+131, 256+0,256+1,256+2,256+3,
 	 128,129,130,131, 0,1,2,3},
 	{0*16,1*16,2*16,3*16,4*16,5*16,6*16,7*16,
@@ -3298,6 +3260,18 @@ static struct GfxDecodeInfo downtown_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,       512*0, 32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_planes_2roms_split, 512*0, 32 }, // [1] Layer 1
+	{ -1 }
+};
+
+/***************************************************************************
+								J.J.Squawkers
+***************************************************************************/
+
+static struct GfxDecodeInfo jjsquawk_gfxdecodeinfo[] =
+{
+	{ REGION_GFX1, 0, &layout_planes_2roms,       0,             32 }, // [0] Sprites
+	{ REGION_GFX2, 0, &layout_packed_6bits_2roms, 512 + 64*32*0, 32 }, // [1] Layer 1
+	{ REGION_GFX3, 0, &layout_packed_6bits_2roms, 512 + 64*32*1, 32 }, // [2] Layer 2
 	{ -1 }
 };
 
@@ -3716,6 +3690,47 @@ static const struct MachineDriver machine_driver_eightfrc =
 
 
 /***************************************************************************
+								J.J.Squawkers
+***************************************************************************/
+
+/*
+	lev 1 == lev 3 (writes to $500000, bit 4 -> 1 then 0)
+	lev 2 drives the game
+*/
+static const struct MachineDriver machine_driver_jjsquawk =
+{
+	{
+		{
+			CPU_M68000,
+			16000000,
+			wrofaero_readmem, wrofaero_writemem,0,0,
+			seta_interrupt_1_and_2, SETA_INTERRUPTS_NUM
+		},
+	},
+	60,DEFAULT_60HZ_VBLANK_DURATION,
+	1,
+	0,
+
+	/* video hardware */
+	400, 256 -16, { 16, 400-1, 0, 256-1 -16},
+	jjsquawk_gfxdecodeinfo,
+	16*32+16*32+16*32, 16*32+64*32+64*32,	/* sprites, layer2, layer1 */
+	jjsquawk_vh_init_palette,				/* layers are 6 planes deep */
+	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE,
+	0,
+	seta_vh_start_2_layers,
+	0,
+	seta_vh_screenrefresh,
+
+	/* sound hardware */
+	SOUND_SUPPORTS_STEREO,0,0,0,
+	{
+		{ SOUND_CUSTOM, &seta_sound_interface }
+	}
+};
+
+
+/***************************************************************************
 								Krazy Bowl
 ***************************************************************************/
 
@@ -3950,64 +3965,6 @@ static const struct MachineDriver machine_driver_rezon =
 	SOUND_SUPPORTS_STEREO,0,0,0,
 	{
 		{ SOUND_CUSTOM, &seta_sound_interface }
-	}
-};
-
-
-/***************************************************************************
-							Super Real Mahjong P2
-***************************************************************************/
-
-static struct AY8910interface srmp2_ay8910_interface =
-{
-	1,
-	1500000,	/* ? */
-	{ 30 },
-	{ dsw1_r },		/* input A: DSW 1 */
-	{ dsw2_r },		/* input B: DSW 2 */
-	{ 0  },
-	{ 0  }
-};
-
-struct MSM5205interface srmp2_msm5205_interface =
-{
-	1,
-	384000,
-	{ 0 },	/* interrupt function */
-	{ MSM5205_S96_4B },		/* 4KHz, 4 Bits */
-	{ 80 }
-};
-
-static struct MachineDriver machine_driver_srmp2 =
-{
-	{
-		{
-			CPU_M68000,
-			8000000,
-			srmp2_readmem, srmp2_writemem,0,0,
-			seta_interrupt_2_and_4, SETA_INTERRUPTS_NUM
-		}
-	},
-	60,DEFAULT_60HZ_VBLANK_DURATION,
-	1,
-	0,
-
-	/* video hardware */
-	400, 256 -16, { 16, 400-1, 0, 256-1 -16},
-	tndrcade_gfxdecodeinfo,
-	512, 512,	/* sprites only */
-	0,
-	VIDEO_TYPE_RASTER,	// static palette
-	0,
-	0,	/* no need for a vh_start: no tilemaps */
-	0,
-	seta_vh_screenrefresh_no_layers, /* just draw the sprites */
-
-	/* sound hardware */
-	SOUND_SUPPORTS_STEREO,0,0,0,
-	{
-		{	SOUND_AY8910,  &srmp2_ay8910_interface  },
-		{	SOUND_MSM5205, &srmp2_msm5205_interface	}
 	}
 };
 
@@ -4835,6 +4792,57 @@ void init_eightfrc(void)
 
 /***************************************************************************
 
+								J.J. Squawkers
+
+68HC000N -16N
+
+2)   Alumer  X1-012
+2)   Alumer  X1-011
+2)   Alumer  X1-014
+
+X1-010
+X1-007
+X1-004
+16.000Mhz
+
+NEC 71054C  ----???
+
+***************************************************************************/
+
+ROM_START( jjsquawk )
+
+	ROM_REGION( 0x180000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_LOAD16_BYTE( "jj-rom1.040", 0x000000, 0x040000, 0x7b9af960 )
+	ROM_CONTINUE   (                0x100000, 0x040000             )
+	ROM_LOAD16_BYTE( "jj-rom2.040", 0x000001, 0x040000, 0x47dd71a3 )
+	ROM_CONTINUE   (                0x100001, 0x040000             )
+
+	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
+	ROM_LOAD( "jj-rom9",  0x000000, 0x080000, 0x27441cd3 )
+	ROM_LOAD( "jj-rom10", 0x080000, 0x080000, 0xca2b42c4 )
+	ROM_LOAD( "jj-rom7",  0x100000, 0x080000, 0x62c45658 )
+	ROM_LOAD( "jj-rom8",  0x180000, 0x080000, 0x2690c57b )
+
+	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE )	/* Layer 1 */
+	ROM_LOAD       ( "jj-rom11",    0x000000, 0x080000, 0x98b9f4b4 )
+	ROM_LOAD       ( "jj-rom12",    0x080000, 0x080000, 0xd4aa916c )
+	ROM_LOAD16_BYTE( "jj-rom3.040", 0x100000, 0x080000, 0xa5a35caf )
+
+	ROM_REGION( 0x200000, REGION_GFX3, ROMREGION_DISPOSE )	/* Layer 2 */
+	ROM_LOAD       ( "jj-rom14",    0x000000, 0x080000, 0x274bbb48 )
+	ROM_LOAD       ( "jj-rom13",    0x080000, 0x080000, 0x51e29871 )
+	ROM_LOAD16_BYTE( "jj-rom4.040", 0x100000, 0x080000, 0xa235488e )
+
+	ROM_REGION( 0x100000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_LOAD( "jj-rom5.040", 0x000000, 0x080000, 0xd99f2879 )
+	ROM_LOAD( "jj-rom6.040", 0x080000, 0x080000, 0x9df1e478 )
+
+ROM_END
+
+
+
+/***************************************************************************
+
 								Krazy Bowl
 
 PCB:	SKB-001
@@ -5240,7 +5248,7 @@ ROM_START( rezon )
 	ROM_LOAD( "us001008.u68",  0x000000, 0x080000, 0x0ab73910 ) // 1xxxxxxxxxxxxxxxxxx = 0xFF
 
 	ROM_REGION( 0x100000, REGION_SOUND1, 0 )	/* Samples */
-	ROM_LOAD( "us001009.u70",  0x000000, 0x100000, 0x0d7d2e2b )
+	ROM_LOAD16_WORD_SWAP( "us001009.u70",  0x000000, 0x100000, 0x0d7d2e2b )
 
 ROM_END
 
@@ -5291,63 +5299,6 @@ ROM_START( stg )
 	ROM_LOAD( "att01010.u55", 0x080000, 0x080000, 0xfffb2f53 )
 
 ROM_END
-
-
-/***************************************************************************
-
-							Super Real Mahjong P2 (Japan)
-
-PCB:	P0-023B
-
-CPU:	68000-8
-
-Sound:	AY-3-8910A
-		M5205
-
-OSC:	8.000MHz
-		20.000MHz
-
-Chips:	X1-001
-		X1-002A
-		X1-003
-		X1-004 x2
-		X0-005 x2
-
-***************************************************************************/
-
-ROM_START( srmp2 )
-
-	ROM_REGION( 0x040000, REGION_CPU1, 0 )		/* 68000 Code */
-	ROM_LOAD16_BYTE( "uco-2.17", 0x000000, 0x020000, 0x0d6c131f )
-	ROM_LOAD16_BYTE( "uco-3.18", 0x000001, 0x020000, 0xe9fdf5f8 )
-
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
-	ROM_LOAD( "uco-8.64",  0x000000, 0x040000, 0x1ca1c7c9 )
-	ROM_LOAD( "uco-9.65",  0x000001, 0x040000, 0xef75471b )
-	ROM_LOAD( "ubo-4.60",  0x080000, 0x040000, 0xcb6f7cce )
-	ROM_LOAD( "ubo-5.61",  0x080001, 0x040000, 0x7b48c540 )
-	ROM_LOAD( "uco-10.66", 0x100000, 0x040000, 0xcb6bd857 )
-	ROM_LOAD( "uco-11.67", 0x100001, 0x040000, 0x199f79c0 )
-	ROM_LOAD( "ubo-6.62",  0x180000, 0x040000, 0x6c891ac5 )
-	ROM_LOAD( "ubo-7.63",  0x180001, 0x040000, 0x60a45755 )
-
-	ROM_REGION( 0x000800, REGION_PROMS, 0 )	/* Color PROMs */
-	ROM_LOAD( "uc-1o.12", 0x000000, 0x000400, 0xfa59b5cb )
-	ROM_LOAD( "uc-2o.13", 0x000400, 0x000400, 0x50a33b96 )
-
-	ROM_REGION( 0x020000, REGION_SOUND1, 0 )	/* Samples */
-	ROM_LOAD( "uco-1.19", 0x000000, 0x020000, 0xf284af8e )
-
-ROM_END
-
-
-void init_srmp2(void)
-{
-	data16_t *RAM = (data16_t *) memory_region(REGION_CPU1);
-
-	RAM[0x20c80/2] = 0x4e75;	// error: rts
-	RAM[0x009b6/2] = 0x601e;	// a00003 test: bne -> bra
-}
 
 
 
@@ -5737,34 +5688,31 @@ ROM_END
 
 /* Working Games: */
 
-GAMEX( 1987, tndrcade, 0,        tndrcade, tndrcade, 0,        ROT270, "[Seta] (Taito license)", "Thundercade / Twin Formation",   GAME_IMPERFECT_SOUND ) // Title/License: DSW
-GAMEX( 1987, tndrcadj, tndrcade, tndrcade, tndrcadj, 0,        ROT270, "[Seta] (Taito license)", "Tokusyu Butai UAG (Japan)",      GAME_IMPERFECT_SOUND ) // License: DSW
-GAMEX( 1988, twineagl, 0,        twineagl, twineagl, twineagl, ROT270, "Seta (Taito license)",   "Twin Eagle - Revenge Joe's Brother (Japan)", GAME_IMPERFECT_SOUND )
-GAMEX( 1989, calibr50, 0,        calibr50, calibr50, 0,        ROT270, "Athena / Seta",          "Caliber 50",                     GAME_IMPERFECT_SOUND ) // Country/License: DSW
-GAMEX( 1989, drgnunit, 0,        drgnunit, drgnunit, 0,        ROT0,   "Seta",                   "Dragon Unit / Castle of Dragon", GAME_IMPERFECT_SOUND )
-GAMEX( 1989, downtown, 0,        downtown, downtown, downtown, ROT270, "Seta",                   "DownTown",                       GAME_IMPERFECT_SOUND ) // Country/License: DSW
-GAMEX( 1989, usclssic, 0,        usclssic, usclssic, 0,        ROT270, "Seta",                   "U.S. Classic",                   GAME_IMPERFECT_SOUND | GAME_WRONG_COLORS ) // Country/License: DSW
-GAMEX( 1989, arbalest, 0,        metafox,  arbalest, arbalest, ROT270, "Seta",                   "Arbalester",                     GAME_IMPERFECT_SOUND ) // Country/License: DSW
-GAMEX( 1989, metafox,  0,        metafox,  metafox,  metafox,  ROT270, "Seta",                   "Meta Fox",                       GAME_IMPERFECT_SOUND ) // Country/License: DSW
-GAMEX( 1990, thunderl, 0,        thunderl, thunderl, 0,        ROT270, "Seta",                   "Thunder & Lightning",            GAME_IMPERFECT_SOUND ) // Country/License: DSW
-GAMEX( 1991, rezon,    0,        rezon,    rezon,    rezon,    ROT0,   "Allumer",                "Rezon",                          GAME_IMPERFECT_SOUND )
-GAMEX( 1991, stg,      0,        drgnunit, stg,      0,        ROT270, "Athena / Tecmo",         "Strike Gunner S.T.G",            GAME_IMPERFECT_SOUND )
-GAMEX( 1992, blandia,  0,        blandia,  blandia,  0,        ROT0,   "Allumer",                "Blandia (prototype)",            GAME_IMPERFECT_SOUND )
-GAMEX( 1992, blockcar, 0,        blockcar, blockcar, 0,        ROT90,  "Visco",                  "Block Carnival / Thunder & Lightning 2", GAME_IMPERFECT_SOUND ) // Title: DSW
-GAMEX( 1992, qzkklogy, 0,        drgnunit, qzkklogy, 0,        ROT0,   "Tecmo",                  "Quiz Kokology",                  GAME_IMPERFECT_SOUND )
-GAMEX( 1992, zingzip,  0,        zingzip,  zingzip,  0,        ROT270, "Allumer + Tecmo",        "Zing Zing Zip",                  GAME_IMPERFECT_SOUND )
-GAMEX( 1993, atehate,  0,        atehate,  atehate,  0,        ROT0,   "Athena",                 "Athena no Hatena ?",             GAME_IMPERFECT_SOUND )
-GAMEX( 1993, msgundam, 0,        msgundam, msgundam, 0,        ROT0  , "Banpresto",              "Mobile Suit Gundam",             GAME_IMPERFECT_SOUND )
-GAMEX( 1993, oisipuzl, 0,        oisipuzl, oisipuzl, oisipuzl, ROT0,   "Sunsoft + Atlus",        "Oishii Puzzle Ha Irimasenka",    GAME_IMPERFECT_SOUND )
-GAMEX( 1993, wrofaero, 0,        wrofaero, wrofaero, 0,        ROT270, "Yang Cheng",             "War of Aero - Project MEIOU",    GAME_IMPERFECT_SOUND )
-GAMEX( 1994, eightfrc, 0,        eightfrc, eightfrc, eightfrc, ROT90,  "Tecmo",                  "Eight Forces",                   GAME_IMPERFECT_SOUND )
-GAMEX( 1994, kiwame,   0,        kiwame,   kiwame,   kiwame,   ROT0,   "Athena",                 "Pro Mahjong Kiwame",             GAME_IMPERFECT_SOUND )
-GAMEX( 1994, krzybowl, 0,        krzybowl, krzybowl, 0,        ROT270, "American Sammy Corp.",   "Krazy Bowl",                     GAME_IMPERFECT_SOUND )
+GAMEX( 1987, tndrcade, 0,        tndrcade, tndrcade, 0,        ROT270,     "[Seta] (Taito license)", "Thundercade / Twin Formation",   GAME_IMPERFECT_SOUND ) // Title/License: DSW
+GAMEX( 1987, tndrcadj, tndrcade, tndrcade, tndrcadj, 0,        ROT270,     "[Seta] (Taito license)", "Tokusyu Butai UAG (Japan)",      GAME_IMPERFECT_SOUND ) // License: DSW
+GAMEX( 1988, twineagl, 0,        twineagl, twineagl, twineagl, ROT270,     "Seta (Taito license)",   "Twin Eagle - Revenge Joe's Brother (Japan)", GAME_IMPERFECT_SOUND )
+GAMEX( 1989, calibr50, 0,        calibr50, calibr50, 0,        ROT270,     "Athena / Seta",          "Caliber 50",                     GAME_IMPERFECT_SOUND ) // Country/License: DSW
+GAMEX( 1989, drgnunit, 0,        drgnunit, drgnunit, 0,        ROT0,       "Seta",                   "Dragon Unit / Castle of Dragon", GAME_IMPERFECT_SOUND )
+GAMEX( 1989, downtown, 0,        downtown, downtown, downtown, ROT270,     "Seta",                   "DownTown",                       GAME_IMPERFECT_SOUND ) // Country/License: DSW
+GAMEX( 1989, usclssic, 0,        usclssic, usclssic, 0,        ROT270,     "Seta",                   "U.S. Classic",                   GAME_IMPERFECT_SOUND | GAME_WRONG_COLORS ) // Country/License: DSW
+GAMEX( 1989, arbalest, 0,        metafox,  arbalest, arbalest, ROT270,     "Seta",                   "Arbalester",                     GAME_IMPERFECT_SOUND ) // Country/License: DSW
+GAMEX( 1989, metafox,  0,        metafox,  metafox,  metafox,  ROT270,     "Seta",                   "Meta Fox",                       GAME_IMPERFECT_SOUND ) // Country/License: DSW
+GAMEX( 1990, thunderl, 0,        thunderl, thunderl, 0,        ROT270,     "Seta",                   "Thunder & Lightning",            GAME_IMPERFECT_SOUND ) // Country/License: DSW
+GAMEX( 1991, rezon,    0,        rezon,    rezon,    rezon,    ROT0,       "Allumer",                "Rezon",                          GAME_IMPERFECT_SOUND )
+GAMEX( 1991, stg,      0,        drgnunit, stg,      0,        ROT270,     "Athena / Tecmo",         "Strike Gunner S.T.G",            GAME_IMPERFECT_SOUND )
+GAMEX( 1992, blandia,  0,        blandia,  blandia,  0,        ROT0,       "Allumer",                "Blandia (prototype)",            GAME_IMPERFECT_SOUND )
+GAMEX( 1992, blockcar, 0,        blockcar, blockcar, 0,        ROT90,      "Visco",                  "Block Carnival / Thunder & Lightning 2", GAME_IMPERFECT_SOUND ) // Title: DSW
+GAMEX( 1992, qzkklogy, 0,        drgnunit, qzkklogy, 0,        ROT0,       "Tecmo",                  "Quiz Kokology",                  GAME_IMPERFECT_SOUND )
+GAMEX( 1992, zingzip,  0,        zingzip,  zingzip,  0,        ROT270,     "Allumer + Tecmo",        "Zing Zing Zip",                  GAME_IMPERFECT_SOUND )
+GAMEX( 1993, atehate,  0,        atehate,  atehate,  0,        ROT0,       "Athena",                 "Athena no Hatena ?",             GAME_IMPERFECT_SOUND )
+GAMEX( 1993, msgundam, 0,        msgundam, msgundam, 0,        ROT0,       "Banpresto",              "Mobile Suit Gundam",             GAME_IMPERFECT_SOUND )
+GAMEX( 1993, oisipuzl, 0,        oisipuzl, oisipuzl, oisipuzl, ROT0,       "Sunsoft + Atlus",        "Oishii Puzzle Ha Irimasenka",    GAME_IMPERFECT_SOUND )
+GAMEX( 1993, wrofaero, 0,        wrofaero, wrofaero, 0,        ROT270,     "Yang Cheng",             "War of Aero - Project MEIOU",    GAME_IMPERFECT_SOUND )
+GAMEX( 1993, jjsquawk, 0,        jjsquawk, jjsquawk, 0,        ROT0_16BIT, "Athena / Able",          "J. J. Squawkers",                GAME_IMPERFECT_SOUND )
+GAMEX( 1994, eightfrc, 0,        eightfrc, eightfrc, eightfrc, ROT90,      "Tecmo",                  "Eight Forces",                   GAME_IMPERFECT_SOUND )
+GAMEX( 1994, kiwame,   0,        kiwame,   kiwame,   kiwame,   ROT0,       "Athena",                 "Pro Mahjong Kiwame",             GAME_IMPERFECT_SOUND )
+GAMEX( 1994, krzybowl, 0,        krzybowl, krzybowl, 0,        ROT270,     "American Sammy Corp.",   "Krazy Bowl",                     GAME_IMPERFECT_SOUND )
 
 /* Nearly Working Games: */
 
 GAMEX( 1993, msgunda1, msgundam, msgundam, msgundam, 0,        ROT0  , "Banpresto",              "Mobile Suit Gundam (alternate)", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
-
-/* Non Working Games: */
-
-GAMEX( 1987, srmp2,    0,        srmp2,    srmp2,    srmp2,    ROT0,   "Seta",                   "Super Real Mahjong P2 (Japan)",  GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )

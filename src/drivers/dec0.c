@@ -80,7 +80,6 @@ WRITE_HANDLER( dec0_pf3_data_8bit_w );
 WRITE_HANDLER( dec0_pf3_control_8bit_w );
 
 /* System prototypes - from machine/dec0.c */
-extern void dec0_custom_memory(void);
 READ16_HANDLER( dec0_controls_r );
 READ16_HANDLER( dec0_rotary_r );
 READ16_HANDLER( midres_controls_r );
@@ -94,6 +93,14 @@ WRITE16_HANDLER( slyspy_246000_w );
 WRITE16_HANDLER( slyspy_248000_w );
 WRITE16_HANDLER( slyspy_24c000_w );
 WRITE16_HANDLER( slyspy_24e000_w );
+
+void init_slyspy(void);
+void init_hippodrm(void);
+void init_robocop(void);
+void init_baddudes(void);
+void init_hbarrel(void);
+void init_hbarrelw(void);
+void init_birdtry(void);
 
 extern void dec0_i8751_write(int data);
 extern void dec0_i8751_reset(void);
@@ -195,7 +202,6 @@ MEMORY_END
 
 static MEMORY_WRITE16_START( dec0_writemem )
 	{ 0x000000, 0x05ffff, MWA16_ROM },
-
 	{ 0x240000, 0x240007, dec0_pf1_control_0_w },	/* text layer */
 	{ 0x240010, 0x240017, dec0_pf1_control_1_w },
  	{ 0x242000, 0x24207f, MWA16_RAM, &dec0_pf1_colscroll },
@@ -956,7 +962,7 @@ static const struct MachineDriver machine_driver_hbarrel =
 	1024, 1024,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	dec0_vh_start,
 	dec0_vh_stop,
@@ -1008,7 +1014,7 @@ static const struct MachineDriver machine_driver_baddudes =
 	1024, 1024,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	dec0_vh_start,
 	dec0_vh_stop,
@@ -1060,7 +1066,7 @@ static const struct MachineDriver machine_driver_birdtry =
 	1024, 1024,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	dec0_vh_start,
 	dec0_vh_stop,
@@ -1118,7 +1124,7 @@ static const struct MachineDriver machine_driver_robocop =
 	1024, 1024,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	dec0_vh_start,
 	dec0_vh_stop,
@@ -1170,7 +1176,7 @@ static const struct MachineDriver machine_driver_robocopb =
 	1024, 1024,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	dec0_vh_start,
 	dec0_vh_stop,
@@ -1228,7 +1234,7 @@ static const struct MachineDriver machine_driver_hippodrm =
 	1024, 1024,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	dec0_vh_start,
 	dec0_vh_stop,
@@ -1787,6 +1793,49 @@ ROM_END
 
 ROM_START( ffantasy )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 )	/* 4*64k for 68000 code */
+	ROM_LOAD16_BYTE( "ff-02-2.bin",  0x00000, 0x10000, 0x29fc22a7 )
+	ROM_LOAD16_BYTE( "ff-01-2.bin",  0x00001, 0x10000, 0x9f617cb4 )
+	ROM_LOAD16_BYTE( "ew05",         0x20000, 0x10000, 0xc76d65ec )
+	ROM_LOAD16_BYTE( "ew00",         0x20001, 0x10000, 0xe9b427a6 )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 6502 sound */
+	ROM_LOAD( "ew04",         0x8000, 0x8000, 0x9871b98d )
+
+	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* HuC6280 CPU */
+	ROM_LOAD( "ew08",         0x00000, 0x10000, 0x53010534 )
+
+	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE ) /* chars */
+	ROM_LOAD( "ev14",         0x00000, 0x10000, 0x686f72c1 )
+	ROM_LOAD( "ev13",         0x10000, 0x10000, 0xb787dcc9 )
+
+	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE ) /* tiles */
+	ROM_LOAD( "ew19",         0x00000, 0x08000, 0x6b80d7a3 )
+	ROM_LOAD( "ew18",         0x08000, 0x08000, 0x78d3d764 )
+	ROM_LOAD( "ew20",         0x10000, 0x08000, 0xce9f5de3 )
+	ROM_LOAD( "ew21",         0x18000, 0x08000, 0x487a7ba2 )
+
+	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE ) /* tiles */
+	ROM_LOAD( "ew24",         0x00000, 0x08000, 0x4e1bc2a4 )
+	ROM_LOAD( "ew25",         0x08000, 0x08000, 0x9eb47dfb )
+	ROM_LOAD( "ew23",         0x10000, 0x08000, 0x9ecf479e )
+	ROM_LOAD( "ew22",         0x18000, 0x08000, 0xe55669aa )
+
+	ROM_REGION( 0x80000, REGION_GFX4, ROMREGION_DISPOSE ) /* sprites */
+	ROM_LOAD( "ev15",         0x00000, 0x10000, 0x1d80f797 )
+	ROM_LOAD( "ew16",         0x10000, 0x10000, 0x96233177 )
+	ROM_LOAD( "ev10",         0x20000, 0x10000, 0xc4e7116b )
+	ROM_LOAD( "ew11",         0x30000, 0x10000, 0xf2e007fc )
+	ROM_LOAD( "ev06",         0x40000, 0x10000, 0x6c794f1a )
+	ROM_LOAD( "ew07",         0x50000, 0x10000, 0x470b6989 )
+	ROM_LOAD( "ev17",         0x60000, 0x10000, 0x045509d4 )
+	ROM_LOAD( "ew12",         0x70000, 0x10000, 0xa2d244bc )
+
+	ROM_REGION( 0x10000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_LOAD( "ew03",         0x0000, 0x10000, 0xb606924d )
+ROM_END
+
+ROM_START( ffantasa )
+	ROM_REGION( 0x40000, REGION_CPU1, 0 )	/* 4*64k for 68000 code */
 	ROM_LOAD16_BYTE( "ev02",         0x00000, 0x10000, 0x797a7860 )
 	ROM_LOAD16_BYTE( "ev01",         0x00001, 0x10000, 0x0f17184d )
 	ROM_LOAD16_BYTE( "ew05",         0x20000, 0x10000, 0xc76d65ec )
@@ -2128,67 +2177,23 @@ ROM_END
 
 /******************************************************************************/
 
-static void h6280_decrypt(int memory_area)
-{
-	int i;
-	unsigned char *RAM = memory_region(memory_area);
-
-	/* Read each byte, decrypt it */
-	for (i=0x00000; i<0x10000; i++)
-		RAM[i]=(RAM[i] & 0x7e) | ((RAM[i] & 0x1) << 7) | ((RAM[i] & 0x80) >> 7);
-}
-
-static void init_dec0(void)
-{
-	dec0_custom_memory();
-}
-
-static void init_hippodrm(void)
-{
-	unsigned char *RAM = memory_region(REGION_CPU3);
-
-	dec0_custom_memory();
-
-	h6280_decrypt(REGION_CPU3);
-
-	/* The protection cpu has additional memory mapped protection! */
-	RAM[0x189]=0x60; /* RTS prot area */
-	RAM[0x1af]=0x60; /* RTS prot area */
-	RAM[0x1db]=0x60; /* RTS prot area */
-	RAM[0x21a]=0x60; /* RTS prot area */
-}
-
-static void init_slyspy(void)
-{
-	unsigned char *RAM = memory_region(REGION_CPU2);
-
-	dec0_custom_memory();
-
-	h6280_decrypt(REGION_CPU2);
-
-	/* Slyspy sound cpu has some protection */
-	RAM[0xf2d]=0xea;
-	RAM[0xf2e]=0xea;
-}
-
-/******************************************************************************/
-
-GAMEX( 1987, hbarrel,  0,        hbarrel,  hbarrel,  dec0,     ROT270, "Data East USA", "Heavy Barrel (US)", GAME_NO_COCKTAIL )
-GAMEX( 1987, hbarrelw, hbarrel,  hbarrel,  hbarrel,  dec0,     ROT270, "Data East Corporation", "Heavy Barrel (World)", GAME_NO_COCKTAIL )
-GAMEX( 1988, baddudes, 0,        baddudes, baddudes, dec0,     ROT0,   "Data East USA", "Bad Dudes vs. Dragonninja (US)", GAME_NO_COCKTAIL )
-GAMEX( 1988, drgninja, baddudes, baddudes, baddudes, dec0,     ROT0,   "Data East Corporation", "Dragonninja (Japan)", GAME_NO_COCKTAIL )
-GAMEX( 1988, birdtry,  0,        birdtry,  hbarrel,  dec0,     ROT270, "Data East Corporation", "Birdie Try (Japan)", GAME_NOT_WORKING | GAME_NO_COCKTAIL)
-GAMEX( 1988, robocop,  0,        robocop,  robocop,  dec0,     ROT0,   "Data East Corporation", "Robocop (World revision 3)", GAME_UNEMULATED_PROTECTION | GAME_NO_COCKTAIL )
-GAMEX( 1988, robocopu, robocop,  robocop,  robocop,  dec0,     ROT0,   "Data East USA", "Robocop (US revision 1)", GAME_UNEMULATED_PROTECTION | GAME_NO_COCKTAIL )
-GAMEX( 1988, robocpu0, robocop,  robocop,  robocop,  dec0,     ROT0,   "Data East USA", "Robocop (US revision 0)", GAME_UNEMULATED_PROTECTION | GAME_NO_COCKTAIL )
-GAMEX( 1988, robocopb, robocop,  robocopb, robocop,  dec0,     ROT0,   "bootleg", "Robocop (World bootleg)", GAME_NO_COCKTAIL )
-GAMEX( 1989, hippodrm, 0,        hippodrm, hippodrm, hippodrm, ROT0,   "Data East USA", "Hippodrome (US)", GAME_NO_COCKTAIL )
-GAMEX( 1989, ffantasy, hippodrm, hippodrm, hippodrm, hippodrm, ROT0,   "Data East Corporation", "Fighting Fantasy (Japan)", GAME_NO_COCKTAIL )
-GAMEX( 1989, slyspy,   0,        slyspy,   slyspy,   slyspy,   ROT0,   "Data East USA", "Sly Spy (US revision 3)", GAME_NO_COCKTAIL )
-GAMEX( 1989, slyspy2,  slyspy,   slyspy,   slyspy,   slyspy,   ROT0,   "Data East USA", "Sly Spy (US revision 2)", GAME_NO_COCKTAIL )
+GAMEX( 1987, hbarrel,  0,        hbarrel,  hbarrel,  hbarrel,  ROT270, "Data East USA",         "Heavy Barrel (US)", GAME_NO_COCKTAIL )
+GAMEX( 1987, hbarrelw, hbarrel,  hbarrel,  hbarrel,  hbarrelw, ROT270, "Data East Corporation", "Heavy Barrel (World)", GAME_NO_COCKTAIL )
+GAMEX( 1988, baddudes, 0,        baddudes, baddudes, baddudes, ROT0,   "Data East USA",         "Bad Dudes vs. Dragonninja (US)", GAME_NO_COCKTAIL )
+GAMEX( 1988, drgninja, baddudes, baddudes, baddudes, baddudes, ROT0,   "Data East Corporation", "Dragonninja (Japan)", GAME_NO_COCKTAIL )
+GAMEX( 1988, birdtry,  0,        birdtry,  hbarrel,  birdtry,  ROT270, "Data East Corporation", "Birdie Try (Japan)", GAME_NOT_WORKING | GAME_NO_COCKTAIL)
+GAMEX( 1988, robocop,  0,        robocop,  robocop,  robocop,  ROT0,   "Data East Corporation", "Robocop (World revision 3)", GAME_UNEMULATED_PROTECTION | GAME_NO_COCKTAIL )
+GAMEX( 1988, robocopu, robocop,  robocop,  robocop,  robocop,  ROT0,   "Data East USA",         "Robocop (US revision 1)", GAME_UNEMULATED_PROTECTION | GAME_NO_COCKTAIL )
+GAMEX( 1988, robocpu0, robocop,  robocop,  robocop,  robocop,  ROT0,   "Data East USA",         "Robocop (US revision 0)", GAME_UNEMULATED_PROTECTION | GAME_NO_COCKTAIL )
+GAMEX( 1988, robocopb, robocop,  robocopb, robocop,  robocop,  ROT0,   "bootleg",               "Robocop (World bootleg)", GAME_NO_COCKTAIL )
+GAMEX( 1989, hippodrm, 0,        hippodrm, hippodrm, hippodrm, ROT0,   "Data East USA",         "Hippodrome (US)", GAME_NO_COCKTAIL )
+GAMEX( 1989, ffantasy, hippodrm, hippodrm, hippodrm, hippodrm, ROT0,   "Data East Corporation", "Fighting Fantasy (Japan revision 2)", GAME_NO_COCKTAIL )
+GAMEX( 1989, ffantasa, hippodrm, hippodrm, hippodrm, hippodrm, ROT0,   "Data East Corporation", "Fighting Fantasy (Japan)", GAME_NO_COCKTAIL )
+GAMEX( 1989, slyspy,   0,        slyspy,   slyspy,   slyspy,   ROT0,   "Data East USA",         "Sly Spy (US revision 3)", GAME_NO_COCKTAIL )
+GAMEX( 1989, slyspy2,  slyspy,   slyspy,   slyspy,   slyspy,   ROT0,   "Data East USA",         "Sly Spy (US revision 2)", GAME_NO_COCKTAIL )
 GAMEX( 1989, secretag, slyspy,   slyspy,   slyspy,   slyspy,   ROT0,   "Data East Corporation", "Secret Agent (World)", GAME_NO_COCKTAIL )
-GAMEX( 1989, secretab, slyspy,   slyspy,   slyspy,   dec0,     ROT0,   "Data East USA", "Sly Spy (revision 2)", GAME_NO_COCKTAIL )
-GAMEX( 1989, midres,   0,        midres,   midres,   dec0,     ROT0,   "Data East Corporation", "Midnight Resistance (World)", GAME_NO_COCKTAIL )
-GAMEX( 1989, midresu,  midres,   midres,   midres,   dec0,     ROT0,   "Data East USA", "Midnight Resistance (US)", GAME_NO_COCKTAIL )
-GAMEX( 1989, midresj,  midres,   midres,   midres,   dec0,     ROT0,   "Data East Corporation", "Midnight Resistance (Japan)", GAME_NO_COCKTAIL )
+GAMEX( 1989, secretab, slyspy,   slyspy,   slyspy,   slyspy,   ROT0,   "bootleg",               "Secret Agent (bootleg)", GAME_NO_COCKTAIL | GAME_NOT_WORKING )
+GAMEX( 1989, midres,   0,        midres,   midres,   0,        ROT0,   "Data East Corporation", "Midnight Resistance (World)", GAME_NO_COCKTAIL )
+GAMEX( 1989, midresu,  midres,   midres,   midres,   0,        ROT0,   "Data East USA",         "Midnight Resistance (US)", GAME_NO_COCKTAIL )
+GAMEX( 1989, midresj,  midres,   midres,   midres,   0,        ROT0,   "Data East Corporation", "Midnight Resistance (Japan)", GAME_NO_COCKTAIL )
 GAMEX( 1990, bouldash, 0,        slyspy,   bouldash, slyspy,   ROT0,   "Data East Corporation (licensed from First Star)", "Boulder Dash / Boulder Dash Part 2 (World)", GAME_NO_COCKTAIL )

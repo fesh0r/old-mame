@@ -16,8 +16,10 @@ static unsigned char *videoram_pg1;
 static unsigned char *videoram_pg2;
 static unsigned char *current_videoram_pg;
 static int current_videoram_pg_index;
-static int fg_palette_bank, bg_palette_bank;
-static int protection_question;
+static int palette_bank;
+static int cocktail_mode;
+static int pleiads_protection_question;
+static int survival_protection_value;
 static struct tilemap *fg_tilemap, *bg_tilemap;
 
 
@@ -67,34 +69,17 @@ void phoenix_vh_convert_color_prom(unsigned char *palette, unsigned short *color
 		color_prom++;
 	}
 
-	/* first bank of characters use colors 0-31 and 64-95 */
-	for (i = 0;i < 8;i++)
+	/* first bank of characters use colors 0x00-0x1f and 0x40-0x5f */
+	/* second bank of characters use colors 0x20-0x3f and 0x60-0x7f */
+	for (i = 0;i < 0x40;i++)
 	{
-		int j;
+		int col;
 
 
-		for (j = 0;j < 2;j++)
-		{
-			COLOR(0,4*i + j*4*8) = i + j*64;
-			COLOR(0,4*i + j*4*8 + 1) = 8 + i + j*64;
-			COLOR(0,4*i + j*4*8 + 2) = 2*8 + i + j*64;
-			COLOR(0,4*i + j*4*8 + 3) = 3*8 + i + j*64;
-		}
-	}
+		col = ((i & 0x1c) >> 2) | ((i & 0x03) << 3) | ((i & 0x20) << 1);
 
-	/* second bank of characters use colors 32-63 and 96-127 */
-	for (i = 0;i < 8;i++)
-	{
-		int j;
-
-
-		for (j = 0;j < 2;j++)
-		{
-			COLOR(1,4*i + j*4*8) = i + 32 + j*64;
-			COLOR(1,4*i + j*4*8 + 1) = 8 + i + 32 + j*64;
-			COLOR(1,4*i + j*4*8 + 2) = 2*8 + i + 32 + j*64;
-			COLOR(1,4*i + j*4*8 + 3) = 3*8 + i + 32 + j*64;
-		}
+		COLOR(0,i) = col;
+		COLOR(1,i) = col | 0x20;
 	}
 }
 
@@ -124,36 +109,18 @@ void pleiads_vh_convert_color_prom(unsigned char *palette, unsigned short *color
 	}
 
 	/* first bank of characters use colors 0x00-0x1f, 0x40-0x5f, 0x80-0x9f and 0xc0-0xdf */
-	for (i = 0;i < 8;i++)
-	{
-		int j;
-
-
-		for (j = 0;j < 4;j++)
-		{
-			COLOR(0,4*i + j*4*8 + 0) = 0*8 + i + (3-j)*64;
-			COLOR(0,4*i + j*4*8 + 1) = 1*8 + i + (3-j)*64;
-			COLOR(0,4*i + j*4*8 + 2) = 2*8 + i + (3-j)*64;
-			COLOR(0,4*i + j*4*8 + 3) = 3*8 + i + (3-j)*64;
-		}
-	}
-
 	/* second bank of characters use colors 0x20-0x3f, 0x60-0x7f, 0xa0-0xbf and 0xe0-0xff */
-	for (i = 0;i < 8;i++)
+	for (i = 0;i < 0x80;i++)
 	{
-		int j;
+		int col;
 
 
-		for (j = 0;j < 4;j++)
-		{
-			COLOR(1,4*i + j*4*8 + 0) = 0*8 + i + 32 + (3-j)*64;
-			COLOR(1,4*i + j*4*8 + 1) = 1*8 + i + 32 + (3-j)*64;
-			COLOR(1,4*i + j*4*8 + 2) = 2*8 + i + 32 + (3-j)*64;
-			COLOR(1,4*i + j*4*8 + 3) = 3*8 + i + 32 + (3-j)*64;
-		}
+		col = ((i & 0x1c) >> 2) | ((i & 0x03) << 3) | ((i & 0x60) << 1);
+
+		COLOR(0,i) = col;
+		COLOR(1,i) = col | 0x20;
 	}
 }
-
 
 /***************************************************************************
 
@@ -166,7 +133,7 @@ static void get_fg_tile_info(int tile_index)
 	int code;
 
 	code = current_videoram_pg[tile_index];
-	SET_TILE_INFO(1, code, (code >> 5) | (fg_palette_bank << 3));
+	SET_TILE_INFO(1, code, (code >> 5) | (palette_bank << 3));
 	tile_info.flags = (tile_index & 0x1f) ? 0 : TILE_IGNORE_TRANSPARENCY;	/* first row (column) is opaque */
 }
 
@@ -175,7 +142,7 @@ static void get_bg_tile_info(int tile_index)
 	int code;
 
 	code = current_videoram_pg[tile_index + 0x800];
-	SET_TILE_INFO(0, code, (code >> 5) | (bg_palette_bank << 3));
+	SET_TILE_INFO(0, code, (code >> 5) | (palette_bank << 3));
 }
 
 
@@ -238,6 +205,8 @@ READ_HANDLER( phoenix_videoram_r )
 
 WRITE_HANDLER( phoenix_videoram_w )
 {
+	unsigned char *rom = memory_region(REGION_CPU1);
+
 	current_videoram_pg[offset] = data;
 
 	if ((offset & 0x7ff) < 0x340)
@@ -247,6 +216,9 @@ WRITE_HANDLER( phoenix_videoram_w )
 		else
 			tilemap_mark_tile_dirty(fg_tilemap,offset & 0x3ff);
 	}
+
+	/* as part of the protecion, Survival executes code from $43a4 */
+	rom[offset + 0x4000] = data;
 }
 
 
@@ -258,13 +230,16 @@ WRITE_HANDLER( phoenix_videoreg_w )
 		current_videoram_pg_index = data & 1;
 		current_videoram_pg = current_videoram_pg_index ? videoram_pg2 : videoram_pg1;
 
+		cocktail_mode = current_videoram_pg_index && (input_port_3_r(0) & 0x01);
+
+		tilemap_set_flip(ALL_TILEMAPS, cocktail_mode ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 
 	/* Phoenix has only one palette select effecting both layers */
-	if (fg_palette_bank != ((data >> 1) & 1))
+	if (palette_bank != ((data >> 1) & 1))
 	{
-		fg_palette_bank = bg_palette_bank = (data >> 1) & 1;
+		palette_bank = (data >> 1) & 1;
 
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
@@ -278,25 +253,27 @@ WRITE_HANDLER( pleiads_videoreg_w )
 		current_videoram_pg_index = data & 1;
 		current_videoram_pg = current_videoram_pg_index ? videoram_pg2 : videoram_pg1;
 
+		cocktail_mode = current_videoram_pg_index && (input_port_3_r(0) & 0x01);
+
+		tilemap_set_flip(ALL_TILEMAPS, cocktail_mode ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 
-	/* Pleiads has seperate palette selects for each layer */
-    if (bg_palette_bank != ((data >> 2) & 1))
-	{
-		bg_palette_bank = (data >> 2) & 1;
 
-		tilemap_mark_all_tiles_dirty(bg_tilemap);
+	/* the palette table is at $0420-$042f and is set by $06bc.
+	   Four palette changes by level.  The palette selection is
+	   wrong, but the same paletter is used for both layers. */
+
+    if (palette_bank != ((~data >> 1) & 3))
+	{
+		palette_bank = ((~data >> 1) & 3);
+
+		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+
+		logerror("Palette: %02X\n", (data & 0x06) >> 1);
 	}
 
-	if (fg_palette_bank != ((data >> 3) & 1))
-	{
-		fg_palette_bank = (data >> 3) & 1;
-
-		tilemap_mark_all_tiles_dirty(fg_tilemap);
-	}
-
-	protection_question = data & 0xfc;
+	pleiads_protection_question = data & 0xfc;
 
 	/* send two bits to sound control C (not sure if they are there) */
 	pleiads_sound_control_c_w(offset, data);
@@ -309,12 +286,20 @@ WRITE_HANDLER( phoenix_scroll_w )
 }
 
 
+READ_HANDLER( phoenix_input_port_0_r )
+{
+	if (cocktail_mode)
+		return (input_port_0_r(0) & 0x07) | (input_port_1_r(0) & 0xf8);
+	else
+		return input_port_0_r(0);
+}
+
 READ_HANDLER( pleiads_input_port_0_r )
 {
-	int ret = input_port_0_r(0) & 0xf7;
+	int ret = phoenix_input_port_0_r(0) & 0xf7;
 
 	/* handle Pleiads protection */
-	switch (protection_question)
+	switch (pleiads_protection_question)
 	{
 	case 0x00:
 	case 0x20:
@@ -326,12 +311,33 @@ READ_HANDLER( pleiads_input_port_0_r )
 		ret	|= 0x08;
 		break;
 	default:
-		logerror("Unknown protection question %02X at %04X\n", protection_question, cpu_get_pc());
+		logerror("Unknown protection question %02X at %04X\n", pleiads_protection_question, cpu_get_pc());
 	}
 
 	return ret;
 }
 
+READ_HANDLER( survival_input_port_0_r )
+{
+	int ret = phoenix_input_port_0_r(0);
+
+	if (survival_protection_value)
+	{
+		ret ^= 0xf0;
+	}
+
+	return ret;
+}
+
+READ_HANDLER( survival_protection_r )
+{
+	if (cpu_get_pc() == 0x2017)
+	{
+		survival_protection_value ^= 1;
+	}
+
+	return survival_protection_value;
+}
 
 /***************************************************************************
 

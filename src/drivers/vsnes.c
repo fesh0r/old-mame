@@ -1430,7 +1430,7 @@ static struct MachineDriver machine_driver_vsdual =
 	2*4*16, 2*4*16,
 	vsdual_vh_convert_color_prom,
 
-	VIDEO_TYPE_RASTER | VIDEO_DUAL_MONITOR,
+	VIDEO_TYPE_RASTER | VIDEO_DUAL_MONITOR | VIDEO_ASPECT_RATIO(8,3),
 	0,
 	vsdual_vh_start,
 	vsnes_vh_stop,
@@ -1566,7 +1566,8 @@ ROM_START( excitbkj )
 
 	ROM_REGION( 0x4000,REGION_GFX1, 0 ) /* PPU memory */
 	ROM_LOAD( "eb4-48ba.bin",  0x0000, 0x2000, 0x62a76c52 )
-	ROM_LOAD( "eb4-48aa.bin",  0x2000, 0x2000, 0xa9b49a05 )
+//	ROM_LOAD( "eb4-48aa.bin",  0x2000, 0x2000, 0xa9b49a05 )
+	ROM_LOAD( "eb-2a",         0x2000, 0x2000, 0xa9b49a05 )
 
 ROM_END
 
@@ -2010,7 +2011,7 @@ GAME( 1984, iceclmrj, 0,        vsdual,  iceclmrj, iceclmrj, ROT0, "Nintendo",  
 
 /* are these using the correct mappers? */
 
-GAMEX(????, topgun,   0,	    vsnes,   vsnes,    vstopgun, ROT0, "Nintendo",  "VS Topgun", GAME_NOT_WORKING )
-GAMEX(????, jajamaru, 0,        vsnes,   vsnes,    vsnormal, ROT0, "Nintendo",  "JAJARU", GAME_NOT_WORKING )
-GAMEX(????, vsxevus,  0,        vsnes,   vsnes,	   xevious,  ROT0, "Namco?", 	"Xevious", GAME_NOT_WORKING )
+GAMEX(19??, topgun,   0,	    vsnes,   vsnes,    vstopgun, ROT0, "Nintendo",  "VS Topgun", GAME_NOT_WORKING )
+GAMEX(19??, jajamaru, 0,        vsnes,   vsnes,    vsnormal, ROT0, "Nintendo",  "JAJARU", GAME_NOT_WORKING )
+GAMEX(19??, vsxevus,  0,        vsnes,   vsnes,	   xevious,  ROT0, "Namco?", 	"Xevious", GAME_NOT_WORKING )
 

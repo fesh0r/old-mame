@@ -1,3 +1,187 @@
+0.37 BETA 15
+
+
+These drivers have improved GRAPHICS:
+-------------------------------------
+
+- Fixed scrolling in Top Secret. [Ian Patterson]
+
+- Improved special effects and fixed pixel layer colors in the Taito F3 games.
+  [Bryan McPhail]
+
+- Fixed sprites in World Grand Prix. [David Graves]
+
+
+These drivers have improved SOUND:
+----------------------------------
+
+- Fixed sound in Atari Basketball. [Stefan Jokisch]
+
+
+Other drivers changes:
+----------------------
+
+- Fixed Arkanoid "instant death in final round" bug. [Frotz]
+
+- Fixed the spinner in Dark Planet. [Zsolt Vasvari]
+
+- Simulated controls in Slick Shot. [Aaron Giles]
+
+- Fixed the NEC cpu bug that caused slowdowns in Raiden. [Bryan McPhail]
+
+
+Changes to the main program:
+----------------------------
+
+- Fixed 68020 emulation bugs that prevented many Taito F3 games from working.
+  [Bryan McPhail]
+
+- Rewritten the cheat engine. [Ian Patterson]
+
+
+Source:
+-------
+
+- The main binary distribution of MAME is now a completely new win32 console
+  port. Some of the benefits are: support for full screen hardware stretching
+  (if you have a decent video card), and a much better command line / options
+  file parsing (ported from xmame).
+  To create the mame.ini configuration file on startup, use the -createconfig
+  option. -showusage lists all available options. [Aaron Giles, Bernd Wiebelt]
+
+
+New games supported:
+--------------------
+
+Power Play [Aaron Giles]
+Neck & Neck [Aaron Giles]
+Shuffleshot [Aaron Giles]
+Elevator Action Returns [Bryan McPhail]
+Darius Gaiden [Bryan McPhail]
+Puzzle Bobble 4 [Bryan McPhail]
+Land Maker [Bryan McPhail]
+Twin Qix [Bryan McPhail]
+Gekiridan [Bryan McPhail]
+Magic Bubble [Luca Elia]
+J. J. Squawkers [Luca Elia]
+Go Go! Mile Smile [Luca Elia]
+Bang Bang Ball [Luca Elia]
+Jitsuryoku!! Pro Yakyuu [Luca Elia]
+Clash Road [Luca Elia]
+Dommy [David Haywood]
+Ixion [David Haywood]
+Vandyke [David Haywood]
+Tunnel Hunt [Phil Stroffolino, Owen Rubin]
+
+
+New clones supported:
+---------------------
+
+Wheel of Fortune (set 2)
+Rim Rockin' Basketball (v1.6)
+Marble Madness (set 1)
+Vindicators (4/26/88)
+Slick Shot (V2.2)
+Jungle Hunt (Brazil)
+Shingen Samurai-Fighter (= Takeda Shingen)
+Double Dragon 2 (World)
+Street Fighter: The Movie (v1.12)
+TMNT (Japan 4 Players)
+Strahl (set 2)
+
+
+==========================================================================
+
+
+0.37 BETA 14
+
+
+These drivers have improved GRAPHICS:
+-------------------------------------
+
+- Fixed sprite priorities in Hachoo. [Nicola Salmoria]
+
+
+These drivers have improved SOUND:
+----------------------------------
+
+- Sound in Looping. [Mathis Rosenhauer]
+
+- Improved speech in Double Dribble. [Tatsuyuki Satoh]
+
+- Improved subwoofer sounds in ninjaw and darius2d. [Andrea Mazzoleni]
+
+
+Changes to the main program:
+----------------------------
+
+- [DOS] The keyboard special handling introduced in the previous beta, which
+  makes it easier to register two- or three-button presses, is now optional.
+  By default it's off; to turn it on, use -steadykey. [Mike Coates]
+
+- Changed 4-way emulation on a 8-way joystick to "sticky" mode. This makes
+  Lady Bug and other 4-way games more playable.
+  Explanation here: http://www.rentrondesign.homestead.com/JoyPrimer.html
+  [Jeoff Krontz]
+
+
+Source:
+-------
+
+- MB87078 emulation, used by some Taito B games. [Jarek Burczynski]
+
+- New helper macros BITSWAP8(), BITSWAP16() and BITSWAP24().
+
+
+New games supported:
+--------------------
+
+Hexion [Nicola Salmoria]
+Mouja [Nicola Salmoria]
+Rough Ranger [Luca Elia, Phil Stroffolino]
+Hard Head [Luca Elia, Phil Stroffolino]
+Gyakuten!! Puzzle Bancho [Luca Elia]
+Shanghai Kid [Phil Stroffolino]
+Dynamic Ski [Phil Stroffolino]
+Bakuretsu Quiz Ma-Q Dai Bouken [Phil Stroffolino]
+Exbania [Phil Stroffolino]
+Knuckle Heads [Phil Stroffolino]
+Nettou! Gekitou! Quiztou!! [Phil Stroffolino]
+Super World Court [Phil Stroffolino]
+Quiz Gakumon no Susume [Uki]
+XX Mission [Uki]
+Wonder Planet [Bryan McPhail]
+Ryu Jin [Jarek Burczynski]
+Thunder Dragon 2 [David Haywood]
+Cyby Bop [David Haywood]
+Bigfoot Bonkers [Juergen Buchmueller]
+IGMO [Zsolt Vasvari]
+
+
+New clones supported:
+---------------------
+
+Trick Trap (= Labyrinth Runner)
+Fighting Fantasy (Japan revision 2)
+Super World Stadium '92 Gekitouban
+Boxy Boy (= Souko Ban Deluxe)
+Rim Rockin' Basketball (V1.2)
+Block Block (World 911106)
+RodLand (Japan original)
+Sky Adventure (Japan)
+Tant-R (Puzzle & Action) (Japan) (bootleg set 2)
+Puyo Puyo (English) (bootleg)
+Punk Shot (Japan)
+The Glob (dedicated)
+Super Glob
+Tube-It (= Cachat)
+Final Round (version M)
+Galaga 3 (set 1)
+
+
+==========================================================================
+
+
 0.37 BETA 13
 
 
@@ -45,6 +229,9 @@ Source:
 - Removed TRANSPARENCY_THROUGH mode for drawgfx().
 
 - NEC UPD7810 CPU emulation. [Juergen Buchmueller]
+
+- Added vector fglicker control to the On Screen Display. int options.flicker
+  replaced with float option.vector_flicker, with ranger 0-100. [M.A.S.H.]
 
 
 New games supported:

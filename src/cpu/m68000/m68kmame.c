@@ -5,6 +5,8 @@
 #include "state.h"
 
 /* global access */
+
+int m68k_ICount;
 struct m68k_memory_interface m68k_memory_intf;
 
 #ifndef A68K0
@@ -244,6 +246,7 @@ static UINT8 m68000_win_layout[] = {
 
 void m68000_init(void)
 {
+	m68k_init();
 	m68k_set_cpu_type(M68K_CPU_TYPE_68000);
 	m68k_memory_intf = interface_a24_d16;
 	m68k_state_register("m68000");
@@ -416,7 +419,7 @@ const char *m68000_info(void *context, int regnum)
 	static int which = 0;
 	int sr;
 
-	which = ++which % 32;
+	which = (which+1) % 32;
 	buffer[which][0] = '\0';
 
 	switch( regnum )
@@ -518,6 +521,7 @@ static UINT8 m68010_win_layout[] = {
 
 void m68010_init(void)
 {
+	m68k_init();
 	m68k_set_cpu_type(M68K_CPU_TYPE_68010);
 	m68k_memory_intf = interface_a24_d16;
 	m68k_state_register("m68010");
@@ -696,7 +700,7 @@ const char *m68010_info(void *context, int regnum)
 	static int which = 0;
 	int sr;
 
-	which = ++which % 32;
+	which = (which+1) % 32;
 	buffer[which][0] = '\0';
 
 	switch( regnum )
@@ -807,6 +811,7 @@ static UINT8 m68ec020_win_layout[] = {
 
 void m68ec020_init(void)
 {
+	m68k_init();
 	m68k_set_cpu_type(M68K_CPU_TYPE_68EC020);
 	m68k_memory_intf = interface_a24_d32;
 	m68k_state_register("m68ec020");
@@ -990,7 +995,7 @@ const char *m68ec020_info(void *context, int regnum)
 	static int which = 0;
 	int sr;
 
-	which = ++which % 32;
+	which = (which+1) % 32;
 	buffer[which][0] = '\0';
 
 	switch( regnum )
@@ -1098,6 +1103,7 @@ static UINT8 m68020_win_layout[] = {
 
 void m68020_init(void)
 {
+	m68k_init();
 	m68k_set_cpu_type(M68K_CPU_TYPE_68020);
 	m68k_memory_intf = interface_a32_d32;
 	m68k_state_register("m68020");
@@ -1281,7 +1287,7 @@ const char *m68020_info(void *context, int regnum)
 	static int which = 0;
 	int sr;
 
-	which = ++which % 32;
+	which = (which+1) % 32;
 	buffer[which][0] = '\0';
 
 	switch( regnum )

@@ -56,6 +56,7 @@ READ_HANDLER( invaders_shift_data_r );
 READ_HANDLER( invaders_shift_data_rev_r );
 READ_HANDLER( invaders_shift_data_comp_r );
 int  invaders_interrupt(void);
+int  polaris_interrupt(void);
 
 READ_HANDLER( boothill_shift_data_r );
 
@@ -2259,7 +2260,7 @@ static const struct MachineDriver machine_driver_polaris =
 			CPU_8080,
 			1996800,        /* 19.968MHz / 10 */
 			schaser_readmem,schaser_writemem,invaders_readport,writeport_0_3,
-			invaders_interrupt,2    /* two interrupts per frame */
+			polaris_interrupt,2    /* two interrupts per frame */
 		}
 	},
 	60, DEFAULT_60HZ_VBLANK_DURATION,       /* frames per second, vblank duration */
@@ -4200,19 +4201,19 @@ ROM_END
 
 		  GAME( 1980, earthinv, invaders, invaders, earthinv, invaders, ROT270, 	"bootleg", "Super Earth Invasion" )
 		  GAME( 1980, spaceatt, invaders, invaders, spaceatt, invaders, ROT270, 	"Zenitone-Microsec Ltd", "Space Attack II" )
-		  GAME( ????, sinvzen,  invaders, invaders, spaceatt, invaders, ROT270, 	"Zenitone-Microsec Ltd", "Super Invaders (Zenitone-Microsec)" )
-		  GAME( ????, sinvemag, invaders, invaders, sinvemag, invaders, ROT270, 	"bootleg", "Super Invaders (EMAG)" )
-		  GAME( ????, alieninv, invaders, invaders, earthinv, invaders, ROT270, 	"bootleg", "Alien Invasion Part II" )
+		  GAME( 19??, sinvzen,  invaders, invaders, spaceatt, invaders, ROT270, 	"Zenitone-Microsec Ltd", "Super Invaders (Zenitone-Microsec)" )
+		  GAME( 19??, sinvemag, invaders, invaders, sinvemag, invaders, ROT270, 	"bootleg", "Super Invaders (EMAG)" )
+		  GAME( 19??, alieninv, invaders, invaders, earthinv, invaders, ROT270, 	"bootleg", "Alien Invasion Part II" )
 		  GAME( 1978, spceking, invaders, invaders, spceking, invaders, ROT270, 	"Leijac (Konami)","Space King" )
 		  GAME( 1978, spcewars, invaders, invaders, invadpt2, invaders, ROT270, 	"Sanritsu", "Space War (Sanritsu)" )
 		  GAME( 1978, spacewr3, invaders, invaders, spacewr3, invaders, ROT270, 	"bootleg", "Space War Part 3" )
 		  GAME( 1978, invaderl, invaders, invaders, invaders, invaders, ROT270, 	"bootleg", "Space Invaders (Logitec)" )
 		  GAME( 1979, jspecter, invaders, invaders, jspecter, invaders, ROT270, 	"Jatre", "Jatre Specter" )
 		  GAME( 1979, cosmicmo, invaders, invaders, cosmicmo, invaders, ROT270, 	"Universal", "Cosmic Monsters" )
-		  GAME( ????, superinv, invaders, invaders, invaders, invaders, ROT270, 	"bootleg", "Super Invaders" )
-		  GAME( ????, moonbase, invadpt2, invaders, invadpt2, invaddlx, ROT270, 	"Nichibutsu", "Moon Base" )
-		  GAMEX(????, invrvnge, 0,        tornbase, invrvnge, invrvnge, ROT270, 	"Zenitone Microsec", "Invader's Revenge",  GAME_NO_SOUND )
-		  GAMEX(????, invrvnga, invrvnge, tornbase, invrvnge, invrvnge, ROT270, 	"Zenitone Microsec (Dutchford license)", "Invader's Revenge (Dutchford)", GAME_NO_SOUND )
+		  GAME( 19??, superinv, invaders, invaders, invaders, invaders, ROT270, 	"bootleg", "Super Invaders" )
+		  GAME( 19??, moonbase, invadpt2, invaders, invadpt2, invaddlx, ROT270, 	"Nichibutsu", "Moon Base" )
+		  GAMEX(19??, invrvnge, 0,        tornbase, invrvnge, invrvnge, ROT270, 	"Zenitone Microsec", "Invader's Revenge",  GAME_NO_SOUND )
+		  GAMEX(19??, invrvnga, invrvnge, tornbase, invrvnge, invrvnge, ROT270, 	"Zenitone Microsec (Dutchford license)", "Invader's Revenge (Dutchford)", GAME_NO_SOUND )
 		  GAME( 1980, spclaser, 0,        invaders, spclaser, invaddlx, ROT270, 	"Game Plan, Inc. (Taito)", "Space Laser" )
 		  GAME( 1980, laser,    spclaser, invaders, spclaser, invaddlx, ROT270, 	"<unknown>", "Laser" )
 		  GAME( 1979, spcewarl, spclaser, invaders, spclaser, invaddlx, ROT270, 	"Leijac (Konami)","Space War (Leijac)" )

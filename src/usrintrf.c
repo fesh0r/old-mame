@@ -430,7 +430,7 @@ struct GfxElement *builduifont(void)
 
 static void erase_screen(struct osd_bitmap *bitmap)
 {
-	fillbitmap(Machine->scrbitmap,Machine->uifont->colortable[0],NULL);
+	fillbitmap(bitmap,Machine->uifont->colortable[0],NULL);
 	schedule_full_refresh();
 }
 
@@ -1050,7 +1050,7 @@ static void showcharset(struct osd_bitmap *bitmap)
 					int table_offs;
 					int flipx,flipy;
 
-					if (palette_used_colors)
+					if (palette_used_colors && Machine->gfx[bank]->colortable)
 					{
 						memset(palette_used_colors,PALETTE_COLOR_TRANSPARENT,Machine->drv->total_colors * sizeof(unsigned char));
 						table_offs = Machine->gfx[bank]->colortable - Machine->remapped_colortable
@@ -1082,7 +1082,7 @@ static void showcharset(struct osd_bitmap *bitmap)
 								flipx,flipy,
 								(i % cpx) * Machine->gfx[bank]->width + Machine->uixmin,
 								Machine->uifontheight + (i / cpx) * Machine->gfx[bank]->height + Machine->uiymin,
-								0,TRANSPARENCY_NONE,0);
+								0,Machine->gfx[bank]->colortable ? TRANSPARENCY_NONE : TRANSPARENCY_NONE_RAW,0);
 
 						lastdrawn = i+firstdrawn;
 					}
@@ -3244,6 +3244,30 @@ static void onscrd_gamma(struct osd_bitmap *bitmap,int increment,int arg)
 	displayosd(bitmap,buf,100*(gamma_correction-0.5)/(2.0-0.5),100*(1.0-0.5)/(2.0-0.5));
 }
 
+static void onscrd_vector_flicker(struct osd_bitmap *bitmap,int increment,int arg)
+{
+	char buf[1000];
+	float flicker_correction;
+
+	if (!code_pressed(KEYCODE_LCONTROL) && !code_pressed(KEYCODE_RCONTROL))
+		increment *= 5;
+
+	if (increment)
+	{
+		flicker_correction = vector_get_flicker();
+
+		flicker_correction += increment;
+		if (flicker_correction < 0.0) flicker_correction = 0.0;
+		if (flicker_correction > 100.0) flicker_correction = 100.0;
+
+		vector_set_flicker(flicker_correction);
+	}
+	flicker_correction = vector_get_flicker();
+
+	sprintf(buf,"%s %1.2f", ui_getstring (UI_vectorflicker), flicker_correction);
+	displayosd(bitmap,buf,flicker_correction,0);
+}
+
 static void onscrd_vector_intensity(struct osd_bitmap *bitmap,int increment,int arg)
 {
 	char buf[30];
@@ -3347,6 +3371,10 @@ static void onscrd_init(void)
 
 	if (Machine->drv->video_attributes & VIDEO_TYPE_VECTOR)
 	{
+		onscrd_fnc[item] = onscrd_vector_flicker;
+		onscrd_arg[item] = 0;
+		item++;
+
 		onscrd_fnc[item] = onscrd_vector_intensity;
 		onscrd_arg[item] = 0;
 		item++;
@@ -3609,37 +3637,33 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 	if (request_loadsave != LOADSAVE_NONE)
 	{
 		int file = 0;
-		int i;
-		InputSeq seq;
-
-		for(i=0; i<SEQ_MAX; i++)
-			seq[i] = CODE_NONE;
 
 		osd_sound_enable(0);
 		osd_pause(1);
-		seq_read_async_start();
 
 		do
 		{
-			int ret;
-			update_video_and_audio();
-			ret = seq_read_async(&seq, 1);
+			InputCode code;
 
-			if (ret == 1)
-				file = -1;
-			else if (ret == 0)
+			if (request_loadsave == LOADSAVE_SAVE)
+				displaymessage(bitmap, "Select position to save to");
+			else
+				displaymessage(bitmap, "Select position to load from");
+
+			update_video_and_audio();
+
+			if (input_ui_pressed(IPT_UI_CANCEL))
+				break;
+
+			code = code_read_async();
+			if (code != CODE_NONE)
 			{
-				if (seq[1] != CODE_NONE)
-				{
-					for(i=0; i<SEQ_MAX; i++)
-						seq[i] = CODE_NONE;
-					seq_read_async_start();
-				} else if (seq[0] >= KEYCODE_A && seq[0] <= KEYCODE_Z)
-					file = 'a' + (seq[0] - KEYCODE_A);
-				else if (seq[0] >= KEYCODE_0 && seq[0] <= KEYCODE_9)
-					file = '0' + (seq[0] - KEYCODE_0);
-				else if (seq[0] >= KEYCODE_0_PAD && seq[0] <= KEYCODE_9_PAD)
-					file = '0' + (seq[0] - KEYCODE_0);
+				if (code >= KEYCODE_A && code <= KEYCODE_Z)
+					file = 'a' + (code - KEYCODE_A);
+				else if (code >= KEYCODE_0 && code <= KEYCODE_9)
+					file = '0' + (code - KEYCODE_0);
+				else if (code >= KEYCODE_0_PAD && code <= KEYCODE_9_PAD)
+					file = '0' + (code - KEYCODE_0);
 			}
 		}
 		while (!file);
@@ -3647,9 +3671,21 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 		osd_pause(0);
 		osd_sound_enable(1);
 
-
 		if (file > 0)
+		{
+			if (request_loadsave == LOADSAVE_SAVE)
+				usrintf_showmessage("Save to position %c", file);
+			else
+				usrintf_showmessage("Load from position %c", file);
 			cpu_loadsave_schedule(request_loadsave, file);
+		}
+		else
+		{
+			if (request_loadsave == LOADSAVE_SAVE)
+				usrintf_showmessage("Save cancelled");
+			else
+				usrintf_showmessage("Load cancelled");
+		}
 	}
 
 	if (single_step || input_ui_pressed(IPT_UI_PAUSE)) /* pause the game */

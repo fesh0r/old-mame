@@ -26,7 +26,7 @@ enum {
 	SS_MSB_FIRST = 0x02
 };
 
-#define VERBOSE
+//#define VERBOSE
 
 #ifdef VERBOSE
 #define TRACE(x) do {x;} while(0)
@@ -47,7 +47,9 @@ enum {
 	SS_DOUBLE
 };
 
+#ifdef VERBOSE
 static const char *ss_type[] =	{ "i8", "u8", "i16", "u16", "i32", "u32", "int", "dbl" };
+#endif
 static int		   ss_size[] =	{	 1,    1,	  2,	 2, 	4,	   4,	  4,	 8 };
 
 static void ss_c2(unsigned char *, unsigned);
@@ -91,10 +93,6 @@ static unsigned char *ss_dump_array;
 static void *ss_dump_file;
 static unsigned int ss_dump_size;
 
-/*
-Commented out because it doesn't match prototypes on Win32
-extern unsigned int crc32 (unsigned int crc, const char *buf, unsigned int len);
-*/
 
 static UINT32 ss_get_signature(void)
 {
@@ -140,7 +138,7 @@ static UINT32 ss_get_signature(void)
 	}
 
 	// Pass 3 : Compute the crc32
-	signature = crc32(0, (unsigned char*)info, size);
+	signature = crc32(0, (unsigned char *)info, size);
 
 	free(info);
 	return signature;
@@ -148,25 +146,41 @@ static UINT32 ss_get_signature(void)
 
 void state_save_reset(void)
 {
-	if(ss_registry) {
-		ss_module *m = ss_registry;
-		while(m) {
-			ss_module *mn = m->next;
-			int i;
-			for(i=0; i<MAX_INSTANCES; i++) {
-				ss_entry *e = m->instances[i];
-				while(e) {
-					ss_entry *en = e->next;
-					free(e->name);
-					free(e);
-					e = en;
-				}
+	ss_func *f;
+	ss_module *m = ss_registry;
+	while(m) {
+		ss_module *mn = m->next;
+		int i;
+		for(i=0; i<MAX_INSTANCES; i++) {
+			ss_entry *e = m->instances[i];
+			while(e) {
+				ss_entry *en = e->next;
+				free(e->name);
+				free(e);
+				e = en;
 			}
-			free(m->name);
-			m = mn;
 		}
-		ss_registry = 0;
+		free(m->name);
+		m = mn;
 	}
+	ss_registry = 0;
+
+	f = ss_prefunc_reg;
+	while(f) {
+		ss_func *fn = f->next;
+		free(f);
+		f = fn;
+	}
+	ss_prefunc_reg = 0;
+
+	f = ss_postfunc_reg;
+	while(f) {
+		ss_func *fn = f->next;
+		free(f);
+		f = fn;
+	}
+	ss_postfunc_reg = 0;
+
 	ss_current_tag = 0;
 	ss_dump_array = 0;
 	ss_dump_file = 0;
@@ -187,7 +201,10 @@ static ss_module *ss_get_module(const char *name)
 		mp = &((*mp)->next);
 	}
 	*mp = malloc(sizeof(ss_module));
-	(*mp)->name = strdup(name);
+	if (*mp == NULL) return NULL;
+	(*mp)->name = malloc (strlen (name) + 1);
+	if ((*mp)->name == NULL) return NULL;
+	strcpy ((*mp)->name, name);
 	(*mp)->next = m;
 	for(i=0; i<MAX_INSTANCES; i++)
 		(*mp)->instances[i] = 0;
@@ -210,7 +227,10 @@ static ss_entry *ss_register_entry(const char *module, int instance, const char 
 		ep = &((*ep)->next);
 	}
 	*ep = malloc(sizeof(ss_entry));
-	(*ep)->name   = strdup(name);
+	if (*ep == NULL) return NULL;
+	(*ep)->name = malloc (strlen (name) + 1);
+	if ((*ep)->name == NULL) return NULL;
+	strcpy ((*ep)->name, name);
 	(*ep)->next   = e;
 	(*ep)->type   = type;
 	(*ep)->data   = data;
@@ -275,15 +295,20 @@ static void ss_register_func(ss_func **root, void (*func)(void))
 	ss_func *next = *root;
 	while (next)
 	{
-		if (next->func == func)
+		if (next->func == func && next->tag == ss_current_tag)
 		{
-			logerror("Duplicate save state function (0x%x)\n", func);
-			return;
+			logerror("Duplicate save state function (%d, 0x%x)\n", ss_current_tag, func);
+			exit(1);
 		}
 		next = next->next;
 	}
 	next = *root;
 	*root = malloc(sizeof(ss_func));
+	if (*root == NULL)
+	{
+		logerror ("malloc failed in ss_register_func\n");
+		return;
+	}
 	(*root)->next = next;
 	(*root)->func = func;
 	(*root)->tag  = ss_current_tag;
@@ -372,6 +397,10 @@ void state_save_save_begin(void *file)
 
 	TRACE(logerror("   total size %u\n", ss_dump_size));
 	ss_dump_array = malloc(ss_dump_size);
+	if (ss_dump_array == NULL)
+	{
+		logerror ("malloc failed in state_save_save_begin\n");
+	}
 }
 
 void state_save_save_continue(void)

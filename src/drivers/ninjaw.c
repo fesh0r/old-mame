@@ -127,10 +127,7 @@ Verify 68000 clock rates. Unknown sprite bits.
 Ninjaw
 ------
 
-Similar "subwoofer" sound problem to Darius2 - see below.
-
-68000 clock rates are a guess (at 12MHz the world version
-rarely displayed any enemy sprites).
+"Subwoofer" sound filtering isn't perfect.
 
 Some enemies slide relative to the background when they should
 be standing still. High cpu interleaving doesn't help much.
@@ -139,21 +136,16 @@ be standing still. High cpu interleaving doesn't help much.
 Darius 2
 --------
 
-The unpleasant sounds when some big enemies appear are wrong: they
-are meant to create rumbling on a subwoofer in the cabinet. Can we
-strip them out or transpose them down in pitch?
+"Subwoofer" sound filtering isn't perfect.
 
-The low frequency sound is not heard at all via the regular stereo
-speakers on a real Darius 2 but is somehow routed only into the
-subwoofer. The subwoofer starts shaking due to the sound and rattles
-the player (the subwoofer is in the seat of the unit).
-So in a sense this low frequency rumble is more a force feedback
-device of sorts than anything. (Info from Julian Eggebrecht)
+(When you lose a life or big enemies appear it's meant to create
+rumbling on a subwoofer in the cabinet.)
 
 
 ***************************************************************************/
 
 #include "driver.h"
+#include "state.h"
 #include "cpu/m68000/m68000.h"
 #include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
@@ -166,7 +158,7 @@ void ninjaw_vh_screenrefresh (struct osd_bitmap *bitmap,int full_refresh);
 //static data16_t *ninjaw_ram;
 
 static UINT8 ioc220_port=0;
-static UINT16 old_cpua_ctrl = 0xff;
+static UINT16 cpua_ctrl = 0xff;
 
 static size_t sharedram_size;
 static data16_t *sharedram;
@@ -181,27 +173,26 @@ static WRITE16_HANDLER( sharedram_w )
 	COMBINE_DATA(&sharedram[offset]);
 }
 
+static void parse_control(void)
+{
+	/* bit 0 enables cpu B */
+	/* however this fails when recovering from a save state
+	   if cpu B is disabled !! */
+	cpu_set_reset_line(2,(cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
+
+}
+
 static WRITE16_HANDLER( cpua_ctrl_w )	/* assumes Z80 sandwiched between 68Ks */
 {
 	if ((data &0xff00) && ((data &0xff) == 0))
-		data = data >> 8;
+		data = data >> 8;	/* for Wgp */
+	cpua_ctrl = data;
 
-	/* bit 0 enables cpu B */
-	cpu_set_reset_line(2,(data &0x1) ? CLEAR_LINE : ASSERT_LINE);
+	parse_control();
 
-	/* is there an irq enable ? */
-
-	/* (currently there's no need to keep track of previous value) */
-	old_cpua_ctrl = data;
 	logerror("CPU #0 PC %06x: write %04x to cpu control\n",cpu_get_pc(),data);
 }
 
-WRITE16_HANDLER( TC0100SCN_triple_screen_w )
-{
-	TC0100SCN_word_0_w(offset,data,mem_mask);
-	TC0100SCN_word_1_w(offset,data,mem_mask);
-	TC0100SCN_word_2_w(offset,data,mem_mask);
-}
 
 /***********************************************************
 				INTERRUPTS
@@ -222,28 +213,28 @@ static READ16_HANDLER( ninjaw_ioc_r )
 	switch (offset)
 	{
 		case 0x00:
+		{
+			switch (ioc220_port & 0xf)
 			{
-				switch (ioc220_port & 0xf)
-				{
-					case 0x00:
-						return input_port_3_word_r(0,mem_mask);	/* DSW A */
+				case 0x00:
+					return input_port_3_word_r(0,mem_mask);	/* DSW A */
 
-					case 0x01:
-						return input_port_4_word_r(0,mem_mask);	/* DSW B */
+				case 0x01:
+					return input_port_4_word_r(0,mem_mask);	/* DSW B */
 
-					case 0x02:
-						return input_port_0_word_r(0,mem_mask);	/* IN0 */
+				case 0x02:
+					return input_port_0_word_r(0,mem_mask);	/* IN0 */
 
-					case 0x03:
-						return input_port_1_word_r(0,mem_mask);	/* IN1 */
+				case 0x03:
+					return input_port_1_word_r(0,mem_mask);	/* IN1 */
 
-					case 0x07:
-						return input_port_2_word_r(0,mem_mask);	/* IN2 */
-				}
+				case 0x07:
+					return input_port_2_word_r(0,mem_mask);	/* IN2 */
+			}
 
 logerror("CPU #0 PC %06x: warning - read unmapped ioc220 port %02x\n",cpu_get_pc(),ioc220_port);
-					return 0;
-			}
+				return 0;
+		}
 
 		case 0x01:
 			return ioc220_port;
@@ -270,18 +261,20 @@ static WRITE16_HANDLER( ninjaw_ioc_w )
 			SOUND
 *****************************************/
 
-static WRITE_HANDLER( bankswitch_w )
-{
-	unsigned char *RAM = memory_region(REGION_CPU2);
-	int banknum = (data - 1) & 7;
+static int banknum = -1;
 
-#ifdef MAME_DEBUG
-	if (banknum>3) logerror("Z80 switch to ROM bank %06x: should only happen if Z80 prg rom is 128K!\n",banknum);
-#endif
-	cpu_setbank (10, &RAM [0x10000 + (banknum * 0x4000)]);
+static void reset_sound_region(void)
+{
+	cpu_setbank( 10, memory_region(REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
 }
 
-WRITE16_HANDLER( ninjaw_sound_w )
+static WRITE_HANDLER( sound_bankswitch_w )
+{
+	banknum = (data - 1) & 7;
+	reset_sound_region();
+}
+
+static WRITE16_HANDLER( ninjaw_sound_w )
 {
 	if (offset == 0)
 		taitosound_port_w (0, data & 0xff);
@@ -299,7 +292,7 @@ WRITE16_HANDLER( ninjaw_sound_w )
 #endif
 }
 
-READ16_HANDLER( ninjaw_sound_r )
+static READ16_HANDLER( ninjaw_sound_r )
 {
 	if (offset == 1)
 		return ((taitosound_comm_r (0) & 0xff));
@@ -458,7 +451,7 @@ static MEMORY_WRITE_START( z80_sound_writemem )
 	{ 0xe400, 0xe403, MWA_NOP }, /* pan */
 	{ 0xee00, 0xee00, MWA_NOP }, /* ? */
 	{ 0xf000, 0xf000, MWA_NOP }, /* ? */
-	{ 0xf200, 0xf200, bankswitch_w },
+	{ 0xf200, 0xf200, sound_bankswitch_w },
 MEMORY_END
 
 
@@ -698,6 +691,32 @@ static struct YM2610interface ym2610_interface =
 };
 
 
+/**************************************************************
+			     SUBWOOFER (SOUND)
+**************************************************************/
+
+static int subwoofer_sh_start(const struct MachineSound *msound)
+{
+	/* Adjust the lowpass filter of the first three YM2610 channels */
+
+	/* The 150 Hz is a common top frequency played by a generic */
+	/* subwoofer, the real Arcade Machine may differs */
+
+	mixer_set_lowpass_frequency(0,100);
+	mixer_set_lowpass_frequency(1,100);
+	mixer_set_lowpass_frequency(2,100);
+
+	return 0;
+}
+
+static struct CustomSound_interface subwoofer_interface =
+{
+	subwoofer_sh_start,
+	0, /* none */
+	0 /* none */
+};
+
+
 /*************************************************************
 			     MACHINE DRIVERS
 
@@ -713,19 +732,19 @@ static struct MachineDriver machine_driver_ninjaw =
 	{
 		{
 			CPU_M68000,
-			13343000,	/* 26.686/2 MHz ??? */
+			16000000/2,	/* 8 MHz ? */
 			ninjaw_readmem,ninjaw_writemem,0,0,
 			ninjaw_interrupt, 1
 		},
 		{
 			CPU_Z80 | CPU_AUDIO_CPU,
-			16000000/4,	/* 4 MHz ??? */
+			16000000/4,	/* 16/4 MHz ? */
 			z80_sound_readmem, z80_sound_writemem,0,0,
 			ignore_interrupt, 0	/* IRQs are triggered by the YM2610 */
 		},
 		{
 			CPU_M68000,
-			13343000,	/* 26.686/2 MHz ??? */
+			16000000/2,	/* 8 MHz ? */
 			ninjaw_cpub_readmem,ninjaw_cpub_writemem,0,0,
 			ninjaw_interrupt, 1
 		},
@@ -735,13 +754,13 @@ static struct MachineDriver machine_driver_ninjaw =
 	0,
 
 	/* video hardware */
-	111*8, 32*8, { 2*8+6, 110*8+6-1, 3*8, 31*8-1 },
+	110*8, 32*8, { 0*8, 108*8-1, 3*8, 31*8-1 },
 
 	ninjaw_gfxdecodeinfo,
 	4096*3, 4096*3,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_DUAL_MONITOR,
+	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_DUAL_MONITOR | VIDEO_ASPECT_RATIO(12,3),
 	0,
 	ninjaw_vh_start,
 	ninjaw_vh_stop,
@@ -753,7 +772,12 @@ static struct MachineDriver machine_driver_ninjaw =
 		{
 			SOUND_YM2610,
 			&ym2610_interface
+		},
+		{
+			SOUND_CUSTOM,
+			&subwoofer_interface
 		}
+
 	}
 };
 
@@ -763,19 +787,19 @@ static struct MachineDriver machine_driver_darius2 =
 	{
 		{
 			CPU_M68000,
-			12000000,	/* 12 MHz ??? */
+			16000000/2,	/* 8 MHz ? */
 			darius2_readmem,darius2_writemem,0,0,
 			ninjaw_interrupt, 1
 		},
 		{
 			CPU_Z80 | CPU_AUDIO_CPU,
-			16000000/4,	/* 4 MHz ??? */
+			16000000/4,	/* 4 MHz ? */
 			z80_sound_readmem, z80_sound_writemem,0,0,
 			ignore_interrupt,0	/* IRQs are triggered by the YM2610 */
 		},
 		{
 			CPU_M68000,
-			12000000,	/* 12 MHz ??? */
+			16000000/2,	/* 8 MHz ? */
 			darius2_cpub_readmem,darius2_cpub_writemem,0,0,
 			ninjaw_interrupt, 1
 		},
@@ -785,13 +809,13 @@ static struct MachineDriver machine_driver_darius2 =
 	0,
 
 	/* video hardware */
-	111*8, 32*8, { 2*8+6, 110*8+6-1, 3*8, 31*8-1 },
+	110*8, 32*8, { 0*8, 108*8-1, 3*8, 31*8-1 },
 
 	ninjaw_gfxdecodeinfo,
 	4096*3, 4096*3,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_DUAL_MONITOR,
+	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_DUAL_MONITOR | VIDEO_ASPECT_RATIO(12,3),
 	0,
 	ninjaw_vh_start,
 	ninjaw_vh_stop,
@@ -803,7 +827,12 @@ static struct MachineDriver machine_driver_darius2 =
 		{
 			SOUND_YM2610,
 			&ym2610_interface
+		},
+		{
+			SOUND_CUSTOM,
+			&subwoofer_interface
 		}
+
 	}
 };
 
@@ -970,7 +999,12 @@ ROM_END
 
 static void init_ninjaw(void)
 {
-	old_cpua_ctrl = 0xff;
+	cpua_ctrl = 0xff;
+	state_save_register_UINT16("main1", 0, "control", &cpua_ctrl, 1);
+	state_save_register_func_postload(parse_control);
+
+	state_save_register_int("sound1", 0, "sound region", &banknum);
+	state_save_register_func_postload(reset_sound_region);
 }
 
 

@@ -260,7 +260,7 @@ static struct GfxLayout pflayout =
 static struct GfxLayout pftoplayout =
 {
 	8,8,
-	RGN_FRAC(2,5),
+	RGN_FRAC(1,5),
 	5,
 	{ RGN_FRAC(4,5), RGN_FRAC(4,5), RGN_FRAC(4,5), RGN_FRAC(4,5), RGN_FRAC(4,5) },
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
@@ -318,7 +318,7 @@ static const struct MachineDriver machine_driver_atarig1 =
 	1280,1280,
 	0,
 
-	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_TYPE_RASTER | VIDEO_MODIFIES_PALETTE | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	atarig1_vh_start,
 	atarig1_vh_stop,

@@ -50,7 +50,7 @@ static READ_HANDLER( konami_IN1_r )
 	{
 		res |= 0x55;
 		res &= bits[cheat];
-		cheat = (++cheat)%4;
+		cheat = (cheat+1)%4;
 	}
 	return res;
 }
@@ -476,7 +476,6 @@ struct VLM5030interface hyperspt_vlm5030_interface =
 	255,		/* volume		 */
 	REGION_SOUND1,	/* memory region  */
 	0,		   /* memory size	 */
-	0,		   /* VCU			 */
 	hyperspt_sample_names
 };
 
@@ -697,7 +696,7 @@ ROM_START( roadf )
 ROM_END
 
 ROM_START( roadf2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	   /* 64k for code */
+	ROM_REGION( 2*0x10000, REGION_CPU1, 0 )	 /* 64k for code + 64k for decrypted opcodes */
 	ROM_LOAD( "5g",           0x4000, 0x2000, 0xd8070d30 )
 	ROM_LOAD( "6g",           0x6000, 0x2000, 0x8b661672 )
 	ROM_LOAD( "8g",           0x8000, 0x2000, 0x714929e8 )
