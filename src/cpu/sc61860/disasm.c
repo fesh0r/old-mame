@@ -99,7 +99,7 @@ static const struct { char *mnemonic; Adr adr; } table[]={
 	{ 0,		Ill	}, { 0,			Ill }, { 0,			Ill	}, { 0,			Ill },
 
 	{ "INCI",	Imp	}, { "DECI",	Imp }, { "INCA",	Imp	}, { "DECA",	Imp },
-	{ "ADM",	Imp	}, { "SBM",		Imp }, { "ANMA",	Imp	}, { "ORMA",	Imm },
+	{ "ADM",	Imp	}, { "SBM",		Imp }, { "ANMA",	Imp	}, { "ORMA",	Imp },
 	{ "INCK",	Imp	}, { "DECK",	Imp }, { "INCV",	Imp	}, { "DECV",	Imp },
 	{ "INA",	Imp	}, { "NOPW",	Imp }, { "WAIT",	Imm	}, { 0,			Ill },
 
@@ -193,8 +193,8 @@ unsigned sc61860_dasm(char *dst, unsigned oldpc)
 				break;
 			case Etc:
 				sprintf(dst,"%-6s",table[oper].mnemonic);
-				//H imm, abs
-				// abs
+				/*H imm, abs */
+				/* abs */
 				break;
 			case Cal: case Lp: break;
 			}
