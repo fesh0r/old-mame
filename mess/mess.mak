@@ -9,7 +9,7 @@ CPUS+=Z80@
 CPUS+=Z180@
 CPUS+=Z80GB@
 CPUS+=CDP1802@
-#CPUS+=8080@
+CPUS+=8080@
 #CPUS+=8085A@
 CPUS+=M6502@
 CPUS+=M65C02@
@@ -64,6 +64,7 @@ CPUS+=TMS9900@
 #CPUS+=TMS9985@
 #CPUS+=TMS9989@
 CPUS+=TMS9995@
+CPUS+=TMS99010@
 #CPUS+=TMS99105A@
 #CPUS+=TMS99110A@
 #CPUS+=Z8000@
@@ -156,6 +157,7 @@ DRVLIBS = \
 	$(OBJ)/aquarius.a \
 	$(OBJ)/exidy.a    \
 	$(OBJ)/galaxy.a   \
+	$(OBJ)/lviv.a   \
 	$(OBJ)/teamconc.a \
 	$(OBJ)/exidy.a    \
 	$(OBJ)/nintendo.a \
@@ -400,7 +402,10 @@ $(OBJ)/ti99.a:	   \
 	  $(OBJ)/mess/systems/ti99_4x.o  \
 	  $(OBJ)/mess/systems/ti99_2.o	 \
 	  $(OBJ)/mess/systems/ti990_4.o  \
-	  $(OBJ)/mess/sndhrdw/spchroms.o
+	  $(OBJ)/mess/systems/ti990_10.o \
+	  $(OBJ)/mess/machine/990_hd.o	 \
+	  $(OBJ)/mess/machine/990_tap.o	 \
+	  $(OBJ)/mess/vidhrdw/911_vdt.o
 
 $(OBJ)/bally.a:    \
 	  $(OBJ)/sound/astrocde.o	 \
@@ -612,6 +617,12 @@ $(OBJ)/galaxy.a:   \
 	  $(OBJ)/mess/vidhrdw/galaxy.o   \
 	  $(OBJ)/mess/systems/galaxy.o
 
+$(OBJ)/lviv.a:   \
+	  $(OBJ)/mess/machine/lviv.o   \
+	  $(OBJ)/mess/vidhrdw/lviv.o   \
+	  $(OBJ)/mess/systems/lviv.o   \
+	  $(OBJ)/mess/formats/lviv_lvt.o
+
 $(OBJ)/magnavox.a: \
 	  $(OBJ)/mess/machine/odyssey2.o \
 	  $(OBJ)/mess/vidhrdw/odyssey2.o \
@@ -686,6 +697,7 @@ COREOBJS += \
 	$(OBJ)/mess/device.o	       \
 	$(OBJ)/mess/config.o	       \
 	$(OBJ)/mess/filemngr.o	       \
+	$(OBJ)/mess/compcfg.o	       \
 	$(OBJ)/mess/tapectrl.o	       \
 	$(OBJ)/mess/menu.o	       \
 	$(OBJ)/mess/printer.o	       \
@@ -694,7 +706,7 @@ COREOBJS += \
 	$(OBJ)/mess/utils.o	       \
 	$(OBJ)/mess/bcd.o	       \
 	$(OBJ)/mess/gregoria.o	       \
-	$(OBJ)/mess/led.o			\
+	$(OBJ)/mess/led.o              \
 	$(OBJ)/mess/vidhrdw/state.o    \
 	$(OBJ)/mess/vidhrdw/m6847.o    \
 	$(OBJ)/mess/vidhrdw/m6845.o    \
@@ -754,11 +766,14 @@ tools/messroms$(EXE): $(OBJ)/mess/tools/messroms/main.o $(OBJ)/unzip.o
 
 
 tools/imgtool$(EXE):	     \
-	  $(IMGTOOL_OBJS)                      \
-	  $(OBJ)/mess/tools/imgtool/stubs.o    \
-	  $(OBJ)/mess/config.o	               \
+	  $(PLATFORM_IMGTOOL_OBJS)	       \
 	  $(OBJ)/unzip.o	               \
+	  $(OBJ)/mess/config.o	               \
 	  $(OBJ)/mess/utils.o	               \
+	  $(OBJ)/mess/formats/fmsx_cas.o       \
+	  $(OBJ)/mess/formats/svi_cas.o        \
+	  $(OBJ)/mess/formats/cococas.o        \
+	  $(OBJ)/mess/tools/imgtool/stubs.o    \
 	  $(OBJ)/mess/tools/imgtool/main.o     \
 	  $(OBJ)/mess/tools/imgtool/imgtool.o  \
 	  $(OBJ)/mess/tools/imgtool/imgwave.o  \
@@ -770,11 +785,8 @@ tools/imgtool$(EXE):	     \
 	  $(OBJ)/mess/tools/imgtool/cococas.o  \
 	  $(OBJ)/mess/tools/imgtool/vmsx_tap.o \
 	  $(OBJ)/mess/tools/imgtool/vmsx_gm2.o \
-	  $(OBJ)/mess/formats/fmsx_cas.o       \
 	  $(OBJ)/mess/tools/imgtool/fmsx_cas.o \
-	  $(OBJ)/mess/formats/svi_cas.o        \
 	  $(OBJ)/mess/tools/imgtool/svi_cas.o  \
-	  $(OBJ)/mess/formats/cococas.o        \
 	  $(OBJ)/mess/tools/imgtool/msx_dsk.o  \
 	  $(OBJ)/mess/tools/imgtool/xsa.o      \
 	  $(OBJ)/mess/tools/imgtool/rsdos.o    \
@@ -794,9 +806,10 @@ tools/imgtool$(EXE):	     \
 
 # text files
 TEXTS = mess.txt sysinfo.htm
-mess.txt: $(EMULATOR)
+
+mess.txt: $(EMULATORCLI)
 	@echo Generating $@...
-	@$(CURPATH)$(EMULATOR) -listtext -noclones -sortname > mess.txt
+	@$(CURPATH)$(EMULATORCLI) -listtext -noclones -sortname > mess.txt
 
 sysinfo.htm: dat2html$(EXE)
 	@echo Generating $@...

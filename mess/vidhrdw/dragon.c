@@ -68,13 +68,6 @@ static int coco3_vidbase;
 static int coco3_palette_recalc(int force);
 static int coco3_calculate_rows(int *bordertop, int *borderbottom);
 
-/* -------------------------------------------------- */
-
-#if 0
-static void coco3_getvideoinfo(int full_refresh, struct rasterbits_source *rs,
-	struct rasterbits_videomode *rvm, struct rasterbits_frame *rf);
-#endif
-
 /* --------------------------------------------------
  * CoCo 1/2 Stuff
  * -------------------------------------------------- */
@@ -117,8 +110,8 @@ static int internal_dragon_vh_start(int m6847_version, void (*charproc)(UINT8))
 	m6847_vh_normalparams(&p);
 	p.version = m6847_version;
 	p.artifactdipswitch = COCO_DIP_ARTIFACTING;
-	p.ram = memory_region(REGION_CPU1);
-	p.ramsize = 0x10000;
+	p.ram = mess_ram;
+	p.ramsize = mess_ram_size;
 	p.charproc = charproc;
 	p.hs_func = coco_m6847_hs_w;
 	p.fs_func = coco_m6847_fs_w;
@@ -148,11 +141,11 @@ int coco2b_vh_start(void)
 
 WRITE_HANDLER(coco_ram_w)
 {
-	UINT8 *mem = memory_region(REGION_CPU1) + offset;
-
-	if (*mem != data) {
-		m6847_touch_vram(offset);
-		*mem = data;
+	if (offset < mess_ram_size) {
+		if (mess_ram[offset] != data) {
+			m6847_touch_vram(offset);
+			mess_ram[offset] = data;
+		}
 	}
 }
 
@@ -181,8 +174,8 @@ int coco3_vh_start(void)
 	m6847_vh_normalparams(&p);
 	p.version = M6847_VERSION_M6847T1_NTSC;
 	p.artifactdipswitch = COCO_DIP_ARTIFACTING;
-	p.ram = memory_region(REGION_CPU1);
-	p.ramsize = 0x80000;
+	p.ram = mess_ram;
+	p.ramsize = mess_ram_size;
 	p.charproc = coco2b_charproc;
 	p.hs_func = coco3_m6847_hs_w;
 	p.fs_func = coco3_m6847_fs_w;
@@ -514,18 +507,20 @@ static UINT8 *coco3_textmapper_noattr(UINT8 *mem, int param, int *fg, int *bg, i
 {
 	/* This mapper uses the character map in the CoCo 3 ROM to display text */
 	UINT8 *result;
-	UINT8 *RAM;
 	int b;
+	UINT8 *ROM;
+	
+	/* Subtracting here so that we can get an offset that looks like a real CoCo address */
+	ROM = memory_region(REGION_CPU1) - 0x8000;
 
-	RAM = (UINT8 *) param;
 	b = (*mem) & 0x7f;
 	if (b < 32) {
 		/* Characters 0-31 are at $FA10 - $FB0F */
-		result = &RAM[0x80000 + 0xfa10 - 0x8000 + (b * 8)];
+		result = &ROM[0xfa10 + (b * 8)];
 	}
 	else {
 		/* Characters 32-127 are at $F09D - $F39C */
-		result = &RAM[0x80000 + 0xf09d - 0x8000 + ((b - 32) * 8)];
+		result = &ROM[0xf09d + ((b - 32) * 8)];
 	}
 	return result;
 }
@@ -575,7 +570,6 @@ static void coco3_rastertrack_getvideomode(struct rastertrack_hvars *hvars)
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 	};
 	int i;
-	UINT8 *temp;
 
 	/* Initialize the pens array */
 	for (i = 0; i < (sizeof(hvars->mode.pens) / sizeof(hvars->mode.pens[0])); i++)
@@ -644,8 +638,7 @@ static void coco3_rastertrack_getvideomode(struct rastertrack_hvars *hvars)
 				hvars->mode.depth = 8;
 				hvars->mode.u.text.mapper = coco3_textmapper_noattr;
 			}
-			temp = memory_region(REGION_CPU1);
-			hvars->mode.u.text.mapper_param = (int)temp;
+			hvars->mode.u.text.mapper_param = (int) mess_ram;
 			hvars->mode.u.text.fontheight = 8;
 
 			/* To quote SockMaster:
@@ -714,20 +707,25 @@ static void coco3_rastertrack_newscreen(struct rastertrack_vvars *vvars, struct 
 #endif
 
 	rows = coco3_calculate_rows(&border_top, NULL);
-	coco3_vidbase = (((coco3_gimevhreg[5] * 0x800) + (coco3_gimevhreg[6] * 8)));
+	coco3_vidbase = (
+		((coco3_gimevhreg[3] & 0x03) * 0x80000) +
+		(coco3_gimevhreg[5] * 0x800) +
+		(coco3_gimevhreg[6] * 8)
+		) % mess_ram_size;
 
 	internal_m6847_rastertrack_newscreen(vvars, hvars, border_top, rows, coco3_vidbase, !coco3_hires, coco3_rastertrack_getvideomode);
 }
 
 static void coco3_ram_w(int offset, int data, int block)
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
 	int vidbase;
 	unsigned int vidbasediff;
 
 	offset = coco3_mmu_translate(block, offset);
+	if (offset & 0x80000000)
+		return;
 
-	if (RAM[offset] != data) {
+	if ((offset >= 0) && (mess_ram[offset] != data)) {
 		if (coco3_hires) {
 			vidbase = coco3_vidbase;
 			vidbasediff = (unsigned int) (offset - vidbase) & 0x7ffff;
@@ -742,7 +740,7 @@ static void coco3_ram_w(int offset, int data, int block)
 				m6847_touch_vram(offset - coco3_vidbase);
 		}
 
-		RAM[offset] = data;
+		mess_ram[offset] = data;
 	}
 }
 
@@ -858,9 +856,10 @@ WRITE_HANDLER(coco3_gimevh_w)
 		rastertrack_touchvideomode();
 		break;
 
+	case 3:
 	case 5:
 	case 6:
-		/*	$FF9D,$FF9E Vertical Offset Registers
+		/*	$FF9B,$FF9D,$FF9E Vertical Offset Registers
 		 *
 		 *	$FF9F Horizontal Offset Register
 		 *		  Bit 7 HVEN Horizontal Virtual Enable
@@ -869,8 +868,11 @@ WRITE_HANDLER(coco3_gimevh_w)
 		 *	According to JK, if an odd value is placed in $FF9E on the 1986
 		 *	GIME, the GIME crashes
 		 *
-		 *  Also, $FF9D and $FF9E are latched at the top of each screen, so
+		 *  Also, $FF9[B|D|E] are latched at the top of each screen, so
 		 *  we schedule a refresh, not touch the video mode
+		 *
+		 *  The reason that $FF9B is not mentioned in offical documentation
+		 *  is because it is only meaninful in CoCo 3's with the 2mb upgrade
 		 */
 		schedule_full_refresh();
 		break;

@@ -171,7 +171,7 @@ struct GfxElement *builduifont(void)
 		0x00,0x00,0x30,0x30,0x00,0x30,0x30,0x00,0x00,0x00,0x30,0x30,0x00,0x30,0x30,0x60,
 		0x10,0x20,0x40,0x80,0x40,0x20,0x10,0x00,0x00,0x00,0xf8,0x00,0xf8,0x00,0x00,0x00,
 		0x40,0x20,0x10,0x08,0x10,0x20,0x40,0x00,0x70,0x88,0x08,0x10,0x20,0x00,0x20,0x00,
-		0x30,0x48,0x94,0xa4,0xa4,0x94,0x48,0x30,0x70,0x88,0x88,0xf8,0x88,0x88,0x88,0x00,
+		0x70,0x88,0xb8,0xa8,0xb8,0x80,0x70,0x00,0x70,0x88,0x88,0xf8,0x88,0x88,0x88,0x00,
 		0xf0,0x88,0x88,0xf0,0x88,0x88,0xf0,0x00,0x70,0x88,0x80,0x80,0x80,0x88,0x70,0x00,
 		0xf0,0x88,0x88,0x88,0x88,0x88,0xf0,0x00,0xf8,0x80,0x80,0xf0,0x80,0x80,0xf8,0x00,
 		0xf8,0x80,0x80,0xf0,0x80,0x80,0x80,0x00,0x70,0x88,0x80,0x98,0x88,0x88,0x70,0x00,
@@ -504,6 +504,8 @@ void displaytext(struct mame_bitmap *bitmap,const struct DisplayText *dt)
 				drawgfx(bitmap,Machine->uifont,*c,dt->color,0,0,x+Machine->uixmin,y+Machine->uiymin,0,TRANSPARENCY_NONE,0);
 				x += Machine->uifontwidth;
 			}
+			else
+				break;
 
 			c++;
 		}
@@ -2136,7 +2138,7 @@ static int displaygameinfo(struct mame_bitmap *bitmap,int selected)
 		ui_displaymessagewindow(bitmap,buf);
 
 		sel = 0;
-		if (code_read_async() != CODE_NONE)
+		if (input_ui_posted() || (code_read_async() != CODE_NONE))
 			sel = -1;
 	}
 	else
@@ -3367,62 +3369,65 @@ int handle_user_interface(struct mame_bitmap *bitmap)
 {
 	static int show_profiler;
 	int request_loadsave = LOADSAVE_NONE;
-#ifdef MESS   
+#ifdef MESS
 	static int mess_pause_for_ui = 0;
-#endif	
+#endif
 
 #ifdef MESS
-if (Machine->gamedrv->flags & GAME_COMPUTER)
-{
-	static int ui_active = 0, ui_toggle_key = 0;
-	static int ui_display_count = 4 * 60;
+	if (Machine->gamedrv->flags & GAME_COMPUTER)
+	{
+		static int ui_active = 0, ui_toggle_key = 0;
+		static int ui_display_count = 30;
 
-	if( input_ui_pressed(IPT_UI_TOGGLE_UI) )
-	{
-		if( !ui_toggle_key )
+		if( input_ui_pressed(IPT_UI_TOGGLE_UI) )
 		{
-			ui_toggle_key = 1;
-			ui_active = !ui_active;
-			ui_display_count = 4 * 60;
-			schedule_full_refresh();
-		 }
-	}
-	else
-	{
-		ui_toggle_key = 0;
-	}
-
-	if( ui_active )
-	{
-			if( HAVE_UI_WARNING && ui_display_count > 0 )
-		{
-				ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
-												"-------------------------\n"\
-												"Mode: PARTIAL Emulation\n"\
-												"UI:   ENABLED\n"\
-												"-------------------------\n"\
-												"**Use SCRLOCK to toggle**\n");
-			if( --ui_display_count == 0 )
+			if( !ui_toggle_key )
+			{
+				ui_toggle_key = 1;
+				ui_active = !ui_active;
+				ui_display_count = 30;
 				schedule_full_refresh();
+			}
+		}
+		else
+		{
+			ui_toggle_key = 0;
+		}
+
+		if( ui_active )
+		{
+			if( HAVE_UI_WARNING && ui_display_count > 0 )
+			{
+					ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
+													"-------------------------\n"\
+													"Mode: PARTIAL Emulation\n"\
+													"UI:   ENABLED\n"\
+													"-------------------------\n"\
+													"**Use SCRLOCK to toggle**\n");
+				if( --ui_display_count == 0 )
+					schedule_full_refresh();
+			}
+		}
+		else
+		{
+			if( HAVE_UI_WARNING && ui_display_count > 0 )
+			{
+					ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
+													"-------------------------\n"\
+													"Mode: FULL Emulation\n"\
+													"UI:   DISABLED\n"\
+													"-------------------------\n"\
+													"**Use SCRLOCK to toggle**\n");
+
+				if( --ui_display_count == 0 )
+					schedule_full_refresh();
+			}
+
+			/* return only if UI wasn't posted */
+			if (input_ui_posted() == 0)
+				return 0;
 		}
 	}
-	else
-	{
-			if( HAVE_UI_WARNING && ui_display_count > 0 )
-		{
-				ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
-												"-------------------------\n"\
-												"Mode: FULL Emulation\n"\
-												"UI:   DISABLED\n"\
-												"-------------------------\n"\
-												"**Use SCRLOCK to toggle**\n");
-
-			if( --ui_display_count == 0 )
-				schedule_full_refresh();
-		}
-		return 0;
-	}
-}
 #endif
 
 	/* if the user pressed F12, save the screen to a file */

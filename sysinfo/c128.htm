@@ -37,7 +37,7 @@ additional vdc videochip for 80 column modes with own connector (rgbi)<br>
  (1 mbyte ram possible)<br>
 sid6581 soundchip<br>
 c64 expansion port with some additional pins<br>
-z80 cpu for CPM mode<br>
+z80 CPU for CPM mode<br>
 c128d<br>
 -----<br>
  c1571 floppy drive build in<br>
@@ -52,7 +52,7 @@ MESS emulation state<br>
 uses c64 emulation for c64 mode<br>
 so only notes for the additional subsystems here<br>
 rasterline based video system<br>
- no cpu holding<br>
+ no CPU holding<br>
  imperfect scrolling support (when 40 columns or 25 lines)<br>
  lightpen support not finished<br>
  rasterline not finished<br>
@@ -66,7 +66,7 @@ vdc emulation<br>
 z80 emulation<br>
  floppy simulation not enough for booting CPM<br>
  so simplified z80 memory management not tested<br>
-no cpu clock doubling<br>
+no CPU clock doubling<br>
 no internal function rom<br>
 c64 mode<br>
  differences to real c64???<br>
@@ -85,7 +85,7 @@ gameport b<br>
  2 button joystick/mouse joystick emulation<br>
  no mouse<br>
 simple tape support<br>
- (not working, cia timing, cpu timing?)<br>
+ (not working, cia timing, CPU timing?)<br>
 serial bus<br>
  simple disk drives<br>
  no printer or other devices<br>
@@ -105,7 +105,7 @@ no userport<br>
  no rs232/v.24 interface<br>
 Video notes<br>
 -----------<br>
-if the game runs to fast with the ntsc version, try the pal version!<br>
+if the game runs to fast with the NTSC version, try the PAL version!<br>
 flickering affects in one video version, try the other video version<br>
 Keys<br>
 ----<br>
@@ -125,7 +125,7 @@ Tape<br>
 ----<br>
 (DAC 1 volume in noise volume)<br>
 loading of wav, prg and prg files in zip archive<br>
-commandline -cassette image<br>
+command line -cassette image<br>
 <p><b>wav:</b><br>
  8 or 16(not tested) bit, mono, 125000 Hz minimum<br>
  has the same problems like an original tape drive (tone head must<br>
@@ -140,7 +140,7 @@ several programs relies on more features<br>
 Discs<br>
 -----<br>
 only file load from drive 8 and 9 implemented<br>
- loads file from rom directory (*.prg,*.p00) (must NOT be specified on commandline)<br>
+ loads file from rom directory (*.prg,*.p00) (must NOT be specified on command line)<br>
  or file from d64 image (here also directory LOAD"$",8 supported)<br>
 use LOAD"filename",8<br>
 or LOAD"filename",8,1 (for loading machine language programs at their address)<br>
@@ -149,7 +149,7 @@ type RUN or the appropriate sys call to start them<br>
 several programs rely on more features<br>
 (loading other file types, writing, ...)<br>
 most games rely on starting own programs in the floppy drive<br>
-(and therefor cpu level emulation is needed)<br>
+(and therefor CPU level emulation is needed)<br>
 Roms<br>
 ----<br>
 .prg<br>
@@ -263,7 +263,7 @@ c128dcr<br>
 as c128 cr<br>
 U102 23256 (read compatible 27256?) 32kB 1571 system rom<br>
 <hr>
-<center><font size=-2>created on Tue Jan 01 12:56:01 2002
+<center><font size=-2>created on Sun May 12 16:53:10 2002
 </font></center>
 </body>
 </html>

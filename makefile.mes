@@ -134,6 +134,8 @@ OBJDIRS += 	$(OBJ)/mess         $(OBJ)/mess/$(MAMEOS)            \
 		$(OBJ)/mess/tools/mkimage  $(OBJ)/mess/sound \
 		$(OBJ)/windowsui $(OBJ)/mess/windowsui
 
+PLATFORM_IMGTOOL_OBJS = $(OBJ)/mess/windows/glob.o
+
 #MESS CPU's
 OBJDIRS += $(OBJ)/mess/cpu
 
@@ -280,7 +282,7 @@ maketree: $(sort $(OBJDIRS))
 
 clean: cleantools cleantexts
 	@echo Deleting object tree $(OBJ)...
-	$(RM) -r $(OBJ)
+	$(RM) -r $(OBJ) lib$(NAME).a
 	@echo Deleting $(EMULATORALL)...
 	$(RM) $(EMULATORALL)
 	@echo Deleting Map file...

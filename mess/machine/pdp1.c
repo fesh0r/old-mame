@@ -1,86 +1,263 @@
+/*
+	pdp1 machine code
+
+	includes emulation for I/O devices (with the IOT opcode) and control panel functions
+
+	TODO:
+	* typewriter out should overwrite the typewriter buffer
+	* improve emulation of the internals of tape reader?
+	* improve puncher timing?
+*/
+
 #include <stdio.h>
-#include "cpu/pdp1/pdp1.h"
-#include "vidhrdw/pdp1.h"
+
 #include "driver.h"
 
+#include "cpu/pdp1/pdp1.h"
 #include "includes/pdp1.h"
 
-/*
- * osd_fread (romfile, pdp1_memory, 16384);
- *
- * is supposed to read 4096 integers!
- * endianess!!!
- *
- * File load functions don't support reading anything but bytes!
- *
- * dirty hack,... see below
- * never did any endianess, the mac and amiga sources... probably
- * must change something in the load routine
- * (perhaps just leave the conversion out)
- *
- */
 
-static unsigned char *ROM;
+/* This flag makes the emulated pdp-1 trigger a sequence break request when a character has been
+typed on the typewriter keyboard.  It is useful in order to test sequence break, but we need
+to build a connection box in which we can connect each wire to any interrupt line.  Also,
+we need to determine the exact relationship between the status register and the sequence break
+system (both standard and type 20). */
+#define USE_SBS 0
 
+#define LOG_IOT 0
+#define LOG_IOT_EXTRA 0
+
+static int tape_read(UINT8 *reply);
+static void reader_callback(int dummy);
+
+
+/* pointer to pdp-1 RAM */
 int *pdp1_memory;
 
-int pdp1_load_rom (int id)
+
+/*
+	devices which are known to generate a completion pulse (source: maintainance manual 9-??,
+	and 9-20, 9-21):
+	emulated:
+	* perforated tape reader
+	* perforated tape punch
+	* typewriter output
+	* CRT display
+	unemulated:
+	* card punch (pac: 43)
+	* line printer (lpr, lsp, but NOT lfb)
+
+	This list should probably include additional optional devices (card reader comes to mind).
+*/
+
+/* IO status word */
+static int io_status;
+
+/* defines for io_status bits */
+enum
 {
-	void *romfile;
-	int i;
+	io_st_ptr = 0200000,	/* perforated tape reader: reader buffer full */
+	io_st_tyo = 0100000,	/* typewriter out: device ready */
+	io_st_tyi = 0040000,	/* typewriter in: new character in buffer */
+	io_st_ptp = 0020000		/* perforated tape punch: device ready */
+};
 
-	/* The spacewar! is mandatory for now. */
-	if (!(romfile = osd_fopen (Machine->gamedrv->name, "spacewar.bin",OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror("PDP1: can't find SPACEWAR.BIN\n");
-		return 1;
-	}
+/* tape reader registers */
+typedef struct tape_reader_t
+{
+	void *fd;		/* file descriptor of tape image */
 
-	if (!device_filename(IO_CARTSLOT,id) || strlen(device_filename(IO_CARTSLOT,id))==0)
-	{
-		logerror("PDP1: no file specified (doesn't matter, not used anyway)!\n");
-	}
-	else
-	/* if (!(cartfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_ROM_CART, 0))) */
-	{
-		logerror("PDP1: file specified, but ignored");
-	}
+	int motor_on;	/* 1-bit reader motor on */
 
-	/* Allocate memory and set up memory regions */
-	if( new_memory_region(REGION_CPU1, 0x10000 * sizeof(int), 0) )
-	{
-		logerror("PDP1: Memory allocation failed!\n");
-		return 1;
-    }
+	int rb;			/* 18-bit reader buffer */
+	int rcl;		/* 1-bit reader clutch */
+	int rc;			/* 2-bit reader counter */
+	int rby;		/* 1-bit reader binary mode flip-flop */
+	int rcp;		/* 1-bit reader "need a completion pulse" flip-flop */
 
- /*
-  * only 4096 are used for now, but pdp1 can address 65336 18 bit words when
-  * extended.
-  */
-    ROM = memory_region(REGION_CPU1);
+	void *timer;	/* timer to simulate reader timing */
+} tape_reader_t;
 
-	/* endianness!!! */
-	osd_fread (romfile, ROM, 16384);
-	osd_fclose (romfile);
+static tape_reader_t tape_reader;
 
-	pdp1_memory = (int *) ROM; /* really bad! */
-#ifdef LSB_FIRST
-	/* for PC (INTEL, AMD...) endianness */
-	for (i=0;i<16384;i+=4)
-	{
-		unsigned char temp;
-		temp=ROM[i];
-		ROM[i]=ROM[i+3];
-		ROM[i+3]=temp;
 
-		temp=ROM[i+1];
-		ROM[i+1]=ROM[i+2];
-		ROM[i+2]=temp;
-	}
-#endif
+/* tape puncher registers */
+typedef struct tape_puncher_t
+{
+	void *fd;		/* file descriptor of tape image */
 
-	return 0;
+	void *timer;	/* timer to generate completion pulses */
+} tape_puncher_t;
+
+static tape_puncher_t tape_puncher;
+
+
+/* typewriter registers */
+typedef struct typewriter_t
+{
+	void *fd;		/* file descriptor of output image */
+
+	int tb;			/* typewriter buffer */
+
+	void *tyo_timer;/* timer to generate completion pulses */
+} typewriter_t;
+
+static typewriter_t typewriter;
+
+
+/* crt display timer */
+static void *dpy_timer;
+
+
+
+/*
+	driver init function
+
+	Set up the pdp1_memory pointer, and generate font data.
+*/
+void init_pdp1(void)
+{
+	UINT8 *dst;
+
+	static const unsigned char fontdata6x8[pdp1_fontdata_size] =
+	{	/* ASCII characters */
+		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x20,0x20,0x20,0x20,0x20,0x00,0x20,0x00,
+		0x50,0x50,0x50,0x00,0x00,0x00,0x00,0x00,0x00,0x50,0xf8,0x50,0xf8,0x50,0x00,0x00,
+		0x20,0x70,0xc0,0x70,0x18,0xf0,0x20,0x00,0x40,0xa4,0x48,0x10,0x20,0x48,0x94,0x08,
+		0x60,0x90,0xa0,0x40,0xa8,0x90,0x68,0x00,0x10,0x20,0x40,0x00,0x00,0x00,0x00,0x00,
+		0x20,0x40,0x40,0x40,0x40,0x40,0x20,0x00,0x10,0x08,0x08,0x08,0x08,0x08,0x10,0x00,
+		0x20,0xa8,0x70,0xf8,0x70,0xa8,0x20,0x00,0x00,0x20,0x20,0xf8,0x20,0x20,0x00,0x00,
+		0x00,0x00,0x00,0x00,0x00,0x30,0x30,0x60,0x00,0x00,0x00,0xf8,0x00,0x00,0x00,0x00,
+		0x00,0x00,0x00,0x00,0x00,0x30,0x30,0x00,0x00,0x08,0x10,0x20,0x40,0x80,0x00,0x00,
+		0x70,0x88,0x88,0x88,0x88,0x88,0x70,0x00,0x10,0x30,0x10,0x10,0x10,0x10,0x10,0x00,
+		0x70,0x88,0x08,0x10,0x20,0x40,0xf8,0x00,0x70,0x88,0x08,0x30,0x08,0x88,0x70,0x00,
+		0x10,0x30,0x50,0x90,0xf8,0x10,0x10,0x00,0xf8,0x80,0xf0,0x08,0x08,0x88,0x70,0x00,
+		0x70,0x80,0xf0,0x88,0x88,0x88,0x70,0x00,0xf8,0x08,0x08,0x10,0x20,0x20,0x20,0x00,
+		0x70,0x88,0x88,0x70,0x88,0x88,0x70,0x00,0x70,0x88,0x88,0x88,0x78,0x08,0x70,0x00,
+		0x00,0x00,0x30,0x30,0x00,0x30,0x30,0x00,0x00,0x00,0x30,0x30,0x00,0x30,0x30,0x60,
+		0x10,0x20,0x40,0x80,0x40,0x20,0x10,0x00,0x00,0x00,0xf8,0x00,0xf8,0x00,0x00,0x00,
+		0x40,0x20,0x10,0x08,0x10,0x20,0x40,0x00,0x70,0x88,0x08,0x10,0x20,0x00,0x20,0x00,
+		0x70,0x88,0xb8,0xa8,0xb8,0x80,0x70,0x00,0x70,0x88,0x88,0xf8,0x88,0x88,0x88,0x00,
+		0xf0,0x88,0x88,0xf0,0x88,0x88,0xf0,0x00,0x70,0x88,0x80,0x80,0x80,0x88,0x70,0x00,
+		0xf0,0x88,0x88,0x88,0x88,0x88,0xf0,0x00,0xf8,0x80,0x80,0xf0,0x80,0x80,0xf8,0x00,
+		0xf8,0x80,0x80,0xf0,0x80,0x80,0x80,0x00,0x70,0x88,0x80,0x98,0x88,0x88,0x70,0x00,
+		0x88,0x88,0x88,0xf8,0x88,0x88,0x88,0x00,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x00,
+		0x08,0x08,0x08,0x08,0x88,0x88,0x70,0x00,0x88,0x90,0xa0,0xc0,0xa0,0x90,0x88,0x00,
+		0x80,0x80,0x80,0x80,0x80,0x80,0xf8,0x00,0x88,0xd8,0xa8,0x88,0x88,0x88,0x88,0x00,
+		0x88,0xc8,0xa8,0x98,0x88,0x88,0x88,0x00,0x70,0x88,0x88,0x88,0x88,0x88,0x70,0x00,
+		0xf0,0x88,0x88,0xf0,0x80,0x80,0x80,0x00,0x70,0x88,0x88,0x88,0x88,0x88,0x70,0x08,
+		0xf0,0x88,0x88,0xf0,0x88,0x88,0x88,0x00,0x70,0x88,0x80,0x70,0x08,0x88,0x70,0x00,
+		0xf8,0x20,0x20,0x20,0x20,0x20,0x20,0x00,0x88,0x88,0x88,0x88,0x88,0x88,0x70,0x00,
+		0x88,0x88,0x88,0x88,0x88,0x50,0x20,0x00,0x88,0x88,0x88,0x88,0xa8,0xd8,0x88,0x00,
+		0x88,0x50,0x20,0x20,0x20,0x50,0x88,0x00,0x88,0x88,0x88,0x50,0x20,0x20,0x20,0x00,
+		0xf8,0x08,0x10,0x20,0x40,0x80,0xf8,0x00,0x30,0x20,0x20,0x20,0x20,0x20,0x30,0x00,
+		0x40,0x40,0x20,0x20,0x10,0x10,0x08,0x08,0x30,0x10,0x10,0x10,0x10,0x10,0x30,0x00,
+		0x20,0x50,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xfc,
+		0x40,0x20,0x10,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x70,0x08,0x78,0x88,0x78,0x00,
+		0x80,0x80,0xf0,0x88,0x88,0x88,0xf0,0x00,0x00,0x00,0x70,0x88,0x80,0x80,0x78,0x00,
+		0x08,0x08,0x78,0x88,0x88,0x88,0x78,0x00,0x00,0x00,0x70,0x88,0xf8,0x80,0x78,0x00,
+		0x18,0x20,0x70,0x20,0x20,0x20,0x20,0x00,0x00,0x00,0x78,0x88,0x88,0x78,0x08,0x70,
+		0x80,0x80,0xf0,0x88,0x88,0x88,0x88,0x00,0x20,0x00,0x20,0x20,0x20,0x20,0x20,0x00,
+		0x20,0x00,0x20,0x20,0x20,0x20,0x20,0xc0,0x80,0x80,0x90,0xa0,0xe0,0x90,0x88,0x00,
+		0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x00,0x00,0x00,0xf0,0xa8,0xa8,0xa8,0xa8,0x00,
+		0x00,0x00,0xb0,0xc8,0x88,0x88,0x88,0x00,0x00,0x00,0x70,0x88,0x88,0x88,0x70,0x00,
+		0x00,0x00,0xf0,0x88,0x88,0xf0,0x80,0x80,0x00,0x00,0x78,0x88,0x88,0x78,0x08,0x08,
+		0x00,0x00,0xb0,0xc8,0x80,0x80,0x80,0x00,0x00,0x00,0x78,0x80,0x70,0x08,0xf0,0x00,
+		0x20,0x20,0x70,0x20,0x20,0x20,0x18,0x00,0x00,0x00,0x88,0x88,0x88,0x98,0x68,0x00,
+		0x00,0x00,0x88,0x88,0x88,0x50,0x20,0x00,0x00,0x00,0xa8,0xa8,0xa8,0xa8,0x50,0x00,
+		0x00,0x00,0x88,0x50,0x20,0x50,0x88,0x00,0x00,0x00,0x88,0x88,0x88,0x78,0x08,0x70,
+		0x00,0x00,0xf8,0x10,0x20,0x40,0xf8,0x00,0x08,0x10,0x10,0x20,0x10,0x10,0x08,0x00,
+		0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x40,0x20,0x20,0x10,0x20,0x20,0x40,0x00,
+		0x00,0x68,0xb0,0x00,0x00,0x00,0x00,0x00,0x20,0x50,0x20,0x50,0xa8,0x50,0x00,0x00,
+		
+		/* non-spacing middle dot */
+		0x00,
+		0x00,
+		0x00,
+		0x20,
+		0x00,
+		0x00,
+		0x00,
+		0x00,
+		/* non-spacing overstrike */
+		0x00,
+		0x00,
+		0x00,
+		0x00,
+		0xfc,
+		0x00,
+		0x00,
+		0x00,
+		/* implies */
+		0x00,
+		0x00,
+		0x70,
+		0x08,
+		0x08,
+		0x08,
+		0x70,
+		0x00,
+		/* or */
+		0x88,
+		0x88,
+		0x88,
+		0x50,
+		0x50,
+		0x50,
+		0x20,
+		0x00,
+		/* and */
+		0x20,
+		0x50,
+		0x50,
+		0x50,
+		0x88,
+		0x88,
+		0x88,
+		0x00,
+		/* up arrow */
+		0x20,
+		0x70,
+		0xa8,
+		0x20,
+		0x20,
+		0x20,
+		0x20,
+		0x00,
+		/* right arrow */
+		0x00,
+		0x20,
+		0x10,
+		0xf8,
+		0x10,
+		0x20,
+		0x00,
+		0x00,
+		/* multiply */
+		0x00,
+		0x88,
+		0x50,
+		0x20,
+		0x50,
+		0x88,
+		0x00,
+		0x00,
+	};
+
+	/* set up memory regions */
+	pdp1_memory = (int *) memory_region(REGION_CPU1); /* really bad! */
+
+	/* set up our font */
+	dst = memory_region(REGION_GFX1);
+
+	memcpy(dst, fontdata6x8, pdp1_fontdata_size);
+
+	/* init variables */
+	io_status = io_st_tyo | io_st_ptp;
+	tape_reader.rcl = tape_reader.rc = 0;
+	tape_reader.timer = tape_puncher.timer = typewriter.tyo_timer = dpy_timer = NULL;
 }
+
 
 static OPBASE_HANDLER(setOPbasefunc)
 {
@@ -90,198 +267,792 @@ static OPBASE_HANDLER(setOPbasefunc)
 
 void pdp1_init_machine(void)
 {
-	/* init pdp1 cpu */
-	extern_iot=pdp1_iot;
-	memory_set_opbase_handler(0,setOPbasefunc);
+	int config;
+
+	memory_set_opbase_handler(0, setOPbasefunc);
+
+	config = readinputport(pdp1_config);
+	pdp1_reset_param.extend_support = config >> pdp1_config_extend_bit & pdp1_config_extend_mask;
+	pdp1_reset_param.hw_multiply = config >> pdp1_config_hw_multiply_bit & pdp1_config_hw_multiply_mask;
+	pdp1_reset_param.hw_divide = config >> pdp1_config_hw_divide_bit & pdp1_config_hw_divide_mask;
+	pdp1_reset_param.type_20_sbs = config >> pdp1_config_type_20_sbs_bit & pdp1_config_type_20_sbs_mask;
 }
+
 
 READ18_HANDLER(pdp1_read_mem)
 {
 	return pdp1_memory ? pdp1_memory[offset] : 0;
 }
 
+
 WRITE18_HANDLER(pdp1_write_mem)
 {
 	if (pdp1_memory)
-		pdp1_memory[offset]=data;
+		pdp1_memory[offset] = data;
 }
-/* these are the key-bits specified in driver\pdp1.c */
-#define FIRE_PLAYER2              128
-#define THRUST_PLAYER2            64
-#define ROTATE_RIGHT_PLAYER2      32
-#define ROTATE_LEFT_PLAYER2       16
-#define FIRE_PLAYER1              8
-#define THRUST_PLAYER1            4
-#define ROTATE_RIGHT_PLAYER1      2
-#define ROTATE_LEFT_PLAYER1       1
 
-/* time in micro seconds, (*io_register) */
-int pdp1_iot(int *io, int md)
+
+/*
+	perforated tape handling
+*/
+
+/*
+	Open a perforated tape image
+
+	unit 0 is reader (read-only), unit 1 is puncher (write-only)
+*/
+int pdp1_tape_init(int id)
 {
- int etime=0;
- switch (cpu_get_reg(PDP1_Y)&077)
- {
-  case 00:
-  {
-   /* Waiting for output to finnish */
-   etime=5;
-   break;
-  }
-  case 01: /* RPA */
-  {
-  /*
-   * This instruction reads one line of tape (all eight Channels) and transfers the resulting 8-bit code to
-   * the Reader Buffer. If bits 5 and 6 of the rpa function are both zero (720001), the contents of the
-   * Reader Buffer must be transferred to the IO Register by executing the rrb instruction. When the Reader
-   * Buffer has information ready to be transferred to the IO Register, Status Register Bit 1 is set to
-   * one. If bits 5 and 6 are different (730001 or 724001) the 8-bit code read from tape is automatically
-   * transferred to the IO Register via the Reader Buffer and appears as follows:
-   *
-   * IO Bits        10 11 12 13 14 15 16 17
-   * TAPE CHANNELS  8  7  6  5  4  3  2  1
-   */
-   int read_byte=0;
-   logerror("\nWarning, RPA instruction not fully emulated: io=0%06o, y=0%06o, pc=0%06o",*io,cpu_get_reg(PDP1_Y),cpu_get_reg(PDP1_PC));
+	void **fd = (id==0) ? & tape_reader.fd : & tape_puncher.fd;
 
-   etime=10; /* probably some more */
-   /* somehow read a byte... */
+	/* open file */
+	*fd = image_fopen(IO_PUNCHTAPE, id, OSD_FILETYPE_IMAGE,
+							(id==0) ? OSD_FOPEN_READ : OSD_FOPEN_WRITE);
 
-   /* ... */
+	if (id == 0)
+	{	/* reader unit */
+		/* start motor if image actually inserted */
+		tape_reader.motor_on = tape_reader.fd ? 1 : 0;
+		/* restart reader IO when necessary */
+		if (tape_reader.timer)
+		{
+			timer_remove(tape_reader.timer);
+			tape_reader.timer = NULL;
+		}
+		if (tape_reader.motor_on && tape_reader.rcl)
+		{
+			/* delay is approximately 1/400s */
+			tape_reader.timer = timer_set(TIME_IN_MSEC(2.5), 0, reader_callback);
+		}
+	}
 
-   reader_buffer=read_byte;
-   if (read_byte==0)
-   {
-	cpu_set_reg(PDP1_F1,0);
-    break;
-   }
-   else
-	cpu_set_reg(PDP1_F1,1);
-   if (!((md>>11)&3))
-   {
-    ;/* work thru rrb */
-   }
-   if (((md>>11)&1)!=((md>>12)&1))
-   {
-    /* code to IO */
-    *io=0;
-    *io|=(reader_buffer&128)<<9;
-    *io|=(reader_buffer&64)<<10;
-    *io|=(reader_buffer&32)<<11;
-    *io|=(reader_buffer&16)<<12;
-    *io|=(reader_buffer&8)<<13;
-    *io|=(reader_buffer&4)<<14;
-    *io|=(reader_buffer&2)<<15;
-    *io|=(reader_buffer&1)<<16;
-   }
-   break;
-  }
-  case 04: /* TYI */
-  {
-  /* When a typewriter key is struck, the code for the struck key is placed in the
-   * typewriter buffer, Program Flag 1 is set, and the type-in status bit is set to
-   * one. A program designed to accept typed-in data would periodically check
-   * Program Flag 1, and if found to be set, an In-Out Transfer Instruction with
-   * address 4 could be executed for the information to be transferred to the
-   * In-Out Register. This In-Out Transfer should not use the optional in-out wait.
-   * The information contained in the typewriter buffer is then transferred to the
-   * right six bits of the In-Out Register. The tyi instruction automatically
-   * clears the In-Out Register before transferring the information and also clears
-   * the type-in status bit.
-   */
+	return INIT_PASS;
+}
 
-   logerror("\nWarning, TYI instruction not fully emulated: io=0%06o, y=0%06o, pc=0%06o",*io,cpu_get_reg(PDP1_Y),cpu_get_reg(PDP1_PC));
+/*
+	Close a perforated tape image
+*/
+void pdp1_tape_exit(int id)
+{
+	void **fd = (id==0) ? & tape_reader.fd : & tape_puncher.fd;
 
-   etime=10; /* probably heaps more */
-   *io=0;
-   *io=fio_dec&077;
-   fio_dec=0;
-   concise=0;
+	if (*fd)
+		osd_fclose(*fd);
+}
 
-   break;
-  }
-  case 07: /* DPY */
-  {
-   /*
-    * PRECISION CRT DISPLAY (TYPE 30)
-    *
-    * This sixteen-inch cathode ray tube display is intended to be used as an on-line output device for the
-    * PDP-1. It is useful for high speed presentation of graphs, diagrams, drawings, and alphanumerical
-    * information. The unit is solid state, self-powered and completely buffered. It has magnetic focus and
-    * deflection.
-    *
-    * Display characteristics are as follows:
-    *
-    *     Random point plotting
-    *     Accuracy of points +/-3 per cent of raster size
-    *     Raster size 9.25 by 9.25 inches
-    *     1024 by 1024 addressable locations
-    *     Fixed origin at center of CRT
-    *     Ones complement binary arithmetic
-    *     Plots 20,000 points per second
-    *
-    * Resolution is such that 512 points along each axis are discernable on the face of the tube.
-    *
-    * One instruction is added to the PDP-1 with the installation of this display:
-    *
-    * Display One Point On CRT
-    * dpy Address 0007
-    *
-    * This instruction clears the light pen status bit and displays one point using bits 0 through 9 of the
-    * AC to represent the (signed) X coordinate of the point and bits 0 through 9 of the IO as the (signed)
-    * Y coordinate.
-    *
-    * Many variations of the Type 30 Display are available. Some of these include hardware for line and
-    * curve generation.
-    */
-   int x;
-   int y;
-   etime=10; /* probably some more */
-   x=(cpu_get_reg(PDP1_AC)+0400000)&0777777;
-   y=(cpu_get_reg(PDP1_IO)+0400000)&0777777;
-   pdp1_plot(x,y);
-   break;
-  }
-  case 011: /* IOT 011 (undocumented?), Input... */
-  {
-   int key_state=readinputport(0);
-   etime=10; /* probably heaps more */
-   *io=0;
-   if (key_state&FIRE_PLAYER2)         *io |= 040000;
-   if (key_state&THRUST_PLAYER2)       *io |= 0100000;
-   if (key_state&ROTATE_LEFT_PLAYER2)  *io |= 0200000;
-   if (key_state&ROTATE_RIGHT_PLAYER2) *io |= 0400000;
-   if (key_state&FIRE_PLAYER1)         *io |= 01;
-   if (key_state&THRUST_PLAYER1)       *io |= 02;
-   if (key_state&ROTATE_LEFT_PLAYER1)  *io |= 04;
-   if (key_state&ROTATE_RIGHT_PLAYER1) *io |= 010;
-   break;
-  }
-  case 030: /* RRB */
-  {
-   logerror("\nWarning, RRB instruction not fully emulated: io=0%06o, y=0%06o, pc=0%06o",*io,cpu_get_reg(PDP1_Y),cpu_get_reg(PDP1_PC));
-   etime=5;
-   cpu_set_reg(PDP1_F1,0);
-   *io=0;
-   *io|=(reader_buffer&128)<<9;
-   *io|=(reader_buffer&64)<<10;
-   *io|=(reader_buffer&32)<<11;
-   *io|=(reader_buffer&16)<<12;
-   *io|=(reader_buffer&8)<<13;
-   *io|=(reader_buffer&4)<<14;
-   *io|=(reader_buffer&2)<<15;
-   *io|=(reader_buffer&1)<<16;
-   break;
-  }
-  case 033: /* CKS */
-  {
-   etime=5;
-  }
-  default:
-  {
-   etime=5;
-   logerror("\nNot supported IOT command: io=0%06o, y=0%06o, pc=0%06o",*io,cpu_get_reg(PDP1_Y),cpu_get_reg(PDP1_PC));
-   break;
-  }
- }
- return etime;
+/*
+	Read a byte from perforated tape
+*/
+static int tape_read(UINT8 *reply)
+{
+	if (tape_reader.fd && (osd_fread(tape_reader.fd, reply, 1) == 1))
+		return 0;	/* unit OK */
+	else
+		return 1;	/* unit not ready */
+}
+
+/*
+	Write a byte to perforated tape
+*/
+static void tape_write(UINT8 data)
+{
+	if (tape_puncher.fd)
+		osd_fwrite(tape_puncher.fd, & data, 1);
+}
+
+/*
+	common code for tape read commands (RPA, RPB, and read-in mode)
+*/
+static void begin_tape_read(int binary, int nac)
+{
+	tape_reader.rb = 0;
+	tape_reader.rcl = 1;
+	tape_reader.rc = (binary) ? 1 : 3;
+	tape_reader.rby = (binary) ? 1 : 0;
+	tape_reader.rcp = nac;
+
+	if (tape_reader.timer)
+	{	/* note this can be caused by a pdp-1 programming error (even if there is no emulator error) */
+		#if LOG_IOT
+			logerror("Error: overlapped perforated tape reads (Read-in mode, RPA/RPB instruction)\n");
+		#endif
+		timer_remove(tape_reader.timer);
+		tape_reader.timer = NULL;
+	}
+
+	/* set up delay if tape is advancing */
+	if (tape_reader.motor_on && tape_reader.rcl)
+	{
+		/* delay is approximately 1/400s */
+		tape_reader.timer = timer_set(TIME_IN_MSEC(2.5), 0, reader_callback);
+	}
+}
+
+/*
+	timer callback to simulate reader IO
+*/
+static void reader_callback(int dummy)
+{
+	int not_ready;
+	UINT8 data;
+
+
+	(void) dummy;
+
+	if (tape_reader.rc)
+	{
+		not_ready = tape_read(& data);
+		if (not_ready)
+		{
+			tape_reader.motor_on = 0;	/* let us stop the motor */
+		}
+		else
+		{
+			if ((! tape_reader.rby) || (data & 0200))
+			{
+				tape_reader.rb |= (tape_reader.rby) ? (data & 077) : data;
+
+				if (tape_reader.rc != 3)
+				{
+					tape_reader.rb <<= 6;
+				}
+
+				tape_reader.rc = (tape_reader.rc+1) & 3;
+
+				if (tape_reader.rc == 0)
+				{	/* IO complete */
+					tape_reader.rcl = 0;
+					if (tape_reader.rcp)
+					{
+						cpunum_set_reg(0, PDP1_IO, tape_reader.rb);	/* transfer reader buffer to IO */
+						pdp1_pulse_iot_done();
+					}
+					else
+						io_status |= io_st_ptr;
+				}
+			}
+		}
+	}
+
+	if (tape_reader.motor_on && tape_reader.rcl)
+		/* delay is approximately 1/400s */
+		timer_reset(tape_reader.timer, TIME_IN_MSEC(2.5));
+	else
+		tape_reader.timer = NULL;
+}
+
+/*
+	timer callback to generate puncher completion pulse
+*/
+static void puncher_callback(int nac)
+{
+	io_status |= io_st_ptp;
+	if (nac)
+	{
+		pdp1_pulse_iot_done();
+	}
+
+	tape_puncher.timer = NULL;
+}
+
+/*
+	Initiate read of a 18-bit word in binary format from tape (used in read-in mode)
+*/
+void pdp1_tape_read_binary(void)
+{
+	begin_tape_read(1, 1);
+}
+
+
+/*
+	Typewiter handling
+*/
+
+/*
+	Open a file for typewriter output
+*/
+int pdp1_typewriter_init(int id)
+{
+	/* open file */
+	typewriter.fd = image_fopen(IO_PRINTER, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_WRITE);
+
+	io_status |= io_st_tyo;
+
+	return INIT_PASS;
+}
+
+/*
+	Close typewriter output file
+*/
+void pdp1_typewriter_exit(int id)
+{
+	if (typewriter.fd)
+		osd_fclose(typewriter.fd);
+}
+
+/*
+	Write a character to typewriter
+*/
+static void typewriter_out(UINT8 data)
+{
+	#if LOG_IOT_EXTRA
+		logerror("typewriter output %o\n", data);
+	#endif
+	pdp1_teletyper_drawchar(data);
+	if (typewriter.fd)
+		osd_fwrite(typewriter.fd, & data, 1);
+}
+
+
+/*
+	timer callback to generate typewriter completion pulse
+*/
+static void tyo_callback(int nac)
+{
+	io_status |= io_st_tyo;
+	if (nac)
+	{
+		pdp1_pulse_iot_done();
+	}
+
+	typewriter.tyo_timer = NULL;
+}
+
+
+/*
+	timer callback to generate crt completion pulse
+*/
+static void dpy_callback(int dummy)
+{
+	(void) dummy;
+	pdp1_pulse_iot_done();
+
+	dpy_timer = NULL;
+}
+
+
+
+/*
+	callback which is called when Start Clear is pulsed
+
+	IO devices should reset
+*/
+void pdp1_io_sc_callback(void)
+{
+	tape_reader.rcl = tape_reader.rc = 0;
+	if (tape_reader.timer)
+	{
+		timer_remove(tape_reader.timer);
+		tape_reader.timer = NULL;
+	}
+
+	if (tape_puncher.timer)
+	{
+		timer_remove(tape_puncher.timer);
+		tape_puncher.timer = NULL;
+	}
+
+	if (typewriter.tyo_timer)
+	{
+		timer_remove(typewriter.tyo_timer);
+		typewriter.tyo_timer = NULL;
+	}
+
+	if (dpy_timer)
+	{
+		timer_remove(dpy_timer);
+		dpy_timer = NULL;
+	}
+
+	io_status = io_st_tyo | io_st_ptp;
+}
+
+
+/*
+	handle IOT
+
+	op2: iot command operation (equivalent to mb & 077)
+	nac: nead a completion pulse
+	mb: contents of the MB register
+	io: pointer on the IO register
+	ac: contents of the AC register
+*/
+void pdp1_iot(int op2, int nac, int mb, int *io, int ac)
+{
+	switch (op2)
+	{
+	/* perforated tape reader */
+	case 001: /* RPA */
+		/*
+		 * Read Perforated Tape, Alphanumeric
+		 * rpa Address 0001
+		 *
+		 * This instruction reads one line of tape (all eight Channels) and transfers the resulting 8-bit code to
+		 * the Reader Buffer. If bits 5 and 6 of the rpa function are both zero (720001), the contents of the
+		 * Reader Buffer must be transferred to the IO Register by executing the rrb instruction. When the Reader
+		 * Buffer has information ready to be transferred to the IO Register, Status Register Bit 1 is set to
+		 * one. If bits 5 and 6 are different (730001 or 724001) the 8-bit code read from tape is automatically
+		 * transferred to the IO Register via the Reader Buffer and appears as follows:
+		 *
+		 * IO Bits        10 11 12 13 14 15 16 17
+		 * TAPE CHANNELS  8  7  6  5  4  3  2  1
+		 */
+		#if LOG_IOT_EXTRA
+			logerror("Warning, RPA instruction not fully emulated: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+		#endif
+
+		begin_tape_read(0, nac);
+		break;
+
+	case 002: /* RPB */
+		/*
+		 * Read Perforated Tape, Binary rpb
+		 * Address 0002
+		 *
+		 * The instruction reads three lines of tape (six Channels per line) and assembles
+		 * the resulting 18-bit word in the Reader Buffer.  For a line to be recognized by
+		 * this instruction Channel 8 must be punched (lines with Channel 8 not punched will
+		 * be skipped over).  Channel 7 is ignored.  The instruction sub 5137, for example,
+		 * appears on tape and is assembled by rpb as follows:
+		 *
+		 * Channel 8 7 6 5 4 | 3 2 1
+		 * Line 1  X   X     |   X
+		 * Line 2  X   X   X |     X
+		 * Line 3  X     X X | X X X
+		 * Reader Buffer 100 010 101 001 011 111
+		 *
+		 * (Vertical dashed line indicates sprocket holes and the symbols "X" indicate holes
+		 * punched in tape). 
+		 *
+		 * If bits 5 and 6 of the rpb instruction are both zero (720002), the contents of
+		 * the Reader Buffer must be transferred to the IO Register by executing
+		 * a rrb instruction.  When the Reader Buffer has information ready to be transferred
+		 * to the IO Register, Status Register Bit 1 is set to one.  If bits 5 and 6 are
+		 * different (730002 or 724002) the 18-bit word read from tape is automatically
+		 * transferred to the IO Register via the Reader Buffer. 
+		 */
+		#if LOG_IOT_EXTRA
+			logerror("Warning, RPB instruction not fully emulated: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+		#endif
+
+		begin_tape_read(1, nac);
+		break;
+
+	case 030: /* RRB */
+		#if LOG_IOT_EXTRA
+			logerror("RRB instruction: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+		#endif
+		*io = tape_reader.rb;
+		io_status &= ~io_st_ptr;
+		break;
+
+
+	/* perforated tape punch */
+	case 005: /* PPA */
+		/*
+		 * Punch Perforated Tape, Alphanumeric
+		 * ppa Address 0005
+		 *
+		 * For each In-Out Transfer instruction one line of tape is punched. In-Out Register
+		 * Bit 17 conditions Hole 1. Bit 16 conditions Hole 2, etc. Bit 10 conditions Hole 8
+		 */
+		#if LOG_IOT_EXTRA
+			logerror("PPA instruction: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+		#endif
+		tape_write(*io & 0377);
+		io_status &= ~io_st_ptp;
+		/* delay is approximately 1/63.3 second */
+		if (tape_puncher.timer)
+		{	/* note this can be caused by a pdp-1 programming error (even if there is no emulator error) */
+			#if LOG_IOT
+				logerror("Error: overlapped PPA/PPB instruction: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+			#endif
+			timer_remove(tape_puncher.timer);
+		}
+		tape_puncher.timer = timer_set(TIME_IN_MSEC(15.8), nac, puncher_callback);
+		break;
+
+	case 006: /* PPB */
+		/*
+		 * Punch Perforated Tape, Binary
+		 * ppb Addres 0006 
+		 *
+		 * For each In-Out Transfer instruction one line of tape is punched. In-Out Register
+		 * Bit 5 conditions Hole 1. Bit 4 conditions Hole 2, etc. Bit 0 conditions Hole 6.
+		 * Hole 7 is left blank. Hole 8 is always punched in this mode. 
+		 */
+		#if LOG_IOT_EXTRA
+			logerror("PPB instruction: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+		#endif
+		tape_write((*io >> 12) | 0200);
+		io_status &= ~io_st_ptp;
+		/* delay is approximately 1/63.3 second */
+		if (tape_puncher.timer)
+		{	/* note this can be caused by a pdp-1 programming error (even if there is no emulator error) */
+			#if LOG_IOT
+				logerror("Error: overlapped PPA/PPB instruction: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+			#endif
+			timer_remove(tape_puncher.timer);
+		}
+		tape_puncher.timer = timer_set(TIME_IN_MSEC(15.8), nac, puncher_callback);
+		break;
+
+
+	/* alphanumeric on-line typewriter */
+	case 003: /* TYO */
+	{
+		int ch, delay;
+
+		#if LOG_IOT_EXTRA
+			logerror("Warning, TYO instruction not fully emulated: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+		#endif
+
+		ch = (*io) & 077;
+
+		typewriter_out(ch);
+		io_status &= ~io_st_tyo;
+
+		/* compute completion delay (source: maintainance manual 9-12, 9-13 and 9-14) */
+		switch (ch)
+		{
+		case 072:	/* lower-case */
+		case 074:	/* upper-case */
+		case 034:	/* black */
+		case 035:	/* red */
+			delay = 175;	/* approximately 175ms (?) */
+			break;
+
+		case 077:	/* carriage return */
+			delay = 205;	/* approximately 205ms (?) */
+			break;
+
+		default:
+			delay = 105;	/* approximately 105ms */
+			break;
+		}
+		if (typewriter.tyo_timer)
+		{	/* note this can be caused by a pdp-1 programming error (even if there is no emulator error) */
+			#if LOG_IOT
+				logerror("Error: overlapped TYO instruction: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+			#endif
+			timer_remove(typewriter.tyo_timer);
+		}
+		typewriter.tyo_timer = timer_set(TIME_IN_MSEC(delay), nac, tyo_callback);
+		break;
+	}
+	case 004: /* TYI */
+		/* When a typewriter key is struck, the code for the struck key is placed in the
+		 * typewriter buffer, Program Flag 1 is set, and the type-in status bit is set to
+		 * one. A program designed to accept typed-in data would periodically check
+		 * Program Flag 1, and if found to be set, an In-Out Transfer Instruction with
+		 * address 4 could be executed for the information to be transferred to the
+		 * In-Out Register. This In-Out Transfer should not use the optional in-out wait.
+		 * The information contained in the typewriter buffer is then transferred to the
+		 * right six bits of the In-Out Register. The tyi instruction automatically
+		 * clears the In-Out Register before transferring the information and also clears
+		 * the type-in status bit.
+		 */
+		#if LOG_IOT_EXTRA
+			logerror("Warning, TYI instruction not fully emulated: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+		#endif
+
+		*io = typewriter.tb;
+		if (! (io_status & io_st_tyi))
+			*io |= 0100;
+		else
+		{
+			io_status &= ~io_st_tyi;
+#ifdef USE_SBS
+			cpu_set_irq_line_and_vector(0, 0, CLEAR_LINE, 0);	/* interrupt it, baby */
+#endif
+		}
+		break;
+
+
+	/* CRT display */
+	case 007: /* DPY */
+	{
+		/*
+		 * PRECISION CRT DISPLAY (TYPE 30)
+		 *
+		 * This sixteen-inch cathode ray tube display is intended to be used as an on-line output device for the
+		 * PDP-1. It is useful for high speed presentation of graphs, diagrams, drawings, and alphanumerical
+		 * information. The unit is solid state, self-powered and completely buffered. It has magnetic focus and
+		 * deflection.
+		 *
+		 * Display characteristics are as follows:
+		 *
+		 *     Random point plotting
+		 *     Accuracy of points +/-3 per cent of raster size
+		 *     Raster size 9.25 by 9.25 inches
+		 *     1024 by 1024 addressable locations
+		 *     Fixed origin at center of CRT
+		 *     Ones complement binary arithmetic
+		 *     Plots 20,000 points per second
+		 *
+		 * Resolution is such that 512 points along each axis are discernable on the face of the tube.
+		 *
+		 * One instruction is added to the PDP-1 with the installation of this display:
+		 *
+		 * Display One Point On CRT
+		 * dpy Address 0007
+		 *
+		 * This instruction clears the light pen status bit and displays one point using bits 0 through 9 of the
+		 * AC to represent the (signed) X coordinate of the point and bits 0 through 9 of the IO as the (signed)
+		 * Y coordinate.
+		 *
+		 * Many variations of the Type 30 Display are available. Some of these include hardware for line and
+		 * curve generation.
+		 */
+		int x;
+		int y;
+
+		x = ((ac+0400000)&0777777) >> 8;
+		y = (((*io)+0400000)&0777777) >> 8;
+		pdp1_plot(x,y);
+
+		if (nac)
+		{
+			if (dpy_timer)
+			{	/* note this can be caused by a pdp-1 programming error (even if there is no emulator error) */
+				#if LOG_IOT
+					logerror("Error: overlapped DPY instruction: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+				#endif
+				timer_remove(dpy_timer);
+			}
+			dpy_timer = timer_set(TIME_IN_USEC(50), 0, dpy_callback);
+		}
+		break;
+	}
+
+	/* Spacewar! controllers */
+	case 011: /* IOT 011 (undocumented?), Input... */
+	{
+		int key_state = readinputport(pdp1_spacewar_controllers);
+
+		*io = 0;
+		if (key_state&FIRE_PLAYER2)         *io |= 040000;
+		if (key_state&THRUST_PLAYER2)       *io |= 0100000;
+		if (key_state&ROTATE_LEFT_PLAYER2)  *io |= 0200000;
+		if (key_state&ROTATE_RIGHT_PLAYER2) *io |= 0400000;
+		if (key_state&FIRE_PLAYER1)         *io |= 01;
+		if (key_state&THRUST_PLAYER1)       *io |= 02;
+		if (key_state&ROTATE_LEFT_PLAYER1)  *io |= 04;
+		if (key_state&ROTATE_RIGHT_PLAYER1) *io |= 010;
+
+		if (key_state&HSPACE_PLAYER1)       *io |= 014;
+		if (key_state&HSPACE_PLAYER2)       *io |= 0600000;
+
+		break;
+	}
+
+	/* check IO status */
+	case 033: /* CKS */
+		#if LOG_IOT_EXTRA
+			logerror("CKS instruction: mb=0%06o, pc=0%06o\n", mb, cpunum_get_reg(0, PDP1_PC));
+		#endif
+		*io = io_status;
+		break;
+
+
+	default:
+		#if LOG_IOT
+			logerror("Ignoring internal error in file " __FILE__ " line %d.\n", __LINE__);
+		#endif
+		break;
+	}
+}
+
+
+/*
+	typewriter keyboard handler
+*/
+static void pdp1_keyboard(void)
+{
+	int i;
+	int j;
+
+	int typewriter_keys[4];
+	static int old_typewriter_keys[4];
+
+	int typewriter_transitions;
+
+
+	for (i=0; i<4; i++)
+		typewriter_keys[i] = readinputport(pdp1_typewriter + i);
+
+	for (i=0; i<4; i++)
+	{
+		typewriter_transitions = typewriter_keys[i] & (~ old_typewriter_keys[i]);
+		if (typewriter_transitions)
+		{
+			for (j=0; (((typewriter_transitions >> j) & 1) == 0) /*&& (j<16)*/; j++)
+				;
+			typewriter.tb = (i << 4) + j;
+			io_status |= io_st_tyi;
+#ifdef USE_SBS
+			cpu_set_irq_line_and_vector(0, 0, ASSERT_LINE, 0);	/* interrupt it, baby */
+#endif
+			cpu_set_reg(PDP1_PF1, 1);
+			/*pdp1_teletyper_drawchar(typewriter.tb);*/	/* right??? */
+			break;
+		}
+	}
+
+	for (i=0; i<4; i++)
+		old_typewriter_keys[i] = typewriter_keys[i];
+}
+
+/*
+	Not a real interrupt - just handle keyboard input
+*/
+int pdp1_interrupt(void)
+{
+	int control_keys;
+	int tw_keys;
+	int ta_keys;
+
+	static int old_control_keys;
+	static int old_tw_keys;
+	static int old_ta_keys;
+
+	int control_transitions;
+	int tw_transitions;
+	int ta_transitions;
+
+
+	/* update display */
+	pdp1_screen_update();
+
+
+	cpu_set_reg(PDP1_SS, readinputport(pdp1_sense_switches));
+
+	/* read new state of control keys */
+	control_keys = readinputport(pdp1_control_switches);
+
+	if (control_keys & pdp1_control)
+	{
+		/* compute transitions */
+		control_transitions = control_keys & (~ old_control_keys);
+
+		if (control_transitions & pdp1_extend)
+		{
+			cpunum_set_reg(0, PDP1_EXTEND_SW, ! cpunum_get_reg(0, PDP1_EXTEND_SW));
+		}
+		if (control_transitions & pdp1_start_nobrk)
+		{
+			pdp1_pulse_start_clear();	/* pulse Start Clear line */
+			cpunum_set_reg(0, PDP1_EXD, cpunum_get_reg(0, PDP1_EXTEND_SW));
+			cpunum_set_reg(0, PDP1_SBM, 0);
+			cpunum_set_reg(0, PDP1_OV, 0);
+			cpunum_set_reg(0, PDP1_PC, cpunum_get_reg(0, PDP1_TA));
+			cpunum_set_reg(0, PDP1_RUN, 1);
+		}
+		if (control_transitions & pdp1_start_brk)
+		{
+			pdp1_pulse_start_clear();	/* pulse Start Clear line */
+			cpunum_set_reg(0, PDP1_EXD, cpunum_get_reg(0, PDP1_EXTEND_SW));
+			cpunum_set_reg(0, PDP1_SBM, 1);
+			cpunum_set_reg(0, PDP1_OV, 0);
+			cpunum_set_reg(0, PDP1_PC, cpunum_get_reg(0, PDP1_TA));
+			cpunum_set_reg(0, PDP1_RUN, 1);
+		}
+		if (control_transitions & pdp1_stop)
+		{
+			cpunum_set_reg(0, PDP1_RUN, 0);
+			cpunum_set_reg(0, PDP1_RIM, 0);	/* bug : we stop after reading an even-numbered word
+											(i.e. data), whereas a real pdp-1 stops after reading
+											an odd-numbered word (i.e. dio instruciton) */
+		}
+		if (control_transitions & pdp1_continue)
+		{
+			cpunum_set_reg(0, PDP1_RUN, 1);
+		}
+		if (control_transitions & pdp1_examine)
+		{
+			pdp1_pulse_start_clear();	/* pulse Start Clear line */
+			cpunum_set_reg(0, PDP1_PC, cpunum_get_reg(0, PDP1_TA));
+			cpunum_set_reg(0, PDP1_MA, cpunum_get_reg(0, PDP1_PC));
+			cpunum_set_reg(0, PDP1_IR, LAC);	/* this instruction is actually executed */
+
+			cpunum_set_reg(0, PDP1_MB, READ_PDP_18BIT(cpunum_get_reg(0, PDP1_MA)));
+			cpunum_set_reg(0, PDP1_AC, cpunum_get_reg(0, PDP1_MB));
+		}
+		if (control_transitions & pdp1_deposit)
+		{
+			pdp1_pulse_start_clear();	/* pulse Start Clear line */
+			cpunum_set_reg(0, PDP1_PC, cpunum_get_reg(0, PDP1_TA));
+			cpunum_set_reg(0, PDP1_MA, cpunum_get_reg(0, PDP1_PC));
+			cpunum_set_reg(0, PDP1_AC, cpunum_get_reg(0, PDP1_TW));
+			cpunum_set_reg(0, PDP1_IR, DAC);	/* this instruction is actually executed */
+
+			cpunum_set_reg(0, PDP1_MB, cpunum_get_reg(0, PDP1_AC));
+			WRITE_PDP_18BIT(cpunum_get_reg(0, PDP1_MA), cpunum_get_reg(0, PDP1_MB));
+		}
+		if (control_transitions & pdp1_read_in)
+		{	/* set cpu to read instructions from perforated tape */
+			pdp1_pulse_start_clear();	/* pulse Start Clear line */
+			cpunum_set_reg(0, PDP1_PC, (cpunum_get_reg(0, PDP1_TA) & 0170000)
+										|  (cpunum_get_reg(0, PDP1_PC) & 0007777));	/* transfer ETA to EPC */
+			/*cpunum_set_reg(0, PDP1_MA, cpunum_get_reg(0, PDP1_PC));*/
+			cpunum_set_reg(0, PDP1_EXD, cpunum_get_reg(0, PDP1_EXTEND_SW));
+			cpunum_set_reg(0, PDP1_OV, 0);		/* right??? */
+			cpunum_set_reg(0, PDP1_RUN, 0);
+			cpunum_set_reg(0, PDP1_RIM, 1);
+		}
+		if (control_transitions & pdp1_reader)
+		{
+		}
+		if (control_transitions & pdp1_tape_feed)
+		{
+		}
+		if (control_transitions & pdp1_single_step)
+		{
+			cpunum_set_reg(0, PDP1_SNGL_STEP, ! cpunum_get_reg(0, PDP1_SNGL_STEP));
+		}
+		if (control_transitions & pdp1_single_inst)
+		{
+			cpunum_set_reg(0, PDP1_SNGL_INST, ! cpunum_get_reg(0, PDP1_SNGL_INST));
+		}
+
+		/* remember new state of control keys */
+		old_control_keys = control_keys;
+
+
+		/* handle test word keys */
+		tw_keys = (readinputport(pdp1_tw_switches_MSB) << 16) | readinputport(pdp1_tw_switches_LSB);
+
+		/* compute transitions */
+		tw_transitions = tw_keys & (~ old_tw_keys);
+
+		if (tw_transitions)
+			cpunum_set_reg(0, PDP1_TW, cpunum_get_reg(0, PDP1_TW) ^ tw_transitions);
+
+		/* remember new state of test word keys */
+		old_tw_keys = tw_keys;
+
+
+		/* handle address keys */
+		ta_keys = readinputport(pdp1_ta_switches);
+
+		/* compute transitions */
+		ta_transitions = ta_keys & (~ old_ta_keys);
+
+		if (ta_transitions)
+			cpunum_set_reg(0, PDP1_TA, cpunum_get_reg(0, PDP1_TA) ^ ta_transitions);
+
+		/* remember new state of test word keys */
+		old_ta_keys = ta_keys;
+
+	}
+	else
+	{
+		old_control_keys = 0;
+		old_tw_keys = 0;
+		old_ta_keys = 0;
+
+		pdp1_keyboard();
+	}
+
+	return ignore_interrupt();
 }

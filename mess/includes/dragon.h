@@ -65,15 +65,14 @@ extern void dragon64_init_machine(void);
 extern void coco_init_machine(void);
 extern void coco2_init_machine(void);
 extern void coco3_init_machine(void);
-extern void dragon_stop_machine(void);
+extern void coco_stop_machine(void);
+extern void dragon64_stop_machine(void);
 extern int coco_cassette_init(int id);
 extern int coco3_cassette_init(int id);
 extern void coco_cassette_exit(int id);
-extern int dragon32_rom_load(int id);
-extern int dragon64_rom_load(int id);
+extern int coco_rom_load(int id);
 extern int coco3_rom_load(int id);
-extern int dragon32_pak_load(int id);
-extern int dragon64_pak_load(int id);
+extern int coco_pak_load(int id);
 extern int coco3_pak_load(int id);
 extern READ_HANDLER ( dragon_mapped_irq_r );
 extern READ_HANDLER ( coco3_mapped_irq_r );
@@ -91,10 +90,14 @@ extern WRITE_HANDLER( coco_m6847_hs_w );
 extern WRITE_HANDLER( coco_m6847_fs_w );
 extern WRITE_HANDLER( coco3_m6847_hs_w );
 extern WRITE_HANDLER( coco3_m6847_fs_w );
-extern int coco3_mmu_translate(int block, int offset);
+extern int coco3_mmu_translate(int bank, int offset);
 extern int dragon_floppy_init(int id);
 extern int dragon_floppy_id(int id);
 extern void dragon_floppy_exit(int id);
+extern int coco_vhd_init(int id);
+extern void coco_vhd_exit(int id);
+extern READ_HANDLER(coco_vhd_io_r);
+extern WRITE_HANDLER(coco_vhd_io_w);
 extern int coco_bitbanger_init (int id);
 extern void coco_bitbanger_exit (int id);
 extern void coco_bitbanger_output (int id, int data);
@@ -193,5 +196,30 @@ extern int coco3_mmu_translatelogicaladdr(int logicaladdr);
 	NULL,						/* input chunk */		\
 	NULL						/* output chunk */		\
 }
+
+#define IO_VHD IO_HARDDISK
+
+#define IO_VHD_PORT								\
+{														\
+	IO_VHD,						/* type */				\
+	1,							/* count */				\
+	"vhd\0",					/* file extensions */	\
+	IO_RESET_NONE,				/* reset depth */		\
+	NULL,						/* id */				\
+	coco_vhd_init,				/* init */				\
+	coco_vhd_exit,				/* exit */				\
+	NULL,						/* info */				\
+	NULL,						/* open */				\
+	NULL,						/* close */				\
+	NULL,						/* status */			\
+	NULL,						/* seek */				\
+	NULL,						/* tell */				\
+	NULL,						/* input */				\
+	NULL,						/* output */			\
+	NULL,						/* input chunk */		\
+	NULL						/* output chunk */		\
+}
+
+
 
 #endif /* DRAGON_H */

@@ -244,7 +244,7 @@ BEGIN
             VALUE "FileDescription", "Multiple Arcade Machine Emulator for Win32\0"
             VALUE "FileVersion", "0, 53, 0, 0\0"
             VALUE "InternalName", "MAME32\0"
-            VALUE "LegalCopyright", "Copyright © 1997-2001 Nicola Salmoria and the MAME team\0"
+            VALUE "LegalCopyright", "Copyright © 1997-2002 Nicola Salmoria and the MAME team\0"
 #endif
             VALUE "LegalTrademarks", "\0"
 #ifdef MESS
@@ -280,6 +280,10 @@ IDI_MAME32_ICON         ICON    DISCARDABLE     "res/mame32.ico"
 #endif
 IDI_WIN_ROMS            ICON    DISCARDABLE     "res/win_roms.ico"
 IDI_WIN_NOROMS          ICON    DISCARDABLE     "res/win_noro.ico"
+#ifdef MESS
+IDI_WIN_NOROMSNEEDED    ICON    DISCARDABLE     "res/win_nrnd.ico"
+IDI_WIN_MISSINGOPTROM	ICON	DISCARDABLE		"res/win_noor.ico"
+#endif
 IDI_WIN_UNKNOWN         ICON    DISCARDABLE     "res/win_unkn.ico"
 IDI_WIN_REDX            ICON    DISCARDABLE     "res/win_redx.ico"
 IDI_FOLDER_AVAILABLE    ICON    DISCARDABLE     "res\\foldavail.ico"
@@ -321,7 +325,7 @@ BEGIN
     CTEXT           "Multi Emulator Super System",IDC_STATIC,147,7,142,
                     11,NOT WS_GROUP
     CTEXT           "Version 0",IDC_VERSION,147,18,142,11,NOT WS_GROUP
-    CTEXT           "Copyright (C) 1998-2001 The MESS Team",IDC_STATIC,147,
+    CTEXT           "Copyright (C) 1998-2002 The MESS Team",IDC_STATIC,147,
                     29,142,10,NOT WS_GROUP
     CTEXT           "MESS GUI based on MAME32 version by",IDC_STATIC,147,51,142,10,NOT
                     WS_GROUP
@@ -337,7 +341,7 @@ BEGIN
     CTEXT           "Multiple Arcade Machine Emulator",IDC_STATIC,147,7,142,
                     11,NOT WS_GROUP
     CTEXT           "Version 0",IDC_VERSION,147,18,142,11,NOT WS_GROUP
-    CTEXT           "Copyright (C) 1997-2001 The MAME Team",IDC_STATIC,147,
+    CTEXT           "Copyright (C) 1997-2002 The MAME Team",IDC_STATIC,147,
                     29,142,10,NOT WS_GROUP
     CTEXT           "MAME32 version by",IDC_STATIC,147,51,142,10,NOT
                     WS_GROUP
@@ -679,6 +683,11 @@ BEGIN
                     WS_TABSTOP,50,64,163,10,0,HIDC_CHEAT
     CONTROL         "Error log (for developers)",IDC_LOG,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,50,79,163,10,0,HIDC_LOG
+#ifdef MESS
+    LTEXT           "RAM size",IDC_RAM_CAPTION,50,94,50,10
+    COMBOBOX        IDC_RAM_COMBOBOX,100,94,80,76,CBS_DROPDOWNLIST | WS_VSCROLL |
+                    WS_TABSTOP
+#endif
     PUSHBUTTON      "Reset",IDC_PROP_RESET,7,184,97,14,0,0,HIDC_PROP_RESET
     PUSHBUTTON      "Restore Default Settings",IDC_USE_DEFAULT,114,184,99,14,
                     0,0,HIDC_USE_DEFAULT

@@ -1,0 +1,13 @@
+# ApexC CRC List
+# Compiled by Stefano 'JoJo' Priore
+# Note: This list is provided as a record of known dumps for this system.  
+#       These checksums have not been validated and cannot be assumed correct.  
+#       They are provided here as a database to help the emulation of this system.  
+
+
+# crc    = Game Name | Year | Manufacturer
+
+[apexc]
+6ae5de89 = Hello World 1.apc | 2001 | Raphael Nabet |
+3cea42e3 = Hello World 2.apc | 2001 | Raphael Nabet |
+55d5ce7d = Hello World 3.apc | 2001 | Raphael Nabet |                                                                                                          

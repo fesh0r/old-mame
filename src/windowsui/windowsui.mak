@@ -2,7 +2,7 @@
 # make SUFFIX=32
 
 # don't create gamelist.txt
-TEXTS=
+# TEXTS=
 
 ifndef MSVC
 # remove pedantic
@@ -79,6 +79,10 @@ RC = windres
 RCDEFS = -DMESS -DNDEBUG -D_WIN32_IE=0x0400
 
 RCFLAGS = -O coff --include-dir mess/windowsui --include-dir src/windowsui
+
+ifdef DEBUG
+RCFLAGS += -DMAME_DEBUG
+endif
 
 $(OBJ)/mess/windowsui/%.res: mess/windowsui/%.rc
 	@echo Compiling resources $<...

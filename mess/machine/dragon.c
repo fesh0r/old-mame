@@ -56,12 +56,13 @@
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
 #include "includes/rstrtrck.h"
-#include "vidhrdw/m6847.h"
 #include "includes/dragon.h"
+#include "includes/cococart.h"
+#include "includes/6883sam.h"
+#include "includes/6551.h"
+#include "vidhrdw/m6847.h"
 #include "formats/cocopak.h"
 #include "formats/cococas.h"
-#include "includes/6883sam.h"
-#include "includes/cococart.h"
 #include "cassette.h"
 
 static UINT8 *coco_rom;
@@ -85,10 +86,11 @@ static READ_HANDLER (  d_pia0_ca1_r );
 static READ_HANDLER (  d_pia0_cb1_r );
 static READ_HANDLER (  d_pia0_pa_r );
 static READ_HANDLER (  d_pia1_pa_r );
-static READ_HANDLER (  d_pia1_pb_r_dragon );
+static READ_HANDLER (  d_pia1_pb_r_coco );
 static READ_HANDLER (  d_pia1_pb_r_coco2 );
 static WRITE_HANDLER ( d_pia0_pa_w );
 static WRITE_HANDLER ( d_pia0_pb_w );
+static WRITE_HANDLER ( dragon64_pia1_pb_w );
 static WRITE_HANDLER ( d_pia1_cb2_w);
 static WRITE_HANDLER ( d_pia0_cb2_w);
 static WRITE_HANDLER ( d_pia1_ca2_w);
@@ -106,9 +108,13 @@ static void d_sam_set_pageonemode(int val);
 static void d_sam_set_mpurate(int val);
 static void d_sam_set_memorysize(int val);
 static void d_sam_set_maptype(int val);
+static void dragon64_sam_set_maptype(int val);
 static void coco3_sam_set_maptype(int val);
 static void coco_setcartline(int data);
 static void coco3_setcartline(int data);
+
+#define myMIN(a, b) ((a) < (b) ? (a) : (b))
+#define myMAX(a, b) ((a) > (b) ? (a) : (b))
 
 /* These sets of defines control logging.  When MAME_DEBUG is off, all logging
  * is off.  There is a different set of defines for when MAME_DEBUG is on so I
@@ -135,6 +141,7 @@ static void coco3_setcartline(int data);
 #define LOG_TIMER       0
 #define LOG_DEC_TIMER	0
 #define LOG_IRQ_RECALC	0
+#define LOG_D64MEM		0
 #else /* !MAME_DEBUG */
 #define LOG_PAK			0
 #define LOG_CASSETTE	0
@@ -150,13 +157,14 @@ static void coco3_setcartline(int data);
 #define LOG_TIMER       0
 #define LOG_DEC_TIMER	0
 #define LOG_IRQ_RECALC	0
+#define LOG_D64MEM		0
 #endif /* MAME_DEBUG */
 
 static void coco3_timer_hblank(void);
 static int count_bank(void);
 static int is_Orch90(void);
 
-static struct pia6821_interface dragon_pia_intf[] =
+static struct pia6821_interface coco_pia_intf[] =
 {
 	/* PIA 0 */
 	{
@@ -167,7 +175,7 @@ static struct pia6821_interface dragon_pia_intf[] =
 
 	/* PIA 1 */
 	{
-		/*inputs : A/B,CA/B1,CA/B2 */ d_pia1_pa_r, d_pia1_pb_r_dragon, 0, d_pia1_cb1_r, 0, 0,
+		/*inputs : A/B,CA/B1,CA/B2 */ d_pia1_pa_r, d_pia1_pb_r_coco, 0, d_pia1_cb1_r, 0, 0,
 		/*outputs: A/B,CA/B2	   */ d_pia1_pa_w, d_pia1_pb_w, d_pia1_ca2_w, d_pia1_cb2_w,
 		/*irqs	 : A/B			   */ d_pia1_firq_a, d_pia1_firq_b
 	}
@@ -207,17 +215,24 @@ static struct pia6821_interface coco3_pia_intf[] =
 	}
 };
 
-static struct sam6883_interface dragon_sam_intf =
+static struct pia6821_interface dragon64_pia_intf[] =
 {
-	m6847_set_row_height,
-	m6847_set_video_offset,
-	d_sam_set_pageonemode,
-	d_sam_set_mpurate,
-	d_sam_set_memorysize,
-	NULL
+	/* PIA 0 */
+	{
+		/*inputs : A/B,CA/B1,CA/B2 */ d_pia0_pa_r, 0, d_pia0_ca1_r, d_pia0_cb1_r, 0, 0,
+		/*outputs: A/B,CA/B2	   */ d_pia0_pa_w, d_pia0_pb_w, d_pia0_ca2_w, d_pia0_cb2_w,
+		/*irqs	 : A/B			   */ d_pia0_irq_a, d_pia0_irq_b
+	},
+
+	/* PIA 1 */
+	{
+		/*inputs : A/B,CA/B1,CA/B2 */ d_pia1_pa_r, d_pia1_pb_r_coco, 0, d_pia1_cb1_r, 0, 0,
+		/*outputs: A/B,CA/B2	   */ d_pia1_pa_w, dragon64_pia1_pb_w, d_pia1_ca2_w, d_pia1_cb2_w,
+		/*irqs	 : A/B			   */ d_pia1_firq_a, d_pia1_firq_b
+	}
 };
 
-static struct sam6883_interface dragon64_sam_intf =
+static struct sam6883_interface coco_sam_intf =
 {
 	m6847_set_row_height,
 	m6847_set_video_offset,
@@ -235,6 +250,16 @@ static struct sam6883_interface coco3_sam_intf =
 	d_sam_set_mpurate,
 	NULL,
 	coco3_sam_set_maptype
+};
+
+static struct sam6883_interface dragon64_sam_intf =
+{
+	m6847_set_row_height,
+	m6847_set_video_offset,
+	d_sam_set_pageonemode,
+	d_sam_set_mpurate,
+	d_sam_set_memorysize,
+	dragon64_sam_set_maptype
 };
 
 static const struct cartridge_slot *coco_cart_interface;
@@ -288,15 +313,15 @@ static int load_pak_into_region(void *fp, int *pakbase, int *paklen, UINT8 *mem,
 
 static void pak_load_trailer(const pak_decodedtrailer *trailer)
 {
-	cpu_set_reg(M6809_PC, trailer->reg_pc);
-	cpu_set_reg(M6809_X, trailer->reg_x);
-	cpu_set_reg(M6809_Y, trailer->reg_y);
-	cpu_set_reg(M6809_U, trailer->reg_u);
-	cpu_set_reg(M6809_S, trailer->reg_s);
-	cpu_set_reg(M6809_DP, trailer->reg_dp);
-	cpu_set_reg(M6809_B, trailer->reg_b);
-	cpu_set_reg(M6809_A, trailer->reg_a);
-	cpu_set_reg(M6809_CC, trailer->reg_cc);
+	cpunum_set_reg(0, M6809_PC, trailer->reg_pc);
+	cpunum_set_reg(0, M6809_X, trailer->reg_x);
+	cpunum_set_reg(0, M6809_Y, trailer->reg_y);
+	cpunum_set_reg(0, M6809_U, trailer->reg_u);
+	cpunum_set_reg(0, M6809_S, trailer->reg_s);
+	cpunum_set_reg(0, M6809_DP, trailer->reg_dp);
+	cpunum_set_reg(0, M6809_B, trailer->reg_b);
+	cpunum_set_reg(0, M6809_A, trailer->reg_a);
+	cpunum_set_reg(0, M6809_CC, trailer->reg_cc);
 
 	/* I seem to only be able to get a small amount of the PIA state from the
 	 * snapshot trailers. Thus I am going to configure the PIA myself. The
@@ -353,6 +378,14 @@ static int generic_pak_load(int id, UINT8 *rambase, UINT8 *rombase, UINT8 *pakba
 		int trailerlen;
 		UINT8 trailerraw[500];
 
+		if (mess_ram_size < 0x10000) {
+#if LOG_PAK
+			logerror("Cannot load PAK files without at least 64k.\n");
+#endif
+			osd_fclose(fp);
+			return 1;
+		}
+
 		if (osd_fread(fp, &header, sizeof(header)) < sizeof(header)) {
 #if LOG_PAK
 			logerror("Could not fully read PAK.\n");
@@ -399,64 +432,40 @@ static int generic_pak_load(int id, UINT8 *rambase, UINT8 *rombase, UINT8 *pakba
 		if (paklength > 0xff00)
 			paklength = 0xff00;
 
-		/* Since PAK files allow the flexibility of loading anywhere in
-		 * the base RAM or ROM, we have to do tricks because in MESS's
-		 * memory, RAM and ROM may be separated, hense this function's
-		 * two parameters.
+		/* PAK files reflect the fact that JeffV's emulator did not appear to
+		 * differentiate between RAM and ROM memory.  So what we do when a PAK
+		 * loads is to copy the ROM into RAM, load the PAK into RAM, and then
+		 * copy the part of RAM corresponding to PAK ROM to the actual PAK ROM
+		 * area.
 		 *
-		 * Similarly, some PAKs appear to be loading into high RAM.  I
-		 * am not completely sure how to distinguish this, but I can
-		 * guess
+		 * It is ugly, but it reflects the way that JeffV's emulator works
 		 */
 
+		memcpy(rambase + 0x8000, rombase, 0x4000);
+		memcpy(rambase + 0xC000, pakbase, 0x3F00);
+
 		/* Get the RAM portion */
-		if (load_pak_into_region(fp, &pakstart, &paklength, rambase, 0x0000, 0x8000)) {
+		if (load_pak_into_region(fp, &pakstart, &paklength, rambase, 0x0000, 0xff00)) {
 			osd_fclose(fp);
 			return 1;
 		}
 
-		if (pakstart == 0x8000) {
-			/* We are probably loading into high RAM */
-			if ((rombase - rambase) < 0x10000) {
-				if (load_pak_into_region(fp, &pakstart, &paklength, rambase, 0x8000, 0x7F00)) {
-					osd_fclose(fp);
-					return 1;
-				}
-			}
-		}
-		else {
-			/* Get the ROM portion */
-			if (load_pak_into_region(fp, &pakstart, &paklength, rombase, 0x8000, 0x4000)) {
-				osd_fclose(fp);
-				return 1;
-			}
-			/* Get the PAK portion */
-			if (load_pak_into_region(fp, &pakstart, &paklength, pakbase, 0xC000, 0x3F00)) {
-				osd_fclose(fp);
-				return 1;
-			}
-		}
+		memcpy(pakbase, rambase + 0xC000, 0x3F00);
 		osd_fclose(fp);
 	}
 	return INIT_PASS;
 }
 
-int dragon32_pak_load(int id)
+int coco_pak_load(int id)
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	return generic_pak_load(id, &ROM[0], &ROM[0x8000], &ROM[0xc000]);
-}
-
-int dragon64_pak_load(int id)
-{
-	UINT8 *ROM = memory_region(REGION_CPU1);
-	return generic_pak_load(id, &ROM[0], &ROM[0x10000], &ROM[0x14000]);
+	return generic_pak_load(id, mess_ram, &ROM[0], &ROM[0x4000]);
 }
 
 int coco3_pak_load(int id)
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	return generic_pak_load(id, &ROM[0x70000], &ROM[0x80000], &ROM[0x8c000]);
+	return generic_pak_load(id, mess_ram + (0x70000 % mess_ram_size), &ROM[0x0000], &ROM[0xc000]);
 }
 
 /***************************************************************************
@@ -518,16 +527,10 @@ static int generic_rom_load(int id, UINT8 *dest, UINT16 destlength)
 	return INIT_PASS;
 }
 
-int dragon32_rom_load(int id)
+int coco_rom_load(int id)
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	return generic_rom_load(id, &ROM[0xc000], 0x4000);
-}
-
-int dragon64_rom_load(int id)
-{
-	UINT8 *ROM = memory_region(REGION_CPU1);
-	return generic_rom_load(id, &ROM[0x14000], 0x4000);
+	return generic_rom_load(id, &ROM[0x4000], 0x4000);
 }
 
 int coco3_rom_load(int id)
@@ -544,11 +547,11 @@ int coco3_rom_load(int id)
 	if( count == 0 )
 		/* Load roms starting at 0x8000 and mirror upwards. */
 		/* ROM size is 32K max */
-		return generic_rom_load(id, &ROM[0x88000], 0x8000);
+		return generic_rom_load(id, &ROM[0x8000], 0x8000);
 	else
 		/* Load roms starting at 0x8000 and mirror upwards. */
 		/* ROM bank is 16K max */
-		return generic_rom_load(id, &ROM[0x88000], 0x4000);
+		return generic_rom_load(id, &ROM[0x8000], 0x4000);
 }
 
 /***************************************************************************
@@ -1013,6 +1016,11 @@ static WRITE_HANDLER ( d_pia0_pb_w )
 	pia0_pb = data;
 }
 
+static WRITE_HANDLER ( d_pia0_pb_w_dragon64 )
+{
+	d_pia0_pb_w(offset, data);
+}
+
 /* The following hacks are necessary because a large portion of cartridges
  * tie the Q line to the CART line.  Since Q pulses with every single clock
  * cycle, this would be prohibitively slow to emulate.  Thus we are only
@@ -1115,6 +1123,21 @@ static WRITE_HANDLER( d_pia1_pb_w )
 	 dragon_sound_update();
 }
 
+enum
+{
+	DRAGON64_SAMMAP = 1,
+	DRAGON64_PIAMAP = 2,
+	DRAGON64_ALL = 3
+};
+
+static void dragon64_sethipage(int type, int val);
+
+static WRITE_HANDLER( dragon64_pia1_pb_w )
+{
+	d_pia1_pb_w(0, data);
+	dragon64_sethipage(DRAGON64_PIAMAP, data & 0x04);
+}
+
 static WRITE_HANDLER( coco3_pia1_pb_w )
 {
 	d_pia1_pb_w(0, data);
@@ -1141,25 +1164,20 @@ static READ_HANDLER ( d_pia1_pa_r )
 	return (device_input(IO_CASSETTE, 0) >= 0) ? 1 : 0;
 }
 
-static READ_HANDLER ( d_pia1_pb_r_dragon )
+static READ_HANDLER ( d_pia1_pb_r_coco )
 {
 	/* This handles the reading of the memory sense switch (pb2) for the Dragon and CoCo 1,
 	 * and serial-in (pb0). Serial-in not yet implemented.
 	 */
+	int result;
 
-	switch( readinputport(12) & 0x18 )		/* Read dip switch setting "on motherboard" */
-	{
-		case 0x00: /* 32/64K: wire output of pia0_pb7 to input pia1_pb2  */
-			return (pia0_pb & 0x80) >> 5;
-			break;
-		case 0x08: /* 16K: wire pia1_pb2 high */
-			return 0x04;
-			break;
-		case 0x10: /* 4K: wire pia1_pb2 low */
-			return 0x00;
-			break;
-	}
-	return 0;
+	if (mess_ram_size >= 0x8000)
+		result = (pia0_pb & 0x80) >> 5;
+	else if (mess_ram_size >= 0x4000)
+		result = 0x04;
+	else
+		result = 0x00;
+	return result;
 }
 
 static READ_HANDLER ( d_pia1_pb_r_coco2 )
@@ -1167,20 +1185,15 @@ static READ_HANDLER ( d_pia1_pb_r_coco2 )
 	/* This handles the reading of the memory sense switch (pb2) for the CoCo 2 and 3,
 	 * and serial-in (pb0). Serial-in not yet implemented.
 	 */
+	int result;
 
-	switch( readinputport(12) & 0x18 )		/* Read dip switch setting "on motherboard" */
-	{
-		case 0x00: /* 32/64K: wire output of pia0_pb6 to input pia1_pb2  */
-			return (pia0_pb & 0x40) >> 4;
-			break;
-		case 0x08: /* 16K: wire pia1_pb2 high */
-			return 0x04;
-			break;
-		case 0x10: /* 4K: wire pia1_pb2 low */
-			return 0x00;
-			break;
-	}
-	return 0;
+	if (mess_ram_size <= 0x1000)
+		result = 0x00;					/* 4K: wire pia1_pb2 low */
+	else if (mess_ram_size <= 0x4000)
+		result = 0x04;					/* 16K: wire pia1_pb2 high */
+	else
+		result = (pia0_pb & 0x40) >> 4;	/* 32/64K: wire output of pia0_pb6 to input pia1_pb2  */
+	return result;
 }
 
 /***************************************************************************
@@ -1457,88 +1470,136 @@ static void coco3_timer_set_interval(int interval)
   MMU
 ***************************************************************************/
 
-WRITE_HANDLER ( dragon64_ram_w );
-WRITE_HANDLER ( dragon64_ram_w )
+static WRITE_HANDLER ( dragon64_ram_w )
 {
 	coco_ram_w(offset + 0x8000, data);
 }
 
 static void d_sam_set_maptype(int val)
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
-	if (val) {
-		cpu_setbank(1, &RAM[0x8000]);
-		memory_set_bankhandler_w(1, 0, dragon64_ram_w);
+	if (val && (mess_ram_size > 0x8000)) {
+		cpu_setbank(2, &mess_ram[0x8000]);
+		memory_set_bankhandler_w(2, 0, dragon64_ram_w);
 	}
 	else {
-		cpu_setbank(1, coco_rom);
-		memory_set_bankhandler_w(1, 0, MWA_ROM);
+		cpu_setbank(2, coco_rom);
+		memory_set_bankhandler_w(2, 0, MWA_ROM);
 	}
+}
+
+static void dragon64_sethipage(int type, int val)
+{
+	static int hipage = 0;
+	UINT8 *bank;
+
+	if (type == DRAGON64_ALL)
+	{
+		/* initial value */
+		hipage = DRAGON64_PIAMAP;
+	}
+	else
+	{
+		if (val)
+			hipage |= type;
+		else
+			hipage &= ~type;
+	}
+
+	if (hipage & DRAGON64_SAMMAP)
+	{
+		cpu_setbank(2, &mess_ram[0x8000]);
+		memory_set_bankhandler_w(2, 0, dragon64_ram_w);
+	}
+	else
+	{
+		/* for some reason, the PIA tries to switch over to the other ROM at
+		 * $BB5D and $BB65, and I don't know how this worked in a real Dragon 64
+		 *
+		 * Perhaps something to do with the PIA original state?
+		 */
+		if ((hipage & DRAGON64_PIAMAP) || ((cpu_getactivecpu() >= 0) && ((activecpu_get_pc() & 0xc000) == 0x8000)))
+			bank = coco_rom;
+		else
+			bank = coco_rom + 0x8000;
+		cpu_setbank(2, bank);
+		memory_set_bankhandler_w(2, 0, MWA_ROM);
+	}
+
+#if LOG_D64MEM
+	logerror("dragon64_sethipage(): hipage=%i\n", hipage);
+#endif
+
+	cpu_setbank(3, &mess_ram[0xc000]);
+}
+
+static void dragon64_sam_set_maptype(int val)
+{
+	dragon64_sethipage(DRAGON64_SAMMAP, val);
 }
 
 /* Coco 3 */
 
-int coco3_mmu_lookup(int block, int forceram);
-int coco3_mmu_lookup(int block, int forceram)
-{
-	int result;
-
-	if (coco3_gimereg[0] & 0x40) {
-		if (coco3_gimereg[1] & 1)
-			block += 8;
-		result = coco3_mmu[block];
-	}
-	else {
-		result = block + 56;
-	}
-
-	/* Are we actually in ROM?
-	 *
-	 * In our world, ROM is represented by memory blocks 0x40-0x47
-	 *
-	 * 0x40			Extended Color Basic
-	 * 0x41			Color Basic
-	 * 0x42			Reset Initialization
-	 * 0x43			Super Extended Color Basic
-	 * 0x44-0x47	Cartridge ROM
-	 *
-	 * This is the level where ROM is mapped, according to Tepolt (p21)
-	 */
-	if ((result >= 0x3c) && !coco3_enable_64k && !forceram) {
-		static const int rommap[4][4] = {
-			{ 0x40, 0x41, 0x46, 0x47 },
-			{ 0x40, 0x41, 0x46, 0x47 },
-			{ 0x40, 0x41, 0x42, 0x43 },
-			{ 0x44, 0x45, 0x46, 0x47 }
-		};
-		result = rommap[coco3_gimereg[0] & 3][result - 0x3c];
-	}
-
-	return result;
-}
-
-int coco3_mmu_translate(int block, int offset)
+/* This function translates a bank into an address within RAM; bank is a zero counted MAME bank */
+int coco3_mmu_translate(int bank, int offset)
 {
 	int forceram;
+	int block;
+	int result;
 
-	/* Block 8 is the 0xfe00 block; and it is treated differently */
-	if (block == 8) {
-		if (coco3_gimereg[0] & 8)
-			return 0x7fe00 + offset;
-		block = 7;
+	/* Bank 8 is the 0xfe00 block; and it is treated differently */
+	if (bank == 8) {
+		if (coco3_gimereg[0] & 8) {
+			assert(offset < 0x200);
+			return mess_ram_size - 0x200 + offset;
+		}
+		bank = 7;
 		offset += 0x1e00;
 		forceram = 1;
 	}
 	else {
 		forceram = 0;
 	}
-	return (coco3_mmu_lookup(block, forceram) * 0x2000) + offset;
+
+	/* Perform the MMU lookup */
+	if (coco3_gimereg[0] & 0x40) {
+		if (coco3_gimereg[1] & 1)
+			bank += 8;
+		block = coco3_mmu[bank];
+	}
+	else {
+		block = bank + 56;
+	}
+
+	/* Are we actually in ROM?
+	 *
+	 * In our world, ROM is represented by memory blocks 0x40-0x47
+	 *
+	 * 0	Extended Color Basic
+	 * 1	Color Basic
+	 * 2	Reset Initialization
+	 * 3	Super Extended Color Basic
+	 * 4-7	Cartridge ROM
+	 *
+	 * This is the level where ROM is mapped, according to Tepolt (p21)
+	 */
+	if (((block & 0x3f) >= 0x3c) && !coco3_enable_64k && !forceram) {
+		static const int rommap[4][4] = {
+			{ 0, 1, 6, 7 },
+			{ 0, 1, 6, 7 },
+			{ 0, 1, 2, 3 },
+			{ 4, 5, 6, 7 }
+		};
+		block = rommap[coco3_gimereg[0] & 3][(block & 0x3f) - 0x3c];
+		result = (block * 0x2000 + offset) | 0x80000000;
+	}
+	else {
+		result = ((block * 0x2000) + offset) % mess_ram_size;
+	}
+	return result;
 }
 
 static void coco3_mmu_update(int lowblock, int hiblock)
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
-
 	static mem_write_handler handlers[] = {
 		coco3_ram_b1_w, coco3_ram_b2_w,
 		coco3_ram_b3_w, coco3_ram_b4_w,
@@ -1547,29 +1608,34 @@ static void coco3_mmu_update(int lowblock, int hiblock)
 		coco3_ram_b9_w
 	};
 
-	int i;
-	UINT8 *p;
+	int i, offset;
 
 	for (i = lowblock; i <= hiblock; i++) {
-		p = &RAM[coco3_mmu_translate(i, 0)];
-		cpu_setbank(i + 1, p);
-		memory_set_bankhandler_w(i + 1, 0, ((p - RAM) >= 0x80000) ? MWA_ROM : handlers[i]);
+		offset = coco3_mmu_translate(i, 0);
+		if (offset & 0x80000000) {
+			offset &= ~0x80000000;
+			cpu_setbank(i + 1, &coco_rom[offset]);
+			memory_set_bankhandler_w(i + 1, 0, MWA_ROM);
+		}
+		else {
+			cpu_setbank(i + 1, &mess_ram[offset]);
+			memory_set_bankhandler_w(i + 1, 0, handlers[i]);
+		}
 #if LOG_MMU
 		logerror("CoCo3 GIME MMU: Logical $%04x ==> Physical $%05x\n",
 			(i == 8) ? 0xfe00 : i * 0x2000,
-			p - RAM);
+			offset);
 #endif
 	}
 }
 
 READ_HANDLER(coco3_mmu_r)
 {
-	return coco3_mmu[offset] & 0x3f;
+	return (coco3_mmu[offset] & 0x3f) | 0x40;
 }
 
 WRITE_HANDLER(coco3_mmu_w)
 {
-	data &= 0x3f;
 	coco3_mmu[offset] = data;
 
 	/* Did we modify the live MMU bank? */
@@ -1956,14 +2022,12 @@ static void generic_setcartbank(int bank, UINT8 *cartpos)
 
 static void coco_setcartbank(int bank)
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
-	generic_setcartbank(bank, &ROM[0x14000]);
+	generic_setcartbank(bank, &coco_rom[0x4000]);
 }
 
 static void coco3_setcartbank(int bank)
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
-	generic_setcartbank(bank, &ROM[0x8C000]);
+	generic_setcartbank(bank, &coco_rom[0xC000]);
 }
 
 static const struct cartridge_callback coco_cartcallbacks =
@@ -1981,6 +2045,8 @@ static const struct cartridge_callback coco3_cartcallbacks =
 static void generic_init_machine(struct pia6821_interface *piaintf, struct sam6883_interface *samintf, const struct cartridge_slot *cartinterface, const struct cartridge_callback *cartcallback)
 {
 	const struct cartridge_slot *cartslottype;
+
+	coco_rom = memory_region(REGION_CPU1);
 
 	cart_line = CARTLINE_CLEAR;
 	pia0_irq_a = CLEAR_LINE;
@@ -2017,20 +2083,32 @@ static void generic_init_machine(struct pia6821_interface *piaintf, struct sam68
 
 void dragon32_init_machine(void)
 {
-	coco_rom = memory_region(REGION_CPU1) + 0x8000;
-	generic_init_machine(dragon_pia_intf, &dragon_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks);
+	cpu_setbank(1, &mess_ram[0]);
+	memory_set_bankhandler_w(1, 0, coco_ram_w);
+	generic_init_machine(coco_pia_intf, &coco_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks);
+}
+
+void dragon64_init_machine(void)
+{
+	cpu_setbank(1, &mess_ram[0]);
+	memory_set_bankhandler_w(1, 0, coco_ram_w);
+	generic_init_machine(dragon64_pia_intf, &dragon64_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks);
+	acia_6551_init();
+	dragon64_sethipage(DRAGON64_ALL, 0);
 }
 
 void coco_init_machine(void)
 {
-	coco_rom = memory_region(REGION_CPU1) + 0x10000;
-	generic_init_machine(dragon_pia_intf, &dragon64_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks);
+	cpu_setbank(1, &mess_ram[0]);
+	memory_set_bankhandler_w(1, 0, coco_ram_w);
+	generic_init_machine(coco_pia_intf, &coco_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks);
 }
 
 void coco2_init_machine(void)
 {
-	coco_rom = memory_region(REGION_CPU1) + 0x10000;
-	generic_init_machine(coco2_pia_intf, &dragon64_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks);
+	cpu_setbank(1, &mess_ram[0]);
+	memory_set_bankhandler_w(1, 0, coco_ram_w);
+	generic_init_machine(coco2_pia_intf, &coco_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks);
 }
 
 void coco3_init_machine(void)
@@ -2047,7 +2125,6 @@ void coco3_init_machine(void)
 		coco3_gimereg[i] = 0;
 	}
 
-	coco_rom = memory_region(REGION_CPU1) + 0x80000;
 	generic_init_machine(coco3_pia_intf, &coco3_sam_intf, &cartridge_fdc_coco, &coco3_cartcallbacks);
 
 	coco3_mmu_update(0, 8);
@@ -2059,11 +2136,17 @@ void coco3_init_machine(void)
 	timer_pulse(TIME_IN_HZ(50), 0, coco3_poll_keyboard);
 }
 
-void dragon_stop_machine(void)
+void coco_stop_machine(void)
 {
 	if (coco_cart_interface && coco_cart_interface->term)
 		coco_cart_interface->term();
 	sam_reset();
+}
+
+void dragon64_stop_machine(void)
+{
+	coco_stop_machine();
+	acia_6551_stop();
 }
 
 /***************************************************************************

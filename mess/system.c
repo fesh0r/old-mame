@@ -31,6 +31,7 @@ struct GameDriver driver_0 =
   0,
   0,
   0,
+  0,
   NOT_A_DRIVER,
 };
 
@@ -54,16 +55,20 @@ const struct GameDriver * drivers[] =
 /* step 1: declare all external references */
 #define DRIVER(NAME) extern const struct GameDriver driver_##NAME;
 #define TESTDRIVER(NAME) extern const struct GameDriver driver_##NAME;
+#define NOBODY(NAME) extern const struct GameDriver driver_##NAME;
 #include "system.c"
 
 /* step 2: define the drivers[] array */
 #undef DRIVER
 #undef TESTDRIVER
+#undef NOBODY
 #define DRIVER(NAME) &driver_##NAME,
 #ifdef MESS_DEBUG
 #define TESTDRIVER(NAME) &driver_##NAME,
+#define NOBODY(NAME)
 #else
 #define TESTDRIVER(NAME)
+#define NOBODY(NAME)
 #endif
 const struct GameDriver *drivers[] =
 {
@@ -93,7 +98,7 @@ const struct GameDriver *drivers[] =
 	DRIVER( nespal )	/* Nintendo Entertainment System			*/
 	DRIVER( famicom )
 	DRIVER( gameboy )	/* Nintendo GameBoy Handheld				*/
-	DRIVER (snes)		/* Nintendo Super Nintendo				*/
+TESTDRIVER (snes)		/* Nintendo Super Nintendo				*/
 //      DRIVER (vboy)		/* Nintendo Virtual Boy 				*/
 
 	/* SEGA */
@@ -150,7 +155,7 @@ TESTDRIVER( vip )		/* Cosmac VIP						*/
 	DRIVER( advision )	/* Adventurevision								  */
 
 	/* CAPCOM */
-	DRIVER( sfzch ) 	/* CPS Changer (Street Fighter ZERO)			  */
+TESTDRIVER( sfzch ) 	/* CPS Changer (Street Fighter ZERO)			  */
 
 	/* Magnavox */
 //      DRIVER( odyssey )	/* Magnavox Odyssey - analogue (1972)			  */
@@ -405,10 +410,13 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS		  */
 
 	DRIVER( zx80 )		/* Sinclair ZX-80								  */
 	DRIVER( zx81 )		/* Sinclair ZX-81								  */
+	DRIVER( zx81a )
+	DRIVER( zx81b )
 	DRIVER( ts1000 )	/* Timex Sinclair 1000							  */
 	DRIVER( aszmic )	/* ASZMIC ZX-81 ROM swap						  */
 	DRIVER( pc8300 )	/* Your Computer - PC8300						  */
 	DRIVER( pow3000 )	/* Creon Enterprises - Power 3000				  */
+	DRIVER( lambda )	/* Lambda 8300							*/
 
 	DRIVER( spectrum )	/* 1982 ZX Spectrum 							  */
 	DRIVER( specpls4 )	/* 2000 ZX Spectrum +4							  */
@@ -434,6 +442,7 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS		  */
 	DRIVER( specp2sp )	/* 1986 ZX Spectrum +2 (Spain)					  */
 	DRIVER( specp3sp )	/* 1987 ZX Spectrum +3 (Spain)					  */
 	DRIVER( specpl3e )	/* 2000 ZX Spectrum +3e 						  */
+	DRIVER( specp3es )	/* 2000 ZX Spectrum +3e (Spain)						  */
 
 	/* sinclair pc200 professional series ibmxt compatible*/
 
@@ -460,13 +469,17 @@ TESTDRIVER( mz800  )	/* 1982 Sharp MZ800 							  */
 /*	DRIVER( x68000 )*/	/* X68000										  */
 
 	/* TEXAS INSTRUMENTS */
-TESTDRIVER( ti990_4 )	/* 197? TI 990/4								  */
-TESTDRIVER( ti99_224 )	/* 1983 TI 99/2 								  */
-TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 								  */
-	DRIVER( ti99_4 )	/* 1978 TI 99/4 								  */
-	DRIVER( ti99_4e )	/* 1980 TI 99/4E								  */
+	DRIVER( ti990_10 )	/* 1975 TI 990/10								  */
+TESTDRIVER( ti990_4 )	/* 1976 TI 990/4								  */
+
+TESTDRIVER( ti99_224 )	/* 1983 TI 99/2 (24kb ROMs) 					  */
+TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 (32kb ROMs) 					  */
+	DRIVER( ti99_4 )	/* 1979 TI 99/4 								  */
+	DRIVER( ti99_4e )	/* 1980 TI 99/4 with 50Hz video					  */
 	DRIVER( ti99_4a )	/* 1981 TI 99/4A								  */
-	DRIVER( ti99_4ae )	/* 1981 TI 99/4AE								  */
+	DRIVER( ti99_4ae )	/* 1981 TI 99/4A with 50Hz video				  */
+	DRIVER( ti99_4ev)	/* 1994 TI 99/4A with EVPC video card			  */
+TESTDRIVER( ti99_4p )	/* 1996 SNUG 99/4P (a.k.a. SGCPU)				  */
 
     DRIVER( avigo )     /*                                                */
 
@@ -604,9 +617,10 @@ TESTDRIVER( kc85_4d )   /* VEB KC 85/4 with disk interface                */
 	/* a7100 i8086 based */
 
 	/* MICROBEE SYSTEMS */
-	DRIVER( mbee )		/* Microbee 									  */
-	DRIVER( mbeepc )	/* Microbee (Personal Communicator)				  */
-	DRIVER( mbee56k )	/* Microbee 56K (CP/M)							  */
+	DRIVER( mbee )		/* Microbee 32 IC									  */
+	DRIVER( mbeepc )	/* Microbee 32 PC				  */
+        DRIVER( mbeepc85 )	/* Microbee 32 PC85					*/
+        DRIVER( mbee56 )	/* Microbee 56K (CP/M)							  */
 
 	/* TANDY RADIO SHACK */
 	DRIVER( trs80 )	    /* TRS-80 Model I	- Radio Shack Level I BASIC   */
@@ -625,11 +639,9 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 		  */
 	DRIVER( coco3p ) 	/* Color Computer 3 (PAL)						  */
 	DRIVER( coco3h )	/* Hacked Color Computer 3 (6309)				  */
 	DRIVER( dragon32 )	/* Dragon32 									  */
+	DRIVER( dragon64 )	/* Dragon64 									  */
 	DRIVER( cp400 ) 	/* Prologica CP400								  */
 	DRIVER( mc10 )		/* MC-10										  */
-
-	/* dragon 32 coco compatible */
-/*	DRIVER( dragon64 */	/* Dragon 64									  */
 
 	/* EACA */
 	DRIVER( cgenie )	/* Colour Genie EG2000							  */
@@ -700,7 +712,7 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 		  */
 TESTDRIVER( mekd2 )     /* 1977 Motorola Evaluation Kit                   */
 
 	/* DEC */
-	DRIVER( pdp1 )      /* 1962 DEC PDP1 for SPACEWAR! - 1962             */
+	DRIVER( pdp1 )      /* 1961 DEC PDP1                                  */
 
 	/* MEMOTECH */
 	DRIVER( mtx512 )    /* 1983 Memotech MTX512                           */
@@ -715,6 +727,11 @@ TESTDRIVER( mekd2 )     /* 1977 Motorola Evaluation Kit                   */
 
 	/* GALAKSIJA */
 	DRIVER( galaxy )
+
+	/* PK-01 Lviv */
+	DRIVER( lviv )		/* PK-01 Lviv */
+	DRIVER( lviva )		/* PK-01 Lviv (alternate) */
+	DRIVER( lvive )		/* PK-01 Lviv (early)*/
 
 	/* Team Concepts */
 	/* CPU not known, else should be easy, look into systems/comquest.c */

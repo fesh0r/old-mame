@@ -21,6 +21,22 @@
 #define SIO_INT 3
 #define EXT_INT 4
 
+#define MBC1  1
+#define MBC2  2
+#define MBC3  3
+#define MBC5  4
+#define TAMA5 5
+#define HUC1  6
+#define HUC3  7
+
+#define RAM     0x01  /* Cartridge has RAM */
+#define BATTERY 0x02  /* Cartridge has a battery to save RAM */
+#define TIMER   0x04  /* Cartridge has a real-time-clock (MBC3 only) */
+#define RUMBLE  0x08  /* Cartridge has a rumble motor */
+#define SRAM    0x10  /* Cartridge has SRAM */
+#define UNKNOWN 0x80  /* Unknown cartridge type */
+
+
 extern UINT8 *gb_ram;
 
 #define JOYPAD  gb_ram[0xFF00] /* Joystick: 1.1.P15.P14.P13.P12.P11.P10      */
@@ -48,6 +64,7 @@ extern UINT8 *gb_ram;
 #define VRAM 0x8000
 
 EXTERN UINT16 gb_bpal[4];				/* Background palette */
+EXTERN UINT16 gb_wpal[4];				/* Window palette (same as bg) */
 EXTERN UINT16 gb_spal0[4];				/* Sprite 0 palette */
 EXTERN UINT16 gb_spal1[4];				/* Sprite 1 palette */
 EXTERN UINT8 *gb_chrgen;				/* Character generator */
@@ -60,18 +77,19 @@ EXTERN UINT8 gb_tile_no_mod;
 
 extern WRITE_HANDLER ( gb_rom_bank_select );
 extern WRITE_HANDLER ( gb_ram_bank_select );
+extern WRITE_HANDLER ( gb_mem_mode_select );
 extern WRITE_HANDLER ( gb_w_io );
-extern READ_HANDLER  ( gb_r_divreg );
-extern READ_HANDLER  ( gb_ser_regs );
-extern READ_HANDLER  ( gb_r_timer_cnt );
+extern WRITE_HANDLER ( gb_w_ie );
+extern READ_HANDLER  ( gb_r_io );
 extern int gb_load_rom (int id);
 extern int gb_scanline_interrupt(void);
-extern void gb_scanline_interrupt_set_mode2(int param);
+extern void gb_scanline_interrupt_set_mode0(int param);
 extern void gb_scanline_interrupt_set_mode3(int param);
 extern int gb_vh_start(void);
 extern void gb_vh_stop(void);
 extern void gb_vh_screen_refresh(struct mame_bitmap *bitmap, int full_refresh);
 extern void gb_init_machine(void);
+extern void gb_shutdown_machine(void);
 
 /* from vidhrdw/gb.c */
 void gb_refresh_scanline(void);

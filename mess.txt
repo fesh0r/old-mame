@@ -1,11 +1,11 @@
                    ==========================================
                     M.E.S.S.  -  Multi-Emulator Super System
-                             Copyright (C) 1998-2001
+                             Copyright (C) 1998-2002
                                 by the MESS team
-                    Official Page at: http://mess.emuverse.com
+                    Official Page at: http://www.mess.org
                    ==========================================
 
-This document is generated for MESS 0.37 BETA 15 (Aug 16 2001)
+This document is generated for MESS 0.561 (May 12 2002)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -28,7 +28,7 @@ Usage and Distribution Licence:
 
 How to Contact The MESS Team
 ============================
-Visit the web page at http://mess.emuverse.com to see a list of contributers
+Visit the web page at http://www.mess.org to see a list of contributers
 If you have comments, suggestions or bug reports about an existing driver, check
 the page contacts section to find who has worked on it, and send comments to that 
 person. If you are not sure who to contact, write to Ben (ben@mame.net)
@@ -43,7 +43,7 @@ First of all, read this doc carefully. If you still can't find an answer to
 your question, try checking the beginner's sections that many emulation pages
 have, or ask on the appropriate Usenet newsgroups (e.g. comp.emulators.misc)
 or on the many emulation message boards.  The official MESS message board is at:
-   http://mess.emuverse.com
+   http://www.mess.org
 
 Also, please DO NOT SEND REQUESTS FOR NEW SYSTEMS TO ADD, unless you have some original
 info on the hardware or, even better, have the technical expertise needed to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.37 BETA 15 (Aug 16 2001)
+Here is the list of systems supported by MESS 0.561 (May 12 2002)
 Variants of the same system are not included, you can use the -listclones command
 to get a list of the alternate versions of a given system.
 
@@ -94,7 +94,7 @@ dat2html.exe.
 | Apple I                                 |  Yes  |  Yes  |  Yes  | apple1   |
 | Aquarius                                |  Yes  |  Yes  |  Yes  | aquarius |
 | Arcadia 2001                            |  Yes  |  Yes  |Partial| arcadia  |
-| Atari 2600                              |   No  |   No  |   No  | a2600    |
+| Atari 2600                              |   No  |  Yes  |  Yes  | a2600    |
 | Atari 400                               |  Yes  |  Yes  |  Yes  | a400     |
 | Atari 5200                              |  Yes  |  Yes  |  Yes  | a5200    |
 | Atari 7800                              |  Yes  |  Yes  |  Yes  | a7800    |
@@ -103,7 +103,6 @@ dat2html.exe.
 | BBC Micro Model A                       |  Yes  |  Yes  |  Yes  | bbca     |
 | Bally Pro Arcade/Astrocade              |  Yes  |  Yes  |  Yes  | astrocde |
 | C65 / C64DX                             |   No  |  Yes  |  Yes  | c65      |
-| CPS Changer                             |  Yes  |  Yes  |  Yes  | sfzch    |
 | Channel F                               |  Yes  |  Yes  |  Yes  | channelf |
 | Chess Champion MK I                     |   No  |  Yes  |  Yes  | mk1      |
 | Chess Champion MK II                    |  Yes  |  Yes  |  Yes  | mk2      |
@@ -116,18 +115,16 @@ dat2html.exe.
 | Commodore B128-40/Pet-II/P500 60Hz      |   No  |  Yes  |  Yes  | cbm500   |
 | Commodore B128-80LP/610 60Hz            |   No  |  Yes  |  Yes  | cbm610   |
 | Commodore Max                           |  Yes  |  Yes  |  Yes  | max      |
-| Einstein TC-01                          |  Yes  |  Yes  |  Yes  | einstein |
 | Enterprise 128                          |  Yes  |  Yes  |Partial| ep128    |
 | Famicom                                 |  Yes  |  Yes  |  Yes  | famicom  |
-| Galaksija                               |  Yes  |  Yes  |  Yes  | galaxy   |
+| Galaksija                               |  Yes  |  Yes  |   No  | galaxy   |
 | Game Gear                               |  Yes  |  Yes  |  Yes  | gamegear |
-| GameBoy                                 |  Yes  |  Yes  |   No  | gameboy  |
+| GameBoy                                 |  Yes  |  Yes  |Partial| gameboy  |
 | IBM PC 10/27/82                         |  Yes  |  Yes  |  Yes  | ibmpc    |
 | Intellivision                           |   No  |  Yes  |  Yes  | intv     |
 | Intellivision                           |   No  |  Yes  |  Yes  | intvsrs  |
 | Intellivision Keyboard Component        |   No  |  Yes  |  Yes  | intvkbd  |
 | Jupiter Ace                             |  Yes  |  Yes  |  Yes  | jupiter  |
-| KC 85/3                                 |   No  |  Yes  |  Yes  | kc85_3   |
 | KIM-1                                   |  Yes  |  Yes  |  Yes  | kim1     |
 | Kaypro 2x                               |  Yes  |  Yes  |  Yes  | kaypro   |
 | Laser 110                               |  Yes  |  Yes  |  Yes  | laser110 |
@@ -143,7 +140,7 @@ dat2html.exe.
 | Macintosh Plus                          |  Yes  |  Yes  |  Yes  | macplus  |
 | Master System                           |  Yes  |  Yes  |  Yes  | sms      |
 | Megadrive / Genesis                     |  Yes  |  Yes  |  Yes  | genesis  |
-| Microbee 32K                            |  Yes  |  Yes  |  Yes  | mbee     |
+| Microbee 32 IC                          |  Yes  |  Yes  |  Yes  | mbee     |
 | Microtan 65                             |  Yes  |  Yes  |  Yes  | microtan |
 | NC100                                   |  Yes  |  Yes  |  Yes  | nc100    |
 | NC200                                   |  Yes  |  Yes  |  Yes  | nc200    |
@@ -152,10 +149,12 @@ dat2html.exe.
 | Oric 1                                  |  Yes  |  Yes  |  Yes  | oric1    |
 | PC Engine/TurboGrafx 16                 |   No  |  Yes  |   No  | pce      |
 | PC-8801 MKIISR                          |  Yes  |  Yes  |  Yes  | pc88srl  |
+| PC/AT                                   |   No  |  Yes  |  Yes  | at       |
 | PCW16                                   |  Yes  |  Yes  |  Yes  | pcw16    |
 | PCW8256                                 |  Yes  |  Yes  |  Yes  | pcw8256  |
 | PDP-1                                   |  Yes  |  Yes  |  Yes  | pdp1     |
 | PET2001/CBM20xx Series                  |  Yes  |  Yes  |   No  | pet      |
+| PK-01 Lviv                              |  Yes  |  Yes  |  Yes  | lviv     |
 | Philips P2000T                          |  Yes  |  Yes  |  Yes  | p2000t   |
 | Pocket Computer 1251                    |   No  |  Yes  |  Yes  | pc1251   |
 | Pocket Computer 1350                    |   No  |  Yes  |  Yes  | pc1350   |
@@ -167,14 +166,16 @@ dat2html.exe.
 | Sorcerer                                |   No  |  Yes  |   No  | exidy    |
 | Sord M5                                 |  Yes  |  Yes  |  Yes  | sordm5   |
 | Studio II                               |  Yes  |  Yes  |  Yes  | studio2  |
-| Super Nintendo Entertainment System     |   No  |  Yes  |   No  | snes     |
 | Super Vision                            |  Yes  |  Yes  |Partial| svision  |
 | TI Avigo 100 PDA                        |   No  |  Yes  |  Yes  | avigo    |
+| TI Model 990/10 Minicomputer System     |  Yes  |  Yes  |  Yes  | ti990_10 |
 | TI-81 Ver. 1.8                          |  Yes  |  Yes  |  Yes  | ti81     |
 | TI-85 ver. 3.0a                         |  Yes  |  Yes  |  Yes  | ti85     |
 | TI-86 ver. 1.2                          |  Yes  |  Yes  |  Yes  | ti86     |
 | TI99/4 Home Computer                    |  Yes  |  Yes  |  Yes  | ti99_4   |
+| TI99/4A Home Computer                   |  Yes  |  Yes  |  Yes  | ti99_4a  |
 | TRS-80 Model I                          |  Yes  |  Yes  |  Yes  | trs80    |
+| Tatung Einstein TC-01                   |  Yes  |  Yes  |  Yes  | einstein |
 | UK101                                   |  Yes  |  Yes  |  Yes  | uk101    |
 | VIC20                                   |  Yes  |  Yes  |Partial| vic20    |
 | Vectrex                                 |  Yes  |  Yes  |  Yes  | vectrex  |
@@ -185,7 +186,6 @@ dat2html.exe.
 | ZX-81                                   |   No  |  Yes  |  Yes  | zx81     |
 +-----------------------------------------+-------+-------+-------+----------+
 (1) There are variants of the system that work correctly
-(2) Needs samples provided separately
 
 
 QUICK MESS USAGE GUIDE!

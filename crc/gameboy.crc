@@ -2,6 +2,7 @@
 # Please keep this notice intact if editing this file
 # crc= Game Name | Year | Manufacturer | Emulation Status
 
+
 [gameboy]
 e038e666= 007 - The World is Not Enough (U) [C][!] |  | | 
 720c7023= 10-Pin Bowling (U) [C][!] |  | | 

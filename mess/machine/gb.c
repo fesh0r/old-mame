@@ -4,6 +4,24 @@
 
   Machine file to handle emulation of the Nintendo GameBoy.
 
+  Changes:
+
+	13/2/2002		AK - MBC2 and MBC3 support and added NVRAM support.
+	23/2/2002		AK - MBC5 support, and MBC2 RAM support.
+	13/3/2002		AK - Tidied up the MBC code, window layer now has it's
+						 own palette. Tidied init code.
+	15/3/2002		AK - More init code tidying with a slight hack to stop
+						 sound when the machine starts.
+	19/3/2002		AK - Changed NVRAM code to the new battery_* functions.
+	24/3/2002		AK - Added MBC1 mode switching, and partial MBC3 RTC support.
+	28/3/2002		AK - Improved LCD status timing and interrupts.
+						 Free memory when we shutdown instead of leaking.
+	31/3/2002		AK - Handle IO memory reading so we return 0xFF for registers
+						 that are unsupported.
+	 7/4/2002		AK - Free memory from battery load/save. General tidying.
+	13/4/2002		AK - Ok, don't free memory when we shutdown as that causes
+						 a crash on reset.
+
 ***************************************************************************/
 #define __MACHINE_GB_C
 
@@ -12,116 +30,238 @@
 #include "cpu/z80gb/z80gb.h"
 #include "includes/gb.h"
 
-static UINT8 MBCType;				   /* MBC type: 1 for MBC2, 0 for MBC1            */
-static UINT8 *ROMMap[256];			   /* Addresses of ROM banks                      */
-static UINT8 ROMBank;				   /* Number of ROM bank currently used           */
+static UINT8 MBCType;				   /* MBC type: 0 for none                        */
+static UINT8 CartType;				   /* Cart Type (battery, ram, timer etc)         */
+static UINT8 *ROMMap[512];			   /* Addresses of ROM banks                      */
+static UINT16 ROMBank;				   /* Number of ROM bank currently used           */
 static UINT8 ROMMask;				   /* Mask for the ROM bank number                */
-static int ROMBanks;				   /* Total number of ROM banks                   */
+static UINT8 ROMBanks;				   /* Total number of ROM banks                   */
 static UINT8 *RAMMap[256];			   /* Addresses of RAM banks                      */
 static UINT8 RAMBank;				   /* Number of RAM bank currently used           */
 static UINT8 RAMMask;				   /* Mask for the RAM bank number                */
-static int RAMBanks;				   /* Total number of RAM banks                   */
-static UINT32 TCount, TStep;		   /* Timer counter and increment            */
-static UINT32 SIOCount;				   /* Serial I/O counter                     */
+static UINT8 RAMBanks;				   /* Total number of RAM banks                   */
+static UINT32 SIOCount;				   /* Serial I/O counter                          */
+static UINT8 MBC1Mode;				   /* MBC1 ROM/RAM mode                           */
+static UINT8 MBC3RTCMap[5];			   /* MBC3 Real-Time-Clock banks                  */
+static UINT8 MBC3RTCBank;			   /* Number of RTC bank for MBC3                 */
+char nvram_name[1024];				   /* Name to store NVRAM under                   */
+UINT8 *gb_ram;
 
 #define Verbose 0x00
 #define SGB 0
 #define CheckCRC 1
 #define LineDelay 0
 #define IFreq 60
-//#define SOUND =0
-
-UINT8 *gb_ram;
 
 void gb_init_machine (void)
 {
-	int I;
-
 	gb_ram = memory_region (REGION_CPU1);
 
-	cpu_setbank (1, ROMMap[1] ? ROMMap[1] : gb_ram + 0x4000);
-	cpu_setbank (2, RAMMap[0] ? RAMMap[0] : gb_ram + 0xA000);
+	ROMBank = 1;
+	RAMBank = 0;
+	cpu_setbank (1, ROMMap[ROMBank] ? ROMMap[ROMBank] : gb_ram + 0x4000);
+	cpu_setbank (2, RAMMap[RAMBank] ? RAMMap[RAMBank] : gb_ram + 0xA000);
+	MBC1Mode = 0;
+	MBC3RTCBank = 0;
 
-	TStep = 32768;
-	TCount = 0;
-
-	gb_chrgen = gb_ram + 0x8800;
-	gb_bgdtab = gb_wndtab = gb_ram + 0x9800;
-	LCDCONT = 0x81;
+	/* Initialise the registers */
 	LCDSTAT = 0x00;
-	CURLINE = 0x00;
-	CMPLINE = 0x00;
+	CURLINE = CMPLINE = 0x00;
 	IFLAGS = ISWITCH = 0x00;
-	TIMECNT = TIMEMOD = 0x01;
-	TIMEFRQ = 0xF8;
 	SIODATA = 0x00;
 	SIOCONT = 0x7E;
-
-	for (I = 0; I < 4; I++)
-	{
-		gb_spal0[I] = gb_bpal[I] = I;
-		gb_spal1[I] = I + 4;
-	}
-
-	BGRDPAL = SPR0PAL = SPR1PAL = 0xE4;
-
-	/* Initialise the timer */
-	gb_w_io (0x07, gb_ram [0xFF07]);
+	SCROLLX = SCROLLY = 0x00;
+	WNDPOSX = WNDPOSY = 0x00;
+	gb_w_io( 0x05, 0x00 );	/* TIMECNT */
+	gb_w_io( 0x06, 0x00 );	/* TIMEMOD */
+	gb_w_io( 0x07, 0x00 );	/* TIMEFRQ */
+	gb_w_io( 0x40, 0x91 );	/* LCDCONT */
+	gb_w_io( 0x47, 0xFC );	/* BGRDPAL */
+	gb_w_io( 0x48, 0xFC );	/* SPR0PAL */
+	gb_w_io( 0x49, 0xFC );	/* SPR1PAL */
 
 	/* Initialise the Sound Registers */
-	   gameboy_sound_w(0xFF10,0x80);
-	   gameboy_sound_w(0xFF11,0xBF);
-   	   gameboy_sound_w(0xFF12,0xBF);
-   	   gameboy_sound_w(0xFF14,0xBF);
-   	   gameboy_sound_w(0xFF16,0x3F);
-   	   gameboy_sound_w(0xFF17,0x00);
-   	   gameboy_sound_w(0xFF19,0xBF);
-   	   gameboy_sound_w(0xFF1A,0x7F);
-   	   gameboy_sound_w(0xFF1B,0xFF);
-   	   gameboy_sound_w(0xFF1C,0x9F);
-   	   gameboy_sound_w(0xFF1E,0xBF);
-   	   gameboy_sound_w(0xFF20,0xFF);
-   	   gameboy_sound_w(0xFF21,0x00);
-   	   gameboy_sound_w(0xFF22,0x00);
-   	   gameboy_sound_w(0xFF23,0xBF);
-   	   gameboy_sound_w(0xFF24,0x77);
-   	   gameboy_sound_w(0xFF25,0xF3);
-   	   gameboy_sound_w(0xFF26,0xF1); /*Gameboy, F0 for SGB*/
+	gameboy_sound_w(0xFF26,0xF1); /*Gameboy, F0 for SGB*/ /* set this first */
+	gameboy_sound_w(0xFF10,0x80);
+	gameboy_sound_w(0xFF11,0xBF);
+	gameboy_sound_w(0xFF12,0xF3);
+	gameboy_sound_w(0xFF14,0x3F); /* NOTE: Should be 0xBF but it causes a tone at startup */
+	gameboy_sound_w(0xFF16,0x3F);
+	gameboy_sound_w(0xFF17,0x00);
+	gameboy_sound_w(0xFF19,0xBF);
+	gameboy_sound_w(0xFF1A,0x7F);
+	gameboy_sound_w(0xFF1B,0xFF);
+	gameboy_sound_w(0xFF1C,0x9F);
+	gameboy_sound_w(0xFF1E,0xBF);
+	gameboy_sound_w(0xFF20,0xFF);
+	gameboy_sound_w(0xFF21,0x00);
+	gameboy_sound_w(0xFF22,0x00);
+	gameboy_sound_w(0xFF23,0xBF);
+	gameboy_sound_w(0xFF24,0x77);
+	gameboy_sound_w(0xFF25,0xF3);
+}
 
+void gb_shutdown_machine(void)
+{
+	int I;
+	UINT8 *battery_ram, *ptr;
+
+	/* Don't save if there was no battery */
+	if( !(CartType & BATTERY) )
+		return;
+
+	/* NOTE: The reason we save the carts RAM this way instead of using MAME's
+	   built in macros is because they force the filename to be the name of
+	   the machine.  We need to have a separate name for each game. */
+	battery_ram = (UINT8 *)malloc( RAMBanks * 0x2000 );
+	if( battery_ram )
+	{
+		ptr = battery_ram;
+		for( I = 0; I < RAMBanks; I++ )
+		{
+			memcpy( ptr, RAMMap[I], 0x2000 );
+			ptr += 0x2000;
+		}
+		battery_save( nvram_name, battery_ram, RAMBanks * 0x2000 );
+
+		free( battery_ram );
+	}
+
+	/* We should releas memory here, but this function is called upon reset
+	   and we don't reload the rom, so we're going to have to leak for now.
+	*/
+/*	for( I = 0; I < RAMBanks; I++ )
+	{
+		free( RAMMap[I] );
+	}
+	for( I = 0; I < ROMBanks; I++ )
+	{
+		free( ROMMap[I] );
+	}*/
 }
 
 WRITE_HANDLER ( gb_rom_bank_select )
 {
-	if (MBCType && ((offset & 0x0100) == 0))
+	/* No need to bank switch if there is no controller */
+	if( !MBCType )
 		return;
+
 	data &= ROMMask;
-	if (!data)
+
+	/* Selecting bank 0 == selecting bank 1 except with an MBC5 */
+	if( !data && MBCType != MBC5 )
 		data = 1;
-	if (ROMMask && (data != ROMBank))
+
+	if( ROMMask )
 	{
-		ROMBank = data;
-		cpu_setbank (1, ROMMap[data] ? ROMMap[data] : gb_ram + 0x4000);
+		switch( MBCType )
+		{
+		case MBC1:
+			ROMBank = data & 0x1F; /* Only uses lower 5 bits */
+			break;
+		case MBC2:
+			/* The least significant bit of the upper address byte must be 1 */
+			if( offset & 0x0100 )
+				ROMBank = data;
+			break;
+		case MBC3:
+		case HUC1:	/* Probably wrong */
+		case HUC3:	/* Probably wrong */
+			ROMBank = data;
+			break;
+		case MBC5:
+			/* MBC5 has a 9 bit bank select */
+			if( offset < 0x1000 )
+			{
+				ROMBank = (ROMBank & 0x100 ) | data;
+			}
+			else
+			{
+				ROMBank = (ROMBank & 0xFF ) | ((UINT16)(data & 0x1) << 8);
+			}
+			break;
+		}
+
+		/* Switch banks */
+		cpu_setbank (1, ROMMap[ROMBank] ? ROMMap[ROMBank] : gb_ram + 0x4000);
 		if (Verbose & 0x08)
-			printf ("ROM: Bank %d selected\n", data);
+			printf ("ROM: Bank %d selected\n", ROMBank);
 	}
 }
 
 WRITE_HANDLER ( gb_ram_bank_select )
 {
+	/* No need to bank switch if no controller or MBC2 */
+	if( !MBCType || MBCType == MBC2 )
+		return;
+
 	data &= RAMMask;
-	if (RAMMask && !MBCType && (RAMBank != data))
+	if( RAMMask )
 	{
-		RAMBank = data;
-		cpu_setbank (2, RAMMap[data] ? RAMMap[data] : gb_ram + 0xA000);
+		switch( MBCType )
+		{
+		case MBC1:
+			data &= 0x3; /* Only uses the lower 2 bits */
+			if( MBC1Mode )
+			{
+				/* Select the upper bits of the ROMMask */
+				ROMBank |= data << 5;
+				cpu_setbank (1, ROMMap[ROMBank] ? ROMMap[ROMBank] : gb_ram + 0x4000);
+				return;
+			}
+			else
+			{
+				RAMBank = data;
+			}
+			break;
+		case MBC3:
+			if( data & 0x3 )
+			{
+				RAMBank = data & 0x3;
+			}
+			if( data & 0x8 )
+			{
+				MBC3RTCBank = data & 0x3;
+				cpu_setbank (2, &MBC3RTCMap[MBC3RTCBank]);
+				return;
+			}
+			break;
+		case MBC5:
+			if( CartType & RUMBLE )
+			{
+				logerror( "Rumble motor: %s\n", data & 0x8?"On":"Off" );
+				data &= 0x7;
+			}
+			RAMBank = data;
+			break;
+		}
+
+		/* Switch banks */
+		cpu_setbank (2, RAMMap[RAMBank] ? RAMMap[RAMBank] : gb_ram + 0xA000);
 		if (Verbose & 0x08)
-			printf ("RAM: Bank %d selected\n", data);
+			printf ("RAM: Bank %d selected\n", RAMBank);
+	}
+}
+
+WRITE_HANDLER ( gb_mem_mode_select )
+{
+	switch( MBCType )
+	{
+		case MBC1:
+			MBC1Mode = data & 0x1;
+			break;
+		case MBC3:
+			if( CartType & TIMER )
+			{
+				/* RTC Latch goes here */
+			}
+			break;
 	}
 }
 
 WRITE_HANDLER ( gb_w_io )
 {
-	static UINT8 timer_shifts[4] =
-	{10, 4, 6, 8};
+	static UINT8 timer_shifts[4] = {10, 4, 6, 8};
 	UINT8 *P;
 	static UINT8 bit_count = 0, byte_count = 0, start = 0, rest = 0;
 	static UINT8 sgb_data[16];
@@ -129,7 +269,6 @@ WRITE_HANDLER ( gb_w_io )
 
 	offset += 0xFF00;
 
-	/*logerror("Hardware hit %04x, %02x\n", offset, data);*/
 	switch (offset)
 	{
 	case 0xFF00:
@@ -137,7 +276,7 @@ WRITE_HANDLER ( gb_w_io )
 		{
 			switch (data & 0x30)
 			{
-			case 0x00:				   // start condition
+			case 0x00:				   /* start condition */
 				if (start)
 					puts ("SGB: Start condition before end of transfer ??");
 				bit_count = 0;
@@ -146,7 +285,7 @@ WRITE_HANDLER ( gb_w_io )
 				rest = 0;
 				JOYPAD = 0x0F & ((readinputport (0) >> 4) | readinputport (0) | 0xF0);
 				break;
-			case 0x10:				   // data true
+			case 0x10:				   /* data true */
 				if (rest)
 				{
 					if (byte_count == 16)
@@ -166,7 +305,7 @@ WRITE_HANDLER ( gb_w_io )
 				}
 				JOYPAD = 0x1F & ((readinputport (0) >> 4) | 0xF0);
 				break;
-			case 0x20:				   // data false
+			case 0x20:				   /* data false */
 				if (rest)
 				{
 					if (byte_count == 16)
@@ -199,7 +338,7 @@ WRITE_HANDLER ( gb_w_io )
 				}
 				JOYPAD = 0x2F & (readinputport (0) | 0xF0);
 				break;
-			case 0x30:				   // rest condition
+			case 0x30:				   /* rest condition */
 				if (start)
 					rest = 1;
 				if (controller_mode)
@@ -224,146 +363,143 @@ WRITE_HANDLER ( gb_w_io )
 				JOYPAD &= readinputport (0) | 0xF0;
 		}
 		return;
-	case 0xFF01:
+	case 0xFF01:						/* SB - Serial transfer data */
 		break;
-	case 0xFF02:
-		if ((data & 0x81) == 0x81)	   /* internal clock && enable */
+	case 0xFF02:						/* SC - SIO control */
+		if ((data & 0x81) == 0x81)		/* internal clock && enable */
+		{
+			SIODATA = 0xFF;
 			SIOCount = 8;
-		else						   /* external clock || disable */
+		}
+		else							/* external clock || disable */
 			SIOCount = 0;
-		data |= 0x7E;
 		break;
-	case 0xFF04:
+	case 0xFF04:						/* DIV - Divider register */
 		gb_divcount = 0;
 		return;
-	case 0xFF05:
+	case 0xFF05:						/* TIMA - Timer counter */
 		gb_timer_count = data << gb_timer_shift;
-	case 0xFF07:
+		break;
+	case 0xFF07:						/* TAC - Timer control */
 		gb_timer_shift = timer_shifts[data & 0x03];
 		data |= 0xF8;
 		break;
-	case 0xFF0F:
+	case 0xFF0F:						/* IF - Interrupt flag */
 		data &= 0x1F;
 		break;
-	case 0xFFFF:
-		data &= 0x1F;
+	case 0xFF40:						/* LCDC - LCD Control */
+		gb_chrgen = gb_ram + ((data & 0x10) ? 0x8000 : 0x8800);
+		gb_tile_no_mod = (data & 0x10) ? 0x00 : 0x80;
+		gb_bgdtab = gb_ram + ((data & 0x08) ? 0x9C00 : 0x9800);
+		gb_wndtab = gb_ram + ((data & 0x40) ? 0x9C00 : 0x9800);
 		break;
-	case 0xFF46:
+	case 0xFF41:						/* STAT - LCD Status */
+		data = (data & 0xF8) | (LCDSTAT & 0x07);
+		break;
+	case 0xFF44:						/* LY - LCD Y-coordinate */
+		data = 0;
+		break;
+	case 0xFF46:						/* DMA - DMA Transfer and Start Address */
 		P = gb_ram + 0xFE00;
 		offset = (UINT16) data << 8;
 		for (data = 0; data < 0xA0; data++)
 			*P++ = cpu_readmem16 (offset++);
 		return;
-	case 0xFF41:
-		data = (data & 0xF8) | (LCDSTAT & 0x07);
+	case 0xFF47:						/* BGP - Background Palette */
+		gb_bpal[0] = Machine->remapped_colortable[(data & 0x03)];
+		gb_bpal[1] = Machine->remapped_colortable[(data & 0x0C) >> 2];
+		gb_bpal[2] = Machine->remapped_colortable[(data & 0x30) >> 4];
+		gb_bpal[3] = Machine->remapped_colortable[(data & 0xC0) >> 6];
+		/* This is so we can assign different colours to window tiles,
+		   even though the window shares the same palette data as the
+		   background */
+		gb_wpal[0] = Machine->remapped_colortable[(data & 0x03) + 12];
+		gb_wpal[1] = Machine->remapped_colortable[((data & 0x0C) >> 2) + 12];
+		gb_wpal[2] = Machine->remapped_colortable[((data & 0x30) >> 4) + 12];
+		gb_wpal[3] = Machine->remapped_colortable[((data & 0xC0) >> 6) + 12];
 		break;
-	case 0xFF40:
-		gb_chrgen = gb_ram + ((data & 0x10) ? 0x8000 : 0x8800);
-		gb_tile_no_mod = (data & 0x10) ? 0x00 : 0x80;
-		gb_bgdtab = gb_ram + ((data & 0x08) ? 0x9C00 : 0x9800);
-		gb_wndtab = gb_ram + ((data & 0x40) ? 0x9C00 : 0x9800);
-
+	case 0xFF48:						/* OBP0 - Object Palette 0 */
+		gb_spal0[0] = Machine->remapped_colortable[(data & 0x03) + 4];
+		gb_spal0[1] = Machine->remapped_colortable[((data & 0x0C) >> 2) + 4];
+		gb_spal0[2] = Machine->remapped_colortable[((data & 0x30) >> 4) + 4];
+		gb_spal0[3] = Machine->remapped_colortable[((data & 0xC0) >> 6) + 4];
 		break;
-	case 0xFF44:
-		data = 0;
+	case 0xFF49:						/* OBP1 - Object Palette 1 */
+		gb_spal1[0] = Machine->remapped_colortable[(data & 0x03) + 8];
+		gb_spal1[1] = Machine->remapped_colortable[((data & 0x0C) >> 2) + 8];
+		gb_spal1[2] = Machine->remapped_colortable[((data & 0x30) >> 4) + 8];
+		gb_spal1[3] = Machine->remapped_colortable[((data & 0xC0) >> 6) + 8];
 		break;
-	case 0xFF47:
-		gb_bpal[0] = Machine->pens[(data & 0x03)];
-		gb_bpal[1] = Machine->pens[(data & 0x0C) >> 2];
-		gb_bpal[2] = Machine->pens[(data & 0x30) >> 4];
-		gb_bpal[3] = Machine->pens[(data & 0xC0) >> 6];
-		break;
-#if 0
-		// only 4 colors in Machine->pens allocated!
-	case 0xFF48:
-		gb_spal0[0] = Machine->pens[(data & 0x03) + 4];
-		gb_spal0[1] = Machine->pens[((data & 0x0C) >> 2) + 4];
-		gb_spal0[2] = Machine->pens[((data & 0x30) >> 4) + 4];
-		gb_spal0[3] = Machine->pens[((data & 0xC0) >> 6) + 4];
-		break;
-	case 0xFF49:
-		gb_spal1[0] = Machine->pens[(data & 0x03) + 8];
-		gb_spal1[1] = Machine->pens[((data & 0x0C) >> 2) + 8];
-		gb_spal1[2] = Machine->pens[((data & 0x30) >> 4) + 8];
-		gb_spal1[3] = Machine->pens[((data & 0xC0) >> 6) + 8];
-		break;
-#else
-	case 0xFF48:
-		gb_spal0[0] = Machine->pens[(data & 0x03) ];
-		gb_spal0[1] = Machine->pens[((data & 0x0C) >> 2) ];
-		gb_spal0[2] = Machine->pens[((data & 0x30) >> 4) ];
-		gb_spal0[3] = Machine->pens[((data & 0xC0) >> 6) ];
-		break;
-	case 0xFF49:
-		gb_spal1[0] = Machine->pens[(data & 0x03) ];
-		gb_spal1[1] = Machine->pens[((data & 0x0C) >> 2) ];
-		gb_spal1[2] = Machine->pens[((data & 0x30) >> 4) ];
-		gb_spal1[3] = Machine->pens[((data & 0xC0) >> 6) ];
-		break;
-#endif
 	default:
-
 		/* Sound Registers */
 		if ((offset >= 0xFF10) && (offset <= 0xFF26))
 		{
-            /*logerror("SOUND WRITE offset: %x  data: %x\n",offset,data);*/
-            gameboy_sound_w(offset,data);
-			gb_ram [offset] = data;
+			gameboy_sound_w(offset, data);
 			return;
 		}
-
-		/*Pre defined Waveform Area */
-		if ((offset >= 0xFF30) && (offset <= 0xFF3F))
-		{
-			gb_ram [offset] = data;
-			return;
-		}
-
-		if (offset == 0xFF26)
-		{
-			if (data & 0x80)
-				gb_ram [0xFF26] = 0xFF;
-			else
-				gb_ram [0xFF26] = 0;
-			return;
-		}
-
 	}
 	gb_ram [offset] = data;
 }
 
-READ_HANDLER ( gb_ser_regs )
+WRITE_HANDLER ( gb_w_ie )
+{
+	gb_ram[0xFFFF] = data & 0x1F;
+}
+
+READ_HANDLER ( gb_r_io )
 {
 	offset += 0xFF00;
 
 	switch(offset)
 	{
+		case 0xFF04:
+			return ((gb_divcount >> 8) & 0xFF);
+		case 0xFF05:
+			return (gb_timer_count >> gb_timer_shift);
 		case 0xFF00:
-						/*logerror("Location read 0xff00\n");*/
-						break;
 		case 0xFF01:
-						/*logerror("Location read 0xff01\n");*/
-						break;
 		case 0xFF02:
-						/*logerror("Location read 0xff02\n");*/
-						break;
 		case 0xFF03:
-						/*logerror("Location read 0xff03\n");*/
-						break;
+		case 0xFF06:
+		case 0xFF07:
+		case 0xFF0F:
+		case 0xFF10:
+		case 0xFF11:
+		case 0xFF12:
+		case 0xFF13:
+		case 0xFF14:
+		case 0xFF16:
+		case 0xFF17:
+		case 0xFF18:
+		case 0xFF19:
+		case 0xFF1A:
+		case 0xFF1B:
+		case 0xFF1C:
+		case 0xFF1D:
+		case 0xFF1E:
+		case 0xFF20:
+		case 0xFF21:
+		case 0xFF22:
+		case 0xFF23:
+		case 0xFF24:
+		case 0xFF25:
+		case 0xFF26:
+		case 0xFF40:
+		case 0xFF41:
+		case 0xFF42:
+		case 0xFF43:
+		case 0xFF44:
+		case 0xFF45:
+		case 0xFF47:
+		case 0xFF48:
+		case 0xFF49:
+		case 0xFF4A:
+		case 0xFF4B:
+			return gb_ram[offset];
+		default:
+			/* It seems unsupported registers return 0xFF */
+			return 0xFF;
 	}
-
-	return gb_ram[offset];
-
-}
-
-READ_HANDLER ( gb_r_divreg )
-{
-	return ((gb_divcount >> 8) & 0xFF);
-}
-
-READ_HANDLER ( gb_r_timer_cnt )
-{
-	return (gb_timer_count >> gb_timer_shift);
 }
 
 int gb_load_rom (int id)
@@ -374,13 +510,42 @@ int gb_load_rom (int id)
 		"ROM ONLY",
 		"ROM+MBC1",
 		"ROM+MBC1+RAM",
-        "ROM+MBC1+RAM+BATTERY",
+		"ROM+MBC1+RAM+BATTERY",
         "UNKNOWN",
-        "ROM+MBC2",
-        "ROM+MBC2+BATTERY"
+		"ROM+MBC2",
+		"ROM+MBC2+BATTERY",
+        "UNKNOWN",
+		"ROM+RAM",
+		"ROM+RAM+BATTERY",
+        "UNKNOWN",
+		"ROM+MMM01",
+		"ROM+MMM01+SRAM",
+		"ROM+MMM01+SRAM+BATTERY",
+        "UNKNOWN",
+		"ROM+MBC3+TIMER+BATTERY",
+		"ROM+MBC3+TIMER+RAM+BATTERY",
+		"ROM+MBC3",
+		"ROM+MBC3+RAM",
+		"ROM+MBC3+RAM+BATTERY",
+        "UNKNOWN",
+        "UNKNOWN",
+        "UNKNOWN",
+        "UNKNOWN",
+        "UNKNOWN",
+		"ROM+MBC5",
+		"ROM+MBC5+RAM",
+		"ROM+MBC5+RAM+BATTERY",
+		"ROM+MBC5+RUMBLE",
+		"ROM+MBC5+RUMBLE+SRAM",
+		"ROM+MBC5+RUMBLE+SRAM+BATTERY",
+		"Pocket Camera",
+		"Bandai TAMA5",
+		/* Need heaps of unknowns here */
+		"Hudson HuC-3",
+		"Hudson HuC-1"
 	};
 
-  /*** Following are some known manufacturer codes *************************/
+/*** Following are some known manufacturer codes *************************/
 	static struct
 	{
 		UINT16 Code;
@@ -469,22 +634,35 @@ int gb_load_rom (int id)
 	int Checksum, I, J;
 	char *P, S[50];
 	void *F;
-	int rambanks[4] =
-	{0, 1, 1, 4};
+	int rambanks[5] = {0, 1, 1, 4, 16};
 
 	for (I = 0; I < 256; I++)
 		RAMMap[I] = ROMMap[I] = NULL;
 
 	if(device_filename(IO_CARTSLOT,id)==NULL)
 	{
-		printf("Cartridge name not specified!\n");
+		printf("Cartridge name required!\n");
 		return INIT_FAIL;
 	}
+
+	/* Grabbed this from the NES driver */
+	strcpy (nvram_name, device_filename(IO_CARTSLOT,id));
+	/* Strip off file extension if it exists */
+	for (I = strlen(nvram_name) - 1; I > 0; I--)
+	{
+		/* If we found a period, terminate the string here and jump out */
+		if (nvram_name[I] == '.')
+		{
+			nvram_name[I] = 0x00;
+			break;
+		}
+	}
+
 	if( new_memory_region(REGION_CPU1, 0x10000,0) )
 	{
 		logerror("Memory allocation failed reading roms!\n");
-        return 1;
-    }
+		return INIT_FAIL;
+	}
 
 	ROM = gb_ram = memory_region(REGION_CPU1);
 	memset (ROM, 0, 0x10000);
@@ -493,7 +671,7 @@ int gb_load_rom (int id)
 	if (!(F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ)))
 	{
 		logerror("image_fopen failed in gb_load_rom.\n");
-		return 1;
+		return INIT_FAIL;
 	}
 
 /* some tricks since we don't have a lseek, the filesize can't
@@ -510,7 +688,7 @@ int gb_load_rom (int id)
 	if (!(F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ)))
 	{
 		logerror("image_fopen failed in gb_load_rom.\n");
-        return 1;
+		return INIT_FAIL;
 	}
 
 	if (J == 512)
@@ -523,20 +701,109 @@ int gb_load_rom (int id)
 	{
 		logerror("Error while reading from file: %s\n", device_filename(IO_CARTSLOT,id));
 		osd_fclose (F);
-		return 1;
+		return INIT_FAIL;
 	}
 
 	ROMMap[0] = gb_ram;
 	ROMBanks = 2 << gb_ram[0x0148];
 	RAMBanks = rambanks[gb_ram[0x0149] & 3];
 	Checksum = ((UINT16) gb_ram[0x014E] << 8) + gb_ram[0x014F];
-	MBCType = gb_ram[0x0147] > 3;
-
-	if ((gb_ram[0x0147] == 4) || (gb_ram[0x0147] > 6))
+	/* File in our cart details */
+	switch( gb_ram[0x0147] )
 	{
-		logerror("Error loading cartridge: Unknown ROM type");
+		case 0x00:
+			MBCType = 0;
+			CartType = 0;
+			break;
+		case 0x01:
+			MBCType = MBC1;
+			CartType = 0;
+			break;
+		case 0x02:
+			MBCType = MBC1;
+			CartType = RAM;
+			break;
+		case 0x03:
+			MBCType = MBC1;
+			CartType = RAM | BATTERY;
+			break;
+		case 0x05:
+			MBCType = MBC2;
+			CartType = 0;
+			break;
+		case 0x06:
+			MBCType = MBC2;
+			CartType = BATTERY;
+			break;
+		case 0x08:
+			MBCType = 0;
+			CartType = RAM;
+		case 0x09:
+			MBCType = 0;
+			CartType = RAM | BATTERY;
+			break;
+		case 0x0F:
+			MBCType = MBC3;
+			CartType = TIMER | BATTERY;
+			break;
+		case 0x10:
+			MBCType = MBC3;
+			CartType = TIMER | RAM | BATTERY;
+			break;
+		case 0x11:
+			MBCType = MBC3;
+			CartType = 0;
+			break;
+		case 0x12:
+			MBCType = MBC3;
+			CartType = RAM;
+			break;
+		case 0x13:
+			MBCType = MBC3;
+			CartType = RAM | BATTERY;
+			break;
+		case 0x19:
+			MBCType = MBC5;
+			CartType = 0;
+			break;
+		case 0x1A:
+			MBCType = MBC5;
+			CartType = RAM;
+			break;
+		case 0x1B:
+			MBCType = MBC5;
+			CartType = RAM | BATTERY;
+			break;
+		case 0x1C:
+			MBCType = MBC5;
+			CartType = RUMBLE;
+			break;
+		case 0x1D:
+			MBCType = MBC5;
+			CartType = RUMBLE | SRAM;
+			break;
+		case 0x1E:
+			MBCType = MBC5;
+			CartType = RUMBLE | SRAM | BATTERY;
+			break;
+		case 0xFE:
+			MBCType = HUC3;
+			CartType = 0;
+			break;
+		case 0xFF:
+			MBCType = HUC1;
+			CartType = 0;
+			break;
+		default:
+			MBCType = 0;
+			CartType = UNKNOWN;
+	}
+
+	if ( CartType & UNKNOWN )
+	{
+		logerror("Error loading cartridge: Unknown ROM type\n");
 		osd_fclose (F);
-		return 1;
+		return INIT_FAIL;
 	}
 
 	if (Verbose)
@@ -544,12 +811,14 @@ int gb_load_rom (int id)
 		strncpy (S, (char *)&gb_ram[0x0134], 16);
 		S[16] = '\0';
 		logerror("OK\n  Name: %s\n", S);
-		logerror("  Type: %s\n", CartTypes[gb_ram[0x0147]]);
-		logerror("  ROM Size: %d 16kB Banks\n", ROMBanks);
+		logerror("  Type: %s [%Xh]\n", CartTypes[gb_ram[0x0147]], gb_ram[0x0147] );
+		logerror("  Color GB: %s [%Xh]\n", (gb_ram[0x0143] == 0x80 || gb_ram[0x0143] == 0xc0) ? "Yes" : "No", gb_ram[0x0143] );
+		logerror("  Super GB: %s [%Xh]\n", (gb_ram[0x0146] == 0x03) ? "Yes" : "No", gb_ram[0x0146] );
+		logerror("  ROM Size: %d 16kB Banks [%X]\n", ROMBanks, gb_ram[0x0148]);
 		J = (gb_ram[0x0149] & 0x03) * 2;
 		J = J ? (1 << (J - 1)) : 0;
-		logerror("  RAM Size: %d kB\n", J);
-
+		logerror("  RAM Size: %d kB [%X]\n", J, gb_ram[0x0149]);
+		logerror("  License code %X%Xh\n", gb_ram[0x0145], gb_ram[0x0144] );
 		J = ((UINT16) gb_ram[0x014B] << 8) + gb_ram[0x014A];
 		for (I = 0, P = NULL; !P && Companies[I].Name; I++)
 			if (J == Companies[I].Code)
@@ -589,22 +858,26 @@ int gb_load_rom (int id)
 		}
 		else
 		{
-			logerror("Error alocating memory\n");
+			logerror("Error allocating memory\n");
 			break;
 		}
 	}
 
 	osd_fclose (F);
 	if (I < ROMBanks)
-		return 1;
+		return INIT_FAIL;
 
 	if (CheckCRC && (Checksum & 0xFFFF))
 	{
 		logerror("Error loading cartridge: Checksum is wrong");
-		return 1;
+		return INIT_FAIL;
 	}
 
-	if (RAMBanks && !MBCType)
+	/* MBC2 has 512 * 4bits (8kb) internal RAM */
+	if( MBCType == MBC2 )
+		RAMBanks = 1;
+
+	if (RAMBanks && MBCType)
 	{
 		for (I = 0; I < RAMBanks; I++)
 		{
@@ -613,46 +886,29 @@ int gb_load_rom (int id)
 			else
 			{
 				logerror("Error alocating memory\n");
-				return 1;
+				return INIT_FAIL;
 			}
 		}
 	}
 
-
-#if 0	/* FIXME */
-	if ((gb_ram[0x0147] == 3) || (gb_ram[0x0147] == 6))
+	/* Load the saved RAM if this cart has a battery */
+	if( CartType & BATTERY )
 	{
-		strcpy (TempFileName, BaseCartName);
-		strcat (TempFileName, ".sav");
-		if (Verbose)
-			logerror("Opening %s...", TempFileName);
-		if (F = fopen (TempFileName, "rb"))
+		UINT8 *battery_ram, *ptr;
+		battery_ram = (UINT8 *)malloc( RAMBanks * 0x2000 );
+		if( battery_ram )
 		{
-			if (Verbose)
-				logerror("reading...");
-			if (gb_ram[0x0147] == 3)
+			battery_load( nvram_name, battery_ram, RAMBanks * 0x2000 );
+			ptr = battery_ram;
+			for( I = 0; I < RAMBanks; I++ )
 			{
-				J = 0;
-				for (I = 0; I < RAMBanks; I++)
-				{
-					J += fread (RAMMap[I], 1, 0x2000, F);
-				}
-				if (Verbose)
-					puts ((J == RAMBanks * 0x2000) ? "OK" : "FAILED");
+				memcpy( RAMMap[I], ptr, 0x2000 );
+				ptr += 0x2000;
 			}
-			else
-			{
-				J = 0x0200;
-				J = (fread (Page[5], 1, J, F) == J);
-				if (Verbose)
-					puts (J ? "OK" : "FAILED");
-			}
-			fclose (F);
+
+			free( battery_ram );
 		}
-		else if (Verbose)
-			puts ("FAILED");
 	}
-#endif
 
 	if (ROMBanks < 3)
 		ROMMask = 0;
@@ -660,7 +916,6 @@ int gb_load_rom (int id)
 	{
 		for (I = 1; I < ROMBanks; I <<= 1) ;
 		ROMMask = I - 1;
-		ROMBank = 1;
 	}
 	if (!RAMMap[0])
 		RAMMask = 0;
@@ -668,95 +923,75 @@ int gb_load_rom (int id)
 	{
 		for (I = 1; I < RAMBanks; I <<= 1) ;
 		RAMMask = I - 1;
-		RAMBank = 0;
 	}
 
-	return 0;
+	return INIT_PASS;
 }
 
 int gb_scanline_interrupt (void)
 {
-	/* test ! */
+	/* This is a little dodgy, but it works... mostly */
 	static UINT8 count = 0;
-
 	count = (count + 1) % 3;
-	switch (count)
-	{
-	case 0:
-		/* continue */
-		break;
-	case 1:
-		gb_scanline_interrupt_set_mode2 (0);
+	if ( count )
 		return ignore_interrupt();
-	case 2:
-		gb_scanline_interrupt_set_mode3 (0);
-		return ignore_interrupt();
-	}
 
-	/* first lett's draw the current scanline */
+	/* First let's draw the current scanline */
 	if (CURLINE < 144)
 		gb_refresh_scanline ();
 
-	/* the rest only makes sense if the display is enabled */
+	/* The rest only makes sense if the display is enabled */
 	if (LCDCONT & 0x80)
 	{
 		if (CURLINE == CMPLINE)
 		{
 			LCDSTAT |= 0x04;
-			/* generate lcd interrupt if requested */
+			/* Generate lcd interrupt if requested */
 			if( LCDSTAT & 0x40 )
 				cpu_set_irq_line(0, LCD_INT, HOLD_LINE);
 		}
 		else
 			LCDSTAT &= 0xFB;
 
-		CURLINE = (CURLINE + 1) % 154;
-
-		//gb_ram[0xFF44] = CURLINE;
-
 		if (CURLINE < 144)
 		{
-			/* first  lcdstate change after aprox 49 uS */
-			timer_set (49.0 / 1000000.0, 0, gb_scanline_interrupt_set_mode2);
+			/* Set Mode 2 lcdstate */
+			LCDSTAT = (LCDSTAT & 0xFC) | 0x02;
+			/* Generate lcd interrupt if requested */
+			if (LCDSTAT & 0x20)
+				cpu_set_irq_line(0, LCD_INT, HOLD_LINE);
 
-			/* second lcdstate change after aprox 69 uS */
-			timer_set (69.0 / 1000000.0, 0, gb_scanline_interrupt_set_mode3);
-
-			/* modify lcdstate */
-			LCDSTAT = LCDSTAT & 0xFC;
-
-			/* generate lcd interrupt if requested */
-			if( LCDSTAT & 0x08 )
-				{
-					/*logerror("generating lcd interrupt\n");*/
-					cpu_set_irq_line(0, LCD_INT, HOLD_LINE);
-				}
+			/* First  lcdstate change after aprox 19 uS */
+			timer_set (19.0 / 1000000.0, 0, gb_scanline_interrupt_set_mode3);
+			/* Second lcdstate change after aprox 60 uS */
+			timer_set (60.0 / 1000000.0, 0, gb_scanline_interrupt_set_mode0);
 		}
 		else
 		{
-			/* generate VBlank interrupt */
+			/* Generate VBlank interrupt */
 			if (CURLINE == 144)
 			{
-				/* cause VBlank interrupt */
+				/* Cause VBlank interrupt */
 				cpu_set_irq_line(0, VBL_INT, HOLD_LINE);
 				/* Set VBlank lcdstate */
 				LCDSTAT = (LCDSTAT & 0xFC) | 0x01;
-				/* generate lcd interrupt if requested */
+				/* Generate lcd interrupt if requested */
 				if( LCDSTAT & 0x10 )
 					cpu_set_irq_line(0, LCD_INT, HOLD_LINE);
 			}
 		}
 
-		/* Generate serial IO interrupt */
-		if (SIOCount)
+		CURLINE = (CURLINE + 1) % 154;
+	}
+
+	/* Generate serial IO interrupt */
+	if (SIOCount)
+	{
+		SIODATA = (SIODATA << 1) | 0x01;
+		if (!--SIOCount)
 		{
-			SIODATA = (SIODATA << 1) | 0x01;
-			if (!--SIOCount)
-			{
-				SIOCONT &= 0x7F;
-				if( LCDSTAT & 0x10 )
-					cpu_set_irq_line(0, SIO_INT, HOLD_LINE);
-			}
+			SIOCONT &= 0x7F;
+			cpu_set_irq_line(0, SIO_INT, HOLD_LINE);
 		}
 	}
 
@@ -765,17 +1000,17 @@ int gb_scanline_interrupt (void)
 	return ignore_interrupt();
 }
 
-void gb_scanline_interrupt_set_mode2 (int param)
+void gb_scanline_interrupt_set_mode0 (int param)
 {
-	/* modify lcdstate */
-	LCDSTAT = (LCDSTAT & 0xFC) | 0x02;
-	/* generate lcd interrupt if requested */
-	if (LCDSTAT & 0x20)
+	/* Set Mode 0 lcdstate */
+	LCDSTAT = LCDSTAT & 0xFC;
+	/* Generate lcd interrupt if requested */
+	if( LCDSTAT & 0x08 )
 		cpu_set_irq_line(0, LCD_INT, HOLD_LINE);
 }
 
 void gb_scanline_interrupt_set_mode3 (int param)
 {
-	/* modify lcdstate */
+	/* Set Mode 3 lcdstate */
 	LCDSTAT = (LCDSTAT & 0xFC) | 0x03;
 }

@@ -21,6 +21,24 @@ Hardware:	PIA6820 DSP for keyboard and screen interface
 		d011	KEYBOARD CTR	Bit 7 high signals available key
 		d012	DISPLAY DDR	Output to screen, set bit 7 of d013
 		d013	DISPLAY CTR	Bit 7 low signals display ready
+
+
+A memory map of an Apple-1 system would be as follows:
+$0000-$00FF:	Zero page: location of single or double byte values used by programs
+$0024-$002B:	Zero page locations used by the Monitor
+$0100-$01FF:	Stack: used by the 6502 processor as a temporary holding place for addresses or data
+$0200-$027F:	Keyboard input buffer storage used by the Monitor
+$0280-$0FFF:	RAM space available for a program in a 4K system
+$1000-$1FFF:	RAM space available for a program in an 8K system not using cassette BASIC
+$C028:			Port for output to cassette
+$C100-$C1FF:	ROM program used to operate the cassette interface
+$D010:  		Port where a byte of keyboard input appears
+$D011:  		Port to indicate that "return" key on keyboard was pressed
+$D012:  		Port to output a byte character to the display monitor
+$D013:  		Port to cause display to skip down to the next line
+$E000-$EFFF:	RAM space available for a program in an 8K system modified to use cassette BASIC
+$F000-$FFFF:	PROM (programmable read-only memory) used by the Apple Monitor program
+
 **********************************************************************/
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
@@ -196,9 +214,33 @@ ROM_START(apple1)
 	ROM_LOAD("apple1.vid", 0x0000, 0x0400, 0xa3f2d66f)
 ROM_END
 
-static	const	struct	IODevice io_apple1[] = {
-	{ IO_END }
+static const struct	IODevice io_apple1[] =
+{
+	{
+		IO_SNAPSHOT,		/* type 					*/
+		1,					/* count 					*/
+		"snp\0",			/* file extensions 			*/
+		IO_RESET_ALL,		/* reset if file changed	*/
+		0,					/* id 						*/
+		apple1_load_snap,	/* load 					*/
+		NULL,				/* exit 					*/
+		NULL,				/* info 					*/
+		NULL,				/* open 					*/
+		NULL,				/* close 					*/
+		NULL,				/* status 					*/
+		NULL,				/* seek 					*/
+		NULL,				/* tell 					*/
+		NULL,				/* input 					*/
+		NULL,				/* output 					*/
+		NULL,				/* input_chunk 				*/
+		NULL				/* output_chunk 			*/
+	},
+	{
+		IO_END
+	}
 };
+
+
 
 /*    YEAR	NAME	PARENT	MACHINE	INPUT	INIT	COMPANY				FULLNAME */
 COMP( 1976,	apple1,	0,		apple1,	apple1,	0,		"Apple Computer",	"Apple I" )

@@ -27,29 +27,41 @@ enum { TMS7000_PC=1, TMS7000_SP, TMS7000_ST };
 
 enum { TMS7000_VCC, TMS7000_VSS };
 
-extern int tms7000_icount;
+enum { TMS7000_NMOS, TMS7000_CMOS };
+
+extern int tms7000_ICount;
+
+enum {
+	TMS7000_IRQ1_LINE = 0,
+	TMS7000_IRQ2_LINE,
+	TMS7000_IRQ3_LINE,
+	TMS7000_IRQNONE = 255
+};
+
+enum {
+	TMS7000_PORTA = 0,
+	TMS7000_PORTB,
+	TMS7000_PORTC,
+	TMS7000_PORTD
+};
 
 /* PUBLIC FUNCTIONS */
 extern unsigned tms7000_get_context(void *dst);
 extern void tms7000_set_context(void *src);
-extern unsigned tms7000_get_pc(void);
-extern void tms7000_set_pc(unsigned val);
-extern unsigned tms7000_get_sp(void);
-extern void tms7000_set_sp(unsigned val);
 extern void tms7000_set_reg(int regnum, unsigned val);
 extern void tms7000_init(void);
 extern void tms7000_reset(void *param);
 extern void tms7000_exit(void);
 extern const char *tms7000_info(void *context, int regnum);
 extern unsigned tms7000_dasm(char *buffer, unsigned pc);
-extern void tms7000_set_nmi_line(int state);
 extern void tms7000_set_irq_line(int irqline, int state);
 extern void tms7000_set_irq_callback(int (*callback)(int irqline));
-extern WRITE_HANDLER( tms7000_internal_w );
-extern READ_HANDLER( tms7000_internal_r );
 extern int tms7000_execute(int cycles);
 extern unsigned tms7000_get_reg(int regnum);
-extern void tms7000_set_mc_line( int value );
+extern void tms7000_A6EC1( void );
+
+extern WRITE_HANDLER( tms70x0_pf_w );
+extern READ_HANDLER( tms70x0_pf_r );
 
 #ifdef MAME_DEBUG
 extern unsigned Dasm7000 (char *buffer, unsigned pc);

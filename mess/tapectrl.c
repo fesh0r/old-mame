@@ -32,9 +32,9 @@ int tapecontrol(struct mame_bitmap *bitmap, int selected)
 	device_seek(IO_CASSETTE,id,t0,SEEK_SET);
 
 	if( t1 )
-		sprintf(timepos, "%3d%%", t0*100/t1);
+		sprintf(timepos, "%04d/%04d", t0/11025, t1/11025);
 	else
-		sprintf(timepos, "%3d%%", 0);
+		sprintf(timepos, "%04d/%04d", 0, t1/11025);
 	menu_item[total] = (device_status(IO_CASSETTE,id,-1) & 1) ? "playing" : "stopped";
 	menu_subitem[total] = timepos;
     flag[total] = 0;
@@ -134,17 +134,21 @@ int tapecontrol(struct mame_bitmap *bitmap, int selected)
                 id = (id + 1) % device_count(IO_CASSETTE);
 				break;
 			case 2:
+				/* Pause/stop */
 				if ((status & 1) == 0)
 					device_seek(IO_CASSETTE,id,0,SEEK_SET);
 				device_status(IO_CASSETTE,id,status & ~1);
 				break;
 			case 3:
+				/* Play */
 				device_status(IO_CASSETTE,id,status | 1);
                 break;
 			case 4:
+				/* Rewind */
 				device_seek(IO_CASSETTE,id,-11025,SEEK_CUR);
 				break;
 			case 5:
+				/* Fast forward */
 				device_seek(IO_CASSETTE,id,+11025,SEEK_CUR);
 				break;
             }

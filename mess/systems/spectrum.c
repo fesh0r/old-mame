@@ -31,66 +31,114 @@ Interrupts:
 
 Changes:
 
-29/1/2000		KT - Implemented initial +3 emulation
-30/1/2000		KT - Improved input port decoding for reading
-					 and therefore correct keyboard handling for Spectrum and +3
-31/1/2000		KT - Implemented buzzer sound for Spectrum and +3.
-					 Implementation copied from Paul Daniel's Jupiter driver.
-					 Fixed screen display problems with dirty chars.
-					 Added support to load .Z80 snapshots. 48k support so far.
-13/2/2000		KT - Added Interface II, Kempston, Fuller and Mikrogen joystick support
-17/2/2000		DJR - Added full key descriptions and Spectrum+ keys.
-				Fixed Spectrum +3 keyboard problems.
-17/2/2000		KT - Added tape loading from WAV/Changed from DAC to generic speaker code
-18/2/2000		KT - Added tape saving to WAV
-27/2/2000		KT - Took DJR's changes and added my changes.
-27/2/2000		KT - Added disk image support to Spectrum +3 driver.
-27/2/2000		KT - Added joystick I/O code to the Spectrum +3 I/O handler.
-14/3/2000		DJR - Tape handling dipswitch.
-26/3/2000		DJR - Snapshot files are now classifed as snapshots not cartridges.
-04/4/2000		DJR - Spectrum 128 / +2 Support.
-13/4/2000		DJR - +4 Support (unofficial 48K hack).
-13/4/2000		DJR - +2a Support (rom also used in +3 models).
-13/4/2000		DJR - TK90X, TK95 and Inves support (48K clones).
-21/4/2000		DJR - TS2068 and TC2048 support (TC2048 Supports extra video
-				modes but doesn't have bank switching or sound chip).
-09/5/2000		DJR - Spectrum +2 (France, Spain), +3 (Spain).
-17/5/2000		DJR - Dipswitch to enable/disable disk drives on +3 and clones.
-27/6/2000		DJR - Changed 128K/+3 port decoding (sound now works in Zub 128K).
-06/8/2000		DJR - Fixed +3 Floppy support
-10/2/2001		KT  - re-arranged code and split into each model emulated
-					Code is split into 48k, 128k, +3, tc2048 and ts2048 segments.
-					128k uses some of the functions in 48k, +3 uses some functions in 128,
-					and tc2048/ts2048 use some of the functions in 48k.
-					The code has been arranged so these functions come in some kind
-					of "override" order, read functions changed to use READ_HANDLER
-					and write functions changed to use WRITE_HANDLER
-					Added Scorpion256 preliminary.
-18/6/2001		DJR - Added support for Interface 2 cartridges.
+29/1/2000	KT -	Implemented initial +3 emulation.
+30/1/2000	KT -	Improved input port decoding for reading and therefore
+			correct keyboard handling for Spectrum and +3.
+31/1/2000	KT -	Implemented buzzer sound for Spectrum and +3.
+			Implementation copied from Paul Daniel's Jupiter driver.
+			Fixed screen display problems with dirty chars.
+			Added support to load .Z80 snapshots. 48k support so far.
+13/2/2000	KT -	Added Interface II, Kempston, Fuller and Mikrogen
+			joystick support.
+17/2/2000	DJR -	Added full key descriptions and Spectrum+ keys.
+			Fixed Spectrum +3 keyboard problems.
+17/2/2000	KT -	Added tape loading from WAV/Changed from DAC to generic
+			speaker code.
+18/2/2000	KT -	Added tape saving to WAV.
+27/2/2000	KT -	Took DJR's changes and added my changes.
+27/2/2000	KT -	Added disk image support to Spectrum +3 driver.
+27/2/2000	KT -	Added joystick I/O code to the Spectrum +3 I/O handler.
+14/3/2000	DJR -	Tape handling dipswitch.
+26/3/2000	DJR -	Snapshot files are now classifed as snapshots not
+			cartridges.
+04/4/2000	DJR -	Spectrum 128 / +2 Support.
+13/4/2000	DJR -	+4 Support (unofficial 48K hack).
+13/4/2000	DJR -	+2a Support (rom also used in +3 models).
+13/4/2000	DJR -	TK90X, TK95 and Inves support (48K clones).
+21/4/2000	DJR -	TS2068 and TC2048 support (TC2048 Supports extra video
+			modes but doesn't have bank switching or sound chip).
+09/5/2000	DJR -	Spectrum +2 (France, Spain), +3 (Spain).
+17/5/2000	DJR -	Dipswitch to enable/disable disk drives on +3 and clones.
+27/6/2000	DJR -	Changed 128K/+3 port decoding (sound now works in Zub 128K).
+06/8/2000	DJR -	Fixed +3 Floppy support
+10/2/2001	KT  -	Re-arranged code and split into each model emulated.
+			Code is split into 48k, 128k, +3, tc2048 and ts2048
+			segments. 128k uses some of the functions in 48k, +3
+			uses some functions in 128, and tc2048/ts2048 use some
+			of the functions in 48k. The code has been arranged so
+			these functions come in some kind of "override" order,
+			read functions changed to use READ_HANDLER and write
+			functions changed to use WRITE_HANDLER.
+			Added Scorpion256 preliminary.
+18/6/2001	DJR -	Added support for Interface 2 cartridges.
+xx/xx/2001	KS -	TS-2068 sound fixed.
+			Added support for DOCK cartridges for TS-2068.
+			Added Spectrum 48k Psycho modified rom driver.
+			Added UK-2086 driver.
+23/12/2001	KS -	48k machines are now able to run code in screen memory.
+				Programs which keep their code in screen memory
+				like monitors, tape copiers, decrunchers, etc.
+				works now.
+		     	Fixed problem with interrupt vector set to 0xffff (much
+			more 128k games works now).
+				A useful used trick on the Spectrum is to set
+				interrupt vector to 0xffff (using the table 
+				which contain 0xff's) and put a byte 0x18 hex,
+				the opcode for JR, at this address. The first
+				byte of the ROM is a 0xf3 (DI), so the JR will
+				jump to 0xfff4, where a long JP to the actual
+				interrupt routine is put. Due to unideal
+				bankswitching in MAME this JP were to 0001 what
+				causes Spectrum to reset. Fixing this problem
+				made much more software runing (i.e. Paperboy).
+			Corrected frames per second value for 48k and 128k
+			Sincalir machines.
+				There are 50.08 frames per second for Spectrum
+				48k what gives 69888 cycles for each frame and
+				50.021 for Spectrum 128/+2/+2A/+3 what gives
+				70908 cycles for each frame. 
+			Remaped some Spectrum+ keys.
+				Presing F3 to reset was seting 0xf7 on keyboard
+				input port. Problem occured for snapshots of
+				some programms where it was readed as pressing
+				key 4 (which is exit in Tapecopy by R. Dannhoefer
+				for example).
+			Added support to load .SP snapshots.
+			Added .BLK tape images support.
+				.BLK files are identical to .TAP ones, extension
+				is an only difference.
+08/03/2002	KS -	#FF port emulation added.
+				Arkanoid works now, but is not playable due to
+				completly messed timings.
 
- Initialisation values used when determining which model is being emulated.
-   48K	   Spectrum doesn't use either port.
-   128K/+2 Bank switches with port 7ffd only.
-   +3/+2a  Bank switches with both ports.
+Initialisation values used when determining which model is being emulated:
+ 48K		Spectrum doesn't use either port.
+ 128K/+2	Bank switches with port 7ffd only.
+ +3/+2a		Bank switches with both ports.
 
-	Notes:
+Notes:
+ 1. No contented memory.
+ 2. No hi-res colour effects (need contended memory first for accurate timing).
+ 3. Multiface 1 and Interface 1 not supported.
+ 4. Horace and the Spiders cartridge doesn't run properly.
+ 5. Tape images not supported:
+    .TZX, .SPC, .ITM, .PAN, .TAP(Warajevo), .VOC, .ZXS.
+ 6. Snapshot images not supported:
+    .ACH, .PRG, .RAW, .SEM, .SIT, .SNX, .ZX, .ZXS, .ZX82.
+ 7. 128K emulation is not perfect - the 128K machines crash and hang while
+    running quite a lot of games.
+ 8. Disk errors occur on some +3 games.
+ 9. Video hardware of all machines is timed incorrectly.
+10. EXROM and HOME cartridges are not emulated.
+11. The TK90X and TK95 roms output 0 to port #df on start up.
+12. The purpose of this port is unknown (probably display mode as TS2068) and
+    thus is not emulated.
 
-48K machines can't run code in screen memory (128K, TS2068, TC2048 etc. OK).
-Port #FF Vertical refresh not emulated (Arkanoid doesn't run).
-No contented memory.
-No hi-res colour effects (need contended memory first for accurate timing).
-Multiface 1 and Interface 1 not supported.
-Horace and the Spiders cartridge doesn't run properly.
-.TZX files not supported.
-128K emulation is not perfect - the 128K machines crash and hang while
-running quite a lot of games.
-Disk errors occur on some +3 games.
+Very detailed infos about the ZX Spectrum +3e can be found at
 
-The TK90X and TK95 roms output 0 to port #df on start up.
-The purpose of this port is unknown (probably display mode as TS2068) and
-thus is not emulated.
+http://www.z88forever.org.uk/zxplus3e/
 
-***************************************************************************/
+*******************************************************************************/
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
@@ -242,7 +290,6 @@ READ_HANDLER(spectrum_port_fe_r)
 	Issue 3 Spectrums default to having bits 5 & 7 set and bit 6 reset. */
 	if (readinputport(16) & 0x80)
 		data ^= (0x40);
-
 	return data;
 }
 
@@ -278,9 +325,7 @@ READ_HANDLER ( spectrum_port_r )
 		if ((offset & 0xff)==0xdf)
 			return spectrum_port_df_r(offset);
 
-		logerror("Read from port: %04x\n", offset);
-
-		return 0xff;
+		return cpu_getscanline()<193 ? spectrum_colorram[(cpu_getscanline()&0xf8)<<2]:0xff;
 }
 
 WRITE_HANDLER ( spectrum_port_w )
@@ -338,7 +383,6 @@ static void spectrum_free_ram(void)
 
 int spectrum_128_port_7ffd_data = -1;
 unsigned char *spectrum_128_screen_location = NULL;
-
 
 static WRITE_HANDLER(spectrum_128_port_7ffd_w)
 {
@@ -412,8 +456,6 @@ static WRITE_HANDLER(spectrum_128_port_fffd_w)
 		AY8910_control_port_0_w(0, data);
 }
 
-/* +3 manual is confused about this */
-
 static READ_HANDLER(spectrum_128_port_fffd_r)
 {
 		return AY8910_read_port_0_r(0);
@@ -426,17 +468,19 @@ READ_HANDLER ( spectrum_128_port_r )
 		 return spectrum_port_fe_r(offset);
 	 }
 
-	 /* KT: the following is not decoded exactly, need to check what
-	 is correct */
 	 if ((offset & 2)==0)
 	 {
-		 switch ((offset>>8) & 0xff)
-		 {
-				case 0xff:
-						return spectrum_128_port_fffd_r(offset);
-		 }
+		switch ((offset>>14) & 0x03)
+		{
+			default:
+				break;
+
+			case 3:
+				return spectrum_128_port_fffd_r(offset);
+		}
 	 }
 
+	 /* don't think these are correct! */
 	 if ((offset & 0xff)==0x1f)
 		 return spectrum_port_1f_r(offset);
 
@@ -446,9 +490,7 @@ READ_HANDLER ( spectrum_128_port_r )
 	 if ((offset & 0xff)==0xdf)
 		 return spectrum_port_df_r(offset);
 
-	 logerror("Read from 128 port: %04x\n", offset);
-
-	 return 0xff;
+	 return cpu_getscanline()<193 ? spectrum_128_screen_location[0x1800|(cpu_getscanline()&0xf8)<<2]:0xff;
 }
 
 WRITE_HANDLER ( spectrum_128_port_w )
@@ -492,7 +534,6 @@ static PORT_WRITE_START (spectrum_128_writeport)
 	{0x0000, 0xffff, spectrum_128_port_w},
 PORT_END
 
-
 static MEMORY_READ_START (spectrum_128_readmem)
 	{ 0x0000, 0x3fff, MRA_BANK1 },
 	{ 0x4000, 0x7fff, MRA_BANK2 },
@@ -506,7 +547,6 @@ static MEMORY_WRITE_START (spectrum_128_writemem)
 	{ 0x8000, 0xbfff, MWA_BANK7 },
 	{ 0xc000, 0xffff, MWA_BANK8 },
 MEMORY_END
-
 
 void spectrum_128_init_machine(void)
 {
@@ -726,6 +766,7 @@ static WRITE_HANDLER(spectrum_plus3_port_1ffd_w)
 		}
 }
 
+/* decoding as per spectrum FAQ on www.worldofspectrum.org */
 READ_HANDLER ( spectrum_plus3_port_r )
 {
 	 if ((offset & 1)==0)
@@ -733,24 +774,42 @@ READ_HANDLER ( spectrum_plus3_port_r )
 		 return spectrum_port_fe_r(offset);
 	 }
 
-	 /* KT: the following is not decoded exactly, need to check what
-	 is correct */
 	 if ((offset & 2)==0)
 	 {
-		 switch ((offset>>8) & 0xff)
+		 switch ((offset>>14) & 0x03)
 		 {
-				case 0xff: return spectrum_128_port_fffd_r(offset);
-				case 0x2f: return spectrum_plus3_port_2ffd_r(offset);
-				case 0x3f: return spectrum_plus3_port_3ffd_r(offset);
-				case 0x1f: return spectrum_port_1f_r(offset);
-				case 0x7f: return spectrum_port_7f_r(offset);
-				case 0xdf: return spectrum_port_df_r(offset);
+			/* +3 fdc,memory,centronics */
+			case 0:
+			{
+				switch ((offset>>12) & 0x03)
+				{
+					/* +3 centronics */
+					case 0:
+						break;
+
+					/* +3 fdc status */
+					case 2:
+						return spectrum_plus3_port_2ffd_r(offset);
+					/* +3 fdc data */
+					case 3:
+						return spectrum_plus3_port_3ffd_r(offset);
+
+					default:
+						break;
+				}
+			}
+			break;
+
+			/* 128k AY data */
+			case 3:
+				return spectrum_128_port_fffd_r(offset);
+
+			default:
+				break;
 		 }
 	 }
 
-	 logerror("Read from +3 port: %04x\n", offset);
-
-	 return 0xff;
+	 return cpu_getscanline()<193 ? spectrum_128_screen_location[0x1800|(cpu_getscanline()&0xf8)<<2]:0xff;
 }
 
 WRITE_HANDLER ( spectrum_plus3_port_w )
@@ -760,32 +819,60 @@ WRITE_HANDLER ( spectrum_plus3_port_w )
 
 		/* the following is not decoded exactly, need to check
 		what is correct! */
-		else if ((offset & 2)==0)
+		
+		if ((offset & 2)==0)
 		{
-				switch ((offset>>8) & 0xf0)
+			switch ((offset>>14) & 0x03)
+			{
+				/* +3 fdc,memory,centronics */
+				case 0:
 				{
-						case 0x70:
-								spectrum_plus3_port_7ffd_w(offset, data);
-								break;
-						case 0xb0:
-								spectrum_128_port_bffd_w(offset, data);
-								break;
-						case 0xf0:
-								spectrum_128_port_fffd_w(offset, data);
-								break;
-						case 0x10:
-								spectrum_plus3_port_1ffd_w(offset, data);
-								break;
-						case 0x30:
-								spectrum_plus3_port_3ffd_w(offset, data);
+					switch ((offset>>12) & 0x03)
+					{
+						/* +3 centronics */
+						case 0:
+						{
+
+
+						}
+						break;
+
+						/* +3 memory */
+						case 1:
+							spectrum_plus3_port_1ffd_w(offset, data);
+							break;
+							
+						/* +3 fdc data */
+						case 3:
+							spectrum_plus3_port_3ffd_w(offset,data);
+							break;
+
 						default:
-								logerror("Write %02x to +3 port: %04x\n", data, offset);
+							break;
+					}
 				}
+				break;
+
+				/* 128k memory */
+				case 1:
+					spectrum_plus3_port_7ffd_w(offset, data);
+					break;
+
+				/* 128k AY data */
+				case 2:
+					spectrum_128_port_bffd_w(offset, data);
+					break;
+
+				/* 128K AY register */
+				case 3:
+					spectrum_128_port_fffd_w(offset, data);
+			
+				default:
+					break;
+			}
 		}
-		else
-		{
-			logerror("Write %02x to +3 port: %04x\n", data, offset);
-		}
+
+/*logerror("Write %02x to +3 port: %04x\n", data, offset); */
 }
 
 /* ports are not decoded full.
@@ -2002,10 +2089,10 @@ INPUT_PORTS_START( spectrum )
 		PORT_BITX(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD, "B  BORDER  *      BIN      BRIGHT",  KEYCODE_B,  IP_JOY_NONE )
 
 		PORT_START /* Spectrum+ Keys (set CAPS + 1-5) */
-		PORT_BITX(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD, "EDIT          (CAPS + 1)",  KEYCODE_F1,         IP_JOY_NONE )
+		PORT_BITX(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD, "EDIT          (CAPS + 1)",  KEYCODE_INSERT,     IP_JOY_NONE )
 		PORT_BITX(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD, "CAPS LOCK     (CAPS + 2)",  KEYCODE_CAPSLOCK,   IP_JOY_NONE )
-		PORT_BITX(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD, "TRUE VID      (CAPS + 3)",  KEYCODE_F2,         IP_JOY_NONE )
-		PORT_BITX(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD, "INV VID       (CAPS + 4)",  KEYCODE_F3,         IP_JOY_NONE )
+		PORT_BITX(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD, "TRUE VID      (CAPS + 3)",  KEYCODE_HOME,         IP_JOY_NONE )
+		PORT_BITX(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD, "INV VID       (CAPS + 4)",  KEYCODE_END,         IP_JOY_NONE )
 		PORT_BITX(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD, "Cursor left   (CAPS + 5)",  KEYCODE_LEFT,       IP_JOY_NONE )
 		PORT_BIT(0xe0, IP_ACTIVE_LOW, IPT_UNUSED)
 
@@ -2148,7 +2235,7 @@ static struct MachineDriver machine_driver_spectrum =
 			spec_interrupt,1,
 		},
 	},
-	50, 2500,		/* frames per second, vblank duration */
+	50.08, 2500,		/* frames per second, vblank duration */
 	1,
 	spectrum_init_machine,
 	spectrum_shutdown_machine,
@@ -2195,7 +2282,7 @@ static struct MachineDriver machine_driver_spectrum_128 =
 			spec_interrupt,1,
 		},
 	},
-	50, 2500,		/* frames per second, vblank duration */
+	50.021, 2500,		/* frames per second, vblank duration */
 	1,
 	spectrum_128_init_machine,
 	spectrum_128_exit_machine,
@@ -2247,7 +2334,7 @@ static struct MachineDriver machine_driver_spectrum_plus3 =
 			spec_interrupt,1,
 		},
 	},
-	50, 2500,		/* frames per second, vblank duration */
+	50.01, 2500,		/* frames per second, vblank duration */
 	1,
 	spectrum_plus3_init_machine,
 	spectrum_plus3_exit_machine,
@@ -2674,8 +2761,14 @@ ROM_END
 
 ROM_START(specpl3e)
 		ROM_REGION(0x20000,REGION_CPU1,0)
-		ROM_LOAD("roma.bin",0x10000,0x8000, 0x7c20e2c9)
-		ROM_LOAD("romb.bin",0x18000,0x8000, 0x4a700c7e)
+		ROM_LOAD("roma-en.rom",0x10000,0x8000, 0x14fddc04)
+		ROM_LOAD("romb-en.rom",0x18000,0x8000, 0xba488ccd)
+ROM_END
+
+ROM_START(specp3es)
+	        ROM_REGION(0x20000,REGION_CPU1,0)
+	        ROM_LOAD("roma-es.rom",0x10000,0x8000, 0x932f1801)
+	        ROM_LOAD("romb-es.rom",0x18000,0x8000, 0xf0a12485)
 ROM_END
 
 ROM_START(scorpion)
@@ -2714,7 +2807,7 @@ static const struct IODevice io_spectrum[] = {
 	{
 		IO_SNAPSHOT,		/* type */
 		1,					/* count */
-		"sna\0z80\0",       /* file extensions */
+		"sna\0z80\0sp\0",       /* file extensions */
 		IO_RESET_ALL,		/* reset if file changed */
 		0,
 		spectrum_snap_load,	/* init */
@@ -2730,7 +2823,7 @@ static const struct IODevice io_spectrum[] = {
 		NULL				/* output_chunk */
 	},
 		IODEVICE_SPEC_QUICK,
-		IO_CASSETTE_WAVE(1,"wav\0tap\0", NULL,spectrum_cassette_init, spectrum_cassette_exit),
+		IO_CASSETTE_WAVE(1,"wav\0tap\0blk\0", NULL,spectrum_cassette_init, spectrum_cassette_exit),
 	{
 		IO_CARTSLOT,		/* type */
 		1,					/* count */
@@ -2756,7 +2849,7 @@ static const struct IODevice io_specpls3[] = {
 	{
 		IO_SNAPSHOT,		/* type */
 		1,					/* count */
-		"sna\0z80\0",       /* file extensions */
+		"sna\0z80\0sp\0",       /* file extensions */
 		IO_RESET_ALL,		/* reset if file changed */
 		0,
 		spectrum_snap_load,	/* init */
@@ -2772,7 +2865,7 @@ static const struct IODevice io_specpls3[] = {
 		NULL				/* output_chunk */
 	},
 		IODEVICE_SPEC_QUICK,
-		IO_CASSETTE_WAVE(1,"wav\0tap\0", NULL,spectrum_cassette_init, spectrum_cassette_exit),
+		IO_CASSETTE_WAVE(1,"wav\0tap\0blk\0", NULL,spectrum_cassette_init, spectrum_cassette_exit),
 	{
 		IO_FLOPPY,			/* type */
 		2,					/* count */
@@ -2798,7 +2891,7 @@ static const struct IODevice io_ts2068[] = {
 	{
 		IO_SNAPSHOT,		/* type */
 		1,					/* count */
-		"sna\0z80\0",       /* file extensions */
+		"sna\0z80\0sp\0",       /* file extensions */
 		IO_RESET_ALL,		/* reset if file changed */
 		0,
 		spectrum_snap_load,	/* init */
@@ -2814,7 +2907,7 @@ static const struct IODevice io_ts2068[] = {
 		NULL				/* output_chunk */
 	},
 		IODEVICE_SPEC_QUICK,
-		IO_CASSETTE_WAVE(1,"wav\0tap\0", NULL,spectrum_cassette_init, spectrum_cassette_exit),
+		IO_CASSETTE_WAVE(1,"wav\0tap\0blk\0", NULL,spectrum_cassette_init, spectrum_cassette_exit),
 	{
 		IO_CARTSLOT,			/* type */
 		1,				/* count */
@@ -2855,6 +2948,7 @@ static const struct IODevice io_ts2068[] = {
 #define io_specp2sp	io_spectrum
 #define io_specp3sp	io_specpls3
 #define io_specpl3e	io_specpls3
+#define io_specp3es	io_specpls3
 #define io_scorpion	io_specpls3
 #define io_pentagon	io_specpls3
 
@@ -2883,6 +2977,7 @@ COMPX( 1986, specp2fr, spec128,  spectrum_128,	 spectrum, 0,			 "Amstrad plc",  
 COMPX( 1986, specp2sp, spec128,  spectrum_128,	 spectrum, 0,			 "Amstrad plc",          "ZX Spectrum +2 (Spain)" ,GAME_NOT_WORKING)
 COMPX( 1987, specp3sp, spec128,  spectrum_plus3, spectrum, 0,			 "Amstrad plc",          "ZX Spectrum +3 (Spain)" ,GAME_NOT_WORKING)
 COMPX( 2000, specpl3e, spec128,  spectrum_plus3, spectrum, 0,			 "Amstrad plc",          "ZX Spectrum +3e" , GAME_NOT_WORKING|GAME_COMPUTER_MODIFIED )
+COMPX( 2000, specp3es, spec128,  spectrum_plus3, spectrum, 0,                    "Amstrad plc",          "ZX Spectrum +3e (Spain)" , GAME_NOT_WORKING|GAME_COMPUTER_MODIFIED )
 
 COMPX( ????, scorpion, 0, scorpion,	spectrum, 0,			"Zonov and Co.",		"Zs Scorpion 256", GAME_NOT_WORKING)
 COMPX( ????, pentagon, spectrum, pentagon,	spectrum, 0,			"???",		"Pentagon", GAME_NOT_WORKING)

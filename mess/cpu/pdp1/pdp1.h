@@ -4,27 +4,50 @@
 #include "memory.h"
 #include "osd_cpu.h"
 
-enum {
-	PDP1_PC=1, PDP1_AC, PDP1_IO, PDP1_Y, PDP1_IB, PDP1_OV, PDP1_F,
-	PDP1_F1, PDP1_F2, PDP1_F3, PDP1_F4, PDP1_F5, PDP1_F6,
-	PDP1_S1, PDP1_S2, PDP1_S3, PDP1_S4, PDP1_S5, PDP1_S6
+
+/* register ids for pdp1_get_reg/pdp1_set_reg */
+enum
+{
+	PDP1_PC=1, PDP1_IR, PDP1_MB, PDP1_MA, PDP1_AC, PDP1_IO,
+	PDP1_PF, PDP1_PF1, PDP1_PF2, PDP1_PF3, PDP1_PF4, PDP1_PF5, PDP1_PF6,
+	PDP1_TA, PDP1_TW,
+	PDP1_SS, PDP1_SS1, PDP1_SS2, PDP1_SS3, PDP1_SS4, PDP1_SS5, PDP1_SS6,
+	PDP1_SNGL_STEP, PDP1_SNGL_INST, PDP1_EXTEND_SW,
+	PDP1_RUN, PDP1_CYC, PDP1_DEFER, PDP1_BRK_CTR, PDP1_OV, PDP1_RIM, PDP1_SBM, PDP1_EXD,
+	PDP1_IOC, PDP1_IOH, PDP1_IOS,
+	PDP1_START_CLEAR,	/* hack, do not use directly, use pdp1_pulse_start_clear instead */
+	PDP1_IO_COMPLETE	/* hack, do not use directly, use pdp1_pulse_iot_done instead */
 };
 
-#ifndef INLINE
-#define INLINE static inline
-#endif
+#define pdp1_pulse_start_clear()	pdp1_set_reg(PDP1_START_CLEAR, 0)
+#define pdp1_pulse_iot_done()		pdp1_set_reg(PDP1_IO_COMPLETE, 0)
+
+typedef struct pdp1_reset_param_t
+{
+	/* callbacks for iot instructions (required for any I/O) */
+	void (*extern_iot[64])(int op2, int nac, int mb, int *io, int ac);
+	/* read a word from the perforated tape reader (required for read-in mode) */
+	void (*read_binary_word)(void);
+	/* callback called when sc is pulsed: IO devices should reset */
+	void (*io_sc_callback)(void);
+
+	/* 0: no extend support, 1: extend with 15-bit address, 2: extend with 16-bit address */
+	int extend_support;
+	/* 1 to use hardware multiply/divide (MUL, DIV) instead of MUS, DIS */
+	int hw_multiply;
+	int hw_divide;
+	/* 0: standard sequence break system 1: type 20 sequence break system */
+	int type_20_sbs;
+} pdp1_reset_param_t;
+
+#define IOT_NO_COMPLETION_PULSE -1
 
 /* PUBLIC FUNCTIONS */
 extern void pdp1_init(void);
-extern unsigned pdp1_get_pc(void);
-extern void pdp1_set_pc(UINT32 newpc);
-extern unsigned pdp1_get_sp(void);
-extern void pdp1_set_sp(UINT32 newsp);
 extern unsigned pdp1_get_context (void *dst);
 extern void pdp1_set_context (void *src);
 extern unsigned pdp1_get_reg (int regnum);
 extern void pdp1_set_reg (int regnum, unsigned val);
-extern void pdp1_set_nmi_line(int state);
 extern void pdp1_set_irq_line(int irqline, int state);
 extern void pdp1_set_irq_callback(int (*callback)(int irqline));
 extern void pdp1_reset(void *param);
@@ -34,14 +57,13 @@ extern const char *pdp1_info(void *context, int regnum);
 extern unsigned pdp1_dasm(char *buffer, unsigned pc);
 
 extern int pdp1_ICount;
-extern int (* extern_iot)(int *, int);
 
 #ifndef SUPPORT_ODD_WORD_SIZES
-#define READ_PDP_18BIT(A) ((signed)cpu_readmem24bedw_dword(A<<2))
-#define WRITE_PDP_18BIT(A,V) (cpu_writemem24bedw_dword(A<<2,V))
+#define READ_PDP_18BIT(A) ((signed)cpu_readmem24bedw_dword((A)<<2))
+#define WRITE_PDP_18BIT(A,V) (cpu_writemem24bedw_dword((A)<<2,(V)))
 #else
 #define READ_PDP_18BIT(A) ((signed)cpu_readmem16_18(A))
-#define WRITE_PDP_18BIT(A,V) (cpu_writemem16_18(A,V))
+#define WRITE_PDP_18BIT(A,V) (cpu_writemem16_18((A),(V)))
 #endif
 
 #define AND 001
@@ -53,6 +75,7 @@ extern int (* extern_iot)(int *, int);
 #define LIO 011
 #define DAC 012
 #define DAP 013
+#define DIP 014
 #define DIO 015
 #define DZM 016
 #define ADD 020
@@ -61,8 +84,8 @@ extern int (* extern_iot)(int *, int);
 #define ISP 023
 #define SAD 024
 #define SAS 025
-#define MUS 026
-#define DIS 027
+#define MUS_MUL 026
+#define DIS_DIV 027
 #define JMP 030
 #define JSP 031
 #define SKP 032

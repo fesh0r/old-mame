@@ -369,12 +369,14 @@ static char* icon_names[] =
 	"warning"
 #ifdef MESS
 	,
+	"noromsneeded",
+	"missingoptrom",
 	"floppy",
 	"cassette",
 	"serial",
 	"snapshot",
 	"printer",
-	"hard"
+	"hard",
 #endif
 };
 
@@ -508,6 +510,7 @@ struct GameDriver driver_neogeo =
 	0,
 #ifdef MESS
 	0,
+	0,
 #endif
 	NOT_A_DRIVER,
 };
@@ -554,8 +557,12 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 #ifdef MESS
 	for (i = 0; i < options.image_count; i++)
 	{
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -%s \"%s\"", mess_opts[options.image_files[i].type].shortname, options.image_files[i].name);
+		const char *optname = mess_opts[options.image_files[i].type].shortname;
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -%s \"%s\"", optname, options.image_files[i].name);
 	}
+
+	if (pOpts->ram_size != 0)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -ramsize %d", pOpts->ram_size);
 #endif
 
 #ifdef MESS
@@ -3800,9 +3807,13 @@ static BOOL CreateIcons(HWND hWnd)
 			return FALSE;
 	}
 #ifdef MESS
-	for (i = IDI_WIN_FLOP; i <= IDI_WIN_HARD; i++)
+	for (i = IDI_WIN_NOROMSNEEDED; i <= IDI_WIN_HARD; i++)
 	{
-		if ((hIcon = LoadIconFromFile(icon_names[i - IDI_WIN_FLOP + IDI_WIN_REDX - IDI_WIN_NOROMS + 1])) == 0)
+		INT icon_name_index;
+		icon_name_index = i - IDI_WIN_NOROMSNEEDED + IDI_WIN_REDX - IDI_WIN_NOROMS + 1;
+		assert(icon_name_index >= 0);
+		assert(icon_name_index < sizeof(icon_names) / sizeof(icon_names[0]));
+		if ((hIcon = LoadIconFromFile(icon_names[icon_name_index])) == 0)
 			hIcon = LoadIcon (hInst, MAKEINTRESOURCE(i));
 
 		if ((ImageList_AddIcon (hSmall, hIcon) == -1)
