@@ -117,7 +117,7 @@ static int internal_dragon_vh_start(int m6847_version, void (*charproc)(UINT8))
 	m6847_vh_normalparams(&p);
 	p.version = m6847_version;
 	p.clock = COCO_TIMER_CMPCARRIER;
-	p.artifactdipswitch = 12;
+	p.artifactdipswitch = COCO_DIP_ARTIFACTING;
 	p.ram = memory_region(REGION_CPU1);
 	p.ramsize = 0x10000;
 	p.charproc = charproc;
@@ -152,51 +152,6 @@ WRITE_HANDLER(coco_ram_w)
 	}
 }
 
-WRITE_HANDLER(dragon_sam_display_offset)
-{
-	UINT16 d_offset = m6847_get_video_offset();
-
-	if (offset & 0x01)
-		d_offset |= 0x01 << (offset/2 + 9);
-	else
-		d_offset &= ~(0x01 << (offset/2 + 9));
-
-	m6847_set_video_offset(d_offset);
-}
-
-WRITE_HANDLER(dragon_sam_vdg_mode)
-{
-	/* SAM Video modes:
-	 *
-	 * 000	Text
-	 * 001	G1C/G1R
-	 * 010	G2C
-	 * 011	G2R
-	 * 100	G3C
-	 * 101	G3R
-	 * 110	G4C/G4R
-	 * 111	Reserved/Invalid
-	 */
-
-	static int sammode2rowheight[] = {
-		12,	/* 0 */
-		3,	/* 1 */
-		3,	/* 2 */
-		2,	/* 3 */
-		2,	/* 4 */
-		1,	/* 5 */
-		1,	/* 6 */
-		1	/* 7 */
-	};
-
-	if (offset & 0x01)
-		sam_videomode |= 0x01 << (offset/2);
-	else
-		sam_videomode &= ~(0x01 << (offset/2));
-
-	m6847_set_row_height(sammode2rowheight[sam_videomode]);
-}
-
 /* --------------------------------------------------
  * CoCo 3 Stuff
  * -------------------------------------------------- */
@@ -209,7 +164,7 @@ int coco3_vh_start(void)
 	m6847_vh_normalparams(&p);
 	p.version = M6847_VERSION_M6847T1;
 	p.clock = COCO_TIMER_CMPCARRIER;
-	p.artifactdipswitch = 12;
+	p.artifactdipswitch = COCO_DIP_ARTIFACTING;
 	p.ram = memory_region(REGION_CPU1);
 	p.ramsize = 0x10000;
 	p.charproc = coco2b_charproc;
@@ -774,7 +729,7 @@ static void coco3_getvideoinfo(int full_refresh, struct rasterbits_source *rs,
 			&RAM[coco3_vidbase],
 			1, (full_refresh ? bordercolor : -1), 2,
 			readinputport(12) & 3,
-			17, coco3_getcolorrgb);
+			64, coco3_getcolorrgb);
 	}
 
 	/* Now translate the pens */

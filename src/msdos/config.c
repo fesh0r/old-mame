@@ -340,7 +340,7 @@ void get_rom_sample_path (int argc, char **argv, int game_index, char *override_
 #ifndef MESS
 	samplepath = get_string ("directory", "samplepath", NULL, ".;SAMPLES");
 #else
-	softwarepath = get_string ("directory", "softwarepath", NULL, ".;SOFTWARE");
+	softwarepath= get_string ("directory", "softwarepath", NULL, ".;SOFTWARE");
 #endif
 
 	/* handle '-romdir' hack. We should get rid of this BW */

@@ -57,6 +57,7 @@ static PORT_READ_START (readport2)
     { 0x98, 0x98, v9938_vram_r },
     { 0x99, 0x99, v9938_status_r },
 	{ 0xb5, 0xb5, msx_rtc_reg_r },
+	{ 0xfc, 0xff, msx_mapper_r },
 PORT_END
 
 static PORT_WRITE_START (writeport2)
@@ -70,6 +71,7 @@ static PORT_WRITE_START (writeport2)
     { 0x9b, 0x9b, v9938_register_w },
 	{ 0xb4, 0xb4, msx_rtc_latch_w },
 	{ 0xb5, 0xb5, msx_rtc_reg_w },
+	{ 0xfc, 0xff, msx_mapper_w },
 PORT_END
 
 /* start define for the special ports (DIPS, joystick, mouse) */
@@ -108,6 +110,10 @@ PORT_END
   PORT_DIPNAME( 0x20, 0x20, "Enforce 4/8 sprites/line")    \
    PORT_DIPSETTING( 0, DEF_STR( No ) )    \
    PORT_DIPSETTING( 0x20, DEF_STR( Yes ) )    \
+  PORT_DIPNAME ( 0x03, 0, "Render resolution")	\
+   PORT_DIPSETTING( 0, "High") \
+   PORT_DIPSETTING( 1, "Low") \
+   PORT_DIPSETTING( 2, "Auto") \
     \
  PORT_START /* 9 */    \
   PORT_ANALOGX( 0xff00, 0x00, IPT_TRACKBALL_X | IPF_PLAYER1, 100, 0, 0, 0, KEYCODE_NONE, KEYCODE_NONE, JOYCODE_NONE, JOYCODE_NONE)    \

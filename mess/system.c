@@ -161,7 +161,7 @@ TESTDRIVER( vip )		/* Cosmac VIP									  */
 
 	/* Magnavox */
 /*	DRIVER( odyssey )*/	/* Magnavox Odyssey - analogue (1972)			  */
-TESTDRIVER( odyssey2 )	/* Magnavox Odyssey 2 - 1978-1983				  */
+    DRIVER( odyssey2 )	/* Magnavox Odyssey 2 - 1978-1983				  */
 
 	/* Watara */
 	DRIVER( svision )	/* Super Vision	Handheld						  */
@@ -210,7 +210,7 @@ TESTDRIVER( z88 )		/*												  */
 	DRIVER( pcw10 ) 	/* 198? PCW10									  */
 
 	DRIVER( pcw16 )     /* 1995 PCW16                                     */
-	
+
 	/* pc20 clone of sinclair pc200 */
 	/* pc1512 ibm xt compatible */
 	/* pc1640/pc6400 ibm xt compatible */
@@ -394,7 +394,7 @@ TESTDRIVER( ibmpcjr )	/*      IBM PC Jr								  */
 	DRIVER( ibmxt )		/* 1986	IBM XT									  */
 /*	DRIVER( ibm8530 )*/	/* 1987 IBM PS2 Model 30 (MCGA)						*/
 	DRIVER( pc200 )     /* 1988 Sinclair PC200                            */
-	DRIVER( pc20 )      /* 1988 Amstrad PC20                              */   	
+	DRIVER( pc20 )      /* 1988 Amstrad PC20                              */
 	DRIVER( pc1512 )	/* 1986 Amstrad PC1512 (CGA compatible)			  */
 	DRIVER( pc1640 )	/* 1987 Amstrad PC1640 (EGA compatible)			  */
 
@@ -527,6 +527,7 @@ TESTDRIVER( kc85_4d )   /* VEB KC 85/4 with disk interface                */
 	DRIVER( trs80l2 ) 	/* TRS-80 Model I	- Radio Shack Level II BASIC  */
 	DRIVER( trs80l2a )	/* TRS-80 Model I	- R/S L2 BASIC				  */
 	DRIVER( sys80 ) 	/* EACA System 80								  */
+	DRIVER( lnw80 ) 	/* LNW Research LNW-80							  */	
 /*	DRIVER( trs80m2 )*/	/* TRS-80 Model II -							  */
 TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 		  */
 
@@ -616,10 +617,10 @@ TESTDRIVER( mekd2 )     /* 1977 Motorola Evaluation Kit                   */
 //TESTDRIVER( intvkbd )	/* 1981 - Mattel Intellivision Keyboard Component */
 						/* (Test marketed, later recalled )				  */
 	DRIVER( aquarius )	/* 1983 Aquarius								  */
-	
+
 	/*EXIDY INC */
 	DRIVER( exidy )  /* Sorcerer                                       */
-	
+
 	/* GALAKSIJA */
 	DRIVER( galaxy )
 

@@ -99,6 +99,7 @@ CPUS+=ARM@
 CPUS+=G65816@
 #CPUS+=SPC700@
 #CPUS+=SATURN@
+#CPUS+=LH5801@
 #CPUS+=ASAP@
 CPUS+=APEXC@
 
@@ -376,7 +377,7 @@ $(OBJ)/cbm.a: \
 	  $(OBJ)/mess/systems/vc20.o	 \
 	  $(OBJ)/mess/vidhrdw/ted7360.o  \
 	  $(OBJ)/mess/sndhrdw/ted7360.o  \
-	  $(OBJ)/mess/sndhrdw/t6721.o \
+	  $(OBJ)/mess/sndhrdw/t6721.o    \
 	  $(OBJ)/mess/machine/c16.o	 \
 	  $(OBJ)/mess/systems/c16.o	 \
 	  $(OBJ)/mess/systems/cbmb.o	 \
@@ -390,7 +391,7 @@ $(OBJ)/cbm.a: \
 	  $(OBJ)/mess/machine/c128.o
 
 $(OBJ)/dragon.a:   \
-	  $(OBJ)/mess/machine/counter.o  \
+	  $(OBJ)/mess/machine/6883sam.o  \
 	  $(OBJ)/mess/formats/cocopak.o  \
 	  $(OBJ)/mess/formats/cococas.o  \
 	  $(OBJ)/mess/machine/mc10.o	 \
@@ -625,8 +626,8 @@ $(OBJ)/nascom1.a:  \
 
 $(OBJ)/cpschngr.a: \
 	  $(OBJ)/machine/eeprom.o	 \
-	  $(OBJ)/vidhrdw/cps1.o 	 \
-	  $(OBJ)/mess/systems/cpschngr.o
+	  $(OBJ)/mess/systems/cpschngr.o \
+	  $(OBJ)/vidhrdw/cps1.o
 
 $(OBJ)/mtx.a:	   \
 	  $(OBJ)/mess/systems/mtx.o
@@ -772,8 +773,11 @@ COREOBJS += \
 
 
 # additional tools
-TOOLS +=  dat2html$(EXE) mkhdimg$(EXE) imgtool$(EXE) messroms$(EXE)
-#TOOLS +=  dat2html$(EXE) mkhdimg$(EXE) imgtool$(EXE)
+TOOLS +=  tools/dat2html$(EXE) \
+	  tools/mkhdimg$(EXE)  \
+	  tools/imgtool$(EXE)  \
+	  tools/messroms$(EXE) 
+
 
 ifeq ($(OS),win32)
 OUTOPT = $(OBJ)/Win32/dirent.o -out:$@
@@ -781,52 +785,52 @@ else
 OUTOPT = -o $@
 endif
 
-dat2html$(EXE): $(OBJ)/mess/tools/dat2html.o $(OBJ)/mess/utils.o
+tools/dat2html$(EXE): $(OBJ)/mess/tools/dat2html/dat2html.o $(OBJ)/mess/utils.o
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $^ $(LIBS) $(OUTOPT)
 
-mkhdimg$(EXE):	$(OBJ)/mess/tools/mkhdimg.o
+tools/mkhdimg$(EXE):	$(OBJ)/mess/tools/mkhdimg/mkhdimg.o
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $^ $(LIBS) $(OUTOPT)
 
-OBJDIRS += $(OBJ)/mess/messroms
-
-messroms$(EXE): $(OBJ)/mess/messroms/main.o $(OBJ)/unzip.o
+tools/messroms$(EXE): $(OBJ)/mess/tools/messroms/main.o $(OBJ)/unzip.o
 	@echo Linking $@...
 #	$(LD) $(LDFLAGS) $^ $(LIBS) $(IMGTOOL_LIBS) -o $@
 	$(LD) $(LDFLAGS) $^ $(LIBS) $(IMGTOOL_LIBS) $(OUTOPT)
 
-imgtool$(EXE):	     \
-	  $(IMGTOOL_OBJS)                \
-	  $(OBJ)/mess/tools/stubs.o      \
-	  $(OBJ)/mess/config.o	         \
-	  $(OBJ)/unzip.o	         \
-	  $(OBJ)/mess/utils.o	         \
-	  $(OBJ)/mess/tools/main.o       \
-	  $(OBJ)/mess/tools/imgtool.o    \
-	  $(OBJ)/mess/tools/imgwave.o    \
-	  $(OBJ)/mess/tools/filter.o     \
-	  $(OBJ)/mess/tools/filteoln.o   \
-	  $(OBJ)/mess/tools/filtbas.o    \
-	  $(OBJ)/mess/tools/cococas.o	 \
-	  $(OBJ)/mess/tools/vmsx_tap.o	 \
-	  $(OBJ)/mess/tools/vmsx_gm2.o	 \
-	  $(OBJ)/mess/formats/fmsx_cas.o \
-	  $(OBJ)/mess/tools/fmsx_cas.o	 \
-	  $(OBJ)/mess/formats/svi_cas.o  \
-	  $(OBJ)/mess/tools/svi_cas.o    \
-	  $(OBJ)/mess/formats/cococas.o  \
-	  $(OBJ)/mess/tools/msx_dsk.o    \
-	  $(OBJ)/mess/tools/xsa.o        \
-	  $(OBJ)/mess/tools/rsdos.o      \
-	  $(OBJ)/mess/tools/stream.o     \
-	  $(OBJ)/mess/tools/t64.o        \
-	  $(OBJ)/mess/tools/lynx.o       \
-	  $(OBJ)/mess/tools/crt.o        \
-	  $(OBJ)/mess/tools/d64.o        \
-	  $(OBJ)/mess/tools/fat.o        \
-	  $(OBJ)/mess/tools/rom16.o      \
-	  $(OBJ)/mess/tools/nccard.o     \
+tools/imgtool$(EXE):	     \
+	  $(IMGTOOL_OBJS)                      \
+	  $(OBJ)/mess/tools/imgtool/stubs.o    \
+	  $(OBJ)/mess/config.o	               \
+	  $(OBJ)/unzip.o	               \
+	  $(OBJ)/mess/utils.o	               \
+	  $(OBJ)/mess/tools/imgtool/main.o     \
+	  $(OBJ)/mess/tools/imgtool/imgtool.o  \
+	  $(OBJ)/mess/tools/imgtool/imgwave.o  \
+	  $(OBJ)/mess/tools/imgtool/imgflop.o  \
+	  $(OBJ)/mess/tools/imgtool/imgtest.o  \
+	  $(OBJ)/mess/tools/imgtool/filter.o   \
+	  $(OBJ)/mess/tools/imgtool/filteoln.o \
+	  $(OBJ)/mess/tools/imgtool/filtbas.o  \
+	  $(OBJ)/mess/tools/imgtool/cococas.o  \
+	  $(OBJ)/mess/tools/imgtool/vmsx_tap.o \
+	  $(OBJ)/mess/tools/imgtool/vmsx_gm2.o \
+	  $(OBJ)/mess/formats/fmsx_cas.o       \
+	  $(OBJ)/mess/tools/imgtool/fmsx_cas.o \
+	  $(OBJ)/mess/formats/svi_cas.o        \
+	  $(OBJ)/mess/tools/imgtool/svi_cas.o  \
+	  $(OBJ)/mess/formats/cococas.o        \
+	  $(OBJ)/mess/tools/imgtool/msx_dsk.o  \
+	  $(OBJ)/mess/tools/imgtool/xsa.o      \
+	  $(OBJ)/mess/tools/imgtool/rsdos.o    \
+	  $(OBJ)/mess/tools/imgtool/stream.o   \
+	  $(OBJ)/mess/tools/imgtool/t64.o      \
+	  $(OBJ)/mess/tools/imgtool/lynx.o     \
+	  $(OBJ)/mess/tools/imgtool/crt.o      \
+	  $(OBJ)/mess/tools/imgtool/d64.o      \
+	  $(OBJ)/mess/tools/imgtool/fat.o      \
+	  $(OBJ)/mess/tools/imgtool/rom16.o    \
+	  $(OBJ)/mess/tools/imgtool/nccard.o   \
 	  $(OBJ)/mess/snprintf.o
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $^ $(LIBS) $(IMGTOOL_LIBS) $(OUTOPT)

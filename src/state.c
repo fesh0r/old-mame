@@ -8,6 +8,7 @@
 #include "osdepend.h"
 #include "mame.h"
 #include "driver.h"
+#include "zlib.h"
 
 /* Save state file format:
  *
@@ -90,7 +91,10 @@ static unsigned char *ss_dump_array;
 static void *ss_dump_file;
 static unsigned int ss_dump_size;
 
+/*
+Commented out because it doesn't match prototypes on Win32
 extern unsigned int crc32 (unsigned int crc, const char *buf, unsigned int len);
+*/
 
 static UINT32 ss_get_signature(void)
 {
@@ -136,7 +140,7 @@ static UINT32 ss_get_signature(void)
 	}
 
 	// Pass 3 : Compute the crc32
-	signature = crc32(0, info, size);
+	signature = crc32(0, (unsigned char*)info, size);
 
 	free(info);
 	return signature;

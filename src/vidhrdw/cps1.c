@@ -327,6 +327,9 @@ static struct CPS1config cps1_config_table[]=
 	{"pnickj",  CPS_B_01, 0,0,0, 0x0000,0xffff,0x0000,0xffff },
 	{"pang3",   CPS_B_01, 0,0,0, 0x0000,0xffff,0x0000,0xffff, 5 },	/* EEPROM port is among the CPS registers */
 	{"pang3j",  CPS_B_01, 0,0,0, 0x0000,0xffff,0x0000,0xffff, 5 },	/* EEPROM port is among the CPS registers */
+	#ifdef MESS
+	{"sfzch",   CPS_B_01, 0,0,0, 0x0000,0xffff,0x0000,0xffff },
+	#endif
 
     /* CPS2 games */
 	{"cps2",    CPS_B_01, 4,4,4, 0x0000,0xffff,0x0000,0xffff },
@@ -1313,12 +1316,14 @@ int cps_vh_start(void)
 	}
     memset(cps1_buffered_obj, 0x00, cps1_obj_size);
 
-    cps2_buffered_obj = malloc (2*cps2_objram_size);
-    if (!cps2_buffered_obj)
-    {
-		return -1;
+    if (cps_version==2) {
+	cps2_buffered_obj = malloc (2*cps2_objram_size);
+	if (!cps2_buffered_obj)
+	{
+	    return -1;
 	}
-    memset(cps2_buffered_obj, 0x00, 2*cps2_objram_size);
+	memset(cps2_buffered_obj, 0x00, 2*cps2_objram_size);
+    }
 
 
 	memset(cps1_gfxram, 0, cps1_gfxram_size);   /* Clear GFX RAM */

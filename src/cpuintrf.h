@@ -36,12 +36,6 @@ enum
 #if (HAS_Z80)
 	CPU_Z80,
 #endif
-#if (HAS_Z80GB)
-	CPU_Z80GB,
-#endif
-#if (HAS_CDP1802)
-	CPU_CDP1802,
-#endif
 #if (HAS_8080)
 	CPU_8080,
 #endif
@@ -180,12 +174,6 @@ enum
 #if (HAS_S2650)
 	CPU_S2650,
 #endif
-#if (HAS_F8)
-	CPU_F8,
-#endif
-#if (HAS_CP1600)
-	CPU_CP1600,
-#endif
 #if (HAS_TMS34010)
 	CPU_TMS34010,
 #endif
@@ -225,9 +213,6 @@ enum
 #if (HAS_CCPU)
 	CPU_CCPU,
 #endif
-#if (HAS_PDP1)
-	CPU_PDP1,
-#endif
 #if (HAS_ADSP2100)
 	CPU_ADSP2100,
 #endif
@@ -237,35 +222,53 @@ enum
 #if (HAS_PSXCPU)
 	CPU_PSXCPU,
 #endif
-#if (HAS_SH2)
-	CPU_SH2,
+#if (HAS_ASAP)
+	CPU_ASAP,
 #endif
-#if (HAS_SC61860)
-	CPU_SC61860,
+#if (HAS_UPD7810)
+	CPU_UPD7810,
+#endif
+
+#ifdef MESS
+#if (HAS_APEXC)
+	CPU_APEXC,
 #endif
 #if (HAS_ARM)
 	CPU_ARM,
 #endif
+#if (HAS_CDP1802)
+	CPU_CDP1802,
+#endif
+#if (HAS_CP1600)
+	CPU_CP1600,
+#endif
+#if (HAS_F8)
+	CPU_F8,
+#endif
 #if (HAS_G65816)
 	CPU_G65816,
-#endif
-#if (HAS_SPC700)
-	CPU_SPC700,
-#endif
-#if (HAS_ASAP)
-	CPU_ASAP,
 #endif
 #if (HAS_LH5801)
 	CPU_LH5801,
 #endif
+#if (HAS_PDP1)
+	CPU_PDP1,
+#endif
 #if (HAS_SATURN)
 	CPU_SATURN,
 #endif
-#if (HAS_APEXC)
-	CPU_APEXC,
+#if (HAS_SC61860)
+	CPU_SC61860,
 #endif
-#if (HAS_UPD7810)
-	CPU_UPD7810,
+#if (HAS_SH2)
+	CPU_SH2,
+#endif
+#if (HAS_SPC700)
+	CPU_SPC700,
+#endif
+#if (HAS_Z80GB)
+	CPU_Z80GB,
+#endif
 #endif
     CPU_COUNT
 };

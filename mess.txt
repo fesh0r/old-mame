@@ -5,7 +5,7 @@
                     Official Page at: http://mess.emuverse.com
                    ==========================================
 
-This document is generated for MESS 0.37 BETA 12 (Mar  3 2001)
+This document is generated for MESS 0.37 BETA 13 (Apr  7 2001)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.37 BETA 12 (Mar  3 2001)
+Here is the list of systems supported by MESS 0.37 BETA 13 (Apr  7 2001)
 
 The meanings of the columns are as follows:
 Working - "No" means that the emulation has shortcomings that cause the system
@@ -106,6 +106,7 @@ dat2html.exe.
 | Spectrum I+                             |  Yes  |  Yes  |  Yes  | raaspec  |
 | Adventurevision                         |  Yes  |  Yes  |   No  | advision |
 | CPS Changer (Street Fighter ZERO)       |  Yes  |  Yes  |  Yes  | sfzch    |
+| ODYSSEY 2                               |  Yes  |  Yes  |   No  | odyssey2 |
 | Super Vision                            |   No  |  Yes  |  Yes  | svision  |
 | Atom                                    |  Yes  |  Yes  |  Yes  | atom     |
 | Atom with Eprom Box                     |  Yes  |  Yes  |  Yes  | atomeb   |
@@ -260,6 +261,7 @@ dat2html.exe.
 | TRS-80 Model I (Radio Shack Level II Bas|  Yes  |  Yes  |  Yes  | trs80l2  |
 | TRS-80 Model I (R/S L2 Basic)           |  Yes  |  Yes  |  Yes  | trs80l2a |
 | System-80                               |  Yes  |  Yes  |  Yes  | sys80    |
+| LNW-80                                  | No(1) |  Yes  |  Yes  | lnw80    |
 | Color Computer                          |  Yes  |  Yes  |  Yes  | coco     |
 | Color Computer (Extended BASIC 1.0)     |  Yes  |  Yes  |  Yes  | cocoe    |
 | Color Computer 2                        |  Yes  |  Yes  |  Yes  | coco2    |
@@ -458,6 +460,7 @@ vectrex      Cartridge   (Cart)   .bin  .gam
 raaspec      UNKNOWN     
 advision     Cartridge   (Cart)   .bin  
 sfzch        UNKNOWN     
+odyssey2     Cartridge   (Cart)   .bin  
 svision      Cartridge   (Cart)   .bin  
 atom         Quickload   (Quik)   .atm  
              Floppydisk  (Flop)   .ssd  
@@ -819,35 +822,46 @@ trs80l2a     Cassette    (Cass)   .cas
 sys80        Cassette    (Cass)   .cas  
              Quickload   (Quik)   .cmd  
              Floppydisk  (Flop)   .dsk  
-coco         Snapshot    (Dump)   .pak  
+lnw80        Cassette    (Cass)   .cas  
+             Quickload   (Quik)   .cmd  
+             Floppydisk  (Flop)   .dsk  
+coco         Cartridge   (Cart)   .rom  
+             Snapshot    (Dump)   .pak  
              Cassette    (Cass)   .cas  .wav  
              Floppydisk  (Flop)   .dsk  
              Printer     (Prin)   .prn  
-cocoe        Snapshot    (Dump)   .pak  
+cocoe        Cartridge   (Cart)   .rom  
+             Snapshot    (Dump)   .pak  
              Cassette    (Cass)   .cas  .wav  
              Floppydisk  (Flop)   .dsk  
              Printer     (Prin)   .prn  
-coco2        Snapshot    (Dump)   .pak  
+coco2        Cartridge   (Cart)   .rom  
+             Snapshot    (Dump)   .pak  
              Cassette    (Cass)   .cas  .wav  
              Floppydisk  (Flop)   .dsk  
              Printer     (Prin)   .prn  
-coco2b       Snapshot    (Dump)   .pak  
+coco2b       Cartridge   (Cart)   .rom  
+             Snapshot    (Dump)   .pak  
              Cassette    (Cass)   .cas  .wav  
              Floppydisk  (Flop)   .dsk  
              Printer     (Prin)   .prn  
-coco3        Snapshot    (Dump)   .pak  
+coco3        Cartridge   (Cart)   .rom  
+             Snapshot    (Dump)   .pak  
              Cassette    (Cass)   .cas  .wav  
              Floppydisk  (Flop)   .dsk  
              Printer     (Prin)   .prn  
-coco3h       Snapshot    (Dump)   .pak  
+coco3h       Cartridge   (Cart)   .rom  
+             Snapshot    (Dump)   .pak  
              Cassette    (Cass)   .cas  .wav  
              Floppydisk  (Flop)   .dsk  
              Printer     (Prin)   .prn  
-dragon32     Snapshot    (Dump)   .pak  
+dragon32     Cartridge   (Cart)   .rom  
+             Snapshot    (Dump)   .pak  
              Cassette    (Cass)   .cas  .wav  
              Floppydisk  (Flop)   .dsk  
              Printer     (Prin)   .prn  
-cp400        Snapshot    (Dump)   .pak  
+cp400        Cartridge   (Cart)   .rom  
+             Snapshot    (Dump)   .pak  
              Cassette    (Cass)   .cas  .wav  
              Floppydisk  (Flop)   .dsk  
              Printer     (Prin)   .prn  
