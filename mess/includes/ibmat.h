@@ -7,12 +7,14 @@ typedef enum {
 
 typedef struct {
 	AT8042_TYPE type;
-	void (*set_address_mask)(unsigned mask);
+	void (*set_gate_a20)(int a20);
 } AT8042_CONFIG;
 
 void at_8042_init(AT8042_CONFIG *config);
 void at_8042_time(void);
 
-READ_HANDLER(at_8042_r);
-WRITE_HANDLER(at_8042_w);
+READ8_HANDLER(at_8042_8_r);
+WRITE8_HANDLER(at_8042_8_w);
+READ32_HANDLER(at_8042_32_r);
+WRITE32_HANDLER(at_8042_32_w);
 

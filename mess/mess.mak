@@ -99,7 +99,8 @@ CPUS+=SH2@
 CPUS+=G65816@
 CPUS+=SPC700@
 #CPUS+=E132XS@
-#CPUS+=I386@
+CPUS+=I386@
+#CPUS+=I960@
 CPUS+=Z80GB@
 CPUS+=CDP1802@
 CPUS+=SC61860@
@@ -109,6 +110,7 @@ CPUS+=F8@
 CPUS+=CP1610@
 #CPUS+=TMS99010@
 CPUS+=PDP1@
+#CPUS+=TMS7000@
 
 # SOUND cores used in MESS
 SOUNDS+=CUSTOM@
@@ -258,7 +260,8 @@ DRVLIBS = \
 	$(OBJ)/mtx.a	  \
 	$(OBJ)/intv.a     \
 	$(OBJ)/rca.a	  \
-	$(OBJ)/multitch.a
+	$(OBJ)/multitch.a	\
+	$(OBJ)/telmac.a
 
 
 $(OBJ)/neocd.a:						\
@@ -281,9 +284,7 @@ $(OBJ)/arcadia.a:  \
 	$(OBJ)/mess/vidhrdw/arcadia.o	\
 
 $(OBJ)/sega.a:						\
-	$(OBJ)/mess/vidhrdw/genesis.o	\
 	$(OBJ)/mess/machine/genesis.o	\
-	$(OBJ)/mess/sndhrdw/genesis.o	\
 	$(OBJ)/mess/systems/genesis.o	\
 	$(OBJ)/mess/systems/saturn.o	\
 	$(OBJ)/mess/vidhrdw/smsvdp.o	\
@@ -704,13 +705,14 @@ $(OBJ)/galaxy.a:   \
 $(OBJ)/lviv.a:   \
 	$(OBJ)/mess/vidhrdw/lviv.o   \
 	$(OBJ)/mess/systems/lviv.o   \
-	$(OBJ)/mess/formats/lviv_lvt.o	\
 	$(OBJ)/mess/machine/lviv.o   \
+	$(OBJ)/mess/formats/lviv_lvt.o
 
 $(OBJ)/pmd85.a:   \
 	$(OBJ)/mess/vidhrdw/pmd85.o   \
 	$(OBJ)/mess/systems/pmd85.o   \
 	$(OBJ)/mess/machine/pmd85.o   \
+	$(OBJ)/mess/formats/pmd_pmd.o
 
 $(OBJ)/magnavox.a: \
 	$(OBJ)/mess/machine/odyssey2.o \
@@ -805,6 +807,10 @@ $(OBJ)/compis.a:					\
 
 $(OBJ)/multitch.a:					\
 	$(OBJ)/mess/systems/mpf1.o		\
+
+$(OBJ)/telmac.a:					\
+	$(OBJ)/mess/systems/telmac.o	\
+	$(OBJ)/mess/vidhrdw/cdp186x.o	\
 
 
 

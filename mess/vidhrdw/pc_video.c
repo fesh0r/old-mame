@@ -23,6 +23,7 @@ static struct crtc6845 *pc_crtc;
 static int pc_anythingdirty;
 static int pc_current_height;
 static int pc_current_width;
+static const UINT16 dummy_palette[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
 
 
 
@@ -67,6 +68,8 @@ struct crtc6845 *pc_video_start(const struct crtc6845_config *config,
 	return pc_crtc;
 }
 
+
+
 VIDEO_UPDATE( pc_video )
 {
 	int w = 0, h = 0;
@@ -110,6 +113,8 @@ VIDEO_UPDATE( pc_video )
 	}
 }
 
+
+
 WRITE_HANDLER ( pc_video_videoram_w )
 {
 	if (videoram && videoram[offset] != data)
@@ -118,5 +123,139 @@ WRITE_HANDLER ( pc_video_videoram_w )
 		if (dirtybuffer)
 			dirtybuffer[offset] = 1;
 		pc_anythingdirty = 1;
+	}
+}
+
+
+WRITE32_HANDLER( pc_video_videoram32_w )
+{
+	COMBINE_DATA(((data32_t *) videoram) + offset);
+	pc_anythingdirty = 1;
+	if (dirtybuffer)
+	{
+		if ((mem_mask & 0x000000FF) == 0)
+			dirtybuffer[offset * 4 + 0] = 1;
+		if ((mem_mask & 0x0000FF00) == 0)
+			dirtybuffer[offset * 4 + 1] = 1;
+		if ((mem_mask & 0x00FF0000) == 0)
+			dirtybuffer[offset * 4 + 2] = 1;
+		if ((mem_mask & 0xFF000000) == 0)
+			dirtybuffer[offset * 4 + 3] = 1;
+	}
+}
+
+
+
+/*************************************
+ *
+ *	Graphics renderers
+ *
+ *************************************/
+
+void pc_render_gfx_1bpp(struct mame_bitmap *bitmap, struct crtc6845 *crtc,
+	const UINT8 *vram, const UINT16 *palette, int interlace)
+{
+	int sx, sy, sh;
+	int	offs = crtc6845_get_start(crtc)*2;
+	int lines = crtc6845_get_char_lines(crtc);
+	int height = crtc6845_get_char_height(crtc);
+	int columns = crtc6845_get_char_columns(crtc)*2;
+
+	if (!vram)
+		vram = videoram;
+	if (!palette)
+		palette = dummy_palette;
+
+	for (sy = 0; sy < lines; sy++)
+	{
+		for (sh = 0; sh < height; sh++)
+		{
+			UINT16 *dest = (UINT16 *) bitmap->line[sy * height + sh];
+			const UINT8 *src = &vram[offs | ((sh % interlace) << 13)];
+
+			for (sx = 0; sx < columns; sx++)
+			{
+				UINT8 b = *(src++);
+				*(dest++) = palette[(b >> 7) & 0x01];
+				*(dest++) = palette[(b >> 6) & 0x01];
+				*(dest++) = palette[(b >> 5) & 0x01];
+				*(dest++) = palette[(b >> 4) & 0x01];
+				*(dest++) = palette[(b >> 3) & 0x01];
+				*(dest++) = palette[(b >> 2) & 0x01];
+				*(dest++) = palette[(b >> 1) & 0x01];
+				*(dest++) = palette[(b >> 0) & 0x01];
+			}
+		}
+		offs = (offs + columns) & 0x1fff;
+	}
+}
+
+
+
+void pc_render_gfx_2bpp(struct mame_bitmap *bitmap, struct crtc6845 *crtc,
+	const UINT8 *vram, const UINT16 *palette, int interlace)
+{
+	int sx, sy, sh;
+	int	offs = crtc6845_get_start(crtc)*2;
+	int lines = crtc6845_get_char_lines(crtc);
+	int height = crtc6845_get_char_height(crtc);
+	int columns = crtc6845_get_char_columns(crtc)*2;
+
+	if (!vram)
+		vram = videoram;
+	if (!palette)
+		palette = dummy_palette;
+
+	for (sy = 0; sy < lines; sy++)
+	{
+		for (sh = 0; sh < height; sh++)
+		{
+			UINT16 *dest = (UINT16 *) bitmap->line[sy * height + sh];
+			const UINT8 *src = &vram[offs | ((sh % interlace) << 13)];
+
+			for (sx = 0; sx < columns; sx++)
+			{
+				UINT8 b = *(src++);
+				*(dest++) = palette[(b >> 6) & 0x03];
+				*(dest++) = palette[(b >> 4) & 0x03];
+				*(dest++) = palette[(b >> 2) & 0x03];
+				*(dest++) = palette[(b >> 0) & 0x03];
+			}
+		}
+		offs = (offs + columns) & 0x1fff;
+	}
+}
+
+
+
+void pc_render_gfx_4bpp(struct mame_bitmap *bitmap, struct crtc6845 *crtc,
+	const UINT8 *vram, const UINT16 *palette, int interlace)
+{
+	int sx, sy, sh;
+	int	offs = crtc6845_get_start(crtc)*2;
+	int lines = crtc6845_get_char_lines(crtc);
+	int height = crtc6845_get_char_height(crtc);
+	int columns = crtc6845_get_char_columns(crtc)*2;
+
+	if (!vram)
+		vram = videoram;
+	if (!palette)
+		palette = dummy_palette;
+
+	for (sy = 0; sy < lines; sy++)
+	{
+		for (sh = 0; sh < height; sh++)
+		{
+			UINT16 *dest = (UINT16 *) bitmap->line[sy * height + sh];
+			const UINT8 *src = &vram[offs | ((sh % interlace) << 13)];
+
+			for (sx = 0; sx < columns; sx++)
+			{
+				UINT8 b = *(src++);
+				*(dest++) = palette[(b >> 4) & 0x0F];
+				*(dest++) = palette[(b >> 0) & 0x0F];
+			}
+		}
+		offs = (offs + columns) & 0x1fff;
 	}
 }

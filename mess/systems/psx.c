@@ -5,11 +5,9 @@
   Preliminary driver by smf
 
   todo:
-    add pad support
+    add memcard support
     tidy up cd controller
     work out why bios schph1000 doesn't get past the first screen
-    fix garbage at the bottom of some of the bootup screens
-    add memcard support
     add cd image support
 
 ***************************************************************************/
@@ -149,6 +147,164 @@ static QUICKLOAD_LOAD( psxexe_load )
 	mame_fread( fp, m_p_psxexe, m_psxexe_header.t_size );
 	memory_set_opbase_handler( 0, psx_setopbase );
 	return INIT_PASS;
+}
+
+#define PAD_STATE_IDLE ( 0 )
+#define PAD_STATE_LISTEN ( 1 )
+#define PAD_STATE_ACTIVE ( 2 )
+#define PAD_STATE_READ ( 3 )
+#define PAD_STATE_UNLISTEN ( 4 )
+
+#define PAD_TYPE_STANDARD ( 4 )
+#define PAD_READ_STANDARD ( 2 )
+
+#define PAD_CMD_START ( 0x01 )
+#define PAD_CMD_READ ( 0x42 )
+#define PAD_DATA_READ ( 0x5a )
+#define PAD_DATA_IDLE ( 0xff )
+
+static struct
+{
+	int n_shiftin;
+	int n_shiftout;
+	int n_bits;
+	int n_state;
+	int n_read;
+	int b_lastclock;
+} m_pad[ 2 ];
+
+static void psx_pad_ack( int b_ack )
+{
+	psx_sio_input( 0, PSX_SIO_IN_DSR, b_ack * PSX_SIO_IN_DSR );
+	if( !b_ack )
+	{
+		timer_set( TIME_IN_USEC( 2 ), 1, psx_pad_ack );
+	}
+}
+
+static void psx_pad( int n_port, int n_data )
+{
+	int b_sel;
+	int b_clock;
+	int b_data;
+	int b_ack;
+	int b_ready;
+
+	b_sel = ( n_data & PSX_SIO_OUT_DTR ) / PSX_SIO_OUT_DTR;
+	b_clock = ( n_data & PSX_SIO_OUT_CLOCK ) / PSX_SIO_OUT_CLOCK;
+	b_data = ( n_data & PSX_SIO_OUT_DATA ) / PSX_SIO_OUT_DATA;
+	b_ready = 0;
+	b_ack = 0;
+
+	if( b_sel )
+	{
+		m_pad[ n_port ].n_state = PAD_STATE_IDLE;
+	}
+
+	switch( m_pad[ n_port ].n_state )
+	{
+	case PAD_STATE_LISTEN:
+	case PAD_STATE_ACTIVE:
+	case PAD_STATE_READ:
+		if( m_pad[ n_port ].b_lastclock && !b_clock )
+		{
+			psx_sio_input( 0, PSX_SIO_IN_DATA, ( m_pad[ n_port ].n_shiftout & 1 ) * PSX_SIO_IN_DATA );
+			m_pad[ n_port ].n_shiftout >>= 1;
+		}
+		if( !m_pad[ n_port ].b_lastclock && b_clock )
+		{
+			m_pad[ n_port ].n_shiftin >>= 1;
+			m_pad[ n_port ].n_shiftin |= b_data << 7;
+			m_pad[ n_port ].n_bits++;
+
+			if( m_pad[ n_port ].n_bits == 8 )
+			{
+				m_pad[ n_port ].n_bits = 0;
+				b_ready = 1;
+			}
+		}
+		break;
+	}
+
+	m_pad[ n_port ].b_lastclock = b_clock;
+
+	switch( m_pad[ n_port ].n_state )
+	{
+	case PAD_STATE_IDLE:
+		if( !b_sel )
+		{
+			m_pad[ n_port ].n_state = PAD_STATE_LISTEN;
+			m_pad[ n_port ].n_shiftout = PAD_DATA_IDLE;
+			m_pad[ n_port ].n_bits = 0;
+		}
+		break;
+	case PAD_STATE_LISTEN:
+		if( b_ready )
+		{
+			if( m_pad[ n_port ].n_shiftin == PAD_CMD_START )
+			{
+				m_pad[ n_port ].n_state = PAD_STATE_ACTIVE;
+				m_pad[ n_port ].n_shiftout = ( PAD_TYPE_STANDARD << 4 ) | ( PAD_READ_STANDARD >> 1 );
+				b_ack = 1;
+			}
+			else
+			{
+				m_pad[ n_port ].n_state = PAD_STATE_UNLISTEN;
+			}
+		}
+		break;
+	case PAD_STATE_ACTIVE:
+		if( b_ready )
+		{
+			if( m_pad[ n_port ].n_shiftin == PAD_CMD_READ )
+			{
+				m_pad[ n_port ].n_state = PAD_STATE_READ;
+				m_pad[ n_port ].n_shiftout = PAD_DATA_READ;
+				m_pad[ n_port ].n_read = 0;
+				b_ack = 1;
+			}
+			else
+			{
+				logerror( "unknown pad command %02x\n", m_pad[ n_port ].n_shiftin );
+				m_pad[ n_port ].n_state = PAD_STATE_UNLISTEN;
+			}
+		}
+		break;
+	case PAD_STATE_READ:
+		if( b_ready )
+		{
+			if( m_pad[ n_port ].n_read < PAD_READ_STANDARD )
+			{
+				m_pad[ n_port ].n_shiftout = readinputport( m_pad[ n_port ].n_read + ( n_port * PAD_READ_STANDARD ) );
+				m_pad[ n_port ].n_read++;
+				b_ack = 1;
+			}
+			else
+			{
+				m_pad[ n_port ].n_state = PAD_STATE_ACTIVE;
+			}
+		}
+		break;
+	}
+
+	if( b_ack )
+	{
+		timer_set( TIME_IN_USEC( 10 ), 0, psx_pad_ack );
+	}
+}
+
+static void psx_mcd( int n_port, int n_data )
+{
+	/* todo */
+}
+
+static void psx_sio0( int n_data )
+{
+	/* todo: raise data & ack when nothing is driving it low */
+	psx_pad( 0, n_data );
+	psx_mcd( 0, n_data );
+	psx_pad( 1, n_data ^ PSX_SIO_OUT_DTR );
+	psx_mcd( 1, n_data ^ PSX_SIO_OUT_DTR );
 }
 
 /* -----------------------------------------------------------------------
@@ -550,6 +706,7 @@ ADDRESS_MAP_END
 static MACHINE_INIT( psx )
 {
 	psx_machine_init();
+	psx_sio_install_handler( 0, psx_sio0 );
 }
 
 static DRIVER_INIT( psx )
@@ -559,49 +716,44 @@ static DRIVER_INIT( psx )
 
 INPUT_PORTS_START( psx )
 	PORT_START		/* IN0 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON5 | IPF_PLAYER1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON5 | IPF_PLAYER2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE )	/* pause */
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE	)	/* pause */
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START   | IPF_PLAYER1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START   | IPF_PLAYER2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON6 | IPF_PLAYER1 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON6 | IPF_PLAYER2 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER1 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER1 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER1 )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER1 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START | IPF_PLAYER1 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED | IPF_PLAYER1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED | IPF_PLAYER1 )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SELECT | IPF_PLAYER1 )
 
-	PORT_START		/* DSWA */
-	PORT_DIPNAME( 0xff, 0xff, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0xff, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_START		/* IN1 */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER1 ) /* Square */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER1 ) /* Cross */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_PLAYER1 ) /* Circle */
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON4 | IPF_PLAYER1 ) /* Triangle */
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON5 | IPF_PLAYER1 ) /* R1 */
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 | IPF_PLAYER1 ) /* L1 */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON7 | IPF_PLAYER1 ) /* R2 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON8 | IPF_PLAYER1 ) /* L2 */
 
-	PORT_START		/* DSWB */
-	PORT_DIPNAME( 0xff, 0xff, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0xff, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_START		/* IN2 */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER2 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER2 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER2 )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER2 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START | IPF_PLAYER2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED | IPF_PLAYER2 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED | IPF_PLAYER2 )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SELECT | IPF_PLAYER2 )
 
-	PORT_START		/* DSWC */
-	PORT_DIPNAME( 0xff, 0xff, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0xff, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
-
-	PORT_START		/* Player 1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_PLAYER1 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY | IPF_PLAYER1 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY | IPF_PLAYER1 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER1 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_PLAYER1 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 | IPF_PLAYER1 )
-
-	PORT_START		/* Player 2 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_PLAYER2 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 | IPF_PLAYER2 )
+	PORT_START		/* IN3 */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 ) /* Square */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2 ) /* Cross */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_PLAYER2 ) /* Circle */
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON4 | IPF_PLAYER2 ) /* Triangle */
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON5 | IPF_PLAYER2 ) /* R1 */
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 | IPF_PLAYER2 ) /* L1 */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON7 | IPF_PLAYER2 ) /* R2 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON8 | IPF_PLAYER2 ) /* L2 */
 INPUT_PORTS_END
 
 static struct PSXSPUinterface psxspu_interface =

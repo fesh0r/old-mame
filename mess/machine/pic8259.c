@@ -145,12 +145,12 @@ static int pic8259_irq_pending(int which, int irq)
 
 
 
-static int pic8259_read(int which, offs_t offset)
+static data8_t pic8259_read(int which, offs_t offset)
 {
 	struct pic8259 *this = &pic[which];
 
 	/* NPW 18-May-2003 - Changing 0xFF to 0x00 as per Ruslan */
-	int data = 0x00;
+	data8_t data = 0x00;
 
 	switch( offset ) {
 	case 0: /* PIC acknowledge IRQ */
@@ -337,10 +337,19 @@ static void pic8259_write(int which, offs_t offset, data8_t data )
 
 /* ----------------------------------------------------------------------- */
 
-READ_HANDLER ( pic8259_0_r )	{ return pic8259_read(0, offset); }
-READ_HANDLER ( pic8259_1_r )	{ return pic8259_read(1, offset); }
-WRITE_HANDLER ( pic8259_0_w )	{ pic8259_write(0, offset, data); }
-WRITE_HANDLER ( pic8259_1_w )	{ pic8259_write(1, offset, data); }
+READ8_HANDLER ( pic8259_0_r )	{ return pic8259_read(0, offset); }
+READ8_HANDLER ( pic8259_1_r )	{ return pic8259_read(1, offset); }
+WRITE8_HANDLER ( pic8259_0_w )	{ pic8259_write(0, offset, data); }
+WRITE8_HANDLER ( pic8259_1_w )	{ pic8259_write(1, offset, data); }
+
+READ32_HANDLER ( pic8259_32_0_r ) { return read32_with_read8_handler(pic8259_0_r, offset, mem_mask); }
+READ32_HANDLER ( pic8259_32_1_r ) { return read32_with_read8_handler(pic8259_1_r, offset, mem_mask); }
+WRITE32_HANDLER ( pic8259_32_0_w ) { write32_with_write8_handler(pic8259_0_w, offset, data, mem_mask); }
+WRITE32_HANDLER ( pic8259_32_1_w ) { write32_with_write8_handler(pic8259_1_w, offset, data, mem_mask); }
+
+
+
+/* ----------------------------------------------------------------------- */
 
 void pic8259_0_issue_irq(int irq)
 {

@@ -74,6 +74,8 @@ static mame_timer *pc_keyboard_timer;
 
 static void pc_keyb_timer(int param);
 
+#define LOG_PORT80 0
+
 
 
 /* ---------------------------------------------------------------------- */
@@ -214,12 +216,16 @@ static data8_t dma_offset[2][4];
 static data8_t at_pages[0x10];
 static offs_t pc_page_offset_mask;
 
-READ_HANDLER(pc_page_r)
+
+
+READ8_HANDLER(pc_page_r)
 {
 	return 0xFF;
 }
 
-WRITE_HANDLER(pc_page_w)
+
+
+WRITE8_HANDLER(pc_page_w)
 {
 	switch(offset % 4) {
 	case 1:
@@ -234,7 +240,9 @@ WRITE_HANDLER(pc_page_w)
 	}
 }
 
-READ_HANDLER(at_page_r)
+
+
+READ8_HANDLER(at_page8_r)
 {
 	data8_t data = at_pages[offset % 0x10];
 
@@ -255,9 +263,16 @@ READ_HANDLER(at_page_r)
 	return data;
 }
 
-WRITE_HANDLER(at_page_w)
+
+
+WRITE8_HANDLER(at_page8_w)
 {
 	at_pages[offset % 0x10] = data;
+
+#if LOG_PORT80
+	if (offset == 0)
+		logerror(" at_page8_w(): Port 80h <== 0x%02x (PC=0x%08x)\n", data, activecpu_get_reg(REG_PC));
+#endif /* LOG_PORT80 */
 
 	switch(offset % 8) {
 	case 1:
@@ -275,6 +290,22 @@ WRITE_HANDLER(at_page_w)
 	}
 }
 
+
+
+READ32_HANDLER(at_page32_r)
+{
+	return read32_with_read8_handler(at_page8_r, offset, mem_mask);
+}
+
+
+
+WRITE32_HANDLER(at_page32_w)
+{
+	write32_with_write8_handler(at_page8_w, offset, data, mem_mask);
+}
+
+
+
 static data8_t pc_dma_read_byte(int channel, offs_t offset)
 {
 	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
@@ -282,12 +313,16 @@ static data8_t pc_dma_read_byte(int channel, offs_t offset)
 	return program_read_byte(page_offset + offset);
 }
 
+
+
 static void pc_dma_write_byte(int channel, offs_t offset, data8_t data)
 {
 	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
 		& pc_page_offset_mask;
 	program_write_byte(page_offset + offset, data);
 }
+
+
 
 static struct dma8237_interface pc_dma =
 {
@@ -394,25 +429,8 @@ void pc_mda_init(void)
 	install_port_write_handler(0, 0x3b0, 0x3bf, pc_MDA_w );
 }
 
-void pc_cga_init(void)
-{
-	/* Get this out of the way of possibly big character ROMs */
-	UINT8 *gfx = &memory_region(REGION_GFX1)[0x8000];
-	int i;
-    /* just a plain bit pattern for graphics data generation */
-    for (i = 0; i < 256; i++)
-		gfx[i] = i;
 
-	/* Changed video RAM size to full 32k, for cards which support the
-	 * Plantronics chipset */
-	install_mem_read_handler(0, 0xb8000, 0xbffff, MRA8_RAM );
-	install_mem_write_handler(0, 0xb8000, 0xbffff, pc_video_videoram_w );
-	videoram = memory_region(REGION_CPU1)+0xb8000;
-	videoram_size = 0x4000;
 
-	install_port_read_handler(0, 0x3d0, 0x3df, pc_CGA_r );
-	install_port_write_handler(0, 0x3d0, 0x3df, pc_CGA_w );
-}
 
 /***********************************/
 /* PC interface to PC COM hardware */
@@ -443,46 +461,25 @@ static void pc_COM_w(int n, int offset, int data)
 	uart8250_w(n,offset, data);
 }
 
-READ_HANDLER(pc_COM1_r)
-{
-	return pc_COM_r(0, offset);
-}
+READ8_HANDLER(pc_COM1_r)  { return pc_COM_r(0, offset); }
+READ8_HANDLER(pc_COM2_r)  { return pc_COM_r(1, offset); }
+READ8_HANDLER(pc_COM3_r)  { return pc_COM_r(2, offset); }
+READ8_HANDLER(pc_COM4_r)  { return pc_COM_r(3, offset); }
+WRITE8_HANDLER(pc_COM1_w) { uart8250_w(0, offset, data); }
+WRITE8_HANDLER(pc_COM2_w) { uart8250_w(1, offset, data); }
+WRITE8_HANDLER(pc_COM3_w) { uart8250_w(2, offset, data); }
+WRITE8_HANDLER(pc_COM4_w) { uart8250_w(3, offset, data); }
 
-READ_HANDLER(pc_COM2_r)
-{
-	return pc_COM_r(1, offset);
-}
-
-READ_HANDLER(pc_COM3_r)
-{
-	return pc_COM_r(2, offset);
-}
-
-READ_HANDLER(pc_COM4_r)
-{
-	return pc_COM_r(3, offset);
-}
+READ32_HANDLER(pc32_COM1_r)  { return read32_with_read8_handler(pc_COM1_r, offset, mem_mask); }
+READ32_HANDLER(pc32_COM2_r)  { return read32_with_read8_handler(pc_COM2_r, offset, mem_mask); }
+READ32_HANDLER(pc32_COM3_r)  { return read32_with_read8_handler(pc_COM3_r, offset, mem_mask); }
+READ32_HANDLER(pc32_COM4_r)  { return read32_with_read8_handler(pc_COM4_r, offset, mem_mask); }
+WRITE32_HANDLER(pc32_COM1_w) { write32_with_write8_handler(pc_COM1_w, offset, data, mem_mask); }
+WRITE32_HANDLER(pc32_COM2_w) { write32_with_write8_handler(pc_COM2_w, offset, data, mem_mask); }
+WRITE32_HANDLER(pc32_COM3_w) { write32_with_write8_handler(pc_COM3_w, offset, data, mem_mask); }
+WRITE32_HANDLER(pc32_COM4_w) { write32_with_write8_handler(pc_COM4_w, offset, data, mem_mask); }
 
 
-WRITE_HANDLER(pc_COM1_w)
-{
-	uart8250_w(0, offset,data);
-}
-
-WRITE_HANDLER(pc_COM2_w)
-{
-	uart8250_w(1, offset,data);
-}
-
-WRITE_HANDLER(pc_COM3_w)
-{
-	uart8250_w(2, offset,data);
-}
-
-WRITE_HANDLER(pc_COM4_w)
-{
-	uart8250_w(3, offset,data);
-}
 
 /*
    keyboard seams to permanently sent data clocked by the mainboard

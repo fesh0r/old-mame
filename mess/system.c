@@ -400,8 +400,9 @@ TESTDRIVER( ppc640 )	/* 1987 Amstrad PPC640								*/
 	DRIVER( ibmat )		/* 1985	IBM AT										*/
 TESTDRIVER( i8530286 )	/* 1988 IBM PS2 Model 30 286 (VGA)					*/
 	DRIVER( at )		/* 1987 AMI Bios and Diagnostics					*/
-	DRIVER( atvga ) 	/*													*/
+	DRIVER( atvga ) 	/* 19?? AT VGA										*/
 TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
+	DRIVER( at386 )		/* 19?? IBM AT 386									*/
 
 	/* SINCLAIR */
 TESTDRIVER( zx80 )		/* Sinclair ZX-80									*/
@@ -654,6 +655,16 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 			*/
 	DRIVER( cpc300 )  	/* 1986 MSX2 Korea 									*/
 	DRIVER( cpc400 )  	/* 1986 MSX2 Korea 									*/
 	DRIVER( cpc400s )  	/* 1986 MSX2 Korea 									*/
+	DRIVER( msx2p )		/* 1988 MSX2+ Japan									*/
+	DRIVER( fsa1fx )  	/* 1988 MSX2+ Japan 								*/
+	DRIVER( fsa1wx )  	/* 1988 MSX2+ Japan 								*/
+	DRIVER( fsa1wxa )  	/* 1988 MSX2+ Japan 								*/
+	DRIVER( fsa1wsx )  	/* 1989 MSX2+ Japan 								*/
+	DRIVER( hbf1xdj )  	/* 1988 MSX2+ Japan 								*/
+	DRIVER( hbf1xv )  	/* 1989 MSX2+ Japan 								*/
+	DRIVER( phc70fd )  	/* 1988 MSX2+ Japan 								*/
+	DRIVER( phc70fd2 ) 	/* 1988 MSX2+ Japan 								*/
+	DRIVER( phc35j )  	/* 1989 MSX2+ Japan 								*/
 
 
 	/* NASCOM MICROCOMPUTERS */
@@ -748,6 +759,11 @@ TESTDRIVER( hp48g ) 	/* HP48 G/GX										*/
 	/* Multitech */
 	DRIVER(mpf1)		/* 1979 Multitech Micro Professor 1					*/
 	DRIVER(mpf1b)		/* 1979 Multitech Micro Professor 1B				*/
+
+	/* Telmac */
+	DRIVER(tmc600)		/* 1982 Telmac TMC-600 (Series I)					*/
+	DRIVER(tmc600a)		/* 1982 Telmac TMC-600 (Series II)					*/
+
 
 /****************Games*******************************************************/
 	/* Computer Electronic */

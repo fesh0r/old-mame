@@ -82,13 +82,10 @@ struct GfxDecodeInfo europc_gfxdecodeinfo[] =
 	{ 1, 0x0000, &europc_cga_charlayout,	                0, 256 },   /* single width */
 	{ 1, 0x0000, &europc_cga_charlayout,	                0, 256 },   /* single width */
 	{ 1, 0x0000, &europc_cga_charlayout,	                0, 256 },   /* single width */
-	{ 1, 0x8000, &CGA_gfxlayout_1bpp,                   256*2,  16 },   /* 640x400x1 gfx */
-	{ 1, 0x8000, &CGA_gfxlayout_2bpp,              256*2+16*2,  96 },   /* 320x200x4 gfx */
 	{ 1, 0x1000, &europc_mda_charlayout,      256*2+16*2+96*4, 256 },   /* single width */
 	{ 1, 0x1000, &europc_mda_charlayout,      256*2+16*2+96*4, 256 },   /* single width */
 	{ 1, 0x1000, &europc_mda_charlayout,      256*2+16*2+96*4, 256 },   /* single width */
 	{ 1, 0x1000, &europc_mda_charlayout,      256*2+16*2+96*4, 256 },   /* single width */
-	{ 1, 0x8000, &pc_mda_gfxlayout_1bpp,256*2+16*2+2*4+256*2,	 1 },	/* 640x400x1 gfx */
     { -1 } /* end of array */
 };
 
@@ -99,14 +96,11 @@ struct GfxDecodeInfo aga_gfxdecodeinfo[] =
 	{ 1, 0x3000, &pc200_cga_charlayout,                     0, 256 },   /* single width */
 	{ 1, 0x5000, &pc200_cga_charlayout,                     0, 256 },   /* single width */
 	{ 1, 0x7000, &pc200_cga_charlayout,                     0, 256 },   /* single width */
-	{ 1, 0x8000, &CGA_gfxlayout_1bpp,                   256*2,  16 },   /* 640x400x1 gfx */
-	{ 1, 0x8000, &CGA_gfxlayout_2bpp,              256*2+16*2,  96 },   /* 320x200x4 gfx */
 /* The four MDA fonts */
 	{ 1, 0x0000, &pc200_mda_charlayout,       256*2+16*2+96*4, 256 },   /* single width */
 	{ 1, 0x2000, &pc200_mda_charlayout,       256*2+16*2+96*4, 256 },   /* single width */
 	{ 1, 0x4000, &pc200_mda_charlayout,       256*2+16*2+96*4, 256 },   /* single width */
 	{ 1, 0x6000, &pc200_mda_charlayout,       256*2+16*2+96*4, 256 },   /* single width */
-	{ 1, 0x8000, &pc_mda_gfxlayout_1bpp, 256*2+16*2+2*4+2*256,   1 },   /* 640x400x1 gfx */
     { -1 } /* end of array */
 };
 
@@ -123,6 +117,44 @@ PALETTE_INIT( pc_aga )
 static struct {
 	AGA_MODE mode;
 } aga;
+
+
+
+/*************************************
+ *
+ *	AGA MDA/CGA read/write handlers
+ *
+ *************************************/
+
+static READ8_HANDLER ( pc_aga_mda_r )
+{
+	if (aga.mode==AGA_MONO)
+		return pc_MDA_r(offset);
+	return 0xff;
+}
+
+static WRITE8_HANDLER ( pc_aga_mda_w )
+{
+	if (aga.mode==AGA_MONO)
+		pc_MDA_w(offset, data);
+}
+
+static READ8_HANDLER ( pc_aga_cga_r )
+{
+	if (aga.mode==AGA_COLOR)
+		return pc_cga8_r(offset);
+	return 0xff;
+}
+
+static WRITE8_HANDLER ( pc_aga_cga_w )
+{
+	if (aga.mode==AGA_COLOR)
+		pc_cga8_w(offset, data);
+}
+
+
+
+/*************************************/
 
 void pc_aga_set_mode(AGA_MODE mode)
 {
@@ -143,7 +175,7 @@ void pc_aga_set_mode(AGA_MODE mode)
 extern void pc_aga_timer(void)
 {
 	switch (aga.mode) {
-	case AGA_COLOR: pc_cga_timer();break;
+	case AGA_COLOR: ;break;
 	case AGA_MONO: pc_mda_timer();break;
 	case AGA_OFF: break;
 	}
@@ -170,7 +202,24 @@ static struct crtc6845_config config= { 14318180 /*?*/, pc_aga_cursor };
 
 VIDEO_START( pc_aga )
 {
+	int buswidth;
+
 	pc_mda_europc_init();
+
+	buswidth = cputype_databus_width(Machine->drv->cpu[0].cpu_type, ADDRESS_SPACE_PROGRAM);
+	switch(buswidth) {
+	case 8:
+		memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, pc_aga_mda_r );
+		memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, pc_aga_mda_w );
+		memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, pc_aga_cga_r );
+		memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, pc_aga_cga_w );
+		break;
+
+	default:
+		osd_die("CGA:  Bus width %d not supported\n", buswidth);
+		break;
+	}
+
 	if (!pc_video_start(&config, pc_aga_choosevideomode, videoram_size))
 		return 1;
 	pc_aga_set_mode(AGA_COLOR);
@@ -250,31 +299,6 @@ READ_HANDLER( pc200_videoram_r )
 }
 
 
-extern WRITE_HANDLER ( pc_aga_mda_w )
-{
-	if (aga.mode==AGA_MONO)
-		pc_MDA_w(offset, data);
-}
-
-WRITE_HANDLER ( pc_aga_cga_w )
-{
-	if (aga.mode==AGA_COLOR)
-		pc_CGA_w(offset, data);
-}
-
-READ_HANDLER ( pc_aga_mda_r )
-{
-	if (aga.mode==AGA_MONO)
-		return pc_MDA_r(offset);
-	return 0xff;
-}
-
-READ_HANDLER ( pc_aga_cga_r )
-{
-	if (aga.mode==AGA_COLOR)
-		return pc_CGA_r(offset);
-	return 0xff;
-}
 
 static struct {
 	UINT8 port8, portd, porte;
@@ -287,12 +311,12 @@ WRITE_HANDLER( pc200_cga_w )
 	switch(offset) {
 	case 4:
 		pc200.portd |= 0x20;
-		pc_CGA_w(offset,data);
+		pc_cga8_w(offset,data);
 		break;
 	case 8:
 		pc200.port8 = data;
 		pc200.portd |= 0x80;
-		pc_CGA_w(offset,data);
+		pc_cga8_w(offset,data);
 		break;
 	case 0xe:
 		pc200.portd = 0x1f;
@@ -315,27 +339,37 @@ WRITE_HANDLER( pc200_cga_w )
 		}
 		pc200.porte = data;
 		break;
+
 	default:
-		pc_CGA_w(offset,data);
+		pc_cga8_w(offset,data);
+		break;
 	}
 }
 
 READ_HANDLER ( pc200_cga_r )
 {
-	UINT8 data=0;
+	data8_t result = 0;
+
 	switch(offset) {
 	case 8:
-		return pc200.port8;
+		result = pc200.port8;
+		break;
+
 	case 0xd:
 		// after writing 0x80 to 0x3de, bits 7..5 of 0x3dd from the 2nd read must be 0
-		data=pc200.portd;
+		result=pc200.portd;
 		pc200.portd&=0x1f;
-		return data;
+		break;
+
 	case 0xe:
 		// 0x20 low cga
 		// 0x10 low special
-		return input_port_1_r(0)&0x38;
+		result = input_port_1_r(0)&0x38;
+		break;
+
 	default:
-		return pc_CGA_r(offset);
+		result = pc_cga8_r(offset);
+		break;
 	}
+	return result;
 }

@@ -406,6 +406,16 @@ static void pit8253_prepare_update(int which, int timer, int cycles)
 
 
 
+static UINT32 adjust_latch(UINT16 latch, UINT8 control)
+{
+	UINT32 adjusted_latch = latch ? latch : 0x10000;
+	if (CTRL_BCD(control))
+		adjusted_latch = decimal_from_bcd(adjusted_latch);
+	return adjusted_latch;
+}
+
+
+
 /* this function is used to appease the compiler with respect to
  * uninitialized variables */
 static void invalid(int *output, int *counter_adjustment)
@@ -666,13 +676,7 @@ static void pit8253_update(int param)
 
 	/* update clock frequency */
 	if (clock_active)
-	{
-		clk_frequency = p->timer[timer].clockin;
-		if (CTRL_BCD(p->timer[timer].control))
-			clk_frequency /= decimal_from_bcd(latch);
-		else
-			clk_frequency /= latch ? latch : 0x10000;
-	}
+		clk_frequency = p->timer[timer].clockin / adjust_latch(latch, p->timer[timer].control);
 	else
 		clk_frequency = 0;
 
@@ -701,10 +705,7 @@ static void pit8253_update(int param)
 		break;
 
 	case WAKE_BYCOUNTER:
-		if (CTRL_BCD(p->timer[timer].control))
-			cycles_to_wake = decimal_from_bcd(counter);
-		else
-			cycles_to_wake = counter ? counter : 0x10000;
+		cycles_to_wake = adjust_latch(counter, p->timer[timer].control);
 		cycles_to_wake /= counter_adjustment;
 		break;
 
@@ -926,11 +927,15 @@ void pit8253_set_clockin(int which, int timer, double new_clockin)
 
 /* ----------------------------------------------------------------------- */
 
-READ_HANDLER ( pit8253_0_r ) { return pit8253_read(0, offset); }
-READ_HANDLER ( pit8253_1_r ) { return pit8253_read(1, offset); }
+READ8_HANDLER ( pit8253_0_r ) { return pit8253_read(0, offset); }
+READ8_HANDLER ( pit8253_1_r ) { return pit8253_read(1, offset); }
+WRITE8_HANDLER ( pit8253_0_w ) { pit8253_write(0, offset, data); }
+WRITE8_HANDLER ( pit8253_1_w ) { pit8253_write(1, offset, data); }
 
-WRITE_HANDLER ( pit8253_0_w ) { pit8253_write(0, offset, data); }
-WRITE_HANDLER ( pit8253_1_w ) { pit8253_write(1, offset, data); }
+READ32_HANDLER ( pit8253_32_0_r ) { return read32_with_read8_handler(pit8253_0_r, offset, mem_mask); }
+READ32_HANDLER ( pit8253_32_1_r ) { return read32_with_read8_handler(pit8253_1_r, offset, mem_mask); }
+WRITE32_HANDLER ( pit8253_32_0_w ) { write32_with_write8_handler(pit8253_0_w, offset, data, mem_mask); }
+WRITE32_HANDLER ( pit8253_32_1_w ) { write32_with_write8_handler(pit8253_1_w, offset, data, mem_mask); }
 
 WRITE_HANDLER ( pit8253_0_gate_w ) { pit8253_gate_write(0, offset, data); }
 WRITE_HANDLER ( pit8253_1_gate_w ) { pit8253_gate_write(1, offset, data); }
