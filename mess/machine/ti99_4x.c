@@ -1,6 +1,6 @@
  /*
-	Machine code for TI99/4, TI-99/4A, and SNUG SGCPU (a.k.a. 99/4P).
-	Raphael Nabet, 1999-2002.
+	Machine code for TI99/4, TI-99/4A, TI-99/8, and SNUG SGCPU (a.k.a. 99/4P).
+	Raphael Nabet, 1999-2003.
 	Some code was originally derived from Ed Swartz's V9T9.
 
 	References:
@@ -16,32 +16,37 @@
 	* Harald Glaab's site has software and documentation for the various SNUG
 	  cards: 99/4P (nicknamed "SGCPU"), EVPC, BwG.
 		<http://home.t-online.de/home/harald.glaab/snug/>
-	* The TI99/4 boot ROM is the only source of information for the IR remote
-	handset controller protocol
+	* The TI-99/4 CPU ROM is the only source of information for the IR remote
+	  handset controller protocol.  I have written a document that explains
+	  this protocol.
+	* TI-99/8 ROM source code (6 PC99 disk images):
+		<ftp://ftp.whtech.com//source/998Source Disk1.DSK>
+		...
+		<ftp://ftp.whtech.com//source/998Source Disk6.DSK>
+	* TI-99/8 schematics.  This is a valuable source of information, BUT the
+	  schematics describe an early prototype (no Extended Basic, etc.).
+		<ftp://ftp.whtech.com//datasheets & manuals/99-8 Computer/99-8 schematic.max>
+	  I have written an index for the signals on these schematics.
 
 Emulated:
 	* All TI99 basic console hardware, except a few tricks in TMS9901 emulation.
 	* Cartridges with ROM (either non-paged or paged), RAM (minimemory) and
-	  GROM (GRAM or extra GPL ports are possible, but not effectively supported yet).
+	  GROM.  Supercart and MBX support are not finished.
 	* Speech Synthesizer, with standard speech ROM (no speech ROM expansion).
 	* Disk emulation (SSSD disk images with TI fdc, both SSSD and DSDD with
-	  SNUG's BwG fdc).
+	  SNUG's BwG and HFDC fdcs).
+	* Hard disk (HFDC and IDE).
+	* Mechatronics mouse.
 
 	Compatibility looks quite good.
 
 Issues:
-	* disk images in MESS format are not quite the same a images in V9T9
-	  format: they are identical for single-sided floppies, but use a different
-	  track order for double-sided floppies.
-		DS image (V9T9): side0 Trk0, side0 Trk1,... side0 Trk39, side1 Trk0,... side1 Trk39
-		DS image (MESS): side0 Trk0, side1 Trk0, side0 Trk1,... side0 Trk39, side1 Trk39
 	* floppy disk timings are not emulated (general issue)
 
 TODO:
 	* support for other peripherals and DSRs as documentation permits
-	* find programs that use super AMS or any other extended memory card
-	* find specs for the EVPC palette chip
-	* finish 99/4p support: ROM6, HSGPL
+	* implement the EVPC palette chip
+	* finish 99/4p support: ROM6, HSGPL (implemented, but not fully debugged)
 	* save minimemory contents
 */
 
@@ -78,12 +83,17 @@ static int ti99_R9901_3(int offset);
 
 static void ti99_handset_set_ack(int offset, int data);
 static void ti99_handset_task(void);
-static void ti99_KeyC2(int offset, int data);
-static void ti99_KeyC1(int offset, int data);
-static void ti99_KeyC0(int offset, int data);
+static void mecmouse_poll(void);
+static void ti99_KeyC(int offset, int data);
 static void ti99_AlphaW(int offset, int data);
-static void ti99_CS1_motor(int offset, int data);
-static void ti99_CS2_motor(int offset, int data);
+
+static int ti99_8_R9901_0(int offset);
+static int ti99_8_R9901_1(int offset);
+static void ti99_8_KeyC(int offset, int data);
+static void ti99_8_WCRUS(int offset, int data);
+static void ti99_8_PTGEN(int offset, int data);
+
+static void ti99_CS_motor(int offset, int data);
 static void ti99_audio_gate(int offset, int data);
 static void ti99_CS_output(int offset, int data);
 
@@ -107,6 +117,7 @@ static enum
 {
 	model_99_4,
 	model_99_4a,
+	model_99_8,
 	model_99_4p
 } ti99_model;
 /* memory extension type */
@@ -125,10 +136,12 @@ static char has_rs232;
 static char has_handset;
 /* TRUE if hsgpl card present */
 static char has_hsgpl;
+/* TRUE if mechatronics mouse present */
+static char has_mecmouse;
 
 
 /* tms9901 setup */
-static const tms9901reset_param tms9901reset_param_ti99 =
+static const tms9901reset_param tms9901reset_param_ti99_4x =
 {
 	TMS9901_INT1 | TMS9901_INT2 | TMS9901_INTC,	/* only input pins whose state is always known */
 
@@ -142,12 +155,12 @@ static const tms9901reset_param tms9901reset_param_ti99 =
 	{	/* write handlers */
 		ti99_handset_set_ack,
 		NULL,
-		ti99_KeyC2,
-		ti99_KeyC1,
-		ti99_KeyC0,
+		ti99_KeyC,
+		ti99_KeyC,
+		ti99_KeyC,
 		ti99_AlphaW,
-		ti99_CS1_motor,
-		ti99_CS2_motor,
+		ti99_CS_motor,
+		ti99_CS_motor,
 		ti99_audio_gate,
 		ti99_CS_output,
 		NULL,
@@ -165,6 +178,43 @@ static const tms9901reset_param tms9901reset_param_ti99 =
 	3000000.
 };
 
+static const tms9901reset_param tms9901reset_param_ti99_8 =
+{
+	TMS9901_INT1 | TMS9901_INT2 | TMS9901_INTC,	/* only input pins whose state is always known */
+
+	{	/* read handlers */
+		ti99_8_R9901_0,
+		ti99_8_R9901_1,
+		ti99_R9901_2,
+		ti99_R9901_3
+	},
+
+	{	/* write handlers */
+		ti99_8_KeyC,
+		ti99_8_KeyC,
+		ti99_8_KeyC,
+		ti99_8_KeyC,
+		ti99_8_WCRUS,
+		ti99_8_PTGEN,
+		ti99_CS_motor,
+		NULL,
+		ti99_audio_gate,
+		ti99_CS_output,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL
+	},
+
+	/* interrupt handler */
+	tms9901_interrupt_callback,
+
+	/* clock rate = 3.58MHz */
+	3579545.
+};
+
 /* handset interface */
 static int handset_buf;
 static int handset_buflen;
@@ -174,6 +224,12 @@ enum
 {
 	max_handsets = 4
 };
+
+/* mechatronics  */
+static int mecmouse_sel;
+static int mecmouse_read_y;
+static int mecmouse_x, mecmouse_y;
+static int mecmouse_x_buf, mecmouse_y_buf;
 
 /* keyboard interface */
 static int KeyCol;
@@ -300,6 +356,25 @@ static int ti99_4p_internal_rom6_enable;
 static UINT16 *ti99_4p_internal_ROM6;
 
 
+/* ti99/8 hardware */
+static UINT8 ti99_8_CRUS;
+
+static UINT32 ti99_8_mapper_regs[16];
+static UINT8 ti99_8_mapper_status;
+enum
+{
+	ms_WPE = 0x80,	/* Write-Protect Error */
+	ms_XCE = 0x40,	/* eXeCute Error */
+	ms_RPE = 0x20	/* Read-Protect Error */
+};
+
+static UINT8 *xRAM_ptr_8;
+static UINT8 *ROM0_ptr_8;
+static UINT8 *ROM1_ptr_8;
+static UINT8 *ROM2_ptr_8;
+static UINT8 *ROM3_ptr_8;
+static UINT8 *sRAM_ptr_8;
+
 /* tms9900_ICount: used to implement memory waitstates (hack) */
 extern int tms9900_ICount;
 
@@ -353,6 +428,24 @@ void init_ti99_4ev(void)
 
 	/* set up memory pointers */
 	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram);
+	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
+	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
+	console_GROMs.data_ptr = memory_region(region_grom);
+}
+
+void init_ti99_8(void)
+{
+	ti99_model = model_99_8;
+	has_evpc = FALSE;
+
+	/* set up memory pointers */
+	xRAM_ptr_8 = memory_region(REGION_CPU1) + offset_xram_8;
+	ROM0_ptr_8 = memory_region(REGION_CPU1) + offset_rom0_8;
+	ROM1_ptr_8 = ROM0_ptr_8 + 0x2000;
+	ROM2_ptr_8 = ROM1_ptr_8 + 0x2000;
+	ROM3_ptr_8 = ROM2_ptr_8 + 0x2000;
+	sRAM_ptr_8 = memory_region(REGION_CPU1) + offset_sram_8;
+
 	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
 	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
 	console_GROMs.data_ptr = memory_region(region_grom);
@@ -572,7 +665,12 @@ void machine_init_ti99(void)
 	/*console_GROMs.data_ptr = memory_region(region_grom);*/
 	console_GROMs.addr = 0;
 
-	if (ti99_model == model_99_4p)
+	if (ti99_model == model_99_8)
+	{
+		/* ... */
+		ti99_8_CRUS = 1;		/* ??? maybe there is a pull-up */
+	}
+	else if (ti99_model == model_99_4p)
 	{
 		/* set up system ROM and scratch pad pointers */
 		cpu_setbank(1, memory_region(REGION_CPU1) + offset_rom0_4p);	/* system ROM */
@@ -590,11 +688,15 @@ void machine_init_ti99(void)
 		cpu_setbank(4, sRAM_ptr);
 	}
 
-	/* reset cartridge mapper */
-	current_page_ptr = cartridge_pages[0];
+	if (ti99_model != model_99_4p)
+		/* reset cartridge mapper */
+		current_page_ptr = cartridge_pages[0];
 
 	/* init tms9901 */
-	tms9901_init(0, & tms9901reset_param_ti99);
+	if (ti99_model == model_99_8)
+		tms9901_init(0, & tms9901reset_param_ti99_8);
+	else
+		tms9901_init(0, & tms9901reset_param_ti99_4x);
 
 	if (! has_evpc)
 		TMS9928A_reset();
@@ -613,11 +715,16 @@ void machine_init_ti99(void)
 	tms9901_set_single_int(0, 12, 0);
 
 	/* read config */
-	if (ti99_model == model_99_4p)
+	if (ti99_model == model_99_8)
+		xRAM_kind = xRAM_kind_99_8;			/* hack */
+	else if (ti99_model == model_99_4p)
 		xRAM_kind = xRAM_kind_99_4p_1Mb;	/* hack */
 	else
 		xRAM_kind = (readinputport(input_port_config) >> config_xRAM_bit) & config_xRAM_mask;
-	has_speech = (readinputport(input_port_config) >> config_speech_bit) & config_speech_mask;
+	if (ti99_model == model_99_8)
+		has_speech = TRUE;
+	else
+		has_speech = (readinputport(input_port_config) >> config_speech_bit) & config_speech_mask;
 	fdc_kind = (readinputport(input_port_config) >> config_fdc_bit) & config_fdc_mask;
 	has_ide = (readinputport(input_port_config) >> config_ide_bit) & config_ide_mask;
 	has_rs232 = (readinputport(input_port_config) >> config_rs232_bit) & config_rs232_mask;
@@ -630,21 +737,30 @@ void machine_init_ti99(void)
 	if (ti99_model == model_99_4p)
 		ti99_4p_internal_dsr_init();
 
+	/*if (ti99_model == model_99_8)
+		ti99_8_internal_dsr_init();*/
+
 	if (has_speech)
 	{
 		spchroms_interface speech_intf = { region_speech_rom };
 
 		spchroms_config(& speech_intf);
 
-		install_mem_read16_handler(0, 0x9000, 0x93ff, ti99_rw_rspeech);
-		install_mem_write16_handler(0, 0x9400, 0x97ff, ti99_ww_wspeech);
+		if (ti99_model != model_99_8)
+		{
+			install_mem_read16_handler(0, 0x9000, 0x93ff, ti99_rw_rspeech);
+			install_mem_write16_handler(0, 0x9400, 0x97ff, ti99_ww_wspeech);
 
-		tms5220_set_variant(variant_tms0285);
+			tms5220_set_variant(variant_tms0285);
+		}
 	}
 	else
 	{
-		install_mem_read16_handler(0, 0x9000, 0x93ff, ti99_rw_null8bits);
-		install_mem_write16_handler(0, 0x9400, 0x97ff, ti99_ww_null8bits);
+		if (ti99_model != model_99_8)
+		{
+			install_mem_read16_handler(0, 0x9000, 0x93ff, ti99_rw_null8bits);
+			install_mem_write16_handler(0, 0x9400, 0x97ff, ti99_ww_null8bits);
+		}
 	}
 
 	switch (xRAM_kind)
@@ -671,6 +787,9 @@ void machine_init_ti99(void)
 	case xRAM_kind_myarc_128k:
 	case xRAM_kind_myarc_512k:
 		ti99_myarcxram_init();
+		break;
+	case xRAM_kind_99_8:
+		/* nothing needs to be done */
 		break;
 	}
 
@@ -705,6 +824,12 @@ void machine_init_ti99(void)
 
 	if (has_evpc)
 		ti99_evpc_init();
+
+	/* initialize mechatronics mouse */
+	mecmouse_sel = 0;
+	mecmouse_read_y = 0;
+	mecmouse_x = 0;
+	mecmouse_y = 0;
 }
 
 void machine_stop_ti99(void)
@@ -739,11 +864,22 @@ void ti99_vblank_interrupt(void)
 	TMS9928A_interrupt();
 	if (has_handset)
 		ti99_handset_task();
+	has_mecmouse = (readinputport(input_port_config) >> config_mecmouse_bit) & config_mecmouse_mask;
+	if (has_mecmouse)
+		mecmouse_poll();
 }
 
 void ti99_4ev_hblank_interrupt(void)
 {
+	static int line_count;
 	v9938_interrupt();
+	if (++line_count == 262)
+	{
+		line_count = 0;
+		has_mecmouse = (readinputport(input_port_config) >> config_mecmouse_bit) & config_mecmouse_mask;
+		if (has_mecmouse)
+			mecmouse_poll();
+	}
 }
 
 /*
@@ -1004,9 +1140,9 @@ static void speech_kludge_callback(int dummy)
 	{
 		/* Weirdly enough, we are always seeing some problems even though
 		everything is working fine. */
-		/*double time_to_ready = tms5220_time_to_ready();
+		double time_to_ready = tms5220_time_to_ready();
 		logerror("ti99/4a speech says aaargh!\n");
-		logerror("(time to ready: %f -> %d)\n", time_to_ready, (int) ceil(3000000*time_to_ready));*/
+		logerror("(time to ready: %f -> %d)\n", time_to_ready, (int) ceil(3000000*time_to_ready));
 	}
 }
 
@@ -1148,6 +1284,281 @@ WRITE16_HANDLER ( ti99_4p_ww_wgpl )
 
 	/*if (hsgpl_crdena)*/
 		ti99_hsgpl_gpl_w(offset, data, mem_mask);
+}
+
+
+READ_HANDLER ( ti99_8_r )
+{
+	int page = offset >> 12;
+	UINT32 mapper_reg;
+
+	if (ti99_8_CRUS)
+	{
+		/* memory mapped ports enabled */
+		if (page == 0)
+			/* ROM? */
+			return ROM0_ptr_8[offset & 0x1fff];
+		else if (page == 8)
+		{
+			/* ti99 scratch pad and memory-mapped registers */
+			/* 0x8000-0x9fff */
+			switch ((offset - 0x8000) >> 10)
+			{
+			case 0:
+				/* RAM */
+				return sRAM_ptr_8[offset & 0x1fff];
+
+			case 1:
+				/* sound write + RAM */
+				if (offset >= 0x8410)
+					return sRAM_ptr_8[offset & 0x1fff];
+				break;
+
+			case 2:
+				/* VDP read + mapper status */
+				if (offset < 0x8810)
+				{
+					if (! (offset & 1))
+					{
+						if (offset & 2)
+						{	/* read VDP status */
+							return TMS9928A_register_r(0);
+						}
+						else
+						{	/* read VDP RAM */
+							return TMS9928A_vram_r(0);
+						}
+					}
+				}
+				else
+				{
+					UINT8 reply = ti99_8_mapper_status;
+
+					ti99_8_mapper_status = 0;
+
+					return reply;
+				}
+				return 0;
+
+			case 4:
+				/* speech read */
+				/*if (! (offset & 1))
+				{
+					return ti99_8_speech_r(0);
+				}*/
+				return 0;
+
+			case 6:
+				/* GPL read */
+				if (! (offset & 1))
+					return ti99_rw_rgpl(offset >> 1, 0) >> 8;
+				return 0;
+
+			default:
+				logerror("unmapped read offs=%d\n", (int) offset);
+				return 0;
+			}
+		}
+	}
+
+	mapper_reg = ti99_8_mapper_regs[page];
+	offset = (mapper_reg + (offset & 0x0fff)) & 0x00ffffff;
+
+	/* test read protect */
+	/*if (mapper_reg & 0x20000000)
+		;*/
+
+	/* test execute protect */
+	/*if (mapper_reg & 0x40000000)
+		;*/
+
+	if (offset < 0x010000)
+		/* Read RAM */
+		return xRAM_ptr_8[offset];
+
+	if (offset >= 0xff0000)
+	{
+		switch ((offset >> 13) & 7)
+		{
+		default:
+			/* should never happen */
+		case 0:
+			/* ROM0 space??? */
+		case 1:
+			/* ??? */
+		case 4:
+			/* internal DSR ROM??? (normally enabled with a write to CRU >2700) */
+		case 7:
+			/* ??? */
+			break;
+
+		case 2:
+			/* DSR space */
+			return ti99_8_peb_r(offset & 0x1fff);
+
+		case 3:
+			/* cartridge space */
+			/* ... */
+			break;
+
+		case 5:
+			/* >2000 ROM (ROM1) */
+			return ROM1_ptr_8[offset & 0x1fff];
+
+		case 6:
+			/* >6000 ROM */
+			return ROM3_ptr_8[offset & 0x1fff];
+		}
+	}
+
+	logerror("unmapped read page=%d offs=%d\n", (int) page, (int) offset);
+	return 0;
+}
+
+WRITE_HANDLER ( ti99_8_w )
+{
+	int page = offset >> 12;
+	UINT32 mapper_reg;
+
+	if (ti99_8_CRUS)
+	{
+		/* memory mapped ports enabled */
+		if (page == 0)
+			/* ROM? */
+			return;
+		else if (page == 8)
+		{
+			/* ti99 scratch pad and memory-mapped registers */
+			/* 0x8000-0x9fff */
+			switch ((offset - 0x8000) >> 10)
+			{
+			case 0:
+				/* RAM */
+				sRAM_ptr_8[offset & 0x1fff] = data;
+				return;
+
+			case 1:
+				/* sound write + RAM */
+				if (offset < 0x8410)
+					SN76496_0_w(offset, data);
+				else
+					sRAM_ptr_8[offset & 0x1fff] = data;
+				return;
+
+			case 2:
+				/* VDP read + mapper control */
+				if (offset >= 0x8810)
+				{
+					int file = (data >> 1) & 3;
+					int i;
+
+					if (data & 1)
+					{	/* save */
+						for (i=0; i<16; i++)
+						{
+							sRAM_ptr_8[(file << 6) + (i << 2)] = ti99_8_mapper_regs[i] >> 24;
+							sRAM_ptr_8[(file << 6) + (i << 2) + 1] = ti99_8_mapper_regs[i] >> 16;
+							sRAM_ptr_8[(file << 6) + (i << 2) + 2] = ti99_8_mapper_regs[i] >> 8;
+							sRAM_ptr_8[(file << 6) + (i << 2) + 3] = ti99_8_mapper_regs[i];
+						}
+					}
+					else
+					{	/* load */
+						for (i=0; i<16; i++)
+						{
+							ti99_8_mapper_regs[i] = (sRAM_ptr_8[(file << 6) + (i << 2)] << 24)
+													| (sRAM_ptr_8[(file << 6) + (i << 2) + 1] << 16)
+													| (sRAM_ptr_8[(file << 6) + (i << 2) + 2] << 8)
+													| sRAM_ptr_8[(file << 6) + (i << 2) + 3];
+						}
+					}
+				}
+				return;
+
+			case 3:
+				/* VDP write */
+				if (! (offset & 1))
+				{
+					if (offset & 2)
+					{	/* read VDP status */
+						TMS9928A_register_w(0, data);
+					}
+					else
+					{	/* read VDP RAM */
+						TMS9928A_vram_w(0, data);
+					}
+				}
+				return;
+
+			case 5:
+				/* speech write */
+				/*if (! (offset & 1))
+				{
+					return ti99_8_speech_w(0);
+				}*/
+				return;
+
+			case 7:
+				/* GPL write */
+				if (! (offset & 1))
+					ti99_ww_wgpl(offset >> 1, data << 8, 0);
+				return;
+
+			default:
+				logerror("unmapped write offs=%d data=%d\n", (int) offset, (int) data);
+				return;
+			}
+		}
+	}
+
+	mapper_reg = ti99_8_mapper_regs[page];
+	offset = (mapper_reg + (offset & 0x0fff)) & 0x00ffffff;
+
+	/* test write protect */
+	/*if (mapper_reg & 0x80000000)
+		;*/
+
+	if (offset < 0x010000)
+	{	/* Write RAM */
+		xRAM_ptr_8[offset] = data;
+	}
+	else if (offset >= 0xff0000)
+	{
+		switch ((offset >> 13) & 7)
+		{
+		default:
+			/* should never happen */
+		case 0:
+			/* ROM0 space??? */
+		case 1:
+			/* ??? */
+		case 4:
+			/* internal DSR ROM??? (normally enabled with a write to CRU >2700) */
+		case 7:
+			/* ??? */
+			break;
+
+		case 2:
+			/* DSR space */
+			ti99_8_peb_w(offset & 0x1fff, data);
+			break;
+
+		case 3:
+			/* cartridge space */
+			/* ... */
+			break;
+
+		case 5:
+			/* >2000 ROM (ROM1) */
+			break;
+
+		case 6:
+			/* >6000 ROM */
+			break;
+		}
+	}
+	else
+		logerror("unmapped write page=%d offs=%d\n", (int) page, (int) offset);
 }
 
 /*===========================================================================*/
@@ -1436,6 +1847,83 @@ static void ti99_handset_task(void)
 /*===========================================================================*/
 #if 0
 #pragma mark -
+#pragma mark MECHATRONICS MOUSE
+#endif
+
+static void mecmouse_select(int sel)
+{
+	if (mecmouse_sel != (sel != 0))
+	{
+		mecmouse_sel = (sel != 0);
+		if (mecmouse_sel)
+		{
+			if (! mecmouse_read_y)
+			{
+				/* sample mouse data for both axes */
+				if (mecmouse_x < -4)
+					mecmouse_x_buf = -4;
+				else if (mecmouse_x > 3)
+					mecmouse_x_buf = 3;
+				else
+					mecmouse_x_buf = mecmouse_x;
+				mecmouse_x -= mecmouse_x_buf;
+				mecmouse_x_buf = (mecmouse_x_buf-1) & 7;
+
+				if (mecmouse_y < -4)
+					mecmouse_y_buf = -4;
+				else if (mecmouse_y > 3)
+					mecmouse_y_buf = 3;
+				else
+					mecmouse_y_buf = mecmouse_y;
+				mecmouse_y -= mecmouse_y_buf;
+				mecmouse_y_buf = (mecmouse_y_buf-1) & 7;
+			}
+		}
+		else
+			mecmouse_read_y = ! mecmouse_read_y;
+	}
+}
+
+static void mecmouse_poll(void)
+{
+	static int last_mx = 0, last_my = 0;
+	int new_mx, new_my;
+	int delta_x, delta_y;
+
+	new_mx = readinputport(input_port_mousex);
+	new_my = readinputport(input_port_mousey);
+
+	/* compute x delta */
+	delta_x = new_mx - last_mx;
+
+	/* check for wrap */
+	if (delta_x > 0x80)
+		delta_x = 0x100-delta_x;
+	if  (delta_x < -0x80)
+		delta_x = -0x100-delta_x;
+
+	last_mx = new_mx;
+
+	/* compute y delta */
+	delta_y = new_my - last_my;
+
+	/* check for wrap */
+	if (delta_y > 0x80)
+		delta_y = 0x100-delta_y;
+	if  (delta_y < -0x80)
+		delta_y = -0x100-delta_y;
+
+	last_my = new_my;
+
+	/* update state */
+	mecmouse_x += delta_x;
+	mecmouse_y += delta_y;
+}
+
+
+/*===========================================================================*/
+#if 0
+#pragma mark -
 #pragma mark TMS9901 INTERFACE
 #endif
 /*
@@ -1531,18 +2019,29 @@ static int ti99_R9901_0(int offset)
 
 	if ((ti99_model == model_99_4) && (KeyCol == 7))
 		answer = (ti99_handset_poll_bus() << 3) | 0x80;
-	else
+	else if (has_mecmouse && (KeyCol == ((ti99_model == model_99_4) ? 6 : 7)))
 	{
+		int buttons = (readinputport(input_port_mouse_buttons) >> input_port_mouse_buttons_shift) & 3;
+
+		answer = (mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 4;
+
+		if (! (buttons & 1))
+			/* action button */
+			answer |= 0x08;
+		if (! (buttons & 2))
+			/* home button */
+			answer |= 0x80;
+	}
+	else
 		answer = ((readinputport(input_port_keyboard + (KeyCol >> 1)) >> ((KeyCol & 1) * 8)) << 3) & 0xF8;
 
-		if ((ti99_model == model_99_4a) || (ti99_model == model_99_4p))
-		{
-			if (! AlphaLockLine)
-				answer &= ~ (readinputport(input_port_caps_lock) << 3);
-		}
+	if ((ti99_model == model_99_4a) || (ti99_model == model_99_4p))
+	{
+		if (! AlphaLockLine)
+			answer &= ~ (readinputport(input_port_caps_lock) << 3);
 	}
 
-	return (answer);
+	return answer;
 }
 
 /*
@@ -1550,7 +2049,7 @@ static int ti99_R9901_0(int offset)
 
 	signification:
 	 bit 0-2: keyboard status bits 5 to 7
-	 bit 3: weird, not emulated
+	 bit 3: tape input mirror
 	 (bit 4: IR remote handset interrupt)
 	 bit 5-7: weird, not emulated
 */
@@ -1559,10 +2058,14 @@ static int ti99_R9901_1(int offset)
 	int answer;
 
 
-	if ((ti99_model == model_99_4) && (KeyCol == 7))
+	if (/*(ti99_model == model_99_4) &&*/ (KeyCol == 7))
 		answer = 0x07;
 	else
 		answer = ((readinputport(input_port_keyboard + (KeyCol >> 1)) >> ((KeyCol & 1) * 8)) >> 5) & 0x07;
+
+	/* we don't take CS2 into account, as CS2 is a write-only unit */
+	/*if (device_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0)
+		answer |= 8;*/
 
 	return answer;
 }
@@ -1601,36 +2104,17 @@ static int ti99_R9901_3(int offset)
 
 
 /*
-	WRITE column number bit 2 (P2)
+	WRITE key column select (P2-P4)
 */
-static void ti99_KeyC2(int offset, int data)
+static void ti99_KeyC(int offset, int data)
 {
 	if (data)
-		KeyCol |= 1;
+		KeyCol |= 1 << (offset-2);
 	else
-		KeyCol &= (~1);
-}
+		KeyCol &= ~ (1 << (offset-2));
 
-/*
-	WRITE column number bit 1 (P3)
-*/
-static void ti99_KeyC1(int offset, int data)
-{
-	if (data)
-		KeyCol |= 2;
-	else
-		KeyCol &= (~2);
-}
-
-/*
-	WRITE column number bit 0 (P4)
-*/
-static void ti99_KeyC0(int offset, int data)
-{
-	if (data)
-		KeyCol |= 4;
-	else
-		KeyCol &= (~4);
+	if (has_mecmouse)
+		mecmouse_select(KeyCol == ((ti99_model == model_99_4) ? 6 : 7));
 }
 
 /*
@@ -1642,9 +2126,102 @@ static void ti99_AlphaW(int offset, int data)
 		AlphaLockLine = data;
 }
 
-static void ti99_CSx_motor(int data, int cassette_id)
+/*
+	Read pins INT3*-INT7* of TI99's 9901.
+
+	signification:
+	 (bit 1: INT1 status)
+	 (bit 2: INT2 status)
+	 bits 3-4: unused?
+	 bit 5: ???
+	 bit 6-7: keyboard status bits 0 through 1
+*/
+static int ti99_8_R9901_0(int offset)
 {
-	mess_image *img = image_from_devtype_and_index(IO_CASSETTE, cassette_id);
+	int answer;
+
+
+	if (has_mecmouse && (KeyCol == 15))
+	{
+		int buttons = (readinputport(input_port_mouse_buttons_8) >> input_port_mouse_buttons_shift) & 3;
+
+		answer = ((mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 7) & 0x80;
+
+		if (! (buttons & 1))
+			/* action button */
+			answer |= 0x40;
+	}
+	else
+		answer = (readinputport(input_port_keyboard + KeyCol) << 6) & 0xC0;
+
+	return answer;
+}
+
+/*
+	Read pins INT8*-INT15* of TI99's 9901.
+
+	signification:
+	 bit 0-2: keyboard status bits 2 to 4
+	 bit 3: tape input mirror
+	 (bit 4: IR remote handset interrupt)
+	 bit 5-7: weird, not emulated
+*/
+static int ti99_8_R9901_1(int offset)
+{
+	int answer;
+
+
+	if (has_mecmouse && (KeyCol == 15))
+	{
+		int buttons = (readinputport(input_port_mouse_buttons_8) >> input_port_mouse_buttons_shift) & 3;
+
+		answer = ((mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 1) & 0x03;
+
+		if (! (buttons & 2))
+			/* home button */
+			answer |= 0x04;
+	}
+	else
+		answer = (readinputport(input_port_keyboard) >> 2) & 0x07;
+
+	/* we don't take CS2 into account, as CS2 is a write-only unit */
+	/*if (device_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0)
+		answer |= 8;*/
+
+	return answer;
+}
+
+/*
+	WRITE key column select (P0-P3)
+*/
+static void ti99_8_KeyC(int offset, int data)
+{
+	if (data)
+		KeyCol |= 1 << offset;
+	else
+		KeyCol &= ~ (1 << offset);
+
+	if (has_mecmouse)
+		mecmouse_select(KeyCol == 15);
+}
+
+static void ti99_8_WCRUS(int offset, int data)
+{
+	ti99_8_CRUS = data;
+}
+
+static void ti99_8_PTGEN(int offset, int data)
+{
+	/* ... */
+}
+
+/*
+	command CS1/CS2 tape unit motor (P6-P7)
+*/
+static void ti99_CS_motor(int offset, int data)
+{
+	mess_image *img = image_from_devtype_and_index(IO_CASSETTE, offset-6);
+
 	if (data)
 		device_status(img, device_status(img, -1) & ~ WAVE_STATUS_MOTOR_INHIBIT);
 	else
@@ -1652,37 +2229,16 @@ static void ti99_CSx_motor(int data, int cassette_id)
 }
 
 /*
-	command CS1 tape unit motor (P6)
-*/
-static void ti99_CS1_motor(int offset, int data)
-{
-	ti99_CSx_motor(data, 0);
-}
-
-/*
-	command CS2 tape unit motor (P7)
-*/
-static void ti99_CS2_motor(int offset, int data)
-{
-	ti99_CSx_motor(data, 1);
-}
-
-/*
 	audio gate (P8)
 
-	connected to the AUDIO IN pin of TMS9919
+	Set to 1 before using tape: this enables the mixing of tape input sound
+	with computer sound.
 
-	set to 1 before using tape (in order not to burn the TMS9901 ??)
-	Must actually control the mixing of tape sound with computer sound.
-
-	I am not sure about polarity.
+	We do not really need to emulate this as the tape recorder generates sound
+	on its own.
 */
 static void ti99_audio_gate(int offset, int data)
 {
-	if (data)
-		DAC_data_w(0, 0xFF);
-	else
-		DAC_data_w(0, 0);
 }
 
 /*

@@ -6,13 +6,13 @@
     ROM_LOAD("mda.chr",     0x00000, 0x01000, CRC(ac1686f3))
 #endif
 
-void pc_mda_init_video(struct _CRTC6845 *crtc);
-void pc_mda_europc_init(struct _CRTC6845 *crtc);
+void pc_mda_init_video(void);
+void pc_mda_europc_init(void);
 
 void pc_mda_timer(void);
 
 VIDEO_START ( pc_mda );
-pc_video_update_proc pc_mda_choosevideomode(int *xfactor, int *yfactor);
+pc_video_update_proc pc_mda_choosevideomode(int *width, int *height, struct crtc6845 *crtc);
 
 WRITE_HANDLER ( pc_MDA_w );
 READ_HANDLER ( pc_MDA_r );
@@ -26,4 +26,4 @@ extern unsigned short mda_colortable[256*2+1*2];
 PALETTE_INIT( pc_mda );
 
 //internal use
-void pc_mda_cursor(CRTC6845_CURSOR *cursor);
+void pc_mda_cursor(struct crtc6845_cursor *cursor);

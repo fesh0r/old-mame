@@ -62,7 +62,7 @@ static void basicdsk_seek_callback(mess_image *img, int);
 static int basicdsk_get_sectors_per_track(mess_image *img, int);
 static void basicdsk_get_id_callback(mess_image *img,  chrn_id *, int, int);
 static void basicdsk_read_sector_data_into_buffer(mess_image *img, int side, int index1, char *ptr, int length);
-static void basicdsk_write_sector_data_from_buffer(mess_image *img, int side, int index1, char *ptr, int length,int ddam);
+static void basicdsk_write_sector_data_from_buffer(mess_image *img, int side, int index1, const char *ptr, int length,int ddam);
 
 static floppy_interface basicdsk_floppy_interface =
 {
@@ -157,7 +157,7 @@ static int basicdsk_get_ddam(mess_image *img, UINT8 physical_track, UINT8 physic
 	unsigned long ddam_bit_offset, ddam_bit_index, ddam_byte_offset;
 	basicdsk *pDisk = get_basicdsk(img);
 
-	if (!pDisk->ddam_map)
+	if (!pDisk->ddam_map || !image_exists(img))
 		return 0;
 
 	/* calculate bit-offset into map */
@@ -561,7 +561,7 @@ static void basicdsk_seek_callback(mess_image *img, int physical_track)
 	w->track = physical_track / w->track_divider;
 }
 
-static void basicdsk_write_sector_data_from_buffer(mess_image *img, int side, int index1, char *ptr, int length, int ddam)
+static void basicdsk_write_sector_data_from_buffer(mess_image *img, int side, int index1, const char *ptr, int length, int ddam)
 {
 	basicdsk *w = get_basicdsk(img);
 

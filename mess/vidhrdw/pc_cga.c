@@ -25,6 +25,30 @@
 			xxx0 1010  320x200 graph color
 			xxx1 1110  640x200 graph B/W
 
+
+	PC1512 display notes
+
+	The PC1512 built-in display adaptor is an emulation of IBM's CGA.  Unlike a
+	real CGA, it is not built around a real MC6845 controller, and so attempts
+	to get custom video modes out of it may not work as expected. Its 640x200
+	CGA mode can be set up to be a 16-color mode rather than mono.
+
+	If you program it with BIOS calls, the PC1512 behaves just like a real CGA,
+	except:
+
+	- The 'greyscale' text modes (0 and 2) behave just like the 'color'
+	  ones (1 and 3). On a color monitor both are in color; on a mono
+	  monitor both are in greyscale.
+	- Mode 5 (the 'greyscale' graphics mode) displays in color, using
+	  an alternative color palette: Cyan, Red and White.
+	- The undocumented 160x100x16 "graphics" mode works correctly.
+
+	(source John Elliott http://www.seasip.info/AmstradXT/pc1512disp.html)
+
+	TODO
+	- Implement black/white versions of the video modes
+	- Implement PC1512 black/cyan/red/white mode
+
 ***************************************************************************/
 #include "driver.h"
 #include "vidhrdw/generic.h"
@@ -110,9 +134,35 @@ unsigned short cga_colortable[] =
 /* the color sets for 1bpp graphics mode */
 	 0,0, 0,1, 0,2, 0,3, 0,4, 0,5, 0,6, 0,7,
 	 0,8, 0,9, 0,10, 0,11, 0,12, 0,13, 0,14, 0,15,
-/* the color sets for 2bpp graphics mode */
-     /*0, 2, 4, 6,*/  0,10,12,14,
-     /*0, 3, 5, 7,*/  0,11,13,15 // only 2 sets!?
+/* the color sets for 2bpp graphics mode. There are 32*3 = 96 of these,
+ * though only the first 64 apply on a real CGA. */
+/* Red/Green/Yellow set */
+      0, 2, 4, 6,  1, 2, 4, 6,  2, 2, 4, 6,  3, 2, 4, 6, 
+      4, 2, 4, 6,  5, 2, 4, 6,  6, 2, 4, 6,  7, 2, 4, 6, 
+      8, 2, 4, 6,  9, 2, 4, 6, 10, 2, 4, 6, 11, 2, 4, 6, 
+     12, 2, 4, 6, 13, 2, 4, 6, 14, 2, 4, 6, 15, 2, 4, 6, 
+      0,10,12,14,  1,10,12,14,  2,10,12,14,  3,10,12,14,
+      4,10,12,14,  5,10,12,14,  6,10,12,14,  7,10,12,14,
+      8,10,12,14,  9,10,12,14, 10,10,12,14, 11,10,12,14,
+     12,10,12,14, 13,10,12,14, 14,10,12,14, 15,10,12,14,
+/* Magenta/Cyan/White set */
+      0, 3, 5, 7,  1, 3, 5, 7,  2, 3, 5, 7,  3, 3, 5, 7, 
+      4, 3, 5, 7,  5, 3, 5, 7,  6, 3, 5, 7,  7, 3, 5, 7, 
+      8, 3, 5, 7,  9, 3, 5, 7, 10, 3, 5, 7, 11, 3, 5, 7, 
+     12, 3, 5, 7, 13, 3, 5, 7, 14, 3, 5, 7, 15, 3, 5, 7, 
+      0,11,13,15,  1,11,13,15,  2,11,13,15,  3,11,13,15,
+      4,11,13,15,  5,11,13,15,  6,11,13,15,  7,11,13,15,
+      8,11,13,15,  9,11,13,15, 10,11,13,15, 11,11,13,15,
+     12,11,13,15, 13,11,13,15, 14,11,13,15, 15,11,13,15,
+/* Red/Cyan/White set (PC1512 only) */
+      0, 3, 4, 7,  1, 3, 4, 7,  2, 3, 4, 7,  3, 3, 4, 7, 
+      4, 3, 4, 7,  5, 3, 4, 7,  6, 3, 4, 7,  7, 3, 4, 7, 
+      8, 3, 4, 7,  9, 3, 4, 7, 10, 3, 4, 7, 11, 3, 4, 7, 
+     12, 3, 4, 7, 13, 3, 4, 7, 14, 3, 4, 7, 15, 3, 4, 7, 
+      0,11,12,15,  1,11,12,15,  2,11,12,15,  3,11,12,15,
+      4,11,12,15,  5,11,12,15,  6,11,12,15,  7,11,12,15,
+      8,11,12,15,  9,11,12,15, 10,11,12,15, 11,11,12,15,
+     12,11,12,15, 13,11,12,15, 14,11,12,15, 15,11,12,15,
 };
 
 struct GfxLayout CGA_charlayout =
@@ -161,7 +211,7 @@ static struct GfxDecodeInfo CGA_gfxdecodeinfo[] =
 {
 	{ 1, 0x0000, &CGA_charlayout,			  0, 256 },   /* single width */
 	{ 1, 0x1000, &CGA_gfxlayout_1bpp,	  256*2,  16 },   /* 640x400x1 gfx */
-	{ 1, 0x1000, &CGA_gfxlayout_2bpp, 256*2+16*2,   2 },   /* 320x200x4 gfx */
+	{ 1, 0x1000, &CGA_gfxlayout_2bpp, 256*2+16*2,   96 },   /* 320x200x4 gfx */
     { -1 } /* end of array */
 };
 
@@ -198,37 +248,27 @@ PALETTE_INIT( pc_cga )
 	memcpy(colortable,cga_colortable,sizeof(cga_colortable));
 }
 
-typedef enum { TYPE_CGA, TYPE_PC1512 } TYPE;
-
-static struct { 
-	TYPE type;
-	struct _CRTC6845 *crtc;
-
+static struct
+{ 
 	UINT8 mode_control,  // wo 0x3d8
 		color_select, //wo 0x3d9
 		status; //ro 0x3da
 	
 	int pc_blink;
 	int pc_framecnt;
-} cga= { TYPE_CGA };
+} cga;
 
-void pc_cga_cursor(CRTC6845_CURSOR *cursor)
+void pc_cga_cursor(struct crtc6845_cursor *cursor)
 {
 	if (dirtybuffer && (videoram_size > cursor->pos*2))
 		dirtybuffer[cursor->pos*2]=1;
 }
 
-static CRTC6845_CONFIG config= { 14318180 /*?*/, pc_cga_cursor };
-
-void pc_cga_init_video(struct _CRTC6845 *crtc)
-{
-	cga.crtc = crtc;
-}
+static struct crtc6845_config config= { 14318180 /*?*/, pc_cga_cursor };
 
 VIDEO_START( pc_cga )
 {
-	cga.crtc = crtc6845;
-	return pc_video_start(cga.crtc, &config, pc_cga_choosevideomode);
+	return pc_video_start(&config, pc_cga_choosevideomode, 0) ? INIT_PASS : INIT_FAIL;
 }
 
 /*
@@ -287,20 +327,17 @@ static int pc_cga_status_r(void)
  *************************************************************************/
 WRITE_HANDLER ( pc_CGA_w )
 {
-	switch( offset )
-	{
-		case 0: case 2: case 4: case 6:
-			crtc6845_port_w(cga.crtc,0,data);
-			break;
-		case 1: case 3: case 5: case 7:
-			crtc6845_port_w(cga.crtc,1,data);
-			break;
-		case 8:
-			pc_cga_mode_control_w(data);
-			break;
-		case 9:
-			pc_cga_color_select_w(data);
-			break;
+	switch(offset) {
+	case 0: case 2: case 4: case 6:
+	case 1: case 3: case 5: case 7:
+		crtc6845_port_w(crtc6845, offset, data);
+		break;
+	case 8:
+		pc_cga_mode_control_w(data);
+		break;
+	case 9:
+		pc_cga_color_select_w(data);
+		break;
 	}
 }
 
@@ -310,10 +347,10 @@ READ_HANDLER ( pc_CGA_r )
 	switch( offset )
 	{
 		case 0: case 2: case 4: case 6:
-			data = crtc6845_port_r(cga.crtc,0);
+			data = crtc6845_port_r(crtc6845, 0);
 			break;
 		case 1: case 3: case 5: case 7:
-			data = crtc6845_port_r(cga.crtc,1);
+			data = crtc6845_port_r(crtc6845, 1);
 			break;
 		case 10:
 			data = pc_cga_status_r();
@@ -326,18 +363,18 @@ READ_HANDLER ( pc_CGA_r )
   Draw text mode with 40x25 characters (default) with high intensity bg.
   The character cell size is 16x8
 ***************************************************************************/
-static void cga_text_inten(struct mame_bitmap *bitmap)
+static void cga_text_inten(struct mame_bitmap *bitmap, struct crtc6845 *crtc)
 {
 	int sx, sy;
-	int	offs = crtc6845_get_start(cga.crtc)*2;
-	int lines = crtc6845_get_char_lines(cga.crtc);
-	int height = crtc6845_get_char_height(cga.crtc);
-	int columns = crtc6845_get_char_columns(cga.crtc);
+	int	offs = crtc6845_get_start(crtc) * 2;
+	int lines = crtc6845_get_char_lines(crtc);
+	int height = crtc6845_get_char_height(crtc);
+	int columns = crtc6845_get_char_columns(crtc);
 	struct rectangle r;
-	CRTC6845_CURSOR cursor;
+	struct crtc6845_cursor cursor;
 
-	crtc6845_time(cga.crtc);
-	crtc6845_get_cursor(cga.crtc, &cursor);
+	crtc6845_time(crtc);
+	crtc6845_get_cursor(crtc, &cursor);
 
 	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height)
 	{
@@ -355,7 +392,7 @@ static void cga_text_inten(struct mame_bitmap *bitmap)
 
 					if (k>0)
 					{
-						plot_box(Machine->scrbitmap, r.min_x, 
+						plot_box(bitmap, r.min_x, 
 								 r.min_y+cursor.top, 
 								 8, k, Machine->pens[7]);
 					}
@@ -372,18 +409,18 @@ static void cga_text_inten(struct mame_bitmap *bitmap)
   Draw text mode with 40x25 characters (default) and blinking colors.
   The character cell size is 16x8
 ***************************************************************************/
-static void cga_text_blink(struct mame_bitmap *bitmap)
+static void cga_text_blink(struct mame_bitmap *bitmap, struct crtc6845 *crtc)
 {
 	int sx, sy;
-	int	offs = crtc6845_get_start(cga.crtc)*2;
-	int lines = crtc6845_get_char_lines(cga.crtc);
-	int height = crtc6845_get_char_height(cga.crtc);
-	int columns = crtc6845_get_char_columns(cga.crtc);
+	int	offs = crtc6845_get_start(crtc)*2;
+	int lines = crtc6845_get_char_lines(crtc);
+	int height = crtc6845_get_char_height(crtc);
+	int columns = crtc6845_get_char_columns(crtc);
 	struct rectangle r;
-	CRTC6845_CURSOR cursor;
+	struct crtc6845_cursor cursor;
 
-	crtc6845_time(cga.crtc);
-	crtc6845_get_cursor(cga.crtc, &cursor);
+	crtc6845_time(crtc);
+	crtc6845_get_cursor(crtc, &cursor);
 
 	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height)
 	{
@@ -416,7 +453,7 @@ static void cga_text_blink(struct mame_bitmap *bitmap)
 
 					if (k > 0)
 					{
-						plot_box(Machine->scrbitmap, r.min_x, 
+						plot_box(bitmap, r.min_x, 
 								 r.min_y+cursor.top, 
 								 8, k, Machine->pens[7]);
 					}
@@ -434,13 +471,21 @@ static void cga_text_blink(struct mame_bitmap *bitmap)
   Even scanlines are from CGA_base + 0x0000, odd from CGA_base + 0x2000
   cga fetches 2 byte per crtc6845 access (not modeled here)!
 ***************************************************************************/
-static void cga_gfx_2bpp(struct mame_bitmap *bitmap)
+static void cga_gfx_2bpp(struct mame_bitmap *bitmap, struct crtc6845 *crtc)
 {
 	int i, sx, sy, sh;
-	int	offs = crtc6845_get_start(cga.crtc)*2;
-	int lines = crtc6845_get_char_lines(cga.crtc);
-	int height = crtc6845_get_char_height(cga.crtc);
-	int columns = crtc6845_get_char_columns(cga.crtc)*2;
+	int	offs = crtc6845_get_start(crtc)*2;
+	int lines = crtc6845_get_char_lines(crtc);
+	int height = crtc6845_get_char_height(crtc);
+	int columns = crtc6845_get_char_columns(crtc)*2;
+	int colorset = cga.color_select & 0x3F;
+
+	/* The PC1512 uses bit 2 of the mode control register to access
+	 * a third palette */
+	if (crtc6845_get_personality(crtc) == M6845_PERSONALITY_PC1512)
+	{
+		if ((colorset < 32) && (cga.mode_control & 4)) colorset += 64;
+	}	
 
 	for (sy=0; sy<lines; sy++,offs=(offs+columns)&0x1fff) {
 
@@ -451,7 +496,7 @@ static void cga_gfx_2bpp(struct mame_bitmap *bitmap)
 				{
 					if (!dirtybuffer || dirtybuffer[i])
 					{
-						drawgfx(bitmap, Machine->gfx[2], videoram[i], (cga.color_select&0x20?1:0),
+						drawgfx(bitmap, Machine->gfx[2], videoram[i], colorset,
 								0,0,sx*4,sy*height+sh, 0,TRANSPARENCY_NONE,0);
 						if (dirtybuffer)
 							dirtybuffer[i]=0;
@@ -464,7 +509,7 @@ static void cga_gfx_2bpp(struct mame_bitmap *bitmap)
 				{
 					if (!dirtybuffer || dirtybuffer[i])
 					{
-						drawgfx(bitmap, Machine->gfx[2], videoram[i], (cga.color_select&0x20?1:0),
+						drawgfx(bitmap, Machine->gfx[2], videoram[i], colorset,
 								0,0,sx*4,sy*height+sh, 0,TRANSPARENCY_NONE,0);
 						if (dirtybuffer)
 							dirtybuffer[i]=0;
@@ -480,13 +525,13 @@ static void cga_gfx_2bpp(struct mame_bitmap *bitmap)
   The cell size is 1x1 (1 scanline is the real default)
   Even scanlines are from CGA_base + 0x0000, odd from CGA_base + 0x2000
 ***************************************************************************/
-static void cga_gfx_1bpp(struct mame_bitmap *bitmap)
+static void cga_gfx_1bpp(struct mame_bitmap *bitmap, struct crtc6845 *crtc)
 {
 	int i, sx, sy, sh;
-	int	offs = crtc6845_get_start(cga.crtc)*2;
-	int lines = crtc6845_get_char_lines(cga.crtc);
-	int height = crtc6845_get_char_height(cga.crtc);
-	int columns = crtc6845_get_char_columns(cga.crtc)*2;
+	int	offs = crtc6845_get_start(crtc)*2;
+	int lines = crtc6845_get_char_lines(crtc);
+	int height = crtc6845_get_char_height(crtc);
+	int columns = crtc6845_get_char_columns(crtc)*2;
 
 	for (sy=0; sy<lines; sy++,offs=(offs+columns)&0x1fff)
 	{
@@ -527,23 +572,15 @@ static void cga_gfx_1bpp(struct mame_bitmap *bitmap)
 /***************************************************************************
   Black and white versions not yet implemented
 ***************************************************************************/
-static void cga_text_inten_bw(struct mame_bitmap *bitmap)
-{
-	/* NYI */
-	cga_text_inten(bitmap);
-}
+#define cga_text_inten_bw		cga_text_inten
+#define cga_text_blink_bw		cga_text_blink
+#define cga_gfx_2bpp_bw			cga_gfx_2bpp
 
-static void cga_text_blink_bw(struct mame_bitmap *bitmap)
-{
-	/* NYI */
-	cga_text_blink(bitmap);
-}
-
-static void cga_gfx_2bpp_bw(struct mame_bitmap *bitmap)
-{
-	/* NYI */
-	cga_gfx_2bpp(bitmap);
-}
+/***************************************************************************
+  Alternate colorset used in PC1512 not yet implemented
+***************************************************************************/
+#define cga_gfx_2bpp_alt		cga_gfx_2bpp
+/**************************************************************************/
 
 // amstrad pc1512 video hardware
 // mapping of the 4 planes into videoram
@@ -555,10 +592,12 @@ INLINE void pc1512_plot_unit(struct mame_bitmap *bitmap,
 	int color, values[4];
 	int i;
 
-	values[0]=videoram[offs|videoram_offset[0]]; // red
-	values[1]=videoram[offs|videoram_offset[1]]<<1; // green
-	values[2]=videoram[offs|videoram_offset[2]]<<2; // blue
-	values[3]=videoram[offs|videoram_offset[3]]<<3; // intensity
+	for (i = 0; i < 4; i++) values[i] = 0;
+
+	if (cga.color_select & 1) values[0]=videoram[offs|videoram_offset[0]]; // red
+	if (cga.color_select & 2) values[1]=videoram[offs|videoram_offset[1]]<<1; // green
+	if (cga.color_select & 4) values[2]=videoram[offs|videoram_offset[2]]<<2; // blue
+	if (cga.color_select & 8) values[3]=videoram[offs|videoram_offset[3]]<<3; // intensity
 
 	for (i=7; i>=0; i--)
 	{
@@ -576,23 +615,41 @@ INLINE void pc1512_plot_unit(struct mame_bitmap *bitmap,
   The cell size is 1x1 (1 scanline is the real default)
   Even scanlines are from CGA_base + 0x0000, odd from CGA_base + 0x2000
 ***************************************************************************/
-static void pc1512_gfx_4bpp(struct mame_bitmap *bitmap)
+static void pc1512_gfx_4bpp(struct mame_bitmap *bitmap, struct crtc6845 *crtc)
 {
 	int i, sx, sy, sh;
-	int	offs = crtc6845_get_start(cga.crtc);
-	int lines = crtc6845_get_char_lines(cga.crtc);
-	int height = crtc6845_get_char_height(cga.crtc);
-	int columns = crtc6845_get_char_columns(cga.crtc);
+	int	offs = crtc6845_get_start(crtc)*2;
+	int lines = crtc6845_get_char_lines(crtc);
+	int height = crtc6845_get_char_height(crtc);
+	int columns = crtc6845_get_char_columns(crtc)*2;
 
-	for (sy=0; sy<lines; sy++,offs=(offs+columns)&0x1fff) {
-
-		for (sh=0; sh<height; sh++, offs|=0x2000) { // char line 0 used as a12 line in graphic mode
-
-			for (i=offs, sx=0; sx<columns; sx++, i=(i+1)&0x1fff) {
-				if (!dirtybuffer || dirtybuffer[i]) {
-					pc1512_plot_unit(bitmap, sx*8, sy*height+sh, i);
-					if (dirtybuffer)
-						dirtybuffer[i]=0;
+	for (sy=0; sy<lines; sy++,offs=(offs+columns)&0x1fff) 
+	{
+		for (sh=0; sh<height; sh++, offs|=0x2000) 
+		{ 
+			// char line 0 used as a12 line in graphic mode
+			if (!(sh & 1))
+			{
+				for (i=offs, sx=0; sx<columns; sx++, i=(i+1)&0x1fff) 
+				{
+					if (!dirtybuffer || dirtybuffer[i]) 
+					{
+						pc1512_plot_unit(bitmap, sx*8, sy*height+sh, i);
+						if (dirtybuffer)
+							dirtybuffer[i]=0;
+					}
+				}
+			}
+			else
+			{
+				for (i=offs|0x2000, sx=0; sx<columns; sx++, i=((i+1)&0x1fff)|0x2000) 
+				{
+					if (!dirtybuffer || dirtybuffer[i]) 
+					{
+						pc1512_plot_unit(bitmap, sx*8, sy*height+sh, i);
+						if (dirtybuffer)
+							dirtybuffer[i]=0;
+					}
 				}
 			}
 		}
@@ -609,8 +666,8 @@ static void pc_cga_blink_textcolors(int on)
 	if (cga.pc_blink == on) return;
 
     cga.pc_blink = on;
-	offs = (crtc6845_get_start(cga.crtc)*2) & 0x3fff;
-	size = crtc6845_get_char_lines(cga.crtc)*crtc6845_get_char_columns(cga.crtc);
+	offs = (crtc6845_get_start(crtc6845)*2) & 0x3fff;
+	size = crtc6845_get_char_lines(crtc6845)*crtc6845_get_char_columns(crtc6845);
 
 	if (dirtybuffer)
 	{
@@ -633,20 +690,20 @@ extern void pc_cga_timer(void)
 /***************************************************************************
   Choose the appropriate video mode
 ***************************************************************************/
-pc_video_update_proc pc_cga_choosevideomode(int *xfactor, int *yfactor)
+pc_video_update_proc pc_cga_choosevideomode(int *width, int *height, struct crtc6845 *crtc)
 {
 	pc_video_update_proc proc = NULL;
-	void (**procarray)(struct mame_bitmap *);
+	const pc_video_update_proc *procarray;
 	UINT8 mode;
 
-	static void (*videoprocs_cga[])(struct mame_bitmap *) =
+	static const pc_video_update_proc videoprocs_cga[] =
 	{
 		/* 0x08 - 0x0f */
 		cga_text_inten,		cga_text_inten,		cga_gfx_2bpp,		cga_gfx_2bpp,
 		cga_text_inten_bw,	cga_text_inten_bw,	cga_gfx_2bpp_bw,	cga_gfx_2bpp_bw,
 
 		/* 0x10 - 0x1f */
-		cga_text_inten,		cga_text_inten,		cga_gfx_2bpp,		cga_gfx_2bpp,
+		cga_text_inten,		cga_text_inten,		cga_gfx_1bpp,		cga_gfx_1bpp,
 		cga_gfx_1bpp,		cga_gfx_1bpp,		cga_gfx_1bpp,		cga_gfx_1bpp,
 
 		/* 0x20 - 0x2f */
@@ -654,51 +711,99 @@ pc_video_update_proc pc_cga_choosevideomode(int *xfactor, int *yfactor)
 		cga_text_blink_bw,	cga_text_blink_bw,	cga_gfx_2bpp_bw,	cga_gfx_2bpp_bw,
 
 		/* 0x30 - 0x3f */
-		cga_text_blink,		cga_text_blink,		cga_gfx_2bpp,		cga_gfx_2bpp,
+		cga_text_blink,		cga_text_blink,		cga_gfx_1bpp,		cga_gfx_1bpp,
 		cga_gfx_1bpp,		cga_gfx_1bpp,		cga_gfx_1bpp,		cga_gfx_1bpp
 	};
 
-	static void (*videoprocs_pc1512[])(struct mame_bitmap *) =
+	static const pc_video_update_proc videoprocs_pc1512[] =
 	{
 		/* 0x08 - 0x0f */
 		cga_text_inten,		cga_text_inten,		cga_gfx_2bpp,		cga_gfx_2bpp,
-		cga_text_inten_bw,	cga_text_inten_bw,	cga_gfx_2bpp_bw,	cga_gfx_2bpp_bw,
+		cga_text_inten,		cga_text_inten,		cga_gfx_2bpp_alt,	cga_gfx_2bpp_alt,
 
 		/* 0x10 - 0x1f */
-		pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,
-		pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,
+		cga_text_inten,		cga_text_inten,		pc1512_gfx_4bpp,	pc1512_gfx_4bpp,
+		cga_text_inten,		cga_text_inten,		pc1512_gfx_4bpp,	pc1512_gfx_4bpp,
 
 		/* 0x20 - 0x2f */
 		cga_text_blink,		cga_text_blink,		cga_gfx_2bpp,		cga_gfx_2bpp,
-		cga_text_blink_bw,	cga_text_blink_bw,	cga_gfx_2bpp_bw,	cga_gfx_2bpp_bw,
+		cga_text_blink,		cga_text_blink,		cga_gfx_2bpp_alt,	cga_gfx_2bpp_alt,
 
 		/* 0x30 - 0x3f */
-		pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,
-		pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp,	pc1512_gfx_4bpp
+		cga_text_blink,		cga_text_blink,		pc1512_gfx_4bpp,	pc1512_gfx_4bpp,
+		cga_text_blink,		cga_text_blink,		pc1512_gfx_4bpp,	pc1512_gfx_4bpp
+	};
+
+	static const pc_video_update_proc *videoprocs[] =
+	{
+		videoprocs_cga,		/* M6845_PERSONALITY_GENUINE */
+		videoprocs_pc1512	/* M6845_PERSONALITY_PC1512 */
 	};
 
 	if (cga.mode_control & 0x08)
 	{
 		mode = (cga.mode_control & 0x07) | ((cga.mode_control & 0x30) / 2);
 
-		procarray = (cga.type == TYPE_PC1512) ? videoprocs_pc1512 : videoprocs_cga;
+		procarray = videoprocs[crtc6845_get_personality(crtc)];
 		proc = procarray[mode];
 
-		*xfactor = (proc == cga_gfx_1bpp) ? 16 : 8;
+		if (proc == cga_gfx_1bpp || proc == pc1512_gfx_4bpp)
+			*width *= 16;
+		else
+			*width *= 8;
 	}
 	return proc;
 }
 
-static struct {
-	UINT8 write, read;
+static struct
+{
+	UINT8 write;
+	UINT8 read;
 } pc1512;
 
-extern WRITE_HANDLER ( pc1512_w )
+WRITE_HANDLER ( pc1512_w )
 {
+	UINT8 char_height;
+
 	switch (offset) {
-	case 0xd: pc1512.write=data;break;
-	case 0xe: pc1512.read=data;cpu_setbank(1,videoram+videoram_offset[data&3]);break;
-	default: pc_CGA_w(offset,data);
+	case 0xd:
+		pc1512.write = data;
+		break;
+
+	case 0xe:
+		pc1512.read = data;
+		cpu_setbank(1, videoram + videoram_offset[data & 3]);
+		break;
+
+	/* The PC1512 doesn't have a full 6845; writes to the first 9 6845
+	 * registers are ignored, and screen resolution is entirely controlled
+	 * by the mode control register. Since MESS does actually use the
+	 * character columns register, program it manually. */
+
+	case 0x8:
+		char_height = crtc6845_get_char_height(crtc6845);
+		if (data & 2) /* Graphics */
+		{
+			crtc6845_set_char_columns(crtc6845, 40);
+		}
+		else
+		{
+			if (data & 1) /* 80-column */
+			{
+				crtc6845_set_char_columns(crtc6845, 80);
+			}
+			else
+			{
+				crtc6845_set_char_columns(crtc6845, 40);
+			}
+		}
+		crtc6845_set_char_lines(crtc6845, 200 / char_height);
+		pc_CGA_w(offset, data);
+		break;
+
+	default:
+		pc_CGA_w(offset,data);
+		break;
 	}
 }
 
@@ -724,25 +829,29 @@ READ_HANDLER ( pc1512_r )
 
 WRITE_HANDLER ( pc1512_videoram_w )
 {
-	if (pc1512.write&1) videoram[offset+videoram_offset[0]]=data; //blue plane
-	if (pc1512.write&2) videoram[offset+videoram_offset[1]]=data; //green
-	if (pc1512.write&4) videoram[offset+videoram_offset[2]]=data; //red
-	if (pc1512.write&8) videoram[offset+videoram_offset[3]]=data; //intensity (text, 4color)
+	if (pc1512.write & 1)
+		videoram[offset+videoram_offset[0]] = data; /* blue plane */
+	if (pc1512.write & 2)
+		videoram[offset+videoram_offset[1]] = data; /* green */
+	if (pc1512.write & 4)
+		videoram[offset+videoram_offset[2]] = data; /* red */
+	if (pc1512.write & 8)
+		videoram[offset+videoram_offset[3]] = data; /* intensity (text, 4color) */
+
 	if (dirtybuffer)
-		dirtybuffer[offset]=1;
+		dirtybuffer[offset] = 1;
 }
 
 VIDEO_START( pc1512 )
 {
-	cga.type = TYPE_PC1512;	
-	
 	videoram = (UINT8*) auto_malloc(0x10000);
-	if (videoram==0)
+	if (videoram == 0)
 		return 1;
 
 	videoram_size = 0x4000; //! used in cga this way, size of plain memory in 1 bank
-	cpu_setbank(1,videoram+videoram_offset[0]);
+	cpu_setbank(1,videoram + videoram_offset[0]);
 	pc1512.write = 0xf;
 	pc1512.read = 0;
+	config.personality = M6845_PERSONALITY_PC1512;	/* PC1512 cut-down 6845 */
 	return video_start_pc_cga();
 }

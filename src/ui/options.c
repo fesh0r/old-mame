@@ -30,6 +30,9 @@
 #include <malloc.h>
 #include <math.h>
 #include <driver.h>
+
+#include "screenshot.h"
+#include "bitmask.h"
 #include "mame32.h"
 #include "m32util.h"
 #include "resource.h"
@@ -37,6 +40,8 @@
 #include "file.h"
 #include "splitters.h"
 #include "dijoystick.h"
+#include "audit.h"
+#include "options.h"
 
 /***************************************************************************
     Internal function prototypes
@@ -85,6 +90,15 @@ static void D3DPrescaleDecodeString(const char *str,void *data);
 static void CleanStretchEncodeString(void *data,char *str);
 static void CleanStretchDecodeString(const char *str,void *data);
 
+static void CurrentTabEncodeString(void *data,char *str);
+static void CurrentTabDecodeString(const char *str,void *data);
+
+static void FolderFlagsEncodeString(void *data,char *str);
+static void FolderFlagsDecodeString(const char *str,void *data);
+
+static void TabFlagsEncodeString(void *data,char *str);
+static void TabFlagsDecodeString(const char *str,void *data);
+
 /***************************************************************************
     Internal defines
  ***************************************************************************/
@@ -120,13 +134,18 @@ static REG_OPTION regSettings[] =
 	{"default_game",       RO_STRING,  &settings.default_game,      0, 0},
 	{"default_folder_id",  RO_INT,     &settings.folder_id,        0, 0},
 	{"show_image_section", RO_BOOL,    &settings.show_screenshot,  0, 0},
-	// this one should be encoded
-	{"show_image_type",    RO_INT,     &settings.show_pict_type,   0, 0},
+	{"current_tab",          RO_ENCODE,&settings.current_tab,
+	 CurrentTabEncodeString, CurrentTabDecodeString },
 	{"show_tool_bar",      RO_BOOL,    &settings.show_toolbar,     0, 0},
 	{"show_status_bar",    RO_BOOL,    &settings.show_statusbar,   0, 0},
 	{"show_folder_section",RO_BOOL,    &settings.show_folderlist,  0, 0},
+	{"hide_folders",       RO_ENCODE,  &settings.show_folder_flags,
+	 FolderFlagsEncodeString, FolderFlagsDecodeString },
+
 	{"show_tabs",          RO_BOOL,    &settings.show_tabctrl,     0, 0},
-	{"show_tab_flags",     RO_INT,     &settings.show_tab_flags,   0, 0},
+	{"hide_tabs",          RO_ENCODE,  &settings.show_tab_flags,
+	 TabFlagsEncodeString, TabFlagsDecodeString },
+
 	{"check_game",         RO_BOOL,    &settings.game_check,       0, 0},
 	{"joystick_in_interface",RO_BOOL,&settings.use_joygui,     0, 0},
 	{"broadcast_game_name",RO_BOOL,    &settings.broadcast,        0, 0},
@@ -166,6 +185,18 @@ static REG_OPTION regSettings[] =
 	{"exec_wait",          RO_INT,     &settings.exec_wait,  0, 0},
 	{"hide_mouse",         RO_BOOL,    &settings.hide_mouse,  0, 0},
 	{"full_screen",        RO_BOOL,    &settings.full_screen,  0, 0},
+	{"cycle_screenshot",   RO_INT,     &settings.cycle_screenshot,  0, 0},
+
+	{"language",           RO_STRING,  &settings.language,         0, 0},
+	{"flyer_directory",    RO_STRING,  &settings.flyerdir,         0, 0},
+	{"cabinet_directory",  RO_STRING,  &settings.cabinetdir,       0, 0},
+	{"marquee_directory",  RO_STRING,  &settings.marqueedir,       0, 0},
+	{"title_directory",    RO_STRING,  &settings.titlesdir,        0, 0},
+	{"cpanel_directory",   RO_STRING,  &settings.cpaneldir,        0, 0},
+	{"background_directory",RO_STRING, &settings.bgdir,            0, 0},
+	{"folder_directory",   RO_STRING,  &settings.folderdir,        0, 0},
+	{"icons_directory",    RO_STRING,  &settings.iconsdir,         0, 0},
+
 
 #ifdef MESS
 	{"mess_column_widths", RO_ENCODE,  &settings.mess_column_width,MessColumnEncodeString, MessColumnDecodeWidths},
@@ -200,7 +231,7 @@ static REG_OPTION regGameOpts[] =
 	{ "frames_to_run",          RO_INT,     &gOpts.frames_to_display, 0, 0},
 	{ "effect",                 RO_STRING,  &gOpts.effect,            0, 0},
 	{ "screen_aspect",          RO_STRING,  &gOpts.aspect,            0, 0},
-	{ "cleanstretch",           RO_INT,     &gOpts.clean_stretch,
+	{ "cleanstretch",           RO_ENCODE,  &gOpts.clean_stretch,
 	  CleanStretchEncodeString, CleanStretchDecodeString },
 	{ "zoom",                   RO_INT,     &gOpts.zoom,              0, 0},
 
@@ -210,15 +241,13 @@ static REG_OPTION regGameOpts[] =
 	{ "d3dfilter",              RO_INT,     &gOpts.d3d_filter,        0, 0},
 	{ "d3deffect",              RO_ENCODE,  &gOpts.d3d_effect,
 	  D3DEffectEncodeString, D3DEffectDecodeString },
-	{ "d3dprescale",            RO_INT,     &gOpts.d3d_prescale,
-	  D3DPrescaleEncodeString, D3DEffectDecodeString },
+	{ "d3dprescale",            RO_ENCODE,  &gOpts.d3d_prescale,
+	  D3DPrescaleEncodeString, D3DPrescaleDecodeString },
 	{ "d3deffectrotate",        RO_BOOL,    &gOpts.d3d_rotate_effects,0, 0},
-	{ "*d3dscan_enable",        RO_BOOL,    &gOpts.d3d_scanlines_enable,0,0},
-	{ "*d3dscan",               RO_INT,     &gOpts.d3d_scanlines,     0, 0},
-	{ "*d3dfeedback_enable",    RO_BOOL,    &gOpts.d3d_feedback_enable,0,0},
-	{ "*d3dfeedback",           RO_INT,     &gOpts.d3d_feedback,      0, 0},
-	{ "*d3dsaturate_enable",    RO_BOOL,    &gOpts.d3d_saturation_enable,0,0},
-	{ "*d3dsaturate",           RO_INT,     &gOpts.d3d_saturation,    0, 0},
+	{ "#*d3dscan_enable",        RO_BOOL,    &gOpts.d3d_scanlines_enable,0,0},
+	{ "#*d3dscan",               RO_INT,     &gOpts.d3d_scanlines,     0, 0},
+	{ "#*d3dfeedback_enable",    RO_BOOL,    &gOpts.d3d_feedback_enable,0,0},
+	{ "#*d3dfeedback",           RO_INT,     &gOpts.d3d_feedback,      0, 0},
 
 	{ "mouse",                  RO_BOOL,    &gOpts.use_mouse,         0, 0},
 	{ "joystick",               RO_BOOL,    &gOpts.use_joystick,      0, 0},
@@ -307,19 +336,12 @@ static REG_OPTION regGameOpts[] =
 #define NUM_GAME_OPTIONS (sizeof(regGameOpts) / sizeof(regGameOpts[0]))
 
 // options in mame32.ini that we'll never override with with game-specific options
-// some of these should actually be in regSettings
 static REG_OPTION global_game_options[] =
 {
 	{"skip_disclaimer",    RO_BOOL,    &settings.skip_disclaimer,  0, 0},
 	{"skip_gameinfo",      RO_BOOL,    &settings.skip_gameinfo,    0, 0},
 	{"high_priority",      RO_BOOL,    &settings.high_priority,    0, 0},
 
-	{"language",           RO_STRING,  &settings.language,         0, 0},
-	{"flyer_directory",    RO_STRING,  &settings.flyerdir,         0, 0},
-	{"cabinet_directory",  RO_STRING,  &settings.cabinetdir,       0, 0},
-	{"marquee_directory",  RO_STRING,  &settings.marqueedir,       0, 0},
-	{"title_directory",    RO_STRING,  &settings.titlesdir,        0, 0},
-	{"background_directory",RO_STRING, &settings.bgdir,            0, 0},
 
 #ifdef MESS
 	{"biospath",           RO_STRING,  &settings.romdirs,          0, 0},
@@ -329,7 +351,7 @@ static REG_OPTION global_game_options[] =
 	{"rompath",            RO_STRING,  &settings.romdirs,          0, 0},
 #endif
 	{"samplepath",         RO_STRING,  &settings.sampledirs,       0, 0},
-	{"ini_directory",      RO_STRING,  &settings.inidir,           0, 0},
+	{"inipath",            RO_STRING,  &settings.inidir,           0, 0},
 	{"cfg_directory",      RO_STRING,  &settings.cfgdir,           0, 0},
 	{"nvram_directory",    RO_STRING,  &settings.nvramdir,         0, 0},
 	{"memcard_directory",  RO_STRING,  &settings.memcarddir,       0, 0},
@@ -339,27 +361,57 @@ static REG_OPTION global_game_options[] =
 	{"artwork_directory",  RO_STRING,  &settings.artdir,           0, 0},
 	{"snapshot_directory", RO_STRING,  &settings.imgdir,           0, 0},
 	{"diff_directory",     RO_STRING,  &settings.diffdir,          0, 0},
-	{"icons_directory",    RO_STRING,  &settings.iconsdir,         0, 0},
 	{"cheat_file",         RO_STRING,  &settings.cheat_filename,   0, 0},
 	{"history_file",       RO_STRING,  &settings.history_filename, 0, 0},
 	{"mameinfo_file",      RO_STRING,  &settings.mameinfo_filename,0, 0},
 	{"ctrlr_directory",    RO_STRING,  &settings.ctrlrdir,         0, 0},
-	{"folder_directory",   RO_STRING,  &settings.folderdir,        0, 0},
 
 };
 #define NUM_GLOBAL_GAME_OPTIONS (sizeof(global_game_options) / sizeof(global_game_options[0]))
 
+typedef struct
+{
+	const char *name;
+	int m_iType;
+	size_t m_iOffset;
+	BOOL (*m_pfnQualifier)(int driver_index);
+	const void *m_vpDefault;
+} GAMEVARIABLE_OPTION;
+
+static GAMEVARIABLE_OPTION gamevariable_options[] =
+{
+	{ "play_count",		RO_INT,		offsetof(game_variables_type, play_count),				NULL,				(const void *) 0},
+	{ "play_time",		RO_INT, 	offsetof(game_variables_type, play_time),				NULL,				(const void *) 0},
+	{ "rom_audit",		RO_INT,		offsetof(game_variables_type, rom_audit_results),		NULL,				(const void *) UNKNOWN },
+	{ "samples_audit",	RO_INT,		offsetof(game_variables_type, samples_audit_results),	DriverUsesSamples,	(const void *) UNKNOWN },
+#ifdef MESS
+	{ "extra_software",	RO_STRING,	offsetof(game_variables_type, extra_software_paths),	NULL,				(const void *) "" }
+#endif
+};
+
 // Screen shot Page tab control text
 // these must match the order of the options flags in options.h
-// (SHOW_TAB_...)
-const char* tab_texts[MAX_PICT_TYPES] =
+// (TAB_...)
+const char* image_tabs_long_name[MAX_TAB_TYPES] =
 {
 	"Snapshot",
 	"Flyer",
 	"Cabinet",
 	"Marquee",
 	"Title",
+	"Control Panel",
 	"History ",
+};
+
+const char* image_tabs_short_name[MAX_TAB_TYPES] =
+{
+	"snapshot",
+	"flyer",
+	"cabinet",
+	"marquee",
+	"title",
+	"cpanel",
+	"history",
 };
 
 // must match D3D_EFFECT_... in options.h, and count must match MAX_D3D_EFFECTS
@@ -466,19 +518,18 @@ static int  num_games = 0;
 static BOOL save_gui_settings = TRUE;
 static BOOL save_default_options = TRUE;
 
-/* Default sizes based on 8pt font w/sort arrow in that column */
-static int default_column_width[] = { 185, 68, 84, 84, 64, 88, 74,108, 60,144, 84 };
-static int default_column_shown[] = {   1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  0 };
-/* Hidden columns need to go at the end of the order array */
-static int default_column_order[] = {   0,  2,  3,  4,  5,  6,  7,  8,  9,  1, 10 };
+// Default sizes based on 8pt font w/sort arrow in that column
+static int default_column_width[] = { 185, 68, 84, 84, 64, 88, 74,108, 60,144, 84, 60 };
+static int default_column_shown[] = {   1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  0, 0 };
+
+// Hidden columns need to go at the end of the order array
+static int default_column_order[] = {   0,  2,  3,  4,  5,  6,  7,  8,  9,  1, 10, 11 };
 
 static const char *view_modes[VIEW_MAX] = { "Large Icons", "Small Icons", "List", "Details", "Grouped" };
 
 folder_filter_type *folder_filters;
 int size_folder_filters;
 int num_folder_filters;
-
-extern const char g_szDefaultGame[];
 
 /***************************************************************************
     External functions  
@@ -488,18 +539,23 @@ BOOL OptionsInit()
 {
 	int i;
 
+	extern const char g_szDefaultGame[];
+
 	num_games = GetNumGames();
 
 	settings.default_game    = strdup(g_szDefaultGame);
 	settings.folder_id       = 0;
 	settings.view            = VIEW_GROUPED;
 	settings.show_folderlist = TRUE;
+	settings.show_folder_flags = NewBits(MAX_FOLDERS);
+	SetAllBits(settings.show_folder_flags,TRUE);
+
 	settings.show_toolbar    = TRUE;
 	settings.show_statusbar  = TRUE;
 	settings.show_screenshot = TRUE;
 	settings.show_tabctrl    = TRUE;
-	settings.show_tab_flags = SHOW_TAB_SNAPSHOT | SHOW_TAB_FLYER | SHOW_TAB_CABINET |
-		SHOW_TAB_MARQUEE | SHOW_TAB_TITLE;
+	settings.show_tab_flags = (1 << TAB_SCREENSHOT) | (1 << TAB_FLYER)
+		| (1 << TAB_CABINET) | (1 << TAB_MARQUEE) | (1 << TAB_TITLE) | (1 << TAB_CONTROL_PANEL);
 	settings.game_check      = TRUE;
 	settings.use_joygui      = FALSE;
 	settings.broadcast       = FALSE;
@@ -614,6 +670,7 @@ BOOL OptionsInit()
 	settings.cabinetdir        = strdup("cabinets");
 	settings.marqueedir        = strdup("marquees");
 	settings.titlesdir         = strdup("titles");
+	settings.cpaneldir         = strdup("cpanel");
 
 #ifdef MESS
 	settings.romdirs           = strdup("bios");
@@ -707,8 +764,6 @@ BOOL OptionsInit()
 	global.d3d_scanlines = 50;
 	global.d3d_feedback_enable = FALSE;
 	global.d3d_feedback = 50;
-	global.d3d_saturation_enable = FALSE;
-	global.d3d_saturation = 50;
 
 	/* input */
 	global.use_mouse         = FALSE;
@@ -785,8 +840,9 @@ BOOL OptionsInit()
 	for (i = 0; i < num_games; i++)
 	{
 		game_variables[i].play_count = 0;
-		game_variables[i].has_roms = UNKNOWN;
-		game_variables[i].has_samples = UNKNOWN;
+		game_variables[i].play_time = 0;
+		game_variables[i].rom_audit_results = UNKNOWN;
+		game_variables[i].samples_audit_results = UNKNOWN;
 		
 		game_variables[i].options_loaded = FALSE;
 		game_variables[i].use_default = TRUE;
@@ -840,6 +896,7 @@ void OptionsExit(void)
     FreeIfAllocated(&settings.cabinetdir);
     FreeIfAllocated(&settings.marqueedir);
     FreeIfAllocated(&settings.titlesdir);
+    FreeIfAllocated(&settings.cpaneldir);
     FreeIfAllocated(&settings.nvramdir);
     FreeIfAllocated(&settings.diffdir);
     FreeIfAllocated(&settings.iconsdir);
@@ -849,6 +906,10 @@ void OptionsExit(void)
 	FreeIfAllocated(&settings.mameinfo_filename);
     FreeIfAllocated(&settings.ctrlrdir);
 	FreeIfAllocated(&settings.folderdir);
+
+	DeleteBits(settings.show_folder_flags);
+	settings.show_folder_flags = NULL;
+
 }
 
 // frees the sub-data (strings)
@@ -958,9 +1019,14 @@ void ResetGUI(void)
 	save_gui_settings = FALSE;
 }
 
-const char * GetTabName(int tab_index)
+const char * GetImageTabLongName(int tab_index)
 {
-	return tab_texts[tab_index];
+	return image_tabs_long_name[tab_index];
+}
+
+const char * GetImageTabShortName(int tab_index)
+{
+	return image_tabs_short_name[tab_index];
 }
 
 const char * GetD3DEffectLongName(int d3d_effect)
@@ -1026,6 +1092,16 @@ void SetJoyGUI(BOOL use_joygui)
 BOOL GetJoyGUI(void)
 {
 	return settings.use_joygui;
+}
+
+void SetCycleScreenshot(int cycle_screenshot)
+{
+	settings.cycle_screenshot = cycle_screenshot;
+}
+
+int GetCycleScreenshot(void)
+{
+	return settings.cycle_screenshot;
 }
 
 void SetBroadcast(BOOL broadcast)
@@ -1108,6 +1184,19 @@ BOOL GetShowFolderList(void)
 	return settings.show_folderlist;
 }
 
+BOOL GetShowFolder(int folder)
+{
+	return TestBit(settings.show_folder_flags,folder);
+}
+
+void SetShowFolder(int folder,BOOL show)
+{
+	if (show)
+		SetBit(settings.show_folder_flags,folder);
+	else
+		ClearBit(settings.show_folder_flags,folder);
+}
+
 void SetShowStatusBar(BOOL val)
 {
 	settings.show_statusbar = val;
@@ -1138,14 +1227,14 @@ BOOL GetShowToolBar(void)
 	return settings.show_toolbar;
 }
 
-void SetShowPictType(int val)
+void SetCurrentTab(int val)
 {
-	settings.show_pict_type = val;
+	settings.current_tab = val;
 }
 
-int GetShowPictType(void)
+int GetCurrentTab(void)
 {
-	return settings.show_pict_type;
+	return settings.current_tab;
 }
 
 void SetDefaultGame(const char *name)
@@ -1224,14 +1313,29 @@ COLORREF GetListCloneColor(void)
 
 }
 
-int GetShowTabFlags(void)
+int GetShowTab(int tab)
 {
-	return settings.show_tab_flags;
+	return (settings.show_tab_flags & (1 << tab)) != 0;
 }
 
-void SetShowTabFlags(int new_flags)
+void SetShowTab(int tab,BOOL show)
 {
-	settings.show_tab_flags = new_flags;
+	if (show)
+		settings.show_tab_flags |= 1 << tab;
+	else
+		settings.show_tab_flags &= ~(1 << tab);
+}
+
+// don't delete the last one
+BOOL AllowedToSetShowTab(int tab,BOOL show)
+{
+	int show_tab_flags = settings.show_tab_flags;
+
+	if (show == TRUE)
+		return TRUE;
+
+	show_tab_flags &= ~(1 << tab);
+	return show_tab_flags != 0;
 }
 
 void SetColumnWidths(int width[])
@@ -1550,6 +1654,18 @@ void SetTitlesDir(const char* path)
 		settings.titlesdir = strdup(path);
 }
 
+const char * GetControlPanelDir(void)
+{
+	return settings.cpaneldir;
+}
+
+void SetControlPanelDir(const char *path)
+{
+	FreeIfAllocated(&settings.cpaneldir);
+	if (path != NULL)
+		settings.cpaneldir = strdup(path);
+}
+
 const char* GetDiffDir(void)
 {
 	return settings.diffdir;
@@ -1674,32 +1790,32 @@ void ResetAllGameOptions(void)
 	}
 }
 
-int GetHasRoms(int driver_index)
+int GetRomAuditResults(int driver_index)
 {
 	assert(0 <= driver_index && driver_index < num_games);
 
-	return game_variables[driver_index].has_roms;
+	return game_variables[driver_index].rom_audit_results;
 }
 
-void SetHasRoms(int driver_index, int has_roms)
+void SetRomAuditResults(int driver_index, int audit_results)
 {
 	assert(0 <= driver_index && driver_index < num_games);
 
-	game_variables[driver_index].has_roms = has_roms;
+	game_variables[driver_index].rom_audit_results = audit_results;
 }
 
-int  GetHasSamples(int driver_index)
+int  GetSampleAuditResults(int driver_index)
 {
 	assert(0 <= driver_index && driver_index < num_games);
 
-	return game_variables[driver_index].has_samples;
+	return game_variables[driver_index].samples_audit_results;
 }
 
-void SetHasSamples(int driver_index, int has_samples)
+void SetSampleAuditResults(int driver_index, int audit_results)
 {
 	assert(0 <= driver_index && driver_index < num_games);
 
-	game_variables[driver_index].has_samples = has_samples;
+	game_variables[driver_index].samples_audit_results = audit_results;
 }
 
 void IncrementPlayCount(int driver_index)
@@ -1717,6 +1833,37 @@ int GetPlayCount(int driver_index)
 	assert(0 <= driver_index && driver_index < num_games);
 
 	return game_variables[driver_index].play_count;
+}
+
+int GetPlayTime(int driver_index)
+{
+	assert(0 <= driver_index && driver_index < num_games);
+
+	return game_variables[driver_index].play_time;
+}
+
+void IncrementPlayTime(int driver_index,int playtime)
+{
+	assert(0 <= driver_index && driver_index < num_games);
+	game_variables[driver_index].play_time += playtime;
+}
+
+void GetTextPlayTime(int driver_index,char *buf)
+{
+	int hour, minute, second;
+	int temp = game_variables[driver_index].play_time;
+
+	assert(0 <= driver_index && driver_index < num_games);
+
+	hour = temp / 3600;
+	temp = temp - 3600*hour;
+	minute = temp / 60; //Calc Minutes
+	second = temp - 60*minute;
+
+	if (hour == 0)
+		sprintf(buf, "%d:%02d", minute, second );
+	else
+		sprintf(buf, "%d:%02d:%02d", hour, minute, second );
 }
 
 int GetUIJoyUp(int joycodeIndex)
@@ -2199,6 +2346,146 @@ static void CleanStretchDecodeString(const char *str,void *data)
 	dprintf("invalid clean stretch string %s",str);
 }
 
+static void CurrentTabEncodeString(void *data,char *str)
+{
+	int tab_index = *(int *)data;
+
+	strcpy(str,GetImageTabShortName(tab_index));
+}
+
+static void CurrentTabDecodeString(const char *str,void *data)
+{
+	int i;
+
+	*(int *)data = TAB_SCREENSHOT;
+
+	for (i=0;i<MAX_TAB_TYPES;i++)
+	{
+		if (stricmp(GetImageTabShortName(i),str) == 0)
+		{
+			*(int *)data = i;
+			return;
+		}
+	}
+	dprintf("invalid tab index string %s",str);
+}
+
+static void FolderFlagsEncodeString(void *data,char *str)
+{
+	int i;
+	int num_saved = 0;
+	extern FOLDERDATA g_folderData[];
+
+	strcpy(str,"");
+
+	// we save the ones that are NOT displayed, so we can add new ones
+	// and upgraders will see them
+	for (i=0;i<MAX_FOLDERS;i++)
+	{
+		if (TestBit(*(LPBITS *)data,i) == FALSE)
+		{
+			int j;
+
+			if (num_saved != 0)
+				strcat(str,", ");
+
+			for (j=0;g_folderData[j].m_lpTitle != NULL;j++)
+			{
+				if (g_folderData[j].m_nFolderId == i)
+				{
+					strcat(str,g_folderData[j].short_name);
+					num_saved++;
+					break;
+				}
+			}
+		}
+	}
+}
+
+static void FolderFlagsDecodeString(const char *str,void *data)
+{
+	char s[2000];
+	extern FOLDERDATA g_folderData[];
+	char *token;
+
+	snprintf(s,sizeof(s),"%s",str);
+
+	SetAllBits(*(LPBITS *)data,TRUE);
+
+	token = strtok(s,", \t");
+	while (token != NULL)
+	{
+		int j;
+
+		for (j=0;g_folderData[j].m_lpTitle != NULL;j++)
+		{
+			if (strcmp(g_folderData[j].short_name,token) == 0)
+			{
+				//dprintf("found folder to hide %i",g_folderData[j].m_nFolderId);
+				ClearBit(*(LPBITS *)data,g_folderData[j].m_nFolderId);
+				break;
+			}
+		}
+		token = strtok(NULL,", \t");
+	}
+}
+
+static void TabFlagsEncodeString(void *data,char *str)
+{
+	int i;
+	int num_saved = 0;
+
+	strcpy(str,"");
+
+	// we save the ones that are NOT displayed, so we can add new ones
+	// and upgraders will see them
+	for (i=0;i<MAX_TAB_TYPES;i++)
+	{
+		if ((*(int *)data & (1 << i)) == 0)
+		{
+			if (num_saved != 0)
+				strcat(str,", ");
+
+			strcat(str,GetImageTabShortName(i));
+			num_saved++;
+		}
+	}
+}
+
+static void TabFlagsDecodeString(const char *str,void *data)
+{
+	char s[2000];
+	char *token;
+
+	snprintf(s,sizeof(s),"%s",str);
+
+	// simple way to set all tab bits "on"
+	*(int *)data = (1 << MAX_TAB_TYPES) - 1;
+
+	token = strtok(s,", \t");
+	while (token != NULL)
+	{
+		int j;
+
+		for (j=0;j<MAX_TAB_TYPES;j++)
+		{
+			if (strcmp(GetImageTabShortName(j),token) == 0)
+			{
+				// turn off this bit
+				*(int *)data &= ~(1 << j);
+				break;
+			}
+		}
+		token = strtok(NULL,", \t");
+	}
+
+	if (*(int *)data == 0)
+	{
+		// not allowed to hide all tabs, because then why even show the area?
+		*(int *)data = (1 << TAB_SCREENSHOT);
+	}
+}
+
 static REG_OPTION * GetOption(REG_OPTION *option_array,int num_options,const char *key)
 {
 	int i;
@@ -2267,67 +2554,30 @@ static void LoadOption(REG_OPTION *option,const char *value_str)
 static BOOL LoadGameVariableOrFolderFilter(char *key,const char *value)
 {
 	REG_OPTION fake_option;
-
+	int i;
+	int driver_index;
 	const char *suffix;
 
-	suffix = "_play_count";
-	if (StringIsSuffixedBy(key, suffix))
+	for (i = 0; i < sizeof(gamevariable_options) / sizeof(gamevariable_options[0]); i++)
 	{
-		int driver_index;
+		snprintf(fake_option.ini_name, sizeof(fake_option.ini_name), "drivername_%s", gamevariable_options[i].name);
+		suffix = strchr(fake_option.ini_name, '_');
 
-		key[strlen(key) - strlen(suffix)] = '\0';
-		driver_index = GetGameNameIndex(key);
-		if (driver_index < 0)
+		if (StringIsSuffixedBy(key, suffix))
 		{
-			dprintf("error loading game variable for invalid game %s",key);
+			key[strlen(key) - strlen(suffix)] = '\0';
+			driver_index = GetGameNameIndex(key);
+			if (driver_index < 0)
+			{
+				dprintf("error loading game variable for invalid game %s",key);
+				return TRUE;
+			}
+
+			fake_option.m_iType = gamevariable_options[i].m_iType;
+			fake_option.m_vpData = (void *) (((UINT8 *) &game_variables[driver_index]) + gamevariable_options[i].m_iOffset);
+			LoadOption(&fake_option,value);
 			return TRUE;
 		}
-
-		strcpy(fake_option.ini_name,"drivername_play_count");
-		fake_option.m_iType = RO_INT;
-		fake_option.m_vpData = &game_variables[driver_index].play_count;
-		LoadOption(&fake_option,value);
-		return TRUE;
-	}
-
-	suffix = "_have_roms";
-	if (StringIsSuffixedBy(key, suffix))
-	{
-		int driver_index;
-
-		key[strlen(key) - strlen(suffix)] = '\0';
-		driver_index = GetGameNameIndex(key);
-		if (driver_index < 0)
-		{
-			dprintf("error loading game variable for invalid game %s",key);
-			return TRUE;
-		}
-
-		strcpy(fake_option.ini_name,"drivername_have_roms");
-		fake_option.m_iType = RO_BOOL;
-		fake_option.m_vpData = &game_variables[driver_index].has_roms;
-		LoadOption(&fake_option,value);
-		return TRUE;
-	}
-
-	suffix = "_have_samples";
-	if (StringIsSuffixedBy(key, suffix))
-	{
-		int driver_index;
-
-		key[strlen(key) - strlen(suffix)] = '\0';
-		driver_index = GetGameNameIndex(key);
-		if (driver_index < 0)
-		{
-			dprintf("error loading game variable for invalid game %s",key);
-			return TRUE;
-		}
-
-		strcpy(fake_option.ini_name,"drivername_have_samples");
-		fake_option.m_iType = RO_BOOL;
-		fake_option.m_vpData = &game_variables[driver_index].has_samples;
-		LoadOption(&fake_option,value);
-		return TRUE;
 	}
 
 	suffix = "_filters";
@@ -2351,28 +2601,6 @@ static BOOL LoadGameVariableOrFolderFilter(char *key,const char *value)
 		LoadFolderFilter(folder_index,filters);
 		return TRUE;
 	}
-
-#ifdef MESS
-	suffix = "_extra_software";
-	if (StringIsSuffixedBy(key, suffix))
-	{
-		int driver_index;
-
-		key[strlen(key) - strlen(suffix)] = '\0';
-		driver_index = GetGameNameIndex(key);
-		if (driver_index < 0)
-		{
-			dprintf("error loading game variable for invalid game %s",key);
-			return TRUE;
-		}
-
-		strcpy(fake_option.ini_name,"drivername_extra_software");
-		fake_option.m_iType = RO_STRING;
-		fake_option.m_vpData = &game_variables[driver_index].extra_software_paths;
-		LoadOption(&fake_option, value);
-		return TRUE;
-	}
-#endif
 
 	return FALSE;
 }
@@ -2435,7 +2663,7 @@ static void ParseKeyValueStrings(char *buffer,char **key,char **value)
 	if (**value == '\"')
 		(*value)++;
 
-	if (**key == '\0' || **value == '\0')
+	if (**key == '\0')
 	{
 		*key = NULL;
 		*value = NULL;
@@ -2458,6 +2686,7 @@ static void LoadOptionsAndSettings(void)
 
 			if (buffer[0] == '\0' || buffer[0] == '#')
 				continue;
+
 			// we're guaranteed that strlen(buffer) >= 1 now
 			buffer[strlen(buffer)-1] = '\0';
 
@@ -2467,10 +2696,11 @@ static void LoadOptionsAndSettings(void)
 				//dprintf("invalid line [%s]",buffer);
 				continue;
 			}
+
 			option = GetOption(regSettings,NUM_SETTINGS,key);
 			if (option == NULL)
 			{
-				// search for game_have_rom/have_sample/play_count thing
+				// search for game_have_rom/have_sample/play_count/play_time thing
 				if (LoadGameVariableOrFolderFilter(key,value_str) == FALSE)
 				{
 					dprintf("found unknown option %s",key);
@@ -2525,11 +2755,21 @@ static BOOL LoadOptions(const char *filename,options_type *o,BOOL load_global_ga
 		char *key,*value_str;
 		REG_OPTION *option;
 
-		if (buffer[0] == '\0' || buffer[0] == '#')
+		if (buffer[0] == '\0')
 			continue;
+
 		// we're guaranteed that strlen(buffer) >= 1 now
 		buffer[strlen(buffer)-1] = '\0';
 		
+		// # starts a comment, but #* is a special MAME32 code
+		// saying it's an option for us, but NOT for the main
+		// MAME
+		if (buffer[0] == '#')
+		{
+			if (buffer[1] != '*')
+				continue;
+		}
+
 		ParseKeyValueStrings(buffer,&key,&value_str);
 		if (key == NULL || value_str == NULL)
 		{
@@ -2585,7 +2825,7 @@ void SaveOptions(void)
 		{
 			for (i=0;i<NUM_SETTINGS;i++)
 			{
-				if (regSettings[i].ini_name[0] != '\0')
+				if ((regSettings[i].ini_name[0] != '\0') && !regSettings[i].m_bOnlyOnGame)
 					WriteOptionToFile(fptr,&regSettings[i]);
 			}
 		}
@@ -2608,32 +2848,52 @@ void SaveOptions(void)
 		fprintf(fptr,"### game variables ###\n\n");
 		for (i=0;i<num_games;i++)
 		{
+			int j;
+			int nValue;
+			const char *pValue;
+			void *pv;
 			int driver_index = GetIndexFromSortedIndex(i); 
+
 			// need to improve this to not save too many
-			if (game_variables[driver_index].play_count != 0)
+			for (j = 0; j < sizeof(gamevariable_options) / sizeof(gamevariable_options[0]); j++)
 			{
-				fprintf(fptr,"%s_play_count %i\n",
-						drivers[driver_index]->name,game_variables[driver_index].play_count);
+				if (!gamevariable_options[j].m_pfnQualifier || gamevariable_options[j].m_pfnQualifier(driver_index))
+				{
+					pv = ((UINT8 *) &game_variables[driver_index]) + gamevariable_options[j].m_iOffset;
+
+					switch(gamevariable_options[j].m_iType) {
+					case RO_INT:
+					case RO_BOOL:
+						nValue = *((int *) pv);
+						if (nValue != (int) gamevariable_options[j].m_vpDefault)
+						{
+							fprintf(fptr, "%s_%s %i\n",
+								drivers[driver_index]->name,
+								gamevariable_options[j].name,
+								nValue);
+						}
+						break;
+
+					case RO_STRING:
+						pValue = *((const char **) pv);
+						if (!pValue)
+							pValue = "";
+
+						if (strcmp(pValue, (const char *) gamevariable_options[j].m_vpDefault))
+						{
+							fprintf(fptr, "%s_%s \"%s\"\n",
+								drivers[driver_index]->name,
+								gamevariable_options[j].name,
+								pValue);
+						}
+						break;
+
+					default:
+						assert(0);
+						break;
+					}
+				}
 			}
-			
-			if (game_variables[driver_index].has_roms != UNKNOWN)
-			{
-				fprintf(fptr,"%s_have_roms %i\n",
-						drivers[driver_index]->name,game_variables[driver_index].has_roms);
-			}
-			if (DriverUsesSamples(driver_index) && 
-				game_variables[driver_index].has_samples != UNKNOWN)
-			{
-				fprintf(fptr,"%s_have_samples %i\n",
-						drivers[driver_index]->name,game_variables[driver_index].has_samples);
-			}
-#ifdef MESS
-			if (game_variables[driver_index].extra_software_paths && game_variables[driver_index].extra_software_paths[0])
-			{
-				fprintf(fptr,"%s_extra_software \"%s\"\n",
-						drivers[driver_index]->name,game_variables[driver_index].extra_software_paths);
-			}
-#endif
 		}
 		fclose(fptr);
 	}
@@ -2708,7 +2968,10 @@ void SaveDefaultOptions(void)
 			fprintf(fptr,"### global-only options ###\n\n");
 		
 			for (i=0;i<NUM_GLOBAL_GAME_OPTIONS;i++)
-				WriteOptionToFile(fptr,&global_game_options[i]);
+			{
+				if (!global_game_options[i].m_bOnlyOnGame)
+					WriteOptionToFile(fptr,&global_game_options[i]);
+			}
 		}
 
 		if (save_default_options)
@@ -2716,7 +2979,10 @@ void SaveDefaultOptions(void)
 			fprintf(fptr,"\n### default game options ###\n\n");
 			gOpts = global;
 			for (i = 0; i < NUM_GAME_OPTIONS; i++)
-				WriteOptionToFile(fptr,&regGameOpts[i]);
+			{
+				if (!regGameOpts[i].m_bOnlyOnGame)
+					WriteOptionToFile(fptr,&regGameOpts[i]);
+			}
 		}
 
 		fclose(fptr);

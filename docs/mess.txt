@@ -5,7 +5,7 @@
                     Official Page at: http://www.mess.org
                    ==========================================
 
-This document is generated for MESS 0.70 (Jun 16 2003)
+This document is generated for MESS 0.71 (Jul 15 2003)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.70 (Jun 16 2003)
+Here is the list of systems supported by MESS 0.71 (Jul 15 2003)
 Variants of the same system are not included, you can use the -listclones command
 to get a list of the alternate versions of a given system.
 
@@ -102,6 +102,7 @@ dat2html.exe.
 | Atari 5200                              |  Yes  |  Yes  |  Yes  | a5200    |
 | Atari 7800 NTSC                         |  Yes  |  Yes  |  Yes  | a7800    |
 | Atari 800                               |  Yes  |  Yes  |  Yes  | a800     |
+| Atari Jaguar                            |  Yes  |  Yes  |Partial| jaguar   |
 | Atom                                    |  Yes  |  Yes  |  Yes  | atom     |
 | BBC Micro Model A                       |  Yes  |  Yes  |  Yes  | bbca     |
 | Bally Professional Arcade               |  Yes  |  Yes  |  Yes  | astrocde |
@@ -114,8 +115,8 @@ dat2html.exe.
 | Colour Genie EG2000                     |  Yes  |  Yes  |  Yes  | cgenie   |
 | Commodore 128 NTSC                      |  Yes  |  Yes  |  Yes  | c128     |
 | Commodore 16/116/232/264                |  Yes  |  Yes  |  Yes  | c16      |
-| Commodore 30xx                          |  Yes  |  Yes  |   No  | cbm30b   |
 | Commodore 30xx                          |  Yes  |  Yes  |   No  | cbm30    |
+| Commodore 30xx                          |  Yes  |  Yes  |   No  | cbm30b   |
 | Commodore 40xx FAT                      |  Yes  |  Yes  |   No  | cbm40pal |
 | Commodore 40xx FAT                      |  Yes  |  Yes  |   No  | cbm40    |
 | Commodore 40xx THIN                     |  Yes  |  Yes  |   No  | cbm40b   |
@@ -180,7 +181,7 @@ dat2html.exe.
 | Sorcerer                                |   No  |  Yes  |   No  | exidy    |
 | Sord M5                                 |  Yes  |  Yes  |  Yes  | sordm5   |
 | Super GameBoy                           |  Yes  |  Yes  |  Yes  | supergb  |
-| Super Nintendo Entertainment System     |   No  |  Yes  |   No  | snes     |
+| Super Nintendo Entertainment System     |  Yes  |  Yes  |   No  | snes     |
 | Super Vision                            |  Yes  |  Yes  |Partial| svision  |
 | TI Avigo 100 PDA                        |   No  |  Yes  |  Yes  | avigo    |
 | TI Model 990/10 Minicomputer System     |  Yes  |  Yes  |  Yes  | ti990_10 |

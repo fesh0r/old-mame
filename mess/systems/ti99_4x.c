@@ -145,15 +145,15 @@ MEMORY_END
 
 static PORT_WRITE16_START(writecru)
 
-	{0x0000<<1, 0x07ff<<1, tms9901_0_CRU_write16},
-	{0x0800<<1, 0x0fff<<1, ti99_4x_peb_CRU_w},
+	{0x0000<<1, (0x07ff<<1) + 1, tms9901_0_CRU_write16},
+	{0x0800<<1, (0x0fff<<1) + 1, ti99_4x_peb_CRU_w},
 
 PORT_END
 
 static PORT_READ16_START(readcru)
 
-	{0x0000<<1, 0x00ff<<1, tms9901_0_CRU_read16},
-	{0x0100<<1, 0x01ff<<1, ti99_4x_peb_CRU_r},
+	{0x0000<<1, (0x00ff<<1) + 1, tms9901_0_CRU_read16},
+	{0x0100<<1, (0x01ff<<1) + 1, ti99_4x_peb_CRU_r},
 
 PORT_END
 
@@ -165,6 +165,7 @@ PORT_END
 /* TI99/4a: 48-key keyboard, plus two optional joysticks (2 shift keys) */
 INPUT_PORTS_START(ti99_4a)
 
+	/* 1 port for config */
 	PORT_START	/* config */
 		PORT_BITX( config_xRAM_mask << config_xRAM_bit, xRAM_kind_TI << config_xRAM_bit, IPT_DIPSWITCH_NAME, "RAM extension", KEYCODE_NONE, IP_JOY_NONE )
 			PORT_DIPSETTING( xRAM_kind_none << config_xRAM_bit,				"none" )
@@ -191,7 +192,20 @@ INPUT_PORTS_START(ti99_4a)
 		PORT_BITX( config_hsgpl_mask << config_hsgpl_bit, 0/*1 << config_hsgpl_bit*/, IPT_DIPSWITCH_NAME, "SNUG HSGPL card", KEYCODE_NONE, IP_JOY_NONE )
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_hsgpl_bit, DEF_STR( On ) )
+		PORT_BITX( config_mecmouse_mask << config_mecmouse_bit, 0, IPT_DIPSWITCH_NAME, "Mechatronics Mouse", KEYCODE_NONE, IP_JOY_NONE )
+			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
+			PORT_DIPSETTING( 1 << config_mecmouse_bit, DEF_STR( On ) )
 
+
+	/* 2 ports for mouse */
+	PORT_START /* Mouse - X AXIS */
+		PORT_ANALOGX( 0xff, 0x00, IPT_TRACKBALL_X | IPF_PLAYER1, 100, 0, 0, 0, IP_KEY_NONE, IP_KEY_NONE, IP_JOY_NONE, IP_JOY_NONE )
+
+	PORT_START /* Mouse - Y AXIS */
+		PORT_ANALOGX( 0xff, 0x00, IPT_TRACKBALL_Y | IPF_PLAYER1, 100, 0, 0, 0, IP_KEY_NONE, IP_KEY_NONE, IP_JOY_NONE, IP_JOY_NONE )
+
+
+	/* 4 ports for keyboard and joystick + mouse buttons */
 	PORT_START	/* col 0 */
 		PORT_BITX(0x0088, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)
 		/* The original control key is located on the left, but we accept the
@@ -262,12 +276,17 @@ INPUT_PORTS_START(ti99_4a)
 		PORT_BIT(0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER1/*, "(1LEFT)", IP_KEY_NONE, OSD_JOY_LEFT, 0*/)
 		PORT_BIT(0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER1/*, "(1FIRE)", IP_KEY_NONE, OSD_JOY_FIRE, 0*/)
 			/* col 7: "wired handset 2" (= joystick 2) */
-		PORT_BITX(0xE000, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)
+		//PORT_BITX(0xE000, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)
 		PORT_BIT(0x1000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER2/*, "(2UP)", IP_KEY_NONE, OSD_JOY2_UP, 0*/)
 		PORT_BIT(0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER2/*, "(2DOWN)", IP_KEY_NONE, OSD_JOY2_DOWN, 0*/)
 		PORT_BIT(0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER2/*, "(2RIGHT)", IP_KEY_NONE, OSD_JOY2_RIGHT, 0*/)
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER2/*, "(2LEFT)", IP_KEY_NONE, OSD_JOY2_LEFT, 0*/)
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2/*, "(2FIRE)", IP_KEY_NONE, OSD_JOY2_FIRE, 0*/)
+
+		/* mouse buttons (sorry, but I had to recycle unused input bytes) */
+		PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_PLAYER1)
+		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_BUTTON2 | IPF_PLAYER1)
+
 
 	PORT_START	/* one more port for Alpha line */
 		PORT_BITX(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD | IPF_TOGGLE, "Alpha Lock", KEYCODE_CAPSLOCK, IP_JOY_NONE)
@@ -281,6 +300,7 @@ INPUT_PORTS_END
 /* TI99/4: 41-key keyboard, plus two optional joysticks  (2 space keys) */
 INPUT_PORTS_START(ti99_4)
 
+	/* 1 port for config */
 	PORT_START	/* config */
 		PORT_BITX( config_xRAM_mask << config_xRAM_bit, xRAM_kind_TI << config_xRAM_bit, IPT_DIPSWITCH_NAME, "RAM extension", KEYCODE_NONE, IP_JOY_NONE )
 			PORT_DIPSETTING( xRAM_kind_none << config_xRAM_bit,				"none" )
@@ -310,7 +330,20 @@ INPUT_PORTS_START(ti99_4)
 		PORT_BITX( config_hsgpl_mask << config_hsgpl_bit, 0/*1 << config_hsgpl_bit*/, IPT_DIPSWITCH_NAME, "SNUG HSGPL card", KEYCODE_NONE, IP_JOY_NONE )
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_hsgpl_bit, DEF_STR( On ) )
+		PORT_BITX( config_mecmouse_mask << config_mecmouse_bit, 0, IPT_DIPSWITCH_NAME, "Mechatronics Mouse", KEYCODE_NONE, IP_JOY_NONE )
+			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
+			PORT_DIPSETTING( 1 << config_mecmouse_bit, DEF_STR( On ) )
 
+
+	/* 2 ports for mouse */
+	PORT_START /* Mouse - X AXIS */
+		PORT_ANALOGX( 0xff, 0x00, IPT_TRACKBALL_X | IPF_PLAYER1, 100, 0, 0, 0, IP_KEY_NONE, IP_KEY_NONE, IP_JOY_NONE, IP_JOY_NONE )
+
+	PORT_START /* Mouse - Y AXIS */
+		PORT_ANALOGX( 0xff, 0x00, IPT_TRACKBALL_Y | IPF_PLAYER1, 100, 0, 0, 0, IP_KEY_NONE, IP_KEY_NONE, IP_JOY_NONE, IP_JOY_NONE )
+
+
+	/* 4 ports for keyboard and joystick + mouse buttons */
 	PORT_START	/* col 0 */
 		PORT_KEY2(0x0080, IP_ACTIVE_LOW, "1 !", KEYCODE_1, IP_JOY_NONE,			'1',	'!')
 		PORT_KEY1(0x0040, IP_ACTIVE_LOW, "Q QUIT", KEYCODE_Q, IP_JOY_NONE,		'Q')
@@ -377,6 +410,11 @@ INPUT_PORTS_START(ti99_4)
 		PORT_BIT(0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2/*, "(2FIRE)", IP_KEY_NONE, OSD_JOY2_FIRE, 0*/)
 				/* col 7: never used (selects IR remote handset instead) */
 		/*PORT_BITX(0xFF00, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)*/
+
+
+		/* mouse buttons (sorry, but I had to recycle unused input bytes) */
+		PORT_BIT(0x2000, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER1)
+		PORT_BIT(0x4000, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2)
 
 
 	/* 13 pseudo-ports for IR remote handsets */
@@ -525,19 +563,6 @@ static struct TMS5220interface tms5220interface =
 };
 
 /*
-	we use a DAC to emulate "audio gate", even thought
-	a) there was no DAC in an actual TI99
-	b) this is a 2-level output (whereas a DAC provides a 256-level output...)
-*/
-static struct DACinterface aux_sound_intf =
-{
-	1,				/* total number of DACs */
-	{
-		20			/* volume for audio gate*/
-	}
-};
-
-/*
 	2 tape units
 */
 static struct Wave_interface tape_input_intf =
@@ -601,10 +626,10 @@ static MACHINE_DRIVER_START(ti99_4_60hz)
 	/* video hardware */
 	MDRV_TMS9928A( &tms9918_interface )
 
+	/* sound hardware */
 	MDRV_SOUND_ATTRIBUTES(0)
 	MDRV_SOUND_ADD(SN76496, tms9919interface)
 	MDRV_SOUND_ADD(TMS5220, tms5220interface)
-	MDRV_SOUND_ADD(DAC, aux_sound_intf)
 	MDRV_SOUND_ADD(WAVE, tape_input_intf)
 
 MACHINE_DRIVER_END
@@ -632,10 +657,10 @@ static MACHINE_DRIVER_START(ti99_4_50hz)
 	/* video hardware */
 	MDRV_TMS9928A( &tms9929_interface )
 
+	/* sound hardware */
 	MDRV_SOUND_ATTRIBUTES(0)
 	MDRV_SOUND_ADD(SN76496, tms9919interface)
 	MDRV_SOUND_ADD(TMS5220, tms5220interface)
-	MDRV_SOUND_ADD(DAC, aux_sound_intf)
 	MDRV_SOUND_ADD(WAVE, tape_input_intf)
 
 MACHINE_DRIVER_END
@@ -663,10 +688,10 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 	/* video hardware */
 	MDRV_TMS9928A( &tms9918a_interface )
 
+	/* sound hardware */
 	MDRV_SOUND_ATTRIBUTES(0)
 	MDRV_SOUND_ADD(SN76496, tms9919interface)
 	MDRV_SOUND_ADD(TMS5220, tms5220interface)
-	MDRV_SOUND_ADD(DAC, aux_sound_intf)
 	MDRV_SOUND_ADD(WAVE, tape_input_intf)
 
 MACHINE_DRIVER_END
@@ -694,10 +719,10 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 	/* video hardware */
 	MDRV_TMS9928A( &tms9929a_interface )
 
+	/* sound hardware */
 	MDRV_SOUND_ATTRIBUTES(0)
 	MDRV_SOUND_ADD(SN76496, tms9919interface)
 	MDRV_SOUND_ADD(TMS5220, tms5220interface)
-	MDRV_SOUND_ADD(DAC, aux_sound_intf)
 	MDRV_SOUND_ADD(WAVE, tape_input_intf)
 
 MACHINE_DRIVER_END
@@ -737,10 +762,10 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	/*MDRV_VIDEO_EOF(name)*/
 	MDRV_VIDEO_UPDATE(v9938)
 
+	/* sound hardware */
 	MDRV_SOUND_ATTRIBUTES(0)
 	MDRV_SOUND_ADD(SN76496, tms9919interface)
 	MDRV_SOUND_ADD(TMS5220, tms5220interface)
-	MDRV_SOUND_ADD(DAC, aux_sound_intf)
 	MDRV_SOUND_ADD(WAVE, tape_input_intf)
 
 MACHINE_DRIVER_END
@@ -851,7 +876,7 @@ SYSTEM_CONFIG_END
 
 /*	  YEAR	NAME	  PARENT   COMPAT	MACHINE		 INPUT	  INIT		CONFIG	COMPANY				FULLNAME */
 COMP( 1979, ti99_4,   0,	   0,		ti99_4_60hz,  ti99_4,  ti99_4,	ti99_4,	"Texas Instruments", "TI99/4 Home Computer (US)" )
-COMPX(1980, ti99_4e,  ti99_4,  0,		ti99_4_50hz,  ti99_4,  ti99_4,	ti99_4,	"Texas Instruments", "TI99/4 Home Computer (Europe)", GAME_ALIAS )
+COMP( 1980, ti99_4e,  ti99_4,  0,		ti99_4_50hz,  ti99_4,  ti99_4,	ti99_4,	"Texas Instruments", "TI99/4 Home Computer (Europe)" )
 COMP( 1981, ti99_4a,  0,	   0,		ti99_4a_60hz, ti99_4a, ti99_4a,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer (US)" )
-COMPX(1981, ti99_4ae, ti99_4a, 0,		ti99_4a_50hz, ti99_4a, ti99_4a,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer (Europe)", GAME_ALIAS )
-COMPX(1994, ti99_4ev, ti99_4a, 0,		ti99_4ev_60hz,ti99_4a, ti99_4ev,ti99_4,	"Texas Instruments", "TI99/4A Home Computer with EVPC", GAME_ALIAS )
+COMP( 1981, ti99_4ae, ti99_4a, 0,		ti99_4a_50hz, ti99_4a, ti99_4a,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer (Europe)" )
+COMP( 1994, ti99_4ev, ti99_4a, 0,		ti99_4ev_60hz,ti99_4a, ti99_4ev,ti99_4,	"Texas Instruments", "TI99/4A Home Computer with EVPC" )

@@ -1,8 +1,32 @@
 /***************************************************************************
 
-  motorola cathode ray tube controller 6845
+	Motorola 6845 CRT controller and emulation
 
-  copyright peter.trauner@jk.uni-linz.ac.at
+	This code emulates the functionality of the 6845 chip, and also
+	supports the functionality of chips related to the 6845
+
+	Peter Trauner
+	Nathan Woods
+
+	Registers
+		00 - Horiz. total characters
+		01 - Horiz. displayed characters per line
+		02 - Horiz. synch position
+		03 - Horiz. synch width in characters
+		04 - Vert. total lines
+		05 - Vert. total adjust (scan lines)
+		06 - Vert. displayed rows
+		07 - Vert. synch position (character rows)
+		08 - Interlace mode
+		09 - Maximum scan line address
+		0A - Cursor start (scan line)
+		0B - Cursor end (scan line)
+		0C - Start address (MSB)
+		0D - Start address (LSB)
+		0E - Cursor address (MSB) (read/write)
+		0F - Cursor address (LSB) (read/write)
+		10 - Light pen (MSB)   (read only)
+		11 - Light pen (LSB)   (read only)
 
 ***************************************************************************/
 
@@ -14,6 +38,12 @@
 #include "mscommon.h"
 #include "includes/crtc6845.h"
 
+/***************************************************************************
+
+	Constants & macros
+
+***************************************************************************/
+
 #define VERBOSE 0
 
 #if VERBOSE
@@ -23,52 +53,103 @@
 #define DBG_LOG(N,M,A)
 #endif
 
-typedef struct _CRTC6845
+/***************************************************************************
+
+	Type definitions
+
+***************************************************************************/
+
+struct crtc6845
 {
-	CRTC6845_CONFIG config;
+	struct crtc6845_config config;
 	UINT8 reg[18];
-	UINT8 index;
-	int lightpen_pos;
+	UINT8 idx;
 	double cursor_time;
 	int cursor_on;
-} CRTC6845;
+};
 
-static CRTC6845 crtc6845_static;
-CRTC6845 *crtc6845=&crtc6845_static;
-
-void crtc6845_init (CRTC6845 *crtc, CRTC6845_CONFIG *config)
+struct reg_mask
 {
+	UINT8 store_mask;
+	UINT8 read_mask;
+};
+
+struct crtc6845 *crtc6845;
+
+/***************************************************************************
+
+	Local variables
+
+***************************************************************************/
+
+/*-------------------------------------------------
+	crtc6845_reg_mask - an array specifying how
+	much of any given register "registers", per
+	m6845 personality
+-------------------------------------------------*/
+
+static const struct reg_mask crtc6845_reg_mask[2][18] =
+{
+	{
+		/* M6845_PERSONALITY_GENUINE */
+		{ 0xff, 0x00 },	{ 0xff, 0x00 },	{ 0xff, 0x00 },	{ 0xff, 0x00 },
+		{ 0x7f, 0x00 },	{ 0x1f, 0x00 },	{ 0x7f, 0x00 },	{ 0x7f, 0x00 },
+		{ 0x3f, 0x00 },	{ 0x1f, 0x00 },	{ 0x7f, 0x00 },	{ 0x1f, 0x00 },
+		{ 0x3f, 0x3f },	{ 0xff, 0xff },	{ 0x3f, 0x3f },	{ 0xff, 0xff },
+		{ 0xff, 0x3f },	{ 0xff, 0xff }
+	},
+	{
+		/* M6845_PERSONALITY_PC1512 */
+		{ 0x00, 0x00 },	{ 0x00, 0x00 },	{ 0x00, 0x00 },	{ 0x00, 0x00 },
+		{ 0x00, 0x00 },	{ 0x00, 0x00 },	{ 0x00, 0x00 },	{ 0x00, 0x00 },
+		{ 0x00, 0x00 },	{ 0x1f, 0x00 },	{ 0x7f, 0x00 },	{ 0x1f, 0x00 },
+		{ 0x3f, 0x3f },	{ 0xff, 0xff },	{ 0x3f, 0x3f },	{ 0xff, 0xff },
+		{ 0xff, 0x3f },	{ 0xff, 0xff }
+	}
+};
+
+/* The PC1512 has not got a full MC6845; the first 9 registers act as if they
+ * had these hardwired values: */
+static UINT8 pc1512_defaults[] =
+{
+	113, 80, 90, 10, 127, 6, 100, 112, 2 
+};
+
+/***************************************************************************
+
+	Functions
+
+***************************************************************************/
+
+struct crtc6845 *crtc6845_init(const struct crtc6845_config *config)
+{
+	struct crtc6845 *crtc;
+	int idx;
+
+	crtc = auto_malloc(sizeof(struct crtc6845));
+	if (!crtc)
+		return NULL;
+
 	memset(crtc, 0, sizeof(*crtc));
-	crtc->cursor_time=timer_get_time();
-	crtc->config=*config;
+	crtc->cursor_time = timer_get_time();
+	crtc->config = *config;
+	crtc6845 = crtc;
+
+	/* Hardwire the values which can't be changed in the PC1512 version */
+	if (config->personality == M6845_PERSONALITY_PC1512)
+	{
+		for (idx = 0; idx < sizeof(pc1512_defaults); idx++)
+		{
+			crtc->reg[idx] = pc1512_defaults[idx];
+		}
+	}
+
+	return crtc;
 }
 
-static const struct { 
-	int stored, 
-		read;
-} reg_mask[]= { 
-	{ 0xff, 0 },
-	{ 0xff, 0 },
-	{ 0xff, 0 },
-	{ 0xff, 0 },
-	{ 0x7f, 0 },
-	{ 0x1f, 0 },
-	{ 0x7f, 0 },
-	{ 0x7f, 0 },
-	{  0x3f, 0 },
-	{  0x1f, 0 },
-	{  0x7f, 0 },
-	{  0x1f, 0 },
-	{  0x3f, 0x3f },
-	{  0xff, 0xff },
-	{  0x3f, 0x3f },
-	{  0xff, 0xff },
-	{  -1, 0x3f },
-	{  -1, 0xff },
-};
-#define REG(x) (crtc->reg[x]&reg_mask[x].stored)
+#define REG(x) (crtc->reg[x])
 
-static int crtc6845_clocks_in_frame(CRTC6845 *crtc)
+static int crtc6845_clocks_in_frame(struct crtc6845 *crtc)
 {
 	int clocks=CRTC6845_COLUMNS*CRTC6845_LINES;
 	switch (CRTC6845_INTERLACE_MODE) {
@@ -80,131 +161,176 @@ static int crtc6845_clocks_in_frame(CRTC6845 *crtc)
 	}
 }
 
-void crtc6845_set_clock(struct _CRTC6845 *crtc, int freq)
+void crtc6845_set_clock(struct crtc6845 *crtc, int freq)
 {
-	crtc->config.freq=freq;
+	assert(crtc);
+	crtc->config.freq = freq;
 	schedule_full_refresh();
 }
 
-void crtc6845_time(CRTC6845 *crtc)
+void crtc6845_time(struct crtc6845 *crtc)
 {
 	double neu, ftime;
-	CRTC6845_CURSOR cursor;
+	struct crtc6845_cursor cursor;
 
-	neu=timer_get_time();
+	neu = timer_get_time();
 
-	if (crtc6845_clocks_in_frame(crtc)==0.0) return;
-	ftime=crtc6845_clocks_in_frame(crtc)*16.0/crtc6845->config.freq;
-	if ( CRTC6845_CURSOR_MODE==CRTC6845_CURSOR_32FRAMES) ftime*=2;
-	if (neu-crtc->cursor_time>ftime) {
-		crtc->cursor_time+=ftime;
+	if (crtc6845_clocks_in_frame(crtc) == 0.0)
+		return;
+
+	ftime = crtc6845_clocks_in_frame(crtc) * 16.0 / crtc->config.freq;
+
+	if (CRTC6845_CURSOR_MODE==CRTC6845_CURSOR_32FRAMES)
+		ftime*=2;
+
+	if (neu-crtc->cursor_time>ftime)
+	{
+		crtc->cursor_time += ftime;
 		crtc6845_get_cursor(crtc, &cursor);
-		if (crtc->config.cursor_changed) crtc->config.cursor_changed(&cursor);
-		crtc->cursor_on^=1;
+
+		if (crtc->config.cursor_changed)
+			crtc->config.cursor_changed(&cursor);
+
+		crtc->cursor_on ^= 1;
 	}
 }
 
-int crtc6845_get_char_columns(struct _CRTC6845 *crtc) 
+int crtc6845_get_char_columns(struct crtc6845 *crtc) 
 { 
 	return CRTC6845_CHAR_COLUMNS;
 }
 
-int crtc6845_get_char_height(struct _CRTC6845 *crtc) 
+int crtc6845_get_char_height(struct crtc6845 *crtc) 
 {
 	return CRTC6845_CHAR_HEIGHT;
 }
 
-int crtc6845_get_char_lines(struct _CRTC6845 *crtc) 
+int crtc6845_get_char_lines(struct crtc6845 *crtc) 
 { 
 	return CRTC6845_CHAR_LINES;
 }
 
-int crtc6845_get_start(struct _CRTC6845 *crtc) 
+int crtc6845_get_start(struct crtc6845 *crtc) 
 {
 	return CRTC6845_VIDEO_START;
 }
 
-void crtc6845_get_cursor(struct _CRTC6845 *crtc, CRTC6845_CURSOR *cursor)
+
+void crtc6845_set_char_columns(struct crtc6845 *crtc, UINT8 columns)
+{ 
+	crtc->reg[1] = columns;
+}
+
+
+void crtc6845_set_char_lines(struct crtc6845 *crtc, UINT8 lines)
+{ 
+	crtc->reg[6] = lines;
+}
+
+
+int crtc6845_get_personality(struct crtc6845 *crtc)
 {
-	cursor->pos=CRTC6845_CURSOR_POS;
+	return crtc->config.personality;
+}
+
+void crtc6845_get_cursor(struct crtc6845 *crtc, struct crtc6845_cursor *cursor)
+{
 	switch (CRTC6845_CURSOR_MODE) {
-	default: cursor->on=1;break;
-	case CRTC6845_CURSOR_OFF: cursor->on=0;break;
+	case CRTC6845_CURSOR_OFF:
+		cursor->on = 0;
+		break;
+
 	case CRTC6845_CURSOR_16FRAMES:
-		cursor->on=crtc->cursor_on;
 	case CRTC6845_CURSOR_32FRAMES:
-		cursor->on=crtc->cursor_on;
+		cursor->on = crtc->cursor_on;
+		break;
+
+	default:
+		cursor->on = 1;
 		break;
 	}
-	cursor->top=CRTC6845_CURSOR_TOP;
-	cursor->bottom=CRTC6845_CURSOR_BOTTOM;
+
+	cursor->pos = CRTC6845_CURSOR_POS;
+	cursor->top = CRTC6845_CURSOR_TOP;
+	cursor->bottom = CRTC6845_CURSOR_BOTTOM;
 }
 
-void crtc6845_port_w(struct _CRTC6845 *crtc, int offset, data8_t data)
+data8_t crtc6845_port_r(struct crtc6845 *crtc, int offset)
 {
-	CRTC6845_CURSOR cursor;
+	data8_t val = 0xff;
+	int idx;
+
 	if (offset & 1)
 	{
-		if ((crtc->index & 0x1f) < 18) {
-			switch (crtc->index & 0x1f) {
-			case 0xa:case 0xb:
-			case 0xe:case 0xf:
-				crtc6845_get_cursor(crtc, &cursor);
-				crtc->reg[crtc->index]=data;
-				if (crtc->config.cursor_changed) crtc->config.cursor_changed(&cursor);
-				break;
-			default:
-				schedule_full_refresh();
-				crtc->reg[crtc->index]=data;
-				break;
-			}
-				DBG_LOG (2, "crtc_port_w", ("%.2x:%.2x\n", crtc->index, data));
-		} else { 
-			DBG_LOG (1, "crtc6845_port_w", ("%.2x:%.2x\n", crtc->index, data));
-		}
+		idx = crtc->idx & 0x1f;
+		if (idx < (sizeof(crtc->reg) / sizeof(crtc->reg[0])))
+			val = crtc->reg[idx] & crtc6845_reg_mask[crtc->config.personality][idx].read_mask;
 	}
 	else
 	{
-		crtc->index = data;
-	}
-}
-
-data8_t crtc6845_port_r(struct _CRTC6845 *crtc, int offset)
-{
-	int val;
-
-	val = 0xff;
-	if (offset & 1)
-	{
-		if ((crtc->index & 0x1f) < 18)
-		{
-			switch (crtc->index & 0x1f)
-			{
-			case 0x10: val=crtc->lightpen_pos>>8;break;
-			case 0x11: val=crtc->lightpen_pos&0xff;break;
-				break;
-			default:
-				val=crtc->reg[crtc->index&0x1f]&reg_mask[crtc->index&0x1f].read;
-			}
-		}
-		DBG_LOG (1, "crtc6845_port_r", ("%.2x:%.2x\n", crtc->index, val));
-	}
-	else
-	{
-		val = crtc->index;
+		val = crtc->idx;
 	}
 	return val;
 }
 
-void crtc6845_state (void)
+void crtc6845_port_w(struct crtc6845 *crtc, int offset, data8_t data)
 {
-	char text[50]="";
+	struct crtc6845_cursor cursor;
+	int idx;
+	UINT8 mask;
 
-	snprintf (text, sizeof (text), "crtc6845 %.2x %.2x %.2x %.2x",
-			  crtc6845->reg[0xc], crtc6845->reg[0xd], crtc6845->reg[0xe],crtc6845->reg[0xf]);
+	if (offset & 1)
+	{
+		/* write to a 6845 register, if supported */
+		idx = crtc->idx & 0x1f;
+		if (idx < (sizeof(crtc->reg) / sizeof(crtc->reg[0])))
+		{
+			mask = crtc6845_reg_mask[crtc->config.personality][idx].store_mask;
+			/* Don't zero out bits not covered by the mask. */
+			crtc->reg[crtc->idx] &= ~mask;
+			crtc->reg[crtc->idx] |= (data & mask);
 
-	statetext_display_text(text);
+			/* are there special consequences to writing to this register? */
+			switch (idx) {
+			case 0xa:
+			case 0xb:
+			case 0xe:
+			case 0xf:
+				crtc6845_get_cursor(crtc, &cursor);
+				if (crtc->config.cursor_changed)
+					crtc->config.cursor_changed(&cursor);
+				break;
+
+			default:
+				schedule_full_refresh();
+				break;
+			}
+
+			/* since the PC1512 does not support the number of lines register directly, 
+			 * this value is keyed off of register 9
+			 */
+			if ((crtc->config.personality == M6845_PERSONALITY_PC1512) && (idx == 9))
+			{
+				UINT8 char_height;
+				char_height = crtc6845_get_char_height(crtc);
+				crtc6845_set_char_lines(crtc, 200 / char_height);
+			}
+		}
+	}
+	else
+	{
+		/* change the idx register */
+		crtc->idx = data;
+	}
 }
 
-WRITE_HANDLER ( crtc6845_0_port_w ) { crtc6845_port_w(crtc6845, offset, data); }
-READ_HANDLER ( crtc6845_0_port_r ) { return crtc6845_port_r(crtc6845, offset); }
+READ_HANDLER ( crtc6845_0_port_r )
+{
+	return crtc6845_port_r(crtc6845, offset);
+}
+
+WRITE_HANDLER ( crtc6845_0_port_w )
+{
+	crtc6845_port_w(crtc6845, offset, data);
+}
+
