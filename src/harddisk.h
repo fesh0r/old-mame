@@ -117,6 +117,7 @@ struct hard_disk_interface
  *************************************/
 
 void hard_disk_set_interface(struct hard_disk_interface *interface);
+void hard_disk_save_interface(struct hard_disk_interface *interface_save);
 
 #ifdef MESS
 void hard_disk_save_interface(struct hard_disk_interface *interface_save);

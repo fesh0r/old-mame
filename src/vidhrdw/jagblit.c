@@ -321,66 +321,46 @@ static void FUNCNAME(UINT32 command, UINT32 a1flags, UINT32 a2flags)
 			UINT32 writedata = 0;
 			int inhibit = 0;
 
-			/* load src data and Z */
-			if (COMMAND & 0x00000001)
-			{
+				/* load src data and Z */
+				if (COMMAND & 0x00000001)
+				{
 				srcdata = READ_PIXEL(asrc, asrcflags);
-				if (COMMAND & 0x00000002)
+					if (COMMAND & 0x00000002)
 					srczdata = READ_ZDATA(asrc, asrcflags);
-				else if (COMMAND & 0x001c020)
+					else if (COMMAND & 0x001c020)
 					srczdata = READ_RDATA(B_SRCZ1_H, asrc, asrcflags, asrc_phrase_mode);
-			}
-			else
-			{
-				srcdata = READ_RDATA(B_SRCD_H, asrc, asrcflags, asrc_phrase_mode);
-				if (COMMAND & 0x001c020)
-					srczdata = READ_RDATA(B_SRCZ1_H, asrc, asrcflags, asrc_phrase_mode);
-			}
-
-			/* load dst data and Z */
-			if (COMMAND & 0x00000008)
-			{
-				dstdata = READ_PIXEL(adest, adestflags);
-				if (COMMAND & 0x00000010)
-					dstzdata = READ_ZDATA(adest, adestflags);
+				}
 				else
-					dstzdata = READ_RDATA(B_DSTZ_H, adest, adestflags, adest_phrase_mode);
-			}
-			else
-			{
-				dstdata = READ_RDATA(B_DSTD_H, adest, adestflags, adest_phrase_mode);
-				if (COMMAND & 0x00000010)
-					dstzdata = READ_RDATA(B_DSTZ_H, adest, adestflags, adest_phrase_mode);
-			}
-
-			/* handle clipping */
-			if (COMMAND & 0x00000040)
-			{
-				if (adest_x < 0 || adest_y < 0 ||
-					(adest_x >> 16) >= (blitter_regs[A1_CLIP] & 0x7fff) ||
-					(adest_y >> 16) >= ((blitter_regs[A1_CLIP] >> 16) & 0x7fff))
-					inhibit = 1;
-			}
-
-			/* apply Z comparator */
-			if (COMMAND & 0x00040000)
-				if (srczdata < dstzdata) inhibit = 1;
-			if (COMMAND & 0x00080000)
-				if (srczdata == dstzdata) inhibit = 1;
-			if (COMMAND & 0x00100000)
-				if (srczdata > dstzdata) inhibit = 1;
+				{
+				srcdata = READ_RDATA(B_SRCD_H, asrc, asrcflags, asrc_phrase_mode);
+					if (COMMAND & 0x001c020)
+					srczdata = READ_RDATA(B_SRCZ1_H, asrc, asrcflags, asrc_phrase_mode);
+				}
 
 			/* apply data comparator */
 			if (COMMAND & 0x08000000)
 			{
 				if (!(COMMAND & 0x02000000))
 				{
-					if (srcdata == READ_RDATA(B_PATD_H, asrc, asrcflags, asrc_phrase_mode))
-						inhibit = 1;
+				dstdata = READ_PIXEL(adest, adestflags);
+					if (COMMAND & 0x00000010)
+					dstzdata = READ_ZDATA(adest, adestflags);
+					else
+					dstzdata = READ_RDATA(B_DSTZ_H, adest, adestflags, adest_phrase_mode);
 				}
 				else
 				{
-					if (dstdata == READ_RDATA(B_PATD_H, adest, adestflags, adest_phrase_mode))
+				dstdata = READ_RDATA(B_DSTD_H, adest, adestflags, adest_phrase_mode);
+					if (COMMAND & 0x00000010)
+					dstzdata = READ_RDATA(B_DSTZ_H, adest, adestflags, adest_phrase_mode);
+				}
+
+				/* handle clipping */
+				if (COMMAND & 0x00000040)
+				{
+				if (adest_x < 0 || adest_y < 0 ||
+					(adest_x >> 16) >= (blitter_regs[A1_CLIP] & 0x7fff) ||
+					(adest_y >> 16) >= ((blitter_regs[A1_CLIP] >> 16) & 0x7fff))
 						inhibit = 1;
 				}
 			}
@@ -393,25 +373,43 @@ static void FUNCNAME(UINT32 command, UINT32 a1flags, UINT32 a2flags)
 					writedata = READ_RDATA(B_PATD_H, adest, adestflags, adest_phrase_mode);
 				else if (COMMAND & 0x00020000)
 				{
-					writedata = (srcdata & 0xff) + (dstdata & 0xff);
-					if (!(COMMAND & 0x00004000) && writedata > 0xff)
-						writedata = 0xff;
-					writedata |= (srcdata & 0xf00) + (dstdata & 0xf00);
-					if (!(COMMAND & 0x00008000) && writedata > 0xfff)
-						writedata = 0xfff;
-					writedata |= (srcdata & 0xf000) + (dstdata & 0xf000);
+					if (!(COMMAND & 0x02000000))
+					{
+					if (srcdata == READ_RDATA(B_PATD_H, asrc, asrcflags, asrc_phrase_mode))
+							inhibit = 1;
+					}
+					else
+					{
+					if (dstdata == READ_RDATA(B_PATD_H, adest, adestflags, adest_phrase_mode))
+							inhibit = 1;
+					}
 				}
 				else
 				{
-					if (COMMAND & 0x00200000)
-						writedata |= ~srcdata & ~dstdata;
-					if (COMMAND & 0x00400000)
-						writedata |= ~srcdata & dstdata;
-					if (COMMAND & 0x00800000)
-						writedata |= srcdata & ~dstdata;
-					if (COMMAND & 0x01000000)
-						writedata |= srcdata & dstdata;
-				}
+					/* handle patterns/additive/LFU */
+					if (COMMAND & 0x00010000)
+					writedata = READ_RDATA(B_PATD_H, adest, adestflags, adest_phrase_mode);
+					else if (COMMAND & 0x00020000)
+					{
+						writedata = (srcdata & 0xff) + (dstdata & 0xff);
+						if (!(COMMAND & 0x00004000) && writedata > 0xff)
+							writedata = 0xff;
+						writedata |= (srcdata & 0xf00) + (dstdata & 0xf00);
+						if (!(COMMAND & 0x00008000) && writedata > 0xfff)
+							writedata = 0xfff;
+						writedata |= (srcdata & 0xf000) + (dstdata & 0xf000);
+					}
+					else
+					{
+						if (COMMAND & 0x00200000)
+							writedata |= ~srcdata & ~dstdata;
+						if (COMMAND & 0x00400000)
+							writedata |= ~srcdata & dstdata;
+						if (COMMAND & 0x00800000)
+							writedata |= srcdata & ~dstdata;
+						if (COMMAND & 0x01000000)
+							writedata |= srcdata & dstdata;
+					}
 
 				/* handle source shading */
 				if (COMMAND & 0x40000000)
@@ -424,19 +422,17 @@ static void FUNCNAME(UINT32 command, UINT32 a1flags, UINT32 a2flags)
 						intensity = 0xff;
 					writedata = (srcdata & 0xff00) | intensity;
 				}
-			}
-			else
-				writedata = dstdata;
+				}
 
 			if (adest_phrase_mode || (command & 0x10000000) || !inhibit)
-			{
-				/* write to the destination */
+				{
+					/* write to the destination */
 				WRITE_PIXEL(adest, adestflags, writedata);
-				if (COMMAND & 0x00000020)
+					if (COMMAND & 0x00000020)
 					WRITE_ZDATA(adest, adestflags, srczdata);
-			}
+				}
 
-			/* update X/Y */
+				/* update X/Y */
 			asrc_x = (asrc_x + asrc_xadd) & asrc_xmask;
 			asrc_y = (asrc_y + asrc_yadd) & asrc_ymask;
 			adest_x = (adest_x + adest_xadd) & adest_xmask;
