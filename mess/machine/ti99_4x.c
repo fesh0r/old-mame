@@ -1,4 +1,4 @@
- /*
+/*
 	Machine code for TI99/4, TI-99/4A, TI-99/8, and SNUG SGCPU (a.k.a. 99/4P).
 	Raphael Nabet, 1999-2003.
 	Some code was originally derived from Ed Swartz's V9T9.
@@ -338,6 +338,7 @@ static char hsgpl_crdena;
 */
 /* pointer on two 8kb cartridge pages */
 static UINT16 *cartridge_pages[2] = {NULL, NULL};
+static UINT8 *cartridge_pages_8[2] = {NULL, NULL};
 /* flag: TRUE if the cartridge is minimemory (4kb of battery-backed SRAM in 0x5000-0x5fff) */
 static char cartridge_minimemory = FALSE;
 /* flag: TRUE if the cartridge is paged */
@@ -346,6 +347,7 @@ static char cartridge_paged = FALSE;
 static char cartridge_mbx = FALSE;
 /* flag on the data for the current page (cartridge_pages[0] if cartridge is not paged) */
 static UINT16 *current_page_ptr;
+static UINT8 *current_page_ptr_8;
 /* keep track of cart file types - required for cleanup... */
 typedef enum slot_type_t { SLOT_EMPTY = -1, SLOT_GROM = 0, SLOT_CROM = 1, SLOT_DROM = 2, SLOT_MINIMEM = 3, SLOT_MBX = 4 } slot_type_t;
 static slot_type_t slot_type[3] = { SLOT_EMPTY, SLOT_EMPTY, SLOT_EMPTY};
@@ -446,8 +448,8 @@ void init_ti99_8(void)
 	ROM3_ptr_8 = ROM2_ptr_8 + 0x2000;
 	sRAM_ptr_8 = memory_region(REGION_CPU1) + offset_sram_8;
 
-	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
-	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
+	cartridge_pages_8[0] = memory_region(REGION_CPU1)+offset_cart_8;
+	cartridge_pages_8[1] = memory_region(REGION_CPU1)+offset_cart_8 + 0x2000;
 	console_GROMs.data_ptr = memory_region(region_grom);
 }
 
@@ -548,14 +550,30 @@ DEVICE_LOAD( ti99_cart )
 		if (type == SLOT_MBX)
 			cartridge_mbx = TRUE;
 	case SLOT_CROM:
-		mame_fread_msbfirst(file, cartridge_pages[0], 0x2000);
-		current_page_ptr = cartridge_pages[0];
+		if (ti99_model == model_99_8)
+		{
+			mame_fread(file, cartridge_pages_8[0], 0x2000);
+			current_page_ptr_8 = cartridge_pages_8[0];
+		}
+		else
+		{
+			mame_fread_msbfirst(file, cartridge_pages[0], 0x2000);
+			current_page_ptr = cartridge_pages[0];
+		}
 		break;
 
 	case SLOT_DROM:
 		cartridge_paged = TRUE;
-		mame_fread_msbfirst(file, cartridge_pages[1], 0x2000);
-		current_page_ptr = cartridge_pages[0];
+		if (ti99_model == model_99_8)
+		{
+			mame_fread(file, cartridge_pages_8[1], 0x2000);
+			current_page_ptr_8 = cartridge_pages_8[0];
+		}
+		else
+		{
+			mame_fread_msbfirst(file, cartridge_pages[1], 0x2000);
+			current_page_ptr = cartridge_pages[0];
+		}
 		break;
 	}
 
@@ -593,12 +611,26 @@ DEVICE_UNLOAD( ti99_cart )
 			cartridge_mbx = FALSE;
 			/* maybe we should insert some code to save the memory contents... */
 	case SLOT_CROM:
-		memset(cartridge_pages[0], 0, 0x2000);
+		if (ti99_model == model_99_8)
+		{
+			memset(cartridge_pages_8[0], 0, 0x2000);
+		}
+		else
+		{
+			memset(cartridge_pages[0], 0, 0x2000);
+		}
 		break;
 
 	case SLOT_DROM:
 		cartridge_paged = FALSE;
-		current_page_ptr = cartridge_pages[0];
+		if (ti99_model == model_99_8)
+		{
+			current_page_ptr_8 = cartridge_pages_8[0];
+		}
+		else
+		{
+			current_page_ptr = cartridge_pages[0];
+		}
 		break;
 	}
 
@@ -689,8 +721,12 @@ void machine_init_ti99(void)
 	}
 
 	if (ti99_model != model_99_4p)
-		/* reset cartridge mapper */
-		current_page_ptr = cartridge_pages[0];
+	{	/* reset cartridge mapper */
+		if (ti99_model == model_99_8)
+			current_page_ptr_8 = cartridge_pages_8[0];
+		else
+			current_page_ptr = cartridge_pages[0];
+	}
 
 	/* init tms9901 */
 	if (ti99_model == model_99_8)
@@ -959,7 +995,7 @@ WRITE16_HANDLER ( ti99_ww_cartmem )
 		if ((offset >= 0x0600) && (offset <= 0x07fe))
 			COMBINE_DATA(cartridge_pages[0]+offset);
 		else if ((offset == 0x07ff) && ACCESSING_MSB16)
-			current_page_ptr = cartridge_paged ? cartridge_pages[(data >> 8) & 1] : 0;
+			current_page_ptr = cartridge_pages[cartridge_paged ? ((data >> 8) & 1) : 0];
 	}
 	else if (cartridge_paged)
 		/* handle pager */
@@ -1295,10 +1331,10 @@ READ_HANDLER ( ti99_8_r )
 	if (ti99_8_CRUS)
 	{
 		/* memory mapped ports enabled */
-		if (page == 0)
+		if ((offset >= 0x0000) && (offset < 0x2000))
 			/* ROM? */
 			return ROM0_ptr_8[offset & 0x1fff];
-		else if (page == 8)
+		else if ((offset >= 0x8000) && (offset < 0xa000))
 		{
 			/* ti99 scratch pad and memory-mapped registers */
 			/* 0x8000-0x9fff */
@@ -1383,7 +1419,7 @@ READ_HANDLER ( ti99_8_r )
 		default:
 			/* should never happen */
 		case 0:
-			/* ROM0 space??? */
+			/* unassigned??? */
 		case 1:
 			/* ??? */
 		case 4:
@@ -1398,8 +1434,17 @@ READ_HANDLER ( ti99_8_r )
 
 		case 3:
 			/* cartridge space */
-			/* ... */
-			break;
+			offset &= 0x1fff;
+#if 0
+			if (hsgpl_crdena)
+				/* hsgpl is enabled */
+				return ti99_hsgpl_rom6_r(offset, mem_mask);
+#endif
+
+			if (cartridge_mbx && (offset >= 0x0c00) && (offset <= 0x0ffd))
+				return (cartridge_pages_8[0])[offset];
+
+			return current_page_ptr_8[offset];
 
 		case 5:
 			/* >2000 ROM (ROM1) */
@@ -1423,10 +1468,10 @@ WRITE_HANDLER ( ti99_8_w )
 	if (ti99_8_CRUS)
 	{
 		/* memory mapped ports enabled */
-		if (page == 0)
+		if ((offset >= 0x0000) && (offset < 0x2000))
 			/* ROM? */
 			return;
-		else if (page == 8)
+		else if ((offset >= 0x8000) && (offset < 0xa000))
 		{
 			/* ti99 scratch pad and memory-mapped registers */
 			/* 0x8000-0x9fff */
@@ -1453,16 +1498,6 @@ WRITE_HANDLER ( ti99_8_w )
 					int i;
 
 					if (data & 1)
-					{	/* save */
-						for (i=0; i<16; i++)
-						{
-							sRAM_ptr_8[(file << 6) + (i << 2)] = ti99_8_mapper_regs[i] >> 24;
-							sRAM_ptr_8[(file << 6) + (i << 2) + 1] = ti99_8_mapper_regs[i] >> 16;
-							sRAM_ptr_8[(file << 6) + (i << 2) + 2] = ti99_8_mapper_regs[i] >> 8;
-							sRAM_ptr_8[(file << 6) + (i << 2) + 3] = ti99_8_mapper_regs[i];
-						}
-					}
-					else
 					{	/* load */
 						for (i=0; i<16; i++)
 						{
@@ -1470,6 +1505,16 @@ WRITE_HANDLER ( ti99_8_w )
 													| (sRAM_ptr_8[(file << 6) + (i << 2) + 1] << 16)
 													| (sRAM_ptr_8[(file << 6) + (i << 2) + 2] << 8)
 													| sRAM_ptr_8[(file << 6) + (i << 2) + 3];
+						}
+					}
+					else
+					{	/* save */
+						for (i=0; i<16; i++)
+						{
+							sRAM_ptr_8[(file << 6) + (i << 2)] = ti99_8_mapper_regs[i] >> 24;
+							sRAM_ptr_8[(file << 6) + (i << 2) + 1] = ti99_8_mapper_regs[i] >> 16;
+							sRAM_ptr_8[(file << 6) + (i << 2) + 2] = ti99_8_mapper_regs[i] >> 8;
+							sRAM_ptr_8[(file << 6) + (i << 2) + 3] = ti99_8_mapper_regs[i];
 						}
 					}
 				}
@@ -1529,7 +1574,7 @@ WRITE_HANDLER ( ti99_8_w )
 		default:
 			/* should never happen */
 		case 0:
-			/* ROM0 space??? */
+			/* unassigned??? */
 		case 1:
 			/* ??? */
 		case 4:
@@ -1545,7 +1590,28 @@ WRITE_HANDLER ( ti99_8_w )
 
 		case 3:
 			/* cartridge space */
-			/* ... */
+			offset &= 0x1fff;
+#if 0
+			if (hsgpl_crdena)
+				/* hsgpl is enabled */
+				ti99_hsgpl_rom6_w(offset, data);
+			else
+#endif
+			if (cartridge_minimemory && (offset >= 0x1000))
+				/* handle minimem RAM */
+				current_page_ptr_8[offset] = data;
+			else if (cartridge_mbx)
+			{	/* handle MBX cart */
+				/* RAM in 0x6c00-0x6ffd (presumably non-paged) */
+				/* mapper at 0x6ffe */
+				if ((offset >= 0x0c00) && (offset <= 0x0ffd))
+					(cartridge_pages_8[0])[offset] = data;
+				else if (offset == 0x0ffe)
+					current_page_ptr_8 = cartridge_pages_8[cartridge_paged ? (data & 1) : 0];
+			}
+			else if (cartridge_paged)
+				/* handle pager */
+				current_page_ptr_8 = cartridge_pages_8[(offset & 2) >> 1];
 			break;
 
 		case 5:
@@ -2152,7 +2218,7 @@ static int ti99_8_R9901_0(int offset)
 			answer |= 0x40;
 	}
 	else
-		answer = (readinputport(input_port_keyboard + KeyCol) << 6) & 0xC0;
+		answer = (readinputport(input_port_keyboard_8 + KeyCol) << 6) & 0xC0;
 
 	return answer;
 }
@@ -2182,7 +2248,8 @@ static int ti99_8_R9901_1(int offset)
 			answer |= 0x04;
 	}
 	else
-		answer = (readinputport(input_port_keyboard) >> 2) & 0x07;
+
+		answer = (readinputport(input_port_keyboard_8 + KeyCol) >> 2) & 0x07;
 
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
 	/*if (device_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0)

@@ -19,6 +19,7 @@
 #include "invokegx.h"
 #endif
 
+
 //============================================================
 //	These defines are necessary because the MinGW headers do
 //	not have the latest definitions
@@ -50,7 +51,7 @@ enum
 	TRIGGER_APPLY		= 2
 };
 
-typedef LRESULT (*trigger_function)(HWND dlgwnd, UINT message, WPARAM wparam, LPARAM lparam);
+typedef LRESULT (*trigger_function)(dialog_box *dialog, HWND dlgwnd, UINT message, WPARAM wparam, LPARAM lparam);
 
 struct dialog_info_trigger
 {
@@ -64,17 +65,27 @@ struct dialog_info_trigger
 	trigger_function trigger_proc;
 };
 
-struct dialog_info
+struct dialog_object_pool
+{
+	HGDIOBJ objects[16];
+};
+
+struct _dialog_box
 {
 	HGLOBAL handle;
 	size_t handle_size;
 	struct dialog_info_trigger *trigger_first;
 	struct dialog_info_trigger *trigger_last;
 	WORD item_count;
-	WORD cx, cy;
+	WORD size_x, size_y;
+	WORD pos_x, pos_y;
+	WORD cursize_x, cursize_y;
+	WORD home_y;
+	DWORD style;
 	int combo_string_count;
 	int combo_default_value;
 	memory_pool mempool;
+	struct dialog_object_pool *objpool;
 };
 
 //============================================================
@@ -98,6 +109,7 @@ extern void win_poll_input(void);
 #define DIM_SEQ_WIDTH			120
 #define DIM_COMBO_WIDTH			140
 #define DIM_BUTTON_WIDTH		50
+#define DIM_SCROLLBAR_WIDTH		10
 
 #define WNDLONG_DIALOG			GWLP_USERDATA
 
@@ -117,6 +129,77 @@ extern void win_poll_input(void);
 
 #define TIMER_ID				0xdeadbeef
 
+#define SCROLL_DELTA_LINE		10
+#define SCROLL_DELTA_PAGE		100
+
+#define LOG_WINMSGS				1
+#define DIALOG_STYLE			WS_POPUP | WS_BORDER | WS_SYSMENU | DS_MODALFRAME | WS_CAPTION | DS_SETFONT
+#define MAX_DIALOG_HEIGHT		200
+
+
+
+//============================================================
+//	LOCAL VARIABLES
+//============================================================
+
+static double pixels_to_xdlgunits;
+static double pixels_to_ydlgunits;
+
+
+
+//============================================================
+//	PROTOTYPES
+//============================================================
+
+static void dialog_prime(dialog_box *di);
+static int dialog_write_item(dialog_box *di, DWORD style, short x, short y,
+	 short width, short height, const char *str, WORD class_atom, WORD *id);
+
+
+
+//============================================================
+//	compute_dlgunits_multiple
+//============================================================
+
+static void calc_dlgunits_multiple(void)
+{
+	dialog_box *dialog = NULL;
+	short offset_x = 2048;
+	short offset_y = 2048;
+	const char *wnd_title = "Foo";
+	WORD id;
+	HWND dlg_window = NULL;
+	HWND child_window;
+	RECT r;
+
+	if ((pixels_to_xdlgunits == 0) || (pixels_to_ydlgunits == 0))
+	{
+		dialog = win_dialog_init(NULL);
+		if (!dialog)
+			goto done;
+
+		if (dialog_write_item(dialog, WS_CHILD | WS_VISIBLE | SS_LEFT,
+				0, 0, offset_x, offset_y, wnd_title, DLGITEM_STATIC, &id))
+			goto done;
+
+		dialog_prime(dialog);
+		dlg_window = CreateDialogIndirectParam(NULL, dialog->handle, NULL, NULL, 0);
+		child_window = GetDlgItem(dlg_window, id);
+
+		GetWindowRect(child_window, &r);
+		pixels_to_xdlgunits = (double)(r.right - r.left) / offset_x;
+		pixels_to_ydlgunits = (double)(r.bottom - r.top) / offset_y;
+
+done:
+		if (dialog)
+			win_dialog_exit(dialog);
+		if (dlg_window)
+			DestroyWindow(dlg_window);
+	}
+}
+
+
+
 //============================================================
 //	dialog_trigger
 //============================================================
@@ -125,25 +208,28 @@ static void dialog_trigger(HWND dlgwnd, WORD trigger_flags)
 {
 	LRESULT result;
 	HWND dialog_item;
-	struct dialog_info *di;
+	struct _dialog_box *di;
 	struct dialog_info_trigger *trigger;
 	LONG l;
 
 	l = GetWindowLongPtr(dlgwnd, WNDLONG_DIALOG);
-	di = (struct dialog_info *) l;
+	di = (struct _dialog_box *) l;
 	assert(di);
 	for (trigger = di->trigger_first; trigger; trigger = trigger->next)
 	{
 		if (trigger->trigger_flags & trigger_flags)
 		{
-			dialog_item = GetDlgItem(dlgwnd, trigger->dialog_item);
+			if (trigger->dialog_item)
+				dialog_item = GetDlgItem(dlgwnd, trigger->dialog_item);
+			else
+				dialog_item = dlgwnd;
 			assert(dialog_item);
 			result = 0;
 
 			if (trigger->message)
 				result = SendMessage(dialog_item, trigger->message, trigger->wparam, trigger->lparam);
 			if (trigger->trigger_proc)
-				result = trigger->trigger_proc(dialog_item, trigger->message, trigger->wparam, trigger->lparam);
+				result = trigger->trigger_proc(di, dialog_item, trigger->message, trigger->wparam, trigger->lparam);
 
 			if (trigger->result)
 				*(trigger->result) = result;
@@ -161,6 +247,15 @@ static INT_PTR CALLBACK dialog_proc(HWND dlgwnd, UINT msg, WPARAM wparam, LPARAM
 	TCHAR buf[32];
 	const char *str;
 	WORD command;
+	INT scroll_min_pos;
+	INT scroll_max_pos;
+	int scroll_pos;
+	int scroll_pos_old;
+
+#if LOG_WINMSGS
+	logerror("dialog_proc(): dlgwnd=0x%08x msg=0x%08x wparam=0x%08x lparam=0x%08x\n",
+		(unsigned int) dlgwnd, (unsigned int) msg, (unsigned int) wparam, (unsigned int) lparam);
+#endif
 
 	switch(msg) {
 	case WM_INITDIALOG:
@@ -195,6 +290,58 @@ static INT_PTR CALLBACK dialog_proc(HWND dlgwnd, UINT msg, WPARAM wparam, LPARAM
 		}
 		break;
 
+	case WM_SYSCOMMAND:
+		if (wparam == SC_CLOSE)
+		{
+			EndDialog(dlgwnd, 0);
+		}
+		else
+		{
+			handled = FALSE;
+		}
+		break;
+
+	case WM_VSCROLL:
+		GetScrollRange(dlgwnd, SB_VERT, &scroll_min_pos, &scroll_max_pos);
+		scroll_pos = scroll_pos_old = GetScrollPos(dlgwnd, SB_VERT);
+
+		switch(LOWORD(wparam)) {
+		case SB_BOTTOM:
+			scroll_pos = scroll_max_pos;
+			break;
+		case SB_LINEDOWN:
+			scroll_pos += SCROLL_DELTA_LINE;
+			break;
+		case SB_LINEUP:
+			scroll_pos -= SCROLL_DELTA_LINE;
+			break;
+		case SB_PAGEDOWN:
+			scroll_pos += SCROLL_DELTA_PAGE;
+			break;
+		case SB_PAGEUP:
+			scroll_pos -= SCROLL_DELTA_PAGE;
+			break;
+		case SB_THUMBPOSITION:
+		case SB_THUMBTRACK:
+			scroll_pos = HIWORD(wparam);
+			break;
+		case SB_TOP:
+			scroll_pos = scroll_min_pos;
+			break;
+		}
+
+		if (scroll_pos < scroll_min_pos)
+			scroll_pos = scroll_min_pos;
+		else if (scroll_pos > scroll_max_pos)
+			scroll_pos = scroll_max_pos;
+
+		if (scroll_pos != scroll_pos_old)
+		{
+			SetScrollPos(dlgwnd, SB_VERT, scroll_pos, TRUE);
+			ScrollWindow(dlgwnd, 0, scroll_pos_old - scroll_pos, NULL, NULL);
+		}
+		break;
+
 	default:
 		handled = FALSE;
 		break;
@@ -207,7 +354,7 @@ static INT_PTR CALLBACK dialog_proc(HWND dlgwnd, UINT msg, WPARAM wparam, LPARAM
 //	dialog_write
 //============================================================
 
-static int dialog_write(struct dialog_info *di, const void *ptr, size_t sz, int align)
+static int dialog_write(struct _dialog_box *di, const void *ptr, size_t sz, int align)
 {
 	HGLOBAL newhandle;
 	size_t base;
@@ -255,9 +402,11 @@ static int dialog_write(struct dialog_info *di, const void *ptr, size_t sz, int 
 //	dialog_write_string
 //============================================================
 
-static int dialog_write_string(struct dialog_info *di, const char *str)
+static int dialog_write_string(dialog_box *di, const char *str)
 {
 	const WCHAR *wstr;
+	if (!str)
+		str = "";
 	wstr = A2W(str);	
 	return dialog_write(di, wstr, (wcslen(wstr) + 1) * sizeof(WCHAR), 2);
 }
@@ -266,8 +415,8 @@ static int dialog_write_string(struct dialog_info *di, const char *str)
 //	dialog_write_item
 //============================================================
 
-static int dialog_write_item(struct dialog_info *di, DWORD style, short x, short y,
-	 short cx, short cy, const char *str, WORD class_atom)
+static int dialog_write_item(dialog_box *di, DWORD style, short x, short y,
+	 short width, short height, const char *str, WORD class_atom, WORD *id)
 {
 	DLGITEMTEMPLATE item_template;
 	WORD w[2];
@@ -276,8 +425,8 @@ static int dialog_write_item(struct dialog_info *di, DWORD style, short x, short
 	item_template.style = style;
 	item_template.x = x;
 	item_template.y = y;
-	item_template.cx = cx;
-	item_template.cy = cy;
+	item_template.cx = width;
+	item_template.cy = height;
 	item_template.id = di->item_count + 1;
 
 	if (dialog_write(di, &item_template, sizeof(item_template), 4))
@@ -296,6 +445,9 @@ static int dialog_write_item(struct dialog_info *di, DWORD style, short x, short
 		return 1;
 
 	di->item_count++;
+
+	if (id)
+		*id = di->item_count;
 	return 0;
 }
 
@@ -303,7 +455,7 @@ static int dialog_write_item(struct dialog_info *di, DWORD style, short x, short
 //	dialog_add_trigger
 //============================================================
 
-static int dialog_add_trigger(struct dialog_info *di, WORD dialog_item,
+static int dialog_add_trigger(struct _dialog_box *di, WORD dialog_item,
 	WORD trigger_flags, UINT message, trigger_function trigger_proc,
 	WPARAM wparam, LPARAM lparam, UINT16 *result)
 {
@@ -334,17 +486,97 @@ static int dialog_add_trigger(struct dialog_info *di, WORD dialog_item,
 }
 
 //============================================================
+//	dialog_add_object
+//============================================================
+
+static int dialog_add_object(dialog_box *di, HGDIOBJ obj)
+{
+	int i;
+	struct dialog_object_pool *objpool;
+
+	objpool = di->objpool;
+
+	if (!di->objpool)
+	{
+		objpool = malloc(sizeof(struct dialog_object_pool));
+		if (!objpool)
+			return 1;
+		memset(objpool, 0, sizeof(struct dialog_object_pool));
+		di->objpool = objpool;
+	}
+
+
+	for (i = 0; i < sizeof(objpool->objects) / sizeof(objpool->objects[0]); i++)
+	{
+		if (!objpool->objects[i])
+			break;
+	}
+	if (i >= sizeof(objpool->objects) / sizeof(objpool->objects[0]))
+		return 1;
+
+	objpool->objects[i] = obj;
+	return 0;
+}
+
+
+
+//============================================================
+//	dialog_scrollbar_init
+//============================================================
+
+static LRESULT dialog_scrollbar_init(dialog_box *dialog, HWND dlgwnd, UINT message, WPARAM wparam, LPARAM lparam)
+{
+	SCROLLINFO si;
+
+	calc_dlgunits_multiple();
+
+	memset(&si, 0, sizeof(si));
+	si.cbSize = sizeof(si);
+	si.nMin  = pixels_to_ydlgunits * 0;
+	si.nMax  = pixels_to_ydlgunits * dialog->size_y;
+	si.nPage = pixels_to_ydlgunits * MAX_DIALOG_HEIGHT;
+	si.fMask = SIF_PAGE | SIF_RANGE;
+
+	SetScrollInfo(dlgwnd, SB_VERT, &si, TRUE);
+	return 0;
+}
+
+
+
+//============================================================
+//	dialog_add_scrollbar
+//============================================================
+
+static int dialog_add_scrollbar(dialog_box *dialog)
+{
+	if (dialog_add_trigger(dialog, 0, TRIGGER_INITDIALOG, 0, dialog_scrollbar_init, 0, 0, NULL))
+		return 1;
+
+	dialog->style |= WS_VSCROLL;
+	return 0;
+}
+
+
+
+//============================================================
 //	dialog_prime
 //============================================================
 
-static void dialog_prime(struct dialog_info *di)
+static void dialog_prime(dialog_box *di)
 {
 	DLGTEMPLATE *dlg_template;
 
+	if (di->size_y > MAX_DIALOG_HEIGHT)
+	{
+		di->size_x += DIM_SCROLLBAR_WIDTH;
+		dialog_add_scrollbar(di);
+	}
+
 	dlg_template = (DLGTEMPLATE *) GlobalLock(di->handle);
 	dlg_template->cdit = di->item_count;
-	dlg_template->cx = di->cx;
-	dlg_template->cy = di->cy;
+	dlg_template->cx = di->size_x;
+	dlg_template->cy = (di->size_y > MAX_DIALOG_HEIGHT) ? MAX_DIALOG_HEIGHT : di->size_y;
+	dlg_template->style = di->style;
 	GlobalUnlock(di->handle);
 }
 
@@ -352,7 +584,7 @@ static void dialog_prime(struct dialog_info *di)
 //	dialog_get_combo_value
 //============================================================
 
-static LRESULT dialog_get_combo_value(HWND dialog_item, UINT message, WPARAM wparam, LPARAM lparam)
+static LRESULT dialog_get_combo_value(dialog_box *dialog, HWND dialog_item, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	int idx;
 	idx = SendMessage(dialog_item, CB_GETCURSEL, 0, 0);
@@ -365,25 +597,22 @@ static LRESULT dialog_get_combo_value(HWND dialog_item, UINT message, WPARAM wpa
 //	win_dialog_init
 //============================================================
 
-void *win_dialog_init(const char *title)
+dialog_box *win_dialog_init(const char *title)
 {
-	struct dialog_info *di;
+	struct _dialog_box *di;
 	DLGTEMPLATE dlg_template;
 	WORD w[2];
 
 	// create the dialog structure
-	di = malloc(sizeof(struct dialog_info));
+	di = malloc(sizeof(struct _dialog_box));
 	if (!di)
 		goto error;
 	memset(di, 0, sizeof(*di));
 
 	pool_init(&di->mempool);
 
-	di->cx = 0;
-	di->cy = 0;
-
 	memset(&dlg_template, 0, sizeof(dlg_template));
-	dlg_template.style = WS_POPUP | WS_BORDER | WS_SYSMENU | DS_MODALFRAME | WS_CAPTION | DS_SETFONT;
+	dlg_template.style = di->style = DIALOG_STYLE;
 	dlg_template.x = 10;
 	dlg_template.y = 10;
 	if (dialog_write(di, &dlg_template, sizeof(dlg_template), 4))
@@ -403,7 +632,7 @@ void *win_dialog_init(const char *title)
 	if (dialog_write_string(di, FONT_FACE))
 		goto error;
 
-	return (void *) di;
+	return di;
 
 error:
 	if (di)
@@ -412,28 +641,61 @@ error:
 }
 
 
+
+//============================================================
+//	dialog_new_control
+//============================================================
+
+static void dialog_new_control(struct _dialog_box *di, short *x, short *y)
+{
+	*x = di->pos_x + DIM_HORIZONTAL_SPACING;
+	*y = di->pos_y + DIM_VERTICAL_SPACING;
+}
+
+
+
+//============================================================
+//	dialog_finish_control
+//============================================================
+
+static void dialog_finish_control(struct _dialog_box *di, short x, short y)
+{
+	di->pos_y = y;
+
+	/* update dialog size */
+	if (x > di->size_x)
+		di->size_x = x;
+	if (y > di->size_y)
+		di->size_y = y;
+	if (x > di->cursize_x)
+		di->cursize_x = x;
+	if (y > di->cursize_y)
+		di->cursize_y = y;
+}
+
+
+
 //============================================================
 //	win_dialog_add_combobox
 //============================================================
 
-int win_dialog_add_combobox(void *dialog, const char *item_label, UINT16 *value)
+int win_dialog_add_combobox(dialog_box *dialog, const char *item_label, UINT16 *value)
 {
-	struct dialog_info *di = (struct dialog_info *) dialog;
+	dialog_box *di = dialog;
 	short x;
 	short y;
 
 	assert(item_label);
 
-	x = DIM_HORIZONTAL_SPACING;
-	y = di->cy + DIM_VERTICAL_SPACING;
+	dialog_new_control(di, &x, &y);
 
 	if (dialog_write_item(di, WS_CHILD | WS_VISIBLE | SS_LEFT,
-			x, y, DIM_LABEL_WIDTH, DIM_COMBO_ROW_HEIGHT, item_label, DLGITEM_STATIC))
+			x, y, DIM_LABEL_WIDTH, DIM_COMBO_ROW_HEIGHT, item_label, DLGITEM_STATIC, NULL))
 		return 1;
 
 	x += DIM_LABEL_WIDTH + DIM_HORIZONTAL_SPACING;
 	if (dialog_write_item(di, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP,
-			x, y, DIM_COMBO_WIDTH, DIM_COMBO_ROW_HEIGHT * 8, "", DLGITEM_COMBOBOX))
+			x, y, DIM_COMBO_WIDTH, DIM_COMBO_ROW_HEIGHT * 8, "", DLGITEM_COMBOBOX, NULL))
 		return 1;
 	di->combo_string_count = 0;
 	di->combo_default_value = *value;
@@ -442,10 +704,9 @@ int win_dialog_add_combobox(void *dialog, const char *item_label, UINT16 *value)
 		return 1;
 
 	x += DIM_COMBO_WIDTH + DIM_HORIZONTAL_SPACING;
+	y += DIM_COMBO_ROW_HEIGHT + DIM_VERTICAL_SPACING * 2;
 
-	if (x > di->cx)
-		di->cx = x;
-	di->cy += DIM_COMBO_ROW_HEIGHT + DIM_VERTICAL_SPACING * 2;
+	dialog_finish_control(di, x, y);
 	return 0;
 }
 
@@ -453,9 +714,9 @@ int win_dialog_add_combobox(void *dialog, const char *item_label, UINT16 *value)
 //	win_dialog_add_combobox_item
 //============================================================
 
-int win_dialog_add_combobox_item(void *dialog, const char *item_label, int item_data)
+int win_dialog_add_combobox_item(dialog_box *dialog, const char *item_label, int item_data)
 {
-	struct dialog_info *di = (struct dialog_info *) dialog;
+	dialog_box *di = dialog;
 	if (dialog_add_trigger(di, di->item_count, TRIGGER_INITDIALOG, CB_ADDSTRING, NULL, 0, (LPARAM) item_label, NULL))
 		return 1;
 	di->combo_string_count++;
@@ -575,7 +836,7 @@ static INT_PTR CALLBACK seqselect_wndproc(HWND editwnd, UINT msg, WPARAM wparam,
 //	seqselect_setup
 //============================================================
 
-static LRESULT seqselect_setup(HWND editwnd, UINT message, WPARAM wparam, LPARAM lparam)
+static LRESULT seqselect_setup(dialog_box *dialog, HWND editwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	char buf[256];
 	struct seqselect_stuff *stuff = (struct seqselect_stuff *) lparam;
@@ -594,7 +855,7 @@ static LRESULT seqselect_setup(HWND editwnd, UINT message, WPARAM wparam, LPARAM
 //	seqselect_apply
 //============================================================
 
-static LRESULT seqselect_apply(HWND editwnd, UINT message, WPARAM wparam, LPARAM lparam)
+static LRESULT seqselect_apply(dialog_box *dialog, HWND editwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	struct seqselect_stuff *stuff;
 	LONG_PTR lp;
@@ -609,7 +870,7 @@ static LRESULT seqselect_apply(HWND editwnd, UINT message, WPARAM wparam, LPARAM
 //	dialog_add_single_seqselect
 //============================================================
 
-static int dialog_add_single_seqselect(struct dialog_info *di, short x, short y,
+static int dialog_add_single_seqselect(struct _dialog_box *di, short x, short y,
 	short cx, short cy, struct InputPort *port)
 {
 	struct seqselect_stuff *stuff;
@@ -617,8 +878,8 @@ static int dialog_add_single_seqselect(struct dialog_info *di, short x, short y,
 
 	code = input_port_seq(port);
 
-	if (dialog_write_item(di, WS_CHILD | WS_VISIBLE | ES_CENTER,
-			x, y, cx, cy, "", DLGITEM_EDIT))
+	if (dialog_write_item(di, WS_CHILD | WS_VISIBLE | SS_ENDELLIPSIS | ES_CENTER | SS_SUNKEN,
+			x, y, cx, cy, "", DLGITEM_EDIT, NULL))
 		return 1;
 	stuff = (struct seqselect_stuff *) pool_malloc(&di->mempool, sizeof(struct seqselect_stuff));
 	if (!stuff)
@@ -637,138 +898,49 @@ static int dialog_add_single_seqselect(struct dialog_info *di, short x, short y,
 //	win_dialog_add_seqselect
 //============================================================
 
-int win_dialog_add_portselect(void *dialog, struct InputPort *port, int *span)
+int win_dialog_add_portselect(dialog_box *dialog, struct InputPort *port, RECT *r)
 {
-	struct dialog_info *di = (struct dialog_info *) dialog;
+	dialog_box *di = dialog;
 	short x;
 	short y;
-	struct InputPort *arranged_ports[4];
-	char buf[256];
-	int i;
-	int rows;
+	short height;
+	short width;
 	const char *port_name;
-	const char *last_port_name = NULL;
 
-	*span = inputx_orient_ports(port, arranged_ports);
+	port_name = input_port_name(port);
 
-	// Come up with 
-	if (*span == 1)
+	if (!r)
 	{
-		port_name = input_port_name(port);
-	}
-	else
-	{
-		for (i = 0; i < sizeof(arranged_ports) / sizeof(arranged_ports[0]); i++)
-		{
-			if (arranged_ports[i])
-			{
-				port_name = input_port_name(arranged_ports[i]);
-				if (i == 0)
-				{
-					strncpyz(buf, port_name, sizeof(buf) / sizeof(buf[0]));
-					last_port_name = port_name;
-				}
-				else if (strcmp(port_name, last_port_name))
-				{
-					strncatz(buf, " / ", sizeof(buf) / sizeof(buf[0]));
-					strncatz(buf, port_name, sizeof(buf) / sizeof(buf[0]));
-					last_port_name = port_name;
-				}
-			}
-		}
-		port_name = buf;
-	}
+		dialog_new_control(di, &x, &y);
 
-	rows = arranged_ports[2] ? (arranged_ports[0] ? 3 : 2) : 1;
+		if (dialog_write_item(di, WS_CHILD | WS_VISIBLE | SS_LEFT, x, y, 
+				DIM_LABEL_WIDTH, DIM_NORMAL_ROW_HEIGHT, port_name, DLGITEM_STATIC, NULL))
+			return 1;
+		x += DIM_LABEL_WIDTH + DIM_HORIZONTAL_SPACING;
 
-	x = DIM_HORIZONTAL_SPACING;
-	y = di->cy + DIM_VERTICAL_SPACING;
-
-	if (dialog_write_item(di, WS_CHILD | WS_VISIBLE | SS_LEFT,
-			x, y + (rows - 1) * (DIM_NORMAL_ROW_HEIGHT + DIM_VERTICAL_SPACING * 2)/2,
-			DIM_LABEL_WIDTH, DIM_NORMAL_ROW_HEIGHT, port_name, DLGITEM_STATIC))
-		return 1;
-	x += DIM_LABEL_WIDTH + DIM_HORIZONTAL_SPACING;
-
-	switch(*span) {
-	case 1:
 		if (dialog_add_single_seqselect(di, x, y, DIM_SEQ_WIDTH, DIM_NORMAL_ROW_HEIGHT, port))
 			return 1;
 		y += DIM_VERTICAL_SPACING + DIM_NORMAL_ROW_HEIGHT;
 		x += DIM_SEQ_WIDTH + DIM_HORIZONTAL_SPACING;
-		break;
 
-	case 2:
-		switch(rows) {
-		case 1:
-			/* left */
-			if (dialog_add_single_seqselect(di, x, y,
-					DIM_SEQ_WIDTH, DIM_NORMAL_ROW_HEIGHT, arranged_ports[0]))
-				return 1;
-
-			/* right */
-			if (dialog_add_single_seqselect(di, x, y,
-					DIM_SEQ_WIDTH, DIM_NORMAL_ROW_HEIGHT, arranged_ports[1]))
-				return 1;
-			y += DIM_VERTICAL_SPACING + DIM_NORMAL_ROW_HEIGHT;
-			x += DIM_SEQ_WIDTH*2 + DIM_HORIZONTAL_SPACING*2;
-			break;
-
-		case 2:
-			/* up */
-			if (dialog_add_single_seqselect(di, x, y, DIM_SEQ_WIDTH, DIM_NORMAL_ROW_HEIGHT, arranged_ports[2]))
-				return 1;
-			y += DIM_VERTICAL_SPACING + DIM_NORMAL_ROW_HEIGHT;
-
-			/* down */
-			if (dialog_add_single_seqselect(di, x, y, DIM_SEQ_WIDTH, DIM_NORMAL_ROW_HEIGHT, arranged_ports[3]))
-				return 1;
-			y += DIM_VERTICAL_SPACING + DIM_NORMAL_ROW_HEIGHT;
-			x += DIM_SEQ_WIDTH + DIM_HORIZONTAL_SPACING;
-			break;
-
-		default:
-			assert(0);
-			return 1;
-		}
-		break;
-
-	case 4:
-		/* up */
-		if (dialog_add_single_seqselect(di, x + (DIM_SEQ_WIDTH + DIM_HORIZONTAL_SPACING) / 2, y,
-				DIM_SEQ_WIDTH, DIM_NORMAL_ROW_HEIGHT, arranged_ports[2]))
-			return 1;
-		y += DIM_VERTICAL_SPACING + DIM_NORMAL_ROW_HEIGHT;
-
-		/* left */
-		if (dialog_add_single_seqselect(di, x, y,
-				DIM_SEQ_WIDTH, DIM_NORMAL_ROW_HEIGHT, arranged_ports[0]))
-			return 1;
-
-		/* right */
-		if (dialog_add_single_seqselect(di, x + DIM_SEQ_WIDTH + DIM_HORIZONTAL_SPACING, y,
-				DIM_SEQ_WIDTH, DIM_NORMAL_ROW_HEIGHT, arranged_ports[1]))
-			return 1;
-		y += DIM_VERTICAL_SPACING + DIM_NORMAL_ROW_HEIGHT;
-
-		/* down */
-		if (dialog_add_single_seqselect(di, x + (DIM_SEQ_WIDTH + DIM_HORIZONTAL_SPACING) / 2, y,
-				DIM_SEQ_WIDTH, DIM_NORMAL_ROW_HEIGHT, arranged_ports[3]))
-			return 1;
-		y += DIM_VERTICAL_SPACING + DIM_NORMAL_ROW_HEIGHT;
-		x += DIM_SEQ_WIDTH*2 + DIM_HORIZONTAL_SPACING*2;
-		break;
-
-	default:
-		assert(0);
-		return 1;
+		dialog_finish_control(di, x, y);
 	}
-	port++;
+	else
+	{
+		x = r->left;
+		y = r->top;
+		width = r->right - r->left;
+		height = r->bottom - r->top;
 
-	/* update dialog size */
-	if (x > di->cx)
-		di->cx = x;
-	di->cy = y;
+		calc_dlgunits_multiple();
+		x		/= pixels_to_xdlgunits;
+		y		/= pixels_to_ydlgunits;
+		width	/= pixels_to_xdlgunits;
+		height	/= pixels_to_ydlgunits;
+
+		if (dialog_add_single_seqselect(di, x, y, width, height, port))
+			return 1;
+	}
 	return 0;
 }
 
@@ -776,24 +948,130 @@ int win_dialog_add_portselect(void *dialog, struct InputPort *port, int *span)
 //	win_dialog_add_standard_buttons
 //============================================================
 
-int win_dialog_add_standard_buttons(void *dialog)
+int win_dialog_add_standard_buttons(dialog_box *dialog)
 {
-	struct dialog_info *di = (struct dialog_info *) dialog;
+	dialog_box *di = dialog;
 	short x;
 	short y;
 
-	x = di->cx - DIM_HORIZONTAL_SPACING - DIM_BUTTON_WIDTH;
-	y = di->cy + DIM_VERTICAL_SPACING;
+	x = di->size_x - DIM_HORIZONTAL_SPACING - DIM_BUTTON_WIDTH;
+	y = di->size_y + DIM_VERTICAL_SPACING;
 
 	if (dialog_write_item(di, WS_CHILD | WS_VISIBLE | SS_LEFT,
-			x, y, DIM_BUTTON_WIDTH, DIM_BUTTON_ROW_HEIGHT, DLGTEXT_CANCEL, DLGITEM_BUTTON))
+			x, y, DIM_BUTTON_WIDTH, DIM_BUTTON_ROW_HEIGHT, DLGTEXT_CANCEL, DLGITEM_BUTTON, NULL))
 		return 1;
 
 	x -= DIM_HORIZONTAL_SPACING + DIM_BUTTON_WIDTH;
 	if (dialog_write_item(di, WS_CHILD | WS_VISIBLE | SS_LEFT,
-			x, y, DIM_BUTTON_WIDTH, DIM_BUTTON_ROW_HEIGHT, DLGTEXT_OK, DLGITEM_BUTTON))
+			x, y, DIM_BUTTON_WIDTH, DIM_BUTTON_ROW_HEIGHT, DLGTEXT_OK, DLGITEM_BUTTON, NULL))
 		return 1;
-	di->cy += DIM_BUTTON_ROW_HEIGHT + DIM_VERTICAL_SPACING * 2;
+	di->size_y += DIM_BUTTON_ROW_HEIGHT + DIM_VERTICAL_SPACING * 2;
+	return 0;
+}
+
+//============================================================
+//	create_png_bitmap
+//============================================================
+
+static HBITMAP create_png_bitmap(const struct png_info *png)
+{
+	HBITMAP bitmap;
+	BITMAPINFOHEADER bitmap_header;
+	UINT8 *bitmap_data;
+	UINT8 *src;
+	UINT8 *dst;
+	int x, y;
+	HDC dc;
+		
+	memset(&bitmap_header, 0, sizeof(bitmap_header));
+	bitmap_header.biSize = sizeof(BITMAPINFOHEADER);
+	bitmap_header.biWidth = png->width;
+	bitmap_header.biHeight = -png->height;
+	bitmap_header.biPlanes = 1;
+	bitmap_header.biBitCount = 24;
+	bitmap_header.biCompression = BI_RGB;
+
+	bitmap_data = alloca(png->width * png->height * 3);
+	src = png->image;
+	dst = bitmap_data;
+	for (y = 0; y < png->height; y++)
+	{
+		for (x = 0; x < png->width; x++)
+		{
+			switch(png->color_type) {
+			case 0:		// 8bpp grayscale case
+				dst[2] = src[0];
+				dst[1] = src[0];
+				dst[0] = src[0];
+				src++;
+				break;
+
+			case 2:		// 32bpp non-alpha case
+				dst[2] = src[0];
+				dst[1] = src[1];
+				dst[0] = src[2];
+				src += 3;
+				break;
+
+			case 3:		// 8bpp palettized case
+				assert(png->palette);
+				dst[2] = png->palette[*src * 3 + 0];
+				dst[1] = png->palette[*src * 3 + 1];
+				dst[0] = png->palette[*src * 3 + 2];
+				src++;
+				break;
+			}
+			dst += 3;
+		}
+	}
+
+	dc = GetDC(NULL);
+	bitmap = CreateDIBitmap(dc, &bitmap_header, CBM_INIT, bitmap_data, (BITMAPINFO *) &bitmap_header, DIB_RGB_COLORS);
+	ReleaseDC(NULL, dc);
+	return bitmap;
+}
+
+//============================================================
+//	win_dialog_add_image
+//============================================================
+
+int win_dialog_add_image(dialog_box *dialog, const struct png_info *png)
+{
+	WORD id;
+	HBITMAP bitmap;
+	short x, y;
+	short width, height;
+
+	calc_dlgunits_multiple();
+	width = png->width / pixels_to_xdlgunits;
+	height = png->height / pixels_to_ydlgunits;
+
+	bitmap = create_png_bitmap(png);
+	if (!bitmap)
+		return 1;
+
+	dialog_new_control(dialog, &x, &y);
+	if (dialog_write_item(dialog, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_BITMAP,
+			x, y, width, height, "", DLGITEM_STATIC, &id))
+		return 1;
+	if (dialog_add_trigger(dialog, id, TRIGGER_INITDIALOG, STM_SETIMAGE, NULL, (WPARAM)IMAGE_BITMAP, (LPARAM) bitmap, NULL))
+		return 1;
+	if (dialog_add_object(dialog, bitmap))
+		return 1;
+	x += width;
+	y += height;
+	dialog_finish_control(dialog, x, y);
+	return 0;
+}
+
+//============================================================
+//	win_dialog_add_separator
+//============================================================
+
+int win_dialog_add_separator(dialog_box *dialog)
+{
+	dialog->home_y = dialog->cursize_y;
+	dialog->cursize_x = 0;
 	return 0;
 }
 
@@ -801,28 +1079,37 @@ int win_dialog_add_standard_buttons(void *dialog)
 //	win_dialog_exit
 //============================================================
 
-void win_dialog_exit(void *dialog)
+void win_dialog_exit(dialog_box *dialog)
 {
-	struct dialog_info *di = (struct dialog_info *) dialog;
+	int i;
+	struct dialog_object_pool *objpool;
 
-	assert(di);
-	if (di->handle)
-		GlobalFree(di->handle);
+	assert(dialog);
 
-	pool_exit(&di->mempool);
-	free(di);
+	objpool = dialog->objpool;
+	if (objpool)
+	{
+		for (i = 0; i < sizeof(objpool->objects) / sizeof(objpool->objects[0]); i++)
+			DeleteObject(objpool->objects[i]);
+		free(objpool);
+	}
+
+	if (dialog->handle)
+		GlobalFree(dialog->handle);
+	pool_exit(&dialog->mempool);
+	free(dialog);
 }
 
 //============================================================
 //	win_dialog_runmodal
 //============================================================
 
-void win_dialog_runmodal(void *dialog)
+void win_dialog_runmodal(dialog_box *dialog)
 {
-	struct dialog_info *di;
+	struct _dialog_box *di;
 	extern void win_timer_enable(int enabled);
 	
-	di = (struct dialog_info *) dialog;
+	di = (struct _dialog_box *) dialog;
 	assert(di);
 
 	// finishing touches on the dialog

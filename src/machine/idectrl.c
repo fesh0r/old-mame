@@ -42,9 +42,9 @@
 
 #define IDE_DISK_SECTOR_SIZE		512
 
-#define TIME_PER_SECTOR			(TIME_IN_USEC(100))
+#define TIME_PER_SECTOR				(TIME_IN_USEC(100))
 #define TIME_PER_MULTISECTOR		(TIME_IN_USEC(145))
-#define TIME_PER_ROTATION		(TIME_IN_HZ(5400/60))
+#define TIME_PER_ROTATION			(TIME_IN_HZ(5400/60))
 #define TIME_SECURITY_ERROR		(TIME_IN_MSEC(1000))
 
 #define IDE_STATUS_ERROR			0x01
@@ -648,7 +648,7 @@ static void write_buffer_to_dma(struct ide_state *ide)
 {
 	int bytesleft = IDE_DISK_SECTOR_SIZE;
 	UINT8 *data = ide->buffer;
-
+	
 //	LOG(("Writing sector to %08X\n", ide->dma_address));
 
 	/* loop until we've consumed all bytes */
@@ -663,7 +663,7 @@ static void write_buffer_to_dma(struct ide_state *ide)
 				LOG(("DMA Out of buffer space!\n"));
 				return;
 			}
-
+		
 			/* fetch the address */
 			ide->dma_address = cpunum_read_byte(ide->dma_cpu, ide->dma_descriptor++ ^ ide->dma_address_xor);
 			ide->dma_address |= cpunum_read_byte(ide->dma_cpu, ide->dma_descriptor++ ^ ide->dma_address_xor) << 8;
@@ -680,10 +680,10 @@ static void write_buffer_to_dma(struct ide_state *ide)
 			ide->dma_bytes_left &= 0xfffe;
 			if (ide->dma_bytes_left == 0)
 				ide->dma_bytes_left = 0x10000;
-
+			
 //			LOG(("New DMA descriptor: address = %08X  bytes = %04X  last = %d\n", ide->dma_address, ide->dma_bytes_left, ide->dma_last_buffer));
 		}
-
+		
 		/* write the next byte */
 		cpunum_write_byte(ide->dma_cpu, ide->dma_address++, *data++);
 		ide->dma_bytes_left--;
@@ -721,8 +721,8 @@ static void read_sector_done(int which)
 		if (--ide->sectors_until_int == 0 || ide->sector_count == 1)
 		{
 			ide->sectors_until_int = ((ide->command == IDE_COMMAND_READ_MULTIPLE_BLOCK) ? ide->block_count : 1);
-			signal_interrupt(ide);
-		}
+		signal_interrupt(ide);
+	}
 
 		/* keep going for DMA */
 		if (ide->dma_active)
@@ -804,7 +804,7 @@ static void read_buffer_from_dma(struct ide_state *ide)
 {
 	int bytesleft = IDE_DISK_SECTOR_SIZE;
 	UINT8 *data = ide->buffer;
-
+	
 //	LOG(("Reading sector from %08X\n", ide->dma_address));
 
 	/* loop until we've consumed all bytes */
@@ -819,7 +819,7 @@ static void read_buffer_from_dma(struct ide_state *ide)
 				LOG(("DMA Out of buffer space!\n"));
 				return;
 			}
-
+		
 			/* fetch the address */
 			ide->dma_address = cpunum_read_byte(ide->dma_cpu, ide->dma_descriptor++ ^ ide->dma_address_xor);
 			ide->dma_address |= cpunum_read_byte(ide->dma_cpu, ide->dma_descriptor++ ^ ide->dma_address_xor) << 8;
@@ -836,10 +836,10 @@ static void read_buffer_from_dma(struct ide_state *ide)
 			ide->dma_bytes_left &= 0xfffe;
 			if (ide->dma_bytes_left == 0)
 				ide->dma_bytes_left = 0x10000;
-
+			
 //			LOG(("New DMA descriptor: address = %08X  bytes = %04X  last = %d\n", ide->dma_address, ide->dma_bytes_left, ide->dma_last_buffer));
 		}
-
+		
 		/* read the next byte */
 		*data++ = cpunum_read_byte(ide->dma_cpu, ide->dma_address++);
 		ide->dma_bytes_left--;
@@ -879,13 +879,13 @@ static void write_sector_done(int which)
 			ide->sectors_until_int = ((ide->command == IDE_COMMAND_WRITE_MULTIPLE_BLOCK) ? ide->block_count : 1);
 			signal_interrupt(ide);
 		}
-
+		
 		/* signal an interrupt if there's more data needed */
 		if (ide->sector_count > 0)
 			ide->sector_count--;
 		if (ide->sector_count == 0)
 			ide->status &= ~IDE_STATUS_BUFFER_READY;
-
+		
 		/* keep going for DMA */
 		if (ide->dma_active && ide->sector_count != 0)
 		{
@@ -964,7 +964,7 @@ void handle_command(struct ide_state *ide, UINT8 command)
 
 			/* start the read going */
 			if (ide->bus_master_command & 1)
-				read_next_sector(ide);
+			read_next_sector(ide);
 			break;
 
 		case IDE_COMMAND_WRITE_MULTIPLE:

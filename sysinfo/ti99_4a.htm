@@ -23,24 +23,32 @@ This TI-99/4a driver offers a high level of compatibility, and implements<br>
 <p><b>several optional extensions:</b><br>
 * Image cartridges are in V9t9 format (see below for instructions).<br>
 * Speech synthesis is emulated completely.  The speech synthesizer occasionally<br>
-generates some weird noises instead of the expected phonemes.  I think the<br>
+generates some weird noise instead of the expected phonemes.  I think the<br>
 actual reason for this issue is the original ti-99/4(a) speech synthesizer did<br>
 not use the tms5220 chip that is used under emulation: I think I have read<br>
 somewhere that TI 99/8, which did use a tms5220, was affected by similar bugs.<br>
 * Three types of memory expansion cards are emulated: the original TI 32kbyte<br>
-card, and the Super AMS card, and the Foundation card.<br>
+card, the Super AMS card, and the Foundation card.<br>
 * Any of three different floppy disk controllers can be emulated: TI's original<br>
 SD disk controller, SNUG's BwG disk controller, and Myarc's HFDC disk<br>
-controller.  Note that neither the hard disk nor tape interface of the HFDC<br>
-card are emulated.  These disk controllers have different abilities: TI's<br>
-controller only supports single density disks with 9 sectors per track and 40<br>
-tracks per sides; the BwG controller supports double density, and it uses no<br>
-VDP RAM at all; the HFDC controller supports 80-track disks as well (high<br>
-density support is incomplete and non-functional because of TI99 bugs).  Four<br>
-floppy disk drives are emulated, but the TI controller only supports three of<br>
-them (the fourth disk drive will be ignored if the TI controller is selected).<br>
-Floppy disk images are in a MESS-specific format that is compatible with<br>
-single-sided V9T9 disk images (but not double-sided ones).<br>
+controller.  These disk controllers have different abilities: TI's controller<br>
+only supports single density disks with 9 sectors per track and 40 tracks per<br>
+sides; the BwG controller supports double density, and it uses no VDP RAM at<br>
+all; the HFDC controller supports 80-track floppy disks (high density support<br>
+is incomplete and non-functional on the TI-99 because of issues with the DSR,<br>
+though it works fine on the Geneve).  Four floppy disk drives are emulated,<br>
+though the TI controller only supports three of them (the fourth disk drive<br>
+will be ignored by the TI-99 if the TI controller is selected, but it will work<br>
+fine with other controllers).  Floppy disk images are in V9T9 format.  The<br>
+older MESS-specific format that was used in MESS .69 and earlier has been<br>
+abandonned; note that this format was compatible with single-sided V9T9 disk<br>
+images (but not double-sided ones).<br>
+* In addition to the floppy drives, the HFDC can support up to 3 MFM hard<br>
+disks.  If you want to use these hard disks, you must use the HFDC as a floppy<br>
+disk controller.  Disk images use a variant of the MAME harddisk format that<br>
+supports sector sizes other than 512 (the sector size for HFDC harddisks is<br>
+256).  (BTW, early HFDC cards also included a tape interface  which is not<br>
+emulated.)<br>
 * Thierry Nouspickel's IDE card prototype is emulated.  A description can be<br>
 found on Thierry's page along with the required disk-based DSR.  Note that<br>
 there are two minor errors in the DSR disk image: the byte at offset &gt;12 must<br>
@@ -49,9 +57,9 @@ to &gt;20; the byte at offset &gt;13 should be edited from &gt;02 to &gt;01, too
 is not a critical issue at present.  Note that the disk image does not work<br>
 very well with the BwG disk controller, though I cannot figure out why (it<br>
 works fine with both the TI controller and the HFDC controller).  The hard disk<br>
-image is a standard MAME disk image; since MESS does not support image diff<br>
-file currently, only un-compressed images can be written to (compressed images<br>
-ARE supported, but only as read-only disks).<br>
+image is in the standard MESS/MAME hardddisk format; since MESS does not<br>
+support image diff file currently, only un-compressed images can be written to<br>
+(compressed images ARE supported, but only as read-only disks).<br>
 * Serial port and PIO emulation is incomplete.  On the one hand, nothing useful<br>
 can be done with the RS232 interface, but, on the other hand, the PIO interface<br>
 enables you to redirect PIO output to a file and save listings to this file by<br>
@@ -113,7 +121,7 @@ than $100, while suffering heavy losses.  So, by the end of 1983, TI had<br>
 abandoned TI99/4a, its prototype successors, and withdrawn from the home<br>
 computer market.<br>
 <hr>
-<center><font size=-2>Generated on Tue Jul 15 11:11:04 2003
+<center><font size=-2>Generated on Sun Aug 10 19:24:04 2003
 </font></center>
 </body>
 </html>

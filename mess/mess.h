@@ -1,16 +1,35 @@
-#include <stdarg.h>
+/*********************************************************************
+
+	mess.h
+
+	Core MESS headers
+
+*********************************************************************/
 
 #ifndef MESS_H
 #define MESS_H
+
+#include <stdarg.h>
 
 #include "osdepend.h"
 #include "device.h"
 #include "driver.h"
 #include "image.h"
+#include "artworkx.h"
 
-extern int devices_inited;
+/***************************************************************************
+
+	Constants
+
+***************************************************************************/
 
 #define LCD_FRAMES_PER_SECOND	30
+
+
+
+/**************************************************************************/
+
+extern int devices_inited;
 
 /* MESS_DEBUG is a debug switch (for developers only) for
    debug code, which should not be found in distributions, like testdrivers,...
@@ -58,14 +77,6 @@ int filemanager(struct mame_bitmap *bitmap, int selected);
 int tapecontrol(struct mame_bitmap *bitmap, int selected);
 void tapecontrol_gettime(char *timepos, size_t timepos_size, mess_image *img, int *curpos, int *endpos);
 #endif
-
-/* driver.h - begin */
-#define IPT_SELECT1		IPT_COIN1
-#define IPT_SELECT2		IPT_COIN2
-#define IPT_SELECT3		IPT_COIN3
-#define IPT_SELECT4		IPT_COIN4
-#define IPT_KEYBOARD	IPT_TILT
-/* driver.h - end */
 
 /* IODevice Initialisation return values.  Use these to determine if */
 /* the emulation can continue if IODevice initialisation fails */
@@ -163,19 +174,21 @@ const struct IODevice *device_find(const struct GameDriver *gamedrv, int type);
 #define RAM_STRING_BUFLEN 16
 extern UINT32 mess_ram_size;
 extern UINT8 *mess_ram;
-extern UINT32 ram_option(const struct GameDriver *gamedrv, unsigned int i);
-extern int ram_option_count(const struct GameDriver *gamedrv);
-extern int ram_is_valid_option(const struct GameDriver *gamedrv, UINT32 ram);
-extern UINT32 ram_default(const struct GameDriver *gamedrv);
-extern UINT32 ram_parse_string(const char *s);
-extern const char *ram_string(char *buffer, UINT32 ram);
-extern int ram_validate_option(void);
-extern void cpu_setbank_fromram(int bank, UINT32 ramposition, mem_read_handler rhandler, mem_write_handler whandler);
+UINT32 ram_option(const struct GameDriver *gamedrv, unsigned int i);
+int ram_option_count(const struct GameDriver *gamedrv);
+int ram_is_valid_option(const struct GameDriver *gamedrv, UINT32 ram);
+UINT32 ram_default(const struct GameDriver *gamedrv);
+UINT32 ram_parse_string(const char *s);
+const char *ram_string(char *buffer, UINT32 ram);
+int ram_validate_option(void);
+void cpu_setbank_fromram(int bank, UINT32 ramposition, mem_read_handler rhandler, mem_write_handler whandler);
 
 extern void ram_dump(const char *filename);
 
 /* gets the path to the MESS executable */
 extern const char *mess_path;
+
+void machine_hard_reset(void);
 
 #ifdef __cplusplus
 }

@@ -36,11 +36,11 @@ enum
 
 enum
 {
-	offset_rom0_8 = 0x0000,			/*  system ROM (32kbytes???) */
-
-	offset_sram_8 = 0x8000,			/* scratch RAM (2kbytes) */
-	offset_xram_8 = 0x8800,			/* extended RAM (64kbytes, expandable to almost 16MBytes) */
-	region_cpu1_len_8 = 0x18800		/* total len */
+	offset_rom0_8 = 0x0000,			/*  system ROM (32kbytes, though hexbus DSR and pascal are missing) */
+	offset_cart_8 = 0x8000,			/* cartridge ROM/RAM (2*8 kbytes) */
+	offset_sram_8 = 0xc000,			/* scratch RAM (2kbytes) */
+	offset_xram_8 = 0xc800,			/* extended RAM (64kbytes, expandable to almost 16MBytes) */
+	region_cpu1_len_8 = 0x1c800		/* total len */
 };
 
 /* offsets for region_dsr */
@@ -103,11 +103,13 @@ enum
 	input_port_config = 0,
 	input_port_mousex,			/* optional mouse */
 	input_port_mousey,									/* optional mouse */
-	input_port_keyboard,
+	input_port_keyboard,								/* /4x only */
 
 	input_port_mouse_buttons = input_port_keyboard+3,	/* /4x only: optional mouse */
-	input_port_mouse_buttons_8 = input_port_keyboard+16,/* /8 only: optional mouse */
+	input_port_mouse_buttons_8 = input_port_mousey+1,	/* /8 only: optional mouse */
 		input_port_mouse_buttons_shift = 13,			/* hack: we share this port with the wired joysticks */
+
+	input_port_keyboard_8 = input_port_mouse_buttons_8+1,/* /8 only */
 
 	input_port_caps_lock = input_port_keyboard+4,		/* /4a only */
 

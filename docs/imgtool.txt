@@ -253,12 +253,12 @@ The file date information is not supported at this time.
 The card filesystem reading/writing in imgtool has not been heavily tested.
 
 
-Ti99 floppy disk images (v9t9/pc99fm/pc99mfm/ti99_old)
+TI99 floppy disk images (v9t9/pc99fm/pc99mfm/ti99_old)
 ------------------------------------------------------
 
 These modules enable you to create and catalog ti99 images, to delete
-individual files, and to get and put files in TIFILE format.  Note that you
-cannot create images in pc99 format.
+individual files and directories, and to get and put files in TIFILE format.
+Note that you cannot create images in pc99 format.
 
 The v9t9 module supports the v9t9 disk images that is used by MESS, the pc99fm
 module supports FM-encoded pc99 images, and the pc99mfm supports MFM-encoded
@@ -307,8 +307,8 @@ Parameters for create:
     all) TI99 programs won't overwrite the disk.
 --density=[0|1|2|3]: you should probably leave this parameter to 0 to select
     the correct value automatically.  If you really want to know, 1 means
-    40-track single density (FM), 2 means 40-track double density (MFM), and 3
-    means either 80-track double density or high density (MFM).
+    single density (FM), 2 means double density (MFM), and 3 means high density
+    (MFM).
 
 Supported geometries for create:
 
@@ -339,6 +339,24 @@ Examples:
 List the catalog of image test.dsk:
 imgtool dir v9t9 test.dsk
 
+Extract file FILE1 located on image test.dsk:
+imgtool get v9t9 test.dsk FILE1
+
+Extract file FILE1 located in subdirectory SUBDIR1 on image test.dsk:
+imgtool get v9t9 test.dsk SUBDIR1.FILE1
+
+Write file FILE1 on image test.dsk:
+imgtool put v9t9 test.dsk FILE1
+(Note that file FILE1 must not exist before the command is run.  Use the delete
+command if you need to an existing file.)
+
+Delete file FILE1 located in subdirectory SUBDIR1 on image test.dsk:
+imgtool delete v9t9 test.dsk SUBDIR1.FILE1
+
+Delete subdirectory SUBDIR1 on image test.dsk:
+imgtool delete v9t9 test.dsk SUBDIR1
+(Subdirectory SUBDIR1 must be empty.)
+
 Create a SSSD image compatible with all controllers:
 imgtool create v9t9 test.dsk --sides=1 --tracks=40 --sectors=9
 
@@ -353,6 +371,14 @@ imgtool create v9t9 test.dsk --sides=2 --tracks=80 --sectors=18
 
 Create a DSHD image compatible with the Geneve with a HFDC controller:
 imgtool create v9t9 test.dsk --sides=2 --tracks=80 --sectors=36
+
+
+TI99 hard disk images (ti99hd)
+------------------------------
+
+This module can catalog ti99 hard disk images, delete individual files and
+directories, and get and put files in TIFILE format.  Only images in HFDC
+format are supported for now (no SCSI format).
 
 
 TI990 disk images (ti990hd)
@@ -471,3 +497,12 @@ listed as WD900-138/2 and WD900-425/2.
 
 MSU II and MSU IIa are SCSI units to be connected to the 990/SCSI controller
 board.
+
+
+Macintosh MFS images (mfs)
+-----------------------------
+
+This module can catalog macintosh floppy disk images in diskcopy 4.2 format and
+in raw format (which is mostly equivalent to diskcopy 6 format).  The module is
+preliminary, but it seems to work fine.
+

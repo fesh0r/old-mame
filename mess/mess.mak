@@ -161,6 +161,7 @@ SOUNDS+=SAA1099@
 SOUNDS+=SPEAKER@
 SOUNDS+=WAVE@
 SOUNDS+=BEEP@
+#SOUNDS+=SP0250@
 
 # Archive definitions
 DRVLIBS = \
@@ -233,7 +234,8 @@ DRVLIBS = \
 	$(OBJ)/kim1.a     \
 	$(OBJ)/sym1.a     \
 	$(OBJ)/sony.a     \
-	$(OBJ)/concept.a
+	$(OBJ)/concept.a  \
+	$(OBJ)/dai.a      \
 
 
 $(OBJ)/coleco.a:   \
@@ -278,16 +280,17 @@ $(OBJ)/gce.a:	                     \
 
 $(OBJ)/nintendo.a:                   \
 	  $(OBJ)/mess/machine/nes_mmc.o  \
-	  $(OBJ)/mess/vidhrdw/nes.o	     \
+	  $(OBJ)/vidhrdw/ppu2c03b.o		 \
+	  $(OBJ)/mess/vidhrdw/nes.o      \
 	  $(OBJ)/mess/machine/nes.o	     \
 	  $(OBJ)/mess/systems/nes.o	     \
 	  $(OBJ)/mess/sndhrdw/gb.o       \
 	  $(OBJ)/mess/vidhrdw/gb.o       \
 	  $(OBJ)/mess/machine/gb.o       \
 	  $(OBJ)/mess/systems/gb.o       \
-	  $(OBJ)/mess/sndhrdw/snes.o	 \
-	  $(OBJ)/mess/vidhrdw/snes.o	 \
-	  $(OBJ)/mess/machine/snes.o	 \
+	  $(OBJ)/sndhrdw/snes.o          \
+	  $(OBJ)/machine/snes.o          \
+	  $(OBJ)/vidhrdw/snes.o          \
 	  $(OBJ)/mess/systems/snes.o	 
 
 $(OBJ)/amiga.a: \
@@ -744,6 +747,12 @@ $(OBJ)/sony.a:     \
 	$(OBJ)/machine/psx.o	\
 	$(OBJ)/vidhrdw/psx.o
 
+$(OBJ)/dai.a:     \
+	$(OBJ)/mess/systems/dai.o     \
+	$(OBJ)/mess/machine/dai.o     \
+	$(OBJ)/mess/vidhrdw/dai.o     \
+	$(OBJ)/mess/machine/tms5501.o \
+
 $(OBJ)/concept.a:  \
 	$(OBJ)/mess/systems/concept.o   \
 	$(OBJ)/mess/machine/concept.o
@@ -758,6 +767,7 @@ COREOBJS += \
 	$(OBJ)/mess/device.o	       \
 	$(OBJ)/mess/config.o	       \
 	$(OBJ)/mess/inputx.o		   \
+	$(OBJ)/mess/artworkx.o		   \
 	$(OBJ)/mess/mesintrf.o	       \
 	$(OBJ)/mess/filemngr.o	       \
 	$(OBJ)/mess/compcfg.o	       \
@@ -838,6 +848,8 @@ tools/messroms$(EXE): $(OBJ)/mess/tools/messroms/main.o $(OBJ)/unzip.o
 tools/imgtool$(EXE):	                   \
 	  $(PLATFORM_IMGTOOL_OBJS)	           \
 	  $(OBJ)/unzip.o	                   \
+	  $(OBJ)/harddisk.o	                   \
+	  $(OBJ)/md5.o	                   \
 	  $(OBJ)/mess/config.o	               \
 	  $(OBJ)/mess/utils.o	               \
 	  $(OBJ)/mess/formats.o                \
@@ -848,6 +860,7 @@ tools/imgtool$(EXE):	                   \
 	  $(OBJ)/mess/formats/ti85_ser.o       \
 	  $(OBJ)/mess/tools/imgtool/stubs.o    \
 	  $(OBJ)/mess/tools/imgtool/main.o     \
+	  $(OBJ)/mess/tools/imgtool/imghd.o    \
 	  $(OBJ)/mess/tools/imgtool/imgtool.o  \
 	  $(OBJ)/mess/tools/imgtool/imgwave.o  \
 	  $(OBJ)/mess/tools/imgtool/imgtfmts.o \
@@ -870,6 +883,7 @@ tools/imgtool$(EXE):	                   \
 	  $(OBJ)/mess/tools/imgtool/crt.o      \
 	  $(OBJ)/mess/tools/imgtool/d64.o      \
 	  $(OBJ)/mess/tools/imgtool/fat.o      \
+	  $(OBJ)/mess/tools/imgtool/mac.o      \
 	  $(OBJ)/mess/tools/imgtool/rom16.o    \
 	  $(OBJ)/mess/tools/imgtool/nccard.o   \
 	  $(OBJ)/mess/tools/imgtool/ti85.o     \

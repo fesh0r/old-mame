@@ -180,6 +180,9 @@ static struct artwork_callbacks mame_artwork_callbacks =
 };
 #endif
 
+#ifdef MESS
+int skip_this_frame;
+#endif
 
 
 

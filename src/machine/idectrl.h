@@ -19,6 +19,9 @@ int ide_controller_init_custom(int which, struct ide_interface *intf, void *disk
 void ide_controller_reset(int which);
 UINT8 *ide_get_features(int which);
 
+int ide_bus_0_r(int select, int offset);
+void ide_bus_0_w(int select, int offset, int data);
+
 void ide_set_master_password(int which, UINT8 *password);
 void ide_set_user_password(int which, UINT8 *password);
 

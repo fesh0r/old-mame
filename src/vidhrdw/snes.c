@@ -100,6 +100,7 @@ struct DEBUGOPTS
 static struct DEBUGOPTS debug_options  = {5, {0,0,0,0,0,0}, 0, 0, 0};
 /*                                    red   green  blue    purple  yellow cyan    grey    white */
 static UINT16 dbg_mode_colours[8] = { 0x1f, 0x3e0, 0x7c00, 0x7c1f, 0x3ff, 0x7fe0, 0x4210, 0x7fff };
+static UINT8 snes_dbg_vidhrdw(UINT16 curline);
 #endif /* SNES_DBG_VIDHRDW */
 
 /* Lookup tables */
@@ -127,6 +128,11 @@ struct SCANLINE
 
 static struct SCANLINE scanlines[2];
 struct SNES_PPU_STRUCT snes_ppu;
+
+
+VIDEO_UPDATE( snes )
+{
+}
 
 /*****************************************
  * snes_draw_blend()
@@ -210,10 +216,6 @@ INLINE void snes_draw_blend( UINT16 offset, UINT16 *colour, UINT8 mode, UINT8 cl
 			*colour = ((r & 0x1f) | ((g & 0x1f) << 5) | ((b & 0x1f) << 10));
 		}
 	}
-}
-
-VIDEO_UPDATE( snes )
-{
 }
 
 /*****************************************
@@ -535,6 +537,12 @@ static void snes_update_line_2( UINT8 screen, UINT8 layer, UINT16 curline, UINT8
 		pal = (snes_vram[tilemap + ii + 1] & 0x1c);		/* 8 palettes of 4 colours */
 		tile = (snes_vram[tilemap + ii + 1] & 0x3) << 8;
 		tile |= snes_vram[tilemap + ii];
+
+		/* Mode 0 palettes are layer specific */
+		if( snes_ppu.mode == 0 )
+		{
+			pal += (layer << 5);
+		}
 
 		tile_line = line;
 		if( vflip )
@@ -971,6 +979,7 @@ static void snes_update_objects( UINT8 screen, UINT16 curline )
 	UINT16 tile;
 	INT16 i, x, y;
 	UINT8 *oamram = (UINT8 *)snes_oam;
+	UINT32 name_sel = 0;
 
 #ifdef SNES_DBG_VIDHRDW
 	if( debug_options.bg_disabled[4] )
@@ -999,7 +1008,7 @@ static void snes_update_objects( UINT8 screen, UINT16 curline )
 		extra <<= 1;
 
 		/* Adjust if past maximum position */
-		if( y > 239 )
+		if( y >= snes_ppu.beam.last_visible_line )
 			y -= 256;
 		if( x > 255 )
 			x -= 512;
@@ -1009,6 +1018,9 @@ static void snes_update_objects( UINT8 screen, UINT16 curline )
 		{
 			/* Only objects using palettes 4-7 can be transparent */
 			blend = (pal < 192) ? 0 : 1;
+
+			/* Only objects using tiles over 255 use name select */
+			name_sel = (tile < 256) ? 0 : snes_ppu.oam.name_select;
 
 			ys = (curline - y) >> 3;
 			line = (curline - y) % 8;
@@ -1025,7 +1037,7 @@ static void snes_update_objects( UINT8 screen, UINT16 curline )
 				for( xs = (snes_ppu.oam.size[size] - 1); xs >= 0; xs-- )
 				{
 					if( (x + (count << 3) < SNES_SCR_WIDTH + 8) )
-						snes_draw_tile_object( screen, snes_ppu.layer[4].data + tile + table_obj_offset[ys][xs] + line, x + (count++ << 3), priority, hflip, pal, blend );
+						snes_draw_tile_object( screen, snes_ppu.layer[4].data + name_sel + tile + table_obj_offset[ys][xs] + line, x + (count++ << 3), priority, hflip, pal, blend );
 					time_over++;	/* Increase time_over. Should we stop drawing if exceeded 34 tiles? */
 				}
 			}
@@ -1034,7 +1046,7 @@ static void snes_update_objects( UINT8 screen, UINT16 curline )
 				for( xs = 0; xs < snes_ppu.oam.size[size]; xs++ )
 				{
 					if( (x + (xs << 3) < SNES_SCR_WIDTH + 8) )
-						snes_draw_tile_object( screen, snes_ppu.layer[4].data + tile + table_obj_offset[ys][xs] + line, x + (xs << 3), priority, hflip, pal, blend );
+						snes_draw_tile_object( screen, snes_ppu.layer[4].data + name_sel + tile + table_obj_offset[ys][xs] + line, x + (xs << 3), priority, hflip, pal, blend );
 					time_over++;	/* Increase time_over. Should we stop drawing if exceeded 34 tiles? */
 				}
 			}
@@ -1323,6 +1335,8 @@ static void snes_update_windowmasks(void)
 			snes_ppu.clipmasks[4][ii] = w2 ? 0x00 : 0xff;
 
 		/* update colour window */
+		/* FIXME: Why is the colour window stuff different to the other  *
+		 * windows? Have I overlooked something or done something wrong? */
 		snes_ppu.clipmasks[5][ii] = 0xff;
 		w1 = w2 = -1;
 		if( snes_ram[WOBJSEL] & 0x20 )
@@ -1404,22 +1418,185 @@ static void snes_update_palette(void)
 	}
 }
 
-#ifdef SNES_DBG_VIDHRDW
 /*********************************************
- * snes_dbg_draw_maps()
+ * snes_refresh_scanline()
  *
- * Debug to display maps
- * Doesn't handle vflip.
+ * Redraw the current line.
  *********************************************/
-void snes_dbg_draw_maps( struct mame_bitmap *bitmap, UINT32 tilemap, UINT8 bpl, UINT16 curline, UINT8 layer )
+void snes_refresh_scanline( UINT16 curline )
+{
+	UINT16 ii;
+	struct mame_bitmap *bitmap = Machine->scrbitmap;
+
+	profiler_mark(PROFILER_VIDEO);
+
+	if( snes_ram[INIDISP] & 0x80 ) /* screen is forced blank */
+	{
+		struct rectangle r = Machine->visible_area;
+		r.min_y = r.max_y = curline;
+		fillbitmap(bitmap, Machine->pens[0], &r);
+	}
+	else
+	{
+		/* Update clip window masks if necessary */
+		if( snes_ppu.update_windows )
+			snes_update_windowmasks();
+		/* Update the palette if necessary */
+		if( snes_ppu.update_palette )
+			snes_update_palette();
+
+		/* Clear zbuffers */
+		memset( scanlines[MAINSCREEN].zbuf, 0, SNES_SCR_WIDTH );
+		memset( scanlines[SUBSCREEN].zbuf, 0, SNES_SCR_WIDTH );
+
+		/* Clear subscreen and draw back colour */
+		for( ii = 0; ii < SNES_SCR_WIDTH; ii++ )
+		{
+			/* Not sure if this is correct behaviour, but a few games seem to
+			 * require it. (SMW, Zelda etc) */
+			scanlines[SUBSCREEN].buffer[ii] = Machine->remapped_colortable[FIXED_COLOUR];
+			/* Draw back colour */
+			scanlines[MAINSCREEN].buffer[ii] = Machine->remapped_colortable[0];
+		}
+
+		/* Draw the subscreen sprites */
+		if( snes_ram[TS] & 0x10 )
+			snes_update_objects( SUBSCREEN, curline );
+
+		/* Draw backgrounds */
+		switch( snes_ram[BGMODE] & 0x7 )
+		{
+			case 0:			/* Mode 0 - 4 layers - 4 / 4 / 4 / 4 colours */
+				/* Draw Subscreen */
+				if( snes_ram[TS] & 0x1 ) snes_update_line_2( SUBSCREEN, 0, curline, 0 );
+				if( snes_ram[TS] & 0x2 ) snes_update_line_2( SUBSCREEN, 1, curline, 0 );
+				if( snes_ram[TS] & 0x4 ) snes_update_line_2( SUBSCREEN, 2, curline, 0 );
+				if( snes_ram[TS] & 0x8 ) snes_update_line_2( SUBSCREEN, 3, curline, 0 );
+				/* Draw the back plane */
+				snes_update_backplane();
+				/* Draw Mainscreen */
+				if( snes_ram[TM] & 0x1 ) snes_update_line_2( MAINSCREEN, 0, curline, 0 );
+				if( snes_ram[TM] & 0x2 ) snes_update_line_2( MAINSCREEN, 1, curline, 0 );
+				if( snes_ram[TM] & 0x4 ) snes_update_line_2( MAINSCREEN, 2, curline, 0 );
+				if( snes_ram[TM] & 0x8 ) snes_update_line_2( MAINSCREEN, 3, curline, 0 );
+				break;
+			case 1:			/* Mode 1 - 3 layers - 16 / 16 / 4 colours */
+				/* Draw Subscreen */
+				if( snes_ram[TS] & 0x1 ) snes_update_line_4( SUBSCREEN, 0, curline );
+				if( snes_ram[TS] & 0x2 ) snes_update_line_4( SUBSCREEN, 1, curline );
+				if( snes_ram[TS] & 0x4 )
+				{
+					if( snes_ram[BGMODE] & 0x8 )	/* BG3 can have highest priority if bit 3 if BGMODE is set */
+						snes_update_line_2( SUBSCREEN, 2, curline, 1 );
+					else
+						snes_update_line_2( SUBSCREEN, 2, curline, 0 );
+				}
+				/* Draw the back plane */
+				snes_update_backplane();
+				/* Draw Mainscreen */
+				if( snes_ram[TM] & 0x1 ) snes_update_line_4( MAINSCREEN, 0, curline );
+				if( snes_ram[TM] & 0x2 ) snes_update_line_4( MAINSCREEN, 1, curline );
+				if( snes_ram[TM] & 0x4 )
+				{
+					if( snes_ram[BGMODE] & 0x8 )	/* BG3 can have highest priority if bit 3 if BGMODE is set */
+						snes_update_line_2( MAINSCREEN, 2, curline, 1 );
+					else
+						snes_update_line_2( MAINSCREEN, 2, curline, 0 );
+				}
+				break;
+			case 2:			/* Mode 2 - 2 layers - 16 / 16 colours */
+				/* Draw Subscreen */
+				if( snes_ram[TS] & 0x1 ) snes_update_line_4( SUBSCREEN, 0, curline );
+				if( snes_ram[TS] & 0x2 ) snes_update_line_4( SUBSCREEN, 1, curline );
+				/* Draw the back plane */
+				snes_update_backplane();
+				/* Draw Mainscreen */
+				if( snes_ram[TM] & 0x1 ) snes_update_line_4( MAINSCREEN, 0, curline );
+				if( snes_ram[TM] & 0x2 ) snes_update_line_4( MAINSCREEN, 1, curline );
+				break;
+			case 3:			/* Mode 3 - 2 layers - 256 / 16 colours */
+				/* Draw Subscreen */
+				if( snes_ram[TS] & 0x1 ) snes_update_line_8( SUBSCREEN, 0, curline );
+				if( snes_ram[TS] & 0x2 ) snes_update_line_4( SUBSCREEN, 1, curline );
+				/* Draw the back plane */
+				snes_update_backplane();
+				/* Draw Mainscreen */
+				if( snes_ram[TM] & 0x1 ) snes_update_line_8( MAINSCREEN, 0, curline );
+				if( snes_ram[TM] & 0x2 ) snes_update_line_4( MAINSCREEN, 1, curline );
+				break;
+			case 4:			/* Mode 4 - 2 layers - 256 / 4 colours */
+				/* Draw Subscreen */
+				if( snes_ram[TS] & 0x1 ) snes_update_line_8( SUBSCREEN, 0, curline );
+				if( snes_ram[TS] & 0x2 ) snes_update_line_2( SUBSCREEN, 1, curline, 0 );
+				/* Draw the back plane */
+				snes_update_backplane();
+				/* Draw Mainscreen */
+				if( snes_ram[TM] & 0x1 ) snes_update_line_8( MAINSCREEN, 0, curline );
+				if( snes_ram[TM] & 0x2 ) snes_update_line_2( MAINSCREEN, 1, curline, 0 );
+				break;
+			case 5:			/* Mode 5 - 2 layers - 16 / 4 colours */
+				/* Draw Subscreen */
+				if( snes_ram[TS] & 0x1 ) snes_update_line_4( SUBSCREEN, 0, curline );
+				if( snes_ram[TS] & 0x2 ) snes_update_line_2( SUBSCREEN, 1, curline, 0 );
+				/* Draw the back plane */
+				snes_update_backplane();
+				/* Draw Mainscreen */
+				if( snes_ram[TM] & 0x1 ) snes_update_line_4( MAINSCREEN, 0, curline );
+				if( snes_ram[TM] & 0x2 ) snes_update_line_2( MAINSCREEN, 1, curline, 0 );
+				break;
+			case 6:			/* Mode 6 - 1 layer - 16 colours */
+				/* Draw Subscreen */
+				if( snes_ram[TS] & 0x1 ) snes_update_line_4( SUBSCREEN, 0, curline );
+				/* Draw the back plane */
+				snes_update_backplane();
+				/* Draw Mainscreen */
+				if( snes_ram[TM] & 0x1 ) snes_update_line_4( MAINSCREEN, 0, curline );
+				break;
+			case 7:			/* Mode 7 - 1 layer - 256 colours - matrix math stuff */
+				/* Draw the subscreen */
+				if( snes_ram[TS] & 0x1 ) snes_update_line_mode7( SUBSCREEN, curline );
+				/* Draw the back plane */
+				snes_update_backplane();
+				/* Draw Mainscreen */
+				if( snes_ram[TM] & 0x1 ) snes_update_line_mode7( MAINSCREEN, curline );
+				break;
+		}
+
+		/* Draw the mainscreen sprites */
+		if( snes_ram[TM] & 0x10 )
+			snes_update_objects( MAINSCREEN, curline );
+
+#ifdef SNES_DBG_VIDHRDW
+		if( snes_dbg_vidhrdw( curline ) )
+		{
+			profiler_mark(PROFILER_END);
+			return;
+		}
+
+		/* Toggle drawing of subscreen or mainscreen */
+		if( debug_options.draw_subscreen )
+			memcpy( (UINT16 *)bitmap->base + bitmap->rowpixels * curline, scanlines[SUBSCREEN].buffer, SNES_SCR_WIDTH * sizeof(UINT16) );
+		else
+#endif /* SNES_DBG_VIDHRDW */
+
+		/* Phew! Draw the line to screen */
+		memcpy( (UINT16 *)bitmap->base + bitmap->rowpixels * curline, scanlines[MAINSCREEN].buffer, SNES_SCR_WIDTH * sizeof(UINT16) );
+	}
+
+	profiler_mark(PROFILER_END);
+}
+
+
+/***** Debug Functions *****/
+
+#ifdef SNES_DBG_VIDHRDW
+
+static void snes_dbg_draw_maps( struct mame_bitmap *bitmap, UINT32 tilemap, UINT8 bpl, UINT16 curline, UINT8 layer )
 {
 	UINT32 tile, addr = tilemap;
 	UINT16 ii, vflip, hflip, pal;
 	INT8 line;
 	char str[50];
-	UINT8 clipmask[SNES_SCR_WIDTH + 8];
-
-	memset( clipmask, 0xff, SNES_SCR_WIDTH + 8 );
 
 	tilemap += (curline >> 3) * 64;
 	for( ii = 0; ii < 64; ii += 2 )
@@ -1452,22 +1629,15 @@ void snes_dbg_draw_maps( struct mame_bitmap *bitmap, UINT32 tilemap, UINT8 bpl, 
 	}
 
 	sprintf( str, "%d : %8X  ", layer, addr );
-	ui_text( bitmap, str, 300, 227 );
+	ui_text( bitmap, str, 0, 227 );
 }
 
-/*********************************************
- * snes_dbg_draw_all_tiles()
- *
- * Debug to display everything in VRAM.
- *********************************************/
 static void snes_dbg_draw_all_tiles( struct mame_bitmap *bitmap, UINT32 tileaddr, UINT8 bpl, UINT16 pal )
 {
 	UINT16 ii, jj, kk;
 	UINT32 addr = tileaddr;
 	char str[50];
-	UINT8 clipmask[SNES_SCR_WIDTH + 8];
 
-	memset( clipmask, 0xff, SNES_SCR_WIDTH + 8 );
 	for( jj = 0; jj < 32; jj++ )
 	{
 		addr = tileaddr + (jj * bpl * 16 * 32);
@@ -1498,21 +1668,13 @@ static void snes_dbg_draw_all_tiles( struct mame_bitmap *bitmap, UINT32 tileaddr
 	}
 
 	sprintf( str, "  %8X  ", tileaddr );
-	ui_text( bitmap, str, 300, 227 );
+	ui_text( bitmap, str, 0, 227 );
 }
-#endif /* SNES_DBG_VIDHRDW */
 
-/*********************************************
- * snes_refresh_scanline()
- *
- * Redraw the current line.
- *********************************************/
-void snes_refresh_scanline( UINT16 curline )
+static UINT8 snes_dbg_vidhrdw( UINT16 curline )
 {
 	UINT16 ii;
-	struct mame_bitmap *bitmap = Machine->scrbitmap;
 
-#ifdef SNES_DBG_VIDHRDW
 	/* Check if the user has enabled or disabled stuff */
 	if( curline == 0 )
 	{
@@ -1668,9 +1830,9 @@ void snes_refresh_scanline( UINT16 curline )
 				{
 					scanlines[MAINSCREEN].buffer[ii] = 0;
 				}
-				snes_dbg_draw_all_tiles( bitmap, addr, dt, pal * 16 );
+				snes_dbg_draw_all_tiles( Machine->scrbitmap, addr, dt, pal * 16 );
 			}
-			return;
+			return 1;
 		}
 		if( dm )
 		{
@@ -1692,179 +1854,30 @@ void snes_refresh_scanline( UINT16 curline )
 			/* Draw back colour */
 			for( ii = 0; ii < SNES_SCR_WIDTH; ii++ )
 				scanlines[MAINSCREEN].buffer[ii] = Machine->pens[0];
-			snes_dbg_draw_maps( bitmap, tmaddr, dm, curline, tmbg );
-			draw_scanline16( bitmap, 0, curline, SNES_SCR_WIDTH, scanlines[MAINSCREEN].buffer, Machine->pens, 200 );
-			return;
+			snes_dbg_draw_maps( Machine->scrbitmap, tmaddr, dm, curline, tmbg );
+			draw_scanline16( Machine->scrbitmap, 0, curline, SNES_SCR_WIDTH, scanlines[MAINSCREEN].buffer, Machine->pens, 200 );
+			return 1;
 		}
 	}
-#endif /* SNES_DBG_VIDHRDW */
 
-	profiler_mark(PROFILER_VIDEO);
-
-	if( snes_ram[INIDISP] & 0x80 ) /* screen is forced blank */
+	/* Draw some useful information about the back/fixed colours and current bg mode etc. */
+	plot_pixel( Machine->scrbitmap, 274, curline, Machine->pens[dbg_mode_colours[(snes_ram[CGWSEL] & 0xc0) >> 6]] );
+	plot_pixel( Machine->scrbitmap, 276, curline, Machine->pens[dbg_mode_colours[(snes_ram[CGWSEL] & 0x30) >> 4]] );
+	plot_pixel( Machine->scrbitmap, 278, curline, Machine->pens[dbg_mode_colours[snes_ram[BGMODE] & 0x7]] );
+	plot_pixel( Machine->scrbitmap, 288, curline, Machine->pens[32767] );
+	plot_pixel( Machine->scrbitmap, 298, curline, Machine->pens[32767] );
+	for( ii = 0; ii < 5; ii++ )
 	{
-		struct rectangle r = Machine->visible_area;
-		r.min_y = r.max_y = curline;
-		fillbitmap(bitmap, Machine->pens[0], &r);
+		plot_pixel( Machine->scrbitmap, 281 + ii, curline, Machine->remapped_colortable[0] );
+		plot_pixel( Machine->scrbitmap, 291 + ii, curline, Machine->remapped_colortable[FIXED_COLOUR] );
 	}
-	else
-	{
-		/* Update clip window masks if necessary */
-		if( snes_ppu.update_windows )
-			snes_update_windowmasks();
-		/* Update the palette if necessary */
-		if( snes_ppu.update_palette )
-			snes_update_palette();
+	/* Draw window positions */
+	scanlines[MAINSCREEN].buffer[snes_ram[WH0]] = Machine->pens[dbg_mode_colours[0]];
+	scanlines[MAINSCREEN].buffer[snes_ram[WH1]] = Machine->pens[dbg_mode_colours[0]];
+	scanlines[MAINSCREEN].buffer[snes_ram[WH2]] = Machine->pens[dbg_mode_colours[2]];
+	scanlines[MAINSCREEN].buffer[snes_ram[WH3]] = Machine->pens[dbg_mode_colours[2]];
 
-		/* Clear zbuffers */
-		memset( scanlines[MAINSCREEN].zbuf, 0, SNES_SCR_WIDTH );
-		memset( scanlines[SUBSCREEN].zbuf, 0, SNES_SCR_WIDTH );
-
-		/* Clear subscreen and draw back colour */
-		for( ii = 0; ii < SNES_SCR_WIDTH; ii++ )
-		{
-			/* Not sure if this is correct behaviour, but a few games seem to
-			 * require it. (SMW, Zelda etc) */
-			scanlines[SUBSCREEN].buffer[ii] = Machine->remapped_colortable[FIXED_COLOUR];
-			/* Draw back colour */
-			scanlines[MAINSCREEN].buffer[ii] = Machine->remapped_colortable[0];
-		}
-
-		/* Draw the subscreen sprites */
-		if( snes_ram[TS] & 0x10 )
-			snes_update_objects( SUBSCREEN, curline );
-
-		/* Draw backgrounds */
-		switch( snes_ram[BGMODE] & 0x7 )
-		{
-			case 0:			/* Mode 0 - 4 layers - 4 / 4 / 4 / 4 colours */
-				/* Draw Subscreen */
-				if( snes_ram[TS] & 0x1 ) snes_update_line_2( SUBSCREEN, 0, curline, 0 );
-				if( snes_ram[TS] & 0x2 ) snes_update_line_2( SUBSCREEN, 1, curline, 0 );
-				if( snes_ram[TS] & 0x4 ) snes_update_line_2( SUBSCREEN, 2, curline, 0 );
-				if( snes_ram[TS] & 0x8 ) snes_update_line_2( SUBSCREEN, 3, curline, 0 );
-				/* Draw the back plane */
-				snes_update_backplane();
-				/* Draw Mainscreen */
-				if( snes_ram[TM] & 0x1 ) snes_update_line_2( MAINSCREEN, 0, curline, 0 );
-				if( snes_ram[TM] & 0x2 ) snes_update_line_2( MAINSCREEN, 1, curline, 0 );
-				if( snes_ram[TM] & 0x4 ) snes_update_line_2( MAINSCREEN, 2, curline, 0 );
-				if( snes_ram[TM] & 0x8 ) snes_update_line_2( MAINSCREEN, 3, curline, 0 );
-				break;
-			case 1:			/* Mode 1 - 3 layers - 16 / 16 / 4 colours */
-				/* Draw Subscreen */
-				if( snes_ram[TS] & 0x1 ) snes_update_line_4( SUBSCREEN, 0, curline );
-				if( snes_ram[TS] & 0x2 ) snes_update_line_4( SUBSCREEN, 1, curline );
-				if( snes_ram[TS] & 0x4 )
-				{
-					if( snes_ram[BGMODE] & 0x8 )	/* BG3 can have highest priority if bit 3 if BGMODE is set */
-						snes_update_line_2( SUBSCREEN, 2, curline, 1 );
-					else
-						snes_update_line_2( SUBSCREEN, 2, curline, 0 );
-				}
-				/* Draw the back plane */
-				snes_update_backplane();
-				/* Draw Mainscreen */
-				if( snes_ram[TM] & 0x1 ) snes_update_line_4( MAINSCREEN, 0, curline );
-				if( snes_ram[TM] & 0x2 ) snes_update_line_4( MAINSCREEN, 1, curline );
-				if( snes_ram[TM] & 0x4 )
-				{
-					if( snes_ram[BGMODE] & 0x8 )	/* BG3 can have highest priority if bit 3 if BGMODE is set */
-						snes_update_line_2( MAINSCREEN, 2, curline, 1 );
-					else
-						snes_update_line_2( MAINSCREEN, 2, curline, 0 );
-				}
-				break;
-			case 2:			/* Mode 2 - 2 layers - 16 / 16 colours */
-				/* Draw Subscreen */
-				if( snes_ram[TS] & 0x1 ) snes_update_line_4( SUBSCREEN, 0, curline );
-				if( snes_ram[TS] & 0x2 ) snes_update_line_4( SUBSCREEN, 1, curline );
-				/* Draw the back plane */
-				snes_update_backplane();
-				/* Draw Mainscreen */
-				if( snes_ram[TM] & 0x1 ) snes_update_line_4( MAINSCREEN, 0, curline );
-				if( snes_ram[TM] & 0x2 ) snes_update_line_4( MAINSCREEN, 1, curline );
-				break;
-			case 3:			/* Mode 3 - 2 layers - 256 / 16 colours */
-				/* Draw Subscreen */
-				if( snes_ram[TS] & 0x1 ) snes_update_line_8( SUBSCREEN, 0, curline );
-				if( snes_ram[TS] & 0x2 ) snes_update_line_4( SUBSCREEN, 1, curline );
-				/* Draw the back plane */
-				snes_update_backplane();
-				/* Draw Mainscreen */
-				if( snes_ram[TM] & 0x1 ) snes_update_line_8( MAINSCREEN, 0, curline );
-				if( snes_ram[TM] & 0x2 ) snes_update_line_4( MAINSCREEN, 1, curline );
-				break;
-			case 4:			/* Mode 4 - 2 layers - 256 / 4 colours */
-				/* Draw Subscreen */
-				if( snes_ram[TS] & 0x1 ) snes_update_line_8( SUBSCREEN, 0, curline );
-				if( snes_ram[TS] & 0x2 ) snes_update_line_2( SUBSCREEN, 1, curline, 0 );
-				/* Draw the back plane */
-				snes_update_backplane();
-				/* Draw Mainscreen */
-				if( snes_ram[TM] & 0x1 ) snes_update_line_8( MAINSCREEN, 0, curline );
-				if( snes_ram[TM] & 0x2 ) snes_update_line_2( MAINSCREEN, 1, curline, 0 );
-				break;
-			case 5:			/* Mode 5 - 2 layers - 16 / 4 colours */
-				/* Draw Subscreen */
-				if( snes_ram[TS] & 0x1 ) snes_update_line_4( SUBSCREEN, 0, curline );
-				if( snes_ram[TS] & 0x2 ) snes_update_line_2( SUBSCREEN, 1, curline, 0 );
-				/* Draw the back plane */
-				snes_update_backplane();
-				/* Draw Mainscreen */
-				if( snes_ram[TM] & 0x1 ) snes_update_line_4( MAINSCREEN, 0, curline );
-				if( snes_ram[TM] & 0x2 ) snes_update_line_2( MAINSCREEN, 1, curline, 0 );
-				break;
-			case 6:			/* Mode 6 - 1 layer - 16 colours */
-				/* Draw Subscreen */
-				if( snes_ram[TS] & 0x1 ) snes_update_line_4( SUBSCREEN, 0, curline );
-				/* Draw the back plane */
-				snes_update_backplane();
-				/* Draw Mainscreen */
-				if( snes_ram[TM] & 0x1 ) snes_update_line_4( MAINSCREEN, 0, curline );
-				break;
-			case 7:			/* Mode 7 - 1 layer - 256 colours - matrix math stuff */
-				/* Draw the subscreen */
-				if( snes_ram[TS] & 0x1 ) snes_update_line_mode7( SUBSCREEN, curline );
-				/* Draw the back plane */
-				snes_update_backplane();
-				/* Draw Mainscreen */
-				if( snes_ram[TM] & 0x1 ) snes_update_line_mode7( MAINSCREEN, curline );
-				break;
-		}
-
-		/* Draw the mainscreen sprites */
-		if( snes_ram[TM] & 0x10 )
-			snes_update_objects( MAINSCREEN, curline );
-
-#ifdef SNES_DBG_VIDHRDW
-		{
-			/* Draw some useful information about the back/fixed colours and current bg mode etc. */
-			plot_pixel( bitmap, 274, curline, Machine->pens[dbg_mode_colours[(snes_ram[CGWSEL] & 0xc0) >> 6]] );
-			plot_pixel( bitmap, 276, curline, Machine->pens[dbg_mode_colours[(snes_ram[CGWSEL] & 0x30) >> 4]] );
-			plot_pixel( bitmap, 278, curline, Machine->pens[dbg_mode_colours[snes_ram[BGMODE] & 0x7]] );
-			plot_pixel( bitmap, 288, curline, Machine->pens[32767] );
-			plot_pixel( bitmap, 298, curline, Machine->pens[32767] );
-			for( ii = 0; ii < 5; ii++ )
-			{
-				plot_pixel( bitmap, 281 + ii, curline, Machine->remapped_colortable[0] );
-				plot_pixel( bitmap, 291 + ii, curline, Machine->remapped_colortable[FIXED_COLOUR] );
-			}
-			/* Draw window positions */
-			scanlines[MAINSCREEN].buffer[snes_ram[WH0]] = Machine->pens[dbg_mode_colours[0]];
-			scanlines[MAINSCREEN].buffer[snes_ram[WH1]] = Machine->pens[dbg_mode_colours[0]];
-			scanlines[MAINSCREEN].buffer[snes_ram[WH2]] = Machine->pens[dbg_mode_colours[2]];
-			scanlines[MAINSCREEN].buffer[snes_ram[WH3]] = Machine->pens[dbg_mode_colours[2]];
-		}
-		/* Toggle drawing of subscreen or mainscreen */
-		if( debug_options.draw_subscreen )
-			draw_scanline16( bitmap, 0, curline, SNES_SCR_WIDTH, scanlines[SUBSCREEN].buffer, Machine->pens, -1 );
-		else
-#endif /* SNES_DBG_VIDHRDW */
-
-		/* Phew! Draw the line to screen */
-		draw_scanline16( bitmap, 0, curline, SNES_SCR_WIDTH, scanlines[MAINSCREEN].buffer, Machine->pens, -1 );
-	}
-
-	profiler_mark(PROFILER_END);
+	return 0;
 }
+
+#endif /* SNES_DBG_VIDHRDW */

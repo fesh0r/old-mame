@@ -930,6 +930,35 @@ struct ik input_keywords[] =
 	{ "P4_AD_STICK_Z",			IKT_IPT,		IPF_PLAYER4 | IPT_AD_STICK_Z },
 	{ "P4_AD_STICK_Z_EXT",		IKT_IPT_EXT,	IPF_PLAYER4 | IPT_AD_STICK_Z },
 
+#ifdef MESS
+	{ "P1_MOUSE_X",				IKT_IPT,		IPF_PLAYER1 | IPT_MOUSE_X },
+	{ "P1_MOUSE_X_EXT",			IKT_IPT_EXT,	IPF_PLAYER1 | IPT_MOUSE_X },
+	{ "P2_MOUSE_X",				IKT_IPT,		IPF_PLAYER2 | IPT_MOUSE_X },
+	{ "P2_MOUSE_X_EXT",			IKT_IPT_EXT,	IPF_PLAYER2 | IPT_MOUSE_X },
+	{ "P3_MOUSE_X",				IKT_IPT,		IPF_PLAYER3 | IPT_MOUSE_X },
+	{ "P3_MOUSE_X_EXT",			IKT_IPT_EXT,	IPF_PLAYER3 | IPT_MOUSE_X },
+	{ "P4_MOUSE_X",				IKT_IPT,		IPF_PLAYER4 | IPT_MOUSE_X },
+	{ "P4_MOUSE_X_EXT",			IKT_IPT_EXT,	IPF_PLAYER4 | IPT_MOUSE_X },
+
+	{ "P1_MOUSE_Y",				IKT_IPT,		IPF_PLAYER1 | IPT_MOUSE_Y },
+	{ "P1_MOUSE_Y_EXT",			IKT_IPT_EXT,	IPF_PLAYER1 | IPT_MOUSE_Y },
+	{ "P2_MOUSE_Y",				IKT_IPT,		IPF_PLAYER2 | IPT_MOUSE_Y },
+	{ "P2_MOUSE_Y_EXT",			IKT_IPT_EXT,	IPF_PLAYER2 | IPT_MOUSE_Y },
+	{ "P3_MOUSE_Y",				IKT_IPT,		IPF_PLAYER3 | IPT_MOUSE_Y },
+	{ "P3_MOUSE_Y_EXT",			IKT_IPT_EXT,	IPF_PLAYER3 | IPT_MOUSE_Y },
+	{ "P4_MOUSE_Y",				IKT_IPT,		IPF_PLAYER4 | IPT_MOUSE_Y },
+	{ "P4_MOUSE_Y_EXT",			IKT_IPT_EXT,	IPF_PLAYER4 | IPT_MOUSE_Y },
+
+	{ "P1_START",				IKT_IPT,		IPF_PLAYER1 | IPT_START },
+	{ "P2_START",				IKT_IPT,		IPF_PLAYER2 | IPT_START },
+	{ "P3_START",				IKT_IPT,		IPF_PLAYER3 | IPT_START },
+	{ "P4_START",				IKT_IPT,		IPF_PLAYER4 | IPT_START },
+	{ "P1_SELECT",				IKT_IPT,		IPF_PLAYER1 | IPT_SELECT },
+	{ "P2_SELECT",				IKT_IPT,		IPF_PLAYER2 | IPT_SELECT },
+	{ "P3_SELECT",				IKT_IPT,		IPF_PLAYER3 | IPT_SELECT },
+	{ "P4_SELECT",				IKT_IPT,		IPF_PLAYER4 | IPT_SELECT },
+#endif /* MESS */
+
 	{ "OSD_1",					IKT_IPT,		IPT_OSD_1 },
 	{ "OSD_2",					IKT_IPT,		IPT_OSD_2 },
 	{ "OSD_3",					IKT_IPT,		IPT_OSD_3 },
@@ -1340,6 +1369,9 @@ getout:
 		while (in->type != IPT_END && in->type != IPT_PORT)
 		{
 			if ((in->type & ~IPF_MASK) != IPT_DIPSWITCH_SETTING &&	/* skip dipswitch definitions */
+#ifdef MESS
+				(in->type & ~IPF_MASK) != IPT_CONFIG_SETTING &&		/* skip config definitions */
+#endif
 				(in->type & ~IPF_MASK) != IPT_EXTENSION &&			/* skip analog extension fields */
 				(in->type & IPF_UNUSED) == 0 &&						/* skip unused bits */
 				!(!options.cheat && (in->type & IPF_CHEAT)) &&				/* skip cheats if cheats disabled */
@@ -1479,6 +1511,9 @@ void save_input_port_settings(void)
 		while (in->type != IPT_END && in->type != IPT_PORT)
 		{
 			if ((in->type & ~IPF_MASK) != IPT_DIPSWITCH_SETTING &&	/* skip dipswitch definitions */
+#ifdef MESS
+				(in->type & ~IPF_MASK) != IPT_CONFIG_SETTING &&		/* skip config definitions */
+#endif
 				(in->type & ~IPF_MASK) != IPT_EXTENSION &&			/* skip analog extension fields */
 				(in->type & IPF_UNUSED) == 0 &&						/* skip unused bits */
 				!(!options.cheat && (in->type & IPF_CHEAT)) &&				/* skip cheats if cheats disabled */
@@ -2161,6 +2196,9 @@ profiler_mark(PROFILER_INPUT);
 		while (in->type != IPT_END && in->type != IPT_PORT)
 		{
 			if ((in->type & ~IPF_MASK) != IPT_DIPSWITCH_SETTING &&	/* skip dipswitch definitions */
+#ifdef MESS
+				(in->type & ~IPF_MASK) != IPT_CONFIG_SETTING &&		/* skip config definitions */
+#endif /* MESS */
 				(in->type & ~IPF_MASK) != IPT_EXTENSION)			/* skip analog extension fields */
 			{
 				input_port_value[port] =
@@ -2189,6 +2227,9 @@ profiler_mark(PROFILER_INPUT);
 			else if ((in->type & IPF_PLAYERMASK) == IPF_PLAYER4) player = 3;
 #endif /* MAME_NET */
 			if ((in->type & ~IPF_MASK) != IPT_DIPSWITCH_SETTING &&	/* skip dipswitch definitions */
+#ifdef MESS
+				(in->type & ~IPF_MASK) != IPT_CONFIG_SETTING &&		/* skip config definitions */
+#endif
 					(in->type & ~IPF_MASK) != IPT_EXTENSION)		/* skip analog extension fields */
 			{
 				if ((in->type & ~IPF_MASK) == IPT_VBLANK)
@@ -2561,10 +2602,15 @@ struct InputPort* input_port_allocate(const struct InputPortTiny *src)
 			case IPT_PORT :
 			case IPT_DIPSWITCH_NAME :
 			case IPT_DIPSWITCH_SETTING :
+#ifdef MESS
+			case IPT_CONFIG_NAME :
+			case IPT_CONFIG_SETTING :
+#endif
 				seq_default = CODE_NONE;
-			break;
+				break;
 			default:
 				seq_default = CODE_DEFAULT;
+				break;
 		}
 
 		ext = src_end;

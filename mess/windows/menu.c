@@ -8,6 +8,7 @@
 #include <windows.h>
 #include <commdlg.h>
 #include <winuser.h>
+#include <ctype.h>
 
 // MAME/MESS headers
 #include "mame.h"
@@ -23,6 +24,7 @@
 #include "utils.h"
 #include "artwork.h"
 #include "tapedlg.h"
+#include "artworkx.h"
 
 #ifdef UNDER_CE
 #include "invokegx.h"
@@ -109,47 +111,72 @@ static HMENU win_menu_bar;
 static int is_paused;
 
 
+
 //============================================================
-//	is_controller_input_type
+//	customize_input
 //============================================================
 
-int is_controller_input_type(UINT32 type)
+static void customize_input(const char *title, int player, int category)
 {
-	int result;
-	switch(type & ~IPF_MASK) {
-	case IPT_JOYSTICK_UP:
-	case IPT_JOYSTICK_DOWN:
-	case IPT_JOYSTICK_LEFT:
-	case IPT_JOYSTICK_RIGHT:
-	case IPT_JOYSTICKLEFT_UP:
-	case IPT_JOYSTICKLEFT_DOWN:
-	case IPT_JOYSTICKLEFT_LEFT:
-	case IPT_JOYSTICKLEFT_RIGHT:
-	case IPT_JOYSTICKRIGHT_UP:
-	case IPT_JOYSTICKRIGHT_DOWN:
-	case IPT_JOYSTICKRIGHT_LEFT:
-	case IPT_JOYSTICKRIGHT_RIGHT:
-	case IPT_BUTTON1:
-	case IPT_BUTTON2:
-	case IPT_BUTTON3:
-	case IPT_BUTTON4:
-	case IPT_BUTTON5:
-	case IPT_BUTTON6:
-	case IPT_BUTTON7:
-	case IPT_BUTTON8:
-	case IPT_BUTTON9:
-	case IPT_BUTTON10:
-	case IPT_AD_STICK_X:
-	case IPT_AD_STICK_Y:
-		result = 1;
-		break;
+	dialog_box *dlg;
+	struct InputPort *in;
+	struct png_info png;
+	struct inputform_customization customizations[128];
+	RECT r, *pr;
+	int i;
+	int this_category, this_player;
 
-	default:
-		result = 0;
-		break;
+	artwork_get_inputscreen_customizations(&png, customizations, sizeof(customizations) / sizeof(customizations[0]));
+
+	dlg = win_dialog_init(title);
+	if (!dlg)
+		goto done;
+
+	if (png.width > 0)
+	{
+		win_dialog_add_image(dlg, &png);
+		win_dialog_add_separator(dlg);
 	}
-	return result;
+
+	in = Machine->input_ports;
+	while(in->type != IPT_END)
+	{
+		this_category = input_categorize_port(in);
+		this_player = input_player_number(in);
+
+		if ((this_player == player) && (this_category == category))
+		{
+			pr = NULL;
+			for (i = 0; customizations[i].ipt != IPT_END; i++)
+			{
+				if ((in->type & ~IPF_MASK) == customizations[i].ipt)
+				{
+					r.left = customizations[i].x;
+					r.top = customizations[i].y;
+					r.right = r.left + customizations[i].width;
+					r.bottom = r.top + customizations[i].height;
+					pr = &r;
+					break;
+				}
+			}
+
+			if (win_dialog_add_portselect(dlg, in, pr))
+				goto done;
+		}
+		in++;
+	}
+
+	if (win_dialog_add_standard_buttons(dlg))
+		goto done;
+
+	win_dialog_runmodal(dlg);
+
+done:
+	if (dlg)
+		win_dialog_exit(dlg);
 }
+
+
 
 //============================================================
 //	setjoystick
@@ -157,27 +184,62 @@ int is_controller_input_type(UINT32 type)
 
 static void setjoystick(int joystick_num)
 {
-	void *dlg;
-	int player;
-	struct InputPort *in;
-	int increment;
+	customize_input("Joysticks/Controllers", joystick_num, INPUT_CATEGORY_CONTROLLER);
+}
 
-	player = joystick_num * IPF_PLAYER2;
+
+
+//============================================================
+//	setkeyboard
+//============================================================
+
+static void setkeyboard(void)
+{
+	customize_input("Emulated Keyboard", 0, INPUT_CATEGORY_KEYBOARD);
+}
+
+
+
+//============================================================
+//	setswitchmenu
+//============================================================
+
+static void setswitchmenu(int title_string_num, UINT32 ipt_name, UINT32 ipt_setting)
+{
+	void *dlg;
+	struct InputPort *in;
+	const char *switch_name = NULL;
+	UINT32 type;
 	
-	dlg = win_dialog_init("Joysticks/Controllers");
+	dlg = win_dialog_init(ui_getstring(title_string_num));
 	if (!dlg)
 		goto done;
 
-	in = Machine->input_ports;
-	while(in->type != IPT_END)
+	for (in = Machine->input_ports; in->type != IPT_END; in++)
 	{
-		increment = 1;
-		if (((in->type & IPF_PLAYERMASK) == player) && is_controller_input_type(in->type))
+		type = in->type & ~IPF_MASK;
+
+		if (type == ipt_name)
 		{
-			if (win_dialog_add_portselect(dlg, in, &increment))
-				goto done;
+			if ((in->type & IPF_UNUSED) == 0 && !(!options.cheat && (in->type & IPF_CHEAT)))
+			{
+				switch_name = input_port_name(in);
+				if (win_dialog_add_combobox(dlg, switch_name, &in->default_value))
+					goto done;
+			}
+			else
+			{
+				switch_name = NULL;
+			}
 		}
-		in += increment;
+		else if (type == ipt_setting)
+		{
+			if (switch_name)
+			{
+				if (win_dialog_add_combobox_item(dlg, input_port_name(in), in->default_value))
+					goto done;
+			}
+		}
 	}
 
 	if (win_dialog_add_standard_buttons(dlg))
@@ -190,23 +252,7 @@ done:
 		win_dialog_exit(dlg);
 }
 
-//============================================================
-//	hasdipswitches
-//============================================================
 
-static int hasdipswitches(void)
-{
-	struct InputPort *in;
-	for (in = Machine->input_ports; in->type != IPT_END; in++)
-	{
-		switch(in->type & ~IPF_MASK) {
-		case IPT_DIPSWITCH_NAME:
-		case IPT_DIPSWITCH_SETTING:
-			return 1;
-		}
-	}
-	return 0;
-}
 
 //============================================================
 //	setdipswitches
@@ -214,49 +260,21 @@ static int hasdipswitches(void)
 
 static void setdipswitches(void)
 {
-	void *dlg;
-	struct InputPort *in;
-	const char *dipswitch_name = NULL;
-	
-	dlg = win_dialog_init(ui_getstring(UI_dipswitches));
-	if (!dlg)
-		goto done;
-
-	for (in = Machine->input_ports; in->type != IPT_END; in++)
-	{
-		switch(in->type & ~IPF_MASK) {
-		case IPT_DIPSWITCH_NAME:
-			if ((in->type & IPF_UNUSED) == 0 && !(!options.cheat && (in->type & IPF_CHEAT)))
-			{
-				dipswitch_name = input_port_name(in);
-				if (win_dialog_add_combobox(dlg, dipswitch_name, &in->default_value))
-					goto done;
-			}
-			else
-			{
-				dipswitch_name = NULL;
-			}
-			break;
-
-		case IPT_DIPSWITCH_SETTING:
-			if (dipswitch_name)
-			{
-				if (win_dialog_add_combobox_item(dlg, input_port_name(in), in->default_value))
-					goto done;
-			}
-			break;
-		}
-	}
-
-	if (win_dialog_add_standard_buttons(dlg))
-		goto done;
-
-	win_dialog_runmodal(dlg);
-
-done:
-	if (dlg)
-		win_dialog_exit(dlg);
+	setswitchmenu(UI_dipswitches, IPT_DIPSWITCH_NAME, IPT_DIPSWITCH_SETTING);
 }
+
+
+
+//============================================================
+//	setconfiguration
+//============================================================
+
+static void setconfiguration(void)
+{
+	setswitchmenu(UI_configuration, IPT_CONFIG_NAME, IPT_CONFIG_SETTING);
+}
+
+
 
 //============================================================
 //	loadsave
@@ -271,6 +289,8 @@ static void loadsave(int type)
 	OPENFILENAME ofn;
 	char *dir;
 	int result = 0;
+	char *src;
+	char *dst;
 
 	if (filename[0])
 	{
@@ -280,6 +300,15 @@ static void loadsave(int type)
 	{
 		snprintf(filename, sizeof(filename) / sizeof(filename[0]), "%s State.sta", Machine->gamedrv->description);
 		dir = NULL;
+
+		src = filename;
+		dst = filename;
+		do
+		{
+			if ((*src == '\0') || isalnum(*src) || isspace(*src) || strchr("(),.", *src))
+				*(dst++) = *src;
+		}
+		while(*(src++));
 	}
 
 	memset(&ofn, 0, sizeof(ofn));
@@ -580,31 +609,40 @@ static void prepare_menus(void)
 	UINT_PTR new_item;
 	UINT flags_for_exists;
 	mess_image *img;
+	int has_config, has_dipswitch, has_keyboard;
 
 	if (!win_menu_bar)
 		return;
 
-	set_command_state(win_menu_bar, ID_EDIT_PASTE,			inputx_can_post()			? MFS_ENABLED : MFS_GRAYED);
+	has_config		= input_has_input_category(INPUT_CATEGORY_CONFIG);
+	has_dipswitch	= input_has_input_category(INPUT_CATEGORY_DIPSWITCH);
+	has_keyboard	= input_has_input_category(INPUT_CATEGORY_KEYBOARD);
 
-	set_command_state(win_menu_bar, ID_OPTIONS_PAUSE,		is_paused					? MFS_CHECKED : MFS_ENABLED);
-	set_command_state(win_menu_bar, ID_OPTIONS_THROTTLE,	throttle					? MFS_CHECKED : MFS_ENABLED);
-	set_command_state(win_menu_bar, ID_OPTIONS_DIPSWITCHES,	hasdipswitches()			? MFS_ENABLED : MFS_GRAYED);
+	set_command_state(win_menu_bar, ID_EDIT_PASTE,				inputx_can_post()							? MFS_ENABLED : MFS_GRAYED);
+
+	set_command_state(win_menu_bar, ID_OPTIONS_PAUSE,			is_paused									? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_OPTIONS_THROTTLE,		throttle									? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_OPTIONS_CONFIGURATION,	has_config									? MFS_ENABLED : MFS_GRAYED);
+	set_command_state(win_menu_bar, ID_OPTIONS_DIPSWITCHES,		has_dipswitch								? MFS_ENABLED : MFS_GRAYED);
 #if HAS_TOGGLEFULLSCREEN
-	set_command_state(win_menu_bar, ID_OPTIONS_FULLSCREEN,	!win_window_mode			? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_OPTIONS_FULLSCREEN,		!win_window_mode							? MFS_CHECKED : MFS_ENABLED);
 #endif
-	set_command_state(win_menu_bar, ID_OPTIONS_TOGGLEFPS,	ui_show_fps_get()			? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_OPTIONS_TOGGLEFPS,		ui_show_fps_get()							? MFS_CHECKED : MFS_ENABLED);
 #if HAS_PROFILER
-	set_command_state(win_menu_bar, ID_OPTIONS_PROFILER,	ui_show_profiler_get()		? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_OPTIONS_PROFILER,		ui_show_profiler_get()						? MFS_CHECKED : MFS_ENABLED);
 #endif
 
-	set_command_state(win_menu_bar, ID_KEYBOARD_EMULATED,	!win_use_natural_keyboard	? MFS_CHECKED : MFS_ENABLED);
-	set_command_state(win_menu_bar, ID_KEYBOARD_NATURAL,	inputx_can_post() ?
-															(win_use_natural_keyboard	? MFS_CHECKED : MFS_ENABLED)
-																						: MFS_GRAYED);
+	set_command_state(win_menu_bar, ID_KEYBOARD_EMULATED,		(has_keyboard) ?
+																(!win_use_natural_keyboard					? MFS_CHECKED : MFS_ENABLED)
+																												: MFS_GRAYED);
+	set_command_state(win_menu_bar, ID_KEYBOARD_NATURAL,		(has_keyboard && inputx_can_post()) ?
+																(win_use_natural_keyboard					? MFS_CHECKED : MFS_ENABLED)
+																												: MFS_GRAYED);
+	set_command_state(win_menu_bar, ID_KEYBOARD_CUSTOMIZE,		has_keyboard								? MFS_ENABLED : MFS_GRAYED);
 
-	set_command_state(win_menu_bar, ID_FRAMESKIP_AUTO,		autoframeskip				? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_FRAMESKIP_AUTO,			autoframeskip								? MFS_CHECKED : MFS_ENABLED);
 	for(i = 0; i < FRAMESKIP_LEVELS; i++)
-		set_command_state(win_menu_bar, ID_FRAMESKIP_0 + i, (!autoframeskip && (frameskip == i)) ? MFS_CHECKED : MFS_ENABLED);
+		set_command_state(win_menu_bar, ID_FRAMESKIP_0 + i, (!autoframeskip && (frameskip == i))			? MFS_CHECKED : MFS_ENABLED);
 
 	// set up device menu
 	device_menu = find_sub_menu(win_menu_bar, "&Devices\0", FALSE);
@@ -822,7 +860,7 @@ static int invoke_command(UINT command)
 		break;
 
 	case ID_FILE_SAVESCREENSHOT:
-		artwork_save_snapshot(artwork_get_ui_bitmap());
+		save_screen_snapshot(artwork_get_ui_bitmap());
 		break;
 
 	case ID_FILE_EXIT:
@@ -841,13 +879,17 @@ static int invoke_command(UINT command)
 		win_use_natural_keyboard = 0;
 		break;
 
+	case ID_KEYBOARD_CUSTOMIZE:
+		setkeyboard();
+		break;
+
 	case ID_OPTIONS_PAUSE:
 		pause();
 		break;
 
 	case ID_OPTIONS_HARDRESET:
-		memset(mess_ram, 0xcd, mess_ram_size);
-		/* fall through */
+		machine_hard_reset();
+		break;
 
 	case ID_OPTIONS_SOFTRESET:
 		machine_reset();
@@ -868,6 +910,10 @@ static int invoke_command(UINT command)
 		debug_key_pressed = 1;
 		break;
 #endif
+
+	case ID_OPTIONS_CONFIGURATION:
+		setconfiguration();
+		break;
 
 	case ID_OPTIONS_DIPSWITCHES:
 		setdipswitches();
@@ -923,30 +969,6 @@ static int invoke_command(UINT command)
 		break;
 	}
 	return handled;
-}
-
-//============================================================
-//	count_joysticks
-//============================================================
-
-static int count_joysticks(void)
-{
-	const struct InputPortTiny *in;
-	int joystick_count;
-
-	assert(MAX_JOYSTICKS > 0);
-	assert(MAX_JOYSTICKS < 8);
-
-	joystick_count = 0;
-	for (in = Machine->gamedrv->input_ports; in->type != IPT_END; in++)
-	{
-		if (is_controller_input_type(in->type))
-		{
-			if (joystick_count <= (in->type & IPF_PLAYERMASK) / IPF_PLAYER2)
-				joystick_count = (in->type & IPF_PLAYERMASK) / IPF_PLAYER2 + 1;
-		}
-	}
-	return joystick_count;
 }
 
 //============================================================
@@ -1014,7 +1036,7 @@ int win_setup_menus(HMENU menu_bar)
 
 	// set up joystick menu
 #ifndef UNDER_CE
-	joystick_count = count_joysticks();
+	joystick_count = input_count_players();
 #endif
 	set_command_state(menu_bar, ID_OPTIONS_JOYSTICKS, joystick_count ? MFS_ENABLED : MFS_GRAYED);
 	if (joystick_count > 0)

@@ -306,9 +306,6 @@
 #include <ctype.h>
 #include <math.h>
 
-#ifdef MESS
-#include "image.h"
-#endif
 
 /***************************************************************************
 
@@ -586,23 +583,6 @@ INLINE UINT32 blend_over(UINT32 game, UINT32 pre, UINT32 yrgb)
 }
 
 
-
-/*-------------------------------------------------
-	use_artwork_system - decides whether it is
-	appropriate to use the artwork system or not
--------------------------------------------------*/
-
-static int use_artwork_system(struct osd_create_params *params)
-{
-#ifdef MESS
-	if ((params->width < options.min_width) && (params->height < options.min_height))
-	{
-		options.artwork_res = 2;
-		return 1;
-	}
-#endif
-	return artwork_list != NULL;
-}
 
 #if 0
 #pragma mark -
@@ -1971,37 +1951,6 @@ static void render_ui_overlay(struct mame_bitmap *bitmap, UINT32 *dirty, const r
 		}
 	}
 }
-
-#ifdef MESS
-static char *override_artfile;
-
-void artwork_use_device_art(mess_image *img, const char *defaultartfile)
-{
-	const char *fname;
-	const char *ext;
-	int len = -1;
-
-	fname = image_basename(img);
-	if (fname)
-	{
-		ext = strrchr(fname, '.');
-		if (ext)
-			len = ext - fname;
-	}
-	else
-	{
-		fname = defaultartfile;
-	}
-	if (len == -1)
-		len = strlen(fname);
-
-	override_artfile = malloc(len + 1);
-	if (!override_artfile)
-		return;
-	memcpy(override_artfile, fname, len);
-	override_artfile[len] = 0;
-}
-#endif
 
 
 

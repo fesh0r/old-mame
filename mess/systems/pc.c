@@ -68,7 +68,7 @@
  */
 #define ADLIB	/* YM3812/OPL2 Chip */
 /*
-  creativ labs game blaster (CMS creativ music system)
+  creative labs game blaster (CMS creative music system)
   2 x saa1099 chips
   also on sound blaster 1.0
   option on sound blaster 1.5
@@ -83,8 +83,7 @@
 static READ_HANDLER( return_0xff ) { return 0xff; }
 
 static MEMORY_READ_START( pc_readmem )
-	{ 0x00000, 0x7ffff, MRA_RAM },
-	{ 0x80000, 0x9ffff, MRA_RAM },
+	{ 0x00000, 0x9ffff, MRA_BANK10 },
 	{ 0xa0000, 0xbffff, MRA_NOP },
 	{ 0xc0000, 0xc7fff, MRA_NOP },
 	{ 0xc8000, 0xcffff, MRA_ROM },
@@ -93,8 +92,7 @@ static MEMORY_READ_START( pc_readmem )
 MEMORY_END
 
 static MEMORY_WRITE_START( pc_writemem )
-	{ 0x00000, 0x7ffff, MWA_RAM },
-	{ 0x80000, 0x9ffff, MWA_RAM },
+	{ 0x00000, 0x9ffff, MWA_BANK10 },
 	{ 0xa0000, 0xbffff, MWA_NOP },
 	{ 0xc0000, 0xc7fff, MWA_NOP },
 	{ 0xc8000, 0xcffff, MWA_ROM },
@@ -166,8 +164,7 @@ static PORT_WRITE_START( pc_writeport )
 PORT_END
 
 static MEMORY_READ_START( europc_readmem )
-	{ 0x00000, 0x7ffff, MRA_RAM },
-	{ 0x80000, 0x9ffff, MRA_RAM },
+	{ 0x00000, 0x9ffff, MRA_BANK10 },
 	{ 0xa0000, 0xaffff, MRA_NOP },
 	{ 0xb0000, 0xbffff, pc_aga_videoram_r },
 	{ 0xc0000, 0xc7fff, MRA_NOP },
@@ -177,8 +174,7 @@ static MEMORY_READ_START( europc_readmem )
 MEMORY_END
 
 static MEMORY_WRITE_START( europc_writemem )
-	{ 0x00000, 0x7ffff, MWA_RAM },
-	{ 0x80000, 0x9ffff, MWA_RAM },
+	{ 0x00000, 0x9ffff, MWA_BANK10 },
 	{ 0xa0000, 0xaffff, MWA_NOP },
 	{ 0xb0000, 0xbffff, pc_aga_videoram_w, &videoram, &videoram_size },
 	{ 0xc0000, 0xc7fff, MWA_NOP },
@@ -244,8 +240,7 @@ static PORT_WRITE_START( europc_writeport )
 PORT_END
 
 static MEMORY_READ_START(t1t_readmem)
-	{ 0x00000, 0x7ffff, MRA_RAM },
-	{ 0x80000, 0x9ffff, MRA_RAM },
+	{ 0x00000, 0x9ffff, MRA_BANK10 },
 	{ 0xa0000, 0xaffff, MRA_RAM },
 	{ 0xb0000, 0xb7fff, MRA_NOP },
 	{ 0xb8000, 0xbffff, pc_t1t_videoram_r },
@@ -257,8 +252,7 @@ static MEMORY_READ_START(t1t_readmem)
 PORT_END
 
 static MEMORY_WRITE_START( t1t_writemem )
-	{ 0x00000, 0x7ffff, MWA_RAM },
-	{ 0x80000, 0x9ffff, MWA_RAM },
+	{ 0x00000, 0x9ffff, MWA_BANK10 },
 	{ 0xa0000, 0xaffff, MWA_RAM },
     { 0xb0000, 0xb7fff, MWA_NOP },
 	{ 0xb8000, 0xbffff, pc_video_videoram_w },
@@ -348,8 +342,7 @@ static PORT_WRITE_START( pc200_writeport )
 PORT_END
 
 static MEMORY_READ_START( pc1640_readmem )
-	{ 0x00000, 0x7ffff, MRA_RAM },
-	{ 0x80000, 0x9ffff, MRA_RAM },
+	{ 0x00000, 0x9ffff, MRA_BANK10 },
 	{ 0xa0000, 0xbffff, MRA_NOP },
 	{ 0xc0000, 0xc7fff, MRA_ROM },
     { 0xc8000, 0xcffff, MRA_ROM },
@@ -358,8 +351,7 @@ static MEMORY_READ_START( pc1640_readmem )
 MEMORY_END
 
 static MEMORY_WRITE_START( pc1640_writemem )
-	{ 0x00000, 0x7ffff, MWA_RAM },
-	{ 0x80000, 0x9ffff, MWA_RAM },
+	{ 0x00000, 0x9ffff, MWA_BANK10 },
 	{ 0xa0000, 0xbffff, MWA_NOP },
 	{ 0xc0000, 0xc7fff, MWA_ROM },
 	{ 0xc8000, 0xcffff, MWA_ROM },
@@ -559,11 +551,28 @@ INPUT_PORTS_START( pccga )
 	PORT_BIT( 0x02, 0x02,	IPT_UNUSED ) /* no turbo switch */
 	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
 
-	PC_KEYBOARD
+	PC_KEYBOARD		/* IN4 - IN11 */
 
-	INPUT_MICROSOFT_MOUSE
+	INPUT_MICROSOFT_MOUSE	/* IN12 - IN14 */
 
-	PC_JOYSTICK
+	PC_JOYSTICK		/* IN15 - IN19 */
+
+    PORT_START /* IN20 */
+	PORT_CONFNAME( 0x03, 0x00, "CGA character set")
+	PORT_CONFSETTING(0x00, "Normal")
+    PORT_CONFSETTING(0x01, "Alternative")
+	PORT_CONFNAME( 0x1C, 0x00, "CGA monitor type")
+	PORT_CONFSETTING(0x00, "Colour RGB")
+	PORT_CONFSETTING(0x04, "Mono RGB")
+	PORT_CONFSETTING(0x08, "Colour composite")
+	PORT_CONFSETTING(0x0C, "Television")
+    PORT_CONFSETTING(0x10, "LCD")
+	PORT_CONFNAME( 0xE0, 0x00, "CGA chipset")
+	PORT_CONFSETTING(0x00, "IBM")
+	PORT_CONFSETTING(0x20, "Amstrad PC1512")
+	PORT_CONFSETTING(0x40, "Amstrad PPC512")
+	PORT_CONFSETTING(0x60, "ATI")
+    PORT_CONFSETTING(0x80, "Paradise")
 INPUT_PORTS_END
 
 INPUT_PORTS_START( europc )
@@ -779,6 +788,22 @@ INPUT_PORTS_START( xtcga )
 	INPUT_MICROSOFT_MOUSE
 
 	PC_JOYSTICK
+    PORT_START /* IN20 */
+	PORT_CONFNAME( 0x03, 0x00, "CGA character set")
+	PORT_CONFSETTING(0x00, "Normal")
+    PORT_CONFSETTING(0x01, "Alternative")
+	PORT_CONFNAME( 0x1C, 0x00, "CGA monitor type")
+	PORT_CONFSETTING(0x00, "Colour RGB")
+	PORT_CONFSETTING(0x04, "Mono RGB")
+	PORT_CONFSETTING(0x08, "Colour composite")
+	PORT_CONFSETTING(0x0C, "Television")
+    PORT_CONFSETTING(0x10, "LCD")
+	PORT_CONFNAME( 0xE0, 0x00, "CGA chipset")
+	PORT_CONFSETTING(0x00, "IBM")
+	PORT_CONFSETTING(0x20, "Amstrad PC1512")
+	PORT_CONFSETTING(0x40, "Amstrad PPC512")
+	PORT_CONFSETTING(0x60, "ATI")
+    PORT_CONFSETTING(0x80, "Paradise")
 INPUT_PORTS_END
 
 INPUT_PORTS_START( tandy1t )
@@ -904,6 +929,19 @@ PORT_BIT ( 0x04, 0x04,	 IPT_UNUSED ) // lpt 1 on motherboard
 	INPUT_MICROSOFT_MOUSE
 
 	PC_JOYSTICK
+
+    PORT_START /* IN20 */
+	PORT_CONFNAME( 0x03, 0x03, "IDA character set")
+	PORT_CONFSETTING(0x00, "Greek")
+	PORT_CONFSETTING(0x01, "Norwegian (Codepage 860)")
+	PORT_CONFSETTING(0x02, "Portugese (Codepage 865)")
+    PORT_CONFSETTING(0x03, "Default (Codepage 437)")
+	PORT_CONFNAME( 0x1C, 0x00, "CGA monitor type")
+	PORT_CONFSETTING(0x00, "Colour RGB")
+	PORT_CONFSETTING(0x04, "Mono RGB")
+    PORT_CONFSETTING(0x0C, "Television")
+    PORT_BIT ( 0xE0, 0x40, IPT_UNUSED )	/* Chipset is always PPC512 */
+
 INPUT_PORTS_END
 
 INPUT_PORTS_START( pc1512 )
@@ -965,6 +1003,19 @@ PORT_BIT ( 0x04, 0x04,	 IPT_UNUSED ) // lpt 1 on motherboard
 	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
 
 	AMSTRAD_KEYBOARD
+
+	PC_NO_JOYSTICK
+
+    PORT_START /* IN20 */
+	PORT_CONFNAME( 0x03, 0x03, "CGA character set")
+	PORT_CONFSETTING(0x00, "Greek")
+	PORT_CONFSETTING(0x01, "Danish 2")
+	PORT_CONFSETTING(0x02, "Danish 1")
+    PORT_CONFSETTING(0x03, "Default")
+	PORT_CONFNAME( 0x1C, 0x00, "CGA monitor type")
+	PORT_CONFSETTING(0x00, "Colour RGB")
+    PORT_CONFSETTING(0x04, "Mono RGB")
+    PORT_BIT ( 0xE0, 0x20, IPT_UNUSED )	/* Chipset is always PC1512 */
 
 //	PC_JOYSTICK
 INPUT_PORTS_END
@@ -1494,7 +1545,7 @@ ROM_START( ibmpc )
     ROM_LOAD("basicc11.fa", 0xfa000, 0x2000, CRC(aac3fc37))
     ROM_LOAD("basicc11.fc", 0xfc000, 0x2000, CRC(3062b3fc))
     ROM_LOAD("pc102782.bin", 0xfe000, 0x2000, CRC(e88792b3))
-	ROM_REGION(0x01100,REGION_GFX1, 0)
+	ROM_REGION(0x08100,REGION_GFX1, 0)
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069))
 ROM_END
 
@@ -1506,7 +1557,7 @@ ROM_START( ibmpca )
     ROM_LOAD("basicc11.fa", 0xfa000, 0x2000, CRC(aac3fc37))
     ROM_LOAD("basicc11.fc", 0xfc000, 0x2000, CRC(3062b3fc))
     ROM_LOAD("pc081682.bin", 0xfe000, 0x2000, CRC(5c3f0256))
-	ROM_REGION(0x01100,REGION_GFX1, 0)
+	ROM_REGION(0x08100,REGION_GFX1, 0)
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069))
 ROM_END
 
@@ -1514,7 +1565,7 @@ ROM_START( bondwell )
 	ROM_REGION(0x100000,REGION_CPU1, 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4)) // taken from other machine
 	ROM_LOAD("bondwell.bin", 0xfe000, 0x2000, CRC(d435a405))
-	ROM_REGION(0x01100,REGION_GFX1, 0)
+	ROM_REGION(0x08100,REGION_GFX1, 0)
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069)) // taken from cga
 ROM_END
 
@@ -1522,8 +1573,8 @@ ROM_START( pcmda )
     ROM_REGION(0x100000,REGION_CPU1, 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
     ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad))
-	ROM_REGION(0x01100,REGION_GFX1, 0)
-    ROM_LOAD("mda.chr",     0x00000, 0x01000, CRC(ac1686f3))
+	ROM_REGION(0x08100,REGION_GFX1, 0)
+    ROM_LOAD("mda.rom",     0x00000, 0x02000, CRC(0bf56d70)) // taken from original IBM MDA
 ROM_END
 
 ROM_START( pc )
@@ -1531,7 +1582,7 @@ ROM_START( pc )
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
 //    ROM_LOAD("xthdd.rom",  0xc8000, 0x02000, CRC(a96317da))
     ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad))
-	ROM_REGION(0x01100,REGION_GFX1, 0)
+	ROM_REGION(0x08100,REGION_GFX1, 0)
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069))
 ROM_END
 
@@ -1539,7 +1590,7 @@ ROM_START( europc )
     ROM_REGION(0x100000,REGION_CPU1, 0)
 	// hdd bios integrated!
     ROM_LOAD("50145", 0xf8000, 0x8000, CRC(1775a11d)) // V2.07
-	ROM_REGION(0x02100,REGION_GFX1, 0)
+	ROM_REGION(0x08100,REGION_GFX1, 0)
     ROM_LOAD("50146", 0x00000, 0x02000, CRC(1305dcf5)) //D1.0
 ROM_END
 
@@ -1552,7 +1603,7 @@ ROM_START( ibmpcjr )
     ROM_LOAD("basic.rom", 0xf6000, 0x8000, CRC(0c19c1a8))
     ROM_LOAD("bios.rom", 0xfe000, 0x2000, CRC(98463f95))
 #endif
-	ROM_REGION(0x01100,REGION_GFX1, 0)
+	ROM_REGION(0x08100,REGION_GFX1, 0)
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069))
 ROM_END
 
@@ -1562,7 +1613,7 @@ ROM_START( t1000hx )
 	// partlist says it has 1 128kbyte rom
 	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242))
 	ROM_LOAD("tandy1t.rom", 0xf0000, 0x10000, CRC(d37a1d5f))
-	ROM_REGION(0x02000,REGION_GFX1, 0)
+	ROM_REGION(0x08000,REGION_GFX1, 0)
 	// expects 8x9 charset!
 	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5)) //taken from europc, 9th blank
 ROM_END
@@ -1573,7 +1624,7 @@ ROM_START( t1000sx )
 	// partlist says it has 1 128kbyte rom
 	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242))
 	ROM_LOAD("t1000sx.f0", 0xf0000, 0x10000, CRC(0e016ecf))
-	ROM_REGION(0x02000,REGION_GFX1, 0)
+	ROM_REGION(0x08000,REGION_GFX1, 0)
 	// expects 8x9 charset!
 	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5)) //taken from europc, 9th blank
 ROM_END
@@ -1583,7 +1634,7 @@ ROM_START( ibmxt )
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
 	ROM_LOAD16_BYTE("xt050986.0", 0xf0000, 0x8000, CRC(83727c42))
 	ROM_LOAD16_BYTE("xt050986.1", 0xf0001, 0x8000, CRC(2a629953))
-	ROM_REGION(0x01100,REGION_GFX1, 0)
+	ROM_REGION(0x08100,REGION_GFX1, 0)
 	ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069))
 ROM_END
 
@@ -1652,7 +1703,7 @@ ROM_START( pc1512 )
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
     ROM_LOAD16_BYTE("40044.v1", 0xfc001, 0x2000, CRC(668fcc94)) // v1
     ROM_LOAD16_BYTE("40043.v1", 0xfc000, 0x2000, CRC(f72f1582)) // v1
-	ROM_REGION(0x02100,REGION_GFX1, 0)
+	ROM_REGION(0x08100,REGION_GFX1, 0)
     ROM_LOAD("40045.bin",     0x00000, 0x02000, CRC(dd5e030f))
 ROM_END
 
@@ -1662,7 +1713,7 @@ ROM_START( pc1512v2 )
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
     ROM_LOAD16_BYTE("40044.v2", 0xfc001, 0x2000, CRC(d2d4d2de)) // v2
     ROM_LOAD16_BYTE("40043.v2", 0xfc000, 0x2000, CRC(1aec54fa)) // v2
-	ROM_REGION(0x02100,REGION_GFX1, 0)
+	ROM_REGION(0x08100,REGION_GFX1, 0)
     ROM_LOAD("40078.bin",     0x00000, 0x02000, CRC(ae9c0d04))
 ROM_END
 
@@ -1673,11 +1724,12 @@ ROM_START( pc1640 )
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
     ROM_LOAD16_BYTE("40043.v3", 0xfc001, 0x2000, CRC(e40a1513)) // v3
     ROM_LOAD16_BYTE("40044.v3", 0xfc000, 0x2000, CRC(f1c074f3))
-	ROM_REGION(0x02100,REGION_GFX1, 0)
+	ROM_REGION(0x08100,REGION_GFX1, 0)
     ROM_LOAD("40045.bin",     0x00000, 0x02000, CRC(dd5e030f))
 ROM_END
 
 SYSTEM_CONFIG_START(ibmpc)
+	CONFIG_RAM_DEFAULT( 640 * 1024 )
 	CONFIG_DEVICE_PRINTER(3)
 	CONFIG_DEVICE_PC_FLOPPY(2)
 	CONFIG_DEVICE_PC_HARDDISK(4)

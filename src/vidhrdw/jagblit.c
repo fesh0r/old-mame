@@ -168,6 +168,28 @@ static void FUNCNAME(UINT32 command, UINT32 a1flags, UINT32 a2flags)
 	void *a1_base_mem = get_jaguar_memory(a1_base);
 	void *a2_base_mem = get_jaguar_memory(a2_base);
 
+	void *asrc_base_mem =	(COMMAND & 0x00000800) ? a1_base_mem : a2_base_mem;
+	UINT32 asrcflags =		(COMMAND & 0x00000800) ? A1FIXED : A2FIXED;
+	INT32 asrc_x =			(COMMAND & 0x00000800) ? a1_x : a2_x;
+	INT32 asrc_y =			(COMMAND & 0x00000800) ? a1_y : a2_y;
+	INT32 asrc_width =		(COMMAND & 0x00000800) ? a1_width : a2_width;
+	INT32 asrc_pitch =		(COMMAND & 0x00000800) ? a1_pitch : a2_pitch;
+	INT32 asrc_zoffs =		(COMMAND & 0x00000800) ? a1_zoffs : a2_zoffs;
+	UINT8 asrc_phrase_mode;
+	INT32 asrc_xadd, asrc_xstep, asrc_yadd, asrc_ystep;
+	UINT32 asrc_xmask, asrc_ymask;
+
+	void *adest_base_mem =	(COMMAND & 0x00000800) ? a2_base_mem : a1_base_mem;
+	UINT32 adestflags =		(COMMAND & 0x00000800) ? A2FIXED : A1FIXED;
+	INT32 adest_x =			(COMMAND & 0x00000800) ? a2_x : a1_x;
+	INT32 adest_y =			(COMMAND & 0x00000800) ? a2_y : a1_y;
+	INT32 adest_width =		(COMMAND & 0x00000800) ? a2_width : a1_width;
+	INT32 adest_pitch =		(COMMAND & 0x00000800) ? a2_pitch : a1_pitch;
+	INT32 adest_zoffs =		(COMMAND & 0x00000800) ? a2_zoffs : a1_zoffs;
+	UINT8 adest_phrase_mode;
+	INT32 adest_xadd, adest_xstep, adest_yadd, adest_ystep;
+	UINT32 adest_xmask, adest_ymask;
+
 	/* don't blit if pointer bad */
 	if (!a1_base_mem || !a2_base_mem)
 	{
@@ -278,9 +300,11 @@ static void FUNCNAME(UINT32 command, UINT32 a1flags, UINT32 a2flags)
 	logerror("  command  = %08X\n", COMMAND);
 #endif
 
+#if LOG_UNHANDLED_BLITS
 	/* check for unhandled command bits */
-	if (COMMAND & 0x64003000)
-		logerror("Blitter unhandled: these command bits: %08X\n", COMMAND & 0x64003000);
+	if (COMMAND & 0x24003000)
+		logerror("Blitter unhandled: these command bits: %08X\n", COMMAND & 0x24003000);
+#endif /* LOG_UNHANDLED_BLITS */
 
 	/* top of the outer loop */
 	outer = outer_count;
@@ -387,6 +411,18 @@ static void FUNCNAME(UINT32 command, UINT32 a1flags, UINT32 a2flags)
 						writedata |= srcdata & ~dstdata;
 					if (COMMAND & 0x01000000)
 						writedata |= srcdata & dstdata;
+				}
+
+				/* handle source shading */
+				if (COMMAND & 0x40000000)
+				{
+					int intensity = srcdata & 0x00ff;
+					intensity += (INT8) (blitter_regs[B_Z3] >> 16);
+					if (intensity < 0)
+						intensity = 0;
+					else if (intensity > 0xff)
+						intensity = 0xff;
+					writedata = (srcdata & 0xff00) | intensity;
 				}
 			}
 			else
