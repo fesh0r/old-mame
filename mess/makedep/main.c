@@ -93,6 +93,7 @@ int width = 78;
 boolean append = FALSE;
 boolean printed = FALSE;
 boolean verbose = FALSE;
+boolean quiet = FALSE;
 boolean show_where_not = FALSE;
 boolean warn_multiple = FALSE;			/* Warn on multiple includes of same file */
 
@@ -137,6 +138,17 @@ char *djgpp_include(void)
 	while ((p = strchr(dir, '\\')))
 		*p = '/';
 	return dir;
+}
+#endif
+#ifdef _WINDOWS
+char *msvc_include(void)
+{
+	static char dir[256];
+	char *inc = getenv("INCLUDE"), *p;
+	strcpy(dir, inc);
+    while ((p = strchr(dir, '\\')))
+		*p = '/';
+    return dir;
 }
 #endif
 
@@ -334,7 +346,12 @@ int main(int argc, char **argv)
 				_debugmask = atoi(argv[0] + 2);
 #endif
 			break;
-		case 's':
+		case 'q':
+			if (endmarker)
+				break;
+			quiet = TRUE;
+            break;
+        case 's':
 			if (endmarker)
 				break;
 			startat = argv[0] + 2;
@@ -795,7 +812,9 @@ void fatalerr(char *msg,...)
 void warning(char *msg,...)
 {
 	va_list args;
-	fprintf(stderr, "%s warning:  ", ProgramName);
+	if (quiet)
+		return;
+    fprintf(stderr, "%s warning:  ", ProgramName);
 	va_start(args, msg);
 	vfprintf(stderr, msg, args);
 	va_end(args);
@@ -804,8 +823,9 @@ void warning(char *msg,...)
 void warning1(char *msg,...)
 {
 	va_list args;
-
-	va_start(args, msg);
+	if (quiet)
+        return;
+    va_start(args, msg);
 	vfprintf(stderr, msg, args);
 	va_end(args);
 }

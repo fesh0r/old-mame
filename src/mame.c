@@ -462,31 +462,23 @@ int run_game(int game)
 
 	if (osd_init() == 0)
 	{
-#ifdef MESS
-		do
+		if (init_machine() == 0)
 		{
-			mess_keep_going = 0;
-#endif
-			if (init_machine() == 0)
-			{
-				if (run_machine() == 0)
-					err = 0;
-				else if (!bailing)
-				{
-					bailing = 1;
-					printf("Unable to start machine emulation\n");
-				}
-
-				shutdown_machine();
-			}
+			if (run_machine() == 0)
+				err = 0;
 			else if (!bailing)
 			{
 				bailing = 1;
-				printf("Unable to initialize machine emulation\n");
+				printf("Unable to start machine emulation\n");
 			}
-#ifdef MESS
-		} while (mess_keep_going);
-#endif
+
+			shutdown_machine();
+		}
+		else if (!bailing)
+		{
+			bailing = 1;
+			printf("Unable to initialize machine emulation\n");
+		}
 
 		osd_exit();
 	}

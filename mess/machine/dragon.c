@@ -61,10 +61,12 @@
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
-#include "machine/wd179x.h"
+#include "includes/wd179x.h"
 #include "vidhrdw/m6847.h"
 #include "includes/dragon.h"
 #include "formats/cocopak.h"
+#include "formats/cococas.h"
+#include "includes/basicdsk.h"
 
 static UINT8 *coco_rom;
 static int coco3_enable_64k;
@@ -603,9 +605,9 @@ static WRITE_HANDLER ( d_pia1_cb2_w )
 #endif
 
 	status = device_status(IO_CASSETTE, 0, -1);
-	status &= ~2;
+	status &= ~WAVE_STATUS_MUTED;
 	if (!data)
-		status |= 2;
+		status |= WAVE_STATUS_MUTED;
 	device_status(IO_CASSETTE, 0, status);
 
 	sound_mux = data;
@@ -624,7 +626,7 @@ static WRITE_HANDLER ( d_pia1_pa_w )
 	if (sound_mux)
 		DAC_data_w(0,d_dac);
 	else
-		device_output(IO_CASSETTE, 0, ((int) d_dac - 0x80) * 0x102);
+		device_output(IO_CASSETTE, 0, ((int) d_dac - 0x80) * 0x100);
 
 }
 
@@ -658,9 +660,9 @@ static WRITE_HANDLER ( d_pia1_ca2_w )
 	if (tape_motor ^ data)
 	{
 		status = device_status(IO_CASSETTE, 0, -1);
-		status &= ~1;
-		if (data)
-			status |= 1;
+		status &= ~WAVE_STATUS_MOTOR_INHIBIT;
+		if (!data)
+			status |= WAVE_STATUS_MOTOR_INHIBIT;
 		device_status(IO_CASSETTE, 0, status);
 		tape_motor = data;
 	}
@@ -728,6 +730,14 @@ static WRITE_HANDLER ( d_pia0_pb_w )
 READ_HANDLER(dragon_mapped_irq_r)
 {
 	return coco_rom[0x3ff0 + offset];
+}
+
+READ_HANDLER(coco3_mapped_irq_r)
+{
+	/* NPW 28-Aug-2000 - I discovered this when we moved over to the new ROMset
+	 * and Tim confirmed this
+	 */
+	return coco_rom[0x7ff0 + offset];
 }
 
 WRITE_HANDLER(dragon_sam_speedctrl)
@@ -1362,195 +1372,6 @@ static void autocenter_init(int dipport, int dipmask)
   Cassette support
 ***************************************************************************/
 
-#define WAVEENTRY_HIGH  32767
-#define WAVEENTRY_LOW   -32768
-#define WAVEENTRY_NULL  0
-#define WAVESAMPLES_BYTE    8*4
-#define WAVESAMPLES_HEADER  3000
-#define WAVESAMPLES_TRAILER 1000
-
-static INT16* fill_wave_byte(INT16 *p, UINT8 b)
-{
-    int i;
-    /* Each byte in a .CAS file is read bit by bit, starting at bit 0, and
-     * ending with bit 7.  High bits are decoded into {l,h} (a 2400hz pulse)
-     * and low bits are decoded into {l,l,h,h} (a 1200hz pulse)
-     */
-    for (i = 0; i < 8; i++) {
-        *(p++) = WAVEENTRY_LOW;
-        if (((b >> i) & 0x01) == 0) {
-            *(p++) = WAVEENTRY_LOW;
-            *(p++) = WAVEENTRY_HIGH;
-        }
-        *(p++) = WAVEENTRY_HIGH;
-    }
-    return p;
-}
-
-static int get_cas_block(const UINT8 *bytes, int length, UINT8 *block, int *blocklen)
-{
-	int i, j, state, phase=0;
-	UINT8 newb, b;
-	UINT8 block_length=0, block_checksum=0;
-
-	b = 0x00;
-	state = 0;
-
-	for (i = 0; i < length; i++) {
-		newb = bytes[i];
-		for (j = 0; j < 8; j++) {
-			b >>= 1;
-			if (newb & 1)
-				b |= 0x80;
-			newb >>= 1;
-
-			if (state == 0) {
-				/* Searching for a block */
-				if (b == 0x3c) {
-					/* Found one! */
-					phase = j;
-					state = 1;
-				}
-			}
-			else if (j == phase) {
-				switch(state) {
-				case 1:
-					/* Found file type */
-					block_checksum = b;
-					state++;
-					break;
-
-				case 2:
-					/* Found file size */
-					block_length = b;
-					block_checksum += b;
-					state++;
-					*blocklen = ((int) block_length) + 3;
-					break;
-
-				case 3:
-					/* Data byte */
-					if (block_length) {
-						block_length--;
-						block_checksum += b;
-					}
-					else {
-						/* End of block! check the checksum */
-						if (b != block_checksum) {
-							/* Checksum error */
-							return 0;
-						}
-						/* We got a block! Return new position */
-						*block = b;
-						return i + 1;
-					}
-					break;
-
-				}
-				*(block++) = b;
-			}
-		}
-	}
-	/* Couldn't find a block */
-	return 0;
-}
-
-static int wave_size;
-
-static int coco_cassette_fill_wave(INT16 *buffer, int length, UINT8 *bytes)
-{
-	int i, usedbytes, blocklen, position;
-	UINT8 last_blocktype;
-    INT16 *p;
-	UINT8 block[258];	/* 255 bytes per block + 3 (type, length, checksum) */
-
-    p = buffer;
-
-    if (bytes == CODE_HEADER) {
-        for (i = 0; i < WAVESAMPLES_HEADER; i++)
-            *(p++) = WAVEENTRY_NULL;
-    }
-    else if (bytes == CODE_TRAILER) {
-        /* Fill in one magic byte; then the empty trailer */
-        for (i = fill_wave_byte(p, 0x55) - p; i < WAVESAMPLES_TRAILER; i++)
-            *(p++) = WAVEENTRY_NULL;
-    }
-    else {
-		/* This is the actual code that processes the CAS data.  CAS files are
-		 * a problem because they are a legacy of previous CoCo emulators, and
-		 * most of these emulators patch the system as a shortcut.  In doing
-		 * so, they make the CoCo more tolerant of short headers and lack of
-		 * delays between blocks.  This legacy is reflected in most CAS files
-		 * in use, and thus presents a problem for a pure hardware emulation
-		 * like MESS.
-		 *
-		 * One alternative is to preprocess the data on the CAS, file by file,
-		 * but this proves to be problematic because in the process, legitimate
-		 * data that is unrecognized by the preprocessor may get dropped.
-		 *
-		 * The approach taken here is a hybrid approach - it retrieves the data
-		 * block by block until an error occurs; be it the end of the CAS or a
-		 * corrupt (?!) block.  When "legitimate" blocks are done processing,
-		 * the remainder of the data is added to the waveform in a traditional
-		 * manner.  The result has proven to work quite well.
-		 *
-		 * One slight issue; strict bounds checking is not done and as such,
-		 * this code could theoretically overflow.  However, I made sure that
-		 * double the amount of required memory was set aside so such overflows
-		 * may be very rare in practice
-		 */
-
-		position = 0;
-		last_blocktype = 0;
-
-		while((usedbytes = get_cas_block(&bytes[position], wave_size, block, &blocklen)) > 0) {
-			#if LOG_WAVE
-				logerror("COCO found block; position=0x%06x type=%i len=%i\n", position, (int) block[0], blocklen);
-			#endif
-
-			/* was the last block a filename block? */
-			if ((last_blocktype == 0) || (last_blocktype == 0xff)) {
-				#if LOG_WAVE
-					logerror("COCO filling silence %d\n", WAVESAMPLES_HEADER);
-				#endif
-
-				/* silence */
-				for (i = 0; i < WAVESAMPLES_HEADER; i++)
-					*(p++) = WAVEENTRY_NULL;
-				/* sync data */
-				for (i = 0; i < 128; i++)
-					p = fill_wave_byte(p, 0x55);
-			}
-			/* Now fill in the magic bytes */
-			p = fill_wave_byte(p, 0x55);
-			p = fill_wave_byte(p, 0x3c);
-
-			/* Write the block */
-			for (i = 0; i < blocklen; i++)
-				p = fill_wave_byte(p, block[i]);
-
-			/* Now fill in the last magic byte */
-			p = fill_wave_byte(p, 0x55);
-
-			/* Move the pointers ahead etc */
-			position += usedbytes;
-			wave_size -= usedbytes;
-			last_blocktype = block[0];
-		}
-
-		/* We havn't been able to decipher any further blocks; so we are going
-		 * to output the rest of the CAS verbatim
-		 */
-		#if LOG_WAVE
-			logerror("COCO leaving %i extraneous bytes; position=%i\n", wave_size, position);
-		#endif
-
-		for (i = 0; i < wave_size ; i++)
-			p = fill_wave_byte(p, bytes[position + i]);
-    }
-    return p - buffer;
-}
-
 int coco_cassette_init(int id)
 {
 	void *file;
@@ -1559,22 +1380,22 @@ int coco_cassette_init(int id)
 	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
 	if( file )
 	{
-		wave_size = osd_fsize(file);
+		coco_wave_size = osd_fsize(file);
 
 		memset(&wa, 0, sizeof(&wa));
 		wa.file = file;
-		wa.chunk_size = wave_size;
-		wa.chunk_samples = 8*8 * wave_size;	/* 8 bits * 4 samples */
+		wa.chunk_size = coco_wave_size;
+		wa.chunk_samples = 8*8 * coco_wave_size;	/* 8 bits * 4 samples */
 		wa.smpfreq = 4800; /* cassette samples go at 4800 baud */
 		wa.fill_wave = coco_cassette_fill_wave;
-		wa.header_samples = WAVESAMPLES_HEADER;
-		wa.trailer_samples = WAVESAMPLES_TRAILER;
+		wa.header_samples = COCO_WAVESAMPLES_HEADER;
+		wa.trailer_samples = COCO_WAVESAMPLES_TRAILER;
 		wa.display = 1;
 		if( device_open(IO_CASSETTE,id,0,&wa) )
 			return INIT_FAILED;
 
-		/* immediately pause/mute the output */
-        device_status(IO_CASSETTE,id,2);
+		/* immediately inhibit/mute/play the output */
+        device_status(IO_CASSETTE,id, WAVE_STATUS_MOTOR_ENABLE|WAVE_STATUS_MUTED|WAVE_STATUS_MOTOR_INHIBIT);
 		return INIT_OK;
 	}
 
@@ -1584,12 +1405,12 @@ int coco_cassette_init(int id)
 		memset(&wa, 0, sizeof(&wa));
 		wa.file = file;
 		wa.display = 1;
-		wa.smpfreq = 11025;
+		wa.smpfreq = 19200;
 		if( device_open(IO_CASSETTE,id,1,&wa) )
             return INIT_FAILED;
 
-		/* immediately pause the output */
-        device_status(IO_CASSETTE,id,2);
+		/* immediately inhibit/mute/play the output */
+        device_status(IO_CASSETTE,id, WAVE_STATUS_MOTOR_ENABLE|WAVE_STATUS_MUTED|WAVE_STATUS_MOTOR_INHIBIT);
 		return INIT_OK;
     }
 
@@ -1629,10 +1450,10 @@ void coco_cassette_exit(int id)
  * ---------------------------------------------------------------------------
  */
 
-static int flop_specified[4];
 static int haltenable;
 static int dskreg;
 static int raise_nmi;
+static void coco_fdc_callback(int event);
 
 enum {
 	HW_COCO,
@@ -1641,21 +1462,9 @@ enum {
 
 static void coco_fdc_init(void)
 {
-	wd179x_init(1);
+    wd179x_init(coco_fdc_callback);
 	dskreg = -1;
 	raise_nmi = 0;
-}
-
-int coco_floppy_init(int id)
-{
-	flop_specified[id] = device_filename(IO_FLOPPY,id) != NULL;
-	return INIT_OK;
-}
-
-void coco_floppy_exit(int id)
-{
-	wd179x_select_drive(id, 0, NULL, NULL);
-	flop_specified[id] = 0;
 }
 
 static void coco_fdc_callback(int event)
@@ -1685,14 +1494,40 @@ static void coco_fdc_callback(int event)
 	}
 }
 
+int dragon_floppy_init(int id)
+{
+	if (basicdsk_floppy_init(id)==INIT_OK)
+	{
+		void *file;
+
+		file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE_R, OSD_FOPEN_READ);
+
+		if (file)
+		{
+			int tracks;
+
+			/* For now, assume that real floppies are always 35 tracks */
+			tracks = (floppy_drive_get_flag_state(id, FLOPPY_DRIVE_REAL_FDD)) ? 35 : (osd_fsize(file) / (18*256));
+
+			basicdsk_set_geometry(id, tracks, 1, 18, 256, 1);
+
+			osd_fclose(file);
+
+			return INIT_OK;
+		}
+	}
+	return INIT_FAILED;
+}
+
+
 static void set_dskreg(int data, int hardware)
 {
 	UINT8 drive = 0;
 	UINT8 head = 0;
 	int motor_mask = 0;
 	int haltenable_mask = 0;
-	int tracks;
-	void *fd;
+        /*int tracks;*/
+        /*void *fd;*/
 
 	switch(hardware) {
 	case HW_COCO:
@@ -1735,16 +1570,12 @@ static void set_dskreg(int data, int hardware)
 	dskreg = data;
 
 	if (data & motor_mask) {
-		fd = wd179x_select_drive(drive, head, coco_fdc_callback, device_filename(IO_FLOPPY,drive));
-		if (fd) {
-			/* For now, assume that real floppies are always 35 tracks */
-			tracks = (fd == REAL_FDD) ? 35 : (osd_fsize(fd) / (18*256));
-			wd179x_set_geometry(drive, tracks, 1, 18, 256, 0, 0, 1);
-		}
+		wd179x_set_drive(drive);
+                wd179x_set_side(head);
 	}
-	else {
-		wd179x_stop_drive();
-	}
+//	else {
+//		wd179x_stop_drive();
+//	}
 
 }
 
@@ -1946,6 +1777,7 @@ void coco3_init_machine(void)
 
 void dragon_stop_machine(void)
 {
+	wd179x_exit();
 }
 
 /***************************************************************************

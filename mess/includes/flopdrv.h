@@ -1,3 +1,12 @@
+#ifndef __FLOP_DRIVE_HEADER_INCLUDED__
+#define __FLOP_DRIVE_HEADER_INCLUDED__
+
+typedef enum {
+        DEN_FM_LO = 0,
+        DEN_FM_HI,
+        DEN_MFM_LO,
+        DEN_MFM_HI
+} DENSITY;
 
 /* sector has a deleted data address mark */
 #define ID_FLAG_DELETED_DATA	0x0001
@@ -6,6 +15,7 @@
 /* CRC error in data field */
 #define ID_FLAG_CRC_ERROR_IN_DATA_FIELD 0x0004
 
+int 	floppy_status(int id, int new_status);
 
 typedef struct chrn_id
 {
@@ -18,9 +28,9 @@ typedef struct chrn_id
 } chrn_id;
 
 /* set if drive is present */
-#define FLOPPY_DRIVE_PRESENT					0x0008
+#define FLOPPY_DRIVE_CONNECTED					0x0008
 /* set if disc is in drive */
-#define FLOPPY_DRIVE_DISK_PRESENT				0x0001
+#define FLOPPY_DRIVE_DISK_INSERTED				0x0001
 /* set if disc is write protected - also set if drive is present but no disc in drive */
 #define FLOPPY_DRIVE_DISK_WRITE_PROTECTED		0x0002
 /* set if drive is connected and head is positioned over track 0 */
@@ -31,6 +41,11 @@ typedef struct chrn_id
 #define FLOPPY_DRIVE_INDEX						0x0020
 /* motor state */
 #define FLOPPY_DRIVE_MOTOR_ON					0x0040
+/* set if we are accessing a real fdd for this floppy drive */
+#define FLOPPY_DRIVE_REAL_FDD                                   0x0080
+/* set if disk image is read only */
+#define FLOPPY_DRIVE_DISK_IMAGE_READ_ONLY		0x0100
+
 
 typedef struct floppy_interface
 {
@@ -51,13 +66,13 @@ typedef struct floppy_interface
 	/* read sector data into buffer, length = number of bytes to read */
 	void	(*read_sector_data_into_buffer)(int drive, int side,int data_id,char *, int length);
 	/* write sector data from buffer, length = number of bytes to read  */
-	void	(*write_sector_data_from_buffer)(int drive, int side,int data_id, char *, int length);
+	void	(*write_sector_data_from_buffer)(int drive, int side,int data_id, char *, int length, int ddam);
 	/* format */
 	void (*format_sector)(int drive, int side, int sector_index,int c, int h, int r, int n, int filler);
 } floppy_interface;
 
 
-typedef struct floppy_drive
+struct floppy_drive
 {
 	/* flags */
 	int flags;
@@ -69,10 +84,16 @@ typedef struct floppy_drive
 	stored by the fdc */
 	int current_track;
 
+    /* physical real drive unit */
+    int fdd_unit;
+
+	unsigned char id_buffer[4];
+
 	int id_index;
+    chrn_id ids[32];
 
 	floppy_interface interface;
-} floppy_drive;
+};
 
 
 /* floppy drive types */
@@ -93,22 +114,30 @@ int floppy_drive_get_current_track(int drive);
 void	floppy_drive_set_geometry(int,floppy_type type);
 
 void	floppy_drives_init(void);
+void	floppy_drives_exit(void);
 
-/* seek */
-void floppy_drive_seek(int drive, int signed_tracks);
-/* get next id from track */
-void floppy_drive_get_next_id(int drive, int side, chrn_id *);
+/* get next id from track, 1 if got a id, 0 if no id was got */
+int floppy_drive_get_next_id(int drive, int side, chrn_id *);
 /* set ready state of drive. If flag == 1, set ready state only if drive present,
 disk is in drive, and motor is on. Otherwise set ready state to the state passed */
 void	floppy_drive_set_ready_state(int drive, int state, int flag);
 
 void	floppy_drive_set_motor_state(int drive, int state);
 
-void	floppy_drive_set_interface(int, floppy_interface *);
+/* set interface for disk image functions */
+void	floppy_drive_set_disk_image_interface(int, floppy_interface *);
+
+/* set real fdd unit */
+void	floppy_drive_set_real_fdd_unit(int, unsigned char);
+
+/* seek up or down */
+void floppy_drive_seek(int drive, signed int signed_tracks);
+
 
 void	floppy_drive_format_sector(int drive, int side, int sector_index, int c, int h, int r, int n, int filler);
-
 void    floppy_drive_read_sector_data(int drive, int side, int index1, char *pBuffer, int length);
-void    floppy_drive_write_sector_data(int drive, int side, int index1, char *pBuffer, int length);
+void    floppy_drive_write_sector_data(int drive, int side, int index1, char *pBuffer, int length, int ddam);
 
 
+
+#endif

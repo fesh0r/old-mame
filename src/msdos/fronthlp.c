@@ -519,18 +519,7 @@ int frontend_help (int argc, char **argv)
 						printf(", The");
 					}
 					else
-					/* Steph - 2000.08.22 */
-					{
-						if (strncmp(name,"Le ",3) == 0)
-						{
-							printf("\"%s",name+3);
-							printf(", Le");
-						}
-						else
-						{
-							printf("\"%s",name);
-						}
-					}
+						printf("\"%s",name);
 
 					/* print the additional description only if we are listing clones */
 					if (listclones)
@@ -817,17 +806,7 @@ int frontend_help (int argc, char **argv)
 						sprintf(name_ref,"%s, The ",name+4);
 					}
 					else
-					/* Steph - 2000.08.22 */
-					{
-						if (strncmp(name,"Le ",3) == 0)
-						{
-							sprintf(name_ref,"%s, Le ",name+3);
-						}
-						else
-						{
-							sprintf(name_ref,"%s ",name);
-						}
-					}
+						sprintf(name_ref,"%s ",name);
 
 					/* print the additional description only if we are listing clones */
 					if (listclones)
@@ -950,18 +929,7 @@ int frontend_help (int argc, char **argv)
 						printf(", The");
 					}
 					else
-					/* Steph - 2000.08.22 */
-					{
-						if (strncmp(name,"Le ",3) == 0)
-						{
-							printf("\"%s",name+3);
-							printf(", Le");
-						}
-						else
-						{
-							printf("\"%s",name);
-						}
-					}
+						printf("%s",name);
 
 					/* print the additional description only if we are listing clones */
 					if (listclones)

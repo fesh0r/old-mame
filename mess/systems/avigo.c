@@ -149,7 +149,7 @@ static void avigo_refresh_ints(void)
 	}
 }
 
-
+#if 0
 static void avigo_1hz_int(int state)
 {
         logerror("1hz int\r\n");
@@ -170,11 +170,11 @@ static void avigo_16hz_int(int state)
         avigo_refresh_ints();
 
 }
+#endif
 
 static struct tc8521_interface avigo_tc8521_interface = 
 {
-	avigo_1hz_int,
-	avigo_16hz_int
+	NULL,	//avigo_alarm_int
 };
 
 static void avigo_refresh_memory(void)
@@ -423,7 +423,7 @@ READ_HANDLER(avigo_key_data_read_r)
 	UINT8 data;
 
 	data = 0x0ff;
-
+        data &= ~(1<<5);
 
 	if (avigo_key_line & 0x01)
 	{
@@ -706,5 +706,5 @@ static const struct IODevice io_avigo[] =
 
 
 /*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT COMPANY   FULLNAME */
-COMP( 19??, avigo,   0,                avigo,  avigo,      0,       "TI", "avigo")
+COMP( 1997, avigo,   0,                avigo,  avigo,      0,       "TI", "avigo")
 

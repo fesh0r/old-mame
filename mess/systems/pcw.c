@@ -195,6 +195,8 @@ void pcw_timer_interrupt(int dummy)
 	pcw_interrupt_handle();
 }
 
+static int previous_fdc_int_state;
+
 /* set/clear fdc interrupt */
 void	pcw_trigger_fdc_int(void)
 {
@@ -207,19 +209,20 @@ void	pcw_trigger_fdc_int(void)
 		/* attach fdc to nmi */
 		case 0:
 		{
-			if (state)
+			/* I'm assuming that the nmi is edge triggered */
+			/* a interrupt from the fdc will cause a change in line state, and
+			the nmi will be triggered, but when the state changes because the int
+			is cleared this will not cause another nmi */
+			/* I'll emulate it like this to be sure */
+		
+			if (state!=previous_fdc_int_state)
 			{
-#ifdef VERBOSE
-				logerror("asserting nmi\r\n");
-#endif
-				cpu_set_nmi_line(0, ASSERT_LINE);
-			}
-			else
-			{
-#ifdef VERBOSE
-				logerror("clearing nmi\r\n");
-#endif
-				cpu_set_nmi_line(0, CLEAR_LINE);
+				if (state)
+				{
+					/* I'll pulse it because if I used hold-line I'm not sure
+					it would clear - to be checked */
+					cpu_set_nmi_line(0, PULSE_LINE);
+				}
 			}
 		}
 		break;
@@ -236,6 +239,8 @@ void	pcw_trigger_fdc_int(void)
 		default:
 			break;
 	}
+
+	previous_fdc_int_state = state;
 }
 
 /* fdc interrupt callback. set/clear fdc int */
@@ -491,7 +496,7 @@ READ_HANDLER(pcw_interrupt_counter_r)
 WRITE_HANDLER(pcw_bank_select_w)
 {
 #ifdef VERBOSE
-	logerror("BANK: %2x %x\r\n",offset, data);
+	logerror("BANK: %2x %x\n",offset, data);
 #endif
 	pcw_banks[offset] = data;
 
@@ -531,7 +536,7 @@ WRITE_HANDLER(pcw_vdu_video_control_register_w)
 WRITE_HANDLER(pcw_system_control_w)
 {
 #ifdef VERBOSE
-	logerror("SYSTEM CONTROL: %d\r\n",data);
+	logerror("SYSTEM CONTROL: %d\n",data);
 #endif
 
 	switch (data)
@@ -651,23 +656,20 @@ WRITE_HANDLER(pcw_system_control_w)
 		/* disc motor on */
 		case 9:
 		{
-                        floppy_drive_set_motor_state(0,1);
-                        floppy_drive_set_motor_state(1,1);
-                        floppy_drive_set_ready_state(0,1,1);
-                        floppy_drive_set_ready_state(1,1,1);
-
-                }
+			floppy_drive_set_motor_state(0,1);
+			floppy_drive_set_motor_state(1,1);
+			floppy_drive_set_ready_state(0,1,1);
+			floppy_drive_set_ready_state(1,1,1);
+		}
 		break;
 
 		/* disc motor off */
 		case 10:
 		{
-                        floppy_drive_set_motor_state(0,0);
-                        floppy_drive_set_motor_state(1,0);
-                        floppy_drive_set_ready_state(0,1,1);
-                        floppy_drive_set_ready_state(1,1,1);
-
-
+			floppy_drive_set_motor_state(0,0);
+			floppy_drive_set_motor_state(1,0);
+			floppy_drive_set_ready_state(0,1,1);
+			floppy_drive_set_ready_state(1,1,1);
 		}
 		break;
 
@@ -859,7 +861,7 @@ void pcw_init_machine(void)
 
 	cpu_0_irq_line_vector_w(0, 0x0ff);
 
-	nec765_init(&pcw_nec765_interface,NEC765A);
+    nec765_init(&pcw_nec765_interface,NEC765A);
 
 
 	/* ram paging is actually undefined at power-on */
@@ -880,17 +882,13 @@ void pcw_init_machine(void)
 	pcw_interrupt_counter = 0;
 
 	floppy_drive_set_geometry(0, FLOPPY_DRIVE_DS_80);
-	floppy_drive_set_geometry(1, FLOPPY_DRIVE_DS_80);
-        floppy_drive_set_flag_state(0, FLOPPY_DRIVE_PRESENT, 1);
-        floppy_drive_set_flag_state(1, FLOPPY_DRIVE_PRESENT, 1);
-
 
 	roller_ram_offset = 0;
 
 	pcw_int_timer = timer_pulse(TIME_IN_HZ(300), 0, pcw_timer_interrupt);
 
-        beep_set_state(0,0);
-        beep_set_frequency(0,3750);
+	beep_set_state(0,0);
+	beep_set_frequency(0,3750);
 }
 
 void pcw_init_memory(int size)
@@ -944,6 +942,8 @@ void	init_pcw10(void)
 
 void pcw_shutdown_machine(void)
 {
+	nec765_stop();
+
 	if (pcw_ram!=NULL)
 	{
 		free(pcw_ram);
@@ -1156,7 +1156,8 @@ INPUT_PORTS_END
 
 static struct beep_interface pcw_beep_interface =
 {
-        1
+	1,
+	{100}
 };
 
 /* PCW8256, PCW8512, PCW9256 */
@@ -1294,7 +1295,7 @@ static const struct IODevice io_pcw[] =
 		NULL,				/* info */
 		NULL,				/* open */
 		NULL,				/* close */
-		NULL,				/* status */
+                floppy_status,                           /* status */
 		NULL,				/* seek */
 		NULL,				/* tell */
 		NULL,				/* input */

@@ -42,7 +42,11 @@ in this Software without prior written authorization from the X Consortium.
 #ifdef	__DJGPP__
 #define INCLUDEDIR	djgpp_include()
 #else
-#define	INCLUDEDIR	"/usr/include"
+#ifdef	_WINDOWS
+#define INCLUDEDIR	msvc_include()
+#else
+#define INCLUDEDIR  "/usr/include"
+#endif
 #endif
 #define OBJSUFFIX   ".o"
 

@@ -64,7 +64,7 @@ extern int dragon32_rom_load(int id);
 extern int dragon64_rom_load(int id);
 extern int coco3_rom_load(int id);
 extern READ_HANDLER ( dragon_mapped_irq_r );
-extern int coco3_mapped_irq_r(int offset);
+extern READ_HANDLER ( coco3_mapped_irq_r );
 extern WRITE_HANDLER ( dragon64_sam_himemmap );
 extern WRITE_HANDLER ( coco3_sam_himemmap );
 extern READ_HANDLER ( coco3_mmu_r );
@@ -85,6 +85,7 @@ extern READ_HANDLER(dragon_floppy_r);
 extern WRITE_HANDLER ( dragon_floppy_w );
 extern void coco3_vblank(void);
 extern int coco3_mmu_translate(int block, int offset);
+extern int dragon_floppy_init(int id);
 
 /* Returns whether a given piece of logical memory is contiguous or not */
 extern int coco3_mmu_ismemorycontiguous(int logicaladdr, int len);

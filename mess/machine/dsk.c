@@ -12,7 +12,7 @@
 
 #include <stdarg.h>
 #include "driver.h"
-#include "includes/nec765.h"
+#include "includes/flopdrv.h"
 #include "includes/dsk.h"
 /* disk image and extended disk image support code */
 /* supports up to 84 tracks and 2 sides */
@@ -98,8 +98,7 @@ int dsk_floppy_load(int id)
 		if (thedrive->data)
 		{
 			dsk_disk_image_init(thedrive); /* initialise dsk */
-			floppy_drive_set_flag_state(id, FLOPPY_DRIVE_DISK_PRESENT, 1);
-			floppy_drive_set_interface(id,&dsk_floppy_interface);
+            floppy_drive_set_disk_image_interface(id,&dsk_floppy_interface);
 			return INIT_OK;
 		}
 	}
@@ -184,7 +183,6 @@ void dsk_floppy_exit(int id)
 		dsk_save(IO_FLOPPY,id,&thedrive->data);
 		free(thedrive->data);
 	}
-	floppy_drive_set_flag_state(id, FLOPPY_DRIVE_DISK_PRESENT, 0);
 	thedrive->data = NULL;
 }
 
@@ -445,6 +443,7 @@ void dsk_get_id_callback(int drive, chrn_id *id, int id_index, int side)
 	id->R = track_header[id_offset + 2];
 	id->N = track_header[id_offset + 3];
 	id->flags = 0;
+	id->data_id = id_index;
 
 	if (track_header[id_offset + 5] & 0x040)
 	{
@@ -452,9 +451,47 @@ void dsk_get_id_callback(int drive, chrn_id *id, int id_index, int side)
 	}
 
 
+
+
 //	id->ST0 = track_header[id_offset + 4];
 //	id->ST1 = track_header[id_offset + 5];
 
+}
+
+
+static void dsk_set_ddam(int drive, int id_index, int side, int ddam)
+{
+	int id_offset;
+	int track_offset;
+	unsigned char *track_header;
+	unsigned char *data;
+
+	drive = drive & 0x03;
+	side = side & 0x01;
+
+	/* get offset to track header in image */
+	track_offset = get_track_offset(drive, side);
+
+	/* track exists? */
+	if (track_offset==0)
+		return;
+
+	/* yes */
+	data = get_floppy_data(drive);
+
+	if (data==0)
+		return;
+
+	track_header = data + track_offset;
+
+	id_offset = 0x018 + (id_index<<3);
+
+	track_header[id_offset + 5] &= ~0x040;
+
+	if (ddam)
+	{
+		track_header[id_offset + 5] |= 0x040;
+	}
 }
 
 
@@ -507,27 +544,31 @@ char * dsk_get_sector_ptr_callback(int drive, int sector_index, int side)
 	return (char *)(data + track_offset + sector_offset);
 }
 
-void dsk_write_sector_data_from_buffer(int drive, int side, int index1, char *ptr, int length)
+void dsk_write_sector_data_from_buffer(int drive, int side, int index1, char *ptr, int length, int ddam)
 {
 	char * pSectorData;
 	
-        pSectorData = dsk_get_sector_ptr_callback(drive, index1, side);
+	pSectorData = dsk_get_sector_ptr_callback(drive, index1, side);
 	
 	if (pSectorData!=NULL)
 	{
 		memcpy(pSectorData, ptr, length);
 	}
+
+	/* set ddam */
+	dsk_set_ddam(drive, index1, side,ddam);
 }
 
 void dsk_read_sector_data_into_buffer(int drive, int side, int index1, char *ptr, int length)
 {
 	char *pSectorData;
 
-        pSectorData = dsk_get_sector_ptr_callback(drive, index1, side);
+	pSectorData = dsk_get_sector_ptr_callback(drive, index1, side);
 
 	if (pSectorData!=NULL)
 	{
 		memcpy(ptr, pSectorData, length);
+
 	}
 }
 

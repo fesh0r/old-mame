@@ -22,17 +22,6 @@ else
 CPUDEFS += -DHAS_Z80GB=0
 endif
 
-CPU=$(strip $(findstring CDP1802@,$(CPUS)))
-ifneq ($(CPU),)
-OBJDIRS += $(OBJ)/cpu/cdp1802
-CPUDEFS += -DHAS_CDP1802=1
-CPUOBJS += $(OBJ)/cpu/cdp1802/cdp1802.o
-DBGOBJS += $(OBJ)/cpu/cdp1802/disasm.o
-$(OBJ)/cpu/cdp1802/cdp1802.o: table.c
-else
-CPUDEFS += -DHAS_CDP1802=0
-endif
-
 CPU=$(strip $(findstring 8080@,$(CPUS)))
 ifneq ($(CPU),)
 OBJDIRS += $(OBJ)/cpu/i8085
@@ -53,6 +42,17 @@ DBGOBJS += $(OBJ)/cpu/i8085/8085dasm.o
 $(OBJ)/cpu/i8085/i8085.o: i8085.c i8085.h i8085cpu.h i8085daa.h
 else
 CPUDEFS += -DHAS_8085A=0
+endif
+
+CPU=$(strip $(findstring CDP1802@,$(CPUS)))
+ifneq ($(CPU),)
+OBJDIRS += $(OBJ)/cpu/cdp1802
+CPUDEFS += -DHAS_CDP1802=1
+CPUOBJS += $(OBJ)/cpu/cdp1802/cdp1802.o
+DBGOBJS += $(OBJ)/cpu/cdp1802/disasm.o
+$(OBJ)/cpu/cdp1802/cdp1802.o: table.c
+else
+CPUDEFS += -DHAS_CDP1802=0
 endif
 
 CPU=$(strip $(findstring M6502@,$(CPUS)))
@@ -669,6 +669,17 @@ else
 CPUDEFS += -DHAS_TMS99105A=0
 endif
 
+CPU=$(strip $(findstring TMS99110A@,$(CPUS)))
+ifneq ($(CPU),)
+OBJDIRS += $(OBJ)/cpu/tms9900
+CPUDEFS += -DHAS_TMS99110A=1
+CPUOBJS += $(OBJ)/cpu/tms9900/tms9995.o
+DBGOBJS += $(OBJ)/cpu/tms9900/9900dasm.o
+$(OBJ)/cpu/tms9900/tms9995.o: tms9995.c tms9900.h 99xxcore.h 99xxstat.h
+else
+CPUDEFS += -DHAS_TMS99110A=0
+endif
+
 CPU=$(strip $(findstring Z8000@,$(CPUS)))
 ifneq ($(CPU),)
 OBJDIRS += $(OBJ)/cpu/z8000
@@ -744,6 +755,17 @@ DBGOBJS += $(OBJ)/cpu/mips/mipsdasm.o
 $(OBJ)/cpu/mips/mips.o: mips.c mips.h
 else
 CPUDEFS += -DHAS_PSXCPU=0
+endif
+
+CPU=$(strip $(findstring SH2@,$(CPUS)))
+ifneq ($(CPU),)
+OBJDIRS += $(OBJ)/cpu/sh2
+CPUDEFS += -DHAS_SH2=1
+CPUOBJS += $(OBJ)/cpu/sh2/sh2.o
+DBGOBJS += $(OBJ)/cpu/sh2/sh2dasm.o
+$(OBJ)/cpu/sh2/sh2.o: sh2.c sh2.h
+else
+CPUDEFS += -DHAS_SH2=0
 endif
 
 CPU=$(strip $(findstring SC61860@,$(CPUS)))
@@ -972,7 +994,7 @@ endif
 SOUND=$(strip $(findstring NES@,$(SOUNDS)))
 ifneq ($(SOUND),)
 SOUNDDEFS += -DHAS_NES=1
-SOUNDOBJS += $(OBJ)/sound/nes_apu.o
+SOUNDOBJS += $(OBJ)/sound/nes_apu.o $(OBJ)/sound/nesintf.o
 else
 SOUNDDEFS += -DHAS_NES=0
 endif
@@ -1135,6 +1157,22 @@ SOUNDDEFS += -DHAS_QSOUND=1
 SOUNDOBJS += $(OBJ)/sound/qsound.o
 else
 SOUNDDEFS += -DHAS_QSOUND=0
+endif
+
+SOUND=$(strip $(findstring SAA1099@,$(SOUNDS)))
+ifneq ($(SOUND),)
+SOUNDDEFS += -DHAS_SAA1099=1
+SOUNDOBJS += $(OBJ)/sound/saa1099.o
+else
+SOUNDDEFS += -DHAS_SAA1099=0
+endif
+
+SOUND=$(strip $(findstring IREMGA20@,$(SOUNDS)))
+ifneq ($(SOUND),)
+SOUNDDEFS += -DHAS_IREMGA20=1
+SOUNDOBJS += $(OBJ)/sound/iremga20.o
+else
+SOUNDDEFS += -DHAS_IREMGA20=0
 endif
 
 SOUND=$(strip $(findstring SPEAKER@,$(SOUNDS)))

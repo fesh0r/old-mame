@@ -17,8 +17,8 @@ extern I8271_STATE_t I8271_STATE;
 
 typedef struct i8271_interface
 {
-	int (*interrupt)(int state);
-	int (*dma_request)(int state, int read);
+	void (*interrupt)(int state);
+	void (*dma_request)(int state, int read);
 } i8271_interface;
 
 typedef struct I8271
@@ -49,8 +49,10 @@ typedef struct I8271
 	/* mode special register */
 	unsigned long Mode;
 
+	
 	/* drive outputs */
 	int drive;
+	int side;
 
 	/* drive control output special register */
 	int drive_control_output;
@@ -68,15 +70,21 @@ typedef struct I8271
 	int ID_R;
 	int ID_N;
 
+	/* id of data for read/write */
+	int data_id;
+
 	int ExecutionPhaseTransferCount;
 	char *pExecutionPhaseData;
 	int ExecutionPhaseCount;
 
-	int SectorCount;
-
+	/* sector counter and id counter */
+	int Counter;
+	
 	/* ==0, to cpu, !=0 =from cpu */
 	int data_direction;
 	i8271_interface	fdc_interface;
+
+	void	*timer;
 } I8271;
 
 /* commands accepted */
@@ -136,8 +144,13 @@ typedef struct I8271
 #define I8271_STATUS_INT_REQUEST	0x008
 #define I8271_STATUS_NON_DMA_REQUEST	0x004
 
+/* initialise emulation */
 void i8271_init(i8271_interface *);
+/* reset */
 void i8271_reset(void);
+/* stop emulation and free data */
+void i8271_stop(void);
+
 READ_HANDLER(i8271_r);
 WRITE_HANDLER(i8271_w);
 

@@ -31,6 +31,13 @@ LD = @gcc
 #ASM = @nasm
 ASM = @nasmw
 ASMFLAGS = -f coff
+MD = -mkdir
+RM = @rm -f
+
+
+# Utility source path
+UTIL = src/util
+MAKELIST = $(UTIL)/makelist$(EXE)
 
 ifdef DEBUG
 NAME = $(TARGET)d
@@ -104,15 +111,18 @@ nozlib:
 	@echo Missing zlib library! Get it from http://www.cdrom.com/pub/infozip/zlib/
 endif
 
-#if obj subdirectory doesn't exist, create the tree before proceeding
-ifeq ($(wildcard $(OBJ)),)
-noobj: maketree all
-endif
-
-all:	$(EMULATOR) extra
-
 IMGTOOL_OBJS = $(OBJ)/mess/$(OS)/dirio.o
 INCLUDE_PATH = -Isrc -Isrc/msdos -Imess -I$(OBJ)/cpu/m68000 -Isrc/cpu/m68000
+
+OBJDIRS = $(OBJ) $(OBJ)/cpu $(OBJ)/sound $(OBJ)/msdos \
+	$(OBJ)/drivers $(OBJ)/machine $(OBJ)/vidhrdw $(OBJ)/sndhrdw
+
+# MESS object directories
+OBJDIRS += $(OBJ)/mess $(OBJ)/mess/systems $(OBJ)/mess/machine \
+	$(OBJ)/mess/vidhrdw $(OBJ)/mess/sndhrdw $(OBJ)/mess/tools \
+	$(OBJ)/mess/formats $(OBJ)/mess/msdos
+
+all:	maketree $(EMULATOR) extra
 
 # include the various .mak files
 include src/core.mak
@@ -127,7 +137,7 @@ DBGDEFS =
 DBGOBJS =
 endif
 
-extra:	romcmp$(EXE) $(TOOLS) $(TEXTS)
+extra:	romcmp$(EXE) $(MAKELIST) $(TOOLS) $(TEXTS)
 
 # combine the various definitions to one
 CDEFS = $(DEFS) $(COREDEFS) $(CPUDEFS) $(SOUNDDEFS) $(ASMDEFS) $(DBGDEFS)
@@ -143,7 +153,19 @@ endif
 
 romcmp$(EXE): $(OBJ)/romcmp.o $(OBJ)/unzip.o
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ -lz -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
+
+src/cpuintrf.h src/cpuintrf.c: src/rules.mak $(MAKELIST)
+	@echo Checking CPU core build rules...
+	@$(MAKELIST) src/cpuintrf.h src/cpuintrf.c src/rules.mak
+
+src/sndintrf.h src/sndintrf.c: src/rules.mak $(MAKELIST)
+	@echo Checking sound chip build rules...
+	@$(MAKELIST) src/sndintrf.h src/sndintrf.c src/rules.mak
+
+$(MAKELIST): $(UTIL)/makelist.c
+	@echo Compling $@...
+	$(CC) $(CDEFS) $(CLAGS) -o $@ $<
 
 $(OBJ)/%.o: src/%.c
 	@echo Compiling $<...
@@ -182,65 +204,22 @@ $(OBJ)/cpu/m68000/68kem.o:  $(OBJ)/cpu/m68000/68kem.asm
 
 $(OBJ)/%.a:
 	@echo Archiving $@...
+	$(RM) $@
 	$(AR) cr $@ $^
 
 makedir:
 	@echo make makedir is no longer necessary, just type make
 
-maketree:
-	@echo Making MAME object tree in $(OBJ)...
-	@md $(OBJ)
-	@md $(OBJ)\cpu
-	@md $(OBJ)\cpu\z80
-	@md $(OBJ)\cpu\z80gb
-	@md $(OBJ)\cpu\m6502
-	@md $(OBJ)\cpu\h6280
-	@md $(OBJ)\cpu\i86
-	@md $(OBJ)\cpu\nec
-	@md $(OBJ)\cpu\i8039
-	@md $(OBJ)\cpu\i8085
-	@md $(OBJ)\cpu\m6800
-	@md $(OBJ)\cpu\m6805
-	@md $(OBJ)\cpu\m6809
-	@md $(OBJ)\cpu\hd6309
-	@md $(OBJ)\cpu\konami
-	@md $(OBJ)\cpu\m68000
-	@md $(OBJ)\cpu\s2650
-	@md $(OBJ)\cpu\f8
-	@md $(OBJ)\cpu\t11
-	@md $(OBJ)\cpu\tms34010
-	@md $(OBJ)\cpu\tms9900
-	@md $(OBJ)\cpu\z8000
-	@md $(OBJ)\cpu\tms32010
-	@md $(OBJ)\cpu\ccpu
-	@md $(OBJ)\cpu\adsp2100
-	@md $(OBJ)\cpu\pdp1
-	@md $(OBJ)\cpu\mips
-	@md $(OBJ)\cpu\sc61860
-	@md $(OBJ)\cpu\arm
-	@md $(OBJ)\cpu\g65816
-	@md $(OBJ)\cpu\spc700
-	@md $(OBJ)\sound
-	@md $(OBJ)\msdos
-	@md $(OBJ)\drivers
-	@md $(OBJ)\machine
-	@md $(OBJ)\vidhrdw
-	@md $(OBJ)\sndhrdw
-ifdef MESS
-	@echo Making MESS object tree in $(OBJ)\mess...
-	@md $(OBJ)\mess
-	@md $(OBJ)\mess\systems
-	@md $(OBJ)\mess\machine
-	@md $(OBJ)\mess\vidhrdw
-	@md $(OBJ)\mess\sndhrdw
-	@md $(OBJ)\mess\tools
-	@md $(OBJ)\mess\formats
-	@md $(OBJ)\mess\msdos
-endif
+$(sort $(OBJDIRS)):
+	$(MD) $@
+
+maketree: $(sort $(OBJDIRS))
 
 clean:
 	@echo Deleting object tree $(OBJ)...
-	deltree /Y $(OBJ)
+	$(RM) -r $(OBJ)
+	@echo Deleting $(MAKELIST)...
+	$(RM) $(MAKELIST)
 	@echo Deleting $(EMULATOR)...
-	@del $(EMULATOR)
+	$(RM) $(EMULATOR)
 

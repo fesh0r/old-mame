@@ -10,13 +10,13 @@
 #include <stdarg.h>
 #include "driver.h"
 #include "cpu/z80/z80.h"
-#include "machine/enterp.h"
+#include "includes/enterp.h"
+#include "includes/basicdsk.h"
+#include "includes/wd179x.h"
 
 extern unsigned char *Enterprise_RAM;
 
 void Enterprise_SetupPalette(void);
-
-int ep128_flop_specified[4] = {0,0,0,0};
 
 void enterprise_init_machine(void)
 {
@@ -37,6 +37,8 @@ void enterprise_init_machine(void)
 
 void enterprise_shutdown_machine(void)
 {
+	wd179x_exit();
+
 	if (Enterprise_RAM != NULL)
 		free(Enterprise_RAM);
 
@@ -45,7 +47,11 @@ void enterprise_shutdown_machine(void)
 
 int enterprise_floppy_init(int id)
 {
-	ep128_flop_specified[id] = device_filename(IO_FLOPPY,id) != NULL;
+	if (basicdsk_floppy_init(id)==INIT_OK)
+	{
+		basicdsk_set_geometry(id, 80, 2, 9, 512, 1);
+		return INIT_OK;
+	}
 
-    return 0;
+	return INIT_FAILED;
 }

@@ -288,6 +288,9 @@ int qsound_clock(const struct MachineSound *msound) { return ((struct QSound_int
 #if (HAS_SAA1099)
 int saa1099_num(const struct MachineSound *msound) { return ((struct SAA1099_interface*)msound->sound_interface)->numchips; }
 #endif
+#if (HAS_IREMGA20)
+int IremGA20_clock(const struct MachineSound *msound) { return ((struct IremGA20_interface*)msound->sound_interface)->clock; }
+#endif
 #if (HAS_SPEAKER)
 int speaker_num(const struct MachineSound *msound) { return ((struct Speaker_interface*)msound->sound_interface)->num; }
 #endif
@@ -370,8 +373,8 @@ struct snd_interface sndintf[] =
 		YM2203_sh_reset
 	},
 #endif
-#if (HAS_YM2151 || HAS_YM2151_ALT)
-    {
+#if (HAS_YM2151)
+	{
 		SOUND_YM2151,
 		"YM-2151",
 		YM2151_num,
@@ -380,7 +383,19 @@ struct snd_interface sndintf[] =
 		YM2151_sh_stop,
 		0,
 		YM2151_sh_reset
-	},
+    },
+#endif
+#if (HAS_YM2151_ALT)
+	{
+		SOUND_YM2151,
+		"YM-2151",
+		YM2151_num,
+		YM2151_clock,
+		YM2151_sh_start,
+		YM2151_sh_stop,
+		0,
+		YM2151_sh_reset
+    },
 #endif
 #if (HAS_YM2608)
     {
@@ -809,6 +824,18 @@ struct snd_interface sndintf[] =
 		0,
 		saa1099_sh_start,
 		saa1099_sh_stop,
+		0,
+		0
+	},
+#endif
+#if (HAS_IREMGA20)
+	{
+		SOUND_IREMGA20,
+		"Irem GA20",
+		0,
+		IremGA20_clock,
+		IremGA20_sh_start,
+		IremGA20_sh_stop,
 		0,
 		0
 	},

@@ -581,7 +581,7 @@ static const struct IODevice io_msx[] = {
     IO_CARTSLOT,                /* type */
     MSX_MAX_CARTS,              /* count */
     "rom\0",                    /* file extensions */
-	IO_RESET_ALL,				/* reset if file changed */
+	IO_RESET_NONE,				/* reset if file changed */
     msx_id_rom,                 /* id */
     msx_load_rom,               /* init */
     msx_exit_rom,               /* exit */
@@ -596,7 +596,7 @@ static const struct IODevice io_msx[] = {
     NULL,                       /* input_chunk */
     NULL                        /* output_chunk */
 },
-    IO_CASSETTE_WAVE (1, "wav\0", NULL, msx_cassette_init, msx_cassette_exit),
+    IO_CASSETTE_WAVE (1, "wav\0cas\0", NULL, msx_cassette_init, msx_cassette_exit),
     { IO_END }
 };
 

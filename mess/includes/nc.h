@@ -8,6 +8,8 @@
 #define NC200_SCREEN_WIDTH		480
 #define NC200_SCREEN_HEIGHT		128
 
+#define NC200_NUM_COLOURS 2
+
 int nc_vh_start(void);
 void nc_vh_stop(void);
 void nc_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
@@ -19,3 +21,8 @@ int     nc_pcmcia_card_id(int);
 int    nc_pcmcia_card_load(int);
 void    nc_pcmcia_card_exit(int);
 
+enum
+{
+        NC_TYPE_1xx, /* nc100/nc150 */
+        NC_TYPE_200  /* nc200 */
+};

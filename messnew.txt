@@ -1,3 +1,78 @@
+0.37b7 
+
+Note: .inp record/playback does still not work currently.
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Amstrad NC200 (preliminary) [Kev Thacker]
+- RCA Studio II [Peter Trauner]
+- Sharp Pocket Computer PC1251 [Peter Trauner]
+
+System Driver Changes:
+----------------------
+
+- [ATOM] Added preliminary floppy disc emulation. [Kev Thacker]
+
+- [BBC B] Updated to use updated 8271 FDC code. Disk images can be used and games
+  can be loaded and played. [Kev Thacker]
+  
+- [BBC B] Cleaned up the memory accessing a little. This fixed a problem with
+  the DNFS rom thinking it found an econet controller. [Gordon Jefferyes]
+
+- [SAM COUPE] Updated Sam Coupe to use WD179x code (same as WD1772). [Kev Thacker]
+
+- [COCO] Updated CoCo and CoCo 3 drivers with new romsets to match the actual chips 
+  in the system.  coco.rom split into bas12.rom, extbas11.rom and disk11.rom, and 
+  coco3.rom now must be of length 32768.  This requires a dump from an EPROM reader.  
+  Fixed a bug in cassette writing.  Cassette tape controls and CoCo motor signal now 
+  operate independently.  [Nate Woods]
+
+- [C16] added SIDCARD support at address $d400 [Peter Trauner]
+
+- [NES] new sound core. [Matt Conte]
+
+Other Changes:
+--------------
+- The core is based on MAME 0.37b7. This incorporates all 
+  features of the update to this core.  [MAME team] 
+
+- Fixed write protect reporting in WD179x [Kev Thacker]
+
+- Added "Disk Control" menu to the user interface. With this you can
+  enable/disable a drive (e.g. this is comparable to connecting a disconnecting
+  a drive to the real machine), set write enable/write protect of the disc,
+  and selecting between disc image and real drive access. Real drive access
+  is currently limited to the drivers which use the WD179x, NEC765 and Intel
+  8271 floppy disc controllers. [Kev Thacker]
+
+- Removed hard-coded disk image format in the WD179x code. This floppy
+  disc controller emulation uses the same disk image access as the NEC765 and
+  Intel 8271. It can now support different disk image formats, and as before
+  real discs in a real drive [Kev Thacker]
+
+- NEC765 and Intel 8271 can now use real disc access in DOS version
+  of MESS. Run under pure DOS, or in a Windows 95
+  DOS box mode for this to work correct. [Kev Thacker]
+
+- Imgtool now supports CoCo cassette files (both .CAS and .WAV).  This is done
+  through a framework that makes it easy to implement cassette images in
+  general.  Also, the CoCo RSDOS disk handling is now a bit more tolerant
+  [Nate Woods]
+
+- Updated Intel 8271 floppy disc controller emulation. [Kev Thacker]
+
+- CRC and sysinfo updates will now be appearing at the official MESS homepage:
+  http://mess.emuverse.com
+  Please send all CRC/sysinfo file contributions to Chris Henry. 
+  (battlepriest@hotmail.com).
+
+- M6510 cpu core added first write cycle for NMOS memory modifying instructions
+  [Peter Trauner]
+
+- CDP1802 cpu core [Peter Trauner]
+
+------------------------
+
 0.37b6 
 
 Note: DELETE mess.cfg!

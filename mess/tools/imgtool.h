@@ -28,7 +28,8 @@ enum {
 	IMGTOOLERR_PARAMNEEDED,
 	IMGTOOLERR_PARAMNOTNEEDED,
 	IMGTOOLERR_BADFILENAME,
-	IMGTOOLERR_NOSPACE
+	IMGTOOLERR_NOSPACE,
+	IMGTOOLERR_INPUTPASTEND
 };
 
 /* These error codes are actually modifiers that make it easier to distinguish
@@ -81,6 +82,7 @@ typedef struct {
 
 STREAM *stream_open(const char *fname, int read_or_write);	/* similar params to osd_fopen */
 STREAM *stream_open_write_stream(int filesize);
+STREAM *stream_open_mem(void *buf, size_t sz);
 void stream_close(STREAM *f);
 size_t stream_read(STREAM *f, void *buf, size_t sz);
 size_t stream_write(STREAM *f, const void *buf, size_t sz);
@@ -197,6 +199,7 @@ struct ImageModule {
 	   if the buffer is too small it will be relocated with realloc */
 	int (*read_sector)(IMAGE *img, int head, int track, int sector, char **buffer, int *size);
 	int (*write_sector)(IMAGE *img, int head, int track, int sector, char *buffer, int size);
+	void *extra;
 };
 
 /* ----------------------------------------------------------------------- */
@@ -213,7 +216,7 @@ struct ImageModule imgmod_##name = \
 	(crcfile),		\
 	(crcsysname),	\
 	(ranges),		\
-	(initbyname),			\
+	(initbyname),	\
 	(init),			\
 	(exit),			\
 	(info),			\
@@ -226,8 +229,9 @@ struct ImageModule imgmod_##name = \
 	(deletefile),	\
 	(create),		\
 	(extract),		\
-	(read_sector),		\
-	(write_sector)		\
+	(read_sector),	\
+	(write_sector),	\
+	NULL			\
 };
 
 /* Use CARTMODULE for cartriges (where the only relevant option is CRC checking */
@@ -240,6 +244,7 @@ struct ImageModule imgmod_##name = \
 	0,				\
 	(#name ".crc"),	\
 	#name,			\
+	NULL,			\
 	NULL,			\
 	NULL,			\
 	NULL,			\
@@ -516,5 +521,86 @@ int img_getinfo_byname(const char *modulename, const char *fname, imageinfo *inf
  */
 int img_goodname(const struct ImageModule *module, const char *fname, const char *base, char **result);
 int img_goodname_byname(const char *modulename, const char *fname, const char *base, char **result);
+
+/* ---------------------------------------------------------------------------
+ * Wave/Cassette calls
+ * ---------------------------------------------------------------------------
+ */
+
+enum {
+	WAVEIMAGE_LSB_FIRST = 0,
+	WAVEIMAGE_MSB_FIRST = 1
+};
+
+struct WaveExtra
+{
+	int (*initalt)(STREAM *instream, STREAM **outstream, int *basepos, int *length, int *channels, int *frequency, int *resolution);
+	int (*nextfile)(IMAGE *img, imgtool_dirent *ent);
+	int (*readfile)(IMAGE *img, STREAM *destf);
+	int zeropulse;
+	int threshpulse;
+	int onepulse;
+	int waveflags;
+	const UINT8 *blockheader;
+	int blockheadersize;
+
+};
+
+#define WAVEMODULE(name,humanname,ext,zeropulse,onepulse,threshpulse,waveflags,blockheader,blockheadersize,\
+		initalt,nextfile,readfilechunk)	\
+static int imgmodinit_##name(STREAM *f, IMAGE **outimg); \
+static struct WaveExtra waveextra_##name = \
+{						\
+	(initalt),			\
+	(nextfile),			\
+	(readfilechunk),	\
+	(zeropulse),		\
+	(onepulse),			\
+	(threshpulse),		\
+	(waveflags),		\
+	(blockheader),		\
+	(blockheadersize),	\
+}; \
+struct ImageModule imgmod_##name = \
+{						\
+	#name,				\
+	(humanname),		\
+	(ext),				\
+	0,					\
+	NULL,				\
+	NULL,				\
+	NULL,				\
+	NULL,				\
+	imgmodinit_##name,	\
+	imgwave_exit,		\
+	NULL,				\
+	imgwave_beginenum,	\
+	imgwave_nextenum,	\
+	imgwave_closeenum,	\
+	NULL,				\
+	imgwave_readfile,	\
+	NULL,				\
+	NULL,				\
+	NULL,				\
+	NULL,				\
+	NULL,				\
+	NULL,				\
+	(void *) &waveextra_##name \
+}; \
+static int imgmodinit_##name(STREAM *f, IMAGE **outimg) \
+{ \
+	return imgwave_init(&imgmod_##name, f, outimg); \
+}
+
+int imgwave_init(struct ImageModule *mod, STREAM *f, IMAGE **outimg);
+void imgwave_exit(IMAGE *img);
+int imgwave_beginenum(IMAGE *img, IMAGEENUM **outenum);
+int imgwave_nextenum(IMAGEENUM *enumeration, imgtool_dirent *ent);
+void imgwave_closeenum(IMAGEENUM *enumeration);
+int imgwave_readfile(IMAGE *img, const char *fname, STREAM *destf);
+
+int imgwave_seek(IMAGE *img, int pos);
+int imgwave_forward(IMAGE *img);
+int imgwave_read(IMAGE *img, UINT8 *buf, int bufsize);
 
 #endif /* IMGTOOL_H */

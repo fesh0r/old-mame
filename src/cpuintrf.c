@@ -117,6 +117,9 @@
 #if (HAS_PSXCPU)
 #include "cpu/mips/mips.h"
 #endif
+#if (HAS_SH2)
+#include "cpu/sh2/sh2.h"
+#endif
 #if (HAS_SC61860)
 #include "cpu/sc61860/sc61860.h"
 #endif
@@ -403,15 +406,15 @@ struct cpu_interface cpuintf[] =
 #if (HAS_Z80GB)
 	CPU0(Z80GB,    z80gb,	 5,255,1.00,Z80GB_IGNORE_INT,  0,			   1,			   16,	  0,16,LE,1, 4,16	),
 #endif
-#if (HAS_CDP1802)
-#define cdp1802_ICount cdp1802_icount
-	CPU0(CDP1802,  cdp1802,  1,  0,1.00,CDP1802_INT_NONE,  CDP1802_IRQ,    -1,			   16,	  0,16,BE,1, 3,16	),
-#endif
 #if (HAS_8080)
 	CPU0(8080,	   i8080,	 4,255,1.00,I8080_NONE, 	   I8080_INTR,	   I8080_TRAP,	   16,	  0,16,LE,1, 3,16	),
 #endif
 #if (HAS_8085A)
 	CPU0(8085A,    i8085,	 4,255,1.00,I8085_NONE, 	   I8085_INTR,	   I8085_TRAP,	   16,	  0,16,LE,1, 3,16	),
+#endif
+#if (HAS_CDP1802)
+#define cdp1802_ICount cdp1802_icount
+	CPU0(CDP1802,  cdp1802,  1,  0,1.00,CDP1802_INT_NONE,  CDP1802_IRQ,    -1,			   16,	  0,16,BE,1, 3,16	),
 #endif
 #if (HAS_M6502)
 	CPU0(M6502,    m6502,	 1,  0,1.00,M6502_INT_NONE,    M6502_INT_IRQ,  M6502_INT_NMI,  16,	  0,16,LE,1, 3,16	),
@@ -440,11 +443,11 @@ struct cpu_interface cpuintf[] =
 #if (HAS_M8502)
 	CPU0(M8502,    m8502,	 1,  0,1.00,M8502_INT_NONE,    M8502_INT_IRQ,  M8502_INT_NMI,  16,	  0,16,LE,1, 3,16	),
 #endif
-#if (HAS_N2A03)
-	CPU0(N2A03,    n2a03,	 1,  0,1.00,N2A03_INT_NONE,    N2A03_INT_IRQ,  N2A03_INT_NMI,  16,	  0,16,LE,1, 3,16	),
-#endif
 #if (HAS_M4510)
 	CPU0(M4510,    m4510,	 1,  0,1.00,M4510_INT_NONE,    M4510_INT_IRQ,  M4510_INT_NMI,  20,	  0,20,LE,1, 3,20	),
+#endif
+#if (HAS_N2A03)
+	CPU0(N2A03,    n2a03,	 1,  0,1.00,N2A03_INT_NONE,    N2A03_INT_IRQ,  N2A03_INT_NMI,  16,	  0,16,LE,1, 3,16	),
 #endif
 #if (HAS_H6280)
 	CPU0(H6280,    h6280,	 3,  0,1.00,H6280_INT_NONE,    -1,			   H6280_INT_NMI,  21,	  0,21,LE,1, 3,21	),
@@ -471,7 +474,7 @@ struct cpu_interface cpuintf[] =
 	CPU0(V30,	   v30, 	 1,  0,1.00,NEC_INT_NONE,	   -1000,		   NEC_NMI_INT,    20,	  0,20,LE,1, 5,20	),
 #endif
 #if (HAS_V33)
-	CPU0(V33,	   v33, 	 1,  0,1.20,NEC_INT_NONE,	   -1000,		   NEC_NMI_INT,    20,	  0,20,LE,1, 5,20	),
+	CPU0(V33,	   v33, 	 1,  0,1.00,NEC_INT_NONE,	   -1000,		   NEC_NMI_INT,    20,	  0,20,LE,1, 5,20	),
 #endif
 #if (HAS_I8035)
 	CPU0(I8035,    i8035,	 1,  0,1.00,I8035_IGNORE_INT,  I8035_EXT_INT,  -1,			   16,	  0,16,LE,1, 2,16	),
@@ -548,7 +551,7 @@ struct cpu_interface cpuintf[] =
 #endif
 #if (HAS_CP1600)
 #define cp1600_ICount cp1600_icount
-    CPU0(CP1600,   cp1600,   0,  0,1.00,CP1600_INT_NONE,   -1,             -1,             16,    0,16,LE,1, 3,16   ),
+	CPU0(CP1600,   cp1600,	 0,  0,1.00,CP1600_INT_NONE,   -1,			   -1,			   16,	  0,16,LE,1, 3,16	),
 #endif
 #if (HAS_TMS34010)
 	CPU2(TMS34010, tms34010, 2,  0,1.00,TMS34010_INT_NONE, TMS34010_INT1,  -1,			   29,	  3,29,LE,2,10,29	),
@@ -575,7 +578,6 @@ struct cpu_interface cpuintf[] =
 	CPU0(TMS99105A,tms99105a,1,  0,1.00,TMS99105A_NONE,    -1,			   -1,			   16bew, 0,16,BE,2, 6,16BEW),
 #endif
 #if (HAS_TMS99110A)
-	CPU0(TMS99110A,tms99110a,1,  0,1.00,TMS99110A_NONE,    -1,			   -1,			   16bew, 0,16,BE,2, 6,16BEW),
 #endif
 #if (HAS_Z8000)
 	CPU0(Z8000,    z8000,	 2,  0,1.00,Z8000_INT_NONE,    Z8000_NVI,	   Z8000_NMI,	   16bew, 0,16,BE,2, 6,16BEW),
@@ -586,17 +588,20 @@ struct cpu_interface cpuintf[] =
 #if (HAS_CCPU)
 	CPU3(CCPU,	   ccpu,	 2,  0,1.00,0,				   -1,			   -1,			   16,	  0,15,LE,1, 3,16	),
 #endif
-#if (HAS_PDP1)
-	CPU0(PDP1,	   pdp1,	 0,  0,1.00,0,				   -1,			   -1,			   16,	  0,18,LE,1, 3,16	),
-#endif
 #if (HAS_ADSP2100)
 	CPU3(ADSP2100, adsp2100, 4,  0,1.00,ADSP2100_INT_NONE, -1,			   -1,			   16lew,-1,14,LE,2, 4,16LEW),
 #endif
 #if (HAS_ADSP2105)
 	CPU3(ADSP2105, adsp2105, 4,  0,1.00,ADSP2105_INT_NONE, -1,			   -1,			   16lew,-1,14,LE,2, 4,16LEW),
 #endif
+#if (HAS_PDP1)
+	CPU0(PDP1,	   pdp1,	 0,  0,1.00,0,				   -1,			   -1,			   16,	  0,18,LE,1, 3,16	),
+#endif
 #if (HAS_PSXCPU)
-	CPU0(PSX,	   mips,	 8, -1,1.00,MIPS_INT_NONE,	   MIPS_INT_NONE,  MIPS_INT_NONE,  32lew, 0,32,LE,4, 4,32LEW),
+	CPU0(PSXCPU,   mips,	 8, -1,1.00,MIPS_INT_NONE,	   MIPS_INT_NONE,  MIPS_INT_NONE,  32lew, 0,32,LE,4, 4,32LEW),
+#endif
+#if (HAS_SH2)
+	CPU4(SH2,	   sh2, 	 16, 0,1.00,SH2_INT_NONE,	   0,			   -1,			   27bew, 0,27,BE,1, 2,27BEW),
 #endif
 #if (HAS_SC61860)
 	#define sc61860_ICount sc61860_icount
@@ -606,7 +611,7 @@ struct cpu_interface cpuintf[] =
 	CPU0(ARM,	   arm, 	 2,  0,1.00,ARM_INT_NONE,	   ARM_FIRQ,	   ARM_IRQ, 	   26lew, 0,26,LE,4, 4,26LEW),
 #endif
 #if (HAS_G65816)
-	CPU0(G65C816,  g65816,	 1,  0,1.00,G65816_INT_NONE,   G65816_INT_IRQ, G65816_INT_NMI, 24,	  0,24,BE,1, 3,24	),
+	CPU0(G65816,   g65816,	 1,  0,1.00,G65816_INT_NONE,   G65816_INT_IRQ, G65816_INT_NMI, 24,	  0,24,BE,1, 3,24	),
 #endif
 #if (HAS_SPC700)
 	CPU0(SPC700,   spc700,	 0,  0,1.00,0,				   -1,			   -1,			   16,	  0,16,LE,1, 3,16	),
@@ -1260,6 +1265,14 @@ MAKE_IRQ_CALLBACK(4)
 MAKE_IRQ_CALLBACK(5)
 MAKE_IRQ_CALLBACK(6)
 MAKE_IRQ_CALLBACK(7)
+MAKE_IRQ_CALLBACK(8)
+MAKE_IRQ_CALLBACK(9)
+MAKE_IRQ_CALLBACK(10)
+MAKE_IRQ_CALLBACK(11)
+MAKE_IRQ_CALLBACK(12)
+MAKE_IRQ_CALLBACK(13)
+MAKE_IRQ_CALLBACK(14)
+MAKE_IRQ_CALLBACK(15)
 
 /***************************************************************************
 
@@ -1331,7 +1344,7 @@ void cpu_set_irq_line(int cpunum, int irqline, int state)
 	if (cpu_getstatus(cpunum) == 0) return;
 
 	LOG(("cpu_set_irq_line(%d,%d,%d)\n",cpunum,irqline,state));
-	timer_set(TIME_NOW, (irqline & 7) | ((cpunum & 7) << 3) | (state << 6), cpu_manualirqcallback);
+	timer_set(TIME_NOW, (irqline & (MAX_IRQ_LINES-1)) | ((cpunum & (MAX_CPU-1)) << 4) | (state << 8), cpu_manualirqcallback);
 }
 
 /***************************************************************************
@@ -1612,9 +1625,9 @@ static void cpu_manualirqcallback(int param)
 {
 	int cpunum, irqline, state, oldactive;
 
-	irqline = param & 7;
-	cpunum = (param >> 3) & 7;
-	state = param >> 6;
+	irqline = param & (MAX_IRQ_LINES-1);
+	cpunum = (param >> 4) & (MAX_CPU-1);
+	state = param >> 8;
 
 	/* swap to the CPU's context */
 	oldactive = activecpu;
@@ -2038,16 +2051,16 @@ static void cpu_generate_interrupt(int cpunum, int (*func)(void), int num)
 				break;
 #endif
 #if (HAS_PSXCPU)
-			case CPU_PSX:
+			case CPU_PSXCPU:
 				switch (num)
 				{
-				case MIPS_IRQ0: 		irq_line = 0; LOG(("MIPS IRQ0\n")); break;
-				case MIPS_IRQ1: 		irq_line = 1; LOG(("MIPS IRQ1\n")); break;
-				case MIPS_IRQ2: 		irq_line = 2; LOG(("MIPS IRQ2\n")); break;
-				case MIPS_IRQ3: 		irq_line = 3; LOG(("MIPS IRQ3\n")); break;
-				case MIPS_IRQ4: 		irq_line = 4; LOG(("MIPS IRQ4\n")); break;
-				case MIPS_IRQ5: 		irq_line = 5; LOG(("MIPS IRQ5\n")); break;
-				default:				irq_line = 0; LOG(("MIPS unknown\n"));
+				case MIPS_IRQ0: 		irq_line = 0; LOG(("PSXCPU IRQ0\n")); break;
+				case MIPS_IRQ1: 		irq_line = 1; LOG(("PSXCPU IRQ1\n")); break;
+				case MIPS_IRQ2: 		irq_line = 2; LOG(("PSXCPU IRQ2\n")); break;
+				case MIPS_IRQ3: 		irq_line = 3; LOG(("PSXCPU IRQ3\n")); break;
+				case MIPS_IRQ4: 		irq_line = 4; LOG(("PSXCPU IRQ4\n")); break;
+				case MIPS_IRQ5: 		irq_line = 5; LOG(("PSXCPU IRQ5\n")); break;
+				default:				irq_line = 0; LOG(("PSXCPU unknown\n"));
 				}
 				break;
 #endif
@@ -2057,7 +2070,7 @@ static void cpu_generate_interrupt(int cpunum, int (*func)(void), int num)
 				LOG(("unknown IRQ\n"));
 			}
 			cpu_irq_line_vector_w(cpunum, irq_line, num);
-			cpu_manualirqcallback(irq_line | (cpunum << 3) | (HOLD_LINE << 6) );
+			cpu_manualirqcallback(irq_line | (cpunum << 4) | (HOLD_LINE << 8) );
 		}
 	}
 
@@ -3008,6 +3021,72 @@ const char *cpunum_win_layout(int cpunum)
 	if( cpunum < totalcpu )
 		return cputype_win_layout(CPU_TYPE(cpunum));
 	return (const char *)default_win_layout;
+}
+
+/***************************************************************************
+  Write memory for a specific CPU number of the running machine
+***************************************************************************/
+void cpunum_writemem(int cpunum, offs_t offset, data_t data)
+{
+	int oldactive;
+
+	if( cpunum == activecpu )
+	{
+		WRITEMEM( cpunum, offset, data );
+		return;
+	}
+
+	/* swap to the CPU's context */
+	if (activecpu >= 0)
+		if (cpu[activecpu].save_context) GETCONTEXT(activecpu, cpu[activecpu].context);
+	oldactive = activecpu;
+	activecpu = cpunum;
+	memorycontextswap(activecpu);
+	if (cpu[activecpu].save_context) SETCONTEXT(activecpu, cpu[activecpu].context);
+
+	WRITEMEM(activecpu, offset, data);
+
+	/* update the CPU's context */
+	if (cpu[activecpu].save_context) GETCONTEXT(activecpu, cpu[activecpu].context);
+	activecpu = oldactive;
+	if (activecpu >= 0)
+	{
+		memorycontextswap(activecpu);
+		if (cpu[activecpu].save_context) SETCONTEXT(activecpu, cpu[activecpu].context);
+	}
+}
+
+/***************************************************************************
+  Read memory from a specific CPU number of the running machine
+***************************************************************************/
+data_t cpunum_readmem(int cpunum, offs_t offset)
+{
+	int oldactive;
+	data_t data = 0;
+
+	if( cpunum == activecpu )
+		return READMEM( activecpu, offset );
+
+	/* swap to the CPU's context */
+	if (activecpu >= 0)
+		if (cpu[activecpu].save_context) GETCONTEXT(activecpu, cpu[activecpu].context);
+	oldactive = activecpu;
+	activecpu = cpunum;
+	memorycontextswap(activecpu);
+	if (cpu[activecpu].save_context) SETCONTEXT(activecpu, cpu[activecpu].context);
+
+	data = READMEM(activecpu,offset);
+
+	/* update the CPU's context */
+	if (cpu[activecpu].save_context) GETCONTEXT(activecpu, cpu[activecpu].context);
+	activecpu = oldactive;
+	if (activecpu >= 0)
+	{
+		memorycontextswap(activecpu);
+		if (cpu[activecpu].save_context) SETCONTEXT(activecpu, cpu[activecpu].context);
+	}
+
+	return data;
 }
 
 /***************************************************************************

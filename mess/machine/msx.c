@@ -17,6 +17,7 @@
 #include "machine/8255ppi.h"
 #include "vidhrdw/tms9928a.h"
 #include "sndhrdw/scc.h"
+#include "formats/fmsx_cas.h"
 
 MSX msx1;
 static void msx_set_all_mem_banks (void);
@@ -570,7 +571,7 @@ WRITE_HANDLER ( msx_psg_port_a_w )
 WRITE_HANDLER ( msx_psg_port_b_w )
 {
     /* Arabic or kana mode led */
-    if ( (data ^ msx1.psg_b) & 0x80) osd_led_w (1, !(data & 0x80) );
+	if ( (data ^ msx1.psg_b) & 0x80) set_led_status (1, !(data & 0x80) );
         msx1.psg_b = data;
 }
 
@@ -611,7 +612,7 @@ static WRITE_HANDLER( msx_ppi_port_c_w )
 
     /* caps lock */
     if ( (old_val ^ data) & 0x40)
-        osd_led_w (0, !(data & 0x40) );
+		set_led_status (0, !(data & 0x40) );
     /* key click */
     if ( (old_val ^ data) & 0x80)
         DAC_signed_data_w (0, (data & 0x80 ? 0x7f : 0));
@@ -1022,9 +1023,58 @@ WRITE_HANDLER ( msx_writemem3 )
 ** Cassette functions
 */
 
+static UINT16* cas_samples;
+static int cas_len;
+
+int msx_cassette_fill_wave (INT16* samples, int wavlen, UINT8* casdata)
+{
+/* HJB: these are (currently?) unused
+ *	int cas_pos, samples_size, bit, state = 1, samples_pos, size, n, i, p;
+ */
+	if (casdata == CODE_HEADER || casdata == CODE_TRAILER)
+		return 0;
+
+	if (wavlen < cas_len)
+	{
+		logerror ("Not enough space to store converted cas file!\n");
+		return 0;
+	}
+
+	memcpy (samples, cas_samples, cas_len * 2);
+
+	return cas_len;
+}
+
+static int check_fmsx_cas (void *f)
+{
+	UINT8* casdata;
+	int caslen, ret;
+
+    caslen = osd_fsize (f);
+	if (caslen < 9) return -1;
+	
+    casdata = (UINT8*)malloc (caslen);
+    if (!casdata)
+	{
+       	logerror ("cas2wav: out of memory!\n");
+       	return -1;
+   	}
+
+    osd_fseek (f, 0, SEEK_SET);
+ 	if (caslen != osd_fread (f, casdata, caslen) ) return -1;
+   	osd_fseek (f, 0, SEEK_SET);
+
+    ret = fmsx_cas_to_wav (casdata, caslen, &cas_samples, &cas_len);
+
+    free (casdata);
+
+    return ret;
+}
+
 int msx_cassette_init(int id)
 {
     void *file;
+	int ret;
 
     file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
     if( file )
@@ -1032,9 +1082,24 @@ int msx_cassette_init(int id)
         struct wave_args wa = {0,};
         wa.file = file;
         wa.display = 1;
-        if( device_open(IO_CASSETTE,id,0,&wa) )
-            return INIT_FAILED;
-        return INIT_OK;
+		/* for cas files */
+		cas_samples = NULL;
+		cas_len = -1;
+		if (!check_fmsx_cas (file) )
+		{
+			wa.smpfreq = 22050;
+			wa.fill_wave = msx_cassette_fill_wave;
+			wa.header_samples = cas_len;
+			wa.trailer_samples = 0;
+			wa.chunk_size = cas_len;
+			wa.chunk_samples = 0;
+		}
+        ret = device_open(IO_CASSETTE,id,0,&wa);
+		free (cas_samples);
+		cas_samples = NULL;
+		cas_len = -1;
+
+		return (ret ? INIT_FAILED : INIT_OK);
     }
     file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW,
         OSD_FOPEN_RW_CREATE);
