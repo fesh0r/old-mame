@@ -210,11 +210,7 @@ mame_file *mame_fopen(const char *gamename, const char *filename, int filetype, 
 
 		/* save state files */
 		case FILETYPE_STATE:
-#ifndef MESS
 			return generic_fopen(filetype, NULL, filename, 0, openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD);
-#else
-			return generic_fopen(filetype, NULL, filename, 0, FILEFLAG_ALLOW_ABSOLUTE | (openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD));
-#endif
 
 		/* memory card files */
 		case FILETYPE_MEMCARD:

@@ -46,6 +46,14 @@ enum { LIST_SHORT = 1, LIST_INFO, LIST_FULL, LIST_SAMDIR, LIST_ROMS, LIST_SAMPLE
 #define KNOWN_NONE  2
 #define KNOWN_SOME  3
 
+#ifndef MESS
+#define YEAR_BEGIN 1975
+#define YEAR_END   2000
+#else
+#define YEAR_BEGIN 1950
+#define YEAR_END   2000
+#endif
+
 static int list = 0;
 static int listclones = 1;
 static int verify = 0;
@@ -484,21 +492,21 @@ int frontend_help (const char *gamename)
         #ifdef MESS
 		case LIST_MESSTEXT: /* all mess specific calls here */
 		{
-					/* send the gamename and arg to mess.c */
+			/* send the gamename and arg to mess.c */
 			list_mess_info(gamename, "-listtext", listclones);
 			return 0;
 			break;
 		}
 		case LIST_MESSDEVICES:
-			{
-					/* send the gamename and arg to mess.c */
+		{
+			/* send the gamename and arg to mess.c */
 			list_mess_info(gamename, "-listdevices", listclones);
 			return 0;
 			break;
 		}
 		case LIST_MESSCREATEDIR:
-			 	{
-					/* send the gamename and arg to mess.c */
+		{
+			/* send the gamename and arg to mess.c */
 			list_mess_info(gamename, "-createdir", listclones);
 			return 0;
 			break;
@@ -1360,7 +1368,7 @@ int frontend_help (const char *gamename)
 					printf("\t%d",8<<j);
 				printf("\n");
 
-				for (year = 1900;year <= 2000;year++)
+				for (year = YEAR_BEGIN;year <= YEAR_END;year++)
 				{
 					int count[CPU_COUNT];
 					int count_buswidth[3];

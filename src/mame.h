@@ -214,7 +214,7 @@ struct GameOptions
 	struct ImageFile image_files[MAX_IMAGES];
 	int		image_count;
 	int		(*mess_printf_output)(const char *fmt, va_list arg);
-	int		disable_normal_ui;
+	int disable_normal_ui;
 
 	int		min_width;		/* minimum width for the display */
 	int		min_height;		/* minimum height for the display */
