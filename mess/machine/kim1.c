@@ -664,7 +664,7 @@ static void m6530_timer_cb(int chip)
 	logerror("m6530(%d) timer expired\n", chip);
 	m6530[chip].state |= 0x80;
 	if (m6530[chip].irqen)			   /* with IRQ? */
-		cpu_set_irq_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(0, 0, HOLD_LINE);
 }
 
 INTERRUPT_GEN( kim1_interrupt )
@@ -784,16 +784,16 @@ INLINE int m6530_r(int chip, int offset)
 	return data;
 }
 
-READ_HANDLER ( m6530_003_r )
+ READ8_HANDLER ( m6530_003_r )
 {
 	return m6530_r(0, offset);
 }
-READ_HANDLER ( m6530_002_r )
+ READ8_HANDLER ( m6530_002_r )
 {
 	return m6530_r(1, offset);
 }
 
-READ_HANDLER ( kim1_mirror_r )
+ READ8_HANDLER ( kim1_mirror_r )
 {
 	return program_read_byte(offset & 0x1fff);
 }
@@ -905,16 +905,16 @@ static void m6530_w(int chip, int offset, int data)
 	}
 }
 
-WRITE_HANDLER ( m6530_003_w )
+WRITE8_HANDLER ( m6530_003_w )
 {
 	m6530_w(0, offset, data);
 }
-WRITE_HANDLER ( m6530_002_w )
+WRITE8_HANDLER ( m6530_002_w )
 {
 	m6530_w(1, offset, data);
 }
 
-WRITE_HANDLER ( kim1_mirror_w )
+WRITE8_HANDLER ( kim1_mirror_w )
 {
 	program_write_byte(offset & 0x1fff, data);
 }

@@ -420,13 +420,13 @@ void pc_mda_init(void)
     for (i = 0; i < 256; i++)
 		gfx[i] = i;
 
-	install_mem_read_handler(0, 0xb0000, 0xbffff, MRA8_RAM );
-	install_mem_write_handler(0, 0xb0000, 0xbffff, pc_video_videoram_w );
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xbffff, 0, 0, MRA8_RAM );
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xbffff, 0, 0, pc_video_videoram_w );
 	videoram = memory_region(REGION_CPU1)+0xb0000;
 	videoram_size = 0x10000;
 
-	install_port_read_handler(0, 0x3b0, 0x3bf, pc_MDA_r );
-	install_port_write_handler(0, 0x3b0, 0x3bf, pc_MDA_w );
+	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, 0, pc_MDA_r );
+	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, 0, pc_MDA_w );
 }
 
 
@@ -555,14 +555,14 @@ void pc_keyboard(void)
 
 static double JOY_time = 0.0;
 
-WRITE_HANDLER ( pc_JOY_w )
+WRITE8_HANDLER ( pc_JOY_w )
 {
 	JOY_time = timer_get_time();
 }
 
 #if 0
 #define JOY_VALUE_TO_TIME(v) (24.2e-6+11e-9*(100000.0/256)*v)
-READ_HANDLER ( pc_JOY_r )
+ READ8_HANDLER ( pc_JOY_r )
 {
 	int data, delta;
 	double new_time = timer_get_time();
@@ -589,7 +589,7 @@ READ_HANDLER ( pc_JOY_r )
 	return data;
 }
 #else
-READ_HANDLER ( pc_JOY_r )
+ READ8_HANDLER ( pc_JOY_r )
 {
 	int data, delta;
 	double new_time = timer_get_time();
@@ -672,3 +672,38 @@ int pc_turbo_setup(int cpunum, int port, int mask, double off_speed, double on_s
 }
 
 
+INPUT_PORTS_START( pc_joystick_none )
+	PORT_START      /* IN15 */
+    PORT_BIT ( 0xffff, 0x0000, IPT_UNUSED )
+	PORT_START      /* IN16 */
+    PORT_BIT ( 0xffff, 0x0000, IPT_UNUSED )
+	PORT_START      /* IN17 */
+    PORT_BIT ( 0xffff, 0x0000, IPT_UNUSED )
+	PORT_START      /* IN18 */
+    PORT_BIT ( 0xffff, 0x0000, IPT_UNUSED )
+	PORT_START      /* IN19 */
+    PORT_BIT ( 0xffff, 0x0000, IPT_UNUSED )
+INPUT_PORTS_END
+
+
+
+INPUT_PORTS_START( pc_joystick )
+	PORT_START	/* IN15 */
+	PORT_BIT ( 0xf, 0xf,	 IPT_UNUSED ) 
+	PORT_BITX( 0x0010, 0x0000, IPT_BUTTON1,	"Joystick 1 Button 1", CODE_DEFAULT, CODE_NONE)
+	PORT_BITX( 0x0020, 0x0000, IPT_BUTTON2,	"Joystick 1 Button 2", CODE_DEFAULT, CODE_NONE)
+	PORT_BITX( 0x0040, 0x0000, IPT_BUTTON1|IPF_PLAYER2,	"Joystick 2 Button 1", CODE_NONE, JOYCODE_2_BUTTON1)
+	PORT_BITX( 0x0080, 0x0000, IPT_BUTTON2|IPF_PLAYER2,	"Joystick 2 Button 2", CODE_NONE, JOYCODE_2_BUTTON2)
+		
+	PORT_START	/* IN16 */
+	PORT_ANALOGX(0xff,0x80,IPT_AD_STICK_X|IPF_CENTER|IPF_REVERSE,100,1,1,0xff,KEYCODE_LEFT,KEYCODE_RIGHT,JOYCODE_1_LEFT,JOYCODE_1_RIGHT)
+		
+	PORT_START /* IN17 */
+	PORT_ANALOGX(0xff,0x80,IPT_AD_STICK_Y|IPF_CENTER|IPF_REVERSE,100,1,1,0xff,KEYCODE_UP,KEYCODE_DOWN,JOYCODE_1_UP,JOYCODE_1_DOWN)
+		
+	PORT_START	/* IN18 */
+	PORT_ANALOGX(0xff,0x80,IPT_AD_STICK_X|IPF_CENTER|IPF_REVERSE|IPF_PLAYER2,100,1,1,0xff,CODE_NONE,CODE_NONE,JOYCODE_2_LEFT,JOYCODE_2_RIGHT)
+		
+	PORT_START /* IN19 */
+	PORT_ANALOGX(0xff,0x80,IPT_AD_STICK_Y|IPF_CENTER|IPF_REVERSE|IPF_PLAYER2,100,1,1,0xff,CODE_NONE,CODE_NONE,JOYCODE_2_UP,JOYCODE_2_DOWN)
+INPUT_PORTS_END

@@ -284,7 +284,7 @@ data8_t crtc6845_port_r(struct crtc6845 *crtc, int offset)
 	return val;
 }
 
-void crtc6845_port_w(struct crtc6845 *crtc, int offset, data8_t data)
+int crtc6845_port_w(struct crtc6845 *crtc, int offset, data8_t data)
 {
 	struct crtc6845_cursor cursor;
 	int idx;
@@ -324,8 +324,9 @@ void crtc6845_port_w(struct crtc6845 *crtc, int offset, data8_t data)
 			{
 				UINT8 char_height;
 				char_height = crtc6845_get_char_height(crtc);
-				crtc6845_set_char_lines(crtc, 200 / char_height);
+				crtc6845_set_char_lines(crtc, 200 ); // / char_height);
 			}
+			return TRUE;
 		}
 	}
 	else
@@ -333,14 +334,15 @@ void crtc6845_port_w(struct crtc6845 *crtc, int offset, data8_t data)
 		/* change the idx register */
 		crtc->idx = data;
 	}
+	return FALSE;
 }
 
-READ_HANDLER ( crtc6845_0_port_r )
+ READ8_HANDLER ( crtc6845_0_port_r )
 {
 	return crtc6845_port_r(crtc6845, offset);
 }
 
-WRITE_HANDLER ( crtc6845_0_port_w )
+WRITE8_HANDLER ( crtc6845_0_port_w )
 {
 	crtc6845_port_w(crtc6845, offset, data);
 }

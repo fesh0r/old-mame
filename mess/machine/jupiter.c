@@ -94,22 +94,22 @@ MACHINE_INIT( jupiter )
 		{
 			case 03:
 			case 02:
-				install_mem_write_handler(0, 0x8800, 0xffff, MWA8_RAM);
-				install_mem_read_handler(0, 0x8800, 0xffff, MRA8_RAM);
-				install_mem_write_handler(0, 0x4800, 0x87ff, MWA8_RAM);
-				install_mem_read_handler(0, 0x4800, 0x87ff, MRA8_RAM);
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, MWA8_RAM);
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, MRA8_RAM);
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, MWA8_RAM);
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, MRA8_RAM);
 				break;
 			case 01:
-				install_mem_write_handler(0, 0x8800, 0xffff, MWA8_NOP);
-				install_mem_read_handler(0, 0x8800, 0xffff, MRA8_NOP);
-				install_mem_write_handler(0, 0x4800, 0x87ff, MWA8_RAM);
-				install_mem_read_handler(0, 0x4800, 0x87ff, MRA8_RAM);
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, MWA8_NOP);
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, MRA8_NOP);
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, MWA8_RAM);
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, MRA8_RAM);
 				break;
 			case 00:
-				install_mem_write_handler(0, 0x8800, 0xffff, MWA8_NOP);
-				install_mem_read_handler(0, 0x8800, 0xffff, MRA8_NOP);
-				install_mem_write_handler(0, 0x4800, 0x87ff, MWA8_NOP);
-				install_mem_read_handler(0, 0x4800, 0x87ff, MRA8_NOP);
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, MWA8_NOP);
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, MRA8_NOP);
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, MWA8_NOP);
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, MRA8_NOP);
 				break;
 		}
 
@@ -270,48 +270,48 @@ DEVICE_UNLOAD( jupiter_tap )
 	}
 }
 
-READ_HANDLER ( jupiter_port_fefe_r )
+ READ8_HANDLER ( jupiter_port_fefe_r )
 {
 	return (readinputport (0));
 }
 
-READ_HANDLER ( jupiter_port_fdfe_r )
+ READ8_HANDLER ( jupiter_port_fdfe_r )
 {
 	return (readinputport (1));
 }
 
-READ_HANDLER ( jupiter_port_fbfe_r )
+ READ8_HANDLER ( jupiter_port_fbfe_r )
 {
 	return (readinputport (2));
 }
 
-READ_HANDLER ( jupiter_port_f7fe_r )
+ READ8_HANDLER ( jupiter_port_f7fe_r )
 {
 	return (readinputport (3));
 }
 
-READ_HANDLER ( jupiter_port_effe_r )
+ READ8_HANDLER ( jupiter_port_effe_r )
 {
 	return (readinputport (4));
 }
 
-READ_HANDLER ( jupiter_port_dffe_r )
+ READ8_HANDLER ( jupiter_port_dffe_r )
 {
 	return (readinputport (5));
 }
 
-READ_HANDLER ( jupiter_port_bffe_r )
+ READ8_HANDLER ( jupiter_port_bffe_r )
 {
 	return (readinputport (6));
 }
 
-READ_HANDLER ( jupiter_port_7ffe_r )
+ READ8_HANDLER ( jupiter_port_7ffe_r )
 {
 	speaker_level_w(0,0);
 	return (readinputport (7));
 }
 
-WRITE_HANDLER ( jupiter_port_fe_w )
+WRITE8_HANDLER ( jupiter_port_fe_w )
 {
 	speaker_level_w(0,1);
 }

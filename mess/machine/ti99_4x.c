@@ -63,6 +63,7 @@ TODO:
 #include "99_dsk.h"
 #include "99_ide.h"
 #include "99_hsgpl.h"
+#include "99_usbsm.h"
 
 #include "sound/tms5220.h"	/* for tms5220_set_variant() */
 
@@ -140,6 +141,8 @@ static char has_handset;
 static char has_hsgpl;
 /* TRUE if mechatronics mouse present */
 static char has_mecmouse;
+/* TRUE if usb-sm card present */
+static char has_usb_sm;
 
 
 /* tms9901 setup */
@@ -489,7 +492,7 @@ DEVICE_LOAD( ti99_cart )
 	/* There is a circuitry in TI99/4(a) that resets the console when a
 	cartridge is inserted or removed.  We emulate this instead of resetting the
 	emulator (which is the default in MESS). */
-	/*cpu_set_reset_line(0, PULSE_LINE);
+	/*cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
 	tms9901_reset(0);
 	if (! has_evpc)
 		TMS9928A_reset();
@@ -582,7 +585,7 @@ DEVICE_UNLOAD( ti99_cart )
 	/* There is a circuitry in TI99/4(a) that resets the console when a
 	cartridge is inserted or removed.  We emulate this instead of resetting the
 	emulator (which is the default in MESS). */
-	/*cpu_set_reset_line(0, PULSE_LINE);
+	/*cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
 	tms9901_reset(0);
 	if (! has_evpc)
 		TMS9928A_reset();
@@ -758,6 +761,7 @@ void machine_init_ti99(void)
 	has_rs232 = (readinputport(input_port_config) >> config_rs232_bit) & config_rs232_mask;
 	has_handset = (ti99_model == model_99_4) && ((readinputport(input_port_config) >> config_handsets_bit) & config_handsets_mask);
 	has_hsgpl = (ti99_model == model_99_4p) || ((readinputport(input_port_config) >> config_hsgpl_bit) & config_hsgpl_mask);
+	has_usb_sm = (readinputport(input_port_config) >> config_usbsm_bit) & config_usbsm_mask;
 
 	/* set up optional expansion hardware */
 	ti99_peb_init(ti99_model == model_99_4p, tms9901_set_int1, NULL);
@@ -776,8 +780,8 @@ void machine_init_ti99(void)
 
 		if (ti99_model != model_99_8)
 		{
-			install_mem_read16_handler(0, 0x9000, 0x93ff, ti99_rspeech_r);
-			install_mem_write16_handler(0, 0x9400, 0x97ff, ti99_wspeech_w);
+			memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x93ff, 0, 0, ti99_rspeech_r);
+			memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9400, 0x97ff, 0, 0, ti99_wspeech_w);
 
 			tms5220_set_variant(variant_tms0285);
 		}
@@ -786,8 +790,8 @@ void machine_init_ti99(void)
 	{
 		if (ti99_model != model_99_8)
 		{
-			install_mem_read16_handler(0, 0x9000, 0x93ff, ti99_nop_8_r);
-			install_mem_write16_handler(0, 0x9400, 0x97ff, ti99_nop_8_w);
+			memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x93ff, 0, 0, ti99_nop_8_r);
+			memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9400, 0x97ff, 0, 0, ti99_nop_8_w);
 		}
 	}
 
@@ -796,10 +800,10 @@ void machine_init_ti99(void)
 	case xRAM_kind_none:
 	default:
 		/* reset mem handler to none */
-		install_mem_read16_handler(0, 0x2000, 0x3fff, ti99_nop_8_r);
-		install_mem_write16_handler(0, 0x2000, 0x3fff, ti99_nop_8_w);
-		install_mem_read16_handler(0, 0xa000, 0xffff, ti99_nop_8_r);
-		install_mem_write16_handler(0, 0xa000, 0xffff, ti99_nop_8_w);
+		memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_nop_8_r);
+		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_nop_8_w);
+		memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_nop_8_r);
+		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_nop_8_w);
 		break;
 	case xRAM_kind_TI:
 		ti99_TIxram_init();
@@ -826,6 +830,11 @@ void machine_init_ti99(void)
 	case fdc_kind_TI:
 		ti99_fdc_init();
 		break;
+#if HAS_99CCFDC
+	case fdc_kind_CC:
+		ti99_ccfdc_init();
+		break;
+#endif
 	case fdc_kind_BwG:
 		ti99_bwg_init();
 		break;
@@ -837,7 +846,7 @@ void machine_init_ti99(void)
 	}
 
 	if (has_ide)
-		ti99_ide_init();
+		ti99_ide_init(ti99_model == model_99_8);
 
 	if (has_rs232)
 		ti99_rs232_init();
@@ -849,6 +858,9 @@ void machine_init_ti99(void)
 	}
 	else
 		hsgpl_crdena = 0;
+
+	if (has_usb_sm)
+		ti99_usbsm_init(ti99_model == model_99_8);
 
 	if (has_evpc)
 		ti99_evpc_init();
@@ -1320,7 +1332,7 @@ WRITE16_HANDLER ( ti99_4p_wgpl_w )
 #pragma mark 99/8 MEMORY HANDLERS
 #endif
 
-READ_HANDLER ( ti99_8_r )
+ READ8_HANDLER ( ti99_8_r )
 {
 	int page = offset >> 12;
 	UINT32 mapper_reg;
@@ -1462,7 +1474,7 @@ READ_HANDLER ( ti99_8_r )
 	return reply;
 }
 
-WRITE_HANDLER ( ti99_8_w )
+WRITE8_HANDLER ( ti99_8_w )
 {
 	int page = offset >> 12;
 	UINT32 mapper_reg;
@@ -1796,13 +1808,13 @@ static int ti99_handset_poll_keyboard(int num)
 	}
 
 	current_key = 0;	/* default value if no key is down */
-	if (key_buf & 0x0008)
-		current_key |= 0x20;	/* set shift flag */
 	for (i=0; i<20; i++)
 	{
 		if (key_buf & (1 << i))
 		{
 			current_key = i + 1;
+			if (key_buf & 0x0008)
+				current_key |= 0x20;	/* set shift flag */
 
 			if (current_key != 0x24)
 				/* If this is the shift key, any other key we may find will
@@ -2083,11 +2095,11 @@ static void tms9901_interrupt_callback(int intreq, int ic)
 	{
 		/* On TI99, TMS9900 IC0-3 lines are not connected to TMS9901,
 		 * but hard-wired to force level 1 interrupts */
-		cpu_set_irq_line_and_vector(0, 0, ASSERT_LINE, 1);	/* interrupt it, baby */
+		cpunum_set_input_line_and_vector(0, 0, ASSERT_LINE, 1);	/* interrupt it, baby */
 	}
 	else
 	{
-		cpu_set_irq_line(0, 0, CLEAR_LINE);
+		cpunum_set_input_line(0, 0, CLEAR_LINE);
 	}
 }
 
@@ -2351,7 +2363,7 @@ static void ti99_CS_output(int offset, int data)
 
 /* prototypes */
 static void ti99_8_internal_dsr_cru_w(int offset, int data);
-static READ_HANDLER(ti99_8_internal_dsr_r);
+static  READ8_HANDLER(ti99_8_internal_dsr_r);
 
 
 static const ti99_peb_card_handlers_t ti99_8_internal_dsr_handlers =
@@ -2388,7 +2400,7 @@ static void ti99_8_internal_dsr_cru_w(int offset, int data)
 }
 
 /* read internal DSR ROM */
-static READ_HANDLER(ti99_8_internal_dsr_r)
+static  READ8_HANDLER(ti99_8_internal_dsr_r)
 {
 	return ti99_8_internal_DSR[offset];
 }
@@ -2492,10 +2504,10 @@ static WRITE16_HANDLER ( ti99_TIxramhigh_w );
 
 static void ti99_TIxram_init(void)
 {
-	install_mem_read16_handler(0, 0x2000, 0x3fff, ti99_TIxramlow_r);
-	install_mem_write16_handler(0, 0x2000, 0x3fff, ti99_TIxramlow_w);
-	install_mem_read16_handler(0, 0xa000, 0xffff, ti99_TIxramhigh_r);
-	install_mem_write16_handler(0, 0xa000, 0xffff, ti99_TIxramhigh_w);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_TIxramlow_r);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_TIxramlow_w);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_TIxramhigh_r);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_TIxramhigh_w);
 }
 
 /* low 8 kb: 0x2000-0x3fff */
@@ -2539,8 +2551,8 @@ static WRITE16_HANDLER ( ti99_TIxramhigh_w )
 
 /* prototypes */
 static void sAMS_cru_w(int offset, int data);
-static READ_HANDLER(sAMS_mapper_r);
-static WRITE_HANDLER(sAMS_mapper_w);
+static  READ8_HANDLER(sAMS_mapper_r);
+static WRITE8_HANDLER(sAMS_mapper_w);
 
 static READ16_HANDLER ( ti99_sAMSxramlow_r );
 static WRITE16_HANDLER ( ti99_sAMSxramlow_w );
@@ -2567,10 +2579,10 @@ static void ti99_sAMSxram_init(void)
 	int i;
 
 
-	install_mem_read16_handler(0, 0x2000, 0x3fff, ti99_sAMSxramlow_r);
-	install_mem_write16_handler(0, 0x2000, 0x3fff, ti99_sAMSxramlow_w);
-	install_mem_read16_handler(0, 0xa000, 0xffff, ti99_sAMSxramhigh_r);
-	install_mem_write16_handler(0, 0xa000, 0xffff, ti99_sAMSxramhigh_w);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_sAMSxramlow_r);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_sAMSxramlow_w);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_sAMSxramhigh_r);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_sAMSxramhigh_w);
 
 	ti99_peb_set_card_handlers(0x1e00, & sAMS_expansion_handlers);
 
@@ -2590,13 +2602,13 @@ static void sAMS_cru_w(int offset, int data)
 }
 
 /* read a mapper register */
-static READ_HANDLER(sAMS_mapper_r)
+static  READ8_HANDLER(sAMS_mapper_r)
 {
 	return (sAMSlookup[(offset >> 1) & 0xf] >> 11);
 }
 
 /* write a mapper register */
-static WRITE_HANDLER(sAMS_mapper_w)
+static WRITE8_HANDLER(sAMS_mapper_w)
 {
 	sAMSlookup[(offset >> 1) & 0xf] = ((int) data) << 11;
 }
@@ -2677,22 +2689,22 @@ static void ti99_4p_mapper_init(void)
 	int i;
 
 	/* Not required at run-time */
-	/*install_mem_read16_handler(0, 0x2000, 0x2fff, MRA16_BANK3);
-	install_mem_write16_handler(0, 0x2000, 0x2fff, MWA16_BANK3);
-	install_mem_read16_handler(0, 0x3000, 0x3fff, MRA16_BANK4);
-	install_mem_write16_handler(0, 0x3000, 0x3fff, MWA16_BANK4);
-	install_mem_read16_handler(0, 0xa000, 0xafff, MRA16_BANK5);
-	install_mem_write16_handler(0, 0xa000, 0xafff, MWA16_BANK5);
-	install_mem_read16_handler(0, 0xb000, 0xbfff, MRA16_BANK6);
-	install_mem_write16_handler(0, 0xb000, 0xbfff, MWA16_BANK6);
-	install_mem_read16_handler(0, 0xc000, 0xcfff, MRA16_BANK7);
-	install_mem_write16_handler(0, 0xc000, 0xcfff, MWA16_BANK7);
-	install_mem_read16_handler(0, 0xd000, 0xdfff, MRA16_BANK8);
-	install_mem_write16_handler(0, 0xd000, 0xdfff, MWA16_BANK8);
-	install_mem_read16_handler(0, 0xe000, 0xefff, MRA16_BANK9);
-	install_mem_write16_handler(0, 0xe000, 0xefff, MWA16_BANK9);
-	install_mem_read16_handler(0, 0xf000, 0xffff, MRA16_BANK10);
-	install_mem_write16_handler(0, 0xf000, 0xffff, MWA16_BANK10);*/
+	/*memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, MRA16_BANK3);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, MWA16_BANK3);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, MRA16_BANK4);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, MWA16_BANK4);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, MRA16_BANK5);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, MWA16_BANK5);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, MRA16_BANK6);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, MWA16_BANK6);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, MRA16_BANK7);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, MWA16_BANK7);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, MRA16_BANK8);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, MWA16_BANK8);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, MRA16_BANK9);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, MWA16_BANK9);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, MRA16_BANK10);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, MWA16_BANK10);*/
 
 	ti99_peb_set_16bit_card_handlers(0x1e00, & ti99_4p_mapper_handlers);
 
@@ -2828,10 +2840,10 @@ static int myarc_page_offset_mask;
 /* set up myarc handlers, and set initial state */
 static void ti99_myarcxram_init(void)
 {
-	install_mem_read16_handler(0, 0x2000, 0x3fff, ti99_myarcxramlow_r);
-	install_mem_write16_handler(0, 0x2000, 0x3fff, ti99_myarcxramlow_w);
-	install_mem_read16_handler(0, 0xa000, 0xffff, ti99_myarcxramhigh_r);
-	install_mem_write16_handler(0, 0xa000, 0xffff, ti99_myarcxramhigh_w);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_myarcxramlow_r);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_myarcxramlow_w);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_myarcxramhigh_r);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_myarcxramhigh_w);
 
 	switch (xRAM_kind)
 	{
@@ -2936,8 +2948,8 @@ static WRITE16_HANDLER ( ti99_myarcxramhigh_w )
 /* prototypes */
 static int evpc_cru_r(int offset);
 static void evpc_cru_w(int offset, int data);
-static READ_HANDLER(evpc_mem_r);
-static WRITE_HANDLER(evpc_mem_w);
+static  READ8_HANDLER(evpc_mem_r);
+static WRITE8_HANDLER(evpc_mem_w);
 
 /* pointer to the evpc DSR area */
 static UINT8 *ti99_evpc_DSR;
@@ -3038,7 +3050,7 @@ static struct
 /*
 	read a byte in evpc DSR space
 */
-static READ_HANDLER(evpc_mem_r)
+static  READ8_HANDLER(evpc_mem_r)
 {
 	UINT8 reply = 0;
 
@@ -3117,7 +3129,7 @@ static READ_HANDLER(evpc_mem_r)
 /*
 	write a byte in evpc DSR space
 */
-static WRITE_HANDLER(evpc_mem_w)
+static WRITE8_HANDLER(evpc_mem_w)
 {
 	if ((offset >= 0x1f00) && (offset < 0x1ff0) && RAMEN)
 	{	/* NOVRAM */

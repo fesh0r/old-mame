@@ -113,7 +113,7 @@ static void ti85_timer_callback (int param)
 	{
 		if (ti85_ON_interrupt_mask && !ti85_ON_pressed)
 		{
-			cpu_set_irq_line(0,0, HOLD_LINE);
+			cpunum_set_input_line(0, 0, HOLD_LINE);
 			ti85_ON_interrupt_status = 1;
 			if (!ti85_timer_interrupt_mask) ti85_timer_interrupt_mask = 1;
 		}
@@ -124,7 +124,7 @@ static void ti85_timer_callback (int param)
 		ti85_ON_pressed = 0;
 	if (ti85_timer_interrupt_mask)
 	{
-		cpu_set_irq_line(0,0, HOLD_LINE);
+		cpunum_set_input_line(0, 0, HOLD_LINE);
 		ti85_timer_interrupt_status = 1;
 	}
 }
@@ -149,7 +149,7 @@ static void update_ti86_memory (void)
 		cpu_setbank(2,memory_region(REGION_CPU1) + 0x010000 + 0x004000*(ti85_memory_page_0x4000&0x0f));
 		wh = MWA8_ROM;
 	}
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, wh);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, wh);
 
 	if (ti86_memory_page_0x8000 & 0x40)
 	{
@@ -162,7 +162,7 @@ static void update_ti86_memory (void)
 		cpu_setbank(3,memory_region(REGION_CPU1) + 0x010000 + 0x004000*(ti86_memory_page_0x8000&0x0f));
 		wh = MWA8_ROM;
 	}
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, wh);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, wh);
 }
 
 /***************************************************************************
@@ -194,8 +194,8 @@ MACHINE_INIT( ti81 )
 
 	timer_pulse(TIME_IN_HZ(200), 0, ti85_timer_callback);
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, MWA8_ROM);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, MWA8_ROM);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MWA8_ROM);
 	cpu_setbank(1,memory_region(REGION_CPU1) + 0x010000);
 	cpu_setbank(2,memory_region(REGION_CPU1) + 0x014000);
 }
@@ -226,8 +226,8 @@ MACHINE_INIT( ti85 )
 
 	ti85_reset_serial();
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, MWA8_ROM);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, MWA8_ROM);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MWA8_ROM);
 	cpu_setbank(1,memory_region(REGION_CPU1) + 0x010000);
 	cpu_setbank(2,memory_region(REGION_CPU1) + 0x014000);
 }
@@ -258,7 +258,7 @@ MACHINE_INIT( ti86 )
 
 	if (ti86_ram)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, MWA8_ROM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
 
 		cpu_setbank(1,memory_region(REGION_CPU1) + 0x010000);
 		cpu_setbank(2,memory_region(REGION_CPU1) + 0x014000);
@@ -283,12 +283,12 @@ MACHINE_STOP( ti86 )
 
 /* I/O ports handlers */
 
-READ_HANDLER ( ti85_port_0000_r )
+ READ8_HANDLER ( ti85_port_0000_r )
 {
 	return 0xff;
 }
 
-READ_HANDLER ( ti85_port_0001_r )
+ READ8_HANDLER ( ti85_port_0001_r )
 {
 	int data = 0xff;
 	int port;
@@ -303,12 +303,12 @@ READ_HANDLER ( ti85_port_0001_r )
 	return data;
 }
 
-READ_HANDLER ( ti85_port_0002_r )
+ READ8_HANDLER ( ti85_port_0002_r )
 {
 	return 0xff;
 }
 
-READ_HANDLER ( ti85_port_0003_r )
+ READ8_HANDLER ( ti85_port_0003_r )
 {
 	int data = 0;
 
@@ -325,22 +325,22 @@ READ_HANDLER ( ti85_port_0003_r )
 	return data;
 }
 
-READ_HANDLER ( ti85_port_0004_r )
+ READ8_HANDLER ( ti85_port_0004_r )
 {
 	return 0xff;
 }
 
-READ_HANDLER ( ti85_port_0005_r )
+ READ8_HANDLER ( ti85_port_0005_r )
 {
 	return ti85_memory_page_0x4000;
 }
 
-READ_HANDLER ( ti85_port_0006_r )
+ READ8_HANDLER ( ti85_port_0006_r )
 {
 	return ti85_power_mode;
 }
 
-READ_HANDLER ( ti85_port_0007_r )
+ READ8_HANDLER ( ti85_port_0007_r )
 {
 	ti85_update_serial();
         return  (ti85_white_out<<3) |
@@ -350,37 +350,37 @@ READ_HANDLER ( ti85_port_0007_r )
 		ti85_PCR;
 }
 
-READ_HANDLER ( ti86_port_0005_r )
+ READ8_HANDLER ( ti86_port_0005_r )
 {
 	return ti85_memory_page_0x4000;
 }
 
-READ_HANDLER ( ti86_port_0006_r )
+ READ8_HANDLER ( ti86_port_0006_r )
 {
 	return ti86_memory_page_0x8000;
 }
 
-WRITE_HANDLER ( ti81_port_0007_w )
+WRITE8_HANDLER ( ti81_port_0007_w )
 {
 	ti81_port_7_data = data;
 }
 
-WRITE_HANDLER ( ti85_port_0000_w )
+WRITE8_HANDLER ( ti85_port_0000_w )
 {
 	ti85_LCD_memory_base = data;
 }
 
-WRITE_HANDLER ( ti85_port_0001_w )
+WRITE8_HANDLER ( ti85_port_0001_w )
 {
 	ti85_keypad_mask = data&0x7f;
 }
 
-WRITE_HANDLER ( ti85_port_0002_w )
+WRITE8_HANDLER ( ti85_port_0002_w )
 {
 	ti85_LCD_contrast = data&0x1f;
 }
 
-WRITE_HANDLER ( ti85_port_0003_w )
+WRITE8_HANDLER ( ti85_port_0003_w )
 {
 	if (ti85_LCD_status && !(data&0x08))	ti85_timer_interrupt_mask = 0;
 	ti85_ON_interrupt_mask = data&0x01;
@@ -389,25 +389,25 @@ WRITE_HANDLER ( ti85_port_0003_w )
 	ti85_LCD_status = data&0x08;
 }
 
-WRITE_HANDLER ( ti85_port_0004_w )
+WRITE8_HANDLER ( ti85_port_0004_w )
 {
 	ti85_video_buffer_width = (data>>3)&0x03;
 	ti85_interrupt_speed = (data>>1)&0x03;
 	ti85_port4_bit0 = data&0x01;
 }
 
-WRITE_HANDLER ( ti85_port_0005_w )
+WRITE8_HANDLER ( ti85_port_0005_w )
 {
 	ti85_memory_page_0x4000 = data;
 	update_ti85_memory();
 }
 
-WRITE_HANDLER ( ti85_port_0006_w )
+WRITE8_HANDLER ( ti85_port_0006_w )
 {
 	ti85_power_mode = data;
 }
 
-WRITE_HANDLER ( ti85_port_0007_w )
+WRITE8_HANDLER ( ti85_port_0007_w )
 {
 	speaker_level_w(0,( (data>>2)|(data>>3) )&0x01 );
         ti85_red_out=(data>>2)&0x01;
@@ -416,13 +416,13 @@ WRITE_HANDLER ( ti85_port_0007_w )
 	ti85_PCR = data&0xf0;
 }
 
-WRITE_HANDLER ( ti86_port_0005_w )
+WRITE8_HANDLER ( ti86_port_0005_w )
 {
 	ti85_memory_page_0x4000 = data&((data&0x40)?0x47:0x4f);
 	update_ti86_memory();
 }
 
-WRITE_HANDLER ( ti86_port_0006_w )
+WRITE8_HANDLER ( ti86_port_0006_w )
 {
 	ti86_memory_page_0x8000 = data&((data&0x40)?0x47:0x4f);
 	update_ti86_memory();
@@ -543,9 +543,9 @@ static void ti8x_snapshot_setup_registers (UINT8 * data)
 
 	cpunum_set_reg(0, Z80_R, (reg[0x44]&0x7f) | (reg[0x48]&0x80));
 
-	activecpu_set_irq_line(0, 0);
-	activecpu_set_irq_line(IRQ_LINE_NMI, 0);
-	cpunum_set_halt_line(0, 0);
+	activecpu_set_input_line(0, 0);
+	activecpu_set_input_line(INPUT_LINE_NMI, 0);
+	cpunum_set_input_line(0, INPUT_LINE_HALT, 0);
 }
 
 static void ti85_setup_snapshot (UINT8 * data)

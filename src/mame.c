@@ -2089,7 +2089,7 @@ static int validitychecks(void)
 							error = 1;
 						}
 					}
-
+					
 					if (inp->type > IPT_ANALOG_START && inp->type < IPT_ANALOG_END)
 					{
 						if (inp->u.analog.sensitivity == 0)

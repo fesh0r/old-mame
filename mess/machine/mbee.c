@@ -33,7 +33,7 @@ static z80pio_interface pio_intf =
 
 static void pio_interrupt(int state)
 {
-	cpu_set_irq_line(0, 0, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(0, 0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 MACHINE_INIT( mbee )
@@ -57,7 +57,7 @@ static mess_image *cassette_device_image(void)
  * 6	speaker
  * 7	network interrupt
  */
-READ_HANDLER ( mbee_pio_r )
+ READ8_HANDLER ( mbee_pio_r )
 {
     int data = z80pio_0_r(offset);
 	if( offset != 2 )
@@ -70,7 +70,7 @@ READ_HANDLER ( mbee_pio_r )
     return data;
 }
 
-WRITE_HANDLER ( mbee_pio_w )
+WRITE8_HANDLER ( mbee_pio_w )
 {
     z80pio_0_w(offset,data);
 	if( offset == 2 )
@@ -85,11 +85,11 @@ static void mbee_fdc_callback(int param)
 	switch( param )
 	{
 	case WD179X_IRQ_CLR:
-//		cpu_set_irq_line(0,0,CLEAR_LINE);
+//		cpunum_set_input_line(0,0,CLEAR_LINE);
 		fdc_status &= ~0x40;
         break;
 	case WD179X_IRQ_SET:
-//		cpu_set_irq_line(0,0,HOLD_LINE);
+//		cpunum_set_input_line(0,0,HOLD_LINE);
 		fdc_status |= 0x40;
         break;
 	case WD179X_DRQ_CLR:
@@ -101,13 +101,13 @@ static void mbee_fdc_callback(int param)
     }
 }
 
-READ_HANDLER ( mbee_fdc_status_r )
+ READ8_HANDLER ( mbee_fdc_status_r )
 {
 	logerror("mbee fdc_motor_r $%02X\n", fdc_status);
 	return fdc_status;
 }
 
-WRITE_HANDLER ( mbee_fdc_motor_w )
+WRITE8_HANDLER ( mbee_fdc_motor_w )
 {
 	logerror("mbee fdc_motor_w $%02X\n", data);
 	/* Controller latch bits

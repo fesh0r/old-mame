@@ -209,10 +209,10 @@ VIDEO_START( pc_aga )
 	buswidth = cputype_databus_width(Machine->drv->cpu[0].cpu_type, ADDRESS_SPACE_PROGRAM);
 	switch(buswidth) {
 	case 8:
-		memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, pc_aga_mda_r );
-		memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, pc_aga_mda_w );
-		memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, pc_aga_cga_r );
-		memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, pc_aga_cga_w );
+		memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, 0, pc_aga_mda_r );
+		memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, 0, pc_aga_mda_w );
+		memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_aga_cga_r );
+		memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_aga_cga_w );
 		break;
 
 	default:
@@ -246,7 +246,7 @@ static pc_video_update_proc pc_aga_choosevideomode(int *width, int *height, stru
 	return proc;
 }
 
-WRITE_HANDLER ( pc_aga_videoram_w )
+WRITE8_HANDLER ( pc_aga_videoram_w )
 {
 	switch (aga.mode) {
 	case AGA_COLOR:
@@ -260,7 +260,7 @@ WRITE_HANDLER ( pc_aga_videoram_w )
 	}
 }
 
-READ_HANDLER( pc_aga_videoram_r )
+ READ8_HANDLER( pc_aga_videoram_r )
 {
 	switch (aga.mode) {
 	case AGA_COLOR: 
@@ -273,7 +273,7 @@ READ_HANDLER( pc_aga_videoram_r )
 	return 0;
 }
 
-WRITE_HANDLER ( pc200_videoram_w )
+WRITE8_HANDLER ( pc200_videoram_w )
 {
 	switch (aga.mode) {
 	default:
@@ -286,7 +286,7 @@ WRITE_HANDLER ( pc200_videoram_w )
 	}
 }
 
-READ_HANDLER( pc200_videoram_r )
+ READ8_HANDLER( pc200_videoram_r )
 {
 	switch (aga.mode) {
 	default: 
@@ -306,7 +306,7 @@ static struct {
 
 // in reality it is of course only 1 graphics adapter,
 // but now cga and mda are splitted in mess
-WRITE_HANDLER( pc200_cga_w )
+WRITE8_HANDLER( pc200_cga_w )
 {
 	switch(offset) {
 	case 4:
@@ -346,7 +346,7 @@ WRITE_HANDLER( pc200_cga_w )
 	}
 }
 
-READ_HANDLER ( pc200_cga_r )
+ READ8_HANDLER ( pc200_cga_r )
 {
 	data8_t result = 0;
 

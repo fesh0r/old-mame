@@ -438,7 +438,7 @@ void a7800_interrupt(void)
 	if( maria_dli )
 	{
 		maria_dli = 0;
-		cpu_set_irq_line(0, IRQ_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 	}
 
 }
@@ -458,7 +458,7 @@ VIDEO_UPDATE( a7800 )
 
 /****** MARIA ***************************************/
 
-READ_HANDLER( a7800_MARIA_r )
+ READ8_HANDLER( a7800_MARIA_r )
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
 	switch (offset)
@@ -472,7 +472,7 @@ READ_HANDLER( a7800_MARIA_r )
 	}
 }
 
-WRITE_HANDLER( a7800_MARIA_w )
+WRITE8_HANDLER( a7800_MARIA_w )
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
 	switch (offset)

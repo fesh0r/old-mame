@@ -89,7 +89,7 @@ static void raise_nmi(int dummy)
 {
 	LOG(("cococart: Raising NMI (and clearing halt), source: wd179x INTRQ\n" ));
 
-	cpu_set_nmi_line(0, ASSERT_LINE);
+	cpunum_set_input_line(0, INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 static void raise_halt(int dummy)
@@ -104,8 +104,9 @@ static void coco_fdc_callback(int event)
 	switch(event) {
 	case WD179X_IRQ_CLR:
 		intrq_state = CLEAR_LINE;
-		cpu_set_nmi_line(0, CLEAR_LINE);
+		cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
 		break;
+
 	case WD179X_IRQ_SET:
 		intrq_state = ASSERT_LINE;
 		CLEAR_COCO_HALTENABLE;
@@ -113,8 +114,9 @@ static void coco_fdc_callback(int event)
 		if( COCO_NMIENABLE )
 			timer_set( TIME_IN_USEC(0), 0, raise_nmi);
 		else
-			cpu_set_nmi_line(0, CLEAR_LINE);
+			cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
 		break;
+
 	case WD179X_DRQ_CLR:
 		drq_state = CLEAR_LINE;
 		if( COCO_HALTENABLE )
@@ -134,7 +136,7 @@ static void dragon_fdc_callback(int event)
 	switch(event) {
 	case WD179X_IRQ_CLR:
 		LOG(("dragon_fdc_callback(): WD179X_IRQ_CLR\n" ));
-		cpu_set_nmi_line(0, CLEAR_LINE);
+		cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
 		break;
 	case WD179X_IRQ_SET:
 		LOG(("dragon_fdc_callback(): WD179X_IRQ_SET\n" ));
@@ -205,7 +207,7 @@ static void set_coco_dskreg(int data)
 		timer_set( TIME_IN_USEC(0), 0, raise_nmi);
 	}
 	else
-		cpu_set_nmi_line(0, CLEAR_LINE);
+		cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
 
 	wd179x_set_drive(drive);
 	wd179x_set_side(head);
@@ -234,7 +236,7 @@ static void set_dragon_dskreg(int data)
 
 /* ---------------------------------------------------- */
 
-READ_HANDLER(coco_floppy_r)
+ READ8_HANDLER(coco_floppy_r)
 {
 	int result = 0;
 
@@ -282,7 +284,7 @@ READ_HANDLER(coco_floppy_r)
 	return result;
 }
 
-WRITE_HANDLER(coco_floppy_w)
+WRITE8_HANDLER(coco_floppy_w)
 {
 	switch(offset & 0xef) {
 	case 0:
@@ -325,7 +327,7 @@ WRITE_HANDLER(coco_floppy_w)
 /*	logerror("SCS write: address %4.4X, data %2.2X\n", 0xff40+offset, data );*/
 }
 
-READ_HANDLER(dragon_floppy_r)
+ READ8_HANDLER(dragon_floppy_r)
 {
 	int result = 0;
 
@@ -348,7 +350,7 @@ READ_HANDLER(dragon_floppy_r)
 	return result;
 }
 
-WRITE_HANDLER(dragon_floppy_w)
+WRITE8_HANDLER(dragon_floppy_w)
 {
 	switch(offset & 0xef) {
 	case 0:
@@ -407,7 +409,7 @@ static void cartidge_standard_init(const struct cartridge_callback *callbacks)
 	cartcallbacks->setcartline(CARTLINE_Q);
 }
 
-static WRITE_HANDLER(cartridge_banks_io_w)
+static WRITE8_HANDLER(cartridge_banks_io_w)
 {
 /* TJL- trying to turn this into a generic banking call */
 	if (offset == 0 )
@@ -419,7 +421,7 @@ static WRITE_HANDLER(cartridge_banks_io_w)
 		LOG( ("Bankswitch: Writing to unmapped SCS memory: $%4.4X (PC=$%4.4X)\n", 0xff40+offset, activecpu_get_pc() ) );
 }
 
-static READ_HANDLER(cartridge_banks_io_r)
+static  READ8_HANDLER(cartridge_banks_io_r)
 {
 /* TJL- trying to turn this into a generic banking call */
 	if (offset == 0 )
@@ -430,19 +432,19 @@ static READ_HANDLER(cartridge_banks_io_r)
 	return 0;
 }
 
-static WRITE_HANDLER(cartridge_std_io_w)
+static WRITE8_HANDLER(cartridge_std_io_w)
 {
 	LOG( ("Standard Cart: Writing to unmapped SCS memory: $%4.4X (PC=$%4.4X)\n", 0xff40+offset, activecpu_get_pc() ) );
 }
 
-static READ_HANDLER(cartridge_std_io_r)
+static  READ8_HANDLER(cartridge_std_io_r)
 {
 	LOG( ("Standard Cart: Reading from unmapped SCS memory: $%4.4X (PC=$%4.4X)\n", 0xff40+offset, activecpu_get_pc() ) );
 
 	return 0xff;
 }
 
-static WRITE_HANDLER(cartridge_Orch90_io_w)
+static WRITE8_HANDLER(cartridge_Orch90_io_w)
 {
 	if( offset == 58 )
 		DAC_data_w(0, data);

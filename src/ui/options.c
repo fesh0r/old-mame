@@ -43,6 +43,7 @@
 #include "dijoystick.h"
 #include "audit.h"
 #include "options.h"
+#include "picker.h"
 #include "windows/config.h"
 
 #ifdef _MSC_VER
@@ -250,6 +251,7 @@ static REG_OPTION regSettings[] =
 	{ "stretch_screenshot_larger",  RO_BOOL,    &settings.stretch_screenshot_larger,  "1" },
 	{ "inherit_filter",             RO_BOOL,    &settings.inherit_filter,             "0" },
 	{ "offset_clones",              RO_BOOL,    &settings.offset_clones,              "0" },
+	{ "game_caption",               RO_BOOL,    &settings.game_caption,               "1" },
 
 	{ "language",                   RO_STRING,  &settings.language,         "english" },
 	{ "flyer_directory",            RO_STRING,  &settings.flyerdir,         "flyers" },
@@ -265,6 +267,9 @@ static REG_OPTION regSettings[] =
 	{ "mess_column_widths",         RO_ENCODE,  &settings.mess.mess_column_width, "186, 230, 88, 84, 84, 68, 248, 248",	FALSE, MessColumnEncodeString, MessColumnDecodeWidths},
 	{ "mess_column_order",          RO_ENCODE,  &settings.mess.mess_column_order,   "0,   1,  2,  3,  4,  5,   6,   7",	FALSE, MessColumnEncodeString, MessColumnDecodeString},
 	{ "mess_column_shown",          RO_ENCODE,  &settings.mess.mess_column_shown,   "1,   1,  1,  1,  1,  0,   0,   0",	FALSE, MessColumnEncodeString, MessColumnDecodeString},
+
+	{ "mess_sort_column",           RO_INT,     &settings.mess.mess_sort_column,    "0" },
+	{ "mess_sort_reversed",         RO_BOOL,    &settings.mess.mess_sort_reverse,   "0" },
 #endif
 	{ "" }
 };
@@ -875,9 +880,9 @@ void SyncInFolderOptions(options_type *opts, int folder_index)
 
 options_type * GetDefaultOptions(int iProperty, BOOL bVectorFolder )
 {
-	if( iProperty == -1)
+	if( iProperty == GLOBAL_OPTIONS)
 		return &global;
-	else if( iProperty == -2)
+	else if( iProperty == FOLDER_OPTIONS)
 	{
 		if (bVectorFolder)
 			return &global;
@@ -1137,6 +1142,16 @@ BOOL GetOffsetClones(void)
 {
 	return settings.offset_clones;
  }
+
+void SetGameCaption(BOOL caption)
+{
+	settings.game_caption = caption;
+}
+
+BOOL GetGameCaption(void)
+{
+	return settings.game_caption;
+}
 
 void SetBroadcast(BOOL broadcast)
 {
@@ -1811,7 +1826,7 @@ void ResetGameOptions(int driver_index)
 	assert(0 <= driver_index && driver_index < num_games);
 
 	// make sure it's all loaded up.
-	GetGameOptions(driver_index, -1);
+	GetGameOptions(driver_index, GLOBAL_OPTIONS);
 
 	if (game_variables[driver_index].use_default == FALSE)
 	{
@@ -1844,7 +1859,7 @@ void ResetAllGameOptions(void)
 	{
 		if( i == FOLDER_VECTOR)
  		{
- 			CopyGameOptions(GetDefaultOptions(-1, FALSE),&folder_options[i]);
+ 			CopyGameOptions(GetDefaultOptions(GLOBAL_OPTIONS, FALSE),&folder_options[i]);
  			SaveFolderOptions(i, 0);
  		}
 
@@ -1852,7 +1867,7 @@ void ResetAllGameOptions(void)
 		{
 			if( ExtraFolderData[i-MAX_FOLDERS] && (ExtraFolderData[i-MAX_FOLDERS]->m_nParent == FOLDER_SOURCE) )
 			{
-				CopyGameOptions(GetDefaultOptions(-1, FALSE),&folder_options[i]);
+				CopyGameOptions(GetDefaultOptions(GLOBAL_OPTIONS, FALSE),&folder_options[i]);
 				SaveFolderOptions(i, 0);
 			}
 		}
@@ -2482,9 +2497,12 @@ static void ListDecodeString(const char* str, void* data)
 
 static void ListEncodeString(void* data, char *str)
 {
-	int* value = (int*)data;
+	int value = *((int*)data);
+	const char* view_mode_string = "";
 
-	strcpy(str, view_modes[*value]);
+	if ((value >= 0) && (value < sizeof(view_modes) / sizeof(view_modes[0])))
+		view_mode_string = view_modes[value];
+	strcpy(str, view_mode_string);
 }
 
 /* Parse the given comma-delimited string into a LOGFONT structure */
@@ -3533,6 +3551,11 @@ void SaveDefaultOptions(void)
 	snprintf(buffer,sizeof(buffer),"%s\\%s",GetIniDir(),DEFAULT_OPTIONS_INI_FILENAME);
 
 	fptr = fopen(buffer,"wt");
+	if( fptr == NULL && GetLastError() == ERROR_PATH_NOT_FOUND )
+	{
+		CreateDirectory( GetIniDir(), NULL);
+		fptr = fopen(buffer,"wt");
+	}
 	if (fptr != NULL)
 	{
 		fprintf(fptr,"### " DEFAULT_OPTIONS_INI_FILENAME " ###\n\n");

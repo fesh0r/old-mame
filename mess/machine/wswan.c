@@ -64,7 +64,7 @@ MACHINE_STOP( wswan )
 {
 }
 
-READ_HANDLER( wswan_port_r )
+ READ8_HANDLER( wswan_port_r )
 {
 	UINT8 value = 0xff;
 
@@ -80,7 +80,7 @@ READ_HANDLER( wswan_port_r )
 	return ws_portram[offset];
 }
 
-WRITE_HANDLER( wswan_port_w )
+WRITE8_HANDLER( wswan_port_w )
 {
 	switch( offset )
 	{
@@ -327,6 +327,6 @@ INTERRUPT_GEN(wswan_scanline_interrupt)
 	if( (ws_portram[0xb2] & WSWAN_IFLAG_VBL) && (vdp.current_line == 144) )
 	{
 		ws_portram[0xb6] &= ~WSWAN_IFLAG_VBL;
-		cpu_set_irq_line( 0, (ws_portram[0xb0] + WSWAN_INT_VBL), HOLD_LINE );
+		cpunum_set_input_line( 0, (ws_portram[0xb0] + WSWAN_INT_VBL), HOLD_LINE );
 	}
 }

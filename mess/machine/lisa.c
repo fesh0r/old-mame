@@ -130,13 +130,13 @@ static UINT16 *videoram_ptr;		/* screen bitmap base address (derived from video_
 	a hard disk
 */
 
-static READ_HANDLER(COPS_via_in_b);
-static WRITE_HANDLER(COPS_via_out_a);
-static WRITE_HANDLER(COPS_via_out_b);
-static WRITE_HANDLER(COPS_via_out_ca2);
-static WRITE_HANDLER(COPS_via_out_cb2);
+static  READ8_HANDLER(COPS_via_in_b);
+static WRITE8_HANDLER(COPS_via_out_a);
+static WRITE8_HANDLER(COPS_via_out_b);
+static WRITE8_HANDLER(COPS_via_out_ca2);
+static WRITE8_HANDLER(COPS_via_out_cb2);
 static void COPS_via_irq_func(int val);
-static READ_HANDLER(parallel_via_in_b);
+static  READ8_HANDLER(parallel_via_in_b);
 
 static int KBIR;	/* COPS VIA interrupt pending */
 
@@ -234,25 +234,25 @@ static void lisa_field_interrupts(void)
 
 	/*if (RSIR)
 		// serial interrupt
-		cpu_set_irq_line_and_vector(0, M68K_IRQ_6, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(0, M68K_IRQ_6, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int0)
 		// external interrupt
-		cpu_set_irq_line_and_vector(0, M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(0, M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int1)
 		// external interrupt
-		cpu_set_irq_line_and_vector(0, M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(0, M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int2)
 		// external interrupt
-		cpu_set_irq_line_and_vector(0, M68K_IRQ_3, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(0, M68K_IRQ_3, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else*/ if (KBIR)
 		/* COPS VIA interrupt */
-		cpu_set_irq_line_and_vector(0, M68K_IRQ_2, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(0, M68K_IRQ_2, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (FDIR || VTIR)
 		/* floppy disk or VBl */
-		cpu_set_irq_line_and_vector(0, M68K_IRQ_1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(0, M68K_IRQ_1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else
 		/* clear all interrupts */
-		cpu_set_irq_line_and_vector(0, M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(0, M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 static void set_parity_error_pending(int value)
@@ -262,18 +262,18 @@ static void set_parity_error_pending(int value)
 	parity_error_pending = value;
 	if (parity_error_pending)
 	{
-		cpu_set_irq_line_and_vector(0, M68K_IRQ_7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(0, M68K_IRQ_7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	}
 	else
 	{
-		cpu_set_irq_line(0, M68K_IRQ_7, CLEAR_LINE);
+		cpunum_set_input_line(0, M68K_IRQ_7, CLEAR_LINE);
 	}
 #else
 	/* work-around... */
 	if ((! parity_error_pending) && value)
 	{
 		parity_error_pending = TRUE;
-		cpu_set_irq_line_and_vector(0, M68K_IRQ_7, PULSE_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(0, M68K_IRQ_7, PULSE_LINE, M68K_INT_ACK_AUTOVECTOR);
 	}
 	else if (parity_error_pending && (! value))
 	{
@@ -432,8 +432,8 @@ static void scan_keyboard( void )
 #if 0
 						if (keycode == NMIcode)
 						{	/* generate NMI interrupt */
-							cpu_set_irq_line(0, M68K_IRQ_7, PULSE_LINE);
-							cpu_irq_line_vector_w(0, M68K_IRQ_7, M68K_INT_ACK_AUTOVECTOR);
+							cpunum_set_input_line(0, M68K_IRQ_7, PULSE_LINE);
+							cpunum_set_input_line_vector(0, M68K_IRQ_7, M68K_INT_ACK_AUTOVECTOR);
 						}
 #endif
 						COPS_queue_data(& keycode, 1);
@@ -779,12 +779,12 @@ static void init_COPS(void)
 	CA1 (I) : COPS sending valid data
 	CA2 (O) : VIA -> COPS handshake
 */
-static WRITE_HANDLER(COPS_via_out_a)
+static WRITE8_HANDLER(COPS_via_out_a)
 {
 	COPS_command = data;
 }
 
-static WRITE_HANDLER(COPS_via_out_ca2)
+static WRITE8_HANDLER(COPS_via_out_ca2)
 {
 	hold_COPS_data = data;
 
@@ -808,7 +808,7 @@ static WRITE_HANDLER(COPS_via_out_ca2)
 	CB1 : not used
 	CB2 (O) : sound output
 */
-static READ_HANDLER(COPS_via_in_b)
+static  READ8_HANDLER(COPS_via_in_b)
 {
 	int val = 0;
 
@@ -821,7 +821,7 @@ static READ_HANDLER(COPS_via_in_b)
 	return val;
 }
 
-static WRITE_HANDLER(COPS_via_out_b)
+static WRITE8_HANDLER(COPS_via_out_b)
 {
 	/* pull-up */
 	data |= (~ via_read(0, VIA_DDRA)) & 0x01;
@@ -845,7 +845,7 @@ static WRITE_HANDLER(COPS_via_out_b)
 	}
 }
 
-static WRITE_HANDLER(COPS_via_out_cb2)
+static WRITE8_HANDLER(COPS_via_out_cb2)
 {
 	speaker_level_w(0, data);
 }
@@ -879,7 +879,7 @@ static void COPS_via_irq_func(int val)
 	CB1 : not used
 	CB2 (I) : current parity latch value
 */
-static READ_HANDLER(parallel_via_in_b)
+static  READ8_HANDLER(parallel_via_in_b)
 {
 	int val = 0;
 
@@ -1408,7 +1408,7 @@ INLINE void lisa_fdc_ttl_glue_access(offs_t offset)
 	}
 }
 
-READ_HANDLER ( lisa_fdc_io_r )
+ READ8_HANDLER ( lisa_fdc_io_r )
 {
 	int answer=0;
 
@@ -1435,7 +1435,7 @@ READ_HANDLER ( lisa_fdc_io_r )
 	return answer;
 }
 
-WRITE_HANDLER ( lisa_fdc_io_w )
+WRITE8_HANDLER ( lisa_fdc_io_w )
 {
 	switch ((offset & 0x0030) >> 4)
 	{
@@ -1460,7 +1460,7 @@ WRITE_HANDLER ( lisa_fdc_io_w )
 	}
 }
 
-READ_HANDLER ( lisa_fdc_r )
+ READ8_HANDLER ( lisa_fdc_r )
 {
 	if (! (offset & 0x1000))
 	{
@@ -1476,7 +1476,7 @@ READ_HANDLER ( lisa_fdc_r )
 		return fdc_rom[offset & 0x0fff];
 }
 
-READ_HANDLER ( lisa210_fdc_r )
+ READ8_HANDLER ( lisa210_fdc_r )
 {
 	if (! (offset & 0x1000))
 	{
@@ -1492,7 +1492,7 @@ READ_HANDLER ( lisa210_fdc_r )
 		return fdc_rom[offset & 0x0fff];
 }
 
-WRITE_HANDLER ( lisa_fdc_w )
+WRITE8_HANDLER ( lisa_fdc_w )
 {
 	if (! (offset & 0x1000))
 	{
@@ -1506,7 +1506,7 @@ WRITE_HANDLER ( lisa_fdc_w )
 	}
 }
 
-WRITE_HANDLER ( lisa210_fdc_w )
+WRITE8_HANDLER ( lisa210_fdc_w )
 {
 	if (! (offset & 0x1000))
 	{

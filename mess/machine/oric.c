@@ -79,11 +79,11 @@ static void oric_refresh_ints(void)
 	/* any irq set? */
 	if ((oric_irqs & 0x0f)!=0)
 	{
-		cpu_set_irq_line(0,0, HOLD_LINE);
+		cpunum_set_input_line(0,0, HOLD_LINE);
 	}
 	else
 	{
-		cpu_set_irq_line(0,0, CLEAR_LINE);
+		cpunum_set_input_line(0,0, CLEAR_LINE);
 	}
 }
 
@@ -223,7 +223,7 @@ static void oric_keyboard_sense_refresh(void)
 
 
 /* this is executed when a write to psg port a is done */
-WRITE_HANDLER (oric_psg_porta_write)
+WRITE8_HANDLER (oric_psg_porta_write)
 {
 	oric_keyboard_mask = data;
 }
@@ -235,7 +235,7 @@ WRITE_HANDLER (oric_psg_porta_write)
 static char oric_psg_control;
 
 /* this port is also used to read printer data */
-static READ_HANDLER ( oric_via_in_a_func )
+static  READ8_HANDLER ( oric_via_in_a_func )
 {
 	/*logerror("port a read\r\n"); */
 
@@ -256,7 +256,7 @@ static READ_HANDLER ( oric_via_in_a_func )
 	return oric_via_port_a_data;
 }
 
-static READ_HANDLER ( oric_via_in_b_func )
+static  READ8_HANDLER ( oric_via_in_b_func )
 {
 	int data;
 
@@ -297,7 +297,7 @@ static void oric_psg_connection_refresh(void)
 	}
 }
 
-static WRITE_HANDLER ( oric_via_out_a_func )
+static WRITE8_HANDLER ( oric_via_out_a_func )
 {
 	oric_via_port_a_data = data;
 
@@ -367,7 +367,7 @@ static void oric_refresh_tape(int dummy)
 }
 
 static unsigned char previous_portb_data = 0;
-static WRITE_HANDLER ( oric_via_out_b_func )
+static WRITE8_HANDLER ( oric_via_out_b_func )
 {
 	int printer_handshake;
 
@@ -434,17 +434,17 @@ static CENTRONICS_CONFIG oric_cent_config[1]={
 };
 
 
-static READ_HANDLER ( oric_via_in_ca2_func )
+static  READ8_HANDLER ( oric_via_in_ca2_func )
 {
 	return oric_psg_control & 1;
 }
 
-static READ_HANDLER ( oric_via_in_cb2_func )
+static  READ8_HANDLER ( oric_via_in_cb2_func )
 {
 	return (oric_psg_control>>1) & 1;
 }
 
-static WRITE_HANDLER ( oric_via_out_ca2_func )
+static WRITE8_HANDLER ( oric_via_out_ca2_func )
 {
 	oric_psg_control &=~1;
 
@@ -456,7 +456,7 @@ static WRITE_HANDLER ( oric_via_out_ca2_func )
 	oric_psg_connection_refresh();
 }
 
-static WRITE_HANDLER ( oric_via_out_cb2_func )
+static WRITE8_HANDLER ( oric_via_out_cb2_func )
 {
 	oric_psg_control &=~2;
 
@@ -559,19 +559,19 @@ disk interface rom accessed through 0x0320-0x03ff (read only)
 CALL &320 to start, or use BOBY rom.
 */
 
-extern READ_HANDLER ( apple2_c0xx_slot6_r );
-extern WRITE_HANDLER ( apple2_c0xx_slot6_w );
+extern  READ8_HANDLER ( apple2_c0xx_slot6_r );
+extern WRITE8_HANDLER ( apple2_c0xx_slot6_w );
 extern void apple2_slot6_init(void);
 extern void apple2_slot6_stop(void);
 
-static READ_HANDLER(apple2_interface_r)
+static  READ8_HANDLER(apple2_interface_r)
 {
 	/*logerror("apple 2 interface r: %04x\n",offset); */
 
 	return apple2_c0xx_slot6_r(offset & 0x0f);
 }
 
-static WRITE_HANDLER(apple2_interface_w)
+static WRITE8_HANDLER(apple2_interface_w)
 {
 	/*logerror("apple 2 interface w: %04x %02x\n",offset,data); */
 
@@ -580,14 +580,13 @@ static WRITE_HANDLER(apple2_interface_w)
 
 static void oric_install_apple2_interface(void)
 {
-	install_mem_read_handler(0, 0x0300, 0x030f, oric_IO_r);
-	install_mem_read_handler(0, 0x0310, 0x031f, apple2_interface_r);
-	install_mem_read_handler(0, 0x0320, 0x03ff, MRA8_BANK4);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_r);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, apple2_interface_r);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, MRA8_BANK4);
 
-	install_mem_write_handler(0, 0x0300, 0x030f, oric_IO_w);
-	install_mem_write_handler(0, 0x0310, 0x031f, apple2_interface_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, apple2_interface_w);
 	cpu_setbank(4, 	memory_region(REGION_CPU1) + 0x014000 + 0x020);
-
 }
 
 
@@ -598,16 +597,16 @@ static void oric_enable_memory(int low, int high, int rd, int wr)
 	{
 		switch(i) {
 		case 1:
-			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, rd ? MRA8_BANK1 : MRA8_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, wr ? MWA8_BANK5 : MWA8_ROM);
+			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, rd ? MRA8_BANK1 : MRA8_NOP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, wr ? MWA8_BANK5 : MWA8_ROM);
 			break;
 		case 2:
-			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xe000, 0xf7ff, 0, rd ? MRA8_BANK2 : MRA8_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xf7ff, 0, wr ? MWA8_BANK6 : MWA8_ROM);
+			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xe000, 0xf7ff, 0, 0, rd ? MRA8_BANK2 : MRA8_NOP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xf7ff, 0, 0, wr ? MWA8_BANK6 : MWA8_ROM);
 			break;
 		case 3:
-			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xf800, 0xffff, 0, rd ? MRA8_BANK3 : MRA8_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf800, 0xffff, 0, wr ? MWA8_BANK7 : MWA8_ROM);
+			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xf800, 0xffff, 0, 0, rd ? MRA8_BANK3 : MRA8_NOP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf800, 0xffff, 0, 0, wr ? MWA8_BANK7 : MWA8_ROM);
 			break;
 		}
 	}
@@ -627,7 +626,7 @@ v2 registers accessed through 0x0380-0x0383 (write only)
 CALL &320 to start, or use BOBY rom.
 */
 
-static WRITE_HANDLER(apple2_v2_interface_w)
+static WRITE8_HANDLER(apple2_v2_interface_w)
 {
 	/* data is ignored, address is used to decode operation */
 
@@ -672,13 +671,13 @@ static WRITE_HANDLER(apple2_v2_interface_w)
 /* APPLE 2 INTERFACE V2 */
 static void oric_install_apple2_v2_interface(void)
 {
-	install_mem_read_handler(0, 0x0300, 0x030f, oric_IO_r);
-	install_mem_read_handler(0, 0x0310, 0x031f, apple2_interface_r);
-	install_mem_read_handler(0, 0x0320, 0x03ff, MRA8_BANK4);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_r);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, apple2_interface_r);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, MRA8_BANK4);
 
-	install_mem_write_handler(0, 0x0300, 0x030f, oric_IO_w);
-	install_mem_write_handler(0, 0x0310, 0x031f, apple2_interface_w);
-	install_mem_write_handler(0, 0x0380, 0x0383, apple2_v2_interface_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, apple2_interface_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0380, 0x0383, 0, 0, apple2_v2_interface_w);
 
 	apple2_v2_interface_w(0,0);
 }
@@ -801,7 +800,7 @@ static void oric_jasmin_wd179x_callback(int State)
 	}
 }
 
-static READ_HANDLER (oric_jasmin_r)
+static  READ8_HANDLER (oric_jasmin_r)
 {
 	unsigned char data = 0x0ff;
 
@@ -830,7 +829,7 @@ static READ_HANDLER (oric_jasmin_r)
 	return data;
 }
 
-static WRITE_HANDLER(oric_jasmin_w)
+static WRITE8_HANDLER(oric_jasmin_w)
 {
 	switch (offset & 0x0f)
 	{
@@ -887,11 +886,11 @@ static void oric_install_jasmin_interface(void)
 	port_3fb_w = 1;
 	oric_jasmin_set_mem_0x0c000();
 
-	install_mem_read_handler(0,0x0300, 0x03ef, oric_IO_r);
-	install_mem_read_handler(0,0x03f0, 0x03ff, oric_jasmin_r);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ef, 0, 0, oric_IO_r);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x03f0, 0x03ff, 0, 0, oric_jasmin_r);
 
-	install_mem_write_handler(0,0x0300, 0x03ef, oric_IO_w);
-	install_mem_write_handler(0,0x03f0, 0x03ff, oric_jasmin_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ef, 0, 0, oric_IO_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x03f0, 0x03ff, 0, 0, oric_jasmin_w);
 }
 
 /*********************************/
@@ -1034,7 +1033,7 @@ static void	oric_microdisc_set_mem_0x0c000(void)
 
 
 
-static READ_HANDLER (oric_microdisc_r)
+static  READ8_HANDLER (oric_microdisc_r)
 {
 	unsigned char data = 0x0ff;
 
@@ -1071,7 +1070,7 @@ static READ_HANDLER (oric_microdisc_r)
 	return data;
 }
 
-static WRITE_HANDLER(oric_microdisc_w)
+static WRITE8_HANDLER(oric_microdisc_w)
 {
 	switch (offset & 0x0ff)
 	{
@@ -1126,13 +1125,13 @@ static WRITE_HANDLER(oric_microdisc_w)
 
 static void oric_install_microdisc_interface(void)
 {
-	install_mem_read_handler(0,0x0300, 0x030f, oric_IO_r);
-	install_mem_read_handler(0,0x0310, 0x031f, oric_microdisc_r);
-	install_mem_read_handler(0,0x0320, 0x03ff, oric_IO_r);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_r);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, oric_microdisc_r);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, oric_IO_r);
 
-	install_mem_write_handler(0,0x0300, 0x030f, oric_IO_w);
-	install_mem_write_handler(0,0x0310, 0x031f, oric_microdisc_w);
-	install_mem_write_handler(0,0x0320, 0x03ff, oric_IO_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, oric_microdisc_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, oric_IO_w);
 
 	/* disable os rom, enable microdisc rom */
 	/* 0x0c000-0x0dfff will be ram, 0x0e000-0x0ffff will be microdisc rom */
@@ -1253,8 +1252,8 @@ MACHINE_INIT( oric )
 			}
 			else
 			{
-				install_mem_read_handler(0,0x0300, 0x03ff, oric_IO_r);
-				install_mem_write_handler(0,0x0300, 0x03ff, oric_IO_w);
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ff, 0, 0, oric_IO_r);
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ff, 0, 0, oric_IO_w);
 			}
 		}
 		break;
@@ -1298,7 +1297,7 @@ MACHINE_STOP( oric )
 }
 
 
-READ_HANDLER ( oric_IO_r )
+ READ8_HANDLER ( oric_IO_r )
 {
 #if 0
 	switch (readinputport(9) & 0x07)
@@ -1337,7 +1336,7 @@ READ_HANDLER ( oric_IO_r )
 	return via_0_r(offset & 0x0f);
 }
 
-WRITE_HANDLER ( oric_IO_w )
+WRITE8_HANDLER ( oric_IO_w )
 {
 #if 0
 	switch (readinputport(9) & 0x07)
@@ -1482,18 +1481,18 @@ static void	telestrat_refresh_mem(void)
 		}
 		break;
 	}
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, rh);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, wh);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, rh);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, wh);
 }
 
-static READ_HANDLER(telestrat_via2_in_a_func)
+static  READ8_HANDLER(telestrat_via2_in_a_func)
 {
 	logerror("via 2 - port a %02x\n",telestrat_via2_port_a_data);
 	return telestrat_via2_port_a_data;
 }
 
 
-static WRITE_HANDLER(telestrat_via2_out_a_func)
+static WRITE8_HANDLER(telestrat_via2_out_a_func)
 {
 	logerror("via 2 - port a w: %02x\n",data);
 
@@ -1507,7 +1506,7 @@ static WRITE_HANDLER(telestrat_via2_out_a_func)
 	}
 }
 
-static READ_HANDLER(telestrat_via2_in_b_func)
+static  READ8_HANDLER(telestrat_via2_in_b_func)
 {
 	unsigned char data = 0x01f;
 
@@ -1528,7 +1527,7 @@ static READ_HANDLER(telestrat_via2_in_b_func)
 	return data;
 }
 
-static WRITE_HANDLER(telestrat_via2_out_b_func)
+static WRITE8_HANDLER(telestrat_via2_out_b_func)
 {
 	telestrat_via2_port_b_data = data;
 }
@@ -1646,7 +1645,7 @@ MACHINE_STOP( telestrat )
 }
 
 
-WRITE_HANDLER(telestrat_IO_w)
+WRITE8_HANDLER(telestrat_IO_w)
 {
 	if (offset<0x010)
 	{
@@ -1676,7 +1675,7 @@ WRITE_HANDLER(telestrat_IO_w)
 
 }
 
-READ_HANDLER(telestrat_IO_r)
+ READ8_HANDLER(telestrat_IO_r)
 {
 	if (offset<0x010)
 	{

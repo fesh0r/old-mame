@@ -30,7 +30,7 @@ WRITE16_HANDLER ( intvkbd_dualport16_w )
 	RAM[offset] = data&0xff;
 }
 
-READ_HANDLER ( intvkbd_dualport8_lsb_r )
+ READ8_HANDLER ( intvkbd_dualport8_lsb_r )
 {
 	//if (offset == 0x6c)
 		//logerror("---lsb_r() = %02x\n",intvkbd_dualport_ram[offset]&0xff);
@@ -41,7 +41,7 @@ READ_HANDLER ( intvkbd_dualport8_lsb_r )
 	//return intvkbd_dualport_ram[offset]&0xff;
 }
 
-WRITE_HANDLER ( intvkbd_dualport8_lsb_w )
+WRITE8_HANDLER ( intvkbd_dualport8_lsb_w )
 {
 	UINT16 mask;
 	unsigned char *RAM;
@@ -62,7 +62,7 @@ static int sr1_int_pending;
 
 int intvkbd_text_blanked;
 
-READ_HANDLER ( intvkbd_dualport8_msb_r )
+ READ8_HANDLER ( intvkbd_dualport8_msb_r )
 {
 	unsigned char rv;
 
@@ -180,7 +180,7 @@ static const char *tape_motor_mode_desc[8] =
 	"EJECT", "PLAY/RECORD", "REWIND", "FF"
 };
 
-WRITE_HANDLER ( intvkbd_dualport8_msb_w )
+WRITE8_HANDLER ( intvkbd_dualport8_msb_w )
 {
 	unsigned int mask;
 
@@ -444,11 +444,11 @@ DRIVER_INIT( intv )
 /* Set Reset and INTR/INTRM Vector */
 MACHINE_INIT( intv )
 {
-	cpu_irq_line_vector_w(0, CP1610_RESET, 0x1000);
+	cpunum_set_input_line_vector(0, CP1610_RESET, 0x1000);
 
 	/* These are actually the same vector, and INTR is unused */
-	cpu_irq_line_vector_w(0, CP1610_INT_INTRM, 0x1004);
-	cpu_irq_line_vector_w(0, CP1610_INT_INTR,  0x1004);
+	cpunum_set_input_line_vector(0, CP1610_INT_INTRM, 0x1004);
+	cpunum_set_input_line_vector(0, CP1610_INT_INTR,  0x1004);
 
 	return;
 }
@@ -456,12 +456,12 @@ MACHINE_INIT( intv )
 
 static void intv_interrupt_complete(int x)
 {
-	cpu_set_irq_line(0, CP1610_INT_INTRM, CLEAR_LINE);
+	cpunum_set_input_line(0, CP1610_INT_INTRM, CLEAR_LINE);
 }
 
 INTERRUPT_GEN( intv_interrupt )
 {
-	cpu_set_irq_line(0, CP1610_INT_INTRM, ASSERT_LINE);
+	cpunum_set_input_line(0, CP1610_INT_INTRM, ASSERT_LINE);
 	sr1_int_pending = 1;
 	timer_set(TIME_NOW+TIME_IN_CYCLES(3791, 0), 0, intv_interrupt_complete);
 	stic_screenrefresh();
@@ -474,7 +474,7 @@ static UINT8 controller_table[] =
 	0x04, 0x16, 0x02, 0x13, 0x01, 0x19, 0x08, 0x1c
 };
 
-READ_HANDLER( intv_right_control_r )
+ READ8_HANDLER( intv_right_control_r )
 {
 	UINT8 rv = 0x00;
 
@@ -506,7 +506,7 @@ READ_HANDLER( intv_right_control_r )
 	return rv ^ 0xff;
 }
 
-READ_HANDLER( intv_left_control_r )
+ READ8_HANDLER( intv_left_control_r )
 {
 	return 0xff;
 }

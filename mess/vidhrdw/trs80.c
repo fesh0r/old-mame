@@ -123,7 +123,7 @@ VIDEO_UPDATE( trs80 )
 	translate = translate_videoram[(input_port_0_r(0) & 0x40) ? 1 : 0];
 
 	if (readinputport(0) & 0x08)
-        cpu_set_nmi_line(0, PULSE_LINE);
+        cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 
     /* check for changed color settings */
 	if (color != (readinputport(0) & 3))
@@ -147,7 +147,7 @@ VIDEO_UPDATE( trs80 )
   Write to video ram
 ***************************************************************************/
 
-WRITE_HANDLER( trs80_videoram_w )
+WRITE8_HANDLER( trs80_videoram_w )
 {
 	if (videoram[offset] != data)
 	{

@@ -14,7 +14,6 @@
 #include "ui/options.h"
 #include "mess.h"
 #include "configms.h"
-#include "SmartListView.h"
 #include "SoftwareList.h"
 #include "windows/window.h"
 #include "messwin.h"
@@ -28,11 +27,10 @@
 static int requested_device_type(char *tchar);
 static void MessCreateCommandLine(char *pCmdLine, options_type *pOpts, const struct GameDriver *gamedrv);
 
-static int SoftwareListClass_WhichIcon(struct SmartListView *pListView, int nItem);
-static void SoftwareListClass_GetColumnInfo(struct SmartListView *pListView, int *pShown, int *pOrder, int *pWidths);
-static void SoftwareListClass_SetColumnInfo(struct SmartListView *pListView, int *pShown, int *pOrder, int *pWidths);
-static void SoftwareListClass_Run(struct SmartListView *pListView);
-static BOOL SoftwareListClass_ItemChanged(struct SmartListView *pListView, BOOL bWasSelected, BOOL bNowSelected, int nRow);
+static int SoftwarePicker_GetItemImage(int nItem);
+static void SoftwarePicker_LeavingItem(int nItem);
+static void SoftwarePicker_EnteringItem(int nItem);
+static void SoftwarePicker_OnHeaderContextMenu(POINT pt, int nColumn);
 
 static const char *mess_column_names[] =
 {
@@ -46,24 +44,6 @@ static const char *mess_column_names[] =
 	"MD5"
 };
 
-static struct SmartListViewClass s_softwareListClass =
-{
-	0,
-	SoftwareListClass_Run,
-	SoftwareListClass_ItemChanged,
-	SoftwareListClass_WhichIcon,
-	SoftwareList_GetText,
-	SoftwareListClass_GetColumnInfo,
-	SoftwareListClass_SetColumnInfo,
-	SoftwareList_IsItemSelected,
-	Compare_TextCaseInsensitive,
-	SoftwareList_CanIdle,
-	SoftwareList_Idle,
-	sizeof(mess_column_names) / sizeof(mess_column_names[0]),
-	mess_column_names
-};
-
-static struct SmartListView *s_pSoftwareListView;
 static int *mess_icon_index;
 
 static void InitMessPicker(void);
@@ -79,7 +59,6 @@ static BOOL MessCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify);
 
 #ifdef MAME_DEBUG
 static void MessTestsBegin(void);
-static void MessTestsDoneIdle(void);
 #endif /* MAME_DEBUG */
 
 #ifdef bool
@@ -93,6 +72,7 @@ static char s_szSelectedItem[256];
 
 struct deviceentry
 {
+	int dev_type;
 	const char *icon_name;
 	const char *dlgname;
 };
@@ -112,18 +92,19 @@ struct deviceentry
 /* TODO - We need to make icons for Cylinders, Punch Cards, and Punch Tape! */
 static struct deviceentry s_devices[] =
 {
-	{ "roms",		"Cartridge images" },	/* IO_CARTSLOT */
-	{ "floppy",		"Floppy disk images" },	/* IO_FLOPPY */
-	{ "hard",		"Hard disk images" },	/* IO_HARDDISK */
-	{ NULL,			"Cylinders" },			/* IO_CYLINDER */
-	{ NULL,			"Cassette images" },	/* IO_CASSETTE */
-	{ NULL,			"Punchcard images" },	/* IO_PUNCHCARD */
-	{ NULL,			"Punchtape images" },	/* IO_PUNCHTAPE */
-	{ NULL,			"Printer Output" },		/* IO_PRINTER */
-	{ NULL,			"Serial Output" },		/* IO_SERIAL */
-	{ NULL,			"Parallel Output" },	/* IO_PARALLEL */
-	{ "snapshot",	"Snapshots" },			/* IO_SNAPSHOT */
-	{ "snapshot",	"Quickloads" }			/* IO_QUICKLOAD */
+	{ IO_CARTSLOT,	"roms",		"Cartridge images" },	/* IO_CARTSLOT */
+	{ IO_FLOPPY,	"floppy",	"Floppy disk images" },	/* IO_FLOPPY */
+	{ IO_HARDDISK,	"hard",		"Hard disk images" },	/* IO_HARDDISK */
+	{ IO_CYLINDER,	NULL,		"Cylinders" },			/* IO_CYLINDER */
+	{ IO_CASSETTE,	NULL,		"Cassette images" },	/* IO_CASSETTE */
+	{ IO_PUNCHCARD,	NULL,		"Punchcard images" },	/* IO_PUNCHCARD */
+	{ IO_PUNCHTAPE,	NULL,		"Punchtape images" },	/* IO_PUNCHTAPE */
+	{ IO_PRINTER,	NULL,		"Printer Output" },		/* IO_PRINTER */
+	{ IO_SERIAL,	NULL,		"Serial Output" },		/* IO_SERIAL */
+	{ IO_PARALLEL,	NULL,		"Parallel Output" },	/* IO_PARALLEL */
+	{ IO_SNAPSHOT,	"snapshot",	"Snapshots" },			/* IO_SNAPSHOT */
+	{ IO_QUICKLOAD,	"snapshot",	"Quickloads" },			/* IO_QUICKLOAD */
+	{ IO_MEMCARD,	NULL,		"Memory cards" }		/* IO_MEMCARD */
 };
 
 static void AssertValidDevice(int d)
@@ -176,7 +157,7 @@ static BOOL CreateMessIcons(void)
 
     if (!mess_icon_index)
 	{
-        mess_icon_index = malloc(sizeof(int) * game_count * IO_COUNT);
+        mess_icon_index = auto_malloc(sizeof(int) * game_count * IO_COUNT);
         if (!mess_icon_index)
             return FALSE;
     }
@@ -184,9 +165,10 @@ static BOOL CreateMessIcons(void)
     for (i = 0; i < (game_count * IO_COUNT); i++)
         mess_icon_index[i] = 0;
 
-	if (s_pSoftwareListView)
-		SmartListView_AssociateImageLists(s_pSoftwareListView, hSmall, hLarge);
-    return TRUE;
+	// Associate the image lists with the list view control.
+	ListView_SetImageList(GetDlgItem(hMain, IDC_LIST2), hSmall, LVSIL_SMALL);
+	ListView_SetImageList(GetDlgItem(hMain, IDC_LIST2), hLarge, LVSIL_NORMAL);
+	return TRUE;
 }
 
 static int GetMessIcon(int nGame, int nSoftwareType)
@@ -204,15 +186,18 @@ static int GetMessIcon(int nGame, int nSoftwareType)
         the_index = (nGame * IO_COUNT) + nSoftwareType;
 
         nIconPos = mess_icon_index[the_index];
-        if (!nIconPos) {
-            for (drv = drivers[nGame]; drv; drv = drv->clone_of) {
+        if (!nIconPos)
+		{
+            for (drv = drivers[nGame]; drv; drv = drv->clone_of)
+			{
                 sprintf(buffer, "%s/%s", drv->name, iconname);
                 hIcon = LoadIconFromFile(buffer);
                 if (hIcon)
                     break;
             }
 
-            if (hIcon) {
+            if (hIcon)
+			{
                 nIconPos = ImageList_AddIcon(hSmall, hIcon);
                 ImageList_AddIcon(hLarge, hIcon);
                 if (nIconPos != -1)
@@ -274,7 +259,7 @@ static void MyFillSoftwareList(int nGame, BOOL bForce)
 		}
 	}
 
-	FillSoftwareList(s_pSoftwareListView, nGame, path_count, pathsv, extra_path,
+	FillSoftwareList(GetDlgItem(hMain, IDC_LIST2), nGame, path_count, pathsv, extra_path,
 		MessHashErrorProc);
 }
 
@@ -282,7 +267,7 @@ static void MyFillSoftwareList(int nGame, BOOL bForce)
 
 static void MessUpdateSoftwareList(void)
 {
-	MyFillSoftwareList(GetSelectedPickItem(), TRUE);
+	MyFillSoftwareList(Picker_GetSelectedItem(hwndList), TRUE);
 }
 
 
@@ -298,6 +283,7 @@ static BOOL IsSoftwarePaneDevice(int devtype)
 
 static void MessReadMountedSoftware(int nGame)
 {
+	HWND hwndSoftware = GetDlgItem(hMain, IDC_LIST2);
 	const char *selected_software_const;
 	char *this_software;
 	char *selected_software;
@@ -305,7 +291,7 @@ static void MessReadMountedSoftware(int nGame)
 	int devtype;
 	int i;
 
-	SmartListView_UnselectAll(s_pSoftwareListView);
+	ListView_SetItemState(hwndSoftware, -1, 0, LVIS_SELECTED);
 
 	for (devtype = 0; devtype < IO_COUNT; devtype++)
 	{
@@ -329,7 +315,17 @@ static void MessReadMountedSoftware(int nGame)
 
 				i = MessLookupByFilename(this_software);
 				if (i >= 0)
-					SmartListView_SelectItem(s_pSoftwareListView, i, this_software == selected_software);
+				{
+					if (this_software == selected_software)
+					{
+						ListView_SetItemState(hwndSoftware, i, LVIS_FOCUSED | LVIS_SELECTED, LVIS_FOCUSED | LVIS_SELECTED);
+						ListView_EnsureVisible(hwndSoftware, i, FALSE);
+					}
+					else
+					{
+						ListView_SetItemState(hwndSoftware, i, LVIS_SELECTED, LVIS_SELECTED);
+					}
+				}
 
 				this_software = s;
 			}
@@ -404,91 +400,57 @@ static void MessWriteMountedSoftware(int nGame)
 	}
 }
 
-/*static void MessSetPickerDefaults(void)
-{
-    int i;
-    size_t nDefaultSize = 0;
-    char *default_software = NULL;
-    char *s = NULL;
 
-    for (i = 0; i < options.image_count; i++)
-        nDefaultSize += strlen(options.image_files[i].name) + 1;
-
-    if (nDefaultSize)
-	{
-        default_software = alloca(nDefaultSize);
-        for (i = 0; i < options.image_count; i++)
-		{
-            if (s)
-                *(s++) = '|';
-            else
-                s = default_software;
-            strcpy(s, options.image_files[i].name);
-            s += strlen(s);
-        }
-    }
-
-    SetDefaultSoftware(default_software);
-}*/
 
 static void InitMessPicker(void)
 {
-	struct SmartListViewOptions opts;
+	static const struct PickerCallbacks s_softwareListCallbacks =
+	{
+		SetMessSortColumn,					/* pfnSetSortColumn */
+		GetMessSortColumn,					/* pfnGetSortColumn */
+		SetMessSortReverse,					/* pfnSetSortReverse */
+		GetMessSortReverse,					/* pfnGetSortReverse */
+		NULL,								/* pfnSetViewMode */
+		GetViewMode,						/* pfnGetViewMode */
+		SetMessColumnWidths,				/* pfnSetColumnWidths */
+		GetMessColumnWidths,				/* pfnGetColumnWidths */
+		SetMessColumnOrder,					/* pfnSetColumnOrder */
+		GetMessColumnOrder,					/* pfnGetColumnOrder */
+		SetMessColumnShown,					/* pfnSetColumnShown */
+		GetMessColumnShown,					/* pfnGetColumnShown */
+		NULL,								/* pfnGetOffsetChildren */
+
+		NULL,								/* pfnCompare */
+		MamePlayGame,						/* pfnDoubleClick */
+		SoftwarePicker_GetItemString,		/* pfnGetItemString */
+		SoftwarePicker_GetItemImage,		/* pfnGetItemImage */
+		SoftwarePicker_LeavingItem,			/* pfnLeavingItem */
+		SoftwarePicker_EnteringItem,		/* pfnEnteringItem */
+		NULL,								/* pfnBeginListViewDrag */
+		NULL,								/* pfnFindItemParent */
+		SoftwarePicker_OnIdle,				/* pfnIdle */
+		SoftwarePicker_OnHeaderContextMenu,	/* pfnOnHeaderContextMenu */
+		NULL								/* pfnOnBodyContextMenu */
+	};
+
+	struct PickerOptions opts;
+	HWND hwndSoftware;
+
+	hwndSoftware = GetDlgItem(hMain, IDC_LIST2);
 
 	memset(&opts, 0, sizeof(opts));
-	opts.pClass = &s_softwareListClass;
-	opts.hwndParent = hMain;
-	opts.nIDDlgItem = IDC_LIST2;
-	opts.hBackground = hBackground;
-	opts.hPALbg = hPALbg;
-	opts.bmDesc = bmDesc;
-	opts.hSmall = hSmall;
-	opts.hLarge = hLarge;
-	opts.rgbListFontColor = GetListFontColor();
-	opts.bOldControl = oldControl;
-	s_pSoftwareListView = SmartListView_Init(&opts);
+	opts.pCallbacks = &s_softwareListCallbacks;
+	opts.nColumnCount = MESS_COLUMN_MAX;
+	opts.ppszColumnNames = mess_column_names;
+	SetupPicker(hwndSoftware, &opts);
 
-	SmartListView_SetTotalItems(s_pSoftwareListView, MessImageCount());
-	SmartListView_SetSorting(s_pSoftwareListView, MESS_COLUMN_IMAGES, FALSE);
-
-	/* subclass the list view */
-	SetWindowLong(s_pSoftwareListView->hwndListView, GWL_WNDPROC, (LONG)ListViewWndProc);
+	SetWindowLong(hwndSoftware, GWL_STYLE, GetWindowLong(hwndSoftware, GWL_STYLE)
+		| LVS_REPORT | LVS_SHOWSELALWAYS | LVS_OWNERDRAWFIXED);
 
 	s_nCurrentGame = -1;
 }
 
-/*static void MessGetPickerDefaults(void)
-{
-	const char *default_software_const;
-	char *default_software;
-	char *this_software;
-	char *s;
-	int i;
 
-	default_software_const = GetDefaultSoftware();
-
-	if (default_software_const && *default_software_const)
-	{
-		default_software = alloca(strlen(default_software_const) + 1);
-		strcpy(default_software, default_software_const);
-
-		this_software = default_software;
-		while(this_software && *this_software)
-		{
-			s = strchr(this_software, '|');
-			if (s)
-				*(s++) = '\0';
-			else
-				s = NULL;
-
-			i = MessLookupByFilename(this_software);
-			if (i >= 0)
-				SmartListView_SelectItem(s_pSoftwareListView, i, this_software == default_software);
-
-			this_software = s;
-		}
-	}
-}*/
 
 static void MessCreateCommandLine(char *pCmdLine, options_type *pOpts, const struct GameDriver *gamedrv)
 {
@@ -607,10 +569,10 @@ static void MessSetupDevice(common_file_dialog_proc cfd, int iDevice)
 	char filename[MAX_PATH];
 	mess_image_type imagetypes[64];
 
-	SetupImageTypes(GetSelectedPickItem(), imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, iDevice);
+	SetupImageTypes(Picker_GetSelectedItem(hwndList), imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, iDevice);
 
 	if (CommonFileImageDialog(last_directory, cfd, filename, imagetypes))
-		MessIntroduceItem(s_pSoftwareListView, filename, imagetypes);
+		MessIntroduceItem(GetDlgItem(hMain, IDC_LIST2), filename, imagetypes);
 }
 
 static void MessOpenOtherSoftware(int iDevice)
@@ -627,11 +589,6 @@ static void MessCreateDevice(int iDevice)
  * Software List Class                                                      *
  * ------------------------------------------------------------------------ */
 
-static void SoftwareListClass_Run(struct SmartListView *pListView)
-{
-	MamePlayGame();
-}
-
 static int LookupIcon(const char *icon_name)
 {
 	int i;
@@ -643,7 +600,9 @@ static int LookupIcon(const char *icon_name)
 	return -1;
 }
 
-static int SoftwareListClass_WhichIcon(struct SmartListView *pListView, int nItem)
+
+
+static int SoftwarePicker_GetItemImage(int nItem)
 {
     int nType;
     int nIcon;
@@ -651,76 +610,179 @@ static int SoftwareListClass_WhichIcon(struct SmartListView *pListView, int nIte
 
     nType = GetImageType(nItem);
 
-    nIcon = GetMessIcon(GetSelectedPickItem(), nType);
-    if (!nIcon) {
-		switch(nType) {
-		case IO_UNKNOWN:
-			/* Unknowns */
-			nIcon = FindIconIndex(IDI_WIN_UNKNOWN);
-			break;
+    nIcon = GetMessIcon(Picker_GetSelectedItem(GetDlgItem(hMain, IDC_LIST2)), nType);
+    if (!nIcon)
+	{
+		switch(nType)
+		{
+			case IO_UNKNOWN:
+				/* Unknowns */
+				nIcon = FindIconIndex(IDI_WIN_UNKNOWN);
+				break;
 
-		case IO_BAD:
-		case IO_ZIP:
-			/* Bad files */
-			nIcon = FindIconIndex(IDI_WIN_REDX);
-			break;
+			case IO_BAD:
+			case IO_ZIP:
+				/* Bad files */
+				nIcon = FindIconIndex(IDI_WIN_REDX);
+				break;
 
-		default:
-			icon_name = lookupdevice(nType)->icon_name;
-			if (!icon_name)
-				icon_name = device_typename(nType);
-			nIcon = LookupIcon(icon_name);
-			if (nIcon < 0)
-				nIcon = LookupIcon("unknown");
-			break;
+			default:
+				icon_name = lookupdevice(nType)->icon_name;
+				if (!icon_name)
+					icon_name = device_typename(nType);
+				nIcon = LookupIcon(icon_name);
+				if (nIcon < 0)
+					nIcon = LookupIcon("unknown");
+				break;
 		}
     }
     return nIcon;
 }
 
-static void SoftwareListClass_GetColumnInfo(struct SmartListView *pListView, int *pShown, int *pOrder, int *pWidths)
+
+
+static void SoftwarePicker_LeavingItem(int nItem)
 {
-	if (pWidths)
-		GetMessColumnWidths(pWidths);
-	if (pOrder)
-		GetMessColumnOrder(pOrder);
-	if (pShown)
-		GetMessColumnShown(pShown);
+	HWND hwndSoftware = GetDlgItem(hMain, IDC_LIST2);
+	SoftwareList_ItemChanged(hwndSoftware, TRUE, FALSE, nItem);
 }
 
-static void SoftwareListClass_SetColumnInfo(struct SmartListView *pListView, int *pShown, int *pOrder, int *pWidths)
-{
-	if (pWidths)
-		SetMessColumnWidths(pWidths);
-	if (pOrder)
-		SetMessColumnOrder(pOrder);
-	if (pShown)
-		SetMessColumnShown(pShown);
-}
 
-static BOOL SoftwareListClass_ItemChanged(struct SmartListView *pListView, BOOL bWasSelected, BOOL bNowSelected, int nRow)
+
+static void SoftwarePicker_EnteringItem(int nItem)
 {
-	BOOL bResult;
 	const char *name;
 	char *s;
+	HWND hwndSoftware = GetDlgItem(hMain, IDC_LIST2);
+	SoftwareList_ItemChanged(hwndSoftware, FALSE, TRUE, nItem);
 
-	bResult = SoftwareList_ItemChanged(pListView, bWasSelected, bNowSelected, nRow);
+	name = GetImageName(nItem);
+	s = strrchr(name, '\\');
+	if (s)
+		name = s + 1;
 
-	if (!bWasSelected && bNowSelected) {
-		name = GetImageName(nRow);
-		s = strrchr(name, '\\');
-		if (s)
-			name = s + 1;
+	strncpyz(s_szSelectedItem, name, sizeof(s_szSelectedItem) / sizeof(s_szSelectedItem[0]));
+	s = strrchr(s_szSelectedItem, '.');
+	if (s)
+		*s = '\0';
 
-		strncpyz(s_szSelectedItem, name, sizeof(s_szSelectedItem) / sizeof(s_szSelectedItem[0]));
-		s = strrchr(s_szSelectedItem, '.');
-		if (s)
-			*s = '\0';
+	UpdateScreenShot();
+}
 
-		UpdateScreenShot();
-    }
+
+
+/* ------------------------------------------------------------------------
+ * Header context menu stuff
+ * ------------------------------------------------------------------------ */
+
+static HWND MyColumnDialogProc_hwndPicker;
+static int *MyColumnDialogProc_order;
+static int *MyColumnDialogProc_shown;
+
+static void MyGetRealColumnOrder(int *order)
+{
+	int i, nColumnCount;
+	nColumnCount = Picker_GetColumnCount(MyColumnDialogProc_hwndPicker);
+	for (i = 0; i < nColumnCount; i++)
+		order[i] = Picker_GetRealColumnFromViewColumn(MyColumnDialogProc_hwndPicker, i);
+}
+
+
+
+static void MyGetColumnInfo(int *order, int *shown)
+{
+	const struct PickerCallbacks *pCallbacks;
+	pCallbacks = Picker_GetCallbacks(MyColumnDialogProc_hwndPicker);
+	pCallbacks->pfnGetColumnOrder(order);
+	pCallbacks->pfnGetColumnShown(shown);
+}
+
+
+
+static void MySetColumnInfo(int *order, int *shown)
+{
+	const struct PickerCallbacks *pCallbacks;
+	pCallbacks = Picker_GetCallbacks(MyColumnDialogProc_hwndPicker);
+	pCallbacks->pfnSetColumnOrder(order);
+	pCallbacks->pfnSetColumnShown(shown);
+}
+
+
+
+static INT_PTR CALLBACK MyColumnDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
+{
+	int nColumnCount = Picker_GetColumnCount(MyColumnDialogProc_hwndPicker);
+	LPCTSTR *ppszColumnNames = Picker_GetColumnNames(MyColumnDialogProc_hwndPicker);
+	return InternalColumnDialogProc(hDlg, Msg, wParam, lParam, nColumnCount,
+		MyColumnDialogProc_shown, MyColumnDialogProc_order, ppszColumnNames,
+		MyGetRealColumnOrder, MyGetColumnInfo, MySetColumnInfo);
+}
+
+
+
+static BOOL RunColumnDialog(HWND hwndPicker)
+{
+	BOOL bResult;
+	int nColumnCount;
+
+	MyColumnDialogProc_hwndPicker = hwndPicker;
+	nColumnCount = Picker_GetColumnCount(MyColumnDialogProc_hwndPicker);
+
+	MyColumnDialogProc_order = alloca(nColumnCount * sizeof(int));
+	MyColumnDialogProc_shown = alloca(nColumnCount * sizeof(int));
+	bResult = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_COLUMNS), hMain, MyColumnDialogProc);
 	return bResult;
 }
+
+
+
+static void SoftwarePicker_OnHeaderContextMenu(POINT pt, int nColumn)
+{
+	HMENU hMenu;
+	HMENU hMenuLoad;
+	HWND hwndPicker;
+	int nMenuItem;
+
+	hMenuLoad = LoadMenu(NULL, MAKEINTRESOURCE(IDR_CONTEXT_HEADER));
+	hMenu = GetSubMenu(hMenuLoad, 0);
+
+	nMenuItem = (int) TrackPopupMenu(hMenu,
+		TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
+		pt.x,
+		pt.y,
+		0,
+		hMain,
+		NULL);
+
+	DestroyMenu(hMenuLoad);
+
+	hwndPicker = GetDlgItem(hMain, IDC_LIST2);
+
+	switch(nMenuItem) {
+	case ID_SORT_ASCENDING:
+		SetMessSortReverse(FALSE);
+		SetMessSortColumn(Picker_GetRealColumnFromViewColumn(hwndPicker, nColumn));
+		Picker_Sort(hwndPicker);
+		break;
+
+	case ID_SORT_DESCENDING:
+		SetMessSortReverse(TRUE);
+		SetMessSortColumn(Picker_GetRealColumnFromViewColumn(hwndPicker, nColumn));
+		Picker_Sort(hwndPicker);
+		break;
+
+	case ID_CUSTOMIZE_FIELDS:
+		if (RunColumnDialog(hwndPicker))
+			Picker_ResetColumnDisplay(hwndPicker);
+		break;
+	}
+}
+
+
+
+/* ------------------------------------------------------------------------
+ * MessCommand
+ * ------------------------------------------------------------------------ */
 
 static BOOL MessCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 {
@@ -742,6 +804,8 @@ static BOOL MessCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 	return FALSE;
 }
 
+
+
 /* ------------------------------------------------------------------------ *
  * Mess32 Diagnostics                                                       *
  * ------------------------------------------------------------------------ */
@@ -749,7 +813,8 @@ static BOOL MessCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 #ifdef MAME_DEBUG
 
 static int s_nOriginalPick;
-static BOOL s_bRunningTests = FALSE;
+static UINT_PTR s_nTestingTimer;
+static BOOL s_bInTimerProc;
 
 static void MessTestsColumns(void)
 {
@@ -760,17 +825,54 @@ static void MessTestsColumns(void)
 	GetMessColumnShown(oldshown);
 
 	shown[0] = 1;
-	for (i = 0; i < (1<<(MESS_COLUMN_MAX-1)); i++) {
+	for (i = 0; i < (1<<(MESS_COLUMN_MAX-1)); i++)
+	{
 		for (j = 1; j < MESS_COLUMN_MAX; j++)
 			shown[j] = (i & (1<<(j-1))) ? 1 : 0;
 
 		SetMessColumnShown(shown);
-		SmartListView_ResetColumnDisplay(s_pSoftwareListView);
+		Picker_ResetColumnDisplay(GetDlgItem(hMain, IDC_LIST2));
 	}
 
 	SetMessColumnShown(oldshown);
-	SmartListView_ResetColumnDisplay(s_pSoftwareListView);
+	Picker_ResetColumnDisplay(GetDlgItem(hMain, IDC_LIST2));
 }
+
+
+
+
+static void CALLBACK MessTestsTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+{
+	int nNewGame;
+
+	/* if either of the pickers have further idle work to do, or we are
+	 * already in this timerproc, do not do anything */
+	if (s_bInTimerProc || Picker_IsIdling(GetDlgItem(hMain, IDC_LIST))
+		|| Picker_IsIdling(GetDlgItem(hMain, IDC_LIST2)))
+		return;
+	s_bInTimerProc = TRUE;
+
+	nNewGame = GetSelectedPick() + 1;
+
+	if (nNewGame >= game_count)
+	{
+		/* We are done */
+		Picker_SetSelectedPick(hwndList, s_nOriginalPick);
+
+		KillTimer(NULL, s_nTestingTimer);
+		s_nTestingTimer = 0;
+
+		MessageBox(hMain, "Tests successfully completed!", MAME32NAME, MB_OK);
+	}
+	else
+	{
+		MessTestsFlex(GetDlgItem(hMain, IDC_LIST2), drivers[Picker_GetSelectedItem(hwndList)]);
+		Picker_SetSelectedPick(hwndList, nNewGame);
+	}
+	s_bInTimerProc = FALSE;
+}
+
+
 
 static void MessTestsBegin(void)
 {
@@ -778,41 +880,23 @@ static void MessTestsBegin(void)
 
 	nOriginalPick = GetSelectedPick();
 
-	/* If we are running already, keep our old defaults */
-	if (!s_bRunningTests) {
-		s_bRunningTests = TRUE;
+	/* If we are not currently running tests, set up the timer and keep track
+	 * of the original selected pick item */
+	if (!s_nTestingTimer)
+	{
+		s_nTestingTimer = SetTimer(NULL, 0, 50, MessTestsTimerProc);
+		if (!s_nTestingTimer)
+			return;
 		s_nOriginalPick = nOriginalPick;
 	}
 
 	MessTestsColumns();
 
 	if (nOriginalPick == 0)
-		SetSelectedPick(1);
-	SetSelectedPick(0);
+		Picker_SetSelectedPick(hwndList, 1);
+	Picker_SetSelectedPick(hwndList, 0);
 }
 
-static void MessTestsCompleted(void)
-{
-	/* We are done */
-	SetSelectedPick(s_nOriginalPick);
-	s_bRunningTests = FALSE;
-	MessageBoxA(hMain, "Tests successfully completed!", MAME32NAME, MB_OK);
-}
 
-static void MessTestsDoneIdle(void)
-{
-	int nNewGame;
-
-	if (s_bRunningTests) {
-		nNewGame = GetSelectedPick() + 1;
-		if (nNewGame >= game_count) {
-			MessTestsCompleted();
-		}
-		else {
-			MessTestsFlex(s_pSoftwareListView, drivers[GetSelectedPickItem()]);
-			SetSelectedPick(nNewGame);
-		}
-	}
-}
 
 #endif /* MAME_DEBUG */

@@ -168,7 +168,7 @@ static UINT8 vcnt_pal_240[PAL_Y_PIXELS] = {
 	0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
 };
 
-READ_HANDLER(sms_vdp_curline_r) {
+ READ8_HANDLER(sms_vdp_curline_r) {
 	/* Is it NTSC */
 	if (IS_NTSC) {
 		/* must be mode 4 */
@@ -334,14 +334,14 @@ INTERRUPT_GEN(sms) {
 
 		if ((statusReg & STATUS_HINT) && (reg[0x00] & 0x10)) {
 			irqState = 1;
-			cpu_set_irq_line(0, 0, ASSERT_LINE);
+			cpunum_set_input_line(0, 0, ASSERT_LINE);
 		}
 	} else {
 		lineCountDownCounter = reg[0x0A];
 
 		if ((statusReg & STATUS_VINT) && (reg[0x01] & 0x20)) {
 			irqState = 1;
-			cpu_set_irq_line(0, 0, ASSERT_LINE);
+			cpunum_set_input_line(0, 0, ASSERT_LINE);
 		}
 	}
 
@@ -385,7 +385,7 @@ INTERRUPT_GEN(sms) {
 	}
 }
 
-READ_HANDLER(sms_vdp_data_r) {
+ READ8_HANDLER(sms_vdp_data_r) {
 	int temp;
 
 	/* Clear pending write flag */
@@ -405,7 +405,7 @@ READ_HANDLER(sms_vdp_data_r) {
 	return (temp);
 }
 
-READ_HANDLER(sms_vdp_ctrl_r) {
+ READ8_HANDLER(sms_vdp_ctrl_r) {
 	int temp = statusReg;
 
 	/* Clear pending write flag */
@@ -418,13 +418,13 @@ READ_HANDLER(sms_vdp_ctrl_r) {
 
 	if (irqState == 1) {
 		irqState = 0;
-		cpu_set_irq_line(0, 0, CLEAR_LINE);
+		cpunum_set_input_line(0, 0, CLEAR_LINE);
 	}
 
 	return (temp);
 }
 
-WRITE_HANDLER(sms_vdp_data_w) {
+WRITE8_HANDLER(sms_vdp_data_w) {
 	/* Clear pending write flag */
 	pending = 0;
 
@@ -469,7 +469,7 @@ WRITE_HANDLER(sms_vdp_data_w) {
 	addr += 1;
 }
 
-WRITE_HANDLER(sms_vdp_ctrl_w) {
+WRITE8_HANDLER(sms_vdp_ctrl_w) {
 	int regNum;
 
 	if (pending == 0) {

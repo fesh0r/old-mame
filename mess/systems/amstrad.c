@@ -23,10 +23,7 @@ Some bugs left :
 ----------------
     - CRTC all type support (0,1,2,3,4) ?
     - Gate Array and CRTC aren't synchronised. (The Gate Array can change the color every microseconds?) So the multi-rasters in one line aren't supported (see yao demo p007's part)!
-    - Z80 timming is wrong or I miss something in the GateArray interrupt timing ? >(see the menu of "the demo")?
     - Implement full Asic for CPC+ emulation
-    - Keyboard arrows and copy send incorrect key on the screen ?! Maybe a problem with readinputport ?
-    - Maybe someting also wrong : Ecole Buissoniere demo don't work !
  ******************************************************************************/
 #include "driver.h"
 
@@ -100,13 +97,11 @@ static int amstrad_GateArray_ModeAndRomConfiguration = 0;
 static int amstrad_GateArray_RamConfiguration = 0;
 /* The gate array counts CRTC HSYNC pulses. (It has a internal 6-bit counter). */
 extern int amstrad_CRTC_HS_Counter;
-/* cycle count of last write */
-int amstrad_cycles_last_write = 0;
 /*-------------
   - MULTIFACE -
   -------------*/
 static void multiface_rethink_memory(void);
-static WRITE_HANDLER(multiface_io_write);
+static WRITE8_HANDLER(multiface_io_write);
 static void multiface_init(void);
 static void multiface_stop(void);
 static int multiface_hardware_enabled(void);
@@ -155,13 +150,13 @@ static void update_psg(void)
 }
 
 /* Read/Write 8255 PPI port A (connected to AY-3-8912 databus) */
-static READ_HANDLER ( amstrad_ppi_porta_r )
+static READ8_HANDLER ( amstrad_ppi_porta_r )
 {
 	update_psg();
   return ppi_port_inputs[amstrad_ppi_PortA];
 }
 	
-static WRITE_HANDLER ( amstrad_ppi_porta_w )
+static WRITE8_HANDLER ( amstrad_ppi_porta_w )
 {
   	ppi_port_outputs[amstrad_ppi_PortA] = data;
     update_psg();
@@ -192,7 +187,7 @@ Note:
   On the CPC this can be used by a expansion device to report it's presence. "1" = device connected, "0" = device not connected. This is not always used by all expansion devices. 
 */
 
-static READ_HANDLER (amstrad_ppi_portb_r)
+static READ8_HANDLER (amstrad_ppi_portb_r)
 {
 	int data = 0;
 /* Set b7 with cassette tape input */
@@ -227,7 +222,7 @@ Bit Description  Usage
 /* previous_ppi_portc_w value */
 static int previous_ppi_portc_w;
 
-static WRITE_HANDLER ( amstrad_ppi_portc_w )
+static WRITE8_HANDLER ( amstrad_ppi_portc_w )
 {
 	int changed_data;
 
@@ -481,7 +476,7 @@ Bit 4 controls the interrupt generation. It can be used to delay interrupts.*/
  then the interrupt request is cleared and the 6-bit counter is reset to "0".  */
   			if ((amstrad_GateArray_ModeAndRomConfiguration & (1<<4)) != 0) {
             amstrad_CRTC_HS_Counter = 0;
-  			    cpu_set_irq_line(0,0, CLEAR_LINE);
+  			    cpunum_set_input_line(0,0, CLEAR_LINE);
   			}
 /* b3b2 != 0 then change the state of upper or lower rom area and rethink memory */
         if (((amstrad_GateArray_ModeAndRomConfiguration & 0x0C)^(Previous_GateArray_ModeAndRomConfiguration & 0x0C)) != 0) {
@@ -583,7 +578,7 @@ Expansion Peripherals Read/Write -   -   -   -   -   0   -   -   -   -   -   -  
 
 */
 
-static READ_HANDLER ( AmstradCPC_ReadPortHandler )
+static READ8_HANDLER ( AmstradCPC_ReadPortHandler )
 {
 	unsigned char data = 0xFF;
 	unsigned int r1r0 = (unsigned int)((offset & 0x0300) >> 8);
@@ -664,7 +659,7 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
 }
 
 /* Offset handler for write */
-static WRITE_HANDLER ( AmstradCPC_WritePortHandler )
+static WRITE8_HANDLER ( AmstradCPC_WritePortHandler )
 {
   if ((offset & (1<<15)) == 0) {
 /* if b15 = 0 and b14 = 1 : Gate-Array Write Selected*/
@@ -755,7 +750,6 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
 
 			switch (b8b0) {
 			case 0x00:
-			case 0x01:
         /* FDC Motor Control - Bit 0 defines the state of the FDD motor: 
          * "1" the FDD motor will be active. 
          * "0" the FDD motor will be in-active.*/
@@ -764,7 +758,7 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
 				floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1,1);
 				floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1,1);
 		  break;
-			case 0x02:
+
       case 0x03: /* Write Data register of FDC */
 				nec765_data_w(0,data);
 			break;
@@ -895,7 +889,7 @@ void	multiface_stop(void)
 		multiface_rethink_memory();
 
 		/* pulse the nmi line */
-		cpu_set_nmi_line(0, PULSE_LINE);
+		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 
 		/* initialise 0065 override to monitor calls to 0065 */
 		memory_set_opbase_handler(0,amstrad_multiface_opbaseoverride);
@@ -928,7 +922,7 @@ static void multiface_rethink_memory(void)
 }
 
 /* any io writes are passed through here */
-static WRITE_HANDLER(multiface_io_write)
+static WRITE8_HANDLER(multiface_io_write)
 {
 	/* multiface hardware enabled? */
 		if (!multiface_hardware_enabled())
@@ -1059,29 +1053,9 @@ static WRITE_HANDLER(multiface_io_write)
 /* this ensures that the next interrupt is no closer than 32 lines */
 static int 	amstrad_cpu_acknowledge_int(int cpu)
 {
-  cpu_set_irq_line(0,0, CLEAR_LINE);
+  cpunum_set_input_line(0,0, CLEAR_LINE);
 	amstrad_CRTC_HS_Counter &= 0x1F;
 	return 0xFF;
-}
-/* every 64us let's the crtc do the job !*/
-static void amstrad_update_video(int dummy)
-{
-	int current_time;
-	int time_delta;
-
-	// current cycles
-	current_time = TIME_TO_CYCLES(0,cpu_getscanline()*cpu_getscanlineperiod());
-	
-	// time between last write and this write
-  time_delta = current_time - amstrad_cycles_last_write;
-  time_delta = time_delta>>2;
-
-	 // set new previous write
-	amstrad_cycles_last_write = current_time;
-	 
-	 if (time_delta != 0) {
-    amstrad_vh_execute_crtc_cycles(time_delta);
-  }
 }
 
 static VIDEO_EOF( amstrad )
@@ -1108,32 +1082,160 @@ void amstrad_reset_machine(void)
 	multiface_reset();
 }
 
+/* the following timings have been measured! */
+static UINT8 amstrad_cycle_table_op[256] = {
+	 4, 12,  8,  8,  4,  4,  8,  4,  4, 12,  8,  8,  4,  4,  8,  4,
+	12, 12,  8,  8,  4,  4,  8,  4, 12, 12,  8,  8,  4,  4,  8,  4,
+	 8, 12, 20,  8,  4,  4,  8,  4,  8, 12, 20,  8,  4,  4,  8,  4,
+	 8, 12, 16,  8, 12, 12, 12,  4,  8, 12, 16,  8,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+	 8,  8,  8,  8,  8,  8,  4,  8,  4,  4,  4,  4,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+	 8, 12, 12, 12, 12, 16,  8, 16,  8, 12, 12,  4, 12, 20,  8, 16,
+	 8, 12, 12, 12, 12, 16,  8, 16,  8,  4, 12, 12, 12,  4,  8, 16,
+	 8, 12, 12, 24, 12, 16,  8, 16,  8,  4, 12,  4, 12,  4,  8, 16,
+	 8, 12, 12,  4, 12, 16,  8, 16,  8,  8, 12,  4, 12,  4,  8, 16
+};
+
+static UINT8 amstrad_cycle_table_cb[256]=
+{
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
+	 4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
+	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4
+};
+
+
+static UINT8 amstrad_cycle_table_ed[256]=
+{
+	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
+	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
+	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
+	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
+	12, 12, 12, 20,  4, 12,  4,  8, 12, 12, 12, 20,  4, 12,  4,  8,
+	12, 12, 12, 20,  4, 12,  4,  8, 12, 12, 12, 20,  4, 12,  4,  8,
+	12, 12, 12, 20,  4, 12,  4, 16, 12, 12, 12, 20,  4, 12,  4, 16,
+	12, 12, 12, 20,  4, 12,  4,  4, 12, 12, 12, 20,  4, 12,  4,  4,
+	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
+	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
+	16, 12, 16, 16,  4,  4,  4,  4, 16, 12, 16, 16,  4,  4,  4,  4,
+	16, 12, 16, 16,  4,  4,  4,  4, 16, 12, 16, 16,  4,  4,  4,  4,
+	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
+	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
+	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
+	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4
+};
+
+
+static UINT8 amstrad_cycle_table_xy[256]=
+{
+	 4, 12,  8,  8,  4,  4,  8,  4,  4, 12,  8,  8,  4,  4,  8,  4,
+	12, 12,  8,  8,  4,  4,  8,  4, 12, 12,  8,  8,  4,  4,  8,  4,
+	 8, 12, 20,  8,  4,  4,  8,  4,  8, 12, 20,  8,  4,  4,  8,  4,
+	 8, 12, 16,  8, 20, 20, 20,  4,  8, 12, 16,  8,  4,  4,  8,  4,
+	 4,  4,  4,  4,  4,  4, 16,  4,  4,  4,  4,  4,  4,  4, 16,  4,
+	 4,  4,  4,  4,  4,  4, 16,  4,  4,  4,  4,  4,  4,  4, 16,  4,
+	 4,  4,  4,  4,  4,  4, 16,  4,  4,  4,  4,  4,  4,  4, 16,  4,
+	16, 16, 16, 16, 16, 16,  4, 16,  4,  4,  4,  4,  4,  4, 16,  4,
+	 4,  4,  4,  4,  4,  4, 16,  4,  4,  4,  4,  4,  4,  4, 16,  4,
+	 4,  4,  4,  4,  4,  4, 16,  4,  4,  4,  4,  4,  4,  4, 16,  4,
+	 4,  4,  4,  4,  4,  4, 16,  4,  4,  4,  4,  4,  4,  4, 16,  4,
+	 4,  4,  4,  4,  4,  4, 16,  4,  4,  4,  4,  4,  4,  4, 16,  4,
+	 8, 12, 12, 12, 12, 16,  8, 16,  8, 12, 12,  4, 12, 20,  8, 16,
+	 8, 12, 12, 12, 12, 16,  8, 16,  8,  4, 12, 12, 12,  4,  8, 16,
+	 8, 12, 12, 24, 12, 16,  8, 16,  8,  4, 12,  4, 12,  4,  8, 16,
+	 8, 12, 12,  4, 12, 16,  8, 16,  8,  8, 12,  4, 12,  4,  8, 16
+};
+
+static UINT8 amstrad_cycle_table_xycb[256]=
+{
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+	16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16,
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20
+};
+
+static UINT8 amstrad_cycle_table_ex[256]=
+{
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 4,  0,  0,  0,  0,  0,  0,  0,  4,  0,  0,  0,  0,  0,  0,  0,
+	 4,  0,  0,  0,  0,  0,  0,  0,  4,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 4,  8,  4,  4,  0,  0,  0,  0,  4,  8,  4,  4,  0,  0,  0,  0,
+	 8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0,
+	 8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0,
+	 8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0,
+	 8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0
+};
+
+/* every 2us let's the crtc do the job !*/
+static void amstrad_update_video_1(int dummy)
+{
+	amstrad_vh_execute_crtc_cycles(2);
+} 
+
 static void amstrad_common_init(void)
 {
 	amstrad_GateArray_ModeAndRomConfiguration = 0;
-	amstrad_CRTC_HS_Counter = 0;
-	amstrad_cycles_last_write = 0;
+	amstrad_CRTC_HS_Counter = 2;
 	previous_amstrad_UpperRom_data = 0xff;
 
-	install_mem_read_handler(0, 0x0000, 0x1fff, MRA8_BANK1);
-	install_mem_read_handler(0, 0x2000, 0x3fff, MRA8_BANK2);
-	install_mem_read_handler(0, 0x4000, 0x5fff, MRA8_BANK3);
-	install_mem_read_handler(0, 0x6000, 0x7fff, MRA8_BANK4);
-	install_mem_read_handler(0, 0x8000, 0x9fff, MRA8_BANK5);
-	install_mem_read_handler(0, 0xa000, 0xbfff, MRA8_BANK6);
-	install_mem_read_handler(0, 0xc000, 0xdfff, MRA8_BANK7);
-	install_mem_read_handler(0, 0xe000, 0xffff, MRA8_BANK8);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, MRA8_BANK1);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MRA8_BANK2);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MRA8_BANK3);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_BANK4);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MRA8_BANK5);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, MRA8_BANK6);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MRA8_BANK7);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, MRA8_BANK8);
 
-	install_mem_write_handler(0, 0x0000, 0x1fff, MWA8_BANK9);
-	install_mem_write_handler(0, 0x2000, 0x3fff, MWA8_BANK10);
-	install_mem_write_handler(0, 0x4000, 0x5fff, MWA8_BANK11);
-	install_mem_write_handler(0, 0x6000, 0x7fff, MWA8_BANK12);
-	install_mem_write_handler(0, 0x8000, 0x9fff, MWA8_BANK13);
-	install_mem_write_handler(0, 0xa000, 0xbfff, MWA8_BANK14);
-	install_mem_write_handler(0, 0xc000, 0xdfff, MWA8_BANK15);
-	install_mem_write_handler(0, 0xe000, 0xffff, MWA8_BANK16);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, MWA8_BANK9);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MWA8_BANK10);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MWA8_BANK11);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_BANK12);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MWA8_BANK13);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, MWA8_BANK14);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_BANK15);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, MWA8_BANK16);
 
-	cpu_irq_line_vector_w(0, 0,0x0ff);
+	cpuint_reset_cpu(0);
+	cpunum_set_input_line_vector(0, 0,0x0ff);
 
 	nec765_init(&amstrad_nec765_interface,NEC765A/*?*/);
 	ppi8255_init(&amstrad_ppi8255_interface);
@@ -1141,11 +1243,33 @@ static void amstrad_common_init(void)
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0),  FLOPPY_DRIVE_SS_40);
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1),  FLOPPY_DRIVE_SS_40);
 
-	timer_pulse(TIME_IN_USEC(AMSTRAD_US_PER_SCANLINE), 0, amstrad_update_video);
+/* Every microsecond: 
+
+The CRTC generates a memory address using it's MA and RA signal outputs 
+The Gate-Array fetches two bytes for each address*/
+
+//	timer_pulse(TIME_IN_USEC(AMSTRAD_US_PER_SCANLINE), 0, amstrad_vh_execute_crtc_cycles);
+	timer_pulse(TIME_IN_USEC(1), 0, amstrad_vh_execute_crtc_cycles);
+
+	/* The opcode timing in the Amstrad is different to the opcode
+	timing in the core for the Z80 CPU.
+
+	The Amstrad hardware issues a HALT for each memory fetch.
+	This has the effect of stretching the timing for Z80 opcodes,
+	so that they are all multiple of 4 T states long. All opcode
+	timings are a multiple of 1us in length. */
+
+	/* Using the cool code Juergen has provided, I will override
+	the timing tables with the values for the amstrad */
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_op, amstrad_cycle_table_op);
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_cb, amstrad_cycle_table_cb);
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_ed, amstrad_cycle_table_ed);
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_xy, amstrad_cycle_table_xy);
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_xycb, amstrad_cycle_table_xycb);
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_ex, amstrad_cycle_table_ex);
 
 	/* Juergen is a cool dude! */
 	cpu_set_irq_callback(0, amstrad_cpu_acknowledge_int);
-
 }
 
 static MACHINE_INIT( amstrad )
@@ -1230,7 +1354,7 @@ When port B is defined as input (bit 7 of register 7 is set to "0"), a read of t
 */
 
 /* read PSG port A */
-static READ_HANDLER ( amstrad_psg_porta_read )
+static READ8_HANDLER ( amstrad_psg_porta_read )
 {	
 /* Read CPC Keyboard
    If keyboard matrix line 11-14 are selected, the byte is always &ff.
@@ -1256,7 +1380,6 @@ static READ_HANDLER ( amstrad_psg_porta_read )
 	PORT_KEY1(0x20, IP_ACTIVE_LOW, "Keypad 3", KEYCODE_3_PAD, IP_JOY_NONE, UCHAR_MAMEKEY(3_PAD) ) \
 	PORT_KEY1(0x40, IP_ACTIVE_LOW, "Keypad Enter", KEYCODE_ENTER_PAD, IP_JOY_NONE, UCHAR_MAMEKEY(ENTER_PAD) ) \
 	PORT_KEY1(0x80, IP_ACTIVE_LOW, "Keypad .", KEYCODE_DEL_PAD, IP_JOY_NONE, UCHAR_MAMEKEY(DEL_PAD) ) \
-\
 \
 	/* keyboard line 1 */ \
 	PORT_START \
@@ -1349,13 +1472,13 @@ static READ_HANDLER ( amstrad_psg_porta_read )
 \
 	/* keyboard line 9 */ \
 	PORT_START \
-	PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER1) \
-	PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER1) \
-	PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER1) \
-	PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER1) \
-	PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER1) \
-	PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER1) \
-	PORT_BIT (0x40, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_PLAYER1) \
+	PORT_BITX(0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER1, IP_NAME_DEFAULT, CODE_NONE, JOYCODE_1_UP)	\
+	PORT_BITX(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER1, IP_NAME_DEFAULT, CODE_NONE, JOYCODE_1_DOWN)	\
+	PORT_BITX(0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER1, IP_NAME_DEFAULT, CODE_NONE, JOYCODE_1_LEFT)	\
+	PORT_BITX(0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER1, IP_NAME_DEFAULT, CODE_NONE, JOYCODE_1_RIGHT)	\
+	PORT_BITX(0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER1, IP_NAME_DEFAULT, CODE_NONE, JOYCODE_1_BUTTON1)	\
+	PORT_BITX(0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER1, IP_NAME_DEFAULT, CODE_NONE, JOYCODE_1_BUTTON2)	\
+	PORT_BITX(0x40, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_PLAYER1, IP_NAME_DEFAULT, CODE_NONE, JOYCODE_1_BUTTON3)	\
 	PORT_KEY1(0x80, IP_ACTIVE_LOW, "Del", KEYCODE_BACKSPACE, IP_JOY_NONE, 8) \
 
 
@@ -1389,7 +1512,8 @@ b3 b2 b1 Manufacturer Name (CPC and CPC+ only):
 1  0  0  Awa 
 1  0  1  Schneider 
 1  1  0  Orion 
-1  1  1  Amstrad*/	PORT_START
+1  1  1  Amstrad*/
+PORT_START
 	PORT_DIPNAME( 0x07, 0x07, "Manufacturer Name" )
 	PORT_DIPSETTING(    0x00, "Isp" )
 	PORT_DIPSETTING(    0x01, "Triumph" )

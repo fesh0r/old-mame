@@ -65,34 +65,34 @@ static INTERRUPT_GEN( pce_interrupt )
         }
     }
 	if (ret)
-		cpu_set_irq_line(0, 0, PULSE_LINE);
+		cpunum_set_input_line(0, 0, PULSE_LINE);
 }
 
 /* stubs for the irq/psg/timer code */
 
-static WRITE_HANDLER ( pce_irq_w)
+static WRITE8_HANDLER ( pce_irq_w)
 {
 }
 
-static READ_HANDLER ( pce_irq_r )
-{
-    return 0x00;
-}
-
-static WRITE_HANDLER ( pce_timer_w )
-{
-}
-
-static READ_HANDLER ( pce_timer_r )
+static  READ8_HANDLER ( pce_irq_r )
 {
     return 0x00;
 }
 
-static WRITE_HANDLER ( pce_psg_w )
+static WRITE8_HANDLER ( pce_timer_w )
 {
 }
 
-static READ_HANDLER ( pce_psg_r )
+static  READ8_HANDLER ( pce_timer_r )
+{
+    return 0x00;
+}
+
+static WRITE8_HANDLER ( pce_psg_w )
+{
+}
+
+static  READ8_HANDLER ( pce_psg_r )
 {
     return 0x00;
 }

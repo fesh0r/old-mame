@@ -115,7 +115,7 @@ VIDEO_UPDATE( pc_video )
 
 
 
-WRITE_HANDLER ( pc_video_videoram_w )
+WRITE8_HANDLER ( pc_video_videoram_w )
 {
 	if (videoram && videoram[offset] != data)
 	{
@@ -200,6 +200,8 @@ void pc_render_gfx_2bpp(struct mame_bitmap *bitmap, struct crtc6845 *crtc,
 	int lines = crtc6845_get_char_lines(crtc);
 	int height = crtc6845_get_char_height(crtc);
 	int columns = crtc6845_get_char_columns(crtc)*2;
+	UINT16 *dest;
+	const UINT8 *src;
 
 	if (!vram)
 		vram = videoram;
@@ -210,8 +212,11 @@ void pc_render_gfx_2bpp(struct mame_bitmap *bitmap, struct crtc6845 *crtc,
 	{
 		for (sh = 0; sh < height; sh++)
 		{
-			UINT16 *dest = (UINT16 *) bitmap->line[sy * height + sh];
-			const UINT8 *src = &vram[offs | ((sh % interlace) << 13)];
+    			if (sy*height+sh >= bitmap->height)
+	    			return;
+
+			dest = (UINT16 *) bitmap->line[sy * height + sh];
+			src = &vram[offs | ((sh % interlace) << 13)];
 
 			for (sx = 0; sx < columns; sx++)
 			{

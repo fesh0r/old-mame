@@ -83,7 +83,7 @@ static int c16_rom_load(mess_image *img);
   p6 serial clock in
   p7 serial data in, serial bus 5
  */
-WRITE_HANDLER(c16_m7501_port_w)
+WRITE8_HANDLER(c16_m7501_port_w)
 {
 	int dat, atn, clk;
 
@@ -106,7 +106,7 @@ WRITE_HANDLER(c16_m7501_port_w)
 	vc20_tape_motor (data & 8);
 }
 
-READ_HANDLER(c16_m7501_port_r)
+ READ8_HANDLER(c16_m7501_port_r)
 {
 	if (offset)
 	{
@@ -168,7 +168,7 @@ static void c16_bankswitch (void)
 	cpu_setbank (4, c16_memory + 0x17c00);
 }
 
-WRITE_HANDLER(c16_switch_to_rom)
+WRITE8_HANDLER(c16_switch_to_rom)
 {
 	ted7360_rom = 1;
 	c16_bankswitch ();
@@ -187,7 +187,7 @@ WRITE_HANDLER(c16_switch_to_rom)
  * 0  1  plus4 hi
  * 1  0  c1 high
  * 1  1  c2 high */
-WRITE_HANDLER(c16_select_roms)
+WRITE8_HANDLER(c16_select_roms)
 {
 	lowrom = offset & 3;
 	highrom = (offset & 0xc) >> 2;
@@ -195,7 +195,7 @@ WRITE_HANDLER(c16_select_roms)
 		c16_bankswitch ();
 }
 
-WRITE_HANDLER(c16_switch_to_ram)
+WRITE8_HANDLER(c16_switch_to_ram)
 {
 	ted7360_rom = 0;
 	switch (DIPMEMORY)
@@ -221,7 +221,7 @@ WRITE_HANDLER(c16_switch_to_ram)
 	}
 }
 
-WRITE_HANDLER(plus4_switch_to_ram)
+WRITE8_HANDLER(plus4_switch_to_ram)
 {
 	ted7360_rom = 0;
 	cpu_setbank (2, c16_memory + 0x8000);
@@ -274,12 +274,12 @@ int c16_read_keyboard (int databus)
  * output low means keyboard line selected
  * keyboard line is then read into the ted7360 latch
  */
-WRITE_HANDLER(c16_6529_port_w)
+WRITE8_HANDLER(c16_6529_port_w)
 {
 	port6529 = data;
 }
 
-READ_HANDLER(c16_6529_port_r)
+ READ8_HANDLER(c16_6529_port_r)
 {
 	return port6529 & (c16_read_keyboard (0xff /*databus */ ) | (port6529 ^ 0xff));
 }
@@ -294,11 +294,11 @@ READ_HANDLER(c16_6529_port_r)
  * p6 Userport j
  * p7 Userport f
  */
-WRITE_HANDLER(plus4_6529_port_w)
+WRITE8_HANDLER(plus4_6529_port_w)
 {
 }
 
-READ_HANDLER(plus4_6529_port_r)
+ READ8_HANDLER(plus4_6529_port_r)
 {
 	int data = 0;
 
@@ -307,7 +307,7 @@ READ_HANDLER(plus4_6529_port_r)
 	return data;
 }
 
-READ_HANDLER(c16_fd1x_r)
+ READ8_HANDLER(c16_fd1x_r)
 {
 	int data = 0;
 
@@ -353,14 +353,14 @@ READ_HANDLER(c16_fd1x_r)
    1111 19200
  control register
   */
-WRITE_HANDLER(c16_6551_port_w)
+WRITE8_HANDLER(c16_6551_port_w)
 {
 	offset &= 3;
 	DBG_LOG (3, "6551", ("port write %.2x %.2x\n", offset, data));
 	port6529 = data;
 }
 
-READ_HANDLER(c16_6551_port_r)
+ READ8_HANDLER(c16_6551_port_r)
 {
 	int data = 0;
 
@@ -369,42 +369,42 @@ READ_HANDLER(c16_6551_port_r)
 	return data;
 }
 
-static WRITE_HANDLER(c16_write_3f20)
+static WRITE8_HANDLER(c16_write_3f20)
 {
 	c16_memory[0x3f20 + offset] = data;
 }
 
-static WRITE_HANDLER(c16_write_3f40)
+static WRITE8_HANDLER(c16_write_3f40)
 {
 	c16_memory[0x3f40 + offset] = data;
 }
 
-static WRITE_HANDLER(c16_write_7f20)
+static WRITE8_HANDLER(c16_write_7f20)
 {
 	c16_memory[0x7f20 + offset] = data;
 }
 
-static WRITE_HANDLER(c16_write_7f40)
+static WRITE8_HANDLER(c16_write_7f40)
 {
 	c16_memory[0x7f40 + offset] = data;
 }
 
-static READ_HANDLER(ted7360_dma_read_16k)
+static  READ8_HANDLER(ted7360_dma_read_16k)
 {
 	return c16_memory[offset & 0x3fff];
 }
 
-static READ_HANDLER(ted7360_dma_read_32k)
+static  READ8_HANDLER(ted7360_dma_read_32k)
 {
 	return c16_memory[offset & 0x7fff];
 }
 
-static READ_HANDLER(ted7360_dma_read)
+static  READ8_HANDLER(ted7360_dma_read)
 {
 	return c16_memory[offset];
 }
 
-static READ_HANDLER(ted7360_dma_read_rom)
+static  READ8_HANDLER(ted7360_dma_read_rom)
 {
 	/* should read real c16 system bus from 0xfd00 -ff1f */
 	if (offset >= 0xc000)
@@ -456,7 +456,7 @@ void c16_interrupt (int level)
 	if (level != old_level)
 	{
 		DBG_LOG (3, "mos7501", ("irq %s\n", level ? "start" : "end"));
-		cpu_set_irq_line (0, M6510_IRQ_LINE, level);
+		cpunum_set_input_line (0, M6510_IRQ_LINE, level);
 		old_level = level;
 	}
 }
@@ -533,7 +533,7 @@ void c16_driver_shutdown (void)
 	cbm_drive_close ();
 }
 
-static WRITE_HANDLER(c16_sidcart_16k)
+static WRITE8_HANDLER(c16_sidcart_16k)
 {
 	c16_memory[0x1400+offset]=data;
 	c16_memory[0x5400+offset]=data;
@@ -542,14 +542,14 @@ static WRITE_HANDLER(c16_sidcart_16k)
 	sid6581_0_port_w(offset,data);
 }
 
-static WRITE_HANDLER(c16_sidcart_32k)
+static WRITE8_HANDLER(c16_sidcart_32k)
 {
 	c16_memory[0x5400+offset]=data;
 	c16_memory[0xd400+offset]=data;
 	sid6581_0_port_w(offset,data);
 }
 
-static WRITE_HANDLER(c16_sidcart_64k)
+static WRITE8_HANDLER(c16_sidcart_64k)
 {
 	c16_memory[0xd400+offset]=data;
 	sid6581_0_port_w(offset,data);
@@ -566,15 +566,15 @@ MACHINE_INIT( c16 )
 	sid6581_reset(0);
 	if (SIDCARD) {
 		sid6581_set_type(0, MOS8580);
-		install_mem_read_handler (0, 0xfd40, 0xfd5f, sid6581_0_port_r);
-		install_mem_write_handler (0, 0xfd40, 0xfd5f, sid6581_0_port_w);
-		install_mem_read_handler (0, 0xfe80, 0xfe9f, sid6581_0_port_r);
-		install_mem_write_handler (0, 0xfe80, 0xfe9f, sid6581_0_port_w);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfd40, 0xfd5f, 0, 0, sid6581_0_port_r);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfd40, 0xfd5f, 0, 0, sid6581_0_port_w);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfe80, 0xfe9f, 0, 0, sid6581_0_port_r);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfe80, 0xfe9f, 0, 0, sid6581_0_port_w);
 	} else {
-		install_mem_read_handler (0, 0xfd40, 0xfd5f, MRA8_NOP);
-		install_mem_write_handler (0, 0xfd40, 0xfd5f, MWA8_NOP);
-		install_mem_read_handler (0, 0xfe80, 0xfe9f, MRA8_NOP);
-		install_mem_write_handler (0, 0xfe80, 0xfe9f, MWA8_NOP);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfd40, 0xfd5f, 0, 0, MRA8_NOP);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfd40, 0xfd5f, 0, 0, MWA8_NOP);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfe80, 0xfe9f, 0, 0, MRA8_NOP);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfe80, 0xfe9f, 0, 0, MWA8_NOP);
 	}
 
 #if 0
@@ -593,76 +593,76 @@ MACHINE_INIT( c16 )
 #ifdef NEW_BANKHANDLER
 			/* causes problems to do this */
 			/* seeable with c16 and 32k ram extension */
-			install_mem_write_handler (0, 0x8000, 0xbfff, MWA8_BANK6);
-			install_mem_write_handler (0, 0x4000, 0x7fff, MWA8_BANK5);
-			install_mem_write_handler (0, 0xc000, 0xfcff, MWA8_BANK7);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x8000, 0xbfff, 0, 0, MWA8_BANK6);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x4000, 0x7fff, 0, 0, MWA8_BANK5);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xc000, 0xfcff, 0, 0, MWA8_BANK7);
 #endif
-			install_mem_write_handler (0, 0xff20, 0xff3d, c16_write_3f20);
-			install_mem_write_handler (0, 0xff40, 0xffff, c16_write_3f40);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff20, 0xff3d, 0, 0, c16_write_3f20);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff40, 0xffff, 0, 0, c16_write_3f40);
 			if (SIDCARD_HACK) {
-				install_mem_write_handler (0, 0xd400, 0xd41f, c16_sidcart_16k);
+				memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_16k);
 			}
 			ted7360_set_dma (ted7360_dma_read_16k, ted7360_dma_read_rom);
 			break;
 		case MEMORY32K:
 #ifdef NEW_BANKHANDLER
-			install_mem_write_handler (0, 0x4000, 0x7fff, MWA8_RAM);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x4000, 0x7fff, 0, 0, MWA8_RAM);
 			cpu_setbank (5, c16_memory);
-			install_mem_write_handler (0, 0x8000, 0xfcff, MWA8_BANK5);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x8000, 0xfcff, 0, 0, MWA8_BANK5);
 			cpu_setbank (6, (c16_memory + 0x7f20));
-			install_mem_write_handler (0, 0xff20, 0xff3d, MWA8_BANK6);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff20, 0xff3d, 0, 0, MWA8_BANK6);
 			cpu_setbank (7, (c16_memory + 0x7f40));
-			install_mem_write_handler (0, 0xff40, 0xffff, MWA8_BANK7);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff40, 0xffff, 0, 0, MWA8_BANK7);
 #else
 			cpu_setbank (5, c16_memory + 0x4000);
 			cpu_setbank (6, c16_memory);
 			cpu_setbank (7, c16_memory + 0x4000);
-			install_mem_write_handler (0, 0xff20, 0xff3d, c16_write_7f20);
-			install_mem_write_handler (0, 0xff40, 0xffff, c16_write_7f40);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff20, 0xff3d, 0, 0, c16_write_7f20);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff40, 0xffff, 0, 0, c16_write_7f40);
 #endif
 			ted7360_set_dma (ted7360_dma_read_32k, ted7360_dma_read_rom);
 			if (SIDCARD_HACK) {
-				install_mem_write_handler (0, 0xd400, 0xd41f, c16_sidcart_32k);
+				memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_32k);
 			}
 			break;
 		case MEMORY64K:
-			install_mem_write_handler (0, 0x4000, 0xfcff, MWA8_RAM);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x4000, 0xfcff, 0, 0, MWA8_RAM);
 			if (SIDCARD_HACK) {
-				install_mem_write_handler (0, 0xd400, 0xd41f, c16_sidcart_64k);
+				memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_64k);
 			}
-			install_mem_write_handler (0, 0xff20, 0xff3d, MWA8_RAM);
-			install_mem_write_handler (0, 0xff40, 0xffff, MWA8_RAM);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff20, 0xff3d, 0, 0, MWA8_RAM);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff40, 0xffff, 0, 0, MWA8_RAM);
 			ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
 			break;
 		}
 	}
 	else
 	{
-		install_mem_write_handler (0, 0x4000, 0xfcff, MWA8_RAM);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x4000, 0xfcff, 0, 0, MWA8_RAM);
 		if (SIDCARD_HACK) {
-			install_mem_write_handler (0, 0xd400, 0xd41f, c16_sidcart_64k);
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_64k);
 		}
 		ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
 	}
 	if (IEC8ON||REAL_C1551)
 	{
-		install_mem_write_handler (0, 0xfee0, 0xfeff, tpi6525_2_port_w);
-		install_mem_read_handler (0, 0xfee0, 0xfeff, tpi6525_2_port_r);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, tpi6525_2_port_w);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, tpi6525_2_port_r);
 	}
 	else
 	{
-		install_mem_write_handler (0, 0xfee0, 0xfeff, MWA8_NOP);
-		install_mem_read_handler (0, 0xfee0, 0xfeff, MRA8_NOP);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, MWA8_NOP);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, MRA8_NOP);
 	}
 	if (IEC9ON)
 	{
-		install_mem_write_handler (0, 0xfec0, 0xfedf, tpi6525_3_port_w);
-		install_mem_read_handler (0, 0xfec0, 0xfedf, tpi6525_3_port_r);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, tpi6525_3_port_w);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, tpi6525_3_port_r);
 	}
 	else
 	{
-		install_mem_write_handler (0, 0xfec0, 0xfedf, MWA8_NOP);
-		install_mem_read_handler (0, 0xfec0, 0xfedf, MRA8_NOP);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, MWA8_NOP);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, MRA8_NOP);
 	}
 
 	if (SERIAL8ON)

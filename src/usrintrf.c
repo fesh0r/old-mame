@@ -16,7 +16,7 @@
 #include "state.h"
 
 #ifdef MESS
-#include "mess.h"
+  #include "mess.h"
 #include "mesintrf.h"
 #include "inputx.h"
 #endif

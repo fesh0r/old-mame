@@ -38,11 +38,11 @@ static void atom_via_irq_func(int state)
 {
 	if (state)
 	{
-		cpu_set_irq_line(0,0, HOLD_LINE);
+		cpunum_set_input_line(0,0, HOLD_LINE);
 	}
 	else
 	{
-		cpu_set_irq_line(0,0, CLEAR_LINE);
+		cpunum_set_input_line(0,0, CLEAR_LINE);
 	}
 
 
@@ -59,7 +59,7 @@ static mess_image *printer_image(void)
 }
 
 /* printer status */
-static READ_HANDLER(atom_via_in_a_func)
+static  READ8_HANDLER(atom_via_in_a_func)
 {
 	unsigned char data;
 
@@ -75,7 +75,7 @@ static READ_HANDLER(atom_via_in_a_func)
 }
 
 /* printer data */
-static WRITE_HANDLER(atom_via_out_a_func)
+static WRITE8_HANDLER(atom_via_out_a_func)
 {
 	/* data is written to port, this causes a pulse on ca2 (printer /strobe input),
 	and data is written */
@@ -86,7 +86,7 @@ static WRITE_HANDLER(atom_via_out_a_func)
 static unsigned char previous_ca2_data = 0;
 
 /* one of these is pulsed! */
-static WRITE_HANDLER(atom_via_out_ca2_func)
+static WRITE8_HANDLER(atom_via_out_ca2_func)
 {
 	/* change in state of ca2 output? */
 	if (((previous_ca2_data^data)&0x01)!=0)
@@ -150,7 +150,7 @@ static void atom_8271_interrupt_callback(int state)
 		{
 			/* I'll pulse it because if I used hold-line I'm not sure
 			it would clear - to be checked */
-			cpu_set_nmi_line(0, PULSE_LINE);
+			cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 
@@ -347,13 +347,13 @@ DEVICE_LOAD( atom_floppy )
 }
 
 
-READ_HANDLER (atom_8255_porta_r )
+ READ8_HANDLER (atom_8255_porta_r )
 {
 	/* logerror("8255: Read port a\n"); */
 	return (atom_8255_porta);
 }
 
-READ_HANDLER ( atom_8255_portb_r )
+ READ8_HANDLER ( atom_8255_portb_r )
 {
 	/* ilogerror("8255: Read port b: %02X %02X\n",
 			readinputport ((atom_8255.atom_8255_porta & 0x0f) + 1),
@@ -362,7 +362,7 @@ READ_HANDLER ( atom_8255_portb_r )
 											(readinputport (11) & 0xc0));
 }
 
-READ_HANDLER ( atom_8255_portc_r )
+ READ8_HANDLER ( atom_8255_portc_r )
 {
 
 /* | */
@@ -400,7 +400,7 @@ READ_HANDLER ( atom_8255_portc_r )
 
 */
 
-WRITE_HANDLER ( atom_8255_porta_w )
+WRITE8_HANDLER ( atom_8255_porta_w )
 {
 	if ((data & 0xf0) != (atom_8255_porta & 0xf0))
 	{
@@ -415,13 +415,13 @@ WRITE_HANDLER ( atom_8255_porta_w )
 /*	logerror("8255: Write port a, %02x\n", data); */
 }
 
-WRITE_HANDLER ( atom_8255_portb_w )
+WRITE8_HANDLER ( atom_8255_portb_w )
 {
 	atom_8255_portb = data;
 /*	logerror("8255: Write port b, %02x\n", data); */
 }
 
-WRITE_HANDLER (atom_8255_portc_w)
+WRITE8_HANDLER (atom_8255_portc_w)
 {
 	atom_8255_portc = data;
 	speaker_level_w(0, (data & 0x04) >> 2);
@@ -432,7 +432,7 @@ WRITE_HANDLER (atom_8255_portc_w)
 
 
 /* KT- I've assumed that the atom 8271 is linked in exactly the same way as on the bbc */
-READ_HANDLER(atom_8271_r)
+ READ8_HANDLER(atom_8271_r)
 {
 	switch (offset)
 	{
@@ -451,7 +451,7 @@ READ_HANDLER(atom_8271_r)
 	return 0x0ff;
 }
 
-WRITE_HANDLER(atom_8271_w)
+WRITE8_HANDLER(atom_8271_w)
 {
 	switch (offset)
 	{
@@ -495,7 +495,7 @@ void atom_eprom_box_init(void)
 }
 
 /* write to eprom box, changes eprom selected */
-WRITE_HANDLER(atom_eprom_box_w)
+WRITE8_HANDLER(atom_eprom_box_w)
 {
 	selected_eprom = data & 0x0f;
 
@@ -503,7 +503,7 @@ WRITE_HANDLER(atom_eprom_box_w)
 }
 
 /* read from eprom box register, can this be done in the real hardware */
-READ_HANDLER(atom_eprom_box_r)
+ READ8_HANDLER(atom_eprom_box_r)
 {
 	return selected_eprom;
 }

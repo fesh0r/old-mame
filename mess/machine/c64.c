@@ -87,13 +87,19 @@ static void c64_nmi(void)
     if (nmilevel != KEY_RESTORE||cia1irq)
     {
 	if (c128) {
-	    if (cpu_getactivecpu()==0) { /* z80 */
-		cpu_set_nmi_line (0, KEY_RESTORE||cia1irq);
-	    } else {
-		cpu_set_nmi_line (1, KEY_RESTORE||cia1irq);
+	    if (cpu_getactivecpu()==0) 
+		{
+			/* z80 */
+			cpunum_set_input_line(0, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
 	    }
-	} else {
-	    cpu_set_nmi_line (0, KEY_RESTORE||cia1irq);
+		else
+		{
+			cpunum_set_input_line(1, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
+	    }
+	}
+	else
+	{
+	    cpunum_set_input_line(0, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
 	}
 	nmilevel = KEY_RESTORE||cia1irq;
     }
@@ -276,18 +282,18 @@ static void c64_irq (int level)
 		DBG_LOG (3, "mos6510", ("irq %s\n", level ? "start" : "end"));
 		if (c128) {
 			if (0&&(cpu_getactivecpu()==0)) {
-				cpu_set_irq_line (0, 0, level);
+				cpunum_set_input_line (0, 0, level);
 			} else {
-				cpu_set_irq_line (1, M6510_IRQ_LINE, level);
+				cpunum_set_input_line (1, M6510_IRQ_LINE, level);
 			}
 		} else {
-			cpu_set_irq_line (0, M6510_IRQ_LINE, level);
+			cpunum_set_input_line (0, M6510_IRQ_LINE, level);
 		}
 		old_level = level;
 	}
 }
 
-WRITE_HANDLER(c64_tape_read)
+WRITE8_HANDLER(c64_tape_read)
 {
 	cia6526_0_set_input_flag (data);
 }
@@ -362,19 +368,8 @@ static void c64_cia1_port_a_w (int offset, int data)
 
 static void c64_cia1_interrupt (int level)
 {
-	cia1irq=level;
+	cia1irq = level;
 	c64_nmi();
-#if 0
-	static int old_level = 0;
-
-	if (level != old_level)
-	{
-		DBG_LOG (1, "mos6510", ("nmi %s\n", level ? "start" : "end"));
-
-		/*      cpu_set_nmi_line(0, level); */
-		old_level = level;
-	}
-#endif
 }
 
 struct cia6526_interface c64_cia0 =
@@ -456,7 +451,7 @@ static void c64_supergames_w(int offset, int value)
 		c64_bankswitch (0);
 }
 
-WRITE_HANDLER( c64_write_io )
+WRITE8_HANDLER( c64_write_io )
 {
 	if (offset < 0x400) {
 		vic2_port_w (offset & 0x3ff, data);
@@ -495,7 +490,7 @@ WRITE_HANDLER( c64_write_io )
 	}
 }
 
-READ_HANDLER( c64_read_io )
+ READ8_HANDLER( c64_read_io )
 {
 	if (offset < 0x400)
 		return vic2_port_r (offset & 0x3ff);
@@ -587,12 +582,12 @@ static void c64_bankswitch (int reset)
 //	    || (loram && hiram && !c64_exrom))
 	{
 		cpu_setbank (1, roml);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, MWA8_RAM);	// always ram: pitstop
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MWA8_RAM);	// always ram: pitstop
 	}
 	else
 	{
 		cpu_setbank (1, c64_memory + 0x8000);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, MWA8_RAM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MWA8_RAM);
 	}
 
 #if 1
@@ -617,13 +612,13 @@ static void c64_bankswitch (int reset)
 	if ((!c64_game && c64_exrom)
 		|| (charen && (loram || hiram)))
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, c64_read_io);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, c64_write_io);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, c64_read_io);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, c64_write_io);
 	}
 	else
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, MRA8_BANK5);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, MWA8_BANK6);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, MRA8_BANK5);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, MWA8_BANK6);
 		cpu_setbank (6, c64_memory + 0xd000);
 		if (!charen && (loram || hiram))
 		{
@@ -638,11 +633,11 @@ static void c64_bankswitch (int reset)
 	if (!c64_game && c64_exrom)
 	{
 		cpu_setbank (7, romh);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, MWA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, MWA8_NOP);
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, MWA8_RAM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, MWA8_RAM);
 		if (hiram)
 		{
 			cpu_setbank (7, c64_kernal);
@@ -669,7 +664,7 @@ static void c64_bankswitch (int reset)
   p5 output cassette motor
   p6,7 not available on M6510
  */
-WRITE_HANDLER(c64_m6510_port_w)
+WRITE8_HANDLER(c64_m6510_port_w)
 {
 	if (offset)
 	{
@@ -698,7 +693,7 @@ WRITE_HANDLER(c64_m6510_port_w)
 		c64_bankswitch (0);
 }
 
-READ_HANDLER(c64_m6510_port_r)
+ READ8_HANDLER(c64_m6510_port_r)
 {
 	if (offset)
 	{
@@ -760,12 +755,12 @@ int c64_paddle_read (int which)
 	}
 }
 
-READ_HANDLER(c64_colorram_read)
+ READ8_HANDLER(c64_colorram_read)
 {
 	return c64_colorram[offset & 0x3ff];
 }
 
-WRITE_HANDLER( c64_colorram_write )
+WRITE8_HANDLER( c64_colorram_write )
 {
 	c64_colorram[offset & 0x3ff] = data | 0xf0;
 }

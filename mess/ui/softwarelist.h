@@ -2,7 +2,6 @@
 #define SOFTWARELIST_H
 
 #include <tchar.h>
-#include "SmartListView.h"
 #include "messdrv.h"
 
 #ifdef UNDER_CE
@@ -19,23 +18,23 @@ typedef struct
     const char *ext;
 } mess_image_type;
 
-/* SoftwareListView Class calls */
-LPCTSTR SoftwareList_GetText(struct SmartListView *pListView, int nRow, int nColumn);
-BOOL SoftwareList_ItemChanged(struct SmartListView *pListView, BOOL bWasSelected, BOOL bNowSelected, int nRow);
-BOOL SoftwareList_IsItemSelected(struct SmartListView *pListView, int nItem);
+/* Software picker calls; note still transitioning to src/ui/picker.c conventions */
+const TCHAR *SoftwarePicker_GetItemString(int nItem, int nColumn,
+	TCHAR *pszBuffer, UINT nBufferLength);
+BOOL SoftwareList_ItemChanged(HWND hwndSoftware, BOOL bWasSelected, BOOL bNowSelected, int nRow);
+BOOL SoftwareList_IsItemSelected(HWND hwndSoftware, int nItem);
 
 #if HAS_IDLING
-BOOL SoftwareList_CanIdle(struct SmartListView *pListView);
-void SoftwareList_Idle(struct SmartListView *pListView);
+BOOL SoftwarePicker_OnIdle(HWND hwndSoftware);
 #endif
 
 /* External calls */
 void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL bZip, int type);
-void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nBasePaths,
+void FillSoftwareList(HWND hwndSoftware, int nGame, int nBasePaths,
 	LPCSTR *plpBasePaths, LPCSTR lpExtraPath, void (*hash_error_proc)(const char *message));
 int MessLookupByFilename(const TCHAR *filename);
 int MessImageCount(void);
-void MessIntroduceItem(struct SmartListView *pListView, const char *filename, mess_image_type *imagetypes);
+void MessIntroduceItem(HWND hwndSoftware, const char *filename, mess_image_type *imagetypes);
 int GetImageType(int nItem);
 LPCTSTR GetImageName(int nItem);
 LPCTSTR GetImageFullName(int nItem);
@@ -43,7 +42,7 @@ BOOL MessApproveImageList(HWND hParent, int nDriver);
 
 #ifdef MAME_DEBUG
 #include "driver.h"
-void MessTestsFlex(struct SmartListView *pListView, const struct GameDriver *drv);
+void MessTestsFlex(HWND hwndSoftware, const struct GameDriver *drv);
 #endif
 
 #endif /* SOFTWARELIST_H */

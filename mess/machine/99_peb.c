@@ -96,8 +96,8 @@
 
 	Note that I use 8-bit RAM handlers.  Obviously, using 16-bit handlers would
 	be equivalent and quite faster, but we need to interface the extension
-	cards not only to the ti-99/4(a), but to the geneve emulator and to a
-	future 99/8 emulator as well.
+	cards not only to the ti-99/4(a), but to the geneve emulator and to the
+	WIP 99/8 emulator as well.
 */
 
 #include "driver.h"
@@ -126,8 +126,8 @@ typedef struct ti99_4p_exp_card_handlers_t
 		} width_8bit;
 		struct
 		{
-			read16_handler mem_read;	/* card mem read handler (8 bits) */
-			write16_handler mem_write;	/* card mem write handler (8 bits) */
+			read16_handler mem_read;	/* card mem read handler (16 bits) */
+			write16_handler mem_write;	/* card mem write handler (16 bits) */
 		} width_16bit;
 	} w;
 } ti99_4p_exp_card_handlers_t;
@@ -298,7 +298,7 @@ void ti99_peb_set_ilb_bit(int bit, int state)
 /*
 	Read CRU in range >1000->1ffe (>800->fff)
 */
-READ_HANDLER ( ti99_4x_peb_cru_r )
+ READ8_HANDLER ( ti99_4x_peb_cru_r )
 {
 	int port;
 	cru_read_handler handler;
@@ -315,7 +315,7 @@ READ_HANDLER ( ti99_4x_peb_cru_r )
 /*
 	Write CRU in range >1000->1ffe (>800->fff)
 */
-WRITE_HANDLER ( ti99_4x_peb_cru_w )
+WRITE8_HANDLER ( ti99_4x_peb_cru_w )
 {
 	int port;
 	cru_write_handler handler;
@@ -394,7 +394,7 @@ WRITE16_HANDLER ( ti99_4x_peb_w )
 /*
 	Read CRU in range >1000->1ffe (>800->fff)
 */
-READ_HANDLER ( geneve_peb_cru_r )
+ READ8_HANDLER ( geneve_peb_cru_r )
 {
 	int port;
 	cru_read_handler handler;
@@ -411,7 +411,7 @@ READ_HANDLER ( geneve_peb_cru_r )
 /*
 	Write CRU in range >1000->1ffe (>800->fff)
 */
-WRITE_HANDLER ( geneve_peb_cru_w )
+WRITE8_HANDLER ( geneve_peb_cru_w )
 {
 	int port;
 	cru_write_handler handler;
@@ -443,7 +443,7 @@ WRITE_HANDLER ( geneve_peb_cru_w )
 /*
 	Read mem in range >4000->5fff
 */
-READ_HANDLER ( geneve_peb_r )
+ READ8_HANDLER ( geneve_peb_r )
 {
 	int reply = 0;
 	read8_handler handler;
@@ -463,7 +463,7 @@ READ_HANDLER ( geneve_peb_r )
 /*
 	Write mem in range >4000->5fff
 */
-WRITE_HANDLER ( geneve_peb_w )
+WRITE8_HANDLER ( geneve_peb_w )
 {
 	write8_handler handler;
 
@@ -480,7 +480,7 @@ WRITE_HANDLER ( geneve_peb_w )
 /*
 	Read CRU in range >1000->2ffe (>0800->17ff)
 */
-READ_HANDLER ( ti99_8_peb_cru_r )
+ READ8_HANDLER ( ti99_8_peb_cru_r )
 {
 	int port;
 	cru_read_handler handler;
@@ -497,7 +497,7 @@ READ_HANDLER ( ti99_8_peb_cru_r )
 /*
 	Write CRU in range >1000->2ffe (>0800->17ff)
 */
-WRITE_HANDLER ( ti99_8_peb_cru_w )
+WRITE8_HANDLER ( ti99_8_peb_cru_w )
 {
 	int port;
 	cru_write_handler handler;
@@ -529,7 +529,7 @@ WRITE_HANDLER ( ti99_8_peb_cru_w )
 /*
 	Read mem in range >4000->5fff
 */
-READ_HANDLER ( ti99_8_peb_r )
+ READ8_HANDLER ( ti99_8_peb_r )
 {
 	int reply = 0;
 	read8_handler handler;
@@ -549,7 +549,7 @@ READ_HANDLER ( ti99_8_peb_r )
 /*
 	Write mem in range >4000->5fff
 */
-WRITE_HANDLER ( ti99_8_peb_w )
+WRITE8_HANDLER ( ti99_8_peb_w )
 {
 	write8_handler handler;
 
@@ -566,7 +566,7 @@ WRITE_HANDLER ( ti99_8_peb_w )
 /*
 	Read CRU in range >0400->1ffe (>200->fff)
 */
-READ_HANDLER ( ti99_4p_peb_cru_r )
+ READ8_HANDLER ( ti99_4p_peb_cru_r )
 {
 	int port;
 	cru_read_handler handler;
@@ -583,7 +583,7 @@ READ_HANDLER ( ti99_4p_peb_cru_r )
 /*
 	Write CRU in range >0400->1ffe (>200->fff)
 */
-WRITE_HANDLER ( ti99_4p_peb_cru_w )
+WRITE8_HANDLER ( ti99_4p_peb_cru_w )
 {
 	int port;
 	cru_write_handler handler;

@@ -430,19 +430,19 @@ static void smpc_execcomm(int commcode)
 	  break;
 	case 0x7 :
 	  printf /*logerror*/ ("smpc - Sound OFF (0x7)\n");
-	  cpu_set_halt_line(2, ASSERT_LINE);
+	  cpunum_set_input_line(2, INPUT_LINE_HALT, ASSERT_LINE);
 	  break;
 	case 0x6 :
 	  printf /*logerror*/("smpc - Sound ON (0x6)\n");
-	  cpu_set_halt_line(2, ASSERT_LINE);
-	  cpu_set_reset_line(2,PULSE_LINE);
-	  cpu_set_halt_line(2, CLEAR_LINE);
+	  cpunum_set_input_line(2, INPUT_LINE_HALT, ASSERT_LINE);
+	  cpunum_set_input_line(2, INPUT_LINE_RESET, PULSE_LINE);
+	  cpunum_set_input_line(2, INPUT_LINE_HALT, CLEAR_LINE);
 	  break;
 	case 0xD :
 	  logerror("smpc - Reset System (0xD)\n");
-	  cpu_set_halt_line(2, ASSERT_LINE);
-	  cpu_set_reset_line(0,PULSE_LINE);
-	  cpu_set_reset_line(1,PULSE_LINE);
+	  cpunum_set_input_line(2, INPUT_LINE_HALT, ASSERT_LINE);
+	  cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+	  cpunum_set_input_line(1, INPUT_LINE_RESET, PULSE_LINE);
 	  break;
 	}
       smpc_state.smpc_regs[OREG(31)] = commcode;
@@ -735,7 +735,7 @@ static void scu_set_imask(void)
         if ((scu_regs[0x28] & (1 <<irq)) == 0)
             logerror(" %s,", int_names[irq]);
         else
-	  cpu_set_irq_line(0, scu_irq_line[irq], CLEAR_LINE);
+	  cpunum_set_input_line(0, scu_irq_line[irq], CLEAR_LINE);
     }
     LOG(("\n"));
 }
@@ -752,8 +752,8 @@ static void scu_pulse_interrupt(int irq)
         if ((scu_regs[0x28] & (1 << irq)) == 0)
         {
             LOG((" - pulsed"));
-            cpu_irq_line_vector_w(0, scu_irq_line[irq], 0x40 + irq + (scu_irq_levels[irq] << 8)); 
-            cpu_set_irq_line(0, scu_irq_line[irq], HOLD_LINE);
+            cpunum_set_input_line_vector(0, scu_irq_line[irq], 0x40 + irq + (scu_irq_levels[irq] << 8)); 
+            cpunum_set_input_line(0, scu_irq_line[irq], HOLD_LINE);
         }
         else
         {
@@ -1750,73 +1750,73 @@ static MACHINE_INIT( saturn )
 
 	for (i = 0; i < 2; i++)
 	{
-		install_mem_read32_handler (i, 0x00000000, 0x0007ffff, MRA32_ROM );
-		install_mem_write32_handler(i, 0x00000000, 0x0007ffff, MWA32_ROM );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x00000000, 0x0007ffff, 0, 0, MRA32_ROM );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x00000000, 0x0007ffff, 0, 0, MWA32_ROM );
 
-		install_mem_read32_handler (i, 0x00100000, 0x0010007f, saturn_smpc_r );
-		install_mem_write32_handler(i, 0x00100000, 0x0010007f, saturn_smpc_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x00100000, 0x0010007f, 0, 0, saturn_smpc_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x00100000, 0x0010007f, 0, 0, saturn_smpc_w );
 
-		install_mem_read32_handler (i, 0x00180000, 0x0019ffff, saturn_back_ram_r );
-		install_mem_write32_handler(i, 0x00180000, 0x0019ffff, saturn_back_ram_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x00180000, 0x0019ffff, 0, 0, saturn_back_ram_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x00180000, 0x0019ffff, 0, 0, saturn_back_ram_w );
 
-		install_mem_read32_handler (i, 0x00200000, 0x002fffff, MRA32_BANK1 /*saturn_workl_ram_r*/ );
-		install_mem_write32_handler(i, 0x00200000, 0x002fffff, MWA32_BANK1 /*saturn_workl_ram_w*/ );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x00200000, 0x002fffff, 0, 0, MRA32_BANK1 /*saturn_workl_ram_r*/ );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x00200000, 0x002fffff, 0, 0, MWA32_BANK1 /*saturn_workl_ram_w*/ );
 
-		install_mem_read32_handler (i, 0x01000000, 0x01000003, saturn_minit_r );
-		install_mem_write32_handler(i, 0x01000000, 0x01000003, saturn_minit_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x01000000, 0x01000003, 0, 0, saturn_minit_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x01000000, 0x01000003, 0, 0, saturn_minit_w );
 
-		install_mem_read32_handler (i, 0x01800000, 0x01800003, saturn_sinit_r );
-		install_mem_write32_handler(i, 0x01800000, 0x01800003, saturn_sinit_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x01800000, 0x01800003, 0, 0, saturn_sinit_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x01800000, 0x01800003, 0, 0, saturn_sinit_w );
 
-		install_mem_read32_handler (i, 0x02000000, 0x03ffffff, saturn_cs0_r );
-		install_mem_write32_handler(i, 0x02000000, 0x03ffffff, saturn_cs0_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x02000000, 0x03ffffff, 0, 0, saturn_cs0_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x02000000, 0x03ffffff, 0, 0, saturn_cs0_w );
 
-		install_mem_read32_handler (i, 0x04000000, 0x04ffffff, saturn_cs1_r );
-		install_mem_write32_handler(i, 0x04000000, 0x04ffffff, saturn_cs1_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x04000000, 0x04ffffff, 0, 0, saturn_cs1_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x04000000, 0x04ffffff, 0, 0, saturn_cs1_w );
 
-		install_mem_read32_handler (i, 0x05000000, 0x057fffff, saturn_cs2_r );
-		install_mem_write32_handler(i, 0x05000000, 0x057fffff, saturn_cs2_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05000000, 0x057fffff, 0, 0, saturn_cs2_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05000000, 0x057fffff, 0, 0, saturn_cs2_w );
 
-		install_mem_read32_handler (i, 0x05890000, 0x0589ffff, saturn_cd_r );
-		install_mem_write32_handler(i, 0x05890000, 0x0589ffff, saturn_cd_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05890000, 0x0589ffff, 0, 0, saturn_cd_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05890000, 0x0589ffff, 0, 0, saturn_cd_w );
 
-		install_mem_read32_handler (i, 0x05a00000, 0x05a7ffff, saturn_sound_ram_r );
-		install_mem_write32_handler(i, 0x05a00000, 0x05a7ffff, saturn_sound_ram_w );
-		install_mem_read32_handler (i, 0x05a80000, 0x05afffff, MRA32_NOP );
-		install_mem_write32_handler(i, 0x05a80000, 0x05afffff, MWA32_NOP );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05a00000, 0x05a7ffff, 0, 0, saturn_sound_ram_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05a00000, 0x05a7ffff, 0, 0, saturn_sound_ram_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05a80000, 0x05afffff, 0, 0, MRA32_NOP );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05a80000, 0x05afffff, 0, 0, MWA32_NOP );
 
-		install_mem_read32_handler (i, 0x05b00000, 0x05b00ee3, saturn_dsp_r );
-		install_mem_write32_handler(i, 0x05b00000, 0x05b00ee3, saturn_dsp_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05b00000, 0x05b00ee3, 0, 0, saturn_dsp_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05b00000, 0x05b00ee3, 0, 0, saturn_dsp_w );
 
-		install_mem_read32_handler (i, 0x05c00000, 0x05c7ffff, saturn_vdp1_ram_r );
-		install_mem_write32_handler(i, 0x05c00000, 0x05c7ffff, saturn_vdp1_ram_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05c00000, 0x05c7ffff, 0, 0, saturn_vdp1_ram_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05c00000, 0x05c7ffff, 0, 0, saturn_vdp1_ram_w );
 
-		install_mem_read32_handler (i, 0x05c80000, 0x05cbffff, saturn_fb1_ram_r );
-		install_mem_write32_handler(i, 0x05c80000, 0x05cbffff, saturn_fb1_ram_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05c80000, 0x05cbffff, 0, 0, saturn_fb1_ram_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05c80000, 0x05cbffff, 0, 0, saturn_fb1_ram_w );
 
-		install_mem_read32_handler (i, 0x05d00000, 0x05d00017, saturn_vdp1_r );
-		install_mem_write32_handler(i, 0x05d00000, 0x05d00017, saturn_vdp1_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05d00000, 0x05d00017, 0, 0, saturn_vdp1_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05d00000, 0x05d00017, 0, 0, saturn_vdp1_w );
 
-		install_mem_read32_handler (i, 0x05e00000, 0x05e7ffff, saturn_vdp2_ram_r );
-		install_mem_write32_handler(i, 0x05e00000, 0x05e7ffff, saturn_vdp2_ram_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05e00000, 0x05e7ffff, 0, 0, saturn_vdp2_ram_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05e00000, 0x05e7ffff, 0, 0, saturn_vdp2_ram_w );
 
-		install_mem_read32_handler (i, 0x05f00000, 0x05f00fff, saturn_color_ram_r );
-		install_mem_write32_handler(i, 0x05f00000, 0x05f00fff, saturn_color_ram_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05f00000, 0x05f00fff, 0, 0, saturn_color_ram_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05f00000, 0x05f00fff, 0, 0, saturn_color_ram_w );
 
-		install_mem_read32_handler (i, 0x05f80000, 0x05f8011f, saturn_vdp2_r );
-		install_mem_write32_handler(i, 0x05f80000, 0x05f8011f, saturn_vdp2_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05f80000, 0x05f8011f, 0, 0, saturn_vdp2_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05f80000, 0x05f8011f, 0, 0, saturn_vdp2_w );
 
-		install_mem_read32_handler (i, 0x05fe0000, 0x05fe00cf, saturn_scu_r );
-		install_mem_write32_handler(i, 0x05fe0000, 0x05fe00cf, saturn_scu_w );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05fe0000, 0x05fe00cf, 0, 0, saturn_scu_r );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x05fe0000, 0x05fe00cf, 0, 0, saturn_scu_w );
 
-		install_mem_read32_handler (i, 0x06000000, 0x060fffff, MRA32_BANK2 );
-		install_mem_write32_handler(i, 0x06000000, 0x060fffff, MWA32_BANK2 );
+		memory_install_read32_handler (i, ADDRESS_SPACE_PROGRAM, 0x06000000, 0x060fffff, 0, 0, MRA32_BANK2 );
+		memory_install_write32_handler (i, ADDRESS_SPACE_PROGRAM, 0x06000000, 0x060fffff, 0, 0, MWA32_BANK2 );
 	}
 
-	install_mem_read16_handler(2, 0x000000, 0x07ffff, MRA16_BANK3);
-	install_mem_write16_handler(2, 0x000000, 0x07ffff, MWA16_BANK3);
-	install_mem_read16_handler(2, 0x100000, 0x100ee3, dsp_68k_r);
-	install_mem_write16_handler(2, 0x100000, 0x100ee3, dsp_68k_w);
+	memory_install_read16_handler(2, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MRA16_BANK3);
+	memory_install_write16_handler(2, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MWA16_BANK3);
+	memory_install_read16_handler(2, ADDRESS_SPACE_PROGRAM, 0x100000, 0x100ee3, 0, 0, dsp_68k_r);
+	memory_install_write16_handler(2, ADDRESS_SPACE_PROGRAM, 0x100000, 0x100ee3, 0, 0, dsp_68k_w);
 
 	cpu_setbank(1, (UINT8 *) workl_ram_base); /* Setup banking (for???) */
 	cpu_setbank(2, (UINT8 *) workh_ram_base);

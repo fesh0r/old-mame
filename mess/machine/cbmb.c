@@ -161,7 +161,7 @@ static void cbmb_irq (int level)
 	if (level != old_level)
 	{
 		DBG_LOG (3, "mos6509", ("irq %s\n", level ? "start" : "end"));
-		cpu_set_irq_line (0, M6502_IRQ_LINE, level);
+		cpunum_set_input_line (0, M6502_IRQ_LINE, level);
 		old_level = level;
 	}
 }
@@ -200,7 +200,7 @@ struct cia6526_interface cbmb_cia =
 	0xff, 0xff, 0
 };
 
-WRITE_HANDLER ( cbmb_colorram_w )
+WRITE8_HANDLER ( cbmb_colorram_w )
 {
 	cbmb_colorram[offset]=data|0xf0;
 }

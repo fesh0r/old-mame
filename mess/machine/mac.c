@@ -59,10 +59,10 @@ static int scan_keyboard(void);
 static void inquiry_timeout_func(int unused);
 static void keyboard_receive(int val);
 static void keyboard_send_reply(void);
-static READ_HANDLER(mac_via_in_a);
-static READ_HANDLER(mac_via_in_b);
-static WRITE_HANDLER(mac_via_out_a);
-static WRITE_HANDLER(mac_via_out_b);
+static  READ8_HANDLER(mac_via_in_a);
+static  READ8_HANDLER(mac_via_in_b);
+static WRITE8_HANDLER(mac_via_out_a);
+static WRITE8_HANDLER(mac_via_out_b);
 static void mac_via_irq(int state);
 
 static struct via6522_interface mac_via6522_intf =
@@ -107,9 +107,9 @@ static void mac_install_memory(offs_t memory_begin, offs_t memory_end,
 	wh = is_rom ? MWA16_ROM : (write16_handler) bank;
 
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, memory_begin,
-		memory_end, memory_mask, rh);
+		memory_end, memory_mask, 0, rh);
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, memory_begin,
-		memory_end, memory_mask, wh);
+		memory_end, memory_mask, 0, wh);
 
 	memory_set_bankptr(bank, memory_data);
 
@@ -131,13 +131,13 @@ static void mac_field_interrupts(void)
 {
 	if (scc_interrupt)
 		/* SCC interrupt */
-		cpu_set_irq_line(0, 2, ASSERT_LINE);
+		cpunum_set_input_line(0, 2, ASSERT_LINE);
 	else if (via_interrupt)
 		/* VIA interrupt */
-		cpu_set_irq_line(0, 1, ASSERT_LINE);
+		cpunum_set_input_line(0, 1, ASSERT_LINE);
 	else
 		/* clear all interrupts */
-		cpu_set_irq_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(0, 7, CLEAR_LINE);
 }
 
 static void set_scc_interrupt(int value)
@@ -1090,7 +1090,7 @@ void mac_scc_mouse_irq( int x, int y)
 			scc_status = 0x02;
 	}
 
-	//cpu_set_irq_line(0, 2, ASSERT_LINE);
+	//cpunum_set_input_line(0, 2, ASSERT_LINE);
 	set_scc_interrupt(1);
 }
 
@@ -1114,7 +1114,7 @@ static void scc_putareg(int data)
 	if (scc_reg == 0)
 	{
 		if (data & 0x10)
-			//cpu_set_irq_line(0, 2, CLEAR_LINE);	/* ack irq */
+			//cpunum_set_input_line(0, 2, CLEAR_LINE);	/* ack irq */
 			set_scc_interrupt(0);
 	}
 }
@@ -1124,7 +1124,7 @@ static void scc_putbreg(int data)
 	if (scc_reg == 0)
 	{
 		if (data & 0x10)
-			//cpu_set_irq_line(0, 2, CLEAR_LINE);	/* ack irq */
+			//cpunum_set_input_line(0, 2, CLEAR_LINE);	/* ack irq */
 			set_scc_interrupt(0);
 	}
 }
@@ -1614,12 +1614,12 @@ DEVICE_UNLOAD(mac_floppy)
  *
  */
 
-static READ_HANDLER(mac_via_in_a)
+static  READ8_HANDLER(mac_via_in_a)
 {
 	return 0x80;
 }
 
-static READ_HANDLER(mac_via_in_b)
+static  READ8_HANDLER(mac_via_in_b)
 {
 	int val = 0;
 
@@ -1639,7 +1639,7 @@ static READ_HANDLER(mac_via_in_b)
 	return val;
 }
 
-static WRITE_HANDLER(mac_via_out_a)
+static WRITE8_HANDLER(mac_via_out_a)
 {
 	set_scc_waitrequest((data & 0x80) >> 7);
 	mac_set_screen_buffer((data & 0x40) >> 6);
@@ -1649,7 +1649,7 @@ static WRITE_HANDLER(mac_via_out_a)
 	mac_set_volume(data & 0x07);
 }
 
-static WRITE_HANDLER(mac_via_out_b)
+static WRITE8_HANDLER(mac_via_out_b)
 {
 	int new_rtc_rTCClk;
 
@@ -1664,7 +1664,7 @@ static WRITE_HANDLER(mac_via_out_b)
 static void mac_via_irq(int state)
 {
 	/* interrupt the 68k (level 1) */
-	//cpu_set_irq_line(0, 1, state);
+	//cpunum_set_input_line(0, 1, state);
 	set_via_interrupt(state);
 }
 

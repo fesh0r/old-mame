@@ -53,7 +53,7 @@
 #define MEM_RAM_6				((unsigned int)0x0fa)
 #define MEM_RAM_7				((unsigned int)0x0fb)
 
-WRITE_HANDLER ( Nick_reg_w );
+WRITE8_HANDLER ( Nick_reg_w );
 
 
 /* The Page index for each 16k page is programmed into
@@ -158,9 +158,9 @@ static void enterprise_dave_reg_read(int RegIndex)
 static void enterprise_dave_interrupt(int state)
 {
 	if (state)
-		cpu_set_irq_line(0,0,HOLD_LINE);
+		cpunum_set_input_line(0,0,HOLD_LINE);
 	else
-		cpu_set_irq_line(0,0,CLEAR_LINE);
+		cpunum_set_input_line(0,0,CLEAR_LINE);
 }
 
 /* enterprise interface to dave - ok, so Dave chip is unique
@@ -229,14 +229,14 @@ void Enterprise_Initialise()
 	Dave_reg_w(0x012,0);
 	Dave_reg_w(0x013,0);
 
-	cpu_irq_line_vector_w(0,0,0x0ff);
+	cpunum_set_input_line_vector(0,0,0x0ff);
 
 	wd179x_init(WD_TYPE_177X, enterp_wd177x_callback);
 
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
 }
 
-static READ_HANDLER ( enterprise_wd177x_read )
+static  READ8_HANDLER ( enterprise_wd177x_read )
 {
 	switch (offset & 0x03)
 	{
@@ -255,7 +255,7 @@ static READ_HANDLER ( enterprise_wd177x_read )
 	return 0x0ff;
 }
 
-static WRITE_HANDLER (	enterprise_wd177x_write )
+static WRITE8_HANDLER (	enterprise_wd177x_write )
 {
 	switch (offset & 0x03)
 	{
@@ -345,7 +345,7 @@ static void enterp_wd177x_callback(int State)
 
 
 
-static WRITE_HANDLER ( exdos_card_w )
+static WRITE8_HANDLER ( exdos_card_w )
 {
 	/* drive side */
 	int head = (data>>4) & 0x01;
@@ -367,7 +367,7 @@ static WRITE_HANDLER ( exdos_card_w )
 */
 
 
-static READ_HANDLER ( exdos_card_r )
+static  READ8_HANDLER ( exdos_card_r )
 {
 	return EXDOS_CARD_R;
 }

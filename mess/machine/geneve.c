@@ -15,6 +15,7 @@
 #include "994x_ser.h"
 #include "99_dsk.h"
 #include "99_ide.h"
+#include "99_usbsm.h"
 
 
 /* prototypes */
@@ -61,6 +62,8 @@ static char has_ide;
 static char has_rs232;
 /* TRUE if genmod extension present */
 /*static char has_genmod;*/
+/* TRUE if usb-sm card present */
+static char has_usb_sm;
 
 
 /* tms9901 setup */
@@ -235,6 +238,7 @@ void machine_init_geneve(void)
 	fdc_kind = (readinputport(input_port_config) >> config_fdc_bit) & config_fdc_mask;
 	has_ide = (readinputport(input_port_config) >> config_ide_bit) & config_ide_mask;
 	has_rs232 = (readinputport(input_port_config) >> config_rs232_bit) & config_rs232_mask;
+	has_usb_sm = (readinputport(input_port_config) >> config_usbsm_bit) & config_usbsm_mask;
 
 	/* set up optional expansion hardware */
 	ti99_peb_init(0, inta_callback, intb_callback);
@@ -251,6 +255,11 @@ void machine_init_geneve(void)
 	case fdc_kind_TI:
 		ti99_fdc_init();
 		break;
+#if HAS_99CCFDC
+	case fdc_kind_CC:
+		ti99_ccfdc_init();
+		break;
+#endif
 	case fdc_kind_BwG:
 		ti99_bwg_init();
 		break;
@@ -262,10 +271,13 @@ void machine_init_geneve(void)
 	}
 
 	if (has_ide)
-		ti99_ide_init();
+		ti99_ide_init(TRUE);
 
 	if (has_rs232)
 		ti99_rs232_init();
+
+	if (has_usb_sm)
+		ti99_usbsm_init(TRUE);
 }
 
 void machine_stop_geneve(void)
@@ -306,7 +318,7 @@ void geneve_hblank_interrupt(void)
 static void inta_callback(int state)
 {
 	tms9901_set_single_int(0, 1, state);
-	cpu_set_irq_line(0, 1, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(0, 1, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*
@@ -330,7 +342,7 @@ static void intb_callback(int state)
 /*
 	TMS5200 speech chip read
 */
-static READ_HANDLER ( geneve_speech_r )
+static  READ8_HANDLER ( geneve_speech_r )
 {
 	activecpu_adjust_icount(-8);		/* this is just a minimum, it can be more */
 
@@ -356,7 +368,7 @@ static void speech_kludge_callback(int dummy)
 /*
 	TMS5200 speech chip write
 */
-static WRITE_HANDLER ( geneve_speech_w )
+static WRITE8_HANDLER ( geneve_speech_w )
 {
 	activecpu_adjust_icount(-32*4);		/* this is just an approx. minimum, it can be much more */
 
@@ -380,7 +392,7 @@ static WRITE_HANDLER ( geneve_speech_w )
 	tms5220_data_w(offset, data);
 }
 
-READ_HANDLER ( geneve_r )
+ READ8_HANDLER ( geneve_r )
 {
 	int page;
 
@@ -614,7 +626,7 @@ READ_HANDLER ( geneve_r )
 	return 0;
 }
 
-WRITE_HANDLER ( geneve_w )
+WRITE8_HANDLER ( geneve_w )
 {
 	int page;
 
@@ -910,7 +922,7 @@ WRITE_HANDLER ( geneve_w )
 #pragma mark CRU HANDLERS
 #endif
 
-WRITE_HANDLER ( geneve_peb_mode_cru_w )
+WRITE8_HANDLER ( geneve_peb_mode_cru_w )
 {
 	if ((offset >= /*0x770*/0x775) && (offset < 0x780))
 	{
@@ -1286,7 +1298,7 @@ static void poll_mouse(void)
 static void tms9901_interrupt_callback(int intreq, int ic)
 {
 	/* INTREQ is connected to INT1 (IC0-3 are not connected) */
-	cpu_set_irq_line(0, 0, intreq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(0, 0, intreq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*

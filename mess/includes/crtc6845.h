@@ -91,13 +91,13 @@ int crtc6845_get_personality(struct crtc6845 *crtc);
 void crtc6845_get_cursor(struct crtc6845 *crtc, struct crtc6845_cursor *cursor);
 
 data8_t crtc6845_port_r(struct crtc6845 *crtc, int offset);
-void crtc6845_port_w(struct crtc6845 *crtc, int offset, data8_t data);
+int crtc6845_port_w(struct crtc6845 *crtc, int offset, data8_t data);
 
 /* to be called when writting to port */
-WRITE_HANDLER ( crtc6845_0_port_w );
+WRITE8_HANDLER ( crtc6845_0_port_w );
 
 /* to be called when reading from port */
-READ_HANDLER ( crtc6845_0_port_r );
+ READ8_HANDLER ( crtc6845_0_port_r );
 	
 /***************************************************************************
 

@@ -178,21 +178,21 @@ static int keylatch, vismac_latch;
 
 /* Read/Write Handlers */
 
-static READ_HANDLER( vismac_r )
+static  READ8_HANDLER( vismac_r )
 {
 	return 0;
 }
 
-static WRITE_HANDLER( vismac_w )
+static WRITE8_HANDLER( vismac_w )
 {
 }
 
-static WRITE_HANDLER( vismac_register_w )
+static WRITE8_HANDLER( vismac_register_w )
 {
 	vismac_latch = data;
 }
 
-static WRITE_HANDLER( vismac_data_w )
+static WRITE8_HANDLER( vismac_data_w )
 {
 	UINT16 word = activecpu_get_reg(activecpu_get_reg(CDP1802_X) + CDP1802_R0) - 1; // TODO: why -1 ??? is it R(X) + R(0) 
 
@@ -211,59 +211,59 @@ static WRITE_HANDLER( vismac_data_w )
 	}
 }
 
-static READ_HANDLER( floppy_r )
+static  READ8_HANDLER( floppy_r )
 {
 	return 0;
 }
 
-static WRITE_HANDLER( floppy_w )
+static WRITE8_HANDLER( floppy_w )
 {
 }
 
-static WRITE_HANDLER( printer_w )
+static WRITE8_HANDLER( printer_w )
 {
 	// TODO: output byte to printer
 }
 
-static READ_HANDLER( ascii_keyboard_r )
+static  READ8_HANDLER( ascii_keyboard_r )
 {
 	return 0;
 }
 
-static READ_HANDLER( io_r )
+static  READ8_HANDLER( io_r )
 {
 	return 0;
 }
 
-static WRITE_HANDLER( io_w )
+static WRITE8_HANDLER( io_w )
 {
 }
 
-static WRITE_HANDLER( io_select_w )
+static WRITE8_HANDLER( io_select_w )
 {
 }
 
-static WRITE_HANDLER( tmc2000_bankswitch_w )
+static WRITE8_HANDLER( tmc2000_bankswitch_w )
 {
 	if (data & 0x01)
 	{
-		// enable Color RAM
-		memory_install_read8_handler(  0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, MRA8_RAM );
-		memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, MWA8_RAM );
+		/* enable Color RAM */
+		memory_install_read8_handler(  0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0, MRA8_RAM );
+		memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0, MWA8_RAM );
 		cpu_setbank(1, &colorram);
 	}
 	else
 	{
-		// enable ROM
-		memory_install_read8_handler(  0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, MRA8_ROM );
-		memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, MWA8_ROM );
+		/* enable ROM */
+		memory_install_read8_handler(  0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0, MRA8_ROM );
+		memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0, MWA8_ROM );
 		cpu_setbank(1, memory_region(REGION_CPU1) + 0x8000);
 	}
 
 	cdp1864_tone_divisor_latch_w(0, data);
 }
 
-static WRITE_HANDLER( keyboard_latch_w )
+static WRITE8_HANDLER( keyboard_latch_w )
 {
 	keylatch = data;
 }
@@ -294,6 +294,20 @@ static ADDRESS_MAP_START( tmc2000_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_READWRITE(cdp1864_audio_enable_r, cdp1864_step_background_color_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(keyboard_latch_w)
 	AM_RANGE(0x04, 0x04) AM_READWRITE(cdp1864_audio_disable_r, tmc2000_bankswitch_w)
+ADDRESS_MAP_END
+
+// Telmac 2000 (TOOL-2000)
+
+static ADDRESS_MAP_START( tmc2000t_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x3fff) AM_RAM									// Work RAM
+	AM_RANGE(0x4000, 0x7fff) AM_RAM									// Expanded RAM
+	AM_RANGE(0x8000, 0x87ff) AM_ROM									// TOOL-2000 ROM
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( tmc2000t_io_map, ADDRESS_SPACE_IO, 8 )
+	AM_RANGE(0x01, 0x01) AM_READWRITE(cdp1864_audio_enable_r, cdp1864_step_background_color_w)
+	AM_RANGE(0x02, 0x02) AM_WRITE(keyboard_latch_w)
+	AM_RANGE(0x04, 0x04) AM_READWRITE(cdp1864_audio_disable_r, cdp1864_tone_divisor_latch_w)
 ADDRESS_MAP_END
 
 // Telmac 2000E
@@ -471,7 +485,7 @@ INPUT_PORTS_START( tmc600 )
 	PORT_KEY1( 0x80, IP_ACTIVE_LOW, "BREAK",	KEYCODE_PGUP, CODE_NONE, UCHAR_MAMEKEY(PAUSE) )
 
 	PORT_START
-	PORT_KEY1( 0x01, IP_ACTIVE_LOW, "SPACE",	KEYCODE_SPACE, CODE_NONE, ' ' )
+	PORT_KEY1( 0x01, IP_ACTIVE_LOW, "(space)",	KEYCODE_SPACE, CODE_NONE, ' ' )
 	PORT_KEY1( 0x02, IP_ACTIVE_LOW, "DEL",		KEYCODE_BACKSPACE, CODE_NONE, UCHAR_MAMEKEY(BACKSPACE) )
 	PORT_KEY1( 0x04, IP_ACTIVE_LOW, "ESC",		KEYCODE_ESC, CODE_NONE, UCHAR_MAMEKEY(ESC) )
 	PORT_KEY1( 0x08, IP_ACTIVE_LOW, "E2",		KEYCODE_RALT, CODE_NONE, UCHAR_MAMEKEY(RALT) )
@@ -646,7 +660,7 @@ static CDP1802_CONFIG tmc2000e_config =
 
 static void tmc600_out_q(int level)
 {
-	logerror("q level: %u\n", level);
+	//logerror("q level: %u\n", level);
 }
 
 static int tmc600_in_ef(void)
@@ -729,6 +743,15 @@ static MACHINE_DRIVER_START( tmc2000 )
 	MDRV_SOUND_ADD(BEEP, cdp1864_sound_intf)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( tmc2000t )
+	MDRV_IMPORT_FROM(tmc2000)
+
+	// basic system hardware
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_PROGRAM_MAP(tmc2000t_map, 0)
+	MDRV_CPU_IO_MAP(tmc2000t_io_map, 0)
+MACHINE_DRIVER_END
+
 static MACHINE_DRIVER_START( tmc2000e )
 	MDRV_IMPORT_FROM(tmc2000)
 
@@ -736,7 +759,6 @@ static MACHINE_DRIVER_START( tmc2000e )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(tmc2000e_map, 0)
 	MDRV_CPU_IO_MAP(tmc2000e_io_map, 0)
-	MDRV_CPU_VBLANK_INT(telmac_frame_int, 1)
 	MDRV_CPU_CONFIG(tmc2000e_config)
 MACHINE_DRIVER_END
 
@@ -771,7 +793,7 @@ MACHINE_DRIVER_END
 
 ROM_START( tmc1800 )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_LOAD( "monitor",	0x0000, 0x0200, NO_DUMP )
+	ROM_LOAD( "monitor",	0x8000, 0x0200, NO_DUMP )
 ROM_END
 
 ROM_START( tmc2000 )
@@ -843,10 +865,10 @@ SYSTEM_CONFIG_END
 
 /* System Drivers */
 
-//     YEAR  NAME 	   PARENT   COMPAT   MACHINE   INPUT   INIT CONFIG    COMPANY 	     FULLNAME
+//     YEAR  NAME 	   PARENT   COMPAT   MACHINE   INPUT   INIT	CONFIG    COMPANY 	     FULLNAME
 COMPX( 1977, tmc1800,  0,       0,	     tmc1800,  tmc1800,  0, tmc1800,  "Telercas Oy", "Telmac 1800", GAME_NOT_WORKING )
 COMPX( 1980, tmc2000,  0,       tmc1800, tmc2000,  tmc1800,  0, tmc2000,  "Telercas Oy", "Telmac 2000", GAME_NOT_WORKING )
-COMPX( 1980, tmc2000t, tmc2000, tmc1800, tmc2000,  tmc1800,  0, tmc2000,  "Telercas Oy", "Telmac 2000 (TOOL-2000)", GAME_NOT_WORKING )
+COMPX( 1980, tmc2000t, tmc2000, tmc1800, tmc2000t, tmc1800,  0, tmc2000,  "Telercas Oy", "Telmac 2000 (TOOL-2000)", GAME_NOT_WORKING )
 COMPX( 1980, tmc2000e, 0,       0,	     tmc2000e, tmc2000e, 0, tmc2000e, "Telercas Oy", "Telmac 2000E", GAME_NOT_WORKING )
 COMPX( 1982, tmc600,   0,       0,	     tmc600,   tmc600,   0, tmc600,   "Telercas Oy", "Telmac TMC-600 (Series I)", GAME_NOT_WORKING )
 COMP ( 1982, tmc600a,  tmc600,  0,	     tmc600,   tmc600,   0, tmc600,   "Telercas Oy", "Telmac TMC-600 (Series II)" )

@@ -646,7 +646,7 @@ static void lynx_multiply(void)
 	}
 }
 
-READ_HANDLER(suzy_read)
+ READ8_HANDLER(suzy_read)
 {
 	UINT8 data=0, input;
 	switch (offset) {
@@ -707,7 +707,7 @@ READ_HANDLER(suzy_read)
 	return data;
 }
 
-WRITE_HANDLER(suzy_write)
+WRITE8_HANDLER(suzy_write)
 {
 	suzy.u.data[offset]=data;
 	switch(offset) {
@@ -820,7 +820,7 @@ static void lynx_timer_signal_irq(LYNX_TIMER *This)
 {
     if ( (This->u.s.cntrl1&0x80) && (This->nr!=4) ) { // irq flag handling later
 	mikey.data[0x81]|=1<<This->nr;
-	cpu_set_irq_line(0, M65SC02_IRQ_LINE, ASSERT_LINE);
+	cpunum_set_input_line(0, M65SC02_IRQ_LINE, ASSERT_LINE);
     }
     switch (This->nr) {
     case 0: lynx_timer_count_down(2); lynx_line++; break;
@@ -960,11 +960,11 @@ static void lynx_uart_timer(int param)
 //    mikey.data[0x80]|=0x10;
     if (uart.serctl&0x80) {
 	mikey.data[0x81]|=0x10;
-	cpu_set_irq_line(0, M65SC02_IRQ_LINE, ASSERT_LINE);
+	cpunum_set_input_line(0, M65SC02_IRQ_LINE, ASSERT_LINE);
     }
 }
 
-static READ_HANDLER(lynx_uart_r)
+static  READ8_HANDLER(lynx_uart_r)
 {
     UINT8 data=0;
     switch (offset) {
@@ -981,7 +981,7 @@ static READ_HANDLER(lynx_uart_r)
     return data;
 }
 
-static WRITE_HANDLER(lynx_uart_w)
+static WRITE8_HANDLER(lynx_uart_w)
 {
     logerror("uart write %.2x %.2x\n",offset,data);
     switch (offset) {
@@ -1001,7 +1001,7 @@ static WRITE_HANDLER(lynx_uart_w)
     }
 }
 
-READ_HANDLER(mikey_read)
+ READ8_HANDLER(mikey_read)
 {
     UINT8 data=0;
     switch (offset) {
@@ -1040,7 +1040,7 @@ READ_HANDLER(mikey_read)
     return data;
 }
 
-WRITE_HANDLER(mikey_write)
+WRITE8_HANDLER(mikey_write)
 {
 	switch (offset) {
 	case 0: case 1: case 2: case 3:
@@ -1066,7 +1066,7 @@ WRITE_HANDLER(mikey_write)
 		mikey.data[0x81]&=~data; // clear interrupt source
 		logerror("mikey write %.2x %.2x\n",offset,data);
 		if (!mikey.data[0x81])
-			cpu_set_irq_line(0, M65SC02_IRQ_LINE, CLEAR_LINE);	    
+			cpunum_set_input_line(0, M65SC02_IRQ_LINE, CLEAR_LINE);	    
 		break;
 
 	case 0x87:
@@ -1121,18 +1121,18 @@ WRITE_HANDLER(mikey_write)
     }
 }
 
-WRITE_HANDLER( lynx_memory_config )
+WRITE8_HANDLER( lynx_memory_config )
 {
     /* bit 7: hispeed, uses page mode accesses (4 instead of 5 cycles )
      * when these are safe in the cpu */
     memory_region(REGION_CPU1)[0xfff9]=data;
 
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, (data & 1) ? MRA8_RAM : suzy_read);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, (data & 1) ? MWA8_RAM : suzy_write);
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, (data & 2) ? MRA8_RAM : mikey_read);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, (data & 2) ? MWA8_RAM : mikey_write);
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfe00, 0xfff7, 0, (data & 4) ? MRA8_RAM : MRA8_BANK3);
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfffa, 0xffff, 0, (data & 8) ? MRA8_RAM : MRA8_BANK4);
+	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, 0, (data & 1) ? MRA8_RAM : suzy_read);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, 0, (data & 1) ? MWA8_RAM : suzy_write);
+	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, 0, (data & 2) ? MRA8_RAM : mikey_read);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, 0, (data & 2) ? MWA8_RAM : mikey_write);
+	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfe00, 0xfff7, 0, 0, (data & 4) ? MRA8_RAM : MRA8_BANK3);
+	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfffa, 0xffff, 0, 0, (data & 8) ? MRA8_RAM : MRA8_BANK4);
 
 	cpu_setbank(3, memory_region(REGION_CPU1) + 0x10000);
 	cpu_setbank(4, memory_region(REGION_CPU1) + 0x101fa);
@@ -1143,7 +1143,7 @@ MACHINE_INIT( lynx )
 	int i;
 	lynx_memory_config(0,0);
 
-	cpu_set_irq_line(0, M65SC02_IRQ_LINE, CLEAR_LINE);	    
+	cpunum_set_input_line(0, M65SC02_IRQ_LINE, CLEAR_LINE);	    
 
 	memset(&suzy, 0, sizeof(suzy));
 	memset(&mikey, 0, sizeof(mikey));

@@ -150,7 +150,7 @@ struct
 static void svision_timer(int param)
 {
     svision.timer1_shot = TRUE;
-    cpu_set_irq_line(0, M65C02_IRQ_LINE, ASSERT_LINE);
+    cpunum_set_input_line(0, M65C02_IRQ_LINE, ASSERT_LINE);
 }
 
 static void svision_update_banks(void)
@@ -160,7 +160,7 @@ static void svision_update_banks(void)
 	cpu_setbank(2, cart_rom + 0xC000);
 }
 
-static READ_HANDLER(svision_r)
+static  READ8_HANDLER(svision_r)
 {
 	int data = svision_reg[offset];
 	switch (offset) {
@@ -185,7 +185,7 @@ static READ_HANDLER(svision_r)
 	return data;
 }
 
-static WRITE_HANDLER(svision_w)
+static WRITE8_HANDLER(svision_w)
 {
 	svision_reg[offset] = data;
 	switch (offset) {
@@ -194,7 +194,7 @@ static WRITE_HANDLER(svision_w)
 		break;
 
 	case 0x23:	/* delta hero irq routine write */
-		cpu_set_irq_line(0, M65C02_IRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(0, M65C02_IRQ_LINE, CLEAR_LINE);
 		svision.timer1_shot=FALSE;
 		timer_reset(svision.timer1, TIME_IN_CYCLES(data*256, 0));
 		break;
@@ -303,7 +303,7 @@ static VIDEO_UPDATE( svision )
 
 static INTERRUPT_GEN( svision_frame_int )
 {
-	cpu_set_nmi_line(0, PULSE_LINE);
+	cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static DRIVER_INIT( svision )

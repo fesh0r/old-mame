@@ -93,7 +93,7 @@ VIDEO_START(vc4000)
     return 0;
 }
 
-READ_HANDLER(vc4000_video_r)
+ READ8_HANDLER(vc4000_video_r)
 {
     UINT8 data=0;
     switch (offset) {
@@ -148,7 +148,7 @@ READ_HANDLER(vc4000_video_r)
     return data;
 }
 
-WRITE_HANDLER(vc4000_video_w)
+WRITE8_HANDLER(vc4000_video_w)
 {
     int nr;
     switch (offset) {
@@ -197,7 +197,7 @@ WRITE_HANDLER(vc4000_video_w)
     }
 }
 
-READ_HANDLER(vc4000_vsync_r)
+ READ8_HANDLER(vc4000_vsync_r)
 {
     return vc4000_video.line>=250?0x80:0;
 }
@@ -483,9 +483,9 @@ INTERRUPT_GEN( vc4000_video_line )
 	vc4000_draw_digit(Machine->scrbitmap, x+16+2, y, vc4000_video.reg.d.bcd[1]&0xf, vc4000_video.line-y);
     }
 	
-    cpu_irq_line_vector_w(0, 0, 3);
-//    cpu_set_irq_line(0, S2650_INT_IRQ, vc4000_video.line==280?1:0);
-    cpu_set_irq_line(0, 0, vc4000_video.line==280?1:0);
+    cpunum_set_input_line_vector(0, 0, 3);
+//    cpunum_set_input_line(0, S2650_INT_IRQ, vc4000_video.line==280?1:0);
+    cpunum_set_input_line(0, 0, vc4000_video.line==280?1:0);
 }
 
 VIDEO_UPDATE( vc4000 )

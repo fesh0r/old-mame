@@ -269,31 +269,30 @@ MACHINE_INIT( cgenie )
 	}
 	else
 	{
-				logerror("cgenie floppy discs disabled\n");
+		logerror("cgenie floppy discs disabled\n");
 	}
 
 	/* copy DOS ROM, if enabled or wipe out that memory area */
 	if( readinputport(0) & 0x40 )
 	{
-
 		if ( readinputport(0) & 0x080 )
 		{
-			install_mem_read_handler(0, 0xc000, 0xdfff, MRA8_ROM);
-			install_mem_write_handler(0, 0xc000, 0xdfff, MWA8_ROM);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MRA8_ROM);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_ROM);
 			logerror("cgenie DOS enabled\n");
 			memcpy(&ROM[0x0c000],&ROM[0x10000], 0x2000);
 		}
 		else
 		{
-			install_mem_read_handler(0, 0xc000, 0xdfff, MRA8_NOP);
-			install_mem_write_handler(0, 0xc000, 0xdfff, MWA8_NOP);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MRA8_NOP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_NOP);
 			logerror("cgenie DOS disabled (no floppy image given)\n");
 		}
 	}
 	else
 	{
-		install_mem_read_handler(0, 0xc000, 0xdfff, MRA8_NOP);
-		install_mem_write_handler(0, 0xc000, 0xdfff, MWA8_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MRA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_NOP);
 		logerror("cgenie DOS disabled\n");
 		memset(&memory_region(REGION_CPU1)[0x0c000], 0x00, 0x2000);
 	}
@@ -301,16 +300,16 @@ MACHINE_INIT( cgenie )
 	/* copy EXT ROM, if enabled or wipe out that memory area */
 	if( readinputport(0) & 0x20 )
 	{
-		install_mem_read_handler(0, 0xe000, 0xefff, MRA8_ROM);
-		install_mem_write_handler(0, 0xe000, 0xefff, MWA8_ROM);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, MRA8_ROM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, MWA8_ROM);
 		logerror("cgenie EXT enabled\n");
 		memcpy(&memory_region(REGION_CPU1)[0x0e000],
 			   &memory_region(REGION_CPU1)[0x12000], 0x1000);
 	}
 	else
 	{
-		install_mem_read_handler(0, 0xe000, 0xefff, MRA8_NOP);
-		install_mem_write_handler(0, 0xe000, 0xefff, MWA8_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, MRA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, MWA8_NOP);
 		logerror("cgenie EXT disabled\n");
 		memset(&memory_region(REGION_CPU1)[0x0e000], 0x00, 0x1000);
 	}
@@ -318,13 +317,13 @@ MACHINE_INIT( cgenie )
 	/* check for 32K RAM */
 	if( readinputport(0) & 0x04 )
 	{
-		install_mem_read_handler(0, 0x8000, 0xbfff, MRA8_RAM);
-		install_mem_write_handler(0, 0x8000, 0xbfff, MWA8_RAM);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MRA8_RAM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MWA8_RAM);
 	}
 	else
 	{
-		install_mem_read_handler(0, 0x8000, 0xbfff, MRA8_NOP);
-		install_mem_write_handler(0, 0x8000, 0xbfff, MWA8_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MRA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MWA8_NOP);
 	}
 
 	cgenie_load_cas = 1;
@@ -749,7 +748,7 @@ static void tape_get_bit(void)
 #define FF_BGD2 0x80		   /* background color select 2 */
 #define FF_BGD	(FF_BGD0 | FF_BGD1 | FF_BGD2)
 
-WRITE_HANDLER( cgenie_port_ff_w )
+WRITE8_HANDLER( cgenie_port_ff_w )
 {
 	int port_ff_changed = port_ff ^ data;
 
@@ -835,7 +834,7 @@ WRITE_HANDLER( cgenie_port_ff_w )
 	port_ff = data;
 }
 
-READ_HANDLER( cgenie_port_ff_r )
+ READ8_HANDLER( cgenie_port_ff_r )
 {
 	/* virtual tape ? */
 
@@ -861,7 +860,7 @@ static UINT8 psg_b_out = 0x00;
 static UINT8 psg_a_inp = 0x00;
 static UINT8 psg_b_inp = 0x00;
 
-READ_HANDLER( cgenie_psg_port_a_r )
+ READ8_HANDLER( cgenie_psg_port_a_r )
 {
 	return psg_a_inp;
 }
@@ -901,17 +900,17 @@ data8_t cgenie_psg_port_b_r(offs_t port)
 	return psg_b_inp;
 }
 
-WRITE_HANDLER( cgenie_psg_port_a_w )
+WRITE8_HANDLER( cgenie_psg_port_a_w )
 {
 	psg_a_out = data;
 }
 
-WRITE_HANDLER( cgenie_psg_port_b_w )
+WRITE8_HANDLER( cgenie_psg_port_b_w )
 {
 	psg_b_out = data;
 }
 
-READ_HANDLER( cgenie_status_r )
+ READ8_HANDLER( cgenie_status_r )
 {
 	/* If the floppy isn't emulated, return 0 */
 	if( (readinputport(0) & 0x80) == 0 )
@@ -919,7 +918,7 @@ READ_HANDLER( cgenie_status_r )
 	return wd179x_status_r(offset);
 }
 
-READ_HANDLER( cgenie_track_r )
+ READ8_HANDLER( cgenie_track_r )
 {
 	/* If the floppy isn't emulated, return 0xff */
 	if( (readinputport(0) & 0x80) == 0 )
@@ -927,7 +926,7 @@ READ_HANDLER( cgenie_track_r )
 	return wd179x_track_r(offset);
 }
 
-READ_HANDLER( cgenie_sector_r )
+ READ8_HANDLER( cgenie_sector_r )
 {
 	/* If the floppy isn't emulated, return 0xff */
 	if( (readinputport(0) & 0x80) == 0 )
@@ -935,7 +934,7 @@ READ_HANDLER( cgenie_sector_r )
 	return wd179x_sector_r(offset);
 }
 
-READ_HANDLER(cgenie_data_r )
+ READ8_HANDLER(cgenie_data_r )
 {
 	/* If the floppy isn't emulated, return 0xff */
 	if( (readinputport(0) & 0x80) == 0 )
@@ -943,7 +942,7 @@ READ_HANDLER(cgenie_data_r )
 	return wd179x_data_r(offset);
 }
 
-WRITE_HANDLER( cgenie_command_w )
+WRITE8_HANDLER( cgenie_command_w )
 {
 	/* If the floppy isn't emulated, return immediately */
 	if( (readinputport(0) & 0x80) == 0 )
@@ -951,7 +950,7 @@ WRITE_HANDLER( cgenie_command_w )
 	wd179x_command_w(offset, data);
 }
 
-WRITE_HANDLER( cgenie_track_w )
+WRITE8_HANDLER( cgenie_track_w )
 {
 	/* If the floppy isn't emulated, ignore the write */
 	if( (readinputport(0) & 0x80) == 0 )
@@ -959,7 +958,7 @@ WRITE_HANDLER( cgenie_track_w )
 	wd179x_track_w(offset, data);
 }
 
-WRITE_HANDLER( cgenie_sector_w )
+WRITE8_HANDLER( cgenie_sector_w )
 {
 	/* If the floppy isn't emulated, ignore the write */
 	if( (readinputport(0) & 0x80) == 0 )
@@ -967,7 +966,7 @@ WRITE_HANDLER( cgenie_sector_w )
 	wd179x_sector_w(offset, data);
 }
 
-WRITE_HANDLER( cgenie_data_w )
+WRITE8_HANDLER( cgenie_data_w )
 {
 	/* If the floppy isn't emulated, ignore the write */
 	if( (readinputport(0) & 0x80) == 0 )
@@ -975,7 +974,7 @@ WRITE_HANDLER( cgenie_data_w )
 	wd179x_data_w(offset, data);
 }
 
-READ_HANDLER( cgenie_irq_status_r )
+ READ8_HANDLER( cgenie_irq_status_r )
 {
 int result = irq_status;
 
@@ -988,7 +987,7 @@ INTERRUPT_GEN( cgenie_timer_interrupt )
 	if( (irq_status & IRQ_TIMER) == 0 )
 	{
 		irq_status |= IRQ_TIMER;
-		cpu_set_irq_line(0, 0, PULSE_LINE);
+		cpunum_set_input_line(0, 0, PULSE_LINE);
 	}
 }
 
@@ -997,7 +996,7 @@ static INTERRUPT_GEN( cgenie_fdc_interrupt )
 	if( (irq_status & IRQ_FDC) == 0 )
 	{
 		irq_status |= IRQ_FDC;
-		cpu_set_irq_line(0, 0, PULSE_LINE);
+		cpunum_set_input_line(0, 0, PULSE_LINE);
 	}
 }
 
@@ -1018,7 +1017,7 @@ void cgenie_fdc_callback(int event)
 	}
 }
 
-WRITE_HANDLER( cgenie_motor_w )
+WRITE8_HANDLER( cgenie_motor_w )
 {
 	UINT8 drive = 255;
 
@@ -1049,7 +1048,7 @@ WRITE_HANDLER( cgenie_motor_w )
 /*************************************
  *		Keyboard					 *
  *************************************/
-READ_HANDLER( cgenie_keyboard_r )
+ READ8_HANDLER( cgenie_keyboard_r )
 {
 	int result = 0;
 
@@ -1082,7 +1081,7 @@ int cgenie_videoram_r( int offset )
 	return videoram[offset];
 }
 
-WRITE_HANDLER( cgenie_videoram_w )
+WRITE8_HANDLER( cgenie_videoram_w )
 {
 	/* write to video RAM */
 	if( data == videoram[offset] )
@@ -1091,12 +1090,12 @@ WRITE_HANDLER( cgenie_videoram_w )
 	dirtybuffer[offset] = 1;
 }
 
-READ_HANDLER( cgenie_colorram_r )
+ READ8_HANDLER( cgenie_colorram_r )
 {
 	return colorram[offset] | 0xf0;
 }
 
-WRITE_HANDLER( cgenie_colorram_w )
+WRITE8_HANDLER( cgenie_colorram_w )
 {
 	int a;
 
@@ -1115,12 +1114,12 @@ WRITE_HANDLER( cgenie_colorram_w )
 		dirtybuffer[a] = 1;
 }
 
-READ_HANDLER( cgenie_fontram_r )
+ READ8_HANDLER( cgenie_fontram_r )
 {
 	return cgenie_fontram[offset];
 }
 
-WRITE_HANDLER( cgenie_fontram_w )
+WRITE8_HANDLER( cgenie_fontram_w )
 {
 	UINT8 *dp;
 	int code;
@@ -1164,11 +1163,4 @@ INTERRUPT_GEN( cgenie_frame_interrupt )
 		cgenie_port_ff_w(0, port_ff ^ FF_BGD0);
 	}
 }
-
-#if 0
-static void cgenie_nmi_generate(int param)
-{
-	cpu_set_nmi_line(0, PULSE_LINE);
-}
-#endif
 

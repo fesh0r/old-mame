@@ -59,7 +59,7 @@ static INTERRUPT_GEN( coupe_line_interrupt )
 		{
 			/* No other interrupts can occur - NOT CORRECT!!! */
             STAT=0x1E;
-			cpu_set_irq_line(0, 0, PULSE_LINE);
+			cpunum_set_input_line(0, 0, PULSE_LINE);
 			interrupted=1;
 		}
 	}
@@ -93,7 +93,7 @@ static INTERRUPT_GEN( coupe_line_interrupt )
 		else
 			STAT=0x17;
 
-		cpu_set_irq_line(0, 0, PULSE_LINE);
+		cpunum_set_input_line(0, 0, PULSE_LINE);
 		interrupted=1;
 	}
 
@@ -152,7 +152,7 @@ static unsigned char getSamKey2(unsigned char hi)
 }
 
 
-static READ_HANDLER( coupe_port_r )
+static  READ8_HANDLER( coupe_port_r )
 {
     if (offset==SSND_ADDR)  /* Sound address request */
 		return SOUND_ADDR;
@@ -201,7 +201,7 @@ static READ_HANDLER( coupe_port_r )
 }
 
 
-static WRITE_HANDLER( coupe_port_w )
+static WRITE8_HANDLER( coupe_port_w )
 {
 	if (offset==SSND_ADDR)						// Set sound address
 	{

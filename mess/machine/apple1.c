@@ -67,8 +67,8 @@ static int apple1_kbd_data;
 DRIVER_INIT( apple1 )
 {
 	/* install RAM handlers */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, mess_ram_size - 1, 0, MRA8_BANK1);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, mess_ram_size - 1, 0, MWA8_BANK1);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, mess_ram_size - 1, 0, 0, MRA8_BANK1);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, mess_ram_size - 1, 0, 0, MWA8_BANK1);
 	cpu_setbank(1, mess_ram);
 
 	pia_config(0, PIA_8BIT | PIA_AUTOSENSE, &apple1_pia0);
@@ -177,15 +177,15 @@ void apple1_interrupt(void)
 /*****************************************************************************
 **	READ/WRITE HANDLERS
 *****************************************************************************/
-READ_HANDLER( apple1_pia0_kbdin )
+ READ8_HANDLER( apple1_pia0_kbdin )
 {
 	return (apple1_kbd_data | 0x80);
 }
-READ_HANDLER( apple1_pia0_dsprdy )
+ READ8_HANDLER( apple1_pia0_dsprdy )
 {
 	return (0x00);		/* Screen always ready */
 }
-READ_HANDLER( apple1_pia0_kbdrdy )
+ READ8_HANDLER( apple1_pia0_kbdrdy )
 {
 	if (apple1_kbd_data)
 	{
@@ -193,7 +193,7 @@ READ_HANDLER( apple1_pia0_kbdrdy )
 	}
 	return (0x00);
 }
-WRITE_HANDLER( apple1_pia0_dspout )
+WRITE8_HANDLER( apple1_pia0_dspout )
 {
 	apple1_vh_dsp_w(data);
 }

@@ -79,21 +79,21 @@ static UINT8 pia0_pb, pia1_pb1, soundmux_status;
 static UINT8 joystick_axis, joystick;
 static int d_dac;
 
-static WRITE_HANDLER ( d_pia1_pb_w );
-static WRITE_HANDLER ( coco3_pia1_pb_w );
-static WRITE_HANDLER ( d_pia1_pa_w );
-static READ_HANDLER (  d_pia1_cb1_r );
-static READ_HANDLER (  d_pia0_pa_r );
-static READ_HANDLER (  d_pia1_pa_r );
-static READ_HANDLER (  d_pia1_pb_r_coco );
-static READ_HANDLER (  d_pia1_pb_r_coco2 );
-static WRITE_HANDLER ( d_pia0_pa_w );
-static WRITE_HANDLER ( d_pia0_pb_w );
-static WRITE_HANDLER ( dragon64_pia1_pb_w );
-static WRITE_HANDLER ( d_pia1_cb2_w);
-static WRITE_HANDLER ( d_pia0_cb2_w);
-static WRITE_HANDLER ( d_pia1_ca2_w);
-static WRITE_HANDLER ( d_pia0_ca2_w);
+static WRITE8_HANDLER ( d_pia1_pb_w );
+static WRITE8_HANDLER ( coco3_pia1_pb_w );
+static WRITE8_HANDLER ( d_pia1_pa_w );
+static  READ8_HANDLER (  d_pia1_cb1_r );
+static  READ8_HANDLER (  d_pia0_pa_r );
+static  READ8_HANDLER (  d_pia1_pa_r );
+static  READ8_HANDLER (  d_pia1_pb_r_coco );
+static  READ8_HANDLER (  d_pia1_pb_r_coco2 );
+static WRITE8_HANDLER ( d_pia0_pa_w );
+static WRITE8_HANDLER ( d_pia0_pb_w );
+static WRITE8_HANDLER ( dragon64_pia1_pb_w );
+static WRITE8_HANDLER ( d_pia1_cb2_w);
+static WRITE8_HANDLER ( d_pia0_cb2_w);
+static WRITE8_HANDLER ( d_pia1_ca2_w);
+static WRITE8_HANDLER ( d_pia0_ca2_w);
 static void d_pia0_irq_a(int state);
 static void d_pia0_irq_b(int state);
 static void d_pia1_firq_a(int state);
@@ -660,17 +660,17 @@ static int is_cpu_suspended(void)
 static void d_recalc_irq(void)
 {
 	if (((pia0_irq_a == ASSERT_LINE) || (pia0_irq_b == ASSERT_LINE)) && is_cpu_suspended())
-		cpu_set_irq_line(0, M6809_IRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(0, M6809_IRQ_LINE, ASSERT_LINE);
 	else
-		cpu_set_irq_line(0, M6809_IRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(0, M6809_IRQ_LINE, CLEAR_LINE);
 }
 
 static void d_recalc_firq(void)
 {
 	if (((pia1_firq_a == ASSERT_LINE) || (pia1_firq_b == ASSERT_LINE)) && is_cpu_suspended())
-		cpu_set_irq_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
-		cpu_set_irq_line(0, M6809_FIRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(0, M6809_FIRQ_LINE, CLEAR_LINE);
 }
 
 static void coco3_recalc_irq(void)
@@ -681,7 +681,7 @@ static void coco3_recalc_irq(void)
 #endif
 
 	if ((coco3_gimereg[0] & 0x20) && gime_irq && is_cpu_suspended())
-		cpu_set_irq_line(0, M6809_IRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(0, M6809_IRQ_LINE, ASSERT_LINE);
 	else
 		d_recalc_irq();
 }
@@ -689,7 +689,7 @@ static void coco3_recalc_irq(void)
 static void coco3_recalc_firq(void)
 {
 	if ((coco3_gimereg[0] & 0x10) && gime_firq && is_cpu_suspended())
-		cpu_set_irq_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
 		d_recalc_firq();
 }
@@ -773,17 +773,17 @@ static void coco3_raise_interrupt(int mask, int state)
 	}
 }
 
-WRITE_HANDLER( coco_m6847_hs_w )
+WRITE8_HANDLER( coco_m6847_hs_w )
 {
 	pia_0_ca1_w(0, data);
 }
 
-WRITE_HANDLER( coco_m6847_fs_w )
+WRITE8_HANDLER( coco_m6847_fs_w )
 {
 	pia_0_cb1_w(0, data);
 }
 
-WRITE_HANDLER( coco3_m6847_hs_w )
+WRITE8_HANDLER( coco3_m6847_hs_w )
 {
 	if (data)
 		coco3_timer_hblank();
@@ -810,7 +810,7 @@ INTERRUPT_GEN( coco3_vh_interrupt )
 
 
 
-WRITE_HANDLER( coco3_m6847_fs_w )
+WRITE8_HANDLER( coco3_m6847_fs_w )
 {
 #if LOG_VBORD
 	logerror("coco3_m6847_fs_w(): data=%i scanline=%i\n", data, cpu_getscanline());
@@ -839,7 +839,7 @@ static void (*recalc_interrupts)(int dummy);
 
 void coco_set_halt_line(int halt_line)
 {
-	cpu_set_halt_line(0, halt_line);
+	cpunum_set_input_line(0, INPUT_LINE_HALT, halt_line);
 	if (halt_line == CLEAR_LINE)
 		timer_set(TIME_IN_CYCLES(1,0), 0, recalc_interrupts);
 }
@@ -1043,13 +1043,13 @@ static void soundmux_sel2_w(int data)
   PIA0 CB2		- SEL2 (Used by sound mux and joystick)
 ***************************************************************************/
 
-static WRITE_HANDLER ( d_pia0_ca2_w )
+static WRITE8_HANDLER ( d_pia0_ca2_w )
 {
 	joystick_axis = data;
 	soundmux_sel1_w(data);
 }
 
-static WRITE_HANDLER ( d_pia0_cb2_w )
+static WRITE8_HANDLER ( d_pia0_cb2_w )
 {
 	joystick = data;
 	soundmux_sel2_w(data);
@@ -1090,7 +1090,7 @@ static int keyboard_r(void)
 	return porta;
 }
 
-static READ_HANDLER ( d_pia0_pa_r )
+static  READ8_HANDLER ( d_pia0_pa_r )
 {
 	return keyboard_r();
 }
@@ -1102,14 +1102,14 @@ static void coco3_poll_keyboard(int dummy)
 	coco3_raise_interrupt(COCO3_INT_EI1, (porta == 0x7f) ? CLEAR_LINE : ASSERT_LINE);
 }
 
-static WRITE_HANDLER ( d_pia0_pa_w )
+static WRITE8_HANDLER ( d_pia0_pa_w )
 {
 	if (joystick_mode() == JOYSTICKMODE_HIRES_CC3MAX) {
 		coco_hiresjoy_w(data & 0x04);
 	}
 }
 
-static WRITE_HANDLER ( d_pia0_pb_w )
+static WRITE8_HANDLER ( d_pia0_pb_w )
 {
 	pia0_pb = data;
 }
@@ -1119,7 +1119,7 @@ static WRITE_HANDLER ( d_pia0_pb_w )
  * cycle, this would be prohibitively slow to emulate.  Thus we are only
  * going to pulse when the PIA is read from; which seems good enough (for now)
  */
-READ_HANDLER( coco_pia_1_r )
+ READ8_HANDLER( coco_pia_1_r )
 {
 	if (cart_line == CARTLINE_Q) {
 		coco_setcartline(CARTLINE_CLEAR);
@@ -1128,7 +1128,7 @@ READ_HANDLER( coco_pia_1_r )
 	return pia_1_r(offset);
 }
 
-READ_HANDLER( coco3_pia_1_r )
+ READ8_HANDLER( coco3_pia_1_r )
 {
 	if (cart_line == CARTLINE_Q) {
 		coco3_setcartline(CARTLINE_CLEAR);
@@ -1157,17 +1157,17 @@ READ_HANDLER( coco3_pia_1_r )
   PIA1 CB2		- SNDEN (Sound Enable)
 ***************************************************************************/
 
-static READ_HANDLER ( d_pia1_cb1_r )
+static  READ8_HANDLER ( d_pia1_cb1_r )
 {
 	return cart_line ? ASSERT_LINE : CLEAR_LINE;
 }
 
-static WRITE_HANDLER ( d_pia1_cb2_w )
+static WRITE8_HANDLER ( d_pia1_cb2_w )
 {
 	soundmux_enable_w(data);
 }
 
-static WRITE_HANDLER ( d_pia1_pa_w )
+static WRITE8_HANDLER ( d_pia1_pa_w )
 {
 	/*
 	 *	This port appears at $FF20
@@ -1195,7 +1195,7 @@ static WRITE_HANDLER ( d_pia1_pa_w )
  * semigraphics modes
  */
 
-static WRITE_HANDLER( d_pia1_pb_w )
+static WRITE8_HANDLER( d_pia1_pb_w )
 {
 	m6847_ag_w(0,		data & 0x80);
 	m6847_gm2_w(0,		data & 0x40);
@@ -1225,19 +1225,19 @@ enum
 
 static void dragon64_sethipage(int type, int val);
 
-static WRITE_HANDLER( dragon64_pia1_pb_w )
+static WRITE8_HANDLER( dragon64_pia1_pb_w )
 {
 	d_pia1_pb_w(0, data);
 	dragon64_sethipage(DRAGON64_PIAMAP, data & 0x04);
 }
 
-static WRITE_HANDLER( coco3_pia1_pb_w )
+static WRITE8_HANDLER( coco3_pia1_pb_w )
 {
 	d_pia1_pb_w(0, data);
 	m6847_set_cannonical_row_height();
 }
 
-static WRITE_HANDLER ( d_pia1_ca2_w )
+static WRITE8_HANDLER ( d_pia1_ca2_w )
 {
 	cassette_change_state(
 		cassette_device_image(),
@@ -1245,12 +1245,12 @@ static WRITE_HANDLER ( d_pia1_ca2_w )
 		CASSETTE_MASK_MOTOR);
 }
 
-static READ_HANDLER ( d_pia1_pa_r )
+static  READ8_HANDLER ( d_pia1_pa_r )
 {
 	return (cassette_input(cassette_device_image()) >= 0) ? 1 : 0;
 }
 
-static READ_HANDLER ( d_pia1_pb_r_coco )
+static  READ8_HANDLER ( d_pia1_pb_r_coco )
 {
 	/* This handles the reading of the memory sense switch (pb2) for the Dragon and CoCo 1,
 	 * and serial-in (pb0). Serial-in not yet implemented.
@@ -1266,7 +1266,7 @@ static READ_HANDLER ( d_pia1_pb_r_coco )
 	return result;
 }
 
-static READ_HANDLER ( d_pia1_pb_r_coco2 )
+static  READ8_HANDLER ( d_pia1_pb_r_coco2 )
 {
 	/* This handles the reading of the memory sense switch (pb2) for the CoCo 2 and 3,
 	 * and serial-in (pb0). Serial-in not yet implemented.
@@ -1286,12 +1286,12 @@ static READ_HANDLER ( d_pia1_pb_r_coco2 )
   Misc
 ***************************************************************************/
 
-READ_HANDLER(dragon_mapped_irq_r)
+ READ8_HANDLER(dragon_mapped_irq_r)
 {
 	return coco_rom[0x3ff0 + offset];
 }
 
-READ_HANDLER(coco3_mapped_irq_r)
+ READ8_HANDLER(coco3_mapped_irq_r)
 {
 	/* NPW 28-Aug-2000 - I discovered this when we moved over to the new ROMset
 	 * and Tim confirmed this
@@ -1564,12 +1564,12 @@ static void coco3_timer_set_interval(int interval)
   MMU
 ***************************************************************************/
 
-static WRITE_HANDLER ( coco_ram8000_w )
+static WRITE8_HANDLER ( coco_ram8000_w )
 {
 	coco_ram_w(offset + 0x8000, data);
 }
 
-static WRITE_HANDLER ( coco_ramc000_w )
+static WRITE8_HANDLER ( coco_ramc000_w )
 {
 	coco_ram_w(offset + 0xc000, data);
 }
@@ -1591,7 +1591,7 @@ static void d_sam_set_maptype(int val)
 	}
 
 	cpu_setbank(2, readbank);
-	install_mem_write_handler(0, 0x8000, 0xfeff, writebank);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xfeff, 0, 0, writebank);
 }
 
 static void dragon64_sethipage(int type, int val)
@@ -1643,8 +1643,8 @@ static void dragon64_sethipage(int type, int val)
 
 	cpu_setbank(2, readbank2);
 	cpu_setbank(3, readbank3);
-	install_mem_write_handler(0, 0x8000, 0xbfff, writebank2);
-	install_mem_write_handler(0, 0xc000, 0xfeff, writebank3);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, writebank2);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xfeff, 0, 0, writebank3);
 
 #if LOG_D64MEM
 	logerror("dragon64_sethipage(): hipage=%i\n", hipage);
@@ -1794,7 +1794,7 @@ static void coco3_mmu_update(int lowblock, int hiblock)
 			writebank = bank_info[i].handler;
 		}
 		cpu_setbank(i + 1, readbank);
-		install_mem_write_handler(0, bank_info[i].start, bank_info[i].end, writebank);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, bank_info[i].start, bank_info[i].end, 0, 0, writebank);
 
 #if LOG_MMU
 		logerror("CoCo3 GIME MMU: Logical $%04x ==> Physical $%05x\n",
@@ -1804,7 +1804,7 @@ static void coco3_mmu_update(int lowblock, int hiblock)
 	}
 }
 
-READ_HANDLER(coco3_mmu_r)
+ READ8_HANDLER(coco3_mmu_r)
 {
 	/* The high two bits are floating (high resistance).  Therefore their
 	 * value is undefined.  But we are exposing them anyways here
@@ -1812,7 +1812,7 @@ READ_HANDLER(coco3_mmu_r)
 	return coco3_mmu[offset];
 }
 
-WRITE_HANDLER(coco3_mmu_w)
+WRITE8_HANDLER(coco3_mmu_w)
 {
 	coco3_mmu[offset] = data | (((coco3_gimevhreg[3] >> 4) & 0x03) << 8);
 
@@ -1828,7 +1828,7 @@ WRITE_HANDLER(coco3_mmu_w)
   GIME Registers (Reference: Super Extended Basic Unravelled)
 ***************************************************************************/
 
-READ_HANDLER(coco3_gime_r)
+ READ8_HANDLER(coco3_gime_r)
 {
 	int result = 0;
 
@@ -1864,7 +1864,7 @@ READ_HANDLER(coco3_gime_r)
 	return result;
 }
 
-WRITE_HANDLER(coco3_gime_w)
+WRITE8_HANDLER(coco3_gime_w)
 {
 	coco3_gimereg[offset] = data;
 
@@ -2039,24 +2039,24 @@ static void coco_cartrige_init(const struct cartridge_slot *cartinterface, const
 		cartinterface->init(callbacks);
 }
 
-READ_HANDLER(coco_cartridge_r)
+ READ8_HANDLER(coco_cartridge_r)
 {
 	return (coco_cart_interface && coco_cart_interface->io_r) ? coco_cart_interface->io_r(offset) : 0;
 }
 
-WRITE_HANDLER(coco_cartridge_w)
+WRITE8_HANDLER(coco_cartridge_w)
 {
 	if (coco_cart_interface && coco_cart_interface->io_w)
 		coco_cart_interface->io_w(offset, data);
 }
 
-READ_HANDLER(coco3_cartridge_r)
+ READ8_HANDLER(coco3_cartridge_r)
 {
 	/* This behavior is documented in Super Extended Basic Unravelled, page 14 */
 	return ((coco3_gimereg[0] & 0x04) || (offset >= 0x10)) ? coco_cartridge_r(offset) : 0;
 }
 
-WRITE_HANDLER(coco3_cartridge_w)
+WRITE8_HANDLER(coco3_cartridge_w)
 {
 	/* This behavior is documented in Super Extended Basic Unravelled, page 14 */
 	if ((coco3_gimereg[0] & 0x04) || (offset >= 0x10))
@@ -2211,14 +2211,14 @@ static void generic_init_machine(struct pia6821_interface *piaintf, struct sam68
 MACHINE_INIT( dragon32 )
 {
 	cpu_setbank(1, &mess_ram[0]);
-	install_mem_write_handler(0, 0x0000, 0x7fff, coco_ram_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, coco_ram_w);
 	generic_init_machine(coco_pia_intf, &coco_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks, d_recalc_interrupts);
 }
 
 MACHINE_INIT( dragon64 )
 {
 	cpu_setbank(1, &mess_ram[0]);
-	install_mem_write_handler(0, 0x0000, 0x7fff, coco_ram_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, coco_ram_w);
 	generic_init_machine(dragon64_pia_intf, &dragon64_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks, d_recalc_interrupts);
 	acia_6551_init();
 	dragon64_sethipage(DRAGON64_ALL, 0);
@@ -2227,14 +2227,14 @@ MACHINE_INIT( dragon64 )
 MACHINE_INIT( coco )
 {
 	cpu_setbank(1, &mess_ram[0]);
-	install_mem_write_handler(0, 0x0000, 0x7fff, coco_ram_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, coco_ram_w);
 	generic_init_machine(coco_pia_intf, &coco_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks, d_recalc_interrupts);
 }
 
 MACHINE_INIT( coco2 )
 {
 	cpu_setbank(1, &mess_ram[0]);
-	install_mem_write_handler(0, 0x0000, 0x7fff, coco_ram_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, coco_ram_w);
 	generic_init_machine(coco2_pia_intf, &coco_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks, d_recalc_interrupts);
 }
 

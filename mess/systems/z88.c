@@ -43,13 +43,13 @@ static void z88_interrupt_refresh(void)
 			)
 		{
 			logerror("set int\n");
-			cpu_set_irq_line(0,0,HOLD_LINE);
+			cpunum_set_input_line(0,0,HOLD_LINE);
 			return;
 		}
 	}
 	
 	logerror("clear int\n");
-	cpu_set_irq_line(0,0,CLEAR_LINE);
+	cpunum_set_input_line(0,0,CLEAR_LINE);
 }
 
 static void z88_update_rtc_interrupt(void)
@@ -181,8 +181,8 @@ static void z88_install_memory_handler_pair(offs_t start, offs_t size, int bank_
 	read_handler  = read_addr  ? (read8_handler)  (STATIC_BANK1 + (bank_base - 1 + 0)) : MRA8_ROM;
 	write_handler = write_addr ? (write8_handler) (STATIC_BANK1 + (bank_base - 1 + 1)) : MWA8_ROM;
 
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, read_handler);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, write_handler);
+	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, 0, read_handler);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, 0, write_handler);
 
 	if (read_addr)
 		cpu_setbank(bank_base + 0, read_addr);
@@ -357,7 +357,7 @@ static void blink_pb_w(int offset, int data, int reg_index)
 
 
 /* segment register write */
-static WRITE_HANDLER(blink_srx_w)
+static WRITE8_HANDLER(blink_srx_w)
 {
 	blink.mem[offset] = data;
 
@@ -375,7 +375,7 @@ blink w: 03b1 03
 blink w: 03b6 03
 */
 
-static WRITE_HANDLER(z88_port_w)
+static WRITE8_HANDLER(z88_port_w)
 {
 	unsigned char port;
 
@@ -503,7 +503,7 @@ static WRITE_HANDLER(z88_port_w)
 
 }
 
-static READ_HANDLER(z88_port_r)
+static  READ8_HANDLER(z88_port_r)
 {
 	unsigned char port;
 
