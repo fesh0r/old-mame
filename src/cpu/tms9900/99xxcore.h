@@ -1641,7 +1641,7 @@ static void tms99xx_set_irq_line(int irqline, int state)
 #elif (TMS99XX_MODEL == TMS9900_ID)
 
 /*
-void tms99xx_set_irq_line(IRQ_LINE_NMI, int state) : change the state of the LOAD* line
+void tms9900_set_irq_line(INPUT_LINE_NMI, int state) : change the state of the LOAD* line
 
 	state == 0 -> LOAD* goes high (inactive)
 	state != 0 -> LOAD* goes low (active)
@@ -1664,9 +1664,9 @@ void tms99xx_set_irq_line(int irqline, int state) : sets the state of the interr
 */
 /*
 	R Nabet 991020, revised 991218 :
-	In short : interrupt code should call "cpu_set_irq_line(0, 0, ASSERT_LINE);" to set an
+	In short : interrupt code should call "cpunum_set_input_line(0, 0, ASSERT_LINE);" to set an
 	interrupt request (level-triggered interrupts).  Also, there MUST be a call to
-	"cpu_set_irq_line(0, 0, CLEAR_LINE);" in the machine code, when the interrupt line is released by
+	"cpunum_set_input_line(0, 0, CLEAR_LINE);" in the machine code, when the interrupt line is released by
 	the hardware (generally in response to an action performed by the interrupt routines).
 	On tms9995 (9989 ?), you can use PULSE_LINE, too, since the processor latches the line...
 
@@ -1678,7 +1678,7 @@ void tms99xx_set_irq_line(int irqline, int state) : sets the state of the interr
 
 	Note that cpu_generate_interrupt uses HOLD_LINE, so your driver interrupt code
 	should always use the new style, i.e. return "ignore_interrupt()" and call
-	"cpu_set_irq_line(0, 0, ASSERT_LINE);" explicitely.
+	"cpunum_set_input_line(0, 0, ASSERT_LINE);" explicitely.
 
 	Last, many TMS9900-based hardware use a TMS9901 interrupt-handling chip.  If anybody wants
 	to emulate some hardware which uses it, note that I am writing some emulation in the TI99/4(A)
@@ -1691,7 +1691,7 @@ void tms99xx_set_irq_line(int irqline, int state) : sets the state of the interr
  * R Nabet 990830 : My mistake, I rewrote all these once again ; I think it is now correct.
  * A driver using the TMS9900 should do :
  *		cpu_0_irq_line_vector_w(0, level);
- *		cpu_set_irq_line(0,0,ASSERT_LINE);
+ *		cpunum_set_input_line(0,0,ASSERT_LINE);
  *
  * R Nabet 991108 : revised once again, with advice from Juergen Buchmueller, after a discussion
  * with Nicola...
@@ -1711,7 +1711,7 @@ void tms99xx_set_irq_line(int irqline, int state) : sets the state of the interr
 */
 static void tms99xx_set_irq_line(int irqline, int state)
 {
-	if (irqline == IRQ_LINE_NMI)
+	if (irqline == INPUT_LINE_NMI)
 	{
 		I.load_state = state;   /* save new state */
 
@@ -1738,6 +1738,16 @@ static void tms99xx_set_irq_line(int irqline, int state)
 
 		field_interrupt();  /* interrupt state is likely to have changed */
 	}
+}
+
+static int get_irq_line(int irqline)
+{
+	switch (irqline)
+	{
+		case INPUT_LINE_NMI:return I.load_state;
+		case 0:				return I.irq_state;
+	}
+	return CLEAR_LINE;
 }
 
 #elif (TMS99XX_MODEL == TMS9980_ID)
@@ -1873,7 +1883,7 @@ static void reset_decrementer(void)
 */
 static void tms99xx_set_irq_line(int irqline, int state)
 {
-	if (irqline == IRQ_LINE_NMI)
+	if (irqline == INPUT_LINE_NMI)
 	{
 		I.load_state = state;   /* save new state */
 
@@ -1915,6 +1925,17 @@ static void tms99xx_set_irq_line(int irqline, int state)
 			field_interrupt();  /* interrupt status changed */
 		}
 	}
+}
+
+static int get_irq_line(int irqline)
+{
+	switch (irqline)
+	{
+		case INPUT_LINE_NMI:return I.load_state;
+		case 0:				return (I.int_state & 0x2) ? ASSERT_LINE : CLEAR_LINE;
+		case 1:				return (I.int_state & 0x10) ? ASSERT_LINE : CLEAR_LINE;
+	}
+	return CLEAR_LINE;
 }
 
 #else
@@ -4640,15 +4661,10 @@ static void tms99xx_set_info(UINT32 state, union cpuinfo *info)
 	switch (state)
 	{
 		/* --- the following bits of info are set as 64-bit signed integers --- */
-		case CPUINFO_INT_IRQ_STATE + IRQ_LINE_NMI:		tms99xx_set_irq_line(IRQ_LINE_NMI, info->i); break;
-		case CPUINFO_INT_IRQ_STATE + 0:					tms99xx_set_irq_line(0, info->i);		break;
-		case CPUINFO_INT_IRQ_STATE + 1:					tms99xx_set_irq_line(1, info->i);		break;
-		case CPUINFO_INT_IRQ_STATE + 2:					tms99xx_set_irq_line(2, info->i);		break;
-
-#if (TMS99XX_MODEL == TI990_10_ID)
-		case CPUINFO_INT_PC:
-			{
-				const unsigned top = (I.cur_map == 0) ? 0xf800 : 0x10000;
+		case CPUINFO_INT_INPUT_STATE + INPUT_LINE_NMI:	set_irq_line(INPUT_LINE_NMI, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + 0:				set_irq_line(0, info->i);				break;
+		case CPUINFO_INT_INPUT_STATE + 1:				set_irq_line(1, info->i);				break;
+		case CPUINFO_INT_INPUT_STATE + 2:				set_irq_line(2, info->i);				break;
 
 				if ((I.cur_map == 0) && (info->i >= 0x1ff800))
 					/* intercept TPCS and CPU ROM */
@@ -4726,7 +4742,7 @@ void TMS99XX_GET_INFO(UINT32 state, union cpuinfo *info)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case CPUINFO_INT_CONTEXT_SIZE:					info->i = sizeof(I);					break;
-		case CPUINFO_INT_IRQ_LINES:						info->i = 3;							break;
+		case CPUINFO_INT_INPUT_LINES:					info->i = 3;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
@@ -4783,11 +4799,10 @@ void TMS99XX_GET_INFO(UINT32 state, union cpuinfo *info)
 			break;
 		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_IO: 		info->i = 0;					break;
 
-/* not implemented */
-/*		case CPUINFO_INT_IRQ_STATE + IRQ_LINE_NMI:		info->i = get_irq_line(IRQ_LINE_NMI);	break;
-		case CPUINFO_INT_IRQ_STATE + 0:					info->i = get_irq_line(0);				break;
-		case CPUINFO_INT_IRQ_STATE + 1:					info->i = get_irq_line(1);				break;
-		case CPUINFO_INT_IRQ_STATE + 2:					info->i = get_irq_line(2);				break;*/
+		case CPUINFO_INT_INPUT_STATE + INPUT_LINE_NMI:	info->i = get_irq_line(INPUT_LINE_NMI);	break;
+		case CPUINFO_INT_INPUT_STATE + 0:				info->i = get_irq_line(0);				break;
+		case CPUINFO_INT_INPUT_STATE + 1:				info->i = get_irq_line(1);				break;
+		case CPUINFO_INT_INPUT_STATE + 2:				info->i = get_irq_line(2);				break;
 
 		case CPUINFO_INT_PREVIOUSPC:					/* not implemented */					break;
 

@@ -594,133 +594,19 @@ static void set_mode(int which, int data, int call_handlers)
 
 
 /* Helpers */
-READ_HANDLER( ppi8255_0_r ) { return ppi8255_r( 0, offset ); }
-READ_HANDLER( ppi8255_1_r ) { return ppi8255_r( 1, offset ); }
-READ_HANDLER( ppi8255_2_r ) { return ppi8255_r( 2, offset ); }
-READ_HANDLER( ppi8255_3_r ) { return ppi8255_r( 3, offset ); }
-READ_HANDLER( ppi8255_4_r ) { return ppi8255_r( 4, offset ); }
-READ_HANDLER( ppi8255_5_r ) { return ppi8255_r( 5, offset ); }
-READ_HANDLER( ppi8255_6_r ) { return ppi8255_r( 6, offset ); }
-READ_HANDLER( ppi8255_7_r ) { return ppi8255_r( 7, offset ); }
-WRITE_HANDLER( ppi8255_0_w ) { ppi8255_w( 0, offset, data ); }
-WRITE_HANDLER( ppi8255_1_w ) { ppi8255_w( 1, offset, data ); }
-WRITE_HANDLER( ppi8255_2_w ) { ppi8255_w( 2, offset, data ); }
-WRITE_HANDLER( ppi8255_3_w ) { ppi8255_w( 3, offset, data ); }
-WRITE_HANDLER( ppi8255_4_w ) { ppi8255_w( 4, offset, data ); }
-WRITE_HANDLER( ppi8255_5_w ) { ppi8255_w( 5, offset, data ); }
-WRITE_HANDLER( ppi8255_6_w ) { ppi8255_w( 6, offset, data ); }
-WRITE_HANDLER( ppi8255_7_w ) { ppi8255_w( 7, offset, data ); }
-
-
-/*************************/
-
-void ppi8255_set_input_acka(int which, int data)
-{
-	ppi8255 *chip = &chips[which];
-
-	if (chip->groupA_mode==2)
-	{
-		logerror("8255 ppi input acka: %d\n",data);
-
-		if (data)
-			chip->latch[2] |= (1<<6);
-		else
-			chip->latch[2] &= ~(1<<6);
-
-		/* low on pin latches out data to port A */
-		if (data==0)
-		{
-			/* output buffer is now empty */
-			ppi8255_obfa_w(which, 1);
-
-
-	//		/* set output latch to high impedance */
-	//		chip->latch[0] = 0x0ff;
-		}
-
-		ppi8255_set_intra(which);
-
-	}
-}
-
-/* a low on the strobe input (/stb)  loads data into the input latch */
-void ppi8255_set_input_stba(int which, int data)
-{
-	ppi8255 *chip = &chips[which];
-
-	if (chip->groupA_mode==2)
-	{
-		logerror("8255 ppi input stba: %d\n",data);
-
-		if (data)
-			chip->latch[2] |= (1<<4);
-		else
-			chip->latch[2] &= ~(1<<4);
-
-		if (data==0)
-		{
-			/* latch data from port A */
-			if (chip->portAread)  chip->latch[0] = chip->portAread(0);
-
-			logerror("8255 chip %d: Received /STBA, just latched data into port A %02x\n",which, chip->latch[0]);
-
-			/* input buffer is full */
-			ppi8255_ibfa_w(which, 1);
-
-			/* "high" indicates data has been loaded into the input latch */
-
-		}
-		
-		ppi8255_set_intra(which);
-	}
-}
-
-/* high indicates interrupt */
-static void	ppi8255_set_intra(int which)
-{
-	ppi8255 *chip = &chips[which];
-
-	int state;
-
-	state = 0;
-
-	if (
-		/* /stb = 1, ibf = 1, inte = 1 */
-		/* ack = 1, /obf = 1, inte = 1 */
-		(
-			((chip->latch[2] & ((1<<5)|(1<<4)))==((1<<5)|(1<<4))) &&
-			((chip->inte_flags & (1<<4))==(1<<4))
-		) ||
-		(
-			((chip->latch[2] & ((1<<7)|(1<<6)))==((1<<7)|(1<<6))) &&
-			((chip->inte_flags & (1<<6))==(1<<6))
-		)
-		)	
-	{
-		state = 1;
-	}
-
-	if (state)
-		chip->latch[2]|=(1<<3);
-	else
-		chip->latch[2]&=~(1<<3);
-
-	if (chip->intra_write)
-	{
-		logerror("8255 ppi output intra: %d\n",state);
-		chip->intra_write(0,state);
-	}
-}
-
-
-void ppi8255_set_mode2_interface( ppi8255_mode2_interface *intfce)
-{
-	int i;
-
-	for (i = 0; i < num; i++)
-	{
-		chips[i].obfa_write = intfce->obfa_write[i];
-		chips[i].intra_write = intfce->intra_write[i];
-		chips[i].ibfa_write = intfce->ibfa_write[i];
-	}
-}
+READ8_HANDLER( ppi8255_0_r ) { return ppi8255_r( 0, offset ); }
+READ8_HANDLER( ppi8255_1_r ) { return ppi8255_r( 1, offset ); }
+READ8_HANDLER( ppi8255_2_r ) { return ppi8255_r( 2, offset ); }
+READ8_HANDLER( ppi8255_3_r ) { return ppi8255_r( 3, offset ); }
+READ8_HANDLER( ppi8255_4_r ) { return ppi8255_r( 4, offset ); }
+READ8_HANDLER( ppi8255_5_r ) { return ppi8255_r( 5, offset ); }
+READ8_HANDLER( ppi8255_6_r ) { return ppi8255_r( 6, offset ); }
+READ8_HANDLER( ppi8255_7_r ) { return ppi8255_r( 7, offset ); }
+WRITE8_HANDLER( ppi8255_0_w ) { ppi8255_w( 0, offset, data ); }
+WRITE8_HANDLER( ppi8255_1_w ) { ppi8255_w( 1, offset, data ); }
+WRITE8_HANDLER( ppi8255_2_w ) { ppi8255_w( 2, offset, data ); }
+WRITE8_HANDLER( ppi8255_3_w ) { ppi8255_w( 3, offset, data ); }
+WRITE8_HANDLER( ppi8255_4_w ) { ppi8255_w( 4, offset, data ); }
+WRITE8_HANDLER( ppi8255_5_w ) { ppi8255_w( 5, offset, data ); }
+WRITE8_HANDLER( ppi8255_6_w ) { ppi8255_w( 6, offset, data ); }
+WRITE8_HANDLER( ppi8255_7_w ) { ppi8255_w( 7, offset, data ); }
