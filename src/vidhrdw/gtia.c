@@ -650,8 +650,8 @@ WRITE8_HANDLER ( atari_gtia_w )
 		if (data == gtia.w.cons)
 			break;
 		gtia.w.cons  = data;
-		if (sndti_token(SOUND_DAC, 0))
-		{
+ 		if (sndti_token(SOUND_DAC, 0))
+ 		{
 			if (gtia.w.cons & 0x08)
 				DAC_data_w(0, -120);
 			else
