@@ -1,0 +1,157 @@
+<html>
+<head>
+<title>Info for c16</title>
+</head>
+<body>
+<table width=100%>
+<tr>
+<td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
+<td><h1>Info for c16</h1></td>
+</tr>
+</table>
+<hr>
+<h4>Commodore C16, Plus 4, and C364</h4>
+<p><b>Cassette Usage:</b><br>
+Cassette images can have the .wav or .prg extensions, and multiple .prg files <br>
+can be contained within a zip file. Zip files must be placed in the current directory, and <br>
+the contained prg files are played in sequential order.<br>
+The format for WAVs are: <br>
+8 bit (16 bit may work, but this hasn't been tested), mono, 12500 Hz minimum. This has the <br>
+same problems as an original Datasette tape drive (the tone head must be adjusted to get <br>
+working (no load error...) wav-files)<br>
+Note that tape volume is DAC1 volume within the MESS UI On Screen Display Options (accessed<br>
+with the tilde (~) key in the DOS version.<br>
+Within the emulation, use LOAD or LOAD"" or LOAD"",1 for loading normal programs. Use <br>
+LOAD"",1,1 for loading programs to a special address.<br>
+<p><b>Diskette Usage:</b><br>
+Disk drives are simulated at the moment, and only file loads from drive 8 and 9 <br>
+are implemented. You can load a program file from the rom directory (*.prg,*.p00)<br>
+(This must NOT be specified on commandline, start the c16 emulation with no images specified)<br>
+The directory command LOAD"$",8 is supported when using d64 images.<br>
+<br>
+Within the emulation, basic programs can be loaded with: <br>
+DLOAD"filename" or LOAD"filename",8 <br>
+<br>
+Machine language programs can be loaded to their address with: <br>
+DLOAD"filename" or LOAD"filename",8,1<br>
+When a program is loaded, type RUN or the appropriate SYS call to start it. <br>
+Note that several programs rely on more features not currently emulated (such as <br>
+loading other file types, writing...) Some games also rely on starting programs in the <br>
+floppy drive's proccessor (and therefore cpu level emulation of the 1541 is needed).<br>
+<p><b>Cartridge Usage:</b><br>
+Cartridges may have any of the following extensions: .bin .rom .lo .hi .prg<br>
+Files with boot-sign in it are recognised as roms. Some cartridges require more than one <br>
+image to load (e.g., tutor.lo tutor.hi).<br>
+ <br>
+.prg files loaded at address in its first two bytes<br>
+ <br>
+.bin, .rom, .lo , .hi roms are loaded to cs1 low, cs1 high, cs2 low, cs2 high addresses <br>
+accordingly to their order in the command line.<br>
+ <br>
+Note that .prg and .p00 files are assigned to the quickloader (so you have to use <br>
+the -cart switch when loading rom images).<br>
+<p><b>Quickloader Usage:</b><br>
+A quickloader is available via the f8 key. It supports program image files <br>
+with the .prg extension. This loads the program into memory and sets the program end <br>
+pointer. It works with most programs. The program can be started by entering "RUN" in <br>
+the emulation.<br>
+<p><b>Miscellaneous Usage Notes:</b><br>
+See "Keys (This Machine)" for key assignments.<br>
+Shift-cbm switches between upper-only and normal character set (if wrong characters are on <br>
+screen this may help).<br>
+Run (shift-stop) loads the first program from device 8 (dload"*) and starts it.<br>
+If you run into difficulty, be sure to start the emulation with the -log switch, and look into<br>
+the error.log file that is created in your mess directory.<br>
+<p><b>Known Issues:</b><br>
+Memory check by c16 kernel will not recognize more memory without restarting MESS.<br>
+CPU clock switching/changing.<br>
+Imperfect colors; should be enough for 95% of the games and programs.<br>
+Imperfect scrolling support (when 40 columns or 25 lines)<br>
+Lightpen support missing.<br>
+Some PC-Keyboards do not behave well when special two or more keys are pressed at the same <br>
+time (with my keyboard printscreen clears the pressed pause key!)<br>
+Expansion modules other than the 1551 floppy drive are not supported.<br>
+The rs232/v.24 interface is not supported, nor are printers and other parallel devices.<br>
+The Plus 4's userport is not supported.<br>
+Note if a game runs too fast with the ntsc version, try the pal version!<br>
+<p><b>The following features are emulated:</b><br>
+<ul>
+<li> rasterline based video system
+<li> keyboard, joystick 1 and 2
+<li> simple tape support
+<li> serial bus
+<li> simple disk drives
+<li> expansion modules
+<li> rom cartridges
+<li> simple ieee488 floppy support (c1551 floppy disk drive)
+<li> quickloader
+</ul>
+<p><b>History and Trivia:</b><br>
+When the first Commodore 264 prototype unofficially debuted at the Winter Consumer <br>
+Electronics Show (CES) in January (?) 1984, the developers had obviously not yet agreed <br>
+about the keyboard layout; some keys are unlabelled, the right shift key was missing, <br>
+instead having a key which seems to be meant as a line feed key.<br>
+ <br>
+It was planned that when buying a C264, you could have chosen between these programs: <br>
+<ul>
+<li> 3 plus 1 (word processor, data base, spread sheet, windowing) 
+<li> Superscript (professional word processor) 
+<li> Magic Desk (word processor, data base, spread sheet, calculator) 
+<li> Logo 
+<li> Pilot 
+<li> Easycalc 264 (spread sheet) 
+<li> COM 264 
+<li> Financial Advisor 
+</ul>
+ <br>
+The C264 should then be delivered with the selected program built in. The remaining programs <br>
+could only be used with cartridges for the expansion port.<br>
+ <br>
+The official presentation of the C264 series took place on the Hannover fair in 1984. <br>
+Luckily, the developers didn't eliminate the right shift key in the final keyboard layout. <br>
+The formerly unlabelled keys bear a label now: the key that used to be the left arrow <br>
+key on the C64 and the VC20 says 'Esc', the key between '@' and '*' bears the English pound <br>
+sign, and the key that was labelled 'SHIFT LOCK' on all 8-bit computers Commodore ever <br>
+produced now says - guess what - 'SHIFT LOCK' :-) (must have been a hard decision between <br>
+SHIFT and CAPS lock).<br>
+ <br>
+A word about the C364 : This prototype was a C264 with a bigger keyboard (86 keys incl. a <br>
+numeric keypad) and with a builtin speech synthesizer with a vocabulary of 250 words (which <br>
+could be expanded by either diskettes or modules). Commodore dropped this model and decided <br>
+to sell a separate speech module (Magic Voice) for the C64.<br>
+ <br>
+Among the Commodore news from the Summer CES 1984 was the renaming of the C264 to Plus/4. <br>
+This renaming came along with a slight change in the builtin software: you could not choose <br>
+between many different programs anymore, but each Plus/4 was delivered with the 3-plus-1 <br>
+software.<br>
+ <br>
+The built-in software was really limited: a word processing (only with 40 columns and can <br>
+manage documents with only 99 lines of 77 columns), a very small spreadsheet (only 17 <br>
+columns and 50 lines), a poor graphic software (which can display graphically datas from <br>
+the sheets but only in text mode) and a small database (999 record with 17 fields each <br>
+and only 38 characters by field). Most of these programs can only be used with a floppy <br>
+disk unit. The Plus 4 can use peripherals of the C64 or the Vic 20, the printer MPS801 <br>
+and the Disk Unit 1541 run well with it but it can't use C64 softwares. This machine <br>
+wasn't built to be a competitor of the C64 nor to replace it. It has an improved basic <br>
+in relation to the C64 one with graphic and sound instructions and a built-in assembler, <br>
+but has lost lots of interesting C64 features like great soundchip or hardware sprites. <br>
+ <br>
+The Commodore 16/116 belongs to the Commodore 264 series (with the Commodore Plus/4). It was <br>
+designed to replace the Commodore VIC-20, but was not compatible with it, nor with <br>
+the C64. It had the same characteristics as the Commodore Plus/4 : same graphic resolution, <br>
+same sound system, same CPU and speed, just less memory. It has a powerful basic language <br>
+(contrary to the VIC-20 or the C64) which makes graphics and sounds easy to program. <br>
+The C16, like the Commodore Plus/4 was a commercial failure.<br>
+ <br>
+The C116 was an earlier version of the C16 and had a rubber keyboard. It was sold in Austria, <br>
+at least, and perhaps in other countries as well.<br>
+ <br>
+It seems that the first C16s had the two control ports labelled JOY 0 and JOY 1 instead of <br>
+JOY 1 and JOY 2, just as a hint for collectors :-)<br>
+ <br>
+Note that like the C116, the C16 lacks a user port.<br>
+<hr>
+<center><font size=-2>created on Thu Aug 16 22:55:01 2001
+</font></center>
+</body>
+</html>

@@ -12,10 +12,10 @@ extern "C" {
 /* must be defined until some driver init problems are solved */
 #define NEW_GAMEDRIVER
 
-/* global header file for 
+/* global header file for
  * vc20
  * c16
- * c64 
+ * c64
  * c128
  * c65*/
 
@@ -64,6 +64,7 @@ void *cbm_memset16 (void *dest, int value, size_t size);
 #define DBG_LOG(n,m,a)
 #endif
 
+#if 0
 #ifndef __cplusplus
 typedef int bool;
 #endif
@@ -73,6 +74,7 @@ typedef int bool;
 #endif
 #ifndef false
 #define false 0
+#endif
 #endif
 
 void cbm_quick_exit (int id);
@@ -218,15 +220,18 @@ typedef struct {
 	UINT8 *chip;
 } CBM_ROM;
 
+
+extern INT8 cbm_c64_game;
+extern INT8 cbm_c64_exrom;
 extern CBM_ROM cbm_rom[0x20];
 
-#define IODEVICE_CBM_ROM(extensions, idfunc) \
+#define IODEVICE_CBM_ROM(extensions) \
 {\
    IO_CARTSLOT,        /* type */\
    2,                  /* in reality 1 *//* count */\
    extensions,            /*file extensions */\
    IO_RESET_ALL,	   /* reset if file changed */\
-   idfunc,             /* id */\
+   0, \
    cbm_rom_init,       /* init */\
    cbm_rom_exit,       /* exit */\
    NULL,               /* info */\

@@ -1,34 +1,71 @@
+/******************************************************************************
+ PeT mess@utanet.at 2000,2001
+******************************************************************************/
 #include <assert.h>
 #include "includes/lynx.h"
 #include "cpu/m6502/m6502.h"
 
 UINT16 lynx_granularity=1;
+static int lynx_line;
 
 typedef struct {
+    union {
 	UINT8 data[0x100];
-	UINT8 high;
-	int low;
+	struct {
+	    struct { UINT8 l, h; } 
+	    // eng used by the blitter engine
+	    // scb written by the blitter scb blocks to engine expander
+	    //     used by the engine
+	    //     might be used directly by software!
+	    eng1, eng2,		
+		h_offset, v_offset, vidbas, colbas,
+		eng3, eng4, 
+		scb1, scb2, scb3, scb4, scb5, scb6,
+		eng5, eng6, eng7, eng8,
+		colloff,
+		eng9,
+		hsizoff, vsizoff,
+		eng10, eng11;
+	    UINT8 res[0x20];
+	    UINT8 used[2];
+	    UINT8 D,C,B,A,P,N;
+	    UINT8 res1[8];
+	    UINT8 H,G,F,E;
+	    UINT8 res2[8];
+	    UINT8 M,L,K,J;
+	    UINT8 res3[0x21];
+	    UINT8 SPRG0;
+	    UINT8 SPRSYS;
+	} s;
+    } u;
+    bool accumulate_overflow;    
+    UINT8 high;
+    int low;
 } SUZY;
 
-static SUZY suzy={ { 0 } };
+static SUZY suzy={ { { 0 } } };
 
 static struct {
-	UINT8 *mem;
-	// global
-	UINT16 screen;
-	UINT16 colbuf;
-	UINT16 colpos; // byte where value of collision is written
-	UINT16 xoff, yoff;
-	// in command
-	int mode;
-	UINT16 cmd;
-	UINT8 spritenr;
-	int x,y;
-	UINT16 width, height;
-	int stretch, tilt;
-	UINT8 color[16]; // or stored
-	void (*line_function)(const int y, const int xdir);
-	UINT16 bitmap;
+    UINT8 *mem;
+    // global
+    UINT16 screen;
+    UINT16 colbuf;
+    UINT16 colpos; // byte where value of collision is written
+    UINT16 xoff, yoff;
+    // in command
+    int mode;
+    UINT16 cmd;
+    UINT8 spritenr;
+    int x,y;
+    UINT16 width, height; // uint16 important for blue lightning
+    UINT16 stretch, tilt; // uint16 important
+    UINT8 color[16]; // or stored
+    void (*line_function)(const int y, const int xdir);
+    UINT16 bitmap;
+
+    bool everon;
+    int memory_accesses;
+    double time;
 } blitter;
 
 #define GET_WORD(mem, index) ((mem)[(index)]|((mem)[(index)+1]<<8))
@@ -43,82 +80,194 @@ mode from blitter command
 #define BOUNDARYSHADOW (0x02)
 #define BKGRNDNOCOL    (0x01)
 #define BKGRND         (0x00)
-
-mode | 0x10 means without DONTCOLLIDE
 */
 
 INLINE void lynx_plot_pixel(const int mode, const int x, const int y, const int color)
 {
-	int back;
-	UINT8 *screen;
-	UINT8 *colbuf;
-
-	screen=blitter.mem+blitter.screen+y*80+x/2;
-	colbuf=blitter.mem+blitter.colbuf+y*80+x/2;
-	switch (mode) {
-	case 0x00:
-	case 0x01:
-		if (!(x&1)) {
-			*screen=(*screen&0x0f)|(blitter.color[color]<<4);
-		} else {
-			*screen=(*screen&0xf0)|blitter.color[color];
-		}
-		break;
-	case 0x02:
-	case 0x03:
-	case 0x04:
-	case 0x05:
-	case 0x06:
-	case 0x07:
-	case 0x15: // prevents robotron from overwriting code
-		if (blitter.color[color]!=0) { // for sprdemo5
-//		if (color!=0) {
-			if (!(x&1)) {
-				*screen=(*screen&0x0f)|(blitter.color[color]<<4);
-			} else {
-				*screen=(*screen&0xf0)|blitter.color[color];
-			}
-		}
-		break;
-	case 0x10:
-	case 0x11: // lemmings
-		if (!(x&1)) {
-			*screen=(*screen&0x0f)|(blitter.color[color]<<4);
-			*colbuf=(*colbuf&0x0f)|(blitter.spritenr<<4);
-		} else {
-			*screen=(*screen&0xf0)|blitter.color[color];
-			*colbuf=(*colbuf&~0xf)|(blitter.spritenr);
-		}
-		break;
-	case 0x12:
-	case 0x13:
-	case 0x14:
-	case 0x16:
-	case 0x17:
-		if (blitter.color[color]!=0) {
-//		if (color!=0) {
-			if (!(x&1)) {
-//				if (blitter.spritenr) {
-					back=*colbuf;
-					if (back&0xf0) {
-						blitter.mem[blitter.colpos]=back>>4;
-					}
-					*colbuf=(back&~0xf0)|(blitter.spritenr<<4);
-//				}
-				*screen=(*screen&0x0f)|(blitter.color[color]<<4);
-			} else {
-//				if (blitter.spritenr) {
-					back=*colbuf;
-					if (back&0xf) {
-						blitter.mem[blitter.colpos]=back&0xf;
-					}
-					*colbuf=(back&~0xf)|(blitter.spritenr);
-//				}
-				*screen=(*screen&0xf0)|blitter.color[color];
-			}
-		}
-		break;
+    int back;
+    UINT8 *screen;
+    UINT8 *colbuf;
+    
+    blitter.everon=true;
+    screen=blitter.mem+blitter.screen+y*80+x/2;
+    colbuf=blitter.mem+blitter.colbuf+y*80+x/2;
+    switch (mode) {
+    case 0x00: // background (shadow bug!)
+	if (!(x&1)) {
+	    *screen=(*screen&0x0f)|(color<<4);
+	} else {
+	    *screen=(*screen&0xf0)|color;
 	}
+	blitter.memory_accesses++;
+	break;
+    case 0x10:
+	if (!(x&1)) {
+	    if (color!=0xe) {
+		*colbuf=(*colbuf&~0xf0)|(blitter.spritenr<<4);
+		blitter.memory_accesses++;
+	    }
+	    *screen=(*screen&0x0f)|(color<<4);
+	} else {
+	    if (color!=0xe) {
+		*colbuf=(*colbuf&~0xf)|(blitter.spritenr);
+		blitter.memory_accesses++;
+	    }
+	    *screen=(*screen&0xf0)|color;
+	}
+	blitter.memory_accesses++;
+	break;
+    case 0x01: // background, no colliding
+    case 0x11:
+	if (!(x&1)) {
+	    *screen=(*screen&0x0f)|(color<<4);
+	} else {
+	    *screen=(*screen&0xf0)|color;
+	}
+	blitter.memory_accesses++;
+	break;
+    case 0x03: // boundary: pen P? transparent, but collides
+    case 0x02: // boundary, shadow
+	if ((color==0)||(color==0xf)) break;
+	if (!(x&1)) {
+	    *screen=(*screen&0x0f)|(color<<4);
+	} else {
+	    *screen=(*screen&0xf0)|color;
+	}
+	blitter.memory_accesses++;
+	break;
+    case 0x13:
+	if (color==0) break;
+	if (!(x&1)) {
+	    back=*colbuf;
+	    if (back>>4>blitter.mem[blitter.colpos])
+		blitter.mem[blitter.colpos]=back>>4;
+	    *colbuf=(back&~0xf0)|(blitter.spritenr<<4);
+	    if (color!=0xf) {
+		*screen=(*screen&0x0f)|(color<<4);
+		blitter.memory_accesses++;
+	    }
+	} else {
+	    back=*colbuf;
+	    if ((back&0xf)>blitter.mem[blitter.colpos])
+		blitter.mem[blitter.colpos]=back&0xf;
+	    *colbuf=(back&~0xf)|(blitter.spritenr);
+	    if (color!=0xf) {
+		*screen=(*screen&0xf0)|color;
+		blitter.memory_accesses++;
+	    }
+	}
+	blitter.memory_accesses+=2;
+	break;
+    case 0x12:
+	if (color==0) break;
+	if (!(x&1)) {
+	    if (color!=0xe) {
+		back=*colbuf;
+		if (back>>4>blitter.mem[blitter.colpos])
+		    blitter.mem[blitter.colpos]=back>>4;
+		*colbuf=(back&~0xf0)|(blitter.spritenr<<4);
+	    }
+	    if (color!=0xf) {
+		*screen=(*screen&0x0f)|(color<<4);
+		blitter.memory_accesses++;
+	    }
+	} else {
+	    if (color!=0xe) {
+		back=*colbuf;
+		if ((back&0xf)>blitter.mem[blitter.colpos])
+		    blitter.mem[blitter.colpos]=back&0xf;
+		*colbuf=(back&~0xf)|(blitter.spritenr);
+	    }
+	    if (color!=0xf) {
+		*screen=(*screen&0xf0)|color;
+		blitter.memory_accesses++;
+	    }
+	}
+	blitter.memory_accesses+=2;
+	break;
+    case 0x04: // pen 0 transparent, 
+    case 0x07: // shadow: pen e doesn't collide
+    case 0x05: // non collidable sprite
+    case 0x15:
+	if (color==0) break;
+	if (!(x&1)) {
+	    *screen=(*screen&0x0f)|(color<<4);
+	} else {
+	    *screen=(*screen&0xf0)|color;
+	}
+	blitter.memory_accesses++;
+	break;
+    case 0x14:
+	if (color==0) break;
+	if (!(x&1)) {
+	    back=*colbuf;
+	    *colbuf=(back&~0xf0)|(blitter.spritenr<<4);
+	    if (back>>4>blitter.mem[blitter.colpos])
+		blitter.mem[blitter.colpos]=back>>4;
+	    *screen=(*screen&0x0f)|(color<<4);
+	} else {
+	    back=*colbuf;
+	    *colbuf=(back&~0xf)|(blitter.spritenr);
+	    if ((back&0xf)>blitter.mem[blitter.colpos])
+		blitter.mem[blitter.colpos]=back&0xf;
+	    *screen=(*screen&0xf0)|color;
+	}
+	blitter.memory_accesses+=3;
+	break;
+    case 0x17:
+	if (color==0) break;
+	if (!(x&1)) {
+	    if (color!=0xe) {
+		back=*colbuf;
+		if (back>>4>blitter.mem[blitter.colpos])
+		    blitter.mem[blitter.colpos]=back>>4;
+		*colbuf=(back&~0xf0)|(blitter.spritenr<<4);
+		blitter.memory_accesses+=2;
+	    }
+	    *screen=(*screen&0x0f)|(color<<4);
+	} else {
+	    if (color!=0xe) {
+		back=*colbuf;
+		if ((back&0xf)>blitter.mem[blitter.colpos])
+		    blitter.mem[blitter.colpos]=back&0xf;
+		*colbuf=(back&~0xf)|(blitter.spritenr);
+		blitter.memory_accesses+=2;
+	    }
+	    *screen=(*screen&0xf0)|color;
+	}
+	blitter.memory_accesses++;
+	break;
+    case 0x06: // xor sprite (shadow bug!)
+	if (!(x&1)) {
+	    *screen=(*screen&0x0f)^(color<<4);
+	} else {
+	    *screen=(*screen&0xf0)^color;
+	}
+	blitter.memory_accesses++;
+	break;
+    case 0x16:
+	if (!(x&1)) {
+	    if (color!=0xe) {
+		back=*colbuf;
+		if (back>>4>blitter.mem[blitter.colpos])
+		    blitter.mem[blitter.colpos]=back>>4;
+		*colbuf=(back&~0xf0)|(blitter.spritenr<<4);
+		blitter.memory_accesses+=2;
+	    }
+	    *screen=(*screen&0x0f)^(color<<4);
+	} else {
+	    if (color!=0xe) {
+		back=*colbuf;
+		if ((back&0xf)>blitter.mem[blitter.colpos])
+		    blitter.mem[blitter.colpos]=back&0xf;
+		*colbuf=(back&~0xf)|(blitter.spritenr);
+		blitter.memory_accesses+=2;
+	    }
+	    *screen=(*screen&0xf0)^color;
+	}
+	blitter.memory_accesses++;
+	break;
+    }
 }
 
 #define INCLUDE_LYNX_LINE_FUNCTION
@@ -205,28 +354,24 @@ static void lynx_blit_lines(void)
 	int ydir=0, xdir=0;
 	int flip=blitter.mem[blitter.cmd+1]&3;
 
-	switch (blitter.mem[blitter.cmd]&0x30) {
-	case 0x0000:
-		xdir=ydir=1;break;
-	case 0x0010:
-		xdir=1;ydir=-1;
-		blitter.y--;break;
-	case 0x0020:
-		xdir=-1;blitter.x--;ydir=1;break;
-	case 0x0030:
-		xdir=ydir=-1;
-		blitter.y--; blitter.x--;
-		break;
-	}
+	blitter.everon=false;
+
+	// flipping sprdemo3
+	// fat bobby 0x10
+	// mirror the sprite in gameplay?
+	xdir=1;
+	if (blitter.mem[blitter.cmd]&0x20) { xdir=-1;blitter.x--;/*?*/ }
+	ydir=1;
+	if (blitter.mem[blitter.cmd]&0x10) { ydir=-1;blitter.y--;/*?*/ }
 	switch (blitter.mem[blitter.cmd+1]&3) {
 	case 0: 
 		flip =0;
 		break;
-	case 1:
+	case 1: // blockout
 		xdir*=-1;
-		flip=2;
+		flip=1;
 		break;
-	case 2:
+	case 2: // fat bobby horicontal
 		ydir*=-1;
 		flip=1;
 		break;
@@ -236,43 +381,46 @@ static void lynx_blit_lines(void)
 		flip=3;
 		break;
 	}
-	// examples sprdemo3, fat bobby for rotation
 
-	for ( y=blitter.y, hi=0; (i=blitter.mem[blitter.bitmap]); blitter.bitmap+=i ) {
+	for ( y=blitter.y, hi=0; (blitter.memory_accesses++,i=blitter.mem[blitter.bitmap]); blitter.bitmap+=i ) {
 		if (i==1) {
-			hi=0;
-			switch (flip&3) {
-			case 0:
-				ydir*=-1;
-				y=blitter.y;
-				break;
-			case 1:
-				xdir*=-1;
-				blitter.x+=xdir;
-				y=blitter.y;
-				break;
-			case 2:
-				ydir*=-1;
-				y=blitter.y;
-				break;
-			case 3:
-				xdir*=-1;
-				blitter.x+=xdir;
-				y=blitter.y;
-				break;
-			}
-			flip++;
-			if (ydir<0) y--;
-			continue;
+		    // centered sprites sprdemo3, fat bobby, blockout
+		    hi=0;
+		    switch (flip&3) {
+		    case 0:
+		    case 2:
+			ydir*=-1;
+			blitter.y+=ydir;
+			break;
+		    case 1:
+		    case 3:
+			xdir*=-1;
+			blitter.x+=xdir;
+			break;
+		    }
+		    y=blitter.y;
+		    flip++;
+		    continue;
 		}
 		for (;(hi<blitter.height); hi+=0x100, y+=ydir) {
-			if ((y>=0)&&(y<102))
-				blitter.line_function(y,xdir);
-			blitter.width+=blitter.stretch;
-			blitter.x+=blitter.tilt;
+		    if ( y>=0 && y<102 )
+			blitter.line_function(y,xdir);
+		    blitter.width+=blitter.stretch;
+		    blitter.x+=blitter.tilt;
 		}
 		hi-=blitter.height;
 	}
+	switch (blitter.mode) {
+	case 0x12: case 0x13: case 0x14: case 0x16: case 0x17:
+	    if (suzy.u.s.SPRG0&0x20 && blitter.everon) {
+		blitter.mem[blitter.colpos]|=0x80;
+	    }
+	}
+}
+
+void lynx_blitter_timer(int param)
+{
+    suzy.u.s.SPRSYS&=~1; //blitter finished
 }
 
 /*
@@ -350,134 +498,186 @@ static void lynx_blit_lines(void)
 
 static void lynx_blitter(void)
 {
-	static const int lynx_colors[4]={2,4,8,16};
+    static const int lynx_colors[4]={2,4,8,16};
+    
+    static void (* const blit_line[4])(const int y, const int xdir)= {
+	lynx_blit_2color_line,
+	lynx_blit_4color_line,
+	lynx_blit_8color_line,
+	lynx_blit_16color_line
+    };
+    
+    static void (* const blit_rle_line[4])(const int y, const int xdir)= {
+	lynx_blit_2color_rle_line,
+	lynx_blit_4color_rle_line,
+	lynx_blit_8color_rle_line,
+	lynx_blit_16color_rle_line
+    };
+    int i; int o;int colors;
+    
+    blitter.memory_accesses=0;
+    blitter.mem=memory_region(REGION_CPU1);
+    blitter.colbuf=GET_WORD(suzy.u.data, 0xa);
+    blitter.screen=GET_WORD(suzy.u.data, 8);
+    blitter.xoff=GET_WORD(suzy.u.data,4);
+    blitter.yoff=GET_WORD(suzy.u.data,6);
+    // hsizeoff GET_WORD(suzy.u.data, 0x28)
+    // vsizeoff GET_WORD(suzy.u.data, 0x2a)
 
-	static void (* const blit_line[4])(const int y, const int xdir)= {
-		lynx_blit_2color_line,
-		lynx_blit_4color_line,
-		lynx_blit_8color_line,
-		lynx_blit_16color_line
-	};
-
-	static void (* const blit_rle_line[4])(const int y, const int xdir)= {
-		lynx_blit_2color_rle_line,
-		lynx_blit_4color_rle_line,
-		lynx_blit_8color_rle_line,
-		lynx_blit_16color_rle_line
-	};
-	int i; int o;int colors;
-
-	blitter.mem=memory_region(REGION_CPU1);
-	blitter.colbuf=GET_WORD(suzy.data, 0xa);
-//	blitter.colpos=GET_WORD(suzy.data, 0x24);
-	blitter.screen=GET_WORD(suzy.data, 8);
-	blitter.xoff=GET_WORD(suzy.data,4);
-	blitter.yoff=GET_WORD(suzy.data,6);
-
-	for (blitter.cmd=GET_WORD(suzy.data, 0x10); blitter.cmd; 
-		 blitter.cmd=GET_WORD(blitter.mem, blitter.cmd+3) ) {
-
-		if (blitter.mem[blitter.cmd+1]&4) continue;
-
-		blitter.colpos=GET_WORD(suzy.data, 0x24)+blitter.cmd;
-
-		blitter.bitmap=GET_WORD(blitter.mem,blitter.cmd+5);
-		blitter.x=(INT16)GET_WORD(blitter.mem, blitter.cmd+7)-blitter.xoff;
-		blitter.y=(INT16)GET_WORD(blitter.mem, blitter.cmd+9)-blitter.yoff;
-
-		blitter.mode=blitter.mem[blitter.cmd]&07;
-		if (blitter.mem[blitter.cmd+1]&0x80) {
-			blitter.line_function=blit_line[blitter.mem[blitter.cmd]>>6];
-		} else {
-			blitter.line_function=blit_rle_line[blitter.mem[blitter.cmd]>>6];
+    // these might be never set by the blitter hardware
+    blitter.width=0x100;
+    blitter.height=0x100;
+    blitter.stretch=0;
+    blitter.tilt=0;
+    
+    blitter.memory_accesses+=2;
+    for (blitter.cmd=GET_WORD(suzy.u.data, 0x10); blitter.cmd; ) {
+	
+	blitter.memory_accesses+=1;
+	if (!(blitter.mem[blitter.cmd+1]&4)) {
+	
+	    blitter.colpos=GET_WORD(suzy.u.data, 0x24)+blitter.cmd;
+	
+	    blitter.bitmap=GET_WORD(blitter.mem,blitter.cmd+5);
+	    blitter.x=(INT16)GET_WORD(blitter.mem, blitter.cmd+7)-blitter.xoff;
+	    blitter.y=(INT16)GET_WORD(blitter.mem, blitter.cmd+9)-blitter.yoff;
+	    blitter.memory_accesses+=6;
+	    
+	    blitter.mode=blitter.mem[blitter.cmd]&07;
+	    if (blitter.mem[blitter.cmd+1]&0x80) {
+		blitter.line_function=blit_line[blitter.mem[blitter.cmd]>>6];
+	    } else {
+		blitter.line_function=blit_rle_line[blitter.mem[blitter.cmd]>>6];
+	    }
+	    
+	    if (!(blitter.mem[blitter.cmd+2]&0x20) && !( suzy.u.s.SPRSYS&0x20) ) {
+		switch (blitter.mode) {
+		case 0: case 2: case 3: case 4: case 6: case 7:
+		    blitter.mode|=0x10;
+		    blitter.mem[blitter.colpos]=0;
+		    blitter.spritenr=blitter.mem[blitter.cmd+2]&0xf;
 		}
-		if (!(blitter.mem[blitter.cmd+2]&0x20)&&!(suzy.data[0x92]&0x20)) {
-			blitter.mem[blitter.colpos]=0;
-			blitter.spritenr=blitter.mem[blitter.cmd+2]&0xf;
-			blitter.mode|=0x10;
+	    }
+	    
+	    o=0xb;
+	    if (blitter.mem[blitter.cmd+1]&0x30) {
+		blitter.width=GET_WORD(blitter.mem, blitter.cmd+11);
+		blitter.height=GET_WORD(blitter.mem, blitter.cmd+13);
+		blitter.memory_accesses+=4;
+		o+=4;
+	    }
+	    
+	    if (blitter.mem[blitter.cmd+1]&0x20) {
+		blitter.stretch=GET_WORD(blitter.mem, blitter.cmd+o);
+		blitter.memory_accesses+=2;
+		o+=2;
+		if (blitter.mem[blitter.cmd+1]&0x10) {
+		    blitter.tilt=GET_WORD(blitter.mem, blitter.cmd+o);
+		    blitter.memory_accesses+=2;
+		    o+=2;
 		}
-			
-		o=0xb;
-		blitter.width=0x100;
-		blitter.height=0x100;
-		if (blitter.mem[blitter.cmd+1]&0x30) {
-			blitter.width=GET_WORD(blitter.mem, blitter.cmd+11);
-			blitter.height=GET_WORD(blitter.mem, blitter.cmd+13);
-			o+=4;
+	    }
+	    colors=lynx_colors[blitter.mem[blitter.cmd]>>6];
+	    
+	    if (!(blitter.mem[blitter.cmd+1]&8)) {
+		for (i=0; i<colors/2; i++) {
+		    blitter.color[i*2]=blitter.mem[blitter.cmd+o+i]>>4;
+		    blitter.color[i*2+1]=blitter.mem[blitter.cmd+o+i]&0xf;
+		    blitter.memory_accesses++;
 		}
-
-		blitter.stretch=0;
-		blitter.tilt=0;
-		if (blitter.mem[blitter.cmd+1]&0x20) {
-			blitter.stretch=GET_WORD(blitter.mem, blitter.cmd+o);
-			o+=2;
-			if (blitter.mem[blitter.cmd+1]&0x10) {
-				blitter.tilt=GET_WORD(blitter.mem, blitter.cmd+o);
-				o+=2;
-			}
-		}
-		colors=lynx_colors[blitter.mem[blitter.cmd]>>6];
-
-		if (!(blitter.mem[blitter.cmd+1]&8)) {
-			for (i=0; i<colors/2; i++) {
-				blitter.color[i*2]=blitter.mem[blitter.cmd+o+i]>>4;
-				blitter.color[i*2+1]=blitter.mem[blitter.cmd+o+i]&0xf;
-			}
-		}
-#if 1
-		logerror("%04x %.2x %.2x %.2x x:%.4x y:%.4x",
-				 blitter.cmd,
-				 blitter.mem[blitter.cmd],blitter.mem[blitter.cmd+1],blitter.mem[blitter.cmd+2],
-				 blitter.x,blitter.y);
-		if (blitter.mem[blitter.cmd+1]&0x30) {
-			logerror(" w:%.4x h:%.4x", blitter.width,blitter.height);
-		}
-		if (blitter.mem[blitter.cmd+1]&0x20) {
-			logerror(" s:%.4x t:%.4x", blitter.stretch, blitter.tilt);
-		}
-		if (!(blitter.mem[blitter.cmd]&0x8)) {
-			logerror(" c:");
-			for (i=0; i<colors/2; i++) {
-				logerror("%.2x", blitter.mem[blitter.cmd+o+i]);
-			}
-		}
-		logerror(" %.4x\n", blitter.bitmap);
+	    }
+	    
+#if 0
+	    if (debug_pos<ARRAY_LENGTH(debug_strings)) {
+		snprintf(debug_strings[debug_pos],sizeof(debug_strings[0]),
+			 "%.2x%.2x%.2x %.4x %.4x %.4x %.4x",
+			 blitter.mem[blitter.cmd],
+			 blitter.mem[blitter.cmd+1],
+			 blitter.mem[blitter.cmd+2],
+			 blitter.x, blitter.y,
+			 blitter.width, blitter.height
+		    );
+		debug_pos++;
+	    }
 #endif
-		lynx_blit_lines();
+	    
+#if 0
+	    logerror("%04x %.2x %.2x %.2x x:%.4x y:%.4x",
+		     blitter.cmd,
+		     blitter.mem[blitter.cmd],blitter.mem[blitter.cmd+1],blitter.mem[blitter.cmd+2],
+		     blitter.x,blitter.y);
+	    if (blitter.mem[blitter.cmd+1]&0x30) {
+		logerror(" w:%.4x h:%.4x", blitter.width,blitter.height);
+	    }
+	    if (blitter.mem[blitter.cmd+1]&0x20) {
+		logerror(" s:%.4x t:%.4x", blitter.stretch, blitter.tilt);
+	    }
+	    if (!(blitter.mem[blitter.cmd+1]&0x8)) {
+		logerror(" c:");
+		for (i=0; i<colors/2; i++) {
+		    logerror("%.2x", blitter.mem[blitter.cmd+o+i]);
+		}
+	    }
+	    logerror(" %.4x\n", blitter.bitmap);
+#endif
+	    lynx_blit_lines();
 	}
+	blitter.cmd=GET_WORD(blitter.mem, blitter.cmd+3);
+	blitter.memory_accesses+=2;
+	if (!(blitter.cmd&0xff00)) break;
+    }
+//    timer_set(TIME_IN_CYCLES(blitter.memory_accesses*20,0), 0, lynx_blitter_timer);
 }
-
-/*
-  writes (0x52 0x53) (0x54 0x55) expects multiplication result at 0x60 0x61
-  writes (0x56 0x57) (0x60 0x61 0x62 0x63) division expects result at (0x52 0x53)
- */
 
 void lynx_divide(void)
 {
-	UINT32 left=suzy.data[0x60]|(suzy.data[0x61]<<8)|(suzy.data[0x62]<<16)|(suzy.data[0x63]<<24);
-	UINT16 right=suzy.data[0x56]|(suzy.data[0x57]<<8);
-	UINT16 res;
-	if (left==0) {
-		res=0;
-	} else if (right==0) {
-		res=0xffff; //estimated
+	UINT32 left=suzy.u.s.H|(suzy.u.s.G<<8)|(suzy.u.s.F<<16)|(suzy.u.s.E<<24);
+	UINT16 right=suzy.u.s.P|(suzy.u.s.N<<8);
+	UINT32 res, mod;
+	suzy.accumulate_overflow=false;
+	if (right==0) {
+	    suzy.accumulate_overflow=true;
+	    res=0xffffffff;
+	    mod=0; //?
 	} else {
-		res=left/right;
+	    res=left/right;
+	    mod=left%right;
 	}
-//	logerror("coprocessor %8x / %4x = %4x\n", left, right, res);
-	suzy.data[0x52]=res&0xff;
-	suzy.data[0x53]=res>>8;
+//	logerror("coprocessor %8x / %8x = %4x\n", left, right, res);
+	suzy.u.s.D=res&0xff;
+	suzy.u.s.C=res>>8;
+	suzy.u.s.B=res>>16;
+	suzy.u.s.A=res>>24;
+	suzy.u.s.M=mod&0xff;
+	suzy.u.s.L=mod>>8;
+	suzy.u.s.K=mod>>16;
+	suzy.u.s.J=mod>>24;
 }
 
 void lynx_multiply(void)
 {
-	UINT16 left, right, res;
-	left=suzy.data[0x52]|(suzy.data[0x53]<<8);
-	right=suzy.data[0x54]|(suzy.data[0x55]<<8);
-	res=left*right;
+	UINT16 left, right;
+	UINT32 res, accu;
+	left=suzy.u.s.B|(suzy.u.s.A<<8);
+	right=suzy.u.s.D|(suzy.u.s.C<<8);
+	if (suzy.u.s.SPRSYS&0x80) {
+	    // to do
+	    res=(INT16)left*(INT16)right;
+	} else res=left*right;
 //	logerror("coprocessor %4x * %4x = %4x\n", left, right, res);
-	suzy.data[0x60]=res&0xff;
-	suzy.data[0x61]=res>>8;
+	suzy.u.s.H=res&0xff;
+	suzy.u.s.G=res>>8;
+	suzy.u.s.F=res>>16;
+	suzy.u.s.E=res>>24;
+	if (suzy.u.s.SPRSYS&0x40) {
+	    accu=suzy.u.s.M|suzy.u.s.L<<8|suzy.u.s.K<<16|suzy.u.s.J<<24;
+	    accu+=res;
+	    if (accu<res) suzy.accumulate_overflow=true;
+	    suzy.u.s.M=accu;
+	    suzy.u.s.L=accu>>8;
+	    suzy.u.s.K=accu>>16;
+	    suzy.u.s.J=accu>>24;
+	}
 }
 
 READ_HANDLER(suzy_read)
@@ -488,13 +688,20 @@ READ_HANDLER(suzy_read)
 		data=1; // must not be 0 for correct power up
 		break;
 	case 0x92:
-		data=suzy.data[offset];
+		if (blitter.time!=0.0) {
+		    if ( TIME_TO_CYCLES(0,timer_get_time()-blitter.time) > blitter.memory_accesses*20) {
+			suzy.u.data[offset]&=~1; //blitter finished
+			blitter.time=0;
+		    }
+		}
+		data=suzy.u.data[offset];
 		data&=~0x80; // math finished
-		data&=~1; //blitter finished
+		data&=~0x40;
+		if (suzy.accumulate_overflow) data|=0x40;
 		break;
 	case 0xb0:
 		input=readinputport(0);
-		switch (readinputport(2)&3) {
+		switch (lynx_rotate) {
 		case 1:
 			data=input;
 			input&=0xf;
@@ -512,7 +719,7 @@ READ_HANDLER(suzy_read)
 			if (data&PAD_LEFT) input|=PAD_UP;
 			break;
 		}
-		if (suzy.data[0x92]&8) {
+		if (suzy.u.s.SPRSYS&8) {
 			data=input&0xf;
 			if (input&PAD_UP) data|=PAD_DOWN;
 			if (input&PAD_DOWN) data|=PAD_UP;
@@ -528,7 +735,7 @@ READ_HANDLER(suzy_read)
 		suzy.low=(suzy.low+1)&(lynx_granularity-1);
 		break;
 	default:
-		data=suzy.data[offset];
+		data=suzy.u.data[offset];
 	}
 //	logerror("suzy read %.2x %.2x\n",offset,data);
 	return data;
@@ -536,16 +743,28 @@ READ_HANDLER(suzy_read)
 
 WRITE_HANDLER(suzy_write)
 {
-	suzy.data[offset]=data;
-	logerror("suzy write %.2x %.2x\n",offset,data);
+	suzy.u.data[offset]=data;
 	switch(offset) {
+	case 0x52: case 0x54:
+	case 0x60: case 0x62:
+	case 0x6e:
+	    suzy.u.data[offset+1]=0;
+	    break;
+	case 0x6c:
+	    suzy.u.data[offset+1]=0;
+	    suzy.accumulate_overflow=false;
+	    break;
 	case 0x55: lynx_multiply();break;
 	case 0x63: lynx_divide();break;
 	case 0x91:
-		if (data&1) {
-			lynx_blitter();
-		}
-		break;
+	    if (data&1) {
+		blitter.time=timer_get_time();
+		lynx_blitter();
+	    }
+//	    logerror("suzy write %.2x %.2x\n",offset,data);
+	    break;
+//	default:
+//	    logerror("suzy write %.2x %.2x\n",offset,data);
 	}
 }
 
@@ -597,284 +816,377 @@ TIM_BORROWIN    EQU %00000010
 TIM_BORROWOUT   EQU %00000001
 */
 typedef struct {
-	const int nr;
-	int counter;
-	void *timer;
+    const int nr;
+    union {
 	UINT8 data[4];
-	double settime;
+	struct {
+	    UINT8 bakup, cntrl1, cnt, cntrl2;
+	} s;
+    } u;
+    bool shot;
+    int counter;
+    void *timer;
+    double settime;
 } LYNX_TIMER;
 static LYNX_TIMER lynx_timer[8]= {
-	{ 0 },
-	{ 1 },
-	{ 2 },
-	{ 3 },
-	{ 4 },
-	{ 5 },
-	{ 6 },
-	{ 7 }
+    { 0 },
+    { 1 },
+    { 2 },
+    { 3 },
+    { 4 },
+    { 5 },
+    { 6 },
+    { 7 }
 };
 
 static void lynx_timer_reset(LYNX_TIMER *This)
 {
-	memset(&This->counter, 0, (char *)(This+1)-(char*)&(This->counter));
-//	This->nr=i;
-	This->settime=0.0;
+    if (This->timer) timer_remove(This->timer);
+    memset((char*)This+sizeof(This->nr), 0, sizeof(*This)-sizeof(This->nr));
+    This->settime=0.0;
 }
 
-
-
-static void lynx_timer_count_down(LYNX_TIMER *This);
 static void lynx_timer_signal_irq(LYNX_TIMER *This)
 {
-//	if ((This->data[1]&0x80)&&!(mikey.data[0x81]&(1<<This->nr))) {
-	if ((This->data[1]&0x80)) { // irq flag handling later
-//	if ((This->data[1]&0x80)||(This->nr==4)) { // irq flag handling later
-//	{
-		cpu_set_irq_line(0, M65SC02_INT_IRQ, PULSE_LINE);
-		mikey.data[0x81]|=1<<This->nr; // vertical
-	}
-	switch (This->nr) {
-	case 0:
-		if ((lynx_timer[2].data[1]&7)==7) lynx_timer_count_down(lynx_timer+2);
-		break;
-	case 2:
-		if ((lynx_timer[4].data[1]&7)==7) lynx_timer_count_down(lynx_timer+4);
-		break;
-	case 1:
-		if ((lynx_timer[3].data[1]&7)==7) lynx_timer_count_down(lynx_timer+3);
-		break;
-	case 3:
-		if ((lynx_timer[5].data[1]&7)==7) lynx_timer_count_down(lynx_timer+5);
-		break;
-	case 5:
-		if ((lynx_timer[7].data[1]&7)==7) lynx_timer_count_down(lynx_timer+7);
-		break;
-	case 7:
-		// audio 1
-		break;
-	}
+    if ( (This->u.s.cntrl1&0x80) && (This->nr!=4) ) { // irq flag handling later
+	mikey.data[0x81]|=1<<This->nr;
+	cpu_set_irq_line(0, M65SC02_INT_IRQ, ASSERT_LINE);
+    }
+    switch (This->nr) {
+    case 0: lynx_timer_count_down(2); lynx_line++; break;
+    case 2: 
+	lynx_timer_count_down(4); 
+	lynx_draw_lines(-1);
+	lynx_line=0;
+	break;
+    case 1: lynx_timer_count_down(3); break;
+    case 3: lynx_timer_count_down(5); break;
+    case 5: lynx_timer_count_down(7); break;
+    case 7: lynx_audio_count_down(0); break;
+    }
 }
 
-static void lynx_timer_count_down(LYNX_TIMER *This)
+void lynx_timer_count_down(int nr)
 {
+    LYNX_TIMER *This=lynx_timer+nr;
+    if ((This->u.s.cntrl1&0xf)==0xf) {
 	if (This->counter>0) {
-		This->counter--;
-		return;
+	    This->counter--;
+	    return;
 	} else if (This->counter==0) {
-		lynx_timer_signal_irq(This);
-		if (This->data[1]&0x10) {
-			This->counter=This->data[0];
-		} else {
-			This->counter--;
-		}
-		return;
+	    This->shot=true;
+	    lynx_timer_signal_irq(This);
+	    if (This->u.s.cntrl1&0x10) {
+		This->counter=This->u.s.bakup;
+	    } else {
+		This->counter--;
+	    }
+	    return;
 	}
+    }
 }
 
 static void lynx_timer_shot(int nr)
 {
-	LYNX_TIMER *This=lynx_timer+nr;
-	lynx_timer_signal_irq(This);
-	if (!(This->data[1]&0x10)) This->timer=NULL;
+    LYNX_TIMER *This=lynx_timer+nr;
+    This->shot=true;
+    lynx_timer_signal_irq(This);
+    if (!(This->u.s.cntrl1&0x10)) This->timer=NULL;
 }
 
 static double times[]= { 1e-6, 2e-6, 4e-6, 8e-6, 16e-6, 32e-6, 64e-6 };
 
 static UINT8 lynx_timer_read(LYNX_TIMER *This, int offset)
 {
-	UINT8 data;
-	switch (offset) {
-	case 2:
-		data=This->counter;
-		break;
-	default:
-		data=This->data[offset];
+    UINT8 data=0;
+    switch (offset) {
+    case 2:
+	if ((This->u.s.cntrl1&7)==7) {
+	    data=This->counter;
+	} else {
+	    if (This->timer) {
+		data=(UINT8)(This->u.s.bakup-timer_timeleft(This->timer)/times[This->u.s.cntrl1&7]);
+	    }
 	}
-	logerror("timer %d read %x %.2x\n",This-lynx_timer,offset,data);
-	return data;
+	break;
+    case 3:
+	data=This->u.data[offset];
+	data&=~8;
+	if (This->shot) data|=8;
+	break;
+    default:
+	data=This->u.data[offset];
+    }
+    logerror("timer %d read %x %.2x\n",This-lynx_timer,offset,data);
+    return data;
 }
 
 static void lynx_timer_write(LYNX_TIMER *This, int offset, UINT8 data)
 {
-	int t;
-	logerror("timer %d write %x %.2x\n",This-lynx_timer,offset,data);
-	This->data[offset]=data;
+    int t;
+    logerror("timer %d write %x %.2x\n",This-lynx_timer,offset,data);
+    This->u.data[offset]=data;
 
-	if (offset==0) This->counter=This->data[0]+1;
+    if ((offset==1) && (data&0x40)) This->shot=false;
+    
+    switch (offset) {
+    case 0:
+//	This->counter=This->u.s.bakup+1;
+//	break;
+    case 2:
+//	This->counter=data;
+//	break;
+    case 1:
 	if (This->timer) { timer_remove(This->timer); This->timer=NULL; }
-//	if ((This->data[1]&0x80)&&(This->nr!=4)) { //timers are combined!
-//	if ((This->data[1]&0x8)||(This->nr==4)) {
-	if ((This->data[1]&0x8)) {
-		if ((This->data[1]&7)!=7) {
-			t=This->data[0]?This->data[0]:0x100;
-			if (This->data[1]&0x10) {
-				This->timer=timer_pulse(t*times[This->data[1]&7],
-										This->nr, lynx_timer_shot);
-			} else {
-				This->timer=timer_set(t*times[This->data[1]&7],
-									  This->nr, lynx_timer_shot);
-			}
+	if ((This->u.s.cntrl1&0x8)) {
+	    if ((This->u.s.cntrl1&7)!=7) {
+		t=This->u.s.bakup+1;
+		if (This->u.s.cntrl1&0x10) {
+		    This->timer=timer_pulse(t*times[This->u.s.cntrl1&7],
+					    This->nr, lynx_timer_shot);
+		} else {
+		    This->timer=timer_set(t*times[This->u.s.cntrl1&7],
+					  This->nr, lynx_timer_shot);
 		}
+	    }
 	}
+	break;
+    }
 }
 
-typedef struct {
-	int nr;
-	UINT8 data[8];
-} LYNX_AUDIO;
-static LYNX_AUDIO lynx_audio[4]= { 
-	{ 0 },
-	{ 1 },
-	{ 2 },
-	{ 3 } 
-};
+static struct {
+    UINT8 serctl;
+    UINT8 data_received, data_to_send, buffer;
 
-static UINT8 lynx_audio_read(LYNX_AUDIO *This, int offset)
+    bool received;
+    bool sending;
+    bool buffer_loaded;
+} uart;
+
+void lynx_uart_reset(void)
 {
-	UINT8 data=This->data[offset];
-	logerror("audio %d read %d %.2x\n", This->nr, offset, data);
-	return data;
+    memset(&uart, 0, sizeof(uart));
 }
 
-static void lynx_audio_write(LYNX_AUDIO *This, int offset, UINT8 data)
+static void lynx_uart_timer(int param)
 {
-	This->data[offset]=data;
-	logerror("audio %d write %d %.2x\n", This->nr, offset, data);
+    if (uart.buffer_loaded) {
+	uart.data_to_send=uart.buffer;
+	uart.buffer_loaded=false;
+	timer_set(1.0e-6*11, 0, lynx_uart_timer);	
+    } else {
+	uart.sending=false;
+    }
+//    mikey.data[0x80]|=0x10;
+    if (uart.serctl&0x80) {
+	mikey.data[0x81]|=0x10;
+	cpu_set_irq_line(0, M65SC02_INT_IRQ, ASSERT_LINE);
+    }
+}
+
+READ_HANDLER(lynx_uart_r)
+{
+    UINT8 data=0;
+    switch (offset) {
+    case 0x8c:
+	if (!uart.buffer_loaded) data|=0x80;
+	if (uart.received) data|=0x40;
+	if (!uart.sending) data|=0x20;
+	break;
+    case 0x8d:
+	data=uart.data_received;
+	break;
+    }
+    logerror("uart read %.2x %.2x\n",offset,data);
+    return data;
+}
+
+WRITE_HANDLER(lynx_uart_w)
+{
+    logerror("uart write %.2x %.2x\n",offset,data);
+    switch (offset) {
+    case 0x8c:
+	uart.serctl=data;
+	break;
+    case 0x8d:
+	if (uart.sending) {
+	    uart.buffer=data;
+	    uart.buffer_loaded=true;
+	} else {
+	    uart.sending=true;
+	    uart.data_to_send=data;
+	    timer_set(1.0e-6*11, 0, lynx_uart_timer);
+	}
+	break;
+    }
 }
 
 READ_HANDLER(mikey_read)
 {
-	UINT8 data=0;
-	switch (offset) {
-	case 0: case 1: case 2: case 3:
-	case 4: case 5: case 6: case 7:
-	case 8: case 9: case 0xa: case 0xb:
-	case 0xc: case 0xd: case 0xe: case 0xf:
-	case 0x10: case 0x11: case 0x12: case 0x13:
-	case 0x14: case 0x15: case 0x16: case 0x17:
-	case 0x18: case 0x19: case 0x1a: case 0x1b:
-	case 0x1c: case 0x1d: case 0x1e: case 0x1f:
-		data=lynx_timer_read(lynx_timer+(offset/4), offset&3);
-		return data;
-//		break;
-	case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27:
-	case 0x28: case 0x29: case 0x2a: case 0x2b: case 0x2c: case 0x2d: case 0x2e: case 0x2f:
-	case 0x30: case 0x31: case 0x32: case 0x33:	case 0x34: case 0x35: case 0x36: case 0x37:
-	case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f:
-		data=lynx_audio_read(lynx_audio+(offset&0x1f)/8, offset&7);
-		return data;
-		break;
-	case 0x81:
-		data=mikey.data[offset];
-		mikey.data[offset]&=~0x10; // timer 4 autoquit!?
-		break;
-	case 0x8b:
-		data=mikey.data[offset];
-		data|=4; // no comlynx adapter
-		break;
-	case 0x8c:
-		data=mikey.data[offset]&~0x40; // no serial data received
-		break;
-	default:
-		data=mikey.data[offset];
-	}
-	logerror("mikey read %.2x %.2x\n",offset,data);
+    UINT8 data=0;
+    switch (offset) {
+    case 0: case 1: case 2: case 3:
+    case 4: case 5: case 6: case 7:
+    case 8: case 9: case 0xa: case 0xb:
+    case 0xc: case 0xd: case 0xe: case 0xf:
+    case 0x10: case 0x11: case 0x12: case 0x13:
+    case 0x14: case 0x15: case 0x16: case 0x17:
+    case 0x18: case 0x19: case 0x1a: case 0x1b:
+    case 0x1c: case 0x1d: case 0x1e: case 0x1f:
+	data=lynx_timer_read(lynx_timer+(offset/4), offset&3);
 	return data;
+    case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27:
+    case 0x28: case 0x29: case 0x2a: case 0x2b: case 0x2c: case 0x2d: case 0x2e: case 0x2f:
+    case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
+    case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f:
+    case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x50:
+	data=lynx_audio_read(offset);
+	return data;
+    case 0x81:
+	data=mikey.data[offset];
+	logerror("mikey read %.2x %.2x\n",offset,data);
+	break;
+    case 0x8b:
+	data=mikey.data[offset];
+	data|=4; // no comlynx adapter
+	break;
+    case 0x8c: case 0x8d:
+	data=lynx_uart_r(offset);
+	break;
+    default:
+	data=mikey.data[offset];
+	logerror("mikey read %.2x %.2x\n",offset,data);
+    }
+    return data;
 }
 
 WRITE_HANDLER(mikey_write)
 {
-	mikey.data[offset]=data;
-	switch (offset) {
-	case 0: case 1: case 2: case 3:
-	case 4: case 5: case 6: case 7:
-	case 8: case 9: case 0xa: case 0xb:
-	case 0xc: case 0xd: case 0xe: case 0xf:
-	case 0x10: case 0x11: case 0x12: case 0x13:
-	case 0x14: case 0x15: case 0x16: case 0x17:
-	case 0x18: case 0x19: case 0x1a: case 0x1b:
-	case 0x1c: case 0x1d: case 0x1e: case 0x1f:
-		lynx_timer_write(lynx_timer+(offset/4), offset&3, data);
-		return;
-//		break;
-	case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27:
-	case 0x28: case 0x29: case 0x2a: case 0x2b: case 0x2c: case 0x2d: case 0x2e: case 0x2f:
-	case 0x30: case 0x31: case 0x32: case 0x33:	case 0x34: case 0x35: case 0x36: case 0x37:
-	case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f:
-		lynx_audio_write(lynx_audio+(offset&0x1f)/8, offset&7, data);
-		return;
-//break;		
-	case 0x80:
-		mikey.data[0x81]&=~data; // clear interrupt source
-		break;
-	case 0x87:
-		if (data&2) {
-			if (data&1) {
-				suzy.high<<=1;
-				if (mikey.data[0x8b]&2) suzy.high|=1;
-				suzy.low=0;
-			}
-		} else {
-			suzy.high=0;
-			suzy.low=0;
-		}
-		return;
-//		break;
-	case 0xa0: case 0xa1: case 0xa2: case 0xa3: case 0xa4: case 0xa5: case 0xa6: case 0xa7:
-	case 0xa8: case 0xa9: case 0xaa: case 0xab: case 0xac: case 0xad: case 0xae: case 0xaf:
-	case 0xb0: case 0xb1: case 0xb2: case 0xb3: case 0xb4: case 0xb5: case 0xb6: case 0xb7:
-	case 0xb8: case 0xb9: case 0xba: case 0xbb: case 0xbc: case 0xbd: case 0xbe: case 0xbf:
-		mikey.data[offset]=data;
-		palette_change_color(offset&0xf,
-							 (mikey.data[0xb0+(offset&0xf)]&0xf)<<4,
-							 (mikey.data[0xa0+(offset&0xf)]&0xf)<<4,
-							 mikey.data[0xb0+(offset&0xf)]&0xf0 );
-		return;
-//		break;
-	}
+    switch (offset) {
+    case 0: case 1: case 2: case 3:
+    case 4: case 5: case 6: case 7:
+    case 8: case 9: case 0xa: case 0xb:
+    case 0xc: case 0xd: case 0xe: case 0xf:
+    case 0x10: case 0x11: case 0x12: case 0x13:
+    case 0x14: case 0x15: case 0x16: case 0x17:
+    case 0x18: case 0x19: case 0x1a: case 0x1b:
+    case 0x1c: case 0x1d: case 0x1e: case 0x1f:
+	lynx_timer_write(lynx_timer+(offset/4), offset&3, data);
+	return;
+    case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27:
+    case 0x28: case 0x29: case 0x2a: case 0x2b: case 0x2c: case 0x2d: case 0x2e: case 0x2f:
+    case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
+    case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f:
+    case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x50:
+	lynx_audio_write(offset, data);
+	return;
+    case 0x80:
+	mikey.data[0x81]&=~data; // clear interrupt source
 	logerror("mikey write %.2x %.2x\n",offset,data);
+	if (!mikey.data[0x81]) {
+	    cpu_set_irq_line(0, M65SC02_INT_IRQ, CLEAR_LINE);	    
+	}
+	break;
+    case 0x87:
+	mikey.data[offset]=data; //?
+	if (data&2) {
+	    if (data&1) {
+		suzy.high<<=1;
+		if (mikey.data[0x8b]&2) suzy.high|=1;
+		suzy.low=0;
+	    }
+	} else {
+	    suzy.high=0;
+	    suzy.low=0;
+	}
+	break;
+    case 0x8c: case 0x8d:
+	lynx_uart_w(offset, data);
+	break;
+    case 0xa0: case 0xa1: case 0xa2: case 0xa3: case 0xa4: case 0xa5: case 0xa6: case 0xa7:
+    case 0xa8: case 0xa9: case 0xaa: case 0xab: case 0xac: case 0xad: case 0xae: case 0xaf:
+    case 0xb0: case 0xb1: case 0xb2: case 0xb3: case 0xb4: case 0xb5: case 0xb6: case 0xb7:
+    case 0xb8: case 0xb9: case 0xba: case 0xbb: case 0xbc: case 0xbd: case 0xbe: case 0xbf:
+	mikey.data[offset]=data;
+	lynx_draw_lines(lynx_line);
+#if 0
+	palette_change_color(offset&0xf,
+			     (mikey.data[0xb0+(offset&0xf)]&0xf)<<4,
+			     (mikey.data[0xa0+(offset&0xf)]&0xf)<<4,
+			     mikey.data[0xb0+(offset&0xf)]&0xf0 );
+#else
+	lynx_palette[offset&0xf]=Machine->pens[((mikey.data[0xb0+(offset&0xf)]&0xf))
+	    |((mikey.data[0xa0+(offset&0xf)]&0xf)<<4)
+	    |((mikey.data[0xb0+(offset&0xf)]&0xf0)<<4)];
+#endif
+	break;
+    case 0x8b:case 0x90:case 0x91:
+	mikey.data[offset]=data;
+	break;
+    default:
+	mikey.data[offset]=data;
+	logerror("mikey write %.2x %.2x\n",offset,data);
+    }
 }
 
 WRITE_HANDLER( lynx_memory_config )
 {
-	memory_region(REGION_CPU1)[0xfff9]=data;
-	if (data&1) {
-		memory_set_bankhandler_r(1, 0, MRA_RAM);
-		memory_set_bankhandler_w(1, 0, MWA_RAM);
-	} else {
-		memory_set_bankhandler_r(1, 0, suzy_read);
-		memory_set_bankhandler_w(1, 0, suzy_write);
-	}
-	if (data&2) {
-		memory_set_bankhandler_r(2, 0, MRA_RAM);
-		memory_set_bankhandler_w(2, 0, MWA_RAM);
-	} else {
-		memory_set_bankhandler_r(2, 0, mikey_read);
-		memory_set_bankhandler_w(2, 0, mikey_write);
-	}
-	if (data&4) {
-		memory_set_bankhandler_r(3, 0, MRA_RAM);
-	} else {
-		cpu_setbank(3,memory_region(REGION_CPU1)+0x10000);
-		memory_set_bankhandler_r(3, 0, MRA_BANK3);
-	}
-	if (data&8) {
-		memory_set_bankhandler_r(4, 0, MRA_RAM);
-	} else {
-		memory_set_bankhandler_r(4, 0, MRA_BANK4);
-		cpu_setbank(4,memory_region(REGION_CPU1)+0x101fa);
-	}
+    // bit 7: hispeed, uses page mode accesses (4 instead of 5 cycles )
+    // when these are safe in the cpu
+    memory_region(REGION_CPU1)[0xfff9]=data;
+    if (data&1) {
+	memory_set_bankhandler_r(1, 0, MRA_RAM);
+	memory_set_bankhandler_w(1, 0, MWA_RAM);
+    } else {
+	memory_set_bankhandler_r(1, 0, suzy_read);
+	memory_set_bankhandler_w(1, 0, suzy_write);
+    }
+    if (data&2) {
+	memory_set_bankhandler_r(2, 0, MRA_RAM);
+	memory_set_bankhandler_w(2, 0, MWA_RAM);
+    } else {
+	memory_set_bankhandler_r(2, 0, mikey_read);
+	memory_set_bankhandler_w(2, 0, mikey_write);
+    }
+    if (data&4) {
+	memory_set_bankhandler_r(3, 0, MRA_RAM);
+    } else {
+	cpu_setbank(3,memory_region(REGION_CPU1)+0x10000);
+	memory_set_bankhandler_r(3, 0, MRA_BANK3);
+    }
+    if (data&8) {
+	memory_set_bankhandler_r(4, 0, MRA_RAM);
+    } else {
+	memory_set_bankhandler_r(4, 0, MRA_BANK4);
+	cpu_setbank(4,memory_region(REGION_CPU1)+0x101fa);
+    }
 }
 
 extern void lynx_machine_init(void)
 {
-	int i;
-	lynx_memory_config(0,0);
+    int i;
+    lynx_memory_config(0,0);
+    
+    cpu_set_irq_line(0, M65SC02_INT_IRQ, CLEAR_LINE);	    
+    
+    memset(&suzy, 0, sizeof(suzy));
+    memset(&mikey, 0, sizeof(mikey));
+    
+    mikey.data[0x80]=0;
+    mikey.data[0x81]=0;
 
-	memset(&suzy, 0, sizeof(suzy));
-	memset(&mikey, 0, sizeof(mikey));
+    lynx_uart_reset();
 
-	for (i=0; i<ARRAY_LENGTH(lynx_timer); i++) {
-		lynx_timer_reset(lynx_timer+i);
-	}
+    for (i=0; i<ARRAY_LENGTH(lynx_timer); i++) {
+	lynx_timer_reset(lynx_timer+i);
+    }
+    lynx_audio_reset();
+
+    // hack to allow current object loading to work
+#if 1
+    lynx_timer_write(lynx_timer, 0, 160);
+    lynx_timer_write(lynx_timer, 1, 0x10|0x8|0);
+    lynx_timer_write(lynx_timer+2, 0, 102);
+    lynx_timer_write(lynx_timer+2, 1, 0x10|0x8|7);
+#endif
 }

@@ -37,13 +37,18 @@ void a7800_init_machine(void) {
     }
 }
 
-void a7800_stop_machine(void) {
+void a7800_stop_machine(void)
+{
+	return;
+
+	/*
 	if (a7800_bios_f000)
 		free(a7800_bios_f000);
 	a7800_bios_f000 = NULL;
 	if (a7800_cart_f000)
 		free(a7800_cart_f000);
 	a7800_cart_f000 = NULL;
+	*/
 }
 
 /*    Header format
@@ -86,34 +91,6 @@ logerror("A7800 Partial CRC: %08lx %d [%s]\n",crc,size,&buf[1]);
 return crc;
 }
 
-int a7800_id_rom (int id)
-{
-    FILE *romfile;
-	
-    char header[128];
-    char tag[] = "ATARI7800";
-
-    logerror("A7800 IDROM\n");
-    /* If no file was specified, don't bother */
-	if (device_filename(IO_CARTSLOT,id) == NULL ||
-		strlen(device_filename(IO_CARTSLOT,id)) == 0)
-		return ID_FAILED;
-
-	if (!(romfile = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0))) {
-		logerror("returning ID_FAILED\n");
-		return ID_FAILED;
-	}
-	osd_fread(romfile,header,sizeof(header));
-    osd_fclose (romfile);
-	logerror("Trying Header Compare\n");
-
-	if (strncmp(&tag[0],&header[1],9)) {
-		logerror("Not an valid A7800 image\n");
-		return ID_FAILED;
-	}
-	logerror("returning ID_OK\n");
-    return ID_OK;
-}
 
 void a7800_exit_rom (int id)
 {
@@ -125,50 +102,72 @@ void a7800_exit_rom (int id)
     a7800_cart_f000 = NULL;
 }
 
-int a7800_load_rom (int id)
+static int a7800_verify_cart (char header[128])
 {
-	
-    FILE *cartfile;
+    char tag[] = "ATARI7800";
+
+	if (strncmp(&tag[0], &header[1],9)) {
+		logerror("Not a valid A7800 image\n");
+		return IMAGE_VERIFY_FAIL;
+	}
+	logerror("returning ID_OK\n");
+    return IMAGE_VERIFY_PASS;
+}
+
+
+int a7800_init_cart (int id)
+{
+
+    FILE *cartfile =NULL;
     long len,start;
     unsigned char header[128];
 
     ROM = memory_region(REGION_CPU1);
 
-    /* A cartridge isn't strictly mandatory, but it's recommended */
-    cartfile = NULL;
+    /* A cartridge is mandatory, since it doesnt do much without one */
 	if (device_filename(IO_CARTSLOT,id) == NULL ||
 		strlen(device_filename(IO_CARTSLOT,id)) == 0)
     {
-        logerror("A7800 - warning: no cartridge specified!\n");
+        logerror("A7800 - no cartridge specified!\n");
+        return INIT_FAIL;
     }
-	else
+
 	if (!(cartfile = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
     {
 		logerror("A7800 - Unable to locate cartridge: %s\n",device_filename(IO_CARTSLOT,id) == NULL);
-        return 1;
+        return INIT_FAIL;
     }
 
     /* Allocate memory for BIOS bank switching */
     a7800_bios_f000 = (UINT8*)malloc(0x1000);
     if (!a7800_bios_f000) {
         logerror("Could not allocate ROM memory\n");
-        return 1;
+        return INIT_FAIL;
     }
     a7800_cart_f000 = (UINT8*)malloc(0x1000);
     if (!a7800_cart_f000) {
         logerror("Could not allocate ROM memory\n");
         free(a7800_bios_f000);
-        return 1;
+        return INIT_FAIL;
     }
 
     /* save the BIOS so we can switch it in and out */
     memcpy(a7800_bios_f000,&(ROM[0xF000]),0x1000);
 
     /* No cart, exit */
-    if (cartfile == NULL) return 0;
+    if (cartfile == NULL)
+    	return INIT_FAIL;
 
     /* Load and decode the header */
     osd_fread(cartfile,header,128);
+
+    /* Check the cart */
+    if (a7800_verify_cart((char *)header) == IMAGE_VERIFY_FAIL)
+    {
+		osd_fclose(cartfile);
+		return INIT_FAIL;
+	}
+
     len = (header[49] << 24) | (header[50] << 16) | (header[51] << 8) | header[52];
     a7800_cart_type = (header[53] << 8) | header[54];
     a7800_stick_type = header[55];
@@ -189,6 +188,7 @@ int a7800_load_rom (int id)
         /* Extra ROM at $4000 */
         if (a7800_cart_type & 0x08) {
             osd_fread(cartfile,&(ROM[0x4000]),0x4000);
+            len -= 0x4000;
         }
         a7800_cartridge_rom = &(ROM[0x10000]);
         osd_fread (cartfile, a7800_cartridge_rom, len);
@@ -246,9 +246,9 @@ WRITE_HANDLER( a7800_TIA_w ) {
                 a7800_ctrl_lock = data & 0x01;
                 a7800_ctrl_reg = data;
                 if (data & 0x04)
-                    memcpy(&(ROM[0xF000]),a7800_cart_f000,0x1000);
+               		memcpy(&(ROM[0xF000]),a7800_cart_f000,0x1000);
                 else
-                    memcpy(&(ROM[0xF000]),a7800_bios_f000,0x1000);
+               		memcpy(&(ROM[0xF000]),a7800_bios_f000,0x1000);
             }
         break;
     }

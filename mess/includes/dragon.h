@@ -3,8 +3,11 @@
 
 #include "vidhrdw/m6847.h"
 #include "includes/rstrbits.h"
+#include "includes/rstrtrck.h"
 
-#define COCO_CPU_SPEED	(TIME_IN_HZ(894886))
+#define COCO_CPU_SPEED_HZ		894886	/* 0.894886 MHz */
+#define COCO_FRAMES_PER_SECOND	(COCO_CPU_SPEED_HZ / 57.0 / 263)
+#define COCO_CPU_SPEED			(TIME_IN_HZ(COCO_CPU_SPEED_HZ))
 #define COCO_TIMER_CMPCARRIER	(COCO_CPU_SPEED * 0.25)
 
 #define COCO_DIP_ARTIFACTING		12
@@ -15,13 +18,17 @@
  * Backdoors into mess/vidhrdw/m6847.c                                     *
  * ----------------------------------------------------------------------- */
 
-int internal_m6847_vh_start(const struct m6847_init_params *params, int dirtyramsize);
-void internal_m6847_vh_screenrefresh(struct rasterbits_source *rs,
-	struct rasterbits_videomode *rvm, struct rasterbits_frame *rf, int full_refresh,
-	UINT32 *pens, UINT8 *vrambase, int skew_up, int border_color, int wf,
+int internal_m6847_vh_start(const struct m6847_init_params *params, struct rastertrack_interface *intf, int dirtyramsize);
+
+void internal_m6847_rastertrack_endcontent(void);
+
+void internal_m6847_rastertrack_newscreen(struct rastertrack_vvars *vvars, struct rastertrack_hvars *hvars,
+	int border_top, int rows, int baseoffset, int use_m6847_offset, void (*getvideomode)(struct rastertrack_hvars *));
+
+void internal_m6847_rastertrack_getvideomode(struct rastertrack_hvars *hvars,
+	UINT32 *pens, int skew_up, int border_pen, int wf,
 	int artifact_value, int artifact_palettebase,
 	void (*getcolorrgb)(int c, UINT8 *red, UINT8 *green, UINT8 *blue));
-int internal_m6847_vblank(int hsyncs, double trailingedgerow, void (*newlineproc)(void));
 
 /* ----------------------------------------------------------------------- *
  * from vidhrdw/dragon.c                                                   *
@@ -42,14 +49,11 @@ extern int coco2b_vh_start(void);
 extern int coco3_vh_start(void);
 extern void coco3_vh_stop(void);
 extern void coco3_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
-//extern WRITE_HANDLER ( dragon_sam_display_offset );
-//extern WRITE_HANDLER ( dragon_sam_vdg_mode );
 extern WRITE_HANDLER ( coco_ram_w );
 extern READ_HANDLER ( coco3_gimevh_r );
 extern WRITE_HANDLER ( coco3_gimevh_w );
 extern WRITE_HANDLER ( coco3_palette_w );
 extern void coco3_vh_blink(void);
-extern int coco3_vblank(void);
 
 /* ----------------------------------------------------------------------- *
  * from machine/dragon.c                                                   *
@@ -71,16 +75,10 @@ extern int dragon64_pak_load(int id);
 extern int coco3_pak_load(int id);
 extern READ_HANDLER ( dragon_mapped_irq_r );
 extern READ_HANDLER ( coco3_mapped_irq_r );
-//extern WRITE_HANDLER ( dragon64_sam_himemmap );
-//extern WRITE_HANDLER ( coco3_sam_himemmap );
 extern READ_HANDLER ( coco3_mmu_r );
 extern WRITE_HANDLER ( coco3_mmu_w );
 extern READ_HANDLER ( coco3_gime_r );
 extern WRITE_HANDLER ( coco3_gime_w );
-//extern WRITE_HANDLER ( dragon_sam_speedctrl );
-//extern WRITE_HANDLER ( coco3_sam_speedctrl );
-//extern WRITE_HANDLER ( dragon_sam_page_mode );
-//extern WRITE_HANDLER ( dragon_sam_memory_size );
 extern READ_HANDLER ( coco_cartridge_r);
 extern WRITE_HANDLER ( coco_cartridge_w );
 extern READ_HANDLER ( coco3_cartridge_r);
@@ -93,10 +91,13 @@ extern WRITE_HANDLER( coco3_m6847_hs_w );
 extern WRITE_HANDLER( coco3_m6847_fs_w );
 extern int coco3_mmu_translate(int block, int offset);
 extern int dragon_floppy_init(int id);
+extern int dragon_floppy_id(int id);
+extern void dragon_floppy_exit(int id);
 extern int coco_bitbanger_init (int id);
 extern void coco_bitbanger_exit (int id);
 extern void coco_bitbanger_output (int id, int data);
-extern int coco3_calculate_rows(int *bordertop, int *borderbottom);
+extern READ_HANDLER( coco_pia_1_r );
+extern READ_HANDLER( coco3_pia_1_r );
 
 /* Returns whether a given piece of logical memory is contiguous or not */
 extern int coco3_mmu_ismemorycontiguous(int logicaladdr, int len);
@@ -113,9 +114,9 @@ extern int coco3_mmu_translatelogicaladdr(int logicaladdr);
 		4,\
 		"dsk\0",\
 		IO_RESET_NONE,\
-		basicdsk_floppy_id,\
+		0,\
 		dragon_floppy_init,\
-		basicdsk_floppy_exit,\
+		dragon_floppy_exit,\
         NULL,\
         NULL,\
         NULL,\

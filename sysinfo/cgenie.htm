@@ -1,0 +1,94 @@
+<html>
+<head>
+<title>Info for cgenie</title>
+</head>
+<body>
+<table width=100%>
+<tr>
+<td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
+<td><h1>Info for cgenie</h1></td>
+</tr>
+</table>
+<hr>
+<h4>EACA Colour Genie 2000</h4>
+<p><b>Cassette Usage:</b><br>
+From within the emulation you can use SYSTEM or CLOAD commands to read images: <br>
+SYSTEM supports 6 character filenames.<br>
+CLOAD loads a file named BASIC(N).CAS, where (N) is the character you supplied <br>
+(e.g., CLOAD"M" loads BASICM.CAS)<br>
+CLOAD is for BASIC type tapes only.  It should work if you have a BASIC *.cas file. <br>
+File "names" in that case are _one_ character in length (inside the emulation).  In your <br>
+roms/cgenie folder the names will be basicA.cas, basicB.cas and so on.  If you CSAVE"A you'll <br>
+see a file basicA.cas later and you can CLOAD"A it again. <br>
+To load a binary image there was a different command: SYSTEM<br>
+You'll see a prompt looking like this: <br>
+*?<br>
+and there you can enter a name of up to six (wow!) characters.<br>
+*?chop16 [ENTER]<br>
+This will start loading a file named chop16.cas if it is in your rompath. If you don't have <br>
+it... well, wait and see (nothing ;)  If you have it, you'll see two stars (**) in the upper <br>
+right corner.  The right one will twinkle after every couple of bytes loaded, every 254 I <br>
+think.<br>
+	<br>
+After several minutes you'll see the prompt again<br>
+*?<br>
+now type / (slash) and ENTER and the program will be started at it's defined run address. If <br>
+a program does not have a run address, you could also specify /[decimal value] to run from a <br>
+specific value...<br>
+ <br>
+<p><b>Diskette Usage:</b><br>
+When the emulation starts, tap [ENTER] and also confirm the following <br>
+	<br>
+MEM SIZE?<br>
+with [ENTER].<br>
+After that you're in BASIC (DISK BASIC, to be exact, unless you disable cgdos.rom via the <br>
+dip switches).<br>
+Now you can use the DISK BASIC extensions to issue commands.  Most important<br>
+CMD"I[disk#] <br>
+Display inventory, disk# is optional and can be from 0 to 3<br>
+You can use CMD"I0" to "CMDI3" to get an inventory of drive 0 to 3.<br>
+Use CMD"S FILENAME/CMD" to start a binary executable or use LOAD"FILENAME/BAS" to load a basic <br>
+program.<br>
+CMD"Sname/cmd will start a binary file name/cmd from any disk<br>
+CMD"Limage/bin:3 will load image/bin from disk 3<br>
+To start a game, eg. paint/cmd, type<br>
+cmd"s paint/cmd<br>
+You can omit the blank between cmd"s and the filename.<br>
+To ease things you could also enable my DOS lookalike frontend ;) It's contained in <br>
+newe000.rom (2,772 bytes; CRC 953491a7) but not enabled by default. If you enable it <br>
+you can type HELP (hehe ;) and DIR and simply give a name to execute a binary file.<br>
+The optional newe000.rom is loaded if the corresponding "dip switch" is set from within the <br>
+driver itself. There is no need to specify this rom on the commandline.<br>
+<p><b>Miscellaneous Usage Notes:</b><br>
+ <br>
+Under the "Options" menu, accessible by hitting TAB, there are three settings: <br>
+"Floppy Disc Drives"  - enable or disable floppy disc controller.<br>
+"DOS ROM C000-DFFF"   - enable 8K DOS ROM or make it RAM.<br>
+"EXT ROM E000-EFFF"   - enable 4K Extension ROM or make it RAM.<br>
+<p><b>Known issues:</b><br>
+Startup with CAS or CMD images does not always work. Use the BASIC SYSTEM or CLOAD commands <br>
+to read cassette image files, or use the Colour Genie DOS ROM with floppy disc images to run <br>
+programs. The driver does not yet emulate the printer port mode for AY-3-8910. Right now it <br>
+always uses the AY-3-8910 ports for joystick emulation.<br>
+Requires full keyboard emulation. At startup, full keyboard emulation mode is enabled by <br>
+default.  Whilst in full keyboard emulation mode, some key associated functionality may be <br>
+disabled (like the ESC key for EXIT). The keyboard emulation mode is toggled using the <br>
+scroll_lock key.   <br>
+The Colour Genie driver should run most of the known programs out there. It supports the <br>
+Motorola 6845 CRT controller with text and graphics modes (LGR and FGR), the AY-3-8910 <br>
+sound chip with three audio channels and noise and the WD 179x floppy disc controller with up <br>
+to four virtual floppy disc drives contained in image files.<br>
+The keyboard is relatively close to the original layout; see "Keys (This Machine)" in the<br>
+TAB/Options menu.<br>
+Emulation of dual Colour Genie joysticks with keypads is also supported.<br>
+<p><b>History and Trivia:</b><br>
+The Colour Genie is the successor of the Genie 1, Genie 2 and Genie 3. It is not possible <br>
+to mix characters and graphics because text and graphic memories are not mixed. There was <br>
+a little level display located above the keyboard which allows to set the recording <br>
+level of the tape recorder to avoid failure when writing onto a tape. <br>
+<br>
+<hr>
+<center><font size=-2>created on Thu Aug 16 22:55:01 2001
+</font></center>
+</body>
+</html>

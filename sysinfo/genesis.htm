@@ -1,0 +1,44 @@
+<html>
+<head>
+<title>Info for genesis</title>
+</head>
+<body>
+<table width=100%>
+<tr>
+<td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
+<td><h1>Info for genesis</h1></td>
+</tr>
+</table>
+<hr>
+<h4>Sega Megadrive/Genesis</h4>
+<p><b>Usage:</b><br>
+Under the "Options" menu, accessible by hitting TAB, you will find the following option: <br>
+"Country" - this allows you to alter the 'flavour' of Genesis, to either European, Japanese <br>
+or American. Many cartridges compare their country codes with that of the Genesis itself and <br>
+may behave differently, or lock up if the two types do not match.<br>
+'Auto' attempts to auto-set the Genesis country code to the value the cartridge will appear <br>
+to be checking for. This may not be 100% accurate, however.<br>
+<p><b>Known Issues:</b><br>
+Most games tend to run fairly well. Some have slight graphic glitches, incorrect colours part <br>
+way down the screen or other bizarre effects. See genesis.crc for a partial list.<br>
+Cartridges up to 32MBit (4MByte) are supported.<br>
+The controller may not work well with some games. This will be resolved when more information <br>
+is obtained. Similarly, 6-button joypads aren't emulated yet.<br>
+Split screen effects and interlacing are not yet supported.<br>
+Sprite/layer priority should be perfect.<br>
+Sound is emulated at Z80 and PSG76489 level. <br>
+I still consider the Genesis driver extremely preliminary. I have a lot of further work to do <br>
+before I consider it anywhere near complete. My initial goal is to make it as compatible as <br>
+possible. Currently there is scope within the driver to handlesplit screen colour changes/any <br>
+VDP effect, interlacing, without rewriting. The graphics renderer emulates VDP at scanline <br>
+level, and does not use tile-based methods.<br>
+Wanted: Any Sega Megadrive information! Information is extremely sparse; typically the same <br>
+three-four documents, with parts incomplete, conflicting, and corrupted. Specifically, some <br>
+of the finer points of DMA transfer, and access of the 68K memory map by the Z80. Generally, <br>
+points which conflict with themselves in the documentation available on the net...<br>
+<br>
+<hr>
+<center><font size=-2>created on Thu Aug 16 22:55:01 2001
+</font></center>
+</body>
+</html>

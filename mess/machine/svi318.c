@@ -29,68 +29,66 @@ static void svi318_set_banks (void);
 ** Cartridge stuff
 */
 
-int svi318_id_rom (int id)
-	{
-    void *f;
-    UINT8 magic[2];
-	int ret = 0;
-
+static int svi318_verify_cart (UINT8 magic[2])
+{
     /* read the first two bytes */
-    f = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
-    if (f) 
-		{
-		if (osd_fsize (f) <= 0x8000)
-    		if (osd_fread (f, magic, 2) == 2)
-				{
-				if ( (magic[0] == 0xf3) && (magic[1] == 0xc3) )
-					ret = 1;
-				}
-    	osd_fclose (f);
-		}
+	if ( (magic[0] == 0xf3) && (magic[1] == 0xc3) )
+		return IMAGE_VERIFY_PASS;
+	else
+		return IMAGE_VERIFY_FAIL;
+}
 
-    return ret;
-	}
+
 
 int svi318_load_rom (int id)
-	{
+{
 	void *f;
 	UINT8 *p;
 	int size;
 
+	/* A cartridge isn't strictly mandatory */
+	if (!device_filename(IO_CARTSLOT,id) || !strlen(device_filename(IO_CARTSLOT,id) ))
+	{
+		logerror("SVI318 - warning: no cartridge specified!\n");
+		return INIT_PASS;
+	}
+
 	f = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
 	if (f)
-		{
+	{
 		p = malloc (0x8000);
 		if (!p)
-			{
+		{
 			logerror ("malloc () failed!\n");
 			osd_fclose (f);
-			return INIT_FAILED;
-			}
+			return INIT_FAIL;
+		}
 		memset (p, 0xff, 0x8000);
 		size = osd_fsize (f);
 		if (osd_fread (f, p, size) != size)
-			{
+		{
 			logerror ("can't read file %s\n", device_filename (IO_CASSETTE, id) );
 			osd_fclose (f);
 			free (p);
-			return INIT_FAILED;
-			}
+			return INIT_FAIL;
+		}
 		osd_fclose (f);
+		if(svi318_verify_cart(p)==IMAGE_VERIFY_FAIL)
+			return INIT_FAIL;
 		pcart = p;
 		svi.banks[0][1] = p;
 
-		return INIT_OK;
-		}
-	
-	return INIT_FAILED;
+		return INIT_PASS;
 	}
+
+	return INIT_FAIL;
+}
 
 void svi318_exit_rom (int id)
 	{
 	if (pcart)
 		{
-		free (pcart); 
+		free (pcart);
 		pcart = svi.banks[0][1] = NULL;
 		}
 	}
@@ -113,7 +111,7 @@ Bit 1: Joystick 1: EOC
 Bit 0: Joystick 1: /SENSE
 
 */
-static int svi318_ppi_port_a_r (int chip)
+static READ_HANDLER ( svi318_ppi_port_a_r )
 	{
     int data = 0x0f;
 
@@ -138,7 +136,7 @@ Bit 1: Keyboard: Column status of selected line
 Bit 0: Keyboard: Column status of selected line
 
 */
-static int svi318_ppi_port_b_r (int chip)
+static READ_HANDLER ( svi318_ppi_port_b_r )
 	{
 	int row;
 
@@ -160,7 +158,7 @@ Bit 1: Keyboard: Line select 1
 Bit 0: Keyboard: Line select 0
 
 */
-static void svi318_ppi_port_c_w (int chip, int data)
+static WRITE_HANDLER ( svi318_ppi_port_c_w )
 	{
 	static int old_val = 0xff;
 	int val;
@@ -184,12 +182,12 @@ static void svi318_ppi_port_c_w (int chip, int data)
 
 static ppi8255_interface svi318_ppi8255_interface = {
     1,
-    svi318_ppi_port_a_r,
-    svi318_ppi_port_b_r,
-    NULL,
-    NULL,
-    NULL,
-    svi318_ppi_port_c_w
+    {svi318_ppi_port_a_r},
+    {svi318_ppi_port_b_r},
+    {NULL},
+    {NULL},
+    {NULL},
+    {svi318_ppi_port_c_w}
 };
 
 READ_HANDLER (svi318_ppi_r)
@@ -203,7 +201,7 @@ WRITE_HANDLER (svi318_ppi_w)
 	}
 
 /*
-** Printer ports 
+** Printer ports
 */
 
 WRITE_HANDLER (svi318_printer_w)
@@ -235,10 +233,10 @@ READ_HANDLER (svi318_printer_r)
 Bit Name    Description
 1   /CART   Bank 11, ROM Cartridge 0000-7FFF
 2   /BK21   Bank 21, RAM 0000-7FFF
-3   /BK22   Bank 22, RAM 8000-FFFF                                        
-4   /BK31   Bank 31, RAM 0000-7FFF                       
+3   /BK22   Bank 22, RAM 8000-FFFF
+4   /BK31   Bank 31, RAM 0000-7FFF
 5   /BK32   Bank 32, RAM 8000-7FFF
-6   CAPS    Caps-Lock diod                                                
+6   CAPS    Caps-Lock diod
 7   /ROMEN0 Bank 12, ROM Cartridge CCS3 8000-BFFF*
 8   /ROMEN1 Bank 12, ROM Cartridge CCS4 C000-FFFF*
 
@@ -248,7 +246,7 @@ disabled.
 
 WRITE_HANDLER (svi318_psg_port_b_w)
 	{
-	if ( (svi.bank_switch ^ data) & 0x20) 
+	if ( (svi.bank_switch ^ data) & 0x20)
 		set_led_status (0, !(data & 0x20) );
 
     svi.bank_switch = data;
@@ -257,14 +255,14 @@ WRITE_HANDLER (svi318_psg_port_b_w)
 
 /*
 
-Bit Name   Description                                      
+Bit Name   Description
  1  FWD1   Joystick 1, Forward
  2  BACK1  Joystick 1, Back
- 3  LEFT1  Joystick 1, Left                      
- 4  RIGHT1 Joystick 1, Right                                               
+ 3  LEFT1  Joystick 1, Left
+ 4  RIGHT1 Joystick 1, Right
  5  FWD2   Joystick 2, Forward
- 6  BACK2  Joystick 2, Back                    
- 7  LEFT2  Joystick 2, Left   
+ 6  BACK2  Joystick 2, Back
+ 7  LEFT2  Joystick 2, Left
  8  RIGHT2 Joystick 2, Right
 
 */
@@ -386,7 +384,7 @@ void init_svi318 (void)
 	svi.banks[0][1] = pcart;
 
     /* adjust z80 cycles for the M1 wait state */
-    z80_table = malloc (0x500); 
+    z80_table = malloc (0x500);
     if (!z80_table)
         logerror ("Cannot malloc z80 cycle table, using default values\n");
     else
@@ -404,7 +402,7 @@ void init_svi318 (void)
 
 #ifdef SVI_DISK
 	/* floppy */
-	wd179x_init (svi_fdc_callback);
+	wd179x_init (WD_TYPE_179X,svi_fdc_callback);
 #endif
 	}
 
@@ -472,9 +470,9 @@ int svi318_interrupt ()
 		if (bit && !svi.banks[p][b])
 			{
 			svi.banks[p][b] = malloc (0x8000);
-			if (!svi.banks[p][b]) 
+			if (!svi.banks[p][b])
 				logerror ("Cannot malloc bank%d%d!\n", b, p + 1);
-			else 
+			else
 				{
 				memset (svi.banks[p][b], 0, 0x8000);
 				logerror ("bank%d%d allocated.\n", b, p + 1);
@@ -510,7 +508,7 @@ WRITE_HANDLER (svi318_writemem1)
 		case 0:
 			if (!svi.svi318 || offset >= 0x4000)
 				svi.banks[1][0][offset] = data;
-		
+
 			break;
 		case 2:
 		case 3:
@@ -526,7 +524,7 @@ static void svi318_set_banks ()
 
 	svi.bank1 = (v&1)?(v&2)?(v&8)?0:3:2:1;
     svi.bank2 = (v&4)?(v&16)?0:3:2;
-    
+
     if (svi.banks[0][svi.bank1])
 		cpu_setbank (1, svi.banks[0][svi.bank1]);
 	else
@@ -555,7 +553,7 @@ static void svi318_set_banks ()
 	}
 
 /*
-** Cassette 
+** Cassette
 */
 
 
@@ -613,6 +611,13 @@ int svi318_cassette_init(int id)
     void *file;
 	int ret;
 
+   	/* A cartridge isn't strictly mandatory for the coleco */
+	if (!device_filename(IO_CASSETTE,id) || !strlen(device_filename(IO_CASSETTE,id) ))
+	{
+		logerror("SVI318 - warning: no cassette specified!\n");
+		return INIT_PASS;
+	}
+
     file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
     if( file )
     	{
@@ -636,7 +641,7 @@ int svi318_cassette_init(int id)
 		cas_samples = NULL;
 		cas_len = -1;
 
-		return (ret ? INIT_FAILED : INIT_OK);
+		return (ret ? INIT_FAIL : INIT_PASS);
     	}
     file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW,
         OSD_FOPEN_RW_CREATE);
@@ -647,17 +652,17 @@ int svi318_cassette_init(int id)
         wa.display = 1;
         wa.smpfreq = 44100;
         if( device_open(IO_CASSETTE,id,1,&wa) )
-            return INIT_FAILED;
-        return INIT_OK;
+            return INIT_FAIL;
+        return INIT_PASS;
     	}
-    return INIT_FAILED;
+    return INIT_FAIL;
 	}
 
 void svi318_cassette_exit(int id)
 	{
     device_close(IO_CASSETTE,id);
 	}
- 
+
 int svi318_cassette_present (int id)
 	{
 	return device_filename (IO_CASSETTE, id) != NULL;

@@ -29,15 +29,15 @@ extern UINT8 *sam_screen;
 
 int coupe_floppy_init(int id)
 {
-	if (basicdsk_floppy_init(id)==INIT_OK)
+	if (basicdsk_floppy_init(id)==INIT_PASS)
 	{
 
 		basicdsk_set_geometry(id, 80, 2, 10, 512, 1);
 
-		return INIT_OK;
+		return INIT_PASS;
 	}
 
-	return INIT_FAILED;
+	return INIT_FAIL;
 }
 
 void coupe_update_memory(void)
@@ -143,7 +143,7 @@ void coupe_init_machine_common(void)
 
     coupe_update_memory();
 
-    wd179x_init(NULL);
+    wd179x_init(WD_TYPE_177X,NULL);
 }
 
 void coupe_init_machine_256(void)

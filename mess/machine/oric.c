@@ -16,6 +16,7 @@
    - fix more disc drive/wd179x problems so more software will run
 */
 
+
 #include <stdio.h>
 #include "driver.h"
 #include "includes/oric.h"
@@ -27,6 +28,9 @@
 #include "includes/centroni.h"
 #include "printer.h"
 #include "formats/orictap.h"
+
+
+
 
 /* timer used to refresh via cb input, which will trigger ints on pulses
 from tape */
@@ -53,7 +57,9 @@ enum
 {
 	ORIC_FLOPPY_INTERFACE_NONE = 0,
 	ORIC_FLOPPY_INTERFACE_MICRODISC = 1,
-	ORIC_FLOPPY_INTERFACE_JASMIN = 2
+	ORIC_FLOPPY_INTERFACE_JASMIN = 2,
+	ORIC_FLOPPY_INTERFACE_APPLE2 = 3,
+	ORIC_FLOPPY_INTERFACE_APPLE2_V2 = 4
 };
 
 /* called when ints are changed - cleared/set */
@@ -65,7 +71,7 @@ static void oric_refresh_ints(void)
 		/* oric 1 or oric atmos */
 
 		/* if floppy disc hardware is disabled, do not allow interrupts from it */
-		if ((readinputport(9) & 0x03)==ORIC_FLOPPY_INTERFACE_NONE)
+		if ((readinputport(9) & 0x07)==ORIC_FLOPPY_INTERFACE_NONE)
 		{
 			oric_irqs &=~(1<<1);
 		}
@@ -97,7 +103,7 @@ static char oric_keyboard_mask;
 
 static unsigned char oric_via_port_a_data;
 
-#define ORIC_DUMP_RAM
+//#define ORIC_DUMP_RAM
 
 #ifdef ORIC_DUMP_RAM
 /* load image */
@@ -106,7 +112,7 @@ void oric_dump_ram(void)
 	void *file;
 
 	file = osd_fopen(Machine->gamedrv->name, "oricram.bin", OSD_FILETYPE_MEMCARD,OSD_FOPEN_WRITE);
- 
+
 	if (file)
 	{
 		int i;
@@ -247,7 +253,7 @@ WRITE_HANDLER ( oric_via_out_a_func )
 
 
 	if (oric_psg_control==0)
-	{	
+	{
 		/* if psg not selected, write to printer */
 		centronics_write_data(0,data);
 	}
@@ -297,10 +303,10 @@ static void    oric_refresh_tape(int dummy)
 
 	input_port_9 = readinputport(9);
 	/* cable is enabled? */
-	if ((input_port_9 & 0x04)!=0)
+	if ((input_port_9 & 0x08)!=0)
 	{
 		/* return state of vsync */
-		data = input_port_9>>3;
+		data = input_port_9>>4;
 	}
 
     via_set_input_cb1(0, data);
@@ -311,7 +317,7 @@ static void    oric_refresh_tape(int dummy)
 
 		if (((previous_input_port5^input_port_data) & 0x01)!=0)
 		{
-			if (input_port_data & 0x01) 
+			if (input_port_data & 0x01)
 			{
 				logerror("do dump");
 				oric_dump_ram();
@@ -351,7 +357,7 @@ WRITE_HANDLER ( oric_via_out_b_func )
 	/* assumption: select is tied low */
 	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
 	centronics_write_handshake(0, printer_handshake, CENTRONICS_STROBE);
-	
+
 	oric_psg_connection_refresh();
 	previous_portb_data = data;
 
@@ -490,6 +496,148 @@ struct via6522_interface oric_6522_interface=
 	NULL
 };
 
+
+
+
+/*********************/
+/* APPLE 2 INTERFACE */
+
+/*
+apple2 disc drive accessed through 0x0310-0x031f (read/write)
+oric via accessed through 0x0300-0x030f. (read/write)
+disk interface rom accessed through 0x0320-0x03ff (read only)
+
+CALL &320 to start, or use BOBY rom.
+*/
+
+extern READ_HANDLER ( apple2_c0xx_slot6_r );
+extern WRITE_HANDLER ( apple2_c0xx_slot6_w );
+extern void apple2_slot6_init(void);
+extern void apple2_slot6_stop(void);
+
+static READ_HANDLER(apple2_interface_r)
+{
+	/*logerror("apple 2 interface r: %04x\n",offset); */
+
+	return apple2_c0xx_slot6_r(offset & 0x0f);
+}
+
+static WRITE_HANDLER(apple2_interface_w)
+{
+	/*logerror("apple 2 interface w: %04x %02x\n",offset,data); */
+
+	apple2_c0xx_slot6_w(offset & 0x0f, data);
+}
+
+static void oric_install_apple2_interface(void)
+{
+	install_mem_read_handler(0, 0x0300, 0x030f, oric_IO_r);
+	install_mem_read_handler(0, 0x0310, 0x031f, apple2_interface_r);
+	install_mem_read_handler(0, 0x0320, 0x03ff, MRA_BANK4);
+
+	install_mem_write_handler(0, 0x0300, 0x030f, oric_IO_w);
+	install_mem_write_handler(0, 0x0310, 0x031f, apple2_interface_w);
+	cpu_setbank(4, 	memory_region(REGION_CPU1) + 0x014000 + 0x020);
+
+}
+
+#if 0
+static void oric_uninstall_apple2_interface(void)
+{
+
+
+}
+#endif
+
+/************************/
+/* APPLE 2 INTERFACE V2 */
+
+/*
+apple2 disc drive accessed through 0x0310-0x031f (read/write)
+oric via accessed through 0x0300-0x030f. (read/write)
+disk interface rom accessed through 0x0320-0x03ff (read only)
+v2 registers accessed through 0x0380-0x0383 (write only)
+
+CALL &320 to start, or use BOBY rom.
+*/
+
+static WRITE_HANDLER(apple2_v2_interface_w)
+{
+	/* data is ignored, address is used to decode operation */
+
+/*	logerror("apple 2 interface v2 rom page: %01x\n",(offset & 0x02)>>1); */
+
+	/* bit 0 is 0 for page 0, 1 for page 1 */
+	cpu_setbank(4, memory_region(REGION_CPU1) + 0x014000 + 0x0100 + (((offset & 0x02)>>1)<<8));
+
+	/* bit 1 is 0, rom enabled, bit 1 is 1 ram enabled */
+	if ((offset & 0x01)==0)
+	{
+		unsigned char *rom_ptr;
+
+		/* logerror("apple 2 interface v2: rom enabled\n"); */
+
+		/* enable rom */
+		memory_set_bankhandler_r(1, 0, MRA_BANK1);
+		memory_set_bankhandler_r(2, 0, MRA_BANK2);
+		memory_set_bankhandler_r(3, 0, MRA_BANK3);
+		memory_set_bankhandler_w(5, 0, MWA_BANK5);
+		memory_set_bankhandler_w(6, 0, MWA_BANK6);
+		memory_set_bankhandler_w(7, 0, MWA_BANK7);
+
+		rom_ptr = memory_region(REGION_CPU1) + 0x010000;
+		cpu_setbank(1, rom_ptr);
+		cpu_setbank(2, rom_ptr+0x02000);
+		cpu_setbank(3, rom_ptr+0x03800);
+		cpu_setbank(5, oric_ram_0x0c000);
+		cpu_setbank(6, oric_ram_0x0c000+0x02000);
+		cpu_setbank(7, oric_ram_0x0c000+0x03800);
+	}
+	else
+	{
+		/*logerror("apple 2 interface v2: ram enabled\n"); */
+
+		/* enable ram */
+		memory_set_bankhandler_r(1, 0, MRA_BANK1);
+		memory_set_bankhandler_r(2, 0, MRA_BANK2);
+		memory_set_bankhandler_r(3, 0, MRA_BANK3);
+		memory_set_bankhandler_w(5, 0, MWA_BANK5);
+		memory_set_bankhandler_w(6, 0, MWA_BANK6);
+		memory_set_bankhandler_w(7, 0, MWA_BANK7);
+
+		cpu_setbank(1, oric_ram_0x0c000);
+		cpu_setbank(2, oric_ram_0x0c000+0x02000);
+		cpu_setbank(3, oric_ram_0x0c000+0x03800);
+		cpu_setbank(5, oric_ram_0x0c000);
+		cpu_setbank(6, oric_ram_0x0c000+0x02000);
+		cpu_setbank(7, oric_ram_0x0c000+0x03800);
+	}
+}
+
+
+/* APPLE 2 INTERFACE V2 */
+static void oric_install_apple2_v2_interface(void)
+{
+	install_mem_read_handler(0, 0x0300, 0x030f, oric_IO_r);
+	install_mem_read_handler(0, 0x0310, 0x031f, apple2_interface_r);
+	install_mem_read_handler(0, 0x0320, 0x03ff, MRA_BANK4);
+
+	install_mem_write_handler(0, 0x0300, 0x030f, oric_IO_w);
+	install_mem_write_handler(0, 0x0310, 0x031f, apple2_interface_w);
+	install_mem_write_handler(0, 0x0380, 0x0383, apple2_v2_interface_w);
+
+	apple2_v2_interface_w(0,0);
+}
+
+#if 0
+static void oric_uninstall_apple2_v2_interface(void)
+{
+
+
+}
+#endif
+
+/********************/
 /* JASMIN INTERFACE */
 
 
@@ -523,7 +671,7 @@ static void oric_jasmin_set_mem_0x0c000(void)
 
 			/* no it is disabled */
 			logerror("&c000-&ffff is os rom\n");
-			
+
 			memory_set_bankhandler_r(1, 0, MRA_BANK1);
 			memory_set_bankhandler_r(2, 0, MRA_BANK2);
 			memory_set_bankhandler_r(3, 0, MRA_BANK3);
@@ -553,7 +701,7 @@ static void oric_jasmin_set_mem_0x0c000(void)
 			cpu_setbank(5, oric_ram_0x0c000);
 			cpu_setbank(6, oric_ram_0x0c000+0x02000);
 			cpu_setbank(7, oric_ram_0x0c000+0x03800);
-		}		
+		}
 	}
 	else
 	{
@@ -562,9 +710,9 @@ static void oric_jasmin_set_mem_0x0c000(void)
 		if ((port_3fa_w & 0x01)==0)
 		{
 			/* overlay ram disabled */
-			
+
 			logerror("&c000-&f8ff is nothing!\n");
-			
+
 			memory_set_bankhandler_r(1, 0, MRA_NOP);
 			memory_set_bankhandler_r(2, 0, MRA_NOP);
 			memory_set_bankhandler_r(3, 0, MRA_NOP);
@@ -591,17 +739,17 @@ static void oric_jasmin_set_mem_0x0c000(void)
 			/* basic rom disabled */
 			unsigned char *rom_ptr;
 
-			logerror("&f800-&ffff is jasmin rom\n"); 	
+			logerror("&f800-&ffff is jasmin rom\n");
 			/* jasmin rom enabled */
 			memory_set_bankhandler_r(3, 0, MRA_BANK3);
 			memory_set_bankhandler_w(7, 0, MWA_BANK7);
 			rom_ptr = memory_region(REGION_CPU1) + 0x010000+0x04000+0x02000;
 			cpu_setbank(3, rom_ptr);
-			cpu_setbank(7, rom_ptr);		
+			cpu_setbank(7, rom_ptr);
 		}
 	}
 }
-  
+
 static void oric_jasmin_wd179x_callback(int State)
 {
 	switch (State)
@@ -610,7 +758,7 @@ static void oric_jasmin_wd179x_callback(int State)
 		case WD179X_DRQ_CLR:
 		{
 			oric_irqs &=~(1<<1);
-			
+
 			oric_refresh_ints();
 		}
 		break;
@@ -628,23 +776,23 @@ static void oric_jasmin_wd179x_callback(int State)
 	}
 }
 
-READ_HANDLER (oric_jasmin_r)
+static READ_HANDLER (oric_jasmin_r)
 {
 	unsigned char data = 0x0ff;
 
-	switch (offset & 0x0ff)
+	switch (offset & 0x0f)
 	{
 		/* jasmin floppy disc interface */
-		case 0x0f4:
+		case 0x04:
 			data = wd179x_status_r(0);
 			break;
-		case 0x0f5:
+		case 0x05:
 			data =wd179x_track_r(0);
 			break;
-		case 0x0f6:
+		case 0x06:
 			data = wd179x_sector_r(0);
 			break;
-		case 0x0f7:
+		case 0x07:
 			data = wd179x_data_r(0);
 			break;
 		default:
@@ -657,47 +805,47 @@ READ_HANDLER (oric_jasmin_r)
 	return data;
 }
 
-WRITE_HANDLER(oric_jasmin_w)
+static WRITE_HANDLER(oric_jasmin_w)
 {
-	switch (offset & 0x0ff)
+	switch (offset & 0x0f)
 	{
 		/* microdisc floppy disc interface */
-		case 0x0f4:
+		case 0x04:
 			logerror("cycles: %d\n",cpu_getcurrentcycles());
 			wd179x_command_w(0,data);
 			break;
-		case 0x0f5:
+		case 0x05:
 			wd179x_track_w(0,data);
 			break;
-		case 0x0f6:
+		case 0x06:
 			wd179x_sector_w(0,data);
 			break;
-		case 0x0f7:
+		case 0x07:
 			wd179x_data_w(0,data);
 			break;
 		/* bit 0 = side */
-		case 0x0f8:
+		case 0x08:
 			wd179x_set_side(data & 0x01);
 			break;
 		/* any write will cause wd179x to reset */
-		case 0x0f9:
+		case 0x09:
 			wd179x_reset();
 			break;
-		case 0x0fa:
+		case 0x0a:
 			logerror("jasmin overlay ram w: %02x PC: %04x\n",data,cpu_get_pc());
 			port_3fa_w = data;
 			oric_jasmin_set_mem_0x0c000();
 			break;
-		case 0x0fb:
+		case 0x0b:
 			logerror("jasmin romdis w: %02x PC: %04x\n",data,cpu_get_pc());
 			port_3fb_w = data;
 			oric_jasmin_set_mem_0x0c000();
 			break;
 		/* bit 0,1 of addr is the drive */
-		case 0x0fc:
-		case 0x0fd:
-		case 0x0fe:
-		case 0x0ff:
+		case 0x0c:
+		case 0x0d:
+		case 0x0e:
+		case 0x0f:
 			wd179x_set_drive(offset & 0x03);
 			break;
 
@@ -707,6 +855,19 @@ WRITE_HANDLER(oric_jasmin_w)
 	}
 }
 
+
+static void oric_install_jasmin_interface(void)
+{
+	/* romdis */
+	port_3fb_w = 1;
+	oric_jasmin_set_mem_0x0c000();
+
+	install_mem_read_handler(0,0x0300, 0x03ef, oric_IO_r);
+	install_mem_read_handler(0,0x03f0, 0x03ff, oric_jasmin_r);
+
+	install_mem_write_handler(0,0x0300, 0x03ef, oric_IO_w);
+	install_mem_write_handler(0,0x03f0, 0x03ff, oric_jasmin_w);
+}
 
 /*********************************/
 /* MICRODISC INTERFACE variables */
@@ -788,7 +949,7 @@ void	oric_microdisc_set_mem_0x0c000(void)
 	/* /ROMDIS */
 	if ((port_314_w & (1<<1))==0)
 	{
-		logerror("&c000-&dfff is ram\n"); 
+		logerror("&c000-&dfff is ram\n");
 		/* rom disabled enable ram */
 		memory_set_bankhandler_r(1, 0, MRA_BANK1);
 		memory_set_bankhandler_w(5, 0, MWA_BANK5);
@@ -798,7 +959,7 @@ void	oric_microdisc_set_mem_0x0c000(void)
 	else
 	{
 		unsigned char *rom_ptr;
-		logerror("&c000-&dfff is os rom\n"); 
+		logerror("&c000-&dfff is os rom\n");
 		/* basic rom */
 		memory_set_bankhandler_r(1, 0, MRA_BANK1);
 		memory_set_bankhandler_w(5, 0, MWA_NOP);
@@ -812,7 +973,7 @@ void	oric_microdisc_set_mem_0x0c000(void)
 	if ((port_314_w & (1<<1))!=0)
 	{
 		unsigned char *rom_ptr;
-		logerror("&e000-&ffff is os rom\n"); 
+		logerror("&e000-&ffff is os rom\n");
 		/* basic rom */
 		memory_set_bankhandler_r(2, 0, MRA_BANK2);
 		memory_set_bankhandler_r(3, 0, MRA_BANK3);
@@ -831,7 +992,7 @@ void	oric_microdisc_set_mem_0x0c000(void)
 		if ((port_314_w & (1<<7))==0)
 		{
 			unsigned char *rom_ptr;
-			logerror("&e000-&ffff is disk rom\n"); 
+			logerror("&e000-&ffff is disk rom\n");
 			memory_set_bankhandler_r(2, 0, MRA_BANK2);
 			memory_set_bankhandler_r(3, 0, MRA_BANK3);
 			memory_set_bankhandler_w(6, 0, MWA_NOP);
@@ -843,7 +1004,7 @@ void	oric_microdisc_set_mem_0x0c000(void)
 		}
 		else
 		{
-			logerror("&e000-&ffff is ram\n"); 
+			logerror("&e000-&ffff is ram\n");
 			/* rom disabled enable ram */
 			memory_set_bankhandler_r(2, 0, MRA_BANK2);
 			memory_set_bankhandler_r(3, 0, MRA_BANK3);
@@ -859,206 +1020,30 @@ void	oric_microdisc_set_mem_0x0c000(void)
 
 
 
-static void oric_wd179x_callback(int State)
-{
-	switch (readinputport(9) &  0x03)
-	{
-		default:
-		case ORIC_FLOPPY_INTERFACE_NONE:
-			return;
-		case ORIC_FLOPPY_INTERFACE_MICRODISC:
-			oric_microdisc_wd179x_callback(State);
-			return;
-		case ORIC_FLOPPY_INTERFACE_JASMIN:
-			oric_jasmin_wd179x_callback(State);
-			return;
-	}
-}
-
-int oric_floppy_init(int id)
-{
-	int result;
-
-	/* attempt to open mfm disk */
-	result = mfm_disk_floppy_init(id);
-
-	if (result==INIT_OK)
-	{
-		oric_floppy_type[id] = ORIC_FLOPPY_MFM_DISK;
-
-		return INIT_OK;
-	}
-
-	if (basicdsk_floppy_init(id))
-	{
-		/* I don't know what the geometry of the disc image should be, so the
-		default is 80 tracks, 2 sides, 9 sectors per track */
-		basicdsk_set_geometry(id, 80, 2, 9, 512, 1);
-
-		oric_floppy_type[id] = ORIC_FLOPPY_BASIC_DISK;
-
-		return INIT_OK;
-	}
-
-	return INIT_FAILED;
-}
-
-void	oric_floppy_exit(int id)
-{
-	switch (oric_floppy_type[id])
-	{
-		case ORIC_FLOPPY_MFM_DISK:
-		{
-			mfm_disk_floppy_exit(id);
-		}
-		break;
-
-		case ORIC_FLOPPY_BASIC_DISK:
-		{
-			basicdsk_floppy_exit(id);
-		}
-		break;
-
-		default:
-			break;
-	}
-
-	oric_floppy_type[id] = ORIC_FLOPPY_NONE;
-}
-
-int		oric_floppy_id(int id)
-{
-	int result;
-
-	/* check if it's a mfm disk first */
-	result = mfm_disk_floppy_id(id);
-
-	if (result==1)
-		return 1;
-
-	return basicdsk_floppy_id(id);
-}
-
-void oric_common_init_machine(void)
-{
-    /* clear all irqs */
-	oric_irqs = 0;
-	oric_ram_0x0c000 = NULL;
-
-    oric_tape_timer = timer_pulse(TIME_IN_HZ(11025), 0, oric_refresh_tape);
-
-	via_reset();
-	via_config(0, &oric_6522_interface);
-	via_set_clock(0,1000000);
-
-	centronics_config(0, oric_cent_config);
-	/* assumption: select is tied low */
-	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
-    via_set_input_ca1(0, 1);
-
-
-#ifdef ORIC_DUMP_RAM
-	previous_input_port5 = readinputport(5);
-#endif
-}
-
-
-void oric_init_machine (void)
-{
-	oric_common_init_machine();
-
-	oric_is_telestrat = 0;
-
-	oric_ram_0x0c000 = malloc(16384);
-
-
-	switch (readinputport(9) & 0x03)
-	{
-		default:
-		case ORIC_FLOPPY_INTERFACE_NONE:
-		{
-			/* setup memory when there is no disc interface */
-			unsigned char *rom_ptr;
-			
-			/* os rom */
-			memory_set_bankhandler_r(1, 0, MRA_BANK1);
-			memory_set_bankhandler_r(2, 0, MRA_BANK2);
-			memory_set_bankhandler_r(3, 0, MRA_BANK3);
-			memory_set_bankhandler_w(5, 0, MWA_NOP);
-			memory_set_bankhandler_w(6, 0, MWA_NOP);
-			memory_set_bankhandler_w(7, 0, MWA_NOP);
-			rom_ptr = memory_region(REGION_CPU1) + 0x010000;
-			cpu_setbank(1, rom_ptr);
-			cpu_setbank(2, rom_ptr+0x02000);
-			cpu_setbank(3, rom_ptr+0x03800);
-			cpu_setbank(5, rom_ptr);			
-			cpu_setbank(6, rom_ptr+0x02000);			
-			cpu_setbank(7, rom_ptr+0x03800);			
-		}
-		break;
-		
-		case ORIC_FLOPPY_INTERFACE_MICRODISC:
-		{
-			/* disable os rom, enable microdisc rom */
-			/* 0x0c000-0x0dfff will be ram, 0x0e000-0x0ffff will be microdisc rom */
-			port_314_w = 0x0ff^((1<<7) | (1<<1));
-		
-			oric_microdisc_set_mem_0x0c000();
-		}
-		break;
-
-		case ORIC_FLOPPY_INTERFACE_JASMIN:
-		{
-			/* romdis */
-			port_3fb_w = 1;
-			oric_jasmin_set_mem_0x0c000();
-		}
-		break;
-	}
-
-
-	wd179x_init(oric_wd179x_callback);
-
-}
-
-void oric_shutdown_machine (void)
-{
-	if (oric_ram_0x0c000)
-		free(oric_ram_0x0c000);
-	oric_ram_0x0c000 = NULL;
-	wd179x_exit();
-
-	if (oric_tape_timer)
-	{
-		timer_remove(oric_tape_timer);
-		oric_tape_timer = NULL;
-	}
-}
-
-READ_HANDLER (oric_microdisc_r)
+static READ_HANDLER (oric_microdisc_r)
 {
 	unsigned char data = 0x0ff;
 
 	switch (offset & 0x0ff)
 	{
 		/* microdisc floppy disc interface */
-		case 0x010:
+		case 0x00:
 			data = wd179x_status_r(0);
 			break;
-		case 0x011:
+		case 0x01:
 			data =wd179x_track_r(0);
 			break;
-		case 0x012:
+		case 0x02:
 			data = wd179x_sector_r(0);
 			break;
-		case 0x013:
+		case 0x03:
 			data = wd179x_data_r(0);
 			break;
-		case 0x014:
+		case 0x04:
 			data = port_314_r | 0x07f;
 /*			logerror("port_314_r: %02x\n",data); */
 			break;
-		case 0x018:
+		case 0x08:
 			data = port_318_r | 0x07f;
 /*			logerror("port_318_r: %02x\n",data); */
 			break;
@@ -1072,30 +1057,30 @@ READ_HANDLER (oric_microdisc_r)
 	return data;
 }
 
-WRITE_HANDLER(oric_microdisc_w)
+static WRITE_HANDLER(oric_microdisc_w)
 {
 	switch (offset & 0x0ff)
 	{
 		/* microdisc floppy disc interface */
-		case 0x010:
+		case 0x00:
 			wd179x_command_w(0,data);
 			break;
-		case 0x011:
+		case 0x01:
 			wd179x_track_w(0,data);
 			break;
-		case 0x012:
+		case 0x02:
 			wd179x_sector_w(0,data);
 			break;
-		case 0x013:
+		case 0x03:
 			wd179x_data_w(0,data);
 			break;
-		case 0x014:
+		case 0x04:
 		{
 			DENSITY density;
 
 			port_314_w = data;
 
-			logerror("port_314_w: %02x\n",data); 
+			logerror("port_314_w: %02x\n",data);
 
 			/* bit 6,5: drive */
 			/* bit 4: side */
@@ -1125,15 +1110,226 @@ WRITE_HANDLER(oric_microdisc_w)
 	}
 }
 
+static void oric_install_microdisc_interface(void)
+{
+	install_mem_read_handler(0,0x0300, 0x030f, oric_IO_r);
+	install_mem_read_handler(0,0x0310, 0x031f, oric_microdisc_r);
+	install_mem_read_handler(0,0x0320, 0x03ff, oric_IO_r);
+
+	install_mem_write_handler(0,0x0300, 0x030f, oric_IO_w);
+	install_mem_write_handler(0,0x0310, 0x031f, oric_microdisc_w);
+	install_mem_write_handler(0,0x0320, 0x03ff, oric_IO_w);
+
+	/* disable os rom, enable microdisc rom */
+	/* 0x0c000-0x0dfff will be ram, 0x0e000-0x0ffff will be microdisc rom */
+	port_314_w = 0x0ff^((1<<7) | (1<<1));
+
+	oric_microdisc_set_mem_0x0c000();
+}
+
+
+
+/*********************************************************/
+
+
+static void oric_wd179x_callback(int State)
+{
+	switch (readinputport(9) &  0x07)
+	{
+		default:
+		case ORIC_FLOPPY_INTERFACE_NONE:
+		case ORIC_FLOPPY_INTERFACE_APPLE2:
+			return;
+		case ORIC_FLOPPY_INTERFACE_MICRODISC:
+			oric_microdisc_wd179x_callback(State);
+			return;
+		case ORIC_FLOPPY_INTERFACE_JASMIN:
+			oric_jasmin_wd179x_callback(State);
+			return;
+	}
+}
+
+int oric_floppy_init(int id)
+{
+	int result;
+
+	if (device_filename(IO_FLOPPY, id)==NULL)
+		return INIT_PASS;
+
+	/* attempt to open mfm disk */
+	result = mfm_disk_floppy_init(id);
+
+	if (result==INIT_PASS)
+	{
+		oric_floppy_type[id] = ORIC_FLOPPY_MFM_DISK;
+
+		return INIT_PASS;
+	}
+
+	if (basicdsk_floppy_init(id))
+	{
+		/* I don't know what the geometry of the disc image should be, so the
+		default is 80 tracks, 2 sides, 9 sectors per track */
+		basicdsk_set_geometry(id, 80, 2, 9, 512, 1);
+
+		oric_floppy_type[id] = ORIC_FLOPPY_BASIC_DISK;
+
+		return INIT_PASS;
+	}
+
+	return INIT_FAIL;
+}
+
+void	oric_floppy_exit(int id)
+{
+	switch (oric_floppy_type[id])
+	{
+		case ORIC_FLOPPY_MFM_DISK:
+		{
+			mfm_disk_floppy_exit(id);
+		}
+		break;
+
+		case ORIC_FLOPPY_BASIC_DISK:
+		{
+			basicdsk_floppy_exit(id);
+		}
+		break;
+
+		default:
+			break;
+	}
+
+	oric_floppy_type[id] = ORIC_FLOPPY_NONE;
+}
+
+void oric_common_init_machine(void)
+{
+    /* clear all irqs */
+	oric_irqs = 0;
+	oric_ram_0x0c000 = NULL;
+
+    oric_tape_timer = timer_pulse(TIME_IN_HZ(11025), 0, oric_refresh_tape);
+
+	via_reset();
+	via_config(0, &oric_6522_interface);
+	via_set_clock(0,1000000);
+
+	centronics_config(0, oric_cent_config);
+	/* assumption: select is tied low */
+	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
+    via_set_input_ca1(0, 1);
+
+
+#ifdef ORIC_DUMP_RAM
+	previous_input_port5 = readinputport(5);
+#endif
+}
+
+
+void oric_init_machine (void)
+{
+	int disc_interface_id;
+
+	oric_common_init_machine();
+
+	oric_is_telestrat = 0;
+
+	oric_ram_0x0c000 = malloc(16384);
+
+	disc_interface_id = readinputport(9) & 0x07;
+
+	switch (disc_interface_id)
+	{
+		default:
+
+		case ORIC_FLOPPY_INTERFACE_APPLE2:
+		case ORIC_FLOPPY_INTERFACE_NONE:
+		{
+			/* setup memory when there is no disc interface */
+			unsigned char *rom_ptr;
+
+			/* os rom */
+			memory_set_bankhandler_r(1, 0, MRA_BANK1);
+			memory_set_bankhandler_r(2, 0, MRA_BANK2);
+			memory_set_bankhandler_r(3, 0, MRA_BANK3);
+			memory_set_bankhandler_w(5, 0, MWA_NOP);
+			memory_set_bankhandler_w(6, 0, MWA_NOP);
+			memory_set_bankhandler_w(7, 0, MWA_NOP);
+			rom_ptr = memory_region(REGION_CPU1) + 0x010000;
+			cpu_setbank(1, rom_ptr);
+			cpu_setbank(2, rom_ptr+0x02000);
+			cpu_setbank(3, rom_ptr+0x03800);
+			cpu_setbank(5, rom_ptr);
+			cpu_setbank(6, rom_ptr+0x02000);
+			cpu_setbank(7, rom_ptr+0x03800);
+
+
+			if (disc_interface_id==ORIC_FLOPPY_INTERFACE_APPLE2)
+			{
+				oric_install_apple2_interface();
+			}
+			else
+			{
+				install_mem_read_handler(0,0x0300, 0x03ff, oric_IO_r);
+				install_mem_write_handler(0,0x0300, 0x03ff, oric_IO_w);
+			}
+		}
+		break;
+
+		case ORIC_FLOPPY_INTERFACE_APPLE2_V2:
+		{
+			oric_install_apple2_v2_interface();
+		}
+		break;
+
+
+		case ORIC_FLOPPY_INTERFACE_MICRODISC:
+		{
+			oric_install_microdisc_interface();
+		}
+		break;
+
+		case ORIC_FLOPPY_INTERFACE_JASMIN:
+		{
+			oric_install_jasmin_interface();
+		}
+		break;
+	}
+
+
+	wd179x_init(WD_TYPE_179X,oric_wd179x_callback);
+
+	apple2_slot6_init();
+
+}
+
+void oric_shutdown_machine (void)
+{
+	if (oric_ram_0x0c000)
+		free(oric_ram_0x0c000);
+	oric_ram_0x0c000 = NULL;
+	wd179x_exit();
+
+	if (oric_tape_timer)
+	{
+		timer_remove(oric_tape_timer);
+		oric_tape_timer = NULL;
+	}
+
+	apple2_slot6_stop();
+}
+
 
 READ_HANDLER ( oric_IO_r )
 {
-	switch (readinputport(9) & 0x03)
+#if 0
+	switch (readinputport(9) & 0x07)
 	{
 		default:
 		case ORIC_FLOPPY_INTERFACE_NONE:
 			break;
-		
+
 		case ORIC_FLOPPY_INTERFACE_MICRODISC:
 		{
 			if ((offset>=0x010) && (offset<=0x01f))
@@ -1152,8 +1348,8 @@ READ_HANDLER ( oric_IO_r )
 		}
 		break;
 	}
-
-	//logerror("via 0 r: %04x\n",offset);
+#endif
+	/*logerror("via 0 r: %04x\n",offset); */
 
 	/* it is repeated */
 	return via_0_r(offset & 0x0f);
@@ -1161,7 +1357,8 @@ READ_HANDLER ( oric_IO_r )
 
 WRITE_HANDLER ( oric_IO_w )
 {
-	switch (readinputport(9) & 0x03)
+#if 0
+	switch (readinputport(9) & 0x07)
 	{
 		default:
 		case ORIC_FLOPPY_INTERFACE_NONE:
@@ -1188,8 +1385,8 @@ WRITE_HANDLER ( oric_IO_w )
 		}
 		break;
 	}
-
-	//logerror("via 0 w: %04x %02x\n",offset,data);
+#endif
+	/*logerror("via 0 w: %04x %02x\n",offset,data); */
 
 	via_0_w(offset & 0x0f,data);
 }
@@ -1199,6 +1396,10 @@ int oric_cassette_init(int id)
 {
 	void *file;
 	struct wave_args wa;
+
+	if (device_filename(IO_CASSETTE, id)==NULL)
+		return INIT_PASS;
+
 
 	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
 	if( file )
@@ -1223,7 +1424,7 @@ int oric_cassette_init(int id)
 			{
 				/* number of samples to generate */
 				int size_in_samples;
-		
+
 				/* read data into temporary buffer */
 				osd_fread(file, oric_tap_data, oric_tap_size);
 
@@ -1253,20 +1454,20 @@ int oric_cassette_init(int id)
 
 				memset(&wa, 0, sizeof(&wa));
 				wa.file = file;
-				wa.chunk_size = oric_tap_size; 
-				wa.chunk_samples = size_in_samples; 
-				wa.smpfreq = ORIC_WAV_FREQUENCY; 
+				wa.chunk_size = oric_tap_size;
+				wa.chunk_samples = size_in_samples;
+				wa.smpfreq = ORIC_WAV_FREQUENCY;
 				wa.fill_wave = oric_cassette_fill_wave;
 				wa.header_samples = 0;
 				wa.trailer_samples = 0;
 				wa.display = 1;
 				if( device_open(IO_CASSETTE,id,0,&wa) )
-					return INIT_FAILED;
+					return INIT_FAIL;
 
-				return INIT_OK;
+				return INIT_PASS;
 			}
 
-			return INIT_FAILED;
+			return INIT_FAIL;
 		}
 	}
 
@@ -1278,14 +1479,14 @@ int oric_cassette_init(int id)
 		wa.display = 1;
 		wa.smpfreq = 19200;
 		if( device_open(IO_CASSETTE,id,1,&wa) )
-            return INIT_FAILED;
+            return INIT_FAIL;
 
 		/* immediately inhibit/mute/play the output */
-     //   device_status(IO_CASSETTE,id, WAVE_STATUS_MOTOR_ENABLE|WAVE_STATUS_MUTED|WAVE_STATUS_MOTOR_INHIBIT);
-		return INIT_OK;
+     /*   device_status(IO_CASSETTE,id, WAVE_STATUS_MOTOR_ENABLE|WAVE_STATUS_MUTED|WAVE_STATUS_MOTOR_INHIBIT); */
+		return INIT_PASS;
     }
 
-	return INIT_FAILED;
+	return INIT_FAIL;
 }
 #if 0
 
@@ -1301,9 +1502,9 @@ int oric_cassette_init(int id)
 		wa.display = 1;
 
 		if (device_open(IO_CASSETTE, id, 0, &wa))
-			return INIT_FAILED;
+			return INIT_FAIL;
 
-		return INIT_OK;
+		return INIT_PASS;
 	}
 
 	/* HJB 02/18: no file, create a new file instead */
@@ -1316,11 +1517,11 @@ int oric_cassette_init(int id)
 		wa.smpfreq = 22050; /* maybe 11025 Hz would be sufficient? */
 		/* open in write mode */
         if (device_open(IO_CASSETTE, id, 1, &wa))
-            return INIT_FAILED;
-		return INIT_OK;
+            return INIT_FAIL;
+		return INIT_PASS;
     }
 
-	return INIT_FAILED;
+	return INIT_FAIL;
 }
 #endif
 
@@ -1572,7 +1773,7 @@ void telestrat_init_machine(void)
 	via_config(1, &telestrat_via2_interface);
 	via_set_clock(1,1000000);
 
-	wd179x_init(oric_wd179x_callback);
+	wd179x_init(WD_TYPE_179X,oric_wd179x_callback);
 }
 
 void	telestrat_shutdown_machine(void)
@@ -1616,7 +1817,7 @@ WRITE_HANDLER(telestrat_IO_w)
 
 	if ((offset>=0x010) && (offset<=0x01b))
 	{
-		oric_microdisc_w(offset, data);
+		oric_microdisc_w(offset & 0x0f, data);
 		return;
 	}
 
@@ -1625,7 +1826,7 @@ WRITE_HANDLER(telestrat_IO_w)
 		acia_6551_w(offset, data);
 		return;
 	}
-	
+
 	logerror("null write %04x %02x\n",offset,data);
 
 }
@@ -1644,7 +1845,7 @@ READ_HANDLER(telestrat_IO_r)
 
 	if ((offset>=0x010) && (offset<=0x01b))
 	{
-		return oric_microdisc_r(offset);
+		return oric_microdisc_r(offset & 0x0f);
 	}
 
 	if ((offset>=0x01c) && (offset<=0x01f))
@@ -1655,6 +1856,4 @@ READ_HANDLER(telestrat_IO_r)
 	logerror("null read %04x\n",offset);
 	return 0x0ff;
 }
-
-
 

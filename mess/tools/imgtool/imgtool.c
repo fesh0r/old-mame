@@ -54,6 +54,35 @@ extern struct ImageModule imgmod_msx_msx;	/* bogus MSX images */
 extern struct ImageModule imgmod_msx_mul;	/* bogus MSX images */
 extern struct ImageModule imgmod_rom16;
 extern struct ImageModule imgmod_nccard;	/* NC100/NC150/NC200 PCMCIA Card ram image */
+extern struct ImageModule imgmod_ti85p;		/* TI-85 program file */
+extern struct ImageModule imgmod_ti85s;		/* TI-85 string file */
+extern struct ImageModule imgmod_ti85i;		/* TI-85 picture file */
+extern struct ImageModule imgmod_ti85n;		/* TI-85 real number file */
+extern struct ImageModule imgmod_ti85c;		/* TI-85 complex number file */
+extern struct ImageModule imgmod_ti85l;		/* TI-85 list file */
+extern struct ImageModule imgmod_ti85k;		/* TI-85 constant file */
+extern struct ImageModule imgmod_ti85m;		/* TI-85 matrix file */
+extern struct ImageModule imgmod_ti85v;		/* TI-85 vector file */
+extern struct ImageModule imgmod_ti85d;		/* TI-85 graphics database file */
+extern struct ImageModule imgmod_ti85e;		/* TI-85 equation file */
+extern struct ImageModule imgmod_ti85r;		/* TI-85 range settings file */
+extern struct ImageModule imgmod_ti85g;		/* TI-85 grouped file */
+extern struct ImageModule imgmod_ti85;		/* TI-85 file */
+extern struct ImageModule imgmod_ti85b;		/* TI-85 memory backup file */
+extern struct ImageModule imgmod_ti86p;		/* TI-86 program file */
+extern struct ImageModule imgmod_ti86s;		/* TI-86 string file */
+extern struct ImageModule imgmod_ti86i;		/* TI-86 picture file */
+extern struct ImageModule imgmod_ti86n;		/* TI-86 real number file */
+extern struct ImageModule imgmod_ti86c;		/* TI-86 complex number file */
+extern struct ImageModule imgmod_ti86l;		/* TI-86 list file */
+extern struct ImageModule imgmod_ti86k;		/* TI-86 constant file */
+extern struct ImageModule imgmod_ti86m;		/* TI-86 matrix file */
+extern struct ImageModule imgmod_ti86v;		/* TI-86 vector file */
+extern struct ImageModule imgmod_ti86d;		/* TI-86 graphics database file */
+extern struct ImageModule imgmod_ti86e;		/* TI-86 equation file */
+extern struct ImageModule imgmod_ti86r;		/* TI-86 range settings file */
+extern struct ImageModule imgmod_ti86g;		/* TI-86 grouped file */
+extern struct ImageModule imgmod_ti86;		/* TI-86 file */
 
 static const struct ImageModule *images[] = {
 	&imgmod_rsdos,
@@ -96,7 +125,36 @@ static const struct ImageModule *images[] = {
 	&imgmod_xsa,
 /*	&imgmod_svi_cas,  -- doesn't work yet! */
 	&imgmod_rom16,
-	&imgmod_nccard
+	&imgmod_nccard,
+	&imgmod_ti85p,
+	&imgmod_ti85s,
+	&imgmod_ti85i,
+	&imgmod_ti85n,
+	&imgmod_ti85c,
+	&imgmod_ti85l,
+	&imgmod_ti85k,
+	&imgmod_ti85m,
+	&imgmod_ti85v,
+	&imgmod_ti85d,
+	&imgmod_ti85e,
+	&imgmod_ti85r,
+	&imgmod_ti85g,
+	&imgmod_ti85,
+	&imgmod_ti85b,
+	&imgmod_ti86p,
+	&imgmod_ti86s,
+	&imgmod_ti86i,
+	&imgmod_ti86n,
+	&imgmod_ti86c,
+	&imgmod_ti86l,
+	&imgmod_ti86k,
+	&imgmod_ti86m,
+	&imgmod_ti86v,
+	&imgmod_ti86d,
+	&imgmod_ti86e,
+	&imgmod_ti86r,
+	&imgmod_ti86g,
+	&imgmod_ti86
 };
 
 /* ----------------------------------------------------------------------- */
@@ -381,7 +439,7 @@ static const struct NamedOption *findnamedoption(const struct NamedOption *nopts
 	return NULL;
 }
 
-static int check_minmax(const struct OptionTemplate *o, int optnum, const ResolvedOption *ropts, int i)
+static int check_minmax(const struct OptionTemplate *o, int optnum, const ResolvedOption *ropts/*, int i*/)
 {
 	if (ropts[optnum].i < o->min)
 		return PARAM_TO_ERROR(IMGTOOLERR_PARAMTOOSMALL, optnum);
@@ -392,7 +450,7 @@ static int check_minmax(const struct OptionTemplate *o, int optnum, const Resolv
 
 static int resolve_options(const struct OptionTemplate *opttemplate, const struct NamedOption *nopts, ResolvedOption *ropts, int roptslen)
 {
-	int i = 0;
+	//int i = 0;
 	int optnum, err;
 	const char *val;
 	const struct NamedOption *n;
@@ -419,7 +477,7 @@ static int resolve_options(const struct OptionTemplate *opttemplate, const struc
 			case IMGOPTION_FLAG_TYPE_INTEGER:
 				ropts[optnum].i = atoi(val);
 				
-				err = check_minmax(o, optnum, ropts, i);
+				err = check_minmax(o, optnum, ropts/*, i*/);
 				if (err)
 					return err;
 				break;
@@ -428,7 +486,7 @@ static int resolve_options(const struct OptionTemplate *opttemplate, const struc
 					return PARAM_TO_ERROR(IMGTOOLERR_PARAMCORRUPT, optnum);
 				ropts[optnum].i = toupper(val[0]);
 
-				err = check_minmax(o, optnum, ropts, i);
+				err = check_minmax(o, optnum, ropts/*, i*/);
 				if (err)
 					return err;
 				break;
@@ -442,6 +500,52 @@ static int resolve_options(const struct OptionTemplate *opttemplate, const struc
 		}
 	}
 	return 0;
+}
+
+int img_writefile_resolved(IMAGE *img, const char *fname, STREAM *sourcef, const ResolvedOption *ropts, FILTERMODULE filter)
+{
+	int err;
+	char *buf = NULL;
+	char *s;
+	STREAM *newstream = NULL;
+
+	if (!img->module->writefile) {
+		err = IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
+		goto done;
+	}
+
+	/* Does this image module prefer upper case file names? */
+	if (img->module->flags & IMGMODULE_FLAG_FILENAMES_PREFERUCASE) {
+		/*buf = strdup(fname);*/
+		buf = malloc(strlen(fname)+1);
+		if (buf)
+			strcpy(buf, fname);
+		if (!buf) {
+			err = IMGTOOLERR_OUTOFMEMORY;
+			goto done;
+		}
+		for (s = buf; *s; s++)
+			*s = toupper(*s);
+		fname = buf;
+	}
+
+	/* Custom filter? */
+	err = process_filter(&sourcef, &newstream, img->module, filter, PURPOSE_WRITE);
+	if (err)
+		goto done;
+
+	err = img->module->writefile(img, fname, sourcef, ropts);
+	if (err) {
+		err = markerrorsource(err);
+		goto done;
+	}
+
+done:
+	if (buf)
+		free(buf);
+	if (newstream)
+		stream_close(newstream);
+	return err;
 }
 
 int img_writefile(IMAGE *img, const char *fname, STREAM *sourcef, const struct NamedOption *nopts, FILTERMODULE filter)
@@ -465,7 +569,10 @@ int img_writefile(IMAGE *img, const char *fname, STREAM *sourcef, const struct N
 
 	/* Does this image module prefer upper case file names? */
 	if (img->module->flags & IMGMODULE_FLAG_FILENAMES_PREFERUCASE) {
-		buf = strdup(fname);
+		/*buf = strdup(fname);*/
+		buf = malloc(strlen(fname)+1);
+		if (buf)
+			strcpy(buf, fname);
 		if (!buf) {
 			err = IMGTOOLERR_OUTOFMEMORY;
 			goto done;
@@ -518,6 +625,23 @@ done:
 	return err;
 }
 
+int img_putfile_resolved(IMAGE *img, const char *newfname, const char *source, const ResolvedOption *ropts, FILTERMODULE filter)
+{
+	int err;
+	STREAM *f;
+
+	if (!newfname)
+		newfname = osd_basename(source);
+
+	f = stream_open(source, OSD_FOPEN_READ);
+	if (!f)
+		return IMGTOOLERR_FILENOTFOUND | IMGTOOLERR_SRC_NATIVEFILE;
+
+	err = img_writefile_resolved(img, newfname, f, ropts, filter);
+	stream_close(f);
+	return err;
+}
+
 int img_putfile(IMAGE *img, const char *newfname, const char *source, const struct NamedOption *nopts, FILTERMODULE filter)
 {
 	int err;
@@ -549,18 +673,13 @@ int img_deletefile(IMAGE *img, const char *fname)
 	return 0;
 }
 
-int img_create(const struct ImageModule *module, const char *fname, const struct NamedOption *nopts)
+int img_create_resolved(const struct ImageModule *module, const char *fname, const ResolvedOption *ropts)
 {
 	int err;
 	STREAM *f;
-	ResolvedOption ropts[MAX_OPTIONS];
 
 	if (!module->create)
 		return IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
-
-	err = resolve_options(module->createoptions_template, nopts, ropts, sizeof(ropts) / sizeof(ropts[0]));
-	if (err)
-		return err | IMGTOOLERR_SRC_PARAM_CREATE;
 
 	f = stream_open(fname, OSD_FOPEN_WRITE);
 	if (!f)
@@ -570,6 +689,23 @@ int img_create(const struct ImageModule *module, const char *fname, const struct
 	stream_close(f);
 	if (err)
 		return markerrorsource(err);
+
+	return 0;
+}
+
+int img_create(const struct ImageModule *module, const char *fname, const struct NamedOption *nopts)
+{
+	int err;
+	ResolvedOption ropts[MAX_OPTIONS];
+
+	if (!module->create)
+		return IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
+
+	err = resolve_options(module->createoptions_template, nopts, ropts, sizeof(ropts) / sizeof(ropts[0]));
+	if (err)
+		return err | IMGTOOLERR_SRC_PARAM_CREATE;
+
+	img_create_resolved(module, fname, ropts);
 
 	return 0;
 }

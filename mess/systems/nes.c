@@ -221,7 +221,7 @@ INPUT_PORTS_START( famicom )
 
 INPUT_PORTS_END
 
-/* !! Warning: the charlayout is changed by nes_load_rom !! */
+/* !! Warning: the charlayout is changed by nes_init_cart !! */
 struct GfxLayout nes_charlayout =
 {
     8,8,    /* 8*8 characters */
@@ -399,8 +399,8 @@ static const struct IODevice io_famicom[] = {
         1,                  /* count */
         "nes\0",            /* file extensions */
         IO_RESET_CPU,       /* reset if file changed */
-        nes_id_rom,         /* id */
-        nes_load_rom,       /* init */
+        0,
+        nes_init_cart,      /* init */
         NULL,               /* exit */
         NULL,               /* info */
         NULL,               /* open */
@@ -416,7 +416,7 @@ static const struct IODevice io_famicom[] = {
     {
         IO_FLOPPY,          /* type */
         1,                  /* count */
-        "dsk\0",            /* file extensions */
+        "dsk\0fds\0",       /* file extensions */
         IO_RESET_NONE,      /* reset if file changed */
         NULL,               /* id */
         nes_load_disk,      /* init */
@@ -442,8 +442,8 @@ static const struct IODevice io_nes[] = {
         1,                  /* count */
         "nes\0",            /* file extensions */
         IO_RESET_CPU,       /* reset if file changed */
-        nes_id_rom,         /* id */
-        nes_load_rom,       /* init */
+        0,
+        nes_init_cart,      /* init */
         NULL,               /* exit */
         NULL,               /* info */
         NULL,               /* open */
@@ -466,8 +466,8 @@ static const struct IODevice io_nespal[] = {
         1,                  /* count */
         "nes\0",            /* file extensions */
         IO_RESET_CPU,       /* reset if file changed */
-        nes_id_rom,         /* id */
-        nes_load_rom,       /* init */
+        0,
+        nes_init_cart,      /* init */
         NULL,               /* exit */
         NULL,               /* info */
         NULL,               /* open */

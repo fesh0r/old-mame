@@ -1,7 +1,8 @@
 /***************************************************************************
 
 	commodore c65 home computer
-	peter.trauner@jk.uni-linz.ac.at
+	PeT mess@utanet.at
+
     documention
      www.funet.fi
 
@@ -363,18 +364,18 @@ static SID6581_interface ntsc_sound_interface =
 	2,
 	{
 		{
-			MIXER(50, MIXER_PAN_LEFT),
+			MIXER(50, MIXER_PAN_RIGHT),
 			MOS8580,
 			985248,
 			c64_paddle_read
 		},
 		{
-			MIXER(50, MIXER_PAN_RIGHT),
+			MIXER(50, MIXER_PAN_LEFT),
 			MOS8580,
 			985248,
 			NULL
 		}
-	}		
+	}
 };
 
 static SID6581_interface pal_sound_interface =
@@ -387,18 +388,18 @@ static SID6581_interface pal_sound_interface =
 	2,
 	{
 		{
-			MIXER(50, MIXER_PAN_LEFT),
+			MIXER(50, MIXER_PAN_RIGHT),
 			MOS8580,
 			1022727,
 			c64_paddle_read
 		},
 		{
-			MIXER(50, MIXER_PAN_RIGHT),
+			MIXER(50, MIXER_PAN_LEFT),
 			MOS8580,
 			1022727,
 			NULL
 		}
-	}		
+	}
 };
 
 static struct MachineDriver machine_driver_c65 =
@@ -434,7 +435,7 @@ static struct MachineDriver machine_driver_c65 =
 	vic2_vh_screenrefresh,
 
   /* sound hardware */
-	0, 0, 0, 0,
+	SOUND_SUPPORTS_STEREO, 0, 0, 0,
 	{
 		{ SOUND_CUSTOM, &ntsc_sound_interface },
 		{ 0 }
@@ -475,7 +476,7 @@ static struct MachineDriver machine_driver_c65pal =
 	vic2_vh_screenrefresh,
 
   /* sound hardware */
-	0, 0, 0, 0,
+	SOUND_SUPPORTS_STEREO, 0, 0, 0,
 	{
 		{ SOUND_CUSTOM, &pal_sound_interface },
 		{ 0 }
@@ -485,9 +486,6 @@ static struct MachineDriver machine_driver_c65pal =
 static const struct IODevice io_c65[] =
 {
 	IODEVICE_CBM_C65_QUICK,
-#if 0
-	IODEVICE_CBM_ROM(c64_rom_id),
-#endif
 	IODEVICE_CBM_DRIVE,
 	{IO_END}
 };
@@ -503,12 +501,12 @@ static const struct IODevice io_c65[] =
 #define io_c65a io_c65
 
 /*		YEAR	NAME	PARENT	MACHINE INPUT	INIT		COMPANY 							FULLNAME */
-COMPX ( 199?,	c65,	0,		c65,	c65,	c65,		"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 911001)",        GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
-COMPX ( 199?,	c65e,	c65,	c65,	c65,	c65,		"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910828)",        GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
-COMPX ( 199?,	c65d,	c65,	c65,	c65,	c65,		"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910626)",        GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
-COMPX ( 199?,	c65c,	c65,	c65,	c65,	c65,		"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910523)",        GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
-COMPX ( 199?,	c65ger, c65,	c65pal, c65ger, c65pal, 	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, German PAL, 910429)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
-COMPX ( 199?,	c65a,	c65,	c65,	c65,	c65_alpha1, "Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910111)",        GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
+COMPX ( 199?,	c65,	0,		c65,	c65,	c65,		"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 911001)",        GAME_NOT_WORKING)
+COMPX ( 199?,	c65e,	c65,	c65,	c65,	c65,		"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910828)",        GAME_NOT_WORKING)
+COMPX ( 199?,	c65d,	c65,	c65,	c65,	c65,		"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910626)",        GAME_NOT_WORKING)
+COMPX ( 199?,	c65c,	c65,	c65,	c65,	c65,		"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910523)",        GAME_NOT_WORKING)
+COMPX ( 199?,	c65ger, c65,	c65pal, c65ger, c65pal, 	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, German PAL, 910429)",  GAME_NOT_WORKING)
+COMPX ( 199?,	c65a,	c65,	c65,	c65,	c65_alpha1, "Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910111)",        GAME_NOT_WORKING)
 
 #ifdef RUNTIME_LOADER
 extern void c65_runtime_loader_init(void)

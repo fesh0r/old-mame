@@ -160,7 +160,7 @@ static void update_psg(void)
 
 
 /* ppi port a read */
-int amstrad_ppi_porta_r( int chip)
+READ_HANDLER ( amstrad_ppi_porta_r )
 {
 	update_psg();
 
@@ -177,7 +177,7 @@ int amstrad_ppi_porta_r( int chip)
 In MESS I have used the dipswitch feature.
  Bit 0 = VSYNC from CRTC */
 
-int amstrad_ppi_portb_r (int chip)
+READ_HANDLER (amstrad_ppi_portb_r)
 {
 	int data;
 
@@ -202,7 +202,7 @@ int amstrad_ppi_portb_r (int chip)
 	return data;
 }
 
-void amstrad_ppi_porta_w (int chip, int data)
+WRITE_HANDLER ( amstrad_ppi_porta_w )
 {
 		ppi_port_outputs[0] = data;
 
@@ -219,7 +219,7 @@ void amstrad_ppi_porta_w (int chip, int data)
 /* previous value */
 static int previous_ppi_portc_w;
 
-void amstrad_ppi_portc_w (int chip, int data)
+WRITE_HANDLER ( amstrad_ppi_portc_w )
 {
 		int changed_data;
 
@@ -252,12 +252,12 @@ void amstrad_ppi_portc_w (int chip, int data)
 static ppi8255_interface amstrad_ppi8255_interface =
 {
 	1,
-	amstrad_ppi_porta_r,
-	amstrad_ppi_portb_r,
-	NULL,
-	amstrad_ppi_porta_w,
-	NULL,
-	amstrad_ppi_portc_w
+	{amstrad_ppi_porta_r},
+	{amstrad_ppi_portb_r},
+	{NULL},
+	{amstrad_ppi_porta_w},
+	{NULL},
+	{amstrad_ppi_portc_w}
 };
 
 /* Amstrad NEC765 interface doesn't use interrupts or DMA! */
@@ -281,15 +281,6 @@ disabled, 3 = if zero, upper rom is enabled, otherwise disabled */
 unsigned char AmstradCPC_GA_RomConfiguration;
 
 static short AmstradCPC_PenColours[18];
-
-
-/* 16 colours, + 1 for border */
-static unsigned short amstrad_colour_table[32] =
-{
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-	16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-	29, 30, 31
-};
 
 static int RamConfigurations[8 * 4] =
 {
@@ -2383,7 +2374,7 @@ void amstrad_init_machine(void)
 	bit 4 is connected to a link on the PCB used to define screen
 	refresh rate. 1 = 50Hz, 0 = 60Hz */
 
-	
+
 	machine_name_and_refresh_rate = readinputport(10);
 	ppi_port_inputs[1] = ((machine_name_and_refresh_rate & 0x07)<<1) | (machine_name_and_refresh_rate & 0x010);
 
@@ -2417,56 +2408,6 @@ void Amstrad_Reset(void)
 
 	multiface_reset();
 }
-
-
-
-/* amstrad has 27 colours, 3 levels of R,G and B. The other colours
-are copies of existing ones in the palette */
-
-unsigned char amstrad_palette[32 * 3] =
-{
-	0x080, 0x080, 0x080,			   /* white */
-	0x080, 0x080, 0x080,			   /* white */
-	0x000, 0x0ff, 0x080,			   /* sea green */
-	0x0ff, 0x0ff, 0x080,			   /* pastel yellow */
-	0x000, 0x000, 0x080,			   /* blue */
-	0x0ff, 0x000, 0x080,			   /* purple */
-	0x000, 0x080, 0x080,			   /* cyan */
-	0x0ff, 0x080, 0x080,			   /* pink */
-	0x0ff, 0x000, 0x080,			   /* purple */
-	0x0ff, 0x0ff, 0x080,			   /* pastel yellow */
-	0x0ff, 0x0ff, 0x000,			   /* bright yellow */
-	0x0ff, 0x0ff, 0x0ff,			   /* bright white */
-	0x0ff, 0x000, 0x000,			   /* bright red */
-	0x0ff, 0x000, 0x0ff,			   /* bright magenta */
-	0x0ff, 0x080, 0x000,			   /* orange */
-	0x0ff, 0x080, 0x0ff,			   /* pastel magenta */
-	0x000, 0x000, 0x080,			   /* blue */
-	0x000, 0x0ff, 0x080,			   /* sea green */
-	0x000, 0x0ff, 0x000,			   /* bright green */
-	0x000, 0x0ff, 0x0ff,			   /* bright cyan */
-	0x000, 0x000, 0x000,			   /* black */
-	0x000, 0x000, 0x0ff,			   /* bright blue */
-	0x000, 0x080, 0x000,			   /* green */
-	0x000, 0x080, 0x0ff,			   /* sky blue */
-	0x080, 0x000, 0x080,			   /* magenta */
-	0x080, 0x0ff, 0x080,			   /* pastel green */
-	0x080, 0x0ff, 0x080,			   /* lime */
-	0x080, 0x0ff, 0x0ff,			   /* pastel cyan */
-	0x080, 0x000, 0x000,			   /* Red */
-	0x080, 0x000, 0x0ff,			   /* mauve */
-	0x080, 0x080, 0x000,			   /* yellow */
-	0x080, 0x080, 0x0ff,			   /* pastel blue */
-};
-
-
-/* Initialise the palette */
-static void amstrad_init_palette(unsigned char *sys_palette, unsigned short *sys_colortable, const unsigned char *color_prom)
-{
-	memcpy(sys_palette, amstrad_palette, sizeof (amstrad_palette));
-	memcpy(sys_colortable, amstrad_colour_table, sizeof (amstrad_colour_table));
-}
-
 
 /* Memory is banked in 16k blocks. However, the multiface
 pages the memory in 8k blocks! The ROM can
@@ -2747,7 +2688,7 @@ static struct MachineDriver machine_driver_amstrad =
 										* decode info */
 	32, 							   /* total colours */
 	32, 							   /* color table len */
-	amstrad_init_palette,			   /* init palette */
+	amstrad_cpc_init_palette,			   /* init palette */
 
 	VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2,				   /* video attributes */
 		amstrad_eof_callback,																  /* MachineLayer */
@@ -2804,7 +2745,7 @@ static struct MachineDriver machine_driver_kccomp =
 										* decode info */
 	32, 							   /* total colours */
 	32, 							   /* color table len */
-	amstrad_init_palette,			   /* init palette */
+	kccomp_init_palette,			   /* init palette */
 
 	VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2,				   /* video attributes */
 		amstrad_eof_callback,																  /* MachineLayer */
@@ -2830,6 +2771,63 @@ static struct MachineDriver machine_driver_kccomp =
 	}
 };
 
+
+static struct MachineDriver machine_driver_cpcplus =
+{
+	/* basic machine hardware */
+	{
+		/* MachineCPU */
+		{
+			CPU_Z80 | CPU_16BIT_PORT,  /* type */
+			4000000,	/*((AMSTRAD_US_PER_FRAME*AMSTRAD_FPS)*4)*/ /* clock: See Note Above */
+			readmem_amstrad,		   /* MemoryReadAddress */
+			writemem_amstrad,		   /* MemoryWriteAddress */
+			readport_amstrad,		   /* IOReadPort */
+			writeport_amstrad,		   /* IOWritePort */
+			0,						   /*amstrad_frame_interrupt, *//* VBlank
+										* Interrupt */
+			0 /*1 */ ,				   /* vblanks per frame */
+			0, 0,	/* every scanline */
+		},
+	},
+	50.08,							   /* frames per second */
+	DEFAULT_60HZ_VBLANK_DURATION,	   /* vblank duration */
+	1,								   /* cpu slices per frame */
+	amstrad_init_machine,			   /* init machine */
+	amstrad_shutdown_machine,
+	/* video hardware */
+	AMSTRAD_MONITOR_SCREEN_WIDTH, /* screen width */
+	AMSTRAD_MONITOR_SCREEN_HEIGHT,	/* screen height */
+	{0, (AMSTRAD_SCREEN_WIDTH - 1), 0, (AMSTRAD_SCREEN_HEIGHT - 1)},	/* rectangle: visible_area */
+	0,								   /*amstrad_gfxdecodeinfo, 			 *//* graphics
+										* decode info */
+	4096, 							   /* total colours */
+	4096, 							   /* color table len */
+	amstrad_plus_init_palette,			   /* init palette */
+
+	VIDEO_TYPE_RASTER/* | VIDEO_PIXEL_ASPECT_RATIO_1_2*/,				   /* video attributes */
+		amstrad_eof_callback,																  /* MachineLayer */
+	amstrad_vh_start,
+	amstrad_vh_stop,
+	amstrad_vh_screenrefresh,
+
+		/* sound hardware */
+	0,								   /* sh init */
+	0,								   /* sh start */
+	0,								   /* sh stop */
+	0,								   /* sh update */
+	{
+		/* MachineSound */
+		{
+			SOUND_AY8910,
+			&amstrad_ay_interface
+		},
+		{
+			SOUND_WAVE,
+			&wave_interface
+		}
+	}
+};
 
 
 /***************************************************************************
@@ -2881,56 +2879,80 @@ ROM_END
 
 
 ROM_START(kccomp)
-	ROM_REGION(0x01c000, REGION_CPU1,0)
+	ROM_REGION(0x018000, REGION_CPU1,0)
 	ROM_LOAD("kccos.rom", 0x10000, 0x04000, 0x7f9ab3f7)
 	ROM_LOAD("kccbas.rom", 0x14000, 0x04000, 0xca6af63d)
+	ROM_REGION(0x018000+0x0800, REGION_PROMS, 0 )
+	ROM_LOAD("farben.rom", 0x018000, 0x0800, 0xa50fa3cf)
 
 	/* fake region - required by graphics decode structure */
 	/*ROM_REGION(0x0c00, REGION_GFX1) */
 ROM_END
 
+
+/* this system must have a cartridge installed to run */
+ROM_START(cpc6128p)
+ROM_END
+
+
+/* this system must have a cartridge installed to run */
+ROM_START(cpc464p)
+ROM_END
+
+#define AMSTRAD_IO_SNAPSHOT \
+	{ \
+		IO_SNAPSHOT,				/* type */ \
+		1,							/* count */ \
+		"sna\0",                    /* file extensions */ \
+		IO_RESET_ALL,				/* reset if file changed */ \
+		0, \
+		amstrad_snapshot_load,		/* init */ \
+		amstrad_snapshot_exit,		/* exit */ \
+		NULL,						/* info */ \
+		NULL,						/* open */ \
+		NULL,						/* close */ \
+		NULL,						/* status */ \
+		NULL,						/* seek */ \
+		NULL,						/* tell */ \
+		NULL,						/* input */ \
+		NULL,						/* output */ \
+		NULL,						/* input_chunk */ \
+		NULL						/* output_chunk */ \
+	}
+
+#define AMSTRAD_IO_DISK \
+	{ \
+		IO_FLOPPY,					/* type */ \
+		2,							/* count */ \
+		"dsk\0",                    /* file extensions */ \
+		IO_RESET_NONE,				/* reset if file changed */ \
+		0, \
+		amstrad_floppy_init,			/* init */ \
+		dsk_floppy_exit,			/* exit */ \
+		NULL,						/* info */ \
+		NULL,						/* open */ \
+		NULL,						/* close */ \
+		floppy_status,              /* status */ \
+		NULL,                       /* seek */ \
+		NULL,						/* tell */ \
+		NULL,						/* input */ \
+		NULL,						/* output */ \
+		NULL,						/* input_chunk */ \
+		NULL						/* output_chunk */ \
+	}
+
+#define AMSTRAD_IO_CASSETTE \
+	IO_CASSETTE_WAVE(1,"wav\0",NULL,amstrad_cassette_init,amstrad_cassette_exit)
+
+#define AMSTRAD_IO_PRINTER \
+	IO_PRINTER_PORT(1,"prn\0")
+
 static const struct IODevice io_cpc6128[] =
 {
-	{
-		IO_CARTSLOT,				/* type */
-		1,							/* count */
-		"sna\0",                    /* file extensions */
-		IO_RESET_ALL,				/* reset if file changed */
-		amstrad_snapshot_id,		/* id */
-		amstrad_snapshot_load,		/* init */
-		amstrad_snapshot_exit,		/* exit */
-		NULL,						/* info */
-		NULL,						/* open */
-		NULL,						/* close */
-		NULL,						/* status */
-		NULL,						/* seek */
-		NULL,						/* tell */
-		NULL,						/* input */
-		NULL,						/* output */
-		NULL,						/* input_chunk */
-		NULL						/* output_chunk */
-	},
-	{
-		IO_FLOPPY,					/* type */
-		2,							/* count */
-		"dsk\0",                    /* file extensions */
-		IO_RESET_NONE,				/* reset if file changed */
-		dsk_floppy_id,				/* id */
-		dsk_floppy_load,			/* init */
-		dsk_floppy_exit,			/* exit */
-		NULL,						/* info */
-		NULL,						/* open */
-		NULL,						/* close */
-                floppy_status,                                           /* status */
-                NULL,                                           /* seek */
-		NULL,						/* tell */
-		NULL,						/* input */
-		NULL,						/* output */
-		NULL,						/* input_chunk */
-		NULL						/* output_chunk */
-	},
-	IO_CASSETTE_WAVE(1,"wav\0",NULL,amstrad_cassette_init,amstrad_cassette_exit),
-	IO_PRINTER_PORT(1,"prn\0"),
+	AMSTRAD_IO_SNAPSHOT,
+	AMSTRAD_IO_DISK,
+	AMSTRAD_IO_CASSETTE,
+	AMSTRAD_IO_PRINTER,
 	{IO_END}
 };
 
@@ -2938,9 +2960,42 @@ static const struct IODevice io_cpc6128[] =
 #define io_cpc464 io_cpc6128
 #define io_cpc664 io_cpc6128
 
+static const struct IODevice io_cpcplus[] =
+{
+	AMSTRAD_IO_SNAPSHOT,
+	AMSTRAD_IO_DISK,
+	AMSTRAD_IO_CASSETTE,
+	AMSTRAD_IO_PRINTER,
+	{
+		IO_CARTSLOT,				/* type */
+		1,							/* count */
+		"cpr\0",                    /* file extensions */
+		IO_RESET_NONE,				/* reset if file changed */
+		0,
+		amstrad_plus_cartridge_init,	/* init */
+		amstrad_plus_cartridge_exit,	/* exit */
+		NULL,						/* info */
+		NULL,						/* open */
+		NULL,						/* close */
+		NULL,                                           /* status */
+		NULL,                                           /* seek */
+		NULL,						/* tell */
+		NULL,						/* input */
+		NULL,						/* output */
+		NULL,						/* input_chunk */
+		NULL						/* output_chunk */
+	},
+};
+
+#define io_cpc6128p io_cpcplus
+#define io_cpc464p io_cpcplus
+
+
 /*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT COMPANY   FULLNAME */
 COMP( 1984, cpc464,   0,		amstrad,  amstrad,	0,	 "Amstrad plc", "Amstrad/Schneider CPC464")
 COMP( 1985, cpc664,   cpc464,	amstrad,  amstrad,	0,	 "Amstrad plc", "Amstrad/Schneider CPC664")
 COMP( 1985, cpc6128,  cpc464,	amstrad,  amstrad,	0,	 "Amstrad plc", "Amstrad/Schneider CPC6128")
-COMP( 19??, kccomp,   cpc464,	kccomp,   kccomp,	0,	 "VEB Mikroelektronik", "KC Compact")
+COMP( 1990, cpc464p,  0,		cpcplus,  amstrad,	0,	 "Amstrad plc", "Amstrad 464plus")
+COMP( 1990, cpc6128p,  0,		cpcplus,  amstrad,	0,	 "Amstrad plc", "Amstrad 6128plus")
+COMP( 1989, kccomp,   cpc464,	kccomp,   kccomp,	0,	 "VEB Mikroelektronik", "KC Compact")
 

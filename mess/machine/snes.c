@@ -189,24 +189,49 @@ void snes_shutdown_machine(void)
 #endif
 }
 
-/* ROM LOADING STUFF - Also allocates Save Ram - In Future will make SRAM File correct size */
 
+
+/* Simple Id done as - divide total size of rom by 32*1024... if remainder is 512 smc header present file is valid, else
+  header not present... don't load file! */
+/*
+static int snes_verify_cart (UINT8 *magic)
+{
+    FILE *romfile;
+	unsigned char magic[4];
+	int retval=0,filePos;
+
+	if (!(romfile = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0))) return 0;
+
+	osd_fseek (romfile,0,SEEK_END);
+	filePos=osd_ftell(romfile);
+	printf("file position = %d , %08X\n",filePos,filePos);
+
+	if ( (filePos % (32*1024))==512)
+		retval=1;
+	osd_fread (romfile, magic, 4);
+	osd_fclose (romfile);
+	return retval;
+}
+*/
+
+/* ROM LOADING STUFF - Also allocates Save Ram - In Future will make SRAM File correct size */
 int snes_load_rom (int id)
 {
 	const char *rom_name = device_filename(IO_CARTSLOT,id);
 	char tempPath[256]="NVRAM\\";
+	//UINT32 aa;
     FILE *romfile,*sramFile;
 	int numBanks,a;
 
 	if(!rom_name)
 	{
 		printf("SNES requires cartridge!\n");
-		return INIT_FAILED;
+		return INIT_FAIL;
 	}
 
 	if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
 	{
-		return INIT_FAILED;
+		return INIT_FAIL;
 	}
 
     /* Allocate memory and set up memory regions */
@@ -223,15 +248,18 @@ int snes_load_rom (int id)
 
 	logerror("SNES_ROM %08x\n",SNES_ROM);
 
-//	osd_fseek (romfile,0,SEEK_END);
-//	numBanks=(((osd_ftell(romfile)-512) + 65535)/ 65536);
+	//osd_fseek (romfile,0,SEEK_END);
+	//numBanks=(osd_ftell(romfile));
+	numBanks=((osd_fsize(romfile)-512)>>16);
+	printf("Number of banks : %04x\n", numBanks);
 
 	/* Position past the header */
 //	osd_fseek (romfile, 512, SEEK_SET);
 
 	/* Read in the PRG_Rom chunks */
 
-	numBanks=8;							// Need to look at another way of doing this since the above method seems to cause a few problems!!
+	//numBanks+=1;							// Need to look at another way of doing this since the above method seems to cause a few problems!!
+	//numBanks-=1;
 
 	numBanks*=2;
 
@@ -248,7 +276,12 @@ int snes_load_rom (int id)
 	for (a=0;a<numBanks;a++)
 	{
 		osd_fread(romfile,&SNES_ROM[a*0x10000 + 0x8000],0x8000);
+		//osd_fread(romfile,&SNES_ROM[a*0x10000],0x10000);
 	}
+	//for (aa=0; aa < 0x3F; aa++)
+  	//{
+    	//memcpy(SNES_ROM+(aa<<16)+0x8000, SNES_ROM+(aa<<0x0f), 32768);
+  	//}
 
 	SNES_SRAM=(unsigned char *)malloc(0x50000);			// 5 banks of sram
 	if (SNES_SRAM==NULL)
@@ -287,28 +320,4 @@ void snes_exit_rom(int id)
 
 	free(SNES_SRAM);
 }
-
-/* Simple Id done as - divide total size of rom by 32*1024... if remainder is 512 smc header present file is valid, else
-  header not present... don't load file! */
-
-int snes_id_rom (int id)
-{
-    FILE *romfile;
-	unsigned char magic[4];
-	int retval=0,filePos;
-
-	if (!(romfile = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0))) return 0;
-
-	osd_fseek (romfile,0,SEEK_END);
-	filePos=osd_ftell(romfile);
-	printf("file position = %d , %08X\n",filePos,filePos);
-
-	if ( (filePos % (32*1024))==512)
-		retval=1;
-	osd_fread (romfile, magic, 4);
-	osd_fclose (romfile);
-	return retval; 
-}
-
-
 

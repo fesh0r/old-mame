@@ -41,7 +41,7 @@ extern const struct GameDriver TINY_NAME;
 
 const struct GameDriver * drivers[] =
 {
-  &TINY_NAME,
+  TINY_POINTER,
   0             /* end of array */
 };
 
@@ -79,47 +79,40 @@ const struct GameDriver *drivers[] =
 
 /* for pong style games look into docs/pong.txt */
 
-#ifndef MESS_EXCLUDE_ATARI
 	/* ATARI */
-	DRIVER( a2600 ) 	/* Atari 2600									  */
-	DRIVER( a5200 ) 	/* Atari 5200									  */
-	DRIVER( a7800 ) 	/* Atari 7800									  */
-	DRIVER( lynx )		/* Atari Lynx Handheld							  */
-	DRIVER( lynxa )		/* Atari Lynx Handheld alternate rom save		  */
-	DRIVER( lynx2 )		/* Atari Lynx II Handheld redesigned, no additions*/
-/*	DRIVER( jaguar )*/	/* Atari Jaguar 								  */
-#endif
+	DRIVER( a2600 ) 	/* Atari 2600						*/
+	DRIVER( a5200 ) 	/* Atari 5200						*/
+	DRIVER( a7800 ) 	/* Atari 7800						*/
+	DRIVER( lynx )		/* Atari Lynx Handheld					*/
+	DRIVER( lynxa )		/* Atari Lynx Handheld alternate rom save		*/
+	DRIVER( lynx2 )		/* Atari Lynx II Handheld redesigned, no additions      */
+//      DRIVER( jaguar )	/* Atari Jaguar 					*/
 
-#ifndef MESS_EXCLUDE_NINTENDO
 	/* NINTENDO */
-	DRIVER( nes )		/* Nintendo Entertainment System				  */
-	DRIVER( nespal )	/* Nintendo Entertainment System				  */
+	DRIVER( nes )		/* Nintendo Entertainment System			*/
+	DRIVER( nespal )	/* Nintendo Entertainment System			*/
 	DRIVER( famicom )
-	DRIVER( gameboy )	/* Nintendo GameBoy Handheld					  */
-	DRIVER (snes)		/* Nintendo Super Nintendo						  */
-/*	DRIVER (vboy)	*/	/* Nintendo Virtual Boy 						  */
-#endif
+	DRIVER( gameboy )	/* Nintendo GameBoy Handheld				*/
+	DRIVER (snes)		/* Nintendo Super Nintendo				*/
+//      DRIVER (vboy)		/* Nintendo Virtual Boy 				*/
 
-#ifndef MESS_EXCLUDE_SEGA
 	/* SEGA */
-	DRIVER( gamegear )	/* Sega Game Gear Handheld						  */
-	DRIVER( sms )		/* Sega Sega Master System						  */
-	DRIVER( genesis )	/* Sega Genesis/MegaDrive						  */
-TESTDRIVER( saturn )	/* Sega Saturn									  */
-#endif
+	DRIVER( gamegear )	/* Sega Game Gear Handheld				*/
+	DRIVER( sms )		/* Sega Sega Master System				*/
+	DRIVER( genesis )	/* Sega Genesis/MegaDrive				*/
+    DRIVER( saturn )	/* Sega Saturn							*/
 
-#ifndef MESS_EXCLUDE_MISC_CONSOLES
 	/* BALLY */
-	DRIVER( astrocde )	/* Bally Astrocade								  */
+	DRIVER( astrocde )	/* Bally Astrocade					*/
 
 	/* RCA */
-TESTDRIVER( vip )		/* Cosmac VIP									  */
-	DRIVER( studio2 )	/* Studio II									  */
+TESTDRIVER( vip )		/* Cosmac VIP						*/
+	DRIVER( studio2 )	/* Studio II						*/
 	/* hanimex mpt-02 */
-/*	DRIVER( cstudio2 )*//* Colour Studio II								  */
+//      DRIVER( cstudio2 )      /* Colour Studio II				        */
 
 	/* FAIRCHILD */
-	DRIVER( channelf )  /* Fairchild Channel F VES - 1976                 */
+	DRIVER( channelf )      /* Fairchild Channel F VES - 1976                       */
 	/* checkers cartridge, additional processor in it */
 	/* saba videoplay */
 	/* itt telematch */
@@ -130,28 +123,28 @@ TESTDRIVER( vip )		/* Cosmac VIP									  */
 	/* COLECO */
 	DRIVER( coleco )	/* ColecoVision (Original BIOS )				  */
 	DRIVER( colecoa )	/* ColecoVision (Thick Characters)				  */
-#if 0					/* Please dont include these next 2 in a distribution, they are Hacks	*/
-	DRIVER( colecofb )	/* ColecoVision (Fast BIOS load)				  */
-	DRIVER( coleconb )	/* ColecoVision (No BIOS load)					  */
-#endif
+	/* Please dont include these next 2 in a distribution, they are Hacks */
+//      DRIVER( colecofb )	   ColecoVision (Fast BIOS load)				  */
+//      DRIVER( coleconb )	   ColecoVision (No BIOS load)					  */
 
 	/* NEC */
 	DRIVER( pce )		/* PC/Engine - Turbo Graphics-16  NEC 1989-1993   */
-	/* pc6601 series z80 based */
-	/* pc8801 series z80 based */
-	/* pc9801 series i8086 based (v30, i386, ..) */
 
-/*  DRIVER( arcadia )*/ /* Emerson Arcadia 2001                           */
+	DRIVER( arcadia ) /* Emerson Arcadia 2001                           */
 	/* schmid tvg 2000 */
 	/* eduscho tele fever */
 	/* hanimex fever 1 (hmg 2650) */
+	DRIVER( vcg )		/* Palladium Video-Computer-Game */
+				/* different cartridge connector, more keys */
 
 	/* GCE */
 	DRIVER( vectrex )	/* General Consumer Electric Vectrex - 1982-1984  */
-						/* (aka Milton-Bradley Vectrex) 				  */
+				/* (aka Milton-Bradley Vectrex) 				  */
 	DRIVER( raaspec )	/* RA+A Spectrum - Modified Vectrex 			  */
 
-/*  DRIVER( intv )*/    /* Mattel Intellivision - 1979 AKA INTV           */
+	/* MATTEL */
+	DRIVER( intv )      /* Mattel Intellivision - 1979 AKA INTV           */
+	DRIVER( intvsrs )   /* Intellivision (Sears License) - 19??           */
 
 	/* ENTEX */
 	DRIVER( advision )	/* Adventurevision								  */
@@ -160,8 +153,8 @@ TESTDRIVER( vip )		/* Cosmac VIP									  */
 	DRIVER( sfzch ) 	/* CPS Changer (Street Fighter ZERO)			  */
 
 	/* Magnavox */
-/*	DRIVER( odyssey )*/	/* Magnavox Odyssey - analogue (1972)			  */
-    DRIVER( odyssey2 )	/* Magnavox Odyssey 2 - 1978-1983				  */
+//      DRIVER( odyssey )	/* Magnavox Odyssey - analogue (1972)			  */
+TESTDRIVER( odyssey2 )	/* Magnavox Odyssey 2 - 1978-1983				  */
 
 	/* Watara */
 	DRIVER( svision )	/* Super Vision	Handheld						  */
@@ -170,17 +163,15 @@ TESTDRIVER( vip )		/* Cosmac VIP									  */
 
 	/* tiger game.com handheld*/
 
-	/* interton vc4000 */
+TESTDRIVER( vc4000 )		/* interton vc4000 */
 	/* grundig super play computer 4000 */
 
 	/* bandai wonderswan handheld*/
 
 	/* 1979 mb microvision handheld*/
-#endif
 
 /****************COMPUTERS****************************************************/
     /* ACORN */
-#ifndef MESS_EXCLUDE_ACORN
     DRIVER( atom )      /* 1979 Acorn Atom                                */
     DRIVER( atomeb )    /* 1979 Acorn Atom                                */
     DRIVER( bbca )      /* 1981 BBC Micro Model A                         */
@@ -192,10 +183,8 @@ TESTDRIVER( vip )		/* Cosmac VIP									  */
 
 TESTDRIVER( a310 )      /* 1988 Acorn Archimedes 310                      */
 
-TESTDRIVER( z88 )		/*												  */
-#endif
+	DRIVER( z88 )		/*												  */
 
-#ifndef MESS_EXCLUDE_AMSTRAD
 	DRIVER( cpc464 )	/* Amstrad (Schneider in Germany) 1984			  */
 	DRIVER( cpc664 )	/* Amstrad (Schneider in Germany) 1985			  */
 	DRIVER( cpc6128 )	/* Amstrad (Schneider in Germany) 1985			  */
@@ -218,9 +207,7 @@ TESTDRIVER( z88 )		/*												  */
 	DRIVER( nc100 ) 	/* 19?? NC100									  */
 	DRIVER( nc100a ) 	/* 19?? NC100									  */
 	DRIVER( nc200 )     /* 19?? NC200									  */
-#endif
 
-#ifndef MESS_EXCLUDE_APPLE
 	/* APPLE */
 /*
  * CPU Model			 Month				 Year
@@ -270,9 +257,7 @@ TESTDRIVER( z88 )		/*												  */
 	DRIVER( mac512ke )  /* 1986 Apple Macintosh 512ke                     */
 	DRIVER( macplus )	/* 1986 Apple Macintosh Plus					  */
 /*	DRIVER( mac2 )*/	/* 1987 Apple Macintosh II						  */
-#endif
 
-#ifndef MESS_EXCLUDE_ATARI
 	/* ATARI */
 /*
 400/800 10kB OS roms
@@ -296,10 +281,8 @@ XL/XE 16kB OS roms
 	DRIVER( a800pal )	/* 1979 Atari 800 PAL							  */
 	DRIVER( a800xl )	/* 1983 Atari 800 XL							  */
 
-//!!TESTDRIVER( atarist )	/* Atari ST 									  */
-#endif
+//!!TESTDRIVER( atarist )	/* Atari ST 								  */
 
-#ifndef MESS_EXCLUDE_CBM
 	/* COMMODORE */
 	DRIVER( kim1 )		/* Commodore (MOS) KIM-1 1975					  */
 TESTDRIVER( sym1 )		/* Synertek SYM1								  */
@@ -334,6 +317,7 @@ TESTDRIVER( vc20v ) 	/* Commodore Vic-20 PAL, VC1541					  */
 	DRIVER( cbm4064 )	/* Commodore CBM4064							  */
 TESTDRIVER( sx64 )		/* Commodore SX 64 - PAL						  */
 TESTDRIVER( vip64 )		/* Commodore VIP64 (SX64, PAL, Swedish)			  */
+TESTDRIVER( dx64 )		/* Commodore DX 64 - PROTOTPYE, PAL						  */
 	DRIVER( c64gs ) 	/* Commodore 64 Games System					  */
 
 	DRIVER( cbm500 )	/* Commodore 500/P128-40						  */
@@ -347,7 +331,7 @@ TESTDRIVER( vip64 )		/* Commodore VIP64 (SX64, PAL, Swedish)			  */
 /*	DRIVER( cbm730 )*/	/* Commodore 730								  */
 
 	DRIVER( c16 )		/* Commodore 16 								  */
-	DRIVER( c16hun )	/* Commodore 16 Hungarian Character Set Hack	  */
+	DRIVER( c16hun )	/* Commodore 16 Novotrade (Hungarian Character Set)	  */
 	DRIVER( c16c )		/* Commodore 16  c1551							  */
 TESTDRIVER( c16v )		/* Commodore 16  vc1541 						  */
 	DRIVER( plus4 ) 	/* Commodore +4  c1551							  */
@@ -362,12 +346,14 @@ TESTDRIVER( plus4v )	/* Commodore +4 								  */
 	DRIVER( c128swe )	/* Commodore 128 - PAL (swedish)				  */
 TESTDRIVER( c128nor )	/* Commodore 128 - PAL (norwegian)				  */
 TESTDRIVER( c128d )		/* Commodore 128D - NTSC 						  */
+TESTDRIVER( c128dita )	/* Commodore 128D - PAL (italian) cost reduced set	  */
 
 /*	DRIVER( lcd )*/		/* Commodore LCD Prototype (m65c102 based)		  */
 
 /*	DRIVER( cbm900 )*/	/* Commodore 900 Prototype (z8000)				  */
 
-//!!	DRIVER( amiga ) 	/* Commodore Amiga								  */
+TESTDRIVER( amiga ) 	/* Commodore Amiga								  */
+TESTDRIVER( cdtv )
 
 	DRIVER( c65 )		/* C65 / C64DX (Prototype, NTSC, 911001)		  */
 	DRIVER( c65e )		/* C65 / C64DX (Prototype, NTSC, 910828)		  */
@@ -375,9 +361,7 @@ TESTDRIVER( c128d )		/* Commodore 128D - NTSC 						  */
 	DRIVER( c65c )		/* C65 / C64DX (Prototype, NTSC, 910523)		  */
 	DRIVER( c65ger )	/* C65 / C64DX (Prototype, German PAL, 910429)	  */
 	DRIVER( c65a )		/* C65 / C64DX (Prototype, NTSC, 910111)		  */
-#endif
 
-#ifndef MESS_EXCLUDE_IBMPC
 	/* IBM PC & Clones */
 	DRIVER( ibmpc )		/* 1982	IBM PC									  */
 	DRIVER( ibmpca )	/* 1982 IBM PC									  */
@@ -403,6 +387,7 @@ TESTDRIVER( ibmpcjr )	/*      IBM PC Jr								  */
 	/* at */
 TESTDRIVER( ibmat )		/* 1985	IBM AT									  */
 TESTDRIVER( i8530286 )	/* 1988 IBM PS2 Model 30 286 (VGA)					*/
+//TESTDRIVER( t2500xl )	/* 19?? Tandy 2500XL (VGA)					*/
 	DRIVER( at )		/* 1987 AMI Bios and Diagnostics				  */
 TESTDRIVER( atvga ) 	/*												  */
 TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS		  */
@@ -411,12 +396,10 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS		  */
 /*	DRIVER( at386)*/	/*												  */
 
 	/* microchannel */
-/*	DRIVER( ibm8550 )*/	/* 1987 IBM PS2 Model 50 (80826)					*/
+/*	DRIVER( ibm8550 )*/	/* 1987 IBM PS2 Model 50 (80286)					*/
 
 /*	DRIVER( ibm8580 )*/	/* 1987 IBM PS2 Model 80 (80386)					*/
-#endif
 
-#ifndef MESS_EXCLUDE_SINCLAIR
 	/* SINCLAIR */
 	DRIVER( zx80 )		/* Sinclair ZX-80								  */
 	DRIVER( zx81 )		/* Sinclair ZX-81								  */
@@ -449,9 +432,7 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS		  */
 	DRIVER( specpl3e )	/* 2000 ZX Spectrum +3e 						  */
 
 	/* sinclair pc200 professional series ibmxt compatible*/
-#endif
 
-#ifndef MESS_EXCLUDE_SHARP
 	/* SHARP */
 #if 0
 TESTDRIVER( pc1500 )	/* 1982 Pocket Computer 1500						*/
@@ -468,14 +449,15 @@ TESTDRIVER( trs80pc3 )	/* Tandy TRS80 PC-3									*/
 
 	DRIVER( pc1350 )	/* Pocket Computer 1350 						  */
 
+	DRIVER( pc1403 )	/* Pocket Computer 1403 						  */
+	DRIVER( pc1403h )	/* Pocket Computer 1403H 						  */
+
 	DRIVER( mz700 ) 	/* 1982 Sharp MZ700 							  */
 	DRIVER( mz700j )	/* 1982 Sharp MZ700 Japan						  */
 TESTDRIVER( mz800  )	/* 1982 Sharp MZ800 							  */
 
 /*	DRIVER( x68000 )*/	/* X68000										  */
-#endif
 
-#ifndef MESS_EXCLUDE_TI
 	/* TEXAS INSTRUMENTS */
 TESTDRIVER( ti990_4 )	/* 197? TI 990/4								  */
 TESTDRIVER( ti99_224 )	/* 1983 TI 99/2 								  */
@@ -486,18 +468,121 @@ TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 								  */
 	DRIVER( ti99_4ae )	/* 1981 TI 99/4AE								  */
 
     DRIVER( avigo )     /*                                                */
+
+/* Texas Instruments Calculators */
+
+/* TI-73 (Z80 6 MHz) */
+/*	DRIVER( ti73 )*/	/*TI 73 rom ver. 1.3004 */
+/*	DRIVER( ti73a )*/	/*TI 73 rom ver. 1.3007 */
+
+/* TI-80 (custom 980 kHz) */
+/*	DRIVER( ti80 )*/	/*TI 80 */
+
+/* TI-81 (Z80 2 MHz) */
+	DRIVER( ti81 )		/*TI 81 rom ver. 1.8 */
+/*	DRIVER( ti81v11 )*/	/*TI 81 rom ver. 1.1 */
+/*	DRIVER( ti81v20 )*/	/*TI 81 rom ver. 2.0 */
+
+/* TI-82 (Z80 6 MHz) */
+/*	DRIVER( ti82 )*/	/*TI 82 rom ver. 3.0 */
+/*	DRIVER( ti82v4 )*/	/*TI 82 rom ver. 4.0 */
+/*	DRIVER( ti82v7 )*/	/*TI 82 rom ver. 7.0 */
+/*	DRIVER( ti82v8 )*/	/*TI 82 rom ver. 8.0 */
+/*	DRIVER( ti82v10 )*/	/*TI 82 rom ver. 10.0 */
+/*	DRIVER( ti82v12 )*/	/*TI 82 rom ver. 12.0 */
+/*	DRIVER( ti82v15 )*/	/*TI 82 rom ver. 15.0 */
+/*	DRIVER( ti82v16 )*/	/*TI 82 rom ver. 16.0 */
+/*	DRIVER( ti82v17 )*/	/*TI 82 rom ver. 17.0 */
+/*	DRIVER( ti82v18 )*/	/*TI 82 rom ver. 18.0 */
+/*	DRIVER( ti82v19 )*/	/*TI 82 rom ver. 19.0 */
+/*	DRIVER( ti82v19a )*/	/*TI 82 rom ver. 19.006 */
+
+/* TI-83 (Z80 6 MHz) */
+/*	DRIVER( ti83 )*/	/*TI 83 rom ver. 1.0200 */
+/*	DRIVER( ti83v02 )*/	/*TI 83 rom ver. 1.0300 */
+/*	DRIVER( ti83v03 )*/	/*TI 83 rom ver. 1.0400 */
+/*	DRIVER( ti83v04 )*/	/*TI 83 rom ver. 1.0600 */
+/*	DRIVER( ti83v06 )*/	/*TI 83 rom ver. 1.0700 */
+/*	DRIVER( ti83v07 )*/	/*TI 83 rom ver. 1.0800 */
+/*	DRIVER( ti83v08 )*/	/*TI 83 rom ver. 1.10 */
+
+/* TI-83 Plus (Z80 8 MHz) */
+/*	DRIVER( ti83p )*/	/*TI 83 rom ver. 1.03 */
+/*	DRIVER( ti83pv06 )*/	/*TI 83 rom ver. 1.06 */
+/*	DRIVER( ti83pv08 )*/	/*TI 83 rom ver. 1.08 */
+/*	DRIVER( ti83pv10 )*/	/*TI 83 rom ver. 1.10 */
+/*	DRIVER( ti83pv12 )*/	/*TI 83 rom ver. 1.12 */
+
+/* TI-85 (Z80 6MHz) */
+/*	DRIVER( ti85v10 )*/	/*TI 85 rom ver. 1.0 */
+/*	DRIVER( ti85v20 )*/	/*TI 85 rom ver. 2.0 */
 	DRIVER( ti85 )  	/*TI 85 rom ver. 3.0a */
 	DRIVER( ti85v40 )	/*TI 85 rom ver. 4.0 */
 	DRIVER( ti85v50 )	/*TI 85 rom ver. 5.0 */
 	DRIVER( ti85v60 )	/*TI 85 rom ver. 6.0 */
+/*	DRIVER( ti85v70 )*/	/*TI 85 rom ver. 7.0 */
 	DRIVER( ti85v80 )	/*TI 85 rom ver. 8.0 */
 	DRIVER( ti85v90 )	/*TI 85 rom ver. 9.0 */
 	DRIVER( ti85v100 )	/*TI 85 rom ver. 10.0 */
-#endif
 
-#ifndef MESS_EXCLUDE_MISC_COMPUTERS
+/* TI-86 (Z80 6 MHz) */
+	DRIVER( ti86 )		/*TI 86 rom ver. 1.2 */
+	DRIVER( ti86v13 )	/*TI 86 rom ver. 1.3 */
+	DRIVER( ti86v14 )	/*TI 86 rom ver. 1.4 */
+	TESTDRIVER( ti86v15 )	/*TI 86 rom ver. 1.5 */
+	DRIVER( ti86v16 )	/*TI 86 rom ver. 1.6 */
+	DRIVER( ti86grom )	/*TI 86 homebrew rom by Daniel Foesch */
+
+/* TI-89 (M68000) */
+/* TI-92 (M68000 10 MHz) */
+/* TI-92 Plus (M68000) */
+
+	/* NEC */
+	/* TK80 series i8080 based */
+	/* PC-100 series i8086 based */
+	/* PC-2001 series micro PD7907 based */
+	/* PC-6001 series Z80 based */
+	/* PC-8001 series Z80 based */
+	/* PC-8201 series micro 80C85 based */
+
+	/* PC-8801 series Z80 based */
+	/* DRIVER( pc8801 ) */	/* PC-8801 */
+	/* DRIVER( pc88mk2 ) */	/* PC-8801mkII */
+	DRIVER( pc88srl )	/* PC-8801mkIISR(Low resolution display, VSYNC 15KHz) */
+	DRIVER( pc88srh )	/* PC-8801mkIISR(High resolution display, VSYNC 24KHz) */
+	/* DRIVER( pc8801tr ) */	/* PC-8801mkIITR */
+	/* DRIVER( pc8801fr ) */	/* PC-8801mkIIFR */
+	/* DRIVER( pc8801mr ) */	/* PC-8801mkIIMR */
+	/* DRIVER( pc8801fh ) */	/* PC-8801FH */
+	/* DRIVER( pc8801mh ) */	/* PC-8801MH */
+	/* DRIVER( pc8801fa ) */	/* PC-8801FA */
+	/* DRIVER( pc8801ma ) */	/* PC-8801MA */
+	/* DRIVER( pc8801fe ) */	/* PC-8801FE */
+	/* DRIVER( pc8801ma2 ) */	/* PC-8801MA2 */
+	/* DRIVER( pc8801fe2 ) */	/* PC-8801FE2 */
+	/* DRIVER( pc8801mc ) */	/* PC-8801MC */
+	/* DRIVER( pc98do88 ) */	/* PC-98DO(88mode) */
+	/* DRIVER( pc98dop8 ) */	/* PC-98DO+(88mode) */
+
+	/* PC-88VA series micro PD9002(special version of V30 with Z80 compatible mode) based */
+	/* DRIVER( pc88va ) */	/* PC-88VA */
+	/* DRIVER( pc88va2 ) */	/* PC-88VA2 */
+	/* DRIVER( pc88va3 ) */	/* PC-88VA3 */
+
+	/* PC-9801 series i8086 based (V30, i386, ..) */
+
 	/* CANTAB */
 	DRIVER( jupiter )	/* Jupiter Ace									  */
+
+	/* SORD */
+	DRIVER( sordm5 )
+
+	/* APF Electronics Inc. */
+	DRIVER( apfm1000 )
+	DRIVER( apfimag )
+
+	/* Tatung */
+	DRIVER( einstein )
 
 	/* INTELLIGENT SOFTWARE */
 	DRIVER( ep128 ) 	/* Enterprise 128 k 							  */
@@ -527,7 +612,7 @@ TESTDRIVER( kc85_4d )   /* VEB KC 85/4 with disk interface                */
 	DRIVER( trs80l2 ) 	/* TRS-80 Model I	- Radio Shack Level II BASIC  */
 	DRIVER( trs80l2a )	/* TRS-80 Model I	- R/S L2 BASIC				  */
 	DRIVER( sys80 ) 	/* EACA System 80								  */
-	DRIVER( lnw80 ) 	/* LNW Research LNW-80							  */	
+	DRIVER( lnw80 ) 	/* LNW Research LNW-80							  */
 /*	DRIVER( trs80m2 )*/	/* TRS-80 Model II -							  */
 TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 		  */
 
@@ -535,7 +620,8 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 		  */
 	DRIVER( cocoe )		/* Color Computer (Extended BASIC 1.0)			  */
 	DRIVER( coco2 ) 	/* Color Computer 2 							  */
 	DRIVER( coco2b ) 	/* Color Computer 2B (uses M6847T1 video chip)    */
-	DRIVER( coco3 ) 	/* Color Computer 3 							  */
+	DRIVER( coco3 ) 	/* Color Computer 3 (NTSC)						  */
+	DRIVER( coco3p ) 	/* Color Computer 3 (PAL)						  */
 	DRIVER( coco3h )	/* Hacked Color Computer 3 (6309)				  */
 	DRIVER( dragon32 )	/* Dragon32 									  */
 	DRIVER( cp400 ) 	/* Prologica CP400								  */
@@ -598,7 +684,11 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 		  */
 
 	/* NASCOM MICROCOMPUTERS */
 	DRIVER( nascom1 )	/* 1978 Nascom 1								  */
+	DRIVER( nascom1a )  /**/
+	DRIVER( nascom1b )  /**/
 	DRIVER( nascom2 )	/* 1979 Nascom 2								  */
+	DRIVER( nascom2a )	/* 1979 Nascom 2								  */
+
 
 	/* MILES GORDON TECHNOLOGY */
 	DRIVER( coupe ) 	/* 1989 Sam Coupe 256K RAM						  */
@@ -614,7 +704,7 @@ TESTDRIVER( mekd2 )     /* 1977 Motorola Evaluation Kit                   */
 	DRIVER( mtx512 )    /* 1983 Memotech MTX512                           */
 
 	/* MATTEL */
-//TESTDRIVER( intvkbd )	/* 1981 - Mattel Intellivision Keyboard Component */
+	DRIVER( intvkbd )	/* 1981 - Mattel Intellivision Keyboard Component */
 						/* (Test marketed, later recalled )				  */
 	DRIVER( aquarius )	/* 1983 Aquarius								  */
 
@@ -642,18 +732,15 @@ TESTDRIVER( hp48g ) 	/* HP48 G/GX										*/
 	/* Booth (this is the builder, not a company) */
 	DRIVER( apexc )		/* 1951(?) APEXC : All-Purpose Electronic X-ray Computer */
 
-#endif
-
 /****************Games*******************************************************/
 
-#ifndef MESS_EXCLUDE_MISC_GAMES
 	/* The Ideal Game Corp. */
 	/* distributed by ARXON in Germany/Austria */
 	/* PIC1655A (NMOS, not CMOS 16C55) dumping problems */
 /*	DRIVER( maniac )*/	/* Maniac										  */
 
 	/* Computer Electronic */
-TESTDRIVER( mk1 )		/* Chess Champion MK I							  */
+	DRIVER( mk1 )		/* Chess Champion MK I							  */
 	/* Quelle International */
 	DRIVER( mk2 )		/* Chess Champion MK II							  */
 	/* NOVAG Industries Ltd. */
@@ -662,7 +749,6 @@ TESTDRIVER( ssystem3 )	/* Chess Champion Super System III / MK III		  */
 	/* tchibo */
 	/* single chip with ram, rom, io without label, how to dump? */
 /*	DRIVER( partner3)*/	/* Chess Partner 3 - Kasparov					  */
-#endif
 
 #endif /* NEOMAME */
 

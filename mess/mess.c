@@ -9,6 +9,7 @@ This file is a set of function calls and defs required for MESS.
 #include "includes/flopdrv.h"
 
 extern struct GameOptions options;
+extern const struct Devices devices[];
 
 /* CRC database file for this driver, supplied by the OS specific code */
 extern const char *crcfile;
@@ -29,41 +30,10 @@ struct image_info {
 	char *extrainfo;
 };
 
-static struct image_info *images[IO_COUNT] = {NULL,};
-static int count[IO_COUNT] = {0,};
-static const char *typename[IO_COUNT] = {
-	"NONE",
-	"Cartridge ",
-	"Floppydisk",
-	"Harddisk  ",
-	"Cylinder  ",
-	"Cassette  ",
-	"Punchcard ",
-	"Punchtape ",
-	"Printer   ",
-	"Serial    ",
-	"Parallel  ",
-	"Snapshot  ",
-	"Quickload "
-};
+#define MAX_INSTANCES 5
+static struct image_info images[IO_COUNT][MAX_INSTANCES];
+static int count[IO_COUNT];
 
-static const char *brieftypename[IO_COUNT] = {
-	"NONE",
-	"Cart",
-	"Flop",
-	"Hard",
-	"Cyln",
-	"Cass",
-	"Pcrd",
-	"Ptap",
-	"Prin",
-	"Serl",
-	"Parl",
-	"Dump",
-	"Quik"
-};
-
-static char *mess_alpha = "";
 
 static char* dupe(const char *src)
 {
@@ -76,6 +46,7 @@ static char* dupe(const char *src)
 	}
 	return NULL;
 }
+
 
 static char* stripspace(const char *src)
 {
@@ -94,27 +65,6 @@ static char* stripspace(const char *src)
 	return NULL;
 }
 
-static void free_image_info(struct image_info *img)
-{
-	if( !img )
-		return;
-	if( img->longname )
-		free(img->longname);
-	img->longname = NULL;
-	if( img->manufacturer )
-		free(img->manufacturer );
-	img->manufacturer = NULL;
-	if( img->year )
-		free(img->year );
-	img->year = NULL;
-	if( img->playable )
-		free(img->playable);
-	img->playable = NULL;
-	if( img->extrainfo )
-		free(img->extrainfo);
-	img->extrainfo = NULL;
-}
-
 int DECL_SPEC mess_printf(char *fmt, ...)
 {
 	va_list arg;
@@ -130,7 +80,34 @@ int DECL_SPEC mess_printf(char *fmt, ...)
 	return length;
 }
 
-static int read_crc_config (const char *, struct image_info *, const char*);
+static int read_crc_config (const char *file, struct image_info *img, const char* sysname)
+{
+	int retval;
+	void *config = config_open (file);
+
+	retval = 1;
+	if( config )
+	{
+		char line[1024];
+		char crc[9+1];
+
+		sprintf(crc, "%08x", img->crc);
+		config_load_string(config,sysname,0,crc,line,sizeof(line));
+		if( line[0] )
+		{
+			logerror("found CRC %s= %s\n", crc, line);
+			img->longname = dupe(stripspace(strtok(line, "|")));
+			img->manufacturer = dupe(stripspace(strtok(NULL, "|")));
+			img->year = dupe(stripspace(strtok(NULL, "|")));
+			img->playable = dupe(stripspace(strtok(NULL, "|")));
+			img->extrainfo = dupe(stripspace(strtok(NULL, "|")));
+			retval = 0;
+		}
+		config_close(config);
+	}
+	return retval;
+}
+
 
 void *image_fopen(int type, int id, int filetype, int read_or_write)
 {
@@ -285,7 +262,6 @@ void *image_fopen(int type, int id, int filetype, int read_or_write)
 			osd_fchecksum(sysname, img->name, &img->length, &img->crc);
 			logerror("image_fopen: CRC is %08x\n", img->crc);
 		}
-		free_image_info(img);
 
 		if (read_crc_config (crcfile, img, sysname) && Machine->gamedrv->clone_of->name)
 			read_crc_config (pcrcfile, img, Machine->gamedrv->clone_of->name);
@@ -294,35 +270,6 @@ void *image_fopen(int type, int id, int filetype, int read_or_write)
 	}
 
 	return file;
-}
-
-
-static int read_crc_config (const char *file, struct image_info *img, const char* sysname)
-{
-	int retval;
-	void *config = config_open (file);
-
-	retval = 1;
-	if( config )
-	{
-		char line[1024];
-		char crc[9+1];
-
-		sprintf(crc, "%08x", img->crc);
-		config_load_string(config,sysname,0,crc,line,sizeof(line));
-		if( line[0] )
-		{
-			logerror("found CRC %s= %s\n", crc, line);
-			img->longname = dupe(stripspace(strtok(line, "|")));
-			img->manufacturer = dupe(stripspace(strtok(NULL, "|")));
-			img->year = dupe(stripspace(strtok(NULL, "|")));
-			img->playable = dupe(stripspace(strtok(NULL, "|")));
-			img->extrainfo = dupe(stripspace(strtok(NULL, "|")));
-			retval = 0;
-		}
-		config_close(config);
-	}
-	return retval;
 }
 
 
@@ -346,27 +293,40 @@ static void floppy_device_common_exit(int id)
 	floppy_drive_set_flag_state(id, FLOPPY_DRIVE_CONNECTED, 0);
 }
 
+
+/*
+ * Does the system support cassette (for tapecontrol)
+ * TRUE, FALSE return
+ */
+int system_supports_cassette_device (void)
+{
+	const struct IODevice *dev = Machine->gamedrv->dev;
+
+	/* Cycle through all devices for this system */
+	while(dev->type != IO_END)
+	{
+		if (dev->type == IO_CASSETTE)
+			return TRUE;
+		dev++;
+	}
+
+	return FALSE;
+}
+
 /*
  * Return a name for the device type (to be used for UI functions)
  */
 const char *device_typename(int type)
 {
 	if (type < IO_COUNT)
-		return typename[type];
-	return "UNKNOWN";
-}
-
-const char *briefdevice_typename(int type)
-{
-	if (type < IO_COUNT)
-		return brieftypename[type];
+		return devices[type].name;
 	return "UNKNOWN";
 }
 
 const char *device_brieftypename(int type)
 {
 	if (type < IO_COUNT)
-		return brieftypename[type];
+		return devices[type].shortname;
 	return "UNKNOWN";
 }
 
@@ -379,7 +339,7 @@ const char *device_typename_id(int type, int id)
 	{
 		which = ++which % 40;
 		/* for the average user counting starts at #1 ;-) */
-		sprintf(typename_id[which], "%s #%d", typename[type], id+1);
+		sprintf(typename_id[which], "%s #%d", devices[type].name, id+1);
 		return typename_id[which];
 	}
 	return "UNKNOWN";
@@ -546,15 +506,23 @@ const char *device_extrainfo(int type, int id)
 	return NULL;
 }
 
-/*
- * Copy the image names from options.image_files[] to
- * the array of filenames we keep here, depending on the
- * type identifier of each image.
- */
-int get_filenames(void)
+
+/*****************************************************************************
+ *  --Distribute images to their respective Devices--
+ *  Copy the Images specified at the CLI from options.image_files[] to the
+ *  array of filenames we keep here, depending on the Device type identifier
+ *  of each image.  Multiple instances of the same device are allowed
+ *  RETURNS 0 on success, 1 if failed
+ ****************************************************************************/
+static int distribute_images(void)
 {
-	const struct IODevice *dev = Machine->gamedrv->dev;
-	int i;
+	int i,j;
+
+	logerror("Distributing Images to Devices...\n");
+	/* Set names to NULL */
+	for (i=0;i<IO_COUNT;i++)
+		for (j=0;j<MAX_INSTANCES;j++)
+			images[i][j].name = NULL;
 
 	for( i = 0; i < options.image_count; i++ )
 	{
@@ -563,48 +531,21 @@ int get_filenames(void)
 		if (type < IO_COUNT)
 		{
 			/* Add a filename to the arrays of names */
-			if( images[type] )
-				images[type] = realloc(images[type],(count[type]+1)*sizeof(struct image_info));
-			else
-				images[type] = malloc(sizeof(struct image_info));
-			if( !images[type] )
-				return 1;
-			memset(&images[type][count[type]], 0, sizeof(struct image_info));
 			if( options.image_files[i].name )
 			{
 				images[type][count[type]].name = dupe(options.image_files[i].name);
 				if( !images[type][count[type]].name )
+				{
+					mess_printf(" ERROR - dupe() failed\n");
 					return 1;
+				}
 			}
-			logerror("%s #%d: %s\n", typename[type], count[type]+1, images[type][count[type]].name);
 			count[type]++;
 		}
 		else
 		{
-			logerror("Invalid IO_ type %d for %s\n", type, options.image_files[i].name);
+			mess_printf(" Invalid Device type %d for %s\n", type, options.image_files[i].name);
 			return 1;
-		}
-	}
-
-	/* Does the driver have any IODevices defined? */
-	if( dev )
-	{
-		while( dev->count )
-		{
-			int type = dev->type;
-			while( count[type] < dev->count )
-			{
-				/* Add an empty slot name the arrays of names */
-				if( images[type] )
-					images[type] = realloc(images[type],(count[type]+1)*sizeof(struct image_info));
-				else
-					images[type] = malloc(sizeof(struct image_info));
-				if( !images[type] )
-					return 1;
-				memset(&images[type][count[type]], 0, sizeof(struct image_info));
-				count[type]++;
-			}
-			dev++;
 		}
 	}
 
@@ -612,69 +553,73 @@ int get_filenames(void)
 	return 0;
 }
 
-/*
- * Call the init() functions for all devices of a driver
- * with all user specified image names.
- */
+
+
+/* Small check to see if system supports device */
+static int supported_device(const struct IODevice *dev, int type)
+{
+	while(dev->type!=IO_END)
+	{
+		if(dev->type==type)
+			return TRUE;	/* Return OK */
+		dev++;
+	}
+	return FALSE;
+}
+
+/*****************************************************************************
+ *  --Initialise Devices--
+ *  Call the init() functions for all devices of a driver
+ *  ith all user specified image names.
+ ****************************************************************************/
 int init_devices(const void *game)
 {
 	const struct GameDriver *gamedrv = game;
 	const struct IODevice *dev = gamedrv->dev;
-	int id;
+	int i,id;
 
-	/* KT - added floppy drives init here. Drivers can override settings, and
-	settings can change in the UI */
+	logerror("Initialising Devices...\n");
+
+	/* Check that the driver supports all devices requested (options struct)*/
+	for( i = 0; i < options.image_count; i++ )
+	{
+		if (supported_device(dev, options.image_files[i].type)==FALSE)
+		{
+			mess_printf(" ERROR: Device [%s] is not supported by this system\n",device_typename(options.image_files[i].type));
+			return 1;
+		}
+	}
+
+	/* Ok! All devices are supported.  Now distribute them to the appropriate device..... */
+	if (distribute_images() == 1)
+		return 1;
+
+	/* Initialise all floppy drives here if the device is Setting can be overriden by the drivers and UI */
 	floppy_drives_init();
 
-	/* initialize all devices */
+	/* initialize --all-- devices */
 	while( dev->count )
 	{
-
-		/* try and check for valid image and compute 'partial' CRC
-		   for imageinfo if possible */
-		if( dev->id )
+		/* all instances */
+		for( id = 0; id < dev->count; id++ )
 		{
-			for( id = 0; id < dev->count; id++ )
+			mess_printf("Initialising %s device #%d\n",device_typename(dev->type), id + 1);
+			/********************************************************************
+			 * CALL INITIALISE DEVICE
+			 ********************************************************************/
+			/* if this device supports initialize (it should!) */
+			if( dev->init )
 			{
 				int result;
 
 				/* initialize */
-				logerror("%s id (%s)\n", device_typename_id(dev->type,id), device_filename(dev->type,id) ? device_filename(dev->type,id) : "NULL");
-				result = (*dev->id)(id);
-				logerror("%s id returns %d\n", device_typename_id(dev->type,id), result);
-
-				if( result != ID_OK && device_filename(dev->type,id) )
-				{
-					mess_printf("%s id failed (%s)\n", device_typename_id(dev->type,id), device_filename(dev->type,id) );
-/* HJB: I think we can't abort if a device->id function fails _yet_, because
- * we first would have to clean up every driver to use the correct return values.
- * device->init will fail if a file really can't be loaded.
- */
-/*					return 1; */
-				}
-			}
-		}
-		else
-		{
-			logerror("%s does not support id!\n", device_typename(dev->type));
-		}
-
-		/* if this device supports initialize (it should!) */
-		if( dev->init )
-		{
-			/* all instances */
-			for( id = 0; id < dev->count; id++ )
-			{
-				int result;
-
-				/* initialize */
-				logerror("%s init (%s)\n", device_typename_id(dev->type,id), device_filename(dev->type,id) ? device_filename(dev->type,id) : "NULL");
 				result = (*dev->init)(id);
-				logerror("%s init returns %d\n", device_typename_id(dev->type,id), result);
 
-				if( result != INIT_OK && device_filename(dev->type,id) )
+				if( result != INIT_PASS)
 				{
-					mess_printf("%s init failed (%s)\n", device_typename_id(dev->type,id), device_filename(dev->type,id) );
+					mess_printf("Driver Reports Initialisation [for %s device] failed\n",device_typename(dev->type));
+					mess_printf("Ensure image is valid and exists and (if needed) can be created\n");
+					mess_printf("Also remember that some systems cannot boot without a valid image!\n");
 					return 1;
 				}
 
@@ -684,15 +629,15 @@ int init_devices(const void *game)
 				{
 					floppy_device_common_init(id);
 				}
-
 			}
-		}
-		else
-		{
-			logerror("%s does not support init!\n", device_typename(dev->type));
+			else
+			{
+				mess_printf(" %s does not support init!\n", device_typename(dev->type));
+			}
 		}
 		dev++;
 	}
+	mess_printf("Device Initialision Complete!\n");
 	return 0;
 }
 
@@ -703,7 +648,8 @@ int init_devices(const void *game)
 void exit_devices(void)
 {
 	const struct IODevice *dev = Machine->gamedrv->dev;
-	int type, id;
+	int id;
+	int type;
 
 	/* shutdown all devices */
 	while( dev->count )
@@ -737,6 +683,7 @@ void exit_devices(void)
 
 		dev++;
 	}
+
 	for( type = 0; type < IO_COUNT; type++ )
 	{
 		if( images[type] )
@@ -745,16 +692,33 @@ void exit_devices(void)
 			{
 				if( images[type][id].name )
 					free(images[type][id].name);
-				images[type][id].name = NULL;
+				if( images[type][id].longname )
+					free(images[type][id].longname);
+				if( images[type][id].manufacturer )
+					free(images[type][id].manufacturer);
+				if( images[type][id].year )
+					free(images[type][id].year);
+				if( images[type][id].playable )
+					free(images[type][id].playable);
+				if( images[type][id].extrainfo )
+					free(images[type][id].extrainfo);
 			}
-			free(images[type]);
 		}
-		images[type] = NULL;
 		count[type] = 0;
 	}
 
 	/* KT: clean up */
 	floppy_drives_exit();
+
+#ifdef MAME_DEBUG
+	for( type = 0; type < IO_COUNT; type++ )
+	{
+		if (count[type])
+			mess_printf("OOPS!!!  Appears not all images free!\n");
+
+	}
+#endif
+
 }
 
 /*
@@ -791,17 +755,18 @@ int device_filename_change(int type, int id, const char *name)
 		 * set the new filename and reset all addition info, it will
 		 * be inserted by osd_fopen() and the crc handling
 		 */
-		if( img->name )
-			free(img->name);
 		img->name = NULL;
 		img->length = 0;
 		img->crc = 0;
-		free_image_info(img);
 		if( name )
 		{
 			img->name = dupe(name);
+			/* Check the name */
 			if( !img->name )
 				return 1;
+			/* check the count - if it was 0, add new! */
+			if (!device_count(type))
+				count[type]++;
 		}
 
 		if( dev->reset_depth == IO_RESET_CPU )
@@ -814,7 +779,7 @@ int device_filename_change(int type, int id, const char *name)
 		}
 
 		result = (*dev->init)(id);
-		if( result != INIT_OK && name )
+		if( result != INIT_PASS)
 			return 1;
 
 		/* init succeeded */
@@ -828,124 +793,39 @@ int device_filename_change(int type, int id, const char *name)
 	return 0;
 }
 
-int device_open(int type, int id, int mode, void *args)
-{
-	const struct IODevice *dev = Machine->gamedrv->dev;
-	while( dev && dev->count )
-	{
-		if( type == dev->type && dev->open )
-			return (*dev->open)(id,mode,args);
 
-		dev++;
-	}
-	return 1;
-}
 
-void device_close(int type, int id)
+
+
+
+
+
+
+#ifdef MAME_DEBUG
+int messvaliditychecks(void)
 {
-	const struct IODevice *dev = Machine->gamedrv->dev;
-	while( dev && dev->count )
+	int i;
+	int error = 0;
+
+	/* Check the device struct array */
+	i=0;
+	while (devices[i].id != IO_COUNT)
 	{
-		if( type == dev->type && dev->close )
+		if (devices[i].id != i)
 		{
-			(*dev->close)(id);
-			return;
+			mess_printf("MESS Validity Error - Device struct array order mismatch\n");
+			error = 1;
 		}
-		dev++;
+		i++;
 	}
-}
-
-int device_seek(int type, int id, int offset, int whence)
-{
-	const struct IODevice *dev = Machine->gamedrv->dev;
-	while( dev && dev->count )
+	if (i < IO_COUNT)
 	{
-		if( type == dev->type && dev->seek )
-			return (*dev->seek)(id,offset,whence);
-		dev++;
+		mess_printf("MESS Validity Error - Device struct entry missing\n");
+		error = 1;
 	}
-	return 0;
+	return error;
 }
-
-int device_tell(int type, int id)
-{
-	const struct IODevice *dev = Machine->gamedrv->dev;
-	while( dev && dev->count )
-	{
-		if( type == dev->type && dev->tell )
-			return (*dev->tell)(id);
-		dev++;
-	}
-	return 0;
-}
-
-int device_status(int type, int id, int newstatus)
-{
-	const struct IODevice *dev = Machine->gamedrv->dev;
-	while( dev && dev->count )
-	{
-		if( type == dev->type && dev->status )
-			return (*dev->status)(id,newstatus);
-		dev++;
-	}
-	return 0;
-}
-
-int device_input(int type, int id)
-{
-	const struct IODevice *dev = Machine->gamedrv->dev;
-	while( dev && dev->count )
-	{
-		if( type == dev->type && dev->input )
-			return (*dev->input)(id);
-		dev++;
-	}
-	return 0;
-}
-
-void device_output(int type, int id, int data)
-{
-	const struct IODevice *dev = Machine->gamedrv->dev;
-	while( dev && dev->count )
-	{
-		if( type == dev->type && dev->output )
-		{
-			(*dev->output)(id,data);
-			return;
-		}
-		dev++;
-	}
-}
-
-int device_input_chunk(int type, int id, void *dst, int chunks)
-{
-	const struct IODevice *dev = Machine->gamedrv->dev;
-	while( dev && dev->count )
-	{
-		if( type == dev->type && dev->input_chunk )
-			return (*dev->input_chunk)(id,dst,chunks);
-		dev++;
-	}
-	return 1;
-}
-
-void device_output_chunk(int type, int id, void *src, int chunks)
-{
-	const struct IODevice *dev = Machine->gamedrv->dev;
-	while( dev && dev->count )
-	{
-		if( type == dev->type && dev->output )
-		{
-			(*dev->output_chunk)(id,src,chunks);
-			return;
-		}
-		dev++;
-	}
-}
-
-
-
-
+#endif
 
 
 int displayimageinfo(struct osd_bitmap *bitmap, int selected)
@@ -1036,7 +916,7 @@ void showmessdisclaimer(void)
 	mess_printf(
 		"MESS is an emulator: it reproduces, more or less faithfully, the behaviour of\n"
 		"several computer and console systems. But hardware is useless without software\n"
-		"so a file dump of the ROMs, cartridges, discs, and cassettes which run on that\n"
+		"so a file dump of the BIOS, cartridges, discs, and cassettes which run on that\n"
 		"hardware is required. Such files, like any other commercial software, are\n"
 		"copyrighted material and it is therefore illegal to use them if you don't own\n"
 		"the original media from which the files are derived. Needless to say, these\n"
@@ -1048,17 +928,17 @@ void showmessdisclaimer(void)
 void showmessinfo(void)
 {
 	mess_printf(
-		"M.E.S.S. v%s %s\n"
-		"Multiple Emulation Super System - Copyright (C) 1997-2000 by the MESS Team\n"
-		"M.E.S.S. is based on the excellent M.A.M.E. Source code\n"
-		"Copyright (C) 1997-2000 by Nicola Salmoria and the MAME Team\n\n",
-		build_version, mess_alpha);
+		"M.E.S.S. v%s\n"
+		"Multiple Emulation Super System - Copyright (C) 1997-2001 by the MESS Team\n"
+		"M.E.S.S. is based on the ever excellent M.A.M.E. Source code\n"
+		"Copyright (C) 1997-2001 by Nicola Salmoria and the MAME Team\n\n",
+		build_version);
 	showmessdisclaimer();
 	mess_printf(
 		"Usage:  MESS <system> <device> <software> <options>\n\n"
 		"        MESS -list        for a brief list of supported systems\n"
-		"        MESS -listfull    for a full list of supported systems\n"
 		"        MESS -listdevices for a full list of supported devices\n"
+		"        MESS -showusage   to see usage instructions\n"
 		"See mess.txt for help, readme.txt for options.\n");
 
 }

@@ -15,7 +15,9 @@
 #include "machine/6821pia.h"
 #include "vidhrdw/m6847.h"
 #include "includes/6883sam.h"
+#include "includes/rstrtrck.h"
 #include "includes/dragon.h"
+#include "formats/dmkdsk.h"
 #include "includes/basicdsk.h"
 #include "printer.h"
 
@@ -24,9 +26,9 @@ static MEMORY_READ_START( dragon32_readmem )
 	{ 0x8000, 0xbfff, MRA_ROM },
 	{ 0xc000, 0xfeff, MRA_ROM }, /* cart area */
 	{ 0xff00, 0xff1f, pia_0_r },
-	{ 0xff20, 0xff3f, pia_1_r },
+	{ 0xff20, 0xff3f, coco_pia_1_r },
 	{ 0xff40, 0xff5f, coco_cartridge_r },
-	{ 0xffc0, 0xffdf, MRA_NOP },
+	{ 0xff60, 0xffef, MRA_NOP },
 	{ 0xfff0, 0xffff, dragon_mapped_irq_r },
 MEMORY_END
 
@@ -37,16 +39,18 @@ static MEMORY_WRITE_START( dragon32_writemem )
 	{ 0xff00, 0xff1f, pia_0_w },
 	{ 0xff20, 0xff3f, pia_1_w },
 	{ 0xff40, 0xff5f, coco_cartridge_w },
+	{ 0xff60, 0xffbf, MWA_NOP },
 	{ 0xffc0, 0xffdf, sam_w },
+	{ 0xffe0, 0xffff, MWA_NOP },
 MEMORY_END
 
 static MEMORY_READ_START( d64_readmem )
 	{ 0x0000, 0x7fff, MRA_RAM },
 	{ 0x8000, 0xfeff, MRA_BANK1 },
 	{ 0xff00, 0xff1f, pia_0_r },
-	{ 0xff20, 0xff3f, pia_1_r },
-	{ 0xff40, 0xff5f, coco_cartridge_r },
-	{ 0xffc0, 0xffdf, MRA_NOP },
+	{ 0xff20, 0xff3f, coco_pia_1_r },
+	{ 0xff40, 0xff8f, coco_cartridge_r },
+	{ 0xff90, 0xffef, MRA_NOP },
 	{ 0xfff0, 0xffff, dragon_mapped_irq_r },
 MEMORY_END
 
@@ -55,8 +59,10 @@ static MEMORY_WRITE_START( d64_writemem )
 	{ 0x8000, 0xfeff, MWA_BANK1 },
 	{ 0xff00, 0xff1f, pia_0_w },
 	{ 0xff20, 0xff3f, pia_1_w },
-	{ 0xff40, 0xff5f, coco_cartridge_w },
+	{ 0xff40, 0xff8f, coco_cartridge_w },
+	{ 0xff90, 0xffbf, MWA_NOP },
 	{ 0xffc0, 0xffdf, sam_w },
+	{ 0xffe0, 0xffff, MWA_NOP},
 MEMORY_END
 
 static MEMORY_READ_START( coco3_readmem )
@@ -70,13 +76,13 @@ static MEMORY_READ_START( coco3_readmem )
 	{ 0xe000, 0xfdff, MRA_BANK8 },
 	{ 0xfe00, 0xfeff, MRA_BANK9 },
 	{ 0xff00, 0xff1f, pia_0_r },
-	{ 0xff20, 0xff3f, pia_1_r },
-	{ 0xff40, 0xff5f, coco_cartridge_r },
+	{ 0xff20, 0xff3f, coco3_pia_1_r },
+	{ 0xff40, 0xff8f, coco_cartridge_r },
 	{ 0xff90, 0xff97, coco3_gime_r },
 	{ 0xff98, 0xff9f, coco3_gimevh_r },
 	{ 0xffa0, 0xffaf, coco3_mmu_r },
 	{ 0xffb0, 0xffbf, paletteram_r },
-	{ 0xffc0, 0xffdf, MRA_NOP },
+	{ 0xffc0, 0xffef, MRA_NOP },
 	{ 0xfff0, 0xffff, coco3_mapped_irq_r },
 MEMORY_END
 
@@ -100,12 +106,13 @@ static MEMORY_WRITE_START( coco3_writemem )
 	{ 0xfe00, 0xfeff, MWA_BANK9 },
 	{ 0xff00, 0xff1f, pia_0_w },
 	{ 0xff20, 0xff3f, pia_1_w },
-	{ 0xff40, 0xff5f, coco_cartridge_w },
+	{ 0xff40, 0xff8f, coco_cartridge_w },
 	{ 0xff90, 0xff97, coco3_gime_w },
 	{ 0xff98, 0xff9f, coco3_gimevh_w },
 	{ 0xffa0, 0xffaf, coco3_mmu_w },
 	{ 0xffb0, 0xffbf, coco3_palette_w },
 	{ 0xffc0, 0xffdf, sam_w },
+	{ 0xffe0, 0xffff, MWA_NOP },
 MEMORY_END
 
 /* Dragon keyboard
@@ -450,14 +457,14 @@ static struct MachineDriver machine_driver_dragon32 =
 	{
 		{
 			CPU_M6809,
-			894886,	/* 0,894886 Mhz */
+			COCO_CPU_SPEED_HZ,
 			dragon32_readmem,dragon32_writemem,
 			0, 0,
-			m6847_vblank, 1,
+			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
 			0, 0,
 		},
 	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,		 /* frames per second, vblank duration */
+	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
 	0,
 	dragon32_init_machine,
 	dragon_stop_machine,
@@ -497,14 +504,14 @@ static struct MachineDriver machine_driver_coco =
 	{
 		{
 			CPU_M6809,
-			894886,	/* 0,894886 Mhz */
+			COCO_CPU_SPEED_HZ,
 			d64_readmem,d64_writemem,
 			0, 0,
-			m6847_vblank, 1,
+			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
 			0, 0,
 		},
 	},
-	60, 0,		 /* frames per second, vblank duration */
+	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
 	0,
 	coco_init_machine,
 	dragon_stop_machine,
@@ -544,14 +551,14 @@ static struct MachineDriver machine_driver_coco2b =
 	{
 		{
 			CPU_M6809,
-			894886,	/* 0,894886 Mhz */
+			COCO_CPU_SPEED_HZ,
 			d64_readmem,d64_writemem,
 			0, 0,
-			m6847_vblank, 1,
+			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
 			0, 0,
 		},
 	},
-	60, 0,		 /* frames per second, vblank duration */
+	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
 	0,
 	coco_init_machine,
 	dragon_stop_machine,
@@ -591,14 +598,14 @@ static struct MachineDriver machine_driver_coco3 =
 	{
 		{
 			CPU_M6809,
-			894886,	/* 0,894886 Mhz */
+			COCO_CPU_SPEED_HZ,
 			coco3_readmem,coco3_writemem,
 			0, 0,
-			coco3_vblank, 1,
+			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
 			0, 0,
 		},
 	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,		 /* frames per second, vblank duration */
+	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
 	0,
 	coco3_init_machine,
 	dragon_stop_machine,
@@ -638,14 +645,14 @@ static struct MachineDriver machine_driver_coco3h =
 	{
 		{
 			CPU_HD6309,
-			894886,	/* 0,894886 Mhz */
+			COCO_CPU_SPEED_HZ,
 			coco3_readmem,coco3_writemem,
 			0, 0,
-			coco3_vblank, 1,
+			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
 			0, 0,
 		},
 	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,		 /* frames per second, vblank duration */
+	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
 	0,
 	coco3_init_machine,
 	dragon_stop_machine,
@@ -721,6 +728,14 @@ ROM_START(coco3)
      ROM_REGION(0x90000,REGION_CPU1,0)
 	 ROM_LOAD(			"coco3.rom",	0x80000, 0x8000, 0xb4c88d6c)
      ROM_LOAD_OPTIONAL(	"disk11.rom",	0x8C000, 0x2000, 0x0b9c5415)
+     ROM_LOAD_OPTIONAL(	"disk11.rom",	0x8E000, 0x2000, 0x0b9c5415)
+ROM_END
+
+ROM_START(coco3p)
+     ROM_REGION(0x90000,REGION_CPU1,0)
+	 ROM_LOAD(			"coco3p.rom",	0x80000, 0x8000, 0xff050d80)
+     ROM_LOAD_OPTIONAL(	"disk11.rom",	0x8C000, 0x2000, 0x0b9c5415)
+     ROM_LOAD_OPTIONAL(	"disk11.rom",	0x8E000, 0x2000, 0x0b9c5415)
 ROM_END
 
 ROM_START(cp400)
@@ -770,6 +785,7 @@ static const struct IODevice io_coco3[] = {
 #define io_cocoe io_coco
 #define io_coco2 io_coco
 #define io_coco2b io_coco
+#define io_coco3p io_coco3
 #define io_coco3h io_coco3
 
 /*     YEAR  NAME       PARENT  MACHINE    INPUT     INIT     COMPANY               FULLNAME */
@@ -777,7 +793,8 @@ COMP(  1980, coco,      0,		coco,      coco,     0,		  "Tandy Radio Shack",  "Co
 COMP(  1981, cocoe,     coco,	coco,      coco,     0,		  "Tandy Radio Shack",  "Color Computer (Extended BASIC 1.0)" )
 COMP(  198?, coco2,     coco,	coco,      coco,     0,		  "Tandy Radio Shack",  "Color Computer 2" )
 COMP(  198?, coco2b,    coco,	coco2b,    coco,     0,		  "Tandy Radio Shack",  "Color Computer 2B" )
-COMP(  1986, coco3,     coco, 	coco3,	   coco3,    0,		  "Tandy Radio Shack",  "Color Computer 3" )
-COMPX( 19??, coco3h,	coco,	coco3h,    coco3,	 0, 	  "Tandy Radio Shack",  "Color Computer 3 (HD6309)", GAME_COMPUTER_MODIFIED|GAME_ALIAS)
+COMP(  1986, coco3,     coco, 	coco3,	   coco3,    0,		  "Tandy Radio Shack",  "Color Computer 3 (NTSC)" )
+COMP(  1986, coco3p,    coco, 	coco3,	   coco3,    0,		  "Tandy Radio Shack",  "Color Computer 3 (PAL)" )
+COMPX( 19??, coco3h,	coco,	coco3h,    coco3,	 0, 	  "Tandy Radio Shack",  "Color Computer 3 (NTSC; HD6309)", GAME_COMPUTER_MODIFIED|GAME_ALIAS)
 COMP(  1982, dragon32,  coco, 	dragon32,  dragon32, 0,		  "Dragon Data Ltd",    "Dragon 32" )
 COMP(  1984, cp400,     coco, 	coco,      coco,     0,		  "Prologica",          "CP400" )

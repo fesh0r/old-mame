@@ -207,7 +207,7 @@ static struct GameSample *vc20_read_wav_sample (void *f)
 
 		/* convert 8-bit data to signed samples */
 		for (temp32 = 0; temp32 < length; temp32++)
-			result->data[temp32] ^= 0x80;
+			result->data[temp32] -= 0x80;
 	}
 	else
 	{
@@ -1136,10 +1136,10 @@ int vc20_tape_attach_image (int id)
 	tape.data = 0;
 
 	if (device_filename(IO_CASSETTE,id) == NULL)
-		return INIT_OK;
+		return INIT_PASS;
 
 	if ((cp = strrchr (device_filename(IO_CASSETTE,id), '.')) == NULL)
-		return INIT_FAILED;
+		return INIT_FAIL;
 	if (stricmp (cp, ".wav") == 0)
 	{
 		vc20_wav_open (IO_CASSETTE,id);
@@ -1153,8 +1153,8 @@ int vc20_tape_attach_image (int id)
 		vc20_zip_open (IO_CASSETTE,id);
 	}
 	else
-		return INIT_FAILED;
-	return INIT_OK;
+		return INIT_FAIL;
+	return INIT_PASS;
 }
 
 void vc20_tape_detach_image (int id)
@@ -1225,7 +1225,7 @@ int vc20_tape_read (void)
 			return tape.data;
 		break;
 	case TAPE_PRG:
-		if (zip.state == 3)
+		if (prg.state == 3)
 			return tape.data;
 		break;
 	case TAPE_ZIP:

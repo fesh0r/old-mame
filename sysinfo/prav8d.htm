@@ -1,0 +1,87 @@
+<html>
+<head>
+<title>Info for prav8d</title>
+</head>
+<body>
+<table width=100%>
+<tr>
+<td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
+<td><h1>Info for prav8d</h1></td>
+</tr>
+</table>
+<hr>
+<h4>Pravetz 8D</h4>
+----------<br>
+The emulation is the same as the Oric Atmos. (I don't know if there are any hardware<br>
+differences compared to an original Oric Atmos, if there are please tell me and I will<br>
+implement them).<br>
+<p><b>Disk:</b><br>
+-----<br>
+The disk drive interface has a boot-rom which loads the DOS from the disc<br>
+in the drive. <br>
+<p><b>The driver supports 2 versions of the disc interface:</b><br>
+- "low dos 8d" has a 256 byte boot rom and supports DOS v1.0 to v1.30 ("Apple 2" on dipswitch)<br>
+- "high dos 8d" has a 512 byte boot rom and supports DOS v2.10 and higher. ("Apple 2 v2" on dipswitch)<br>
+<p><b>If you are using the standard prav8d driver you will need to type:</b><br>
+CALL #320<br>
+to start the boot procedure.<br>
+If you are using prav8dd (with the "BOBY" rom), then the disc is booted<br>
+automatically.<br>
+The Pravetz 8D uses Apple 2 compatible disk drives only and these<br>
+are supported by the driver. <br>
+<p><b>Here is a brief listing of DOS commands provided by George:</b><br>
+<p><b>options:</b><br>
+f - FileName (1-30 signs)<br>
+d - drive (one or two)<br>
+v - volume<br>
+a - beginning address<br>
+e - end adress<br>
+l - record length<br>
+r - record number<br>
+b - number of byte in the record<br>
+<p><b>filetypes:</b><br>
+B - Basic program<br>
+C - Bynary file<br>
+T - Text file<br>
+M - Text file, created with Make command ( batch file:) )<br>
+<p><b>commands:</b><br>
+DIR [1] [2] - not comment<br>
+INIT [,Vv] [,Dd] - formatting Disk (in first or second Disk Drive)<br>
+DOS [f] [,Dd], [,Vv] - writing Dos on the disk without formatting It. File f authomatically starts after booting<br>
+MAP [1] [2] - show chart of the disk.<br>
+SAVE f [,A,a] [,Ee] [,Vv] [,Dd] - Saves file on the disk. If missing parameter of the addresses A,E - saving Basic file in Memory<br>
+LOAD f [,Aa] [,Dd] [,Vv] - loads file in memory<br>
+MERGE - adding program in Basic to already exists in Memory<br>
+- -only for files B or C types. Loads file in Memory and start It. (RUN and BRUN together in Apple ][)<br>
+DELETE f [,Dd] [,Vv] - deleting file f<br>
+RENAME f1, f2 [,Vv] [,Dd] - ranaming last name of the file f1 with f2<br>
+* f [,Dd] [,Vv] - lock/unlock file<br>
+MAXFILES m - alowing up to m open files<br>
+VERIFY f [,Dd] [,Vv] - checks surface integrity of file<br>
+EXIT - leaving Dos<br>
+OPEN f [,Vv] [,Dd] - open file for read/write<br>
+CLOSE [f] - closing f. If there's no f pointed - closes all open files<br>
+READ f [,Bb] - points that will be reading of the file with command INPUT<br>
+WRITE f [,Bb] - writes in Text file<br>
+APPEND f [,Vv] [,Dd] - adding information in Text file. Always there's WRITE after It<br>
+POSITION f [,Rr] - allow writing or reading in Text file from r position<br>
+<p><b>in Program mode using of the commands is:</b><br>
+10LPRINT CHR$(2); "MAXFILES 5"<br>
+e.g.<br>
+<p><b>To load a program called "MONITOR" type:</b><br>
+LOAD MONITOR<br>
+often you will see a load address (it is the first number with # prefix).<br>
+Now type CALL #&lt;number&gt; to execute the program.<br>
+<p><b>History and Trivia:</b><br>
+-------------------<br>
+The Pravetz 8D is a Bulgarian clone of the Oric Atmos.<br>
+It was produced between 1986 and 1989.<br>
+<p><b>Thankyou to:</b><br>
+------------<br>
+George Dramcheff for the Pravetz information,<br>
+Fabrice Frances for the Oric information,<br>
+<hr>
+<center><font size=-2>created on Thu Aug 16 22:55:01 2001
+</font></center>
+</body>
+</html>

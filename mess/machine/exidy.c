@@ -13,6 +13,9 @@ int exidy_cassette_init(int id)
 {
 	void *file;
 
+	if (device_filename(IO_CASSETTE,id)==NULL)
+		return INIT_PASS;
+
 	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
 	if (file)
 	{
@@ -21,9 +24,9 @@ int exidy_cassette_init(int id)
 		wa.display = 1;
 
 		if (device_open(IO_CASSETTE, id, 0, &wa))
-			return INIT_FAILED;
+			return INIT_FAIL;
 
-		return INIT_OK;
+		return INIT_PASS;
 	}
 
 	/* HJB 02/18: no file, create a new file instead */
@@ -36,11 +39,11 @@ int exidy_cassette_init(int id)
 		wa.smpfreq = 22050; /* maybe 11025 Hz would be sufficient? */
 		/* open in write mode */
         if (device_open(IO_CASSETTE, id, 1, &wa))
-            return INIT_FAILED;
-		return INIT_OK;
+            return INIT_FAIL;
+		return INIT_PASS;
     }
 
-	return INIT_FAILED;
+	return INIT_FAIL;
 }
 
 void exidy_cassette_exit(int id)

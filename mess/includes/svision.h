@@ -1,6 +1,8 @@
 #ifndef __SVISION_H_
 #define __SVISION_H_
 
+#include "driver.h"
+
 /*
   this shows the interface that your files offer
   (the only exception is your GAME/CONS/COMP structure!)
@@ -20,5 +22,16 @@ extern "C" void svision_runtime_loader_init(void);
 extern void svision_runtime_loader_init(void);
 # endif
 #endif
+
+typedef struct {
+    UINT8 reg[3];
+    int pos;
+    int size;
+} SVISION_CHANNEL;
+extern SVISION_CHANNEL svision_channel[2];
+extern int svision_custom_start (const struct MachineSound *driver);
+extern void svision_custom_stop (void);
+extern void svision_custom_update (void);
+extern void svision_soundport_w (SVISION_CHANNEL *channel, int offset, int data);
 
 #endif

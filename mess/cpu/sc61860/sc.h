@@ -8,15 +8,12 @@
 #define YH 7
 #define K 8
 #define L 9
-#define V 10
-#define W 11
+#define V 10 // some docus m
+#define W 11 // some docus n
 #define IA 92
 #define IB 93
 #define F0 94
 #define C 95
-
-#define H 12 //???used in table call, but not mentioned in registers
-
 
 enum {
 	SC61860_PC=1, SC61860_DP,

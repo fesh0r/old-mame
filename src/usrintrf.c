@@ -503,6 +503,8 @@ void displaytext(struct osd_bitmap *bitmap,const struct DisplayText *dt)
 				drawgfx(bitmap,Machine->uifont,*c,dt->color,0,0,x+Machine->uixmin,y+Machine->uiymin,0,TRANSPARENCY_NONE,0);
 				x += Machine->uifontwidth;
 			}
+			else
+				break;
 
 			c++;
 		}
@@ -2898,7 +2900,10 @@ static void setup_menu_init(void)
 #else
 	menu_item[menu_total] = ui_getstring (UI_imageinfo); menu_action[menu_total++] = UI_IMAGEINFO;
 	menu_item[menu_total] = ui_getstring (UI_filemanager); menu_action[menu_total++] = UI_FILEMANAGER;
-	menu_item[menu_total] = ui_getstring (UI_tapecontrol); menu_action[menu_total++] = UI_TAPECONTROL;
+	if (system_supports_cassette_device())
+	{
+		menu_item[menu_total] = ui_getstring (UI_tapecontrol); menu_action[menu_total++] = UI_TAPECONTROL;
+	}
 	menu_item[menu_total] = ui_getstring (UI_history); menu_action[menu_total++] = UI_HISTORY;
 #endif
 
@@ -2920,7 +2925,9 @@ static void setup_menu_init(void)
 #endif
 #endif
 
+#ifndef MESS
 	menu_item[menu_total] = ui_getstring (UI_resetgame); menu_action[menu_total++] = UI_RESET;
+#endif
 	menu_item[menu_total] = ui_getstring (UI_returntogame); menu_action[menu_total++] = UI_EXIT;
 	menu_item[menu_total] = 0; /* terminate array */
 }
@@ -3476,6 +3483,7 @@ void CLIB_DECL usrintf_showmessage_secs(int seconds, const char *text,...)
 int handle_user_interface(struct osd_bitmap *bitmap)
 {
 	static int show_profiler;
+	static int mess_pause_for_ui = 0;
 	int request_loadsave = LOADSAVE_NONE;
 #ifdef MAME_DEBUG
 	static int show_total_colors;
@@ -3506,16 +3514,12 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 	{
 		if( ui_display_count > 0 )
 		{
-			char text[] = "KBD: UI  (ScrLock)";
-			int x, x0 = Machine->uiwidth - sizeof(text) * Machine->uifont->width - 2;
-			int y0 = Machine->uiymin + Machine->uiheight - Machine->uifont->height - 2;
-			for( x = 0; text[x]; x++ )
-			{
-				drawgfx(bitmap,
-					Machine->uifont,text[x],0,0,0,
-					x0+x*Machine->uifont->width,
-					y0,0,TRANSPARENCY_NONE,0);
-			}
+			ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
+											"-------------------------\n"\
+											"Mode: PARTIAL Emulation\n"\
+											"UI:   ENABLED\n"\
+											"-------------------------\n"\
+											"**Use SCRLOCK to toggle**\n");
 			if( --ui_display_count == 0 )
 				schedule_full_refresh();
 		}
@@ -3524,16 +3528,13 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 	{
 		if( ui_display_count > 0 )
 		{
-			char text[] = "KBD: EMU (ScrLock)";
-			int x, x0 = Machine->uiwidth - sizeof(text) * Machine->uifont->width - 2;
-			int y0 = Machine->uiymin + Machine->uiheight - Machine->uifont->height - 2;
-			for( x = 0; text[x]; x++ )
-			{
-				drawgfx(bitmap,
-					Machine->uifont,text[x],0,0,0,
-					x0+x*Machine->uifont->width,
-					y0,0,TRANSPARENCY_NONE,0);
-			}
+			ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
+											"-------------------------\n"\
+											"Mode: FULL Emulation\n"\
+											"UI:   DISABLED\n"\
+											"-------------------------\n"\
+											"**Use SCRLOCK to toggle**\n");
+
 			if( --ui_display_count == 0 )
 				schedule_full_refresh();
 		}
@@ -3688,7 +3689,10 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 		}
 	}
 
-	if (single_step || input_ui_pressed(IPT_UI_PAUSE)) /* pause the game */
+	if (setup_selected)
+		mess_pause_for_ui = 1;
+
+	if (single_step || input_ui_pressed(IPT_UI_PAUSE) || mess_pause_for_ui) /* pause the game */
 	{
 /*		osd_selected = 0;	   disable on screen display, since we are going   */
 							/* to change parameters affected by it */
@@ -3745,6 +3749,12 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 			if (messagecounter > 0) displaymessage(bitmap, messagetext);
 
 			update_video_and_audio();
+
+			if (!setup_selected && mess_pause_for_ui)
+			{
+				mess_pause_for_ui = 0;
+				break;
+			}
 		}
 
 		if (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT))

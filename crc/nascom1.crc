@@ -1,0 +1,98 @@
+# Nascom series image CRC List
+# Compiled by Stefano "JoJo" Priore
+# Note: This list is provided as a record of known dumps for this system.  
+#       These checksums have not been validated and cannot be assumed correct.  
+#       They are provided here as a database to help the emulation of this system.  
+# Send corrections/submissions to: battlepriest@hotmail.com
+
+[nascom1]
+
+# These programs have been tested and work
+78fd2aa7 = 3D-Labyrinth (E1000).nas
+745baa26 = 3D-Labyrinth.cas | | MpdK-Soft | Source Code in BLS Pascal 1.0 Format
+4aaa531e = 3D-Maze (E1000).nas | | K. K. Sørensen
+9a5e56ee = Adventure Land.cas
+2602b346 = Aktive Filter.cas | 1982 | Rüdiger Maurer
+249e0fe1 = ASSCROL 2 (EB800).nas | | Compware
+6950265c = Asteroids (E1000).nas | 1982 | Level 9 Computing
+55fc09c1 = Avalanche (ED000).nas
+2151a79a = BASIC 4.7 (EE000).nas | 1978 | Microsoft
+48ccc050 = BASIC Extension for Advanced Video Card (EAEF6?).nas
+344a3347 = BLS PASCAL 1.0 ROM Version (ED000).nas | 1981 | Poly-Data Microcenter
+f50f0293 = BLS PASCAL 1.2 RAM Version (E1000).nas | 1981 | Poly-Data Microcenter
+6d83059a = BLS PASCAL 1.3 (E1000).cas | | Poly-Data Microcenter | BAD DUMP
+50603615 = Breakout (E1000).cas | 1980 | Blue Label Software
+20f20885 = Calculation of the Euler Number.cas | | Jörg Wittich | Source Code in ZEAP 2.x Format
+b7552ec4 = Camel.cas
+cf1ff446 = Car Racing (E1000).nas | | Nobody
+ef905b05 = Character Set for "Graphic PROM Editor".nas | | | Stored at $8000
+8dbc69a9 = COMPASS 1.3 (E1000).nas | 1982 | Level 9 Computing
+63bdc22d = Das Damespiel.cas | 1980
+9c5f13d6 = Disasm (E6000).nas
+b3cd521e = Eliza (E1000).nas
+c0c04911 = Eprommer 1.1 (Driver for Prommer-80 ECB) (E8000).nas
+c2f13fbe = Extention BASIC 1.3 (E1000).nas | 1982 | Level 9 Computing | Needs BASIC
+25c7272b = Falling Stones (E1000).cas | 1981 | Erling T. Madsen
+40196603 = Fruit Machine (E4400).nas | 1981 | S. C. Allen
+21fa02cd = Game of Life (E1000).nas
+2147b550 = Gener-80 1.1 (E1000).nas | 1983
+90298c74 = Graphics PROM Editor (E1000).nas | 1983 | ZRL | Needs BASIC & Character Set
+bb0c2b28 = Hisoft PASCAL 1.0 (E1000).nas | 1982 | Hisoft
+7b384508 = Hisoft PASCAL 1.5 (E1000).nas | 1983 | Hisoft
+8c2bf9f2 = Hisoft PASCAL 2.0 with Screen Editor (E1000).nas | 1983 | Hisoft
+a7b15303 = Hobbit (Driver for Philips Mini Digital Cassette Recorder) (ED000).nas | | | Needs NAS-SYS 3
+a0480895 = Hole in the Wall (E1000).nas | 1982 | ZRL | Needs BASIC
+e18777f4 = HullFORTH 1.1 (E1400).nas | 1982 | AFTW / PSC
+5454b1e8 = Integer PASCAL Compiler (E1000).nas | 1980 | Paul Wood
+4d968139 = Lemonade Stand.cas
+75475343 = Logichess (E1000).nas | 1980 | Blue Label Software
+91abcb15 = Lollypop Lady Trainer (E1000).nas | | | Needs NAS-SYS 3
+54369479 = Lord of Time (E1000).nas | | Level 9 Computing
+3c8ed777 = Lost Dutchman's Gold.cas | 1980 | Teri Li
+ddafd1a7 = Lumberjack (E1000).nas | 1980 | Program Power
+faf86258 = Lunar Lander (E1E6A).nas
+72470f5b = Monster (E1000).nas | | S. S. I. Realtime Games
+e3a2a06f = NAP 2.2 (E1000).nas
+fece96a9 = NASCALC (E5000).nas | | | Needs BASIC
+68842437 = NAS-Chess (E1000).nas | | | Needs a custom character set (not dumped yet)
+f31b5256 = Nascom PASCAL 2.0 ROM Version (ED000).nas | 1981 | Poly-Data Microcenter
+900b9ae8 = Nascom-Schach (E1000).nas | 1980 | Bregulla / MKS
+ae6a6b48 = NAS-DEBUG & NAS-DIS (EC000).nas
+fe20d501 = NAS-FORTH 1.11 (E1000).nas
+b539c523 = NAS-Graphpac 1.0 (E1000).nas | 1982 | CCsoft | Needs BASIC
+22e39d5f = NASPEN 1.0 (EB800).nas | | | Needs NAS-SYS
+649c2d18 = NASPEN 2.0 (E8000).nas | | | Needs NAS-SYS
+37bb2d73 = NAS-SYS Programmers Toolkit (EB000).nas | | | Needs BASIC
+5c05ba65 = Night Driver (E1000).cas | 1983 | OZ1AEX
+551c57bd = NIP 1.1 (EC400).nas
+7dd26ed7 = Pac Man (E1000).nas | | 2001 Jule-Manden
+5fcce477 = Pac Man (Scrolling Display) (E1000).nas
+e89ba8f2 = Piranha (E1000).nas
+0b8fa1f9 = Return to Eden (E1000).nas | 1984 | Level 9 Computing
+1da17911 = Reversi (E1000).nas
+6c276b6b = Schiffe Versenken.cas | 1981 | Klaus Mombaur
+e0435228 = Serpent (E1000).nas
+e9fe4035 = Skatte Jagt (E1000).cas | | Henrik K. Jensen
+0f48a8c8 = Snail Racing.cas
+f2f79f58 = Snowball (E1000).nas | 1983 | Level 9 Computing
+a9c6dffa = Space Invaders (E1000).nas
+136d9d92 = Space Invaders (alt) (E1000).nas | | Helmut Emmelmann
+5e9c43eb = Space Zap (E1000).nas | | Blue Label Software
+3abb6851 = Starfighters (E1000).nas | 1982 | A. L. Cross | Needs digital joystick attached to the PIO
+590b4246 = Star Trek.cas
+e380b2b2 = Super Tiny BASIC Interpreter 3.2 (E1000).nas
+3fc16a3f = SuperTrace (EC000).nas
+e39bb715 = SwingHouse.cas
+10570e4f = Swords and Sorcery.cas | | David Kastrup
+72bca35e = Symbolische Differentation.cas | 1982 | Martin Albrecht
+c2280e64 = SYS-EX (EB000).nas
+e6ed1ea7 = T FORTH Interpreter (E1000).nas
+12c313b4 = The Nascom Demon (E0D00).nas | | | Needs NAS-SYS
+a3cc72b5 = The Revenge of the Drosophila (E3123).nas | | Garry Rowland
+7c8d5fa0 = Vectorrechnung.cas
+3bab84a0 = V & T Assembler (E1000).nas
+c3e33b43 = WordEase (EF002).nas
+00a63143 = XTAL BASIC 2.2 (E1000).nas | | Crystal / C. C. Electronics
+429c1da1 = Z80 Relocater 1.6 (E1000).nas | 1981 | Logic Soft
+6096f5c6 = ZEAP 2.1 (ED000).nas | | Sigma Software Unit
+d508f9d8 = ZEAP 2.1 to COMPASS 1.3 File Converter (ED000).nas

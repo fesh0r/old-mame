@@ -1,0 +1,151 @@
+<html>
+<head>
+<title>Info for c64</title>
+</head>
+<body>
+<table width=100%>
+<tr>
+<td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
+<td><h1>Info for c64</h1></td>
+</tr>
+</table>
+<hr>
+<h4>Commodore 64</h4>
+<p><b>Diskette Usage:</b><br>
+Disk drives are simulated at the moment, and only file loads from drive 8 and 9 <br>
+are implemented. You can load a program file from the rom directory (*.prg,*.p00)<br>
+You can also load a file from a d64 image (The directory command LOAD"$",8 is supported when <br>
+using d64 images).<br>
+ <br>
+Within the emulation, basic programs can be loaded with:  LOAD"filename",8 <br>
+ <br>
+Machine language programs can be loaded to their address with:  LOAD"filename",8,1<br>
+ <br>
+When a program is loaded, type RUN or the appropriate SYS call to start it. <br>
+ <br>
+Note that several programs rely on more features not currently emulated (such as <br>
+loading other file types, writing...) Some games also rely on starting programs in the <br>
+floppy drive's proccessor (and therefore cpu level emulation of the 1541 is needed).<br>
+<p><b>Cartridge Usage:</b><br>
+Cartridges may have any of the following extensions: .prg .crt .80 .90 .a0 .b0 <br>
+.e0 .f0   Files with boot-sign in it are recognised as roms. Some cartridges may require more <br>
+than one image.<br>
+ <br>
+.prg files loaded at address in its first two bytes<br>
+ <br>
+.?0 files are loaded to the address specified in the extension.<br>
+ <br>
+.crt roms are loaded to the addresses specified in crt file.<br>
+ <br>
+Note that .prg files are assigned to the quickloader (so you have to use <br>
+the -cart switch when loading rom images).<br>
+<p><b>Cassette Usage:</b><br>
+Cassette images with the .wav or .prg extensions as well as multiple .prg files <br>
+contained within a zip file can be loaded. Zip files must be placed in the current directory, <br>
+and the contained prg files are played in sequential order.<br>
+ <br>
+The format for WAVs are: <br>
+8 bit (16 bit may work, but hasn't been tested), mono, 12500 Hz minimum. This has the same <br>
+problems as an original Datasette tape drive (the tone head must be adjusted to get working <br>
+(no load error...) wav-files)<br>
+ <br>
+Note that tape volume is DAC1 volume within the MESS UI On Screen Display Options (accessed<br>
+with the tilde (~) key in the DOS version.<br>
+ <br>
+Within the emulation, use LOAD or LOAD"" or LOAD"",1 for loading normal programs. Use <br>
+LOAD"",1,1 for loading programs to a special address.<br>
+<p><b>Quickloader Usage:</b><br>
+A quickloader is available via the f8 key. It supports program image files with <br>
+the .prg and .p00 extensions. This loads the program into memory and sets the program end <br>
+pointer. It works with most programs. The program can be started by entering "RUN" in the <br>
+emulation.<br>
+<p><b>Miscellaneous Usage Notes:</b><br>
+Gameport A supports paddles 1 & 2,  joystick 1, lightpen (implementation not finished).<br>
+Gameport B supports paddles 3 & 4, joystick 2<br>
+If you run into difficulty, be sure to start the emulation with the -log switch, and look into<br>
+the error.log file that is created in your mess directory.<br>
+If the game runs to fast with the ntsc version, try the pal version! (c64pal)<br>
+<p><b>Known Issues:</b><br>
+The rasterline based video system currently has the following issues: no cpu holding, imperfect <br>
+scrolling support (when 40 columns or 25 lines), lightpen support not finished, rasterline not <br>
+finished.<br>
+Sound is not currently supported<br>
+The restore key is not currently working.<br>
+NTSC/PAL select not correct.<br>
+The Gameports do not suport the mouse (Serial Protocol?).<br>
+No printer or other devices support in the serial bus (apart from simple disk drives).<br>
+Simple tape support not working (cia timing?)<br>
+As far as expansion modules go, non-bankswitching rom cartridges (exrom) should work, but no <br>
+other rom cartridges (those with bankswitching logic in it, switching exrom, game). There is <br>
+no ieee488 support nor support for other expansion modules.<br>
+No userport support and no rs232/v.24 interface.<br>
+ <br>
+Some issues with the cia6526: <br>
+<ul>
+<li> port a,b
+<li> handshake support, flag input, not pc output
+<li> no serial in/out, cnt
+<li> timer a,b
+<li> not counting of external clocks
+<li> not switching port b pins
+</ul>
+<p><b>History and Trivia:</b><br>
+ <br>
+Designed similar to the Vic-20, the Commodore 64 featured a better video chip supporting <br>
+sprites, as well as the famous sid6581 sound chip, two "Atari-compatible" joystick ports,<br>
+and 64 kilobytes of RAM.<br>
+ <br>
+The Commodore 64 is, along with the Apple II and the Atari 8-Bit computers, one of the <br>
+most famous home computers of it's era. During its production from 1982 to 1993 (!) 17 <br>
+to 22 million (!) of these computer would sell, to put in perspective, that's more than <br>
+all the Macintoshes in the world. It was one of the first to offer a high quality sound <br>
+chip and graphic resolution with many colors and sprites. A great range of peripherals <br>
+was developped for this computer and can use several of the Vic 20 peripherals. <br>
+ <br>
+Several versions of the Commodore 64 were launched : The first one (C64-1) uses the VIC 20 <br>
+case, it will be quiclky replaced with the C64-2 which uses the famous brown case and by <br>
+the C64-3 with small cosmetic changes in the keyboard. A special version called Educator 64 <br>
+or PET64 or CBM 4064 was proposed for schools and uses the PET case.<br>
+ <br>
+Commodore produced the first generation of C64s until May 1986, then it was discontinued <br>
+and they introduced the C64C. According to the 64'er magazine, this version has been <br>
+planned since the Hannover mass in 1985, but as the old version sold so well during <br>
+Christmas '85, its release date was pushed back.<br>
+ <br>
+The new model does not differ much from its predecessor, the only innovation is the <br>
+flatter case, which makes the keyboard (which has off-white keys now) more ergonomical <br>
+(it looks like the C128 case), as it is less higher than the old one. But the new case <br>
+did not only have advantages: due to its low profile and additional metal screening, <br>
+some of the numerous hardware expansions did not fit anymore. This was changed with <br>
+the C64G. The 64'er staff noticed that VIC-II as well as the two CIAs have new version <br>
+numbers; they didn't write which, though (these are probably just bugfixed chips). <br>
+ <br>
+The official name for this model was "C=64 C", but nevertheless the German 64'er magazine <br>
+decided to call it "C64-II" (because the first units didn't have the new name on the label <br>
+at the bottom), the badges on all the 64 C's just says "Commodore 64". They pointed out <br>
+that this name was only valid for the 64'er magazine, but since the 64'er was the <br>
+magazine for the C64 for a long time, the name was widely accepted and so this model <br>
+is mostly known as "C64-II" in Germany.<br>
+ <br>
+The C64C appeared again after (or concurrently with?) the C64G, this time with the new, <br>
+short board. So, although the case might look the same and the label says "Commodore 64", <br>
+the boards may be completely different.<br>
+ <br>
+Commodore also released a "laptop version" (though hardly portable) of the C64, called SX64. <br>
+This computer has a built-in 5" color screen, one detachable keyboard, one 5.25" floppy <br>
+disk drive (the famous 1541) and a second one can be installed as well. A version called <br>
+DX-64 was launched (in very limited quantities) at the same time, it has same <br>
+characteristics as the SX64 except its two 5.25" floppy disk drives. The SX64 and DX64 <br>
+computers never had success, but it is known as the world's first color portable.<br>
+ <br>
+The C64GS was released in 1990. Basically it was a re-boxed C64, without a keyboard or any <br>
+other interfaces, except for the cartridge slot on top. It didn't have much success as you <br>
+could buy a C64 for not much extra, and the C64GS games would still work on the C64.<br>
+It came with one game cartridge containing International Soccer, Klax, Flimbo's Quest<br>
+and Fiendish Freddy's Big Top O'Fun. The carts had a memory of 4 megabits (512k).<br>
+<br>
+<hr>
+<center><font size=-2>created on Thu Aug 16 22:55:01 2001
+</font></center>
+</body>
+</html>

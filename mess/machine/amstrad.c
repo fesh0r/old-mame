@@ -39,6 +39,16 @@ static unsigned char *snapshot = NULL;
 extern unsigned char *Amstrad_Memory;
 static int snapshot_loaded;
 
+int amstrad_floppy_init(int id)
+{
+	if (device_filename(IO_FLOPPY, id)==NULL)
+		return INIT_PASS;
+
+	return dsk_floppy_load(id);
+}
+
+
+
 /* used to setup computer if a snapshot was specified */
 OPBASE_HANDLER( amstrad_opbaseoverride )
 {
@@ -87,6 +97,12 @@ int amstrad_cassette_init(int id)
 {
 	void *file;
 
+	if (device_filename(IO_CASSETTE, id)==NULL)
+		return INIT_PASS;
+
+	/* filename specified */
+
+	/* attempt to open for reading */
 	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
 	if (file)
 	{
@@ -95,12 +111,12 @@ int amstrad_cassette_init(int id)
 		wa.display = 1;
 
 		if (device_open(IO_CASSETTE, id, 0, &wa))
-			return INIT_FAILED;
+			return INIT_FAIL;
 
-		return INIT_OK;
+		return INIT_PASS;
 	}
 
-	/* HJB 02/18: no file, create a new file instead */
+	/* can't open it, attempt to open for writing */
 	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_WRITE);
 	if (file)
 	{
@@ -110,11 +126,11 @@ int amstrad_cassette_init(int id)
 		wa.smpfreq = 22050; /* maybe 11025 Hz would be sufficient? */
 		/* open in write mode */
         if (device_open(IO_CASSETTE, id, 1, &wa))
-            return INIT_FAILED;
-		return INIT_OK;
+            return INIT_FAIL;
+		return INIT_PASS;
     }
 
-	return INIT_FAILED;
+	return INIT_FAIL;
 }
 
 void amstrad_cassette_exit(int id)
@@ -309,41 +325,25 @@ int amstrad_load(int type, int id, unsigned char **ptr)
 /* load snapshot */
 int amstrad_snapshot_load(int id)
 {
+	/* machine can be started without a snapshot */
+	/* if filename not specified, then init is ok */
+	if (device_filename(IO_SNAPSHOT, id)==NULL)
+		return INIT_PASS;
+
+	/* filename specified */
 	snapshot_loaded = 0;
 
+	/* load and verify image */
 	if (amstrad_load(IO_SNAPSHOT,id,&snapshot))
 	{
 		snapshot_loaded = 1;
-		return INIT_OK;
+		if (memcmp(snapshot, "MV - SNA", 8)==0)
+			return INIT_PASS;
+		else
+			return INIT_FAIL;
 	}
 
-	return INIT_FAILED;
-}
-
-/* check if a snapshot file is valid to load */
-int amstrad_snapshot_id(int id)
-{
-	int valid;
-	unsigned char *snapshot_data;
-
-	valid = ID_FAILED;
-
-	/* load snapshot */
-	if (amstrad_load(IO_SNAPSHOT, id, &snapshot_data))
-	{
-		/* snapshot loaded, check it is valid */
-
-		if (memcmp(snapshot_data, "MV - SNA", 8)==0)
-		{
-			valid = ID_OK;
-		}
-
-		/* free the file */
-		free(snapshot_data);
-	}
-
-	return valid;
-
+	return INIT_FAIL;
 }
 
 void amstrad_snapshot_exit(int id)
@@ -354,3 +354,20 @@ void amstrad_snapshot_exit(int id)
 	snapshot_loaded = 0;
 
 }
+
+int	amstrad_plus_cartridge_init(int id)
+{
+	/* cpc+ requires a cartridge to be inserted to run */
+	if (device_filename(IO_CARTSLOT, id)==NULL)
+		return INIT_FAIL;
+
+	return INIT_PASS;
+}
+
+void amstrad_plus_cartridge_exit(int id)
+{
+
+
+
+}
+

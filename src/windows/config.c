@@ -32,7 +32,9 @@
 
 
 #ifdef MESS
-extern char *crcdir;
+#include "messwin.h"
+static char crcdirbuf[256] = "";
+const char *crcdir = crcdirbuf;
 static char crcfilename[256] = "";
 const char *crcfile = crcfilename;
 extern char *pcrcdir;
@@ -48,6 +50,11 @@ extern struct rc_option frontend_opts[];
 /* START: probably everything for fileio.c, datafile.c and cheat.c */
 /* FIXME: needs to be sorted out much more, leave here for the moment */
 static const char *rompath;
+#ifdef MESS
+	static const char *swpath;
+	static const char *mess_opts;
+#endif
+
 static const char *samplepath;
 extern const char *cfgdir;
 extern const char *nvdir;
@@ -66,11 +73,21 @@ extern char *cheatfile;
 
 void decompose_rom_sample_path (const char *_rompath, const char *_samplepath);
 
+#ifdef MESS
+void decompose_software_path (const char *_softwarepath);
+#endif
+
 static struct rc_option fileio_opts[] =
 {
 	/* name, shortname, type, dest, deflt, min, max, func, help */
 	{ "Windows path and directory options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
+#ifdef MESS
+	{ "biospath", "rp", rc_string, &rompath, "bios", 0, 0, NULL, "path to BIOS files" },
+	{ "softwarepath", "swp",  rc_string, &swpath,    "software", 0, 0, NULL, "path to software" },
+	{ "CRC_directory", "crc", rc_string, &crcdir, "crc"     , 0, 0, NULL, "path to CRC files" },
+#else
 	{ "rompath", "rp", rc_string, &rompath, "roms", 0, 0, NULL, "path to romsets" },
+#endif
 	{ "samplepath", "sp", rc_string, &samplepath, "samples", 0, 0, NULL, "path to samplesets" },
 	{ "cfg_directory", NULL, rc_string, &cfgdir, "cfg", 0, 0, NULL, "directory to save configurations" },
 	{ "nvram_directory", NULL, rc_string, &nvdir, "nvram", 0, 0, NULL, "directory to save nvram contents" },
@@ -81,8 +98,13 @@ static struct rc_option fileio_opts[] =
 	{ "artwork_directory", NULL, rc_string, &artworkdir, "artwork", 0, 0, NULL, "directory for Artwork (Overlays etc.)" },
 	{ "snapshot_directory", NULL, rc_string, &screenshotdir, "snap", 0, 0, NULL, "directory for screenshots (.png format)" },
 //	{ "cheat_directory", NULL, rc_string, &cheatdir, "cheat", 0, 0, NULL, "directory for cheatfiles" },
+#ifdef MESS
+	{ "cheat_file", NULL, rc_string, &cheatfile, "cheat.cdb", 0, 0, NULL, "cheat filename" },
+	{ "history_file", NULL, rc_string, &history_filename, "sysinfo.dat", 0, 0, NULL, NULL },
+#else
 	{ "cheat_file", NULL, rc_string, &cheatfile, "cheat.dat", 0, 0, NULL, "cheat filename" },
 	{ "history_file", NULL, rc_string, &history_filename, "history.dat", 0, 0, NULL, NULL },
+#endif
 	{ "mameinfo_file", NULL, rc_string, &mameinfo_filename, "mameinfo.dat", 0, 0, NULL, NULL },
 	{ NULL,	NULL, rc_end, NULL, NULL, 0, 0,	NULL, NULL }
 };
@@ -181,6 +203,39 @@ static int video_verify_bpp(struct rc_option *option, const char *arg, int prior
 	return 0;
 }
 
+#ifdef MESS
+/* add_device() is called when the MESS CLI option has been identified 		*/
+/* This searches throught the devices{} struct array to grab the ID of the 	*/
+/* option, which then registers the device using register_device()			*/
+static int add_device(struct rc_option *option, const char *arg, int priority)
+{
+	extern const struct Devices devices[]; /* from mess device.c */
+	int i=0;
+
+	/* First, we need to find the ID of this option - kludge alert!			*/
+	while(devices[i].id != IO_COUNT)
+	{
+		if (!stricmp(option->name, devices[i].name)  		||
+			!stricmp(option->shortname, devices[i].shortname))
+		{
+			/* A match!  we now know the ID of the device */
+			option->priority = priority;
+			return (register_device (devices[i].id, arg));
+		}
+		else
+		{
+			/* No match - keep looking */
+			i++;
+		}
+	}
+
+	/* If we get to here, log the error - This is mostly due to a mismatch in the array */
+	logerror("Command Line Option [-%s] not a valid device - ignoring\n", option->name);
+    return -1;
+
+}
+#endif
+
 /* struct definitions */
 static struct rc_option opts[] = {
 	/* name, shortname, type, dest, deflt, min, max, func, help */
@@ -223,10 +278,27 @@ static struct rc_option opts[] = {
 	{ "artwork", "art", rc_bool, &options.use_artwork, "0", 0, 0, NULL, "use additional game artwork" },
 	{ "cheat", "c", rc_bool, &options.cheat, "0", 0, 0, NULL, "enable/disable cheat subsystem" },
 	{ "debug", "d", rc_bool, &options.mame_debug, "0", 0, 0, NULL, "enable/disable debugger (only if available)" },
+#ifndef MESS
 	{ "playback", "pb", rc_string, &playbackname, NULL, 0, 0, NULL, "playback an input file" },
 	{ "record", "rec", rc_string, &recordname, NULL, 0, 0, NULL, "record an input file" },
+#endif
 	{ "log", NULL, rc_bool, &errorlog, "0", 0, 0, NULL, "generate error.log" },
-
+#ifdef MESS
+	/* FIXME - these option->names should NOT be hardcoded! */
+	{ "MESS specific options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
+	{ "cartridge", "cart", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to cartridge device" },
+	{ "floppydisk","flop", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to floppy disk device" },
+	{ "harddisk",  "hard", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to hard disk device" },
+	{ "cylinder",  "cyln", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to cylinder device" },
+	{ "cassette",  "cass", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to cassette device" },
+	{ "punchcard", "pcrd", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to punch card device" },
+	{ "punchtape", "ptap", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to punch tape device" },
+	{ "printer",   "prin", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to printer device" },
+	{ "serial",    "serl", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to serial device" },
+	{ "parallel",  "parl", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to parallel device" },
+	{ "snapshot",  "dump", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to snapshot device" },
+	{ "quickload", "quik", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to quickload device" },
+#endif
 	/* config options */
 	{ "Configuration options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
 	{ "createconfig", "cc", rc_set_int, &createconfig, NULL, 1, 0, NULL, "create the default configuration file" },
@@ -392,12 +464,21 @@ int parse_config_and_cmdline (int argc, char **argv)
 
 	/* parse the global configfile */
 	if (readconfig)
+#ifdef MESS
+		if (parse_config ("mess.ini", NULL))
+			exit(1);
+#else
 		if (parse_config ("mame.ini", NULL))
 			exit(1);
+#endif
 
 	if (createconfig)
 	{
+#ifdef MESS
+		rc_save(rc, "mess.ini", 0);
+#else
 		rc_save(rc, "mame.ini", 0);
+#endif
 		exit(0);
 	}
 
@@ -418,6 +499,9 @@ int parse_config_and_cmdline (int argc, char **argv)
 
 	/* FIXME: split this up into two functions and use rc-callbacks" */
 	decompose_rom_sample_path (rompath, samplepath);
+#ifdef MESS
+	decompose_software_path(swpath);
+#endif
 
 	/* check for frontend options, horrible 1234 hack */
 	if (frontend_help(gamename) != 1234)
@@ -508,12 +592,6 @@ int parse_config_and_cmdline (int argc, char **argv)
 		if (parse_config (NULL, drivers[game_index]))
 			exit(1);
 
-	#ifdef MESS
-	/* This function has been added to MESS.C as load_image() */
-	/* FIXME: broken, sorry */
-//	load_image(argc, argv, j, game_index);
-	#endif
-
 	/* handle record which is not available in mame.cfg */
 	if (recordname)
 	{
@@ -581,9 +659,9 @@ static int config_handle_arg(char *arg)
 			fprintf(stderr, "error: too many image names specified!\n");
 			return -1;
 		}
-		options.image_files[options.image_count].type = iodevice_type;
-		options.image_files[options.image_count].name = arg;
-		options.image_count++;
+		//options.image_files[options.image_count].type = iodevice_type;
+		//options.image_files[options.image_count].name = arg;
+		//options.image_count++;
 	}
 #else
 	{

@@ -1,0 +1,84 @@
+<html>
+<head>
+<title>Info for pc8801</title>
+</head>
+<body>
+<table width=100%>
+<tr>
+<td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
+<td><h1>Info for pc8801</h1></td>
+</tr>
+</table>
+<hr>
+NEC PC-8801 series<br>
+------------------<br>
+early Z80 based computer commonly used in Japan<br>
+Features<br>
+--------<br>
+main Z80 CPU 4MHz(some models has 8MHz version)<br>
+sub Z80 CPU 4MHz(for 5'floppy disk drive)<br>
+64KB RAM<br>
+48KB Video RAM<br>
+640x200 8colors or B/W graphics<br>
+640x400 B/W graphics(required "high-resolution" display(VSYNC 24KHz))<br>
+80x25 text(alphabet or Kata-kana only, can overlay on graphics)<br>
+YM-2203 or YM-2608 FM sound(some models or optional)<br>
+extended RAM(various size, some models or optional)<br>
+5'2D or 5'2HD or 8'2D floppy disk drives(some models or optional)<br>
+96KB BASIC ROM<br>
+Kanji ROM(some models or optional)<br>
+Kana-Kanji dictionary ROM(some models)<br>
+RS-232C<br>
+CD-ROM(some models)<br>
+printer port<br>
+MESS emulation state<br>
+--------------------<br>
+CPU<br>
+text or graphics<br>
+YM-2203 sound(YM-2608 not yet)<br>
+extended RAM<br>
+5'2D disk drives<br>
+Kanji ROM<br>
+Note: Currently, each model is separated which use "High-resolution"<br>
+      display and "Low-resolution" display. Beacause I don't know how<br>
+      to change display resolution and HSYNC frequency dynamically<br>
+      (when machine is running).<br>
+ROM<br>
+---<br>
+BIOS images has same format as one of images for M88 emulator, but<br>
+"disk.rom" is only used first 2K bytes, that is, you must truncate<br>
+last 6KB of "disk.rom". M88 emulator and BIOS tools can be downloaded<br>
+<p><b>from this:</b><br>
+	<a href="http://www.remus.dti.ne.jp/~cisc/m88/">http://www.remus.dti.ne.jp/~cisc/m88/</a><br>
+Currently PC-8801mkIISR rom is only tested.<br>
+Disk Emulation<br>
+--------------<br>
+The D88 format disk image is supported now, but multiple disks image<br>
+files are not supported, That is, disk in image file must be only<br>
+one. The D88 disk image format is supported by more PC-8801<br>
+<p><b>emulators. Tools for D88 format can be downloaded from these:</b><br>
+	<a href="http://www1.plala.or.jp/aoto/index.html">http://www1.plala.or.jp/aoto/index.html</a><br>
+	<a href="http://www.remus.dti.ne.jp/~cisc/m88/">http://www.remus.dti.ne.jp/~cisc/m88/</a><br>
+	<a href="http://member.nifty.ne.jp/arearea/M882.html">http://member.nifty.ne.jp/arearea/M882.html</a><br>
+TODO<br>
+----<br>
+integrate "high-resolution" and "low-resolution" mode<br>
+optimization of CPU switching<br>
+more accurate speed(memory wait and DMAC overhead)<br>
+YM-2608 sound<br>
+joystick and mouse<br>
+5'2HD or 8'2D floppy disk drives<br>
+font substitution<br>
+Kana-Kanji dictionary ROM<br>
+test ROMs of other models<br>
+multiple disks image support<br>
+source clean-up<br>
+printer<br>
+RS-232C<br>
+CD-ROM<br>
+more good English document<br>
+<hr>
+<center><font size=-2>created on Thu Aug 16 22:55:01 2001
+</font></center>
+</body>
+</html>

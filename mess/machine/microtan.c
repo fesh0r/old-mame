@@ -456,8 +456,8 @@ int microtan_cassette_init(int id)
         wa.chunk_size = 1;
         wa.chunk_samples = 8;
         if( device_open(IO_CASSETTE,id,0,&wa) )
-            return INIT_FAILED;
-        return INIT_OK;
+            return INIT_FAIL;
+        return INIT_PASS;
     }
     file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
     if( file )
@@ -468,10 +468,10 @@ int microtan_cassette_init(int id)
         wa.fill_wave = NULL;
         wa.smpfreq = Machine->sample_rate;
         if( device_open(IO_CASSETTE,id,1,&wa) )
-            return INIT_FAILED;
-        return INIT_OK;
+            return INIT_FAIL;
+        return INIT_PASS;
     }
-    return INIT_FAILED;
+    return INIT_PASS;
 }
 
 void microtan_cassette_exit(int id)
@@ -479,14 +479,35 @@ void microtan_cassette_exit(int id)
     device_close(IO_CASSETTE,id);
 }
 
-int microtan_cassette_id(int id)
+static int microtan_varify_snapshot(UINT8 *data, int size)
 {
-    return 0;
+	if (size == 8263)
+	{
+		LOG(("microtan_snapshot_id: magic size %d found\n", size));
+		return IMAGE_VERIFY_PASS;
+	}
+	else
+	{
+		if (4 + data[2] + 256 * data[3] + 1 + 16 + 16 + 16 + 1 + 1 + 16 + 16 + 64 + 7 == size)
+		{
+			LOG(("microtan_snapshot_id: header RAM size + structures matches filesize %d\n", size));
+			return IMAGE_VERIFY_PASS;
+		}
+	}
+
+    return IMAGE_VERIFY_FAIL;
 }
 
 int microtan_snapshot_init(int id)
 {
     void *file;
+
+	/* If no image specified, I guess we should start! */
+	if (!device_filename(IO_SNAPSHOT,id) || !strlen(device_filename(IO_SNAPSHOT,id) ))
+	{
+		logerror("warning: no sanpshot specified!\n");
+		return INIT_PASS;
+	}
 
     file = image_fopen(IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE_RW, 0);
     if (file)
@@ -496,14 +517,17 @@ int microtan_snapshot_init(int id)
         if (!snapshot_buff)
         {
             LOG(("microtan_snapshot_load: could not allocate %d bytes of buffer\n", snapshot_size));
-            return INIT_FAILED;
+            return INIT_FAIL;
         }
         osd_fread(file, snapshot_buff, snapshot_size);
         osd_fclose(file);
 
-        return INIT_OK;
+//		if (microtan_varify_snapshot(snapshot_buff, snapshot_size)==IMAGE_VERIFY_FAIL)
+//			return INIT_FAIL;
+//		else
+			return INIT_PASS;
     }
-    return INIT_FAILED;
+    return INIT_FAIL;
 }
 
 void microtan_snapshot_exit(int id)
@@ -512,36 +536,6 @@ void microtan_snapshot_exit(int id)
         free(snapshot_buff);
     snapshot_buff = NULL;
     snapshot_size = 0;
-}
-
-int microtan_snapshot_id(int id)
-{
-    UINT8 buff[4];
-    void *file;
-    int size;
-
-    file = image_fopen(IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE_RW, 0);
-    if (file)
-    {
-        size = osd_fsize(file);
-        if (size == 8263)
-        {
-            LOG(("microtan_snapshot_id: magic size %d found\n", size));
-            osd_fclose(file);
-            return 1;
-        }
-        else
-        {
-            osd_fread(file, buff, sizeof (buff));
-            osd_fclose(file);
-            if (4 + buff[2] + 256 * buff[3] + 1 + 16 + 16 + 16 + 1 + 1 + 16 + 16 + 64 + 7 == size)
-            {
-                LOG(("microtan_snapshot_id: header RAM size + structures matches filesize %d\n", size));
-                return 1;
-            }
-        }
-    }
-    return 0;
 }
 
 int parse_intel_hex(char *src)
@@ -622,7 +616,7 @@ int parse_intel_hex(char *src)
         LOG(("parse_intel_hex: registers (?) at %04X\n", last_addr));
         memcpy(&snapshot_buff[8192+64], &snapshot_buff[last_addr], last_size);
     }
-    return INIT_OK;
+    return INIT_PASS;
 }
 
 int parse_zillion_hex(char *src)
@@ -705,12 +699,19 @@ int parse_zillion_hex(char *src)
         }
         src++;
     }
-    return INIT_OK;
+    return INIT_PASS;
 }
 
 int microtan_hexfile_init(int id)
 {
     void *file;
+
+	/* If no image specified, I guess we should start! */
+	if (!device_filename(IO_QUICKLOAD,id) || !strlen(device_filename(IO_QUICKLOAD,id) ))
+	{
+		logerror("warning: no quikload specified!\n");
+		return INIT_PASS;
+	}
 
     file = image_fopen(IO_QUICKLOAD, id, OSD_FILETYPE_IMAGE_RW, 0);
     if (file)
@@ -723,7 +724,7 @@ int microtan_hexfile_init(int id)
         if (!snapshot_buff)
         {
             LOG(("microtan_hexfile_load: could not allocate %d bytes of buffer\n", snapshot_size));
-            return INIT_FAILED;
+            return INIT_FAIL;
         }
         memset(snapshot_buff, 0, snapshot_size);
 
@@ -731,7 +732,7 @@ int microtan_hexfile_init(int id)
         if (!buff)
         {
             LOG(("microtan_hexfile_load: could not allocate %d bytes of buffer\n", size));
-            return INIT_FAILED;
+            return INIT_FAIL;
         }
         osd_fread(file, buff, size);
         osd_fclose(file);
@@ -742,7 +743,7 @@ int microtan_hexfile_init(int id)
             return parse_intel_hex(buff);
         return parse_zillion_hex(buff);
     }
-    return INIT_FAILED;
+    return INIT_FAIL;
 }
 
 void microtan_hexfile_exit(int id)
@@ -751,11 +752,6 @@ void microtan_hexfile_exit(int id)
         free(snapshot_buff);
     snapshot_buff = NULL;
     snapshot_size = 0;
-}
-
-int microtan_hexfile_id(int id)
-{
-    return 0;
 }
 
 static void store_key(int key)

@@ -265,7 +265,7 @@ void cgenie_init_machine(void)
 	/* wipe out font RAM */
 	memset(&ROM[0x0f400], 0xff, 0x0400);
 
-	wd179x_init(cgenie_fdc_callback);
+	wd179x_init(WD_TYPE_179X,cgenie_fdc_callback);
 
 	if( readinputport(0) & 0x80 )
 	{
@@ -376,8 +376,8 @@ int cgenie_floppy_init(int id)
 {
 		void *file;
 
-	if (basicdsk_floppy_init(id) != INIT_OK)
-		return INIT_FAILED;
+	if (basicdsk_floppy_init(id) != INIT_PASS)
+		return INIT_FAIL;
 
 	/* open file and determine image geometry */
 	file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
@@ -463,10 +463,10 @@ int cgenie_floppy_init(int id)
 		}
 
 		osd_fclose(file);
-		return INIT_OK;
+		return INIT_PASS;
 	}
 
-	return INIT_FAILED;
+	return INIT_FAIL;
 }
 
 int cgenie_rom_load(int id)
@@ -494,13 +494,6 @@ int cgenie_rom_load(int id)
 
 	return result;
 }
-
-int cgenie_rom_id(int id)
-{
-	/* This driver cannot ID ROMs */
-	return 0;
-}
-
 
 /*************************************
  *

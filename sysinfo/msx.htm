@@ -1,0 +1,384 @@
+<html>
+<head>
+<title>Info for msx</title>
+</head>
+<body>
+<table width=100%>
+<tr>
+<td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
+<td><h1>Info for msx</h1></td>
+</tr>
+</table>
+<hr>
+<h4>MSX 1 Class Computers</h4>
+The MSX driver currently emulates the MSX1, international, UK, korean and Japanese models.<br>
+<p><b>Not emulated:</b><br>
+Printer port, diskdrives, megaRAM, Sound Cartridge (SCC+), MSX2, etc..<br>
+<p><b>Cartridge emulation:</b><br>
+The MSX has 64kB RAM, like most (by far) MSX1 computers. It is located in slot 3. Two <br>
+cartridges are allowed: the first in slot 1 and the second in slot 2. So subslots aren't <br>
+emulated (yet). <br>
+The msx.crc file is important. The last field on every line specifies the type of ROM mapper. <br>
+See msx.crc for more information.<br>
+<p><b>Sound emulation:</b><br>
+The standard sound chip, the PSG (AY8910) is emulated, so is the extension that was included <br>
+in some Konami cartridges: the SCC. The keyclick (PPI) is also emulated, as is the FM-PAC <br>
+(you'll need the fmpac.rom of the original Panasonic FM-PAC for this). Unfortunately the <br>
+YM2413 emulation in MAME does not emulate the volumes correctly.<br>
+Last but not least, the DAC in Konami's Synthesizer is emulated, and the SIMPL (DAC on the <br>
+printer port). The DAC in Konami's Matjusushi is also emulated, but the driver lacks MSX2 <br>
+support.  <br>
+<p><b>SRAM in cartridges:</b><br>
+A number of cartridges (Hydlide 2, Xanadu, The Game Master 2 and more) had on-board sram. <br>
+This sram is automagically saved as a MEMCARD.  <br>
+<p><b>Tape emulation:</b><br>
+Unlike other MSX emulators, the tape emulation is not done by trapping BIOS calls. In our <br>
+opinion this is an evil kludge; apart from that, our setup does have an advantage. Tapes with <br>
+a custom loader (using direct access to the hardware) will work fine. It is done by saving <br>
+the tape as a .wav file. In principle, you could record a tape to .wav, and load them into <br>
+MESS.<br>
+<p><b>History and Trivia:</b><br>
+In the early 80's, there were a lot of home computers, Microsoft and a Japanese company <br>
+called ASCII corporation (directed by Kay Nishi) decided then to create an industry standard <br>
+for the home computers: MSX (for MicroSoft eXtended). The new standard was based on an <br>
+existing computer: The Spectravideo SV 318. Microsoft designed the MSX 1 computers and the <br>
+first version of the OS: MSX DOS 1 (which looks like earlier versions of MS DOS).<br>
+Almost all japanese and Korean computer companies made their own MSX computers (except <br>
+parhaps NEC). Bill Gates was then very confident about the future of the MSX standard. <br>
+Spectravideo (one of the MSX companies) made a 80 columns card and adapted CP/M on the MSX.<br>
+A lot of software(especially a lot of games from Sega, Konami, Taito, Ascii,...) and <br>
+hardware was developed for this standard. Despite all its qualities, the MSX family didn't <br>
+have great success in USA, however was pretty known in Europe (Netherlands and France), in <br>
+South Americca (Brazil) and USSR. This standard was replaced in 1985 by MSX 2. <br>
+<p><b>A list of known MSX compliant machines:</b><br>
+Canon (Japan)<br>
+V-8: 16kB RAM (other source says 32kB RAM)<br>
+V-10: 16kB RAM<br>
+V-20: 64kB RAM<br>
+<br>
+Casio (Japan)<br>
+MX-10: 16kB RAM (other source says 64k), docking station available<br>
+MX-101: 16kB RAM (other source says 64k)<br>
+PV-7: 32kB RAM<br>
+PV-16: 16kB RAM<br>
+<br>
+Daewoo/Yeno (Korea)<br>
+Ce-Tec MPC-80: 64kB RAM (other source says 32KB)<br>
+DPC-100: 16kB RAM, built in loudspeaker, available in green, blue or silver<br>
+DPC-200: 64kB RAM<br>
+DPH-64: 64kB RAM (other source says 32kB RAM)<br>
+DPH-?: 64kB RAM, built in software, arabic version<br>
+IQ-1000: 32kB RAM, produced for Korea<br>
+MX64: 64kB RAM<br>
+<br>
+Dragon (Spain)<br>
+MSX-64: 64kB RAM<br>
+<br>
+Dynadata (MSX from Daewoo in Spain)<br>
+DPC-200: 64kB RAM<br>
+<br>
+Fenner (Italy?)<br>
+FPC-500: 64kB RAM<br>
+<br>
+Fujitsu (Japan)<br>
+MB-H1: ??kB RAM<br>
+FM-X: 16kB RAM<br>
+<br>
+General (Japan)<br>
+PAXON-PC K50: ??kB RAM, separate keyboard, computer and monitor in one box<br>
+PAXON-PC T50: 16kB RAM, RGB connector<br>
+PAXON-PC T55: 32kB RAM, RGB connector<br>
+<br>
+Goldstar (Korea)<br>
+FC-80: ??kB RAM<br>
+FC-100: 16kB RAM<br>
+FC-200: 64kB RAM (with hole for light-pen)<br>
+<br>
+Gradiente (Brazil)<br>
+XP-800 Expert 1.0: 64kB RAM, separate keyboard<br>
+XP-800 Expert 1.1: 64kB RAM, separate keyboard (with fixed ASCII tables, grey colour)<br>
+Expert plus: 64kB RAM, separate keyboard (black colour)<br>
+Expert DD plus: 64kB RAM, separate keyboard, 3,5" floppy disk drive (black colour)<br>
+<br>
+Hitachi (Japan)<br>
+Hint: 16kB RAM<br>
+MB-H1 (Humanicatio): 32kB RAM, built in software (Sketch and Music)<br>
+MB-H1E: 16kB RAM<br>
+MB-H2: 64kB RAM, built in tape recorder<br>
+MB-H21: ??kB RAM<br>
+MB-H25: ??kB RAM<br>
+MB-H50: 64kB RAM<br>
+MB-H80: 64kB RAM, also built in software (Sketch and Music)<br>
+<br>
+JVC/Victor (Japan)<br>
+HC-5: 32kB RAM (other source says 16kB RAM)<br>
+HC-6: 16kB RAM<br>
+HC-6AV: 32kB RAM, RGB connector<br>
+HC-7: 64kB RAM (Japanese version)<br>
+HC-7E: 64kB RAM (English version, other source says 32KB RAM)<br>
+HC-7GB: 64kB RAM<br>
+HC-30: 32kB RAM<br>
+HC-60: 32kB RAM<br>
+<br>
+Kyocera (Japan)<br>
+YC-64: 64kB RAM<br>
+<br>
+Mitsubishi (Japan)<br>
+Letus: 16kB RAM<br>
+ML-8000: 32kB RAM<br>
+ML-F48: 32kB RAM<br>
+ML-F80: 64kB RAM<br>
+ML-F110: 16kB RAM<br>
+ML-F120(D): 32kB RAM<br>
+ML-F8000: 32kB RAM<br>
+ML-FX1: 64kB RAM<br>
+ML-FX2: 64kB RAM, built in software<br>
+<br>
+National (Japan)<br>
+CF-1200: 16kB RAM<br>
+CF-2000: 16kB RAM<br>
+CF-2700: 32kB RAM<br>
+CF-3000: 64kB RAM<br>
+CF-3300: 64kB RAM<br>
+CF-4000: ??kB RAM<br>
+FS-1300: 64kB RAM<br>
+FS-4000: 64kB RAM<br>
+<br>
+Olympia (France)<br>
+PHC-2: ??kB RAM, same as some Sanyo?<br>
+PHC-28: 32kB RAM, same as Sanyo's PHC-28S<br>
+<br>
+Panasonic/Matsushita (Japan)<br>
+CF-2000: 16kB RAM<br>
+CF-2700: 64kB RAM, same as Sanyo MPC-64<br>
+CF-3000: ??kB RAM<br>
+CF-3300: ??kB RAM<br>
+<br>
+Perfect (Daewoo in Kuwait)<br>
+Perfect1: 64kb RAM, 1 slot, no reset, built in software<br>
+<br>
+Philips (The Netherlands)<br>
+VG-8000: 16kB RAM<br>
+VG-8010: 32kB RAM<br>
+VG-8020: 64kB RAM, (VG8020 comes in 2 different versions (/00 and /20), new versions use <br>
+sub-slot for ram)<br>
+<br>
+Pioneer (Japan)<br>
+PX-7 PALCOM: 32kB RAM, built in laser disk interface, superimpose (image & sound (stereo)), <br>
+separate keyboard (UK version in black, JP version in black/silver (lila/blue keys) colour)<br>
+PX-V60: 64kB RAM<br>
+<br>
+Radofin (Hong-Kong)<br>
+Triton: 64kB RAM<br>
+<br>
+Radiola (France)<br>
+MX-180: 32kB RAM, Same as Philips VG-8010 with a different color case<br>
+<br>
+Sakhr/Universal/Al Alamiah (Kuwait/Yemen)<br>
+     Those computers are Yamaha and Sanyo MSX modified for arabian countries.<br>
+AX-100: 64kB RAM<br>
+AX-150: 64kB RAM<br>
+AX-170: 64kB RAM, built in special roms with arabic characters set and softwares<br>
+AX-230: 64kB RAM, same software as AX-170 + 1MB of other software<br>
+AX-330: 64kB RAM, same as AX-230 but with built in SEGA-MEGADRIVE board<br>
+AX-990: 64kB RAM, 50 softwares built in, SEGA-MEGADRIVE board built in<br>
+SX-100: 32kB RAM, 3 slots, RGB connector<br>
+SX-101: ??kB RAM, 3 slots<br>
+<br>
+Samsung (Korea)<br>
+SPC-800: 64kB RAM<br>
+<br>
+Sanyo (Japan)<br>
+MPC-2: 16kB RAM<br>
+MPC-3: 16kB RAM<br>
+MPC-4: 16kB RAM<br>
+MPC-5: 16kB RAM<br>
+MPC-6: 64kB RAM<br>
+MPC-10(mk2): 64kB RAM (other source says 32kB RAM), lightpen-interface<br>
+MPC-11: 64kB RAM (other source says 32kB RAM), lightpen-interface<br>
+MPC-64: 64kB RAM<br>
+MPC-100: 64kB RAM, hole for lightpen<br>
+MPC-200: 64kB RAM<br>
+MPC-X: 64kB RAM, built in lightpen, high-res adaptor and speech-synthesizer<br>
+PHC-27: 64kB RAM<br>
+PHC-28L: 64kB RAM, Same as PHC-28S but with 64kB RAM<br>
+PHC-28S: 16KB (or 32KB) RAM<br>
+PHC-30: 16kB RAM (other source says 32KB), built in tape recorder<br>
+PHC-30N: 64kB RAM<br>
+PHC-33: 32kB RAM<br>
+WAVY-MPC-10: 32KB (other source says 16KB) RAM, built in light pen unit<br>
+<br>
+Schneider (Germany)<br>
+MC-810: 32kB RAM, (Same as Philips VG-8010 with a different color case)<br>
+<br>
+Sharp/Epcom (Brazil)<br>
+HB-8000 HotBit: 64kB RAM (white colour)<br>
+HB-8000 HotBit 1.2: 64kB RAM (in black color)<br>
+<br>
+Sony (Japan)<br>
+     Note: Some of the Sony's computer names are followed by a letter like HB-101P, or <br>
+HB-101F or HB-700D. The last letter is only depending of the keyboard layout of the <br>
+country. D=German (QWERTZ) F=French (AZERTY) S=Spanish P=UK (QWERTY)<br>
+HB-10: 64kB RAM<br>
+HB-11: 64kB RAM<br>
+HB-11U: ??kB RAM, built in dictionary Japanese-English<br>
+HB-20: 32kB RAM<br>
+HB-55: 16kB RAM<br>
+HB-75: 64kB RAM, built in program: Personal Databank (schedule/memo/address)<br>
+HB-101: 32kB RAM, (Same as HB-201 but with 32kB RAM, but other source says 16kB RAM)<br>
+HB-201: 64kB RAM, built in joystick (Same as HB-501 but without tape recorder)<br>
+HB-501: 64kB RAM, built in tape recorder ('BitCorder'), pause button, joystick<br>
+HB-701, 64kB RAM<br>
+HB-701FD: 64kB RAM, floppy disk drive<br>
+<br>
+Spectravideo (Hong-Kong/USA)<br>
+SVI-728: 64kB RAM, numeric keypad<br>
+SVI-738: 64kB RAM, built in 80 columns card (V9938), RS232C interface, 360KB 3,5" floppy <br>
+disk drive. Also called X'PRESS and also SVI-318 and SVI-328 MSX compatible with an emulator<br>
+<br>
+Talent/Telematica (Argentina)<br>
+DPC-200: 64kB RAM, Daewoo's MSX model sold under the Talent name<br>
+<br>
+Toshiba (Japan)<br>
+HX-10: 64kB RAM<br>
+HX-10D: 16kB RAM<br>
+HX-10DP: 64kB RAM<br>
+HX-10DPN: 64kB RAM, built in program (??)<br>
+HX-10E: 64kB RAM<br>
+HX-10S: 16kB RAM<br>
+HX-20: 64kB RAM, built in word processor (in total 64kB ROM), RAMdisk feature (32kB of <br>
+main RAM in page 0 and 1 are used, under BASIC), T6950 VDP (software compatible with <br>
+9929A which is normally used)<br>
+HX-20e: 64kB RAM, built in wordprocessor, RS232C interface<br>
+HX-21: 64kB RAM, built in software<br>
+HX-22: 64kB RAM, RS-232C interface, RGB connector (SCART 21), built in wordprocessor (in <br>
+total 64kB ROM)<br>
+HX-30: ??kB RAM, built in software<br>
+HX-31: ??kB RAM, built in software<br>
+HX-32: ??kB RAM, built in software<br>
+HX-51: ??kB RAM<br>
+<br>
+Triton (Hong-Kong)<br>
+PC64: 64kB RAM<br>
+<br>
+Yamaha (Japan)<br>
+CX5: 32kB RAM<br>
+CX5F: 32kB RAM<br>
+CX5M: 32kB RAM, built in FM synthetizer (SFG-01) and MIDI-Interface<br>
+CX5MII: 64kB RAM, built in FM synthetizer (SFG-01), MIDI-interface<br>
+CX5MII/128: 128kB RAM, built in FM synthetizer (SFG-05), (V9938 built in), built in <br>
+FM VOICING program II<br>
+CX-11: 32kB RAM<br>
+CX-100: 32kB RAM<br>
+YIS-303: 16kB RAM<br>
+YIS-503: 32kB RAM<br>
+YIS-503II/64: 64kB RAM, FDD<br>
+<br>
+Yashica (Japan)<br>
+YC-64: 64kB RAM, Kyocera's MSX sold by Yashica<br>
+MSX system list compiled from the list by TRD, Manuel Bilderbeek & Alex Wulms. Thanks to<br>
+Stefano Priore, for abridging it to MSX1 specific info.<br>
+Other Info<br>
+-----------<br>
+The MSX driver is very preliminary. Disk drive emulation doesn't work properly<br>
+for example, and memory emulation isn't very good either. Various MSX1 models<br>
+are emulated, and there is preliminary MSX2 support through the msx2 and msx2j<br>
+driver.<br>
+<p><b>The required bios dumps are available at:</b><br>
+	<a href="http://www.file-hunter.com/">http://www.file-hunter.com/</a><br>
+Cartridges<br>
+----------<br>
+The ROM mapper (which is specified with -rom x in fMSX) is autodetected but<br>
+isn't perfect. So you should also install the crc files, which can be <br>
+downloaded from the official mess site. With the CRC files, cartridges with<br>
+SRAM or a DAC (like Synthesizer or Majutsushi from Konami) are detected<br>
+properly.<br>
+Tape emulation<br>
+--------------<br>
+Tape emulation is done via .wav files; the actual sound the MSX produces<br>
+is recorded / played back, making tape emulation more authentic. Because of<br>
+this, you can record your existing tapes to .wav and play them in MESS. Make<br>
+sure your record them at high quality (44100Hz, 16 bit and mono).<br>
+.cas files are also supported but they're converted to sound by the driver<br>
+on startup. There is no support for writing .cas files.<br>
+While recording or playback you can hear the sound through the sound card<br>
+of your computer. You can control the volume by pressing &lt;SCROLL LOCK&gt; and<br>
+&lt;~&gt;. <br>
+.tap files from Virtual MSX can be converted to .cas using imgtool (see<br>
+imgtool.txt for more information).<br>
+Memory Emulation<br>
+----------------<br>
+The memory map is from a standard MSX1; there are no subslots, nor MSX2 <br>
+memory mappers for RAM. RAM is 64Kb in slot 3, and slot 1 and 2 are where <br>
+the cartridges end up.<br>
+Sound emulation<br>
+---------------<br>
+The PSG, PPI (key click), SCC are emulated. The SCC isn't perfect yet, you<br>
+can hear slight inperfections in King's Valley 2 (when you through the knife),<br>
+F1 Spirit (when you start a race), Solid Snake (when you get to building 3).<br>
+The SCC is called `k051649' in the volume menu.<br>
+The FM-PAC is also emulated for which you need the ROM dump of an original<br>
+Panasonic FM-PAC. However the sound emulation isn't very good at all. :/<br>
+The following DACs are emulated: SIMPL, Konami's Synthesizer, Konami's<br>
+Majutsushi. The keyclick is also done through the DAC. To enable SIMPL<br>
+(which disables the printer port), press &lt;SCROLL LOCK&gt;, &lt;TAB&gt; and go to<br>
+Dip Switches. Here set SIMPL to "On".<br>
+You can control the volumes by pressing &lt;SCROLL LOCK&gt; (so you go to UI<br>
+mode) and then &lt;~&gt;. Press &lt;UP&gt; and &lt;DOWN&gt; to see different sound chips, and<br>
+&lt;LEFT&gt; and &lt;RIGHT&gt; to change the volume.<br>
+Video emulation<br>
+---------------<br>
+The tms9928a (MSX1) emulation is very good, but doesn't emulate changes while<br>
+the screen is being drawn to the screen. <br>
+The v9938 emulation is preliminary and has problems with sprite mode 2 (MSX2<br>
+games), interlaced mode, graphic engine emulation, timing (Zanac Ex doesn't<br>
+run correctly and Aleste only runs in the Japanese version of the driver).<br>
+Also the PAL/NTSC (50/60Hz) switch is an evil hack, the actual refresh rate<br>
+of the screen isn't changed.<br>
+Also it's not very well optimised, I'll start optimising as soons as it<br>
+works alright. <br>
+The v9958 isn't emulated at all. <br>
+The MSX1 and MSX2 video chips only only display a limited number of sprites on<br>
+one line; this causes sprite flickering, you can turn this off (which isn't<br>
+like a real MSX of course) by pressing: &lt;SCROLL LOCK&gt;, &lt;TAB&gt; and going to the<br>
+Dip Switches menu. Set "Enforce 4/8 sprites/line" to "Off". Note that sometimes<br>
+this feature is used for other purposes, like making sure a sprite is only<br>
+partly displayed (when you enter a world in The Maze of Galious for example).<br>
+Printer port<br>
+------------<br>
+The printer port is emulated; output to the port is saved to disk. However<br>
+no emulation/translation is done, so the data is raw. <br>
+MSX2 RTC<br>
+--------<br>
+The real-time clock, which keeps information like the time and date, should<br>
+be emulated correctly. However in PAL mode the timing isn't correct as the<br>
+refresh rate isn't properly adjusted. All settings are saved to disk.<br>
+Keyboard/joystick/mouse<br>
+-----------------------<br>
+The keyboard layout should be properly emulated. Joysticks seem to default<br>
+to having key-bindings aswell, so pressing &lt;CTRL&gt; or &lt;ALT&gt; will also work<br>
+for the joysticks, but might give some unexpected results.<br>
+The mouse emulation doesn't work properly yet. :(<br>
+Disk Emulation<br>
+--------------<br>
+Disks are emulated through proper wd2793 emulation. Currently only the<br>
+Philips and Sony diskroms are supported; the Panasonic machines use the<br>
+tc8566af diskcontroller (unemulated) and the Brazillian machines are <br>
+port-based (not memory-mapped).<br>
+You need a proper diskrom dump, and the msx.crc file in place. The diskrom <br>
+should be recognised as type 15 otherwise the driver doesn't know it's<br>
+a diskrom. <br>
+Next specify the diskrom as one of the cartridges. That should do the <br>
+trick. :) Note that only .dsk files are supported; other formats can<br>
+be converted to .dsk using imgtool (it can convert .msx, .img, .ddi, .xsa,<br>
+multidisks -- see imgtool.txt for more information).<br>
+Error aren't properly handled yet. ``not ready'' is reported as ``record<br>
+not found'', which results in ``Disk I/O error'' in MSX-BASIC.<br>
+Also not that memory emulation isn't complete so MSX2 memory mappers<br>
+don't work yet.<br>
+<br>
+<hr>
+<center><font size=-2>created on Thu Aug 16 22:55:01 2001
+</font></center>
+</body>
+</html>

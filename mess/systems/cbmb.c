@@ -1,7 +1,8 @@
 /***************************************************************************
 	commodore b series computer
 
-    peter.trauner@jk.uni-linz.ac.at
+	PeT mess@utanet.at
+
 	documentation
 	 vice emulator
      www.funet.fi
@@ -1022,7 +1023,7 @@ static struct MachineDriver machine_driver_cbm500 =
 			cbm500_readmem, cbm500_writemem,
 			0, 0,
 			0, 0,
-			vic2_raster_irq, VIC2_HRETRACERATE,		
+			vic2_raster_irq, VIC2_HRETRACERATE,
 		},
 	},
 	VIC6567_VRETRACERATE, DEFAULT_REAL_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */
@@ -1056,7 +1057,7 @@ static struct MachineDriver machine_driver_cbm500 =
 static const struct IODevice io_cbmb[] =
 {
 	IODEVICE_CBMB_QUICK,
-	IODEVICE_CBM_ROM("crt\00010\00020\00040\00060\0", NULL),
+	IODEVICE_CBM_ROM("crt\00010\00020\00040\00060\0"),
 	/* monitor OR tape routine in kernal */
 #ifdef PET_TEST_CODE
 	IODEVICE_CBM_DRIVE,
@@ -1067,7 +1068,7 @@ static const struct IODevice io_cbmb[] =
 static const struct IODevice io_cbm500[] =
 {
 	IODEVICE_CBM500_QUICK,
-	IODEVICE_CBM_ROM("crt\00010\00020\00040\00060\0", NULL),
+	IODEVICE_CBM_ROM("crt\00010\00020\00040\00060\0"),
 #ifdef PET_TEST_CODE
 	IODEVICE_CBM_DRIVE,
 #endif
@@ -1093,15 +1094,15 @@ static const struct IODevice io_cbm500[] =
 #endif
 
 /*     YEAR		NAME	PARENT	MACHINE		INPUT		INIT		COMPANY								FULLNAME */
-COMPX (1983,	cbm500,	0,		cbm500,		cbm500,		cbm500,		"Commodore Business Machines Co.",	"Commodore B128-40/Pet-II/P500 60Hz",		GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-COMPX (1983,	cbm610, 0,		cbm600, 	cbm600, 	cbm600, 	"Commodore Business Machines Co.",  "Commodore B128-80LP/610 60Hz",             GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-COMPX (1983,	cbm620,	cbm610,	cbm600pal,	cbm600pal,	cbm600pal,	"Commodore Business Machines Co.",	"Commodore B256-80LP/620 50Hz",	GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-COMPX (1983,	cbm620hu,	cbm610,	cbm600pal,	cbm600pal,	cbm600hu,	"Commodore Business Machines Co.",	"Commodore B256-80LP/620 Hungarian 50Hz",	GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-COMPX (1983,	cbm710, cbm610, cbm700, 	cbm700, 	cbm700, 	"Commodore Business Machines Co.",  "Commodore B128-80HP/710",                  GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-COMPX (1983,	cbm720,	cbm610,	cbm700,		cbm700,		cbm700,		"Commodore Business Machines Co.",	"Commodore B256-80HP/720",					GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-COMPX (1983,	cbm720se,	cbm610,	cbm700,	cbm700,		cbm700,		"Commodore Business Machines Co.",	"Commodore B256-80HP/720 Swedish/Finnish",	GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+COMPX (1983,	cbm500,	0,		cbm500,		cbm500,		cbm500,		"Commodore Business Machines Co.",	"Commodore B128-40/Pet-II/P500 60Hz",		GAME_NOT_WORKING)
+COMPX (1983,	cbm610, 0,		cbm600, 	cbm600, 	cbm600, 	"Commodore Business Machines Co.",  "Commodore B128-80LP/610 60Hz",             GAME_NOT_WORKING)
+COMPX (1983,	cbm620,	cbm610,	cbm600pal,	cbm600pal,	cbm600pal,	"Commodore Business Machines Co.",	"Commodore B256-80LP/620 50Hz",	GAME_NOT_WORKING)
+COMPX (1983,	cbm620hu,	cbm610,	cbm600pal,	cbm600pal,	cbm600hu,	"Commodore Business Machines Co.",	"Commodore B256-80LP/620 Hungarian 50Hz",	GAME_NOT_WORKING)
+COMPX (1983,	cbm710, cbm610, cbm700, 	cbm700, 	cbm700, 	"Commodore Business Machines Co.",  "Commodore B128-80HP/710",                  GAME_NOT_WORKING)
+COMPX (1983,	cbm720,	cbm610,	cbm700,		cbm700,		cbm700,		"Commodore Business Machines Co.",	"Commodore B256-80HP/720",					GAME_NOT_WORKING)
+COMPX (1983,	cbm720se,	cbm610,	cbm700,	cbm700,		cbm700,		"Commodore Business Machines Co.",	"Commodore B256-80HP/720 Swedish/Finnish",	GAME_NOT_WORKING)
 #if 0
-COMPX (1983,	cbm730, cbm610, cbmbx, 		cbmb, 		cbmb, 		"Commodore Business Machines Co.",	"Commodore BX128-80HP/BX256-80HP/730", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+COMPX (1983,	cbm730, cbm610, cbmbx, 		cbmb, 		cbmb, 		"Commodore Business Machines Co.",	"Commodore BX128-80HP/BX256-80HP/730", GAME_NOT_WORKING)
 #endif
 
 #ifdef RUNTIME_LOADER

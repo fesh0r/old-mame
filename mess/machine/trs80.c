@@ -147,20 +147,6 @@ static void cas_copy_callback(int param)
 	cpu_set_reg(Z80_PC, entry);
 }
 
-int trs80_cas_id(int id)
-{
-	void *file = image_fopen(IO_CASSETTE,id,OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
-	if (file)
-	{
-		UINT8 buffer[8];
-		osd_fread(file, buffer, 8);
-		osd_fclose(file);
-		if (buffer[1] == 0x55)	/* SYSTEM tape */
-			return 1;
-	}
-	return 0;
-}
-
 int trs80_cas_init(int id)
 {
 	void *file = image_fopen(IO_CASSETTE,id,OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
@@ -260,11 +246,6 @@ static void cmd_copy_callback(int param)
 	cpu_set_reg(Z80_PC, entry);
 }
 
-int trs80_cmd_id(int id)
-{
-	return 0;
-}
-
 int trs80_cmd_init(int id)
 {
 	void *file = image_fopen(IO_QUICKLOAD,id,OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
@@ -305,8 +286,8 @@ int trs80_floppy_init(int id)
 	int dir_length; /* length of directory in sectors (aka DDGA) */
     void *file;
 
-    if (basicdsk_floppy_init(id) != INIT_OK)
-		return INIT_FAILED;
+    if (basicdsk_floppy_init(id) != INIT_PASS)
+		return INIT_FAIL;
 
     if (id == 0)        /* first floppy? */
 	{
@@ -364,14 +345,14 @@ int trs80_floppy_init(int id)
 		/* set deleted data address mark for sector specified */
 		basicdsk_set_ddam(id, track, side, sector_id, 1);
 	}
-    return INIT_OK;
+    return INIT_PASS;
 }
 
 static void trs80_fdc_callback(int);
 
 void trs80_init_machine(void)
 {
-	wd179x_init(trs80_fdc_callback);
+	wd179x_init(WD_TYPE_179X,trs80_fdc_callback);
 
 	if (cas_size)
 	{

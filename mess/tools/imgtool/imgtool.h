@@ -108,7 +108,7 @@ struct filter_info {
 	void *internalparam;
 };
 
-struct ImageModule;
+typedef struct ImageModule ImageModule;
 
 struct filter_module {
 	const char *name;
@@ -166,14 +166,14 @@ enum {
 	IMGOPTION_FLAG_HASDEFAULT	= 0x0010
 };
 
-struct OptionTemplate {
+typedef struct OptionTemplate {
 	const char *name;
 	const char *description;
 	int flags;
 	int min;
 	int max;
 	const char *defaultvalue;
-};
+} OptionTemplate;
 
 struct NamedOption {
 	const char *name;
@@ -451,7 +451,8 @@ int img_freespace(IMAGE *img, int *sz);
 int img_readfile(IMAGE *img, const char *fname, STREAM *destf,
 	FILTERMODULE filter);
 
-/* img_writefile
+/* img_writefile_resolved
+ * img_writefile
  *
  * Description:
  *		Start writing to a new file on an image with a stream
@@ -460,9 +461,11 @@ int img_readfile(IMAGE *img, const char *fname, STREAM *destf,
  *		img:				The image to read from
  *		fname:				The filename on the image
  *		destf:				Place to receive the stream
- *		options:			Options to specify on the new file
+ *		options/ropts:		Options to specify on the new file
  *      filter:             Filter to use, or NULL if none
  */
+int img_writefile_resolved(IMAGE *img, const char *fname, STREAM *sourcef,
+	const ResolvedOption *ropts, FILTERMODULE filter);
 int img_writefile(IMAGE *img, const char *fname, STREAM *sourcef,
 	const struct NamedOption *_options, FILTERMODULE filter);
 
@@ -480,7 +483,8 @@ int img_writefile(IMAGE *img, const char *fname, STREAM *sourcef,
 int img_getfile(IMAGE *img, const char *fname, const char *dest,
 	FILTERMODULE filter);
 
-/* img_putfile
+/* img_putfile_resolved
+ * img_putfile
  *
  * Description:
  *		Read a native file and store it on an image
@@ -490,9 +494,11 @@ int img_getfile(IMAGE *img, const char *fname, const char *dest,
  *		newfname:			The filename on the image to store (if NULL, then
  *							the file will be named basename(source)
  *		source:				Native filename for source
- *		options:			Options to specify on the new file
+ *		options/ropts:		Options to specify on the new file
  *      filter:             Filter to use, or NULL if none
  */
+int img_putfile_resolved(IMAGE *img, const char *newfname, const char *source,
+	const ResolvedOption *ropts, FILTERMODULE filter);
 int img_putfile(IMAGE *img, const char *newfname, const char *source,
 	const struct NamedOption *_options, FILTERMODULE filter);
 
@@ -507,7 +513,8 @@ int img_putfile(IMAGE *img, const char *newfname, const char *source,
  */
 int img_deletefile(IMAGE *img, const char *fname);
 
-/* img_create
+/* img_create_resolved
+ * img_create
  * img_create_byname
  *
  * Description:
@@ -516,9 +523,10 @@ int img_deletefile(IMAGE *img, const char *fname);
  * Parameters:
  *		module/modulename:	The module for this image format
  *		fname:				The native filename for the image
- *		options:			Options that control how the image is created
+ *		options/ropts:		Options that control how the image is created
  *							(tracks, sectors, etc)
  */
+int img_create_resolved(const struct ImageModule *module, const char *fname, const ResolvedOption *ropts);
 int img_create(const struct ImageModule *module, const char *fname, const struct NamedOption *_options);
 int img_create_byname(const char *modulename, const char *fname, const struct NamedOption *_options);
 

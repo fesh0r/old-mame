@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "zlib.h"
 #include "osdepend.h"
 #include "imgtool.h"
 
@@ -119,24 +120,34 @@ static int rom16_image_beginenum(IMAGE *img, IMAGEENUM **outenum)
 
 static int rom16_image_nextenum(IMAGEENUM *enumeration, imgtool_dirent *ent)
 {
+    int pos = 0;
 	rom16_iterator *iter=(rom16_iterator*)enumeration;
 
 	ent->corrupt=0;
 	ent->eof=0;
-	
+
 	switch (iter->index) {
 	case 0:
-		strcpy(ent->fname,"even");
-		ent->filesize= iter->image->size/2;
-		iter->index++;
-		break;
+	    pos=0;
+	    strcpy(ent->fname,"even");
+	    ent->filesize= iter->image->size/2;
+	    iter->index++;
+	    break;
 	case 1:
-		iter->index++;
-		ent->filesize= iter->image->size/2;
-		strcpy(ent->fname,"odd");
-		break;
+	    pos=1;
+	    iter->index++;
+	    ent->filesize= iter->image->size/2;
+	    strcpy(ent->fname,"odd");
+	    break;
 	default:
-		ent->eof=1;
+	    ent->eof=1;
+	}
+	if (ent->eof==0 && ent->attr) {
+	    unsigned crc=0;
+	    for (;pos<iter->image->size; pos+=2) {
+		crc=crc32(crc, iter->image->data+pos, 1);
+	    }
+	    sprintf(ent->attr, "0x%x", crc);
 	}
 	return 0;
 }
@@ -168,7 +179,7 @@ static int rom16_image_readfile(IMAGE *img, const char *fname, STREAM *destf)
 	return 0;
 }
 
-static int rom16_image_writefile(IMAGE *img, const char *fname, STREAM *sourcef, 
+static int rom16_image_writefile(IMAGE *img, const char *fname, STREAM *sourcef,
 							   const ResolvedOption *options)
 {
 	rom16_image *image=(rom16_image*)img;
@@ -199,7 +210,7 @@ static int rom16_image_writefile(IMAGE *img, const char *fname, STREAM *sourcef,
 static int rom16_image_create(STREAM *f, const ResolvedOption *options)
 {
 //	if (options->label) strcpy(header.name, options->label);
-	return (stream_write(f, &header, sizeof(crt_header)) == sizeof(crt_header)) 
+	return (stream_write(f, &header, sizeof(crt_header)) == sizeof(crt_header))
 		? 0 : IMGTOOLERR_WRITEERROR;
 }
 #endif

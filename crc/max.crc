@@ -1,12 +1,22 @@
 # Commodore MAX  Cartridge CRC List
-# Compiled by Peter Trauner
+# Compiled by PeT
 # Note: This list is provided as a record of known dumps for this system.  
 #       These checksums have not been validated and cannot be assumed correct.  
 #       They are provided here as a database to help the emulation of this system.  
 # Send corrections/submissions to: battlepriest@hotmail.com
 
 [MAX]
-4048f163 = musicmac.crt music tool
-d7827f16 = Kickman (.crt) | 1982 | Commodore | SPRITE COLLISION ISSUES | 
-85aa080b = Clowns (.hi or .e0) | 1982 | Commodore | Uses Paddles in Port A | 
+adf47a7c = avenger
+85aa080b = Clowns.hi | 1982 | Commodore | Uses Paddles in Port A | 
+56ffc481 = Clowns.crt | 1982 | Commodore | Uses Paddles in Port A | (equal to 85aa080b)
+fc703ba1 = Jupiter Lander | 1982 | Commodore
+d7827f16 = Kickman.crt | 1982 | Commodore |
+8b310e77 = Lemans | 1982 | Commodore & HAL | Paddles in Port A
+4048f163 = Music Machine.crt | 1982 | Commodore
+8af1b170 = Pinball Spectacular | 1983 | Commodore & HAL | Paddles
+3b0165a7 = Radar Rat Race | 1982 | Commodore
+aa571a8a = Visible Solar System | 1982 | Commodore
 
+# modified
+f847b023 = Seawolf | | | cracked version, input problems
+eade0831 = Omega Race | 1982 | Commodore | Hack?

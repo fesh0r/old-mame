@@ -8,8 +8,7 @@
 /*
  todo:
 
- - sprite collision / 5th/8th sprite
- - graphic 5 -- check sprites and transparency
+ - sprite collision 
  - vdp engine -- make run at correct speed
  - vr/hr/fh flags: double-check all of that
  - make vdp engine work in exp. ram
@@ -31,7 +30,6 @@ typedef struct {
 	UINT16 address_latch;
 	UINT8 *vram, *vram_exp;
 	int vram_size;
-	struct osd_bitmap *bmp;
     /* interrupt */
     UINT8 INT;
     void (*INTCallback)(int);
@@ -348,7 +346,7 @@ WRITE_HANDLER (v9938_vram_w)
 	{
 	int address;
 
-	v9938_update_command ();
+	/*v9938_update_command ();*/
 
 	vdp.cmd_write_first = 0;
 
@@ -441,14 +439,6 @@ int v9938_init (int model, int vram_size, void (*callback)(int) )
 	vdp.INTCallback = callback;
 	vdp.size_old = -1;
 
-	/* allocate back-buffer */
-	vdp.bmp = osd_alloc_bitmap (512 + 32, (212 + 16) * 2, Machine->scrbitmap->depth);
-	if (!vdp.bmp)
-		{
-		logerror ("V9938: Unable to allocate back-buffer bitmap\n");
-		return 1;
-		}
-
 	/* allocate VRAM */
 	vdp.vram = malloc (0x20000);
 	if (!vdp.vram) return 1;
@@ -513,9 +503,15 @@ static void v9938_check_int (void)
 	if (n != vdp.INT)
 		{
 		vdp.INT = n;
-		vdp.INTCallback (n);
 		logerror ("V9938: IRQ line %s\n", n ? "up" : "down");
 		}
+
+	/* 
+    ** Somehow the IRQ request is going down without cpu_irq_line () being
+    ** called; because of this Mr. Ghost, Xevious and SD Snatcher don't
+    ** run. As a patch it's called every scanline 
+    */
+	vdp.INTCallback (n);
 	}
 
 void v9938_set_sprite_limit (int i)
@@ -572,12 +568,13 @@ static void v9938_register_write (int reg, int data)
 		return;
 		}
 
+	/*v9938_update_command (); */
+
 	switch (reg)
 		{
 		/* registers that affect interrupt and display mode */
 		case 0:
 		case 1:
-			v9938_update_command ();
 			vdp.contReg[reg] = data;
 			v9938_set_mode ();
 			v9938_check_int ();
@@ -646,14 +643,14 @@ READ_HANDLER (v9938_status_r)
 		{
 		case 0:
 			ret = vdp.statReg[0];
-			vdp.statReg[0] &= 0x5f;
+			vdp.statReg[0] &= 0x1f;
 			break;
 		case 1:
 			ret = vdp.statReg[1];
 			vdp.statReg[1] &= 0xfe;
 			break;
 		case 2:
-			v9938_update_command ();
+			/*v9938_update_command ();*/
 			if ( (cpu_getcurrentcycles () % 227) > 170) vdp.statReg[2] |= 0x20;
 			else vdp.statReg[2] &= ~0x20;
 			ret = vdp.statReg[2];
@@ -821,7 +818,7 @@ static void v9938_sprite_mode1 (int line, UINT8 *col)
 static void v9938_sprite_mode2 (int line, UINT8 *col)
 	{
 	int attrtbl, patterntbl, patternptr, colourtbl;
-	int x, i, y, p, height, c, p2, n, pattern, colourmask;
+	int x, i, y, p, height, c, p2, n, pattern, colourmask, first_cc_seen;
 
 	memset (col, 0, 256);
 
@@ -838,7 +835,7 @@ static void v9938_sprite_mode2 (int line, UINT8 *col)
 	/* magnified sprites (zoomed) */
 	if (vdp.contReg[1] & 1) height *= 2;
 
-	p2 = p = 0;
+	p2 = p = first_cc_seen = 0;
 	while (1)
 		{
 		y = v9938_vram_read (attrtbl);
@@ -861,17 +858,27 @@ static void v9938_sprite_mode2 (int line, UINT8 *col)
 				if (vdp.sprite_limit) break;
 				}
 
+			n = line - y; if (vdp.contReg[1] & 1) n /= 2;
+			/* get colour */
+			c = v9938_vram_read (colourtbl + (((p&colourmask)*16) + n));
+
+			/* don't draw all sprite with CC set before any sprites 
+               with CC = 0 are seen on this line */
+			if (c & 0x40)
+				{
+				if (!first_cc_seen)
+					goto skip_first_cc_set;
+				}
+			else
+				first_cc_seen = 1;
+
 			/* get pattern */
 			pattern = v9938_vram_read (attrtbl + 2);
 			if (vdp.contReg[1] & 2)
 				pattern &= 0xfc;
-			n = line - y; if (vdp.contReg[1] & 1) n /= 2;
 			patternptr = patterntbl + pattern * 8 + n;
 			pattern = (v9938_vram_read (patternptr) << 8) |
 				v9938_vram_read (patternptr + 16);
-
-			/* get colour */
-			c = v9938_vram_read (colourtbl + (((p&colourmask)*16) + n));
 
 			/* get x */
 			x = v9938_vram_read (attrtbl + 1);
@@ -884,22 +891,39 @@ static void v9938_sprite_mode2 (int line, UINT8 *col)
 					{
 					if ( (x >= 0) && (x < 256) )
 						{
-						if ( (pattern & 0x8000) && 
-							( (c & 0x40) ? 
-								/* CC = 1 */ (col[x] & 0x30) == 0x20 : 
-								/* CC = 0 */ (col[x] & 0xa0) != 0xa0) )
+						if ( (pattern & 0x8000) && !(col[x] & 0x10) )
 							{
-							col[x] |= c & 15;
-							if ( (c & 15) || (vdp.contReg[8] & 0x20) ) col[x] |= 0x40;
+							if ( (c & 15) || (vdp.contReg[8] & 0x20) ) 
+								{
+								if ( !(c & 0x40) )
+									{
+									if (col[x] & 0x20) col[x] |= 0x10;
+									else 
+										col[x] |= 0x20 | (c & 15);
+									}
+								else
+									col[x] |= c & 15;
+
+								col[x] |= 0x80;
+								}
+							}
+						else
+							{
+							if ( !(c & 0x40) && (col[x] & 0x20) )
+								col[x] |= 0x10;
 							}
 
-						if ( !(c & 0x40) )
+						if ( !(c & 0x60) && (pattern & 0x8000) )
 							{
-							if ( (col[x] & 0xa0) == 0xa0)
-								col[x] |= 0x10;
-							col[x] |= 0x20;
+							if (col[x] & 0x40)
+								{
+								/* sprite collision! */
+								if (p2 < 8)
+									vdp.statReg[0] |= 0x20;
+								}
+							else
+								col[x] |= 0x40;
 							}
-						if (col[x] & 0x40) col[x] |= 0x80;
 
 						x++;
 						}
@@ -908,6 +932,7 @@ static void v9938_sprite_mode2 (int line, UINT8 *col)
 				pattern <<= 1;
 				}
 
+skip_first_cc_set:
 			p2++;
 			}
 
@@ -992,8 +1017,8 @@ static const V9938_MODE modes[] = {
 		v9938_graphic5_border_8, v9938_graphic5_border_16,
 		v9938_graphic5_border_8s, v9938_graphic5_border_16s,
 		v9938_sprite_mode2, 
-		v9938_default_draw_sprite_8, v9938_default_draw_sprite_16,
-		v9938_default_draw_sprite_8s, v9938_default_draw_sprite_16s },
+		v9938_graphic5_draw_sprite_8, v9938_graphic5_draw_sprite_16,
+		v9938_graphic5_draw_sprite_8s, v9938_graphic5_draw_sprite_16s },
 	{ 0x14,
 		v9938_mode_graphic6_8, v9938_mode_graphic6_16,
 		v9938_mode_graphic6_8s, v9938_mode_graphic6_16s,
@@ -1050,7 +1075,10 @@ static void v9938_refresh_8 (struct osd_bitmap *bmp, int line)
 	if (vdp.size == RENDER_HIGH)
 		{
 		if (vdp.contReg[9] & 0x08)
+			{
+			vdp.size_now = RENDER_HIGH;
 			ln = bmp->line[line*2+((vdp.statReg[2]>>1)&1)];
+			}
 		else
 			{
 			ln = bmp->line[line*2];
@@ -1106,7 +1134,10 @@ static void v9938_refresh_16 (struct osd_bitmap *bmp, int line)
 	if (vdp.size == RENDER_HIGH)
 		{
 		if (vdp.contReg[9] & 0x08)
+			{
+			vdp.size_now = RENDER_HIGH;
 			ln = (UINT16*)bmp->line[line*2+((vdp.statReg[2]>>1)&1)];
+			}
 		else
 			{
 			ln = (UINT16*)bmp->line[line*2];
@@ -1158,7 +1189,7 @@ static void v9938_refresh_line (struct osd_bitmap *bmp, int line)
 	ind16 = pal_ind16[0];
 	ind256 = pal_ind256[0];
 
-	if ( !(vdp.contReg[8] & 0x20) )
+	if ( !(vdp.contReg[8] & 0x20) && (vdp.mode != V9938_MODE_GRAPHIC5) )
 		{
 		pal_ind16[0] = pal_ind16[(vdp.contReg[7] & 0x0f)];
 		pal_ind256[0] = pal_ind256[vdp.contReg[7]];
@@ -1169,7 +1200,7 @@ static void v9938_refresh_line (struct osd_bitmap *bmp, int line)
 	else
 		v9938_refresh_16 (bmp, line);
 
-	if ( !(vdp.contReg[8] & 0x20) )
+	if ( !(vdp.contReg[8] & 0x20) && (vdp.mode != V9938_MODE_GRAPHIC5) )
 		{
 		pal_ind16[0] = ind16;
 		pal_ind256[0] = ind256;
@@ -1178,21 +1209,7 @@ static void v9938_refresh_line (struct osd_bitmap *bmp, int line)
 
 void v9938_refresh (struct osd_bitmap *bmp, int fullrefresh)
 	{
-	struct rectangle rc;
-
-	if (vdp.size == RENDER_HIGH)
-		copybitmap (bmp, vdp.bmp, 0, 0, 0, 0,
-			&Machine->visible_area, TRANSPARENCY_NONE, 0);
-	else
-		{
-		rc.min_x = 0;
-		rc.max_x = 256 + 16 - 1;
-		rc.min_y = 0;
-		rc.max_y = 212 + 16 - 1;
-
-		copybitmap (bmp, vdp.bmp, 0, 0, 0, 0,
-			&rc, TRANSPARENCY_NONE, 0);
-		}
+	/* already been rendered, since we're using scanline stuff */
 	}
 
 /*
@@ -1300,30 +1317,28 @@ I do not know the behaviour of FV when IE0=0. That is the part that I still
 have to test.
 */
 
-static void v9938_interrupt_bottom (void)
+static void v9938_interrupt_start_vblank (void)
 	{
 #if 0
 	if (keyboard_pressed (KEYCODE_D) )
 		{
-	FILE *fp;
-	int i;
+		FILE *fp;
+		int i;
 
-	fp = fopen ("vram.dmp", "wb");
-	if (fp)
-		{
-		fwrite (vdp.vram, 0x10000, 1, fp);
-		fclose (fp);
-		usrintf_showmessage ("saved");
-		}
+		fp = fopen ("vram.dmp", "wb");
+		if (fp)
+			{
+			fwrite (vdp.vram, 0x10000, 1, fp);
+			fclose (fp);
+			usrintf_showmessage ("saved");
+			}
 
-	for (i=0;i<24;i++) printf ("R#%d = %02x\n", i, vdp.contReg[i]);
+		for (i=0;i<24;i++) printf ("R#%d = %02x\n", i, vdp.contReg[i]);
 		}
 #endif
 
-	/* at every interrupt, vdp switches fields */
+	/* at every frame, vdp switches fields */
 	vdp.statReg[2] = (vdp.statReg[2] & 0xfd) | (~vdp.statReg[2] & 2);
-
-	v9938_update_command ();
 
 	/* color blinking */
 	if (!(vdp.contReg[13] & 0xf0))
@@ -1345,8 +1360,7 @@ static void v9938_interrupt_bottom (void)
 			}
 		}
 
-	//printf ("vdp.size = %d, vdp.size_now = %d, vdp.size_old = %d\n", vdp.size, vdp.size_now, vdp.size_old);
-
+	/* check screen rendering size */
 	if (vdp.size_auto && (vdp.size_now >= 0) && (vdp.size != vdp.size_now) )
 		vdp.size = vdp.size_now;
 
@@ -1366,31 +1380,26 @@ static void v9938_interrupt_bottom (void)
 int v9938_interrupt (void)
 	{
 	UINT8 col[256];
-	int scanline, max;
+	int scanline, max, pal, scanline_start;
 
-	if (vdp.scanline == vdp.offset_y)
+	v9938_update_command ();
+
+	pal = vdp.contReg[9] & 2;
+	if (pal) scanline_start = 53; else scanline_start = 26;
+
+	/* set flags */
+	if (vdp.scanline == (vdp.offset_y + scanline_start) )
 		{
 		vdp.statReg[2] &= ~0x40;
 		}
-	else if (vdp.scanline == (vdp.offset_y + vdp.visible_y) )
+	else if (vdp.scanline == (vdp.offset_y + vdp.visible_y + scanline_start) )
 		{
 		vdp.statReg[2] |= 0x40;
 		vdp.statReg[0] |= 0x80;
 		}
-	if (vdp.scanline < (212 + 16) )
-		{
-		if (osd_skip_this_frame () )
-			{
-			if ( !(vdp.statReg[2] & 0x40) && (modes[vdp.mode].sprites) )
-				modes[vdp.mode].sprites ((vdp.scanline - vdp.offset_y) & 255, col);
-			}
-		else
-			{
-			v9938_refresh_line (vdp.bmp, vdp.scanline);
-			}
-		}
-	max = (vdp.contReg[9] & 2) ? 255 : (vdp.contReg[9] & 0x80) ? 234 : 244;
-	scanline = (vdp.scanline - vdp.offset_y);
+
+	max = (pal) ? 255 : (vdp.contReg[9] & 0x80) ? 234 : 244;
+	scanline = (vdp.scanline - scanline_start - vdp.offset_y);
 	if ( (scanline >= 0) && (scanline <= max) &&
 	   ( ( (scanline + vdp.contReg[23]) & 255) == vdp.contReg[19]) )
 		{
@@ -1400,14 +1409,32 @@ int v9938_interrupt (void)
 	else
 		if ( !(vdp.contReg[0] & 0x10) ) vdp.statReg[1] &= 0xfe;
 
-	if (vdp.scanline == (212 + 32) ) /* check this!! */
-		v9938_interrupt_bottom ();
+	v9938_check_int ();
+
+	/* check for start of vblank */
+	if ((pal && (vdp.scanline == 310)) ||
+		(!pal && (vdp.scanline == 259)))
+		v9938_interrupt_start_vblank ();
+
+	/* render the current line */
+	if ((vdp.scanline >= scanline_start) && (vdp.scanline < (212 + 16 + scanline_start)))
+		{
+		scanline = (vdp.scanline - scanline_start) & 255;
+
+		if (osd_skip_this_frame () )
+			{
+			if ( !(vdp.statReg[2] & 0x40) && (modes[vdp.mode].sprites) )
+				modes[vdp.mode].sprites ( (scanline - vdp.offset_y) & 255, col);
+			}
+		else
+			{
+			v9938_refresh_line (Machine->scrbitmap, scanline);
+			}
+		}
 
 	max = (vdp.contReg[9] & 2) ? 313 : 262;
 	if (++vdp.scanline == max)
 		vdp.scanline = 0;
-
-	v9938_check_int ();
 
 	return vdp.INT;
 	}
@@ -2446,12 +2473,12 @@ static void v9938_update_command (void)
 {
   if(VdpOpsCnt<=0)
   {
-    VdpOpsCnt+=12500*60;
+    VdpOpsCnt+=13662;
     if(VdpEngine&&(VdpOpsCnt>0)) VdpEngine();
   }
   else
   {
-    VdpOpsCnt=12500*60;
+    VdpOpsCnt=13662;
     if(VdpEngine) VdpEngine();
   }
 }

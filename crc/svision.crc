@@ -1,0 +1,74 @@
+# watara supervision
+[SVISION]
+10dcc110 = Cryst Ball | 199? | Travell Mate
+#SV10001         Blockbuster
+#SV10002         Hash Blocks
+#SV10004         Carrier
+#SV10005         Eagle Plan
+#SV10006         P52 Sea Battle
+6f8abaf9 = Linear Racing | 199? | Travell Mate | SV10007
+#SV10008         PacBoy & Mouse
+#SV10009         Sssnake
+8dbb2c53 = Alien | | | SV10010
+25ddd6e1 = Hero Kid | | | SV10011
+#SV10012         MahJongg
+#SV10013         Challenger Tank
+#SV10014         Police Bust
+#SV10015         Tennis Pro `92
+#SV10016         Chimera
+#SV10017         Space Fighter
+#SV10018         Honey Bee
+#SV10019         Olympic Trails
+#SV10020         Matta Blatta
+cef3f295 = Grand Prix | 199? | Bon Treasure | SV10021 | noise
+#SV10022         Super Block
+#SV10023         Brain Power
+#SV10024         2 in 1 (Eagle Plan & Hash Blocks)
+aa4372d4 = Jaguar Bomber | 1992 | Bon Treasure | SV10025
+#SV10026         TASAC 2010
+#SV10027         Happy Race
+#SV10028         Super Pang
+#SV10029         Galactic Crusader
+#SV10030         Dancing Blocks
+#SV10031         Final Combat
+#SV10032         Penguin Hideout
+7e05d84f = Block Buster & Cross High | | | SV10033
+#SV10034         Soccer Champion
+#SV10035         Happy Pair
+#SV10036         John Adventure
+#SV10037         PaPo Team
+#SV10038         Chinese Checkers
+#SV10039         Magincross
+32ccdf89 = Delta Hero | 1992 | Bon Treasure | SV10040
+#SV10041         Recycle Design
+#SV10042         Super Kong
+#SV10043         Juggler
+
+#hash block, jacky lucky, challenger tank, brain power
+#b52 battle
+#balloon fight
+#bubble world
+#classic casino
+#climber
+#dream world
+#earth defender
+917cab48 = fatalcraft | 1992 | Bon Treasure
+#galaxy fighter
+#hero hawk
+#money bee
+#jade legend
+#kabi island
+#kitchen war
+#pacific battle
+#pyramid
+#scaffolder
+#sonny xpress
+#thunder shooting
+#treasure hunter
+#untouchable
+#usa sea battle
+#witty kitty
+
+#[baddump]
+62f39f8b = Delta Hero (bad dump)
+

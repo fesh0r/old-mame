@@ -1,0 +1,269 @@
+<html>
+<head>
+<title>Info for c128</title>
+</head>
+<body>
+<table width=100%>
+<tr>
+<td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
+<td><h1>Info for c128</h1></td>
+</tr>
+</table>
+<hr>
+commodore c128<br>
+--------------<br>
+Sequel of to the c64.<br>
+Description<br>
+-----------<br>
+hardware emulation mode for c64<br>
+ displayed over din/tv connector only<br>
+ c64 cartridges<br>
+ c64 userport<br>
+ only the c64 standard keys available<br>
+country support (keyboard, character rom, kernel (keyboard polling))<br>
+ character rom german<br>
+ character rom french, belgium, italian<br>
+ editor, kernel for german<br>
+ editor, kernel for swedish<br>
+ editor, kernel for finish<br>
+ editor, kernel for norwegian<br>
+ editor, kernel for french<br>
+ editor, kernel for italian<br>
+enhanced keyboard<br>
+m8502 processor (additional port pin)<br>
+additional vdc videochip for 80 column modes with own connector (rgbi)<br>
+ 16k byte ram for this chip<br>
+128 kbyte ram, 64 kbyte rom, 8k byte charrom, 2k byte static colorram<br>
+ (1 mbyte ram possible)<br>
+sid6581 soundchip<br>
+c64 expansion port with some additional pins<br>
+z80 cpu for CPM mode<br>
+c128d<br>
+-----<br>
+ c1571 floppy drive build in<br>
+ 64kb vdc ram<br>
+ sid8580 sound chip<br>
+c128cr/c128dcr<br>
+--------------<br>
+ cost reduced<br>
+ only modified for cheaper production (newer rams, ...)<br>
+MESS emulation state<br>
+--------------------<br>
+uses c64 emulation for c64 mode<br>
+so only notes for the additional subsystems here<br>
+rasterline based video system<br>
+ no cpu holding<br>
+ imperfect scrolling support (when 40 columns or 25 lines)<br>
+ lightpen support not finished<br>
+ rasterline not finished<br>
+vdc emulation<br>
+ dirtybuffered video system<br>
+ text mode<br>
+  only standard 8x8 characters supported<br>
+ graphic mode not tested<br>
+ lightpen not supported<br>
+ scrolling not supported<br>
+z80 emulation<br>
+ floppy simulation not enough for booting CPM<br>
+ so simplified z80 memory management not tested<br>
+no cpu clock doubling<br>
+no internal function rom<br>
+c64 mode<br>
+ differences to real c64???<br>
+no sound<br>
+cia6526's look in machine/cia6526.c<br>
+keyboard<br>
+gameport a<br>
+ paddles 1,2<br>
+ joystick 1<br>
+ 2 button joystick/mouse joystick emulation<br>
+ no mouse<br>
+ lightpen (not finished)<br>
+gameport b<br>
+ paddles 3,4<br>
+ joystick 2<br>
+ 2 button joystick/mouse joystick emulation<br>
+ no mouse<br>
+simple tape support<br>
+ (not working, cia timing, cpu timing?)<br>
+serial bus<br>
+ simple disk drives<br>
+ no printer or other devices<br>
+expansion modules<br>
+ no c128 modules<br>
+expansion modules c64<br>
+ rom cartridges (exrom)<br>
+ ultimax rom cartridges (game)<br>
+ c64 cartridges (only standard rom cartridges)<br>
+ no other rom cartridges (bankswitching logic in it, switching exrom, game)<br>
+ no ieee488 support<br>
+ no cpm cartridge<br>
+ no speech cartridge (no circuit diagram found)<br>
+ no fm sound cartridge<br>
+ no other expansion modules<br>
+no userport<br>
+ no rs232/v.24 interface<br>
+Video notes<br>
+-----------<br>
+if the game runs to fast with the ntsc version, try the pal version!<br>
+flickering affects in one video version, try the other video version<br>
+Keys<br>
+----<br>
+Some PC-Keyboards does not behave well when special two or more keys are<br>
+pressed at the same time<br>
+(with my keyboard printscreen clears the pressed pause key!)<br>
+shift-cbm switches between upper-only and normal character set<br>
+(when wrong characters on screen this can help)<br>
+run (shift-stop) loads pogram from type and starts it<br>
+esc-x switch between two videosystems<br>
+additional keys (to c64) are in c64mode not useable<br>
+Lightpen<br>
+--------<br>
+Paddle 5 x-axe<br>
+Paddle 6 y-axe<br>
+Tape<br>
+----<br>
+(DAC 1 volume in noise volume)<br>
+loading of wav, prg and prg files in zip archiv<br>
+commandline -cassette image<br>
+<p><b>wav:</b><br>
+ 8 or 16(not tested) bit, mono, 125000 Hz minimum<br>
+ has the same problems like an original tape drive (tone head must<br>
+ be adjusted to get working(no load error,...) wav-files)<br>
+<p><b>zip:</b><br>
+ must be placed in current directory<br>
+ prg's are played in the order of the files in zip file<br>
+use LOAD or LOAD"" or LOAD"",1 for loading of normal programs<br>
+use LOAD"",1,1 for loading programs to their special address<br>
+several programs relies on more features<br>
+(loading other file types, writing, ...)<br>
+Discs<br>
+-----<br>
+only file load from drive 8 and 9 implemented<br>
+ loads file from rom directory (*.prg,*.p00) (must NOT be specified on commandline)<br>
+ or file from d64 image (here also directory LOAD"$",8 supported)<br>
+use LOAD"filename",8<br>
+or LOAD"filename",8,1 (for loading machine language programs at their address)<br>
+for loading<br>
+type RUN or the appropriate sys call to start them<br>
+several programs rely on more features<br>
+(loading other file types, writing, ...)<br>
+most games rely on starting own programs in the floppy drive<br>
+(and therefor cpu level emulation is needed)<br>
+Roms<br>
+----<br>
+.prg<br>
+.crt<br>
+.80 .90 .a0 .b0 .e0 .f0<br>
+files with boot-sign in it<br>
+  recogniced as roms<br>
+.prg files loaded at address in its first two bytes<br>
+.?0 files to address specified in extension<br>
+.crt roms to addresses in crt file<br>
+Quickloader<br>
+-----------<br>
+.prg and .p00 files supported<br>
+loads program into memory and sets program end pointer<br>
+(works with most programs)<br>
+program ready to get started with RUN<br>
+loads first rom when you press quickload key (numeric slash)<br>
+c64 mode<br>
+--------<br>
+hold down commodore key while reseting or turning on<br>
+type go64 at the c128 command mode<br>
+cpm mode<br>
+--------<br>
+cpm disk must be inserted in device 8<br>
+turn on computer<br>
+or<br>
+type boot at the c128 command mode<br>
+when problems start with -log and look into error.log file<br>
+rom dumping<br>
+-----------<br>
+<p><b>Dumping of the roms from the running machine:</b><br>
+in the monitor program<br>
+s "drive:name",device,start,end<br>
+s "0:basic",8,f4000,fc000<br>
+s "0:editor",8,fc000,fd000<br>
+s "0:kernel",8,ee000,f0000<br>
+s "0:char128",8,ed000,ee000<br>
+*z80bios missing (funet says only 1 version!?)<br>
+I don't know, maybe there is a cpm utility allowing saving<br>
+the memory area 0-0xfff of bank 0.<br>
+(I don't want to develope (and cant test) this short complicated<br>
+program)<br>
+*c64basic and kernel (only 1 version!?)<br>
+in c64 mode<br>
+poke43,0:poke44,160:poke45,0:poke46,192:save"0:basic64",8<br>
+in c64 mode<br>
+for i=0 to 8191:poke 32*256+i, peek(224*256+i): next<br>
+poke43,0:poke44,32:poke45,0:poke46,64:save"0:kernel64",8<br>
+*c64 charset (swedish version or original c64 version)<br>
+in c128 mode<br>
+monitor<br>
+a 2000 sei<br>
+lda #33<br>
+sta 1<br>
+ldy #0<br>
+sty fa<br>
+sty fc<br>
+lda #c0<br>
+sta fd<br>
+lda #d0<br>
+sta fb<br>
+ldx #10<br>
+lda (fa),y<br>
+sta (fc),y<br>
+iny<br>
+bne 2015<br>
+inc fb<br>
+inc fd<br>
+dex<br>
+bne 2015<br>
+lda #37<br>
+sta 1<br>
+cli<br>
+rts<br>
+(additional enter to end assembler input)<br>
+x (to leave monitor)<br>
+go64 (answer with y)<br>
+sys 32*256<br>
+poke 43,0:poke44,192:poke45,0:poke46,208:save"0:char64",8<br>
+or in c64 mode<br>
+load the program in the attachment<br>
+load"savechar64",8,1<br>
+sys 32*256<br>
+poke 43,0:poke44,192:poke45,0:poke46,208:save"0:char64",8<br>
+<p><b>c128d floppy disk bios:</b><br>
+I think you have to download a program<br>
+copying the bios to puffers.<br>
+Then you could read this buffer into the computer, or write<br>
+these buffers to disk.<br>
+<p><b>Transportation to your pc:</b><br>
+1571 writing to mfm encoded disketts (in cpm mode only, or use program)<br>
+ maybe the IBM CPM-86 formats are like the standard DOS formats.<br>
+ but using dd may create images known by some other emulators.<br>
+<p><b>1581 writes mfm encoded:</b><br>
+ can one of these drives to a format know by linux?<br>
+Some years ago I build a simple adapter pc/parport to vc1541<br>
+ floppy disk drive.<br>
+Dumping roms with epromer<br>
+-------------------------<br>
+c128<br>
+U18       (read compatible 2764?) 8kB c64 character rom, c128 character rom<br>
+U32 23128 (read compatible 27128?) 16kB c64 Basic, c64 Kernel<br>
+U33 23128 (read compatible 27128?) 16kB c128 Basic at 0x4000<br>
+U34 23128 (read compatible 27128?) 16kB c128 Basic at 0x8000<br>
+U35 23128 (read compatible 27128?) 16kB c128 Editor, Z80Bios, C128 Kernel<br>
+c128 cost reduced<br>
+U18       (read compatible 2764?) 8kB c64 character rom, c128 character rom<br>
+U32 23256 (read compatible 27256?) 32kB c64 Basic, c64 Kernel, c128 Editor, Z80Bios, C128 Kernel<br>
+U34 23256 (read compatible 27256?) 32kB C128 Basic<br>
+c128dcr<br>
+as c128 cr<br>
+U102 23256 (read compatible 27256?) 32kB 1571 system rom<br>
+<hr>
+<center><font size=-2>created on Thu Aug 16 22:55:01 2001
+</font></center>
+</body>
+</html>

@@ -1,0 +1,52 @@
+[ARCADIA]
+ca58b3f8 = brain_quiz (mind breaker,maxit,hangman) | | | c001 |
+e84df2ef = crazy_gobbler | | | c002 |
+e3794a2c = space_attack | | | c003 |
+4671b7f7 = robot_killer | | | c004 |
+08d8b186 = super_gobbler | | | c005 |
+7666a712 = space_vultures | | | c006 |
+33c348c1 = breakaway | | | c007 | 55s instead of 60 too slow
+1f65b21e = alien_invaders | | | c008 |
+3ff224e5 = space_mission | | | c009 |
+# ?tanks a lot
+f3c08e19 = 3d_bowling | | | c011 |
+aeb803e4 = capture | | | c012 | timer too fast
+b0b98a92 = soccer | | | c013 | hanging sound
+0076422e = tanks_a_lot | | | c014 |
+fc7eba76 = escape | | | c015 |
+a615f068 = missile_war | | | c016 |
+fd2cf496 = cat_trax | | | c017 |
+88defacf = space_raiders | | | c018 |
+dfb5dd55 = jungler | | | c019 |
+caa5f449 = space_squadron | | | c020 |
+# ???
+8bf2dfa9 = grand_slam_tennis | | | c022 |
+77c19320 = funky_fish | | | c023 |
+4f19fd9b = pleiades | 1983 | UA | c024 |
+f9d9ec5b = spiders | | | c025 | rasterline effect
+06a86f4a = red_clash | | | c026 |
+e66f362d = the_end | | | c027 | rasterline effect
+df0bf3fb = astro_invaders | | | c028 | rasterline effect
+306e39c1 = turtles | | | c029 |
+97060a54 = jumpbug | | | c030 |
+a0626e23 = r2d_tank | | | c031 |
+1cec4b21 = hobo | | | c032 | controls??, rasterline effect
+4da68df8 = 3d_soccer | | | c033 |
+1b5be22a = 3d_soccer set 2| | | c033 |
+
+a23c7a01 = golf | | | |
+e93938f6 = basketball | | | |
+83e6e40b = star_chess | | | | how to play?
+1cf08155 = 2001_baseball | | | | how to play?
+449e80cb = ocean_battle | | | | how to play?
+28ad5bcf = autorace | | | |
+82d049d7 = combat | | | |
+76e773fa = crazy_climber | | | |
+22624414 = football | | | | sound
+8169864e = route16 | | | |
+
+#[baddumps]
+8c0c456e = soccer | | | c013 | overdumped, remove last 4kbyte
+dd1facab = super_gobbler | | | c005 | overdumped, remove last 4kbyte
+cca7a60b= golf 0000| | | | 1st of 2 parts, merge with golf 4000
+a70ee568= golf 4000| | | | 2nd of 2 parts, merge with golf 0000

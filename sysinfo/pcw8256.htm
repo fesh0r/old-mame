@@ -1,0 +1,45 @@
+<html>
+<head>
+<title>Info for pcw8256</title>
+</head>
+<body>
+<table width=100%>
+<tr>
+<td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
+<td><h1>Info for pcw8256</h1></td>
+</tr>
+</table>
+<hr>
+<h4>Amstrad PCW8256/8512/9512/9512+/10</h4>
+----------------------------------<br>
+These machines were designed primiarly for wordprocessing (hence the name<br>
+"Personal Computer Wordprocessor"), but are capable of a lot more.<br>
+The original PCW8256 system had a green screen monitor, with 2 3" disc<br>
+drives mounted vertically in it, a keyboard and a special printer. (The CPU and other <br>
+hardware was also contained in the base of the monitor)<br>
+Later models changed the case design, but also allowed the use of any printer that <br>
+was available. (The original 8256 had a proprietry printer and interface).<br>
+The hardware is simple, a Z80 running at 4Mhz, slowed to 3.3 with wait states, an Amstrad <br>
+ASIC custom chip for driving the display (2 colours, 720x256 in PAL, 720x200 in NTSC), a <br>
+beep for sound, and a NEC765 floppy disc controller.<br>
+The boot-program is contained on the printer chip, and is enabled at power-on or reset. <br>
+The data is passed through a Amstrad custom ASIC chip, and is executed by the Z80. The <br>
+program is simple, and just loads track 0, side 0,sector &01 to &f000 where it is then <br>
+executed at &f010. (The first 16 bytes appear to contain some format parameters which <br>
+are used to initialise CPM). I don't own a PCW machine so I don't know the exact display <br>
+that the PCW shows on boot-up.<br>
+AFAIK, no dumps are available for this program. The MESS driver uses a program coded by <br>
+myself. This program waits for a key to be pressed and then starts the boot procedure. If <br>
+an error occurs, the screen will flash 6 times, and then it will repeat the procedure. If <br>
+all is well, you will see some lines appear on the screen, and the boot will continue.<br>
+The original computer came with CP/M and Locoscript (a special wordprocessor).<br>
+Since it was able to use CP/M there was a lot of public domain and CP/M programs available <br>
+that would run on it.<br>
+A few games were written for it, two of these are "Head Over Heels" and "Hitchhikers Guide <br>
+to the Galaxy".<br>
+THIS SYSTEM REQUIRES A BOOT DISK TO RUN!<br>
+<hr>
+<center><font size=-2>created on Thu Aug 16 22:55:01 2001
+</font></center>
+</body>
+</html>

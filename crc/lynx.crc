@@ -1,0 +1,201 @@
+# This MESS CRC file is based on a generated one from Cowering's Good databases
+# crc= Game Name | Year | Manufacturer | Emulation Status | MESS keywords
+
+# MESS keywords
+# ROTATE90DEGREE rotate display and pad 90 degree clockwise
+# ROTATE270DEGREE 
+
+# redumps needed T-RES, TETRIS
+
+[Lynx]
+540e9bb7= Alien Vs Predator (Prototype) [!] | 1993 | | speed
+f6fb48fb= APB - All Points Bulletin | 1990 | | 
+0483cd2a= Awesome Golf | 1991 | | rasterline, hanging
+033d5225= Baseball Heroes | 1991 | | hanging 
+4161bb4a= Basketbrawl | 1992 | | speed
+277f82c2= Batman Returns | 1992 | | 
+779faece= Battle Wheels | 1993 | | speed
+30fee726= Battlezone 2000 | 1996 | | speed
+143a313e= Bill & Ted's Excellent Adventure | 1991 | | 
+3cd75df3= Block Out | 1990 | | 
+daf587b1= Blue Lightning | 1989 | | 
+bfe36525= Blue Lightning Demo | 1989 | | street graphics
+333daece= Bubble Trouble | 1997 | | line glitch
+a08f0b59= California Games | 1991 | graphics | speed
+97501709= Centipede (beta) | 198x | | | ROTATE270DEGREE
+19c5a7a5= Checkered Flag | 1991 | | speed
+6a5f53ed= Chip's Challenge | 1989 | | 
+b02821fa= Conquest of Zow | 1996 | | speed
+aec474c8= Crystal Mines II | 1990 | | 
+b9ac1fe5= Desert Strike - Return to the Gulf | 1993 | | line glitches
+2f54810d= Digidemo (PD) | 199x | | not working
+a8e505e5= Digidemo 2 (PD) | 199x | | not working
+50386cfa= Dinolympics | 1992 | | timer too fast
+d565fbb7= Dirty Larry - Renegade Cop | 1992 | | 
+fbfc0f05= Double Dragon | 1993 | | hanging
+33bb74c7= Dracula - The Undead | 1991 | | hanging
+5598a4c9= Dragnet | 1995 | | ???
+bd97116b= Electrocop | 1989 | | graphics 
+f83397f9= European Soccer Challenge | 1993 | | hanging
+6bceaa9c= Eye of the Beholder (beta1) | 1990 | | speed 
+9034ee27= Fat Bobby | 1997 | | 
+7e4b5945= Fidelity Ultimate Chess Challenge | 1991 | | 
+494cc568= Gates of Zendocon, The | 1989 | | graphics, sound
+7f0ec7ad= Gauntlet - The Third Encounter | 1990 | | graphics, line glitch, speed | ROTATE90DEGREE
+d20a85fc= Gordo 106 - The Mutated Lab Monkey | 1993 | | 
+6df63834= Hard Drivin' | 1993 | | graphics
+e8b45707= Hockey | 1992 | | speed
+e3041c6c= Hydra | 1992 | | graphics
+#hyperdrome
+5cf8bbf0= Ishido - The Way of the Stones | 1991 | | 
+2455b6cf= Jimmy Conners Tennis | 1991 | | speed
+5dba792a= Joust | 1993 | | hanging
+a53649f1= Klax | 1990 | | hanging | ROTATE90DEGREE
+bed5ba2b= Krazy Ace - Minature Golf | 1997 | | 
+cd1bd405= Kung Food | 1992 | | 
+39b9b8cc= Lemmings | 1993 | | sound
+0271b6e9= Lexis | 1999 | | | ROTATE270DEGREE
+b1c25ef1= Loopz (beta) | 1992 | | 
+1091a268= Lynx Casino | 1992 | | hanging
+28ada019= Lynx Diagnostic Cart V0.02 | 1989 | | 
+aba6da3d= Malibu Bikini Volleyball | 1993 | | speed
+323af126= Marble Madness 0.999 (PD)| | Matthias Domin |
+c3fa0d4d= Marlboro Go! (beta) | 1993 | |
+7de3783a= Ms. Pac-Man | 1990 | | 
+006fd398= NFL Football | 1990 | | hanging | ROTATE270DEGREE
+22d47d51= Ninja Gaiden | 1990 | | 
+f3e3f811= Ninja Gaiden III - The Ancient Ship of Doom | 1993 | | 
+#othello
+aa50dd22= Pac-Land | 1991 | | 
+4cdfbd57= Paperboy | 1990 | | 
+14d38ca7= Pinball Jam | 1992 | | 
+2393135f= Pit Fighter - The Ultimate Competition | 1992 | | speed
+99c42034= Power Factor | 1992 | | 
+f6f43c87= Puzzler 2000 | 1998 | | | ROTATE270DEGREE
+b9881423= Qix | 1991 | | 
+bcd10c3a= Raiden | 1997 | | hanging | ROTATE270DEGREE
+b10b7c8e= Rampage | 1991 | | hanging
+139f301d= Rampart | 1991 | | hanging
+69959a3b= Road Riot 4WD (beta) | 1994 | | speed
+6867e80c= RoadBlasters | 1990 | | 
+d1dff2b2= Robo-Squash | 1990 | | speed
+7a6049b5= Robotron 2084 | 1991 | | 
+67e5bdba= Rygar - Legendary Warrior | 1990 | | 
+8595c40b= S.T.U.N. Runner | 1991 | | 
+be166f3b= Scrapyard Dog | 1991 | | hanging
+eb78baa3= Shadow of the Beast | 1992 | | 
+192bcd04= Shanghai | 1990 | | hanging
+#simis
+#sokomania
+5b2308ed= Steel Talons | 1991 | | graphics
+2da7e2a8= Super Asteroids & Missile Command | 1995 | | invisible sprites in mc
+690caeb0= Super Off-Road | 1996 | | speed
+dfa61571= Super Skweek | 1991 | | hanging
+13657705= Switchblade II | 1992 | | hanging
+ae267e29= Todd's Adventure in Slime World | 1990 | | hanging
+156a4a4c= Toki | 1990 | | too fast?
+0590a9e3= Tournament Cyberball 2072 | 1991 | | hanging
+a4b924d6= Turbo Sub | 1991 | | speed
+8d56828b= Viking Child | 1991 | | 
+b946ba49= Warbirds | 1990 | | hanging
+91233794= World Class Soccer | 1992 | | speed
+9bed736d= Xenophobe [a1] | 1990 | |
+b5406a9a= Xenophobe | 1990 | | hanging
+89e2a595= Xybots | 1991 | | speed
+cb27199d= Zarlor Mercenary | 1990 | | hanging
+
+#objects
+3469d418= loderunner.o
+58d0fcfb= pong5.o | | | BS96 id, xhandy expects BS93
+8350df4d= Snakebyte.o (PD) | | | hanging
+2708643d= t_tris.o | | | hanging
+a261fcbc= t_tris_set2.o | | | hanging
+
+#overdumped
+d0ee9038= Basketbrawl | 1992 | | 
+46729ae6= Battle Wheels [o1] | 1993 | | 
+1ac56ac4= Block Out [o1] | 1990 | | 
+2eaa9bfd= Blue Lightning | 1989 | | 
+30becfcf= Blue Lightning Demo [o1] | 1989 | | 
+fe50b5d0= California Games [o1] | 1991 | | 
+0785c9f2= Chip's Challenge [o1] | 1989 | | 
+a1973918= Crystal Mines II [o1] | 1990 | | 
+44ee8069= Electrocop [o1] | 1989 | | 
+49d2eb22= European Soccer Challenge [o1] | 1993 | | 
+b8f9be69= Fidelity Ultimate Chess Challenge [o1] | 1991 | | 
+d0514175= Gates of Zendocon, The [o1] | 1989 | | 
+ac564baa= Gauntlet - The Third Encounter [o1] | 1990 | | 
+6dcc5c79= Hard Drivin' [o1] | 1993 | | 
+d80e7d52= Ishido - The Way of the Stones [o1] | 1991 | | 
+f4ae42a1= Joust [o1] | 1993 | | 
+34f4b5ab= Ms. Pac-Man [o1] | 1990 | | 
+769d9ed0= Pac-Land [o1] | 1991 | | 
+c32dff68= Paperboy [o1] | 1990 | | 
+9b5c4627= Qix [o1] | 1991 | | 
+d8569327= Robo-Squash [o1] | 1990 | | 
+6439a8ee= Shanghai [o1] | 1990 | | 
+5a5e86cc= Super Asteroids & Missile Command [o1] | 1995 | | 
+02153c28= Todd's Adventure in Slime World [o1] | 1990 | | 
+3450ab05= Warbirds [o1] | 1990 | | 
+45edb4d7= Xenophobe alt [o1] | 1990 | | 
+e0a1eea3= Xenophobe [o1]| 1990 | | 
+577eb5ae= Zarlor Mercenary [o1] | 1990 | | 
+
+# bad dumps
+dfe41168= APB - All Points Bulletin | 1990 | | Known Bad Dump
+f8d32d28= Awesome Golf | 1991 | | Known Bad Dump
+ac082945= Baseball Heroes | 1991 | | Known Bad Dump
+f4348e05= Basketbrawl | 1992 | | Known Bad Dump
+b331e8ec= Batman Returns | 1992 | | Known Bad Dump
+dc1719c4= Bill & Ted's Excellent Adventure | 1991 | | Known Bad Dump
+1d9d8a5c= Checkered Flag | 1991 | | Known Bad Dump
+0120eac4= Desert Strike - Return to the Gulf | 1993 | | Known Bad Dump
+ea6c6d7b= Dinolympics | 1992 | | Known Bad Dump
+7b641963= Dirty Larry - Renegade Cop | 1992 | | Known Bad Dump
+c18169f7= Double Dragon | 1993 | | Known Bad Dump
+761ccd17= Dracula - The Undead | 1991 | | Known Bad Dump
+eabd3210= Gordo 106 - The Mutated Lab Monkey | 1993 | | Known Bad Dump
+6d778383= Gordo 106 - The Mutated Lab Monkey | 1993 | | Known Bad Dump
+a96b08ba= Hockey | 1992 | | Known Bad Dump
+04eec3d9= Hydra | 1992 | | Known Bad Dump
+bc3b9bb7= Jimmy Conners Tennis | 1991 | | Known Bad Dump
+fb562789= Jimmy Conners Tennis | 1991 | | Known Bad Dump, no lynx file
+03af03c6= Jimmy Conners Tennis | 1991 | | Known Bad Dump
+eebadbe6= Klax | 1990 | | Known Bad Dump
+967ca345= Krazy Ace - Minature Golf | 1997 | | Known Bad Dump
+fb562789= Krazy Ace - Minature Golf | 1997 | | Known Bad Dump
+542659fd= Kung Food | 1992 | | Known Bad Dump
+30f010ab= Lemmings | 1993 | | Known Bad Dump
+cfd6e1c8= Lynx Casino | 1992 | | Known Bad Dump
+9bae6929= Malibu Bikini Volleyball | 1993 | | Known Bad Dump
+685375cf= NFL Football | 1990 | | Known Bad Dump
+e54b48ba= Ninja Gaiden | 1990 | | Known Bad Dump
+995f1eb3= Ninja Gaiden III - The Ancient Ship of Doom | 1993 | | Known Bad Dump
+a955faef= Ninja Gaiden III - The Ancient Ship of Doom | 1993 | | Known Bad Dump
+81da358f= Pinball Jam | 1992 | | Known Bad Dump
+6da7cc00= Pit Fighter - The Ultimate Competition | 1992 | | Known Bad Dump
+147fa7de= Power Factor | 1992 | | Known Bad Dump
+7f139864= Rampage | 1991 | | Known Bad Dump
+926a6f25= Rampart | 1991 | | Known Bad Dump
+1e9c3cd1= RoadBlasters | 1990 | | Known Bad Dump
+abcf7789= Rygar - Legendary Warrior | 1990 | | Known Bad Dump
+0cda1f28= S.T.U.N. Runner | 1991 | | Known Bad Dump
+3a215bf0= Scrapyard Dog | 1991 | | Known Bad Dump
+360a1ce9= Shadow of the Beast | 1992 | | Known Bad Dump
+4e22275f= Steel Talons | 1991 | | Known Bad Dump
+982cca4f= Super Skweek | 1991 | | Known Bad Dump
+5e4df4e4= Switchblade II | 1992 | | Known Bad Dump
+ec5bbc61= T-RES (title unknown) | 199x | | Known Bad Dump
+3ca0ed33= Tetris | 1996 | | Known Bad Dump
+372d8895= Tetris | 1996 | | Known Bad Dump
+663c01f2= Tetris | 1996 | | Known Bad Dump
+c72fa98b= Toki | 1990 | | Known Bad Dump
+e7b83517= Tournament Cyberball 2072 | 1991 | | Known Bad Dump
+6b6d9d30= Turbo Sub | 1991 | | Known Bad Dump
+39732e90= Viking Child | 1991 | | Known Bad Dump
+bc0bdbc3= World Class Soccer | 1992 | | Known Bad Dump
+dfa1293b= World Class Soccer | 1992 | | Known Bad Dump
+e4f262f3= Xybots | 1991 | | Known Bad Dump
+1ae6e455= Zarlor Mercenary | 1990 | | Known Bad Dump
+
+

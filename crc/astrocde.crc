@@ -6,32 +6,53 @@
 # Send corrections and submissions to: battlepriest@hotmail.com
 
 [astrocde]
-e4d285e5 = 280ZZZap/Dodgem
-cd57c485 = Amazing Maze/Tic-Tac-Toe
-4f372019 = Artillery Duel
-1a050094 = Astro Battle
-70514687 = Bally Basic
-fb652bac = Bally Pinball
-78d45a11 = BlackJack/Poker/Acey Deucey
+e4d285e5 = 280ZZZap/Dodgem | | | 2001 |
+cd57c485 = Amazing Maze/Tic-Tac-Toe | | | 5001 |
+4f372019 = Artillery Duel | | | 5005 |
+0b5298bc = Astro Battle | | | 2009 |
+70514687 = Astrocade Basic | | | 6004 |
+3f431613 = Bally Pinball | | | 3005 |
+78d45a11 = BlackJack/Poker/Acey Deucey | | | 5002 |
 79fe386b = Blast Droids
-28f9e502 = Brickyard/Clowns
-2a77b3fb = Cosmic Raider
-77bed6ba = Dog Patch
-fc8998a9 = Football
-d75e9672 = Galactic Invasion
-7b3b7b70 = Grand Prix/Demolition Derby
-1395b130 = The Incredible Wizard
-2cf68f93 = Letter Match/Spell 'n Score/Crosswords
+28f9e502 = Brickyard/Clowns | | | 2004 |
+2a77b3fb = Cosmic Raider | | | 2019 |
+77bed6ba = Dog Patch | 2010 |
+fc8998a9 = Football | | | 3002 |
+d75e9672 = Galaxian
+7b3b7b70 = Grand Prix/Demolition Derby | | | 2014 |
+1395b130 = The Incredible Wizard | | | 2017 |
+2cf68f93 = Letter Match/Spell 'n Score/Crosswords | | | 4002 |
 5393f920 = Machine Language Manager
 e4726657 = Muncher
-a1c7e129 = Red Baron/Panzer Attack
-ee3489ea = SeaWolf/Missile
+a1c7e129 = Red Baron/Panzer Attack | | | 2003 |
+a021735e = SeaWolf/Missile | | | 2002 |
 3e9f4f0d = Sneaky Snake
-519cc707 = Space Fortress
-7d30312a = Elementary Math/Bingo Math
-ce15563b = Star Battle
-5be548cc = Tornado Baseball, Tennis, Hockey and Handball
+519cc707 = Space Fortress | | | 2012 |
+d54a74c8 = Star Battle | | | 2005 |
+7d30312a = Elementary Math/Bingo Math | | | 4001 |
+5be548cc = Tornado Baseball, Tennis, Hockey and Handball | | | 3001 |
 
+14f36aba = coloring_book
+ba558eb7 = galactic_invasion | | | 2011 |
+bc2b6fe3 = icbm_attack
+14e93a41 = ms_candyman
+0bba8261 = muncher_set2
+b5f9663f = muncher_set3
+7b1b206a = pirates_chase | | | 2015 |
+960b6f86 = sea_devil
+52964c1f = space_invaders
+1447f854 = treasure_cove
+a0cba256 = wizard2 | | | | not working
+d15ce025 = solar_conqueror | | | 2018 |
+fc4bd27c = biorhythm | | | 4004 |
 
 #Unconfirmed
-90e276aa = Bally Basic (Alternate?)
+90e276aa = Bally Basic | | | 6002 |
+
+#[baddump]
+1a050094 = Astro Battle | | | | overdumped
+fb652bac = Bally Pinball | | | | overdumped
+ce15563b = Star Battle | | | | overdumped
+ee3489ea = SeaWolf/Missile | | | | overdumped
+
+ebc77f3a = not a cartridge, buildin rom

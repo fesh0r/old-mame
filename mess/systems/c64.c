@@ -1,7 +1,8 @@
 /***************************************************************************
 	commodore c64 home computer
 
-    peter.trauner@jk.uni-linz.ac.at
+	PeT mess@utanet.at
+
     documentation
      www.funet.fi
 ***************************************************************************/
@@ -249,6 +250,7 @@ static MEMORY_WRITE_START( c64_writemem )
 	{0x0002, 0x7fff, MWA_RAM},
 	{0x8000, 0x9fff, MWA_BANK2},
 	{0xa000, 0xcfff, MWA_RAM},
+//	{0xa000, 0xcfff, MWA_BANK16},
 #if 1
 	{0xd000, 0xdfff, MWA_BANK6},
 #else
@@ -649,6 +651,15 @@ ROM_START (sx64)
 	VC1541_ROM (REGION_CPU2)
 ROM_END
 
+ROM_START (dx64)
+	ROM_REGION (0x19400, REGION_CPU1, 0)
+    ROM_LOAD ("901226.01", 0x10000, 0x2000, 0xf833d117)
+    ROM_LOAD( "dx64kern.bin",     0x12000, 0x2000, 0x58065128 )
+    // vc1541 roms were not included in submission
+    VC1541_ROM (REGION_CPU2)
+//    VC1541_ROM (REGION_CPU3)
+ROM_END
+
 ROM_START (vip64)
 	ROM_REGION (0x19400, REGION_CPU1, 0)
 	ROM_LOAD ("901226.01", 0x10000, 0x2000, 0xf833d117)
@@ -1045,10 +1056,8 @@ static struct MachineDriver machine_driver_sx64 =
 static const struct IODevice io_c64[] =
 {
 	IODEVICE_CBM_QUICK,
-	IODEVICE_CBM_ROM("crt\080\0", c64_rom_id),
-#ifdef PET_TEST_CODE
+	IODEVICE_CBM_ROM("crt\080\0"),
 	IODEVICE_VC20TAPE,
-#endif
 	IODEVICE_CBM_DRIVE,
 	{IO_END}
 };
@@ -1056,7 +1065,7 @@ static const struct IODevice io_c64[] =
 static const struct IODevice io_sx64[] =
 {
 	IODEVICE_CBM_QUICK,
-	IODEVICE_CBM_ROM("crt\080\0", c64_rom_id),
+	IODEVICE_CBM_ROM("crt\080\0"),
 	IODEVICE_VC1541,
 	{IO_END}
 };
@@ -1064,16 +1073,14 @@ static const struct IODevice io_sx64[] =
 static const struct IODevice io_ultimax[] =
 {
 	IODEVICE_CBM_QUICK,
-	IODEVICE_CBM_ROM("crt\0e0\0f0\0", c64_rom_id),
-#ifdef PET_TEST_CODE
+	IODEVICE_CBM_ROM("crt\0e0\0f0\0"),
 	IODEVICE_VC20TAPE,
-#endif
 	{IO_END}
 };
 
 static const struct IODevice io_c64gs[] =
 {
-	IODEVICE_CBM_ROM("crt\080\0", c64_rom_id),
+	IODEVICE_CBM_ROM("crt\080\0"),
 	{IO_END}
 };
 
@@ -1088,21 +1095,24 @@ static const struct IODevice io_c64gs[] =
 #define io_max io_ultimax
 #define io_cbm4064 io_c64
 #define io_vip64 io_sx64
+#define io_dx64 io_sx64
 
 #define rom_max rom_ultimax
 #define rom_cbm4064 rom_pet64
 
 /*	  YEAR	NAME		PARENT	MACHINE 		INPUT	INIT	COMPANY 						   FULLNAME */
-COMPX(1982, max,		0,		ultimax,		ultimax,ultimax,"Commodore Business Machines Co.", "Commodore Max (Ultimax/VC10)",      GAME_IMPERFECT_SOUND)
-COMPX(1982, c64,		0,		c64,			c64,	c64,	"Commodore Business Machines Co.", "Commodore 64 (NTSC)",                      GAME_IMPERFECT_SOUND)
-COMPX(1982, cbm4064,	c64,	pet64,			c64,	c64,	"Commodore Business Machines Co.", "CBM4064/PET64/Educator64 (NTSC)", GAME_IMPERFECT_SOUND)
-COMPX(1982, c64pal, 	c64,	c64pal, 		c64,	c64pal, "Commodore Business Machines Co.", "Commodore 64/VC64/VIC64 (PAL)",            GAME_IMPERFECT_SOUND)
-COMPX(1982, vic64s, 	c64,	c64pal, 		vic64s,	c64pal, "Commodore Business Machines Co.", "Commodore 64 Swedish (PAL)",           GAME_IMPERFECT_SOUND)
-CONSX(1987, c64gs,		c64,	c64gs,			c64gs,	c64gs,	"Commodore Business Machines Co.", "C64GS (PAL)",                    GAME_IMPERFECT_SOUND)
+COMP(1982, max,		0,		ultimax,		ultimax,ultimax,"Commodore Business Machines Co.", "Commodore Max (Ultimax/VC10)")
+COMP(1982, c64,		0,		c64,			c64,	c64,	"Commodore Business Machines Co.", "Commodore 64 (NTSC)")
+COMP(1982, cbm4064,	c64,	pet64,			c64,	c64,	"Commodore Business Machines Co.", "CBM4064/PET64/Educator64 (NTSC)")
+COMP(1982, c64pal, 	c64,	c64pal, 		c64,	c64pal, "Commodore Business Machines Co.", "Commodore 64/VC64/VIC64 (PAL)")
+COMP(1982, vic64s, 	c64,	c64pal, 		vic64s,	c64pal, "Commodore Business Machines Co.", "Commodore 64 Swedish (PAL)")
+CONS(1987, c64gs,		c64,	c64gs,			c64gs,	c64gs,	"Commodore Business Machines Co.", "C64GS (PAL)")
 /* please leave the following as testdriver, */
 /* or better don't include them in system.c */
-COMPX(1983, sx64,		c64,	sx64,			sx64,	sx64,	"Commodore Business Machines Co.", "SX64 (PAL)",                      GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-COMPX(1983, vip64,		c64,	sx64,			vip64,	sx64,	"Commodore Business Machines Co.", "VIP64 (SX64 PAL), Swedish Expansion Kit", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+COMPX(1983, sx64,		c64,	sx64,			sx64,	sx64,	"Commodore Business Machines Co.", "SX64 (PAL)",                      GAME_NOT_WORKING)
+COMPX(1983, vip64,		c64,	sx64,			vip64,	sx64,	"Commodore Business Machines Co.", "VIP64 (SX64 PAL), Swedish Expansion Kit", GAME_NOT_WORKING)
+// sx64 with second disk drive
+COMPX(198?, dx64,		c64,	sx64,			sx64,	sx64,	"Commodore Business Machines Co.", "DX64 (Prototype, PAL)",                      GAME_NOT_WORKING)
 /*c64 II (cbm named it still c64) */
 /*c64c (bios in 1 chip) */
 /*c64g late 8500/8580 based c64, sold at aldi/germany */
@@ -1121,6 +1131,7 @@ extern void c64_runtime_loader_init(void)
 		if ( strcmp(drivers[i]->name,"c64gs")==0) drivers[i]=&driver_c64gs;
 		if ( strcmp(drivers[i]->name,"sx64")==0) drivers[i]=&driver_sx64;
 		if ( strcmp(drivers[i]->name,"vip64")==0) drivers[i]=&driver_vip64;
+		if ( strcmp(drivers[i]->name,"dx64")==0) drivers[i]=&driver_sx64;
 	}
 }
 #endif

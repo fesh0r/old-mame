@@ -141,8 +141,60 @@ WRITE_HANDLER ( gg_psg_w )
 
 
 /****************************************************************************/
+static int sms_verify_cart (char * magic)
+{
+	//const char *sysname;
+	int retval;
 
-int sms_load_rom(int id)
+	//sysname = Machine->gamedrv->name;
+	//printf ("Driver is %s\n",sysname);
+
+
+	retval = IMAGE_VERIFY_FAIL;
+
+	/* Verify the file is a valid image - check $7ff0 for "TMR SEGA" */
+	if (!strncmp(&magic[0x7ff0],"TMR SEGA",8))
+	{
+		/* Technically, it should be this, but remove for now until verified:
+		if (!strcmp(sysname, "gamegear"))
+		{
+			if ((unsigned char)magic[0x7ffd] < 0x50)
+				retval = IMAGE_VERIFY_PASS;
+		}
+		if (!strcmp(sysname, "sms"))
+		{
+			if ((unsigned char)magic[0x7ffd] >= 0x50)
+				retval = IMAGE_VERIFY_PASS;
+		}
+		*/
+		retval = IMAGE_VERIFY_PASS;
+	}
+
+	/* Check at $81f0 also */
+	if (!retval)
+	{
+		if (!strncmp(&magic[0x81f0],"TMR SEGA",8))
+		{
+			/* Technically, it should be this, but remove for now until verified:
+			if (!strcmp(sysname, "gamegear"))
+			{
+				if ((unsigned char)magic[0x81fd] < 0x50)
+					retval = IMAGE_VERIFY_PASS;
+			}
+			if (!strcmp(sysname, "sms"))
+			{
+				if ((unsigned char)magic[0x81fd] >= 0x50)
+					retval = IMAGE_VERIFY_PASS;
+			}
+			*/
+			retval = IMAGE_VERIFY_PASS;
+		}
+	}
+
+	return retval;
+}
+
+int sms_init_cart(int id)
 {
     int size, ret;
     FILE *handle;
@@ -152,7 +204,7 @@ int sms_load_rom(int id)
     if(device_filename(IO_CARTSLOT,id) == NULL)
     {
         printf("Cartridge Name Required!\n");
-        return (INIT_FAILED);
+        return (INIT_FAIL);
 	}
 
     /* Ensure filename was specified */
@@ -160,7 +212,7 @@ int sms_load_rom(int id)
     if(handle == NULL)
     {
 		printf("Cartridge Name Required!\n");
-        return (INIT_FAILED);
+        return (INIT_FAIL);
 	}
 
     /* Get file size */
@@ -180,7 +232,7 @@ int sms_load_rom(int id)
     if(ret)
     {
         printf("Error allocating %d bytes.\n", size);
-        return INIT_FAILED;
+        return INIT_FAIL;
     }
 
     /* Get base of CPU1 memory region */
@@ -192,6 +244,13 @@ int sms_load_rom(int id)
     /* Close file */
     osd_fclose(handle);
 
+	/* check the image */
+	if (sms_verify_cart((char*)&RAM[0x10000])==IMAGE_VERIFY_FAIL)
+	{
+		logerror("Invalid Image\n");
+		return INIT_FAIL;
+	}
+
     /* Get 16K page count */
     sms_page_count = (size / 0x4000);
 
@@ -200,100 +259,12 @@ int sms_load_rom(int id)
     memcpy(&RAM[0x4000], &RAM[0x14000], 0x4000);
     memcpy(&RAM[0x8000], &RAM[0x10000], 0x4000);
 
-    return (INIT_OK);
+    return (INIT_PASS);
 }
 
 void sms_init_machine (void)
 {
     sms_fm_detect = 0;
-}
-
-int sms_id_rom (int id)
-{
-	FILE *romfile;
-	char magic[9];
-	unsigned char extra;
-	int retval;
-
-	if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0))) return 0;
-
-	retval = 0;
-
-	/* Verify the file is a valid image - check $7ff0 for "TMR SEGA" */
-	osd_fseek (romfile, 0x7ff0, SEEK_SET);
-	osd_fread (romfile, magic, 8);
-	magic[8] = 0;
-	if (!strcmp(magic,"TMR SEGA"))
-	{
-		/* TODO: Is this right? If it's $50 or greater, it is SMS */
-		osd_fseek (romfile, 0x7ffd, SEEK_SET);
-		osd_fread (romfile, &extra, 1);
-		if (extra >= 0x50)
-			retval = 1;
-	}
-	/* Check at $81f0 also */
-	if (!retval)
-	{
-		osd_fseek (romfile, 0x81f0, SEEK_SET);
-		osd_fread (romfile, magic, 8);
-		magic[8] = 0;
-		if (!strcmp(magic,"TMR SEGA"))
-		{
-			/* TODO: Is this right? If it's $50 or greater, it is SMS */
-			osd_fseek (romfile, 0x81fd, SEEK_SET);
-			osd_fread (romfile, &extra, 1);
-			if (extra >= 0x50)
-				retval = 1;
-		}
-	}
-
-	osd_fclose (romfile);
-
-	return retval;
-}
-
-int gamegear_id_rom (int id)
-{
-	FILE *romfile;
-	char magic[9];
-	unsigned char extra;
-	int retval;
-
-	if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0))) return 0;
-
-	retval = 0;
-
-	/* Verify the file is a valid image - check $7ff0 for "TMR SEGA" */
-	osd_fseek (romfile, 0x7ff0, SEEK_SET);
-	osd_fread (romfile, magic, 8);
-	magic[8] = 0;
-	if (!strcmp(magic,"TMR SEGA"))
-	{
-		/* TODO: Is this right? If it's less than 0x50, it is a GameGear image */
-		osd_fseek (romfile, 0x7ffd, SEEK_SET);
-		osd_fread (romfile, &extra, 1);
-		if (extra < 0x50)
-			retval = 1;
-	}
-	/* Check at $81f0 also */
-	if (!retval)
-	{
-		osd_fseek (romfile, 0x81f0, SEEK_SET);
-		osd_fread (romfile, magic, 8);
-		magic[8] = 0;
-		if (!strcmp(magic,"TMR SEGA"))
-		{
-			/* TODO: Is this right? If it's less than 0x50, it is a GameGear image */
-			osd_fseek (romfile, 0x81fd, SEEK_SET);
-			osd_fread (romfile, &extra, 1);
-			if (extra < 0x50)
-				retval = 1;
-		}
-	}
-
-	osd_fclose (romfile);
-
-	return retval;
 }
 
 

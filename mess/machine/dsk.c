@@ -38,6 +38,7 @@ floppy_interface dsk_floppy_interface=
 	dsk_get_id_callback,
 	dsk_read_sector_data_into_buffer,
 	dsk_write_sector_data_from_buffer,
+	NULL,
 	NULL
 };
 
@@ -86,6 +87,16 @@ int dsk_load(int type, int id, unsigned char **ptr)
 	return 0;
 }
 
+static int dsk_floppy_verify(UINT8 *diskimage_data)
+{
+	if ( (memcmp(diskimage_data, "MV - CPC", 8)==0) || 	/* standard disk image? */
+		 (memcmp(diskimage_data, "EXTENDED", 8)==0))	/* extended disk image? */
+	{
+		return IMAGE_VERIFY_PASS;
+	}
+	return IMAGE_VERIFY_FAIL;
+}
+
 
 /* load floppy */
 int dsk_floppy_load(int id)
@@ -99,11 +110,14 @@ int dsk_floppy_load(int id)
 		{
 			dsk_disk_image_init(thedrive); /* initialise dsk */
             floppy_drive_set_disk_image_interface(id,&dsk_floppy_interface);
-			return INIT_OK;
+            if(dsk_floppy_verify(thedrive->data) == IMAGE_VERIFY_PASS)
+            	return INIT_PASS;
+            else
+            	return INIT_PASS;
 		}
 	}
 
-	return INIT_FAILED;
+	return INIT_FAIL;
 }
 
 int dsk_save(int type, int id, unsigned char **ptr)
@@ -141,38 +155,6 @@ int dsk_save(int type, int id, unsigned char **ptr)
 	return 0;
 }
 
-
-int dsk_floppy_id(int id)
-{
-	int valid;
-	unsigned char *diskimage_data;
-
-	valid = 0;
-
-	/* load disk image */
-	if (dsk_load(IO_FLOPPY, id, &diskimage_data))
-	{
-		/* disk image loaded */
-		if (diskimage_data)
-		{
-			if (
-				/* standard disk image? */
-				(memcmp(diskimage_data, "MV - CPC", 8)==0) ||
-				/* extended disk image? */
-				(memcmp(diskimage_data, "EXTENDED", 8)==0)
-				)
-			{
-				valid = 1;
-
-			}
-		}
-
-		/* free the file */
-		free(diskimage_data);
-	}
-
-	return valid;
-}
 
 void dsk_floppy_exit(int id)
 {
@@ -547,9 +529,9 @@ char * dsk_get_sector_ptr_callback(int drive, int sector_index, int side)
 void dsk_write_sector_data_from_buffer(int drive, int side, int index1, char *ptr, int length, int ddam)
 {
 	char * pSectorData;
-	
+
 	pSectorData = dsk_get_sector_ptr_callback(drive, index1, side);
-	
+
 	if (pSectorData!=NULL)
 	{
 		memcpy(pSectorData, ptr, length);

@@ -45,7 +45,7 @@ static void	nc_card_save(int id)
 
 		/* close file */
 		osd_fclose(file);
-	
+
 		logerror("write succeeded!\r\n");
 	}
 }
@@ -122,6 +122,22 @@ static int nc_card_load(int id, unsigned char **ptr)
 /* load pcmcia card */
 int nc_pcmcia_card_load(int id)
 {
+	/* a pcmcia card is not required for this machine,
+	so if no image is specified, initialisation has succeeded */
+	if (device_filename(IO_CARTSLOT,id)==NULL)
+	{
+		/* card not present */
+		nc_set_card_present_state(0);
+		/* card ram NULL */
+		nc_card_ram = NULL;
+		nc_card_size = 0;
+
+		return INIT_PASS;
+	}
+
+	/* filename specified */
+
+	/* attempt to load file */
 	if (nc_card_load(id,&nc_card_ram))
 	{
 		if (nc_card_ram!=NULL)
@@ -131,37 +147,19 @@ int nc_pcmcia_card_load(int id)
 			{
 				nc_set_card_present_state(1);
 			}
-			return INIT_OK;
+			return INIT_PASS;
 		}
 	}
 
-	/* when MESS is first initialised, and a NULL filename
-	is passed to this function, the load will fail, but this
-	is a good opportunity to setup some variables */
-	/* init failed! */
-	logerror("failed!\n");
-
-	/* card not present */
-	nc_set_card_present_state(0);
-	/* card ram NULL */
-	nc_card_ram = NULL;
-	nc_card_size = 0;
-	return INIT_FAILED;
-}
-
-/* check if pcmcia card is valid  */
-/* TODO: Check valid card sizes?? */
-int nc_pcmcia_card_id(int id)
-{
-	/* for now it's valid */
-	return 1;
+	/* nc100 can run without a image */
+	return INIT_FAIL;
 }
 
 void nc_pcmcia_card_exit(int id)
 {
 	/* save card data if there is any */
 	nc_card_save(id);
-	
+
 	/* free ram allocated to card */
 	if (nc_card_ram!=NULL)
 	{
@@ -180,7 +178,13 @@ void nc_pcmcia_card_exit(int id)
 
 int	nc_serial_init(int id)
 {
-	if (serial_device_init(id)==INIT_OK)
+	/* serial device is not require for this machine, so if no image
+	is specified, initialisation has succeeded */
+	if (device_filename(IO_SERIAL, id)==NULL)
+		return INIT_PASS;
+
+	/* filename specified */
+	if (serial_device_init(id)==INIT_PASS)
 	{
 		/* setup transmit parameters */
 		serial_device_setup(id, 9600, 8, 1,SERIAL_PARITY_NONE);
@@ -188,14 +192,13 @@ int	nc_serial_init(int id)
 		/* connect serial chip to serial device */
 		msm8251_connect_to_serial_device(id);
 
-      serial_device_set_protocol(id, SERIAL_PROTOCOL_NONE);
-    //    serial_device_set_protocol(id, SERIAL_PROTOCOL_XMODEM);
+		serial_device_set_protocol(id, SERIAL_PROTOCOL_NONE);
 
 		/* and start transmit */
 		serial_device_set_transmit_state(id,1);
-		
-		return INIT_OK;
+
+		return INIT_PASS;
 	}
 
-	return INIT_FAILED;
+	return INIT_FAIL;
 }

@@ -12,15 +12,18 @@ int printer_init (int id)
 	{
 	void *f;
 
-	f = image_fopen (IO_PRINTER, id, OSD_FILETYPE_IMAGE_RW, 
+	if (!device_filename(IO_PRINTER,id) || !strlen(device_filename(IO_PRINTER,id) ))
+		return 0;
+
+	f = image_fopen (IO_PRINTER, id, OSD_FILETYPE_IMAGE_RW,
 		OSD_FOPEN_RW_CREATE);
 	if (f)
 		{
 		prn_ports[id] = f;
-		return INIT_OK;
+		return INIT_PASS;
 		}
 	else
-		return INIT_FAILED;
+		return INIT_FAIL;
 	}
 
 void printer_exit (int id)
@@ -43,7 +46,7 @@ void printer_output (int id, int data)
 	{
 		UINT8 d=data;
 
-	if (!prn_ports[id]) 
+	if (!prn_ports[id])
 		{
 		logerror ("Printer port %d# data written while port not open\n", id);
 		return;
@@ -52,7 +55,7 @@ void printer_output (int id, int data)
 	if (1 != osd_fwrite (prn_ports[id], &d, 1) )
 		{
 		logerror ("Printer port %d# failed to write data\n",id );
-		return;	
+		return;
 		}
 
 //	logerror ("Printer port %d# write %.2x data\n",id, d );
@@ -63,7 +66,7 @@ int printer_output_chunk (int id, void *src, int chunks)
 	{
 	int chunks_written;
 
-	if (!prn_ports[id]) 
+	if (!prn_ports[id])
 		{
 		logerror ("Printer port %d# data written while port not open\n", id);
 		return 0;
@@ -73,7 +76,7 @@ int printer_output_chunk (int id, void *src, int chunks)
 	if (chunks != chunks_written)
 		{
 		logerror ("Printer port %d# failed to write data\n");
-		return chunks_written;	
+		return chunks_written;
 		}
 
 	return chunks;

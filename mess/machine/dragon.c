@@ -22,9 +22,6 @@
 		- Implement unimplemented SAM registers
 		- Implement unimplemented interrupts (serial)
 		- Choose and implement more appropriate ratios for the speed up poke
-		- Make the wd179x DRQ and IRQ work the way they did in reality.  The
-		  problem is that the wd179x code doesn't implement any timing, and as
-		  such behaves differently then the real thing.
 		- Handle resets correctly
 
   In the CoCo, all timings should be exactly relative to each other.  This
@@ -58,14 +55,13 @@
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
-#include "includes/wd179x.h"
+#include "includes/rstrtrck.h"
 #include "vidhrdw/m6847.h"
 #include "includes/dragon.h"
 #include "formats/cocopak.h"
 #include "formats/cococas.h"
 #include "includes/6883sam.h"
-#include "includes/basicdsk.h"
-#include "includes/rstrtrck.h"
+#include "includes/cococart.h"
 
 static UINT8 *coco_rom;
 static int coco3_enable_64k;
@@ -75,7 +71,7 @@ static int coco3_interupt_line;
 static int pia0_irq_a, pia0_irq_b;
 static int pia1_firq_a, pia1_firq_b;
 static int gime_firq, gime_irq;
-static int cart_inserted;
+static int cart_line, cart_inserted;
 static UINT8 pia0_pb, soundmux_status, tape_motor;
 static UINT8 joystick_axis, joystick;
 static int d_dac;
@@ -108,6 +104,8 @@ static void d_sam_set_mpurate(int val);
 static void d_sam_set_memorysize(int val);
 static void d_sam_set_maptype(int val);
 static void coco3_sam_set_maptype(int val);
+static void coco_setcartline(int data);
+static void coco3_setcartline(int data);
 
 /* These sets of defines control logging.  When MAME_DEBUG is off, all logging
  * is off.  There is a different set of defines for when MAME_DEBUG is on so I
@@ -115,7 +113,7 @@ static void coco3_sam_set_maptype(int val);
  * with logging enabled after doing some debugging work
  *
  * Logging options marked as "Sparse" are logging options that happen rarely,
- * and should not get in the way.  As such, these options are always on 
+ * and should not get in the way.  As such, these options are always on
  * (assuming MAME_DEBUG is on).  "Frequent" options are options that happen
  * enough that they might get in the way.
  */
@@ -126,13 +124,14 @@ static void coco3_sam_set_maptype(int val);
 #define LOG_TIMER_SET	1	/* [Sparse]   Logging when setting the timer */
 #define LOG_INT_TMR		1	/* [Frequent] Logging when timer interrupt is invoked */
 #define LOG_FLOPPY		0	/* [Frequent] Set when floppy interrupts occur */
-#define LOG_INT_COCO3	0
+#define LOG_INT_COCO3	1
 #define LOG_GIME		0
 #define LOG_MMU			0
 #define LOG_VBORD		1   /* [Frequent] Occurs when VBORD is changed */
 #define LOG_OS9         0
 #define LOG_TIMER       0
 #define LOG_DEC_TIMER	0
+#define LOG_IRQ_RECALC	1
 #else /* !MAME_DEBUG */
 #define LOG_PAK			0
 #define LOG_CASSETTE	0
@@ -147,9 +146,12 @@ static void coco3_sam_set_maptype(int val);
 #define LOG_FLOPPY		0
 #define LOG_TIMER       0
 #define LOG_DEC_TIMER	0
+#define LOG_IRQ_RECALC	0
 #endif /* MAME_DEBUG */
 
 static void coco3_timer_hblank(void);
+static int count_bank(void);
+static int is_Orch90(void);
 
 static struct pia6821_interface dragon_pia_intf[] =
 {
@@ -214,6 +216,8 @@ static struct sam6883_interface coco3_sam_intf =
 	NULL,
 	coco3_sam_set_maptype
 };
+
+static const struct cartridge_slot *coco_cart_interface;
 
 /***************************************************************************
   PAK files
@@ -414,7 +418,7 @@ static int generic_pak_load(int id, UINT8 *rambase, UINT8 *rombase, UINT8 *pakba
 		}
 		osd_fclose(fp);
 	}
-	return INIT_OK;
+	return INIT_PASS;
 }
 
 int dragon32_pak_load(int id)
@@ -444,14 +448,33 @@ int coco3_pak_load(int id)
 
 static int generic_rom_load(int id, UINT8 *dest, UINT16 destlength)
 {
-	UINT16 romsize;
+	UINT8 *rombase;
+	int   romsize;
 	void *fp;
 
 	cart_inserted = 0;
 
 	fp = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
 	if (fp) {
-		romsize = (UINT16) osd_fsize(fp);
+		
+		romsize = osd_fsize(fp);
+
+		/* The following hack is for Arkanoid running on the CoCo2.
+		   The issuse is the CoCo2 hardware only allows the cartridge
+		   interface to access 0xC000-0xFEFF (16K). The Arkanoid ROM is
+		   32K starting at 0x8000. The first 16K is totally inaccessable
+		   from a CoCo2. Thus we need to skip ahead in the ROM file. On
+		   the CoCo3 the entire 32K ROM is accessable. */
+		
+		if ( device_crc(IO_CARTSLOT, 0) == 0x25C3AA70 )     /* Test for Arkanoid  */
+		{
+			if ( destlength == 0x4000 )						/* Test if CoCo2      */
+			{
+				osd_fseek( fp, 0x4000, SEEK_SET );			/* Move ahead in file */
+				romsize -= 0x4000;							/* Adjust ROM size    */
+			}
+		}
+		
 		if (romsize > destlength)
 			romsize = destlength;
 
@@ -459,8 +482,20 @@ static int generic_rom_load(int id, UINT8 *dest, UINT16 destlength)
 
 		cart_inserted = 1;
 		osd_fclose(fp);
+
+		/* Now we need to repeat the mirror the ROM throughout the ROM memory */
+		rombase = dest;
+		dest += romsize;
+		destlength -= romsize;
+		while(destlength > 0) {
+			if (romsize > destlength)
+				romsize = destlength;
+			memcpy(dest, rombase, romsize);
+			dest += romsize;
+			destlength -= romsize;
+		}
 	}
-	return INIT_OK;
+	return INIT_PASS;
 }
 
 int dragon32_rom_load(int id)
@@ -477,8 +512,23 @@ int dragon64_rom_load(int id)
 
 int coco3_rom_load(int id)
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
-	return generic_rom_load(id, &ROM[0x8c000], 0x8000);
+	UINT8 	*ROM = memory_region(REGION_CPU1);
+	int		count;
+	void	*fp;
+	
+	fp = image_fopen(IO_CARTSLOT, 0, OSD_FILETYPE_IMAGE_R, 0);
+	count = count_bank();
+	if (fp)
+		osd_fclose(fp);
+	
+	if( count == 0 )
+		/* Load roms starting at 0x8000 and mirror upwards. */
+		/* ROM size is 32K max */
+		return generic_rom_load(id, &ROM[0x88000], 0x8000);
+	else
+		/* Load roms starting at 0x8000 and mirror upwards. */
+		/* ROM bank is 16K max */
+		return generic_rom_load(id, &ROM[0x88000], 0x4000);
 }
 
 /***************************************************************************
@@ -546,6 +596,11 @@ static void d_recalc_firq(void)
 
 static void coco3_recalc_irq(void)
 {
+#if LOG_IRQ_RECALC
+	logerror("coco3_recalc_irq(): gime_irq=%i pia0_irq_a=%i pia0_irq_b=%i (GIME IRQ %s)\n",
+		gime_irq, pia0_irq_a, pia0_irq_b, coco3_gimereg[0] & 0x20 ? "enabled" : "disabled");
+#endif
+
 	if ((coco3_gimereg[0] & 0x20) && gime_irq)
 		cpu_set_irq_line(0, M6809_IRQ_LINE, ASSERT_LINE);
 	else
@@ -592,7 +647,7 @@ static void coco3_pia0_irq_a(int state)
 
 static void coco3_pia0_irq_b(int state)
 {
-	pia0_irq_a = state;
+	pia0_irq_b = state;
 	coco3_recalc_irq();
 }
 
@@ -604,7 +659,7 @@ static void coco3_pia1_firq_a(int state)
 
 static void coco3_pia1_firq_b(int state)
 {
-	pia1_firq_a = state;
+	pia1_firq_b = state;
 	coco3_recalc_firq();
 }
 
@@ -646,7 +701,7 @@ WRITE_HANDLER( coco_m6847_hs_w )
 
 WRITE_HANDLER( coco_m6847_fs_w )
 {
-	pia_0_cb1_w(0, data);
+	pia_0_cb1_w(0, !data);
 }
 
 WRITE_HANDLER( coco3_m6847_hs_w )
@@ -662,14 +717,8 @@ WRITE_HANDLER( coco3_m6847_fs_w )
 #if LOG_VBORD
 	logerror("coco3_m6847_fs_w(): data=%i scanline=%i\n", data, rastertrack_scanline());
 #endif
-	pia_0_cb1_w(0, data);
+	pia_0_cb1_w(0, !data);
 	coco3_raise_interrupt(COCO3_INT_VBORD, !data);
-
-	if (data) {
-		int top, rows;
-		rows = coco3_calculate_rows(&top, NULL);
-		rastertrack_newscreen(top, rows);
-	}
 }
 
 /***************************************************************************
@@ -681,6 +730,7 @@ WRITE_HANDLER( coco3_m6847_fs_w )
 #define JOYSTICK_LEFT_X		9
 #define JOYSTICK_LEFT_Y		10
 
+double read_joystick(int joyport);
 double read_joystick(int joyport)
 {
 	return readinputport(joyport) / 255.0;
@@ -923,6 +973,29 @@ static WRITE_HANDLER ( d_pia0_pb_w )
 	pia0_pb = data;
 }
 
+/* The following hacks are necessary because a large portion of cartridges
+ * tie the Q line to the CART line.  Since Q pulses with every single clock
+ * cycle, this would be prohibitively slow to emulate.  Thus we are only
+ * going to pulse when the PIA is read from; which seems good enough (for now)
+ */
+READ_HANDLER( coco_pia_1_r )
+{
+	if (cart_line == CARTLINE_Q) {
+		coco_setcartline(CARTLINE_CLEAR);
+		coco_setcartline(CARTLINE_Q);
+	}
+	return pia_1_r(offset);
+}
+
+READ_HANDLER( coco3_pia_1_r )
+{
+	if (cart_line == CARTLINE_Q) {
+		coco3_setcartline(CARTLINE_CLEAR);
+		coco3_setcartline(CARTLINE_Q);
+	}
+	return pia_1_r(offset);
+}
+
 /***************************************************************************
   PIA1 ($FF20-$FF3F) (Chip U4)
 
@@ -945,7 +1018,7 @@ static WRITE_HANDLER ( d_pia0_pb_w )
 
 static READ_HANDLER ( d_pia1_cb1_r )
 {
-	return cart_inserted;
+	return cart_line ? ASSERT_LINE : CLEAR_LINE;
 }
 
 static WRITE_HANDLER ( d_pia1_cb2_w )
@@ -1202,7 +1275,7 @@ static void coco3_timer_cannonicalize(int newvalue)
 		assert(coco3_timer_value > 0);
 
 		/* Calculate how many transitions elapsed */
-		elapsed = (int) ((current_time - coco3_timer_counterbase) / COCO_TIMER_CMPCARRIER);		
+		elapsed = (int) ((current_time - coco3_timer_counterbase) / COCO_TIMER_CMPCARRIER);
 		assert(elapsed >= 0);
 
 #if LOG_TIMER
@@ -1219,7 +1292,7 @@ static void coco3_timer_cannonicalize(int newvalue)
 
 		if (elapsed) {
 			coco3_timer_value -= elapsed;
-			
+
 			/* HACKHACK - I don't know why I have to do this */
 			if (coco3_timer_value < 0)
 				coco3_timer_value = 0;
@@ -1300,6 +1373,7 @@ static void coco3_timer_set_interval(int interval)
   MMU
 ***************************************************************************/
 
+WRITE_HANDLER ( dragon64_ram_w );
 WRITE_HANDLER ( dragon64_ram_w )
 {
 	coco_ram_w(offset + 0x8000, data);
@@ -1320,6 +1394,7 @@ static void d_sam_set_maptype(int val)
 
 /* Coco 3 */
 
+int coco3_mmu_lookup(int block, int forceram);
 int coco3_mmu_lookup(int block, int forceram)
 {
 	int result;
@@ -1629,11 +1704,11 @@ int coco_cassette_init(int id)
 		wa.trailer_samples = COCO_WAVESAMPLES_TRAILER;
 		wa.display = 1;
 		if( device_open(IO_CASSETTE,id,0,&wa) )
-			return INIT_FAILED;
+			return INIT_FAIL;
 
 		/* immediately inhibit/mute/play the output */
         device_status(IO_CASSETTE,id, WAVE_STATUS_MOTOR_ENABLE|WAVE_STATUS_MUTED|WAVE_STATUS_MOTOR_INHIBIT);
-		return INIT_OK;
+		return INIT_PASS;
 	}
 
 	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
@@ -1644,14 +1719,13 @@ int coco_cassette_init(int id)
 		wa.display = 1;
 		wa.smpfreq = 19200;
 		if( device_open(IO_CASSETTE,id,1,&wa) )
-            return INIT_FAILED;
+            return INIT_FAIL;
 
 		/* immediately inhibit/mute/play the output */
         device_status(IO_CASSETTE,id, WAVE_STATUS_MOTOR_ENABLE|WAVE_STATUS_MUTED|WAVE_STATUS_MOTOR_INHIBIT);
-		return INIT_OK;
+		return INIT_PASS;
     }
-
-	return INIT_FAILED;
+	return INIT_PASS;
 }
 
 void coco_cassette_exit(int id)
@@ -1662,19 +1736,6 @@ void coco_cassette_exit(int id)
 /***************************************************************************
   Cartridge Expansion Slot
  ***************************************************************************/
-
-struct cartridge_callback {
-	void (*cart_w)(int data);
-};
-
-struct cartridge_slot {
-	void (*init)(const struct cartridge_callback *callbacks);
-	mem_read_handler io_r;
-	mem_write_handler io_w;
-	void (*enablesound)(int enable);
-};
-
-static const struct cartridge_slot *coco_cart_interface;
 
 static void coco_cartrige_init(const struct cartridge_slot *cartinterface, const struct cartridge_callback *callbacks)
 {
@@ -1716,320 +1777,6 @@ static void coco_cartridge_enablesound(int enable)
 }
 
 /***************************************************************************
-  Floppy disk controller
- ***************************************************************************
- * The CoCo and Dragon both use the Western Digital 1793 floppy disk
- * controller.  The wd1793's variables are mapped to $ff48-$ff4b on the CoCo
- * and on $ff40-$ff43 on the Dragon.  In addition, there is another register
- * called DSKREG that controls the interface with the wd1793.  DSKREG is
- * detailed below:.  But they appear to be
- *
- * References:
- *		CoCo:	Disk Basic Unravelled
- *		Dragon:	Inferences from the PC-Dragon source code
- *              DragonDos Controller, Disk and File Formats by Graham E Kinns
- * ---------------------------------------------------------------------------
- * DSKREG - the control register
- * CoCo ($ff40)                            Dragon ($ff48)
- *
- * Bit                                     Bit
- *	7 halt enable flag                      7 not used
- *	6 drive select #3                       6 not used
- *	5 density flag (0=single, 1=double)     5 NMI enable flag
- *	4 write precompensation                 4 write precompensation
- *	3 drive motor activation                3 single density enable
- *	2 drive select #2                       2 drive motor activation
- *	1 drive select #1                       1 drive select high bit
- *	0 drive select #0                       0 drive select low bit
- * ---------------------------------------------------------------------------
- */
-
-static int haltenable;
-static int nmienable;
-static int dskreg;
-static void coco_fdc_callback(int event);
-static void dragon_fdc_callback(int event);
-static int ff4b_count;
-static const struct cartridge_callback *cartcallbacks;
-
-enum {
-	HW_COCO,
-	HW_DRAGON
-};
-
-static void coco_fdc_init(const struct cartridge_callback *callbacks)
-{
-    wd179x_init(coco_fdc_callback);
-	dskreg = -1;
-	ff4b_count = 0x100;
-	nmienable = 1;
-	cartcallbacks = callbacks;
-}
-
-static void dragon_fdc_init(const struct cartridge_callback *callbacks)
-{
-    wd179x_init(dragon_fdc_callback);
-	dskreg = -1;
-	ff4b_count = 0x100;
-	nmienable = 1;
-	cartcallbacks = callbacks;
-}
-
-static void raise_nmi(int dummy)
-{
-#if LOG_FLOPPY
-	logerror("raise_nmi(): Raising NMI from floppy controller\n");
-#endif
-	cpu_set_nmi_line(0, ASSERT_LINE);
-}
-
-static void coco_fdc_callback(int event)
-{
-	/* In all honesty, I believe that I should be able to tie the WD179X IRQ
-	 * directly to the 6809 NMI input.  But it seems that if I do that, the NMI
-	 * occurs when the last byte of a read is made without any delay.  This
-	 * means that we drop the last byte of every sector read or written.  Thus,
-	 * we will delay the NMI
-	 */
-	switch(event) {
-	case WD179X_IRQ_CLR:
-		cpu_set_nmi_line(0, CLEAR_LINE);
-		break;
-	case WD179X_IRQ_SET:
-#if LOG_FLOPPY
-		logerror("coco_fdc_callback(): Called with WD179X_IRQ_SET; but not raising NMI because of hack (ff4b_count=$%04x)\n", ff4b_count);
-#endif
-		/* timer_set(COCO_CPU_SPEED * 11 / timer_get_overclock(0), 0, raise_nmi); */
-		break;
-	case WD179X_DRQ_CLR:
-		cpu_set_halt_line(0, CLEAR_LINE);
-		break;
-	case WD179X_DRQ_SET:
-		/* I should be able to specify haltenable instead of zero, but several
-		 * programs don't appear to work
-		 */
-		cpu_set_halt_line(0, 0 /*haltenable*/ ? ASSERT_LINE : CLEAR_LINE);
-		break;
-	}
-}
-
-static void dragon_fdc_callback(int event)
-{
-	/* In all honesty, I believe that I should be able to tie the WD179X IRQ
-	 * directly to the 6809 NMI input.  But it seems that if I do that, the NMI
-	 * occurs when the last byte of a read is made without any delay.  This
-	 * means that we drop the last byte of every sector read or written.  Thus,
-	 * we will delay the NMI
-	 */
-	switch(event) {
-	case WD179X_IRQ_CLR:
-		cpu_set_nmi_line(0, CLEAR_LINE);
-		break;
-	case WD179X_IRQ_SET:
-#if LOG_FLOPPY
-		logerror("dragon_fdc_callback(): Called with WD179X_IRQ_SET; but not raising NMI because of hack (ff4b_count=$%04x)\n", ff4b_count);
-#endif
-		if (nmienable)
-			timer_set(COCO_CPU_SPEED * 11 / timer_get_overclock(0), 0, raise_nmi);
-		break;
-	case WD179X_DRQ_CLR:
-		cartcallbacks->cart_w(CLEAR_LINE);
-		break;
-	case WD179X_DRQ_SET:
-		cartcallbacks->cart_w(ASSERT_LINE);
-		break;
-	}
-}
-
-int dragon_floppy_init(int id)
-{
-	if (basicdsk_floppy_init(id)==INIT_OK)
-	{
-		void *file;
-
-		file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE_R, OSD_FOPEN_READ);
-
-		if (file)
-		{
-			int tracks;
-			int heads;
-
-			if (floppy_drive_get_flag_state(id, FLOPPY_DRIVE_REAL_FDD)) {
-				/* For now, assume that real floppies are always 35 tracks, 1 head */
-				tracks = 35;
-				heads = 1;
-			}
-			else {
-				tracks = osd_fsize(file) / (18*256);
-				heads = (tracks > 80) ? 2 : 1;
-				tracks /= heads;
-			}
-
-			basicdsk_set_geometry(id, tracks, heads, 18, 256, 1);
-
-			osd_fclose(file);
-
-			return INIT_OK;
-		}
-	}
-	return INIT_FAILED;
-}
-
-
-static void set_dskreg(int data, int hardware)
-{
-	UINT8 drive = 0;
-	UINT8 head = 0;
-	int motor_mask = 0;
-	int haltenable_mask = 0;
-
-#if LOG_FLOPPY
-	logerror("set_dskreg(): data=$%02x\n", data);
-#endif
-
-	switch(hardware) {
-	case HW_COCO:
-		if ((dskreg & 0x1cf) == (data & 0xcf))
-			return;
-
-		/* An email from John Kowalski informed me that if the last drive is
-		 * selected, and one of the other drive bits is selected, then the
-		 * second side is selected.  If multiple bits are selected in other
-		 * situations, then both drives are selected, and any read signals get
-		 * yucky.
-		 */
-		motor_mask = 0x08;
-		haltenable_mask = 0x80;
-
-		if (data & 0x04)
-			drive = 2;
-		else if (data & 0x02)
-			drive = 1;
-		else if (data & 0x01)
-			drive = 0;
-		else if (data & 0x40)
-			drive = 3;
-		else
-			motor_mask = 0;
-
-		head = ((data & 0x40) && (drive != 3)) ? 1 : 0;
-		break;
-
-	case HW_DRAGON:
-		if ((dskreg & 0x127) == (data & 0x27))
-			return;
-		drive = data & 0x03;
-		motor_mask = 0x04;
-		haltenable_mask = 0x00;
-		nmienable = data & 0x20;
-		break;
-	}
-
-	haltenable = data & haltenable_mask;
-	dskreg = data;
-
-	if (data & motor_mask) {
-		wd179x_set_drive(drive);
-		wd179x_set_side(head);
-	}
-}
-
-static int dc_floppy_r(int offset)
-{
-	int result = 0;
-
-	switch(offset & 0xef) {
-	case 8:
-		result = wd179x_status_r(0);
-		break;
-	case 9:
-		result = wd179x_track_r(0);
-		break;
-	case 10:
-		result = wd179x_sector_r(0);
-		break;
-	case 11:
-		if (ff4b_count-- == 0)
-			raise_nmi(0);
-		result = wd179x_data_r(0);
-		break;
-	}
-	return result;
-}
-
-static void dc_floppy_w(int offset, int data, int hardware)
-{
-	switch(offset & 0xef) {
-	case 0:
-	case 1:
-	case 2:
-	case 3:
-	case 4:
-	case 5:
-	case 6:
-	case 7:
-		set_dskreg(data, hardware);
-		break;
-	case 8:
-		wd179x_command_w(0, data);
-		ff4b_count = 0x100;
-		break;
-	case 9:
-		wd179x_track_w(0, data);
-		break;
-	case 10:
-		wd179x_sector_w(0, data);
-		break;
-	case 11:
-		if (ff4b_count-- == 0)
-			raise_nmi(0);
-		else
-			wd179x_data_w(0, data);
-		break;
-	};
-}
-
-/* ---------------------------------------------------- */
-
-READ_HANDLER(coco_floppy_r)
-{
-	return dc_floppy_r(offset);
-}
-
-WRITE_HANDLER(coco_floppy_w)
-{
-	dc_floppy_w(offset, data, HW_COCO);
-}
-
-READ_HANDLER(dragon_floppy_r)
-{
-	return dc_floppy_r(offset ^ 8);
-}
-
-WRITE_HANDLER(dragon_floppy_w)
-{
-	dc_floppy_w(offset ^ 8, data, HW_DRAGON);
-}
-
-/* ---------------------------------------------------- */
-
-static const struct cartridge_slot coco_disk_cartridge =
-{
-	coco_fdc_init,
-	coco_floppy_r,
-	coco_floppy_w,
-	NULL
-};
-
-static const struct cartridge_slot dragon_disk_cartridge =
-{
-	dragon_fdc_init,
-	dragon_floppy_r,
-	dragon_floppy_w,
-	NULL
-};
-
-/***************************************************************************
   Bitbanger port
 ***************************************************************************/
 
@@ -2058,7 +1805,7 @@ int coco_bitbanger_init (int id)
 	bitbanger_word = 0;
 	bitbanger_line = 0;
 	bitbanger_file = image_fopen (IO_BITBANGER, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
-	return INIT_OK;
+	return INIT_PASS;
 }
 
 void coco_bitbanger_exit (int id)
@@ -2078,29 +1825,97 @@ void coco_bitbanger_output (int id, int data)
 
 static void coco_setcartline(int data)
 {
-	cart_inserted = data;
-	pia_1_cb1_w(0, data);
+	cart_line = data;
+	pia_1_cb1_w(0, data ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static void coco3_setcartline(int data)
 {
-	cart_inserted = data;
-	pia_1_cb1_w(0, data);
-	coco3_raise_interrupt(COCO3_INT_EI0, cart_inserted ? 1 : 0);
+	cart_line = data;
+	pia_1_cb1_w(0, data ? ASSERT_LINE : CLEAR_LINE);
+	coco3_raise_interrupt(COCO3_INT_EI0, cart_line ? 1 : 0);
+}
+
+static int count_bank(void)
+{
+	unsigned int	crc;
+	/* This function, and all calls of it, are hacks for bankswitched games */
+	
+	crc = device_crc(IO_CARTSLOT, 0);
+	
+	switch( crc )
+	{
+		case 0x83bd6056:		/* Mind-Roll */
+			return 1;
+			break;
+		case 0xBF4AD8F8:		/* Predator */
+			return 3;
+			break;
+		case 0xDD94DD06:		/* RoboCop */
+			return 7;
+			break;
+		default:				/* No bankswitching */
+			return 0;
+			break;
+	}
+}
+
+static int is_Orch90(void)
+{
+	unsigned int	crc;
+	/* This function, and all calls of it, are hacks for bankswitched games */
+	
+	crc = device_crc(IO_CARTSLOT, 0);
+	
+	return crc == 0x15FB39AF;
+}
+
+static void generic_setcartbank(int bank, UINT8 *cartpos)
+{
+	void *fp;
+
+	if (count_bank() > 0) {
+		/* Pin variable to proper bit width */
+		bank &= count_bank();
+		fp = image_fopen(IO_CARTSLOT, 0, OSD_FILETYPE_IMAGE_R, 0);
+		if (fp) {
+			if (bank)
+				osd_fseek(fp, 0x4000 * bank, SEEK_SET);
+			osd_fread(fp, cartpos, 0x4000);
+			osd_fclose(fp);
+		}
+	}
+}
+
+static void coco_setcartbank(int bank)
+{
+	UINT8 *ROM = memory_region(REGION_CPU1);
+	generic_setcartbank(bank, &ROM[0x14000]);
+}
+
+static void coco3_setcartbank(int bank)
+{
+	UINT8 *ROM = memory_region(REGION_CPU1);
+	generic_setcartbank(bank, &ROM[0x8C000]);
 }
 
 static const struct cartridge_callback coco_cartcallbacks =
 {
-	coco_setcartline
+	coco_setcartline,
+	coco_setcartbank
 };
 
 static const struct cartridge_callback coco3_cartcallbacks =
 {
-	coco3_setcartline
+	coco3_setcartline,
+	coco3_setcartbank
 };
 
 static void generic_init_machine(struct pia6821_interface *piaintf, struct sam6883_interface *samintf, const struct cartridge_slot *cartinterface, const struct cartridge_callback *cartcallback)
 {
+	const struct cartridge_slot *cartslottype;
+
+	cart_line = CARTLINE_CLEAR;
 	pia0_irq_a = CLEAR_LINE;
 	pia0_irq_b = CLEAR_LINE;
 	pia1_firq_a = CLEAR_LINE;
@@ -2114,11 +1929,6 @@ static void generic_init_machine(struct pia6821_interface *piaintf, struct sam68
 	pia_config(1, PIA_STANDARD_ORDERING | PIA_8BIT, &piaintf[1]);
 	pia_reset();
 
-	if (cart_inserted) {
-		/* HACK */
-		timer_set(0.25, 1, cartcallback->cart_w);
-	}
-
 	sam_init(samintf);
 
 	if (trailer_load) {
@@ -2126,7 +1936,13 @@ static void generic_init_machine(struct pia6821_interface *piaintf, struct sam68
 		timer_set(0, 0, pak_load_trailer_callback);
 	}
 
-	coco_cartrige_init(cartinterface, cartcallback);
+	/* HACK for bankswitching carts */
+	if( is_Orch90() )
+		cartslottype = &cartridge_Orch90;
+	else
+	    cartslottype = (count_bank() > 0) ? &cartridge_banks : &cartridge_standard;
+
+	coco_cartrige_init(cart_inserted ? cartslottype : cartinterface, cartcallback);
 	autocenter_init(12, 0x04);
 
 	timer_pulse(TIME_IN_HZ(600), 0, coco_bitbanger_poll);
@@ -2135,13 +1951,13 @@ static void generic_init_machine(struct pia6821_interface *piaintf, struct sam68
 void dragon32_init_machine(void)
 {
 	coco_rom = memory_region(REGION_CPU1) + 0x8000;
-	generic_init_machine(dragon_pia_intf, &dragon_sam_intf, &dragon_disk_cartridge, &coco_cartcallbacks);
+	generic_init_machine(dragon_pia_intf, &dragon_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks);
 }
 
 void coco_init_machine(void)
 {
 	coco_rom = memory_region(REGION_CPU1) + 0x10000;
-	generic_init_machine(dragon_pia_intf, &dragon64_sam_intf, &coco_disk_cartridge, &coco_cartcallbacks);
+	generic_init_machine(dragon_pia_intf, &dragon64_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks);
 }
 
 void coco3_init_machine(void)
@@ -2159,7 +1975,7 @@ void coco3_init_machine(void)
 	}
 
 	coco_rom = memory_region(REGION_CPU1) + 0x80000;
-	generic_init_machine(coco3_pia_intf, &coco3_sam_intf, &coco_disk_cartridge, &coco3_cartcallbacks);
+	generic_init_machine(coco3_pia_intf, &coco3_sam_intf, &cartridge_fdc_coco, &coco3_cartcallbacks);
 
 	coco3_mmu_update(0, 8);
 	coco3_timer_init();
@@ -2172,7 +1988,8 @@ void coco3_init_machine(void)
 
 void dragon_stop_machine(void)
 {
-	wd179x_exit();
+	if (coco_cart_interface && coco_cart_interface->term)
+		coco_cart_interface->term();
 	sam_reset();
 }
 
@@ -2361,35 +2178,6 @@ void os9_in_swi2(void)
 
   This section discusses hardware/accessories/enhancements to the CoCo (mainly
   CoCo 3) that exist but are not emulated yet.
-
-  HI-RES JOYSTICK - A joystick that shared the joystick and serial ports that
-  provided higher accuracy.  Programs like CoCo Max used it.
-
-  IDE - There is an IDE ehancement for the CoCo 3.  Here are some docs on the
-  interface (info courtesy: LCB):
-
-		The IDE interface (which is jumpered to be at either at $ff5x or $ff7x
-		is mapped thusly:
-
-		$FFx0 - 1st 8 bits of 16 bit IDE DATA register
-		$FFx1 - Error (read) / Features (write) register
-		$FFx2 - Sector count register
-		$FFx3 - Sector # register
-		$FFx4 - Low byte of cylinder #
-		$FFx5 - Hi byte of cylinder #
-		$FFx6 - Device/head register
-		$FFx7 - Status (read) / Command (write) register
-		$FFx8 - Latch containing the 2nd 8 bits of the 16 bit IDE DATA reg.
-
-		All of these directly map to the IDE standard equivalents. No drivers
-		use	the IRQ's... they all use Polled I/O.
-
-  ORCH-90 STEREO SOUND PACK - This is simply 2 8 bit DACs, with the left and
-  right channels at $ff7a & $ff7b respectively (info courtesy: LCB).
-
-  6309 PROCESSOR UPGRADE - The Motorola 6809 is ripped out and a Hitachi 6309
-  is put in its place.  Note that there are many undocumented 6309 opcodes, and
-  software that uses the 6309 uses these undocumented features.
 
   TWO MEGABYTE UPGRADE - CoCo's could be upgraded to have two megabytes of RAM.
   This worked by doing the following things (info courtesy: LCB):

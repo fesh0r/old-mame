@@ -563,12 +563,16 @@ void c16_init_machine (void)
 
 	sid6581_reset(0);
 	if (SIDCARD) {
-		sid6581_set_type(0, SIDCARD_8580);
+		sid6581_set_type(0, MOS8580);
 		install_mem_read_handler (0, 0xfd40, 0xfd5f, sid6581_0_port_r);
 		install_mem_write_handler (0, 0xfd40, 0xfd5f, sid6581_0_port_w);
+		install_mem_read_handler (0, 0xfe80, 0xfe9f, sid6581_0_port_r);
+		install_mem_write_handler (0, 0xfe80, 0xfe9f, sid6581_0_port_w);
 	} else {
 		install_mem_read_handler (0, 0xfd40, 0xfd5f, MRA_NOP);
 		install_mem_write_handler (0, 0xfd40, 0xfd5f, MWA_NOP);
+		install_mem_read_handler (0, 0xfe80, 0xfe9f, MRA_NOP);
+		install_mem_write_handler (0, 0xfe80, 0xfe9f, MWA_NOP);
 	}
 
 #if 0
@@ -593,9 +597,7 @@ void c16_init_machine (void)
 #endif
 			install_mem_write_handler (0, 0xff20, 0xff3d, c16_write_3f20);
 			install_mem_write_handler (0, 0xff40, 0xffff, c16_write_3f40);
-			if (SIDCARD) {
-				// lone07 works with sid at the c64 address???
-				// dizzy fantasy 3
+			if (SIDCARD_HACK) {
 				install_mem_write_handler (0, 0xd400, 0xd41f, c16_sidcart_16k);
 			}
 			ted7360_set_dma (ted7360_dma_read_16k, ted7360_dma_read_rom);
@@ -617,17 +619,13 @@ void c16_init_machine (void)
 			install_mem_write_handler (0, 0xff40, 0xffff, c16_write_7f40);
 #endif
 			ted7360_set_dma (ted7360_dma_read_32k, ted7360_dma_read_rom);
-			if (SIDCARD) {
-				// lone07 works with sid at the c64 address???
-				// dizzy fantasy 3
+			if (SIDCARD_HACK) {
 				install_mem_write_handler (0, 0xd400, 0xd41f, c16_sidcart_32k);
 			}
 			break;
 		case MEMORY64K:
 			install_mem_write_handler (0, 0x4000, 0xfcff, MWA_RAM);
-			if (SIDCARD) {
-				// lone07 works with sid at the c64 address???
-				// dizzy fantasy 3
+			if (SIDCARD_HACK) {
 				install_mem_write_handler (0, 0xd400, 0xd41f, c16_sidcart_64k);
 			}
 			install_mem_write_handler (0, 0xff20, 0xff3d, MWA_RAM);
@@ -639,9 +637,7 @@ void c16_init_machine (void)
 	else
 	{
 		install_mem_write_handler (0, 0x4000, 0xfcff, MWA_RAM);
-		if (SIDCARD) {
-			// lone07 works with sid at the c64 address???
-			// dizzy fantasy 3
+		if (SIDCARD_HACK) {
 			install_mem_write_handler (0, 0xd400, 0xd41f, c16_sidcart_64k);
 		}
 		ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
@@ -701,59 +697,6 @@ void c16_shutdown_machine (void)
 {
 }
 
-int c16_rom_init (int id)
-{
-	rom_specified[id] = device_filename(IO_CARTSLOT,id) != NULL;
-	return !rom_specified[id] || !c16_rom_id(id);
-}
-
-
-int c16_rom_load (int id)
-{
-	const char *name = device_filename(IO_CARTSLOT,id);
-    UINT8 *mem = memory_region (REGION_CPU1);
-	FILE *fp;
-	int size, read;
-	char *cp;
-	static unsigned int addr = 0;
-
-	if (name==NULL) return 1;
-	if (!c16_rom_id (id))
-		return 1;
-	fp = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
-	if (!fp)
-	{
-		logerror("%s file not found\n", name);
-		return 1;
-	}
-
-	size = osd_fsize (fp);
-
-	if ((cp = strrchr (name, '.')) != NULL)
-	{
-		if (stricmp (cp, ".prg") == 0)
-		{
-			unsigned short in;
-
-			osd_fread_lsbfirst (fp, &in, 2);
-			logerror("rom prg %.4x\n", in);
-			addr = in;
-			size -= 2;
-		}
-	}
-	if (addr == 0)
-	{
-		addr = 0x20000;
-	}
-	logerror("loading rom %s at %.5x size:%.4x\n", name, addr, size);
-	read = osd_fread (fp, mem + addr, size);
-	addr += size;
-	osd_fclose (fp);
-	if (read != size)
-		return 1;
-	return 0;
-}
-
 int c16_rom_id (int id)
 {
     /* magic lowrom at offset 7: $43 $42 $4d */
@@ -794,6 +737,60 @@ int c16_rom_id (int id)
 			logerror("rom %s not recognized\n", name);
 	return retval;
 }
+
+int c16_rom_init (int id)
+{
+	rom_specified[id] = device_filename(IO_CARTSLOT,id) != NULL;
+	return rom_specified[id] && !c16_rom_id(id) ? INIT_FAIL: INIT_PASS;
+}
+
+
+int c16_rom_load (int id)
+{
+	const char *name = device_filename(IO_CARTSLOT,id);
+    UINT8 *mem = memory_region (REGION_CPU1);
+	FILE *fp;
+	int size, read;
+	char *cp;
+	static unsigned int addr = 0;
+
+	if (name==NULL) return 1;
+	if (!c16_rom_id (id))
+		return 1;
+	fp = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
+	if (!fp)
+	{
+		logerror("%s file not found\n", name);
+		return 1;
+	}
+
+	size = osd_fsize (fp);
+
+	if ((cp = strrchr (name, '.')) != NULL)
+	{
+		if (stricmp (cp, ".prg") == 0)
+		{
+			unsigned short in;
+
+			osd_fread_lsbfirst (fp, &in, 2);
+			logerror("rom prg %.4x\n", in);
+			addr = in+0x20000;
+			size -= 2;
+		}
+	}
+	if (addr == 0)
+	{
+		addr = 0x20000;
+	}
+	logerror("loading rom %s at %.5x size:%.4x\n", name, addr, size);
+	read = osd_fread (fp, mem + addr, size);
+	addr += size;
+	osd_fclose (fp);
+	if (read != size)
+		return 1;
+	return 0;
+}
+
 
 int c16_frame_interrupt (void)
 {

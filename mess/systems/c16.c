@@ -1,7 +1,8 @@
 /***************************************************************************
 	commodore c16 home computer
 
-	peter.trauner@jk.uni-linz.ac.at
+	PeT mess@utanet.at
+
 	documentation
 	 www.funet.fi
 
@@ -476,10 +477,10 @@ INPUT_PORTS_START (c16)
 	PORT_START
 	PORT_DIPNAME ( 0x80, 0x80, "Sidcard")
 	PORT_DIPSETTING(  0, DEF_STR(Off) )
-	PORT_DIPSETTING( 0x80, "at $fd40-fd5f/$d400 write only" )
-	PORT_DIPNAME ( 0x40, 0, " Sidcard Chip")
-	PORT_DIPSETTING(  0, "MOS6581" )
-	PORT_DIPSETTING( 0x40, "MOS8580" )
+	PORT_DIPSETTING( 0x80, DEF_STR(On) )
+	PORT_DIPNAME ( 0x40, 0, " SID 0xd400 hack")
+	PORT_DIPSETTING(  0, DEF_STR(Off) )
+	PORT_DIPSETTING( 0x40, DEF_STR(On) )
 	PORT_BIT (0x10, 0x0, IPT_UNUSED)		   /* pal */
 	PORT_BIT (0xc, 0x0, IPT_UNUSED) 	   /* c16 */
 	PORT_DIPNAME (3, 3, "Memory")
@@ -497,10 +498,10 @@ INPUT_PORTS_START (c16c)
 	PORT_START
 	PORT_DIPNAME ( 0x80, 0x80, "Sidcard")
 	PORT_DIPSETTING(  0, DEF_STR(Off) )
-	PORT_DIPSETTING( 0x80, "at $fd40-fd5f/$d400 write only" )
-	PORT_DIPNAME ( 0x40, 0, " Sidcard Chip")
-	PORT_DIPSETTING(  0, "MOS6581" )
-	PORT_DIPSETTING( 0x40, "MOS8580" )
+	PORT_DIPSETTING( 0x80, DEF_STR(On) )
+	PORT_DIPNAME ( 0x40, 0, " SID 0xd400 hack")
+	PORT_DIPSETTING(  0, DEF_STR(Off) )
+	PORT_DIPSETTING( 0x40, DEF_STR(On) )
 	PORT_BIT (0x10, 0x0, IPT_UNUSED)		   /* pal */
 	PORT_BIT (0xc, 0x0, IPT_UNUSED) 	   /* c16 */
 	PORT_DIPNAME (3, 3, "Memory")
@@ -518,10 +519,10 @@ INPUT_PORTS_START (c16v)
 	PORT_START
 	PORT_DIPNAME ( 0x80, 0x80, "Sidcard")
 	PORT_DIPSETTING(  0, DEF_STR(Off) )
-	PORT_DIPSETTING( 0x80, "at $fd40-fd5f/$d400 write only" )
-	PORT_DIPNAME ( 0x40, 0, " Sidcard Chip")
-	PORT_DIPSETTING(  0, "MOS6581" )
-	PORT_DIPSETTING( 0x40, "MOS8580" )
+	PORT_DIPSETTING( 0x80, DEF_STR(On) )
+	PORT_DIPNAME ( 0x40, 0, " SID 0xd400 hack")
+	PORT_DIPSETTING(  0, DEF_STR(Off) )
+	PORT_DIPSETTING( 0x40, DEF_STR(On) )
 	PORT_BIT (0x10, 0x0, IPT_UNUSED)		   /* pal */
 	PORT_BIT (0xc, 0x0, IPT_UNUSED) 	   /* c16 */
 	PORT_DIPNAME (3, 3, "Memory")
@@ -545,10 +546,10 @@ INPUT_PORTS_START (plus4)
 	PORT_START
 	PORT_DIPNAME ( 0x80, 0x80, "Sidcard")
 	PORT_DIPSETTING(  0, DEF_STR(Off) )
-	PORT_DIPSETTING( 0x80, "at $fd40-fd5f/$d400 write only" )
-	PORT_DIPNAME ( 0x40, 0, " Sidcard Chip")
-	PORT_DIPSETTING(  0, "MOS6581" )
-	PORT_DIPSETTING( 0x40, "MOS8580" )
+	PORT_DIPSETTING( 0x80, DEF_STR(On) )
+	PORT_DIPNAME ( 0x40, 0, " SID 0xd400 hack")
+	PORT_DIPSETTING(  0, DEF_STR(Off) )
+	PORT_DIPSETTING( 0x40, DEF_STR(On) )
 	PORT_BIT (0x10, 0x10, IPT_UNUSED)		   /* ntsc */
 	PORT_BIT (0xc, 0x4, IPT_UNUSED) 	   /* plus4 */
 	PORT_BIT (0x3, 0x3, IPT_UNUSED) 	   /* 64K Memory */
@@ -563,10 +564,10 @@ INPUT_PORTS_START (plus4c)
 	PORT_START
 	PORT_DIPNAME ( 0x80, 0x80, "Sidcard")
 	PORT_DIPSETTING(  0, DEF_STR(Off) )
-	PORT_DIPSETTING( 0x80, "at $fd40-fd5f/$d400 write only" )
-	PORT_DIPNAME ( 0x40, 0, " Sidcard Chip")
-	PORT_DIPSETTING(  0, "MOS6581" )
-	PORT_DIPSETTING( 0x40, "MOS8580" )
+	PORT_DIPSETTING( 0x80, DEF_STR(On) )
+	PORT_DIPNAME ( 0x40, 0, " SID 0xd400 hack")
+	PORT_DIPSETTING(  0, DEF_STR(Off) )
+	PORT_DIPSETTING( 0x40, DEF_STR(On) )
 	PORT_BIT (0x10, 0x10, IPT_UNUSED)		   /* ntsc */
 	PORT_BIT (0xc, 0x4, IPT_UNUSED) 	   /* plus4 */
 	PORT_BIT (0x3, 0x3, IPT_UNUSED) 	   /* 64K Memory */
@@ -581,10 +582,10 @@ INPUT_PORTS_START (plus4v)
 	PORT_START
 	PORT_DIPNAME ( 0x80, 0x80, "Sidcard")
 	PORT_DIPSETTING(  0, DEF_STR(Off) )
-	PORT_DIPSETTING( 0x80, "at $fd40-fd5f/$d400 write only" )
-	PORT_DIPNAME ( 0x40, 0, " Sidcard Chip")
-	PORT_DIPSETTING(  0, "MOS6581" )
-	PORT_DIPSETTING( 0x40, "MOS8580" )
+	PORT_DIPSETTING( 0x80, DEF_STR(On) )
+	PORT_DIPNAME ( 0x40, 0, " SID 0xd400 hack")
+	PORT_DIPSETTING(  0, DEF_STR(Off) )
+	PORT_DIPSETTING( 0x40, DEF_STR(On) )
 	PORT_BIT (0x10, 0x10, IPT_UNUSED)		   /* ntsc */
 	PORT_BIT (0xc, 0x4, IPT_UNUSED) 	   /* plus4 */
 	PORT_BIT (0x3, 0x3, IPT_UNUSED) 	   /* 64K Memory */
@@ -606,10 +607,10 @@ INPUT_PORTS_START (c364)
 	PORT_START
 	PORT_DIPNAME ( 0x80, 0x80, "Sidcard")
 	PORT_DIPSETTING(  0, DEF_STR(Off) )
-	PORT_DIPSETTING( 0x80, "at $fd40-fd5f/$d400 write only" )
-	PORT_DIPNAME ( 0x40, 0, " Sidcard Chip")
-	PORT_DIPSETTING(  0, "MOS6581" )
-	PORT_DIPSETTING( 0x40, "MOS8580" )
+	PORT_DIPSETTING( 0x80, DEF_STR(On) )
+	PORT_DIPNAME ( 0x40, 0, " SID 0xd400 hack")
+	PORT_DIPSETTING(  0, DEF_STR(Off) )
+	PORT_DIPSETTING( 0x40, DEF_STR(On) )
 	PORT_BIT (0x10, 0x10, IPT_UNUSED)		   /* ntsc */
 	PORT_BIT (0xc, 0x8, IPT_UNUSED) 	   /* 364 */
 	PORT_BIT (0x3, 0x3, IPT_UNUSED) 	   /* 64K Memory */
@@ -729,7 +730,7 @@ static SID6581_interface sidc16_sound_interface =
 	{
 		{
 			MIXER(50, MIXER_PAN_CENTER),
-			MOS6581,
+			MOS8580,
 			TED7360PAL_CLOCK/4,
 			NULL
 		}
@@ -747,7 +748,7 @@ static SID6581_interface sidplus4_sound_interface =
 	{
 		{
 			MIXER(50, MIXER_PAN_CENTER),
-			MOS6581,
+			MOS8580,
 			TED7360NTSC_CLOCK/4,
 			NULL
 		}
@@ -1072,7 +1073,7 @@ static const struct IODevice io_c16[] =
 		2,							   /* normal 1 *//* count */
 		"bin\0rom\0",                  /* file extensions */
 		IO_RESET_ALL,				   /* reset if file changed */
-		c16_rom_id, 				   /* id */
+		0,
 		c16_rom_init,				   /* init */
 		NULL,						   /* exit */
 		NULL,						   /* info */
@@ -1098,7 +1099,7 @@ static const struct IODevice io_c16c[] =
 		2,							   /* normal 1 *//* count */
 		"bin\0rom\0",                  /* file extensions */
 		IO_RESET_ALL,				   /* reset if file changed */
-		c16_rom_id, 				   /* id */
+		0,
 		c16_rom_init,				   /* init */
 		NULL,						   /* exit */
 		NULL,						   /* info */
@@ -1124,7 +1125,7 @@ static const struct IODevice io_c16v[] =
 		2,							   /* normal 1 *//* count */
 		"bin\0rom\0",                  /* file extensions */
 		IO_RESET_ALL,				   /* reset if file changed */
-		c16_rom_id, 				   /* id */
+		0,
 		c16_rom_init,				   /* init */
 		NULL,						   /* exit */
 		NULL,						   /* info */
@@ -1158,15 +1159,15 @@ static const struct IODevice io_c16v[] =
 #define init_c364		c16_driver_init
 
 /*		YEAR	NAME	PARENT	MACHINE INPUT	INIT	COMPANY 								FULLNAME */
-COMPX ( 1984,	c16,	0,		c16,	c16,	c16,	"Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL)", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
-COMPX ( 1984,	c16hun, c16,	c16,	c16,	c16,	"Commodore Business Machines Co.",      "Commodore 16 Novotrade (PAL, Hungarian Character Set)", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
-COMPX ( 1984,	c16c,	c16,	c16c,	c16c,	c16,	"Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL), 1551", GAME_NOT_WORKING | GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
-COMPX ( 1984,	plus4,	c16,	plus4,	plus4,	plus4,	"Commodore Business Machines Co.",      "Commodore +4 (NTSC)", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
-COMPX ( 1984,	plus4c, c16,	plus4c, plus4c, plus4,	"Commodore Business Machines Co.",      "Commodore +4 (NTSC), 1551", GAME_NOT_WORKING | GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
-COMPX ( 198?,	c364,	c16,	c364,	plus4,	plus4,	"Commodore Business Machines Co.",      "Commodore 364 (Prototype)", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
+COMP ( 1984,	c16,	0,		c16,	c16,	c16,	"Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL)")
+COMP ( 1984,	c16hun, c16,	c16,	c16,	c16,	"Commodore Business Machines Co.",      "Commodore 16 Novotrade (PAL, Hungarian Character Set)")
+COMPX ( 1984,	c16c,	c16,	c16c,	c16c,	c16,	"Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL), 1551", GAME_NOT_WORKING)
+COMP ( 1984,	plus4,	c16,	plus4,	plus4,	plus4,	"Commodore Business Machines Co.",      "Commodore +4 (NTSC)")
+COMPX ( 1984,	plus4c, c16,	plus4c, plus4c, plus4,	"Commodore Business Machines Co.",      "Commodore +4 (NTSC), 1551", GAME_NOT_WORKING)
+COMPX ( 198?,	c364,	c16,	c364,	plus4,	plus4,	"Commodore Business Machines Co.",      "Commodore 364 (Prototype)", GAME_IMPERFECT_SOUND)
 // please leave the following as testdriver only
-COMPX ( 1984,	c16v,	c16,	c16v,	c16v,	c16,	"Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL), VC1541", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
-COMPX ( 1984,	plus4v, c16,	plus4v, plus4v, plus4,	"Commodore Business Machines Co.",      "Commodore +4 (NTSC), VC1541", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
+COMPX ( 1984,	c16v,	c16,	c16v,	c16v,	c16,	"Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL), VC1541", GAME_NOT_WORKING)
+COMPX ( 1984,	plus4v, c16,	plus4v, plus4v, plus4,	"Commodore Business Machines Co.",      "Commodore +4 (NTSC), VC1541", GAME_NOT_WORKING)
 
 #ifdef RUNTIME_LOADER
 extern void c16_runtime_loader_init(void)

@@ -27,8 +27,6 @@
 #include "sc61860.h"
 #include "sc.h"
 
-typedef int bool;
-
 #define VERBOSE 0
 
 #if VERBOSE
@@ -87,16 +85,17 @@ static UINT8 sc61860_win_layout[] = {
  ****************************************************************************/
 typedef struct
 {
-	SC61860_CONFIG *config;
-	UINT8 ram[0x60]; // internal special ram
-	UINT8 p, q, r; //6 bits only?
-
-	UINT16 oldpc, pc, dp;
-
-	bool carry, zero;
-
-	struct { bool t2ms, t512ms; int count;} timer;
-}	SC61860_Regs;
+    SC61860_CONFIG *config;
+    UINT8 ram[0x60]; // internal special ram
+    UINT8 p, q, r; //7 bits only?
+    
+    UINT8 d, h;
+    UINT16 oldpc, pc, dp;
+    
+    bool carry, zero;
+    
+    struct { bool t2ms, t512ms; int count;} timer;
+}   SC61860_Regs;
 
 int sc61860_icount = 0;
 
@@ -301,7 +300,7 @@ const char *sc61860_info(void *context, int regnum)
 	case CPU_INFO_REG+SC61860_L: sprintf(buffer[which],"L:%.2x",r->ram[L]);break;
 	case CPU_INFO_REG+SC61860_V: sprintf(buffer[which],"V:%.2x",r->ram[V]);break;
 	case CPU_INFO_REG+SC61860_W: sprintf(buffer[which],"W:%.2x",r->ram[W]);break;
-	case CPU_INFO_REG+SC61860_H: sprintf(buffer[which],"H:%.2x",r->ram[H]);break;
+	case CPU_INFO_REG+SC61860_H: sprintf(buffer[which],"W:%.2x",r->h);break;
 	case CPU_INFO_REG+SC61860_BA:
 		sprintf(buffer[which],"BA:%.2x%.2x",r->ram[B],r->ram[A]);break;
 	case CPU_INFO_REG+SC61860_X:
@@ -313,9 +312,9 @@ const char *sc61860_info(void *context, int regnum)
 	case CPU_INFO_FLAGS: sprintf(buffer[which], "%c%c", r->zero?'Z':'.', r->carry ? 'C':'.'); break;
 	case CPU_INFO_NAME: return "SC61860";
 	case CPU_INFO_FAMILY: return "SC61860";
-	case CPU_INFO_VERSION: return "1.0alpha";
+	case CPU_INFO_VERSION: return "1.0beta";
 	case CPU_INFO_FILE: return __FILE__;
-	case CPU_INFO_CREDITS: return "Copyright (c) 2000 Peter Trauner, all rights reserved.";
+	case CPU_INFO_CREDITS: return "Copyright (c) 2000,2001 Peter Trauner, all rights reserved.";
 	case CPU_INFO_REG_LAYOUT: return (const char*)sc61860_reg_layout;
 	case CPU_INFO_WIN_LAYOUT: return (const char*)sc61860_win_layout;
 	}

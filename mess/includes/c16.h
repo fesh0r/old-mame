@@ -124,7 +124,10 @@
 #define SERIAL9ON ((input_port_8_r(0)&7)==3)
 
 #define SIDCARD ((input_port_9_r(0)&0x80))
-#define SIDCARD_8580 ((input_port_9_r(0)&0x40) ? MOS8580 : MOS6581)
+// a lot of c64 software has been converted to c16
+// these oftenly still produce the commands for the sid chip at 0xd400
+// with following hack you can hear these sounds
+#define SIDCARD_HACK ((input_port_9_r(0)&0x40))
 
 #define C16_PAL ((input_port_9_r(0)&0x10)==0)
 
@@ -181,6 +184,5 @@ extern int c16_frame_interrupt (void);
 
 extern int c16_rom_init (int id);
 extern int c16_rom_load (int id);
-extern int c16_rom_id (int id);
 
 #endif

@@ -147,9 +147,6 @@ struct MachineSound
 #if (HAS_TIA)
 #include "mess/sound/tiaintf.h"
 #endif
-#if (HAS_TIA)
-#include "sound/tiaintf.h"
-#endif
 #if (HAS_WAVE)
 #include "mess/sound/wave.h"
 #endif

@@ -260,7 +260,8 @@ static struct MachineDriver machine_driver_atom =
 			1000000,
 			atom_readmem, atom_writemem,
 			0, 0,
-			0, 0,
+			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
+			0, 0
 		},
 	},
 	50, 128, /* frames/sec, vblank duration */
@@ -302,7 +303,8 @@ static struct MachineDriver machine_driver_atomeb =
 			1000000,
 			atomeb_readmem, atomeb_writemem,
 			0, 0,
-			0, 0,
+			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
+			0, 0
 		},
 	},
 	50, 128, /* frames/sec, vblank duration */
@@ -386,7 +388,7 @@ static const struct IODevice io_atom[] =
 		2,						/* count */
 		"ssd\0",                /* file extensions */
 		IO_RESET_NONE,			/* reset if file changed */
-		basicdsk_floppy_id, 	/* id */
+		0,
 		atom_floppy_init,		/* init */
 		basicdsk_floppy_exit,	/* exit */
 		NULL,					/* info */

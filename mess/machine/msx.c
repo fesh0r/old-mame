@@ -28,36 +28,21 @@
 
 static MSX msx1;
 static void msx_set_all_mem_banks (void);
-static void msx_ppi_port_a_w (int chip, int data);
-static void msx_ppi_port_c_w (int chip, int data);
-static int msx_ppi_port_b_r (int chip);
+static WRITE_HANDLER ( msx_ppi_port_a_w );
+static WRITE_HANDLER ( msx_ppi_port_c_w );
+static READ_HANDLER (msx_ppi_port_b_r );
 static ppi8255_interface msx_ppi8255_interface = {
     1,
-    NULL,
-    msx_ppi_port_b_r,
-    NULL,
-    msx_ppi_port_a_w,
-    NULL,
-    msx_ppi_port_c_w
+    {NULL},
+    {msx_ppi_port_b_r},
+    {NULL},
+    {msx_ppi_port_a_w},
+    {NULL},
+    {msx_ppi_port_c_w}
 };
 
 static char PAC_HEADER[] = "PAC2 BACKUP DATA";
 #define PAC_HEADER_LEN (16)
-
-int msx_id_rom (int id)
-{
-    FILE *F;
-    unsigned char magic[2];
-
-    /* read the first two bytes */
-    F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
-    if (!F) return 0;
-    osd_fread (F, magic, 2);
-    osd_fclose (F);
-
-    /* first to bytes must be 'AB' */
-    return ( (magic[0] == 'A') && (magic[1] == 'B') );
-}
 
 static int msx_probe_type (UINT8* pmem, int size)
 {
@@ -109,8 +94,6 @@ static int msx_probe_type (UINT8* pmem, int size)
         return (asc8 > asc16) ? 4 : 5;
 }
 
-/* static UINT16 DiskPatches[] = { 0x10,0x13,0x16,0x1C,0x1F,0 }; */
-
 int msx_load_rom (int id)
 {
     void *F;
@@ -124,6 +107,9 @@ int msx_load_rom (int id)
         "Panasonic FM-PAC", "Super Load Runner",
         "Konami Synthesizer", "Cross Blaim", "Disk ROM",
 		"Korean 80-in-1", "Korean 126-in-1" };
+
+	if (!device_filename(IO_CARTSLOT,id) || !strlen(device_filename(IO_CARTSLOT,id) ))
+		return 0;
 
     /* try to load it */
     F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
@@ -174,6 +160,7 @@ int msx_load_rom (int id)
         return 1;
     }
     osd_fclose (F);
+
     /* check type */
     if (type < 0)
     {
@@ -545,7 +532,7 @@ static void msx_ch_reset_core (void) {
         msx1.empty = (UINT8*)malloc (0x4000);
         msx1.ram = (UINT8*)malloc (0x20000);
 		for (i=0;i<4;i++) msx1.ramp[i] = 3 - i;
-	
+
         if (!msx1.ram || !msx1.empty)
         {
             logerror("malloc () in msx_ch_reset () failed!\n");
@@ -583,7 +570,7 @@ void init_msx (void)
     {
     int i,n;
 
-	wd179x_init (msx_wd179x_int);
+	wd179x_init (WD_TYPE_179X,msx_wd179x_int);
 	wd179x_set_density (DEN_FM_HI);
 	msx1.dsk_stat = 0x7f;
 
@@ -752,7 +739,7 @@ WRITE_HANDLER ( msx_psg_port_a_w )
 WRITE_HANDLER ( msx_psg_port_b_w )
 {
     /* Arabic or kana mode led */
-	if ( (data ^ msx1.psg_b) & 0x80) 
+	if ( (data ^ msx1.psg_b) & 0x80)
 		set_led_status (2, !(data & 0x80) );
 
     if ( (msx1.psg_b ^ data) & 0x10)
@@ -863,10 +850,10 @@ hardware registers
 
 adress
 
-7FFCH r/w  bit 0 side select 
+7FFCH r/w  bit 0 side select
 7FFDH r/w  b7>M-on , b6>in-use , b1>ds1 , b0>ds0  (all neg. logic)
 7FFEH         not used
-7FFFH read b7>drq , b6>intrq 
+7FFFH read b7>drq , b6>intrq
 
 set on 7FFDH bit 2 always to 0 (some use it as disk change reset)
 
@@ -887,10 +874,10 @@ READ_HANDLER (msx_disk_p1_r)
 	{
 	switch (offset)
 		{
-		case 0x1ff8: return wd179x_status_r (0); 
-		case 0x1ff9: return wd179x_track_r (0); 
-		case 0x1ffa: return wd179x_sector_r (0); 
-		case 0x1ffb: return wd179x_data_r (0); 
+		case 0x1ff8: return wd179x_status_r (0);
+		case 0x1ff9: return wd179x_track_r (0);
+		case 0x1ffa: return wd179x_sector_r (0);
+		case 0x1ffb: return wd179x_data_r (0);
 		case 0x1fff: return msx1.dsk_stat;
 		default: return msx1.disk[offset];
 		}
@@ -902,10 +889,10 @@ READ_HANDLER (msx_disk_p2_r)
 		{
 		switch (offset)
 			{
-			case 0x1ff8: return wd179x_status_r (0); 
-			case 0x1ff9: return wd179x_track_r (0); 
-			case 0x1ffa: return wd179x_sector_r (0); 
-			case 0x1ffb: return wd179x_data_r (0); 
+			case 0x1ff8: return wd179x_status_r (0);
+			case 0x1ff9: return wd179x_track_r (0);
+			case 0x1ffa: return wd179x_sector_r (0);
+			case 0x1ffb: return wd179x_data_r (0);
 			case 0x1fff: return msx1.dsk_stat;
 			default: return msx1.disk[offset];
 			}
@@ -918,19 +905,19 @@ WRITE_HANDLER (msx_disk_w)
 	{
 	switch (offset)
 		{
-		case 0x1ff8: 
-			wd179x_command_w (0, data); 
+		case 0x1ff8:
+			wd179x_command_w (0, data);
 			break;
-		case 0x1ff9: 
-			wd179x_track_w (0, data); 
+		case 0x1ff9:
+			wd179x_track_w (0, data);
 			break;
-		case 0x1ffa: 
-			wd179x_sector_w (0, data); 
+		case 0x1ffa:
+			wd179x_sector_w (0, data);
 			break;
-		case 0x1ffb: 
-			wd179x_data_w (0, data); 
+		case 0x1ffb:
+			wd179x_data_w (0, data);
 			break;
-		case 0x1ffc: 
+		case 0x1ffc:
 			wd179x_set_side (data & 1);
 			msx1.disk[0x1ffc] = data | 0xfe;
 			break;
@@ -943,32 +930,13 @@ WRITE_HANDLER (msx_disk_w)
 		}
 	}
 
-int msx_floppy_id (int id)
-	{
-	void *f;
-	int size;
-
-	f = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE_R, OSD_FOPEN_READ);
-	if (f)
-		{
-		size = osd_fsize (f);
-		osd_fclose (f);
-
-		switch (size)
-			{
-			case 360*1024:
-			case 720*1024:
-				return INIT_OK;
-			}	
-		}
-	
-	return INIT_FAILED;
-	}
-	
 int msx_floppy_init (int id)
 	{
 	void *f;
 	int size, heads = 2;
+
+	if (!device_filename(IO_FLOPPY,id) || !strlen(device_filename(IO_FLOPPY,id) ))
+		return 0;
 
 	f = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE_R, OSD_FOPEN_READ);
 	if (f)
@@ -983,30 +951,30 @@ int msx_floppy_init (int id)
 			case 720*1024:
 				break;
 			default:
-				return INIT_FAILED;
-			}	
+				return INIT_FAIL;
+			}
 		}
 	else
-		return INIT_FAILED;
+		return INIT_FAIL;
 
-	if (basicdsk_floppy_init (id) != INIT_OK)
-		return INIT_FAILED;
+	if (basicdsk_floppy_init (id) != INIT_PASS)
+		return INIT_FAIL;
 
 	basicdsk_set_geometry (id, 80, heads, 9, 512, 1);
 
-	return INIT_OK;
+	return INIT_PASS;
 	}
 
 /*
 ** The PPI functions
 */
 
-static void msx_ppi_port_a_w (int chip, int data)
+static WRITE_HANDLER ( msx_ppi_port_a_w )
 	{
     msx_set_all_mem_banks ();
 	}
 
-static void msx_ppi_port_c_w (int chip, int data)
+static WRITE_HANDLER ( msx_ppi_port_c_w )
 	{
     static int old_val = 0xff;
 
@@ -1026,7 +994,7 @@ static void msx_ppi_port_c_w (int chip, int data)
     old_val = data;
 	}
 
-static int msx_ppi_port_b_r (int chip)
+static READ_HANDLER( msx_ppi_port_b_r )
 	{
     int row, data;
 
@@ -1148,7 +1116,7 @@ static void msx_set_all_mem_banks (void)
 
 	memory_set_bankhandler_r (4, 0, MRA_BANK4);
 	memory_set_bankhandler_r (6, 0, MRA_BANK6);
-		
+
     for (i=0;i<4;i++)
         msx_set_slot[(ppi8255_0_r(0)>>(i*2))&3](i);
 }
@@ -1159,18 +1127,18 @@ WRITE_HANDLER ( msx_writemem0 )
 	{
 	if (!offset)
 		{
-		/* 
+		/*
          * Super Load Runner ignores the CS, it responds to any
          * write to address 0x0000 (!).
 		 */
-		
+
 		if (msx1.cart[0].type == 12)
 			msx_cart_write (0, -1, data);
 
 		if (msx1.cart[1].type == 12)
 			msx_cart_write (1, -1, data);
 		}
-	
+
     if ( (ppi8255_0_r(0) & 0x03) == 0x03 )
         msx1.ram[(7 - msx1.ramp[0]) * 0x4000 + offset] = data;
 	}
@@ -1232,6 +1200,15 @@ static void msx_cart_write (int cart, int offset, int data)
             else if (offset < 0x8a) K051649_frequency_w (offset - 0x80 , data);
             else if (offset < 0x8f) K051649_volume_w (offset - 0x8a, data);
             else if (offset == 0x8f) K051649_keyonoff_w (0, data);
+        }
+        /* quick sound cartridge hack */
+        else if ( (offset >= 0x7800) && (offset < 0x8000) )
+        {
+            offset &= 0xff;
+            if (offset < 0xa0) K052539_waveform_w (offset, data);
+            else if (offset < 0xaa) K051649_frequency_w (offset - 0xa0 , data);
+            else if (offset < 0xaf) K051649_volume_w (offset - 0xaa, data);
+            else if (offset == 0xaf) K051649_keyonoff_w (0, data);
         }
         break;
     case 3: /* Konami4 without SCC */
@@ -1498,7 +1475,8 @@ static void msx_cart_write (int cart, int offset, int data)
         cpu_setbank (4,msx1.cart[cart].mem + (n + 1) * 0x2000);
         break;
     case 13: /* Konami Synthesizer */
-        if (!offset) DAC_data_w (0, data);
+		if ( (offset < 0x4000) && !(offset & 0x0010) )
+			DAC_data_w (0, data);
         break;
 	case 15: /* disk rom */
 		if ( (offset >= 0x2000) && (offset < 0x4000) )
@@ -1614,6 +1592,9 @@ int msx_cassette_init(int id)
     void *file;
 	int ret;
 
+	if (!device_filename(IO_CASSETTE,id) || !strlen(device_filename(IO_CASSETTE,id) ))
+		return 0;
+
     file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_READ);
     if( file )
     {
@@ -1637,7 +1618,7 @@ int msx_cassette_init(int id)
 		cas_samples = NULL;
 		cas_len = -1;
 
-		return (ret ? INIT_FAILED : INIT_OK);
+		return (ret ? INIT_FAIL : INIT_PASS);
     }
     file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE_RW,
         OSD_FOPEN_RW_CREATE);
@@ -1648,10 +1629,10 @@ int msx_cassette_init(int id)
         wa.display = 1;
         wa.smpfreq = 44100;
         if( device_open(IO_CASSETTE,id,1,&wa) )
-            return INIT_FAILED;
-        return INIT_OK;
+            return INIT_FAIL;
+        return INIT_PASS;
     }
-    return INIT_FAILED;
+    return INIT_FAIL;
 }
 
 void msx_cassette_exit(int id)

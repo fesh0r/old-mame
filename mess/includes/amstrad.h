@@ -9,11 +9,9 @@ int amstrad_floppy_init(int);
 
 
 int amstrad_snapshot_load(int);
-int amstrad_snapshot_id(int);
 void amstrad_snapshot_exit(int);
 
 int amstrad_floppy_load(int);
-int amstrad_floppy_id(int);
 void amstrad_floppy_exit(int);
 
 void Amstrad_Reset(void);
@@ -22,6 +20,7 @@ void Amstrad_Reset(void);
 extern int amstrad_cassette_init(int id);
 extern void amstrad_cassette_exit(int id);
 
+extern int amstrad_floppy_init(int id);
 
 
 /* On the Amstrad, any part of the 64k memory can be access by the video
@@ -81,3 +80,23 @@ void amstrad_vh_update_mode(int);
 void amstrad_interrupt_timer_update(void);
 /* if start of vsync sound, wait to reset interrupt counter 2 hsyncs later */
 void amstrad_interrupt_timer_trigger_reset_by_vsync(void);
+
+/*** AMSTRAD CPC SPECIFIC ***/
+
+/* initialise palette for CPC464, CPC664 and CPC6128 */
+void amstrad_cpc_init_palette(unsigned char *sys_palette, unsigned short *sys_colortable, const unsigned char *color_prom);
+
+/**** KC COMPACT SPECIFIC ***/
+
+/* initialise palette for KC Compact */
+void kccomp_init_palette(unsigned char *sys_palette, unsigned short *sys_colortable, const unsigned char *color_prom);
+
+/**** AMSTRAD PLUS SPECIFIC ***/
+
+/* initialise palette for 464plus, 6128plus */
+void amstrad_plus_init_palette(unsigned char *sys_palette, unsigned short *sys_colortable, const unsigned char *color_prom);
+
+int amstrad_plus_cartridge_init(int id);
+void amstrad_plus_cartridge_exit(int id);
+
+
