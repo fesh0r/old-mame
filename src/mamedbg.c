@@ -1452,7 +1452,7 @@ static const char *get_file_name( char **parg, int *size )
 const char *get_ea_info( unsigned pc )
 {
 	static char buffer[63+1];
-	static char *access[EA_COUNT] =
+	static const char *access[EA_COUNT] =
 	{
 		"",     /* no EA mode */
 		"#",    /* immediate */
@@ -5324,7 +5324,7 @@ void MAME_Debug(void)
 	/* If this CPU shall be ignored, just return */
 	if( DBG.ignore ) return;
 
-	cputype = Machine->drv->cpu[active_cpu].cpu_type & ~CPU_FLAGS_MASK;
+	cputype = Machine->drv->cpu[active_cpu].cpu_type;
 
 	if( trace_on )
 	{

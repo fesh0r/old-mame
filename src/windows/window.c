@@ -391,7 +391,6 @@ int win_init_window(void)
 {
 	static int classes_created = 0;
 	TCHAR title[256];
-	HMENU menu = NULL;
 
 	// disable win_old_scanlines if a win_blit_effect is active
 	if (win_blit_effect != 0)
@@ -448,7 +447,7 @@ int win_init_window(void)
 	// create the window, but don't show it yet
 	win_video_window = CreateWindowEx(win_window_mode ? WINDOW_STYLE_EX : FULLSCREEN_STYLE_EX,
 			TEXT("MAME"), title, win_window_mode ? WINDOW_STYLE : FULLSCREEN_STYLE,
-			20, 20, 100, 100, NULL, menu, GetModuleHandle(NULL), NULL);
+			20, 20, 100, 100, NULL, NULL, GetModuleHandle(NULL), NULL);
 	if (!win_video_window)
 		return 1;
 
@@ -667,6 +666,8 @@ static void draw_video_contents(HDC dc, struct mame_bitmap *bitmap, const struct
 
 static LRESULT CALLBACK video_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
+	extern void win_timer_enable(int enabled);
+
 	// handle a few messages
 	switch (message)
 	{
@@ -676,7 +677,20 @@ static LRESULT CALLBACK video_window_proc(HWND wnd, UINT message, WPARAM wparam,
 			if (win_window_mode)
 				return DefWindowProc(wnd, message, wparam, lparam);
 			break;
-#endif
+
+		// suspend sound and timer if we are resizing or a menu is coming up
+		case WM_ENTERMENULOOP:
+		case WM_ENTERSIZEMOVE:
+			osd_sound_enable(0);
+			win_timer_enable(0);
+			break;
+
+		// resume sound and timer if we dome with resizing or a menu
+		case WM_EXITMENULOOP:
+		case WM_EXITSIZEMOVE:
+			osd_sound_enable(1);
+			win_timer_enable(1);
+			break;
 	
 		// paint: redraw the last bitmap
 		case WM_PAINT:

@@ -12,7 +12,6 @@
 #include "driver.h"
 #include "datafile.h"
 
-
 /****************************************************************************
  *      token parsing constants
  ****************************************************************************/
@@ -42,7 +41,7 @@ enum
 /****************************************************************************
  *      datafile constants
  ****************************************************************************/
-#define MAX_DATAFILE_ENTRIES 3000
+#define MAX_DATAFILE_ENTRIES 5000
 #define DATAFILE_TAG '$'
 
 const char *DATAFILE_TAG_KEY = "$info";
@@ -56,9 +55,19 @@ const char *mameinfo_filename = NULL;
 /****************************************************************************
  *      private data for parsing functions
  ****************************************************************************/
-static void *fp;                                                        /* Our file pointer */
+static mame_file *fp;                                       /* Our file pointer */
 static long dwFilePos;                                          /* file position */
 static UINT8 bToken[MAX_TOKEN_LENGTH];          /* Our current token */
+
+/* an array of driver name/drivers array index sorted by driver name
+   for fast look up by name */
+typedef struct
+{
+    const char *name;
+    int index;
+} driver_data_type;
+static driver_data_type *sorted_drivers = NULL;
+static int num_games;
 
 
 /**************************************************************************
@@ -68,6 +77,52 @@ static UINT8 bToken[MAX_TOKEN_LENGTH];          /* Our current token */
  *
  **************************************************************************
  **************************************************************************/
+
+/*
+ * DriverDataCompareFunc -- compare function for GetGameNameIndex
+ */
+static int DriverDataCompareFunc(const void *arg1,const void *arg2)
+{
+    return strcmp( ((driver_data_type *)arg1)->name, ((driver_data_type *)arg2)->name );
+}
+
+/*
+ * GetGameNameIndex -- given a driver name (in lowercase), return
+ * its index in the main drivers[] array, or -1 if it's not found.
+ */
+static int GetGameNameIndex(const char *name)
+{
+    driver_data_type *driver_index_info;
+	driver_data_type key;
+	key.name = name;
+
+	if (sorted_drivers == NULL)
+	{
+		/* initialize array of game names/indices */
+		int i;
+		num_games = 0;
+		while (drivers[num_games] != NULL)
+			num_games++;
+
+		sorted_drivers = (driver_data_type *)malloc(sizeof(driver_data_type) * num_games);
+		for (i=0;i<num_games;i++)
+		{
+			sorted_drivers[i].name = drivers[i]->name;
+			sorted_drivers[i].index = i;
+		}
+		qsort(sorted_drivers,num_games,sizeof(driver_data_type),DriverDataCompareFunc);
+	}
+
+	/* uses our sorted array of driver names to get the index in log time */
+	driver_index_info = bsearch(&key,sorted_drivers,num_games,sizeof(driver_data_type),
+								DriverDataCompareFunc);
+
+	if (driver_index_info == NULL)
+		return -1;
+
+	return driver_index_info->index;
+
+}
 
 /****************************************************************************
  *      GetNextToken - Pointer to the token string pointer
@@ -84,11 +139,11 @@ static UINT32 GetNextToken(UINT8 **ppszTokenText, long *pdwPosition)
 
         while (1)
         {
-                bData = osd_fgetc(fp);                                  /* Get next character */
+                bData = mame_fgetc(fp);                                  /* Get next character */
 
                 /* If we're at the end of the file, bail out */
 
-                if (osd_feof(fp))
+                if (mame_feof(fp))
                         return(TOKEN_INVALID);
 
                 /* If it's not whitespace, then let's start eating characters */
@@ -128,22 +183,22 @@ static UINT32 GetNextToken(UINT8 **ppszTokenText, long *pdwPosition)
                                                  bData != '\t' &&
                                                  bData != '\n' &&
                                                  bData != '\r' &&
-                                                 osd_feof(fp) == 0)
+                                                 mame_feof(fp) == 0)
                                 {
                                         ++dwFilePos;
                                         *pbTokenPtr++ = bData;  /* Store our byte */
                                         ++dwLength;
                                         assert(dwLength < MAX_TOKEN_LENGTH);
-                                        bData = osd_fgetc(fp);
+                                        bData = mame_fgetc(fp);
                                 }
 
                                 /* If it's not the end of the file, put the last received byte */
                                 /* back. We don't want to touch the file position, though if */
                                 /* we're past the end of the file. Otherwise, adjust it. */
 
-                                if (0 == osd_feof(fp))
+                                if (0 == mame_feof(fp))
                                 {
-                                        osd_ungetc(bData, fp);
+                                        mame_ungetc(bData, fp);
                                 }
 
                                 /* Null terminate the token */
@@ -165,8 +220,8 @@ static UINT32 GetNextToken(UINT8 **ppszTokenText, long *pdwPosition)
                         {
                                 /* Unix style perhaps? */
 
-                                bData = osd_fgetc(fp);          /* Peek ahead */
-                                osd_ungetc(bData, fp);          /* Force a retrigger if subsequent LF's */
+                                bData = mame_fgetc(fp);          /* Peek ahead */
+                                mame_ungetc(bData, fp);          /* Force a retrigger if subsequent LF's */
 
                                 if (LF == bData)                /* Two LF's in a row - it's a UNIX hard CR */
                                 {
@@ -185,7 +240,7 @@ static UINT32 GetNextToken(UINT8 **ppszTokenText, long *pdwPosition)
                                 /* Figure out if it's Mac or MSDOS format */
 
                                 ++dwFilePos;
-                                bData = osd_fgetc(fp);          /* Peek ahead */
+                                bData = mame_fgetc(fp);          /* Peek ahead */
 
                                 /* We don't need to bother with EOF checking. It will be 0xff if */
                                 /* it's the end of the file and will be caught by the outer loop. */
@@ -197,7 +252,7 @@ static UINT32 GetNextToken(UINT8 **ppszTokenText, long *pdwPosition)
 
                                         /* Stuff our character back upstream for successive CR's */
 
-                                        osd_ungetc(bData, fp);
+                                        mame_ungetc(bData, fp);
 
                                         *pbTokenPtr++ = bData;  /* A real carriage return (hard) */
                                         *pbTokenPtr = '\0';
@@ -211,15 +266,15 @@ static UINT32 GetNextToken(UINT8 **ppszTokenText, long *pdwPosition)
 
                                         /* Look for a followup CR/LF */
 
-                                        bData = osd_fgetc(fp);  /* Get the next byte */
+                                        bData = mame_fgetc(fp);  /* Get the next byte */
 
                                         if (CR == bData)        /* CR! Good! */
                                         {
-                                                bData = osd_fgetc(fp);  /* Get the next byte */
+                                                bData = mame_fgetc(fp);  /* Get the next byte */
 
                                                 /* We need to do this to pick up subsequent CR/LF sequences */
 
-                                                osd_fseek(fp, dwPos, SEEK_SET);
+                                                mame_fseek(fp, dwPos, SEEK_SET);
 
                                                 if (pdwPosition)
                                                         *pdwPosition = dwPos;
@@ -236,13 +291,13 @@ static UINT32 GetNextToken(UINT8 **ppszTokenText, long *pdwPosition)
                                         else
                                         {
                                                 --dwFilePos;
-                                                osd_ungetc(bData, fp);  /* Put the character back. No good */
+                                                mame_ungetc(bData, fp);  /* Put the character back. No good */
                                         }
                                 }
                                 else
                                 {
                                         --dwFilePos;
-                                        osd_ungetc(bData, fp);  /* Put the character back. No good */
+                                        mame_ungetc(bData, fp);  /* Put the character back. No good */
                                 }
 
                                 /* Otherwise, fall through and keep parsing */
@@ -263,7 +318,7 @@ static void ParseClose(void)
 
         if (fp)
         {
-                osd_fclose(fp);
+                mame_fclose(fp);
         }
 
         fp = NULL;
@@ -277,7 +332,7 @@ static UINT8 ParseOpen(const char *pszFilename)
 {
         /* Open file up in binary mode */
 
-        fp = osd_fopen (NULL, pszFilename, OSD_FILETYPE_HISTORY, 0);
+        fp = mame_fopen (NULL, pszFilename, FILETYPE_HISTORY, 0);
 
         /* If this is NULL, return FALSE. We can't open it */
 
@@ -298,11 +353,11 @@ static UINT8 ParseOpen(const char *pszFilename)
  ****************************************************************************/
 static UINT8 ParseSeek(long offset, int whence)
 {
-        int result = osd_fseek(fp, offset, whence);
+        int result = mame_fseek(fp, offset, whence);
 
         if (0 == result)
         {
-                dwFilePos = osd_ftell(fp);
+                dwFilePos = mame_ftell(fp);
         }
         return (UINT8)result;
 }
@@ -400,35 +455,31 @@ static int index_datafile (struct tDatafileIndex **_index)
                         if (TOKEN_EQUALS == token)
                         {
                                 int done = 0;
-                                int     i;
 
                                 token = GetNextToken ((UINT8 **)&s, &tell);
                                 while (!done && TOKEN_SYMBOL == token)
                                 {
-                                        /* search for matching driver name */
-                                        for (i = 0; drivers[i]; i++)
-                                        {
-                                                if (!ci_strcmp (s, drivers[i]->name))
-                                                {
-                                                        /* found correct driver -- fill in index entry */
-                                                        idx->driver = drivers[i];
-                                                        idx->offset = tell;
-                                                        idx++;
-                                                        count++;
-                                                        /* done = 1;  Not done, as we must process other clones in list */
-                                                        break;
-                                                }
-                                        }
+									int game_index;
+									strlwr(s);
+									game_index = GetGameNameIndex(s);
+									if (game_index >= 0)
+									{
+										idx->driver = drivers[game_index];
+										idx->offset = tell;
+										idx++;
+										count++;
+										/* done = 1;  Not done, as we must process other clones in list */
 
-                                        if (!done)
-                                        {
-                                                token = GetNextToken ((UINT8 **)&s, &tell);
+									}
+									if (!done)
+									{
+										token = GetNextToken ((UINT8 **)&s, &tell);
 
-                                                if (TOKEN_COMMA == token)
-                                                        token = GetNextToken ((UINT8 **)&s, &tell);
-                                                else
-                                                        done = 1; /* end of key field */
-                                        }
+										if (TOKEN_COMMA == token)
+											token = GetNextToken ((UINT8 **)&s, &tell);
+										else
+											done = 1; /* end of key field */
+									}
                                 }
                         }
                 }
@@ -625,5 +676,3 @@ int load_driver_history (const struct GameDriver *drv, char *buffer, int bufsize
 
         return (history == 0 && mameinfo == 0);
 }
-
-
