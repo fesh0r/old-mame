@@ -374,7 +374,7 @@ static void draw_background( const int num, UINT8 *line_priority )
 				if ( sd[i] )
 				{
 					pen = paldata[sd[i]];
-					line_priority[start_x+i] |= 0x02;
+					line_priority[ start_x+i ] |= 0x02;
 				}
 				else
 				{
@@ -400,7 +400,7 @@ static void draw_background( const int num, UINT8 *line_priority )
 	if ( !( ppu_regs[PPU_CONTROL1] & PPU_CONTROL1_BACKGROUND_L8 ) )
 	{
 		dest = ((UINT16 *) bitmap->base) + (bitmap->rowpixels * scanline);
-		for (i = 0; i < 8; i++)
+		for( i = 0; i < 8; i++ )
 			*(dest++) = back_pen;
 	}
 
