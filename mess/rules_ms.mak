@@ -152,7 +152,7 @@ DBGOBJS += $(OBJ)/$(TX0D)/tx0dasm.o
 $(OBJ)/$(TX0D)/tx0.o:		$(TX0D)/tx0.h $(TX0D)/tx0.c
 $(OBJ)/$(TX0D)/tx0dasm.o:	$(TX0D)/tx0.h $(TX0D)/tx0dasm.c
 else
-CPUDEFS += -DHAS_TX0_64KW=0 -DHAS_TX0_64KW=0
+CPUDEFS += -DHAS_TX0_64KW=0 -DHAS_TX0_8KW=0
 endif
 
 
@@ -205,3 +205,12 @@ SOUNDOBJS += $(OBJ)/mess/sound/sid6581.o $(OBJ)/mess/sound/sid.o $(OBJ)/mess/sou
 else
 SOUNDDEFS += -DHAS_SID8580=0
 endif
+
+SOUND=$(strip $(findstring ES5503@,$(SOUNDS)))
+ifneq ($(SOUND),)
+SOUNDDEFS += -DHAS_ES5503=1
+SOUNDOBJS += $(OBJ)/mess/sound/es5503.o
+else
+SOUNDDEFS += -DHAS_ES5503=0
+endif
+

@@ -32,9 +32,7 @@
 #include "ui_text.h"
 #include "strconv.h"
 
-#ifdef _MSC_VER
-#define alloca _alloca
-#endif
+#define LOG_SOFTWARE	0
 
 static int requested_device_type(char *tchar);
 static void MessCreateCommandLine(char *pCmdLine, options_type *pOpts, const struct GameDriver *gamedrv);
@@ -540,6 +538,12 @@ static void MessSpecifyImage(int nGame, const struct IODevice *dev, int nID, LPC
 		s += strlen(s);
 	}
 
+	if (LOG_SOFTWARE)
+	{
+		dprintf("MessSpecifyImage(): nID=%d pszFilename='%s'\n\t   pszSelection='%s'\n\tpszNewSelection='%s'\n",
+			nID, pszFilename, pszSelection, pszNewSelection);
+	}
+
 	InternalSetSelectedSoftware(nGame, dev->type, pszNewSelection);
 }
 
@@ -561,6 +565,7 @@ static void MessRemoveImage(int nGame, const struct IODevice *dev, LPCTSTR pszFi
 	pszMySelection = (LPTSTR) alloca((_tcslen(pszSelection) + 1) * sizeof(TCHAR));
 	_tcscpy(pszMySelection, pszSelection);
 
+	// find the selection in question and remove it
 	i = 0;
 	while(*pszMySelection)
 	{
@@ -573,6 +578,7 @@ static void MessRemoveImage(int nGame, const struct IODevice *dev, LPCTSTR pszFi
 			break;
 		}
 		pszMySelection = s ? s + 1 : szNull;
+		i++;
 	}
 }
 
@@ -771,7 +777,9 @@ static BOOL CommonFileImageDialog(char *the_last_directory, common_file_dialog_p
     // Common image types
     strcpy(s, "Common image types");
     s += strlen(s) + 1;
-    for (i = 0; imagetypes[i].ext; i++) {
+    for (i = 0; imagetypes[i].ext; i++)
+	{
+		assert(!IsBadStringPtr(imagetypes[i].ext, ~0));
         *(s++) = '*';
         *(s++) = '.';
         strcpy(s, imagetypes[i].ext);
@@ -850,7 +858,6 @@ static void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL
     const struct IODevice *dev;
     int num_extensions = 0;
 
-	begin_resource_tracking();
 	memset(types, 0, sizeof(*types) * count);
     count--;
 
@@ -863,7 +870,7 @@ static void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL
 
 	dev = devices_allocate(drivers[nDriver]);
 	if (!dev)
-		goto done;
+		return;
 
 	while(dev->type < IO_COUNT)
 	{
@@ -889,9 +896,6 @@ static void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL
 		}
 		dev++;
     }
-
-done:
-	end_resource_tracking();
 }
 
 
@@ -902,6 +906,8 @@ static void MessSetupDevice(common_file_dialog_proc cfd, int iDevice)
 	mess_image_type imagetypes[64];
 	int nGame;
 
+	begin_resource_tracking();
+
 	nGame = Picker_GetSelectedItem(hwndList);
 	SetupImageTypes(nGame, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, iDevice);
 
@@ -910,6 +916,7 @@ static void MessSetupDevice(common_file_dialog_proc cfd, int iDevice)
 		// TODO - this should go against InternalSetSelectedSoftware()
 		SoftwarePicker_AddFile(GetDlgItem(hMain, IDC_SWLIST), filename);
 	}
+	end_resource_tracking();
 }
 
 
@@ -930,18 +937,32 @@ static void MessCreateDevice(int iDevice)
 
 static BOOL DevView_GetOpenFileName(HWND hwndDevView, const struct IODevice *dev, LPTSTR pszFilename, UINT nFilenameLength)
 {
+	BOOL bResult;
 	mess_image_type imagetypes[64];
+
+	begin_resource_tracking();
+
 	SetupImageTypes(Picker_GetSelectedItem(hwndList), imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, dev->type);
-	return CommonFileImageDialog(last_directory, GetOpenFileName, pszFilename, imagetypes);
+	bResult = CommonFileImageDialog(last_directory, GetOpenFileName, pszFilename, imagetypes);
+
+	end_resource_tracking();
+	return bResult;
 }
 
 
 
 static BOOL DevView_GetCreateFileName(HWND hwndDevView, const struct IODevice *dev, LPTSTR pszFilename, UINT nFilenameLength)
 {
+	BOOL bResult;
 	mess_image_type imagetypes[64];
+
+	begin_resource_tracking();
+
 	SetupImageTypes(Picker_GetSelectedItem(hwndList), imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, dev->type);
-	return CommonFileImageDialog(last_directory, GetSaveFileName, pszFilename, imagetypes);
+	bResult = CommonFileImageDialog(last_directory, GetSaveFileName, pszFilename, imagetypes);
+
+	end_resource_tracking();
+	return bResult;
 }
 
 
@@ -981,7 +1002,7 @@ static LPCTSTR DevView_GetSelectedSoftware(HWND hwndDevView, int nDriverIndex,
 		if (s)
 		{
 			// extract the filename, minus the comma
-			nBufferLength = MIN(nBufferLength, (s - pszSelection + 1));
+			nBufferLength = MIN(nBufferLength, s - pszSelection);
 			memcpy(pszBuffer, pszSelection, nBufferLength * sizeof(*pszSelection));
 			if (nBufferLength)
 				pszBuffer[nBufferLength] = '\0';

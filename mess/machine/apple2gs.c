@@ -112,6 +112,7 @@
 #include "machine/8530scc.h"
 #include "devices/flopdrv.h"
 #include "cpu/g65816/g65816.h"
+#include "sound/es5503.h"
 
 #define LOG_C0XX			0
 #define LOG_ADB				0
@@ -124,12 +125,12 @@
 #define IRQ_VGC_SECOND		0x10
 #define IRQ_INTEN_QSECOND	0x20
 #define IRQ_INTEN_VBL		0x40
+#define IRQ_DOC			0x80
 
 UINT8 *apple2gs_slowmem;
 data8_t apple2gs_newvideo;
 
 static UINT8 apple2gs_vgcint;
-static UINT8 apple2gs_diskreg;
 static UINT8 apple2gs_langsel;
 static UINT8 apple2gs_sltromsel;
 static UINT8 apple2gs_cyareg;
@@ -142,7 +143,6 @@ static UINT8 apple2gs_mouse_y;
 static INT8 apple2gs_mouse_dx;
 static INT8 apple2gs_mouse_dy;
 static mess_image *apple2gs_cur_slot6_image;
-
 
 
 /* -----------------------------------------------------------------------
@@ -296,6 +296,7 @@ static const char *apple2gs_irq_name(UINT8 irq_mask)
 		case IRQ_VGC_SECOND:		return "IRQ_VGC_SECOND";
 		case IRQ_INTEN_QSECOND:		return "IRQ_INTEN_QSECOND";
 		case IRQ_INTEN_VBL:			return "IRQ_INTEN_VBL";
+		case IRQ_DOC:				return "IRQ_DOC";
 	}
 	return NULL;
 }
@@ -329,6 +330,17 @@ static void apple2gs_remove_irq(UINT8 irq_mask)
 	}
 }
 
+void apple2gs_doc_irq(int state)
+{
+	if (state)
+	{
+		apple2gs_add_irq(IRQ_DOC);
+	}
+	else
+	{
+		apple2gs_remove_irq(IRQ_DOC);
+	}
+}
 
 
 /* -----------------------------------------------------------------------
@@ -760,7 +772,8 @@ INTERRUPT_GEN( apple2gs_interrupt )
 	int scanline;
 	int current_frame;
 	static int last_scanline = -1;
-
+	static int scanint_this_frame = 0;
+	
 	/* TODO: This handler should be called every scanline; that crappyness on
 	 * the VBL handler is a consequence of not doing so */
 	scanline = cpu_getscanline();
@@ -786,6 +799,8 @@ INTERRUPT_GEN( apple2gs_interrupt )
 		}
 		else if ((scanline >= 192) && (last_scanline < 192))
 		{
+			scanint_this_frame = 0;
+
 			/* VBL interrupt */
 			if ((apple2gs_inten & 0x08) && !(apple2gs_intflag & 0x08))
 			{
@@ -799,8 +814,12 @@ INTERRUPT_GEN( apple2gs_interrupt )
 	/* scanline interrupt */
 	if ((apple2gs_vgcint & 0x02) && !(apple2gs_vgcint & 0x20))
 	{
-		apple2gs_vgcint |= 0xa0;
-		apple2gs_add_irq(IRQ_VGC_SCANLINE);
+		if (!scanint_this_frame)
+		{
+			scanint_this_frame = 1;
+			apple2gs_vgcint |= 0xa0;
+			apple2gs_add_irq(IRQ_VGC_SCANLINE);
+		}
 	}
 
 	/* check the mouse status */
@@ -817,35 +836,32 @@ INTERRUPT_GEN( apple2gs_interrupt )
  * Sound handlers
  * ----------------------------------------------------------------------- */
 
-static data8_t sndglu_docram[64*1024];
 static data8_t sndglu_ctrl;
-static int sndglu_addr;
+static int sndglu_addr, sndglu_dummy_read;
 
 static READ8_HANDLER( gssnd_r )
 {
 	data8_t ret = 0;
-	
+
 	switch (offset)
 	{
 		case 0:	// control
 			ret = sndglu_ctrl;
 			break;
 		case 1:	// data read
+			if (sndglu_dummy_read)
+			{
+				sndglu_dummy_read = 0;
+				return 0;
+			}
+
 			if (sndglu_ctrl & 0x40)	// docram access
 			{
-				ret = sndglu_docram[sndglu_addr];
+				ret = ES5503_ram_0_r(sndglu_addr);
 			}
 			else
 			{
-				// DOC
-				if (sndglu_addr == 0xe0)
-				{
-					ret = 0x80;	// interrupt control - return no DOC IRQ
-				}
-				else
-				{
-					ret = 0;
-				}
+				ret = ES5503_reg_0_r(sndglu_addr);
 			}
 
 			if (sndglu_ctrl & 0x20)	// auto-increment
@@ -880,7 +896,11 @@ static WRITE8_HANDLER( gssnd_w )
 		case 1:	// data write
 			if (sndglu_ctrl & 0x40)	// docram access
 			{
-				sndglu_docram[sndglu_addr] = data;
+				ES5503_ram_0_w(sndglu_addr, data);
+			}
+			else
+			{
+				ES5503_reg_0_w(sndglu_addr, data);
 			}
 
 			if (sndglu_ctrl & 0x20)	// auto-increment
@@ -891,10 +911,12 @@ static WRITE8_HANDLER( gssnd_w )
 		case 2:	// addr l
 			sndglu_addr &= 0xff00;
 			sndglu_addr |= data;
+			sndglu_dummy_read = 1;
 			break;
 		case 3: // addr h
 			sndglu_addr &= 0x00ff;
 			sndglu_addr |= data<<8;
+			sndglu_dummy_read = 1;
 			break;
 	}
 }
@@ -908,25 +930,6 @@ static WRITE8_HANDLER( gssnd_w )
 static READ8_HANDLER( apple2gs_c0xx_r )
 {
 	data8_t result;
-	static const read8_handler inherited_handlers[] =
-	{
-		apple2_c00x_r,
-		apple2_c01x_r,
-		apple2_c02x_r,
-		apple2_c03x_r,
-		NULL,
-		apple2_c05x_r,
-		apple2_c06x_r,
-		apple2_c07x_r,
-		apple2_c08x_r,
-		apple2_c0xx_slot1_r,
-		apple2_c0xx_slot2_r,
-		apple2_c0xx_slot3_r,
-		apple2_c0xx_slot4_r,
-		apple2_c0xx_slot5_r,
-		apple2_c0xx_slot6_r,
-		apple2_c0xx_slot7_r
-	};
 
 	offset &= 0xFF;
 
@@ -982,7 +985,7 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 			break;
 
 		case 0x31:	/* C031 - DISKREG */
-			result = apple2gs_diskreg;
+			result = apple2_iwm_getdiskreg();
 			break;
 
 		case 0x33:	/* C033 - CLOCKDATA */
@@ -1041,22 +1044,12 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 			result = memory_region(REGION_CPU1)[offset];
 			break;
 
-		case 0xe0: case 0xe1: case 0xe2: case 0xe3:
-		case 0xe4: case 0xe5: case 0xe6: case 0xe7:
-		case 0xe8: case 0xe9: case 0xea: case 0xeb:
-		case 0xec: case 0xed: case 0xee: case 0xef:
-			result = iwm_r(offset - 0xe0);
-			break;
-
 		case 0x21:	/* C021 - MONOCOLOR */
 		case 0x2C:	/* C02C - CHARROM */
 			result = 0x00;
 
 		default:
-			if (inherited_handlers[offset / 0x10])
-				result = inherited_handlers[offset / 0x10](offset % 0x10);
-			else
-				result = 0x00;
+			result = apple2_c0xx_r(offset);
 			break;
 	}
 
@@ -1070,26 +1063,6 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 
 static WRITE8_HANDLER( apple2gs_c0xx_w )
 {
-	static const write8_handler inherited_handlers[] =
-	{
-		apple2_c00x_w,
-		apple2_c01x_w,
-		apple2_c02x_w,
-		apple2_c03x_w,
-		NULL,
-		apple2_c05x_w,
-		NULL,
-		apple2_c07x_w,
-		apple2_c08x_w,
-		apple2_c0xx_slot1_w,
-		apple2_c0xx_slot2_w,
-		apple2_c0xx_slot3_w,
-		apple2_c0xx_slot4_w,
-		apple2_c0xx_slot5_w,
-		apple2_c0xx_slot6_w,
-		apple2_c0xx_slot7_w
-	};
-
 	offset &= 0xFF;
 
 #if LOG_C0XX
@@ -1139,8 +1112,7 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 			break;
 
 		case 0x31:	/* C031 - DISKREG */
-			apple2gs_diskreg = data & 0xC0;
-			sony_set_sel_line(apple2gs_diskreg & 0x80);
+			apple2_iwm_setdiskreg(data);
 			break;
 
 		case 0x32:	/* C032 - SCANINT */
@@ -1211,140 +1183,11 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 				VAR_ALTZP | VAR_PAGE2 | VAR_RAMRD | VAR_RAMWRT | VAR_LCRAM | VAR_LCRAM2 | VAR_INTCXROM);
 			break;
 
-		case 0xe0: case 0xe1: case 0xe2: case 0xe3:
-		case 0xe4: case 0xe5: case 0xe6: case 0xe7:
-		case 0xe8: case 0xe9: case 0xea: case 0xeb:
-		case 0xec: case 0xed: case 0xee: case 0xef:
-			iwm_w(offset - 0xe0, data);
-			break;
-
 		default:
-			if (inherited_handlers[offset / 0x10])
-				inherited_handlers[offset / 0x10](offset % 0x10, data);
+			apple2_c0xx_w(offset, data);
 			break;
 	}
 }
-
-
-
-static void apple2gs_set_lines(data8_t lines)
-{
-	if (apple2gs_diskreg & 0x40)
-	{
-		/* slot 5: 3.5" disks */
-		sony_set_lines(lines);
-	}
-#if APPLE2GS_SUPPORT_SLOT6
-	else
-	{
-		/* slot 6: 5.25" disks */
-		if (apple2gs_cur_slot6_image)
-			apple2_slot6_set_lines(apple2gs_cur_slot6_image, lines);
-	}
-#endif /* APPLE2GS_SUPPORT_SLOT6 */
-}
-
-
-
-static void apple2gs_set_enable_lines(int enable_mask)
-{
-	int slot5_enable_mask = 0;
-	int slot6_enable_mask = 0;
-	mess_image *image;
-
-	if (apple2gs_diskreg & 0x40)
-		slot5_enable_mask = enable_mask;
-	else
-		slot6_enable_mask = enable_mask;
-
-	/* set the 3.5" enable lines */
-	sony_set_enable_lines(slot5_enable_mask);
-
-	/* set the 5.25" enable lines */
-	apple2gs_cur_slot6_image = NULL;
-	image = image_from_devtag_and_index(APDISK_DEVTAG, 0);
-	floppy_drive_set_motor_state(image, (slot6_enable_mask == 1));
-	if (slot6_enable_mask == 1)
-		apple2gs_cur_slot6_image = image;
-	image = image_from_devtag_and_index(APDISK_DEVTAG, 1);
-	floppy_drive_set_motor_state(image, (slot6_enable_mask == 2));
-	if (slot6_enable_mask == 2)
-		apple2gs_cur_slot6_image = image;
-}
-
-
-
-static data8_t apple2gs_read_data(void)
-{
-	data8_t result = 0x00;
-
-	if (apple2gs_diskreg & 0x40)
-	{
-		/* slot 5: 3.5" disks */
-		result = sony_read_data();
-	}
-#if APPLE2GS_SUPPORT_SLOT6
-	else
-	{
-		/* slot 6: 5.25" disks */
-		if (apple2gs_cur_slot6_image)
-			result = apple2_slot6_readbyte(apple2gs_cur_slot6_image);
-	}
-#endif /* APPLE2GS_SUPPORT_SLOT6 */
-	return result;
-}
-
-
-
-static void apple2gs_write_data(data8_t data)
-{
-	if (apple2gs_diskreg & 0x40)
-	{
-		/* slot 5: 3.5" disks */
-		sony_write_data(data);
-	}
-#if APPLE2GS_SUPPORT_SLOT6
-	else
-	{
-		/* slot 6: 5.25" disks */
-		if (apple2gs_cur_slot6_image)
-			apple2_slot6_writebyte(apple2gs_cur_slot6_image, data);
-	}
-#endif /* APPLE2GS_SUPPORT_SLOT6 */
-}
-
-
-
-static int apple2gs_read_status(void)
-{
-	int result = 0;
-
-	if (apple2gs_diskreg & 0x40)
-	{
-		/* slot 5: 3.5" disks */
-		result = sony_read_status();
-	}
-#if APPLE2GS_SUPPORT_SLOT6
-	else
-	{
-		/* slot 6: 5.25" disks */
-		if (apple2gs_cur_slot6_image)
-			result = image_is_writable(apple2gs_cur_slot6_image) ? 0x00 : 0x80;
-	}
-#endif /* APPLE2GS_SUPPORT_SLOT6 */
-	return result;
-}
-
-
-
-static const struct iwm_interface apple2gs_iwm_interface =
-{
-	apple2gs_set_lines,
-	apple2gs_set_enable_lines,
-	apple2gs_read_data,
-	apple2gs_write_data,
-	apple2gs_read_status
-};
 
 
 
@@ -1810,14 +1653,21 @@ static READ8_HANDLER( apple2gs_read_vector )
 
 DRIVER_INIT( apple2gs )
 {
-	apple2_init_common(AP2_KEYBOARD_2GS);
+	struct apple2_config cfg;
+	
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.keyboard_type = AP2_KEYBOARD_2GS;
+	cfg.slots[0] = &apple2_slot_langcard;
+	cfg.slots[4] = &apple2_slot_mockingboard;
+	cfg.slots[6] = &apple2_slot_iwm;
+	
+	apple2_init_common(&cfg);
 
 	/* set up Apple IIgs vectoring */
 	cpunum_set_info_fct(0, CPUINFO_PTR_G65816_READVECTOR_CALLBACK, (genf *) apple2gs_read_vector);
 
 	/* setup globals */
 	apple2gs_cur_slot6_image = NULL;
-	apple2gs_diskreg = 0;
 	apple2gs_langsel = 0;
 	apple2gs_cyareg = 0x80;
 	apple2gs_inten = 0x00;
@@ -1851,6 +1701,5 @@ DRIVER_INIT( apple2gs )
 
 	/* init the various subsystems */
 	scc_init(NULL);
-	iwm_init(&apple2gs_iwm_interface);
 	apple2gs_setup_memory();
 }

@@ -226,6 +226,7 @@ SOUNDS+=WAVE@
 SOUNDS+=BEEP@
 SOUNDS+=SID6581@
 SOUNDS+=SID8580@
+SOUNDS+=ES5503@
 
 # Archive definitions
 DRVLIBS = \
@@ -883,6 +884,13 @@ COREOBJS +=							\
 	$(ZLIB)							\
 	$(OBJ)/cheat.o					\
 	$(OBJ)/vidhrdw/tms9928a.o		\
+	$(OBJ)/machine/8255ppi.o		\
+	$(OBJ)/machine/random.o			\
+	$(OBJ)/machine/6522via.o		\
+	$(OBJ)/machine/6821pia.o		\
+	$(OBJ)/machine/z80fmly.o		\
+	$(OBJ)/machine/idectrl.o		\
+	$(OBJ)/machine/6532riot.o		\
 	$(OBJ)/mess/mess.o				\
 	$(OBJ)/mess/image.o				\
 	$(OBJ)/mess/system.o			\

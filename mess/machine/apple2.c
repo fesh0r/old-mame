@@ -18,6 +18,8 @@
 #include "cpu/m6502/m6502.h"
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
+#include "machine/sonydriv.h"
+#include "machine/iwm.h"
 #include "devices/flopdrv.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
@@ -42,8 +44,9 @@ static UINT32 a2_set;
 
 
 /* local */
+static struct apple2_config *a2_config;
+static void **a2_slot_tokens;
 static int a2_speaker_state;
-static int a2_keyboard_type;
 
 static void mockingboard_init (int slot);
 static int mockingboard_r (int offset);
@@ -58,6 +61,22 @@ static WRITE8_HANDLER ( apple2_mainram0400_w );
 static WRITE8_HANDLER ( apple2_mainram2000_w );
 static WRITE8_HANDLER ( apple2_auxram0400_w );
 static WRITE8_HANDLER ( apple2_auxram2000_w );
+
+static READ8_HANDLER ( apple2_c00x_r );
+static READ8_HANDLER ( apple2_c01x_r );
+static READ8_HANDLER ( apple2_c02x_r );
+static READ8_HANDLER ( apple2_c03x_r );
+static READ8_HANDLER ( apple2_c05x_r );
+static READ8_HANDLER ( apple2_c06x_r );
+static READ8_HANDLER ( apple2_c07x_r );
+
+static WRITE8_HANDLER ( apple2_c00x_w );
+static WRITE8_HANDLER ( apple2_c01x_w );
+static WRITE8_HANDLER ( apple2_c02x_w );
+static WRITE8_HANDLER ( apple2_c03x_w );
+static WRITE8_HANDLER ( apple2_c05x_w );
+static WRITE8_HANDLER ( apple2_c06x_w );
+static WRITE8_HANDLER ( apple2_c07x_w );
 
 
 
@@ -281,9 +300,8 @@ void apple2_update_memory(void)
  * Apple II memory map
  * ----------------------------------------------------------------------- */
 
-static READ8_HANDLER(apple2_c000_r)
+READ8_HANDLER(apple2_c0xx_r)
 {
-	data8_t result;
 	static const read8_handler handlers[] =
 	{
 		apple2_c00x_r,
@@ -293,27 +311,30 @@ static READ8_HANDLER(apple2_c000_r)
 		NULL,
 		apple2_c05x_r,
 		apple2_c06x_r,
-		apple2_c07x_r,
-		apple2_c08x_r,
-		apple2_c0xx_slot1_r,
-		apple2_c0xx_slot2_r,
-		apple2_c0xx_slot3_r,
-		apple2_c0xx_slot4_r,
-		apple2_c0xx_slot5_r,
-		apple2_c0xx_slot6_r,
-		apple2_c0xx_slot7_r
+		apple2_c07x_r
 	};
+	data8_t result = 0x00;
+	int slot;
 
 	offset &= 0xFF;
 
-	if (handlers[offset / 0x10])
-		result = handlers[offset / 0x10](offset % 0x10);
+	if (offset < 0x80)
+	{
+		if (handlers[offset / 0x10])
+			result = handlers[offset / 0x10](offset % 0x10);
+	}
 	else
-		result = 0x00;
+	{
+		slot = (offset - 0x80) / 0x10;
+		if (a2_config->slots[slot] && a2_config->slots[slot]->read)
+			result = a2_config->slots[slot]->read(a2_slot_tokens[slot], offset % 0x10);
+	}
 	return result;
 }
 
-static WRITE8_HANDLER(apple2_c000_w)
+
+
+WRITE8_HANDLER(apple2_c0xx_w)
 {
 	static const write8_handler handlers[] =
 	{
@@ -324,21 +345,23 @@ static WRITE8_HANDLER(apple2_c000_w)
 		NULL,
 		apple2_c05x_w,
 		NULL,
-		apple2_c07x_w,
-		apple2_c08x_w,
-		apple2_c0xx_slot1_w,
-		apple2_c0xx_slot2_w,
-		apple2_c0xx_slot3_w,
-		apple2_c0xx_slot4_w,
-		apple2_c0xx_slot5_w,
-		apple2_c0xx_slot6_w,
-		apple2_c0xx_slot7_w
+		apple2_c07x_w
 	};
+	int slot;
 	
 	offset &= 0xFF;
 	
-	if (handlers[offset / 0x10])
-		handlers[offset / 0x10](offset % 0x10, data);
+	if (offset < 0x80)
+	{
+		if (handlers[offset / 0x10])
+			handlers[offset / 0x10](offset % 0x10, data);
+	}
+	else
+	{
+		slot = (offset - 0x80) / 0x10;
+		if (a2_config->slots[slot] && a2_config->slots[slot]->write)
+			a2_config->slots[slot]->write(a2_slot_tokens[slot], offset % 0x10, data);
+	}
 }
 
 
@@ -401,8 +424,8 @@ static void apple2_mem_4000(offs_t begin, offs_t end, struct apple2_meminfo *mem
 
 static void apple2_mem_C000(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
 {
-	meminfo->read_handler = apple2_c000_r;
-	meminfo->write_handler = apple2_c000_w;
+	meminfo->read_handler = apple2_c0xx_r;
+	meminfo->write_handler = apple2_c0xx_w;
 }
 
 static void apple2_mem_Cx00(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
@@ -680,63 +703,6 @@ data8_t apple2_getfloatingbusvalue(void)
 
 
 /* -----------------------------------------------------------------------
- * Driver init
- * ----------------------------------------------------------------------- */
-
-void apple2_init_common(int keyboard_type)
-{
-	a2_keyboard_type = keyboard_type;
-
-	/* state save registers */
-	state_save_register_UINT32("apple2", 0, "softswitch", &a2, 1);
-	state_save_register_func_postload(apple2_update_memory);
-
-	/* apple2 behaves much better when the default memory is zero */
-	memset(mess_ram, 0, mess_ram_size);
-
-	/* initialise 5.25" floppy */
-	apple2_slot6_init();
-
-	/* --------------------------------------------- *
-	 * set up the softswitch mask/set                *
-	 * --------------------------------------------- */
-	a2_mask = ~0;
-	a2_set = 0;
-	
-	/* disable VAR_ROMSWITCH if the ROM is only 16k */
-	if (memory_region_length(REGION_CPU1) < 0x8000)
-		a2_mask &= ~VAR_ROMSWITCH;
-
-	if (mess_ram_size <= 64*1024)
-		a2_mask &= ~(VAR_RAMRD | VAR_RAMWRT | VAR_80STORE | VAR_ALTZP | VAR_80COL);
-}
-
-
-
-DRIVER_INIT( apple2 )
-{
-	struct apple2_memmap_config cfg;
-	int keyboard_type;
-
-	keyboard_type = AP2_KEYBOARD_2E;
-	if (!strcmp(Machine->gamedrv->name, "apple2"))
-		keyboard_type = AP2_KEYBOARD_2;
-	if (!strcmp(Machine->gamedrv->name, "apple2p"))
-		keyboard_type = AP2_KEYBOARD_2P;
-	if (!strcmp(Machine->gamedrv->name, "apple2ep"))
-		keyboard_type = AP2_KEYBOARD_2GS;
-
-	apple2_init_common(keyboard_type);
-
-	memset(&cfg, 0, sizeof(cfg));
-	cfg.first_bank = 1;
-	cfg.memmap = apple2_memmap_entries;
-	apple2_setup_memory(&cfg);
-}
-
-
-
-/* -----------------------------------------------------------------------
  * Machine init
  * ----------------------------------------------------------------------- */
 
@@ -749,36 +715,30 @@ static int apple2_hasslots(void)
 
 MACHINE_INIT( apple2 )
 {
-	mess_image *image;
-	int i;
-	int need_intcxrom;
+	int need_intcxrom, i;
 
 	need_intcxrom = !strcmp(Machine->gamedrv->name, "apple2c")
 		|| !strcmp(Machine->gamedrv->name, "apple2c0")
+		|| !strcmp(Machine->gamedrv->name, "apple2c3")
 		|| !strcmp(Machine->gamedrv->name, "apple2cp");
 	apple2_setvar(need_intcxrom ? VAR_INTCXROM : 0, ~0);
 
-	AY3600_init(a2_keyboard_type);
+	AY3600_init(a2_config->keyboard_type);
 
 	a2_speaker_state = 0;
 
-	/* TODO: add more initializers as we add more slots */
-	if (apple2_hasslots())
-		mockingboard_init(4);
+	/* reset slots */
+	for (i = 0; i < APPLE2_SLOT_COUNT; i++)
+	{
+		if (a2_config->slots[i])
+		{
+			if (a2_config->slots[i]->reset)
+				a2_config->slots[i]->reset(a2_slot_tokens[i]);
+		}
+	}
 
 	joystick_x1_time = joystick_y1_time = 0;
 	joystick_x2_time = joystick_y2_time = 0;
-
-	/* seek middle sector */
-	for (i = 0; i < device_count(IO_FLOPPY); i++)
-	{
-		image = image_from_devtag_and_index(APDISK_DEVTAG, i);
-		if (image_exists(image))
-		{
-			floppy_drive_seek(image, -999);
-			floppy_drive_seek(image, +35/2);
-		}
-	}
 }
 
 
@@ -983,11 +943,14 @@ WRITE8_HANDLER( apple2_c02x_w )
 
 READ8_HANDLER ( apple2_c03x_r )
 {
-	if (a2_speaker_state == 0xFF)
-		a2_speaker_state = 0;
-	else
-		a2_speaker_state = 0xFF;
-	DAC_data_w(0, a2_speaker_state);
+	if (!offset)
+	{
+		if (a2_speaker_state == 0xFF)
+			a2_speaker_state = 0;
+		else
+			a2_speaker_state = 0xFF;
+		DAC_data_w(0, a2_speaker_state);
+	}
 	return apple2_getfloatingbusvalue();
 }
 
@@ -1112,6 +1075,7 @@ WRITE8_HANDLER ( apple2_c07x_w )
 /***************************************************************************
   apple2_c08x_r
 ***************************************************************************/
+
 READ8_HANDLER ( apple2_c08x_r )
 {
 	UINT32 val, mask;
@@ -1127,8 +1091,8 @@ READ8_HANDLER ( apple2_c08x_r )
 
 	switch(offset & 0x03)
 	{
-		case 0x00:
 		case 0x03:
+		case 0x00:
 			val |= VAR_LCRAM;
 			break;
 	}
@@ -1155,201 +1119,42 @@ WRITE8_HANDLER ( apple2_c08x_w )
 
 
 
-/***************************************************************************
-  apple2_c0xx_slot1_r
-***************************************************************************/
+/* -----------------------------------------------------------------------
+ * Language Card
+ * ----------------------------------------------------------------------- */
 
-READ8_HANDLER ( apple2_c0xx_slot1_r )
+static data8_t apple2_langcard_read(void *token, offs_t offset)
 {
-	return 0;
+	return apple2_c08x_r(offset);
+
 }
 
 
 
-/***************************************************************************
-  apple2_c0xx_slot2_r
-***************************************************************************/
-
-READ8_HANDLER ( apple2_c0xx_slot2_r )
+static void apple2_langcard_write(void *token, offs_t offset, data8_t data)
 {
-	return 0;
+	apple2_c08x_w(offset, data);
 }
 
 
 
-/***************************************************************************
-  apple2_c0xx_slot3_r
-***************************************************************************/
-
-READ8_HANDLER ( apple2_c0xx_slot3_r )
+const struct apple2_slotdevice apple2_slot_langcard =
 {
-	return 0;
-}
+	"langcard",
+	"Language Card",
+	NULL,
+	NULL,
+	apple2_langcard_read,
+	apple2_langcard_write
+};
 
 
 
-/***************************************************************************
-  apple2_c0xx_slot4_r
-***************************************************************************/
+/* -----------------------------------------------------------------------
+ * Mockingboard
+ * ----------------------------------------------------------------------- */
 
-READ8_HANDLER ( apple2_c0xx_slot4_r )
-{
-	return 0;
-}
-
-
-
-/***************************************************************************
-  apple2_c0xx_slot5_r
-***************************************************************************/
-
-READ8_HANDLER ( apple2_c0xx_slot5_r )
-{
-	return 0;
-}
-
-
-
-/***************************************************************************
-  apple2_c0xx_slot7_r
-***************************************************************************/
-
-READ8_HANDLER ( apple2_c0xx_slot7_r )
-{
-	return 0;
-}
-
-
-
-/***************************************************************************
-  apple2_c0xx_slot1_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_c0xx_slot1_w )
-{
-}
-
-
-
-/***************************************************************************
-  apple2_c0xx_slot2_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_c0xx_slot2_w )
-{
-}
-
-
-
-/***************************************************************************
-  apple2_c0xx_slot3_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_c0xx_slot3_w )
-{
-}
-
-
-
-/***************************************************************************
-  apple2_c0xx_slot4_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_c0xx_slot4_w )
-{
-}
-
-
-
-/***************************************************************************
-  apple2_c0xx_slot5_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_c0xx_slot5_w )
-{
-}
-
-
-
-/***************************************************************************
-  apple2_c0xx_slot7_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_c0xx_slot7_w )
-{
-}
-
-
-
-/***************************************************************************
-  apple2_slot1_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_slot1_w )
-{
-}
-
-
-
-/***************************************************************************
-  apple2_slot2_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_slot2_w )
-{
-}
-
-
-
-/***************************************************************************
-  apple2_slot3_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_slot3_w )
-{
-}
-
-
-
-/***************************************************************************
-  apple2_slot4_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_slot4_w )
-{
-	mockingboard_w (offset, data);
-}
-
-
-
-/***************************************************************************
-  apple2_slot5_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_slot5_w )
-{
-}
-
-
-
-/***************************************************************************
-  apple2_slot7_w
-***************************************************************************/
-
-WRITE8_HANDLER ( apple2_slot7_w )
-{
-}
-
-
-
-READ8_HANDLER ( apple2_slot4_r )
-{
-	return mockingboard_r (offset);
-}
-
-
-
-static void mockingboard_init (int slot)
+static void apple2_mockingboard_reset(void *token)
 {
 	/* TODO: fix this */
 	/* What follows is pure filth. It abuses the core like an angry pimp on a bad hair day. */
@@ -1364,7 +1169,7 @@ static void mockingboard_init (int slot)
 
 
 
-static int mockingboard_r (int offset)
+static data8_t apple2_mockingboard_read(void *token, offs_t offset)
 {
 	static int flip1 = 0, flip2 = 0;
 
@@ -1388,7 +1193,7 @@ static int mockingboard_r (int offset)
 
 
 
-static void mockingboard_w (int offset, int data)
+static void apple2_mockingboard_write(void *token, offs_t offset, data8_t data)
 {
 	static int latch0, latch1;
 
@@ -1448,5 +1253,369 @@ static void mockingboard_w (int offset, int data)
 			break;
 	}
 }
+
+
+
+const struct apple2_slotdevice apple2_slot_mockingboard =
+{
+	"mockingboard",
+	"Mockingboard",
+	NULL,
+	apple2_mockingboard_reset,
+	apple2_mockingboard_read,
+	apple2_mockingboard_write
+};
+
+
+
+/* -----------------------------------------------------------------------
+ * 5.25" Floppy Drive
+ * ----------------------------------------------------------------------- */
+
+static void *apple2_floppy525_init(int slot)
+{
+	return (void *) ~0;
+}
+
+
+
+static data8_t apple2_floppy525_read(void *token, offs_t offset)
+{
+	return apple2_c0xx_slot6_r(offset);
+}
+
+
+
+static void apple2_floppy525_write(void *token, offs_t offset, data8_t data)
+{
+	apple2_c0xx_slot6_w(offset, data);
+}
+
+
+
+const struct apple2_slotdevice apple2_slot_floppy525 =
+{
+	"floppy525",
+	"5.25\" Floppy Drive",
+	apple2_floppy525_init,
+	NULL,
+	apple2_floppy525_read,
+	apple2_floppy525_write
+};
+
+
+
+/* -----------------------------------------------------------------------
+ * IWM
+ * ----------------------------------------------------------------------- */
+
+static int apple2_iwm_has_35;
+static int apple2_iwm_has_525;
+static int apple2_iwm_diskreg;
+static mess_image *apple2_iwm_cur_slot6_image;
+
+static void apple2_iwm_set_lines(data8_t lines)
+{
+	if (apple2_iwm_diskreg & 0x40)
+	{
+		if (apple2_iwm_has_35)
+		{
+			/* slot 5: 3.5" disks */
+			sony_set_lines(lines);
+		}
+	}
+	else
+	{
+		if (apple2_iwm_has_525)
+		{
+			/* slot 6: 5.25" disks */
+			if (apple2_iwm_cur_slot6_image)
+				apple2_slot6_set_lines(apple2_iwm_cur_slot6_image, lines);
+		}
+	}
+}
+
+
+
+static void apple2_iwm_set_enable_lines(int enable_mask)
+{
+	int slot5_enable_mask = 0;
+	int slot6_enable_mask = 0;
+	mess_image *image;
+
+	if (apple2_iwm_diskreg & 0x40)
+		slot5_enable_mask = enable_mask;
+	else
+		slot6_enable_mask = enable_mask;
+
+	if (apple2_iwm_has_35)
+	{
+		/* set the 3.5" enable lines */
+		sony_set_enable_lines(slot5_enable_mask);
+	}
+
+	if (apple2_iwm_has_525)
+	{
+		/* set the 5.25" enable lines */
+		apple2_iwm_cur_slot6_image = NULL;
+		image = image_from_devtag_and_index(APDISK_DEVTAG, 0);
+		floppy_drive_set_motor_state(image, (slot6_enable_mask == 1));
+		if (slot6_enable_mask == 1)
+			apple2_iwm_cur_slot6_image = image;
+		image = image_from_devtag_and_index(APDISK_DEVTAG, 1);
+		floppy_drive_set_motor_state(image, (slot6_enable_mask == 2));
+		if (slot6_enable_mask == 2)
+			apple2_iwm_cur_slot6_image = image;
+	}
+}
+
+
+
+static data8_t apple2_iwm_read_data(void)
+{
+	data8_t result = 0x00;
+
+	if (apple2_iwm_diskreg & 0x40)
+	{
+		if (apple2_iwm_has_35)
+		{
+			/* slot 5: 3.5" disks */
+			result = sony_read_data();
+		}
+	}
+	else
+	{
+		if (apple2_iwm_has_525)
+		{
+			/* slot 6: 5.25" disks */
+			if (apple2_iwm_cur_slot6_image)
+				result = apple2_slot6_readbyte(apple2_iwm_cur_slot6_image);
+		}
+	}
+	return result;
+}
+
+
+
+static void apple2_iwm_write_data(data8_t data)
+{
+	if (apple2_iwm_diskreg & 0x40)
+	{
+		if (apple2_iwm_has_35)
+		{
+			/* slot 5: 3.5" disks */
+			sony_write_data(data);
+		}
+	}
+	else
+	{
+		if (apple2_iwm_has_525)
+		{
+			/* slot 6: 5.25" disks */
+			if (apple2_iwm_cur_slot6_image)
+				apple2_slot6_writebyte(apple2_iwm_cur_slot6_image, data);
+		}
+	}
+}
+
+
+
+static int apple2_iwm_read_status(void)
+{
+	int result = 0;
+
+	if (apple2_iwm_diskreg & 0x40)
+	{
+		if (apple2_iwm_has_35)
+		{
+			/* slot 5: 3.5" disks */
+			result = sony_read_status();
+		}
+	}
+	else
+	{
+		if (apple2_iwm_has_525)
+		{
+			/* slot 6: 5.25" disks */
+			if (apple2_iwm_cur_slot6_image)
+				result = image_is_writable(apple2_iwm_cur_slot6_image) ? 0x00 : 0x80;
+		}
+	}
+	return result;
+}
+
+
+
+void apple2_iwm_setdiskreg(data8_t data)
+{
+	apple2_iwm_diskreg = data & 0xC0;
+	if (apple2_iwm_has_35)
+		sony_set_sel_line(apple2_iwm_diskreg & 0x80);
+}
+
+
+
+data8_t apple2_iwm_getdiskreg(void)
+{
+	return apple2_iwm_diskreg;
+}
+
+
+
+static const struct iwm_interface apple2_iwm_interface =
+{
+	apple2_iwm_set_lines,
+	apple2_iwm_set_enable_lines,
+	apple2_iwm_read_data,
+	apple2_iwm_write_data,
+	apple2_iwm_read_status
+};
+
+
+
+static void *apple2_iwm_init(int slot)
+{
+	const struct IODevice *dev;
+
+	apple2_iwm_has_35 = FALSE;
+	apple2_iwm_has_525 = FALSE;
+	apple2_iwm_diskreg = 0x00;
+
+	for (dev = Machine->devices; dev->type < IO_COUNT; dev++)
+	{
+		if (!strcmp(dev->tag, "sonydriv"))
+			apple2_iwm_has_35 = !dev->not_working;
+		else if (!strcmp(dev->tag, APDISK_DEVTAG))
+			apple2_iwm_has_525 = !dev->not_working;
+	}
+
+	iwm_init(&apple2_iwm_interface);
+	return (void *) ~0;
+}
+
+
+
+static data8_t apple2_iwm_read(void *token, offs_t offset)
+{
+	return iwm_r(offset);
+}
+
+
+
+static void apple2_iwm_write(void *token, offs_t offset, data8_t data)
+{
+	iwm_w(offset, data);
+}
+
+
+
+const struct apple2_slotdevice apple2_slot_iwm =
+{
+	"iwm",
+	"IWM",
+	apple2_iwm_init,
+	NULL,
+	apple2_iwm_read,
+	apple2_iwm_write
+};
+
+
+
+/* -----------------------------------------------------------------------
+ * Driver init
+ * ----------------------------------------------------------------------- */
+
+void apple2_init_common(const struct apple2_config *config)
+{
+	int i;
+	void *token;
+	
+	/* copy configuration */
+	a2_config = auto_malloc(sizeof(*config));
+	memcpy(a2_config, config, sizeof(*config));
+
+	/* state save registers */
+	state_save_register_UINT32("apple2", 0, "softswitch", &a2, 1);
+	state_save_register_func_postload(apple2_update_memory);
+
+	/* apple2 behaves much better when the default memory is zero */
+	memset(mess_ram, 0, mess_ram_size);
+
+	/* initialize slots */
+	a2_slot_tokens = auto_malloc(sizeof(*a2_slot_tokens) * APPLE2_SLOT_COUNT);
+	memset(a2_slot_tokens, 0, sizeof(*a2_slot_tokens) * APPLE2_SLOT_COUNT);
+	for (i = 0; i < APPLE2_SLOT_COUNT; i++)
+	{
+		if (a2_config->slots[i])
+		{
+			if (a2_config->slots[i]->init)
+				token = a2_config->slots[i]->init(i);
+			else
+				token = (void *) ~0;
+				
+			a2_slot_tokens[i] = token;
+		}
+	}
+	
+	/* initialise 5.25" floppy */
+	apple2_slot6_init();
+
+	/* --------------------------------------------- *
+	 * set up the softswitch mask/set                *
+	 * --------------------------------------------- */
+	a2_mask = ~0;
+	a2_set = 0;
+	
+	/* disable VAR_ROMSWITCH if the ROM is only 16k */
+	if (memory_region_length(REGION_CPU1) < 0x8000)
+		a2_mask &= ~VAR_ROMSWITCH;
+
+	if (mess_ram_size <= 64*1024)
+		a2_mask &= ~(VAR_RAMRD | VAR_RAMWRT | VAR_80STORE | VAR_ALTZP | VAR_80COL);
+}
+
+
+
+DRIVER_INIT( apple2 )
+{
+	struct apple2_memmap_config mem_cfg;
+	struct apple2_config a2_cfg;
+	
+	memset(&a2_cfg, 0, sizeof(a2_cfg));
+
+	/* determine keyboard type */
+	if (!strcmp(Machine->gamedrv->name, "apple2"))
+		a2_cfg.keyboard_type = AP2_KEYBOARD_2;
+	else if (!strcmp(Machine->gamedrv->name, "apple2p"))
+		a2_cfg.keyboard_type = AP2_KEYBOARD_2P;
+	else if (!strcmp(Machine->gamedrv->name, "apple2ep"))
+		a2_cfg.keyboard_type = AP2_KEYBOARD_2GS;
+	else
+		a2_cfg.keyboard_type = AP2_KEYBOARD_2E;
+
+	/* specify slots */
+	if (!strcmp(Machine->gamedrv->name, "apple2c0") ||
+		!strcmp(Machine->gamedrv->name, "apple2c3"))
+	{
+		a2_cfg.slots[0] = &apple2_slot_langcard;
+		a2_cfg.slots[4] = &apple2_slot_mockingboard;
+		a2_cfg.slots[6] = &apple2_slot_iwm;
+	}
+	else
+	{
+		a2_cfg.slots[0] = &apple2_slot_langcard;
+		a2_cfg.slots[4] = &apple2_slot_mockingboard;
+		a2_cfg.slots[6] = &apple2_slot_floppy525;
+	}
+
+	apple2_init_common(&a2_cfg);
+
+	memset(&mem_cfg, 0, sizeof(mem_cfg));
+	mem_cfg.first_bank = 1;
+	mem_cfg.memmap = apple2_memmap_entries;
+	apple2_setup_memory(&mem_cfg);
+}
+
+
 
 
