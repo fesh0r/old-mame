@@ -7,6 +7,7 @@
 #include <commctrl.h>
 #include <stdio.h>
 #include <math.h>
+#include <assert.h>
 
 #include "resource.h"
 #include "m32util.h"
@@ -265,6 +266,14 @@ BOOL IsControlDifferent(HWND hDlg,HWND hwnd_ctrl,options_type *o,options_type *b
 	for (i = 0; i < numCtrls; i++)
 	{
 		data_item = &dataMap[i];
+
+		// This assertion checks to see if encoded_var is actually on options_type
+		if (data_item->encoded_type != DM_NONE)
+		{
+			size_t offset;
+			offset = (char *)data_item->encoded_var - (char *)o;
+			assert(offset < sizeof(*o));
+		}
 
 		if (GetDlgItem(hDlg,data_item->dwCtrlId) != hwnd_ctrl)
 			continue;

@@ -25,6 +25,7 @@ enum messtest_phase
 	STATE_ROOT,
 	STATE_TEST,
 	STATE_COMMAND,
+	STATE_SUBCOMMAND,
 	STATE_ABORTED
 };
 
@@ -128,7 +129,6 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 	const XML_Char *s2;
 	const XML_Char *s3;
 	const char *attr_name;
-	struct messtest_command cmd;
 	int region;
 	int device_type;
 	int preload;
@@ -146,15 +146,6 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 
 			memset(&state->testcase, 0, sizeof(state->testcase));
 
-			/* 'name' attribute */
-			attr_name = "name";
-			s = find_attribute(attributes, attr_name);
-			if (!s)
-				goto missing_attribute;
-			state->testcase.name = pool_strdup(&state->pool, s);
-			if (!state->testcase.name)
-				goto outofmemory;
-
 			/* 'driver' attribute */
 			attr_name = "driver";
 			s = find_attribute(attributes, attr_name);
@@ -163,6 +154,20 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 			state->testcase.driver = pool_strdup(&state->pool, s);
 			if (!state->testcase.driver)
 				goto outofmemory;
+
+			/* 'name' attribute */
+			attr_name = "name";
+			s = find_attribute(attributes, attr_name);
+			if (s)
+			{
+				state->testcase.name = pool_strdup(&state->pool, s);
+				if (!state->testcase.name)
+					goto outofmemory;
+			}
+			else
+			{
+				state->testcase.name = state->testcase.driver;
+			}
 
 			/* 'ramsize' attribute */
 			s = find_attribute(attributes, "ramsize");
@@ -297,6 +302,14 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 			goto unknowntag;
 		state->phase = STATE_COMMAND;
 		break;
+
+	case STATE_COMMAND:
+		/* allow one subcommand */
+		state->phase = STATE_SUBCOMMAND;
+		break;
+
+	default:
+		goto unknowntag;
 	}
 
 	return;
@@ -352,11 +365,21 @@ static void end_handler(void *data, const XML_Char *name)
 					+ command->u.verify_args.verify_data_size - 1;
 			}
 			break;
+
+		default:
+			break;
 		};
 
 		if (!append_command(state))
 			goto outofmemory;
 		state->phase = STATE_TEST;
+		break;
+
+	case STATE_SUBCOMMAND:
+		state->phase = STATE_COMMAND;
+		break;
+
+	default:
 		break;
 	}
 	return;
@@ -503,11 +526,11 @@ static void data_handler(void *data, const XML_Char *s, int len)
 	struct messtest_state *state = (struct messtest_state *) data;
 	struct messtest_command *command = &state->current_command;
 	char *str;
-	int i, line_begin;
 	int old_len;
 
 	switch(state->phase) {
 	case STATE_COMMAND:
+	case STATE_SUBCOMMAND:
 		switch(command->command_type) {
 		case MESSTEST_COMMAND_INPUT:
 		case MESSTEST_COMMAND_RAWINPUT:
@@ -525,7 +548,13 @@ static void data_handler(void *data, const XML_Char *s, int len)
 				(void **) &command->u.verify_args.verify_data,
 				&command->u.verify_args.verify_data_size);
 			break;
+
+		default:
+			break;
 		}
+
+	default:
+		break;
 	}
 	return;
 
@@ -553,9 +582,8 @@ static int external_entity_handler(XML_Parser parser,
 	XML_Parser extparser = NULL;
 	int rc = 0, i;
 	char buf[256];
-	char charbuf[UTF8_CHAR_MAX + 1];
 	static const char *mamekey_prefix = "mamekey_";
-	unicode_char_t c;
+	input_code_t c;
 
 	buf[0] = '\0';
 
@@ -563,7 +591,7 @@ static int external_entity_handler(XML_Parser parser,
 	if (strcmp(systemId, "http://www.mess.org/messtest/"))
 		goto done;
 
-	extparser = XML_ExternalEntityParserCreate(parser, context, "UTF-8");
+	extparser = XML_ExternalEntityParserCreate(parser, context, "us-ascii");
 	if (!extparser)
 		goto done;
 
@@ -575,21 +603,19 @@ static int external_entity_handler(XML_Parser parser,
 		c = 0;
 
 		/* this is interim until we can come up with a real solution */
-		if (!strcmp(context, "esc"))
-			c = UCHAR_MAMEKEY(ESC);
-		else if (!strcmp(context, "up"))
-			c = UCHAR_MAMEKEY(UP);
+		snprintf(buf, sizeof(buf) / sizeof(buf[0]), "KEYCODE_%s", context);
+		for (i = 0; buf[i]; i++)
+			buf[i] = toupper(buf[i]);
 
-		if (c)
+		code_init();
+		c = token_to_code(buf);
+		code_close();
+
+		if (c != CODE_NONE)
 		{
-			i = utf8_from_uchar(charbuf, sizeof(charbuf) / sizeof(charbuf[0]), c);
-			if (i < 0)
-				goto done;
-			charbuf[i] = 0;
-
-			snprintf(buf, sizeof(buf) / sizeof(buf[0]), "<%s%s>%s</%s%s>",
+			snprintf(buf, sizeof(buf) / sizeof(buf[0]), "<%s%s>&#%d;</%s%s>",
 				mamekey_prefix, context,
-				charbuf,
+				UCHAR_MAMEKEY_BEGIN + c,
 				mamekey_prefix, context);
 
 			if (XML_Parse(extparser, buf, strlen(buf), 0) == XML_STATUS_ERROR)

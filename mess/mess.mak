@@ -112,6 +112,7 @@ CPUS+=CP1610@
 #CPUS+=TMS99010@
 CPUS+=PDP1@
 #CPUS+=TMS7000@
+CPUS+=TMS7000_EXL@
 
 # SOUND cores used in MESS
 SOUNDS+=CUSTOM@
@@ -262,7 +263,7 @@ DRVLIBS = \
 	$(OBJ)/intv.a     \
 	$(OBJ)/rca.a	  \
 	$(OBJ)/multitch.a	\
-	$(OBJ)/telmac.a
+	$(OBJ)/telmac.a		\
 
 
 $(OBJ)/neocd.a:						\
@@ -817,6 +818,9 @@ $(OBJ)/telmac.a:					\
 	$(OBJ)/mess/systems/telmac.o	\
 	$(OBJ)/mess/vidhrdw/cdp186x.o	\
 
+$(OBJ)/exeltel.a:					\
+	$(OBJ)/mess/systems/exelv.o		\
+
 
 
 # MESS specific core $(OBJ)s
@@ -861,6 +865,7 @@ COREOBJS +=							\
 	$(OBJ)/mess/devices/harddriv.o	\
 	$(OBJ)/mess/devices/idedrive.o	\
 	$(OBJ)/mess/devices/dsk.o		\
+	$(OBJ)/mess/devices/z80bin.o	\
 	$(OBJ)/mess/machine/6551.o		\
 	$(OBJ)/mess/machine/smartmed.o	\
 	$(OBJ)/mess/vidhrdw/m6847.o		\
@@ -912,7 +917,7 @@ MESSTEST_OBJS =								\
 	$(OBJ)/mess/tools/messtest/tststubs.o	\
 	$(OBJ)/mess/tools/messtest/tstutils.o	\
 
-IMGTOOL_OBJS =								\
+IMGTOOL_LIB_OBJS =							\
 	$(OBJ)/unzip.o							\
 	$(OBJ)/chd.o							\
 	$(OBJ)/harddisk.o						\
@@ -930,7 +935,6 @@ IMGTOOL_OBJS =								\
 	$(OBJ)/mess/formats/coco_cas.o			\
 	$(OBJ)/mess/formats/wavfile.o			\
 	$(OBJ)/mess/tools/imgtool/stubs.o		\
-	$(OBJ)/mess/tools/imgtool/main.o     \
 	$(OBJ)/mess/tools/imgtool/stream.o   \
 	$(OBJ)/mess/tools/imgtool/library.o  \
 	$(OBJ)/mess/tools/imgtool/modules.o  \
@@ -969,6 +973,10 @@ IMGTOOL_OBJS =								\
 #	  $(OBJ)/mess/tools/imgtool/rom16.o    \
 #	  $(OBJ)/mess/tools/imgtool/nccard.o   \
 #	  $(OBJ)/mess/tools/imgtool/ti85.o     \
+
+IMGTOOL_OBJS =							\
+	$(IMGTOOL_LIB_OBJS)					\
+	$(OBJ)/mess/tools/imgtool/main.o     \
 
 # text files
 TEXTS = sysinfo.htm

@@ -26,11 +26,9 @@ static enum messtest_state state;
 static double wait_target;
 static double final_time;
 static const struct messtest_command *current_command;
-static int abort_test;
 static int test_flags;
 static int screenshot_num;
 static UINT64 runtime_hash;
-static const struct ik *current_fake_input;
 
 static void message(enum messtest_messagetype msgtype, const char *fmt, ...);
 
@@ -88,7 +86,6 @@ enum messtest_result run_test(const struct messtest_testcase *testcase, int flag
 	enum messtest_result rc;
 	clock_t begin_time;
 	double real_run_time;
-	int done;
 
 	current_testcase = testcase;
 
@@ -259,12 +256,15 @@ static void command_input(void)
 
 static void command_rawinput(void)
 {
-	int i, parts;
+	int parts;
+	double current_time = timer_get_time();
+	static const char *position;
+#if 0
+	int i;
 	double rate = TIME_IN_SEC(1);
 	const char *s;
-	double current_time = timer_get_time();
 	char buf[256];
-	static const char *position;
+#endif
 
 	if (state == STATE_READY)
 	{
@@ -376,7 +376,7 @@ static void command_image_loadcreate(void)
 	{
 		snprintf(buf, sizeof(buf) / sizeof(buf[0]),	"%s.%s",
 			current_testcase->name,
-			device_find(Machine->gamedrv, device_type)->file_extensions);
+			device_find(Machine->devices, device_type)->file_extensions);
 		filename = buf;
 	}
 
@@ -396,6 +396,9 @@ static void command_image_loadcreate(void)
 			message(MSG_FAILURE, "Failed to load image '%s': %s", filename, image_error(image));
 			return;
 		}
+		break;
+
+	default:
 		break;
 	}
 }
@@ -496,8 +499,6 @@ void osd_update_video_and_audio(struct mame_display *display)
 	int i;
 	double time_limit;
 	double current_time;
-	int region;
-	const char *filename;
 	int cpunum;
 
 	/* if the visible area has changed, update it */

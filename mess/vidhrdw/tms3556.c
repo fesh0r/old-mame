@@ -2,9 +2,11 @@
 	tms3556 emulation
 
 	TODO:
-	* implement VRAM read/write
 	* implement remaining flags in control registers
 	* test the whole thing
+	* find the bloody tms3556 manual.  I mean the register and VRAM interfaces
+	  are mostly guesswork full of hacks, and I'd like to compare it with
+	  documentation.
 
 	Raphael Nabet, 2004
 */
@@ -17,9 +19,11 @@ static struct
 	/* registers */
 	UINT8 controlRegs[8];
 	UINT16 addressRegs[8];
+	UINT16 writePtr;
 	/* register interface */
 	int reg_ptr;
 	int reg_access_phase;
+	int magical_mystery_flag;
 	/* memory */
 	UINT8 *vram;
 	int vram_size;
@@ -39,6 +43,8 @@ static struct
 	/* double height phase flags (one per horizontal character position) */
 	int dbl_h_phase[40];
 } vdp;
+
+static struct mame_bitmap *tmpbitmap;
 
 #define TOP_BORDER 1
 #define BOTTOM_BORDER 1
@@ -75,18 +81,35 @@ static VIDEO_UPDATE(tms3556);
 */
 READ8_HANDLER(tms3556_vram_r)
 {
-	/***TODO***/
-	return 0;
+	int reply;
+
+	if (vdp.magical_mystery_flag)
+	{
+		vdp.writePtr = ((vdp.controlRegs[2] << 8) | vdp.controlRegs[1]) + 1;
+		vdp.magical_mystery_flag = 0;
+	}
+
+	reply = vdp.vram[vdp.addressRegs[1]];
+	vdp.addressRegs[1] ++;
+
+	return reply;
 }
 
 /*
-	tms3556_vram_r
+	tms3556_vram_w
 
 	write a byte to tms3556 VRAM port
 */
 WRITE8_HANDLER(tms3556_vram_w)
 {
-	/***TODO***/
+	if (vdp.magical_mystery_flag)
+	{
+		vdp.writePtr = (vdp.controlRegs[2] << 8) | vdp.controlRegs[1];
+		vdp.magical_mystery_flag = 0;
+	}
+
+	vdp.vram[vdp.writePtr] = data;
+	vdp.writePtr++;
 }
 
 /*
@@ -117,6 +140,8 @@ READ8_HANDLER(tms3556_reg_r)
 */
 WRITE8_HANDLER(tms3556_reg_w)
 {
+	if ((vdp.reg_access_phase == 3) && (data))
+		vdp.reg_access_phase = 0;	/* ???????????? */
 	switch (vdp.reg_access_phase)
 	{
 	case 0:
@@ -128,19 +153,33 @@ WRITE8_HANDLER(tms3556_reg_w)
 		{
 			vdp.controlRegs[vdp.reg_ptr] = data;
 			vdp.reg_access_phase = 0;
+			if (vdp.reg_ptr == 2)
+				vdp.magical_mystery_flag = 1;
+		}
+		else if (vdp.reg_ptr == 9)
+		{	/* I don't understand what is going on, but it is the only way to
+			get this to work */
+			vdp.addressRegs[vdp.reg_ptr-8] = ((vdp.controlRegs[2] << 8) | vdp.controlRegs[1]) + 1;
+			vdp.reg_access_phase = 0;
+			vdp.magical_mystery_flag = 0;
 		}
 		else
 		{
-			vdp.addressRegs[vdp.reg_ptr-8] = (vdp.addressRegs[vdp.reg_ptr] & 0xff00) | vdp.controlRegs[1];
+			vdp.addressRegs[vdp.reg_ptr-8] = (vdp.addressRegs[vdp.reg_ptr-8] & 0xff00) | vdp.controlRegs[1];
 			vdp.reg_access_phase = 2;
+			vdp.magical_mystery_flag = 0;
 		}
 		break;
 	case 2:
-		vdp.addressRegs[vdp.reg_ptr-8] = (vdp.addressRegs[vdp.reg_ptr] & 0x00ff) | (vdp.controlRegs[2] << 8);
+		vdp.addressRegs[vdp.reg_ptr-8] = (vdp.addressRegs[vdp.reg_ptr-8] & 0x00ff) | (vdp.controlRegs[2] << 8);
 		if ((vdp.reg_ptr <= 10) || (vdp.reg_ptr == 15))
 			vdp.addressRegs[vdp.reg_ptr-8] ++;
 		else
 			vdp.addressRegs[vdp.reg_ptr-8] += 2;
+		vdp.reg_access_phase = 3;
+		break;
+	case 3:
+		vdp.reg_access_phase = 0;
 		break;
 	}
 }
@@ -208,6 +247,10 @@ int tms3556_init(int vram_size)
 
 	vdp.vram_size = vram_size;
 
+	tmpbitmap = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height);
+	if (!tmpbitmap)
+		return 1;
+
 	/* allocate VRAM */
 	vdp.vram = auto_malloc(0x10000);
 	if (!vdp.vram)
@@ -238,8 +281,10 @@ void tms3556_reset(void)
 		vdp.controlRegs[i] = 0;
 		vdp.addressRegs[i] = 0;
 	}
+	vdp.writePtr = 0;
 	vdp.reg_ptr = 0;
 	vdp.reg_access_phase = 0;
+	vdp.magical_mystery_flag = 0;
 	vdp.scanline = 0;
 }
 
@@ -312,8 +357,8 @@ static void tms3556_draw_line_text_common(UINT16 *ln)
 			}
 			else
 				bg = vdp.bg_color;
-			dbl_w = name_hi & 0x1;
-			dbl_h = name_hi & 0x2;
+			dbl_w = name_hi & 0x2;
+			dbl_h = name_hi & 0x1;
 		}
 		else
 		{
@@ -547,6 +592,7 @@ static void tms3556_draw_line(struct mame_bitmap *bmp, int line)
 static VIDEO_UPDATE(tms3556)
 {
 	/* already been rendered, since we're using scanline stuff */
+	copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0, &Machine->visible_area, TRANSPARENCY_NONE, 0);
 }
 
 /*
@@ -590,10 +636,6 @@ static void tms3556_interrupt_start_vblank(void)
 */
 void tms3556_interrupt(void)
 {
-	int scanline;
-
-	scanline = vdp.scanline;
-
 	/* check for start of vblank */
 	if (vdp.scanline == 310)	/*no idea what the real value is*/
 		tms3556_interrupt_start_vblank();
@@ -601,8 +643,8 @@ void tms3556_interrupt(void)
 	/* render the current line */
 	if ((vdp.scanline >= 0) && (vdp.scanline < TOTAL_HEIGHT))
 	{
-		if (!osd_skip_this_frame())
-			tms3556_draw_line(Machine->scrbitmap, vdp.scanline);
+		//if (!osd_skip_this_frame())
+			tms3556_draw_line(tmpbitmap, vdp.scanline);
 	}
 
 	if (++vdp.scanline == 313)

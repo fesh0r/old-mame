@@ -165,7 +165,7 @@ struct RunningMachine
 	pen_t *debug_remapped_colortable;
 
 	/* font used by the debugger */
-	struct GfxElement *		debugger_font;
+	struct GfxElement *debugger_font;
 
 #ifdef MESS
 	struct IODevice *devices;
@@ -246,11 +246,11 @@ struct GameOptions
 
 	const char *controller;	/* controller-specific cfg to load */
 
-	#ifdef MESS
-	UINT32 ram;
+#ifdef MESS	
+	UINT32	ram;
 	struct ImageFile image_files[32];
 	int		image_count;
-	int disable_normal_ui;
+	int		disable_normal_ui;
 
 	int		min_width;		/* minimum width for the display */
 	int		min_height;		/* minimum height for the display */

@@ -1,3 +1,6 @@
+#ifndef MBEE_H
+#define MBEE_H
+
 /* from mess/machine/mbee.c */
 MACHINE_INIT( mbee );
 
@@ -38,3 +41,5 @@ WRITE8_HANDLER ( mbee_pcg_color_w );
 
 VIDEO_START( mbee );
 VIDEO_UPDATE( mbee );
+
+#endif /* MBEE_H */

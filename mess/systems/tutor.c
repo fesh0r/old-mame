@@ -231,13 +231,13 @@ static WRITE8_HANDLER(tutor_mapper_w)
 static void tape_interrupt_handler(int dummy)
 {
 	//assert(tape_interrupt_enable);
-	cpunum_set_input_line(0, 1, (device_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(0, 1, (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.0) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* CRU handler */
 static  READ8_HANDLER(tutor_cassette_r)
 {
-	return (device_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0) ? 1 : 0;
+	return (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.0) ? 1 : 0;
 }
 
 /* memory handler */
@@ -254,7 +254,7 @@ static WRITE8_HANDLER(tutor_cassette_w)
 		{
 		case 0:
 			/* data out */
-			device_output(image_from_devtype_and_index(IO_CASSETTE, 0), (data) ? 32767 : -32767);
+			cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0), (data) ? +1.0 : -1.0);
 			break;
 		case 1:
 			/* interrupt control??? */
@@ -614,12 +614,42 @@ ROM_START(tutor)
 	ROM_LOAD("tutor2.bin", 0x8000, 0x4000, CRC(05f228f5))      /* BASIC ROM */
 ROM_END
 
+static void tutor_cartslot_getinfo(struct IODevice *dev)
+{
+	/* cartslot */
+	cartslot_device_getinfo(dev);
+	dev->count = 1;
+	dev->file_extensions = "\0";
+	dev->load = device_load_tutor_cart;
+	dev->unload = device_unload_tutor_cart;
+}
+
+static void tutor_cassette_getinfo(struct IODevice *dev)
+{
+	/* cassette */
+	cassette_device_getinfo(dev, NULL, NULL, (cassette_state) -1);
+	dev->count = 1;
+}
+
+static void tutor_parallel_getinfo(struct IODevice *dev)
+{
+	/* parallel */
+	dev->type = IO_PARALLEL;
+	dev->file_extensions = "\0";
+	dev->count = 1;
+	dev->readable = 0;
+	dev->writeable = 1;
+	dev->creatable = 1;
+	dev->load = device_load_tutor_printer;
+	dev->unload = device_unload_tutor_printer;
+}
+
 SYSTEM_CONFIG_START(tutor)
 
 	/* cartridge port is not emulated */
-	CONFIG_DEVICE_CARTSLOT_OPT(1,	"",	NULL,	NULL,	device_load_tutor_cart,	device_unload_tutor_cart,	NULL,	NULL)
-	CONFIG_DEVICE_CASSETTE	(1,		NULL)
-	CONFIG_DEVICE_LEGACY	(IO_PARALLEL,	1, "\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_WRITE,	NULL,	NULL,	device_load_tutor_printer,	device_unload_tutor_printer,		NULL)
+	CONFIG_DEVICE(tutor_cartslot_getinfo)
+	CONFIG_DEVICE(tutor_cassette_getinfo)
+	CONFIG_DEVICE(tutor_parallel_getinfo)
 
 SYSTEM_CONFIG_END
 

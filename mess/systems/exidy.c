@@ -61,6 +61,7 @@
 	Kevin Thacker [MESS driver]
 
  ******************************************************************************/
+
 #include "driver.h"
 #include "../includes/exidy.h"
 #include "includes/centroni.h"
@@ -70,6 +71,7 @@
 #include "devices/basicdsk.h"
 #include "devices/cassette.h"
 #include "devices/printer.h"
+#include "devices/z80bin.h"
 #include "image.h"
 
 static DEVICE_LOAD( exidy_floppy )
@@ -174,12 +176,12 @@ static void exidy_cassette_timer_callback(int dummy)
 
 			/* detect level */
 			bit = 1;
-			if (device_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 255)
+			if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.0038)
 				bit = 0;
 			cassette_input_ff[0] = bit;
 			/* detect level */
 			bit = 1;
-			if (device_input(image_from_devtype_and_index(IO_CASSETTE, 1)) > 255)
+			if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 1)) > 0.0038)
 				bit = 0;
 
 			cassette_input_ff[1] = bit;
@@ -229,17 +231,7 @@ static CENTRONICS_CONFIG exidy_cent_config[1]={
 
 static void cassette_serial_in(int id, unsigned long state)
 {
-//	int cassette_output;
-
 	cassette_serial_connection.input_state = state;
-
-//	cassette_output = 32768;
-//	if (get_in_data_bit(cassette_serial_connection.input_state))
-//	{
-//		cassette_output = -cassette_output;
-//	}
-//
-//	device_output(IO_CASSETTE, 0, cassette_output);
 }
 
 static MACHINE_INIT( exidy )
@@ -599,7 +591,7 @@ static  READ8_HANDLER(exidy_ff_port_r)
 	/* bit 7 = printer busy */
 	/* 0 = printer is not busy */
 
-	if (device_status(image_from_devtype_and_index(IO_PRINTER, 0), 0)==0 )
+	if (printer_status(image_from_devtype_and_index(IO_PRINTER, 0), 0)==0 )
 		data |= 0x080;
 	
 	logerror("exidy ff r: %04x %02x\n",offset,data);
@@ -812,10 +804,34 @@ ROM_START(exidy)
 	ROM_LOAD_OPTIONAL("exsb1-4.dat", 0x0d800, 0x0800, CRC(a370cb19) SHA1(75fffd897aec8c3dbe1a918f5a29485e603004cb))	
 ROM_END
 
+static void exidy_printer_getinfo(struct IODevice *dev)
+{
+	/* printer */
+	printer_device_getinfo(dev);
+	dev->count = 1;
+}
+
+static void exidy_floppy_getinfo(struct IODevice *dev)
+{
+	/* floppy */
+	legacybasicdsk_device_getinfo(dev);
+	dev->count = 4;
+	dev->file_extensions = "dsk\0";
+	dev->load = device_load_exidy_floppy;
+}
+
+static void exidy_cassette_getinfo(struct IODevice *dev)
+{
+	/* cassette */
+	cassette_device_getinfo(dev, NULL, NULL, (cassette_state) -1);
+	dev->count = 2;
+}
+
 SYSTEM_CONFIG_START(exidy)
-	CONFIG_DEVICE_PRINTER			(1)
-	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	device_load_exidy_floppy)
-	//CONFIG_DEVICE_CASSETTE		(2,	NULL)
+	CONFIG_DEVICE(exidy_printer_getinfo)
+	CONFIG_DEVICE(exidy_floppy_getinfo)
+	/*CONFIG_DEVICE(exidy_cassette_getinfo)*/
+	CONFIG_DEVICE(z80bin_quickload_getinfo)
 SYSTEM_CONFIG_END
 
 /*	  YEAR	NAME	PARENT	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY        FULLNAME */

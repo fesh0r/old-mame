@@ -219,6 +219,7 @@ typedef struct tagLVBKIMAGEW
 
 #define JOYGUI_TIMER 1
 #define SCREENSHOT_TIMER 2
+#define GAMEWND_TIMER 3
 
 /* Max size of a sub-menu */
 #define DBU_MIN_WIDTH  292
@@ -365,11 +366,18 @@ BOOL MouseHasBeenMoved(void);
 void SwitchFullScreenMode(void);
 
 // Game Window Communication Functions
+#if MULTISESSION
+BOOL SendMessageToEmulationWindow(UINT Msg, WPARAM wParam, LPARAM lParam);
+BOOL SendIconToEmulationWindow(int nGameIndex);
+HWND GetGameWindow(void);
+#else
 void SendMessageToProcess(LPPROCESS_INFORMATION lpProcessInformation,
 						  UINT Msg, WPARAM wParam, LPARAM lParam);
-static BOOL CALLBACK EnumWindowCallBack(HWND hwnd, LPARAM lParam);
 void SendIconToProcess(LPPROCESS_INFORMATION lpProcessInformation, int nGameIndex);
 HWND GetGameWindow(LPPROCESS_INFORMATION lpProcessInformation);
+#endif
+
+static BOOL CALLBACK EnumWindowCallBack(HWND hwnd, LPARAM lParam);
 /***************************************************************************
     External variables
  ***************************************************************************/
@@ -483,6 +491,7 @@ static HINSTANCE hInst = NULL;
 static HFONT hFont = NULL;     /* Font for list view */
 
 static int              game_count = 0;
+static int optionfolder_count = 0;
 
 /* global data--know where to send messages */
 static BOOL in_emulation;
@@ -874,10 +883,8 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -%sd3deffectrotate",pOpts->d3d_rotate_effects ? "" : "no");
 
-		if (pOpts->d3d_scanlines_enable)
-			sprintf(&pCmdLine[strlen(pCmdLine)], " -d3dscan %i",pOpts->d3d_scanlines);
-		if (pOpts->d3d_feedback_enable)
-			sprintf(&pCmdLine[strlen(pCmdLine)], " -d3dfeedback %i",pOpts->d3d_feedback);
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -d3dscan %i",pOpts->d3d_scanlines);
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -d3dfeedback %i",pOpts->d3d_feedback);
 	}
 	/* input */
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%smouse",                   pOpts->use_mouse       ? "" : "no");
@@ -1007,28 +1014,75 @@ static BOOL WaitWithMessageLoop(HANDLE hEvent)
 
 static int RunMAME(int nGameIndex)
 {
+	time_t start, end;
+	double elapsedtime;
+
 #if MULTISESSION
 	int argc = 0;
-	char *argv[100];
+	const char *argv[100];
 	char pModule[_MAX_PATH];
-	char game_name[500];
-		
-	ShowWindow(hMain, SW_HIDE);
+	extern int DECL_SPEC main_(int, char**);
+	int exit_code;
 
 	GetModuleFileName(GetModuleHandle(NULL), pModule, _MAX_PATH);
-	argv[0] = pModule;
-	strcpy(game_name,drivers[nGameIndex]->name);
-	argv[1] = game_name;
-	argc = 2;
+	argv[argc++] = pModule;
+	argv[argc++] = drivers[nGameIndex]->name;
 
-	extern int DECL_SPEC main_(int, char**);
-	main_(argc, argv);
-
-	// recover windows cursor and our main window
-	while (1)
+	if (override_playback_directory != NULL)
 	{
-		if (ShowCursor(TRUE) >= 0)
-			break;
+		argv[argc++] = "-input_directory";
+		argv[argc++] = override_playback_directory;
+	}
+	if (g_pPlayBkName != NULL)
+	{
+		argv[argc++] = "-pb";
+		argv[argc++] = g_pPlayBkName;
+	}
+	if (g_pRecordName != NULL)
+	{
+		argv[argc++] = "-rec";
+		argv[argc++] = g_pRecordName;
+	}
+	if (g_pRecordWaveName != NULL)
+	{
+		argv[argc++] = "-wavwrite";
+		argv[argc++] = g_pRecordWaveName;
+	}
+	if (g_pSaveStateName != NULL)
+	{
+		argv[argc++] = "-state";
+		argv[argc++] = g_pSaveStateName;
+	}
+
+	ShowWindow(hMain, SW_HIDE);
+
+	time(&start);
+	SetTimer(hMain, GAMEWND_TIMER, 1000/*1s*/, NULL);
+	exit_code = main_(argc, (char **)argv);
+	time(&end);
+	/*This is to make sure this timer is killed, if the Game Window was not found
+	Should not happen, but you never know... */
+	KillTimer(hMain,GAMEWND_TIMER);
+	elapsedtime = end - start;
+	if (exit_code == 0)
+	{
+		// Check the exitcode before incrementing Playtime
+		IncrementPlayTime(nGameIndex, elapsedtime);
+		ListView_RedrawItems(hwndList, GetSelectedPick(), GetSelectedPick());
+	}
+
+	if (GetHideMouseOnStartup())
+	{
+		ShowCursor(FALSE);
+	}
+	else
+	{
+		// recover windows cursor and our main window
+		while (1)
+		{
+			if (ShowCursor(TRUE) >= 0)
+				break;
+		}
 	}
 	ShowWindow(hMain, SW_SHOW);
 
@@ -1040,8 +1094,6 @@ static int RunMAME(int nGameIndex)
 	STARTUPINFO         si;
 	PROCESS_INFORMATION pi;
 	char pCmdLine[2048];
-	time_t start, end;
-	double elapsedtime;
 	HWND hGameWnd = NULL;
 	long lGameWndStyle = 0;
 
@@ -1317,6 +1369,19 @@ int GetNumGames()
 {
 	return game_count;
 }
+
+/* Return the number of folders with options */
+int GetNumOptionFolders()
+{
+	return optionfolder_count;
+}
+
+/* Return the number of folders with options */
+void SetNumOptionFolders(int count)
+{
+	optionfolder_count = count;
+}
+
 
 /* Sets the treeview and listviews sizes in accordance with their visibility and the splitters */
 static void ResizeTreeAndListViews(BOOL bResizeHidden)
@@ -1745,8 +1810,6 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	int i, j = 0, nSplitterCount;
 	extern FOLDERDATA g_folderData[];
 	extern FILTER_ITEM g_filterList[];
-	extern const char g_szHistoryFileName[];
-	extern const char g_szMameInfoFileName[];
 	extern const char *history_filename;
 	extern const char *mameinfo_filename;
 	LONG common_control_version = GetCommonControlVersion();
@@ -1926,8 +1989,8 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	hTreeView = GetDlgItem(hMain, IDC_TREE);
 	hwndList  = GetDlgItem(hMain, IDC_LIST);
 
-	history_filename = strdup(g_szHistoryFileName);
-	mameinfo_filename = strdup(g_szMameInfoFileName);
+	history_filename = strdup(GetHistoryFileName());
+	mameinfo_filename = strdup(GetMAMEInfoFileName());
 
 	if (!InitSplitters())
 		return FALSE;
@@ -1990,7 +2053,7 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	dprintf("about to init tree");
 	InitTree(g_folderData, g_filterList);
 	dprintf("did init tree");
-
+	FolderOptionsInit();
 	PropertiesInit();
 
 	/* Initialize listview columns */
@@ -2114,7 +2177,7 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	if (mame_validitychecks())
 	{
 		MessageBox(hMain, MAMENAME " has failed its validity checks.  The GUI will "
-			"still work, but wll emulations will fail to execute", MAMENAME, MB_OK);
+			"still work, but emulations will fail to execute", MAMENAME, MB_OK);
 	}
 #endif // MAME_DEBUG
 
@@ -2186,6 +2249,13 @@ static void Win32UI_exit()
 static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lParam)
 {
 	MINMAXINFO	*mminfo;
+#if MULTISESSION
+	int nGame;
+	HWND hGameWnd;
+	long lGameWndStyle;
+#endif // MULTISESSION
+
+
 	int 		i;
 	TCHAR szClass[128];
 
@@ -2262,6 +2332,24 @@ static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lPa
 			TabView_CalculateNextTab(hTabCtrl);
 			UpdateScreenShot();
 			TabView_UpdateSelection(hTabCtrl);
+			break;
+		case GAMEWND_TIMER:
+#if MULTISESSION
+			nGame = Picker_GetSelectedItem(hwndList);
+			if( ! GetGameCaption() )
+			{
+				hGameWnd = GetGameWindow();
+				if( hGameWnd )
+				{
+					lGameWndStyle = GetWindowLong(hGameWnd, GWL_STYLE);
+					lGameWndStyle = lGameWndStyle & (WS_BORDER ^ 0xffffffff);
+					SetWindowLong(hGameWnd, GWL_STYLE, lGameWndStyle);
+					SetWindowPos(hGameWnd,0,0,0,0,0,SWP_DRAWFRAME | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER);
+				}
+			}
+			if( SendIconToEmulationWindow(nGame)== TRUE);
+				KillTimer(hMain, GAMEWND_TIMER);
+#endif // MULTISESSION
 			break;
 		default:
 			break;
@@ -2433,6 +2521,30 @@ static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lPa
 		}
 		break;
 
+	case WM_MEASUREITEM :
+	{
+		LPMEASUREITEMSTRUCT lpmis = (LPMEASUREITEMSTRUCT) lParam;
+
+		// tell the list view that each row (item) should be just taller than our font
+
+		//DefWindowProc(hWnd, message, wParam, lParam);
+		//dprintf("default row height calculation gives %u\n",lpmis->itemHeight);
+
+		TEXTMETRIC tm;
+		HDC hDC = GetDC(NULL);
+		HFONT hFontOld = (HFONT)SelectObject(hDC,hFont);
+
+		GetTextMetrics(hDC,&tm);
+		
+		lpmis->itemHeight = tm.tmHeight + tm.tmExternalLeading + 1;
+		if (lpmis->itemHeight < 17)
+			lpmis->itemHeight = 17;
+		//dprintf("we would do %u\n",tm.tmHeight + tm.tmExternalLeading + 1);
+		SelectObject(hDC,hFontOld);
+		ReleaseDC(NULL,hDC);
+
+		return TRUE;
+	}
 	default:
 
 		break;
@@ -2928,7 +3040,7 @@ static void CopyToolTipText(LPTOOLTIPTEXT lpttt)
 	else if ( iButton <= 2 )
 	{
 		//Statusbar
-	    SendMessage(lpttt->hdr.hwndFrom, TTM_SETMAXTIPWIDTH, 0, 140);
+		SendMessage(lpttt->hdr.hwndFrom, TTM_SETMAXTIPWIDTH, 0, 200);
 		if( iButton != 1)
 			SendMessage(hStatusBar, SB_GETTEXT, (WPARAM)iButton, (LPARAM)(LPSTR) &String );
 		else
@@ -3051,7 +3163,6 @@ static void UpdateStatusBar()
 
 static void UpdateHistory(void)
 {
-	LOGFONT font;
 	HDC hDC;
 	RECT rect;
 	TEXTMETRIC     tm ;
@@ -3074,7 +3185,6 @@ static void UpdateHistory(void)
 	{
 		Edit_GetRect(GetDlgItem(hMain, IDC_HISTORY),&rect);
 		nLines = Edit_GetLineCount(GetDlgItem(hMain, IDC_HISTORY) );
-		GetListFont( &font);
 		hDC = GetDC(GetDlgItem(hMain, IDC_HISTORY));
 		GetTextMetrics (hDC, &tm);
 		nLineHeight = tm.tmHeight - tm.tmInternalLeading;
@@ -6354,12 +6464,12 @@ int UpdateLoadProgress(const char* name, const struct rom_load_data *romdata)
 
 	// if abort with a warning, gotta exit abruptly
 	if (name == NULL && g_bAbortLoading && romdata->errors == 0)
-		exit(1);
+		return 1;
 
 	// if abort along the way, tell 'em
 	if (g_bAbortLoading && name != NULL)
 	{
-		exit(1);
+		return 1;
 	}
 
 	return 0;
@@ -6818,6 +6928,98 @@ BOOL MouseHasBeenMoved(void)
 	return (p.x != mouse_x || p.y != mouse_y);       
 }
 
+/*
+	The following two functions enable us to send Messages to the Game Window
+*/
+#if MULTISESSION
+
+BOOL SendIconToEmulationWindow(int nGameIndex)
+{
+	HICON hIcon; 
+	hIcon = LoadIconFromFile(drivers[nGameIndex]->name); 
+	if( hIcon == NULL ) 
+	{ 
+		//Check if clone, if so try parent icon first 
+		if( DriverIsClone(nGameIndex) ) 
+		{ 
+			hIcon = LoadIconFromFile(drivers[nGameIndex]->clone_of->name); 
+			if( hIcon == NULL) 
+			{ 
+				hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_MAME32_ICON)); 
+			} 
+		} 
+		else 
+		{ 
+			hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_MAME32_ICON)); 
+		} 
+	} 
+	if( SendMessageToEmulationWindow( WM_SETICON, ICON_SMALL, (LPARAM)hIcon ) == FALSE)
+		return FALSE;
+	if( SendMessageToEmulationWindow( WM_SETICON, ICON_BIG, (LPARAM)hIcon ) == FALSE)
+		return FALSE;
+	return TRUE;
+}
+
+BOOL SendMessageToEmulationWindow(UINT Msg, WPARAM wParam, LPARAM lParam)
+{
+	FINDWINDOWHANDLE fwhs;
+	fwhs.ProcessInfo = NULL;
+	fwhs.hwndFound  = NULL;
+
+	EnumWindows(EnumWindowCallBack, (LPARAM)&fwhs);
+	if( fwhs.hwndFound )
+	{
+		SendMessage(fwhs.hwndFound, Msg, wParam, lParam);
+		//Fix for loosing Focus, we reset the Focus on our own Main window
+		SendMessage(fwhs.hwndFound, WM_KILLFOCUS,(WPARAM) hMain, (LPARAM) NULL);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+
+static BOOL CALLBACK EnumWindowCallBack(HWND hwnd, LPARAM lParam) 
+{ 
+	FINDWINDOWHANDLE * pfwhs = (FINDWINDOWHANDLE * )lParam; 
+	DWORD ProcessId, ProcessIdGUI; 
+	char buffer[MAX_PATH]; 
+
+	GetWindowThreadProcessId(hwnd, &ProcessId);
+	GetWindowThreadProcessId(hMain, &ProcessIdGUI);
+
+	// cmk--I'm not sure I believe this note is necessary
+	// note: In order to make sure we have the MainFrame, verify that the title 
+	// has Zero-Length. Under Windows 98, sometimes the Client Window ( which doesn't 
+	// have a title ) is enumerated before the MainFrame 
+
+	GetWindowText(hwnd, buffer, sizeof(buffer));
+	if (ProcessId  == ProcessIdGUI &&
+		 strncmp(buffer,MAMENAME,strlen(MAMENAME)) == 0 &&
+		 hwnd != hMain) 
+	{ 
+		pfwhs->hwndFound = hwnd; 
+		return FALSE; 
+	} 
+	else 
+	{ 
+		// Keep enumerating 
+		return TRUE; 
+	} 
+}
+
+HWND GetGameWindow(void)
+{
+	FINDWINDOWHANDLE fwhs;
+	fwhs.ProcessInfo = NULL;
+	fwhs.hwndFound  = NULL;
+
+	EnumWindows(EnumWindowCallBack, (LPARAM)&fwhs);
+	return fwhs.hwndFound;
+}
+
+
+#else
+
 void SendIconToProcess(LPPROCESS_INFORMATION pi, int nGameIndex)
 {
 	HICON hIcon;
@@ -6842,9 +7044,6 @@ void SendIconToProcess(LPPROCESS_INFORMATION pi, int nGameIndex)
 	SendMessageToProcess( pi, WM_SETICON, ICON_SMALL, (LPARAM)hIcon );
 	SendMessageToProcess( pi, WM_SETICON, ICON_BIG, (LPARAM)hIcon );
 }
-/*
-	The following two functions enable us to send Messages to the Game Window
-*/
 
 void SendMessageToProcess(LPPROCESS_INFORMATION lpProcessInformation, 
                                       UINT Msg, WPARAM wParam, LPARAM lParam)
@@ -6896,4 +7095,7 @@ HWND GetGameWindow(LPPROCESS_INFORMATION lpProcessInformation)
 	EnumWindows(EnumWindowCallBack, (LPARAM)&fwhs);
 	return fwhs.hwndFound;
 }
+
+#endif
+
 /* End of source file */

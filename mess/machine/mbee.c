@@ -154,4 +154,3 @@ DEVICE_LOAD( mbee_cart )
 	}
 	return INIT_PASS;
 }
-

@@ -45,18 +45,22 @@
 
 /* Private prototypes */
 
-void tms7000_set_irq_line(int irqline, int state);
+static void tms7000_set_irq_line(int irqline, int state);
 static void tms7000_get_context(void *dst);
 static void tms7000_set_context(void *src);
+static unsigned tms7000_dasm(char *buffer, unsigned pc);
+static void tms7000_check_IRQ_lines( void );
+static void tms7000_do_interrupt( UINT16 address, UINT8 line );
+static int tms7000_execute(int cycles);
+static int tms7000_exl_execute(int cycles);
+static void tms7000_service_timer1( void );
 static UINT16 bcd_add( UINT16 a, UINT16 b );
 static UINT16 bcd_tencomp( UINT16 a );
 static UINT16 bcd_sub( UINT16 a, UINT16 b);
-static void tms7000_do_interrupt( UINT16 address, UINT8 line );
-static void tms7000_service_timer1( void );
 
-/* Public globals */
+/* Static variables */
 
-int tms7000_icount;
+static int tms7000_icount;
 static int tms7000_div_by_16_trigger;
 static int tms7000_cycles_per_INT2;
 
@@ -72,8 +76,6 @@ static UINT8 tms7000_win_layout[] = {
 	27,13,53, 9,	/* memory #2 window (right, lower middle) */
 	 0,23,80, 1,	/* command line window (bottom rows) */
 };
-
-void tms7000_check_IRQ_lines( void );
 
 #define RM(Addr) ((unsigned)program_read_byte_8(Addr))
 #define WM(Addr,Value) (program_write_byte_8(Addr,Value))
@@ -190,7 +192,7 @@ static void tms7000_set_context(void *src)
         tms7000_check_IRQ_lines();
 }
 
-void tms7000_init(void)
+static void tms7000_init(void)
 {
 	int cpu = cpu_getactivecpu();
 
@@ -211,23 +213,21 @@ void tms7000_init(void)
 
         /* Save timer state */
 	state_save_register_INT8("tms7000", cpu, "t1_pre_scaler", &(tms7000.t1_prescaler), 1);
-	state_save_register_INT8("tms7000", cpu, "t1_capture_latch", &(tms7000.t1_capture_latch), 1);
+	state_save_register_UINT8("tms7000", cpu, "t1_capture_latch", &(tms7000.t1_capture_latch), 1);
 	state_save_register_INT16("tms7000", cpu, "t1_decrementer", &(tms7000.t1_decrementer), 1);
 
 	state_save_register_UINT8("tms7000", cpu, "tms7000_idle_state", &(tms7000.idle_state), 1);
 }
 
-void tms7000_reset(void *param)
+static void tms7000_reset(void *param)
 {
-	int cpu = cpu_getactivecpu();
-
 //	tms7000.architecture = (int)param;
         
-	memory_install_read8_handler(cpu, ADDRESS_SPACE_PROGRAM, 0x0000, 0x007f, 0x0000, tms7000_internal_r);
-	memory_install_write8_handler(cpu, ADDRESS_SPACE_PROGRAM, 0x0000, 0x007f, 0x0000, tms7000_internal_w);
+	/*memory_install_read8_handler(cpu, ADDRESS_SPACE_PROGRAM, 0x0000, 0x007f, 0x0000, 0x0000, tms7000_internal_r);
+	memory_install_write8_handler(cpu, ADDRESS_SPACE_PROGRAM, 0x0000, 0x007f, 0x0000, 0x0000, tms7000_internal_w);
 	
-	memory_install_read8_handler(cpu, ADDRESS_SPACE_PROGRAM, 0x0100, 0x01ff, 0x0000, tms70x0_pf_r);
-	memory_install_write8_handler(cpu, ADDRESS_SPACE_PROGRAM, 0x0100, 0x01ff, 0x0000, tms70x0_pf_w);
+	memory_install_read8_handler(cpu, ADDRESS_SPACE_PROGRAM, 0x0100, 0x01ff, 0x0000, 0x0000, tms70x0_pf_r);
+	memory_install_write8_handler(cpu, ADDRESS_SPACE_PROGRAM, 0x0100, 0x01ff, 0x0000, 0x0000, tms70x0_pf_w);*/
 
 	tms7000.idle_state = 0;
 	tms7000.irq_state[ TMS7000_IRQ1_LINE ] = CLEAR_LINE;
@@ -262,7 +262,7 @@ void tms7000_reset(void *param)
 	tms7000_div_by_16_trigger = -16;
 }
 
-void tms7000_exit(void)
+static void tms7000_exit(void)
 {
 }
 
@@ -386,7 +386,20 @@ void tms7000_get_info(UINT32 state, union cpuinfo *info)
     }
 }
 
-unsigned tms7000_dasm(char *buffer, unsigned pc)
+void tms7000_exl_get_info(UINT32 state, union cpuinfo *info)
+{
+    switch( state )
+    {
+		case CPUINFO_PTR_EXECUTE:
+			info->execute = tms7000_exl_execute;
+			break;
+		default:
+			tms7000_get_info(state, info);
+			break;
+	}
+}
+
+static unsigned tms7000_dasm(char *buffer, unsigned pc)
 {
 #ifdef MAME_DEBUG
 	return Dasm7000(buffer,pc);
@@ -398,40 +411,44 @@ unsigned tms7000_dasm(char *buffer, unsigned pc)
 
 void tms7000_set_irq_line(int irqline, int state)
 {
-	tms7000.irq_state[ irqline ] = state;
+	if (tms7000.irq_state[irqline] != state)
+	{	/* check for transition */
+		tms7000.irq_state[irqline] = state;
 
-	LOG(("tms7000: (cpu #%d) set_irq_line (INT%d, state %d)\n", cpu_getactivecpu(), irqline+1, state));
+		LOG(("tms7000: (cpu #%d) set_irq_line (INT%d, state %d)\n", cpu_getactivecpu(), irqline+1, state));
 
-	if (state == CLEAR_LINE)
-	{
-		return;
+		if (state == CLEAR_LINE)
+		{
+			return;
+		}
+
+		tms7000.pf[0] |= (0x02 << (irqline * 2));	/* Set INTx iocntl0 flag */
+		
+		if( irqline == TMS7000_IRQ3_LINE )
+		{
+			/* Latch the value in perpherial file register 3 */
+			tms7000.t1_capture_latch = tms7000.t1_decrementer & 0x00ff;
+		}
+		
+		tms7000_check_IRQ_lines();
 	}
-
-	tms7000.pf[0] |= (0x02 << (irqline * 2));	/* Set INTx iocntl0 flag */
-	
-	if( irqline == TMS7000_IRQ3_LINE )
-	{
-		/* Latch the value in perpherial file register 3 */
-		tms7000.t1_capture_latch = tms7000.t1_decrementer & 0x00ff;
-	}
-	
-	tms7000_check_IRQ_lines();
 }
 
-void tms7000_set_irq_callback(int (*callback)(int irqline))
+static void tms7000_set_irq_callback(int (*callback)(int irqline))
 {
 	tms7000.irq_callback = callback;
 }
 
-void tms7000_check_IRQ_lines( void )
+static void tms7000_check_IRQ_lines( void )
 {
 	if( pSR & SR_I ) /* Check Global Interrupt bit: Status register, bit 4 */
 	{
-		if( tms7000.irq_state[ TMS7000_IRQ1_LINE ] == ASSERT_LINE )
+		if ((tms7000.irq_state[TMS7000_IRQ1_LINE] == ASSERT_LINE) || (tms7000.pf[0] & 0x02))
 		{
 			if( tms7000.pf[0] & 0x01 ) /* INT1 Enable bit */
 			{
 				tms7000_do_interrupt( 0xfffc, TMS7000_IRQ1_LINE );
+				tms7000.pf[0] &= ~0x02;
 				return;
 			}
 		}
@@ -445,11 +462,12 @@ void tms7000_check_IRQ_lines( void )
 			}
 		}
 
-		if( tms7000.irq_state[ TMS7000_IRQ3_LINE ] == ASSERT_LINE )
+		if ((tms7000.irq_state[TMS7000_IRQ3_LINE] == ASSERT_LINE) || (tms7000.pf[0] & 0x20))
 		{
 			if( tms7000.pf[0] & 0x10 ) /* INT3 Enable bit */
 			{
 				tms7000_do_interrupt( 0xfff8, TMS7000_IRQ3_LINE );
+				tms7000.pf[0] &= ~0x20;
 				return;
 			}
 		}
@@ -478,7 +496,7 @@ static void tms7000_do_interrupt( UINT16 address, UINT8 line )
 #include "tms70op.c"
 #include "tms70tb.c"
 
-int tms7000_execute(int cycles)
+static int tms7000_execute(int cycles)
 {
 	int op;
 	
@@ -517,6 +535,46 @@ int tms7000_execute(int cycles)
 	return cycles - tms7000_icount;
 }
 
+static int tms7000_exl_execute(int cycles)
+{
+	int op;
+	
+	tms7000_icount = cycles;
+	tms7000_div_by_16_trigger += cycles;
+	
+	do
+	{
+		CALL_MAME_DEBUG;
+
+		if( tms7000.idle_state == 0 )
+		{
+
+			op = cpu_readop(pPC++);
+	
+			opfn_exl[op]();
+		}
+		else
+			tms7000_icount -= 16;
+			
+		/* Internal timer system */
+		
+		while( tms7000_icount < tms7000_div_by_16_trigger )
+		{
+			tms7000_div_by_16_trigger -= 16;
+
+			if( (tms7000.pf[0x03] & 0x80) == 0x80 ) /* Is timer system active? */
+			{
+				if( (tms7000.pf[0x03] & 0x40) != 0x40) /* Is system clock (divided by 16) the timer source? */
+					tms7000_service_timer1();
+			}
+		}
+                                
+	} while( tms7000_icount > 0 );
+	
+	tms7000_div_by_16_trigger -= tms7000_icount;
+	return cycles - tms7000_icount;
+}
+
 /****************************************************************************
  * Trigger the event counter
  ****************************************************************************/
@@ -531,9 +589,6 @@ void tms7000_A6EC1( void )
 
 static void tms7000_service_timer1( void )
 {
-	static int	tick;
-	static int	tick2;
-	
     if( --tms7000.t1_prescaler < 0 ) /* Decrement prescaler and check for underflow */
     {
         tms7000.t1_prescaler = tms7000.pf[3] & 0x1f; /* Reload prescaler (5 bit) */
@@ -628,6 +683,10 @@ WRITE8_HANDLER( tms70x0_pf_w )	/* Perpherial file write */
 	{
 		case 0x00:	/* IOCNT0, Input/Ouput control */
 			result = tms7000.pf[0x00];
+			if (tms7000.irq_state[TMS7000_IRQ1_LINE] == ASSERT_LINE)
+				result |= 0x02;
+			if (tms7000.irq_state[TMS7000_IRQ3_LINE] == ASSERT_LINE)
+				result |= 0x20;
 			break;
 		
 		case 0x02:	/* T1DATA, timer 1 8-bit decrementer */
@@ -641,6 +700,7 @@ WRITE8_HANDLER( tms70x0_pf_w )	/* Perpherial file write */
 		case 0x04: /* Port A read */
 			result = io_read_byte_8( TMS7000_PORTA );
 			break;
+			
 			
 		case 0x06: /* Port B read */
 			/* Port B is write only, return a previous written value */
@@ -698,9 +758,13 @@ static UINT16 bcd_tencomp( UINT16 a )
 	return t2-t6;
 }
 
+/*
+	Compute difference a-b???
+*/
 static UINT16 bcd_sub( UINT16 a, UINT16 b)
 {
-	return bcd_tencomp(b) - bcd_tencomp(a);
+	//return bcd_tencomp(b) - bcd_tencomp(a);
+	return bcd_add(a, bcd_tencomp(b) & 0xff);
 }
 
 WRITE8_HANDLER( tms7000_internal_w ) {

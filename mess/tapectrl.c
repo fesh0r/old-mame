@@ -6,16 +6,15 @@
 
 void tapecontrol_gettime(char *timepos, size_t timepos_size, mess_image *img, int *curpos, int *endpos)
 {
-	int t0, t1;
+	double t0, t1;
 
-	t0 = device_tell(img);
-	t1 = device_seek(img, 0, SEEK_END);
-	device_seek(img, t0, SEEK_SET);
+	t0 = cassette_get_position(img);
+	t1 = cassette_get_length(img);
 
 	if (t1)
-		snprintf(timepos, timepos_size, "%04d/%04d", t0/11025, t1/11025);
+		snprintf(timepos, timepos_size, "%04d/%04d", (int) t0, (int) t1);
 	else
-		snprintf(timepos, timepos_size, "%04d/%04d", 0, t1/11025);
+		snprintf(timepos, timepos_size, "%04d/%04d", 0, (int) t1);
 
 	if (curpos)
 		*curpos = t0;
@@ -37,14 +36,14 @@ int tapecontrol(struct mame_bitmap *bitmap, int selected)
 	int arrowize;
 	cassette_state state;
 
-	if (!device_find(Machine->gamedrv, IO_CASSETTE))
+	if (!device_find(Machine->devices, IO_CASSETTE))
 		return 0;
 
 	total = 0;
 	sel = selected - 1;
 
 	img = image_from_devtype_and_index(IO_CASSETTE, id);
-	menu_item[total] = device_typename_id(img);
+	menu_item[total] = image_typename_id(img);
 	menu_subitem[total] = image_filename(img) ? image_filename(img) : "---";
 	flag[total] = 0;
 	total++;

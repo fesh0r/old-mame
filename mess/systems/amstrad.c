@@ -47,7 +47,6 @@ Some bugs left :
 
 #define MANUFACTURER_NAME 0x07
 #define TV_REFRESH_RATE 0x10
-#define CRTC_TYPE 0xA0
 
 //int selected_crtc6845_address = 0;
 
@@ -195,7 +194,7 @@ static READ8_HANDLER (amstrad_ppi_portb_r)
 		data |= (1<<7);
   }
 /* Set b6 with Parallel/Printer port ready */
-	if (device_status(image_from_devtype_and_index(IO_PRINTER, 0), 0)==0 ) {
+	if (printer_status(image_from_devtype_and_index(IO_PRINTER, 0), 0)==0 ) {
 		data |= (1<<6);
   }
 /* Set b4-b1 50hz/60hz state and manufacturer name defined by links on PCB */
@@ -582,7 +581,10 @@ static READ8_HANDLER ( AmstradCPC_ReadPortHandler )
 {
 	unsigned char data = 0xFF;
 	unsigned int r1r0 = (unsigned int)((offset & 0x0300) >> 8);
-	int crtc_type;
+	m6845_personality_t crtc_type;
+
+	crtc_type = readinputportbytag("crtc");
+	crtc6845_set_personality(crtc_type);
 
 	/* if b14 = 0 : CRTC Read selected */
 	if ((offset & (1<<14)) == 0)
@@ -591,14 +593,15 @@ static READ8_HANDLER ( AmstradCPC_ReadPortHandler )
 		case 0x02:
 			/* CRTC Type 1 : Read Status Register
 			   CRTC Type 3 or 4 : Read from selected internal 6845 register */
-			crtc_type = (readinputport(10)&CRTC_TYPE)>>5;
 			switch(crtc_type) {
-			case 0x01:
+			case M6845_PERSONALITY_UM6845R:
 				data = amstrad_CRTC_CR; /* Read Status Register */
 				break;
-			case 0x03:
-			case 0x04:
+			case M6845_PERSONALITY_AMS40489:
+			case M6845_PERSONALITY_PREASIC:
 				data = crtc6845_register_r(0);
+				break;
+			default:
 				break;
 			}
 			break;
@@ -710,7 +713,7 @@ static WRITE8_HANDLER ( AmstradCPC_WritePortHandler )
 			/* check for only one transition */
 			if ((data & (1<<7)) == 0)  {
 				/* output data to printer */
-				device_output(image_from_devtype_and_index(IO_PRINTER, 0), data & 0x07f);
+				printer_output(image_from_devtype_and_index(IO_PRINTER, 0), data & 0x07f);
 			}
 		}
 		previous_printer_data_byte = data;
@@ -855,7 +858,7 @@ int multiface_hardware_enabled(void)
 {
 		if (multiface_ram!=NULL)
 		{
-				if ((readinputport(11) & 0x01)!=0)
+				if ((readinputportbytag("multiface") & 0x01)!=0)
 				{
 						return 1;
 				}
@@ -1060,7 +1063,7 @@ static int 	amstrad_cpu_acknowledge_int(int cpu)
 
 static VIDEO_EOF( amstrad )
 {
-	if ((readinputport(11) & 0x02)!=0) {
+	if ((readinputportbytag("multiface") & 0x02)!=0) {
 			multiface_stop();
 	}
 }
@@ -1483,18 +1486,6 @@ static INPUT_PORTS_START( amstrad_keyboard )
 INPUT_PORTS_END
 
 
-#define MULTIFACE_PORTS \
-	PORT_START \
-	PORT_CONFNAME(0x01, 0x00, "Multiface Hardware" ) \
-	PORT_CONFSETTING(0x00, DEF_STR( Off) ) \
-	PORT_CONFSETTING(0x01, DEF_STR( On) ) \
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Multiface Stop") PORT_CODE(KEYCODE_F1) \
-
-
-
-
-
-
 /* Steph 2000-10-27	I remapped the 'Machine Name' Dip Switches (easier to understand) */
 
 INPUT_PORTS_START(amstrad)
@@ -1538,16 +1529,20 @@ PORT_START
    Pre-ASIC??? Amstrad?     4 In the "cost-down" CPC6128, the CRTC functionality is integrated into a single ASIC IC. This ASIC is often refered to as the "Pre-ASIC" because it preceeded the CPC+ ASIC
 As far as I know, the KC compact used HD6845S only. 
 */
-	PORT_START
-	PORT_DIPNAME( CRTC_TYPE, 0x20, "CRTC Type" )
-	PORT_DIPSETTING(0x00, "Type 0 - UM6845" )
-	PORT_DIPSETTING(0x00, "Type 0 - HD6845S" )
-	PORT_DIPSETTING(0x20, "Type 1 - UM6845R" )
-	PORT_DIPSETTING(0x40, "Type 2 - MC6845" )
-	PORT_DIPSETTING(0x60, "Type 3 - AMS40489" )
-	PORT_DIPSETTING(0x80, "Type 4 - Pre-ASIC???" )
+	PORT_START_TAG("crtc")
+	PORT_DIPNAME( 0xFF, M6845_PERSONALITY_UM6845R, "CRTC Type" )
+	PORT_DIPSETTING(M6845_PERSONALITY_UM6845, "Type 0 - UM6845" )
+	PORT_DIPSETTING(M6845_PERSONALITY_HD6845S, "Type 0 - HD6845S" )
+	PORT_DIPSETTING(M6845_PERSONALITY_UM6845R, "Type 1 - UM6845R" )
+	PORT_DIPSETTING(M6845_PERSONALITY_GENUINE, "Type 2 - MC6845" )
+	PORT_DIPSETTING(M6845_PERSONALITY_AMS40489, "Type 3 - AMS40489" )
+	PORT_DIPSETTING(M6845_PERSONALITY_PREASIC, "Type 4 - Pre-ASIC???" )
 
-	MULTIFACE_PORTS
+	PORT_START_TAG("multiface")
+	PORT_CONFNAME(0x01, 0x00, "Multiface Hardware" )
+	PORT_CONFSETTING(0x00, DEF_STR( Off) )
+	PORT_CONFSETTING(0x01, DEF_STR( On) )
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Multiface Stop") PORT_CODE(KEYCODE_F1)
 
 INPUT_PORTS_END
 
@@ -1659,17 +1654,55 @@ MACHINE_DRIVER_END
 /* cpcados.rom contains Amstrad DOS */
 
 
+static void cpc6128_floppy_getinfo(struct IODevice *dev)
+{
+	/* floppy */
+	legacydsk_device_getinfo(dev);
+	dev->count = 2;
+}
+
+static void cpc6128_cassette_getinfo(struct IODevice *dev)
+{
+	/* cassette */
+	cassette_device_getinfo(dev, NULL, NULL, (cassette_state) -1);
+	dev->count = 1;
+}
+
+static void cpc6128_printer_getinfo(struct IODevice *dev)
+{
+	/* printer */
+	printer_device_getinfo(dev);
+	dev->count = 1;
+}
+
 SYSTEM_CONFIG_START(cpc6128)
 	CONFIG_RAM_DEFAULT(128 * 1024)
-	CONFIG_DEVICE_LEGACY_DSK(2)
-	CONFIG_DEVICE_CASSETTE(1, NULL)
-	CONFIG_DEVICE_PRINTER(1)
+	CONFIG_DEVICE(cpc6128_floppy_getinfo)
+	CONFIG_DEVICE(cpc6128_cassette_getinfo)
+	CONFIG_DEVICE(cpc6128_printer_getinfo)
 SYSTEM_CONFIG_END
+
+static void cpcplus_cartslot_getinfo(struct IODevice *dev)
+{
+	/* cartslot */
+	cartslot_device_getinfo(dev);
+	dev->count = 1;
+	dev->file_extensions = "cpr\0";
+	dev->must_be_loaded = 1;
+	dev->load = device_load_amstrad_plus_cartridge;
+}
+
+static void cpcplus_snapshot_getinfo(struct IODevice *dev)
+{
+	/* snapshot */
+	snapshot_device_getinfo(dev, snapshot_load_amstrad, 0.0);
+	dev->file_extensions = "sna\0";
+}
 
 SYSTEM_CONFIG_START(cpcplus)
 	CONFIG_IMPORT_FROM(cpc6128)
-	CONFIG_DEVICE_CARTSLOT_REQ(1,	"cpr\0", NULL, NULL, device_load_amstrad_plus_cartridge, NULL, NULL, NULL)
-	CONFIG_DEVICE_SNAPSHOT(			"sna\0", amstrad)
+	CONFIG_DEVICE(cpcplus_cartslot_getinfo)
+	CONFIG_DEVICE(cpcplus_snapshot_getinfo)
 SYSTEM_CONFIG_END
 
 

@@ -113,6 +113,8 @@ static void FolderFlagsDecodeString(const char *str,void *data);
 static void TabFlagsEncodeString(void *data,char *str);
 static void TabFlagsDecodeString(const char *str,void *data);
 
+static const char * GetDefaultOptionsFilename(void);
+
 #ifdef _MSC_VER
 #define snprintf _snprintf
 #endif
@@ -145,6 +147,7 @@ static options_type gOpts;  // Used in conjunction with regGameOpts
 static options_type global; // Global 'default' options
 static options_type *game_options;  // Array of Game specific options
 static options_type *folder_options;  // Array of Folder specific options
+static int *folder_options_redirect;  // Array of Folder Ids for redirecting Folder specific options
 static game_variables_type *game_variables;  // Array of game specific extra data
 
 // UI options in mame32ui.ini
@@ -324,10 +327,8 @@ static REG_OPTION regGameOpts[] =
 	{ "d3deffect",              RO_ENCODE,  &gOpts.d3d_effect,                      "auto", FALSE, D3DEffectEncodeString,   D3DEffectDecodeString },
 	{ "d3dprescale",            RO_ENCODE,  &gOpts.d3d_prescale,                    "auto", FALSE, D3DPrescaleEncodeString, D3DPrescaleDecodeString },
 	{ "d3deffectrotate",        RO_BOOL,    &gOpts.d3d_rotate_effects,              "1" },
-	{ "#*d3dscan_enable",       RO_BOOL,    &gOpts.d3d_scanlines_enable,            "0" },
-	{ "#*d3dscan",              RO_INT,     &gOpts.d3d_scanlines,                   "50" },
-	{ "#*d3dfeedback_enable",   RO_BOOL,    &gOpts.d3d_feedback_enable,             "0" },
-	{ "#*d3dfeedback",          RO_INT,     &gOpts.d3d_feedback,                    "50" },
+	{ "d3dscan",                RO_INT,     &gOpts.d3d_scanlines,                   "100" },
+	{ "d3dfeedback",            RO_INT,     &gOpts.d3d_feedback,                    "100" },
 
 	{ "mouse",                  RO_BOOL,    &gOpts.use_mouse,                       "0" },
 	{ "joystick",               RO_BOOL,    &gOpts.use_joystick,                    "0" },
@@ -646,7 +647,7 @@ BOOL OptionsInit()
 #endif /* MAME_DEBUG */
 
 	num_games = GetNumGames();
-	
+	code_init();
 	// Load all default settings
 	LoadDefaultOptions(regSettings);
 	LoadDefaultOptions(global_game_options);
@@ -715,13 +716,11 @@ BOOL OptionsInit()
 	game_options = (options_type *)malloc(num_games * sizeof(options_type));
 	game_variables = (game_variables_type *)malloc(num_games * sizeof(game_variables_type));
 
-	folder_options = (options_type *)malloc( (MAX_FOLDERS + (MAX_EXTRA_FOLDERS * MAX_EXTRA_SUBFOLDERS) ) * sizeof(options_type));
 	if (!game_options || !game_variables)
 		return FALSE;
 
 	memset(game_options, 0, num_games * sizeof(options_type));
 	memset(game_variables, 0, num_games * sizeof(game_variables_type));
-	memset(folder_options, 0, (MAX_FOLDERS + (MAX_EXTRA_FOLDERS * MAX_EXTRA_SUBFOLDERS) ) * sizeof(options_type));
 	for (i = 0; i < num_games; i++)
 	{
 		game_variables[i].play_count = 0;
@@ -752,6 +751,16 @@ BOOL OptionsInit()
 
 }
 
+void FolderOptionsInit()
+{
+	//Get Number of Folder Entries with options from folder_options_redirect
+	int i=GetNumOptionFolders();
+
+	folder_options = (options_type *)malloc( i * sizeof(options_type));
+	memset(folder_options, 0, (i * sizeof(options_type)) );
+	return;
+}
+
 void OptionsExit(void)
 {
 	int i;
@@ -763,7 +772,7 @@ void OptionsExit(void)
 
     free(game_options);
 
-	for (i=0;i<(MAX_FOLDERS + (MAX_EXTRA_FOLDERS *MAX_EXTRA_SUBFOLDERS) );i++)
+	for (i=0;i<GetNumOptionFolders();i++)
 	{
 		FreeGameOptions(&folder_options[i]);
 	}
@@ -776,7 +785,7 @@ void OptionsExit(void)
 		if (regSettings[i].m_iType == RO_STRING)
 			FreeIfAllocated(regSettings[i].m_vpData);
 	}
-
+	free(folder_options_redirect);
 	DeleteBits(settings.show_folder_flags);
 	settings.show_folder_flags = NULL;
 
@@ -800,6 +809,33 @@ void FreeGameOptions(options_type *o)
 			}
 		}
 	}
+}
+
+int GetRedirectIndex(int folder_index)
+{
+	int i=0;
+	int *redirect_arr = GetFolderOptionsRedirectArr();
+	//Use the redirect array, to get correct folder
+	for( i=0; i<GetNumOptionFolders();i++)
+	{
+		
+		if( redirect_arr[i] == folder_index)
+		{
+			//found correct folderId
+			return i;
+		}
+	}
+	return -1;
+}
+
+int GetRedirectValue(int index)
+{
+	int *redirect_arr = GetFolderOptionsRedirectArr();
+	//Use the redirect array, to get correct folder
+	if( GetNumOptionFolders() < index )
+		return redirect_arr[index];
+	else
+		return -1;
 }
 
 // performs a "deep" copy--strings in source are allocated and copied in dest
@@ -878,7 +914,8 @@ void SyncInFolderOptions(options_type *opts, int folder_index)
 						//we have a source ini to create, so remove the ".c" at the end of the title
 						strncpy(title, ExtraFolderData[folder_index]->m_szTitle, strlen(ExtraFolderData[folder_index]->m_szTitle)-2 );
 						title[strlen(ExtraFolderData[folder_index]->m_szTitle)-2] = '\0';
-						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, title );
+						//Core expects it there
+						snprintf(buffer,sizeof(buffer),"%s\\mame\\src\\drivers\\%s.ini",GetIniDir(), title );
 					}
 					else
 					{
@@ -913,20 +950,36 @@ options_type * GetDefaultOptions(int iProperty, BOOL bVectorFolder )
 
 options_type * GetFolderOptions(int folder_index, BOOL bIsVector)
 {
+	int redirect_index=0;
 	if( folder_index >= (MAX_FOLDERS + (MAX_EXTRA_FOLDERS * MAX_EXTRA_SUBFOLDERS) ) )
 	{
 		dprintf("Folder Index out of bounds");
 		return NULL;
 	}
-	CopyGameOptions(&global,&folder_options[folder_index]);
+	//Use the redirect array, to get correct folder
+	redirect_index = GetRedirectIndex(folder_index);
+	if( redirect_index < 0)
+		return NULL;
+	CopyGameOptions(&global,&folder_options[redirect_index]);
 	LoadFolderOptions(folder_index);
 	if( bIsVector)
 	{
-		SyncInFolderOptions(&folder_options[folder_index], FOLDER_VECTOR);
-		CopyGameOptions(&gOpts, &folder_options[folder_index] );
+		SyncInFolderOptions(&folder_options[redirect_index], FOLDER_VECTOR);
+		CopyGameOptions(&gOpts, &folder_options[redirect_index] );
 	}
-	return &folder_options[folder_index];
+	return &folder_options[redirect_index];
 }
+
+int * GetFolderOptionsRedirectArr()
+{
+	return &folder_options_redirect[0];
+}
+
+void SetFolderOptionsRedirectArr(int *redirect_arr)
+{
+	folder_options_redirect = redirect_arr;
+}
+
 
 options_type * GetVectorOptions(void)
 {
@@ -957,7 +1010,8 @@ options_type * GetSourceOptions(int driver_index )
 	//If it has source folder settings sync in the source\sourcefile.ini settings
 	strcpy(title, GetDriverFilename(driver_index) );
 	title[strlen(title)-2] = '\0';
-	snprintf(buffer,sizeof(buffer),"%s\\Source\\%s.ini",GetIniDir(),title );
+	//Core expects it there
+	snprintf(buffer,sizeof(buffer),"%s\\mame\\src\\drivers\\%s.ini",GetIniDir(), title );
 	SyncInGameOptions(&game_options[driver_index], buffer);
 	return &gOpts;
 }
@@ -979,7 +1033,8 @@ options_type * GetGameOptions(int driver_index, int folder_index )
 	//If it has source folder settings sync in the source\sourcefile.ini settings
 	strcpy(title, GetDriverFilename(driver_index) );
 	title[strlen(title)-2] = '\0';
-	snprintf(buffer,sizeof(buffer),"%s\\Source\\%s.ini",GetIniDir(),title );
+	//Core expects it there
+	snprintf(buffer,sizeof(buffer),"%s\\mame\\src\\drivers\\%s.ini",GetIniDir(), title );
 	SyncInGameOptions(&game_options[driver_index], buffer);
 	//last but not least, sync in game specific settings
 	snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),drivers[driver_index]->name );
@@ -1902,8 +1957,8 @@ void ResetGameDefaults(void)
 
 void ResetAllGameOptions(void)
 {
-	extern LPEXFOLDERDATA ExtraFolderData[];
 	int i;
+	int redirect_value = 0;
 
 	for (i = 0; i < num_games; i++)
 	{
@@ -1912,22 +1967,14 @@ void ResetAllGameOptions(void)
 
 	//with our new code we also need to delete the Source Folder Options and the Vector Options
 	//Reset the Folder Options, can be done in one step
-	for (i=0;i<(MAX_FOLDERS + (MAX_EXTRA_FOLDERS *MAX_EXTRA_SUBFOLDERS));i++)
+	for (i=0;i<GetNumOptionFolders();i++)
 	{
-		if( i == FOLDER_VECTOR)
- 		{
- 			CopyGameOptions(GetDefaultOptions(GLOBAL_OPTIONS, FALSE),&folder_options[i]);
- 			SaveFolderOptions(i, 0);
- 		}
-
-		if( i>= MAX_FOLDERS )
-		{
-			if( ExtraFolderData[i-MAX_FOLDERS] && (ExtraFolderData[i-MAX_FOLDERS]->m_nParent == FOLDER_SOURCE) )
-			{
-				CopyGameOptions(GetDefaultOptions(GLOBAL_OPTIONS, FALSE),&folder_options[i]);
-				SaveFolderOptions(i, 0);
-			}
-		}
+		//Use the redirect array, to get correct folder
+		redirect_value = GetRedirectValue(i);
+		if( redirect_value < 0)
+			continue;
+ 		CopyGameOptions(GetDefaultOptions(GLOBAL_OPTIONS, FALSE),&folder_options[i]);
+ 		SaveFolderOptions(redirect_value, 0);
 	}
 }
 
@@ -3027,7 +3074,7 @@ static void ParseKeyValueStrings(char *buffer,char **key,char **value)
 /* Register access functions below */
 static void LoadOptionsAndSettings(void)
 {
-	char buffer[512];
+	char buffer[2048];
 	FILE *fptr;
 
 	fptr = fopen(UI_INI_FILENAME,"rt");
@@ -3070,7 +3117,7 @@ static void LoadOptionsAndSettings(void)
 		fclose(fptr);
 	}
 
-	snprintf(buffer,sizeof(buffer),"%s\\%s",GetIniDir(),DEFAULT_OPTIONS_INI_FILENAME);
+	snprintf(buffer,sizeof(buffer),"%s\\%s",GetIniDir(),GetDefaultOptionsFilename());
 	gOpts = global;
 	if (LoadOptions(buffer,&global,TRUE))
 	{
@@ -3127,11 +3174,11 @@ void LoadFolderOptions(int folder_index )
 	char buffer[512];
 	char title[512];
 	int i;
+	int redirect_index;
 	extern FOLDERDATA g_folderData[];
 	extern LPEXFOLDERDATA ExtraFolderData[];
 	extern int numExtraFolders;
 	const char *pParent;
-
 
 	for( i = 0; i<=folder_index; i++ )
 	{
@@ -3169,7 +3216,8 @@ void LoadFolderOptions(int folder_index )
 						//we have a source ini to create, so remove the ".c" at the end of the title
 						strncpy(title, ExtraFolderData[folder_index]->m_szTitle, strlen(ExtraFolderData[folder_index]->m_szTitle)-2 );
 						title[strlen(ExtraFolderData[folder_index]->m_szTitle)-2] = '\0';
-						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, title );
+						//Core expects it there
+						snprintf(buffer,sizeof(buffer),"%s\\mame\\src\\drivers\\%s.ini",GetIniDir(), title );
 					}
 					else
 					{
@@ -3181,30 +3229,21 @@ void LoadFolderOptions(int folder_index )
 		}
 	}
 	
-/*	if( folder_index <= MAX_FOLDERS )
-		//Subtract 1 because FOLDER_NONE is 0
-		snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),g_folderData[folder_index-1].m_lpTitle );
-	else if( folder_index < MAX_FOLDERS + numExtraFolders)
-		snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),ExtraFolderData[numExtraFolders]->m_szTitle );
-	else
-	{
-		//SubDirName is ParentFolderName
-		pParent = GetFolderNameByID(ExtraFolderData[folder_index]->m_nParent);
-		if( pParent )
-			snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, ExtraFolderData[folder_index]->m_szTitle );
-		else
-			return;
-	}	
-*/	CopyGameOptions(&global,&gOpts);
-	if (LoadOptions(buffer,&folder_options[folder_index],FALSE))
+	//Use the redirect array, to get correct folder
+	redirect_index = GetRedirectIndex(folder_index);
+	if( redirect_index < 0)
+		return;
+
+	CopyGameOptions(&global,&gOpts);
+	if (LoadOptions(buffer,&folder_options[redirect_index],FALSE))
 	{
 		// successfully loaded
-		CopyGameOptions(&gOpts, &folder_options[folder_index] );
+		CopyGameOptions(&gOpts, &folder_options[redirect_index] );
 	}
 	else
 	{
 		// uses globals
-		CopyGameOptions(&global, &folder_options[folder_index] );
+		CopyGameOptions(&global, &folder_options[redirect_index] );
 	}
 }
 
@@ -3378,11 +3417,16 @@ BOOL GetVectorUsesDefaultsMem(void)
 	BOOL options_different = FALSE;
 	options_type Opts;
 	int i;
+	int redirect_index = 0;
 	CopyGameOptions( &global, &Opts );
+	//Use the redirect array, to get correct folder
+	redirect_index = GetRedirectIndex(FOLDER_VECTOR);
+	if( redirect_index < 0)
+		return TRUE;
 
 	for (i = 0; regGameOpts[i].ini_name[0]; i++)
 	{
-		if (IsOptionEqual(i,&folder_options[FOLDER_VECTOR], &Opts ) == FALSE)
+		if (IsOptionEqual(i,&folder_options[redirect_index], &Opts ) == FALSE)
 		{
 			options_different = TRUE;
 		}
@@ -3397,14 +3441,20 @@ BOOL GetFolderUsesDefaultsMem(int folder_index, int driver_index)
 	BOOL options_different = FALSE;
 	options_type Opts;
 	int i;
+	int redirect_index;
+
 	if( DriverIsVector(driver_index) )
 		CopyGameOptions( GetVectorOptions(), &Opts );
 	else
 		CopyGameOptions( &global, &Opts );
+	//Use the redirect array, to get correct folder
+	redirect_index = GetRedirectIndex(folder_index);
+	if( redirect_index < 0)
+		return TRUE;
 
 	for (i = 0; regGameOpts[i].ini_name[0]; i++)
 	{
-		if (IsOptionEqual(i,&folder_options[folder_index], &Opts ) == FALSE)
+		if (IsOptionEqual(i,&folder_options[redirect_index], &Opts ) == FALSE)
 		{
 			options_different = TRUE;
 		}
@@ -3489,6 +3539,8 @@ void SaveFolderOptions(int folder_index, int game_index)
 	char buffer[512];
 	char subdir[512];
 	char title[512];
+	char *inititle = NULL;
+	int redirect_index = 0;
 	extern FOLDERDATA g_folderData[];
 	extern LPEXFOLDERDATA ExtraFolderData[];
 	extern int numExtraFolders;
@@ -3501,16 +3553,19 @@ void SaveFolderOptions(int folder_index, int game_index)
 	*subdir = 0;
 	if( DriverIsVector(game_index) && folder_index != FOLDER_VECTOR )
 	{
-		//CopyGameOptions(&gOpts,&folder_options[folder_index] );
 		CopyGameOptions( GetVectorOptions(), &Opts );
 		pOpts = &Opts;
 	}
 	else
 		pOpts = &global;
+	//Use the redirect array, to get correct folder
+	redirect_index = GetRedirectIndex(folder_index);
+	if( redirect_index < 0)
+		return;
 
 	for (i = 0; regGameOpts[i].ini_name[0]; i++)
 	{
-		if (IsOptionEqual(i,&folder_options[folder_index],pOpts) == FALSE)
+		if (IsOptionEqual(i,&folder_options[redirect_index],pOpts) == FALSE)
 		{
 			options_different = TRUE;
 		}
@@ -3524,6 +3579,7 @@ void SaveFolderOptions(int folder_index, int game_index)
 			if( g_folderData[i].m_nFolderId == folder_index )
 			{
 				snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),g_folderData[i].m_lpTitle );
+				inititle = strdup(g_folderData[i].m_lpTitle );
 				break;
 			}
 		}
@@ -3535,6 +3591,7 @@ void SaveFolderOptions(int folder_index, int game_index)
 				if( ExtraFolderData[i]->m_nFolderId == folder_index )
 				{
 					snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),ExtraFolderData[i]->m_szTitle );
+					inititle = strdup(ExtraFolderData[i]->m_szTitle );
 					break;
 				}
 			}
@@ -3553,24 +3610,41 @@ void SaveFolderOptions(int folder_index, int game_index)
 						//we have a source ini to create, so remove the ".c" at the end of the title
 						strncpy(title, ExtraFolderData[folder_index]->m_szTitle, strlen(ExtraFolderData[folder_index]->m_szTitle)-2 );
 						title[strlen(ExtraFolderData[folder_index]->m_szTitle)-2] = '\0';
-						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, title );
+						//Core expects it there
+						snprintf(buffer,sizeof(buffer),"%s\\mame\\src\\drivers\\%s.ini",GetIniDir(), title );
+						snprintf(subdir,sizeof(subdir),"%s\\mame\\src\\drivers\\",GetIniDir() );
 					}
 					else
 					{
 						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, ExtraFolderData[folder_index]->m_szTitle );
+						snprintf(subdir,sizeof(subdir),"%s\\%s",GetIniDir(),pParent );
 					}
-					snprintf(subdir,sizeof(subdir),"%s\\%s",GetIniDir(),pParent );
+					inititle = strdup(ExtraFolderData[folder_index]->m_szTitle );
 					//need to check if Subdirectory Exists
 					/* Don't allow empty entries. */
 					if (strcmp(subdir, ""))
 					{
-						/* Check validity of edited directory. */
-						if (! (stat(subdir, &file_stat) == 0
-						&&	(file_stat.st_mode & S_IFDIR)) )
-						{
-							//Create it
-							CreateDirectory( subdir, NULL );
-						}
+						char *tmp, tmp1[MAX_PATH];
+						tmp = strdup(subdir);
+						tmp = strtok(tmp,"\\");
+						strcpy(tmp1, tmp);
+						while( tmp != NULL)
+ 						{
+							/* Check validity of edited directory. */
+							if (! (stat(tmp1, &file_stat) == 0
+							&&	(file_stat.st_mode & S_IFDIR)) )
+							{
+								//Create all parts of it 
+								CreateDirectory( tmp1, NULL );
+							}
+							tmp = strtok(NULL,"\\");
+							if( tmp != NULL)
+							{
+								strcat(tmp1,"\\");
+								strcat(tmp1, tmp);
+							}
+ 						}
+						free(tmp);
 					}
 					break;
 				}
@@ -3583,17 +3657,14 @@ void SaveFolderOptions(int folder_index, int game_index)
 		if (fptr != NULL)
 		{
 			fprintf(fptr,"### ");
-			if( folder_index < MAX_FOLDERS )
-				fprintf(fptr,"%s",g_folderData[i].m_lpTitle);
-			else
-				fprintf(fptr,"%s",ExtraFolderData[i]->m_szTitle);
+			fprintf(fptr,"%s",inititle);
 			fprintf(fptr," ###\n\n");
 
 			for (i = 0; regGameOpts[i].ini_name[0]; i++)
 			{
-				if (IsOptionEqual(i,&folder_options[folder_index],pOpts) == FALSE)
+				if (IsOptionEqual(i,&folder_options[redirect_index],pOpts) == FALSE)
 				{
-					gOpts = folder_options[folder_index];
+					gOpts = folder_options[redirect_index];
 					WriteOptionToFile(fptr,&regGameOpts[i]);
 				}
 			}
@@ -3611,11 +3682,25 @@ void SaveFolderOptions(int folder_index, int game_index)
 		//Check if SubDir
 		if( subdir )
 		{
-			//we just call rmdir on the subdir, if it is empty, it gets deleted, 
-			//otherwise it just stays as is
-			_rmdir( subdir );
+			//we just call rmdir on the subdirs, if they are empty, they get deleted, 
+ 			//otherwise it just stays as is
+			char *tmp, *tmp1;
+			int result;
+			tmp = strdup(subdir);
+			tmp1 = strrchr(tmp-1,'\\');
+			while( tmp != NULL && tmp1 != NULL)
+			{
+				_rmdir( tmp );
+				result = tmp1-tmp;
+				strncpy(tmp, subdir, result);
+				tmp[result] = '\0';
+				tmp1 = strrchr(tmp-1,'\\');
+			}
+			free(tmp);
  		}
  	}
+	if( inititle != NULL)
+		free(inititle);
  }
 
 
@@ -3625,7 +3710,7 @@ void SaveDefaultOptions(void)
 	FILE *fptr;
 	char buffer[512];
 
-	snprintf(buffer,sizeof(buffer),"%s\\%s",GetIniDir(),DEFAULT_OPTIONS_INI_FILENAME);
+	snprintf(buffer,sizeof(buffer),"%s\\%s",GetIniDir(),GetDefaultOptionsFilename());
 
 	fptr = fopen(buffer,"wt");
 	if( fptr == NULL && GetLastError() == ERROR_PATH_NOT_FOUND )
@@ -3635,7 +3720,8 @@ void SaveDefaultOptions(void)
 	}
 	if (fptr != NULL)
 	{
-		fprintf(fptr,"### " DEFAULT_OPTIONS_INI_FILENAME " ###\n\n");
+		char s[_MAX_PATH];
+		snprintf(s,sizeof(s),"### %s ###\n\n",GetDefaultOptionsFilename());
 		
 		if (save_gui_settings)
 		{
@@ -3818,6 +3904,35 @@ char* GetVersionString(void)
 	return build_version;
 }
 
+static const char * GetDefaultOptionsFilename()
+{
+	static char pModule[_MAX_PATH];
+	char *ptr;
+
+	GetModuleFileName(GetModuleHandle(NULL), pModule, _MAX_PATH);
+
+	// take out the path if there is one
+	ptr = strrchr(pModule,'\\');
+	if (ptr != NULL)
+	{
+		// move length of string, minus the backslash but plus the terminating 0
+		memmove(pModule,ptr+1,strlen(ptr));
+	}
+
+	// take out the extension
+	ptr = strrchr(pModule,'.');
+	if (ptr != NULL)
+	{
+		*ptr = 0;
+	}
+
+	// add .ini
+	strcat(pModule,".ini");
+
+	//dprintf("got [%s] for ini name\n",pModule);
+
+	return pModule;
+}
 
 
 /***************************************************************************
