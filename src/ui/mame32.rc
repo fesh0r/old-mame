@@ -287,8 +287,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,85,0,0
- PRODUCTVERSION 0,85,0,0
+ FILEVERSION 0,86,0,0
+ PRODUCTVERSION 0,86,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -314,7 +314,7 @@ BEGIN
             VALUE "CompanyName", "MAME Team\0"
             VALUE "FileDescription", "Multiple Arcade Machine Emulator for Win32\0"
 #endif
-            VALUE "FileVersion", "0, 85, 0, 0\0"
+            VALUE "FileVersion", "0, 86, 0, 0\0"
             VALUE "InternalName", "MAME32\0"
             VALUE "LegalCopyright", "Copyright 1997-2004 Nicola Salmoria and the MAME team\0"
             VALUE "LegalTrademarks", "\0"
@@ -325,7 +325,7 @@ BEGIN
             VALUE "OriginalFilename", "MAME32.exe\0"
             VALUE "ProductName", "MAME32\0"
 #endif
-            VALUE "ProductVersion", "0, 85, 0, 0\0"
+            VALUE "ProductVersion", "0, 86, 0, 0\0"
         END
     END
     BLOCK "VarFileInfo"
@@ -564,7 +564,7 @@ BEGIN
     LTEXT           "Colors:",IDC_STATIC,18,198,47,8
     LTEXT           "Static",IDC_PROP_COLORS,75,198,139,8
     LTEXT           "Clone of:",IDC_PROP_CLONEOF_TEXT,18,218,50,8
-    LTEXT           "Static",IDC_PROP_CLONEOF,75,218,130,8
+    LTEXT           "Static",IDC_PROP_CLONEOF,75,218,130,18
     LTEXT           "Source:",IDC_STATIC,18,208,47,8
     LTEXT           "Static",IDC_PROP_SOURCE,75,208,139,8
 END

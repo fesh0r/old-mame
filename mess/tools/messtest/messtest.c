@@ -12,6 +12,7 @@
 #include "messtest.h"
 #include "osdepend.h"
 #include "pool.h"
+#include "inputx.h"
 
 #include "expat/expat.h"
 
@@ -536,10 +537,74 @@ outofmemory:
 
 
 
-static int entity_handler(XML_Parser parser, const XML_Char *context,
-	const XML_Char *base, const XML_Char *systemId, const XML_Char *publicId)
+/* this external entity handler allows us to do things like this:
+ *
+ *	<!DOCTYPE tests
+ *	[
+ *		<!ENTITY mamekey_esc SYSTEM "http://www.mess.org/messtest/">
+ *	]>
+ */
+static int external_entity_handler(XML_Parser parser,
+	const XML_Char *context,
+	const XML_Char *base,
+	const XML_Char *systemId,
+	const XML_Char *publicId)
 {
-	return -1;
+	XML_Parser extparser = NULL;
+	int rc = 0, i;
+	char buf[256];
+	char charbuf[UTF8_CHAR_MAX + 1];
+	static const char *mamekey_prefix = "mamekey_";
+	unicode_char_t c;
+
+	buf[0] = '\0';
+
+	/* only supportr our own schema */
+	if (strcmp(systemId, "http://www.mess.org/messtest/"))
+		goto done;
+
+	extparser = XML_ExternalEntityParserCreate(parser, context, "UTF-8");
+	if (!extparser)
+		goto done;
+
+	/* does this use the 'mamekey' prefix? */
+	if ((strlen(context) > strlen(mamekey_prefix)) && !memcmp(context,
+		mamekey_prefix, strlen(mamekey_prefix)))
+	{
+		context += strlen(mamekey_prefix);
+		c = 0;
+
+		/* this is interim until we can come up with a real solution */
+		if (!strcmp(context, "esc"))
+			c = UCHAR_MAMEKEY(ESC);
+		else if (!strcmp(context, "up"))
+			c = UCHAR_MAMEKEY(UP);
+
+		if (c)
+		{
+			i = utf8_from_uchar(charbuf, sizeof(charbuf) / sizeof(charbuf[0]), c);
+			if (i < 0)
+				goto done;
+			charbuf[i] = 0;
+
+			snprintf(buf, sizeof(buf) / sizeof(buf[0]), "<%s%s>%s</%s%s>",
+				mamekey_prefix, context,
+				charbuf,
+				mamekey_prefix, context);
+
+			if (XML_Parse(extparser, buf, strlen(buf), 0) == XML_STATUS_ERROR)
+				goto done;
+		}
+	}
+
+	if (XML_Parse(extparser, NULL, 0, 1) == XML_STATUS_ERROR)
+		goto done;
+
+	rc = 1;
+done:
+	if (extparser)
+		XML_ParserFree(extparser);
+	return rc;
 }
 
 
@@ -589,7 +654,7 @@ int messtest(const char *script_filename, int flags, int *test_count, int *failu
 	XML_SetUserData(state.parser, &state);
 	XML_SetElementHandler(state.parser, start_handler, end_handler);
 	XML_SetCharacterDataHandler(state.parser, data_handler);
-	XML_SetExternalEntityRefHandler(state.parser, entity_handler);
+	XML_SetExternalEntityRefHandler(state.parser, external_entity_handler);
 
 	do
 	{

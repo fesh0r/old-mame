@@ -23,6 +23,12 @@
   Nov/Dec 1998 - Mike Haaland
 
 ***************************************************************************/
+#ifdef MESS
+#define MULTISESSION 0
+#else
+#define MULTISESSION 1
+#endif
+
 #ifdef _MSC_VER
 #ifndef NONAMELESSUNION
 #define NONAMELESSUNION 
@@ -72,6 +78,8 @@
 #include "dialogs.h"
 #include "state.h"
 #include "windows/input.h"
+#include "windows/config.h"
+#include "windows/window.h"
 
 #include "DirectDraw.h"
 #include "DirectInput.h"
@@ -272,7 +280,7 @@ static void             LoadBackgroundBitmap(void);
 static void             PaintBackgroundImage(HWND hWnd, HRGN hRgn, int x, int y);
 
 static int CLIB_DECL DriverDataCompareFunc(const void *arg1,const void *arg2);
-static int              GamePicker_Compare(int index1, int index2, int sort_subitem);
+static int              GamePicker_Compare(HWND hwndPicker, int index1, int index2, int sort_subitem);
 
 static void             DisableSelection(void);
 static void             EnableSelection(int nGame);
@@ -885,7 +893,8 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	if (pOpts->offscreen_reload)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -%sreload",pOpts->offscreen_reload ? "" : "no");
 
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -ctrlr \"%s\"",              pOpts->ctrlr);
+	if (strlen(pOpts->ctrlr) > 0)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -ctrlr \"%s\"",              pOpts->ctrlr);
 	
 	/* core video */
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -bright %f",                 pOpts->f_bright_correct); 
@@ -998,6 +1007,35 @@ static BOOL WaitWithMessageLoop(HANDLE hEvent)
 
 static int RunMAME(int nGameIndex)
 {
+#if MULTISESSION
+	int argc = 0;
+	char *argv[100];
+	char pModule[_MAX_PATH];
+	char game_name[500];
+		
+	ShowWindow(hMain, SW_HIDE);
+
+	GetModuleFileName(GetModuleHandle(NULL), pModule, _MAX_PATH);
+	argv[0] = pModule;
+	strcpy(game_name,drivers[nGameIndex]->name);
+	argv[1] = game_name;
+	argc = 2;
+
+	extern int DECL_SPEC main_(int, char**);
+	main_(argc, argv);
+
+	// recover windows cursor and our main window
+	while (1)
+	{
+		if (ShowCursor(TRUE) >= 0)
+			break;
+	}
+	ShowWindow(hMain, SW_SHOW);
+
+	return 0;
+
+#else
+
 	DWORD               dwExitCode = 0;
 	STARTUPINFO         si;
 	PROCESS_INFORMATION pi;
@@ -1006,11 +1044,12 @@ static int RunMAME(int nGameIndex)
 	double elapsedtime;
 	HWND hGameWnd = NULL;
 	long lGameWndStyle = 0;
-	
+
 #ifdef MESS
 	SaveGameOptions(nGameIndex);
 #endif
-	CreateCommandLine(nGameIndex, pCmdLine );
+
+	CreateCommandLine(nGameIndex, pCmdLine);
 
 	ZeroMemory(&si, sizeof(si));
 	ZeroMemory(&pi, sizeof(pi));
@@ -1057,7 +1096,7 @@ static int RunMAME(int nGameIndex)
 		elapsedtime = end - start;
 		if( dwExitCode == 0 )
 		{
-			/*Check the exitcode before incrementing Playtime*/
+			// Check the exitcode before incrementing Playtime
 			IncrementPlayTime(nGameIndex, elapsedtime);
 			ListView_RedrawItems(hwndList, GetSelectedPick(), GetSelectedPick());
 		}
@@ -1074,6 +1113,7 @@ static int RunMAME(int nGameIndex)
 	}
 
 	return dwExitCode;
+#endif
 }
 
 int Mame32Main(HINSTANCE    hInstance,
@@ -1886,8 +1926,8 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	hTreeView = GetDlgItem(hMain, IDC_TREE);
 	hwndList  = GetDlgItem(hMain, IDC_LIST);
 
-	history_filename = g_szHistoryFileName;
-	mameinfo_filename = g_szMameInfoFileName;
+	history_filename = strdup(g_szHistoryFileName);
+	mameinfo_filename = strdup(g_szMameInfoFileName);
 
 	if (!InitSplitters())
 		return FALSE;
@@ -2307,10 +2347,6 @@ static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lPa
 			/* Save the users current game options and default game */
 			nItem = Picker_GetSelectedItem(hwndList);
 			SetDefaultGame(ModifyThe(drivers[nItem]->name));
-
-#ifdef MESS
-			MessWriteMountedSoftware(nItem);
-#endif /* MESS */
 
 			/* hide window to prevent orphan empty rectangles on the taskbar */
 			/* ShowWindow(hWnd,SW_HIDE); */
@@ -3306,7 +3342,7 @@ char* ConvertAmpersandString(const char *s)
 	return buf;
 }
 
-static int GUI_seq_pressed(input_seq_t* code)
+static int GUI_seq_pressed(input_code_t* code)
 {
 	int j;
 	int res = 1;
@@ -3315,7 +3351,7 @@ static int GUI_seq_pressed(input_seq_t* code)
 
 	for(j=0;j<SEQ_MAX;++j)
 	{
-		switch (code->code[j])
+		switch (code[j])
 		{
 			case CODE_NONE :
 				return res && count;
@@ -3331,7 +3367,7 @@ static int GUI_seq_pressed(input_seq_t* code)
 			default:
 				if (res)
 				{
-					int pressed = keyboard_state[code->code[j]];
+					int pressed = keyboard_state[code[j]];
 					if ((pressed != 0) == invert)
 						res = 0;
 				}
@@ -3350,7 +3386,7 @@ static void check_for_GUI_action(void)
 	{
 		input_seq_t *is = &(GUISequenceControl[i].is);
 
-		if (GUI_seq_pressed(is))
+		if (GUI_seq_pressed(is->code))
 		{
 			dprintf("seq =%s pressed\n", GUISequenceControl[i].name);
 			switch (GUISequenceControl[i].func_id)
@@ -3766,7 +3802,6 @@ static void UpdateGameList()
 	// Let REFRESH also load new background if found
 	LoadBackgroundBitmap();
 	InvalidateRect(hMain,NULL,TRUE);
-	ResetListView();
 	Picker_ResetIdle(hwndList);
 }
 
@@ -4163,7 +4198,20 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 
 	/* View Menu */
 	case ID_VIEW_LINEUPICONS:
-		ResetListView();
+		if( codeNotify == FALSE)
+			ResetListView();
+		else
+		{
+			/*it was sent after a refresh (F5) was done, we only reset the View if "available" is the selected folder
+			  as it doesn't affect the others*/
+			folder = GetSelectedFolder();
+			if( folder )
+			{
+				if (folder->m_nFolderId == FOLDER_AVAILABLE )
+					ResetListView();
+
+			}
+		}
 		break;
 
 	case ID_GAME_PROPERTIES:
@@ -4269,7 +4317,7 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 			// these may have been changed
 			// WTF?
 			SaveDefaultOptions();
-            DestroyWindow( hwnd );
+			DestroyWindow( hwnd );
 			PostQuitMessage(0);
         }
 		return TRUE;
@@ -4520,12 +4568,12 @@ static void ResetColumnDisplay(BOOL first_time)
 	Picker_SetSelectedItem(hwndList, driver_index);
 }
 
-int GamePicker_GetItemImage(int nItem)
+int GamePicker_GetItemImage(HWND hwndPicker, int nItem)
 {
 	return GetIconForDriver(nItem);
 }
 
-const TCHAR *GamePicker_GetItemString(int nItem, int nColumn,
+const TCHAR *GamePicker_GetItemString(HWND hwndPicker, int nItem, int nColumn,
 	TCHAR *pszBuffer, UINT nBufferLength)
 {
 	const TCHAR *s = NULL;
@@ -4607,16 +4655,13 @@ const TCHAR *GamePicker_GetItemString(int nItem, int nColumn,
 	return s;
 }
 
-void GamePicker_LeavingItem(int nItem)
+static void GamePicker_LeavingItem(HWND hwndPicker, int nItem)
 {
 	// leaving item
 	// printf("leaving %s\n",drivers[nItem]->name);
-#ifdef MESS
-	MessWriteMountedSoftware(nItem);
-#endif	
 }
 
-void GamePicker_EnteringItem(int nItem)
+static void GamePicker_EnteringItem(HWND hwndPicker, int nItem)
 {
 	// printf("entering %s\n",drivers[nItem]->name);
 	if (g_bDoBroadcast == TRUE)
@@ -4632,7 +4677,7 @@ void GamePicker_EnteringItem(int nItem)
 #endif
 }
 
-static int GamePicker_FindItemParent(int nItem)
+static int GamePicker_FindItemParent(HWND hwndPicker, int nItem)
 {
 	return parent_index[nItem];
 }
@@ -4875,7 +4920,7 @@ static void CreateIcons(void)
 
 
 
-static int GamePicker_Compare(int index1, int index2, int sort_subitem)
+static int GamePicker_Compare(HWND hwndPicker, int index1, int index2, int sort_subitem)
 {
 	int value;
 	const char *name1 = NULL;
@@ -4906,7 +4951,7 @@ static int GamePicker_Compare(int index1, int index2, int sort_subitem)
 		nTemp2 = GetRomAuditResults(index2);
 
 		if (IsAuditResultKnown(nTemp1) == FALSE && IsAuditResultKnown(nTemp2) == FALSE)
-			return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+			return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 
 		if (IsAuditResultKnown(nTemp1) == FALSE)
 		{
@@ -4923,10 +4968,10 @@ static int GamePicker_Compare(int index1, int index2, int sort_subitem)
 		// ok, both are known
 
 		if (IsAuditResultYes(nTemp1) && IsAuditResultYes(nTemp2))
-			return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+			return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 		
 		if (IsAuditResultNo(nTemp1) && IsAuditResultNo(nTemp2))
-			return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+			return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 
 		if (IsAuditResultYes(nTemp1) && IsAuditResultNo(nTemp2))
 			value = -1;
@@ -4966,7 +5011,7 @@ static int GamePicker_Compare(int index1, int index2, int sort_subitem)
 		}
 
 		if (nTemp1 == nTemp2)
-			return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+			return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 
 		value = nTemp2 - nTemp1;
 		break;
@@ -4977,14 +5022,14 @@ static int GamePicker_Compare(int index1, int index2, int sort_subitem)
 
    	case COLUMN_SRCDRIVERS:
 		if (stricmp(drivers[index1]->source_file+12, drivers[index2]->source_file+12) == 0)
-			return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+			return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 
 		value = stricmp(drivers[index1]->source_file+12, drivers[index2]->source_file+12);
 		break;
 	case COLUMN_PLAYTIME:
 	   value = GetPlayTime(index1) - GetPlayTime(index2);
 	   if (value == 0)
-		  return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+		  return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 
 	   break;
 
@@ -4996,7 +5041,7 @@ static int GamePicker_Compare(int index1, int index2, int sort_subitem)
 
 		if ((drv1.video_attributes & VIDEO_TYPE_VECTOR) ==
 			(drv2.video_attributes & VIDEO_TYPE_VECTOR))
-			return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+			return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 
 		value = (drv1.video_attributes & VIDEO_TYPE_VECTOR) -
 				(drv2.video_attributes & VIDEO_TYPE_VECTOR);
@@ -5004,7 +5049,7 @@ static int GamePicker_Compare(int index1, int index2, int sort_subitem)
     }
 	case COLUMN_TRACKBALL:
 		if (DriverUsesTrackball(index1) == DriverUsesTrackball(index2))
-			return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+			return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 
 		value = DriverUsesTrackball(index1) - DriverUsesTrackball(index2);
 		break;
@@ -5012,20 +5057,20 @@ static int GamePicker_Compare(int index1, int index2, int sort_subitem)
 	case COLUMN_PLAYED:
 	   value = GetPlayCount(index1) - GetPlayCount(index2);
 	   if (value == 0)
-		  return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+		  return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 
 	   break;
 
 	case COLUMN_MANUFACTURER:
 		if (stricmp(drivers[index1]->manufacturer, drivers[index2]->manufacturer) == 0)
-			return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+			return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 
 		value = stricmp(drivers[index1]->manufacturer, drivers[index2]->manufacturer);
 		break;
 
 	case COLUMN_YEAR:
 		if (stricmp(drivers[index1]->year, drivers[index2]->year) == 0)
-			return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+			return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 
 		value = stricmp(drivers[index1]->year, drivers[index2]->year);
 		break;
@@ -5040,7 +5085,7 @@ static int GamePicker_Compare(int index1, int index2, int sort_subitem)
 			name2 = NULL;
 
 		if (name1 == name2)
-			return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+			return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 
 		if (name2 == NULL)
 			value = -1;
@@ -5051,7 +5096,7 @@ static int GamePicker_Compare(int index1, int index2, int sort_subitem)
 		break;
 
 	default :
-		return GamePicker_Compare(index1, index2, COLUMN_GAMES);
+		return GamePicker_Compare(hwndPicker, index1, index2, COLUMN_GAMES);
 	}
 
 #ifdef DEBUG
@@ -6224,6 +6269,8 @@ int UpdateLoadProgress(const char* name, const struct rom_load_data *romdata)
 	int current = romdata->romsloaded;
 	int total = romdata->romstotal;
 
+	//dprintf("updateloadprogress %s %u %u %08x\n",name,current,total,hWndLoad);
+
 	if (hWndLoad == NULL)
 	{
 		hWndLoad = CreateDialog(GetModuleHandle(NULL),
@@ -6290,7 +6337,10 @@ int UpdateLoadProgress(const char* name, const struct rom_load_data *romdata)
 	}
 
 	if (name == NULL)
+	{
 		DestroyWindow(hWndLoad);
+		hWndLoad = NULL;
+	}
 
 	// take care of any pending messages
 	while (PeekMessage(&Msg, NULL, 0, 0, PM_REMOVE))

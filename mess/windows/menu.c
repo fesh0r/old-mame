@@ -164,7 +164,7 @@ static void customize_input(const char *title, int cust_type, int player, int in
 	while(in->type != IPT_END)
 	{
 		this_inputclass = input_classify_port(in);
-		if (this_inputclass == inputclass)
+		if (input_port_name(in) && (this_inputclass == inputclass))
 		{
 			/* most of the time, the player parameter is the player number
 			 * but in the case of INPUT_CLASS_CATEGORIZED, it is the
@@ -1238,7 +1238,7 @@ static void prepare_menus(void)
 	UINT flags_for_exists;
 	UINT flags_for_writing;
 	mess_image *img;
-	int has_config, has_dipswitch, has_keyboard, has_misc;
+	int has_config, has_dipswitch, has_keyboard, has_analog, has_misc;
 	const struct InputPort *in;
 	UINT16 in_cat_value = 0;
 
@@ -1256,6 +1256,16 @@ static void prepare_menus(void)
 	has_keyboard	= input_has_input_class(INPUT_CLASS_KEYBOARD);
 	has_misc		= input_has_input_class(INPUT_CLASS_MISC);
 
+	has_analog = 0;
+	for (in = Machine->input_ports; in->type != IPT_END; in++)
+	{
+		if (port_type_is_analog(in->type))
+		{
+			has_analog = 1;
+			break;
+		}
+	}
+
 	set_command_state(win_menu_bar, ID_EDIT_PASTE,				inputx_can_post()							? MFS_ENABLED : MFS_GRAYED);
 
 	set_command_state(win_menu_bar, ID_OPTIONS_PAUSE,			is_paused									? MFS_CHECKED : MFS_ENABLED);
@@ -1263,9 +1273,10 @@ static void prepare_menus(void)
 	set_command_state(win_menu_bar, ID_OPTIONS_CONFIGURATION,	has_config									? MFS_ENABLED : MFS_GRAYED);
 	set_command_state(win_menu_bar, ID_OPTIONS_DIPSWITCHES,		has_dipswitch								? MFS_ENABLED : MFS_GRAYED);
 	set_command_state(win_menu_bar, ID_OPTIONS_MISCINPUT,		has_misc									? MFS_ENABLED : MFS_GRAYED);
+	set_command_state(win_menu_bar, ID_OPTIONS_ANALOGCONTROLS,	has_analog									? MFS_ENABLED : MFS_GRAYED);
 #if HAS_TOGGLEFULLSCREEN
 	set_command_state(win_menu_bar, ID_OPTIONS_FULLSCREEN,		!win_window_mode							? MFS_CHECKED : MFS_ENABLED);
-#endif
+#endif // HAS_TOGGLEFULLSCREEN
 	set_command_state(win_menu_bar, ID_OPTIONS_TOGGLEFPS,		ui_show_fps_get()							? MFS_CHECKED : MFS_ENABLED);
 #if HAS_PROFILER
 	set_command_state(win_menu_bar, ID_OPTIONS_PROFILER,		ui_show_profiler_get()						? MFS_CHECKED : MFS_ENABLED);
