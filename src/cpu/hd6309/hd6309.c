@@ -81,6 +81,13 @@
 	To Do:
 		Verify new DIV opcodes.
 
+001217 TJL:
+	Finished:
+		All opcodes
+		Dual Timing
+	To Do:
+		Verify new DIV opcodes.
+
 *****************************************************************************/
 
 #include <stdio.h>
@@ -1113,7 +1120,7 @@ int hd6309_execute(int cycles)	/* NS 970908 */
 #endif    /* BIG_SWITCH */
 
 			hd6309_ICount -= cycle_counts_page0[hd6309.ireg];
-				
+
 		} while( hd6309_ICount > 0 );
 
 		hd6309_ICount -= hd6309.extra_cycles;
@@ -1402,7 +1409,7 @@ INLINE void fetch_effective_address( void )
 	case 0xfe: EA=S+W;								EAD=RM16(EAD);		break;
 	case 0xff: IMMWORD(ea); 						EAD=RM16(EAD);		break;
 	}
-	
+
 	hd6309_ICount -= index_cycle[postbyte];
 }
 

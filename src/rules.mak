@@ -784,9 +784,9 @@ ifneq ($(CPU),)
 OBJDIRS += $(OBJ)/cpu/sc61860
 CPUDEFS += -DHAS_SC61860=1
 CPUOBJS += $(OBJ)/cpu/sc61860/sc61860.o
-DBGOBJS += $(OBJ)/cpu/sc61860/disasm.o
+DBGOBJS += $(OBJ)/cpu/sc61860/scdasm.o
 $(OBJ)/cpu/sc61860/sc61860.o: src/cpu/sc61860/sc61860.h \
-	src/cpu/sc61860/sc.h src/cpu/sc61860/ops.c src/cpu/sc61860/table.c
+	src/cpu/sc61860/sc.h src/cpu/sc61860/ops.c src/cpu/sc61860/sctable.c
 else
 CPUDEFS += -DHAS_SC61860=0
 endif
@@ -867,6 +867,14 @@ SOUNDDEFS += -DHAS_DAC=1
 SOUNDOBJS += $(OBJ)/sound/dac.o
 else
 SOUNDDEFS += -DHAS_DAC=0
+endif
+
+SOUND=$(strip $(findstring DISCRETE@,$(SOUNDS)))
+ifneq ($(SOUND),)
+SOUNDDEFS += -DHAS_DISCRETE=1
+SOUNDOBJS += $(OBJ)/sound/discrete.o
+else
+SOUNDDEFS += -DHAS_DISCRETE=0
 endif
 
 SOUND=$(strip $(findstring AY8910@,$(SOUNDS)))
@@ -1017,7 +1025,11 @@ ifndef MESS
 SOUND=$(strip $(findstring NES@,$(SOUNDS)))
 ifneq ($(SOUND),)
 SOUNDDEFS += -DHAS_NES=1
+ifndef MESS
 SOUNDOBJS += $(OBJ)/sound/nes_apu.o
+else
+SOUNDOBJS += $(OBJ)/sound/nes_apu2.o $(OBJ)/sound/nesintf.o
+endif
 else
 SOUNDDEFS += -DHAS_NES=0
 endif
@@ -1214,6 +1226,22 @@ SOUNDDEFS += -DHAS_IREMGA20=1
 SOUNDOBJS += $(OBJ)/sound/iremga20.o
 else
 SOUNDDEFS += -DHAS_IREMGA20=0
+endif
+
+SOUND=$(strip $(findstring ES5505@,$(SOUNDS)))
+ifneq ($(SOUND),)
+SOUNDDEFS += -DHAS_ES5505=1
+SOUNDOBJS += $(OBJ)/sound/es5506.o
+else
+SOUNDDEFS += -DHAS_ES5505=0
+endif
+
+SOUND=$(strip $(findstring ES5506@,$(SOUNDS)))
+ifneq ($(SOUND),)
+SOUNDDEFS += -DHAS_ES5506=1
+SOUNDOBJS += $(OBJ)/sound/es5506.o
+else
+SOUNDDEFS += -DHAS_ES5506=0
 endif
 
 SOUND=$(strip $(findstring SPEAKER@,$(SOUNDS)))
