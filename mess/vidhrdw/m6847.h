@@ -12,10 +12,13 @@ extern "C" {
 
 /******************* Initialization & Functionality *******************/
 
-#define M6847_TOTAL_COLORS 17
+#define M6847_ARTIFACT_COLOR_COUNT	14
+
+#define M6847_TOTAL_COLORS (13 + (M6847_ARTIFACT_COLOR_COUNT * 4))
 
 enum {
 	M6847_VERSION_ORIGINAL,
+	M6847_VERSION_M6847Y,
 	M6847_VERSION_M6847T1
 };
 
@@ -25,6 +28,10 @@ struct m6847_init_params {
 	UINT8 *ram;					/* the base of RAM */
 	int ramsize;				/* the size of accessible RAM */
 	void (*charproc)(UINT8 c);	/* the proc that gives the host a chance to change mode bits */
+
+	mem_write_handler hs_func;	/* Horizontal sync */
+	mem_write_handler fs_func;	/* Field sync */
+	double callback_delay;		/* Amount of time to wait before invoking callbacks (this is a CoCo related hack */
 };
 
 void m6847_vh_init_palette(unsigned char *palette, unsigned short *colortable, const unsigned char *color_prom);
@@ -57,6 +64,9 @@ void m6847_touch_vram(int offset);
 void m6847_set_row_height(int rowheight);
 void m6847_set_cannonical_row_height(void);
 
+/* Call this function at vblank; so fs and hs will be properly set */
+int m6847_vblank(void);
+
 /******************* 1-bit mode port interfaces *******************/
 
 READ_HANDLER( m6847_ag_r );
@@ -67,6 +77,7 @@ READ_HANDLER( m6847_css_r );
 READ_HANDLER( m6847_gm2_r );
 READ_HANDLER( m6847_gm1_r );
 READ_HANDLER( m6847_gm0_r );
+READ_HANDLER( m6847_hs_r );
 READ_HANDLER( m6847_fs_r );
 
 WRITE_HANDLER( m6847_ag_w );

@@ -109,7 +109,7 @@ void pcw_fdc_interrupt(int);
 void *pcw_int_timer = NULL;
 
 // pointer to pcw ram
-unsigned char *pcw_ram;
+unsigned char *pcw_ram = NULL;
 unsigned int roller_ram_addr;
 // flag to indicate if boot-program is enabled/disabled
 static int 	pcw_boot;
@@ -696,23 +696,46 @@ READ_HANDLER(pcw_system_status_r)
 the PCW custom ASIC */
 READ_HANDLER(pcw_expansion_r)
 {
-	/* spectravideo joystick */
-	if (offset == (0x0e0-0x080))
+	logerror("pcw expansion r: %04x\n",offset+0x080);
+
+	switch (offset-0x080)
 	{
-		if (readinputport(16) & 0x020)
+		case 0x0e0:
 		{
-			return readinputport(17);
+			/* spectravideo joystick */
+			if (readinputport(16) & 0x020)
+			{
+				return readinputport(17);
+			}
+			else
+			{
+				return 0x0ff;
+			}
 		}
-		else
+
+		case 0x09f:
 		{
+
+			/* kempston joystick */
+			return readinputport(18);
+		}
+
+		case 0x0e1:
+		{
+			return 0x07f;
+		}
+
+		case 0x085:
+		{
+			return 0x0fe;
+		}
+		
+		case 0x087:
+		{
+
 			return 0x0ff;
 		}
-	}
 
-	/* kempston joystick */
-	if (offset == (0x09f-0x080))
-	{
-		return readinputport(18);
 	}
 
 	/* result from floating bus/no peripherial at this port */
@@ -723,6 +746,13 @@ READ_HANDLER(pcw_expansion_r)
 the PCW custom ASIC */
 WRITE_HANDLER(pcw_expansion_w)
 {
+	logerror("pcw expansion w: %04x %02x\n",offset+0x080, data);
+
+
+
+
+
+
 }
 
 READ_HANDLER(pcw_fdc_r)
@@ -767,12 +797,19 @@ READ_HANDLER(pcw_printer_status_r)
 /* TODO: Implement parallel port! */
 READ_HANDLER(pcw9512_parallel_r)
 {
-	return 0x0ff;
+	if (offset==1)
+	{
+		return 0xff^0x020;
+	}
+
+	logerror("pcw9512 parallel r: offs: %04x %02x\n",offset);
+	return 0x00;
 }
 
 /* TODO: Implement parallel port! */
 WRITE_HANDLER(pcw9512_parallel_w)
 {
+	logerror("pcw9512 parallel w: offs: %04x data: %02x\n",offset,data);
 }
 
 
@@ -787,7 +824,7 @@ PORT_READ_START( readport_pcw )
 PORT_END
 
 
-#if 0 /* unused */
+/* unused */
 PORT_READ_START( readport_pcw9512 )
 	{0x000, 0x07f, pcw_fdc_r},
 	{0x080, 0x0ef, pcw_expansion_r},
@@ -795,7 +832,6 @@ PORT_READ_START( readport_pcw9512 )
 	{0x0f8, 0x0f8, pcw_system_status_r},
 	{0x0fc, 0x0fd, pcw9512_parallel_r},
 PORT_END
-#endif
 
 PORT_WRITE_START( writeport_pcw )
 	{0x000, 0x07f, pcw_fdc_w},
@@ -812,7 +848,7 @@ PORT_WRITE_START( writeport_pcw )
 PORT_END
 
 
-#if 0 /* unused */
+ /* unused */
 PORT_WRITE_START( writeport_pcw9512 )
 	{0x000, 0x07f, pcw_fdc_w},
 	{0x080, 0x0ef, pcw_expansion_w},
@@ -825,7 +861,7 @@ PORT_WRITE_START( writeport_pcw9512 )
 
 	{0x0fc, 0x0fd, pcw9512_parallel_w},
 PORT_END
-#endif
+
 
 void pcw_init_machine(void)
 {
@@ -881,8 +917,6 @@ void pcw_init_machine(void)
 
 void pcw_init_memory(int size)
 {
-	pcw_ram = NULL;
-
 	switch (size)
 	{
 		case 256:
@@ -905,26 +939,31 @@ void pcw_init_memory(int size)
 void	init_pcw8256(void)
 {
 	pcw_init_memory(256);
+	pcw_init_machine();
 }
 
 void	init_pcw8512(void)
 {
 	pcw_init_memory(512);
+	pcw_init_machine();
 }
 
 void	init_pcw9256(void)
 {
 	pcw_init_memory(256);
+	pcw_init_machine();
 }
 
 void	init_pcw9512(void)
 {
 	pcw_init_memory(512);
+	pcw_init_machine();
 }
 
 void	init_pcw10(void)
 {
 	pcw_init_memory(512);
+	pcw_init_machine();
 }
 
 
@@ -1169,7 +1208,7 @@ static struct MachineDriver machine_driver_pcw =
 	50, 							   /* frames per second */
 	DEFAULT_REAL_60HZ_VBLANK_DURATION /*DEFAULT_60HZ_VBLANK_DURATION*/,	   /* vblank duration */
 	1,								   /* cpu slices per frame */
-	pcw_init_machine,			   /* init machine */
+	NULL,			   /* init machine */
 	pcw_shutdown_machine,
 	/* video hardware */
 	PCW_SCREEN_WIDTH,			   /* screen width */
@@ -1208,8 +1247,8 @@ static struct MachineDriver machine_driver_pcw9512 =
 			4000000,	/* clock supplied to chip, but in reality it is 3,4Mhz */
 			readmem_pcw,		   /* MemoryReadAddress */
 			writemem_pcw,		   /* MemoryWriteAddress */
-			readport_pcw,		   /* IOReadPort */
-			writeport_pcw,		   /* IOWritePort */
+			readport_pcw9512,		   /* IOReadPort */
+			writeport_pcw9512,		   /* IOWritePort */
 			0,
 			1,
 			0, 0,
@@ -1218,7 +1257,7 @@ static struct MachineDriver machine_driver_pcw9512 =
 	50, 							   /* frames per second */
 	DEFAULT_REAL_60HZ_VBLANK_DURATION /*DEFAULT_60HZ_VBLANK_DURATION*/,	   /* vblank duration */
 	1,								   /* cpu slices per frame */
-	pcw_init_machine,			   /* init machine */
+	NULL,			   /* init machine */
 	pcw_shutdown_machine,
 	/* video hardware */
 	PCW_SCREEN_WIDTH,			   /* screen width */

@@ -786,7 +786,7 @@ CPUDEFS += -DHAS_SC61860=1
 CPUOBJS += $(OBJ)/cpu/sc61860/sc61860.o
 DBGOBJS += $(OBJ)/cpu/sc61860/scdasm.o
 $(OBJ)/cpu/sc61860/sc61860.o: src/cpu/sc61860/sc61860.h \
-	src/cpu/sc61860/sc.h src/cpu/sc61860/ops.c src/cpu/sc61860/sctable.c
+	src/cpu/sc61860/sc.h src/cpu/sc61860/scops.c src/cpu/sc61860/sctable.c
 else
 CPUDEFS += -DHAS_SC61860=0
 endif
@@ -1021,7 +1021,6 @@ else
 SOUNDDEFS += -DHAS_TIA=0
 endif
 
-ifndef MESS
 SOUND=$(strip $(findstring NES@,$(SOUNDS)))
 ifneq ($(SOUND),)
 SOUNDDEFS += -DHAS_NES=1
@@ -1032,16 +1031,6 @@ SOUNDOBJS += $(OBJ)/sound/nes_apu2.o $(OBJ)/sound/nesintf.o
 endif
 else
 SOUNDDEFS += -DHAS_NES=0
-endif
-
-else
-SOUND=$(strip $(findstring NES@,$(SOUNDS)))
-ifneq ($(SOUND),)
-SOUNDDEFS += -DHAS_NES=1
-SOUNDOBJS += $(OBJ)/sound/nes_apu2.o $(OBJ)/sound/nesintf.o
-else
-SOUNDDEFS += -DHAS_NES=0
-endif
 endif
 
 SOUND=$(strip $(findstring ASTROCADE@,$(SOUNDS)))

@@ -61,7 +61,7 @@ CPUS+=M6803@
 CPUS+=M6808@
 CPUS+=HD63701@
 CPUS+=NSC8105@
-#CPUS+=M6805@
+CPUS+=M6805@
 #CPUS+=M68705@
 #CPUS+=HD63705@
 CPUS+=HD6309@
@@ -187,9 +187,12 @@ DRVLIBS += \
 		$(OBJ)/mtx.a	  \
 		$(OBJ)/samcoupe.a \
 		$(OBJ)/aquarius.a \
+		$(OBJ)/exidy.a \
+		$(OBJ)/galaxy.a \
 		$(OBJ)/teamconc.a \
 		$(OBJ)/motorola.a \
-		$(OBJ)/svi.a
+        $(OBJ)/exidy.a \
+        $(OBJ)/svi.a
 
 # not working yet, cpu core not submitted yet
 #		$(OBJ)/hp48.a \
@@ -253,7 +256,7 @@ DRVLIBS += \
 	$(OBJ)/sym1.a \
 	$(OBJ)/aim65.a \
 	$(OBJ)/cbm.a $(OBJ)/cbmshare.a \
-#	$(OBJ)/amiga.a \
+#    $(OBJ)/amiga.a \
 
 else
 COREDEFS += -DMESS_EXCLUDE_CBM
@@ -314,7 +317,7 @@ $(OBJ)/atari.a:    \
 	  $(OBJ)/mess/systems/a7800.o	 \
 	  $(OBJ)/mess/machine/a2600.o	 \
       $(OBJ)/mess/systems/a2600.o   \
-#    $(OBJ)/mess/systems/atarist.o
+#      $(OBJ)/mess/systems/atarist.o
 
 $(OBJ)/gce.a:	   \
 	  $(OBJ)/mess/vidhrdw/vectrex.o  \
@@ -521,6 +524,8 @@ $(OBJ)/amstrad.a:  \
 $(OBJ)/veb.a: \
 	  $(OBJ)/mess/vidhrdw/kc.o	 \
 	  $(OBJ)/mess/machine/kc.o	 \
+      $(OBJ)/mess/systems/kc.o   \
+
 
 $(OBJ)/nec.a:	   \
 	  $(OBJ)/mess/vidhrdw/vdc.o	 \
@@ -535,6 +540,7 @@ $(OBJ)/ep128.a :   \
 	  $(OBJ)/mess/systems/enterp.o
 
 $(OBJ)/ascii.a :   \
+	  $(OBJ)/mess/vidhrdw/v9938.o	 \
 	  $(OBJ)/mess/machine/msx.o	 \
 	  $(OBJ)/mess/machine/msx_dsk.o	 \
 	  $(OBJ)/mess/formats/fmsx_cas.o \
@@ -649,6 +655,17 @@ $(OBJ)/aquarius.a: \
 	  $(OBJ)/mess/vidhrdw/aquarius.o \
 	  $(OBJ)/mess/systems/aquarius.o
 
+$(OBJ)/exidy.a: \
+	$(OBJ)/mess/machine/hd6402.o   \
+	$(OBJ)/mess/vidhrdw/exidy.o   \
+	$(OBJ)/mess/machine/exidy.o   \
+	$(OBJ)/mess/systems/exidy.o
+
+$(OBJ)/galaxy.a: \
+	  $(OBJ)/mess/machine/galaxy.o \
+	  $(OBJ)/mess/vidhrdw/galaxy.o \
+	  $(OBJ)/mess/systems/galaxy.o
+
 $(OBJ)/magnavox.a: \
 	  $(OBJ)/mess/machine/odyssey2.o \
 	  $(OBJ)/mess/vidhrdw/odyssey2.o \
@@ -678,6 +695,12 @@ $(OBJ)/svi.a: \
 	  $(OBJ)/mess/systems/svi318.o \
 	  $(OBJ)/mess/formats/svi_cas.o 
 
+$(OBJ)/exidy.a: \
+      $(OBJ)/mess/machine/hd6402.o \
+      $(OBJ)/mess/machine/exidy.o \
+      $(OBJ)/mess/systems/exidy.o \
+      $(OBJ)/mess/vidhrdw/exidy.o 
+
 $(OBJ)/intv.a:	\
 	$(OBJ)/mess/systems/intv.o
 
@@ -700,6 +723,7 @@ COREOBJS += \
 		$(OBJ)/mess/vidhrdw/m6845.o    \
 		$(OBJ)/mess/vidhrdw/tms9928a.o \
 		$(OBJ)/mess/machine/28f008sa.o \
+        $(OBJ)/mess/machine/am29f080.o \
 		$(OBJ)/mess/machine/rriot.o    \
 		$(OBJ)/mess/machine/riot6532.o \
 		$(OBJ)/mess/machine/pit8253.o  \

@@ -202,22 +202,6 @@ WRITE_HANDLER (svi318_ppi_w)
 	ppi8255_0_w (offset + 2, data);
 	}
 
-READ_HANDLER (svi318_vdp_r)
-	{
-    if (offset & 0x01)
-        return TMS9928A_register_r();
-    else
-        return TMS9928A_vram_r();
-	}
-
-WRITE_HANDLER (svi318_vdp_w)
-	{
-    if (offset & 0x01)
-        TMS9928A_register_w(data);
-    else
-        TMS9928A_vram_w(data);
-	}
-
 /*
 ** Printer ports 
 */

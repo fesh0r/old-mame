@@ -17,12 +17,14 @@
 #include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "machine/8255ppi.h"
+#include "includes/tc8521.h"
 #include "vidhrdw/tms9928a.h"
+#include "vidhrdw/v9938.h"
 #include "formats/fmsx_cas.h"
 #include "printer.h"
 #include "utils.h"
 
-MSX msx1;
+static MSX msx1;
 static void msx_set_all_mem_banks (void);
 static void msx_ppi_port_a_w (int chip, int data);
 static void msx_ppi_port_c_w (int chip, int data);
@@ -227,15 +229,19 @@ int msx_load_rom (int id)
          */
 
         p = 1;
-        for (n=2;n<=8;n+=2)
-        {
-            if (pmem[n] || pmem[n+1])
-            {
-                /* this hack works on all byte order systems */
-                p = pmem[n+1] / 0x40;
-                break;
-            }
-        }
+		if ( (pmem[0] == 'A') && (pmem[1] == 'B') )
+		{
+	    	for (n=2;n<=8;n+=2)
+        	{
+            	if (pmem[n] || pmem[n+1])
+            	{
+                	/* this hack works on all byte order systems */
+                	p = pmem[n+1] / 0x40;
+                	break;
+            	}
+        	}
+		}
+
         if (size <= 0x4000)
         {
             if (p == 1 || p == 2)
@@ -251,7 +257,7 @@ int msx_load_rom (int id)
                 memcpy (pmem + 0xc000, pmem, 0x4000);
             }
         }
-        else if (size <= 0xc000)
+        else /*if (size <= 0xc000) */
         {
             if (p)
             {
@@ -519,12 +525,11 @@ void msx_exit_rom (int id)
     }
 }
 
-static void msx_vdp_interrupt(int i) {
+void msx_vdp_interrupt(int i) {
     cpu_set_irq_line (0, 0, (i ? HOLD_LINE : CLEAR_LINE));
 }
 
-void msx_ch_reset(void) {
-    TMS9928A_reset ();
+static void msx_ch_reset_core (void) {
     /* set interrupt stuff */
     cpu_irq_line_vector_w(0,0,0xff);
     /* setup PPI */
@@ -549,6 +554,18 @@ void msx_ch_reset(void) {
     return;
 }
 
+void msx_ch_reset (void)
+	{
+	TMS9928A_reset ();
+	msx_ch_reset_core ();
+	}
+
+void msx2_ch_reset (void)
+	{
+	v9938_reset ();
+	msx_ch_reset_core ();
+	}
+
 /* z80 stuff */
 static int z80_table_num[5] = { Z80_TABLE_op, Z80_TABLE_xy,
 	Z80_TABLE_ed, Z80_TABLE_cb, Z80_TABLE_xycb };
@@ -557,9 +574,6 @@ static UINT8 *old_z80_tables[5], *z80_table;
 void init_msx (void)
     {
     int i,n;
-
-    /* this function is called at a very early stage, and not after a reset. */
-    TMS9928A_int_callback(msx_vdp_interrupt);
 
     /* adjust z80 cycles for the M1 wait state */
     z80_table = malloc (0x500);
@@ -579,6 +593,15 @@ void init_msx (void)
 		}
     }
 
+static struct tc8521_interface tc = { NULL };
+
+void init_msx2 (void)
+	{
+	init_msx ();
+
+	tc8521_init (&tc);
+	}
+
 void msx_ch_stop (void)
 	{
 	int i;
@@ -595,24 +618,38 @@ void msx_ch_stop (void)
     msx1.run = 0;
 	}
 
+void msx2_ch_stop (void)
+	{
+	msx_ch_stop ();
+	tc8521_stop ();
+	}
+
+int msx2_interrupt ()
+	{
+	v9938_set_sprite_limit (readinputport (8) & 0x20);
+	v9938_interrupt ();
+
+	return ignore_interrupt ();
+	}
+
 int msx_interrupt()
 	{
     int i;
 
     for (i=0;i<2;i++)
         {
-        msx1.mouse[i] = readinputport (12+i);
+        msx1.mouse[i] = readinputport (9+i);
         msx1.mouse_stat[i] = -1;
         }
 
-    TMS9928A_set_spriteslimit (readinputport (11) & 0x20);
+    TMS9928A_set_spriteslimit (readinputport (8) & 0x20);
     TMS9928A_interrupt();
 
 	/* floppy stuff */
-	device_status (IO_FLOPPY, 0, (readinputport (11) & 0x0010) > 0);
-	device_output (IO_FLOPPY, 0, readinputport (11) & 0x000f);
-	device_status (IO_FLOPPY, 1, (readinputport (11) & 0x1000) > 0);
-	device_output (IO_FLOPPY, 1, (readinputport (11) & 0x0f00) / 256);
+	device_status (IO_FLOPPY, 0, (readinputport (8) & 0x0010) > 0);
+	device_output (IO_FLOPPY, 0, readinputport (8) & 0x000f);
+	device_status (IO_FLOPPY, 1, (readinputport (8) & 0x1000) > 0);
+	device_output (IO_FLOPPY, 1, (readinputport (8) & 0x0f00) / 256);
 
     return ignore_interrupt();
 	}
@@ -620,22 +657,6 @@ int msx_interrupt()
 /*
 ** The I/O funtions
 */
-
-READ_HANDLER ( msx_vdp_r )
-{
-    if (offset & 0x01)
-        return TMS9928A_register_r();
-    else
-        return TMS9928A_vram_r();
-}
-
-WRITE_HANDLER ( msx_vdp_w )
-{
-    if (offset & 0x01)
-        TMS9928A_register_w(data);
-    else
-        TMS9928A_vram_w(data);
-}
 
 READ_HANDLER ( msx_psg_r )
 {
@@ -656,10 +677,10 @@ READ_HANDLER ( msx_psg_port_a_r )
 
     data = (device_input (IO_CASSETTE, 0) > 255 ? 0x80 : 0);
 
-    if ( (msx1.psg_b ^ readinputport (11) ) & 0x40)
+    if ( (msx1.psg_b ^ readinputport (8) ) & 0x40)
 		{
 		/* game port 2 */
-        inp = input_port_10_r (0) & 0x7f;
+        inp = input_port_7_r (0) & 0x7f;
 		if ( !(inp & 0x80) )
 			{
 			/* joystick */
@@ -680,7 +701,7 @@ READ_HANDLER ( msx_psg_port_a_r )
     else
 		{
 		/* game port 1 */
-        inp = input_port_9_r (0) & 0x7f;
+        inp = input_port_6_r (0) & 0x7f;
 		if ( !(inp & 0x80) )
 			{
 			/* joystick */
@@ -731,7 +752,7 @@ WRITE_HANDLER ( msx_psg_port_b_w )
 
 WRITE_HANDLER ( msx_printer_w )
 	{
-	if (readinputport (11) & 0x80)
+	if (readinputport (8) & 0x80)
 		{
 		/* SIMPL emulation */
 		if (offset == 1)
@@ -753,7 +774,7 @@ WRITE_HANDLER ( msx_printer_w )
 
 READ_HANDLER ( msx_printer_r )
 	{
-	if (offset == 0 && ! (readinputport (11) & 0x80) &&
+	if (offset == 0 && ! (readinputport (8) & 0x80) &&
 		device_status (IO_PRINTER, 0, 0) )
 		return 253;
 
@@ -768,6 +789,36 @@ WRITE_HANDLER ( msx_fmpac_w )
         else YM2413_register_port_0_w (0, data);
     }
 }
+
+/*
+** RTC functions
+*/
+
+WRITE_HANDLER (msx_rtc_latch_w)
+	{
+	msx1.rtc_latch = data & 15;
+	}
+
+WRITE_HANDLER (msx_rtc_reg_w)
+	{
+	tc8521_w (msx1.rtc_latch, data);
+	}
+
+READ_HANDLER (msx_rtc_reg_r)
+	{
+	return tc8521_r (msx1.rtc_latch);
+	}
+
+void msx2_nvram (void *file, int write_local)
+	{
+	if (file)
+		{
+		if (write_local)
+			tc8521_save_stream (file);
+		else
+			tc8521_load_stream (file);
+		}
+	}
 
 /*
 ** The evil disk functions ...
@@ -953,10 +1004,15 @@ static void msx_ppi_port_c_w (int chip, int data)
 
 static int msx_ppi_port_b_r (int chip)
 	{
-    int row;
+    int row, data;
 
     row = ppi8255_0_r (2) & 0x0f;
-    if (row <= 8) return readinputport (row);
+    if (row <= 10)
+		{
+		data = readinputport (row/2);
+		if (row & 1) data >>= 8;
+		return data & 0xff;
+		}
     else return 0xff;
 	}
 
@@ -980,6 +1036,8 @@ static void msx_set_slot_0 (int page)
 
 static void msx_set_slot_1 (int page) {
     int i,n;
+    unsigned char *ROM;
+    ROM = memory_region(REGION_CPU1);
 
     if (msx1.cart[0].type == 0 && msx1.cart[0].mem)
     {
@@ -988,8 +1046,16 @@ static void msx_set_slot_1 (int page) {
     } else {
         if (page == 0 || page == 3 || !msx1.cart[0].mem)
         {
-            cpu_setbank (1 + page * 2, msx1.empty);
-            cpu_setbank (2 + page * 2, msx1.empty);
+    		if (!page && !strncmp (Machine->gamedrv->name, "msx2", 4) )
+				{
+		        cpu_setbank (1, ROM + 0x8000);
+       			cpu_setbank (2, ROM + 0xa000);
+				}
+			else
+				{
+            	cpu_setbank (1 + page * 2, msx1.empty);
+            	cpu_setbank (2 + page * 2, msx1.empty);
+				}
             return;
         }
         n = (page - 1) * 2;
@@ -1068,6 +1134,8 @@ static void msx_cart_write (int cart, int offset, int data)
     switch (msx1.cart[cart].type)
     {
     case 0:
+		logerror ("Write %02x to %04x in cartridge slot #%d\n", data, offset,
+			cart + 1);
         break;
     case 1: /* MSX-DOS 2 cartridge */
         if (offset == 0x2000)
@@ -1095,7 +1163,7 @@ static void msx_cart_write (int cart, int offset, int data)
         {
             offset &= 0xff;
             if (offset < 0x80)
-				{ 
+				{
 				K051649_waveform_w (offset, data);
                 p = msx1.cart[cart].mem +
                     (msx1.cart[cart].bank_mask + 1) * 0x2000;
@@ -1261,7 +1329,7 @@ static void msx_cart_write (int cart, int offset, int data)
         break;
     case 10: /* Konami majutushi */
         if (offset >= 0x1000 && offset < 0x2000)
-            DAC_data_w (0, data);
+			DAC_data_w (0, data);
         else if (offset >= 0x2000)
         {
             n = data & msx1.cart[cart].bank_mask;

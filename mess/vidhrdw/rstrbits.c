@@ -7,195 +7,91 @@
 #define myMAX(a, b) ((a) > (b) ? (a) : (b))
 
 /* -------------------------------------------------------------------------
- * These functions were taken out of the CoCo/M6847 support, currently what
- * raster_bits() does is looks at the args, and calls one of these
- * functions.  The problem is that this leaves many holes in raster_bits()'s
- * functionality, but as time goes on, these holes will probably be filled
+ * New raster_graphic call
  * ------------------------------------------------------------------------- */
 
-/*
- * Note that 'sizex' is in bytes, and 'sizey' is in pixels
- */
-static void blitgraphics2(struct osd_bitmap *bitmap, struct rasterbits_clip *clip,
-	UINT8 *vrambase, int vrampos, int offset, int loopbackpos, int loopbackadj,
-	int vramsize, UINT8 *db, const int *metapalette, int sizex, int sizey,
-	int basex, int basey, int scalex, int scaley, int additionalrowbytes)
+static int isrowdirty(UINT8 *db, int rowbytes)
 {
-	int x, y;
-	int fg, bg;
-	int p, b;
-	int pixtop, pixbottom;
-	UINT8 *vidram;
+	int i;
 
-	if (metapalette) {
-		bg = Machine->pens[metapalette[0]];
-		fg = Machine->pens[metapalette[1]];
-	}
-	else {
-		bg = Machine->pens[0];
-		fg = Machine->pens[1];
-	}
+	if (!db)
+		return TRUE;
 
-	vidram = vrambase + vrampos;
-
-	if (offset) {
-		vidram += offset;
-		if (db)
-			db += offset;
-	}
-
-	for (y = 0; y < sizey; y++) {
-		pixtop = basey + y * scaley;
-		pixbottom = pixtop + scaley - 1;
-		pixtop = myMAX(pixtop, clip->ybegin);
-		pixbottom = myMIN(pixbottom, clip->yend);
-
-		if (pixbottom >= pixtop) {
-			for (x = 0; x < sizex; x++) {
-				/* Check loopback; this is used to support $FF9F in the CoCo 3 */
-				if (x == loopbackpos) {
-					vidram += loopbackadj;
-					if (db)
-						db += loopbackadj;
-				}
-
-				if (!db || *db) {
-					for (b = 0; b < 8; b++) {
-						p = ((*vidram) & (1<<(7-b))) ? fg : bg;
-						plot_box(bitmap, (x * 8 + b) * scalex + basex, pixtop, scalex, (pixbottom - pixtop + 1), p);
-					}
-					if (db)
-						*(db++) = 0;
-				}
-				else {
-					db++;
-				}
-				vidram++;
-			}
+	for (i = 0; i < rowbytes; i++) {
+		if (db[i]) {
+			memset(&db[i], 0, rowbytes - i);
+			return TRUE;
 		}
-		else {
-			vidram += sizex + loopbackadj;
-			if (db)
-				db += sizex + loopbackadj;
-		}
+	}
+	return FALSE;
+}
 
-		vidram += additionalrowbytes;
-		if (db)
-			db += additionalrowbytes;
+static void build_scanline4_4(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT16 *pens)
+{
+	UINT8 c;
+	int i;
 
-		/* Check to see if the video RAM has wrapped around */
-		if (vidram > vrambase + vramsize)
-			vidram -= vramsize;
+	for (i = 0; i < length; i++) {
+		c = *(vram++);
+		scanline[0] = scanline[1] = scanline[2] = scanline[3] = pens[(c & 0xf0) >> 4];
+		scanline[4] = scanline[5] = scanline[6] = scanline[7] = pens[(c & 0x0f) >> 0];
+		scanline += 8;
 	}
 }
 
-static void blitgraphics4(struct osd_bitmap *bitmap, struct rasterbits_clip *clip,
-	UINT8 *vrambase, int vrampos, int offset, int loopbackpos, int loopbackadj,
-	int vramsize, UINT8 *db, const int *metapalette, int sizex, int sizey,
-	int basex, int basey, int scalex, int scaley, int additionalrowbytes)
+static void build_scanline4_2(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT16 *pens)
 {
-	int x, y;
-	int c[4];
-	int p, b;
-	int crunlen, crunc =0, thisx =0;
-	int pixtop, pixbottom;
-	UINT8 *vidram;
+	UINT8 c;
+	int i;
 
-	if (metapalette) {
-		c[0] = Machine->pens[metapalette[0]];
-		c[1] = Machine->pens[metapalette[1]];
-		c[2] = Machine->pens[metapalette[2]];
-		c[3] = Machine->pens[metapalette[3]];
-	}
-	else {
-		c[0] = Machine->pens[0];
-		c[1] = Machine->pens[1];
-		c[2] = Machine->pens[2];
-		c[3] = Machine->pens[3];
-	}
-
-	vidram = vrambase + vrampos;
-
-	if (offset) {
-		vidram += offset;
-		if (db)
-			db += offset;
-	}
-
-	for (y = 0; y < sizey; y++) {
-		crunlen = 0;
-
-		pixtop = basey + y * scaley;
-		pixbottom = pixtop + scaley - 1;
-		pixtop = myMAX(pixtop, clip->ybegin);
-		pixbottom = myMIN(pixbottom, clip->yend);
-
-		if (pixbottom >= pixtop) {
-			for (x = 0; x < sizex; x++) {
-				/* Check loopback; this is used to support $FF9F in the CoCo 3 */
-				if (x == loopbackpos) {
-					vidram += loopbackadj;
-					if (db)
-						db += loopbackadj;
-				}
-
-				if (!db || *db) {
-					for (b = 0; b < 4; b++) {
-						p = (((*vidram) >> (6-(2*b)))) & 3;
-
-						if (crunlen == 0) {
-							thisx = (x * 4 + b) * scalex + basex;
-							crunlen = 1;
-							crunc = p;
-						}
-						else if (crunc == p) {
-							crunlen++;
-						}
-						else {
-							plot_box(bitmap, thisx, pixtop, scalex * crunlen, (pixbottom - pixtop + 1), c[crunc]);
-							thisx += scalex * crunlen;
-							crunlen = 1;
-							crunc = p;
-						}
-					}
-					if (db)
-						*(db++) = 0;
-				}
-				else {
-					if (crunlen) {
-						plot_box(bitmap, thisx, pixtop, scalex * crunlen, (pixbottom - pixtop + 1), c[crunc]);
-						crunlen = 0;
-					}
-					db++;
-				}
-				vidram++;
-			}
-			if (crunlen) {
-				plot_box(bitmap, thisx, pixtop, scalex * crunlen, (pixbottom - pixtop + 1), c[crunc]);
-				crunlen = 0;
-			}
-		}
-		else {
-			vidram += sizex + loopbackadj;
-			if (db)
-				db += sizex + loopbackadj;
-		}
-
-		vidram += additionalrowbytes;
-		if (db)
-			db += additionalrowbytes;
-
-		/* Check to see if the video RAM has wrapped around */
-		if (vidram > vrambase + vramsize)
-			vidram -= vramsize;
+	for (i = 0; i < length; i++) {
+		c = *(vram++);
+		scanline[0] = scanline[1] = pens[(c & 0xf0) >> 4];
+		scanline[2] = scanline[3] = pens[(c & 0x0f) >> 0];
+		scanline += 4;
 	}
 }
 
-static void blitgraphics4artifact(struct osd_bitmap *bitmap, struct rasterbits_clip *clip,
-	UINT8 *vrambase,
-	int vrampos, int offset, int loopbackpos, int loopbackadj,
-	int vramsize, UINT8 *db, const int *metapalette, int sizex,
-	int sizey, int basex, int basey, int scalex, int scaley)
+static void build_scanline4_1(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT16 *pens)
+{
+	UINT8 c;
+	int i;
+
+	for (i = 0; i < length; i++) {
+		c = *(vram++);
+		scanline[0] = pens[(c & 0xf0) >> 4];
+		scanline[1] = pens[(c & 0x0f) >> 0];
+		scanline += 2;
+	}
+}
+
+static void build_scanline4(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT16 *pens)
+{
+	UINT8 c;
+	int i;
+
+	for (i = 0; i < length; i++) {
+		c = *(vram++);
+		memset(scanline, pens[(c & 0xf0) >> 4], scale);	scanline += scale;
+		memset(scanline, pens[(c & 0x0f) >> 0], scale);	scanline += scale;
+	}
+}
+
+static void build_scanline2(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT16 *pens)
+{
+	UINT8 c;
+	int i;
+
+	for (i = 0; i < length; i++) {
+		c = *(vram++);
+		memset(scanline, pens[(c & 0xc0) >> 6], scale);	scanline += scale;
+		memset(scanline, pens[(c & 0x30) >> 4], scale);	scanline += scale;
+		memset(scanline, pens[(c & 0x0c) >> 2], scale);	scanline += scale;
+		memset(scanline, pens[(c & 0x03) >> 0], scale);	scanline += scale;
+	}
+}
+
+static void build_scanline1a(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT16 *pens)
 {
 	/* Arifacting isn't truely the same resolution as PMODE 3
 	 * it has a bias to the higher resolution.  We need to
@@ -208,14 +104,15 @@ static void blitgraphics4artifact(struct osd_bitmap *bitmap, struct rasterbits_c
 	 * and right, and compute what the two resulting pixels
 	 * should look like.  The table is accessed like this:
 	 *
-	 *		blurcorrection[pix(x-1,y)*16+pix(x,y)*4+pix(x+1,y)]
+	 *		artifactcorrection[pix(x-1,y)*16+pix(x,y)*4+pix(x+1,y)]
 	 *
 	 * This gives you a pair of pixels to display pix(x,y) as
 	 *
 	 * Special thanks to Derek Snider for coming up with the
 	 * basis for the values in this table
 	 */
-	static int blurcorrection[64][2] = {
+#if 0
+	static int artifactcorrection[64][2] = {
 		{0, 0}, {0, 0}, {0, 0}, {0, 0},
 		{0, 1}, {0, 1}, {0, 3}, {0, 3},
 		{2, 0}, {2, 0}, {2, 2}, {2, 2},
@@ -236,240 +133,336 @@ static void blitgraphics4artifact(struct osd_bitmap *bitmap, struct rasterbits_c
 		{3, 0}, {3, 0}, {3, 2}, {3, 2},
 		{3, 3}, {3, 3}, {3, 3}, {3, 3}
 	};
+#endif
 
-	int x, y;
-	int c[4];
-	int b;
-	int c1, c2;
-	int crunc =0, crunlen;
-	int drunlen;
-	int thisx;
-	int pixtop, pixbottom;
-	UINT8 *vidram;
+	/* The following is an 'extra artifacting' table, designed to take into
+	 * account two pixels before and after (as opposed to one).  Data courtesy
+	 * of John Kowalski
+	 */
+#if 1
+	static int artifactcorrection[64][2] = {
+		{ 0,  0}, { 0,  0}, { 0,  8}, { 0,  3},
+		{ 5,  7}, { 5,  7}, { 1,  2}, { 1, 11},
+		{10,  8}, {10, 14}, {10,  9}, {10,  9},
+		{ 4,  4}, { 4, 15}, {12, 12}, {12, 15},
+
+		{ 5, 13}, { 5, 13}, {13,  0}, {13,  3},
+		{ 6,  6}, { 6,  6}, { 6, 15}, { 6, 11},
+		{ 2,  1}, { 2,  1}, {15,  9}, {15,  9},
+		{11, 11}, {11, 11}, {15, 15}, {15, 15},
+
+		{14,  0}, {14,  0}, {14,  8}, {14,  3},
+		{ 0,  7}, { 0,  7}, { 1,  2}, { 1, 11},
+		{ 9,  8}, { 9, 14}, { 9,  9}, { 9,  9},
+		{15,  4}, {15, 15}, {12, 12}, {12, 15},
+
+		{ 3, 13}, { 3, 13}, { 3,  0}, { 3,  3},
+		{ 6,  6}, { 6,  6}, { 6, 15}, { 6, 11},
+		{12,  1}, {12,  1}, {12,  9}, {12,  9},
+		{15, 11}, {15, 11}, {15, 15}, {15, 15}
+	};
+#endif
+
+	/* Artifacting causes pixels to appear differently depending on
+	 * their neighbors.  Thus we use 'w' to hold all bits in the
+	 * vicinity:
+	 *
+	 * bits 23-16: previous byte
+	 * bits 15-08: current byte
+	 * bits 07-00: next byte
+	 *
+	 * As we plot the run, we shift 'w' left, and bring in new data
+	 *
+	 * Given this map - these bit fields are used for the four pixels:
+	 *
+	 * pixel 0: bits 17-12
+	 * pixel 1: bits 15-10
+	 * pixel 2: bits 13-08
+	 * pixel 3: bits 11-06
+	 *
+	 * Note that we assume that on either sides of the scanline, the 'data'
+	 * would be 0xff.  This is always true, unless if we were affected by
+	 * loopback (fortunately the way the CoCo driver works now, this will
+	 * never happen
+	 */
+
 	UINT32 w;
-	int *blur;
+	int i;
+	int *b;
 
-	c[0] = Machine->pens[metapalette[0]];
-	c[1] = Machine->pens[metapalette[1]];
-	c[2] = Machine->pens[metapalette[2]];
-	c[3] = Machine->pens[metapalette[3]];
+	w = ((UINT32) vram[0]) | 0xff00;
 
-	vidram = vrambase + vrampos;
+	for (i = 0; i < length; i++) {
+		w <<= 8;
+		w |= (i+1) == length ? 0xff : *(++vram);
 
-	if (offset) {
-		vidram += offset;
-		if (db)
-			db += offset;
-	}
+		/* We have a switch statement to test for common cases; solid colors */
+		switch(w & 0x03ffc0) {
+		case 0x000000:
+		case 0x015540:
+		case 0x02aa80:
+		case 0x03ffc0:
+			b = artifactcorrection[(w >> 12) & 0x3f];
+			memset(scanline, pens[b[0]], scale * 8);
+			scanline += scale * 8;
+			break;
 
-	/* NYI - Note! We are not supporting loopback yet!!! */
-
-	for (y = 0; y < sizey; y++) {
-		pixtop = basey + y * scaley;
-		pixbottom = pixtop + scaley - 1;
-		pixtop = myMAX(pixtop, clip->ybegin);
-		pixbottom = myMIN(pixbottom, clip->yend);
-
-		if (pixbottom >= pixtop) {
-			x = 0;
-			while(x < sizex) {
-				if (!db || db[0] || ((x < (sizex-1)) && db[1])) {
-					/* We are in a run; calculate the size of the run */
-					if (db) {
-						drunlen = 1;
-						while((x + drunlen < (sizex-1)) && db[drunlen])
-							drunlen++;
-						if (x + drunlen < (sizex-1))
-							drunlen++;
-					}
-					else {
-						drunlen = sizex;
-					}
-
-					thisx = (x * 8) * scalex + basex;
-
-					/* Artifacting causes pixels to appear differently depending on
-					 * their neighbors.  Thus we use 'w' to hold all bits in the
-					 * vicinity:
-					 *
-					 * bits 23-16: previous byte
-					 * bits 15-08: current byte
-					 * bits 07-00: next byte
-					 *
-					 * As we plot the run, we shift 'w' left, and bring in new data
-					 */
-					w = (((UINT32) vidram[0]) << 8);
-					if (x == 0)
-						w |= (w << 2) & 0x030000;
-					else
-						w |= ((UINT32) vidram[-1]) << 16;
-
-					crunlen = 0;
-					if (db) {
-						memset(db, 0, drunlen);
-						db += drunlen;
-					}
-					x += drunlen;
-
-					while(drunlen--) {
-						/* Bring new data into 'w' */
-						if (drunlen || (x < sizex))
-							w |= (UINT32) vidram[1];
-						else
-							w |= (w >> 2) & 0x0000e0;
-
-						for (b = 0; b < 4; b++) {
-							blur = blurcorrection[(w & 0x3f000) >> 12];
-							c1 = c[blur[0]];
-							c2 = c[blur[1]];
-							w <<= 2;
-
-							if (crunlen == 0) {
-								crunlen = 1;
-								crunc = c1;
-							}
-							else if (crunc == c1) {
-								crunlen++;
-							}
-							else {
-								plot_box(bitmap, thisx, pixtop, scalex * crunlen, (pixbottom - pixtop + 1), crunc);
-								thisx += scalex * crunlen;
-								crunlen = 1;
-								crunc = c1;
-							}
-							if (crunc == c2) {
-								crunlen++;
-							}
-							else {
-								plot_box(bitmap, thisx, pixtop, scalex * crunlen, (pixbottom - pixtop + 1), crunc);
-								thisx += scalex * crunlen;
-								crunlen = 1;
-								crunc = c2;
-							}
-						}
-						vidram++;
-					}
-					plot_box(bitmap, thisx, pixtop, scalex * crunlen, (pixbottom - pixtop + 1), crunc);
-				}
-				else {
-					if (db)
-						db++;
-					vidram++;
-					x++;
-				}
-			}
+		default:
+			b = artifactcorrection[(w >> 12) & 0x3f];
+			memset(scanline, pens[b[0]], scale);	scanline += scale;
+			memset(scanline, pens[b[1]], scale);	scanline += scale;
+			b = artifactcorrection[(w >> 10) & 0x3f];
+			memset(scanline, pens[b[0]], scale);	scanline += scale;
+			memset(scanline, pens[b[1]], scale);	scanline += scale;
+			b = artifactcorrection[(w >>  8) & 0x3f];
+			memset(scanline, pens[b[0]], scale);	scanline += scale;
+			memset(scanline, pens[b[1]], scale);	scanline += scale;
+			b = artifactcorrection[(w >>  6) & 0x3f];
+			memset(scanline, pens[b[0]], scale);	scanline += scale;
+			memset(scanline, pens[b[1]], scale);	scanline += scale;
+			break;
 		}
-		else {
-			vidram += sizex + loopbackadj;
-			if (db)
-				db += sizex + loopbackadj;
-		}
-
-		/* Check to see if the video RAM has wrapped around */
-		if (vidram > vrambase + vramsize)
-			vidram -= vramsize;
 	}
 }
 
-static void blitgraphics16(struct osd_bitmap *bitmap, struct rasterbits_clip *clip,
-	UINT8 *vrambase,
-	int vrampos, int offset, int loopbackpos, int loopbackadj,
-	int vramsize, UINT8 *db, int sizex, int sizey, int basex,
-	int basey, int scalex, int scaley, int additionalrowbytes)
+static void build_scanline1(UINT8 *scanline, UINT8 *vram, int length, int scale, UINT16 *pens)
 {
-	int x, y;
-	int thisx = 0;
-	int pixtop, pixbottom;
-	int crunlen, crunc =0;
-	UINT8 *vidram;
-	UINT8 b;
+	UINT8 c;
+	int i;
+	UINT8 fg, bg;
 
-	vidram = vrambase + vrampos;
+	bg = pens[0];
+	fg = pens[1];
 
-	if (offset) {
-		vidram += offset;
-		if (db)
-			db += offset;
+	for (i = 0; i < length; i++) {
+		c = *(vram++);
+		memset(scanline, (c & 0x80) ? fg : bg, scale);	scanline += scale;
+		memset(scanline, (c & 0x40) ? fg : bg, scale);	scanline += scale;
+		memset(scanline, (c & 0x20) ? fg : bg, scale);	scanline += scale;
+		memset(scanline, (c & 0x10) ? fg : bg, scale);	scanline += scale;
+		memset(scanline, (c & 0x08) ? fg : bg, scale);	scanline += scale;
+		memset(scanline, (c & 0x04) ? fg : bg, scale);	scanline += scale;
+		memset(scanline, (c & 0x02) ? fg : bg, scale);	scanline += scale;
+		memset(scanline, (c & 0x01) ? fg : bg, scale);	scanline += scale;
+	}
+}
+
+static void mix_colors(UINT8 *dest, const double *val, const UINT8 *c0, const UINT8 *c1, int reverse)
+{
+	double v;
+	double rval[3];
+	int i;
+
+	if (reverse) {
+		rval[0] = val[2];
+		rval[1] = val[1];
+		rval[2] = val[0];
+		val = rval;
 	}
 
-	for (y = 0; y < sizey; y++) {
-		crunlen = 0;
+	for (i = 0; i < 3; i++) {
+		v = (c0[i] * (1.0 - val[i])) + (c1[i] * val[i]);
+		dest[i] = (UINT8) (v + 0.5);
+	}
+}
 
+static void map_artifact_palette(UINT16 c0, UINT16 c1, const struct rasterbits_artifacting *artifact, UINT16 *artifactpens)
+{
+	int i, j;
+	int totalcolors, palettebase;
+	const double *table;
+	UINT8 myrgb[3];
+	UINT8 rgb0[3];
+	UINT8 rgb1[3];
+
+	totalcolors = artifact->numfactors + 2;
+	table = artifact->colorfactors;
+	palettebase = (artifact->flags & RASTERBITS_ARTIFACT_DYNAMICPALETTE) ? artifact->u.dynamicpalettebase : -1;
+
+	artifactpens[0] = c0;
+	artifactpens[totalcolors-1] = c1;
+
+	if (artifact->getcolorrgb) {
+		artifact->getcolorrgb(c0, &rgb0[0], &rgb0[1], &rgb0[2]);
+		artifact->getcolorrgb(c1, &rgb1[0], &rgb1[1], &rgb1[2]);
+	}
+	else {
+		assert(palettebase < 0);
+		memcpy(rgb0, &artifact->u.staticpalette[c0 * 3], 3);
+		memcpy(rgb1, &artifact->u.staticpalette[c1 * 3], 3);
+	}
+
+  	for (i = 1; i < (totalcolors-1); i++) {
+		mix_colors(myrgb, &table[(i-1)*3], rgb0, rgb1, artifact->flags & RASTERBITS_ARTIFACT_REVERSE);
+
+		if (palettebase < 0) {
+			/* Search palette for matching color; start at the end of table because thats where we put stuff */
+			for (j = Machine->drv->total_colors-1; j >= 0; j--) {
+				if (!memcmp(myrgb, &artifact->u.staticpalette[j * 3], 3))
+					break;
+			}
+
+			/* We had better have found a valid color */
+			assert((j >= 0) && (j < Machine->drv->total_colors));
+
+			artifactpens[i] = j;
+		}
+		else {
+			/* We can use palette_change_color */
+			palette_change_color(palettebase + i - 1, myrgb[0], myrgb[1], myrgb[2]);
+			artifactpens[i] = palettebase + i - 1;
+		}
+	}
+
+}
+
+void setup_artifact_palette(UINT8 *destpalette, int destcolor, UINT16 c0, UINT16 c1,
+	const double *colorfactors, int numfactors, int reverse)
+{
+	int i;
+	const UINT8 *rgb0;
+	const UINT8 *rgb1;
+
+	rgb0 = &destpalette[c0 * 3];
+	rgb1 = &destpalette[c1 * 3];
+	destpalette += (destcolor * 3);
+
+	for (i = 0; i < numfactors; i++) {
+		mix_colors(&destpalette[i * 3], &colorfactors[i * 3], rgb0, rgb1, reverse);
+	}
+}
+
+static void raster_graphics(struct osd_bitmap *bitmap, struct rasterbits_source *src,
+	struct rasterbits_videomode *mode, struct rasterbits_clip *clip,
+	int scalex, int scaley, int basex, int basey)
+{
+	UINT16 artifactpens[16];
+	UINT16 *pens;
+	UINT16 *mappedpens = NULL;
+	UINT8 *vram;
+	UINT8 *vramtop;
+	UINT8 *scanline = NULL;
+	UINT8 *db;
+	int pixtop, pixbottom;
+	int loopbackpos;
+	int visualbytes;
+	int y, r, i;
+	void (*build_scanline)(UINT8 *, UINT8 *, int , int , UINT16 *) = NULL;
+
+	scanline = malloc(mode->width * scalex);
+	if (!scanline)
+		goto done; /* PANIC */
+
+	vram = src->videoram + src->position;
+	vramtop = vram + (src->size - (src->position % src->size));
+
+	pens = mode->pens;
+	db = src->db;
+	visualbytes = mode->width * mode->depth / 8;
+
+	/* Do we need loopback? */
+	if ((mode->flags & RASTERBITS_FLAG_WRAPINROW) && ((mode->width * mode->depth / 8 + mode->offset) > mode->wrapbytesperrow)) {
+		loopbackpos = mode->wrapbytesperrow - mode->offset;
+	}
+	else {
+		loopbackpos = -1;
+	}
+
+	switch(mode->depth) {
+	case 4:
+		assert(!(mode->flags & RASTERBITS_FLAG_ARTIFACT));
+		switch(scalex) {
+		case 4:
+			build_scanline = build_scanline4_4;
+			break;
+		case 2:
+			build_scanline = build_scanline4_2;
+			break;
+		case 1:
+			build_scanline = build_scanline4_1;
+			break;
+		default:
+			build_scanline = build_scanline4;
+			break;
+		}
+		break;
+
+	case 2:
+		assert(!(mode->flags & RASTERBITS_FLAG_ARTIFACT));
+		build_scanline = build_scanline2;
+		break;
+
+	case 1:
+		if (mode->flags & RASTERBITS_FLAG_ARTIFACT) {
+			map_artifact_palette(pens ? pens[0] : 0, pens ? pens[1] : 1, &mode->u.artifact, artifactpens);
+			build_scanline = build_scanline1a;
+			pens = artifactpens;
+		}
+		else {
+			build_scanline = build_scanline1;
+		}
+		break;
+
+	default:
+		assert(0);
+		break;
+	}
+
+	/* We need to choose the proper pens mapping */
+	if (pens) {
+		int num_colors;
+
+		if (mode->flags & RASTERBITS_FLAG_ARTIFACT)
+			num_colors = mode->u.artifact.numfactors + 2;
+		else
+			num_colors = 1 << mode->depth;
+
+		mappedpens = malloc(num_colors * sizeof(UINT16));
+		if (!mappedpens)
+			goto done; /* PANIC */
+
+		for (i = 0; i < num_colors; i++)
+			mappedpens[i] = Machine->pens[pens[i]];
+		pens = mappedpens;
+	}
+	else {
+		/* Use default */
+		pens = Machine->pens;
+	}
+
+	for (y = 0; y < mode->height; y++) {
 		pixtop = basey + y * scaley;
 		pixbottom = pixtop + scaley - 1;
 		pixtop = myMAX(pixtop, clip->ybegin);
 		pixbottom = myMIN(pixbottom, clip->yend);
+		if ((pixbottom >= pixtop) && isrowdirty(db, mode->bytesperrow)) {
+			/* We have to draw this scanline */
 
-		if (pixbottom >= pixtop) {
-			for (x = 0; x < sizex; x++) {
-				/* Check loopback; this is used to support $FF9F in the CoCo 3 */
-				if (x == loopbackpos) {
-					vidram += loopbackadj;
-					if (db)
-						db += loopbackadj;
-				}
-
-				if (!db || *db) {
-					b = *vidram;
-
-					if (crunlen == 0) {
-						thisx = (x * 2) * scalex + basex;
-						crunlen = 1;
-						crunc = b >> 4;
-					}
-					else if (crunc == (b >> 4)) {
-						crunlen++;
-					}
-					else {
-						plot_box(bitmap, thisx, pixtop, scalex * crunlen, (pixbottom - pixtop + 1), Machine->pens[crunc]);
-						thisx += scalex * crunlen;
-						crunlen = 1;
-						crunc = b >> 4;
-					}
-
-					if (crunc == (b & 15)) {
-						crunlen++;
-					}
-					else {
-						plot_box(bitmap, thisx, pixtop, scalex * crunlen, (pixbottom - pixtop + 1), Machine->pens[crunc]);
-						thisx += scalex * crunlen;
-						crunlen = 1;
-						crunc = b & 15;
-					}
-
-					if (db)
-						*(db++) = 0;
-				}
-				else {
-					db++;
-
-					if (crunlen > 0) {
-						plot_box(bitmap, thisx, pixtop, scalex * crunlen, (pixbottom - pixtop + 1), Machine->pens[crunc]);
-						crunlen = 0;
-					}
-				}
-				vidram++;
+			if (loopbackpos >= 0) {
+				build_scanline(scanline,               vram + mode->offset, loopbackpos,               scalex, pens);
+				build_scanline(scanline + loopbackpos, vram,                visualbytes - loopbackpos, scalex, pens);
+			}
+			else {
+				build_scanline(scanline,               vram + mode->offset, visualbytes,               scalex, pens);
 			}
 
-			if (crunlen > 0) {
-				plot_box(bitmap, thisx, pixtop, scalex * crunlen, (pixbottom - pixtop + 1), Machine->pens[crunc]);
-				crunlen = 0;
+			/* We have the scanline, now draw it */
+			for (r = pixtop; r <= pixbottom; r++) {
+				draw_scanline8(bitmap, basex, r, mode->width * scalex, scanline, NULL, -1);
 			}
-		}
-		else {
-			vidram += sizex + loopbackadj;
-			if (db)
-				db += sizex + loopbackadj;
-		}
 
-		vidram += additionalrowbytes;
+			mark_dirty(basex, pixtop, basex + mode->width * scalex - 1, pixbottom);
+		}
+		vram += mode->bytesperrow;
 		if (db)
-			db += additionalrowbytes;
-
-		/* Check to see if the video RAM has wrapped around */
-		if (vidram > vrambase + vramsize)
-			vidram -= vramsize;
+			db += mode->bytesperrow;
 	}
+
+done:
+	if (scanline)
+		free(scanline);
+	if (mappedpens)
+		free(mappedpens);
 }
 
 /* -------------------------------------------------------------------------
@@ -479,7 +472,8 @@ static void blitgraphics16(struct osd_bitmap *bitmap, struct rasterbits_clip *cl
 #define COUNTDIRTYCHARS 0
 
 static void raster_text(struct osd_bitmap *bitmap, struct rasterbits_source *src,
-	struct rasterbits_videomode *mode, struct rasterbits_clip *clip, int scalex, int scaley, int basex, int basey)
+	struct rasterbits_videomode *mode, struct rasterbits_clip *clip,
+	int scalex, int scaley, int basex, int basey)
 {
 	int x, y, i;
 	int xi, yi;
@@ -524,8 +518,8 @@ static void raster_text(struct osd_bitmap *bitmap, struct rasterbits_source *src
 
 	/* Build up our pen table; save some work later */
 	for (i = 0; i < (sizeof(c) / sizeof(c[0])); i++) {
-		if (mode->metapalette)
-			c[i] = Machine->pens[mode->metapalette[i]];
+		if (mode->pens)
+			c[i] = Machine->pens[mode->pens[i]];
 		else
 			c[i] = Machine->pens[i];
 	}
@@ -681,9 +675,6 @@ void raster_bits(struct osd_bitmap *bitmap, struct rasterbits_source *src, struc
 	int bitmapwidth;
 	int bitmapheight;
 	int drawingbody;
-	int additionalrowbytes;
-	int loopbackpos, loopbackadj;
-	int artifactpalette[4];
 	struct rasterbits_clip myclip;
 
 	assert(bitmap);
@@ -747,11 +738,11 @@ void raster_bits(struct osd_bitmap *bitmap, struct rasterbits_source *src, struc
 		 *   +---------------------+
 		 *   |          1          |
 		 *   +-----+---------+-----+
-		 *   |     |         |     | 
-		 *   |     |         |     | 
-		 *   |  3  |         |  4  | 
-		 *   |     |         |     | 
-		 *   |     |         |     | 
+		 *   |     |         |     |
+		 *   |     |         |     |
+		 *   |  3  |         |  4  |
+		 *   |     |         |     |
+		 *   |     |         |     |
 		 *   +-----+---------+-----+
 		 *   |          2          |
 		 *   +---------------------+
@@ -796,65 +787,8 @@ void raster_bits(struct osd_bitmap *bitmap, struct rasterbits_source *src, struc
 			myclip.yend = basey + frame->height - 1;
 
 		/* Render the content */
-		switch(mode->flags & RASTERBITS_FLAG_TEXT) {
-		case 0:
-			/* Graphics */
-			if (mode->flags & RASTERBITS_FLAG_ARTIFACT)
-				assert(mode->depth == 1);
-
-			additionalrowbytes = mode->bytesperrow - (mode->width * mode->depth / 8);
-
-			/* Do we need loopback? */
-			if ((mode->flags & RASTERBITS_FLAG_WRAPINROW) && ((mode->width * mode->depth / 8 + mode->offset) > mode->wrapbytesperrow)) {
-				loopbackpos = mode->wrapbytesperrow - mode->offset;
-				loopbackadj = -mode->wrapbytesperrow;
-				additionalrowbytes += mode->wrapbytesperrow;
-			}
-			else {
-				loopbackpos = -1;
-				loopbackadj = 0;
-			}
-
-			switch(mode->depth) {
-			case 1:
-				if (mode->flags & RASTERBITS_FLAG_ARTIFACT) {
-					assert(mode->bytesperrow == (mode->width / 8));
-					assert(mode->u.artifact);
-					assert(mode->metapalette);
-					artifactpalette[0] = mode->metapalette[0];
-					artifactpalette[3] = mode->metapalette[1];
-					mode->u.artifact(artifactpalette);
-					blitgraphics4artifact(bitmap, &myclip, src->videoram, src->position, mode->offset, loopbackpos, loopbackadj, src->size, src->db, artifactpalette,
-						mode->width / 8, mode->height, basex, basey, scalex, scaley);
-				}
-				else {
-					blitgraphics2(bitmap, &myclip, src->videoram, src->position, mode->offset, loopbackpos, loopbackadj, src->size, src->db, mode->metapalette,
-						mode->width / 8, mode->height, basex, basey, scalex, scaley, additionalrowbytes);
-				}
-				break;
-
-			case 2:
-				blitgraphics4(bitmap, &myclip, src->videoram, src->position, mode->offset, loopbackpos, loopbackadj, src->size, src->db, mode->metapalette,
-					mode->width / 4, mode->height, basex, basey, scalex, scaley, additionalrowbytes);
-				break;
-
-			case 4:
-				assert(!mode->metapalette);
-				blitgraphics16(bitmap, &myclip, src->videoram, src->position, mode->offset, loopbackpos, loopbackadj, src->size, src->db,
-					mode->width / 2, mode->height, basex, basey, scalex, scaley, additionalrowbytes);
-				break;
-
-			default:
-				assert(0);
-				break;
-			};
-			break;
-
-		case RASTERBITS_FLAG_TEXT:
-			/* Text */
-			raster_text(bitmap, src, mode, &myclip, scalex, scaley, basex, basey);
-			break;
-		};
+		((mode->flags & RASTERBITS_FLAG_TEXT) ? raster_text : raster_graphics)(bitmap, src, mode, &myclip, scalex, scaley, basex, basey);
 	}
 }
+
 

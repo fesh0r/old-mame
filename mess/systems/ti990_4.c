@@ -87,7 +87,7 @@ F : flag
 
 */
 
-static READ_HANDLER ( ti990_4_panel_read )
+static READ16_HANDLER ( ti990_4_panel_read )
 {
 	if (offset == 1)
 		return 0x08;
@@ -95,7 +95,7 @@ static READ_HANDLER ( ti990_4_panel_read )
 	return 0;
 }
 
-static WRITE_HANDLER ( ti990_4_panel_write )
+static WRITE16_HANDLER ( ti990_4_panel_write )
 {
 }
 
@@ -161,15 +161,15 @@ MEMORY_END
   CRU map
 */
 
-static PORT_WRITE_START ( ti990_4_writeport )
+static PORT_WRITE16_START ( ti990_4_writeport )
 
-	{ 0xff0, 0xfff, ti990_4_panel_write },
+	{ 0xff0 << 1, 0xfff << 1, ti990_4_panel_write },
 
 PORT_END
 
-static PORT_READ_START ( ti990_4_readport )
+static PORT_READ16_START ( ti990_4_readport )
 
-	{ 0x1fe, 0x1ff, ti990_4_panel_read },
+	{ 0x1fe << 1, 0x1ff << 1, ti990_4_panel_read },
 
 PORT_END
 
@@ -227,38 +227,39 @@ ROM_START(ti990_4)
 
 #if 0
 
-	ROM_REGION(0x10000, REGION_CPU1,0)
+	ROM_REGION16_BE(0x10000, REGION_CPU1,0)
 
-	/* TI990/10 ROMs set 1 */
-	ROM_LOAD_EVEN("975383.31", 0xFC00, 0x100, 0x64fcd040)
-	ROM_LOAD_ODD("975383.32", 0xFC00, 0x100, 0x64277276)
-	ROM_LOAD_EVEN("975383.29", 0xFE00, 0x100, 0xaf92e7bf)
-	ROM_LOAD_ODD("975383.30", 0xFE00, 0x100, 0xb7b40cdc)
+	/* TI990/10 : older boot ROMs for floppy-disk */
+	ROM_LOAD16_BYTE("975383.31", 0xFC00, 0x100, 0x64fcd040)
+	ROM_LOAD16_BYTE("975383.32", 0xFC01, 0x100, 0x64277276)
+	ROM_LOAD16_BYTE("975383.29", 0xFE00, 0x100, 0xaf92e7bf)
+	ROM_LOAD16_BYTE("975383.30", 0xFE01, 0x100, 0xb7b40cdc)
 
 #elif 1
 
-	ROM_REGION(0x10000, REGION_CPU1,0)
+	ROM_REGION16_BE(0x10000, REGION_CPU1,0)
 
-	/* TI990/10 ROMs set 2 */
-	ROM_LOAD_EVEN("975383.45", 0xFC00, 0x100, 0x391943c7)
-	ROM_LOAD_ODD("975383.46", 0xFC00, 0x100, 0xf40f7c18)
-	ROM_LOAD_EVEN("975383.47", 0xFE00, 0x100, 0x1ba571d8)
-	ROM_LOAD_ODD("975383.48", 0xFE00, 0x100, 0x8852b09e)
+	/* TI990/10 : newer "universal" boot ROMs  */
+	ROM_LOAD16_BYTE("975383.45", 0xFC00, 0x100, 0x391943c7)
+	ROM_LOAD16_BYTE("975383.46", 0xFC01, 0x100, 0xf40f7c18)
+	ROM_LOAD16_BYTE("975383.47", 0xFE00, 0x100, 0x1ba571d8)
+	ROM_LOAD16_BYTE("975383.48", 0xFE01, 0x100, 0x8852b09e)
 
 #else
 
-	ROM_REGION(0x12000, REGION_CPU1,0)
+	ROM_REGION16_BE(0x12000, REGION_CPU1,0)
 
 	/* TI990/12 ROMs - actually incompatible with TI990/4, but I just wanted to disassemble them. */
-	ROM_LOAD_EVEN("ti2025-7", 0xFC00, 0x1000, 0x4824f89c)
-	ROM_LOAD_ODD("ti2025-8", 0xFC00, 0x1000, 0x51fef543)
-	/* the other half of this ROM is not loaded - it makes no sense, anyway... */
+	ROM_LOAD16_BYTE("ti2025-7", 0xFC00, 0x1000, 0x4824f89c)
+	ROM_LOAD16_BYTE("ti2025-8", 0xFC01, 0x1000, 0x51fef543)
+	/* the other half of this ROM is not loaded - it makes no sense as TI990/12 machine code, it may
+	be a microcode ROM, but I am not quite sure... */
 
 #endif
 
 #else
 
-	ROM_REGION(0x10000, REGION_CPU1,0)
+	ROM_REGION16_BE(0x10000, REGION_CPU1,0)
 
 
 	ROM_REGION(0x800, REGION_USER1, ROMREGION_DISPOSE)

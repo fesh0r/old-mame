@@ -73,13 +73,6 @@
 
 000809 TJL:
 	Started converting m6809 into hd6309
-	
-001217 TJL:
-	Finished:
-		All opcodes
-		Dual Timing
-	To Do:
-		Verify new DIV opcodes.
 
 001217 TJL:
 	Finished:
@@ -851,7 +844,7 @@ int hd6309_execute(int cycles)	/* NS 970908 */
 			pPPC = pPC;
 
 			CALL_MAME_DEBUG;
-			
+
 			hd6309.ireg = ROP(PCD);
 			PC++;
 

@@ -5,7 +5,7 @@
                     Official Page at: http://mess.emuverse.com
                    ==========================================
 
-This document is generated for MESS 0.37 BETA 10 (Dec 25 2000)
+This document is generated for MESS 0.37 BETA 11 (Jan 29 2001)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.37 BETA 10 (Dec 25 2000)
+Here is the list of systems supported by MESS 0.37 BETA 11 (Jan 29 2001)
 
 The meanings of the columns are as follows:
 Working - "No" means that the emulation has shortcomings that cause the system
@@ -85,6 +85,9 @@ dat2html.exe.
 | Atari 2600                              |   No  |   No  |   No  | a2600    |
 | Atari 5200                              |  Yes  |  Yes  |  Yes  | a5200    |
 | Atari 7800                              |  Yes  |  Yes  |  Yes  | a7800    |
+| Lynx                                    |   No  |  Yes  |  Yes  | lynx     |
+| Lynx (alternate rom save!)              |   No  |  Yes  |  Yes  | lynxa    |
+| Lynx II                                 |   No  |  Yes  |  Yes  | lynx2    |
 | Nintendo Entertainment System (NTSC)    |  Yes  |  Yes  |  Yes  | nes      |
 | Nintendo Entertainment System (PAL)     |  Yes  |  Yes  |  Yes  | nespal   |
 | Famicom                                 |  Yes  |  Yes  |  Yes  | famicom  |
@@ -121,8 +124,8 @@ dat2html.exe.
 | PCW9512 (+)                             |  Yes  |  Yes  |  Yes  | pcw9512  |
 | PCW10                                   |  Yes  |  Yes  |  Yes  | pcw10    |
 | PCW16                                   |  Yes  |  Yes  |  Yes  | pcw16    |
-| NC100 Rom version v1.09                 |  Yes  |  Yes  |  Yes  | nc100    |
-| NC100 Rom version v1.00                 |  Yes  |  Yes  |  Yes  | nc100a   |
+| NC100                                   |  Yes  |  Yes  |  Yes  | nc100    |
+| NC100 (Version 1.09)                    |  Yes  |  Yes  |  Yes  | nc100a   |
 | NC200                                   |  Yes  |  Yes  |  Yes  | nc200    |
 | Apple I                                 |  Yes  |  Yes  |  Yes  | apple1   |
 | Apple //c                               |  Yes  |  Yes  |  Yes  | apple2c  |
@@ -193,7 +196,9 @@ dat2html.exe.
 | PC (CGA)                                |  Yes  |  Yes  |  Yes  | pc       |
 | EURO PC                                 |  Yes  |  Yes  |  Yes  | europc   |
 | Tandy 1000HX                            |  Yes  |  Yes  |  Yes  | t1000hx  |
-| IBM PC/XT (CGA, MF2 Keyboard)           |  Yes  |  Yes  |  Yes  | ibmxt    |
+| IBM PC/XT (CGA)                         |  Yes  |  Yes  |  Yes  | ibmxt    |
+| PC200 Professional Series               |  Yes  |  Yes  |  Yes  | pc200    |
+| Amstrad PC20                            |  Yes  |  Yes  |  Yes  | pc20     |
 | Amstrad PC1512                          |  Yes  |  Yes  |  Yes  | pc1512   |
 | Amstrad PC1640 / PC6400 (US)            | No(1) |  Yes  |  Yes  | pc1640   |
 | PC/XT (VGA, MF2 Keyboard)               | No(1) |  Yes  |  Yes  | xtvga    |
@@ -234,17 +239,19 @@ dat2html.exe.
 | TI99/4 Home Computer (Europe)           |  Yes  |  Yes  |  Yes  | ti99_4e  |
 | TI99/4A Home Computer (US)              |  Yes  |  Yes  |  Yes  | ti99_4a  |
 | TI99/4A Home Computer (Europe)          |  Yes  |  Yes  |  Yes  | ti99_4ae |
-| avigo                                   |  Yes  |  Yes  |  Yes  | avigo    |
+| TI Avigo 100 PDA                        |   No  |  Yes  |  Yes  | avigo    |
 | Jupiter Ace                             |  Yes  |  Yes  |  Yes  | jupiter  |
-| Enterprise 128                          |  Yes  |  Yes  |   No  | ep128    |
-| Enterprise 128 (EXOS 2.1)               |  Yes  |  Yes  |   No  | ep128a   |
+| Enterprise 128                          |  Yes  |  Yes  |Partial| ep128    |
+| Enterprise 128 (EXOS 2.1)               |  Yes  |  Yes  |Partial| ep128a   |
 | Kaypro 2x                               |  Yes  |  Yes  |  Yes  | kaypro   |
 | KC 85/4                                 |   No  |  Yes  |  Yes  | kc85_4   |
+| KC 85/3                                 |   No  |  Yes  |  Yes  | kc85_3   |
 | Microbee 32K                            |  Yes  |  Yes  |  Yes  | mbee     |
+| Microbee 32K Personal Communicator      |  Yes  |  Yes  |  Yes  | mbeepc   |
 | Microbee 56K (CP/M)                     |  Yes  |  Yes  |  Yes  | mbee56k  |
-| TRS-80 Model I (Level I Basic)          |  Yes  |  Yes  |  Yes  | trs80l1  |
-| TRS-80 Model I (Radio Shack Level II Bas|  Yes  |  Yes  |  Yes  | trs80    |
-| TRS-80 Model I (R/S L2 Basic)           |  Yes  |  Yes  |  Yes  | trs80alt |
+| TRS-80 Model I (Level I Basic)          |  Yes  |  Yes  |  Yes  | trs80    |
+| TRS-80 Model I (Radio Shack Level II Bas|  Yes  |  Yes  |  Yes  | trs80l2  |
+| TRS-80 Model I (R/S L2 Basic)           |  Yes  |  Yes  |  Yes  | trs80l2a |
 | System-80                               |  Yes  |  Yes  |  Yes  | sys80    |
 | Color Computer                          |  Yes  |  Yes  |  Yes  | coco     |
 | Color Computer (Extended BASIC 1.0)     |  Yes  |  Yes  |  Yes  | cocoe    |
@@ -273,15 +280,22 @@ dat2html.exe.
 | Pravetz 8D                              |  Yes  |  Yes  |  Yes  | prav8d   |
 | Pravetz 8D (Disk ROM)                   |  Yes  |  Yes  |  Yes  | prav8dd  |
 | Pravetz 8D (Disk ROM, RadoSoft)         |  Yes  |  Yes  |  Yes  | prav8dda |
-| Oric Telestrat                          |  Yes  |  Yes  |  Yes  | telstrat |
+| Oric Telestrat                          | No(1) |  Yes  |  Yes  | telstrat |
 | Philips P2000T                          |  Yes  |  Yes  |  Yes  | p2000t   |
 | Philips P2000M                          |  Yes  |  Yes  |  Yes  | p2000m   |
 | UK101                                   |  Yes  |  Yes  |  Yes  | uk101    |
 | Superboard II                           |  Yes  |  Yes  |  Yes  | superbrd |
-| MSX1                                    |  Yes  |  Yes  |  Yes  | msx      |
-| MSX1 (Japan)                            |  Yes  |  Yes  |  Yes  | msxj     |
-| MSX1 (Korean)                           |  Yes  |  Yes  |  Yes  | msxkr    |
-| MSX1 (UK)                               |  Yes  |  Yes  |  Yes  | msxuk    |
+| MSX 1                                   |  Yes  |  Yes  |  Yes  | msx      |
+| MSX 1 (Japan)                           |  Yes  |  Yes  |  Yes  | msxj     |
+| MSX 1 (Korea)                           |  Yes  |  Yes  |  Yes  | msxkr    |
+| MSX 1 (UK)                              |  Yes  |  Yes  |  Yes  | msxuk    |
+| HB-8000 Hotbit 1.1                      |  Yes  |  Yes  |  Yes  | hotbit11 |
+| HB-8000 Hotbit 1.2                      |  Yes  |  Yes  |  Yes  | hotbit12 |
+| XP-800 Expert 1.0                       |  Yes  |  Yes  |  Yes  | expert10 |
+| XP-800 Expert 1.1                       |  Yes  |  Yes  |  Yes  | expert11 |
+| MSX 2                                   | No(1) |  Yes  |  Yes  | msx2     |
+| MSX 2 (BASIC 2.1)                       | No(1) |  Yes  |  Yes  | msx2a    |
+| MSX 2 (Japan)                           | No(1) |  Yes  |  Yes  | msx2j    |
 | Nascom 1                                |  Yes  |  Yes  |  Yes  | nascom1  |
 | Nascom 2                                |  Yes  |  Yes  |  Yes  | nascom2  |
 | Sam Coupe 256K RAM                      |  Yes  |  Yes  |  Yes  | coupe    |
@@ -289,8 +303,11 @@ dat2html.exe.
 | PDP-1 (Spacewar!)                       |  Yes  |  Yes  |  Yes  | pdp1     |
 | MTX 512                                 |  Yes  |  Yes  |  Yes  | mtx512   |
 | Aquarius                                |  Yes  |   No  |  Yes  | aquarius |
+| Sorcerer                                |   No  |  Yes  |   No  | exidy    |
+| Galaksija                               |  Yes  |  Yes  |  Yes  | galaxy   |
 | SVI-318                                 |  Yes  |  Yes  |  Yes  | svi318   |
 | SVI-328                                 |  Yes  |  Yes  |  Yes  | svi328   |
+| SVI-328 (BASIC 1.11)                    |  Yes  |  Yes  |  Yes  | svi328a  |
 | Chess Champion MK II                    |  Yes  |  Yes  |  Yes  | mk2      |
 +-----------------------------------------+-------+-------+-------+----------+
 (1) There are variants of the system that work correctly
@@ -408,6 +425,12 @@ system devices.  Use the UI (TAB key) to access.
 a2600        Cartridge   (Cart)   .bin  
 a5200        Cartridge   (Cart)   .rom  .bin  
 a7800        Cartridge   (Cart)   .a78  
+lynx         Cartridge   (Cart)   .lnx  
+             Quickload   (Quik)   .o    
+lynxa        Cartridge   (Cart)   .lnx  
+             Quickload   (Quik)   .o    
+lynx2        Cartridge   (Cart)   .lnx  
+             Quickload   (Quik)   .o    
 nes          Cartridge   (Cart)   .nes  
 nespal       Cartridge   (Cart)   .nes  
 famicom      Cartridge   (Cart)   .nes  
@@ -645,6 +668,12 @@ t1000hx      Floppydisk  (Flop)   .dsk
 ibmxt        Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
              Printer     (Prin)   .prn  
+pc200        Floppydisk  (Flop)   .dsk  
+             Harddisk    (Hard)   .img  
+             Printer     (Prin)   .prn  
+pc20         Floppydisk  (Flop)   .dsk  
+             Harddisk    (Hard)   .img  
+             Printer     (Prin)   .prn  
 pc1512       Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
              Printer     (Prin)   .prn  
@@ -751,19 +780,25 @@ jupiter      Cartridge   (Cart)   .ace
 ep128        Floppydisk  (Flop)   .dsk  
 ep128a       Floppydisk  (Flop)   .dsk  
 kaypro       Floppydisk  (Flop)   .dsk  
-kc85_4       UNKNOWN     
+kc85_4       Quickload   (Quik)   .kcc  
+             Cassette    (Cass)   .wav  
+kc85_3       Quickload   (Quik)   .kcc  
+             Cassette    (Cass)   .wav  
 mbee         Cartridge   (Cart)   .rom  
+             Cassette    (Cass)   .wav  
+             Floppydisk  (Flop)   .dsk  
+mbeepc       Cartridge   (Cart)   .rom  
              Cassette    (Cass)   .wav  
              Floppydisk  (Flop)   .dsk  
 mbee56k      Cartridge   (Cart)   .rom  
              Cassette    (Cass)   .wav  
              Floppydisk  (Flop)   .dsk  
-trs80l1      Cassette    (Cass)   .cas  
-             Quickload   (Quik)   .cmd  
 trs80        Cassette    (Cass)   .cas  
              Quickload   (Quik)   .cmd  
+trs80l2      Cassette    (Cass)   .cas  
+             Quickload   (Quik)   .cmd  
              Floppydisk  (Flop)   .dsk  
-trs80alt     Cassette    (Cass)   .cas  
+trs80l2a     Cassette    (Cass)   .cas  
              Quickload   (Quik)   .cmd  
              Floppydisk  (Flop)   .dsk  
 sys80        Cassette    (Cass)   .cas  
@@ -841,10 +876,10 @@ laser700     Cartridge   (Cart)   .rom
 microtan     Cassette    (Cass)   .tap  
              Snapshot    (Dump)   .m65  
              Quickload   (Quik)   .hex  
-oric1        Cassette    (Cass)   .wav  
+oric1        Cassette    (Cass)   .tap  .wav  
              Printer     (Prin)   .prn  
              Floppydisk  (Flop)   .dsk  
-orica        Cassette    (Cass)   .wav  
+orica        Cassette    (Cass)   .tap  .wav  
              Printer     (Prin)   .prn  
              Floppydisk  (Flop)   .dsk  
 prav8d       Cassette    (Cass)   .wav  
@@ -853,7 +888,7 @@ prav8dd      Cassette    (Cass)   .wav
              Printer     (Prin)   .prn  
 prav8dda     Cassette    (Cass)   .wav  
              Printer     (Prin)   .prn  
-telstrat     Cassette    (Cass)   .wav  
+telstrat     Cassette    (Cass)   .tap  .wav  
              Printer     (Prin)   .prn  
              Floppydisk  (Flop)   .dsk  
 p2000t       UNKNOWN     
@@ -876,6 +911,34 @@ msxuk        Cartridge   (Cart)   .rom
              Floppydisk  (Flop)   .dsk  
              Cassette    (Cass)   .cas  .wav  
              Printer     (Prin)   .prn  
+hotbit11     Cartridge   (Cart)   .rom  
+             Floppydisk  (Flop)   .dsk  
+             Cassette    (Cass)   .cas  .wav  
+             Printer     (Prin)   .prn  
+hotbit12     Cartridge   (Cart)   .rom  
+             Floppydisk  (Flop)   .dsk  
+             Cassette    (Cass)   .cas  .wav  
+             Printer     (Prin)   .prn  
+expert10     Cartridge   (Cart)   .rom  
+             Floppydisk  (Flop)   .dsk  
+             Cassette    (Cass)   .cas  .wav  
+             Printer     (Prin)   .prn  
+expert11     Cartridge   (Cart)   .rom  
+             Floppydisk  (Flop)   .dsk  
+             Cassette    (Cass)   .cas  .wav  
+             Printer     (Prin)   .prn  
+msx2         Cartridge   (Cart)   .rom  
+             Floppydisk  (Flop)   .dsk  
+             Cassette    (Cass)   .cas  .wav  
+             Printer     (Prin)   .prn  
+msx2a        Cartridge   (Cart)   .rom  
+             Floppydisk  (Flop)   .dsk  
+             Cassette    (Cass)   .cas  .wav  
+             Printer     (Prin)   .prn  
+msx2j        Cartridge   (Cart)   .rom  
+             Floppydisk  (Flop)   .dsk  
+             Cassette    (Cass)   .cas  .wav  
+             Printer     (Prin)   .prn  
 nascom1      Cassette    (Cass)   .nas  .bin  
              Cartridge   (Cart)   .nas  .bin  
 nascom2      Cassette    (Cass)   .cas  .nas  .bin  
@@ -885,10 +948,16 @@ coupe512     Floppydisk  (Flop)   .dsk
 pdp1         Cartridge   (Cart)   .bin  
 mtx512       Cartridge   (Cart)   .bin  
 aquarius     UNKNOWN     
+exidy        Cassette    (Cass)   .wav  
+             Printer     (Prin)   .prn  
+galaxy       Snapshot    (Dump)   .gal  
 svi318       Cartridge   (Cart)   .rom  
              Cassette    (Cass)   .cas  .wav  
              Printer     (Prin)   .prn  
 svi328       Cartridge   (Cart)   .rom  
+             Cassette    (Cass)   .cas  .wav  
+             Printer     (Prin)   .prn  
+svi328a      Cartridge   (Cart)   .rom  
              Cassette    (Cass)   .cas  .wav  
              Printer     (Prin)   .prn  
 mk2          UNKNOWN     

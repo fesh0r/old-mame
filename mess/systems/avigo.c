@@ -21,7 +21,7 @@
 		Hardware:
 			- Z80 CPU
             - 16c500c UART
-			-  28f008sa flash-file memory x 3 (3mb)
+			-  amd29f080 flash-file memory x 3 (3mb)
 			- 128k ram
 			- stylus pen
 			- touch-pad screen
@@ -39,7 +39,7 @@
  ******************************************************************************/
 #include "driver.h"
 #include "includes/avigo.h"
-#include "includes/28f008sa.h"
+#include "includes/am29f080.h"
 #include "includes/tc8521.h"
 #include "includes/uart8250.h"
 
@@ -91,7 +91,7 @@ static READ_HANDLER(avigo_flash_0x0000_read_handler)
 
         int flash_offset = offset;
 
-	return flash_bank_handler_r(0, flash_offset);
+	return amd_flash_bank_handler_r(0, flash_offset);
 }
 
 /* memory 0x04000-0x07fff */
@@ -100,10 +100,10 @@ static READ_HANDLER(avigo_flash_0x4000_read_handler)
 
         int flash_offset = (avigo_rom_bank_l<<14) | offset;
 
-		logerror("flash offset: %04x offset: %04x\n",flash_offset, offset);
+	//	logerror("flash offset: %04x offset: %04x\n",flash_offset, offset);
 
 
-        return flash_bank_handler_r(avigo_flash_at_0x4000, flash_offset);
+        return amd_flash_bank_handler_r(avigo_flash_at_0x4000, flash_offset);
 }
 
 /* memory 0x0000-0x03fff */
@@ -112,7 +112,7 @@ static WRITE_HANDLER(avigo_flash_0x0000_write_handler)
 
 	int flash_offset = offset;
 
-	flash_bank_handler_w(0, flash_offset, data);
+	amd_flash_bank_handler_w(0, flash_offset, data);
 }
 
 /* memory 0x04000-0x07fff */
@@ -121,9 +121,9 @@ static WRITE_HANDLER(avigo_flash_0x4000_write_handler)
 
         int flash_offset = (avigo_rom_bank_l<<14) | offset;
 
-		logerror("flash offset: %04x offset: %04x\n",flash_offset, offset);
+	//	logerror("flash offset: %04x offset: %04x\n",flash_offset, offset);
 
-        flash_bank_handler_w(avigo_flash_at_0x4000, flash_offset, data);
+        amd_flash_bank_handler_w(avigo_flash_at_0x4000, flash_offset, data);
 }
 
 /* memory 0x08000-0x0bfff */
@@ -132,9 +132,9 @@ static READ_HANDLER(avigo_flash_0x8000_read_handler)
 
         int flash_offset = (avigo_ram_bank_l<<14) | offset;
 
-		logerror("flash offset: %04x offset: %04x\n",flash_offset, offset);
+	//	logerror("flash offset: %04x offset: %04x\n",flash_offset, offset);
 
-        return flash_bank_handler_r(avigo_flash_at_0x8000, flash_offset);
+        return amd_flash_bank_handler_r(avigo_flash_at_0x8000, flash_offset);
 }
 
 /* memory 0x08000-0x0bfff */
@@ -143,9 +143,9 @@ static WRITE_HANDLER(avigo_flash_0x8000_write_handler)
 
         int flash_offset = (avigo_ram_bank_l<<14) | offset;
 
-		logerror("flash offset: %04x offset: %04x\n",flash_offset, offset);
+	//	logerror("flash offset: %04x offset: %04x\n",flash_offset, offset);
 
-        flash_bank_handler_w(avigo_flash_at_0x8000, flash_offset, data);
+        amd_flash_bank_handler_w(avigo_flash_at_0x8000, flash_offset, data);
 }
 
 
@@ -175,14 +175,22 @@ static void avigo_refresh_ints(void)
 
 /* previous input port data */
 static int previous_input_port_data[4];
+static int stylus_marker_x;
+static int stylus_marker_y;
+static int stylus_press_x;
+static int stylus_press_y;
 
-/* this is not a real interrupt. This timer will check the state of the buttons and pen,
-if the state has changed an appropiate interrupt will be generated! */
+/* this is not a real interrupt. This timer updates the stylus position from mouse
+movements, and checks if the mouse button is pressed to emulate a press of the stylus to the screen.
+*/
 static void avigo_dummy_timer_callback(int dummy)
 {
 	int i;
 	int current_input_port_data[4];
 	int changed;
+	static int ox = 0, oy = 0;
+	int nx,ny;
+    int dx, dy;
 
 	for (i=0; i<4; i++)
 	{
@@ -197,8 +205,16 @@ static void avigo_dummy_timer_callback(int dummy)
 		{
 			/* pen pressed to screen */
 			
+			logerror("pen pressed interrupt\n");
+			stylus_press_x = stylus_marker_x;
+			stylus_press_y = stylus_marker_y;
 			/* set pen interrupt */
 			avigo_irq |= (1<<6);
+		}
+		else
+		{
+			stylus_press_x = 0;
+			stylus_press_y = 0;
 		}
 	}
 
@@ -210,6 +226,30 @@ static void avigo_dummy_timer_callback(int dummy)
 			cpu_set_nmi_line(0, PULSE_LINE);
 		}
 	}
+
+	for (i=0; i<4; i++)
+	{
+		previous_input_port_data[i] = current_input_port_data[i];
+	}
+
+	nx = readinputport(4);
+	if (nx>=0x800) nx-=0x1000;
+	else if (nx<=-0x800) nx+=0x1000;
+
+	dx = nx - ox;
+	ox = nx;
+
+	ny = readinputport(5);
+	if (ny>=0x800) ny-=0x1000;
+	else if (ny<=-0x800) ny+=0x1000;
+
+	dy = ny - oy;
+	oy = ny;
+
+	stylus_marker_x +=dx;
+	stylus_marker_y +=dy;
+
+	avigo_vh_set_stylus_marker_position(stylus_marker_x, stylus_marker_y);
 #if 0
 	/* not sure if keyboard generates an interrupt, or if something
 	is plugged in for synchronisation! */
@@ -244,7 +284,16 @@ static void avigo_dummy_timer_callback(int dummy)
 /* does not do anything yet */
 static void avigo_tc8521_alarm_int(int state)
 {
+//#if 0
+	avigo_irq &=~(1<<5);
 	
+	if (state)
+	{
+		avigo_irq |= (1<<5);
+	}
+
+	avigo_refresh_ints();
+//#endif
 }
 
 
@@ -278,7 +327,7 @@ static void avigo_refresh_memory(void)
               break;
         }
 
-        addr = (unsigned char *)flash_get_base(avigo_flash_at_0x4000);
+        addr = (unsigned char *)amd_flash_get_base(avigo_flash_at_0x4000);
         addr = addr + (avigo_rom_bank_l<<14);
         cpu_setbank(2, addr);
         cpu_setbank(6, addr);
@@ -290,7 +339,7 @@ static void avigo_refresh_memory(void)
         {
 				/* %101 */
                 /* screen */
-                case 0x06:
+               case 0x06:
                 {
                         memory_set_bankhandler_w(7, 0, avigo_vid_memory_w);
                         memory_set_bankhandler_r(3, 0, avigo_vid_memory_r);
@@ -317,7 +366,7 @@ static void avigo_refresh_memory(void)
                         avigo_flash_at_0x8000 = 1;
 
 
-                        addr = (unsigned char *)flash_get_base(avigo_flash_at_0x8000);
+                        addr = (unsigned char *)amd_flash_get_base(avigo_flash_at_0x8000);
                         addr = addr + (avigo_ram_bank_l<<14);
                         cpu_setbank(3, addr);
                         cpu_setbank(7, addr);
@@ -336,7 +385,7 @@ static void avigo_refresh_memory(void)
                         avigo_flash_at_0x8000 = 0;
 
 
-                        addr = (unsigned char *)flash_get_base(avigo_flash_at_0x8000);
+                        addr = (unsigned char *)amd_flash_get_base(avigo_flash_at_0x8000);
                         addr = addr + (avigo_ram_bank_l<<14);
                         cpu_setbank(3, addr);
                         cpu_setbank(7, addr);
@@ -390,11 +439,11 @@ void avigo_init_machine(void)
 	unsigned char *addr;
 
 	/* initialise flash memory */
-	flash_init(0);
+	amd_flash_init(0);
 
-	flash_init(1);
+	amd_flash_init(1);
 	
-	flash_init(2);
+	amd_flash_init(2);
 
     /* install os into flash from rom image data */
 	{
@@ -405,7 +454,7 @@ void avigo_init_machine(void)
 		if (rom!=NULL)
 		{
 			/* copy first 1mb into first flash */
-			flash = (char *)flash_get_base(0);
+			flash = (char *)amd_flash_get_base(0);
 
 			if (flash!=NULL)
 			{
@@ -413,7 +462,7 @@ void avigo_init_machine(void)
 			}
 
 			/* copy second 1mb into second flash */
-			flash = (char *)flash_get_base(1);
+			flash = (char *)amd_flash_get_base(1);
 
 			if (flash!=NULL)
 			{
@@ -423,6 +472,12 @@ void avigo_init_machine(void)
 	}
 
 
+	stylus_marker_x = AVIGO_SCREEN_WIDTH>>1;
+	stylus_marker_y = AVIGO_SCREEN_HEIGHT>>1;
+	stylus_press_x = 0;
+	stylus_press_y = 0;
+	avigo_vh_set_stylus_marker_position(stylus_marker_x, stylus_marker_y);
+
     /* if these files exist, they will overwrite the os installed
 	from the rom in the code above.
 	
@@ -431,14 +486,14 @@ void avigo_init_machine(void)
 	memory they can be written to. */
 
 	
-	flash_restore(0, "avigof1.nv");
-	flash_reset(0);
+	amd_flash_restore(0, "avigof1.nv");
+	amd_flash_reset(0);
 
-    flash_restore(1, "avigof2.nv");
-    flash_reset(1);
+    amd_flash_restore(1, "avigof2.nv");
+    amd_flash_reset(1);
 
-    flash_restore(2, "avigof3.nv");
-    flash_reset(2);
+    amd_flash_restore(2, "avigof3.nv");
+    amd_flash_reset(2);
 
 	/* initialise settings for port data */
 	for (i=0; i<4; i++)
@@ -483,7 +538,7 @@ void avigo_init_machine(void)
 		memset(avigo_memory, 0, 128*1024);
 	}
 
-	addr = (unsigned char *)flash_get_base(0);
+	addr = (unsigned char *)amd_flash_get_base(0);
 	cpu_setbank(1, addr);
 	cpu_setbank(5, addr);
 
@@ -506,14 +561,14 @@ void avigo_init_machine(void)
 void avigo_shutdown_machine(void)
 {
 	/* store and free flash memory */
-	flash_store(0, "avigof1.nv");
-	flash_finish(0);
+	amd_flash_store(0, "avigof1.nv");
+	amd_flash_finish(0);
 
-    flash_store(1, "avigof2.nv");
-    flash_finish(1);
+    amd_flash_store(1, "avigof2.nv");
+    amd_flash_finish(1);
 
-    flash_store(2, "avigof3.nv");
-    flash_finish(2);
+    amd_flash_store(2, "avigof3.nv");
+    amd_flash_finish(2);
 
     tc8521_stop();
 
@@ -536,18 +591,18 @@ void avigo_shutdown_machine(void)
 
 
 MEMORY_READ_START( readmem_avigo )
-        {0x00000, 0x03fff, MRA_BANK1},
-        {0x04000, 0x07fff, MRA_BANK2},
-        {0x08000, 0x0bfff, MRA_BANK3},
-        {0x0c000, 0x0ffff, MRA_BANK4},
+	{0x00000, 0x03fff, MRA_BANK1},
+	{0x04000, 0x07fff, MRA_BANK2},
+	{0x08000, 0x0bfff, MRA_BANK3},
+	{0x0c000, 0x0ffff, MRA_BANK4},
 MEMORY_END
 
 
 MEMORY_WRITE_START( writemem_avigo )
-        {0x00000, 0x03fff, MWA_BANK5},
-        {0x04000, 0x07fff, MWA_BANK6},
-        {0x08000, 0x0bfff, MWA_BANK7},
-        {0x0c000, 0x0ffff, MWA_BANK8},
+	{0x00000, 0x03fff, MWA_BANK5},
+	{0x04000, 0x07fff, MWA_BANK6},
+	{0x08000, 0x0bfff, MWA_BANK7},
+	{0x0c000, 0x0ffff, MWA_BANK8},
 MEMORY_END
 
 READ_HANDLER(avigo_key_data_read_r)
@@ -671,37 +726,183 @@ WRITE_HANDLER(avigo_ram_bank_h_w)
 
 READ_HANDLER(avigo_ad_control_status_r)
 {
-	logerror("avigo ad control read\n");
+	logerror("avigo ad control read %02x\n",avigo_ad_control_status);
 
         return avigo_ad_control_status;
 }
+
+static unsigned int avigo_ad_value;
 
 WRITE_HANDLER(avigo_ad_control_status_w)
 {
 	logerror("avigo ad control w %02x\n",data);
 
-        avigo_ad_control_status = data | 1;
+	if ((data & 0x070)==0x070)
+	{
+		/* bit 3 appears to select between 1 = x coord, 0 = y coord */
+		/* when 6,5,4 = 1 */
+		if ((data & 0x08)!=0)
+		{
+			logerror("a/d select x coordinate\n");
+			logerror("x coord: %d\n",stylus_press_x);
+
+			/* on screen range 0x060->0x03a0 */
+			/* 832 is on-screen range */
+			/* 5.2 a/d units per pixel */
+
+			if (stylus_press_x!=0)
+			{
+				/* this might not be totally accurate because hitable screen
+				area may include the border around the screen! */
+				avigo_ad_value = ((int)(stylus_press_x * 5.2f))+0x060;
+				avigo_ad_value &= 0x03fc;
+			}
+			else
+			{
+				avigo_ad_value = 0;
+			}
+
+			logerror("ad value: %d\n",avigo_ad_value);
+			stylus_press_x = 0;
+
+		}
+		else
+		{
+			/* in the avigo rom, the y coordinate is inverted! */
+			/* therefore a low value would be near the bottom of the display,
+			and a high value at the top */
+			
+			/* total valid range 0x044->0x036a */
+			/* 0x0350 is also checked */
+			
+			/* assumption 0x044->0x0350 is screen area and
+			0x0350->0x036a is panel at bottom */
+			
+			/* 780 is therefore on-screen range */
+			/* 3.25 a/d units per pixel */
+			/* a/d unit * a/d range = total height */
+			/* 3.25 * 1024.00 = 315.07 */
+			
+			logerror("a/d select y coordinate\n");
+			logerror("y coord: %d\n",stylus_press_y);
+
+			if (stylus_press_y!=0)
+			{
+				avigo_ad_value = 1024 - (((stylus_press_y)*3.25f) + 0x040);
+			}
+			else
+			{
+				avigo_ad_value = 0;
+			}
+
+			logerror("ad value: %d\n",avigo_ad_value);
+			stylus_press_y = 0;
+		}
+	}
+
+	/* bit 0: 1 if a/d complete, 0 if a/d not complete */
+	avigo_ad_control_status = data | 1;
 }
 
 READ_HANDLER(avigo_ad_data_r)
 {
-	logerror("avigo ad read\n");
+	unsigned char data;
 
-	return 0x00;	//ff;
+	data = 0;
 
-//        switch (avigo_ad_control_status & 0x0fe)
-  //      {
-    //       case 0x020:
-      //      return 0x0fd;
-     //      case 0x060:
-     //       return 0x0fd;
-     // /     default:
-     //      break;
-     //   }
-//
-  //      return 0;
+	/* original */
+	
+	/* status AND	11110111 */
+	/* status OR	01110000 -> C20F */
+	
+	switch (avigo_ad_control_status & 0x078)
+	{
+		/* x1110xxx */
+		/* read upper 4 bits of 10 bit A/D number */
+		case 0x070:
+		case 0x078:
+		{		
+			/* upper 4 bits of 10 bit A/D number in bits 7-4 of data */
+			/* bit 0 must be 0, bit 1 must be 0 */
+			/* bit 3 must be 1. bit 2 can have any value */
+	
+			logerror("a/d read upper 4 bits\n");
+			data = ((avigo_ad_value>>6) & 0x0f)<<4;
+			data |= 8;
+		}
+		break;
+
+		/* x0111xxx */
+		case 0x038:
+		{
+			/* lower 6 bits of 10-bit A/D number in bits 7-2 of data */
+			/* bit 0 must be 1, bit 1 must be 0 */
+
+			logerror("a/d lower 6-bits\n");
+			data = ((avigo_ad_value & 0x03f)<<2);
+			data |= 1;
+		}
+		break;
+
+		default:
+			break;
+	}
+
+	/* x coord? */
+	/* wait for bit 0 of status to become 1 */
+	/* read data -> d */
+
+	
+	/* C20f AND 10111111 */
+	/* C20f OR  00001000 */
+	/* x0111xxx */
+
+	/* bit 1 must be 0, bit 0 must be 1 */
+	/* read data -> e */
+
+	/* upper 4 bits of d contain data */
+	/* bits 0 and 1 do not contain data of e, but all other bits do */
+
+	/* get bit 5 and 6 of d */
+	/* and put into bit 0 and 1 of e */
+
+	/* C20f OR  01000000 */
+	/* x1111xxx */
+
+	/* y coord? */
+	/* bit 0 must be 0, bit 1 must be 0 */
+	/* bit 3 must be 1. bit 2 can have any value */
+	/* read data -> d */
+
+	/* C20f AND  10111111 */
+	/* x0111xxx */
+
+	/* bit 1 must be 0, bit 0 must be 1 */
+	/* read data -> e */
 
 
+	/* original and 1111100 */
+	/* original or  1111000 */
+	/* 1111x00 */
+
+
+
+	/* if fails! */
+	/* original */
+	/* AND 1001100 */
+	/* OR  1001000 */
+	/* 1001x00 */
+
+
+	/* AND 1101100 */
+	/* OR  1101000 */
+	/* 1101x00 */
+
+	/* 1111x00 */
+
+	logerror("avigo ad read %02x\n",data);
+
+	return data;	
 }
 
 
@@ -713,7 +914,7 @@ WRITE_HANDLER(avigo_speaker_w)
 	avigo_speaker_data = data;
 
 	/* changed state? */
-        if (((data^avigo_speaker_data) & (1<<3))!=0)
+	if (((data^avigo_speaker_data) & (1<<3))!=0)
 	{
 		/* DAC output state */
 		speaker_level_w(0,(data>>3) & 0x01);
@@ -795,6 +996,15 @@ INPUT_PORTS_START(avigo)
 	PORT_START	
 	PORT_BITX( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD, "Pen/Stylus pressed", KEYCODE_Q, JOYCODE_1_BUTTON1) 
     PORT_BITX( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD, "?? Causes a NMI", KEYCODE_W, JOYCODE_1_BUTTON2) 		
+
+	/* these two ports are used to emulate the position of the pen/stylus on the screen */
+	/* a cursor is drawn to indicate the position, so when a click is done, it will occur in the correct place */
+	PORT_START /* Mouse - X AXIS */ 
+	PORT_ANALOGX( 0xfff, 0x00, IPT_TRACKBALL_X | IPF_PLAYER1, 100, 0, 0, 0, IP_KEY_NONE, IP_KEY_NONE, IP_JOY_NONE, IP_JOY_NONE ) 
+
+	PORT_START /* Mouse - Y AXIS */
+	PORT_ANALOGX( 0xfff, 0x00, IPT_TRACKBALL_Y | IPF_PLAYER1, 100, 0, 0, 0, IP_KEY_NONE, IP_KEY_NONE, IP_JOY_NONE, IP_JOY_NONE ) 	
+	
 INPUT_PORTS_END
 
 static struct Speaker_interface avigo_speaker_interface=
@@ -879,5 +1089,5 @@ static const struct IODevice io_avigo[] =
 
 
 /*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT COMPANY   FULLNAME */
-COMP( 1997, avigo,   0,                avigo,  avigo,      0,       "Texas Instruments", "avigo")
+COMPX( 1997, avigo,   0,                avigo,  avigo,      0,       "Texas Instruments", "TI Avigo 100 PDA",GAME_NOT_WORKING)
 

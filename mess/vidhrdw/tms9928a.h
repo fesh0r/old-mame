@@ -4,13 +4,9 @@
 ** By Sean Young 1999 (sean@msxnet.org).
 */
 
-extern unsigned char TMS9928A_palette[];
-extern unsigned short TMS9928A_colortable[];
-/* initialise palette function */
-void tms9928A_init_palette(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 
 #define TMS9928A_PALETTE_SIZE           16
-#define TMS9928A_COLORTABLE_SIZE        32
+#define TMS9928A_COLORTABLE_SIZE        16
 
 /*
 ** The different models
@@ -19,39 +15,21 @@ void tms9928A_init_palette(unsigned char *palette, unsigned short *colortable,co
 #define TMS99x8A	(1)
 #define TMS99x8		(2)
 
-typedef struct {
-    /* TMS9928A internal settings */
-    UINT8 ReadAhead,Regs[8],StatusReg,oldStatusReg;
-    int Addr,FirstByte,INT,BackColour,Change,mode;
-    int colour,pattern,nametbl,spriteattribute,spritepattern;
-    int colourmask,patternmask;
-    void (*INTCallback)(int);
-    /* memory */
-    UINT8 *vMem, *dBackMem;
-    struct osd_bitmap *tmpbmp;
-    int vramsize, model;
-    /* emulation settings */
-    int LimitSprites; /* max 4 sprites on a row, like original TMS9918A */
-    /* dirty tables */
-    char anyDirtyColour, anyDirtyName, anyDirtyPattern;
-    char *DirtyColour, *DirtyName, *DirtyPattern;
-} TMS9928A;
-
-
 /*
 ** The init, reset and shutdown functions
 */
 int TMS9928A_start (int model, unsigned int vram);
 void TMS9928A_reset (void);
 void TMS9928A_stop (void);
+void tms9928A_init_palette(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
 
 /*
 ** The I/O functions
 */
-UINT8 TMS9928A_vram_r (void);
-void TMS9928A_vram_w (UINT8 val);
-UINT8 TMS9928A_register_r (void);
-void TMS9928A_register_w (UINT8 val);
+READ_HANDLER (TMS9928A_vram_r);
+WRITE_HANDLER (TMS9928A_vram_w);
+READ_HANDLER (TMS9928A_register_r);
+WRITE_HANDLER (TMS9928A_register_w);
 
 /*
 ** Call this function to render the screen.

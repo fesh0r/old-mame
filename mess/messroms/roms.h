@@ -208,8 +208,8 @@ static struct {
 	{ 0x3b5cd0c5, 0x30000, "ATARIST TOS 104" },
 	{ 0x08538e39, 0x40000, "ATARIST TOS 206" },
 
-	{ 0xe1ffecb6, 0x200, "LYNX I or II?" },
-	{ 0x0d973c9d, 0x200, "LYNX I or II? alternate" },
+	{ 0xe1ffecb6, 0x200, "LYNX saved (fff9 not authentic)" },
+	{ 0x0d973c9d, 0x200, "LYNX saved (fff9 different to 0xe1ffecb6)" },
 
 	{ 0xfb731aaa, 0x20000, "JAGUAR" },
 
@@ -510,6 +510,8 @@ static struct {
 
 	{ 0xecc43f0f , 0x1000, "Wiesemann Interface (CBM Serial bus to Centronics Printer)" },
 
+
+
 	{ 0xf6290043 , 0x80000, "AMIGA kickstart 1.3" },
 
 /* ibm pc and compatibles ******************************************************/
@@ -529,6 +531,8 @@ static struct {
 	{ 0xd37a1d5f , 0x10000, "Tandy 1000 HX bios f0000" },
 	{ 0x83727c42 , 0x8000, "IBM XT bios even f0000" },
 	{ 0x2a629953 , 0x8000, "IBM XT bios odd f0000" },
+	{ 0x71b84616 , 0x2000, "Amstrad PC20 bios even fc000 (v2)" },
+	{ 0x41302eb8 , 0x2000, "Amstrad PC20 bios odd fc000 (v2)" },
 	{ 0x668fcc94 , 0x2000, "40044 Amstrad PC1512 bios even fc000 (v1)" },
 	{ 0xf72f1582 , 0x2000, "40043 Amstrad PC1512 bios odd fc000 (v1)" },
 	{ 0xd2d1f1ae,  0x8000, "40100 Amstrad PC1640 ega bios c0000" },
@@ -625,6 +629,7 @@ static struct {
 	{ 0xdfce21e5 , 0x7f00, "INCOMPLETE COCO3 saved from running machine" },
 	{ 0x7d48ba8e , 0x2000, "??? COCO3 disk?" },
 	{ 0xe3879310 , 0x4000, "DRAGON32" },
+	{ 0xb44536f6 , 0x2000, "DRAGON DOS 1.0" },
 	{ 0x878396a5 , 0x4000, "CP400 basic" },
 	{ 0xe9ad60a0 , 0x2000, "CP400 disk" },
 	{ 0x11fda97e , 0x2000, "MC10" },
@@ -674,6 +679,11 @@ static struct {
 	{ 0xeb8e1d5b , 0x4000, "MSX fmsxdisk" },
 	{ 0x71162b96 , 0x4000, "MSX disk" },
 
+	{ 0x07610d77, 0x8000, "EXPERT 1.0" },
+	{ 0xefb4b972, 0x8000, "EXPERT 1.1" },
+	{ 0xb6942694, 0x8000, "HOTBIT 1.1" },
+	{ 0xf59a4a0c, 0x8000, "HOTBIT 1.2" },
+
 	{ 0x77b94ae0,0x8000, "MSXTR" },
 	{ 0x937c8dbb,0x8000, "MSXTR" },
 	{ 0x70aea0fe,0x4000, "MSXTR ext" },
@@ -702,6 +712,8 @@ static struct {
 	{ 0x425eedf5 , 0x1000, "MZ700 font japan" },
 	{ 0x0c281675 , 0x2000, "MZ800" },
 
+	{ 0xdca8f879 , 0x4000, "PC1500A rom" },
+
 	{ 0x44bee438 , 0x2000, "SC61860A08 5H 13LD PC1401 cpu rom" },
 	{ 0x69b9d587 , 0x8000, "5S1 SC613256 D30 PC1401" },
 	{ 0xf7287aca , 0x2000, "PC1251 cpu rom" },
@@ -728,9 +740,43 @@ static struct {
 
 	{ 0x160ee4a6 , 0x150000, "AVIGO english 1.004" },
 
-	{ 0x6a320f03 , 0x20000, "TI82" },
-	{ 0x4bf05697 , 0x40000, "TI83 1?" },
-	{ 0x6a0a94d0 , 0x20000, "TI85" },
+	{ 0xe2f5721c , 0x20000, "TI82 16" },
+	{ 0x0fc956d4 , 0x20000, "TI82 17" },
+	{ 0x6a320f03 , 0x20000, "TI82 18" },
+	{ 0xed4cf9ff , 0x20000, "TI82 19" },
+	{ 0x7ee5d27b , 0x40000, "TI83 102" },
+	{ 0x926f72a4 , 0x40000, "TI83 103" },
+	{ 0xdccb73d3 , 0x40000, "TI83 104" },
+	{ 0x2eae1cf0 , 0x40000, "TI83 106" },
+	{ 0x4bf05697 , 0x40000, "TI83 1.07" },
+	{ 0x0c6aafcc , 0x40000, "TI83 108" },
+	{ 0x7faee2d2 , 0x40000, "TI83 110" },
+	{ 0xda466be0 , 0x80000, "TI83+ 103" },
+	{ 0xad770061 , 0x80000, "TI83+ 112" },
+	{ 0x6a0a94d0 , 0x20000, "TI85 ?" },
+	{ 0x053325b0 , 0x20000, "TI85 100" },
+	{ 0xde4c0b1a , 0x20000, "TI85 30a" },
+	{ 0x889dadc7 , 0x20000, "TI85 40" },
+	{ 0xd723e107 , 0x20000, "TI85 50" },
+	{ 0xcd13d4f1 , 0x20000, "TI85 60" },
+	{ 0x32ad5c28 , 0x20000, "TI85 80" },
+	{ 0xceed0ef5 , 0x20000, "TI85 90" },
+	{ 0xbdf16105 , 0x40000, "TI86 1.2" },
+	{ 0x073ef70f , 0x40000, "TI86 1.3" },
+	{ 0xfe6e2986 , 0x40000, "TI86 1.4" },
+	{ 0xe6e10546 , 0x40000, "TI86 1.5" },
+	{ 0x37e02acc , 0x40000, "TI86 1.6" },
+	{ 0x264b34ad , 0x200000, "TI89 1.00" },
+	{ 0x3bc0b474 , 0x200000, "TI89 1.05" },
+	{ 0x316c8196 , 0x100000, "TI92 1.3" },
+	{ 0x239e9405 , 0x100000, "TI92 1.4" },
+	{ 0x83e27cc5 , 0x100000, "TI92 1.7" },
+	{ 0x4a343833 , 0x100000, "TI92 1.11" },
+	{ 0x9a6947a0 , 0x100000, "TI92 1.12" },
+	{ 0x5afb5863 , 0x200000, "TI92 2.1" },
+	{ 0xc651a586 , 0x200000, "TI92+ 1.00" },
+	{ 0x826b1539 , 0x200000, "TI92+ 1.01" },
+	{ 0xcd945824 , 0x200000, "TI92+ 1.05" },
 
 	{ 0xd359ead7 , 0x4000, "CGENIE bios" },
 	{ 0x2a96cf74 , 0x2000, "CGENIE dos" },
@@ -773,16 +819,18 @@ static struct {
 	{ 0xd64cd50b , 0x2000, "KC85_4 os e000" },
 	{ 0x37cc2080 , 0x2000, "KC85_4 disk" },
 	{ 0xee273933 , 0x2000, "KC85_4 tape" },
-	{ 0xfe2932e3 , 0x2000, "KC85_3? basic" },
+	{ 0xfe2932e3 , 0x2000, "KC85_3? basic (1 byte different to 0xdfe34b08)" },
 	{ 0xbd30cd2d , 0x2000, "KC85_3? bios" },
 	{ 0x4a6c9a47 , 0x2000, "KC85_3 disk" },
 	{ 0x639e4864 , 0x2000, "KC85_3 tape" },
 
-	{ 0x7896a696 , 0x2000, "MBEE" },
-	{ 0xb21d9679 , 0x2000, "MBEE" },
+	{ 0x7896a696 , 0x2000, "MBEE basic 8000" },
+	{ 0xb21d9679 , 0x2000, "MBEE basic a000" },
 	{ 0x0fc21cb5 , 0x2000, "MBEE" },
-	{ 0xb85a9565 , 0x1000, "MBEE char" },
-	{ 0x28211224 , 0x1000, "MBEE56k" },
+	{ 0x47a56a9a , 0x1000, "BAD DUMP? MBEE char" },
+	{ 0x28211224 , 0x1000, "MBEE 56k" },
+	{ 0x1f9fcee4 , 0x1000, "MBEE 128k char" },
+	{ 0x995c53db , 0x2000, "MBEE 128k" },
 
 	{ 0x5f72da5b , 0x1000, "KAYPRO char" },
 	{ 0xd10cd036 , 5632, "REPROGRAMMED? KAYPRO" },

@@ -122,9 +122,9 @@ const struct GameDriver *drivers[] =
 	DRIVER( a2600 ) 	/* Atari 2600									  */
 	DRIVER( a5200 ) 	/* Atari 5200									  */
 	DRIVER( a7800 ) 	/* Atari 7800									  */
-TESTDRIVER( lynx )		/* Atari Lynx Handheld							  */
-TESTDRIVER( lynxa )		/* Atari Lynx Handheld alternate rom save		  */
-TESTDRIVER( lynx2 )		/* Atari Lynx II Handheld redesigned, no additions*/
+	DRIVER( lynx )		/* Atari Lynx Handheld							  */
+	DRIVER( lynxa )		/* Atari Lynx Handheld alternate rom save		  */
+	DRIVER( lynx2 )		/* Atari Lynx II Handheld redesigned, no additions*/
 /*	DRIVER( jaguar )*/	/* Atari Jaguar 								  */
 #endif
 
@@ -423,6 +423,8 @@ TESTDRIVER( ibmpcjr )	/*      IBM PC Jr								  */
 
 	/* xt */
 	DRIVER( ibmxt )		/* 1986	IBM XT									  */
+	DRIVER( pc200 )     /* 1988 Sinclair PC200                            */
+	DRIVER( pc20 )      /* 1988 Amstrad PC20                              */   	
 	DRIVER( pc1512 )	/* 1986 Amstrad PC1512 (CGA compatible)			  */
 	DRIVER( pc1640 )	/* 1987 Amstrad PC1640 (EGA compatible)			  */
 
@@ -511,7 +513,9 @@ TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 								  */
 	/* VEB MIKROELEKTRONIK */
 	/* KC compact is partial CPC compatible */
 	DRIVER( kc85_4 )	/* VEB KC 85/4									  */
-	/* pc1715 z80/u880 based */
+    DRIVER( kc85_3 )    /* VEB KC 85/3                                    */
+TESTDRIVER( kc85_4d )   /* VEB KC 85/4 with disk interface                */
+    /* pc1715 z80/u880 based */
 	/* pc1715w z80/u880 based */
 	/* a5105 z80/u880 based */
 	/* a5120 z80/u880 based */
@@ -519,12 +523,13 @@ TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 								  */
 
 	/* MICROBEE SYSTEMS */
 	DRIVER( mbee )		/* Microbee 									  */
+	DRIVER( mbeepc )	/* Microbee (Personal Communicator)				  */
 	DRIVER( mbee56k )	/* Microbee 56K (CP/M)							  */
 
 	/* TANDY RADIO SHACK */
-	DRIVER( trs80l1 )	/* TRS-80 Model I	- Radio Shack Level I BASIC   */
-	DRIVER( trs80 ) 	/* TRS-80 Model I	- Radio Shack Level II BASIC  */
-	DRIVER( trs80alt )	/* TRS-80 Model I	- R/S L2 BASIC				  */
+	DRIVER( trs80 )	    /* TRS-80 Model I	- Radio Shack Level I BASIC   */
+	DRIVER( trs80l2 ) 	/* TRS-80 Model I	- Radio Shack Level II BASIC  */
+	DRIVER( trs80l2a )	/* TRS-80 Model I	- R/S L2 BASIC				  */
 	DRIVER( sys80 ) 	/* EACA System 80								  */
 /*	DRIVER( trs80m2 )*/	/* TRS-80 Model II -							  */
 TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 		  */
@@ -586,6 +591,13 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 		  */
 	DRIVER( msxj )		/* 1983 MSX Jap 								  */
 	DRIVER( msxkr ) 	/* 1983 MSX Korean								  */
 	DRIVER( msxuk ) 	/* 1983 MSX UK									  */
+	DRIVER( hotbit11 )	/* 198? ???									      */
+	DRIVER( hotbit12 )	/* 198? ???									      */
+	DRIVER( expert10 )	/* 198? ???									      */
+	DRIVER( expert11 )	/* 198? ???									      */
+	DRIVER( msx2 ) 		/* 1985 MSX2									  */
+	DRIVER( msx2a )		/* 1985 MSX2									  */
+	DRIVER( msx2j ) 	/* 1983 MSX2 Jap								  */
 
 	/* NASCOM MICROCOMPUTERS */
 	DRIVER( nascom1 )	/* 1978 Nascom 1								  */
@@ -608,7 +620,13 @@ TESTDRIVER( mekd2 )     /* 1977 Motorola Evaluation Kit                   */
 //TESTDRIVER( intvkbd )	/* 1981 - Mattel Intellivision Keyboard Component */
 						/* (Test marketed, later recalled )				  */
 	DRIVER( aquarius )	/* 1983 Aquarius								  */
-
+	
+	/*EXIDY INC */
+	DRIVER( exidy )  /* Sorcerer                                       */
+	
+	/* GALAKSIJA */
+	DRIVER( galaxy )
+	
 	/* Team Concepts */
 	/* CPU not known, else should be easy, look into systems/comquest.c */
 TESTDRIVER( comquest )	/* Comquest Plus German							*/
@@ -620,6 +638,7 @@ TESTDRIVER( comquest )	/* Comquest Plus German							*/
 	/* SpectraVideo */
 	DRIVER( svi318 ) 	/* SVI-318										  */
 	DRIVER( svi328 ) 	/* SVI-328										  */
+	DRIVER( svi328a ) 	/* SVI-328	(BASIC 1.11)						  */
 #endif
 
 /****************Games*******************************************************/

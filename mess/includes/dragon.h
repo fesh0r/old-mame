@@ -10,7 +10,10 @@
 int internal_m6847_vh_start(const struct m6847_init_params *params, int dirtyramsize);
 void internal_m6847_vh_screenrefresh(struct rasterbits_source *rs,
 	struct rasterbits_videomode *rvm, struct rasterbits_frame *rf, int full_refresh,
-	const int *metapalette, UINT8 *vrambase, int skew_up, int border_color, int wf, artifactproc artifact);
+	UINT16 *pens, UINT8 *vrambase, int skew_up, int border_color, int wf,
+	int artifact_value, int artifact_palettebase,
+	void (*getcolorrgb)(int c, UINT8 *red, UINT8 *green, UINT8 *blue));
+int internal_m6847_vblank(int hsyncs, double trailingedgerow);
 
 /* ----------------------------------------------------------------------- *
  * from vidhrdw/dragon.c                                                   *
@@ -33,12 +36,12 @@ extern void coco3_vh_stop(void);
 extern void coco3_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
 extern WRITE_HANDLER ( dragon_sam_display_offset );
 extern WRITE_HANDLER ( dragon_sam_vdg_mode );
-extern int dragon_interrupt(void);
 extern WRITE_HANDLER ( coco_ram_w );
 extern READ_HANDLER ( coco3_gimevh_r );
 extern WRITE_HANDLER ( coco3_gimevh_w );
 extern WRITE_HANDLER ( coco3_palette_w );
 extern void coco3_vh_blink(void);
+extern int coco3_vblank(void);
 
 /* ----------------------------------------------------------------------- *
  * from machine/dragon.c                                                   *
@@ -67,16 +70,16 @@ extern WRITE_HANDLER ( dragon_sam_speedctrl );
 extern WRITE_HANDLER ( coco3_sam_speedctrl );
 extern WRITE_HANDLER ( dragon_sam_page_mode );
 extern WRITE_HANDLER ( dragon_sam_memory_size );
-extern READ_HANDLER ( coco3_floppy_r);
-extern WRITE_HANDLER ( coco3_floppy_w );
+extern READ_HANDLER ( coco_cartridge_r);
+extern WRITE_HANDLER ( coco_cartridge_w );
+extern READ_HANDLER ( coco3_cartridge_r);
+extern WRITE_HANDLER ( coco3_cartridge_w );
 extern int coco_floppy_init(int id);
 extern void coco_floppy_exit(int id);
-extern READ_HANDLER ( coco_floppy_r );
-extern WRITE_HANDLER ( coco_floppy_w );
-extern READ_HANDLER(dragon_floppy_r);
-extern WRITE_HANDLER ( dragon_floppy_w );
-extern int coco3_hblank(void);
-/*extern int coco3_vblank(void);*/
+extern WRITE_HANDLER( coco_m6847_hs_w );
+extern WRITE_HANDLER( coco_m6847_fs_w );
+extern WRITE_HANDLER( coco3_m6847_hs_w );
+extern WRITE_HANDLER( coco3_m6847_fs_w );
 extern int coco3_mmu_translate(int block, int offset);
 extern int dragon_floppy_init(int id);
 extern int coco_bitbanger_init (int id);
