@@ -77,10 +77,6 @@
 #include "messdrv.h"
 #endif
 
-#ifdef MMSND
-#include "mmsnd/mmsnd.h"
-#endif
-
 
 /***************************************************************************
 
@@ -416,7 +412,7 @@ struct GameDriver
 	const char *year;
 	const char *manufacturer;
 	void (*drv)(struct InternalMachineDriver *);
-	void (*construct_ipt)(void *param);
+	void (*construct_ipt)(struct IptInitParams *param);
 	void (*driver_init)(void);	/* optional function to be called during initialization */
 								/* This is called ONCE, unlike Machine->init_machine */
 								/* which is called every time the game is reset. */
@@ -577,5 +573,9 @@ extern const struct GameDriver *drivers[];
 #define S64(val) val
 #endif
 
+/* Suppress warnings about redefining the macro 'PPC' on LinuxPPC. */
+#ifdef PPC
+#undef PPC
+#endif
 
 #endif
