@@ -483,7 +483,7 @@ int osd_create_display(const struct osd_create_params *params, UINT32 *rgb_compo
 	double aspect_ratio;
 	int r, g, b;
 	HRESULT result;
-
+	
 	logerror("width %d, height %d depth %d\n", params->width, params->height, params->depth);
 
 	// copy the parameters into globals for later use
@@ -502,7 +502,7 @@ int osd_create_display(const struct osd_create_params *params, UINT32 *rgb_compo
 	// extract useful parameters from the attributes
 	vector_game			= ((params->video_attributes & VIDEO_TYPE_VECTOR) != 0);
 	rgb_direct			= ((params->video_attributes & VIDEO_RGB_DIRECT) != 0);
-
+	
 	if (!blit_swapxy)
 		aspect_ratio = (double)params->aspect_x / (double)params->aspect_y;
 	else

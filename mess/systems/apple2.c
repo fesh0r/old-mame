@@ -213,9 +213,13 @@ static ADDRESS_MAP_START( apple2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc0d0, 0xc0df) AM_READWRITE(apple2_c0xx_slot5_r,	apple2_c0xx_slot5_w)
 	AM_RANGE(0xc0e0, 0xc0ef) AM_READWRITE(apple2_c0xx_slot6_r,	apple2_c0xx_slot6_w)
 	AM_RANGE(0xc0f0, 0xc0ff) AM_READWRITE(apple2_c0xx_slot7_r,	apple2_c0xx_slot7_w)
-	AM_RANGE(0xc100, 0xc2ff) AM_READWRITE(MRA8_A2BANK_C100,		MWA8_A2BANK_C100)
+	AM_RANGE(0xc100, 0xc1ff) AM_READWRITE(MRA8_A2BANK_C100,		MWA8_A2BANK_C100)
+	AM_RANGE(0xc200, 0xc2ff) AM_READWRITE(MRA8_A2BANK_C200,		MWA8_A2BANK_C200)
 	AM_RANGE(0xc300, 0xc3ff) AM_READWRITE(MRA8_A2BANK_C300,		MWA8_A2BANK_C300)
-	AM_RANGE(0xc400, 0xc7ff) AM_READWRITE(MRA8_A2BANK_C400,		MWA8_A2BANK_C400)
+	AM_RANGE(0xc400, 0xc4ff) AM_READWRITE(MRA8_A2BANK_C400,		MWA8_A2BANK_C400)
+	AM_RANGE(0xc500, 0xc5ff) AM_READWRITE(MRA8_A2BANK_C500,		MWA8_A2BANK_C500)
+	AM_RANGE(0xc600, 0xc6ff) AM_READWRITE(MRA8_A2BANK_C600,		MWA8_A2BANK_C600)
+	AM_RANGE(0xc700, 0xc7ff) AM_READWRITE(MRA8_A2BANK_C700,		MWA8_A2BANK_C700)
 	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(MRA8_A2BANK_C800,		MWA8_A2BANK_C800)
 	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(MRA8_A2BANK_D000,		MWA8_A2BANK_D000)
 	AM_RANGE(0xe000, 0xffff) AM_READWRITE(MRA8_A2BANK_E000,		MWA8_A2BANK_E000)
@@ -330,7 +334,7 @@ INPUT_PORTS_END
  * have been more appropriate for an Apple IIgs.  So we've substituted in the
  * Robert Munafo palette instead, which is more accurate on 8-bit Apples
  */
-static unsigned char apple2_palette[] =
+static const unsigned char apple2_palette[] =
 {
 	0x00, 0x00, 0x00,	/* Black */
 	0xE3, 0x1E, 0x60,	/* Dark Red */
@@ -349,28 +353,6 @@ static unsigned char apple2_palette[] =
 	0x72, 0xFF, 0xD0,	/* Aquamarine */
 	0xFF, 0xFF, 0xFF	/* White */
 };
-
-#if 0
-static unsigned char apple2gs_palette[] =
-{
-	0x00, 0x00, 0x00,	/* Black */
-	0xD0, 0x00, 0x30,	/* Dark Red */
-	0x00, 0x00, 0x90,	/* Dark Blue */
-	0xD0, 0x20, 0xD0,	/* Purple */
-	0x00, 0x70, 0x20,	/* Dark Green */
-	0x50, 0x50, 0x50,	/* Dark Grey */
-	0x20, 0x20, 0xF0,	/* Medium Blue */
-	0x60, 0xA0, 0xF0,	/* Light Blue */
-	0x80, 0x50, 0x00,	/* Brown */
-	0xF0, 0x60, 0x00,	/* Orange */
-	0xA0, 0xA0, 0xA0,	/* Light Grey */
-	0xF0, 0x90, 0x80,	/* Pink */
-	0x10, 0xD0, 0x00,	/* Light Green */
-	0xF0, 0xF0, 0x00,	/* Yellow */
-	0x40, 0xF0, 0x90,	/* Aquamarine */
-	0xF0, 0xF0, 0xF0	/* White */
-};
-#endif
 
 static struct GfxLayout apple2_text_layout =
 {
@@ -430,18 +412,48 @@ static struct GfxDecodeInfo apple2e_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static unsigned short apple2_colortable[] =
+static const unsigned short apple2_colortable[] =
 {
-	15, 0,	/* normal */
-	0, 15	/* inverse */
+	0,	0,	0,	1,	0,	2,	0,	3,	0,	4,	0,	5,	0,	6,	0,	7,	
+	0,	8,	0,	9,	0,	10,	0,	11,	0,	12,	0,	13,	0,	14,	0,	15,	
+	1,	0,	1,	1,	1,	2,	1,	3,	1,	4,	1,	5,	1,	6,	1,	7,	
+	1,	8,	1,	9,	1,	10,	1,	11,	1,	12,	1,	13,	1,	14,	1,	15,	
+	2,	0,	2,	1,	2,	2,	2,	3,	2,	4,	2,	5,	2,	6,	2,	7,	
+	2,	8,	2,	9,	2,	10,	2,	11,	2,	12,	2,	13,	2,	14,	2,	15,	
+	3,	0,	3,	1,	3,	2,	3,	3,	3,	4,	3,	5,	3,	6,	3,	7,	
+	3,	8,	3,	9,	3,	10,	3,	11,	3,	12,	3,	13,	3,	14,	3,	15,	
+	4,	0,	4,	1,	4,	2,	4,	3,	4,	4,	4,	5,	4,	6,	4,	7,	
+	4,	8,	4,	9,	4,	10,	4,	11,	4,	12,	4,	13,	4,	14,	4,	15,	
+	5,	0,	5,	1,	5,	2,	5,	3,	5,	4,	5,	5,	5,	6,	5,	7,	
+	5,	8,	5,	9,	5,	10,	5,	11,	5,	12,	5,	13,	5,	14,	5,	15,	
+	6,	0,	6,	1,	6,	2,	6,	3,	6,	4,	6,	5,	6,	6,	6,	7,	
+	6,	8,	6,	9,	6,	10,	6,	11,	6,	12,	6,	13,	6,	14,	6,	15,	
+	7,	0,	7,	1,	7,	2,	7,	3,	7,	4,	7,	5,	7,	6,	7,	7,	
+	7,	8,	7,	9,	7,	10,	7,	11,	7,	12,	7,	13,	7,	14,	7,	15,	
+	8,	0,	8,	1,	8,	2,	8,	3,	8,	4,	8,	5,	8,	6,	8,	7,	
+	8,	8,	8,	9,	8,	10,	8,	11,	8,	12,	8,	13,	8,	14,	8,	15,	
+	9,	0,	9,	1,	9,	2,	9,	3,	9,	4,	9,	5,	9,	6,	9,	7,	
+	9,	8,	9,	9,	9,	10,	9,	11,	9,	12,	9,	13,	9,	14,	9,	15,	
+	10,	0,	10,	1,	10,	2,	10,	3,	10,	4,	10,	5,	10,	6,	10,	7,	
+	10,	8,	10,	9,	10,	10,	10,	11,	10,	12,	10,	13,	10,	14,	10,	15,	
+	11,	0,	11,	1,	11,	2,	11,	3,	11,	4,	11,	5,	11,	6,	11,	7,	
+	11,	8,	11,	9,	11,	10,	11,	11,	11,	12,	11,	13,	11,	14,	11,	15,	
+	12,	0,	12,	1,	12,	2,	12,	3,	12,	4,	12,	5,	12,	6,	12,	7,	
+	12,	8,	12,	9,	12,	10,	12,	11,	12,	12,	12,	13,	12,	14,	12,	15,	
+	13,	0,	13,	1,	13,	2,	13,	3,	13,	4,	13,	5,	13,	6,	13,	7,	
+	13,	8,	13,	9,	13,	10,	13,	11,	13,	12,	13,	13,	13,	14,	13,	15,	
+	14,	0,	14,	1,	14,	2,	14,	3,	14,	4,	14,	5,	14,	6,	14,	7,	
+	14,	8,	14,	9,	14,	10,	14,	11,	14,	12,	14,	13,	14,	14,	14,	15,	
+	15,	0,	15,	1,	15,	2,	15,	3,	15,	4,	15,	5,	15,	6,	15,	7,	
+	15,	8,	15,	9,	15,	10,	15,	11,	15,	12,	15,	13,	15,	14,	15,	15
 };
 
 
-/* Initialise the palette */
-static PALETTE_INIT( apple2 )
+/* Initialize the palette */
+PALETTE_INIT( apple2 )
 {
 	palette_set_colors(0, apple2_palette, sizeof(apple2_palette) / 3);
-    memcpy(colortable,apple2_colortable,sizeof(apple2_colortable));
+	memcpy(colortable, apple2_colortable, sizeof(apple2_colortable));
 }
 
 static const char *apple2_floppy_getname(const struct IODevice *dev, int id, char *buf, size_t bufsize)
@@ -504,22 +516,21 @@ static MACHINE_DRIVER_START( apple2p )
 	MDRV_GFXDECODE(apple2_gfxdecodeinfo)
 MACHINE_DRIVER_END
 
-static MACHINE_DRIVER_START( apple2e )
+MACHINE_DRIVER_START( apple2e )
 	MDRV_IMPORT_FROM( apple2_common )
 	MDRV_VIDEO_START(apple2e)
 	MDRV_GFXDECODE(apple2e_gfxdecodeinfo)
 MACHINE_DRIVER_END
-
 
 static MACHINE_DRIVER_START( apple2ee )
 	MDRV_IMPORT_FROM( apple2e )
 	MDRV_CPU_REPLACE("main", M65C02, 1021800)		/* close to actual CPU frequency of 1.020484 MHz */
 MACHINE_DRIVER_END
 
-
 static MACHINE_DRIVER_START( apple2c )
 	MDRV_IMPORT_FROM( apple2ee )
 MACHINE_DRIVER_END
+
 
 
 /***************************************************************************
@@ -618,6 +629,7 @@ ROM_START(apple2cp)
 	ROM_LOAD("a2cplus.mon", 0x0000, 0x8000, CRC(0b996420) SHA1(1a27ae26966bbafd825d08ad1a24742d3e33557c))
 ROM_END
 
+
 static void apple2_floppy_getinfo(struct IODevice *dev)
 {
 	/* floppy */
@@ -664,6 +676,8 @@ SYSTEM_CONFIG_START(apple2e)
 	CONFIG_IMPORT_FROM( apple2_common )
 	CONFIG_RAM_DEFAULT			(128 * 1024)
 SYSTEM_CONFIG_END
+
+
 
 /*     YEAR  NAME      PARENT    COMPAT		MACHINE   INPUT     INIT      CONFIG	COMPANY            FULLNAME */
 COMPX( 1977, apple2,   0,        0,			apple2,   apple2,   apple2,   apple2,	"Apple Computer", "Apple ][", GAME_IMPERFECT_COLORS )

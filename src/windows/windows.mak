@@ -15,6 +15,22 @@ OSOBJS = $(OBJ)/windows/winmain.o $(OBJ)/windows/fileio.o $(OBJ)/windows/config.
 	 $(OBJ)/windows/winddraw.o \
 	 $(OBJ)/windows/asmblit.o $(OBJ)/windows/asmtile.o
 
+ifdef MESS
+CFLAGS += -DWINUI -DEMULATORDLL=\"$(EMULATORDLL)\"
+OSOBJS += \
+	$(OBJ)/mess/windows/dirio.o		\
+	$(OBJ)/mess/windows/dirutils.o	\
+	$(OBJ)/mess/windows/messwin.o	\
+	$(OBJ)/mess/windows/configms.o	\
+	$(OBJ)/mess/windows/menu.o		\
+	$(OBJ)/mess/windows/opcntrl.o	\
+	$(OBJ)/mess/windows/dialog.o	\
+	$(OBJ)/mess/windows/tapedlg.o	\
+	$(OBJ)/mess/windows/parallel.o	\
+	$(OBJ)/mess/windows/strconv.o	\
+	$(OBJ)/mess/windows/winutils.o
+endif 
+
 # add resource file if no UI
 ifeq ($(WINUI),)
 OSOBJS += $(OBJ)/windows/mame.res
@@ -29,8 +45,8 @@ RESFILE=$(OBJ)/mess/windows/mess.res
 # enable guard pages on all memory allocations in the debug build
 ifdef DEBUG
 ifndef MESS
-#OSOBJS += $(OBJ)/windows/winalloc.o
-#LDFLAGS += -Wl,--allow-multiple-definition
+OSOBJS += $(OBJ)/windows/winalloc.o
+LDFLAGS += -Wl,--allow-multiple-definition
 endif
 endif
 
