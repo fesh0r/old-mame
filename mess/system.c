@@ -183,7 +183,7 @@ TESTDRIVER( coleconb )	/* ColecoVision (No BIOS load)						*/
 	DRIVER( advision )	/* Adventurevision									*/
 
 	/* CAPCOM */
-TESTDRIVER( sfzch ) 	/* CPS Changer (Street Fighter ZERO)				*/
+	DRIVER( sfzch ) 	/* CPS Changer (Street Fighter ZERO)				*/
 
 	/* MAGNAVOX */
 	DRIVER( odyssey2 )	/* Magnavox Odyssey 2 - 1978-1983					*/
@@ -637,7 +637,7 @@ TESTDRIVER( mekd2 )     /* 1977 Motorola Evaluation Kit						*/
 	/* PK-01 Lviv */
 	DRIVER( lviv )		/* PK-01 Lviv										*/
 	DRIVER( lviva )		/* PK-01 Lviv (alternate)							*/
-	DRIVER( lvive )		/* PK-01 Lviv (early)								*/
+	DRIVER( lvivp )		/* PK-01 Lviv (early)								*/
 
 	/* Tesla */
 	TESTDRIVER( pmd85 )	/* PMD-85.1											*/

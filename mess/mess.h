@@ -18,7 +18,7 @@
    debug code, which should not be found in distributions, like testdrivers,...
    contrary to MAME_DEBUG, NDEBUG it should not be found in the makefiles of distributions
    use it in your private root makefile */
-//#define MESS_DEBUG
+/* #define MESS_DEBUG */
 
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 	#include <stdbool.h>
@@ -89,12 +89,6 @@ extern int tapecontrol(struct mame_bitmap *bitmap, int selected);
 #define INIT_FAIL 1
 #define IMAGE_VERIFY_PASS 0
 #define IMAGE_VERIFY_FAIL 1
-
-/* handy functions for memory pools */
-void pool_init(void **pool);
-void pool_exit(void **pool);
-void *pool_malloc(void **pool, size_t size);
-char *pool_strdup(void **pool, const char *src);
 
 /* possible values for osd_fopen() last argument:
  * OSD_FOPEN_READ

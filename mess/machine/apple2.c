@@ -98,22 +98,27 @@ MACHINE_INIT( apple2e )
 void apple2_interrupt(void)
 {
 	int irq_freq = 1;
+	int scanline;
 
 	profiler_mark(PROFILER_A2INT);
 
-	irq_freq --;
-	if (irq_freq < 0)
-		irq_freq = 1;
+	scanline = cpu_getscanline();
 
-	/* We poll the keyboard periodically to scan the keys.  This is
-	   actually consistent with how the AY-3600 keyboard controller works. */
-	AY3600_interrupt();
+	if (scanline > 190)
+	{
+		irq_freq --;
+		if (irq_freq < 0)
+			irq_freq = 1;
 
-	/* control-reset mapped to control-delete */
-	if (osd_is_key_pressed (KEYCODE_LCONTROL) && osd_is_key_pressed (KEYCODE_BACKSPACE))
-		cpu_set_reset_line (0,PULSE_LINE);
-	else if (irq_freq)
-		cpu_set_irq_line(0, M6502_IRQ_LINE, PULSE_LINE);
+		/* We poll the keyboard periodically to scan the keys.  This is
+		actually consistent with how the AY-3600 keyboard controller works. */
+		AY3600_interrupt();
+
+		if (irq_freq)
+			cpu_set_irq_line(0, M6502_IRQ_LINE, PULSE_LINE);
+	}
+
+	force_partial_update(scanline);
 
 	profiler_mark(PROFILER_END);
 }
@@ -385,7 +390,7 @@ READ_HANDLER ( apple2_c05x_r )
 		case 0x0F:		a2.AN3   = 0x00; break;
 	}
 
-	return 0;
+	return ((offset == 0) && (input_port_0_r(0) & 0x40)) ? 0x80 : 0;
 }
 
 /***************************************************************************
@@ -415,15 +420,15 @@ READ_HANDLER ( apple2_c06x_r )
 	switch (offset) {
 	case 0x01:
 		/* Open-Apple/Joystick button 0 */
-		result = input_port_1_r(0) & 0x02;
+		result = pressed_specialkey(SPECIALKEY_BUTTON0);
 		break;
 	case 0x02:
 		/* Closed-Apple/Joystick button 1 */
-		result = input_port_1_r(0) & 0x04;
+		result = pressed_specialkey(SPECIALKEY_BUTTON1);
 		break;
 	case 0x03:
 		/* Joystick button 2. Later revision motherboards connected this to SHIFT also */
-		result = input_port_1_r(0) & 0x08;
+		result = pressed_specialkey(SPECIALKEY_BUTTON2);
 		break;
 	case 0x04:
 		/* X Joystick axis */

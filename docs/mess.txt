@@ -5,7 +5,7 @@
                     Official Page at: http://www.mess.org
                    ==========================================
 
-This document is generated for MESS 0.62 (Dec  9 2002)
+This document is generated for MESS 0.62.1 (Dec 30 2002)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.62 (Dec  9 2002)
+Here is the list of systems supported by MESS 0.62.1 (Dec 30 2002)
 Variants of the same system are not included, you can use the -listclones command
 to get a list of the alternate versions of a given system.
 
@@ -105,6 +105,7 @@ dat2html.exe.
 | BBC Micro Model A                       |  Yes  |  Yes  |  Yes  | bbca     |
 | Bally Pro Arcade/Astrocade              |  Yes  |  Yes  |  Yes  | astrocde |
 | C65 / C64DX                             |   No  |  Yes  |  Yes  | c65      |
+| CPS Changer                             |  Yes  |  Yes  |  Yes  | sfzch    |
 | Channel F                               |  Yes  |  Yes  |  Yes  | channelf |
 | Chess Champion MK II                    |  Yes  |  Yes  |  Yes  | mk2      |
 | Colecovision                            |  Yes  |  Yes  |  Yes  | coleco   |
@@ -122,8 +123,8 @@ dat2html.exe.
 | Game Gear - European/American           |  Yes  |  Yes  |  Yes  | gamegear |
 | GameBoy                                 |  Yes  |  Yes  |  Yes  | gameboy  |
 | IBM PC 10/27/82                         |  Yes  |  Yes  |  Yes  | ibmpc    |
-| Intellivision                           |   No  |  Yes  |  Yes  | intvsrs  |
 | Intellivision                           |   No  |  Yes  |  Yes  | intv     |
+| Intellivision                           |   No  |  Yes  |  Yes  | intvsrs  |
 | Intellivision Keyboard Component        |   No  |  Yes  |  Yes  | intvkbd  |
 | Jupiter Ace                             |  Yes  |  Yes  |  Yes  | jupiter  |
 | KC 85/3                                 |   No  |  Yes  |  Yes  | kc85_3   |

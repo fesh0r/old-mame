@@ -3,6 +3,7 @@
 #include "includes/flopdrv.h"
 #include "config.h"
 #include "utils.h"
+#include "mscommon.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -49,6 +50,13 @@ void *image_malloc(int type, int id, size_t size)
 	struct image_info *img;
 	img = get_image(type, id);
 	return pool_malloc(&img->memory_pool, size);
+}
+
+void *image_realloc(int type, int id, void *ptr, size_t size)
+{
+	struct image_info *img;
+	img = get_image(type, id);
+	return pool_realloc(&img->memory_pool, ptr, size);
 }
 
 char *image_strdup(int type, int id, const char *src)

@@ -9,124 +9,115 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 #include "includes/apple1.h"
+#include "mscommon.h"
 
-static	int	dsp_pntr;
+static struct terminal *apple1_terminal;
+
+/**************************************************************************/
+
+static int apple1_getcursorcode(int original_code)
+{
+	return 1;
+}
+
+/**************************************************************************/
 
 VIDEO_START( apple1 )
 {
-	dsp_pntr = 0;
-	if (!(videoram = auto_malloc (videoram_size = 40 * 24)))
-		return (1);;
-	if (video_start_generic ())
-		return (1);
+	apple1_terminal = terminal_create(
+		0,
+		0,
+		8,
+		apple1_getcursorcode,
+		40, 24);
+	if (!apple1_terminal)
+		return 1;
 
-	memset (videoram, 0, videoram_size);
-	memset (dirtybuffer, 1, videoram_size);
-	return (0);
+	terminal_setcursor(apple1_terminal, 0, 0);
+	return 0;
 }
 
-void	apple1_vh_dsp_w (int data)
+void apple1_vh_dsp_w (int data)
 {
-	int	loop;
+	int	x, y, thischar, abovechar;
+	int cur_x, cur_y;
 
 	data &= 0x7f;
+
+	terminal_getcursor(apple1_terminal, &cur_x, &cur_y);
 
 	switch (data) {
 	case 0x0a:
 	case 0x0d:
-		dirtybuffer[dsp_pntr] = 1;
-		dsp_pntr += 40 - (dsp_pntr % 40);
+		cur_x = 0;
+		cur_y++;
 		break;
 	case 0x5f:
-		dirtybuffer[dsp_pntr] = 1;
-		if (dsp_pntr) dsp_pntr--;
-		videoram[dsp_pntr] = 0;
+		if (cur_x)
+		{
+			cur_x--;
+		}
+		else if (cur_y)
+		{
+			cur_x = 39;
+			cur_y--;
+		}
+		terminal_putchar(apple1_terminal, cur_x, cur_y, 0);
 		break;
 	default:
-		dirtybuffer[dsp_pntr] = 1;
-		videoram[dsp_pntr] = data;
-		dsp_pntr++;
+		terminal_putchar(apple1_terminal, cur_x, cur_y, data);
+		if (cur_x < 39)
+		{
+			cur_x++;
+		}
+		else
+		{
+			cur_x = 0;
+			cur_y++;
+		}
 		break;
 	}
 
-/* || */
-
-	if (dsp_pntr >= 960)
+	/* scroll */
+	while (cur_y >= 24)
 	{
-		for (loop = 40; loop < 960; loop++)
+		for (y = 1; y < 24; y++)
 		{
-			if (!videoram[loop - 40] || ((videoram[loop - 40] > 1) &&
-										(videoram[loop - 40] <= 32)) ||
-										(videoram[loop - 40] > 96))
+			for (x = 0; x < 40; x++)
 			{
-				if (!(!videoram[loop] || ((videoram[loop] > 1) &&
-										(videoram[loop] <= 32)) ||
-										(videoram[loop] > 96)))
+				thischar = terminal_getchar(apple1_terminal, x, y);
+				abovechar = terminal_getchar(apple1_terminal, x, y-1);
+
+				if ((abovechar <= 32) || (abovechar > 96))
 				{
-					videoram[loop - 40] = videoram[loop];
-					dirtybuffer[loop - 40] = 1;
+					if ((thischar > 32) && (thischar <= 96))
+						terminal_putchar(apple1_terminal, x, y-1, thischar);
+				}
+				else if (thischar != abovechar)
+				{
+					terminal_putchar(apple1_terminal, x, y-1, thischar);
 				}
 			}
-			else if (videoram[loop - 40] != videoram[loop])
-			{
-				videoram[loop - 40] = videoram[loop];
-				dirtybuffer[loop - 40] = 1;
-			}
 		}
-		for (loop = 920; loop < 960; loop++)
+
+		for (x = 0; x < 40; x++)
 		{
-			if (!(!videoram[loop] || ((videoram[loop] > 1) &&
-						(videoram[loop] <= 32)) || (videoram[loop] > 96)))
-			{
-				videoram[loop] = 0;
-				dirtybuffer[loop] = 1;
-			}
+			thischar = terminal_getchar(apple1_terminal, x, 23);
+			if ((thischar > 32) && (thischar <= 96))
+				terminal_putchar(apple1_terminal, x, 23, 0);
 		}
-		dsp_pntr -= 40;
+		cur_y--;
 	}
+	terminal_setcursor(apple1_terminal, cur_x, cur_y);
 }
 
-void	apple1_vh_dsp_clr (void)
+void apple1_vh_dsp_clr (void)
 {
-	int	loop;
-
-	dirtybuffer[dsp_pntr] = 1;
-	dsp_pntr = 0;
-	for (loop = 0; loop < 960; loop++)
-	{
-		if (!(!videoram[loop] || ((videoram[loop] > 1) &&
-						(videoram[loop] <= 32)) || (videoram[loop] > 96)))
-		{
-			dirtybuffer[loop] = 1;
-		}
-		videoram[loop] = 0;
-	}
+	terminal_setcursor(apple1_terminal, 0, 0);
+	terminal_clear(apple1_terminal, 0);
 }
 
 VIDEO_UPDATE( apple1 )
 {
-	int offs;
-	int code;
-	int sx, sy;
-	int full_refresh = 1;
-
-	/* do we need a full refresh? */
-
-	if (full_refresh) memset (dirtybuffer, 1, videoram_size);
-
-	for (offs = 0; offs < videoram_size; offs++ )
-	{
-		if (dirtybuffer[offs] || (offs == dsp_pntr))
-		{
-			if (offs == dsp_pntr) code = 1;
-			else code = videoram[offs];
-			sy = (offs / 40) * 8;
-			sx = (offs % 40) * 7;
-
-			drawgfx (bitmap, Machine->gfx[0], code, 1,
-			  0, 0, sx,sy, &Machine->visible_area, TRANSPARENCY_NONE, 0);
-
-			dirtybuffer[offs] = 0;
-		}
-	}
+	terminal_draw(bitmap, NULL, apple1_terminal);
 }

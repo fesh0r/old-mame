@@ -156,8 +156,12 @@ INPUT_PORTS_START( apple2 )
     PORT_KEY1( 0x02, IP_ACTIVE_HIGH, "Left Shift",		KEYCODE_LSHIFT,		IP_JOY_NONE, UCHAR_SHIFT_1 )
     PORT_KEY1( 0x04, IP_ACTIVE_HIGH, "Right Shift",		KEYCODE_RSHIFT,		IP_JOY_NONE, UCHAR_SHIFT_1 )
     PORT_KEY1( 0x08, IP_ACTIVE_HIGH, "Left Control",	KEYCODE_LCONTROL,	IP_JOY_NONE, UCHAR_SHIFT_2 )
-    PORT_BITX( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON3,	"Button 3",	IP_KEY_DEFAULT,	IP_JOY_DEFAULT )
-    PORT_BITX( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD,	"Reset",	KEYCODE_F3,		IP_JOY_NONE )
+	PORT_KEY0( 0x10, IP_ACTIVE_HIGH, "Open Apple",		KEYCODE_LALT,		IP_JOY_NONE)
+	PORT_KEY0( 0x20, IP_ACTIVE_HIGH, "Closed Apple",	KEYCODE_RALT,		IP_JOY_NONE)
+    PORT_BITX( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1,	"Button 0",	IP_KEY_DEFAULT,	IP_JOY_DEFAULT )
+    PORT_BITX( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2,	"Button 1",	IP_KEY_DEFAULT,	IP_JOY_DEFAULT )
+    PORT_BITX( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3,	"Button 2",	IP_KEY_DEFAULT,	IP_JOY_DEFAULT )
+    PORT_BITX( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD,	"Reset",	KEYCODE_F3,		IP_JOY_NONE )
 
 	PORT_START /* [9] Joystick X Axis */
 	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER1 | IPF_CENTER, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0, 0xff, KEYCODE_4_PAD, KEYCODE_6_PAD, JOYCODE_1_LEFT, JOYCODE_1_RIGHT)
@@ -176,7 +180,7 @@ static struct GfxLayout apple2_text_layout =
     8*8        /* every char takes 8 bytes */
 };
 
-static struct GfxLayout apple2_dbl_text_layout =
+static struct GfxLayout apple2_dbltext_layout =
 {
     7,8,           /* 7*8 characters */
     256,           /* 256 characters */
@@ -187,72 +191,10 @@ static struct GfxLayout apple2_dbl_text_layout =
     8*8        /* every char takes 8 bytes */
 };
 
-static struct GfxLayout apple2_lores_layout =
-{
-    14,8,          /* 14*8 characters */
-    0x100,         /* 0x100 characters */
-    1,             /* 1 bits per pixel */
-    { 0 },         /* no bitplanes; 1 bit per pixel */
-    { 7+16, 6+16, 5+16, 4+16, 3+16, 2+16, 1+16,
-      0+16, 7+16, 6+16, 5+16, 4+16, 3+16, 2+16 },   /* x offsets */
-    { 0, 0, 0, 0, 4*8, 4*8, 4*8, 4*8 },
-    8*8        /* every char takes 8 bytes */
-};
-
-static struct GfxLayout apple2_dbl_lores_layout =
-{
-    7,8,           /* 7*16 characters */
-    0x100,         /* 0x100 characters */
-    1,             /* 1 bits per pixel */
-    { 0 },         /* no bitplanes; 1 bit per pixel */
-    { 7+16, 6+16, 5+16, 4+16, 3+16, 2+16, 1+16 },   /* x offsets */
-    { 0, 0, 0, 0, 4*8, 4*8, 4*8, 4*8 },
-    8*8        /* every char takes 8 bytes */
-};
-
-static struct GfxLayout apple2_hires_layout =
-{
-    14,1,          /* 14*1 characters */
-    0x80,          /* 0x80 characters */
-    1,             /* 1 bits per pixel */
-    { 0 },         /* no bitplanes; 1 bit per pixel */
-    { 7, 7, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1 },   /* x offsets */
-    { 0 },
-    8*8        /* every char takes 1 byte */
-};
-
-static struct GfxLayout apple2_hires_shifted_layout =
-{
-    14,1,          /* 14*1 characters */
-    0x80,          /* 0x80 characters */
-    1,             /* 1 bits per pixel */
-    { 0 },         /* no bitplanes; 1 bit per pixel */
-    { 0, 7, 7, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1 },   /* x offsets */
-    { 0 },
-    8*8        /* every char takes 1 byte */
-};
-
-static struct GfxLayout apple2_dbl_hires_layout =
-{
-    7,1,           /* 7*2 characters */
-    0x800,         /* 0x800 characters */
-    1,             /* 1 bits per pixel */
-    { 0 },         /* no bitplanes; 1 bit per pixel */
-    { 7, 6, 5, 4, 3, 2, 1 },    /* x offsets */
-    { 0 },
-    8*1        /* every char takes 1 byte */
-};
-
 static struct GfxDecodeInfo apple2_gfxdecodeinfo[] =
 {
     { 1, 0x0000, &apple2_text_layout, 0, 16 },
-    { 1, 0x0000, &apple2_dbl_text_layout, 0, 16 },
-    { 1, 0x0800, &apple2_lores_layout, 0, 16 },     /* Even characters */
-    { 1, 0x0801, &apple2_lores_layout, 0, 16 },     /* Odd characters */
-    { 1, 0x0800, &apple2_dbl_lores_layout, 0, 16 },
-    { 1, 0x0800, &apple2_hires_layout, 0, 16 },
-    { 1, 0x0C00, &apple2_hires_shifted_layout, 0, 16 },
-    { 1, 0x0800, &apple2_dbl_hires_layout, 0, 16 },
+    { 1, 0x0000, &apple2_dbltext_layout, 0, 16 },
 MEMORY_END   /* end of array */
 
 static unsigned char apple2_palette[] =
@@ -336,7 +278,7 @@ static MACHINE_DRIVER_START( standard )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, 1022727)        /* 1.023 Mhz */
 	MDRV_CPU_MEMORY(readmem_apple2, writemem_apple2)
-	MDRV_CPU_VBLANK_INT(apple2_interrupt, 1)
+	MDRV_CPU_VBLANK_INT(apple2_interrupt, 192/8)
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
