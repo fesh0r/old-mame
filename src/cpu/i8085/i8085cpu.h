@@ -21,9 +21,11 @@
 
 #define IM_SID          0x80
 #define IM_SOD          0x40
-#define IM_IEN          0x20
+//#define IM_IEN          0x20
+#define IM_INTR         0x20 //AT: the 8085 ignores bit 0x20. we move IM_INTR here for compatibility.
 #define IM_TRAP         0x10
-#define IM_INTR         0x08
+//#define IM_INTR         0x08
+#define IM_IEN          0x08 //AT: RIM returns IEN status on this bit. SIM checks this bit to allow masking RST55-75
 #define IM_RST75        0x04
 #define IM_RST65        0x02
 #define IM_RST55        0x01
@@ -230,6 +232,7 @@ int q = I.AF.b.h+R; 											\
 
 #define M_JMP(cc) { 											\
 	if (cc) {													\
+		i8085_ICount -= 3;										\
 		I.PC.w.l = ARG16(); 									\
 		change_pc16(I.PC.d);									\
 	} else I.PC.w.l += 2;										\
@@ -254,3 +257,15 @@ int q = I.AF.b.h+R; 											\
 }
 
 
+#define M_DSUB() {												\
+	int q = I.HL.b.l-I.BC.b.l;									\
+	I.AF.b.l=ZS[q&255]|((q>>8)&CF)|NF|							\
+		((I.HL.b.l^q^I.BC.b.l)&HF)|								\
+		(((I.BC.b.l^I.HL.b.l)&(I.HL.b.l^q)&SF)>>5);				\
+	I.HL.b.l=q; 												\
+	q = I.HL.b.h-I.BC.b.h-(I.AF.b.l&CF);						\
+	I.AF.b.l=ZS[q&255]|((q>>8)&CF)|NF|							\
+		((I.HL.b.h^q^I.BC.b.h)&HF)|								\
+		(((I.BC.b.h^I.HL.b.h)&(I.HL.b.h^q)&SF)>>5);				\
+	if (I.HL.b.l!=0) I.AF.b.l&=~ZF;								\
+}

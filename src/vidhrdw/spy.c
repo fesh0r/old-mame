@@ -2,6 +2,8 @@
 #include "vidhrdw/konamiic.h"
 
 
+int spy_video_enable;
+
 static int layer_colorbase[3],sprite_colorbase;
 
 
@@ -26,11 +28,14 @@ static void tile_callback(int layer,int bank,int *code,int *color)
 
 ***************************************************************************/
 
-static void sprite_callback(int *code,int *color,int *priority,int *shadow)
+static void sprite_callback(int *code,int *color,int *priority_mask,int *shadow)
 {
 	/* bit 4 = priority over layer A (0 = have priority) */
 	/* bit 5 = priority over layer B (1 = have priority) */
-	*priority = (*color & 0x30) >> 4;
+	*priority_mask = 0x00;
+	if ( *color & 0x10) *priority_mask |= 0xa;
+	if (~*color & 0x20) *priority_mask |= 0xc;
+
 	*color = sprite_colorbase + (*color & 0x0f);
 }
 
@@ -41,29 +46,18 @@ static void sprite_callback(int *code,int *color,int *priority,int *shadow)
 
 ***************************************************************************/
 
-int spy_vh_start(void)
+VIDEO_START( spy )
 {
 	layer_colorbase[0] = 48;
 	layer_colorbase[1] = 0;
 	layer_colorbase[2] = 16;
 	sprite_colorbase = 32;
 	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tile_callback))
-	{
 		return 1;
-	}
 	if (K051960_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER,sprite_callback))
-	{
-		K052109_vh_stop();
 		return 1;
-	}
 
 	return 0;
-}
-
-void spy_vh_stop(void)
-{
-	K052109_vh_stop();
-	K051960_vh_stop();
 }
 
 
@@ -74,17 +68,20 @@ void spy_vh_stop(void)
 
 ***************************************************************************/
 
-void spy_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
+VIDEO_UPDATE( spy )
 {
 	K052109_tilemap_update();
 
-	fillbitmap(bitmap,Machine->pens[16 * layer_colorbase[0]],&Machine->visible_area);
-	K051960_sprites_draw(bitmap,1,1);	/* are these used? */
-	K052109_tilemap_draw(bitmap,1,0,0);
-	K051960_sprites_draw(bitmap,0,0);
-	K052109_tilemap_draw(bitmap,2,0,0);
-	K051960_sprites_draw(bitmap,3,3);	/* are these used? They are supposed to have */
-										/* priority over layer B but not layer A. */
-	K051960_sprites_draw(bitmap,2,2);
-	K052109_tilemap_draw(bitmap,0,0,0);
+	fillbitmap(priority_bitmap, 0, cliprect);
+
+	if (!spy_video_enable)
+	{
+		fillbitmap(bitmap,Machine->pens[16 * layer_colorbase[0]],cliprect);
+		return;
+	}
+
+	tilemap_draw(bitmap,cliprect,K052109_tilemap[1],TILEMAP_IGNORE_TRANSPARENCY,1);
+	tilemap_draw(bitmap,cliprect,K052109_tilemap[2],0,2);
+	K051960_sprites_draw(bitmap,cliprect,-1,-1);
+	tilemap_draw(bitmap,cliprect,K052109_tilemap[0],0,0);
 }

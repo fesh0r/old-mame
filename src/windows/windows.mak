@@ -1,11 +1,16 @@
 # only Windows specific output files and rules
 # the first two targets generate the prefix.h header
 # note this requires that OSOBJS be the first target
-OSOBJS = $(OBJ)/windows/winmain.o  $(OBJ)/windows/config.o \
+#
+OSOBJS = $(OBJ)/windows/winmain.o $(OBJ)/windows/fileio.o $(OBJ)/windows/config.o \
 	 $(OBJ)/windows/ticker.o $(OBJ)/windows/fronthlp.o $(OBJ)/windows/video.o \
 	 $(OBJ)/windows/input.o $(OBJ)/windows/sound.o $(OBJ)/windows/blit.o \
 	 $(OBJ)/windows/snprintf.o $(OBJ)/windows/rc.o $(OBJ)/windows/misc.o \
-	 $(OBJ)/windows/window.o $(OBJ)/windows/winddraw.o $(OBJ)/windows/asmblit.o
+	 $(OBJ)/windows/window.o $(OBJ)/windows/winddraw.o $(OBJ)/windows/asmblit.o \
+	 $(OBJ)/windows/asmtile.o
+
+# uncomment this line to enable guard pages on all memory allocations
+OSOBJS += $(OBJ)/windows/winalloc.o
 
 ifndef MESS
 OSOBJS += $(OBJ)/windows/fileio.o 
@@ -17,7 +22,11 @@ endif
 # video blitting functions
 $(OBJ)/windows/asmblit.o: src/windows/asmblit.asm
 	@echo Assembling $<...
-#	$(ASM) -e $(ASMFLAGS) $(subst -D,-d,$(ASMDEFS)) $<
+	$(ASM) -o $@ $(ASMFLAGS) $(subst -D,-d,$(ASMDEFS)) $<
+
+# tilemap blitting functions
+$(OBJ)/windows/asmtile.o: src/windows/asmtile.asm
+	@echo Assembling $<...
 	$(ASM) -o $@ $(ASMFLAGS) $(subst -D,-d,$(ASMDEFS)) $<
 
 ifndef MSVC
@@ -36,6 +45,8 @@ endif
 # due to quirks of using /bin/sh, we need to explicitly specify the current path
 CURPATH = ./
 
-ifdef MESS
-include src/windowsui/windowsui.mak
+# if building with a UI, set the C flags and include the ui.mak
+ifneq ($(WINUI),)
+CFLAGS+= -DWINUI=1
+include src/ui/ui.mak
 endif

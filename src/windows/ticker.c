@@ -11,7 +11,6 @@
 
 // MAME headers
 #include "driver.h"
-#include "ticker.h"
 
 #ifndef _MSC_VER
 #define HAS_RDTSC 1
@@ -24,9 +23,9 @@
 //	PROTOTYPES
 //============================================================
 
-static TICKER init_ticker(void);
-static TICKER rdtsc_ticker(void);
-static TICKER time_ticker(void);
+static cycles_t init_cycle_counter(void);
+static cycles_t rdtsc_cycle_counter(void);
+static cycles_t time_cycle_counter(void);
 
 
 
@@ -34,17 +33,34 @@ static TICKER time_ticker(void);
 //	GLOBAL VARIABLES
 //============================================================
 
-// global ticker function and divider
-TICKER			(*ticker)(void) = init_ticker;
-TICKER			ticks_per_sec;
+// global cycle_counter function and divider
+cycles_t		(*cycle_counter)(void) = init_cycle_counter;
+cycles_t		cycles_per_sec;
 
 
 
 //============================================================
-//	init_ticker
+//	init_cycle_counter
 //============================================================
 
-#if HAS_RDTSC
+#ifdef _MSC_VER
+
+static int has_rdtsc(void)
+{
+	int nFeatures;
+
+	__asm {
+
+		mov eax, 1
+		cpuid
+		mov nFeatures, edx
+	}
+
+	return ((nFeatures & 0x10) == 0x10) ? TRUE : FALSE;
+}
+
+#else
+
 static int has_rdtsc(void)
 {
 	int result;
@@ -64,18 +80,18 @@ static int has_rdtsc(void)
 	);
 	return result;
 }
-#else
-#define has_rdtsc()	(0)
-#endif // HAS_RDTSC
+
+#endif
+
 
 
 //============================================================
-//	init_ticker
+//	init_cycle_counter
 //============================================================
 
-static TICKER init_ticker(void)
+static cycles_t init_cycle_counter(void)
 {
-	TICKER start, end;
+	cycles_t start, end;
 	DWORD a, b;
 	int priority;
 
@@ -83,15 +99,15 @@ static TICKER init_ticker(void)
 	// it is more precise and has less overhead than timeGetTime()
 	if (has_rdtsc())
 	{
-		ticker = rdtsc_ticker;
+		cycle_counter = rdtsc_cycle_counter;
 		logerror("using RDTSC for timing ... ");
 	}
 	else
 	{
-		ticker = time_ticker;
+		cycle_counter = time_cycle_counter;
 		logerror("using timeGetTime for timing ... ");
 	}
-	
+
 	// temporarily set our priority higher
 	priority = GetThreadPriority(GetCurrentThread());
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
@@ -102,39 +118,59 @@ static TICKER init_ticker(void)
 	{
 		b = timeGetTime();
 	} while (a == b);
-	
-	// get the starting ticker
-	start = ticker();
-	
+
+	// get the starting cycle count
+	start = (*cycle_counter)();
+
 	// now wait for 1/4 second total
 	do
 	{
 		a = timeGetTime();
 	} while (a - b < 250);
-	
-	// get the ending ticker
-	end = ticker();
-	
+
+	// get the ending cycle count
+	end = (*cycle_counter)();
+
 	// compute ticks_per_sec
-	ticks_per_sec = (end - start) * 4;
-	
+	cycles_per_sec = (end - start) * 4;
+
 	// reduce our priority
 	SetThreadPriority(GetCurrentThread(), priority);
-	
+
 	// log the results
-	logerror("ticks/second = %d\n", (int)ticks_per_sec);
-	
-	// return the current ticker value
-	return ticker();
+	logerror("cycles/second = %d\n", (int)cycles_per_sec);
+
+	// return the current cycle count
+	return (*cycle_counter)();
 }
 
 
 
 //============================================================
-//	rdtsc_ticker
+//	rdtsc_cycle_counter
 //============================================================
 
-static TICKER rdtsc_ticker(void)
+#ifdef _MSC_VER
+
+static cycles_t rdtsc_cycle_counter(void)
+{
+	INT64 result;
+	INT64 *presult = &result;
+
+	__asm {
+
+		rdtsc
+		mov ebx, presult
+		mov [ebx],eax
+		mov [ebx+4],edx
+	}
+
+	return result;
+}
+
+#else
+
+static cycles_t rdtsc_cycle_counter(void)
 {
 #if HAS_RDTSC
 	INT64 result;
@@ -151,14 +187,38 @@ static TICKER rdtsc_ticker(void)
 #endif // HAS_RDTSC
 }
 
+#endif
+
 
 
 //============================================================
-//	time_ticker
+//	time_cycle_counter
 //============================================================
 
-static TICKER time_ticker(void)
+static cycles_t time_cycle_counter(void)
 {
 	// use timeGetTime
-	return (TICKER)timeGetTime();
+	return (cycles_t)timeGetTime();
+}
+
+
+
+//============================================================
+//	osd_cycles
+//============================================================
+
+cycles_t osd_cycles(void)
+{
+	return (*cycle_counter)();
+}
+
+
+
+//============================================================
+//	osd_cycles_per_second
+//============================================================
+
+cycles_t osd_cycles_per_second(void)
+{
+	return cycles_per_sec;
 }

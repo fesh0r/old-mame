@@ -46,11 +46,10 @@ READ_HANDLER( phoenix_input_port_0_r );
 READ_HANDLER( pleiads_input_port_0_r );
 READ_HANDLER( survival_input_port_0_r );
 READ_HANDLER( survival_protection_r );
-void phoenix_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-void pleiads_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-int  phoenix_vh_start(void);
-void phoenix_vh_stop(void);
-void phoenix_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+PALETTE_INIT( phoenix );
+PALETTE_INIT( pleiads );
+VIDEO_START( phoenix );
+VIDEO_UPDATE( phoenix );
 
 WRITE_HANDLER( phoenix_sound_control_a_w );
 WRITE_HANDLER( phoenix_sound_control_b_w );
@@ -129,9 +128,7 @@ INPUT_PORTS_START( phoenix )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
 	PORT_START		/* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x07, IP_ACTIVE_LOW, IPT_SPECIAL )	/* comes from IN0 0-2 */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY | IPF_COCKTAIL  )
@@ -178,9 +175,7 @@ INPUT_PORTS_START( phoenixa )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
 	PORT_START		/* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x07, IP_ACTIVE_LOW, IPT_SPECIAL )	/* comes from IN0 0-2 */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY | IPF_COCKTAIL  )
@@ -228,9 +223,7 @@ INPUT_PORTS_START( phoenixt )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
 	PORT_START		/* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x07, IP_ACTIVE_LOW, IPT_SPECIAL )	/* comes from IN0 0-2 */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY | IPF_COCKTAIL  )
@@ -277,9 +270,7 @@ INPUT_PORTS_START( phoenix3 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
 	PORT_START		/* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x07, IP_ACTIVE_LOW, IPT_SPECIAL )	/* comes from IN0 0-2 */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY | IPF_COCKTAIL  )
@@ -314,6 +305,54 @@ INPUT_PORTS_START( phoenix3 )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
 INPUT_PORTS_END
 
+INPUT_PORTS_START( condor )
+	PORT_START		/* IN0 */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START1 )
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START2 )
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_2WAY )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_2WAY )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON2 )
+
+	PORT_START		/* IN1 */
+	PORT_BIT( 0x07, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* comes from IN0 0-2 */
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_2WAY | IPF_COCKTAIL  )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_2WAY | IPF_COCKTAIL  )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON2 | IPF_COCKTAIL  )
+
+	PORT_START		/* DSW0 */
+	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )
+	PORT_DIPSETTING(	0x00, "3" )
+	PORT_DIPSETTING(	0x01, "4" )
+	PORT_DIPSETTING(	0x02, "5" )
+	PORT_DIPSETTING(	0x03, "6" )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(	0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x70, 0x30, "Fuel Consumption" )
+	PORT_DIPSETTING(	0x00, "Slowest" )
+	PORT_DIPSETTING(	0x10, "Slower" )
+	PORT_DIPSETTING(	0x20, "Slow" )
+	PORT_DIPSETTING(	0x30, "Bit Slow" )
+	PORT_DIPSETTING(	0x40, "Bit Fast" )
+	PORT_DIPSETTING(	0x50, "Fast" )
+	PORT_DIPSETTING(	0x60, "Faster" )
+	PORT_DIPSETTING(	0x70, "Fastest" )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
+
+	PORT_START		/* fake port for non-memory mapped dip switch */
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
+INPUT_PORTS_END
+
 INPUT_PORTS_START( pleiads )
 	PORT_START		/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -326,9 +365,7 @@ INPUT_PORTS_START( pleiads )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
 	PORT_START		/* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x07, IP_ACTIVE_LOW, IPT_SPECIAL )	/* comes from IN0 0-2 */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY | IPF_COCKTAIL  )
@@ -375,9 +412,7 @@ INPUT_PORTS_START( pleiadce )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
 	PORT_START		/* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x07, IP_ACTIVE_LOW, IPT_SPECIAL )	/* comes from IN0 0-2 */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY | IPF_COCKTAIL  )
@@ -424,9 +459,7 @@ INPUT_PORTS_START( survival )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
 
 	PORT_START		/* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x07, IP_ACTIVE_LOW, IPT_SPECIAL )	/* comes from IN0 0-2 */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_COCKTAIL )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_COCKTAIL  )
@@ -540,91 +573,87 @@ static struct AY8910interface survival_ay8910_interface =
 
 
 
-#define MACHINE_DRIVER(NAME, PENS)									\
-																	\
-static struct MachineDriver machine_driver_##NAME = 				\
-{																	\
-	/* basic machine hardware */									\
-	{																\
-		{															\
-			CPU_8085A,												\
-			11000000/4,	/* 2.75 MHz */								\
-			NAME##_readmem,NAME##_writemem,0,0,						\
-			ignore_interrupt,1										\
-		}															\
-	},																\
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */	\
-	1,	/* single CPU, no need for interleaving */					\
-	0,																\
-																	\
-	/* video hardware */											\
-	32*8, 32*8, { 0*8, 31*8-1, 0*8, 26*8-1 },						\
-	NAME##_gfxdecodeinfo,											\
-	256,PENS*4+PENS*4,												\
-	NAME##_vh_convert_color_prom,									\
-																	\
-	VIDEO_TYPE_RASTER,												\
-	0,																\
-	phoenix_vh_start,												\
-	phoenix_vh_stop,												\
-	phoenix_vh_screenrefresh,										\
-																	\
-	/* sound hardware */											\
-	0,0,0,0,														\
-	{																\
-		{															\
-			SOUND_TMS36XX,											\
-			&NAME##_tms36xx_interface								\
-		},															\
-		{															\
-			SOUND_CUSTOM,											\
-			&NAME##_custom_interface								\
-		}															\
-	}																\
-};
+static MACHINE_DRIVER_START( phoenix )
 
-MACHINE_DRIVER(phoenix,16)
-MACHINE_DRIVER(pleiads,32)
+	/* basic machine hardware */
+	MDRV_CPU_ADD_TAG("main", 8085A, 11000000/4)	/* 2.75 MHz */
+	MDRV_CPU_MEMORY(phoenix_readmem,phoenix_writemem)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)	/* frames per second, vblank duration */
+
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(32*8, 32*8)
+	MDRV_VISIBLE_AREA(0*8, 31*8-1, 0*8, 26*8-1)
+	MDRV_GFXDECODE(phoenix_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(256)
+	MDRV_COLORTABLE_LENGTH(16*4+16*4)
+
+	MDRV_PALETTE_INIT(phoenix)
+	MDRV_VIDEO_START(phoenix)
+	MDRV_VIDEO_UPDATE(phoenix)
+
+	/* sound hardware */
+	MDRV_SOUND_ADD_TAG("tms",  TMS36XX, phoenix_tms36xx_interface)
+	MDRV_SOUND_ADD_TAG("cust", CUSTOM, phoenix_custom_interface)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( pleiads )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(phoenix)
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MEMORY(pleiads_readmem,pleiads_writemem)
+
+	/* video hardware */
+	MDRV_GFXDECODE(pleiads_gfxdecodeinfo)
+	MDRV_COLORTABLE_LENGTH(32*4+32*4)
+
+	MDRV_PALETTE_INIT(pleiads)
+
+	/* sound hardware */
+	MDRV_SOUND_REPLACE("tms",  TMS36XX, pleiads_tms36xx_interface)
+	MDRV_SOUND_REPLACE("cust", CUSTOM, pleiads_custom_interface)
+MACHINE_DRIVER_END
 
 
 /* Same as Phoenix, but uses an AY8910 and an extra visible line (column) */
 
-static const struct MachineDriver machine_driver_survival =
-{
+static MACHINE_DRIVER_START( survival )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_8085A,
-			11000000/4,	/* 2.75 MHz */
-			survival_readmem,survival_writemem,0,0,
-			ignore_interrupt,1
-		}
-	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,  /* frames per second, vblank duration */
-	1,	/* single CPU, no need for interleaving */
-	0,
+	MDRV_CPU_ADD(8085A,11000000/4)	/* 2.75 MHz */
+	MDRV_CPU_MEMORY(survival_readmem,survival_writemem)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	32*8, 32*8, { 0*8, 32*8-1, 0*8, 26*8-1 },
-	phoenix_gfxdecodeinfo,
-	256,16*4+16*4,
-	phoenix_vh_convert_color_prom,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(32*8, 32*8)
+	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 26*8-1)
+	MDRV_GFXDECODE(phoenix_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(256)
+	MDRV_COLORTABLE_LENGTH(16*4+16*4)
 
-	VIDEO_TYPE_RASTER,
-	0,
-	phoenix_vh_start,
-	phoenix_vh_stop,
-	phoenix_vh_screenrefresh,
+	MDRV_PALETTE_INIT(phoenix)
+	MDRV_VIDEO_START(phoenix)
+	MDRV_VIDEO_UPDATE(phoenix)
 
 	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_AY8910,
-			&survival_ay8910_interface
-		}
-	}
-};
+	MDRV_SOUND_ADD(AY8910, survival_ay8910_interface)
+MACHINE_DRIVER_END
+
+
+/* Uses a Z80 */
+static MACHINE_DRIVER_START( condor )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(phoenix)
+	MDRV_CPU_REPLACE("main", Z80, 11000000/4)	/* 2.75 MHz??? */
+MACHINE_DRIVER_END
 
 
 /***************************************************************************
@@ -753,6 +782,30 @@ ROM_START( phoenixc )
 	ROM_LOAD( "ic41_a.bin",   0x0100, 0x0100, 0xe176b768 )  /* palette high bits */
 ROM_END
 
+ROM_START( condor )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+	ROM_LOAD( "cond01c.bin",  0x0000, 0x0800, 0xc0f73929 )
+	ROM_LOAD( "cond02c.bin",  0x0800, 0x0800, 0x440d56e8 )
+	ROM_LOAD( "cond03c.bin",  0x1000, 0x0800, 0x750b059b )
+	ROM_LOAD( "cond04c.bin",  0x1800, 0x0800, 0xca55e1dd )
+	ROM_LOAD( "cond05c.bin",  0x2000, 0x0800, 0x1ff3a982 )
+	ROM_LOAD( "cond06c.bin",  0x2800, 0x0800, 0x8c83bff7 )
+	ROM_LOAD( "cond07c.bin",  0x3000, 0x0800, 0x805ec2e8 )
+	ROM_LOAD( "cond08c.bin",  0x3800, 0x0800, 0x1edebb45 )
+
+	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "ic23",         0x0000, 0x0800, 0x3c7e623f )
+	ROM_LOAD( "ic24",         0x0800, 0x0800, 0x59916d3b )
+
+	ROM_REGION( 0x1000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "cond11c.bin",  0x0000, 0x0800, 0x53c52eb0 )
+	ROM_LOAD( "cond12c.bin",  0x0800, 0x0800, 0xeba42f0f )
+
+	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_LOAD( "ic40_b.bin",   0x0000, 0x0100, 0x79350b25 )  /* palette low bits */
+	ROM_LOAD( "ic41_a.bin",   0x0100, 0x0100, 0xe176b768 )  /* palette high bits */
+ROM_END
+
 ROM_START( pleiads )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
 	ROM_LOAD( "ic47.r1",      0x0000, 0x0800, 0x960212c8 )
@@ -850,7 +903,7 @@ ROM_START( survival )
 ROM_END
 
 
-static void init_survival(void)
+static DRIVER_INIT( survival )
 {
 	unsigned char *rom = memory_region(REGION_CPU1);
 
@@ -865,6 +918,7 @@ GAME ( 1980, phoenixa, phoenix, phoenix,  phoenixa, 0,        ROT90, "Amstar (Ce
 GAME ( 1980, phoenixt, phoenix, phoenix,  phoenixt, 0,        ROT90, "Taito", "Phoenix (Taito)" )
 GAME ( 1980, phoenix3, phoenix, phoenix,  phoenix3, 0,        ROT90, "bootleg", "Phoenix (T.P.N.)" )
 GAME ( 1981, phoenixc, phoenix, phoenix,  phoenixt, 0,        ROT90, "bootleg?", "Phoenix (IRECSA, G.G.I Corp)" )
+GAME ( 1981, condor,   phoenix, condor,   condor,   0,        ROT90, "Sidam", "Condor" )
 GAMEX( 1981, pleiads,  0,       pleiads,  pleiads,  0,        ROT90, "Tehkan", "Pleiads (Tehkan)", GAME_IMPERFECT_COLORS )
 GAMEX( 1981, pleiadbl, pleiads, pleiads,  pleiads,  0,        ROT90, "bootleg", "Pleiads (bootleg)", GAME_IMPERFECT_COLORS )
 GAMEX( 1981, pleiadce, pleiads, pleiads,  pleiadce, 0,        ROT90, "Tehkan (Centuri license)", "Pleiads (Centuri)", GAME_IMPERFECT_COLORS )

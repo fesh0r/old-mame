@@ -1006,7 +1006,7 @@ WRITE_HANDLER(tms9995_internal2_w)
 		}
 		else if (addr < 0xf0fc)
 		{
-			return READ_WORD(& I.RAM[addr - 0xf000]);
+			return *(UINT16 *)(& I.RAM[addr - 0xf000]);
 		}
 		else if (addr < 0xfffa)
 		{
@@ -1019,7 +1019,7 @@ WRITE_HANDLER(tms9995_internal2_w)
 			if (I.flag & 1)
 				/* event counter mode */
 				return I.decrementer_count;
-			else if (I.timer)
+			else if (I.decrementer_enabled && !(I.flag & 1))
 				/* timer mode, timer enabled */
 				return ceil(TIME_TO_CYCLES(cpu_getactivecpu(), timer_timeleft(I.timer)) / 16);
 			else
@@ -1028,7 +1028,7 @@ WRITE_HANDLER(tms9995_internal2_w)
 		}
 		else
 		{
-			return READ_WORD(& I.RAM[addr - 0xff00]);
+			return *(UINT16 *)(& I.RAM[addr - 0xff00]);
 		}
 	}
 
@@ -1042,7 +1042,7 @@ WRITE_HANDLER(tms9995_internal2_w)
 		}
 		else if (addr < 0xf0fc)
 		{
-			WRITE_WORD(& I.RAM[addr - 0xf000], data);
+			*(UINT16 *)(& I.RAM[addr - 0xf000]) = data;
 		}
 		else if (addr < 0xfffa)
 		{
@@ -1058,7 +1058,7 @@ WRITE_HANDLER(tms9995_internal2_w)
 		}
 		else
 		{
-			WRITE_WORD(& I.RAM[addr - 0xff00], data);
+			*(UINT16 *)(& I.RAM[addr - 0xff00]) = data;
 		}
 	}
 
@@ -1086,7 +1086,7 @@ WRITE_HANDLER(tms9995_internal2_w)
 			if (I.flag & 1)
 				/* event counter mode */
 				value = I.decrementer_count;
-			else if (I.timer)
+			else if (I.decrementer_enabled && !(I.flag & 1))
 				/* timer mode, timer enabled */
 				value = ceil(TIME_TO_CYCLES(cpu_getactivecpu(), timer_timeleft(I.timer)) / 16);
 			else
@@ -1285,6 +1285,10 @@ static void set_flag1(int val);
 */
 void TMS99XX_INIT(void)
 {
+#if (TMS99XX_MODEL == TMS9995_ID)
+	void decrementer_callback(int ignored);
+	I.timer = timer_alloc(decrementer_callback);
+#endif
 }
 
 void TMS99XX_RESET(void *p)
@@ -1964,7 +1968,7 @@ void tms9985_set_irq_line(int irqline, int state)
 /*
   this call-back is called by MESS timer system when the timer reaches 0.
 */
-static void decrementer_callback(int ignored)
+void decrementer_callback(int ignored)
 {
 	/* request decrementer interrupt */
 	I.int_latch |= 0x8;
@@ -1981,11 +1985,7 @@ static void decrementer_callback(int ignored)
 */
 static void reset_decrementer(void)
 {
-	if (I.timer)
-	{
-		timer_remove(I.timer);
-		I.timer = NULL;
-	}
+	timer_adjust(I.timer, TIME_NEVER, 0, 0);
 
 	/* decrementer / timer enabled ? */
 	I.decrementer_enabled = ((I.flag & 2) && (I.decrementer_interval));
@@ -1998,8 +1998,7 @@ static void reset_decrementer(void)
 		}
 		else
 		{	/* timer */
-			I.timer = timer_pulse(TIME_IN_CYCLES(I.decrementer_interval * 16L, cpu_getactivecpu()),
-			                        0, decrementer_callback);
+			timer_adjust(I.timer, TIME_IN_CYCLES(I.decrementer_interval * 16L, cpu_getactivecpu()), 0, 0);
 		}
 	}
 }
@@ -4619,6 +4618,7 @@ static void h4000w(UINT16 opcode)
 	register UINT16 src;
 	register UINT16 dest;
 	register UINT16 value;
+	int a,b;
 
 #if HAS_MAPPING
 	int src_map = (opcode & 0x0030) ? I.cur_src_map : I.cur_map;
@@ -4643,22 +4643,28 @@ static void h4000w(UINT16 opcode)
 	case 3:   /* S */
 		/* S ----- Subtract */
 		/* D -= S */
-		value = setst_sub_laeco(readwordX(dest, dst_map), value);
-		writewordX(dest, value, dst_map);
-		CYCLES(2, 14, 4);
+		a = readword(dest);
+		b = readword(src);
+		value = setst_sub_laeco(a, b);
+		writeword(dest, value);
+		CYCLES(14, 4);
 		break;
 	case 4:   /* C */
 		/* C ----- Compare */
 		/* ST = (D - S) */
-		setst_c_lae(readwordX(dest, dst_map), value);
-		CYCLES(5, 14, 4);
+		a = readword(dest);
+		b = readword(src);
+		setst_c_lae(a, b);
+		CYCLES(14, 4);
 		break;
 	case 5:   /* A */
 		/* A ----- Add */
 		/* D += S */
-		value = setst_add_laeco(readwordX(dest, dst_map), value);
-		writewordX(dest, value, dst_map);
-		CYCLES(2, 14, 4);
+		a = readword(dest);
+		b = readword(src);
+		value = setst_add_laeco(a, b);
+		writeword(dest, value);
+		CYCLES(14, 4);
 		break;
 	case 6:   /* MOV */
 		/* MOV --- MOVe */

@@ -48,21 +48,14 @@ static int scrolld[2][4][2] = {
  	{{-73-112, 0 }, {-73-112, 0}, {-73-112, 0}, {-73-112, 0}}
 };
 
-int asterix_vh_start(void)
+VIDEO_START( asterix )
 {
+	K053251_vh_start();
+
 	K054157_vh_start(REGION_GFX1, 0, scrolld, NORMAL_PLANE_ORDER, asterix_tile_callback);
 	if (K053245_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER, asterix_sprite_callback))
-	{
-		K054157_vh_stop();
 		return 1;
-	}
 	return 0;
-}
-
-void asterix_vh_stop(void)
-{
-	K054157_vh_stop();
-	K053245_vh_stop();
 }
 
 /* useful function to sort the three tile layers by priority order */
@@ -81,41 +74,20 @@ static void sortlayers(int *layer,int *pri)
 	SWAP(1,2)
 }
 
-void asterix_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( asterix )
 {
 	int layer[3];
-	int new_base;
 
 	tilebanks[0] = (K054157_get_lookup(0) << 10);
 	tilebanks[1] = (K054157_get_lookup(1) << 10);
 	tilebanks[2] = (K054157_get_lookup(2) << 10);
 	tilebanks[3] = (K054157_get_lookup(3) << 10);
 
-	new_base = K053251_get_palette_index(K053251_CI0);
-	if(layer_colorbase[0] != new_base) {
-		layer_colorbase[0] = new_base;
-		K054157_mark_plane_dirty(0);
-	}
-
-	new_base = K053251_get_palette_index(K053251_CI2);
-	if(layer_colorbase[1] != new_base) {
-		layer_colorbase[1] = new_base;
-		K054157_mark_plane_dirty(1);
-	}
-
-	new_base = K053251_get_palette_index(K053251_CI3);
-	if(layer_colorbase[2] != new_base) {
-		layer_colorbase[2] = new_base;
-		K054157_mark_plane_dirty(2);
-	}
-
-	new_base = K053251_get_palette_index(K053251_CI4);
-	if(layer_colorbase[3] != new_base) {
-		layer_colorbase[3] = new_base;
-		K054157_mark_plane_dirty(3);
-	}
-
-	sprite_colorbase = K053251_get_palette_index(K053251_CI1);
+	layer_colorbase[0] = K053251_get_palette_index(K053251_CI0);
+	layer_colorbase[1] = K053251_get_palette_index(K053251_CI2);
+	layer_colorbase[2] = K053251_get_palette_index(K053251_CI3);
+	layer_colorbase[3] = K053251_get_palette_index(K053251_CI4);
+	sprite_colorbase   = K053251_get_palette_index(K053251_CI1);
 
 	K054157_tilemap_update();
 
@@ -128,15 +100,15 @@ void asterix_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
 
 	sortlayers(layer, layerpri);
 
-	fillbitmap(priority_bitmap, 0, NULL);
-	fillbitmap(bitmap, Machine->pens[0], &Machine->visible_area);
+	fillbitmap(priority_bitmap, 0, cliprect);
+	fillbitmap(bitmap, Machine->pens[0], cliprect);
 
-	K054157_tilemap_draw(bitmap, layer[0], 0, 1);
-	K054157_tilemap_draw(bitmap, layer[1], 0, 2);
-	K054157_tilemap_draw(bitmap, layer[2], 0, 4);
+	K054157_tilemap_draw(bitmap, cliprect, layer[0], 0, 1);
+	K054157_tilemap_draw(bitmap, cliprect, layer[1], 0, 2);
+	K054157_tilemap_draw(bitmap, cliprect, layer[2], 0, 4);
 
 	pdrawgfx_shadow_lowpri = 1;	/* fix shadows in front of feet */
-	K053245_sprites_draw(bitmap);
+	K053245_sprites_draw(bitmap, cliprect);
 
-	K054157_tilemap_draw(bitmap, 2, 0, 0);
+	K054157_tilemap_draw(bitmap, cliprect, 2, 0, 0);
 }

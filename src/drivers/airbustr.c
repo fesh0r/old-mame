@@ -202,8 +202,8 @@ extern unsigned char *airbustr_bgram, *airbustr_fgram;
 WRITE_HANDLER( airbustr_bgram_w );
 WRITE_HANDLER( airbustr_fgram_w );
 WRITE_HANDLER( airbustr_scrollregs_w );
-extern int  airbustr_vh_start(void);
-extern void airbustr_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+extern VIDEO_START( airbustr );
+extern VIDEO_UPDATE( airbustr );
 
 /* Debug stuff (bound to go away sometime) */
 int u1, u2, u3, u4;
@@ -213,7 +213,7 @@ static WRITE_HANDLER( bankswitch_w );
 static WRITE_HANDLER( bankswitch2_w );
 static WRITE_HANDLER( sound_bankswitch_w );
 
-static void airbustr_init_machine (void)
+static MACHINE_INIT( airbustr )
 {
 	soundlatch_status = soundlatch2_status = 0;
 	bankswitch_w(0,2);
@@ -231,13 +231,12 @@ static void airbustr_init_machine (void)
 /*	Runs in IM 2	fd-fe	address of int: 0x38
 					ff-100	address of int: 0x16	*/
 
-int airbustr_interrupt(void)
+INTERRUPT_GEN( airbustr_interrupt )
 {
 static int addr = 0xff;
 
 	addr ^= 0x02;
-
-	return addr;
+	cpu_set_irq_line_and_vector(0, 0, HOLD_LINE, addr);
 }
 
 
@@ -290,7 +289,7 @@ unsigned char *RAM = memory_region(REGION_CPU1);
 	else					RAM = &RAM[0x10000 + 0x4000 * ((data & 7)-3)];
 
 	cpu_setbank(1,RAM);
-//	if (data > 7)	logerror("CPU #0 - suspicious bank: %d ! - PC = %04X\n", data, cpu_get_pc());
+//	if (data > 7)	logerror("CPU #0 - suspicious bank: %d ! - PC = %04X\n", data, activecpu_get_pc());
 
 	u1 = data & 0xf8;
 }
@@ -317,7 +316,7 @@ MEMORY_END
 
 static WRITE_HANDLER( cause_nmi_w )
 {
-	cpu_cause_interrupt(1,Z80_NMI_INT);	// cause a nmi to sub cpu
+	cpu_set_irq_line(1, IRQ_LINE_NMI, PULSE_LINE);
 }
 
 static PORT_WRITE_START( writeport )
@@ -345,13 +344,12 @@ PORT_END
 /*	Runs in IM 2	fd-fe	address of int: 0x36e	(same as 0x38)
 					ff-100	address of int: 0x4b0	(only writes to port 38h)	*/
 
-int airbustr_interrupt2(void)
+INTERRUPT_GEN( airbustr_interrupt2 )
 {
 static int addr = 0xfd;
 
 	addr ^= 0x02;
-
-	return addr;
+	cpu_set_irq_line_and_vector(1, 0, HOLD_LINE, addr);
 }
 
 
@@ -363,7 +361,7 @@ unsigned char *RAM = memory_region(REGION_CPU2);
 	else					RAM = &RAM[0x10000 + 0x4000 * ((data & 7)-3)];
 
 	cpu_setbank(2,RAM);
-//	if (data > 7)	logerror("CPU #1 - suspicious bank: %d ! - PC = %04X\n", data, cpu_get_pc());
+//	if (data > 7)	logerror("CPU #1 - suspicious bank: %d ! - PC = %04X\n", data, activecpu_get_pc());
 
 	flipscreen = data & 0x10;	// probably..
 	tilemap_set_flip(ALL_TILEMAPS,flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
@@ -453,7 +451,7 @@ static WRITE_HANDLER( soundcommand_w )
 {
 	soundlatch_w(0,data);
 	soundlatch_status = 1;				// soundlatch has been written
-	cpu_cause_interrupt(2,Z80_NMI_INT);	// cause a nmi to sub cpu
+	cpu_set_irq_line(2, IRQ_LINE_NMI, PULSE_LINE);	// cause a nmi to sub cpu
 }
 
 
@@ -499,7 +497,7 @@ unsigned char *RAM = memory_region(REGION_CPU3);
 	else					RAM = &RAM[0x10000 + 0x4000 * ((data & 7)-3)];
 
 	cpu_setbank(3,RAM);
-//	if (data > 7)	logerror("CPU #2 - suspicious bank: %d ! - PC = %04X\n", data, cpu_get_pc());
+//	if (data > 7)	logerror("CPU #2 - suspicious bank: %d ! - PC = %04X\n", data, activecpu_get_pc());
 
 	u3 = data & 0xf8;
 }
@@ -561,9 +559,9 @@ PORT_END
 INPUT_PORTS_START( airbustr )
 
 	PORT_START	// IN0 - Player 1
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -571,9 +569,9 @@ INPUT_PORTS_START( airbustr )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN1 - Player 2
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_PLAYER2 )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER2 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER2 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2 )
@@ -587,21 +585,114 @@ INPUT_PORTS_START( airbustr )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN3 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )	// used
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )		// used
 
 	PORT_START	// IN3 - DSW-1
-	PORT_DIPNAME( 0x01, 0x01, "Unknown 1-0" )
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )	// if active, bit 4 of cpu2 bank is on ..
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )			// is this a flip screen?
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )			// it changes the scroll offsets
-	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x08, 0x08, "Unknown 1-3" )		//	routine 56d:	11 21 12 16 (bit 3 active)
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )		//					11 21 13 14 (bit 3 not active)
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )	//	routine 546:	11 12 21 23
+	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
+	PORT_DIPNAME( 0x08, 0x08, "Coin Mode" )			//   routine at 0x056d :
+	PORT_DIPSETTING(    0x08, "Mode 1" )			//     11 21 12 16 (bit 3 active)
+	PORT_DIPSETTING(    0x00, "Mode 2" )			//     11 21 13 14 (bit 3 not active)
+	/* 	Coinage Mode 1 */
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) )
+	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) )
+	/*	Coinage Mode 2 - for non-Japan version
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_4C ) )
+	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_4C ) )
+	*/
+
+	PORT_START	// IN4 - DSW-2
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x02, "Easy" )
+	PORT_DIPSETTING(    0x03, "Normal" )
+	PORT_DIPSETTING(    0x01, "Hard" )
+	PORT_DIPSETTING(    0x00, "Hardest" )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, "Freeze" )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )
+	PORT_DIPSETTING(    0x30, "3" )
+	PORT_DIPSETTING(    0x20, "4" )
+	PORT_DIPSETTING(    0x10, "5" )
+	PORT_DIPSETTING(    0x00, "7" )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+INPUT_PORTS_END
+
+INPUT_PORTS_START( airbustj )
+
+	PORT_START	// IN0 - Player 1
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START	// IN1 - Player 2
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER2 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER2 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER2 )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START	// IN2 - Service
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )		// used
+
+	PORT_START	// IN3 - DSW-1
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )		// routine at 0x0546 : 11 12 21 23
 	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
@@ -618,7 +709,7 @@ INPUT_PORTS_START( airbustr )
 	PORT_DIPSETTING(    0x03, "Normal" )
 	PORT_DIPSETTING(    0x01, "Hard" )
 	PORT_DIPSETTING(    0x00, "Hardest" )
-	PORT_DIPNAME( 0x04, 0x04, "Unknown 2-2" )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x08, 0x08, "Freeze" )
@@ -632,7 +723,7 @@ INPUT_PORTS_START( airbustr )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, "Unknown 2-7" )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
@@ -696,58 +787,44 @@ static struct OKIM6295interface okim6295_interface =
 };
 
 
-static const struct MachineDriver machine_driver_airbustr =
-{
-	{
-		{
-			CPU_Z80,
-			6000000,	/* ?? */
-			readmem,writemem,0,writeport,
-			airbustr_interrupt, 2	/* nmi caused by sub cpu?, ? */
-		},
-		{
-			CPU_Z80,
-			6000000,	/* ?? */
-			readmem2,writemem2,readport2,writeport2,
-			airbustr_interrupt2, 2	/* nmi caused by main cpu, ? */
-		},
-		{
-			CPU_Z80,	/* Sound CPU, reads DSWs. Hence it can't be disabled */
-			6000000,	/* ?? */
-			sound_readmem,sound_writemem,sound_readport,sound_writeport,
-			interrupt,1	/* nmi are caused by sub cpu writing a sound command */
-		},
-	},
-	60,DEFAULT_60HZ_VBLANK_DURATION,
-	100,	/* Palette RAM is filled by sub cpu with data supplied by main cpu */
-			/* Maybe an high value is safer in order to avoid glitches */
-	airbustr_init_machine,
+static MACHINE_DRIVER_START( airbustr )
+
+	/* basic machine hardware */
+	MDRV_CPU_ADD(Z80, 6000000)	/* ?? */
+	MDRV_CPU_MEMORY(readmem,writemem)
+	MDRV_CPU_PORTS(0,writeport)
+	MDRV_CPU_VBLANK_INT(airbustr_interrupt,2)	/* nmi caused by sub cpu?, ? */
+
+	MDRV_CPU_ADD(Z80, 6000000)	/* ?? */
+	MDRV_CPU_MEMORY(readmem2,writemem2)
+	MDRV_CPU_PORTS(readport2,writeport2)
+	MDRV_CPU_VBLANK_INT(airbustr_interrupt2,2)	/* nmi caused by main cpu, ? */
+
+	MDRV_CPU_ADD(Z80, 6000000)	/* ?? */
+	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+	MDRV_CPU_PORTS(sound_readport,sound_writeport)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)	/* nmi are caused by sub cpu writing a sound command */
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(100)	/* Palette RAM is filled by sub cpu with data supplied by main cpu */
+							/* Maybe an high value is safer in order to avoid glitches */
+	MDRV_MACHINE_INIT(airbustr)
 
 	/* video hardware */
-	256, 256, { 0, 256-1, 0+16, 256-16-1 },
-	gfxdecodeinfo,
-	768, 0,
-	0,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(256, 256)
+	MDRV_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
+	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(768)
 
-	VIDEO_TYPE_RASTER,
-	0,
-	airbustr_vh_start,
-	0,
-	airbustr_vh_screenrefresh,
+	MDRV_VIDEO_START(airbustr)
+	MDRV_VIDEO_UPDATE(airbustr)
 
 	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_YM2203,
-			&ym2203_interface
-		},
-		{
-			SOUND_OKIM6295,
-			&okim6295_interface
-		}
-	}
-};
+	MDRV_SOUND_ADD(YM2203, ym2203_interface)
+	MDRV_SOUND_ADD(OKIM6295, okim6295_interface)
+MACHINE_DRIVER_END
 
 
 
@@ -758,6 +835,30 @@ static const struct MachineDriver machine_driver_airbustr =
 ***************************************************************************/
 
 ROM_START( airbustr )
+	ROM_REGION( 0x24000, REGION_CPU1, 0 )
+	ROM_LOAD( "pr12.h19", 0x00000, 0x0c000, 0x91362eb2 )
+	ROM_CONTINUE(           0x10000, 0x14000 )
+
+	ROM_REGION( 0x24000, REGION_CPU2, 0 )
+	ROM_LOAD( "pr13.l15", 0x00000, 0x0c000, 0x13b2257b )
+	ROM_CONTINUE(           0x10000, 0x14000 )
+
+	ROM_REGION( 0x24000, REGION_CPU3, 0 )
+	ROM_LOAD( "pr-21.bin",  0x00000, 0x0c000, 0x6e0a5df0 )
+	ROM_CONTINUE(           0x10000, 0x14000 )
+
+	ROM_REGION( 0x080000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "pr-000.bin", 0x000000, 0x80000, 0x8ca68f0d ) // scrolling layers
+
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "pr-001.bin", 0x000000, 0x80000, 0x7e6cb377 ) // sprites
+	ROM_LOAD( "pr-02.bin",  0x080000, 0x10000, 0x6bbd5e46 )
+
+	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* OKI-M6295 samples */
+	ROM_LOAD( "pr-200.bin", 0x00000, 0x40000, 0xa4dd3390 )
+ROM_END
+
+ROM_START( airbustj )
 	ROM_REGION( 0x24000, REGION_CPU1, 0 )
 	ROM_LOAD( "pr-14j.bin", 0x00000, 0x0c000, 0x6b9805bd )
 	ROM_CONTINUE(           0x10000, 0x14000 )
@@ -783,10 +884,10 @@ ROM_END
 
 
 
-void init_airbustr(void)
+DRIVER_INIT( airbustr )
 {
-int i;
-unsigned char *RAM;
+	int i;
+	unsigned char *RAM;
 
 	/* One gfx rom seems to have scrambled data (bad read?): */
 	/* let's swap even and odd nibbles */
@@ -797,14 +898,37 @@ unsigned char *RAM;
 	}
 
 	RAM = memory_region(REGION_CPU1);
-	RAM[0x37f4] = 0x00;		RAM[0x37f5] = 0x00;	// startup check. We need a reset
-												// so I patch a busy loop with jp 0
+	RAM[0x37e4] = 0x00;	RAM[0x37e5] = 0x00;	// startup check. We need a reset
+									// so I patch a busy loop with jp 0
 
 	RAM = memory_region(REGION_CPU2);
-	RAM[0x0258] = 0x53; // include EI in the busy loop.
-						// It's an hack to repair nested nmi troubles
+	RAM[0x0258] = 0x53; 					// include EI in the busy loop.
+									// It's an hack to repair nested nmi troubles
+}
+
+DRIVER_INIT( airbustj )
+{
+	int i;
+	unsigned char *RAM;
+
+	/* One gfx rom seems to have scrambled data (bad read?): */
+	/* let's swap even and odd nibbles */
+	RAM = memory_region(REGION_GFX1) + 0x000000;
+	for (i = 0; i < 0x80000; i ++)
+	{
+		RAM[i] = ((RAM[i] & 0xF0)>>4) + ((RAM[i] & 0x0F)<<4);
+	}
+
+	RAM = memory_region(REGION_CPU1);
+	RAM[0x37f4] = 0x00;	RAM[0x37f5] = 0x00;	// startup check. We need a reset
+									// so I patch a busy loop with jp 0
+
+	RAM = memory_region(REGION_CPU2);
+	RAM[0x0258] = 0x53; 					// include EI in the busy loop.
+									// It's an hack to repair nested nmi troubles
 }
 
 
 
-GAME( 1990, airbustr, 0, airbustr, airbustr, airbustr, ROT0, "Kaneko (Namco license)", "Air Buster (Japan)" )
+GAME( 1990, airbustr, 0,        airbustr, airbustr, airbustr, ROT0, "Kaneko (Namco license)", "Air Buster" )	// 891220
+GAME( 1990, airbustj, airbustr, airbustr, airbustj, airbustj, ROT0, "Kaneko (Namco license)", "Air Buster (Japan)" )	// 891229

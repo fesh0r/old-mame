@@ -71,19 +71,19 @@ struct rc_option frontend_opts[] = {
 	{ "wrongfps", NULL, rc_set_int, &list, NULL, LIST_WRONGFPS, 0, NULL, "wrong fps" },
 	{ "clones", NULL, rc_bool, &listclones, "1", 0, 0, NULL, "enable/disable clones" },
 #ifdef MESS
-	{ "listdevices", NULL, rc_set_int, &list, NULL, LIST_MESSDEVICES, 0, NULL, NULL },
-	{ "listtext", NULL, rc_set_int, &list, NULL, LIST_MESSTEXT, 0, NULL, NULL },
-	{ "createdir", NULL, rc_set_int, &list, NULL, LIST_MESSCREATEDIR, 0, NULL, NULL },
+	{ "listdevices", NULL, rc_set_int, &list, NULL, LIST_MESSINFO, 0, NULL, "list available devices" },
+	{ "listtext", NULL, rc_set_int, &list, NULL, LIST_MESSINFO, 0, NULL, "list available file extensions" },
+	{ "createdir", NULL, rc_set_int, &list, NULL, LIST_MESSINFO, 0, NULL, NULL },
 #endif
-	{ "listroms", NULL, rc_set_int, &list, NULL, LIST_ROMS, 0, NULL, NULL },
-	{ "listsamples", NULL, rc_set_int, &list, NULL, LIST_SAMPLES, 0, NULL, NULL },
-	{ "verifyroms", NULL, rc_set_int, &verify, NULL, VERIFY_ROMS, 0, NULL, NULL },
-	{ "verifysets", NULL, rc_set_int, &verify, NULL, VERIFY_ROMS|VERIFY_VERBOSE|VERIFY_TERSE, 0, NULL, NULL },
-	{ "vset", NULL, rc_set_int, &verify, NULL, VERIFY_ROMS|VERIFY_VERBOSE, 0, NULL, NULL },
-	{ "verifysamples", NULL, rc_set_int, &verify, NULL, VERIFY_SAMPLES|VERIFY_VERBOSE, 0, NULL, NULL },
-	{ "vsam", NULL, rc_set_int, &list, NULL, VERIFY_SAMPLES|VERIFY_VERBOSE, 0, NULL, NULL },
-	{ "romident", NULL, rc_set_int, &ident, NULL, 1, 0, NULL, NULL },
-	{ "isknown", NULL, rc_set_int, &ident, NULL, 2, 0, NULL, NULL },
+	{ "listroms", NULL, rc_set_int, &list, NULL, LIST_ROMS, 0, NULL, "list required roms for a driver" },
+	{ "listsamples", NULL, rc_set_int, &list, NULL, LIST_SAMPLES, 0, NULL, "list optional samples for a driver" },
+	{ "verifyroms", NULL, rc_set_int, &verify, NULL, VERIFY_ROMS, 0, NULL, "report romsets that have problems" },
+	{ "verifysets", NULL, rc_set_int, &verify, NULL, VERIFY_ROMS|VERIFY_VERBOSE|VERIFY_TERSE, 0, NULL, "verify checksums of romsets (terse)" },
+	{ "vset", NULL, rc_set_int, &verify, NULL, VERIFY_ROMS|VERIFY_VERBOSE, 0, NULL, "verify checksums of a romset (verbose)" },
+	{ "verifysamples", NULL, rc_set_int, &verify, NULL, VERIFY_SAMPLES|VERIFY_VERBOSE, 0, NULL, "report samplesets that have problems" },
+	{ "vsam", NULL, rc_set_int, &verify, NULL, VERIFY_SAMPLES|VERIFY_VERBOSE, 0, NULL, "verify a sampleset" },
+	{ "romident", NULL, rc_set_int, &ident, NULL, 1, 0, NULL, "compare files with known MAME roms" },
+	{ "isknown", NULL, rc_set_int, &ident, NULL, 2, 0, NULL, "compare files with known MAME roms (brief)" },
 	{ "sortname", NULL, rc_set_int, &sortby, NULL, 1, 0, NULL, "sort by descriptive name" },
 	{ "sortdriver", NULL, rc_set_int, &sortby, NULL, 2, 0, NULL, "sort by driver" },
 	{ NULL, NULL, rc_end, NULL, NULL, 0, 0, NULL, NULL }
@@ -154,45 +154,6 @@ int strwildcmp(const char *sp1, const char *sp2)
 
 	return stricmp(s1, s2);
 }
-#if 0
-/* fuzzy string compare, compare short string against long string        */
-/* e.g. astdel == "Asteroids Deluxe". The return code is the fuzz index, */
-/* we simply count the gaps between maching chars.                       */
-int fuzzycmp (const char *s, const char *l)
-{
-	int gaps = 0;
-	int match = 0;
-	int last = 1;
-
-	for (; *s && *l; l++)
-	{
-		if (*s == *l)
-			match = 1;
-		else if (*s >= 'a' && *s <= 'z' && (*s - 'a') == (*l - 'A'))
-			match = 1;
-		else if (*s >= 'A' && *s <= 'Z' && (*s - 'A') == (*l - 'a'))
-			match = 1;
-		else
-			match = 0;
-
-		if (match)
-			s++;
-
-		if (match != last)
-		{
-			last = match;
-			if (!match)
-				gaps++;
-		}
-	}
-
-	/* penalty if short string does not completely fit in */
-	for (; *s; s++)
-		gaps++;
-
-	return gaps;
-}
-#endif
 
 /* Identifies a rom from from this checksum */
 void identify_rom(const char* name, int checksum, int length)
@@ -212,7 +173,7 @@ void identify_rom(const char* name, int checksum, int length)
 		}
 	}
 	if (!silentident)
-		printf("%-12s ",&name[i]);
+		printf("%s ",&name[0]);
 
 	for (i = 0; drivers[i]; i++)
 	{
@@ -359,7 +320,8 @@ void identify_zip(const char* zipname)
 		/* Skip empty file and directory */
 		if (ent->uncompressed_size!=0) {
 			char* buf = (char*)malloc(strlen(zipname)+1+strlen(ent->name)+1);
-			sprintf(buf,"%s/%s",zipname,ent->name);
+//			sprintf(buf,"%s/%s",zipname,ent->name);
+			sprintf(buf,"%-12s",ent->name);
 			identify_rom(buf,ent->crc32,ent->uncompressed_size);
 			free(buf);
 		}
@@ -441,6 +403,7 @@ int CLIB_DECL compare_driver_names(const void *elem1, const void *elem2)
 
 int frontend_help (char *gamename)
 {
+	struct InternalMachineDriver drv;
 	int i, j;
 	char *all_games = "*";
 
@@ -581,17 +544,14 @@ int frontend_help (char *gamename)
 						|| (drivers[i]->clone_of->flags & NOT_A_DRIVER)
 						) && !strwildcmp(gamename, drivers[i]->name))
 				{
+					expand_machine_driver(drivers[i]->drv, &drv);
 #if (HAS_SAMPLES || HAS_VLM5030)
-					for( j = 0; drivers[i]->drv->sound[j].sound_type && j < MAX_SOUND; j++ )
+					for( j = 0; drv.sound[j].sound_type && j < MAX_SOUND; j++ )
 					{
 						const char **samplenames = NULL;
 #if (HAS_SAMPLES)
-						if( drivers[i]->drv->sound[j].sound_type == SOUND_SAMPLES )
-							samplenames = ((struct Samplesinterface *)drivers[i]->drv->sound[j].sound_interface)->samplenames;
-#endif
-#if (HAS_VLM5030)
-						if( drivers[i]->drv->sound[j].sound_type == SOUND_VLM5030 )
-							samplenames = ((struct VLM5030interface *)drivers[i]->drv->sound[j].sound_interface)->samplenames;
+						if( drv.sound[j].sound_type == SOUND_SAMPLES )
+							samplenames = ((struct Samplesinterface *)drv.sound[j].sound_interface)->samplenames;
 #endif
 						if (samplenames != 0 && samplenames[0] != 0)
 						{
@@ -624,16 +584,13 @@ int frontend_help (char *gamename)
 			{
 #if (HAS_SAMPLES || HAS_VLM5030)
 				int k;
-				for( k = 0; gamedrv->drv->sound[k].sound_type && k < MAX_SOUND; k++ )
+				expand_machine_driver(gamedrv->drv, &drv);
+				for( k = 0; drv.sound[k].sound_type && k < MAX_SOUND; k++ )
 				{
 					const char **samplenames = NULL;
 #if (HAS_SAMPLES)
-					if( gamedrv->drv->sound[k].sound_type == SOUND_SAMPLES )
-							samplenames = ((struct Samplesinterface *)gamedrv->drv->sound[k].sound_interface)->samplenames;
-#endif
-#if (HAS_VLM5030)
-					if( gamedrv->drv->sound[k].sound_type == SOUND_VLM5030 )
-							samplenames = ((struct VLM5030interface *)gamedrv->drv->sound[k].sound_interface)->samplenames;
+					if( drv.sound[k].sound_type == SOUND_SAMPLES )
+							samplenames = ((struct Samplesinterface *)drv.sound[k].sound_interface)->samplenames;
 #endif
 					if (samplenames != 0 && samplenames[0] != 0)
 					{
@@ -702,9 +659,13 @@ int frontend_help (char *gamename)
 				{
 					/* Dummy structs to fetch the information from */
 
-					const struct MachineDriver *x_driver = drivers[i]->drv;
-					const struct MachineCPU *x_cpu = x_driver->cpu;
-					const struct MachineSound *x_sound = x_driver->sound;
+					const struct MachineCPU *x_cpu;
+					const struct MachineSound *x_sound;
+					struct InternalMachineDriver x_driver;
+
+					expand_machine_driver(drivers[i]->drv, &x_driver);
+					x_cpu = x_driver.cpu;
+					x_sound = x_driver.sound;
 
 					/* First, the rom name */
 
@@ -874,20 +835,14 @@ int frontend_help (char *gamename)
 
 					{
 						const char **samplenames = NULL;
+						expand_machine_driver(drivers[i]->drv, &drv);
 #if (HAS_SAMPLES || HAS_VLM5030)
-						for (j = 0;drivers[i]->drv->sound[j].sound_type && j < MAX_SOUND; j++)
+						for (j = 0;drv.sound[j].sound_type && j < MAX_SOUND; j++)
 						{
 #if (HAS_SAMPLES)
-							if (drivers[i]->drv->sound[j].sound_type == SOUND_SAMPLES)
+							if (drv.sound[j].sound_type == SOUND_SAMPLES)
 							{
-								samplenames = ((struct Samplesinterface *)drivers[i]->drv->sound[j].sound_interface)->samplenames;
-								break;
-							}
-#endif
-#if (HAS_VLM5030)
-							if (drivers[i]->drv->sound[j].sound_type == SOUND_VLM5030)
-							{
-								samplenames = ((struct VLM5030interface *)drivers[i]->drv->sound[j].sound_interface)->samplenames;
+								samplenames = ((struct Samplesinterface *)drv.sound[j].sound_interface)->samplenames;
 								break;
 							}
 #endif
@@ -972,11 +927,13 @@ int frontend_help (char *gamename)
 
 		case LIST_WRONGORIENTATION: /* list drivers which incorrectly use the orientation and visible area fields */
 			for (i = 0; drivers[i]; i++)
-				if ((drivers[i]->drv->video_attributes & VIDEO_TYPE_VECTOR) == 0 &&
+			{
+				expand_machine_driver(drivers[i]->drv, &drv);
+				if ((drv.video_attributes & VIDEO_TYPE_VECTOR) == 0 &&
 						(drivers[i]->clone_of == 0
 								|| (drivers[i]->clone_of->flags & NOT_A_DRIVER)) &&
-						drivers[i]->drv->default_visible_area.max_x - drivers[i]->drv->default_visible_area.min_x + 1 <=
-						drivers[i]->drv->default_visible_area.max_y - drivers[i]->drv->default_visible_area.min_y + 1)
+						drv.default_visible_area.max_x - drv.default_visible_area.min_x + 1 <=
+						drv.default_visible_area.max_y - drv.default_visible_area.min_y + 1)
 				{
 					if (strcmp(drivers[i]->name,"crater") &&
 						strcmp(drivers[i]->name,"mpatrol") &&
@@ -1029,26 +986,30 @@ int frontend_help (char *gamename)
 						strcmp(drivers[i]->name,"tomahawk") &&
 						1)
 						printf("%s %dx%d\n",drivers[i]->name,
-								drivers[i]->drv->default_visible_area.max_x - drivers[i]->drv->default_visible_area.min_x + 1,
-								drivers[i]->drv->default_visible_area.max_y - drivers[i]->drv->default_visible_area.min_y + 1);
+								drv.default_visible_area.max_x - drv.default_visible_area.min_x + 1,
+								drv.default_visible_area.max_y - drv.default_visible_area.min_y + 1);
 				}
+			}
 			return 0;
 			break;
 
 		case LIST_WRONGFPS: /* list drivers with too high frame rate */
 			for (i = 0; drivers[i]; i++)
-				if ((drivers[i]->drv->video_attributes & VIDEO_TYPE_VECTOR) == 0 &&
+			{
+				expand_machine_driver(drivers[i]->drv, &drv);
+				if ((drv.video_attributes & VIDEO_TYPE_VECTOR) == 0 &&
 						(drivers[i]->clone_of == 0
 								|| (drivers[i]->clone_of->flags & NOT_A_DRIVER)) &&
-						drivers[i]->drv->frames_per_second > 57 &&
-						drivers[i]->drv->default_visible_area.max_y - drivers[i]->drv->default_visible_area.min_y + 1 > 244 &&
-						drivers[i]->drv->default_visible_area.max_y - drivers[i]->drv->default_visible_area.min_y + 1 <= 256)
+						drv.frames_per_second > 57 &&
+						drv.default_visible_area.max_y - drv.default_visible_area.min_y + 1 > 244 &&
+						drv.default_visible_area.max_y - drv.default_visible_area.min_y + 1 <= 256)
 				{
 					printf("%s %dx%d %fHz\n",drivers[i]->name,
-							drivers[i]->drv->default_visible_area.max_x - drivers[i]->drv->default_visible_area.min_x + 1,
-							drivers[i]->drv->default_visible_area.max_y - drivers[i]->drv->default_visible_area.min_y + 1,
-							drivers[i]->drv->frames_per_second);
+							drv.default_visible_area.max_x - drv.default_visible_area.min_x + 1,
+							drv.default_visible_area.max_y - drv.default_visible_area.min_y + 1,
+							drv.frames_per_second);
 				}
+			}
 			return 0;
 			break;
 
@@ -1186,7 +1147,8 @@ int frontend_help (char *gamename)
 			for (i = 0; drivers[i]; i++)
 				if (drivers[i]->clone_of == 0 || (drivers[i]->clone_of->flags & NOT_A_DRIVER))
 				{
-					printf("%-8s\t%-5s\t%u\n",drivers[i]->name,drivers[i]->year,drivers[i]->drv->total_colors);
+					expand_machine_driver(drivers[i]->drv, &drv);
+					printf("%-8s\t%-5s\t%u\n",drivers[i]->name,drivers[i]->year,drv.total_colors);
 				}
 			return 0;
 			break;
@@ -1195,30 +1157,46 @@ int frontend_help (char *gamename)
 			{
 				int year;
 
-				for (j = 1;j < CPU_COUNT;j++)
-					printf("\t%s",cputype_name(j));
+//				for (j = 1;j < CPU_COUNT;j++)
+//					printf("\t%s",cputype_name(j));
+				for (j = 0;j < 3;j++)
+					printf("\t%d",8<<j);
 				printf("\n");
 
-				for (year = 1980;year <= 1995;year++)
+				for (year = 1980;year <= 2000;year++)
 				{
 					int count[CPU_COUNT];
+					int count_buswidth[3];
 
 					for (j = 0;j < CPU_COUNT;j++)
 						count[j] = 0;
+					for (j = 0;j < 3;j++)
+						count_buswidth[j] = 0;
 
 					i = 0;
 					while (drivers[i])
 					{
 						if (drivers[i]->clone_of == 0 || (drivers[i]->clone_of->flags & NOT_A_DRIVER))
 						{
-							const struct MachineDriver *x_driver = drivers[i]->drv;
-							const struct MachineCPU *x_cpu = x_driver->cpu;
+							struct InternalMachineDriver x_driver;
+							const struct MachineCPU *x_cpu;
+
+							expand_machine_driver(drivers[i]->drv, &x_driver);
+							x_cpu = x_driver.cpu;
 
 							if (atoi(drivers[i]->year) == year)
 							{
 //								for (j = 0;j < MAX_CPU;j++)
 j = 0;	// count only the main cpu
+								{
 									count[x_cpu[j].cpu_type & ~CPU_FLAGS_MASK]++;
+									switch(cputype_databus_width(x_cpu[j].cpu_type & ~CPU_FLAGS_MASK))
+									{
+										case  8: count_buswidth[0]++; break;
+										case 16: count_buswidth[1]++; break;
+										case 32: count_buswidth[2]++; break;
+									}
+								}
 							}
 						}
 
@@ -1226,8 +1204,10 @@ j = 0;	// count only the main cpu
 					}
 
 					printf("%d",year);
-					for (j = 1;j < CPU_COUNT;j++)
-						printf("\t%d",count[j]);
+//					for (j = 1;j < CPU_COUNT;j++)
+//						printf("\t%d",count[j]);
+					for (j = 0;j < 3;j++)
+						printf("\t%d",count_buswidth[j]);
 					printf("\n");
 				}
 			}
@@ -1285,16 +1265,13 @@ j = 0;	// count only the main cpu
 			if (verify & VERIFY_SAMPLES)
 			{
 				const char **samplenames = NULL;
+				expand_machine_driver(drivers[i]->drv, &drv);
 #if (HAS_SAMPLES || HAS_VLM5030)
- 				for( j = 0; drivers[i]->drv->sound[j].sound_type && j < MAX_SOUND; j++ )
+ 				for( j = 0; drv.sound[j].sound_type && j < MAX_SOUND; j++ )
 				{
 #if (HAS_SAMPLES)
- 					if( drivers[i]->drv->sound[j].sound_type == SOUND_SAMPLES )
- 						samplenames = ((struct Samplesinterface *)drivers[i]->drv->sound[j].sound_interface)->samplenames;
-#endif
-#if (HAS_VLM5030)
-					if( drivers[i]->drv->sound[j].sound_type == SOUND_VLM5030 )
-						samplenames = ((struct VLM5030interface *)drivers[i]->drv->sound[j].sound_interface)->samplenames;
+ 					if( drv.sound[j].sound_type == SOUND_SAMPLES )
+ 						samplenames = ((struct Samplesinterface *)drv.sound[j].sound_interface)->samplenames;
 #endif
 				}
 #endif

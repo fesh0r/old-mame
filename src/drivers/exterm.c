@@ -59,28 +59,28 @@ driver by Zsolt Vasvari and Alex Pasadyn
 #include "driver.h"
 #include "cpu/tms34010/tms34010.h"
 
-static data16_t *eeprom;
-static size_t eeprom_size;
 static size_t code_rom_size;
 static data16_t *exterm_code_rom;
 static data16_t *exterm_master_speedup, *exterm_slave_speedup;
 
 extern data16_t *exterm_master_videoram, *exterm_slave_videoram;
 
-static int aimpos1, aimpos2;
+static data8_t aimpos[2];
+static data8_t trackball_old[2];
+
 
 /* Functions in vidhrdw/exterm.c */
-void exterm_init_palette(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-int  exterm_vh_start(void);
-void exterm_vh_stop (void);
+PALETTE_INIT( exterm );
+VIDEO_START( exterm );
 
-void exterm_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+VIDEO_UPDATE( exterm );
 void exterm_to_shiftreg_master(unsigned int address, unsigned short* shiftreg);
 void exterm_from_shiftreg_master(unsigned int address, unsigned short* shiftreg);
 void exterm_to_shiftreg_slave(unsigned int address, unsigned short* shiftreg);
 void exterm_from_shiftreg_slave(unsigned int address, unsigned short* shiftreg);
 
 /* Functions in sndhrdw/gottlieb.c */
+void gottlieb_sound_init(void);
 WRITE16_HANDLER( gottlieb_sh_word_w );
 READ_HANDLER( gottlieb_cause_dac_nmi_r );
 WRITE_HANDLER( gottlieb_nmi_rate_w );
@@ -90,26 +90,10 @@ WRITE_HANDLER( exterm_dac_vol_w );
 WRITE_HANDLER( exterm_dac_data_w );
 
 
-
-/*************************************
- *
- *	NVRAM handler
- *
- *************************************/
-
-static void nvram_handler(void *file, int read_or_write)
+static MACHINE_INIT( exterm )
 {
-	if (read_or_write)
-		osd_fwrite(file,eeprom,eeprom_size);
-	else
-	{
-		if (file)
-			osd_fread(file,eeprom,eeprom_size);
-		else
-			memset(eeprom,0,eeprom_size);
-	}
+	gottlieb_sound_init();
 }
-
 
 
 /*************************************
@@ -137,24 +121,41 @@ READ16_HANDLER( exterm_host_data_r )
  *
  *************************************/
 
-READ16_HANDLER( exterm_input_port_0_1_r )
+static data16_t exterm_trackball_port_r(int which, data16_t mem_mask)
 {
-	int hi = readinputport(1);
-	if (!(hi & 2)) aimpos1++;
-	if (!(hi & 1)) aimpos1--;
-	aimpos1 &= 0x3f;
+	data16_t port;
 
-	return ((hi & 0x80) << 8) | (aimpos1 << 8) | readinputport(0);
+	/* Read the fake input port */
+	data8_t trackball_pos = readinputport(3 + which);
+
+	/* Calculate the change from the last position. */
+	data8_t trackball_diff = trackball_old[which] - trackball_pos;
+
+	/* Store the new position for the next comparision. */
+	trackball_old[which] = trackball_pos;
+
+	/* Move the sign bit to the high bit of the 6-bit trackball count. */
+	if (trackball_diff & 0x80)
+		trackball_diff |= 0x20;
+
+	/* Keep adding the changes.  The counters will be reset later by a hardware write. */
+	aimpos[which] = (aimpos[which] + trackball_diff) & 0x3f;
+
+	/* Combine it with the standard input bits */
+	port = which ? input_port_1_word_r(0, mem_mask) :
+				   input_port_0_word_r(0, mem_mask);
+
+	return (port & 0xc0ff) | (aimpos[which] << 8);
 }
 
-READ16_HANDLER( exterm_input_port_2_3_r )
+READ16_HANDLER( exterm_input_port_0_r )
 {
-	int hi = readinputport(3);
-	if (!(hi & 2)) aimpos2++;
-	if (!(hi & 1)) aimpos2--;
-	aimpos2 &= 0x3f;
+	return exterm_trackball_port_r(0, mem_mask);
+}
 
-	return (aimpos2 << 8) | readinputport(2);
+READ16_HANDLER( exterm_input_port_1_r )
+{
+	return exterm_trackball_port_r(1, mem_mask);
 }
 
 
@@ -175,10 +176,10 @@ WRITE16_HANDLER( exterm_output_port_0_w )
 	{
 		/* Bit 0-1= Resets analog controls */
 		if ((data & 0x0001) && !(last & 0x0001))
-			aimpos1 = 0;
+			aimpos[0] = 0;
 
 		if ((data & 0x0002) && !(last & 0x0002))
-			aimpos2 = 0;
+			aimpos[1] = 0;
 	}
 
 	if (ACCESSING_MSB)
@@ -208,7 +209,7 @@ READ16_HANDLER( exterm_master_speedup_r )
 	int value = exterm_master_speedup[offset];
 
 	/* Suspend cpu if it's waiting for an interrupt */
-	if (cpu_get_pc() == 0xfff4d9b0 && !value)
+	if (activecpu_get_pc() == 0xfff4d9b0 && !value)
 		cpu_spinuntil_int();
 
 	return value;
@@ -217,7 +218,7 @@ READ16_HANDLER( exterm_master_speedup_r )
 WRITE16_HANDLER( exterm_slave_speedup_w )
 {
 	/* Suspend cpu if it's waiting for an interrupt */
-	if (cpu_get_pc() == 0xfffff050)
+	if (activecpu_get_pc() == 0xfffff050)
 		cpu_spinuntil_int();
 
 	COMBINE_DATA(&exterm_slave_speedup[offset]);
@@ -229,7 +230,7 @@ READ_HANDLER( exterm_sound_dac_speedup_r )
 	int value = RAM[0x0007];
 
 	/* Suspend cpu if it's waiting for an interrupt */
-	if (cpu_get_pc() == 0x8e79 && !value)
+	if (activecpu_get_pc() == 0x8e79 && !value)
 		cpu_spinuntil_int();
 
 	return value;
@@ -243,7 +244,7 @@ READ_HANDLER( exterm_sound_ym2151_speedup_r )
 	int value = RAM[0x02b6];
 
 	/* Suspend cpu if it's waiting for an interrupt */
-	if (cpu_get_pc() == 0x8179 && !(value & 0x80) &&  RAM[0x00bc] == RAM[0x00bb] &&
+	if (activecpu_get_pc() == 0x8179 && !(value & 0x80) &&  RAM[0x00bc] == RAM[0x00bb] &&
 		RAM[0x0092] == 0x00 &&  RAM[0x0093] == 0x00 && !(RAM[0x0004] & 0x80))
 		cpu_spinuntil_int();
 
@@ -262,9 +263,9 @@ static MEMORY_READ16_START( master_readmem )
 	{ TOBYTE(0x00000000), TOBYTE(0x000fffff), MRA16_RAM },
 	{ TOBYTE(0x00c00000), TOBYTE(0x00ffffff), MRA16_RAM },
 	{ TOBYTE(0x01200000), TOBYTE(0x012fffff), exterm_host_data_r },
-	{ TOBYTE(0x01400000), TOBYTE(0x0140000f), exterm_input_port_0_1_r },
-	{ TOBYTE(0x01440000), TOBYTE(0x0144000f), exterm_input_port_2_3_r },
-	{ TOBYTE(0x01480000), TOBYTE(0x0148000f), input_port_4_word_r },
+	{ TOBYTE(0x01400000), TOBYTE(0x0140000f), exterm_input_port_0_r },
+	{ TOBYTE(0x01440000), TOBYTE(0x0144000f), exterm_input_port_1_r },
+	{ TOBYTE(0x01480000), TOBYTE(0x0148000f), input_port_2_word_r },
 	{ TOBYTE(0x01800000), TOBYTE(0x01807fff), MRA16_RAM },
 	{ TOBYTE(0x02800000), TOBYTE(0x02807fff), MRA16_RAM },
 	{ TOBYTE(0x03000000), TOBYTE(0x03ffffff), MRA16_BANK1 },
@@ -281,7 +282,7 @@ static MEMORY_WRITE16_START( master_writemem )
 	{ TOBYTE(0x01580000), TOBYTE(0x0158000f), gottlieb_sh_word_w },
 	{ TOBYTE(0x015c0000), TOBYTE(0x015c000f), watchdog_reset16_w },
 	{ TOBYTE(0x01800000), TOBYTE(0x01807fff), paletteram16_xRRRRRGGGGGBBBBB_word_w, &paletteram16 },
-	{ TOBYTE(0x02800000), TOBYTE(0x02807fff), MWA16_RAM, &eeprom, &eeprom_size }, /* EEPROM */
+	{ TOBYTE(0x02800000), TOBYTE(0x02807fff), MWA16_RAM, (data16_t **)&generic_nvram, &generic_nvram_size }, /* EEPROM */
 	{ TOBYTE(0xc0000000), TOBYTE(0xc00001ff), tms34010_io_register_w },
 	{ TOBYTE(0xff000000), TOBYTE(0xffffffff), MWA16_ROM, &exterm_code_rom, &code_rom_size },
 MEMORY_END
@@ -343,64 +344,66 @@ MEMORY_END
  *************************************/
 
 INPUT_PORTS_START( exterm )
-	PORT_START      /* IN0 LO */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER1)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER1)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER1)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER1)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER1 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER1 )
+	PORT_START      /* IN0 */
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER1)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER1)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER1)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER1)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER1 )
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER1 )
+	PORT_BIT( 0x3f00, IP_ACTIVE_LOW, IPT_SPECIAL) /* trackball data */
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_SERVICE( 0x8000, IP_ACTIVE_LOW )
 
-	PORT_START      /* IN0 HI */
-	PORT_BITX(0x01, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_PLAYER1, "Aim Left",  KEYCODE_Z, IP_JOY_DEFAULT )
-	PORT_BITX(0x02, IP_ACTIVE_LOW, IPT_BUTTON4 | IPF_PLAYER1, "Aim Right", KEYCODE_X, IP_JOY_DEFAULT )
-	PORT_BIT( 0xec, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
-
-	PORT_START      /* IN1 LO */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER2)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER2)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER2)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER2)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 )
-
-	PORT_START      /* IN1 HI */
-	PORT_BITX(0x01, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_PLAYER2, "2 Aim Left",  KEYCODE_H, IP_JOY_DEFAULT )
-	PORT_BITX(0x02, IP_ACTIVE_LOW, IPT_BUTTON4 | IPF_PLAYER2, "2 Aim Right", KEYCODE_J, IP_JOY_DEFAULT )
-	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_START      /* IN1 */
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER2)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER2)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER2)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER2)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2 )
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 )
+	PORT_BIT( 0x3f00, IP_ACTIVE_LOW, IPT_SPECIAL) /* trackball data */
+	PORT_BIT( 0xc000, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START	/* DSW */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) ) /* According to the test screen */
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unused ) ) /* According to the test screen */
+	PORT_DIPSETTING(	  0x0001, DEF_STR( Off ) )
+	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
 	/* Note that the coin settings don't match the setting shown on the test screen,
 	   but instead what the game appears to used. This is either a bug in the game,
 	   or I don't know what else. */
-	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x06, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_4C ) )
-	PORT_DIPNAME( 0x38, 0x38, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x38, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x18, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x28, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( 1C_5C ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 1C_6C ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( 1C_7C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_8C ) )
-	PORT_DIPNAME( 0x40, 0x40, "Memory Test" )
-	PORT_DIPSETTING(    0x40, "Single" )
-	PORT_DIPSETTING(    0x00, "Continous" )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Free_Play ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0006, 0x0006, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(      0x0006, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_4C ) )
+	PORT_DIPNAME( 0x0038, 0x0038, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(      0x0038, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0018, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0028, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x0030, DEF_STR( 1C_5C ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( 1C_6C ) )
+	PORT_DIPSETTING(      0x0020, DEF_STR( 1C_7C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_8C ) )
+	PORT_DIPNAME( 0x0040, 0x0040, "Memory Test" )
+	PORT_DIPSETTING(      0x0040, "Once" )
+	PORT_DIPSETTING(      0x0000, "Continous" )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Free_Play ) )
+	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START /* IN3, fake trackball input port */
+	PORT_ANALOG( 0xff, 0x00, IPT_DIAL | IPF_REVERSE | IPF_PLAYER1, 50, 10, 0, 0)
+
+	PORT_START /* IN4, fake trackball input port. */
+	PORT_ANALOG( 0xff, 0x00, IPT_DIAL | IPF_REVERSE | IPF_PLAYER2, 50, 10, 0, 0)
+
 INPUT_PORTS_END
 
 
@@ -457,70 +460,47 @@ static struct YM2151interface ym2151_interface =
  *
  *************************************/
 
-static const struct MachineDriver machine_driver_exterm =
-{
+static MACHINE_DRIVER_START( exterm )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_TMS34010,
-			40000000/TMS34010_CLOCK_DIVIDER,
-            master_readmem,master_writemem,0,0,
-            ignore_interrupt,0,
-            0,0,&master_config
-		},
-		{
-			CPU_TMS34010,
-			40000000/TMS34010_CLOCK_DIVIDER,
-            slave_readmem,slave_writemem,0,0,
-            ignore_interrupt,0,
-            0,0,&slave_config
-		},
-		{
-			CPU_M6502 | CPU_AUDIO_CPU,
-			2000000,
-			sound_dac_readmem,sound_dac_writemem,0,0,
-			ignore_interrupt,0
-		},
-		{
-			CPU_M6502 | CPU_AUDIO_CPU,
-			2000000,
-			sound_ym2151_readmem,sound_ym2151_writemem,0,0,
-			ignore_interrupt,0
-		}
-	},
-	60, DEFAULT_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */
-	1,
-	0,
+	MDRV_CPU_ADD(TMS34010,40000000/TMS34010_CLOCK_DIVIDER)
+	MDRV_CPU_CONFIG(master_config)
+	MDRV_CPU_MEMORY(master_readmem,master_writemem)
+
+	MDRV_CPU_ADD(TMS34010,40000000/TMS34010_CLOCK_DIVIDER)
+	MDRV_CPU_CONFIG(slave_config)
+	MDRV_CPU_MEMORY(slave_readmem,slave_writemem)
+
+	MDRV_CPU_ADD(M6502, 2000000)
+	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	MDRV_CPU_MEMORY(sound_dac_readmem,sound_dac_writemem)
+
+	MDRV_CPU_ADD(M6502, 2000000)
+	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	MDRV_CPU_MEMORY(sound_ym2151_readmem,sound_ym2151_writemem)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+
+	MDRV_MACHINE_INIT(exterm)
+	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware, the reason for 263 is that the VCOUNT register is
 	   supposed to go from 0 to the value in VEND-1, which is 263 */
-    256, 263, { 0, 255, 0, 238 },
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(256, 263)
+	MDRV_VISIBLE_AREA(0, 255, 0, 238)
+	MDRV_PALETTE_LENGTH(4096+32768)
 
-	0,
-	4096+32768,0,
-    exterm_init_palette,
-
-    VIDEO_TYPE_RASTER,
-	0,
-	exterm_vh_start,
-	exterm_vh_stop,
-	exterm_vh_screenrefresh,
+	MDRV_PALETTE_INIT(exterm)
+	MDRV_VIDEO_START(exterm)
+	MDRV_VIDEO_UPDATE(exterm)
 
 	/* sound hardware */
-	SOUND_SUPPORTS_STEREO,0,0,0,
-	{
-		{
-			SOUND_DAC,
-			&dac_interface
-		},
-		{
-			SOUND_YM2151,
-			&ym2151_interface
-		}
-	},
-
-	nvram_handler
-};
+	MDRV_SOUND_ATTRIBUTES(SOUND_SUPPORTS_STEREO)
+	MDRV_SOUND_ADD(DAC, dac_interface)
+	MDRV_SOUND_ADD(YM2151, ym2151_interface)
+MACHINE_DRIVER_END
 
 
 
@@ -572,7 +552,7 @@ ROM_END
  *
  *************************************/
 
-void init_exterm(void)
+DRIVER_INIT( exterm )
 {
 	memcpy(exterm_code_rom, memory_region(REGION_USER1), code_rom_size);
 

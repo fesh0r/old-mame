@@ -55,14 +55,15 @@ Games by Nihon Game/Culture Brain:
 #include "cpu/z80/z80.h"
 
 /* from vidhrdw/shangkid.c */
-extern int shangkid_vh_start( void );
-extern void shangkid_vh_stop( void );
-extern void shangkid_screenrefresh( struct mame_bitmap *bitmap, int fullfresh );
-extern WRITE_HANDLER( shangkid_videoram_w );
 extern UINT8 *shangkid_videoreg;
 extern int shangkid_gfx_type;
 
-extern void dynamski_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh );
+VIDEO_START( shangkid );
+VIDEO_UPDATE( shangkid );
+WRITE_HANDLER( shangkid_videoram_w );
+
+PALETTE_INIT( dynamski );
+VIDEO_UPDATE( dynamski );
 
 /***************************************************************************************/
 
@@ -90,17 +91,17 @@ static struct AY8910interface ay8910_interface = {
 
 /***************************************************************************************/
 
-static void init_chinhero( void )
+static DRIVER_INIT( chinhero )
 {
 	shangkid_gfx_type = 0;
 }
 
-static void init_shangkid( void )
+static DRIVER_INIT( shangkid )
 {
 	shangkid_gfx_type = 1;
 }
 
-static void init_dynamski( void )
+static DRIVER_INIT( dynamski )
 {
 /*
 	unsigned char *pMem;
@@ -160,7 +161,7 @@ WRITE_HANDLER( shangkid_bbx_AY8910_write_w )
 			if( data == 0x01 )
 			{
 				/* 0->1 transition triggers interrupt on Sound CPU */
-				cpu_cause_interrupt( 2, Z80_IRQ_INT );
+				cpu_set_irq_line( 2, 0, HOLD_LINE );
 			}
 		}
 		else
@@ -274,8 +275,8 @@ static struct GfxDecodeInfo shangkid_gfxdecodeinfo[] = {
 };
 
 static struct GfxDecodeInfo dynamski_gfxdecodeinfo[] = {
-	{ REGION_GFX1, 0, &shangkid_char_layout,	0, 0x40 },
-	{ REGION_GFX2, 0, &shangkid_sprite_layout,	0, 0x40 },
+	{ REGION_GFX1, 0, &shangkid_char_layout,	   0, 0x10 },
+	{ REGION_GFX2, 0, &shangkid_sprite_layout,	0x40, 0x10 },
 	{ -1 }
 };
 
@@ -360,57 +361,54 @@ PORT_END
 
 /***************************************************************************************/
 
-#define MACHINE_DRIVER( NAME ) \
-static struct MachineDriver machine_driver_##NAME = { \
-	{ \
-		{ \
-			CPU_Z80, \
-			3000000, /* ? */ \
-			main_readmem,main_writemem,0,0, \
-			interrupt,1 \
-		}, \
-		{ \
-			CPU_Z80, \
-			3000000, /* ? */ \
-			bbx_readmem,bbx_writemem, \
-			0,bbx_writeport, \
-			interrupt,1 \
-		}, \
-		{ \
-			CPU_Z80|CPU_AUDIO_CPU, \
-			3000000, /* ? */ \
-			sound_readmem,sound_writemem, \
-			readport_sound,writeport_sound, \
-			ignore_interrupt,1 \
-		}, \
-	}, \
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION, \
-	10, /* CPU slices */ \
-	0, /* init machine */ \
-	40*8, 28*8, { 16, 319-16, 0, 223 }, \
-	NAME##_gfxdecodeinfo, \
-	256, 0, \
-	palette_RRRR_GGGG_BBBB_convert_prom, \
-	VIDEO_TYPE_RASTER, \
-	0, \
-	shangkid_vh_start, \
-	shangkid_vh_stop, \
-	shangkid_screenrefresh, \
-	0,0,0,0, \
-	{ \
-		{ \
-			SOUND_DAC, \
-			&dac_interface \
-		}, \
-		{ \
-			SOUND_AY8910, \
-			&ay8910_interface \
-		} \
-	} \
-};
+static MACHINE_DRIVER_START( chinhero )
 
-MACHINE_DRIVER( chinhero )
-MACHINE_DRIVER( shangkid )
+	/* basic machine hardware */
+	MDRV_CPU_ADD(Z80, 3000000) /* ? */
+	MDRV_CPU_MEMORY(main_readmem,main_writemem)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+
+	MDRV_CPU_ADD(Z80, 3000000) /* ? */
+	MDRV_CPU_MEMORY(bbx_readmem,bbx_writemem)
+	MDRV_CPU_PORTS(0,bbx_writeport)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+
+	MDRV_CPU_ADD(Z80, 3000000) /* ? */
+	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+	MDRV_CPU_PORTS(readport_sound,writeport_sound)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(10)
+
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(40*8, 28*8)
+	MDRV_VISIBLE_AREA(16, 319-16, 0, 223)
+	MDRV_GFXDECODE(chinhero_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(256)
+
+	MDRV_PALETTE_INIT(RRRR_GGGG_BBBB)
+	MDRV_VIDEO_START(shangkid)
+	MDRV_VIDEO_UPDATE(shangkid)
+
+	/* sound hardware */
+	MDRV_SOUND_ADD(DAC, dac_interface)
+	MDRV_SOUND_ADD(AY8910, ay8910_interface)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( shangkid )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(chinhero)
+
+	/* video hardware */
+	MDRV_GFXDECODE(shangkid_gfxdecodeinfo)
+MACHINE_DRIVER_END
+
+
 
 static MEMORY_READ_START( dynamski_readmem )
 	{ 0x0000, 0x7fff, MRA_ROM },
@@ -443,36 +441,31 @@ static PORT_WRITE_START( dynamski_writeport )
 	{ 0x01, 0x01, AY8910_control_port_0_w },
 PORT_END
 
-static struct MachineDriver machine_driver_dynamski = {
-	{
-		{
-			CPU_Z80,
-			3000000, /* ? */
-			dynamski_readmem,dynamski_writemem,0,dynamski_writeport,
-			interrupt,1
-		},
-	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,
-	1, /* CPU slices */
-	0, /* init machine */
-	256+32, 256, { 0, 255+32, 16, 255-16 },
-	dynamski_gfxdecodeinfo,
-	256, 0,
-	0,
+static MACHINE_DRIVER_START( dynamski )
 
-	VIDEO_TYPE_RASTER,
-	0,
-	0,//vh_start,
-	0,//vh_stop,
-	dynamski_screenrefresh,
-	0,0,0,0,
-	{
-		{
-			SOUND_AY8910,
-			&ay8910_interface
-		}
-	}
-};
+	/* basic machine hardware */
+	MDRV_CPU_ADD(Z80, 3000000) /* ? */
+	MDRV_CPU_MEMORY(dynamski_readmem,dynamski_writemem)
+	MDRV_CPU_PORTS(0,dynamski_writeport)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(256+32, 256)
+	MDRV_VISIBLE_AREA(0, 255+32, 16, 255-16)
+	MDRV_GFXDECODE(dynamski_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(32)
+	MDRV_COLORTABLE_LENGTH(16*4+16*4)
+
+	MDRV_PALETTE_INIT(dynamski)
+	MDRV_VIDEO_UPDATE(dynamski)
+
+	/* sound hardware */
+	MDRV_SOUND_ADD(AY8910, ay8910_interface)
+MACHINE_DRIVER_END
 
 /***************************************************************************************/
 
@@ -652,51 +645,51 @@ INPUT_PORTS_END
 
 ROM_START( chinhero )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code (main) */
-	ROM_LOAD( "ic2.1",		0x0000, 0x2000, 0x8974bac4 )
-	ROM_LOAD( "ic3.2",		0x2000, 0x2000, 0x9b7a02fe )
-	ROM_LOAD( "ic4.3",		0x4000, 0x2000, 0xe86d4195 )
-	ROM_LOAD( "ic5.4",		0x6000, 0x2000, 0x2b629d2c )
-	ROM_LOAD( "ic6.5",		0x8000, 0x2000, 0x35bf4a4f )
+	ROM_LOAD( "ic2.1",		  0x0000, 0x2000, 0x8974bac4 )
+	ROM_LOAD( "ic3.2",		  0x2000, 0x2000, 0x9b7a02fe )
+	ROM_LOAD( "ic4.3",		  0x4000, 0x2000, 0xe86d4195 )
+	ROM_LOAD( "ic5.4",		  0x6000, 0x2000, 0x2b629d2c )
+	ROM_LOAD( "ic6.5",		  0x8000, 0x2000, 0x35bf4a4f )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code (coprocessor) */
-	ROM_LOAD( "ic31.6",		0x0000, 0x2000, 0x7c56927b )
-	ROM_LOAD( "ic32.7",		0x2000, 0x2000, 0xd67b8045 )
+	ROM_LOAD( "ic31.6",		  0x0000, 0x2000, 0x7c56927b )
+	ROM_LOAD( "ic32.7",		  0x2000, 0x2000, 0xd67b8045 )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* Z80 code (sound) */
-	ROM_LOAD( "ic47.8",		0x0000, 0x2000, 0x3c396062 )
-	ROM_LOAD( "ic48.9",		0x2000, 0x2000, 0xb14f2bab )
-	ROM_LOAD( "ic49.10",	0x4000, 0x2000, 0x8c0e43d1 )
+	ROM_LOAD( "ic47.8",		  0x0000, 0x2000, 0x3c396062 )
+	ROM_LOAD( "ic48.9",		  0x2000, 0x2000, 0xb14f2bab )
+	ROM_LOAD( "ic49.10",	  0x4000, 0x2000, 0x8c0e43d1 )
 
 	ROM_REGION( 0x4000, REGION_GFX1, ROMREGION_DISPOSE|ROMREGION_INVERT ) /* tiles */
-	ROM_LOAD( "ic21.11",	0x0000,0x2000,0x3a37fb45 )
-	ROM_LOAD( "ic22.12",	0x2000,0x2000,0xbc21c002 )
+	ROM_LOAD( "ic21.11",	  0x0000, 0x2000, 0x3a37fb45 )
+	ROM_LOAD( "ic22.12",	  0x2000, 0x2000, 0xbc21c002 )
 
 	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE|ROMREGION_INVERT ) /* sprites */
-	ROM_LOAD( "ic114.18",	0x0000,0x2000,0xfc4183a8 )
-	ROM_LOAD( "ic113.17",	0x2000,0x2000,0xd713d7fe )
-	ROM_LOAD(  "ic99.13",	0x4000,0x2000,0xa8e2a3f4 )
+	ROM_LOAD( "ic114.18",	  0x0000, 0x2000, 0xfc4183a8 )
+	ROM_LOAD( "ic113.17",	  0x2000, 0x2000, 0xd713d7fe )
+	ROM_LOAD(  "ic99.13",	  0x4000, 0x2000, 0xa8e2a3f4 )
 
 	ROM_REGION( 0x6000, REGION_GFX3, ROMREGION_DISPOSE|ROMREGION_INVERT ) /* sprites */
-	ROM_LOAD( "ic112.16",	0x0000,0x2000,0xdd5170ca )
-	ROM_LOAD( "ic111.15",	0x2000,0x2000,0x20f6052e )
-	ROM_LOAD( "ic110.14",	0x4000,0x2000,0x9bc2d568 )
+	ROM_LOAD( "ic112.16",	  0x0000, 0x2000, 0xdd5170ca )
+	ROM_LOAD( "ic111.15",	  0x2000, 0x2000, 0x20f6052e )
+	ROM_LOAD( "ic110.14",	  0x4000, 0x2000, 0x9bc2d568 )
 
 	ROM_REGION( 0xa80, REGION_PROMS, 0 )
-	ROM_LOAD( "v_ic36_r",	0x000,0x100,0x16ae1692 ) /* red */
-	ROM_LOAD( "v_ic35_g",	0x100,0x100,0xb3d0a074 ) /* green */
-	ROM_LOAD( "v_ic27_b",	0x200,0x100,0x353a2d11 ) /* blue */
+	ROM_LOAD( "v_ic36_r",	  0x000, 0x100, 0x16ae1692 ) /* red */
+	ROM_LOAD( "v_ic35_g",	  0x100, 0x100, 0xb3d0a074 ) /* green */
+	ROM_LOAD( "v_ic27_b",	  0x200, 0x100, 0x353a2d11 ) /* blue */
 
-	ROM_LOAD( "v_ic28_m",	0x300,0x100,0x7ca273c1 ) /* unknown */
-	ROM_LOAD( "v_ic69",		0x400,0x200,0x410d6f86 ) /* zoom */
-	ROM_LOAD( "v_ic108",	0x600,0x200,0xd33c02ae ) /* zoom */
+	ROM_LOAD( "v_ic28_m",	  0x300, 0x100, 0x7ca273c1 ) /* unknown */
+	ROM_LOAD( "v_ic69",		  0x400, 0x200, 0x410d6f86 ) /* zoom */
+	ROM_LOAD( "v_ic108",	  0x600, 0x200, 0xd33c02ae ) /* zoom */
 
-	ROM_LOAD( "v_ic12",		0x800,0x100,0x0de07e89 ) /* tile pen priority */
-	ROM_LOAD( "v_ic15_p",	0x900,0x100,0x7e0a0581 ) /* sprite pen transparency */
-	ROM_LOAD( "v_ic8",		0xa00, 0x20,0x4c62974d )
+	ROM_LOAD( "v_ic12",		  0x800, 0x100, 0x0de07e89 ) /* tile pen priority */
+	ROM_LOAD( "v_ic15_p",	  0x900, 0x100, 0x7e0a0581 ) /* sprite pen transparency */
+	ROM_LOAD( "v_ic8",		  0xa00, 0x020, 0x4c62974d )
 
-	ROM_LOAD( "ic8",		0xa20, 0x20,0x84bcd9af ) /* main CPU banking */
-	ROM_LOAD( "ic22",		0xa40, 0x20,0x84bcd9af ) /* coprocessor banking */
-	ROM_LOAD( "ic42",		0xa60, 0x20,0x2ccfe10a ) /* sound cpu banking */
+	ROM_LOAD( "ic8",		  0xa20, 0x020, 0x84bcd9af ) /* main CPU banking */
+	ROM_LOAD( "ic22",		  0xa40, 0x020, 0x84bcd9af ) /* coprocessor banking */
+	ROM_LOAD( "ic42",		  0xa60, 0x020, 0x2ccfe10a ) /* sound cpu banking */
 ROM_END
 
 ROM_START( shangkid )
@@ -746,51 +739,51 @@ ROM_START( shangkid )
 	ROM_LOAD( "cr19i100.bin", 0x14000, 0x4000, 0xf948f829 )
 
 	ROM_REGION( 0xa80, REGION_PROMS, 0 )
-	ROM_LOAD( "cr31ic36.bin",	0x000, 256,0x9439590b )		/* 82S129 - red */
-	ROM_LOAD( "cr30ic35.bin",	0x100, 256,0x324e295e )		/* 82S129 - green */
-	ROM_LOAD( "cr28ic27.bin",	0x200, 256,0x375cba96 )		/* 82S129 - blue */
+	ROM_LOAD( "cr31ic36.bin", 0x000, 0x100, 0x9439590b )	/* 82S129 - red */
+	ROM_LOAD( "cr30ic35.bin", 0x100, 0x100, 0x324e295e )	/* 82S129 - green */
+	ROM_LOAD( "cr28ic27.bin", 0x200, 0x100, 0x375cba96 )	/* 82S129 - blue */
 
-	ROM_LOAD( "cr29ic28.bin",	0x300, 256,0x7ca273c1 )		/* 82S129 - unknown */
-	ROM_LOAD( "cr32ic69.bin",	0x400, 512,0x410d6f86 )		/* 82S147 - sprite-related (zoom?) */
-	ROM_LOAD( "cr33-108.bin",	0x600, 512,0xd33c02ae )		/* 82S147 - sprite-related (zoom?) */
+	ROM_LOAD( "cr29ic28.bin", 0x300, 0x100, 0x7ca273c1 )	/* 82S129 - unknown */
+	ROM_LOAD( "cr32ic69.bin", 0x400, 0x200, 0x410d6f86 )	/* 82S147 - sprite-related (zoom?) */
+	ROM_LOAD( "cr33-108.bin", 0x600, 0x200, 0xd33c02ae )	/* 82S147 - sprite-related (zoom?) */
 
-	ROM_LOAD( "cr26ic12.bin",	0x800, 256,0x85b5e958 )		/* 82S129 - tile pen priority? */
-	ROM_LOAD( "cr27ic15.bin",	0x900, 256,0xf7a19fe2 )		/* 82S129 - sprite pen transparency */
+	ROM_LOAD( "cr26ic12.bin", 0x800, 0x100, 0x85b5e958 )	/* 82S129 - tile pen priority? */
+	ROM_LOAD( "cr27ic15.bin", 0x900, 0x100, 0xf7a19fe2 )	/* 82S129 - sprite pen transparency */
 
-	ROM_LOAD( "cr25ic8.bin",	0xa00, 0x20, 0xc85e09ad )	/* 82S123 */
-	ROM_LOAD( "cr22ic8.bin",	0xa20, 0x20, 0x1a7e0b06 )	/* 82S123 - main CPU banking */
-	ROM_LOAD( "cr23ic22.bin",	0xa40, 0x20, 0xefb5f265 )	/* 82S123 - coprocessor banking */
-	ROM_LOAD( "cr24ic42.bin",	0xa60, 0x20, 0x823878aa )	/* 82S123 - sample player banking */
+	ROM_LOAD( "cr25ic8.bin",  0xa00, 0x020, 0xc85e09ad )	/* 82S123 */
+	ROM_LOAD( "cr22ic8.bin",  0xa20, 0x020, 0x1a7e0b06 )	/* 82S123 - main CPU banking */
+	ROM_LOAD( "cr23ic22.bin", 0xa40, 0x020, 0xefb5f265 )	/* 82S123 - coprocessor banking */
+	ROM_LOAD( "cr24ic42.bin", 0xa60, 0x020, 0x823878aa )	/* 82S123 - sample player banking */
 ROM_END
 
 ROM_START( dynamski )
 	ROM_REGION( 0x12000, REGION_CPU1, 0 ) /* Z80 code */
-	ROM_LOAD( "dynski.1", 0x00000, 0x1000, 0x30191160 ) /* code */
-	ROM_LOAD( "dynski.2", 0x01000, 0x1000, 0x5e08a0b0 )
-	ROM_LOAD( "dynski.3", 0x02000, 0x1000, 0x29cfd740 )
-	ROM_LOAD( "dynski.4", 0x03000, 0x1000, 0xe1d47776 )
-	ROM_LOAD( "dynski.5", 0x04000, 0x1000, 0xe39aba1b )
-	ROM_LOAD( "dynski.6", 0x05000, 0x1000, 0x95780608 )
-	ROM_LOAD( "dynski.7", 0x06000, 0x1000, 0xb88d328b )
-	ROM_LOAD( "dynski.8", 0x07000, 0x1000, 0x8db5e691 )
+	ROM_LOAD( "dynski.1",     0x00000, 0x1000, 0x30191160 ) /* code */
+	ROM_LOAD( "dynski.2",     0x01000, 0x1000, 0x5e08a0b0 )
+	ROM_LOAD( "dynski.3",     0x02000, 0x1000, 0x29cfd740 )
+	ROM_LOAD( "dynski.4",     0x03000, 0x1000, 0xe1d47776 )
+	ROM_LOAD( "dynski.5",     0x04000, 0x1000, 0xe39aba1b )
+	ROM_LOAD( "dynski.6",     0x05000, 0x1000, 0x95780608 )
+	ROM_LOAD( "dynski.7",     0x06000, 0x1000, 0xb88d328b )
+	ROM_LOAD( "dynski.8",     0x07000, 0x1000, 0x8db5e691 )
 
 	ROM_REGION( 0x4000, REGION_GFX1, ROMREGION_DISPOSE|ROMREGION_INVERT ) /* 8x8 tiles */
-	ROM_LOAD( "dynski8.3e",  0x0000, 0x2000, 0x32c354dc )
-	ROM_LOAD( "dynski9.2e",  0x2000, 0x2000, 0x80a6290c )
+	ROM_LOAD( "dynski8.3e",   0x0000, 0x2000, 0x32c354dc )
+	ROM_LOAD( "dynski9.2e",   0x2000, 0x2000, 0x80a6290c )
 
 	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE|ROMREGION_INVERT ) /* 16x16 sprites */
-	ROM_LOAD( "dynski5.14b", 0x0000, 0x2000, 0xaa4ac6e2 )
-	ROM_LOAD( "dynski6.15b", 0x2000, 0x2000, 0x47e76886 )
-	ROM_LOAD( "dynski7.14d", 0x4000, 0x2000, 0xa153dfa9 )
+	ROM_LOAD( "dynski5.14b",  0x0000, 0x2000, 0xaa4ac6e2 )
+	ROM_LOAD( "dynski6.15b",  0x2000, 0x2000, 0x47e76886 )
+	ROM_LOAD( "dynski7.14d",  0x4000, 0x2000, 0xa153dfa9 )
 
-	ROM_REGION( 0xa80, REGION_PROMS, 0 )
-	ROM_LOAD( "dynski.11e",		0x000, 256,0xe625aa09 )
-	ROM_LOAD( "dynski.4g",		0x100, 256,0x761fe465 )
-	ROM_LOAD( "dynskic.15f",	0x200, 256,0 /*0x025996b1*/ )
-	ROM_LOAD( "dynskic.15g",	0x300, 256,0 /*0x025996b1*/ )
+	ROM_REGION( 0x240, REGION_PROMS, 0 )
+	ROM_LOAD( "dynskic.15f",  0x000, 0x020, 0x3869514b )	/* palette */
+	ROM_LOAD( "dynskic.15g",  0x020, 0x020, 0x9333a5e4 )	/* palette */
+	ROM_LOAD( "dynski.11e",   0x040, 0x100, 0xe625aa09 )	/* lookup table */
+	ROM_LOAD( "dynski.4g",    0x140, 0x100, 0x761fe465 )	/* lookup table */
 ROM_END
 
 
 GAMEX( 1984, dynamski, 0, dynamski, dynamski, dynamski,	ROT90, "Taiyo", "Dynamic Ski", GAME_WRONG_COLORS | GAME_NO_COCKTAIL )
 GAME(  1984, chinhero, 0, chinhero, chinhero, chinhero,	ROT90, "Taiyo", "Chinese Hero" )
-GAMEX( 1985, shangkid, 0, shangkid, shangkid, shangkid,	0,     "Taiyo (Data East license)", "Shanghai Kid", GAME_NO_COCKTAIL )
+GAMEX( 1985, shangkid, 0, shangkid, shangkid, shangkid,	ROT0,  "Taiyo (Data East license)", "Shanghai Kid", GAME_NO_COCKTAIL )

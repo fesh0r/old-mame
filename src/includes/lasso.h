@@ -1,24 +1,32 @@
 /***************************************************************************
 
+ Lasso and similar hardware
 
 ***************************************************************************/
 
 /* defined in vidhrdw/ */
-extern data8_t *lasso_vram;
-extern data8_t *wwjgtin_scroll;
+extern data8_t *lasso_videoram;
+extern data8_t *lasso_colorram;
+extern data8_t *lasso_spriteram;
+extern size_t lasso_spriteram_size;
+extern data8_t *lasso_bitmap_ram;
+extern data8_t *wwjgtin_track_scroll;
 
 WRITE_HANDLER( lasso_videoram_w );
+WRITE_HANDLER( lasso_colorram_w );
 WRITE_HANDLER( lasso_backcolor_w );
-WRITE_HANDLER( lasso_gfxbank_w );
-WRITE_HANDLER( wwjgtin_gfxbank_w );
+WRITE_HANDLER( lasso_video_control_w );
+WRITE_HANDLER( wwjgtin_video_control_w );
+WRITE_HANDLER( pinbo_video_control_w );
 WRITE_HANDLER( wwjgtin_lastcolor_w );
 
-void lasso_vh_convert_color_prom  (unsigned char *palette,unsigned short *colortable,const unsigned char *color_prom);
-void wwjgtin_vh_convert_color_prom(unsigned char *palette,unsigned short *colortable,const unsigned char *color_prom);
+PALETTE_INIT( lasso );
+PALETTE_INIT( wwjgtin );
 
-int lasso_vh_start  ( void );
-int wwjgtin_vh_start( void );
+VIDEO_START( lasso );
+VIDEO_START( wwjgtin );
+VIDEO_START( pinbo );
 
-void lasso_vh_screenrefresh   ( struct mame_bitmap *bitmap, int fullrefresh );
-void chameleo_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh );
-void wwjgtin_vh_screenrefresh ( struct mame_bitmap *bitmap, int fullrefresh );
+VIDEO_UPDATE( lasso );
+VIDEO_UPDATE( chameleo );
+VIDEO_UPDATE( wwjgtin );

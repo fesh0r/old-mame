@@ -166,7 +166,6 @@ int		DisOp;
 #undef cpu_readmem24bew
 #undef cpu_readmem24bew_word
 
-#include "cpuintrf.h"
 
 /*
  * Defines used by Program
@@ -191,9 +190,15 @@ int		DisOp;
 #define NORMAL 0
 #define PCREL  1
 
+#ifdef __ELF__
+#define PREF ""
+#else
+#define PREF "_"
+#endif
+
 /* Register Location Offsets */
 
-#define ICOUNT				"_m68k_ICount"
+#define ICOUNT				PREF "m68k_ICount"
 
 #define REG_DAT				"R_D0"
 #define REG_DAT_EBX			"[R_D0+ebx*4]"
@@ -470,7 +475,7 @@ void MemoryBanking(int BaseCode)
 #endif
 
 	/* Mask to n bits */
-	fprintf(fp, "\t\t and   esi,[_mem_amask]\n");
+	fprintf(fp, "\t\t and   esi,[%smem_amask]\n", PREF);
 
 #if 0
 #ifdef KEEPHIGHPC
@@ -519,7 +524,7 @@ void MemoryBanking(int BaseCode)
 	fprintf(fp, "\t\t push  esi\n");
 #endif
 
-	fprintf(fp, "\t\t call  [_a68k_memory_intf+28]\n");
+	fprintf(fp, "\t\t call  [%sa68k_memory_intf+28]\n", PREF);
 
 #ifndef FASTCALL
 	fprintf(fp, "\t\t lea   esp,[esp+4]\n");
@@ -537,7 +542,7 @@ void MemoryBanking(int BaseCode)
 
 	/* Update our copy */
 
-	fprintf(fp, "\t\t mov   ebp,dword [_OP_ROM]\n");
+	fprintf(fp, "\t\t mov   ebp,dword [%sOP_ROM]\n", PREF);
 
 	fprintf(fp, "OP%d_%5.5x_Bank:\n",CPU,BaseCode);
 }
@@ -604,7 +609,7 @@ void Completed(void)
 
 	/* Check for Debug Active */
 
-	fprintf(fp, "\n\t\t test    byte [_mame_debug],byte 0xff\n");
+	fprintf(fp, "\n\t\t test    byte [%smame_debug],byte 0xff\n", PREF);
 	fprintf(fp, "\t\t jnz   near MainExit\n\n");
 
 #endif
@@ -1017,15 +1022,15 @@ void Memory_Read(char Size,int AReg,char *Flags,int Mask)
 			 switch (Size)
 			 {
 				 case 66 :
-					fprintf(fp, "\t\t call  [_a68k_memory_intf+4]\n");
+					fprintf(fp, "\t\t call  [%sa68k_memory_intf+4]\n", PREF);
 					break;
 
 				 case 87 :
-					fprintf(fp, "\t\t call  [_a68k_memory_intf+8]\n");
+					fprintf(fp, "\t\t call  [%sa68k_memory_intf+8]\n", PREF);
 					break;
 
 				 case 76 :
-					fprintf(fp, "\t\t call  [_a68k_memory_intf+12]\n");
+					fprintf(fp, "\t\t call  [%sa68k_memory_intf+12]\n", PREF);
 					break;
 			 }
 			 break;
@@ -1035,15 +1040,15 @@ void Memory_Read(char Size,int AReg,char *Flags,int Mask)
 			 switch (Size)
 			 {
 				 case 66 :
-					 fprintf(fp, "\t\t call  [_a68k_memory_intf+32]\n");
+					 fprintf(fp, "\t\t call  [%sa68k_memory_intf+32]\n", PREF);
 					 break;
 
 				 case 87 :
-					 fprintf(fp, "\t\t call  [_a68k_memory_intf+36]\n");
+					 fprintf(fp, "\t\t call  [%sa68k_memory_intf+36]\n", PREF);
 					 break;
 
 				 case 76 :
-					 fprintf(fp, "\t\t call  [_a68k_memory_intf+40]\n");
+					 fprintf(fp, "\t\t call  [%sa68k_memory_intf+40]\n", PREF);
 					 break;
 			 }
 			 break;
@@ -1056,15 +1061,15 @@ void Memory_Read(char Size,int AReg,char *Flags,int Mask)
 	switch (Size)
 	{
 		case 66 :
-			fprintf(fp, "\t\t call  [_a68k_memory_intf+4]\n");
+			fprintf(fp, "\t\t call  [%sa68k_memory_intf+4]\n", PREF);
 			break;
 
 		case 87 :
-			fprintf(fp, "\t\t call  [_a68k_memory_intf+8]\n");
+			fprintf(fp, "\t\t call  [%sa68k_memory_intf+8]\n", PREF);
 			break;
 
 		case 76 :
-			fprintf(fp, "\t\t call  [_a68k_memory_intf+12]\n");
+			fprintf(fp, "\t\t call  [%sa68k_memory_intf+12]\n", PREF);
 			break;
 	}
 #endif
@@ -1108,7 +1113,7 @@ void Memory_Read(char Size,int AReg,char *Flags,int Mask)
 
 	if ((Flags[EBP] != '-') && (SavedRegs[EBP] == '-'))
 	{
-		fprintf(fp, "\t\t mov   ebp,dword [_OP_ROM]\n");
+		fprintf(fp, "\t\t mov   ebp,dword [%sOP_ROM]\n", PREF);
 	}
 }
 
@@ -1197,15 +1202,15 @@ void Memory_Write(char Size,int AReg,int DReg,char *Flags,int Mask)
 	switch (Size)
 	{
 		case 66 :
-			fprintf(fp, "\t\t call  [_a68k_memory_intf+16]\n");
+			fprintf(fp, "\t\t call  [%sa68k_memory_intf+16]\n", PREF);
 			break;
 
 		case 87 :
-			fprintf(fp, "\t\t call  [_a68k_memory_intf+20]\n");
+			fprintf(fp, "\t\t call  [%sa68k_memory_intf+20]\n", PREF);
 			break;
 
 		case 76 :
-			fprintf(fp, "\t\t call  [_a68k_memory_intf+24]\n");
+			fprintf(fp, "\t\t call  [%sa68k_memory_intf+24]\n", PREF);
 			break;
 	}
 
@@ -1253,7 +1258,7 @@ void Memory_Write(char Size,int AReg,int DReg,char *Flags,int Mask)
 
 	if ((Flags[EBP] != '-') && (SavedRegs[EBP] == '-'))
 	{
-		fprintf(fp, "\t\t mov   ebp,dword [_OP_ROM]\n");
+		fprintf(fp, "\t\t mov   ebp,dword [%sOP_ROM]\n", PREF);
 	}
 }
 
@@ -1359,7 +1364,7 @@ void PushPC(int Wreg,int Wreg2,char *Flags, int Mask)
 
 	if (Wreg2 == EBP)
 	{
-		fprintf(fp, "\t\t mov   ebp,dword [_OP_ROM]\n");
+		fprintf(fp, "\t\t mov   ebp,dword [%sOP_ROM]\n", PREF);
 	}
 
 #endif
@@ -5645,12 +5650,12 @@ void reset(void)
 		fprintf(fp, "\t\t mov   [%s],edx\n",REG_CCR);
 		fprintf(fp, "\t\t push  ECX\n");
 
-		fprintf(fp, "\t\t call  [eax]\n");
+		fprintf(fp, "\t\t call  eax\n");
 
 		fprintf(fp, "\t\t mov   ESI,[%s]\n",REG_PC);
 		fprintf(fp, "\t\t mov   edx,[%s]\n",REG_CCR);
 		fprintf(fp, "\t\t pop   ECX\n");
-		fprintf(fp, "\t\t mov   ebp,dword [_OP_ROM]\n");
+		fprintf(fp, "\t\t mov   ebp,dword [%sOP_ROM]\n", PREF);
 
 		fprintf(fp, "OP%d_%4.4x_END:\n",CPU,BaseCode);
 		fprintf(fp, "\t\t sub   dword [%s],%d\n",ICOUNT,TimingCycles);
@@ -5808,14 +5813,16 @@ void illegal_opcode(void)
 {
 	Align();
 	fprintf(fp, "ILLEGAL:\n");
-	fprintf(fp, "\t\t mov [_illegal_op],ecx\n");
-	fprintf(fp, "\t\t mov [_illegal_pc],esi\n");
+	fprintf(fp, "\t\t mov [%sillegal_op],ecx\n", PREF);
+	fprintf(fp, "\t\t mov [%sillegal_pc],esi\n", PREF);
 
+#if 0
 #ifdef MAME_DEBUG
 	fprintf(fp, "\t\t jmp ecx\n");
 	fprintf(fp, "\t\t pushad\n");
-	fprintf(fp, "\t\t call _m68k_illegal_opcode\n");
+	fprintf(fp, "\t\t call %sm68k_illegal_opcode\n", PREF);
 	fprintf(fp, "\t\t popad\n");
+#endif
 #endif
 
 	Exception(4,0xFFFE);
@@ -7606,7 +7613,6 @@ void JumpTable(void)
 
 void CodeSegmentBegin(void)
 {
-
 /* Messages */
 
 	fprintf(fp, "; Make68K - V%s - Copyright 1998, Mike Coates (mame@btinternet.com)\n", VERSION);
@@ -7623,25 +7629,25 @@ void CodeSegmentBegin(void)
 	fprintf(fp, "\t\t GLOBAL %s_OPCODETABLE\n",CPUtype);
 
 	/* ASG - only one interface to memory now */
-	fprintf(fp, "\t\t EXTERN _m68k_ICount\n");
-	fprintf(fp, "\t\t EXTERN _a68k_memory_intf\n");
-	fprintf(fp, "\t\t EXTERN _mem_amask\n");
+	fprintf(fp, "\t\t EXTERN %sm68k_ICount\n", PREF);
+	fprintf(fp, "\t\t EXTERN %sa68k_memory_intf\n", PREF);
+	fprintf(fp, "\t\t EXTERN %smem_amask\n", PREF);
 
 	fprintf(fp, "; Vars Mame declares / needs access to\n\n");
 
-	fprintf(fp, "\t\t EXTERN _mame_debug\n");
-	fprintf(fp, "\t\t EXTERN _illegal_op\n");
-	fprintf(fp, "\t\t EXTERN _illegal_pc\n");
+	fprintf(fp, "\t\t EXTERN %smame_debug\n", PREF);
+	fprintf(fp, "\t\t EXTERN %sillegal_op\n", PREF);
+	fprintf(fp, "\t\t EXTERN %sillegal_pc\n", PREF);
 
-	fprintf(fp, "\t\t EXTERN _OP_ROM\n");
-	fprintf(fp, "\t\t EXTERN _OP_RAM\n");
+	fprintf(fp, "\t\t EXTERN %sOP_ROM\n", PREF);
+	fprintf(fp, "\t\t EXTERN %sOP_RAM\n", PREF);
 
-	fprintf(fp, "\t\t EXTERN _opcode_entry\n");
-	fprintf(fp, "\t\t EXTERN _cur_mrhard\n");
+	fprintf(fp, "\t\t EXTERN %sopcode_entry\n", PREF);
+//	fprintf(fp, "\t\t EXTERN %scur_mrhard\n", PREF);
 
-//#ifdef MAME_DEBUG
-	fprintf(fp, "\t\t EXTERN _m68k_illegal_opcode\n");
-//#endif
+#ifdef MAME_DEBUG
+	fprintf(fp, "\t\t EXTERN %sm68k_illegal_opcode\n", PREF);
+#endif
 
 #ifdef OS2
 	fprintf(fp, "\t\t SECTION maincode USE32 FLAT CLASS=CODE\n\n");
@@ -7709,7 +7715,7 @@ void CodeSegmentBegin(void)
 	fprintf(fp, "\t\t pushad\n");
 	fprintf(fp, "\t\t mov   esi,[%s]\n",REG_PC);
 	fprintf(fp, "\t\t mov   edx,[%s]\n",REG_CCR);
-	fprintf(fp, "\t\t mov   ebp,dword [_OP_ROM]\n");
+	fprintf(fp, "\t\t mov   ebp,dword [%sOP_ROM]\n", PREF);
 
 	fprintf(fp,"; Check for Interrupt waiting\n\n");
 	fprintf(fp,"\t\t test  [%s],byte 07H\n",REG_IRQ);
@@ -8160,11 +8166,8 @@ int main(int argc, char **argv)
 
 
 	CPUtype = malloc(64);
-#ifdef OS2
-	sprintf(CPUtype,"M680%s",argv[3]);
-#else
-	sprintf(CPUtype,"_M680%s",argv[3]);
-#endif
+
+	sprintf(CPUtype,"%sM680%s", PREF, argv[3]);
 
 	if(argv[3][0]=='2') CPU = 2;
 	if(argc > 4 && !strcmp(argv[4], "ppro"))

@@ -31,7 +31,7 @@ extern unsigned char *kyugo_back_scrollY_lo;
 extern unsigned char *kyugo_back_scrollX;
 WRITE_HANDLER( kyugo_gfxctrl_w );
 WRITE_HANDLER( kyugo_flipscreen_w );
-void kyugo_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+VIDEO_UPDATE( kyugo );
 
 
 static unsigned char *shared_ram;
@@ -223,7 +223,7 @@ INPUT_PORTS_START( gyrodine )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START      /* DSW2 */
-    COIN_A_B
+	COIN_A_B
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -232,18 +232,18 @@ INPUT_PORTS_START( gyrodine )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START	/* IN0 */
-    START_COINS
+	START_COINS
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START	/* IN1 */
-    JOYSTICK_1
+	JOYSTICK_1
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START	/* IN2 */
-    JOYSTICK_2
+	JOYSTICK_2
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
@@ -275,7 +275,7 @@ INPUT_PORTS_START( sonofphx )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START      /* DSW2 */
-    COIN_A_B
+	COIN_A_B
 	PORT_DIPNAME( 0xc0, 0x80, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0xc0, "Easy" )
 	PORT_DIPSETTING(    0x80, "Normal" )
@@ -283,18 +283,18 @@ INPUT_PORTS_START( sonofphx )
 	PORT_DIPSETTING(    0x00, "Hardest" )
 
 	PORT_START	/* IN0 */
-    START_COINS
+	START_COINS
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START	/* IN1 */
-    JOYSTICK_1
+	JOYSTICK_1
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START	/* IN2 */
-    JOYSTICK_2
+	JOYSTICK_2
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
@@ -312,7 +312,7 @@ INPUT_PORTS_START( airwolf )
 	PORT_DIPNAME( 0x08, 0x08, "Slow Motion" )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BITX(0x10,     0x10, IPT_DIPSWITCH_NAME | IPF_CHEAT, "Invulnerability", IP_KEY_NONE, IP_JOY_NONE )
+	PORT_BITX(    0x10, 0x10, IPT_DIPSWITCH_NAME | IPF_CHEAT, "Invulnerability", IP_KEY_NONE, IP_JOY_NONE )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x20, "Sound Test" )
@@ -326,27 +326,80 @@ INPUT_PORTS_START( airwolf )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START      /* DSW2 */
-    COIN_A_B
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	COIN_A_B
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START	/* IN0 */
-    START_COINS
+	START_COINS
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START	/* IN1 */
-    JOYSTICK_1
+	JOYSTICK_1
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START	/* IN2 */
-    JOYSTICK_2
+	JOYSTICK_2
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+INPUT_PORTS_END
+
+/* Same as 'airwolf', but different "Lives" Dip Switch */
+INPUT_PORTS_START( skywolf )
+	PORT_START      /* DSW1 */
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
+	PORT_DIPSETTING(    0x03, "3" )
+	PORT_DIPSETTING(    0x02, "4" )
+	PORT_DIPSETTING(    0x01, "5" )
+	PORT_DIPSETTING(    0x00, "6" )
+	PORT_DIPNAME( 0x04, 0x00, "Allow Continue" )
+	PORT_DIPSETTING(    0x04, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
+	PORT_DIPNAME( 0x08, 0x08, "Slow Motion" )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_BITX(    0x10, 0x10, IPT_DIPSWITCH_NAME | IPF_CHEAT, "Invulnerability", IP_KEY_NONE, IP_JOY_NONE )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, "Sound Test" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x80, 0x80, "Freeze" )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_START      /* DSW2 */
+	COIN_A_B
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_START	/* IN0 */
+	START_COINS
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+
+	PORT_START	/* IN1 */
+	JOYSTICK_1
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+
+	PORT_START	/* IN2 */
+	JOYSTICK_2
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
@@ -378,79 +431,27 @@ INPUT_PORTS_START( flashgal )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START      /* DSW2 */
-    COIN_A_B
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	COIN_A_B
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START	/* IN0 */
-    START_COINS
+	START_COINS
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START	/* IN1 */
-    JOYSTICK_1
+	JOYSTICK_1
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START	/* IN2 */
-    JOYSTICK_2
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-INPUT_PORTS_END
-
-INPUT_PORTS_START( skywolf )
-	PORT_START      /* DSW1 */
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x03, "3" )
-	PORT_DIPSETTING(    0x02, "4" )
-	PORT_DIPSETTING(    0x01, "5" )
-	PORT_DIPSETTING(    0x00, "6" )
-	PORT_DIPNAME( 0x04, 0x00, "Allow Continue" )
-	PORT_DIPSETTING(    0x04, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x08, 0x08, "Slow Motion" )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BITX(0x10,     0x10, IPT_DIPSWITCH_NAME | IPF_CHEAT, "Invulnerability", IP_KEY_NONE, IP_JOY_NONE )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, "Sound Test" )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x80, 0x80, "Freeze" )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-
-	PORT_START      /* DSW2 */
-    COIN_A_B
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-
-	PORT_START	/* IN0 */
-    START_COINS
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-
-	PORT_START	/* IN1 */
-    JOYSTICK_1
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-
-	PORT_START	/* IN2 */
-    JOYSTICK_2
+	JOYSTICK_2
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
@@ -482,26 +483,27 @@ INPUT_PORTS_START( srdmissn )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START      /* DSW2 */
-    COIN_A_B
-	PORT_DIPNAME( 0xc0, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0xc0, "Easy" )
-	PORT_DIPSETTING(    0x80, "Normal" )
-	PORT_DIPSETTING(    0x40, "Hard" )
-	PORT_DIPSETTING(    0x00, "Hardest" )
+	COIN_A_B
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START	/* IN0 */
-    START_COINS
+	START_COINS
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START	/* IN1 */
-    JOYSTICK_1
+	JOYSTICK_1
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START	/* IN2 */
-    JOYSTICK_2
+	JOYSTICK_2
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
@@ -580,54 +582,80 @@ static struct AY8910interface ay8910_interface =
 
 ***************************************************************************/
 
-#define Machine_Driver( name ) \
-static const struct MachineDriver machine_driver_##name =											\
-{																							\
-	{																						\
-		{																					\
-			CPU_Z80,																		\
-			18432000 / 4,	/* 18.432 MHz crystal */										\
-			name##_readmem,name##_writemem,0,name##_writeport,								\
-			nmi_interrupt,1																	\
-		},																					\
-		{																					\
-			CPU_Z80,																		\
-			18432000 / 4,	/* 18.432 MHz crystal */										\
-			name##_sub_readmem,name##_sub_writemem,name##_sub_readport,name##_sub_writeport,\
-			interrupt,4																		\
-		}																					\
-	},																						\
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */		\
-	100,	/* cpu interleaving */															\
-	0,																						\
-																							\
-	/* video hardware */																	\
-	64*8, 32*8, { 0*8, 36*8-1, 2*8, 30*8-1 },												\
-	gfxdecodeinfo,																			\
-	256, 0,																					\
-	palette_RRRR_GGGG_BBBB_convert_prom,													\
-																							\
-	VIDEO_TYPE_RASTER,																		\
-	0,																						\
-	generic_vh_start,																		\
-	generic_vh_stop,																		\
-	kyugo_vh_screenrefresh,																	\
-																							\
-	/* sound hardware */																	\
-	0,0,0,0,																				\
-	{																						\
-		{																					\
-			SOUND_AY8910,																	\
-			&ay8910_interface																\
-		}																					\
-	}																						\
-};
+static MACHINE_DRIVER_START( gyrodine )
 
-/* actual definitions */
-Machine_Driver( gyrodine )
-Machine_Driver( sonofphx )
-Machine_Driver( srdmissn )
-Machine_Driver( flashgal )
+	/* basic machine hardware */
+	MDRV_CPU_ADD_TAG("main", Z80, 18432000 / 4)	/* 18.432 MHz crystal */
+	MDRV_CPU_MEMORY(gyrodine_readmem,gyrodine_writemem)
+	MDRV_CPU_PORTS(0,gyrodine_writeport)
+	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+
+	MDRV_CPU_ADD_TAG("sub", Z80, 18432000 / 4)	/* 18.432 MHz crystal */
+	MDRV_CPU_MEMORY(gyrodine_sub_readmem,gyrodine_sub_writemem)
+	MDRV_CPU_PORTS(gyrodine_sub_readport,gyrodine_sub_writeport)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(100)
+
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_VISIBLE_AREA(0*8, 36*8-1, 2*8, 30*8-1)
+	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(256)
+
+	MDRV_PALETTE_INIT(RRRR_GGGG_BBBB)
+	MDRV_VIDEO_START(generic)
+	MDRV_VIDEO_UPDATE(kyugo)
+
+	/* sound hardware */
+	MDRV_SOUND_ADD(AY8910, ay8910_interface)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( sonofphx )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(gyrodine)
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MEMORY(sonofphx_readmem,sonofphx_writemem)
+	MDRV_CPU_PORTS(0,sonofphx_writeport)
+
+	MDRV_CPU_MODIFY("sub")
+	MDRV_CPU_MEMORY(sonofphx_sub_readmem,sonofphx_sub_writemem)
+	MDRV_CPU_PORTS(sonofphx_sub_readport,sonofphx_sub_writeport)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( srdmissn )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(gyrodine)
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MEMORY(srdmissn_readmem,srdmissn_writemem)
+	MDRV_CPU_PORTS(0,srdmissn_writeport)
+
+	MDRV_CPU_MODIFY("sub")
+	MDRV_CPU_MEMORY(srdmissn_sub_readmem,srdmissn_sub_writemem)
+	MDRV_CPU_PORTS(srdmissn_sub_readport,srdmissn_sub_writeport)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( flashgal )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(gyrodine)
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MEMORY(flashgal_readmem,flashgal_writemem)
+	MDRV_CPU_PORTS(0,flashgal_writeport)
+
+	MDRV_CPU_MODIFY("sub")
+	MDRV_CPU_MEMORY(flashgal_sub_readmem,flashgal_sub_writemem)
+	MDRV_CPU_PORTS(flashgal_sub_readport,flashgal_sub_writeport)
+MACHINE_DRIVER_END
+
 
 /***************************************************************************
 

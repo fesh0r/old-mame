@@ -24,13 +24,13 @@ WRITE_HANDLER( mystston_fgvideoram_w );
 WRITE_HANDLER( mystston_bgvideoram_w );
 WRITE_HANDLER( mystston_scroll_w );
 WRITE_HANDLER( mystston_2000_w );
-int mystston_vh_start(void);
-void mystston_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-void mystston_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+VIDEO_START( mystston );
+PALETTE_INIT( mystston );
+VIDEO_UPDATE( mystston );
 
 
 
-static int mystston_interrupt(void)
+static INTERRUPT_GEN( mystston_interrupt )
 {
 	static int coin;
 
@@ -40,22 +40,27 @@ static int mystston_interrupt(void)
 		if (coin == 0)
 		{
 			coin = 1;
-			return nmi_interrupt();
+			nmi_line_pulse();
+			return;
 		}
 	}
 	else coin = 0;
 
-	return interrupt();
+	cpu_set_irq_line(0, 0, HOLD_LINE);
 }
 
+
+static int soundlatch;
+
+static WRITE_HANDLER( mystston_soundlatch_w )
+{
+	soundlatch = data;
+}
 
 static WRITE_HANDLER( mystston_soundcontrol_w )
 {
 	static int last;
-	int soundlatch;
 
-
-	soundlatch = soundlatch_r(0);
 
 	/* bit 5 goes to 8910 #0 BDIR pin  */
 	if ((last & 0x20) == 0x20 && (data & 0x20) == 0x00)
@@ -99,10 +104,10 @@ static MEMORY_WRITE_START( writemem )
 	{ 0x1000, 0x17ff, &mystston_fgvideoram_w, &mystston_fgvideoram },
 	{ 0x1800, 0x1bff, &mystston_bgvideoram_w, &mystston_bgvideoram },
 	{ 0x1c00, 0x1fff, MWA_RAM },	/* work RAM? This gets copied to videoram */
-	{ 0x2000, 0x2000, mystston_2000_w },	/* flip screen & coin counters */
+	{ 0x2000, 0x2000, mystston_2000_w },	/* text color, flip screen & coin counters */
 	{ 0x2010, 0x2010, watchdog_reset_w },	/* or IRQ acknowledge maybe? */
 	{ 0x2020, 0x2020, mystston_scroll_w },
-	{ 0x2030, 0x2030, soundlatch_w },
+	{ 0x2030, 0x2030, mystston_soundlatch_w },
 	{ 0x2040, 0x2040, mystston_soundcontrol_w },
 	{ 0x2060, 0x2077, paletteram_BBGGGRRR_w, &paletteram },
 	{ 0x4000, 0xffff, MWA_ROM },
@@ -230,42 +235,30 @@ static struct AY8910interface ay8910_interface =
 
 
 
-static const struct MachineDriver machine_driver_mystston =
-{
+static MACHINE_DRIVER_START( mystston )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_M6502,
-			1500000,	/* 1.5 MHz ???? */
-			readmem,writemem,0,0,
-			mystston_interrupt,16	/* ? controls music tempo */
-		},
-	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */
-	1,	/* single CPU, no need for interleaving */
-	0,
+	MDRV_CPU_ADD(M6502, 1500000)	/* 1.5 MHz ???? */
+	MDRV_CPU_MEMORY(readmem,writemem)
+	MDRV_CPU_VBLANK_INT(mystston_interrupt,16)	/* ? controls music tempo */
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	32*8, 32*8, { 0*8, 32*8-1, 1*8, 31*8-1 },
-	gfxdecodeinfo,
-	24+32, 24+32,
-	mystston_vh_convert_color_prom,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(32*8, 32*8)
+	MDRV_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(24+32)
 
-	VIDEO_TYPE_RASTER,
-	0,
-	mystston_vh_start,
-	0,
-	mystston_vh_screenrefresh,
+	MDRV_PALETTE_INIT(mystston)
+	MDRV_VIDEO_START(mystston)
+	MDRV_VIDEO_UPDATE(mystston)
 
 	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_AY8910,
-			&ay8910_interface
-		}
-	}
-};
+	MDRV_SOUND_ADD(AY8910, ay8910_interface)
+MACHINE_DRIVER_END
 
 
 

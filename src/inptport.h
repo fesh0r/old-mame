@@ -59,8 +59,9 @@ enum { IPT_END=1,IPT_PORT,
 	IPT_PADDLE, IPT_PADDLE_V,
 	IPT_DIAL, IPT_DIAL_V,
 	IPT_TRACKBALL_X, IPT_TRACKBALL_Y,
-	IPT_AD_STICK_X, IPT_AD_STICK_Y,
-	IPT_PEDAL,
+	IPT_AD_STICK_X, IPT_AD_STICK_Y, IPT_AD_STICK_Z,
+	IPT_LIGHTGUN_X, IPT_LIGHTGUN_Y,
+	IPT_PEDAL, IPT_PEDAL2,
 	IPT_ANALOG_END,
 
 	IPT_START1, IPT_START2, IPT_START3, IPT_START4,	/* start buttons */
@@ -73,6 +74,11 @@ enum { IPT_END=1,IPT_PORT,
 /* input bits to this, the bit will be inverted while a vertical blank is happening. */
 	IPT_VBLANK,
 	IPT_UNKNOWN,
+	IPT_OSD_RESERVED,
+	IPT_OSD_1,
+	IPT_OSD_2,
+	IPT_OSD_3,
+	IPT_OSD_4,
 	IPT_EXTENSION,	/* this is an extension on the previous InputPort, not a real inputport. */
 					/* It is used to store additional parameters for analog inputs */
 
@@ -104,6 +110,8 @@ enum { IPT_END=1,IPT_PORT,
 	IPT_UI_DELETE_CHEAT,
 	IPT_UI_SAVE_CHEAT,
 	IPT_UI_WATCH_VALUE,
+	IPT_UI_EDIT_CHEAT,
+	IPT_UI_TOGGLE_CROSSHAIR,
 	__ipt_max
 };
 
@@ -238,8 +246,11 @@ enum { IPT_END=1,IPT_PORT,
 	PORT_DIPSETTING(    mask & default, DEF_STR( Off ) )	\
 	PORT_DIPSETTING(    mask &~default, DEF_STR( On ) )
 
+#define PORT_SERVICE_NO_TOGGLE(mask,default)	\
+	PORT_BITX(    mask, mask & default, IPT_SERVICE, DEF_STR( Service_Mode ), KEYCODE_F2, IP_JOY_NONE )
+
 #define MAX_DEFSTR_LEN 20
-extern char ipdn_defaultstrings[][MAX_DEFSTR_LEN];
+extern const char ipdn_defaultstrings[][MAX_DEFSTR_LEN];
 
 /* this must match the ipdn_defaultstrings list in inptport.c */
 enum {
@@ -299,6 +310,8 @@ enum {
 	STR_TOTAL
 };
 
+enum { IKT_STD, IKT_IPT, IKT_IPT_EXT, IKT_OSD_KEY, IKT_OSD_JOY };
+
 #define DEF_STR(str_num) (ipdn_defaultstrings[STR_##str_num])
 
 #define MAX_INPUT_PORTS 20
@@ -317,6 +330,8 @@ void input_port_free(struct InputPort* dst);
 #ifdef MAME_NET
 void set_default_player_controls(int player);
 #endif /* MAME_NET */
+
+void init_analog_seq(void);
 
 void update_analog_port(int port);
 void update_input_ports(void);	/* called by cpuintrf.c - not for external use */
@@ -371,6 +386,18 @@ struct ipd
 	const char *name;
 	InputSeq seq;
 };
+
+struct ik
+{
+	char *name;
+	UINT32 type;
+	UINT32 val;
+};
+extern struct ik input_keywords[];
+extern struct ik *osd_input_keywords;
+extern int num_ik;
+
+void seq_set_string(InputSeq* a, const char *buf);
 
 #ifdef __cplusplus
 }

@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "vidhrdw/generic.h"
 
 
 unsigned char *xevious_fg_videoram,*xevious_fg_colorram;
@@ -34,7 +35,7 @@ static struct tilemap *fg_tilemap,*bg_tilemap;
   bit 0 -- 2.2kohm resistor  -- RED/GREEN/BLUE
 
 ***************************************************************************/
-void xevious_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
+PALETTE_INIT( xevious )
 {
 	int i;
 	#define TOTAL_COLORS(gfxn) (Machine->gfx[gfxn]->total_colors * Machine->gfx[gfxn]->color_granularity)
@@ -43,7 +44,7 @@ void xevious_vh_convert_color_prom(unsigned char *palette, unsigned short *color
 
 	for (i = 0;i < 128;i++)
 	{
-		int bit0,bit1,bit2,bit3;
+		int bit0,bit1,bit2,bit3,r,g,b;
 
 
 		/* red component */
@@ -51,27 +52,26 @@ void xevious_vh_convert_color_prom(unsigned char *palette, unsigned short *color
 		bit1 = (color_prom[0] >> 1) & 0x01;
 		bit2 = (color_prom[0] >> 2) & 0x01;
 		bit3 = (color_prom[0] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+		r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 		/* green component */
 		bit0 = (color_prom[256] >> 0) & 0x01;
 		bit1 = (color_prom[256] >> 1) & 0x01;
 		bit2 = (color_prom[256] >> 2) & 0x01;
 		bit3 = (color_prom[256] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 		/* blue component */
 		bit0 = (color_prom[2*256] >> 0) & 0x01;
 		bit1 = (color_prom[2*256] >> 1) & 0x01;
 		bit2 = (color_prom[2*256] >> 2) & 0x01;
 		bit3 = (color_prom[2*256] >> 3) & 0x01;
-		*(palette++) = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
+		palette_set_color(i,r,g,b);
 		color_prom++;
 	}
 
 	/* color 0x80 is used by sprites to mark transparency */
-	*(palette++) = 0;
-	*(palette++) = 0;
-	*(palette++) = 0;
+	palette_set_color(0x80,0,0,0);
 
 	color_prom += 128;  /* the bottom part of the PROM is unused */
 	color_prom += 2*256;
@@ -97,6 +97,78 @@ void xevious_vh_convert_color_prom(unsigned char *palette, unsigned short *color
 		color_prom++;
 	}
 	color_prom += TOTAL_COLORS(2);
+
+	/* foreground characters */
+	for (i = 0;i < TOTAL_COLORS(0);i++)
+	{
+		if (i % 2 == 0) COLOR(0,i) = 0x80;  /* transparent */
+		else COLOR(0,i) = i / 2;
+	}
+}
+
+
+
+PALETTE_INIT( battles )
+{
+	int i;
+	#define TOTAL_COLORS(gfxn) (Machine->gfx[gfxn]->total_colors * Machine->gfx[gfxn]->color_granularity)
+	#define COLOR(gfxn,offs) (colortable[Machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
+
+
+	for (i = 0;i < 128;i++)
+	{
+		int bit0,bit1,bit2,bit3,r,g,b;
+
+
+		/* red component */
+		bit0 = (color_prom[0] >> 0) & 0x01;
+		bit1 = (color_prom[0] >> 1) & 0x01;
+		bit2 = (color_prom[0] >> 2) & 0x01;
+		bit3 = (color_prom[0] >> 3) & 0x01;
+		r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+		/* green component */
+		bit0 = (color_prom[256] >> 0) & 0x01;
+		bit1 = (color_prom[256] >> 1) & 0x01;
+		bit2 = (color_prom[256] >> 2) & 0x01;
+		bit3 = (color_prom[256] >> 3) & 0x01;
+		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+		/* blue component */
+		bit0 = (color_prom[2*256] >> 0) & 0x01;
+		bit1 = (color_prom[2*256] >> 1) & 0x01;
+		bit2 = (color_prom[2*256] >> 2) & 0x01;
+		bit3 = (color_prom[2*256] >> 3) & 0x01;
+		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+
+		palette_set_color(i,r,g,b);
+		color_prom++;
+	}
+
+	/* color 0x80 is used by sprites to mark transparency */
+	palette_set_color(0x80,0,0,0);
+
+	color_prom += 128;  /* the bottom part of the PROM is unused */
+	color_prom += 2*256;
+	/* color_prom now points to the beginning of the lookup table */
+
+	/* background tiles */
+	for (i = 0;i < TOTAL_COLORS(1);i++)
+	{
+		COLOR(1,i) = (color_prom[0] & 0x0f) | ((color_prom[0x400] & 0x0f) << 4);
+
+		color_prom++;
+	}
+	color_prom += 0x600;
+
+	/* sprites */
+	for (i = 0;i < TOTAL_COLORS(2);i++)
+	{
+		int c = (color_prom[0] & 0x0f) | ((color_prom[0x400] & 0x0f) << 4);
+
+		if (c & 0x80) COLOR(2,i) = c & 0x7f;
+		else COLOR(2,i) = 0x80; /* transparent */
+
+		color_prom++;
+	}
 
 	/* foreground characters */
 	for (i = 0;i < TOTAL_COLORS(0);i++)
@@ -143,7 +215,7 @@ static void get_bg_tile_info(int tile_index)
 
 ***************************************************************************/
 
-int xevious_vh_start(void)
+VIDEO_START( xevious )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,     8,8,64,32);
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,32);
@@ -293,7 +365,7 @@ ROM 3M,3L color reprace table for sprite
 
 ***************************************************************************/
 
-static void draw_sprites(struct mame_bitmap *bitmap)
+static void draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
 {
 	int offs,sx,sy;
 
@@ -334,21 +406,21 @@ static void draw_sprites(struct mame_bitmap *bitmap)
 					drawgfx(bitmap,Machine->gfx[bank],
 							code+3,color,flipx,flipy,
 							flipx ? sx : sx+16,flipy ? sy-16 : sy,
-							&Machine->visible_area,TRANSPARENCY_COLOR,0x80);
+							cliprect,TRANSPARENCY_COLOR,0x80);
 					drawgfx(bitmap,Machine->gfx[bank],
 							code+1,color,flipx,flipy,
 							flipx ? sx : sx+16,flipy ? sy : sy-16,
-							&Machine->visible_area,TRANSPARENCY_COLOR,0x80);
+							cliprect,TRANSPARENCY_COLOR,0x80);
 				}
 				code &= 0x7d;
 				drawgfx(bitmap,Machine->gfx[bank],
 						code+2,color,flipx,flipy,
 						flipx ? sx+16 : sx,flipy ? sy-16 : sy,
-						&Machine->visible_area,TRANSPARENCY_COLOR,0x80);
+						cliprect,TRANSPARENCY_COLOR,0x80);
 				drawgfx(bitmap,Machine->gfx[bank],
 						code,color,flipx,flipy,
 						flipx ? sx+16 : sx,flipy ? sy : sy-16,
-						&Machine->visible_area,TRANSPARENCY_COLOR,0x80);
+						cliprect,TRANSPARENCY_COLOR,0x80);
 			}
 			else if (spriteram_3[offs] & 1) /* double width */
 			{
@@ -356,26 +428,26 @@ static void draw_sprites(struct mame_bitmap *bitmap)
 				drawgfx(bitmap,Machine->gfx[bank],
 						code,color,flipx,flipy,
 						flipx ? sx+16 : sx,flipy ? sy-16 : sy,
-						&Machine->visible_area,TRANSPARENCY_COLOR,0x80);
+						cliprect,TRANSPARENCY_COLOR,0x80);
 				drawgfx(bitmap,Machine->gfx[bank],
 						code+1,color,flipx,flipy,
 						flipx ? sx : sx+16,flipy ? sy-16 : sy,
-						&Machine->visible_area,TRANSPARENCY_COLOR,0x80);
+						cliprect,TRANSPARENCY_COLOR,0x80);
 			}
 			else	/* normal */
 			{
 				drawgfx(bitmap,Machine->gfx[bank],
 						code,color,flipx,flipy,sx,sy,
-						&Machine->visible_area,TRANSPARENCY_COLOR,0x80);
+						cliprect,TRANSPARENCY_COLOR,0x80);
 			}
 		}
 	}
 }
 
 
-void xevious_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
+VIDEO_UPDATE( xevious )
 {
-	tilemap_draw(bitmap,bg_tilemap,0,0);
-	draw_sprites(bitmap);
-	tilemap_draw(bitmap,fg_tilemap,0,0);
+	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
+	draw_sprites(bitmap,cliprect);
+	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 }

@@ -22,6 +22,7 @@ static int xevious_bs[2];
 static void *nmi_timer;
 
 WRITE_HANDLER( xevious_halt_w );
+void xevious_nmi_generate (int param);
 
 /* namco stick number array */
 /*
@@ -42,13 +43,15 @@ unsigned char namco_key[16] =
 /*  LDRU,LDR,LDU,LD ,LRU,LR ,LU , L ,DRU,DR ,DU , D ,RU , R , U ,NON  */
   {   5 , 5 , 5 , 5 , 7 , 6 , 7 , 6 , 3 , 3 , 4 , 4 , 1 , 2 , 0 , 8 };
 
-void xevious_init_machine(void)
+
+
+MACHINE_INIT( xevious )
 {
 	rom2a = memory_region(REGION_GFX4);
 	rom2b = memory_region(REGION_GFX4)+0x1000;
 	rom2c = memory_region(REGION_GFX4)+0x3000;
 
-	nmi_timer = 0;
+	nmi_timer = timer_alloc(xevious_nmi_generate);
 
 	xevious_halt_w (0, 0);
 }
@@ -135,7 +138,7 @@ WRITE_HANDLER( xevious_customio_data_w )
 {
 	customio[offset] = data;
 
-logerror("%04x: custom IO offset %02x data %02x\n",cpu_get_pc(),offset,data);
+logerror("%04x: custom IO offset %02x data %02x\n",activecpu_get_pc(),offset,data);
 
 	switch (customio_command)
 	{
@@ -184,7 +187,7 @@ logerror("%04x: custom IO offset %02x data %02x\n",cpu_get_pc(),offset,data);
 				}
 				else
 				{
-					logerror("%04x: custom IO offset %02x\n",cpu_get_pc(),offset);
+					logerror("%04x: custom IO offset %02x\n",activecpu_get_pc(),offset);
 					logerror("data[0]=%02x\n",customio[0]);
 					logerror("data[1]=%02x\n",customio[1]);
 					logerror("data[2]=%02x\n",customio[2]);
@@ -202,7 +205,7 @@ logerror("%04x: custom IO offset %02x data %02x\n",cpu_get_pc(),offset,data);
 READ_HANDLER( xevious_customio_data_r )
 {
 	if (customio_command != 0x71)
-		logerror("%04x: custom IO read offset %02x\n",cpu_get_pc(),offset);
+		logerror("%04x: custom IO read offset %02x\n",activecpu_get_pc(),offset);
 
 	switch (customio_command)
 	{
@@ -316,25 +319,24 @@ READ_HANDLER( xevious_customio_r )
 
 void xevious_nmi_generate (int param)
 {
-	cpu_cause_interrupt (0, Z80_NMI_INT);
+	cpu_set_irq_line (0, IRQ_LINE_NMI, PULSE_LINE);
 }
 
 
 WRITE_HANDLER( xevious_customio_w )
 {
 	if (data != 0x10 && data != 0x71)
-		logerror("%04x: custom IO command %02x\n",cpu_get_pc(),data);
+		logerror("%04x: custom IO command %02x\n",activecpu_get_pc(),data);
 
 	customio_command = data;
 
 	switch (data)
 	{
 		case 0x10:
-			if (nmi_timer) timer_remove (nmi_timer);
-			nmi_timer = 0;
+			timer_adjust(nmi_timer, TIME_NEVER, 0, 0);
 			return; /* nop */
 	}
-	nmi_timer = timer_pulse (TIME_IN_USEC (50), 0, xevious_nmi_generate);
+	timer_adjust(nmi_timer, TIME_IN_USEC(50), 0, TIME_IN_USEC(50));
 
 }
 
@@ -363,10 +365,10 @@ WRITE_HANDLER( xevious_interrupt_enable_1_w )
 
 
 
-int xevious_interrupt_1(void)
+INTERRUPT_GEN( xevious_interrupt_1 )
 {
-	if (interrupt_enable_1) return interrupt();
-	else return ignore_interrupt();
+	if (interrupt_enable_1)
+		cpu_set_irq_line(0, 0, HOLD_LINE);
 }
 
 
@@ -378,10 +380,10 @@ WRITE_HANDLER( xevious_interrupt_enable_2_w )
 
 
 
-int xevious_interrupt_2(void)
+INTERRUPT_GEN( xevious_interrupt_2 )
 {
-	if (interrupt_enable_2) return interrupt();
-	else return ignore_interrupt();
+	if (interrupt_enable_2)
+		cpu_set_irq_line(1, 0, HOLD_LINE);
 }
 
 
@@ -393,8 +395,189 @@ WRITE_HANDLER( xevious_interrupt_enable_3_w )
 
 
 
-int xevious_interrupt_3(void)
+INTERRUPT_GEN( xevious_interrupt_3 )
 {
-	if (interrupt_enable_3) return nmi_interrupt();
-	else return ignore_interrupt();
+	if (interrupt_enable_3)
+		cpu_set_irq_line(2, IRQ_LINE_NMI, PULSE_LINE);
 }
+
+
+
+/***************************************************************************
+
+ BATTLES CPU4(custum I/O Emulation) I/O Handlers
+
+***************************************************************************/
+
+unsigned char *battles_sharedram;
+static char battles_customio_command;
+static char battles_customio_prev_command;
+static char battles_customio_command_count;
+static char battles_customio_data;
+static char battles_sound_played;
+
+void battles_nmi_generate(int param);
+
+
+MACHINE_INIT( battles )
+{
+	rom2a = memory_region(REGION_GFX4);
+	rom2b = memory_region(REGION_GFX4)+0x1000;
+	rom2c = memory_region(REGION_GFX4)+0x3000;
+
+	battles_customio_command = 0;
+	battles_customio_prev_command = 0;
+	battles_customio_command_count = 0;
+	battles_customio_data = 0;
+	battles_sound_played = 0;
+	nmi_timer = timer_alloc(battles_nmi_generate);
+
+	xevious_halt_w (0, 0);
+}
+
+
+void battles_nmi_generate(int param)
+{
+
+	battles_customio_prev_command = battles_customio_command;
+
+	if( battles_customio_command & 0x10 ){
+		if( battles_customio_command_count == 0 ){
+			cpu_set_irq_line(3, IRQ_LINE_NMI, PULSE_LINE);
+		}else{
+			cpu_set_irq_line(0, IRQ_LINE_NMI, PULSE_LINE);
+			cpu_set_irq_line(3, IRQ_LINE_NMI, PULSE_LINE);
+		}
+	}else{
+		cpu_set_irq_line(0, IRQ_LINE_NMI, PULSE_LINE);
+		cpu_set_irq_line(3, IRQ_LINE_NMI, PULSE_LINE);
+	}
+	battles_customio_command_count++;
+}
+
+
+READ_HANDLER( battles_sharedram_r )
+{
+	return battles_sharedram[offset];
+}
+
+WRITE_HANDLER( battles_sharedram_w )
+{
+	battles_sharedram[offset] = data;
+}
+
+
+
+READ_HANDLER( battles_customio0_r )
+{
+	logerror("CPU0 %04x: custom I/O Read = %02x\n",activecpu_get_pc(),battles_customio_command);
+	return battles_customio_command;
+}
+
+READ_HANDLER( battles_customio3_r )
+{
+	int	return_data;
+
+	if( activecpu_get_pc() == 0xAE ){
+		/* CPU4 0xAA - 0xB9 : waiting for MB8851 ? */
+		return_data =	( (battles_customio_command & 0x10) << 3)
+						| 0x00
+						| (battles_customio_command & 0x0f);
+	}else{
+		return_data =	( (battles_customio_prev_command & 0x10) << 3)
+						| 0x60
+						| (battles_customio_prev_command & 0x0f);
+	}
+	logerror("CPU3 %04x: custom I/O Read = %02x\n",activecpu_get_pc(),return_data);
+
+	return return_data;
+}
+
+
+WRITE_HANDLER( battles_customio0_w )
+{
+	logerror("CPU0 %04x: custom I/O Write = %02x\n",activecpu_get_pc(),data);
+
+	battles_customio_command = data;
+	battles_customio_command_count = 0;
+
+	switch (data)
+	{
+		case 0x10:
+			timer_adjust(nmi_timer, TIME_NEVER, 0, 0);
+			return; /* nop */
+	}
+	timer_adjust(nmi_timer, TIME_IN_USEC(166), 0, TIME_IN_USEC(166));
+
+}
+
+WRITE_HANDLER( battles_customio3_w )
+{
+	logerror("CPU3 %04x: custom I/O Write = %02x\n",activecpu_get_pc(),data);
+
+	battles_customio_command = data;
+}
+
+
+
+READ_HANDLER( battles_customio_data0_r )
+{
+	logerror("CPU0 %04x: custom I/O parameter %02x Read = %02x\n",activecpu_get_pc(),offset,battles_customio_data);
+
+	return battles_customio_data;
+}
+
+READ_HANDLER( battles_customio_data3_r )
+{
+	logerror("CPU3 %04x: custom I/O parameter %02x Read = %02x\n",activecpu_get_pc(),offset,battles_customio_data);
+	return battles_customio_data;
+}
+
+
+WRITE_HANDLER( battles_customio_data0_w )
+{
+	logerror("CPU0 %04x: custom I/O parameter %02x Write = %02x\n",activecpu_get_pc(),offset,data);
+	battles_customio_data = data;
+	customio[offset] = data;
+}
+
+WRITE_HANDLER( battles_customio_data3_w )
+{
+	logerror("CPU3 %04x: custom I/O parameter %02x Write = %02x\n",activecpu_get_pc(),offset,data);
+	battles_customio_data = data;
+}
+
+
+WRITE_HANDLER( battles_CPU4_4000_w )
+{
+	logerror("CPU3 %04x: 40%02x Write = %02x\n",activecpu_get_pc(),offset,data);
+}
+
+
+WRITE_HANDLER( battles_noise_sound_w )
+{
+	logerror("CPU3 %04x: 50%02x Write = %02x\n",activecpu_get_pc(),offset,data);
+	if( (battles_sound_played == 0) && (data == 0xFF) ){
+		if( customio[0] == 0x40 ){
+			sample_start (0, 0, 0);
+		}
+		else{
+			sample_start (0, 1, 0);
+		}
+	}
+	battles_sound_played = data;
+}
+
+
+READ_HANDLER( battles_input_port_r )
+{
+	logerror("battles_input_port_r %04x: Read offset %02x data %02x\n",activecpu_get_pc(),offset);
+	return 0xff;
+}
+
+
+INTERRUPT_GEN( battles_interrupt_4 )
+{
+	cpu_set_irq_line(3, 0, HOLD_LINE);
+}
+

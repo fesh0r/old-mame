@@ -9,11 +9,11 @@
 #else
 #ifndef WIN32
 #   include <dirent.h>
-#ifdef __sgi
-#   include <errno.h>
-#else
-#   include <sys/errno.h>
-#endif
+#   ifdef __sgi
+#      include <errno.h>
+#   else
+#      include <sys/errno.h>
+#   endif
 #else
 #    include "dirent.h"
 #endif
@@ -190,7 +190,17 @@ static void checkintegrity(const struct fileinfo *file,int side)
 		if (mask0 == file->size/2)
 			printf("%-23s %-23s FIRST AND SECOND HALF IDENTICAL\n",side ? "" : file->name,side ? file->name : "");
 		else
-			printf("%-23s %-23s BAD ADDRESS LINES (mask=%06x)\n",side ? "" : file->name,side ? file->name : "",mask0);
+		{
+			printf("%-23s %-23s BADADDR",side ? "" : file->name,side ? file->name : "");
+			for (i = 0;i < 24;i++)
+			{
+				if (file->size <= (1<<(23-i))) printf(" ");
+				else if (mask0 & 0x800000) printf("-");
+				else printf("x");
+				mask0 <<= 1;
+			}
+			printf("\n");
+		}
 		return;
 	}
 
@@ -644,7 +654,8 @@ int CLIB_DECL main(int argc,char **argv)
 						{
 							for (j = 0;j < found[1];j++)
 							{
-								if (matchscore[i][j][mode1][mode2] > bestscore)
+								if (matchscore[i][j][mode1][mode2] > bestscore
+									|| (matchscore[i][j][mode1][mode2] == 1.0 && mode2 == 0 && bestmode2 > 0))
 								{
 									bestscore = matchscore[i][j][mode1][mode2];
 									besti = i;

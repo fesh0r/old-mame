@@ -20,7 +20,7 @@ WRITE_HANDLER( scramble_background_blue_w );
 WRITE_HANDLER( darkplnt_bullet_color_w );
 
 
-void scramble_init_machine(void)
+MACHINE_INIT( scramble )
 {
 	/* we must start with NMI interrupts disabled, otherwise some games */
 	/* (e.g. Lost Tomb, Rescue) will not pass the startup test. */
@@ -35,15 +35,15 @@ void scramble_init_machine(void)
 
 static READ_HANDLER( scrambls_input_port_2_r )
 {
-	int res;
+	data8_t res;
 
 
 	res = readinputport(2);
 
-/*logerror("%04x: read IN2\n",cpu_get_pc());*/
+/*logerror("%04x: read IN2\n",activecpu_get_pc());*/
 
 	/* avoid protection */
-	if (cpu_get_pc() == 0x00e4) res &= 0x7f;
+	if (activecpu_get_pc() == 0x00e4) res &= 0x7f;
 
 	return res;
 }
@@ -59,7 +59,7 @@ static READ_HANDLER( ckongs_input_port_2_r )
 }
 
 
-static int moonwar_port_select;
+static data8_t moonwar_port_select;
 
 static WRITE_HANDLER( moonwar_port_select_w )
 {
@@ -68,8 +68,8 @@ static WRITE_HANDLER( moonwar_port_select_w )
 
 static READ_HANDLER( moonwar_input_port_0_r )
 {
-	int sign;
-	int delta;
+	data8_t sign;
+	data8_t delta;
 
 	delta = (moonwar_port_select ? readinputport(3) : readinputport(4));
 
@@ -94,15 +94,15 @@ static READ_HANDLER( stratgyx_input_port_3_r )
 
 static READ_HANDLER( darkplnt_input_port_1_r )
 {
-	static UINT8 remap[] = {0x03, 0x02, 0x00, 0x01, 0x21, 0x20, 0x22, 0x23,
-						    0x33, 0x32, 0x30, 0x31, 0x11, 0x10, 0x12, 0x13,
-						    0x17, 0x16, 0x14, 0x15, 0x35, 0x34, 0x36, 0x37,
-						    0x3f, 0x3e, 0x3c, 0x3d, 0x1d, 0x1c, 0x1e, 0x1f,
-						    0x1b, 0x1a, 0x18, 0x19, 0x39, 0x38, 0x3a, 0x3b,
-						    0x2b, 0x2a, 0x28, 0x29, 0x09, 0x08, 0x0a, 0x0b,
-						    0x0f, 0x0e, 0x0c, 0x0d, 0x2d, 0x2c, 0x2e, 0x2f,
-						    0x27, 0x26, 0x24, 0x25, 0x05, 0x04, 0x06, 0x07 };
-	int val;
+	static data8_t remap[] = {0x03, 0x02, 0x00, 0x01, 0x21, 0x20, 0x22, 0x23,
+							  0x33, 0x32, 0x30, 0x31, 0x11, 0x10, 0x12, 0x13,
+							  0x17, 0x16, 0x14, 0x15, 0x35, 0x34, 0x36, 0x37,
+							  0x3f, 0x3e, 0x3c, 0x3d, 0x1d, 0x1c, 0x1e, 0x1f,
+							  0x1b, 0x1a, 0x18, 0x19, 0x39, 0x38, 0x3a, 0x3b,
+							  0x2b, 0x2a, 0x28, 0x29, 0x09, 0x08, 0x0a, 0x0b,
+							  0x0f, 0x0e, 0x0c, 0x0d, 0x2d, 0x2c, 0x2e, 0x2f,
+							  0x27, 0x26, 0x24, 0x25, 0x05, 0x04, 0x06, 0x07 };
+	data8_t val;
 
 	val = readinputport(1);
 
@@ -118,7 +118,7 @@ static WRITE_HANDLER( scramble_protection_w )
 
 static READ_HANDLER( scramble_protection_r )
 {
-	switch (cpu_get_pc())
+	switch (activecpu_get_pc())
 	{
 	case 0x00a8: return 0xf0;
 	case 0x00be: return 0xb0;
@@ -129,37 +129,37 @@ static READ_HANDLER( scramble_protection_r )
 	case 0x1ca2: return 0x00;  /* I don't think it's checked */
 	case 0x1d7e: return 0xb0;
 	default:
-		logerror("%04x: read protection\n",cpu_get_pc());
+		logerror("%04x: read protection\n",activecpu_get_pc());
 		return 0;
 	}
 }
 
 static READ_HANDLER( scrambls_protection_r )
 {
-	logerror("%04x: read protection\n",cpu_get_pc());
+	logerror("%04x: read protection\n",activecpu_get_pc());
 
 	return 0x6f;
 }
 
 READ_HANDLER( scramblb_protection_1_r )
 {
-	switch (cpu_get_pc())
+	switch (activecpu_get_pc())
 	{
 	case 0x01da: return 0x80;
 	case 0x01e4: return 0x00;
 	default:
-		logerror("%04x: read protection 1\n",cpu_get_pc());
+		logerror("%04x: read protection 1\n",activecpu_get_pc());
 		return 0;
 	}
 }
 
 READ_HANDLER( scramblb_protection_2_r )
 {
-	switch (cpu_get_pc())
+	switch (activecpu_get_pc())
 	{
 	case 0x01ca: return 0x90;
 	default:
-		logerror("%04x: read protection 2\n",cpu_get_pc());
+		logerror("%04x: read protection 2\n",activecpu_get_pc());
 		return 0;
 	}
 }
@@ -184,16 +184,16 @@ static READ_HANDLER( mariner_protection_2_r )
 
 READ_HANDLER( triplep_pip_r )
 {
-	logerror("PC %04x: triplep read port 2\n",cpu_get_pc());
-	if (cpu_get_pc() == 0x015a) return 0xff;
-	else if (cpu_get_pc() == 0x0886) return 0x05;
+	logerror("PC %04x: triplep read port 2\n",activecpu_get_pc());
+	if (activecpu_get_pc() == 0x015a) return 0xff;
+	else if (activecpu_get_pc() == 0x0886) return 0x05;
 	else return 0;
 }
 
 READ_HANDLER( triplep_pap_r )
 {
-	logerror("PC %04x: triplep read port 3\n",cpu_get_pc());
-	if (cpu_get_pc() == 0x015d) return 0x04;
+	logerror("PC %04x: triplep read port 3\n",activecpu_get_pc());
+	if (activecpu_get_pc() == 0x015d) return 0x04;
 	else return 0;
 }
 
@@ -206,7 +206,7 @@ static void cavelon_banksw(void)
 
 	static int cavelon_bank;
 
-	unsigned char *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(REGION_CPU1);
 
 	if (cavelon_bank)
 	{
@@ -360,26 +360,26 @@ static ppi8255_interface ppi8255_intf =
 };
 
 
-void init_scramble_ppi(void)
+DRIVER_INIT( scramble_ppi )
 {
 	ppi8255_init(&ppi8255_intf);
 }
 
-void init_scobra(void)
+DRIVER_INIT( scobra )
 {
 	init_scramble_ppi();
 
 	install_mem_write_handler(0, 0xa803, 0xa803, scramble_background_enable_w);
 }
 
-void init_atlantis(void)
+DRIVER_INIT( atlantis )
 {
 	init_scramble_ppi();
 
 	install_mem_write_handler(0, 0x6803, 0x6803, scramble_background_enable_w);
 }
 
-void init_scramble(void)
+DRIVER_INIT( scramble )
 {
 	init_atlantis();
 
@@ -387,7 +387,7 @@ void init_scramble(void)
 	ppi8255_set_portCwrite(1, scramble_protection_w);
 }
 
-void init_scrambls(void)
+DRIVER_INIT( scrambls )
 {
 	init_atlantis();
 
@@ -396,14 +396,14 @@ void init_scrambls(void)
 	ppi8255_set_portCwrite(1, scramble_protection_w);
 }
 
-void init_theend(void)
+DRIVER_INIT( theend )
 {
 	init_scramble_ppi();
 
 	ppi8255_set_portCwrite(0, theend_coin_counter_w);
 }
 
-void init_stratgyx(void)
+DRIVER_INIT( stratgyx )
 {
 	init_scramble_ppi();
 
@@ -415,14 +415,14 @@ void init_stratgyx(void)
 	ppi8255_set_portCread(1, stratgyx_input_port_3_r);
 }
 
-void init_tazmani2(void)
+DRIVER_INIT( tazmani2 )
 {
 	init_scramble_ppi();
 
 	install_mem_write_handler(0, 0xb002, 0xb002, scramble_background_enable_w);
 }
 
-void init_amidar(void)
+DRIVER_INIT( amidar )
 {
 	init_scramble_ppi();
 
@@ -430,7 +430,7 @@ void init_amidar(void)
 	ppi8255_set_portCread(1, input_port_3_r);
 }
 
-void init_ckongs(void)
+DRIVER_INIT( ckongs )
 {
 	init_scramble_ppi();
 
@@ -438,7 +438,7 @@ void init_ckongs(void)
 	ppi8255_set_portCread(0, ckongs_input_port_2_r);
 }
 
-void init_mariner(void)
+DRIVER_INIT( mariner )
 {
 	init_scramble_ppi();
 
@@ -453,82 +453,89 @@ void init_mariner(void)
 	/*install_mem_write_handler(0, 0x6803, 0x6803, MWA_NOP);*/
 }
 
-void init_frogger(void)
+DRIVER_INIT( frogger )
 {
-	int A;
-	unsigned char *rom;
+	offs_t A;
+	UINT8 *ROM;
 
 
 	init_scramble_ppi();
 
 
 	/* the first ROM of the second CPU has data lines D0 and D1 swapped. Decode it. */
-	rom = memory_region(REGION_CPU2);
+	ROM = memory_region(REGION_CPU2);
 	for (A = 0;A < 0x0800;A++)
-		rom[A] = BITSWAP8(rom[A],7,6,5,4,3,2,0,1);
+		ROM[A] = BITSWAP8(ROM[A],7,6,5,4,3,2,0,1);
 
 	/* likewise, the 2nd gfx ROM has data lines D0 and D1 swapped. Decode it. */
-	rom = memory_region(REGION_GFX1);
+	ROM = memory_region(REGION_GFX1);
 	for (A = 0x0800;A < 0x1000;A++)
-		rom[A] = BITSWAP8(rom[A],7,6,5,4,3,2,0,1);
+		ROM[A] = BITSWAP8(ROM[A],7,6,5,4,3,2,0,1);
 }
 
-void init_froggers(void)
+DRIVER_INIT( froggers )
 {
-	int A;
-	unsigned char *rom;
+	offs_t A;
+	UINT8 *ROM;
 
 
 	init_scramble_ppi();
 
 	/* the first ROM of the second CPU has data lines D0 and D1 swapped. Decode it. */
-	rom = memory_region(REGION_CPU2);
+	ROM = memory_region(REGION_CPU2);
 	for (A = 0;A < 0x0800;A++)
-		rom[A] = BITSWAP8(rom[A],7,6,5,4,3,2,0,1);
+		ROM[A] = BITSWAP8(ROM[A],7,6,5,4,3,2,0,1);
 }
 
-void init_mars(void)
+DRIVER_INIT( devilfsh )
 {
-	int i;
-	unsigned char *RAM;
+	offs_t i;
+	UINT8 *RAM;
 
 
 	init_scramble_ppi();
 
 
-	ppi8255_set_portCread(1, input_port_3_r);
+	/* Address lines are scrambled on the main CPU */
 
-
-	/* Address lines are scrambled on the main CPU:
-
-		A0 -> A2
-		A1 -> A0
-		A2 -> A3
-		A3 -> A1 */
+	/* A0 -> A2 */
+	/* A1 -> A0 */
+	/* A2 -> A3 */
+	/* A3 -> A1 */
 
 	RAM = memory_region(REGION_CPU1);
 	for (i = 0; i < 0x10000; i += 16)
 	{
-		int j;
-		unsigned char swapbuffer[16];
+		offs_t j;
+		UINT8 swapbuffer[16];
 
 		for (j = 0; j < 16; j++)
 		{
-			swapbuffer[j] = RAM[i + ((j & 1) << 2) + ((j & 2) >> 1) + ((j & 4) << 1) + ((j & 8) >> 2)];
+			offs_t new = BITSWAP8(j,7,6,5,4,2,0,3,1);
+
+			swapbuffer[j] = RAM[i + new];
 		}
 
 		memcpy(&RAM[i], swapbuffer, 16);
 	}
 }
 
-void init_hotshock(void)
+DRIVER_INIT( mars )
+{
+	init_devilfsh();
+
+	/* extra port */
+	ppi8255_set_portCread(1, input_port_3_r);
+}
+
+DRIVER_INIT( hotshock )
 {
 	/* protection??? The game jumps into never-neverland here. I think
 	   it just expects a RET there */
 	memory_region(REGION_CPU1)[0x2ef9] = 0xc9;
 }
 
-void init_cavelon(void)
+DRIVER_INIT( cavelon )
 {
 	init_scramble_ppi();
 
@@ -544,7 +551,7 @@ void init_cavelon(void)
 															   an AY8910, but not sure */
 }
 
-void init_moonwar(void)
+DRIVER_INIT( moonwar )
 {
 	init_scramble_ppi();
 
@@ -553,7 +560,7 @@ void init_moonwar(void)
 	ppi8255_set_portCwrite(0, moonwar_port_select_w);
 }
 
-void init_darkplnt(void)
+DRIVER_INIT( darkplnt )
 {
 	init_scramble_ppi();
 
@@ -570,11 +577,11 @@ static int bit(int i,int n)
 }
 
 
-void init_anteater(void)
+DRIVER_INIT( anteater )
 {
-	int i;
-	unsigned char *RAM;
-	unsigned char *scratch;
+	offs_t i;
+	UINT8 *RAM;
+	UINT8 *scratch;
 
 
 	init_scobra();
@@ -609,11 +616,11 @@ void init_anteater(void)
 	}
 }
 
-void init_rescue(void)
+DRIVER_INIT( rescue )
 {
-	int i;
-	unsigned char *RAM;
-	unsigned char *scratch;
+	offs_t i;
+	UINT8 *RAM;
+	UINT8 *scratch;
 
 
 	init_scobra();
@@ -648,11 +655,11 @@ void init_rescue(void)
 	}
 }
 
-void init_minefld(void)
+DRIVER_INIT( minefld )
 {
-	int i;
-	unsigned char *RAM;
-	unsigned char *scratch;
+	offs_t i;
+	UINT8 *RAM;
+	UINT8 *scratch;
 
 
 	init_scobra();
@@ -687,11 +694,11 @@ void init_minefld(void)
 	}
 }
 
-void init_losttomb(void)
+DRIVER_INIT( losttomb )
 {
-	int i;
-	unsigned char *RAM;
-	unsigned char *scratch;
+	offs_t i;
+	UINT8 *RAM;
+	UINT8 *scratch;
 
 
 	init_scramble();
@@ -726,17 +733,15 @@ void init_losttomb(void)
 	}
 }
 
-void init_superbon(void)
+DRIVER_INIT( superbon )
 {
-	int i;
-	unsigned char *RAM;
+	offs_t i;
+	UINT8 *RAM;
 
 
 	init_scramble();
 
-	/*
-	*   Code rom deryption worked out by hand by Chris Hardy.
-	*/
+	/* Deryption worked out by hand by Chris Hardy. */
 
 	RAM = memory_region(REGION_CPU1);
 
@@ -762,9 +767,9 @@ void init_superbon(void)
 }
 
 
-void init_hustler(void)
+DRIVER_INIT( hustler )
 {
-	int A;
+	offs_t A;
 
 
 	init_scramble_ppi();
@@ -772,10 +777,10 @@ void init_hustler(void)
 
 	for (A = 0;A < 0x4000;A++)
 	{
-		unsigned char xormask;
+		UINT8 xormask;
 		int bits[8];
 		int i;
-		unsigned char *RAM = memory_region(REGION_CPU1);
+		UINT8 *RAM = memory_region(REGION_CPU1);
 
 
 		for (i = 0;i < 8;i++)
@@ -796,17 +801,17 @@ void init_hustler(void)
 
 	/* the first ROM of the second CPU has data lines D0 and D1 swapped. Decode it. */
 	{
-		unsigned char *RAM = memory_region(REGION_CPU2);
+		UINT8 *RAM = memory_region(REGION_CPU2);
 
 
 		for (A = 0;A < 0x0800;A++)
-			RAM[A] = (RAM[A] & 0xfc) | ((RAM[A] & 1) << 1) | ((RAM[A] & 2) >> 1);
+			RAM[A] = BITSWAP8(RAM[A],7,6,5,4,3,2,0,1);
 	}
 }
 
-void init_billiard(void)
+DRIVER_INIT( billiard )
 {
-	int A;
+	offs_t A;
 
 
 	init_scramble_ppi();
@@ -814,10 +819,10 @@ void init_billiard(void)
 
 	for (A = 0;A < 0x4000;A++)
 	{
-		unsigned char xormask;
+		UINT8 xormask;
 		int bits[8];
 		int i;
-		unsigned char *RAM = memory_region(REGION_CPU1);
+		UINT8 *RAM = memory_region(REGION_CPU1);
 
 
 		for (i = 0;i < 8;i++)
@@ -839,22 +844,22 @@ void init_billiard(void)
 			bits[i] = (RAM[A] >> i) & 1;
 
 		RAM[A] =
-			(bits[7] << 0) +
-			(bits[0] << 1) +
-			(bits[3] << 2) +
-			(bits[4] << 3) +
-			(bits[5] << 4) +
-			(bits[2] << 5) +
-			(bits[1] << 6) +
+			(bits[7] << 0) |
+			(bits[0] << 1) |
+			(bits[3] << 2) |
+			(bits[4] << 3) |
+			(bits[5] << 4) |
+			(bits[2] << 5) |
+			(bits[1] << 6) |
 			(bits[6] << 7);
 	}
 
 	/* the first ROM of the second CPU has data lines D0 and D1 swapped. Decode it. */
 	{
-		unsigned char *RAM = memory_region(REGION_CPU2);
+		UINT8 *RAM = memory_region(REGION_CPU2);
 
 
 		for (A = 0;A < 0x0800;A++)
-			RAM[A] = (RAM[A] & 0xfc) | ((RAM[A] & 1) << 1) | ((RAM[A] & 2) >> 1);
+			RAM[A] = BITSWAP8(RAM[A],7,6,5,4,3,2,0,1);
 	}
 }

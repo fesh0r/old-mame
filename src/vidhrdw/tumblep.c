@@ -23,7 +23,7 @@ static int flipscreen;
 
 /******************************************************************************/
 
-static void tumblep_drawsprites(struct mame_bitmap *bitmap)
+static void tumblep_drawsprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
 {
 	int offs;
 
@@ -78,7 +78,69 @@ static void tumblep_drawsprites(struct mame_bitmap *bitmap)
 					colour,
 					fx,fy,
 					x,y + mult * multi,
-					&Machine->visible_area,TRANSPARENCY_PEN,0);
+					cliprect,TRANSPARENCY_PEN,0);
+
+			multi--;
+		}
+	}
+}
+
+static void jumpkids_drawsprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
+{
+	int offs;
+
+	for (offs = 0;offs < 0x400;offs += 4)
+	{
+		int x,y,sprite,colour,multi,fx,fy,inc,flash,mult;
+
+		sprite = spriteram16[offs+1] & 0x3fff;
+		if (!sprite) continue;
+
+		y = spriteram16[offs];
+		flash=y&0x1000;
+		if (flash && (cpu_getcurrentframe() & 1)) continue;
+
+		x = spriteram16[offs+2];
+		colour = (x >>9) & 0xf;
+
+		fx = y & 0x2000;
+		fy = y & 0x4000;
+		multi = (1 << ((y & 0x0600) >> 9)) - 1;	/* 1x, 2x, 4x, 8x height */
+
+		x = x & 0x01ff;
+		y = y & 0x01ff;
+		if (x >= 320) x -= 512;
+		if (y >= 256) y -= 512;
+		y = 240 - y;
+        x = 304 - x;
+
+	//	sprite &= ~multi; /* Todo:  I bet TumblePop bootleg doesn't do this either */
+		if (fy)
+			inc = -1;
+		else
+		{
+			sprite += multi;
+			inc = 1;
+		}
+
+		if (flipscreen)
+		{
+			y=240-y;
+			x=304-x;
+			if (fx) fx=0; else fx=1;
+			if (fy) fy=0; else fy=1;
+			mult=16;
+		}
+		else mult=-16;
+
+		while (multi >= 0)
+		{
+			drawgfx(bitmap,Machine->gfx[3],
+					sprite - multi * inc,
+					colour,
+					fx,fy,
+					x,y + mult * multi,
+					cliprect,TRANSPARENCY_PEN,0);
 
 			multi--;
 		}
@@ -144,7 +206,7 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-int tumblep_vh_start(void)
+VIDEO_START( tumblep )
 {
 	pf1_tilemap =     tilemap_create(get_fg_tile_info, tilemap_scan_rows,TILEMAP_TRANSPARENT, 8, 8,64,32);
 	pf1_alt_tilemap = tilemap_create(get_bg1_tile_info,tumblep_scan,TILEMAP_TRANSPARENT,16,16,64,32);
@@ -161,7 +223,7 @@ int tumblep_vh_start(void)
 
 /******************************************************************************/
 
-void tumblep_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
+VIDEO_UPDATE( tumblep )
 {
 	int offs;
 
@@ -176,15 +238,15 @@ void tumblep_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 	tilemap_set_scrollx( pf2_tilemap,0, tumblep_control_0[3]+offs );
 	tilemap_set_scrolly( pf2_tilemap,0, tumblep_control_0[4] );
 
-	tilemap_draw(bitmap,pf2_tilemap,0,0);
+	tilemap_draw(bitmap,cliprect,pf2_tilemap,0,0);
 	if (tumblep_control_0[6]&0x80)
-		tilemap_draw(bitmap,pf1_tilemap,0,0);
+		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	else
-		tilemap_draw(bitmap,pf1_alt_tilemap,0,0);
-	tumblep_drawsprites(bitmap);
+		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
+	tumblep_drawsprites(bitmap,cliprect);
 }
 
-void tumblepb_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
+VIDEO_UPDATE( tumblepb )
 {
 	int offs,offs2;
 
@@ -200,10 +262,34 @@ void tumblepb_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
 	tilemap_set_scrollx( pf2_tilemap,0, tumblep_control_0[3]+offs );
 	tilemap_set_scrolly( pf2_tilemap,0, tumblep_control_0[4] );
 
-	tilemap_draw(bitmap,pf2_tilemap,0,0);
+	tilemap_draw(bitmap,cliprect,pf2_tilemap,0,0);
 	if (tumblep_control_0[6]&0x80)
-		tilemap_draw(bitmap,pf1_tilemap,0,0);
+		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	else
-		tilemap_draw(bitmap,pf1_alt_tilemap,0,0);
-	tumblep_drawsprites(bitmap);
+		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
+	tumblep_drawsprites(bitmap,cliprect);
+}
+
+VIDEO_UPDATE( jumpkids )
+{
+	int offs,offs2;
+
+	flipscreen=tumblep_control_0[0]&0x80;
+	tilemap_set_flip(ALL_TILEMAPS,flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+	if (flipscreen) offs=1; else offs=-1;
+	if (flipscreen) offs2=-3; else offs2=-5;
+
+	tilemap_set_scrollx( pf1_tilemap,0, tumblep_control_0[1]+offs2 );
+	tilemap_set_scrolly( pf1_tilemap,0, tumblep_control_0[2] );
+	tilemap_set_scrollx( pf1_alt_tilemap,0, tumblep_control_0[1]+offs2 );
+	tilemap_set_scrolly( pf1_alt_tilemap,0, tumblep_control_0[2] );
+	tilemap_set_scrollx( pf2_tilemap,0, tumblep_control_0[3]+offs );
+	tilemap_set_scrolly( pf2_tilemap,0, tumblep_control_0[4] );
+
+	tilemap_draw(bitmap,cliprect,pf2_tilemap,0,0);
+	if (tumblep_control_0[6]&0x80)
+		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
+	else
+		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
+	jumpkids_drawsprites(bitmap,cliprect);
 }

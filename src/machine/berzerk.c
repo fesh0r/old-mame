@@ -9,28 +9,20 @@
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
+#include "includes/berzerk.h"
+
 
 static int irq_enabled;
 static int nmi_enabled;
-int berzerk_irq_end_of_screen;
-
-int berzerkplayvoice;
-
 static int int_count;
 
 
-
-void berzerk_init_machine(void)
+MACHINE_INIT( berzerk )
 {
-	int i;
-
-	/* Berzerk expects locations 3800-3fff to be ff */
-	for (i = 0x3800; i < 0x4000; i++)
-		memory_region(REGION_CPU1)[i] = 0xff;
+	memory_set_unmap_value(0xff);
 
 	irq_enabled = 0;
 	nmi_enabled = 0;
-	berzerk_irq_end_of_screen = 0;
 	int_count = 0;
 }
 
@@ -76,49 +68,17 @@ READ_HANDLER( berzerk_led_off_r )
 	return 0;
 }
 
-READ_HANDLER( berzerk_voiceboard_r )
-{
-   if (!berzerkplayvoice)
-      return 0;
-   else
-      return 0x40;
-}
-
-int berzerk_interrupt(void)
+INTERRUPT_GEN( berzerk_interrupt )
 {
 	int_count++;
 
-	switch (int_count)
+	if (int_count & 0x03)
 	{
-	default:
-	case 4:
-	case 8:
-		if (int_count == 8)
-		{
-			berzerk_irq_end_of_screen = 0;
-			int_count = 0;
-		}
-		else
-		{
-			berzerk_irq_end_of_screen = 1;
-		}
-		return irq_enabled ? 0xfc : ignore_interrupt();
-
-	case 1:
-	case 2:
-	case 3:
-	case 5:
-	case 6:
-	case 7:
-		if (int_count == 7)
-		{
-			berzerk_irq_end_of_screen = 1;
-		}
-		else
-		{
-			berzerk_irq_end_of_screen = 0;
-		}
-		return nmi_enabled ? Z80_NMI_INT : ignore_interrupt();
+		if (nmi_enabled) cpu_set_irq_line(0, IRQ_LINE_NMI, PULSE_LINE);
+	}
+	else
+	{
+		if (irq_enabled) cpu_set_irq_line_and_vector(0, 0, HOLD_LINE, 0xfc);
 	}
 }
 

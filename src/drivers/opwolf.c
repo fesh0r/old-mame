@@ -55,7 +55,6 @@ register. So what is controlling priority.
 
 #include "driver.h"
 #include "state.h"
-#include "cpu/m68000/m68000.h"
 #include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 #include "sndhrdw/taitosnd.h"
@@ -65,10 +64,8 @@ static data8_t *cchip_ram;
 WRITE16_HANDLER( rainbow_spritectrl_w );
 WRITE16_HANDLER( rastan_spriteflip_w );
 
-int  opwolf_vh_start(void);
-void opwolf_eof_callback(void);
-void opwolf_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
-void rastan_vh_stop(void);
+VIDEO_START( opwolf );
+VIDEO_UPDATE( opwolf );
 
 static int opwolf_gun_xoffs,opwolf_gun_yoffs;
 
@@ -82,35 +79,21 @@ static WRITE16_HANDLER( cchip_w )
 	cchip_ram[offset] = data &0xff;
 }
 
-/***********************************************************
-				INTERRUPTS
-***********************************************************/
-
-//void opwolf_irq_handler(int irq);
-
-static int opwolf_interrupt(void)
-{
-	return 5;  /* interrupt vector 5: others are RTE */
-}
-
-static int sub_z80_interrupt(void)
-{
-	return 1;  // ??
-}
-
-
 /**********************************************************
 				GAME INPUTS
 **********************************************************/
 
 static READ16_HANDLER( opwolf_lightgun_r )
 {
+	int scaled;
+
 	switch (offset)
 	{
-		case 0x00:	/* P1X */
-			return (input_port_5_word_r(0,mem_mask) + 0x15 + opwolf_gun_xoffs);
+		case 0x00:	/* P1X - Have to remap 8 bit input value, into 0-319 visible range */
+			scaled=(input_port_4_word_r(0,mem_mask) * 320 ) / 256;
+			return (scaled + 0x15 + opwolf_gun_xoffs);
 		case 0x01:	/* P1Y */
-			return (input_port_6_word_r(0,mem_mask) - 0x24 + opwolf_gun_yoffs);
+			return (input_port_5_word_r(0,mem_mask) - 0x24 + opwolf_gun_yoffs);
 	}
 
 	return 0xff;
@@ -131,19 +114,10 @@ static READ_HANDLER( z80_input2_r )
 				SOUND
 ******************************************************/
 
-static int banknum = -1;
-
-static void reset_sound_region(void)
-{
-	cpu_setbank( 10, memory_region(REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
-}
-
 static WRITE_HANDLER( sound_bankswitch_w )
 {
-	banknum = (data-1) & 0x03;
-	reset_sound_region();
+	cpu_setbank( 10, memory_region(REGION_CPU2) + ((data-1) & 0x03) * 0x4000 + 0x10000 );
 }
-
 
 /***********************************************************
 			 MEMORY STRUCTURES
@@ -162,8 +136,7 @@ static MEMORY_READ16_START( opwolf_readmem )
 	{ 0x3e0000, 0x3e0001, MRA16_NOP },
 	{ 0x3e0002, 0x3e0003, taitosound_comm16_msb_r },
 	{ 0xc00000, 0xc0ffff, PC080SN_word_0_r },
-//	{ 0xc10000, 0xc1ffff, MRA16_RAM },	// (don't think this area is used)
-	{ 0xd00000, 0xd007ff, MRA16_RAM },	/* sprite ram */
+	{ 0xd00000, 0xd03fff, PC090OJ_word_0_r },	/* sprite ram */
 MEMORY_END
 
 static MEMORY_WRITE16_START( opwolf_writemem )
@@ -180,8 +153,7 @@ static MEMORY_WRITE16_START( opwolf_writemem )
 	{ 0xc20000, 0xc20003, PC080SN_yscroll_word_0_w },
 	{ 0xc40000, 0xc40003, PC080SN_xscroll_word_0_w },
 	{ 0xc50000, 0xc50003, PC080SN_ctrl_word_0_w },
-	{ 0xd00000, 0xd007ff, MWA16_RAM, &spriteram16, &spriteram_size },
-	{ 0xd01bfe, 0xd01bff, rastan_spriteflip_w },
+	{ 0xd00000, 0xd03fff, PC090OJ_word_0_w },	/* sprite ram */
 MEMORY_END
 
 /***************************************************************************
@@ -243,7 +215,7 @@ static WRITE_HANDLER( opwolf_adpcm_b_w )
 		ADPCM_play(0,start,(end-start)*2);
 	}
 
-	/*logerror("CPU #1     b00%i-data=%2x   pc=%4x\n",offset,data,cpu_get_pc() );*/
+	/*logerror("CPU #1     b00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );*/
 }
 
 
@@ -263,18 +235,18 @@ static WRITE_HANDLER( opwolf_adpcm_c_w )
 		ADPCM_play(1,start,(end-start)*2);
 	}
 
-	/*logerror("CPU #1     c00%i-data=%2x   pc=%4x\n",offset,data,cpu_get_pc() );*/
+	/*logerror("CPU #1     c00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );*/
 }
 
 
 static WRITE_HANDLER( opwolf_adpcm_d_w )
 {
-	logerror("CPU #1         d00%i-data=%2x   pc=%4x\n",offset,data,cpu_get_pc() );
+	/*logerror("CPU #1         d00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );*/
 }
 
 static WRITE_HANDLER( opwolf_adpcm_e_w )
 {
-	logerror("CPU #1         e00%i-data=%2x   pc=%4x\n",offset,data,cpu_get_pc() );
+	/*logerror("CPU #1         e00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );*/
 }
 
 
@@ -369,16 +341,11 @@ INPUT_PORTS_START( opwolf )
 	PORT_DIPSETTING(    0x80, "Japanese" )
 	PORT_DIPSETTING(    0x00, "English" )
 
-	PORT_START	/* Fake DSW */
-	PORT_BITX(    0x01, 0x01, IPT_DIPSWITCH_NAME | IPF_TOGGLE, "Show gun target", KEYCODE_F1, IP_JOY_NONE )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
-
 	PORT_START	/* P1X (span allows you to shoot enemies behind status bar) */
-	PORT_ANALOG( 0xff, 0x80, IPT_AD_STICK_X | IPF_PLAYER1, 25, 15, 0x00, 0xff)
+	PORT_ANALOG( 0xff, 0x80, IPT_LIGHTGUN_X | IPF_PLAYER1, 25, 15, 0x00, 0xff)
 
 	PORT_START	/* P1Y (span allows you to be slightly offscreen) */
-	PORT_ANALOG( 0xff, 0x80, IPT_AD_STICK_Y | IPF_PLAYER1, 25, 15, 0x00, 0xff)
+	PORT_ANALOG( 0xff, 0x80, IPT_LIGHTGUN_Y | IPF_PLAYER1, 25, 15, 0x00, 0xff)
 INPUT_PORTS_END
 
 
@@ -480,111 +447,72 @@ static struct ADPCMinterface adpcm_interface =
 			     MACHINE DRIVERS
 ***********************************************************/
 
-static struct MachineDriver machine_driver_opwolf =
-{
+static MACHINE_DRIVER_START( opwolf )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_M68000,
-			12000000,	/* 12 MHz ??? */
-			opwolf_readmem,opwolf_writemem,0,0,
-			opwolf_interrupt,1
-		},
-		{
-			CPU_Z80,
-			4000000,	/* 4 MHz ??? */
-			z80_readmem,z80_writemem,0,0,
-			ignore_interrupt,1
-		},
-		{
-			CPU_Z80,	/* fake, not present on the original board */
-			4000000,	/* 4 MHz ??? */
-			sub_z80_readmem,sub_z80_writemem,0,0,
-			sub_z80_interrupt,1
-		}
-	},
-	60, DEFAULT_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */
-	10,	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
-	0,
+	MDRV_CPU_ADD(M68000, 12000000 )	/* 12 MHz ??? */
+	MDRV_CPU_MEMORY(opwolf_readmem,opwolf_writemem)
+	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)
+
+	MDRV_CPU_ADD(Z80, 4000000 )	/* 4 MHz ??? */
+	MDRV_CPU_MEMORY(z80_readmem,z80_writemem)
+
+	MDRV_CPU_ADD(Z80, 4000000 )	/* fake, not present on the original board */
+	MDRV_CPU_MEMORY(sub_z80_readmem,sub_z80_writemem)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	/* video hardware */
-	40*8, 32*8, { 0*8, 40*8-1, 1*8, 31*8-1 },
-	opwolf_gfxdecodeinfo,
-	8192, 0,
-	0,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(40*8, 32*8)
+	MDRV_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+	MDRV_GFXDECODE(opwolf_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(8192)
 
-	VIDEO_TYPE_RASTER,
-	opwolf_eof_callback,
-	opwolf_vh_start,
-	rastan_vh_stop,
-	opwolf_vh_screenrefresh,
+	MDRV_VIDEO_START(opwolf)
+	MDRV_VIDEO_UPDATE(opwolf)
 
 	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_YM2151,
-			&ym2151_interface
-		},
-		{
-			SOUND_ADPCM,
-			&adpcm_interface
-		}
-	}
-};
+	MDRV_SOUND_ADD(YM2151, ym2151_interface)
+	MDRV_SOUND_ADD(ADPCM, adpcm_interface)
+MACHINE_DRIVER_END
 
-static struct MachineDriver machine_driver_opwolfb =
-{
+
+static MACHINE_DRIVER_START( opwolfb )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_M68000,
-			12000000,	/* 12 MHz ??? */
-			opwolf_readmem,opwolf_writemem,0,0,
-			opwolf_interrupt,1
-		},
-		{
-			CPU_Z80,
-			4000000,	/* 4 MHz ??? */
-			z80_readmem,z80_writemem,0,0,
-			ignore_interrupt,1
-		},
-		{
-			CPU_Z80,
-			4000000,	/* 4 MHz ??? */
-			sub_z80_readmem,sub_z80_writemem,0,0,
-			sub_z80_interrupt,1
-		}
-	},
-	60, DEFAULT_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */
-	10,	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
-	0,
+	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz ??? */
+	MDRV_CPU_MEMORY(opwolf_readmem,opwolf_writemem)
+	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)
+
+	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz ??? */
+	MDRV_CPU_MEMORY(z80_readmem,z80_writemem)
+
+	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz ??? */
+	MDRV_CPU_MEMORY(sub_z80_readmem,sub_z80_writemem)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	/* video hardware */
-	40*8, 32*8, { 0*8, 40*8-1, 1*8, 31*8-1 },
-	opwolfb_gfxdecodeinfo,
-	8192, 0,
-	0,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(40*8, 32*8)
+	MDRV_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+	MDRV_GFXDECODE(opwolfb_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(8192)
 
-	VIDEO_TYPE_RASTER,
-	opwolf_eof_callback,
-	opwolf_vh_start,
-	rastan_vh_stop,
-	opwolf_vh_screenrefresh,
+	MDRV_VIDEO_START(opwolf)
+	MDRV_VIDEO_UPDATE(opwolf)
 
 	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_YM2151,
-			&ym2151_interface
-		},
-		{
-			SOUND_ADPCM,
-			&adpcm_interface
-		}
-	}
-};
+	MDRV_SOUND_ADD(YM2151, ym2151_interface)
+	MDRV_SOUND_ADD(ADPCM, adpcm_interface)
+MACHINE_DRIVER_END
 
 
 /***************************************************************************
@@ -661,29 +589,25 @@ ROM_START( opwolfb )
 ROM_END
 
 
-static void init_opwolf(void)
+static DRIVER_INIT( opwolf )
 {
 	opwolf_gun_xoffs = 0;
 	opwolf_gun_yoffs = 0;
 
 	/* (there are other sound vars that may need saving too) */
-	state_save_register_int("sound1", 0, "sound region", &banknum);
 	state_save_register_UINT8("sound2", 0, "registers", adpcm_b, 8);
 	state_save_register_UINT8("sound3", 0, "registers", adpcm_c, 8);
-	state_save_register_func_postload(reset_sound_region);
 }
 
-static void init_opwolfb(void)
+static DRIVER_INIT( opwolfb )
 {
 	/* bootleg needs different range of raw gun coords */
 	opwolf_gun_xoffs = -2;
 	opwolf_gun_yoffs = 17;
 
 	/* (there are other sound vars that may need saving too) */
-	state_save_register_int("sound1", 0, "sound region", &banknum);
 	state_save_register_UINT8("sound2", 0, "registers", adpcm_b, 8);
 	state_save_register_UINT8("sound3", 0, "registers", adpcm_c, 8);
-	state_save_register_func_postload(reset_sound_region);
 }
 
 

@@ -6,6 +6,16 @@
  *	 Copyright (c) 1999 Juergen Buchmueller, all rights reserved.
  *	 Partially based on information out of Z80Em by Marcel De Kogel
  *
+ * changes in V1.3
+ *   - Added undocumented opcodes for the 8085A, based on a german
+ *     book about microcomputers: "Mikrocomputertechnik mit dem
+ *     Prozessor 8085A".
+ *   - This book also suggest that INX/DCX should modify the X flag bit
+ *     for a LSB to MSB carry and
+ *   - that jumps take 10 T-states only when they're executed, 7 when
+ *     they're skipped.
+ *     Thanks for the info and a copy of the tables go to Timo Sachsenberg
+ *     <timo.sachsenberg@student.uni-tuebingen.de>
  * changes in V1.2
  *	 - corrected cycle counts for these classes of opcodes
  *	   Thanks go to Jim Battle <frustum@pacbell.bet>
@@ -39,9 +49,19 @@
  *	   terms of its usage and license at any time, including retroactively
  *	 - This entire notice must remain in the source code.
  *
+ *
+ * Revisions:
+ *
+ * xx-xx-2002 Acho A. Tang
+ *
+ * - 8085 emulation was in fact never used. It's been treated as a plain 8080.
+ * - protected IRQ0 vector from being overwritten
+ * - modified interrupt handler to properly process 8085-specific IRQ's
+ * - corrected interrupt masking, RIM and SIM behaviors according to Intel's documentation
+ *
  *****************************************************************************/
 
-//int survival_prot = 0;
+/*int survival_prot = 0; */
 
 #define VERBOSE 0
 
@@ -102,7 +122,7 @@ int i8085_ICount = 0;
 static i8085_Regs I;
 static UINT8 ZS[256];
 static UINT8 ZSP[256];
-
+static UINT8 RIM_IEN = 0; //AT: IEN status latch used by the RIM instruction
 static UINT8 ROP(void)
 {
 	return cpu_readop(I.PC.w.l++);
@@ -156,6 +176,7 @@ INLINE void execute_one(int opcode)
 			break;
 		case 0x03: i8085_ICount -= 5;	/* INX	B */
 			I.BC.w.l++;
+			if (I.BC.b.l == 0x00) I.AF.b.l |= XF; else I.AF.b.l &= ~XF;
 			break;
 		case 0x04: i8085_ICount -= 5;	/* INR	B */
 			M_INR(I.BC.b.h);
@@ -170,8 +191,14 @@ INLINE void execute_one(int opcode)
 			M_RLC;
 			break;
 
-		case 0x08: i8085_ICount -= 4;	/* ???? */
-			illegal();
+		case 0x08:
+			if( I.cputype ) {
+				i8085_ICount -= 10;		/* DSUB */
+				M_DSUB();
+			} else {
+				i8085_ICount -= 4;
+				illegal(); 				/* ???? */
+			}
 			break;
 		case 0x09: i8085_ICount -= 10;	/* DAD	B */
 			M_DAD(BC);
@@ -181,6 +208,7 @@ INLINE void execute_one(int opcode)
 			break;
 		case 0x0b: i8085_ICount -= 5;	/* DCX	B */
 			I.BC.w.l--;
+			if (I.BC.b.l == 0xff) I.AF.b.l |= XF; else I.AF.b.l &= ~XF;
 			break;
 		case 0x0c: i8085_ICount -= 5;	/* INR	C */
 			M_INR(I.BC.b.l);
@@ -195,8 +223,15 @@ INLINE void execute_one(int opcode)
 			M_RRC;
 			break;
 
-		case 0x10: i8085_ICount -= 8;	/* ????  */
-			illegal();
+		case 0x10:
+			if( I.cputype ) {
+				i8085_ICount -= 7;		/* ASRH */
+				I.AF.b.l = (I.AF.b.l & ~CF) | (I.HL.b.l & CF);
+				I.HL.w.l = (I.HL.w.l >> 1);
+			} else {
+				i8085_ICount -= 8;		/* ????  */
+				illegal();
+			}
 			break;
 		case 0x11: i8085_ICount -= 10;	/* LXI	D,nnnn */
 			I.DE.w.l = ARG16();
@@ -206,6 +241,7 @@ INLINE void execute_one(int opcode)
 			break;
 		case 0x13: i8085_ICount -= 5;	/* INX	D */
 			I.DE.w.l++;
+			if (I.DE.b.l == 0x00) I.AF.b.l |= XF; else I.AF.b.l &= ~XF;
 			break;
 		case 0x14: i8085_ICount -= 5;	/* INR	D */
 			M_INR(I.DE.b.h);
@@ -220,8 +256,17 @@ INLINE void execute_one(int opcode)
 			M_RAL;
 			break;
 
-		case 0x18: i8085_ICount -= 7;	/* ????? */
-			illegal();
+		case 0x18:
+			if( I.cputype ) {
+				i8085_ICount -= 10;		/* RLDE */
+				I.AF.b.l = (I.AF.b.l & ~(CF | VF)) | (I.DE.b.h >> 7);
+				I.DE.w.l = (I.DE.w.l << 1) | (I.DE.w.l >> 15);
+				if (0 != (((I.DE.w.l >> 15) ^ I.AF.b.l) & CF))
+					I.AF.b.l |= VF;
+			} else {
+				i8085_ICount -= 7;		/* ????? */
+				illegal();
+			}
 			break;
 		case 0x19: i8085_ICount -= 10;	/* DAD	D */
 			M_DAD(DE);
@@ -231,6 +276,7 @@ INLINE void execute_one(int opcode)
 			break;
 		case 0x1b: i8085_ICount -= 5;	/* DCX	D */
 			I.DE.w.l--;
+			if (I.DE.b.l == 0xff) I.AF.b.l |= XF; else I.AF.b.l &= ~XF;
 			break;
 		case 0x1c: i8085_ICount -= 5;	/* INR	E */
 			M_INR(I.DE.b.l);
@@ -246,14 +292,12 @@ INLINE void execute_one(int opcode)
 			break;
 
 		case 0x20:
-			if( I.cputype )
-			{
+			if( I.cputype ) {
 				i8085_ICount -= 7;		/* RIM	*/
 				I.AF.b.h = I.IM;
-//				survival_prot ^= 0x01;
-			}
-			else
-			{
+				I.AF.b.h |= RIM_IEN; RIM_IEN = 0; //AT: read and clear IEN status latch
+/*				survival_prot ^= 0x01; */
+			} else {
 				i8085_ICount -= 7;		/* ???	*/
 			}
 			break;
@@ -268,6 +312,7 @@ INLINE void execute_one(int opcode)
 			break;
 		case 0x23: i8085_ICount -= 5;	/* INX	H */
 			I.HL.w.l++;
+			if (I.HL.b.l == 0x00) I.AF.b.l |= XF; else I.AF.b.l &= ~XF;
 			break;
 		case 0x24: i8085_ICount -= 5;	/* INR	H */
 			M_INR(I.HL.b.h);
@@ -286,8 +331,15 @@ INLINE void execute_one(int opcode)
 			I.AF.w.l = DAA[I.XX.d];
 			break;
 
-		case 0x28: i8085_ICount -= 7;	/* ???? */
-			illegal();
+		case 0x28:
+			if( I.cputype ) {
+				i8085_ICount -= 10;		/* LDEH nn */
+				I.XX.d = ARG();
+				I.DE.d = (I.HL.d + I.XX.d) & 0xffff;
+			} else {
+				i8085_ICount -= 7;		/* ???? */
+				illegal();
+			}
 			break;
 		case 0x29: i8085_ICount -= 10;	/* DAD	H */
 			M_DAD(HL);
@@ -300,6 +352,7 @@ INLINE void execute_one(int opcode)
 			break;
 		case 0x2b: i8085_ICount -= 5;	/* DCX	H */
 			I.HL.w.l--;
+			if (I.HL.b.l == 0xff) I.AF.b.l |= XF; else I.AF.b.l &= ~XF;
 			break;
 		case 0x2c: i8085_ICount -= 5;	/* INR	L */
 			M_INR(I.HL.b.l);
@@ -316,17 +369,20 @@ INLINE void execute_one(int opcode)
 			break;
 
 		case 0x30:
-			if( I.cputype )
-			{
+			if( I.cputype ) {
 				i8085_ICount -= 7;		/* SIM	*/
 				if ((I.IM ^ I.AF.b.h) & 0x80)
 					if (I.sod_callback) (*I.sod_callback)(I.AF.b.h >> 7);
-				I.IM &= (IM_SID + IM_IEN + IM_TRAP);
-				I.IM |= (I.AF.b.h & ~(IM_SID + IM_SOD + IM_IEN + IM_TRAP));
+//AT
+				//I.IM &= (IM_SID + IM_IEN + IM_TRAP);
+				//I.IM |= (I.AF.b.h & ~(IM_SID + IM_SOD + IM_IEN + IM_TRAP));
+
+				// overwrite RST5.5-7.5 interrupt masks only when bit 0x08 of the accumulator is set
+				if (I.AF.b.h & 0x08)
+					I.IM = (I.IM & ~(IM_RST55+IM_RST65+IM_RST75)) | (I.AF.b.h & (IM_RST55+IM_RST65+IM_RST75));
+//ZT
 				if (I.AF.b.h & 0x80) I.IM |= IM_SOD;
-			}
-			else
-			{
+			} else {
 				i8085_ICount -= 4;		/* ???	*/
 			}
 			break;
@@ -339,6 +395,7 @@ INLINE void execute_one(int opcode)
 			break;
 		case 0x33: i8085_ICount -= 5;	/* INX	SP */
 			I.SP.w.l++;
+			if (I.SP.b.l == 0x00) I.AF.b.l |= XF; else I.AF.b.l &= ~XF;
 			break;
 		case 0x34: i8085_ICount -= 10;	/* INR	M */
 			I.XX.b.l = RM(I.HL.d);
@@ -358,8 +415,15 @@ INLINE void execute_one(int opcode)
 			I.AF.b.l = (I.AF.b.l & ~(HF + NF)) | CF;
 			break;
 
-		case 0x38: i8085_ICount -= 7;	/* ???? */
-			illegal();
+		case 0x38:
+			if( I.cputype ) {
+				i8085_ICount -= 10;		/* LDES nn */
+				I.XX.d = ARG();
+				I.DE.d = (I.SP.d + I.XX.d) & 0xffff;
+			} else {
+				i8085_ICount -= 7;		/* ???? */
+				illegal();
+			}
 			break;
 		case 0x39: i8085_ICount -= 10;	/* DAD SP */
 			M_DAD(SP);
@@ -370,6 +434,7 @@ INLINE void execute_one(int opcode)
 			break;
 		case 0x3b: i8085_ICount -= 5;	/* DCX	SP */
 			I.SP.w.l--;
+			if (I.SP.b.l == 0xff) I.AF.b.l |= XF; else I.AF.b.l &= ~XF;
 			break;
 		case 0x3c: i8085_ICount -= 5;	/* INR	A */
 			M_INR(I.AF.b.h);
@@ -793,10 +858,10 @@ INLINE void execute_one(int opcode)
 		case 0xc1: i8085_ICount -= 10;	/* POP	B */
 			M_POP(BC);
 			break;
-		case 0xc2: i8085_ICount -= 10;	/* JNZ	nnnn */
+		case 0xc2: i8085_ICount -= 7;	/* JNZ	nnnn */
 			M_JMP( !(I.AF.b.l & ZF) );
 			break;
-		case 0xc3: i8085_ICount -= 10;	/* JMP	nnnn */
+		case 0xc3: i8085_ICount -= 7;	/* JMP	nnnn */
 			M_JMP(1);
 			break;
 		case 0xc4: i8085_ICount -= 11;	/* CNZ	nnnn */
@@ -819,11 +884,21 @@ INLINE void execute_one(int opcode)
 		case 0xc9: i8085_ICount -= 4;	/* RET	*/
 			M_RET(1);
 			break;
-		case 0xca: i8085_ICount -= 10;	/* JZ	nnnn */
+		case 0xca: i8085_ICount -= 7;	/* JZ	nnnn */
 			M_JMP( I.AF.b.l & ZF );
 			break;
-		case 0xcb: i8085_ICount -= 4;	/* ???? */
-			illegal();
+		case 0xcb:
+			if( I.cputype ) {
+				if (I.AF.b.l & VF) {
+					i8085_ICount -= 12;
+					M_RST(8);			/* call 0x40 */
+				} else {
+					i8085_ICount -= 6;	/* RST  V */
+				}
+			} else {
+				i8085_ICount -= 4;		/* ???? */
+				illegal();
+			}
 			break;
 		case 0xcc: i8085_ICount -= 11;	/* CZ	nnnn */
 			M_CALL( I.AF.b.l & ZF );
@@ -845,7 +920,7 @@ INLINE void execute_one(int opcode)
 		case 0xd1: i8085_ICount -= 10;	/* POP	D */
 			M_POP(DE);
 			break;
-		case 0xd2: i8085_ICount -= 10;	/* JNC	nnnn */
+		case 0xd2: i8085_ICount -= 7;	/* JNC	nnnn */
 			M_JMP( !(I.AF.b.l & CF) );
 			break;
 		case 0xd3: i8085_ICount -= 10;	/* OUT	nn */
@@ -868,10 +943,19 @@ INLINE void execute_one(int opcode)
 		case 0xd8: i8085_ICount -= 5;	/* RC	*/
 			M_RET( I.AF.b.l & CF );
 			break;
-		case 0xd9: i8085_ICount -= 4;	/* ???? */
-			illegal();
+		case 0xd9:
+			if( I.cputype ) {
+				i8085_ICount -= 10;		/* SHLX */
+				I.XX.w.l = I.DE.w.l;
+				WM(I.XX.d, I.HL.b.l);
+				I.XX.w.l++;
+				WM(I.XX.d, I.HL.b.h);
+			} else {
+				i8085_ICount -= 4;		/* ???? */
+				illegal();
+			}
 			break;
-		case 0xda: i8085_ICount -= 10;	/* JC	nnnn */
+		case 0xda: i8085_ICount -= 7;	/* JC	nnnn */
 			M_JMP( I.AF.b.l & CF );
 			break;
 		case 0xdb: i8085_ICount -= 10;	/* IN	nn */
@@ -880,8 +964,14 @@ INLINE void execute_one(int opcode)
 		case 0xdc: i8085_ICount -= 11;	/* CC	nnnn */
 			M_CALL( I.AF.b.l & CF );
 			break;
-		case 0xdd: i8085_ICount -= 4;	/* ???? */
-			illegal();
+		case 0xdd:
+			if( I.cputype ) {
+				i8085_ICount -= 7;		/* JNX  nnnn */
+				M_JMP( !(I.AF.b.l & XF) );
+			} else {
+				i8085_ICount -= 4;		/* ???? */
+				illegal();
+			}
 			break;
 		case 0xde: i8085_ICount -= 7;	/* SBI	nn */
 			I.XX.b.l = ARG();
@@ -897,7 +987,7 @@ INLINE void execute_one(int opcode)
 		case 0xe1: i8085_ICount -= 10;	/* POP	H */
 			M_POP(HL);
 			break;
-		case 0xe2: i8085_ICount -= 10;	/* JPE	nnnn */
+		case 0xe2: i8085_ICount -= 7;	/* JPE	nnnn */
 			M_JMP( !(I.AF.b.l & VF) );
 			break;
 		case 0xe3: i8085_ICount -= 18;	/* XTHL */
@@ -926,7 +1016,7 @@ INLINE void execute_one(int opcode)
 			I.PC.d = I.HL.w.l;
 			change_pc16(I.PC.d);
 			break;
-		case 0xea: i8085_ICount -= 10;	/* JPO	nnnn */
+		case 0xea: i8085_ICount -= 7;	/* JPO	nnnn */
 			M_JMP( I.AF.b.l & VF );
 			break;
 		case 0xeb: i8085_ICount -= 4;	/* XCHG */
@@ -937,7 +1027,17 @@ INLINE void execute_one(int opcode)
 		case 0xec: i8085_ICount -= 11;	/* CPO	nnnn */
 			M_CALL( I.AF.b.l & VF );
 			break;
-		case 0xed: i8085_ICount -= 4;	/* ???? */
+		case 0xed:
+			if( I.cputype ) {
+				i8085_ICount -= 10;		/* LHLX */
+				I.XX.w.l = I.DE.w.l;
+				I.HL.b.l = RM(I.XX.d);
+				I.XX.w.l++;
+				I.HL.b.h = RM(I.XX.d);
+			} else {
+				i8085_ICount -= 4;		/* ???? */
+				illegal();
+			}
 			illegal();
 			break;
 		case 0xee: i8085_ICount -= 7;	/* XRI	nn */
@@ -954,7 +1054,7 @@ INLINE void execute_one(int opcode)
 		case 0xf1: i8085_ICount -= 10;	/* POP	A */
 			M_POP(AF);
 			break;
-		case 0xf2: i8085_ICount -= 10;	/* JP	nnnn */
+		case 0xf2: i8085_ICount -= 7;	/* JP	nnnn */
 			M_JMP( !(I.AF.b.l & SF) );
 			break;
 		case 0xf3: i8085_ICount -= 4;	/* DI	*/
@@ -981,7 +1081,7 @@ INLINE void execute_one(int opcode)
 		case 0xf9: i8085_ICount -= 5;	/* SPHL */
 			I.SP.d = I.HL.d;
 			break;
-		case 0xfa: i8085_ICount -= 10;	/* JM	nnnn */
+		case 0xfa: i8085_ICount -= 7;	/* JM	nnnn */
 			M_JMP( I.AF.b.l & SF );
 			break;
 		case 0xfb: i8085_ICount -= 4;	/* EI */
@@ -991,59 +1091,43 @@ INLINE void execute_one(int opcode)
 			I.IREQ &= ~I.ISRV;
 			/* reset serviced IRQ */
 			I.ISRV = 0;
-			if( I.irq_state[0] != CLEAR_LINE )
-			{
+			if( I.irq_state[0] != CLEAR_LINE ) {
 				LOG(("i8085 EI sets INTR\n"));
 				I.IREQ |= IM_INTR;
 				I.INTR = I8085_INTR;
 			}
-			if( I.cputype )
-			{
-				if( I.irq_state[1] != CLEAR_LINE )
-				{
+			if( I.cputype ) {
+				if( I.irq_state[1] != CLEAR_LINE ) {
 					LOG(("i8085 EI sets RST5.5\n"));
 					I.IREQ |= IM_RST55;
 				}
-				if( I.irq_state[2] != CLEAR_LINE )
-				{
+				if( I.irq_state[2] != CLEAR_LINE ) {
 					LOG(("i8085 EI sets RST6.5\n"));
 					I.IREQ |= IM_RST65;
 				}
-				if( I.irq_state[3] != CLEAR_LINE )
-				{
+				if( I.irq_state[3] != CLEAR_LINE ) {
 					LOG(("i8085 EI sets RST7.5\n"));
 					I.IREQ |= IM_RST75;
 				}
 				/* find highest priority IREQ flag with
 				   IM enabled and schedule for execution */
-				if( !(I.IM & IM_RST75) && (I.IREQ & IM_RST75) )
-				{
+				if( !(I.IM & IM_RST75) && (I.IREQ & IM_RST75) ) {
 					I.ISRV = IM_RST75;
 					I.IRQ2 = ADDR_RST75;
 				}
 				else
-				if( !(I.IM & IM_RST65) && (I.IREQ & IM_RST65) )
-				{
+				if( !(I.IM & IM_RST65) && (I.IREQ & IM_RST65) ) {
 					I.ISRV = IM_RST65;
 					I.IRQ2 = ADDR_RST65;
-				}
-				else
-				if( !(I.IM & IM_RST55) && (I.IREQ & IM_RST55) )
-				{
+				} else if( !(I.IM & IM_RST55) && (I.IREQ & IM_RST55) ) {
 					I.ISRV = IM_RST55;
 					I.IRQ2 = ADDR_RST55;
-				}
-				else
-				if( !(I.IM & IM_INTR) && (I.IREQ & IM_INTR) )
-				{
+				} else if( !(I.IM & IM_INTR) && (I.IREQ & IM_INTR) ) {
 					I.ISRV = IM_INTR;
 					I.IRQ2 = I.INTR;
 				}
-			}
-			else
-			{
-				if( !(I.IM & IM_INTR) && (I.IREQ & IM_INTR) )
-				{
+			} else {
+				if( !(I.IM & IM_INTR) && (I.IREQ & IM_INTR) ) {
 					I.ISRV = IM_INTR;
 					I.IRQ2 = I.INTR;
 				}
@@ -1052,8 +1136,14 @@ INLINE void execute_one(int opcode)
 		case 0xfc: i8085_ICount -= 11;	/* CM	nnnn */
 			M_CALL( I.AF.b.l & SF );
 			break;
-		case 0xfd: i8085_ICount -= 4;	/* ???? */
-			illegal();
+		case 0xfd:
+			if( I.cputype ) {
+				i8085_ICount -= 7;		/* JX   nnnn */
+				M_JMP( I.AF.b.l & XF );
+			} else {
+				i8085_ICount -= 4;		/* ???? */
+				illegal();
+			}
 			break;
 		case 0xfe: i8085_ICount -= 7;	/* CPI	nn */
 			I.XX.b.l = ARG();
@@ -1073,6 +1163,10 @@ static void Interrupt(void)
 		I.PC.w.l++; 	/* skip HALT instr */
 		I.HALT = 0;
 	}
+//AT
+	I.IREQ &= ~I.ISRV; // remove serviced IRQ flag
+	RIM_IEN = (I.ISRV==IM_TRAP) ? I.IM & IM_IEN : 0; // latch general interrupt enable bit on TRAP or NMI
+//ZT
 	I.IM &= ~IM_IEN;		/* remove general interrupt enable bit */
 
 	if( I.ISRV == IM_INTR )
@@ -1086,19 +1180,22 @@ static void Interrupt(void)
 		if( I.ISRV == IM_RST55 )
 		{
 			LOG(("Interrupt get RST5.5 vector\n"));
-			I.IRQ1 = (I.irq_callback)(1);
+			//I.IRQ1 = (I.irq_callback)(1);
+			I.irq_state[I8085_RST55_LINE] = CLEAR_LINE; //AT: processing RST5.5, reset interrupt line
 		}
 
 		if( I.ISRV == IM_RST65	)
 		{
 			LOG(("Interrupt get RST6.5 vector\n"));
-			I.IRQ1 = (I.irq_callback)(2);
+			//I.IRQ1 = (I.irq_callback)(2);
+			I.irq_state[I8085_RST65_LINE] = CLEAR_LINE; //AT: processing RST6.5, reset interrupt line
 		}
 
 		if( I.ISRV == IM_RST75 )
 		{
 			LOG(("Interrupt get RST7.5 vector\n"));
-			I.IRQ1 = (I.irq_callback)(3);
+			//I.IRQ1 = (I.irq_callback)(3);
+			I.irq_state[I8085_RST75_LINE] = CLEAR_LINE; //AT: processing RST7.5, reset interrupt line
 		}
 	}
 
@@ -1216,9 +1313,13 @@ void i8085_init(void)
  ****************************************************************************/
 void i8085_reset(void *param)
 {
+	int cputype_bak = I.cputype; //AT: backup cputype(0=8080, 1=8085)
+
 	init_tables();
-	memset(&I, 0, sizeof(i8085_Regs));
+	memset(&I, 0, sizeof(i8085_Regs)); //AT: this also resets I.cputype so 8085 features were never ever used!
 	change_pc16(I.PC.d);
+
+	I.cputype = cputype_bak; //AT: restore cputype
 }
 
 /****************************************************************************
@@ -1438,7 +1539,8 @@ void i8085_set_INTR(int state)
 	if( state )
 	{
 		I.IREQ |= IM_INTR;				/* request INTR */
-		I.INTR = state;
+		//I.INTR = state;
+		I.INTR = I8085_INTR; //AT: I.INTR is supposed to hold IRQ0 vector(0x38) (0xff in this implementation)
 		if( I.IM & IM_INTR ) return;	/* if masked, ignore it for now */
 		if( !I.ISRV )					/* if no higher priority IREQ is serviced */
 		{

@@ -9,37 +9,35 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-static int flipscreen = 0;
 static int palettebank;
 
-
-
-void tagteam_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
+PALETTE_INIT( tagteam )
 {
 	int i;
 
 
 	for (i = 0;i < Machine->drv->total_colors;i++)
 	{
-		int bit0,bit1,bit2;
+		int bit0,bit1,bit2,r,g,b;
 
 
 		/* red component */
 		bit0 = (*color_prom >> 0) & 0x01;
 		bit1 = (*color_prom >> 1) & 0x01;
 		bit2 = (*color_prom >> 2) & 0x01;
-		*(palette++) = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 		/* green component */
 		bit0 = (*color_prom >> 3) & 0x01;
 		bit1 = (*color_prom >> 4) & 0x01;
 		bit2 = (*color_prom >> 5) & 0x01;
-		*(palette++) = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 		/* blue component */
 		bit0 = 0;
 		bit1 = (*color_prom >> 6) & 0x01;
 		bit2 = (*color_prom >> 7) & 0x01;
-		*(palette++) = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
+		palette_set_color(i,r,g,b);
 		color_prom++;
 	}
 }
@@ -94,7 +92,7 @@ WRITE_HANDLER( tagteam_mirrorcolorram_w )
 
 WRITE_HANDLER( tagteam_control_w )
 {
-logerror("%04x: control = %02x\n",cpu_get_pc(),data);
+logerror("%04x: control = %02x\n",activecpu_get_pc(),data);
 
 	/* bit 7 is the palette bank */
 	palettebank = (data & 0x80) >> 7;
@@ -110,6 +108,8 @@ the main emulation engine.
 ***************************************************************************/
 static void drawchars(struct mame_bitmap *bitmap,int color)
 {
+	static int prev_flip_screen = 0;
+
 	int offs;
 
 
@@ -122,14 +122,14 @@ static void drawchars(struct mame_bitmap *bitmap,int color)
 	{
 		int sx,sy;
 
-		if (dirtybuffer[offs])
+		if ((flip_screen != prev_flip_screen) || dirtybuffer[offs])
 		{
 			dirtybuffer[offs] = 0;
 
 			sx = 31 - offs % 32;
 			sy = offs / 32;
 
-			if (flipscreen)
+			if (flip_screen)
 			{
 				sx = 31 - sx;
 				sy = 31 - sy;
@@ -140,7 +140,7 @@ static void drawchars(struct mame_bitmap *bitmap,int color)
 			drawgfx(tmpbitmap,Machine->gfx[0],
 					videoram[offs] + 256 * colorram[offs],
 					2*color,	/* guess */
-					flipscreen,flipscreen,
+					flip_screen,flip_screen,
 					8*sx,8*sy,
 					&Machine->visible_area,TRANSPARENCY_NONE,0);
 		}
@@ -148,6 +148,7 @@ static void drawchars(struct mame_bitmap *bitmap,int color)
 
 	/* copy the temporary bitmap to the screen */
 	copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+	prev_flip_screen = flip_screen;
 }
 
 static void drawsprites(struct mame_bitmap *bitmap,int color)
@@ -169,11 +170,10 @@ static void drawsprites(struct mame_bitmap *bitmap,int color)
 		flipy = videoram[offs + 0] & 0x02;
 		spritebank = (videoram[offs] & 0x30) << 4;
 
-		if (flipscreen)
+		if (flip_screen)
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
-
 			flipx = !flipx;
 			flipy = !flipy;
 		}
@@ -185,9 +185,9 @@ static void drawsprites(struct mame_bitmap *bitmap,int color)
 				sx,sy,
 				&Machine->visible_area,TRANSPARENCY_PEN,0);
 
-		sy += (flipscreen ? -256 : 256);
+		sy += (flip_screen ? -256 : 256);
 
-		// Wrap around
+		/* Wrap around */
 		drawgfx(bitmap,Machine->gfx[1],
 				videoram[offs + 0x20] + 256 * spritebank,
 				color,
@@ -197,10 +197,9 @@ static void drawsprites(struct mame_bitmap *bitmap,int color)
 	}
 }
 
-void tagteam_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh)
+VIDEO_UPDATE( tagteam )
 {
 	drawchars(bitmap,palettebank);
-
 	drawsprites(bitmap,palettebank);
 }
 

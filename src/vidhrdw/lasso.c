@@ -1,19 +1,12 @@
 /***************************************************************************
 
-		driver by Phil Stroffolino, Nicola Salmoria, Luca Elia
+ Lasso and similar hardware
+
+	driver by Phil Stroffolino, Nicola Salmoria, Luca Elia
 
 
-Note:	if MAME_DEBUG is defined, pressing Z with:
-
-		Q			shows the background
-		W			shows the foreground (if present)
-		A			shows the sprites
-
-		Keys can be used together!
-
-
-	Every game has 1 256 x 256 tilemap (non scrollable) made of 8 x 8 x 2
-	tiles, and 16 x 16 x 2 sprites (some games use 32, some more).
+	Every game has 1 256 x 256 tilemap (non scrollable) made of 8 x 8
+	tiles, and 16 x 16 sprites (some games use 32, some more).
 
 	The graphics for tiles and sprites are held inside the same ROMs,
 	but	aren't shared between the two:
@@ -35,62 +28,23 @@ Note:	if MAME_DEBUG is defined, pressing Z with:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "lasso.h"
 
+
+data8_t *lasso_videoram;
+data8_t *lasso_colorram;
+data8_t *lasso_spriteram;
+size_t lasso_spriteram_size;
+data8_t *lasso_bitmap_ram; 	/* 0x2000 bytes for a 256 x 256 x 1 bitmap */
+data8_t *wwjgtin_track_scroll;
+
 /* variables only used here: */
-static struct tilemap *background, *background1;
-static int gfxbank, wwjgtin_bg1_enable;
+static struct tilemap *bg_tilemap, *track_tilemap;
+static int gfxbank;
+static int wwjgtin_track_enable;
+static int flip_screen_x;
+static int flip_screen_y;
 
-
-/* variables needed externally: */
-data8_t *lasso_vram; 	/* 0x2000 bytes for a 256 x 256 x 1 bitmap */
-data8_t *wwjgtin_scroll;
-
-
-/***************************************************************************
-
-
-								Memory Handlers
-
-
-***************************************************************************/
-
-WRITE_HANDLER( lasso_videoram_w )
-{
-	if( videoram[offset]!=data )
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty( background, offset&0x3ff );
-	}
-}
-
-WRITE_HANDLER( lasso_gfxbank_w )
-{
-	int bank = (data & 0x04) >> 2;
-
-	flip_screen_set( data & 0x01 );
-
-	if (gfxbank != bank)
-	{
-		gfxbank = bank;
-		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
-	}
-}
-
-WRITE_HANDLER( wwjgtin_gfxbank_w )
-{
-	int bank = ((data & 0x04) ? 0 : 1) + ((data & 0x10) ? 2 : 0);
-	wwjgtin_bg1_enable = data & 0x08;
-
-	flip_screen_set( data & 0x01 );
-
-	if (gfxbank != bank)
-	{
-		gfxbank = bank;
-		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
-	}
-}
 
 /***************************************************************************
 
@@ -100,7 +54,7 @@ WRITE_HANDLER( wwjgtin_gfxbank_w )
 
 ***************************************************************************/
 
-void lasso_set_color(int i, int data)
+static void lasso_set_color(int i, int data)
 {
 	int bit0,bit1,bit2,r,g,b;
 
@@ -122,7 +76,7 @@ void lasso_set_color(int i, int data)
 	palette_set_color( i,r,g,b );
 }
 
-void lasso_vh_convert_color_prom(unsigned char *palette,unsigned short *colortable,const unsigned char *color_prom)
+PALETTE_INIT( lasso )
 {
 	int i;
 
@@ -134,18 +88,168 @@ void lasso_vh_convert_color_prom(unsigned char *palette,unsigned short *colortab
 }
 
 /* 16 color tiles with a 4 color step for the palettes */
-void wwjgtin_vh_convert_color_prom(unsigned char *palette,unsigned short *colortable,const unsigned char *color_prom)
+PALETTE_INIT( wwjgtin )
 {
 	int color, pen;
 
-	lasso_vh_convert_color_prom(palette,colortable,color_prom);
+	palette_init_lasso(colortable,color_prom);
 
 	for( color = 0; color < 0x10; color++ )
 		for( pen = 0; pen < 16; pen++ )
 			colortable[color * 16 + pen + 4*16] = (color * 4 + pen) % 0x40;
 }
 
-/* The background color can be changed */
+
+/***************************************************************************
+
+  Callbacks for the TileMap code
+
+***************************************************************************/
+
+static void lasso_get_bg_tile_info(int tile_index)
+{
+	int code  = lasso_videoram[tile_index];
+	int color = lasso_colorram[tile_index];
+	SET_TILE_INFO(0,
+				  code + (gfxbank << 8),
+				  color & 0x0f,
+				  0)
+}
+
+static void wwjgtin_get_track_tile_info(int tile_index)
+{
+	data8_t *ROM = memory_region(REGION_USER1);
+	int code  = ROM[tile_index];
+	int color = ROM[tile_index + 0x2000];
+	SET_TILE_INFO(2,
+				  code,
+				  color & 0x0f,
+				  0)
+}
+
+static void pinbo_get_bg_tile_info(int tile_index)
+{
+	int code  = lasso_videoram[tile_index];
+	int color = lasso_colorram[tile_index];
+	SET_TILE_INFO(0,
+				  code + ((color & 0x30) << 4),
+				  color & 0x0f,
+				  0)
+}
+
+
+/*************************************
+ *
+ *	Video system start
+ *
+ *************************************/
+
+VIDEO_START( lasso )
+{
+	bg_tilemap = tilemap_create(lasso_get_bg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 32,32);
+
+	if (!bg_tilemap)
+		return 1;
+
+	return 0;
+}
+
+VIDEO_START( wwjgtin )
+{
+	bg_tilemap =    tilemap_create(lasso_get_bg_tile_info,      tilemap_scan_rows, TILEMAP_TRANSPARENT, 8, 8,  32,  32);
+	track_tilemap = tilemap_create(wwjgtin_get_track_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE,      16,16, 0x80,0x40);
+
+	if (!bg_tilemap || !track_tilemap)
+		return 1;
+
+	tilemap_set_transparent_pen(bg_tilemap,0);
+	return 0;
+}
+
+VIDEO_START( pinbo )
+{
+	bg_tilemap = tilemap_create(pinbo_get_bg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 32,32);
+
+	if (!bg_tilemap)
+		return 1;
+
+	return 0;
+}
+
+
+/*************************************
+ *
+ *	Memory handlers
+ *
+ *************************************/
+
+WRITE_HANDLER( lasso_videoram_w )
+{
+	if (lasso_videoram[offset] != data)
+	{
+		lasso_videoram[offset] = data;
+		tilemap_mark_tile_dirty( bg_tilemap, offset );
+	}
+}
+
+WRITE_HANDLER( lasso_colorram_w )
+{
+	if (lasso_colorram[offset] != data)
+	{
+		lasso_colorram[offset] = data;
+		tilemap_mark_tile_dirty( bg_tilemap, offset );
+	}
+}
+
+
+static WRITE_HANDLER( lasso_flip_screen_w )
+{
+	/* don't know which is which, but they are always set together */
+	flip_screen_x = data & 0x01;
+	flip_screen_y = data & 0x02;
+
+	tilemap_set_flip(ALL_TILEMAPS, (flip_screen_x ? TILEMAP_FLIPX : 0) |
+								   (flip_screen_y ? TILEMAP_FLIPY : 0));
+}
+
+
+WRITE_HANDLER( lasso_video_control_w )
+{
+	int bank = (data & 0x04) >> 2;
+
+	if (gfxbank != bank)
+	{
+		gfxbank = bank;
+		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+	}
+
+	lasso_flip_screen_w(offset, data);
+}
+
+WRITE_HANDLER( wwjgtin_video_control_w )
+{
+	int bank = ((data & 0x04) ? 0 : 1) + ((data & 0x10) ? 2 : 0);
+	wwjgtin_track_enable = data & 0x08;
+
+	if (gfxbank != bank)
+	{
+		gfxbank = bank;
+		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+	}
+
+	lasso_flip_screen_w(offset, data);
+}
+
+WRITE_HANDLER( pinbo_video_control_w )
+{
+	/* no need to dirty the tilemap -- only the sprites use the global bank */
+	gfxbank = (data & 0x0c) >> 2;
+
+	lasso_flip_screen_w(offset, data);
+}
+
+
+/* The bg_tilemap color can be changed */
 WRITE_HANDLER( lasso_backcolor_w )
 {
 	int i;
@@ -153,260 +257,153 @@ WRITE_HANDLER( lasso_backcolor_w )
 		lasso_set_color(i,data);
 }
 
+
 /* The last 4 color (= last palette) entries can be changed */
 WRITE_HANDLER( wwjgtin_lastcolor_w )
 {
 	lasso_set_color(0x3f - offset,data);
 }
 
-/***************************************************************************
 
+/*************************************
+ *
+ *	Video update
+ *
+ *************************************/
 
-								Tilemaps
-
-
-***************************************************************************/
-
-static void get_bg_tile_info(int tile_index)
+static void draw_sprites( struct mame_bitmap *bitmap, const struct rectangle *cliprect, int reverse )
 {
-	int tile_number	=	videoram[tile_index];
-	int attributes	=	videoram[tile_index + 0x400];
-	SET_TILE_INFO(		0,
-						tile_number + (gfxbank << 8),
-						attributes & 0x0f,
-						0	)
-}
-
-/* wwjgtin has an additional scrollable tilemap stored in ROM */
-static void get_bg1_tile_info(int tile_index)
-{
-	data8_t *ROM = memory_region(REGION_GFX3);
-	int tile_number	=	ROM[tile_index];
-	int attributes	=	ROM[tile_index + 0x2000];
-	SET_TILE_INFO(		2,
-						tile_number,
-						attributes & 0x0f,
-						0	)
-}
-
-
-/***************************************************************************
-
-
-						  	Video Hardware Init
-
-
-***************************************************************************/
-
-int lasso_vh_start( void )
-{
-	background = tilemap_create(	get_bg_tile_info, tilemap_scan_rows,
-									TILEMAP_OPAQUE,		8,8,	32,32);
-
-	if (!background)
-		return 1;
-
-	return 0;
-}
-
-int wwjgtin_vh_start( void )
-{
-	background = tilemap_create(	get_bg_tile_info, tilemap_scan_rows,
-									TILEMAP_TRANSPARENT,	8,8,	32,32);
-
-	background1 = tilemap_create(	get_bg1_tile_info, tilemap_scan_rows,
-									TILEMAP_OPAQUE,			16,16,	0x80,0x40);
-
-	if (!background || !background1)
-		return 1;
-
-	tilemap_set_transparent_pen(background,0);
-	return 0;
-}
-
-
-
-
-/***************************************************************************
-
-								Sprites Drawing
-
-
-		Offset:		Format:			Value:
-
-			0						Y (Bottom-up)
-
-			1		7--- ----		Flip Y
-					-6-- ----		Flip X
-					--54 3210		Code
-
-			2		7654 ----
-					---- 3210		Color
-
-			3						X
-
-***************************************************************************/
-
-static void draw_sprites( struct mame_bitmap *bitmap, int reverse )
-{
-    struct rectangle clip = Machine->visible_area;
 	const data8_t *finish, *source;
 	int inc;
 
 	if (reverse)
 	{
-		source	=	spriteram;
-		finish	=	spriteram + spriteram_size;
-		inc		=	4;
+		source = lasso_spriteram;
+		finish = lasso_spriteram + lasso_spriteram_size;
+		inc	   = 4;
 	}
 	else
 	{
-		source	=	spriteram + spriteram_size - 4;
-		finish	=	spriteram - 4;
-		inc		=	-4;
+		source = lasso_spriteram + lasso_spriteram_size - 4;
+		finish = lasso_spriteram - 4;
+		inc	   = -4;
 	}
 
 	while( source != finish )
 	{
-		int sy			=	source[0];
-		int tile_number	=	source[1];
-		int color		=	source[2];
-		int sx			=	source[3];
+		int sx,sy,flipx,flipy;
+		int code,color;
 
-		int flipx		=	(tile_number & 0x40);
-		int flipy		=	(tile_number & 0x80);
+		sx = source[3];
+		sy = source[0];
+		flipx = source[1] & 0x40;
+		flipy = source[1] & 0x80;
 
-		if( flip_screen )
+		if (flip_screen_x)
 		{
-			sx = 240-sx;
+			sx = 240 - sx;
 			flipx = !flipx;
+		}
+
+		if (flip_screen_y)
+		{
 			flipy = !flipy;
 		}
 		else
 		{
-			sy = 240-sy;
+			sy = 240 - sy;
 		}
-        drawgfx(	bitmap, Machine->gfx[1],
-					(tile_number & 0x3f) + (gfxbank << 6),
-					color,
-					flipx, flipy,
-					sx,sy,
-					&clip, TRANSPARENCY_PEN,0	);
+
+		code = source[1] & 0x3f;
+		color = source[2] & 0x0f;
+
+
+        drawgfx(bitmap, Machine->gfx[1],
+				code | (gfxbank << 6),
+				color,
+				flipx, flipy,
+				sx,sy,
+				cliprect, TRANSPARENCY_PEN,0);
 
 		source += inc;
     }
 }
 
-/***************************************************************************
 
-
-								Pixmap Drawing
-
-
-***************************************************************************/
-
-static void draw_lasso( struct mame_bitmap *bitmap )
+static void draw_lasso( struct mame_bitmap *bitmap)
 {
-	const unsigned char *source = lasso_vram;
+	const data8_t *source = lasso_bitmap_ram;
 	int x,y;
-	int pen = Machine->pens[0x3f];
-	for( y=0; y<256; y++ )
+	pen_t pen = Machine->pens[0x3f];
+
+
+	for (y = 0; y < 256; y++)
 	{
-		for( x=0; x<256; x+=8 )
+		for (x = 0; x < 256; )
 		{
-			int data = *source++;
-			if( data )
+			data8_t data = *source++;
+
+			if (data)
 			{
 				int bit;
-				if( flip_screen )
+
+				for (bit = 0; bit < 8; bit++)
 				{
-					for( bit=0; bit<8; bit++ )
+					if (data & 0x80)
 					{
-						if( (data<<bit)&0x80 )
-							plot_pixel( bitmap, 255-(x+bit), 255-y, pen );
+						if (flip_screen_x)
+						{
+							if (flip_screen_y)
+								plot_pixel(bitmap, 255-x, 255-y, pen);
+							else
+								plot_pixel(bitmap, 255-x,     y, pen);
+						}
+						else
+						{
+							if (flip_screen_y)
+								plot_pixel(bitmap,     x, 255-y, pen);
+							else
+								plot_pixel(bitmap,     x,     y, pen);
+						}
 					}
+
+					x++;
+					data <<= 1;
 				}
-				else
-				{
-					for( bit=0; bit<8; bit++ )
-					{
-						if( (data<<bit)&0x80 )
-							plot_pixel( bitmap, x+bit, y, pen );
-					}
-				}
+			}
+			else
+			{
+				x += 8;
 			}
 		}
 	}
 }
 
-/***************************************************************************
 
-
-								Screen Drawing
-
-
-***************************************************************************/
-
-void lasso_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh )
+VIDEO_UPDATE( lasso )
 {
-	int layers_ctrl = -1;
-
-#ifdef MAME_DEBUG
-if (keyboard_pressed(KEYCODE_Z))
-{	int msk = 0;
-	if (keyboard_pressed(KEYCODE_Q))	msk |= 1;
-	if (keyboard_pressed(KEYCODE_W))	msk |= 2;
-	if (keyboard_pressed(KEYCODE_A))	msk |= 4;
-	if (msk != 0) layers_ctrl &= msk;		}
-#endif
-
-	if (layers_ctrl & 1)	tilemap_draw(bitmap, background,  0,0);
-	else					fillbitmap(bitmap,Machine->pens[0],NULL);
-	if (layers_ctrl & 2)	draw_lasso(bitmap);
-	if (layers_ctrl & 4)	draw_sprites(bitmap, 0);
+	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
+	draw_lasso  (bitmap);
+	draw_sprites(bitmap, cliprect, 0);
 }
 
-void chameleo_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh )
+VIDEO_UPDATE( chameleo )
 {
-	int layers_ctrl = -1;
-
-#ifdef MAME_DEBUG
-if (keyboard_pressed(KEYCODE_Z))
-{	int msk = 0;
-	if (keyboard_pressed(KEYCODE_Q))	msk |= 1;
-	if (keyboard_pressed(KEYCODE_W))	msk |= 2;
-	if (keyboard_pressed(KEYCODE_A))	msk |= 4;
-	if (msk != 0) layers_ctrl &= msk;		}
-#endif
-
-	if (layers_ctrl & 1)	tilemap_draw(bitmap, background,  0,0);
-	else					fillbitmap(bitmap,Machine->pens[0],NULL);
-//	if (layers_ctrl & 2)	draw_lasso(bitmap);
-	if (layers_ctrl & 4)	draw_sprites(bitmap, 0);
+	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
+	draw_sprites(bitmap, cliprect, 0);
 }
 
 
-void wwjgtin_vh_screenrefresh( struct mame_bitmap *bitmap, int fullrefresh )
+VIDEO_UPDATE( wwjgtin )
 {
-	int layers_ctrl = -1;
+	tilemap_set_scrollx(track_tilemap,0,wwjgtin_track_scroll[0] + wwjgtin_track_scroll[1]*256);
+	tilemap_set_scrolly(track_tilemap,0,wwjgtin_track_scroll[2] + wwjgtin_track_scroll[3]*256);
 
-#ifdef MAME_DEBUG
-if (keyboard_pressed(KEYCODE_Z))
-{	int msk = 0;
-	if (keyboard_pressed(KEYCODE_Q))	msk |= 1;
-	if (keyboard_pressed(KEYCODE_W))	msk |= 2;
-	if (keyboard_pressed(KEYCODE_A))	msk |= 4;
-	if (msk != 0) layers_ctrl &= msk;		}
-#endif
-
-	tilemap_set_scrollx(background1,0,wwjgtin_scroll[0] + wwjgtin_scroll[1]*256);
-	tilemap_set_scrolly(background1,0,wwjgtin_scroll[2] + wwjgtin_scroll[3]*256);
-
-	if((layers_ctrl & 1) && wwjgtin_bg1_enable)
-		tilemap_draw(bitmap, background1, 0,0);
+	if (wwjgtin_track_enable)
+		tilemap_draw(bitmap, cliprect, track_tilemap, 0, 0);
 	else
-		fillbitmap(bitmap,Machine->pens[0x40],NULL);	// BLACK
+		fillbitmap(bitmap, Machine->pens[0x40], cliprect);	// black
 
-	if (layers_ctrl & 4)	draw_sprites(bitmap, 1);	// reverse order
-	if (layers_ctrl & 2)	tilemap_draw(bitmap, background,  0,0);
+	draw_sprites(bitmap, cliprect, 1);	// reverse order
+	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 }

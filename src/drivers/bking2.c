@@ -1,7 +1,7 @@
 /***************************************************************************
 
-Birdie King II Memory Map
--------------------------
+Birdie King / Birdie King II Memory Map
+---------------------------------------
 
 0000-7fff ROM
 8000-83ff Scratch RAM
@@ -10,7 +10,9 @@ Birdie King II Memory Map
 A000-Bfff Unused?
 
 
-NOTE:  ROM DM03 is missing from all known ROM sets.  This is a color palette.
+NOTE:
+ROM DM03 is missing from all known ROM sets.  This is a color palette.
+* is this note out of date?, DM_03.d1 in bking.zip = 82s141.2d in bking2.zip
 
 ***************************************************************************/
 
@@ -18,8 +20,8 @@ NOTE:  ROM DM03 is missing from all known ROM sets.  This is a color palette.
 #include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 
-void bking2_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
-void bking2_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+PALETTE_INIT( bking2 );
+VIDEO_UPDATE( bking2 );
 WRITE_HANDLER( bking2_xld1_w );
 WRITE_HANDLER( bking2_yld1_w );
 WRITE_HANDLER( bking2_xld2_w );
@@ -59,7 +61,7 @@ static WRITE_HANDLER( bking2_soundlatch_w )
 		if (data & (1 << i)) code |= 0x80 >> i;
 
 	soundlatch_w(offset,code);
-	if (sndnmi_enable) cpu_cause_interrupt(1,Z80_NMI_INT);
+	if (sndnmi_enable) cpu_set_irq_line(1, IRQ_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -315,65 +317,86 @@ static struct DACinterface dac_interface =
 
 
 
-static const struct MachineDriver machine_driver_bking2 =
-{
-    /* basic machine hardware */
-    {
-        {
-            CPU_Z80,
-			4000000,	/* 4 MHz */
-            readmem,writemem,
-            readport,writeport,
-            interrupt,1
-        },
-		{
-			CPU_Z80 | CPU_AUDIO_CPU,
-			3000000,	/* 3 MHz */
-			sound_readmem,sound_writemem,0,0,
+static MACHINE_DRIVER_START( bking2 )
+
+	/* basic machine hardware */
+	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz */
+	MDRV_CPU_MEMORY(readmem,writemem)
+	MDRV_CPU_PORTS(readport,writeport)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+
+	MDRV_CPU_ADD(Z80, 3000000)
+	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 3 MHz */
+	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
 			/* interrupts (from Jungle King hardware, might be wrong): */
 			/* - no interrupts synced with vblank */
 			/* - NMI triggered by the main CPU */
 			/* - periodic IRQ, with frequency 6000000/(4*16*16*10*16) = 36.621 Hz, */
 			/*   that is a period of 27306666.6666 ns */
-			0,0,
-			interrupt,27306667
-		}
-    },
-    60, DEFAULT_60HZ_VBLANK_DURATION,   /* frames per second, vblank duration */
-	1,	/* 1 CPU slice per frame - interleaving is forced when a sound command is written */
-    0,  /* init machine */
+	MDRV_CPU_PERIODIC_INT(irq0_line_hold,27306667)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
     /* video hardware */
-    32*8, 32*8, { 0*8, 32*8-1, 2*8, 30*8-1 },
-    gfxdecodeinfo,
-    512, 4*8+4*4+4*2+4*2,
-    bking2_vh_convert_color_prom,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(32*8, 32*8)
+	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(512)
+	MDRV_COLORTABLE_LENGTH(4*8+4*4+4*2+4*2)
 
-    VIDEO_TYPE_RASTER,
-    0,  /* video hardware init */
-    generic_vh_start,
-    generic_vh_stop,
-    bking2_vh_screenrefresh,
+	MDRV_PALETTE_INIT(bking2)
+	MDRV_VIDEO_START(generic)
+	MDRV_VIDEO_UPDATE(bking2)
 
     /* sound hardware */
-    0,0,0,0,
-	{
-		{
-			SOUND_AY8910,
-			&ay8910_interface
-		},
-        {
-			SOUND_DAC,
-			&dac_interface
-		}
-	}
-};
+	MDRV_SOUND_ADD(AY8910, ay8910_interface)
+	MDRV_SOUND_ADD(DAC, dac_interface)
+MACHINE_DRIVER_END
 
 /***************************************************************************
 
   Game driver(s)
 
 ***************************************************************************/
+
+ROM_START( bking )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_LOAD( "dm_11.f13", 0x0000, 0x1000, 0xd84fe4f7 )
+	ROM_LOAD( "dm_12.f11", 0x1000, 0x1000, 0xe065bbe6 )
+	ROM_LOAD( "dm_13.f10", 0x2000, 0x1000, 0xaac7cddd )
+	ROM_LOAD( "dm_14.f8",  0x3000, 0x1000, 0x1179d074 )
+	ROM_LOAD( "dm_15.f7",  0x4000, 0x1000, 0xfda31475 )
+	ROM_LOAD( "dm_16.f5",  0x5000, 0x1000, 0xb6c3c3ed )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Sound ROMs */
+	ROM_LOAD( "dm_17.f4",  0x0000, 0x1000, 0x54840bc3 )
+	ROM_LOAD( "dm_18.d4",  0x1000, 0x1000, 0x2abadd42 )
+
+	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "dm_10.a5",  0x0000, 0x1000, 0xfe96dd67 )
+	ROM_LOAD( "dm_09.a7",  0x1000, 0x1000, 0x80c675d7 )
+	ROM_LOAD( "dm_08.a8",  0x2000, 0x1000, 0xd9bd6b60 )
+	ROM_LOAD( "dm_07.a10", 0x3000, 0x1000, 0x65f7a0e4 )
+	ROM_LOAD( "dm_06.a11", 0x4000, 0x1000, 0x00fdbafc )
+	ROM_LOAD( "dm_05.a13", 0x5000, 0x1000, 0x3e4fe925 )
+
+	ROM_REGION( 0x0800, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "dm_01.e10", 0x0000, 0x0800, 0xe5663f0b ) /* crow graphics */
+
+	ROM_REGION( 0x0800, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_LOAD( "dm_02.e7",  0x0000, 0x0800, 0xfc9cec31 ) /* ball 1 graphics. Only the first 128 bytes used */
+
+	ROM_REGION( 0x0800, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_LOAD( "dm_02.e9",  0x0000, 0x0800, 0xfc9cec31 ) /* ball 2 graphics. Only the first 128 bytes used */
+
+	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_LOAD( "dm_03.d1",  0x0000, 0x0200, 0x61b7a9ff ) /* palette */
+	/* Collision detection prom 32x1 (not currently used) */
+	/* HIT0-1 go to A3-A4. Character image goes to A0-A2 */
+	ROM_LOAD( "dm04.c2",   0x0200, 0x0020, 0x4cb5bd32 )
+ROM_END
 
 ROM_START( bking2 )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
@@ -414,6 +437,5 @@ ROM_START( bking2 )
 	ROM_LOAD( "mb7051.2c",    0x0200, 0x0020, 0x4cb5bd32 )
 ROM_END
 
-
-
-GAME( 1983, bking2, 0, bking2, bking2, 0, ROT90, "Taito Corporation", "Birdie King 2" )
+GAMEX( 1982, bking,  0, bking2, bking2, 0, ROT270, "Taito Corporation", "Birdie King", GAME_NOT_WORKING )
+GAMEX( 1983, bking2, 0, bking2, bking2, 0, ROT90,  "Taito Corporation", "Birdie King 2", GAME_NOT_WORKING )

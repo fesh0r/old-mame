@@ -29,6 +29,8 @@ turbofrc 352x240  57 63 69 71 1f 00  77 79 7b 7f 1f 00
 spinlbrk 352x240  57 68 6f 75 ff 01  77 78 7b 7f ff 00
 aerofgtb 320x224  4f 5d 63 71 1f 00  6f 70 72 7c 1f 02
 tail2nos 320x240  4f 5e 64 71 1f 09  7a 7c 7e 7f 1f 02
+f1gp     320x240  4f 5e 64 71 1f 09  7a 7c 7e 7f 1f 02
+welltris 352x240  57 63 69 71 1f 00  7a 7b 7e 7f 1f 00
 
 games with 8x4 tiles:
 
@@ -68,15 +70,15 @@ WRITE16_HANDLER( aerofgt_bg1scrolly_w );
 WRITE16_HANDLER( aerofgt_bg2scrollx_w );
 WRITE16_HANDLER( aerofgt_bg2scrolly_w );
 WRITE16_HANDLER( pspikes_palette_bank_w );
-int pspikes_vh_start(void);
-int karatblz_vh_start(void);
-int spinlbrk_vh_start(void);
-int turbofrc_vh_start(void);
-void pspikes_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
-void karatblz_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
-void spinlbrk_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
-void turbofrc_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
-void aerofgt_vh_screenrefresh(struct mame_bitmap *bitmap,int full_refresh);
+VIDEO_START( pspikes );
+VIDEO_START( karatblz );
+VIDEO_START( spinlbrk );
+VIDEO_START( turbofrc );
+VIDEO_UPDATE( pspikes );
+VIDEO_UPDATE( karatblz );
+VIDEO_UPDATE( spinlbrk );
+VIDEO_UPDATE( turbofrc );
+VIDEO_UPDATE( aerofgt );
 
 
 
@@ -89,7 +91,7 @@ static WRITE16_HANDLER( sound_command_w )
 	{
 		pending_command = 1;
 		soundlatch_w(offset,data & 0xff);
-		cpu_cause_interrupt(1,Z80_NMI_INT);
+		cpu_set_irq_line(1, IRQ_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -99,7 +101,7 @@ static WRITE16_HANDLER( turbofrc_sound_command_w )
 	{
 		pending_command = 1;
 		soundlatch_w(offset,(data >> 8) & 0xff);
-		cpu_cause_interrupt(1,Z80_NMI_INT);
+		cpu_set_irq_line(1, IRQ_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -115,12 +117,14 @@ static WRITE_HANDLER( pending_command_clear_w )
 
 static WRITE_HANDLER( aerofgt_sh_bankswitch_w )
 {
-	unsigned char *RAM = memory_region(REGION_CPU2);
-	int bankaddress;
+	data8_t *rom = memory_region(REGION_CPU2) + 0x10000;
 
+	cpu_setbank(1,rom + (data & 0x03) * 0x8000);
+}
 
-	bankaddress = 0x10000 + (data & 0x03) * 0x8000;
-	cpu_setbank(1,&RAM[bankaddress]);
+static MACHINE_INIT( aerofgt )
+{
+	aerofgt_sh_bankswitch_w(0,0);	/* needed by spinlbrk */
 }
 
 
@@ -1034,271 +1038,199 @@ static struct YM2610interface ym2610_interface =
 
 
 
-static const struct MachineDriver machine_driver_pspikes =
-{
+static MACHINE_DRIVER_START( pspikes )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_M68000,
-			20000000/2,	/* 10 MHz (?) */
-			pspikes_readmem,pspikes_writemem,0,0,
-			m68_level1_irq,1	/* all irq vectors are the same */
-		},
-		{
-			CPU_Z80 | CPU_AUDIO_CPU,
-			8000000/2,	/* 4 MHz ??? */
-			sound_readmem,sound_writemem,turbofrc_sound_readport,turbofrc_sound_writeport,
-			ignore_interrupt,0	/* NMIs are triggered by the main CPU */
+	MDRV_CPU_ADD(M68000,20000000/2)	/* 10 MHz (?) */
+	MDRV_CPU_MEMORY(pspikes_readmem,pspikes_writemem)
+	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)/* all irq vectors are the same */
+
+	MDRV_CPU_ADD(Z80,8000000/2)
+	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ??? */
+	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+	MDRV_CPU_PORTS(turbofrc_sound_readport,turbofrc_sound_writeport)
 								/* IRQs are triggered by the YM2610 */
-		}
-	},
-	60, DEFAULT_60HZ_VBLANK_DURATION,       /* frames per second, vblank duration */
-	1,	/* 1 CPU slice per frame - interleaving is forced when a sound command is written */
-	0,
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+
+	MDRV_MACHINE_INIT(aerofgt)
 
 	/* video hardware */
-	64*8, 32*8, { 0*8+4, 44*8+4-1, 0*8, 30*8-1 },
-	pspikes_gfxdecodeinfo,
-	2048, 0,
-	0,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_VISIBLE_AREA(0*8+4, 44*8+4-1, 0*8, 30*8-1)
+	MDRV_GFXDECODE(pspikes_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(2048)
 
-	VIDEO_TYPE_RASTER,
-	0,
-	pspikes_vh_start,
-	0,
-	pspikes_vh_screenrefresh,
+	MDRV_VIDEO_START(pspikes)
+	MDRV_VIDEO_UPDATE(pspikes)
 
 	/* sound hardware */
-	SOUND_SUPPORTS_STEREO,0,0,0,
-	{
-		{
-			SOUND_YM2610,
-			&ym2610_interface,
-		}
-	}
-};
+	MDRV_SOUND_ATTRIBUTES(SOUND_SUPPORTS_STEREO)
+	MDRV_SOUND_ADD(YM2610, ym2610_interface)
+MACHINE_DRIVER_END
 
-static const struct MachineDriver machine_driver_karatblz =
-{
+static MACHINE_DRIVER_START( karatblz )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_M68000,
-			20000000/2,	/* 10 MHz (?) */
-			karatblz_readmem,karatblz_writemem,0,0,
-			m68_level1_irq,1
-		},
-		{
-			CPU_Z80 | CPU_AUDIO_CPU,
-			8000000/2,	/* 4 MHz ??? */
-			sound_readmem,sound_writemem,turbofrc_sound_readport,turbofrc_sound_writeport,
-			ignore_interrupt,0	/* NMIs are triggered by the main CPU */
+	MDRV_CPU_ADD(M68000,20000000/2)	/* 10 MHz (?) */
+	MDRV_CPU_MEMORY(karatblz_readmem,karatblz_writemem)
+	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
+
+	MDRV_CPU_ADD(Z80,8000000/2)
+	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ??? */
+	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+	MDRV_CPU_PORTS(turbofrc_sound_readport,turbofrc_sound_writeport)
 								/* IRQs are triggered by the YM2610 */
-		}
-	},
-	60, DEFAULT_60HZ_VBLANK_DURATION,       /* frames per second, vblank duration */
-	1,	/* 1 CPU slice per frame - interleaving is forced when a sound command is written */
-	0,
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+
+	MDRV_MACHINE_INIT(aerofgt)
 
 	/* video hardware */
-	64*8, 32*8, { 1*8, 45*8-1, 0*8, 30*8-1 },
-	turbofrc_gfxdecodeinfo,
-	1024, 0,
-	0,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_VISIBLE_AREA(1*8, 45*8-1, 0*8, 30*8-1)
+	MDRV_GFXDECODE(turbofrc_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(1024)
 
-	VIDEO_TYPE_RASTER,
-	0,
-	karatblz_vh_start,
-	0,
-	karatblz_vh_screenrefresh,
+	MDRV_VIDEO_START(karatblz)
+	MDRV_VIDEO_UPDATE(karatblz)
 
 	/* sound hardware */
-	SOUND_SUPPORTS_STEREO,0,0,0,
-	{
-		{
-			SOUND_YM2610,
-			&ym2610_interface,
-		}
-	}
-};
+	MDRV_SOUND_ATTRIBUTES(SOUND_SUPPORTS_STEREO)
+	MDRV_SOUND_ADD(YM2610, ym2610_interface)
+MACHINE_DRIVER_END
 
-static const struct MachineDriver machine_driver_spinlbrk =
-{
+static MACHINE_DRIVER_START( spinlbrk )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_M68000,
-			20000000/2,	/* 10 MHz (?) */
-			spinlbrk_readmem,spinlbrk_writemem,0,0,
-			m68_level1_irq,1	/* there are vectors for 3 and 4 too */
-		},
-		{
-			CPU_Z80 | CPU_AUDIO_CPU,
-			8000000/2,	/* 4 MHz ??? */
-			sound_readmem,sound_writemem,turbofrc_sound_readport,turbofrc_sound_writeport,
-			ignore_interrupt,0	/* NMIs are triggered by the main CPU */
+	MDRV_CPU_ADD(M68000,20000000/2)	/* 10 MHz (?) */
+	MDRV_CPU_MEMORY(spinlbrk_readmem,spinlbrk_writemem)
+	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)/* there are vectors for 3 and 4 too */
+
+	MDRV_CPU_ADD(Z80,8000000/2)
+	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ??? */
+	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+	MDRV_CPU_PORTS(turbofrc_sound_readport,turbofrc_sound_writeport)
 								/* IRQs are triggered by the YM2610 */
-		}
-	},
-	60, DEFAULT_60HZ_VBLANK_DURATION,       /* frames per second, vblank duration */
-	1,	/* 1 CPU slice per frame - interleaving is forced when a sound command is written */
-	0,
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+
+	MDRV_MACHINE_INIT(aerofgt)
 
 	/* video hardware */
-	64*8, 32*8, { 1*8, 45*8-1, 0*8, 30*8-1 },
-	turbofrc_gfxdecodeinfo,
-	1024, 0,
-	0,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_VISIBLE_AREA(1*8, 45*8-1, 0*8, 30*8-1)
+	MDRV_GFXDECODE(turbofrc_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(1024)
 
-	VIDEO_TYPE_RASTER,
-	0,
-	spinlbrk_vh_start,
-	0,
-	spinlbrk_vh_screenrefresh,
+	MDRV_VIDEO_START(spinlbrk)
+	MDRV_VIDEO_UPDATE(spinlbrk)
 
 	/* sound hardware */
-	SOUND_SUPPORTS_STEREO,0,0,0,
-	{
-		{
-			SOUND_YM2610,
-			&ym2610_interface,
-		}
-	}
-};
+	MDRV_SOUND_ATTRIBUTES(SOUND_SUPPORTS_STEREO)
+	MDRV_SOUND_ADD(YM2610, ym2610_interface)
+MACHINE_DRIVER_END
 
-static const struct MachineDriver machine_driver_turbofrc =
-{
+static MACHINE_DRIVER_START( turbofrc )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_M68000,
-			20000000/2,	/* 10 MHz (?) */
-			turbofrc_readmem,turbofrc_writemem,0,0,
-			m68_level1_irq,1	/* all irq vectors are the same */
-		},
-		{
-			CPU_Z80 | CPU_AUDIO_CPU,
-			8000000/2,	/* 4 MHz ??? */
-			sound_readmem,sound_writemem,turbofrc_sound_readport,turbofrc_sound_writeport,
-			ignore_interrupt,0	/* NMIs are triggered by the main CPU */
+	MDRV_CPU_ADD(M68000,20000000/2)	/* 10 MHz (?) */
+	MDRV_CPU_MEMORY(turbofrc_readmem,turbofrc_writemem)
+	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)/* all irq vectors are the same */
+
+	MDRV_CPU_ADD(Z80,8000000/2)
+	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ??? */
+	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+	MDRV_CPU_PORTS(turbofrc_sound_readport,turbofrc_sound_writeport)
 								/* IRQs are triggered by the YM2610 */
-		}
-	},
-	60, DEFAULT_60HZ_VBLANK_DURATION,       /* frames per second, vblank duration */
-	1,	/* 1 CPU slice per frame - interleaving is forced when a sound command is written */
-	0,
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+
+	MDRV_MACHINE_INIT(aerofgt)
 
 	/* video hardware */
-	64*8, 32*8, { 0*8, 44*8-1, 0*8, 30*8-1 },
-	turbofrc_gfxdecodeinfo,
-	1024, 0,
-	0,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_VISIBLE_AREA(0*8, 44*8-1, 0*8, 30*8-1)
+	MDRV_GFXDECODE(turbofrc_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(1024)
 
-	VIDEO_TYPE_RASTER,
-	0,
-	turbofrc_vh_start,
-	0,
-	turbofrc_vh_screenrefresh,
+	MDRV_VIDEO_START(turbofrc)
+	MDRV_VIDEO_UPDATE(turbofrc)
 
 	/* sound hardware */
-	SOUND_SUPPORTS_STEREO,0,0,0,
-	{
-		{
-			SOUND_YM2610,
-			&ym2610_interface,
-		}
-	}
-};
+	MDRV_SOUND_ATTRIBUTES(SOUND_SUPPORTS_STEREO)
+	MDRV_SOUND_ADD(YM2610, ym2610_interface)
+MACHINE_DRIVER_END
 
-static const struct MachineDriver machine_driver_aerofgtb =
-{
+static MACHINE_DRIVER_START( aerofgtb )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_M68000,
-			20000000/2,	/* 10 MHz (?) */
-			aerofgtb_readmem,aerofgtb_writemem,0,0,
-			m68_level1_irq,1	/* all irq vectors are the same */
-		},
-		{
-			CPU_Z80 | CPU_AUDIO_CPU,
-			8000000/2,	/* 4 MHz ??? */
-			sound_readmem,sound_writemem,aerofgt_sound_readport,aerofgt_sound_writeport,
-			ignore_interrupt,0	/* NMIs are triggered by the main CPU */
+	MDRV_CPU_ADD(M68000,20000000/2)	/* 10 MHz (?) */
+	MDRV_CPU_MEMORY(aerofgtb_readmem,aerofgtb_writemem)
+	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)/* all irq vectors are the same */
+
+	MDRV_CPU_ADD(Z80,8000000/2)
+	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ??? */
+	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+	MDRV_CPU_PORTS(aerofgt_sound_readport,aerofgt_sound_writeport)
 								/* IRQs are triggered by the YM2610 */
-		}
-	},
-	60, 500,	/* frames per second, vblank duration */
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(500)
 				/* wrong but improves sprite-background synchronization */
-	1,	/* 1 CPU slice per frame - interleaving is forced when a sound command is written */
-	0,
+
+	MDRV_MACHINE_INIT(aerofgt)
 
 	/* video hardware */
-	64*8, 32*8, { 0*8+12, 40*8-1+12, 0*8, 28*8-1 },
-	aerofgtb_gfxdecodeinfo,
-	1024, 0,
-	0,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_VISIBLE_AREA(0*8+12, 40*8-1+12, 0*8, 28*8-1)
+	MDRV_GFXDECODE(aerofgtb_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(1024)
 
-	VIDEO_TYPE_RASTER,
-	0,
-	turbofrc_vh_start,
-	0,
-	turbofrc_vh_screenrefresh,
+	MDRV_VIDEO_START(turbofrc)
+	MDRV_VIDEO_UPDATE(turbofrc)
 
 	/* sound hardware */
-	SOUND_SUPPORTS_STEREO,0,0,0,
-	{
-		{
-			SOUND_YM2610,
-			&ym2610_interface,
-		}
-	}
-};
+	MDRV_SOUND_ATTRIBUTES(SOUND_SUPPORTS_STEREO)
+	MDRV_SOUND_ADD(YM2610, ym2610_interface)
+MACHINE_DRIVER_END
 
-static const struct MachineDriver machine_driver_aerofgt =
-{
+static MACHINE_DRIVER_START( aerofgt )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_M68000,
-			20000000/2,	/* 10 MHz (?) */
-			aerofgt_readmem,aerofgt_writemem,0,0,
-			m68_level1_irq,1	/* all irq vectors are the same */
-		},
-		{
-			CPU_Z80 | CPU_AUDIO_CPU,
-			8000000/2,	/* 4 MHz ??? */
-			sound_readmem,sound_writemem,aerofgt_sound_readport,aerofgt_sound_writeport,
-			ignore_interrupt,0	/* NMIs are triggered by the main CPU */
+	MDRV_CPU_ADD(M68000,20000000/2)	/* 10 MHz (?) */
+	MDRV_CPU_MEMORY(aerofgt_readmem,aerofgt_writemem)
+	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)/* all irq vectors are the same */
+
+	MDRV_CPU_ADD(Z80,8000000/2)
+	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ??? */
+	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+	MDRV_CPU_PORTS(aerofgt_sound_readport,aerofgt_sound_writeport)
 								/* IRQs are triggered by the YM2610 */
-		}
-	},
-	60, 400,	/* frames per second, vblank duration */
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(400)
 				/* wrong but improves sprite-background synchronization */
-	1,	/* 1 CPU slice per frame - interleaving is forced when a sound command is written */
-	0,
+
+	MDRV_MACHINE_INIT(aerofgt)
 
 	/* video hardware */
-	64*8, 32*8, { 0*8, 40*8-1, 0*8, 28*8-1 },
-	aerofgt_gfxdecodeinfo,
-	1024, 0,
-	0,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
+	MDRV_GFXDECODE(aerofgt_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(1024)
 
-	VIDEO_TYPE_RASTER,
-	0,
-	turbofrc_vh_start,
-	0,
-	aerofgt_vh_screenrefresh,
+	MDRV_VIDEO_START(turbofrc)
+	MDRV_VIDEO_UPDATE(aerofgt)
 
 	/* sound hardware */
-	SOUND_SUPPORTS_STEREO,0,0,0,
-	{
-		{
-			SOUND_YM2610,
-			&ym2610_interface,
-		}
-	}
-};
+	MDRV_SOUND_ATTRIBUTES(SOUND_SUPPORTS_STEREO)
+	MDRV_SOUND_ADD(YM2610, ym2610_interface)
+MACHINE_DRIVER_END
 
 
 
@@ -1309,6 +1241,28 @@ static const struct MachineDriver machine_driver_aerofgt =
 ***************************************************************************/
 
 ROM_START( pspikes )
+	ROM_REGION( 0xc0000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_LOAD16_WORD_SWAP( "pspikes2.bin", 0x00000, 0x40000, 0xec0c070e )
+
+	ROM_REGION( 0x30000, REGION_CPU2, 0 )	/* 64k for the audio CPU + banks */
+	ROM_LOAD( "19",           0x00000, 0x20000, 0x7e8ed6e5 )
+	ROM_RELOAD(               0x10000, 0x20000 )
+
+	ROM_REGION( 0x080000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "g7h",          0x000000, 0x80000, 0x74c23c3d )
+
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "g7j",          0x000000, 0x80000, 0x0b9e4739 )
+	ROM_LOAD( "g7l",          0x080000, 0x80000, 0x943139ff )
+
+	ROM_REGION( 0x40000, REGION_SOUND1, 0 ) /* sound samples */
+	ROM_LOAD( "a47",          0x00000, 0x40000, 0xc6779dfa )
+
+	ROM_REGION( 0x100000, REGION_SOUND2, 0 ) /* sound samples */
+	ROM_LOAD( "o5b",          0x000000, 0x100000, 0x07d6cbac )
+ROM_END
+
+ROM_START( pspikesk )
 	ROM_REGION( 0xc0000, REGION_CPU1, 0 )	/* 68000 code */
 	ROM_LOAD16_WORD_SWAP( "20",           0x00000, 0x40000, 0x75cdcee2 )
 
@@ -1387,11 +1341,11 @@ ROM_START( spinlbrk )
 	ROM_LOAD16_BYTE( "ic13",    0x00001, 0x10000, 0x97025bf4 )
 	/* 20000-23fff empty space, filled in vh_startup */
 
-	ROM_REGION( 0x80000, REGION_SOUND1, 0 ) /* sound samples */
-	ROM_LOAD( "ic166",        0x000000, 0x80000, 0x6e0d063a )
+	/* no REGION_SOUND1 */
 
-	ROM_REGION( 0x80000, REGION_SOUND2, 0 ) /* sound samples */
-	ROM_LOAD( "ic163",        0x000000, 0x80000, 0xe6621dfb )	//FIRST AND SECOND HALF IDENTICAL
+	ROM_REGION( 0x100000, REGION_SOUND2, 0 ) /* sound samples */
+	ROM_LOAD( "ic166",        0x000000, 0x80000, 0x6e0d063a )
+	ROM_LOAD( "ic163",        0x080000, 0x80000, 0xe6621dfb )	//FIRST AND SECOND HALF IDENTICAL
 ROM_END
 
 ROM_START( spinlbru )
@@ -1429,11 +1383,11 @@ ROM_START( spinlbru )
 	ROM_LOAD16_BYTE( "ic13",    0x00001, 0x10000, 0x97025bf4 )
 	/* 20000-23fff empty space, filled in vh_startup */
 
-	ROM_REGION( 0x80000, REGION_SOUND1, 0 ) /* sound samples */
-	ROM_LOAD( "ic166",        0x000000, 0x80000, 0x6e0d063a )
+	/* no REGION_SOUND1 */
 
-	ROM_REGION( 0x80000, REGION_SOUND2, 0 ) /* sound samples */
-	ROM_LOAD( "ic163",        0x000000, 0x80000, 0xe6621dfb )	//FIRST AND SECOND HALF IDENTICAL
+	ROM_REGION( 0x100000, REGION_SOUND2, 0 ) /* sound samples */
+	ROM_LOAD( "ic166",        0x000000, 0x80000, 0x6e0d063a )
+	ROM_LOAD( "ic163",        0x080000, 0x80000, 0xe6621dfb )	//FIRST AND SECOND HALF IDENTICAL
 ROM_END
 
 ROM_START( spinlbrj )
@@ -1471,11 +1425,11 @@ ROM_START( spinlbrj )
 	ROM_LOAD16_BYTE( "ic13",    0x00001, 0x10000, 0x97025bf4 )
 	/* 20000-23fff empty space, filled in vh_startup */
 
-	ROM_REGION( 0x80000, REGION_SOUND1, 0 ) /* sound samples */
-	ROM_LOAD( "ic166",        0x000000, 0x80000, 0x6e0d063a )
+	/* no REGION_SOUND1 */
 
-	ROM_REGION( 0x80000, REGION_SOUND2, 0 ) /* sound samples */
-	ROM_LOAD( "ic163",        0x000000, 0x80000, 0xe6621dfb )	//FIRST AND SECOND HALF IDENTICAL
+	ROM_REGION( 0x100000, REGION_SOUND2, 0 ) /* sound samples */
+	ROM_LOAD( "ic166",        0x000000, 0x80000, 0x6e0d063a )
+	ROM_LOAD( "ic163",        0x080000, 0x80000, 0xe6621dfb )	//FIRST AND SECOND HALF IDENTICAL
 ROM_END
 
 ROM_START( karatblz )
@@ -1665,8 +1619,8 @@ ROM_END
 
 ROM_START( sonicwi )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 )	/* 68000 code */
-	ROM_LOAD16_BYTE( "2.149",             0x00000, 0x40000, 0x3d1b96ba )
-	ROM_LOAD16_BYTE( "1.111",             0x00001, 0x40000, 0xa3d09f94 )
+	ROM_LOAD16_BYTE( "2.149",        0x00000, 0x40000, 0x3d1b96ba )
+	ROM_LOAD16_BYTE( "1.111",        0x00001, 0x40000, 0xa3d09f94 )
 
 	ROM_REGION( 0x30000, REGION_CPU2, 0 )	/* 64k for the audio CPU + banks */
 	ROM_LOAD( "2.153",        0x00000, 0x20000, 0xa1ef64ec )	// 3.156
@@ -1696,13 +1650,14 @@ ROM_END
 
 
 
-GAMEX( 1991, pspikes,  0,        pspikes,  pspikes,  0, ROT0,   "Video System Co.", "Power Spikes (Korea)", GAME_NO_COCKTAIL )
+GAMEX( 1990, spinlbrk, 0,        spinlbrk, spinlbrk, 0, ROT0,   "V-System Co.", "Spinal Breakers (World)", GAME_NO_COCKTAIL )
+GAMEX( 1990, spinlbru, spinlbrk, spinlbrk, spinlbrk, 0, ROT0,   "V-System Co.", "Spinal Breakers (US)", GAME_NO_COCKTAIL )
+GAMEX( 1990, spinlbrj, spinlbrk, spinlbrk, spinlbrk, 0, ROT0,   "V-System Co.", "Spinal Breakers (Japan)", GAME_NO_COCKTAIL )
+GAMEX( 1991, pspikes,  0,        pspikes,  pspikes,  0, ROT0,   "Video System Co.", "Power Spikes (World)", GAME_NO_COCKTAIL )
+GAMEX( 1991, pspikesk, pspikes,  pspikes,  pspikes,  0, ROT0,   "Video System Co.", "Power Spikes (Korea)", GAME_NO_COCKTAIL )
 GAMEX( 1991, svolly91, pspikes,  pspikes,  pspikes,  0, ROT0,   "Video System Co.", "Super Volley '91 (Japan)", GAME_NO_COCKTAIL )
 GAMEX( 1991, karatblz, 0,        karatblz, karatblz, 0, ROT0,   "Video System Co.", "Karate Blazers (World?)", GAME_NO_COCKTAIL )
 GAMEX( 1991, karatblu, karatblz, karatblz, karatblz, 0, ROT0,   "Video System Co.", "Karate Blazers (US)", GAME_NO_COCKTAIL )
-GAMEX( 1990, spinlbrk, 0,        spinlbrk, spinlbrk, 0, ROT0,   "V-System Co.", "Spinal Breakers (World)", GAME_IMPERFECT_SOUND | GAME_NO_COCKTAIL )
-GAMEX( 1990, spinlbru, spinlbrk, spinlbrk, spinlbrk, 0, ROT0,   "V-System Co.", "Spinal Breakers (US)", GAME_IMPERFECT_SOUND | GAME_NO_COCKTAIL )
-GAMEX( 1990, spinlbrj, spinlbrk, spinlbrk, spinlbrk, 0, ROT0,   "V-System Co.", "Spinal Breakers (Japan)", GAME_IMPERFECT_SOUND | GAME_NO_COCKTAIL )
 GAMEX( 1991, turbofrc, 0,        turbofrc, turbofrc, 0, ROT270, "Video System Co.", "Turbo Force", GAME_NO_COCKTAIL )
 GAMEX( 1992, aerofgt,  0,        aerofgt,  aerofgt,  0, ROT270, "Video System Co.", "Aero Fighters", GAME_NO_COCKTAIL )
 GAMEX( 1992, aerofgtb, aerofgt,  aerofgtb, aerofgtb, 0, ROT270, "Video System Co.", "Aero Fighters (Turbo Force hardware set 1)", GAME_NO_COCKTAIL )

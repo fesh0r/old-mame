@@ -19,18 +19,17 @@ static unsigned char *sharedram;
 extern unsigned char *baraduke_textram, *spriteram, *baraduke_videoram;
 
 /* from vidhrdw/baraduke.c */
-int baraduke_vh_start( void );
-int metrocrs_vh_start( void );
-void baraduke_vh_stop( void );
-void baraduke_vh_screenrefresh( struct mame_bitmap *bitmap,int full_refresh );
-void metrocrs_vh_screenrefresh( struct mame_bitmap *bitmap,int full_refresh );
+VIDEO_START( baraduke );
+VIDEO_START( metrocrs );
+VIDEO_UPDATE( baraduke );
+VIDEO_UPDATE( metrocrs );
 READ_HANDLER( baraduke_textlayer_r );
 READ_HANDLER( baraduke_videoram_r );
 WRITE_HANDLER( baraduke_textlayer_w );
 WRITE_HANDLER( baraduke_videoram_w );
 WRITE_HANDLER( baraduke_scroll0_w );
 WRITE_HANDLER( baraduke_scroll1_w );
-void baraduke_vh_convert_color_prom(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom);
+PALETTE_INIT( baraduke );
 
 static int inputport_selected;
 
@@ -428,91 +427,69 @@ static struct namco_interface namco_interface =
 };
 
 
-static const struct MachineDriver machine_driver_baraduke =
-{
+static MACHINE_DRIVER_START( baraduke )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_M6809,
-			49152000/32,	/* ??? */
-			baraduke_readmem,baraduke_writemem,0,0,
-			interrupt,1
-		},
-		{
-			CPU_HD63701,	/* or compatible 6808 with extra instructions */
-			49152000/32,	/* ??? */
-			mcu_readmem,mcu_writemem,mcu_readport,mcu_writeport,
-			interrupt,1
-		}
-	},
-	60.606060,DEFAULT_REAL_60HZ_VBLANK_DURATION,
-	100,		/* we need heavy synch */
-	0,
+	MDRV_CPU_ADD(M6809,49152000/32)	/* ??? */
+	MDRV_CPU_MEMORY(baraduke_readmem,baraduke_writemem)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+
+	MDRV_CPU_ADD(HD63701,49152000/32)	/* or compatible 6808 with extra instructions */
+	MDRV_CPU_MEMORY(mcu_readmem,mcu_writemem)
+	MDRV_CPU_PORTS(mcu_readport,mcu_writeport)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+
+	MDRV_FRAMES_PER_SECOND(60.606060)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(100)		/* we need heavy synch */
 
 	/* video hardware */
-	36*8, 28*8, { 0*8, 36*8-1, 0*8, 28*8-1 },
-	gfxdecodeinfo,
-	2048,2048*4,
-	baraduke_vh_convert_color_prom,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(36*8, 28*8)
+	MDRV_VISIBLE_AREA(0*8, 36*8-1, 0*8, 28*8-1)
+	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(2048)
+	MDRV_COLORTABLE_LENGTH(2048*4)
 
-	VIDEO_TYPE_RASTER,	/* palette is static but doesn't fit in 256 colors */
-	0,
-	baraduke_vh_start,
-	0,
-	baraduke_vh_screenrefresh,
+	MDRV_PALETTE_INIT(baraduke)
+	MDRV_VIDEO_START(baraduke)
+	MDRV_VIDEO_UPDATE(baraduke)
 
 	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_NAMCO,
-			&namco_interface
-		}
-	}
-};
+	MDRV_SOUND_ADD(NAMCO, namco_interface)
+MACHINE_DRIVER_END
 
-static const struct MachineDriver machine_driver_metrocrs =
-{
+static MACHINE_DRIVER_START( metrocrs )
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_M6809,
-			49152000/32,	/* ??? */
-			baraduke_readmem,baraduke_writemem,0,0,
-			interrupt,1
-		},
-		{
-			CPU_HD63701,	/* or compatible 6808 with extra instructions */
-			49152000/32,	/* ??? */
-			mcu_readmem,mcu_writemem,mcu_readport,mcu_writeport,
-			interrupt,1
-		}
-	},
-	60.606060,DEFAULT_REAL_60HZ_VBLANK_DURATION,
-	100,		/* we need heavy synch */
-	0,
+	MDRV_CPU_ADD(M6809,49152000/32)	/* ??? */
+	MDRV_CPU_MEMORY(baraduke_readmem,baraduke_writemem)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+
+	MDRV_CPU_ADD(HD63701,49152000/32)	/* or compatible 6808 with extra instructions */
+	MDRV_CPU_MEMORY(mcu_readmem,mcu_writemem)
+	MDRV_CPU_PORTS(mcu_readport,mcu_writeport)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+
+	MDRV_FRAMES_PER_SECOND(60.606060)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(100)		/* we need heavy synch */
 
 	/* video hardware */
-	36*8, 28*8, { 0*8, 36*8-1, 0*8, 28*8-1 },
-	gfxdecodeinfo,
-	2048,2048*4,
-	baraduke_vh_convert_color_prom,
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(36*8, 28*8)
+	MDRV_VISIBLE_AREA(0*8, 36*8-1, 0*8, 28*8-1)
+	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(2048)
+	MDRV_COLORTABLE_LENGTH(2048*4)
 
-	VIDEO_TYPE_RASTER,
-	0,
-	baraduke_vh_start,
-	0,
-	metrocrs_vh_screenrefresh,
+	MDRV_PALETTE_INIT(baraduke)
+	MDRV_VIDEO_START(baraduke)
+	MDRV_VIDEO_UPDATE(metrocrs)
 
 	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_NAMCO,
-			&namco_interface
-		}
-	}
-};
+	MDRV_SOUND_ADD(NAMCO, namco_interface)
+MACHINE_DRIVER_END
 
 ROM_START( baraduke )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 6809 code */
@@ -522,6 +499,35 @@ ROM_START( baraduke )
 
 	ROM_REGION(  0x10000 , REGION_CPU2, 0 ) /* MCU code */
 	ROM_LOAD( "prg4.3b",	0x8000,  0x4000, 0xabda0fe7 )	/* subprogram for the MCU */
+	ROM_LOAD( "pl1-mcu.bin",0xf000,	 0x1000, 0x6ef08fb3 )	/* The MCU internal code is missing */
+															/* Using Pacland code (probably similar) */
+	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "ch1.3j",		0x00000, 0x2000, 0x706b7fee )	/* characters */
+
+	ROM_REGION( 0x0c000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "ch2.4p",		0x00000, 0x4000, 0xb0bb0710 )	/* tiles */
+	ROM_LOAD( "ch3.4n",		0x04000, 0x4000, 0x0d7ebec9 )
+	ROM_LOAD( "ch4.4m",		0x08000, 0x4000, 0xe5da0896 )
+
+	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_LOAD( "obj1.8k",	0x00000, 0x4000, 0x87a29acc )	/* sprites */
+	ROM_LOAD( "obj2.8l",	0x04000, 0x4000, 0x72b6d20c )
+	ROM_LOAD( "obj3.8m",	0x08000, 0x4000, 0x3076af9c )
+	ROM_LOAD( "obj4.8n",	0x0c000, 0x4000, 0x8b4c09a3 )
+
+	ROM_REGION( 0x1000, REGION_PROMS, 0 )
+	ROM_LOAD( "prmcolbg.1n",0x0000, 0x0800, 0x0d78ebc6 )	/* Blue + Green palette */
+	ROM_LOAD( "prmcolr.2m",	0x0800, 0x0800, 0x03f7241f )	/* Red palette */
+ROM_END
+
+ROM_START( baraduka )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 6809 code */
+	ROM_LOAD( "prg1.9c",	0x6000, 0x02000, 0xea2ea790 )
+	ROM_LOAD( "bd1_1.9a",	0x8000, 0x04000, 0x4e9f2bdc )
+	ROM_LOAD( "bd1_2.9b",	0xc000, 0x04000, 0x40617fcd )
+
+	ROM_REGION(  0x10000 , REGION_CPU2, 0 ) /* MCU code */
+	ROM_LOAD( "bd1_4b.3b",	0x8000,  0x4000, 0xa47ecd32 )	/* subprogram for the MCU */
 	ROM_LOAD( "pl1-mcu.bin",0xf000,	 0x1000, 0x6ef08fb3 )	/* The MCU internal code is missing */
 															/* Using Pacland code (probably similar) */
 	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
@@ -571,9 +577,35 @@ ROM_START( metrocrs )
 	ROM_LOAD( "mc1-2.2m",	0x0800, 0x0800, 0x6f4dca7b )	/* Red palette */
 ROM_END
 
+ROM_START( metrocra )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 6809 code */
+	ROM_LOAD( "mc2-3.9b",	0x6000, 0x02000, 0xffe08075 )
+	ROM_LOAD( "mc2-1.9a ",	0x8000, 0x04000, 0x05a239ea )
+	ROM_LOAD( "mc2-2.9a",	0xc000, 0x04000, 0xdb9b0e6d )
 
+	ROM_REGION(  0x10000 , REGION_CPU2, 0 ) /* MCU code */
+	ROM_LOAD( "mc1-4.3b",	0x8000, 0x02000, 0x9c88f898 )	/* subprogram for the MCU */
+	ROM_LOAD( "pl1-mcu.bin",0xf000,	 0x1000, 0x6ef08fb3 )	/* The MCU internal code is missing */
+															/* Using Pacland code (probably similar) */
+	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "mc1-5.3j",	0x00000, 0x2000, 0x9b5ea33a )	/* characters */
 
-static void init_metrocrs( void )
+	ROM_REGION( 0x0c000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "mc1-7.4p",	0x00000, 0x4000, 0xc9dfa003 )	/* tiles */
+	ROM_LOAD( "mc1-6.4n",	0x04000, 0x4000, 0x9686dc3c )
+	/* empty space to decode the roms as 3bpp */
+
+	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_LOAD( "mc1-8.8k",	0x00000, 0x4000, 0x265b31fa )	/* sprites */
+	ROM_LOAD( "mc1-9.8l",	0x04000, 0x4000, 0x541ec029 )
+	/* 8000-ffff empty */
+
+	ROM_REGION( 0x1000, REGION_PROMS, 0 )
+	ROM_LOAD( "mc1-1.1n",	0x0000, 0x0800, 0x32a78a8b )	/* Blue + Green palette */
+	ROM_LOAD( "mc1-2.2m",	0x0800, 0x0800, 0x6f4dca7b )	/* Red palette */
+ROM_END
+
+static DRIVER_INIT( metrocrs )
 {
 	int i;
 	unsigned char *rom = memory_region(REGION_GFX2);
@@ -584,5 +616,7 @@ static void init_metrocrs( void )
 
 
 
-GAME( 1985, baraduke, 0, baraduke, baraduke, 0,        ROT0, "Namco", "Baraduke" )
-GAME( 1985, metrocrs, 0, metrocrs, metrocrs, metrocrs, ROT0, "Namco", "Metro-Cross" )
+GAME( 1985, baraduke, 0,        baraduke, baraduke, 0,        ROT0, "Namco", "Baraduke (set 1)" )
+GAME( 1985, baraduka, baraduke, baraduke, baraduke, 0,        ROT0, "Namco", "Baraduke (set 2)" )
+GAME( 1985, metrocrs, 0,        metrocrs, metrocrs, metrocrs, ROT0, "Namco", "Metro-Cross (set 1)" )
+GAME( 1985, metrocra, metrocrs, metrocrs, metrocrs, metrocrs, ROT0, "Namco", "Metro-Cross (set 2)" )
