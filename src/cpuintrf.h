@@ -249,6 +249,9 @@ enum
 #if (HAS_SPC700)
 	CPU_SPC700,
 #endif
+#if (HAS_ASAP)
+	CPU_ASAP,
+#endif
 	CPU_COUNT
 };
 
