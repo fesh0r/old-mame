@@ -4,7 +4,7 @@
 #include "osdepend.h"
 #include "imgtoolx.h"
 #include "osd_cpu.h"
-#include "config.h"
+#include "crcfile.h"
 #include "utils.h"
 
 /* Arbitrary */
@@ -90,7 +90,7 @@ IMAGEMODULE_EXTERN(pc99fm);		/* TI99 floppy (PC99 FM format) */
 IMAGEMODULE_EXTERN(pc99mfm);	/* TI99 floppy (PC99 MFM format) */
 IMAGEMODULE_EXTERN(ti99hd);		/* TI99 hard disk */
 IMAGEMODULE_EXTERN(ti990dsk);	/* TI990 disk */
-IMAGEMODULE_EXTERN(mfs);		/* macintosh MFS image */
+IMAGEMODULE_EXTERN(mac);		/* macintosh disk image */
 
 static const ImageModule_ctor module_ctors[] =
 {
@@ -171,7 +171,7 @@ static const ImageModule_ctor module_ctors[] =
 	IMAGEMODULE_DECL(pc99mfm),
 	IMAGEMODULE_DECL(ti99hd),
 	IMAGEMODULE_DECL(ti990dsk),
-	IMAGEMODULE_DECL(mfs)
+	IMAGEMODULE_DECL(mac)
 };
 
 /* ----------------------------------------------------------------------- */
@@ -836,7 +836,7 @@ static char *nextentry(char **s)
 int img_getinfo(const struct ImageModule *module, const char *fname, imageinfo *info)
 {
 	int err;
-	config_file *config;
+	crc_file *config;
 	const char *year;
 	char *s;
 	char buf[32];
@@ -854,12 +854,12 @@ int img_getinfo(const struct ImageModule *module, const char *fname, imageinfo *
 	if (!module || !module->crcfile)
 		return 0;
 
-	config = config_open(module->crcfile, module->crcfile, FILETYPE_CRC);
+	config = crcfile_open(module->crcfile, module->crcfile, FILETYPE_CRC);
 	if (!config)
 		return 0;
 
 	sprintf(buf, "%08x", (int)info->crc);
-	config_load_string(config, module->crcsysname, 0, buf, info->buffer, sizeof(info->buffer));
+	crcfile_load_string(config, module->crcsysname, 0, buf, info->buffer, sizeof(info->buffer));
 	if (info->buffer[0])
 	{
 		s = info->buffer;
@@ -870,7 +870,7 @@ int img_getinfo(const struct ImageModule *module, const char *fname, imageinfo *
 		info->playable = nextentry(&s);
 		info->extrainfo = nextentry(&s);
 	}
-	config_close(config);
+	crcfile_close(config);
 
 	return 0;
 }

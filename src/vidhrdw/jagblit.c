@@ -337,10 +337,8 @@ static void FUNCNAME(UINT32 command, UINT32 a1flags, UINT32 a2flags)
 					srczdata = READ_RDATA(B_SRCZ1_H, asrc, asrcflags, asrc_phrase_mode);
 				}
 
-			/* apply data comparator */
-			if (COMMAND & 0x08000000)
-			{
-				if (!(COMMAND & 0x02000000))
+				/* load dst data and Z */
+				if (COMMAND & 0x00000008)
 				{
 				dstdata = READ_PIXEL(adest, adestflags);
 					if (COMMAND & 0x00000010)
@@ -363,15 +361,17 @@ static void FUNCNAME(UINT32 command, UINT32 a1flags, UINT32 a2flags)
 					(adest_y >> 16) >= ((blitter_regs[A1_CLIP] >> 16) & 0x7fff))
 						inhibit = 1;
 				}
-			}
 
-			/* compute the write data and store */
-			if (!inhibit)
-			{
-				/* handle patterns/additive/LFU */
-				if (COMMAND & 0x00010000)
-					writedata = READ_RDATA(B_PATD_H, adest, adestflags, adest_phrase_mode);
-				else if (COMMAND & 0x00020000)
+				/* apply Z comparator */
+				if (COMMAND & 0x00040000)
+					if (srczdata < dstzdata) inhibit = 1;
+				if (COMMAND & 0x00080000)
+					if (srczdata == dstzdata) inhibit = 1;
+				if (COMMAND & 0x00100000)
+					if (srczdata > dstzdata) inhibit = 1;
+
+				/* apply data comparator */
+				if (COMMAND & 0x08000000)
 				{
 					if (!(COMMAND & 0x02000000))
 					{
@@ -384,7 +384,9 @@ static void FUNCNAME(UINT32 command, UINT32 a1flags, UINT32 a2flags)
 							inhibit = 1;
 					}
 				}
-				else
+
+				/* compute the write data and store */
+				if (!inhibit)
 				{
 					/* handle patterns/additive/LFU */
 					if (COMMAND & 0x00010000)
@@ -423,6 +425,8 @@ static void FUNCNAME(UINT32 command, UINT32 a1flags, UINT32 a2flags)
 					writedata = (srcdata & 0xff00) | intensity;
 				}
 				}
+				else
+					writedata = dstdata;
 
 			if (adest_phrase_mode || (command & 0x10000000) || !inhibit)
 				{

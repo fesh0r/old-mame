@@ -1706,6 +1706,15 @@ static int setdipswitches(struct mame_bitmap *bitmap, int selected)
 
 
 
+#ifdef MESS
+static int setconfiguration(struct mame_bitmap *bitmap, int selected)
+{
+	return switchmenu(bitmap, selected, IPT_CONFIG_NAME, IPT_CONFIG_SETTING);
+}
+#endif /* MESS */
+
+
+
 /* This flag is used for record OR sequence of key/joy */
 /* when is !=0 the first sequence is record, otherwise the first free */
 /* it's used byt setdefkeysettings, setdefjoysettings, setkeysettings, setjoysettings */
@@ -3104,6 +3113,9 @@ static void setup_menu_init(void)
 
 	menu_item[menu_total] = ui_getstring (UI_inputgeneral); menu_action[menu_total++] = UI_DEFCODE;
 	menu_item[menu_total] = ui_getstring (UI_inputspecific); menu_action[menu_total++] = UI_CODE;
+#ifdef MESS
+	menu_item[menu_total] = ui_getstring (UI_configuration); menu_action[menu_total++] = UI_CONFIGURATION;
+#endif /* MESS */
 
 	/* Determine if there are any dip switches */
 	{

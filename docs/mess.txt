@@ -5,7 +5,7 @@
                     Official Page at: http://www.mess.org
                    ==========================================
 
-This document is generated for MESS 0.72 (Aug 10 2003)
+This document is generated for MESS 0.73 (Sep  5 2003)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.72 (Aug 10 2003)
+Here is the list of systems supported by MESS 0.73 (Sep  5 2003)
 Variants of the same system are not included, you can use the -listclones command
 to get a list of the alternate versions of a given system.
 
@@ -115,10 +115,10 @@ dat2html.exe.
 | Colour Genie EG2000                     |  Yes  |  Yes  |  Yes  | cgenie   |
 | Commodore 128 NTSC                      |  Yes  |  Yes  |  Yes  | c128     |
 | Commodore 16/116/232/264                |  Yes  |  Yes  |  Yes  | c16      |
-| Commodore 30xx                          |  Yes  |  Yes  |   No  | cbm30    |
 | Commodore 30xx                          |  Yes  |  Yes  |   No  | cbm30b   |
-| Commodore 40xx FAT                      |  Yes  |  Yes  |   No  | cbm40pal |
+| Commodore 30xx                          |  Yes  |  Yes  |   No  | cbm30    |
 | Commodore 40xx FAT                      |  Yes  |  Yes  |   No  | cbm40    |
+| Commodore 40xx FAT                      |  Yes  |  Yes  |   No  | cbm40pal |
 | Commodore 40xx THIN                     |  Yes  |  Yes  |   No  | cbm40b   |
 | Commodore 64                            |  Yes  |  Yes  |  Yes  | c64      |
 | Commodore 80xx 50Hz                     |  Yes  |  Yes  |   No  | cbm80pal |
@@ -130,6 +130,7 @@ dat2html.exe.
 | Commodore Max                           |  Yes  |  Yes  |  Yes  | max      |
 | Commodore SP9000/MMF9000                |   No  |  Yes  |   No  | superpet |
 | Concept                                 |  Yes  |  Yes  |  Yes  | concept  |
+| DAI Personal Computer                   |  Yes  |  Yes  |  Yes  | dai      |
 | Enterprise 128                          |  Yes  |  Yes  |Partial| ep128    |
 | Famicom                                 |  Yes  |  Yes  |  Yes  | famicom  |
 | Galaksija                               |  Yes  |  Yes  |   No  | galaxy   |
@@ -166,8 +167,8 @@ dat2html.exe.
 | Oric 1                                  |  Yes  |  Yes  |  Yes  | oric1    |
 | PC Engine/TurboGrafx 16                 |   No  |  Yes  |   No  | pce      |
 | PC-8801 MKIISR                          |  Yes  |  Yes  |  Yes  | pc88srl  |
-| PC/AT                                   |   No  |  Yes  |  Yes  | at       |
 | PC/AT                                   |  Yes  |  Yes  |  Yes  | atvga    |
+| PC/AT                                   |   No  |  Yes  |  Yes  | at       |
 | PDP-1                                   |  Yes  |  Yes  |  Yes  | pdp1     |
 | PET2001/CBM20xx Series                  |  Yes  |  Yes  |   No  | pet      |
 | PK-01 Lviv                              |  Yes  |  Yes  |  Yes  | lviv     |

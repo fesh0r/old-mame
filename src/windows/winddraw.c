@@ -668,20 +668,20 @@ static int create_blit_surface(void)
 	int width, height;
 	HRESULT result;
 	int done = 0;
-	
+
 	// determine the width/height of the blit surface
 	while (!done)
 	{
 		done = 1;
-	
+
 		// first compute the ideal size
 		width = (max_width * effect_min_xscale) + 18;
 		height = (max_height * effect_min_yscale) + 2;
-		
+
 		// if it's okay, keep it
 		if (width <= primary_desc.dwWidth && height <= primary_desc.dwHeight)
 			break;
-		
+
 		// reduce the width
 		if (width > primary_desc.dwWidth)
 		{
@@ -702,7 +702,7 @@ static int create_blit_surface(void)
 			}
 		}
 	}
-	
+
 	// now make a description of our blit surface, based on the primary surface
 	blit_desc = primary_desc;
 	blit_desc.dwFlags = DDSD_WIDTH | DDSD_HEIGHT | DDSD_PIXELFORMAT | DDSD_CAPS;
@@ -966,7 +966,7 @@ static void compute_color_masks(const DDSURFACEDESC *desc)
 		while (!(temp & 1))
 			temp >>= 1, win_color32_bdst_shift++;
 	}
-	
+
 	// mark the lookups invalid
 	palette_lookups_invalid = 1;
 }
@@ -987,7 +987,7 @@ int win_ddraw_draw(struct mame_bitmap *bitmap, const struct rectangle *bounds, v
 		forced_updates--;
 		update = 1;
 	}
-	
+
 	// if we don't have our surfaces, try to recreate them
 	if (!primary_surface)
 	{
@@ -1016,14 +1016,14 @@ int win_ddraw_draw(struct mame_bitmap *bitmap, const struct rectangle *bounds, v
 
 static int lock_must_succeed(const struct rectangle *bounds, void *vector_dirty_pixels)
 {
-	// determine up front if this lock must succeed; by default, it depends on 
+	// determine up front if this lock must succeed; by default, it depends on
 	// whether or not we're throttling
 	int result = throttle;
-	
+
 	// if we're using dirty pixels, we must succeed as well, or else we will leave debris
 	if (vector_dirty_pixels)
 		result = 1;
-	
+
 	// if we're blitting a different source rect than before, we also must
 	// succeed, or else we will miss some areas
 	if (bounds)
@@ -1033,7 +1033,7 @@ static int lock_must_succeed(const struct rectangle *bounds, void *vector_dirty_
 			result = 1;
 		last_bounds = *bounds;
 	}
-	
+
 	return result;
 }
 
@@ -1092,9 +1092,9 @@ tryagain:
 	params.srcyoffs		= win_visible_rect.top;
 	params.srcwidth		= win_visible_width;
 	params.srcheight	= win_visible_height;
-	
+
 	params.vecdirty		= vector_dirty_pixels;
-	
+
 	params.flipx		= blit_flipx;
 	params.flipy		= blit_flipy;
 	params.swapxy		= blit_swapxy;
@@ -1377,9 +1377,9 @@ tryagain:
 	params.srcyoffs		= win_visible_rect.top;
 	params.srcwidth		= win_visible_width;
 	params.srcheight	= win_visible_height;
-	
+
 	params.vecdirty		= vector_dirty_pixels;
-	
+
 	params.flipx		= blit_flipx;
 	params.flipy		= blit_flipy;
 	params.swapxy		= blit_swapxy;

@@ -29,7 +29,8 @@
 
 #ifdef MESS
 #include "menu.h"
-#endif
+#endif /* MESS */
+
 
 
 //============================================================
@@ -452,14 +453,6 @@ int win_init_window(void)
 	sprintf(title, "MAME: %s [%s]", Machine->gamedrv->description, Machine->gamedrv->name);
 #else
 	sprintf(title, "MESS: %s [%s]", Machine->gamedrv->description, Machine->gamedrv->name);
-#if WINDOW_HAS_MENU
-	if (options.disable_normal_ui)
-	{
-		menu = win_create_menus();
-		if (!menu)
-			return 1;
-	}
-#endif
 #endif
 
 #if HAS_WINDOW_MENU
@@ -749,7 +742,6 @@ static LRESULT CALLBACK video_window_proc(HWND wnd, UINT message, WPARAM wparam,
 	{
 #if !HAS_WINDOW_MENU
 		// non-client paint: punt if full screen
-#if !WINDOW_HAS_MENU
 		case WM_NCPAINT:
 			if (win_window_mode)
 				return DefWindowProc(wnd, message, wparam, lparam);
@@ -775,8 +767,8 @@ static LRESULT CALLBACK video_window_proc(HWND wnd, UINT message, WPARAM wparam,
 		{
 			PAINTSTRUCT pstruct;
 			HDC hdc = BeginPaint(wnd, &pstruct);
- 			if (win_video_window)
-  				draw_video_contents(hdc, NULL, NULL, NULL, 1);
+			if (win_video_window)
+				draw_video_contents(hdc, NULL, NULL, NULL, 1);
  			if (win_has_menu())
  				DrawMenuBar(win_video_window);
 			EndPaint(wnd, &pstruct);

@@ -745,7 +745,7 @@ WRITE_HANDLER(suzy_write)
 {
 	suzy.u.data[offset]=data;
 	switch(offset) {
-	case 0x52: case 0x54:
+	case 0x52: case 0x54: case 0x56:
 	case 0x60: case 0x62:
 	case 0x6e:
 	    suzy.u.data[offset+1]=0;

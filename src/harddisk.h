@@ -119,10 +119,6 @@ struct hard_disk_interface
 void hard_disk_set_interface(struct hard_disk_interface *interface);
 void hard_disk_save_interface(struct hard_disk_interface *interface_save);
 
-#ifdef MESS
-void hard_disk_save_interface(struct hard_disk_interface *interface_save);
-#endif
-
 int hard_disk_create(const char *filename, const struct hard_disk_header *header);
 void *hard_disk_open(const char *filename, int writeable, void *parent);
 void hard_disk_close(void *disk);

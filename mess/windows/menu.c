@@ -351,6 +351,8 @@ static void loadsave(int type)
 		free(dir);
 }
 
+
+
 //============================================================
 //	change_device
 //============================================================
@@ -455,6 +457,8 @@ static void change_device(mess_image *img)
 	image_load(img, newfilename);
 }
 
+
+
 //============================================================
 //	paste
 //============================================================
@@ -488,6 +492,8 @@ static void paste(void)
 	CloseClipboard();
 }
 
+
+
 //============================================================
 //	pause
 //============================================================
@@ -502,15 +508,18 @@ static void pause(void)
 	{
 		is_paused = 1;
 		mame_pause(1);
+		draw_screen();
 		while(is_paused && !win_trying_to_quit)
 		{
-			draw_screen();
 			update_video_and_audio();
-			reset_partial_updates();
+			WaitMessage();
+			win_process_events();
 		}
 		mame_pause(0);
 	}
 }
+
+
 
 //============================================================
 //	find_submenu
@@ -560,6 +569,8 @@ static HMENU find_sub_menu(HMENU menu, const char *menutext, int create_sub_menu
 	return menu;
 }
 
+
+
 //============================================================
 //	set_command_state
 //============================================================
@@ -583,6 +594,8 @@ static void set_command_state(HMENU menu_bar, UINT command, UINT state)
 #endif
 }
 
+
+
 //============================================================
 //	append_menu
 //============================================================
@@ -593,6 +606,8 @@ static void append_menu(HMENU menu, UINT flags, UINT_PTR id, int uistring)
 	str = (uistring >= 0) ? ui_getstring(uistring) : NULL;
 	AppendMenu(menu, flags, id, A2T(str));
 }
+
+
 
 //============================================================
 //	prepare_menus
@@ -690,6 +705,7 @@ static void prepare_menus(void)
 }
 
 
+
 //============================================================
 //	win_toggle_menubar
 //============================================================
@@ -716,6 +732,7 @@ void win_toggle_menubar(void)
 	RedrawWindow(win_video_window, NULL, NULL, 0);
 }
 #endif // HAS_TOGGLEMENUBAR
+
 
 
 //============================================================
@@ -772,6 +789,8 @@ static void device_command(mess_image *img, int devoption)
 	}
 }
 
+
+
 //============================================================
 //	help_display
 //============================================================
@@ -803,6 +822,8 @@ static void help_display(const char *chapter)
 	htmlhelp(win_video_window, A2T(chapter), 0 /*HH_DISPLAY_TOPIC*/, 0);
 }
 
+
+
 //============================================================
 //	help_about_mess
 //============================================================
@@ -811,6 +832,8 @@ static void help_about_mess(void)
 {
 	help_display("mess.chm::/html/mess_overview.htm");
 }
+
+
 
 //============================================================
 //	help_about_thissystem
@@ -822,6 +845,8 @@ static void help_about_thissystem(void)
 	snprintf(buf, sizeof(buf) / sizeof(buf[0]), "mess.chm::/sysinfo/%s.htm", Machine->gamedrv->name);
 	help_display(buf);
 }
+
+
 
 //============================================================
 //	decode_deviceoption
@@ -839,6 +864,8 @@ static mess_image *decode_deviceoption(int command, int *devoption)
 
 	return image_from_absolute_index(absolute_index);
 }
+
+
 
 //============================================================
 //	invoke_command
@@ -971,6 +998,8 @@ static int invoke_command(UINT command)
 	return handled;
 }
 
+
+
 //============================================================
 //	set_menu_text
 //============================================================
@@ -984,6 +1013,8 @@ void set_menu_text(HMENU menu_bar, int command, const char *text)
 	mii.dwTypeData = (LPTSTR) A2T(text);
 	SetMenuItemInfo(menu_bar, command, FALSE, &mii);	
 }
+
+
 
 //============================================================
 //	win_setup_menus
@@ -1059,26 +1090,40 @@ int win_setup_menus(HMENU menu_bar)
 	return 0;
 }
 
+
+
 //============================================================
-//	win_create_menus
+//	win_create_menu
 //============================================================
 
 #ifndef UNDER_CE
-HMENU win_create_menus(void)
+int win_create_menu(HMENU *menus)
 {
-	HMENU menu_bar;
+	HMENU menu_bar = NULL;
 	HMODULE module;
 	
-	module = GetModuleHandle(EMULATORDLL);
-	menu_bar = LoadMenu(module, MAKEINTRESOURCE(IDR_RUNTIME_MENU));
-	if (!menu_bar)
-		return NULL;
+	if (options.disable_normal_ui)
+	{
+		module = GetModuleHandle(EMULATORDLL);
+		menu_bar = LoadMenu(module, MAKEINTRESOURCE(IDR_RUNTIME_MENU));
+		if (!menu_bar)
+			goto error;
 
-	if (win_setup_menus(menu_bar))
-		return NULL;
-	return menu_bar;
+		if (win_setup_menus(menu_bar))
+			goto error;
+	}
+
+	*menus = menu_bar;
+	return 0;
+
+error:
+	if (menu_bar)
+		DestroyMenu(menu_bar);
+	return 1;
 }
-#endif
+#endif /* UNDER_CE */
+
+
 
 //============================================================
 //	win_mess_window_proc

@@ -183,10 +183,6 @@ static void init_keylist(void);
 static void init_joylist(void);
 
 
-#if WINDOW_HAS_MENU
-#define use_mouse_	use_mouse
-#define use_mouse	(use_mouse_ && !GetMenu(win_video_window))
-#endif
 
 //============================================================
 //	KEYBOARD LIST
@@ -581,7 +577,7 @@ static BOOL CALLBACK enum_joystick_callback(LPCDIDEVICEINSTANCE instance, LPVOID
 #else
 	flags = DISCL_FOREGROUND | DISCL_EXCLUSIVE;
 #endif
-	result = IDirectInputDevice_SetCooperativeLevel(joystick_device[joystick_count], win_video_window,
+	result = IDirectInputDevice_SetCooperativeLevel(joystick_device[joystick_count], win_video_window, 
 					flags);
 	if (result != DI_OK)
 		goto cant_set_coop_level;
@@ -1685,7 +1681,7 @@ void osd_customize_inputport_defaults(struct ipd *defaults)
 					seq_set_2 (&idef->seq, KEYCODE_LALT, KEYCODE_ENTER);
 				break;
 
-#if WINDOW_HAS_MENU
+#ifdef MESS
 				case IPT_OSD_2:
 					if (options.disable_normal_ui)
 					{
@@ -1694,7 +1690,8 @@ void osd_customize_inputport_defaults(struct ipd *defaults)
 						seq_set_1 (&idef->seq, KEYCODE_SCRLOCK);
 					}
 				break;
-#endif
+#endif /* MESS */
+
 				default:
 				break;
 			}
@@ -1708,13 +1705,13 @@ void osd_customize_inputport_defaults(struct ipd *defaults)
 			seq_copy(&idef->seq, &no_alt_tab_seq);
 		}
 
-#if WINDOW_HAS_MENU
+#ifdef MESS
 		if (idef->type == IPT_UI_THROTTLE)
 		{
 			static InputSeq empty_seq = SEQ_DEF_0;
 			seq_copy(&idef->seq, &empty_seq);
 		}
-#endif
+#endif /* MESS */
 
 		// find the next one
 		idef++;
