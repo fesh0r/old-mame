@@ -53,7 +53,7 @@ typedef struct
 	unsigned long ddam_map_size;
 
 	unsigned long (*calcoffset)(UINT8 t, UINT8 h, UINT8 s,
-		UINT8 heads, UINT16 offset, UINT8 first_sector_id, UINT8 sec_per_track, UINT16 sector_length);
+		UINT8 tracks, UINT8 heads, UINT8 sec_per_track, UINT16 sector_length, UINT8 first_sector_id, UINT16 offset_track_zero);
 } basicdsk;
 
 static basicdsk basicdsk_drives[basicdsk_MAX_DRIVES];
@@ -83,18 +83,18 @@ static basicdsk *get_basicdsk(mess_image *img)
 	return &basicdsk_drives[drive];
 }
 
-int basicdsk_floppy_init(mess_image *img)
+DEVICE_INIT(basicdsk_floppy)
 {
-	return floppy_drive_init(img, &basicdsk_floppy_interface);
+	return floppy_drive_init(image, &basicdsk_floppy_interface);
 }
 
 /* attempt to insert a disk into the drive specified with id */
-int basicdsk_floppy_load(mess_image *img, mame_file *fp, int open_mode)
+DEVICE_LOAD(basicdsk_floppy)
 {
-	basicdsk *w = get_basicdsk(img);
+	basicdsk *w = get_basicdsk(image);
 
-	w->image_file = fp;
-	w->mode = is_effective_mode_writable(open_mode);
+	w->image_file = file;
+	w->mode = image_is_writable(image);
 
 	/* this will be setup in the set_geometry function */
 	w->ddam_map = NULL;
@@ -103,14 +103,14 @@ int basicdsk_floppy_load(mess_image *img, mame_file *fp, int open_mode)
 	so we need to reflect this */
 	w->track = 0;
 
-	floppy_drive_set_disk_image_interface(img, &basicdsk_floppy_interface);
+	floppy_drive_set_disk_image_interface(image, &basicdsk_floppy_interface);
 
 	return INIT_PASS;
 }
 
-void basicdsk_floppy_unload(mess_image *img)
+DEVICE_UNLOAD(basicdsk_floppy)
 {
-	basicdsk *w = get_basicdsk(img);
+	basicdsk *w = get_basicdsk(image);
 	w->image_file = NULL;
 	w->mode = 0;
 }
@@ -179,7 +179,7 @@ static int basicdsk_get_ddam(mess_image *img, UINT8 physical_track, UINT8 physic
 
 
 void basicdsk_set_calcoffset(mess_image *img, unsigned long (*calcoffset)(UINT8 t, UINT8 h, UINT8 s,
-	UINT8 heads, UINT16 offset, UINT8 first_sector_id, UINT8 sec_per_track, UINT16 sector_length))
+	UINT8 tracks, UINT8 heads, UINT8 sec_per_track, UINT16 sector_length, UINT8 first_sector_id, UINT16 offset_track_zero))
 {
 	basicdsk *pDisk = get_basicdsk(img);
 	pDisk->calcoffset = calcoffset;
@@ -187,7 +187,7 @@ void basicdsk_set_calcoffset(mess_image *img, unsigned long (*calcoffset)(UINT8 
 
 /* dir_sector is a relative offset from the start of the disc,
 dir_length is a relative offset from the start of the disc */
-void basicdsk_set_geometry(mess_image *img, UINT16 tracks, UINT8 heads, UINT8 sec_per_track, UINT16 sector_length, UINT8 first_sector_id, UINT16 offset_track_zero, int track_skipping)
+void basicdsk_set_geometry(mess_image *img, UINT8 tracks, UINT8 heads, UINT8 sec_per_track, UINT16 sector_length, UINT8 first_sector_id, UINT16 offset_track_zero, int track_skipping)
 {
 	unsigned long N;
 	unsigned long ShiftCount;
@@ -267,7 +267,7 @@ static int basicdsk_seek(basicdsk * w, UINT8 t, UINT8 h, UINT8 s)
 
 	if (w->calcoffset)
 	{
-		offset = w->calcoffset(t, h, s, w->heads, w->sec_per_track, w->first_sector_id, w->sector_length, w->offset);
+		offset = w->calcoffset(t, h, s, w->tracks, w->heads, w->sec_per_track, w->sector_length, w->first_sector_id, w->offset);
 	}
 	else
 	{

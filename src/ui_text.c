@@ -177,7 +177,7 @@ const char * default_text[] =
 	"Memory Card Ejected!",
 	"Memory Card Created OK!",
 	"Failed To Create Memory Card!",
-	"(It already exists?)",
+	"(It already exists ?)",
 	"DAMN!! Internal Error!",
 
 	/* cheats */

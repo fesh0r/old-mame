@@ -37,12 +37,12 @@
 // from input.c
 extern UINT8 win_trying_to_quit;
 
-// from usrintrf.c
-extern int showfps;
-extern int showfpstemp;
-
 // from mamedbg.c
 extern int debug_key_pressed;
+
+// from timer.c
+extern void win_timer_enable(int enabled);
+
 
 //============================================================
 //	PARAMETERS
@@ -99,10 +99,6 @@ enum
 //============================================================
 
 int win_use_natural_keyboard;
-
-#if HAS_PROFILER
-extern int show_profiler;
-#endif
 
 
 //============================================================
@@ -596,9 +592,9 @@ static void prepare_menus(void)
 #if HAS_TOGGLEFULLSCREEN
 	set_command_state(win_menu_bar, ID_OPTIONS_FULLSCREEN,	!win_window_mode			? MFS_CHECKED : MFS_ENABLED);
 #endif
-	set_command_state(win_menu_bar, ID_OPTIONS_TOGGLEFPS,	(showfps || showfpstemp)	? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_OPTIONS_TOGGLEFPS,	ui_show_fps_get()			? MFS_CHECKED : MFS_ENABLED);
 #if HAS_PROFILER
-	set_command_state(win_menu_bar, ID_OPTIONS_PROFILER,	show_profiler				? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_OPTIONS_PROFILER,	ui_show_profiler_get()		? MFS_CHECKED : MFS_ENABLED);
 #endif
 
 	set_command_state(win_menu_bar, ID_KEYBOARD_EMULATED,	!win_use_natural_keyboard	? MFS_CHECKED : MFS_ENABLED);
@@ -673,7 +669,7 @@ void win_toggle_menubar(void)
 	{
 		RECT window;
 		GetWindowRect(win_video_window, &window);
-		win_constrain_to_aspect_ratio(&window, WMSZ_BOTTOM);
+		win_constrain_to_aspect_ratio(&window, WMSZ_BOTTOM, 0);
 		SetWindowPos(win_video_window, HWND_TOP, window.left, window.top,
 			window.right - window.left, window.bottom - window.top, SWP_NOZORDER);
 	}
@@ -683,28 +679,6 @@ void win_toggle_menubar(void)
 }
 #endif // HAS_TOGGLEMENUBAR
 
-
-//============================================================
-//	toggle_fps
-//============================================================
-
-static void toggle_fps(void)
-{
-	/* if we're temporarily on, turn it off immediately */
-	if (showfpstemp)
-	{
-		showfpstemp = 0;
-		schedule_full_refresh();
-	}
-
-	/* otherwise, just toggle; force a refresh if going off */
-	else
-	{
-		showfps ^= 1;
-		if (!showfps)
-			schedule_full_refresh();
-	}
-}
 
 //============================================================
 //	device_command
@@ -885,14 +859,7 @@ static int invoke_command(UINT command)
 
 #if HAS_PROFILER
 	case ID_OPTIONS_PROFILER:
-		show_profiler ^= 1;
-		if (show_profiler)
-			profiler_start();
-		else
-		{
-			profiler_stop();
-			schedule_full_refresh();
-		}
+		ui_show_profiler_set(!ui_show_profiler_get());
 		break;
 #endif
 
@@ -913,7 +880,7 @@ static int invoke_command(UINT command)
 #endif
 
 	case ID_OPTIONS_TOGGLEFPS:
-		toggle_fps();
+		ui_show_fps_set(!ui_show_fps_get());
 		break;
 
 #if HAS_TOGGLEMENUBAR
@@ -1012,7 +979,7 @@ int win_setup_menus(HMENU menu_bar)
 
 	// remove the profiler menu item if it doesn't exist
 #if HAS_PROFILER
-	show_profiler = 0;
+	ui_show_profiler_set(0);
 #else
 	DeleteMenu(menu_bar, ID_OPTIONS_PROFILER, MF_BYCOMMAND);
 #endif
@@ -1097,7 +1064,59 @@ HMENU win_create_menus(void)
 
 LRESULT win_mess_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
-	extern void win_timer_enable(int enabled);
+	int i;
+	MSG msg;
+
+	static WPARAM keytrans[][2] =
+	{
+		{ VK_F1,		UCHAR_MAMEKEY(F1) },
+		{ VK_F2,		UCHAR_MAMEKEY(F2) },
+		{ VK_F3,		UCHAR_MAMEKEY(F3) },
+		{ VK_F4,		UCHAR_MAMEKEY(F4) },
+		{ VK_F5,		UCHAR_MAMEKEY(F5) },
+		{ VK_F6,		UCHAR_MAMEKEY(F6) },
+		{ VK_F7,		UCHAR_MAMEKEY(F7) },
+		{ VK_F8,		UCHAR_MAMEKEY(F8) },
+		{ VK_F9,		UCHAR_MAMEKEY(F9) },
+		{ VK_F10,		UCHAR_MAMEKEY(F10) },
+		{ VK_F11,		UCHAR_MAMEKEY(F11) },
+		{ VK_F12,		UCHAR_MAMEKEY(F12) },
+		{ VK_NUMLOCK,	UCHAR_MAMEKEY(F12) },
+		{ VK_SCROLL,	UCHAR_MAMEKEY(F12) },
+		{ VK_NUMPAD0,	UCHAR_MAMEKEY(0_PAD) },
+		{ VK_NUMPAD1,	UCHAR_MAMEKEY(1_PAD) },
+		{ VK_NUMPAD2,	UCHAR_MAMEKEY(2_PAD) },
+		{ VK_NUMPAD3,	UCHAR_MAMEKEY(3_PAD) },
+		{ VK_NUMPAD4,	UCHAR_MAMEKEY(4_PAD) },
+		{ VK_NUMPAD5,	UCHAR_MAMEKEY(5_PAD) },
+		{ VK_NUMPAD6,	UCHAR_MAMEKEY(6_PAD) },
+		{ VK_NUMPAD7,	UCHAR_MAMEKEY(7_PAD) },
+		{ VK_NUMPAD8,	UCHAR_MAMEKEY(8_PAD) },
+		{ VK_NUMPAD9,	UCHAR_MAMEKEY(9_PAD) },
+		{ VK_DECIMAL,	UCHAR_MAMEKEY(DEL_PAD) },
+		{ VK_ADD,		UCHAR_MAMEKEY(PLUS_PAD) },
+		{ VK_SUBTRACT,	UCHAR_MAMEKEY(MINUS_PAD) }
+	};
+
+	if (win_use_natural_keyboard && (message == WM_KEYDOWN))
+	{
+		for (i = 0; i < sizeof(keytrans) / sizeof(keytrans[0]); i++)
+		{
+			if (wparam == keytrans[i][0])
+			{
+				inputx_postc(keytrans[i][1]);
+				message = WM_NULL;
+
+				/* check to see if there is a corresponding WM_CHAR in our
+				 * future.  If so, remove it
+				 */
+				PeekMessage(&msg, wnd, 0, 0, PM_NOREMOVE);
+				if ((msg.message == WM_CHAR) && (msg.lParam == lparam))
+					PeekMessage(&msg, wnd, 0, 0, PM_REMOVE);
+				break;
+			}
+		}
+	}
 
 	switch(message) {
 	case WM_INITMENU:

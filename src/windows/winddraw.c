@@ -102,12 +102,15 @@ static int blit_and_flip(LPDIRECTDRAWSURFACE target_surface, LPRECT src, LPRECT 
 
 
 //============================================================
-//	win_get_top_height
+//	win_ddraw_fullscreen_margins
 //============================================================
 
-static int win_get_top_height(void)
+void win_ddraw_fullscreen_margins(DWORD desc_width, DWORD desc_height, RECT *margins)
 {
-	int top_height = 0;
+	margins->left = 0;
+	margins->top = 0;
+	margins->right = desc_width;
+	margins->bottom = desc_height;
 
 #if WINDOW_HAS_MENU
 	if (GetMenu(win_video_window))
@@ -121,10 +124,9 @@ static int win_get_top_height(void)
 			AdjustWindowRect(&without_menu, WS_OVERLAPPED, FALSE);
 			height_with_menubar = (with_menu.bottom - with_menu.top) - (without_menu.bottom - without_menu.top);
 		}
-		top_height = height_with_menubar;
+		margins->top = height_with_menubar;
 	}
 #endif /* WINDOW_HAS_MENU */
-	return top_height;
 }
 
 //============================================================
@@ -345,12 +347,7 @@ static HRESULT WINAPI enum_callback(LPDDSURFACEDESC desc, LPVOID context)
 static HRESULT WINAPI enum2_callback(LPDDSURFACEDESC2 desc, LPVOID context)
 {
 	int refresh = (win_match_refresh || win_gfx_refresh) ? desc->DUMMYUNIONNAMEN(2).dwRefreshRate : 0;
-#ifdef _MSC_VER
 	int depth = desc->DUMMYUNIONNAMEN(4).ddpfPixelFormat.DUMMYUNIONNAMEN(1).dwRGBBitCount;
-#else
-	int depth = desc->DUMMYUNIONNAMEN(4).ddpfPixelFormat.DUMMYUNIONNAMEN(1).dwRGBBitCount;
-//	int depth = desc->ddpfPixelFormat.DUMMYUNIONNAMEN(1).dwRGBBitCount;
-#endif
 	double score;
 
 	// compute this mode's score
@@ -1053,7 +1050,7 @@ static int render_to_blit(struct mame_bitmap *bitmap, const struct rectangle *bo
 	LPDIRECTDRAWSURFACE target_surface;
 	struct win_blit_params params;
 	HRESULT result;
-	RECT src, dst;
+	RECT src, dst, margins;
 	int dstxoffs;
 
 tryagain:
@@ -1154,8 +1151,15 @@ tryagain:
 		// target surface is the back buffer
 		target_surface = back_surface ? back_surface : primary_surface;
 
-		if (dst.top < win_get_top_height())
-			dst.top = win_get_top_height();
+		win_ddraw_fullscreen_margins(primary_desc.dwWidth, primary_desc.dwHeight, &margins);
+		if (dst.left < margins.left)
+			dst.left = margins.left;
+		if (dst.top < margins.top)
+			dst.top = margins.top;
+		if (dst.right > margins.right)
+			dst.right = margins.right;
+		if (dst.bottom > margins.bottom)
+			dst.bottom = margins.bottom;
 	}
 
 	// blit and flip
@@ -1223,10 +1227,7 @@ tryagain:
 	if (update)
 	{
 		RECT outer;
-		outer.left = 0;
-		outer.top = win_get_top_height();
-		outer.right = primary_desc.dwWidth;
-		outer.bottom = primary_desc.dwHeight;
+		win_ddraw_fullscreen_margins(primary_desc.dwWidth, primary_desc.dwHeight, &outer);
 		erase_outer_rect(&outer, dst, target_surface);
 	}
 
@@ -1302,10 +1303,7 @@ tryagain:
 	else
 	{
 		// win_start_maximized the rect, constraining to the aspect ratio
-		outer.left = 0;
-		outer.top = win_get_top_height();
-		outer.right = primary_desc.dwWidth;
-		outer.bottom = primary_desc.dwHeight;
+		win_ddraw_fullscreen_margins(primary_desc.dwWidth, primary_desc.dwHeight, &outer);
 		inner = outer;
 		win_constrain_to_aspect_ratio(&inner, WMSZ_BOTTOMRIGHT, 0);
 

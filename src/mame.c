@@ -1966,6 +1966,7 @@ static int validitychecks(void)
 								break;
 						}
 
+#ifndef MESS
 						while (!IS_MEMPORT_END(pra))
 						{
 							if (!IS_MEMPORT_MARKER(pra))
@@ -1984,6 +1985,7 @@ static int validitychecks(void)
 							}
 							pra++;
 						}
+#endif
 					}
 
 					if (drv.cpu[cpu].port_write)
@@ -2022,6 +2024,7 @@ static int validitychecks(void)
 								break;
 						}
 
+#ifndef MESS
 						while (!IS_MEMPORT_END(pwa))
 						{
 							if (!IS_MEMPORT_MARKER(pwa))
@@ -2040,6 +2043,7 @@ static int validitychecks(void)
 							}
 							pwa++;
 						}
+#endif
 					}
 
 				}

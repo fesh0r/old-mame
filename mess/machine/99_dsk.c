@@ -9,8 +9,9 @@
 	  sectors per track.  (Not emulated)
 	* CorComp FDC.  Specs unknown, but it supports DD.  (Not emulated)
 	* SNUG BwG.  A nice DD disk controller.  Supports 18 sectors per track.
-	* Myarc HFDC.  Extremely elaborate, supports DD (a HD upgrade may have
-	  existed) and MFM harddisks.  (Preliminary emulation)
+	* Myarc HFDC.  Extremely elaborate, supports DD (and even HD, provided that
+	  a) the data separator is a 9216B and not a 9216, and b) that the OS
+	  overrides the hfdc DSR, whose HD support is buggy) and MFM harddisks.
 
 	An alternative was installing the hexbus controller (which was just a
 	prototype, and is not emulated) and connecting a hexbus floppy disk
@@ -42,6 +43,29 @@ static struct
 	UINT8 density;
 	/*mess_image *img;*/
 } floppy[MAX_FLOPPIES];
+
+/*
+	Convert physical sector address to offset in disk image
+*/
+static unsigned long ti99_calcoffset(UINT8 t, UINT8 h, UINT8 s,
+										UINT8 tracks, UINT8 heads, UINT8 sec_per_track, UINT16 sector_length, UINT8 first_sector_id, UINT16 offset_track_zero)
+{
+	unsigned long reply;
+
+#if 0
+	/* old MESS format */
+	reply = ((((unsigned long) t*heads) + h)*sec_per_track + s)*sector_length;
+#else
+	/* V9T9 format */
+	if (h & 1)
+		/* on side 1, tracks are stored in the reverse order */
+		reply = (((h*tracks) + (tracks-1 - t))*sec_per_track + s)*sector_length;
+	else
+		reply = (((h*tracks) + t)*sec_per_track + s)*sector_length;
+#endif
+
+	return reply;
+}
 
 DEVICE_LOAD( ti99_floppy )
 {
@@ -190,9 +214,10 @@ DEVICE_LOAD( ti99_floppy )
 		}
 	}
 
-	if (done && (basicdsk_floppy_load(image, file, open_mode) == INIT_PASS))
+	if (done && (device_load_basicdsk_floppy(image, file) == INIT_PASS))
 	{
 		basicdsk_set_geometry(image, floppy[id].tracksperside, floppy[id].sides, floppy[id].secspertrack, 256, 0, 0, use_80_track_drives && (floppy[id].density < 3));
+		basicdsk_set_calcoffset(image, ti99_calcoffset);
 
 		return INIT_PASS;
 	}
@@ -209,7 +234,7 @@ static void ti99_floppy_reset_geometries(void)
 	{
 		image = image_from_devtype_and_index(IO_FLOPPY, id);
 		if (image_exists(image))
-		basicdsk_set_geometry(image, floppy[id].tracksperside, floppy[id].sides, floppy[id].secspertrack, 256, 0, 0, use_80_track_drives && (floppy[id].density < 3));
+			basicdsk_set_geometry(image, floppy[id].tracksperside, floppy[id].sides, floppy[id].secspertrack, 256, 0, 0, use_80_track_drives && (floppy[id].density < 3));
 	}
 }
 
@@ -564,7 +589,7 @@ void ti99_bwg_init(void)
 	wd179x_set_density(DEN_MFM_LO);
 
 
-	mm58274c_init(1);	/* initialize the RTC */
+	mm58274c_init(1, 1);	/* initialize the RTC */
 
 	use_80_track_drives = FALSE;
 
@@ -865,10 +890,9 @@ static int hfdc_select_callback(int which, select_mode_t select_mode, int select
 
 	(void) which;
 
-	assert(select_mode != sm_reserved);
-
 	switch (select_mode)
 	{
+	/*case sm_at_harddisk:*/
 	case sm_harddisk:
 		/* hard disk */
 		disk_unit = select_line - 1;
@@ -959,7 +983,7 @@ void ti99_hfdc_init(void)
 	/* initialize the floppy disk controller */
 	smc92x4_init(0, & hfdc_intf);
 
-	mm58274c_init(1);	/* initialize the RTC */
+	mm58274c_init(1, 1);	/* initialize the RTC */
 
 	use_80_track_drives = TRUE;
 

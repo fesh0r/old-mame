@@ -73,7 +73,7 @@
 
 static DEVICE_LOAD( exidy_floppy )
 {
-	if (basicdsk_floppy_load(image, file, open_mode)==INIT_PASS)
+	if (device_load_basicdsk_floppy(image, file)==INIT_PASS)
 	{
 		/* not correct */
 		basicdsk_set_geometry(image, 80, 2, 9, 512, 1, 0, FALSE);
@@ -273,7 +273,7 @@ static MACHINE_INIT( exidy )
 	
 	wd179x_init(WD_TYPE_179X,NULL);
 
-	floppy_drive_set_geometry(0, FLOPPY_DRIVE_DS_80);
+	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
 
 	/* this is temporary. Normally when a Z80 is reset, it will
 	execute address 0. The exidy starts executing from 0x0e000 */
@@ -799,7 +799,7 @@ ROM_START(exidy)
 	/* these are common to all because they are inside the machine */
 	ROM_REGION(64*1024+32, REGION_CPU1,0)
 
-	ROM_LOAD_OPTIONAL("diskboot.dat",0x0bc00, 0x0100, BAD_DUMP)
+	ROM_LOAD_OPTIONAL("diskboot.dat",0x0bc00, 0x0100, BAD_DUMP CRC(d82a40d6))
 
 	/* char rom */
 	ROM_LOAD("exchr-1.dat",0x0f800, 1024, CRC(4a7e1cdd))

@@ -1,4 +1,4 @@
-/*
+ /*
 	Machine code for TI99/4, TI-99/4A, and SNUG SGCPU (a.k.a. 99/4P).
 	Raphael Nabet, 1999-2002.
 	Some code was originally derived from Ed Swartz's V9T9.
@@ -59,6 +59,11 @@ TODO:
 #include "99_ide.h"
 #include "99_hsgpl.h"
 
+#include "sound/tms5220.h"	/* for tms5220_set_variant() */
+
+#include "devices/mess_hd.h"	/* for device_init_mess_hd() */
+#include "smc92x4.h"	/* for smc92x4_hd_load()/smc92x4_hd_unload() */
+
 
 /* prototypes */
 static READ16_HANDLER ( ti99_rw_rspeech );
@@ -90,11 +95,8 @@ static void ti99_myarcxram_init(void);
 static void ti99_evpc_init(void);
 
 /*
-	pointers to RAM areas
+	pointer to extended RAM area
 */
-/* pointer to scratch RAM */
-static UINT16 *sRAM_ptr;
-/* pointer to extended RAM */
 static UINT16 *xRAM_ptr;
 
 /*
@@ -238,7 +240,8 @@ GPL ports:
 	with data.
 
 	Note, however, that the TI99/4(a) console does not decode the page number, so console GROMs
-	occupy the first 24kb of EVERY port, and cartridge GROMs occupy the next 40kb of EVERY port.
+	occupy the first 24kb of EVERY port, and cartridge GROMs occupy the next 40kb of EVERY port
+	(with the exception of one demonstration from TI that implements several distinct ports).
 	(Note that the TI99/8 console does have the required decoder.)  Fortunately, GROM drivers
 	have a relatively high impedance, and therefore extension cards can use TTL drivers to impose
 	another value on the data bus with no risk of burning the console GROMs.  This hack permits
@@ -291,6 +294,11 @@ static UINT16 *current_page_ptr;
 typedef enum slot_type_t { SLOT_EMPTY = -1, SLOT_GROM = 0, SLOT_CROM = 1, SLOT_DROM = 2, SLOT_MINIMEM = 3, SLOT_MBX = 4 } slot_type_t;
 static slot_type_t slot_type[3] = { SLOT_EMPTY, SLOT_EMPTY, SLOT_EMPTY};
 
+/* true if 99/4p rom6 is enabled */
+static int ti99_4p_internal_rom6_enable;
+/* pointer to the ROM6 data */
+static UINT16 *ti99_4p_internal_ROM6;
+
 
 /* tms9900_ICount: used to implement memory waitstates (hack) */
 extern int tms9900_ICount;
@@ -311,8 +319,7 @@ void init_ti99_4(void)
 	ti99_model = model_99_4;
 	has_evpc = FALSE;
 
-	/* set up RAM pointers */
-	sRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_sram);
+	/* set up memory pointers */
 	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram);
 	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
 	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
@@ -332,8 +339,7 @@ void init_ti99_4a(void)
 	ti99_model = model_99_4a;
 	has_evpc = FALSE;
 
-	/* set up RAM pointers */
-	sRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_sram);
+	/* set up memory pointers */
 	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram);
 	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
 	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
@@ -345,8 +351,7 @@ void init_ti99_4ev(void)
 	ti99_model = model_99_4a;
 	has_evpc = TRUE;
 
-	/* set up RAM pointers */
-	sRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_sram);
+	/* set up memory pointers */
 	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram);
 	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
 	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
@@ -358,10 +363,9 @@ void init_ti99_4p(void)
 	ti99_model = model_99_4p;
 	has_evpc = TRUE;
 
-	/* set up RAM pointers */
-	sRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_sram_4p);
+	/* set up memory pointers */
 	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram_4p);
-	console_GROMs.data_ptr = memory_region(region_grom);
+	/*console_GROMs.data_ptr = memory_region(region_grom);*/
 }
 
 DEVICE_LOAD( ti99_cassette )
@@ -369,7 +373,7 @@ DEVICE_LOAD( ti99_cassette )
 	struct cassette_args args;
 	memset(&args, 0, sizeof(args));
 	args.create_smpfreq = 22050;	/* maybe 11025 Hz would be sufficient? */
-	return cassette_init(image, file, open_mode, &args);
+	return cassette_init(image, file, &args);
 }
 
 /*
@@ -508,24 +512,78 @@ DEVICE_UNLOAD( ti99_cart )
 	slot_type[id] = SLOT_EMPTY;
 }
 
+DEVICE_INIT( ti99_hd )
+{
+	int id = image_index_in_device(image);
+
+	switch (id)
+	{
+	case 0:
+	case 1:
+	case 2:
+		return device_init_mess_hd(image);
+
+	case 3:
+		return device_init_ti99_ide(image);
+	}
+
+	return INIT_FAIL;
+}
+
+DEVICE_LOAD( ti99_hd )
+{
+	int id = image_index_in_device(image);
+
+	switch (id)
+	{
+	case 0:
+	case 1:
+	case 2:
+		return smc92x4_hd_load(image, id);
+
+	case 3:
+		return device_load_ti99_ide(image, file);
+	}
+
+	return INIT_FAIL;
+}
+
+DEVICE_UNLOAD( ti99_hd )
+{
+	int id = image_index_in_device(image);
+
+	switch (id)
+	{
+	case 0:
+	case 1:
+	case 2:
+		smc92x4_hd_unload(image, id);
+
+	case 3:
+		device_unload_ti99_ide(image);
+	}
+}
 
 /*
 	ti99_init_machine(); called before ti99_load_rom...
 */
 void machine_init_ti99(void)
 {
-	console_GROMs.data_ptr = memory_region(region_grom);
+	/*console_GROMs.data_ptr = memory_region(region_grom);*/
 	console_GROMs.addr = 0;
 
 	if (ti99_model == model_99_4p)
 	{
 		/* set up system ROM and scratch pad pointers */
-		cpu_setbank(1, memory_region(REGION_CPU1) + offset_rom0_4p);
-		cpu_setbank(2, sRAM_ptr);
+		cpu_setbank(1, memory_region(REGION_CPU1) + offset_rom0_4p);	/* system ROM */
+		cpu_setbank(2, memory_region(REGION_CPU1) + offset_sram_4p);	/* scratch pad */
+		cpu_setbank(11, memory_region(REGION_CPU1) + offset_dram_4p);	/* extra RAM for debugger */
 	}
 	else
 	{
 		/* set up 4 mirrors of scratch pad to the same address */
+		UINT16 *sRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_sram);
+
 		cpu_setbank(1, sRAM_ptr);
 		cpu_setbank(2, sRAM_ptr);
 		cpu_setbank(3, sRAM_ptr);
@@ -580,6 +638,8 @@ void machine_init_ti99(void)
 
 		install_mem_read16_handler(0, 0x9000, 0x93ff, ti99_rw_rspeech);
 		install_mem_write16_handler(0, 0x9400, 0x97ff, ti99_ww_wspeech);
+
+		tms5220_set_variant(variant_tms0285);
 	}
 	else
 	{
@@ -649,6 +709,9 @@ void machine_init_ti99(void)
 
 void machine_stop_ti99(void)
 {
+	if (has_speech)
+		tms5220_set_variant(variant_tms5220);
+
 	if (has_hsgpl)
 		ti99_hsgpl_save_memcard();
 
@@ -721,7 +784,10 @@ WRITE16_HANDLER ( ti99_ww_null8bits )
 }
 
 /*
-	Cartridge read: same as MRA_ROM, but with an additionnal delay.
+	Cartridge read: usually ROMs located on the 8-bit bus.  Bank switching is
+	common, some cartridges include some RAM.
+
+	HSGPL maps here, too.
 */
 READ16_HANDLER ( ti99_rw_cartmem )
 {
@@ -763,7 +829,43 @@ WRITE16_HANDLER ( ti99_ww_cartmem )
 		/* handle pager */
 		current_page_ptr = cartridge_pages[offset & 1];
 }
+/*
+	Cartridge read: usually ROMs located on the 8-bit bus.  Bank switching is
+	common, some cartridges include some RAM.
 
+	HSGPL maps here, too.
+*/
+READ16_HANDLER ( ti99_4p_rw_cartmem )
+{
+	if (ti99_4p_internal_rom6_enable)
+		return ti99_4p_internal_ROM6[offset];
+
+	tms9900_ICount -= 4;
+
+	if (hsgpl_crdena)
+		/* hsgpl is enabled */
+		return ti99_hsgpl_rom6_r(offset, mem_mask);
+
+	return 0;
+}
+
+/*
+	this handler handles ROM switching in cartridges
+*/
+WRITE16_HANDLER ( ti99_4p_ww_cartmem )
+{
+	if (ti99_4p_internal_rom6_enable)
+	{
+		ti99_4p_internal_ROM6 = (UINT16 *) (memory_region(REGION_CPU1) + (offset & 1) ? offset_rom6b_4p : offset_rom6_4p);
+		return;
+	}
+
+	tms9900_ICount -= 4;
+
+	if (hsgpl_crdena)
+		/* hsgpl is enabled */
+		ti99_hsgpl_rom6_w(offset, data, mem_mask);
+}
 
 /*---------------------------------------------------------------------------*/
 /*
@@ -863,7 +965,7 @@ WRITE16_HANDLER ( ti99_ww_wv38 )
 {
 	tms9900_ICount -= 4;
 
-	switch (offset & /*3*/1)
+	switch (offset & 3)
 	{
 	case 0:
 		/* write VDP data */
@@ -873,16 +975,14 @@ WRITE16_HANDLER ( ti99_ww_wv38 )
 		/* write VDP address */
 		v9938_command_w(0, (data >> 8) & 0xff);
 		break;
-#if 0
 	case 2:
 		/* write VDP palette */
-		v9938_palette_w(0, data);
+		v9938_palette_w(0, (data >> 8) & 0xff);
 		break;
 	case 3:
 		/* write VDP register */
-		v9938_register_w(0, data);
+		v9938_register_w(0, (data >> 8) & 0xff);
 		break;
-#endif
 	}
 }
 
@@ -1029,6 +1129,26 @@ WRITE16_HANDLER ( ti99_ww_wgpl )
 		ti99_hsgpl_gpl_w(offset, data, mem_mask);
 }
 
+/*
+	GPL read
+*/
+READ16_HANDLER ( ti99_4p_rw_rgpl )
+{
+	tms9900_ICount -= 4;		/* HSGPL is located on 8-bit bus? */
+
+	return /*hsgpl_crdena ?*/ ti99_hsgpl_gpl_r(offset, mem_mask) /*: 0*/;
+}
+
+/*
+	GPL write
+*/
+WRITE16_HANDLER ( ti99_4p_ww_wgpl )
+{
+	tms9900_ICount -= 4;		/* HSGPL is located on 8-bit bus? */
+
+	/*if (hsgpl_crdena)*/
+		ti99_hsgpl_gpl_w(offset, data, mem_mask);
+}
 
 /*===========================================================================*/
 #if 0
@@ -1604,17 +1724,16 @@ static const ti99_peb_16bit_card_handlers_t ti99_4p_internal_dsr_handlers =
 /* pointer to the internal DSR ROM data */
 static UINT16 *ti99_4p_internal_DSR;
 
-static int internal_rom6_enable;
-
 
 /* set up handlers, and set initial state */
 static void ti99_4p_internal_dsr_init(void)
 {
 	ti99_4p_internal_DSR = (UINT16 *) (memory_region(REGION_CPU1) + offset_rom4_4p);
+	ti99_4p_internal_ROM6 = (UINT16 *) (memory_region(REGION_CPU1) + offset_rom6_4p);
 
 	ti99_peb_set_16bit_card_handlers(0x0f00, & ti99_4p_internal_dsr_handlers);
 
-	internal_rom6_enable = 0;
+	ti99_4p_internal_rom6_enable = 0;
 	ti99_4p_peb_set_senila(0);
 	ti99_4p_peb_set_senilb(0);
 }
@@ -1629,8 +1748,7 @@ static void ti99_4p_internal_dsr_cru_w(int offset, int data)
 	switch (offset)
 	{
 	case 1:
-		internal_rom6_enable = data;
-		/* ... */
+		ti99_4p_internal_rom6_enable = data;
 		break;
 	case 2:
 		ti99_4p_peb_set_senila(data);

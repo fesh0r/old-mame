@@ -21,9 +21,6 @@
 static void inta_callback(int state);
 static void intb_callback(int state);
 
-/*static READ16_HANDLER ( geneve_rw_rspeech );
-static WRITE16_HANDLER ( geneve_ww_wspeech );*/
-
 static void read_key_if_possible(void);
 static void poll_keyboard(void);
 static void poll_mouse(void);
@@ -87,8 +84,8 @@ static const tms9901reset_param tms9901reset_param_ti99 =
 		NULL,
 		W9901_KeyboardReset,
 		W9901_ext_mem_wait_states,
-		W9901_VDP_wait_states,
 		NULL,
+		W9901_VDP_wait_states,
 		NULL,
 		NULL,
 		NULL,
@@ -112,10 +109,10 @@ enum
 	MaxKeyMessageLen = 10
 };
 static UINT8 KeyQueue[KeyQueueSize];
-int KeyQueueHead;
-int KeyQueueLen;
-int KeyInBuf;
-int KeyReset;
+static int KeyQueueHead;
+static int KeyQueueLen;
+static int KeyInBuf;
+static int KeyReset;
 static UINT32 KeyStateSave[4];
 
 /*
@@ -129,7 +126,7 @@ static UINT32 KeyStateSave[4];
 
 	I think that I have once read that the geneve GROM emulator does not
 	emulate wrap-around within a GROM, i.e. address >1fff is followed by >2000
-	(instead of >1000 with a real GROM).
+	(instead of >0000 with a real GROM).
 */
 static struct
 {
@@ -207,7 +204,7 @@ void machine_init_geneve(void)
 
 	v9938_reset();
 
-	mm58274c_init(0);
+	mm58274c_init(0, 1);
 
 	/* clear keyboard interface state (probably overkill, but can't harm) */
 	JoySel = 0;
@@ -380,9 +377,11 @@ READ_HANDLER ( geneve_r )
 			switch (offset)
 			{
 			case 0xf100:
+			case 0xf108:		/* mirror? */
 				return v9938_vram_r(0);
 
 			case 0xf102:
+			case 0xf10a:		/* mirror? */
 				return v9938_status_r(0);
 
 			case 0xf110:
@@ -443,6 +442,24 @@ READ_HANDLER ( geneve_r )
 
 			case 0x8008:
 				return KeyInBuf ? KeyQueue[KeyQueueHead] : 0;
+
+			case 0x8010:
+			case 0x8011:
+			case 0x8012:
+			case 0x8013:
+			case 0x8014:
+			case 0x8015:
+			case 0x8016:
+			case 0x8017:
+			case 0x8018:
+			case 0x8019:
+			case 0x801a:
+			case 0x801b:
+			case 0x801c:
+			case 0x801d:
+			case 0x801e:
+			case 0x801f:
+				return mm58274c_r(0, offset-0xf130);
 
 			default:
 				logerror("unmapped read offs=%d\n", (int) offset);
@@ -592,18 +609,22 @@ WRITE_HANDLER ( geneve_w )
 			switch (offset)
 			{
 			case 0xf100:
+			case 0xf108:		/* mirror? */
 				v9938_vram_w(0, data);
 				return;
 
 			case 0xf102:
+			case 0xf10a:		/* mirror? */
 				v9938_command_w(0, data);
 				return;
 
 			case 0xf104:
+			case 0xf10c:		/* mirror? */
 				v9938_palette_w(0, data);
 				return;
 
 			case 0xf106:
+			case 0xf10e:		/* mirror? */
 				v9938_register_w(0, data);
 				return;
 
@@ -621,6 +642,10 @@ WRITE_HANDLER ( geneve_w )
 			/*case 0xf118:	// read-only register???
 				key_buf = data;
 				return*/
+
+			case 0xf120:
+				SN76496_0_w(0, data);
+				break;
 
 			case 0xf130:
 			case 0xf131:
@@ -671,6 +696,25 @@ WRITE_HANDLER ( geneve_w )
 				key_buf = data;
 				return*/
 
+			case 0x8010:
+			case 0x8011:
+			case 0x8012:
+			case 0x8013:
+			case 0x8014:
+			case 0x8015:
+			case 0x8016:
+			case 0x8017:
+			case 0x8018:
+			case 0x8019:
+			case 0x801a:
+			case 0x801b:
+			case 0x801c:
+			case 0x801d:
+			case 0x801e:
+			case 0x801f:
+				mm58274c_w(0, offset-0xf130, data);
+				return;
+
 			default:
 				logerror("unmapped write offs=%d data=%d\n", (int) offset, (int) data);
 				return;
@@ -691,16 +735,26 @@ WRITE_HANDLER ( geneve_w )
 				/* VDP write */
 				if (! (offset & 1))
 				{
-					if (offset & 2)
-					{	/* write VDP address */
-						v9938_command_w(0, data);
-					}
-					else
-					{	/* write VDP RAM */
+
+					switch ((offset >> 1) & 3)
+					{
+					case 0:
+						/* write VDP RAM */
 						v9938_vram_w(0, data);
+						break;
+					case 1:
+						/* write VDP address */
+						v9938_command_w(0, data);
+						break;
+					case 2:
+						/* write palette */
+						v9938_palette_w(0, data);
+						break;
+					case 3:
+						/* write register */
+						v9938_register_w(0, data);
+						break;
 					}
-					if (offset & 0x03fc)
-						logerror("aha?\n");
 				}
 				return;
 
@@ -1091,7 +1145,7 @@ static void tms9901_interrupt_callback(int intreq, int ic)
 }
 
 /*
-	Read pins INT3*-INT7* of TI99's 9901.
+	Read pins INT3*-INT7* of Geneve 9901.
 
 	signification:
 	 (bit 1: INT1 status)
@@ -1108,12 +1162,12 @@ static int R9901_0(int offset)
 }
 
 /*
-	Read pins INT8*-INT15* of TI99's 9901.
+	Read pins INT8*-INT15* of Geneve 9901.
 
 	signification:
 	 (bit 0: keyboard interrupt)
 	 bit 1: unused
-	 (bit 2: mouse interrupt)
+	 bit 2: mouse right button
 	 (bit 3: clock interrupt)
 	 (bit 4: INTB from PE-bus)
 	 bit 5 & 7: used as output
@@ -1123,13 +1177,13 @@ static int R9901_1(int offset)
 {
 	int answer;
 
-	answer = 0;//((readinputport(input_port_keyboard + (KeyCol >> 1)) >> ((KeyCol & 1) * 8)) >> 5) & 0x07;
+	answer = readinputport(input_port_mouse_buttons_geneve) & 4;
 
 	return answer;
 }
 
 /*
-	Read pins P0-P7 of TI99's 9901.
+	Read pins P0-P7 of Geneve 9901.
 */
 static int R9901_2(int offset)
 {
@@ -1137,11 +1191,17 @@ static int R9901_2(int offset)
 }
 
 /*
-	Read pins P8-P15 of TI99's 9901.
+	Read pins P8-P15 of Geneve 9901.
+	bit 4: mouse right button
 */
 static int R9901_3(int offset)
 {
-	return 0;
+	int answer = 0;
+
+	if (readinputport(input_port_mouse_buttons_geneve) & 4)
+		answer |= 0x10;
+
+	return answer;
 }
 
 

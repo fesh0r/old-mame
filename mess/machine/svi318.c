@@ -352,7 +352,7 @@ READ_HANDLER (svi318_fdc_status_r)
 }
 
 static unsigned long svi318_calcoffset(UINT8 t, UINT8 h, UINT8 s,
-	UINT8 heads, UINT16 offset, UINT8 first_sector_id, UINT8 sec_per_track, UINT16 sector_length)
+	UINT8 tracks, UINT8 heads, UINT8 sec_per_track, UINT16 sector_length, UINT8 first_sector_id, UINT16 offset_track_zero)
 {
 	unsigned long o;
 
@@ -369,7 +369,7 @@ DEVICE_LOAD( svi318_floppy )
 	int size;
 	int id = image_index_in_device(image);
 
-	if (file && ! is_effective_mode_create(open_mode))
+	if (! image_has_been_created(image))
 	{
 		size = mame_fsize (file);
 
@@ -388,7 +388,7 @@ DEVICE_LOAD( svi318_floppy )
 	else
 		return INIT_FAIL;
 
-	if (basicdsk_floppy_init (image) != INIT_PASS)
+	if (device_load_basicdsk_floppy(image, file) != INIT_PASS)
 		return INIT_FAIL;
 
 	basicdsk_set_geometry(image, 40, svi318_dsk_heads[id], 17, 256, 1, 0, 0);
@@ -661,7 +661,7 @@ DEVICE_LOAD( svi318_cassette )
 {
 	int ret;
 
-	if (! is_effective_mode_create(open_mode))
+	if (! image_has_been_created(image))
 	{
 		struct wave_args_legacy wa = {0,};
 		wa.file = file;

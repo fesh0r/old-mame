@@ -48,6 +48,7 @@ Historical notes: TI made several last minute design changes.
 #include "machine/99_hsgpl.h"
 /*#include "devices/cartslot.h"*/
 #include "devices/basicdsk.h"
+#include "devices/mess_hd.h"
 
 /*
 	memory map
@@ -842,7 +843,7 @@ SYSTEM_CONFIG_START(ti99_4)
 	CONFIG_DEVICE_CASSETTE			(2, "",												device_load_ti99_cassette)
 	CONFIG_DEVICE_LEGACY			(IO_CARTSLOT,	3,	"bin\0c\0d\0g\0m\0crom\0drom\0grom\0mrom\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_READ,	NULL,	NULL,	device_load_ti99_cart,	device_unload_ti99_cart,	NULL)
 	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",										device_load_ti99_floppy)
-	CONFIG_DEVICE_LEGACY			(IO_HARDDISK, 	1, "hd\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_OR_READ, NULL, NULL, device_load_ti99_ide, device_unload_ti99_ide, NULL)
+	CONFIG_DEVICE_LEGACY			(IO_HARDDISK, 	4, "hd\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_OR_READ,device_init_ti99_hd, NULL, device_load_ti99_hd, device_unload_ti99_hd, NULL)
 	CONFIG_DEVICE_LEGACY			(IO_PARALLEL,	1, "\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	device_load_ti99_4_pio,	device_unload_ti99_4_pio,		NULL)
 	CONFIG_DEVICE_LEGACY			(IO_SERIAL,		1, "\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	device_load_ti99_4_rs232,	device_unload_ti99_4_rs232,	NULL)
 	/*CONFIG_DEVICE_LEGACY			(IO_QUICKLOAD,	1, "\0",	DEVICE_LOAD_RESETS_CPU,		OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	device_load_ti99_hsgpl,		device_unload_ti99_hsgpl,	NULL)*/
@@ -853,4 +854,4 @@ COMP( 1979, ti99_4,   0,	   0,		ti99_4_60hz,  ti99_4,  ti99_4,	ti99_4,	"Texas In
 COMPX(1980, ti99_4e,  ti99_4,  0,		ti99_4_50hz,  ti99_4,  ti99_4,	ti99_4,	"Texas Instruments", "TI99/4 Home Computer (Europe)", GAME_ALIAS )
 COMP( 1981, ti99_4a,  0,	   0,		ti99_4a_60hz, ti99_4a, ti99_4a,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer (US)" )
 COMPX(1981, ti99_4ae, ti99_4a, 0,		ti99_4a_50hz, ti99_4a, ti99_4a,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer (Europe)", GAME_ALIAS )
-COMPX(1994, ti99_4ev, ti99_4a, 0,		ti99_4ev_60hz,ti99_4a, ti99_4ev,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer with EVPC", GAME_ALIAS )
+COMPX(1994, ti99_4ev, ti99_4a, 0,		ti99_4ev_60hz,ti99_4a, ti99_4ev,ti99_4,	"Texas Instruments", "TI99/4A Home Computer with EVPC", GAME_ALIAS )

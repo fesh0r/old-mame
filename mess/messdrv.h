@@ -33,6 +33,11 @@
  ******************************************************************************/
 struct mame_bitmap;
 
+typedef int (*device_init_handler)(mess_image *img);
+typedef void (*device_exit_handler)(mess_image *img);
+typedef int (*device_load_handler)(mess_image *img, mame_file *fp);
+typedef void (*device_unload_handler)(mess_image *img);
+
 struct IODevice
 {
 	int type;
@@ -40,10 +45,10 @@ struct IODevice
 	const char *file_extensions;
 	int flags;
 	int open_mode;
-	int (*init)(mess_image *img);
-	void (*exit)(mess_image *img);
-	int (*load)(mess_image *img, mame_file *fp, int open_mode);
-	void (*unload)(mess_image *img);
+	device_init_handler init;
+	device_exit_handler exit;
+	device_load_handler load;
+	device_unload_handler unload;
 	int (*imgverify)(const UINT8 *buf, size_t size);
 	const void *(*info)(mess_image *img, int whatinfo);
 	int (*open)(mess_image *img, int mode, void *args);
@@ -154,6 +159,7 @@ const struct GameDriver driver_##NAME = 	\
 	__FILE__,								\
 	&driver_##PARENT,						\
 	#NAME,									\
+	system_bios_0,							\
 	FULLNAME,								\
 	#YEAR,									\
 	COMPANY,								\
@@ -175,6 +181,7 @@ const struct GameDriver driver_##NAME = 	\
 	__FILE__,								\
 	&driver_##PARENT,						\
 	#NAME,									\
+	system_bios_0,							\
 	FULLNAME,								\
 	#YEAR,									\
 	COMPANY,								\
@@ -196,6 +203,7 @@ const struct GameDriver driver_##NAME = 	\
 	__FILE__,								\
 	&driver_##PARENT,						\
 	#NAME,									\
+	system_bios_0,							\
 	FULLNAME,								\
 	#YEAR,									\
 	COMPANY,								\
@@ -217,6 +225,7 @@ const struct GameDriver driver_##NAME = 	\
 	__FILE__,								\
 	&driver_##PARENT,						\
 	#NAME,									\
+	system_bios_0,							\
 	FULLNAME,								\
 	#YEAR,									\
 	COMPANY,								\

@@ -275,7 +275,7 @@ static BOOL MessSetImage(int nDriver, int imagenum, int entry)
 		free(filename);
 		return FALSE;
 	}
-	assert(nDeviceType > 0);
+	assert(nDeviceType >= 0);
 	assert(nDeviceType < IO_COUNT);
 
 	if (options.image_files[entry].name)
@@ -763,6 +763,41 @@ unknownsoftware:
 outofmemory:
     MessageBox(NULL, TEXT("Out of memory"), TEXT(MAME32NAME), MB_OK);
     return;
+}
+
+BOOL MessApproveImageList(HWND hParent, int nDriver)
+{
+	int image_count[IO_COUNT];
+	int devtype;
+	int i;
+	const struct IODevice *dev;
+	const struct GameDriver *gamedrv;
+	char buf[256];
+	LPCTSTR msg;
+
+	memset(image_count, 0, sizeof(image_count));
+
+	for (i = 0; i < options.image_count; i++)
+	{
+		devtype = options.image_files[i].type;
+		assert(devtype >= 0);
+		assert(devtype < IO_COUNT);
+		image_count[devtype]++;
+	}
+
+	gamedrv = drivers[nDriver];
+
+	for (dev = device_first(gamedrv); dev; dev = device_next(gamedrv, dev))
+	{
+		if ((dev->flags & DEVICE_MUST_BE_LOADED) && (image_count[dev->type] != dev->count))
+		{
+			snprintf(buf, sizeof(buf) / sizeof(buf[0]), "Driver requires that device %s must have an image to load\n", device_typename(dev->type));
+			msg = A2T(buf);
+			MessageBox(hParent, msg, NULL, MB_OK);
+			return FALSE;
+		}
+	}
+	return TRUE;
 }
 
 /* ************************************************************************ *

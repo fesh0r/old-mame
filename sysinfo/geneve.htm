@@ -2,7 +2,7 @@
 <head>
 <title>Info for geneve</title>
 </head>
-<body>
+<body leftmargin= 20 rightmargin = 20>
 <table width=100%>
 <tr>
 <td width=25%><h4><a href="../sysinfo.htm">Back to index</a></h4></td>
@@ -14,14 +14,12 @@
 <p><b>Known Issues:</b><br>
 Wait states are not emulated (except for the speech synthesizer), so the Geneve<br>
 will always run at full speed.<br>
-My-word will display garbage at start-up, but it will run fine afterwards.<br>
+The keyboard does not seem to work properly in BHDMV.<br>
 <p><b>Usage:</b><br>
 This driver emulates a Geneve with (almost) 2Mbytes of RAM, 4 floppy drives,<br>
-and a mouse.  No Hard Disk is emulated yet.<br>
+and a mouse.  3 Hard Disk are supported by the HFDC disk controller.<br>
 You need an MDOS disk image to boot the Geneve.  Insert the image and run the<br>
 computer.<br>
-Preliminary tests have shown that emulation seems to have a good level of<br>
-compatibility.<br>
 <p><b>History and Trivia:</b><br>
 Myarc is known as the builder of several fine extension cards for the TI99.<br>
 They managed to remain in business for several years after TI abandonned its<br>
@@ -33,9 +31,9 @@ relies on expansion cards in the PEB to provide disk and RS232 interfaces.  The<
 Geneve features a TMS9995 at 12MHz, a V9938 VDP, an SN76496 sound generator<br>
 (compatible with TMS9919), a MM58274 RTC, 512 kbytes of 1-wait-state CPU RAM<br>
 (expandable to almost 2 Mbytes), 32 kbytes of 0-wait-state CPU RAM (expandable<br>
-to 64 kbytes), and 128 kbytes of VRAM.  Thanks to the GenMod modification, the<br>
-512 kbytes of on-board RAM can be disabled so that 0-wait-state RAM may be used<br>
-instead, but this breaks the TI99 emulation mode.<br>
+to 64 kbytes), and 128 kbytes of VRAM (expandable to 192 kbytes).  Thanks to<br>
+the GenMod modification, the 512 kbytes of on-board RAM can be disabled so that<br>
+0-wait-state RAM may be used instead, but this breaks the TI99 emulation mode.<br>
 Although the Geneve is compatible with the TI99, it is a different machine.  It<br>
 has a disk-based Operating System that looks like MS-DOS.  It has two operating<br>
 modes: a native mode, and a TI99-compatible mode.  The TI99 mode is normally<br>
@@ -43,7 +41,7 @@ entered by running the GPL program: the Geneve can run most TI99 programs in<br>
 this mode, which uses some special areas of CPU RAM to emulate GROMs and<br>
 cartridge ROMs.<br>
 <hr>
-<center><font size=-2>created on Mon May 19 14:44:27 2003
+<center><font size=-2>Generated on Mon Jun 16 18:23:37 2003
 </font></center>
 </body>
 </html>

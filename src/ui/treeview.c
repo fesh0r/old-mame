@@ -408,13 +408,15 @@ INT_PTR CALLBACK InterfaceDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM 
 	{
 	case WM_INITDIALOG:
 		Button_SetCheck(GetDlgItem(hDlg,IDC_START_GAME_CHECK),GetGameCheck());
-		Button_SetCheck(GetDlgItem(hDlg,IDC_START_VERSION_WARN),GetVersionCheck());
 		Button_SetCheck(GetDlgItem(hDlg,IDC_JOY_GUI),GetJoyGUI());
 		Button_SetCheck(GetDlgItem(hDlg,IDC_BROADCAST),GetBroadcast());
 		Button_SetCheck(GetDlgItem(hDlg,IDC_RANDOM_BG),GetRandomBackground());
-		Button_SetCheck(GetDlgItem(hDlg,IDC_SHOW_DISCLAIMER),GetShowDisclaimer());
-		Button_SetCheck(GetDlgItem(hDlg,IDC_SHOW_GAME_INFO),GetShowGameInfo());
+		Button_SetCheck(GetDlgItem(hDlg,IDC_SKIP_DISCLAIMER),GetSkipDisclaimer());
+		Button_SetCheck(GetDlgItem(hDlg,IDC_SKIP_GAME_INFO),GetSkipGameInfo());
 		Button_SetCheck(GetDlgItem(hDlg,IDC_HIGH_PRIORITY),GetHighPriority());
+		
+		Button_SetCheck(GetDlgItem(hDlg,IDC_HIDE_MOUSE),GetHideMouseOnStartup());
+
 		return TRUE;
 
 	case WM_HELP:
@@ -431,13 +433,15 @@ INT_PTR CALLBACK InterfaceDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM 
 		{
 		case IDOK :
 			SetGameCheck(Button_GetCheck(GetDlgItem(hDlg, IDC_START_GAME_CHECK)));
-			SetVersionCheck(Button_GetCheck(GetDlgItem(hDlg, IDC_START_VERSION_WARN)));
 			SetJoyGUI(Button_GetCheck(GetDlgItem(hDlg, IDC_JOY_GUI)));
 			SetBroadcast(Button_GetCheck(GetDlgItem(hDlg, IDC_BROADCAST)));
 			SetRandomBackground(Button_GetCheck(GetDlgItem(hDlg, IDC_RANDOM_BG)));
-			SetShowDisclaimer(Button_GetCheck(GetDlgItem(hDlg, IDC_SHOW_DISCLAIMER)));
-			SetShowGameInfo(Button_GetCheck(GetDlgItem(hDlg, IDC_SHOW_GAME_INFO)));
+			SetSkipDisclaimer(Button_GetCheck(GetDlgItem(hDlg, IDC_SKIP_DISCLAIMER)));
+			SetSkipGameInfo(Button_GetCheck(GetDlgItem(hDlg, IDC_SKIP_GAME_INFO)));
 			SetHighPriority(Button_GetCheck(GetDlgItem(hDlg, IDC_HIGH_PRIORITY)));
+			
+			SetHideMouseOnStartup(Button_GetCheck(GetDlgItem(hDlg,IDC_HIDE_MOUSE)));
+
 			EndDialog(hDlg, 0);
 			return TRUE;
 
@@ -641,6 +645,37 @@ void CreateSoundFolders(int parent_index)
 				// sound type #'s are one-based
 				AddGame(map[drv.sound[n].sound_type],jj);
 			}
+	}
+}
+
+void CreateOrientationFolders(int parent_index)
+{
+	int jj;
+	int nGames = GetNumGames();
+	LPTREEFOLDER lpFolder = treeFolders[parent_index];
+
+	// not sure why this is added separately
+	LPTREEFOLDER lpVert, lpHorz;
+	lpVert = NewFolder("Vertical", next_folder_id++, parent_index, IDI_FOLDER,
+					   GetFolderFlags(numFolders));
+	AddFolder(lpVert);
+	lpHorz = NewFolder("Horizontal", next_folder_id++, parent_index, IDI_FOLDER,
+					   GetFolderFlags(numFolders));
+	AddFolder(lpHorz);
+
+	// no games in top level folder
+	SetAllBits(lpFolder->m_lpGameBits,FALSE);
+
+	for (jj = 0; jj < nGames; jj++)
+	{
+		if (drivers[jj]->flags & ORIENTATION_SWAP_XY)
+		{
+			AddGame(lpVert,jj);
+		}
+		else
+		{
+			AddGame(lpHorz,jj);
+		}
 	}
 }
 
@@ -1292,7 +1327,14 @@ static LRESULT CALLBACK TreeWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 	if (GetBackgroundBitmap() != NULL)
 	{
 		switch (uMsg)
+		{	
+	    case WM_MOUSEMOVE:
 		{
+			if (MouseHasBeenMoved())
+				ShowCursor(TRUE);
+			break;
+		}
+
 		case WM_KEYDOWN :
 			if (wParam == VK_F2)
 			{
@@ -1707,7 +1749,7 @@ BOOL TryAddExtraFolderAndChildren(int parent_index)
     char*   p;
     char*   name;
     int     id, current_id;
-    LPTREEFOLDER lpTemp = 0;
+    LPTREEFOLDER lpTemp = NULL;
 	LPTREEFOLDER lpFolder = treeFolders[parent_index];
 
     current_id = lpFolder->m_nFolderId;
@@ -1787,6 +1829,13 @@ BOOL TryAddExtraFolderAndChildren(int parent_index)
             /* IMPORTANT: This assumes that all driver names are lowercase! */
             strlwr( name );
 
+			if (lpTemp == NULL)
+			{
+				ErrorMsg("Error parsing %s: missing [folder name] or [ROOT_FOLDER]",
+						 fname);
+				current_id = lpFolder->m_nFolderId;
+				lpTemp = lpFolder;
+			}
 			AddGame(lpTemp,GetGameNameIndex(name));
         }
     }

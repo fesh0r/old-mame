@@ -13,6 +13,10 @@ TODO:	remove the 1 analog device per port limitation
 #include "driver.h"
 #include <math.h>
 
+#ifdef MESS
+#include "inputx.h"
+#endif
+
 #if defined MAME_NET || defined XMAME_NET
 #include "network.h"
 

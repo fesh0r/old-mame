@@ -5,6 +5,7 @@
 #include <commctrl.h>
 #include <commdlg.h>
 #include <wingdi.h>
+#include <winuser.h>
 
 #include "ui/mame32.h"
 #include "ui/resourcems.h"
@@ -76,10 +77,6 @@ static void MessTestsBegin(void);
 static void MessTestsDoneIdle(void);
 #endif /* MAME_DEBUG */
 
-/*
-#define MAME32HELP "mess32.hlp"
-*/
-
 #ifdef bool
 #undef bool
 #endif
@@ -147,11 +144,14 @@ static int requested_device_type(char *tchar)
 
     logerror("Requested device is %s\n", tchar);
 
-	if (*tchar == '-') {
+	if (*tchar == '-')
+	{
 		tchar++;
 
-		for (i = 1; i < IO_COUNT; i++) {
-			if (!stricmp(tchar, device_typename(i)) || !stricmp(tchar, device_brieftypename(i))) {
+		for (i = 1; i < IO_COUNT; i++)
+		{
+			if (!stricmp(tchar, device_typename(i)) || !stricmp(tchar, device_brieftypename(i)))
+			{
 				device = i;
 				break;
 			}
@@ -432,6 +432,8 @@ static void InitMessPicker(void)
 
 	/* subclass the list view */
 	SetWindowLong(s_pSoftwareListView->hwndListView, GWL_WNDPROC, (LONG)ListViewWndProc);
+
+	s_nCurrentGame = -1;
 }
 
 /*static void MessGetPickerDefaults(void)

@@ -76,6 +76,7 @@ void CreateYearFolders(int parent_index);
 void CreateSourceFolders(int parent_index);
 void CreateCPUFolders(int parent_index);
 void CreateSoundFolders(int parent_index);
+void CreateOrientationFolders(int parent_index);
 
 /***************************************************************************/
 
@@ -107,6 +108,7 @@ enum FolderIds
 	FOLDER_TRACKBALL,
 	FOLDER_STEREO,
 	FOLDER_HARDDISK,
+	FOLDER_XY,
 	FOLDER_END
 };
 
@@ -182,5 +184,7 @@ extern void RemoveFromCustomFolder(LPTREEFOLDER lpFolder,int driver_index);
 
 extern HIMAGELIST GetTreeViewIconList(void);
 extern int GetTreeViewIconIndex(int icon_id);
+
+extern BOOL MouseHasBeenMoved(void);
 
 #endif /* TREEVIEW_H */

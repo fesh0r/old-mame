@@ -7,10 +7,11 @@
 /* this enum matches the possible values for bits 3-2 of the select register */
 typedef enum select_mode_t
 {
-	sm_reserved = 0,		/* I guess this will select nothing */
+	sm_undefined = -1,		/* value after reset and drive deselect(right?) */
+	sm_at_harddisk = 0,		/* hard disk in PC-AT compatible harddisk format */
 	sm_harddisk,			/* hard disk */
-	sm_floppy_slow,			/* slower 8" drives??? */
-	sm_floppy_fast			/* 5.25" and 3.5" drives??? */
+	sm_floppy_slow,			/* 8" drive (and 5.25" and 3.5" HD disks?) */
+	sm_floppy_fast			/* 5.25" and 3.5" drive */
 } select_mode_t;
 
 typedef struct smc92x4_intf
@@ -39,6 +40,9 @@ typedef struct smc92x4_intf
 	the interrupt lien changes */
 	void (*int_callback)(int which, int state);
 } smc92x4_intf;
+
+int smc92x4_hd_load(mess_image *image, int disk_unit);
+void smc92x4_hd_unload(mess_image *image, int disk_unit);
 
 void smc92x4_init(int which, const smc92x4_intf *intf);
 void smc92x4_reset(int which);

@@ -316,9 +316,9 @@ static PORT_READ_START( pc200_readport )
 	{ 0x0278, 0x027b, pc_parallelport2_r },
 	{ 0x02e8, 0x02ef, pc_COM4_r },
 	{ 0x02f8, 0x02ff, pc_COM2_r },
-    { 0x0320, 0x0323, pc_HDC1_r },
+	{ 0x0320, 0x0323, pc_HDC1_r },
 	{ 0x0324, 0x0327, pc_HDC2_r },
-	{ 0x0378, 0x037b, pc1640_port378_r },
+	{ 0x0378, 0x037b, pc200_port378_r },
 	{ 0x03bc, 0x03be, pc_parallelport0_r },
 	{ 0x03e8, 0x03ef, pc_COM3_r },
 	{ 0x03f0, 0x03f7, pc_fdc_r },
@@ -1331,8 +1331,8 @@ static MACHINE_DRIVER_START( pc200 )
 	MDRV_MACHINE_INIT(pc_aga)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(80*9, 25*14)
-	MDRV_VISIBLE_AREA(0,80*9-1, 0,25*14-1)
+	MDRV_SCREEN_SIZE(80*8, 25*14)
+	MDRV_VISIBLE_AREA(0,80*8-1, 0,25*14-1)
 	MDRV_GFXDECODE(aga_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
 	MDRV_COLORTABLE_LENGTH((sizeof(cga_colortable)+sizeof(mda_colortable) )/sizeof(cga_colortable[0]))
@@ -1666,6 +1666,8 @@ SYSTEM_CONFIG_START(ibmpc)
 	CONFIG_DEVICE_PRINTER(3)
 	CONFIG_DEVICE_PC_FLOPPY(2)
 	CONFIG_DEVICE_PC_HARDDISK(4)
+	CONFIG_QUEUE_CHARS( at_keyboard )
+	CONFIG_ACCEPT_CHAR( at_keyboard )
 SYSTEM_CONFIG_END
 
 /***************************************************************************

@@ -1,19 +1,22 @@
 /*
 	experimental LISA driver
 
-	Runs most ROM start-up code successfully, and loads the boot file, but it locks shortly
-	afterwards.
+	This driver runs most ROM test code successfully, and it loads the boot
+	file, but it locks when booting from Lisa OS (probably because of floppy
+	write bug).  MacWorks boots fine, though (I think it looks when we
+	attempt to write to floppy, too).
 
 	TODO :
 	* fix floppy write bug
 	* *** Boot and run LisaTest !!! ***
-	* finish MMU (does not switch to bank 0 on 68k trap)
+	* finish MMU (does not switch to bank 0 on 68k trap) --- fixed in June 2003???
 	* support hard disk to boot office system
 	* finish keyboard/mouse support
 	* finish clock support
 	* write SCC support
 	* finalize sound support (involves adding new features to the 6522 VIA core)
-	* fix warm-reset (I think I need to use a callback when 68k RESET instruction is called)
+	* fix warm-reset (I think I need to use a callback when 68k RESET
+	  instruction is called)
 	* write support for additionnal hardware (hard disk, etc...)
 	* emulate LISA1 (?)
 	* optimize MMU emulation !
@@ -24,12 +27,13 @@
 	* LISA2/Mac XL floppy hardware (november 2000)
 
 	Credits :
-	* the lisaemu project (<http://www.sundernet.com/>) has gathered much hardware information
-	(books, schematics...) without which this driver could never have been written
-	* The driver raised the interest of several MESS regulars (Paul Lunga, Dennis Munsie...)
-	who supported my feeble efforts
+	* the lisaemu project (<http://www.sundernet.com/>) has gathered much
+	   hardware information (books, schematics...) without which this driver
+	   could never have been written
+	* The driver raised the interest of several MESS regulars (Paul Lunga,
+	  Dennis Munsie...) who supported my feeble efforts
 
-	Raphael Nabet, 2000
+	Raphael Nabet, 2000-2003
 */
 
 #include "driver.h"
@@ -54,8 +58,9 @@ UINT8 *lisa_rom_ptr;
 #define RAM_OFFSET 0x004000
 #define ROM_OFFSET 0x000000
 
-/* 1kb of RAM for 6504 floppy disk controller (shared with 68000), and 4kb of ROM (8kb on some
-boards, but then only one 4kb bank is selected, according to the drive type (TWIGGY or 3.5'')) */
+/* 1kb of RAM for 6504 floppy disk controller (shared with 68000), and 4kb of
+ROM (8kb on some boards, but then only one 4kb bank is selected, according to
+the drive type (TWIGGY or 3.5'')) */
 static UINT8 *fdc_ram;
 static UINT8 *fdc_rom;
 
@@ -96,9 +101,10 @@ static mmu_entry mmu_regs[4][128];
 
 /*
 	parity logic - only hard errors are emulated for now, since
-	a) the ROMs only test these
-	b) most memory boards do not use soft errors (i.e. they only generate 1 parity bit to
-	detect errors, instead of generating several bits to fix errors)
+	a) the ROMs power-up test only tests hard errors
+	b) most memory boards do not use soft errors (i.e. they only generate 1
+	  parity bit to detect errors, instead of generating several ECC bits to
+	  fix errors)
 */
 
 static int diag2;			/* -> writes wrong parity data into RAM */
@@ -958,6 +964,9 @@ static OPBASE_HANDLER (lisa_OPbaseoverride)
 
 	}
 
+	if (cpunum_get_reg(0, M68K_SR) & 0x2000)
+		/* supervisor mode -> force register file 0 */
+		the_seg = 0;
 
 	{
 		int seg_offset = address & 0x01ffff;
@@ -1007,23 +1016,23 @@ static OPBASE_HANDLER (lisa_fdc_OPbaseoverride)
 }
 
 
-int lisa_floppy_load(mess_image *img, mame_file *fp, int open_mode)
+DEVICE_LOAD(lisa_floppy)
 {
 	/*if (lisa_features.lisa_floppy_hardware == twiggy)
-		return twiggy_floppy_load(id);
+		return twiggy_floppy_load(image);
 	else*/
-		return sony_floppy_load(img, fp, open_mode,
+		return sony_floppy_load(image, file,
 									(lisa_features.has_double_sided_floppy)
 										? SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K
 										: SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_EXT_SPEED_CONTROL);
 }
 
-void lisa_floppy_unload(mess_image *img)
+DEVICE_UNLOAD(lisa_floppy)
 {
 	/*if (lisa_features.lisa_floppy_hardware == twiggy)
-		return twiggy_floppy_unload(id);
+		return twiggy_floppy_unload(image);
 	else*/
-		sony_floppy_unload(img);
+		sony_floppy_unload(image);
 }
 
 /* should save PRAM to file */
@@ -1402,7 +1411,7 @@ READ_HANDLER ( lisa_fdc_io_r )
 		answer = 0;	/* ??? */
 		break;
 
-	case 2:	/* pulses the PWM LOAD line (mistake !) */
+	case 2:	/* pulses the PWM LOAD line (bug!) */
 		answer = 0;	/* ??? */
 		break;
 
@@ -1544,6 +1553,10 @@ READ16_HANDLER ( lisa_r )
 			return answer;
 		}
 	}
+
+	if (cpunum_get_reg(0, M68K_SR) & 0x2000)
+		/* supervisor mode -> force register file 0 */
+		the_seg = 0;
 
 	{
 		/* offset in segment */
@@ -1771,6 +1784,10 @@ WRITE16_HANDLER ( lisa_w )
 			return;
 		}
 	}
+
+	if (cpunum_get_reg(0, M68K_SR) & 0x2000)
+		/* supervisor mode -> force register file 0 */
+		the_seg = 0;
 
 	{
 		/* offset in segment */

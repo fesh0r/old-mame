@@ -2409,6 +2409,67 @@ $end
 
 #---------------------------------------------------------------------------------------------#
 
+$info=concept
+$bio
+Corvus Concept
+
+
+Known Issues:
+
+The keyboard is not emulated fully.
+
+Hard disks, serial ports, and Omninet are not emulated.
+
+Only the original floppy controller (8" SSSD disks) is emulated.
+
+
+Usage:
+
+The driver can boot from a 8" SSSD floppy image.  Start the computer and press
+'F' when the computer asks for a boot device.
+
+You may invoke the MACSbug debugger as well by pressing the key 'D'.  However,
+this version of MACSbug requires a terminal to be connected to the serial port
+to do anything useful, so you are out of luck.
+
+
+History and Trivia:
+
+The Concept was announced in the spring of 1982.
+
+This computer uses a state-of-art (at the time) MC68000 CPU.  Its CCOS
+operating system is a variant of the Merlin operating system by Silicon Valley
+Software: it is a mono-tasking OS, with source-level compatibility with the
+UCSD p-system, and vague reminiscences of UNIX.
+
+The Concept has a bitmapped screen, which enables to mix text in any style and
+size with graphics, and some programs were reportedly WYSIWYG (which was still
+relatively uncommon at the time).  The system includes a primitive window
+manager, but don't delude yourself: it is no GUI.  The most original feature is
+probably the rotatable screen that can be used either in horizontal or vertical
+position: however you need to reboot the computer after flipping the screen. 
+Another feature of interest is the integrated network support: the Concept can
+be used either as a disk-less network computer or as a full-featured personal
+computer, and you could connect Concepts, Apple IIs and IBM PCs in an
+heterogeneous Omninet LAN.
+
+Available programs were mostly business applications: word processor,
+spreadsheet, grapher, database, accounting...  Thanks to its large screen, its
+WYSIWYG capability and to the use of various hierarchical menus, the Concept is
+relatively user-friendly for a 1982 business computer.  There were also Pascal
+and FORTRAN compilers, a BASIC, a UCSD runtime, an 8080 simulator, a port of
+the CP/M OS, a version of SPICE to simulate discrete ICs, and even a paint
+program that could take advantage of a mouse.
+
+The price was about 4000$ for a bare 256-kbyte system in 1984 (1000$ for extra
+256kbytes, $750 for floppy, from 2000$ to 4000$ for hard disk according to
+size).
+
+
+$end
+
+#---------------------------------------------------------------------------------------------#
+
 $info=coupe
 $bio
 Sam Coupe (1989)
@@ -3209,19 +3270,16 @@ Known Issues:
 Wait states are not emulated (except for the speech synthesizer), so the Geneve
 will always run at full speed.
 
-My-word will display garbage at start-up, but it will run fine afterwards.
+The keyboard does not seem to work properly in BHDMV.
 
 
 Usage:
 
 This driver emulates a Geneve with (almost) 2Mbytes of RAM, 4 floppy drives,
-and a mouse.  No Hard Disk is emulated yet.
+and a mouse.  3 Hard Disk are supported by the HFDC disk controller.
 
 You need an MDOS disk image to boot the Geneve.  Insert the image and run the
 computer.
-
-Preliminary tests have shown that emulation seems to have a good level of
-compatibility.
 
 
 History and Trivia:
@@ -3236,9 +3294,9 @@ relies on expansion cards in the PEB to provide disk and RS232 interfaces.  The
 Geneve features a TMS9995 at 12MHz, a V9938 VDP, an SN76496 sound generator
 (compatible with TMS9919), a MM58274 RTC, 512 kbytes of 1-wait-state CPU RAM
 (expandable to almost 2 Mbytes), 32 kbytes of 0-wait-state CPU RAM (expandable
-to 64 kbytes), and 128 kbytes of VRAM.  Thanks to the GenMod modification, the
-512 kbytes of on-board RAM can be disabled so that 0-wait-state RAM may be used
-instead, but this breaks the TI99 emulation mode.
+to 64 kbytes), and 128 kbytes of VRAM (expandable to 192 kbytes).  Thanks to
+the GenMod modification, the 512 kbytes of on-board RAM can be disabled so that
+0-wait-state RAM may be used instead, but this breaks the TI99 emulation mode.
 
 Although the Geneve is compatible with the TI99, it is a different machine.  It
 has a disk-based Operating System that looks like MS-DOS.  It has two operating
@@ -7835,6 +7893,81 @@ DNOS (released around 1981) was similar to DX10 and mostly compatible with it:
 it supported extra features but it was bigger and slower. Neither OS could run
 on the lower-end 990/4 and /5 systems, but a kernel and various OS utilities
 were available as static-link libraries for embedded applications.
+
+$end
+
+#---------------------------------------------------------------------------------------------#
+
+$info=tutor
+$bio
+Tomy Tutor (a.k.a. Grandstand Tutor)
+
+
+Known Issues:
+
+
+Cassette emulation does not work.
+
+
+
+Usage:
+
+
+The Tutor has three built-in programs:
+
+* Graphic is a Picture drawing program.  It enables you to create 256*192
+pictures in 16 colors, but the interface is awkward and I don't think the
+pictures drawn in this program can be saved.
+
+* Basic is a Basic interpreter derived from the TI99 Extended Basic.  Quite
+unfortunately, Basic lacks I/O routines and a serious graphic library.
+
+* GBasic is another Basic interpreter that is hidden in Graphic.  It is
+probably faster than Basic and has better graphic capabilities, but the
+language itself is unfortunately lacking.  And the editor simply sucks.
+
+
+A few cartridges were released: almost 40 games and a few educational programs.
+9 cartridges are known to have been dumped (8 games and an educational title).
+
+
+
+History and Trivia:
+
+
+This computer is known as Tomy Tutor in US, and as Grandstand Tutor in UK.  It
+was initially released in Japan in 1982 or 1983 under the name of Pyuuta
+(Pi-yu-u-ta, with a Kanji for the "ta").  The Japanese versions are different
+from the English-language versions, as they have different ROMs with Japanese
+messages and support for the katakana syllabus.  There are at least 4 versions:
+
+* original Pyuuta (1982 or 1983) with title screens in Japanese but no Basic
+(only the toy-like Gbasic interpreter is available)
+
+* Pyuuta Jr. (1983?) which is a console with a simplified keyboard
+
+* Tomy/Grandstand Tutor (circa October 1983?) with title screens in English and
+integrated Basic
+
+* Pyuuta Mk. 2 (1984?) with a better-looking keyboard and integrated Basic
+
+
+The Tutor was not extremely successful, probably due to the fact that little
+software was available (and that the software that was available was not varied
+enough).
+
+
+One question that remains open is the relationship between the Tutor and the
+TI-99 series.  From a hardware point of view, the Tutor has a lot in common
+with TI-99/4(a) (though the two computers are NOT compatible).  From a
+software point of view, the Tutor Basic is directly derived from TI Extended
+Basic (there is even a GPL interpreter in ROM, though the Tutor variant of GPL
+is quite different from TI GPL).  However, other Tutor software do not seem to
+be derived from TI-99 software.  It is therefore likely that Matsushita
+designed the Tutor independently from TI and licenced the TI Basic from TI as
+an afterthought; OTOH, the whole design might have originated from TI, as the
+computer really looks like a "TI-99/3" (the hardware is similar to the TI-99/4
+series, whereas the concept is very close to the TI-99/2).
 
 $end
 

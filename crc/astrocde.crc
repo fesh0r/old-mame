@@ -1,58 +1,115 @@
 # Bally Professional Arcade/Astrocade Casettrige CRC list
 # Compiled by MESSDEV Team
+# Revised by Discord
 # Note: This list is provided as a record of known dumps for this system.  
 #       These checksums have not been validated and cannot be assumed correct.  
 #       They are provided here as a database to help the emulation of this system.  
-# Send corrections and submissions to: battlepriest@hotmail.com
+# Games in basic were tapes but ward shrake converted them to cartridge form in 
+# Theory the original cassette forms must exist somewhere also
+# crc = Game Name | Year | Manufacturer | Emulation Status
 
 [astrocde]
-e4d285e5 = 280ZZZap/Dodgem | | | 2001 |
-cd57c485 = Amazing Maze/Tic-Tac-Toe | | | 5001 |
-4f372019 = Artillery Duel | | | 5005 |
-0b5298bc = Astro Battle | | | 2009 |
-70514687 = Astrocade Basic | | | 6004 |
-3f431613 = Bally Pinball | | | 3005 |
-78d45a11 = BlackJack/Poker/Acey Deucey | | | 5002 |
-79fe386b = Blast Droids
-28f9e502 = Brickyard/Clowns | | | 2004 |
-2a77b3fb = Cosmic Raider | | | 2019 |
-77bed6ba = Dog Patch | 2010 |
-fc8998a9 = Football | | | 3002 |
-d75e9672 = Galaxian
-7b3b7b70 = Grand Prix/Demolition Derby | | | 2014 |
-1395b130 = The Incredible Wizard | | | 2017 |
-2cf68f93 = Letter Match/Spell 'n Score/Crosswords | | | 4002 |
-5393f920 = Machine Language Manager
-e4726657 = Muncher
-a1c7e129 = Red Baron/Panzer Attack | | | 2003 |
-a021735e = SeaWolf/Missile | | | 2002 |
-3e9f4f0d = Sneaky Snake
-519cc707 = Space Fortress | | | 2012 |
-d54a74c8 = Star Battle | | | 2005 |
-7d30312a = Elementary Math/Bingo Math | | | 4001 |
-5be548cc = Tornado Baseball, Tennis, Hockey and Handball | | | 3001 |
-
-14f36aba = coloring_book
-ba558eb7 = galactic_invasion | | | 2011 |
-bc2b6fe3 = icbm_attack
-14e93a41 = ms_candyman
-0bba8261 = muncher_set2
-b5f9663f = muncher_set3
-7b1b206a = pirates_chase | | | 2015 |
-960b6f86 = sea_devil
-52964c1f = space_invaders
-1447f854 = treasure_cove
-a0cba256 = wizard2 | | | | not working
-d15ce025 = solar_conqueror | | | 2018 |
-fc4bd27c = biorhythm | | | 4004 |
+e4d285e5 = 280 ZZZap & Dodgem | 1978 | Bally Manufacturing | | 2001
+cd57c485 = Amazing Maze & Tic-Tac-Toe | 1979 | Bally Manufacturing | | 5001
+4f372019 = Artillery Duel | 1982 | Astrocade Inc. | | 5005
+bc0d0336 = Artillery Duel & O-Jello (BASIC) | 19?? | | 
+70514687 = Astro BASIC | 1981 | Astrovision Inc. | | 6004
+0b5298bc = Astro Battle | 1979 | Astrovision Inc. | | 2009
+9a3b9be2 = Backgammon & Checkers (BASIC) | 19?? | | 
+90e276aa = Bally BASIC | 1978 | Bally Manufacturing | | 6002
+3f431613 = Bally Pin / Astrocade Pinball | 1979 | Bally Manufacturing / Astrovision Inc. | | 2007 / 3005
+fc4bd27c = Biorhythm | 1981 | Astrovision Inc. | | 4004
+78d45a11 = BlackJack & Acey Deucey & Poker | 1979 | Bally Manufacturing | | 5002
+79fe386b = Blast Droids | 1983 | Esoterica |
+4da03dfe = Blue Ram BASIC 1.1 | 1981 | Perkins Engineering | requires additional ram in memory map from $6000-$6FFF
+004ee140 = Blue Ram Utility | 19?? | Perkins Engineering | requires additional ram and external 8154 chip
+1f8bc8ba = Bowling (prototype) | 1985 | Astrocade Inc. | | 3006
+0fc97852 = Candyman | 19?? | |
+757bab8f = Checkers (prototype) | 19?? | New Image | | 5003
+5b946526 = Chicken | 19?? | Bit Fiddlers | 
+28f9e502 = Clowns & Brickyard | 1978 | Bally Manufacturing | | 2004
+313fee89 = Collision Course & Wack-a-mole (BASIC) | 19?? | | requires blue ram basic
+14f36aba = Coloring Book (prototype) | 19?? | Astrocade Inc. | | 4005
+8a6adbfe = Conan the Barbarian / Quest for the Orb (prototype) | 19?? | Astrocade Inc. | | 5005
+05dd02c8 = Connect Four & Simon (BASIC) | 19?? | | 
+2a77b3fb = Cosmic Raider | 1983 | Astrocade Inc. | | 2019
+869b692e = Cosmic Raider (unfinished version) | 1983 | Astrocade Inc. | | 2019
+007e70d5 = Demo: Bally BASIC | 1978 | Bally Manufacturing | 
+16b77b44 = Demo: Bally Pro Arcade | 1978 | Bally Manufacturing | | 6001
+77bed6ba = Dogpatch | 1980 | Astrovision Inc. | | 2010
+7d30312a = Elementary Math & Bingo Math / Speed Math & Bingo Math | 1978 | Bally Manufacturing | | 4001
+9e08814d = Flying Ace & Monkey Jump (BASIC) | 19?? | | requires blue ram basic
+fc8998a9 = Football | 1978 | Bally Manufacturing | | 3002
+ba558eb7 = Galactic Invasion | 1981 | Astrovision Inc. | clone of galaxian | 2011
+d75e9672 = Galaxian | 1981 | Astrovision Inc. | | 2011
+d89abb30 = Gate Escape (BASIC) | 19?? | | requires blue ram basic
+7d56aa59 = Gold Digger & Yahtzee (BASIC) | 19?? | | requires blue ram basic
+7b3b7b70 = Grand Prix / Demolition Derby & Grand Prix | 1981 | Astrovision Inc. | | 2014
+a1eb3e15 = Great American Jigsaw & QB-2B (BASIC) | 19??| | 
+bc2b6fe3 = I.C.B.M. Attack | 1982 | Spectre Software | | Bally Alley contacted rights owner this is now a public domain rom
+1395b130 = Incredible Wizard, The | 1982 | Astrocade Inc. | | 2017
+a0cba256 = Incredible Wizard, The (set 2?) | 19?? | | not working |
+2cf68f93 = Letter Match & Spell 'n Score & Crosswords | 1978 | Bally Manufacturing | | 4002
+752d13fd = Life (prototype) | 1985 | R.Diegler | 
+5393f920 = Machine Language Manager | 1982 | Bit Fiddlers | |
+565a644c = Mazeman | 1984 | Anonymous | 
+88f56c4e = Missile Attack | 1985 | Mike White | | clone of ICBM Attack
+14e93a41 = Ms. Candyman | 1983 | L & M Software | |
+e4726657 = Muncher | 1983 | Esoterica | |
+b242ef84 = Music Maker (prototype) | 1985 | Astrocade Inc. | requires tape support to save | 4003
+784b256a = No-die | 19?? | | clone of muncher
+be686630 = Old Bent Nose & Yahtzee (BASIC) | 19?? | | 
+7bd3cfbb = Outpost 19 (BASIC) | 19?? | | requires blue ram basic
+17363546 = Pac-Man (prototype) | 1985 | Astrocade Inc. | clone of muncher
+a1c7e129 = Panzer Attack & Red Baron | 1978 | Bally Manufacturing | | 2003
+7b1b206a = Pirates Chase | 1982 | Astrocade Inc. | | 2015
+a982c37a = Putt-Putt Golf & Simon (BASIC) | 19?? | | requires blue ram basic
+231f56ff = Quadra: Snoop Camera | 1990 | Mike White | 
+ef2c7744 = Quadra: UFO | 1990 | Mike White | 
+d333e1e3 = Quadra: Laser | 1990 | Mike White | 
+97c70ffa = Quadra: Smash-up | 1990 | Mike White | 
+b43b17dd = Quadra: Q Cartoon | 1990 | Mike White | 
+878cb3a5 = Quadra: Part 1 | 1990 | Mike White | 
+b1219aa9 = Quadra: Part 2 | 1990 | Mike White | 
+f74385ee = Road Toad | 19?? | | 
+960b6f86 = Sea Devil | 1983 | L & M Software | |
+a021735e = Seawolf & Missile | 19?? | Bally Manufacturing | | 2002
+3e9f4f0d = Sneaky Snake | 1983 | New Image | |
+56d28b62 = Soccer | 1985 | Astrocade Inc. | | 3007
+7de08d9a = Soccer (prototype) | 1985 | Astrocade Inc. | | 3007
+d15ce025 = Solar Conqueror | 1983 | Bally Manufacturing | | 2018
+fe6182b3 = Songs (prototype) | 1985 | New Image | 
+e4f3766a = Sound Tweeker (prototype) | 19?? | New Image | 
+519cc707 = Space Fortress | 1981 | Astrovision Inc. | | 2012
+52964c1f = Space Invaders | 1979 | Bally Manufacturing | | 2009 (2006,2008)
+d54a74c8 = Star Battle | 1979 | Astrovision | | 2005
+df6b2304 = Super Slope | 19?? | | 
+49df19eb = Tests (prototype) | 1986 | New Image | 
+5be548cc = Tornado Baseball, Tennis, Hockey & Handball | 1978 | Bally Manufacturing | | 3001
+1447f854 = Treasure Cove | 1983 | Esoterica (Spectre Software) | | Bally Alley contacted rights owner this is now a public domain rom
+2cc8cc3c = Video Story Book (prototype) | 1985 | Self-Published | 
+770143c5 = Vipersoft BASIC | 1981 | Viper Systems | 
+f400e5d4 = Yesterday (prototype) | 1986 | Self-Published | 
 
 #Unconfirmed
-90e276aa = Bally Basic | | | 6002 |
+0bba8261 = Muncher (set 2?) | 19?? | | |
+b5f9663f = Muncher (set 3?) | 19?? | | |
 
-#[baddump]
-1a050094 = Astro Battle | | | | overdumped
-fb652bac = Bally Pinball | | | | overdumped
-ce15563b = Star Battle | | | | overdumped
-ee3489ea = SeaWolf/Missile | | | | overdumped
+#Bad Dumps
+1a050094 = Astro Battle | 1981 | Astrovision | OVERDUMPED | 2009
+fb652bac = Bally Pin / Astrocade Pinball | 1981 | Bally Manufacturing | OVERDUMPED | 3005
+ee3489ea = Seawolf & Missile | 19?? | Bally Manufacturing | OVERDUMPED | 2002
+ce15563b = Star Battle | 19?? | Astrovision | OVERDUMPED | 2005
 
-ebc77f3a = not a cartridge, buildin rom
+#Undumped
+######## = Astrology (prototype) | 19?? | Bally Manufacturing | | 4003
+######## = Bally Colour BASIC (prototype) | 19?? | | | 
+######## = Basketball | 19?? | Bally Manufacturing | | 3006
+######## = Computer Eye | 19?? | HARD | | 
+######## = Creative Crayon | 19?? | Bally Manufacturing | | 
+######## = Drag Race & Desert Fox | 19?? | Bally Manufacturing | | 3004
+######## = King Arthur's Adventure | 19?? | Bally Manufacturing | | 
+######## = Quest for the Orb | 19?? | Bally Manufacturing | | 5004
+######## = Skiing | 19?? | Bally Manufacturing | | 
+
+

@@ -11,9 +11,9 @@ extern "C" {
 #endif
 
 /* init */
-int basicdsk_floppy_init(mess_image *img);
-int basicdsk_floppy_load(mess_image *img, mame_file *fp, int open_mode);
-void basicdsk_floppy_unload(mess_image *img);
+DEVICE_INIT(basicdsk_floppy);
+DEVICE_LOAD(basicdsk_floppy);
+DEVICE_UNLOAD(basicdsk_floppy);
 
 /* set the disk image geometry for the specified drive */
 /* this is required to read the disc image correct */
@@ -40,10 +40,10 @@ void basicdsk_floppy_unload(mess_image *img);
   80-track drive, FALSE otherwise
 */
 
-void basicdsk_set_geometry(mess_image *img, UINT16 tracks, UINT8 sides, UINT8 sec_per_track, UINT16 sector_length/*, UINT16 dir_sector, UINT16 dir_length*/, UINT8 first_sector_id, UINT16 offset_track_zero, int track_skipping);
+void basicdsk_set_geometry(mess_image *img, UINT8 tracks, UINT8 sides, UINT8 sec_per_track, UINT16 sector_length/*, UINT16 dir_sector, UINT16 dir_length*/, UINT8 first_sector_id, UINT16 offset_track_zero, int track_skipping);
 
 void basicdsk_set_calcoffset(mess_image *img, unsigned long (*calcoffset)(UINT8 t, UINT8 h, UINT8 s,
-	UINT8 heads, UINT16 offset, UINT8 first_sector_id, UINT8 sec_per_track, UINT16 sector_length));
+	UINT8 tracks, UINT8 heads, UINT8 sec_per_track, UINT16 sector_length, UINT8 first_sector_id, UINT16 offset_track_zero));
 
 /* set data mark/deleted data mark for the sector specified. If ddam!=0, the sector will
 have a deleted data mark, if ddam==0, the sector will have a data mark */
@@ -52,7 +52,7 @@ void basicdsk_set_ddam(mess_image *img, UINT8 physical_track, UINT8 physical_sid
 
 #define CONFIG_DEVICE_FLOPPY_BASICDSK(count, file_extensions, load)		\
 	CONFIG_DEVICE_BASE(IO_FLOPPY, (count), (file_extensions), DEVICE_LOAD_RESETS_NONE,	\
-		OSD_FOPEN_RW_CREATE_OR_READ, basicdsk_floppy_init, NULL, (load), basicdsk_floppy_unload, NULL, NULL,\
+		OSD_FOPEN_RW_CREATE_OR_READ, device_init_basicdsk_floppy, NULL, (load), device_unload_basicdsk_floppy, NULL, NULL,\
 		NULL, NULL, floppy_status, NULL, NULL, NULL, NULL, NULL, NULL)	\
 
 #ifdef __cplusplus

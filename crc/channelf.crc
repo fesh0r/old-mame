@@ -1,5 +1,34 @@
+# This MESS CRC file was compiled by Discord.
+# Please keep this notice intact if editing this file
+# crc= Game Name | Year | Manufacturer | Emulation Status
+
+
 [channelf]
-1570934b = Desert Fox / Shooting Gallery.bin |  |  | 
-bb4c24a2 = Math Quiz 1 (Addition/Subtraction).bin |  |  | 
-5357c5f6 = Spitfire.bin |  |  | 
-ff4768b0 = Tic Tac Toe / Shooting Gallery / Doodle / Quadra Doodle.bin |  |  | 
+ff4768b0= Videocart 01 - Tic Tac Toe & Shooting Gallery & Doodle & Quadra Doodle | 1976 | Fairchild |
+1570934b= Videocart 02 - Desert Fox & Shooting Gallery | 1976 | Fairchild |
+########= Videocart 03 - Video Blackjack | 1976 | Fairchild |
+5357c5f6= Videocart 04 - Spitfire | 1976 | Fairchild |
+########= Videocart 05 - Space War | 1976 | Fairchild |
+bb4c24a2= Videocart 06 - Math Quiz 1 (Addition & Subtraction) | 1976 | Fairchild |
+########= Videocart 07 - Math Quiz 2 | 197? | Fairchild |
+########= Videocart 08 - Magic Numbers | 197? | Fairchild |
+########= Videocart 09 - Drag Race | 197? | Fairchild |
+########= Videocart 10 - Maze & Cat and Mouse | 197? | Fairchild |
+########= Videocart 11 - Backgammon & Acey Ducey | 197? | Fairchild |
+########= Videocart 12 - Baseball | 197? | Fairchild |
+########= Videocart 13 - Robot War | 197? | Fairchild |
+########= Videocart 14 - Sonar Search | 197? | Fairchild |
+########= Videocart 15 - Memory Match | 197? | Fairchild |
+########= Videocart 16 - Dodge It | 197? | Fairchild |
+########= Videocart 17 - Pinball Challenge | 197? | Fairchild |
+########= Videocart 18 - Hangman | 197? | Fairchild |
+########= Videocart 19 - Checkers | 197? | Zircon |
+########= Videocart 20 - Video Whizball | 197? | Fairchild |
+########= Videocart 21 - Bowling | 197? | Fairchild |
+########= Videocart 22 - Slot Machine | 197? | Zircon |
+########= Videocart 23 - Galactic Space Wars | 197? | Zircon |
+########= Videocart 24 - Pro Football | 197? | Zircon |
+########= Videocart 25 - Casino Poker | 197? | Zircon |
+########= Videocart 26 - Alien Invasion | 197? | Zircon |
+########= Democart 1
+########= Democart 2

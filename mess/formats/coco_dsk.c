@@ -477,15 +477,45 @@ static int cocodmk_encode_header(void *buffer, UINT32 *header_size, const struct
 	return 0;
 }
 
+static int cocodmk_seek_to_start_of_idam_at_index( void *bdf, struct dmk_header *hdr, UINT8 track, UINT8 head, UINT8 sector_index)
+{
+	int	offset, IDAM_offset, count;
+	struct dmk_track_toc	t_toc;
+	int	sideCount = (hdr->diskOptions && 0x10) ? 1 : 2,
+                trackLength = LITTLE_ENDIANIZE_INT16(hdr->trackLength);	
+
+	/* Seek to start of track */
+	offset = DMK_HEADER_LEN + (trackLength * track * sideCount) + (trackLength * head);
+	bdf_seek(bdf, offset);
+	
+	/* Read in DMK track table of contents */
+	count = bdf_read( bdf, &t_toc, sizeof( struct dmk_track_toc ) );
+	if( count != sizeof( struct dmk_track_toc ) )
+		return BLOCKDEVICE_ERROR_OUTOFMEMORY;
+
+	IDAM_offset = (LITTLE_ENDIANIZE_INT16( t_toc.idamOffset[sector_index] )) & 0x3fff;
+
+        if (IDAM_offset == 0 )
+            return BLOCKDEVICE_ERROR_SECORNOTFOUND;
+            
+        if( IDAM_offset > trackLength )
+            return BLOCKDEVICE_ERROR_SECORNOTFOUND;
+            
+        bdf_seek( bdf, offset+IDAM_offset );
+
+        return 0;
+
+}
+
 static int cocodmk_seek_to_start_of_sector( void *bdf, struct dmk_header *hdr, UINT8 track, UINT8 head, UINT8 sector, int *length )
 {
-	int						error = 0, offset, i, IDAM_offset, count, state;
-	UINT8					val;
-	UINT16					calculated_crc;
+	int	error = 0, offset, i, IDAM_offset, count, state;
+	UINT8	val;
+	UINT16	calculated_crc;
 	struct dmk_track_toc	t_toc;
-	struct dmk_IDAM			idam;
-	int						sideCount = (hdr->diskOptions && 0x10) ? 1 : 2,
-							trackLength = LITTLE_ENDIANIZE_INT16(hdr->trackLength);	
+	struct dmk_IDAM	idam;
+	int	sideCount = (hdr->diskOptions && 0x10) ? 1 : 2,
+                trackLength = LITTLE_ENDIANIZE_INT16(hdr->trackLength);	
 
 	*length = 0;
 	
@@ -501,7 +531,7 @@ static int cocodmk_seek_to_start_of_sector( void *bdf, struct dmk_header *hdr, U
 	/* Search for matching IDAM */
 	for( i=0; i<DMK_TOC_LEN; i++ )
 	{
-		IDAM_offset = (LITTLE_ENDIANIZE_INT16( t_toc.idamOffset[i] )) & 0x3fff;
+                IDAM_offset = (LITTLE_ENDIANIZE_INT16( t_toc.idamOffset[i] )) & 0x3fff;
 		
 		if( IDAM_offset == 0 )
 		{
@@ -550,7 +580,7 @@ static int cocodmk_seek_to_start_of_sector( void *bdf, struct dmk_header *hdr, U
 	return error;
 }
 
-static int cocodmk_read_sector(void *bdf, const void *header, UINT8 track, UINT8 head, UINT8 sector, int offset, void *buffer, int length)
+static int cocodmk_read_sector(bdf_file *bdf, const void *header, UINT8 track, UINT8 head, UINT8 sector, int offset, void *buffer, int length)
 {
 	int					error, actual_sector_length, size;
 	UINT16				crc_on_disk, calculated_crc;
@@ -604,7 +634,7 @@ static int cocodmk_read_sector(void *bdf, const void *header, UINT8 track, UINT8
 	return error;
 }
 
-static int cocodmk_write_sector(void *bdf, const void *header, UINT8 track, UINT8 head, UINT8 sector, int offset, const void *buffer, int length)
+static int cocodmk_write_sector(bdf_file *bdf, const void *header, UINT8 track, UINT8 head, UINT8 sector, int offset, const void *buffer, int length)
 {
 	int					error, actual_sector_length, size;
 	UINT16				calculated_crc;
@@ -687,7 +717,7 @@ static void bdf_write_repeat( void *bdf, UINT8 value, int count, int *track_leng
 	*track_length += count;
 }
 
-static int cocodmk_format_track(struct InternalBdFormatDriver *drv, void *bdf, const struct disk_geometry *geometry, UINT8 track, UINT8 head)
+static int cocodmk_format_track(struct InternalBdFormatDriver *drv, bdf_file *bdf, const struct disk_geometry *geometry, UINT8 track, UINT8 head)
 {
 	int						i, j, track_length = 0, error;
 	UINT16					offset, calculated_crc;
@@ -811,6 +841,59 @@ static int cocodmk_format_track(struct InternalBdFormatDriver *drv, void *bdf, c
 	return BLOCKDEVICE_ERROR_SUCCESS;
 }
 
+
+
+static void cocodmk_sector_info(bdf_file *bdf, const void *header, UINT8 track, UINT8 head, UINT8 sector_index, UINT8 *sector, UINT16 *sector_size)
+{
+    int	count;
+    struct dmk_header *hdr = (struct dmk_header *) header;
+    struct dmk_IDAM idam;
+    
+    cocodmk_seek_to_start_of_idam_at_index( bdf, hdr, track, head, sector_index);
+    
+    count = bdf_read( bdf, &idam, sizeof( struct dmk_IDAM ) );
+    if( count != sizeof( struct dmk_IDAM ) )
+        return;
+
+    *sector = dmk_idam_sectorNumber(idam);
+    *sector_size = 128 << dmk_idam_sectorLength(idam);
+}
+
+static UINT8 cocodmk_sector_count(bdf_file *bdf, const void *header, UINT8 track, UINT8 head)
+{
+	int	offset, i, IDAM_offset, count;
+	UINT8	IDAM_count = 0;
+	struct dmk_header *hdr = (struct dmk_header *) header;
+	struct dmk_track_toc t_toc;
+	int	sideCount = (hdr->diskOptions && 0x10) ? 1 : 2,
+                trackLength = LITTLE_ENDIANIZE_INT16(hdr->trackLength);	
+	
+	/* Seek to start of track */
+	offset = DMK_HEADER_LEN + (trackLength * track * sideCount) + (trackLength * head);
+	bdf_seek(bdf, offset);
+	
+	/* Read in DMK track table of contents */
+	count = bdf_read( bdf, &t_toc, sizeof( struct dmk_track_toc ) );
+	if( count != sizeof( struct dmk_track_toc ) )
+		return BLOCKDEVICE_ERROR_OUTOFMEMORY;
+		
+	/* Count IDAMs */
+	for( i=0; i<DMK_TOC_LEN; i++ )
+	{
+            IDAM_offset = (LITTLE_ENDIANIZE_INT16( t_toc.idamOffset[i] )) & 0x3fff;
+		
+            if( IDAM_offset == 0 )
+            {
+                i = DMK_TOC_LEN;
+                break;
+            }
+            
+            IDAM_count++;
+	}
+        
+    return IDAM_count;
+}
+
 BLOCKDEVICE_FORMATDRIVER_START( coco_dmk )
 	BDFD_NAME( "dmk" )
 	BDFD_HUMANNAME( "DMK disk image" )
@@ -827,6 +910,8 @@ BLOCKDEVICE_FORMATDRIVER_START( coco_dmk )
 	BDFD_READ_SECTOR(cocodmk_read_sector)
 	BDFD_WRITE_SECTOR(cocodmk_write_sector)
 	BDFD_FORMAT_TRACK(cocodmk_format_track)
+	BDFD_GET_SECTOR_INFO(cocodmk_sector_info)
+	BDFD_GET_SECTOR_COUNT(cocodmk_sector_count)
 BLOCKDEVICE_FORMATDRIVER_END
 
 /* ----------------------------------------------------------------------- */

@@ -29,9 +29,9 @@ enum
 	offset_rom6_4p = 0x6000,
 	offset_rom6b_4p= 0xe000,
 	offset_sram_4p = 0x10000,		/* scratch RAM (1kbyte) */
-	offset_cart_4p = 0x10400,		/* cartridge ROM/RAM (2*8 kbytes) */
-	offset_xram_4p = 0x12400,		/* extended RAM (1Mb with super AMS compatible mapper) */
-	region_cpu1_len_4p = 0x112400	/* total len */
+	offset_dram_4p = 0x10400,		/* extra ram for debugger (768 bytes) */
+	offset_xram_4p = 0x10700,		/* extended RAM (1Mb with super AMS compatible mapper) */
+	region_cpu1_len_4p = 0x110700	/* total len */
 };
 
 
@@ -106,14 +106,14 @@ enum
 	config_speech_mask	= 0x1,
 	config_fdc_bit		= 4,
 	config_fdc_mask		= 0x3,	/* 2 bits */
-	config_ide_bit		= 8,
-	config_ide_mask		= 0x1,
 	config_rs232_bit	= 6,
 	config_rs232_mask	= 0x1,
 	/* next option only makes sense for ti99/4 */
 	config_handsets_bit	= 7,
 	config_handsets_mask= 0x1,
-	config_hsgpl_bit	= 8,
+	config_ide_bit		= 8,
+	config_ide_mask		= 0x1,
+	config_hsgpl_bit	= 9,
 	config_hsgpl_mask	= 0x1
 };
 
@@ -133,6 +133,10 @@ DEVICE_LOAD( ti99_cassette );
 DEVICE_LOAD( ti99_cart );
 DEVICE_UNLOAD( ti99_cart );
 
+DEVICE_INIT( ti99_hd );
+DEVICE_LOAD( ti99_hd );
+DEVICE_UNLOAD( ti99_hd );
+
 int video_start_ti99_4(void);
 int video_start_ti99_4a(void);
 int video_start_ti99_4ev(void);
@@ -146,13 +150,19 @@ WRITE16_HANDLER ( ti99_ww_null8bits );
 
 READ16_HANDLER ( ti99_rw_cartmem );
 WRITE16_HANDLER ( ti99_ww_cartmem );
+READ16_HANDLER ( ti99_4p_rw_cartmem );
+WRITE16_HANDLER ( ti99_4p_ww_cartmem );
 
 WRITE16_HANDLER( ti99_ww_wsnd );
+
 READ16_HANDLER ( ti99_rw_rvdp );
 WRITE16_HANDLER ( ti99_ww_wvdp );
 READ16_HANDLER ( ti99_rw_rv38 );
 WRITE16_HANDLER ( ti99_ww_wv38 );
+
 READ16_HANDLER ( ti99_rw_rgpl );
 WRITE16_HANDLER( ti99_ww_wgpl );
+READ16_HANDLER ( ti99_4p_rw_rgpl );
+WRITE16_HANDLER ( ti99_4p_ww_wgpl );
 
 extern void tms9901_set_int2(int state);

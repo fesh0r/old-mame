@@ -1,5 +1,5 @@
 /*
-	Preliminary MESS Driver for the Myarc Geneve 9640.
+	MESS Driver for the Myarc Geneve 9640.
 	Raphael Nabet, 2003.
 
 	The Geneve has two operation modes.  One is compatible with the TI-99/4a,
@@ -11,7 +11,8 @@
 	TMS9995@12MHz (including 256 bytes of on-chip 16-bit RAM and a timer),
 	V9938, SN76496 (compatible with TMS9919), TMS9901, MM58274 RTC, 512 kbytes
 	of 1-wait-state CPU RAM (expandable to almost 2 Mbytes), 32 kbytes of
-	0-wait-state CPU RAM (expandable to 64 kbytes), 128 kbytes of VRAM.
+	0-wait-state CPU RAM (expandable to 64 kbytes), 128 kbytes of VRAM
+	(expandable to 192 kbytes).
 
 
 	Memory map:
@@ -60,7 +61,7 @@
 	>f102: VDP address/status port (read/write)
 	>f104: VDP port 2
 	>f106: VDP port 3
-	>f108->f10f: ???
+	>f108->f10f: VDP mirror (used by Barry Boone's converted Tomy cartridges)
 	>f110->f117: memory page registers (>f110 for page 0, >f111 for page 1,
 	  etc.)
 	>f118: key buffer
@@ -86,9 +87,8 @@
 	int3-int7: joystick port inputs (fire, left, right, down, up)
 	int8: keyboard interrupt (asserted when key buffer full)
 	int9/p13: unused
-	int10/p12: some input from mouse???  Could be third mouse button, or mouse
-	  present.
-	int11/p11: clock interrupt???
+	int10/p12: third mouse button
+	int11/p11: clock interrupt?
 	int12/p10: INTB from PE-bus
 	int13/p9: (used as output)
 	int14/p8: unused
@@ -215,7 +215,7 @@ INPUT_PORTS_START(geneve)
 	PORT_START /* mouse buttons */
 	PORT_BITX( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1, "mouse button 1", KEYCODE_NONE, IP_JOY_DEFAULT)
 	PORT_BITX( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2, "mouse button 2", KEYCODE_NONE, IP_JOY_DEFAULT)
-	/*PORT_BITX( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3, "mouse button 3", KEYCODE_NONE, IP_JOY_DEFAULT)*/
+	PORT_BITX( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3, "mouse button 3", KEYCODE_NONE, IP_JOY_DEFAULT)
 
 	PORT_START /* Mouse - X AXIS */
 	PORT_ANALOGX( 0xff, 0x00, IPT_TRACKBALL_X | IPF_PLAYER1, 100, 0, 0, 0, IP_KEY_NONE, IP_KEY_NONE, IP_JOY_NONE, IP_JOY_NONE )
@@ -461,8 +461,8 @@ ROM_END
 
 SYSTEM_CONFIG_START(geneve)
 	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",										device_load_ti99_floppy)
-	/*CONFIG_DEVICE_LEGACY			(IO_HARDDISK, 	1, "hd\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_OR_READ, NULL, NULL, ti99_ide_load, ti99_ide_unload, NULL)
-	CONFIG_DEVICE_LEGACY			(IO_PARALLEL,	1, "",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	ti99_4_pio_load,	ti99_4_pio_unload,		NULL)
+	CONFIG_DEVICE_LEGACY			(IO_HARDDISK, 	/*4*/3, "hd\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_OR_READ,device_init_ti99_hd, NULL, device_load_ti99_hd, device_unload_ti99_hd, NULL)
+	/*CONFIG_DEVICE_LEGACY			(IO_PARALLEL,	1, "",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	ti99_4_pio_load,	ti99_4_pio_unload,		NULL)
 	CONFIG_DEVICE_LEGACY			(IO_SERIAL,		1, "",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_CREATE_OR_READ,	NULL,	NULL,	ti99_4_rs232_load,	ti99_4_rs232_unload,	NULL)*/
 SYSTEM_CONFIG_END
 

@@ -229,7 +229,7 @@ void init_cgenie(void)
 	 * Every fitfth cycle is a wait cycle, so I reduced
 	 * the overlocking by one fitfth
 	 */
-	timer_set_overclock(0, 0.80);
+	cpunum_set_clockscale(0, 0.80);
 
 	/* Initialize some patterns to be displayed in graphics mode */
 	for( i = 0; i < 256; i++ )
@@ -357,7 +357,7 @@ DEVICE_LOAD( cgenie_floppy )
 	short dir_length = 0;
 
 	/* A Floppy Isnt manditory, so return if none */
-	if (basicdsk_floppy_load(image, file, open_mode) != INIT_PASS)
+	if (device_load_basicdsk_floppy(image, file) != INIT_PASS)
 		return INIT_FAIL;
 
 	/* determine image geometry */

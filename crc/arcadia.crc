@@ -1,52 +1,33 @@
-[ARCADIA]
-ca58b3f8 = brain_quiz (mind breaker,maxit,hangman) | | | c001 |
-e84df2ef = crazy_gobbler | | | c002 |
-e3794a2c = space_attack | | | c003 |
-4671b7f7 = robot_killer | | | c004 |
-08d8b186 = super_gobbler | | | c005 |
-7666a712 = space_vultures | | | c006 |
-33c348c1 = breakaway | | | c007 | 55s instead of 60 too slow
-1f65b21e = alien_invaders | | | c008 |
-3ff224e5 = space_mission | | | c009 |
-# ?tanks a lot
-f3c08e19 = 3d_bowling | | | c011 |
-aeb803e4 = capture | | | c012 | timer too fast
-b0b98a92 = soccer | | | c013 | hanging sound
-0076422e = tanks_a_lot | | | c014 |
-fc7eba76 = escape | | | c015 |
-a615f068 = missile_war | | | c016 |
-fd2cf496 = cat_trax | | | c017 |
-88defacf = space_raiders | | | c018 |
-dfb5dd55 = jungler | | | c019 |
-caa5f449 = space_squadron | | | c020 |
-# ???
-8bf2dfa9 = grand_slam_tennis | | | c022 |
-77c19320 = funky_fish | | | c023 |
-4f19fd9b = pleiades | 1983 | UA | c024 |
-bb88daea = spiders | | | c025 | rasterline effect
-a06f284b = red_clash | | | c026 |
-e66f362d = the_end | | | c027 | rasterline effect
-ddcf5b2c = astro_invaders | | | c028 | rasterline effect
-7046e0bc = turtles | | | c029 |
-97060a54 = jumpbug | | | c030 |
-a0626e23 = r2d_tank | | | c031 |
-1cec4b21 = hobo | | | c032 | controls??, rasterline effect
-4da68df8 = 3d_soccer | | | c033 |
-1b5be22a = 3d_soccer set 2| | | c033 |
+# This MESS CRC file was is for the Arcadia 2001 family of systems.
+# Please keep this notice intact if editing this file
+# crc= Game Name | Year | Manufacturer | Emulation Status
 
-a23c7a01 = golf | | | |
-e93938f6 = basketball | | | |
-83e6e40b = star_chess | | | | how to play?
-1cf08155 = 2001_baseball | | | | how to play?
-449e80cb = ocean_battle | | | | how to play?
-99ac48ca = autorace | | | |
-a6bffa9e = combat | | | |
-76e773fa = crazy_climber | | | |
-22624414 = football | | | | sound
-8169864e = route16 | | | |
-6818c8bd = tankgame
-5e033f9c = grand prix de monaco | | | | use keys for steering
-560daa7f = horse_racing | | | | how to play?
+[ARCADIA]
+1cf08155 = 2001 Baseball | | | | how to play?
+4da68df8 = 3D Soccer | | | c033 |
+1b5be22a = 3D Soccer(set 2) | | | c033 |
+1f65b21e = Alien Invaders | 1983 | Emerson | c008 |
+ddcf5b2c = Astro Invaders | | | c028 | rasterline effect
+99ac48ca = Autorace | 19?? | | |
+e93938f6 = Basketball | | | |
+f3c08e19 = Bowling 3D | 1982 | Emerson | c011 |
+ca58b3f8 = Brain Quiz (mind breaker,maxit,hangman) | 1982 | Emerson | c001 |
+33c348c1 = Breakaway | 1982 | Emerson | c007 | 55s instead of 60 too slow
+aeb803e4 = Capture | 1982 | Emerson | c012 | timer too fast
+fd2cf496 = Cat Trax | 1982 | Emerson | c017 |
+a6bffa9e = Combat | | | |
+76e773fa = Crazy Climber | 1982 | | |
+e84df2ef = Crazy Gobbler | 1982 | Leisure Vision | c002 |
+fc7eba76 = Escape | 1982| Emerson | c015 |
+22624414 = Football | | | | sound
+77c19320 = Funky Fish | 1983 | Emerson | c023 |
+a23c7a01 = Golf | | | |
+8bf2dfa9 = Grand Slam Tennis | 1982 | Emerson | c022 |
+5e033f9c = Grand Prix de Monaco | | | | use keys for steering
+1cec4b21 = Hobo | 1983 | Leisure Vision | c032 | controls??, rasterline effect
+560daa7f = Horse Racing | | | | how to play?
+
+#How To play Horse Racing:
 #Hit "0" then "enter" on the keypad, to start the horses racing. That's the big thing to know.
 #
 #Before the race, multiple players can bid. Hit player number (1-6) then
@@ -54,15 +35,41 @@ a6bffa9e = combat | | | |
 #what that is, other than maybe Win or Place or Show? -- and then the color
 #of the horse (listed at the bottom). Then start the race.
 
+97060a54 = Jump Bug | 1982 | Leisure Vision  | c030 |
+dfb5dd55 = Jungler | 1982 | Emerson | c019 |
+a615f068 = Missile War | 1982 | Emerson | c016 |
+449e80cb = Ocean Battle | 1982 | | | how to play?
+4f19fd9b = Pleiades | 1983 | UA? | c024 |
+a0626e23 = R2D Tank | 1983 | | c031 |
+a06f284b = Red Clash | 1982  | Leisure Vision | c026 |
+4671b7f7 = Robot Killer | 1982 | Leisure Vision | c004 |
+8169864e = Route 16 | 1983 | | |
+b0b98a92 = Soccer | 1982 | Emerson | c013 | hanging sound
+e3794a2c = Space Attack (PD) | 1982 | Choi Andrew | c003 |
+3ff224e5 = Space Mission | 1982 | Emerson | c009 |
+88defacf = Space Raiders | 1982 | Emerson | c018 |
+caa5f449 = Space Squadron | 1982 | Leisure Vision | c020 |
+7666a712 = Space Vultures | 1982 | Emerson-Leisure Vision | c006 |
+bb88daea = Spiders | 1982 | Emerson | c025 | rasterline effect
+83e6e40b = Star Chess | 1982 | Emerson | | how to play?
+08d8b186 = Super Gobbler | | | c005 |
+0076422e = Tanks a Lot | 1982 | Emerson | c014 |
+6818c8bd = Tankgame | | | |
+e66f362d = The End | | | c027 | rasterline effect
+7046e0bc = Turtles Turpin | | | c029 |
+
+# C021 ???
+
 #[baddumps]
-f9d9ec5b = spiders | | | c025 | overdumped, remove last 4kbyte
-06a86f4a = red_clash | | | c026 | overdumped, remove last 4kbyte
-df0bf3fb = astro_invaders | | | c028 | overdumped, remove last 4kbyte
-306e39c1 = turtles | | | c029 | overdumped, remove last 4kbyte
-28ad5bcf = autorace | | | | overdumped, remove last 4kbyte
-82d049d7 = combat | | | | overdumped, remove last 4kbyte
-9da024d3 = golf | | | | overdumped, remove last 2 kbyte
-8c0c456e = soccer | | | c013 | overdumped, remove last 4kbyte
-dd1facab = super_gobbler | | | c005 | overdumped, remove last 4kbyte
-cca7a60b= golf 0000| | | | 1st of 2 parts, merge with golf 4000
-a70ee568= golf 4000| | | | 2nd of 2 parts, merge with golf 0000
+#note: Some of these are in the TOSEC Arcadia 2001 db...???
+df0bf3fb = Astro Invaders | | | c028 | overdumped, remove last 4kbyte
+28ad5bcf = Autorace | | | | overdumped, remove last 4kbyte
+82d049d7 = Combat | | | | overdumped, remove last 4kbyte
+9da024d3 = Golf | | | | overdumped, remove last 2 kbyte
+cca7a60b = Golf 0000| | | | 1st of 2 parts, merge with golf 4000
+a70ee568 = Golf 4000| | | | 2nd of 2 parts, merge with golf 0000
+06a86f4a = Red Clash | | | c026 | overdumped, remove last 4kbyte
+8c0c456e = Soccer | | | c013 | overdumped, remove last 4kbyte
+f9d9ec5b = Spiders | | | c025 | overdumped, remove last 4kbyte
+dd1facab = Super Gobbler | | | c005 | overdumped, remove last 4kbyte
+306e39c1 = Turtles | | | c029 | overdumped, remove last 4kbyte

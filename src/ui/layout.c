@@ -52,14 +52,15 @@ FOLDERDATA g_folderData[] =
 	{"Source",          FOLDER_SOURCE,       IDI_FOLDER_SOURCE,        0,             0,            CreateSourceFolders },
 	{"CPU",             FOLDER_CPU,          IDI_FOLDER,               0,             0,            CreateCPUFolders },
 	{"SND",             FOLDER_SND,          IDI_FOLDER,               0,             0,            CreateSoundFolders },
+	{"Orientation",     FOLDER_XY,           IDI_FOLDER,               0,             0,            CreateOrientationFolders },
 	{"Working",         FOLDER_WORKING,      IDI_WORKING,              F_WORKING,     F_NONWORKING, NULL,                       DriverIsBroken,    FALSE },
 	{"Non-Working",     FOLDER_NONWORKING,   IDI_NONWORKING,           F_NONWORKING,  F_WORKING,    NULL,                       DriverIsBroken,    TRUE },
 	{"Originals",       FOLDER_ORIGINAL,     IDI_FOLDER,               F_ORIGINALS,   F_CLONES,     NULL,                       DriverIsClone,     FALSE },
 	{"Clones",          FOLDER_CLONES,       IDI_FOLDER,               F_CLONES,      F_ORIGINALS,  NULL,                       DriverIsClone,     TRUE },
-	{"Raster",          FOLDER_RASTER,       IDI_FOLDER,               F_RASTER,      F_VECTOR,     NULL,                       DriverIsVector,    FALSE },
+//	{"Raster",          FOLDER_RASTER,       IDI_FOLDER,               F_RASTER,      F_VECTOR,     NULL,                       DriverIsVector,    FALSE },
 	{"Vector",          FOLDER_VECTOR,       IDI_FOLDER,               F_VECTOR,      F_RASTER,     NULL,                       DriverIsVector,    TRUE },
 	{"Trackball",       FOLDER_TRACKBALL,    IDI_FOLDER,               0,             0,            NULL,                       DriverUsesTrackball,	TRUE },
-	{"Stereo",          FOLDER_STEREO,       IDI_SOUND,                0,             0,            NULL,                       DriverIsStereo,    TRUE },
+//	{"Stereo",          FOLDER_STEREO,       IDI_SOUND,                0,             0,            NULL,                       DriverIsStereo,    TRUE },
 	{"Hard Disk",       FOLDER_HARDDISK,     IDI_HARDDISK,             0,             0,            NULL,                       DriverIsHarddisk,  TRUE },
 	{ NULL }
 };
@@ -125,6 +126,7 @@ const PROPERTYSHEETINFO g_propSheets[] =
 	{ FALSE,	NULL,					IDD_PROP_AUDIT,			GameAuditDialogProc },
 	{ TRUE,		NULL,					IDD_PROP_DISPLAY,		GameOptionsProc },
 	{ TRUE,		NULL,					IDD_PROP_ADVANCED,		GameOptionsProc },
+	{ TRUE,		NULL,					IDD_PROP_DIRECT3D,		GameOptionsProc },
 	{ TRUE,		NULL,					IDD_PROP_SOUND,			GameOptionsProc },
 	{ TRUE,		NULL,					IDD_PROP_INPUT,			GameOptionsProc },
 	{ TRUE,		NULL,					IDD_PROP_MISC,			GameOptionsProc },
@@ -143,6 +145,8 @@ const ICONDATA g_iconData[] =
 };
 
 const char g_szDefaultGame[] = "pacman";
+const char g_szPlayGameString[] = "&Play %s";
+const char g_szGameCountString[] = "%d games";
 
 static BOOL FilterAvailable(int driver_index)
 {

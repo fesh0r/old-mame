@@ -8,12 +8,13 @@
 
 /* ----------------------------------------------------------------------- */
 
-static mame_file *image_fopen_new(mess_image *img, int *effective_mode);
+static mame_file *image_fopen_new(mess_image *img);
 
 enum
 {
-	IMAGE_STATUS_ISLOADING	= 1,
-	IMAGE_STATUS_ISLOADED	= 2
+	IMAGE_STATUS_ISLOADING		= 1,
+	IMAGE_STATUS_ISLOADED		= 2,
+	IMAGE_STATUS_CRCCALCULATED	= 4
 };
 
 struct _mess_image
@@ -28,6 +29,7 @@ struct _mess_image
 	char *dir;
 	UINT32 crc;
 	UINT32 length;
+	int effective_mode;
 	char *longname;
 	char *manufacturer;
 	char *year;
@@ -91,7 +93,6 @@ int image_load(mess_image *img, const char *name)
 	const struct IODevice *dev;
 	char *newname;
 	int err = INIT_PASS;
-	int effective_mode;
 	mame_file *fp = NULL;
 	UINT8 *buffer = NULL;
 	UINT64 size;
@@ -127,7 +128,7 @@ int image_load(mess_image *img, const char *name)
 	}
 	else
 	{
-		fp = image_fopen_new(img, &effective_mode);
+		fp = image_fopen_new(img);
 		if (fp == NULL)
 			goto error;
 	}
@@ -156,7 +157,7 @@ int image_load(mess_image *img, const char *name)
 	/* call device load */
 	if (dev->load)
 	{
-		err = dev->load(img, fp, effective_mode);
+		err = dev->load(img, fp);
 		if (err)
 			goto error;
 	}
@@ -254,6 +255,109 @@ void image_unload_all(int ispreload)
 
 /* ----------------------------------------------------------------------- */
 
+static mame_file *image_fopen_new(mess_image *img)
+{
+	mame_file *fref;
+	const struct IODevice *dev;
+
+	dev = image_device(img);
+
+	switch (dev->open_mode) {
+	case OSD_FOPEN_NONE:
+	default:
+		/* unsupported modes */
+		printf("Internal Error in file \""__FILE__"\", line %d\n", __LINE__);
+		fref = NULL;
+		img->effective_mode = OSD_FOPEN_NONE;
+		break;
+
+	case OSD_FOPEN_READ:
+	case OSD_FOPEN_WRITE:
+	case OSD_FOPEN_RW:
+	case OSD_FOPEN_RW_CREATE:
+		/* supported modes */
+		fref = image_fopen_custom(img, FILETYPE_IMAGE, dev->open_mode);
+		img->effective_mode = dev->open_mode;
+		break;
+
+	case OSD_FOPEN_RW_OR_READ:
+		/* R/W or read-only: emulated mode */
+		fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_RW);
+		if (fref)
+			img->effective_mode = OSD_FOPEN_RW;
+		else
+		{
+			fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_READ);
+			img->effective_mode = OSD_FOPEN_READ;
+		}
+		break;
+
+	case OSD_FOPEN_RW_CREATE_OR_READ:
+		/* R/W, read-only, or create new R/W image: emulated mode */
+		fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_RW);
+		if (fref)
+			img->effective_mode = OSD_FOPEN_RW;
+		else
+		{
+			fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_READ);
+			if (fref)
+				img->effective_mode = OSD_FOPEN_READ;
+			else
+			{
+				fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
+				img->effective_mode = OSD_FOPEN_RW_CREATE;
+			}
+		}
+		break;
+
+	case OSD_FOPEN_READ_OR_WRITE:
+		/* read or write: emulated mode */
+		fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_READ);
+		if (fref)
+			img->effective_mode = OSD_FOPEN_READ;
+		else
+		{
+			fref = image_fopen_custom(img, FILETYPE_IMAGE, /*OSD_FOPEN_WRITE*/OSD_FOPEN_RW_CREATE);
+			img->effective_mode = OSD_FOPEN_WRITE;
+		}
+		break;
+	}
+
+	return fref;
+}
+
+/****************************************************************************
+  Tag management functions.
+  
+  When devices have private data structures that need to be associated with a
+  device, it is recommended that image_alloctag() be called in the device
+  init function.  If the allocation succeeds, then a pointer will be returned
+  to a block of memory of the specified size that will last for the lifetime
+  of the emulation.  This pointer can be retrieved with image_lookuptag().
+
+  Note that since image_lookuptag() is used to index preallocated blocks of
+  memory, image_lookuptag() cannot fail legally.  In fact, an assert will be
+  raised if this happens
+****************************************************************************/
+
+void *image_alloctag(mess_image *img, const char *tag, size_t size)
+{
+	return tagpool_alloc(&img->tagpool, tag, size);
+}
+
+void *image_lookuptag(mess_image *img, const char *tag)
+{
+	return tagpool_lookup(&img->tagpool, tag);
+}
+
+
+/****************************************************************************
+  CRC info loading
+
+  If the CRC is not checked and the relevant info not loaded, force that info
+  to be loaded
+****************************************************************************/
+
 static int read_crc_config(const char *sysname, mess_image *img)
 {
 	int rc = 1;
@@ -285,103 +389,75 @@ done:
 	return rc;
 }
 
-static mame_file *image_fopen_new(mess_image *img, int *effective_mode)
+static int image_checkcrc(mess_image *img)
 {
-	mame_file *fref;
-	int effective_mode_local;
+	UINT8 static_buf[2048]; 
+	UINT8 *alloc_buf;
+	UINT8 *buf;
+	UINT32 bufsize;
+	UINT32 imgsize;
+	UINT32 chunksize;
 	const struct IODevice *dev;
+	mame_file *file;
+	UINT32 crc;
 
-	dev = image_device(img);
+	/*assert(img->status & (IMAGE_STATUS_ISLOADING | IMAGE_STATUS_ISLOADED));*/
 
-	switch (dev->open_mode) {
-	case OSD_FOPEN_NONE:
-	default:
-		/* unsupported modes */
-		printf("Internal Error in file \""__FILE__"\", line %d\n", __LINE__);
-		fref = NULL;
-		effective_mode_local = OSD_FOPEN_NONE;
-		break;
+	/* only calculate CRC if it hasn't been calculated, and the open_mode is read only */
+	if (!(img->status & IMAGE_STATUS_CRCCALCULATED) && (img->effective_mode == OSD_FOPEN_READ))
+	{
+		/* initialize key variables */
+		file = image_fp(img);
+		imgsize = image_length(img);
+		dev = image_device(img);
+		crc = 0;
 
-	case OSD_FOPEN_READ:
-	case OSD_FOPEN_WRITE:
-	case OSD_FOPEN_RW:
-	case OSD_FOPEN_RW_CREATE:
-		/* supported modes */
-		fref = image_fopen_custom(img, FILETYPE_IMAGE, dev->open_mode);
-		effective_mode_local = dev->open_mode;
-		break;
-
-	case OSD_FOPEN_RW_OR_READ:
-		/* R/W or read-only: emulated mode */
-		fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_RW);
-		if (fref)
-			effective_mode_local = OSD_FOPEN_RW;
-		else
+		/* decide which buffer we need to use */
+		if (dev && dev->partialcrc && (imgsize > sizeof(static_buf)))
 		{
-			fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_READ);
-			effective_mode_local = OSD_FOPEN_READ;
+			alloc_buf = (UINT8 *) malloc(imgsize);
+			if (!alloc_buf)
+				return FALSE;
+			buf = alloc_buf;
+			bufsize = imgsize;
 		}
-		break;
-
-	case OSD_FOPEN_RW_CREATE_OR_READ:
-		/* R/W, read-only, or create new R/W image: emulated mode */
-		fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_RW);
-		if (fref)
-			effective_mode_local = OSD_FOPEN_RW;
 		else
 		{
-			fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_READ);
-			if (fref)
-				effective_mode_local = OSD_FOPEN_READ;
+			alloc_buf = NULL;
+			buf = static_buf;
+			bufsize = sizeof(static_buf);
+		}
+
+		/* reset the file */
+		mame_fseek(file, 0, SEEK_SET);
+
+		/* loop through the file, calculating the CRC */
+		while(imgsize > 0)
+		{
+			chunksize = (imgsize > bufsize) ? bufsize : imgsize;
+
+			mame_fread(file, buf, chunksize);
+
+			if (dev && dev->partialcrc)
+				crc = dev->partialcrc(buf, chunksize);
 			else
-			{
-				fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
-				effective_mode_local = OSD_FOPEN_RW_CREATE;
-			}
-		}
-		break;
+				crc = crc32(crc, buf, chunksize);
 
-	case OSD_FOPEN_READ_OR_WRITE:
-		/* read or write: emulated mode */
-		fref = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_READ);
-		if (fref)
-			effective_mode_local = OSD_FOPEN_READ;
-		else
-		{
-			fref = image_fopen_custom(img, FILETYPE_IMAGE, /*OSD_FOPEN_WRITE*/OSD_FOPEN_RW_CREATE);
-			effective_mode_local = OSD_FOPEN_WRITE;
+			imgsize -= chunksize;
 		}
-		break;
+
+		/* cleanup */
+		if (alloc_buf)
+			free(alloc_buf);
+		img->crc = crc;
+		mame_fseek(file, 0, SEEK_SET);
+
+		/* now read the CRC file */
+		read_crc_config(Machine->gamedrv->name, img);
+		
+		img->status |= IMAGE_STATUS_CRCCALCULATED;
 	}
-
-	if (effective_mode)
-		*effective_mode = effective_mode_local;
-
-	return fref;
-}
-
-/****************************************************************************
-  Tag management functions.
-  
-  When devices have private data structures that need to be associated with a
-  device, it is recommended that image_alloctag() be called in the device
-  init function.  If the allocation succeeds, then a pointer will be returned
-  to a block of memory of the specified size that will last for the lifetime
-  of the emulation.  This pointer can be retrieved with image_lookuptag().
-
-  Note that since image_lookuptag() is used to index preallocated blocks of
-  memory, image_lookuptag() cannot fail legally.  In fact, an assert will be
-  raised if this happens
-****************************************************************************/
-
-void *image_alloctag(mess_image *img, const char *tag, size_t size)
-{
-	return tagpool_alloc(&img->tagpool, tag, size);
-}
-
-void *image_lookuptag(mess_image *img, const char *tag)
-{
-	return tagpool_lookup(&img->tagpool, tag);
+	return TRUE;
 }
 
 /****************************************************************************
@@ -460,7 +536,18 @@ unsigned int image_length(mess_image *img)
 
 unsigned int image_crc(mess_image *img)
 {
+	image_checkcrc(img);
 	return img->crc;
+}
+
+int image_is_writable(mess_image *img)
+{
+	return is_effective_mode_writable(img->effective_mode);
+}
+
+int image_has_been_created(mess_image *img)
+{
+	return is_effective_mode_create(img->effective_mode);
 }
 
 /****************************************************************************
@@ -503,26 +590,31 @@ void image_freeptr(mess_image *img, void *ptr)
 
 const char *image_longname(mess_image *img)
 {
+	image_checkcrc(img);
 	return img->longname;
 }
 
 const char *image_manufacturer(mess_image *img)
 {
+	image_checkcrc(img);
 	return img->manufacturer;
 }
 
 const char *image_year(mess_image *img)
 {
+	image_checkcrc(img);
 	return img->year;
 }
 
 const char *image_playable(mess_image *img)
 {
+	image_checkcrc(img);
 	return img->playable;
 }
 
 const char *image_extrainfo(mess_image *img)
 {
+	image_checkcrc(img);
 	return img->extrainfo;
 }
 
@@ -665,7 +757,7 @@ mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_write)
 	logerror("image_fopen: trying %s for system %s\n", img->name, sysname);
 	img->fp = file = mame_fopen(sysname, img->name, filetype, read_or_write);
 
-	if (file)
+	if ((file) && ! is_effective_mode_create(read_or_write))
 	{
 		/* is this file actually a zip file? */
 		if ((mame_fread(file, buffer, 4) == 4) && (buffer[0] == 0x50)
@@ -703,39 +795,8 @@ mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_write)
 
 		logerror("image_fopen: found image %s for system %s\n", img->name, sysname);
 		img->length = mame_fsize(file);
-/* Cowering, partial crcs for NES/A7800/others */
 		img->crc = 0;
-
-		if (!img->crc)
-		{
-			unsigned char *pc_buf = (unsigned char *)malloc(img->length);
-			const struct IODevice *pc_dev;
-
-			if (pc_buf)
-			{
-				mame_fseek(file,0,SEEK_SET);
-				mame_fread(file,pc_buf,img->length);
-				mame_fseek(file,0,SEEK_SET);
-
-				pc_dev = device_find(Machine->gamedrv, image_devtype(img));
-				if (pc_dev && pc_dev->partialcrc)
-				{
-					logerror("Calling partialcrc()\n");
-					img->crc = (*pc_dev->partialcrc)(pc_buf,img->length);
-				}
-				else
-				{
-					img->crc = crc32(0L, pc_buf, img->length);
-				}
-				free(pc_buf);
-			}
-			else
-			{
-				logerror("failed to malloc(%d)\n", img->length);
-			}
-		}
-
-		read_crc_config(sysname, img);
+		img->status &= ~IMAGE_STATUS_CRCCALCULATED;
 	}
 
 	return file;

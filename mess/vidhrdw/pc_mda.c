@@ -131,13 +131,16 @@ static void pc_mda_blink_textcolors(int on)
 	offs = (crtc6845_get_start(mda.crtc)*2)% videoram_size;
 	size = crtc6845_get_char_lines(mda.crtc)*crtc6845_get_char_columns(mda.crtc);
 
-	for (i = 0; i < size; i++)
+	if (dirtybuffer)
 	{
-		if( videoram[offs+1] & 0x80 )
-			dirtybuffer[offs+1] = 1;
-		if( (offs += 2) == videoram_size )
-			offs = 0;
-    }
+		for (i = 0; i < size; i++)
+		{
+			if (videoram[offs+1] & 0x80)
+				dirtybuffer[offs+1] = 1;
+			if ((offs += 2) == videoram_size)
+				offs = 0;
+		}
+	}
 }
 
 extern void pc_mda_timer(void)
@@ -149,61 +152,45 @@ extern void pc_mda_timer(void)
 
 void pc_mda_cursor(CRTC6845_CURSOR *cursor)
 {
-	dirtybuffer[cursor->pos*2]=1;
+	if (dirtybuffer)
+		dirtybuffer[cursor->pos*2]=1;
 }
 
 static CRTC6845_CONFIG config= { 14318180 /*?*/, pc_mda_cursor };
 
-extern void pc_mda_init_video(struct _CRTC6845 *crtc)
+static void pc_mda_init_video_internal(struct _CRTC6845 *crtc, int gfx_char, int gfx_graphic)
 {
-	int i;
-	mda.gfx_char=Machine->gfx[0];
-	mda.gfx_graphic=Machine->gfx[1];
+	int i, y;
 
-    /* remove pixel column 9 for character codes 0 - 175 and 224 - 255 */
-	for( i = 0; i < 256; i++)
+	mda.gfx_char = Machine->gfx[gfx_char];
+	mda.gfx_graphic = Machine->gfx[gfx_graphic];
+
+	/* remove pixel column 9 for character codes 0 - 191 and 224 - 255 */
+	for (i = 0; i < 256; i++)
 	{
-		if( i < 176 || i > 223 )
+		if (i < 191 || i > 223)
 		{
-			int y;
-			for( y = 0; y < Machine->gfx[0]->height; y++ )
-				Machine->gfx[0]->gfxdata[(i * Machine->gfx[0]->height + y) * Machine->gfx[0]->width + 8] = 0;
+			for (y = 0; y < Machine->gfx[gfx_char]->height; y++)
+				Machine->gfx[gfx_char]->gfxdata[(i * Machine->gfx[gfx_char]->height + y) * Machine->gfx[gfx_char]->width + 8] = 0;
 		}
 	}
-	mda.crtc=crtc6845;
+	mda.crtc = crtc6845;
 }
 
-extern void pc_mda_europc_init(struct _CRTC6845 *crtc)
+void pc_mda_init_video(struct _CRTC6845 *crtc)
 {
-	int i;
-	mda.gfx_char=Machine->gfx[3];
-	mda.gfx_graphic=Machine->gfx[4];
+	pc_mda_init_video_internal(crtc, 0, 1);
+}
 
-    /* remove pixel column 9 for character codes 0 - 175 and 224 - 255 */
-	for( i = 0; i < 256; i++)
-	{
-		if( i < 176 || i > 223 )
-		{
-			int y;
-			for( y = 0; y < Machine->gfx[3]->height; y++ )
-				Machine->gfx[3]->gfxdata[(i * Machine->gfx[3]->height + y) * Machine->gfx[3]->width + 8] = 0;
-		}
-	}
-	mda.crtc=crtc6845;
+void pc_mda_europc_init(struct _CRTC6845 *crtc)
+{
+	pc_mda_init_video_internal(crtc, 3, 4);
 }
 
 VIDEO_START( pc_mda )
 {
 	pc_mda_init_video(crtc6845);
 	return pc_video_start(mda.crtc, &config, pc_mda_choosevideomode);
-}
-
-WRITE_HANDLER ( pc_mda_videoram_w )
-{
-	if (videoram[offset] == data)
-		return;
-	videoram[offset] = data;
-	dirtybuffer[offset] = 1;
 }
 
 /*
@@ -298,17 +285,20 @@ static void mda_text_inten(struct mame_bitmap *bitmap)
 	int lines = crtc6845_get_char_lines(mda.crtc);
 	int height = crtc6845_get_char_height(mda.crtc);
 	int columns = crtc6845_get_char_columns(mda.crtc);
+	int char_width;
 	struct rectangle r;
 	CRTC6845_CURSOR cursor;
+
+	char_width = Machine->scrbitmap->width / 80;
 
 	crtc6845_time(mda.crtc);
 	crtc6845_get_cursor(mda.crtc, &cursor);
 
 	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height) {
 
-		for (sx=0, r.min_x=0, r.max_x=8; sx<columns; 
-			 sx++, offs=(offs+2)&0x3fff, r.min_x+=9, r.max_x+=9) {
-			if (dirtybuffer[offs] || dirtybuffer[offs+1]) {
+		for (sx=0, r.min_x=0, r.max_x = char_width-1; sx<columns; 
+			 sx++, offs=(offs+2)&0x3fff, r.min_x += char_width, r.max_x += char_width) {
+			if (!dirtybuffer || dirtybuffer[offs] || dirtybuffer[offs+1]) {
 				
 				drawgfx(bitmap, mda.gfx_char, videoram[offs], videoram[offs+1], 
 						0,0,r.min_x,r.min_y,&r,TRANSPARENCY_NONE,0);
@@ -323,10 +313,11 @@ static void mda_text_inten(struct mame_bitmap *bitmap)
 					if (k>0)
 						plot_box(Machine->scrbitmap, r.min_x, 
 								 r.min_y+cursor.top, 
-								 9, k, Machine->pens[2/*?*/]);
+								 char_width, k, Machine->pens[2/*?*/]);
 				}
 
-				dirtybuffer[offs]=dirtybuffer[offs+1]=0;
+				if (dirtybuffer)
+					dirtybuffer[offs] = dirtybuffer[offs+1] = 0;
 			}
 		}
 	}
@@ -347,16 +338,19 @@ static void mda_text_blink(struct mame_bitmap *bitmap)
 	int columns = crtc6845_get_char_columns(mda.crtc);
 	struct rectangle r;
 	CRTC6845_CURSOR cursor;
+	int char_width;
+
+	char_width = Machine->scrbitmap->width / 80;
 
 	crtc6845_time(mda.crtc);
 	crtc6845_get_cursor(mda.crtc, &cursor);
 
 	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height) {
 
-		for (sx=0, r.min_x=0, r.max_x=8; sx<columns; 
-			 sx++, offs=(offs+2)&0x3fff, r.min_x+=9, r.max_x+=9) {
+		for (sx=0, r.min_x=0, r.max_x = char_width-1; sx<columns; 
+			 sx++, offs=(offs+2)&0x3fff, r.min_x += char_width, r.max_x += char_width) {
 
-			if (dirtybuffer[offs] || dirtybuffer[offs+1]) {
+			if (!dirtybuffer || dirtybuffer[offs] || dirtybuffer[offs+1]) {
 				
 				int attr = videoram[offs+1];
 				
@@ -381,10 +375,11 @@ static void mda_text_blink(struct mame_bitmap *bitmap)
 					if (k>0)
 						plot_box(Machine->scrbitmap, r.min_x, 
 								 r.min_y+cursor.top, 
-								 9, k, Machine->pens[2/*?*/]);
+								 char_width, k, Machine->pens[2/*?*/]);
 				}
 
-				dirtybuffer[offs]=dirtybuffer[offs+1]=0;
+				if (dirtybuffer)
+					dirtybuffer[offs] = dirtybuffer[offs+1] = 0;
 			}
 		}
 	}
@@ -461,11 +456,11 @@ pc_video_update_proc pc_mda_choosevideomode(int *xfactor, int *yfactor)
 	switch (mda.mode_control & 0x2a) { /* text and gfx modes */
 	case 0x08:
 		proc = mda_text_inten;
-		*xfactor = 9;
+		*xfactor = Machine->scrbitmap->width / 80;
 		break;
 	case 0x28:
 		proc = mda_text_blink;
-		*xfactor = 9;
+		*xfactor = Machine->scrbitmap->width / 80;
 		break;
 	case 0x0a:
 	case 0x2a:

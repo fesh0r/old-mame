@@ -450,7 +450,7 @@ IMAGEMODULE(
 )
 
 /*
-	Convert a C string to a 10-character file name (padded with spaces if necessary)
+	Convert a C string to a 8-character file name (padded with spaces if necessary)
 */
 static void str_to_fname(char dst[8], const char *src)
 {
@@ -476,7 +476,7 @@ static void str_to_fname(char dst[8], const char *src)
 }
 
 /*
-	Convert a 10-character file name to a C string (removing trailing spaces if necessary)
+	Convert a 8-character file name to a C string (removing trailing spaces if necessary)
 */
 static void fname_to_str(char *dst, const char src[8], int n)
 {
@@ -1086,7 +1086,7 @@ static int qsort_catalog_compare(const void *p1, const void *p2)
 #endif
 
 /*
-	Open a file as a ti99_image.
+	Open a file as a ti990_image.
 */
 static int ti990_image_init(const struct ImageModule *mod, STREAM *f, IMAGE **outimg)
 {
@@ -1161,7 +1161,7 @@ static int ti990_image_init(const struct ImageModule *mod, STREAM *f, IMAGE **ou
 }
 
 /*
-	close a ti99_image
+	close a ti990_image
 */
 static void ti990_image_exit(IMAGE *img)
 {
@@ -1172,7 +1172,7 @@ static void ti990_image_exit(IMAGE *img)
 }
 
 /*
-	get basic information on a ti99_image
+	get basic information on a ti990_image
 
 	Currently returns the volume name
 */

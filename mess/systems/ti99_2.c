@@ -99,7 +99,7 @@ general :
   - sound and speech (both ti99/4-like)
   - Hex-Bus
   - Cassette
-* cartidge port on the top
+* cartridge port on the top
 * 50-pin(?) expansion port on the back (so, it was not even the same as TI99/2 ????)
 
 memory map :
@@ -126,27 +126,15 @@ static void init_ti99_2_32(void)
 	ROM_paged = 1;
 }
 
-static int ti99_2_24_load_rom(void)
-{
-	cpu_setbank(1, memory_region(REGION_CPU1)+0x4000);
-
-	return 0;
-}
-
-#define TI99_2_32_ROMPAGE0 memory_region(REGION_CPU1)+0x4000
-#define TI99_2_32_ROMPAGE1 memory_region(REGION_CPU1)+0x10000
-
-static int ti99_2_32_load_rom(void)
-{
-	memcpy(memory_region(REGION_CPU1), memory_region(REGION_CPU1)+0x10000, 0x4000);
-
-	cpu_setbank(1, TI99_2_32_ROMPAGE0);
-
-	return 0;
-}
+#define TI99_2_32_ROMPAGE0 (memory_region(REGION_CPU1)+0x4000)
+#define TI99_2_32_ROMPAGE1 (memory_region(REGION_CPU1)+0x10000)
 
 static void machine_init_ti99_2(void)
 {
+	if (! ROM_paged)
+		cpu_setbank(1, memory_region(REGION_CPU1)+0x4000);
+	else
+		cpu_setbank(1, TI99_2_32_ROMPAGE0);
 }
 
 static void machine_stop_ti99_2(void)
@@ -167,6 +155,9 @@ static void ti99_2_vblank_interrupt(void)
   We display 24 rows and 32 columns of characters.  Each 8*8 pixel character pattern is defined
   in a 128-entry table located in ROM.  Character code for each screen position are stored
   sequentially in RAM.  Colors are a fixed Black on White.
+
+	There is an EOL character that blanks the end of the current line, so that
+	the CPU can get more bus time.
 */
 
 static unsigned char ti99_2_palette[] =

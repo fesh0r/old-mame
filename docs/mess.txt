@@ -5,7 +5,7 @@
                     Official Page at: http://www.mess.org
                    ==========================================
 
-This document is generated for MESS 0.68 (May 19 2003)
+This document is generated for MESS 0.70 (Jun 16 2003)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.68 (May 19 2003)
+Here is the list of systems supported by MESS 0.70 (Jun 16 2003)
 Variants of the same system are not included, you can use the -listclones command
 to get a list of the alternate versions of a given system.
 
@@ -104,7 +104,7 @@ dat2html.exe.
 | Atari 800                               |  Yes  |  Yes  |  Yes  | a800     |
 | Atom                                    |  Yes  |  Yes  |  Yes  | atom     |
 | BBC Micro Model A                       |  Yes  |  Yes  |  Yes  | bbca     |
-| Bally Pro Arcade/Astrocade              |  Yes  |  Yes  |  Yes  | astrocde |
+| Bally Professional Arcade               |  Yes  |  Yes  |  Yes  | astrocde |
 | C65 / C64DX                             |   No  |  Yes  |  Yes  | c65      |
 | CPS Changer                             |  Yes  |  Yes  |  Yes  | sfzch    |
 | Channel F                               |  Yes  |  Yes  |  Yes  | channelf |
@@ -128,6 +128,7 @@ dat2html.exe.
 | Commodore B128-80LP/610 60Hz            |   No  |  Yes  |  Yes  | cbm610   |
 | Commodore Max                           |  Yes  |  Yes  |  Yes  | max      |
 | Commodore SP9000/MMF9000                |   No  |  Yes  |   No  | superpet |
+| Concept                                 |  Yes  |  Yes  |  Yes  | concept  |
 | Enterprise 128                          |  Yes  |  Yes  |Partial| ep128    |
 | Famicom                                 |  Yes  |  Yes  |  Yes  | famicom  |
 | Galaksija                               |  Yes  |  Yes  |   No  | galaxy   |
@@ -164,8 +165,8 @@ dat2html.exe.
 | Oric 1                                  |  Yes  |  Yes  |  Yes  | oric1    |
 | PC Engine/TurboGrafx 16                 |   No  |  Yes  |   No  | pce      |
 | PC-8801 MKIISR                          |  Yes  |  Yes  |  Yes  | pc88srl  |
-| PC/AT                                   |  Yes  |  Yes  |  Yes  | atvga    |
 | PC/AT                                   |   No  |  Yes  |  Yes  | at       |
+| PC/AT                                   |  Yes  |  Yes  |  Yes  | atvga    |
 | PDP-1                                   |  Yes  |  Yes  |  Yes  | pdp1     |
 | PET2001/CBM20xx Series                  |  Yes  |  Yes  |   No  | pet      |
 | PK-01 Lviv                              |  Yes  |  Yes  |  Yes  | lviv     |
@@ -190,6 +191,7 @@ dat2html.exe.
 | TI99/4A Home Computer                   |  Yes  |  Yes  |  Yes  | ti99_4a  |
 | TRS-80 Model I                          |  Yes  |  Yes  |  Yes  | trs80    |
 | Tatung Einstein TC-01                   |  Yes  |  Yes  |  Yes  | einstein |
+| Tomy Tutor                              |  Yes  |  Yes  |  Yes  | tutor    |
 | UK101                                   |  Yes  |  Yes  |  Yes  | uk101    |
 | VIC20                                   |  Yes  |  Yes  |Partial| vic20    |
 | Vectrex                                 |  Yes  |  Yes  |  Yes  | vectrex  |

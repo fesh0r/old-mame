@@ -522,42 +522,42 @@ static int generic_rom_load(mess_image *img, mame_file *fp, UINT8 *dest, UINT16 
 	return INIT_PASS;
 }
 
-int coco_rom_load(mess_image *img, mame_file *fp, int open_mode)
+DEVICE_LOAD(coco_rom)
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	return generic_rom_load(img, fp, &ROM[0x4000], 0x4000);
+	return generic_rom_load(image, file, &ROM[0x4000], 0x4000);
 }
 
-void coco_rom_unload(mess_image *img)
+DEVICE_UNLOAD(coco_rom)
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
 	memset(&ROM[0x4000], 0, 0x4000);
 }
 
-int coco3_rom_load(mess_image *img, mame_file *fp, int open_mode)
+DEVICE_LOAD(coco3_rom)
 {
 	UINT8 	*ROM = memory_region(REGION_CPU1);
 	int		count;
 
 	count = count_bank();
-	if (fp)
-		mame_fseek(fp, 0, SEEK_SET);
+	if (file)
+		mame_fseek(file, 0, SEEK_SET);
 
 	if( count == 0 )
 	{
 		/* Load roms starting at 0x8000 and mirror upwards. */
 		/* ROM size is 32K max */
-		return generic_rom_load(img, fp, &ROM[0x8000], 0x8000);
+		return generic_rom_load(image, file, &ROM[0x8000], 0x8000);
 	}
 	else
 	{
 		/* Load roms starting at 0x8000 and mirror upwards. */
 		/* ROM bank is 16K max */
-		return generic_rom_load(img, fp, &ROM[0x8000], 0x4000);
+		return generic_rom_load(image, file, &ROM[0x8000], 0x4000);
 	}
 }
 
-void coco3_rom_unload(mess_image *img)
+DEVICE_UNLOAD(coco3_rom)
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
 	memset(&ROM[0x8000], 0, 0x8000);
@@ -1306,7 +1306,7 @@ static void d_sam_set_mpurate(int val)
 	 * TODO:  Make the overclock more accurate.  In dual speed, ROM was a fast
 	 * access but RAM was not.  I don't know how to simulate this.
 	 */
-    timer_set_overclock(0, val ? 2 : 1);
+    cpunum_set_clockscale(0, val ? 2 : 1);
 }
 
 static void d_sam_set_pageonemode(int val)
@@ -1961,9 +1961,9 @@ static struct cassette_args coco_cassette_args =
 	19200											/* create_smpfreq */
 };
 
-int coco_cassette_init(mess_image *img, mame_file *fp, int open_mode)
+DEVICE_LOAD(coco_cassette)
 {
-	return cassette_init(img, fp, open_mode, &coco_cassette_args);
+	return cassette_init(image, file, &coco_cassette_args);
 }
 
 /***************************************************************************
@@ -2026,12 +2026,17 @@ static void coco3_setcartline(int data)
 	coco3_raise_interrupt(COCO3_INT_EI0, cart_line ? 1 : 0);
 }
 
+/* This function, and all calls of it, are hacks for bankswitched games */
 static int count_bank(void)
 {
-	unsigned int	crc;
-	/* This function, and all calls of it, are hacks for bankswitched games */
+	unsigned int crc;
+	mess_image *img;
 
-	crc = image_crc(cartslot_image());
+	img = cartslot_image();
+	if (!image_exists(img))
+		return FALSE;
+
+	crc = image_crc(img);
 
 	switch( crc )
 	{
@@ -2053,13 +2058,17 @@ static int count_bank(void)
 	}
 }
 
+/* This function, and all calls of it, are hacks for bankswitched games */
 static int is_Orch90(void)
 {
-	unsigned int	crc;
-	/* This function, and all calls of it, are hacks for bankswitched games */
+	unsigned int crc;
+	mess_image *img;
 
-	crc = image_crc(cartslot_image());
+	img = cartslot_image();
+	if (!image_exists(img))
+		return FALSE;
 
+	crc = image_crc(img);
 	return crc == 0x15FB39AF;
 }
 

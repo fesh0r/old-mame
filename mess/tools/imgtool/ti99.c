@@ -1482,27 +1482,27 @@ static int ti99_write_sector(IMAGE *img, UINT8 head, UINT8 track, UINT8 sector, 
 static struct OptionTemplate ti99_createopts[] =
 {
 	{ "label",	"Volume name", IMGOPTION_FLAG_TYPE_STRING | IMGOPTION_FLAG_HASDEFAULT,	0,	0,	NULL},
-	{ "density",	"1 for SD, 2 for 40-track DD, 3 for 80-track DD and HD", IMGOPTION_FLAG_TYPE_INTEGER | IMGOPTION_FLAG_HASDEFAULT,	1,	3,	"2" },
 	{ "sides",	NULL, IMGOPTION_FLAG_TYPE_INTEGER | IMGOPTION_FLAG_HASDEFAULT,	1,	2,	"2" },
 	{ "tracks",	NULL, IMGOPTION_FLAG_TYPE_INTEGER | IMGOPTION_FLAG_HASDEFAULT,	1,	80,	"40" },
 	{ "sectors",	"1->9 for SD, 1->18 for DD, 1->36 for HD", IMGOPTION_FLAG_TYPE_INTEGER | IMGOPTION_FLAG_HASDEFAULT,	1,	36,	"18" },
 	{ "protection",	"0 for normal, 1 for protected", IMGOPTION_FLAG_TYPE_INTEGER | IMGOPTION_FLAG_HASDEFAULT,	0,	1,	"0" },
+	{ "density",	"0 for auto-detect, 1 for SD, 2 for 40-track DD, 3 for 80-track DD and HD", IMGOPTION_FLAG_TYPE_INTEGER | IMGOPTION_FLAG_HASDEFAULT,	0,	3,	"0" },
 	{ NULL, NULL, 0, 0, 0, 0 }
 };
 
 enum
 {
 	ti99_createopts_volname = 0,
-	ti99_createopts_density = 1,
-	ti99_createopts_sides = 2,
-	ti99_createopts_tracks = 3,
-	ti99_createopts_sectors = 4,
-	ti99_createopts_protection = 5
+	ti99_createopts_sides = 1,
+	ti99_createopts_tracks = 2,
+	ti99_createopts_sectors = 3,
+	ti99_createopts_protection = 4,
+	ti99_createopts_density = 5
 };
 
 IMAGEMODULE(
-	ti99,
-	"TI99 Diskette (MESS format)",	/* human readable name */
+	ti99_old,
+	"TI99 Diskette (old MESS format)",	/* human readable name */
 	"dsk",							/* file extension */
 	NULL,							/* crcfile */
 	NULL,							/* crc system name */
@@ -2150,11 +2150,11 @@ static int ti99_image_create(const struct ImageModule *mod, STREAM *f, const Res
 
 	/* read options */
 	volname = in_options[ti99_createopts_volname].s;
-	density = in_options[ti99_createopts_density].i;
 	lvl1_ref.geometry.sides = in_options[ti99_createopts_sides].i;
 	lvl1_ref.geometry.tracksperside = in_options[ti99_createopts_tracks].i;
 	lvl1_ref.geometry.secspertrack = in_options[ti99_createopts_sectors].i;
 	protected = in_options[ti99_createopts_protection].i;
+	density = in_options[ti99_createopts_density].i;
 
 	totphysrecs = lvl1_ref.geometry.secspertrack * lvl1_ref.geometry.tracksperside * lvl1_ref.geometry.sides;
 	physrecsperAU = (totphysrecs + 1599) / 1600;
@@ -2163,6 +2163,17 @@ static int ti99_image_create(const struct ImageModule *mod, STREAM *f, const Res
 		;
 	physrecsperAU = i;
 	totAUs = totphysrecs / physrecsperAU;
+
+	/* auto-density */
+	if (density == 0)
+	{
+		if ((lvl1_ref.geometry.tracksperside <= 40) && (lvl1_ref.geometry.secspertrack <= 9))
+			density = 1;
+		else if ((lvl1_ref.geometry.tracksperside <= 40) && (lvl1_ref.geometry.secspertrack <= 18))
+			density = 2;
+		else
+			density = 3;
+	}
 
 	/* check number of tracks if 40-track image */
 	if ((density < 3) && (lvl1_ref.geometry.tracksperside > 40))

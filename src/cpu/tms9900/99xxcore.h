@@ -966,8 +966,10 @@ WRITE_HANDLER(tms9995_internal2_w)
 	{
 		if (addr < 0xf000)
 		{
+			int reply;
 			TMS99XX_ICOUNT -= I.memory_wait_states_word;
-			return (cpu_readmem16(addr) << 8) + cpu_readmem16(addr + 1);
+			reply = cpu_readmem16(addr);
+			return (reply << 8) | cpu_readmem16(addr + 1);
 		}
 		else if (addr < 0xf0fc)
 		{
@@ -975,21 +977,20 @@ WRITE_HANDLER(tms9995_internal2_w)
 		}
 		else if (addr < 0xfffa)
 		{
+			int reply;
 			TMS99XX_ICOUNT -= I.memory_wait_states_word;
-			return (cpu_readmem16(addr) << 8) + cpu_readmem16(addr + 1);
+			reply = cpu_readmem16(addr);
+			return (reply << 8) | cpu_readmem16(addr + 1);
 		}
 		else if (addr < 0xfffc)
 		{
 			/* read decrementer */
-			if (I.flag & 1)
-				/* event counter mode */
-				return I.decrementer_count;
-			else if (I.decrementer_enabled && !(I.flag & 1))
+			if (I.decrementer_enabled && !(I.flag & 1))
 				/* timer mode, timer enabled */
 				return ceil(TIME_TO_CYCLES(cpu_getactivecpu(), timer_timeleft(I.timer)) / 16);
 			else
-				/* timer mode, timer disabled */
-				return 0;
+				/* event counter mode or timer mode, timer disabled */
+				return I.decrementer_count;
 		}
 		else
 		{
@@ -1048,15 +1049,12 @@ WRITE_HANDLER(tms9995_internal2_w)
 			/* read decrementer */
 			int value;
 
-			if (I.flag & 1)
-				/* event counter mode */
-				value = I.decrementer_count;
-			else if (I.decrementer_enabled && !(I.flag & 1))
+			if (I.decrementer_enabled && !(I.flag & 1))
 				/* timer mode, timer enabled */
 				value = ceil(TIME_TO_CYCLES(cpu_getactivecpu(), timer_timeleft(I.timer)) / 16);
 			else
-				/* timer mode, timer disabled */
-				value = 0;
+				/* event counter mode or timer mode, timer disabled */
+				value = I.decrementer_count;
 
 			if (addr & 1)
 				return (value & 0xFF);
@@ -1463,6 +1461,8 @@ int TMS99XX_EXECUTE(int cycles)
 		{
 			if (mame_debug)
 			{
+				int icount_save = TMS99XX_ICOUNT;
+
 				I.FR[ 0] = READREG(R0);
 				I.FR[ 1] = READREG(R1);
 				I.FR[ 2] = READREG(R2);
@@ -1491,6 +1491,8 @@ int TMS99XX_EXECUTE(int cycles)
 				#endif
 
 				MAME_Debug();
+
+				TMS99XX_ICOUNT = icount_save;
 			}
 		}
 		#endif
@@ -1955,19 +1957,16 @@ static void reset_decrementer(void)
 {
 	timer_adjust(I.timer, TIME_NEVER, 0, 0);
 
+	/* reload count */
+	I.decrementer_count = I.decrementer_interval;
+
 	/* decrementer / timer enabled ? */
 	I.decrementer_enabled = ((I.flag & 2) && (I.decrementer_interval));
 
-	if (I.decrementer_enabled)
-	{
-		if (I.flag & 1)
-		{	/* decrementer */
-			I.decrementer_count = I.decrementer_interval;
-		}
-		else
-		{	/* timer */
-			timer_adjust(I.timer, TIME_IN_CYCLES(I.decrementer_interval * 16L, cpu_getactivecpu()), 0, 0);
-		}
+	if (I.decrementer_enabled && ! (I.flag & 1))
+	{	/* timer */
+		double period = TIME_IN_CYCLES(I.decrementer_interval * 16L, cpu_getactivecpu());
+		timer_adjust(I.timer, period, 0, period);
 	}
 }
 
@@ -2738,6 +2737,10 @@ static void contextswitch(UINT16 addr)
 
 #if HAS_MAPPING || HAS_PRIVILEGE
 
+/* priviledged context switch, that accurs after a reset, interrupt or XOP:
+we enter priviledged mode and select map file 0 before doing the context switch */
+/* For CPU that have no priviledge support, contextswitchX would behave the
+identically to contextswitch, so we can call contextswitch in all cases. */
 static void contextswitchX(UINT16 addr)
 {
 	UINT16 oldWP, oldpc, oldST;
@@ -2748,13 +2751,16 @@ static void contextswitchX(UINT16 addr)
 	setstat();
 	oldST = I.STATUS;
 
-	/* load vector */
-	#if HAS_MAPPING || HAS_PRIVILEGE
-		I.STATUS = oldST & ~ (ST_PR | ST_MF);
-	#else
-		#warning "Todo..."
+	/* enter priviledged mode and select map file 0 */
+	#if HAS_PRIVILEGE
+		I.STATUS &= ~ ST_PR;
+	#endif
+	#if HAS_MAPPING
+		I.STATUS &= ~ ST_MF;
 	#endif
 	getstat();
+
+	/* load vector */
 	I.WP = readword(addr) & ~1;
 	I.PC = readword(addr+2) & ~1;
 

@@ -34,6 +34,7 @@ CARTMODULE(vic20,    "Commodore Vic-20 Cartridge",		"a0")
 
 IMAGEMODULE_EXTERN(coco_rsdos);			/* CoCo RS-DOS disks */
 IMAGEMODULE_EXTERN(cococas);			/* CoCo cassettes */
+IMAGEMODULE_EXTERN(concept);			/* Concept Disks */
 IMAGEMODULE_EXTERN(msdos);				/* FAT/MSDOS diskett images */
 IMAGEMODULE_EXTERN(msdoshd);			/* FAT/MSDOS harddisk images */
 IMAGEMODULE_EXTERN(lynx);				/* c64 archive */
@@ -83,7 +84,7 @@ IMAGEMODULE_EXTERN(ti86e);		/* TI-86 equation file */
 IMAGEMODULE_EXTERN(ti86r);		/* TI-86 range settings file */
 IMAGEMODULE_EXTERN(ti86g);		/* TI-86 grouped file */
 IMAGEMODULE_EXTERN(ti86);		/* TI-86 file */
-IMAGEMODULE_EXTERN(ti99);		/* TI99 floppy (MESS format) */
+IMAGEMODULE_EXTERN(ti99_old);	/* TI99 floppy (old MESS format) */
 IMAGEMODULE_EXTERN(v9t9);		/* TI99 floppy (V9T9 format) */
 IMAGEMODULE_EXTERN(pc99fm);		/* TI99 floppy (PC99 FM format) */
 IMAGEMODULE_EXTERN(pc99mfm);	/* TI99 floppy (PC99 MFM format) */
@@ -93,6 +94,7 @@ static const ImageModule_ctor module_ctors[] =
 {
 	IMAGEMODULE_DECL(coco_rsdos),
 	IMAGEMODULE_DECL(cococas),
+	IMAGEMODULE_DECL(concept),
 	IMAGEMODULE_DECL(msdos),
 	IMAGEMODULE_DECL(msdoshd),
 	IMAGEMODULE_DECL(nes),
@@ -161,7 +163,7 @@ static const ImageModule_ctor module_ctors[] =
 	IMAGEMODULE_DECL(ti86r),
 	IMAGEMODULE_DECL(ti86g),
 	IMAGEMODULE_DECL(ti86),
-	IMAGEMODULE_DECL(ti99),
+	IMAGEMODULE_DECL(ti99_old),
 	IMAGEMODULE_DECL(v9t9),
 	IMAGEMODULE_DECL(pc99fm),
 	IMAGEMODULE_DECL(pc99mfm),

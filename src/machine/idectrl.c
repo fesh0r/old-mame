@@ -38,6 +38,8 @@
  *
  *************************************/
 
+#define IDE_DISK_SECTOR_SIZE		512
+
 #define TIME_PER_SECTOR				(TIME_IN_USEC(100))
 #define TIME_PER_ROTATION			(TIME_IN_HZ(5400/60))
 
@@ -104,8 +106,8 @@ struct ide_state
 	UINT8	interrupt_pending;
 	UINT8	precomp_offset;
 
-	UINT8	buffer[HARD_DISK_SECTOR_SIZE];
-	UINT8	features[HARD_DISK_SECTOR_SIZE];
+	UINT8	buffer[IDE_DISK_SECTOR_SIZE];
+	UINT8	features[IDE_DISK_SECTOR_SIZE];
 	UINT16	buffer_offset;
 	UINT16	sector_count;
 
@@ -233,6 +235,9 @@ int ide_controller_init_custom(int which, struct ide_interface *intf, void *disk
 		ide->num_cylinders = header->cylinders;
 		ide->num_sectors = header->sectors;
 		ide->num_heads = header->heads;
+		if (header->seclen != IDE_DISK_SECTOR_SIZE)
+			/* wrong sector len */
+			return 1;
 #if PRINTF_IDE_COMMANDS
 		printf("CHS: %d %d %d\n", ide->num_cylinders, ide->num_sectors, ide->num_heads);
 #endif
@@ -401,7 +406,7 @@ static void ide_build_features(struct ide_state *ide)
 {
 	int total_sectors = ide->num_cylinders * ide->num_heads * ide->num_sectors;
 
-	memset(ide->buffer, 0, HARD_DISK_SECTOR_SIZE);
+	memset(ide->buffer, 0, IDE_DISK_SECTOR_SIZE);
 
 	/* basic geometry */
 	ide->features[ 0*2+0] = 0x5a;						/*  0: configuration bits */
@@ -513,7 +518,7 @@ static void continue_read(struct ide_state *ide)
 
 static void write_buffer_to_dma(struct ide_state *ide)
 {
-	int bytesleft = HARD_DISK_SECTOR_SIZE;
+	int bytesleft = IDE_DISK_SECTOR_SIZE;
 	UINT8 *data = ide->buffer;
 	
 //	LOG(("Writing sector to %08X\n", ide->dma_address));
@@ -647,7 +652,7 @@ static void continue_write(struct ide_state *ide)
 
 static void read_buffer_from_dma(struct ide_state *ide)
 {
-	int bytesleft = HARD_DISK_SECTOR_SIZE;
+	int bytesleft = IDE_DISK_SECTOR_SIZE;
 	UINT8 *data = ide->buffer;
 	
 //	LOG(("Reading sector from %08X\n", ide->dma_address));
@@ -763,7 +768,7 @@ static void write_sector_done(int which)
  *
  *************************************/
 
-static void handle_command(struct ide_state *ide, UINT8 command)
+void handle_command(struct ide_state *ide, UINT8 command)
 {
 	/* implicitly clear interrupts here */
 	clear_interrupt(ide);
@@ -959,7 +964,7 @@ static UINT32 ide_controller_read(struct ide_state *ide, offs_t offset, int size
 				}
 
 				/* if we're at the end of the buffer, handle it */
-				if (ide->buffer_offset >= HARD_DISK_SECTOR_SIZE)
+				if (ide->buffer_offset >= IDE_DISK_SECTOR_SIZE)
 					continue_read(ide);
 			}
 			break;
@@ -1067,7 +1072,7 @@ static void ide_controller_write(struct ide_state *ide, offs_t offset, int size,
 				}
 
 				/* if we're at the end of the buffer, handle it */
-				if (ide->buffer_offset >= HARD_DISK_SECTOR_SIZE)
+				if (ide->buffer_offset >= IDE_DISK_SECTOR_SIZE)
 					continue_write(ide);
 			}
 			break;
@@ -1219,6 +1224,68 @@ static void ide_bus_master_write(struct ide_state *ide, offs_t offset, int size,
 
 /*************************************
  *
+ *	IDE direct handlers (16-bit)
+ *
+ *************************************/
+
+/*
+	ide_bus_0_r()
+
+	Read a 16-bit word from the IDE bus directly.
+
+	select: 0->CS1Fx active, 1->CS3Fx active
+	offset: register offset (state of DA2-DA0)
+*/
+int ide_bus_0_r(int select, int offset)
+{
+	/*int shift;*/
+
+	offset += select ? 0x3f0 : 0x1f0;
+	/*if (offset == 0x1f0)
+	{
+		return ide_controller32_0_r(offset >> 2, 0xffff0000);
+	}
+	else
+	{
+		shift = (offset & 3) * 8;
+		return (ide_controller32_0_r(offset >> 2, ~ (0xff << shift)) >> shift);
+	}*/
+	return ide_controller_read(&idestate[0], offset, (offset == 0x1f0) ? 2 : 1);
+}
+
+/*
+	ide_bus_0_w()
+
+	Write a 16-bit word to the IDE bus directly.
+
+	select: 0->CS1Fx active, 1->CS3Fx active
+	offset: register offset (state of DA2-DA0)
+	data: data written (state of D0-D15 or D0-D7)
+*/
+void ide_bus_0_w(int select, int offset, int data)
+{
+	/*int shift;*/
+
+	offset += select ? 0x3f0 : 0x1f0;
+	/*if (offset == 0x1f0)
+	{
+		ide_controller32_0_w(offset >> 2, data, 0xffff0000);
+	}
+	else
+	{
+		shift = (offset & 3) * 8;
+		ide_controller32_0_w(offset >> 2, data << shift, ~ (0xff << shift));
+	}*/
+	if (offset == 0x1f0)
+		ide_controller_write(&idestate[0], offset, 2, data);
+	else
+		ide_controller_write(&idestate[0], offset, 1, data & 0xff);
+}
+
+
+
+/*************************************
+ *
  *	32-bit IDE handlers
  *
  *************************************/
@@ -1279,7 +1346,7 @@ READ16_HANDLER( ide_controller16_0_r )
 	int size;
 
 	offset *= 2;
-	size = convert_to_offset_and_size(&offset, 0xffff0000 | mem_mask);
+	size = convert_to_offset_and_size(&offset, mem_mask);
 
 	return ide_controller_read(&idestate[0], offset, size) << ((offset & 1) * 8);
 }
@@ -1290,7 +1357,7 @@ WRITE16_HANDLER( ide_controller16_0_w )
 	int size;
 
 	offset *= 2;
-	size = convert_to_offset_and_size(&offset, 0xffff0000 | mem_mask);
+	size = convert_to_offset_and_size(&offset, mem_mask);
 
 	ide_controller_write(&idestate[0], offset, size, data >> ((offset & 1) * 8));
 }
