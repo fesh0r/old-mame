@@ -6,11 +6,12 @@
 
 #include <assert.h>
 #include "driver.h"
+#include "image.h"
 #include "vidhrdw/generic.h"
 #include "cpu/m6502/m6502.h"
 
 #include "includes/svision.h"
-#include "image.h"
+#include "devices/cartslot.h"
 
 /*
 supervision
@@ -380,16 +381,10 @@ ROM_END
  dd6a clear 0x2000 at ($57/58) (0x4000)
  */
 
-static int svision_load_rom(int id, mame_file *cartfile, int open_mode)
+static int svision_cart_load(int id, mame_file *cartfile, int open_mode)
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
 	int size;
-
-	if (cartfile == NULL)
-	{
-		printf("%s requires Cartridge!\n", Machine->gamedrv->name);
-		return 0;
-	}
 
 	size = mame_fsize(cartfile);
 	if (size>0x10000) {
@@ -409,7 +404,7 @@ static int svision_load_rom(int id, mame_file *cartfile, int open_mode)
 }
 
 SYSTEM_CONFIG_START(svision)
-	CONFIG_DEVICE_CARTSLOT(1, "bin\0", svision_load_rom, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_REQ(1, "bin\0", NULL, NULL, svision_cart_load, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************

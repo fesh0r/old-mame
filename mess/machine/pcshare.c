@@ -34,7 +34,7 @@
 #include "includes/pc_mda.h"
 #include "includes/pc_aga.h"
 
-#include "includes/pc_flopp.h"
+#include "devices/pc_flopp.h"
 #include "includes/pc_mouse.h"
 #include "includes/pckeybrd.h"
 #include "includes/pc_fdc_h.h"
@@ -42,7 +42,7 @@
 #include "includes/pclpt.h"
 #include "includes/centroni.h"
 
-#include "includes/pc_hdc.h"
+#include "devices/pc_hdc.h"
 #include "includes/nec765.h"
 
 #include "includes/pcshare.h"
@@ -801,10 +801,10 @@ static void pc_keyb_timer(int param)
 
 void pc_keyb_set_clock(int on)
 {
-	if ((!pc_keyb.on)&&on) {
+	if (!pc_keyb.on && on)
 		timer_set(1/200.0, 0, pc_keyb_timer);
-	}
-	pc_keyb.on=on;
+
+	pc_keyb.on = on;
 	// NPW 2-Feb-2001 - Disabling this because it appears to cause problems
 	//pc_keyboard();
 }

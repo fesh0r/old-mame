@@ -16,9 +16,9 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 #include "includes/oric.h"
-#include "includes/flopdrv.h"
+#include "devices/flopdrv.h"
 #include "includes/centroni.h"
-#include "printer.h"
+#include "devices/printer.h"
 
 #include "includes/apple2.h"
 
@@ -541,12 +541,12 @@ SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(oric1)
 	CONFIG_IMPORT_FROM(oric_common)
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 4, "dsk\0", IO_RESET_NONE, OSD_FOPEN_RW_CREATE_OR_READ, oric_floppy_init, oric_floppy_exit, floppy_status)
+	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 4, "dsk\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_CREATE_OR_READ, NULL, NULL, oric_floppy_load, oric_floppy_unload, floppy_status)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(prav8)
 	CONFIG_IMPORT_FROM(oric_common)
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 1, "dsk\0bin\0", IO_RESET_NONE, OSD_FOPEN_READ, apple2_floppy_init, NULL, NULL)
+	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 1, "dsk\0bin\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, apple2_floppy_load, NULL, NULL)
 SYSTEM_CONFIG_END
 
 

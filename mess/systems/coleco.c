@@ -20,6 +20,7 @@
 #include "sound/sn76496.h"
 #include "vidhrdw/tms9928a.h"
 #include "includes/coleco.h"
+#include "devices/cartslot.h"
 
 static MEMORY_READ_START( coleco_readmem )
     { 0x0000, 0x1FFF, MRA_ROM },  /* COLECO.ROM */
@@ -214,7 +215,7 @@ ROM_END
 //ROM_END
 
 SYSTEM_CONFIG_START(coleco)
-	CONFIG_DEVICE_CARTSLOT( 1, "rom\0col\0", coleco_init_cart, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT( 1, "rom\0col\0", NULL, NULL, coleco_cart_load, NULL, coleco_cart_verify, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************

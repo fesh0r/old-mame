@@ -16,7 +16,7 @@
 #include "includes/bbc.h"
 #include "includes/upd7002.h"
 #include "includes/i8271.h"
-#include "includes/basicdsk.h"
+#include "devices/basicdsk.h"
 #include "image.h"
 
 int startbank;
@@ -783,7 +783,7 @@ BBC_uPD7002= {
 
 int bbc_floppy_init(int id, mame_file *fp, int open_mode)
 {
-	if (basicdsk_floppy_init(id, fp, open_mode)==INIT_PASS)
+	if (basicdsk_floppy_load(id, fp, open_mode)==INIT_PASS)
 	{
 		/* sector id's 0-9 */
 		/* drive, tracks, heads, sectors per track, sector length, dir_sector, dir_length, first sector id */
@@ -1073,7 +1073,7 @@ WRITE_HANDLER ( bbc_wd1770_write )
 int bbcb_load_rom(int id, mame_file *fp, int open_mode)
 {
 	UINT8 *mem = memory_region (REGION_USER1);
-	int size, read;
+	int size, read_;
 	int addr = 0;
 
 	if (fp == NULL)
@@ -1089,19 +1089,19 @@ int bbcb_load_rom(int id, mame_file *fp, int open_mode)
 
 	switch (size) {
 	case 0x2000:
-		read = mame_fread (fp, mem + addr, size);
-		read = mame_fread (fp, mem + addr + 0x2000, size);
+		read_ = mame_fread (fp, mem + addr, size);
+		read_ = mame_fread (fp, mem + addr + 0x2000, size);
 		break;
 	case 0x4000:
-		read = mame_fread (fp, mem + addr, size);
+		read_ = mame_fread (fp, mem + addr, size);
 		break;
 	default:
-		read=0;
+		read_ = 0;
 		logerror("bad rom file size of %.4x\n",size);
 		break;
 	}
 
-	if (read != size)
+	if (read_ != size)
 		return 1;
 	return 0;
 }

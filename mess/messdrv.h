@@ -35,10 +35,13 @@ struct IODevice
 	int type;
 	int count;
 	const char *file_extensions;
-	int reset_depth;
+	int flags;
 	int open_mode;
-	int (*init)(int id, mame_file *fp, int open_mode);
+	int (*init)(int id);
 	void (*exit)(int id);
+	int (*load)(int id, mame_file *fp, int open_mode);
+	void (*unload)(int id);
+	int (*verify)(const UINT8 *buf, size_t size);
 	const void *(*info)(int id, int whatinfo);
 	int (*open)(int id, int mode, void *args);
 	void (*close)(int id);
@@ -47,7 +50,7 @@ struct IODevice
     int (*tell)(int id);
 	int (*input)(int id);
 	void (*output)(int id, int data);
-	UINT32 (*partialcrc)(const unsigned char *buf, unsigned int size);
+	UINT32 (*partialcrc)(const UINT8 *buf, size_t size);
 	void (*display)(struct mame_bitmap *bitmap, int id);
 	void *user1;
 	void *user2;
@@ -92,30 +95,29 @@ struct SystemConfigurationParamBlock
 #define CONFIG_GET_CUSTOM_DEVICENAME(get_custom_devicename__)								\
 	cfg->get_custom_devicename = get_custom_devicename_##get_custom_devicename__;			\
 
-#define CONFIG_DEVICE(type, count, file_extensions, reset_depth, open_mode, init, exit,		\
-				info, open, close, status, seek, tell, input, output, partialcrc, display)	\
+#define CONFIG_DEVICE_BASE(type, count, file_extensions, flags, open_mode, init, exit,		\
+		load, unload, verify, info, open, close, status, seek, tell, input, output,			\
+		partialcrc, display)																\
 	if (cfg->device_num-- == 0)																\
 	{																						\
-		static struct IODevice device = { (type), (count), (file_extensions), (reset_depth),\
-			(open_mode), (init), (exit), (info), (open), (close), (status), (seek),			\
-			(tell), (input), (output), (partialcrc), (display), NULL, NULL };				\
+		static struct IODevice device = { (type), (count), (file_extensions), (flags),		\
+			(open_mode), (init), (exit), (load), (unload), (verify), (info), (open),		\
+			(close), (status), (seek), (tell), (input), (output), (partialcrc), (display),	\
+			NULL, NULL };																	\
 		cfg->dev = &device;																	\
 	}																						\
 
-#define CONFIG_DEVICE_CARTSLOT(count,file_extensions,init,exit,partialcrc)					\
-	CONFIG_DEVICE(IO_CARTSLOT, (count), (file_extensions), IO_RESET_CPU, OSD_FOPEN_READ,	\
-		(init), (exit),	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (partialcrc), NULL)	\
+#define CONFIG_DEVICE_LEGACY(type, count, file_extensions, flags, open_mode,				\
+		init, exit, load, unload, status)													\
+	CONFIG_DEVICE_BASE((type), (count), (file_extensions), (flags), (open_mode), (init),	\
+		(exit), (load), (unload), NULL, NULL, NULL, NULL, (status), NULL, NULL, NULL, NULL, NULL, NULL)		\
 
-#define CONFIG_DEVICE_LEGACY(type, count, file_extensions, reset_depth, open_mode,			\
-		init, exit, status)																	\
-	CONFIG_DEVICE((type), (count), (file_extensions), (reset_depth), (open_mode),			\
-		(init), (exit), NULL, NULL, NULL, (status), NULL, NULL, NULL, NULL, NULL, NULL)		\
-
-#define CONFIG_DEVICE_LEGACYX(type, count, file_extensions, reset_depth, open_mode,			\
-		init, exit, open, status)															\
-	CONFIG_DEVICE((type), (count), (file_extensions), (reset_depth), (open_mode),			\
-		(init), (exit), NULL, (open), NULL, (status), NULL, NULL, NULL, NULL, NULL, NULL)	\
-
+#define CONFIG_DEVICE_LEGACYX(type, count, file_extensions, flags, open_mode,				\
+		init, exit, load, unload, open, status)												\
+	CONFIG_DEVICE_BASE((type), (count), (file_extensions), (flags), (open_mode),			\
+		(init), (exit), (load), (unload), NULL, NULL, (open), NULL, (status), NULL, NULL, NULL,	\
+		NULL, NULL, NULL)	\
+	
 /*****************************************************************************/
 
 #define GET_CUSTOM_DEVICENAME(name)															\

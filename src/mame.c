@@ -388,9 +388,9 @@ static int init_machine(void)
 
 #ifdef MESS
 	/* initialize the devices */
-	if (init_devices(gamedrv))
+	if (devices_init(gamedrv) || devices_initialload(gamedrv, TRUE))
 	{
-		logerror("init_devices failed\n");
+		logerror("devices_init failed\n");
 		goto cant_load_roms;
 	}
 #endif
@@ -573,7 +573,7 @@ static void shutdown_machine(void)
 
 #ifdef MESS
 	/* close down any devices */
-	exit_devices();
+	devices_exit();
 #endif
 
 	/* release any allocated memory */
@@ -691,7 +691,7 @@ static int vh_open(void)
 		goto cant_create_scrbitmap;
 
 	/* set the default visible area */
-	set_visible_area(0,1,0,1);	// make sure everything is recalculated on multiple runs
+	set_visible_area(0,1,0,1);	/* make sure everything is recalculated on multiple runs */
 	set_visible_area(
 			Machine->drv->default_visible_area.min_x,
 			Machine->drv->default_visible_area.max_x,
@@ -1260,12 +1260,14 @@ static void recompute_fps(int skipped_it)
 	vfcount++;
 	if (vfcount >= (int)Machine->drv->frames_per_second)
 	{
+#ifndef MESS
 		/* from vidhrdw/avgdvg.c */
 		extern int vector_updates;
 
-		vfcount -= (int)Machine->drv->frames_per_second;
 		performance.vector_updates_last_second = vector_updates;
 		vector_updates = 0;
+#endif
+		vfcount -= (int)Machine->drv->frames_per_second;
 	}
 }
 
@@ -1302,11 +1304,7 @@ int updatescreen(void)
 
 	/* call the end-of-frame callback */
 	if (Machine->drv->video_eof)
-	{
-		profiler_mark(PROFILER_VIDEO);
 		(*Machine->drv->video_eof)();
-		profiler_mark(PROFILER_END);
-	}
 
 	return 0;
 }

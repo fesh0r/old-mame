@@ -41,10 +41,12 @@
 /***************************************************************************
 	Internal variables
  ***************************************************************************/
+#ifndef PATH_SEPARATOR
 #ifdef _MSC_VER
 #define PATH_SEPARATOR '\\'
 #else
 #define PATH_SEPARATOR '/'
+#endif
 #endif
 
 
@@ -236,7 +238,7 @@ char* MyStrStrI(const char* pFirst, const char* pSrch)
 
 char * ConvertToWindowsNewlines(const char *source)
 {
-	static char buf[4000];
+	static char buf[9000];
 	char *dest;
 
 	dest = buf;

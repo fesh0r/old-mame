@@ -83,11 +83,11 @@
 #include "vidhrdw/tms9928a.h"
 #include "cpu/z80/z80.h"
 #include "includes/wd179x.h"
-#include "includes/basicdsk.h"
+#include "devices/basicdsk.h"
 #include "includes/msm8251.h"
-#include "includes/dsk.h"
+#include "devices/dsk.h"
 #include "includes/centroni.h"
-#include "printer.h"
+#include "devices/printer.h"
 #include "image.h"
 
 #define EINSTEIN_SYSTEM_CLOCK 4000000

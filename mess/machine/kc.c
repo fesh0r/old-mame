@@ -160,7 +160,7 @@ int kc85_floppy_init(int id, mame_file *fp, int open_mode)
 	if (fp == NULL)
 		return INIT_PASS;
 
-	if (basicdsk_floppy_init(id, fp, open_mode)==INIT_PASS)
+	if (basicdsk_floppy_load(id, fp, open_mode)==INIT_PASS)
 	{
 		basicdsk_set_geometry(id, 80, 2, 9, 512, 1, 0);
 		return INIT_PASS;
@@ -233,22 +233,16 @@ WRITE_HANDLER(kc85_disc_hw_terminal_count_w)
 static void kc85_fdc_interrupt(int state)
 {
 	kc85_disc_hw_input_gate &=~(1<<6);
-
 	if (state)
-	{
 		kc85_disc_hw_input_gate |=(1<<6);
-	}
 }
 
 /* callback for /DRQ output from FDC */
-static void kc85_fdc_dma_drq(int state, int read)
+static void kc85_fdc_dma_drq(int state, int read_)
 {
 	kc85_disc_hw_input_gate &=~(1<<7);
-
 	if (state)
-	{
 		kc85_disc_hw_input_gate |=(1<<7);
-	}
 }
 
 static struct nec765_interface kc_fdc_interface=

@@ -35,9 +35,22 @@ BOOL    FindRomSet(int game);
 BOOL    FindSampleSet(int game);
 
 /* Get Game status text string */
-const char*   GameInfoStatus(UINT game);
+const char *GameInfoStatus(int driver_index);
 
-/* Get Game history information */
-char*   GameHistory(int game_index);
+/* Property sheet info for layout.c */
+typedef struct
+{
+	BOOL bOnDefaultPage;
+	BOOL (*pfnFilterProc)(const struct InternalMachineDriver *drv, const struct GameDriver *gamedrv);
+	DWORD dwDlgID;
+	DLGPROC pfnDlgProc;
+} PROPERTYSHEETINFO;
+
+extern const PROPERTYSHEETINFO g_propSheets[];
+
+BOOL PropSheetFilter_Vector(const struct InternalMachineDriver *drv, const struct GameDriver *gamedrv);
+
+INT_PTR CALLBACK GamePropertiesDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam);
 
 #endif

@@ -819,9 +819,6 @@ static void c64_common_driver_init (void)
 	if (c64_cia1_on)
 	{
 		cbm_drive_open ();
-
-		cbm_drive_attach_fs (0);
-		cbm_drive_attach_fs (1);
 	}
 
 	cia6526_init();
@@ -865,10 +862,6 @@ void ultimax_driver_init (void)
 	ultimax = 1;
     c64_cia1_on = 0;
 	c64_common_driver_init ();
-	if (cbm_rom[0].size==0) {
-	  printf("no cartridge found\n");
-	  exit(1);
-	}
 }
 
 void c64gs_driver_init (void)
@@ -881,7 +874,7 @@ void c64gs_driver_init (void)
 
 void sx64_driver_init (void)
 {
-	VC1541_CONFIG vc1541= { 1, 8 };
+	VC1541_CONFIG vc1541 = { 1, 8 };
 	c64_tape_on = 0;
 	c64_pal = 1;
 	c64_common_driver_init ();
@@ -1109,21 +1102,12 @@ void c64_rom_load(void)
 
 INTERRUPT_GEN( c64_frame_interrupt )
 {
-	static int quickload = 0;
 	static int monitor=-1;
 	int value, value2;
 
 	sid6581_update();
 
 	c64_nmi();
-
-	if (!quickload && QUICKLOAD) {
-		if (c65) {
-			cbm_c65_quick_open (0, 0, c64_memory);
-		} else
-			cbm_quick_open (0, 0, c64_memory);
-	}
-	quickload = QUICKLOAD;
 
 	if (c128) {
 		if (MONITOR_TV!=monitor) {

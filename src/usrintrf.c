@@ -16,7 +16,8 @@
 #include "state.h"
 
 #ifdef MESS
-  #include "mess.h"
+#include "mess.h"
+#include "mesintrf.h"
 #endif
 
 
@@ -1333,7 +1334,7 @@ static void showcharset(struct mame_bitmap *bitmap)
 			{
 				bank = next_bank;
 				mode = next_mode;
-//				firstdrawn = 0;
+				/* firstdrawn = 0; */
 				changed = 1;
 			}
 		}
@@ -1369,7 +1370,7 @@ static void showcharset(struct mame_bitmap *bitmap)
 			{
 				bank = next_bank;
 				mode = next_mode;
-//				firstdrawn = 0;
+				/* firstdrawn = 0; */
 				changed = 1;
 			}
 		}
@@ -2288,7 +2289,7 @@ int showcopyright(struct mame_bitmap *bitmap)
 	strcat (buf, "\n\n");
 	strcat (buf, ui_getstring(UI_copyright3));
 
-	setup_selected = -1;////
+	setup_selected = -1;
 	done = 0;
 
 	do
@@ -2300,7 +2301,7 @@ int showcopyright(struct mame_bitmap *bitmap)
 		update_video_and_audio();
 		if (input_ui_pressed(IPT_UI_CANCEL))
 		{
-			setup_selected = 0;////
+			setup_selected = 0;
 			return 1;
 		}
 		if (keyboard_pressed_memory(KEYCODE_O) ||
@@ -2311,7 +2312,7 @@ int showcopyright(struct mame_bitmap *bitmap)
 			done = 2;
 	} while (done < 2);
 
-	setup_selected = 0;////
+	setup_selected = 0;
 	erase_screen(bitmap);
 	update_video_and_audio();
 
@@ -2624,12 +2625,14 @@ int showgameinfo(struct mame_bitmap *bitmap)
 		update_video_and_audio();
 	}
 
-	#ifdef MESS
+#ifdef MESS
+#if 0
 	while (displayimageinfo(bitmap,0) == 1)
 	{
 		update_video_and_audio();
 	}
-	#endif
+#endif
+#endif
 
 	erase_screen(bitmap);
 	/* make sure that the screen is really cleared, in case autoframeskip kicked in */
@@ -3302,7 +3305,7 @@ static void displayosd(struct mame_bitmap *bitmap,const char *text,int percentag
 }
 
 /* K.Wilkins Feb2003 Additional of Disrete Sound System ADJUSTMENT sliders */
-
+#if HAS_DISCRETE
 static void onscrd_discrete(struct mame_bitmap *bitmap,int increment,int arg)
 {
 	int ourval,initial;
@@ -3368,7 +3371,7 @@ static void onscrd_discrete(struct mame_bitmap *bitmap,int increment,int arg)
 	}
 	displayosd(bitmap,buf,ourval,initial);
 }
-
+#endif /* HAS_DISCRETE */
 /* K.Wilkins Feb2003 Additional of Disrete Sound System ADJUSTMENT sliders */
 
 static void onscrd_volume(struct mame_bitmap *bitmap,int increment,int arg)
@@ -3599,7 +3602,10 @@ static int onscrd_total_items;
 
 static void onscrd_init(void)
 {
-	int item,ch,soundnum;
+	int item,ch;
+#if HAS_DISCRETE
+	int soundnum;
+#endif /* HAS_DISCRETE */
 
 
 	item = 0;
@@ -3621,7 +3627,7 @@ static void onscrd_init(void)
 		}
 
 		/* K.Wilkins Feb2003 Additional of Disrete Sound System ADJUSTMENT sliders */
-
+#if HAS_DISCRETE
 		/* See if there is a discrete sound sub-system present */
 		for (soundnum = 0; soundnum < MAX_SOUND; soundnum++)
 		{
@@ -3642,7 +3648,7 @@ static void onscrd_init(void)
 				}
 			}
 		}
-
+#endif /* HAS_DISCRETE */
 		/* K.Wilkins Feb2003 Additional of Disrete Sound System ADJUSTMENT sliders */
 	}
 

@@ -6,13 +6,14 @@
 
 ******************************************************************************/
 
-#include "driver.h"
-#include "cpu/m6502/m6502.h"
-
-#include "includes/lynx.h"
-#include "image.h"
-#include "snapquik.h"
 #include <zlib.h>
+
+#include "driver.h"
+#include "image.h"
+#include "cpu/m6502/m6502.h"
+#include "devices/snapquik.h"
+#include "devices/cartslot.h"
+#include "includes/lynx.h"
 
 static int rotate=0;
 int lynx_rotate;
@@ -251,7 +252,7 @@ ROM_START(lynx2)
 	ROM_REGION(0x100000, REGION_USER1, 0)
 ROM_END
 
-UINT32 lynx_partialcrc(const unsigned char *buf,unsigned int size)
+UINT32 lynx_partialcrc(const unsigned char *buf, size_t size)
 {
 	unsigned int crc;
 
@@ -287,7 +288,7 @@ static void lynx_crc_keyword(int io_device, int id)
 }
 
 
-static int lynx_init_cart(int id, mame_file *cartfile, int open_mode)
+static int lynx_cart_load(int id, mame_file *cartfile, int open_mode)
 {
 	UINT8 *rom = memory_region(REGION_USER1);
 	int size;
@@ -299,9 +300,6 @@ static int lynx_init_cart(int id, mame_file *cartfile, int open_mode)
    32 chars name
    22 chars manufacturer
 */
-
-	if (cartfile == NULL)
-		return 0;
 
 	size=mame_fsize(cartfile);
 	if (mame_fread(cartfile, header, 0x40)!=0x40) {
@@ -355,8 +353,8 @@ static QUICKLOAD_LOAD( lynx )
 }
 
 SYSTEM_CONFIG_START(lynx)
-	CONFIG_DEVICE_CARTSLOT(1, "lnx\0",	lynx_init_cart, NULL, lynx_partialcrc)
-	CONFIG_DEVICE_QUICKLOAD(  "o\0",	lynx)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "lnx\0", NULL, NULL, lynx_cart_load, NULL, NULL, lynx_partialcrc)
+	CONFIG_DEVICE_QUICKLOAD(  "o\0", lynx )
 SYSTEM_CONFIG_END
 
 /***************************************************************************

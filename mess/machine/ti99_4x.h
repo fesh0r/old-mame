@@ -74,7 +74,9 @@ enum
 {
 	input_port_config = 0,
 	input_port_keyboard,
-	input_port_caps_lock = input_port_keyboard+8	/* /4a only */
+	input_port_caps_lock = input_port_keyboard+4,		/* /4a only */
+	input_port_IR_joysticks = input_port_keyboard+4,	/* /4 only */
+	input_port_IR_keypads = input_port_IR_joysticks+8	/* /4 only */
 };
 
 /* defines for input port input_port_config */
@@ -87,7 +89,10 @@ enum
 	config_fdc_bit		= 4,
 	config_fdc_mask		= 0x3,	/* 2 bits */
 	config_rs232_bit	= 6,
-	config_rs232_mask	= 0x1
+	config_rs232_mask	= 0x1,
+	/* next option only makes sense for ti99/4 */
+	config_handsets_bit	= 7,
+	config_handsets_mask= 0x1
 };
 
 
@@ -101,12 +106,12 @@ void init_ti99_4p(void);
 void machine_init_ti99(void);
 void machine_stop_ti99(void);
 
-int ti99_floppy_init(int id, mame_file *fp, int open_mode);
+int ti99_floppy_load(int id, mame_file *fp, int open_mode);
 
-int ti99_cassette_init(int id, mame_file *fp, int open_mode);
+int ti99_cassette_load(int id, mame_file *fp, int open_mode);
 
-int ti99_load_rom(int id, mame_file *fp, int open_mode);
-void ti99_rom_cleanup(int id);
+int ti99_rom_load(int id, mame_file *fp, int open_mode);
+void ti99_rom_unload(int id);
 
 int video_start_ti99_4(void);
 int video_start_ti99_4a(void);

@@ -508,8 +508,6 @@ static void c16_common_driver_init (void)
 	c16_tape_open ();
 
 	cbm_drive_open ();
-	cbm_drive_attach_fs (0);
-	cbm_drive_attach_fs (1);
 
 	if (REAL_C1551)
 		c1551_config (0, 0, &config);
@@ -742,11 +740,10 @@ void c16_rom_exit (int id)
 
 int c16_rom_load (int id)
 {
-	const char *name = image_filename(IO_CARTSLOT,id);
-    UINT8 *mem = memory_region (REGION_CPU1);
+	UINT8 *mem = memory_region (REGION_CPU1);
 	mame_file *fp = rom_fp[id];
-	int size, read;
-	char *cp;
+	int size, read_;
+	const char *filetype;
 	static unsigned int addr = 0;
 
 	if (rom_fp[id] == NULL)
@@ -756,40 +753,33 @@ int c16_rom_load (int id)
 
 	size = mame_fsize (fp);
 
-	if ((cp = strrchr (name, '.')) != NULL)
+	filetype = image_filetype(IO_CARTSLOT, id);	
+	if (filetype && !stricmp (filetype, "prg"))
 	{
-		if (stricmp (cp, ".prg") == 0)
-		{
-			unsigned short in;
+		unsigned short in;
 
-			mame_fread_lsbfirst (fp, &in, 2);
-			logerror("rom prg %.4x\n", in);
-			addr = in+0x20000;
-			size -= 2;
-		}
+		mame_fread_lsbfirst (fp, &in, 2);
+		logerror("rom prg %.4x\n", in);
+		addr = in + 0x20000;
+		size -= 2;
 	}
 	if (addr == 0)
 	{
 		addr = 0x20000;
 	}
-	logerror("loading rom %s at %.5x size:%.4x\n", name, addr, size);
-	read = mame_fread (fp, mem + addr, size);
+	logerror("loading rom at %.5x size:%.4x\n", addr, size);
+	read_ = mame_fread (fp, mem + addr, size);
 	addr += size;
-	if (read != size)
+	if (read_ != size)
 		return 1;
 	return 0;
 }
 
 INTERRUPT_GEN( c16_frame_interrupt )
 {
-	static int quickload = 0;
 	int value;
 
 	sid6581_update();
-
-	if (!quickload && QUICKLOAD)
-		cbm_quick_open (0, 0, c16_memory);
-	quickload = QUICKLOAD;
 
 	value = 0xff;
 	if (KEY_ATSIGN)

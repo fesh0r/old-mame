@@ -47,11 +47,11 @@ In Memory Of Haruki Ikeda
 #endif
 
 #include "driver.h"
+#include "sound/2612intf.h"
 #include "vidhrdw/generic.h"
-
 #include "machine/genesis.h"
 #include "vidhrdw/genesis.h"
-#include "sound/2612intf.h"
+#include "devices/cartslot.h"
 
 #define ARMLong(x) (((x << 24) | (((unsigned long) x) >> 24) | (( x & 0x0000ff00) << 8) | (( x & 0x00ff0000) >> 8)))
 
@@ -160,6 +160,7 @@ static int genesis_sharedram_r (int offset)
 
 
 #ifdef EASPORTS_HACK
+#if 0
 static READ16_HANDLER(cartridge_ram_r)
 {
 	logerror("cartridge ram read.. %x\n", offset);
@@ -170,6 +171,7 @@ static WRITE16_HANDLER(cartridge_ram_w)
 	logerror("cartridge ram write.. %x to %x\n", data, offset);
 	cartridge_ram[offset] = data;
 }
+#endif
 #endif
 
 static MEMORY_READ16_START(genesis_readmem)
@@ -338,7 +340,7 @@ ROM_START(genesis)
 ROM_END
 
 SYSTEM_CONFIG_START(genesis)
-	CONFIG_DEVICE_CARTSLOT( 1, "smd\0bin\0md\0", genesis_init_cart, NULL, genesis_partialcrc)
+	CONFIG_DEVICE_CARTSLOT_REQ( 1, "smd\0bin\0md\0", NULL, NULL, genesis_load_cart, NULL, NULL, genesis_partialcrc)
 SYSTEM_CONFIG_END
 
 /***************************************************************************

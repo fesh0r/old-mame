@@ -53,7 +53,7 @@ enum
 	FLAG_INVAL_LINEINFO		= 2,
 	FLAG_BORDER_MODIFIED	= 4,
 	FLAG_ENDIAN_FLIP		= 8,
-	FLAG_FIRST_DRAW			= 16
+	FLAG_FULL_REFRESH		= 16
 };
 static UINT8 flags;
 
@@ -395,34 +395,6 @@ static void get_line_info(void)
 	assert(line_info.scanlines_per_row);
 }
 
-enum
-{
-	POSITION_DISPLAY,
-	POSITION_BORDER_TOP,
-	POSITION_BORDER_BOTTOM,
-	POSITION_BORDER_LEFT,
-	POSITION_BORDER_RIGHT
-};
-
-static int in_border(void)
-{
-	int scanline;
-	int horzbeampos;
-
-	scanline = cpu_getscanline();
-	if (scanline < frame_info.bordertop_scanlines)
-		return POSITION_BORDER_TOP;
-	if (scanline >= (frame_info.bordertop_scanlines + frame_info.visible_scanlines))
-		return POSITION_BORDER_BOTTOM;
-
-	horzbeampos = cpu_gethorzbeampos();
-	if (horzbeampos < line_info.borderleft_columns)
-		return POSITION_BORDER_LEFT;
-	if (horzbeampos >= (line_info.borderleft_columns + line_info.visible_columns))
-		return POSITION_BORDER_RIGHT;
-	return POSITION_DISPLAY;
-}
-
 /* ----------------------------------------------------------------------- *
  * video mode invalidation                                                 *
  * ----------------------------------------------------------------------- */
@@ -482,6 +454,7 @@ static void general_invalidate(UINT8 inval_flags_mask, void (*callback)(int), in
 		timer_set(delay, scanline, callback);
 		flags |= inval_flags_mask;
 	}
+	flags |= FLAG_FULL_REFRESH;
 	schedule_full_refresh();
 }
 
@@ -813,12 +786,16 @@ static void internal_videomap_update(struct mame_bitmap *bitmap, const struct re
 void videomap_update(struct mame_bitmap *bitmap, const struct rectangle *cliprect)
 {
 	struct mame_bitmap *bmp = bitmap;
-	int full_refresh = 1;
+	int full_refresh;
+	int is_partial_update;
 
 	if (tmpbitmap)
 	{
 		/* writing to buffered bitmap; partial refresh (except on first draw) */
-		full_refresh = (flags & FLAG_FIRST_DRAW) ? 1 : 0;
+		is_partial_update = memcmp(cliprect, &Machine->visible_area, sizeof(*cliprect));
+		full_refresh = (is_partial_update || (flags & FLAG_FULL_REFRESH)) ? 1 : 0;
+		if (!is_partial_update)
+			flags &= ~FLAG_FULL_REFRESH;
 		bmp = tmpbitmap;
 	}
 	else
@@ -858,7 +835,7 @@ int videomap_init(const struct videomap_config *config)
 	assert(config->videoram_windowsize || mess_ram_size);
 
 	callbacks = config->intf;
-	flags = FLAG_FIRST_DRAW;
+	flags = FLAG_FULL_REFRESH;
 	border_scanline = (UINT16 *) auto_malloc(Machine->drv->screen_width * sizeof(UINT16));
 	if (!border_scanline)
 		return 1;

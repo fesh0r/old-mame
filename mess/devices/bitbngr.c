@@ -2,8 +2,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "mame.h"
-#include "bitbngr.h"
-#include "printer.h"
+#include "devices/bitbngr.h"
+#include "devices/printer.h"
 #include "mess.h"
 
 static void bitbanger_overthreshhold(int id);
@@ -22,22 +22,22 @@ struct bitbanger_info
 
 static struct bitbanger_info *bitbangers[MAX_PRINTER];
 
-static int bitbanger_init(int id, mame_file *fp, int open_mode)
+static int bitbanger_init(int id)
 {
 	struct bitbanger_info *bi;
 	const struct bitbanger_config *config;
 
 	config = (const struct bitbanger_config *) device_find(Machine->gamedrv, IO_BITBANGER)->user1;
 
-	bi = (struct bitbanger_info *) image_malloc(IO_BITBANGER, id, sizeof(struct bitbanger_info));
+	bi = (struct bitbanger_info *) auto_malloc(sizeof(struct bitbanger_info));
 	if (!bi)
 		return INIT_FAIL;
 
-	bi->pulses = (double *) image_malloc(IO_BITBANGER, id, config->maximum_pulses * sizeof(double));
+	bi->pulses = (double *) auto_malloc(config->maximum_pulses * sizeof(double));
 	if (!bi->pulses)
 		return INIT_FAIL;
 
-	bi->factored_pulses = (int *) image_malloc(IO_BITBANGER, id, config->maximum_pulses * sizeof(int));
+	bi->factored_pulses = (int *) auto_malloc(config->maximum_pulses * sizeof(int));
 	if (!bi->factored_pulses)
 		return INIT_FAIL;
 
@@ -49,7 +49,7 @@ static int bitbanger_init(int id, mame_file *fp, int open_mode)
 	bi->over_threshhold = 1;
 
 	bitbangers[id] = bi;
-	return printer_init(id, fp, open_mode);
+	return INIT_PASS;
 }
 
 static void bitbanger_analyze(int id, struct bitbanger_info *bi)
@@ -150,10 +150,10 @@ void bitbanger_specify(struct IODevice *iodev, int count, const struct bitbanger
 	iodev->type = IO_BITBANGER;
 	iodev->count = count;
 	iodev->file_extensions = "prn\0";
-	iodev->reset_depth = IO_RESET_NONE;
+	iodev->flags = DEVICE_LOAD_RESETS_NONE;
 	iodev->open_mode = OSD_FOPEN_WRITE;
 	iodev->init = bitbanger_init;
-	iodev->exit = printer_exit;
+	iodev->load = printer_load;
 	iodev->status = printer_status;
 	iodev->output = bitbanger_output;
 	iodev->user1 = (char *) config;

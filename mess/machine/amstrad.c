@@ -25,8 +25,8 @@ rom/ram selection
 //#include "systems/i8255.h"
 #include "machine/8255ppi.h"
 #include "includes/nec765.h"
-#include "includes/dsk.h"
-#include "cassette.h"
+#include "devices/dsk.h"
+#include "devices/cassette.h"
 #include "image.h"
 
 void amstrad_setup_machine(void)
@@ -206,12 +206,8 @@ SNAPSHOT_LOAD(amstrad)
 	return INIT_PASS;
 }
 
-int	amstrad_plus_cartridge_init(int id, mame_file *fp, int open_mode)
+int	amstrad_plus_cartridge_load(int id, mame_file *fp, int open_mode)
 {
-	/* cpc+ requires a cartridge to be inserted to run */
-	if (!image_exists(IO_CARTSLOT, id))
-		return INIT_FAIL;
-
 	return INIT_PASS;
 }
 

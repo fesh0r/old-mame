@@ -144,12 +144,13 @@ http://www.z88forever.org.uk/zxplus3e/
 #include "vidhrdw/generic.h"
 #include "includes/spectrum.h"
 #include "eventlst.h"
-#include "snapquik.h"
+#include "devices/snapquik.h"
+#include "devices/cartslot.h"
 
 /* +3 hardware */
 #include "includes/nec765.h"
 #include "cpuintrf.h"
-#include "includes/dsk.h"
+#include "devices/dsk.h"
 
 
 extern void spectrum_128_update_memory(void);
@@ -2445,7 +2446,7 @@ SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(spectrum)
 	CONFIG_IMPORT_FROM(spectrum_common)
-	CONFIG_DEVICE_CARTSLOT(1, "rom\0", spectrum_cart_load, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "rom\0", NULL, NULL, spectrum_cart_load, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(specpls3)
@@ -2455,7 +2456,7 @@ SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(ts2068)
 	CONFIG_IMPORT_FROM(spectrum_common)
-	CONFIG_DEVICE_CARTSLOT(1, "dck\0", timex_cart_load, timex_cart_exit, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "dck\0", NULL, NULL, timex_cart_load, timex_cart_unload, NULL, NULL)
 SYSTEM_CONFIG_END
 
 /*     YEAR  NAME      PARENT    MACHINE		INPUT		INIT	CONFIG		COMPANY		FULLNAME */

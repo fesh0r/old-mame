@@ -1,3 +1,11 @@
+/***********************************************************
+
+  utils.h
+
+  Nifty utility code
+
+***********************************************************/
+
 #ifndef UTILS_H
 #define UTILS_H
 
@@ -11,7 +19,35 @@
 
 #include "osdutils.h"
 
-char *stripspace(const char *src);
+/* -----------------------------------------------------------------------
+ * GCC related optimizations
+ * ----------------------------------------------------------------------- */
+
+#ifdef __GNUC__
+#if (__GNUC__ > 2)
+#define FUNCATTR_MALLOC		__attribute__ ((malloc))
+#endif
+
+#if (__GNUC__ > 2) || (__GNUC__ == 2 && __GNUC_MINOR__ >= 96)
+#define FUNCATTR_PURE		__attribute__ ((pure))
+#endif
+
+#if (__GNUC__ > 2) || (__GNUC__ == 2 && __GNUC_MINOR__ >= 5)
+#define FUNCATTR_CONST		__attribute__ ((const))
+#endif
+#endif /* __GNUC__ */
+
+#ifndef FUNCATTR_MALLOC
+#define FUNCATTR_MALLOC
+#endif
+
+#ifndef FUNCATTR_PURE
+#define FUNCATTR_PURE
+#endif
+
+#ifndef FUNCATTR_CONST
+#define FUNCATTR_CONST
+#endif
 
 /* -----------------------------------------------------------------------
  * strncpyz
@@ -83,5 +119,27 @@ void *memset16 (void *dest, int value, size_t size);
 #ifndef PATH_SEPARATOR
 #define PATH_SEPARATOR	'/'
 #endif
+
+#define ARRAY_LENGTH(x) (sizeof(x) / sizeof(x[0]))
+
+char *stripspace(const char *src);
+char *strip_extension(const char *filename);
+
+/* Endian macros */
+#define FLIPENDIAN_INT16(x)	((((x) >> 8) | ((x) << 8)) & 0xffff)
+#define FLIPENDIAN_INT32(x)	((((x) << 24) | (((UINT32) (x)) >> 24) | \
+                       (( (x) & 0x0000ff00) << 8) | (( (x) & 0x00ff0000) >> 8)))
+
+#ifdef LSB_FIRST
+#define BIG_ENDIANIZE_INT16(x)		(FLIPENDIAN_INT16(x))
+#define BIG_ENDIANIZE_INT32(x)		(FLIPENDIAN_INT32(x))
+#define LITTLE_ENDIANIZE_INT16(x)	(x)
+#define LITTLE_ENDIANIZE_INT32(x)	(x)
+#else
+#define BIG_ENDIANIZE_INT16(x)		(x)
+#define BIG_ENDIANIZE_INT32(x)		(x)
+#define LITTLE_ENDIANIZE_INT16(x)	(FLIPENDIAN_INT16(x))
+#define LITTLE_ENDIANIZE_INT32(x)	(FLIPENDIAN_INT32(x))
+#endif /* LSB_FIRST */
 
 #endif /* UTILS_H */

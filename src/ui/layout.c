@@ -34,6 +34,9 @@
 #include "options.h"
 #include "splitters.h"
 #include "help.h"
+#include "properties.h"
+#include "audit32.h"
+#include "win32ui.h"
 
 static BOOL FilterAvailable(int driver_index);
 
@@ -79,7 +82,7 @@ DIRECTORYINFO g_directoryInfo[] =
 {
 	{ "ROMs",                  GetRomDirs,      SetRomDirs,      TRUE,  DIRDLG_ROMS },
 	{ "Samples",               GetSampleDirs,   SetSampleDirs,   TRUE,  DIRDLG_SAMPLES },
-	{ "Ini Files",             GetIniDirs,      SetIniDirs,      TRUE,  DIRDLG_INI },
+	{ "Ini Files",             GetIniDir,       SetIniDir,       FALSE, DIRDLG_INI },
 	{ "Config",                GetCfgDir,       SetCfgDir,       FALSE, DIRDLG_CFG },
 	{ "High Scores",           GetHiDir,        SetHiDir,        FALSE, DIRDLG_HI },
 	{ "Snapshots",             GetImgDir,       SetImgDir,       FALSE, DIRDLG_IMG },
@@ -114,6 +117,29 @@ const MAMEHELPINFO g_helpInfo[] =
 	{ ID_HELP_RELEASE,		FALSE,	"windows.txt" },
 	{ ID_HELP_WHATS_NEW,	TRUE,	MAME32HELP "::/docs/whatsnew.txt" },
 	{ -1 }
+};
+
+const PROPERTYSHEETINFO g_propSheets[] =
+{
+	{ FALSE,	NULL,					IDD_PROP_GAME,			GamePropertiesDialogProc },
+	{ FALSE,	NULL,					IDD_PROP_AUDIT,			GameAuditDialogProc },
+	{ TRUE,		NULL,					IDD_PROP_DISPLAY,		GameOptionsProc },
+	{ TRUE,		NULL,					IDD_PROP_ADVANCED,		GameOptionsProc },
+	{ TRUE,		NULL,					IDD_PROP_SOUND,			GameOptionsProc },
+	{ TRUE,		NULL,					IDD_PROP_INPUT,			GameOptionsProc },
+	{ TRUE,		NULL,					IDD_PROP_MISC,			GameOptionsProc },
+	{ TRUE,		PropSheetFilter_Vector,	IDD_PROP_VECTOR,		GameOptionsProc },
+	{ FALSE }
+};
+
+const ICONDATA g_iconData[] =
+{
+	{ IDI_WIN_NOROMS,			"noroms" },
+	{ IDI_WIN_ROMS,				"roms" },
+	{ IDI_WIN_UNKNOWN,			"unknown" },
+	{ IDI_WIN_CLONE,			"clone" },
+	{ IDI_WIN_REDX,				"warning" },
+	{ 0 }
 };
 
 const char g_szDefaultGame[] = "pacman";

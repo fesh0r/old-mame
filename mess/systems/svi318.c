@@ -11,7 +11,8 @@
 #include "includes/svi318.h"
 #include "includes/wd179x.h"
 #include "includes/svi318dk.h"
-#include "printer.h"
+#include "devices/printer.h"
+#include "devices/cartslot.h"
 
 
 static MEMORY_READ_START (readmem)
@@ -374,9 +375,9 @@ ROM_END
 SYSTEM_CONFIG_START(svi318)
 	CONFIG_DEVICE_PRINTER			(1)
 	CONFIG_DEVICE_CASSETTE			(1,	"cas\0",	svi318_cassette_init)
-	CONFIG_DEVICE_CARTSLOT			(1,	"rom\0",	svi318_load_rom, svi318_exit_rom, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT		(1,	"rom\0",	NULL, NULL, svi318_cart_load, svi318_cart_unload, NULL, NULL)
 #ifdef SVI_DISK
-	CONFIG_DEVICE_FLOPPY_SVI318DSK	(2,	"dsk\0",	svi318_floppy_init)
+	CONFIG_DEVICE_FLOPPY_SVI318DSK	(2,	"dsk\0")
 #endif
 SYSTEM_CONFIG_END
 

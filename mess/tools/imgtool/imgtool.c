@@ -84,6 +84,7 @@ IMAGEMODULE_EXTERN(ti86r);		/* TI-86 range settings file */
 IMAGEMODULE_EXTERN(ti86g);		/* TI-86 grouped file */
 IMAGEMODULE_EXTERN(ti86);		/* TI-86 file */
 IMAGEMODULE_EXTERN(ti99);		/* TI99 floppy */
+IMAGEMODULE_EXTERN(ti990dsk);	/* TI990 disk */
 
 static const ImageModule_ctor module_ctors[] =
 {
@@ -157,7 +158,8 @@ static const ImageModule_ctor module_ctors[] =
 	IMAGEMODULE_DECL(ti86r),
 	IMAGEMODULE_DECL(ti86g),
 	IMAGEMODULE_DECL(ti86),
-	IMAGEMODULE_DECL(ti99)
+	IMAGEMODULE_DECL(ti99),
+	IMAGEMODULE_DECL(ti990dsk)
 };
 
 /* ----------------------------------------------------------------------- */
@@ -822,11 +824,11 @@ static char *nextentry(char **s)
 int img_getinfo(const struct ImageModule *module, const char *fname, imageinfo *info)
 {
 	int err;
-	void *config;
+	config_file *config;
 	const char *year;
 	char *s;
-	char fnamebuf[32];
-
+	char buf[32];
+	
 	info->longname = NULL;
 	info->manufacturer = NULL;
 	info->year = 0;
@@ -840,14 +842,14 @@ int img_getinfo(const struct ImageModule *module, const char *fname, imageinfo *
 	if (!module || !module->crcfile)
 		return 0;
 
-	sprintf(fnamebuf, "crc/%s", module->crcfile);
-	config = config_open(fnamebuf);
+	config = config_open(module->crcfile, module->crcfile, FILETYPE_CRC);
 	if (!config)
 		return 0;
 
-	sprintf(fnamebuf, "%08x", (int)info->crc);
-	config_load_string(config, module->crcsysname, 0, fnamebuf, info->buffer, sizeof(info->buffer));
-	if (info->buffer[0]) {
+	sprintf(buf, "%08x", (int)info->crc);
+	config_load_string(config, module->crcsysname, 0, buf, info->buffer, sizeof(info->buffer));
+	if (info->buffer[0])
+	{
 		s = info->buffer;
 		info->longname = nextentry(&s);
 		info->manufacturer = nextentry(&s);

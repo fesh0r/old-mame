@@ -16,6 +16,8 @@
 	* Harald Glaab's site has software and documentation for the various SNUG
 	  cards: 99/4P (nicknamed "SGCPU"), EVPC, BwG.
 		<http://home.t-online.de/home/harald.glaab/snug/>
+	* The TI99/4 boot ROM is the only source of information for the IR remote
+	handset controller protocol
 
 Emulated:
 	* All TI99 basic console hardware, except a few tricks in TMS9901 emulation.
@@ -36,8 +38,6 @@ Issues:
 	* floppy disk timings are not emulated (general issue)
 
 TODO:
-	* DUMP THIS BLOODY TI99/4 ROM
-	* Submit speech improvements to Nicola again
 	* support for other peripherals and DSRs as documentation permits
 	* find programs that use super AMS or any other extended memory card
 	* find specs for the EVPC palette chip
@@ -52,8 +52,8 @@ TODO:
 #include "vidhrdw/tms9928a.h"
 #include "vidhrdw/v9938.h"
 #include "sndhrdw/spchroms.h"
-#include "includes/basicdsk.h"
-#include "cassette.h"
+#include "devices/basicdsk.h"
+#include "devices/cassette.h"
 #include "ti99_4x.h"
 #include "994x_ser.h"
 
@@ -65,8 +65,11 @@ static WRITE16_HANDLER ( ti99_ww_wspeech );
 static void tms9901_interrupt_callback(int intreq, int ic);
 static int ti99_R9901_0(int offset);
 static int ti99_R9901_1(int offset);
+static int ti99_R9901_2(int offset);
 static int ti99_R9901_3(int offset);
 
+static void ti99_handset_set_ack(int offset, int data);
+static void ti99_handset_task(void);
 static void ti99_KeyC2(int offset, int data);
 static void ti99_KeyC1(int offset, int data);
 static void ti99_KeyC0(int offset, int data);
@@ -114,22 +117,24 @@ static fdc_kind_t fdc_kind;
 static char has_evpc;
 /* TRUE if rs232 card present */
 static char has_rs232;
+/* TRUE if ti99/4 IR remote handset present */
+static char has_handset;
 
 
 /* tms9901 setup */
 static const tms9901reset_param tms9901reset_param_ti99 =
 {
-	TMS9901_INT1 | TMS9901_INT2,	/* only input pins whose state is always known */
+	TMS9901_INT1 | TMS9901_INT2 | TMS9901_INTC,	/* only input pins whose state is always known */
 
 	{	/* read handlers */
 		ti99_R9901_0,
 		ti99_R9901_1,
-		NULL,
+		ti99_R9901_2,
 		ti99_R9901_3
 	},
 
 	{	/* write handlers */
-		NULL,
+		ti99_handset_set_ack,
 		NULL,
 		ti99_KeyC2,
 		ti99_KeyC1,
@@ -152,6 +157,16 @@ static const tms9901reset_param tms9901reset_param_ti99 =
 
 	/* clock rate = 3MHz */
 	3000000.
+};
+
+/* handset interface */
+static int handset_buf;
+static int handset_buflen;
+static int handset_clock;
+static int handset_ack;
+enum
+{
+	max_handsets = 4
 };
 
 /* keyboard interface */
@@ -296,8 +311,19 @@ extern int tms9900_ICount;
 
 void init_ti99_4(void)
 {
+	int i, j;
+	UINT8 *GROM;
+
+
 	ti99_model = model_99_4;
 	has_evpc = FALSE;
+
+	GROM = memory_region(region_grom);
+	for (i=0; i<2; i++)
+		for (j=0; j<0x800; j++)
+		{
+			GROM[0x2000*i+0x1800+j] = GROM[0x2000*i+0x0800+j] | GROM[0x2000*i+0x1000+j];
+		}
 }
 
 void init_ti99_4a(void)
@@ -318,19 +344,68 @@ void init_ti99_4p(void)
 	has_evpc = TRUE;
 }
 
-int ti99_floppy_init(int id, mame_file *fp, int open_mode)
+int ti99_floppy_load(int id, mame_file *fp, int open_mode)
 {
-	if (basicdsk_floppy_init(id, fp, open_mode)==INIT_PASS)
+	typedef struct ti99_sc0
 	{
-		switch (image_length(IO_FLOPPY, id))
+		char	name[10];			/* volume name (10 characters, pad with spaces) */
+		UINT8	totsecsMSB;			/* disk length in sectors (big-endian) (usually 360, 720 or 1440) */
+		UINT8	totsecsLSB;
+		UINT8	secspertrack;		/* sectors per track (usually 9 (FM) or 18 (MFM)) */
+		UINT8	id[4];				/* 'DSK ' */
+		UINT8	tracksperside;		/* tracks per side (usually 40) */
+		UINT8	sides;				/* sides (1 or 2) */
+		UINT8	density;			/* 1 (FM) or 2 (MFM) */
+		UINT8	res[36];			/* reserved */
+		UINT8	abm[200];			/* allocation bitmap: a 1 for each sector in use (sector 0 is LSBit of byte 0, sector 7 is MSBit of byte 0, sector 8 is LSBit of byte 1, etc.) */
+	} ti99_sc0;
+
+	ti99_sc0 sec0;
+	int totsecs;
+	int done;
+
+
+	if (basicdsk_floppy_load(id, fp, open_mode)==INIT_PASS)
+	{
+		done = FALSE;
+
+		/* Read sector 0 to identify format */
+		if (fp && (! mame_fseek(fp, 0, SEEK_SET)) && (mame_fread(fp, & sec0, sizeof(sec0)) == sizeof(sec0)))
 		{
-		case 1*40*9*256:	/* 90kbytes: SSSD */
-		default:
-			basicdsk_set_geometry(id, 40, 1, 9, 256, 0, 0);
-			break;
-		case 2*40*18*256:	/* 360kbytes: DSDD */
-			basicdsk_set_geometry(id, 40, 2, 18, 256, 0, 0);
-			break;
+			/* If we have read the sector successfully, let us parse it */
+			totsecs = (sec0.totsecsMSB << 8) | sec0.totsecsLSB;
+			if (sec0.tracksperside == 0)
+				/* Some images are like this, because the TI controller always assumes 40. */
+				sec0.tracksperside = 40;
+			if (sec0.sides == 0)
+				/* Some images are like this, because the TI controller always assumes
+				tracks beyond 40 are on side 2. */
+				sec0.sides = totsecs / (sec0.secspertrack * sec0.tracksperside);
+			/* check that the format makes sense */
+			if (((sec0.secspertrack * sec0.tracksperside * sec0.sides) == totsecs)
+				&& (totsecs >= 2) && (totsecs <= 1600) && (! memcmp(sec0.id, "DSK", 3))
+				&& (image_length(IO_FLOPPY, id) == totsecs*256))
+			{
+				/* set geometry */
+				basicdsk_set_geometry(id, sec0.tracksperside, sec0.sides, sec0.secspertrack, 256, 0, 0);
+				done = TRUE;
+			}
+		}
+
+		/* If we have been unable to parse the format, let us guess according
+		to file lenght */
+		if (! done)
+		{
+			switch (image_length(IO_FLOPPY, id))
+			{
+			case 1*40*9*256:	/* 90kbytes: SSSD */
+			default:
+				basicdsk_set_geometry(id, 40, 1, 9, 256, 0, 0);
+				break;
+			case 2*40*18*256:	/* 360kbytes: DSDD */
+				basicdsk_set_geometry(id, 40, 2, 18, 256, 0, 0);
+				break;
+			}
 		}
 
 		return INIT_PASS;
@@ -339,7 +414,7 @@ int ti99_floppy_init(int id, mame_file *fp, int open_mode)
 	return INIT_FAIL;
 }
 
-int ti99_cassette_init(int id, mame_file *fp, int open_mode)
+int ti99_cassette_load(int id, mame_file *fp, int open_mode)
 {
 	struct cassette_args args;
 	memset(&args, 0, sizeof(args));
@@ -355,89 +430,88 @@ int ti99_cassette_init(int id, mame_file *fp, int open_mode)
 
 	We don't need to support 99/4p, as it has no cartridge port.
 */
-int ti99_load_rom(int id, mame_file *cartfile, int open_mode)
+int ti99_rom_load(int id, mame_file *cartfile, int open_mode)
 {
+	/* Trick - we identify file types according to their extension */
+	/* Note that if we do not recognize the extension, we revert to the slot location <-> type
+	scheme.  I do this because the extension concept is quite unfamiliar to mac people
+	(I am dead serious). */
+	/* Original idea by Norberto Bensa */
 	const char *name = image_filename(IO_CARTSLOT,id);
+	const char *ch, *ch2;
+	slot_type_t type = (slot_type_t) id;
 
+	/* There is a circuitry in TI99/4(a) that resets the console when a
+	cartridge is inserted or removed.  We emulate this instead of resetting the
+	emulator (which is the default in MESS). */
+	cpu_set_reset_line(0, PULSE_LINE);
+	tms9901_reset(0);
+	TMS9928A_reset();
 
-	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
-	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
+	ch = strrchr(name, '.');
+	ch2 = (ch-1 >= name) ? ch-1 : "";
 
-
-	if (cartfile == NULL)
-		slot_type[id] = SLOT_EMPTY;
-	else
+	if (ch)
 	{
-		/* Trick - we identify file types according to their extension */
-		/* Note that if we do not recognize the extension, we revert to the slot location <-> type
-		scheme.  I do this because the extension concept is quite unfamiliar to mac people
-		(I am dead serious). */
-		/* Original idea by Norberto Bensa */
+		if ((! stricmp(ch2, "g.bin")) || (! stricmp(ch, ".grom")) || (! stricmp(ch, ".g")))
 		{
-
-		const char *ch, *ch2;
-		slot_type_t type = (slot_type_t) id;
-
-		ch = strrchr(name, '.');
-		ch2 = (ch-1 >= name) ? ch-1 : "";
-
-		if (ch)
+			/* grom */
+			type = SLOT_GROM;
+		}
+		else if ((! stricmp(ch2, "c.bin")) || (! stricmp(ch, ".crom")) || (! stricmp(ch, ".c")))
 		{
-			if ((! stricmp(ch2, "g.bin")) || (! stricmp(ch, ".grom")) || (! stricmp(ch, ".g")))
-			{
-				/* grom */
-				type = SLOT_GROM;
-			}
-			else if ((! stricmp(ch2, "c.bin")) || (! stricmp(ch, ".crom")) || (! stricmp(ch, ".c")))
-			{
-				/* rom first page */
-				type = SLOT_CROM;
-			}
-			else if ((! stricmp(ch2, "d.bin")) || (! stricmp(ch, ".drom")) || (! stricmp(ch, ".d")))
-			{
-				/* rom second page */
-				type = SLOT_DROM;
-			}
-			else if ((! stricmp(ch2, "m.bin")) || (! stricmp(ch, ".mrom")) || (! stricmp(ch, ".m")))
-			{
-				/* rom minimemory  */
-				type = SLOT_MINIMEM;
-			}
+			/* rom first page */
+			type = SLOT_CROM;
 		}
-
-		slot_type[id] = type;
-
-		switch (type)
+		else if ((! stricmp(ch2, "d.bin")) || (! stricmp(ch, ".drom")) || (! stricmp(ch, ".d")))
 		{
-		case SLOT_EMPTY:
-			break;
-
-		case SLOT_GROM:
-			mame_fread(cartfile, memory_region(region_grom) + 0x6000, 0xA000);
-			break;
-
-		case SLOT_MINIMEM:
-			cartridge_minimemory = TRUE;
-		case SLOT_CROM:
-			mame_fread_msbfirst(cartfile, cartridge_pages[0], 0x2000);
-			current_page_ptr = cartridge_pages[0];
-			break;
-
-		case SLOT_DROM:
-			cartridge_paged = TRUE;
-			mame_fread_msbfirst(cartfile, cartridge_pages[1], 0x2000);
-			current_page_ptr = cartridge_pages[0];
-			break;
+			/* rom second page */
+			type = SLOT_DROM;
 		}
-
+		else if ((! stricmp(ch2, "m.bin")) || (! stricmp(ch, ".mrom")) || (! stricmp(ch, ".m")))
+		{
+			/* rom minimemory  */
+			type = SLOT_MINIMEM;
 		}
+	}
+
+	slot_type[id] = type;
+
+	switch (type)
+	{
+	case SLOT_EMPTY:
+		break;
+
+	case SLOT_GROM:
+		mame_fread(cartfile, memory_region(region_grom) + 0x6000, 0xA000);
+		break;
+
+	case SLOT_MINIMEM:
+		cartridge_minimemory = TRUE;
+	case SLOT_CROM:
+		mame_fread_msbfirst(cartfile, cartridge_pages[0], 0x2000);
+		current_page_ptr = cartridge_pages[0];
+		break;
+
+	case SLOT_DROM:
+		cartridge_paged = TRUE;
+		mame_fread_msbfirst(cartfile, cartridge_pages[1], 0x2000);
+		current_page_ptr = cartridge_pages[0];
+		break;
 	}
 
 	return INIT_PASS;
 }
 
-void ti99_rom_cleanup(int id)
+void ti99_rom_unload(int id)
 {
+	/* There is a circuitry in TI99/4(a) that resets the console when a
+	cartridge is inserted or removed.  We emulate this instead of resetting the
+	emulator (which is the default in MESS). */
+	cpu_set_reset_line(0, PULSE_LINE);
+	tms9901_reset(0);
+	TMS9928A_reset();
+
 	switch (slot_type[id])
 	{
 	case SLOT_EMPTY:
@@ -459,6 +533,8 @@ void ti99_rom_cleanup(int id)
 		current_page_ptr = cartridge_pages[0];
 		break;
 	}
+
+	slot_type[id] = SLOT_EMPTY;
 }
 
 
@@ -507,6 +583,8 @@ void machine_init_ti99(void)
 		cpu_setbank(4, sRAM_ptr);
 	}
 
+	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
+	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
 	/* reset cartridge mapper */
 	current_page_ptr = cartridge_pages[0];
 
@@ -522,6 +600,13 @@ void machine_init_ti99(void)
 	KeyCol = 0;
 	AlphaLockLine = 0;
 
+	/* reset handset */
+	handset_buf = 0;
+	handset_buflen = 0;
+	handset_clock = 0;
+	handset_ack = 0;
+	tms9901_set_single_int(0, 12, 0);
+
 	/* read config */
 	if (ti99_model == model_99_4p)
 		xRAM_kind = xRAM_kind_99_4p_1Mb;	/* hack */
@@ -530,6 +615,7 @@ void machine_init_ti99(void)
 	has_speech = (readinputport(input_port_config) >> config_speech_bit) & config_speech_mask;
 	fdc_kind = (readinputport(input_port_config) >> config_fdc_bit) & config_fdc_mask;
 	has_rs232 = (readinputport(input_port_config) >> config_rs232_bit) & config_rs232_mask;
+	has_handset = (ti99_model == model_99_4) && ((readinputport(input_port_config) >> config_handsets_bit) & config_handsets_mask);
 
 	/* set up optional expansion hardware */
 	ti99_exp_init();
@@ -624,6 +710,8 @@ int video_start_ti99_4ev(void)
 void ti99_vblank_interrupt(void)
 {
 	TMS9928A_interrupt();
+	if (has_handset)
+		ti99_handset_task();
 }
 
 void ti99_4ev_hblank_interrupt(void)
@@ -1003,6 +1091,234 @@ WRITE16_HANDLER ( ti99_ww_wgpl )
 }
 
 
+/*===========================================================================*/
+/*
+	Handset support (TI99/4 only)
+
+	The ti99/4 was intended to support some so-called "IR remote handsets".
+	This feature was canceled at the last minute (reportedly ten minutes before
+	the introductory press conference in June 1979), but the first thousands of
+	99/4 units had the required port, and the support code was seemingly not
+	deleted from ROMs until the introduction of the ti99/4a in 1981.  You could
+	connect up to 4 20-key keypads, and up to 4 joysticks with a maximum
+	resolution of 15 levels on each axis.
+
+	The keyboard DSR was able to couple two 20-key keypads together to emulate
+	a full 40-key keyboard.  Keyboard modes 0, 1 and 2 would select either the
+	console keyboard with its two wired remote controllers (i.e. joysticks), or
+	remote handsets 1 and 2 with their associated IR remote controllers (i.e.
+	joysticks), according to which was currently active.
+*/
+
+static int ti99_handset_poll_bus(void)
+{
+	return (has_handset) ? (handset_buf & 0xf) : 0;
+}
+
+static void ti99_handset_ack_callback(int dummy)
+{
+	handset_clock = ! handset_clock;
+	handset_buf >>= 4;
+	handset_buflen--;
+	tms9901_set_single_int(0, 12, 0);
+
+	if (handset_buflen == 1)
+	{
+		/* Unless I am missing something, the third and last nybble of the
+		message is not acknowledged by the DSR in any way, and the first nybble
+		of next message is not requested for either, so we need to decide on
+		our own when we can post a new event.  Currently, we wait for 1000us
+		after the DSR acknowledges the second nybble. */
+		timer_set(TIME_IN_USEC(1000), 0, ti99_handset_ack_callback);
+	}
+
+	if (handset_buflen == 0)
+		/* See if we need to post a new event */
+		ti99_handset_task();
+}
+
+static void ti99_handset_set_ack(int offset, int data)
+{
+	if (has_handset && handset_buflen && (data != handset_ack))
+	{
+		handset_ack = data;
+		if (data == handset_clock)
+			/* I don't know what the real delay is, but 30us apears to be enough */
+			timer_set(TIME_IN_USEC(30), 0, ti99_handset_ack_callback);
+	}
+}
+
+static void ti99_handset_post_message(int message)
+{
+	/* post message and assert interrupt */
+	handset_clock = 1;
+	handset_buf = ~ message;
+	handset_buflen = 3;
+	tms9901_set_single_int(0, 12, 1);
+}
+
+static int ti99_handset_poll_keyboard(int num)
+{
+	static UINT8 previous_key[max_handsets];
+
+	UINT32 key_buf;
+	UINT8 current_key;
+	int i;
+
+
+	/* read current key state */
+	key_buf = ( readinputport(input_port_IR_keypads+num)
+					| (readinputport(input_port_IR_keypads+num+1) << 16) ) >> (4*num);
+
+	/* If a key was previously pressed, this key was not shift, and this key is
+	still down, then don't change
+	the current key press. */
+	if (previous_key[num] && (previous_key[num] != 0x24)
+			&& (key_buf & (1 << (previous_key[num] & 0x1f))))
+	{
+		/* check the shift modifier state */
+		if (((previous_key[num] & 0x20) != 0) == ((key_buf & 0x0008) != 0))
+			/* the shift modifier state has not changed */
+			return FALSE;
+		else
+		{
+			/* the shift modifier state has changed: we need to update the
+			keyboard state */
+			if (key_buf & 0x0008)
+			{	/* shift has been pressed down */
+				previous_key[num] = current_key = previous_key[num] | 0x20;
+			}
+			else
+			{	/* shift has been pressed down */
+				previous_key[num] = current_key = previous_key[num] & ~0x20;
+			}
+			/* post message */
+			ti99_handset_post_message((((unsigned) current_key) << 4) | (num << 1));
+
+			return TRUE;
+		}
+				
+	}
+
+	current_key = 0;	/* default value if no key is down */
+	if (key_buf & 0x0008)
+		current_key |= 0x20;	/* set shift flag */
+	for (i=0; i<20; i++)
+	{
+		if (key_buf & (1 << i))
+		{
+			current_key = i + 1;
+
+			if (current_key != 0x24)
+				/* If this is the shift key, any other key we may find will
+				have higher priority; otherwise, we may exit the loop and keep
+				the key we have just found. */
+				break;
+		}
+	}
+
+	if (current_key != previous_key[num])
+	{
+		previous_key[num] = current_key;
+
+		/* post message */
+		ti99_handset_post_message((((unsigned) current_key) << 4) | (num << 1));
+
+		return TRUE;
+	}
+		
+	return FALSE;
+}
+
+static int ti99_handset_poll_joystick(int num)
+{
+	static UINT8 previous_joy[max_handsets];
+	UINT8 current_joy;
+	int current_joy_x, current_joy_y;
+	int message;
+
+	/* read joystick position */
+	current_joy_x = readinputport(input_port_IR_joysticks+2*num);
+	current_joy_y = readinputport(input_port_IR_joysticks+2*num+1);
+	/* compare with last saved position */
+	current_joy = current_joy_x | (current_joy_y << 4);
+	if (current_joy != previous_joy[num])
+	{
+		/* save position */
+		previous_joy[num] = current_joy;
+
+		/* transform position to signed quantity */
+		current_joy_x -= 7;
+		current_joy_y -= 7;
+
+		message = 0;
+
+		/* set sign */
+		/* note that we set the sign if the joystick position is 0 to work
+		around a bug in the ti99/4 ROMs */
+		if (current_joy_x <= 0)
+		{
+			message |= 0x040;
+			current_joy_x = - current_joy_x;
+		}
+
+		if (current_joy_y <= 0)
+		{
+			message |= 0x400;
+			current_joy_y = - current_joy_y;
+		}
+
+		/* convert absolute values to Gray code and insert in message */
+		if (current_joy_x & 4)
+			current_joy_x ^= 3;
+		if (current_joy_x & 2)
+			current_joy_x ^= 1;
+		message |= current_joy_x << 3;
+
+		if (current_joy_y & 4)
+			current_joy_y ^= 3;
+		if (current_joy_y & 2)
+			current_joy_y ^= 1;
+		message |= current_joy_y << 7;
+
+		/* set joystick address */
+		message |= (num << 1) | 0x1;
+
+		/* post message */
+		ti99_handset_post_message(message);
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+static void ti99_handset_task(void)
+{
+	int i;
+
+	if (handset_buflen == 0)
+	{	/* poll every handset */
+		for (i=0; i<max_handsets; i++)
+			if (ti99_handset_poll_joystick(i))
+				return;
+		for (i=0; i<max_handsets; i++)
+			if (ti99_handset_poll_keyboard(i))
+				return;
+	}
+	else if (handset_buflen == 3)
+	{	/* update messages after they have been posted */
+		if (handset_buf & 1)
+		{	/* keyboard */
+			ti99_handset_poll_keyboard((~ (handset_buf >> 1)) & 0x3);
+		}
+		else
+		{	/* joystick */
+			ti99_handset_poll_joystick((~ (handset_buf >> 1)) & 0x3);
+		}
+	}
+}
+
 
 /*===========================================================================*/
 /*
@@ -1084,12 +1400,18 @@ static int ti99_R9901_0(int offset)
 {
 	int answer;
 
-	answer = (readinputport(input_port_keyboard + KeyCol) << 3) & 0xF8;
 
-	if ((ti99_model == model_99_4a) || (ti99_model == model_99_4p))
+	if ((ti99_model == model_99_4) && (KeyCol == 7))
+		answer = (ti99_handset_poll_bus() << 3) | 0x80;
+	else
 	{
-		if (! AlphaLockLine)
-			answer &= ~ (readinputport(input_port_caps_lock) << 3);
+		answer = ((readinputport(input_port_keyboard + (KeyCol >> 1)) >> ((KeyCol & 1) * 8)) << 3) & 0xF8;
+
+		if ((ti99_model == model_99_4a) || (ti99_model == model_99_4p))
+		{
+			if (! AlphaLockLine)
+				answer &= ~ (readinputport(input_port_caps_lock) << 3);
+		}
 	}
 
 	return (answer);
@@ -1100,31 +1422,53 @@ static int ti99_R9901_0(int offset)
 
 	signification:
 	 bit 0-2: keyboard status bits 5 to 7
-	 bit 3-7: weird, not emulated
+	 bit 3: weird, not emulated
+	 (bit 4: IR remote handset interrupt)
+	 bit 5-7: weird, not emulated
 */
 static int ti99_R9901_1(int offset)
 {
-	return (readinputport(input_port_keyboard + KeyCol) >> 5) & 0x07;
+	int answer;
+
+
+	if ((ti99_model == model_99_4) && (KeyCol == 7))
+		answer = 0x07;
+	else
+		answer = ((readinputport(input_port_keyboard + (KeyCol >> 1)) >> ((KeyCol & 1) * 8)) >> 5) & 0x07;
+
+	return answer;
 }
 
 /*
 	Read pins P0-P7 of TI99's 9901.
-	Nothing is connected !
+
+	 bit 1: handset data clock pin
 */
-/*static int ti99_R9901_2(int offset)
+static int ti99_R9901_2(int offset)
 {
-	return 0;
-}*/
+	return (has_handset && handset_clock) ? 2 : 0;
+}
 
 /*
 	Read pins P8-P15 of TI99's 9901.
+
+	 bit 26: IR handset interrupt (not emulated)
+	 bit 27: tape input
 */
 static int ti99_R9901_3(int offset)
 {
-	/*only important bit: bit 27: tape input */
+	int answer;
+
+	if (has_handset && (handset_buflen == 3))
+		answer = 0;
+	else
+		answer = 4;	/* on systems without handset, the pin is pulled up to avoid spurious interrupts */
 
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
-	return device_input(IO_CASSETTE, 0) > 0 ? 8 : 0;
+	if (device_input(IO_CASSETTE, 0) > 0)
+		answer |= 8;
+
+	return answer;
 }
 
 

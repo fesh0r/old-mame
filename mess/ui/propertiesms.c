@@ -7,33 +7,38 @@
 #include <windows.h>
 #include <string.h>
 #include <assert.h>
+#include <commctrl.h>
+#include <commdlg.h>
+#include <windowsx.h>
 
 #include "ui/mame32.h"
 #include "ui/directories.h"
+#include "ui/m32util.h"
 #include "resourcems.h"
 #include "mess.h"
 #include "utils.h"
-
-static void MessOptionsToProp(HWND hWnd, options_type *o);
-static void MessPropToOptions(HWND hWnd, options_type *o);
-static BOOL MessPropertiesCommand(HWND hWnd, WORD wNotifyCode, WORD wID, BOOL *changed);
+#include "propertiesms.h"
 
 static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCSTR lpItem);
 static BOOL SoftwareDirectories_OnDelete(HWND hDlg);
 static BOOL SoftwareDirectories_OnBeginLabelEdit(HWND hDlg, NMHDR* pNMHDR);
 static BOOL SoftwareDirectories_OnEndLabelEdit(HWND hDlg, NMHDR* pNMHDR);
 
-static BOOL PropSheetFilter_Config(const struct InternalMachineDriver *drv, const struct GameDriver *gamedrv);
-
 #ifdef bool
 #undef bool
 #endif
 
-/* Include the actual Properties.c */
-#include "../../src/ui/properties.c"
-
 extern BOOL BrowseForDirectory(HWND hwnd, const char* pStartDir, char* pResult);
 BOOL g_bModifiedSoftwarePaths = FALSE;
+
+static void MarkChanged(HWND hDlg)
+{
+	HWND hCtrl;
+
+	/* fake a CBN_SELCHANGE event from IDC_SIZES to force it to be changed */
+	hCtrl = GetDlgItem(hDlg, IDC_SIZES);
+	PostMessage(hDlg, WM_COMMAND, (CBN_SELCHANGE << 16) | IDC_SIZES, (LPARAM) hCtrl);
+}
 
 static void AppendList(HWND hList, LPCSTR lpItem, int nItem)
 {
@@ -54,7 +59,6 @@ static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCSTR l
 	LPSTR lpIn;
 
 	g_bModifiedSoftwarePaths = TRUE;
-	g_bUseDefaults = FALSE;
 
     hList = GetDlgItem(hDlg, IDC_DIR_LIST);
     nItem = ListView_GetNextItem(hList, -1, LVNI_SELECTED);
@@ -85,6 +89,7 @@ static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCSTR l
 	AppendList(hList, lpItem, nItem);
 	if (bBrowse)
 		ListView_DeleteItem(hList, nItem+1);
+	MarkChanged(hDlg);
 	return TRUE;
 }
 
@@ -119,6 +124,7 @@ static BOOL SoftwareDirectories_OnDelete(HWND hDlg)
         nSelect = nItem;
 
     ListView_SetItemState(hList, nSelect, LVIS_FOCUSED | LVIS_SELECTED, LVIS_FOCUSED | LVIS_SELECTED);
+	MarkChanged(hDlg);
 	return TRUE;
 }
 
@@ -176,49 +182,34 @@ static BOOL SoftwareDirectories_OnEndLabelEdit(HWND hDlg, NMHDR* pNMHDR)
     return bResult;
 }
 
-/*
-static void SoftwareDirectories_OnCommand(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
-{
-    switch (id)
-    {
-    case IDC_DIR_BROWSE:
-        if (codeNotify == BN_CLICKED)
-			SoftwareDirectories_OnInsertBrowse(hDlg, TRUE, NULL);
-        break;
-
-    case IDC_DIR_INSERT:
-        if (codeNotify == BN_CLICKED)
-			SoftwareDirectories_OnInsertBrowse(hDlg, FALSE, NULL);
-        break;
-
-    case IDC_DIR_DELETE:
-        if (codeNotify == BN_CLICKED)
-            SoftwareDirectories_OnDelete(hDlg);
-        break;
-    }
-}
-*/
-
-static BOOL SoftwareDirectories_OnNotify(HWND hDlg, int id, NMHDR* pNMHDR)
-{
-    switch (id)
-    {
-    case IDC_DIR_LIST:
-        switch (pNMHDR->code)
-        {
-        case LVN_ENDLABELEDIT:
-            return SoftwareDirectories_OnEndLabelEdit(hDlg, pNMHDR);
-
-        case LVN_BEGINLABELEDIT:
-			return SoftwareDirectories_OnBeginLabelEdit(hDlg, pNMHDR);
-        }
-    }
-    return FALSE;
-}
-
-static BOOL PropSheetFilter_Config(const struct InternalMachineDriver *drv, const struct GameDriver *gamedrv)
+BOOL PropSheetFilter_Config(const struct InternalMachineDriver *drv, const struct GameDriver *gamedrv)
 {
 	return (ram_option_count(gamedrv) > 0) || device_find(gamedrv, IO_PRINTER);
+}
+
+INT_PTR CALLBACK GameMessOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
+{
+	INT_PTR rc = 0;
+	BOOL bHandled = FALSE;
+
+	switch (Msg) {
+	case WM_NOTIFY:
+		switch (((NMHDR *) lParam)->code) {
+		case LVN_ENDLABELEDIT:
+			rc = SoftwareDirectories_OnEndLabelEdit(hDlg, (NMHDR *) lParam);
+			bHandled = TRUE;
+			break;
+
+		case LVN_BEGINLABELEDIT:
+			rc = SoftwareDirectories_OnBeginLabelEdit(hDlg, (NMHDR *) lParam);
+			bHandled = TRUE;
+			break;
+		}
+	}
+
+	if (!bHandled)
+		rc = GameOptionsProc(hDlg, Msg, wParam, lParam);
+	return rc;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -245,12 +236,12 @@ static BOOL SoftwareDirectories_ComponentProc(enum component_msg msg, HWND hWnd,
 	LVCOLUMN    LVCol;
 	int nItem;
 	int nLen;
-	char buf[MAX_PATH];
+	char buf[2048];
 	LPCSTR s;
 	LPCSTR lpList;
+	LPSTR lpBuf;
     LV_ITEM Item;
 	int iCount, i;
-	LPSTR lpBuf;
 	int iBufLen;
 	options_type *o = params->o;
 
@@ -267,6 +258,10 @@ static BOOL SoftwareDirectories_ComponentProc(enum component_msg msg, HWND hWnd,
 		LVCol.mask    = LVCF_WIDTH;
 		LVCol.cx      = rectClient.right - rectClient.left - GetSystemMetrics(SM_CXHSCROLL);
 		ListView_InsertColumn(hList, 0, &LVCol);
+
+#ifdef MAME_DEBUG
+		dprintf("CMSG_OPTIONSTOPROP: o->extra_software_paths='%s'\n", o->extra_software_paths);
+#endif
 
 		lpList = o->extra_software_paths;
 
@@ -291,8 +286,8 @@ static BOOL SoftwareDirectories_ComponentProc(enum component_msg msg, HWND hWnd,
 		break;
 
 	case CMSG_PROPTOOPTIONS:
-		lpBuf = o->extra_software_paths;
-		iBufLen = sizeof(o->extra_software_paths) / sizeof(o->extra_software_paths[0]);
+		lpBuf = buf;
+		iBufLen = sizeof(buf) / sizeof(buf[0]);
 		memset(lpBuf, '\0', iBufLen);
 
 		iCount = ListView_GetItemCount(hList);
@@ -304,7 +299,8 @@ static BOOL SoftwareDirectories_ComponentProc(enum component_msg msg, HWND hWnd,
 
 		*lpBuf = '\0';
 
-		for (i = 0; i < iCount; i++) {
+		for (i = 0; i < iCount; i++)
+		{
 			if (i > 0)
 				strncatz(lpBuf, ";", iBufLen);
 
@@ -313,6 +309,12 @@ static BOOL SoftwareDirectories_ComponentProc(enum component_msg msg, HWND hWnd,
 			Item.cchTextMax = iBufLen - strlen(lpBuf);
 			ListView_GetItem(hList, &Item);
 		}
+		FreeIfAllocated(&o->extra_software_paths);
+		o->extra_software_paths = strdup(buf);
+
+#ifdef MAME_DEBUG
+		dprintf("CMSG_PROPTOOPTIONS: o->extra_software_paths='%s'\n", o->extra_software_paths);
+#endif
 		break;
 
 	case CMSG_COMMAND:
@@ -407,6 +409,12 @@ static BOOL RamSize_ComponentProc(enum component_msg msg, HWND hWnd, const struc
 		break;
 
 	case CMSG_COMMAND:
+		switch(params->wID) {
+		case IDC_RAM_COMBOBOX:
+			if (params->wNotifyCode == CBN_SELCHANGE)
+				*(params->changed) = TRUE;
+			break;
+		}
 		return FALSE;
 
 	default:
@@ -420,6 +428,7 @@ static BOOL Printer_ComponentProc(enum component_msg msg, HWND hWnd, const struc
 {
 	HWND hPrinterText, hPrinterCaption, hPrinterBrowse;
 	options_type *o = params->o;
+	char buf[MAX_PATH];
 
 	hPrinterText = GetDlgItem(hWnd, IDC_PRINTER_EDITTEXT);
 	hPrinterCaption = GetDlgItem(hWnd, IDC_PRINTER_CAPTION);
@@ -445,7 +454,13 @@ static BOOL Printer_ComponentProc(enum component_msg msg, HWND hWnd, const struc
 		break;
 
 	case CMSG_PROPTOOPTIONS:
-		GetWindowText(hPrinterText, o->printer, sizeof(o->printer) / sizeof(o->printer[0]));
+		GetWindowText(hPrinterText, buf, sizeof(buf) / sizeof(buf[0]));
+		if (strcmp(o->printer, buf))
+		{
+			FreeIfAllocated(&o->printer);
+			o->printer = strdup(buf);
+			MarkChanged(hWnd);
+		}
 		break;
 
 	case CMSG_COMMAND:
@@ -491,14 +506,14 @@ static component_proc s_ComponentProcs[] =
 	Printer_ComponentProc
 };
 
-static BOOL InvokeComponentProcs(enum component_msg msg, HWND hWnd, struct component_param_block *params)
+static BOOL InvokeComponentProcs(int nGame, enum component_msg msg, HWND hWnd, struct component_param_block *params)
 {
 	int i;
 	const struct GameDriver *gamedrv;
 	BOOL handled = FALSE;
 
 	/* figure out which GameDriver we're using.  NULL indicated default options */
-	gamedrv = (g_nGame >= 0) ? drivers[g_nGame] : NULL;
+	gamedrv = (nGame >= 0) ? drivers[nGame] : NULL;
 
 	for (i = 0; i < sizeof(s_ComponentProcs) / sizeof(s_ComponentProcs[0]); i++)
 	{
@@ -508,29 +523,29 @@ static BOOL InvokeComponentProcs(enum component_msg msg, HWND hWnd, struct compo
 	return handled;
 }
 
-static void MessOptionsToProp(HWND hWnd, options_type *o)
+void MessOptionsToProp(int nGame, HWND hWnd, options_type *o)
 {
 	struct component_param_block params;
 	memset(&params, 0, sizeof(params));
 	params.o = o;
-	InvokeComponentProcs(CMSG_OPTIONSTOPROP, hWnd, &params);
+	InvokeComponentProcs(nGame, CMSG_OPTIONSTOPROP, hWnd, &params);
 }
 
-static void MessPropToOptions(HWND hWnd, options_type *o)
+void MessPropToOptions(int nGame, HWND hWnd, options_type *o)
 {
 	struct component_param_block params;
 	memset(&params, 0, sizeof(params));
 	params.o = o;
-	InvokeComponentProcs(CMSG_PROPTOOPTIONS, hWnd, &params);
+	InvokeComponentProcs(nGame, CMSG_PROPTOOPTIONS, hWnd, &params);
 }
 
-static BOOL MessPropertiesCommand(HWND hWnd, WORD wNotifyCode, WORD wID, BOOL *changed)
+BOOL MessPropertiesCommand(int nGame, HWND hWnd, WORD wNotifyCode, WORD wID, BOOL *changed)
 {
 	struct component_param_block params;
 	memset(&params, 0, sizeof(params));
 	params.wID = wID;
 	params.wNotifyCode = wNotifyCode;
 	params.changed = changed;
-	return InvokeComponentProcs(CMSG_COMMAND, hWnd, &params);
+	return InvokeComponentProcs(nGame, CMSG_COMMAND, hWnd, &params);
 }
 

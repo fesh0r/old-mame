@@ -11,8 +11,8 @@ Bruce Tomlin (hardware info)
 #include "driver.h"
 #include "vidhrdw/vector.h"
 #include "machine/6522via.h"
-
 #include "includes/vectrex.h"
+#include "devices/cartslot.h"
 
 MEMORY_READ_START( vectrex_readmem )
 	{ 0x0000, 0x7fff, MRA_ROM },
@@ -117,7 +117,7 @@ static MACHINE_DRIVER_START( vectrex )
 MACHINE_DRIVER_END
 
 SYSTEM_CONFIG_START(vectrex)
-	CONFIG_DEVICE_CARTSLOT(1, "bin\0gam\0", vectrex_init_cart, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "bin\0gam\0", NULL, NULL, vectrex_cart_load, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 ROM_START(vectrex)

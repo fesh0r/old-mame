@@ -7,14 +7,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <dirent.h>
 #include <unzip.h>
 
 #ifdef MESS
 #ifdef _MSC_VER
 #include "ui/dirent.h"
+#ifndef S_ISDIR
 #define S_ISDIR(mode) ((mode) & _S_IFDIR)
 #endif
+#else
+#include <dirent.h>
+#endif
+#else
+#include <dirent.h>
 #endif
 
 #ifndef MESS
@@ -492,21 +497,21 @@ int frontend_help (const char *gamename)
         #ifdef MESS
 		case LIST_MESSTEXT: /* all mess specific calls here */
 		{
-			/* send the gamename and arg to mess.c */
+					/* send the gamename and arg to mess.c */
 			list_mess_info(gamename, "-listtext", listclones);
 			return 0;
 			break;
 		}
 		case LIST_MESSDEVICES:
-		{
-			/* send the gamename and arg to mess.c */
+			{
+					/* send the gamename and arg to mess.c */
 			list_mess_info(gamename, "-listdevices", listclones);
 			return 0;
 			break;
 		}
 		case LIST_MESSCREATEDIR:
-		{
-			/* send the gamename and arg to mess.c */
+			 	{
+					/* send the gamename and arg to mess.c */
 			list_mess_info(gamename, "-createdir", listclones);
 			return 0;
 			break;

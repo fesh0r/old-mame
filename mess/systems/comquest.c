@@ -40,8 +40,8 @@ icq3250a-d
  */
 
 #include "driver.h"
-
 #include "includes/comquest.h"
+#include "devices/cartslot.h"
 
 static READ_HANDLER(comquest_read)
 {
@@ -321,7 +321,7 @@ ROM_START(comquest)
 ROM_END
 
 SYSTEM_CONFIG_START(comquest)
-	/*CONFIG_DEVICE_CARTSLOT( 1, "bin\0", a2600_load_rom, NULL, NULL)*/
+	/*CONFIG_DEVICE_CARTSLOT_REQ( 1, "bin\0", a2600_load_rom, NULL, NULL)*/
 SYSTEM_CONFIG_END
 
 /***************************************************************************

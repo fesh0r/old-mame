@@ -4,6 +4,8 @@
 #include <stdlib.h>
 
 #include "driver.h"
+#include "devices/cartslot.h"
+#include "devices/snapquik.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,51 +55,25 @@ extern "C" {
 #define DBG_LOG(n,m,a)
 #endif
 
-#if 0
-#ifndef __cplusplus
-typedef int bool;
-#endif
+QUICKLOAD_LOAD( cbm_pet1 );
+QUICKLOAD_LOAD( cbm_pet );
+QUICKLOAD_LOAD( cbm );
+QUICKLOAD_LOAD( cbmb );
+QUICKLOAD_LOAD( cbm500 );
+QUICKLOAD_LOAD( cbm_c65 );
 
-#ifndef true
-#define true 1
-#endif
-#ifndef false
-#define false 0
-#endif
-#endif
-
-int cbm_quick_init (int id, mame_file *fp, int open_mode);
-/* pet with basic 1 */
-int cbm_pet1_quick_open (int id, int mode, void *arg);
-int cbm_pet_quick_open (int id, int mode, void *arg);
-int cbm_quick_open (int id, int mode, void *arg);
-int cbmb_quick_open (int id, int mode, void *arg);
-int cbm500_quick_open (int id, int mode, void *arg);
-int cbm_c65_quick_open (int id, int mode, void *arg);
-
-
-#define CONFIG_DEVICE_CBMPETQUICK \
-	CONFIG_DEVICE_LEGACYX(IO_QUICKLOAD, 1, "p00\0prg\0", IO_RESET_CPU, OSD_FOPEN_READ, cbm_quick_init, NULL, cbm_pet_quick_open, NULL)
-
-#define CONFIG_DEVICE_CBMPET1QUICK \
-	CONFIG_DEVICE_LEGACYX(IO_QUICKLOAD, 1, "p00\0prg\0", IO_RESET_CPU, OSD_FOPEN_READ, cbm_quick_init, NULL, cbm_pet1_quick_open, NULL)
-
-#define CONFIG_DEVICE_CBMQUICK	\
-	CONFIG_DEVICE_LEGACYX(IO_QUICKLOAD, 1, "p00\0prg\0", IO_RESET_CPU, OSD_FOPEN_READ, cbm_quick_init, NULL, cbm_quick_open, NULL)
-
-#define CONFIG_DEVICE_CBMBQUICK	\
-	CONFIG_DEVICE_LEGACYX(IO_QUICKLOAD, 1, "p00\0prg\0", IO_RESET_CPU, OSD_FOPEN_READ, cbm_quick_init, NULL, cbmb_quick_open, NULL)
-
-#define CONFIG_DEVICE_CBM500QUICK	\
-	CONFIG_DEVICE_LEGACYX(IO_QUICKLOAD, 1, "p00\0prg\0", IO_RESET_CPU, OSD_FOPEN_READ, cbm_quick_init, NULL, cbm500_quick_open, NULL)
-
-#define CONFIG_DEVICE_C65QUICK \
-	CONFIG_DEVICE_LEGACYX(IO_QUICKLOAD, 1, "p00\0prg\0", IO_RESET_CPU, OSD_FOPEN_READ, cbm_quick_init, NULL, cbm_c65_quick_open, NULL)
+#define CONFIG_DEVICE_CBMPETQUICK	CONFIG_DEVICE_QUICKLOAD( "p00\0prg\0", cbm_pet)
+#define CONFIG_DEVICE_CBMPET1QUICK	CONFIG_DEVICE_QUICKLOAD( "p00\0prg\0", cbm_pet1)
+#define CONFIG_DEVICE_CBMQUICK		CONFIG_DEVICE_QUICKLOAD( "p00\0prg\0", cbm)
+#define CONFIG_DEVICE_CBMBQUICK		CONFIG_DEVICE_QUICKLOAD( "p00\0prg\0", cbmb)
+#define CONFIG_DEVICE_CBM500QUICK	CONFIG_DEVICE_QUICKLOAD( "p00\0prg\0", cbm500)
+#define CONFIG_DEVICE_C65QUICK		CONFIG_DEVICE_QUICKLOAD( "p00\0prg\0", cbm_c65)
 
 /* use to functions to parse, load the rom images into memory
    and then use the cbm_rom var */
-int cbm_rom_init(int id, mame_file *fp, int open_mode);
-void cbm_rom_exit(int id);
+int cbm_rom_init(int id);
+int cbm_rom_load(int id, mame_file *fp, int open_mode);
+void cbm_rom_unload(int id);
 
 typedef struct {
 #define CBM_ROM_ADDR_UNKNOWN 0
@@ -113,7 +89,10 @@ extern INT8 cbm_c64_exrom;
 extern CBM_ROM cbm_rom[0x20];
 
 #define CONFIG_DEVICE_CBM_CARTSLOT(file_extensions) \
-	CONFIG_DEVICE_CARTSLOT(2, (file_extensions), cbm_rom_init, cbm_rom_exit, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(2, (file_extensions), cbm_rom_init, NULL, cbm_rom_load, cbm_rom_unload, NULL, NULL)
+
+#define CONFIG_DEVICE_CBM_CARTSLOT_REQ(file_extensions) \
+	CONFIG_DEVICE_CARTSLOT_REQ(2, (file_extensions), cbm_rom_init, NULL, cbm_rom_load, cbm_rom_unload, NULL, NULL)
 
 /* prg file format
  * sfx file format

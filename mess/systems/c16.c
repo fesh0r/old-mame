@@ -163,6 +163,7 @@ when problems start with -log and look into error.log file
 #include "includes/vc20tape.h"
 #include "includes/ted7360.h"
 #include "includes/sid6581.h"
+#include "devices/cartslot.h"
 
 /*
  * commodore c16/c116/plus 4
@@ -857,22 +858,25 @@ MACHINE_DRIVER_END
 #define init_plus4v 	c16_driver_init
 #define init_c364		c16_driver_init
 
+#define CONFIG_DEVICE_C16CART \
+	CONFIG_DEVICE_CARTSLOT_OPT(2, "bin\0rom\0", NULL, NULL, c16_rom_init, c16_rom_exit, NULL, NULL)
+
 SYSTEM_CONFIG_START(c16)
-	CONFIG_DEVICE_CARTSLOT(2, "bin\0rom\0", c16_rom_init, c16_rom_exit, NULL)
+	CONFIG_DEVICE_C16CART
 	CONFIG_DEVICE_FLOPPY_CBM
 	CONFIG_DEVICE_CBMQUICK
 	CONFIG_DEVICE_VC20TAPE
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(c16c)
-	CONFIG_DEVICE_CARTSLOT(2, "bin\0rom\0", c16_rom_init, c16_rom_exit, NULL)
+	CONFIG_DEVICE_C16CART
 	CONFIG_DEVICE_CBMQUICK
 	CONFIG_DEVICE_VC20TAPE
 	CONFIG_DEVICE_C1551
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(c16v)
-	CONFIG_DEVICE_CARTSLOT(2, "bin\0rom\0", c16_rom_init, c16_rom_exit, NULL)
+	CONFIG_DEVICE_C16CART
 	CONFIG_DEVICE_CBMQUICK
 	CONFIG_DEVICE_VC20TAPE
 	CONFIG_DEVICE_VC1541

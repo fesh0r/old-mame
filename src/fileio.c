@@ -4,6 +4,7 @@
 
 ***************************************************************************/
 
+#include <assert.h>
 #include "driver.h"
 #include "unzip.h"
 
@@ -210,7 +211,11 @@ mame_file *mame_fopen(const char *gamename, const char *filename, int filetype, 
 
 		/* save state files */
 		case FILETYPE_STATE:
+#ifndef MESS
 			return generic_fopen(filetype, NULL, filename, 0, openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD);
+#else
+			return generic_fopen(filetype, NULL, filename, 0, FILEFLAG_ALLOW_ABSOLUTE | (openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD));
+#endif
 
 		/* memory card files */
 		case FILETYPE_MEMCARD:
@@ -239,6 +244,12 @@ mame_file *mame_fopen(const char *gamename, const char *filename, int filetype, 
 		/* game specific ini files */
 		case FILETYPE_INI:
 			return generic_fopen(filetype, NULL, gamename, 0, FILEFLAG_OPENREAD);
+
+#ifdef MESS
+		/* CRC files */
+		case FILETYPE_CRC:
+			return generic_fopen(filetype, NULL, gamename, 0, openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD);
+#endif
 
 		/* anything else */
 		default:
@@ -826,6 +837,12 @@ static const char *get_extension_for_filetype(int filetype)
 		case FILETYPE_INI:			/* game specific ini files */
 			extension = "ini";
 			break;
+
+#ifdef MESS
+		case FILETYPE_CRC:
+			extension = "crc";
+			break;
+#endif
 	}
 	return extension;
 }

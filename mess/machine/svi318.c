@@ -19,7 +19,7 @@
 #include "formats/svi_cas.h"
 #include "machine/8255ppi.h"
 #include "vidhrdw/tms9928a.h"
-#include "printer.h"
+#include "devices/printer.h"
 #include "image.h"
 
 static SVI_318 svi;
@@ -42,47 +42,32 @@ static int svi318_verify_cart (UINT8 magic[2])
 
 
 
-int svi318_load_rom (int id, mame_file *f, int open_mode)
+int svi318_cart_load(int id, mame_file *f, int open_mode)
 {
 	UINT8 *p;
 	int size;
 
-	/* A cartridge isn't strictly mandatory */
-	if (f == NULL)
+	p = image_malloc(IO_CARTSLOT, id, 0x8000);
+	if (!p)
+		return INIT_FAIL;
+
+	memset (p, 0xff, 0x8000);
+	size = mame_fsize (f);
+	if (mame_fread (f, p, size) != size)
 	{
-		logerror("SVI318 - warning: no cartridge specified!\n");
-		return INIT_PASS;
+		logerror ("can't read file %s\n", image_filename (IO_CASSETTE, id) );
+		return INIT_FAIL;
 	}
 
-	if (f)
-	{
-		p = image_malloc(IO_CARTSLOT, id, 0x8000);
-		if (!p)
-		{
-			logerror ("malloc () failed!\n");
-			return INIT_FAIL;
-		}
+	if(svi318_verify_cart(p)==IMAGE_VERIFY_FAIL)
+		return INIT_FAIL;
+	pcart = p;
+	svi.banks[0][1] = p;
 
-		memset (p, 0xff, 0x8000);
-		size = mame_fsize (f);
-		if (mame_fread (f, p, size) != size)
-		{
-			logerror ("can't read file %s\n", image_filename (IO_CASSETTE, id) );
-			return INIT_FAIL;
-		}
-
-		if(svi318_verify_cart(p)==IMAGE_VERIFY_FAIL)
-			return INIT_FAIL;
-		pcart = p;
-		svi.banks[0][1] = p;
-
-		return INIT_PASS;
-	}
-
-	return INIT_FAIL;
+	return INIT_PASS;
 }
 
-void svi318_exit_rom (int id)
+void svi318_cart_unload(int id)
 {
 	pcart = svi.banks[0][1] = NULL;
 }
@@ -395,7 +380,7 @@ int svi318_floppy_init(int id, mame_file *fp, int open_mode)
 	else
 		return INIT_FAIL;
 
-	if (svi318dsk_floppy_init (id, fp, open_mode) != INIT_PASS)
+	if (svi318dsk_floppy_init (id) != INIT_PASS)
 		return INIT_FAIL;
 
 	svi318dsk_set_geometry (id, 40, svi318_dsk_heads[id], 17, 256, 1, 0);

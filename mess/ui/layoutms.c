@@ -24,6 +24,9 @@
 #include "ui/options.h"
 #include "ui/splitters.h"
 #include "ui/help.h"
+#include "ui/properties.h"
+#include "ui/audit32.h"
+#include "ui/propertiesms.h"
 
 static BOOL FilterAvailable(int driver_index);
 
@@ -74,7 +77,7 @@ DIRECTORYINFO g_directoryInfo[] =
 {
 	{ "BIOSes",                GetRomDirs,      SetRomDirs,      TRUE,  DIRDLG_ROMS },
 	{ "Software",              GetSoftwareDirs, SetSoftwareDirs, TRUE,  DIRDLG_SOFTWARE },
-	{ "Ini Files",             GetIniDirs,      SetIniDirs,      TRUE,  DIRDLG_INI },
+	{ "Ini Files",             GetIniDir,       SetIniDir,       FALSE, DIRDLG_INI },
 	{ "CRC",                   GetCrcDir,       SetCrcDir,       FALSE, 0 },
 	{ "Config",                GetCfgDir,       SetCfgDir,       FALSE, DIRDLG_CFG },
 	{ "High Scores",           GetHiDir,        SetHiDir,        FALSE, DIRDLG_HI },
@@ -105,10 +108,43 @@ const SPLITTERINFO g_splitterInfo[] =
 
 const MAMEHELPINFO g_helpInfo[] =
 {
-	{ ID_HELP_CONTENTS,		TRUE,	MAME32HELP "::/html/mess_overview.htm" },
+	{ ID_HELP_CONTENTS,		TRUE,	"mess.chm::/html/mess_overview.htm" },
 	{ ID_HELP_RELEASE,		FALSE,	"docs\\Mess.txt" },
-	{ ID_HELP_WHATS_NEW,	TRUE,	MAME32HELP "::/messnew.txt" },
+	{ ID_HELP_WHATS_NEW,	TRUE,	"mess.chm::/messnew.txt" },
 	{ -1 }
+};
+
+const PROPERTYSHEETINFO g_propSheets[] =
+{
+	{ FALSE,	NULL,					IDD_PROP_GAME,			GamePropertiesDialogProc },
+	{ FALSE,	NULL,					IDD_PROP_AUDIT,			GameAuditDialogProc },
+	{ TRUE,		NULL,					IDD_PROP_DISPLAY,		GameOptionsProc },
+	{ TRUE,		NULL,					IDD_PROP_ADVANCED,		GameOptionsProc },
+	{ TRUE,		NULL,					IDD_PROP_SOUND,			GameOptionsProc },
+	{ TRUE,		NULL,					IDD_PROP_INPUT,			GameOptionsProc },
+	{ TRUE,		NULL,					IDD_PROP_MISC,			GameOptionsProc },
+	{ TRUE,		NULL,					IDD_PROP_SOFTWARE,		GameMessOptionsProc },
+	{ FALSE,	PropSheetFilter_Config,	IDD_PROP_CONFIGURATION,	GameMessOptionsProc },
+	{ TRUE,		PropSheetFilter_Vector,	IDD_PROP_VECTOR,		GameOptionsProc },
+	{ FALSE }
+};
+
+const ICONDATA g_iconData[] =
+{
+	{ IDI_WIN_NOROMS,			"noroms" },
+	{ IDI_WIN_ROMS,				"roms" },
+	{ IDI_WIN_UNKNOWN,			"unknown" },
+	{ IDI_WIN_CLONE,			"clone" },
+	{ IDI_WIN_REDX,				"warning" },
+	{ IDI_WIN_NOROMSNEEDED,		"noromsneeded" },
+	{ IDI_WIN_MISSINGOPTROM,	"missingoptrom" },
+	{ IDI_WIN_FLOP,				"floppy" },
+	{ IDI_WIN_CASS,				"cassette" },
+	{ IDI_WIN_SERL,				"serial" },
+	{ IDI_WIN_SNAP,				"snapshot" },
+	{ IDI_WIN_PRIN,				"printer" },
+	{ IDI_WIN_HARD,				"hard" },
+	{ 0 }
 };
 
 const char g_szDefaultGame[] = "nes";

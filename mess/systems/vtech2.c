@@ -65,13 +65,13 @@
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
-
+#include "devices/cartslot.h"
 #include "includes/vtech2.h"
 
 #define VERBOSE 0
 
 #if VERBOSE
-#define LOG(x)	if( errorlog ) fprintf x
+#define LOG(x)	logerror x
 #else
 #define LOG(x)	/* x */
 #endif
@@ -506,7 +506,6 @@ static MACHINE_DRIVER_START( laser350 )
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_INIT( laser350 )
-	MDRV_MACHINE_STOP( laser )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -575,8 +574,8 @@ ROM_END
 
 SYSTEM_CONFIG_START(laser)
 	CONFIG_DEVICE_CASSETTE(1, "cas\0", laser_cassette_init)
-	CONFIG_DEVICE_CARTSLOT(1, "rom\0", laser_rom_init, laser_rom_exit, NULL)
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 2, "dsk\0", IO_RESET_NONE, OSD_FOPEN_READ, laser_floppy_init, laser_floppy_exit, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "rom\0", NULL, NULL, laser_cart_load, laser_cart_unload, NULL, NULL)
+	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 2, "dsk\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, laser_floppy_load, NULL, NULL)
 SYSTEM_CONFIG_END
 
 /*	  YEAR	 NAME	   PARENT	 MACHINE   INPUT	 INIT	   CONFIG	COMPANY	 FULLNAME */

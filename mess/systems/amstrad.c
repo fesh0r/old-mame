@@ -21,20 +21,15 @@
 #include "driver.h"
 
 #include "includes/centroni.h"
-#include "printer.h"
-
-/* for 8255 ppi */
-#include "machine/8255ppi.h"
-/* for cycle tables */
-#include "cpu/z80/z80.h"
-/* CRTC display */
-#include "vidhrdw/m6845.h"
+#include "machine/8255ppi.h"	/* for 8255 ppi */
+#include "cpu/z80/z80.h"		/* for cycle tables */
+#include "vidhrdw/m6845.h"		/* CRTC display */
 #include "includes/amstrad.h"
-/* for floppy disc controller */
-#include "includes/nec765.h"
-/* for CPCEMU style disk images */
-#include "includes/dsk.h"
-#include "snapquik.h"
+#include "includes/nec765.h"	/* for floppy disc controller */
+#include "devices/dsk.h"		/* for CPCEMU style disk images */
+#include "devices/snapquik.h"
+#include "devices/cartslot.h"
+#include "devices/printer.h"
 
 #ifdef AMSTRAD_VIDEO_EVENT_LIST
 /* for event list */
@@ -2788,8 +2783,8 @@ SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(cpcplus)
 	CONFIG_IMPORT_FROM(cpc6128)
-	CONFIG_DEVICE_CARTSLOT(1,	"cpr\0", amstrad_plus_cartridge_init, NULL, NULL)
-	CONFIG_DEVICE_SNAPSHOT(		"sna\0", amstrad)
+	CONFIG_DEVICE_CARTSLOT_REQ(1,	"cpr\0", NULL, NULL, amstrad_plus_cartridge_load, NULL, NULL, NULL)
+	CONFIG_DEVICE_SNAPSHOT(			"sna\0", amstrad)
 SYSTEM_CONFIG_END
 
 /*      YEAR  NAME       PARENT  MACHINE    INPUT    INIT    CONFIG,  COMPANY               FULLNAME */

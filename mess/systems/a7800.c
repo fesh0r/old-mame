@@ -16,6 +16,7 @@
 #include "vidhrdw/generic.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/tiaintf.h"
+#include "devices/cartslot.h"
 
 #include "includes/a7800.h"
 
@@ -262,10 +263,8 @@ static PALETTE_INIT(a7800)
 
 static PALETTE_INIT(a7800p)
 {
-
 	palette_set_colors(0, a7800p_palette, sizeof(a7800p_palette) / 3);
     memcpy(colortable,a7800_colortable,sizeof(a7800_colortable));
-
 }
 
 
@@ -344,7 +343,7 @@ static MACHINE_DRIVER_START( a7800p )
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(sizeof(a7800p_palette) / sizeof(a7800p_palette[0]) / 3)
 	MDRV_COLORTABLE_LENGTH(sizeof(a7800_colortable) / sizeof(a7800_colortable[0]))
-	MDRV_PALETTE_INIT(a7800)
+	MDRV_PALETTE_INIT(a7800p)
 
 	MDRV_VIDEO_START(a7800)
 	MDRV_VIDEO_UPDATE(a7800)
@@ -376,11 +375,11 @@ ROM_START (a7800p)
 ROM_END
 
 SYSTEM_CONFIG_START(a7800)
-	CONFIG_DEVICE_CARTSLOT( 1, "a78\0", a7800_init_cart, NULL, a7800_partialcrc)
+	CONFIG_DEVICE_CARTSLOT_REQ( 1, "a78\0", NULL, NULL, a7800_cart_load, NULL, NULL, a7800_partialcrc)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(a7800p)
-	CONFIG_DEVICE_CARTSLOT( 1, "a78\0", a7800p_init_cart, NULL, a7800_partialcrc)
+	CONFIG_DEVICE_CARTSLOT_REQ( 1, "a78\0", NULL, NULL, a7800p_cart_load, NULL, NULL, a7800_partialcrc)
 SYSTEM_CONFIG_END
 
 /***************************************************************************

@@ -52,6 +52,7 @@ Nascom Memory map
 #include "cpu/z80/z80.h"
 #include "vidhrdw/generic.h"
 #include "includes/nascom1.h"
+#include "devices/cartslot.h"
 
 /* port i/o functions */
 
@@ -313,18 +314,18 @@ ROM_END
 
 SYSTEM_CONFIG_START(nascom)
 #ifdef CART
-	CONFIG_DEVICE_CARTSLOT(1, "nas\0bin\0", nascom1_init_cartridge, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_REQ(1, "nas\0bin\0", nascom1_init_cartridge, NULL, NULL)
 #endif
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(nascom1)
 	CONFIG_IMPORT_FROM(nascom)
-	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "nas\0bin\0", IO_RESET_NONE, OSD_FOPEN_READ, nascom1_init_cassette, nascom1_exit_cassette, NULL)
+	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "nas\0bin\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, nascom1_cassette_load, nascom1_cassette_unload, NULL)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(nascom2)
 	CONFIG_IMPORT_FROM(nascom)
-	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "cas\0nas\0bin\0", IO_RESET_NONE, OSD_FOPEN_READ, nascom1_init_cassette, nascom1_exit_cassette, NULL)
+	CONFIG_DEVICE_LEGACY(IO_CASSETTE, 1, "cas\0nas\0bin\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, nascom1_cassette_load, nascom1_cassette_unload, NULL)
 SYSTEM_CONFIG_END
 
 /*	  YEAR	NAME		PARENT		MACHINE		INPUT		INIT	CONFIG		COMPANY		FULLNAME */

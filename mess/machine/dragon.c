@@ -62,9 +62,9 @@
 #include "vidhrdw/m6847.h"
 #include "formats/cocopak.h"
 #include "formats/cococas.h"
-#include "cassette.h"
-#include "bitbngr.h"
-#include "printer.h"
+#include "devices/cassette.h"
+#include "devices/bitbngr.h"
+#include "devices/printer.h"
 #include "image.h"
 
 static UINT8 *coco_rom;
@@ -510,7 +510,8 @@ static int generic_rom_load(int id, mame_file *fp, UINT8 *dest, UINT16 destlengt
 		rombase = dest;
 		dest += romsize;
 		destlength -= romsize;
-		while(destlength > 0) {
+		while(destlength > 0)
+		{
 			if (romsize > destlength)
 				romsize = destlength;
 			memcpy(dest, rombase, romsize);
@@ -527,6 +528,12 @@ int coco_rom_load(int id, mame_file *fp, int open_mode)
 	return generic_rom_load(id, fp, &ROM[0x4000], 0x4000);
 }
 
+void coco_rom_unload(int id)
+{
+	UINT8 *ROM = memory_region(REGION_CPU1);
+	memset(&ROM[0x4000], 0, 0x4000);
+}
+
 int coco3_rom_load(int id, mame_file *fp, int open_mode)
 {
 	UINT8 	*ROM = memory_region(REGION_CPU1);
@@ -537,13 +544,23 @@ int coco3_rom_load(int id, mame_file *fp, int open_mode)
 		mame_fseek(fp, 0, SEEK_SET);
 
 	if( count == 0 )
+	{
 		/* Load roms starting at 0x8000 and mirror upwards. */
 		/* ROM size is 32K max */
 		return generic_rom_load(id, fp, &ROM[0x8000], 0x8000);
+	}
 	else
+	{
 		/* Load roms starting at 0x8000 and mirror upwards. */
 		/* ROM bank is 16K max */
 		return generic_rom_load(id, fp, &ROM[0x8000], 0x4000);
+	}
+}
+
+void coco3_rom_unload(int id)
+{
+	UINT8 *ROM = memory_region(REGION_CPU1);
+	memset(&ROM[0x8000], 0, 0x8000);
 }
 
 /***************************************************************************
@@ -1054,11 +1071,6 @@ static WRITE_HANDLER ( d_pia0_pa_w )
 static WRITE_HANDLER ( d_pia0_pb_w )
 {
 	pia0_pb = data;
-}
-
-static WRITE_HANDLER ( d_pia0_pb_w_dragon64 )
-{
-	d_pia0_pb_w(offset, data);
 }
 
 /* The following hacks are necessary because a large portion of cartridges

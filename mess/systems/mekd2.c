@@ -28,7 +28,7 @@
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
-
+#include "devices/cartslot.h"
 #include "includes/mekd2.h"
 
 #ifndef VERBOSE
@@ -205,7 +205,7 @@ ROM_START(mekd2)
 ROM_END
 
 SYSTEM_CONFIG_START(mekd2)
-	CONFIG_DEVICE_CARTSLOT(1, "d2\0", mekd2_rom_load, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_OPT(1, "d2\0", NULL, NULL, mekd2_cart_load, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************

@@ -17,16 +17,21 @@ enabled by default.  Whilst in full keyboard emulation mode, some key<br>
 associated functionality may be disabled (like the ESC key for EXIT).<br>
 The keyboard emulation mode is toggled using the scroll_lock key.<br>
 <p><b>Usage:</b><br>
-This TI99/4a driver offers a high level of compatibility. It currently<br>
+This TI99/4a driver offers a high level of compatibility.  It currently<br>
 supports V9t9-format cartridge images, sampled tapes in wave format<br>
-(CS1 and CS2), and up to 3 SSSD disk images. Speech synthesis is emulated,<br>
-although speech ROM emulation is still in the works. TI, Super AMS and<br>
-Foundation memory expansion cards are supported.<br>
+(CS1 and CS2), and up to 3 SSSD or DSDD disk images.  Speech synthesis should<br>
+now emulated completely.  Both TI and BwG disk controllers are supported.<br>
+TI, Super AMS and Foundation memory expansion cards are supported.  Serial port<br>
+and PIO emulation is incomplete, but it enables you to redirect PIO output to a<br>
+file and save listings to this file by "printing" them to PIO.<br>
 <p><b>Loading a cartridge:</b><br>
 You do not need a cartridge image to run the computer, since TI99/4a has<br>
 a small built-in basic interpreter.<br>
-V9t9-format cart images are typically split into up to 3 files. These can be<br>
-loaded in any order, so long as all necessary portions are loaded.<br>
+V9t9-format cart images are typically split into up to 3 files.  You MUST load<br>
+all individual files.  Loading a single zip archive containing all the<br>
+cartridge files will NOT work, you must uncompress the archive and select every<br>
+file instead.  These files can be loaded in any order, as long as all necessary<br>
+files are loaded.<br>
 <p><b>Setting up the system configuration:</b><br>
 A few dip switches enable or disable computer extensions. These switches are<br>
 only read at reset. Therefore, if you edit them, you must reset the emulator<br>
@@ -43,7 +48,7 @@ than $100, while suffering heavy losses.  So, by the end of 1983, TI had<br>
 abandoned TI99/4a, its prototype successors, and withdrawn from the home<br>
 computer market.<br>
 <hr>
-<center><font size=-2>created on Sun Feb 16 15:15:09 2003
+<center><font size=-2>created on Fri Mar 21 21:16:51 2003
 </font></center>
 </body>
 </html>

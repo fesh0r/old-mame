@@ -98,11 +98,12 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6502/m6502.h"
-#include "sound/tiaintf.h"
 #include "machine/6821pia.h"
+#include "sound/tiaintf.h"
 #include "sound/hc55516.h"
+#include "vidhrdw/generic.h"
+#include "devices/cartslot.h"
 
 #include "includes/a2600.h"
 
@@ -800,7 +801,7 @@ static MACHINE_DRIVER_START( a2600 )
 MACHINE_DRIVER_END
 
 SYSTEM_CONFIG_START(a2600)
-	CONFIG_DEVICE_CARTSLOT( 1, "bin\0", a2600_load_rom, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_REQ( 1, "bin\0", NULL, NULL, a2600_cart_load, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
 /***************************************************************************

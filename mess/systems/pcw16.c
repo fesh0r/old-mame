@@ -91,13 +91,13 @@
 // PC-Parallel Port
 #include "includes/pclpt.h"
 #include "includes/centroni.h" // centronics printer handshake simulation
-#include "printer.h" // printer device
+#include "devices/printer.h" // printer device
 // PC-AT keyboard
 #include "includes/pckeybrd.h"
 // change to superio later
 #include "includes/pc_fdc_h.h"
 // for pc disk images
-#include "includes/pc_flopp.h"
+#include "devices/pc_flopp.h"
 // for pc com port
 #include "includes/uart8250.h"
 // for pc serial mouse
@@ -1545,7 +1545,7 @@ ROM_END
 SYSTEM_CONFIG_START(pcw16)
 	CONFIG_RAM_DEFAULT(2048 * 1024)
 	/*CONFIG_DEVICE_PRINTER(1)*/
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 2, "dsk\0", IO_RESET_NONE, OSD_FOPEN_RW_CREATE_OR_READ, pc_floppy_init, pc_floppy_exit, floppy_status)
+	CONFIG_DEVICE_PC_FLOPPY(2)
 SYSTEM_CONFIG_END
 
 /*     YEAR  NAME     PARENT    MACHINE    INPUT     INIT   CONFIG,  COMPANY          FULLNAME */

@@ -23,7 +23,7 @@ IRQ mode 1
 NMI
 ***************************************************************************/
 #include "includes/trs80.h"
-#include "includes/basicdsk.h"
+#include "devices/basicdsk.h"
 
 #define FW	TRS80_FONT_W
 #define FH	TRS80_FONT_H
@@ -433,7 +433,7 @@ ROM_END
 
 SYSTEM_CONFIG_START(trs80)
 	CONFIG_DEVICE_QUICKLOAD_DELAY(		"cmd\0", trs80_cmd,	0.5)
-	CONFIG_DEVICE_LEGACY(IO_CASSETTE,1,	"cas\0", IO_RESET_NONE, OSD_FOPEN_READ, trs80_cas_init, trs80_cas_exit, NULL)
+	CONFIG_DEVICE_LEGACY(IO_CASSETTE,1,	"cas\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, trs80_cas_load, trs80_cas_unload, NULL)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(trs8012)

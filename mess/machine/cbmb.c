@@ -248,9 +248,6 @@ static void cbmb_common_driver_init (void)
 
 	cbm_drive_open ();
 
-	cbm_drive_attach_fs (0);
-	cbm_drive_attach_fs (1);
-
 	cbm_ieee_open();
 }
 
@@ -323,8 +320,7 @@ void cbmb_rom_load(void)
 
 void cbmb_frame_interrupt (int param)
 {
-	static int level=0;
-	static int quickload = 0;
+	static int level = 0;
 	int value;
 
 	tpi6525_0_irq0_level(level);
@@ -332,11 +328,6 @@ void cbmb_frame_interrupt (int param)
 	if (level) return ;
 
 	sid6581_update();
-	if (!quickload && QUICKLOAD) {
-		if (cbm500) cbm500_quick_open(0, 0, cbmb_memory);
-		else cbmb_quick_open (0, 0, cbmb_memory);
-	}
-	quickload = QUICKLOAD;
 
 	value = 0;
 	if (KEY_STOP)

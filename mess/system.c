@@ -140,8 +140,6 @@ const struct GameDriver *test_drivers[] =
 	DRIVER( smsehs24 )	/* Sega Master System								*/
 	DRIVER( smsuh34 )	/* Sega Master System								*/
 	DRIVER( smseh34 )	/* Sega Master System								*/
-//	DRIVER( smsumd3d )	/* Sega Master System								*/
-//	DRIVER( smsemd3d )	/* Sega Master System								*/
 	DRIVER( genesis )	/* Sega Genesis/MegaDrive							*/
 TESTDRIVER( saturn )	/* Sega Saturn										*/
 
@@ -158,17 +156,12 @@ TESTDRIVER( studio2 )	/* Studio II										*/
 	/* COLECO */
 	DRIVER( coleco )	/* ColecoVision (Original BIOS)						*/
 	DRIVER( colecoa )	/* ColecoVision (Thick Characters)					*/
-	/* Please dont include these next 2 in a distribution, they are Hacks */
-#ifdef COLECO_HACKS
-TESTDRIVER( colecofb )	/* ColecoVision (Fast BIOS load)					*/
-TESTDRIVER( coleconb )	/* ColecoVision (No BIOS load)						*/
-#endif
 
 	/* NEC */
 	DRIVER( pce )		/* PC/Engine - Turbo Graphics-16  NEC 1989-1993		*/
 
 	DRIVER( arcadia )	/* Emerson Arcadia 2001								*/
-	TESTDRIVER( vcg )	/* Palladium Video-Computer-Game					*/
+TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
 
 	/* GCE */
 	DRIVER( vectrex )	/* General Consumer Electric Vectrex - 1982-1984	*/
@@ -204,7 +197,6 @@ TESTDRIVER( vc4000 )	/* Interton vc4000									*/
 	DRIVER( bbcbp )     /* 198? BBC Micro Model B+ 64K						*/
 	DRIVER( bbcbp128 )  /* 198? BBC Micro Model B+ 128K						*/
 TESTDRIVER( bbcb6502 )  /* 198? BBC B WD1770 with a 6502 second processor	*/
-//TESTDRIVER( electron )	/* 198? Acorn Electron								*/
 TESTDRIVER( a310 )      /* 1988 Acorn Archimedes 310						*/
 
 	/* CAMBRIDGE COMPUTERS */
@@ -272,7 +264,6 @@ TESTDRIVER( nc200 )     /* 19?? NC200										*/
  * Macintosh SE			 March				 1987
  * Macintosh II 		 March				 1987
  */
-//TESTDRIVER( mac512k )	/* 1984 Apple Macintosh 512k						*/
 	DRIVER( mac512ke )  /* 1986 Apple Macintosh 512ke						*/
 	DRIVER( macplus )	/* 1986 Apple Macintosh Plus						*/
 
@@ -298,8 +289,6 @@ XL/XE 16kB OS roms
 	DRIVER( a800 )		/* 1979 Atari 800									*/
 	DRIVER( a800pal )	/* 1979 Atari 800 PAL								*/
 	DRIVER( a800xl )	/* 1983 Atari 800 XL								*/
-
-//TESTDRIVER( atarist )	/* Atari ST 										*/
 
 	/* COMMODORE */
 	DRIVER( kim1 )		/* Commodore (MOS) KIM-1 1975						*/
@@ -384,6 +373,7 @@ TESTDRIVER( bondwell )	/* 1985	Bondwell (CGA)								*/
 	/* pc junior */
 TESTDRIVER( ibmpcjr )	/*      IBM PC Jr									*/
 	DRIVER( t1000hx )	/* 1987 Tandy 1000HX (similiar to PCJr)				*/
+TESTDRIVER( t1000sx )	/* 1987 Tandy 1000SX (similiar to PCJr)				*/
 
 	/* xt */
 	DRIVER( ibmxt )		/* 1986	IBM XT										*/
@@ -439,9 +429,6 @@ TESTDRIVER( lambda )	/* Lambda 8300										*/
 	DRIVER( specp3es )	/* 2000 ZX Spectrum +3e (Spain)						*/
 
 	/* SHARP */
-//TESTDRIVER( pc1500 )	/* 1982 Pocket Computer 1500						*/
-//TESTDRIVER( trs80pc2 )	/* 1982 Tandy TRS80 PC 2							*/
-//TESTDRIVER( pc1500a )	/* 1984 Pocket Computer 1500A						*/
 	DRIVER( pc1251 )	/* Pocket Computer 1251 							*/
 TESTDRIVER( trs80pc3 )	/* Tandy TRS80 PC-3									*/
 
@@ -459,16 +446,17 @@ TESTDRIVER( mz800  )	/* 1982 Sharp MZ800 								*/
 
 	/* TEXAS INSTRUMENTS */
 	DRIVER( ti990_10 )	/* 1975 TI 990/10									*/
-/*TESTDRIVER( ti990_4 )*/	/* 1976 TI 990/4									*/
+//TESTDRIVER( ti990_4 )	/* 1976 TI 990/4									*/
+//TESTDRIVER( tm990189 )	/* 1980? TM990/189									*/
 
-/*TESTDRIVER( ti99_224 )*/	/* 1983 TI 99/2 (24kb ROMs) 						*/
-/*TESTDRIVER( ti99_232 )*/	/* 1983 TI 99/2 (32kb ROMs) 						*/
+//TESTDRIVER( ti99_224 )	/* 1983 TI 99/2 (24kb ROMs) 						*/
+//TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 (32kb ROMs) 						*/
 	DRIVER( ti99_4 )	/* 1979 TI 99/4 									*/
 	DRIVER( ti99_4e )	/* 1980 TI 99/4 with 50Hz video						*/
 	DRIVER( ti99_4a )	/* 1981 TI 99/4A									*/
 	DRIVER( ti99_4ae )	/* 1981 TI 99/4A with 50Hz video					*/
 	DRIVER( ti99_4ev)	/* 1994 TI 99/4A with EVPC video card				*/
-/*TESTDRIVER( ti99_4p )*/	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
+TESTDRIVER( ti99_4p )	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
 
 	DRIVER( avigo )     /*												    */
 
@@ -640,7 +628,7 @@ TESTDRIVER( mekd2 )     /* 1977 Motorola Evaluation Kit						*/
 	DRIVER( lvivp )		/* PK-01 Lviv (early)								*/
 
 	/* Tesla */
-	TESTDRIVER( pmd85 )	/* PMD-85.1											*/
+TESTDRIVER( pmd85 )	/* PMD-85.1											*/
 
 	/* Team Concepts */
 	/* CPU not known, else should be easy, look into systems/comquest.c */

@@ -10,6 +10,7 @@
 #include "cpu/i8039/i8039.h"
 #include "vidhrdw/generic.h"
 #include "includes/odyssey2.h"
+#include "devices/cartslot.h"
 
 MEMORY_READ_START( readmem )
 	{ 0x0000, 0x03FF, MRA_ROM },
@@ -150,7 +151,8 @@ static struct GfxLayout odyssey2_spritelayout =
         1*8
 };
 
-static struct GfxDecodeInfo odyssey2_gfxdecodeinfo[] = {
+static struct GfxDecodeInfo odyssey2_gfxdecodeinfo[] =
+{
     { REGION_GFX1, 0x0000, &odyssey2_graphicslayout,                     0, 2 },
     { REGION_GFX1, 0x0000, &odyssey2_spritelayout,                     0, 2 },
     { -1 } /* end of array */
@@ -198,15 +200,15 @@ ROM_END
 static DRIVER_INIT( odyssey2 )
 {
 	int i;
-	UINT8 *gfx=memory_region(REGION_GFX1);
+	UINT8 *gfx = memory_region(REGION_GFX1);
 	for (i=0; i<256; i++)
 		gfx[i]=i;
 }
 
 SYSTEM_CONFIG_START(odyssey2)
-	CONFIG_DEVICE_CARTSLOT(1, "bin\0", odyssey2_load_rom, NULL, NULL)
+	CONFIG_DEVICE_CARTSLOT_REQ(1, "bin\0", NULL, NULL, odyssey2_cart_load, NULL, NULL, NULL)
 SYSTEM_CONFIG_END
 
-/*     YEAR  NAME		PARENT	MACHINE   INPUT 	INIT		CONFIG		COMPANY		FULLNAME */
-COMPX( 1982, odyssey2,	0,		odyssey2, odyssey2, odyssey2,	odyssey2,	"Magnavox",  "Odyssey 2", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
+/*     YEAR  NAME      PARENT  MACHINE   INPUT     INIT      CONFIG    COMPANY     FULLNAME     FLAGS */
+COMPX( 1982, odyssey2, 0,      odyssey2, odyssey2, odyssey2, odyssey2, "Magnavox", "Odyssey 2", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
 /* philips g7000/videopac */

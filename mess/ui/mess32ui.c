@@ -62,6 +62,7 @@ static int *mess_icon_index;
 static void InitMessPicker(void);
 static void MyFillSoftwareList(int nGame);
 static void MessUpdateSoftwareList(void);
+static void MessGetPickerDefaults(void);
 static void MessSetPickerDefaults(void);
 static void MessOpenOtherSoftware(int iDevice);
 static void MessCreateDevice(int iDevice);
@@ -82,6 +83,7 @@ static void MessTestsDoneIdle(void);
 #undef bool
 #endif
 
+static int s_nCurrentGame;
 static char s_szSelectedItem[256];
 
 #include "ui/win32ui.c"
@@ -164,7 +166,8 @@ static BOOL CreateMessIcons(void)
 {
     int i;
 
-    if (!mess_icon_index) {
+    if (!mess_icon_index)
+	{
         mess_icon_index = malloc(sizeof(int) * game_count * IO_COUNT);
         if (!mess_icon_index)
             return FALSE;
@@ -222,6 +225,10 @@ static void MyFillSoftwareList(int nGame)
 	int path_count;
 	LPCSTR *pathsv;
 
+	if (nGame == s_nCurrentGame)
+		return;
+	s_nCurrentGame = nGame;
+
 	drv = drivers[nGame];
 	software_dirs = GetSoftwareDirs();
 	extra_path = GetGameOptions(nGame)->extra_software_paths;
@@ -262,39 +269,31 @@ static void MessSetPickerDefaults(void)
     int i;
     size_t nDefaultSize = 0;
     char *default_software = NULL;
-    char *s;
+    char *s = NULL;
 
     for (i = 0; i < options.image_count; i++)
         nDefaultSize += strlen(options.image_files[i].name) + 1;
 
-    if (nDefaultSize) {
-        default_software = malloc(nDefaultSize);
-        if (default_software) {
-            s = NULL;
-            for (i = 0; i < options.image_count; i++) {
-                if (s)
-                    *(s++) = '|';
-                else
-                    s = default_software;
-                strcpy(s, options.image_files[i].name);
-                s += strlen(s);
-            }
+    if (nDefaultSize)
+	{
+        default_software = alloca(nDefaultSize);
+        for (i = 0; i < options.image_count; i++)
+		{
+            if (s)
+                *(s++) = '|';
+            else
+                s = default_software;
+            strcpy(s, options.image_files[i].name);
+            s += strlen(s);
         }
     }
 
     SetDefaultSoftware(default_software);
-
-    if (default_software)
-        free(default_software);
 }
 
 static void InitMessPicker(void)
 {
 	struct SmartListViewOptions opts;
-	char *default_software;
-	char *this_software;
-	char *s;
-	int i;
 
 	memset(&opts, 0, sizeof(opts));
 	opts.pClass = &s_softwareListClass;
@@ -314,12 +313,26 @@ static void InitMessPicker(void)
 
 	/* subclass the list view */
 	SetWindowLong(s_pSoftwareListView->hwndListView, GWL_WNDPROC, (LONG)ListViewWndProc);
+}
 
-	default_software = strdup(GetDefaultSoftware());
+static void MessGetPickerDefaults(void)
+{
+	const char *default_software_const;
+	char *default_software;
+	char *this_software;
+	char *s;
+	int i;
 
-	if (default_software) {
+	default_software_const = GetDefaultSoftware();
+
+	if (default_software_const && *default_software_const)
+	{
+		default_software = alloca(strlen(default_software_const) + 1);
+		strcpy(default_software, default_software_const);
+
 		this_software = default_software;
-		while(this_software && *this_software) {
+		while(this_software && *this_software)
+		{
 			s = strchr(this_software, '|');
 			if (s)
 				*(s++) = '\0';
@@ -332,8 +345,6 @@ static void InitMessPicker(void)
 
 			this_software = s;
 		}
-
-		free(default_software);
 	}
 }
 
@@ -477,9 +488,9 @@ static void SoftwareListClass_Run(struct SmartListView *pListView)
 static int LookupIcon(const char *icon_name)
 {
 	int i;
-	for (i = 0; i < sizeof(icon_names) / sizeof(icon_names[0]); i++)
+	for (i = 0; g_iconData[i].icon_name; i++)
 	{
-		if (!strcmp(icon_names[i], icon_name))
+		if (!strcmp(g_iconData[i].icon_name, icon_name))
 			return i;
 	}
 	return -1;

@@ -5,7 +5,7 @@
 #include "sound/3812intf.h"
 #include "machine/8255ppi.h"
 #include "vidhrdw/generic.h"
-#include "printer.h"
+#include "devices/printer.h"
 
 #include "includes/uart8250.h"
 #include "includes/pic8259.h"
@@ -16,10 +16,10 @@
 #include "includes/pc_cga.h"
 #include "includes/pc_mda.h"
 
-#include "includes/pc_hdc.h"
+#include "devices/pc_hdc.h"
 #include "includes/pc_ide.h"
 #include "includes/pc_fdc_h.h"
-#include "includes/pc_flopp.h"
+#include "devices/pc_flopp.h"
 #include "includes/pckeybrd.h"
 #include "includes/pclpt.h"
 #include "includes/sblaster.h"
@@ -687,10 +687,8 @@ ROM_END
 
 SYSTEM_CONFIG_START(ibmat)
 	CONFIG_DEVICE_PRINTER(3)
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 2, "dsk\0", IO_RESET_NONE, OSD_FOPEN_RW_CREATE_OR_READ,
-		pc_floppy_init, pc_floppy_exit, floppy_status)
-	CONFIG_DEVICE_LEGACY(IO_HARDDISK, 4, "img\0", IO_RESET_CPU, OSD_FOPEN_RW,
-		pc_harddisk_init, pc_harddisk_exit, NULL)
+	CONFIG_DEVICE_PC_FLOPPY(2)
+	CONFIG_DEVICE_PC_HARDDISK(4)
 SYSTEM_CONFIG_END
 
 /***************************************************************************

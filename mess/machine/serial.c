@@ -211,11 +211,6 @@ void	serial_device_set_transmit_state(int id, int state)
 
 }
 
-static int	data_stream_get_bytes_remaining(struct data_stream *stream)
-{
-	return (stream->DataLength - stream->ByteCount) + ((stream->BitCount+7)>>3);
-}
-
 /* get a bit from input stream */
 static int	data_stream_get_data_bit_from_data_byte(struct data_stream *stream)
 {
@@ -266,36 +261,6 @@ static int data_stream_get_byte(struct data_stream *stream)
 
 	return data_byte;
 }
-
-/* put a bit to output stream */
-static void data_stream_put_data_bit_to_data_byte(struct data_stream *stream, int bit)
-{
-	/* over end of buffer */
-	if (stream->ByteCount>=stream->DataLength)
-		return;
-
-	/* get data from buffer */
-	stream->pData[stream->ByteCount] &=~(1<<(7-stream->BitCount));
-
-	if (bit)
-	{
-		stream->pData[stream->ByteCount] |= (1<<(7-stream->BitCount));
-	}
-
-	/* update bit count */
-	stream->BitCount++;
-	/* ripple overflow onto byte count */
-	stream->ByteCount+=stream->BitCount>>3;
-	/* lock bit count into range */
-	stream->BitCount &=0x07;
-
-	/* do not let it read over end of data */
-	if (stream->ByteCount>=stream->DataLength)
-	{
-		stream->ByteCount = stream->DataLength-1;
-	}
-}
-
 
 void	receive_register_setup(struct serial_receive_register *receive, struct data_form *data_form)
 {
@@ -601,40 +566,36 @@ void	serial_device_connect(int id, struct serial_connection *connection)
 
 
 /* load image */
-static int serial_device_load(int type, int id, mame_file *file, unsigned char **ptr, int *pDataSize)
+static int serial_device_load_internal(int type, int id, mame_file *file, unsigned char **ptr, int *pDataSize)
 {
-	if (file)
+	int datasize;
+	unsigned char *data;
+
+	/* get file size */
+	datasize = mame_fsize(file);
+
+	if (datasize!=0)
 	{
-		int datasize;
-		unsigned char *data;
+		/* malloc memory for this data */
+		data = malloc(datasize);
 
-		/* get file size */
-		datasize = mame_fsize(file);
-
-		if (datasize!=0)
+		if (data!=NULL)
 		{
-			/* malloc memory for this data */
-			data = malloc(datasize);
+			/* read whole file */
+			mame_fread(file, data, datasize);
 
-			if (data!=NULL)
-			{
-				/* read whole file */
-				mame_fread(file, data, datasize);
+			*ptr = data;
+			*pDataSize = datasize;
 
-				*ptr = data;
-				*pDataSize = datasize;
+			/* close file */
+			mame_fclose(file);
 
-				/* close file */
-				mame_fclose(file);
+			logerror("File loaded!\r\n");
 
-				logerror("File loaded!\r\n");
-
-				/* ok! */
-				return 1;
-			}
+			/* ok! */
+			return 1;
 		}
 	}
-
 	return 0;
 }
 
@@ -666,8 +627,13 @@ static void data_stream_init(struct data_stream *stream, unsigned char *pData, u
 	data_stream_reset(stream);
 }
 
+int serial_device_init(int id)
+{
+	memset(&serial_devices[id], 0, sizeof(serial_devices[id]));
+	return INIT_PASS;
+}
 
-int		serial_device_init(int id, mame_file *fp)
+int serial_device_load(int id, mame_file *fp)
 {
 	int data_length;
 	unsigned char *data;
@@ -677,7 +643,7 @@ int		serial_device_init(int id, mame_file *fp)
 		return INIT_FAIL;
 
 	/* load file and setup transmit data */
-	if (serial_device_load(IO_SERIAL, id, fp, &data, &data_length))
+	if (serial_device_load_internal(IO_SERIAL, id, fp, &data, &data_length))
 	{
 		data_stream_init(&serial_devices[id].transmit, data, data_length);
 		return INIT_PASS;
@@ -687,11 +653,8 @@ int		serial_device_init(int id, mame_file *fp)
 }
 
 
-void	serial_device_exit(int id)
+void serial_device_unload(int id)
 {
-	if ((id<0) || (id>=MAX_SERIAL_DEVICES))
-		return;
-
 	/* stop transmit */
 	serial_device_set_transmit_state(id,0);
 	/* free streams */

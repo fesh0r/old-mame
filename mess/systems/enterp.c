@@ -21,9 +21,9 @@
 #include "vidhrdw/epnick.h"
 #include "includes/wd179x.h"
 #include "cpuintrf.h"
-#include "includes/basicdsk.h"
+#include "devices/basicdsk.h"
 /* for CPCEMU style disk images */
-#include "includes/dsk.h"
+#include "devices/dsk.h"
 #include "image.h"
 
 /* there are 64us per line, although in reality

@@ -276,7 +276,7 @@ static struct AY8910interface ay8910_interface =
 
 static MACHINE_DRIVER_START( standard )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M6502, 1022727)        /* 1.023 Mhz */
+	MDRV_CPU_ADD_TAG("main", M6502, 1021800)		/* close to actual CPU frequency of 1.020484 MHz */
 	MDRV_CPU_MEMORY(readmem_apple2, writemem_apple2)
 	MDRV_CPU_VBLANK_INT(apple2_interrupt, 192/8)
 	MDRV_FRAMES_PER_SECOND(60)
@@ -304,7 +304,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( enhanced )
 	MDRV_IMPORT_FROM( standard )
-	MDRV_CPU_REPLACE( "main", M65C02, 1022727)	/* 1.023 Mhz */
+	MDRV_CPU_REPLACE("main", M6502, 1021800)		/* close to actual CPU frequency of 1.020484 MHz */
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -375,7 +375,7 @@ ROM_START(apple2cp)
 ROM_END
 
 SYSTEM_CONFIG_START(apple2)
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 2, "dsk\0bin\0", IO_RESET_NONE, OSD_FOPEN_READ, apple2_floppy_init, NULL, NULL)
+	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 2, "dsk\0bin\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, apple2_floppy_load, NULL, NULL)
 
 	/* custom devicename */
 	CONFIG_GET_CUSTOM_DEVICENAME( apple2 )

@@ -16,8 +16,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#define MAX_GAMEDESC 256
-
 enum 
 {
 	COLUMN_GAMES = 0,
@@ -65,12 +63,12 @@ enum
 /* Reg helpers types */
 enum RegTypes
 {
-	RO_BOOL = 0, /* BOOL value                                            */
-	RO_INT,      /* int value                                             */
-	RO_DOUBLE,   /* double value         -                                */
-	RO_STRING,   /* string               - m_vpData is an array           */
-	RO_PSTRING,  /* pointer to string    - m_vpData is an allocated array */
-	RO_ENCODE    /* encode/decode string - calls decode/encode functions  */
+	RO_BOOL = 0, // BOOL value
+	RO_INT,      // int value
+	RO_DOUBLE,   // double value
+	RO_COLOR,    // COLORREF value
+	RO_STRING,   // pointer to string    - m_vpData is an allocated buffer
+	RO_ENCODE    // encode/decode string - calls decode/encode functions
 };
 
 /* List of artwork types to display in the screen shot area */
@@ -96,6 +94,7 @@ enum
 typedef struct
 {
 	char m_cName[40];                             /* reg key name     */
+	char ini_name[40]; // ini name
 	int  m_iType;                                 /* reg key type     */
 	void *m_vpData;                               /* reg key data     */
 	void (*encode)(void *data, char *str);        /* encode function  */
@@ -109,8 +108,6 @@ typedef struct
 
 typedef struct
 {
-	BOOL   use_default; /* only for non-default options */
-
 	/* video */
 	BOOL   autoframeskip;
 	int    frameskip;
@@ -119,7 +116,7 @@ typedef struct
 	BOOL   window_mode;
 	BOOL   use_ddraw;
 	BOOL   ddraw_stretch;
-	char   resolution[16];
+	char *resolution;
 	int    gfx_refresh;
 	BOOL   scanlines;
 	BOOL   switchres;
@@ -131,20 +128,18 @@ typedef struct
 	BOOL   throttle;
 	double gfx_brightness;
 	int    frames_to_display;
-	char   effect[16];
-	char   aspect[16];
+	char   *effect;
+	char   *aspect;
 
 	/* sound */
 
 	/* input */
-	BOOL   hotrod;
-	BOOL   hotrodse;
 	BOOL   use_mouse;
 	BOOL   use_joystick;
 	double f_a2d;
 	BOOL   steadykey;
 	BOOL   lightgun;
-	char   ctrlr[64];
+	char *ctrlr;
 
 	/* Core video */
 	double f_bright_correct; /* "1.0", 0.5, 2.0 */
@@ -154,7 +149,7 @@ typedef struct
 	BOOL   rol;
 	BOOL   flipx;
 	BOOL   flipy;
-	char   debugres[16];
+	char *debugres;
 	double f_gamma_correct;
 
 	/* Core vector */
@@ -182,8 +177,6 @@ typedef struct
 	/* misc */
 	BOOL   cheat;
 	BOOL   mame_debug;
-	char*  playbackname; // ?
-	char*  recordname; // ?
 	BOOL   errorlog;
 	BOOL   sleep;
         BOOL   old_timing;
@@ -191,8 +184,8 @@ typedef struct
 
 #ifdef MESS
 	BOOL   use_new_ui;
-	char   extra_software_paths[MAX_PATH * 10];
-	char   printer[MAX_PATH];
+	char   *extra_software_paths;
+	char   *printer;
 	UINT32 ram_size;
 #endif
 } options_type;
@@ -203,24 +196,28 @@ typedef struct
     int play_count;
     int has_roms;
     int has_samples;
+
+	BOOL options_loaded; // whether or not we've loaded the game options yet
+	BOOL use_default; // whether or not we should just use default options
+
 } game_variables_type;
 
 typedef struct
 {
-	INT      folder_id;
-	BOOL     view;
-	BOOL     show_folderlist;
-	BOOL     show_toolbar;
-	BOOL     show_statusbar;
-	BOOL     show_screenshot;
-	BOOL     show_tabctrl;
-	int      show_pict_type;
-	BOOL     game_check;        /* Startup GameCheck */
-	BOOL     version_check;     /* Version mismatch warings */
-	BOOL     use_joygui;
-	BOOL     broadcast;
-	BOOL     random_bg;
-	char     default_game[MAX_GAMEDESC];
+    INT      folder_id;
+    BOOL     view;
+    BOOL     show_folderlist;
+    BOOL     show_toolbar;
+    BOOL     show_statusbar;
+    BOOL     show_screenshot;
+    BOOL     show_tabctrl;
+    int      show_pict_type;
+    BOOL     game_check;        /* Startup GameCheck */
+    BOOL     version_check;     /* Version mismatch warings */
+    BOOL     use_joygui;
+    BOOL     broadcast;
+    BOOL     random_bg;
+    char     *default_game;
 #ifdef MESS
 	char     *default_software;
 #endif
@@ -232,16 +229,17 @@ typedef struct
 	int      mess_column_order[MESS_COLUMN_MAX];
 	int      mess_column_shown[MESS_COLUMN_MAX];
 #endif
-	int      sort_column;
-	BOOL     sort_reverse;
-	AREA     area;
-	UINT     windowstate;
+    int      sort_column;
+    BOOL     sort_reverse;
+    AREA     area;
+    UINT     windowstate;
     int      splitter[4];		/* NPW 5-Feb-2003 - I don't like hard coding this, but I don't have a choice */
-	LOGFONT  list_font;
-	COLORREF list_font_color;
+    LOGFONT  list_font;
+    COLORREF list_font_color;
     COLORREF list_clone_color;
     BOOL show_disclaimer;
     BOOL show_gameinfo;
+    BOOL high_priority;
 
 	char*    language;
 	char*    flyerdir;
@@ -255,7 +253,7 @@ typedef struct
 	char*    softwaredirs;
 	char*    crcdir;	
 #endif
-	char*    inidirs;
+    char*    inidir;
 	char*    cfgdir;
 	char*    nvramdir;
 	char*    memcarddir;
@@ -278,8 +276,14 @@ typedef struct
 void OptionsInit(void);
 void OptionsExit(void);
 
+void FreeGameOptions(options_type *o);
+void CopyGameOptions(options_type *source,options_type *dest);
 options_type* GetDefaultOptions(void);
 options_type * GetGameOptions(int driver_index);
+BOOL GetGameUsesDefaults(int driver_index);
+void SetGameUsesDefaults(int driver_index,BOOL use_defaults);
+
+void SaveOptions(void);
 
 void ResetGUI(void);
 void ResetGameDefaults(void);
@@ -305,6 +309,9 @@ BOOL GetShowDisclaimer(void);
 
 void SetShowGameInfo(BOOL show_gameinfo);
 BOOL GetShowGameInfo(void);
+
+void SetHighPriority(BOOL high_priority);
+BOOL GetHighPriority(void);
 
 void SetRandomBackground(BOOL random_bg);
 BOOL GetRandomBackground(void);
@@ -373,8 +380,7 @@ int  GetSplitterPos(int splitterId);
 void SetListFont(LOGFONT *font);
 void GetListFont(LOGFONT *font);
 
-DWORD GetFolderFlags(const char *folderName);
-void  SetFolderFlags(const char *folderName, DWORD dwFlags);
+DWORD GetFolderFlags(int folder_index);
 
 void SetListFontColor(COLORREF uColor);
 COLORREF GetListFontColor(void);
@@ -402,8 +408,8 @@ const char* GetSoftwareDirs(void);
 void  SetSoftwareDirs(const char* paths);
 #endif
 
-const char* GetIniDirs(void);
-void  SetIniDirs(const char* paths);
+const char * GetIniDir(void);
+void SetIniDir(const char *path);
 
 const char* GetCfgDir(void);
 void SetCfgDir(const char* path);

@@ -14,7 +14,7 @@
 #include "vidhrdw/generic.h"
 #include "includes/cgenie.h"
 #include "includes/wd179x.h"
-#include "includes/basicdsk.h"
+#include "devices/basicdsk.h"
 #include "image.h"
 
 #define AYWriteReg(chip,port,value) \
@@ -339,7 +339,7 @@ MACHINE_STOP( cgenie )
 	tape_put_close();
 }
 
-int cgenie_cassette_init(int id, mame_file *fp, int open_mode)
+int cgenie_cassette_load(int id, mame_file *fp, int open_mode)
 {
 	return INIT_PASS;
 }
@@ -378,7 +378,7 @@ int cgenie_floppy_init(int id, mame_file *fp, int open_mode)
 		return INIT_PASS;
 	}
 
-	if (basicdsk_floppy_init(id, fp, open_mode) != INIT_PASS)
+	if (basicdsk_floppy_load(id, fp, open_mode) != INIT_PASS)
 		return INIT_FAIL;
 
 	/* determine image geometry */
@@ -473,27 +473,12 @@ int cgenie_floppy_init(int id, mame_file *fp, int open_mode)
 
 int cgenie_rom_load(int id, mame_file *fp, int open_mode)
 {
-	int result = 0;
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	mame_file *rom;
-	const char *filename;
 
 	/* Initialize memory */
 	memset(&ROM[0x4000], 0xff, 0xc000);
-
-	filename = "newe000.rom";
-	rom = mame_fopen(Machine->gamedrv->name, filename, FILETYPE_IMAGE, 0);
-	if( rom )
-	{
-		logerror("%s found '%s' ROM\n", Machine->gamedrv->name, filename);
-		mame_fread(rom, &ROM[0x12000], 0x1000);
-	}
-	else
-	{
-		logerror("%s optional ROM image '%s' not found\n", Machine->gamedrv->name, filename);
-	}
-
-	return result;
+	mame_fread(fp, &ROM[0x12000], 0x1000);
+	return INIT_PASS;
 }
 
 /*************************************

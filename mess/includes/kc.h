@@ -1,4 +1,4 @@
-#include "snapquik.h"
+#include "devices/snapquik.h"
 
 #define KC85_4_CLOCK 1750000
 #define KC85_3_CLOCK 1750000
@@ -159,7 +159,7 @@ WRITE_HANDLER(kc85_module_w);
 
 /*** DISC INTERFACE **/
 #include "includes/nec765.h"
-#include "includes/basicdsk.h"
+#include "devices/basicdsk.h"
 
 /* IO_FLOPPY device */
 

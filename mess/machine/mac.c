@@ -1560,20 +1560,20 @@ WRITE16_HANDLER ( mac_iwm_w )
 		iwm_w(offset >> 8, data & 0xff);
 }
 
-int mac_floppy_init(int id, mame_file *fp, int open_mode)
+int mac_floppy_load(int id, mame_file *fp, int open_mode)
 {
 #if 0
 	if ((mac_model == model_Mac128k512k) && (id == 0))
 		/* on Mac 128k/512k, internal floppy is single sided */
-		return sony_floppy_init(id, fp, open_mode, SONY_FLOPPY_ALLOW400K);
+		return sony_floppy_load(id, fp, open_mode, SONY_FLOPPY_ALLOW400K);
 	else
 #endif
-		return sony_floppy_init(id, fp, open_mode, SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K);
+		return sony_floppy_load(id, fp, open_mode, SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K);
 }
 
-void mac_floppy_exit(int id)
+void mac_floppy_unload(int id)
 {
-	sony_floppy_exit(id);
+	sony_floppy_unload(id);
 }
 
 /* *************************************************************************
@@ -1706,9 +1706,6 @@ void init_mac128k(void)
 	via_config(0, &mac_via6522_intf);
 	via_set_clock(0, 1000000);	/* 6522 = 1 Mhz, 6522a = 2 Mhz */
 
-	/* setup videoram */
-	mac_set_screen_buffer(1);
-
 	/* setup keyboard */
 	keyboard_init();
 }
@@ -1726,9 +1723,6 @@ void init_mac512k(void)
 	/* configure via */
 	via_config(0, &mac_via6522_intf);
 	via_set_clock(0, 1000000);	/* 6522 = 1 Mhz, 6522a = 2 Mhz */
-
-	/* setup videoram */
-	mac_set_screen_buffer(1);
 
 	/* setup keyboard */
 	keyboard_init();
@@ -1749,9 +1743,6 @@ void init_mac512ke(void)
 	via_config(0, &mac_via6522_intf);
 	via_set_clock(0, 1000000);	/* 6522 = 1 Mhz, 6522a = 2 Mhz */
 
-	/* setup videoram */
-	mac_set_screen_buffer(1);
-
 	/* setup keyboard */
 	keyboard_init();
 }
@@ -1770,9 +1761,6 @@ void init_macplus(void)
 	/* configure via */
 	via_config(0, &mac_via6522_intf);
 	via_set_clock(0, 1000000);	/* 6522 = 1 Mhz, 6522a = 2 Mhz */
-
-	/* setup videoram */
-	mac_set_screen_buffer(1);
 
 	/* setup keyboard */
 	keyboard_init();
@@ -1899,6 +1887,9 @@ MACHINE_INIT(mac)
 
 	/* reset video */
 	current_scanline = 0;
+
+	/* setup videoram */
+	mac_set_screen_buffer(1);
 
 	inquiry_timeout = timer_alloc(inquiry_timeout_func);
 }
