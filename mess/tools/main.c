@@ -5,6 +5,7 @@
 #include <time.h>
 #include <assert.h>
 #include "imgtool.h"
+#include "snprintf.h"
 #include "utils.h"
 
 struct command {
@@ -27,12 +28,17 @@ static void writeusage(FILE *f, int write_word_usage, struct command *c, char *a
 
 /* ----------------------------------------------------------------------- */
 
-static int parse_options(int argc, char *argv[], int minunnamed, int maxunnamed, struct NamedOption *opts, int optcount)
+static int parse_options(int argc, char *argv[], int minunnamed, int maxunnamed, struct NamedOption *opts, int optcount, FILTERMODULE *filter)
 {
 	int i;
 	int optpos = 0;
 	int lastunnamed = 0;
 	char *s;
+	char *name = NULL;
+	char *value = NULL;
+
+	if (filter)
+		*filter = NULL;
 
 	memset(opts, 0, sizeof(struct NamedOption) * optcount);
 
@@ -45,22 +51,46 @@ static int parse_options(int argc, char *argv[], int minunnamed, int maxunnamed,
 			lastunnamed = i + 1;
 		}
 		else {
-			if (i < minunnamed)
-				goto error; /* Too few unnamed */
-			if (optpos >= optcount)
-				goto error; /* Too many */
-
 			/* Named */
-			opts[optpos].name = argv[i] + 2;
-			s = strchr(opts[optpos].name, '=');
+			name = argv[i] + 2;
+			s = strchr(name, '=');
 			if (!s)
 				goto error;
-			*(s++) = 0;
-			opts[optpos].value = s;
-			optpos++;
+			*s = 0;
+			value = s + 1;
+			if (!strcmp(name, "filter")) {
+				/* Filter option */
+				if (!filter)
+					goto error; /* This command doesn't use filters */
+				if (*filter)
+					goto filteralreadyspecified;
+				*filter = filter_lookup(value);
+				if (!(*filter))
+					goto filternotfound;
+
+			}
+			else {
+				/* Other named option */
+				if (i < minunnamed)
+					goto error; /* Too few unnamed */
+				if (optpos >= optcount)
+					goto error; /* Too many */
+
+				opts[optpos].name = name;
+				opts[optpos].value = value;
+				optpos++;
+			}
 		}
 	}
 	return lastunnamed;
+
+filternotfound:
+	fprintf(stderr, "%s: Unknown filter type\n", value);
+	return -1;
+
+filteralreadyspecified:
+	fprintf(stderr, "Cannot specify multiple filters\n");
+	return -1;
 
 error:
 	fprintf(stderr, "%s: Unrecognized option\n", argv[i]);
@@ -208,12 +238,20 @@ static int cmd_get(struct command *c, int argc, char *argv[])
 {
 	int err;
 	IMAGE *img;
+	char *newfname;
+	int unnamedargs;
+	FILTERMODULE filter;
 
 	err = img_open_byname(argv[0], argv[1], OSD_FOPEN_READ, &img);
 	if (err)
 		goto error;
 
-	err = img_getfile(img, argv[2], (argc == 4) ? argv[3] : NULL);
+	unnamedargs = parse_options(argc, argv, 3, 4, NULL, 0, &filter);
+	if (unnamedargs < 0)
+		return -1;
+	newfname = (unnamedargs == 4) ? argv[3] : NULL;
+
+	err = img_getfile(img, argv[2], newfname, filter);
 	img_close(img);
 	if (err)
 		goto error;
@@ -231,9 +269,10 @@ static int cmd_put(struct command *c, int argc, char *argv[])
 	IMAGE *img;
 	char *newfname;
 	int unnamedargs;
+	FILTERMODULE filter;
 	struct NamedOption nopts[32];
 
-	unnamedargs = parse_options(argc, argv, 3, 4, nopts, sizeof(nopts) / sizeof(nopts[0]));
+	unnamedargs = parse_options(argc, argv, 3, 4, nopts, sizeof(nopts) / sizeof(nopts[0]), &filter);
 	if (unnamedargs < 0)
 		return -1;
 	newfname = (unnamedargs == 4) ? argv[3] : NULL;
@@ -242,7 +281,7 @@ static int cmd_put(struct command *c, int argc, char *argv[])
 	if (err)
 		goto error;
 
-	err = img_putfile(img, newfname, argv[2], nopts);
+	err = img_putfile(img, newfname, argv[2], nopts, filter);
 	img_close(img);
 	if (err)
 		goto error;
@@ -260,11 +299,17 @@ static int cmd_getall(struct command *c, int argc, char *argv[])
 	IMAGE *img;
 	IMAGEENUM *imgenum;
 	imgtool_dirent ent;
+	FILTERMODULE filter;
+	int unnamedargs;
 	char buf[128];
 
 	err = img_open_byname(argv[0], argv[1], OSD_FOPEN_READ, &img);
 	if (err)
 		goto error;
+
+	unnamedargs = parse_options(argc, argv, 2, 2, NULL, 0, &filter);
+	if (unnamedargs < 0)
+		return -1;
 
 	err = img_beginenum(img, &imgenum);
 	if (err) {
@@ -279,7 +324,7 @@ static int cmd_getall(struct command *c, int argc, char *argv[])
 	while (((err = img_nextenum(imgenum, &ent)) == 0) && !ent.eof) {
 		fprintf(stdout, "Retrieving %s (%i bytes)\n", ent.fname, ent.filesize);
 
-		err = img_getfile(img, ent.fname, NULL);
+		err = img_getfile(img, ent.fname, NULL, filter);
 		if (err)
 			break;
 	}
@@ -293,7 +338,7 @@ static int cmd_getall(struct command *c, int argc, char *argv[])
 	return 0;
 
 error:
-	reporterror(err, c, argv[0], argv[1], argv[2], argv[3], NULL);
+	reporterror(err, c, argv[0], argv[1], NULL, NULL, NULL);
 	return -1;
 }
 
@@ -440,7 +485,7 @@ static int cmd_create(struct command *c, int argc, char *argv[])
 	char *label;
 	struct NamedOption nopts[32];
 
-	unnamedargs = parse_options(argc, argv, 2, 3, nopts, sizeof(nopts) / sizeof(nopts[0]));
+	unnamedargs = parse_options(argc, argv, 2, 3, nopts, sizeof(nopts) / sizeof(nopts[0]), NULL);
 	if (unnamedargs < 0)
 		return -1;
 
@@ -474,23 +519,126 @@ static int cmd_listformats(struct command *c, int argc, char *argv[])
 	return 0;
 }
 
+static int cmd_listfilters(struct command *c, int argc, char *argv[])
+{
+	FILTERMODULE *f = filters;
+
+	fprintf(stdout, "Filters supported by imgtool:\n\n");
+
+	while(*f) {
+		fprintf(stdout, "  %-10s%s\n", (*f)->name, (*f)->humanname);
+		f++;
+	}
+
+	return 0;
+}
+
+static void listoptions(const struct OptionTemplate *opttemplate)
+{
+	const char *attrtypename;
+	const char *minval;
+	const char *maxval;
+	char buf1[256];
+	char buf2[16];
+	char buf3[16];
+
+	assert(opttemplate);
+
+	fprintf(stdout, "Option   Type      Min  Max  Default Description\n");
+	fprintf(stdout, "-------- --------- ---- ---- ------- -----------\n");
+
+	while(opttemplate->name) {
+		minval = maxval = "";
+
+		/* Min/Max/Default representations are dependant on type */
+		switch(opttemplate->flags & IMGOPTION_FLAG_TYPE_MASK) {
+		case IMGOPTION_FLAG_TYPE_INTEGER:
+			attrtypename = "(integer)";
+			snprintf(buf2, sizeof(buf2) / sizeof(buf2[0]), "%i", opttemplate->min);
+			snprintf(buf3, sizeof(buf3) / sizeof(buf3[0]), "%i", opttemplate->max);
+			minval = buf2;
+			maxval = buf3;
+			break;
+		case IMGOPTION_FLAG_TYPE_CHAR:
+			attrtypename = "(char)";
+			buf2[0] = opttemplate->min;
+			buf2[1] = '\0';
+			buf3[0] = opttemplate->max;
+			buf3[1] = '\0';
+			minval = buf2;
+			maxval = buf3;
+			break;
+		case IMGOPTION_FLAG_TYPE_STRING:
+			attrtypename = "(string)";
+			break;
+		default:
+			assert(0);
+			attrtypename = NULL;
+			break;
+		}
+
+		snprintf(buf1, sizeof(buf1) / sizeof(buf1[0]), "--%s", opttemplate->name);
+
+		fprintf(stdout, "%8s %-9s %4s %4s %7s %s\n", buf1, attrtypename, minval, maxval,
+			opttemplate->defaultvalue ? opttemplate->defaultvalue : "",
+			opttemplate->description ? opttemplate->description : "");
+		opttemplate++;
+	}
+}
+
+static int cmd_listdriveroptions(struct command *c, int argc, char *argv[])
+{
+	const struct ImageModule *mod;
+	const struct OptionTemplate *opttemplate;
+
+	mod = findimagemodule(argv[0]);
+	if (!mod)
+		goto error;
+
+	fprintf(stdout, "Driver specific options for module '%s':\n\n", argv[0]);
+
+	opttemplate = mod->fileoptions_template;
+	if (opttemplate) {
+		fprintf(stdout, "Image specific file options (usable on the 'put' command): %s\n\n", argv[0]);
+		listoptions(opttemplate);
+		puts("\n");
+	}
+	else {
+		fprintf(stdout, "No image specific file options\n\n");
+	}
+
+	opttemplate = mod->createoptions_template;
+	if (opttemplate) {
+		fprintf(stdout, "Image specific creation options (usable on the 'create' command):%s\n\n", argv[0]);
+		listoptions(opttemplate);
+		puts("\n");
+	}
+	else {
+		fprintf(stdout, "No image specific creation options\n\n");
+	}
+
+	return 0;
+
+error:
+	reporterror(IMGTOOLERR_MODULENOTFOUND|IMGTOOLERR_SRC_MODULE, c, argv[0], NULL, NULL, NULL, NULL);
+	return -1;
+}
+
 /* ----------------------------------------------------------------------- */
 
 static struct command cmds[] = {
-	{ "create", "<format> <imagename> [<internalname>] "
-	  "[--heads=HEADS] [--cylinders=CYLINDERS] "
-	  "[--sectors=SECTORS] [--sectorsize=SIZE] "
-	  "[--htype=HARDWARETYPE] [--exrom=LEVEL] [--game=LEVEL]",
-	  cmd_create, 2, 8, 0},
+	{ "create", "<format> <imagename>", cmd_create, 2, 8, 0},
 	{ "dir", "<format> <imagename>...", cmd_dir, 2, 2, 1 },
-	{ "get", "<format> <imagename> <filename> [newname]", cmd_get, 3, 4, 0 },
-	{ "put", "<format> <imagename> <filename> [newname] [--ftype=FILETYPE] [--ascii=0|1] [--addr=ADDR] [--bank=BANK]", cmd_put, 3, 8, 0 },
-	{ "getall", "<format> <imagename>", cmd_getall, 2, 2, 0 },
+	{ "get", "<format> <imagename> <filename> [newname] [--filter=filter]", cmd_get, 3, 4, 0 },
+	{ "put", "<format> <imagename> <filename> [newname] [--(fileoption)==value] [--filter=filter]", cmd_put, 3, 8, 0 },
+	{ "getall", "<format> <imagename> [--filter=filter]", cmd_getall, 2, 2, 0 },
 	{ "del", "<format> <imagename> <filename>...", cmd_del, 3, 3, 1 },
 	{ "info", "<format> <imagename>...", cmd_info, 2, 2, 1 },
 	{ "crc", "<format> <imagename>...", cmd_crc, 2, 2, 1 },
 	{ "good", "<format> <imagename>...", cmd_good, 2, 2, 1 },
-	{ "listformats", NULL, cmd_listformats, 0, 0, 0 }
+	{ "listformats", NULL, cmd_listformats, 0, 0, 0 },
+	{ "listfilters", NULL, cmd_listfilters, 0, 0, 0 },
+	{ "listdriveroptions", "<format>", cmd_listdriveroptions, 1, 1, 0 }
 };
 
 int CLIB_DECL main(int argc, char *argv[])

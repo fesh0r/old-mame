@@ -23,7 +23,7 @@
 #ifdef LSB_FIRST
 #define intelWord(x) (x)
 #else
-#define intelWord(x) ( (x) << 8) | ( ((x) >> 8) & 0xff) )
+#define intelWord(x) ( ((x) << 8) | (((x) >> 8) & 0xff) )
 #endif
 
 typedef struct {
@@ -57,6 +57,7 @@ IMAGEMODULE(
 	NULL,								/* crcfile */
 	NULL,								/* crc system name */
 	NULL,								/* eoln */
+	0,									/* flags */
 	fmsx_cas_image_init,				/* init function */
 	fmsx_cas_image_exit,				/* exit function */
 	NULL,								/* info function */
@@ -114,8 +115,7 @@ static int fmsx_cas_image_init(STREAM *f, IMAGE **outimg)
 		return IMGTOOLERR_CORRUPTIMAGE;
 		}
 
-    if (f->name) pbase = (char*)osd_basename (f->name);
-	else pbase = NULL;
+	pbase = NULL;
     if (pbase) len = strlen (pbase);
     else len = strlen (default_name);
 

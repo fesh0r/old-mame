@@ -29,15 +29,16 @@
 
 /* timer used to refresh via cb input, which will trigger ints on pulses
 from tape */
-static void *oric_tape_timer;
+static void *oric_tape_timer = NULL;
 /* ==0 if oric1 or oric atmos, !=0 if telestrat */
-static int oric_is_telestrat;
+static int oric_is_telestrat = 0;
 
 /* This does not exist in the real hardware. I have used it to
 know which sources are interrupting */
 /* bit 2 = telestrat 2nd via interrupt, 1 = microdisc interface,
 0 = oric 1st via interrupt */
 static unsigned char oric_irqs;
+
 enum
 {
 	ORIC_FLOPPY_NONE,
@@ -45,20 +46,32 @@ enum
 	ORIC_FLOPPY_BASIC_DISK
 };
 
+/* type of disc interface connected to oric/oric atmos */
+/* telestrat always has a microdisc interface */
+enum
+{
+	ORIC_FLOPPY_INTERFACE_NONE = 0,
+	ORIC_FLOPPY_INTERFACE_MICRODISC = 1,
+	ORIC_FLOPPY_INTERFACE_JASMIN = 2
+};
+
 /* called when ints are changed - cleared/set */
 static void oric_refresh_ints(void)
 {
+	/* telestrat has floppy hardware built-in! */
 	if (oric_is_telestrat==0)
 	{
-		/* if microdisc interface is disabled, do not allow interrupts from it */
-		if ((readinputport(9) & 0x01)==0)
+		/* oric 1 or oric atmos */
+
+		/* if floppy disc hardware is disabled, do not allow interrupts from it */
+		if ((readinputport(9) & 0x03)==ORIC_FLOPPY_INTERFACE_NONE)
 		{
 			oric_irqs &=~(1<<1);
 		}
 	}
 
 	/* any irq set? */
-	if ((oric_irqs & 0x07)!=0)
+	if ((oric_irqs & 0x0f)!=0)
 	{
 		cpu_set_irq_line(0,0, HOLD_LINE);
 	}
@@ -70,7 +83,7 @@ static void oric_refresh_ints(void)
 
 static int oric_floppy_type[4] = {ORIC_FLOPPY_NONE, ORIC_FLOPPY_NONE, ORIC_FLOPPY_NONE, ORIC_FLOPPY_NONE};
 
-static	char *oric_ram_0x0c000;
+static	char *oric_ram_0x0c000 = NULL;
 
 
 /* index of keyboard line to scan */
@@ -269,11 +282,25 @@ This allows the via to trigger on bit changes and issue interrupts */
 static void    oric_refresh_tape(int dummy)
 {
 	int data;
+	int input_port_9;
 
 	data = 0;
 
 	if (device_input(IO_CASSETTE,0) > 255)
 		data |=1;
+
+	/* "A simple cable to catch the vertical retrace signal !
+	 This cable connects the video output for the television/monitor
+	to the via cb1 input. Interrupts can be generated from the vertical
+	sync, and flicker free games can be produced */
+
+	input_port_9 = readinputport(9);
+	/* cable is enabled? */
+	if ((input_port_9 & 0x04)!=0)
+	{
+		/* return state of vsync */
+		data = input_port_9>>3;
+	}
 
     via_set_input_cb1(0, data);
 
@@ -462,18 +489,239 @@ struct via6522_interface oric_6522_interface=
 	NULL
 };
 
+/* JASMIN INTERFACE */
+
+
+/* bit 0: overlay ram access (1 means overlay ram enabled) */
+static unsigned char port_3fa_w;
+
+/* bit 0: ROMDIS (1 means internal Basic rom disabled) */
+static unsigned char port_3fb_w;
+
+
+static void oric_jasmin_set_mem_0x0c000(void)
+{
+	/* assumption:
+	1. It is possible to access all 16k overlay ram.
+	2. If os is enabled, and overlay ram is enabled, all 16k can be accessed.
+	3. if os is disabled, and overlay ram is enabled, jasmin rom takes priority.
+	*/
+
+	/* the ram is disabled in the jasmin rom which indicates that jasmin takes
+	priority over the ram */
+
+	/* basic rom disabled? */
+	if ((port_3fb_w & 0x01)==0)
+	{
+		/* no, it is enabled! */
+
+		/* overlay ram enabled? */
+		if ((port_3fa_w & 0x01)==0)
+		{
+			unsigned char *rom_ptr;
+
+			/* no it is disabled */
+			logerror("&c000-&ffff is os rom\n");
+			
+			memory_set_bankhandler_r(1, 0, MRA_BANK1);
+			memory_set_bankhandler_r(2, 0, MRA_BANK2);
+			memory_set_bankhandler_r(3, 0, MRA_BANK3);
+			memory_set_bankhandler_w(5, 0, MWA_NOP);
+			memory_set_bankhandler_w(6, 0, MWA_NOP);
+			memory_set_bankhandler_w(7, 0, MWA_NOP);
+
+			rom_ptr = memory_region(REGION_CPU1) + 0x010000;
+			cpu_setbank(1, rom_ptr);
+			cpu_setbank(2, rom_ptr+0x02000);
+			cpu_setbank(3, rom_ptr+0x03800);
+		}
+		else
+		{
+			logerror("&c000-&ffff is ram\n");
+
+			memory_set_bankhandler_r(1, 0, MRA_BANK1);
+			memory_set_bankhandler_r(2, 0, MRA_BANK2);
+			memory_set_bankhandler_r(3, 0, MRA_BANK3);
+			memory_set_bankhandler_w(5, 0, MWA_BANK5);
+			memory_set_bankhandler_w(6, 0, MWA_BANK6);
+			memory_set_bankhandler_w(7, 0, MWA_BANK7);
+
+			cpu_setbank(1, oric_ram_0x0c000);
+			cpu_setbank(2, oric_ram_0x0c000+0x02000);
+			cpu_setbank(3, oric_ram_0x0c000+0x03800);
+			cpu_setbank(5, oric_ram_0x0c000);
+			cpu_setbank(6, oric_ram_0x0c000+0x02000);
+			cpu_setbank(7, oric_ram_0x0c000+0x03800);
+		}		
+	}
+	else
+	{
+		/* yes, basic rom is disabled */
+
+		if ((port_3fa_w & 0x01)==0)
+		{
+			/* overlay ram disabled */
+			
+			logerror("&c000-&f8ff is nothing!\n");
+			
+			memory_set_bankhandler_r(1, 0, MRA_NOP);
+			memory_set_bankhandler_r(2, 0, MRA_NOP);
+			memory_set_bankhandler_r(3, 0, MRA_NOP);
+			memory_set_bankhandler_w(5, 0, MWA_NOP);
+			memory_set_bankhandler_w(6, 0, MWA_NOP);
+			memory_set_bankhandler_w(7, 0, MWA_NOP);
+		}
+		else
+		{
+			logerror("&c000-&f8ff is ram!\n");
+
+			memory_set_bankhandler_r(1, 0, MRA_BANK1);
+			memory_set_bankhandler_r(2, 0, MRA_BANK2);
+			memory_set_bankhandler_w(5, 0, MWA_BANK5);
+			memory_set_bankhandler_w(6, 0, MWA_BANK6);
+
+			cpu_setbank(1, oric_ram_0x0c000);
+			cpu_setbank(2, oric_ram_0x0c000+0x02000);
+			cpu_setbank(5, oric_ram_0x0c000);
+			cpu_setbank(6, oric_ram_0x0c000+0x02000);
+		}
+
+		{
+			/* basic rom disabled */
+			unsigned char *rom_ptr;
+
+			logerror("&f800-&ffff is jasmin rom\n"); 	
+			/* jasmin rom enabled */
+			memory_set_bankhandler_r(3, 0, MRA_BANK3);
+			memory_set_bankhandler_w(7, 0, MWA_BANK7);
+			rom_ptr = memory_region(REGION_CPU1) + 0x010000+0x04000+0x02000;
+			cpu_setbank(3, rom_ptr);
+			cpu_setbank(7, rom_ptr);		
+		}
+	}
+}
+  
+static void oric_jasmin_wd179x_callback(int State)
+{
+	switch (State)
+	{
+		/* DRQ is connected to interrupt */
+		case WD179X_DRQ_CLR:
+		{
+			oric_irqs &=~(1<<1);
+			
+			oric_refresh_ints();
+		}
+		break;
+
+		case WD179X_DRQ_SET:
+		{
+			oric_irqs |= (1<<1);
+
+			oric_refresh_ints();
+		}
+		break;
+
+		default:
+			break;
+	}
+}
+
+READ_HANDLER (oric_jasmin_r)
+{
+	unsigned char data = 0x0ff;
+
+	switch (offset & 0x0ff)
+	{
+		/* jasmin floppy disc interface */
+		case 0x0f4:
+			data = wd179x_status_r(0);
+			break;
+		case 0x0f5:
+			data =wd179x_track_r(0);
+			break;
+		case 0x0f6:
+			data = wd179x_sector_r(0);
+			break;
+		case 0x0f7:
+			data = wd179x_data_r(0);
+			break;
+		default:
+			logerror("unhandled io read: %04x %02x\n",offset);
+			data = via_0_r(offset & 0x0f);
+			break;
+
+	}
+
+	return data;
+}
+
+WRITE_HANDLER(oric_jasmin_w)
+{
+	switch (offset & 0x0ff)
+	{
+		/* microdisc floppy disc interface */
+		case 0x0f4:
+			logerror("cycles: %d\n",cpu_getcurrentcycles());
+			wd179x_command_w(0,data);
+			break;
+		case 0x0f5:
+			wd179x_track_w(0,data);
+			break;
+		case 0x0f6:
+			wd179x_sector_w(0,data);
+			break;
+		case 0x0f7:
+			wd179x_data_w(0,data);
+			break;
+		/* bit 0 = side */
+		case 0x0f8:
+			wd179x_set_side(data & 0x01);
+			break;
+		/* any write will cause wd179x to reset */
+		case 0x0f9:
+			wd179x_reset();
+			break;
+		case 0x0fa:
+			logerror("jasmin overlay ram w: %02x PC: %04x\n",data,cpu_get_pc());
+			port_3fa_w = data;
+			oric_jasmin_set_mem_0x0c000();
+			break;
+		case 0x0fb:
+			logerror("jasmin romdis w: %02x PC: %04x\n",data,cpu_get_pc());
+			port_3fb_w = data;
+			oric_jasmin_set_mem_0x0c000();
+			break;
+		/* bit 0,1 of addr is the drive */
+		case 0x0fc:
+		case 0x0fd:
+		case 0x0fe:
+		case 0x0ff:
+			wd179x_set_drive(offset & 0x03);
+			break;
+
+		default:
+			via_0_w(offset & 0x0f, data);
+			break;
+	}
+}
+
+
+/*********************************/
 /* MICRODISC INTERFACE variables */
+
+/* used by Microdisc interfaces */
+static unsigned char oric_wd179x_int_state = 0;
+
 /* bit 7 is intrq state */
-unsigned char port_314_r;
+static unsigned char port_314_r;
 /* bit 7 is drq state (active low) */
-unsigned char port_318_r;
+static unsigned char port_318_r;
 /* bit 6,5: drive */
 /* bit 4: side */
 /* bit 3: double density enable */
 /* bit 0: enable FDC IRQ to trigger IRQ on CPU */
-unsigned char port_314_w;
-
-static unsigned char oric_wd179x_int_state = 0;
+static unsigned char port_314_w;
 
 
 static void oric_microdisc_refresh_wd179x_ints(void)
@@ -528,9 +776,102 @@ static void oric_microdisc_wd179x_callback(int State)
 	}
 }
 
+
+void	oric_microdisc_set_mem_0x0c000(void)
+{
+	if (oric_is_telestrat)
+		return;
+
+	/* for 0x0c000-0x0dfff: */
+	/* if os disabled, ram takes priority */
+	/* /ROMDIS */
+	if ((port_314_w & (1<<1))==0)
+	{
+		logerror("&c000-&dfff is ram\n"); 
+		/* rom disabled enable ram */
+		memory_set_bankhandler_r(1, 0, MRA_BANK1);
+		memory_set_bankhandler_w(5, 0, MWA_BANK5);
+		cpu_setbank(1, oric_ram_0x0c000);
+		cpu_setbank(5, oric_ram_0x0c000);
+	}
+	else
+	{
+		unsigned char *rom_ptr;
+		logerror("&c000-&dfff is os rom\n"); 
+		/* basic rom */
+		memory_set_bankhandler_r(1, 0, MRA_BANK1);
+		memory_set_bankhandler_w(5, 0, MWA_NOP);
+		rom_ptr = memory_region(REGION_CPU1) + 0x010000;
+		cpu_setbank(1, rom_ptr);
+		cpu_setbank(5, rom_ptr);
+	}
+
+	/* for 0x0e000-0x0ffff */
+	/* if not disabled, os takes priority */
+	if ((port_314_w & (1<<1))!=0)
+	{
+		unsigned char *rom_ptr;
+		logerror("&e000-&ffff is os rom\n"); 
+		/* basic rom */
+		memory_set_bankhandler_r(2, 0, MRA_BANK2);
+		memory_set_bankhandler_r(3, 0, MRA_BANK3);
+		memory_set_bankhandler_w(6, 0, MWA_NOP);
+		memory_set_bankhandler_w(7, 0, MWA_NOP);
+		rom_ptr = memory_region(REGION_CPU1) + 0x010000;
+		cpu_setbank(2, rom_ptr+0x02000);
+		cpu_setbank(3, rom_ptr+0x03800);
+		cpu_setbank(6, rom_ptr+0x02000);
+		cpu_setbank(7, rom_ptr+0x03800);
+
+	}
+	else
+	{
+		/* if eprom is enabled, it takes priority over ram */
+		if ((port_314_w & (1<<7))==0)
+		{
+			unsigned char *rom_ptr;
+			logerror("&e000-&ffff is disk rom\n"); 
+			memory_set_bankhandler_r(2, 0, MRA_BANK2);
+			memory_set_bankhandler_r(3, 0, MRA_BANK3);
+			memory_set_bankhandler_w(6, 0, MWA_NOP);
+			memory_set_bankhandler_w(7, 0, MWA_NOP);
+			/* enable rom of microdisc interface */
+			rom_ptr = memory_region(REGION_CPU1) + 0x014000;
+			cpu_setbank(2, rom_ptr);
+			cpu_setbank(3, rom_ptr+0x01800);
+		}
+		else
+		{
+			logerror("&e000-&ffff is ram\n"); 
+			/* rom disabled enable ram */
+			memory_set_bankhandler_r(2, 0, MRA_BANK2);
+			memory_set_bankhandler_r(3, 0, MRA_BANK3);
+			memory_set_bankhandler_w(6, 0, MWA_BANK6);
+			memory_set_bankhandler_w(7, 0, MWA_BANK7);
+			cpu_setbank(2, oric_ram_0x0c000+0x02000);
+			cpu_setbank(3, oric_ram_0x0c000+0x03800);
+			cpu_setbank(6, oric_ram_0x0c000+0x02000);
+			cpu_setbank(7, oric_ram_0x0c000+0x03800);
+		}
+	}
+}
+
+
+
 static void oric_wd179x_callback(int State)
 {
-	oric_microdisc_wd179x_callback(State);
+	switch (readinputport(9) &  0x03)
+	{
+		default:
+		case ORIC_FLOPPY_INTERFACE_NONE:
+			return;
+		case ORIC_FLOPPY_INTERFACE_MICRODISC:
+			oric_microdisc_wd179x_callback(State);
+			return;
+		case ORIC_FLOPPY_INTERFACE_JASMIN:
+			oric_jasmin_wd179x_callback(State);
+			return;
+	}
 }
 
 int oric_floppy_init(int id)
@@ -597,98 +938,24 @@ int		oric_floppy_id(int id)
 	return basicdsk_floppy_id(id);
 }
 
-void	oric_microdisc_set_mem_0x0c000(void)
-{
-	if (oric_is_telestrat)
-		return;
-
-	/* for 0x0c000-0x0dfff: */
-	/* if os disabled, ram takes priority */
-	/* /ROMDIS */
-	if ((port_314_w & (1<<1))==0)
-	{
-/*		logerror("&c000-&dfff is ram\n"); */
-		/* rom disabled enable ram */
-		memory_set_bankhandler_r(1, 0, MRA_BANK1);
-		memory_set_bankhandler_w(5, 0, MWA_BANK5);
-		cpu_setbank(1, oric_ram_0x0c000);
-		cpu_setbank(5, oric_ram_0x0c000);
-	}
-	else
-	{
-		unsigned char *rom_ptr;
-/*		logerror("&c000-&dfff is os rom\n"); */
-		/* basic rom */
-		memory_set_bankhandler_r(1, 0, MRA_BANK1);
-		memory_set_bankhandler_w(5, 0, MWA_NOP);
-		rom_ptr = memory_region(REGION_CPU1) + 0x010000;
-		cpu_setbank(1, rom_ptr);
-		cpu_setbank(5, rom_ptr);
-	}
-
-	/* for 0x0e000-0x0ffff */
-	/* if not disabled, os takes priority */
-	if ((port_314_w & (1<<1))!=0)
-	{
-		unsigned char *rom_ptr;
-/*		logerror("&e000-&ffff is os rom\n"); */
-		/* basic rom */
-		memory_set_bankhandler_r(2, 0, MRA_BANK2);
-		memory_set_bankhandler_w(6, 0, MWA_NOP);
-		rom_ptr = memory_region(REGION_CPU1) + 0x010000;
-		cpu_setbank(2, rom_ptr+0x02000);
-		cpu_setbank(6, rom_ptr+0x02000);
-	}
-	else
-	{
-		/* if eprom is enabled, it takes priority over ram */
-		if ((port_314_w & (1<<7))==0)
-		{
-			unsigned char *rom_ptr;
-/*			logerror("&e000-&ffff is disk rom\n"); */
-			memory_set_bankhandler_r(2, 0, MRA_BANK2);
-			memory_set_bankhandler_w(6, 0, MWA_NOP);
-
-			/* enable rom of microdisc interface */
-			rom_ptr = memory_region(REGION_CPU1) + 0x014000;
-			cpu_setbank(2, rom_ptr);
-		}
-		else
-		{
-/*			logerror("&e000-&ffff is ram\n"); */
-			/* rom disabled enable ram */
-			memory_set_bankhandler_r(2, 0, MRA_BANK2);
-			memory_set_bankhandler_w(6, 0, MWA_BANK6);
-			cpu_setbank(2, oric_ram_0x0c000+0x02000);
-			cpu_setbank(6, oric_ram_0x0c000+0x02000);
-		}
-	}
-}
-
 void oric_common_init_machine(void)
 {
     /* clear all irqs */
 	oric_irqs = 0;
-
 	oric_ram_0x0c000 = NULL;
 
     oric_tape_timer = timer_pulse(TIME_IN_HZ(11025), 0, oric_refresh_tape);
 
-	/* disable os rom, enable microdisc rom */
-	/* 0x0c000-0x0dfff will be ram, 0x0e000-0x0ffff will be microdisc rom */
-    port_314_w = 0x0ff^((1<<7) | (1<<1));
-
 	via_reset();
 	via_config(0, &oric_6522_interface);
 	via_set_clock(0,1000000);
-
 
 	centronics_config(0, oric_cent_config);
 	/* assumption: select is tied low */
 	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
     via_set_input_ca1(0, 1);
 
-	wd179x_init(oric_wd179x_callback);
+
 #ifdef ORIC_DUMP_RAM
 	previous_input_port5 = readinputport(5);
 #endif
@@ -703,19 +970,54 @@ void oric_init_machine (void)
 
 	oric_ram_0x0c000 = malloc(16384);
 
-	if (readinputport(9) & 0x01)
+
+	switch (readinputport(9) & 0x03)
 	{
-		/* disable os rom, enable microdisc rom */
-		/* 0x0c000-0x0dfff will be ram, 0x0e000-0x0ffff will be microdisc rom */
-		port_314_w = 0x0ff^((1<<7) | (1<<1));
-	}
-	else
-	{
-		/* disable microdisc rom, enable os rom */
-		port_314_w = 0x0ff;
+		default:
+		case ORIC_FLOPPY_INTERFACE_NONE:
+		{
+			/* setup memory when there is no disc interface */
+			unsigned char *rom_ptr;
+			
+			/* os rom */
+			memory_set_bankhandler_r(1, 0, MRA_BANK1);
+			memory_set_bankhandler_r(2, 0, MRA_BANK2);
+			memory_set_bankhandler_r(3, 0, MRA_BANK3);
+			memory_set_bankhandler_w(5, 0, MWA_NOP);
+			memory_set_bankhandler_w(6, 0, MWA_NOP);
+			memory_set_bankhandler_w(7, 0, MWA_NOP);
+			rom_ptr = memory_region(REGION_CPU1) + 0x010000;
+			cpu_setbank(1, rom_ptr);
+			cpu_setbank(2, rom_ptr+0x02000);
+			cpu_setbank(3, rom_ptr+0x03800);
+			cpu_setbank(5, rom_ptr);			
+			cpu_setbank(6, rom_ptr+0x02000);			
+			cpu_setbank(7, rom_ptr+0x03800);			
+		}
+		break;
+		
+		case ORIC_FLOPPY_INTERFACE_MICRODISC:
+		{
+			/* disable os rom, enable microdisc rom */
+			/* 0x0c000-0x0dfff will be ram, 0x0e000-0x0ffff will be microdisc rom */
+			port_314_w = 0x0ff^((1<<7) | (1<<1));
+		
+			oric_microdisc_set_mem_0x0c000();
+		}
+		break;
+
+		case ORIC_FLOPPY_INTERFACE_JASMIN:
+		{
+			/* romdis */
+			port_3fb_w = 1;
+			oric_jasmin_set_mem_0x0c000();
+		}
+		break;
 	}
 
-	oric_microdisc_set_mem_0x0c000();
+
+	wd179x_init(oric_wd179x_callback);
+
 }
 
 void oric_shutdown_machine (void)
@@ -825,12 +1127,29 @@ WRITE_HANDLER(oric_microdisc_w)
 
 READ_HANDLER ( oric_IO_r )
 {
-	if (readinputport(9) & 0x01)
+	switch (readinputport(9) & 0x03)
 	{
-		if ((offset>=0x010) && (offset<=0x01f))
+		default:
+		case ORIC_FLOPPY_INTERFACE_NONE:
+			break;
+		
+		case ORIC_FLOPPY_INTERFACE_MICRODISC:
 		{
-			return oric_microdisc_r(offset);
+			if ((offset>=0x010) && (offset<=0x01f))
+			{
+				return oric_microdisc_r(offset);
+			}
 		}
+		break;
+
+		case ORIC_FLOPPY_INTERFACE_JASMIN:
+		{
+			if ((offset>=0x0f4) && (offset<=0x0ff))
+			{
+				return oric_jasmin_r(offset);
+			}
+		}
+		break;
 	}
 
 	logerror("via 0 r: %04x\n",offset);
@@ -841,13 +1160,32 @@ READ_HANDLER ( oric_IO_r )
 
 WRITE_HANDLER ( oric_IO_w )
 {
-	if (readinputport(9) & 0x01)
+	switch (readinputport(9) & 0x03)
 	{
-		if ((offset>=0x010) && (offset<=0x01f))
+		default:
+		case ORIC_FLOPPY_INTERFACE_NONE:
+			break;
+
+		case ORIC_FLOPPY_INTERFACE_MICRODISC:
 		{
-			oric_microdisc_w(offset, data);
-			return;
+			if ((offset>=0x010) && (offset<=0x01f))
+			{
+				oric_microdisc_w(offset, data);
+				return;
+			}
 		}
+		break;
+
+		case ORIC_FLOPPY_INTERFACE_JASMIN:
+		{
+			if ((offset>=0x0f4) && (offset<=0x0ff))
+			{
+				oric_jasmin_w(offset,data);
+				return;
+			}
+
+		}
+		break;
 	}
 
 	logerror("via 0 w: %04x %02x\n",offset,data);
@@ -1027,13 +1365,13 @@ static READ_HANDLER(telestrat_via2_in_b_func)
 	/* left joystick selected? */
 	if (telestrat_via2_port_b_data & (1<<6))
 	{
-		data &= readinputport(9);
+		data &= readinputport(10);
 	}
 
 	/* right joystick selected? */
 	if (telestrat_via2_port_b_data & (1<<7))
 	{
-		data &= readinputport(10);
+		data &= readinputport(11);
 	}
 
 	data |= telestrat_via2_port_b_data & ((1<<7) | (1<<6) | (1<<5));
@@ -1079,6 +1417,18 @@ struct via6522_interface telestrat_via2_interface=
 	NULL
 };
 
+/* interrupt state from acia6551 */
+static void telestrat_acia_callback(int irq_state)
+{
+	oric_irqs&=~(1<<3);
+
+	if (irq_state)
+	{
+		oric_irqs |= (1<<3);
+	}
+
+	oric_refresh_ints();
+}
 
 void telestrat_init_machine(void)
 {
@@ -1117,9 +1467,16 @@ void telestrat_init_machine(void)
 	telestrat_bank_selection = 7;
 	telestrat_refresh_mem();
 
+	/* disable os rom, enable microdisc rom */
+	/* 0x0c000-0x0dfff will be ram, 0x0e000-0x0ffff will be microdisc rom */
+    port_314_w = 0x0ff^((1<<7) | (1<<1));
+
+	acia_6551_init();
 
 	via_config(1, &telestrat_via2_interface);
 	via_set_clock(1,1000000);
+
+	wd179x_init(oric_wd179x_callback);
 }
 
 void	telestrat_shutdown_machine(void)
@@ -1142,6 +1499,8 @@ void	telestrat_shutdown_machine(void)
 	}
 
 	oric_shutdown_machine();
+
+	acia_6551_stop();
 }
 
 

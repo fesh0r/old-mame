@@ -33,7 +33,7 @@ CPUS+=CDP1802@
 #CPUS+=8085A@
 CPUS+=M6502@
 CPUS+=M65C02@
-#CPUS+=M65SC02@
+CPUS+=M65SC02@
 #CPUS+=M65CE02@
 CPUS+=M6509@
 CPUS+=M6510@
@@ -94,6 +94,7 @@ CPUS+=SC61860@
 CPUS+=ARM@
 CPUS+=G65816@
 #CPUS+=SPC700@
+#CPUS+=SATURN@
 
 # SOUND cores used in MESS
 SOUNDS+=CUSTOM@
@@ -160,6 +161,7 @@ DRVLIBS += \
 		$(OBJ)/rca.a	  \
 		$(OBJ)/fairch.a   \
 		$(OBJ)/magnavox.a \
+		$(OBJ)/svision.a \
 		$(OBJ)/cpschngr.a \
 		$(OBJ)/intv.a
 endif
@@ -186,7 +188,12 @@ DRVLIBS += \
 		$(OBJ)/samcoupe.a \
 		$(OBJ)/aquarius.a \
 		$(OBJ)/teamconc.a \
-		$(OBJ)/motorola.a
+		$(OBJ)/motorola.a \
+		$(OBJ)/svi.a
+
+# not working yet, cpu core not submitted yet
+#		$(OBJ)/hp48.a \
+
 endif
 
 ifdef MESS_EXCLUDE_MISC_GAMES
@@ -236,7 +243,8 @@ endif
 ifdef MESS_EXCLUDE_ATARI
 COREDEFS += -DMESS_EXCLUDE_ATARI
 else
-DRVLIBS += $(OBJ)/atari.a
+DRVLIBS += $(OBJ)/atari.a $(OBJ)/lynx.a
+
 endif
 
 ifndef MESS_EXCLUDE_CBM
@@ -474,6 +482,7 @@ $(OBJ)/pc.a:	   \
 	  $(OBJ)/mess/machine/pic8259.o  \
 	  $(OBJ)/mess/vidhrdw/vga.o	 \
 	  $(OBJ)/mess/sndhrdw/pc.o	 \
+	  $(OBJ)/mess/sndhrdw/sblaster.o \
 	  $(OBJ)/mess/vidhrdw/pc_cga.o	 \
 	  $(OBJ)/mess/vidhrdw/pc_aga.o	 \
 	  $(OBJ)/mess/vidhrdw/pc_mda.o	 \
@@ -630,6 +639,11 @@ $(OBJ)/sharp.a:    \
 	  $(OBJ)/mess/vidhrdw/mz700.o	 \
 	  $(OBJ)/mess/systems/mz700.o	 
 
+$(OBJ)/hp48.a: \
+	  $(OBJ)/mess/machine/hp48.o \
+	  $(OBJ)/mess/vidhrdw/hp48.o \
+	  $(OBJ)/mess/systems/hp48.o
+
 $(OBJ)/aquarius.a: \
 	  $(OBJ)/mess/machine/aquarius.o \
 	  $(OBJ)/mess/vidhrdw/aquarius.o \
@@ -644,6 +658,10 @@ $(OBJ)/teamconc.a: \
 	$(OBJ)/mess/vidhrdw/comquest.o   \
 	$(OBJ)/mess/systems/comquest.o
 
+$(OBJ)/svision.a: $(OBJ)/mess/systems/svision.o
+
+$(OBJ)/lynx.a: $(OBJ)/mess/systems/lynx.o $(OBJ)/mess/machine/lynx.o
+
 $(OBJ)/mk1.a: $(OBJ)/mess/vidhrdw/mk1.o $(OBJ)/mess/systems/mk1.o
 
 $(OBJ)/mk2.a: $(OBJ)/mess/vidhrdw/mk2.o $(OBJ)/mess/systems/mk2.o
@@ -654,6 +672,11 @@ $(OBJ)/motorola.a: \
 	  $(OBJ)/mess/vidhrdw/mekd2.o	 \
 	  $(OBJ)/mess/machine/mekd2.o	 \
 	  $(OBJ)/mess/systems/mekd2.o
+
+$(OBJ)/svi.a: \
+	  $(OBJ)/mess/machine/svi318.o \
+	  $(OBJ)/mess/systems/svi318.o \
+	  $(OBJ)/mess/formats/svi_cas.o 
 
 $(OBJ)/intv.a:	\
 	$(OBJ)/mess/systems/intv.o
@@ -702,20 +725,26 @@ COREOBJS += \
 TOOLS +=  dat2html$(EXE) mkhdimg$(EXE) imgtool$(EXE) messroms$(EXE)
 #TOOLS +=  dat2html$(EXE) mkhdimg$(EXE) imgtool$(EXE) 
 
+ifeq ($(OS),win32)
+OUTOPT = $(OBJ)/Win32/dirent.o -out:$@
+else
+OUTOPT = -o $@
+endif
+
 dat2html$(EXE): $(OBJ)/mess/tools/dat2html.o $(OBJ)/mess/utils.o
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) $(OUTOPT)
 
 mkhdimg$(EXE):	$(OBJ)/mess/tools/mkhdimg.o
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) $(OUTOPT)
 
 OBJDIRS += $(OBJ)/mess/messroms
 
 messroms$(EXE):	$(OBJ)/mess/messroms/main.o $(OBJ)/unzip.o
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) $(IMGTOOL_LIBS) -o $@
-
+#	$(LD) $(LDFLAGS) $^ $(LIBS) $(IMGTOOL_LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) $(IMGTOOL_LIBS) $(OUTOPT)
 
 imgtool$(EXE):	     \
 	  $(IMGTOOL_OBJS) \
@@ -726,11 +755,16 @@ imgtool$(EXE):	     \
 	  $(OBJ)/mess/tools/main.o    \
 	  $(OBJ)/mess/tools/imgtool.o \
 	  $(OBJ)/mess/tools/imgwave.o \
+	  $(OBJ)/mess/tools/filter.o \
+	  $(OBJ)/mess/tools/filteoln.o \
+	  $(OBJ)/mess/tools/filtbas.o \
 	  $(OBJ)/mess/tools/cococas.o   \
 	  $(OBJ)/mess/tools/vmsx_tap.o   \
 	  $(OBJ)/mess/tools/vmsx_gm2.o   \
 	  $(OBJ)/mess/formats/fmsx_cas.o  \
 	  $(OBJ)/mess/tools/fmsx_cas.o  \
+	  $(OBJ)/mess/formats/svi_cas.o  \
+	  $(OBJ)/mess/tools/svi_cas.o  \
 	  $(OBJ)/mess/formats/cococas.o  \
 	  $(OBJ)/mess/tools/msx_dsk.o  \
 	  $(OBJ)/mess/tools/rsdos.o   \
@@ -740,10 +774,10 @@ imgtool$(EXE):	     \
 	  $(OBJ)/mess/tools/crt.o     \
 	  $(OBJ)/mess/tools/d64.o     \
 	  $(OBJ)/mess/tools/fat.o     \
-	  $(OBJ)/mess/tools/rom16.o
+	  $(OBJ)/mess/tools/rom16.o   \
+	  $(OBJ)/mess/snprintf.o
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) $(IMGTOOL_LIBS) -o $@
-
+	$(LD) $(LDFLAGS) $^ $(LIBS) $(IMGTOOL_LIBS) $(OUTOPT)
 
 # text files
 ifeq ($(OS),msdos)

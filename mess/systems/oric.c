@@ -1,4 +1,17 @@
-/* Oric 1, Oric Atmos and Oric Telestrat Machine Drivers ..... */
+
+/* 
+	Systems supported by this driver:
+
+	Oric 1,
+	Oric Atmos,
+	Oric Telestrat,
+	Pravetz 8D
+
+	Pravetz is a Bulgarian copy of the Oric Atmos and uses
+	Apple 2 disc drives for storage 
+
+	This driver originally by Paul Cook, rewritten by Kevin Thacker.
+*/
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
@@ -7,12 +20,37 @@
 #include "includes/centroni.h"
 #include "printer.h"
 
+
+/* 
+	Explaination of memory regions:
+
+	I have split the memory region &c000-&ffff in this way because:
+
+	All roms (os, microdisc and jasmin) use the 6502 IRQ vectors at the end
+	of memory &fff8-&ffff, but they are different sizes. The os is 16k, microdisc
+	is 8k and jasmin is 2k.
+
+	There is also 16k of ram at &c000-&ffff which is normally masked
+	by the os rom, but when the microdisc or jasmin interfaces are used,
+	this ram can be accessed. For the microdisc and jasmin, the ram not
+	covered by the roms for these interfaces, can be accessed 
+	if it is enabled.
+
+	MRA_BANK1,MRA_BANK2 and MRA_BANK3 are used for a 16k rom.
+	MRA_BANK2 and MRA_BANK3 are used for a 8k rom.
+	MRA_BANK3 is used for a 2k rom.
+
+*/
+
+
 static MEMORY_READ_START(oric_readmem)
     { 0x0000, 0x02FF, MRA_RAM },
     { 0x0300, 0x03ff, oric_IO_r },
     { 0x0400, 0xBFFF, MRA_RAM },
+
     { 0xc000, 0xdFFF, MRA_BANK1 },
-	{ 0xe000, 0xffff, MRA_BANK2 },
+	{ 0xe000, 0xf7ff, MRA_BANK2 },	
+	{ 0xf800, 0xffff, MRA_BANK3 },	
 MEMORY_END
 
 static MEMORY_WRITE_START(oric_writemem)
@@ -20,9 +58,13 @@ static MEMORY_WRITE_START(oric_writemem)
     { 0x0300, 0x03ff, oric_IO_w },
     { 0x0400, 0xbFFF, MWA_RAM },
     { 0xc000, 0xdFFF, MWA_BANK5 },
-    { 0xe000, 0xffff, MWA_BANK6 },
+    { 0xe000, 0xf7ff, MWA_BANK6 },
+	{ 0xf800, 0xffff, MWA_BANK7 },
 MEMORY_END
 
+/* 
+The telestrat has the memory regions split into 16k blocks.
+Memory region &c000-&ffff can be ram or rom. */
 static MEMORY_READ_START(telestrat_readmem)
     { 0x0000, 0x02FF, MRA_RAM },
     { 0x0300, 0x03ff, telestrat_IO_r },
@@ -125,14 +167,39 @@ MEMORY_END
 INPUT_PORTS_START(oric)
 	INPUT_PORT_ORIC
 	PORT_START
-	/* microdisc interface on/off */
-	PORT_BITX(0x01, 0x01, IPT_DIPSWITCH_NAME | IPF_TOGGLE, "Microdisc Interface", IP_KEY_NONE, IP_JOY_NONE)
+	/* floppy interface  */
+	PORT_DIPNAME( 0x03, 0x00, "Floppy disc interface" )
+	PORT_DIPSETTING(    0x00, "None" )
+	PORT_DIPSETTING(    0x01, "Microdisc" )
+	PORT_DIPSETTING(    0x02, "Jasmin" )
+	/* vsync cable hardware. This is a simple cable connected to the video output
+	to the monitor/television. The sync signal is connected to the cassette input
+	allowing interrupts to be generated from the vsync signal. */
+    PORT_BITX(0x04, 0x00, IPT_DIPSWITCH_NAME | IPF_TOGGLE, "Vsync cable hardware", IP_KEY_NONE, IP_JOY_NONE)
 	PORT_DIPSETTING(0x0, DEF_STR( Off) )
-	PORT_DIPSETTING(0x1, DEF_STR( On) )
+	PORT_DIPSETTING(0x4, DEF_STR( On) )	
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK)
 INPUT_PORTS_END
 
-INPUT_PORTS_START(telestrat)
+
+INPUT_PORTS_START(prav8d)
 	INPUT_PORT_ORIC
+	PORT_START
+	PORT_BIT (0x0f, 0x00, IPT_UNUSED)
+INPUT_PORTS_END
+
+
+INPUT_PORTS_START(telstrat)
+	INPUT_PORT_ORIC
+	PORT_START
+	/* vsync cable hardware. This is a simple cable connected to the video output
+	to the monitor/television. The sync signal is connected to the cassette input
+	allowing interrupts to be generated from the vsync signal. */
+	PORT_BIT (0x03, 0x00, IPT_UNUSED)
+	PORT_BITX(0x04, 0x00, IPT_DIPSWITCH_NAME | IPF_TOGGLE, "Vsync cable hardware", IP_KEY_NONE, IP_JOY_NONE)
+	PORT_DIPSETTING(0x0, DEF_STR( Off) )
+	PORT_DIPSETTING(0x4, DEF_STR( On) )	
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK)	
 	/* left joystick port */
 	PORT_START
 	PORT_BITX(0x001, IP_ACTIVE_LOW, IPT_KEYBOARD, "JOYSTICK 0 UP", IP_KEY_NONE, JOYCODE_1_RIGHT)
@@ -151,11 +218,6 @@ INPUT_PORTS_START(telestrat)
 INPUT_PORTS_END
 
 static unsigned char oric_palette[8*3] = {
-//	0x00, 0x00, 0x00, 0xcf, 0x00, 0x00,
-//	0x00, 0xcf, 0x00, 0xcf, 0xcf, 0x00,
-//	0x00, 0x00, 0xcf, 0xcf, 0x00, 0xcf,
-//	0x00, 0xcf, 0xcf, 0xcf, 0xcf, 0xcf,
-
 	0x00, 0x00, 0x00, 0xff, 0x00, 0x00,
 	0x00, 0xff, 0x00, 0xff, 0xff, 0x00,
 	0x00, 0x00, 0xff, 0xff, 0x00, 0xff,
@@ -164,25 +226,7 @@ static unsigned char oric_palette[8*3] = {
 
 static unsigned short oric_colortable[8] = {
 	 0,1,2,3,4,5,6,7
-/*
-		 0,0,  0,1,  0, 2,	0, 3,  0, 4,  0, 5,  0, 6,	0, 7,
-	 1,0,  2,1,  2, 2,	1, 3,  1, 4,  1, 5,  1, 6,	1, 7,
-	 2,0,  4,1,  4, 2,	1, 3,  1, 4,  1, 5,  1, 6,	1, 7,
-	 3,0,  6,1,  6, 2,	1, 3,  1, 4,  1, 5,  1, 6,	1, 7,
-	 4,0,  1,1,  1, 2,	1, 3,  1, 4,  1, 5,  1, 6,	1, 7,
-	 5,0,  3,1,  3, 2,	1, 3,  1, 4,  1, 5,  1, 6,	1, 7,
-	 6,0,  6,1,  6, 2,	1, 3,  1, 4,  1, 5,  1, 6,	1, 7,
-	 7,0,  7,1,  7, 2,	1, 3,  1, 4,  1, 5,  1, 6,	1, 7,
-
-	 8,8,  8,9,  8,10,	8,11,  8,12,  8,13,  8,14,	8,15,
-	 9,8,  9,9,  9,10,	9,11,  9,12,  9,13,  9,14,	9,15,
-	10,8, 10,9, 10,10, 10,11, 10,12, 10,13, 10,14, 10,15,
-	11,8, 11,9, 11,10, 11,11, 11,12, 11,13, 11,14, 11,15,
-	12,8, 12,9, 12,10, 12,11, 12,12, 12,13, 12,14, 12,15,
-	13,8, 13,9, 13,10, 13,11, 13,12, 13,13, 13,14, 13,15,
-	14,8, 14,9, 14,10, 14,11, 14,12, 14,13, 14,14, 14,15,
-	15,8, 15,9, 15,10, 15,11, 15,12, 15,13, 15,14, 15,15
-*/};
+};
 
 /* Initialise the palette */
 static void oric_init_palette(unsigned char *sys_palette, unsigned short *sys_colortable,const unsigned char *color_prom)
@@ -257,7 +301,7 @@ static struct MachineDriver machine_driver_oric =
 };
 
 
-static struct MachineDriver machine_driver_telestrat =
+static struct MachineDriver machine_driver_telstrat =
 {
 	/* basic machine hardware */
 	{
@@ -306,29 +350,47 @@ static struct MachineDriver machine_driver_telestrat =
 };
 
 ROM_START(oric1)
-	ROM_REGION(0x10000+0x04000+0x02000,REGION_CPU1,0)
+	ROM_REGION(0x10000+0x04000+0x02000+0x0800,REGION_CPU1,0)
 	ROM_LOAD ("basic10.rom", 0x10000, 0x4000, 0xf18710b4)
-	ROM_LOAD ("microdis.rom",0x014000, 0x02000, 0x0)
+	ROM_LOAD_OPTIONAL ("microdis.rom",0x014000, 0x02000, 0xa9664a9c)
+	ROM_LOAD_OPTIONAL ("jasmin.rom", 0x016000, 0x800, 0x37220e89)
 ROM_END
 
 ROM_START(orica)
-	ROM_REGION(0x10000+0x04000+0x02000,REGION_CPU1,0)
+	ROM_REGION(0x10000+0x04000+0x02000+0x0800,REGION_CPU1,0)
 	ROM_LOAD ("basic11b.rom", 0x10000, 0x4000, 0xc3a92bef)
-	ROM_LOAD ("microdis.rom",0x014000, 0x02000, 0x0)
+	ROM_LOAD_OPTIONAL ("microdis.rom",0x014000, 0x02000, 0xa9664a9c)
+	ROM_LOAD_OPTIONAL ("jasmin.rom", 0x016000, 0x800, 0x37220e89)
 ROM_END
 
-ROM_START(telestrat)
+ROM_START(telstrat)
 	ROM_REGION(0x010000+(0x04000*4), REGION_CPU1,0)
-	ROM_LOAD ("telmatic.rom", 0x010000, 0x04000, 0x0)
-	ROM_LOAD ("teleass.rom", 0x014000, 0x04000, 0x0)
-	ROM_LOAD ("hyperbas.rom", 0x018000, 0x04000, 0x0)
-	ROM_LOAD ("telmon24.rom", 0x01c000, 0x04000, 0x0)
+	ROM_LOAD ("telmatic.rom", 0x010000, 0x02000, 0x94358dc6)
+	ROM_LOAD ("teleass.rom", 0x014000, 0x04000, 0x68b0fde6)
+	ROM_LOAD ("hyperbas.rom", 0x018000, 0x04000, 0x1d96ab50)
+	ROM_LOAD ("telmon24.rom", 0x01c000, 0x04000, 0xaa727c5d)
 ROM_END
 
-static const struct IODevice io_oric1[] = 
+ROM_START(prav8d)
+    ROM_REGION (0x10000+0x4000,REGION_CPU1,0)
+    ROM_LOAD ("pravetzt.rom", 0x10000, 0x4000, 0x58079502)
+ROM_END
+
+ROM_START(prav8dd)
+    ROM_REGION (0x10000+0x4000,REGION_CPU1,0)
+    ROM_LOAD ("8d.rom", 0x10000, 0x4000, 0xb48973ef)
+ROM_END
+
+ROM_START(prav8dda)
+    ROM_REGION (0x10000+0x4000,REGION_CPU1,0)
+    ROM_LOAD ("pravetzd.rom", 0x10000, 0x4000, 0xf8d23821)
+ROM_END
+
+static const struct IODevice io_oric1[] =
 {
 	IO_CASSETTE_WAVE(1,"wav\0",NULL,oric_cassette_init,oric_cassette_exit),
- 	{
+ 	IO_PRINTER_PORT(1,"prn\0"),
+	{
 		IO_FLOPPY,				/* type */
 		4,						/* count */
 		"dsk\0",                /* file extensions */
@@ -347,14 +409,26 @@ static const struct IODevice io_oric1[] =
 		NULL,					/* input_chunk */
 		NULL					/* output_chunk */
 	},
-	IO_PRINTER_PORT(1,"\0"),
 	{ IO_END }
 };
 
-#define io_orica io_oric1
-#define io_telestrat io_oric1
+static const struct IODevice io_prav8[] =
+{
+	IO_CASSETTE_WAVE(1,"wav\0",NULL,oric_cassette_init,oric_cassette_exit),
+ 	IO_PRINTER_PORT(1,"prn\0"),
+	{ IO_END }
+};
 
-/*    YEAR   NAME      PARENT    MACHINE   INPUT     INIT      COMPANY      FULLNAME */
-COMP( 1983,  oric1,    0,		 oric,	   oric,	 0,		   "Tangerine", "Oric 1" )
-COMP( 1984,  orica,    oric1,		 oric,	   oric,	 0,		   "Tangerine", "Oric Atmos" )
-COMP( 198?,	 telestrat, oric1, telestrat, telestrat, 0, "Tangerine", "Oric Telestrat" )
+#define io_prav8d io_prav8
+#define io_prav8dd io_prav8
+#define io_prav8dda io_prav8
+#define io_orica io_oric1
+#define io_telstrat io_oric1
+
+/*    YEAR   NAME       PARENT  MACHINE     INPUT       INIT    COMPANY         FULLNAME */
+COMP( 1983,  oric1,     0,      oric,       oric,	    0,	    "Tangerine",    "Oric 1" )
+COMP( 1984,  orica,     oric1,	oric,	    oric,	    0,	    "Tangerine",    "Oric Atmos" )
+COMP( 1985,  prav8d,    oric1,  oric,       prav8d,     0,      "Pravetz",      "Pravetz 8D")
+COMPX( 1989, prav8dd,   oric1,  oric,       prav8d,     0,      "Pravetz",      "Pravetz 8D (Disk ROM)", GAME_COMPUTER_MODIFIED)
+COMPX( 1992, prav8dda,  oric1,  oric,       prav8d,     0,      "Pravetz",      "Pravetz 8D (Disk ROM, RadoSoft)", GAME_COMPUTER_MODIFIED)
+COMP( 198?,  telstrat,  oric1,  telstrat,   telstrat,   0,      "Tangerine",    "Oric Telestrat" )

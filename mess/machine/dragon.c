@@ -90,8 +90,10 @@ static WRITE_HANDLER ( coco3_pia1_pb_w );
 static WRITE_HANDLER ( d_pia1_pa_w );
 static READ_HANDLER (  d_pia1_cb1_r );
 static READ_HANDLER (  d_pia0_ca1_r );
+static READ_HANDLER (  d_pia0_cb1_r );
 static READ_HANDLER (  d_pia0_pa_r );
 static READ_HANDLER (  d_pia1_pa_r );
+static WRITE_HANDLER ( d_pia0_pa_w );
 static WRITE_HANDLER ( d_pia0_pb_w );
 static WRITE_HANDLER ( d_pia1_cb2_w);
 static WRITE_HANDLER ( d_pia0_cb2_w);
@@ -128,8 +130,8 @@ static struct pia6821_interface dragon_pia_intf[] =
 {
 	/* PIA 0 */
 	{
-		/*inputs : A/B,CA/B1,CA/B2 */ d_pia0_pa_r, 0, d_pia0_ca1_r, 0, 0, 0,
-		/*outputs: A/B,CA/B2	   */ 0, d_pia0_pb_w, d_pia0_ca2_w, d_pia0_cb2_w,
+		/*inputs : A/B,CA/B1,CA/B2 */ d_pia0_pa_r, 0, d_pia0_ca1_r, d_pia0_cb1_r, 0, 0,
+		/*outputs: A/B,CA/B2	   */ d_pia0_pa_w, d_pia0_pb_w, d_pia0_ca2_w, d_pia0_cb2_w,
 		/*irqs	 : A/B			   */ d_pia0_irq_a, d_pia0_irq_b
 	},
 
@@ -145,8 +147,8 @@ static struct pia6821_interface coco3_pia_intf[] =
 {
 	/* PIA 0 */
 	{
-		/*inputs : A/B,CA/B1,CA/B2 */ d_pia0_pa_r, 0, d_pia0_ca1_r, 0, 0, 0,
-		/*outputs: A/B,CA/B2	   */ 0, d_pia0_pb_w, d_pia0_ca2_w, d_pia0_cb2_w,
+		/*inputs : A/B,CA/B1,CA/B2 */ d_pia0_pa_r, 0, d_pia0_ca1_r, d_pia0_cb1_r, 0, 0,
+		/*outputs: A/B,CA/B2	   */ d_pia0_pa_w, d_pia0_pb_w, d_pia0_ca2_w, d_pia0_cb2_w,
 		/*irqs	 : A/B			   */ coco3_pia0_irq_a, coco3_pia0_irq_b
 	},
 
@@ -591,6 +593,82 @@ static void coco3_raise_interrupt(int mask, int state)
 }
 
 /***************************************************************************
+  Joystick Abstractions
+***************************************************************************/
+
+#define JOYSTICK_RIGHT_X	7
+#define JOYSTICK_RIGHT_Y	8
+#define JOYSTICK_LEFT_X		9
+#define JOYSTICK_LEFT_Y		10
+
+double read_joystick(int joyport)
+{
+	return readinputport(joyport) / 255.0;
+}
+
+#define JOYSTICKMODE_NORMAL			0x00
+#define JOYSTICKMODE_HIRES			0x10
+#define JOYSTICKMODE_HIRES_CC3MAX	0x30
+
+#define joystick_mode()	(readinputport(12) & 0x30)
+
+/***************************************************************************
+  Hires Joystick
+***************************************************************************/
+
+static int coco_hiresjoy_ca = 1;
+static double coco_hiresjoy_xtransitiontime = 0;
+static double coco_hiresjoy_ytransitiontime = 0;
+
+static double coco_hiresjoy_computetransitiontime(int inputport)
+{
+	double val;
+
+	val = read_joystick(inputport);
+
+	if (joystick_mode() == JOYSTICKMODE_HIRES_CC3MAX) {
+		/* CoCo MAX 3 Interface */
+		val = val * 2500.0 + 400.0;
+	}
+	else {
+		/* Normal Hires Interface */
+		val = val * 4160.0 + 592.0;
+	}
+
+	return timer_get_time() + (COCO_CPU_SPEED * val);
+}
+
+static void coco_hiresjoy_w(int data)
+{
+	if (!data && coco_hiresjoy_ca) {
+		/* Hi to lo */
+		coco_hiresjoy_xtransitiontime = coco_hiresjoy_computetransitiontime(JOYSTICK_RIGHT_X);
+		coco_hiresjoy_ytransitiontime = coco_hiresjoy_computetransitiontime(JOYSTICK_RIGHT_Y);
+	}
+	else if (data && !coco_hiresjoy_ca) {
+		/* Lo to hi */
+		coco_hiresjoy_ytransitiontime = 0;
+		coco_hiresjoy_ytransitiontime = 0;
+	}
+	coco_hiresjoy_ca = data;
+}
+
+static int coco_hiresjoy_readone(double transitiontime)
+{
+	return (transitiontime) ? (timer_get_time() >= transitiontime) : 1;
+}
+
+static int coco_hiresjoy_rx(void)
+{
+	return coco_hiresjoy_readone(coco_hiresjoy_xtransitiontime);
+}
+
+static int coco_hiresjoy_ry(void)
+{
+	return coco_hiresjoy_readone(coco_hiresjoy_ytransitiontime);
+}
+
+/***************************************************************************
   PIA
 ***************************************************************************/
 
@@ -604,6 +682,11 @@ int dragon_interrupt(void)
 static READ_HANDLER ( d_pia0_ca1_r )
 {
 	return 0;
+}
+
+static READ_HANDLER ( d_pia0_cb1_r )
+{
+	return m6847_fs_r(0);
 }
 
 static READ_HANDLER ( d_pia1_cb1_r )
@@ -640,6 +723,8 @@ static WRITE_HANDLER ( d_pia1_pa_w )
 	d_dac = data & 0xfc;
 	if (sound_mux)
 		DAC_data_w(0,d_dac);
+	else if (joystick_mode() == JOYSTICKMODE_HIRES)
+		coco_hiresjoy_w(d_dac >= 0x80);
 	else
 		device_output(IO_CASSETTE, 0, ((int) d_dac - 0x80) * 0x100);
 
@@ -698,7 +783,9 @@ static WRITE_HANDLER ( d_pia0_ca2_w )
 
 static int keyboard_r(void)
 {
-	int porta=0x7f;
+	int porta = 0x7f;
+	int joyport;
+	double joyval;
 
 	if ((input_port_0_r(0) | pia0_pb) != 0xff) porta &= ~0x01;
 	if ((input_port_1_r(0) | pia0_pb) != 0xff) porta &= ~0x02;
@@ -707,8 +794,22 @@ static int keyboard_r(void)
 	if ((input_port_4_r(0) | pia0_pb) != 0xff) porta &= ~0x10;
 	if ((input_port_5_r(0) | pia0_pb) != 0xff) porta &= ~0x20;
 	if ((input_port_6_r(0) | pia0_pb) != 0xff) porta &= ~0x40;
-	if (d_dac <= readinputport(joystick ? (joystick_axis ? 10 : 9) : (joystick_axis ? 8 : 7)))
-		porta |= 0x80;
+
+
+	if (!joystick && (joystick_mode() != JOYSTICKMODE_NORMAL)) {
+		/* Hi res joystick */
+		if (joystick_axis ? coco_hiresjoy_ry() : coco_hiresjoy_rx())
+			porta |= 0x80;
+
+	}
+	else {
+		/* Normal joystick */
+		joyport = joystick ? (joystick_axis ? JOYSTICK_LEFT_Y : JOYSTICK_LEFT_X) : (joystick_axis ? JOYSTICK_RIGHT_Y : JOYSTICK_RIGHT_X);
+		joyval = readinputport(joyport);
+		if (d_dac <= ((int) (joyval * 255.0)))
+			porta |= 0x80;
+	}
+
 	porta &= ~readinputport(11);
 
 	return porta;
@@ -739,6 +840,13 @@ static void coco3_poll_keyboard(int dummy)
 static READ_HANDLER ( d_pia1_pa_r )
 {
 	return (device_input(IO_CASSETTE, 0) >= 0) ? 1 : 0;
+}
+
+static WRITE_HANDLER ( d_pia0_pa_w )
+{
+	if (joystick_mode() == JOYSTICKMODE_HIRES_CC3MAX) {
+		coco_hiresjoy_w(data & 0x04);
+	}
 }
 
 static WRITE_HANDLER ( d_pia0_pb_w )
@@ -902,7 +1010,7 @@ static void coco3_timer_reset(void)
 	/* This resets the timer back to the original value
 	 *
 	 * JK tells me that when the timer resets, it gets reset to a value that
-	 * is 1 (with the 1986 GIME) above or 2 (with the 1987 GIME) above the
+	 * is 2 (with the 1986 GIME) above or 1 (with the 1987 GIME) above the
 	 * value written into the timer.  coco3_timer_base keeps track of the value
 	 * placed into the variable, so we increment that here
 	 *
@@ -913,7 +1021,7 @@ static void coco3_timer_reset(void)
 		counter_remove(coco3_timer_counter);
 
 	if (coco3_timer_base)
-		coco3_timer_counter = counter_set(coco3_timer_base + 1, coco3_timer_interval_time(), 0, coco3_timer_callback);
+		coco3_timer_counter = counter_set(coco3_timer_base + 2, coco3_timer_interval_time(), 0, coco3_timer_callback);
 	else
 		coco3_timer_counter = NULL;
 }
@@ -934,18 +1042,19 @@ static int coco3_timer_r(void)
 	return result;	/* result = 0..4095 */
 }
 
+/* Write into MSB of timer ($FF94); this causes a reset (source: Sockmaster) */
 static void coco3_timer_msb_w(int data)
 {
-	coco3_timer_base &= 0xff;
+	coco3_timer_base &= 0x00ff;
 	coco3_timer_base |= (data & 0x0f) << 8;
 	coco3_timer_reset();
 }
 
+/* Write into LSB of timer ($FF95); this does not cause a reset (source: Sockmaster) */
 static void coco3_timer_lsb_w(int data)
 {
 	coco3_timer_base &= 0xff00;
 	coco3_timer_base |= (data & 0xff);
-	coco3_timer_reset();
 }
 
 static void coco3_timer_set_interval(int interval)

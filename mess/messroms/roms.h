@@ -608,10 +608,16 @@ static struct {
 	{ 0x953f8f51, 0xc000, "QL js-4," },
 
 /* tandy *************************************************************************/
-	{ 0x54368805 , 0x2000, "COCO basic" },
-	{ 0xa82a6254 , 0x2000, "COCO extbasic" },
+	{ 0x73316e3e , 0x2000, "NOT AUTHENTIC COCO basic 1.0" },
+	{ 0x6270955a , 0x2000, "COCO basic 1.1" },
+	{ 0x54368805 , 0x2000, "COCO basic 1.2" },
+	{ 0xd8f4d15e , 0x2000, "COCO basic 1.3" },
+	{ 0xa04a8732 , 0x2000, "COCO basic 1.3 (1byte different to 0xd8f4d15e" },
+	{ 0x6111a086 , 0x2000, "NOT AUTHENTIC COCO extbasic 1.0" },
+	{ 0xa82a6254 , 0x2000, "COCO extbasic 1.1" },
 	{ 0x2ea0fb7f , 0x4000, "MERGED! 0xa82a6254+0x54368805" },
-	{ 0x0b9c5415 , 0x2000, "COCO disk" },
+	{ 0xb4f9968e , 0x2000, "COCO disk 1.0" },
+	{ 0x0b9c5415 , 0x2000, "COCO disk 1.1" },
 	{ 0x7eaa44e3 , 0x2000, "COCO disk (2bytes different to 0x0b9c5415" },
 	{ 0x5fb295a7 , 0x6000, "MERGED! 0xa82a6254+0x54368805+0x7eaa44e3" },
 	{ 0xb4c88d6c , 0x8000, "COCO3" },
@@ -686,6 +692,10 @@ static struct {
 	{ 0xb8ba44d3,0x4000, "MSX2+ ext" },
 	{ 0xc9651b32,0x20000, "MSX2+ kanji 128k" },
 
+	{ 0x98d48655,0x8000, "SVI 1.0" },
+	{ 0x709904e9,0x8000, "SVI 1.1" },
+	{ 0xbc433df6,0x8000, "SVI 1.11" },
+
 /* sharp ***************************************************************************/
 	{ 0x4c6c6b7b , 0x1000, "MZ700" },
 	{ 0x42b9e8fb , 0x1000, "MZ700 font" },
@@ -715,6 +725,8 @@ static struct {
 	{ 0x72a040e0 , 0x100, "94519114 TI990_4" },
 	{ 0x9ccf8cca , 0x100, "94519115 TI990_4" },
 	{ 0xfa387bf3 , 0x100, "94519116 TI990_4" },
+
+	{ 0x160ee4a6 , 0x150000, "AVIGO english 1.004" },
 
 	{ 0x6a320f03 , 0x20000, "TI82" },
 	{ 0x4bf05697 , 0x40000, "TI83 1?" },
@@ -796,8 +808,13 @@ static struct {
 	{ 0x7e215313 , 0x400, "MICROTAN" },
 	{ 0xc8221d9e , 0x400, "MICROTAN" },
 	{ 0x3b3c5360 , 0x800, "MICROTAN character" },
-	{ 0xf18710b4 , 0x4000, "ORIC1" },
-	{ 0xc3a92bef , 0x4000, "ORICA" },
+
+	{ 0xf18710b4 , 0x4000, "ORIC1 basic 10" },
+	{ 0xc3a92bef , 0x4000, "ORICA basic 11b" },
+	{ 0xa9664a9c , 0x2000, "ORIC microdisk" },
+	{ 0x58079502 , 0x4000, "PRAVETZ8D" },
+	{ 0xb48973ef , 0x4000, "PRAVETZ8Dd" },
+	{ 0xf8d23821 , 0x4000, "PRAVETZ8Dda" },
 
 	{ 0x32f0d1ef , 0x4000, "MODIFIED? Einstein" },
 
@@ -810,8 +827,9 @@ static struct {
 
 	{ 0xa0b059f9 , 0x119000, "BAD Dump PalmOs" },
 
-	{ 0x5619ccaf , 0x40000, "HP48S" },
-	{ 0xd6bb68c5 , 0x80000, "HP48G" },
+	{ 0xd4f1390b , 0x40000, "HP48S E" },
+	{ 0x5619ccaf , 0x40000, "BAD DUMP HP48S E" },
+	{ 0xd6bb68c5 , 0x80000, "BAD DUMP HP48G R" },
 
 	{ 0xa2a56502 , 0x400, "6530-003 KIM1 1800" },
 	{ 0x2b08e923 , 0x400, "6530-002 KIM1 1c00" },
@@ -842,6 +860,7 @@ static struct {
 	{ 0x278f7bf3 , 0x800, "7916E C48091 82c210-1 Chess Champion MK1 (2716 compatible)" },
 	{ 0x4f28c443 , 0x400, "MOS6530 024 1879 Chess Champion MK2" },
 	{ 0x6f10991b , 0x1000, "MOS6332 005 2179 Chess Champion MK2 (not full 2732 compatible)" },
+	{ 0x9ea46ed3 , 0x1000, "Signetics c19081e Chess Champion MK3 (not full 2732 compatible)" },
 	{ 0x52741e0b , 0x1000, "Signetics c19082 Chess Champion MK3 (not full 2732 compatible)" },
 
 	{ 0x2bf4b1a8 , 0x80000, "Epoxy DIL32 Comquest Plus German (dumped as 278001, gave 2 identical halfes" },

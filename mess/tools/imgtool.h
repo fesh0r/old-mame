@@ -65,23 +65,8 @@ typedef struct {
 
 /* ----------------------------------------------------------------------- */
 
-enum {
-	IMG_FILE,
-	IMG_MEM
-};
-
 typedef struct {
-	int imgtype;
-	int write_protect;
-	const char *name; // needed for clear
-	union {
-		FILE *f;
-		struct {
-			char *buf;
-			size_t bufsz;
-			size_t pos;
-		} m;
-	} u;
+	int dummy;
 } STREAM;
 
 STREAM *stream_open(const char *fname, int read_or_write);	/* similar params to osd_fopen */
@@ -89,7 +74,7 @@ STREAM *stream_open_write_stream(int filesize);
 STREAM *stream_open_mem(void *buf, size_t sz);
 void stream_close(STREAM *f);
 size_t stream_read(STREAM *f, void *buf, size_t sz);
-size_t stream_write(STREAM *f, const void *buf, size_t sz);
+size_t stream_write(STREAM *f, void *buf, size_t sz);
 size_t stream_size(STREAM *f);
 int stream_seek(STREAM *f, size_t pos, int where);
 /* works currently only for IMG_FILE
@@ -108,6 +93,55 @@ size_t stream_fill(STREAM *f, unsigned char b, size_t sz);
 /* Returns the CRC of a file */
 int stream_crc(STREAM *f, unsigned long *result);
 int file_crc(const char *fname,  unsigned long *result);
+
+/* Returns whether a stream is read only or not */
+int stream_isreadonly(STREAM *f);
+
+/* -----------------------------------------------------------------------
+ * Filters
+ * ----------------------------------------------------------------------- */
+
+struct filter_info {
+	int (*sendproc)(struct filter_info *fi, void *buf, int buflen);
+	void *filterstate;
+	void *filterparam;
+	void *internalparam;
+};
+
+struct ImageModule;
+
+struct filter_module {
+	const char *name;
+	const char *humanname;
+	void *(*calcreadparam)(const struct ImageModule *imgmod);
+	void *(*calcwriteparam)(const struct ImageModule *imgmod);
+	int (*filterreadproc)(struct filter_info *fi, void *buf, int buflen);
+	int (*filterwriteproc)(struct filter_info *fi, void *buf, int buflen);
+	int statesize;
+};
+
+typedef struct {
+	int dummy;
+} FILTER;
+
+typedef const struct filter_module *FILTERMODULE;
+
+enum {
+	PURPOSE_READ,
+	PURPOSE_WRITE
+};
+
+FILTER *filter_init(FILTERMODULE filter, const struct ImageModule *imgmod, int purpose);
+void filter_term(FILTER *f);
+int filter_writetostream(FILTER *f, STREAM *s, void *buf, int buflen);
+int filter_readfromstream(FILTER *f, STREAM *s, void *buf, int buflen);
+int filter_readintobuffer(FILTER *f, STREAM *s);
+
+extern FILTERMODULE filters[];
+
+FILTERMODULE filter_lookup(const char *name);
+
+STREAM *stream_open_filter(STREAM *s, FILTER *f);
 
 /* ----------------------------------------------------------------------- */
 
@@ -134,6 +168,7 @@ enum {
 
 struct OptionTemplate {
 	const char *name;
+	const char *description;
 	int flags;
 	int min;
 	int max;
@@ -150,6 +185,10 @@ typedef union {
 	const char *s;	/* string */
 } ResolvedOption;
 
+enum {
+	IMGMODULE_FLAG_FILENAMES_PREFERUCASE	= 0x0001	/* this means that all filenames are normally upper case */
+};
+
 struct ImageModule {
 	const char *name;
 	const char *humanname;
@@ -157,6 +196,7 @@ struct ImageModule {
 	const char *crcfile;
 	const char *crcsysname;
 	const char *eoln;
+	int flags;
 
 	int (*init)(STREAM *f, IMAGE **outimg);
 	void (*exit)(IMAGE *img);
@@ -184,7 +224,7 @@ struct ImageModule {
 /* ----------------------------------------------------------------------- */
 
 /* Use IMAGEMODULE for (potentially) full featured images */
-#define IMAGEMODULE(name,humanname,ext,crcfile,crcsysname,eoln,\
+#define IMAGEMODULE(name,humanname,ext,crcfile,crcsysname,eoln,flags,\
 		init,exit,info,beginenum,nextenum,closeenum,freespace,readfile,writefile, \
 		deletefile,create,read_sector,write_sector,fileoptions_template,createoptions_template)	\
 struct ImageModule imgmod_##name = \
@@ -195,6 +235,7 @@ struct ImageModule imgmod_##name = \
 	(crcfile),					\
 	(crcsysname),				\
 	(eoln),						\
+	(flags),					\
 	(init),						\
 	(exit),						\
 	(info),						\
@@ -223,6 +264,7 @@ struct ImageModule imgmod_##name = \
 	(#name ".crc"),	\
 	#name,			\
 	NULL,			\
+	0,				\
 	NULL,			\
 	NULL,			\
 	NULL,			\
@@ -381,8 +423,10 @@ int img_freespace(IMAGE *img, int *sz);
  *		img:				The image to read from
  *		fname:				The filename on the image
  *		destf:				Place to receive the stream
+ *      filter:             Filter to use, or NULL if none
  */
-int img_readfile(IMAGE *img, const char *fname, STREAM *destf);
+int img_readfile(IMAGE *img, const char *fname, STREAM *destf,
+	FILTERMODULE filter);
 
 /* img_writefile
  *
@@ -394,8 +438,10 @@ int img_readfile(IMAGE *img, const char *fname, STREAM *destf);
  *		fname:				The filename on the image
  *		destf:				Place to receive the stream
  *		options:			Options to specify on the new file
+ *      filter:             Filter to use, or NULL if none
  */
-int img_writefile(IMAGE *img, const char *fname, STREAM *sourcef, const struct NamedOption *_options);
+int img_writefile(IMAGE *img, const char *fname, STREAM *sourcef,
+	const struct NamedOption *_options, FILTERMODULE filter);
 
 /* img_getfile
  *
@@ -406,8 +452,10 @@ int img_writefile(IMAGE *img, const char *fname, STREAM *sourcef, const struct N
  *		img:				The image to read from
  *		fname:				The filename on the image
  *		dest:				Filename for native file to write to
+ *      filter:             Filter to use, or NULL if none
  */
-int img_getfile(IMAGE *img, const char *fname, const char *dest);
+int img_getfile(IMAGE *img, const char *fname, const char *dest,
+	FILTERMODULE filter);
 
 /* img_putfile
  *
@@ -420,8 +468,10 @@ int img_getfile(IMAGE *img, const char *fname, const char *dest);
  *							the file will be named basename(source)
  *		source:				Native filename for source
  *		options:			Options to specify on the new file
+ *      filter:             Filter to use, or NULL if none
  */
-int img_putfile(IMAGE *img, const char *newfname, const char *source, const struct NamedOption *_options);
+int img_putfile(IMAGE *img, const char *newfname, const char *source,
+	const struct NamedOption *_options, FILTERMODULE filter);
 
 /* img_deletefile
  *
@@ -513,7 +563,7 @@ struct WaveExtra
 
 };
 
-#define WAVEMODULE(name,humanname,ext,eoln,zeropulse,onepulse,threshpulse,waveflags,blockheader,blockheadersize,\
+#define WAVEMODULE(name,humanname,ext,eoln,flags,zeropulse,onepulse,threshpulse,waveflags,blockheader,blockheadersize,\
 		initalt,nextfile,readfilechunk)	\
 static int imgmodinit_##name(STREAM *f, IMAGE **outimg); \
 static struct WaveExtra waveextra_##name = \
@@ -536,6 +586,7 @@ struct ImageModule imgmod_##name = \
 	NULL,				\
 	NULL,				\
 	(eoln),				\
+	(flags),			\
 	imgmodinit_##name,	\
 	imgwave_exit,		\
 	NULL,				\

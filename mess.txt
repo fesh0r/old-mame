@@ -5,7 +5,7 @@
                     Official Page at: http://mess.emuverse.com
                    ==========================================
 
-This document is generated for MESS 0.37 BETA 9 (Dec  5 2000)
+This document is generated for MESS 0.37 BETA 10 (Dec 25 2000)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.37 BETA 9 (Dec  5 2000)
+Here is the list of systems supported by MESS 0.37 BETA 10 (Dec 25 2000)
 
 The meanings of the columns are as follows:
 Working - "No" means that the emulation has shortcomings that cause the system
@@ -103,6 +103,7 @@ dat2html.exe.
 | Spectrum I+                             |  Yes  |  Yes  |  Yes  | raaspec  |
 | Adventurevision                         |  Yes  |  Yes  |   No  | advision |
 | CPS Changer (Street Fighter ZERO)       |  Yes  |  Yes  |  Yes  | sfzch    |
+| Super Vision                            |   No  |  Yes  |  Yes  | svision  |
 | Atom                                    |  Yes  |  Yes  |  Yes  | atom     |
 | Atom with Eprom Box                     |  Yes  |  Yes  |  Yes  | atomeb   |
 | BBC Micro Model A                       |  Yes  |  Yes  |  Yes  | bbca     |
@@ -190,10 +191,10 @@ dat2html.exe.
 | IBM PC 08/16/82                         |  Yes  |  Yes  |  Yes  | ibmpca   |
 | PC (MDA)                                |  Yes  |  Yes  |  Yes  | pcmda    |
 | PC (CGA)                                |  Yes  |  Yes  |  Yes  | pc       |
-| EURO PC                                 | No(1) |  Yes  |  Yes  | europc   |
-| Tandy 1000HX                            |  Yes  | Close |  Yes  | t1000hx  |
-| IBM PC/XT (CGA, MF2 Keyboard)           | No(1) |  Yes  |  Yes  | ibmxt    |
-| Amstrad PC1512                          | No(1) |  Yes  |  Yes  | pc1512   |
+| EURO PC                                 |  Yes  |  Yes  |  Yes  | europc   |
+| Tandy 1000HX                            |  Yes  |  Yes  |  Yes  | t1000hx  |
+| IBM PC/XT (CGA, MF2 Keyboard)           |  Yes  |  Yes  |  Yes  | ibmxt    |
+| Amstrad PC1512                          |  Yes  |  Yes  |  Yes  | pc1512   |
 | Amstrad PC1640 / PC6400 (US)            | No(1) |  Yes  |  Yes  | pc1640   |
 | PC/XT (VGA, MF2 Keyboard)               | No(1) |  Yes  |  Yes  | xtvga    |
 | PC/AT (CGA, MF2 Keyboard)               |   No  |  Yes  |  Yes  | at       |
@@ -246,11 +247,13 @@ dat2html.exe.
 | TRS-80 Model I (R/S L2 Basic)           |  Yes  |  Yes  |  Yes  | trs80alt |
 | System-80                               |  Yes  |  Yes  |  Yes  | sys80    |
 | Color Computer                          |  Yes  |  Yes  |  Yes  | coco     |
+| Color Computer (Extended BASIC 1.0)     |  Yes  |  Yes  |  Yes  | cocoe    |
+| Color Computer 2                        |  Yes  |  Yes  |  Yes  | coco2    |
 | Color Computer 2B                       |  Yes  |  Yes  |  Yes  | coco2b   |
 | Color Computer 3                        |  Yes  |  Yes  |  Yes  | coco3    |
-| Color Computer 3 (6309)                 | No(1) |  Yes  |  Yes  | coco3h   |
+| Color Computer 3 (HD6309)               |  Yes  |  Yes  |  Yes  | coco3h   |
 | Dragon 32                               |  Yes  |  Yes  |  Yes  | dragon32 |
-| Prologica CP400                         |  Yes  |  Yes  |  Yes  | cp400    |
+| CP400                                   |  Yes  |  Yes  |  Yes  | cp400    |
 | MC-10                                   |  Yes  |  Yes  |  Yes  | mc10     |
 | Colour Genie EG2000                     |  Yes  |  Yes  |  Yes  | cgenie   |
 | Laser 110                               |  Yes  |  Yes  |  Yes  | laser110 |
@@ -267,7 +270,10 @@ dat2html.exe.
 | Microtan 65                             |  Yes  |  Yes  |  Yes  | microtan |
 | Oric 1                                  |  Yes  |  Yes  |  Yes  | oric1    |
 | Oric Atmos                              |  Yes  |  Yes  |  Yes  | orica    |
-| Oric Telestrat                          |  Yes  |  Yes  |  Yes  | telestrat |
+| Pravetz 8D                              |  Yes  |  Yes  |  Yes  | prav8d   |
+| Pravetz 8D (Disk ROM)                   |  Yes  |  Yes  |  Yes  | prav8dd  |
+| Pravetz 8D (Disk ROM, RadoSoft)         |  Yes  |  Yes  |  Yes  | prav8dda |
+| Oric Telestrat                          |  Yes  |  Yes  |  Yes  | telstrat |
 | Philips P2000T                          |  Yes  |  Yes  |  Yes  | p2000t   |
 | Philips P2000M                          |  Yes  |  Yes  |  Yes  | p2000m   |
 | UK101                                   |  Yes  |  Yes  |  Yes  | uk101    |
@@ -283,6 +289,8 @@ dat2html.exe.
 | PDP-1 (Spacewar!)                       |  Yes  |  Yes  |  Yes  | pdp1     |
 | MTX 512                                 |  Yes  |  Yes  |  Yes  | mtx512   |
 | Aquarius                                |  Yes  |   No  |  Yes  | aquarius |
+| SVI-318                                 |  Yes  |  Yes  |  Yes  | svi318   |
+| SVI-328                                 |  Yes  |  Yes  |  Yes  | svi328   |
 | Chess Champion MK II                    |  Yes  |  Yes  |  Yes  | mk2      |
 +-----------------------------------------+-------+-------+-------+----------+
 (1) There are variants of the system that work correctly
@@ -364,6 +372,14 @@ So to load these files, you would simply then type:
 and both cartridges will be attached to the TI99_4a.
 
 
+To EXIT the emulator, press ESC.  If the emulated system is a computer, 
+you may need to toggle the UI mode (use the SCR_LOCK key).
+The on-screen display shows the current UI mode when SCR_LOCK is pressed.
+
+
+
+
+
 To automatically create the individual system directories in the 
 SOFTWARE folder, use:
 MESS -createdir
@@ -411,6 +427,7 @@ vectrex      Cartridge   (Cart)   .bin  .gam
 raaspec      UNKNOWN     
 advision     Cartridge   (Cart)   .bin  
 sfzch        UNKNOWN     
+svision      Cartridge   (Cart)   .bin  
 atom         Quickload   (Quik)   .atm  
              Floppydisk  (Flop)   .ssd  
              Cassette    (Cass)   .wav  
@@ -431,19 +448,19 @@ bbcbp128     Cassette    (Cass)   .wav
 cpc464       Cartridge   (Cart)   .sna  
              Floppydisk  (Flop)   .dsk  
              Cassette    (Cass)   .wav  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 cpc664       Cartridge   (Cart)   .sna  
              Floppydisk  (Flop)   .dsk  
              Cassette    (Cass)   .wav  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 cpc6128      Cartridge   (Cart)   .sna  
              Floppydisk  (Flop)   .dsk  
              Cassette    (Cass)   .wav  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 kccomp       Cartridge   (Cart)   .sna  
              Floppydisk  (Flop)   .dsk  
              Cassette    (Cass)   .wav  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 pcw8256      Floppydisk  (Flop)   .dsk  
 pcw8512      Floppydisk  (Flop)   .dsk  
 pcw9256      Floppydisk  (Flop)   .dsk  
@@ -609,37 +626,37 @@ c65a         Quickload   (Quik)   .p00  .prg
              Floppydisk  (Flop)   .d64  
 ibmpc        Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 ibmpca       Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 pcmda        Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 pc           Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 europc       Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 t1000hx      Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 ibmxt        Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 pc1512       Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 pc1640       Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 xtvga        Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 at           Floppydisk  (Flop)   .dsk  
              Harddisk    (Hard)   .img  
-             Printer     (Prin)   
+             Printer     (Prin)   .prn  
 zx80         Cassette    (Cass)   .80   .o    
 zx81         Cassette    (Cass)   .81   .p    
 ts1000       Cassette    (Cass)   .81   .p    
@@ -756,6 +773,14 @@ coco         Snapshot    (Dump)   .pak
              Cassette    (Cass)   .cas  .wav  
              Floppydisk  (Flop)   .dsk  
              Printer     (Prin)   .prn  
+cocoe        Snapshot    (Dump)   .pak  
+             Cassette    (Cass)   .cas  .wav  
+             Floppydisk  (Flop)   .dsk  
+             Printer     (Prin)   .prn  
+coco2        Snapshot    (Dump)   .pak  
+             Cassette    (Cass)   .cas  .wav  
+             Floppydisk  (Flop)   .dsk  
+             Printer     (Prin)   .prn  
 coco2b       Snapshot    (Dump)   .pak  
              Cassette    (Cass)   .cas  .wav  
              Floppydisk  (Flop)   .dsk  
@@ -817,14 +842,20 @@ microtan     Cassette    (Cass)   .tap
              Snapshot    (Dump)   .m65  
              Quickload   (Quik)   .hex  
 oric1        Cassette    (Cass)   .wav  
+             Printer     (Prin)   .prn  
              Floppydisk  (Flop)   .dsk  
-             Printer     (Prin)   
 orica        Cassette    (Cass)   .wav  
+             Printer     (Prin)   .prn  
              Floppydisk  (Flop)   .dsk  
-             Printer     (Prin)   
-telestrat    Cassette    (Cass)   .wav  
+prav8d       Cassette    (Cass)   .wav  
+             Printer     (Prin)   .prn  
+prav8dd      Cassette    (Cass)   .wav  
+             Printer     (Prin)   .prn  
+prav8dda     Cassette    (Cass)   .wav  
+             Printer     (Prin)   .prn  
+telstrat     Cassette    (Cass)   .wav  
+             Printer     (Prin)   .prn  
              Floppydisk  (Flop)   .dsk  
-             Printer     (Prin)   
 p2000t       UNKNOWN     
 p2000m       UNKNOWN     
 uk101        Cassette    (Cass)   .bas  
@@ -854,4 +885,10 @@ coupe512     Floppydisk  (Flop)   .dsk
 pdp1         Cartridge   (Cart)   .bin  
 mtx512       Cartridge   (Cart)   .bin  
 aquarius     UNKNOWN     
+svi318       Cartridge   (Cart)   .rom  
+             Cassette    (Cass)   .cas  .wav  
+             Printer     (Prin)   .prn  
+svi328       Cartridge   (Cart)   .rom  
+             Cassette    (Cass)   .cas  .wav  
+             Printer     (Prin)   .prn  
 mk2          UNKNOWN     

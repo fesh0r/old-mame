@@ -70,7 +70,7 @@
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
-
+#include "vidhrdw/m6847.h"
 #include "includes/vtech1.h"
 
 #define VERBOSE 0
@@ -86,7 +86,8 @@ MEMORY_READ_START( readmem_laser110 )
     { 0x4000, 0x5fff, MRA_ROM },
     { 0x6000, 0x67ff, MRA_ROM },
     { 0x6800, 0x6fff, vtech1_keyboard_r },
-    { 0x7000, 0x77ff, MRA_RAM },
+//    { 0x7000, 0x77ff, MRA_RAM },
+	{ 0x7000, 0x77ff, videoram_r}, // VDG 6847
     { 0x7800, 0x7fff, MRA_RAM },
 //  { 0x8000, 0xbfff, MRA_RAM },    /* opt. installed */
     { 0xc000, 0xffff, MRA_NOP },
@@ -98,7 +99,9 @@ MEMORY_WRITE_START( writemem_laser110 )
     { 0x6000, 0x67ff, MWA_ROM },
     { 0x6800, 0x6fff, vtech1_latch_w },
     { 0x7000, 0x77ff, videoram_w, &videoram, &videoram_size },
-    { 0x7800, 0x7fff, MWA_RAM },
+//	{ 0x8000, 0x97ff, videoram_w, &videoram, &videoram_size}, // VDG 6847
+ 
+   { 0x7800, 0x7fff, MWA_RAM },
 //  { 0x8000, 0xbfff, MWA_RAM },    /* opt. installed */
     { 0xc000, 0xffff, MWA_NOP },
 MEMORY_END
@@ -108,7 +111,8 @@ MEMORY_READ_START( readmem_laser210 )
     { 0x4000, 0x5fff, MRA_ROM },
     { 0x6000, 0x67ff, MRA_ROM },
     { 0x6800, 0x6fff, vtech1_keyboard_r },
-    { 0x7000, 0x77ff, MRA_RAM },
+//   { 0x7000, 0x77ff, MRA_RAM },
+	{ 0x7000, 0x77ff, videoram_r}, // VDG 6847
     { 0x7800, 0x8fff, MRA_RAM },
 //  { 0x9000, 0xcfff, MRA_RAM },    /* opt. installed */
     { 0xd000, 0xffff, MRA_NOP },
@@ -130,8 +134,9 @@ MEMORY_READ_START( readmem_laser310 )
     { 0x4000, 0x5fff, MRA_ROM },
     { 0x6000, 0x67ff, MRA_ROM },
     { 0x6800, 0x6fff, vtech1_keyboard_r },
-    { 0x7000, 0x77ff, MRA_RAM },
-    { 0x7800, 0xb7ff, MRA_RAM },
+//    { 0x7000, 0x77ff, MRA_RAM },
+	{ 0x7000, 0x77ff, videoram_r}, // VDG 6847
+     { 0x7800, 0xb7ff, MRA_RAM },
 //  { 0xb800, 0xf7ff, MRA_RAM },    /* opt. installed */
     { 0xf800, 0xffff, MRA_NOP },
 MEMORY_END
@@ -278,6 +283,7 @@ INPUT_PORTS_START( vtech1 )
     PORT_BIT(0x0f, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
+#ifdef OLD_VIDEO
 static struct GfxLayout charlayout =
 {
     8,12,                   /* 8 x 12 characters */
@@ -310,7 +316,6 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
     { 1, 0x0000, &charlayout,   0, 10 },
     { 1, 0x0c00, &gfxlayout, 2*10, 2 },
 MEMORY_END   /* end of array */
-
 
 static unsigned char palette[] =
 {
@@ -347,13 +352,35 @@ static unsigned short colortable[] =
     1,2,3,4,    /* green, yellow, blue, red */
     5,6,8,7     /* buff, cyan, orange, magenta */
 };
+#else
 
+static unsigned char palette[] = {
+	0x00,0x00,0x00, /* BLACK */
+	0x00,224,0x00, /* GREEN */
+	208,0xff,0x00, /* YELLOW */
+	0x00,0x00,0xff, /* BLUE */
+	0xff,0x00,0x00, /* RED */
+	224,224,144, /* BUFF */
+	0x00,255,160, /* CYAN */
+	0xff,0x00,0xff, /* MAGENTA */
+	240,112,0x00, /* ORANGE */
+	0x00,0x80,0x00, /* ARTIFACT GREEN/RED */
+	0x00,0x80,0x00, /* ARTIFACT GREEN/BLUE */
+	0xff,0x80,0x00, /* ARTIFACT BUFF/RED */
+	0x00,0x80,0xff, /* ARTIFACT BUFF/BLUE */
+	0x00,0x40,0x00,	/* ALPHANUMERIC DARK GREEN */
+	0x00,0xff,0x00,	/* ALPHANUMERIC BRIGHT GREEN */
+	0x40,0x10,0x00,	/* ALPHANUMERIC DARK ORANGE */
+	0xff,0xc4,0x18,	/* ALPHANUMERIC BRIGHT ORANGE */
+};
+
+#endif
 
 /* Initialise the palette */
 static void init_palette_monochrome(unsigned char *sys_palette, unsigned short *sys_colortable,const unsigned char *color_prom)
 {
     int i;
-    for (i = 0; i < sizeof(palette)/sizeof(palette[0])/3; i++)
+    for (i = 0; i < sizeof(palette)/(sizeof(unsigned char)*3); i++)
     {
         int mono;
         mono = (int)(palette[i*3+0] * 0.299 + palette[i*3+1] * 0.587 + palette[i*3+2] * 0.114);
@@ -361,14 +388,18 @@ static void init_palette_monochrome(unsigned char *sys_palette, unsigned short *
         sys_palette[i*3+1] = mono;
         sys_palette[i*3+2] = mono;
     }
+#ifdef OLD_VIDEO
     memcpy(sys_colortable,colortable,sizeof(colortable));
+#endif
 }
 
 /* Initialise the palette */
 static void init_palette_color(unsigned char *sys_palette, unsigned short *sys_colortable,const unsigned char *color_prom)
 {
     memcpy(sys_palette,palette,sizeof(palette));
+#ifdef OLD_VIDEO
     memcpy(sys_colortable,colortable,sizeof(colortable));
+#endif
 }
 
 static INT16 speaker_levels[] = {-32768,0,32767,0};
@@ -403,19 +434,35 @@ static struct MachineDriver machine_driver_laser110 =
     vtech1_shutdown_machine,
 
     /* video hardware */
+#ifdef OLD_VIDEO
     36*8,                                   /* screen width (inc. blank/sync) */
     38+192+25+1+6+13,                       /* screen height (inc. blank/sync) */
     { 0*8, 36*8-1, 0, 20+192+12-1},         /* visible_area */
     gfxdecodeinfo,                          /* graphics decode info */
     sizeof(palette)/sizeof(palette[0])/3,   /* colors used for the characters */
-    sizeof(colortable)/sizeof(colortable[0]),
+    sizeof(colortable)/sizeof(colortable[0]) ,
     init_palette_monochrome,                /* init palette */
+#else
+	320,					/* screen width */
+	240,					/* screen height (pixels doubled) */
+	{ 0, 319, 0, 239 },		/* visible_area */
+	0,
+    sizeof(palette)/(sizeof(unsigned char)*3),
+	0,
+	init_palette_monochrome,
+#endif
 
     VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
     0,
+#ifdef OLD_VIDEO
     generic_vh_start,
     generic_vh_stop,
     vtech1_vh_screenrefresh,
+#else
+	vtech1_vh_start,
+	m6847_vh_stop,
+	m6847_vh_update,
+#endif
 
     /* sound hardware */
     0,0,0,0,
@@ -449,20 +496,35 @@ static struct MachineDriver machine_driver_laser210 =
     vtech1_shutdown_machine,
 
     /* video hardware */
+#ifdef OLD_VIDEO
     36*8,                                   /* screen width (inc. blank/sync) */
     38+192+25+1+6+13,                       /* screen height (inc. blank/sync) */
     { 0*8, 36*8-1, 0, 20+192+12-1},         /* visible_area */
     gfxdecodeinfo,                          /* graphics decode info */
     sizeof(palette)/sizeof(palette[0])/3,   /* colors used for the characters */
-    sizeof(colortable)/sizeof(colortable[0]),
-    init_palette_color,                     /* init palette */
+    sizeof(colortable)/sizeof(colortable[0]) ,
+    init_palette_color,                /* init palette */
+#else
+	320,					/* screen width */
+	240,					/* screen height (pixels doubled) */
+	{ 0, 319, 0, 239 },		/* visible_area */
+	0,
+    sizeof(palette)/(sizeof(unsigned char)*3),
+	0,
+	init_palette_color,
+#endif
 
     VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
     0,
+ #ifdef OLD_VIDEO
     generic_vh_start,
     generic_vh_stop,
     vtech1_vh_screenrefresh,
-
+#else
+	vtech1_vh_start,
+	m6847_vh_stop,
+	m6847_vh_update,
+#endif
     /* sound hardware */
     0,0,0,0,
     {
@@ -495,20 +557,34 @@ static struct MachineDriver machine_driver_laser310 =
     vtech1_shutdown_machine,
 
     /* video hardware */
+#ifdef OLD_VIDEO
     36*8,                                   /* screen width (inc. blank/sync) */
     38+192+25+1+6+13,                       /* screen height (inc. blank/sync) */
     { 0*8, 36*8-1, 0, 20+192+12-1},         /* visible_area */
     gfxdecodeinfo,                          /* graphics decode info */
     sizeof(palette)/sizeof(palette[0])/3,   /* colors used for the characters */
-    sizeof(colortable)/sizeof(colortable[0]),
-    init_palette_color,                     /* init palette */
-
+    sizeof(colortable)/sizeof(colortable[0]) ,
+    init_palette_color,                /* init palette */
+#else
+	320,					/* screen width */
+	240,					/* screen height (pixels doubled) */
+	{ 0, 319, 0, 239 },		/* visible_area */
+	0,
+    sizeof(palette)/(sizeof(unsigned char)*3),
+	0,
+	init_palette_color,
+#endif
     VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
     0,
+#ifdef OLD_VIDEO
     generic_vh_start,
     generic_vh_stop,
     vtech1_vh_screenrefresh,
-
+#else
+	vtech1_vh_start,
+	m6847_vh_stop,
+	m6847_vh_update,
+#endif
     /* sound hardware */
     0,0,0,0,
     {
@@ -527,9 +603,10 @@ ROM_START( laser110 )
     ROM_REGION(0x10000,REGION_CPU1,0)
     ROM_LOAD("vtechv12.lo",  0x0000, 0x2000, 0x99412d43)
     ROM_LOAD("vtechv12.hi",  0x2000, 0x2000, 0xe4c24e8b)
-
+#ifdef OLD_VIDEO
     ROM_REGION(0x0d00,REGION_GFX1,0)
     ROM_LOAD("vtech1.chr",   0x0000, 0x0c00, 0xead006a1)
+#endif
 ROM_END
 #define rom_laser200    rom_laser110
 #define rom_tx8000      rom_laser110
@@ -538,9 +615,10 @@ ROM_START( laser210 )
     ROM_REGION(0x10000,REGION_CPU1,0)
     ROM_LOAD("vtechv20.lo",  0x0000, 0x2000, 0xcc854fe9)
     ROM_LOAD("vtechv20.hi",  0x2000, 0x2000, 0x7060f91a)
-
+#ifdef OLD_VIDEO
     ROM_REGION(0x0d00,REGION_GFX1,0)
     ROM_LOAD("vtech1.chr",   0x0000, 0x0c00, 0xead006a1)
+#endif
 ROM_END
 #define rom_vz200       rom_laser210
 #define rom_fellow      rom_laser210
@@ -548,9 +626,10 @@ ROM_END
 ROM_START( laser310 )
     ROM_REGION(0x10000,REGION_CPU1,0)
     ROM_LOAD("vtechv20.rom", 0x0000, 0x4000, 0x613de12c)
-
+#ifdef OLD_VIDEO
     ROM_REGION(0x0d00,REGION_GFX1,0)
     ROM_LOAD("vtech1.chr",   0x0000, 0x0c00, 0xead006a1)
+#endif
 ROM_END
 #define rom_vz300       rom_laser310
 

@@ -46,8 +46,8 @@ static int rsdos_diskimage_create(STREAM *f, const ResolvedOption *createoptions
 
 static struct OptionTemplate rsdos_fileopts[] =
 {
-	{ "ftype", IMGOPTION_FLAG_TYPE_INTEGER | IMGOPTION_FLAG_HASDEFAULT,	0,		3,		"1"	},	/* [0] */
-	{ "ascii", IMGOPTION_FLAG_TYPE_CHAR | IMGOPTION_FLAG_HASDEFAULT,	'A',	'B',	"B"	},	/* [1] */
+	{ "ftype", "File type (0=basic|1=data|2=bin|3=source)", IMGOPTION_FLAG_TYPE_INTEGER | IMGOPTION_FLAG_HASDEFAULT,	0,		3,		"1"	},	/* [0] */
+	{ "ascii", "Ascii flag (A=ascii|B=binary)",				IMGOPTION_FLAG_TYPE_CHAR | IMGOPTION_FLAG_HASDEFAULT,		'A',	'B',	"B"	},	/* [1] */
 	{ NULL, 0, 0, 0, 0 }
 };
 
@@ -60,7 +60,8 @@ IMAGEMODULE(
 	"dsk",									/* file extension */
 	NULL,									/* crcfile */
 	NULL,									/* crc system name */
-	EOLN_CR,									/* eoln */
+	EOLN_CR,								/* eoln */
+	IMGMODULE_FLAG_FILENAMES_PREFERUCASE,	/* flags */
 	rsdos_diskimage_init,					/* init function */
 	rsdos_diskimage_exit,					/* exit function */
 	NULL,									/* info function */
@@ -236,7 +237,7 @@ static int rsdos_diskimage_init(STREAM *f, IMAGE **outimg)
 	}
 
 	img->granule_count = (tracks - 1) * 2;
-	img->granulemap = malloc(img->granule_count * sizeof(unsigned char));
+	img->granulemap = malloc(img->granule_count);
 	if (!img->granulemap) {
 		err = IMGTOOLERR_OUTOFMEMORY;
 		goto error;
@@ -248,7 +249,7 @@ static int rsdos_diskimage_init(STREAM *f, IMAGE **outimg)
 	}
 
 
-	if (stream_read(f, img->granulemap, sizeof(img->granulemap)) != sizeof(img->granulemap)) {
+	if (stream_read(f, img->granulemap, img->granule_count) != img->granule_count) {
 		err = IMGTOOLERR_READERROR;
 		goto error;
 	}
@@ -397,7 +398,7 @@ static int rsdos_diskimage_writefile(IMAGE *img, const char *fname, STREAM *sour
 	unsigned char *gptr;
 
 	/* Can we write to this image? */
-	if (rsimg->f->write_protect)
+	if (stream_isreadonly(rsimg->f))
 		return IMGTOOLERR_READONLY;
 
 	/* Is there enough space? */
@@ -418,8 +419,6 @@ static int rsdos_diskimage_writefile(IMAGE *img, const char *fname, STREAM *sour
 
 	rsimg->granulemap_dirty = 1;
 	g = 0xff;
-
-	stream_seek(sourcef, 0, SEEK_SET);
 
 	do {
 		g = find_unused_granule(rsimg, g);

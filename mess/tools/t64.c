@@ -117,9 +117,9 @@ static int t64_image_create(STREAM *f, const ResolvedOption *options);
 
 static struct OptionTemplate t64_createopts[] =
 {
-	{ "entries", IMGOPTION_FLAG_TYPE_INTEGER,							0,		3,		NULL	},	/* [0] */
-	{ "label", IMGOPTION_FLAG_TYPE_STRING | IMGOPTION_FLAG_HASDEFAULT,	0,		0,		NULL	},	/* [1] */
-	{ NULL, 0, 0, 0, 0 }
+	{ "entries", NULL, IMGOPTION_FLAG_TYPE_INTEGER,							0,		3,		NULL	},	/* [0] */
+	{ "label", NULL, IMGOPTION_FLAG_TYPE_STRING | IMGOPTION_FLAG_HASDEFAULT,	0,		0,		NULL	},	/* [1] */
+	{ NULL, NULL, 0, 0, 0, 0 }
 };
 
 #define T64_OPTION_ENTRIES	0
@@ -132,6 +132,7 @@ IMAGEMODULE(
 	NULL,								/* crcfile */
 	NULL,								/* crc system name */
 	EOLN_CR,							/* eoln */
+	0,									/* flags */
 	t64_image_init,						/* init function */
 	t64_image_exit,						/* exit function */
 	t64_image_info,						/* info function */
@@ -302,7 +303,12 @@ static int t64_image_writefile(IMAGE *img, const char *fname, STREAM *sourcef, c
 		if (!(image->data=realloc(image->data, image->size+fsize-2)) )
 			return IMGTOOLERR_OUTOFMEMORY;
 		image->size+=fsize-2;
+#ifdef LSB_FIRST
 		HEADER(image)->used_entries++;
+#else
+		if (++HEADER(image)->used_entries.low == 0)
+			HEADER(image)->used_entries.high++;
+#endif
 	} else {
 		pos=GET_ULONG(ENTRY(image,ind)->offset);
 		// find the size of the data in this area
@@ -375,7 +381,12 @@ static int t64_image_deletefile(IMAGE *img, const char *fname)
 	image->size-=size;
 	ENTRY(image,ind)->type=0; // normal file
 	image->modified=1;
+#ifdef LSB_FIRST
 	HEADER(image)->used_entries--;
+#else
+		if (HEADER(image)->used_entries.low-- == 0)
+			HEADER(image)->used_entries.high--;
+#endif
 
 	return 0;
 }

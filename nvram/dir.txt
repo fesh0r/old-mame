@@ -1,1 +1,1 @@
-NVRAM files will be placed here
+nvram files will be stored here.
