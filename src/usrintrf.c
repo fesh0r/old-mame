@@ -193,7 +193,7 @@ struct GfxElement *builduifont(void)
 		0x00,0x00,0x30,0x30,0x00,0x30,0x30,0x00,0x00,0x00,0x30,0x30,0x00,0x30,0x30,0x60,
 		0x10,0x20,0x40,0x80,0x40,0x20,0x10,0x00,0x00,0x00,0xf8,0x00,0xf8,0x00,0x00,0x00,
 		0x40,0x20,0x10,0x08,0x10,0x20,0x40,0x00,0x70,0x88,0x08,0x10,0x20,0x00,0x20,0x00,
-		0x30,0x48,0x94,0xa4,0xa4,0x94,0x48,0x30,0x70,0x88,0x88,0xf8,0x88,0x88,0x88,0x00,
+		0x70,0x88,0xb8,0xa8,0xb8,0x80,0x70,0x00,0x70,0x88,0x88,0xf8,0x88,0x88,0x88,0x00,
 		0xf0,0x88,0x88,0xf0,0x88,0x88,0xf0,0x00,0x70,0x88,0x80,0x80,0x80,0x88,0x70,0x00,
 		0xf0,0x88,0x88,0x88,0x88,0x88,0xf0,0x00,0xf8,0x80,0x80,0xf0,0x80,0x80,0xf8,0x00,
 		0xf8,0x80,0x80,0xf0,0x80,0x80,0x80,0x00,0x70,0x88,0x80,0x98,0x88,0x88,0x70,0x00,
@@ -955,13 +955,13 @@ static void showcharset(struct mame_bitmap *bitmap)
 				{
 					total_colors = Machine->drv->total_colors;
 					colortable = Machine->pens;
-					strcpy(buf,"PALETTE");
+					strcpy(buf,ui_getstring (UI_palette));
 				}
 				else if (bank == 1)	/* clut */
 				{
 					total_colors = Machine->drv->color_table_len;
 					colortable = Machine->remapped_colortable;
-					strcpy(buf,"CLUT");
+					strcpy(buf,ui_getstring (UI_clut));
 				}
 				else
 				{
@@ -1014,7 +1014,7 @@ static void showcharset(struct mame_bitmap *bitmap)
 						switch_true_orientation(bitmap);
 					}
 					else
-						ui_text(bitmap,"N/A",3*Machine->uifontwidth,2*Machine->uifontheight);
+						ui_text(bitmap,ui_getstring (UI_NA),3*Machine->uifontwidth,2*Machine->uifontheight);
 
 					ui_text(bitmap,buf,0,0);
 					changed = 0;
@@ -1072,7 +1072,7 @@ static void showcharset(struct mame_bitmap *bitmap)
 
 					switch_true_orientation(bitmap);
 
-					sprintf(buf,"GFXSET %d COLOR %2X CODE %X-%X",bank,color,firstdrawn,lastdrawn);
+					sprintf(buf,"%s %d %s %2X %s %X-%X", ui_getstring (UI_gfxset), bank, ui_getstring (UI_color), color, ui_getstring (UI_code_up), firstdrawn, lastdrawn);
 					ui_text(bitmap,buf,0,0);
 					changed = 0;
 				}
@@ -1095,7 +1095,7 @@ static void showcharset(struct mame_bitmap *bitmap)
 
 					erase_screen(bitmap);
 					tilemap_nb_draw (bitmap, bank, tilemap_xpos, tilemap_ypos);
-					sprintf(buf, "TILEMAP %d (%dx%d)  X:%d  Y:%d", bank, tilemap_width, tilemap_height, tilemap_xpos, tilemap_ypos);
+					sprintf(buf, "%s %d (%dx%d)  X:%d  Y:%d", ui_getstring (UI_tilemap), bank, tilemap_width, tilemap_height, tilemap_xpos, tilemap_ypos);
 					ui_text(bitmap,buf,0,0);
 					changed = 0;
 					skip_tmap = 0;
@@ -2103,12 +2103,12 @@ int showcopyright(struct mame_bitmap *bitmap)
 	char buf[1000];
 	char buf2[256];
 
-	strcpy (buf, ui_getstring(UI_copyright1));
+	strcpy (buf, ui_getstring (UI_copyright1));
 	strcat (buf, "\n\n");
-	sprintf(buf2, ui_getstring(UI_copyright2), Machine->gamedrv->description);
+	sprintf(buf2, ui_getstring (UI_copyright2), Machine->gamedrv->description);
 	strcat (buf, buf2);
 	strcat (buf, "\n\n");
-	strcat (buf, ui_getstring(UI_copyright3));
+	strcat (buf, ui_getstring (UI_copyright3));
 
 	setup_selected = -1;////
 	done = 0;
@@ -2218,7 +2218,7 @@ static int displaygameinfo(struct mame_bitmap *bitmap,int selected)
 		sprintf(&buf[strlen(buf)],"%d x %d (%s) %f Hz\n",
 				Machine->visible_area.max_x - Machine->visible_area.min_x + 1,
 				Machine->visible_area.max_y - Machine->visible_area.min_y + 1,
-				(Machine->gamedrv->flags & ORIENTATION_SWAP_XY) ? "V" : "H",
+				(Machine->gamedrv->flags & ORIENTATION_SWAP_XY) ? ui_getstring (UI_orient_vert) : ui_getstring (UI_orient_horz),
 				Machine->drv->frames_per_second);
 #if 0
 		{
@@ -2248,10 +2248,10 @@ static int displaygameinfo(struct mame_bitmap *bitmap,int selected)
 			pixelx /= tmin;
 			pixely /= tmin;
 
-			sprintf(&buf[strlen(buf)],"pixel aspect ratio %d:%d\n",
-					pixelx,pixely);
+			sprintf(&buf[strlen(buf)],"%s %d:%d\n",
+					ui_getstring (UI_pix_asp_rat),pixelx,pixely);
 		}
-		sprintf(&buf[strlen(buf)],"%d colors ",Machine->drv->total_colors);
+		sprintf(&buf[strlen(buf)],"%d &s ",ui_getstring (UI_colors),Machine->drv->total_colors);
 #endif
 	}
 
@@ -2676,7 +2676,7 @@ static int displayhistory (struct mame_bitmap *bitmap, int selected)
 			char msg[80];
 
 			strcpy(msg,"\t");
-			strcat(msg,ui_getstring(UI_historymissing));
+			strcat(msg,ui_getstring (UI_historymissing));
 			strcat(msg,"\n\n\t");
 			strcat(msg,ui_getstring (UI_lefthilight));
 			strcat(msg," ");
@@ -2936,9 +2936,7 @@ static void setup_menu_init(void)
 #endif
 #endif
 
-#ifndef MESS
 	menu_item[menu_total] = ui_getstring (UI_resetgame); menu_action[menu_total++] = UI_RESET;
-#endif
 	menu_item[menu_total] = ui_getstring (UI_returntogame); menu_action[menu_total++] = UI_EXIT;
 	menu_item[menu_total] = 0; /* terminate array */
 }
@@ -3504,9 +3502,9 @@ void do_loadsave(struct mame_bitmap *bitmap, int request_loadsave)
 		InputCode code;
 
 		if (request_loadsave == LOADSAVE_SAVE)
-			displaymessage(bitmap, "Select position to save to");
+			displaymessage(bitmap, ui_getstring (UI_select_save));
 		else
-			displaymessage(bitmap, "Select position to load from");
+			displaymessage(bitmap, ui_getstring (UI_select_load));
 
 		update_video_and_audio();
 		reset_partial_updates();
@@ -3532,17 +3530,17 @@ void do_loadsave(struct mame_bitmap *bitmap, int request_loadsave)
 	if (file > 0)
 	{
 		if (request_loadsave == LOADSAVE_SAVE)
-			usrintf_showmessage("Save to position %c", file);
+			usrintf_showmessage("%s %c", ui_getstring (UI_save_to), file);
 		else
-			usrintf_showmessage("Load from position %c", file);
+			usrintf_showmessage("%s %c", ui_getstring (UI_load_from),file);
 		cpu_loadsave_schedule(request_loadsave, file);
 	}
 	else
 	{
 		if (request_loadsave == LOADSAVE_SAVE)
-			usrintf_showmessage("Save cancelled");
+			usrintf_showmessage(ui_getstring (UI_save_canc));
 		else
-			usrintf_showmessage("Load cancelled");
+			usrintf_showmessage(ui_getstring (UI_load_canc));
 	}
 }
 
@@ -3560,7 +3558,7 @@ static void display_fps(struct mame_bitmap *bitmap)
 	char textbuf[256];
 	int done = 0;
 	int y = 0;
-	
+
 	/* if we're not currently displaying, skip it */
 	if (!showfps && !showfpstemp)
 		return;
@@ -3599,75 +3597,13 @@ static void display_fps(struct mame_bitmap *bitmap)
 	}
 }
 
-#ifdef MESS
-#ifdef SUPPRESS_UI_WARNING
-#define HAVE_UI_WARNING 0
-#else
-#define HAVE_UI_WARNING 1
-#endif
-#endif /* MESS */
 
+int show_profiler;
 
 int handle_user_interface(struct mame_bitmap *bitmap)
 {
-	static int show_profiler;
-
 #ifdef MESS
-	static int mess_pause_for_ui = 0;
-	if (Machine->gamedrv->flags & GAME_COMPUTER)
-	{
-		static int ui_active = 0, ui_toggle_key = 0;
-		static int ui_display_count = 30;
-
-		if( input_ui_pressed(IPT_UI_TOGGLE_UI) )
-		{
-			if( !ui_toggle_key )
-			{
-				ui_toggle_key = 1;
-				ui_active = !ui_active;
-				ui_display_count = 30;
-				schedule_full_refresh();
-			}
-		}
-		else
-		{
-			ui_toggle_key = 0;
-		}
-
-		if( ui_active )
-		{
-			if( HAVE_UI_WARNING && ui_display_count > 0 )
-			{
-					ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
-													"-------------------------\n"\
-													"Mode: PARTIAL Emulation\n"\
-													"UI:   ENABLED\n"\
-													"-------------------------\n"\
-													"**Use SCRLOCK to toggle**\n");
-				if( --ui_display_count == 0 )
-					schedule_full_refresh();
-			}
-		}
-		else
-		{
-			if( HAVE_UI_WARNING && ui_display_count > 0 )
-			{
-					ui_displaymessagewindow(bitmap, "Keyboard Emulation Status\n"\
-													"-------------------------\n"\
-													"Mode: FULL Emulation\n"\
-													"UI:   DISABLED\n"\
-													"-------------------------\n"\
-													"**Use SCRLOCK to toggle**\n");
-
-				if( --ui_display_count == 0 )
-					schedule_full_refresh();
-			}
-
-			/* return only if UI wasn't posted */
-			if (input_ui_posted() == 0)
-				return 0;
-		}
-	}
+	extern int mess_pause_for_ui;
 #endif
 
 	/* if the user pressed F12, save the screen to a file */
@@ -3746,7 +3682,7 @@ int handle_user_interface(struct mame_bitmap *bitmap)
 		{
 			jukebox_selected = (jukebox_selected - 16) & 0xff;
 		}
-		sprintf(buf,"sound cmd %02x",jukebox_selected);
+		sprintf(buf,"%s %02x",ui_getstring (UI_sound_cmd), jukebox_selected);
 		displaymessage(buf);
 	}
 #endif

@@ -9,17 +9,12 @@ This file is a set of function calls and defs required for MESS.
 #include "config.h"
 #include "includes/flopdrv.h"
 #include "utils.h"
+#include "ui_text.h"
 #include "state.h"
 #include "image.h"
 #include "inputx.h"
 
 extern struct GameOptions options;
-extern const struct Devices devices[];
-
-const struct IODevice io_NULL[] =
-{
-    { IO_END }
-};
 
 /* Globals */
 const char *mess_path;
@@ -52,30 +47,6 @@ int system_supports_cassette_device (void)
 	return device_find(Machine->gamedrv, IO_CASSETTE) ? TRUE : FALSE;
 }
 
-int device_count(int type)
-{
-	const struct IODevice *dev;
-	dev = device_find(Machine->gamedrv, type);
-	return dev ? dev->count : 0;
-}
-
-/*
- * Return a name for the device type (to be used for UI functions)
- */
-const char *device_typename(int type)
-{
-	if (type < IO_COUNT)
-		return devices[type].name;
-	return "UNKNOWN";
-}
-
-const char *device_brieftypename(int type)
-{
-	if (type < IO_COUNT)
-		return devices[type].shortname;
-	return "UNKNOWN";
-}
-
 /* Return a name for a device of type 'type' with id 'id' */
 const char *device_typename_id(int type, int id)
 {
@@ -85,7 +56,7 @@ const char *device_typename_id(int type, int id)
 	{
 		which = (which + 1) % 40;
 		/* for the average user counting starts at #1 ;-) */
-		sprintf(typename_id[which], "%s #%d", devices[type].name, id+1);
+		sprintf(typename_id[which], "%s #%d", ui_getstring(UI_filespecification+type), id+1);
 		return typename_id[which];
 	}
 	return "UNKNOWN";
@@ -427,20 +398,25 @@ int displayimageinfo(struct mame_bitmap *bitmap, int selected)
 	{
 		/* startup info, print MAME version and ask for any key */
 
-		strcat(buf,"\n\tPress any key to Begin");
+		strcat(buf,"\n\t");
+		strcat(buf,ui_getstring(UI_anykey));
 		ui_drawbox(bitmap,0,0,Machine->uiwidth,Machine->uiheight);
 		ui_displaymessagewindow(bitmap, buf);
 
 		sel = 0;
-		if (input_ui_posted() ||
-			code_read_async() != KEYCODE_NONE ||
+		if (code_read_async() != KEYCODE_NONE ||
 			code_read_async() != JOYCODE_NONE)
 			sel = -1;
 	}
 	else
 	{
 		/* menu system, use the normal menu keys */
-		strcat(buf,"\n\t\x1a Return to Main Menu \x1b");
+		strcat(buf,"\n\t");
+		strcat(buf,ui_getstring(UI_lefthilight));
+		strcat(buf," ");
+		strcat(buf,ui_getstring(UI_returntomain));
+		strcat(buf," ");
+		strcat(buf,ui_getstring(UI_righthilight));
 
 		ui_displaymessagewindow(bitmap,buf);
 
@@ -566,7 +542,6 @@ void palette_set_colors(pen_t color_base, const UINT8 *colors, int color_count)
 }
 
 #ifdef MAME_DEBUG
-
 int messvaliditychecks(void)
 {
 	int i;
@@ -575,28 +550,11 @@ int messvaliditychecks(void)
 	const struct IODevice *dev;
 	long used_devices;
 	const char *s;
-
-	/* Check the device struct array */
-	i=0;
-	while (devices[i].id != IO_COUNT)
-	{
-		if (devices[i].id != i)
-		{
-			printf("MESS Validity Error - Device struct array order mismatch\n");
-			error = 1;
-		}
-		i++;
-	}
-	if (i < IO_COUNT)
-	{
-		printf("MESS Validity Error - Device struct entry missing\n");
-		error = 1;
-	}
+	extern int device_valididtychecks(void);
 
 	/* MESS specific driver validity checks */
 	for(i = 0; drivers[i]; i++)
 	{
-
 		/* check device array */
 		used_devices = 0;
 		for(dev = device_first(drivers[i]); dev; dev = device_next(drivers[i], dev))
@@ -610,7 +568,7 @@ int messvaliditychecks(void)
 			/* make sure that we can't duplicate devices */
 			if (used_devices & (1 << dev->type))
 			{
-				printf("%s: device type '%s' is specified multiple times\n", drivers[i]->name, devices[dev->type].name);
+				printf("%s: device type '%s' is specified multiple times\n", drivers[i]->name, device_typename(dev->type));
 				error = 1;
 			}
 			used_devices |= (1 << dev->type);
@@ -626,7 +584,7 @@ int messvaliditychecks(void)
 			case IO_SNAPSHOT:
 				if (dev->count != 1)
 				{
-					printf("%s: there can only be one instance of devices of type '%s'\n", drivers[i]->name, devices[dev->type].name);
+					printf("%s: there can only be one instance of devices of type '%s'\n", drivers[i]->name, device_typename(dev->type));
 					error = 1;
 				}
 				/* fallthrough */
@@ -634,7 +592,7 @@ int messvaliditychecks(void)
 			case IO_CARTSLOT:
 				if (dev->open_mode != OSD_FOPEN_READ)
 				{
-					printf("%s: devices of type '%s' must have open mode OSD_FOPEN_READ\n", drivers[i]->name, devices[dev->type].name);
+					printf("%s: devices of type '%s' must have open mode OSD_FOPEN_READ\n", drivers[i]->name, device_typename(dev->type));
 					error = 1;
 				}
 				break;
@@ -659,6 +617,10 @@ int messvaliditychecks(void)
 			error = 1;
 	}
 
+	if (inputx_validitycheck(NULL))
+		error = 1;
+	if (device_valididtychecks())
+		error = 1;
 	return error;
 }
 

@@ -12,8 +12,7 @@
 <hr>
 <h4>commodore c128</h4>
 Sequel of to the c64.<br>
-Description<br>
------------<br>
+<p><b>Description:</b><br>
 hardware emulation mode for c64<br>
  displayed over din/tv connector only<br>
  c64 cartridges<br>
@@ -37,17 +36,14 @@ additional vdc videochip for 80 column modes with own connector (rgbi)<br>
 sid6581 soundchip<br>
 c64 expansion port with some additional pins<br>
 z80 CPU for CPM mode<br>
-c128d<br>
------<br>
+<p><b>c128d:</b><br>
  c1571 floppy drive build in<br>
  64kb vdc ram<br>
  sid8580 sound chip<br>
-c128cr/c128dcr<br>
---------------<br>
+<p><b>c128cr/c128dcr:</b><br>
  cost reduced<br>
  only modified for cheaper production (newer rams, ...)<br>
-MESS emulation state<br>
---------------------<br>
+<p><b>MESS emulation state:</b><br>
 uses c64 emulation for c64 mode<br>
 so only notes for the additional subsystems here<br>
 rasterline based video system<br>
@@ -102,12 +98,10 @@ expansion modules c64<br>
  no other expansion modules<br>
 no userport<br>
  no rs232/v.24 interface<br>
-Video notes<br>
------------<br>
+<p><b>Video notes:</b><br>
 if the game runs too fast with the NTSC version, try the PAL version!<br>
 flickering affects in one video version, try the other video version<br>
-Keys<br>
-----<br>
+<p><b>Keys:</b><br>
 Some PC-Keyboards does not behave well when special two or more keys are<br>
 pressed at the same time<br>
 (with my keyboard printscreen clears the pressed pause key!)<br>
@@ -116,12 +110,10 @@ shift-cbm switches between upper-only and normal character set<br>
 run (shift-stop) loads program from type and starts it<br>
 esc-x switch between two videosystems<br>
 additional keys (to c64) are in c64mode not useable<br>
-Lightpen<br>
---------<br>
+<p><b>Lightpen:</b><br>
 Paddle 5 x-axe<br>
 Paddle 6 y-axe<br>
-Tape<br>
-----<br>
+<p><b>Tape:</b><br>
 (DAC 1 volume in noise volume)<br>
 loading of wav, prg and prg files in zip archive<br>
 command line -cassette image<br>
@@ -136,8 +128,7 @@ use LOAD or LOAD"" or LOAD"",1 for loading of normal programs<br>
 use LOAD"",1,1 for loading programs to their special address<br>
 several programs relies on more features<br>
 (loading other file types, writing, ...)<br>
-Discs<br>
------<br>
+<p><b>Discs:</b><br>
 only file load from drive 8 and 9 implemented<br>
  loads file from rom directory (*.prg,*.p00) (must NOT be specified on command line)<br>
  or file from d64 image (here also directory LOAD"$",8 supported)<br>
@@ -149,8 +140,7 @@ several programs rely on more features<br>
 (loading other file types, writing, ...)<br>
 most games rely on starting own programs in the floppy drive<br>
 (and therefore CPU level emulation is needed)<br>
-Roms<br>
-----<br>
+<p><b>Roms:</b><br>
 .prg<br>
 .crt<br>
 .80 .90 .a0 .b0 .e0 .f0<br>
@@ -159,26 +149,22 @@ files with boot-sign in it<br>
 .prg files loaded at address in its first two bytes<br>
 .?0 files to address specified in extension<br>
 .crt roms to addresses in crt file<br>
-Quickloader<br>
------------<br>
+<p><b>Quickloader:</b><br>
 .prg and .p00 files supported<br>
 loads program into memory and sets program end pointer<br>
 (works with most programs)<br>
 program ready to get started with RUN<br>
 loads first rom when you press quickload key (numeric slash)<br>
-c64 mode<br>
---------<br>
+<p><b>c64 mode:</b><br>
 hold down commodore key while resetting or turning on<br>
 type go64 at the c128 command mode<br>
-cpm mode<br>
---------<br>
+<p><b>cpm mode:</b><br>
 cpm disk must be inserted in device 8<br>
 turn on computer<br>
 or<br>
 type boot at the c128 command mode<br>
 when problems start with -log and look into error.log file<br>
-rom dumping<br>
------------<br>
+<p><b>rom dumping:</b><br>
 <p><b>Dumping of the roms from the running machine:</b><br>
 in the monitor program<br>
 s "drive:name",device,start,end<br>
@@ -246,8 +232,7 @@ these buffers to disk.<br>
  can one of these drives to a format know by linux?<br>
 Some years ago I build a simple adapter pc/parport to vc1541<br>
  floppy disk drive.<br>
-Dumping roms with epromer<br>
--------------------------<br>
+<p><b>Dumping roms with epromer:</b><br>
 c128<br>
 U18       (read compatible 2764?) 8kB c64 character rom, c128 character rom<br>
 U32 23128 (read compatible 27128?) 16kB c64 Basic, c64 Kernel<br>
@@ -262,7 +247,7 @@ c128dcr<br>
 as c128 cr<br>
 U102 23256 (read compatible 27256?) 32kB 1571 system rom<br>
 <hr>
-<center><font size=-2>created on Fri Oct 18 10:58:15 2002
+<center><font size=-2>created on Mon Nov 11 18:01:15 2002
 </font></center>
 </body>
 </html>

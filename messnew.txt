@@ -1,3 +1,51 @@
+0.61.2
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+(none)
+
+System Driver Changes:
+----------------------
+- [SNES] Fixed background scrolling. Added 16x16 tile mode. Improved Mode 21
+  SRAM support. [Anthony Kruize]
+
+- [GAMEBOY] Finally fixed sound channel 3 so it produces correct frequencies!
+  Flagged sound as being stereo. Improved input ports. Fixed loud buzz caused
+  by the new sound code when digital audio is used. (bug #275) [Anthony Kruize]
+
+- [SUPERGB] Fixed certain areas of the border image being left blank instead of
+  being filled in. (bug #264) [Anthony Kruize]
+
+- [COCO3] Fixed a bug that caused a few display glitches when switching between
+  40 column and 80 column mode. (bug #271) [Nate Woods]
+
+- [Z88] Video updates. [Kev Thacker]
+
+Source Changes:
+---------------
+- Updated all drivers device declarations to new system and removed old dev
+  array. [Nate Woods]
+
+- New options.disable_normal_ui and osd_trying_to_quit() functions created, to
+  support the new Win32 UI. [Nate Woods]
+
+- Added the ability for drivers to support drawing to the UI in a standard way;
+  which helped fix a problem where the tape graphic was lost in MESS 0.61. (bug
+  #270) [Nate Woods]
+
+- [Win32] New user interface replaces old UI; this is on by default but can be
+  disabled with the -nonewui command switch.  This new UI uses Windows native
+  menus and should be much easier to use. [Nate Woods]
+
+- [Win32] Help file entries for each system now list the directory name
+  expected by MESS. [Nate Woods]
+
+- [Win32 GUI] Fixed an incredibly MORONIC bug where RAM preferences were stored
+  as booleans (!?!) rather than integers (bug #260) [Nate Woods]
+
+- [Win32 GUI] Fixed a bug where certain elements in the treeview lost their
+  first character (bug #262) [Nate Woods]
+
 0.61.1
 
 New System Drivers Supported (in no particular order):

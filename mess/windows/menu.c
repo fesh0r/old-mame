@@ -5,6 +5,8 @@
 //============================================================
 
 #include <windows.h>
+#include <commdlg.h>
+#include <winuser.h>
 
 #include "mame.h"
 #include "../../src/windows/window.h"
@@ -15,6 +17,8 @@
 #include "snprintf.h"
 #include "dialog.h"
 #include "ui_text.h"
+#include "strconv.h"
+#include "utils.h"
 
 //============================================================
 //	IMPORTS
@@ -34,12 +38,45 @@ extern UINT8 win_trying_to_quit;
 
 #define MAX_JOYSTICKS				((IPF_PLAYERMASK / IPF_PLAYER2) + 1)
 
+enum
+{
+	DEVOPTION_MOUNT,
+	DEVOPTION_UNMOUNT,
+	DEVOPTION_CASSETTE_PLAYRECORD,
+	DEVOPTION_CASSETTE_STOPPAUSE,
+	DEVOPTION_CASSETTE_REWIND,
+	DEVOPTION_CASSETTE_FASTFORWARD,
+	DEVOPTION_MAX
+};
+
+#ifdef MAME_DEBUG
+#define HAS_PROFILER	1
+#else
+#define HAS_PROFILER	0
+#endif
+
+#ifdef UNDER_CE
+#define HAS_TOGGLEMENUBAR	0
+#else
+#define HAS_TOGGLEMENUBAR	1
+#endif
+
+#ifdef UNDER_CE
+#define WM_INITMENU		WM_INITMENUPOPUP
+#define MFS_GRAYED		MF_GRAYED
+#define WMSZ_BOTTOM		6
+#endif
+
 //============================================================
 //	GLOBAL VARIABLES
 //============================================================
 
 int win_use_natural_keyboard;
 char *win_state_hack;
+
+#if HAS_PROFILER
+extern int show_profiler;
+#endif
 
 
 //============================================================
@@ -101,7 +138,6 @@ static void setjoystick(int joystick_num)
 	void *dlg;
 	int player;
 	struct InputPort *in;
-	const char *input_name;
 	int increment;
 
 	player = joystick_num * IPF_PLAYER2;
@@ -116,8 +152,7 @@ static void setjoystick(int joystick_num)
 		increment = 1;
 		if (((in->type & IPF_PLAYERMASK) == player) && is_controller_input_type(in->type))
 		{
-			input_name = input_port_name(in);
-			if (win_dialog_add_portselect(dlg, input_name, in, &increment))
+			if (win_dialog_add_portselect(dlg, in, &increment))
 				goto done;
 		}
 		in += increment;
@@ -190,6 +225,9 @@ done:
 static void loadsave(int type)
 {
 	static char filename[MAX_PATH];
+#ifdef UNICODE
+	WCHAR filenamew[MAX_PATH];
+#endif
 	OPENFILENAME ofn;
 	char *dir;
 	int result = 0;
@@ -206,10 +244,15 @@ static void loadsave(int type)
 	ofn.lStructSize = sizeof(ofn);
 	ofn.hwndOwner = win_video_window;
 	ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
-	ofn.lpstrFilter = "State Files (*.sta)\0*.sta\0All Files (*.*);*.*\0";
+	ofn.lpstrFilter = TEXT("State Files (*.sta)\0*.sta\0All Files (*.*);*.*\0");
+	ofn.lpstrInitialDir = A2T(dir);
+#ifdef UNICODE
+	ofn.lpstrFile = filenamew;
+	ofn.nMaxFile = sizeof(filenamew) / sizeof(filenamew[0]);
+#else
 	ofn.lpstrFile = filename;
-	ofn.lpstrInitialDir = dir;
 	ofn.nMaxFile = sizeof(filename) / sizeof(filename[0]);
+#endif
 
 	switch(type) {
 	case LOADSAVE_LOAD:
@@ -228,6 +271,9 @@ static void loadsave(int type)
 
 	if (result)
 	{
+#ifdef UNICODE
+		snprintf(filename, sizeof(filename) / sizeof(filename[0]), "%S", filenamew);
+#endif
 		win_state_hack = filename;
 		cpu_loadsave_schedule(type, '\1');
 	}
@@ -242,9 +288,9 @@ static void loadsave(int type)
 static void change_device(const struct IODevice *dev, int id)
 {
 	OPENFILENAME ofn;
-	TCHAR filter[2048];
+	char filter[2048];
 	TCHAR filename[MAX_PATH];
-	TCHAR *s;
+	char *s;
 	const char *ext;
 
 	assert(dev);
@@ -279,16 +325,26 @@ static void change_device(const struct IODevice *dev, int id)
 	*(s++) = '\0';
 
 	if (image_exists(dev->type, id))
-		snprintf(filename, sizeof(filename) / sizeof(filename[0]), image_basename(dev->type, id));
+	{
+		const char *img;
+		img = image_basename(dev->type, id);
+#ifdef UNICODE
+		mbstowcs(filename, img, strlen(img) + 1);
+#else
+		strncpyz(filename, img, sizeof(filename) / sizeof(filename[0]));
+#endif
+	}
 	else
+	{
 		filename[0] = '\0';
+	}
 
 	memset(&ofn, 0, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
 	ofn.hwndOwner = win_video_window;
-	ofn.lpstrFilter = filter;
+	ofn.lpstrFilter = A2T(filter);
 	ofn.lpstrFile = filename;
-	ofn.lpstrInitialDir = image_filedir(dev->type, id);
+	ofn.lpstrInitialDir = A2T(image_filedir(dev->type, id));
 	ofn.nMaxFile = sizeof(filename) / sizeof(filename[0]);
 	ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
 
@@ -311,7 +367,7 @@ static void change_device(const struct IODevice *dev, int id)
 	if (!GetOpenFileName(&ofn))
 		return;
 
-	image_load(dev->type, id, filename);
+	image_load(dev->type, id, T2A(filename));
 }
 
 //============================================================
@@ -375,10 +431,9 @@ static void pause(void)
 //	find_submenu
 //============================================================
 
-static HMENU find_sub_menu(HMENU menu, LPCTSTR menutext, int create_sub_menu)
+static HMENU find_sub_menu(HMENU menu, const char *menutext, int create_sub_menu)
 {
 	MENUITEMINFO mii;
-	int item_count;
 	int i;
 	TCHAR buf[128];
 
@@ -389,18 +444,17 @@ static HMENU find_sub_menu(HMENU menu, LPCTSTR menutext, int create_sub_menu)
 
 	while(*menutext)
 	{
-		item_count = GetMenuItemCount(menu);
-		for(i = 0; i < item_count; i++)
+		i = -1;
+		do
 		{
+			i++;
 			mii.dwTypeData = buf;
 			mii.cch = sizeof(buf) / sizeof(buf[0]);
 			if (!GetMenuItemInfo(menu, i, TRUE, &mii))
 				return NULL;
-			if (mii.dwTypeData && !strcmp(menutext, mii.dwTypeData))
-				break;
 		}
-		if (i >= item_count)
-			return NULL;
+		while((mii.fType == MFT_SEPARATOR) || !mii.dwTypeData || strcmp(menutext, T2A(mii.dwTypeData)));
+
 		if (!mii.hSubMenu && create_sub_menu)
 		{
 			memset(&mii, 0, sizeof(mii));
@@ -427,20 +481,32 @@ static HMENU find_sub_menu(HMENU menu, LPCTSTR menutext, int create_sub_menu)
 
 static void set_command_state(HMENU menu_bar, UINT command, UINT state)
 {
-	MENUITEMINFO mii;
 	BOOL result;
-	int err;
+
+#ifdef UNDER_CE
+	result = EnableMenuItem(menu_bar, command, (state & MFS_GRAYED ? MF_GRAYED : MF_ENABLED) | MF_BYCOMMAND);
+	if (result)
+		result = CheckMenuItem(menu_bar, command, (state & MFS_CHECKED ? MF_CHECKED : MF_UNCHECKED) | MF_BYCOMMAND) != 0xffffffff;
+#else
+	MENUITEMINFO mii;
 
 	memset(&mii, 0, sizeof(mii));
 	mii.cbSize = sizeof(mii);
 	mii.fMask = MIIM_STATE;
 	mii.fState = state;
 	result = SetMenuItemInfo(menu_bar, command, FALSE, &mii);
-	if (!result)
-	{
-		err = GetLastError();
-		assert(FALSE);
-	}
+#endif
+}
+
+//============================================================
+//	append_menu
+//============================================================
+
+static void append_menu(HMENU menu, UINT flags, UINT_PTR id, int uistring)
+{
+	const char *str;
+	str = (uistring >= 0) ? ui_getstring(uistring) : NULL;
+	AppendMenu(menu, flags, id, A2T(str));
 }
 
 //============================================================
@@ -451,9 +517,13 @@ static void prepare_menus(void)
 {
 	int i;
 	const struct IODevice *dev;
-	TCHAR buf[MAX_PATH];
+	char buf[MAX_PATH];
 	const char *s;
 	HMENU device_menu;
+	HMENU sub_menu;
+	UINT_PTR new_item;
+	UINT flags_for_exists;
+	int status;
 
 	if (!win_menu_bar)
 		return;
@@ -462,6 +532,10 @@ static void prepare_menus(void)
 
 	set_command_state(win_menu_bar, ID_OPTIONS_PAUSE,		is_paused					? MFS_CHECKED : MFS_ENABLED);
 	set_command_state(win_menu_bar, ID_OPTIONS_THROTTLE,	throttle					? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_OPTIONS_FULLSCREEN,	!win_window_mode			? MFS_CHECKED : MFS_ENABLED);
+#if HAS_PROFILER
+	set_command_state(win_menu_bar, ID_OPTIONS_PROFILER,	show_profiler				? MFS_CHECKED : MFS_ENABLED);
+#endif
 
 	set_command_state(win_menu_bar, ID_KEYBOARD_EMULATED,	!win_use_natural_keyboard	? MFS_CHECKED : MFS_ENABLED);
 	set_command_state(win_menu_bar, ID_KEYBOARD_NATURAL,	inputx_can_post() ?
@@ -474,18 +548,162 @@ static void prepare_menus(void)
 
 	// set up device menu
 	device_menu = find_sub_menu(win_menu_bar, "&Devices\0", FALSE);
-	while(GetMenuItemCount(device_menu) > 0)
-		RemoveMenu(device_menu, 0, MF_BYPOSITION);
+	while(RemoveMenu(device_menu, 0, MF_BYPOSITION))
+		;
 
 	for (dev = device_first(Machine->gamedrv); dev; dev = device_next(Machine->gamedrv, dev))
 	{
 		for (i = 0; i < dev->count; i++)
 		{
-			s = image_exists(dev->type, i) ? image_filename(dev->type, i) : "<empty>";
+			new_item = ID_DEVICE_0 + ((dev->type * MAX_DEV_INSTANCES) + i) * DEVOPTION_MAX;
+			flags_for_exists = MF_STRING;
+			if (!image_exists(dev->type, i))
+				flags_for_exists |= MF_GRAYED;
+
+			sub_menu = CreateMenu();
+			append_menu(sub_menu, MF_STRING,		new_item + DEVOPTION_MOUNT,	UI_mount);
+			append_menu(sub_menu, flags_for_exists,	new_item + DEVOPTION_UNMOUNT,	UI_unmount);
+
+			if (dev->type == IO_CASSETTE)
+			{
+				status = device_status(IO_CASSETTE, i, -1);
+				append_menu(sub_menu, MF_SEPARATOR, 0, -1);
+				append_menu(sub_menu, flags_for_exists | (status & WAVE_STATUS_MOTOR_ENABLE) ? 0 : MF_CHECKED,	new_item + DEVOPTION_CASSETTE_STOPPAUSE,	UI_pauseorstop);
+				append_menu(sub_menu, flags_for_exists | (status & WAVE_STATUS_MOTOR_ENABLE) ? MF_CHECKED : 0,	new_item + DEVOPTION_CASSETTE_PLAYRECORD,	(status & WAVE_STATUS_WRITE_ONLY) ? UI_record : UI_play);
+				append_menu(sub_menu, flags_for_exists,															new_item + DEVOPTION_CASSETTE_REWIND,		UI_rewind);
+				append_menu(sub_menu, flags_for_exists,															new_item + DEVOPTION_CASSETTE_FASTFORWARD,	UI_fastforward);
+			}
+			s = image_exists(dev->type, i) ? image_filename(dev->type, i) : ui_getstring(UI_emptyslot);
+
 			snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%s: %s", device_typename_id(dev->type, i), s);
-			AppendMenu(device_menu, MF_STRING, ID_DEVICE_0 + (dev->type * MAX_DEV_INSTANCES) + i, buf);
+			AppendMenu(device_menu, MF_POPUP, (UINT_PTR) sub_menu, A2T(buf));
 		}
 	}
+}
+
+
+//============================================================
+//	win_toggle_menubar
+//============================================================
+
+#if HAS_TOGGLEMENUBAR
+void win_toggle_menubar(void)
+{
+	extern void win_pause_input(int pause_);
+
+	win_pause_input(1);
+	SetMenu(win_video_window, GetMenu(win_video_window) ? NULL : win_menu_bar);
+	win_pause_input(0);
+	
+	if (win_window_mode)
+	{
+		RECT window;
+		GetWindowRect(win_video_window, &window);
+		win_constrain_to_aspect_ratio(&window, WMSZ_BOTTOM);
+		SetWindowPos(win_video_window, HWND_TOP, window.left, window.top,
+			window.right - window.left, window.bottom - window.top, SWP_NOZORDER);
+	}
+
+	win_adjust_window();
+	RedrawWindow(win_video_window, NULL, NULL, 0);
+}
+#endif // HAS_TOGGLEMENUBAR
+
+
+//============================================================
+//	device_command
+//============================================================
+
+static void device_command(const struct IODevice *dev, int id, int devoption)
+{
+	int status;
+
+	switch(devoption) {
+	case DEVOPTION_MOUNT:
+		change_device(dev, id);
+		break;
+
+	case DEVOPTION_UNMOUNT:
+		image_unload(dev->type, id);
+		break;
+
+	default:
+		switch(dev->type) {
+		case IO_CASSETTE:
+			status = device_status(IO_CASSETTE, id, -1);
+			switch(devoption) {
+			case DEVOPTION_CASSETTE_PLAYRECORD:
+				device_status(IO_CASSETTE, id, status | WAVE_STATUS_MOTOR_ENABLE);
+				break;
+
+			case DEVOPTION_CASSETTE_STOPPAUSE:
+				if ((status & 1) == 0)
+					device_seek(IO_CASSETTE,id,0,SEEK_SET);
+				device_status(IO_CASSETTE, id, status & ~WAVE_STATUS_MOTOR_ENABLE);
+				break;
+
+			case DEVOPTION_CASSETTE_REWIND:
+				device_seek(IO_CASSETTE, id, -11025, SEEK_CUR);
+				break;
+
+			case DEVOPTION_CASSETTE_FASTFORWARD:
+				device_seek(IO_CASSETTE, id, +11025, SEEK_CUR);
+				break;
+			}
+
+		}
+	}
+}
+
+//============================================================
+//	help_display
+//============================================================
+
+static void help_display(const char *chapter)
+{
+	typedef HWND (WINAPI *htmlhelpproc)(HWND hwndCaller, LPCTSTR pszFile, UINT uCommand, DWORD_PTR dwData);
+	static htmlhelpproc htmlhelp;
+	static DWORD htmlhelp_cookie;
+	LPCTSTR htmlhelp_funcname;
+
+	if (htmlhelp == NULL)
+	{
+#ifdef UNICODE
+		htmlhelp_funcname = TEXT("HtmlHelpW");
+#else
+		htmlhelp_funcname = TEXT("HtmlHelpA");
+#endif
+		htmlhelp = (htmlhelpproc) GetProcAddress(LoadLibrary(TEXT("hhctrl.ocx")), htmlhelp_funcname);
+		if (!htmlhelp)
+			return;
+		htmlhelp(NULL, NULL, 28 /*HH_INITIALIZE*/, (DWORD_PTR) &htmlhelp_cookie);
+	}
+
+	// if full screen, turn it off
+	if (!win_window_mode)
+		win_toggle_full_screen();
+
+	htmlhelp(win_video_window, A2T(chapter), 0 /*HH_DISPLAY_TOPIC*/, 0);
+}
+
+//============================================================
+//	help_about_mess
+//============================================================
+
+static void help_about_mess(void)
+{
+	help_display("mess.chm::/html/mess_overview.htm");
+}
+
+//============================================================
+//	help_about_thissystem
+//============================================================
+
+static void help_about_thissystem(void)
+{
+	char buf[256];
+	snprintf(buf, sizeof(buf) / sizeof(buf[0]), "mess.chm::/sysinfo/%s.htm", Machine->gamedrv->name);
+	help_display(buf);
 }
 
 //============================================================
@@ -496,6 +714,7 @@ static int invoke_command(UINT command)
 {
 	const struct IODevice *dev;
 	int handled = 1;
+	int dev_id, dev_command;
 
 	switch(command) {
 	case ID_FILE_LOADSTATE:
@@ -534,16 +753,43 @@ static int invoke_command(UINT command)
 		throttle = !throttle;
 		break;
 
+#if HAS_PROFILER
+	case ID_OPTIONS_PROFILER:
+		show_profiler ^= 1;
+		if (show_profiler)
+			profiler_start();
+		else
+		{
+			profiler_stop();
+			schedule_full_refresh();
+		}
+		break;
+#endif
+
 	case ID_OPTIONS_DIPSWITCHES:
 		setdipswitches();
 		break;
+
+	case ID_OPTIONS_FULLSCREEN:
+		win_toggle_full_screen();
+		break;
+
+#if HAS_TOGGLEMENUBAR
+	case ID_OPTIONS_TOGGLEMENUBAR:
+		win_toggle_menubar();
+		break;
+#endif
 
 	case ID_FRAMESKIP_AUTO:
 		autoframeskip = 1;
 		break;
 
 	case ID_HELP_ABOUT:
-		MessageBox(win_video_window, TEXT("MESS"), TEXT("MESS"), MB_OK);
+		help_about_mess();
+		break;
+
+	case ID_HELP_ABOUTSYSTEM:
+		help_about_thissystem();
 		break;
 
 	default:
@@ -552,11 +798,13 @@ static int invoke_command(UINT command)
 			frameskip = command - ID_FRAMESKIP_0;
 			autoframeskip = 0;
 		}
-		else if ((command >= ID_DEVICE_0) && (command < ID_DEVICE_0 + (MAX_DEV_INSTANCES*IO_COUNT)))
+		else if ((command >= ID_DEVICE_0) && (command < ID_DEVICE_0 + (MAX_DEV_INSTANCES*IO_COUNT*DEVOPTION_MAX)))
 		{
 			command -= ID_DEVICE_0;
-			dev = device_find(Machine->gamedrv, command / MAX_DEV_INSTANCES);
-			change_device(dev, command % MAX_DEV_INSTANCES);
+			dev = device_find(Machine->gamedrv, command / MAX_DEV_INSTANCES / DEVOPTION_MAX);
+			dev_id = (command / DEVOPTION_MAX) % MAX_DEV_INSTANCES;
+			dev_command = command % DEVOPTION_MAX;
+			device_command(dev, dev_id, dev_command);
 		}
 		else if ((command >= ID_JOYSTICK_0) && (command < ID_JOYSTICK_0 + MAX_JOYSTICKS))
 		{
@@ -596,53 +844,86 @@ static int count_joysticks(void)
 }
 
 //============================================================
+//	win_setup_menus
+//============================================================
+
+int win_setup_menus(HMENU menu_bar)
+{
+	HMENU frameskip_menu;
+	HMENU joystick_menu;
+	char buf[256];
+	int i, joystick_count = 0;
+	MENUITEMINFO mii;
+
+	assert((ID_DEVICE_0 + IO_COUNT * MAX_DEV_INSTANCES * DEVOPTION_MAX) < ID_JOYSTICK_0);
+	is_paused = 0;
+
+	// remove the profiler menu item if it doesn't exist
+#if HAS_PROFILER
+	show_profiler = 0;
+#else
+	DeleteMenu(menu_bar, ID_OPTIONS_PROFILER, MF_BYCOMMAND);
+#endif
+
+	// set up frameskip menu
+	frameskip_menu = find_sub_menu(menu_bar, "&Options\0&Frameskip\0", FALSE);
+	if (!frameskip_menu)
+		return 1;
+	for(i = 0; i < FRAMESKIP_LEVELS; i++)
+	{
+		snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%i", i);
+		AppendMenu(frameskip_menu, MF_STRING, ID_FRAMESKIP_0 + i, A2T(buf));
+	}
+
+	// set up joystick menu
+#ifndef UNDER_CE
+	joystick_count = count_joysticks();
+#endif
+	set_command_state(menu_bar, ID_OPTIONS_JOYSTICKS, joystick_count ? MFS_ENABLED : MFS_GRAYED);
+	if (joystick_count > 0)
+	{
+		joystick_menu = find_sub_menu(menu_bar, "&Options\0&Joysticks\0", TRUE);
+		if (!joystick_menu)
+			return 1;
+		for(i = 0; i < joystick_count; i++)
+		{
+			snprintf(buf, sizeof(buf) / sizeof(buf[0]), "Joystick %i", i + 1);
+			AppendMenu(joystick_menu, MF_STRING, ID_JOYSTICK_0 + i, A2T(buf));
+		}
+	}
+
+	// set the help menu to refer to this machine
+	snprintf(buf, sizeof(buf) / sizeof(buf[0]), "About %s (%s)...", Machine->gamedrv->description, Machine->gamedrv->name);
+	memset(&mii, 0, sizeof(mii));
+	mii.cbSize = sizeof(mii);
+	mii.fMask = MIIM_TYPE;
+	mii.dwTypeData = (LPTSTR) A2T(buf);
+	SetMenuItemInfo(menu_bar, ID_HELP_ABOUTSYSTEM, FALSE, &mii);	
+
+	win_menu_bar = menu_bar;
+	return 0;
+}
+
+//============================================================
 //	win_create_menus
 //============================================================
 
+#ifndef UNDER_CE
 HMENU win_create_menus(void)
 {
 	HMENU menu_bar;
-	HMENU frameskip_menu;
-	HMENU joystick_menu;
 	HMODULE module;
-	TCHAR buf[32];
-	int i, joystick_count;
-
-	is_paused = 0;
 	
 	module = GetModuleHandle(EMULATORDLL);
 	menu_bar = LoadMenu(module, MAKEINTRESOURCE(IDR_RUNTIME_MENU));
 	if (!menu_bar)
 		return NULL;
 
-	// set up frameskip menu
-	frameskip_menu = find_sub_menu(menu_bar, "&Options\0&Frameskip\0", FALSE);
-	if (!frameskip_menu)
+	if (win_setup_menus(menu_bar))
 		return NULL;
-	for(i = 0; i < FRAMESKIP_LEVELS; i++)
-	{
-		snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%i", i);
-		AppendMenu(frameskip_menu, MF_STRING, ID_FRAMESKIP_0 + i, buf);
-	}
-
-	// set up joystick menu
-	joystick_count = count_joysticks();
-	set_command_state(menu_bar, ID_OPTIONS_JOYSTICKS, joystick_count ? MFS_ENABLED : MFS_GRAYED);
-	if (joystick_count > 0)
-	{
-		joystick_menu = find_sub_menu(menu_bar, "&Options\0&Joysticks\0", TRUE);
-		if (!joystick_menu)
-			return NULL;
-		for(i = 0; i < joystick_count; i++)
-		{
-			snprintf(buf, sizeof(buf) / sizeof(buf[0]), "Joystick %i", i + 1);
-			AppendMenu(joystick_menu, MF_STRING, ID_JOYSTICK_0 + i, buf);
-		}
-	}
-
-	win_menu_bar = menu_bar;
 	return menu_bar;
 }
+#endif
 
 //============================================================
 //	win_mess_window_proc
@@ -650,6 +931,8 @@ HMENU win_create_menus(void)
 
 LRESULT win_mess_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
+	extern void win_timer_enable(int enabled);
+
 	switch(message) {
 	case WM_INITMENU:
 		prepare_menus();
@@ -660,12 +943,28 @@ LRESULT win_mess_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lpara
 			inputx_postc(wparam);
 		break;
 
+	// suspend sound and timer if we are resizing or a menu is coming up
 	case WM_ENTERMENULOOP:
+#ifndef UNDER_CE
+	case WM_ENTERSIZEMOVE:
+#endif
 		osd_sound_enable(0);
+		win_timer_enable(0);
+#ifdef UNDER_CE
+		gx_suspend();
+#endif
 		break;
 
+	// resume sound and timer if we dome with resizing or a menu
 	case WM_EXITMENULOOP:
+#ifndef UNDER_CE
+	case WM_EXITSIZEMOVE:
+#endif
 		osd_sound_enable(1);
+		win_timer_enable(1);
+#ifdef UNDER_CE
+		gx_resume();
+#endif
 		break;
 
 	case WM_COMMAND:
@@ -679,8 +978,22 @@ LRESULT win_mess_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lpara
 	return 0;
 }
 
+//============================================================
+//	osd_keyboard_disabled
+//============================================================
+
 int osd_keyboard_disabled(void)
 {
 	return win_use_natural_keyboard;
 }
+
+//============================================================
+//	osd_trying_to_quit
+//============================================================
+
+int osd_trying_to_quit(void)
+{
+	return win_trying_to_quit;
+}
+
 

@@ -41,6 +41,17 @@ enum
 	UI_vectorintensity,
 	UI_overclock,
 	UI_allcpus,
+	UI_palette,
+	UI_clut,
+	UI_gfxset,
+	UI_color,
+	UI_code_up,
+	UI_tilemap,
+	UI_orient_vert,
+	UI_orient_horz,
+	UI_pix_asp_rat,
+	UI_colors,
+	UI_sound_cmd,
 	UI_historymissing,
 
 	/* special characters */
@@ -66,6 +77,13 @@ enum
 #ifdef MESS
 	UI_comp1,
 	UI_comp2,
+	UI_keyb1,
+	UI_keyb2,
+	UI_keyb3,
+	UI_keyb4,
+	UI_keyb5,
+	UI_keyb6,
+	UI_keyb7,
 #endif
 
 	/* main menu */
@@ -83,6 +101,33 @@ enum
 	UI_imageinfo,
 	UI_filemanager,
 	UI_tapecontrol,
+	UI_recording,
+	UI_playing,
+	UI_recording_inhibited,
+	UI_playing_inhibited,
+	UI_stopped,
+	UI_pauseorstop,
+	UI_record,
+	UI_play,
+	UI_rewind,
+	UI_fastforward,
+	UI_mount,
+	UI_unmount,
+	UI_emptyslot,
+	UI_quitfileselector,
+	UI_filespecification,	/* IMPORTANT: be careful to ensure that the following */
+	UI_cartridge,		/* device list matches the order found in device.h    */
+	UI_floppydisk,		/* and is ALWAYS placed after UI_filespecification    */
+	UI_harddisk,
+	UI_cylinder,
+	UI_cassette,
+	UI_punchcard,
+	UI_punchtape,
+	UI_printer,
+	UI_serial,
+	UI_parallel,
+	UI_snapshot,
+	UI_quickload,
 #endif
 	UI_cheat,
 	UI_memorycard,
@@ -148,6 +193,14 @@ enum
 	UI_hex,
 	UI_decimal,
 	UI_binary,
+
+	/* save state stuff */
+	UI_select_save,
+	UI_select_load,
+	UI_save_to,
+	UI_load_from,
+	UI_save_canc,
+	UI_load_canc,
 
 	/* search stuff */
 	UI_search_lives,

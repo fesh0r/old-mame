@@ -706,6 +706,13 @@ static int ti99_image_init(const struct ImageModule *mod, STREAM *f, IMAGE **out
 	}
 
 	totsecs = (image->sec0.totsecsMSB << 8) | image->sec0.totsecsLSB;
+	if (image->sec0.tracksperside == 0)
+		/* Some images are like this, because the TI controller always assumes 40. */
+		image->sec0.tracksperside = 40;	// The most usual value
+	if (image->sec0.sides == 0)
+		/* Some images are like this, because the TI controller always assumes
+		tracks beyond 40 are on side 2. */
+		image->sec0.sides = totsecs / (image->sec0.secspertrack * image->sec0.tracksperside);
 	if (((image->sec0.secspertrack * image->sec0.tracksperside * image->sec0.sides) != totsecs)
 		|| (totsecs < 2) || (totsecs > 1600) || memcmp(image->sec0.id, "DSK", 3)
 		|| (stream_size(f) != totsecs*256))
@@ -867,7 +874,7 @@ static int ti99_image_nextenum(IMAGEENUM *enumeration, imgtool_dirent *ent)
 				snprintf(ent->attr, ent->attr_len, "PGM%s",
 							(fdr.flags & fdr99_f_wp) ? " R/O" : "");
 			else
-				snprintf(ent->attr, ent->attr_len, "%c/%c %d%s%s",
+				snprintf(ent->attr, ent->attr_len, "%c/%c %d%s",
 							(fdr.flags & fdr99_f_int) ? 'I' : 'D',
 							(fdr.flags & fdr99_f_var) ? 'V' : 'F',
 							fdr.reclen,

@@ -315,11 +315,10 @@ static void InitMessPicker(void)
 static void MessCreateCommandLine(char *pCmdLine, options_type *pOpts, const struct GameDriver *gamedrv)
 {
 	int i;
-	extern struct rc_option mess_opts[1];
 
 	for (i = 0; i < options.image_count; i++)
 	{
-		const char *optname = mess_opts[options.image_files[i].type].shortname;
+		const char *optname = device_brieftypename(options.image_files[i].type);
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -%s \"%s\"", optname, options.image_files[i].name);
 	}
 
@@ -327,6 +326,8 @@ static void MessCreateCommandLine(char *pCmdLine, options_type *pOpts, const str
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -ramsize %d", pOpts->ram_size);
 	if (pOpts->printer[0])
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -prin \"%s\"", pOpts->printer);
+
+	sprintf(&pCmdLine[strlen(pCmdLine)], " -%snewui", pOpts->use_new_ui ? "" : "no");
 }
 
 /* ------------------------------------------------------------------------ *

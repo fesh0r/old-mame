@@ -11,6 +11,8 @@
 #include "../windows/window.h"
 #include "ui_text.h"
 #include "inputx.h"
+#include "utils.h"
+#include "strconv.h"
 
 //============================================================
 //	These defines are necessary because the MinGW headers do
@@ -60,6 +62,7 @@ struct dialog_info_trigger
 struct dialog_info
 {
 	HGLOBAL handle;
+	size_t handle_size;
 	struct dialog_info_trigger *trigger_first;
 	struct dialog_info_trigger *trigger_last;
 	WORD item_count;
@@ -79,7 +82,7 @@ struct dialog_info
 #define DIM_COMBO_ROW_HEIGHT	12
 #define DIM_BUTTON_ROW_HEIGHT	12
 #define DIM_LABEL_WIDTH			80
-#define DIM_SEQ_WIDTH			60
+#define DIM_SEQ_WIDTH			120
 #define DIM_COMBO_WIDTH			140
 #define DIM_BUTTON_WIDTH		50
 
@@ -95,6 +98,11 @@ struct dialog_info
 #define DLGTEXT_OK				ui_getstring(UI_OK)
 #define DLGTEXT_APPLY			"Apply"
 #define DLGTEXT_CANCEL			"Cancel"
+
+#define FONT_SIZE				8
+#define FONT_FACE				"Microsoft Sans Serif"
+
+#define TIMER_ID				0xdeadbeef
 
 //============================================================
 //	dialog_trigger
@@ -151,7 +159,7 @@ static INT_PTR CALLBACK dialog_proc(HWND dlgwnd, UINT msg, WPARAM wparam, LPARAM
 		command = LOWORD(wparam);
 
 		GetWindowText((HWND) lparam, buf, sizeof(buf) / sizeof(buf[0]));
-		str = buf;
+		str = T2A(buf);
 		if (!strcmp(str, DLGTEXT_OK))
 			command = IDOK;
 		else if (!strcmp(str, DLGTEXT_CANCEL))
@@ -200,7 +208,7 @@ static int dialog_write(struct dialog_info *di, const void *ptr, size_t sz, int 
 	}
 	else
 	{
-		base = GlobalSize(di->handle);
+		base = di->handle_size;
 		base += align - 1;
 		base -= base % align;
 		newhandle = GlobalReAlloc(di->handle, base + sz, GMEM_ZEROINIT);
@@ -225,6 +233,7 @@ static int dialog_write(struct dialog_info *di, const void *ptr, size_t sz, int 
 	memcpy(mem + base, ptr, sz);
 	GlobalUnlock(newhandle);
 	di->handle = newhandle;
+	di->handle_size = base + sz;
 	return 0;
 }
 
@@ -235,13 +244,9 @@ static int dialog_write(struct dialog_info *di, const void *ptr, size_t sz, int 
 
 static int dialog_write_string(struct dialog_info *di, const char *str)
 {
-	int sz;
-	WCHAR *wstr;
-	
-	sz = MultiByteToWideChar(CP_ACP, 0, str, -1, NULL, 0);
-	wstr = alloca(sz * sizeof(WCHAR));
-	MultiByteToWideChar(CP_ACP, 0, str, -1, wstr, sz);
-	return dialog_write(di, wstr, sz * sizeof(WCHAR), 2);
+	const WCHAR *wstr;
+	wstr = A2W(str);	
+	return dialog_write(di, wstr, (wcslen(wstr) + 1) * sizeof(WCHAR), 2);
 }
 
 //============================================================
@@ -365,7 +370,7 @@ void *win_dialog_init(const char *title)
 	di->cy = 0;
 
 	memset(&dlg_template, 0, sizeof(dlg_template));
-	dlg_template.style = WS_POPUP | WS_BORDER | WS_SYSMENU | DS_MODALFRAME | WS_CAPTION;
+	dlg_template.style = WS_POPUP | WS_BORDER | WS_SYSMENU | DS_MODALFRAME | WS_CAPTION | DS_SETFONT;
 	dlg_template.x = 10;
 	dlg_template.y = 10;
 	if (dialog_write(di, &dlg_template, sizeof(dlg_template), 4))
@@ -377,6 +382,12 @@ void *win_dialog_init(const char *title)
 		goto error;
 
 	if (dialog_write_string(di, title))
+		goto error;
+
+	w[0] = FONT_SIZE;
+	if (dialog_write(di, w, sizeof(w[0]), 2))
+		goto error;
+	if (dialog_write_string(di, FONT_FACE))
 		goto error;
 
 	return (void *) di;
@@ -451,35 +462,80 @@ int win_dialog_add_combobox_item(void *dialog, const char *item_label, int item_
 
 struct seqselect_stuff
 {
-	INT_PTR (CALLBACK *oldwndproc)(HWND editwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+	WNDPROC oldwndproc;
 	InputSeq *code;
 	InputSeq newcode;
+	UINT_PTR timer;
+	WORD pos;
 };
 
 static INT_PTR CALLBACK seqselect_wndproc(HWND editwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
-	const struct KeyboardInfo *keylist;
 	struct seqselect_stuff *stuff;
 	INT_PTR result;
+	int dlgitem;
+	HWND dlgwnd;
+	HWND dlgitemwnd;
+	InputCode code;
 
 	stuff = (struct seqselect_stuff *) GetWindowLongPtr(editwnd, GWLP_USERDATA);
 
 	switch(msg) {
 	case WM_KEYDOWN:
 	case WM_SYSKEYDOWN:
-		keylist = osd_get_key_list();
-		while(keylist->name)
-		{
-			if (osd_is_key_pressed(keylist->code))
-			{
-				seq_set_1(&stuff->newcode, keylist->standardcode);
-				SetWindowText(editwnd, keylist->name);
-				SendMessage(editwnd, EM_SETSEL, 0, -1);
-				break;
-			}
-			keylist++;
-		}
 		result = 1;
+		break;
+
+	case WM_TIMER:
+		if (wparam == TIMER_ID)
+		{
+			code = code_read_async();
+			if (code != CODE_NONE)
+			{
+				seq_set_1(&stuff->newcode, code);
+				SetWindowText(editwnd, A2T(code_name(code)));
+
+				dlgwnd = GetParent(editwnd);
+
+				dlgitem = stuff->pos;
+				do
+				{
+					dlgitem++;
+					dlgitemwnd = GetDlgItem(dlgwnd, dlgitem);
+				}
+				while(dlgitemwnd && (GetWindowLongPtr(dlgitemwnd, GWLP_WNDPROC) != (LONG_PTR) seqselect_wndproc));
+				if (dlgitemwnd)
+				{
+					SetFocus(dlgitemwnd);
+					SendMessage(dlgitemwnd, EM_SETSEL, 0, -1);
+				}
+				else
+				{
+					SetFocus(dlgwnd);
+				}
+			}
+			result = 0;
+		}
+		else
+		{
+			result = CallWindowProc(stuff->oldwndproc, editwnd, msg, wparam, lparam);
+		}
+		break;
+
+	case WM_SETFOCUS:
+		if (stuff->timer)
+			KillTimer(editwnd, stuff->timer);
+		stuff->timer = SetTimer(editwnd, TIMER_ID, 100, (TIMERPROC) NULL);
+		result = CallWindowProc(stuff->oldwndproc, editwnd, msg, wparam, lparam);
+		break;
+
+	case WM_KILLFOCUS:
+		if (stuff->timer)
+		{
+			KillTimer(editwnd, stuff->timer);
+			stuff->timer = 0;
+		}
+		result = CallWindowProc(stuff->oldwndproc, editwnd, msg, wparam, lparam);
 		break;
 
 	case WM_LBUTTONDOWN:
@@ -490,7 +546,7 @@ static INT_PTR CALLBACK seqselect_wndproc(HWND editwnd, UINT msg, WPARAM wparam,
 		break;
 
 	default:
-		result = stuff->oldwndproc(editwnd, msg, wparam, lparam);
+		result = CallWindowProc(stuff->oldwndproc, editwnd, msg, wparam, lparam);
 		break;
 	}
 	return result;
@@ -504,13 +560,11 @@ static LRESULT seqselect_setup(HWND editwnd, UINT message, WPARAM wparam, LPARAM
 {
 	char buf[256];
 	struct seqselect_stuff *stuff = (struct seqselect_stuff *) lparam;
-	LONG_PTR oldwndproc;
 
 	memcpy(stuff->newcode, *(stuff->code), sizeof(stuff->newcode));
 	seq_name(stuff->code, buf, sizeof(buf) / sizeof(buf[0]));
-	SetWindowText(editwnd, buf);
-	oldwndproc = SetWindowLongPtr(editwnd, GWLP_WNDPROC, (LONG) seqselect_wndproc);
-	memcpy(&stuff->oldwndproc, &oldwndproc, sizeof(oldwndproc));
+	SetWindowText(editwnd, A2T(buf));
+	stuff->oldwndproc = (WNDPROC) SetWindowLongPtr(editwnd, GWLP_WNDPROC, (LONG) seqselect_wndproc);
 	SetWindowLongPtr(editwnd, GWLP_USERDATA, lparam);
 	return 0;
 }
@@ -546,6 +600,8 @@ static int dialog_add_single_seqselect(struct dialog_info *di, short x, short y,
 	if (!stuff)
 		return 1;
 	stuff->code = code;
+	stuff->pos = di->item_count;
+	stuff->timer = 0;
 	if (dialog_add_trigger(di, di->item_count, TRIGGER_INITDIALOG, 0, seqselect_setup, di->item_count, (LPARAM) stuff, NULL))
 		return 1;
 	if (dialog_add_trigger(di, di->item_count, TRIGGER_APPLY, 0, seqselect_apply, 0, 0, NULL))
@@ -557,16 +613,47 @@ static int dialog_add_single_seqselect(struct dialog_info *di, short x, short y,
 //	win_dialog_add_seqselect
 //============================================================
 
-int win_dialog_add_portselect(void *dialog, const char *item_label, struct InputPort *port, int *span)
+int win_dialog_add_portselect(void *dialog, struct InputPort *port, int *span)
 {
 	struct dialog_info *di = (struct dialog_info *) dialog;
 	short x;
 	short y;
 	struct InputPort *arranged_ports[4];
+	char buf[256];
+	int i;
 	int rows;
+	const char *port_name;
+	const char *last_port_name = NULL;
 
-	assert(item_label);
 	*span = inputx_orient_ports(port, arranged_ports);
+
+	// Come up with 
+	if (*span == 1)
+	{
+		port_name = input_port_name(port);
+	}
+	else
+	{
+		for (i = 0; i < sizeof(arranged_ports) / sizeof(arranged_ports[0]); i++)
+		{
+			if (arranged_ports[i])
+			{
+				port_name = input_port_name(arranged_ports[i]);
+				if (i == 0)
+				{
+					strncpyz(buf, port_name, sizeof(buf) / sizeof(buf[0]));
+					last_port_name = port_name;
+				}
+				else if (strcmp(port_name, last_port_name))
+				{
+					strncatz(buf, " / ", sizeof(buf) / sizeof(buf[0]));
+					strncatz(buf, port_name, sizeof(buf) / sizeof(buf[0]));
+					last_port_name = port_name;
+				}
+			}
+		}
+		port_name = buf;
+	}
 
 	rows = arranged_ports[2] ? (arranged_ports[0] ? 3 : 2) : 1;
 
@@ -575,7 +662,7 @@ int win_dialog_add_portselect(void *dialog, const char *item_label, struct Input
 
 	if (dialog_write_item(di, WS_CHILD | WS_VISIBLE | SS_LEFT,
 			x, y + (rows - 1) * (DIM_NORMAL_ROW_HEIGHT + DIM_VERTICAL_SPACING * 2)/2,
-			DIM_LABEL_WIDTH, DIM_NORMAL_ROW_HEIGHT, item_label, DLGITEM_STATIC))
+			DIM_LABEL_WIDTH, DIM_NORMAL_ROW_HEIGHT, port_name, DLGITEM_STATIC))
 		return 1;
 	x += DIM_LABEL_WIDTH + DIM_HORIZONTAL_SPACING;
 

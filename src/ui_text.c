@@ -34,7 +34,7 @@ const char * default_text[] =
 	"Press Any Key",
 	"On",
 	"Off",
-	"NA",
+	"N/A",
 	"OK",
 	"INVALID",
 	"(none)",
@@ -56,6 +56,17 @@ const char * default_text[] =
 	"Vector Intensity",
 	"Overclock",
 	"ALL CPUS",
+	"PALETTE",
+	"CLUT",
+	"GFXSET",
+	"COLOR",
+	"CODE",
+	"TILEMAP",
+	"V",
+	"H",
+	"pixel aspect ratio",
+	"colors",
+	"sound cmd",
 #ifndef MESS
 	"History not available",
 #else
@@ -93,6 +104,13 @@ const char * default_text[] =
 #ifdef MESS
 	"The emulated system is a computer: ",
 	"The keyboard emulation may not be 100% accurate.",
+	"Keyboard Emulation Status",
+	"-------------------------",
+	"Mode: PARTIAL Emulation",
+	"Mode: FULL Emulation",
+	"UI:   Enabled",
+	"UI:   Disabled",
+	"**Use ScrLock to toggle**",
 #endif
 
 	/* main menu */
@@ -116,6 +134,34 @@ const char * default_text[] =
 	"Image Information",
 	"File Manager",
 	"Tape Control",
+
+	"recording",
+	"playing",
+	"(recording)",
+	"(playing)",
+	"stopped",
+	"Pause/Stop",
+	"Record",
+	"Play",
+	"Rewind",
+	"Fast Forward",
+	"Mount",
+	"Unmount",
+	"[empty slot]",
+	"Quit Fileselector",
+	"File Specification",	/* IMPORTANT: be careful to ensure that the following */
+	"Cartridge",		/* device list matches the order found in device.h    */
+	"Floppy Disk",		/* and is ALWAYS placed after "File Specification"    */
+	"Hard Disk",
+	"Cylinder",
+	"Cassette",
+	"Punched Card",
+	"Punched Tape",
+	"Printer",
+	"Serial Port",
+	"Parallel Port",
+	"Snapshot",
+	"Quickload",
 #endif
 	"Cheat",
 	"Memory Card",
@@ -140,7 +186,7 @@ const char * default_text[] =
 	"Memory Card Ejected!",
 	"Memory Card Created OK!",
 	"Failed To Create Memory Card!",
-	"(It already exists ?)",
+	"(It already exists?)",
 	"DAMN!! Internal Error!",
 
 	/* cheats */
@@ -181,6 +227,14 @@ const char * default_text[] =
 	"Hex",
 	"Decimal",
 	"Binary",
+
+	/* save state */
+	"Select position to save to",
+	"Select position to load from",
+	"Save to position",
+	"Load from position",
+	"Save cancelled",
+	"Load cancelled",
 
 	/* searching */
 	"Lives (or another value)",

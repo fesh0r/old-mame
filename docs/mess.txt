@@ -5,7 +5,7 @@
                     Official Page at: http://www.mess.org
                    ==========================================
 
-This document is generated for MESS 0.61.1 (Oct 18 2002)
+This document is generated for MESS 0.61.2 (Nov 11 2002)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.61.1 (Oct 18 2002)
+Here is the list of systems supported by MESS 0.61.2 (Nov 11 2002)
 Variants of the same system are not included, you can use the -listclones command
 to get a list of the alternate versions of a given system.
 
@@ -120,7 +120,7 @@ dat2html.exe.
 | Famicom                                 |  Yes  |  Yes  |  Yes  | famicom  |
 | Galaksija                               |  Yes  |  Yes  |   No  | galaxy   |
 | Game Gear - European/American           |  Yes  |  Yes  |  Yes  | gamegear |
-| GameBoy                                 |  Yes  |  Yes  |Partial| gameboy  |
+| GameBoy                                 |  Yes  |  Yes  |  Yes  | gameboy  |
 | IBM PC 10/27/82                         |  Yes  |  Yes  |  Yes  | ibmpc    |
 | Intellivision                           |   No  |  Yes  |  Yes  | intv     |
 | Intellivision                           |   No  |  Yes  |  Yes  | intvsrs  |

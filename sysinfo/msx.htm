@@ -278,23 +278,20 @@ Yashica (Japan)<br>
 YC-64: 64kB RAM, Kyocera's MSX sold by Yashica<br>
 MSX system list compiled from the list by TRD, Manuel Bilderbeek & Alex Wulms. Thanks to<br>
 Stefano Priore, for abridging it to MSX1 specific info.<br>
-Other Info<br>
------------<br>
+<p><b>Other Info:</b><br>
 The MSX driver is very preliminary. Disk drive emulation doesn't work properly<br>
 for example, and memory emulation isn't very good either. Various MSX1 models<br>
 are emulated, and there is preliminary MSX2 support through the msx2 and msx2j<br>
 driver.<br>
 <p><b>The required bios dumps are available at:</b><br>
 	<a href="http://www.file-hunter.com/">http://www.file-hunter.com/</a><br>
-Cartridges<br>
-----------<br>
+<p><b>Cartridges:</b><br>
 The ROM mapper (which is specified with -rom x in fMSX) is autodetected but<br>
 isn't perfect. So you should also install the crc files, which can be <br>
 downloaded from the official mess site. With the CRC files, cartridges with<br>
 SRAM or a DAC (like Synthesizer or Majutsushi from Konami) are detected<br>
 properly.<br>
-Tape emulation<br>
---------------<br>
+<p><b>Tape emulation:</b><br>
 Tape emulation is done via .wav files; the actual sound the MSX produces<br>
 is recorded / played back, making tape emulation more authentic. Because of<br>
 this, you can record your existing tapes to .wav and play them in MESS. Make<br>
@@ -306,13 +303,11 @@ of your computer. You can control the volume by pressing &lt;SCROLL LOCK&gt; and
 &lt;~&gt;. <br>
 .tap files from Virtual MSX can be converted to .cas using imgtool (see<br>
 imgtool.txt for more information).<br>
-Memory Emulation<br>
-----------------<br>
+<p><b>Memory Emulation:</b><br>
 The memory map is from a standard MSX1; there are no subslots, nor MSX2 <br>
 memory mappers for RAM. RAM is 64Kb in slot 3, and slot 1 and 2 are where <br>
 the cartridges end up.<br>
-Sound emulation<br>
----------------<br>
+<p><b>Sound emulation:</b><br>
 The PSG, PPI (key click), SCC are emulated. The SCC isn't perfect yet, you<br>
 can hear slight imperfections in King's Valley 2 (when you through the knife),<br>
 F1 Spirit (when you start a race), Solid Snake (when you get to building 3).<br>
@@ -326,8 +321,7 @@ Dip Switches. Here set SIMPL to "On".<br>
 You can control the volumes by pressing &lt;SCROLL LOCK&gt; (so you go to UI<br>
 mode) and then &lt;~&gt;. Press &lt;UP&gt; and &lt;DOWN&gt; to see different sound chips, and<br>
 &lt;LEFT&gt; and &lt;RIGHT&gt; to change the volume.<br>
-Video emulation<br>
----------------<br>
+<p><b>Video emulation:</b><br>
 The tms9928a (MSX1) emulation is very good, but doesn't emulate changes while<br>
 the screen is being drawn to the screen. <br>
 The v9938 emulation is preliminary and has problems with sprite mode 2 (MSX2<br>
@@ -344,23 +338,19 @@ like a real MSX of course) by pressing: &lt;SCROLL LOCK&gt;, &lt;TAB&gt; and goi
 Dip Switches menu. Set "Enforce 4/8 sprites/line" to "Off". Note that sometimes<br>
 this feature is used for other purposes, like making sure a sprite is only<br>
 partly displayed (when you enter a world in The Maze of Galious for example).<br>
-Printer port<br>
-------------<br>
+<p><b>Printer port:</b><br>
 The printer port is emulated; output to the port is saved to disk. However<br>
 no emulation/translation is done, so the data is raw. <br>
-MSX2 RTC<br>
---------<br>
+<p><b>MSX2 RTC:</b><br>
 The real-time clock, which keeps information like the time and date, should<br>
 be emulated correctly. However in PAL mode the timing isn't correct as the<br>
 refresh rate isn't properly adjusted. All settings are saved to disk.<br>
-Keyboard/joystick/mouse<br>
------------------------<br>
+<p><b>Keyboard/joystick/mouse:</b><br>
 The keyboard layout should be properly emulated. Joysticks seem to default<br>
 to having key-bindings as well, so pressing &lt;CTRL&gt; or &lt;ALT&gt; will also work<br>
 for the joysticks, but might give some unexpected results.<br>
 The mouse emulation doesn't work properly yet. :(<br>
-Disk Emulation<br>
---------------<br>
+<p><b>Disk Emulation:</b><br>
 Disks are emulated through proper wd2793 emulation. Currently only the<br>
 Philips and Sony diskroms are supported; the Panasonic machines use the<br>
 tc8566af diskcontroller (unemulated) and the Brazillian machines are <br>
@@ -376,9 +366,8 @@ Error aren't properly handled yet. ``not ready'' is reported as ``record<br>
 not found'', which results in ``Disk I/O error'' in MSX-BASIC.<br>
 Also not that memory emulation isn't complete so MSX2 memory mappers<br>
 don't work yet.<br>
-<br>
 <hr>
-<center><font size=-2>created on Fri Oct 18 10:58:15 2002
+<center><font size=-2>created on Mon Nov 11 18:01:15 2002
 </font></center>
 </body>
 </html>
