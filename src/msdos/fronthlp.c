@@ -11,7 +11,6 @@
 #include <unzip.h>
 
 #ifdef MESS
-/* HJB: choosing a different name would make sense to avoid ../mess/ */
 #include "../mess/msdos.h"
 #endif
 
@@ -520,7 +519,18 @@ int frontend_help (int argc, char **argv)
 						printf(", The");
 					}
 					else
-						printf("\"%s",name);
+					/* Steph - 2000.08.22 */
+					{
+						if (strncmp(name,"Le ",3) == 0)
+						{
+							printf("\"%s",name+3);
+							printf(", Le");
+						}
+						else
+						{
+							printf("\"%s",name);
+						}
+					}
 
 					/* print the additional description only if we are listing clones */
 					if (listclones)
@@ -780,7 +790,17 @@ int frontend_help (int argc, char **argv)
 						sprintf(name_ref,"%s, The ",name+4);
 					}
 					else
-						sprintf(name_ref,"%s ",name);
+					/* Steph - 2000.08.22 */
+					{
+						if (strncmp(name,"Le ",3) == 0)
+						{
+							sprintf(name_ref,"%s, Le ",name+3);
+						}
+						else
+						{
+							sprintf(name_ref,"%s ",name);
+						}
+					}
 
 					/* print the additional description only if we are listing clones */
 					if (listclones)
@@ -894,7 +914,18 @@ int frontend_help (int argc, char **argv)
 						printf(", The");
 					}
 					else
-						printf("%s",name);
+					/* Steph - 2000.08.22 */
+					{
+						if (strncmp(name,"Le ",3) == 0)
+						{
+							printf("\"%s",name+3);
+							printf(", Le");
+						}
+						else
+						{
+							printf("\"%s",name);
+						}
+					}
 
 					/* print the additional description only if we are listing clones */
 					if (listclones)

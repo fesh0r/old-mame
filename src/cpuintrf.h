@@ -248,9 +248,6 @@ enum {
 #ifndef HAS_ADSP2105
 #define HAS_ADSP2105	0
 #endif
-#ifndef HAS_ADSP2105
-#define HAS_ADSP2105	0
-#endif
 #ifndef HAS_MIPS
 #define HAS_MIPS		0
 #endif
@@ -351,11 +348,6 @@ void *cpu_get_cycle_table(int which);
 /* Override a pointer to the active CPUs cycle count lookup table */
 void cpu_set_cycle_tbl(int which, void *new_table);
 
-/* Get a pointer to the active CPUs cycle count lookup table */
-void *cpu_get_cycle_table(int which);
-/* Override a pointer to the active CPUs cycle count lookup table */
-void cpu_set_cycle_tbl(int which, void *new_table);
-
 /* Returns a specific register value (mamedbg) */
 unsigned cpu_get_reg(int regnum);
 /* Sets a specific register value (mamedbg) */
@@ -443,9 +435,6 @@ void cpu_set_irq_line(int cpunum, int irqline, int state);
 void cpu_generate_internal_interrupt(int cpunum, int type);
 /* set the vector to be returned during a CPU's interrupt acknowledge cycle */
 void cpu_irq_line_vector_w(int cpunum, int irqline, int vector);
-
-/* use this function to install a driver callback for IRQ acknowledge */
-void cpu_set_irq_callback(int cpunum, int (*callback)(int));
 
 /* use this function to install a driver callback for IRQ acknowledge */
 void cpu_set_irq_callback(int cpunum, int (*callback)(int));

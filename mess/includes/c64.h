@@ -159,7 +159,7 @@
 #define DATASSETTE_RECORD	(input_port_8_r(0)&0x800)
 #define DATASSETTE_STOP		(input_port_8_r(0)&0x400)
 
-#define SID8580		(input_port_8_r(0)&0x80)
+#define SID8580		((input_port_8_r(0)&0x80) ? MOS8580 : MOS6581)
 
 #define AUTO_MODULE ((input_port_8_r(0)&0x1c)==0)
 #define ULTIMAX_MODULE ((input_port_8_r(0)&0x1c)==4)
@@ -271,7 +271,7 @@ void c64_rom_load(void);
 void c64_rom_recognition (void);
 extern int c64_rom_id (int id);
 
-void c64_state(PRASTER *this);
+void c64_state(PRASTER *This);
 
 /* private area */
 

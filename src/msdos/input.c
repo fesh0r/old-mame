@@ -491,10 +491,8 @@ void osd_trak_read(int player,int *deltax,int *deltay)
 
 #ifndef MESS
 #ifndef TINY_COMPILE
-#ifndef MESS
 extern int no_of_tiles;
 extern struct GameDriver driver_neogeo;
-#endif
 #endif
 #endif
 
@@ -540,7 +538,6 @@ void osd_customize_inputport_defaults(struct ipd *defaults)
 
 #ifndef MESS
 #ifndef TINY_COMPILE
-#ifndef MESS
 			if (use_hotrod == 2 &&
 					(Machine->gamedrv->clone_of == &driver_neogeo ||
 					(Machine->gamedrv->clone_of && Machine->gamedrv->clone_of->clone_of == &driver_neogeo)))
@@ -562,7 +559,6 @@ void osd_customize_inputport_defaults(struct ipd *defaults)
 				if (defaults->type == (IPT_BUTTON7 | IPF_PLAYER2)) seq_set_1(&defaults->seq,KEYCODE_NONE);
 				if (defaults->type == (IPT_BUTTON8 | IPF_PLAYER2)) seq_set_1(&defaults->seq,KEYCODE_NONE);
 			}
-#endif
 #endif
 #endif
 

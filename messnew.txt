@@ -1,3 +1,116 @@
+0.37b6 
+
+Note: DELETE mess.cfg!
+
+Note: .inp record/playback does still not work currently.
+
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Amstrad NC100 [Kev Thacker]
+- CoCo 3 (with a preliminary 6309 CPU core) [Tim Linder, Nate Woods]
+- SNES (preliminary) [Lee Hammerton]
+- ChannelF [Frank Palazzolo, Juergen Buchmueller]
+
+
+System Driver Changes:
+----------------------
+- SPECTRUM:  Fixed +3 disk handling [David Robertson]
+
+- COCO 3: Fixed low resolution video so that it is sensitive to the MMU; this
+  fixes a problem that made OS-9 Level 2 display garbage.  Also fixed two bugs
+  that prevented horizontal scrolling from working properly [Nate Woods]
+
+Other Changes:
+--------------
+- The core is based on MAME 0.37b6. This incorporates all 
+  features of the update to this core.  [MAME team] 
+
+- [DOS] File handling has CHANGED!  heres a brief description:
+  MESS supports a softwarepath= global setting (in the [directories] section of mess.cfg) 
+  and this is overrideable per driver (in the [driver] sections) Default for softwarepath= 
+  is .;SOFTWARE
+  OSD_FILETYPE_ROM uses the biospath= setting from now on (MAME rompath=) Default for 
+  biospath= is .;BIOS.
+  OSD_FILETYPE_IMAGE_R and _RW use the softwarepath= settings from now on, so BIOS ROMs can 
+  be kept separate from carts, floppy, harddisk etc. images.
+  The search paths/files are for a hypothetic system driver 'sys':
+  
+  extensions of carts for sys = .rom, .bin
+  softwarepath = .;x:/software
+
+  mess sys -cart cart
+
+  ./cart
+  ./sys/cart
+  ./cart.zip containing cart
+  ./sys/cart.zip containing cart
+  x:/software/cart
+  x:/software/sys/cart
+  x:/software/cart.zip containing cart
+  x:/software/sys/cart.zip containing cart
+  ---> assume it failed, because the real extension is .bin
+  ./cart.rom
+  ./sys/cart.rom
+  ./cart.zip containing cart.rom
+  ./sys/cart.zip containing cart.rom
+  x:/software/cart.rom
+  x:/software/sys/cart.rom
+  x:/software/cart.zip containing cart.rom
+  x:/software/sys/cart.zip containing cart.rom
+  ---> still not found, so image_fopen() tries .bin now
+  ./cart.bin
+  ./sys/cart.bin
+  ./cart.zip containing cart.bin
+  ./sys/cart.zip containing cart.bin
+  x:/software/cart.bin
+  x:/software/sys/cart.bin
+  x:/software/cart.zip containing cart.bin
+  x:/software/sys/cart.zip containing cart.bin
+
+  As you can see it might take quite some time until an image is found, with two 
+  directories on the path already, that's why the main softwarepath= setting should be 
+  short. If you have many, different drives/paths where you store software, you better use 
+  the system specific overrides like this:
+
+  [sys]
+  biospath=x:/sys
+  softwarepath=x:/sys
+  
+  [sys2]
+  biospath=roms
+  sofwarepath=z:/somewhere/sys2
+  
+  However, if you have a 'complete set' you would be done (mostly) if you only change the 
+  [directories] setting for biospath= and softwarepath= to the drive/path where your 
+  mirrored files are.
+
+  One extension to the searches that might make sense would be to also look into a 
+  path/ext/cart.ext directory, that means you could have subirectories for eg. dsk, cas, 
+  vz, bin or whatever the extensions of the system are. [Juergen Buchmueller, Ben Bruscella]
+
+- Many fixes to cheat engine [Cowering]
+
+- MESS CRC files now use 'Good' database CRCs where applicable [Cowering]
+
+- NES now gets correct mapper info from nes.crc (if present) [Cowering]
+
+- Genesis/Megadrive now gets correct CRC info for .smd and .md files [Cowering]
+
+- new function osd_select_file() added [Brad Oliver]
+
+- IMGTOOL: Fixed a bug that caused saving a file into an image to error if that
+  file was in a different directory.  Also fixed a bug that would cause crashes
+  when reporting certain types of errors [Nate Woods]
+
+- CRC and sysinfo updates will now be appearing at the official MESS homepage:
+  http://mess.emuverse.com
+  Please send all CRC/sysinfo file contributions to Chris Henry. 
+  (battlepriest@hotmail.com).
+
+
+
+------------------------
 0.37b5
 
 Note: .inp record/playback does still not work currently.

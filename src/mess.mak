@@ -6,11 +6,11 @@ COREDEFS += -DNEOFREE -DMESS
 
 # to split the mess into parts
 # (problem with tinymess is to only compile for 1 system)
-MESS_AMSTRAD = 1
-MESS_CBM = 1
-MESS_IBMPC = 1
-MESS_SHARP = 1
-MESS_SINCLAIR = 1
+#MESS_EXCLUDE_AMSTRAD = 1
+#MESS_EXCLUDE_CBM = 1
+#MESS_EXCLUDE_IBMPC = 1
+#MESS_EXCLUDE_SHARP = 1
+#MESS_EXCLUDE_SINCLAIR = 1
 
 # CPU cores used in MESS
 CPUS+=Z80@
@@ -39,36 +39,81 @@ CPUS+=M6803@
 CPUS+=M6808@
 CPUS+=HD63701@
 CPUS+=NSC8105@
+CPUS+=HD6309@
 CPUS+=M6809@
 CPUS+=M68000@
+#CPUS+=M68010@
+#CPUS+=M68EC020@
+#CPUS+=M68020@
+#CPUS+=T11@
+#CPUS+=S2650@
+CPUS+=F8@
+#CPUS+=TMS34010@
 CPUS+=TMS9900@
+#CPUS+=TMS9940@
+#CPUS+=TMS9980@
+#CPUS+=TMS9985@
+#CPUS+=TMS9989@
 CPUS+=TMS9995@
+#CPUS+=TMS99105A@
+#CPUS+=TMS99110A@
+#CPUS+=TMS320C10@
 CPUS+=PDP1@
+#CPUS+=ADSP2100@
+#CPUS+=ADSP2105@
+#CPUS+=MIPS@
 CPUS+=SC61860@
 CPUS+=ARM@
+CPUS+=G65816@
+#CPUS+=SPC700@
 
 # SOUND cores used in MESS
 SOUNDS+=CUSTOM@
 SOUNDS+=SAMPLES@
 SOUNDS+=DAC@
 SOUNDS+=AY8910@
+#SOUNDS+=YM2203@
+# enable only one of the following two
+#SOUNDS+=YM2151@
 SOUNDS+=YM2151_ALT@
 SOUNDS+=YM2608@
 SOUNDS+=YM2610@
+#SOUNDS+=YM2610B@
 SOUNDS+=YM2612@
+#SOUNDS+=YM3438@
 SOUNDS+=YM2413@
 SOUNDS+=YM3812@
+#SOUNDS+=YMZ280B@
+#SOUNDS+=YM3526@
+#SOUNDS+=Y8950@
+#SOUNDS+=SN76477@
 SOUNDS+=SN76496@
 SOUNDS+=POKEY@
 SOUNDS+=TIA@
 SOUNDS+=NES@
 SOUNDS+=ASTROCADE@
+#SOUNDS+=NAMCO@
+#SOUNDS+=TMS36XX@
+SOUNDS+=TMS5110@
 SOUNDS+=TMS5220@
+#SOUNDS+=VLM5030@
+#SOUNDS+=ADPCM@
 SOUNDS+=OKIM6295@
+#SOUNDS+=MSM5205@
+#SOUNDS+=UPD7759@
+#SOUNDS+=HC55516@
+#SOUNDS+=K005289@
+#SOUNDS+=K007232@
+#SOUNDS+=K051649@
+#SOUNDS+=K053260@
+#SOUNDS+=SEGAPCM@
+#SOUNDS+=RF5C68@
+#SOUNDS+=CEM3394@
+#SOUNDS+=C140@
 SOUNDS+=QSOUND@
 SOUNDS+=SPEAKER@
 SOUNDS+=WAVE@
-SOUNDS+=SAA1099@
+SOUNDS+=BEEP@
 
 # Archive definitions
 DRVLIBS = $(OBJ)/advision.a \
@@ -104,31 +149,39 @@ DRVLIBS = $(OBJ)/advision.a \
           $(OBJ)/kim1.a     \
           $(OBJ)/lisa.a     \
           $(OBJ)/aquarius.a \
+	  $(OBJ)/avigo.a    \
+	  $(OBJ)/fairch.a   \
+          $(OBJ)/magnavox.a \
           #$(OBJ)/motorola.a \
 
-ifdef MESS_AMSTRAD
+ifndef MESS_EXCLUDE_AMSTRAD
 DRVLIBS += $(OBJ)/amstrad.a
-COREDEFS += -DMESS_AMSTRAD
+else
+COREDEFS += -DMESS_EXCLUDE_AMSTRAD
 endif
 
-ifdef MESS_CBM
+ifndef MESS_EXCLUDE_CBM
 DRVLIBS += $(OBJ)/cbm.a
-COREDEFS += -DMESS_CBM
+else
+COREDEFS += -DMESS_EXCLUDE_CBM
 endif
 
-ifdef MESS_IBMPC
+ifndef MESS_EXCLUDE_IBMPC
 DRVLIBS += $(OBJ)/pc.a
-COREDEFS += -DMESS_IBMPC
+else
+COREDEFS += -DMESS_EXCLUDE_IBMPC
 endif
 
-ifdef MESS_SHARP
+ifndef MESS_EXCLUDE_SHARP
 DRVLIBS += $(OBJ)/sharp.a
-COREDEFS += -DMESS_SHARP
+else
+COREDEFS += -DMESS_EXCLUDE_SHARP
 endif
 
-ifdef MESS_SINCLAIR
+ifndef MESS_EXCLUDE_SINCLAIR
 DRVLIBS += $(OBJ)/sinclair.a
-COREDEFS += -DMESS_SINCLAIR
+else
+COREDEFS += -DMESS_EXCLUDE_SINCLAIR
 endif
 
 $(OBJ)/mess/system.o: src/mess.mak
@@ -173,7 +226,12 @@ $(OBJ)/nintendo.a: \
           $(OBJ)/mess/systems/nes.o      \
           $(OBJ)/mess/vidhrdw/gb.o       \
           $(OBJ)/mess/machine/gb.o       \
-          $(OBJ)/mess/systems/gb.o
+          $(OBJ)/mess/systems/gb.o       \
+          $(OBJ)/mess/sndhrdw/snes.o     \
+          $(OBJ)/mess/vidhrdw/snes.o     \
+          $(OBJ)/mess/machine/snes.o     \
+          $(OBJ)/mess/systems/snes.o
+
 
 $(OBJ)/cbm.a:      \
           $(OBJ)/mess/vidhrdw/amiga.o    \
@@ -278,6 +336,14 @@ $(OBJ)/mac.a: \
           $(OBJ)/mess/machine/mac.o      \
           $(OBJ)/mess/systems/mac.o
 
+$(OBJ)/avigo.a: \
+          $(OBJ)/mess/systems/avigo.o    \
+          $(OBJ)/mess/vidhrdw/avigo.o    \
+          $(OBJ)/mess/machine/28f008sa.o
+
+$(OBJ)/fairch.a: \
+	  $(OBJ)/mess/systems/channelf.o
+
 $(OBJ)/ti99.a:     \
           $(OBJ)/mess/machine/tms9901.o  \
           $(OBJ)/mess/machine/ti99_4x.o  \
@@ -336,7 +402,12 @@ $(OBJ)/amstrad.a:  \
           $(OBJ)/mess/systems/amstrad.o  \
           $(OBJ)/mess/vidhrdw/pcw.o      \
           $(OBJ)/mess/systems/pcw.o      \
+          $(OBJ)/mess/vidhrdw/nc.o       \
+          $(OBJ)/mess/systems/nc.o       \
+          $(OBJ)/mess/machine/nc.o       \
+          $(OBJ)/mess/machine/tc8521.o   \
           $(OBJ)/mess/systems/pcw16.o    \
+          $(OBJ)/mess/machine/28f008sa.o \
           $(OBJ)/mess/vidhrdw/pcw16.o
 
 $(OBJ)/nec.a:      \
@@ -422,7 +493,10 @@ $(OBJ)/acorn.a:    \
           $(OBJ)/mess/machine/atom.o     \
           $(OBJ)/mess/vidhrdw/atom.o     \
 	  $(OBJ)/mess/systems/atom.o	 \
-	  $(OBJ)/mess/systems/a310.o
+          $(OBJ)/mess/systems/a310.o     \
+          $(OBJ)/mess/systems/z88.o      \
+          $(OBJ)/mess/vidhrdw/z88.o      
+
 
 $(OBJ)/samcoupe.a: \
           $(OBJ)/mess/machine/coupe.o    \
@@ -443,6 +517,11 @@ $(OBJ)/aquarius.a: \
           $(OBJ)/mess/vidhrdw/aquarius.o \
           $(OBJ)/mess/systems/aquarius.o
 
+$(OBJ)/magnavox.a: \
+          $(OBJ)/mess/machine/odyssey2.o \
+          $(OBJ)/mess/vidhrdw/odyssey2.o \
+          $(OBJ)/mess/systems/odyssey2.o
+
 $(OBJ)/motorola.a: \
           $(OBJ)/mess/vidhrdw/mekd2.o    \
           $(OBJ)/mess/machine/mekd2.o    \
@@ -458,16 +537,15 @@ COREOBJS +=        \
           $(OBJ)/mess/filemngr.o         \
           $(OBJ)/mess/tapectrl.o         \
           $(OBJ)/mess/machine/wd179x.o   \
-          $(OBJ)/mess/sndhrdw/beep.o     \
           $(OBJ)/mess/machine/pit8253.o  \
 
-ifdef MESS_CBM
+ifndef MESS_EXCLUDE_CBM
 COREOBJS += $(OBJ)/mess/machine/6522via.o
 endif
 
-ifndef MESS_IBMPC
-ifndef MESS_AMSTRAD
-ifndef MESS_SPECTRUM
+ifdef MESS_EXCLUDE_IBMPC
+ifdef MESS_EXCLUDE_AMSTRAD
+ifdef MESS_EXCLUDE_SPECTRUM
 EXCLUDE_NEC765 = 1
 endif
 endif
@@ -491,7 +569,6 @@ mkhdimg$(EXE):  $(OBJ)/mess/tools/mkhdimg.o
 imgtool$(EXE):       \
 	  $(IMGTOOL_OBJS) \
           $(OBJ)/mess/tools/stubs.o   \
-	  $(OBJ)/mess/$(OS)/dirio.o   \
           $(OBJ)/mess/config.o        \
           $(OBJ)/unzip.o              \
           $(OBJ)/mess/tools/main.o    \
@@ -520,10 +597,10 @@ mess.txt: $(EMULATOR)
 makedep/makedep$(EXE):
 	make -Cmakedep
 
-depend $(NAME).dep: makedep/makedep$(EXE)
-	makedep/makedep$(EXE) -f - -p$(TARGET).obj/ -Imess -- $(CFLAGS) $(INCLUDES) -- src/*.c \
+depend $(TARGET).dep: makedep/makedep$(EXE)
+	makedep/makedep$(EXE) -f - -p$(TARGET).obj/ -- $(INCLUDE_PATH) -- src/*.c \
 	src/cpu/*/*.c src/sound/*.c mess/systems/*.c mess/machine/*.c mess/vidhrdw/*.c mess/sndhrdw/*.c \
-	mess/tools/*.c mess/formats/*.c >$(NAME).dep
+	mess/tools/*.c mess/formats/*.c >$(TARGET).dep
 
 ## uncomment the following line to include dependencies
-include $(NAME).dep
+include $(TARGET).dep

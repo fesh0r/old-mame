@@ -14,7 +14,7 @@
 #include "ui_text.h"
 
 #ifdef MESS
-  #include "mess.h"
+#include "../mess/mess.h"
 #endif
 
 extern int bitmap_dirty;	/* set by osd_clearbitmap() */
@@ -27,8 +27,6 @@ extern unsigned int coinlockedout[COIN_COUNTERS];
 
 /* MARTINEZ.F 990207 Memory Card */
 #ifndef MESS
-
-#ifndef MESS
 #ifndef TINY_COMPILE
 int 		memcard_menu(struct osd_bitmap *bitmap, int);
 extern int	mcd_action;
@@ -39,13 +37,12 @@ extern int	memcard_manager;
 #endif
 #endif
 
-
 extern int neogeo_memcard_load(int);
 extern void neogeo_memcard_save(void);
 extern void neogeo_memcard_eject(void);
 extern int neogeo_memcard_create(int);
 /* MARTINEZ.F 990207 Memory Card End */
-#endif
+
 
 
 static int setup_selected;
@@ -964,7 +961,6 @@ void ui_displaymessagewindow(struct osd_bitmap *bitmap,const char *text)
 
 #ifndef MESS
 #ifndef TINY_COMPILE
-#ifndef MESS
 extern int no_of_tiles;
 void NeoMVSDrawGfx(unsigned char **line,const struct GfxElement *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
@@ -973,7 +969,6 @@ void NeoMVSDrawGfx16(unsigned char **line,const struct GfxElement *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
 		int zx,int zy,const struct rectangle *clip);
 extern struct GameDriver driver_neogeo;
-#endif
 #endif
 #endif
 
@@ -998,12 +993,10 @@ static void showcharset(struct osd_bitmap *bitmap)
 
 #ifndef MESS
 #ifndef TINY_COMPILE
-#ifndef MESS
 	if (Machine->gamedrv->clone_of == &driver_neogeo ||
 			(Machine->gamedrv->clone_of &&
 				Machine->gamedrv->clone_of->clone_of == &driver_neogeo))
 		game_is_neogeo=1;
-#endif
 #endif
 #endif
 
@@ -1129,7 +1122,6 @@ static void showcharset(struct osd_bitmap *bitmap)
 			}
 #ifndef MESS
 #ifndef TINY_COMPILE
-#ifndef MESS
 			else	/* neogeo sprite tiles */
 			{
 				struct rectangle clip;
@@ -1167,7 +1159,6 @@ static void showcharset(struct osd_bitmap *bitmap)
 					lastdrawn = i+firstdrawn;
 				}
 			}
-#endif
 #endif
 #endif
 
@@ -2710,7 +2701,6 @@ static int displayhistory (struct osd_bitmap *bitmap, int selected)
 
 #ifndef MESS
 #ifndef TINY_COMPILE
-#ifndef MESS
 int memcard_menu(struct osd_bitmap *bitmap, int selection)
 {
 	int sel;
@@ -2831,7 +2821,6 @@ int memcard_menu(struct osd_bitmap *bitmap, int selection)
 }
 #endif
 #endif
-#endif
 
 
 #ifndef MESS
@@ -2905,14 +2894,12 @@ static void setup_menu_init(void)
 
 #ifndef MESS
 #ifndef TINY_COMPILE
-#ifndef MESS
 	if (Machine->gamedrv->clone_of == &driver_neogeo ||
 			(Machine->gamedrv->clone_of &&
 				Machine->gamedrv->clone_of->clone_of == &driver_neogeo))
 	{
 		menu_item[menu_total] = ui_getstring (UI_memorycard); menu_action[menu_total++] = UI_MEMCARD;
 	}
-#endif
 #endif
 #endif
 
@@ -2978,11 +2965,9 @@ static int setup_menu(struct osd_bitmap *bitmap, int selected)
 				break;
 #ifndef MESS
 #ifndef TINY_COMPILE
-#ifndef MESS
 			case UI_MEMCARD:
 				res = memcard_menu(bitmap, sel >> SEL_BITS);
 				break;
-#endif
 #endif
 #endif
 		}
@@ -3422,16 +3407,17 @@ static void displaymessage(struct osd_bitmap *bitmap,const char *text)
 	displaytext(bitmap,dt,0,0);
 }
 
+
 static char messagetext[80];
 static int messagecounter;
 
 void CLIB_DECL usrintf_showmessage(const char *text,...)
 {
-    va_list arg;
-    va_start(arg,text);
-    vsprintf(messagetext,text,arg);
-    va_end(arg);
-    messagecounter = 2 * Machine->drv->frames_per_second;
+	va_list arg;
+	va_start(arg,text);
+	vsprintf(messagetext,text,arg);
+	va_end(arg);
+	messagecounter = 2 * Machine->drv->frames_per_second;
 }
 
 void CLIB_DECL usrintf_showmessage_secs(int seconds, const char *text,...)
@@ -3442,6 +3428,7 @@ void CLIB_DECL usrintf_showmessage_secs(int seconds, const char *text,...)
 	va_end(arg);
 	messagecounter = seconds * Machine->drv->frames_per_second;
 }
+
 
 
 int handle_user_interface(struct osd_bitmap *bitmap)

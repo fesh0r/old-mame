@@ -15,6 +15,11 @@
 #include "includes/nes.h"
 #include "cpu/m6502/m6502.h"
 
+/* drivers/nes.c */
+READ_HANDLER ( nes_mirrorram_r );
+WRITE_HANDLER ( nes_mirrorram_w );
+READ_HANDLER ( nes_bogus_r );
+
 /* machine/nes.c */
 int nes_load_rom (int id);
 int nes_load_disk (int id);
@@ -500,8 +505,8 @@ static const struct IODevice io_nespal[] = {
 		IO_CARTSLOT,		/* type */
 		1,					/* count */
 		"nes\0",            /* file extensions */
-		NULL,               /* private */
-		nes_id_rom, 		/* id */
+		IO_RESET_CPU,		/* reset if file changed */
+        nes_id_rom,         /* id */
 		nes_load_rom,		/* init */
 		NULL,				/* exit */
 		NULL,				/* info */

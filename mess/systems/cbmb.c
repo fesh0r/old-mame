@@ -241,7 +241,7 @@ static struct MemoryReadAddress cbmb_readmem[] =
 	{0xfde00, 0xfdeff, tpi6525_0_port_r},
 	{0xfdf00, 0xfdfff, tpi6525_1_port_r},
 	{0xfe000, 0xfffff, MRA_ROM },
-	{-1}							   /* end of table */
+	MEMORY_TABLE_END
 };
 
 static struct MemoryWriteAddress cbmb_writemem[] =
@@ -310,7 +310,7 @@ static struct MemoryWriteAddress cbmb_writemem[] =
 	{0xfdf00, 0xfdfff, tpi6525_1_port_w},
 	{0xfe000, 0xfffff, MWA_ROM, &cbmb_kernal },
 	{0x100000, 0x101fff, MWA_ROM, &cbmb_chargen },
-	{-1}							   /* end of table */
+	MEMORY_TABLE_END
 };
 
 static struct MemoryReadAddress cbm500_readmem[] =
@@ -383,7 +383,7 @@ static struct MemoryReadAddress cbm500_readmem[] =
 	{0xfde00, 0xfdeff, tpi6525_0_port_r},
 	{0xfdf00, 0xfdfff, tpi6525_1_port_r},
 	{0xfe000, 0xfffff, MRA_ROM },
-	{-1}							   /* end of table */
+	MEMORY_TABLE_END
 };
 
 static struct MemoryWriteAddress cbm500_writemem[] =
@@ -453,7 +453,7 @@ static struct MemoryWriteAddress cbm500_writemem[] =
 	{0xfdf00, 0xfdfff, tpi6525_1_port_w},
 	{0xfe000, 0xfffff, MWA_ROM, &cbmb_kernal },
 	{0x100000, 0x100fff, MWA_ROM, &cbmb_chargen },
-	{-1}							   /* end of table */
+	MEMORY_TABLE_END
 };
 
 #define DIPS_HELPER(bit, name, keycode) \
@@ -1073,9 +1073,9 @@ static const struct IODevice io_cbm500[] =
 
 /*     YEAR		NAME	PARENT	MACHINE		INPUT		INIT		COMPANY								FULLNAME */
 COMPX (1983,	cbm500,	0,		cbm500,		cbm500,		cbm500,		"Commodore Business Machines Co.",	"Commodore B128-40/Pet-II/P500 60Hz",		GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-COMPX (1983,	cbm610,	0,	cbm600,		cbm600,		cbm600,		"Commodore Business Machines Co.",	"Commodore B128-80LP/610 60Hz",				GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+COMPX (1983,	cbm610, 0,		cbm600, 	cbm600, 	cbm600, 	"Commodore Business Machines Co.",  "Commodore B128-80LP/610 60Hz",             GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
 COMPX (1983,	cbm620,	cbm610,	cbm600pal,	cbm600pal,	cbm600pal,	"Commodore Business Machines Co.",	"Commodore B256-80LP/620 Hungarian 50Hz",	GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-COMPX (1983,	cbm710,	cbm610,		cbm700,		cbm700,		cbm700,		"Commodore Business Machines Co.",	"Commodore B128-80HP/710",					GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+COMPX (1983,	cbm710, cbm610, cbm700, 	cbm700, 	cbm700, 	"Commodore Business Machines Co.",  "Commodore B128-80HP/710",                  GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
 COMPX (1983,	cbm720,	cbm610,	cbm700,		cbm700,		cbm700,		"Commodore Business Machines Co.",	"Commodore B256-80HP/720",					GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
 #if 0
 COMPX (1983,	cbm730, cbm610, cbmbx, 		cbmb, 		cbmb, 		"Commodore Business Machines Co.",	"Commodore BX128-80HP/BX256-80HP/730", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)

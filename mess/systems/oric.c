@@ -2,25 +2,7 @@
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
-
-/* from machine/oric.c */
-
-void oric_init_machine (void);
-void oric_shutdown_machine (void);
-int oric_load_rom (int id);
-int oric_interrupt(void);
-READ_HANDLER ( oric_IO_r );
-WRITE_HANDLER ( oric_IO_w );
-
-/* from vidhrdw/oric.c */
-void oric_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
-int oric_vh_start(void);
-void oric_vh_stop(void);
-
-extern unsigned char *oric_IO;
-
-// int oric_ram_r (int offset);
-// void oric_ram_w (int offset, int data);
+#include "includes/oric.h"
 
 static struct MemoryReadAddress oric_readmem[] =
 {
@@ -169,7 +151,7 @@ static void oric_init_palette(unsigned char *sys_palette, unsigned short *sys_co
 }
 
 /* read PSG port A */
-READ_HANDLER ( oric_psg_porta_read )
+static READ_HANDLER ( oric_psg_porta_read )
 {
 	return 0;
 }
@@ -246,8 +228,8 @@ static const struct IODevice io_oric1[] = {
 		IO_CARTSLOT,		/* type */
 		1,					/* count */
 		"tap\0",            /* file extensions */
-        NULL,               /* private */
-		NULL,				/* id */
+		IO_RESET_NONE,		/* reset if file changed */
+        NULL,               /* id */
 		oric_load_rom,		/* init */
 		NULL,				/* exit */
         NULL,               /* info */
@@ -269,8 +251,8 @@ static const struct IODevice io_orica[] = {
 		IO_CARTSLOT,		/* type */
 		1,					/* count */
 		"tap\0",            /* file extensions */
-        NULL,               /* private */
-		NULL,				/* id */
+		IO_RESET_NONE,		/* reset if file changed */
+        NULL,               /* id */
 		oric_load_rom,		/* init */
 		NULL,				/* exit */
         NULL,               /* info */

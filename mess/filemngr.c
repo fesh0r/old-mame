@@ -13,9 +13,6 @@ static int enter_filename_mode;
 #define MAX_ENTER_FILENAME_LENGTH 256
 static char entered_filename[MAX_ENTER_FILENAME_LENGTH];
 
-extern void osd_change_directory(const char *);
-extern const char *osd_get_cwd(void);
-
 static void start_enter_string(char *string_buffer, int max_string_size, int filename_mode)
 {
 	enter_string = string_buffer;
@@ -101,7 +98,7 @@ static char valid_filename_char[256] =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 	/* c0-cf */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 	/* d0-df */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 	/* e0-ef */
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0	/* f0-ff */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0		/* f0-ff */
 };
 
 static char code_to_ascii(InputCode code)
@@ -211,43 +208,29 @@ enum {
 } FILESELECT_ENTRY_TYPE;
 
 
-
-
-/*
-char *fs_dupe(const char *src, int len)
-{
-        char *dst;
-
-        dst = malloc(len+1);
-	if (dst)
-		strcpy(dst, src);
-	return dst;
-}
-*/
-
 char *fs_dupe(const char *src, int len)
 {
 	char *dst;
- 	int display_length;
- 	int display_width;
+	int display_length;
+	int display_width;
 
- 	display_width = (Machine->uiwidth / Machine->uifontwidth);
- 	display_length = len;
+	display_width = (Machine->uiwidth / Machine->uifontwidth);
+	display_length = len;
 
-    if (display_length>display_width)
+	if (display_length>display_width)
 		display_length = display_width;
 
-    /* malloc space for string + NULL char + extra char.*/
-    dst = malloc(len+2);
-    if (dst)
-    {
-        strcpy(dst, src);
-        /* copy old char to end of string */
-        dst[len+1]=dst[display_length];
-        /* put in NULL to cut string. */
-        dst[len+1]='\0';
-    }
-    return dst;
+	/* malloc space for string + NULL char + extra char.*/
+	dst = malloc(len+2);
+	if (dst)
+	{
+		strcpy(dst, src);
+		/* copy old char to end of string */
+		dst[len+1]=dst[display_length];
+		/* put in NULL to cut string. */
+		dst[len+1]='\0';
+	}
+	return dst;
 
 }
 
@@ -283,7 +266,7 @@ int fs_alloc(void)
 	}
 	if (fs_chunk)
 	{
-		fs_chunk += 50;
+		fs_chunk += 256;
 		logerror("fs_alloc() next chunk (total %d)\n", fs_chunk);
 		fs_item = realloc(fs_item, fs_chunk * sizeof(char **));
 		fs_subitem = realloc(fs_subitem, fs_chunk * sizeof(char **));
@@ -293,7 +276,7 @@ int fs_alloc(void)
 	}
 	else
 	{
-		fs_chunk = 200;
+		fs_chunk = 512;
 		logerror("fs_alloc() first chunk %d\n", fs_chunk);
 		fs_item = malloc(fs_chunk * sizeof(char **));
 		fs_subitem = malloc(fs_chunk * sizeof(char **));
@@ -337,16 +320,16 @@ void fs_generate_filelist(void)
 	char *tmp_flags;
 	int *tmp_types;
 
-        /* should be moved inside mess.c ??? */
-        if (fs_init_done==0)
-        {
-			/* this will not work if roms is not a sub-dir of mess, and
-			will also not work if we are not in the mess dir */
-                /* go to initial roms directory */
-                osd_change_directory("roms");
-                osd_change_directory(Machine->gamedrv->name);
-                fs_init_done = 1;
-        }
+	/* should be moved inside mess.c ??? */
+	if (fs_init_done==0)
+	{
+		/* this will not work if roms is not a sub-dir of mess, and
+		   will also not work if we are not in the mess dir */
+		/* go to initial roms directory */
+		osd_change_directory("roms");
+		osd_change_directory(Machine->gamedrv->name);
+		fs_init_done = 1;
+	}
 
 	/* just to be safe */
 	fs_free();
@@ -365,14 +348,14 @@ void fs_generate_filelist(void)
 	fs_types[n] = FILESELECT_NONE;
 	fs_flags[n] = 0;
 
-        /* current directory */
+	/* current directory */
 	n = fs_alloc();
-        fs_item[n] = osd_get_cwd();
-        fs_subitem[n] = 0;
+	fs_item[n] = osd_get_cwd();
+	fs_subitem[n] = 0;
 	fs_types[n] = FILESELECT_NONE;
 	fs_flags[n] = 0;
 
-        /* blank line */
+	/* blank line */
 	n = fs_alloc();
 	fs_item[n] = "-";
 	fs_subitem[n] = 0;
@@ -414,7 +397,7 @@ void fs_generate_filelist(void)
 	}
 
 	/* directory entries */
-        dir = osd_dir_open(".", current_filespecification);
+	dir = osd_dir_open(".", current_filespecification);
 	if (dir)
 	{
 		int len, filetype;
@@ -481,15 +464,15 @@ void fs_generate_filelist(void)
 	free(tmp_types);
 }
 
-#define UI_SHIFT_PRESSED        (keyboard_pressed(KEYCODE_LSHIFT) || keyboard_pressed(KEYCODE_RSHIFT))
-#define UI_CONTROL_PRESSED      (keyboard_pressed(KEYCODE_LCONTROL) || keyboard_pressed(KEYCODE_RCONTROL))
+#define UI_SHIFT_PRESSED		(keyboard_pressed(KEYCODE_LSHIFT) || keyboard_pressed(KEYCODE_RSHIFT))
+#define UI_CONTROL_PRESSED		(keyboard_pressed(KEYCODE_LCONTROL) || keyboard_pressed(KEYCODE_RCONTROL))
 /* and mask to get bits */
-#define SEL_BITS_MASK           (~SEL_MASK)
+#define SEL_BITS_MASK			(~SEL_MASK)
 
 int fileselect(struct osd_bitmap *bitmap, int selected)
 {
 	int sel, total, arrowize;
-		int visible;
+	int visible;
 
 	sel = selected - 1;
 
@@ -504,7 +487,7 @@ int fileselect(struct osd_bitmap *bitmap, int selected)
 		/* make sure it is in range - might go out of range if
 		 * we were stepping up and down directories */
 		if ((sel & SEL_MASK) >= total)
-                        sel = (sel & SEL_BITS_MASK) | (total - 1);
+			sel = (sel & SEL_BITS_MASK) | (total - 1);
 
 		arrowize = 0;
 		if (sel < total)
@@ -512,18 +495,18 @@ int fileselect(struct osd_bitmap *bitmap, int selected)
 			switch (fs_types[sel])
 			{
 				/* arrow pointing inwards (arrowize = 1) */
-			case FILESELECT_QUIT:
-			case FILESELECT_FILE:
-				break;
+				case FILESELECT_QUIT:
+				case FILESELECT_FILE:
+					break;
 
-			case FILESELECT_FILESPEC:
-			case FILESELECT_DIRECTORY:
-			case FILESELECT_DEVICE:
-				/* arrow pointing to right -
-				 * indicating more available if
-				 * selected, or editable */
-				arrowize = 2;
-				break;
+				case FILESELECT_FILESPEC:
+				case FILESELECT_DIRECTORY:
+				case FILESELECT_DEVICE:
+					/* arrow pointing to right -
+					 * indicating more available if
+					 * selected, or editable */
+					arrowize = 2;
+					break;
 			}
 		}
 
@@ -561,12 +544,12 @@ int fileselect(struct osd_bitmap *bitmap, int selected)
 
 		ui_displaymenu(bitmap, fs_item, fs_subitem, fs_flags, sel, arrowize);
 
-				/* borrowed from usrintrf.c */
-				visible = Machine->uiheight / (3 * Machine->uifontheight /2) -1;
+		/* borrowed from usrintrf.c */
+		visible = Machine->uiheight / (3 * Machine->uifontheight /2) -1;
 
 		if (input_ui_pressed_repeat(IPT_UI_DOWN, 8))
 		{
-                        if (UI_CONTROL_PRESSED)
+			if (UI_CONTROL_PRESSED)
 			{
 				sel = total - 1;
 			}
@@ -615,23 +598,23 @@ int fileselect(struct osd_bitmap *bitmap, int selected)
 
 				case FILESELECT_FILE:
 					/* copy filename */
-                                        strncpy(entered_filename, fs_item[sel],MAX_ENTER_FILENAME_LENGTH-1);
-                                        entered_filename[MAX_ENTER_FILENAME_LENGTH-1]='\0';
+					strncpy(entered_filename, fs_item[sel],MAX_ENTER_FILENAME_LENGTH-1);
+					entered_filename[MAX_ENTER_FILENAME_LENGTH-1]='\0';
 
 					fs_free();
 					sel = -3;
 					break;
 
 				case FILESELECT_DIRECTORY:
-                                      /*  fs_chdir(fs_item[sel]); */
-                                        osd_change_directory(fs_item[sel]);
-                                        fs_free();
+					/*	fs_chdir(fs_item[sel]); */
+					osd_change_directory(fs_item[sel]);
+					fs_free();
 
-                                        need_to_clear_bitmap = 1;
+					need_to_clear_bitmap = 1;
 					break;
 
 				case FILESELECT_DEVICE:
-                                     /*   fs_chdir("/"); */
+					/*	 fs_chdir("/"); */
 					osd_change_device(fs_item[sel]);
 					fs_free();
 					need_to_clear_bitmap = 1;
@@ -717,15 +700,13 @@ int filemanager(struct osd_bitmap *bitmap, int selected)
 			previous_sel = previous_sel & SEL_MASK;
 
 			/* attempt a filename change */
-                        device_filename_change(types[previous_sel], ids[previous_sel], entered_filename);
-
-
+			device_filename_change(types[previous_sel], ids[previous_sel], entered_filename);
 		}
 
 		sel = previous_sel;
 
-                /* change menu item to show this filename */
-                menu_subitem[sel & SEL_MASK] = entered_filename;
+		/* change menu item to show this filename */
+		menu_subitem[sel & SEL_MASK] = entered_filename;
 
 	}
 
@@ -775,13 +756,29 @@ int filemanager(struct osd_bitmap *bitmap, int selected)
 	if (input_ui_pressed_repeat(IPT_UI_UP, 8))
 		sel = (sel + total - 1) % total;
 
-        if (input_ui_pressed(IPT_UI_SELECT))
+	if (input_ui_pressed(IPT_UI_SELECT))
 	{
+		int os_sel;
 
-                if (sel == total-1)
-                        sel = -1;
-                else
-		if (!UI_SHIFT_PRESSED)
+		/* Return to main menu? */
+		if (sel == total-1)
+		{
+			sel = -1;
+			os_sel = -1;
+		}
+		/* no, let the osd code have a crack at changing files */
+		else os_sel = osd_select_file (sel, entered_filename);
+
+		if (os_sel != 0)
+		{
+			if (os_sel == 1)
+			{
+				/* attempt a filename change */
+				device_filename_change(types[sel], ids[sel], entered_filename);
+			}
+		}
+		/* osd code won't handle it, lets use our clunky interface */
+		else if (!UI_SHIFT_PRESSED)
 		{
 			/* save selection and switch to fileselect() */
 			previous_sel = sel;
@@ -790,13 +787,12 @@ int filemanager(struct osd_bitmap *bitmap, int selected)
 		}
 		else
 		{
-
 			{
 				if (strcmp(menu_subitem[sel], "---") == 0)
 					entered_filename[0] = '\0';
 				else
 					strcpy(entered_filename, menu_subitem[sel]);
-                                start_enter_string(entered_filename, MAX_ENTER_FILENAME_LENGTH-1, 1);
+				start_enter_string(entered_filename, MAX_ENTER_FILENAME_LENGTH-1, 1);
 
 				sel |= 1 << SEL_BITS;	/* we'll ask for a key */
 

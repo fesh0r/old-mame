@@ -5,6 +5,10 @@
 
 #include "driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* must be defined until some driver init problems are solved */
 #define NEW_GAMEDRIVER
 
@@ -15,11 +19,13 @@
  * c128
  * c65*/
 
-#if 1
+#if 0
+#include "snprintf.h"
+#else
 /* quick (and unsafe as sprintf) snprintf */
 #define snprintf cbm_snprintf
-#endif
 int DECL_SPEC cbm_snprintf (char *str, size_t size, const char *format,...);
+#endif
 
 #define memset16 cbm_memset16
 void *cbm_memset16 (void *dest, int value, size_t size);
@@ -58,7 +64,9 @@ void *cbm_memset16 (void *dest, int value, size_t size);
 #define DBG_LOG(n,m,a)
 #endif
 
+#ifndef __cplusplus
 typedef int bool;
+#endif
 
 #ifndef true
 #define true 1
@@ -79,10 +87,10 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
 
 #define IODEVICE_CBM_PET1_QUICK \
 {\
-   IO_QUICKLOAD,          /* type */\
-   1,                                      /* count */\
-   "p00\0prg\0",            /*file extensions */\
-   NULL,               /* private */\
+   IO_QUICKLOAD,	   /* type */\
+   1,				   /* count */\
+   "p00\0prg\0",       /*file extensions */\
+   IO_RESET_CPU,	   /* reset if file changed */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
    cbm_quick_exit,     /* exit */\
@@ -102,7 +110,7 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
    IO_QUICKLOAD,          /* type */\
    1,                                      /* count */\
    "p00\0prg\0",            /*file extensions */\
-   NULL,               /* private */\
+   IO_RESET_CPU,	   /* reset if file changed */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
    cbm_quick_exit,     /* exit */\
@@ -122,7 +130,7 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
    IO_QUICKLOAD,          /* type */\
    1,                                      /* count */\
    "p00\0prg\0",            /*file extensions */\
-   NULL,               /* private */\
+   IO_RESET_CPU,	   /* reset if file changed */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
    cbm_quick_exit,     /* exit */\
@@ -142,7 +150,7 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
    IO_QUICKLOAD,          /* type */\
    1,                                      /* count */\
    "p00\0prg\0",            /*file extensions */\
-   NULL,               /* private */\
+   IO_RESET_CPU,	   /* reset if file changed */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
    cbm_quick_exit,     /* exit */\
@@ -162,7 +170,7 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
    IO_QUICKLOAD,          /* type */\
    1,                                      /* count */\
    "p00\0prg\0",            /*file extensions */\
-   NULL,               /* private */\
+   IO_RESET_CPU,	   /* reset if file changed */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
    cbm_quick_exit,     /* exit */\
@@ -182,7 +190,7 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
    IO_QUICKLOAD,          /* type */\
    1,                                      /* count */\
    "p00\0prg\0",            /*file extensions */\
-   NULL,               /* private */\
+   IO_RESET_CPU,	   /* reset if file changed */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
    cbm_quick_exit,     /* exit */\
@@ -217,7 +225,7 @@ extern CBM_ROM cbm_rom[0x20];
    IO_CARTSLOT,        /* type */\
    2,                  /* in reality 1 *//* count */\
    extensions,            /*file extensions */\
-   NULL,               /* private */\
+   IO_RESET_ALL,	   /* reset if file changed */\
    idfunc,             /* id */\
    cbm_rom_init,       /* init */\
    cbm_rom_exit,       /* exit */\
@@ -246,50 +254,8 @@ extern CBM_ROM cbm_rom[0x20];
  * 0x001a lsb 16bit address
  * 0x001c data */
 
-/* t64 file format
- * introduced in c64s?
- * 
- */
-
-/* d64 file format
- * vc1541 disk image
- * 256 byte sectors
- * track 1 sector 0,1,..20
- * 2
- * ..
- * 17
- * track 18 sector 0,..18
- * ..
- * 24
- * 25 sector 0,..17
- * ..
- * 30
- * 31 sector 0,..16
- * 35
- * larger d64 files contains sector chksums at the end for all
- * sectors (in the same ordering */
-
-/* crt file format
- * file format for little endian machine contains 
- * data in big endian format
- * 0 "C64 CARTRIDGE   " (string filled with spaces)
- * 0x0010 msb 32bit size of section
- * 1 0 0 0  0 1 0 0  0 0 0 0
- * name of cartridge
- * next sections:
- * 0 CHIP
- * 4 0 0 
- * 6 msb 16bit size of section
- * 8 0 0 0
- * b ?
- * 0x000c msb 16bit address of chip
- * 0x000e msb 16bit size of data in chip 
- * 0x0010 chipdata
- * 
- * supergam: chip section offset b: 0 1 2 3, 4x data at 0x8000 size 0x4000
- * robocop2: chip section offset b: 0 .. 0x1f
- * 16x data at 0x8000 size 0x2000
- * 16x data at 0xa000 size 0x2000
- */
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -126,8 +126,8 @@ struct MachineSound
 #if (HAS_WAVE)
 #include "sound/wave.h"
 #endif
-#if (HAS_SAA1099)
-#include "sound/saa1099.h"
+#if (HAS_BEEP)
+#include "sound/beep.h"
 #endif
 
 
@@ -149,10 +149,7 @@ enum
 #if (HAS_YM2203)
 	SOUND_YM2203,
 #endif
-#if (HAS_YM2151)
-	SOUND_YM2151,
-#endif
-#if (HAS_YM2151_ALT)
+#if (HAS_YM2151 || HAS_YM2151_ALT)
 	SOUND_YM2151,
 #endif
 #if (HAS_YM2608)
@@ -266,8 +263,8 @@ enum
 #if (HAS_WAVE)
 	SOUND_WAVE,
 #endif
-#if (HAS_SAA1099)
-	SOUND_SAA1099,
+#if (HAS_BEEP)
+	SOUND_BEEP,
 #endif
     SOUND_COUNT
 };

@@ -7,7 +7,6 @@
 #include "ticker.h"
 
 #ifdef MESS
-/* HJB: choosing a different name would make sense to avoid ../mess/ */
 #include "../mess/msdos.h"
 /* from msdos/config.c */
 extern char *crcdir;

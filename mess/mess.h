@@ -1,6 +1,16 @@
 #ifndef MESS_H
 #define MESS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if 0
+// artwork struct name causes problems (member causes constructor name clash)
+// this is here to allow mess avoid clash, until mame part changed
+#define artwork_ artwork
+#endif
+
 #ifndef TRUE
 #define TRUE 1
 #endif
@@ -66,7 +76,6 @@ typedef struct
 	int crc;
 	int length;
 	char * name;
-
 } image_details;
 
 /* possible values for osd_fopen() last argument
@@ -189,11 +198,17 @@ enum {
 	IO_COUNT
 };
 
+enum {
+	IO_RESET_NONE,		/* changing the device file doesn't reset anything */
+	IO_RESET_CPU,		/* only reset the CPU */
+	IO_RESET_ALL		/* restart the driver including audio/video */
+};
+
 struct IODevice {
 	int type;
 	int count;
 	const char *file_extensions;
-	void *_private;
+	int reset_depth;
 	int (*id)(int id);
 	int (*init)(int id);
 	void (*exit)(int id);
@@ -252,6 +267,12 @@ extern void device_output_chunk(int type, int id, void *src, int chunks);
 /* This is the dummy GameDriver with flag NOT_A_DRIVER set
    It allows us to use an empty PARENT field in the macros. */
 extern struct GameDriver driver_0;
+
+/* Flag is used to bail out in mame.c/run_game() and cpuintrf.c/run_cpu()
+ * but keep the program going. It will be set eg. if the filename for a
+ * device which has IO_RESET_ALL flag set is changed
+ */
+extern int mess_keep_going;
 
 /******************************************************************************
  * MESS' version of the GAME() and GAMEX() macros of MAME
@@ -330,5 +351,8 @@ struct GameDriver driver_##NAME =			\
 	ROT0|GAME_COMPUTER|(FLAGS)	 			\
 };
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

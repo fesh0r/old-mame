@@ -3,16 +3,6 @@
   memory.c
 
   Functions which handle the CPU memory and I/O port access.
-  
-  Caveats:
-  
-  * The install_mem/port_*_handler functions are only intended to be
-    called at driver init time. Do not call them after this time.
-  
-  * If your driver executes an opcode which crosses a bank-switched
-    boundary, it will pull the wrong data out of memory. Although not
-    a common case, you may need to revert to memcpy to work around this.
-    See machine/tnzs.c for an example.
 
   Caveats:
 
@@ -32,7 +22,7 @@
 
 #define VERBOSE 0
 
-#define MEM_DUMP
+/* #define MEM_DUMP */
 
 #ifdef MEM_DUMP
 static void mem_dump( void );
@@ -517,8 +507,8 @@ int memory_init(void)
 		{
 			while (_mra->start != -1)
 			{
-//				if (_mra->base) *_mra->base = memory_find_base (cpu, _mra->start);
-//				if (_mra->size) *_mra->size = _mra->end - _mra->start + 1;
+/*				if (_mra->base) *_mra->base = memory_find_base (cpu, _mra->start); */
+/*				if (_mra->size) *_mra->size = _mra->end - _mra->start + 1; */
 				_mra++;
 			}
 		}
@@ -1430,6 +1420,7 @@ void *install_mem_read_handler(int cpu, int start, int end, mem_read_handler han
 	MHELE hardware = 0;
 	int abitsmin;
 	int i, hw_set;
+#if VERBOSE
 	logerror("Install new memory read handler:\n");
 	logerror("             cpu: %d\n", cpu);
 	logerror("           start: 0x%08x\n", start);
@@ -1438,6 +1429,7 @@ void *install_mem_read_handler(int cpu, int start, int end, mem_read_handler han
 	logerror(" handler address: 0x%016lx\n", (unsigned long) handler);
 #else
 	logerror(" handler address: 0x%08x\n", (unsigned int) handler);
+#endif
 #endif
 	abitsmin = ABITSMIN (cpu);
 
@@ -1460,7 +1452,9 @@ void *install_mem_read_handler(int cpu, int start, int end, mem_read_handler han
 		if (( memoryreadhandler[i] == handler ) &&
 			(  memoryreadoffset[i] == start))
 		{
+#if VERBOSE
 			logerror("handler match - use old one\n");
+#endif
 			hardware = i;
 			hw_set = 1;
 		}
@@ -1522,9 +1516,11 @@ void *install_mem_read_handler(int cpu, int start, int end, mem_read_handler han
 		(((unsigned int) start) >> abitsmin) ,
 		(((unsigned int) end) >> abitsmin) ,
 		hardware , readhardware , &rdelement_max );
+#if VERBOSE
 	logerror("Done installing new memory handler.\n");
 	logerror("used read  elements %d/%d , functions %d/%d\n"
 			,rdelement_max,MH_ELEMAX , rdhard_max,MH_HARDMAX );
+#endif
 	return memory_find_base(cpu, start);
 }
 
@@ -1533,6 +1529,7 @@ void *install_mem_write_handler(int cpu, int start, int end, mem_write_handler h
 	MHELE hardware = 0;
 	int abitsmin;
 	int i, hw_set;
+#if VERBOSE
 	logerror("Install new memory write handler:\n");
 	logerror("             cpu: %d\n", cpu);
 	logerror("           start: 0x%08x\n", start);
@@ -1541,6 +1538,7 @@ void *install_mem_write_handler(int cpu, int start, int end, mem_write_handler h
 	logerror(" handler address: 0x%016lx\n", (unsigned long) handler);
 #else
 	logerror(" handler address: 0x%08x\n", (unsigned int) handler);
+#endif
 #endif
 	abitsmin = ABITSMIN (cpu);
 
@@ -1563,7 +1561,9 @@ void *install_mem_write_handler(int cpu, int start, int end, mem_write_handler h
 		if (( memorywritehandler[i] == handler ) &&
 			(  memorywriteoffset[i] == start))
 		{
+#if VERBOSE
 			logerror("handler match - use old one\n");
+#endif
 			hardware = i;
 			hw_set = 1;
 		}
@@ -1634,9 +1634,11 @@ void *install_mem_write_handler(int cpu, int start, int end, mem_write_handler h
 		(((unsigned int) start) >> abitsmin) ,
 		(((unsigned int) end) >> abitsmin) ,
 		hardware , writehardware , &wrelement_max );
+#if VERBOSE
 	logerror("Done installing new memory handler.\n");
 	logerror("used write elements %d/%d , functions %d/%d\n"
 			,wrelement_max,MH_ELEMAX , wrhard_max,MH_HARDMAX );
+#endif
 	return memory_find_base(cpu, start);
 }
 
@@ -1664,7 +1666,17 @@ static void *install_port_read_handler_common(int cpu, int start, int end,
 	}
 	else
 	{
+		struct IOReadPort *old_readport = readport[cpu];
+
 		readport[cpu] = realloc(readport[cpu], readport_size[cpu]);
+
+		/* check if we're changing the current readport and ifso update it */
+		if (cur_readport == old_readport)
+		   cur_readport = readport[cpu];
+
+		/* realloc leaves the old buffer intact if it fails, so free it */
+		if(!readport[cpu])
+		   free(old_readport);
 	}
 
 	if (readport[cpu] == 0)  return 0;
@@ -1709,7 +1721,17 @@ static void *install_port_write_handler_common(int cpu, int start, int end,
 	}
 	else
 	{
+		struct IOWritePort *old_writeport = writeport[cpu];
+
 		writeport[cpu] = realloc(writeport[cpu], writeport_size[cpu]);
+
+		/* check if we're changing the current writeport and ifso update it */
+		if (cur_writeport == old_writeport)
+		   cur_writeport = writeport[cpu];
+
+		/* realloc leaves the old buffer intact if it fails, so free it */
+		if(!writeport[cpu])
+		   free(old_writeport);
 	}
 
 	if (writeport[cpu] == 0)  return 0;

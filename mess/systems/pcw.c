@@ -93,14 +93,12 @@
   - emulation of other hardware...?
  ******************************************************************************/
 #include "driver.h"
-#include "cpuintrf.h"
 // nec765 interface
 #include "includes/nec765.h"
 #include "includes/dsk.h"
 // pcw video hardware
 #include "includes/pcw.h"
 // pcw/pcw16 beeper
-#include "includes/beep.h"
 
 // uncomment for debug log output
 //#define VERBOSE
@@ -676,14 +674,14 @@ WRITE_HANDLER(pcw_system_control_w)
 		/* beep on */
 		case 11:
 		{
-			beep_set_state(1);
+                        beep_set_state(0,1);
 		}
 		break;
 
 		/* beep off */
 		case 12:
 		{
-			beep_set_state(0);
+                        beep_set_state(0,0);
 		}
 		break;
 
@@ -891,8 +889,8 @@ void pcw_init_machine(void)
 
 	pcw_int_timer = timer_pulse(TIME_IN_HZ(300), 0, pcw_timer_interrupt);
 
-	beep_set_state(0);
-	beep_set_frequency(3750);
+        beep_set_state(0,0);
+        beep_set_frequency(0,3750);
 }
 
 void pcw_init_memory(int size)
@@ -1156,11 +1154,9 @@ INPUT_PORTS_START(pcw)
 
 INPUT_PORTS_END
 
-static struct CustomSound_interface pcw_custom_interface =
+static struct beep_interface pcw_beep_interface =
 {
-	beep_sh_start,
-	beep_sh_stop,
-	beep_sh_update
+        1
 };
 
 /* PCW8256, PCW8512, PCW9256 */
@@ -1206,8 +1202,8 @@ static struct MachineDriver machine_driver_pcw =
 	0,0,0,0,
 	{
 		{
-			SOUND_CUSTOM,
-			&pcw_custom_interface
+                        SOUND_BEEP,
+                        &pcw_beep_interface
 		}
 	},
 };
@@ -1255,8 +1251,8 @@ static struct MachineDriver machine_driver_pcw9512 =
 	0,0,0,0,
 	{
 		{
-			SOUND_CUSTOM,
-			&pcw_custom_interface
+                        SOUND_BEEP,
+                        &pcw_beep_interface
 		}
 	},
 };
@@ -1288,23 +1284,23 @@ ROM_PCW(pcw10)
 static const struct IODevice io_pcw[] =
 {
 	{
-		IO_FLOPPY,					/* type */
-		2,							/* count */
-		"dsk\0",                    /* file extensions */
-		NULL,						/* private */
-		dsk_floppy_id,			/* id */
-		dsk_floppy_load,		/* init */
-		dsk_floppy_exit,		/* exit */
-		NULL,						/* info */
-		NULL,						/* open */
-		NULL,						/* close */
-		NULL,						/* status */
-        NULL,                       /* seek */
-		NULL,						/* tell */
-        NULL,                       /* input */
-		NULL,						/* output */
-		NULL,						/* input_chunk */
-		NULL						/* output_chunk */
+		IO_FLOPPY,			/* type */
+		2,					/* count */
+		"dsk\0",            /* file extensions */
+		IO_RESET_NONE,		/* reset if file changed */
+		dsk_floppy_id,		/* id */
+		dsk_floppy_load,	/* init */
+		dsk_floppy_exit,	/* exit */
+		NULL,				/* info */
+		NULL,				/* open */
+		NULL,				/* close */
+		NULL,				/* status */
+		NULL,				/* seek */
+		NULL,				/* tell */
+		NULL,				/* input */
+		NULL,				/* output */
+		NULL,				/* input_chunk */
+		NULL				/* output_chunk */
 	},
 	{IO_END}
 };
@@ -1317,10 +1313,10 @@ static const struct IODevice io_pcw[] =
 
 /* these are all variants on the pcw design */
 /* major difference is memory configuration and drive type */
-/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT COMPANY   FULLNAME */
-COMP( 198?, pcw8256,   0,		pcw,		pcw,	pcw8256,	 "Amstrad plc", "PCW8256")
-COMP( 198?, pcw8512,   pcw8256,		pcw,		pcw,	pcw8512,	 "Amstrad plc", "PCW8512")
-COMP( 198?, pcw9256,   pcw8256,		pcw,		pcw,	pcw9256,	 "Amstrad plc", "PCW9256")
-COMP( 198?, pcw9512,   pcw8256,		pcw9512,	pcw,	pcw9512,	 "Amstrad plc", "PCW9512 (+)")
-COMP( 198?, pcw10,	   pcw8256,		pcw9512,	pcw,	pcw10,	 "Amstrad plc", "PCW10")
+/*	  YEAR	NAME	  PARENT	MACHINE   INPUT INIT	COMPANY 	   FULLNAME */
+COMP( 198?, pcw8256,   0,		pcw,	  pcw,	pcw8256,"Amstrad plc", "PCW8256")
+COMP( 198?, pcw8512,   pcw8256, pcw,	  pcw,	pcw8512,"Amstrad plc", "PCW8512")
+COMP( 198?, pcw9256,   pcw8256, pcw,	  pcw,	pcw9256,"Amstrad plc", "PCW9256")
+COMP( 198?, pcw9512,   pcw8256, pcw9512,  pcw,	pcw9512,"Amstrad plc", "PCW9512 (+)")
+COMP( 198?, pcw10,	   pcw8256, pcw9512,  pcw,	pcw10,	"Amstrad plc", "PCW10")
 

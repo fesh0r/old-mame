@@ -893,18 +893,23 @@ logerror("Machine reset\n");
   Use this function to initialize, and later maintain, the watchdog. For
   convenience, when the machine is reset, the watchdog is disabled. If you
   call this function, the watchdog is initialized, and from that point
-  onwards, if you don't call it at least once every 10 video frames, the
-  machine will be reset.
+  onwards, if you don't call it at least once every 2 seconds, the machine
+  will be reset.
+
+  The 2 seconds delay is targeted at dondokod, which during boot stays more
+  than 1 second without resetting the watchdog.
 
 ***************************************************************************/
 WRITE_HANDLER( watchdog_reset_w )
 {
-	watchdog_counter = Machine->drv->frames_per_second;
+	if (watchdog_counter == -1) logerror("watchdog armed\n");
+	watchdog_counter = 2*Machine->drv->frames_per_second;
 }
 
 READ_HANDLER( watchdog_reset_r )
 {
-	watchdog_counter = Machine->drv->frames_per_second;
+	if (watchdog_counter == -1) logerror("watchdog armed\n");
+	watchdog_counter = 2*Machine->drv->frames_per_second;
 	return 0;
 }
 

@@ -2561,8 +2561,8 @@ ROM_END
 ROM_START( atcga )
     ROM_REGION(0x1000000,REGION_CPU1)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, 0x8e9e2bd4)
-    ROM_LOAD_EVEN("rom01.bin", 0xf0000, 0x8000, 0x679296a7)
-    ROM_LOAD_ODD("rom02.bin", 0xf0000, 0x8000, 0x65ae1f97)
+    ROM_LOAD_EVEN("rom_01.bin", 0xf0000, 0x8000, 0x679296a7)
+    ROM_LOAD_ODD("rom_02.bin", 0xf0000, 0x8000, 0x65ae1f97)
 	ROM_REGION(0x01100,REGION_GFX1)
     ROM_LOAD("cga.chr",     0x00000, 0x01000, 0x42009069)
 ROM_END
@@ -2580,7 +2580,7 @@ static const struct IODevice io_pc[] = {
 		IO_FLOPPY,			/* type */
 		2,					/* count */
 		"dsk\0",            /* file extensions */
-        NULL,               /* private */
+		IO_RESET_NONE,		/* reset if file changed */
         NULL,               /* id */
 		pc_floppy_init, 	/* init */
 		pc_floppy_exit, 	/* exit */
@@ -2599,7 +2599,7 @@ static const struct IODevice io_pc[] = {
 		IO_HARDDISK,		/* type */
 		4,					/* count */
 		"img\0",            /* file extensions */
-        NULL,               /* private */
+		IO_RESET_ALL,		/* reset if file changed */
         NULL,               /* id */
 		pc_harddisk_init,	/* init */
 		pc_harddisk_exit,	/* exit */
