@@ -49,7 +49,6 @@ static void LoadOption(REG_OPTION *option,const char *value_str);
 static BOOL LoadGameVariableOrFolderFilter(char *key,const char *value);
 static void ParseKeyValueStrings(char *buffer,char **key,char **value);
 static void LoadOptionsAndSettings(void);
-static void LoadGameOptions(int driver_index);
 static BOOL LoadOptions(const char *filename,options_type *o,BOOL load_global_game_options);
 static void SaveSettings(void);
 
@@ -135,9 +134,6 @@ static game_variables_type *game_variables;  // Array of game specific extra dat
 static REG_OPTION regSettings[] =
 {
 	{"DefaultGame",        "default_game",       RO_STRING,  &settings.default_game,      0, 0},
-#ifdef MESS
-	{"DefaultSoftware",    "default_software",   RO_STRING, &settings.default_software, 0, 0},
-#endif
 	{"FolderID",           "default_folder_id",  RO_INT,     &settings.folder_id,        0, 0},
 	{"ShowScreenShot",     "show_image_section", RO_BOOL,    &settings.show_screenshot,  0, 0},
 	// this one should be encoded
@@ -256,6 +252,8 @@ static REG_OPTION regGameOpts[] =
 	{ "norotate",           "norotate",               RO_BOOL,    &gOpts.norotate,          0, 0},
 	{ "ror",                "ror",                    RO_BOOL,    &gOpts.ror,               0, 0},
 	{ "rol",                "rol",                    RO_BOOL,    &gOpts.rol,               0, 0},
+	{ "auto_ror",           "auto_ror",               RO_BOOL,    &gOpts.auto_ror,          0, 0},
+	{ "auto_rol",           "auto_rol",               RO_BOOL,    &gOpts.auto_rol,          0, 0},
 	{ "flipx",              "flipx",                  RO_BOOL,    &gOpts.flipx,             0, 0},
 	{ "flipy",              "flipy",                  RO_BOOL,    &gOpts.flipy,             0, 0},
 	{ "debug_resolution",   "debug_resolution",       RO_STRING,  &gOpts.debugres,          0, 0}, 
@@ -294,11 +292,21 @@ static REG_OPTION regGameOpts[] =
 #ifdef MESS
 	/* mess options */
 	,
-	{ "extra_software",	"extra_software",             RO_STRING,  &gOpts.extra_software_paths,	0, 0},
-	{ "printer",		"printer",                    RO_STRING,  &gOpts.printer,			0, 0},
-	{ "use_new_ui",		"newui",                      RO_BOOL,    &gOpts.use_new_ui,		0, 0},
-	{ "ram_size",		"ramsize",                    RO_INT,     &gOpts.ram_size,			0, 0}
-#endif
+	{ "use_new_ui",		"newui",                      RO_BOOL,    &gOpts.use_new_ui,		0, 0, FALSE},
+	{ "ram_size",		"ramsize",                    RO_INT,     &gOpts.ram_size,			0, 0, TRUE},
+	{ "cartridge",		"cartridge",                  RO_STRING,  &gOpts.software[IO_CARTSLOT],	0, 0, TRUE},
+	{ "floppydisk",		"floppydisk",                 RO_STRING,  &gOpts.software[IO_FLOPPY],	0, 0, TRUE},
+	{ "harddisk",		"harddisk",                   RO_STRING,  &gOpts.software[IO_HARDDISK],	0, 0, TRUE},
+	{ "cylinder",		"cylinder",                   RO_STRING,  &gOpts.software[IO_CYLINDER],	0, 0, TRUE},
+	{ "cassette",		"cassette",                   RO_STRING,  &gOpts.software[IO_CASSETTE],	0, 0, TRUE},
+	{ "punchcard",		"punchcard",                  RO_STRING,  &gOpts.software[IO_PUNCHCARD],	0, 0, TRUE},
+	{ "punchtape",		"punchtape",                  RO_STRING,  &gOpts.software[IO_PUNCHTAPE],	0, 0, TRUE},
+	{ "printer",		"printer",                    RO_STRING,  &gOpts.software[IO_PRINTER],	0, 0, TRUE},
+	{ "serial",			"serial",                     RO_STRING,  &gOpts.software[IO_SERIAL],	0, 0, TRUE},
+	{ "parallel",		"parallel",                   RO_STRING,  &gOpts.software[IO_PARALLEL],	0, 0, TRUE},
+	{ "snapshot",		"snapshot",                   RO_STRING,  &gOpts.software[IO_SNAPSHOT],	0, 0, TRUE},
+	{ "quickload",		"quickload",                  RO_STRING,  &gOpts.software[IO_QUICKLOAD],0, 0, TRUE}
+#endif /* MESS */
 };
 #define NUM_GAME_OPTIONS (sizeof(regGameOpts) / sizeof(regGameOpts[0]))
 
@@ -367,16 +375,13 @@ extern const char g_szDefaultGame[];
     External functions  
  ***************************************************************************/
 
-void OptionsInit()
+BOOL OptionsInit()
 {
 	int i;
 
 	num_games = GetNumGames();
 
 	settings.default_game    = strdup(g_szDefaultGame);
-#ifdef MESS
-	settings.default_software = NULL;
-#endif
 	settings.folder_id       = 0;
 	settings.view            = VIEW_GROUPED;
 	settings.show_folderlist = TRUE;
@@ -522,6 +527,8 @@ void OptionsInit()
 	global.norotate          = FALSE;
 	global.ror               = FALSE;
 	global.rol               = FALSE;
+	global.auto_ror          = FALSE;
+	global.auto_rol          = FALSE;
 	global.flipx             = FALSE;
 	global.flipy             = FALSE;
 	global.debugres          = strdup("auto");
@@ -557,18 +564,23 @@ void OptionsInit()
 	global.old_timing        = TRUE;
 	global.leds				 = FALSE;
 #ifdef MESS
-	global.extra_software_paths = strdup("");
-	global.printer = strdup("");
 	global.use_new_ui = TRUE;
+	for (i = 0; i < IO_COUNT; i++)
+		global.software[i] = strdup("");
 #endif
 
 	// game_options[x] is valid iff game_variables[i].options_loaded == true
 	game_options = (options_type *)malloc(num_games * sizeof(options_type));
 	game_variables = (game_variables_type *)malloc(num_games * sizeof(game_variables_type));
 
+	if (!game_options || !game_variables)
+		return FALSE;
+
+	memset(game_options, 0, num_games * sizeof(options_type));
+	memset(game_variables, 0, num_games * sizeof(game_variables_type));
+
 	for (i = 0; i < num_games; i++)
 	{
-		ZeroMemory(&game_options[i],sizeof(options_type));
 		game_variables[i].play_count = 0;
 		game_variables[i].has_roms = UNKNOWN;
 		game_variables[i].has_samples = UNKNOWN;
@@ -579,7 +591,9 @@ void OptionsInit()
 
 	size_folder_filters = 1;
 	num_folder_filters = 0;
-	folder_filters = (folder_filter_type *)malloc(size_folder_filters*sizeof(folder_filter_type));
+	folder_filters = (folder_filter_type *) malloc(size_folder_filters * sizeof(folder_filter_type));
+	if (!folder_filters)
+		return FALSE;
 
 	LoadOptionsAndSettings();
 
@@ -590,6 +604,7 @@ void OptionsInit()
 #ifdef MESS
 	set_pathlist(FILETYPE_CRC,strdup(settings.crcdir));
 #endif
+	return TRUE;
 
 }
 
@@ -1711,98 +1726,108 @@ static BOOL LoadGameVariableOrFolderFilter(char *key,const char *value)
 	const char *suffix;
 
 	suffix = "_play_count";
-	if (strlen(key) > strlen(suffix))
+	if (StringIsSuffixedBy(key, suffix))
 	{
-		if (strcmp(key + strlen(key) - strlen(suffix),suffix) == 0)
+		int driver_index;
+
+		key[strlen(key) - strlen(suffix)] = '\0';
+		driver_index = GetGameNameIndex(key);
+		if (driver_index < 0)
 		{
-			int driver_index;
-
-			key[strlen(key) - strlen(suffix)] = '\0';
-			driver_index = GetGameNameIndex(key);
-			if (driver_index < 0)
-			{
-				dprintf("error loading game variable for invalid game %s",key);
-				return TRUE;
-			}
-
-			strcpy(fake_option.ini_name,"drivername_play_count");
-			fake_option.m_iType = RO_INT;
-			fake_option.m_vpData = &game_variables[driver_index].play_count;
-			LoadOption(&fake_option,value);
+			dprintf("error loading game variable for invalid game %s",key);
 			return TRUE;
 		}
+
+		strcpy(fake_option.ini_name,"drivername_play_count");
+		fake_option.m_iType = RO_INT;
+		fake_option.m_vpData = &game_variables[driver_index].play_count;
+		LoadOption(&fake_option,value);
+		return TRUE;
 	}
 
 	suffix = "_have_roms";
-	if (strlen(key) > strlen(suffix))
+	if (StringIsSuffixedBy(key, suffix))
 	{
-		if (strcmp(key + strlen(key) - strlen(suffix),suffix) == 0)
+		int driver_index;
+
+		key[strlen(key) - strlen(suffix)] = '\0';
+		driver_index = GetGameNameIndex(key);
+		if (driver_index < 0)
 		{
-			int driver_index;
-
-			key[strlen(key) - strlen(suffix)] = '\0';
-			driver_index = GetGameNameIndex(key);
-			if (driver_index < 0)
-			{
-				dprintf("error loading game variable for invalid game %s",key);
-				return TRUE;
-			}
-
-			strcpy(fake_option.ini_name,"drivername_have_roms");
-			fake_option.m_iType = RO_BOOL;
-			fake_option.m_vpData = &game_variables[driver_index].has_roms;
-			LoadOption(&fake_option,value);
+			dprintf("error loading game variable for invalid game %s",key);
 			return TRUE;
 		}
+
+		strcpy(fake_option.ini_name,"drivername_have_roms");
+		fake_option.m_iType = RO_BOOL;
+		fake_option.m_vpData = &game_variables[driver_index].has_roms;
+		LoadOption(&fake_option,value);
+		return TRUE;
 	}
 
 	suffix = "_have_samples";
-	if (strlen(key) > strlen(suffix))
+	if (StringIsSuffixedBy(key, suffix))
 	{
-		if (strcmp(key + strlen(key) - strlen(suffix),suffix) == 0)
+		int driver_index;
+
+		key[strlen(key) - strlen(suffix)] = '\0';
+		driver_index = GetGameNameIndex(key);
+		if (driver_index < 0)
 		{
-			int driver_index;
-
-			key[strlen(key) - strlen(suffix)] = '\0';
-			driver_index = GetGameNameIndex(key);
-			if (driver_index < 0)
-			{
-				dprintf("error loading game variable for invalid game %s",key);
-				return TRUE;
-			}
-
-			strcpy(fake_option.ini_name,"drivername_have_samples");
-			fake_option.m_iType = RO_BOOL;
-			fake_option.m_vpData = &game_variables[driver_index].has_samples;
-			LoadOption(&fake_option,value);
+			dprintf("error loading game variable for invalid game %s",key);
 			return TRUE;
 		}
+
+		strcpy(fake_option.ini_name,"drivername_have_samples");
+		fake_option.m_iType = RO_BOOL;
+		fake_option.m_vpData = &game_variables[driver_index].has_samples;
+		LoadOption(&fake_option,value);
+		return TRUE;
 	}
 
 	suffix = "_filters";
-	if (strlen(key) > strlen(suffix))
+	if (StringIsSuffixedBy(key, suffix))
 	{
-		if (strcmp(key + strlen(key) - strlen(suffix),suffix) == 0)
+		int folder_index;
+		int filters;
+
+		key[strlen(key) - strlen(suffix)] = '\0';
+		if (sscanf(key,"%i",&folder_index) != 1)
 		{
-			int folder_index;
-			int filters;
-
-			key[strlen(key) - strlen(suffix)] = '\0';
-			if (sscanf(key,"%i",&folder_index) != 1)
-			{
-				dprintf("error loading game variable for invalid game %s",key);
-				return TRUE;
-			}
-			if (folder_index < 0)
-				return TRUE;
-
-			if (sscanf(value,"%i",&filters) != 1)
-				return TRUE;
-
-			LoadFolderFilter(folder_index,filters);
+			dprintf("error loading game variable for invalid game %s",key);
 			return TRUE;
 		}
+		if (folder_index < 0)
+			return TRUE;
+
+		if (sscanf(value,"%i",&filters) != 1)
+			return TRUE;
+
+		LoadFolderFilter(folder_index,filters);
+		return TRUE;
 	}
+
+#ifdef MESS
+	suffix = "_extra_software";
+	if (StringIsSuffixedBy(key, suffix))
+	{
+		int driver_index;
+
+		key[strlen(key) - strlen(suffix)] = '\0';
+		driver_index = GetGameNameIndex(key);
+		if (driver_index < 0)
+		{
+			dprintf("error loading game variable for invalid game %s",key);
+			return TRUE;
+		}
+
+		strcpy(fake_option.ini_name,"drivername_extra_software");
+		fake_option.m_iType = RO_STRING;
+		fake_option.m_vpData = &game_variables[driver_index].extra_software_paths;
+		LoadOption(&fake_option, value);
+		return TRUE;
+	}
+#endif
 
 	return FALSE;
 }
@@ -2009,7 +2034,7 @@ static void LoadOptionsAndSettings(void)
 
 }
 
-static void LoadGameOptions(int driver_index)
+void LoadGameOptions(int driver_index)
 {
     char    keyString[80];
 	HKEY    hKey;
@@ -2237,15 +2262,21 @@ void SaveDefaultOptions(void)
 			fprintf(fptr,"### global-only options ###\n\n");
 		
 			for (i=0;i<NUM_GLOBAL_GAME_OPTIONS;i++)
-				WriteOptionToFile(fptr,&global_game_options[i]);
+			{
+				if (!global_game_options[i].m_bOnlyOnGame)
+					WriteOptionToFile(fptr,&global_game_options[i]);
+			}
 		}
 
 		if (save_default_options)
 		{
 			fprintf(fptr,"\n### default game options ###\n\n");
 			gOpts = global;
-			for (i=0;i<NUM_GAME_OPTIONS;i++)
-				WriteOptionToFile(fptr,&regGameOpts[i]);
+			for (i = 0; i < NUM_GAME_OPTIONS; i++)
+			{
+				if (!regGameOpts[i].m_bOnlyOnGame)
+					WriteOptionToFile(fptr, &regGameOpts[i]);
+			}
 		}
 
 		fclose(fptr);
@@ -2254,7 +2285,7 @@ void SaveDefaultOptions(void)
 
 static void WriteStringOptionToFile(FILE *fptr,const char *key,const char *value)
 {
-	if (strchr(value,' ') == NULL)
+	if (value[0] && !strchr(value,' '))
 		fprintf(fptr,"%s %s\n",key,value);
 	else
 		fprintf(fptr,"%s \"%s\"\n",key,value);
@@ -2410,7 +2441,7 @@ static void SaveSettings(void)
 		{
 			for (i=0;i<NUM_SETTINGS;i++)
 			{
-				if (regSettings[i].ini_name[0] != '\0')
+				if ((regSettings[i].ini_name[0] != '\0') && !regSettings[i].m_bOnlyOnGame)
 					WriteOptionToFile(fptr,&regSettings[i]);
 			}
 		}
@@ -2452,6 +2483,13 @@ static void SaveSettings(void)
 				fprintf(fptr,"%s_have_samples %i\n",
 						drivers[driver_index]->name,game_variables[driver_index].has_samples);
 			}
+#ifdef MESS
+			if (game_variables[driver_index].extra_software_paths && game_variables[driver_index].extra_software_paths[0])
+			{
+				fprintf(fptr,"%s_extra_software %s\n",
+						drivers[driver_index]->name,game_variables[driver_index].extra_software_paths);
+			}
+#endif
 		}
 		fclose(fptr);
 	}
@@ -2463,11 +2501,14 @@ static void LoadRegGameOptions(HKEY hKey, options_type *o, int driver_index)
 	DWORD	value;
 	DWORD	size;
 
+	assert(driver_index < num_games);
+
 	/* look for window.  If it's not there, then use default options for this game */
 	if (RegQueryValueEx(hKey, "window", 0, &value, NULL, &size) != ERROR_SUCCESS)
 	   return;
 
-	game_variables[driver_index].use_default = FALSE;
+	if (driver_index >= 0)
+		game_variables[driver_index].use_default = FALSE;
 
 	/* copy passed in options to our struct */
 	gOpts = *o;

@@ -21,7 +21,7 @@
 #include "ui/resourcems.h"
 #include "ui/ms32util.h"
 #include "ui/directories.h"
-#include "ui/options.h"
+#include "ui/optionsms.h"
 #include "ui/splitters.h"
 #include "ui/help.h"
 #include "ui/properties.h"
@@ -123,7 +123,7 @@ const PROPERTYSHEETINFO g_propSheets[] =
 	{ TRUE,		NULL,					IDD_PROP_SOUND,			GameOptionsProc },
 	{ TRUE,		NULL,					IDD_PROP_INPUT,			GameOptionsProc },
 	{ TRUE,		NULL,					IDD_PROP_MISC,			GameOptionsProc },
-	{ TRUE,		NULL,					IDD_PROP_SOFTWARE,		GameMessOptionsProc },
+	{ FALSE,	NULL,					IDD_PROP_SOFTWARE,		GameMessOptionsProc },
 	{ FALSE,	PropSheetFilter_Config,	IDD_PROP_CONFIGURATION,	GameMessOptionsProc },
 	{ TRUE,		PropSheetFilter_Vector,	IDD_PROP_VECTOR,		GameOptionsProc },
 	{ FALSE }

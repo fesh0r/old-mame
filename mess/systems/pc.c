@@ -109,8 +109,8 @@ static PORT_READ_START( pc_readport )
 	{ 0x0060, 0x0063, ppi8255_0_r },
 	{ 0x0080, 0x0087, pc_page_r },
 	{ 0x0200, 0x0207, pc_JOY_r },
-	{ 0x240, 0x257, pc_rtc_r },
-//	{ 0x240, 0x257, return_0xff }, // anonymous bios should not recogniced realtimeclock
+	{ 0x0240, 0x257, pc_rtc_r },
+//	{ 0x0240, 0x257, return_0xff }, // anonymous bios should not recognized realtimeclock
 #ifdef EXP_ON
 	{ 0x0210, 0x0217, pc_EXP_r },
 #endif
@@ -417,7 +417,7 @@ INPUT_PORTS_START( pcmda )
 	PORT_BIT ( 0x80, 0x80,	 IPT_VBLANK )
 	PORT_BIT ( 0x7f, 0x7f,	 IPT_UNUSED )
 
-    PORT_START /* IN1 */
+	PORT_START /* IN1 */
 	PORT_BITX( 0xc0, 0x40, IPT_DIPSWITCH_NAME | IPF_TOGGLE, "Number of floppy drives", CODE_NONE, CODE_NONE )
 	PORT_DIPSETTING(	0x00, "1" )
 	PORT_DIPSETTING(	0x40, "2" )
@@ -1657,7 +1657,7 @@ ROM_START( pc200 )
     ROM_LOAD16_BYTE("pc20v2.1", 0xfc000, 0x2000, 0x71b84616) // v2
 	// also mapped to f0000, f4000, f8000
 	ROM_REGION(0x02100,REGION_GFX1, 0)
-    ROM_LOAD("aga.chr",     0x00000, 0x02000, 0xaca81498) //taken from aga
+    ROM_LOAD("40109.bin",     0x00000, 0x02000, 0xecf9ebe8)
 ROM_END
 
 ROM_START( pc20 )
@@ -1669,7 +1669,7 @@ ROM_START( pc20 )
     ROM_LOAD16_BYTE("pc20v2.1", 0xfc000, 0x2000, 0x71b84616) // v2
 	// also mapped to f0000, f4000, f8000
 	ROM_REGION(0x02100,REGION_GFX1, 0)
-    ROM_LOAD("aga.chr",     0x00000, 0x02000, 0xaca81498) //taken from aga
+    ROM_LOAD("40109.bin",     0x00000, 0x02000, 0xecf9ebe8)
 ROM_END
 
 ROM_START( pc1512 )
@@ -1679,7 +1679,7 @@ ROM_START( pc1512 )
     ROM_LOAD16_BYTE("40044.v1", 0xfc001, 0x2000, 0x668fcc94) // v1
     ROM_LOAD16_BYTE("40043.v1", 0xfc000, 0x2000, 0xf72f1582) // v1
 	ROM_REGION(0x01100,REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, 0x42009069) // taken from cga
+    ROM_LOAD("40045.bin",     0x00000, 0x01000, 0xdd5e030f)
 ROM_END
 
 ROM_START( pc1640 )
@@ -1689,6 +1689,8 @@ ROM_START( pc1640 )
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, 0x8e9e2bd4)
     ROM_LOAD16_BYTE("40043.v3", 0xfc001, 0x2000, 0xe40a1513) // v3
     ROM_LOAD16_BYTE("40044.v3", 0xfc000, 0x2000, 0xf1c074f3)
+	ROM_REGION(0x01100,REGION_GFX1, 0)
+    ROM_LOAD("40045.bin",     0x00000, 0x01000, 0xdd5e030f)
 ROM_END
 
 SYSTEM_CONFIG_START(ibmpc)

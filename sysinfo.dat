@@ -904,49 +904,72 @@ in bargain bins in toy stores for many years following.
 
 $end
 
+
 #---------------------------------------------------------------------------------------------#
 
 $info=arcadia
 $bio
-Emerson Arcadia 2001
+Emerson Arcadia 2001 (1982)
 
 
-Console
+8-bit Console system
+
+
+Sold from several firms with different names:
 
 Hanimex mpt-03 (first variant?) with large cartridge slot
+
 Palladium Video - Computer - Game with different cartridge slot, Controllers
 
 Emerson Arcadia 2001
-Schmid TVG2000 / Tele Fever
+
+Schmid TVG2000 / Tele Fever (Germany)
+
 Hanimex hmg 2650
-? leisure vision
 
-sold from several firms with different names
+LeisureVision (Canada)
 
-Features
---------
+Leonardo (Italy)
+
+Advision Home Arcade (France)
+
+
+Features:
+
 128x208 in 8 colors
+
 4 8x8 single color sprites
+
 single channel sound
+
 2 controller with analog joystick and keypad
 
-controller layout
------------------
+
+Controller Layout:
+
   1   2   3
+
   4   5   6
+
   7   8   9
+
  Del  0 Enter
 
-Emulator
---------
+
+Links:
+
+
 r2001 for DOS by Paul Robson at http://users.aol.com/mk14emu/arcadia.htm
 
 
-Known issues:
+MESS Emulation State:
 
-* Based on info by Paul Robson, Ward Shrake
-* Look into crc/arcadia.crc for some issues
-* Bad analog joystick emulation
+Based on info by Paul Robson, Ward Shrake
+
+Look into crc/arcadia.crc for some issues
+
+Bad analog joystick emulation
+
 
 $end
 
@@ -1082,7 +1105,7 @@ $end
 
 $info=c128
 $bio
-commodore c128
+Commodore c128
 
 
 Sequel of to the c64.
@@ -2943,27 +2966,40 @@ Awakening and Tetris proved that quality games could be developed for portable u
 Nintendo later released the “Play it Loud” Game Boy series in 5 colors, and the redesigned 
 slimmed down Game Boy pocket version was released in 1996.
 
+
 Features:
 
 CPU: 8-bit (Similar to the Z80 processor) at 4.194304MHz
+
 Main RAM: 8k Byte internal
+
 Video RAM: 8k Byte internal
 
 Video Display: Reflective LCD 160 x 144 dots (20 x 18 Tiles)
+
 Video Colors: 4 shades of gray
+
 Screen Size: 2.6"
+
 Max # of sprites: 40
+
 Max # sprites/line: 10
+
 Max sprite size: 8x16
+
 Min sprite size: 8x8
+
 Sound: 4 channels each of which can be mapped either to the left or to the right or to
 both speakers
 
 Communications: Serial port. Up to 4 Game boys can be connected together using this port.
+
 Baud rate and protocol: (?)
 
 Power: 6 VDC, 0.7 Watts (3 VDC 0.7W for Game Boy Pocket)
+
 4 AA Batteries ~ 35 hours 
+
 Rechargeable battery (NAKI) ~ 12 hours
 
 
@@ -3010,7 +3046,48 @@ EIdolons inn - www.eidolons-inn.de
 
 MESS Emulation State:
 
-(?)
+???
+
+$end
+
+#---------------------------------------------------------------------------------------------#
+
+$info=gbcolor
+$bio
+Nintendo Gameboy Color (1998)
+
+
+This is an update to the original Gameboy system that adds color capabilities as well as backwards
+compatibility.
+
+
+Features:
+
+Processor:  8 MHz Z80 work alike by Sharp with two processor modes: Single (4MHz) and double (8MHz)
+
+Video: 10, 32, or 56 on screen colors from a palette of 32000, Screen made by Sharp
+
+Sound: 4 Channel FM stereo
+
+Controls:  8 directional D-Pad, A, B, select, and start buttons. 
+ 
+Resolution: 160x144x56 colors
+
+Sprites: 40 - 8x16, 8x8 (four color sprites-4 colors- 1 being a transparent)
+
+Tiles:  512 on screen making use of the 16K of VRAM
+
+Cart Size: 256KBit - 16MBit for GB compatible games. Up to 64 MBit ROM & 128 KBytes RAM for CGB 
+cartridges, although 32Mbit ROM / 64K RAM carts are the largest currently manufactured.
+
+Serial port speed: 512 Kbps
+
+Power:  ~13 hours on 2 AA batteries or AC adapter.
+
+
+MESS Emulation State:
+
+???
 
 $end
 
@@ -3481,7 +3558,7 @@ The base unit can connect to a TV through a aerial or scart lead.
 Not many of these systems were produced and they are rare.
 
 The Amstrad CPC had a gate array chip which contained the logic for the
-palette, mode display, rom paging,ram paging and interrupt
+palette, mode display, rom paging, ram paging and interrupt
 system. This is emulated in the KC Compact using a lot of TTL logic chips
 and a Zilog 8536 chip.
 
@@ -3914,7 +3991,9 @@ $info=mbee
 $bio
 Applied Technologies Microbee
 
+
 Features:
+
 
 MESS Emulation State:
 
@@ -3925,6 +4004,7 @@ $end
 $info=mc10
 $bio
 Tandy Radio Shack MC-10 (1983)
+
 
 Features:
 
@@ -4960,9 +5040,10 @@ $bio
 Magnavox(?) Odyssey2
 
 
-Console for tv connection
+Console for TV connection
 
 Philips G7000 videopac
+
 
 Features:
 
@@ -4977,7 +5058,7 @@ Dan Boris o2em for DOS
 
 MESS Emulation State:
 
-based on info by Dan Boris
+Based on info by Dan Boris.
 
 
 $end
@@ -5618,10 +5699,11 @@ $end
 
 $info=pcd85
 $bio
-PMD-85
+Tesla PMD-85 (1985)
 
 
-homecomputer for tv connection in czechoslovakia?
+homecomputer for TV connection in Czechoslovakia.
+
 
 Features:
 
@@ -5629,7 +5711,7 @@ Features:
 288x256 dots resolution
 (version 1 and 2 mono)
 (version 3 with 4 colors)
-integrated beeper or beep generation for tv
+integrated beeper or beep generation for TV
 centronics port?
 something like user port?
 
@@ -5643,8 +5725,12 @@ $bio
 NEC PC Engine/TurboGrafx-16 (1987)
 
 
-
-The PC Engine (called TurboGrafx - 16 in the US)  was the first 16-Bit graphics home entertainment system to be released. The PC Engine was created by NEC of Japan. Supporting over 1000 software titles with such popular titles as Bonk's Adventure, Bomberman, Dracula X and Ys IV . The PC Engine was embraced by millions of Japanese gamers, and because of this, the system will be remembered as the starting of a legacy. This system was the first of it's kind to use credit card size game cartridges and later supported CD-ROMs and portable models with built in TV tuners.
+The PC Engine (called TurboGrafx - 16 in the US)  was the first 16-Bit graphics home entertainment 
+system to be released. The PC Engine was created by NEC of Japan. Supporting over 1000 software 
+titles with such popular titles as Bonk's Adventure, Bomberman, Dracula X and Ys IV . The PC Engine
+was embraced by millions of Japanese gamers, and because of this, the system will be remembered as
+the starting of a legacy. This system was the first of it's kind to use credit card size game cartridges
+and later supported CD-ROMs and portable models with built in TV tuners.
 
 
 Features:
@@ -6702,8 +6788,7 @@ The floppy disc interface:
 - 16k ROM
 - RAM
 - NEC765 compatible disc controller
-- internally the disc interface uses interrupts to transfer data into it's own
-ram.
+- internally the disc interface uses interrupts to transfer data into it's own ram.
 
 The floppy disc drives are 3" and are believed to use 40 track, double density, double sided discs,
 giving 360K per disc.
@@ -6846,6 +6931,40 @@ $end
 
 #---------------------------------------------------------------------------------------------#
 
+$info=supergb
+$bio
+Nintendo Super Game Boy (1994)
+
+
+The Super Game Boy is an adapter for the SNES that let you play Game Boy games on your TV. It 
+also had some extended features like backgrounds around the game and primitive color, although
+not all games take advantage of this. It possible for Super Game Boy games to make use of the 
+SNES sound hardware for extra effects. Try compairing Astroids/Missle Commmand, Space invadors
+or Donkey Kong to see some excellent use of the of enhancments. In 1994 the Super Game Boy sold
+for under $60.
+
+There was a Super Game Boy 2 released in 199?. It has the same features of the original Super 
+Game Boy but adds a green game link LED, red power LED and a Game link port.
+
+
+Features:
+
+Supports 256 colors in static screens (i.e the title screen) and 12 colors in the normal game.
+
+
+Links:
+
+http://www.gamersgraveyard.com/repository/snes/peripherals/sgbfaq.txt
+
+
+MESS Emulation State:
+
+???
+
+$end
+
+#---------------------------------------------------------------------------------------------#
+
 $info=svi318
 $bio
 Spectravideo SVI-318 (1983)
@@ -6890,7 +7009,7 @@ Connector for external power supply
 
 Optional features:
 
-tv adapter
+TV adapter
 
 
 Notes:
@@ -6904,7 +7023,7 @@ MESS Emulation State:
 very preliminary support
 preliminary sound support
 no serial port
-no tv adapter support
+no TV adapter support
 work stopped until more cartridges are available
 
 
@@ -7000,7 +7119,7 @@ This system is a update to the Atmos.
 
 Known Issues:
 
-- disc emulation is not correct so it fails to boot! 
+Disc emulation is not correct so it fails to boot! 
 
 
 $end
@@ -7095,10 +7214,10 @@ Notes:
 
 To do:
 
-- port 3 and 4
-- nvram
-- better artworks
-- drivers for other rom versions
+port 3 and 4
+nvram
+better artworks
+drivers for other rom versions
 
 Needed:
 
@@ -7178,9 +7297,9 @@ Notes:
 
 To do:
 
-- port 3 and 4
-- better artworks
-- drivers for rom versions: 1.0, 2.0, 7.0
+port 3 and 4
+better artworks
+drivers for rom versions: 1.0, 2.0, 7.0
 
 
 Needed:
@@ -7261,10 +7380,10 @@ Notes:
 
 To do:
 
-- many corrections of existing code
-- port 3 and 4
-- better artworks
-- driver for rom version 1.2
+many corrections of existing code
+port 3 and 4
+better artworks
+driver for rom version 1.2
 
 
 Needed:
@@ -7637,6 +7756,7 @@ Features:
 
 MESS Emulation State:
 
+
 $end
 
 #---------------------------------------------------------------------------------------------#
@@ -7646,7 +7766,7 @@ $bio
 Interton VC4000
 
 
-Console for tv connection (PAL only?)
+Console for TV connection (PAL only?)
 
 seams to be prequel of the arcadia 2001
 technical something between channel f and odyssey2
@@ -7659,6 +7779,7 @@ radofin 1201?
 fountain 1392?
 hanimex?
 
+
 Features:
 
 grid 
@@ -7668,6 +7789,7 @@ special << load/reset button (must be pressed after power up)
 special > select button
 special start button
 2 controller with analog joystick and 14 key keypad
+
 
 controller keypad:
 
@@ -7946,16 +8068,16 @@ $end
 
 $info=vip
 $bio
-RCA Cosmac VIP
+RCA Cosmac VIP (1977)
 
 
-very early computer for tv connection
+very early home computer for TV connection
 
 
 Features:
 
 tape interface
-tv output
+TV output
 integrated speaker
 
 
@@ -7983,7 +8105,10 @@ $end
 
 $info=zx80
 $bio
-Sinclair ZX 80
+Sinclair ZX 80 (1980)
+
+
+A home computer built in the United Kingdom.
 
 
 History and Trivia:
@@ -7998,7 +8123,10 @@ $end
 
 $info=zx81
 $bio
-Sinclair ZX 81 / Timex Sinclair 1000
+Sinclair ZX 81 / Timex Sinclair 1000 (1981)
+
+
+A home computer built in the United Kingdom.
 
 
 History and Trivia:

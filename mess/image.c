@@ -138,6 +138,8 @@ int image_load(int type, int id, const char *name)
 	img->name = newname;
 	img->dir = NULL;
 
+	osd_image_load_status_changed(type, id, 0);
+
 	if (!dev->load)
 		goto error;
 
@@ -183,7 +185,6 @@ int image_load(int type, int id, const char *name)
 
 	img->status &= ~IMAGE_STATUS_ISLOADING;
 	img->status |= IMAGE_STATUS_ISLOADED;
-	osd_image_load_status_changed(type, id);
 	return INIT_PASS;
 
 error:
@@ -197,10 +198,13 @@ error:
 		img->name = NULL;
 		img->status &= ~IMAGE_STATUS_ISLOADING|IMAGE_STATUS_ISLOADED;
 	}
+
+	osd_image_load_status_changed(type, id, 0);
+
 	return INIT_FAIL;
 }
 
-void image_unload(int type, int id)
+static void image_unload_internal(int type, int id, int is_final_unload)
 {
 	const struct IODevice *dev;
 	struct image_info *img;
@@ -218,17 +222,38 @@ void image_unload(int type, int id)
 	image_free_resources(img);
 	memset(img, 0, sizeof(*img));
 
-	osd_image_load_status_changed(type, id);
+	osd_image_load_status_changed(type, id, is_final_unload);
 }
 
-void image_unload_all(void)
-{
-	int type, id;
 
-	for (type = 0; type < IO_COUNT; type++)
+void image_unload(int type, int id)
+{
+	image_unload_internal(type, id, FALSE);
+}
+
+void image_unload_all(int ispreload)
+{
+	int id;
+	const struct IODevice *dev;
+
+	if (!ispreload)
+		osd_begin_final_unloading();
+
+	/* normalize ispreload */
+	ispreload = ispreload ? DEVICE_LOAD_AT_INIT : 0;
+
+	/* unload all devices with matching preload */
+	for(dev = device_first(Machine->gamedrv); dev; dev = device_next(Machine->gamedrv, dev))
 	{
-		for (id = 0; id < MAX_DEV_INSTANCES; id++)
-			image_unload(type, id);
+		if ((dev->flags & DEVICE_LOAD_AT_INIT) == ispreload)
+		{
+			/* all instances */
+			for( id = 0; id < dev->count; id++ )
+			{
+				/* unload this image */
+				image_unload_internal(dev->type, id, TRUE);
+			}
+		}
 	}
 }
 
@@ -460,7 +485,8 @@ const char *image_filetype(int type, int id)
 {
 	const char *s;
 	s = image_filename(type, id);
-	s = strrchr(s, '.');
+	if (s)
+		s = strrchr(s, '.');
 	return s ? s+1 : NULL;
 }
 

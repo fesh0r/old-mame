@@ -456,7 +456,7 @@ int osd_get_path_info(int pathtype, int pathindex, const char *filename)
 
 osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const char *mode)
 {
-	DWORD disposition = 0, access_ = 0;
+	DWORD disposition = 0, access = 0;
 	char fullpath[1024];
 	LONG upperPos = 0;
 	osd_file *file;
@@ -475,28 +475,28 @@ osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const cha
 
 	/* convert the mode into disposition and access */
 	if (strchr(mode, 'r'))
-		disposition = OPEN_EXISTING, access_ = GENERIC_READ;
+		disposition = OPEN_EXISTING, access = GENERIC_READ;
 	if (strchr(mode, 'w'))
-		disposition = CREATE_ALWAYS, access_ = GENERIC_WRITE;
+		disposition = CREATE_ALWAYS, access = GENERIC_WRITE;
 	if (strchr(mode, '+'))
-		access_ = GENERIC_READ | GENERIC_WRITE;
+		access = GENERIC_READ | GENERIC_WRITE;
 
 	/* compose the full path */
 	compose_path(fullpath, pathtype, pathindex, filename);
 
 	/* attempt to open the file */
-	file->handle = CreateFile(fullpath, access_, 0, NULL, disposition, 0, NULL);
+	file->handle = CreateFile(fullpath, access, 0, NULL, disposition, 0, NULL);
 	if (file->handle == INVALID_HANDLE_VALUE)
 	{
 		DWORD error = GetLastError();
 
 		/* if it's read-only, or if the path exists, then that's final */
-		if (!(access_ & GENERIC_WRITE) || error != ERROR_PATH_NOT_FOUND)
+		if (!(access & GENERIC_WRITE) || error != ERROR_PATH_NOT_FOUND)
 			return NULL;
 
 		/* create the path and try again */
 		create_path(fullpath, 1);
-		file->handle = CreateFile(fullpath, access_, 0, NULL, disposition, 0, NULL);
+		file->handle = CreateFile(fullpath, access, 0, NULL, disposition, 0, NULL);
 
 		/* if that doesn't work, we give up */
 		if (file->handle == INVALID_HANDLE_VALUE)
@@ -739,22 +739,5 @@ void set_pathlist(int file_type, const char *new_rawpath)
 		
 	list->rawpath = new_rawpath;
 
-}
-#endif
-
-#ifdef MESS
-//============================================================
-//	build_crc_database_filename
-//============================================================
-
-void build_crc_database_filename(int game_index)
-{
-	/* Build the CRC database filename */
-	/*sprintf(crcfilename, "%s/%s.crc", crcdir, drivers[game_index]->name);
-	if (drivers[game_index]->clone_of->name)
-		sprintf (pcrcfilename, "%s/%s.crc", crcdir, drivers[game_index]->clone_of->name);
-	else
-		pcrcfilename[0] = 0;
-	*/
 }
 #endif

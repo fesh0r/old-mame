@@ -16,6 +16,7 @@
 #include "messwin.h"
 #include "rc.h"
 #include "utils.h"
+#include "optionsms.h"
 
 #ifdef _MSC_VER
 #define alloca _alloca
@@ -60,12 +61,12 @@ static struct SmartListView *s_pSoftwareListView;
 static int *mess_icon_index;
 
 static void InitMessPicker(void);
-static void MyFillSoftwareList(int nGame);
+static void MyFillSoftwareList(int nGame, BOOL bForce);
 static void MessUpdateSoftwareList(void);
-static void MessGetPickerDefaults(void);
-static void MessSetPickerDefaults(void);
 static void MessOpenOtherSoftware(int iDevice);
 static void MessCreateDevice(int iDevice);
+static void MessReadMountedSoftware(int nGame);
+static void MessWriteMountedSoftware(int nGame);
 static BOOL CreateMessIcons(void);
 
 static BOOL MessCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify);
@@ -97,14 +98,14 @@ struct deviceentry
 /* ------------------------------------------------------------------------ *
  * Image types
  *
- * IO_END (0) is used for ZIP files
+ * IO_ZIP is used for ZIP files
  * IO_ALIAS is used for unknown types
  * IO_COUNT is used for bad files
  * ------------------------------------------------------------------------ */
 
-#define IO_ZIP		(IO_END)
-#define IO_BAD		(IO_COUNT + 0)
-#define IO_UNKNOWN	(IO_COUNT + 1)
+#define IO_ZIP		(IO_COUNT + 0)
+#define IO_BAD		(IO_COUNT + 1)
+#define IO_UNKNOWN	(IO_COUNT + 2)
 
 /* TODO - We need to make icons for Cylinders, Punch Cards, and Punch Tape! */
 static struct deviceentry s_devices[] =
@@ -125,14 +126,16 @@ static struct deviceentry s_devices[] =
 
 static void AssertValidDevice(int d)
 {
-	assert((sizeof(s_devices) / sizeof(s_devices[0])) + 1 == IO_COUNT);
-	assert(((d > IO_END) && (d < IO_COUNT)) || (d == IO_UNKNOWN) || (d == IO_BAD));
+	assert((sizeof(s_devices) / sizeof(s_devices[0])) == IO_COUNT);
+	assert(((d >= 0) && (d < IO_COUNT)) || (d == IO_UNKNOWN) || (d == IO_BAD) || (d == IO_ZIP));
 }
 
 static const struct deviceentry *lookupdevice(int d)
 {
+	assert(d >= 0);
+	assert(d < IO_COUNT);
 	AssertValidDevice(d);
-	return &s_devices[d - 1];
+	return &s_devices[d];
 }
 
 /* ------------------------------------------------------------------------ */
@@ -190,7 +193,8 @@ static int GetMessIcon(int nGame, int nSoftwareType)
     char buffer[32];
 	const char *iconname;
 
-    if ((nSoftwareType > IO_END) && (nSoftwareType < IO_COUNT)) {
+    if ((nSoftwareType >= 0) && (nSoftwareType < IO_COUNT))
+	{
 		iconname = device_brieftypename(nSoftwareType);
         the_index = (nGame * IO_COUNT) + nSoftwareType;
 
@@ -214,7 +218,7 @@ static int GetMessIcon(int nGame, int nSoftwareType)
     return nIconPos;
 }
 
-static void MyFillSoftwareList(int nGame)
+static void MyFillSoftwareList(int nGame, BOOL bForce)
 {
 	int i;
 	const struct GameDriver *drv;
@@ -225,13 +229,13 @@ static void MyFillSoftwareList(int nGame)
 	int path_count;
 	LPCSTR *pathsv;
 
-	if (nGame == s_nCurrentGame)
+	if (!bForce && (nGame == s_nCurrentGame))
 		return;
 	s_nCurrentGame = nGame;
 
 	drv = drivers[nGame];
 	software_dirs = GetSoftwareDirs();
-	extra_path = GetGameOptions(nGame)->extra_software_paths;
+	extra_path = GetExtraSoftwarePaths(nGame);
 
 	software_dirs_length = strlen(software_dirs);
 	paths = alloca(software_dirs_length + 1);
@@ -261,10 +265,125 @@ static void MyFillSoftwareList(int nGame)
 
 static void MessUpdateSoftwareList(void)
 {
-	MyFillSoftwareList(GetSelectedPickItem());
+	MyFillSoftwareList(GetSelectedPickItem(), TRUE);
 }
 
-static void MessSetPickerDefaults(void)
+static BOOL IsSoftwarePaneDevice(int devtype)
+{
+	assert(devtype >= 0);
+	assert(devtype < IO_COUNT);
+	return devtype != IO_PRINTER;
+}
+
+static void MessReadMountedSoftware(int nGame)
+{
+	const char *selected_software_const;
+	char *this_software;
+	char *selected_software;
+	char *s;
+	int devtype;
+	int i;
+
+	SmartListView_UnselectAll(s_pSoftwareListView);
+
+	for (devtype = 0; devtype < IO_COUNT; devtype++)
+	{
+		if (!IsSoftwarePaneDevice(devtype))
+			continue;
+
+		selected_software_const = GetSelectedSoftware(nGame, devtype);
+		if (selected_software_const && selected_software_const[0])
+		{
+			selected_software = alloca(strlen(selected_software_const) + 1);
+			strcpy(selected_software, selected_software_const);
+
+			this_software = selected_software;
+			while(this_software && *this_software)
+			{
+				s = strchr(this_software, ',');
+				if (s)
+					*(s++) = '\0';
+				else
+					s = NULL;
+
+				i = MessLookupByFilename(this_software);
+				if (i >= 0)
+					SmartListView_SelectItem(s_pSoftwareListView, i, this_software == selected_software);
+
+				this_software = s;
+			}
+		}
+	}
+}
+
+static void MessWriteMountedSoftware(int nGame)
+{
+	int i;
+	int devtype;
+	BOOL dirty = FALSE;
+	const char *softwarename;
+	char *newsoftware[IO_COUNT];
+	char *s;
+	size_t pos;
+
+	memset(newsoftware, 0, sizeof(newsoftware));
+
+    for (i = 0; i < options.image_count; i++)
+	{
+		softwarename = options.image_files[i].name;
+		devtype = options.image_files[i].type;
+
+		if ((devtype == IO_ZIP) || (devtype == IO_UNKNOWN) || (devtype == IO_BAD))
+			continue;
+
+		assert(softwarename);
+		assert(devtype >= 0);
+		assert(devtype < IO_COUNT);
+
+		if (newsoftware[devtype])
+		{
+			pos = strlen(newsoftware[devtype]);
+			s = realloc(newsoftware[devtype], pos + 1 + strlen(softwarename) + 1);
+		}
+		else
+		{
+			pos = 0;
+			s = malloc(strlen(softwarename) + 1);
+		}
+		if (!s)
+			continue;
+
+		if (pos > 0)
+			s[pos++] = ',';
+
+		strcpy(&s[pos], softwarename);
+		newsoftware[devtype] = s;
+	}
+
+	for (devtype = 0; devtype < IO_COUNT; devtype++)
+	{
+		if (!IsSoftwarePaneDevice(devtype))
+			continue;
+
+		softwarename = newsoftware[devtype] ? newsoftware[devtype] : "";
+		if (strcmp(GetSelectedSoftware(nGame, devtype), softwarename))
+		{
+			SetSelectedSoftware(nGame, devtype, newsoftware[devtype]);
+			dirty = TRUE;
+		}
+
+		if (newsoftware[devtype])
+			free(newsoftware[devtype]);
+	}
+
+	if (dirty)
+	{
+		SetGameUsesDefaults(nGame, FALSE);
+		SaveGameOptions(nGame);
+	}
+}
+
+/*static void MessSetPickerDefaults(void)
 {
     int i;
     size_t nDefaultSize = 0;
@@ -289,7 +408,7 @@ static void MessSetPickerDefaults(void)
     }
 
     SetDefaultSoftware(default_software);
-}
+}*/
 
 static void InitMessPicker(void)
 {
@@ -315,7 +434,7 @@ static void InitMessPicker(void)
 	SetWindowLong(s_pSoftwareListView->hwndListView, GWL_WNDPROC, (LONG)ListViewWndProc);
 }
 
-static void MessGetPickerDefaults(void)
+/*static void MessGetPickerDefaults(void)
 {
 	const char *default_software_const;
 	char *default_software;
@@ -346,24 +465,28 @@ static void MessGetPickerDefaults(void)
 			this_software = s;
 		}
 	}
-}
+}*/
 
 static void MessCreateCommandLine(char *pCmdLine, options_type *pOpts, const struct GameDriver *gamedrv)
 {
-	int i;
+	int i, imgtype;
+	const char *optname;
+	const char *software;
 
 	for (i = 0; i < options.image_count; i++)
 	{
-		const char *optname = device_brieftypename(options.image_files[i].type);
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -%s \"%s\"", optname, options.image_files[i].name);
+		imgtype = options.image_files[i].type;
+		assert(imgtype < IO_COUNT);
+		optname = device_brieftypename(imgtype);
+		software = options.image_files[i].name;
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -%s \"%s\"", optname, software);
 	}
 
 	if ((pOpts->ram_size != 0) && ram_is_valid_option(gamedrv, pOpts->ram_size))
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -ramsize %d", pOpts->ram_size);
-	if (pOpts->printer[0])
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -prin \"%s\"", pOpts->printer);
 
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%snewui", pOpts->use_new_ui ? "" : "no");
+	sprintf(&pCmdLine[strlen(pCmdLine)], " -writeconfig");
 }
 
 /* ------------------------------------------------------------------------ *
@@ -401,7 +524,8 @@ static BOOL CommonFileImageDialog(char *the_last_directory, common_file_dialog_p
     s += strlen(s) + 1;
 
     // The others
-    for (i = 0; imagetypes[i].ext; i++) {
+    for (i = 0; imagetypes[i].ext; i++)
+	{
 		if (imagetypes[i].type == IO_ZIP)
 			typname = "Compressed images";
 		else
@@ -468,12 +592,12 @@ static void MessSetupDevice(common_file_dialog_proc cfd, int iDevice)
 
 static void MessOpenOtherSoftware(int iDevice)
 {
-    MessSetupDevice(GetOpenFileName, iDevice);
+	MessSetupDevice(GetOpenFileName, iDevice);
 }
 
 static void MessCreateDevice(int iDevice)
 {
-    MessSetupDevice(GetSaveFileName, iDevice);
+	MessSetupDevice(GetSaveFileName, iDevice);
 }
 
 /* ------------------------------------------------------------------------ *
@@ -509,12 +633,13 @@ static int SoftwareListClass_WhichIcon(struct SmartListView *pListView, int nIte
 		switch(nType) {
 		case IO_UNKNOWN:
 			/* Unknowns */
-			nIcon = 2;
+			nIcon = FindIconIndex(IDI_WIN_UNKNOWN);
 			break;
 
 		case IO_BAD:
+		case IO_ZIP:
 			/* Bad files */
-			nIcon = 3;
+			nIcon = FindIconIndex(IDI_WIN_REDX);
 			break;
 
 		default:
@@ -578,11 +703,11 @@ static BOOL MessCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 {
 	switch (id) {
 	case ID_MESS_OPEN_SOFTWARE:
-		MessOpenOtherSoftware(IO_END);
+		MessOpenOtherSoftware(IO_COUNT);
 		break;
 
 	case ID_MESS_CREATE_SOFTWARE:
-		MessCreateDevice(IO_END);
+		MessCreateDevice(IO_COUNT);
 		break;
 
 #ifdef MAME_DEBUG
@@ -594,194 +719,6 @@ static BOOL MessCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 	return FALSE;
 }
 
-/* ------------------------------------------------------------------------ *
- * New File Manager                                                         *
- *                                                                          *
- * This code implements a MESS32 specific file manger.  However, it isn't   *
- * ready for prime time so it isn't enabled by default                      *
- * ------------------------------------------------------------------------ */
-
-//static const char *s_pInitialFileName;
-static BOOL s_bChosen;
-static struct SmartListView *s_pFileMgrListView;
-static long s_lSelectedItem;
-
-static void FileMgrListClass_Run(struct SmartListView *pListView)
-{
-	s_bChosen = TRUE;
-}
-
-/*
-static struct SmartListViewClass s_filemgrListClass =
-{
-	sizeof(struct SingleItemSmartListView),
-	FileMgrListClass_Run,
-	SingleItemSmartListViewClass_ItemChanged,
-	SoftwareListClass_WhichIcon,
-	SoftwareList_GetText,
-	SoftwareListClass_GetColumnInfo,
-	SoftwareListClass_SetColumnInfo,
-	SingleItemSmartListViewClass_IsItemSelected,
-	Compare_TextCaseInsensitive,
-	SoftwareList_CanIdle,
-	SoftwareList_Idle,
-	sizeof(mess_column_names) / sizeof(mess_column_names[0]),
-	mess_column_names
-};
-*/
-static void EndFileManager(HWND hDlg, long lSelectedItem)
-{
-	s_lSelectedItem = lSelectedItem;
-	PostMessage(hDlg, WM_QUIT, 0, 0);
-
-	if (s_pFileMgrListView) {
-		SmartListView_Free(s_pFileMgrListView);
-		s_pFileMgrListView = NULL;
-	}
-}
-
-#ifdef __NOT_USED__
-static INT_PTR CALLBACK FileManagerProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	struct SmartListViewOptions opts;
-	int i;
-
-	if (s_pFileMgrListView && SmartListView_IsEvent(s_pFileMgrListView, message, wParam, lParam)) {
-		return SmartListView_HandleEvent(s_pFileMgrListView, message, wParam, lParam);
-	}
-
-	switch(message) {
-	case WM_INITDIALOG:
-		/* Initialize */
-		CenterSubDialog(win_video_window, hDlg, FALSE); /* FIXME */
-
-		s_bChosen = FALSE;
-		s_lSelectedItem = -1;
-
-		assert((sizeof(mess_column_names) / sizeof(mess_column_names[0])) == MESS_COLUMN_MAX);
-
-		memset(&opts, 0, sizeof(opts));
-		opts.pClass = &s_filemgrListClass;
-		opts.hwndParent = hDlg;
-		opts.nIDDlgItem = IDC_LIST2;
-		opts.hBackground = NULL;
-		opts.hPALbg = hPALbg;
-		opts.hSmall = hSmall;
-		opts.hLarge = hLarge;
-		opts.rgbListFontColor = GetListFontColor();
-		opts.bOldControl = oldControl;
-		opts.bCenterOnParent = TRUE;
-		opts.nInsetPixels = 10;
-
-		s_pFileMgrListView = SmartListView_Init(&opts);
-		if (!s_pFileMgrListView) {
-			/* PANIC */
-			EndFileManager(hDlg, -1);
-			return FALSE;
-		}
-
-		SmartListView_SetTotalItems(s_pFileMgrListView, MessImageCount());
-
-		if (s_pInitialFileName && *s_pInitialFileName) {
-			i = MessLookupByFilename(s_pInitialFileName);
-			if (i >= 0)
-				SmartListView_SelectItem(s_pFileMgrListView, i, TRUE);
-		}
-
-		ShowWindow(hDlg, TRUE);
-		break;
-
-    case WM_COMMAND:
-		switch(wParam) {
-		case IDOK:
-			EndFileManager(hDlg, SingleItemSmartListView_GetSelectedItem(s_pFileMgrListView));
-			break;
-
-		case IDCANCEL:
-			EndFileManager(hDlg, -1);
-			break;
-
-		default:
-			return FALSE;
-		}
-		break;
-
-	default:
-		return FALSE;
-	}
-	return TRUE;
-}
-#endif
-
-/* osd_select_file allows MESS32 to override the default file manager
- *
- * sel indexes an entry in options.image_files[]
- *
- * Returns:
- *	0 if the core should handle it
- *  1 if we successfully selected a file
- * -1 if we cancelled
- */
-/*
-int osd_select_file(int sel, char *filename)
-{
-	MSG msg;
-	HWND hDlg;
-	int nSelectedItem;
-	int result;
-	BOOL bDialogDone;
-
-	if (GetUseNewFileMgr(GetSelectedPickItem())) {
-		s_pInitialFileName = filename;
-
-		ShowCursor(TRUE);
-
-		if (MAME32App.m_pDisplay->AllowModalDialog)
-			MAME32App.m_pDisplay->AllowModalDialog(TRUE);
-
-		hDlg = CreateDialog(hInst, MAKEINTRESOURCE(IDD_FILEMGR), win_video_window, FileManagerProc);
-
-		bDialogDone = FALSE;
-		while(!bDialogDone) {
-			SmartListView_IdleUntilMsg(s_pFileMgrListView);
-
-			do {
-				if (GetMessage(&msg, NULL, 0, 0) && msg.message != WM_CLOSE) {
-					if (!IsDialogMessage(hDlg, &msg)) {
-						TranslateMessage(&msg);
-						DispatchMessage(&msg);
-					}
-				}
-				else {
-					bDialogDone = TRUE;
-				}
-			}
-			while(PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE));
-		}
-
-		DestroyWindow(hDlg);
-		nSelectedItem = s_lSelectedItem; //DialogBox(hInst, MAKEINTRESOURCE(IDD_FILEMGR), MAME32App.m_hWnd, FileManagerProc);
-
-		if (MAME32App.m_pDisplay->AllowModalDialog)
-			MAME32App.m_pDisplay->AllowModalDialog(FALSE);
-
-		ShowCursor(FALSE);
-
-		result = -1;
-		if (nSelectedItem > -1) {
-			strcpy(filename, GetImageFullName(nSelectedItem));
-			result = 1;
-		}
-		else {
-			result = -1;
-		}
-	}
-	else {
-		result = 0;
-	}
-	return result;
-}
-*/
 /* ------------------------------------------------------------------------ *
  * Mess32 Diagnostics                                                       *
  * ------------------------------------------------------------------------ */

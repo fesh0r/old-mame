@@ -21,22 +21,26 @@ static int cocojvc_decode_header(const void *header, UINT32 file_size, UINT32 he
 
 	/* byte offset 0 - sectors per track */
 	geometry->sectors = (header_size > 0) ? header_bytes[0] : 18;
+	if (geometry->sectors <= 0)
+		return -1;
 
 	/* byte offset 1 - side count */
 	geometry->heads = (header_size > 1) ? header_bytes[1] : 1;
+	if (geometry->heads <= 0)
+		return -1;
 
 	/* byte offset 2 - sector size code */
 	geometry->sector_size = 128 << ((header_size > 2) ? header_bytes[2] : 1);
+	if (geometry->sectors <= 0)
+		return -1;
 
 	/* byte offset 3 - first sector ID */
 	geometry->first_sector_id = (header_size > 3) ? header_bytes[3] : 1;
 
 	/* byte offset 4 - sector attribute flag */
 	sector_attribute_flag = (header_size > 4) ? header_bytes[4] : 0;
-
-	/* we do not support sector attribute flags */
 	if (sector_attribute_flag != 0)
-		return -1;
+		return -1;	/* we do not support sector attribute flags */
 
 	physical_bytes_per_sector = geometry->sector_size;
 	if (sector_attribute_flag)
@@ -104,6 +108,51 @@ BLOCKDEVICE_FORMATDRIVER_START( coco_jvc )
 	BDFD_FLAGS( BDFD_ROUNDUP_TRACKS )
 	BDFD_FILLER_BYTE( 0xFF );
 BLOCKDEVICE_FORMATDRIVER_END
+
+/* ----------------------------------------------------------------------- *
+ * OS9 type file format                                                    *
+ *                                                                         *
+ * Used by the OS-9 Source project on SourceForge                          *
+ * ----------------------------------------------------------------------- */
+
+static int cocoo9t_decode_header(const void *header, UINT32 file_size, UINT32 header_size, struct disk_geometry *geometry, int *offset)
+{
+    UINT8 *hb = (UINT8 *) header;
+    int	totalSectors;
+    
+    totalSectors = (hb[0x00] << 16) + (hb[0x01] << 8) + hb[0x02];
+    
+    *offset = 0;
+    geometry->first_sector_id = 1;
+    geometry->sector_size = 256;
+    geometry->sectors = (hb[0x11] << 8) + hb[0x12];
+    geometry->heads = (hb[0x10] & 0x01) ? 2 : 1;    
+    geometry->tracks = totalSectors / (geometry->sectors * geometry->heads);   
+    
+    return 0;
+}
+
+static int cocoo9t_encode_header(void *buffer, UINT32 *header_size, const struct disk_geometry *geometry)
+{
+    return 1;
+}
+
+BLOCKDEVICE_FORMATDRIVER_START( coco_o9t )
+	BDFD_NAME( "o9t" )
+	BDFD_HUMANNAME( "OS-9 disk image" )
+	BDFD_EXTENSION( "os9" )
+	BDFD_TRACKS_OPTION( 35 )
+	BDFD_TRACKS_OPTION( 40 )
+	BDFD_TRACKS_OPTION( 80 )
+	BDFD_SECTORS_OPTION( 18 )
+	BDFD_BYTES_PER_SECTOR( 256 )
+	BDFD_HEADER_SIZE( 256 )
+	BDFD_HEADER_ENCODE( cocoo9t_encode_header )
+	BDFD_HEADER_DECODE( cocoo9t_decode_header )
+	BDFD_FLAGS( BDFD_ROUNDUP_TRACKS )
+	BDFD_FILLER_BYTE( 0xFF );
+BLOCKDEVICE_FORMATDRIVER_END
+
 
 /* ----------------------------------------------------------------------- *
  * VDK file format                                                         *
@@ -783,6 +832,7 @@ BLOCKDEVICE_FORMATDRIVER_END
 /* ----------------------------------------------------------------------- */
 
 BLOCKDEVICE_FORMATCHOICES_START( coco )
+	BDFC_CHOICE( coco_o9t )
 	BDFC_CHOICE( coco_jvc )
 	BDFC_CHOICE( coco_vdk )
 	BDFC_CHOICE( coco_dmk )

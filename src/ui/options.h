@@ -16,6 +16,10 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#ifdef MESS
+#include "device.h"
+#endif
+
 enum 
 {
 	COLUMN_GAMES = 0,
@@ -99,6 +103,7 @@ typedef struct
 	void *m_vpData;                               /* reg key data     */
 	void (*encode)(void *data, char *str);        /* encode function  */
 	void (*decode)(const char *str, void *data);  /* decode function  */
+	BOOL m_bOnlyOnGame;
 } REG_OPTION;
 
 typedef struct
@@ -147,6 +152,8 @@ typedef struct
 	BOOL   norotate;
 	BOOL   ror;
 	BOOL   rol;
+	BOOL   auto_ror;
+	BOOL   auto_rol;
 	BOOL   flipx;
 	BOOL   flipy;
 	char *debugres;
@@ -184,9 +191,8 @@ typedef struct
 
 #ifdef MESS
 	BOOL   use_new_ui;
-	char   *extra_software_paths;
-	char   *printer;
 	UINT32 ram_size;
+	char   *software[IO_COUNT];
 #endif
 } options_type;
 
@@ -200,6 +206,9 @@ typedef struct
 	BOOL options_loaded; // whether or not we've loaded the game options yet
 	BOOL use_default; // whether or not we should just use default options
 
+#ifdef MESS
+	char *extra_software_paths;
+#endif
 } game_variables_type;
 
 typedef struct
@@ -218,9 +227,6 @@ typedef struct
     BOOL     broadcast;
     BOOL     random_bg;
     char     *default_game;
-#ifdef MESS
-	char     *default_software;
-#endif
 	int      column_width[COLUMN_MAX];
 	int      column_order[COLUMN_MAX];
 	int      column_shown[COLUMN_MAX];
@@ -273,7 +279,7 @@ typedef struct
 
 } settings_type; /* global settings for the UI only */
 
-void OptionsInit(void);
+BOOL OptionsInit(void);
 void OptionsExit(void);
 
 void FreeGameOptions(options_type *o);
@@ -282,6 +288,7 @@ options_type* GetDefaultOptions(void);
 options_type * GetGameOptions(int driver_index);
 BOOL GetGameUsesDefaults(int driver_index);
 void SetGameUsesDefaults(int driver_index,BOOL use_defaults);
+void LoadGameOptions(int driver_index);
 
 void SaveOptions(void);
 
@@ -340,14 +347,6 @@ int  GetShowPictType(void);
 void SetDefaultGame(const char *name);
 const char *GetDefaultGame(void);
 
-#ifdef MESS
-void SetDefaultSoftware(const char *name);
-const char *GetDefaultSoftware(void);
-
-void SetCrcDir(const char *dir);
-const char *GetCrcDir(void);
-#endif
-
 void SetWindowArea(AREA *area);
 void GetWindowArea(AREA *area);
 
@@ -362,17 +361,6 @@ void GetColumnOrder(int order[]);
 
 void SetColumnShown(int shown[]);
 void GetColumnShown(int shown[]);
-
-#ifdef MESS
-void SetMessColumnWidths(int widths[]);
-void GetMessColumnWidths(int widths[]);
-
-void SetMessColumnOrder(int order[]);
-void GetMessColumnOrder(int order[]);
-
-void SetMessColumnShown(int shown[]);
-void GetMessColumnShown(int shown[]);
-#endif
 
 void SetSplitterPos(int splitterId, int pos);
 int  GetSplitterPos(int splitterId);
@@ -402,11 +390,6 @@ void SetRomDirs(const char* paths);
 
 const char* GetSampleDirs(void);
 void  SetSampleDirs(const char* paths);
-
-#ifdef MESS
-const char* GetSoftwareDirs(void);
-void  SetSoftwareDirs(const char* paths);
-#endif
 
 const char * GetIniDir(void);
 void SetIniDir(const char *path);

@@ -37,14 +37,14 @@ extern unsigned int ZEXPORT crc32 (unsigned int crc, const unsigned char *buf, u
 /* ------------------------------------------------------------------------ *
  * Image types
  *
- * IO_END (0) is used for ZIP files
+ * IO_ZIP is used for ZIP files
  * IO_ALIAS is used for unknown types
  * IO_COUNT is used for bad files
  * ------------------------------------------------------------------------ */
 
-#define IO_ZIP		(IO_END)
-#define IO_BAD		(IO_COUNT + 0)
-#define IO_UNKNOWN	(IO_COUNT + 1)
+#define IO_ZIP		(IO_COUNT + 0)
+#define IO_BAD		(IO_COUNT + 1)
+#define IO_UNKNOWN	(IO_COUNT + 2)
 
 /* ----------------------------------------------------------------- *
  * Type declarations                                                 *
@@ -101,14 +101,14 @@ static char mess_crc_category[64];
 
 static void AssertValidDevice(int d)
 {
-	assert(((d > IO_END) && (d < IO_COUNT)) || (d == IO_UNKNOWN) || (d == IO_BAD));
+	assert(((d >= 0) && (d < IO_COUNT)) || (d == IO_UNKNOWN) || (d == IO_BAD) || (d == IO_ZIP));
 }
 
 /* ************************************************************************ */
 /* Code for manipulation of image list                                      */
 /* ************************************************************************ */
 
-/* Specify IO_END for type if you want all types */
+/* Specify IO_COUNT for type if you want all types */
 void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL bZip, int type)
 {
     const struct IODevice *dev;
@@ -132,7 +132,7 @@ void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL bZip, 
 			{
 				while(*ext)
 				{
-					if ((type == 0) || (type == dev->type))
+					if ((type == IO_COUNT) || (type == dev->type))
 					{
 						if (num_extensions < count)
 						{
@@ -264,7 +264,7 @@ static BOOL MessSetImage(int nDriver, int imagenum, int entry)
     if (!filename)
         return FALSE;		/* Out of memory */
 
-    SetupImageTypes(nDriver, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, IO_END);
+    SetupImageTypes(nDriver, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, IO_COUNT);
 
 	if (options.image_files[entry].name)
 		free((void *) options.image_files[entry].name);
@@ -472,7 +472,7 @@ static void AddImagesFromDirectory(int nDriver, const char *dir, BOOL bRecurse, 
 	const char *olddirc;
 	char *olddir;
 
-    SetupImageTypes(nDriver, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), FALSE, IO_END);
+    SetupImageTypes(nDriver, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), FALSE, IO_COUNT);
 
     d = osd_dir_open(dir, "*.*");
     if (d) {
@@ -587,10 +587,8 @@ static void InternalFillSoftwareList(struct SmartListView *pSoftwareListView, in
         mess_images_index = NULL;
     }
 
-	if (pSoftwareListView) {
-		SmartListView_SetTotalItems(pSoftwareListView, mess_images_count);
-		SmartListView_SetSorting(pSoftwareListView, 0, FALSE);
-	}
+	SmartListView_SetTotalItems(pSoftwareListView, mess_images_count);
+	SmartListView_SetSorting(pSoftwareListView, 0, FALSE);
 
 #if HAS_IDLING
     mess_idle_work = TRUE;
@@ -610,6 +608,8 @@ void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nB
 	const char *system_dir;
 	const char *parent_dir;
 	char buffer[MAX_PATH];
+
+	assert(pSoftwareListView);
 
 	/* Count the number of extra paths */
 	if (lpExtraPath && *lpExtraPath) {
@@ -662,10 +662,41 @@ void FillSoftwareList(struct SmartListView *pSoftwareListView, int nGame, int nB
 int MessLookupByFilename(const TCHAR *filename)
 {
     int i;
+	const char *this_fullname;
+	size_t this_fullname_len;
+	size_t filename_len = tcslen(filename);
+	ZIP *zipfile;
+	struct zipent *zipentry;
+	BOOL good_zip;
 
-    for (i = 0; i < mess_images_count; i++) {
-        if (!_tcscmp(filename, mess_images_index[i]->fullname))
+    for (i = 0; i < mess_images_count; i++)
+	{
+		this_fullname = mess_images_index[i]->fullname;
+
+		if (!tcsicmp(filename, this_fullname))
             return i;
+
+		this_fullname_len = tcslen(this_fullname);
+		if (this_fullname_len < filename_len)
+		{
+			if (!tcsnicmp(filename, this_fullname, this_fullname_len) && (filename[this_fullname_len] == PATH_SEPARATOR))
+			{
+				good_zip = FALSE;
+				zipfile = openzip(FILETYPE_IMAGE, 0, T2A(this_fullname));
+				if (zipfile)
+				{
+					zipentry = readzip(zipfile);
+					if (zipentry)
+					{
+						if (!tcsicmp(A2T(zipentry->name), &filename[this_fullname_len + 1]))
+							good_zip = TRUE;
+					}
+					closezip(zipfile);
+				}
+				if (good_zip)
+					return i;
+			}
+		}
     }
     return -1;
 }
@@ -848,7 +879,7 @@ void SoftwareList_Idle(struct SmartListView *pListView)
     int i;
 
     if (s_nIdleImageNum == 0)
-        SetupImageTypes(s_nGame, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, IO_END);
+        SetupImageTypes(s_nGame, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, IO_COUNT);
 
     for (i = 0; (i < 10) && (s_nIdleImageNum < mess_images_count); i++) {
         pImageData = mess_images_index[s_nIdleImageNum];
@@ -908,7 +939,7 @@ void MessTestsFlex(struct SmartListView *pListView, const struct GameDriver *gam
 	ImageData *img;
 	mess_image_type imagetypes[64];
 
-	SetupImageTypes(s_nGame, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, IO_END);
+	SetupImageTypes(s_nGame, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, IO_COUNT);
 
 	/* Try appending an item to the list */
 	for (i = 0; i < nItemsToAdd; i++) {

@@ -172,6 +172,9 @@ static struct performance_info performance;
 static int settingsloaded;
 static int leds_status;
 
+#ifdef MESS
+int skip_this_frame;
+#endif
 
 
 /***************************************************************************
@@ -691,7 +694,7 @@ static int vh_open(void)
 		goto cant_create_scrbitmap;
 
 	/* set the default visible area */
-	set_visible_area(0,1,0,1);	/* make sure everything is recalculated on multiple runs */
+	set_visible_area(0,1,0,1);	// make sure everything is recalculated on multiple runs
 	set_visible_area(
 			Machine->drv->default_visible_area.min_x,
 			Machine->drv->default_visible_area.max_x,
@@ -1130,7 +1133,18 @@ void force_partial_update(int scanline)
 	if (clip.min_y <= clip.max_y)
 	{
 		profiler_mark(PROFILER_VIDEO);
+#ifdef MESS
+		{
+			int update_says_skip = 0;
+			(*Machine->drv->video_update)(Machine->scrbitmap, &clip, &update_says_skip);
+			if (!update_says_skip)
+				skip_this_frame = 0;
+			else if (skip_this_frame == -1)
+				skip_this_frame = 1;
+		}
+#else
 		(*Machine->drv->video_update)(Machine->scrbitmap, &clip);
+#endif
 		performance.partial_updates_this_frame++;
 		profiler_mark(PROFILER_END);
 	}
@@ -1169,6 +1183,12 @@ void update_video_and_audio(void)
 
 	/* fill in our portion of the display */
 	current_display.changed_flags = 0;
+
+#ifdef MESS
+	if (skip_this_frame == 1)
+		current_display.changed_flags |= GAME_OPTIONAL_FRAMESKIP;
+	skip_this_frame = -1;
+#endif
 	
 	/* set the main game bitmap */
 	current_display.game_bitmap = Machine->scrbitmap;

@@ -263,15 +263,17 @@ char * ConvertToWindowsNewlines(const char *source)
  */
 const char * GetDriverFilename(int nIndex)
 {
-    static char tmp[40];
-    char *ptmp;
+	static char tmp[40];
+	char *ptmp;
 
 	const char *s = drivers[nIndex]->source_file;
 
-    tmp[0] = '\0';
+	tmp[0] = '\0';
 
-    ptmp = strrchr(s, PATH_SEPARATOR);
-    if (ptmp == NULL)
+	ptmp = strrchr(s, '\\');
+	if (ptmp == NULL)
+		ptmp = strrchr(s, '/');
+	if (ptmp == NULL)
 		return s;
 
 	ptmp++;
@@ -421,6 +423,11 @@ void FreeIfAllocated(char **s)
 	if (*s)
 		free(*s);
 	*s = NULL;
+}
+
+BOOL StringIsSuffixedBy(const char *s, const char *suffix)
+{
+	return (strlen(s) > strlen(suffix)) && (strcmp(s + strlen(s) - strlen(suffix), suffix) == 0);
 }
 
 /***************************************************************************

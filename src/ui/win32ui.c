@@ -62,6 +62,7 @@
 #include "Splitters.h"
 #include "help.h"
 #include "history.h"
+#include "options.h"
 
 #include "DirectDraw.h"
 #include "DirectInput.h"
@@ -668,6 +669,10 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%snorotate",                pOpts->norotate        ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sror",                     pOpts->ror             ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%srol",                     pOpts->rol             ? "" : "no");
+	if (pOpts->auto_ror)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -autoror");
+	if (pOpts->auto_rol)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -autorol");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sflipx",                   pOpts->flipx           ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sflipy",                   pOpts->flipy           ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -debug_resolution %s",       pOpts->debugres); 
@@ -715,6 +720,8 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 		sprintf(&pCmdLine[strlen(pCmdLine)]," -skip_disclaimer");
 	if (GetShowGameInfo() == FALSE)
 		sprintf(&pCmdLine[strlen(pCmdLine)]," -skip_gameinfo");
+	if (GetHighPriority() == TRUE)
+		sprintf(&pCmdLine[strlen(pCmdLine)]," -high_priority");
 }
 
 static BOOL WaitWithMessageLoop(HANDLE hEvent)
@@ -784,13 +791,17 @@ static int RunMAME(int nGameIndex)
 		/* Close process and thread handles. */
 		CloseHandle(pi.hProcess);
 		CloseHandle(pi.hThread);
+
+#ifdef MESS
+		LoadGameOptions(nGameIndex);
+		MessReadMountedSoftware(nGameIndex);
+#endif
 	}
 
 	return dwExitCode;
 }
 
-int __declspec(dllexport) WINAPI GuiMain(HINSTANCE    hInstance,
-                   HINSTANCE    hPrevInstance,
+int Mame32Main(HINSTANCE    hInstance,
                    LPSTR        lpCmdLine,
                    int          nCmdShow)
 {
@@ -1545,7 +1556,8 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
     }
 
 	dprintf("about to init options");
-	OptionsInit();
+	if (!OptionsInit())
+		return FALSE;
 	dprintf("options loaded");
 
 	g_mame32_message = RegisterWindowMessage("MAME32");
@@ -1720,10 +1732,10 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	dprintf("did init tree");
 
 	/* Initialize listview columns */
-	InitListView();
 #ifdef MESS
 	InitMessPicker();
 #endif
+	InitListView();
 	SetFocus(hwndList);
 
 	/* Init DirectInput */
@@ -1778,10 +1790,6 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 		SetView(ID_VIEW_GROUPED,LVS_REPORT);
 		break;
 	}
-
-#ifdef MESS
-	MessGetPickerDefaults();
-#endif
 
 	return TRUE;
 }
@@ -2020,8 +2028,9 @@ static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lPa
 			SetDefaultGame(ModifyThe(drivers[nItem]->name));
 
 #ifdef MESS
+			MessWriteMountedSoftware(nItem);
+
 			/* Set the default software in the pane */
-			MessSetPickerDefaults();
 			SmartListView_Free(s_pSoftwareListView);
 			s_pSoftwareListView = NULL;
 #endif /* MESS */
@@ -2625,7 +2634,7 @@ static void EnableSelection(int nGame)
 	HMENU			hMenu = GetMenu(hMain);
 
 #ifdef MESS
-	MyFillSoftwareList(nGame);
+	MyFillSoftwareList(nGame, FALSE);
 #endif
 
 	sprintf(buf, "&Play %s", ConvertAmpersandString(ModifyThe(drivers[nGame]->description)));
@@ -2890,6 +2899,9 @@ static BOOL MamePickerNotify(NMHDR *nm)
 				nLastItem = pnmv->lParam;
 			/* leaving item */
 			/* printf("leaving %s\n",drivers[pnmv->lParam]->name); */
+#ifdef MESS
+			MessWriteMountedSoftware(pnmv->lParam);
+#endif
 		}
 
 		if (!(pnmv->uOldState & LVIS_SELECTED)
@@ -2904,6 +2916,9 @@ static BOOL MamePickerNotify(NMHDR *nm)
 			}
 
 			EnableSelection(pnmv->lParam);
+#ifdef MESS
+			MessReadMountedSoftware(pnmv->lParam);
+#endif
 		}
 		return TRUE;
 
@@ -3627,6 +3642,9 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 			bUpdateSamples = ((nResult & DIRDLG_SAMPLES) == DIRDLG_SAMPLES) ? TRUE : FALSE;
 #ifdef MESS
 			bUpdateSoftware = ((nResult & DIRDLG_SOFTWARE) == DIRDLG_SOFTWARE) ? TRUE : FALSE;
+
+			if (bUpdateSoftware)
+				MessUpdateSoftwareList();
 #endif
 
 			/* update game list */
@@ -3641,6 +3659,8 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 		if (DialogBox(GetModuleHandle(NULL),
 					  MAKEINTRESOURCE(IDD_RESET), hMain, ResetDialogProc) == TRUE)
         {
+			// these may have been changed
+			SaveDefaultOptions();
             DestroyWindow( hwnd );
 			PostQuitMessage(0);
         }
@@ -4781,6 +4801,17 @@ static void EnablePlayOptions(int nIndex, options_type *o)
 		o->use_joystick = FALSE;
 }
 
+static int FindIconIndex(int nIconResource)
+{
+	int i;
+	for(i = 0; g_iconData[i].icon_name; i++)
+	{
+		if (g_iconData[i].resource == nIconResource)
+			return i;
+	}
+	return -1;
+}
+
 static int GetIconForDriver(int nItem)
 {
 	int iconRoms;
@@ -4795,11 +4826,11 @@ static int GetIconForDriver(int nItem)
 
 	// Show Red-X if the ROMs are present and flagged as NOT WORKING
 	if (iconRoms == 1 && DriverIsBroken(nItem))
-		iconRoms = 4;
+		iconRoms = FindIconIndex(IDI_WIN_REDX);
 
 	// show clone icon if we have roms and game is working
 	if (iconRoms == 1 && DriverIsClone(nItem))
-		iconRoms = 3;
+		iconRoms = FindIconIndex(IDI_WIN_CLONE);
 
 	// if we have the roms, then look for a custom per-game icon to override
 	if (iconRoms == 1 || iconRoms == 3)
