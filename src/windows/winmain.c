@@ -21,6 +21,10 @@
 #include "input.h"
 #include "config.h"
 
+#ifdef MESS
+#include "messwin.h"
+#include "parallel.h"
+#endif
 
 #define ENABLE_PROFILER		0
 

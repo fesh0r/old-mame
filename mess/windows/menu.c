@@ -25,6 +25,7 @@
 #include "artwork.h"
 #include "tapedlg.h"
 #include "artworkx.h"
+#include "devices/cassette.h"
 
 #ifdef UNDER_CE
 #include "invokegx.h"
@@ -65,6 +66,8 @@ enum
 	DEVOPTION_UNMOUNT,
 	DEVOPTION_CASSETTE_PLAYRECORD,
 	DEVOPTION_CASSETTE_STOPPAUSE,
+	DEVOPTION_CASSETTE_PLAY,
+	DEVOPTION_CASSETTE_RECORD,
 #if USE_TAPEDLG
 	DEVOPTION_CASSETTE_DIALOG,
 #else
@@ -109,6 +112,7 @@ int win_use_natural_keyboard;
 
 static HMENU win_menu_bar;
 static int is_paused;
+static HICON device_icons[IO_COUNT];
 
 
 
@@ -623,6 +627,7 @@ static void prepare_menus(void)
 	HMENU sub_menu;
 	UINT_PTR new_item;
 	UINT flags_for_exists;
+	UINT flags_for_writing;
 	mess_image *img;
 	int has_config, has_dipswitch, has_keyboard;
 
@@ -676,6 +681,10 @@ static void prepare_menus(void)
 			if (!image_exists(img))
 				flags_for_exists |= MF_GRAYED;
 
+			flags_for_writing = flags_for_exists;
+			if (!image_is_writable(img))
+				flags_for_writing |= MF_GRAYED;
+
 			sub_menu = CreateMenu();
 			append_menu(sub_menu, MF_STRING,		new_item + DEVOPTION_MOUNT,	UI_mount);
 			append_menu(sub_menu, flags_for_exists,	new_item + DEVOPTION_UNMOUNT,	UI_unmount);
@@ -683,16 +692,17 @@ static void prepare_menus(void)
 #if HAS_WAVE
 			if (dev->type == IO_CASSETTE)
 			{
-				int status;
-				status = device_status(img, -1);
+				cassette_state state;
+				state = cassette_get_state(img) & CASSETTE_MASK_UISTATE;
 				append_menu(sub_menu, MF_SEPARATOR, 0, -1);
-				append_menu(sub_menu, flags_for_exists | (status & WAVE_STATUS_MOTOR_ENABLE) ? 0 : MF_CHECKED,	new_item + DEVOPTION_CASSETTE_STOPPAUSE,	UI_pauseorstop);
-				append_menu(sub_menu, flags_for_exists | (status & WAVE_STATUS_MOTOR_ENABLE) ? MF_CHECKED : 0,	new_item + DEVOPTION_CASSETTE_PLAYRECORD,	(status & WAVE_STATUS_WRITE_ONLY) ? UI_record : UI_play);
+				append_menu(sub_menu, flags_for_exists	| ((state == CASSETTE_STOPPED)	? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_STOPPAUSE,	UI_pauseorstop);
+				append_menu(sub_menu, flags_for_exists	| ((state == CASSETTE_PLAY)		? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_PLAY,			UI_play);
+				append_menu(sub_menu, flags_for_writing	| ((state == CASSETTE_RECORD)	? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_RECORD,		UI_record);
 #if USE_TAPEDLG
-				append_menu(sub_menu, flags_for_exists,															new_item + DEVOPTION_CASSETTE_DIALOG,		UI_tapecontrol);
+				append_menu(sub_menu, flags_for_exists,														new_item + DEVOPTION_CASSETTE_DIALOG,		UI_tapecontrol);
 #else
-				append_menu(sub_menu, flags_for_exists,															new_item + DEVOPTION_CASSETTE_REWIND,		UI_rewind);
-				append_menu(sub_menu, flags_for_exists,															new_item + DEVOPTION_CASSETTE_FASTFORWARD,	UI_fastforward);
+				append_menu(sub_menu, flags_for_exists,														new_item + DEVOPTION_CASSETTE_REWIND,		UI_rewind);
+				append_menu(sub_menu, flags_for_exists,														new_item + DEVOPTION_CASSETTE_FASTFORWARD,	UI_fastforward);
 #endif
 			}
 #endif /* HAS_WAVE */
@@ -754,18 +764,17 @@ static void device_command(mess_image *img, int devoption)
 		switch(image_devtype(img)) {
 #if HAS_WAVE
 		case IO_CASSETTE:
-		{
-			int status;
-			status = device_status(img, -1);
 			switch(devoption) {
-			case DEVOPTION_CASSETTE_PLAYRECORD:
-				device_status(img, status | WAVE_STATUS_MOTOR_ENABLE);
+			case DEVOPTION_CASSETTE_STOPPAUSE:
+				cassette_change_state(img, CASSETTE_STOPPED, CASSETTE_MASK_UISTATE);
 				break;
 
-			case DEVOPTION_CASSETTE_STOPPAUSE:
-				if ((status & 1) == 0)
-					device_seek(img, 0, SEEK_SET);
-				device_status(img, status & ~WAVE_STATUS_MOTOR_ENABLE);
+			case DEVOPTION_CASSETTE_PLAY:
+				cassette_change_state(img, CASSETTE_PLAY, CASSETTE_MASK_UISTATE);
+				break;
+
+			case DEVOPTION_CASSETTE_RECORD:
+				cassette_change_state(img, CASSETTE_RECORD, CASSETTE_MASK_UISTATE);
 				break;
 
 #if USE_TAPEDLG
@@ -783,7 +792,6 @@ static void device_command(mess_image *img, int devoption)
 #endif
 			}
 			break;
-		}
 #endif /* HAS_WAVE */
 		}
 	}
@@ -1020,15 +1028,32 @@ void set_menu_text(HMENU menu_bar, int command, const char *text)
 //	win_setup_menus
 //============================================================
 
-int win_setup_menus(HMENU menu_bar)
+int win_setup_menus(HMODULE module, HMENU menu_bar)
 {
 	HMENU frameskip_menu;
 	HMENU joystick_menu;
 	char buf[256];
 	int i, joystick_count = 0;
 
+	static const int bitmap_ids[][2] =
+	{
+		{ IO_CARTSLOT,	IDI_ICON_CART },
+		{ IO_HARDDISK,	IDI_ICON_HARD },
+		{ IO_CASSETTE,	IDI_ICON_CASS },
+		{ IO_FLOPPY,	IDI_ICON_FLOP },
+		{ IO_PRINTER,	IDI_ICON_PRIN },
+		{ IO_SERIAL,	IDI_ICON_SERL },
+		{ IO_SNAPSHOT,	IDI_ICON_SNAP }
+	};
+
+	// verify that our magic numbers work
 	assert((ID_DEVICE_0 + IO_COUNT * MAX_DEV_INSTANCES * DEVOPTION_MAX) < ID_JOYSTICK_0);
 	is_paused = 0;
+
+	// get the device icons
+	memset(device_icons, 0, sizeof(device_icons));
+	for (i = 0; i < sizeof(bitmap_ids) / sizeof(bitmap_ids[0]); i++)
+		device_icons[bitmap_ids[i][0]] = LoadIcon(module, MAKEINTRESOURCE(bitmap_ids[i][1]));
 
 	// remove the profiler menu item if it doesn't exist
 #if HAS_PROFILER
@@ -1109,7 +1134,7 @@ int win_create_menu(HMENU *menus)
 		if (!menu_bar)
 			goto error;
 
-		if (win_setup_menus(menu_bar))
+		if (win_setup_menus(module, menu_bar))
 			goto error;
 	}
 
@@ -1162,7 +1187,13 @@ LRESULT win_mess_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lpara
 		{ VK_NUMPAD9,	UCHAR_MAMEKEY(9_PAD) },
 		{ VK_DECIMAL,	UCHAR_MAMEKEY(DEL_PAD) },
 		{ VK_ADD,		UCHAR_MAMEKEY(PLUS_PAD) },
-		{ VK_SUBTRACT,	UCHAR_MAMEKEY(MINUS_PAD) }
+		{ VK_SUBTRACT,	UCHAR_MAMEKEY(MINUS_PAD) },
+		{ VK_INSERT,	UCHAR_MAMEKEY(INSERT) },
+		{ VK_DELETE,	UCHAR_MAMEKEY(DEL) },
+		{ VK_HOME,		UCHAR_MAMEKEY(HOME) },
+		{ VK_END,		UCHAR_MAMEKEY(END) },
+		{ VK_PRIOR,		UCHAR_MAMEKEY(PGUP) },
+		{ VK_NEXT,		UCHAR_MAMEKEY(PGDN) }
 	};
 
 	if (win_use_natural_keyboard && (message == WM_KEYDOWN))

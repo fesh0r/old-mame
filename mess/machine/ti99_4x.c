@@ -97,6 +97,8 @@ static void ti99_CS_motor(int offset, int data);
 static void ti99_audio_gate(int offset, int data);
 static void ti99_CS_output(int offset, int data);
 
+static void ti99_8_internal_dsr_init(void);
+
 static void ti99_4p_internal_dsr_init(void);
 static void ti99_TIxram_init(void);
 static void ti99_sAMSxram_init(void);
@@ -379,6 +381,8 @@ static UINT8 *sRAM_ptr_8;
 
 /* tms9900_ICount: used to implement memory waitstates (hack) */
 extern int tms9900_ICount;
+/* tms9995_ICount: used to implement memory waitstates (hack) */
+extern int tms9995_ICount;
 
 
 
@@ -461,14 +465,6 @@ void init_ti99_4p(void)
 	/* set up memory pointers */
 	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram_4p);
 	/*console_GROMs.data_ptr = memory_region(region_grom);*/
-}
-
-DEVICE_LOAD( ti99_cassette )
-{
-	struct cassette_args args;
-	memset(&args, 0, sizeof(args));
-	args.create_smpfreq = 22050;	/* maybe 11025 Hz would be sufficient? */
-	return cassette_init(image, file, &args);
 }
 
 /*
@@ -770,11 +766,11 @@ void machine_init_ti99(void)
 	/* set up optional expansion hardware */
 	ti99_peb_init(ti99_model == model_99_4p, tms9901_set_int1, NULL);
 
+	if (ti99_model == model_99_8)
+		ti99_8_internal_dsr_init();
+
 	if (ti99_model == model_99_4p)
 		ti99_4p_internal_dsr_init();
-
-	/*if (ti99_model == model_99_8)
-		ti99_8_internal_dsr_init();*/
 
 	if (has_speech)
 	{
@@ -1159,11 +1155,11 @@ WRITE16_HANDLER ( ti99_ww_wv38 )
 }
 
 /*
-	TMS5200 speech chip read
+	TMS0285 speech chip read
 */
 static READ16_HANDLER ( ti99_rw_rspeech )
 {
-	tms9900_ICount -= 4;		/* this is just a minimum, it can be more */
+	tms9900_ICount -= 18+3;		/* this is just a minimum, it can be more */
 
 	return ((int) tms5220_status_r(offset)) << 8;
 }
@@ -1185,11 +1181,11 @@ static void speech_kludge_callback(int dummy)
 #endif
 
 /*
-	TMS5200 speech chip write
+	TMS0285 speech chip write
 */
 static WRITE16_HANDLER ( ti99_ww_wspeech )
 {
-	tms9900_ICount -= 30;		/* this is just an approx. minimum, it can be much more */
+	tms9900_ICount -= 54+3;		/* this is just an approx. minimum, it can be much more */
 
 #if 1
 	/* the stupid design of the tms5220 core means that ready is cleared when
@@ -1219,7 +1215,7 @@ READ16_HANDLER ( ti99_rw_rgpl )
 	int reply;
 
 
-	tms9900_ICount -= 4/*16*/;		/* from 4 to 16? */
+	tms9900_ICount -= 4/*20+3*/;		/* from 4 to 23? */
 
 	if (offset & 1)
 	{	/* read GPL address */
@@ -1260,7 +1256,7 @@ READ16_HANDLER ( ti99_rw_rgpl )
 */
 WRITE16_HANDLER ( ti99_ww_wgpl )
 {
-	tms9900_ICount -= 4/*16*/;		/* from 4 to 16? */
+	tms9900_ICount -= 4/*20+3*/;		/* from 4 to 23? */
 
 	if (offset & 1)
 	{	/* write GPL address */
@@ -1323,10 +1319,16 @@ WRITE16_HANDLER ( ti99_4p_ww_wgpl )
 }
 
 
+#if 0
+#pragma mark -
+#pragma mark 99/8 MEMORY HANDLERS
+#endif
+
 READ_HANDLER ( ti99_8_r )
 {
 	int page = offset >> 12;
 	UINT32 mapper_reg;
+	int reply = 0;
 
 	if (ti99_8_CRUS)
 	{
@@ -1342,12 +1344,13 @@ READ_HANDLER ( ti99_8_r )
 			{
 			case 0:
 				/* RAM */
-				return sRAM_ptr_8[offset & 0x1fff];
+				reply = sRAM_ptr_8[offset & 0x1fff];
+				break;
 
 			case 1:
 				/* sound write + RAM */
 				if (offset >= 0x8410)
-					return sRAM_ptr_8[offset & 0x1fff];
+					reply = sRAM_ptr_8[offset & 0x1fff];
 				break;
 
 			case 2:
@@ -1358,42 +1361,44 @@ READ_HANDLER ( ti99_8_r )
 					{
 						if (offset & 2)
 						{	/* read VDP status */
-							return TMS9928A_register_r(0);
+							tms9995_ICount -= 1;
+							reply = TMS9928A_register_r(0);
 						}
 						else
 						{	/* read VDP RAM */
-							return TMS9928A_vram_r(0);
+							tms9995_ICount -= 1;
+							reply = TMS9928A_vram_r(0);
 						}
 					}
 				}
 				else
 				{
-					UINT8 reply = ti99_8_mapper_status;
+					reply = ti99_8_mapper_status;
 
 					ti99_8_mapper_status = 0;
-
-					return reply;
 				}
-				return 0;
+				break;
 
 			case 4:
 				/* speech read */
-				/*if (! (offset & 1))
+				if (! (offset & 1))
 				{
-					return ti99_8_speech_r(0);
-				}*/
-				return 0;
+					tms9995_ICount -= 16;		/* this is just a minimum, it can be more */
+					reply = tms5220_status_r(0);
+				}
+				break;
 
 			case 6:
 				/* GPL read */
 				if (! (offset & 1))
-					return ti99_rw_rgpl(offset >> 1, 0) >> 8;
-				return 0;
+					reply = ti99_rw_rgpl(offset >> 1, 0) >> 8;
+				break;
 
 			default:
 				logerror("unmapped read offs=%d\n", (int) offset);
-				return 0;
+				break;
 			}
+			return reply;
 		}
 	}
 
@@ -1410,7 +1415,7 @@ READ_HANDLER ( ti99_8_r )
 
 	if (offset < 0x010000)
 		/* Read RAM */
-		return xRAM_ptr_8[offset];
+		reply = xRAM_ptr_8[offset];
 
 	if (offset >= 0xff0000)
 	{
@@ -1426,11 +1431,13 @@ READ_HANDLER ( ti99_8_r )
 			/* internal DSR ROM??? (normally enabled with a write to CRU >2700) */
 		case 7:
 			/* ??? */
+			logerror("unmapped read page=%d offs=%d\n", (int) page, (int) offset);
 			break;
 
 		case 2:
 			/* DSR space */
-			return ti99_8_peb_r(offset & 0x1fff);
+			reply = ti99_8_peb_r(offset & 0x1fff);
+			break;
 
 		case 3:
 			/* cartridge space */
@@ -1438,26 +1445,29 @@ READ_HANDLER ( ti99_8_r )
 #if 0
 			if (hsgpl_crdena)
 				/* hsgpl is enabled */
-				return ti99_hsgpl_rom6_r(offset, mem_mask);
+				reply = ti99_hsgpl_rom6_r(offset, mem_mask);
+			else
 #endif
 
 			if (cartridge_mbx && (offset >= 0x0c00) && (offset <= 0x0ffd))
-				return (cartridge_pages_8[0])[offset];
-
-			return current_page_ptr_8[offset];
+				reply = (cartridge_pages_8[0])[offset];
+			else
+				reply = current_page_ptr_8[offset];
+			break;
 
 		case 5:
 			/* >2000 ROM (ROM1) */
-			return ROM1_ptr_8[offset & 0x1fff];
+			reply = ROM1_ptr_8[offset & 0x1fff];
+			break;
 
 		case 6:
 			/* >6000 ROM */
-			return ROM3_ptr_8[offset & 0x1fff];
+			reply = ROM3_ptr_8[offset & 0x1fff];
+			break;
 		}
 	}
 
-	logerror("unmapped read page=%d offs=%d\n", (int) page, (int) offset);
-	return 0;
+	return reply;
 }
 
 WRITE_HANDLER ( ti99_8_w )
@@ -1480,7 +1490,7 @@ WRITE_HANDLER ( ti99_8_w )
 			case 0:
 				/* RAM */
 				sRAM_ptr_8[offset & 0x1fff] = data;
-				return;
+				break;
 
 			case 1:
 				/* sound write + RAM */
@@ -1488,7 +1498,7 @@ WRITE_HANDLER ( ti99_8_w )
 					SN76496_0_w(offset, data);
 				else
 					sRAM_ptr_8[offset & 0x1fff] = data;
-				return;
+				break;
 
 			case 2:
 				/* VDP read + mapper control */
@@ -1518,7 +1528,7 @@ WRITE_HANDLER ( ti99_8_w )
 						}
 					}
 				}
-				return;
+				break;
 
 			case 3:
 				/* VDP write */
@@ -1527,32 +1537,52 @@ WRITE_HANDLER ( ti99_8_w )
 					if (offset & 2)
 					{	/* read VDP status */
 						TMS9928A_register_w(0, data);
+						tms9995_ICount -= 1;
 					}
 					else
 					{	/* read VDP RAM */
 						TMS9928A_vram_w(0, data);
+						tms9995_ICount -= 1;
 					}
 				}
-				return;
+				break;
 
 			case 5:
 				/* speech write */
-				/*if (! (offset & 1))
+				if (! (offset & 1))
 				{
-					return ti99_8_speech_w(0);
-				}*/
-				return;
+					tms9995_ICount -= 48;		/* this is just an approx. minimum, it can be much more */
+
+					/* the stupid design of the tms5220 core means that ready is cleared when
+					there are 15 bytes in FIFO.  It should be 16.  Of course, if it were the
+					case, we would need to store the value on the bus, which would be more
+					complex. */
+					if (! tms5220_ready_r())
+					{
+						double time_to_ready = tms5220_time_to_ready();
+						int cycles_to_ready = ceil(TIME_TO_CYCLES(0, time_to_ready));
+
+						logerror("time to ready: %f -> %d\n", time_to_ready, (int) cycles_to_ready);
+
+						tms9995_ICount -= cycles_to_ready;
+						timer_set(TIME_NOW, 0, /*speech_kludge_callback*/NULL);
+					}
+
+					tms5220_data_w(offset, data);
+				}
+				break;
 
 			case 7:
 				/* GPL write */
 				if (! (offset & 1))
 					ti99_ww_wgpl(offset >> 1, data << 8, 0);
-				return;
+				break;
 
 			default:
 				logerror("unmapped write offs=%d data=%d\n", (int) offset, (int) data);
-				return;
+				break;
 			}
+			return;
 		}
 	}
 
@@ -2030,11 +2060,13 @@ KNOWN PROBLEMS:
 	the pending interrupt (or am I wrong once again ?).
 
 nota:
-	All interrupt routines notify (by software) the TMS9901 of interrupt recognition ("SBO n").
-	However, AFAIK, this has strictly no consequence in the TMS9901, and interrupt routines
-	would work fine without this (except probably TIMER interrupt).  All this is quite weird.
-	Maybe the interrupt recognition notification is needed on TMS9985, or any other weird
-	variant of TMS9900 (TI990/10 with TI99 development system?).
+	All interrupt routines notify (by software) the TMS9901 of interrupt
+	recognition (with a "SBO n").  However, unless I am missing something, this
+	has absolutely no consequence on the TMS9901 (except for the TIMER
+	interrupt routine), and interrupt routines would work fine without this
+	SBO instruction.  This is quite weird.  Maybe the interrupt recognition
+	notification is needed on TMS9985, or any other weird variant of TMS9900
+	(how about the TI-99 development system connected to a TI990/10?).
 */
 
 /*
@@ -2288,11 +2320,7 @@ static void ti99_8_PTGEN(int offset, int data)
 static void ti99_CS_motor(int offset, int data)
 {
 	mess_image *img = image_from_devtype_and_index(IO_CASSETTE, offset-6);
-
-	if (data)
-		device_status(img, device_status(img, -1) & ~ WAVE_STATUS_MOTOR_INHIBIT);
-	else
-		device_status(img, device_status(img, -1) | WAVE_STATUS_MOTOR_INHIBIT);
+	cassette_change_state(img, data ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 }
 
 /*
@@ -2315,7 +2343,65 @@ static void ti99_audio_gate(int offset, int data)
 static void ti99_CS_output(int offset, int data)
 {
 	device_output(image_from_devtype_and_index(IO_CASSETTE, 0), data ? 32767 : -32767);
-	device_output(image_from_devtype_and_index(IO_CASSETTE, 1), data ? 32767 : -32767);
+	if (ti99_model != model_99_8)	/* 99/8 only has one tape port!!! */
+		device_output(image_from_devtype_and_index(IO_CASSETTE, 1), data ? 32767 : -32767);
+}
+
+
+
+/*===========================================================================*/
+#if 0
+#pragma mark -
+#pragma mark 99/8 INTERNAL DSR
+#endif
+/*
+	TI 99/8 internal DSR support.
+
+	Includes a few specific signals, and an extra ROM.
+*/
+
+/* prototypes */
+static void ti99_8_internal_dsr_cru_w(int offset, int data);
+static READ_HANDLER(ti99_8_rw_internal_dsr);
+
+
+static const ti99_peb_card_handlers_t ti99_8_internal_dsr_handlers =
+{
+	NULL,
+	ti99_8_internal_dsr_cru_w,
+	ti99_8_rw_internal_dsr,
+	NULL
+};
+
+/* pointer to the internal DSR ROM data */
+static UINT8 *ti99_8_internal_DSR;
+
+
+/* set up handlers, and set initial state */
+static void ti99_8_internal_dsr_init(void)
+{
+	ti99_8_internal_DSR = memory_region(REGION_CPU1) + offset_rom0_8 + 0x4000;
+
+	ti99_peb_set_card_handlers(0x2700, & ti99_8_internal_dsr_handlers);
+}
+
+/* write CRU bit:
+	bit0: enable/disable internal DSR ROM,
+	bit1: hard reset */
+static void ti99_8_internal_dsr_cru_w(int offset, int data)
+{
+	switch (offset)
+	{
+	case 1:
+		/* hard reset -- not emulated */
+		break;
+	}
+}
+
+/* read internal DSR ROM */
+static READ_HANDLER(ti99_8_rw_internal_dsr)
+{
+	return ti99_8_internal_DSR[offset];
 }
 
 

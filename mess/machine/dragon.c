@@ -61,10 +61,9 @@
 #include "includes/6551.h"
 #include "vidhrdw/m6847.h"
 #include "formats/cocopak.h"
-#include "formats/cococas.h"
-#include "devices/cassette.h"
 #include "devices/bitbngr.h"
 #include "devices/printer.h"
+#include "devices/cassette.h"
 #include "image.h"
 
 static UINT8 *coco_rom;
@@ -76,7 +75,7 @@ static int pia0_irq_a, pia0_irq_b;
 static int pia1_firq_a, pia1_firq_b;
 static int gime_firq, gime_irq;
 static int cart_line, cart_inserted;
-static UINT8 pia0_pb, pia1_pb1, soundmux_status, tape_motor;
+static UINT8 pia0_pb, pia1_pb1, soundmux_status;
 static UINT8 joystick_axis, joystick;
 static int d_dac;
 
@@ -115,9 +114,6 @@ static void coco3_sam_set_maptype(int val);
 static void coco_setcartline(int data);
 static void coco3_setcartline(int data);
 
-#define myMIN(a, b) ((a) < (b) ? (a) : (b))
-#define myMAX(a, b) ((a) > (b) ? (a) : (b))
-
 /* These sets of defines control logging.  When MAME_DEBUG is off, all logging
  * is off.  There is a different set of defines for when MAME_DEBUG is on so I
  * don't have to worry abount accidently committing a version of the driver
@@ -129,16 +125,15 @@ static void coco3_setcartline(int data);
  * enough that they might get in the way.
  */
 #ifdef MAME_DEBUG
-#define LOG_PAK			1	/* [Sparse]   Logging on PAK trailers */
-#define LOG_INT_MASKING	1	/* [Sparse]   Logging on changing GIME interrupt masks */
-#define LOG_CASSETTE	1	/* [Sparse]   Logging when cassette motor changes state */
+#define LOG_PAK			0	/* [Sparse]   Logging on PAK trailers */
+#define LOG_INT_MASKING	0	/* [Sparse]   Logging on changing GIME interrupt masks */
+#define LOG_CASSETTE	0	/* [Sparse]   Logging when cassette motor changes state */
 #define LOG_TIMER_SET	0	/* [Sparse]   Logging when setting the timer */
 #define LOG_INT_TMR		0	/* [Frequent] Logging when timer interrupt is invoked */
 #define LOG_FLOPPY		0	/* [Frequent] Set when floppy interrupts occur */
 #define LOG_INT_COCO3	0
 #define LOG_GIME		0
 #define LOG_MMU			0
-#define LOG_OS9         0
 #define LOG_TIMER       0
 #define LOG_DEC_TIMER	0
 #define LOG_IRQ_RECALC	0
@@ -153,7 +148,6 @@ static void coco3_setcartline(int data);
 #define LOG_INT_COCO3	0
 #define LOG_GIME		0
 #define LOG_MMU			0
-#define LOG_OS9         0
 #define LOG_FLOPPY		0
 #define LOG_TIMER       0
 #define LOG_DEC_TIMER	0
@@ -165,6 +159,11 @@ static void coco3_setcartline(int data);
 static void coco3_timer_hblank(void);
 static int count_bank(void);
 static int is_Orch90(void);
+
+#ifdef MAME_DEBUG
+static unsigned coco_dasm_override(int cpunum, char *buffer, unsigned pc);
+#endif /* MAME_DEBUG */
+
 
 static struct pia6821_interface coco_pia_intf[] =
 {
@@ -900,7 +899,7 @@ static mess_image *cartslot_image(void)
 	return image_from_devtype_and_index(IO_CARTSLOT, 0);
 }
 
-static mess_image *cassette_image(void)
+static mess_image *cassette_device_image(void)
 {
 	return image_from_devtype_and_index(IO_CASSETTE, 0);
 }
@@ -917,30 +916,20 @@ static void soundmux_update(void)
 	 * It also calls a function into the cartridges device to tell it if it is
 	 * switch on or off.
 	 */
-
-	int casstatus, new_casstatus;
-
-	casstatus = device_status(cassette_image(), -1);
-	new_casstatus = casstatus | WAVE_STATUS_MUTED;
+	cassette_state new_state;
 
 	switch(soundmux_status) {
 	case SOUNDMUX_STATUS_ENABLE | SOUNDMUX_STATUS_SEL1:
 		/* CSN */
-		new_casstatus &= ~WAVE_STATUS_MUTED;
+		new_state = CASSETTE_SPEAKER_ENABLED;
 		break;
 	default:
+		new_state = CASSETTE_SPEAKER_MUTED;
 		break;
 	}
 
 	coco_cartridge_enablesound(soundmux_status == (SOUNDMUX_STATUS_ENABLE|SOUNDMUX_STATUS_SEL2));
-
-	if (casstatus != new_casstatus)
-	{
-#if LOG_CASSETTE
-		logerror("CoCo: Turning cassette speaker %s\n", new_casstatus ? "on" : "off");
-#endif
-		device_status(cassette_image(), new_casstatus);
-	}
+	cassette_change_state(cassette_device_image(), new_state, CASSETTE_MASK_SPEAKER);
 }
 
 void dragon_sound_update(void)
@@ -1158,7 +1147,7 @@ static WRITE_HANDLER ( d_pia1_pa_w )
 	if (joystick_mode() == JOYSTICKMODE_HIRES)
 		coco_hiresjoy_w(d_dac >= 0x80);
 	else
-		device_output(cassette_image(), ((int) d_dac - 0x80) * 0x100);
+		cassette_output(cassette_device_image(), ((int) d_dac - 0x80) / 128.0);
 
 	device_output(bitbanger_image(), (data & 2) >> 1);
 }
@@ -1215,22 +1204,15 @@ static WRITE_HANDLER( coco3_pia1_pb_w )
 
 static WRITE_HANDLER ( d_pia1_ca2_w )
 {
-	int status;
-
-	if (tape_motor ^ data)
-	{
-		status = device_status(cassette_image(), -1);
-		status &= ~WAVE_STATUS_MOTOR_INHIBIT;
-		if (!data)
-			status |= WAVE_STATUS_MOTOR_INHIBIT;
-		device_status(cassette_image(), status);
-		tape_motor = data;
-	}
+	cassette_change_state(
+		cassette_device_image(),
+		data ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
+		CASSETTE_MASK_MOTOR);
 }
 
 static READ_HANDLER ( d_pia1_pa_r )
 {
-	return (device_input(cassette_image()) >= 0) ? 1 : 0;
+	return (cassette_input(cassette_device_image()) >= 0) ? 1 : 0;
 }
 
 static READ_HANDLER ( d_pia1_pb_r_coco )
@@ -1973,37 +1955,6 @@ static void autocenter_init(int dipport, int dipmask)
 }
 
 /***************************************************************************
-  Cassette support
-***************************************************************************/
-
-static void coco_cassette_calcchunkinfo(mame_file *file, int *chunk_size,
-	int *chunk_samples)
-{
-	coco_wave_size = mame_fsize(file);
-	*chunk_size = coco_wave_size;
-	*chunk_samples = 8*8 * coco_wave_size;	/* 8 bits * 4 samples */
-}
-
-static struct cassette_args coco_cassette_args =
-{
-	WAVE_STATUS_MOTOR_ENABLE | WAVE_STATUS_MUTED
-		| WAVE_STATUS_MOTOR_INHIBIT,				/* initial_status */
-	coco_cassette_fill_wave,									/* fill_wave */
-	coco_cassette_calcchunkinfo,					/* calc_chunk_info */
-	4800,											/* input_smpfreq */
-	COCO_WAVESAMPLES_HEADER,						/* header_samples */
-	COCO_WAVESAMPLES_TRAILER,						/* trailer_samples */
-	0,												/* NA */
-	0,												/* NA */
-	19200											/* create_smpfreq */
-};
-
-DEVICE_LOAD(coco_cassette)
-{
-	return cassette_init(image, file, &coco_cassette_args);
-}
-
-/***************************************************************************
   Cartridge Expansion Slot
  ***************************************************************************/
 
@@ -2166,7 +2117,7 @@ static void generic_init_machine(struct pia6821_interface *piaintf, struct sam68
 	pia1_firq_a = CLEAR_LINE;
 	pia1_firq_b = CLEAR_LINE;
 
-	pia0_pb = pia1_pb1 = soundmux_status = tape_motor = 0;
+	pia0_pb = pia1_pb1 = soundmux_status = 0;
 	joystick_axis = joystick = 0;
 	d_dac = 0;
 
@@ -2227,7 +2178,8 @@ MACHINE_INIT( coco3 )
 	coco3_enable_64k = 0;
 	gime_irq = 0;
 	gime_firq = 0;
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < 8; i++)
+	{
 		coco3_mmu[i] = coco3_mmu[i + 8] = 56 + i;
 		coco3_gimereg[i] = 0;
 	}
@@ -2239,9 +2191,6 @@ MACHINE_INIT( coco3 )
 	coco3_vh_reset();
 
 	coco3_interupt_line = 0;
-
-	/* The choise of 50hz is arbitrary */
-	timer_pulse(TIME_IN_HZ(50), 0, coco3_poll_keyboard);
 }
 
 MACHINE_STOP( coco )
@@ -2254,15 +2203,25 @@ DRIVER_INIT( coco )
 {
 	pia_init(2);
 	sam_init();
+
+	/* The choise of 50hz is arbitrary */
+	timer_pulse(TIME_IN_HZ(50), 0, coco3_poll_keyboard);
+
+#ifdef MAME_DEBUG
+	cpuintrf_set_dasm_override(coco_dasm_override);
+#endif
 }
 
+
+
 /***************************************************************************
-  OS9 Syscalls (This is a helper not enabled by default to aid in logging
+  OS9 Syscalls for disassembly
 ****************************************************************************/
 
-#if LOG_OS9
+#ifdef MAME_DEBUG
 
-static const char *os9syscalls[] = {
+static const char *os9syscalls[] =
+{
 	"F$Link",          /* Link to Module */
 	"F$Load",          /* Load Module from File */
 	"F$UnLink",        /* Unlink Module */
@@ -2410,51 +2369,24 @@ static const char *os9syscalls[] = {
 	"I$DeletX"         /* Delete from current exec dir */
 };
 
-static const char *getos9call(int call)
+
+static unsigned coco_dasm_override(int cpunum, char *buffer, unsigned pc)
 {
-	return (call >= (sizeof(os9syscalls) / sizeof(os9syscalls[0]))) ? NULL : os9syscalls[call];
+	unsigned call;
+	unsigned result = 0;
+
+	if ((cpu_readop(pc + 0) == 0x10) && (cpu_readop(pc + 1) == 0x3F))
+	{
+		call = cpu_readop(pc + 2);
+		if ((call >= 0) && (call < sizeof(os9syscalls) / sizeof(os9syscalls[0])) && os9syscalls[call])
+		{
+			sprintf(buffer, "OS9   %s", os9syscalls[call]);
+			result = 3;
+		}
+	}
+	return result;
 }
 
-void log_os9call(int call)
-{
-	const char *mnemonic;
-
-	mnemonic = getos9call(call);
-	if (!mnemonic)
-		mnemonic = "(unknown)";
-
-	logerror("Logged OS9 Call Through SWI2 $%02x (%s): pc=$%04x\n", (void *) call, mnemonic, activecpu_get_pc());
-}
-
-void os9_in_swi2(void)
-{
-	unsigned pc;
-	pc = activecpu_get_pc();
-	log_os9call(cpu_readmem16(pc));
-}
-
-#endif /* LOG_OS9 */
-
-/***************************************************************************
-  Other hardware
-****************************************************************************
-
-  This section discusses hardware/accessories/enhancements to the CoCo (mainly
-  CoCo 3) that exist but are not emulated yet.
-
-  TWO MEGABYTE UPGRADE - CoCo's could be upgraded to have two megabytes of RAM.
-  This worked by doing the following things (info courtesy: LCB):
-
-		1,  All MMU registers are extended to 8 bits.  Note that even if they
-			store eight bits of data, on reading they are only 6 bits.
-		2.	The low two bits of $FF9B now extend the video start register.  It
-			is worth noting that these two bits are write-only, and if the
-			video is at the end of a 512k bank, it wraps around inside the
-			current 512k bank.
-
-  EIGHT MEGABYTE UPGRADE - This upgrade extends $FF9B so that video and the MMU
-  support 8 MB of memory.  I am not sure about the details.
-
-***************************************************************************/
 
 
+#endif /* MAME_DEBUG */

@@ -15,7 +15,7 @@ psxe30
 ***************************************************************************/
 
 #include "driver.h"
-#include "cpu/mips/mips.h"
+#include "cpu/mips/psx.h"
 #include "devices/snapquik.h"
 #include "includes/psx.h"
 
@@ -179,14 +179,19 @@ static MEMORY_READ32_START( psx_readmem )
 	{ 0xbfc00000, 0xbfc7ffff, MRA32_BANK5 },	/* bios */
 MEMORY_END
 
-static DRIVER_INIT( psx_mess )
+static MACHINE_INIT( psx )
 {
-	init_psx();
+	psx_machine_init();
+}
+
+static DRIVER_INIT( psx )
+{
 	cpu_setbank( 1, memory_region( REGION_USER1 ) );
 	cpu_setbank( 2, memory_region( REGION_CPU1 ) );
 	cpu_setbank( 3, memory_region( REGION_CPU1 ) );
 	cpu_setbank( 4, memory_region( REGION_CPU1 ) );
 	cpu_setbank( 5, memory_region( REGION_USER2 ) );
+	psx_driver_init();
 }
 
 INPUT_PORTS_START( psx )
@@ -254,7 +259,7 @@ static MACHINE_DRIVER_START( psx )
 	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_PALETTE_INIT(psx)
-	MDRV_VIDEO_START(psx_1024x512)
+	MDRV_VIDEO_START(psx_type2_1024x512)
 	MDRV_VIDEO_UPDATE(psx)
 	MDRV_VIDEO_STOP(psx)
 
@@ -352,14 +357,14 @@ There is also a BCD encoded date at offset 0x100, but this is set to 041211995 i
 from scph1000 & scph7000 ( where it is 22091994 & 29051997 respectively ).
 */
 
-/*		YEAR	NAME	PARENT	COMPAT	MACHINE INPUT	INIT		CONFIG  COMPANY 	FULLNAME */
-CONSX( 1994,	psx,	0,		0,		psx,	psx,	psx_mess,	psx,	"Sony",		"Sony PSX (scph1000)", GAME_NO_SOUND | GAME_NOT_WORKING )
-CONSX( 1995,	psxj22,	psx,	0,		psx,	psx,	psx_mess,	psx,	"Sony",		"Sony PSX (scph5000 J v2.2 12/04/95)", GAME_NO_SOUND | GAME_NOT_WORKING )
-CONSX( 1995,	psxa22,	psx,	0,		psx,	psx,	psx_mess,	psx,	"Sony",		"Sony PSX (scph1001/dtlh3000 A v2.2 12/04/95)", GAME_NO_SOUND | GAME_NOT_WORKING )
-CONSX( 1995,	psxe22,	psx,	0,		psx,	psx,	psx_mess,	psx,	"Sony",		"Sony PSX (scph1002/dtlh3002 E v2.2 12/04/95)", GAME_NO_SOUND | GAME_NOT_WORKING )
-CONSX( 1996,	psxj30,	psx,	0,		psx,	psx,	psx_mess,	psx,	"Sony",		"Sony PSX (scph5500 J v3.0 09/09/96)", GAME_NO_SOUND | GAME_NOT_WORKING )
-CONSX( 1996,	psxa30,	psx,	0,		psx,	psx,	psx_mess,	psx,	"Sony",		"Sony PSX (scph7003 A v3.0 11/18/96)", GAME_NO_SOUND | GAME_NOT_WORKING )
-CONSX( 1997,	psxe30,	psx,	0,		psx,	psx,	psx_mess,	psx,	"Sony",		"Sony PSX (scph5502 E v3.0 01/06/97)", GAME_NO_SOUND | GAME_NOT_WORKING )
-CONSX( 1997,	psxj40,	psx,	0,		psx,	psx,	psx_mess,	psx,	"Sony",		"Sony PSX (scph7000 J v4.0 08/18/97)", GAME_NO_SOUND | GAME_NOT_WORKING )
-CONSX( 1997,	psxa41,	psx,	0,		psx,	psx,	psx_mess,	psx,	"Sony",		"Sony PSX (scph7001 A v4.1 12/16/97)", GAME_NO_SOUND | GAME_NOT_WORKING )
-CONSX( 1997,	psxe41,	psx,	0,		psx,	psx,	psx_mess,	psx,	"Sony",		"Sony PSX (scph7502 E v4.1 12/16/97)", GAME_NO_SOUND | GAME_NOT_WORKING )
+/*     YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT  INIT  CONFIG  COMPANY   FULLNAME */
+CONSX( 1994, psx,    0,      0,      psx,     psx,   psx,  psx,    "Sony",   "Sony PSX (scph1000)", GAME_NO_SOUND | GAME_NOT_WORKING )
+CONSX( 1995, psxj22, psx,    0,      psx,     psx,   psx,  psx,    "Sony",   "Sony PSX (scph5000 J v2.2 12/04/95)", GAME_NO_SOUND | GAME_NOT_WORKING )
+CONSX( 1995, psxa22, psx,    0,      psx,     psx,   psx,  psx,    "Sony",   "Sony PSX (scph1001/dtlh3000 A v2.2 12/04/95)", GAME_NO_SOUND | GAME_NOT_WORKING )
+CONSX( 1995, psxe22, psx,    0,      psx,     psx,   psx,  psx,    "Sony",   "Sony PSX (scph1002/dtlh3002 E v2.2 12/04/95)", GAME_NO_SOUND | GAME_NOT_WORKING )
+CONSX( 1996, psxj30, psx,    0,      psx,     psx,   psx,  psx,    "Sony",   "Sony PSX (scph5500 J v3.0 09/09/96)", GAME_NO_SOUND | GAME_NOT_WORKING )
+CONSX( 1996, psxa30, psx,    0,      psx,     psx,   psx,  psx,    "Sony",   "Sony PSX (scph7003 A v3.0 11/18/96)", GAME_NO_SOUND | GAME_NOT_WORKING )
+CONSX( 1997, psxe30, psx,    0,      psx,     psx,   psx,  psx,    "Sony",   "Sony PSX (scph5502 E v3.0 01/06/97)", GAME_NO_SOUND | GAME_NOT_WORKING )
+CONSX( 1997, psxj40, psx,    0,      psx,     psx,   psx,  psx,    "Sony",   "Sony PSX (scph7000 J v4.0 08/18/97)", GAME_NO_SOUND | GAME_NOT_WORKING )
+CONSX( 1997, psxa41, psx,    0,      psx,     psx,   psx,  psx,    "Sony",   "Sony PSX (scph7001 A v4.1 12/16/97)", GAME_NO_SOUND | GAME_NOT_WORKING )
+CONSX( 1997, psxe41, psx,    0,      psx,     psx,   psx,  psx,    "Sony",   "Sony PSX (scph7502 E v4.1 12/16/97)", GAME_NO_SOUND | GAME_NOT_WORKING )

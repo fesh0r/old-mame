@@ -185,13 +185,16 @@ static void wd179x_restore(WD179X *w)
 	/* reset busy count */
 	w->busy_count = 0;
 
-	/* keep stepping until track 0 is received or 255 steps have been done */
-	while (!(floppy_drive_get_flag_state(wd179x_current_image(), FLOPPY_DRIVE_HEAD_AT_TRACK_0)) && (step_counter!=0))
+	if (image_slotexists(wd179x_current_image()))
 	{
-		/* update time to simulate seek time busy signal */
-		w->busy_count++;
-		floppy_drive_seek(wd179x_current_image(), w->direction);
-		step_counter--;
+		/* keep stepping until track 0 is received or 255 steps have been done */
+		while (!(floppy_drive_get_flag_state(wd179x_current_image(), FLOPPY_DRIVE_HEAD_AT_TRACK_0)) && (step_counter!=0))
+		{
+			/* update time to simulate seek time busy signal */
+			w->busy_count++;
+			floppy_drive_seek(wd179x_current_image(), w->direction);
+			step_counter--;
+		}
 	}
 
 	/* update track reg */
@@ -942,6 +945,10 @@ READ_HANDLER ( wd179x_data_r )
 			/* Delay the INTRQ 3 byte times becuase we need to read two CRC bytes and
 			   compare them with a calculated CRC */
 			wd179x_complete_command(w, DELAY_DATADONE);
+
+#if VERBOSE
+			logerror("wd179x_data_r(): data read completed\n");
+#endif
 		}
 		else
 		{
@@ -965,7 +972,7 @@ WRITE_HANDLER ( wd179x_command_w )
 	floppy_drive_set_ready_state(wd179x_current_image(), 1,0);
 	/* also cleared by writing command */
 	if (w->callback)
-			(*w->callback) (WD179X_IRQ_CLR);
+		(*w->callback) (WD179X_IRQ_CLR);
 
 	/* clear write protected. On read sector, read track and read dam, write protected bit is clear */
 	w->status &= ~((1<<6) | (1<<5) | (1<<4));

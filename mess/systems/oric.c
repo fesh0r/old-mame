@@ -1,5 +1,7 @@
+/*********************************************************************
 
-/*
+	systems/oric.c
+
 	Systems supported by this driver:
 
 	Oric 1,
@@ -11,14 +13,18 @@
 	Apple 2 disc drives for storage.
 
 	This driver originally by Paul Cook, rewritten by Kevin Thacker.
-*/
+
+*********************************************************************/
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
 #include "includes/oric.h"
-#include "devices/flopdrv.h"
 #include "includes/centroni.h"
 #include "devices/printer.h"
+#include "devices/mflopimg.h"
+#include "devices/cassette.h"
+#include "formats/ap2_dsk.h"
+#include "formats/oric_tap.h"
 
 #include "includes/apple2.h"
 
@@ -535,18 +541,18 @@ ROM_START(prav8dda)
 ROM_END
 
 SYSTEM_CONFIG_START(oric_common)
-	CONFIG_DEVICE_CASSETTE(1, "tap\0", device_load_oric_cassette)
+	CONFIG_DEVICE_CASSETTE(1, oric_cassette_formats)
 	CONFIG_DEVICE_PRINTER(1)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(oric1)
 	CONFIG_IMPORT_FROM(oric_common)
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 4, "dsk\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_CREATE_OR_READ, NULL, NULL, device_load_oric_floppy, device_unload_oric_floppy, floppy_status)
+	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 4, "dsk\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_RW_CREATE_OR_READ, device_init_oric_floppy, NULL, device_load_oric_floppy, NULL, floppy_status)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(prav8)
 	CONFIG_IMPORT_FROM(oric_common)
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 1, "dsk\0bin\0", DEVICE_LOAD_RESETS_NONE, OSD_FOPEN_READ, NULL, NULL, device_load_apple2_floppy, NULL, NULL)
+	CONFIG_DEVICE_FLOPPY( 1, apple2 )
 SYSTEM_CONFIG_END
 
 

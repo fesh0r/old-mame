@@ -49,6 +49,22 @@
 #define FUNCATTR_CONST
 #endif
 
+#ifndef MIN
+#define MIN(a, b)		((a) < (b) ? (a) : (b))
+#endif /* MIN */
+
+#ifndef MAX
+#define MAX(a, b)		((a) > (b) ? (a) : (b))
+#endif /* MIN */
+
+#ifndef TRUE
+#define TRUE	1
+#endif
+
+#ifndef FALSE
+#define FALSE	0
+#endif
+
 /* -----------------------------------------------------------------------
  * strncpyz
  * strncatz
@@ -92,15 +108,32 @@ int strncmpi(const char *dst, const char *src, size_t n);
 char *osd_basename (char *name);
 #endif /* osd_basename */
 
+
+
 /* -----------------------------------------------------------------------
  * osd_mkdir
+ * osd_rmdir
+ * osd_rmfile
+ * osd_copyfile
  *
- * A platform independant mkdir().  No default implementation exists, but
- * so far, only imgtool uses this.  Either way, a 'prototype' is given here
- * for informational purposes.
+ * Misc platform independent dir/file functions.
  * ----------------------------------------------------------------------- */
 
-/* void osd_mkdir(const char *dir); */
+#ifndef osd_mkdir
+void osd_mkdir(const char *dir);
+#endif /* osd_mkdir */
+
+#ifndef osd_rmdir
+void osd_rmdir(const char *dir);
+#endif /* osd_rmdir */
+
+#ifndef osd_rmfile
+void osd_rmfile(const char *filepath);
+#endif /* osd_rmfile */
+
+#ifndef osd_copyfile
+void osd_copyfile(const char *destfile, const char *srcfile);
+#endif /* osd_copyfile */
 
 
 /* -----------------------------------------------------------------------
@@ -111,6 +144,13 @@ char *osd_basename (char *name);
 #ifndef memset16
 void *memset16 (void *dest, int value, size_t size);
 #endif /* memset16 */
+
+
+/* -----------------------------------------------------------------------
+ * CRC stuff
+ * ----------------------------------------------------------------------- */
+unsigned short ccitt_crc16(unsigned short crc, const unsigned char *buffer, size_t buffer_len);
+
 
 /* -----------------------------------------------------------------------
  * Miscellaneous
@@ -124,9 +164,10 @@ void *memset16 (void *dest, int value, size_t size);
 
 char *stripspace(const char *src);
 char *strip_extension(const char *filename);
+int compute_log2(int val);
 
 /* Endian macros */
-#define FLIPENDIAN_INT16(x)	((((x) >> 8) | ((x) << 8)) & 0xffff)
+#define FLIPENDIAN_INT16(x)	(((((UINT16) (x)) >> 8) | ((x) << 8)) & 0xffff) 
 #define FLIPENDIAN_INT32(x)	((((x) << 24) | (((UINT32) (x)) >> 24) | \
                        (( (x) & 0x0000ff00) << 8) | (( (x) & 0x00ff0000) >> 8)))
 
@@ -141,5 +182,7 @@ char *strip_extension(const char *filename);
 #define LITTLE_ENDIANIZE_INT16(x)	(FLIPENDIAN_INT16(x))
 #define LITTLE_ENDIANIZE_INT32(x)	(FLIPENDIAN_INT32(x))
 #endif /* LSB_FIRST */
+
+int findextension(const char *extensions, const char *ext);
 
 #endif /* UTILS_H */

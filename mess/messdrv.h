@@ -2,7 +2,7 @@
 #define MESSDRV_H
 
 #include <assert.h>
-#include "formats.h"
+#include "formats/flopimg.h"
 #include "fileio.h"
 #include "osdepend.h"
 
@@ -62,6 +62,7 @@ struct IODevice
 	void (*display)(mess_image *img, struct mame_bitmap *bitmap);
 	void *user1;
 	void *user2;
+	void *user3;
 };
 
 struct SystemConfigurationParamBlock

@@ -177,7 +177,6 @@ mame_file *mame_fopen(const char *gamename, const char *filename, int filetype, 
 				return generic_fopen(filetype, gamename, filename, 0, openforwrite ? FILEFLAG_OPENWRITE | FILEFLAG_CREATE_GAMEDIR : FILEFLAG_OPENREAD);
 #endif
 			return generic_fopen(filetype, NULL, gamename, 0, openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD);
-#endif
 
 		/* high score files */
 		case FILETYPE_HIGHSCORE:

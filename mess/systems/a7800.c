@@ -23,24 +23,24 @@
 static MEMORY_READ_START( readmem )
     { 0x0000, 0x001f, a7800_TIA_r },
     { 0x0020, 0x003f, a7800_MARIA_r },
-    { 0x0040, 0x00FF, a7800_RAM0_r },
+    { 0x0040, 0x00FF, MRA_BANK5 },		/* RAM0 */
     { 0x0100, 0x011f, a7800_TIA_r },
     { 0x0120, 0x013f, a7800_MARIA_r },
-    { 0x0140, 0x01FF, a7800_RAM1_r },
+    { 0x0140, 0x01FF, MRA_BANK6 },		/* RAM1 */
     { 0x0200, 0x021f, a7800_TIA_r },
     { 0x0220, 0x023f, a7800_MARIA_r },
     { 0x0280, 0x02FF, a7800_RIOT_r },
     { 0x0300, 0x031f, a7800_TIA_r },
     { 0x0320, 0x033f, a7800_MARIA_r },
-    { 0x0480, 0x04ff, MRA_RAM },    /* RIOT RAM */
+    { 0x0480, 0x04ff, MRA_RAM },		/* RIOT RAM */
     { 0x1800, 0x27FF, MRA_RAM },
-    { 0x2800, 0x2FFF, a7800_MAINRAM_r },
-    { 0x3000, 0x37FF, a7800_MAINRAM_r },
-    { 0x3800, 0x3FFF, a7800_MAINRAM_r },
-    { 0x4000, 0x7FFF, MRA_BANK1 },	/* f18 hornet */
-    { 0x8000, 0x9FFF, MRA_BANK2 },	/* sc */
-    { 0xA000, 0xBFFF, MRA_BANK3 },	/* sc + ac */
-    { 0xC000, 0xDFFF, MRA_BANK4 },	/* ac */
+    { 0x2800, 0x2FFF, MRA_BANK7 },		/* MAINRAM */
+    { 0x3000, 0x37FF, MRA_BANK7 },		/* MAINRAM */
+    { 0x3800, 0x3FFF, MRA_BANK7 },		/* MAINRAM */
+    { 0x4000, 0x7FFF, MRA_BANK1 },		/* f18 hornet */
+    { 0x8000, 0x9FFF, MRA_BANK2 },		/* sc */
+    { 0xA000, 0xBFFF, MRA_BANK3 },		/* sc + ac */
+    { 0xC000, 0xDFFF, MRA_BANK4 },		/* ac */
     { 0xE000, 0xFFFF, MRA_ROM },
 MEMORY_END
 
@@ -50,49 +50,48 @@ static MEMORY_WRITE_START( writemem )
     { 0x0040, 0x00FF, a7800_RAM0_w },
     { 0x0100, 0x011f, a7800_TIA_w },
     { 0x0120, 0x013f, a7800_MARIA_w },
-    { 0x0140, 0x01FF, a7800_RAM1_w },
+    { 0x0140, 0x01FF, MWA_BANK6 },		/* RAM1 */
     { 0x0200, 0x021f, a7800_TIA_w },
     { 0x0220, 0x023f, a7800_MARIA_w },
     { 0x0280, 0x02FF, a7800_RIOT_w },
     { 0x0300, 0x031f, a7800_TIA_w },
     { 0x0320, 0x033f, a7800_MARIA_w },
-    { 0x0480, 0x04ff, MWA_RAM },  /* RIOT RAM */
+    { 0x0480, 0x04ff, MWA_RAM },		/* RIOT RAM */
     { 0x1800, 0x27FF, MWA_RAM },
-    { 0x2800, 0x2FFF, a7800_MAINRAM_w },
-    { 0x3000, 0x37FF, a7800_MAINRAM_w },
-    { 0x3800, 0x3FFF, a7800_MAINRAM_w },
+    { 0x2800, 0x2FFF, MWA_BANK7 },		/* MAINRAM */
+    { 0x3000, 0x37FF, MWA_BANK7 },		/* MAINRAM */
+    { 0x3800, 0x3FFF, MWA_BANK7 },		/* MAINRAM */
     { 0x4000, 0xFFFF, a7800_cart_w },
 MEMORY_END
 
 
 INPUT_PORTS_START( a7800 )
-    PORT_START      /* IN0 */
-    PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER2 )
-    PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER2 )
-    PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER2 )
-    PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER2 )
-    PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER1 )
-    PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER1 )
-    PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER1 )
-    PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER1 )
+	PORT_START      /* IN0 */
+	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER2 )
+	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER2 )
+	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER2 )
+	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER2 )
+	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER1 )
+	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER1 )
+	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER1 )
+	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER1 )
 
-    PORT_START      /* IN1 */
-    PORT_BIT ( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_PLAYER2 )
-    PORT_BIT ( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_PLAYER1 )
-    PORT_BIT ( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON2 | IPF_PLAYER2 )
-    PORT_BIT ( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON2 | IPF_PLAYER1 )
-    PORT_BIT ( 0xF0, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_START      /* IN1 */
+	PORT_BIT ( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_PLAYER2 )
+	PORT_BIT ( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_PLAYER1 )
+	PORT_BIT ( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON2 | IPF_PLAYER2 )
+	PORT_BIT ( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON2 | IPF_PLAYER1 )
+	PORT_BIT ( 0xF0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-    PORT_START      /* IN2 */
-    PORT_BIT (0x7F, IP_ACTIVE_LOW, IPT_UNUSED)
-    PORT_BIT (0x80, IP_ACTIVE_HIGH, IPT_VBLANK)
+	PORT_START      /* IN2 */
+	PORT_BIT (0x7F, IP_ACTIVE_LOW, IPT_UNUSED)
+	PORT_BIT (0x80, IP_ACTIVE_HIGH, IPT_VBLANK)
 
-    PORT_START      /* IN3 */
-    PORT_BITX( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_RESETCPU, "Reset", KEYCODE_F3, IP_JOY_NONE)
-    PORT_BITX( 0x02, IP_ACTIVE_LOW, IPT_BUTTON4, "Select", KEYCODE_S, IP_JOY_NONE)
-    PORT_BITX( 0x08, IP_ACTIVE_LOW, IPT_BUTTON5, "Pause", KEYCODE_O, IP_JOY_NONE)
-    PORT_BIT ( 0xF4, IP_ACTIVE_LOW, IPT_UNUSED)
-
+	PORT_START      /* IN3 */
+	PORT_BITX( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN, "Reset", KEYCODE_R, IP_JOY_NONE)
+	PORT_BITX( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN, "Start", KEYCODE_S, IP_JOY_NONE)
+	PORT_BITX( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN, "Pause", KEYCODE_P, IP_JOY_NONE)
+	PORT_BIT ( 0xF4, IP_ACTIVE_LOW, IPT_UNUSED)
 INPUT_PORTS_END
 
 #define NTSC_GREY    \
@@ -215,13 +214,13 @@ static UINT8 a7800p_palette[256*3] =
 {
 	NTSC_GREY,
 	NTSC_ORANGE_GREEN,
-	NTSC_ORANGE_GREEN,
-	NTSC_LIGHT_ORANGE,
 	NTSC_GOLD,
 	NTSC_ORANGE,
 	NTSC_RED_ORANGE,
 	NTSC_PINK,
 	NTSC_PURPLE,
+	NTSC_PURPLE_BLUE,
+	NTSC_BLUE1,
 	NTSC_BLUE1,
 	NTSC_BLUE2,
 	NTSC_LIGHT_BLUE,
@@ -269,10 +268,6 @@ static PALETTE_INIT(a7800p)
 }
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
-{
-MEMORY_END   /* end of array */
-
 #define CLK_PAL 1773447
 #define CLK_NTSC 1789772
 
@@ -284,19 +279,21 @@ static struct TIAinterface tia_interface =
 };
 
 
-static struct POKEYinterface pokey_interfacen = {
+static struct POKEYinterface pokey_interfacen =
+{
     1,
     CLK_NTSC,
     { 100 },
 };
 
-static struct POKEYinterface pokey_interfacep = {
+static struct POKEYinterface pokey_interfacep =
+{
     1,
     CLK_PAL,
     { 100 },
 };
 
-static MACHINE_DRIVER_START( a7800 )
+static MACHINE_DRIVER_START( a7800_ntsc )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, CLK_NTSC)	/* 1.79Mhz (note: The clock switches to 1.19Mhz
 												 * when the TIA or RIOT are accessed) */
@@ -310,9 +307,8 @@ static MACHINE_DRIVER_START( a7800 )
 	MDRV_MACHINE_INIT( a7800 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(640,263)
-	MDRV_VISIBLE_AREA(0,319,35,35+204)
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_SCREEN_SIZE(640,262)
+	MDRV_VISIBLE_AREA(0,319,25,45+204)
 	MDRV_PALETTE_LENGTH(sizeof(a7800_palette) / sizeof(a7800_palette[0]) / 3)
 	MDRV_COLORTABLE_LENGTH(sizeof(a7800_colortable) / sizeof(a7800_colortable[0]))
 	MDRV_PALETTE_INIT(a7800)
@@ -322,36 +318,25 @@ static MACHINE_DRIVER_START( a7800 )
 
 	/* sound hardware */
 	MDRV_SOUND_ADD(TIA, tia_interface)
-	MDRV_SOUND_ADD(POKEY, pokey_interfacen)
+	MDRV_SOUND_ADD_TAG("pokey", POKEY, pokey_interfacen)
 MACHINE_DRIVER_END
 
-static MACHINE_DRIVER_START( a7800p )
+
+
+static MACHINE_DRIVER_START( a7800_pal )
+	MDRV_IMPORT_FROM( a7800_ntsc )
+
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M6502, CLK_PAL)	/* 1.79Mhz (note: The clock switches to 1.19Mhz
+	MDRV_CPU_REPLACE("main", M6502, CLK_PAL)	/* 1.79Mhz (note: The clock switches to 1.19Mhz
 												 * when the TIA or RIOT are accessed) */
-	MDRV_CPU_MEMORY(readmem,writemem)
 	MDRV_CPU_VBLANK_INT(a7800_interrupt,312)
-
 	MDRV_FRAMES_PER_SECOND(50)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_INTERLEAVE(1)
-
-	MDRV_MACHINE_INIT( a7800p )
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(640,263)
-	MDRV_VISIBLE_AREA(0,319,35,35+204)
-	MDRV_GFXDECODE(gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(sizeof(a7800p_palette) / sizeof(a7800p_palette[0]) / 3)
-	MDRV_COLORTABLE_LENGTH(sizeof(a7800_colortable) / sizeof(a7800_colortable[0]))
-	MDRV_PALETTE_INIT(a7800p)
-
-	MDRV_VIDEO_START(a7800)
-	MDRV_VIDEO_UPDATE(a7800)
+	MDRV_SCREEN_SIZE(640,312)
+	MDRV_VISIBLE_AREA(0,319,50,50+225)
+	MDRV_PALETTE_INIT( a7800p )
 
 	/* sound hardware */
-	MDRV_SOUND_ADD(TIA, tia_interface)
-	MDRV_SOUND_ADD(POKEY, pokey_interfacep)
+	MDRV_SOUND_REPLACE("pokey", POKEY, pokey_interfacep)
 MACHINE_DRIVER_END
 
 
@@ -375,12 +360,12 @@ ROM_START (a7800p)
     ROM_LOAD ("7800pal.rom", 0xc000, 0x4000, CRC(d5b61170 ))
 ROM_END
 
-SYSTEM_CONFIG_START(a7800)
-	CONFIG_DEVICE_CARTSLOT_REQ( 1, "a78\0", NULL, NULL, device_load_a7800, NULL, NULL, a7800_partialcrc)
+SYSTEM_CONFIG_START(a7800_ntsc)
+	CONFIG_DEVICE_CARTSLOT_REQ( 1, "a78\0", NULL, NULL, device_load_a7800_cart, NULL, NULL, a7800_partialcrc)
 SYSTEM_CONFIG_END
 
-SYSTEM_CONFIG_START(a7800p)
-	CONFIG_DEVICE_CARTSLOT_REQ( 1, "a78\0", NULL, NULL, device_load_a7800p, NULL, NULL, a7800_partialcrc)
+SYSTEM_CONFIG_START(a7800_pal)
+	CONFIG_DEVICE_CARTSLOT_REQ( 1, "a78\0", NULL, NULL, device_load_a7800_cart, NULL, NULL, a7800_partialcrc)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -389,6 +374,6 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT	MACHINE   INPUT     INIT	CONFIG	COMPANY   FULLNAME */
-CONS( 1986, a7800,    0,        0,		a7800,    a7800,    0,		a7800,	"Atari",  "Atari 7800 NTSC" )
-CONS( 1986, a7800p,   a7800,    0,		a7800p,   a7800,    0,		a7800p,	"Atari",  "Atari 7800 PAL" )
+/*    YEAR  NAME      PARENT    COMPAT	MACHINE		INPUT     INIT			CONFIG		COMPANY   FULLNAME */
+CONS( 1986, a7800,    0,        0,		a7800_ntsc,	a7800,    a7800_ntsc,	a7800_ntsc,	"Atari",  "Atari 7800 NTSC" )
+CONS( 1986, a7800p,   a7800,    0,		a7800_pal,	a7800,    a7800_pal,	a7800_pal,	"Atari",  "Atari 7800 PAL" )

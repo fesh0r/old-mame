@@ -34,6 +34,7 @@ Historical notes: TI made several last minute design changes.
 /*#include "devices/cartslot.h"*/
 #include "devices/basicdsk.h"
 #include "devices/mess_hd.h"
+#include "devices/cassette.h"
 
 /*
 	memory map
@@ -839,6 +840,9 @@ ROM_START(ti99_4ev)
 	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7)) /* system speech ROM */
 ROM_END
 
+#define rom_ti99_4e rom_ti99_4
+#define rom_ti99_4ae rom_ti99_4a
+
 /* a TI99 console only had one cartridge slot, but cutting the ROMs
  * in 3 files seems to be the only way to handle cartridges until I use
  * a headered format.
@@ -847,11 +851,8 @@ ROM_END
  * are emulated.
  */
 
-#define rom_ti99_4e rom_ti99_4
-#define rom_ti99_4ae rom_ti99_4a
-
 SYSTEM_CONFIG_START(ti99_4)
-	CONFIG_DEVICE_CASSETTE			(2, "",												device_load_ti99_cassette)
+	CONFIG_DEVICE_CASSETTE			(2, NULL)
 	CONFIG_DEVICE_LEGACY			(IO_CARTSLOT,	3,	"bin\0c\0d\0g\0m\0crom\0drom\0grom\0mrom\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_READ,	NULL,	NULL,	device_load_ti99_cart,	device_unload_ti99_cart,	NULL)
 	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",										device_load_ti99_floppy)
 	CONFIG_DEVICE_LEGACY			(IO_HARDDISK, 	4, "hd\0",	DEVICE_LOAD_RESETS_NONE,	OSD_FOPEN_RW_OR_READ,device_init_ti99_hd, NULL, device_load_ti99_hd, device_unload_ti99_hd, NULL)

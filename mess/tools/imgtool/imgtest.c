@@ -26,9 +26,9 @@ static void *create_buffer(size_t len)
 	return buf;
 }
 
-static int get_freespace(const struct ImageModule *module, const char *imagename, int *freespace)
+static imgtoolerr_t get_freespace(const struct ImageModule *module, const char *imagename, int *freespace)
 {
-	int err;
+	imgtoolerr_t err;
 	IMAGE *img = NULL;
 
 	err = img_open(module, imagename, OSD_FOPEN_RW, &img);
@@ -45,15 +45,16 @@ done:
 	return err;
 }
 
-static int create_file_in_image(const struct ImageModule *module, const char *imagename, const char *fname, void *testbuf, size_t filesize)
+static imgtoolerr_t create_file_in_image(const struct ImageModule *module, const char *imagename, const char *fname, void *testbuf, size_t filesize)
 {
-	int err;
+	imgtoolerr_t err;
 	IMAGE *img = NULL;
 	STREAM *s = NULL;
 
 	/* Create a test stream */
 	s = stream_open_mem(testbuf, filesize);
-	if (!s) {
+	if (!s)
+	{
 		err = IMGTOOLERR_OUTOFMEMORY;
 		goto done;
 	}
@@ -90,7 +91,8 @@ static int verify_file_in_image(const struct ImageModule *module, const char *im
 
 	/* Create a test stream */
 	s = stream_open_mem(readbuf, filesize);
-	if (!s) {
+	if (!s)
+	{
 		err = IMGTOOLERR_OUTOFMEMORY;
 		goto done;
 	}
@@ -139,9 +141,9 @@ done:
 	return err;
 }
 
-static int count_files(const struct ImageModule *module, const char *imagename, int *totalfiles)
+static imgtoolerr_t count_files(const struct ImageModule *module, const char *imagename, int *totalfiles)
 {
-	int err;
+	imgtoolerr_t err;
 	IMAGE *img = NULL;
 
 	err = img_open(module, imagename, OSD_FOPEN_RW, &img);
@@ -158,9 +160,9 @@ done:
 	return err;
 }
 
-static int assert_file_count(const struct ImageModule *module, const char *imagename, int filecount)
+static imgtoolerr_t assert_file_count(const struct ImageModule *module, const char *imagename, int filecount)
 {
-	int err;
+	imgtoolerr_t err;
 	int totalfiles;
 
 	err = count_files(module, imagename, &totalfiles);
@@ -200,14 +202,12 @@ static int calculate_filesize(int i)
 	return 5*(i+1)*(i+1)*(i+1)*(i+1);
 }
 
-static int internal_test(const struct ImageModule *module)
+static imgtoolerr_t internal_test(const struct ImageModule *module)
 {
-	int err, i;
-	const struct OptionTemplate *createopts;
-	char *s;
+	imgtoolerr_t err;
+	int i;
 	int freespace, freespace2, filesize;
 	void *testbuf;
-	struct NamedOption nopts[32];
 	char buf[2048];
 
 	/* Create the buffer */
@@ -219,23 +219,7 @@ static int internal_test(const struct ImageModule *module)
 	}
 
 	/* Create the image */
-	memset(nopts, 0, sizeof(nopts));
-	s = buf;
-	createopts = module->createoptions_template;
-	if (createopts)
-	{
-		for (i = 0; createopts[i].name; i++)
-		{
-			assert(i < (sizeof(nopts) / sizeof(nopts[0]))-1);
-			assert(createopts[i].flags == IMGOPTION_FLAG_TYPE_INTEGER);
-
-			sprintf(s, "%i", createopts[i].min);
-			nopts[i].name = createopts[i].name;
-			nopts[i].value = s;
-			s += strlen(s) + 1;
-		}
-	}
-	err = img_create(module, testimage, nopts);
+	err = img_create(module, testimage, NULL);
 	if (err)
 		goto done;
 
@@ -314,35 +298,37 @@ done:
 
 /* ----------------------------------------------------------------------- */
 
-int imgtool_test(const struct ImageModule *module)
+imgtoolerr_t imgtool_test(imgtool_library *library, const struct ImageModule *module)
 {
-	int err, i;
-	size_t allmodules_count;
-	const struct ImageModule *allmodules;
+	imgtoolerr_t err;
 
-	if (module) {
+	if (module)
+	{
 		err = internal_test(module);
 		if (err)
 			return err;
 	}
-	else {
-		allmodules = getmodules(&allmodules_count);
-		for (i = 0; i < allmodules_count; i++) {
-			err = internal_test(&allmodules[i]);
+	else
+	{
+		module = imgtool_library_findmodule(library, NULL);
+		while(module)
+		{
+			err = internal_test(module);
 			if (err)
 				return err;
+			module = module->next;
 		}
 	}
 	return 0;
 }
 
-int imgtool_test_byname(const char *modulename)
+imgtoolerr_t imgtool_test_byname(imgtool_library *library, const char *modulename)
 {
 	const struct ImageModule *module;
 
 	if (modulename)
 	{
-		module = findimagemodule(modulename);
+		module = imgtool_library_findmodule(library, modulename);
 		if (!module)
 			return IMGTOOLERR_MODULENOTFOUND | IMGTOOLERR_SRC_MODULE;
 	}
@@ -350,7 +336,7 @@ int imgtool_test_byname(const char *modulename)
 	{
 		module = NULL;
 	}
-	return imgtool_test(module);
+	return imgtool_test(library, module);
 }
 
 

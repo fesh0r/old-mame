@@ -10,11 +10,13 @@
 	Kevin Thacker [MESS driver]
 
  ******************************************************************************/
+
 #include "driver.h"
 #include "cpuintrf.h"
 #include "machine/z80fmly.h"
 #include "cpu/z80/z80.h"
 #include "includes/kc.h"
+#include "devices/cassette.h"
 
 /* pio is last in chain and therefore has highest priority */
 
@@ -375,7 +377,7 @@ static struct Wave_interface kc_wave_interface=
 
 static MACHINE_DRIVER_START( kc85_3 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", Z80_MSX, KC85_3_CLOCK)
+	MDRV_CPU_ADD_TAG("main", Z80, KC85_3_CLOCK)
 	MDRV_CPU_FLAGS( CPU_16BIT_PORT )
 	MDRV_CPU_MEMORY(readmem_kc85_3, writemem_kc85_3)
 	MDRV_CPU_PORTS(readport_kc85_3, writeport_kc85_3)
@@ -406,7 +408,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( kc85_4 )
 	MDRV_IMPORT_FROM( kc85_3 )
 
-	MDRV_CPU_REPLACE("main", Z80_MSX, KC85_4_CLOCK)
+	MDRV_CPU_REPLACE("main", Z80, KC85_4_CLOCK)
 	MDRV_CPU_FLAGS( CPU_16BIT_PORT )
 	MDRV_CPU_MEMORY(readmem_kc85_4, writemem_kc85_4)
 	MDRV_CPU_PORTS(readport_kc85_4, writeport_kc85_4)
@@ -452,7 +454,7 @@ ROM_START(kc85_3)
 ROM_END
 
 SYSTEM_CONFIG_START(kc85)
-	CONFIG_DEVICE_CASSETTE	(1, "",			device_load_kc_cassette)
+	CONFIG_DEVICE_CASSETTE	(1, NULL)
 	CONFIG_DEVICE_QUICKLOAD	(	"kcc\0",	kc)
 SYSTEM_CONFIG_END
 

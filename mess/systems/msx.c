@@ -14,6 +14,8 @@
 #include "devices/basicdsk.h"
 #include "devices/printer.h"
 #include "devices/cartslot.h"
+#include "devices/cassette.h"
+#include "formats/fmsx_cas.h"
 
 static MEMORY_READ_START (readmem)
     { 0x0000, 0x1fff, MRA_BANK1 },
@@ -700,7 +702,7 @@ static const TMS9928a_interface tms9928a_interface =
 
 static MACHINE_DRIVER_START( msx )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80_MSX, 3579545)        /* 3.579545 Mhz */
+	MDRV_CPU_ADD(Z80, 3579545)        /* 3.579545 Mhz */
 	MDRV_CPU_MEMORY(readmem,writemem)
 	MDRV_CPU_PORTS(readport,writeport)
 	MDRV_CPU_VBLANK_INT(msx_interrupt,1)
@@ -731,7 +733,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( msx2 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80_MSX, 3579545)        /* 3.579545 Mhz */
+	MDRV_CPU_ADD(Z80, 3579545)        /* 3.579545 Mhz */
 	MDRV_CPU_MEMORY(readmem,writemem)
 	MDRV_CPU_PORTS(readport2,writeport2)
 	MDRV_CPU_VBLANK_INT(msx2_interrupt,262)
@@ -837,7 +839,7 @@ ROM_END
 */
 
 SYSTEM_CONFIG_START(msx)
-	CONFIG_DEVICE_CASSETTE(1, "cas\0", device_load_msx_cassette)
+	CONFIG_DEVICE_CASSETTE(1, fmsx_cassette_formats)
 	CONFIG_DEVICE_PRINTER(1)
 	CONFIG_DEVICE_CARTSLOT_OPT(MSX_MAX_CARTS, "mx1\0rom\0", NULL, NULL, device_load_msx_cart, device_unload_msx_cart, NULL, NULL)
 	CONFIG_DEVICE_FLOPPY_BASICDSK(2, "dsk\0", device_load_msx_floppy)
@@ -853,7 +855,7 @@ COMP( 1985, hotbit11, msx,		0,		msx,     hotbit,   msx,	msx,	"Sharp / Epcom",   
 COMP( 1985, hotbit12, msx,		0,		msx,     hotbit,   msx,	msx,	"Sharp / Epcom",     "HB-8000 Hotbit 1.2" )
 COMP( 1985, expert10, msx,		0,		msx,     expert10, msx,	msx,	"Gradiente",         "XP-800 Expert 1.0" )
 COMP( 1985, expert11, msx,		0,		msx,     expert11, msx,	msx,	"Gradiente",         "XP-800 Expert 1.1" )
-COMPX(1985, msx2,     msx,		0,		msx2,    msx2,     msx2,	msx,	"ASCII & Microsoft", "MSX 2", GAME_NOT_WORKING )
-COMPX(1985, msx2a,    msx,		0,		msx2,    msx2,     msx2,	msx,	"ASCII & Microsoft", "MSX 2 (BASIC 2.1)", GAME_NOT_WORKING )
-COMPX(1985, msx2j,    msx,		0,		msx2,     msx2j,   msx2,	msx,	"ASCII & Microsoft", "MSX 2 (Japan)", GAME_NOT_WORKING )
+COMPX(1985, msx2,     0,		msx,	msx2,    msx2,     msx2,	msx,	"ASCII & Microsoft", "MSX 2", GAME_NOT_WORKING )
+COMPX(1985, msx2a,    msx2,		0,		msx2,    msx2,     msx2,	msx,	"ASCII & Microsoft", "MSX 2 (BASIC 2.1)", GAME_NOT_WORKING )
+COMPX(1985, msx2j,    msx2,		0,		msx2,     msx2j,   msx2,	msx,	"ASCII & Microsoft", "MSX 2 (Japan)", GAME_NOT_WORKING )
 

@@ -1151,7 +1151,7 @@ void win_toggle_maximize(int force_maximize)
 		win_constrain_to_aspect_ratio(&constrained, WMSZ_BOTTOMRIGHT, win_default_constraints);
 	}
 
-	if (force_maximize)
+if (force_maximize)
 	{
 		current = constrained;
 		center_window = 1;
@@ -1159,11 +1159,11 @@ void win_toggle_maximize(int force_maximize)
 	else if (win_default_constraints)
 	{
 		// toggle between maximised, contrained, and normal sizes
-	if ((current.right - current.left) >= (maximum.right - maximum.left) ||
-		(current.bottom - current.top) >= (maximum.bottom - maximum.top))
-	{
-		current = non_maximized_bounds;
-	}
+		if ((current.right - current.left) >= (maximum.right - maximum.left) ||
+			(current.bottom - current.top) >= (maximum.bottom - maximum.top))
+		{
+			current = non_maximized_bounds;
+		}
 		else if ((current.right - current.left) == (constrained.right - constrained.left) &&
 				 (current.bottom - current.top) == (constrained.bottom - constrained.top))
 		{
@@ -1183,8 +1183,8 @@ void win_toggle_maximize(int force_maximize)
 			win_constrain_to_aspect_ratio(&current, WMSZ_BOTTOMRIGHT, 0);
 			center_window = 1;
 		}
-	else
-	{
+		else
+		{
 			// save the current location
 			non_maximized_bounds = current;
 
@@ -1202,10 +1202,10 @@ void win_toggle_maximize(int force_maximize)
 		}
 		else
 		{
-		// save the current location
-		non_maximized_bounds = current;
+			// save the current location
+			non_maximized_bounds = current;
 
-		current = maximum;
+			current = maximum;
 			center_window = 1;
 		}
 

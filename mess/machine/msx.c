@@ -21,20 +21,25 @@
 #include "devices/basicdsk.h"
 #include "vidhrdw/tms9928a.h"
 #include "cpu/z80/z80.h"
-#include "cpu/z80/z80_msx.h"
 #include "vidhrdw/v9938.h"
-#include "formats/fmsx_cas.h"
 #include "devices/printer.h"
+#include "devices/cassette.h"
 #include "utils.h"
 #include "image.h"
+
+#ifndef MAX
+#define MAX(x, y) ((x) < (y) ? (y) : (x) )
+#endif
 
 static MSX msx1;
 static void msx_set_all_mem_banks (void);
 static WRITE_HANDLER ( msx_ppi_port_a_w );
 static WRITE_HANDLER ( msx_ppi_port_c_w );
 static READ_HANDLER (msx_ppi_port_b_r );
-static ppi8255_interface msx_ppi8255_interface = {
-    1,
+
+static ppi8255_interface msx_ppi8255_interface =
+{
+	1,
 	{NULL}, 
 	{msx_ppi_port_b_r},
 	{NULL},
@@ -88,8 +93,6 @@ static int msx_probe_type (UINT8* pmem, int size)
         }
     }
 
-#define MAX(x, y) ((x) < (y) ? (y) : (x) )
-
     if (MAX (kon4, kon5) > MAX (asc8, asc16) )
         return (kon5 > kon4) ? 2 : 3;
     else
@@ -141,19 +144,15 @@ DEVICE_LOAD( msx_cart )
     size_aligned = 0x2000;
     while (size_aligned < size) size_aligned *= 2;
 
-    pmem = (UINT8*)malloc (size_aligned);
+    pmem = (UINT8*) image_malloc(image, size_aligned);
     if (!pmem)
-    {
-        logerror("malloc () failed\n");
-        return 1;
-    }
-    memset (pmem, 0xff, size_aligned);
+		goto error;
+
+	memset (pmem, 0xff, size_aligned);
     if (mame_fread (file, pmem, size) != size)
     {
-        logerror("%s: can't read file\n",
-            image_filename (image));
-        free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
-        return 1;
+        logerror("%s: can't read file\n", image_filename (image));
+		goto error;
     }
 
     /* check type */
@@ -173,15 +172,14 @@ DEVICE_LOAD( msx_cart )
     if (!type)
     {
         size_aligned = 0x10000;
-        pmem = realloc (pmem, 0x10000);
+        pmem = image_realloc(image, pmem, 0x10000);
         if (!pmem)
-        {
-            logerror("Realloc failed!\n");
-            free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
-            return 1;
-        }
-        if (size < 0x10000) memset (pmem + size, 0xff, 0x10000 - size);
-        if (size > 0x10000) size = 0x10000;
+			goto error;
+
+		if (size < 0x10000)
+			memset (pmem + size, 0xff, 0x10000 - size);
+        if (size > 0x10000)
+			size = 0x10000;
     }
 
     /* set mapper specific stuff */
@@ -191,14 +189,9 @@ DEVICE_LOAD( msx_cart )
     for (i=0;i<4;i++) msx1.cart[id].banks[i] = (i & msx1.cart[id].bank_mask);
     logerror("Cart #%d size %d, mask %d, type: %s\n",id, size, msx1.cart[id].bank_mask, mapper_types[type]);
     /* set filename for sram (memcard) */
-    msx1.cart[id].sramfile = malloc (strlen (image_filename
-        (image)) + 1);
+    msx1.cart[id].sramfile = image_malloc(image, strlen(image_filename(image)) + 1);
     if (!msx1.cart[id].sramfile)
-    {
-        logerror("malloc () failed\n");
-        free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
-        return 1;
-    }
+		goto error;
 
 	strcpy(msx1.cart[id].sramfile, image_basename(image));
     pext2 = strrchr (msx1.cart[id].sramfile, '.');
@@ -266,23 +259,18 @@ DEVICE_LOAD( msx_cart )
         }
         break;
    case 1: /* msx-dos 2: extra blank page for page 2 */
-        pmem = realloc (msx1.cart[id].mem, 0x12000);
+        pmem = image_realloc(image, msx1.cart[id].mem, 0x12000);
         if (!pmem)
-        {
-            free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
-            return 1;
-        }
-        msx1.cart[id].mem = pmem;
+			goto error;
+
+		msx1.cart[id].mem = pmem;
         msx1.cart[id].banks[2] = 8;
         msx1.cart[id].banks[3] = 8;
         break;
    case 6: /* game master 2; try to load sram */
-        pmem = realloc (msx1.cart[id].mem, 0x24000);
+        pmem = image_realloc(image, msx1.cart[id].mem, 0x24000);
         if (!pmem)
-        {
-            free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
-            return 1;
-        }
+			goto error;
 
 		i = 0;
         file = mame_fopen (Machine->gamedrv->name, msx1.cart[id].sramfile,
@@ -314,24 +302,24 @@ DEVICE_LOAD( msx_cart )
 
         if (file) mame_fclose (file);
 
-		if (i) logerror ("Cart #%d SRAM loaded\n", id);
+		if (i)
+			logerror ("Cart #%d SRAM loaded\n", id);
 		else
-			{
-            memset (pmem + 0x20000, 0, 0x4000);
-            logerror("Cart #%d Failed to load SRAM\n", id);
-        	}
+		{
+			memset (pmem + 0x20000, 0, 0x4000);
+			logerror("Cart #%d Failed to load SRAM\n", id);
+		}
 
         msx1.cart[id].mem = pmem;
         break;
+
     case 2: /* Konami SCC */
         /* we want an extra page that looks like the SCC page */
-        pmem = realloc (pmem, size_aligned + 0x2000);
+        pmem = image_realloc(image, pmem, size_aligned + 0x2000);
         if (!pmem)
-        {
-            free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
-            return 1;
-        }
-        memcpy (pmem + size_aligned, pmem + size_aligned - 0x2000, 0x1800);
+			goto error;
+
+		memcpy (pmem + size_aligned, pmem + size_aligned - 0x2000, 0x1800);
         for (i=0;i<8;i++)
         {
             memset (pmem + size_aligned + i * 0x100 + 0x1800, 0, 0x80);
@@ -341,50 +329,49 @@ DEVICE_LOAD( msx_cart )
         /*msx1.cart[id].banks[0] = 0x1; */
         break;
    case 7: /* ASCII/8kB with SRAM */
-        pmem = realloc (msx1.cart[id].mem, size_aligned + 0x2000);
-        if (!pmem)
-        {
-            free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
-            return 1;
-        }
-        file = mame_fopen (Machine->gamedrv->name, msx1.cart[id].sramfile,
-                FILETYPE_MEMCARD, 0);
-        if (file && (mame_fread (file, pmem + size_aligned, 0x2000) == 0x2000) )
-        {
-            logerror("Cart #%d SRAM loaded\n", id);
-        } else {
-            memset (pmem + size_aligned, 0, 0x2000);
-            logerror("Cart #%d Failed to load SRAM\n", id);
-        }
-        if (file) mame_fclose (file);
+		pmem = image_realloc(image, msx1.cart[id].mem, size_aligned + 0x2000);
+		if (!pmem)
+			goto error;
 
-        msx1.cart[id].mem = pmem;
-        break;
+		file = mame_fopen (Machine->gamedrv->name, msx1.cart[id].sramfile,
+				FILETYPE_MEMCARD, 0);
+		if (file && (mame_fread (file, pmem + size_aligned, 0x2000) == 0x2000) )
+		{
+			logerror("Cart #%d SRAM loaded\n", id);
+		} else {
+			memset (pmem + size_aligned, 0, 0x2000);
+			logerror("Cart #%d Failed to load SRAM\n", id);
+		}
+		if (file) mame_fclose (file);
+
+		msx1.cart[id].mem = pmem;
+		break;
    case 8: /* ASCII/16kB with SRAM */
-        pmem = realloc (msx1.cart[id].mem, size_aligned + 0x4000);
-        if (!pmem)
-        {
-            free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
-            return 1;
-        }
-        file = mame_fopen (Machine->gamedrv->name, msx1.cart[id].sramfile,
-                FILETYPE_MEMCARD, 0);
-        if (file && (mame_fread (file, pmem + size_aligned, 0x2000) == 0x2000) )
-        {
-            for (i=1;i<8;i++)
-            {
-                memcpy (pmem + size_aligned + i * 0x800,
-                    pmem + size_aligned, 0x800);
-            }
-            logerror("Cart #%d SRAM loaded\n", id);
-        } else {
-            memset (pmem + size_aligned, 0, 0x4000);
-            logerror("Cart #%d Failed to load SRAM\n", id);
-        }
-        if (file) mame_fclose (file);
+		pmem = image_realloc(image, msx1.cart[id].mem, size_aligned + 0x4000);
+		if (!pmem)
+			goto error;
 
-        msx1.cart[id].mem = pmem;
-        break;
+		file = mame_fopen (Machine->gamedrv->name, msx1.cart[id].sramfile,
+				FILETYPE_MEMCARD, 0);
+		if (file && (mame_fread (file, pmem + size_aligned, 0x2000) == 0x2000) )
+		{
+			for (i=1;i<8;i++)
+			{
+				memcpy (pmem + size_aligned + i * 0x800,
+					pmem + size_aligned, 0x800);
+			}
+			logerror("Cart #%d SRAM loaded\n", id);
+			if (file)
+				mame_fclose (file);
+		}
+		else
+		{
+			memset (pmem + size_aligned, 0, 0x4000);
+			logerror("Cart #%d Failed to load SRAM\n", id);
+		}
+
+		msx1.cart[id].mem = pmem;
+		break;
     case 9: /* R-Type */
         msx1.cart[id].banks[0] = 0x1e;
         msx1.cart[id].banks[1] = 0x1f;
@@ -392,36 +379,37 @@ DEVICE_LOAD( msx_cart )
         msx1.cart[id].banks[3] = 0x1f;
         break;
     case 11: /* fm-pac */
-        msx1.cart[id].pacsram = !strncmp ((char*)msx1.cart[id].mem + 0x18, "PAC2", 4);
-        pmem = realloc (msx1.cart[id].mem, 0x18000);
-        if (!pmem)
-        {
-            free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
-            return 1;
-        }
-        memset (pmem + size_aligned, 0xff, 0x18000 - size_aligned);
-        pmem[0x13ff6] = 0;
-        pmem[0x13ff7] = 0;
-        if (msx1.cart[id].pacsram)
-        {
-            file = mame_fopen (Machine->gamedrv->name, msx1.cart[id].sramfile,
-                FILETYPE_MEMCARD, 0);
-            if (file &&
-                (mame_fread (file, buf, PAC_HEADER_LEN) == PAC_HEADER_LEN) &&
-                !strncmp (buf, PAC_HEADER, PAC_HEADER_LEN) &&
-                (mame_fread (file, pmem + 0x10000, 0x1ffe) == 0x1ffe) )
-            {
-               logerror("Cart #%d SRAM loaded\n", id);
-            } else {
-               memset (pmem + 0x10000, 0, 0x2000);
-               logerror("Cart #%d Failed to load SRAM\n", id);
-            }
-            if (file) mame_fclose (file);
-        }
-        msx1.cart[id].banks[2] = (0x14000/0x2000);
-        msx1.cart[id].banks[3] = (0x16000/0x2000);
-        msx1.cart[id].mem = pmem;
-        break;
+		msx1.cart[id].pacsram = !strncmp ((char*)msx1.cart[id].mem + 0x18, "PAC2", 4);
+		pmem = image_realloc(image, msx1.cart[id].mem, 0x18000);
+		if (!pmem)
+		{
+			msx1.cart[id].mem = NULL;
+			return 1;
+		}
+		memset (pmem + size_aligned, 0xff, 0x18000 - size_aligned);
+		pmem[0x13ff6] = 0;
+		pmem[0x13ff7] = 0;
+		if (msx1.cart[id].pacsram)
+		{
+			file = mame_fopen (Machine->gamedrv->name, msx1.cart[id].sramfile,
+				FILETYPE_MEMCARD, 0);
+			if (file &&
+				(mame_fread (file, buf, PAC_HEADER_LEN) == PAC_HEADER_LEN) &&
+				!strncmp (buf, PAC_HEADER, PAC_HEADER_LEN) &&
+				(mame_fread (file, pmem + 0x10000, 0x1ffe) == 0x1ffe) )
+			{
+				logerror("Cart #%d SRAM loaded\n", id);
+			} else {
+				memset (pmem + 0x10000, 0, 0x2000);
+				logerror("Cart #%d Failed to load SRAM\n", id);
+			}
+			if (file)
+				mame_fclose (file);
+		}
+		msx1.cart[id].banks[2] = (0x14000/0x2000);
+		msx1.cart[id].banks[3] = (0x16000/0x2000);
+		msx1.cart[id].mem = pmem;
+		break;
     case 5: /* ASCII 16kb */
         msx1.cart[id].banks[0] = 0;
         msx1.cart[id].banks[1] = 1;
@@ -435,12 +423,10 @@ DEVICE_LOAD( msx_cart )
         msx1.cart[id].banks[3] = 1;
         break;
 	case 15: /* disk rom */
-        pmem = realloc (msx1.cart[id].mem, 0x8000);
+        pmem = image_realloc(image, msx1.cart[id].mem, 0x8000);
         if (!pmem)
-        {
-            free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
-            return 1;
-        }
+			goto error;
+
 		msx1.cart[id].mem = pmem;
 		memset (pmem + 0x4000, 0xff, 0x4000);
         msx1.cart[id].banks[2] = 2;
@@ -448,8 +434,13 @@ DEVICE_LOAD( msx_cart )
 		break;
 	}
 
-    if (msx1.run) msx_set_all_mem_banks ();
-    return 0;
+    if (msx1.run)
+		msx_set_all_mem_banks ();
+    return INIT_PASS;
+
+error:
+	msx1.cart[id].mem = NULL;
+	return INIT_FAIL;
 }
 
 static int save_sram (int id, char *filename, UINT8* pmem, int size)
@@ -509,8 +500,6 @@ DEVICE_UNLOAD( msx_cart )
         } else if (res > 0) {
             logerror("Cart %d# failed to save SRAM\n", id);
         }
-        free (msx1.cart[id].mem);
-        free (msx1.cart[id].sramfile);
     }
 }
 
@@ -577,16 +566,17 @@ DRIVER_INIT( msx )
     z80_table = auto_malloc (0x500);
 
     if (!z80_table)
-		logerror ("Cannot malloc z80 cycle table, using default values\n");
-	else
 	{
-        for (i=0;i<5;i++)
-		{
-			old_z80_tables[i] = z80_msx_get_cycle_table (z80_table_num[i]);
-			for (n=0;n<256;n++)
-				z80_table[i*0x100+n] = old_z80_tables[i][n] + (i > 1 ? 2 : 1);
-			z80_msx_set_cycle_table (i, z80_table + i*0x100);
-		}
+		logerror ("Cannot malloc z80 cycle table, using default values\n");
+		return;
+	}
+
+	for (i=0;i<5;i++)
+	{
+		old_z80_tables[i] = z80_get_cycle_table (z80_table_num[i]);
+		for (n=0;n<256;n++)
+			z80_table[i*0x100+n] = old_z80_tables[i][n] + (i > 1 ? 2 : 1);
+		z80_set_cycle_table (i, z80_table + i*0x100);
 	}
 }
 
@@ -602,7 +592,7 @@ MACHINE_STOP( msx )
 {
 	int i;
 	for (i=0;i<5;i++)
-		z80_msx_set_cycle_table (i, (void *) old_z80_tables[i]);
+		z80_set_cycle_table (i, (void *) old_z80_tables[i]);
     msx1.run = 0;
 }
 
@@ -644,7 +634,7 @@ WRITE_HANDLER ( msx_psg_w )
         AY8910_control_port_0_w (offset, data);
 }
 
-static mess_image *cassette_image(void)
+static mess_image *cassette_device_image(void)
 {
 	return image_from_devtype_and_index(IO_CASSETTE, 0);
 }
@@ -658,7 +648,7 @@ READ_HANDLER ( msx_psg_port_a_r )
 {
     int data, inp;
 
-    data = (device_input(cassette_image()) > 255 ? 0x80 : 0);
+    data = (device_input(cassette_device_image()) > 255 ? 0x80 : 0);
 
     if ( (msx1.psg_b ^ readinputport (8) ) & 0x40)
 		{
@@ -955,28 +945,31 @@ DEVICE_LOAD( msx_floppy )
 
 static WRITE_HANDLER ( msx_ppi_port_a_w )
 {
-    msx_set_all_mem_banks ();
+	msx_set_all_mem_banks ();
 }
 
 static WRITE_HANDLER ( msx_ppi_port_c_w )
-	{
-    static int old_val = 0xff;
+{
+	static int old_val = 0xff;
 
-    /* caps lock */
-    if ( (old_val ^ data) & 0x40)
+	/* caps lock */
+	if ( (old_val ^ data) & 0x40)
 		set_led_status (1, !(data & 0x40) );
-    /* key click */
-    if ( (old_val ^ data) & 0x80)
-        DAC_signed_data_w (0, (data & 0x80 ? 0x7f : 0));
-    /* cassette motor on/off */
-    if ( (old_val ^ data) & 0x10)
-        device_status (cassette_image(), (data & 0x10) ? 0 : 1);
-    /* cassette signal write */
-    if ( (old_val ^ data) & 0x20)
-        device_output (cassette_image(), (data & 0x20) ? -32768 : 32767);
 
-    old_val = data;
-	}
+	/* key click */
+	if ( (old_val ^ data) & 0x80)
+		DAC_signed_data_w (0, (data & 0x80 ? 0x7f : 0));
+
+	/* cassette motor on/off */
+	if ( (old_val ^ data) & 0x10)
+		cassette_change_state(cassette_device_image(), (data & 0x10) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+
+	/* cassette signal write */
+	if ( (old_val ^ data) & 0x20)
+		cassette_output(cassette_device_image(), (data & 0x20) ? -1.0 : 1.0);
+
+	old_val = data;
+}
 
 static READ_HANDLER( msx_ppi_port_b_r )
 	{
@@ -1516,98 +1509,5 @@ WRITE_HANDLER (msx_mapper_w)
 READ_HANDLER (msx_mapper_r)
 {
 	return msx1.ramp[offset];
-}
-
-/*
-** Cassette functions
-*/
-
-static INT16* cas_samples;
-static int cas_len;
-
-static int msx_cassette_fill_wave (INT16* samples, int wavlen, UINT8* casdata)
-{
-	if (casdata == CODE_HEADER || casdata == CODE_TRAILER)
-		return 0;
-
-	if (wavlen < cas_len)
-	{
-		logerror ("Not enough space to store converted cas file!\n");
-		return 0;
-	}
-
-	memcpy (samples, cas_samples, cas_len * 2);
-
-	return cas_len;
-}
-
-static int check_fmsx_cas (mame_file *f)
-{
-	UINT8* casdata;
-	int caslen, ret;
-
-    caslen = mame_fsize (f);
-	if (caslen < 9) return -1;
-
-    casdata = (UINT8*)malloc (caslen);
-    if (!casdata)
-	{
-       	logerror ("cas2wav: out of memory!\n");
-       	return -1;
-   	}
-
-    mame_fseek (f, 0, SEEK_SET);
- 	if (caslen != mame_fread (f, casdata, caslen) ) return -1;
-   	mame_fseek (f, 0, SEEK_SET);
-
-    ret = fmsx_cas_to_wav (casdata, caslen, &cas_samples, &cas_len);
-    if (ret == 2)
-	logerror ("cas2wav: out of memory\n");
-    else if (ret)
-	logerror ("cas2wav: conversion error\n");
-
-    free (casdata);
-
-    return ret;
-}
-
-DEVICE_LOAD( msx_cassette )
-{
-	int ret;
-
-
-	if (! image_has_been_created(image))
-	{
-		struct wave_args_legacy wa = {0,};
-		wa.file = file;
-		/* for cas files */
-		cas_samples = NULL;
-		cas_len = -1;
-		if (!check_fmsx_cas (file) )
-		{
-			wa.smpfreq = 22050;
-			wa.fill_wave = msx_cassette_fill_wave;
-			wa.header_samples = cas_len;
-			wa.trailer_samples = 0;
-			wa.chunk_size = cas_len;
-			wa.chunk_samples = 0;
-		}
-		ret = device_open(image,0,&wa);
-		free (cas_samples);
-		cas_samples = NULL;
-		cas_len = -1;
-
-		return (ret ? INIT_FAIL : INIT_PASS);
-	}
-	else
-	{
-		struct wave_args_legacy wa = {0,};
-		wa.file = file;
-		wa.smpfreq = 44100;
-		if( device_open(image,1,&wa) )
-			return INIT_FAIL;
-		return INIT_PASS;
-	}
-	return INIT_FAIL;
 }
 

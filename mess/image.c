@@ -3,7 +3,7 @@
 #include "devices/flopdrv.h"
 #include "crcfile.h"
 #include "utils.h"
-#include "mscommon.h"
+#include "pool.h"
 #include "snprintf.h"
 
 /* ----------------------------------------------------------------------- */
@@ -403,10 +403,13 @@ static int image_checkcrc(mess_image *img)
 	UINT32 imgsize;
 	UINT32 chunksize;
 	const struct IODevice *dev;
+	const struct GameDriver *drv;
 	mame_file *file;
 	UINT32 crc;
+	int rc;
 
-	/*assert(img->status & (IMAGE_STATUS_ISLOADING | IMAGE_STATUS_ISLOADED));*/
+	/* this call should not be made when the image is not loaded */
+	assert(img->status & (IMAGE_STATUS_ISLOADING | IMAGE_STATUS_ISLOADED));
 
 	/* only calculate CRC if it hasn't been calculated, and the open_mode is read only */
 	if (!(img->status & IMAGE_STATUS_CRCCALCULATED) && (img->effective_mode == OSD_FOPEN_READ))
@@ -458,7 +461,18 @@ static int image_checkcrc(mess_image *img)
 		mame_fseek(file, 0, SEEK_SET);
 
 		/* now read the CRC file */
-		read_crc_config(Machine->gamedrv->name, img);
+		drv = Machine->gamedrv;
+		do
+		{
+			rc = read_crc_config(drv->name, img);
+			if (drv->clone_of && !(drv->clone_of->flags & NOT_A_DRIVER))
+				drv = drv->clone_of;
+			else if (drv->compatible_with && !(drv->compatible_with->flags & NOT_A_DRIVER))
+				drv = drv->compatible_with;
+			else
+				drv = NULL;
+		}
+		while(rc && drv);
 		
 		img->status |= IMAGE_STATUS_CRCCALCULATED;
 	}
@@ -554,6 +568,12 @@ int image_has_been_created(mess_image *img)
 {
 	return is_effective_mode_create(img->effective_mode);
 }
+
+void image_make_readonly(mess_image *img)
+{
+	img->effective_mode = OSD_FOPEN_READ;
+}
+
 
 /****************************************************************************
   Memory allocators

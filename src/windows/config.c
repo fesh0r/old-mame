@@ -19,7 +19,7 @@
  *   gamma (is already osd_)
  *   sound (enable/disable sound)
  *   volume
- * - get rid of #ifdef MESS's by providing appropriate hooks
+  * - get rid of #ifdef MESS's by providing appropriate hooks
  */
 
 #include <stdarg.h>
@@ -563,7 +563,6 @@ int cli_frontend_init (int argc, char **argv)
 	/* we give up. print a few approximate matches */
 	if (game_index == -1)
 	{
-		#ifndef MESS
 		fprintf(stderr, "\n\"%s\" approximately matches the following\n"
 				"supported " GAMESNOUN " (best match first):\n\n", gamename);
 		show_approx_matches();
@@ -581,7 +580,7 @@ int cli_frontend_init (int argc, char **argv)
 	/* nice hack: load source_file.ini (omit if referenced later any) */
 	{
 		const struct GameDriver *tmp_gd;
-		
+
 		sprintf(buffer, "%s", drivers[game_index]->source_file+12);
 		buffer[strlen(buffer) - 2] = 0;
 
@@ -673,7 +672,7 @@ int cli_frontend_init (int argc, char **argv)
 	/* override if no rotation requested */
 	if (video_norotate)
 		orientation = options.ui_orientation = ROT0;
-	
+
 	/* rotate right */
 	if (video_ror)
 	{
@@ -695,7 +694,7 @@ int cli_frontend_init (int argc, char **argv)
 
 		orientation ^= ROT270;
 	}
-	
+
 	/* auto-rotate right (e.g. for rotating lcds), based on original orientation */
 	if (video_autoror && (drivers[game_index]->flags & ORIENTATION_SWAP_XY) )
 	{
@@ -723,7 +722,7 @@ int cli_frontend_init (int argc, char **argv)
 		orientation ^= ORIENTATION_FLIP_X;
 	if (video_flipy)
 		orientation ^= ORIENTATION_FLIP_Y;
-	
+
 	blit_flipx = ((orientation & ORIENTATION_FLIP_X) != 0);
 	blit_flipy = ((orientation & ORIENTATION_FLIP_Y) != 0);
 	blit_swapxy = ((orientation & ORIENTATION_SWAP_XY) != 0);
@@ -753,11 +752,6 @@ void cli_frontend_exit(void)
 	if (options.playback) mame_fclose(options.playback);
 	if (options.record)   mame_fclose(options.record);
 	if (options.language_file) mame_fclose(options.language_file);
-
-#ifdef MESS
-	if (win_write_config)
-		write_config(NULL, Machine->gamedrv);
-#endif
 }
 
 static int config_handle_arg(char *arg)

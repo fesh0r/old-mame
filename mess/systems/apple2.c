@@ -183,13 +183,12 @@ Apple 3.5 and Apple 5.25 drives - up to three devices
 ***************************************************************************/
 
 #include "driver.h"
+#include "inputx.h"
 #include "vidhrdw/generic.h"
 #include "includes/apple2.h"
-#include "inputx.h"
-#include "snprintf.h"
 #include "machine/ay3600.h"
-#include "devices/basicdsk.h"
-#include "formats/ap2_disk.h"
+#include "devices/mflopimg.h"
+#include "formats/ap2_dsk.h"
 
 static MEMORY_READ_START( readmem_apple2 )
 	{ 0x0000, 0x01ff, MRA_BANK4 },
@@ -535,8 +534,15 @@ static MACHINE_DRIVER_START( apple2 )
 	MDRV_GFXDECODE(apple2_gfxdecodeinfo)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( apple2p )
+	MDRV_IMPORT_FROM( apple2_common )
+	MDRV_VIDEO_START(apple2p)
+	MDRV_GFXDECODE(apple2_gfxdecodeinfo)
+MACHINE_DRIVER_END
+
 static MACHINE_DRIVER_START( apple2e )
 	MDRV_IMPORT_FROM( apple2_common )
+	MDRV_VIDEO_START(apple2e)
 	MDRV_GFXDECODE(apple2e_gfxdecodeinfo)
 MACHINE_DRIVER_END
 
@@ -649,7 +655,7 @@ ROM_START(apple2cp)
 ROM_END
 
 SYSTEM_CONFIG_START(apple2_common)
-	CONFIG_DEVICE_FLOPPY_BASICDSK( 2, "dsk\0bin\0do\0po\0", device_load_apple2_floppy )
+	CONFIG_DEVICE_FLOPPY( 2, apple2 )
 	CONFIG_GET_CUSTOM_DEVICENAME( apple2 )
 	CONFIG_QUEUE_CHARS			( AY3600 )
 	CONFIG_ACCEPT_CHAR			( AY3600 )
@@ -690,7 +696,7 @@ SYSTEM_CONFIG_END
 
 /*     YEAR  NAME      PARENT    COMPAT		MACHINE   INPUT     INIT      CONFIG	COMPANY            FULLNAME */
 COMPX( 1977, apple2,   0,        0,			apple2,   apple2,   apple2,   apple2,	"Apple Computer", "Apple ][", GAME_IMPERFECT_COLORS )
-COMPX( 1979, apple2p,  apple2,   0,			apple2,   apple2,   apple2,   apple2p,	"Apple Computer", "Apple ][+", GAME_IMPERFECT_COLORS )
+COMPX( 1979, apple2p,  apple2,   0,			apple2p,  apple2,   apple2,   apple2p,	"Apple Computer", "Apple ][+", GAME_IMPERFECT_COLORS )
 COMP ( 1983, apple2e,  0,        apple2,	apple2e,  apple2,   apple2,   apple2e,	"Apple Computer", "Apple //e" )
 COMP ( 1985, apple2ee, apple2e,  0,			apple2ee, apple2,   apple2,   apple2e,	"Apple Computer", "Apple //e (enhanced)" )
 COMP ( 1987, apple2ep, apple2e,  0,			apple2ee, apple2,   apple2,   apple2e,	"Apple Computer", "Apple //e (Platinum)" )

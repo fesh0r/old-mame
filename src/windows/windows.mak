@@ -1,7 +1,5 @@
-# nasm for Windows (but not cygwin) has a "w" at the end
-ifndef COMPILESYSTEM_CYGWIN
+# nasm for Windows has a "w" at the end
 ASM = @nasmw
-endif
 
 # only Windows specific output files and rules
 # the first two targets generate the prefix.h header
@@ -48,9 +46,12 @@ $(OBJ)/windows/asmtile.o: src/windows/asmtile.asm
 	@echo Assembling $<...
 	$(ASM) -o $@ $(ASMFLAGS) $(subst -D,-d,$(ASMDEFS)) $<
 
-# add our prefix files to the mix (we need -Wno-strict-aliasing for DirectX)
+# add our prefix files to the mix
+ifndef MSVC
 CFLAGS += -mwindows -include src/$(MAMEOS)/winprefix.h
-# CFLAGSOSDEPEND += -Wno-strict-aliasing
+else
+CFLAGS += /FI"windows/winprefix.h"
+endif
 
 # add the windows libaries
 ifndef MSVC

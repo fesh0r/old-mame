@@ -1,6 +1,6 @@
 # MESS System Information Data File
 # Maintained by Hobie Troxell &  Chris Henry
-#
+
 # Send corrections/submissions to: 
 #   Hobie Troxell <ht1848@yahoo.com> 
 #   Chris Henry <battlepriest@hotmail.com>
@@ -30,8 +30,9 @@
 # fixed as time and knowledge permit. Please be patient. If you have information that may
 # help the MESS team resolve these issues go to www.mess.org.
 
+# MESS Emulation State: This section highlights the overall status of the MESS driver. Some system
+# drivers are TESTDRIVERS.
 
-# MESS Emulation State: This section highlights the overall status of the MESS driver.
 
 #---------------------------------------------------------------------------------------------#
 
@@ -300,26 +301,31 @@ Very early computer
 
 Features:
 
-* Integrated 20 digit (16segment) display
+Integrated 20 digit (16segment) display
  
-* Full size keyboard
+Full size keyboard
 
-* Integrated printer
+Integrated printer
 
-* Connector for tty input/output
+Connector for tty input/output
 
-* Tape interface
+Tape interface
 
 
 Known Issues:
 
-* Display and keyboard working
+Display and keyboard working
 
-* Usable picture of the display with its white frame as artwork would be nice.
+Usable picture of the display with its white frame as artwork would be nice.
 
-* Would suffer from support for intelligent terminals as tty equipment.
+Would suffer from support for intelligent terminals as tty equipment.
 
-* Stopped. For me it is much to cryptic to operate, and therefore not interesting for me anymore.
+Stopped. For me it is much to cryptic to operate, and therefore not interesting for me anymore.
+
+
+MESS Emulation State:
+
+This system is a TESTDRIVER.
 
 
 Contributors:
@@ -364,7 +370,9 @@ with its successor, the Amiga 2000) had a PAL display, the enhanced video modes
 (HAM & EHB) and was built in Germany.
 
 
+MESS Emulation State:
 
+This system is a TESTDRIVER.
 
 $end
 
@@ -2421,11 +2429,34 @@ $info=coleco
 $bio
 Coleco Industries ColecoVision
 
-
 Known Issues:
 
-This emulation runs most cartridges accurately. Games requiring analogue controls (Steering 
-Wheel, Roller Controller) are not playable. See coleco.crc for further compatibility notes.
+None. This emulation runs most cartridges accurately. 
+
+EXTRA CONTROLLERS INFO:
+
+*Driving Controller (Expansion Module #2). 
+It consist of a steering wheel and a gas pedal. Only one
+can be used on a real ColecoVision. The gas pedal is not analog, internally it is just a 
+switch.
+On a real ColecoVision, when the Driving Controller is enabled, the controller 1 do not work 
+because have been replaced by the Driving Controller, and controller 2 have to be used to 
+start game, gear shift, etc.
+Driving Controller is just a spinner on controller 1 socket similar to the one on Roller 
+Controller and Super Action Controllers so you can use Roller Controller or Super Action 
+Controllers to play games requiring Driving Controller.
+
+*Roller Controller. 
+Basically a trackball with four buttons (the two fire buttons from player 1 and the two fire 
+buttons from player 2). Only one Roller Controller can be used on a real ColecoVision.  Roller 
+Controller is connected to both controller sockets and both controllers are conected to the Roller
+Controller, it uses the spinner pins of both sockets to generate the X and Y signals (X from controller 1 
+and the Y from controller 2)
+
+*Super Action Controllers. 
+It is a hand controller with a keypad, four buttons (the two from
+the player pad and two more), and a spinner. This was made primarily for two player sport games, but
+will work for every other ColecoVision game.
 
 
 History and Trivia:
@@ -2436,17 +2467,14 @@ graphics and more expansion capabilities compared to it's chief rivals: the Atar
 Intellivision. Among the expansion module options were a hardware Atari 2600 emulator, and a 
 Steering Wheel for driving games, both unheard of at the time.
 
-
 The competitive price, technical superiority, and perhaps more importantly, the inclusion of 
 Donkey Kong as the pack-in cartridge, led to Coleco becoming an industry leader. With the 
 emergence of the popularity of home computers, however, the console market seemed in jeopardy 
 of losing it's share to the likes of Commodore and Apple. Coleco responded by releasing the 
 Adam Family Computer as both a standalone unit and as an expansion to the ColecoVision itself. 
 
-
 The Adam was a phenomenal market failure though, and Coleco pulled itself from both the 
 console and computer markets just before the game market crash in late 1984.
-
 
 Telegames purchased the rights to the system, and many of the manufactured games, and released 
 a clone, The Personal Arcade, in 1988. It was later re-released by them, as the DINA.
@@ -2846,7 +2874,7 @@ chip8 interpreter
 
 Notes:
 
-seams to be very related to rca cosmac vip.
+seams to be very related to RCA Cosmac VIP.
 
 emulator source available
 
@@ -2916,15 +2944,17 @@ Very early computer
 
 Features:
 
-operation without built-in ROMs, you can enter your program directly with
+Operation without built-in ROMs, you can enter your program directly with
 help of the CPU integrated dma.
+
 2 segment digits
-tape connector
+
+Tape connector
 
 
 Notes:
 
-much like rca cosmac vip without video chip
+much like RCA Cosmac VIP without video chip
 
 Info for building an elf/elf2 is at http://incolor.inetnebr.com/bill_r/computer_simulators.htm
 
@@ -3105,6 +3135,7 @@ connector with support for rs232 and centronics
 
 1 3V CR2012 lithium as RAM power supply
 
+
 MESS Emulation State:
 
 Not started, need information about the hd62002 CPU
@@ -3223,14 +3254,20 @@ Sega Game Gear (1990)
 
 
 The Game Gear is the portable version of the Sega Master System, with slightly enhanced 
-graphics and stereo sound, but fully compatible (i.e. you could play SMS games on the GG
-with the use of a special adaptor). The Game Gear was sold 11 million times world-wide 
-(2 million in Japan, 9 million in the rest of the world). (note taken from www.eidolons-inn.de)
+graphics and stereo sound. The Game Gear would compete in a tough market with the Atari
+Lynx, the NEC Turbo Express and the industry leader Nintendo Gameboy. With an adaptor you
+could play SMS games on the Game Gear. A TV tuner also turned the system into a portable
+television set. Game gear featured many of the Sega Standard games, like Sonic the Hedgehog,
+ Shinobi, Super Monaco GP and Ecco the Dolphin.
 
 
 Features:
 
-CPU:  4 MHz Zilog Z80
+CPU: 4 MHz Zilog Z80 (8-bit)
+
+RAM: 8K
+
+Video RAM: 16K
 
 Colors Palette: 512; 32 max on screen
 
@@ -3245,14 +3282,19 @@ Sound:  6 channel FM, 2 channel noise - Stereo
 Battery life:  6 hours on 6 AA batteries
 
 
-Links:
+To do (see source): 
 
-EIdolons inn - www.eidolons-inn.de
+LCD persistence emulation for GG
+
+SIO interface for Game Gear (needs netplay, I guess)
+
+PSG control for Game Gear (needs custom SN76489 with stereo output for each channel)
 
 
 MESS Emulation State:
 
 ???
+
 
 $end
 
@@ -3304,20 +3346,15 @@ $bio
 Sega Megadrive/Genesis (1988)
 
 
-The Sega Genesis was released in Japan on the 29th of October 1988, and in the USA on the 1st
-of September 1989. At that time, no other console could compete with Sega´s powerful 16-bit 
-system, apart from the PC-Engine / TurboGrafx-16, perhaps. But due to a lack of third-party 
-support - especially with the arrival of the SNES, because many of the major game companies 
-were still bound to Nintendo because of the contracts they made in the NES era - the Genesis 
-never became as successful as Nintendo´s 16-bit console. Nevertheless, about 28.5 million 
-consoles were sold worldwide, compared to about 48 million SNES consoles. Looking at the 
-different regions of the world, the Genesis was most successful in the USA. It was quite strong in 
-Europe, too (especially Great Britain is famous for being the European Sega stronghold), but did
-not succeed very well in Japan, Nintendo's home country. It was definitely no mistake to buy the
-console, as I did in early 1990, shortly after Super Shinobi had been released.  Among the 
-approximetaly 1000 games which were produced during the genesis' lifespan (about 10 years 
-during 1988-1998) are a lot of evergreens which deserve to be played even today. (note taken 
-rom www.eidolons-inn.de)
+The Genesis (called Megadrive in Japan) console featured many great conversions that
+banked on the success of Segas Arcade games. Games like Altered Beast, After Burner,
+Ghouls 'N Ghosts and Sonic the Hedgehog helped make this 16-bit system very popular. 
+Unfortunately third party support was difficult considering many developers were making
+games exclusively for the Nintendo systems. The Genesis was redesigned into a smaller
+and more affordable package three times. There was also a portable version of the 
+Genesis, called the Nomad, which featured a backlit LCD. The Genesis also served as the
+core for the expansion hardware with Sega CD and 32X that added CD support and additional
+features.
 
 
 Features:
@@ -3326,20 +3363,19 @@ Main Processor: Motorola M68000 (16-bit) at 7.67 Mhz
  
 Co-processor: Z80a at 3.58Mhz
 
-Sound Chips: YM2612 and a 4 channel TI PSG76489
+RAM: 64k (Plus 64k Ram for sound)
 
-Ram: 64k (Plus 64k Ram for sound)
+Video RAM: 64k
 
-Max Cart Size: ??
-
-
-Video:
+Max Cart Size: ???
 
 Max resolution: 320 X 224 
 
-Color palette: 512; 64 max on screen
+Color palette: 512 total; 64 max on screen
 
 Max # of sprites: 80; 20 max per scanline
+
+Sound Chips: YM2612 and a 4 channel TI PSG76489
 
 Sound: Stereo FM-based sound with 8-bit audio samples 
 
@@ -3356,11 +3392,6 @@ may behave differently, or lock up if the two types do not match.
 
 'Auto' attempts to auto-set the Genesis country code to the value the cartridge will appear
 to be checking for. This may not be 100% accurate, however.
-
-
-Links:
-
-EIdolons inn - www.eidolons-inn.de
 
 
 MESS Emulation State:
@@ -5337,6 +5368,7 @@ at lots of disassemblies!
 Links:
 
 http://genesis8.free.fr/
+
 http://www.ncus.org.uk/
 
 
@@ -6193,11 +6225,11 @@ more accurate speed(memory wait and DMAC overhead)
 
 YM-2608 sound
 
-joystick and mouse
+Joystick and mouse
 
 5'2HD or 8'2D floppy disk drives
 
-font substitution
+Font substitution
 
 Kana-Kanji dictionary ROM
 
@@ -6278,21 +6310,32 @@ and later supported CD-ROMs and portable models with built in TV tuners.
 Features:
 
 Custom 8bit CPU: HuC6280 (7.16MHz)  (1.5 Million Instructions Per Second [MIPS])
+
 Video Processor: HuC6270 - 16 bit
-Color Processor: HuC6260 
-Resolution: 256 x 216 
-Sound Processor: 8 bit PCM stereo / 6-channel stereo 
-Ram: 8 Kbyte (64Kbit) 
+
+Color Processor: HuC6260
+
+Resolution: 256 x 216
+
+Sound Processor: 8 bit PCM stereo / 6-channel stereo
+
+Ram: 8 Kbyte (64Kbit)
+
 Video Ram: 64Kbyte (512 Kbit)
-Cart Size: 256Kbit - 20 Megabit Max. (S.F. 2) Normally 8 Mbits 
-colors Pallet: 512 - (256 for sprites, 256 for the background.) 
+
+Cart Size: 256Kbit - 20 Megabit Max. (S.F. 2) Normally 8 Mbits
+
+colors Pallet: 512 - (256 for sprites, 256 for the background.)
+
 Max # of sprites: 64
+
 Sprite Size: 16 x 16 , 32x64
 
 
 Links:
 
 Universo PCENGINE - upce.netfirms.com/index.html
+
 Turbo Station 16 - pcenginefx.com/TS/
 
 
@@ -6792,22 +6835,18 @@ Joro Dramchev, Ventzislav Alexandrov and Todor Arnaudov for Pravetz information,
 $end
 #---------------------------------------------------------------------------------------------#
 
-#$info=psx
-#$bio
-#Sony Playstation
-#
-#
-#Features:
-#
-#
-#MESS Emulation State:
-#
-#
-#History and Trivia:
-#
-#
-#$end
-#
+$info=psx
+$bio
+Sony Playstation
+
+
+MESS Emulation State:
+
+Driver is currently a TESTDRIVER.
+
+
+$end
+
 #---------------------------------------------------------------------------------------------#
 
 $info=raaspec
@@ -6884,7 +6923,7 @@ CDROM: Max 2x speed - custom interface controlled by Hitachi SH1 processor. (512
 
 MESS Emulation State:
 
-See source code for more information.
+See source code for more information. Driver is currently a TESTDRIVER.
 
 Bios starts requesting pad data so maybe we are now in the time set area ????
 Need to emulate pad system, add more interrupts and get some grafix working so we can see exactly 
@@ -6926,7 +6965,6 @@ rate.
 
 Ten other games were released for the CPS Changer, though none have been dumped at present
 (to the best of my knowledge). If/when these are dumped, support will be added for them: 
-
 Captain Commando (1995)
 
 Final Fight  (1994)
@@ -6945,6 +6983,8 @@ Street Fighter II' Champion Edition (1994)
 
 Street Fighter II Turbo (1994, Pack-in)
 
+Street Fighter Zero (19??)
+
 Tenchi O Kurau II (1995)
 
 
@@ -6954,19 +6994,26 @@ $end
 
 $info=sms
 $bio
-Sega Master System (1987)
+Sega Master System (1986)
 
 
-The Master System (called Mark III in Japan) was Sega´s competitor for the NES. Though Sega 
-constantly developed new (and good) games, the Master System never beat the NES. The MS was 
-most successful in Europe, especially Great Britain, where most of the games were developed in
-the "final" days in 1993/94. Overall, about 6 million consoles were sold world-wide until the 
-end of 1994. (note taken from www.eidolons-inn.de)
+The Master System (called Mark III in Japan) was Sega's first console to be released in
+North America. It was in direct competition with the 8-bit NES. The Master System was
+especially popular in Europe and South America. SMS featured many popular original 
+games and arcade conversions like Phantasy Star, R-Type, Sonic the Hedgehog, Shinobi. 
+Many SMS games turned into franchise games for Sega and appear on later consoles. 
+SMS supported both game cartridges (128-512K) and smaller cards (<32K), as well as 
+many other accessories like Light Phaser, Sports Pad, Rapid Fire Unit and 3-D Glasses.
+
 
 
 Features:
 
-CPU: Z80 at 4 MHz
+CPU: 3.6 MHz, 8-bit Z80 processor
+
+RAM: 8K
+
+Video RAM: 16K
 
 Custom video controller (VDP) derived from the TI chip TMS9918/9928
 
@@ -6985,14 +7032,20 @@ Sound output: 3 square-wave sound and white noise/periodic noise channel
 Music: Yamaha YM2413 FM sound chip
 
 
-Links:
-
-EIdolons inn - www.eidolons-inn.de
-
-
 MESS Emulation State:
 
 This driver runs just about everything!
+
+
+To do (see source):
+
+TMS9928A support for 'f16ffight.sms'
+
+SMS lightgun support
+
+SMS Pause key - certainly there's an effective way to handle this
+
+SMS 3D glass support
 
 
 $end
@@ -7041,12 +7094,31 @@ Cart Size: 4Mbit - 128 Megabit Max. (Tengay Maikio at 70+ Megabits is the larges
 
 Controller: 8-way direction pad with Select, Start, A, B, X, Y and 2 Flipper buttons labeled R and L
 
-Controller Response: 16ms
 
 
 MESS Emulation State:
 
 This driver is preliminary and most images will not work. Super Mario World (US version) is playable.
+
+
+To do (see source):
+
+Emulate extra chips - superfx, dsp2, sa-1 etc.
+
+Add sound emulation. Currently the SPC700 is emulated, but that's it.
+
+Add horizontal mosaic, hi-res. interlaced etc to video emulation.
+
+Add support for fullgraphic mode(partially done).
+
+Fix support for Mode 7. (In Progress)
+
+Handle interleaved roms (maybe even multi-part roms, but how?)
+
+Add support for running at 3.58Mhz at the appropriate time.
+
+I'm sure there's lots more ...
+
 
 $end
 
@@ -7824,6 +7896,7 @@ Oric Telestrat
 
 This system is a update to the Atmos.
 
+
 Known Issues:
 
 Disc emulation is not correct so it fails to boot! 
@@ -7863,10 +7936,15 @@ Place for 4 micro batteries
 Peripherals:
 
 Texas Instruments PC-324 thermo? printer
+
 (how to dump the C70016 integrated ROM? (tms7000 family))
+
 24 characters per line
+
 hexbus port
+
 place for 4 mignon batteries
+
 port for power supply
 
 $end
@@ -8134,6 +8212,7 @@ Notes:
    emulator written by Rusty Wagner.
 
 3. NVRAM is saved properly only when calculator is turned off during MESS exiting.
+
 4. To receive data from TI press "R" immediately after TI starts to send data.
 
 5. To send data to calculator start receiving on TI and choose file from
@@ -8169,39 +8248,39 @@ $end
 #$info=ti99_2
 #$bio
 #Texas Instruments TI-99/2 BASIC Computer
-
-
+#
+#
 #Known Issues:
-
+#
 #This TI99/2 driver is preliminary and could not be tested. (It may work,
 #it may not work.) It is commented out in the source code distribution.
-
-
+#
+#
 #History and Trivia:
-
+#
 #The TI99/2 BASIC Computer was an attempt at producing a cheap ($100)
 #computer.  TI started designing it in the summer of 1982, it was first
 #introduced in January 1983, and it was abandoned, before entering
 #production, by April 1983.
-
+#
 #It featured a TMS9995 microprocessor (with on-line timer and 256-byte RAM),
 #4kb of RAM, 24kb (or 32kb) of ROM, a B&W character-based display.  There
 #was no sound generator.  It was mostly incompatible with TI99/4(a), but
 #it used the same Basic syntax and file format.
-
+#
 #The computer was obviously unattractive. On the other hand, it would have
 #been cheap, fairly fast for its time, and easy to program in both BASIC and
 #assembly.
-
+#
 #Moreover, the expansion port of TI99/2 carried every bus signal, and even
 #allowed to disable the system ROMs and use one's own ROMs instead, so this
 #computer could have been a hobbyist's dream.
-
-
+#
+#
 #Wanted (dead or alive):
 #If you have an actual TI99/2 or TI99/2 ROM image at hand, please mail me at
 #pytheas@club-internet.fr
-
+#
 #$end
 
 #---------------------------------------------------------------------------------------------#
@@ -8487,6 +8566,75 @@ $end
 
 #---------------------------------------------------------------------------------------------#
 
+$info=ti99_8
+$bio
+Texas Instruments TI-99/8 Computer
+
+
+Known Issues:
+
+Requires full keyboard emulation.  At startup, full keyboard emulation mode is
+enabled by default.  Whilst in full keyboard emulation mode, some key
+associated functionality may be disabled (like the ESC key for EXIT).
+The keyboard emulation mode is toggled using the scroll_lock key.
+
+There is no known dump of TI-99/8 ROMs.  I have reassembled the source code of
+the TI-99/8 ROMs, which has enabled me to reconstruct the core of the operating
+system.  Unfortunately, several optional but important parts of the system
+(HexBus, P-System, Speech ROMs, and named subroutines in BASIC) are missing.
+
+Speech that sounds fine on a /4(a) with the optional speech synthesizer may
+sound garbled on a /8 with its integrated speech synthesizer.  This is because
+the /4a and the /8 do not use the same speech chip (TMS0285 vs. TMS5200C).  On
+an actual /8, this only affects programs that use custom speech; under
+emulation, this currently affects programs that use pre-defined speech as well,
+because the /8 speech ROMs have not been dumped and we resort to using the
+incompatible /4(a) speech ROMs instead.
+
+Mapper-level Read protect, Write protect and Execute protect are not
+emulated.  Hard reset and P-code GROMs are not emulated either.
+
+
+Usage:
+
+The TI99/8 looks a lot like the /4(a).  Press any key to begin, then press A
+for the built-in BASIC interpreter, B to set speed, C, D, etc, for any
+inserted cartridge.  Set speed does not apply to the built-in BASIC
+interpreter, which will always at full speed.  The default speed is "B TI-99/4A
+speed": you must run set speed to select any other speed.
+
+Though the level of compatibility with the /4a is high, you may not access
+extensions provided by an inserted cartridge from /8 BASIC, whether they are
+packaged as a CALL or as a DSR.  
+
+
+
+History and Trivia:
+
+When TI released the TI-99/4 in 1979, they announced that a bigger, more
+professional version of this machine would follow: the TI-99/7.  After several
+delays, the TI-99/7 project was abandoned, and in 1981 TI started a similar
+project with upgraded specs: the TI-99/8 (code-named Armadillo).
+
+The project was nearing completion, with a prototype series in production, when
+TI terminated the TI-99 series in October 1983.  As a consequence, the TI-99/8
+was never released, although several prototypes ended in private hands.
+
+The TI-99/8 is similar to, yet different from, the TI-99/4(a).  Mostly, it
+looks like a super TI-99/4(a): it has a faster CPU, a better keyboard, and
+several features that were optional on the /4(a) (speech synthesizer, HexBus
+controller and UCSD P-system).  However, it includes several features that have
+no equivalent on the /4a: its memory mapper enables it to address 64kBytes of
+RAM simultaneously, to support more than 15MBytes of RAM, and to implement
+partial memory protection; also, its ROMs are a lot improved compared to the
+/4(a) ROMs: they support machine language programs much better, they implement
+several extra system calls for graphics, and they support I/O buffer in CPU
+RAM.
+
+$end
+
+#---------------------------------------------------------------------------------------------#
+
 $info=ti990_10
 $bio
 Texas Instruments Model 990/10 Minicomputer System
@@ -8612,11 +8760,11 @@ Video Board.
 You can use all the video opcodes documented in the University Basic Manual.
 
 The optional demonstration EPROM set includes demonstration programs.  They can
-be loaded with LOAD 0, LOAD 1, LOAD 2 and LOAD 3.  Some programs are supposed to
-do some user interaction, but they were set up in demo mode, so that you must
-edit the source code to run the programs: for instance, to play the brick-wall
-game, you must type 'LOAD 2', then '5 SP=0' to disable demonstration mode,
-then 'RUN'.
+be loaded with LOAD 0, LOAD 1, LOAD 2 and LOAD 3.  Some programs are supposed
+to do some user interaction, but they were set up to run in demo mode, so that
+you must edit the source code to run the programs interactively: for instance,
+to play the brick-wall game, you must type 'LOAD 2', then enter '5 SP=0' to
+disable demonstration mode, then 'RUN'.
 
 There is one undocumented built-in Basic function that can be used if you have
 the demonstration EPROMs installed: JOY.  This instruction is not fully
@@ -8871,8 +9019,7 @@ Palladium Video - Computer - Game
 
 Console
 
-emerson arcadia clone with different cartridge connector/pinout
-and 4 additional keys per controller
+Emerson Arcadia clone with different cartridge connector/pinout and 4 additional keys per controller
 
 look into messroms for cartridge pinout
 
@@ -9130,12 +9277,102 @@ MESS Emulation State:
 
 display, keyboard working
 Stopped. For me it is much too cryptic to operate and therefore not interesting.
-( I did it because it is the same hardware as in the studio2)
+(I did it because it is the same hardware as in the studio2)
 
 
 $end
 
 #---------------------------------------------------------------------------------------------#
+
+$info=wswan
+$bio
+Bandai WonderSwan (1999)
+
+
+In March of 1999, Bandai released a portable gaming console in Japan that was designed to 
+compete with the Neo Geo Pocket and Game Boy Color. The machine was met with rave reviews and has 
+gained a major share of the handheld market. The WS was available in ten case colors, playable both 
+vertically and horizontally, and features a fairly large library of games.
+
+
+In December of 2000, Bandai followed up its WonderSwan with the WonderSwan Color. 
+Designed to continue the fight against Nintendo's Game Boy empire, the WSC is equipped
+with a color display and improved specifications. The WonderSwan Color is backwards compatible 
+with the WonderSwan's black and white library, as well as having games of its own. Remakes 
+of the older Final Fantasy games and many other RPGs make the WonderSwan Color a popular 
+system in Japan.
+
+
+WonderSwan Features:
+
+CPU : 16-bit processor at 3.072 MHz 
+
+Screen (dot matrix section): FSTN reflective LCD, 224 x 144 pixels (2.49-inch)
+
+Display performance : Max. 512 characters, max. 128 sprites (32 on one horizontal line),
+	 two screens (overlay possible), screen windows and sprite windows.
+
+Graphics : 8-shade monochrome in the dot matrix section and six icons at the static section.
+
+Audio: 4-channel digital stereo sound. Built-in speaker or optional headphones with stereo adapter.
+
+Size : 74.3mm x 121mm x 24.3 mm (H)
+ 
+Weight : 93g (without battery) 110g (with battery)
+
+Power : 1 AA battery or rechargeable pack, ~40 hours playtime
+
+Connecting Ports : Link Port, Stereo Jack & cartridge port
+
+Cartridge Capacity: ROM and/or RAM - maximum 128Meg (like Beat Mania)
+
+Features: Can be played holding the unit vertically or horizontally.
+            Built-in EEPROM and 1Kbit RAM for backing up game data.
+            Several levels of energy-saving control.
+
+
+WonderSwan color Features:
+
+CPU: 16 bit processor at 3.072 Mhz
+
+RAM: 512k
+
+Display: LCD screen reflection type FSTN (2.8 inch size)
+
+Color: 41 colors at once of a 4096 color palette or 57 colors in extended mode.
+
+Audio: Digital sound source 4ch (2 for voices and 2 for Hyper voice)
+
+Communication: 9600bps/38.4kbps (for the Wonder Gate)
+
+Size: 74.3mm X 128mm X 24.3mm (with AA battery)
+      74.3mm X 128mm X 17.5mm (with rechargeable pack)
+
+Weight: about 95 grams (without the battery)
+
+Buttons: 13 (X 1-4, Y 1-4, Start, A, B, Volume & Power)
+
+Power: 1 AA battery or echargable pack, ~20 hours of playtime
+
+Other Features: Fully compatible with Wonder Swan Cartridges.
+
+  
+Cartrige Size: 42mm X 67mm X 6mm
+
+Cartrige Weight: About 12 grams
+
+Cartrige Capacity: ROM or FLASHROM max 512Mbit(LUXSOR2), RAM max 512Mbit(LUXSOR2)
+
+
+
+MESS Emulation State:
+
+Very Preliminary Driver. Driver is currently a TESTDRIVER.
+
+$end
+
+#---------------------------------------------------------------------------------------------#
+
 
 $info=z88
 $bio
