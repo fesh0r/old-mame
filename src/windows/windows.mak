@@ -15,25 +15,18 @@ OSOBJS = $(OBJ)/windows/winmain.o $(OBJ)/windows/fileio.o $(OBJ)/windows/config.
 	 $(OBJ)/windows/winddraw.o \
 	 $(OBJ)/windows/asmblit.o $(OBJ)/windows/asmtile.o
 
-ifdef MESS
-CFLAGS += -DWINUI -DEMULATORDLL=\"$(EMULATORDLL)\"
-OSOBJS += \
-	$(OBJ)/mess/windows/dirio.o		\
-	$(OBJ)/mess/windows/dirutils.o	\
-	$(OBJ)/mess/windows/messwin.o	\
-	$(OBJ)/mess/windows/configms.o	\
-	$(OBJ)/mess/windows/menu.o		\
-	$(OBJ)/mess/windows/opcntrl.o	\
-	$(OBJ)/mess/windows/dialog.o	\
-	$(OBJ)/mess/windows/tapedlg.o	\
-	$(OBJ)/mess/windows/parallel.o	\
-	$(OBJ)/mess/windows/strconv.o
-endif 
+# add resource file
+OSOBJS += $(OBJ)/windows/mame.res
 
-RESFILE=$(OBJ)/mess/windows/mess.res
+ifdef NEW_DEBUGGER
+OSOBJS += $(OBJ)/windows/debugwin.o 
+endif
 
-# uncomment this line to enable guard pages on all memory allocations
-#OSOBJS += $(OBJ)/windows/winalloc.o
+# enable guard pages on all memory allocations in the debug build
+ifdef DEBUG
+OSOBJS += $(OBJ)/windows/winalloc.o
+LDFLAGS += -Wl,--allow-multiple-definition
+endif
 
 # video blitting functions
 $(OBJ)/windows/asmblit.o: src/windows/asmblit.asm
@@ -73,3 +66,17 @@ endif
 ifndef X86_MIPS3_DRC
 COREOBJS += $(OBJ)/x86drc.o
 endif
+
+#####################################################################
+# Resources
+
+RC = @windres --use-temp-file
+
+RCDEFS = -DNDEBUG -D_WIN32_IE=0x0400
+
+RCFLAGS = -O coff --include-dir src/windows
+
+$(OBJ)/windows/%.res: src/windows/%.rc
+	@echo Compiling resources $<...
+	$(RC) $(RCDEFS) $(RCFLAGS) -o $@ -i $<
+
