@@ -26,7 +26,7 @@
 #include "includes/vic6567.h"
 #include "includes/vdc8563.h"
 #include "includes/sid6581.h"
-#include "includes/state.h"
+#include "statetxt.h"
 
 #include "includes/c128.h"
 #include "includes/c65.h"
@@ -276,7 +276,7 @@ static void c64_irq (int level)
 		DBG_LOG (3, "mos6510", ("irq %s\n", level ? "start" : "end"));
 		if (c128) {
 			if (0&&(cpu_getactivecpu()==0)) {
-				cpu_set_irq_line (0, Z80_IRQ_INT, level);
+				cpu_set_irq_line (0, 0, level);
 			} else {
 				cpu_set_irq_line (1, M6510_IRQ_LINE, level);
 			}
@@ -824,6 +824,8 @@ static void c64_common_driver_init (void)
 		cbm_drive_attach_fs (1);
 	}
 
+	cia6526_init();
+
 	c64_cia0.todin50hz = c64_pal;
 	cia6526_config (0, &c64_cia0);
 	if (c64_cia1_on)
@@ -842,7 +844,9 @@ static void c64_common_driver_init (void)
 		vic6567_init (0, c64_pal, c64_dma_read, c64_dma_read_color,
 					  c64_vic_interrupt);
 	}
-	state_add_function(c64_state);
+	statetext_add_function(c64_state);
+
+	cia6526_reset ();
 }
 
 void c64_driver_init (void)
@@ -908,14 +912,13 @@ void c64_common_init_machine (void)
 		cbm_drive_1_config (SERIAL9ON ? SERIAL : 0, c65?11:9);
 		serial_clock = serial_data = serial_atn = 1;
 	}
-	cia6526_reset ();
 	c64_vicaddr = c64_memory;
 	vicirq = cia0irq = 0;
 	c64_port6510 = 0xff;
 	c64_ddr6510 = 0;
 }
 
-void c64_init_machine (void)
+MACHINE_INIT( c64 )
 {
 	c64_common_init_machine ();
 
@@ -926,10 +929,6 @@ void c64_init_machine (void)
 		c128_bankswitch_64 (1);
 	if (!ultimax)
 		c64_bankswitch (1);
-}
-
-void c64_shutdown_machine (void)
-{
 }
 
 #ifdef VERIFY_IMAGE
@@ -1108,7 +1107,7 @@ void c64_rom_load(void)
     }
 }
 
-int c64_frame_interrupt (void)
+INTERRUPT_GEN( c64_frame_interrupt )
 {
 	static int quickload = 0;
 	static int monitor=-1;
@@ -1131,11 +1130,11 @@ int c64_frame_interrupt (void)
 			if (MONITOR_TV) {
 				vic2_set_rastering(0);
 				vdc8563_set_rastering(1);
-				osd_set_visible_area(0,655,0,215);
+				set_visible_area(0,655,0,215);
 			} else {
 				vic2_set_rastering(1);
 				vdc8563_set_rastering(0);
-				osd_set_visible_area(0,335,0,215);
+				set_visible_area(0,335,0,215);
 			}
 			monitor=MONITOR_TV;
 		}
@@ -1469,8 +1468,6 @@ int c64_frame_interrupt (void)
 	}
 	set_led_status (1 /*KB_CAPSLOCK_FLAG */ , KEY_SHIFTLOCK ? 1 : 0);
 	set_led_status (0 /*KB_NUMLOCK_FLAG */ , JOYSTICK_SWAP ? 1 : 0);
-
-	return ignore_interrupt ();
 }
 
 void c64_state(void)
@@ -1480,28 +1477,28 @@ void c64_state(void)
 #if VERBOSE_DBG
 #if 0
 	cia6526_status (text, sizeof (text));
-	state_display_text (text);
+	statetext_display_text (text);
 
 	snprintf (text, sizeof(text), "c64 vic:%.4x m6510:%d exrom:%d game:%d",
 			  c64_vicaddr - c64_memory, c64_port6510 & 7,
 			  c64_exrom, c64_game);
-	state_display_text (text);
+	statetext_display_text (text);
 #endif
 
 	vdc8563_state();
-//	state_display_text (text);
+//	statetext_display_text (text);
 #endif
 
 	vc20_tape_status (text, sizeof (text));
-	state_display_text (text);
+	statetext_display_text (text);
 #ifdef VC1541
 	vc1541_drive_status (text, sizeof (text));
 #else
 	cbm_drive_0_status (text, sizeof (text));
 #endif
-	state_display_text (text);
+	statetext_display_text (text);
 
 	cbm_drive_1_status (text, sizeof (text));
-	state_display_text (text);
+	statetext_display_text (text);
 }
 

@@ -10,24 +10,26 @@
 </tr>
 </table>
 <hr>
-<h4>Texas Instruments Model TI-990/10 Minicomputer System</h4>
+<h4>Texas Instruments Model 990/10 Minicomputer System</h4>
 <p><b>Known Issues:</b><br>
-No complete DX10 or DNOS image is available at the time of writing.<br>
 The controller panel is not emulated yet.<br>
+The computer seems to lock when running various installation scripts, and<br>
+rebuilding the system.<br>
 <p><b>Usage:</b><br>
 This driver emulates a TI990/10 CPU with mapping option, 1Mbyte of RAM,<br>
 a generic disk controller at TILINE base &gt;1ff800, a generic tape controller<br>
 at TILINE base &gt;1ff880, and a 911 VDT at CRU base &gt;0100.<br>
-This is enough to build DX10 or DNOS. I have been using a build tape image<br>
-as tape unit #1 and a blank disk image as disk unit #1 (with the SCOSTA flag<br>
+This is enough to build DX10 or DNOS. I have been able to build a working DX10<br>
+3.7 or 3.6 system from the revelant build and backup tapes. (Tape loaded as<br>
+tape unit #1 and a blank disk image as disk unit #1 (with the SCOSTA flag<br>
 at offset &gt;A4 set to &gt;0002, so that the build tape does not try to format the<br>
-disk). The build tape boots, and I am able to build a bootable disk image.<br>
-The problems start at step 3 (restore after reboot), as it seems I do not<br>
-have an image of the backup tape that goes with the build tape.<br>
+disk)). I have even managed to instal the fun and games tape, and play pacman.<br>
 <p><b>History and Trivia:</b><br>
 Texas Instruments has been building minicomputers since the late 1960s through<br>
 the 1980s.<br>
-In 1974, TI started to build the prototype of the TI990 series, the TI990/9.<br>
+Around the summer of 1973, they started to design the TI990 as a successor to<br>
+the 960 and 980 computers they were building at the time. In 1974, TI started<br>
+to build the prototype of the TI990 series, the TI990/9.<br>
 In 1975, they released the first commercial system, the TI990/10. It was<br>
 a minicomputer built with TTL logic. Although it was a 16-bit CPU,<br>
 it supported an optional mapper to expand address space from 64kbytes<br>
@@ -57,7 +59,7 @@ it supported extra features but it was bigger and slower. Neither OS could run<b
 on the lower-end 990/4 and /5 systems, but a kernel and various OS utilities<br>
 were available as static-link libraries for embedded applications.<br>
 <hr>
-<center><font size=-2>created on Sun May 12 16:53:10 2002
+<center><font size=-2>created on Thu Sep 05 21:06:39 2002
 </font></center>
 </body>
 </html>

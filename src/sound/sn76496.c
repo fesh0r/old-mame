@@ -10,13 +10,6 @@
   layout is unknown. It can be set for either period or white noise; again,
   the details are unknown.
 
-Update (R. Nabet 2002/03/21):
-	Using white noise samples by John Kortink (found at
-	http://web.inter.nl.net/users/J.Kortink/sn76489.bits), I have been able
-	to reverse engineer the value for FB_WNOISE.  Therefore, the values for
-	both FB_WNOISE and FB_PNOISE should be regarded as solid.  I still have
-	no idea what the correct value for NG_PRESET, however.
-
 ***************************************************************************/
 
 #include "driver.h"

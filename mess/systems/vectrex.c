@@ -74,12 +74,6 @@ INPUT_PORTS_START( vectrex )
 	PORT_DIPSETTING(0x40, "Green")
 	PORT_DIPSETTING(0x60, "Blue")
 	PORT_DIPSETTING(0x80, "Color")
-
-	PORT_START
-	//PORT_DIPNAME( 0x01, 0x01, "Timer 2 refresh", IP_KEY_NONE )
-	PORT_DIPNAME( 0x01, 0x01, "Timer 2 refresh")
-	PORT_DIPSETTING(0x00, DEF_STR ( No ))
-	PORT_DIPSETTING(0x01, DEF_STR ( Yes ))
 INPUT_PORTS_END
 
 static struct DACinterface dac_interface =
@@ -96,54 +90,32 @@ static struct AY8910interface ay8910_interface =
     /*AY8910_DEFAULT_GAIN,*/
 	{ input_port_0_r },
 	{ 0 },
-	{ 0 },
+	{ vectrex_psg_port_w },
 	{ 0 }
 };
 
 
-static struct MachineDriver machine_driver_vectrex =
-{
+static MACHINE_DRIVER_START( vectrex )
 	/* basic machine hardware */
-	{
-		{
-			CPU_M6809,
-			1500000,	/* 1.5 Mhz */
-			vectrex_readmem, vectrex_writemem,0,0,
-			0, 0, /* no vblank interrupt */
-			0, 0 /* no interrupts */
-		}
-	},
-	40, 0,	/* frames per second, vblank duration (vector game, so no vblank) */
-	1,
-	0,
-	0,
+	MDRV_CPU_ADD_TAG("main", M6809, 1500000)        /* 1.5 Mhz */
+	MDRV_CPU_MEMORY(vectrex_readmem, vectrex_writemem)
 
-	/* video hardware */
-	380, 480, { 0, 500, 0, 600 },
-	0,
-	256 + 32768, 0,
-	0,
+	MDRV_FRAMES_PER_SECOND(60)
 
-	VIDEO_TYPE_VECTOR | VIDEO_SUPPORTS_DIRTY | VIDEO_RGB_DIRECT,
-	0,
-	vectrex_start,
-	vectrex_stop,
-	vectrex_vh_update,
+    /* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR | VIDEO_RGB_DIRECT)
+	MDRV_SCREEN_SIZE(300, 400)
+	MDRV_VISIBLE_AREA(0, 500, 0, 600)
+	MDRV_PALETTE_LENGTH(256 + 32768)
+
+	MDRV_VIDEO_START( vectrex )	
+	MDRV_VIDEO_UPDATE( vectrex )
 
 	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_AY8910,
-			&ay8910_interface
-		},
-		{
-			SOUND_DAC,
- 			&dac_interface
-		}
-	}
+	MDRV_SOUND_ADD(AY8910, ay8910_interface)
+	MDRV_SOUND_ADD(DAC, dac_interface)
+MACHINE_DRIVER_END
 
-};
 
 static const struct IODevice io_vectrex[] = {
 	{
@@ -227,49 +199,17 @@ INPUT_PORTS_START( raaspec )
 
 INPUT_PORTS_END
 
-static struct MachineDriver machine_driver_raaspec =
-{
-	/* basic machine hardware */
-	{
-		{
-			CPU_M6809,
-			1500000,	/* 1.5 Mhz */
-			raaspec_readmem, raaspec_writemem,0,0,
-			0, 0, /* no vblank interrupt */
-			0, 0 /* no interrupts */
-		}
-	},
-	40, 0,	/* frames per second, vblank duration (vector game, so no vblank) */
-	1,
-	0,
-	0,
 
-	/* video hardware */
-	380, 480, { 0, 500, 0, 600 },
-	0,
-	254, 0,
-	raaspec_init_artwork,
+static MACHINE_DRIVER_START( raaspec )
+	MDRV_IMPORT_FROM( vectrex )
+	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MEMORY( raaspec_readmem, raaspec_writemem )
 
-	VIDEO_TYPE_VECTOR | VIDEO_SUPPORTS_DIRTY | VIDEO_RGB_DIRECT,
-	0,
-	raaspec_start,
-	vectrex_stop,
-	raaspec_vh_update,
+	MDRV_PALETTE_LENGTH(254)
 
-	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_AY8910,
-			&ay8910_interface
-		},
-		{
-			SOUND_DAC,
- 			&dac_interface
-		}
-	}
+	MDRV_VIDEO_START( raaspec )
+MACHINE_DRIVER_END
 
-};
 
 static const struct IODevice io_raaspec[] = {
 	{ IO_END }
@@ -284,14 +224,3 @@ ROM_END
 /*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	  COMPANY	FULLNAME */
 CONS( 1982, vectrex,  0, 		vectrex,  vectrex,	0,		  "General Consumer Electronics",   "Vectrex" )
 CONS( 1984, raaspec,  vectrex,	raaspec,  raaspec,	0,		  "Roy Abel & Associates",   "Spectrum I+" )
-
-#ifdef RUNTIME_LOADER
-extern void vectrex_runtime_loader_init(void)
-{
-	int i;
-	for (i=0; drivers[i]; i++) {
-		if ( strcmp(drivers[i]->name,"vectrex")==0) drivers[i]=&driver_vectrex;
-		if ( strcmp(drivers[i]->name,"raaspec")==0) drivers[i]=&driver_raaspec;
-	}
-}
-#endif

@@ -50,15 +50,7 @@ extern int verbose;
 //	TYPE DEFINITIONS
 //============================================================
 
-#ifdef _MSC_VER
-#define BLITDECL	__cdecl
-UINT32 asmblit_mmxmask1[4];
-UINT32 asmblit_mmxmask2[4];
-#else
-#define BLITDECL
-#endif
-
-typedef void (BLITDECL *blitter_func)(void);
+typedef void (*blitter_func)(void);
 
 struct rgb_descriptor
 {
@@ -318,7 +310,7 @@ static void compute_source_fixups(const struct win_blit_params *blit, UINT32 val
 //	BLITTER CORE TABLES
 //============================================================
 
-static void (BLITDECL *blit1_core[4][4][3])(void) =
+static void (*blit1_core[4][4][3])(void) =
 {
 	{
 		{ NULL,                 NULL,                 NULL },
@@ -346,7 +338,7 @@ static void (BLITDECL *blit1_core[4][4][3])(void) =
 	}
 };
 
-static void (BLITDECL *blit16_core[4][4][3])(void) =
+static void (*blit16_core[4][4][3])(void) =
 {
 	{
 		{ NULL,                 NULL,                 NULL },
@@ -374,7 +366,7 @@ static void (BLITDECL *blit16_core[4][4][3])(void) =
 	}
 };
 
-static void (BLITDECL *blit16_core_mmx[4][4][3])(void) =
+static void (*blit16_core_mmx[4][4][3])(void) =
 {
 	{
 		{ NULL,                 NULL,                 NULL },
@@ -402,7 +394,7 @@ static void (BLITDECL *blit16_core_mmx[4][4][3])(void) =
 	}
 };
 
-static void (BLITDECL *blit1_core_rgb[4][4])(void) =
+static void (*blit1_core_rgb[4][4])(void) =
 {
 	{ NULL, NULL, NULL, NULL },
 	{ NULL, asmblit1_16_to_16_rgb, NULL, asmblit1_16_to_32_rgb },
@@ -410,7 +402,7 @@ static void (BLITDECL *blit1_core_rgb[4][4])(void) =
 	{ NULL, NULL, NULL, NULL }
 };
 
-static void (BLITDECL *blit16_core_rgb[4][4])(void) =
+static void (*blit16_core_rgb[4][4])(void) =
 {
 	{ NULL, NULL, NULL, NULL },
 	{ NULL, asmblit16_16_to_16_rgb, NULL, asmblit16_16_to_32_rgb },

@@ -45,36 +45,36 @@ struct RunningMachine
 
 	/* points to the definition of the game machine */
 	const struct GameDriver *gamedrv;
-
+	
 	/* points to the constructed MachineDriver */
 	const struct InternalMachineDriver *drv;
 
 	/* array of memory regions */
-	struct RegionInfo		memory_region[MAX_MEMORY_REGIONS];
-
+	struct RegionInfo memory_region[MAX_MEMORY_REGIONS];
+	
 
 	/* ----- video-related information ----- */
 
 	/* array of pointers to graphic sets (chars, sprites) */
 	struct GfxElement *		gfx[MAX_GFX_ELEMENTS];
-
+	
 	/* main bitmap to render to (but don't do it directly!) */
 	struct mame_bitmap *	scrbitmap;
 
 	/* current visible area, and a prerotated one adjusted for orientation */
-	struct rectangle 		visible_area;
+	struct rectangle visible_area;
 	struct rectangle		absolute_visible_area;
 
 	/* remapped palette pen numbers. When you write directly to a bitmap in a
 	   non-paletteized mode, use this array to look up the pen number. For example,
 	   if you want to use color #6 in the palette, use pens[6] instead of just 6. */
-	pen_t *					pens;
+	pen_t *					pens;	
 
 	/* lookup table used to map gfx pen numbers to color numbers */
-	UINT16 *				game_colortable;
+	UINT16 *				game_colortable;	
 
 	/* the above, already remapped through Machine->pens */
-	pen_t *					remapped_colortable;
+	pen_t *					remapped_colortable;	
 
 	/* video color depth: 16, 15 or 32 */
 	int						color_depth;
@@ -95,7 +95,7 @@ struct RunningMachine
 	/* ----- input-related information ----- */
 
 	/* the input ports definition from the driver is copied here and modified */
-	struct InputPort *input_ports;
+	struct InputPort *input_ports;	
 
 	/* original input_ports without modifications */
 	struct InputPort *input_ports_default;
@@ -105,13 +105,13 @@ struct RunningMachine
 
 	/* font used by the user interface */
 	struct GfxElement *uifont;
-
+	
 	/* font parameters */
-	int uifontwidth, uifontheight;
+	int uifontwidth,uifontheight;
 
 	/* user interface visible area */
-	int uixmin, uiymin;
-	int uiwidth, uiheight;
+	int uixmin,uiymin;
+	int uiwidth,uiheight;
 
 	/* user interface orientation */
 	int ui_orientation;
@@ -121,7 +121,7 @@ struct RunningMachine
 
 	/* bitmap where the debugger is rendered */
 	struct mame_bitmap *debug_bitmap;
-
+	
 	/* pen array for the debugger, analagous to the pens above */
 	pen_t *debug_pens;
 
@@ -133,6 +133,12 @@ struct RunningMachine
 };
 
 
+#ifdef MESS
+#include <stdarg.h>
+#ifndef DECL_SPEC
+#define DECL_SPEC
+#endif
+#endif
 
 /***************************************************************************
 
@@ -148,10 +154,6 @@ struct RunningMachine
 
 
 #ifdef MESS
-#include <stdarg.h>
-#ifndef DECL_SPEC
-#define DECL_SPEC
-#endif
 #define MAX_IMAGES	32
 /*
  * This is a filename and it's associated peripheral type
@@ -183,8 +185,8 @@ struct GameOptions
 	float	brightness;		/* brightness of the display */
 	float	gamma;			/* gamma correction of the display */
 	int		color_depth;	/* 15, 16, or 32, any other value means auto */
-	int		vector_width;	/* requested width for vector games; 0 means default (640) */
-	int		vector_height;	/* requested height for vector games; 0 means default (480) */
+	int vector_width;	/* requested width for vector games; 0 means default (640) */
+	int vector_height;	/* requested height for vector games; 0 means default (480) */
 	int		norotate;		/* 1 to disable rotaton */
 	int		ror;			/* 1 to rotate the game 90 degrees to the right (clockwise) */
 	int		rol;			/* 1 to rotate the game 90 degrees to the left (counterclockwise) */
@@ -209,9 +211,10 @@ struct GameOptions
 	int		debug_depth;	/* requested depth of debugger bitmap */
 
 	#ifdef MESS
-	int		append_no_file_extension;
-	int		image_count;
+	UINT32 ram;
 	struct ImageFile image_files[MAX_IMAGES];
+	int image_count;
+	int (*mess_printf_output)(char *fmt, va_list arg);
 	#endif
 };
 
@@ -300,7 +303,7 @@ extern struct RunningMachine *Machine;
 /* ----- core system management ----- */
 
 /* execute a given game by index in the drivers[] array */
-int run_game(int game);
+int run_game (int game);
 
 /* construct a machine driver */
 struct InternalMachineDriver;
@@ -347,7 +350,7 @@ int updatescreen(void);
 int mame_highscore_enabled(void);
 
 /* set the state of a given LED */
-void set_led_status(int num, int on);
+void set_led_status(int num,int on);
 
 /* return current performance data */
 const struct performance_info *mame_get_performance_info(void);

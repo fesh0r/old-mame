@@ -30,15 +30,10 @@ UINT8 *microtan_chunky_buffer = NULL;
 char microtan_frame_message[64+1];
 int microtan_frame_time = 0;
 
-void microtan_init_colors (unsigned char *palette, unsigned short *colortable, const unsigned char *color_prom)
+PALETTE_INIT( microtan )
 {
-	palette[0*3+0] = 0x00;
-	palette[0*3+1] = 0x00;
-	palette[0*3+2] = 0x00;
-
-    palette[1*3+0] = 0xff;
-	palette[1*3+1] = 0xff;
-	palette[1*3+2] = 0xff;
+	palette_set_color(0, 0x00, 0x00, 0x00);
+	palette_set_color(1, 0xff, 0xff, 0xff);
 
 	colortable[0] = 0;
 	colortable[1] = 1;
@@ -54,27 +49,21 @@ WRITE_HANDLER( microtan_videoram_w )
 	}
 }
 
-int microtan_vh_start(void)
+VIDEO_START( microtan )
 {
-	if (generic_vh_start())
+	if (video_start_generic())
 		return 1;
-	microtan_chunky_buffer = malloc(videoram_size);
+	microtan_chunky_buffer = auto_malloc(videoram_size);
     microtan_chunky_graphics = 0;
 	memset(microtan_chunky_buffer, microtan_chunky_graphics, sizeof(microtan_chunky_buffer));
 
     return 0;
 }
 
-void microtan_vh_stop(void)
-{
-	generic_vh_stop();
-	free(microtan_chunky_buffer);
-	microtan_chunky_buffer = NULL;
-}
-
-void microtan_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( microtan )
 {
     int offs;
+	int full_refresh = 1;
 
 	if( microtan_frame_time > 0 )
     {
@@ -85,10 +74,7 @@ void microtan_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
     }
 
     if( full_refresh )
-	{
-		fillbitmap(Machine->scrbitmap, Machine->pens[0], &Machine->visible_area);
 		memset(dirtybuffer, 1, videoram_size);
-    }
 
 	for( offs = 0; offs < 32*16; offs++ )
 	{

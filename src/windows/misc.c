@@ -40,11 +40,6 @@ Version 0.2, May 2000
 
 #include "misc.h"
 
-#ifndef _MSC_VER
-#include <unistd.h>
-#include <sys/time.h>
-#endif
-
 
 #ifdef HAVE_GETTIMEOFDAY
 /* Standard UNIX clock() is based on CPU time, not real time.

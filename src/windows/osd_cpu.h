@@ -39,12 +39,6 @@
 int index;	/* avoid a common "shadows global declaration" warning in the DOS build */
 
 
-#ifdef _MSC_VER
-#define __extension__
-#else
-#define __int64	long long
-#endif
-
 typedef unsigned char						UINT8;
 typedef signed char 						INT8;
 typedef unsigned short						UINT16;

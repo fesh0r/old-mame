@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "osdepend.h"
-#include "imgtool.h"
+#include "imgtoolx.h"
 
 #ifdef LSB_FIRST
 typedef UINT16 littleuword;
@@ -158,7 +158,7 @@ static int t64_image_init(const struct ImageModule *mod, STREAM *f, IMAGE **outi
 	if (!image) return IMGTOOLERR_OUTOFMEMORY;
 
 	memset(image, 0, sizeof(t64_image));
-	image->base.module = &imgmod_t64;
+	image->base.module = mod;
 	image->size=stream_size(f);
 	image->file_handle=f;
 
@@ -207,7 +207,7 @@ static int t64_image_beginenum(IMAGE *img, IMAGEENUM **outenum)
 	iter=*(t64_iterator**)outenum = (t64_iterator *) malloc(sizeof(t64_iterator));
 	if (!iter) return IMGTOOLERR_OUTOFMEMORY;
 
-	iter->base.module = &imgmod_t64;
+	iter->base.module = img->module;
 
 	iter->image=image;
 	iter->index = 0;

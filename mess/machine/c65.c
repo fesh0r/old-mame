@@ -16,7 +16,7 @@
 #include "includes/vc1541.h"
 #include "includes/vic4567.h"
 #include "includes/sid6581.h"
-#include "includes/state.h"
+#include "statetxt.h"
 
 #include "includes/c65.h"
 
@@ -336,7 +336,7 @@ static void c65_fdc_state(void)
 
 static void c65_fdc_w(int offset, int data)
 {
-	DBG_LOG (1, "fdc write", ("%.5x %.2x %.2x\n", cpu_get_pc(), offset, data));
+	DBG_LOG (1, "fdc write", ("%.5x %.2x %.2x\n", activecpu_get_pc(), offset, data));
 	switch (offset&0xf) {
 	case 0:
 		c65_fdc.reg[0]=data;
@@ -417,7 +417,7 @@ static int c65_fdc_r(int offset)
 		data=c65_fdc.reg[offset&0xf];
 		break;
 	}
-	DBG_LOG (1, "fdc read", ("%.5x %.2x %.2x\n", cpu_get_pc(), offset, data));
+	DBG_LOG (1, "fdc read", ("%.5x %.2x %.2x\n", activecpu_get_pc(), offset, data));
 	return data;
 }
 
@@ -444,13 +444,13 @@ static READ_HANDLER(c65_ram_expansion_r)
 	int data=0xff;
 	if (C65_MAIN_MEMORY==C65_4096KB)
 		data=expansion_ram.reg;
-	DBG_LOG (1, "expansion read", ("%.5x %.2x %.2x\n", cpu_get_pc(),offset,data));
+	DBG_LOG (1, "expansion read", ("%.5x %.2x %.2x\n", activecpu_get_pc(),offset,data));
 	return data;
 }
 
 static WRITE_HANDLER(c65_ram_expansion_w)
 {
-	DBG_LOG (1, "expansion write", ("%.5x %.2x %.2x\n", cpu_get_pc(), offset, data));
+	DBG_LOG (1, "expansion write", ("%.5x %.2x %.2x\n", activecpu_get_pc(), offset, data));
 	expansion_ram.reg=data;
 
 #if 0
@@ -756,12 +756,14 @@ static void c65_common_driver_init (void)
 	cbm_drive_attach_fs (0);
 	cbm_drive_attach_fs (1);
 
+	cia6526_init();
+
 	c64_cia0.todin50hz = c64_cia1.todin50hz = c64_pal;
 	cia6526_config (0, &c64_cia0);
 	cia6526_config (1, &c64_cia1);
 	vic4567_init (c64_pal, c65_dma_read, c65_dma_read_color,
 				  c64_vic_interrupt, c65_bankswitch_interface);
-	state_add_function(c65_state);
+	statetext_add_function(c65_state);
 }
 
 void c65_driver_init (void)
@@ -789,7 +791,7 @@ void c65_driver_shutdown (void)
 	cbm_drive_close ();
 }
 
-void c65_init_machine (void)
+MACHINE_INIT( c65 )
 {
 	memset(c64_memory+0x40000, 0xff, 0xc0000);
 
@@ -813,24 +815,20 @@ void c65_init_machine (void)
 	c65_bankswitch ();
 }
 
-void c65_shutdown_machine (void)
-{
-}
-
 void c65_state (void)
 {
 	char text[70];
 
 #if VERBOSE_DBG
 	cia6526_status (text, sizeof (text));
-	state_display_text (text);
+	statetext_display_text (text);
 
 	snprintf (text, sizeof(text), "c65 vic:%.4x m6510:%d c64:%d",
 			  c64_vicaddr - c64_memory, c64_port6510 & 7, c64mode);
 #endif
 	cbm_drive_0_status (text, sizeof (text));
-	state_display_text (text);
+	statetext_display_text (text);
 
 	cbm_drive_1_status (text, sizeof (text));
-	state_display_text (text);
+	statetext_display_text (text);
 }

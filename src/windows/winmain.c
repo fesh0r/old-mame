@@ -44,9 +44,8 @@ int _CRT_glob = 0;
 //============================================================
 
 static char mapfile_name[MAX_PATH];
-#ifndef USE_DRMINGW
 static LPTOP_LEVEL_EXCEPTION_FILTER pass_thru_filter;
-#endif
+
 static int original_leds;
 
 
@@ -54,7 +53,7 @@ static int original_leds;
 //============================================================
 //	PROTOTYPES
 //============================================================
-#ifndef USE_DRMINGW
+
 static LONG CALLBACK exception_filter(struct _EXCEPTION_POINTERS *info);
 static const char *lookup_symbol(UINT32 address);
 static int get_code_base_size(UINT32 *base, UINT32 *size);
@@ -69,6 +68,9 @@ static int get_code_base_size(UINT32 *base, UINT32 *size);
 #define main main_
 #endif
 
+#ifdef MESS
+int __declspec(dllexport) DECL_SPEC main_(int argc, char **argv)
+#else
 int main(int argc, char **argv)
 #endif
 {
@@ -83,9 +85,8 @@ int main(int argc, char **argv)
 		strcpy(ext, ".map");
 	else
 		strcat(mapfile_name, ".map");
-#ifndef USE_DRMINGW
 	pass_thru_filter = SetUnhandledExceptionFilter(exception_filter);
-#endif
+
 	// remember the initial LED states
 	original_leds = osd_get_leds();
 
@@ -156,7 +157,7 @@ void osd_exit(void)
 //============================================================
 //	exception_filter
 //============================================================
-#ifndef USE_DRMINGW
+
 static LONG CALLBACK exception_filter(struct _EXCEPTION_POINTERS *info)
 {
 	static const struct
@@ -265,7 +266,7 @@ static LONG CALLBACK exception_filter(struct _EXCEPTION_POINTERS *info)
 
 				// make sure it points somewhere a little before the last call
 				if (call_target == 1 || (call_target < last_call && call_target >= last_call - 0x1000))
-				{
+	{
 					char *stop_compare = strchr(prev_symbol, '+');
 
 					// don't print duplicate hits in the same routine
@@ -277,8 +278,8 @@ static LONG CALLBACK exception_filter(struct _EXCEPTION_POINTERS *info)
 						last_call = stack_val;
 					}
 				}
-			}
-		}
+					}
+				}
 	}
 
 	cli_frontend_exit();

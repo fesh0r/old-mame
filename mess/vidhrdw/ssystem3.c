@@ -9,46 +9,41 @@
 
 UINT8 ssystem3_led[5]= {0};
 
-unsigned char ssystem3_palette[242][3] =
+static unsigned char ssystem3_palette[] =
 {
-	{ 0,12,12 },
-	{ 80,82,75 },
-	{ 0,12,12 },
+	0,12,12,
+	80,82,75,
+	0,12,12
 };
 
-unsigned short ssystem3_colortable[1][2] = {
+static unsigned short ssystem3_colortable[1][2] = {
 	{ 0, 1 },
 };
 
-void ssystem3_init_colors (unsigned char *sys_palette,
-						  unsigned short *sys_colortable,
-						  const unsigned char *color_prom)
+PALETTE_INIT( ssystem3 )
 {
-	memcpy (sys_palette, ssystem3_palette, sizeof (ssystem3_palette));
-	memcpy(sys_colortable,ssystem3_colortable,sizeof(ssystem3_colortable));
+	palette_set_colors(0, ssystem3_palette, sizeof(ssystem3_palette) / 3);
+	memcpy(colortable,ssystem3_colortable,sizeof(ssystem3_colortable));
 }
 
-int ssystem3_vh_start(void)
+VIDEO_START( ssystem3 )
 {
 	// artwork seams to need this
     videoram_size = 6 * 2 + 24;
-    videoram = (UINT8*)malloc (videoram_size);
+    videoram = (UINT8*) auto_malloc (videoram_size);
 	if (!videoram)
         return 1;
 
+#if 0
 	{
 		char backdrop_name[200];
 	    /* try to load a backdrop for the machine */
 		sprintf (backdrop_name, "%s.png", Machine->gamedrv->name);
 		backdrop_load(backdrop_name, 3);
 	}
+#endif
 
-	return generic_vh_start();
-}
-
-void ssystem3_vh_stop(void)
-{
-	generic_vh_stop();
+	return video_start_generic();
 }
 
 static const char led[]={
@@ -103,7 +98,6 @@ static void ssystem3_draw_7segment(struct mame_bitmap *bitmap,int value, int x, 
 		if (mask!=0) {
 			color=Machine->pens[(value&mask)?1:0];
 			plot_pixel(bitmap, x+xi, y+yi, color);
-			osd_mark_dirty(x+xi,y+yi,x+xi,y+yi);
 		}
 		if (led[i]!='\r') xi++;
 		else { yi++, xi=0; }
@@ -168,7 +162,6 @@ static void ssystem3_draw_led(struct mame_bitmap *bitmap,INT16 color, int x, int
 		default:
 			if (ch==single_led[j]) {
 				plot_pixel(bitmap, x+xi, y, color);
-				osd_mark_dirty(x+xi,y,x+xi,y);
 			}
 			xi++;
 			break;
@@ -183,7 +176,7 @@ static void ssystem3_draw_led(struct mame_bitmap *bitmap,INT16 color, int x, int
 	}
 }
 
-void ssystem3_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( ssystem3 )
 {
 	int i;
 

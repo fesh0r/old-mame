@@ -7,7 +7,7 @@
 #include <wingdi.h>
 
 #include "windowsui/mame32.h"
-#include "mess/mess.h"
+#include "mess.h"
 #include "config.h"
 #include "SmartListView.h"
 #include "SoftwareList.h"
@@ -487,14 +487,14 @@ static void SoftwareListClass_SetColumnInfo(struct SmartListView *pListView, int
 static BOOL SoftwareListClass_ItemChanged(struct SmartListView *pListView, BOOL bWasSelected, BOOL bNowSelected, int nRow)
 {
 	BOOL bResult;
-    BOOL bNewScreenShot;
+	BOOL bNewScreenShot;
 	const char *name;
 	char *s;
 	char *newname;
 
 	bResult = SoftwareList_ItemChanged(pListView, bWasSelected, bNowSelected, nRow);
 
-    if (!bWasSelected && bNowSelected) {
+	if (!bWasSelected && bNowSelected) {
 		name = GetImageName(nRow);
 		s = strrchr(name, '\\');
 		if (s)
@@ -505,7 +505,7 @@ static BOOL SoftwareListClass_ItemChanged(struct SmartListView *pListView, BOOL 
 		if (s)
 			*s = '\0';
 
-		bNewScreenShot = LoadScreenShot(GetSelectedPickItem(), newname, nPictType);
+		bNewScreenShot = LoadScreenShotEx(GetSelectedPickItem(), newname, nPictType);
 		if (bNewScreenShot || bScreenShotAvailable)
         {
             HWND hWnd;

@@ -10,8 +10,8 @@
 
 #include "windowsui/mame32.h"
 #include "windowsui/Directories.h"
-#include "mess/mess.h"
-#include "mess/utils.h"
+#include "mess.h"
+#include "utils.h"
 
 static void MessOptionsToProp(HWND hWnd, options_type *o);
 static void MessPropToOptions(HWND hWnd, options_type *o);
@@ -20,6 +20,8 @@ static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCSTR l
 static BOOL SoftwareDirectories_OnDelete(HWND hDlg);
 static BOOL SoftwareDirectories_OnBeginLabelEdit(HWND hDlg, NMHDR* pNMHDR);
 static BOOL SoftwareDirectories_OnEndLabelEdit(HWND hDlg, NMHDR* pNMHDR);
+
+static BOOL PropSheetFilter_Config(const struct InternalMachineDriver *drv, const struct GameDriver *gamedrv);
 
 /* Include the actual Properties.c */
 #include "../../src/windowsui/Properties.c"
@@ -330,8 +332,10 @@ static void RamSize_InitList(HWND hDlg, UINT32 default_ram)
 			}
 		}
 		
-		if (sel < 0) {
-			assert(default_index > 0);
+		if (sel < 0)
+		{
+			/* there doesn't seem to be a default RAM option */
+			assert(default_index >= 0);
 			sel = default_index;
 		}
 		ComboBox_SetCurSel(hRamComboBox, sel);
@@ -367,3 +371,7 @@ static void MessPropToOptions(HWND hWnd, options_type *o)
 	}
 }
 
+static BOOL PropSheetFilter_Config(const struct InternalMachineDriver *drv, const struct GameDriver *gamedrv)
+{
+	return ram_option_count(gamedrv) > 0;
+}

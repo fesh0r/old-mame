@@ -16,12 +16,15 @@
 #include "machine/6821pia.h"
 #include "vidhrdw/m6847.h"
 #include "includes/6883sam.h"
-#include "includes/rstrtrck.h"
 #include "includes/dragon.h"
 #include "includes/basicdsk.h"
 #include "includes/6551.h"
 #include "formats/dmkdsk.h"
 #include "printer.h"
+
+#define SHOW_FULL_AREA			0
+#define JOYSTICK_DELTA			10
+#define JOYSTICK_SENSITIVITY	100
 
 static MEMORY_READ_START( coco_readmem )
 	{ 0x0000, 0x7fff, MRA_BANK1 },
@@ -213,13 +216,13 @@ INPUT_PORTS_START( dragon32 )
 	PORT_BITX(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD, "R-SHIFT", KEYCODE_RSHIFT, CODE_NONE)
 
 	PORT_START /* 7 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER1, 100, 10, 0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_1_LEFT, JOYCODE_1_RIGHT)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER1, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_1_LEFT, JOYCODE_1_RIGHT)
 	PORT_START /* 8 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER1, 100, 10, 0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_1_UP, JOYCODE_1_DOWN)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER1, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_1_UP, JOYCODE_1_DOWN)
 	PORT_START /* 9 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER2, 100, 10, 0x0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_2_LEFT, JOYCODE_2_RIGHT)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER2, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0x0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_2_LEFT, JOYCODE_2_RIGHT)
 	PORT_START /* 10 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER2, 100, 10, 0x0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_2_UP, JOYCODE_2_DOWN)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER2, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0x0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_2_UP, JOYCODE_2_DOWN)
 
 	PORT_START /* 11 */
 	PORT_BITX( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_PLAYER1, "Right Button", KEYCODE_RALT, JOYCODE_1_BUTTON1)
@@ -228,8 +231,8 @@ INPUT_PORTS_START( dragon32 )
 	PORT_START /* 12 */
 	PORT_DIPNAME( 0x03, 0x01, "Artifacting" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x01, "Red" )
-	PORT_DIPSETTING(    0x02, "Blue" )
+	PORT_DIPSETTING(    0x01, "Standard" )
+	PORT_DIPSETTING(    0x02, "Reverse" )
 	PORT_DIPNAME( 0x04, 0x00, "Autocenter Joysticks" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
@@ -317,13 +320,13 @@ INPUT_PORTS_START( coco )
 	PORT_BITX(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD, "R-SHIFT", KEYCODE_RSHIFT, CODE_NONE)
 
 	PORT_START /* 7 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER1, 100, 10, 0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_1_LEFT, JOYCODE_1_RIGHT)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER1, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_1_LEFT, JOYCODE_1_RIGHT)
 	PORT_START /* 8 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER1, 100, 10, 0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_1_UP, JOYCODE_1_DOWN)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER1, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_1_UP, JOYCODE_1_DOWN)
 	PORT_START /* 9 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER2, 100, 10, 0x0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_2_LEFT, JOYCODE_2_RIGHT)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER2, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0x0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_2_LEFT, JOYCODE_2_RIGHT)
 	PORT_START /* 10 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER2, 100, 10, 0x0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_2_UP, JOYCODE_2_DOWN)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER2, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0x0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_2_UP, JOYCODE_2_DOWN)
 
 	PORT_START /* 11 */
 	PORT_BITX( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_PLAYER1, "Right Button", KEYCODE_RALT, JOYCODE_1_BUTTON1)
@@ -332,8 +335,8 @@ INPUT_PORTS_START( coco )
 	PORT_START /* 12 */
 	PORT_DIPNAME( 0x03, 0x01, "Artifacting" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x01, "Red" )
-	PORT_DIPSETTING(    0x02, "Blue" )
+	PORT_DIPSETTING(    0x01, "Standard" )
+	PORT_DIPSETTING(    0x02, "Reverse" )
 	PORT_DIPNAME( 0x04, 0x00, "Autocenter Joysticks" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
@@ -430,13 +433,13 @@ INPUT_PORTS_START( coco3 )
 	PORT_BITX(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD, "R-SHIFT", KEYCODE_RSHIFT, CODE_NONE)
 
 	PORT_START /* 7 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER1, 100, 10, 0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_1_LEFT, JOYCODE_1_RIGHT)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER1, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_1_LEFT, JOYCODE_1_RIGHT)
 	PORT_START /* 8 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER1, 100, 10, 0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_1_UP, JOYCODE_1_DOWN)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER1, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_1_UP, JOYCODE_1_DOWN)
 	PORT_START /* 9 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER2, 100, 10, 0x0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_2_LEFT, JOYCODE_2_RIGHT)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_X | IPF_PLAYER2, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0x0, 0xff, KEYCODE_LEFT, KEYCODE_RIGHT, JOYCODE_2_LEFT, JOYCODE_2_RIGHT)
 	PORT_START /* 10 */
-	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER2, 100, 10, 0x0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_2_UP, JOYCODE_2_DOWN)
+	PORT_ANALOGX( 0xff, 0x80,  IPT_AD_STICK_Y | IPF_PLAYER2, JOYSTICK_SENSITIVITY, JOYSTICK_DELTA, 0x0, 0xff, KEYCODE_UP, KEYCODE_DOWN, JOYCODE_2_UP, JOYCODE_2_DOWN)
 
 	PORT_START /* 11 */
 	PORT_BITX( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_PLAYER1, "Right Button 1", KEYCODE_RCONTROL, JOYCODE_1_BUTTON1)
@@ -448,8 +451,8 @@ INPUT_PORTS_START( coco3 )
 	PORT_START /* 12 */
 	PORT_DIPNAME( 0x03, 0x01, "Artifacting" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x01, "Red" )
-	PORT_DIPSETTING(    0x02, "Blue" )
+	PORT_DIPSETTING(    0x01, "Standard" )
+	PORT_DIPSETTING(    0x02, "Reverse" )
 	PORT_DIPNAME( 0x04, 0x00, "Autocenter Joysticks" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
@@ -478,334 +481,133 @@ static struct Wave_interface d_wave_interface = {
 	{ 25 }		/* mixing levels */
 };
 
-static struct MachineDriver machine_driver_dragon32 =
-{
+static MACHINE_DRIVER_START( dragon32 )
 	/* basic machine hardware */
-	{
-		{
-			CPU_M6809,
-			COCO_CPU_SPEED_HZ,
-			coco_readmem,coco_writemem,
-			0, 0,
-			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
-			0, 0,
-		},
-	},
-	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
-	0,
-	dragon32_init_machine,
-	coco_stop_machine,
+	MDRV_CPU_ADD_TAG("main", M6809, COCO_CPU_SPEED_HZ)        /* 0,894886 Mhz */
+	MDRV_CPU_MEMORY(coco_readmem, coco_writemem)
+	MDRV_CPU_VBLANK_INT(m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME)
+	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
+	MDRV_VBLANK_DURATION(0)
+
+	MDRV_MACHINE_INIT( dragon32 )
+	MDRV_MACHINE_STOP( coco )
 
 	/* video hardware */
-	320,					/* screen width */
-	240,					/* screen height (pixels doubled) */
-	{ 0, 319, 0, 239 },		/* visible_area */
-	0,						/* graphics decode info */
-	M6847_TOTAL_COLORS,
-	0,
-	m6847_vh_init_palette,						/* initialise palette */
-
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
-	0,
-	dragon_vh_start,
-	m6847_vh_stop,
-	m6847_vh_update,
+	MDRV_M6847_PAL( dragon )
 
 	/* sound hardware */
-	0, 0, 0, 0,
-	{
-		{
-			SOUND_DAC,
-			&d_dac_interface
-		},
-        {
-			SOUND_WAVE,
-            &d_wave_interface
-        }
-	}
-};
+	MDRV_SOUND_ADD(DAC, d_dac_interface)
+	MDRV_SOUND_ADD(WAVE, d_wave_interface)
+MACHINE_DRIVER_END
 
-static struct MachineDriver machine_driver_dragon64 =
-{
+static MACHINE_DRIVER_START( dragon64 )
 	/* basic machine hardware */
-	{
-		{
-			CPU_M6809,
-			COCO_CPU_SPEED_HZ,
-			d64_readmem,d64_writemem,
-			0, 0,
-			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
-			0, 0,
-		},
-	},
-	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
-	0,
-	dragon64_init_machine,
-	dragon64_stop_machine,
+	MDRV_CPU_ADD_TAG("main", M6809, COCO_CPU_SPEED_HZ)        /* 0,894886 Mhz */
+	MDRV_CPU_MEMORY(coco_readmem, coco_writemem)
+	MDRV_CPU_VBLANK_INT(m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME)
+	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
+	MDRV_VBLANK_DURATION(0)
+
+	MDRV_MACHINE_INIT( dragon64 )
+	MDRV_MACHINE_STOP( coco )
 
 	/* video hardware */
-	320,					/* screen width */
-	240,					/* screen height (pixels doubled) */
-	{ 0, 319, 0, 239 },		/* visible_area */
-	0,						/* graphics decode info */
-	M6847_TOTAL_COLORS,
-	0,
-	m6847_vh_init_palette,						/* initialise palette */
-
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
-	0,
-	dragon_vh_start,
-	m6847_vh_stop,
-	m6847_vh_update,
+	MDRV_M6847_PAL( dragon )
 
 	/* sound hardware */
-	0, 0, 0, 0,
-	{
-		{
-			SOUND_DAC,
-			&d_dac_interface
-		},
-        {
-			SOUND_WAVE,
-            &d_wave_interface
-        }
-	}
-};
+	MDRV_SOUND_ADD(DAC, d_dac_interface)
+	MDRV_SOUND_ADD(WAVE, d_wave_interface)
+MACHINE_DRIVER_END
 
-static struct MachineDriver machine_driver_coco =
-{
+static MACHINE_DRIVER_START( coco )
 	/* basic machine hardware */
-	{
-		{
-			CPU_M6809,
-			COCO_CPU_SPEED_HZ,
-			coco_readmem,coco_writemem,
-			0, 0,
-			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
-			0, 0,
-		},
-	},
-	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
-	0,
-	coco_init_machine,
-	coco_stop_machine,
+	MDRV_CPU_ADD_TAG("main", M6809, COCO_CPU_SPEED_HZ)        /* 0,894886 Mhz */
+	MDRV_CPU_MEMORY(coco_readmem, coco_writemem)
+	MDRV_CPU_VBLANK_INT(m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME)
+	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
+	MDRV_VBLANK_DURATION(0)
+
+	MDRV_MACHINE_INIT( coco )
+	MDRV_MACHINE_STOP( coco )
 
 	/* video hardware */
-	320,					/* screen width */
-	240,					/* screen height (pixels doubled) */
-	{ 0, 319, 0, 239 },		/* visible_area */
-	0,						/* graphics decode info */
-	M6847_TOTAL_COLORS,
-	0,
-	m6847_vh_init_palette,						/* initialise palette */
-
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
-	0,
-	dragon_vh_start,
-	m6847_vh_stop,
-	m6847_vh_update,
+	MDRV_M6847_NTSC( dragon )
 
 	/* sound hardware */
-	0, 0, 0, 0,
-	{
-		{
-			SOUND_DAC,
-			&d_dac_interface
-		},
-        {
-			SOUND_WAVE,
-            &d_wave_interface
-        }
-	}
-};
+	MDRV_SOUND_ADD(DAC, d_dac_interface)
+	MDRV_SOUND_ADD(WAVE, d_wave_interface)
+MACHINE_DRIVER_END
 
-static struct MachineDriver machine_driver_coco2 =
-{
+static MACHINE_DRIVER_START( coco2 )
 	/* basic machine hardware */
-	{
-		{
-			CPU_M6809,
-			COCO_CPU_SPEED_HZ,
-			coco_readmem,coco_writemem,
-			0, 0,
-			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
-			0, 0,
-		},
-	},
-	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
-	0,
-	coco2_init_machine,
-	coco_stop_machine,
+	MDRV_CPU_ADD_TAG("main", M6809, COCO_CPU_SPEED_HZ)        /* 0,894886 Mhz */
+	MDRV_CPU_MEMORY(coco_readmem, coco_writemem)
+	MDRV_CPU_VBLANK_INT(m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME)
+	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
+	MDRV_VBLANK_DURATION(0)
+
+	MDRV_MACHINE_INIT( coco2 )
+	MDRV_MACHINE_STOP( coco )
 
 	/* video hardware */
-	320,					/* screen width */
-	240,					/* screen height (pixels doubled) */
-	{ 0, 319, 0, 239 },		/* visible_area */
-	0,						/* graphics decode info */
-	M6847_TOTAL_COLORS,
-	0,
-	m6847_vh_init_palette,						/* initialise palette */
-
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
-	0,
-	dragon_vh_start,
-	m6847_vh_stop,
-	m6847_vh_update,
+	MDRV_M6847_PAL( dragon )
 
 	/* sound hardware */
-	0, 0, 0, 0,
-	{
-		{
-			SOUND_DAC,
-			&d_dac_interface
-		},
-        {
-			SOUND_WAVE,
-            &d_wave_interface
-        }
-	}
-};
+	MDRV_SOUND_ADD(DAC, d_dac_interface)
+	MDRV_SOUND_ADD(WAVE, d_wave_interface)
+MACHINE_DRIVER_END
 
-static struct MachineDriver machine_driver_coco2b =
-{
+static MACHINE_DRIVER_START( coco2b )
 	/* basic machine hardware */
-	{
-		{
-			CPU_M6809,
-			COCO_CPU_SPEED_HZ,
-			coco_readmem,coco_writemem,
-			0, 0,
-			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
-			0, 0,
-		},
-	},
-	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
-	0,
-	coco2_init_machine,
-	coco_stop_machine,
+	MDRV_CPU_ADD_TAG("main", M6809, COCO_CPU_SPEED_HZ)        /* 0,894886 Mhz */
+	MDRV_CPU_MEMORY(coco_readmem, coco_writemem)
+	MDRV_CPU_VBLANK_INT(m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME)
+	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
+	MDRV_VBLANK_DURATION(0)
+
+	MDRV_MACHINE_INIT( coco2 )
+	MDRV_MACHINE_STOP( coco )
 
 	/* video hardware */
-	320,					/* screen width */
-	240,					/* screen height (pixels doubled) */
-	{ 0, 319, 0, 239 },		/* visible_area */
-	0,						/* graphics decode info */
-	M6847_TOTAL_COLORS,
-	0,
-	m6847_vh_init_palette,						/* initialise palette */
-
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
-	0,
-	coco2b_vh_start,
-	m6847_vh_stop,
-	m6847_vh_update,
+	MDRV_M6847_NTSC( coco2b )
 
 	/* sound hardware */
-	0, 0, 0, 0,
-	{
-		{
-			SOUND_DAC,
-			&d_dac_interface
-		},
-        {
-			SOUND_WAVE,
-            &d_wave_interface
-        }
-	}
-};
+	MDRV_SOUND_ADD(DAC, d_dac_interface)
+	MDRV_SOUND_ADD(WAVE, d_wave_interface)
+MACHINE_DRIVER_END
 
-static struct MachineDriver machine_driver_coco3 =
-{
+static MACHINE_DRIVER_START( coco3 )
 	/* basic machine hardware */
-	{
-		{
-			CPU_M6809,
-			COCO_CPU_SPEED_HZ,
-			coco3_readmem,coco3_writemem,
-			0, 0,
-			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
-			0, 0,
-		},
-	},
-	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
-	0,
-	coco3_init_machine,
-	coco_stop_machine,
+	MDRV_CPU_ADD_TAG("main", M6809, COCO_CPU_SPEED_HZ)        /* 0,894886 Mhz */
+	MDRV_CPU_MEMORY(coco3_readmem, coco3_writemem)
+	MDRV_CPU_VBLANK_INT(coco3_vh_interrupt, M6847_INTERRUPTS_PER_FRAME)
+	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
+	MDRV_VBLANK_DURATION(0)
+
+	MDRV_MACHINE_INIT( coco3 )
+	MDRV_MACHINE_STOP( coco )
 
 	/* video hardware */
-	640,							/* screen width */
-	240,							/* screen height (pixels doubled) */
-	{ 0, 639, 0, 239 },				/* visible_area */
-	0,								/* graphics decode info */
-	64+M6847_ARTIFACT_COLOR_COUNT,	/* 64 colors + artifact colors */
-	0,
-	NULL,							/* initialise palette */
-
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY | VIDEO_PIXEL_ASPECT_RATIO_1_2,
-	0,
-	coco3_vh_start,
-	coco3_vh_stop,
-	coco3_vh_screenrefresh,
+	MDRV_VIDEO_ATTRIBUTES(M6847_VIDEO_TYPE | VIDEO_PIXEL_ASPECT_RATIO_1_2)
+	MDRV_SCREEN_SIZE(640, 263)
+#if SHOW_FULL_AREA
+	MDRV_VISIBLE_AREA(0,639,0,262)
+#else
+	MDRV_VISIBLE_AREA(0,639,11,250)
+#endif
+	MDRV_PALETTE_LENGTH(64+M6847_ARTIFACT_COLOR_COUNT)
+	MDRV_VIDEO_START(coco3)
+	MDRV_VIDEO_UPDATE(coco3)
 
 	/* sound hardware */
-	0, 0, 0, 0,
-	{
-		{
-			SOUND_DAC,
-			&d_dac_interface
-		},
-        {
-			SOUND_WAVE,
-            &d_wave_interface
-        }
-	}
-};
+	MDRV_SOUND_ADD(DAC, d_dac_interface)
+	MDRV_SOUND_ADD(WAVE, d_wave_interface)
+MACHINE_DRIVER_END
 
-static struct MachineDriver machine_driver_coco3h =
-{
-	/* basic machine hardware */
-	{
-		{
-			CPU_HD6309,
-			COCO_CPU_SPEED_HZ,
-			coco3_readmem,coco3_writemem,
-			0, 0,
-			m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME,
-			0, 0,
-		},
-	},
-	COCO_FRAMES_PER_SECOND, 0,		 /* frames per second, vblank duration */
-	0,
-	coco3_init_machine,
-	coco_stop_machine,
-
-	/* video hardware */
-	640,							/* screen width */
-	240,							/* screen height (pixels doubled) */
-	{ 0, 639, 0, 239 },				/* visible_area */
-	0,								/* graphics decode info */
-	64+M6847_ARTIFACT_COLOR_COUNT,	/* 64 colors + artifact colors */
-	0,
-	NULL,							/* initialise palette */
-
-	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY | VIDEO_PIXEL_ASPECT_RATIO_1_2,
-	0,
-	coco3_vh_start,
-	coco3_vh_stop,
-	coco3_vh_screenrefresh,
-
-	/* sound hardware */
-	0, 0, 0, 0,
-	{
-		{
-			SOUND_DAC,
-			&d_dac_interface
-		},
-        {
-			SOUND_WAVE,
-            &d_wave_interface
-        }
-	}
-};
+static MACHINE_DRIVER_START( coco3h )
+	MDRV_IMPORT_FROM( coco3 )
+	MDRV_CPU_REPLACE( "main", HD6309, COCO_CPU_SPEED_HZ)
+MACHINE_DRIVER_END
 
 /***************************************************************************
 
@@ -947,11 +749,11 @@ COMPUTER_CONFIG_END
 /*     YEAR  NAME       PARENT  MACHINE    INPUT     INIT     CONFIG,  COMPANY               FULLNAME */
 COMPC(  1980, coco,      0,		coco,      coco,     0,		  coco,    "Tandy Radio Shack",  "Color Computer" )
 COMPC(  1981, cocoe,     coco,	coco,      coco,     0,		  coco,    "Tandy Radio Shack",  "Color Computer (Extended BASIC 1.0)" )
-COMPC(  198?, coco2,     coco,	coco2,     coco,     0,		  coco2,   "Tandy Radio Shack",  "Color Computer 2" )
-COMPC(  198?, coco2b,    coco,	coco2b,    coco,     0,		  coco2,   "Tandy Radio Shack",  "Color Computer 2B" )
+COMPC(  1983, coco2,     coco,	coco2,     coco,     0,		  coco2,   "Tandy Radio Shack",  "Color Computer 2" )
+COMPC(  1985?, coco2b,    coco,	coco2b,    coco,     0,		  coco2,   "Tandy Radio Shack",  "Color Computer 2B" )
 COMPC(  1986, coco3,     coco, 	coco3,	   coco3,    0,		  coco3,   "Tandy Radio Shack",  "Color Computer 3 (NTSC)" )
 COMPC(  1986, coco3p,    coco, 	coco3,	   coco3,    0,		  coco3,   "Tandy Radio Shack",  "Color Computer 3 (PAL)" )
 COMPCX( 19??, coco3h,	 coco,	coco3h,    coco3,	 0, 	  coco3,   "Tandy Radio Shack",  "Color Computer 3 (NTSC; HD6309)", GAME_COMPUTER_MODIFIED|GAME_ALIAS)
 COMPC(  1982, dragon32,  coco, 	dragon32,  dragon32, 0,		  dragon32,"Dragon Data Ltd",    "Dragon 32" )
-COMPC(  198?, dragon64,  coco, 	dragon64,  dragon32, 0,		  dragon64,"Dragon Data Ltd",    "Dragon 64" )
+COMPC(  1983, dragon64,  coco, 	dragon64,  dragon32, 0,		  dragon64,"Dragon Data Ltd",    "Dragon 64" )
 COMPC(  1984, cp400,     coco, 	coco,      coco,     0,		  coco,    "Prologica",          "CP400" )

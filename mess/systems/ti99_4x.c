@@ -355,15 +355,8 @@ INPUT_PORTS_START(ti99_4)
 
 INPUT_PORTS_END
 
-#if 0
-static const struct GfxDecodeInfo gfxdecodeinfo[] =
-{
-	{ -1 }		/* end of array */
-};
-#endif
-
 /*
-	TMS9919 (i.e. SN76489) sound chip parameters.
+	TMS9919 (a.k.a. SN76489) sound chip parameters.
 */
 static struct SN76496interface tms9919interface =
 {
@@ -418,305 +411,201 @@ static struct Wave_interface tape_input_intf =
 };
 
 
-
-/*
-	machine description.
-*/
-static struct MachineDriver machine_driver_ti99_4_60hz =
+static const TMS9928a_interface tms9918_interface =
 {
-	/* basic machine hardware */
-	{
-		{
-			CPU_TMS9900,
-			3000000,	/* 3.0 Mhz*/
-			readmem, writemem, readcru, writecru,
-			ti99_vblank_interrupt, 1,
-			0, 0,
-			0
-		},
-	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */
-	1,
-	ti99_init_machine,
-	ti99_stop_machine,
-
-	/* video hardware */
-	256,						/* screen width */
-	192,						/* screen height */
-	{ 0, 256-1, 0, 192-1},		/* visible_area */
-	/*gfxdecodeinfo*/NULL,				/* graphics decode info */
-	TMS9928A_PALETTE_SIZE,		/* palette is 3*total_colors bytes long */
-	TMS9928A_COLORTABLE_SIZE,	/* length in shorts of the color lookup table */
-	tms9928A_init_palette,		/* palette init */
-
-	VIDEO_TYPE_RASTER,
-	0,
-	ti99_4_vh_start,
-	TMS9928A_stop,
-	TMS9928A_refresh,
-
-	/* sound hardware */
-	0,
-	0,0,0,
-	{
-		{
-			SOUND_SN76496,
-			&tms9919interface
-		},
-		{
-			SOUND_TMS5220,
-			&tms5220interface
-		},
-		{
-			SOUND_DAC,
-			&aux_sound_intf
-		},
-		{
-			SOUND_WAVE,
-			&tape_input_intf
-		}
-	},
-
-	/* NVRAM handler */
-	NULL
+	TMS99x8,
+	0x4000,
+	tms9901_set_int2
 };
 
-static struct MachineDriver machine_driver_ti99_4_50hz =
+static const TMS9928a_interface tms9929_interface =
 {
-	/* basic machine hardware */
-	{
-		{
-			CPU_TMS9900,
-			3000000,	/* 3.0 Mhz*/
-			readmem, writemem, readcru, writecru,
-			ti99_vblank_interrupt, 1,
-			0, 0,
-			0
-		},
-	},
-	50, DEFAULT_REAL_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */
-	1,
-	ti99_init_machine,
-	ti99_stop_machine,
-
-	/* video hardware */
-	256,						/* screen width */
-	192,						/* screen height */
-	{ 0, 256-1, 0, 192-1},		/* visible_area */
-	/*gfxdecodeinfo*/NULL,				/* graphics decode info */
-	TMS9928A_PALETTE_SIZE,		/* palette is 3*total_colors bytes long */
-	TMS9928A_COLORTABLE_SIZE,	/* length in shorts of the color lookup table */
-	tms9928A_init_palette,		/* palette init */
-
-	VIDEO_TYPE_RASTER,
-	0,
-	ti99_4_vh_start,
-	TMS9928A_stop,
-	TMS9928A_refresh,
-
-	/* sound hardware */
-	0,
-	0,0,0,
-	{
-		{
-			SOUND_SN76496,
-			&tms9919interface
-		},
-		{
-			SOUND_TMS5220,
-			&tms5220interface
-		},
-		{
-			SOUND_DAC,
-			&aux_sound_intf
-		},
-		{
-			SOUND_WAVE,
-			&tape_input_intf
-		}
-	},
-
-	/* NVRAM handler */
-	NULL
+	TMS9929,
+	0x4000,
+	tms9901_set_int2
 };
 
-
-static struct MachineDriver machine_driver_ti99_4a_60hz =
+static const TMS9928a_interface tms9918a_interface =
 {
-	/* basic machine hardware */
-	{
-		{
-			CPU_TMS9900,
-			3000000,	/* 3.0 Mhz*/
-			readmem, writemem, readcru, writecru,
-			ti99_vblank_interrupt, 1,
-			0, 0,
-			0
-		},
-	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */
-	1,
-	ti99_init_machine,
-	ti99_stop_machine,
-
-	/* video hardware */
-	256,						/* screen width */
-	192,						/* screen height */
-	{ 0, 256-1, 0, 192-1},		/* visible_area */
-	/*gfxdecodeinfo*/NULL,				/* graphics decode info (???)*/
-	TMS9928A_PALETTE_SIZE,		/* palette is 3*total_colors bytes long */
-	TMS9928A_COLORTABLE_SIZE,	/* length in shorts of the color lookup table */
-	tms9928A_init_palette,		/* palette init */
-
-	VIDEO_TYPE_RASTER,
-	0,
-	ti99_4a_vh_start,
-	TMS9928A_stop,
-	TMS9928A_refresh,
-
-	/* sound hardware */
-	0,
-	0,0,0,
-	{
-		{
-			SOUND_SN76496,
-			&tms9919interface
-		},
-		{
-			SOUND_TMS5220,
-			&tms5220interface
-		},
-		{
-			SOUND_DAC,
-			&aux_sound_intf
-		},
-		{
-			SOUND_WAVE,
-			&tape_input_intf
-		}
-	},
-
-	/* NVRAM handler */
-	NULL
+	TMS99x8A,
+	0x4000,
+	tms9901_set_int2
 };
 
-static struct MachineDriver machine_driver_ti99_4a_50hz =
+static const TMS9928a_interface tms9929a_interface =
 {
-	/* basic machine hardware */
-	{
-		{
-			CPU_TMS9900,
-			3000000,	/* 3.0 Mhz*/
-			readmem, writemem, readcru, writecru,
-			ti99_vblank_interrupt, 1,
-			0, 0,
-			0
-		},
-	},
-	50, DEFAULT_REAL_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */
-	1,
-	ti99_init_machine,
-	ti99_stop_machine,
-
-	/* video hardware */
-	256,						/* screen width */
-	192,						/* screen height */
-	{ 0, 256-1, 0, 192-1},		/* visible_area */
-	/*gfxdecodeinfo*/NULL,				/* graphics decode info (???)*/
-	TMS9928A_PALETTE_SIZE,		/* palette is 3*total_colors bytes long */
-	TMS9928A_COLORTABLE_SIZE,	/* length in shorts of the color lookup table */
-	tms9928A_init_palette,		/* palette init */
-
-	VIDEO_TYPE_RASTER,
-	0,
-	ti99_4a_vh_start,
-	TMS9928A_stop,
-	TMS9928A_refresh,
-
-	/* sound hardware */
-	0,
-	0,0,0,
-	{
-		{
-			SOUND_SN76496,
-			&tms9919interface
-		},
-		{
-			SOUND_TMS5220,
-			&tms5220interface
-		},
-		{
-			SOUND_DAC,
-			&aux_sound_intf
-		},
-		{
-			SOUND_WAVE,
-			&tape_input_intf
-		}
-	},
-
-	/* NVRAM handler */
-	NULL
+	TMS9929A,
+	0x4000,
+	tms9901_set_int2
 };
 
-static struct MachineDriver machine_driver_ti99_4ev_60hz =
-{
+static MACHINE_DRIVER_START(ti99_4_60hz)
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_TMS9900,
-			3000000,	/* 3.0 Mhz*/
-			readmem_4ev, writemem_4ev, readcru, writecru,
-			ti99_4ev_vblank_interrupt, 313,
-			0, 0,
-			0
-		},
-	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,	/* frames per second, vblank duration */
-	1,
-	ti99_init_machine,
-	ti99_stop_machine,
+	/* TMS9900 CPU @ 3.0 MHz */
+	MDRV_CPU_ADD(TMS9900, 3000000)
+	/*MDRV_CPU_FLAGS(0)*/
+	/*MDRV_CPU_CONFIG(0)*/
+	MDRV_CPU_MEMORY(readmem, writemem)
+	MDRV_CPU_PORTS(readcru, writecru)
+	MDRV_CPU_VBLANK_INT(ti99_vblank_interrupt, 1)
+	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	/*MDRV_INTERLEAVE(interleave)*/
+
+	MDRV_MACHINE_INIT( ti99 )
+	MDRV_MACHINE_STOP( ti99 )
+	/*MDRV_NVRAM_HANDLER( NULL )*/
 
 	/* video hardware */
-	512 + 32,					/* screen width */
-	(212 + 16) * 2,				/* screen height */
-	{ 0, 512 + 32 - 1, 0, (212 + 16) * 2 - 1 },		/* visible_area */
-	NULL,						/* graphics decode info */
-	512,						/* palette is 3*total_colors bytes long */
-	512,						/* length in shorts of the color lookup table */
-	v9938_init_palette,			/* palette init */
+	MDRV_TMS9928A( &tms9918_interface )
 
-	VIDEO_TYPE_RASTER,
-	0,
-	ti99_4ev_vh_start,
-	v9938_exit,
-	v9938_refresh,
+	MDRV_SOUND_ATTRIBUTES(0)
+	MDRV_SOUND_ADD(SN76496, tms9919interface)
+	MDRV_SOUND_ADD(TMS5220, tms5220interface)
+	MDRV_SOUND_ADD(DAC, aux_sound_intf)
+	MDRV_SOUND_ADD(WAVE, tape_input_intf)
 
-	/* sound hardware */
-	0,
-	0,0,0,
-	{
-		{
-			SOUND_SN76496,
-			&tms9919interface
-		},
-		{
-			SOUND_TMS5220,
-			&tms5220interface
-		},
-		{
-			SOUND_DAC,
-			&aux_sound_intf
-		},
-		{
-			SOUND_WAVE,
-			&tape_input_intf
-		}
-	},
+MACHINE_DRIVER_END
 
-	/* NVRAM handler */
-	NULL
-};
+static MACHINE_DRIVER_START(ti99_4_50hz)
+
+	/* basic machine hardware */
+	/* TMS9900 CPU @ 3.0 MHz */
+	MDRV_CPU_ADD(TMS9900, 3000000)
+	/*MDRV_CPU_FLAGS(0)*/
+	/*MDRV_CPU_CONFIG(0)*/
+	MDRV_CPU_MEMORY(readmem, writemem)
+	MDRV_CPU_PORTS(readcru, writecru)
+	MDRV_CPU_VBLANK_INT(ti99_vblank_interrupt, 1)
+	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
+
+	MDRV_FRAMES_PER_SECOND(50)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	/*MDRV_INTERLEAVE(interleave)*/
+
+	MDRV_MACHINE_INIT( ti99 )
+	MDRV_MACHINE_STOP( ti99 )
+	/*MDRV_NVRAM_HANDLER( NULL )*/
+
+	/* video hardware */
+	MDRV_TMS9928A( &tms9929_interface )
+
+	MDRV_SOUND_ATTRIBUTES(0)
+	MDRV_SOUND_ADD(SN76496, tms9919interface)
+	MDRV_SOUND_ADD(TMS5220, tms5220interface)
+	MDRV_SOUND_ADD(DAC, aux_sound_intf)
+	MDRV_SOUND_ADD(WAVE, tape_input_intf)
+
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START(ti99_4a_60hz)
+
+	/* basic machine hardware */
+	/* TMS9900 CPU @ 3.0 MHz */
+	MDRV_CPU_ADD(TMS9900, 3000000)
+	/*MDRV_CPU_FLAGS(0)*/
+	/*MDRV_CPU_CONFIG(0)*/
+	MDRV_CPU_MEMORY(readmem, writemem)
+	MDRV_CPU_PORTS(readcru, writecru)
+	MDRV_CPU_VBLANK_INT(ti99_vblank_interrupt, 1)
+	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	/*MDRV_INTERLEAVE(interleave)*/
+
+	MDRV_MACHINE_INIT( ti99 )
+	MDRV_MACHINE_STOP( ti99 )
+	/*MDRV_NVRAM_HANDLER( NULL )*/
+
+	/* video hardware */
+	MDRV_TMS9928A( &tms9918a_interface )
+
+	MDRV_SOUND_ATTRIBUTES(0)
+	MDRV_SOUND_ADD(SN76496, tms9919interface)
+	MDRV_SOUND_ADD(TMS5220, tms5220interface)
+	MDRV_SOUND_ADD(DAC, aux_sound_intf)
+	MDRV_SOUND_ADD(WAVE, tape_input_intf)
+
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START(ti99_4a_50hz)
+
+	/* basic machine hardware */
+	/* TMS9900 CPU @ 3.0 MHz */
+	MDRV_CPU_ADD(TMS9900, 3000000)
+	/*MDRV_CPU_FLAGS(0)*/
+	/*MDRV_CPU_CONFIG(0)*/
+	MDRV_CPU_MEMORY(readmem, writemem)
+	MDRV_CPU_PORTS(readcru, writecru)
+	MDRV_CPU_VBLANK_INT(ti99_vblank_interrupt, 1)
+	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
+
+	MDRV_FRAMES_PER_SECOND(50)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	/*MDRV_INTERLEAVE(interleave)*/
+
+	MDRV_MACHINE_INIT( ti99 )
+	MDRV_MACHINE_STOP( ti99 )
+	/*MDRV_NVRAM_HANDLER( NULL )*/
+
+	/* video hardware */
+	MDRV_TMS9928A( &tms9929a_interface )
+
+	MDRV_SOUND_ATTRIBUTES(0)
+	MDRV_SOUND_ADD(SN76496, tms9919interface)
+	MDRV_SOUND_ADD(TMS5220, tms5220interface)
+	MDRV_SOUND_ADD(DAC, aux_sound_intf)
+	MDRV_SOUND_ADD(WAVE, tape_input_intf)
+
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START(ti99_4ev_60hz)
+
+	/* basic machine hardware */
+	/* TMS9900 CPU @ 3.0 MHz */
+	MDRV_CPU_ADD(TMS9900, 3000000)
+	/*MDRV_CPU_FLAGS(0)*/
+	/*MDRV_CPU_CONFIG(0)*/
+	MDRV_CPU_MEMORY(readmem_4ev, writemem_4ev)
+	MDRV_CPU_PORTS(readcru, writecru)
+	MDRV_CPU_VBLANK_INT(ti99_4ev_hblank_interrupt, 263)	/* 262.5 in 60Hz, 312.5 in 50Hz */
+	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
+
+	MDRV_FRAMES_PER_SECOND(60)	/* or 50Hz */
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	/*MDRV_INTERLEAVE(interleave)*/
+
+	MDRV_MACHINE_INIT( ti99 )
+	MDRV_MACHINE_STOP( ti99 )
+	/*MDRV_NVRAM_HANDLER( NULL )*/
+
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	/*MDRV_ASPECT_RATIO(num, den)*/
+	MDRV_SCREEN_SIZE(512+32, (212+16)*2)
+	MDRV_VISIBLE_AREA(0, 512+32 - 1, 0, (212+16)*2 - 1)
+
+	/*MDRV_GFXDECODE(NULL)*/
+	MDRV_PALETTE_LENGTH(512)
+	MDRV_COLORTABLE_LENGTH(512)
+
+	MDRV_PALETTE_INIT(v9938)
+	MDRV_VIDEO_START(ti99_4ev)
+	/*MDRV_VIDEO_EOF(name)*/
+	MDRV_VIDEO_UPDATE(v9938)
+
+	MDRV_SOUND_ATTRIBUTES(0)
+	MDRV_SOUND_ADD(SN76496, tms9919interface)
+	MDRV_SOUND_ADD(TMS5220, tms5220interface)
+	MDRV_SOUND_ADD(DAC, aux_sound_intf)
+	MDRV_SOUND_ADD(WAVE, tape_input_intf)
+
+MACHINE_DRIVER_END
+
 
 /*
 	ROM loading
@@ -843,7 +732,7 @@ static const struct IODevice io_ti99_4[] =
 #define rom_ti99_4e rom_ti99_4
 #define rom_ti99_4ae rom_ti99_4a
 
-/*	  YEAR	NAME	  PARENT   MACHINE		ÊINPUT	  INIT	   COMPANY				FULLNAME */
+/*	  YEAR	NAME	  PARENT   MACHINE		 INPUT	  INIT	   COMPANY				FULLNAME */
 COMP( 1979, ti99_4,   0,	   ti99_4_60hz,  ti99_4,  ti99_4,  "Texas Instruments", "TI99/4 Home Computer (US)" )
 COMPX(1980, ti99_4e,  ti99_4,  ti99_4_50hz,  ti99_4,  ti99_4,  "Texas Instruments", "TI99/4 Home Computer (Europe)", GAME_ALIAS )
 COMP( 1981, ti99_4a,  0,	   ti99_4a_60hz, ti99_4a, ti99_4a, "Texas Instruments", "TI99/4A Home Computer (US)" )

@@ -7,8 +7,8 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "machine/atari.h"
-#include "vidhrdw/atari.h"
+#include "includes/atari.h"
+#include "vidhrdw/generic.h"
 
 #ifdef	LSB_FIRST
 #define BYTE_XOR(n) (n)
@@ -716,7 +716,7 @@ static void cclk_init(void)
  * atari_vh_start
  * Initialize the ATARI800 video emulation
  ************************************************************************/
-int atari_vh_start(void)
+VIDEO_START( atari )
 {
 	int i;
 
@@ -724,7 +724,7 @@ int atari_vh_start(void)
     memset(&antic, 0, sizeof(antic));
 	memset(&gtia, 0, sizeof(gtia));
 
-	antic.cclk_expand = malloc(21 * 256 * sizeof(UINT32));
+	antic.cclk_expand = auto_malloc(21 * 256 * sizeof(UINT32));
 	if( !antic.cclk_expand )
 		return 1;
 
@@ -738,12 +738,10 @@ int atari_vh_start(void)
 	antic.pf_gtia2	  = &antic.cclk_expand[19 * 256];
 	antic.pf_gtia3	  = &antic.cclk_expand[20 * 256];
 
-	antic.used_colors = malloc(21 * 256 * sizeof(UINT8));
+	antic.used_colors = auto_malloc(21 * 256 * sizeof(UINT8));
 	if( !antic.used_colors )
-	{
-		free(antic.cclk_expand);
 		return 1;
-	}
+
 	memset(antic.used_colors, 0, 21 * 256 * sizeof(UINT8));
 
 	antic.uc_21 	  = &antic.used_colors[ 0 * 256];
@@ -765,13 +763,9 @@ int atari_vh_start(void)
 
 	for( i = 0; i < 64; i++ )
     {
-		antic.prio_table[i] = malloc(8*256);
+		antic.prio_table[i] = auto_malloc(8*256);
 		if( !antic.prio_table[i] )
-		{
-			while( --i >= 0 )
-				free(antic.prio_table[i]);
 			return 1;
-		}
     }
 
 	LOG((errorlog, "atari prio_init\n"));
@@ -779,49 +773,13 @@ int atari_vh_start(void)
 
 	for( i = 0; i < Machine->drv->screen_height; i++ )
     {
-		antic.video[i] = malloc(sizeof(VIDEO));
+		antic.video[i] = auto_malloc(sizeof(VIDEO));
 		if( !antic.video[i] )
-        {
-			while( --i >= 0 )
-				free(antic.video[i]);
             return 1;
-        }
 		memset(antic.video[i], 0, sizeof(VIDEO));
     }
 
-    return 0;
-}
-
-/************************************************************************
- * atari_vh_stop
- * Shutdown the ATARI800 video emulation
- ************************************************************************/
-void atari_vh_stop(void)
-{
-	int i;
-
-	for( i = 0; i < 64; i++ )
-	{
-		if (antic.prio_table[i])
-		{
-			free(antic.prio_table[i]);
-			antic.prio_table[i] = 0;
-		}
-	}
-	for( i = 0; i < Machine->drv->screen_height; i++ )
-	{
-		if (antic.video[i])
-		{
-			free(antic.video[i]);
-			antic.video[i] = 0;
-		}
-	}
-
-	if( antic.cclk_expand )
-	{
-		free(antic.cclk_expand);
-		antic.cclk_expand = 0;
-	}
+    return video_start_generic_bitmapped();
 }
 
 /************************************************************************
@@ -829,22 +787,20 @@ void atari_vh_stop(void)
  * Refresh screen bitmap.
  * Note: Actual drawing is done scanline wise during atari_interrupt
  ************************************************************************/
-void atari_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( atari )
 {
+	video_update_generic_bitmapped(bitmap, cliprect);
+
 	if( tv_artifacts != (readinputport(0) & 0x40) )
 	{
 		tv_artifacts = readinputport(0) & 0x40;
-		full_refresh = 1;
+		schedule_full_refresh();
 	}
 	if( atari_frame_counter > 0 )
 	{
-		if( --atari_frame_counter == 0 )
-			full_refresh = 1;
-		else
+		if( --atari_frame_counter )
 			ui_text(bitmap, atari_frame_message, 0, Machine->uiheight - 10);
 	}
-    if( full_refresh )
-		fillbitmap(Machine->scrbitmap, Machine->pens[0], &Machine->visible_area);
 }
 
 static renderer_function antic_renderer = antic_mode_0_xx;
@@ -1053,7 +1009,7 @@ static void antic_linerefresh(void)
 	dst[2] = antic.color_lookup[PBK] | antic.color_lookup[PBK] << 16;
 	dst[3] = antic.color_lookup[PBK] | antic.color_lookup[PBK] << 16;
 
-	draw_scanline8(Machine->scrbitmap, 12, y, sizeof(scanline), (const UINT8 *) scanline, Machine->pens, -1);
+	draw_scanline8(tmpbitmap, 12, y, sizeof(scanline), (const UINT8 *) scanline, Machine->pens, -1);
 }
 
 #if VERBOSE
@@ -1493,14 +1449,14 @@ static void antic_scanline_dma(int param)
  *	ANTIC DMA to possibly access the next display list command
  *
  *****************************************************************************/
-int  a400_interrupt(void)
+void a400_interrupt(void)
 {
 	LOG((errorlog, "ANTIC #%3d @cycle #%d scanline interrupt\n", antic.scanline, cycle()));
 
     if( antic.scanline < VBL_START )
     {
 		antic_scanline_dma(0);
-        return ignore_interrupt();
+        return;
     }
 
     if( antic.scanline == VBL_START )
@@ -1530,7 +1486,6 @@ int  a400_interrupt(void)
     }
 	/* refresh the display (translate color clocks to pixels) */
     antic_linerefresh();
-    return ignore_interrupt();
 }
 
 /*****************************************************************************
@@ -1541,14 +1496,14 @@ int  a400_interrupt(void)
  *	ANTIC DMA to possibly access the next display list command
  *
  *****************************************************************************/
-int  a800_interrupt(void)
+void a800_interrupt(void)
 {
 	LOG((errorlog, "ANTIC #%3d @cycle #%d scanline interrupt\n", antic.scanline, cycle()));
 
     if( antic.scanline < VBL_START )
     {
 		antic_scanline_dma(0);
-        return ignore_interrupt();
+        return;
     }
 
     if( antic.scanline == VBL_START )
@@ -1578,7 +1533,6 @@ int  a800_interrupt(void)
     }
 	/* refresh the display (translate color clocks to pixels) */
     antic_linerefresh();
-    return ignore_interrupt();
 }
 
 /*****************************************************************************
@@ -1589,14 +1543,14 @@ int  a800_interrupt(void)
  *	ANTIC DMA to possibly access the next display list command
  *
  *****************************************************************************/
-int  a800xl_interrupt(void)
+void a800xl_interrupt(void)
 {
 	LOG((errorlog, "ANTIC #%3d @cycle #%d scanline interrupt\n", antic.scanline, cycle()));
 
     if( antic.scanline < VBL_START )
     {
 		antic_scanline_dma(0);
-        return ignore_interrupt();
+        return;
     }
 
     if( antic.scanline == VBL_START )
@@ -1626,7 +1580,6 @@ int  a800xl_interrupt(void)
     }
 	/* refresh the display (translate color clocks to pixels) */
     antic_linerefresh();
-    return ignore_interrupt();
 }
 
 /*****************************************************************************
@@ -1637,14 +1590,14 @@ int  a800xl_interrupt(void)
  *	ANTIC DMA to possibly access the next display list command
  *
  *****************************************************************************/
-int  a5200_interrupt(void)
+void a5200_interrupt(void)
 {
 	LOG((errorlog, "ANTIC #%3d @cycle #%d scanline interrupt\n", antic.scanline, cycle()));
 
     if( antic.scanline < VBL_START )
     {
 		antic_scanline_dma(0);
-        return ignore_interrupt();
+        return;
     }
 
     if( antic.scanline == VBL_START )
@@ -1674,7 +1627,6 @@ int  a5200_interrupt(void)
     }
 	/* refresh the display (translate color clocks to pixels) */
     antic_linerefresh();
-    return ignore_interrupt();
 }
 
 

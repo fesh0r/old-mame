@@ -2,10 +2,16 @@
 
 PK-01 Lviv driver by Krzysztof Strzecha
 
-Big thanks to Anton V. Ignatichev for informations about Lviv hardware.
+Big thanks go to:
+Anton V. Ignatichev for informations about Lviv hardware.
+Volodimir Mosorov for two Lviv machines.
 
 What's new:
 -----------
+20.07.2002	"Reset" key fixed. 8080 core fixed (all BASIC commands works
+		now). Unsupported .lvt files versions aren't now loaded.
+xx.07.2002	Improved port and memory mapping (Raphael Nabet).
+		Hardware description updated (Raphael Nabet).
 27.03.2002	CPU clock changed to 2.5MHz.
 		New Lviv driver added for different ROM revision.
 24.03.2002	Palette emulation.
@@ -17,11 +23,10 @@ What's new:
 
 Notes on emulation status and to do list:
 -----------------------------------------
-1. Some BASIC commands dont work (ie. LIST).
-2. Printer is not emulated. 
-3. Only simple video hardware emulation (timings are not known).
-4. .RSS and .SAV files are not supported.
-5. Some usage notes and trivia are needed in sysinfo.dat.
+1. Printer is not emulated. 
+2. Only simple video hardware emulation (timings are not known).
+3. .RSS and .SAV files are not supported.
+4. Some usage notes and trivia are needed in sysinfo.dat.
 
 
 Lviv technical information
@@ -34,11 +39,23 @@ CPU:
 
 Memory map:
 -----------
-	0000-3fff RAM (avilable only when Video RAM if off)
-	4000-7fff RAM / Video RAM
+	start-up map (cleared by the first I/O write operation done by the CPU):
+	0000-3fff ROM mirror #1
+	4000-7fff ROM mirror #2
+	8000-bfff ROM mirror #3
+	c000-ffff ROM
+
+	normal map with video RAM off:
+	0000-3fff RAM
+	4000-7fff RAM
 	8000-bfff RAM
 	c000-ffff ROM
-		
+
+	normal map with video RAM on:
+	0000-3fff mirrors 8000-bfff
+	4000-7fff video RAM
+	8000-bfff RAM
+	c000-ffff ROM
 
 Interrupts:
 -----------
@@ -46,6 +63,9 @@ Interrupts:
 
 Ports:
 ------
+	Only A4-A5 are decoded.  A2-A3 is ignored in the console, but could be used by extension
+	devices.
+
 	C0-C3	8255 PPI
 		Port A: extension slot output, printer data
 		Port B: palette control, extension slot input or output
@@ -72,7 +92,6 @@ Ports:
 			keyboard reading
 		Port C:
 			keyboard scaning/reading
-
 
 Keyboard:
 ---------
@@ -175,6 +194,83 @@ Sound:
 	Buzzer connected to port 0xc2 (bit 0).
 	Bit 7 of port 0xc1 - enable/disable speaker.
 
+
+timings:
+--------
+
+	The CPU timing is controlled by a KR580GF24 (Sovietic copy of i8224) connected to a 18MHz(?)
+	oscillator.  CPU frequency must be 18MHz/8 = 2.25MHz (no waranty).
+
+	Memory timing uses a 8-phase clock, derived from a 20MHz(?) video clock (called VCLK0 here:
+	in the schematics, it comes from pin 6 of V8, and it is labelled "0'" in the video clock bus).
+	This clock is divided by G7, G6 and D5 to generate the signals we call VCLK1-VCLK11.  The memory
+	clock phases Phi0-Phi7 are generated in D7, whereas PHI'14 and PHI'15 are generated in D8.
+
+	When the CPU accesses RAM, wait states are inserted until the RAM transfer is complete.
+
+	CPU clock: 18MHz/8 = 2.25MHz
+	memory cycle time: 20MHz/8 = 2.5MHz
+	CPU memory access time: (min) approx. 9/20MHz = 450ns
+	                        (max) approx. 17/20MHz = 850ns
+	pixel clock: 20MHz/4 = 5MHz
+	screen size: 256*256
+	HBL: 64 pixel clock cycles
+	VBL: 64 lines
+	horizontal frequency: 5MHZ/(256+64) = 15.625kHz
+	vertical frequency: 15.625kHz/(256+64) = 48.83Hz
+
+			 |<--------VIDEO WINDOW--------->|<----------CPU WINDOW--------->|<--
+			_   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _
+	VCLK0	 |_| |_| |_| |_| |_| |_| |_| |_| |_| |_| |_| |_| |_| |_| |_| |_| |_| |_| |
+			_     ___     ___     ___     ___     ___     ___     ___     ___     ___
+	VCLK1	 |___|   |___|   |___|   |___|   |___|   |___|   |___|   |___|   |___|   |
+			_         _______         _______         _______         _______
+	VCLK2	 |_______|       |_______|       |_______|       |_______|       |______|
+			_                 _______________                 _______________
+	VCLK3	 |_______________|               |_______________|               |_______
+			_                                 _______________________________
+	VCLK4	 |_______________________________|                               |_______
+
+			  _                               _                               _
+	PHI0	_| |_____________________________| |_____________________________| |_____
+			      _                               _                               _
+	PHI1	_____| |_____________________________| |_____________________________| |_
+			          _                               _
+	PHI2	_________| |_____________________________| |_____________________________
+			              _                               _
+	PHI3	_____________| |_____________________________| |_________________________
+			                  _                               _
+	PHI4	_________________| |_____________________________| |_____________________
+			                      _                               _
+	PHI5	_____________________| |_____________________________| |_________________
+			                          _                               _
+	PHI6	_________________________| |_____________________________| |_____________
+			                              _                               _
+	PHI7	_____________________________| |_____________________________| |_________
+			                                                          _
+	PHI'14	_________________________________________________________| |_____________
+			                                                              _
+	PHI'15	_____________________________________________________________| |_________
+			__________             __________________________________________________
+	RAS*	          \___________/                   \_a_________/
+			______________                 __________________________________________
+	CAS*	              \_______________/               \_a_____________/
+			_________________________________________________________________________
+	WR*		                                                  \_b_________////////
+			_________________________________________________________________________
+	WRM*	\\\\\\\\\\\\\\\\\\\\\\\\\\_b__________________________________///////////
+			_________________________________________________________________________
+	RDM*	\\\\\\\\\\\\\\\\\\\\\\\\\\_c__________________________________///////////
+			_________________________________________________________________________
+	RA		\\\\\\\\\\\\\\\\\\\\\\\\\\_a__________________________________/
+
+	DRAM
+	ADDRESS	video row /\ video column /XXX\CPU row (a)/\  CPU column (a)  /\ video row
+
+	a: only if the CPU is requesting a RAM read/write
+	b: only if the CPU is requesting a RAM write
+	c: only if the CPU is requesting a RAM read
+
 *******************************************************************************/
 
 #include "driver.h"
@@ -186,13 +282,11 @@ Sound:
 /* I/O ports */
 
 PORT_READ_START( lviv_readport )
-	{ 0xc0, 0xc3, ppi8255_0_r },
-	{ 0xd0, 0xd3, ppi8255_1_r },
+	{ 0x00, 0xff, lviv_io_r },
 PORT_END
 
 PORT_WRITE_START( lviv_writeport )
-	{ 0xc0, 0xc3, ppi8255_0_w },
-	{ 0xd0, 0xd3, ppi8255_1_w },
+	{ 0x00, 0xff, lviv_io_w },
 PORT_END
 
 /* memory w/r functions */
@@ -205,10 +299,10 @@ MEMORY_READ_START( lviv_readmem )
 MEMORY_END
 
 MEMORY_WRITE_START( lviv_writemem )
-	{0x0000, 0x3fff, MWA_BANK5},
-	{0x4000, 0x7fff, MWA_BANK6},
-	{0x8000, 0xbfff, MWA_BANK7},
-	{0xc000, 0xffff, MWA_BANK8},
+	{0x0000, 0x3fff, MWA_BANK1},
+	{0x4000, 0x7fff, MWA_BANK2},
+	{0x8000, 0xbfff, MWA_BANK3},
+	{0xc000, 0xffff, MWA_BANK4},
 MEMORY_END
 
 
@@ -307,7 +401,7 @@ INPUT_PORTS_START (lviv)
 		PORT_BITX(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD, "Left",	KEYCODE_LEFT,		IP_JOY_NONE )
 		PORT_BITX(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD, "Down",	KEYCODE_DOWN,		IP_JOY_NONE )
 	PORT_START /* CPU */
-		PORT_BITX(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD | IPF_RESETCPU, "Reset", KEYCODE_PGUP, IP_JOY_NONE )
+		PORT_BITX(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD, "Reset",	KEYCODE_PGUP,		IP_JOY_NONE )
 INPUT_PORTS_END
 
 static struct Speaker_interface lviv_speaker_interface=
@@ -322,53 +416,33 @@ static struct Wave_interface lviv_wave_interface = {
 };
 
 /* machine definition */
-
-static	struct MachineDriver machine_driver_lviv =
-{
+static MACHINE_DRIVER_START( lviv )
 	/* basic machine hardware */
-	{
-		{
-			CPU_8080,
-			2500000,				  
-			lviv_readmem, lviv_writemem,
-			lviv_readport, lviv_writeport,
-			0, 0,
-		},
-	},
-	50,					/* frames per second */
-	0,					/* vblank duration */
-	1,
-	lviv_init_machine,
-	lviv_stop_machine,
+	MDRV_CPU_ADD(8080, 2500000)
+	MDRV_CPU_MEMORY(lviv_readmem, lviv_writemem)
+	MDRV_CPU_PORTS(lviv_readport, lviv_writeport)
+	MDRV_FRAMES_PER_SECOND(50)
+	MDRV_VBLANK_DURATION(0)
+	MDRV_INTERLEAVE(1)
 
-	/* video hardware */
-	256,					/* screen width */
-	256,					/* screen height */
-	{0, 256 - 1, 0, 256 - 1},		/* visible_area */
-	0,					/* graphics decode info */
-	sizeof (lviv_palette) / 3,
-	sizeof (lviv_colortable),		/* colors used for the characters */
-	lviv_init_palette,			/* initialise palette */
+	MDRV_MACHINE_INIT( lviv )
 
-	VIDEO_TYPE_RASTER,
-	0,
-	lviv_vh_start,
-	lviv_vh_stop,
-	lviv_vh_screenrefresh,
+    /* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(256, 256)
+	MDRV_VISIBLE_AREA(0, 256-1, 0, 256-1)
+	MDRV_PALETTE_LENGTH(sizeof (lviv_palette) / 3)
+	MDRV_COLORTABLE_LENGTH(sizeof (lviv_colortable))
+	MDRV_PALETTE_INIT( lviv )
+
+	MDRV_VIDEO_START( lviv )
+	MDRV_VIDEO_UPDATE( lviv )
 
 	/* sound hardware */
-	0, 0, 0, 0,
-	{
-		{
-			SOUND_SPEAKER,
-			&lviv_speaker_interface,
-		},
-		{
-			SOUND_WAVE,
-			&lviv_wave_interface
-		}
-	}
-};
+	MDRV_SOUND_ADD(SPEAKER, lviv_speaker_interface)
+	MDRV_SOUND_ADD(WAVE, lviv_wave_interface)
+MACHINE_DRIVER_END
+
 
 static const struct IODevice io_lviv[] = {
     IO_CASSETTE_WAVE(1,"lv?\0wav\0",NULL,lviv_tape_init,lviv_tape_exit),
@@ -393,8 +467,12 @@ ROM_START(lvive)
 	ROM_LOAD("lvive.bin", 0x10000, 0x4000, 0xf171c282)
 ROM_END
 
+COMPUTER_CONFIG_START(lviv)
+	CONFIG_RAM_DEFAULT(64 * 1024)
+COMPUTER_CONFIG_END
 
-/*    YEAR    NAME  PARENT  MACHINE   INPUT  INIT  COMPANY     FULLNAME */
-COMP( 1989, lviv,      0,  lviv, lviv,    0,      "", "PK-01 Lviv" )
-COMP( 1989, lviva,  lviv,  lviv, lviv,    0,      "", "PK-01 Lviv (alternate)" )
-COMP( 1986, lvive,  lviv,  lviv, lviv,    0,      "", "PK-01 Lviv (early)" )
+
+/*     YEAR  NAME       PARENT  MACHINE    INPUT     INIT     CONFIG,  COMPANY               FULLNAME */
+COMPC( 1989, lviv,      0,      lviv,      lviv,     0,       lviv,    "", "PK-01 Lviv" )
+COMPC( 1989, lviva,     lviv,   lviv,      lviv,     0,       lviv,    "", "PK-01 Lviv (alternate)" )
+COMPC( 1986, lvive,     lviv,   lviv,      lviv,     0,       lviv,    "", "PK-01 Lviv (early)" )

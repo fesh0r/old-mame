@@ -106,8 +106,10 @@
 #define false 0
 #endif
 
-#ifndef BIG_SWITCH
-#define BIG_SWITCH	0
+/*#define BIG_SWITCH*/
+
+#ifdef MAME_DEBUG
+extern int debug_key_pressed;
 #endif
 
 void CHECK_IRQ_LINES( void );
@@ -251,6 +253,7 @@ int hd6309_ICount=50000;
 
 #define CLR_HNZVC	CC&=~(CC_H|CC_N|CC_Z|CC_V|CC_C)
 #define CLR_NZV 	CC&=~(CC_N|CC_Z|CC_V)
+#define CLR_NZ	 	CC&=~(CC_N|CC_Z)
 #define CLR_HNZC	CC&=~(CC_H|CC_N|CC_Z|CC_C)
 #define CLR_NZVC	CC&=~(CC_N|CC_Z|CC_V|CC_C)
 #define CLR_Z		CC&=~(CC_Z)
@@ -347,7 +350,8 @@ static UINT8 *index_cycle;
 	IMMWORD(t); 						\
 	if( f ) 							\
 	{									\
-		hd6309_ICount -= 1; 			\
+		if( !(MD & MD_EM) )				\
+			hd6309_ICount -= 1;			\
 		PC += t.w.l;					\
 		CHANGE_PC;						\
 	}									\
@@ -644,7 +648,7 @@ void hd6309_set_irq_line(int irqline, int state)
 	{
 		if (hd6309.nmi_state == state) return;
 		hd6309.nmi_state = state;
-		LOG(("HD6309#%d set_irq_line (NMI) %d\n", cpu_getactivecpu(), state));
+		LOG(("HD6309#%d set_irq_line (NMI) %d (PC=%4.4X)\n", cpu_getactivecpu(), state, pPC));
 		if( state == CLEAR_LINE ) return;
 
 		/* if the stack was not yet initialized */
@@ -683,7 +687,7 @@ void hd6309_set_irq_line(int irqline, int state)
 	}
 	else if (irqline < 2)
 	{
-		LOG(("HD6309#%d set_irq_line %d, %d\n", cpu_getactivecpu(), irqline, state));
+		LOG(("HD6309#%d set_irq_line %d, %d (PC=%4.4X)\n", cpu_getactivecpu(), irqline, state, pPC));
 		hd6309.irq_state[irqline] = state;
 		if (state == CLEAR_LINE) return;
 		CHECK_IRQ_LINES();
@@ -792,7 +796,7 @@ int hd6309_execute(int cycles)	/* NS 970908 */
 			hd6309.ireg = ROP(PCD);
 			PC++;
 
-#if BIG_SWITCH
+#ifdef BIG_SWITCH
 			switch( hd6309.ireg )
 			{
 			case 0x00: neg_di();   				break;

@@ -16,12 +16,13 @@
 #include <assert.h>
 #include "osd_cpu.h"
 #include "driver.h"
-#include "includes/state.h"
+#include "statetxt.h"
 
 #include "includes/crtc6845.h" // include only several register defines
 #include "includes/vdc8563.h"
 
 #define VERBOSE 0
+#define VERBOSE_DBG	0
 
 #if VERBOSE
 #define DBG_LOG(N,M,A)      \
@@ -204,17 +205,12 @@ void vdc8563_set_rastering(int on)
 	vdc.changed|=1;
 }
 
-int vdc8563_vh_start (void)
+VIDEO_START( vdc8563 )
 {
-	vdc.ram=(UINT8*)malloc(0x20000);
+	vdc.ram=(UINT8*) auto_malloc(0x20000);
 	vdc.dirty=vdc.ram+0x10000;
 
 	return (!vdc.ram);
-}
-
-void vdc8563_vh_stop(void)
-{
-	free(vdc.ram);
 }
 
 #define CHAR_WIDTH (((vdc.reg[0x16]&0xf0)>>4)+1)
@@ -531,9 +527,10 @@ void vdc8563_graphic_screenrefresh (struct mame_bitmap *bitmap, int full_refresh
 	}
 }
 
-void vdc8563_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( vdc8563 )
 {
 	int i;
+	int full_refresh = 1;
 
 	if (!vdc.rastering) return;
 	vdc8563_time();
@@ -570,7 +567,7 @@ void vdc8563_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
 
 	vdc.changed=0;
 
-	state_display(bitmap);
+	statetext_display(bitmap);
 }
 
 extern void vdc8563_state (void)
@@ -583,6 +580,6 @@ extern void vdc8563_state (void)
 	snprintf (text, sizeof (text), "enable:%.2x occured:%.2x",
 			  vdc.reg[0x1a], vdc.reg[0x19]);
 #endif
-	state_display_text (text);
+	statetext_display_text (text);
 #endif
 }

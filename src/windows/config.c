@@ -19,7 +19,7 @@
  *   gamma (is already osd_)
  *   sound (enable/disable sound)
  *   volume
-  * - get rid of #ifdef MESS's by providing appropriate hooks
+ * - get rid of #ifdef MESS's by providing appropriate hooks
  */
 
 
@@ -27,6 +27,8 @@
 #define BLIT_ROTATE		1
 
 
+
+#include <windows.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <time.h>
@@ -176,10 +178,11 @@ static struct rc_option opts[] = {
 #ifdef MESS
 	{ NULL, NULL, rc_link, mess_opts, NULL, 0,	0, NULL, NULL },
 #endif
+
 	/* options supported by the mame core */
 	/* video */
 	{ "Mame CORE video options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
-	{ "norotate", NULL, rc_bool, &options.norotate, "0", 0, 0, NULL, "do not apply rotation" },
+	{ "norotate", NULL, rc_bool , &options.norotate, "0", 0, 0, NULL, "do not apply rotation" },
 	{ "ror", NULL, rc_bool, &options.ror, "0", 0, 0, NULL, "rotate screen clockwise" },
 	{ "rol", NULL, rc_bool, &options.rol, "0", 0, 0, NULL, "rotate screen anti-clockwise" },
 	{ "flipx", NULL, rc_bool, &options.flipx, "0", 0, 0, NULL, "flip screen upside-down" },
@@ -536,7 +539,7 @@ int cli_frontend_init (int argc, char **argv)
 	{
 		/* do we have a driver for this? */
 		for (i = 0; drivers[i]; i++)
-			if (stricmp(gamename,drivers[i]->name) == 0)
+			if (strcasecmp(gamename,drivers[i]->name) == 0)
 			{
 				game_index = i;
 				break;
@@ -588,7 +591,7 @@ int cli_frontend_init (int argc, char **argv)
 	/* nice hack: load source_file.ini (omit if referenced later any) */
 	{
 		const struct GameDriver *tmp_gd;
-
+		
 		sprintf(buffer, "%s", drivers[game_index]->source_file+12);
 		buffer[strlen(buffer) - 2] = 0;
 
@@ -685,7 +688,7 @@ int cli_frontend_init (int argc, char **argv)
 	/* override if no rotation requested */
 	if (options.norotate)
 		orientation = options.ui_orientation = ROT0;
-
+	
 	/* rotate right */
 	if (options.ror)
 	{
@@ -707,17 +710,17 @@ int cli_frontend_init (int argc, char **argv)
 
 		orientation ^= ROT270;
 	}
-
+	
 	/* flip X/Y */
 	if (options.flipx)
 		orientation ^= ORIENTATION_FLIP_X;
 	if (options.flipy)
 		orientation ^= ORIENTATION_FLIP_Y;
-
+	
 	blit_flipx = ((orientation & ORIENTATION_FLIP_X) != 0);
 	blit_flipy = ((orientation & ORIENTATION_FLIP_Y) != 0);
 	blit_swapxy = ((orientation & ORIENTATION_SWAP_XY) != 0);
-
+	
 	/* disable rotation in the core */
 	options.norotate = 1;
 	options.ror = options.rol = options.flipx = options.flipy = 0;
@@ -731,6 +734,7 @@ void cli_frontend_exit(void)
 {
 	/* close open files */
 	if (logfile) fclose(logfile);
+
 #ifndef MESS
 	if (options.playback) osd_fclose(options.playback);
 	if (options.record)   osd_fclose(options.record);

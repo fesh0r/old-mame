@@ -30,6 +30,7 @@ enum
 	COLUMN_MANUFACTURER,
 	COLUMN_YEAR,
 	COLUMN_CLONE,
+	COLUMN_SRCDRIVERS,
 	COLUMN_MAX
 };
 
@@ -45,7 +46,8 @@ enum {
 };
 #endif
 
-enum {
+enum
+{
 	VIEW_LARGE_ICONS = 0,
 	VIEW_SMALL_ICONS,
 	VIEW_INLIST,
@@ -87,6 +89,7 @@ enum
 	PICT_FLYER,
 	PICT_CABINET,
 	PICT_MARQUEE,
+	PICT_TITLES,
 	MAX_PICT_TYPES
 };
 
@@ -139,7 +142,6 @@ typedef struct
 	BOOL   keepaspect;
 	BOOL   matchrefresh;
 	BOOL   syncrefresh;
-	BOOL   use_dirty;
 	BOOL   throttle;
 	double gfx_brightness;
 	int    frames_to_display;
@@ -153,23 +155,27 @@ typedef struct
 	BOOL   hotrodse;
 	BOOL   use_mouse;
 	BOOL   use_joystick;
+	double f_a2d;
 	BOOL   steadykey;
+	BOOL   lightgun;
+	char   ctrlr[64];
 
 	/* Core video */
-	int    color_depth; /* MAME bitmap depth/bpp */
+	double f_bright_correct; /* "1.0", 0.5, 2.0 */
 	BOOL   norotate;
 	BOOL   ror;
 	BOOL   rol;
 	BOOL   flipx;
 	BOOL   flipy;
 	char   debugres[16];
-	double gamma_correct;
+	double f_gamma_correct;
 
 	/* Core vector */
 	BOOL   antialias;
 	BOOL   translucency;
 	double f_beam;
 	double f_flicker;
+	double f_intensity;
 
 	/* Sound */
 	int    samplerate;
@@ -178,13 +184,22 @@ typedef struct
 	BOOL   enable_sound;
 	int    attenuation;
 
-	/* misc */
+	/* Misc artwork options */
 	BOOL   use_artwork;
+	BOOL   backdrops;
+	BOOL   overlays;
+	BOOL   bezels;
+	BOOL   artwork_crop;
+	int    artres;
+
+	/* misc */
 	BOOL   cheat;
 	BOOL   mame_debug;
 	char*  playbackname; // ?
 	char*  recordname; // ?
 	BOOL   errorlog;
+	BOOL   sleep;
+	BOOL   leds;
 
 #ifdef MESS
 	BOOL   use_new_filemgr;
@@ -201,11 +216,13 @@ typedef struct
 	BOOL     show_toolbar;
 	BOOL     show_statusbar;
 	BOOL     show_screenshot;
+	BOOL     show_tabctrl;
 	int      show_pict_type;
 	BOOL     game_check;        /* Startup GameCheck */
 	BOOL     version_check;     /* Version mismatch warings */
 	BOOL     use_joygui;
 	BOOL     broadcast;
+	BOOL     random_bg;
 	char     default_game[MAX_GAMEDESC];
 #ifdef MESS
 	char     *default_software;
@@ -221,6 +238,7 @@ typedef struct
 	int      sort_column;
 	BOOL     sort_reverse;
 	AREA     area;
+	UINT     windowstate;
 	int      splitter[SPLITTER_MAX];
 	LOGFONT  list_font;
 	COLORREF list_font_color;
@@ -229,6 +247,7 @@ typedef struct
 	char*    flyerdir;
 	char*    cabinetdir;
 	char*    marqueedir;
+	char*	 titlesdir;
 
 	char*    romdirs;
 	char*    sampledirs;
@@ -236,6 +255,7 @@ typedef struct
 	char*    softwaredirs;
 	char*    crcdir;	
 #endif
+	char*    inidirs;
 	char*    cfgdir;
 	char*    nvramdir;
 	char*    memcarddir;
@@ -244,10 +264,15 @@ typedef struct
 	char*    statedir;
 	char*    artdir;
 	char*    imgdir;
+	char*    diffdir;
+	char*	 iconsdir;
+	char*    bgdir;
 	char*    cheatdir;
 	char*    cheatfile;
 	char*    history_filename;
 	char*    mameinfo_filename;
+	char*    ctrlrdir;
+	char*	 folderdir;
 
 } settings_type; /* global settings for the UI only */
 
@@ -276,6 +301,9 @@ BOOL GetJoyGUI(void);
 void SetBroadcast(BOOL broadcast);
 BOOL GetBroadcast(void);
 
+void SetRandomBg(BOOL random_bg);
+BOOL GetRandomBg(void);
+
 void SetSavedFolderID(UINT val);
 UINT GetSavedFolderID(void);
 
@@ -290,6 +318,9 @@ BOOL GetShowStatusBar(void);
 
 void SetShowToolBar(BOOL val);
 BOOL GetShowToolBar(void);
+
+void SetShowTabCtrl(BOOL val);
+BOOL GetShowTabCtrl(void);
 
 void SetShowPictType(int val);
 int  GetShowPictType(void);
@@ -309,6 +340,9 @@ const char *GetCrcDir(void);
 
 void SetWindowArea(AREA *area);
 void GetWindowArea(AREA *area);
+
+void SetWindowState(UINT state);
+UINT GetWindowState(void);
 
 void SetColumnWidths(int widths[]);
 void GetColumnWidths(int widths[]);
@@ -359,6 +393,9 @@ const char* GetSoftwareDirs(void);
 void  SetSoftwareDirs(const char* paths);
 #endif
 
+const char* GetIniDirs(void);
+void  SetIniDirs(const char* paths);
+
 const char* GetCfgDir(void);
 void SetCfgDir(const char* path);
 
@@ -392,8 +429,26 @@ void SetCabinetDir(const char* path);
 const char* GetMarqueeDir(void);
 void SetMarqueeDir(const char* path);
 
+const char* GetTitlesDir(void);
+void SetTitlesDir(const char* path);
+
+const char* GetDiffDir(void);
+void SetDiffDir(const char* path);
+
+const char* GetIconsDir(void);
+void SetIconsDir(const char* path);
+
+const char *GetBgDir(void);
+void SetBgDir(const char *path);
+
 const char* GetCheatDir(void);
 void SetCheatFileDir(const char* path);
+
+const char* GetCtrlrDir(void);
+void SetCtrlrDir(const char* path);
+
+const char* GetFolderDir(void);
+void SetFolderDir(const char* path);
 
 const char* GetCheatFileName(void);
 void SetCheatFileName(const char* path);

@@ -20,7 +20,7 @@
 
 #include "includes/pic8259.h"
 #include "includes/dma8237.h"
-#include "includes/state.h"
+#include "statetxt.h"
 
 #include "includes/pc_hdc.h"
 
@@ -460,7 +460,7 @@ static void pc_hdc_command(int n)
 			ecc[idx] = buffer[13];
 			HDC_LOG(1,"hdc set param",("INDEX #%d D:%d C:%d H:%d RW:%d WP:%d ECC:%d\n",
 				idx, drv, cylinders[idx], heads[idx], rwc[idx], wp[idx], ecc[idx]));
-#if NEVERDEF
+#if 0
 			if (pc_hdc_file[idx])
 			{
                 /* write the drive geometry to the image */
@@ -652,9 +652,10 @@ void pc_hdc_data_w(int n, int data)
 			status[n] &= ~STA_REQUEST;
 			status[n] &= ~STA_READY;
 			status[n] |= STA_INPUT;
-			if( timer[n] )
-				timer_remove(timer[n]);
-			timer[n] = timer_set(0.001, n, pc_hdc_command);
+			
+			if (!timer[n])
+				timer[n] = timer_alloc(pc_hdc_command);
+			timer_adjust(timer[n], 0.001, n, 0);
         }
 	}
 }
@@ -771,6 +772,7 @@ READ_HANDLER ( pc_HDC2_r ) { return pc_HDC_r(1, offset); }
 int pc_harddisk_init(int id)
 {
 	pc_hdc_file[id] = image_fopen(IO_HARDDISK, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
+
 	return INIT_PASS;
 }
 
@@ -790,7 +792,7 @@ void pc_harddisk_state(void)
 		if (display[i]) {
 			snprintf(text, sizeof(text), "HDD:%d track:%-3d head:%-2d sector:%-2d %s",
 					 i,cylinder[i],head[i],sector[i], display[i]&2?"writing":"reading" );
-			state_display_text(text);
+			statetext_display_text(text);
 			display[i]=0;
 		}
 	}

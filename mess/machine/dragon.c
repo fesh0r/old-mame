@@ -55,7 +55,6 @@
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
-#include "includes/rstrtrck.h"
 #include "includes/dragon.h"
 #include "includes/cococart.h"
 #include "includes/6883sam.h"
@@ -64,6 +63,8 @@
 #include "formats/cocopak.h"
 #include "formats/cococas.h"
 #include "cassette.h"
+#include "bitbngr.h"
+#include "printer.h"
 
 static UINT8 *coco_rom;
 static int coco3_enable_64k;
@@ -130,18 +131,18 @@ static void coco3_setcartline(int data);
 #define LOG_PAK			1	/* [Sparse]   Logging on PAK trailers */
 #define LOG_INT_MASKING	1	/* [Sparse]   Logging on changing GIME interrupt masks */
 #define LOG_CASSETTE	1	/* [Sparse]   Logging when cassette motor changes state */
-#define LOG_TIMER_SET	1	/* [Sparse]   Logging when setting the timer */
+#define LOG_TIMER_SET	0	/* [Sparse]   Logging when setting the timer */
 #define LOG_INT_TMR		0	/* [Frequent] Logging when timer interrupt is invoked */
 #define LOG_FLOPPY		0	/* [Frequent] Set when floppy interrupts occur */
 #define LOG_INT_COCO3	0
 #define LOG_GIME		0
 #define LOG_MMU			0
-#define LOG_VBORD		0   /* [Frequent] Occurs when VBORD is changed */
 #define LOG_OS9         0
 #define LOG_TIMER       0
 #define LOG_DEC_TIMER	0
 #define LOG_IRQ_RECALC	0
 #define LOG_D64MEM		0
+#define LOG_VBORD		0
 #else /* !MAME_DEBUG */
 #define LOG_PAK			0
 #define LOG_CASSETTE	0
@@ -151,13 +152,13 @@ static void coco3_setcartline(int data);
 #define LOG_INT_COCO3	0
 #define LOG_GIME		0
 #define LOG_MMU			0
-#define LOG_VBORD		0
 #define LOG_OS9         0
 #define LOG_FLOPPY		0
 #define LOG_TIMER       0
 #define LOG_DEC_TIMER	0
 #define LOG_IRQ_RECALC	0
 #define LOG_D64MEM		0
+#define LOG_VBORD		0
 #endif /* MAME_DEBUG */
 
 static void coco3_timer_hblank(void);
@@ -603,7 +604,7 @@ enum {
 
 static void d_recalc_irq(void)
 {
-	if ((pia0_irq_a == ASSERT_LINE) || (pia0_irq_b == ASSERT_LINE))
+	if (((pia0_irq_a == ASSERT_LINE) || (pia0_irq_b == ASSERT_LINE)) && cpu_getstatus(0))
 		cpu_set_irq_line(0, M6809_IRQ_LINE, ASSERT_LINE);
 	else
 		cpu_set_irq_line(0, M6809_IRQ_LINE, CLEAR_LINE);
@@ -611,7 +612,7 @@ static void d_recalc_irq(void)
 
 static void d_recalc_firq(void)
 {
-	if ((pia1_firq_a == ASSERT_LINE) || (pia1_firq_b == ASSERT_LINE))
+	if (((pia1_firq_a == ASSERT_LINE) || (pia1_firq_b == ASSERT_LINE)) && cpu_getstatus(0))
 		cpu_set_irq_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
 		cpu_set_irq_line(0, M6809_FIRQ_LINE, CLEAR_LINE);
@@ -624,7 +625,7 @@ static void coco3_recalc_irq(void)
 		gime_irq, pia0_irq_a, pia0_irq_b, coco3_gimereg[0] & 0x20 ? "enabled" : "disabled");
 #endif
 
-	if ((coco3_gimereg[0] & 0x20) && gime_irq)
+	if ((coco3_gimereg[0] & 0x20) && gime_irq && cpu_getstatus(0))
 		cpu_set_irq_line(0, M6809_IRQ_LINE, ASSERT_LINE);
 	else
 		d_recalc_irq();
@@ -632,7 +633,7 @@ static void coco3_recalc_irq(void)
 
 static void coco3_recalc_firq(void)
 {
-	if ((coco3_gimereg[0] & 0x10) && gime_firq)
+	if ((coco3_gimereg[0] & 0x10) && gime_firq && cpu_getstatus(0))
 		cpu_set_irq_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
 		d_recalc_firq();
@@ -703,7 +704,7 @@ static void coco3_raise_interrupt(int mask, int state)
 			coco3_recalc_irq();
 
 #if LOG_INT_COCO3
-			logerror("CoCo3 Interrupt: Raising IRQ; scanline=%i\n", rastertrack_scanline());
+			logerror("CoCo3 Interrupt: Raising IRQ; scanline=%i\n", cpu_getscanline());
 #endif
 		}
 		if ((coco3_gimereg[0] & 0x10) && (coco3_gimereg[3] & mask)) {
@@ -711,7 +712,7 @@ static void coco3_raise_interrupt(int mask, int state)
 			coco3_recalc_firq();
 
 #if LOG_INT_COCO3
-			logerror("CoCo3 Interrupt: Raising FIRQ; scanline=%i\n", rastertrack_scanline());
+			logerror("CoCo3 Interrupt: Raising FIRQ; scanline=%i\n", cpu_getscanline());
 #endif
 		}
 	}
@@ -724,25 +725,80 @@ WRITE_HANDLER( coco_m6847_hs_w )
 
 WRITE_HANDLER( coco_m6847_fs_w )
 {
-	pia_0_cb1_w(0, !data);
+	pia_0_cb1_w(0, data);
 }
 
 WRITE_HANDLER( coco3_m6847_hs_w )
 {
 	if (data)
 		coco3_timer_hblank();
-	pia_0_ca1_w(0, data);
-	coco3_raise_interrupt(COCO3_INT_HBORD, !data);
+	pia_0_ca1_w(0, !data);
+	coco3_raise_interrupt(COCO3_INT_HBORD, data);
 }
+
+int coco3_calculate_rows(int *bordertop, int *borderbottom);
+
+INTERRUPT_GEN( coco3_vh_interrupt )
+{
+	int border_top, border_bottom, body_scanlines;
+	int scanline;
+
+	body_scanlines = coco3_calculate_rows(&border_top, &border_bottom);
+
+	scanline = internal_m6847_getadjustedscanline();
+
+#if 1
+	{
+		static int last_scanline = 0;
+		if (scanline < last_scanline)
+			logerror("scanline=%d\n", scanline);
+		last_scanline = scanline;
+	}
+#endif
+
+	if (scanline == 0)
+		coco3_raise_interrupt(COCO3_INT_VBORD, CLEAR_LINE);
+	else if (scanline >= border_top+body_scanlines)
+		coco3_raise_interrupt(COCO3_INT_VBORD, ASSERT_LINE);
+
+	internal_m6847_vh_interrupt(scanline, 4, 0);
+}
+
 
 WRITE_HANDLER( coco3_m6847_fs_w )
 {
 #if LOG_VBORD
-	logerror("coco3_m6847_fs_w(): data=%i scanline=%i\n", data, rastertrack_scanline());
+	logerror("coco3_m6847_fs_w(): data=%i scanline=%i\n", data, cpu_getscanline());
 #endif
-	pia_0_cb1_w(0, !data);
+	pia_0_cb1_w(0, data);
 	coco3_raise_interrupt(COCO3_INT_VBORD, !data);
 }
+
+/***************************************************************************
+  Halt line
+***************************************************************************/
+
+static void d_recalc_interrupts(int dummy)
+{
+	d_recalc_firq();
+	d_recalc_irq();
+}
+
+static void coco3_recalc_interrupts(int dummy)
+{
+	coco3_recalc_firq();
+	coco3_recalc_irq();
+}
+
+static void (*recalc_interrupts)(int dummy);
+
+void coco_set_halt_line(int halt_line)
+{
+	cpu_set_halt_line(0, halt_line);
+	if (halt_line == CLEAR_LINE)
+		timer_set(TIME_IN_CYCLES(1,0), 0, recalc_interrupts);
+}
+
 
 /***************************************************************************
   Joystick Abstractions
@@ -1110,7 +1166,7 @@ static WRITE_HANDLER( d_pia1_pb_w )
 	m6847_gm0_w(0,		data & 0x10);
 	m6847_intext_w(0,	data & 0x10);
 	m6847_css_w(0,		data & 0x08);
-	schedule_full_refresh();
+	set_vh_global_attribute(NULL, 0);
 
 	/* PB1 will drive the sound output.  This is a rarely
 	 * used single bit sound mode. It is always connected thus
@@ -1302,16 +1358,22 @@ static void d_sam_set_memorysize(int val)
 
 static double coco3_timer_counterbase;
 static void *coco3_timer_counter;
+static void *coco3_timer_fallingedge;
 static int coco3_timer_interval;	/* interval: 1=280 nsec, 0=63.5 usec */
 static int coco3_timer_value;
 static int coco3_timer_base;
 
+static void coco3_timer_cannonicalize(int newvalue);
+static void coco3_timer_fallingedge_handler(int dummy);
+
 static void coco3_timer_init(void)
 {
-	coco3_timer_counter = NULL;
+	coco3_timer_counter = timer_alloc(coco3_timer_cannonicalize);
+	coco3_timer_fallingedge = timer_alloc(coco3_timer_fallingedge_handler);
 	coco3_timer_interval = 0;
 	coco3_timer_base = 0;
 	coco3_timer_value = 0;
+	coco3_timer_counterbase = -1.0;
 }
 
 static int coco3_timer_actualvalue(int specified)
@@ -1328,16 +1390,19 @@ static int coco3_timer_actualvalue(int specified)
 	return specified ? specified + 2 : 0;
 }
 
+static void coco3_timer_fallingedge_handler(int dummy)
+{
+	coco3_raise_interrupt(COCO3_INT_TMR, 0);
+}
+
 static void coco3_timer_newvalue(void)
 {
 	if (coco3_timer_value == 0) {
 #if LOG_INT_TMR
-		logerror("CoCo3 GIME: Triggering TMR interrupt; scanline=%i time=%g\n", rastertrack_scanline(), timer_get_time());
+		logerror("CoCo3 GIME: Triggering TMR interrupt; scanline=%i time=%g\n", cpu_getscanline(), timer_get_time());
 #endif
 		coco3_raise_interrupt(COCO3_INT_TMR, 1);
-
-		/* HACKHACK - This should not happen until the next timer tick */
-		coco3_raise_interrupt(COCO3_INT_TMR, 0);
+		timer_adjust(coco3_timer_fallingedge, coco3_timer_interval ? COCO_TIMER_CMPCARRIER : COCO_TIMER_CMPCARRIER*4*57, 0, 0);
 
 		/* Every time the timer hit zero, the video hardware would do a blink */
 		coco3_vh_blink();
@@ -1367,10 +1432,8 @@ static void coco3_timer_cannonicalize(int newvalue)
 	logerror("coco3_timer_cannonicalize(): Entering; current_time=%g\n", current_time);
 #endif
 
-	/* This part resolves timer issues with the CMP Carrier */
-	if (coco3_timer_counter) {
-		assert(coco3_timer_value > 0);
-
+	if (coco3_timer_counterbase >= 0)
+	{
 		/* Calculate how many transitions elapsed */
 		elapsed = (int) ((current_time - coco3_timer_counterbase) / COCO_TIMER_CMPCARRIER);
 		assert(elapsed >= 0);
@@ -1378,14 +1441,6 @@ static void coco3_timer_cannonicalize(int newvalue)
 #if LOG_TIMER
 		logerror("coco3_timer_cannonicalize(): Recalculating; current_time=%g base=%g elapsed=%i\n", current_time, coco3_timer_counterbase, elapsed);
 #endif
-
-		/* Remove the timer.  Note that we might be called as part of a timer
-		 * proc resolving.  In this case; we must _not_ call timer_remove() on
-		 * ourself, due to the way the MAME core works
-		 */
-		if (newvalue != -1)
-			timer_remove(coco3_timer_counter);
-		coco3_timer_counter = NULL;
 
 		if (elapsed) {
 			coco3_timer_value -= elapsed;
@@ -1398,21 +1453,30 @@ static void coco3_timer_cannonicalize(int newvalue)
 		}
 	}
 
-	if (newvalue >= 0) {
+	/* non-negative values of newvalue set the timer value; negative values simply cannonicalize */
+	if (newvalue >= 0)
+	{
 #if LOG_TIMER
 		logerror("coco3_timer_cannonicalize(): Setting timer to %i\n", newvalue);
 #endif
 		coco3_timer_value = newvalue;
 	}
 
-	if (coco3_timer_interval && coco3_timer_value) {
-		coco3_timer_counterbase = current_time; //floor(current_time / COCO_TIMER_CMPCARRIER) * COCO_TIMER_CMPCARRIER;
+	if (coco3_timer_interval && coco3_timer_value)
+	{
+		coco3_timer_counterbase = floor(current_time / COCO_TIMER_CMPCARRIER) * COCO_TIMER_CMPCARRIER;
 		duration = coco3_timer_counterbase + (coco3_timer_value * COCO_TIMER_CMPCARRIER) + (COCO_TIMER_CMPCARRIER / 2) - current_time;
-		coco3_timer_counter = timer_set(duration, -1, coco3_timer_cannonicalize);
+		timer_adjust(coco3_timer_counter, duration, -1, 0);
 
 #if LOG_TIMER
 		logerror("coco3_timer_cannonicalize(): Setting CMP timer for duration %g\n", duration);
 #endif
+	}
+	else
+	{
+		/* timer is disabled */
+		timer_reset(coco3_timer_counter, TIME_NEVER);
+		coco3_timer_counterbase = -1.0;
 	}
 }
 
@@ -1631,7 +1695,10 @@ static void coco3_mmu_update(int lowblock, int hiblock)
 
 READ_HANDLER(coco3_mmu_r)
 {
-	return (coco3_mmu[offset] & 0x3f) | 0x40;
+	/* The high two bits are floating (high resistance).  Therefore their
+	 * value is undefined.  But we are exposing them anyways here
+	 */
+	return coco3_mmu[offset];
 }
 
 WRITE_HANDLER(coco3_mmu_w)
@@ -1690,7 +1757,7 @@ WRITE_HANDLER(coco3_gime_w)
 	coco3_gimereg[offset] = data;
 
 #if LOG_GIME
-	logerror("CoCo3 GIME: $%04x <== $%02x pc=$%04x\n", offset + 0xff90, data, cpu_get_pc());
+	logerror("CoCo3 GIME: $%04x <== $%02x pc=$%04x\n", offset + 0xff90, data, activecpu_get_pc());
 #endif
 
 	/* Features marked with '!' are not yet implemented */
@@ -1796,24 +1863,32 @@ static void coco3_sam_set_maptype(int val)
   Joystick autocenter
 ***************************************************************************/
 
-static int autocenter_val;
+struct autocenter_info
+{
+	int dipport;
+	int dipmask;
+	int old_value;
+};
 
 static void autocenter_timer_proc(int data)
 {
 	struct InputPort *in;
-	int dipport, dipmask, portval;
+	struct autocenter_info *info;
+	int portval;
 
-	dipport = (data & 0xff00) >> 8;
-	dipmask = data & 0x00ff;
-	portval = readinputport(dipport) & dipmask;
+	info = (struct autocenter_info *) data;
+	portval = readinputport(info->dipport) & info->dipmask;
 
-	if (autocenter_val != portval) {
+	if (info->old_value != portval)
+	{
 		/* Now go through all inputs, and set or reset IPF_CENTER on all
 		 * joysticks
 		 */
-		for (in = Machine->input_ports; in->type != IPT_END; in++) {
+		for (in = Machine->input_ports; in->type != IPT_END; in++)
+		{
 			if (((in->type & ~IPF_MASK) > IPT_ANALOG_START)
-					&& ((in->type & ~IPF_MASK) < IPT_ANALOG_END)) {
+					&& ((in->type & ~IPF_MASK) < IPT_ANALOG_END))
+			{
 				/* We found a joystick */
 				if (portval)
 					in->type |= IPF_CENTER;
@@ -1821,13 +1896,23 @@ static void autocenter_timer_proc(int data)
 					in->type &= ~IPF_CENTER;
 			}
 		}
+		info->old_value = portval;
 	}
 }
 
 static void autocenter_init(int dipport, int dipmask)
 {
-	autocenter_val = -1;
-	timer_pulse(TIME_IN_HZ(10), (dipport << 8) | dipmask, autocenter_timer_proc);
+	struct autocenter_info *info;
+
+	info = (struct autocenter_info *) auto_malloc(sizeof(struct autocenter_info));
+	if (!info)
+		return;	/* ACK */
+
+	info->dipport = dipport;
+	info->dipmask = dipmask;
+	info->old_value = -1;
+
+	timer_pulse(TIME_IN_HZ(60), (int) info, autocenter_timer_proc);
 }
 
 /***************************************************************************
@@ -1913,43 +1998,60 @@ static void coco_cartridge_enablesound(int enable)
   Bitbanger port
 ***************************************************************************/
 
-static void *bitbanger_file;
-static int bitbanger_word;
-static int bitbanger_line;
-
-static void coco_bitbanger_poll(int dummy)
+static int coco_bitbanger_filter(int id, const int *pulses, int total_pulses, int total_duration)
 {
-	char c;
+	int i;
+	int result = 0;
+	int word;
+	int pos;
+	int pulse_type;
+	int c;
 
-	bitbanger_word >>= 1;
-	if (bitbanger_line)
-		bitbanger_word |= 0x400;
+	if (total_duration >= 11)
+	{
+		word = 0;
+		pos = 0;
+		pulse_type = 0;
+		result = 1;
 
-	if ((bitbanger_word & 0x403) == 0x401) {
-		c = (char) (bitbanger_word >> 2);
-		if (bitbanger_file)
-			osd_fwrite(bitbanger_file, &c, 1);
-		bitbanger_word = 0;
+		for (i = 0; i < total_pulses; i++)
+		{
+			if (pulse_type)
+				word |= ((1 << pulses[i]) - 1) << pos;
+			pulse_type ^= 1;
+			pos += pulses[i];
+		}
+
+		c = (word >> 1) & 0xff;
+		printer_output(id, c);
 	}
+	return result;
 }
 
 int coco_bitbanger_init (int id)
 {
-	bitbanger_word = 0;
-	bitbanger_line = 0;
-	bitbanger_file = image_fopen (IO_BITBANGER, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
-	return INIT_PASS;
+	static const struct bitbanger_config cfg =
+	{
+		coco_bitbanger_filter,
+		1.0 / 10.0,
+		0.2,
+		2,
+		10,
+		0,
+		0
+	};
+
+	return bitbanger_init(id, &cfg);
 }
 
 void coco_bitbanger_exit (int id)
 {
-	if (bitbanger_file)
-		osd_fclose(bitbanger_file);
+	printer_exit(id);
 }
 
 void coco_bitbanger_output (int id, int data)
 {
-	bitbanger_line = data;
+	bitbanger_output(id, data);
 }
 
 /***************************************************************************
@@ -1979,12 +2081,15 @@ static int count_bank(void)
 	switch( crc )
 	{
 		case 0x83bd6056:		/* Mind-Roll */
+			logerror("ROM cartridge bankswitching enabled: Mind-Roll (26-3100)\n");
 			return 1;
 			break;
 		case 0xBF4AD8F8:		/* Predator */
+			logerror("ROM cartridge bankswitching enabled: Predator (26-3165)\n");
 			return 3;
 			break;
 		case 0xDD94DD06:		/* RoboCop */
+			logerror("ROM cartridge bankswitching enabled: RoboCop (26-3164)\n");
 			return 7;
 			break;
 		default:				/* No bankswitching */
@@ -2042,9 +2147,13 @@ static const struct cartridge_callback coco3_cartcallbacks =
 	coco3_setcartbank
 };
 
-static void generic_init_machine(struct pia6821_interface *piaintf, struct sam6883_interface *samintf, const struct cartridge_slot *cartinterface, const struct cartridge_callback *cartcallback)
+static void generic_init_machine(struct pia6821_interface *piaintf, struct sam6883_interface *samintf,
+	const struct cartridge_slot *cartinterface, const struct cartridge_callback *cartcallback,
+	void (*recalc_interrupts_)(int dummy))
 {
 	const struct cartridge_slot *cartslottype;
+
+	recalc_interrupts = recalc_interrupts_;
 
 	coco_rom = memory_region(REGION_CPU1);
 
@@ -2077,41 +2186,39 @@ static void generic_init_machine(struct pia6821_interface *piaintf, struct sam68
 
 	coco_cartrige_init(cart_inserted ? cartslottype : cartinterface, cartcallback);
 	autocenter_init(12, 0x04);
-
-	timer_pulse(TIME_IN_HZ(600), 0, coco_bitbanger_poll);
 }
 
-void dragon32_init_machine(void)
+MACHINE_INIT( dragon32 )
 {
 	cpu_setbank(1, &mess_ram[0]);
 	memory_set_bankhandler_w(1, 0, coco_ram_w);
-	generic_init_machine(coco_pia_intf, &coco_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks);
+	generic_init_machine(coco_pia_intf, &coco_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks, d_recalc_interrupts);
 }
 
-void dragon64_init_machine(void)
+MACHINE_INIT( dragon64 )
 {
 	cpu_setbank(1, &mess_ram[0]);
 	memory_set_bankhandler_w(1, 0, coco_ram_w);
-	generic_init_machine(dragon64_pia_intf, &dragon64_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks);
+	generic_init_machine(dragon64_pia_intf, &dragon64_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks, d_recalc_interrupts);
 	acia_6551_init();
 	dragon64_sethipage(DRAGON64_ALL, 0);
 }
 
-void coco_init_machine(void)
+MACHINE_INIT( coco )
 {
 	cpu_setbank(1, &mess_ram[0]);
 	memory_set_bankhandler_w(1, 0, coco_ram_w);
-	generic_init_machine(coco_pia_intf, &coco_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks);
+	generic_init_machine(coco_pia_intf, &coco_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks, d_recalc_interrupts);
 }
 
-void coco2_init_machine(void)
+MACHINE_INIT( coco2 )
 {
 	cpu_setbank(1, &mess_ram[0]);
 	memory_set_bankhandler_w(1, 0, coco_ram_w);
-	generic_init_machine(coco2_pia_intf, &coco_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks);
+	generic_init_machine(coco2_pia_intf, &coco_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks, d_recalc_interrupts);
 }
 
-void coco3_init_machine(void)
+MACHINE_INIT( coco3 )
 {
 	int i;
 
@@ -2125,7 +2232,7 @@ void coco3_init_machine(void)
 		coco3_gimereg[i] = 0;
 	}
 
-	generic_init_machine(coco3_pia_intf, &coco3_sam_intf, &cartridge_fdc_coco, &coco3_cartcallbacks);
+	generic_init_machine(coco3_pia_intf, &coco3_sam_intf, &cartridge_fdc_coco, &coco3_cartcallbacks, coco3_recalc_interrupts);
 
 	coco3_mmu_update(0, 8);
 	coco3_timer_init();
@@ -2136,17 +2243,11 @@ void coco3_init_machine(void)
 	timer_pulse(TIME_IN_HZ(50), 0, coco3_poll_keyboard);
 }
 
-void coco_stop_machine(void)
+MACHINE_STOP( coco )
 {
 	if (coco_cart_interface && coco_cart_interface->term)
 		coco_cart_interface->term();
 	sam_reset();
-}
-
-void dragon64_stop_machine(void)
-{
-	coco_stop_machine();
-	acia_6551_stop();
 }
 
 /***************************************************************************
@@ -2316,13 +2417,13 @@ void log_os9call(int call)
 	if (!mnemonic)
 		mnemonic = "(unknown)";
 
-	logerror("Logged OS9 Call Through SWI2 $%02x (%s): pc=$%04x\n", (void *) call, mnemonic, cpu_get_pc());
+	logerror("Logged OS9 Call Through SWI2 $%02x (%s): pc=$%04x\n", (void *) call, mnemonic, activecpu_get_pc());
 }
 
 void os9_in_swi2(void)
 {
 	unsigned pc;
-	pc = cpu_get_pc();
+	pc = activecpu_get_pc();
 	log_os9call(cpu_readmem16(pc));
 }
 

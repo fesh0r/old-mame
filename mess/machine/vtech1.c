@@ -30,6 +30,7 @@
 #include "vidhrdw/generic.h"
 #include "vidhrdw/m6847.h"
 #include "includes/vtech1.h"
+#include "cpu/z80/z80.h"
 
 int vtech1_latch = -1;
 
@@ -56,18 +57,6 @@ static int vtech1_fdc_write = 0;
 static int vtech1_fdc_offs = 0;
 static int vtech1_fdc_latch = 0;
 
-void init_vtech1(void)
-{
-#ifdef OLD_VIDEO
-	int i;
-    UINT8 *gfx = memory_region(REGION_GFX1);
-
-	/* create 256 bit patterns */
-    for( i = 0; i < 256; i++ )
-        gfx[0x0c00+i] = i;
-#endif
-}
-
 static void common_init_machine(void)
 {
 
@@ -88,7 +77,7 @@ static void common_init_machine(void)
     }
 }
 
-void laser110_init_machine(void)
+MACHINE_INIT( laser110 )
 {
     if( readinputport(0) & 0x80 )
     {
@@ -103,7 +92,7 @@ void laser110_init_machine(void)
 	common_init_machine();
 }
 
-void laser210_init_machine(void)
+MACHINE_INIT( laser210 )
 {
     if( readinputport(0) & 0x80 )
     {
@@ -118,7 +107,7 @@ void laser210_init_machine(void)
 	common_init_machine();
 }
 
-void laser310_init_machine(void)
+MACHINE_INIT( laser310 )
 {
     if( readinputport(0) & 0x80 )
     {
@@ -133,7 +122,7 @@ void laser310_init_machine(void)
 	common_init_machine();
 }
 
-void vtech1_shutdown_machine(void)
+MACHINE_STOP( vtech1 )
 {
 	int i;
 	for( i = 0; i < 2; i++ )
@@ -751,16 +740,13 @@ WRITE_HANDLER( vtech1_latch_w )
     /* mode or the background color are toggle? */
 	if( (vtech1_latch ^ data) & 0x18 )
 	{
-#ifdef OLD_VIDEO
-		schedule_full_refresh();
-#else
 		/* background */
 		m6847_css_w(0,	data & 0x08);
 		/* text/graphics */
 		m6847_ag_w(0,	data & 0x10);
 		m6847_set_cannonical_row_height();
 		schedule_full_refresh();
-#endif
+
 		if( (vtech1_latch ^ data) & 0x10 )
 			logerror("vtech1_latch_w: change background %d\n", (data>>4)&1);
 		if( (vtech1_latch ^ data) & 0x08 )
@@ -771,9 +757,9 @@ WRITE_HANDLER( vtech1_latch_w )
     vtech1_latch = data;
 }
 
-int vtech1_interrupt(void)
+INTERRUPT_GEN( vtech1_interrupt )
 {
 	if( vtech1_snapshot_size > 0 )
 		vtech1_snapshot_copy();
-	return interrupt();
+	cpu_set_irq_line(0, 0, PULSE_LINE);
 }

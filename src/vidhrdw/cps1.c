@@ -151,11 +151,7 @@ The games seem to use them to mark platforms, kill zones and no-go areas.
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
-#ifdef MESS
-#include "includes/cps1.h"
-#else
 #include "cps1.h"
-#endif /* MESS */
 
 #define VERBOSE 0
 

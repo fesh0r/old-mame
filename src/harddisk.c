@@ -9,6 +9,9 @@
 #include "zlib.h"
 #include <time.h>
 
+#ifdef _MSC_VER
+#define interface interface_
+#endif
 
 
 /*************************************

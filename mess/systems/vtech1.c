@@ -283,61 +283,8 @@ INPUT_PORTS_START( vtech1 )
     PORT_BIT(0x0f, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-#ifdef OLD_VIDEO
-static struct GfxLayout charlayout =
-{
-    8,12,                   /* 8 x 12 characters */
-    256,                    /* 256 characters */
-    1,                      /* 1 bits per pixel */
-    { 0 },                  /* no bitplanes; 1 bit per pixel */
-    /* x offsets */
-    { 7, 6, 5, 4, 3, 2, 1, 0 },
-    /* y offsets */
-    {  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,
-       6*8,  7*8,  8*8,  9*8, 10*8, 11*8 },
-    8*12                    /* every char takes 12 bytes */
-};
-
-static struct GfxLayout gfxlayout =
-{
-    8,3,                    /* 4 times 2x3 pixels */
-    256,                    /* 256 codes */
-    2,                      /* 2 bits per pixel */
-    { 0,1 },                /* two bitplanes */
-    /* x offsets */
-    { 0,0, 2,2, 4,4, 6,6 },
-    /* y offsets */
-    {  0, 0, 0  },
-    8                       /* one byte per code */
-};
-
-static struct GfxDecodeInfo gfxdecodeinfo[] =
-{
-    { 1, 0x0000, &charlayout,   0, 10 },
-    { 1, 0x0c00, &gfxlayout, 2*10, 2 },
-MEMORY_END   /* end of array */
-
-static unsigned short colortable[] =
-{
-/* block graphics in text mode */
-     0, 1,      /* green */
-     0, 2,      /* yellow */
-     0, 3,      /* blue */
-     0, 4,      /* red */
-     0, 5,      /* white */
-     0, 6,      /* cyan */
-     0, 7,      /* magenta */
-     0, 8,      /* orange */
-/* text in text mode */
-     9,10,      /* green on dark green */
-    11,12,      /* yellow on dark orange */
-/* graphics mode */
-    1,2,3,4,    /* green, yellow, blue, red */
-    5,6,8,7     /* buff, cyan, orange, magenta */
-};
-#endif
-
-static unsigned char palette[] =
+/* note - Juergen's colors do not match the colors in the m6847 code */
+static unsigned char vt_palette[] =
 {
       0,  0,  0,    /* black (block graphics) */
       0,224,  0,    /* green */
@@ -355,29 +302,21 @@ static unsigned char palette[] =
 };
 
 /* Initialise the palette */
-static void init_palette_monochrome(unsigned char *sys_palette, unsigned short *sys_colortable,const unsigned char *color_prom)
+static PALETTE_INIT( monochrome )
 {
     int i;
-    for (i = 0; i < sizeof(palette)/(sizeof(unsigned char)*3); i++)
+    for (i = 0; i < sizeof(vt_palette)/(sizeof(unsigned char)*3); i++)
     {
         int mono;
-        mono = (int)(palette[i*3+0] * 0.299 + palette[i*3+1] * 0.587 + palette[i*3+2] * 0.114);
-        sys_palette[i*3+0] = mono;
-        sys_palette[i*3+1] = mono;
-        sys_palette[i*3+2] = mono;
+        mono = (int)(vt_palette[i*3+0] * 0.299 + vt_palette[i*3+1] * 0.587 + vt_palette[i*3+2] * 0.114);
+		palette_set_color(i, mono, mono, mono);
     }
-#ifdef OLD_VIDEO
-    memcpy(sys_colortable,colortable,sizeof(colortable));
-#endif
 }
 
 /* Initialise the palette */
-static void init_palette_color(unsigned char *sys_palette, unsigned short *sys_colortable,const unsigned char *color_prom)
+static PALETTE_INIT( color )
 {
-    memcpy(sys_palette,palette,sizeof(palette));
-#ifdef OLD_VIDEO
-    memcpy(sys_colortable,colortable,sizeof(colortable));
-#endif
+	palette_set_colors(0, vt_palette, sizeof(vt_palette) / (sizeof(vt_palette[0]) * 3));
 }
 
 static INT16 speaker_levels[] = {-32768,0,32767,0};
@@ -394,188 +333,48 @@ static struct Wave_interface wave_interface = {
     { 25 }
 };
 
-static struct MachineDriver machine_driver_laser110 =
-{
-    /* basic machine hardware */
-    {
-        {
-            CPU_Z80,
-            3579500,    /* 3.57950 Mhz */
-            readmem_laser110,writemem_laser110,
-            readport_vtech1,writeport_vtech1,
-            vtech1_interrupt,1
-        },
-    },
-    50, 0,  /* frames per second, vblank duration */
-    1,
-    laser110_init_machine,
-    vtech1_shutdown_machine,
+static MACHINE_DRIVER_START( laser110 )
+	/* basic machine hardware */
+	MDRV_CPU_ADD_TAG("main", Z80, 3579500)        /* 3.57950 Mhz */
+	MDRV_CPU_MEMORY(readmem_laser110,writemem_laser110)
+	MDRV_CPU_PORTS(readport_vtech1,writeport_vtech1)
+	MDRV_CPU_VBLANK_INT(vtech1_interrupt,1)
+	MDRV_FRAMES_PER_SECOND(50)
+	MDRV_VBLANK_DURATION(0)
+	MDRV_INTERLEAVE(1)
+
+	MDRV_MACHINE_INIT( laser110 )
+	MDRV_MACHINE_STOP( vtech1 )
 
     /* video hardware */
-#ifdef OLD_VIDEO
-    36*8,                                   /* screen width (inc. blank/sync) */
-    38+192+25+1+6+13,                       /* screen height (inc. blank/sync) */
-    { 0*8, 36*8-1, 0, 20+192+12-1},         /* visible_area */
-    gfxdecodeinfo,                          /* graphics decode info */
-    sizeof(palette)/sizeof(palette[0])/3,   /* colors used for the characters */
-    sizeof(colortable)/sizeof(colortable[0]) ,
-    init_palette_monochrome,                /* init palette */
-#else
-	320,					/* screen width */
-	240,					/* screen height (pixels doubled) */
-	{ 0, 319, 0, 239 },		/* visible_area */
-	0,
-    sizeof(palette)/(sizeof(unsigned char)*3),
-	0,
-	init_palette_monochrome,
-#endif
+	MDRV_M6847_PAL( vtech1 )
+	MDRV_PALETTE_INIT(monochrome)
 
-    VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
-    0,
-#ifdef OLD_VIDEO
-    generic_vh_start,
-    generic_vh_stop,
-    vtech1_vh_screenrefresh,
-#else
-	vtech1_vh_start,
-	m6847_vh_stop,
-	m6847_vh_update,
-#endif
+	/* sound hardware */
+	MDRV_SOUND_ADD(SPEAKER, speaker_interface)
+	MDRV_SOUND_ADD(WAVE, wave_interface)
+MACHINE_DRIVER_END
 
-    /* sound hardware */
-    0,0,0,0,
-    {
-        {
-            SOUND_SPEAKER,
-            &speaker_interface
-        },
-        {
-            SOUND_WAVE,
-            &wave_interface
-        }
-    }
-};
 
-static struct MachineDriver machine_driver_laser210 =
-{
-    /* basic machine hardware */
-    {
-        {
-            CPU_Z80,
-            3579500,    /* 3.57950 Mhz */
-            readmem_laser210,writemem_laser210,
-            readport_vtech1,writeport_vtech1,
-            vtech1_interrupt,1
-        },
-    },
-    50, 0,  /* frames per second, vblank duration */
-    1,
-    laser210_init_machine,
-    vtech1_shutdown_machine,
+static MACHINE_DRIVER_START( laser210 )
+	MDRV_IMPORT_FROM( laser110 )
+	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MEMORY( readmem_laser210,writemem_laser210 )
 
-    /* video hardware */
-#ifdef OLD_VIDEO
-    36*8,                                   /* screen width (inc. blank/sync) */
-    38+192+25+1+6+13,                       /* screen height (inc. blank/sync) */
-    { 0*8, 36*8-1, 0, 20+192+12-1},         /* visible_area */
-    gfxdecodeinfo,                          /* graphics decode info */
-    sizeof(palette)/sizeof(palette[0])/3,   /* colors used for the characters */
-    sizeof(colortable)/sizeof(colortable[0]) ,
-    init_palette_color,                /* init palette */
-#else
-	320,					/* screen width */
-	240,					/* screen height (pixels doubled) */
-	{ 0, 319, 0, 239 },		/* visible_area */
-	0,
-    sizeof(palette)/(sizeof(unsigned char)*3),
-	0,
-	init_palette_color,
-#endif
+	MDRV_MACHINE_INIT( laser210 )
+	MDRV_PALETTE_INIT( color )
+MACHINE_DRIVER_END
 
-    VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
-    0,
- #ifdef OLD_VIDEO
-    generic_vh_start,
-    generic_vh_stop,
-    vtech1_vh_screenrefresh,
-#else
-	vtech1_vh_start,
-	m6847_vh_stop,
-	m6847_vh_update,
-#endif
-    /* sound hardware */
-    0,0,0,0,
-    {
-        {
-            SOUND_SPEAKER,
-            &speaker_interface
-        },
-        {
-            SOUND_WAVE,
-            &wave_interface
-        }
-    }
-};
 
-static struct MachineDriver machine_driver_laser310 =
-{
-    /* basic machine hardware */
-    {
-        {
-            CPU_Z80,
-            17734000/5,                     /* 17.734MHz / 5 = 3.54690 Mhz */
-            readmem_laser310,writemem_laser310,
-            readport_vtech1,writeport_vtech1,
-            vtech1_interrupt,1
-        },
-    },
-    50, 0,                                  /* frames per second, vblank duration */
-    1,
-    laser310_init_machine,
-    vtech1_shutdown_machine,
+static MACHINE_DRIVER_START( laser310 )
+	MDRV_IMPORT_FROM( laser110 )
+	MDRV_CPU_REPLACE( "main", Z80, 17734000/5 )	/* 17.734MHz / 5 = 3.54690 Mhz */
+	MDRV_CPU_MEMORY( readmem_laser310,writemem_laser310 )
 
-    /* video hardware */
-#ifdef OLD_VIDEO
-    36*8,                                   /* screen width (inc. blank/sync) */
-    38+192+25+1+6+13,                       /* screen height (inc. blank/sync) */
-    { 0*8, 36*8-1, 0, 20+192+12-1},         /* visible_area */
-    gfxdecodeinfo,                          /* graphics decode info */
-    sizeof(palette)/sizeof(palette[0])/3,   /* colors used for the characters */
-    sizeof(colortable)/sizeof(colortable[0]) ,
-    init_palette_color,                /* init palette */
-#else
-	320,					/* screen width */
-	240,					/* screen height (pixels doubled) */
-	{ 0, 319, 0, 239 },		/* visible_area */
-	0,
-    sizeof(palette)/(sizeof(unsigned char)*3),
-	0,
-	init_palette_color,
-#endif
-    VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
-    0,
-#ifdef OLD_VIDEO
-    generic_vh_start,
-    generic_vh_stop,
-    vtech1_vh_screenrefresh,
-#else
-	vtech1_vh_start,
-	m6847_vh_stop,
-	m6847_vh_update,
-#endif
-    /* sound hardware */
-    0,0,0,0,
-    {
-        {
-            SOUND_SPEAKER,
-            &speaker_interface
-        },
-        {
-            SOUND_WAVE,
-            &wave_interface
-        }
-    }
-};
+	MDRV_MACHINE_INIT( laser310 )
+	MDRV_PALETTE_INIT( color )
+MACHINE_DRIVER_END
+
 
 ROM_START( laser110 )
     ROM_REGION(0x10000,REGION_CPU1,0)
@@ -669,29 +468,12 @@ static const struct IODevice io_laser[] = {
 #define io_laser310 io_laser
 #define io_vz300    io_laser
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMP ( 1983, laser110, 0,        laser110, vtech1,   vtech1,   "Video Technology", "Laser 110" )
-COMP ( 1983, laser210, 0,        laser210, vtech1,   vtech1,   "Video Technology", "Laser 210" )
-COMPX( 1983, laser200, laser210, laser210, vtech1,   vtech1,   "Video Technology", "Laser 200", GAME_ALIAS )
-COMPX( 1983, vz200,    laser210, laser210, vtech1,   vtech1,   "Video Technology", "Sanyo / Dick Smith VZ200", GAME_ALIAS )
-COMPX( 1983, fellow,   laser210, laser210, vtech1,   vtech1,   "Video Technology", "Salora Fellow", GAME_ALIAS )
-COMPX( 1983, tx8000,   laser210, laser210, vtech1,   vtech1,   "Video Technology", "Texet TX8000", GAME_ALIAS )
-COMP ( 1983, laser310, 0,        laser310, vtech1,   vtech1,   "Video Technology", "Laser 310" )
-COMPX( 1983, vz300,    laser310, laser310, vtech1,   vtech1,   "Video Technology", "Sanyo / Dick Smith VZ300", GAME_ALIAS )
-
-#ifdef RUNTIME_LOADER
-extern void vtech1_runtime_loader_init(void)
-{
-	int i;
-	for (i=0; drivers[i]; i++) {
-		if ( strcmp(drivers[i]->name,"laser110")==0) drivers[i]=&driver_laser110;
-		if ( strcmp(drivers[i]->name,"laser210")==0) drivers[i]=&driver_laser210;
-		if ( strcmp(drivers[i]->name,"laser200")==0) drivers[i]=&driver_laser200;
-		if ( strcmp(drivers[i]->name,"vz200")==0) drivers[i]=&driver_vz200;
-		if ( strcmp(drivers[i]->name,"fellow")==0) drivers[i]=&driver_fellow;
-		if ( strcmp(drivers[i]->name,"tx8000")==0) drivers[i]=&driver_tx8000;
-		if ( strcmp(drivers[i]->name,"laser310")==0) drivers[i]=&driver_laser310;
-		if ( strcmp(drivers[i]->name,"vz300")==0) drivers[i]=&driver_vz300;
-	}
-}
-#endif
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT    COMPANY   FULLNAME */
+COMP ( 1983, laser110, 0,        laser110, vtech1,  NULL,   "Video Technology", "Laser 110" )
+COMP ( 1983, laser210, 0,        laser210, vtech1,  NULL,   "Video Technology", "Laser 210" )
+COMPX( 1983, laser200, laser210, laser210, vtech1,  NULL,   "Video Technology", "Laser 200", GAME_ALIAS )
+COMPX( 1983, vz200,    laser210, laser210, vtech1,  NULL,   "Video Technology", "Sanyo / Dick Smith VZ200", GAME_ALIAS )
+COMPX( 1983, fellow,   laser210, laser210, vtech1,  NULL,   "Video Technology", "Salora Fellow", GAME_ALIAS )
+COMPX( 1983, tx8000,   laser210, laser210, vtech1,  NULL,   "Video Technology", "Texet TX8000", GAME_ALIAS )
+COMP ( 1983, laser310, 0,        laser310, vtech1,  NULL,   "Video Technology", "Laser 310" )
+COMPX( 1983, vz300,    laser310, laser310, vtech1,  NULL,   "Video Technology", "Sanyo / Dick Smith VZ300", GAME_ALIAS )

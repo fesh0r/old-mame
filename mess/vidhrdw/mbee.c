@@ -491,9 +491,9 @@ void m6545_data_w(int offs, int data)
     }
 }
 
-int mbee_vh_start(void)
+VIDEO_START( mbee )
 {
-    if( generic_vh_start() )
+    if( video_start_generic() )
 		return 1;
 	pcgram = memory_region(REGION_CPU1)+0xf000;
 	videoram = memory_region(REGION_GFX1)+0x0000;
@@ -503,14 +503,10 @@ int mbee_vh_start(void)
     return 0;
 }
 
-void mbee_vh_stop(void)
-{
-	generic_vh_stop();
-}
-
-void mbee_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( mbee )
 {
 	int offs, cursor;
+	int full_refresh = 1;
 
 	if( mbee_frame_counter > 0 )
 	{
@@ -530,7 +526,6 @@ void mbee_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
     if( full_refresh )
 	{
 		memset(dirtybuffer, 1, videoram_size);
-        fillbitmap(bitmap, Machine->pens[0], &Machine->visible_area);
 	}
 
 	for( offs = 0x000; offs < 0x380; offs += 0x10 )

@@ -2,8 +2,7 @@
 #define DRAGON_H
 
 #include "vidhrdw/m6847.h"
-#include "includes/rstrbits.h"
-#include "includes/rstrtrck.h"
+#include "videomap.h"
 
 #define COCO_CPU_SPEED_HZ		894886	/* 0.894886 MHz */
 #define COCO_FRAMES_PER_SECOND	(COCO_CPU_SPEED_HZ / 57.0 / 263)
@@ -18,17 +17,28 @@
  * Backdoors into mess/vidhrdw/m6847.c                                     *
  * ----------------------------------------------------------------------- */
 
-int internal_m6847_vh_start(const struct m6847_init_params *params, struct rastertrack_interface *intf, int dirtyramsize);
+int internal_video_start_m6847(const struct m6847_init_params *params, const struct videomap_interface *videointf,
+	int dirtyramsize);
 
-void internal_m6847_rastertrack_endcontent(void);
+void internal_m6847_frame_callback(struct videomap_framecallback_info *info, int offset, int border_top, int rows);
 
-void internal_m6847_rastertrack_newscreen(struct rastertrack_vvars *vvars, struct rastertrack_hvars *hvars,
-	int border_top, int rows, int baseoffset, int use_m6847_offset, void (*getvideomode)(struct rastertrack_hvars *));
+struct internal_m6847_linecallback_interface
+{
+	int width_factor;
+	charproc_callback charproc;
+	UINT16 (*calculate_artifact_color)(UINT16 metacolor, int artifact_mode);
+	int (*setup_dynamic_artifact_palette)(int artifact_mode, UINT8 *bgcolor, UINT8 *fgcolor);
+};
 
-void internal_m6847_rastertrack_getvideomode(struct rastertrack_hvars *hvars,
-	UINT32 *pens, int skew_up, int border_pen, int wf,
-	int artifact_value, int artifact_palettebase,
-	void (*getcolorrgb)(int c, UINT8 *red, UINT8 *green, UINT8 *blue));
+void internal_m6847_line_callback(struct videomap_linecallback_info *info, const UINT16 *metapalette,
+	struct internal_m6847_linecallback_interface *intf);
+
+UINT8 internal_m6847_charproc(UINT32 c, UINT16 *charpalette, const UINT16 *metapalette, int row, int skew);
+
+int internal_m6847_getadjustedscanline(void);
+void internal_m6847_vh_interrupt(int scanline, int rise_scanline, int fall_scanline);
+
+void internal_video_update_m6847(struct mame_bitmap *bitmap, const struct rectangle *cliprect);
 
 /* ----------------------------------------------------------------------- *
  * from vidhrdw/dragon.c                                                   *
@@ -44,12 +54,13 @@ extern void coco3_ram_b7_w (offs_t offset, data8_t data);
 extern void coco3_ram_b8_w (offs_t offset, data8_t data);
 extern void coco3_ram_b9_w (offs_t offset, data8_t data);
 extern void coco3_vh_sethires(int hires);
-extern int dragon_vh_start(void);
-extern int coco_vh_start(void);
-extern int coco2b_vh_start(void);
-extern int coco3_vh_start(void);
-extern void coco3_vh_stop(void);
-extern void coco3_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh);
+
+extern VIDEO_START( dragon );
+extern VIDEO_START( coco );
+extern VIDEO_START( coco2b );
+extern VIDEO_START( coco3 );
+extern VIDEO_UPDATE( coco3 );
+
 extern WRITE_HANDLER ( coco_ram_w );
 extern READ_HANDLER ( coco3_gimevh_r );
 extern WRITE_HANDLER ( coco3_gimevh_w );
@@ -60,13 +71,14 @@ extern void coco3_vh_blink(void);
  * from machine/dragon.c                                                   *
  * ----------------------------------------------------------------------- */
 
-extern void dragon32_init_machine(void);
-extern void dragon64_init_machine(void);
-extern void coco_init_machine(void);
-extern void coco2_init_machine(void);
-extern void coco3_init_machine(void);
-extern void coco_stop_machine(void);
-extern void dragon64_stop_machine(void);
+extern MACHINE_INIT( dragon32 );
+extern MACHINE_INIT( dragon64 );
+extern MACHINE_INIT( coco );
+extern MACHINE_INIT( coco2 );
+extern MACHINE_INIT( coco3 );
+extern MACHINE_STOP( coco );
+
+extern INTERRUPT_GEN( coco3_vh_interrupt );
 extern int coco_cassette_init(int id);
 extern int coco3_cassette_init(int id);
 extern void coco_cassette_exit(int id);
@@ -104,6 +116,8 @@ extern void coco_bitbanger_output (int id, int data);
 extern READ_HANDLER( coco_pia_1_r );
 extern READ_HANDLER( coco3_pia_1_r );
 extern void dragon_sound_update(void);
+
+extern void coco_set_halt_line(int halt_line);
 
 /* Returns whether a given piece of logical memory is contiguous or not */
 extern int coco3_mmu_ismemorycontiguous(int logicaladdr, int len);

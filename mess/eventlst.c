@@ -23,35 +23,12 @@ static int CyclesPerFrame=0;
 can be setup as:
 
 Number_of_CPU_Cycles_In_A_Frame/Minimum_Number_Of_Cycles_Per_Instruction */
-void	EventList_Initialise(int NumEntries)
+void EventList_Initialise(int NumEntries)
 {
-        /* stop memory leak if initialise accidently called twice */
-	if (pEventListBuffer!=NULL)
-		free(pEventListBuffer);
-
-	pEventListBuffer = malloc(sizeof(EVENT_LIST_ITEM)*NumEntries);
-
-	if (pEventListBuffer!=NULL)
-	{
-		EventList_Reset();
-                TotalEvents = NumEntries;
-//		return 1;
-	}
-        else
-                TotalEvents = 0;
-//	return 0;
-}
-
-/* free event buffer */
-void    EventList_Finish(void)
-{
-	if (pEventListBuffer!=NULL)
-	{
-		free(pEventListBuffer);
-		pEventListBuffer = NULL;
-	}
-        TotalEvents = 0;
+	pEventListBuffer = auto_malloc(sizeof(EVENT_LIST_ITEM)*NumEntries);
+	TotalEvents = NumEntries;
 	CyclesPerFrame = 0;
+	EventList_Reset();
 }
 
 /* reset the change list */

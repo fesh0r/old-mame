@@ -349,17 +349,16 @@ static int z80_table_num[5] = { Z80_TABLE_op, Z80_TABLE_xy,
     Z80_TABLE_ed, Z80_TABLE_cb, Z80_TABLE_xycb };
 static UINT8 *old_z80_tables[5], *z80_table;
 
-static void svi318_vdp_interrupt (int i)
+void svi318_vdp_interrupt (int i)
 	{
     cpu_set_irq_line (0, 0, (i ? HOLD_LINE : CLEAR_LINE));
 	}
 
-void init_svi318 (void)
+DRIVER_INIT( svi318 )
 	{
 	int i,n;
 
     memset (&svi, 0, sizeof (svi) );
-    TMS9928A_int_callback (svi318_vdp_interrupt);
 
     svi.svi318 = !strcmp (Machine->gamedrv->name, "svi318");
 
@@ -391,7 +390,7 @@ void init_svi318 (void)
         {
         for (i=0;i<5;i++)
             {
-            old_z80_tables[i] = z80_get_cycle_table (z80_table_num[i]);
+            old_z80_tables[i] = (void *) z80_get_cycle_table (z80_table_num[i]);
             for (n=0;n<256;n++)
                 {
                 z80_table[i*0x100+n] = old_z80_tables[i][n] + (i > 1 ? 2 : 1);
@@ -406,7 +405,7 @@ void init_svi318 (void)
 #endif
 	}
 
-void svi318_ch_reset (void)
+MACHINE_INIT( svi318 )
 	{
     /* video stuff */
     TMS9928A_reset ();
@@ -423,13 +422,9 @@ void svi318_ch_reset (void)
 #endif
 	}
 
-void svi318_ch_stop (void)
+MACHINE_STOP( svi318 )
 	{
 	int i,j;
-
-#ifdef SVI_DISK
-	wd179x_exit ();
-#endif
 
 	if (svi.empty_bank) free (svi.empty_bank);
 	if (svi.banks[1][0]) free (svi.banks[1][0]);
@@ -452,7 +447,7 @@ void svi318_ch_stop (void)
         }
 	}
 
-int svi318_interrupt ()
+INTERRUPT_GEN( svi318_interrupt )
 	{
 	int set, i, p, b, bit;
 
@@ -485,8 +480,6 @@ int svi318_interrupt ()
 			logerror ("bank%d%d freed.\n", b, p + 1);
         	}
 		}
-
-	return ignore_interrupt();
 	}
 
 /*

@@ -145,10 +145,9 @@ static struct SN76496interface sn76496_interface =
 
 ***************************************************************************/
 
-static int coleco_interrupt(void)
+static INTERRUPT_GEN( coleco_interrupt )
 {
     TMS9928A_interrupt();
-    return ignore_interrupt ();
 }
 
 static void coleco_vdp_interrupt (int state)
@@ -160,51 +159,29 @@ static void coleco_vdp_interrupt (int state)
 	last_state = state;
 }
 
-static int coleco_vh_start(void)
+static const TMS9928a_interface tms9928a_interface =
 {
-	if (TMS9928A_start(TMS99x8A, 0x4000)) return 1;
-
-	TMS9928A_int_callback(coleco_vdp_interrupt);
-	return 0;
-}
-
-static struct MachineDriver machine_driver_coleco =
-{
-    /* basic machine hardware */
-    {
-        {
-            CPU_Z80,
-            3579545,    /* 3.579545 Mhz */
-            coleco_readmem,coleco_writemem,coleco_readport,coleco_writeport,
-            coleco_interrupt,1
-        }
-    },
-    60, DEFAULT_REAL_60HZ_VBLANK_DURATION,  /* frames per second, vblank duration */
-    1,
-    0, /* init_machine */
-	0, /* stop_machine */
-
-    32*8, 24*8, { 0*8, 32*8-1, 0*8, 24*8-1 },
-    0, /* gfxdecodeinfo */
-    TMS9928A_PALETTE_SIZE,
-    TMS9928A_COLORTABLE_SIZE,
-    tms9928A_init_palette,
-
-    VIDEO_TYPE_RASTER,
-    0,
-    coleco_vh_start,
-    TMS9928A_stop,
-    TMS9928A_refresh,
-
-    /* sound hardware */
-    0,0,0,0,
-    {
-        {
-            SOUND_SN76496,
-            &sn76496_interface
-        }
-    }
+	TMS99x8A,
+	0x4000,
+	coleco_vdp_interrupt
 };
+
+static MACHINE_DRIVER_START( coleco )
+	/* basic machine hardware */
+	MDRV_CPU_ADD(Z80, 3579545)       /* 3.579545 Mhz */
+	MDRV_CPU_MEMORY(coleco_readmem,coleco_writemem)
+	MDRV_CPU_PORTS(coleco_readport,coleco_writeport)
+	MDRV_CPU_VBLANK_INT(coleco_interrupt,1)
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(1)
+
+    /* video hardware */
+	MDRV_TMS9928A( &tms9928a_interface )
+
+	/* sound hardware */
+	MDRV_SOUND_ADD(SN76496, sn76496_interface)
+MACHINE_DRIVER_END
 
 
 /***************************************************************************
@@ -240,7 +217,7 @@ static const struct IODevice io_coleco[] = {
     {
         IO_CARTSLOT,        /* type */
         1,                  /* count */
-        "rom\0",            /* file extensions */
+        "rom\0col\0",       /* file extensions */
         IO_RESET_CPU,       /* reset if file changed */
         0,
         coleco_init_cart,	/* init */

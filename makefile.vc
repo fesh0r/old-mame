@@ -1,0 +1,426 @@
+# set this to mame, mess or the destination you want to build
+# TARGET = mame
+TARGET = mess
+# TARGET = neomame
+# TARGET = tiny
+# TARGET=tinyms
+
+# uncomment next line to make a debug version
+# DEBUG = 1
+
+# build with browser information for debugging
+BSCMAKE = @-bscmake.exe
+
+# command to invoke UPX (Ultimate Packer for eXecutables)
+# UPX = upx.exe -9 --compress-icons=0
+
+# uncomment next line to use Assembler 68000 engine
+# X86_ASM_68000 = 1
+
+# uncomment next line to use Assembler 68020 engine
+# X86_ASM_68020 = 1
+
+# set this the operating system you're building for
+MAMEOS = windows
+
+# if MAME_NET is defined, network support will be compiled in
+# MAME_NET = -DMAME_NET
+
+# uncomment next line to generate help files
+# HELP = 1
+
+
+# extension for executables
+EXE = .exe
+
+# CPU core include paths
+VPATH=src $(wildcard src/cpu/*)
+
+# compiler, linker and utilities
+AR = @lib
+CC = @cl
+LD = @link
+RC = rc
+ASM = @nasmw
+ASMFLAGS = -f win32
+RM = rm
+RMDIR = rd /S /Q
+MD = -mkdir
+
+ifeq "$(TARGET)" "mess"
+MESS = 1
+endif
+ifeq "$(TARGET)" "tinyms"
+MESS = 1
+endif
+
+MSVC = 1
+WINDOWS_PROGRAM = -subsystem:windows
+CONSOLE_PROGRAM = -subsystem:console
+
+SUFFIX = vc
+
+ifdef DEBUG
+NAME = $(TARGET)$(SUFFIX)d
+GUINAME = $(TARGET)gui$(SUFFIX)d
+else
+ifdef K6
+NAME = $(TARGET)$(SUFFIX)k6
+GUINAME = $(TARGET)gui$(SUFFIX)k6
+else
+ifdef I686
+NAME = $(TARGET)$(SUFFIX)pp
+GUINAME = $(TARGET)gui$(SUFFIX)pp
+else
+NAME = $(TARGET)$(SUFFIX)
+GUINAME = $(TARGET)gui$(SUFFIX)
+ARCH = -march=pentium
+endif
+endif
+endif
+
+# build the targets in different object dirs, since mess changes
+# some structures and thus they can't be linked against each other.
+OBJ = obj/$(NAME)
+
+EMULATORDLL = $(NAME)lib.dll
+EMULATORCLI = $(NAME)$(EXE)
+EMULATORGUI = $(GUINAME)$(EXE)
+
+#####################################################################
+# compiler
+
+#
+# Preprocessor Definitions
+#
+
+DEFS = \
+	-DWIN32 \
+	-D_WINDOWS \
+	-DM_PI=3.1415926534 \
+	-DPI=3.1415926534 \
+	-DINLINE='static __inline' \
+	-Dinline=__inline \
+	-D__inline__=__inline \
+	-Dalloca=_alloca \
+	-DPNG_SAVE_SUPPORT \
+	-DMAME_AVI \
+	-DHAS_CPUS \
+	-DHAS_SOUND \
+	-DLSB_FIRST=1 \
+	-DZLIB_DLL \
+	$(MAME_VERSION) \
+	$(MAME_NET) \
+
+ifndef DEBUG
+DEFS += -DNDEBUG
+endif
+
+ifdef MESS
+DEFS += -DMESS=1 -DMAME32NAME='"MESS"' -DMAMENAME='"MESS"'
+endif
+
+INCLUDES = \
+        -Isrc \
+        -Isrc/includes \
+	-Isrc/windows \
+	-Isrc/windowsui \
+        -Isrc/cpu/m68000 \
+        -I$(OBJ)/cpu/m68000
+
+ifeq "$(TARGET)" "mess"
+INCLUDES += \
+	-Imess \
+	-Imess/includes \
+	-Imess/windows
+endif
+
+ifdef DX_INCPATH
+INCLUDES += -I$(DX_INCPATH)
+endif
+
+ifdef ZLIB_INCPATH
+INCLUDES += -I$(subst \,\\,$(ZLIB_INCPATH)) 
+endif
+
+#
+# C Compiler flags
+#
+
+CFLAGS = -nologo -MT $(INCLUDES)
+
+ifdef DEBUG
+CFLAGS += -Zi -Od
+else
+CFLAGS += -Ox -G5 -Ob2
+endif
+
+#####################################################################
+# Resources
+
+RCDEFS = $(MAME_NET) $(MAME_MMX) -DNDEBUG $(MAME_VERSION)
+
+RCFLAGS = -l 0x409 -I./windowsui $(MAME_DEBUG)
+
+ifdef DEBUG
+RCFLAGS += -DMAME_DEBUG
+endif
+
+ifdef MESS
+RCFLAGS += -DMESS -Imess/windowsui -Isrc/windowsui
+endif
+
+#####################################################################
+# Linker
+
+LIBS = \
+        kernel32.lib \
+        user32.lib \
+        gdi32.lib \
+        shell32.lib \
+        comctl32.lib \
+        comdlg32.lib \
+        advapi32.lib \
+        winmm.lib \
+        vfw32.lib \
+        dxguid.lib \
+        dinput.lib \
+		dsound.lib \
+		ddraw.lib \
+        zlib.lib
+
+ifdef DX_LIBPATH
+LDFLAGS += -LIBPATH:$(subst \,\\,$(DX_LIBPATH))
+endif
+
+ifdef ZLIB_LIBPATH
+LDFLAGS += -LIBPATH:$(subst \,\\,$(ZLIB_LIBPATH))
+endif
+
+ifdef GX_PATH
+LDFLAGS += -LIBPATH:$(subst \,\\,$(GX_PATH))\\$(WCEPLAT)
+endif
+
+LDFLAGS += -machine:x86 -nologo
+
+ifdef DEBUG
+LDFLAGS += -debug:full
+else
+LDFLAGS += -release -incremental:no -map
+endif
+
+ifdef BSCMAKE
+BSCDEFS = -Fr$(@:%.o=%.sbr)
+endif
+
+#####################################################################
+
+OBJDIRS = \
+        obj \
+        $(OBJ) \
+        $(OBJ)/cpu \
+        $(OBJ)/sound \
+        $(OBJ)/drivers \
+        $(OBJ)/machine \
+        $(OBJ)/vidhrdw \
+        $(OBJ)/sndhrdw \
+        $(OBJ)/windows \
+        $(OBJ)/wince \
+		$(OBJ)/windowsui
+
+ifdef MESS
+# MESS object directories
+OBJDIRS += \
+        $(OBJ)/mess \
+		$(OBJ)/mess/cpu \
+		$(OBJ)/mess/sound \
+        $(OBJ)/mess/systems \
+        $(OBJ)/mess/machine \
+        $(OBJ)/mess/vidhrdw \
+        $(OBJ)/mess/sndhrdw \
+        $(OBJ)/mess/tools \
+        $(OBJ)/mess/tools/dat2html \
+        $(OBJ)/mess/tools/imgtool \
+        $(OBJ)/mess/tools/mkhdimg \
+        $(OBJ)/mess/tools/messroms \
+        $(OBJ)/mess/tools/mkimage \
+        $(OBJ)/mess/formats \
+        $(OBJ)/mess/windows \
+        $(OBJ)/mess/windowsui
+endif
+
+PLATFORM_IMGTOOL_OBJS = $(OBJ)/mess/windows/glob.o
+
+#####################################################################
+
+all: maketree $(EMULATORCLI) $(EMULATORGUI) extra
+
+# include the various .mak files
+include src/core.mak
+ifdef MESS
+include mess/$(TARGET).mak
+else
+include src/$(TARGET).mak
+endif
+include src/rules.mak
+include src/$(MAMEOS)/$(MAMEOS).mak
+ifdef MESS
+include mess/rules_ms.mak
+endif
+
+ifdef DEBUG
+DBGDEFS = -DMAME_DEBUG
+else
+DBGDEFS =
+DBGOBJS =
+endif
+
+DIRENTOBJS = $(OBJ)/windowsui/dirent.o
+
+extra:	romcmp$(EXE) $(TOOLS) $(HELPFILES)
+
+# combine the various definitions to one
+CDEFS = $(DEFS) $(COREDEFS) $(CPUDEFS) $(SOUNDDEFS) $(ASMDEFS) $(DBGDEFS) $(BSCDEFS)
+
+$(EMULATORDLL): $(OBJS) $(COREOBJS) $(OSOBJS) $(DIRENTOBJS) $(DRVLIBS)
+# always recompile the version string
+	$(CC) $(CDEFS) $(CFLAGS) -Fr$(OBJ)/version.sbr -Fo$(OBJ)/version.o -c src/version.c
+	@echo Linking $@...
+	$(LD) /dll $(LDFLAGS) -out:$@ $(LIBS) $(COREOBJS) $(OBJS) $(OSOBJS) $(DIRENTOBJS) $(DRVLIBS)
+ifdef BSCMAKE
+	$(BSCMAKE) -nologo -o$(@:%.exe=%.bsc) $(OBJS:%.o=%.sbr) $(COREOBJS:%.o=%.sbr)
+endif
+ifndef DEBUG
+ifdef UPX
+	$(UPX) $@
+endif
+endif
+
+# gui target
+$(EMULATORGUI):	$(EMULATORDLL) $(OBJ)/mess/windowsui/guimain.o $(RESFILE)
+	@echo Linking $@...
+	$(LD) $(LDFLAGS) $(WINDOWS_PROGRAM) $(EMULATORDLL:%.dll=%.lib) $(OBJ)/mess/windowsui/guimain.o $(RESFILE) -out:$@
+ifndef DEBUG
+ifdef UPX
+	$(UPX) $@
+endif
+endif
+
+# cli target
+$(EMULATORCLI):	$(EMULATORDLL) $(OBJ)/mess/windows/climain.o
+	@echo Linking $@...
+	$(LD) $(LDFLAGS) $(CONSOLE_PROGRAM) $(EMULATORDLL:%.dll=%.lib) $(OBJ)/mess/windows/climain.o -out:$@
+ifndef DEBUG
+ifdef UPX
+	$(UPX) $@
+endif
+endif
+
+romcmp$(EXE): $(OBJ)/romcmp.o $(OBJ)/unzip.o
+	@echo Linking $@...
+	$(LD) $(LDFLAGS) $(CONSOLE_PROGRAM) $(LIBS) $(DIRENTOBJS) -out:$@ $^
+
+ifdef PERL
+$(OBJ)/cpuintrf.o: src/cpuintrf.c rules.mak
+	$(PERL) src/makelist.pl
+	@echo Compiling $<...
+	$(CC) $(CDEFS) $(CFLAGS) -c $< -o $@
+endif
+
+ifndef DEBUG
+# Workarounds for VC6 optimization bugs
+$(OBJ)/input.o: src/input.c
+	$(CC) $(CDEFS) $(FFLAGS) -W3 -nologo -MT $(INCLUDES) -Oi -Ot -Oy -Ob1 -Gs -G5 -Gr -Fo$@ -c $<
+
+$(OBJ)/mess/cpu/g65816/g65816o0.o: mess/cpu/g65816/g65816o0.c
+	$(CC) $(CDEFS) $(FFLAGS) -W3 -nologo -MT $(INCLUDES) -Oi -Ot -Oy -Gs -G5 -Gr -Fo$@ -c $<
+
+$(OBJ)/mess/machine/msx.o: mess/machine/msx.c
+	$(CC) $(CDEFS) $(FFLAGS) -W3 -nologo -MT $(INCLUDES) -Oi -Ot -Oy -Ob1 -Gs -G5 -Gr -Fo$@ -c $<
+
+$(OBJ)/cpu/tms9900/%.o:	src/cpu/tms9900/%.c
+	$(CC) $(CDEFS) $(FFLAGS) -W3 -nologo -MT $(INCLUDES) -Oi -Ot -Oy -Ob1 -Gs -G5 -Gr -Fo$@ -c $<
+endif
+
+$(OBJ)/%.o: src/%.asm
+	$(ASM) -o $@ $(ASMFLAGS) $(ASMDEFS) $<
+
+$(OBJ)/%.o: src/windows/%.asm
+	$(ASM) -o $@ $(ASMFLAGS) $(ASMDEFS) $<
+
+$(OBJ)/%.o: src/%.c
+	$(CC) $(CDEFS) $(CFLAGS) -Fo$@ -c $<
+
+$(OBJ)/wince/%.o: src/wince/%.cpp
+	$(CC) $(CDEFS) $(CFLAGS) -Fo$@ -c $<
+
+$(OBJ)/mess/%.o: mess/%.c
+	$(CC) $(CDEFS) $(CFLAGS) -Fo$@ -c $<
+
+$(OBJ)/wince/%.res: src/wince/%.rc
+	@echo Compiling resources $<...
+	$(RC) $(RCDEFS) $(RCFLAGS) -Fo$@ $<
+
+$(OBJ)/windowsui/%.res: windowsui/%.rc
+	@echo Compiling resources $<...
+	$(RC) $(RCDEFS) $(RCFLAGS) -Fo$@ $<
+
+$(OBJ)/mess/windowsui/%.res: mess/windowsui/%.rc
+	@echo Compiling resources $<...
+	$(RC) $(RCDEFS) $(RCFLAGS) -Fo$@ $<
+
+# compile generated C files for the 68000 emulator
+$(M68000_GENERATED_OBJS): $(OBJ)/cpu/m68000/m68kmake$(EXE)
+	@echo Compiling $(subst .o,.c,$@)...
+	$(CC) $(CDEFS) $(CFLAGS) -Fo$@ -c $*.c
+
+# additional rule, because m68kcpu.c includes the generated m68kops.h :-/
+$(OBJ)/cpu/m68000/m68kcpu.o: $(OBJ)/cpu/m68000/m68kmake$(EXE)
+
+# generate C source files for the 68000 emulator
+$(OBJ)/cpu/m68000/m68kmake$(EXE): src/cpu/m68000/m68kmake.c
+	@echo M68K make $<...
+	$(CC) $(CDEFS) $(CFLAGS) -Fe$@ -Fo$(OBJ)/cpu/m68000/ $<
+	@echo Generating M68K source files...
+	$(OBJ)/cpu/m68000/m68kmake$(EXE) $(OBJ)/cpu/m68000 src/cpu/m68000/m68k_in.c
+
+# generate asm source files for the 68000/68020 emulators
+$(OBJ)/cpu/m68000/68000.asm:  src/cpu/m68000/make68k.c
+	@echo Compiling $<...
+	$(CC) $(CDEFS) $(CFLAGS) -Fe$(OBJ)/cpu/m68000/make68k$(EXE) -Fo$(OBJ)/cpu/m68000/ $<
+	@echo Generating $@...
+	$(OBJ)/cpu/m68000/make68k$(EXE) $@ $(OBJ)/cpu/m68000/68000tab.asm 00
+
+$(OBJ)/cpu/m68000/68020.asm:  src/cpu/m68000/make68k.c
+	@echo Compiling $<...
+	$(CC) $(CDEFS) $(CFLAGS) -Fe$(OBJ)/cpu/m68000/make68k$(EXE) -Fo$(OBJ)/cpu/m68000/ $<
+	@echo Generating $@...
+	$(OBJ)/cpu/m68000/make68k$(EXE) $@ $(OBJ)/cpu/m68000/68020tab.asm 20
+
+# generated asm files for the 68000 emulator
+$(OBJ)/cpu/m68000/68000.o:  $(OBJ)/cpu/m68000/68000.asm
+	@echo Assembling $<...
+	$(ASM) -o $@ $(ASMFLAGS) $(subst -D,-d,$(ASMDEFS)) $<
+
+$(OBJ)/cpu/m68000/68020.o:  $(OBJ)/cpu/m68000/68020.asm
+	@echo Assembling $<...
+	$(ASM) -o $@ $(ASMFLAGS) $(subst -D,-d,$(ASMDEFS)) $<
+
+$(OBJ)/%.a:
+	@echo Archiving $@...
+	$(AR) -nologo -out:$@ $^
+
+makedir:
+	@echo make makedir is no longer necessary, just type make
+
+$(sort $(OBJDIRS)):
+	$(MD) $(subst /,\\,$@)
+
+maketree: $(sort $(OBJDIRS))
+
+clean:
+	@echo Deleting object tree $(OBJ)...
+	@-$(RM) -r $(OBJ)
+	@echo Deleting $(EMULATOR)...
+	@-$(RM) $(EMULATOR)
+

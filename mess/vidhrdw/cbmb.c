@@ -8,7 +8,7 @@
 
 #include "vidhrdw/generic.h"
 #include "includes/crtc6845.h"
-#include "includes/state.h"
+#include "statetxt.h"
 #include "includes/cbmb.h"
 
 static int cbmb_font=0;
@@ -37,7 +37,7 @@ void cbm700_vh_init(void)
 	}
 }
 
-int cbm700_vh_start(void)
+VIDEO_START( cbm700 )
 {
 	int i;
 
@@ -54,7 +54,7 @@ int cbm700_vh_start(void)
 		}
 	}
 
-    return generic_vh_start();
+    return video_start_generic();
 }
 
 void cbmb_vh_cursor(CRTC6845_CURSOR *cursor)
@@ -67,7 +67,7 @@ void cbmb_vh_set_font(int font)
 	cbmb_font=font;
 }
 
-void cbmb_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( cbmb )
 {
 	int x, y, i;
 	struct rectangle rect, rect2;
@@ -76,6 +76,7 @@ void cbmb_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
 	int height=crtc6845_get_char_height(crtc6845);
 	int start=crtc6845_get_start(crtc6845)&0x7ff;
 	CRTC6845_CURSOR cursor;
+	int full_refresh = 1;
 
 	rect.min_x=Machine->visible_area.min_x;
 	rect.max_x=Machine->visible_area.max_x;
@@ -110,6 +111,6 @@ void cbmb_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
 		}
 	}
 
-	state_display(bitmap);
+	statetext_display(bitmap);
 }
 

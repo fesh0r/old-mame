@@ -15,7 +15,6 @@
 #include "mamedbg.h"
 #include "tms34010.h"
 #include "34010ops.h"
-#include "state.h"
 
 #ifdef MAME_DEBUG
 extern int debug_key_pressed;
@@ -2050,28 +2049,6 @@ void tms34010_state_load(int cpunum, void *f)
 	osd_fread(f,state.shiftreg,sizeof(SHIFTREG_SIZE));
 }
 
-static void tms34010_state_presave(void)   
-{   
-	int i;   
-	for (i = 0; i < 16; i++)   
-		state.flat_aregs[i] = AREG(i);   
-	for (i = 0; i < 15; i++)   
-		state.flat_bregs[i] = BREG(BINDEX(i));   
-}   
-
-static void tms34010_state_postload(void)   
-{   
-	int i;   
-	for (i = 0; i < 16; i++)   
-		AREG(i) = state.flat_aregs[i];   
-	for (i = 0; i < 15; i++)   
-		BREG(BINDEX(i)) = state.flat_bregs[i];   
-
-	SET_FW();   
-	tms34010_io_register_w(REG_DPYINT,IOREG(REG_DPYINT),0);   
-	set_raster_op(&state);   
-	set_pixel_function(&state);   
-} 
 
 
 /*###################################################################################################

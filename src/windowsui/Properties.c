@@ -19,6 +19,11 @@
     Created 8/29/98 by Mike Haaland (mhaaland@hypertech.com)
 
 ***************************************************************************/
+
+#ifdef __GNUC__
+#undef bool
+#endif
+
 #define WIN32_LEAN_AND_MEAN
 #define NONAMELESSUNION 1
 #include <windows.h>
@@ -26,7 +31,6 @@
 #include <commctrl.h>
 #include <commdlg.h>
 #undef NONAMELESSUNION
-#undef bool //hack for the mingw compiler and mess code
 #include <ddraw.h>
 #include <stdio.h>
 #include <string.h>
@@ -69,16 +73,19 @@ static INT_PTR CALLBACK GamePropertiesDialogProc(HWND hDlg, UINT Msg, WPARAM wPa
 static INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam);
 static INT_PTR CALLBACK GameDisplayOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam);
 
-static void SetStereoEnabled(HWND hWnd, int the_index);
-static void SetYM3812Enabled(HWND hWnd, int the_index);
-static void SetSamplesEnabled(HWND hWnd, int the_index, BOOL bSoundEnabled);
+static void SetStereoEnabled(HWND hWnd, int nIndex);
+static void SetYM3812Enabled(HWND hWnd, int nIndex);
+static void SetSamplesEnabled(HWND hWnd, int nIndex, BOOL bSoundEnabled);
 static void InitializeOptions(HWND hDlg);
 static void InitializeMisc(HWND hDlg);
 static void OptOnHScroll(HWND hWnd, HWND hwndCtl, UINT code, int pos);
 static void BeamSelectionChange(HWND hwnd);
 static void FlickerSelectionChange(HWND hwnd);
 static void GammaSelectionChange(HWND hwnd);
+static void BrightCorrectSelectionChange(HWND hwnd);
 static void BrightnessSelectionChange(HWND hwnd);
+static void IntensitySelectionChange(HWND hwnd);
+static void A2DSelectionChange(HWND hwnd);
 static void ResDepthSelectionChange(HWND hWnd, HWND hWndCtrl);
 static void RefreshSelectionChange(HWND hWnd, HWND hWndCtrl);
 static void VolumeSelectionChange(HWND hwnd);
@@ -87,11 +94,11 @@ static void InitializeDisplayModeUI(HWND hwnd);
 static void InitializeSoundUI(HWND hwnd);
 static void InitializeSkippingUI(HWND hwnd);
 static void InitializeRotateUI(HWND hwnd);
-static void InitializeDepthUI(HWND hwnd);
 static void InitializeResDepthUI(HWND hwnd);
 static void InitializeRefreshUI(HWND hwnd);
 static void InitializeDefaultInputUI(HWND hWnd);
 static void InitializeEffectUI(HWND hWnd);
+static void InitializeArtresUI(HWND hWnd);
 static void PropToOptions(HWND hWnd, options_type *o);
 static void OptionsToProp(HWND hWnd, options_type *o);
 static void SetPropEnabledControls(HWND hWnd);
@@ -114,15 +121,18 @@ static BOOL g_bUseDefaults     = FALSE;
 static BOOL g_bReset           = FALSE;
 static int  g_nSampleRateIndex = 0;
 static int  g_nVolumeIndex     = 0;
-static int  g_nDepthIndex      = 0;
 static int  g_nGammaIndex      = 0;
+static int  g_nBrightCorrectIndex = 0;
 static int  g_nBeamIndex       = 0;
 static int  g_nFlickerIndex    = 0;
+static int  g_nIntensityIndex  = 0;
 static int  g_nRotateIndex     = 0;
 static int  g_nInputIndex      = 0;
 static int  g_nBrightnessIndex = 0;
 static int  g_nEffectIndex     = 0;
+static int  g_nA2DIndex		   = 0;
 
+static HICON g_hIcon = NULL;
 /* Game history variables */
 #define MAX_HISTORY_LEN     (8 * 1024)
 
@@ -130,39 +140,60 @@ static char   historyBuf[MAX_HISTORY_LEN];
 static char   tempHistoryBuf[MAX_HISTORY_LEN];
 
 /* Property sheets */
-static DWORD dwDlgId[] =
+struct PropertySheetInfo
 {
-	IDD_PROP_GAME,
-	IDD_PROP_AUDIT,
-	IDD_PROP_DISPLAY,
-	IDD_PROP_ADVANCED,
-	IDD_PROP_SOUND,
-	IDD_PROP_INPUT,
-	IDD_PROP_MISC,
-#ifdef MESS
-	IDD_PROP_SOFTWARE,
-#endif
-	IDD_PROP_VECTOR
+	BOOL bOnDefaultPage;
+	BOOL (*pfnFilterProc)(const struct InternalMachineDriver *drv, const struct GameDriver *gamedrv);
+	DWORD dwDlgID;
+	DLGPROC pfnDlgProc;
 };
 
-#define NUM_PROPSHEETS (sizeof(dwDlgId) / sizeof(dwDlgId[0]))
+static BOOL PropSheetFilter_Vector(const struct InternalMachineDriver *drv, const struct GameDriver *gamedrv)
+{
+	return (drv->video_attributes & VIDEO_TYPE_VECTOR) != 0;
+}
+
+static struct PropertySheetInfo s_propSheets[] =
+{
+	{ FALSE,	NULL,						IDD_PROP_GAME,			GamePropertiesDialogProc },
+	{ FALSE,	NULL,						IDD_PROP_AUDIT,			GameAuditDialogProc },
+	{ TRUE,		NULL,						IDD_PROP_DISPLAY,		GameDisplayOptionsProc },
+	{ TRUE,		NULL,						IDD_PROP_ADVANCED,		GameOptionsProc },
+	{ TRUE,		NULL,						IDD_PROP_SOUND,			GameOptionsProc },
+	{ TRUE,		NULL,						IDD_PROP_INPUT,			GameOptionsProc },
+	{ TRUE,		NULL,						IDD_PROP_MISC,			GameOptionsProc },
+#ifdef MESS
+	{ TRUE,		NULL,						IDD_PROP_SOFTWARE,		GameOptionsProc },
+	{ FALSE,	PropSheetFilter_Config,	IDD_PROP_CONFIGURATION,	GameOptionsProc },
+#endif
+	{ TRUE,		PropSheetFilter_Vector,	IDD_PROP_VECTOR,		GameOptionsProc }
+};
+
+#define NUM_PROPSHEETS (sizeof(s_propSheets) / sizeof(s_propSheets[0]))
 
 #if HAS_HELP
 /* Help IDs */
 static DWORD dwHelpIDs[] =
 {
+	
+	IDC_A2D,				HIDC_A2D,
 	IDC_ANTIALIAS,          HIDC_ANTIALIAS,
+	IDC_ARTRES,				HIDC_ARTRES,
 	IDC_ARTWORK,            HIDC_ARTWORK,
+	IDC_ARTWORK_CROP,		HIDC_ARTWORK_CROP,
 	IDC_ASPECTRATIOD,       HIDC_ASPECTRATIOD,
 	IDC_ASPECTRATION,       HIDC_ASPECTRATION,
 	IDC_AUTOFRAMESKIP,      HIDC_AUTOFRAMESKIP,
+	IDC_BACKDROPS,			HIDC_BACKDROPS,
 	IDC_BEAM,               HIDC_BEAM,
+	IDC_BEZELS,				HIDC_BEZELS,
 	IDC_BRIGHTNESS,         HIDC_BRIGHTNESS,
+	IDC_BRIGHTCORRECT,      HIDC_BRIGHTCORRECT,
+	IDC_BROADCAST,			HIDC_BROADCAST,
+	IDC_RANDOM_BG,          HIDC_RANDOM_BG,
 	IDC_CHEAT,              HIDC_CHEAT,
 	IDC_DDRAW,              HIDC_DDRAW,
 	IDC_DEFAULT_INPUT,      HIDC_DEFAULT_INPUT,
-	IDC_DEPTH,              HIDC_DEPTH,
-	IDC_DIRTY,              HIDC_DIRTY,
 	IDC_EFFECT,             HIDC_EFFECT,
 	IDC_FILTER_CLONES,      HIDC_FILTER_CLONES,
 	IDC_FILTER_EDIT,        HIDC_FILTER_EDIT,
@@ -182,14 +213,18 @@ static DWORD dwHelpIDs[] =
 	IDC_GAMMA,              HIDC_GAMMA,
 	IDC_HISTORY,            HIDC_HISTORY,
 	IDC_HWSTRETCH,          HIDC_HWSTRETCH,
+	IDC_INTENSITY,          HIDC_INTENSITY,
 	IDC_JOYSTICK,           HIDC_JOYSTICK,
 	IDC_KEEPASPECT,         HIDC_KEEPASPECT,
 	IDC_LANGUAGECHECK,      HIDC_LANGUAGECHECK,
 	IDC_LANGUAGEEDIT,       HIDC_LANGUAGEEDIT,
+	IDC_LEDS,				HIDC_LEDS,
 	IDC_LOG,                HIDC_LOG,
+	IDC_SLEEP,				HIDC_SLEEP,
 	IDC_MATCHREFRESH,       HIDC_MATCHREFRESH,
 	IDC_MAXIMIZE,           HIDC_MAXIMIZE,
 	IDC_NOROTATE,           HIDC_NOROTATE,
+	IDC_OVERLAYS,			HIDC_OVERLAYS,
 	IDC_PROP_RESET,         HIDC_PROP_RESET,
 	IDC_REFRESH,            HIDC_REFRESH,
 	IDC_RESDEPTH,           HIDC_RESDEPTH,
@@ -237,7 +272,8 @@ static struct ComboBoxEffect
 	{ "RGB triad of 4 pixels",          "rgb4"    },
 	{ "RGB triad of 4 vertical pixels", "rgb4v"   },
 	{ "RGB triad of 3 pixels",          "rgb3"    },
-	{ "RGB tiny",                       "rgbtiny" }
+	{ "RGB tiny",                       "rgbtiny" },
+	{ "RGB sharp",                      "sharp"   }
 };
 
 #define NUMEFFECTS (sizeof(g_ComboBoxEffect) / sizeof(g_ComboBoxEffect[0]))
@@ -312,24 +348,25 @@ BOOL GameUsesSamples(int game)
 #if (HAS_SAMPLES == 1) || (HAS_VLM5030 == 1)
 
 	int i;
-	static const struct GameDriver *gamedrv;
+    struct InternalMachineDriver drv;
 
-	gamedrv = drivers[game];
+	expand_machine_driver(drivers[game]->drv,&drv);
 
-	for (i = 0; gamedrv->drv->sound[i].sound_type && i < MAX_SOUND; i++)
+	for (i = 0; drv.sound[i].sound_type && i < MAX_SOUND; i++)
 	{
 		const char **samplenames = NULL;
 
 #if (HAS_SAMPLES == 1)
-		if (gamedrv->drv->sound[i].sound_type == SOUND_SAMPLES)
-			samplenames = ((struct Samplesinterface *)gamedrv->drv->sound[i].sound_interface)->samplenames;
+		if (drv.sound[i].sound_type == SOUND_SAMPLES)
+			samplenames = ((struct Samplesinterface *)drv.sound[i].sound_interface)->samplenames;
 #endif
 
+        /*
 #if (HAS_VLM5030 == 1)
-		if (gamedrv->drv->sound[i].sound_type == SOUND_VLM5030)
-			samplenames = ((struct VLM5030interface *)gamedrv->drv->sound[i].sound_interface)->samplenames;
+		if (drv.sound[i].sound_type == SOUND_VLM5030)
+			samplenames = ((struct VLM5030interface *)drv.sound[i].sound_interface)->samplenames;
 #endif
-
+        */
 		if (samplenames != 0 && samplenames[0] != 0)
 			return TRUE;
 	}
@@ -347,30 +384,32 @@ BOOL FindSampleSet(int game)
 #if (HAS_SAMPLES == 1) || (HAS_VLM5030 == 1)
 
 	static const struct GameDriver *gamedrv;
+
 	const char* sharedname;
 	BOOL bStatus;
 	int  skipfirst;
 	int  j, i;
+    struct InternalMachineDriver drv;
+    expand_machine_driver(drivers[game]->drv,&drv);
+	gamedrv = drivers[game];
 
 	if (GameUsesSamples(game) == FALSE)
 		return TRUE;
 
-	gamedrv = drivers[game];
-
-	for (i = 0; gamedrv->drv->sound[i].sound_type && i < MAX_SOUND; i++)
+	for (i = 0; drv.sound[i].sound_type && i < MAX_SOUND; i++)
 	{
 		const char **samplenames = NULL;
 
 #if (HAS_SAMPLES == 1)
-		if (gamedrv->drv->sound[i].sound_type == SOUND_SAMPLES)
-			samplenames = ((struct Samplesinterface *)gamedrv->drv->sound[i].sound_interface)->samplenames;
+		if (drv.sound[i].sound_type == SOUND_SAMPLES)
+			samplenames = ((struct Samplesinterface *)drv.sound[i].sound_interface)->samplenames;
 #endif
-
+        /*
 #if (HAS_VLM5030 == 1)
-		if (gamedrv->drv->sound[i].sound_type == SOUND_VLM5030)
-			samplenames = ((struct VLM5030interface *)gamedrv->drv->sound[i].sound_interface)->samplenames;
+		if (drv.sound[i].sound_type == SOUND_VLM5030)
+			samplenames = ((struct VLM5030interface *)drv.sound[i].sound_interface)->samplenames;
 #endif
-
+        */
 		if (samplenames != 0 && samplenames[0] != 0)
 		{
 			BOOL have_samples = FALSE;
@@ -434,7 +473,6 @@ void InitDefaultPropertyPage(HINSTANCE hInst, HWND hWnd)
 	int             maxPropSheets;
 
 	g_nGame = -1;
-	maxPropSheets = NUM_PROPSHEETS - 2;
 
 	/* Get default options to populate property sheets */
 	pGameOpts = GetDefaultOptions();
@@ -444,8 +482,8 @@ void InitDefaultPropertyPage(HINSTANCE hInst, HWND hWnd)
 	g_bReset = FALSE;
 	BuildDataMap();
 
-	ZeroMemory(&pshead, sizeof(PROPSHEETHEADER));
-	ZeroMemory(pspage, sizeof(PROPSHEETPAGE) * maxPropSheets);
+	ZeroMemory(&pshead, sizeof(pshead));
+	ZeroMemory(pspage, sizeof(pspage));
 
 	/* Fill in the property sheet header */
 	pshead.hwndParent                 = hWnd;
@@ -453,23 +491,27 @@ void InitDefaultPropertyPage(HINSTANCE hInst, HWND hWnd)
 	pshead.dwFlags                    = PSH_PROPSHEETPAGE | PSH_USEICONID | PSH_PROPTITLE;
 	pshead.hInstance                  = hInst;
 	pshead.pszCaption                 = "Default Game";
-	pshead.nPages                     = maxPropSheets;
 	pshead.DUMMYUNIONNAME2.nStartPage = 0;
 	pshead.DUMMYUNIONNAME.pszIcon     = MAKEINTRESOURCE(IDI_MAME32_ICON);
 	pshead.DUMMYUNIONNAME3.ppsp       = pspage;
 
 	/* Fill out the property page templates */
-	for (i = 0; i < maxPropSheets; i++)
+	maxPropSheets = 0;
+	for (i = 0; i < NUM_PROPSHEETS; i++)
 	{
-		pspage[i].dwSize                     = sizeof(PROPSHEETPAGE);
-		pspage[i].dwFlags                    = 0;
-		pspage[i].hInstance                  = hInst;
-		pspage[i].DUMMYUNIONNAME.pszTemplate = MAKEINTRESOURCE(dwDlgId[i + 2]);
-		pspage[i].pfnCallback                = NULL;
-		pspage[i].lParam                     = 0;
-		pspage[i].pfnDlgProc                 = GameOptionsProc;
+		if (s_propSheets[i].bOnDefaultPage)
+		{
+			pspage[maxPropSheets].dwSize                     = sizeof(PROPSHEETPAGE);
+			pspage[maxPropSheets].dwFlags                    = 0;
+			pspage[maxPropSheets].hInstance                  = hInst;
+			pspage[maxPropSheets].DUMMYUNIONNAME.pszTemplate = MAKEINTRESOURCE(s_propSheets[i].dwDlgID);
+			pspage[maxPropSheets].pfnCallback                = NULL;
+			pspage[maxPropSheets].lParam                     = 0;
+			pspage[maxPropSheets].pfnDlgProc                 = s_propSheets[i].pfnDlgProc;
+			maxPropSheets++;
+		}
 	}
-	pspage[2 - 2].pfnDlgProc = GameDisplayOptionsProc;
+	pshead.nPages = maxPropSheets;
 
 	/* Create the Property sheet and display it */
 	if (PropertySheet(&pshead) == -1)
@@ -481,21 +523,23 @@ void InitDefaultPropertyPage(HINSTANCE hInst, HWND hWnd)
 	}
 }
 
-void InitPropertyPage(HINSTANCE hInst, HWND hWnd, int game_num)
+void InitPropertyPage(HINSTANCE hInst, HWND hWnd, int game_num, HICON hIcon)
 {
-	InitPropertyPageToPage(hInst, hWnd, game_num, PROPERTIES_PAGE);
+	InitPropertyPageToPage(hInst, hWnd, game_num, hIcon, PROPERTIES_PAGE);
 }
 
-void InitPropertyPageToPage(HINSTANCE hInst, HWND hWnd, int game_num, int start_page)
+void InitPropertyPageToPage(HINSTANCE hInst, HWND hWnd, int game_num, HICON hIcon, int start_page)
 {
 	PROPSHEETHEADER pshead;
 	PROPSHEETPAGE   pspage[NUM_PROPSHEETS];
 	int             i;
 	int             maxPropSheets;
+	struct InternalMachineDriver drv;
+	expand_machine_driver(drivers[game_num]->drv,&drv);
 
+	g_hIcon = CopyIcon(hIcon);
 	InitGameAudit(game_num);
 	g_nGame = game_num;
-	maxPropSheets = (drivers[g_nGame]->drv->video_attributes & VIDEO_TYPE_VECTOR) ? NUM_PROPSHEETS : NUM_PROPSHEETS - 1;
 
 	/* Get Game options to populate property sheets */
 	pGameOpts = GetGameOptions(game_num);
@@ -506,7 +550,7 @@ void InitPropertyPageToPage(HINSTANCE hInst, HWND hWnd, int game_num, int start_
 	BuildDataMap();
 
 	ZeroMemory(&pshead, sizeof(PROPSHEETHEADER));
-	ZeroMemory(pspage, sizeof(PROPSHEETPAGE) * maxPropSheets);
+	maxPropSheets = 0;
 
 	/* Fill in the property sheet header */
 	pshead.hwndParent                 = hWnd;
@@ -514,40 +558,27 @@ void InitPropertyPageToPage(HINSTANCE hInst, HWND hWnd, int game_num, int start_
 	pshead.dwFlags                    = PSH_PROPSHEETPAGE | PSH_USEICONID | PSH_PROPTITLE;
 	pshead.hInstance                  = hInst;
 	pshead.pszCaption                 = ModifyThe(drivers[g_nGame]->description);
-	pshead.nPages                     = maxPropSheets;
 	pshead.DUMMYUNIONNAME2.nStartPage = start_page;
 	pshead.DUMMYUNIONNAME.pszIcon     = MAKEINTRESOURCE(IDI_MAME32_ICON);
 	pshead.DUMMYUNIONNAME3.ppsp       = pspage;
 
 	/* Fill out the property page templates */
-	for (i = 0; i < maxPropSheets; i++)
+	for (i = 0; i < NUM_PROPSHEETS; i++)
 	{
-		pspage[i].dwSize                     = sizeof(PROPSHEETPAGE);
-		pspage[i].dwFlags                    = 0;
-		pspage[i].hInstance                  = hInst;
-		pspage[i].DUMMYUNIONNAME.pszTemplate = MAKEINTRESOURCE(dwDlgId[i]);
-		pspage[i].pfnCallback                = NULL;
-		pspage[i].lParam                     = 0;
+		if (!s_propSheets[i].pfnFilterProc || s_propSheets[i].pfnFilterProc(&drv, drivers[game_num]))
+		{
+			memset(&pspage[maxPropSheets], 0, sizeof(pspage[i]));
+			pspage[maxPropSheets].dwSize                     = sizeof(PROPSHEETPAGE);
+			pspage[maxPropSheets].dwFlags                    = 0;
+			pspage[maxPropSheets].hInstance                  = hInst;
+			pspage[maxPropSheets].DUMMYUNIONNAME.pszTemplate = MAKEINTRESOURCE(s_propSheets[i].dwDlgID);
+			pspage[maxPropSheets].pfnCallback                = NULL;
+			pspage[maxPropSheets].lParam                     = 0;
+			pspage[maxPropSheets].pfnDlgProc				 = s_propSheets[i].pfnDlgProc;
+			maxPropSheets++;
+		}
 	}
-
-	pspage[0].pfnDlgProc = GamePropertiesDialogProc;
-	pspage[1].pfnDlgProc = GameAuditDialogProc;
-
-	pspage[2].pfnDlgProc = GameDisplayOptionsProc;
-	pspage[3].pfnDlgProc = GameOptionsProc;
-	pspage[4].pfnDlgProc = GameOptionsProc;
-	pspage[5].pfnDlgProc = GameOptionsProc;
-	pspage[6].pfnDlgProc = GameOptionsProc;
-
-#ifdef MESS
-    pspage[7].pfnDlgProc = GameOptionsProc;
-#endif
-
-	/* If this is a vector game, add the vector prop sheet */
-	if (maxPropSheets == NUM_PROPSHEETS)
-	{
-		pspage[NUM_PROPSHEETS - 1].pfnDlgProc = GameOptionsProc;
-	}
+	pshead.nPages = maxPropSheets;
 
 	/* Create the Property sheet and display it */
 	if (PropertySheet(&pshead) == -1)
@@ -568,23 +599,25 @@ static char *GameInfoCPU(UINT nIndex)
 {
 	int i;
 	static char buf[1024] = "";
+    struct InternalMachineDriver drv;
+    expand_machine_driver(drivers[nIndex]->drv,&drv);
 
 	ZeroMemory(buf, sizeof(buf));
 	i = 0;
-	while (i < MAX_CPU && drivers[nIndex]->drv->cpu[i].cpu_type)
+	while (i < MAX_CPU && drv.cpu[i].cpu_type)
 	{
-		if (drivers[nIndex]->drv->cpu[i].cpu_clock >= 1000000)
+		if (drv.cpu[i].cpu_clock >= 1000000)
 			sprintf(&buf[strlen(buf)], "%s %d.%06d MHz",
-					cputype_name(drivers[nIndex]->drv->cpu[i].cpu_type),
-					drivers[nIndex]->drv->cpu[i].cpu_clock / 1000000,
-					drivers[nIndex]->drv->cpu[i].cpu_clock % 1000000);
+					cputype_name(drv.cpu[i].cpu_type),
+					drv.cpu[i].cpu_clock / 1000000,
+					drv.cpu[i].cpu_clock % 1000000);
 		else
 			sprintf(&buf[strlen(buf)], "%s %d.%03d kHz",
-					cputype_name(drivers[nIndex]->drv->cpu[i].cpu_type),
-					drivers[nIndex]->drv->cpu[i].cpu_clock / 1000,
-					drivers[nIndex]->drv->cpu[i].cpu_clock % 1000);
+					cputype_name(drv.cpu[i].cpu_type),
+					drv.cpu[i].cpu_clock / 1000,
+					drv.cpu[i].cpu_clock % 1000);
 
-		if (drivers[nIndex]->drv->cpu[i].cpu_type & CPU_AUDIO_CPU)
+		if (drv.cpu[i].cpu_type & CPU_AUDIO_CPU)
 			strcat(buf, " (sound)");
 
 		strcat(buf, "\n");
@@ -600,26 +633,28 @@ static char *GameInfoSound(UINT nIndex)
 {
 	int i;
 	static char buf[1024] = "";
+    struct InternalMachineDriver drv;
+    expand_machine_driver(drivers[nIndex]->drv,&drv);
 
 	ZeroMemory(buf, sizeof(buf));
 	i = 0;
-	while (i < MAX_SOUND && drivers[nIndex]->drv->sound[i].sound_type)
+	while (i < MAX_SOUND && drv.sound[i].sound_type)
 	{
-		if (1 < sound_num(&drivers[nIndex]->drv->sound[i]))
-			sprintf(&buf[strlen(buf)], "%d x ", sound_num(&drivers[nIndex]->drv->sound[i]));
+		if (1 < sound_num(&drv.sound[i]))
+			sprintf(&buf[strlen(buf)], "%d x ", sound_num(&drv.sound[i]));
 
-		sprintf(&buf[strlen(buf)], "%s", sound_name(&drivers[nIndex]->drv->sound[i]));
+		sprintf(&buf[strlen(buf)], "%s", sound_name(&drv.sound[i]));
 
-		if (sound_clock(&drivers[nIndex]->drv->sound[i]))
+		if (sound_clock(&drv.sound[i]))
 		{
-			if (sound_clock(&drivers[nIndex]->drv->sound[i]) >= 1000000)
+			if (sound_clock(&drv.sound[i]) >= 1000000)
 				sprintf(&buf[strlen(buf)], " %d.%06d MHz",
-						sound_clock(&drivers[nIndex]->drv->sound[i]) / 1000000,
-						sound_clock(&drivers[nIndex]->drv->sound[i]) % 1000000);
+						sound_clock(&drv.sound[i]) / 1000000,
+						sound_clock(&drv.sound[i]) % 1000000);
 			else
 				sprintf(&buf[strlen(buf)], " %d.%03d kHz",
-						sound_clock(&drivers[nIndex]->drv->sound[i]) / 1000,
-						sound_clock(&drivers[nIndex]->drv->sound[i]) % 1000);
+						sound_clock(&drv.sound[i]) / 1000,
+						sound_clock(&drv.sound[i]) % 1000);
 		}
 
 		strcat(buf,"\n");
@@ -633,21 +668,23 @@ static char *GameInfoSound(UINT nIndex)
 static char *GameInfoScreen(UINT nIndex)
 {
 	static char buf[1024];
+    struct InternalMachineDriver drv;
+    expand_machine_driver(drivers[nIndex]->drv,&drv);
 
-	if (drivers[nIndex]->drv->video_attributes & VIDEO_TYPE_VECTOR)
+	if (drv.video_attributes & VIDEO_TYPE_VECTOR)
 		strcpy(buf, "Vector Game");
 	else
 	{
 		if (drivers[nIndex]->flags & ORIENTATION_SWAP_XY)
 			sprintf(buf,"%d x %d (vert) %5.2f Hz",
-					drivers[nIndex]->drv->default_visible_area.max_y - drivers[nIndex]->drv->default_visible_area.min_y + 1,
-					drivers[nIndex]->drv->default_visible_area.max_x - drivers[nIndex]->drv->default_visible_area.min_x + 1,
-					drivers[nIndex]->drv->frames_per_second);
+					drv.default_visible_area.max_y - drv.default_visible_area.min_y + 1,
+					drv.default_visible_area.max_x - drv.default_visible_area.min_x + 1,
+					drv.frames_per_second);
 		else
 			sprintf(buf,"%d x %d (horz) %5.2f Hz",
-					drivers[nIndex]->drv->default_visible_area.max_x - drivers[nIndex]->drv->default_visible_area.min_x + 1,
-					drivers[nIndex]->drv->default_visible_area.max_y - drivers[nIndex]->drv->default_visible_area.min_y + 1,
-					drivers[nIndex]->drv->frames_per_second);
+					drv.default_visible_area.max_x - drv.default_visible_area.min_x + 1,
+					drv.default_visible_area.max_y - drv.default_visible_area.min_y + 1,
+					drv.frames_per_second);
 	}
 	return buf;
 }
@@ -656,13 +693,15 @@ static char *GameInfoScreen(UINT nIndex)
 static char *GameInfoColors(UINT nIndex)
 {
 	static char buf[1024];
+    struct InternalMachineDriver drv;
+    expand_machine_driver(drivers[nIndex]->drv,&drv);
 
 	ZeroMemory(buf, sizeof(buf));
-	if (drivers[nIndex]->drv->video_attributes & VIDEO_TYPE_VECTOR)
+	if (drv.video_attributes & VIDEO_TYPE_VECTOR)
 		strcpy(buf, "Vector Game");
 	else
 	{
-		sprintf(buf, "%d colors ", drivers[nIndex]->drv->total_colors);
+		sprintf(buf, "%d colors ", drv.total_colors);
 	}
 
 	return buf;
@@ -724,7 +763,7 @@ static char *GameInfoCloneOf(UINT nIndex)
 	&&  !(drivers[nIndex]->clone_of->flags & NOT_A_DRIVER))
 	{
 		sprintf(buf, "%s - \"%s\"",
-				ModifyThe(drivers[nIndex]->clone_of->description),
+				ConvertAmpersandString(ModifyThe(drivers[nIndex]->clone_of->description)),
 				drivers[nIndex]->clone_of->name);
 	}
 
@@ -737,6 +776,8 @@ static INT_PTR CALLBACK GamePropertiesDialogProc(HWND hDlg, UINT Msg, WPARAM wPa
 	switch (Msg)
 	{
 	case WM_INITDIALOG:
+		if (g_hIcon)
+			SendMessage(GetDlgItem(hDlg, IDC_GAME_ICON), STM_SETICON, (WPARAM) g_hIcon, 0);
 #if defined(USE_SINGLELINE_TABCONTROL)
 		{
 			HWND hWnd = PropSheet_GetTabControl(GetParent(hDlg));
@@ -832,13 +873,13 @@ static INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPAR
 
 			switch (wID)
 			{
-			case IDC_DEPTH:
 			case IDC_SIZES:
 			case IDC_FRAMESKIP:
 			case IDC_EFFECT:
 			case IDC_DEFAULT_INPUT:
 			case IDC_ROTATE:
 			case IDC_SAMPLERATE:
+			case IDC_ARTRES:
 				if (wNotifyCode == CBN_SELCHANGE)
 					changed = TRUE;
 				break;
@@ -1019,10 +1060,10 @@ static INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPAR
 			break;
 
 #ifdef MESS
-        case LVN_ENDLABELEDIT:
-            return SoftwareDirectories_OnEndLabelEdit(hDlg, (NMHDR *) lParam);
+		case LVN_ENDLABELEDIT:
+			return SoftwareDirectories_OnEndLabelEdit(hDlg, (NMHDR *) lParam);
 
-        case LVN_BEGINLABELEDIT:
+		case LVN_BEGINLABELEDIT:
 			return SoftwareDirectories_OnBeginLabelEdit(hDlg, (NMHDR *) lParam);
 #endif
 		}
@@ -1031,13 +1072,14 @@ static INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPAR
 #if HAS_HELP
 	case WM_HELP:
 		/* User clicked the ? from the upper right on a control */
-		Help_HtmlHelp(((LPHELPINFO)lParam)->hItemHandle, MAME32HELP, HH_TP_HELP_WM_HELP, GetHelpIDs());
+		Help_HtmlHelp(((LPHELPINFO)lParam)->hItemHandle, MAME32CONTEXTHELP, HH_TP_HELP_WM_HELP, GetHelpIDs());
 		break;
 
 	case WM_CONTEXTMENU:
-		Help_HtmlHelp((HWND)wParam, MAME32HELP, HH_TP_HELP_CONTEXTMENU, GetHelpIDs());
+		Help_HtmlHelp((HWND)wParam, MAME32CONTEXTHELP, HH_TP_HELP_CONTEXTMENU, GetHelpIDs());
 		break;
 #endif /* HAS_HELP */
+
 	}
 	EnableWindow(GetDlgItem(hDlg, IDC_PROP_RESET), g_bReset);
 
@@ -1288,6 +1330,7 @@ static void OptionsToProp(HWND hWnd, options_type* o)
 		}
 	}
 
+	
 	hCtrl = GetDlgItem(hWnd, IDC_BRIGHTNESSDISP);
 	if (hCtrl)
 	{
@@ -1321,7 +1364,22 @@ static void OptionsToProp(HWND hWnd, options_type* o)
 	hCtrl = GetDlgItem(hWnd, IDC_GAMMADISP);
 	if (hCtrl)
 	{
-		sprintf(buf, "%03.02f", o->gamma_correct);
+		sprintf(buf, "%03.02f", o->f_gamma_correct);
+		Static_SetText(hCtrl, buf);
+	}
+
+	hCtrl = GetDlgItem(hWnd, IDC_BRIGHTCORRECTDISP);
+	if (hCtrl)
+	{
+		sprintf(buf, "%03.02f", o->f_bright_correct);
+		Static_SetText(hCtrl, buf);
+	}
+
+	/* Input */
+	hCtrl = GetDlgItem(hWnd, IDC_A2DDISP);
+	if (hCtrl)
+	{
+		sprintf(buf, "%03.02f", o->f_a2d);
 		Static_SetText(hCtrl, buf);
 	}
 
@@ -1340,6 +1398,13 @@ static void OptionsToProp(HWND hWnd, options_type* o)
 		Static_SetText(hCtrl, buf);
 	}
 
+	hCtrl = GetDlgItem(hWnd, IDC_INTENSITYDISP);
+	if (hCtrl)
+	{
+		sprintf(buf, "%03.02f", o->f_intensity);
+		Static_SetText(hCtrl, buf);
+	}
+
 	/* sound */
 	hCtrl = GetDlgItem(hWnd, IDC_VOLUMEDISP);
 	if (hCtrl)
@@ -1348,11 +1413,31 @@ static void OptionsToProp(HWND hWnd, options_type* o)
 		Static_SetText(hCtrl, buf);
 	}
 
+	g_bInternalSet = FALSE;
+
+	g_nInputIndex = 0;
+	hCtrl = GetDlgItem(hWnd, IDC_DEFAULT_INPUT);	
+	if (hCtrl)
+	{
+		int nCount;
+
+		/* Get the number of items in the control */
+		nCount = ComboBox_GetCount(hCtrl);
+        
+		while (0 < nCount--)
+		{
+			ComboBox_GetLBText(hCtrl, nCount, buf);
+
+			if (stricmp (buf,o->ctrlr) == 0)
+				g_nInputIndex = nCount;
+		}
+
+		ComboBox_SetCurSel(hCtrl, g_nInputIndex);
+	}
+
 #ifdef MESS
 	MessOptionsToProp(hWnd, o);
 #endif
-
-	g_bInternalSet = FALSE;
 }
 
 /* Adjust controls - tune them to the currently selected game */
@@ -1362,6 +1447,8 @@ static void SetPropEnabledControls(HWND hWnd)
 	int  nIndex;
 	int  sound;
 	int  ddraw = 0;
+	int  useart = 0;
+	int joystick_attached = 9;
 
 	nIndex = g_nGame;
 
@@ -1384,9 +1471,24 @@ static void SetPropEnabledControls(HWND hWnd)
 	EnableWindow(GetDlgItem(hWnd, IDC_ASPECTRATION),    ddraw && DirectDraw_HasHWStretch() && Button_GetCheck(GetDlgItem(hWnd, IDC_HWSTRETCH)));
 	EnableWindow(GetDlgItem(hWnd, IDC_ASPECTRATIOD),    ddraw && DirectDraw_HasHWStretch() && Button_GetCheck(GetDlgItem(hWnd, IDC_HWSTRETCH)));
 
-	hCtrl = GetDlgItem(hWnd, IDC_JOYSTICK);
-	if (hCtrl)
-		Button_Enable(hCtrl, DIJoystick.Available());
+	/* Artwork options */
+	hCtrl = GetDlgItem(hWnd, IDC_ARTWORK);
+	useart = Button_GetCheck(hCtrl);
+
+	EnableWindow(GetDlgItem(hWnd, IDC_ARTWORK_CROP),	useart);
+	EnableWindow(GetDlgItem(hWnd, IDC_BACKDROPS),		useart);
+	EnableWindow(GetDlgItem(hWnd, IDC_BEZELS),			useart);
+	EnableWindow(GetDlgItem(hWnd, IDC_OVERLAYS),		useart);
+	EnableWindow(GetDlgItem(hWnd, IDC_ARTRES),			useart);
+	EnableWindow(GetDlgItem(hWnd, IDC_ARTRESTEXT),		useart);
+
+	/* Joystick options */
+	joystick_attached = DIJoystick.Available();
+
+	Button_Enable(GetDlgItem(hWnd,IDC_JOYSTICK),		joystick_attached);
+	EnableWindow(GetDlgItem(hWnd, IDC_A2DTEXT),			joystick_attached);
+	EnableWindow(GetDlgItem(hWnd, IDC_A2DDISP),			joystick_attached);
+	EnableWindow(GetDlgItem(hWnd, IDC_A2D),				joystick_attached);
 
 	/* Trackball / Mouse options */
 	if (nIndex == -1 || GameUsesTrackball(nIndex))
@@ -1414,20 +1516,7 @@ static void SetPropEnabledControls(HWND hWnd)
 		SetStereoEnabled(hWnd, nIndex);
 		SetYM3812Enabled(hWnd, nIndex);
 	}
-
-	/* Dirty rectangles */
-	if (nIndex == -1
-	||  (drivers[nIndex]->drv->video_attributes & VIDEO_SUPPORTS_DIRTY)
-	||  (drivers[nIndex]->drv->video_attributes & VIDEO_TYPE_VECTOR))
-	{
-		Button_Enable(GetDlgItem(hWnd, IDC_DIRTY), TRUE);
-	}
-	else
-	{
-		Button_Enable(  GetDlgItem(hWnd, IDC_DIRTY), FALSE);
-		Button_SetCheck(GetDlgItem(hWnd, IDC_DIRTY), FALSE);
-	}
-
+    
 	if (Button_GetCheck(GetDlgItem(hWnd, IDC_AUTOFRAMESKIP)))
 		EnableWindow(GetDlgItem(hWnd, IDC_FRAMESKIP), FALSE);
 	else
@@ -1454,21 +1543,16 @@ static void AssignVolume(HWND hWnd)
 	pGameOpts->attenuation = g_nVolumeIndex - 32;
 }
 
-static void AssignDepth(HWND hWnd)
+static void AssignBrightCorrect(HWND hWnd)
 {
-	switch (g_nDepthIndex)
-	{
-		default:
-		case 0:  pGameOpts->color_depth =  0; break;
-		case 1:  pGameOpts->color_depth = 15; break;
-		case 2:  pGameOpts->color_depth = 16; break;
-		case 3:  pGameOpts->color_depth = 32; break;
-	}
+	/* "1.0", 0.5, 2.0 */
+	pGameOpts->f_bright_correct = g_nBrightCorrectIndex / 20.0 + 0.5;
+	
 }
 
 static void AssignGamma(HWND hWnd)
 {
-	pGameOpts->gamma_correct = g_nGammaIndex / 20.0 + 0.5;
+	pGameOpts->f_gamma_correct = g_nGammaIndex / 20.0 + 0.5;
 }
 
 static void AssignBrightness(HWND hWnd)
@@ -1486,6 +1570,16 @@ static void AssignFlicker(HWND hWnd)
 	pGameOpts->f_flicker = g_nFlickerIndex;
 }
 
+static void AssignIntensity(HWND hWnd)
+{
+	pGameOpts->f_intensity = g_nIntensityIndex / 20.0 + 0.5;
+}
+
+static void AssignA2D(HWND hWnd)
+{
+	pGameOpts->f_a2d = g_nA2DIndex / 20.0;
+}
+
 static void AssignRotate(HWND hWnd)
 {
 	pGameOpts->ror = 0;
@@ -1501,15 +1595,7 @@ static void AssignRotate(HWND hWnd)
 
 static void AssignInput(HWND hWnd)
 {
-	pGameOpts->hotrod   = 0;
-	pGameOpts->hotrodse = 0;
-
-	switch (g_nInputIndex)
-	{
-		case 1:  pGameOpts->hotrod   = 1; break;
-		case 2:  pGameOpts->hotrodse = 1; break;
-		default: break;
-	}
+	ComboBox_GetLBText (hWnd, g_nInputIndex, pGameOpts->ctrlr);
 }
 
 static void AssignEffect(HWND hWnd)
@@ -1527,21 +1613,29 @@ static void AssignEffect(HWND hWnd)
 static void ResetDataMap(void)
 {
 	int i;
-	g_nGammaIndex      = (int)((pGameOpts->gamma_correct  - 0.5) * 20.0);
+	g_nGammaIndex			= (int)((pGameOpts->f_gamma_correct  - 0.5) * 20.0);
 	g_nBrightnessIndex = (int)((pGameOpts->gfx_brightness - 0.1) * 20.0);
+	g_nBrightCorrectIndex	= (int)((pGameOpts->f_bright_correct - 0.5) * 20.0);
 	g_nBeamIndex       = (int)((pGameOpts->f_beam         - 1.0) * 20.0);
 	g_nFlickerIndex    = (int)(pGameOpts->f_flicker);
+	g_nIntensityIndex		= (int)((pGameOpts->f_intensity      - 0.5) * 20.0);
+	g_nA2DIndex				= (int)(pGameOpts->f_a2d                    * 20.0);
 
-	if (pGameOpts->hotrod == 0 && pGameOpts->hotrodse == 0)
-		g_nInputIndex = 0;
-	else
-	if (pGameOpts->hotrod == 1 && pGameOpts->hotrodse == 0)
-		g_nInputIndex = 1;
-	else
-	if (pGameOpts->hotrod == 0 && pGameOpts->hotrodse == 1)
-		g_nInputIndex = 2;
-	else
-		g_nInputIndex = 0;
+	// if no controller type was specified or it was standard
+	if ((pGameOpts->ctrlr == NULL) || *pGameOpts->ctrlr == 0 || (stricmp(pGameOpts->ctrlr,"Standard") == 0))
+	{
+		// automatically set to hotrod or hotrodse if selected
+		if (pGameOpts->hotrod == 1 && pGameOpts->hotrodse == 0)
+   			strcpy (pGameOpts->ctrlr, "HotRod");
+		else
+		if (pGameOpts->hotrod == 0 && pGameOpts->hotrodse == 1)
+   			strcpy (pGameOpts->ctrlr, "HotRodSE");
+		else
+   			strcpy (pGameOpts->ctrlr, "Standard");
+	}
+	// turn off hotrod/hotrodse selection
+	pGameOpts->hotrod = 0;
+	pGameOpts->hotrodse = 0;
 
 	if (pGameOpts->ror == 0 && pGameOpts->rol == 0)
 		g_nRotateIndex = 0;
@@ -1561,15 +1655,6 @@ static void ResetDataMap(void)
 		case 22050:  g_nSampleRateIndex = 1; break;
 		default:
 		case 44100:  g_nSampleRateIndex = 2; break;
-	}
-
-	switch (pGameOpts->color_depth)
-	{
-		default:
-		case 0:  g_nDepthIndex = 0; break;
-		case 15: g_nDepthIndex = 1; break;
-		case 16: g_nDepthIndex = 2; break;
-		case 32: g_nDepthIndex = 3; break;
 	}
 
 	g_nEffectIndex = 0;
@@ -1604,7 +1689,6 @@ static void BuildDataMap(void)
 	DataMapAdd(IDC_KEEPASPECT,    DM_BOOL, CT_BUTTON,   &pGameOpts->keepaspect,    0, 0, 0);
 	DataMapAdd(IDC_MATCHREFRESH,  DM_BOOL, CT_BUTTON,   &pGameOpts->matchrefresh,  0, 0, 0);
 	DataMapAdd(IDC_SYNCREFRESH,   DM_BOOL, CT_BUTTON,   &pGameOpts->syncrefresh,   0, 0, 0);
-	DataMapAdd(IDC_DIRTY,         DM_BOOL, CT_BUTTON,   &pGameOpts->use_dirty,     0, 0, 0);
 	DataMapAdd(IDC_THROTTLE,      DM_BOOL, CT_BUTTON,   &pGameOpts->throttle,      0, 0, 0);
 	DataMapAdd(IDC_BRIGHTNESS,    DM_INT,  CT_SLIDER,   &g_nBrightnessIndex, 0, 0, AssignBrightness);
 	/* pGameOpts->frames_to_display */
@@ -1615,10 +1699,12 @@ static void BuildDataMap(void)
 	DataMapAdd(IDC_DEFAULT_INPUT, DM_INT,  CT_COMBOBOX, &g_nInputIndex, 0, 0, AssignInput);
 	DataMapAdd(IDC_USE_MOUSE,     DM_BOOL, CT_BUTTON,   &pGameOpts->use_mouse,     0, 0, 0);
 	DataMapAdd(IDC_JOYSTICK,      DM_BOOL, CT_BUTTON,   &pGameOpts->use_joystick,  0, 0, 0);
+	DataMapAdd(IDC_A2D,           DM_INT,  CT_SLIDER,   &g_nA2DIndex,              0, 0, AssignA2D);
 	DataMapAdd(IDC_STEADYKEY,     DM_BOOL, CT_BUTTON,   &pGameOpts->steadykey,     0, 0, 0);
+	DataMapAdd(IDC_LIGHTGUN,      DM_BOOL, CT_BUTTON,   &pGameOpts->lightgun,      0, 0, 0);   
 
 	/* core video */
-	DataMapAdd(IDC_DEPTH,         DM_INT,  CT_COMBOBOX, &g_nDepthIndex, 0, 0, AssignDepth);
+	DataMapAdd(IDC_BRIGHTCORRECT, DM_INT,  CT_SLIDER,   &g_nBrightCorrectIndex,    0, 0, AssignBrightCorrect);
 	DataMapAdd(IDC_NOROTATE,      DM_BOOL, CT_BUTTON,   &pGameOpts->norotate,      0, 0, 0);
 	DataMapAdd(IDC_ROTATE,        DM_INT,  CT_COMBOBOX, &g_nRotateIndex, 0, 0, AssignRotate);
 	DataMapAdd(IDC_FLIPX,         DM_BOOL, CT_BUTTON,   &pGameOpts->flipx,         0, 0, 0);
@@ -1631,6 +1717,7 @@ static void BuildDataMap(void)
 	DataMapAdd(IDC_TRANSLUCENCY,  DM_BOOL, CT_BUTTON,   &pGameOpts->translucency,  0, 0, 0);
 	DataMapAdd(IDC_BEAM,          DM_INT,  CT_SLIDER,   &g_nBeamIndex, 0, 0, AssignBeam);
 	DataMapAdd(IDC_FLICKER,       DM_INT,  CT_SLIDER,   &g_nFlickerIndex, 0, 0, AssignFlicker);
+	DataMapAdd(IDC_INTENSITY,     DM_INT,  CT_SLIDER,   &g_nIntensityIndex,        0, 0, AssignIntensity);	
 
 	/* sound */
 	DataMapAdd(IDC_SAMPLERATE,    DM_INT,  CT_COMBOBOX, &g_nSampleRateIndex, 0, 0, AssignSampleRate);
@@ -1639,36 +1726,53 @@ static void BuildDataMap(void)
 	DataMapAdd(IDC_USE_SOUND,     DM_BOOL, CT_BUTTON,   &pGameOpts->enable_sound,  0, 0, 0);
 	DataMapAdd(IDC_VOLUME,        DM_INT,  CT_SLIDER,   &g_nVolumeIndex, 0, 0, AssignVolume);
 
-	/* misc */
+	/* misc artwork options */
 	DataMapAdd(IDC_ARTWORK,       DM_BOOL, CT_BUTTON,   &pGameOpts->use_artwork,   0, 0, 0);
+	DataMapAdd(IDC_BACKDROPS,     DM_BOOL, CT_BUTTON,   &pGameOpts->backdrops,     0, 0, 0);
+	DataMapAdd(IDC_OVERLAYS,      DM_BOOL, CT_BUTTON,   &pGameOpts->overlays,      0, 0, 0);
+	DataMapAdd(IDC_BEZELS,        DM_BOOL, CT_BUTTON,   &pGameOpts->bezels,        0, 0, 0);
+	DataMapAdd(IDC_ARTRES,        DM_INT,  CT_COMBOBOX, &pGameOpts->artres,        0, 0, 0);
+	DataMapAdd(IDC_ARTWORK_CROP,  DM_BOOL, CT_BUTTON,   &pGameOpts->artwork_crop,  0, 0, 0);
+
+	/* misc */
 	DataMapAdd(IDC_CHEAT,         DM_BOOL, CT_BUTTON,   &pGameOpts->cheat,         0, 0, 0);
 /*	DataMapAdd(IDC_DEBUG,         DM_BOOL, CT_BUTTON,   &pGameOpts->mame_debug,    0, 0, 0);*/
 	DataMapAdd(IDC_LOG,           DM_BOOL, CT_BUTTON,   &pGameOpts->errorlog,      0, 0, 0);
+	DataMapAdd(IDC_SLEEP,         DM_BOOL, CT_BUTTON,   &pGameOpts->sleep,         0, 0, 0);
+	DataMapAdd(IDC_LEDS,          DM_BOOL, CT_BUTTON,   &pGameOpts->leds,          0, 0, 0);
 #ifdef MESS
 	DataMapAdd(IDC_NEW_FILEMGR,   DM_BOOL, CT_BUTTON,   &pGameOpts->use_new_filemgr, 0, 0, 0);
 #endif
 }
 
-static void SetStereoEnabled(HWND hWnd, int the_index)
+static void SetStereoEnabled(HWND hWnd, int nIndex)
 {
 	BOOL enabled = FALSE;
 	HWND hCtrl;
+    struct InternalMachineDriver drv;
+
+	if (-1 != nIndex)
+		expand_machine_driver(drivers[nIndex]->drv,&drv);
 
 	hCtrl = GetDlgItem(hWnd, IDC_STEREO);
 	if (hCtrl)
 	{
-		if (the_index == -1 || drivers[the_index]->drv->sound_attributes & SOUND_SUPPORTS_STEREO)
+		if (nIndex == -1 || drv.sound_attributes & SOUND_SUPPORTS_STEREO)
 			enabled = TRUE;
 
 		EnableWindow(hCtrl, enabled);
 	}
 }
 
-static void SetYM3812Enabled(HWND hWnd, int the_index)
+static void SetYM3812Enabled(HWND hWnd, int nIndex)
 {
 	int i;
 	BOOL enabled;
 	HWND hCtrl;
+    struct InternalMachineDriver drv;
+
+	if (-1 != nIndex)
+		expand_machine_driver(drivers[nIndex]->drv,&drv);
 
 	hCtrl = GetDlgItem(hWnd, IDC_USE_FM_YM3812);
 	if (hCtrl)
@@ -1676,15 +1780,15 @@ static void SetYM3812Enabled(HWND hWnd, int the_index)
 		enabled = FALSE;
 		for (i = 0; i < MAX_SOUND; i++)
 		{
-			if (the_index == -1
+			if (nIndex == -1
 #if HAS_YM3812
-			||  drivers[the_index]->drv->sound[i].sound_type == SOUND_YM3812
+			||  drv.sound[i].sound_type == SOUND_YM3812
 #endif
 #if HAS_YM3526
-			||  drivers[the_index]->drv->sound[i].sound_type == SOUND_YM3526
+			||  drv.sound[i].sound_type == SOUND_YM3526
 #endif
 #if HAS_YM2413
-			||  drivers[the_index]->drv->sound[i].sound_type == SOUND_YM2413
+			||  drv.sound[i].sound_type == SOUND_YM2413
 #endif
 			)
 				enabled = TRUE;
@@ -1694,27 +1798,31 @@ static void SetYM3812Enabled(HWND hWnd, int the_index)
 	}
 }
 
-static void SetSamplesEnabled(HWND hWnd, int the_index, BOOL bSoundEnabled)
+static void SetSamplesEnabled(HWND hWnd, int nIndex, BOOL bSoundEnabled)
 {
 #if (HAS_SAMPLES == 1) || (HAS_VLM5030 == 1)
 	int i;
 	BOOL enabled = FALSE;
 	HWND hCtrl;
+    struct InternalMachineDriver drv;
 
 	hCtrl = GetDlgItem(hWnd, IDC_SAMPLES);
+
+	if (-1 != nIndex)
+		expand_machine_driver(drivers[nIndex]->drv,&drv);
+	
 	if (hCtrl)
 	{
 		for (i = 0; i < MAX_SOUND; i++)
 		{
-			if (the_index == -1
-			||  drivers[the_index]->drv->sound[i].sound_type == SOUND_SAMPLES
+			if (nIndex == -1
+			||  drv.sound[i].sound_type == SOUND_SAMPLES
 #if HAS_VLM5030
-			||  drivers[the_index]->drv->sound[i].sound_type == SOUND_VLM5030
+			||  drv.sound[i].sound_type == SOUND_VLM5030
 #endif
 			)
 				enabled = TRUE;
 		}
-
 		enabled = enabled && bSoundEnabled;
 		EnableWindow(hCtrl, enabled);
 	}
@@ -1724,7 +1832,6 @@ static void SetSamplesEnabled(HWND hWnd, int the_index, BOOL bSoundEnabled)
 /* Moved here cause it's called in a few places */
 static void InitializeOptions(HWND hDlg)
 {
-	InitializeDepthUI(hDlg);
 	InitializeResDepthUI(hDlg);
 	InitializeRefreshUI(hDlg);
 	InitializeDisplayModeUI(hDlg);
@@ -1733,6 +1840,7 @@ static void InitializeOptions(HWND hDlg)
 	InitializeRotateUI(hDlg);
 	InitializeDefaultInputUI(hDlg);
 	InitializeEffectUI(hDlg);
+	InitializeArtresUI(hDlg);
 }
 
 /* Moved here because it is called in several places */
@@ -1744,9 +1852,21 @@ static void InitializeMisc(HWND hDlg)
 				(WPARAM)FALSE,
 				(LPARAM)MAKELONG(0, 30)); /* [0.50, 2.00] in .05 increments */
 
+	SendMessage(GetDlgItem(hDlg, IDC_BRIGHTCORRECT), TBM_SETRANGE,
+				(WPARAM)FALSE,
+				(LPARAM)MAKELONG(0, 30)); /* [0.50, 2.00] in .05 increments */
+
 	SendMessage(GetDlgItem(hDlg, IDC_BRIGHTNESS), TBM_SETRANGE,
 				(WPARAM)FALSE,
 				(LPARAM)MAKELONG(0, 38)); /* [0.10, 2.00] in .05 increments */
+
+	SendMessage(GetDlgItem(hDlg, IDC_INTENSITY), TBM_SETRANGE,
+				(WPARAM)FALSE,
+				(LPARAM)MAKELONG(0, 50)); /* [0.50, 3.00] in .05 increments */
+
+	SendMessage(GetDlgItem(hDlg, IDC_A2D), TBM_SETRANGE,
+				(WPARAM)FALSE,
+				(LPARAM)MAKELONG(0, 20)); /* [0.00, 1.00] in .05 increments */
 
 	SendMessage(GetDlgItem(hDlg, IDC_FLICKER), TBM_SETRANGE,
 				(WPARAM)FALSE,
@@ -1773,6 +1893,11 @@ static void OptOnHScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 		GammaSelectionChange(hwnd);
 	}
 	else
+	if (hwndCtl == GetDlgItem(hwnd, IDC_BRIGHTCORRECT))
+	{
+		BrightCorrectSelectionChange(hwnd);
+	}
+	else
 	if (hwndCtl == GetDlgItem(hwnd, IDC_BRIGHTNESS))
 	{
 		BrightnessSelectionChange(hwnd);
@@ -1791,6 +1916,16 @@ static void OptOnHScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 	if (hwndCtl == GetDlgItem(hwnd, IDC_VOLUME))
 	{
 		VolumeSelectionChange(hwnd);
+	}
+	else
+	if (hwndCtl == GetDlgItem(hwnd, IDC_INTENSITY))
+	{
+		IntensitySelectionChange(hwnd);
+	}
+	else
+	if (hwndCtl == GetDlgItem(hwnd, IDC_A2D))
+	{
+		A2DSelectionChange(hwnd);
 	}
 }
 
@@ -1845,6 +1980,23 @@ static void GammaSelectionChange(HWND hwnd)
 	Static_SetText(GetDlgItem(hwnd, IDC_GAMMADISP), buf);
 }
 
+/* Handle changes to the Brightness Correction slider */
+static void BrightCorrectSelectionChange(HWND hwnd)
+{
+	char   buf[100];
+	UINT   nValue;
+	double dValue;
+
+	/* Get the current value of the control */
+	nValue = SendMessage(GetDlgItem(hwnd, IDC_BRIGHTCORRECT), TBM_GETPOS, 0, 0);
+
+	dValue = nValue / 20.0 + 0.5;
+
+	/* Set the static display to the new value */
+	sprintf(buf, "%03.02f", dValue);
+	Static_SetText(GetDlgItem(hwnd, IDC_BRIGHTCORRECTDISP), buf);
+}
+
 /* Handle changes to the Brightness slider */
 static void BrightnessSelectionChange(HWND hwnd)
 {
@@ -1860,6 +2012,40 @@ static void BrightnessSelectionChange(HWND hwnd)
 	/* Set the static display to the new value */
 	sprintf(buf, "%03.02f", dBrightness);
 	Static_SetText(GetDlgItem(hwnd, IDC_BRIGHTNESSDISP), buf);
+}
+
+/* Handle changes to the Intensity slider */
+static void IntensitySelectionChange(HWND hwnd)
+{
+	char   buf[100];
+	UINT   nValue;
+	double dIntensity;
+
+	/* Get the current value of the control */
+	nValue = SendMessage(GetDlgItem(hwnd, IDC_INTENSITY), TBM_GETPOS, 0, 0);
+
+	dIntensity = nValue / 20.0 + 0.5;
+
+	/* Set the static display to the new value */
+	sprintf(buf, "%03.02f", dIntensity);
+	Static_SetText(GetDlgItem(hwnd, IDC_INTENSITYDISP), buf);
+}
+
+/* Handle changes to the A2D slider */
+static void A2DSelectionChange(HWND hwnd)
+{
+	char   buf[100];
+	UINT   nValue;
+	double dA2D;
+
+	/* Get the current value of the control */
+	nValue = SendMessage(GetDlgItem(hwnd, IDC_A2D), TBM_GETPOS, 0, 0);
+
+	dA2D = nValue / 20.0;
+
+	/* Set the static display to the new value */
+	sprintf(buf, "%03.02f", dA2D);
+	Static_SetText(GetDlgItem(hwnd, IDC_A2DDISP), buf);
 }
 
 /* Handle changes to the Color Depth drop down */
@@ -2041,25 +2227,6 @@ static void InitializeRotateUI(HWND hwnd)
 	}
 }
 
-/* Populate the Color depth drop down */
-static void InitializeDepthUI(HWND hwnd)
-{
-	HWND hCtrl = GetDlgItem(hwnd, IDC_DEPTH);
-
-	if (hCtrl)
-	{
-		ComboBox_AddString(hCtrl, "Auto");
-		ComboBox_AddString(hCtrl, "15 bit");
-		ComboBox_AddString(hCtrl, "16 bit");
-		ComboBox_AddString(hCtrl, "32 bit");
-
-		ComboBox_SetItemData(hCtrl, 0,  0);
-		ComboBox_SetItemData(hCtrl, 1, 15);
-		ComboBox_SetItemData(hCtrl, 2, 16);
-		ComboBox_SetItemData(hCtrl, 3, 32);
-	}
-}
-
 /* Populate the resolution depth drop down */
 static void InitializeResDepthUI(HWND hwnd)
 {
@@ -2141,11 +2308,58 @@ static void InitializeDefaultInputUI(HWND hwnd)
 {
 	HWND hCtrl = GetDlgItem(hwnd, IDC_DEFAULT_INPUT);
 
+	WIN32_FIND_DATA FindFileData;
+	HANDLE hFind;
+	char *ext;
+	int isZipFile;
+	char root[256];
+	char path[256];
+
 	if (hCtrl)
 	{
 		ComboBox_AddString(hCtrl, "Standard");
-		ComboBox_AddString(hCtrl, "HotRod");
-		ComboBox_AddString(hCtrl, "HotRod SE");
+
+		sprintf (path, "%s\\*.*", GetCtrlrDir());
+
+		hFind = FindFirstFile(path, &FindFileData);
+
+	    if (hFind != INVALID_HANDLE_VALUE)
+		{
+			do 
+			{
+				if (strcmp (FindFileData.cFileName,".") != 0 && 
+					strcmp (FindFileData.cFileName,"..") != 0)
+				{
+					// copy the filename
+					strcpy (root,FindFileData.cFileName);
+
+					// assume it's not a zip file
+					isZipFile = 0;
+
+					// find the extension
+					ext = strrchr (root,'.');
+					if (ext)
+					{
+						// check if it's a zip file
+						if (strcmp (ext, ".zip") == 0)
+						{
+							isZipFile = 1;
+						}
+
+						// and strip off the extension
+						*ext = 0;
+					}
+
+					if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || isZipFile)
+					{
+						ComboBox_AddString(hCtrl, root);
+					}
+				}
+			}
+			while (FindNextFile (hFind, &FindFileData) != 0);
+			
+			FindClose (hFind);
+		}
 	}
 }
 
@@ -2161,6 +2375,19 @@ static void InitializeEffectUI(HWND hwnd)
 			ComboBox_InsertString(hCtrl, i, g_ComboBoxEffect[i].m_pText);
 			ComboBox_SetItemData( hCtrl, i, g_ComboBoxEffect[i].m_pData);
 		}
+	}
+}
+
+/* Populate the Art Resolution drop down */
+static void InitializeArtresUI(HWND hwnd)
+{
+	HWND hCtrl = GetDlgItem(hwnd, IDC_ARTRES);
+
+	if (hCtrl)
+	{
+		ComboBox_AddString(hCtrl, "Auto");		/* 0 */
+		ComboBox_AddString(hCtrl, "Standard");  /* 1 */
+		ComboBox_AddString(hCtrl, "High");		/* 2 */
 	}
 }
 

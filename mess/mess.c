@@ -19,6 +19,7 @@ extern const char *crcfile;
 extern const char *pcrcfile;
 
 /* Globals */
+const char *mess_path;
 int mess_keep_going;
 char *renamed_image;
 UINT32 mess_ram_size;
@@ -590,7 +591,7 @@ static int ram_init(const struct GameDriver *gamedrv)
 		mess_ram_size = ram_default(gamedrv);
 	}
 	/* if we have RAM, allocate it */
-	if (mess_ram_size >= 0)
+	if (mess_ram_size > 0)
 	{
 		mess_ram = (UINT8 *) auto_malloc(mess_ram_size);
 		if (!mess_ram)
@@ -612,10 +613,23 @@ static int ram_init(const struct GameDriver *gamedrv)
  *  Call the init() functions for all devices of a driver
  *  ith all user specified image names.
  ****************************************************************************/
-extern int init_devices(const struct GameDriver *gamedrv)
+int init_devices(const struct GameDriver *gamedrv)
 {
 	const struct IODevice *dev = gamedrv->dev;
 	int i,id;
+
+	/* convienient place to call this */
+	{
+		const char *cwd;
+		char *s;
+
+		cwd = osd_get_cwd();
+		s = auto_malloc(strlen(cwd) + 1);
+		if (!s)
+			return 1;
+		strcpy(s, cwd);
+		mess_path = s;
+	}
 
 	logerror("Initialising Devices...\n");
 
@@ -963,22 +977,33 @@ void showmessinfo(void)
 
 }
 
+static char *battery_nvramfilename(const char *filename)
+{
+	return osd_strip_extension(osd_basename((char *) filename));
+}
+
 /* load battery backed nvram from a driver subdir. in the nvram dir. */
-int battery_load( const char *filename, void *buffer, int length )
+int battery_load(const char *filename, void *buffer, int length)
 {
 	void *f;
 	int bytes_read = 0;
 	int result = FALSE;
+	char *nvram_filename;
 
 	/* some sanity checking */
 	if( buffer != NULL && length > 0 )
 	{
-		f = osd_fopen(Machine->gamedrv->name, filename, OSD_FILETYPE_NVRAM, 0);
-		if (f)
+		nvram_filename = battery_nvramfilename(filename);
+		if (nvram_filename)
 		{
-			bytes_read = osd_fread(f, buffer, length);
-			osd_fclose(f);
-			result = TRUE;
+			f = osd_fopen(Machine->gamedrv->name, nvram_filename, OSD_FILETYPE_NVRAM, 0);
+			if (f)
+			{
+				bytes_read = osd_fread(f, buffer, length);
+				osd_fclose(f);
+				result = TRUE;
+			}
+			free(nvram_filename);
 		}
 
 		/* fill remaining bytes (if necessary) */
@@ -988,22 +1013,37 @@ int battery_load( const char *filename, void *buffer, int length )
 }
 
 /* save battery backed nvram to a driver subdir. in the nvram dir. */
-int battery_save( const char *filename, void *buffer, int length )
+int battery_save(const char *filename, void *buffer, int length)
 {
 	void *f;
+	char *nvram_filename;
 
 	/* some sanity checking */
 	if( buffer != NULL && length > 0 )
 	{
-		f = osd_fopen(Machine->gamedrv->name, filename, OSD_FILETYPE_NVRAM, 1);
-		if (f)
+		nvram_filename = battery_nvramfilename(filename);
+		if (nvram_filename)
 		{
-			osd_fwrite(f, buffer, length);
-			osd_fclose(f);
-			return TRUE;
+			f = osd_fopen(Machine->gamedrv->name, nvram_filename, OSD_FILETYPE_NVRAM, 1);
+			if (f)
+			{
+				osd_fwrite(f, buffer, length);
+				osd_fclose(f);
+				return TRUE;
+			}
+			free(nvram_filename);
 		}
 	}
 	return FALSE;
+}
+
+void palette_set_colors(pen_t color_base, const UINT8 *colors, int color_count)
+{
+	while(color_count--)
+	{
+		palette_set_color(color_base++, colors[0], colors[1], colors[2]);
+		colors += 3;
+	}
 }
 
 #ifdef MAME_DEBUG
@@ -1012,6 +1052,7 @@ int messvaliditychecks(void)
 {
 	int i;
 	int error = 0;
+	const struct RomModule *region, *rom;
 
 	/* Check the device struct array */
 	i=0;
@@ -1034,6 +1075,28 @@ int messvaliditychecks(void)
 	i = 0;
 	while(drivers[i])
 	{
+		/* check device array */
+		if (drivers[i]->dev)
+		{
+			const struct IODevice *dev = drivers[i]->dev;
+			while(dev->type != IO_END)
+			{
+				assert(dev->type < IO_COUNT);
+				dev++;
+			}
+		}
+
+		/* this detects some inconsistencies in the ROM structures */
+		for (region = rom_first_region(drivers[i]); region; region = rom_next_region(region))
+		{
+			for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
+			{
+				char name[100];
+				sprintf(name,ROM_GETNAME(rom));
+			}
+		}
+
+		/* check computer config, if present */
 		if (drivers[i]->compcfg)
 		{
 			const struct ComputerConfigEntry *entry = drivers[i]->compcfg;
@@ -1091,6 +1154,7 @@ enum
 	TESTERROR_INITDEVICESFAILED	= -1
 };
 
+#if 0
 static int try_driver(const struct GameDriver *gamedrv)
 {
 	int i;
@@ -1122,10 +1186,10 @@ static int try_driver(const struct GameDriver *gamedrv)
 
 	return 0;
 }
+#endif
 
 void messtestdriver(const struct GameDriver *gamedrv, const char *(*getfodderimage)(unsigned int index, int *foddertype))
 {
-	int error;
 	struct GameOptions saved_options;
 
 	/* preserve old options; the MESS GUI needs this */
@@ -1136,11 +1200,13 @@ void messtestdriver(const struct GameDriver *gamedrv, const char *(*getfodderima
 	options.image_count = 0;
 
 	/* try running with no attached devices */
+#if 0
 	error = try_driver(gamedrv);
 	if (gamedrv->flags & GAME_COMPUTER)
 		assert(error >= 0);	/* computers should succeed when ran with no attached devices */
 	else
 		assert(error <= 0);	/* consoles can fail; but should never fail due to a no roms error */
+#endif
 
 	/* restore old options */
 	memcpy(&options, &saved_options, sizeof(options));

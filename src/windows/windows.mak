@@ -9,16 +9,18 @@ OSOBJS = $(OBJ)/windows/winmain.o $(OBJ)/windows/fileio.o $(OBJ)/windows/config.
 	 $(OBJ)/windows/window.o $(OBJ)/windows/winddraw.o $(OBJ)/windows/asmblit.o \
 	 $(OBJ)/windows/asmtile.o
 
-# uncomment this line to enable guard pages on all memory allocations
-OSOBJS += $(OBJ)/windows/winalloc.o
-
-ifndef MESS
-OSOBJS += $(OBJ)/windows/fileio.o 
-else
-OSOBJS += $(OBJ)/mess/windows/fileio.o	$(OBJ)/mess/windows/dirio.o \
-	  $(OBJ)/mess/windows/messwin.o $(OBJ)/mess/windows/messopts.o
+ifdef MESS
+CFLAGS += -DWINUI
+OSOBJS += $(OBJ)/mess/windows/dirio.o \
+	$(OBJ)/mess/windows/messwin.o \
+	$(OBJ)/mess/windows/messopts.o
 endif 
-      
+
+# uncomment this line to enable guard pages on all memory allocations
+ifdef DEBUG
+OSOBJS += $(OBJ)/windows/winalloc.o
+endif
+
 # video blitting functions
 $(OBJ)/windows/asmblit.o: src/windows/asmblit.asm
 	@echo Assembling $<...
@@ -29,24 +31,24 @@ $(OBJ)/windows/asmtile.o: src/windows/asmtile.asm
 	@echo Assembling $<...
 	$(ASM) -o $@ $(ASMFLAGS) $(subst -D,-d,$(ASMDEFS)) $<
 
-ifndef MSVC
 # add our prefix files to the mix
-CFLAGS += -mwindows -include src/windows/winprefix.h
-
-# add the windows libaries
-LIBS += -luser32 -lgdi32 -lddraw -ldsound -ldinput -ldxguid -lwinmm
+ifndef MSVC
+CFLAGS += -mwindows -include src/$(MAMEOS)/winprefix.h
+else
+CFLAGS += /FI"windows/winprefix.h"
 endif
 
-ifdef MSVC
-FFLAGS += /FI"src/windows/winprefix.h"
-CFLAGS += $(FFLAGS)
+# add the windows libaries
+ifndef MSVC
+LIBS += -luser32 -lgdi32 -lddraw -ldsound -ldinput -ldxguid -lwinmm
+else
+LIBS += dinput.lib
 endif
 
 # due to quirks of using /bin/sh, we need to explicitly specify the current path
 CURPATH = ./
 
 # if building with a UI, set the C flags and include the ui.mak
-ifneq ($(WINUI),)
-CFLAGS+= -DWINUI=1
-include src/ui/ui.mak
+ifdef MESS
+include src/windowsui/windowsui.mak
 endif

@@ -1,23 +1,25 @@
 /*
 	99xxcore.h : generic tms99xx emulation
 
-	The TMS99XX_MODEL switch tell which emulator we want to build.  Set the switch, then include
-	99xxcore.h, and you will have an emulator for this processor.
+	The TMS99XX_MODEL switch tells which emulator we want to build.  Set the
+	switch, then include 99xxcore.h, and you will have an emulator for this
+	processor.
 
-	Only tms9900, tms9980a/9981, and tms9995 work OK for now.  Note that tms9995 has not been tested
-	extensively.
+	Only ti990/10, tms9900, tms9980a/9981, and tms9995 work OK for now.  Note
+	that tms9995 has not been tested extensively.
 
-	tms9940 is WIP.  tms9985 was implemented as a 9940 with data bus, which should be mostly correct.
+	tms9940 is WIP: it is probably still buggy (particularily the BCD support),
+	as it has not been tested.  tms9985 has been implemented as a 9940 with
+	a data bus, which should be mostly correct.
 
-	I think all software aspects of tms9940, tms9985 and tms9989 are implemented (though there
-	must be some mistakes, particularily in tms9940 BCD support).  You'll just have to implement
-	bus interfaces, provided you know them.  (I don't...)
+	I think all software aspects of tms9985 and tms9989 are implemented.
+	You just need to implement bus interfaces, provided you know them.
+	(I don't...)
 
-	ti990/10 is WIP, far from being finished.  tms99000 can not be implemented fully due to lack
-	of documentation.
+	tms99000 cannot be implemented fully yet, due to lack of documentation.
 
-	ti990/12 is not supported at all, but it should probably be implemented as a separate
-	processor core, anyway.
+	ti990/12 is not supported at all, and it should probably be implemented as
+	a separate processor core, anyway.
 
 	Original tms9900 emulator by Edward Swartz
 	Smoothed out by Raphael Nabet
@@ -26,41 +28,47 @@
 */
 
 /*
-	The first member of the family was actually the ti990/10 minicomputer, released in 1975.
-	tms9900 was released in 1976, and has the same instruction set as ti990/10: however,
-	tms9900 is slower, it does not support privileges and memory mapping, and illegal
-	instructions do not cause an error interrupt.
+	The first member of the family was actually the ti990/10 minicomputer,
+	released in 1975.  tms9900 was released in 1976, and has the same
+	instruction set as ti990/10: however, tms9900 is slower, it does not
+	support privileges and memory mapping, and illegal instructions do not
+	cause an error interrupt.
 
-	The ti990 family later evoluted into the huge ti990/12 system, with support for 144 different
-	instructions, and microcode programming in case some user found it was not enough.
-	ti990/10 was eventually replaced by a cheaper ti990/10a board, built around a tms99000
-	microprocessor.
+	The ti990 family later evoluted into the huge ti990/12 system, with support
+	for 144 different instructions, and microcode programming in case some user
+	found it was not enough.  ti990/10 was eventually replaced by a cheaper
+	ti990/10a board, built around a tms99000 microprocessor.
 
-	The tms9980 processor is merely a tms9900 with a 8-bit data bus (instead of 16-bit on tms9900).
+	The tms9980 processor is merely a tms9900 with a 8-bit data bus (instead of
+	16-bit on tms9900).
 
-	tms9940 is a microcontroller, and is mostly similar to 9900/9980.  The variant I know has
-	2kb of ROM, 128 bytes of RAM, a timer, 32 I/O line, some of which can be reconfigured as
-	a CRU bus, but no external memory bus.  It includes three additional opcodes, which are not
-	to be found in any other member of the family.
+	tms9940 is a microcontroller, and is mostly similar to 9900/9980.  The
+	variant I know has 2kb of ROM, 128 bytes of RAM, a timer, 32 I/O line, some
+	of which can be reconfigured as a CRU bus, but no external memory bus.  It
+	includes three additional opcodes, which are not supported by any other
+	member of the family (with the probable exception of TMS9985).
 
-	tms9985 is similar to tms9940, but it supports an external 8-bit-wide memory bus.  At least
-	one variant included 8kb of ROM, 256 bytes of RAM.  It was ill-fated, as it was never released
-	due to technical problems.
+	tms9985 is similar to tms9940, but it supports an external 8-bit-wide
+	memory bus.  At least one variant included 8kb of ROM, 256 bytes of RAM.
+	It was ill-fated, as it was never released due to technical problems.
 
-	tms9989 is mostly alien to me.  I guess it is a close relative of tms9995, although
-	I am not sure.
+	tms9989 is mostly alien to me.  I guess it is a close relative of tms9995,
+	although I am not sure.  I have read that the SBP68689 supports tms9995
+	opcodes, but that tms9989 does not.
 
-	tms9995 belongs to another generation.  It is quite faster than tms9900, and supports 4 extra
-	opcodes.  Its external bus is 8-bit-wide, and it has 256 bytes of internal 16-bit RAM.
+	tms9995 belongs to another generation.  It is quite faster than tms9900,
+	and supports 4 extra opcodes.  Its external bus is 8-bit-wide, and it has
+	256 bytes of internal 16-bit RAM.
 
-	tms99000 is the successor to both ti9900 and ti990/10.  It supports privileges, and has
-	a coprocessor interface which enables the use of an external memory mapper.  Additionnally,
-	it can use a Macrostore ROM to emulate additional instructions.
+	tms99000 is the successor to both ti9900 and ti990/10.  It supports
+	privileges, and has a coprocessor interface which enables the use of an
+	external memory mapper.  Additionnally,  it can use a Macrostore ROM to
+	emulate additional instructions.
 
-	This feature allowed TI to expand the 99000 family with the tms99105 (which was said to
-	support 84 instructions types), the tms99110 (which supported floating point instructions),
-	and possibly another chip (tms99220???) which included parts of the UCSD P-system
-	in Macrostore.
+	This feature allowed TI to expand the 99000 family with the tms99105 (which
+	was said to support 84 instructions types), the tms99110 (which supported
+	floating point instructions), and possibly another chip (tms99220???) which
+	included parts of the UCSD P-system in Macrostore.
 
 References :
 * 9900 family systems design, chapter 6, 7, 8
@@ -78,7 +86,7 @@ Other references can be found on spies.com:
 */
 
 /* Set this to 1 to support HOLD_LINE */
-/* This is a weird HOLD_LINE, actually : we hold the interrupt line only until IAQ
+/* This is a weird HOLD_LINE, actually: we hold the interrupt line only until IAQ
 	(instruction acquisition) is enabled.  Well, this scheme could possibly exist on
 	a tms9900-based system, unlike a real HOLD_LINE.  (OK, this is just a pretext, I was just too
 	lazy to implement a true HOLD_LINE ;-) .) */
@@ -1285,10 +1293,6 @@ static void set_flag1(int val);
 */
 void TMS99XX_INIT(void)
 {
-#if (TMS99XX_MODEL == TMS9995_ID)
-	void decrementer_callback(int ignored);
-	I.timer = timer_alloc(decrementer_callback);
-#endif
 }
 
 void TMS99XX_RESET(void *p)
@@ -1968,7 +1972,7 @@ void tms9985_set_irq_line(int irqline, int state)
 /*
   this call-back is called by MESS timer system when the timer reaches 0.
 */
-void decrementer_callback(int ignored)
+static void decrementer_callback(int ignored)
 {
 	/* request decrementer interrupt */
 	I.int_latch |= 0x8;
@@ -4618,7 +4622,6 @@ static void h4000w(UINT16 opcode)
 	register UINT16 src;
 	register UINT16 dest;
 	register UINT16 value;
-	int a,b;
 
 #if HAS_MAPPING
 	int src_map = (opcode & 0x0030) ? I.cur_src_map : I.cur_map;
@@ -4643,28 +4646,22 @@ static void h4000w(UINT16 opcode)
 	case 3:   /* S */
 		/* S ----- Subtract */
 		/* D -= S */
-		a = readword(dest);
-		b = readword(src);
-		value = setst_sub_laeco(a, b);
-		writeword(dest, value);
-		CYCLES(14, 4);
+		value = setst_sub_laeco(readwordX(dest, dst_map), value);
+		writewordX(dest, value, dst_map);
+		CYCLES(2, 14, 4);
 		break;
 	case 4:   /* C */
 		/* C ----- Compare */
 		/* ST = (D - S) */
-		a = readword(dest);
-		b = readword(src);
-		setst_c_lae(a, b);
-		CYCLES(14, 4);
+		setst_c_lae(readwordX(dest, dst_map), value);
+		CYCLES(5, 14, 4);
 		break;
 	case 5:   /* A */
 		/* A ----- Add */
 		/* D += S */
-		a = readword(dest);
-		b = readword(src);
-		value = setst_add_laeco(a, b);
-		writeword(dest, value);
-		CYCLES(14, 4);
+		value = setst_add_laeco(readwordX(dest, dst_map), value);
+		writewordX(dest, value, dst_map);
+		CYCLES(2, 14, 4);
 		break;
 	case 6:   /* MOV */
 		/* MOV --- MOVe */
@@ -4744,7 +4741,7 @@ static void h4000b(UINT16 opcode)
 			/* On ti990/10 and tms9900, MOVB needs to read destination, because it cannot actually
 			  read one single byte.  It reads a word, replaces the revelant byte, then write
 			  the result.  A tms9980 should not need to do so, but still does, because it is just
-			  a tms9900 with a 16 to 8 bit multiplexer (instead of a new chip design such as 9995). */
+			  a tms9900 with a 16 to 8 bit multiplexer (instead of a new chip design, like tms9995). */
 			(void)readbyteX(dest, dst_map);
 		#endif
 		writebyteX(dest, value, dst_map);

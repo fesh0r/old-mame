@@ -109,10 +109,12 @@ static REG_OPTIONS regSettings[] =
 	{"ShowToolBar",        RO_BOOL,    &settings.show_toolbar,     0, 0},
 	{"ShowStatusBar",      RO_BOOL,    &settings.show_statusbar,   0, 0},
 	{"ShowFolderList",     RO_BOOL,    &settings.show_folderlist,  0, 0},
+	{"ShowTabCtrl",        RO_BOOL,    &settings.show_tabctrl,     0, 0},
 	{"GameCheck",          RO_BOOL,    &settings.game_check,       0, 0},
 	{"VersionCheck",       RO_BOOL,    &settings.version_check,    0, 0},
 	{"JoyGUI",             RO_BOOL,    &settings.use_joygui,       0, 0},
 	{"Broadcast",          RO_BOOL,    &settings.broadcast,        0, 0},
+	{"Random_Bg",          RO_BOOL,    &settings.random_bg,        0, 0},
 
 	{"SortColumn",         RO_INT,     &settings.sort_column,      0, 0},
 	{"SortReverse",        RO_BOOL,    &settings.sort_reverse,     0, 0},
@@ -120,19 +122,23 @@ static REG_OPTIONS regSettings[] =
 	{"Y",                  RO_INT,     &settings.area.y,           0, 0},
 	{"Width",              RO_INT,     &settings.area.width,       0, 0},
 	{"Height",             RO_INT,     &settings.area.height,      0, 0},
+	{"State",              RO_INT,     &settings.windowstate,      0, 0},
 
 	{"Language",           RO_PSTRING, &settings.language,         0, 0},
 	{"FlyerDir",           RO_PSTRING, &settings.flyerdir,         0, 0},
 	{"CabinetDir",         RO_PSTRING, &settings.cabinetdir,       0, 0},
 	{"MarqueeDir",         RO_PSTRING, &settings.marqueedir,       0, 0},
+	{"TitlesDir",          RO_PSTRING, &settings.titlesdir,        0, 0},
+	{"BkgroundDir",        RO_PSTRING, &settings.bgdir,            0, 0},
 
 #ifdef MESS
-    {"SoftwareDirs",       RO_PSTRING, &settings.softwaredirs,     0, 0},
+	{"SoftwareDirs",       RO_PSTRING, &settings.softwaredirs,     0, 0},
 	{"crc_directory",      RO_PSTRING, &settings.crcdir,           0, 0},
 #endif
 
 	{"rompath",            RO_PSTRING, &settings.romdirs,          0, 0},
 	{"samplepath",         RO_PSTRING, &settings.sampledirs,       0, 0},
+	{"inipath",			   RO_PSTRING, &settings.inidirs,          0, 0},
 	{"cfg_directory",      RO_PSTRING, &settings.cfgdir,           0, 0},
 	{"nvram_directory",    RO_PSTRING, &settings.nvramdir,         0, 0},
 	{"memcard_directory",  RO_PSTRING, &settings.memcarddir,       0, 0},
@@ -141,10 +147,14 @@ static REG_OPTIONS regSettings[] =
 	{"state_directory",    RO_PSTRING, &settings.statedir,         0, 0},
 	{"artwork_directory",  RO_PSTRING, &settings.artdir,           0, 0},
 	{"snapshot_directory", RO_PSTRING, &settings.imgdir,           0, 0},
+	{"diff_directory",     RO_PSTRING, &settings.diffdir,          0, 0},
+	{"icons_directory",    RO_PSTRING, &settings.iconsdir,         0, 0},
 	{"cheat_directory",    RO_PSTRING, &settings.cheatdir,         0, 0},
 	{"cheat_file",         RO_PSTRING, &settings.cheatfile,        0, 0},
 	{"history_file",       RO_PSTRING, &settings.history_filename, 0, 0},
 	{"mameinfo_file",      RO_PSTRING, &settings.mameinfo_filename,0, 0},
+	{"ctrlr_directory",    RO_PSTRING, &settings.ctrlrdir,         0, 0},
+	{"folder_directory",   RO_PSTRING, &settings.folderdir,        0, 0},
 
 	/* ListMode needs to be before ColumnWidths settings */
 	{"ListMode",           RO_ENCODE,  &settings.view,             ListEncodeString,     ListDecodeString},
@@ -154,9 +164,9 @@ static REG_OPTIONS regSettings[] =
 	{"ColumnOrder",        RO_ENCODE,  &settings.column_order,     ColumnEncodeString,   ColumnDecodeString},
 	{"ColumnShown",        RO_ENCODE,  &settings.column_shown,     ColumnEncodeString,   ColumnDecodeString},
 #ifdef MESS
-    {"MessColumnWidths",RO_ENCODE,  &settings.mess_column_width,MessColumnEncodeString, MessColumnDecodeWidths},
-    {"MessColumnOrder", RO_ENCODE,  &settings.mess_column_order,MessColumnEncodeString, MessColumnDecodeString},
-    {"MessColumnShown", RO_ENCODE,  &settings.mess_column_shown,MessColumnEncodeString, MessColumnDecodeString}
+	{"MessColumnWidths",RO_ENCODE,  &settings.mess_column_width,MessColumnEncodeString, MessColumnDecodeWidths},
+	{"MessColumnOrder", RO_ENCODE,  &settings.mess_column_order,MessColumnEncodeString, MessColumnDecodeString},
+	{"MessColumnShown", RO_ENCODE,  &settings.mess_column_shown,MessColumnEncodeString, MessColumnDecodeString}
 #endif
 };
 
@@ -180,7 +190,6 @@ static REG_OPTIONS regGameOpts[] =
 	{ "keepaspect",             RO_BOOL,    &gOpts.keepaspect,        0, 0},
 	{ "matchrefresh",           RO_BOOL,    &gOpts.matchrefresh,      0, 0},
 	{ "syncrefresh",            RO_BOOL,    &gOpts.syncrefresh,       0, 0},
-	{ "dirty",                  RO_BOOL,    &gOpts.use_dirty,         0, 0},
 	{ "throttle",               RO_BOOL,    &gOpts.throttle,          0, 0},
 	{ "full_screen_brightness", RO_DOUBLE,  &gOpts.gfx_brightness,    0, 0},
 	{ "frames_to_run",          RO_INT,     &gOpts.frames_to_display, 0, 0},
@@ -193,41 +202,53 @@ static REG_OPTIONS regGameOpts[] =
 	{ "mouse",                  RO_BOOL,    &gOpts.use_mouse,         0, 0},
 	{ "joystick",               RO_BOOL,    &gOpts.use_joystick,      0, 0},
 	{ "steadykey",              RO_BOOL,    &gOpts.steadykey,         0, 0},
+	{ "lightgun",               RO_BOOL,    &gOpts.lightgun,          0, 0},
+	{ "ctrlr",                  RO_STRING,  &gOpts.ctrlr,             0, 0},
 
 	/* core video */
-	{ "bpp",                    RO_INT,     &gOpts.color_depth,       0, 0}, 
+	{ "brightness",             RO_DOUBLE,  &gOpts.f_bright_correct,  0, 0}, 
 	{ "norotate",               RO_BOOL,    &gOpts.norotate,          0, 0},
 	{ "ror",                    RO_BOOL,    &gOpts.ror,               0, 0},
 	{ "rol",                    RO_BOOL,    &gOpts.rol,               0, 0},
 	{ "flipx",                  RO_BOOL,    &gOpts.flipx,             0, 0},
 	{ "flipy",                  RO_BOOL,    &gOpts.flipy,             0, 0},
 	{ "debug_resolution",       RO_STRING,  &gOpts.debugres,          0, 0}, 
-	{ "gamma",                  RO_DOUBLE,  &gOpts.gamma_correct,     0, 0},
+	{ "gamma",                  RO_DOUBLE,  &gOpts.f_gamma_correct,   0, 0},
 
 	/* vector */
 	{ "antialias",              RO_BOOL,    &gOpts.antialias,         0, 0},
 	{ "translucency",           RO_BOOL,    &gOpts.translucency,      0, 0},
 	{ "beam",                   RO_DOUBLE,  &gOpts.f_beam,            0, 0},
 	{ "flicker",                RO_DOUBLE,  &gOpts.f_flicker,         0, 0},
+	{ "intensity",              RO_DOUBLE,  &gOpts.f_intensity,       0, 0},
 
 	/* sound */
 	{ "samplerate",             RO_INT,     &gOpts.samplerate,        0, 0},
-	{ "samples",                RO_BOOL,    &gOpts.use_samples,       0, 0},
+	{ "use_samples",            RO_BOOL,    &gOpts.use_samples,       0, 0},
 	{ "resamplefilter",         RO_BOOL,    &gOpts.use_filter,        0, 0},
 	{ "sound",                  RO_BOOL,    &gOpts.enable_sound,      0, 0},
 	{ "volume",                 RO_INT,     &gOpts.attenuation,       0, 0},
 
-	/* misc */
+	/* misc artwork options */
 	{ "artwork",                RO_BOOL,    &gOpts.use_artwork,       0, 0},
+	{ "backdrops",              RO_BOOL,    &gOpts.backdrops,         0, 0},
+	{ "overlays",               RO_BOOL,    &gOpts.overlays,          0, 0},
+	{ "bezels",                 RO_BOOL,    &gOpts.bezels,            0, 0},
+	{ "artwork_crop",           RO_BOOL,    &gOpts.artwork_crop,      0, 0},
+	{ "artres",                 RO_INT,     &gOpts.artres,            0, 0},
+
+	/* misc */
 	{ "cheat",                  RO_BOOL,    &gOpts.cheat,             0, 0},
 	{ "debug",                  RO_BOOL,    &gOpts.mame_debug,        0, 0},
 /*	{ "playback",               RO_STRING,  &gOpts.playbackname,      0, 0},*/
 /*	{ "record",                 RO_STRING,  &gOpts.recordname,        0, 0},*/
 	{ "log",                    RO_BOOL,    &gOpts.errorlog,          0, 0},
+	{ "sleep",                  RO_BOOL,    &gOpts.sleep,             0, 0},
+	{ "leds",                   RO_BOOL,    &gOpts.leds,              0, 0}
 
 #ifdef MESS
 	/* mess options */
-	{ "extra_software",			RO_STRING,	&gOpts.extra_software_paths,	0, 0},
+	,{ "extra_software",		RO_STRING,	&gOpts.extra_software_paths,	0, 0},
 	{ "use_new_filemgr",		RO_BOOL,	&gOpts.use_new_filemgr,			0, 0},
 	{ "ram_size",				RO_BOOL,	&gOpts.ram_size,			0, 0}
 #endif
@@ -241,10 +262,10 @@ static BOOL bResetGUI      = FALSE;
 static BOOL bResetGameDefs = FALSE;
 
 /* Default sizes based on 8pt font w/sort arrow in that column */
-static int default_column_width[] = { 186, 68, 84, 84, 64, 88, 74,108, 60,144 };
-static int default_column_shown[] = {   1,  0,  1,  1,  1,  1,  1,  1,  1,  1 };
+static int default_column_width[] = { 189, 68, 84, 84, 64, 88, 74,108, 60,144, 84 };
+static int default_column_shown[] = {   1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  0 };
 /* Hidden columns need to go at the end of the order array */
-static int default_column_order[] = {   0,  2,  3,  4,  5,  6,  7,  8,  9,  1 };
+static int default_column_order[] = {   0,  2,  3,  4,  5,  6,  7,  8,  9,  1, 10 };
 
 static char *view_modes[VIEW_MAX] = { "Large Icons", "Small Icons", "List", "Details" };
 
@@ -281,10 +302,12 @@ void OptionsInit(int total_games)
 	settings.show_toolbar    = TRUE;
 	settings.show_statusbar  = TRUE;
 	settings.show_screenshot = TRUE;
+	settings.show_tabctrl    = TRUE;
 	settings.game_check      = TRUE;
 	settings.version_check   = TRUE;
 	settings.use_joygui      = FALSE;
 	settings.broadcast       = FALSE;
+	settings.random_bg       = FALSE;
 
 	for (i = 0; i < COLUMN_MAX; i++)
 	{
@@ -294,12 +317,12 @@ void OptionsInit(int total_games)
 	}
 
 #ifdef MESS
-    for (i = 0; i < MESS_COLUMN_MAX; i++)
-    {
-        settings.mess_column_width[i] = default_mess_column_width[i];
-        settings.mess_column_order[i] = default_mess_column_order[i];
-        settings.mess_column_shown[i] = default_mess_column_shown[i];
-    }
+	for (i = 0; i < MESS_COLUMN_MAX; i++)
+	{
+		settings.mess_column_width[i] = default_mess_column_width[i];
+		settings.mess_column_order[i] = default_mess_column_order[i];
+		settings.mess_column_shown[i] = default_mess_column_shown[i];
+	}
 #endif
 	settings.sort_column = 0;
 	settings.sort_reverse= FALSE;
@@ -307,16 +330,23 @@ void OptionsInit(int total_games)
 	settings.area.y      = 0;
 	settings.area.width  = 640;
 	settings.area.height = 400;
+	settings.windowstate = 1;
 	settings.splitter[0] = 150;
-	settings.splitter[1] = 300;
+	settings.splitter[1] = 362;
 #ifdef MESS
-    settings.splitter[2] = 406;
+	/* an algorithm to adjust for the fact that we need a larger window for the
+	 * software picker
+	 */
+	settings.splitter[1] -= (settings.splitter[1] - settings.splitter[0]) / 4;
+	settings.area.width += settings.splitter[1] - settings.splitter[0];
+	settings.splitter[2] = settings.splitter[1] + (settings.splitter[1] - settings.splitter[0]);
 #endif
 
 	settings.language          = strdup("english");
 	settings.flyerdir          = strdup("flyers");
 	settings.cabinetdir        = strdup("cabinets");
 	settings.marqueedir        = strdup("marquees");
+	settings.titlesdir         = strdup("titles");
 
 #ifdef MESS
 	settings.romdirs           = strdup("bios");
@@ -328,6 +358,7 @@ void OptionsInit(int total_games)
     settings.softwaredirs      = strdup("software");
 	settings.crcdir            = strdup("crc");
 #endif
+	settings.inidirs		   = strdup("ini");
 	settings.cfgdir            = strdup("cfg");
 	settings.nvramdir          = strdup("nvram");
 	settings.memcarddir        = strdup("memcard");
@@ -336,6 +367,9 @@ void OptionsInit(int total_games)
 	settings.statedir          = strdup("sta");
 	settings.artdir            = strdup("artwork");
 	settings.imgdir            = strdup("snap");
+	settings.diffdir           = strdup("diff");
+	settings.iconsdir          = strdup("icons");
+	settings.bgdir             = strdup("bkground");
 	settings.cheatdir          = strdup("cheat");
 	settings.cheatfile         = strdup("cheat.dat");
 #ifdef MESS
@@ -345,6 +379,8 @@ void OptionsInit(int total_games)
 	settings.history_filename  = strdup("history.dat");
 	settings.mameinfo_filename = strdup("mameinfo.dat");
 #endif
+	settings.ctrlrdir          = strdup("ctrlr");
+	settings.folderdir         = strdup("folders");
 
 	settings.list_font.lfHeight         = -8;
 	settings.list_font.lfWidth          = 0;
@@ -388,37 +424,38 @@ void OptionsInit(int total_games)
 	global.keepaspect        = TRUE;
 	global.matchrefresh      = FALSE;
 	global.syncrefresh       = FALSE;
-	global.use_dirty         = TRUE;
 	global.throttle          = TRUE;
 	global.gfx_brightness    = 1.0;
 	global.frames_to_display = 0;
 	strcpy(global.effect,    "none");
 	strcpy(global.aspect,    "4:3");
 
-	/* sound */
-
 	/* input */
 	global.hotrod            = FALSE;
 	global.hotrodse          = FALSE;
 	global.use_mouse         = FALSE;
 	global.use_joystick      = FALSE;
+	global.f_a2d             = 0.3;
 	global.steadykey         = FALSE;
+	global.lightgun          = FALSE;
+	strcpy(global.ctrlr,     "Standard");
 
 	/* Core video */
-	global.color_depth       = 0;
+	global.f_bright_correct  = 1.0;
 	global.norotate          = FALSE;
 	global.ror               = FALSE;
 	global.rol               = FALSE;
 	global.flipx             = FALSE;
 	global.flipy             = FALSE;
 	strcpy(global.debugres, "auto");
-	global.gamma_correct     = 1.0;
+	global.f_gamma_correct   = 1.0;
 
 	/* Core vector */
 	global.antialias         = TRUE;
 	global.translucency      = TRUE;
 	global.f_beam            = 1.0;
 	global.f_flicker         = 0.0;
+	global.f_intensity		 = 1.5;
 
 	/* Sound */
 	global.samplerate        = 44100;
@@ -427,13 +464,23 @@ void OptionsInit(int total_games)
 	global.enable_sound      = TRUE;
 	global.attenuation       = 0;
 
-	/* misc */
+	/* misc artwork options */
 	global.use_artwork       = TRUE;
+	global.backdrops         = TRUE;
+	global.overlays          = TRUE;
+	global.bezels            = TRUE;
+	global.artwork_crop      = FALSE;
+	global.artres            = 0; /* auto */
+
+	/* misc */
 	global.cheat             = FALSE;
 	global.mame_debug        = FALSE;
 	global.playbackname      = NULL;
 	global.recordname        = NULL;
 	global.errorlog          = FALSE;
+	global.sleep             = FALSE;
+	global.leds				 = TRUE;
+
 
 #ifdef MESS
 	global.use_new_filemgr = TRUE;
@@ -460,6 +507,7 @@ void OptionsExit(void)
     free(settings.language);
     free(settings.romdirs);
     free(settings.sampledirs);
+	free(settings.inidirs);
     free(settings.cfgdir);
     free(settings.hidir);
     free(settings.inpdir);
@@ -470,11 +518,17 @@ void OptionsExit(void)
     free(settings.flyerdir);
     free(settings.cabinetdir);
     free(settings.marqueedir);
+    free(settings.titlesdir);
     free(settings.nvramdir);
+    free(settings.diffdir);
+    free(settings.iconsdir);
+    free(settings.bgdir);
 	free(settings.cheatdir);
 	free(settings.cheatfile);
 	free(settings.history_filename);
 	free(settings.mameinfo_filename);
+    free(settings.ctrlrdir);
+	free(settings.folderdir);
 }
 
 options_type * GetDefaultOptions(void)
@@ -564,6 +618,16 @@ BOOL GetBroadcast(void)
 	return settings.broadcast;
 }
 
+void SetRandomBg (BOOL random_bg)
+{
+	settings.random_bg = random_bg;
+}
+
+BOOL GetRandomBg (void)
+{
+	return settings.random_bg;
+}
+
 void SetSavedFolderID(UINT val)
 {
 	settings.folder_id = val;
@@ -604,6 +668,16 @@ BOOL GetShowStatusBar(void)
 	return settings.show_statusbar;
 }
 
+void SetShowTabCtrl (BOOL val)
+{
+	settings.show_tabctrl = val;
+}
+
+BOOL GetShowTabCtrl (void)
+{
+	return settings.show_tabctrl;
+}
+
 void SetShowToolBar(BOOL val)
 {
 	settings.show_toolbar = val;
@@ -642,6 +716,16 @@ void SetWindowArea(AREA *area)
 void GetWindowArea(AREA *area)
 {
 	memcpy(area, &settings.area, sizeof(AREA));
+}
+
+void SetWindowState(UINT state)
+{
+	settings.windowstate = state;
+}
+
+UINT GetWindowState(void)
+{
+	return settings.windowstate;
 }
 
 void SetListFont(LOGFONT *font)
@@ -797,6 +881,40 @@ void SetSampleDirs(const char* paths)
 
 	if (paths != NULL)
 		settings.sampledirs = strdup(paths);
+}
+
+const char* GetIniDirs(void)
+{
+	return settings.inidirs;
+}
+
+void SetIniDirs(const char* paths)
+{
+	if (settings.inidirs != NULL)
+	{
+		free(settings.inidirs);
+		settings.inidirs = NULL;
+	}
+
+	if (paths != NULL)
+		settings.inidirs = strdup(paths);
+}
+
+const char* GetCtrlrDir(void)
+{
+	return settings.ctrlrdir;
+}
+
+void SetCtrlrDir(const char* path)
+{
+	if (settings.ctrlrdir != NULL)
+	{
+		free(settings.ctrlrdir);
+		settings.ctrlrdir = NULL;
+	}
+
+	if (path != NULL)
+		settings.ctrlrdir = strdup(path);
 }
 
 const char* GetCfgDir(void)
@@ -984,6 +1102,87 @@ void SetMarqueeDir(const char* path)
 
 	if (path != NULL)
 		settings.marqueedir = strdup(path);
+}
+
+const char* GetTitlesDir(void)
+{
+	return settings.titlesdir;
+}
+
+void SetTitlesDir(const char* path)
+{
+	if (settings.titlesdir != NULL)
+	{
+		free(settings.titlesdir);
+		settings.titlesdir = NULL;
+	}
+
+	if (path != NULL)
+		settings.titlesdir = strdup(path);
+}
+
+const char* GetDiffDir(void)
+{
+	return settings.diffdir;
+}
+
+void SetDiffDir(const char* path)
+{
+	if (settings.diffdir != NULL)
+	{
+		free(settings.diffdir);
+		settings.diffdir = NULL;
+	}
+
+	if (path != NULL)
+		settings.diffdir = strdup(path);
+}
+
+const char* GetIconsDir(void)
+{
+	return settings.iconsdir;
+}
+
+void SetIconsDir(const char* path)
+{
+	if (settings.iconsdir != NULL)
+	{
+		free(settings.iconsdir);
+		settings.iconsdir = NULL;
+	}
+
+	if (path != NULL)
+		settings.iconsdir = strdup(path);
+}
+
+const char* GetBgDir (void)
+{
+	return settings.bgdir;
+}
+
+void SetBgDir (const char* path)
+{
+	free(settings.bgdir);
+
+	if (path != NULL)
+		settings.bgdir = strdup (path);
+}
+
+const char* GetFolderDir(void)
+{
+	return settings.folderdir;
+}
+
+void SetFolderDir(const char* path)
+{
+	if (settings.folderdir != NULL)
+	{
+		free(settings.folderdir);
+		settings.folderdir = NULL;
+	}
+
+	if (path != NULL)
+		settings.folderdir = strdup(path);
 }
 
 const char* GetCheatDir(void)
@@ -1490,7 +1689,7 @@ static void SavePlayCount(int game_index)
 
 		if (result == ERROR_SUCCESS)
 		{
-			PutRegOption(hKey, "PlayCount", game[game_index].play_count);
+			PutRegOption(hSubkey, "PlayCount", game[game_index].play_count);
 			RegCloseKey(hSubkey);
 		}
 		RegCloseKey(hKey);

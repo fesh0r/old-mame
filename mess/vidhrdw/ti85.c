@@ -13,29 +13,21 @@
 #define TI81_VIDEO_MEMORY_SIZE	 768
 #define TI81_SCREEN_X_SIZE	  12
 #define TI81_SCREEN_Y_SIZE	  64
-#define TI81_SCREEN_X_SHIFT	 173
-#define TI81_SCREEN_Y_SHIFT	  26
 #define TI81_NUMBER_OF_FRAMES	   6
 
 #define TI85_VIDEO_MEMORY_SIZE	1024
 #define TI85_SCREEN_X_SIZE	  16
 #define TI85_SCREEN_Y_SIZE	  64
-#define TI85_SCREEN_X_SHIFT	 157
-#define TI85_SCREEN_Y_SHIFT	  26
 #define TI85_NUMBER_OF_FRAMES	   6
 
 #define TI86_VIDEO_MEMORY_SIZE	1024
 #define TI86_SCREEN_X_SIZE	  16
 #define TI86_SCREEN_Y_SIZE	  64
-#define TI86_SCREEN_X_SHIFT	 157
-#define TI86_SCREEN_Y_SHIFT	  26
 #define TI86_NUMBER_OF_FRAMES	   6
 
 static int ti_video_memory_size;
 static int ti_screen_x_size;
 static int ti_screen_y_size;
-static int ti_screen_x_shift;
-static int ti_screen_y_shift;
 static int ti_number_of_frames;
 
 static UINT8 * ti85_frames;
@@ -112,32 +104,20 @@ unsigned short ti85_colortable[32][7] =
 	{ 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf }
 };
  
-void ti85_init_palette (unsigned char *sys_palette, unsigned short *sys_colortable, const unsigned char *color_prom)
+PALETTE_INIT( ti85 )
 {
-	char *backdrop_name;
 	int used = sizeof (ti85_palette) / 3;
+	int i;
 
-	memcpy (sys_palette, ti85_palette, sizeof (ti85_palette));
-	memcpy (sys_colortable, ti85_colortable, sizeof (ti85_colortable));
-
-	/* try to load a backdrop for the machine */
-	backdrop_name = malloc(4+4+1);
-
-	strncpy(backdrop_name, Machine->gamedrv->name, 4);
-	backdrop_name[4] = '\0';
-	strcat(backdrop_name, ".png");
-
-	backdrop_load (backdrop_name, used);
-        free(backdrop_name);
-	backdrop_name = NULL;
+	for (i = 0; i < used; i++)
+		palette_set_color(i, ti85_palette[i][0], ti85_palette[i][1], ti85_palette[i][2]);
+	memcpy (colortable, ti85_colortable, sizeof (ti85_colortable));
 
 	if (!strncmp(Machine->gamedrv->name, "ti81", 4))
 	{
 		ti_video_memory_size = TI81_VIDEO_MEMORY_SIZE;
 		ti_screen_x_size = TI81_SCREEN_X_SIZE;
 		ti_screen_y_size = TI81_SCREEN_Y_SIZE;
-		ti_screen_x_shift = TI81_SCREEN_X_SHIFT;
-		ti_screen_y_shift = TI81_SCREEN_Y_SHIFT;
 		ti_number_of_frames = TI81_NUMBER_OF_FRAMES;
 	}
 	if (!strncmp(Machine->gamedrv->name, "ti85", 4))
@@ -145,8 +125,6 @@ void ti85_init_palette (unsigned char *sys_palette, unsigned short *sys_colortab
 		ti_video_memory_size = TI85_VIDEO_MEMORY_SIZE;
 		ti_screen_x_size = TI85_SCREEN_X_SIZE;
 		ti_screen_y_size = TI85_SCREEN_Y_SIZE;
-		ti_screen_x_shift = TI85_SCREEN_X_SHIFT;
-		ti_screen_y_shift = TI85_SCREEN_Y_SHIFT;
 		ti_number_of_frames = TI85_NUMBER_OF_FRAMES;
 	}
 	if (!strncmp(Machine->gamedrv->name, "ti86", 4))
@@ -154,28 +132,19 @@ void ti85_init_palette (unsigned char *sys_palette, unsigned short *sys_colortab
 		ti_video_memory_size = TI86_VIDEO_MEMORY_SIZE;
 		ti_screen_x_size = TI86_SCREEN_X_SIZE;
 		ti_screen_y_size = TI86_SCREEN_Y_SIZE;
-		ti_screen_x_shift = TI86_SCREEN_X_SHIFT;
-		ti_screen_y_shift = TI86_SCREEN_Y_SHIFT;
 		ti_number_of_frames = TI86_NUMBER_OF_FRAMES;
 	}
 
-	ti85_frames = (UINT8 *) malloc(ti_number_of_frames*ti_video_memory_size*sizeof (UINT8));
+	ti85_frames = (UINT8 *) auto_malloc(ti_number_of_frames*ti_video_memory_size*sizeof (UINT8));
 	memset (ti85_frames, 0, sizeof(UINT8)*ti_number_of_frames*ti_video_memory_size);
 }
 
-
-int ti85_vh_start (void)
+VIDEO_START( ti85 )
 {
 	return 0;
 }
 
-void ti85_vh_stop (void)
-{
-	free (ti85_frames);
-}
-
-
-void ti85_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( ti85 )
 {
 	int x,y,b;
 	int brightnes;
@@ -186,7 +155,7 @@ void ti85_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
         	for (y=0; y<ti_screen_y_size; y++)
 			for (x=0; x<ti_screen_x_size; x++)
 				for (b=0; b<8; b++)
-					plot_pixel(bitmap, ti_screen_x_shift+x*8+b, y+TI85_SCREEN_Y_SHIFT, Machine->pens[ti85_colortable[ti85_LCD_contrast&0x1f][6]]);
+					plot_pixel(bitmap, x*8+b, y, Machine->pens[ti85_colortable[ti85_LCD_contrast&0x1f][6]]);
 		return;
 	}
 
@@ -209,7 +178,7 @@ void ti85_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
 					  + ((*(ti85_frames+4*ti_video_memory_size+y*ti_screen_x_size+x)>>(7-b)) & 0x01)
 					  + ((*(ti85_frames+5*ti_video_memory_size+y*ti_screen_x_size+x)>>(7-b)) & 0x01);
 
-				plot_pixel(bitmap, ti_screen_x_shift+x*8+b, ti_screen_y_shift+y, Machine->pens[ti85_colortable[ti85_LCD_contrast&0x1f][brightnes]]);
+				plot_pixel(bitmap, x*8+b, y, Machine->pens[ti85_colortable[ti85_LCD_contrast&0x1f][brightnes]]);
 	                }
 }
 

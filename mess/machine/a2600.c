@@ -20,6 +20,7 @@
 #include "machine/tia.h"
 #include "drawgfx.h"
 #include "zlib.h"
+#include "vidhrdw/generic.h"
 
 #include "includes/a2600.h"
 
@@ -164,9 +165,6 @@ static void *HSYNC_timer;
 
 static int msize0 = 0;
 static int msize1 = 0;
-
-/* bitmap */
-static struct mame_bitmap *stella_bitmap = NULL;
 
 /* local */
 static unsigned char *a2600_cartridge_rom;
@@ -418,7 +416,7 @@ READ_HANDLER( a2600_TIA_r )
 	UINT8 *ROM = memory_region(REGION_CPU1);
 	unsigned int pc;
 
-	pc = cpu_get_pc();
+	pc = activecpu_get_pc();
 	{
 		INT32 riotdiff = (global_tia_cycle + TIME_TO_CYCLES(0, timer_timeelapsed(HSYNC_timer))) - previous_tia_cycle;
 
@@ -497,7 +495,7 @@ WRITE_HANDLER( a2600_TIA_w )
 
 	unsigned int pc;
 
-	pc = cpu_get_pc();
+	pc = activecpu_get_pc();
 	{
 		INT32 riotdiff = (global_tia_cycle + TIME_TO_CYCLES(0, timer_timeelapsed(HSYNC_timer))) - previous_tia_cycle;
 
@@ -908,27 +906,6 @@ void a2600_stop_machine(void)
 /* Video functions for the a2600         */
 /* Since all software drivern, have here */
 
-
-/***************************************************************************
-
-  Start the video hardware emulation.
-
-***************************************************************************/
-int a2600_vh_start(void)
-{
-	if ((stella_bitmap = bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height)) == 0)
-		return 1;
-	return 0;
-}
-
-void a2600_vh_stop(void)
-{
-	if (stella_bitmap)
-		bitmap_free(stella_bitmap);
-	stella_bitmap = NULL;
-}
-
-
 /***************************************************************************
 
   Update Bitmap When called
@@ -939,6 +916,7 @@ static void a2600_scanline_cb(void)
 	int regpos;
 	int xs = Machine->visible_area.min_x;
 	int backcolor;
+	UINT16 scanline[160];
 
 	profiler_mark(PROFILER_VIDEO);
 
@@ -949,22 +927,16 @@ static void a2600_scanline_cb(void)
 	{
 		if ((currentline <= 261) && (TIA_vblank == 0))
 		{
-		/* now we have color, plot for 4 color cycles */
-		for (regpos = 0; regpos < 160; regpos++)
-		{
-			int i = PF_Data[regpos] % Machine->drv->color_table_len;
-
-				plot_pixel(stella_bitmap, regpos + xs, currentline, Machine->pens[0]);
-
+			/* now we have color, plot for 4 color cycles */
+			for (regpos = 0; regpos < 160; regpos++)
+			{
+				int i = PF_Data[regpos] % Machine->drv->color_table_len;
 				if (i == 0)
-				{
-					plot_pixel(stella_bitmap, regpos + xs, currentline, Machine->pens[backcolor]);
-				}
+					scanline[regpos] = Machine->pens[backcolor];
 				else
-				{
-					plot_pixel(stella_bitmap, regpos + xs, currentline, Machine->pens[i]);
-				}
+					scanline[regpos] = Machine->pens[i];
 			}
+			draw_scanline16(tmpbitmap, xs, currentline, 160, scanline, NULL, -1);
 		}
 	}
 	#ifndef USE_SCANLINE_WSYNC
@@ -1333,28 +1305,15 @@ static void a2600_Cycle_cb(int riotdiff)
   Machine Initialisation
 
 ***************************************************************************/
-void a2600_init_machine(void)
+MACHINE_INIT( a2600 )
 {
-
 	/* start RIOT interface */
-
 	currentline = 0;
-	HSYNC_timer = timer_pulse(TIME_IN_CYCLES(76, 0), 0, a2600_main_cb);
+	HSYNC_timer = timer_alloc(a2600_main_cb);
+	timer_adjust(HSYNC_timer, 0, 0, TIME_IN_CYCLES(76, 0));
 	TIA_pf_mask.shiftreg = 0x080000;
 	return;
 
-}
-
-/***************************************************************************
-
-  Refresh the video screen
-	This routine is called at the start of vblank to refresh the screen
-
-***************************************************************************/
-void a2600_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
-{
-	if (!osd_skip_this_frame())
-		copybitmap(bitmap, stella_bitmap, 0, 0, 0, 0, &Machine->visible_area, TRANSPARENCY_NONE, 0);
 }
 
 

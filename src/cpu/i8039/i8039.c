@@ -43,21 +43,6 @@
 #include "mamedbg.h"
 #include "i8039.h"
 
-#ifdef RUNTIME_LOADER
-#define i8048_icount i8048_ICount
-struct cpu_interface
-i8035_interface=
-    CPU0(I8035,    i8035,    1,  0,1.00,I8035_IGNORE_INT,  I8035_EXT_INT,  -1,             8, 16,     0,16,LE,1, 2), i8039_interface=
-    CPU0(I8039,    i8039,    1,  0,1.00,I8039_IGNORE_INT,  I8039_EXT_INT,  -1,             8, 16,     0,16,LE,1, 2), i8048_interface=
-    CPU4(I8048,    i8048,    1,  0,1.00,I8048_IGNORE_INT,  I8048_EXT_INT,  -1,             8, 16,     0,16,LE,1, 2);
-
-extern void i8039_runtime_loader_init(void)
-{
-        cpuintf[CPU_I8035]=i8035_interface;
-        cpuintf[CPU_I8039]=i8039_interface;
-        cpuintf[CPU_I8048]=i8048_interface;
-}
-#endif
 
 /*** Cycle times for the jump on condition instructions, are unusual.
 	 Condition is tested during the first cycle, so if condition is not
@@ -1101,18 +1086,6 @@ const char *i8048_info(void *context, int regnum)
 	}
 	return i8039_info(context,regnum);
 }
-
-/* add these in the memory region for better usage of mame debugger */
-READ_HANDLER(i8048_internal_r)
-{
-    return R.RAM[offset&0x7f];
-}
-
-WRITE_HANDLER(i8048_internal_w)
-{
-    R.RAM[offset&0x7f]=data;
-}
-
 
 unsigned i8048_dasm(char *buffer, unsigned pc)
 {

@@ -23,14 +23,27 @@ enum FolderIds
 	FOLDER_ALLGAMES,
 	FOLDER_AVAILABLE,
 	FOLDER_UNAVAILABLE,
+	FOLDER_TYPES,
+#if !defined(NEOFREE)
 	FOLDER_NEOGEO,
+#endif
 #ifdef MESS
 	FOLDER_CONSOLE,
 	FOLDER_COMPUTER,
 	FOLDER_MODIFIED,
+#else
+	FOLDER_CPS,
+	FOLDER_SEGASYS,
+	FOLDER_IREMM,
+	FOLDER_NES,
+	FOLDER_DECOCASS,
 #endif
 	FOLDER_MANUFACTURER,
 	FOLDER_YEAR,
+#ifdef CPUSND_FOLDER
+	FOLDER_CPU,
+	FOLDER_SND,
+#endif /* CPUSND_FOLDER */
 	FOLDER_WORKING,
 	FOLDER_NONWORKING,
 	FOLDER_CUSTOM,
@@ -65,10 +78,10 @@ typedef enum
 	F_WORKING       = 0x00000080,
 	F_AVAILABLE     = 0x00000100,
 #ifdef MESS
-    F_COMPUTER      = 0x00000200,
-    F_CONSOLE       = 0x00000400,
+	F_COMPUTER      = 0x00000200,
+	F_CONSOLE       = 0x00000400,
 	F_MODIFIED      = 0x00000800,
-    F_NUM_FILTERS   = 11,
+	F_NUM_FILTERS   = 11,
 #else
 	F_NUM_FILTERS   = 9,
 #endif
@@ -97,16 +110,11 @@ extern LPTREEFOLDER GetCurrentFolder(void);
 extern LPTREEFOLDER GetFolder(UINT nFolder);
 extern LPTREEFOLDER GetFolderByID(UINT nID);
 
-extern TREEFOLDER** treeFolders;
-extern UINT         numFolders;
-
 extern void AddGame(LPTREEFOLDER lpFolder, UINT nGame);
 extern void RemoveGame(LPTREEFOLDER lpFolder, UINT nGame);
 extern int  FindGame(LPTREEFOLDER lpFolder, int nGame);
 
 extern void InitTree(HWND hWnd, UINT nGames);
-extern void DestroyTree(HWND hWnd);
-
 extern void InitGames(UINT nGames);
 
 extern void Tree_Initialize(HWND hWnd);

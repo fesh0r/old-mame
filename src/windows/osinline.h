@@ -52,36 +52,6 @@ INLINE int _vec_mult(int x, int y)
 #else
 
 #define vec_mult _vec_mult
-
-#ifdef _MSC_VER
-
-inline int _vec_mult(int x, int y)
-{
-    int result;
-    __asm
-    {
-        mov eax , x
-        imul y
-        mov result , edx
-    }
-    return result;
-}
-
-INLINE unsigned int osd_cycles(void)
-{
-    int result;
-
-    __asm
-    {
-        rdtsc               /* load clock cycle counter in eax and edx */
-        mov result, eax     /* the result has to go in eax (low 32 bits) */
-    }
-
-    return result;
-}
-
-#else // !_MSC_VER
-
 INLINE int _vec_mult(int x, int y)
 {
 	int result;
@@ -98,7 +68,5 @@ INLINE int _vec_mult(int x, int y)
 }
 
 #endif /* _MSC_VER */
-
-#endif // _MSC_VER
 
 #endif /* __OSINLINE__ */

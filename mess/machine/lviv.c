@@ -17,51 +17,45 @@
 #include "machine/8255ppi.h"
 #include "formats/lviv_lvt.h"
 
-unsigned char * lviv_ram;
 unsigned char * lviv_video_ram;
 
 UINT8 lviv_ppi_port_outputs[2][3];
 
-void lviv_update_memory (void)
+static UINT8 startup_mem_map;
+
+
+static void lviv_update_memory (void)
 {
 	if (lviv_ppi_port_outputs[0][2] & 0x02)
 	{
-		memory_set_bankhandler_r(1, 0, MRA_BANK1);
-		memory_set_bankhandler_r(2, 0, MRA_BANK2);
-
-		memory_set_bankhandler_w(5, 0, MWA_BANK5);
-		memory_set_bankhandler_w(6, 0, MWA_BANK6);
-
-		cpu_setbank(1, lviv_ram);
-		cpu_setbank(2, lviv_ram + 0x4000);
-
-		cpu_setbank(5, lviv_ram);
-		cpu_setbank(6, lviv_ram + 0x4000);
+		cpu_setbank(1, mess_ram);
+		cpu_setbank(2, mess_ram + 0x4000);
 	}
 	else
 	{
-		memory_set_bankhandler_r(1, 0, MRA_NOP);
-		memory_set_bankhandler_r(2, 0, MRA_BANK2);
-
-		memory_set_bankhandler_w(5, 0, MWA_NOP);
-		memory_set_bankhandler_w(6, 0, MWA_BANK6);
-
+		cpu_setbank(1, mess_ram + 0x8000);
 		cpu_setbank(2, lviv_video_ram);
-		cpu_setbank(6, lviv_video_ram);
 	}
 }
 
-READ_HANDLER ( lviv_ppi_0_porta_r )
+OPBASE_HANDLER(lviv_opbaseoverride)
+{
+	if (readinputport(12)&0x01)
+		machine_reset();
+	return address;
+}
+
+static READ_HANDLER ( lviv_ppi_0_porta_r )
 {
 	return 0xff;
 }
 
-READ_HANDLER ( lviv_ppi_0_portb_r )
+static READ_HANDLER ( lviv_ppi_0_portb_r )
 {
 	return 0xff;
 }
 
-READ_HANDLER ( lviv_ppi_0_portc_r )
+static READ_HANDLER ( lviv_ppi_0_portc_r )
 {
 	UINT8 data = 0xff;
 	if (!(device_input(IO_CASSETTE,0) > 255))
@@ -69,18 +63,18 @@ READ_HANDLER ( lviv_ppi_0_portc_r )
 	return data;
 }
 
-WRITE_HANDLER ( lviv_ppi_0_porta_w )
+static WRITE_HANDLER ( lviv_ppi_0_porta_w )
 {
 	lviv_ppi_port_outputs[0][0] = data;
 }
 
-WRITE_HANDLER ( lviv_ppi_0_portb_w )
+static WRITE_HANDLER ( lviv_ppi_0_portb_w )
 {
 	lviv_ppi_port_outputs[0][1] = data;
 	lviv_update_palette (data&0x7f);
 }
 
-WRITE_HANDLER ( lviv_ppi_0_portc_w )	/* tape in/out, video memory on/off */
+static WRITE_HANDLER ( lviv_ppi_0_portc_w )	/* tape in/out, video memory on/off */
 {
 	lviv_ppi_port_outputs[0][2] = data;
 	if (lviv_ppi_port_outputs[0][1]&0x80)
@@ -89,12 +83,12 @@ WRITE_HANDLER ( lviv_ppi_0_portc_w )	/* tape in/out, video memory on/off */
 	lviv_update_memory();
 }
 
-READ_HANDLER ( lviv_ppi_1_porta_r )
+static READ_HANDLER ( lviv_ppi_1_porta_r )
 {
 	return 0xff;
 }
 
-READ_HANDLER ( lviv_ppi_1_portb_r )	/* keyboard reading */
+static READ_HANDLER ( lviv_ppi_1_portb_r )	/* keyboard reading */
 {
 	return	((lviv_ppi_port_outputs[1][0]&0x01) ? 0xff : readinputport(0)) &
 		((lviv_ppi_port_outputs[1][0]&0x02) ? 0xff : readinputport(1)) &
@@ -106,7 +100,7 @@ READ_HANDLER ( lviv_ppi_1_portb_r )	/* keyboard reading */
 		((lviv_ppi_port_outputs[1][0]&0x80) ? 0xff : readinputport(7));
 }
 
-READ_HANDLER ( lviv_ppi_1_portc_r )     /* keyboard reading */
+static READ_HANDLER ( lviv_ppi_1_portc_r )     /* keyboard reading */
 {
 	return	((lviv_ppi_port_outputs[1][2]&0x01) ? 0xff : readinputport(8))  &
 		((lviv_ppi_port_outputs[1][2]&0x02) ? 0xff : readinputport(9))  &
@@ -114,20 +108,91 @@ READ_HANDLER ( lviv_ppi_1_portc_r )     /* keyboard reading */
 		((lviv_ppi_port_outputs[1][2]&0x08) ? 0xff : readinputport(11));
 }
 
-WRITE_HANDLER ( lviv_ppi_1_porta_w )	/* kayboard scaning */
+static WRITE_HANDLER ( lviv_ppi_1_porta_w )	/* kayboard scaning */
 {
 	lviv_ppi_port_outputs[1][0] = data;
 }
 
-WRITE_HANDLER ( lviv_ppi_1_portb_w )
+static WRITE_HANDLER ( lviv_ppi_1_portb_w )
 {
 	lviv_ppi_port_outputs[1][1] = data;
 }
 
-WRITE_HANDLER ( lviv_ppi_1_portc_w )	/* kayboard scaning */
+static WRITE_HANDLER ( lviv_ppi_1_portc_w )	/* kayboard scaning */
 {
 	lviv_ppi_port_outputs[1][2] = data;
 }
+
+
+/* I/O */
+READ_HANDLER ( lviv_io_r )
+{
+	if (startup_mem_map)
+	{
+		return 0;	/* ??? */
+	}
+	else
+	{
+		switch ((offset >> 4) & 0x3)
+		{
+		case 0:
+			return ppi8255_0_r(offset & 3);
+			break;
+
+		case 1:
+			return ppi8255_1_r(offset & 3);
+			break;
+
+		case 2:
+		case 3:
+		default:
+			/* reserved for extension? */
+			return 0;	/* ??? */
+		}
+	}
+}
+
+WRITE_HANDLER ( lviv_io_w )
+{
+	if (startup_mem_map)
+	{
+		startup_mem_map = 0;
+
+		memory_set_bankhandler_r(1, 0, MRA_BANK1);
+		memory_set_bankhandler_r(2, 0, MRA_BANK2);
+		memory_set_bankhandler_r(3, 0, MRA_BANK3);
+		memory_set_bankhandler_r(4, 0, MRA_BANK4);
+
+		memory_set_bankhandler_w(1, 0, MWA_BANK1);
+		memory_set_bankhandler_w(2, 0, MWA_BANK2);
+		memory_set_bankhandler_w(3, 0, MWA_BANK3);
+		memory_set_bankhandler_w(4, 0, MWA_ROM);
+
+		cpu_setbank(1, mess_ram);
+		cpu_setbank(2, mess_ram + 0x4000);
+		cpu_setbank(3, mess_ram + 0x8000);
+		cpu_setbank(4, memory_region(REGION_CPU1) + 0x010000);
+	}
+	else
+	{
+		switch ((offset >> 4) & 0x3)
+		{
+		case 0:
+			ppi8255_0_w(offset & 3, data);
+			break;
+
+		case 1:
+			ppi8255_1_w(offset & 3, data);
+			break;
+
+		case 2:
+		case 3:
+			/* reserved for extension? */
+			break;
+		}
+	}
+}
+
 
 static ppi8255_interface lviv_ppi8255_interface =
 {
@@ -140,50 +205,32 @@ static ppi8255_interface lviv_ppi8255_interface =
 	{lviv_ppi_0_portc_w, lviv_ppi_1_portc_w}
 };
 
-void lviv_init_machine(void)
+MACHINE_INIT( lviv )
 {
+	memory_set_opbase_handler(0, lviv_opbaseoverride);
+
 	ppi8255_init(&lviv_ppi8255_interface);
 
-	lviv_ram = (unsigned char *)malloc(0xffff); /* 48kB RAM and 16 kB Video RAM */
-	lviv_video_ram = lviv_ram + 0xc000;
+	lviv_video_ram = mess_ram + 0xc000;
 
-	if (lviv_ram)
-	{
-		memory_set_bankhandler_r(1, 0, MRA_BANK1);
-		memory_set_bankhandler_r(2, 0, MRA_BANK2);
-		memory_set_bankhandler_r(3, 0, MRA_BANK3);
-		memory_set_bankhandler_r(4, 0, MRA_BANK4);
+	startup_mem_map = 1;
 
-		memory_set_bankhandler_w(5, 0, MWA_BANK5);
-		memory_set_bankhandler_w(6, 0, MWA_BANK6);
-		memory_set_bankhandler_w(7, 0, MWA_BANK7);
-		memory_set_bankhandler_w(8, 0, MWA_ROM);
+	memory_set_bankhandler_r(1, 0, MRA_BANK1);
+	memory_set_bankhandler_r(2, 0, MRA_BANK2);
+	memory_set_bankhandler_r(3, 0, MRA_BANK3);
+	memory_set_bankhandler_r(4, 0, MRA_BANK4);
 
-		cpu_setbank(1, lviv_ram);
-		cpu_setbank(2, lviv_ram + 0x4000);
-		cpu_setbank(3, lviv_ram + 0x8000);
-		cpu_setbank(4, memory_region(REGION_CPU1) + 0x010000);
+	memory_set_bankhandler_w(1, 0, MWA_ROM);
+	memory_set_bankhandler_w(2, 0, MWA_ROM);
+	memory_set_bankhandler_w(3, 0, MWA_ROM);
+	memory_set_bankhandler_w(4, 0, MWA_ROM);
 
-		cpu_setbank(5, lviv_ram);
-		cpu_setbank(6, lviv_ram + 0x4000);
-		cpu_setbank(7, lviv_ram + 0x8000);
-		cpu_setbank(8, memory_region(REGION_CPU1) + 0x010000);
+	cpu_setbank(1, memory_region(REGION_CPU1) + 0x010000);
+	cpu_setbank(2, memory_region(REGION_CPU1) + 0x010000);
+	cpu_setbank(3, memory_region(REGION_CPU1) + 0x010000);
+	cpu_setbank(4, memory_region(REGION_CPU1) + 0x010000);
 
-		memset(lviv_ram, 0, sizeof(unsigned char)*0xffff);
-
-		lviv_ram[0x0000] = 0xc3;		
-		lviv_ram[0x0001] = 0x00;		
-		lviv_ram[0x0002] = 0xc0;		
-	}
-}
-
-void lviv_stop_machine(void)
-{
-	if(lviv_ram)
-	{
-		free(lviv_ram);
-		lviv_ram = NULL;
-	}
+	/*memset(mess_ram, 0, sizeof(unsigned char)*0xffff);*/
 }
 
 int lviv_tape_init(int id)
@@ -214,6 +261,12 @@ int lviv_tape_init(int id)
 				int size_in_samples;
 
 				osd_fread(file, lviv_lvt_data, lviv_lvt_size);
+				if (strncmp ((char *)lviv_lvt_data, "LVOV/2.0/", 9))
+				{
+					free(lviv_lvt_data);
+					logerror ("Unsupported file version\n");
+					return INIT_FAIL;
+				}
 				size_in_samples = lviv_cassette_calculate_size_in_samples(lviv_lvt_size, lviv_lvt_data);
 				osd_fseek(file, 0, SEEK_SET);
 				free(lviv_lvt_data);

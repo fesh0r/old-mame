@@ -30,7 +30,7 @@
  **************************************************************************** */
 
 /* GLmame and FXmame provide their own vector implementations */
-#if !(defined xgl)
+#if !(defined xgl) && !(defined xfx) && !(defined svgafx)
 
 #include <math.h>
 #include "osinline.h"

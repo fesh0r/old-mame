@@ -760,7 +760,7 @@ void vic3_draw_bitplanes(void)
 	}
 }
 
-int vic3_raster_irq (void)
+INTERRUPT_GEN( vic3_raster_irq )
 {
 	static int columns=640, raws=200;
 	int new_columns, new_raws;
@@ -800,7 +800,7 @@ int vic3_raster_irq (void)
 		if ((new_columns!=columns)||(new_raws!=raws)) {
 			raws=new_raws;
 			columns=new_columns;
-			osd_set_visible_area(0,columns+16-1,0, raws+16-1);
+			set_visible_area(0,columns+16-1,0, raws+16-1);
 		}
 		if (VIC3_BITPLANES) {
 			if (!osd_skip_this_frame ()) vic3_draw_bitplanes();
@@ -815,7 +815,7 @@ int vic3_raster_irq (void)
 			double tme = 0.0;
 
 			/* lightpen timer starten */
-			vic2.lightpentimer = timer_set (tme, 1, vic2_timer_timeout);
+			timer_set (tme, 1, vic2_timer_timeout);
 		}
 		//state_display(vic2.bitmap);
 	}
@@ -825,6 +825,5 @@ int vic3_raster_irq (void)
 			vic2_drawlines (vic2.lastline, vic2.rasterline);
 		vic2_set_interrupt (1);
 	}
-	return ignore_interrupt();
 }
 

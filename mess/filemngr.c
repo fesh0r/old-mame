@@ -2,10 +2,19 @@
 #include <signal.h>
 #include "utils.h"
 
+#ifndef MIN
+#define MIN(x,y) ((x)<(y)?(x):(y))
+#endif
+#ifndef MAX
+#define MAX(x,y) ((x)>(y)?(x):(y))
+#endif
+
 static int count_chars_entered;
 static char *enter_string;
 static int enter_string_size;
 static int enter_filename_mode;
+
+static char fs_label_none[] = "[empty slot]";
 
 static char entered_filename[512];
 
@@ -193,6 +202,7 @@ static int *fs_types;
 static int *fs_order;
 static int fs_chunk;
 static int fs_total;
+static int fs_insession;
 
 enum {
 	FILESELECT_NONE,
@@ -239,9 +249,13 @@ void fs_free(void)
 		/* free duplicated strings of file and directory names */
 		for (i = 0; i < fs_total; i++)
 		{
-			if (fs_types[i] == FILESELECT_FILE ||
-				fs_types[i] == FILESELECT_DIRECTORY)
-				free((char *)fs_item[i]);
+			switch(fs_types[i]) {
+			case FILESELECT_FILE:
+			case FILESELECT_DIRECTORY:
+				if (fs_item[i] != fs_label_none)
+					free((char *)fs_item[i]);
+				break;
+			}
 		}
 		free(fs_item);
 		free(fs_subitem);
@@ -305,9 +319,7 @@ static int DECL_SPEC fs_compare(const void *p1, const void *p2)
 
 #define MAX_ENTRIES_IN_MENU (SEL_MASK-1)
 
-int fs_init_done = 0;
-
-void fs_generate_filelist(void)
+static void fs_generate_filelist(void)
 {
 	void *dir;
 	int qsort_start, count, i, n;
@@ -315,17 +327,6 @@ void fs_generate_filelist(void)
 	const char **tmp_menu_subitem;
 	char *tmp_flags;
 	int *tmp_types;
-
-	/* should be moved inside mess.c ??? */
-	if (fs_init_done==0)
-	{
-		/* this will not work if roms is not a sub-dir of mess, and
-		   will also not work if we are not in the mess dir */
-		/* go to initial roms directory */
-		osd_change_directory("software");
-		osd_change_directory(Machine->gamedrv->name);
-		fs_init_done = 1;
-	}
 
 	/* just to be safe */
 	fs_free();
@@ -371,6 +372,13 @@ void fs_generate_filelist(void)
 	fs_item[n] = "-";
 	fs_subitem[n] = 0;
 	fs_types[n] = FILESELECT_NONE;
+	fs_flags[n] = 0;
+
+	/* insert empty specifier */
+	n = fs_alloc();
+	fs_item[n] = fs_label_none;
+	fs_subitem[n] = "";
+	fs_types[n] = FILESELECT_FILE;
 	fs_flags[n] = 0;
 
 	qsort_start = fs_total;
@@ -465,16 +473,37 @@ void fs_generate_filelist(void)
 /* and mask to get bits */
 #define SEL_BITS_MASK			(~SEL_MASK)
 
-int fileselect(struct mame_bitmap *bitmap, int selected)
+static int fileselect(struct mame_bitmap *bitmap, int selected, const char *default_selection)
 {
 	int sel, total, arrowize;
 	int visible;
 
 	sel = selected - 1;
 
+	/* beginning a file manager session */
+	if (fs_insession == 0)
+	{
+		fs_insession = 1;
+		if (default_selection)
+		{
+			char *dirname;
+			dirname = osd_dirname((char *) default_selection);
+			osd_change_directory(dirname);
+			free(dirname);
+		}
+		else
+		{
+			osd_change_directory(mess_path);
+			osd_change_directory("software");
+			osd_change_directory(Machine->gamedrv->name);
+		}
+	}
+
 	/* generate menu? */
 	if (fs_total == 0)
+	{
 		fs_generate_filelist();
+	}
 
 	total = fs_total - 1;
 
@@ -552,11 +581,13 @@ int fileselect(struct mame_bitmap *bitmap, int selected)
 			else
 			if (UI_SHIFT_PRESSED)
 			{
-				sel = (sel + visible) % total;
+				sel = (sel + visible - 1);
+				sel = MIN(sel,total);
 			}
 			else
 			{
-				sel = (sel + 1) % total;
+				sel++;
+				sel = MIN(sel,total);
 			}
 		}
 
@@ -564,15 +595,17 @@ int fileselect(struct mame_bitmap *bitmap, int selected)
 		{
 			if (UI_CONTROL_PRESSED)
 			{
-				sel = 0;
+				sel = 1;
 			}
 			if (UI_SHIFT_PRESSED)
 			{
-				sel = (sel + total - visible) % total;
+				sel = (sel - visible + 1);
+				sel = MAX(0,sel);
 			}
 			else
 			{
-				sel = (sel + total - 1) % total;
+				sel--;
+				sel = MAX(0,sel);
 			}
 		}
 
@@ -588,14 +621,25 @@ int fileselect(struct mame_bitmap *bitmap, int selected)
 
 				case FILESELECT_FILESPEC:
 					start_enter_string(current_filespecification, 32, 0);
+
+	                                /* flush keyboard buffer */
+        	                        do {} while (keyboard_read_async() != CODE_NONE);
+
 					sel |= 1 << SEL_BITS; /* we'll ask for a key */
 					schedule_full_refresh();
 					break;
 
 				case FILESELECT_FILE:
 					/* copy filename */
-					strncpyz(entered_filename, osd_get_cwd(), sizeof(entered_filename) / sizeof(entered_filename[0]));
-					strncatz(entered_filename, fs_item[sel], sizeof(entered_filename) / sizeof(entered_filename[0]));
+					if (fs_item[sel] == fs_label_none)
+					{
+						entered_filename[0] = '\0';
+					}
+					else
+					{
+						strncpyz(entered_filename, osd_get_cwd(), sizeof(entered_filename) / sizeof(entered_filename[0]));
+						strncatz(entered_filename, fs_item[sel], sizeof(entered_filename) / sizeof(entered_filename[0]));
+					}
 
 					fs_free();
 					sel = -3;
@@ -637,7 +681,10 @@ int fileselect(struct mame_bitmap *bitmap, int selected)
 		fs_free();
 
 	if (sel == -1 || sel == -2 || sel == -3)
+	{
 		schedule_full_refresh();
+		fs_insession = 0;
+	}
 
 	return sel + 1;
 }
@@ -689,7 +736,7 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 	/* if the fileselect() mode is active */
 	if (sel & (2 << SEL_BITS))
 	{
-		sel = fileselect(bitmap, selected & ~(2 << SEL_BITS));
+		sel = fileselect(bitmap, selected & ~(2 << SEL_BITS), device_filename(types[previous_sel & SEL_MASK], ids[previous_sel & SEL_MASK]));
 		if (sel != 0 && sel != -1 && sel!=-2)
 			return sel | (2 << SEL_BITS);
 
@@ -701,7 +748,7 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 			previous_sel = previous_sel & SEL_MASK;
 
 			/* attempt a filename change */
-			device_filename_change(types[previous_sel], ids[previous_sel], entered_filename);
+			device_filename_change(types[previous_sel], ids[previous_sel], entered_filename[0] ? entered_filename : NULL);
 		}
 
 		sel = previous_sel;
@@ -794,6 +841,9 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 				else
 					strcpy(entered_filename, menu_subitem[sel]);
 				start_enter_string(entered_filename, (sizeof(entered_filename) / sizeof(entered_filename[0])) - 1, 1);
+
+				/* flush keyboard buffer */
+				do {} while (keyboard_read_async() != CODE_NONE);
 
 				sel |= 1 << SEL_BITS;	/* we'll ask for a key */
 

@@ -57,7 +57,6 @@ static void	coco_fdc_callback(int event);
 static void	dragon_fdc_callback(int event);
 static int	drq_state;
 static int	intrq_state;
-static int	m6242_address;
 
 #define       COCO_HALTENABLE   (dskreg & 0x80)
 #define   SET_COCO_HALTENABLE    dskreg &= 0x80
@@ -100,7 +99,7 @@ static void raise_halt(int dummy)
 {
 	LOG(("cococart: Raising HALT\n" ));
 
-	cpu_set_halt_line(0, ASSERT_LINE);
+	coco_set_halt_line(ASSERT_LINE);
 }
 
 static void coco_fdc_callback(int event)
@@ -113,7 +112,7 @@ static void coco_fdc_callback(int event)
 	case WD179X_IRQ_SET:
 		intrq_state = ASSERT_LINE;
 		CLEAR_COCO_HALTENABLE;
-		cpu_set_halt_line(0, CLEAR_LINE);
+		coco_set_halt_line(CLEAR_LINE);
 		if( COCO_NMIENABLE )
 			timer_set( TIME_IN_USEC(0), 0, raise_nmi);
 		else
@@ -123,13 +122,12 @@ static void coco_fdc_callback(int event)
 		drq_state = CLEAR_LINE;
 		if( COCO_HALTENABLE )
 			timer_set( TIME_IN_CYCLES(7,0), 0, raise_halt);
-/*			cpu_set_halt_line(0, ASSERT_LINE);*/
 		else
-			cpu_set_halt_line(0, CLEAR_LINE);
+			coco_set_halt_line(CLEAR_LINE);
 		break;
 	case WD179X_DRQ_SET:
 		drq_state = ASSERT_LINE;
-		cpu_set_halt_line(0, CLEAR_LINE);
+		coco_set_halt_line(CLEAR_LINE);
 		break;
 	}
 }
@@ -295,14 +293,13 @@ static void set_coco_dskreg(int data)
 
 	if( COCO_HALTENABLE && (drq_state == CLEAR_LINE) )
 		timer_set( TIME_IN_CYCLES(7,0), 0, raise_halt);
-/*		cpu_set_halt_line(0, ASSERT_LINE);*/
 	else
-		cpu_set_halt_line(0, CLEAR_LINE);
+		coco_set_halt_line(CLEAR_LINE);
 
 	if( COCO_NMIENABLE  && (intrq_state == ASSERT_LINE) )
 	{
 		CLEAR_COCO_HALTENABLE;
-		cpu_set_halt_line(0, CLEAR_LINE);
+		coco_set_halt_line(CLEAR_LINE);
 		timer_set( TIME_IN_USEC(0), 0, raise_nmi);
 	}
 	else
@@ -354,6 +351,9 @@ READ_HANDLER(coco_floppy_r)
 	case 11:
 		result = wd179x_data_r(0);
 		break;
+	default:
+		result = coco_vhd_io_r( offset );
+		break;
 	}
 
 	if( (readinputport(13) & 0x03) == 0 )
@@ -361,7 +361,7 @@ READ_HANDLER(coco_floppy_r)
 		/* This is the real time clock in Disto's many products */
 
 		if( offset == ( 0xff50-0xff40 ) )
-			result = m6242_data_r( m6242_address );
+			result = m6242_data_r( 0 );
 	}
 	else
 	{
@@ -415,10 +415,10 @@ WRITE_HANDLER(coco_floppy_w)
 		/* This is the real time clock in Disto's many products */
 
 		if( offset == ( 0xff50-0xff40 ) )
-			m6242_data_w( m6242_address, data );
+			m6242_data_w( 0, data );
 
 		if( offset == ( 0xff51-0xff40 ) )
-			m6242_address = data & 0x0f;
+			m6242_address_w( 0, data );
 	}
 
 	coco_vhd_io_w( offset, data );
@@ -445,7 +445,6 @@ READ_HANDLER(dragon_floppy_r)
 		result = wd179x_data_r(0);
 		break;
 	default:
-		result = coco_vhd_io_r( offset );
 		break;
 	}
 	return result;
@@ -485,7 +484,7 @@ WRITE_HANDLER(dragon_floppy_w)
 const struct cartridge_slot cartridge_fdc_coco =
 {
 	coco_fdc_init,
-	wd179x_exit,
+	NULL,
 	coco_floppy_r,
 	coco_floppy_w,
 	NULL
@@ -494,7 +493,7 @@ const struct cartridge_slot cartridge_fdc_coco =
 const struct cartridge_slot cartridge_fdc_dragon =
 {
 	dragon_fdc_init,
-	wd179x_exit,
+	NULL,
 	dragon_floppy_r,
 	dragon_floppy_w,
 	NULL
@@ -512,7 +511,35 @@ static WRITE_HANDLER(cartridge_banks_io_w)
 {
 /* TJL- trying to turn this into a generic banking call */
 	if (offset == 0 )
+	{
 		cartcallbacks->setbank(data);
+		LOG( ("Bankswitch: set bank: %d\n", data ) );
+	}
+	else
+		LOG( ("Bankswitch: Writing to unmapped SCS memory: $%4.4X (PC=$%4.4X)\n", 0xff40+offset, activecpu_get_pc() ) );
+}
+
+static READ_HANDLER(cartridge_banks_io_r)
+{
+/* TJL- trying to turn this into a generic banking call */
+	if (offset == 0 )
+		LOG( ("Bankswitch: reading bank (not implemented\n" ) );
+	else
+		LOG( ("Bankswitch: Reading from unmapped SCS memory: $%4.4X (PC=$%4.4X)\n", 0xff40+offset, activecpu_get_pc() ) );
+		
+	return 0;
+}
+
+static WRITE_HANDLER(cartridge_std_io_w)
+{
+	LOG( ("Standard Cart: Writing to unmapped SCS memory: $%4.4X (PC=$%4.4X)\n", 0xff40+offset, activecpu_get_pc() ) );
+}
+
+static READ_HANDLER(cartridge_std_io_r)
+{
+	LOG( ("Standard Cart: Reading from unmapped SCS memory: $%4.4X (PC=$%4.4X)\n", 0xff40+offset, activecpu_get_pc() ) );
+
+	return 0xff;
 }
 
 static WRITE_HANDLER(cartridge_Orch90_io_w)
@@ -529,8 +556,8 @@ const struct cartridge_slot cartridge_standard =
 {
 	cartidge_standard_init,
 	NULL,
-	NULL,
-	NULL,
+	cartridge_std_io_r,
+	cartridge_std_io_w,
 	NULL
 };
 
@@ -538,7 +565,7 @@ const struct cartridge_slot cartridge_banks =
 {
 	cartidge_standard_init,
 	NULL,
-	NULL,
+	cartridge_banks_io_r,
 	cartridge_banks_io_w,
 	NULL
 };
@@ -636,24 +663,17 @@ READ_HANDLER(coco_vhd_io_r)
 
 WRITE_HANDLER(coco_vhd_io_w)
 {
+	int		pos;
+	
 	switch( offset )
 	{
 		case 0xff80 - 0xff40:
-			logicalRecordNumber &= 0xFF00FFFF;
-			logicalRecordNumber += data << 16;
-			LOG(( "vhd: LRN write: %d (%2.2X....)\n", logicalRecordNumber, data ));
-			break;
-
 		case 0xff81 - 0xff40:
-			logicalRecordNumber &= 0xFFFF00FF;
-			logicalRecordNumber += data << 8;
-			LOG(( "vhd: LRN write: %d (..%2.2X..)\n", logicalRecordNumber, data ));
-			break;
-
 		case 0xff82 - 0xff40:
-			logicalRecordNumber &= 0xFFFFFF00;
-			logicalRecordNumber += data;
-			LOG(( "vhd: LRN write: %d (....%2.2X)\n", logicalRecordNumber, data ));
+			pos = ((0xff82 - 0xff40) - offset) * 8;
+			logicalRecordNumber &= ~(0xFF << pos);
+			logicalRecordNumber += data << pos;
+			LOG(( "vhd: LRN write: %6.6X\n", logicalRecordNumber ));
 			break;
 
 		case 0xff83 - 0xff40:
@@ -679,7 +699,7 @@ void coco_vhd_readwrite( UINT8 data )
 {
 	int		result;
 	int		phyOffset;
-	long	nBA = BIG_ENDIANIZE_INT32(bufferAddress);
+	long	nBA = bufferAddress;
 
 	if( vhdFile == NULL )
 	{
@@ -687,7 +707,7 @@ void coco_vhd_readwrite( UINT8 data )
 		return;
 	}
 
-	result = osd_fseek(vhdFile, ((BIG_ENDIANIZE_INT32(logicalRecordNumber))) * 256, SEEK_SET);
+	result = osd_fseek(vhdFile, ((logicalRecordNumber)) * 256, SEEK_SET);
 
 	if( result < 0 )
 	{
@@ -732,6 +752,7 @@ void coco_vhd_readwrite( UINT8 data )
 				vhdStatus = 2; /* Unable to open image */
 			else
 				vhdStatus = 0; /* Aok */
+
 			break;
 
 		default:

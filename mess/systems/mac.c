@@ -39,15 +39,20 @@
 #include "vidhrdw/generic.h"
 #include "machine/6522via.h"
 #include "includes/mac.h"
+#include "videomap.h"
 
 
 static MEMORY_READ16_START (mac512ke_readmem)
 
 /*	{ 0x000000, 0x3fffff, MRA16_BANK1 },*/	/* ram/rom */
+	{ 0x000000, 0x01ffff, /*MRA16_NOP*/MRA16_RAM }, /* ram/rom */
+	{ 0x020000, 0x07ffff, /*MRA16_NOP*/MRA16_RAM }, /* ram/rom */
+	{ 0x080000, 0x3fffff, /*MRA16_NOP*/MRA16_RAM }, /* ram/rom */
 /*	{ 0x400000, 0x5fffff, MRA16_BANK3 },*/ /* rom */
 /* for some reason, the system will not work without the next line */
 	{ 0x400000, 0x41ffff, MRA16_BANK3 }, /* rom */
-/*	{ 0x600000, 0x6fffff, MRA16_BANK2 },*/	/* ram */
+	{ 0x420000, 0x5fffff, /*MRA16_NOP*/MRA16_RAM }, /* rom */
+	{ 0x600000, 0x6fffff, /*MRA16_NOP*/MRA16_RAM }, /* ram */
 	{ 0x800000, 0x9fffff, mac_scc_r },
 	{ 0xc00000, 0xdfffff, mac_iwm_r },
 	{ 0xe80000, 0xefffff, mac_via_r },
@@ -58,8 +63,12 @@ MEMORY_END
 static MEMORY_WRITE16_START (mac512ke_writemem)
 
 /*	{ 0x000000, 0x3fffff, MWA16_BANK1 },*/ /* ram/rom */
-	{ 0x400000, 0x5fffff, MWA16_ROM },
-/*	{ 0x600000, 0x6fffff, MWA16_BANK2 },*/ /* ram */
+	{ 0x000000, 0x01ffff, /*MWA16_NOP*/MWA16_RAM }, /* ram/rom */
+	{ 0x020000, 0x07ffff, /*MWA16_NOP*/MWA16_RAM }, /* ram/rom */
+	{ 0x080000, 0x3fffff, /*MWA16_NOP*/MWA16_RAM }, /* ram/rom */
+	{ 0x400000, 0x5fffff, MWA16_ROM },	/* rom */
+
+	{ 0x600000, 0x6fffff, /*MWA16_NOP*/MWA16_RAM }, /* ram */
 	{ 0xa00000, 0xbfffff, mac_scc_w },
 	{ 0xc00000, 0xdfffff, mac_iwm_w },
 	{ 0xe80000, 0xefffff, mac_via_w },
@@ -100,14 +109,10 @@ static MEMORY_WRITE16_START (macplus_writemem)
 
 MEMORY_END
 
-static void mac_init_palette(unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
+static PALETTE_INIT( mac )
 {
-	palette[0*3 + 0] = 0xff;
-	palette[0*3 + 1] = 0xff;
-	palette[0*3 + 2] = 0xff;
-	palette[1*3 + 0] = 0x00;
-	palette[1*3 + 1] = 0x00;
-	palette[1*3 + 2] = 0x00;
+	palette_set_color(0, 0xff, 0xff, 0xff);
+	palette_set_color(1, 0x00, 0x00, 0x00);
 }
 
 static struct CustomSound_interface custom_interface =
@@ -117,89 +122,42 @@ static struct CustomSound_interface custom_interface =
 	mac_sh_update
 };
 
-static struct MachineDriver machine_driver_mac512ke =
-{
+#define video_update_mac videomap_update
+
+static MACHINE_DRIVER_START( mac512ke )
 	/* basic machine hardware */
-	{
-		{
-			CPU_M68000,
-			7833600,			/* 7.8336 Mhz */
-			mac512ke_readmem,mac512ke_writemem,0,0,
-			mac_interrupt,370,
-		}
-	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,		/* frames per second, vblank duration */
-	1,
-	mac_init_machine,
-	0,
+	MDRV_CPU_ADD_TAG("main", M68000, 7833600)        /* 7.8336 Mhz */
+	MDRV_CPU_MEMORY(mac512ke_readmem,mac512ke_writemem)
+	MDRV_CPU_VBLANK_INT(mac_interrupt, 370)
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(1)
 
-	/* video hardware */
-	512, 342, /* screen width, screen height */
-	{ 0, 512-1, 0, 342-1 }, 		/* visible_area */
+	MDRV_MACHINE_INIT( mac )
 
-	0,					/* graphics decode info */
-	2, 2,						/* number of colors, colortable size */
-	mac_init_palette,				/* convert color prom */
+    /* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_SCREEN_SIZE(512, 342)
+	MDRV_VISIBLE_AREA(0, 512-1, 0, 342-1)
+	MDRV_PALETTE_LENGTH(2)
+	MDRV_COLORTABLE_LENGTH(2)
+	MDRV_PALETTE_INIT(mac)
 
-	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
-	0,
-	mac_vh_start,
-	mac_vh_stop,
-	mac_vh_screenrefresh,
+	MDRV_VIDEO_START(mac)
+	MDRV_VIDEO_UPDATE(mac)
 
 	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_CUSTOM,
-			&custom_interface
-		}
-	},
+	MDRV_SOUND_ADD(CUSTOM, custom_interface)
 
-	mac_nvram_handler
-};
+	MDRV_NVRAM_HANDLER(mac)
+MACHINE_DRIVER_END
 
-static struct MachineDriver machine_driver_macplus =
-{
-	/* basic machine hardware */
-	{
-		{
-			CPU_M68000,
-			7833600,			/* 7.8336 Mhz */
-			macplus_readmem,macplus_writemem,0,0,
-			mac_interrupt,370,
-		}
-	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,		/* frames per second, vblank duration */
-	1,
-	mac_init_machine,
-	0,
 
-	/* video hardware */
-	512, 342, /* screen width, screen height */
-	{ 0, 512-1, 0, 342-1 }, 		/* visible_area */
-
-	0,					/* graphics decode info */
-	2, 2,						/* number of colors, colortable size */
-	mac_init_palette,				/* convert color prom */
-
-	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
-	0,
-	mac_vh_start,
-	mac_vh_stop,
-	mac_vh_screenrefresh,
-
-	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_CUSTOM,
-			&custom_interface
-		}
-	},
-
-	mac_nvram_handler
-};
+static MACHINE_DRIVER_START( macplus )
+	MDRV_IMPORT_FROM( mac512ke )
+	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MEMORY( macplus_readmem,macplus_writemem )
+MACHINE_DRIVER_END
 
 INPUT_PORTS_START( macplus )
 	PORT_START /* 0 */

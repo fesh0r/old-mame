@@ -138,11 +138,6 @@ extern void i8048_set_irq_line(int irqline, int state);
 extern void i8048_set_irq_callback(int (*callback)(int irqline));
 const char *i8048_info(void *context, int regnum);
 extern unsigned i8048_dasm(char *buffer, unsigned pc);
-
-/* add these in the memory region for better usage of mame debugger */
-READ_HANDLER(i8048_internal_r);
-WRITE_HANDLER(i8048_internal_w);
-
 #endif
 
 /**************************************************************************
@@ -226,10 +221,6 @@ extern unsigned n7751_dasm(char *buffer, unsigned pc);
 
 #ifdef  MAME_DEBUG
 int 	Dasm8039(char *dst, unsigned pc);
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif  /* _I8039_H */

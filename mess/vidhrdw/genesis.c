@@ -167,18 +167,16 @@ typedef struct
 
 
 
-void genesis_vh_convert_color_prom (unsigned char *palette, unsigned short *colortable,const unsigned char *color_prom)
+PALETTE_INIT( genesis )
 {
 	int i;
 
 	/* the palette will be initialized by the game. We just set it to some */
 	/* pre-cooked values so the startup copyright notice can be displayed. */
 	for (i = 0;i < Machine->drv->total_colors;i++)
-	{
-		*(palette++) = ((i & 1) >> 0) * 0xff;
-		*(palette++) = ((i & 2) >> 1) * 0xff;
-		*(palette++) = ((i & 4) >> 2) * 0xff;
-	}
+		palette_set_color(i, ((i & 1) >> 0) * 0xff,
+							 ((i & 2) >> 1) * 0xff,
+							 ((i & 4) >> 2) * 0xff);
 }
 
 
@@ -188,35 +186,31 @@ WRITE16_HANDLER ( genesis_videoram1_w )
 	//offset = data;
 }
 
-int genesis_vh_start (void)
+VIDEO_START( genesis )
 {
-	if (generic_vh_start() != 0)
+	if (video_start_generic() != 0)
 		return 1;
 
 	/* create scrollA and scrollB playfields */
 
   /*	if ((scroll_a = osd_create_bitmap(1024,1024)) == 0)
 	{
-		generic_vh_stop();
 		return 1;
 	}
 	if ((scroll_b = osd_create_bitmap(1024,1024)) == 0)
 	{
-		generic_vh_stop();
 		bitmap_free(scroll_a);
 		return 1;
 	}*/
 
    	if ((spritelayer = bitmap_alloc(2500,2500)) == 0)
 	{
-		generic_vh_stop();
    //		bitmap_free(scroll_a);
    //		bitmap_free(scroll_b);
 		return 1;
 	}
 	if ((bitmap2 = bitmap_alloc(320,224)) == 0)
 	{
-		generic_vh_stop();
    //		bitmap_free(scroll_a);
    //		bitmap_free(scroll_b);
 		return 1;
@@ -226,7 +220,6 @@ int genesis_vh_start (void)
 
    /*	if ((bitmap_vram = osd_create_bitmap(8,18000)) == 0)
 	{
-		generic_vh_stop();
 	//	bitmap_free(scroll_a);
 	//	bitmap_free(scroll_b);
     	bitmap_free(spritelayer);
@@ -237,7 +230,6 @@ int genesis_vh_start (void)
 
    /*	if ((bitmap_sprite = osd_create_bitmap(64,64)) == 0)
 	{
-		generic_vh_stop();
 	//	bitmap_free(scroll_a);
 	//	bitmap_free(scroll_b);
 		bitmap_free(spritelayer);
@@ -246,9 +238,8 @@ int genesis_vh_start (void)
 	}*/
 
 
-	if ((tile_changed_1 = malloc(0x1000)) == 0)
+	if ((tile_changed_1 = auto_malloc(0x1000)) == 0)
 	{
-		generic_vh_stop();
 	//	bitmap_free(scroll_a);
 	//	bitmap_free(scroll_b);
 		bitmap_free(spritelayer);
@@ -257,15 +248,13 @@ int genesis_vh_start (void)
 		return 1;
 	}
 
-	if ((tile_changed_2 = malloc(0x1000)) == 0)
+	if ((tile_changed_2 = auto_malloc(0x1000)) == 0)
 	{
-		generic_vh_stop();
 	//	bitmap_free(scroll_a);
 	//	bitmap_free(scroll_b);
 		bitmap_free(spritelayer);
 	//	bitmap_free(bitmap_vram);
 	//	bitmap_free(bitmap_sprite);
-		free(tile_changed_1);
 		return 1;
 	}
 
@@ -335,7 +324,7 @@ int genesis_vh_start (void)
 }
 
 
-void genesis_vh_stop (void)
+VIDEO_STOP( genesis )
 {
 	/* Free everything */
  //	bitmap_free(scroll_a);
@@ -343,10 +332,6 @@ void genesis_vh_stop (void)
 	bitmap_free(spritelayer);
  //	bitmap_free(bitmap_vram);
  //	bitmap_free(bitmap_sprite);
-	free(tile_changed_1);
-	free(tile_changed_2);
-
-	generic_vh_stop ();
 }
 
 static unsigned char *get_dma_dest_address(int id)
@@ -492,7 +477,7 @@ WRITE16_HANDLER ( genesis_vdp_data_w )
 	 		//bitmap_vram->line[sy][sx + 1] = (data >>  8) & 0x0f;
 			//bitmap_vram->line[sy][sx + 2] = (data >>  4) & 0x0f;
 	 		//bitmap_vram->line[sy][sx + 3] = (data      ) & 0x0f;
-	 		printf("SY:%d\n",sy);
+/*	 		printf("SY:%d\n",sy); */
 			if (sy < 16384) tile_changed_1[sy >> BLOCK_SHIFT] = tile_changed_2[sy >> BLOCK_SHIFT] = 1;
 
 			}
@@ -618,7 +603,7 @@ WRITE16_HANDLER ( genesis_vdp_ctrl_w )
 						vdp_h_scroll_addr	= (char *)(&vdp_vram[0]+(vdp_data<<10));
 						break;
 					case 14: /* nothing */
-						logerror("$c10001c register usage @ PC=%08x\n",(UINT32)cpu_get_pc());
+						logerror("$c10001c register usage @ PC=%08x\n",(UINT32)activecpu_get_pc());
 						break;
 					case 15: /* autoincrement data */
 						vdp_auto_increment	= vdp_data;
@@ -1389,11 +1374,10 @@ static void plot_sprites(int priority)
   the main emulation engine.
 
 ***************************************************************************/
-void genesis_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( genesis )
 {
-
-genesis_modify_display(0);
-copybitmap(bitmap, bitmap2, 0, 0, 0, 0, 0, 0, 0);
+	genesis_modify_display(0);
+	copybitmap(bitmap, bitmap2, 0, 0, 0, 0, 0, 0, 0);
 }
 
 void genesis_modify_display(int inter)
@@ -1461,11 +1445,8 @@ void genesis_modify_display(int inter)
 		if (dirty_colour[pom])
 		{
 			int colour = vdp_cram[pom];
-	   		osd_modify_pen(Machine->pens[pom],
-			((colour<<4) & 0xe0) DIM,
-	   		((colour   ) & 0xe0) DIM,
-	   		((colour>>4) & 0xe0) DIM);
-	   		colours[pom] = (pom & 0x0f) ? Machine->pens[pom] : Machine->pens[0];
+			palette_set_color(Machine->pens[pom],((colour<<4) & 0xe0) DIM,((colour) & 0xe0) DIM,((colour>>4) & 0xe0) DIM);
+			colours[pom] = (pom & 0x0f) ? Machine->pens[pom] : Machine->pens[0];
 			dirty_colour[pom] = 0;
 		}
 	}
@@ -1473,11 +1454,8 @@ void genesis_modify_display(int inter)
 	if (dirty_colour[0])
 	{
 		int colour = vdp_cram[vdp_background_colour];
-	  	osd_modify_pen(Machine->pens[0],
-		((colour<<4) & 0xe0) DIM,
-	   	((colour   ) & 0xe0) DIM,
-	   	((colour>>4) & 0xe0) DIM);  /* quick background colour set */
-	   	colours[0] = Machine->pens[0];
+		palette_set_color(Machine->pens[0],((colour<<4) & 0xe0) DIM,((colour) & 0xe0) DIM,((colour>>4) & 0xe0) DIM);  /* quick background colour set */
+		colours[0] = Machine->pens[0];
 		dirty_colour[0] = 0;
 	}
 
@@ -1754,33 +1732,29 @@ void genesis_videoram1_w (int offset, int data)
 
 int genesis_vh_start (void)
 {
-	if (generic_vh_start() != 0)
+	if (video_start_generic() != 0)
 		return 1;
 
 	/* create scrollA and scrollB playfields */
 
   	if ((scroll_a = osd_create_bitmap(1024,1024)) == 0)
 	{
-		generic_vh_stop();
 		return 1;
 	}
 	if ((scroll_b = osd_create_bitmap(1024,1024)) == 0)
 	{
-		generic_vh_stop();
 		bitmap_free(scroll_a);
 		return 1;
 	}
 
    	if ((spritelayer = osd_create_bitmap(2500,2500)) == 0)
 	{
-		generic_vh_stop();
    //		bitmap_free(scroll_a);
    //		bitmap_free(scroll_b);
 		return 1;
 	}
 	if ((bitmap2 = osd_create_bitmap(320,224)) == 0)
 	{
-		generic_vh_stop();
    //		bitmap_free(scroll_a);
    //		bitmap_free(scroll_b);
 		return 1;
@@ -1790,7 +1764,6 @@ int genesis_vh_start (void)
 
    /*	if ((bitmap_vram = osd_create_bitmap(8,18000)) == 0)
 	{
-		generic_vh_stop();
 	//	bitmap_free(scroll_a);
 	//	bitmap_free(scroll_b);
     	bitmap_free(spritelayer);
@@ -1801,7 +1774,6 @@ int genesis_vh_start (void)
 
    /*	if ((bitmap_sprite = osd_create_bitmap(64,64)) == 0)
 	{
-		generic_vh_stop();
 	//	bitmap_free(scroll_a);
 	//	bitmap_free(scroll_b);
 		bitmap_free(spritelayer);
@@ -1810,9 +1782,8 @@ int genesis_vh_start (void)
 	}*/
 
 
-	if ((tile_changed_1 = malloc(0x800)) == 0)
+	if ((tile_changed_1 = auto_malloc(0x800)) == 0)
 	{
-		generic_vh_stop();
 	//	bitmap_free(scroll_a);
 	//	bitmap_free(scroll_b);
 		bitmap_free(spritelayer);
@@ -1821,15 +1792,13 @@ int genesis_vh_start (void)
 		return 1;
 	}
 
-	if ((tile_changed_2 = malloc(0x800)) == 0)
+	if ((tile_changed_2 = auto_malloc(0x800)) == 0)
 	{
-		generic_vh_stop();
 	//	bitmap_free(scroll_a);
 	//	bitmap_free(scroll_b);
 		bitmap_free(spritelayer);
 	//	bitmap_free(bitmap_vram);
 	//	bitmap_free(bitmap_sprite);
-		free(tile_changed_1);
 		return 1;
 	}
 
@@ -1907,10 +1876,6 @@ void genesis_vh_stop (void)
 	bitmap_free(spritelayer);
  //	bitmap_free(bitmap_vram);
  //	bitmap_free(bitmap_sprite);
-	free(tile_changed_1);
-	free(tile_changed_2);
-
-	generic_vh_stop ();
 }
 
 unsigned char *get_dma_dest_address(int id)
@@ -3207,13 +3172,10 @@ void plot_sprites(int priority)
   the main emulation engine.
 
 ***************************************************************************/
-void genesis_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( genesis )
 {
-
-genesis_modify_display(0);
-//copybitmap(bitmap, bitmap2, 0, 0, 0, 0, 0, 0, 0);
-copybitmap(bitmap, bitmap2, 0, 0, 0, 0, 0, 0, 0);
-
+	genesis_modify_display(0);
+	copybitmap(bitmap, bitmap2, 0, 0, 0, 0, 0, 0, 0);
 }
 
 void genesis_modify_display(int inter)

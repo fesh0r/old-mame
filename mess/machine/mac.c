@@ -136,6 +136,38 @@ static UINT8 *rom_ptr;
 
 static int mac_overlay = 0;
 
+/*
+	Interrupt handling
+*/
+
+int scc_interrupt, via_interrupt;
+
+static void mac_field_interrupts(void)
+{
+	if (scc_interrupt)
+		/* SCC interrupt */
+		cpu_set_irq_line(0, 2, ASSERT_LINE);
+	else if (via_interrupt)
+		/* VIA interrupt */
+		cpu_set_irq_line(0, 1, ASSERT_LINE);
+	else
+		/* clear all interrupts */
+		cpu_set_irq_line(0, 7, CLEAR_LINE);
+}
+
+static void set_scc_interrupt(int value)
+{
+	scc_interrupt = value;
+	mac_field_interrupts();
+}
+
+static void set_via_interrupt(int value)
+{
+	via_interrupt = value;
+	mac_field_interrupts();
+}
+
+
 WRITE16_HANDLER ( mac_autovector_w )
 {
 #if LOG_GENERAL
@@ -168,15 +200,6 @@ static void set_scc_waitrequest(int waitrequest)
 	/* Not Yet Implemented */
 }
 
-static void set_screen_buffer(int buffer)
-{
-#if LOG_GENERAL
-	logerror("set_screen_buffer: buffer=%i\n", buffer);
-#endif
-
-	videoram = mac_ram_ptr + mac_ram_size - (buffer ? 0x5900 : 0xD900);
-}
-
 static READ16_HANDLER (mac_RAM_r);
 static WRITE16_HANDLER (mac_RAM_w);
 static READ16_HANDLER (mac_RAM_r2);
@@ -191,11 +214,12 @@ static void set_memory_overlay(int overlay)
 	{
 		/* ROM mirror */
 		install_mem_read16_handler(0, 0x000000, rom_size-1, MRA_RAM_BANK1);
-		install_mem_write16_handler(0, 0x000000, rom_size-1, MWA_RAM_BANK1);
+		//install_mem_write16_handler(0, 0x000000, rom_size-1, MWA16_NOP);
 		cpu_setbank(RAM_BANK1, rom_ptr);
 
 		install_mem_read16_handler(0, rom_size, 0x3fffff, mac_ROM_r);
-		install_mem_write16_handler(0, rom_size, 0x3fffff, MWA16_NOP);
+		//install_mem_write16_handler(0, rom_size, 0x3fffff, MWA16_NOP);
+		install_mem_write16_handler(0, 0x000000, 0x3fffff, MWA16_NOP);
 
 		/* HACK! - copy in the initial reset/stack */
 		memcpy(mac_ram_ptr, rom_ptr, 8);
@@ -593,8 +617,7 @@ static void keyboard_receive(int val)
 	if (inquiry_in_progress)
 	{	/* new command aborts last inquiry */
 		inquiry_in_progress = FALSE;
-		timer_remove(inquiry_timeout);
-		inquiry_timeout = NULL;
+		timer_reset(inquiry_timeout, TIME_NEVER);
 	}
 
 	switch (val)
@@ -608,7 +631,7 @@ static void keyboard_receive(int val)
 		if (keyboard_reply == 0x7B)
 		{	/* if NULL, wait until key pressed or timeout */
 			inquiry_in_progress = TRUE;
-			inquiry_timeout = timer_set(.25, 0, inquiry_timeout_func);
+			timer_adjust(inquiry_timeout, .25, 0, 0.);
 		}
 		break;
 
@@ -992,7 +1015,7 @@ static void scsi_check(void)
 READ16_HANDLER ( macplus_scsi_r )
 {
 #if LOG_SCSI
-	logerror("macplus_scsi_r: offset=0x%08x pc=0x%08x\n", offset, (int) cpu_get_pc());
+	logerror("macplus_scsi_r: offset=0x%08x pc=0x%08x\n", offset, (int) activecpu_get_pc());
 #endif
 
 	offset <<= 1;
@@ -1005,7 +1028,7 @@ READ16_HANDLER ( macplus_scsi_r )
 WRITE16_HANDLER ( macplus_scsi_w )
 {
 #if LOG_SCSI
-	logerror("macplus_scsi_w: offset=0x%08x data=0x%04x pc=0x%08x\n", offset, data, (int) cpu_get_pc());
+	logerror("macplus_scsi_w: offset=0x%08x data=0x%04x pc=0x%08x\n", offset, data, (int) activecpu_get_pc());
 #endif
 
 	offset <<= 1;
@@ -1057,7 +1080,8 @@ void mac_scc_mouse_irq( int x, int y)
 			scc_status = 0x02;
 	}
 
-	cpu_set_irq_line(0, 2, ASSERT_LINE);
+	//cpu_set_irq_line(0, 2, ASSERT_LINE);
+	set_scc_interrupt(1);
 }
 
 static int scc_getareg(void)
@@ -1080,7 +1104,8 @@ static void scc_putareg(int data)
 	if (scc_reg == 0)
 	{
 		if (data & 0x10)
-			cpu_set_irq_line(0, 2, CLEAR_LINE);	/* ack irq */
+			//cpu_set_irq_line(0, 2, CLEAR_LINE);	/* ack irq */
+			set_scc_interrupt(0);
 	}
 }
 
@@ -1089,7 +1114,8 @@ static void scc_putbreg(int data)
 	if (scc_reg == 0)
 	{
 		if (data & 0x10)
-			cpu_set_irq_line(0, 2, CLEAR_LINE);	/* ack irq */
+			//cpu_set_irq_line(0, 2, CLEAR_LINE);	/* ack irq */
+			set_scc_interrupt(0);
 	}
 }
 
@@ -1431,7 +1457,7 @@ static void rtc_execute_cmd(int data)
 
 /* should save PRAM to file */
 /* TODO : save write_protect flag, save time difference with host clock */
-void mac_nvram_handler(void *file, int read_or_write)
+NVRAM_HANDLER( mac )
 {
 	if (read_or_write)
 	{
@@ -1606,11 +1632,11 @@ static READ_HANDLER(mac_via_in_b)
 static WRITE_HANDLER(mac_via_out_a)
 {
 	set_scc_waitrequest((data & 0x80) >> 7);
-	set_screen_buffer((data & 0x40) >> 6);
+	mac_set_screen_buffer((data & 0x40) >> 6);
 	sony_set_sel_line((data & 0x20) >> 5);
-	if (((data & 0x10) >> 4) ^ mac_overlay)
+	if (((data & 0x10) >> 4) != mac_overlay)
 		set_memory_overlay((data & 0x10) >> 4);
-	mac_set_buffer((data >> 3) & 0x01);
+	mac_set_sound_buffer((data & 0x08) >> 3);
 	mac_set_volume(data & 0x07);
 }
 
@@ -1629,7 +1655,8 @@ static WRITE_HANDLER(mac_via_out_b)
 static void mac_via_irq(int state)
 {
 	/* interrupt the 68k (level 1) */
-	cpu_set_irq_line(0, 1, state);
+	//cpu_set_irq_line(0, 1, state);
+	set_via_interrupt(state);
 }
 
 READ16_HANDLER ( mac_via_r )
@@ -1670,7 +1697,7 @@ void init_mac128k(void)
 	mac_model = model_Mac128k512k;
 
 	/* set RAM size - always 0x020000 */
-	ram_size = 0x020000;
+	mac_ram_size = 0x020000;
 
 	/* set ROM size - 64kb */
 	rom_size = 0x010000;
@@ -1680,7 +1707,7 @@ void init_mac128k(void)
 	via_set_clock(0, 1000000);	/* 6522 = 1 Mhz, 6522a = 2 Mhz */
 
 	/* setup videoram */
-	set_screen_buffer(1);
+	mac_set_screen_buffer(1);
 
 	/* setup keyboard */
 	keyboard_init();
@@ -1691,7 +1718,7 @@ void init_mac512k(void)
 	mac_model = model_Mac128k512k;
 
 	/* set RAM size - always 0x080000 */
-	ram_size = 0x080000;
+	mac_ram_size = 0x080000;
 
 	/* set ROM size - 64kb */
 	rom_size = 0x010000;
@@ -1701,7 +1728,7 @@ void init_mac512k(void)
 	via_set_clock(0, 1000000);	/* 6522 = 1 Mhz, 6522a = 2 Mhz */
 
 	/* setup videoram */
-	set_screen_buffer(1);
+	mac_set_screen_buffer(1);
 
 	/* setup keyboard */
 	keyboard_init();
@@ -1723,7 +1750,7 @@ void init_mac512ke(void)
 	via_set_clock(0, 1000000);	/* 6522 = 1 Mhz, 6522a = 2 Mhz */
 
 	/* setup videoram */
-	set_screen_buffer(1);
+	mac_set_screen_buffer(1);
 
 	/* setup keyboard */
 	keyboard_init();
@@ -1745,7 +1772,7 @@ void init_macplus(void)
 	via_set_clock(0, 1000000);	/* 6522 = 1 Mhz, 6522a = 2 Mhz */
 
 	/* setup videoram */
-	set_screen_buffer(1);
+	mac_set_screen_buffer(1);
 
 	/* setup keyboard */
 	keyboard_init();
@@ -1816,7 +1843,7 @@ static READ16_HANDLER (mac_ROM_r)
 
 static int current_scanline;
 
-void mac_init_machine(void)
+MACHINE_INIT(mac)
 {
 	mac_ram_ptr = memory_region(REGION_CPU1);
 	rom_ptr = memory_region(REGION_CPU1) + 0x400000;
@@ -1872,9 +1899,11 @@ void mac_init_machine(void)
 
 	/* reset video */
 	current_scanline = 0;
+
+	inquiry_timeout = timer_alloc(inquiry_timeout_func);
 }
 
-int mac_vblank_irq(void)
+static void mac_vblank_irq(void)
 {
 	static int irq_count = 0, ca1_data = 0, ca2_data = 0;
 
@@ -1890,8 +1919,7 @@ int mac_vblank_irq(void)
 			logerror("keyboard enquiry successful, keycode %X\n", keycode);
 
 			inquiry_in_progress = FALSE;
-			timer_remove(inquiry_timeout);
-			inquiry_timeout = NULL;
+			timer_reset(inquiry_timeout, TIME_NEVER);
 
 			if (hold_keyboard_reply)
 				keyboard_reply = keycode;
@@ -1914,11 +1942,9 @@ int mac_vblank_irq(void)
 
 		rtc_incticks();
 	}
-
-	return 0;
 }
 
-int mac_interrupt(void)
+INTERRUPT_GEN( mac_interrupt )
 {
 	mac_sh_data_w(current_scanline);
 
@@ -1932,6 +1958,4 @@ int mac_interrupt(void)
 	current_scanline++;
 	if (current_scanline == 370)
 		current_scanline = 0;
-
-	return 0;
 }

@@ -62,7 +62,7 @@ static int apple1_kbd_data;
 /*****************************************************************************
 **	apple1_init_machine
 *****************************************************************************/
-void apple1_init_machine(void)
+MACHINE_INIT( apple1 )
 {
 	logerror("apple1_init\r\n");
 
@@ -170,7 +170,7 @@ int apple1_load_snap (int id)
 /*****************************************************************************
 **	apple1_interrupt
 *****************************************************************************/
-int apple1_interrupt(void)
+void apple1_interrupt(void)
 {
 	int loop;
 
@@ -206,8 +206,6 @@ int apple1_interrupt(void)
 			}
 		}
 	}
-
-	return ignore_interrupt();
 }
 
 

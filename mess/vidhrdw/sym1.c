@@ -12,41 +12,37 @@
 
 UINT8 sym1_led[6]= {0};
 
-unsigned char sym1_palette[242][3] =
+static unsigned char sym1_palette[] =
 {
-  	{ 0x20,0x02,0x05 },
-	{ 0xc0, 0, 0 },
+	0x20,0x02,0x05,
+	0xc0, 0, 0
 };
 
-void sym1_init_colors (unsigned char *palette, unsigned short *colortable, const unsigned char *color_prom)
+PALETTE_INIT( sym1 )
 {
-	memcpy (palette, sym1_palette, sizeof (sym1_palette));
+	palette_set_colors(0, sym1_palette, sizeof(sym1_palette) / 3);
 }
 
-int sym1_vh_start (void)
+VIDEO_START( sym1 )
 {
     videoram_size = 6 * 2 + 24;
     videoram = (UINT8*) auto_malloc (videoram_size);
 	if (!videoram)
         return 1;
 
+#if 0
 	{
 		char backdrop_name[200];
 	    /* try to load a backdrop for the machine */
 		sprintf (backdrop_name, "%s.png", Machine->gamedrv->name);
 		backdrop_load(backdrop_name, 3);
-	}  
+	}
+#endif
 
-	if (generic_vh_start () != 0)
+	if (video_start_generic () != 0)
         return 1;
 
     return 0;
-}
-
-void sym1_vh_stop (void)
-{
-    videoram = NULL;
-    generic_vh_stop ();
 }
 
 static const char led[] =
@@ -94,7 +90,6 @@ static void sym1_draw_7segment(struct mame_bitmap *bitmap,int value, int x, int 
 		if (mask!=0) {
 			color=Machine->pens[(value&mask)?1:0];
 			plot_pixel(bitmap, x+xi, y+yi, color);
-			osd_mark_dirty(x+xi,y+yi,x+xi,y+yi);
 		}
 		if (led[i]!='\r') xi++;
 		else { yi++, xi=0; }
@@ -129,7 +124,6 @@ static void sym1_draw_led(struct mame_bitmap *bitmap,INT16 color, int x, int y)
 		switch (single_led[j]) {
 		case '1': 
 			plot_pixel(bitmap, x+xi, y, color);
-			osd_mark_dirty(x+xi,y,x+xi,y);
 			xi++;
 			break;
 		case ' ': 
@@ -143,14 +137,10 @@ static void sym1_draw_led(struct mame_bitmap *bitmap,INT16 color, int x, int y)
 	}
 }
 
-void sym1_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( sym1 )
 {
 	int i;
 
-    if (full_refresh)
-    {
-        osd_mark_dirty (0, 0, bitmap->width, bitmap->height);
-    }
 	for (i=0; i<6; i++) {
 		sym1_draw_7segment(bitmap, sym1_led[i], sym1_led_pos[i].x, sym1_led_pos[i].y);
 //		sym1_draw_7segment(bitmap, sym1_led[i], sym1_led_pos[i].x-160, sym1_led_pos[i].y-120);

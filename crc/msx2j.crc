@@ -98,7 +98,7 @@ e0e72736 = Hai No Majutsushi | 1989 | Konami |  | 10
 d95116b0 = Hinotori (2) | 1987 | Konami |  | 3
 f35df283 = Hole In One Special (1) | 1987 | Hal |  | 5
 4708bdd1 = Hole In One Special (2) | 1987 | Hal |  | 5
-00db86c8 = Hydlide 3 | 1987 | T&E Soft |  | 7
+00db86c8 = Hydlide 3 | 1987 | T&E Soft | (Not Playable) | 4
 935f1bde = Ide Yousuke No Jissen Mahjong | 1988 | Pack In Video |  | 4
 a9a66075 = Ikari | 1987 | SNK |  | 5
 881b3849 = Inindou Datou Nobunaga | 1991 | Koei |  | 7
@@ -115,7 +115,7 @@ b1cb1052 = King's Valley 2 | 1988 | Konami |  | 2
 0767af40 = Kitahei | 1986 | Micro Cabin |  | 4
 4e82660d = Kontora - Contra | 1989 | Konami |  | 2
 fb348de6 = Koronis Rift | 1987 | Pony Cannon |  | 5
-dcb1a61e = kyouto Ryu No Tera Satsujin Jiken | 1988 | Taito |  | 4
+dcb1a61e = Kyouto Ryu No Tera Satsujin Jiken | 1988 | Taito |  | 4
 9926f43c = Labyrinth | 1987 | Pack In Video |  | 4
 c7521809 = Lempereur | 1990 | Koei |  | 7
 f87bd172 = Mad Rider | 1987 | Carry Lab |  | 4
@@ -127,7 +127,7 @@ fafe1303 = Metal Gear | 1987 | Konami |  | 3
 18b1f34b = Metal Gear 2 - Solid Snake | 1990 | Konami |  | 2
 dcee5080 = Metal Gear 2 - Solid Snake (Demo Version) | 1990 | Konami |  | 2
 70aa93cf = Mirai - Future | 1987 | Xain |  | 4
-3f69a464 = Missisippi Satsujin Jiken | 1987 | Jaleco |  | 4
+3f69a464 = Mississippi Satsujin Jiken | 1987 | Jaleco |  | 4
 68745c64 = Moero! Nettou Yakyuu'88 | 1988 | Jaleco |  | 4
 ebccb796 = Mon Mon Monstar | 1989 | Hot-B |  | 4
 53c25b6b = MSX-FAN Fandom Library 2 | 1988 | Tecnopolis Soft | (MSX2 Mode) | 4
@@ -163,7 +163,7 @@ fe797d88 = Satsujin Club - Murder Club | 1988 | Micro Cabin |  | 4
 226795e0 = Scramble Formation | 1987 | Taito |  | 4
 e37b681e = Seikima 2 Special | 1987 | Sony |  | 4
 3b815dc6 = Shanghai | 1987 | System Soft |  | 5
-f640670c = Shougi Sinan 2 | 1988 | Pony Cannon |  | 4
+f640670c = Shougi Sinan 2 | 1988 | Pony Cannon |  | 7
 39e1c37a = Siryousensen - War Of The Dead | 1987 | Victor |  | 7
 27405eed = Space Manbow | 1989 | Konami |  | 2
 cbdfcc35 = Star Virgin | 1988 | Pony Cannon |  | 4
@@ -197,21 +197,35 @@ ff974ee3 = Yaksa | 1987 | Wolf Team |  | 4
 d153b2f2 = Zanac-EX | 1986 | Pony Cannon |  | 5
 2605031e = Zoids | 1988 | Toshiba EMI |  | 5
 a29e6ab4 = Zombie Hunter | 1989 | Hi-Score |  | 4
-d0ececc6 = Zukkoke Yajikita (1) | 1987 | Hal |  | 4
-4968e84e = Zukkoke Yajikita (2) | 1987 | Hal |  | 4
+d0ececc6 = Zukkoke Yajikita Onmitsudoutyuu (1) | 1987 | Hal |  | 4
+4968e84e = Zukkoke Yajikita Onmitsudoutyuu (2) | 1987 | Hal |  | 4
 
 
 #(2) Applications (Education / Utility / Business / Etc.)
 
 2ffb49c3 = Cheese 2 | 1985 | Nipon Electronics |  | 0
-006fba38 = Disk Basic 1.0 for FS-FD351 | 1985 | National | (Not Playable) | 15
-697eaf4e = Disk Basic 1.0 for FS-FD1   | 1987 | Panasonic |  | 15
-7b7743b1 = Disk Basic 1.0 for FS-FD1A  | 1987 | Panasonic | (Not Playable) | 15
+006fba38 = Disk Basic 1.0 (For FS-FD351) | 1985 | National | (Not Playable) | 15
+4c9b8214 = Disk Basic 1.0 (For FS-FD1) | 1987 | Panasonic |  | 15
+4b673b29 = Disk Basic 1.0 (For FS-FD1A) | 1987 | Panasonic | (Not Playable) | 15
+af99376f = Disk Basic 1.0 (For HBD-F1/HB-F900/HB-F1XD/HB-F1XDmk2) | 1987 | Sony |  | 15
+a21f5266 = Disk Basic 1.0 (For HB-F1XDJ) | 1988 | Sony |  | 15
+04e4e533 = Disk Basic 1.0 (For HB-F1XV) | 1989 | Sony |  | 15
 0e84505d = FM Pana Amusement Cartridge (FM-PAC) | 1988 | Panasoft |  | 11
 33c37313 = Garakuta | 1988 | Wachi Electronics |  | 5
 40313fec = Halnote | 1987 | Hal | (Not Playable / System Disk Needs) |  | 0
 ef02e4f3 = Japanese MSX-Write | 1986 | Ascii | (MSX2 Mode / Not Playable / Kanji ROM Needs) | 5
 459478cb = Japanese MSX-Write II | 1988 | Ascii | (Kanji ROM Needs) | 7
+3b8fdf44 = Kanji Rom - JIS 1st Class (For Japanese MSX-Write) |  | 0
+17e58926 = Kanji Rom - JIS 1st+2nd Class (For Japanese MSX-Write II) |  | 0
 084c5803 = Konami's Game Master 2 | 1987 | Konami | (MSX2 Mode) | 6
-90e893ba = MSX Audio (FS-CA1) | 1988 | Panasoic | (Not Playable) | 0
+90e893ba = MSX Audio (FS-CA1) | 1988 | Panasoic | (Includes I/O-accessed Device) | 0
+a13615d2 = MSX Basic-Kun Plus | 1988 | Ascii |  | 0
 7122e8e3 = Synthe Saurus 1.1 | 1988 | Bit2 |  | 4
+
+
+#(3) Sample or System Disk For Rom Cartridge
+
+b35b30f4 = Sample Disk (For MSX Basic-Kun Plus) | 1988 | Ascii |  | 0
+ce3b09c0 = Sample & System Disk (For FS-FD1/FD1A/PW1) | 1987 | Panasonic |  | 0
+2ec98b57 = System Disk #1 (For Halnote) | 1987 | Hal | (Not Playable) | 0
+5899d0ae = System Disk #2 (For Halnote) | 1987 | Hal | (Not Playable) | 0

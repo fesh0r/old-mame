@@ -83,7 +83,6 @@ New (020327):
 static READ16_HANDLER ( ti99_rw_rspeech );
 static WRITE16_HANDLER ( ti99_ww_wspeech );
 
-static void tms9901_set_int2(int state);
 static void tms9901_interrupt_callback(int intreq, int ic);
 static int ti99_R9901_0(int offset);
 static int ti99_R9901_1(int offset);
@@ -484,6 +483,7 @@ void ti99_rom_cleanup(int id)
 
 	case SLOT_DROM:
 		cartridge_paged = FALSE;
+		current_page_ptr = cartridge_pages[0];
 		break;
 	}
 }
@@ -492,7 +492,7 @@ void ti99_rom_cleanup(int id)
 /*
 	ti99_init_machine() ; launched AFTER ti99_load_rom...
 */
-void ti99_init_machine(void)
+void machine_init_ti99(void)
 {
 	int i;
 
@@ -534,15 +534,14 @@ void ti99_init_machine(void)
 		cpu_setbank(4, sRAM_ptr);
 	}
 
+	/* reset cartridge mapper */
+	current_page_ptr = cartridge_pages[0];
+
 	/* init tms9901 */
 	tms9901_init(& tms9901reset_param_ti99);
 
-	/* set up callback for the TMS9901 to be notified of changes to the
-	 * TMS9928A INT* line (connected to the TMS9901 INT2* line)
-	 */
 	if (! has_evpc)
-		TMS9928A_int_callback(tms9901_set_int2);
-
+		TMS9928A_reset();
 	if (has_evpc)
 		v9938_reset();
 
@@ -617,12 +616,8 @@ void ti99_init_machine(void)
 	}
 }
 
-void ti99_stop_machine(void)
+void machine_stop_ti99(void)
 {
-	if (has_fdc)
-	{
-		wd179x_exit();
-	}
 	tms9901_cleanup();
 }
 
@@ -630,17 +625,7 @@ void ti99_stop_machine(void)
 /*
 	video initialization.
 */
-int ti99_4_vh_start(void)
-{
-	return TMS9928A_start(TMS99x8, 0x4000);		/* tms9918/28/29 with 16 kb of video RAM */
-}
-
-int ti99_4a_vh_start(void)
-{
-	return TMS9928A_start(TMS99x8A, 0x4000);	/* tms9918a/28a/29a with 16 kb of video RAM */
-}
-
-int ti99_4ev_vh_start(void)
+int video_start_ti99_4ev(void)
 {
 	return v9938_init(MODEL_V9938, 0x20000, tms9901_set_int2);	/* v38 with 128 kb of video RAM */
 }
@@ -649,18 +634,14 @@ int ti99_4ev_vh_start(void)
 	VBL interrupt  (mmm... actually, it happens when the beam enters the lower border, so it is not
 	a genuine VBI, but who cares ?)
 */
-int ti99_vblank_interrupt(void)
+void ti99_vblank_interrupt(void)
 {
 	TMS9928A_interrupt();
-
-	return ignore_interrupt();
 }
 
-int ti99_4ev_vblank_interrupt(void)
+void ti99_4ev_hblank_interrupt(void)
 {
 	v9938_interrupt();
-
-	return ignore_interrupt();
 }
 
 
@@ -778,7 +759,7 @@ WRITE16_HANDLER ( ti99_ww_wvdp )
 	tms9900_ICount -= 4;
 
 	if (offset & 1)
-	{	/* write VDP adress */
+	{	/* write VDP address */
 		TMS9928A_register_w(0, (data >> 8) & 0xff);
 	}
 	else
@@ -811,13 +792,26 @@ WRITE16_HANDLER ( ti99_ww_wv38 )
 {
 	tms9900_ICount -= 4;
 
-	if (offset & 1)
-	{	/* write VDP adress */
-		v9938_command_w(0, (data >> 8) & 0xff);
-	}
-	else
-	{	/* write VDP data */
+	switch (offset & /*3*/1)
+	{
+	case 0:
+		/* write VDP data */
 		v9938_vram_w(0, (data >> 8) & 0xff);
+		break;
+	case 1:
+		/* write VDP address */
+		v9938_command_w(0, (data >> 8) & 0xff);
+		break;
+#if 0
+	case 2:
+		/* write VDP palette */
+		v9938_palette_w(0, data);
+		break;
+	case 3:
+		/* write VDP register */
+		v9938_register_w(0, data);
+		break;
+#endif
 	}
 }
 
@@ -998,9 +992,6 @@ WRITE16_HANDLER ( ti99_ww_wgpl )
 	BTW, although TMS9900 is generally big-endian, it is little endian as far as CRU is
 	concerned. (i.e. bit 0 is the least significant)
 
-TODO:
-	* support for tape unit CS2, and motor control.
-
 KNOWN PROBLEMS:
 	* a read or write to bits 16-31 causes TMS9901 to quit timer mode.  The problem is:
 	  on a TI99/4A, any memory access causes a dummy CRU read.  Therefore, TMS9901 can quit
@@ -1038,7 +1029,7 @@ nota:
 /*
 	set the state of int2 (called by tms9928 core)
 */
-static void tms9901_set_int2(int state)
+void tms9901_set_int2(int state)
 {
 	tms9901_set_single_int(2, state);
 }
@@ -1111,7 +1102,7 @@ static int ti99_R9901_3(int offset)
 {
 	/*only important bit: bit 27: tape input */
 
-	/* we don't take CS2 into account */
+	/* we don't take CS2 into account, as CS2 is a write-only unit */
 	return device_input(IO_CASSETTE, 0) > 0 ? 8 : 0;
 }
 
@@ -1163,7 +1154,10 @@ static void ti99_AlphaW(int offset, int data)
 */
 static void ti99_CS1_motor(int offset, int data)
 {
-	/*device_status(IO_CASSETTE, 0, data);*/
+	if (data)
+		device_status(IO_CASSETTE, 0, device_status(IO_CASSETTE, 0, -1) & ~ WAVE_STATUS_MOTOR_INHIBIT);
+	else
+		device_status(IO_CASSETTE, 0, device_status(IO_CASSETTE, 0, -1) | WAVE_STATUS_MOTOR_INHIBIT);
 }
 
 /*
@@ -1171,7 +1165,10 @@ static void ti99_CS1_motor(int offset, int data)
 */
 static void ti99_CS2_motor(int offset, int data)
 {
-	/*device_status(IO_CASSETTE, 1, ! data);*/
+	if (data)
+		device_status(IO_CASSETTE, 1, device_status(IO_CASSETTE, 1, -1) & ~ WAVE_STATUS_MOTOR_INHIBIT);
+	else
+		device_status(IO_CASSETTE, 1, device_status(IO_CASSETTE, 1, -1) | WAVE_STATUS_MOTOR_INHIBIT);
 }
 
 /*
@@ -1180,6 +1177,7 @@ static void ti99_CS2_motor(int offset, int data)
 	connected to the AUDIO IN pin of TMS9919
 
 	set to 1 before using tape (in order not to burn the TMS9901 ??)
+	Must actually control the mixing of tape sound with computer sound.
 
 	I am not sure about polarity.
 */
@@ -1193,11 +1191,12 @@ static void ti99_audio_gate(int offset, int data)
 
 /*
 	tape output (P9)
-	I am not sure about polarity.
+	I think polarity is correct, but don't take my word for it.
 */
 static void ti99_CS_output(int offset, int data)
 {
-	device_output(IO_CASSETTE, 0, data ? -32768 : 32767);
+	device_output(IO_CASSETTE, 0, data ? 32767 : -32767);
+	device_output(IO_CASSETTE, 1, data ? 32767 : -32767);
 }
 
 
@@ -2221,6 +2220,7 @@ static WRITE16_HANDLER ( ti99_ww_myarcxramhigh )
 
 /* prototypes */
 static void fdc_callback(int);
+static void motor_on_timer_callback(int dummy);
 static int fdc_cru_r(int offset);
 static void fdc_cru_w(int offset, int data);
 static READ_HANDLER(fdc_mem_r);
@@ -2278,7 +2278,8 @@ static void ti99_fdc_init(void)
 
 	DVENA = 0;
 	motor_on = 0;
-	motor_on_timer = NULL;
+	//motor_on_timer = NULL;
+	motor_on_timer = timer_alloc(motor_on_timer_callback);
 
 	ti99_set_expansion_card_handlers(0x1100, & fdc_handlers);
 
@@ -2296,9 +2297,9 @@ static void ti99_fdc_init(void)
 static void fdc_handle_hold(void)
 {
 	if (DSKhold && (!DRQ_IRQ_status) && DVENA)
-		cpu_set_halt_line(1, ASSERT_LINE);
+		cpu_set_halt_line(0, ASSERT_LINE);
 	else
-		cpu_set_halt_line(1, CLEAR_LINE);
+		cpu_set_halt_line(0, CLEAR_LINE);
 }
 
 /*
@@ -2334,8 +2335,6 @@ static void motor_on_timer_callback(int dummy)
 {
 	DVENA = 0;
 	fdc_handle_hold();
-
-	motor_on_timer = NULL;
 }
 
 /*
@@ -2390,9 +2389,7 @@ static void fdc_cru_w(int offset, int data)
 		{	/* on rising edge, set DVENA for 4.23s */
 			DVENA = 1;
 			fdc_handle_hold();
-			if (motor_on_timer)
-				timer_remove(motor_on_timer);
-			motor_on_timer = timer_set(4.23, 0, motor_on_timer_callback);
+			timer_adjust(motor_on_timer, 4.23, 0, 0.);
 		}
 		motor_on = data;
 		break;

@@ -14,6 +14,7 @@ typedef struct
 	mem_write_handler portCwrite[MAX_8255];
 } ppi8255_interface;
 
+
 /* Init */
 void ppi8255_init( ppi8255_interface *intfce);
 
@@ -51,4 +52,28 @@ WRITE_HANDLER( ppi8255_4_w );
 WRITE_HANDLER( ppi8255_5_w );
 WRITE_HANDLER( ppi8255_6_w );
 WRITE_HANDLER( ppi8255_7_w );
+
+
+/**************************************************************************/
+/* Added by Kev Thacker */
+/* mode 2 (used by Sord M5 to communicate with FD-5 disc interface */
+
+/* interface for mode 2 */
+typedef struct 
+{
+	mem_write_handler	obfa_write[MAX_8255];
+	mem_write_handler	intra_write[MAX_8255];
+	mem_write_handler	ibfa_write[MAX_8255];
+} ppi8255_mode2_interface;
+
+/* set interface to use for mode 2 */
+/* call AFTER setting interface with other function */
+void ppi8255_set_mode2_interface( ppi8255_mode2_interface *intfce);
+
+/* set acka input */
+void ppi8255_set_input_acka(int which, int data);
+
+/* set stba input */
+void ppi8255_set_input_stba(int which, int data);
+
 #endif

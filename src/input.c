@@ -152,7 +152,7 @@ INLINE const struct KeyboardInfo* internal_code_find_keyboard(InputCode code)
 
 	assert( code < code_mac );
 
-	if (code < __code_max)
+        if (code < __code_max)
 	{
 		while (keyinfo->name)
 		{
@@ -797,7 +797,11 @@ int input_ui_pressed(int code)
 
 		if (pressed)
 		{
-			ui_map[code].memory = 1;
+			if (ui_map[code].memory == 0)
+			{
+         	               ui_map[code].memory = 1;
+			} else
+				pressed = 0;
 		} else
 			ui_map[code].memory = 0;
 	}
@@ -883,3 +887,13 @@ int return_os_joycode(InputCode code)
 	}
 	return 0;
 }
+void input_ui_post(int code)
+{
+	ui_posted_press = code;
+}
+
+int input_ui_posted(void)
+{
+	return ui_posted_press;
+}
+

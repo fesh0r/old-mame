@@ -12,17 +12,10 @@
 
 static	INT8	frame_count;
 
-int p2000m_vh_start (void)
+VIDEO_START( p2000m )
 {
 	frame_count = 0;
-	if (generic_vh_start ())
-		return (1);
-	return (0);
-}
-
-void p2000m_vh_stop (void)
-{
-	generic_vh_stop ();
+	return video_start_generic();
 }
 
 void p2000m_vh_callback (void)
@@ -41,9 +34,10 @@ void p2000m_vh_callback (void)
 	}
 }
 
-void p2000m_vh_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
+VIDEO_UPDATE( p2000m )
 {
 	int offs, sx, sy, code, loop;
+	int full_refresh = 1;
 
 	if (full_refresh)
 		memset (dirtybuffer, 1, videoram_size);

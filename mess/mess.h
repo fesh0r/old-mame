@@ -7,6 +7,8 @@
 #include "device.h"
 #include "driver.h"
 
+#define LCD_FRAMES_PER_SECOND	30
+
 #define ARRAY_LENGTH(x) (sizeof(x)/sizeof(x[0]))
 
 /* MESS_DEBUG is a debug switch (for developers only) for
@@ -63,7 +65,7 @@ extern "C" {
 #define DECL_SPEC
 #endif
 
-int DECL_SPEC mess_printf(char *fmt, ...);
+int mess_printf(char *fmt, ...);
 
 extern void showmessinfo(void);
 extern int displayimageinfo(struct mame_bitmap *bitmap, int selected);
@@ -172,6 +174,9 @@ extern int mess_keep_going;
 int battery_load(const char *filename, void *buffer, int length);
 int battery_save(const char *filename, void *buffer, int length);
 
+/* handy wrapper for palette_set_color */
+void palette_set_colors(pen_t color_base, const UINT8 *colors, int color_count);
+
 /* RAM configuration calls */
 #define RAM_STRING_BUFLEN 16
 extern UINT32 mess_ram_size;
@@ -184,6 +189,9 @@ extern UINT32 ram_parse_string(const char *s);
 extern const char *ram_string(char *buffer, UINT32 ram);
 extern int ram_validate_option(void);
 extern void cpu_setbank_fromram(int bank, UINT32 ramposition, mem_read_handler rhandler, mem_write_handler whandler);
+
+/* gets the path to the MESS executable */
+extern const char *mess_path;
 
 #ifdef __cplusplus
 }

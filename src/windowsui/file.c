@@ -31,6 +31,7 @@
 #include "ScreenShot.h"
 #include "file.h"
 #include "rc.h"
+#include "snprintf.h"
 
 /* Verbose outputs to error.log ? */
 #define VERBOSE 0
@@ -69,7 +70,6 @@ typedef struct
 	unsigned int length;
 	eFileType type;
 	unsigned int crc;
-	int		eof;	// for kRamFiles only
 }	FakeFileHandle;
 
 /***************************************************************************
@@ -253,6 +253,7 @@ void File_UpdatePaths(void)
 #else
 	rc_set_option2(fileio_opts, "rompath",			  GetRomDirs(), 		 MAXINT_PTR);
 #endif
+	rc_set_option2(fileio_opts, "inipath",			  GetIniDirs(),			 MAXINT_PTR);
 	rc_set_option2(fileio_opts, "samplepath",		  GetSampleDirs(),		 MAXINT_PTR);
 	rc_set_option2(fileio_opts, "cfg_directory",	  GetCfgDir(),			 MAXINT_PTR);
 	rc_set_option2(fileio_opts, "nvram_directory",	  GetNvramDir(),		 MAXINT_PTR);
@@ -266,6 +267,7 @@ void File_UpdatePaths(void)
 	rc_set_option2(fileio_opts, "cheat_file",		  GetCheatFileName(),	 MAXINT_PTR);
 	rc_set_option2(fileio_opts, "history_file", 	  GetHistoryFileName(),  MAXINT_PTR);
 	rc_set_option2(fileio_opts, "mameinfo_file",	  GetMAMEInfoFileName(), MAXINT_PTR);
+	rc_set_option2(fileio_opts, "ctrlr_directory",    GetCtrlrDir(),         MAXINT_PTR);
 }
 
 void* osd_fopen2(const char *gamename, const char *filename, int filetype, int openforwrite)
@@ -335,11 +337,11 @@ void* osd_fopen2(const char *gamename, const char *filename, int filetype, int o
 
 		for (i = 0; i < FORMAT_MAX; i++)
 		{
-			char imagename[32];
+			char imagename[1024];
 
 			/* then zip file. */
 			f->type = kZippedFile;
-			sprintf(imagename, "%s.%s", gamename, pic_format[i]);
+			snprintf(imagename, sizeof(imagename) / sizeof(imagename[0]), "%s.%s", gamename, pic_format[i]);
 
 			if (use_flyers)
 			{

@@ -1095,11 +1095,13 @@ static int display_rom_load_results(struct rom_load_data *romdata)
 			bailing = 1;
 		}
 		else
+		{
 			#ifndef MESS
 			strcat(romdata->errorbuf, "WARNING: the game might not run correctly.\n");
 			#else
 			strcat(romdata->errorbuf, "WARNING: the system might not operate correctly.\n");
 			#endif
+		}
 
 		/* display the result */
 		printf("%s", romdata->errorbuf);

@@ -17,7 +17,6 @@
 //#define SPLIT_PRG
 
 #define BATTERY_SIZE 0x2000
-char battery_name[1024];
 UINT8 battery_data[BATTERY_SIZE];
 
 static int famicom_image_registered = 0;
@@ -167,7 +166,7 @@ void init_nespal (void)
 	init_nes_core ();
 }
 
-void nes_init_machine (void)
+MACHINE_INIT( nes )
 {
 	current_scanline = 0;
 
@@ -184,11 +183,11 @@ void nes_init_machine (void)
 	in_1_shift = 0;
 }
 
-void nes_stop_machine (void)
+MACHINE_STOP( nes )
 {
 	/* Write out the battery file if necessary */
 	if (nes.battery)
-		battery_save(battery_name, battery_ram, BATTERY_SIZE);
+		battery_save(device_filename(IO_CARTSLOT, 0), battery_ram, BATTERY_SIZE);
 }
 
 static void ppu_reset (struct ppu_struct *_ppu)
@@ -263,7 +262,7 @@ READ_HANDLER ( nes_IN0_r )
 	}
 
 #ifdef LOG_JOY
-	logerror ("joy 0 read, val: %02x, pc: %04x, bits read: %d, chan0: %08x\n", retVal, cpu_get_pc(), in_0_shift, in_0[0]);
+	logerror ("joy 0 read, val: %02x, pc: %04x, bits read: %d, chan0: %08x\n", retVal, activecpu_get_pc(), in_0_shift, in_0[0]);
 #endif
 
 	in_0_shift ++;
@@ -319,7 +318,7 @@ READ_HANDLER ( nes_IN1_r )
 	}
 
 #ifdef LOG_JOY
-	logerror ("joy 1 read, val: %02x, pc: %04x, bits read: %d, chan0: %08x\n", retVal, cpu_get_pc(), in_1_shift, in_1[0]);
+	logerror ("joy 1 read, val: %02x, pc: %04x, bits read: %d, chan0: %08x\n", retVal, activecpu_get_pc(), in_1_shift, in_1[0]);
 #endif
 
 	in_1_shift ++;
@@ -404,7 +403,7 @@ WRITE_HANDLER ( nes_IN1_w )
 	return;
 }
 
-int nes_interrupt (void)
+void nes_interrupt (void)
 {
 	static int vblank_started = 0;
 	int ret;
@@ -457,7 +456,8 @@ int nes_interrupt (void)
 	else if (current_scanline == NMI_SCANLINE)
 	{
 		/* Check if NMIs are enabled on vblank */
-		if (PPU_Control0 & PPU_c0_NMI) ret = M6502_INT_NMI;
+		if (PPU_Control0 & PPU_c0_NMI)
+			ret = IRQ_LINE_NMI;
 	}
 
 	/* Increment the scanline pointer & check to see if it's rolled */
@@ -503,7 +503,18 @@ int nes_interrupt (void)
     	else logerror(" NMI\n");
     }
 
-	return ret;
+	switch(ret) {
+	case INTERRUPT_NONE:
+		break;
+
+	case IRQ_LINE_NMI:
+		cpu_set_irq_line(0, IRQ_LINE_NMI, PULSE_LINE);
+		break;
+
+	default:
+		cpu_set_irq_line_and_vector(0, ret, HOLD_LINE, ret);
+		break;
+	}
 }
 
 READ_HANDLER ( nes_ppu_r )
@@ -542,7 +553,7 @@ READ_HANDLER ( nes_ppu_r )
 		case 4:
 			retVal = spriteram[PPU_Sprite_Addr];
 #ifdef LOG_PPU
-//	logerror("PPU read (%02x), data: %02x, pc: %04x\n", offset, retVal, cpu_get_pc ());
+//	logerror("PPU read (%02x), data: %02x, pc: %04x\n", offset, retVal, activecpu_get_pc ());
 #endif
 			break;
 
@@ -567,7 +578,7 @@ READ_HANDLER ( nes_ppu_r )
 			}
 
 #ifdef LOG_PPU
-	logerror("PPU read (%02x), data: %02x, ppu_addr: %04x, pc: %04x\n", offset, retVal, PPU_address, cpu_get_pc ());
+	logerror("PPU read (%02x), data: %02x, ppu_addr: %04x, pc: %04x\n", offset, retVal, PPU_address, activecpu_get_pc ());
 #endif
 			PPU_address += PPU_add;
 			break;
@@ -689,7 +700,7 @@ WRITE_HANDLER ( nes_ppu_w )
 					case 7: r_mod = .75; g_mod = .75; b_mod = .75; break;
 				}
 				for (i = 0; i < 64; i ++)
-					palette_change_color (i,
+					palette_set_color (i,
 						(double) nes_palette[3*i] * r_mod,
 						(double) nes_palette[3*i+1] * g_mod,
 						(double) nes_palette[3*i+2] * b_mod);
@@ -1090,28 +1101,11 @@ int nes_init_cart (int id)
 		else
 			return INIT_FAIL;
 	}
-	else
-	{
-		strcpy (battery_name, device_filename(IO_CARTSLOT,id));
-
-		/* Strip off file extension if it exists */
-		for (i = strlen(battery_name) - 1; i > 0; i --)
-		{
-			/* If we found a period, terminate the string here and jump out */
-			if (battery_name[i] == '.')
-			{
-				battery_name[i] = 0x00;
-				break;
-			}
-		}
-
-		logerror ("battery name (minus extension): %s\n", battery_name);
-	}
 
 	if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
 	{
 		logerror("image_fopen failed in nes_init_cart.\n");
-			return INIT_FAIL;
+		return INIT_FAIL;
 	}
 
 	/* Verify the file is in iNES format */
@@ -1272,7 +1266,7 @@ int nes_init_cart (int id)
 	/* Attempt to load a battery file for this ROM. If successful, we */
 	/* must wait until later to move it to the system memory. */
 	if (nes.battery)
-		battery_load(battery_name, battery_data, BATTERY_SIZE);
+		battery_load(device_filename(IO_CARTSLOT,id), battery_data, BATTERY_SIZE);
 
 	osd_fclose (romfile);
 	famicom_image_registered = 1;

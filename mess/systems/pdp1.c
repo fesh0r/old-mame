@@ -305,9 +305,13 @@ static unsigned short colortable[] =
 };
 
 /* Initialise the palette */
-static void pdp1_init_palette(unsigned char *sys_palette, unsigned short *sys_colortable, const unsigned char *color_prom)
+static void palette_init_pdp1(unsigned short *sys_colortable, const unsigned char *dummy)
 {
-	memcpy(sys_palette, palette, sizeof(palette));
+	int i;
+
+	for (i=0; i<(sizeof(palette)/3); i++)
+		palette_set_color(i, palette[i*3], palette[i*3+1], palette[i*3+2]);
+
 	memcpy(sys_colortable, colortable, sizeof(colortable));
 }
 
@@ -345,48 +349,45 @@ pdp1_reset_param_t pdp1_reset_param =
 };
 
 
-/* note I don't know about the speed of the machine, I only know
- * how long each instruction takes in micro seconds
- * below speed should therefore also be read in something like
- * microseconds of instructions
- */
-static struct MachineDriver machine_driver_pdp1 =
-{
+static MACHINE_DRIVER_START(pdp1)
+
 	/* basic machine hardware */
-	{
-		{
-			CPU_PDP1,
-			1000000,	/* should be 200000, but this makes little sense as there is no master clock */
-			pdp1_readmem, pdp1_writemem,0,0,
-			pdp1_interrupt, 1, /* fake interrupt */
-			0, 0,
-			& pdp1_reset_param
-		}
-	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,  /* frames per second, vblank duration */
-	1,
-	pdp1_init_machine,
-	0,
+	/* PDP1 CPU @ 200 kHz (no master clock, but the instruction and memory rate is 200 kHz) */
+	MDRV_CPU_ADD(PDP1, 1000000/*the CPU core uses microsecond counts*/)
+	/*MDRV_CPU_FLAGS(0)*/
+	MDRV_CPU_CONFIG(pdp1_reset_param)
+	MDRV_CPU_MEMORY(pdp1_readmem, pdp1_writemem)
+	/*MDRV_CPU_PORTS(readport, writeport)*/
+	/* dummy interrupt: handles input */
+	MDRV_CPU_VBLANK_INT(pdp1_interrupt, 1)
+	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
 
-	/* video hardware */
-	virtual_width, virtual_height, { 0, virtual_width-1, 0, virtual_height-1 },
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	/*MDRV_INTERLEAVE(interleave)*/
 
-	gfxdecodeinfo,
-	sizeof(palette) / sizeof(palette[0]) / 3,
-	sizeof(colortable) / sizeof(colortable[0]),
+	MDRV_MACHINE_INIT( pdp1 )
+	/*MDRV_MACHINE_STOP( NULL )*/
+	/*MDRV_NVRAM_HANDLER( NULL )*/
 
-	pdp1_init_palette,
+	/* video hardware (includes the control panel and typewriter output) */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	/*MDRV_ASPECT_RATIO(num, den)*/
+	MDRV_SCREEN_SIZE(virtual_width, virtual_height)
+	MDRV_VISIBLE_AREA(0, virtual_width-1, 0, virtual_height-1)
 
-	VIDEO_TYPE_RASTER,
-	0,
-	pdp1_vh_start,
-	pdp1_vh_stop,
-	pdp1_vh_update,
+	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(sizeof(palette) / sizeof(palette[0]) / 3)
+	MDRV_COLORTABLE_LENGTH(sizeof(colortable) / sizeof(colortable[0]))
 
-	/* sound hardware */
-	0,0,0,0
-};
+	MDRV_PALETTE_INIT(pdp1)
+	MDRV_VIDEO_START(pdp1)
+	/*MDRV_VIDEO_EOF(name)*/
+	MDRV_VIDEO_UPDATE(pdp1)
 
+	/* no sound */
+
+MACHINE_DRIVER_END
 
 static const struct IODevice io_pdp1[] =
 {

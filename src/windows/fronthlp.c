@@ -10,6 +10,12 @@
 #include <dirent.h>
 #include <unzip.h>
 
+#ifdef MESS
+#ifdef _MSC_VER
+#include "windowsui/dirent.h"
+#endif
+#endif
+
 #ifndef MESS
 enum { LIST_SHORT = 1, LIST_INFO, LIST_FULL, LIST_SAMDIR, LIST_ROMS, LIST_SAMPLES,
 		LIST_LMR, LIST_DETAILS, LIST_GAMELIST,
@@ -71,9 +77,9 @@ struct rc_option frontend_opts[] = {
 	{ "wrongfps", NULL, rc_set_int, &list, NULL, LIST_WRONGFPS, 0, NULL, "wrong fps" },
 	{ "clones", NULL, rc_bool, &listclones, "1", 0, 0, NULL, "enable/disable clones" },
 #ifdef MESS
-	{ "listdevices", NULL, rc_set_int, &list, NULL, LIST_MESSINFO, 0, NULL, "list available devices" },
-	{ "listtext", NULL, rc_set_int, &list, NULL, LIST_MESSINFO, 0, NULL, "list available file extensions" },
-	{ "createdir", NULL, rc_set_int, &list, NULL, LIST_MESSINFO, 0, NULL, NULL },
+	{ "listdevices", NULL, rc_set_int, &list, NULL, LIST_MESSDEVICES, 0, NULL, "list available devices" },
+	{ "listtext", NULL, rc_set_int, &list, NULL, LIST_MESSTEXT, 0, NULL, "list available file extensions" },
+	{ "createdir", NULL, rc_set_int, &list, NULL, LIST_MESSCREATEDIR, 0, NULL, NULL },
 #endif
 	{ "listroms", NULL, rc_set_int, &list, NULL, LIST_ROMS, 0, NULL, "list required roms for a driver" },
 	{ "listsamples", NULL, rc_set_int, &list, NULL, LIST_SAMPLES, 0, NULL, "list optional samples for a driver" },
@@ -1196,7 +1202,7 @@ j = 0;	// count only the main cpu
 										case 16: count_buswidth[1]++; break;
 										case 32: count_buswidth[2]++; break;
 									}
-								}
+									}
 							}
 						}
 

@@ -108,19 +108,12 @@ static void mfp_init(void)
 	mfp.timer_c_cycles=0;
 }
 
-int atarist_vh_start(void)
+static VIDEO_START( atarist )
 {
 	int i;
-
 	for (i=0; i<512; i++)
 		palette_set_color(i,((i>>6)&7)*0x24,((i>>3)&7)*0x24,(i&7)*0x24);
-
 	return 0;
-}
-
-void atarist_vh_stop(void)
-{
-
 }
 
 void atarist_drawborder(int line)
@@ -270,7 +263,7 @@ void atarist_pixel_update(void)
 //	}
 }
 
-void atarist_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
+static VIDEO_UPDATE( atarist )
 {
 }
 
@@ -348,20 +341,20 @@ static READ16_HANDLER( atarist_mfp_r )
 {
 	switch (offset) {
 	case 0x00: /* General purpose IO */
-//		logerror("%06x: MFP 00 read\n", cpu_get_pc());
+//		logerror("%06x: MFP 00 read\n", activecpu_get_pc());
 		return 0x80 | mfp.genr | wd1772_active; //wd1772_active=0x20 for BUSY
 	case 0x02: /* Active Edge Register */
-//		logerror("%06x: MFP 02 read\n", cpu_get_pc());
+//		logerror("%06x: MFP 02 read\n", activecpu_get_pc());
 		return mfp.aer;
 	case 0x04: /* Data direction */
-//		logerror("%06x: MFP 04 read\n", cpu_get_pc());
+//		logerror("%06x: MFP 04 read\n", activecpu_get_pc());
 		return mfp.ddr;
 
 
 	case 0x06: /* Interrupt enable A */
 		return mfp.iea;
 	case 0x0a: /* Interrupt Pending A */
-//		logerror("%06x: MFP 0xa read (Timer A poll)\n", cpu_get_pc());
+//		logerror("%06x: MFP 0xa read (Timer A poll)\n", activecpu_get_pc());
 		return mfp.ipa;
 	case 0x0e: /* Interrupt In Service A */
 		return mfp.isa;
@@ -371,7 +364,7 @@ static READ16_HANDLER( atarist_mfp_r )
 	case 0x08: /* Interrupt enable B */
 		return mfp.ieb;
 	case 0x0c: /* Interrupt Pending B */
-//		logerror("%06x: MFP 0xC read (Timer B poll)\n", cpu_get_pc());
+//		logerror("%06x: MFP 0xC read (Timer B poll)\n", activecpu_get_pc());
 		return mfp.ipb;
 	case 0x10: /* Interrupt In Service B */
 		return mfp.isb;
@@ -416,7 +409,7 @@ if (mfp.timer_c)
 		return mfp.tddr&0xff;
 	}
 
-	logerror("%06x:  Unmapped mfp read %02x\n",cpu_get_pc(),offset);
+	logerror("%06x:  Unmapped mfp read %02x\n",activecpu_get_pc(),offset);
 
 	return 0;
 }
@@ -506,7 +499,7 @@ static WRITE16_HANDLER( atarist_mfp_w )
 			mfp.tbty=DELAY;
 		}
 		if ((data&0x8)!=0 && mfp.timer_b==NULL) { /* Timer B started, from stopped state */
-//			logerror("Timer B event count enabled (%06x), dt is %02x (line %d)\n",cpu_get_pc(),mfp.tbrl,current_line);
+//			logerror("Timer B event count enabled (%06x), dt is %02x (line %d)\n",activecpu_get_pc(),mfp.tbrl,current_line);
 			mfp.tbty=EVENT;
 		}
 
@@ -567,7 +560,7 @@ static WRITE16_HANDLER( atarist_mfp_w )
 		return;
 	}
 
-	logerror("%06x:  Unmapped mfp write %02x %04x\n",cpu_get_pc(),offset,data);
+	logerror("%06x:  Unmapped mfp write %02x %04x\n",activecpu_get_pc(),offset,data);
 }
 
 /************************************************************************************/
@@ -723,7 +716,7 @@ static READ16_HANDLER( atarist_acia_r )
 {
 	int a;
 
-//	logerror("%06x: ikbd read %02x\n", cpu_get_pc(),offset);
+//	logerror("%06x: ikbd read %02x\n", activecpu_get_pc(),offset);
 
 	switch (offset) {
 	case 0: return (acia_status)<<8;
@@ -744,7 +737,7 @@ static READ16_HANDLER( atarist_acia_r )
 
 static WRITE16_HANDLER( atarist_acia_w )
 {
-logerror("%06x: ikbd write %02x %04x\n", cpu_get_pc(),offset,data);
+logerror("%06x: ikbd write %02x %04x\n", activecpu_get_pc(),offset,data);
 
 	if (offset==2) atarist_fake_ikbd_w((data>>8)&0xff);
 }
@@ -856,7 +849,7 @@ void atarist_dma_transfer(void)
 	/* if no more bytes are remaining, set int */
 	if (fdc.dma_bytes_remaining<=0)
 	{
-		logerror("Done DMA to %06x at %06x (512*%d)\n",fdc.dma_base,cpu_get_pc(),fdc.dma_sector_count);
+		logerror("Done DMA to %06x at %06x (512*%d)\n",fdc.dma_base,activecpu_get_pc(),fdc.dma_sector_count);
 
 		mfp.ipb=mfp.ipb|0x80; /* Set pending interrupt bit */
 		if (mfp.ieb&0x80) /* Interrupt enabled */
@@ -912,7 +905,7 @@ static READ16_HANDLER( atarist_fdc_r )
 			}
 			break;
 		case 6: /* Status register */
-			//logerror("%06x:  DMA fdc read (%02x)\n",cpu_get_pc(),0xfe | fdc.dma_status);
+			//logerror("%06x:  DMA fdc read (%02x)\n",activecpu_get_pc(),0xfe | fdc.dma_status);
 			return 0xfe | fdc.dma_status;
 	}
 
@@ -1031,7 +1024,7 @@ static WRITE16_HANDLER(atarist_fakehdc_w)
 	static void *file0;
 
 	COMBINE_WORD_MEM(&atarist_fakehdc_ram[offset],data);
-//	logerror("%06x: Write mish_fs (%d) %04x\n",cpu_get_pc(),offset,data);
+//	logerror("%06x: Write mish_fs (%d) %04x\n",activecpu_get_pc(),offset,data);
 	if (offset==HDC_COMMAND) {
 		switch (data&0xff) {
 			case 3: /* Return BPB */
@@ -1101,7 +1094,7 @@ static WRITE16_HANDLER(atarist_fakehdc_w)
 						WRITE_WORD(&atarist_fakehdc_ram[HDC_RETURN],0); /* F_SNEXT is ok to run */
 						WRITE_WORD(&atarist_fakehdc_ram[HDC_RETURN+2],0);
 
-						logerror("Found mask %s ok. (cpu %06x)\n",str_ptr,cpu_get_pc());
+						logerror("Found mask %s ok. (cpu %06x)\n",str_ptr,activecpu_get_pc());
 
 						ok_to_go=1;
 						return;
@@ -1456,18 +1449,18 @@ logerror("Doing blit\n");
 
 static READ16_HANDLER( atarist_blitter_r )
 {
-//	logerror("%06x:  blitter read %02x\n",cpu_get_pc(),offset);
+//	logerror("%06x:  blitter read %02x\n",activecpu_get_pc(),offset);
 	if (offset==0x3c) return READ_WORD(&atarist_blitter_ram[0x3c])&0x3fff;
 	return READ_WORD(&atarist_blitter_ram[offset]);
 }
 
 static WRITE16_HANDLER( atarist_blitter_w )
 {
-if (offset==0x3c) logerror("%06x:  blitter write %02x %04x\n",cpu_get_pc(),offset,data);
+if (offset==0x3c) logerror("%06x:  blitter write %02x %04x\n",activecpu_get_pc(),offset,data);
 	COMBINE_WORD_MEM(&atarist_blitter_ram[offset],data);
 
-//if (offset==0x20) logerror("%06x:  blitter write xinc %02x %04x\n",cpu_get_pc(),offset,data);
-//if (offset==0x22) logerror("%06x:  blitter write yinc %02x %04x\n",cpu_get_pc(),offset,data);
+//if (offset==0x20) logerror("%06x:  blitter write xinc %02x %04x\n",activecpu_get_pc(),offset,data);
+//if (offset==0x22) logerror("%06x:  blitter write yinc %02x %04x\n",activecpu_get_pc(),offset,data);
 
 	if (offset==0x3c) {
 		if ((data&0xffff8000)==0x8000) do_blit();
@@ -1498,7 +1491,7 @@ static READ16_HANDLER( atarist_shifter_r )
 	if (offset==0x8) { /* Current screen address being rendered by shifter (low byte) */
 		int c=512-cpu_geticount(); /* 512 cycles per line */
 
-	logerror("%06x: render read low byte\n",cpu_get_pc());
+	logerror("%06x: render read low byte\n",activecpu_get_pc());
 
 		/* Are in left border? If so we haven't yet started drawing this line */
 		if (c<96) return (atarist_vidram_base+atarist_shifter_offset)&0xfe;
@@ -1522,7 +1515,7 @@ static READ16_HANDLER( atarist_shifter_r )
 		return resolution<<8;
 
 
-	logerror("%06x:  Unmapped video read %02x\n",cpu_get_pc(),offset);
+	logerror("%06x:  Unmapped video read %02x\n",activecpu_get_pc(),offset);
 
 
 	return 0;
@@ -1549,7 +1542,7 @@ static WRITE16_HANDLER( atarist_shifter_w )
 		if (shifter_sync!=(data&0x200)) {
 			start_line=current_line;
 			end_line=start_line+200;
-			logerror("%06x: Sync changed to %s (line %d)\n",cpu_get_pc(),t[(data>>9)&1],current_line);
+			logerror("%06x: Sync changed to %s (line %d)\n",activecpu_get_pc(),t[(data>>9)&1],current_line);
 		}
 
 		shifter_sync=data&0x200;
@@ -1581,7 +1574,7 @@ static int a;
 		return;
 	}
 
-	logerror("%06x:  Unmapped video write %02x %04x (line %d)\n",cpu_get_pc(),offset,data,current_line);
+	logerror("%06x:  Unmapped video write %02x %04x (line %d)\n",activecpu_get_pc(),offset,data,current_line);
 }
 
 static int mmu;
@@ -1616,7 +1609,7 @@ MEMORY_END
 static WRITE16_HANDLER(log_mem)
 {
 	COMBINE_WORD_MEM(&atarist_ram[offset+0x122],data);
-	logerror("%06x: Write LOGMEM %04x (line %d)\n",cpu_get_pc(),data,current_line);
+	logerror("%06x: Write LOGMEM %04x (line %d)\n",activecpu_get_pc(),data,current_line);
 }
 
 static MEMORY_WRITE16_START (atarist_writemem)
@@ -1945,7 +1938,7 @@ int atarist_load(int type, int id, unsigned char **ptr)
 
 /***************************************************************************/
 
-static void atarist_eof_callback(void)
+static VIDEO_EOF( atarist )
 {
 	static int last_mem=-1;
 	int mid,new_mem=readinputport(0)&6;
@@ -1970,7 +1963,7 @@ static void atarist_eof_callback(void)
 	}
 }
 
-static void atarist_init_machine(void)
+static MACHINE_INIT( atarist )
 {
 	unsigned char *RAM = memory_region(REGION_USER1);
 	unsigned char *RAM2 = memory_region(REGION_CPU1);
@@ -1992,13 +1985,7 @@ static void atarist_init_machine(void)
 	atarist_current_drive=-1;
 }
 
-static void atarist_stop_machine(void)
-{
-	wd179x_exit();
-}
-
-
-static int atarist_interrupt(void)
+static INTERRUPT_GEN( atarist_interrupt )
 {
 	static int keyboard_line;
 	current_line = 311 - cpu_getiloops();
@@ -2097,48 +2084,36 @@ static struct AY8910interface ay8910_interface =
 
 /***************************************************************************/
 
-static struct MachineDriver machine_driver_atarist =
-{
+static MACHINE_DRIVER_START( ataris )
 	/* basic machine hardware */
-	{
-		{
-			CPU_M68000,
-			MASTER_CLOCK, /* 8 MHz */
-			atarist_readmem,atarist_writemem,0,0,
-			atarist_interrupt,312
-		}
-	},
-	50, 0,
-	1,
-	atarist_init_machine,	/* init machine */
-	atarist_stop_machine,
+	MDRV_CPU_ADD(M68000, MASTER_CLOCK)        /* 8 MHz */
+	MDRV_CPU_MEMORY(atarist_readmem,atarist_writemem)
+	MDRV_CPU_VBLANK_INT(atarist_interrupt,312)
+	MDRV_FRAMES_PER_SECOND(50)
+	MDRV_VBLANK_DURATION(0)
+	MDRV_INTERLEAVE(1)
+
+	MDRV_MACHINE_INIT( atarist )
 
 	/* video hardware, doubled to allow mode changes */
-  	512*2, 313*1, /* 50Hz values (Note, 60Hz is 508 by 315) */
-// 	{ 0, 639, 0+63, 239+63 },
-//	{ 0, 639, 0+(63*2), (239+63)*2 },
- 	{ 96*2, (320+96)*2-1, 0+63, 239+63 },
-// 	{ 0, 639, 0, 239+63 },
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_SCREEN_SIZE(512*2, 313*1)	/* 50Hz values (Note, 60Hz is 508 by 315) */
+	/*MDRV_VISIBLE_AREA(0, 639, 0+63, 239+63)*/
+	/*MDRV_VISIBLE_AREA(0, 639, 0+(63*2), (239+63)*2)*/
+	MDRV_VISIBLE_AREA(96*2, (320+96)*2-1, 0+63, 239+63)
+	/*MDRV_VISIBLE_AREA(0, 639, 0, 239+63)*/
+	MDRV_GFXDECODE( gfxdecodeinfo )
+	MDRV_PALETTE_LENGTH(512)
+	MDRV_COLORTABLE_LENGTH(512)
 
-	gfxdecodeinfo,
-	512,512,
-	0,
-
-	VIDEO_TYPE_RASTER,
-	atarist_eof_callback,
-	atarist_vh_start,
-	atarist_vh_stop,
-	atarist_vh_screenrefresh,
+	MDRV_VIDEO_EOF( atarist )
+	MDRV_VIDEO_START( atarist )
+	MDRV_VIDEO_UPDATE( atarist )
 
 	/* sound hardware */
-	0,0,0,0,
-	{
-		{
-			SOUND_AY8910,
-			&ay8910_interface
-		}
-	}
-};
+	MDRV_SOUND_ADD(AY8910, ay8910_interface)
+MACHINE_DRIVER_END
+
 
 #if 0
 static struct MachineDriver machine_driver_stmono =

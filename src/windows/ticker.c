@@ -12,11 +12,6 @@
 // MAME headers
 #include "driver.h"
 
-#ifndef _MSC_VER
-#define HAS_RDTSC 1
-#else
-#define HAS_RDTSC 0
-#endif
 
 
 //============================================================
@@ -172,7 +167,6 @@ static cycles_t rdtsc_cycle_counter(void)
 
 static cycles_t rdtsc_cycle_counter(void)
 {
-#if HAS_RDTSC
 	INT64 result;
 
 	// use RDTSC
@@ -182,9 +176,6 @@ static cycles_t rdtsc_cycle_counter(void)
 	);
 
 	return result;
-#else
-	return 0;
-#endif // HAS_RDTSC
 }
 
 #endif

@@ -9,23 +9,23 @@
 	Since there has been confusion in the past over the order of
 	initialization and other such things, here it is, all spelled out
 	as of May, 2002:
-
+	
 	main()
 		- does platform-specific init
 		- calls run_game()
-
+		
 		run_game()
 			- constructs the machine driver
 			- calls init_game_options()
-
+			
 			init_game_options()
 				- determines color depth from the options
 				- computes orientation from the options
-
+			
 			- initializes the savegame system
 			- calls osd_init() to do platform-specific initialization
 			- calls init_machine()
-
+			
 			init_machine()
 				- initializes the localized strings
 				- initializes the input system
@@ -38,12 +38,12 @@
 				- loads the configuration file
 				- initializes the memory system for the game
 				- calls the driver's DRIVER_INIT callback
-
+			
 			- calls run_machine()
-
+			
 			run_machine()
 				- calls vh_open()
-
+				
 				vh_open()
 					- allocates the palette
 					- decodes the graphics
@@ -56,40 +56,40 @@
 					- creates the user interface font
 					- creates the debugger bitmap and font
 					- finishes palette initialization
-
+				
 				- initializes the tilemap system
 				- calls the driver's VIDEO_START callback
 				- starts the audio system
 				- disposes of regions marked as disposable
 				- calls run_machine_core()
-
+				
 				run_machine_core()
 					- shows the copyright screen
 					- shows the game warnings
 					- initializes the user interface
 					- initializes the cheat system
 					- calls the driver's NVRAM_HANDLER
-
+					
 	--------------( at this point, we're up and running )---------------------------
-
+	
 					- calls the driver's NVRAM_HANDLER
 					- tears down the cheat system
 					- saves the game's configuration
-
+				
 				- stops the audio system
 				- calls the driver's VIDEO_STOP callback
 				- tears down the tilemap system
 				- calls vh_close()
-
+				
 				vh_close()
 					- frees the decoded graphics
 					- frees the fonts
 					- calls osd_close_display() to shut down the display
 					- tears down the artwork
 					- tears down the palette system
-
+				
 			- calls shutdown_machine()
-
+			
 			shutdown_machine()
 				- tears down the memory system
 				- frees all the memory regions
@@ -99,7 +99,7 @@
 				- tears down the input system
 				- tears down the localized strings
 				- resets the saved state system
-
+			
 			- calls osd_exit() to do platform-specific cleanup
 
 		- exits the program
@@ -266,6 +266,9 @@ int run_game(int game)
 	/* validity checks -- debug build only */
 	if (validitychecks())
 		return 1;
+	#ifdef MESS
+	if (messvaliditychecks()) return 1;
+	#endif
 #endif
 
 	/* first give the machine a good cleaning */
@@ -288,14 +291,14 @@ int run_game(int game)
 
 	/* here's the meat of it all */
 	bailing = 0;
-
+	
 	/* let the OSD layer start up first */
 	if (osd_init())
 		bail_and_print("Unable to initialize system");
 	else
 	{
 		begin_resource_tracking();
-
+		
 		/* then finish setting up our local machine */
 		if (init_machine())
 			bail_and_print("Unable to initialize machine emulation");
@@ -369,6 +372,14 @@ static int init_machine(void)
 		goto cant_load_roms;
 	}
 
+	/* first init the timers; some CPUs have built-in timers and will need */
+	/* to allocate them up front */
+	timer_init();
+	cpu_init_refresh_timer();
+
+	/* now set up all the CPUs */
+	cpu_init();
+
 #ifdef MESS
 	/* initialize the devices */
 	if (init_devices(gamedrv))
@@ -377,14 +388,6 @@ static int init_machine(void)
 		goto cant_load_roms;
 	}
 #endif
-
-	/* first init the timers; some CPUs have built-in timers and will need */
-	/* to allocate them up front */
-	timer_init();
-	cpu_init_refresh_timer();
-
-	/* now set up all the CPUs */
-	cpu_init();
 
 	/* init the hard drive interface */
 	hard_disk_set_interface(&mame_hard_disk_interface);
@@ -424,8 +427,8 @@ cant_load_language_file:
 
 
 /*-------------------------------------------------
-	run_machine - start the various subsystems
-	and the CPU emulation; returns non zero in
+	run_machine - start the various subsystems 
+	and the CPU emulation; returns non zero in 
 	case of error
 -------------------------------------------------*/
 
@@ -440,7 +443,7 @@ static int run_machine(void)
 	{
 		/* initialize tilemaps */
 		tilemap_init();
-
+		
 		/* start up the driver's video */
 		if (Machine->drv->video_start && (*Machine->drv->video_start)())
 			bail_and_print("Unable to start video emulation");
@@ -465,7 +468,7 @@ static int run_machine(void)
 						free(Machine->memory_region[region].base);
 						Machine->memory_region[region].base = 0;
 					}
-
+				
 				/* now do the core execution */
 				run_machine_core();
 				res = 0;
@@ -473,7 +476,7 @@ static int run_machine(void)
 				/* store the sound system */
 				sound_stop();
 			}
-
+			
 			/* shut down the driver's video and kill and artwork */
 			if (Machine->drv->video_stop)
 				(*Machine->drv->video_stop)();
@@ -497,7 +500,7 @@ void run_machine_core(void)
 {
 	/* disable artwork for the start */
 	artwork_enable(0);
-
+	
 	/* if we didn't find a settings file, show the disclaimer */
 	if (settingsloaded || showcopyright(artwork_get_ui_bitmap()) == 0)
 	{
@@ -508,11 +511,11 @@ void run_machine_core(void)
 
 			/* enable artwork now */
 			artwork_enable(1);
-
+	
 			/* disable cheat if no roms */
 			if (!gamedrv->rom)
 				options.cheat = 0;
-
+			
 			/* start the cheat engine */
 			if (options.cheat)
 				InitCheat();
@@ -553,7 +556,7 @@ void run_machine_core(void)
 
 
 /*-------------------------------------------------
-	shutdown_machine - tear down the emulated
+	shutdown_machine - tear down the emulated 
 	machine
 -------------------------------------------------*/
 
@@ -588,7 +591,7 @@ static void shutdown_machine(void)
 
 	/* close down the localization */
 	uistring_shutdown();
-
+	
 	/* reset the saved states */
 	state_save_reset();
 }
@@ -658,7 +661,7 @@ static int vh_open(void)
 		params.width = bmwidth;
 		params.height = bmheight;
 	}
-
+	
 	/* fill in the rest of the display parameters */
 	compute_aspect_ratio(Machine->drv->video_attributes, &params.aspect_x, &params.aspect_y);
 	params.depth = Machine->color_depth;
@@ -774,7 +777,7 @@ static void vh_close(void)
 		freegfx(Machine->gfx[i]);
 		Machine->gfx[i] = 0;
 	}
-
+	
 	/* free the font elements */
 	if (Machine->uifont)
 	{
@@ -786,7 +789,7 @@ static void vh_close(void)
 		freegfx(Machine->debugger_font);
 		Machine->debugger_font = NULL;
 	}
-
+	
 	/* close down the OSD layer's display */
 	osd_close_display();
 }
@@ -831,7 +834,7 @@ static void compute_game_orientation(void)
 	/* override if no rotation requested */
 	if (options.norotate)
 		Machine->orientation = ROT0;
-
+	
 	/* rotate right */
 	if (options.ror)
 	{
@@ -867,7 +870,7 @@ static void compute_game_orientation(void)
 
 		Machine->ui_orientation ^= ROT270;
 	}
-
+	
 	/* flip X/Y */
 	if (options.flipx)
 	{
@@ -905,11 +908,11 @@ static int init_game_options(void)
 			Machine->color_depth = 32;
 		else
 			Machine->color_depth = 15;
-
+		
 		/* now allow overrides */
 		if (options.color_depth == 15 || options.color_depth == 32)
 			Machine->color_depth = options.color_depth;
-
+		
 		/* enable alpha for direct video modes */
 		alpha_active = 1;
 		alpha_init();
@@ -925,11 +928,6 @@ static int init_game_options(void)
 	/* get orientation right */
 	compute_game_orientation();
 
-#ifdef MESS
-	/* process some MESSy stuff */
-	if (get_filenames())
-		return 1;
-#endif
 	return 0;
 }
 
@@ -942,7 +940,7 @@ static int init_game_options(void)
 static int decode_graphics(const struct GfxDecodeInfo *gfxdecodeinfo)
 {
 	int i;
-
+	
 	/* loop over all elements */
 	for (i = 0; i < MAX_GFX_ELEMENTS && gfxdecodeinfo[i].memory_region != -1; i++)
 	{
@@ -950,14 +948,14 @@ static int decode_graphics(const struct GfxDecodeInfo *gfxdecodeinfo)
 		UINT8 *region_base = memory_region(gfxdecodeinfo[i].memory_region);
 		struct GfxLayout glcopy;
 		int j;
-
+		
 		/* make a copy of the layout */
 		glcopy = *gfxdecodeinfo[i].gfxlayout;
 
 		/* if the character count is a region fraction, compute the effective total */
 		if (IS_FRAC(glcopy.total))
 			glcopy.total = region_length / glcopy.charincrement * FRAC_NUM(glcopy.total) / FRAC_DEN(glcopy.total);
-
+		
 		/* loop over all the planes, converting fractions */
 		for (j = 0; j < MAX_GFX_PLANES; j++)
 		{
@@ -1014,7 +1012,7 @@ static int decode_graphics(const struct GfxDecodeInfo *gfxdecodeinfo)
 
 
 /*-------------------------------------------------
-	scale_vectorgames - scale the vector games
+	scale_vectorgames - scale the vector games 
 	to a given resolution
 -------------------------------------------------*/
 
@@ -1033,7 +1031,7 @@ static void scale_vectorgames(int gfx_width, int gfx_height, int *width, int *he
 		x_scale = (double)gfx_width / (double)(*width);
 		y_scale = (double)gfx_height / (double)(*height);
 	}
-
+	
 	/* pick the smaller scale factor */
 	scale = (x_scale < y_scale) ? x_scale : y_scale;
 
@@ -1061,7 +1059,7 @@ static int init_buffered_spriteram(void)
 		logerror("vh_open():  Video buffers spriteram but spriteram_size is 0\n");
 		return 0;
 	}
-
+	
 	/* allocate memory for the back buffer */
 	buffered_spriteram = auto_malloc(spriteram_size);
 	if (!buffered_spriteram)
@@ -1117,7 +1115,7 @@ void orient_rect(struct rectangle *rect, struct mame_bitmap *bitmap)
 		temp = rect->min_x; rect->min_x = rect->min_y; rect->min_y = temp;
 		temp = rect->max_x; rect->max_x = rect->max_y; rect->max_y = temp;
 	}
-
+	
 	/* apply X flip */
 	if (Machine->orientation & ORIENTATION_FLIP_X)
 	{
@@ -1125,7 +1123,7 @@ void orient_rect(struct rectangle *rect, struct mame_bitmap *bitmap)
 		rect->min_x = bitmap->width - rect->max_x - 1;
 		rect->max_x = temp;
 	}
-
+	
 	/* apply Y flip */
 	if (Machine->orientation & ORIENTATION_FLIP_Y)
 	{
@@ -1149,7 +1147,7 @@ void disorient_rect(struct rectangle *rect, struct mame_bitmap *bitmap)
 	/* use the scrbitmap if none specified */
 	if (!bitmap)
 		bitmap = Machine->scrbitmap;
-
+	
 	/* unapply Y flip */
 	if (Machine->orientation & ORIENTATION_FLIP_Y)
 	{
@@ -1157,7 +1155,7 @@ void disorient_rect(struct rectangle *rect, struct mame_bitmap *bitmap)
 		rect->min_y = bitmap->height - rect->max_y - 1;
 		rect->max_y = temp;
 	}
-
+	
 	/* unapply X flip */
 	if (Machine->orientation & ORIENTATION_FLIP_X)
 	{
@@ -1200,7 +1198,7 @@ void set_visible_area(int min_x, int max_x, int min_y, int max_y)
 		Machine->absolute_visible_area.min_y = 0;
 		Machine->absolute_visible_area.max_y = Machine->scrbitmap->height - 1;
 	}
-
+	
 	/* raster games need to be rotated */
 	else
 	{
@@ -1310,18 +1308,18 @@ void update_video_and_audio(void)
 
 	/* fill in our portion of the display */
 	current_display.changed_flags = 0;
-
+	
 	/* set the main game bitmap */
 	current_display.game_bitmap = Machine->scrbitmap;
 	current_display.game_bitmap_update = Machine->absolute_visible_area;
 	if (!skipped_it)
 		current_display.changed_flags |= GAME_BITMAP_CHANGED;
-
+	
 	/* set the visible area */
 	current_display.game_visible_area = Machine->absolute_visible_area;
 	if (visible_area_changed)
 		current_display.changed_flags |= GAME_VISIBLE_AREA_CHANGED;
-
+	
 	/* set the vector dirty list */
 	if (Machine->drv->video_attributes & VIDEO_TYPE_VECTOR)
 		if (!full_refresh_pending && !ui_dirty && !skipped_it)
@@ -1329,7 +1327,7 @@ void update_video_and_audio(void)
 			current_display.vector_dirty_pixels = vector_dirty_list;
 			current_display.changed_flags |= VECTOR_PIXELS_CHANGED;
 		}
-
+	
 #ifdef MAME_DEBUG
 	/* set the debugger bitmap */
 	current_display.debug_bitmap = Machine->debug_bitmap;
@@ -1351,16 +1349,16 @@ void update_video_and_audio(void)
 		current_display.led_state = leds_status;
 		current_display.changed_flags |= LED_STATE_CHANGED;
 	}
-
+	
 	/* update with data from other parts of the system */
 	palette_update_display(&current_display);
-
+	
 	/* render */
 	artwork_update_video_and_audio(&current_display);
-
+	
 	/* update FPS */
 	recompute_fps(skipped_it);
-
+	
 	/* reset dirty flags */
 	visible_area_changed = 0;
 	if (ui_dirty) ui_dirty--;
@@ -1378,7 +1376,7 @@ static void recompute_fps(int skipped_it)
 	frames_since_last_fps++;
 	if (!skipped_it)
 		rendered_frames_since_last_fps++;
-
+	
 	/* if we didn't skip this frame, we may be able to compute a new FPS */
 	if (!skipped_it && frames_since_last_fps >= FRAMES_PER_FPS_UPDATE)
 	{
@@ -1386,7 +1384,7 @@ static void recompute_fps(int skipped_it)
 		cycles_t curr = osd_cycles();
 		double seconds_elapsed = (double)(curr - last_fps_time) * (1.0 / (double)cps);
 		double frames_per_sec = (double)frames_since_last_fps / seconds_elapsed;
-
+		
 		/* compute the performance data */
 		performance.game_speed_percent = 100.0 * frames_per_sec / Machine->drv->frames_per_second;
 		performance.frames_per_second = (double)rendered_frames_since_last_fps / seconds_elapsed;
@@ -1396,7 +1394,7 @@ static void recompute_fps(int skipped_it)
 		frames_since_last_fps = 0;
 		rendered_frames_since_last_fps = 0;
 	}
-
+	
 	/* for vector games, compute the vector update count once/second */
 	vfcount++;
 	if (vfcount >= (int)Machine->drv->frames_per_second)
@@ -1534,7 +1532,7 @@ struct MachineCPU *machine_add_cpu(struct InternalMachineDriver *machine, const 
 
 
 /*-------------------------------------------------
-	machine_find_cpu - find a tagged CPU during
+	machine_find_cpu - find a tagged CPU during 
 	machine driver expansion
 -------------------------------------------------*/
 
@@ -1553,7 +1551,7 @@ struct MachineCPU *machine_find_cpu(struct InternalMachineDriver *machine, const
 
 
 /*-------------------------------------------------
-	machine_remove_cpu - remove a tagged CPU
+	machine_remove_cpu - remove a tagged CPU 
 	during machine driver expansion
 -------------------------------------------------*/
 
@@ -1575,7 +1573,7 @@ void machine_remove_cpu(struct InternalMachineDriver *machine, const char *tag)
 
 
 /*-------------------------------------------------
-	machine_add_sound - add a sound system during
+	machine_add_sound - add a sound system during 
 	machine driver expansion
 -------------------------------------------------*/
 
@@ -1600,7 +1598,7 @@ struct MachineSound *machine_add_sound(struct InternalMachineDriver *machine, co
 
 
 /*-------------------------------------------------
-	machine_find_sound - find a tagged sound
+	machine_find_sound - find a tagged sound 
 	system during machine driver expansion
 -------------------------------------------------*/
 
@@ -1650,7 +1648,7 @@ void *mame_hard_disk_open(const char *filename, const char *mode)
 	/* look for read-only drives first in the ROM path */
 	if (mode[0] == 'r' && !strchr(mode, '+'))
 	{
-		void *file = osd_fopen(Machine->gamedrv->name, filename, OSD_FILETYPE_IMAGE_R, 0);
+		void *file = osd_fopen(Machine->gamedrv->name, filename, OSD_FILETYPE_IMAGE, 0);
 		if (file)
 			return file;
 	}

@@ -27,29 +27,36 @@ enum {
 	M6847_VERSION_M6847T1_NTSC
 };
 
-struct m6847_init_params {
+struct m6847_init_params
+{
 	int version;				/* use one of the above initialization constants */
 	int artifactdipswitch;		/* dip switch that controls artifacting; -1 if NA */
 	UINT8 *ram;					/* the base of RAM */
 	int ramsize;				/* the size of accessible RAM */
 	void (*charproc)(UINT8 c);	/* the proc that gives the host a chance to change mode bits */
+	int initial_video_offset;	/* the first video offset to use */
 
-	mem_write_handler hs_func;	/* Horizontal sync */
-	mem_write_handler fs_func;	/* Field sync */
-	double callback_delay;		/* Amount of time to wait before invoking callbacks (this is a CoCo related hack */
+	mem_write_handler hs_func;	/* horizontal sync */
+	mem_write_handler fs_func;	/* field sync */
+	double callback_delay;		/* amount of time to wait before invoking callbacks (this is a CoCo related hack */
 };
 
 /* This call fills out the params structure with defaults; this is so I can
  * change around the structure without breaking people's code */
 void m6847_vh_normalparams(struct m6847_init_params *params);
 
-void m6847_vh_init_palette(unsigned char *palette, unsigned short *colortable, const unsigned char *color_prom);
-int m6847_vh_start(const struct m6847_init_params *params);
-void m6847_vh_update(struct mame_bitmap *bitmap,int full_refresh);
-void m6847_vh_stop(void);
-int m6847_vh_interrupt(void);
+int video_start_m6847(const struct m6847_init_params *params);
 int m6847_is_t1(int version);
+extern INTERRUPT_GEN( m6847_vh_interrupt );
 
+#define M6847_VIDEO_TYPE	(VIDEO_TYPE_RASTER)
+#define M6847_SCREEN_WIDTH	320
+#define M6847_SCREEN_HEIGHT	263
+
+extern void mdrv_m6847(struct InternalMachineDriver *machine, int (*video_start_proc)(void), int is_pal);
+
+#define MDRV_M6847_NTSC(video_start_proc)		mdrv_m6847(machine, (video_start_##video_start_proc), 0);
+#define MDRV_M6847_PAL(video_start_proc)		mdrv_m6847(machine, (video_start_##video_start_proc), 1);
 
 /******************* Modifiers *******************/
 

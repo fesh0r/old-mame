@@ -33,9 +33,6 @@
 #include "file.h"
 #include "options.h"
 
-#ifdef _MSC_VER
-#define alloca _alloca
-#endif
 
 /***************************************************************************
     global variables
@@ -326,6 +323,8 @@ static BOOL DrawDIB(HWND hWnd, HDC hDC, HGLOBAL hDIB, HPALETTE hPal)
 		OffsetRect(&rect, x, y);
 	}
 
+	SetStretchBltMode(hDC, STRETCH_HALFTONE);
+
     nResults = StretchDIBits(hDC,                        /* hDC */
 							 rect.left,                  /* DestX */
 							 rect.top,                   /* DestY */
@@ -440,7 +439,7 @@ static BOOL LoadSoftwareScreenShot(const struct GameDriver *drv, LPCSTR lpSoftwa
 
 /* Allow us to pre-load the DIB once for future draws */
 #ifdef MESS
-BOOL LoadScreenShot(int nGame, LPCSTR lpSoftwareName, int nType)
+BOOL LoadScreenShotEx(int nGame, LPCSTR lpSoftwareName, int nType)
 #else /* !MESS */
 BOOL LoadScreenShot(int nGame, int nType)
 #endif /* MESS */
@@ -449,10 +448,12 @@ BOOL LoadScreenShot(int nGame, int nType)
 	BOOL loaded = FALSE;
 
 	/* No need to reload the same one again */
+#ifndef MESS
 	if (nGame == nLastGame && m_hDIB != 0 && use_flyer == nType)
 	{
 		return TRUE;
 	}
+#endif
 
 	/* Delete the last ones */
 	FreeScreenShot();
@@ -626,7 +627,7 @@ HBITMAP DIBToDDB(HDC hDC, HANDLE hDIB, LPMYBITMAPINFO desc)
     PNG graphics handling functions
 ***************************************************************************/
 
-static void store_pixels(char *buf, int len)
+static void store_pixels(UINT8 *buf, int len)
 {
 	if (pixel_ptr && copy_size)
 	{
@@ -806,5 +807,12 @@ static BOOL LoadPNG(LPVOID mfile, HGLOBAL *phDIB, HPALETTE *pPal)
 		return 0;
 	return 1;
 }
+
+#ifdef MESS
+BOOL LoadScreenShot(int nGame, int nType)
+{
+	return LoadScreenShotEx(nGame, NULL, nType);
+}
+#endif
 
 /* End of source */

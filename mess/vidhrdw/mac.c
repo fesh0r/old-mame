@@ -1,70 +1,63 @@
-#include "driver.h"
-#include "vidhrdw/generic.h"
+/*
+	Macintosh video hardware
 
+	Emulates the video hardware for compact Macintosh series (original Macintosh (128k, 512k,
+	512ke), Macintosh Plus, Macintosh SE, Macintosh Classic)
+*/
+
+#include "driver.h"
+#include "videomap.h"
 #include "includes/mac.h"
 
-static UINT16 *old_display;
+int screen_buffer;
 
-
-
-
-
-int mac_vh_start(void)
+void mac_set_screen_buffer(int buffer)
 {
-	videoram_size = (512 * 384 / 8);
-
-	old_display = (UINT16 *) malloc(videoram_size);
-	if (! old_display)
-	{
-		return 1;
-	}
-	memset(old_display, 0, videoram_size);
-
-	return 0;
+	screen_buffer = buffer;
+	videomap_invalidate_frameinfo();
 }
 
-void mac_vh_stop(void)
+#define MAC_MAIN_SCREEN_BUF_OFFSET	0x5900
+#define MAC_ALT_SCREEN_BUF_OFFSET	0xD900
+
+static void mac_videomap_frame_callback(struct videomap_framecallback_info *info)
 {
-	free(old_display);
+	info->visible_scanlines = Machine->scrbitmap->height;
+	info->video_base = mac_ram_size - (screen_buffer ? MAC_MAIN_SCREEN_BUF_OFFSET : MAC_ALT_SCREEN_BUF_OFFSET);
+	info->pitch = Machine->scrbitmap->width / 8;
 }
 
-void mac_vh_screenrefresh(struct mame_bitmap *bitmap, int full_refresh)
+static void mac_videomap_line_callback(struct videomap_linecallback_info *info)
 {
-	UINT16	data;
-	UINT16	*old;
-	UINT8	*v;
-	int		fg, bg, x, y;
-
-	v = videoram;
-	bg = Machine->pens[0];
-	fg = Machine->pens[1];
-	old = old_display;
-
-	for (y = 0; y < 342; y++) {
-		for ( x = 0; x < 32; x++ ) {
-			data = READ_WORD( v );
-			if (full_refresh || (data != *old)) {
-				plot_pixel( bitmap, ( x << 4 ) + 0x00, y, ( data & 0x8000 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x01, y, ( data & 0x4000 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x02, y, ( data & 0x2000 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x03, y, ( data & 0x1000 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x04, y, ( data & 0x0800 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x05, y, ( data & 0x0400 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x06, y, ( data & 0x0200 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x07, y, ( data & 0x0100 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x08, y, ( data & 0x0080 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x09, y, ( data & 0x0040 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x0a, y, ( data & 0x0020 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x0b, y, ( data & 0x0010 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x0c, y, ( data & 0x0008 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x0d, y, ( data & 0x0004 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x0e, y, ( data & 0x0002 ) ? fg : bg );
-				plot_pixel( bitmap, ( x << 4 ) + 0x0f, y, ( data & 0x0001 ) ? fg : bg );
-				*old = data;
-			}
-			v += 2;
-			old++;
-		}
-	}
+	info->visible_columns = Machine->scrbitmap->width;
+	info->grid_width = Machine->scrbitmap->width;
+	info->grid_depth = 1;
+	info->scanlines_per_row = 1;
 }
 
+static struct videomap_interface intf =
+{
+	VIDEOMAP_FLAGS_MEMORY16_BE,
+	&mac_videomap_frame_callback,
+	&mac_videomap_line_callback,
+	NULL
+};
+
+VIDEO_START( mac )
+{
+	struct videomap_config cfg;
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.intf = &intf;
+	cfg.videoram = memory_region(REGION_CPU1);
+	cfg.videoram_windowsize = mac_ram_size;
+
+	return videomap_init(&cfg);
+}
+
+#if 0
+VIDEO_UPDATE( mac )
+{
+	videomap_update(bitmap, cliprect);
+}
+#endif

@@ -360,7 +360,7 @@ static int sony_get_track(void)
 	 *	Tracks 48-63 have  9 sectors each
 	 *	Tracks 64-79 have  8 sectors each
 	 *
-	 *	Each sector has 524 bytes, 512 of whom are really used by the Macintosh
+	 *	Each sector has 524 bytes, 512 of which are really used by the Macintosh
 	 *
 	 *	(80 tracks) * (avg of 10 sectors) * (512 bytes) * (2 sides) = 800 kB
 	 *
@@ -606,7 +606,7 @@ static int sony_get_track(void)
 		for (i = 0; i < (sizeof(blk3) / sizeof(blk3[0])); i++)
 			sony_filltrack(f, blk3[i]);
 
-		#if LOG_sony_EXTRA
+		#if LOG_SONY_EXTRA
 			logerror("sony_get_track(): sector=%i csum[0..3]={0x%02x,0x%02x,0x%02x,0x%02x}\n",
 				(int) sector, (int) csum[0], (int) csum[1], (int) csum[2], (int) csum[3]);
 		#endif
@@ -830,7 +830,7 @@ static int sony_put_track(void)
 
 		sector_found[sector] = TRUE;
 
-		#if LOG_sony_EXTRA
+		#if LOG_SONY_EXTRA
 			logerror("sony_put_track(): sector=%i csum[0..3]={0x%02x,0x%02x,0x%02x,0x%02x}\n",
 				(int) sector, (int) csum[0], (int) csum[1], (int) csum[2], (int) csum[3]);
 		#endif
@@ -1025,7 +1025,7 @@ int sony_read_data(void)
 	}
 
 	#if LOG_SONY_EXTRA
-		logerror("sony_readdata(): result=%d pc=0x%08x\n", result, (int) cpu_get_pc());
+		logerror("sony_readdata(): result=%d pc=0x%08x\n", result, (int) activecpu_get_pc());
 	#endif
 
 	return result;
@@ -1134,7 +1134,7 @@ int sony_read_status(void)
 
 	#if LOG_SONY_EXTRA
 		logerror("sony_status(): action=%d pc=0x%08x%s\n",
-			action, (int) cpu_get_pc(), sony_floppy_enable ? "" : " (no drive enabled)");
+			action, (int) activecpu_get_pc(), sony_floppy_enable ? "" : " (no drive enabled)");
 	#endif
 
 	if ((! sony_enable2()) && sony_floppy_enable)
@@ -1169,7 +1169,7 @@ int sony_read_status(void)
 			result = f->drive_sides;
 			break;
 		case 0x0a:	/* At track 0 */
-			logerror("sony_status(): reading Track 0 pc=0x%08x\n", (int) cpu_get_pc());
+			logerror("sony_status(): reading Track 0 pc=0x%08x\n", (int) activecpu_get_pc());
 			result = f->track != 0;	/* 0=track zero 1=not track zero */
 			break;
 		case 0x0b:	/* Disk ready: 0=ready, 1=not ready */
@@ -1219,7 +1219,7 @@ static void sony_doaction(void)
 
 	#if LOG_SONY
 		logerror("sony_doaction(): action=%d pc=0x%08x%s\n",
-			action, (int) cpu_get_pc(), (sony_floppy_enable) ? "" : " (MOTOR OFF)");
+			action, (int) activecpu_get_pc(), (sony_floppy_enable) ? "" : " (MOTOR OFF)");
 	#endif
 
 	if (sony_floppy_enable)
@@ -1261,14 +1261,14 @@ static void sony_doaction(void)
 			break;
 		case 0x0d:	/* Eject disk */
 			#if LOG_SONY
-				logerror("sony_doaction(): ejecting disk pc=0x%08x\n", (int) cpu_get_pc());
+				logerror("sony_doaction(): ejecting disk pc=0x%08x\n", (int) activecpu_get_pc());
 			#endif
 			/*if (f->fd) {
 				osd_fclose(f->fd);
 				memset(f, 0, sizeof(*f));
 			}*/
 			/* somewhat hackish, but better method (?) */
-			device_filename_change(IO_FLOPPY, sony_floppy_select, NULL);
+			osd_device_eject(IO_FLOPPY, sony_floppy_select);
 			break;
 		default:
 			#if LOG_SONY

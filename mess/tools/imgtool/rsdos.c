@@ -2,8 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include "osdepend.h"
-#include "imgtool.h"
+#include "imgtoolx.h"
 #include "utils.h"
+#include "formats/coco_dsk.h"
 
 typedef struct {
 	char fname[8];
@@ -22,7 +23,6 @@ typedef struct {
 	int eof;
 } rsdos_direnum;
 
-static int rsdos_diskimage_resolvegeometry(STREAM *f, UINT8 *tracks, UINT8 *sides, UINT8 *sec_per_track, UINT16 *sector_length, UINT8 *first_sector_id, int *offset);
 static int rsdos_diskimage_beginenum(IMAGE *img, IMAGEENUM **outenum);
 static int rsdos_diskimage_nextenum(IMAGEENUM *enumeration, imgtool_dirent *ent);
 static void rsdos_diskimage_closeenum(IMAGEENUM *enumeration);
@@ -31,58 +31,54 @@ static int rsdos_diskimage_readfile(IMAGE *img, const char *fname, STREAM *destf
 static int rsdos_diskimage_writefile(IMAGE *img, const char *fname, STREAM *sourcef, const ResolvedOption *writeoptions);
 static int rsdos_diskimage_deletefile(IMAGE *img, const char *fname);
 
-static struct OptionTemplate rsdos_fileopts[] =
-{
-	{ "ftype", "File type (0=basic|1=data|2=bin|3=source)", IMGOPTION_FLAG_TYPE_INTEGER | IMGOPTION_FLAG_HASDEFAULT,	0,		3,		"1"	},	/* [0] */
-	{ "ascii", "Ascii flag (A=ascii|B=binary)",				IMGOPTION_FLAG_TYPE_CHAR | IMGOPTION_FLAG_HASDEFAULT,		'A',	'B',	"B"	},	/* [1] */
-	{ NULL, 0, 0, 0, 0 }
-};
-
 #define RSDOS_OPTION_FTYPE	0
 #define RSDOS_OPTION_ASCII	1
 
-BASICDSKFORMAT(
-	format_dsk,
-	rsdos_diskimage_resolvegeometry,		/* resolve geometry */
-	NULL,									/* create header */
-	18,										/* sectors per track */
-	256,									/* bytes per sector */
-	1										/* first sector id */
-)
+FLOPPYMODULE_BEGIN( coco_rsdos_jvc )
+	FMOD_HUMANNAME("Tandy CoCo RS-DOS disk image (JVC image format)")
+	FMOD_FORMAT( coco_jvc )
+	FMOD_EOLN( EOLN_CR )
+	FMOD_FLAGS( IMGMODULE_FLAG_FILENAMES_PREFERUCASE )
+	FMOD_ENUMERATE( rsdos_diskimage_beginenum, rsdos_diskimage_nextenum, rsdos_diskimage_closeenum)
+	FMOD_FREESPACE( rsdos_diskimage_freespace )
+	FMOD_READFILE( rsdos_diskimage_readfile )
+	FMOD_WRITEFILE( rsdos_diskimage_writefile )
+	FMOD_DELETEFILE( rsdos_diskimage_deletefile )
 
-FLOPPYMODULE(
-	rsdos,
-	"Tandy CoCo RS-DOS disk image",			/* human readable name */
-	"dsk",									/* file extension */
-	NULL,									/* crcfile */
-	NULL,									/* crc system name */
-	EOLN_CR,								/* eoln */
-	IMGMODULE_FLAG_FILENAMES_PREFERUCASE,	/* flags */
-	NULL,									/* info function */
-	rsdos_diskimage_beginenum,				/* begin enumeration */
-	rsdos_diskimage_nextenum,				/* enumerate next */
-	rsdos_diskimage_closeenum,				/* close enumeration */
-	rsdos_diskimage_freespace,				/* free space on image */
-	rsdos_diskimage_readfile,				/* read file */
-	rsdos_diskimage_writefile,				/* write file */
-	rsdos_diskimage_deletefile,				/* delete file */
-	rsdos_fileopts,							/* file options */
-	format_dsk,								/* floppy format */
-	2,										/* max sides */
-	35,										/* min tracks */
-	80,										/* max tracks */
-	35,										/* default tracks */
-	0xff									/* filler */
-)
+	/* [0] */
+	FMOD_FILEOPTION(
+		"ftype",
+		"File type (0=basic|1=data|2=bin|3=source)",
+		IMGOPTION_FLAG_TYPE_INTEGER | IMGOPTION_FLAG_HASDEFAULT,
+		0, 3, "1")
 
+	/* [1] */
+	FMOD_FILEOPTION(
+		"ascii",
+		"Ascii flag (A=ascii|B=binary)",
+		IMGOPTION_FLAG_TYPE_CHAR | IMGOPTION_FLAG_HASDEFAULT,
+		'A', 'B', "B")
+FLOPPYMODULE_END
+
+FLOPPYMODULE_BEGIN( coco_rsdos_vdk )
+	FMOD_IMPORT_FROM( coco_rsdos_jvc )
+	FMOD_HUMANNAME("Tandy CoCo RS-DOS disk image (VDK image format)")
+	FMOD_FORMAT( coco_vdk )
+FLOPPYMODULE_END
+
+#define MAX_DIRENTS		((18-2)*(256/32))
 static int get_rsdos_dirent(IMAGE *f, int index_loc, rsdos_dirent *ent)
 {
-	return imgfloppy_read(f, 0, 17, 3, index_loc * 32, sizeof(*ent), (UINT8 *) ent);
+	if (index_loc >= MAX_DIRENTS)
+		return IMGTOOLERR_FILENOTFOUND;
+	return imgtool_bdf_read_sector(f, 17, 0, 3, index_loc * 32, (void *) ent, sizeof(*ent));
 }
 
 static int put_rsdos_dirent(IMAGE *f, int index_loc, const rsdos_dirent *ent)
 {
-	return imgfloppy_write(f, 0, 17, 3, index_loc * 32, sizeof(*ent), (UINT8 *) ent);
+	if (index_loc >= MAX_DIRENTS)
+		return IMGTOOLERR_FILENOTFOUND;
+	return imgtool_bdf_write_sector(f, 17, 0, 3, index_loc * 32, (const void *) ent, sizeof(*ent));
 }
 
 /* fnamebuf must have at least 13 bytes */
@@ -135,11 +131,11 @@ static int lookup_rsdos_file(IMAGE *f, const char *fname, rsdos_dirent *ent, int
 
 static UINT8 get_granule_count(IMAGE *img)
 {
-	UINT8 tracks;
+	UINT16 tracks;
 	UINT16 granules;
 
-	imgfloppy_get_geometry(img, NULL, &tracks, NULL);
-	granules = (((UINT16) tracks) - 1) * 2;
+	tracks = imgtool_bdf_get_geometry(img)->tracks;
+	granules = (tracks - 1) * 2;
 	return (granules > 255) ? 255 : (UINT8) granules;
 }
 
@@ -154,12 +150,12 @@ static int get_granule_map(IMAGE *img, UINT8 *granule_map, UINT8 *granule_count)
 	if (granule_count)
 		*granule_count = count;
 
-	return imgfloppy_read(img, 0, 17, 2, 0, count, granule_map);
+	return imgtool_bdf_read_sector(img, 17, 0, 2, 0, granule_map, count);
 }
 
 static int put_granule_map(IMAGE *img, const UINT8 *granule_map, UINT8 granule_count)
 {
-	return imgfloppy_write(img, 0, 17, 2, 0, granule_count, granule_map);
+	return imgtool_bdf_write_sector(img, 17, 0, 2, 0, granule_map, granule_count);
 }
 
 
@@ -173,17 +169,17 @@ static int transfer_granule(IMAGE *img, UINT8 granule, int length, STREAM *f, in
 
 	sector = (granule % 2) ? 10 : 1;
 
-	return proc(img, 0, track, sector, 0, length, f);
+	return proc(img, track, 0, sector, 0, length, f);
 }
 
 static int transfer_from_granule(IMAGE *img, UINT8 granule, int length, STREAM *destf)
 {
-	return transfer_granule(img, granule, length, destf, imgfloppy_transfer_from);
+	return transfer_granule(img, granule, length, destf, imgtool_bdf_read_sector_to_stream);
 }
 
 static int transfer_to_granule(IMAGE *img, UINT8 granule, int length, STREAM *sourcef)
 {
-	return transfer_granule(img, granule, length, sourcef, imgfloppy_transfer_to);
+	return transfer_granule(img, granule, length, sourcef, imgtool_bdf_write_sector_from_stream);
 }
 
 static size_t process_rsdos_file(rsdos_dirent *ent, IMAGE *img, STREAM *destf)
@@ -256,20 +252,6 @@ static int prepare_dirent(rsdos_dirent *ent, const char *fname)
 	return 0;
 }
 
-static int rsdos_diskimage_resolvegeometry(STREAM *f, UINT8 *tracks, UINT8 *sides, UINT8 *sec_per_track, UINT16 *sector_length, UINT8 *first_sector_id, int *offset)
-{
-	size_t sz;
-
-	sz = stream_size(f);
-	*tracks = (sz / 256 / 18);
-	*sides = 1;
-	*sec_per_track = 18;
-	*sector_length = 256;
-	*first_sector_id = 1;
-	*offset = 0;
-	return 0;
-}
-
 static int rsdos_diskimage_beginenum(IMAGE *img, IMAGEENUM **outenum)
 {
 	rsdos_direnum *rsenum;
@@ -278,7 +260,7 @@ static int rsdos_diskimage_beginenum(IMAGE *img, IMAGEENUM **outenum)
 	if (!rsenum)
 		return IMGTOOLERR_OUTOFMEMORY;
 
-	rsenum->base.module = &imgmod_rsdos;
+	rsenum->base.module = img->module;
 	rsenum->img = img;
 	rsenum->index = 0;
 	rsenum->eof = 0;
@@ -387,7 +369,7 @@ static int rsdos_diskimage_writefile(IMAGE *img, const char *fname, STREAM *sour
 	UINT8 granule_map[MAX_GRANULEMAP_SIZE];
 
 	/* Can we write to this image? */
-	if (imgfloppy_isreadonly(img))
+	if (imgtool_bdf_is_readonly(img))
 		return IMGTOOLERR_READONLY;
 
 	/* Is there enough space? */
