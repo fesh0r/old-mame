@@ -69,11 +69,13 @@
 #include "formats/cococas.h"
 #include "includes/basicdsk.h"
 #include "machine/counter.h"
+#include "includes/rstrtrck.h"
 
 static UINT8 *coco_rom;
 static int coco3_enable_64k;
 static int coco3_mmu[16];
 static int coco3_gimereg[8];
+static int coco3_interupt_line;
 static int pia0_irq_a, pia0_irq_b;
 static int pia1_firq_a, pia1_firq_b;
 static int gime_firq, gime_irq;
@@ -111,6 +113,7 @@ static void coco3_pia1_firq_b(int state);
 #define LOG_INT_COCO3	0
 #define LOG_GIME		0
 #define LOG_MMU			0
+#define LOG_VBORD		0
 #define LOG_OS9         0
 
 #define COCO_CPU_SPEED	(TIME_IN_HZ(894886))
@@ -558,7 +561,16 @@ static void coco3_pia1_firq_b(int state)
 
 static void coco3_raise_interrupt(int mask, int state)
 {
-	if (state) {
+	int lowtohigh;
+
+	lowtohigh = state && ((coco3_interupt_line & mask) == 0);
+
+	if (state)
+		coco3_interupt_line |= mask;
+	else
+		coco3_interupt_line &= ~mask;
+
+	if (lowtohigh) {
 		if ((coco3_gimereg[0] & 0x20) && (coco3_gimereg[2] & mask)) {
 			gime_irq |= (coco3_gimereg[2] & mask);
 			coco3_recalc_irq();
@@ -584,6 +596,7 @@ static void coco3_raise_interrupt(int mask, int state)
 
 int dragon_interrupt(void)
 {
+	pia_0_cb1_w (0, 0);
 	pia_0_cb1_w (0, 1);
 	return ignore_interrupt();
 }
@@ -643,12 +656,19 @@ static WRITE_HANDLER ( d_pia1_pa_w )
 
 static WRITE_HANDLER( d_pia1_pb_w )
 {
-	m6847_set_gmode(data >> 3);
+	m6847_ag_w(0,		data & 0x80);
+	m6847_gm2_w(0,		data & 0x40);
+	m6847_gm1_w(0,		data & 0x20);
+	m6847_gm0_w(0,		data & 0x10);
+	m6847_intext_w(0,	data & 0x10);
+	m6847_css_w(0,		data & 0x08);
+	schedule_full_refresh();
 }
 
 static WRITE_HANDLER( coco3_pia1_pb_w )
 {
-	m6847_set_mode(data >> 3);
+	d_pia1_pb_w(0, data);
+	m6847_set_cannonical_row_height();
 }
 
 static WRITE_HANDLER ( d_pia0_cb2_w )
@@ -788,9 +808,9 @@ WRITE_HANDLER(dragon_sam_page_mode)
 
 static void recalc_vram_size(void)
 {
-	static int vram_masks[] = { 0xfff, 0x3fff, 0xffff, 0xffff };
+	static int vram_sizes[] = { 0x1000, 0x4000, 0x10000, 0x10000 };
 
-	m6847_set_vram_mask(vram_masks[d_sam_memory_size % 4]);
+	m6847_set_ram_size(vram_sizes[d_sam_memory_size % 4]);
 }
 
 WRITE_HANDLER(dragon_sam_memory_size)
@@ -949,11 +969,11 @@ WRITE_HANDLER(dragon64_sam_himemmap)
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	if (offset) {
 		cpu_setbank(1, &RAM[0x8000]);
-		cpu_setbankhandler_w(1, dragon64_ram_w);
+		memory_set_bankhandler_w(1, 0, dragon64_ram_w);
 	}
 	else {
 		cpu_setbank(1, coco_rom);
-		cpu_setbankhandler_w(1, MWA_ROM);
+		memory_set_bankhandler_w(1, 0, MWA_ROM);
 	}
 }
 
@@ -1121,7 +1141,7 @@ static void coco3_mmu_update(int lowblock, int hiblock)
 	for (i = lowblock; i <= hiblock; i++) {
 		p = &RAM[coco3_mmu_translate(i, 0)];
 		cpu_setbank(i + 1, p);
-		cpu_setbankhandler_w(i + 1, ((p - RAM) >= 0x80000) ? MWA_ROM : handlers[i]);
+		memory_set_bankhandler_w(i + 1, 0, ((p - RAM) >= 0x80000) ? MWA_ROM : handlers[i]);
 #if LOG_MMU
 		logerror("CoCo3 GIME MMU: Logical $%04x ==> Physical $%05x\n",
 			(i == 8) ? 0xfe00 : i * 0x2000,
@@ -1686,18 +1706,43 @@ static void dragon_hblank(int dummy)
 	pia_0_ca1_w(0, 0);
 }
 
-static void coco3_hblank(int dummy)
+int coco3_hblank(void)
 {
+	int scanline;
+	int bordertop;
+	int borderbottom;
+	int rows;
+	int inborder;
+
+	rows = coco3_calculate_rows(&bordertop, &borderbottom);
+
 	pia_0_ca1_w(0, 0);
+	pia_0_ca1_w(0, 1);
 	coco3_raise_interrupt(COCO3_INT_HBORD, 1);
 	coco3_raise_interrupt(COCO3_INT_HBORD, 0);
-}
 
-void coco3_vblank(void)
-{
-	pia_0_cb1_w(0, 0);
-	coco3_raise_interrupt(COCO3_INT_VBORD, 1);
-	coco3_raise_interrupt(COCO3_INT_VBORD, 0);
+	scanline = rastertrack_hblank();
+	if (scanline == 263) {
+		pia_0_cb1_w(0, 0);
+		pia_0_cb1_w(0, 1);
+		rastertrack_vblank();
+		scanline = 0;
+	}
+
+	/* HACK HACK of the 1st degree; this makes the SockMaster Moon demo look much better */
+	scanline += 8;
+
+	inborder = (scanline < bordertop) || (scanline >= (bordertop + rows));
+
+#if LOG_VBORD
+	if (scanline == (bordertop + rows)) {
+		logerror("coco3_hblank(): raising VBORD at absolute scanline #%i\n", bordertop + rows);
+	}
+#endif
+
+	coco3_raise_interrupt(COCO3_INT_VBORD, inborder);
+
+	return ignore_interrupt();
 }
 
 static void generic_init_machine(struct pia6821_interface *piaintf)
@@ -1783,10 +1828,10 @@ void coco3_init_machine(void)
 	coco3_mmu_update(0, 8);
 	coco3_timer_init();
 
+	coco3_interupt_line = 0;
+
 	/* The choise of 50hz is arbitrary */
 	timer_pulse(TIME_IN_HZ(50), 0, coco3_poll_keyboard);
-
-	timer_pulse(COCO_TIMER_HSYNC, 0, coco3_hblank);
 }
 
 void dragon_stop_machine(void)

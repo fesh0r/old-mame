@@ -1,25 +1,16 @@
 #ifndef DRAGON_H
 #define DRAGON_H
 
+#include "vidhrdw/m6847.h"
+#include "includes/rstrbits.h"
 /* ----------------------------------------------------------------------- *
  * Backdoors into mess/vidhrdw/m6847.c                                     *
  * ----------------------------------------------------------------------- */
 
-typedef void (*artifactproc)(int *artifactcolors);
-void internal_m6847_drawborder(struct osd_bitmap *bitmap, int screenx, int screeny, int pen);
-int internal_m6847_vh_start(int maxvram);
-void internal_m6847_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh,
-	const int *metapalette, UINT8 *vrambase, int vrampos, int vramsize,
-	int has_lowercase, int basex, int basey, int wf, artifactproc artifact);
-void blitgraphics2(struct osd_bitmap *bitmap, UINT8 *vrambase, int vrampos,
-	int vramsize, UINT8 *db, const int *metapalette, int sizex, int sizey,
-	int basex, int basey, int scalex, int scaley, int additionalrowbytes);
-void blitgraphics4(struct osd_bitmap *bitmap, UINT8 *vrambase, int vrampos,
-	int vramsize, UINT8 *db, const int *metapalette, int sizex, int sizey,
-	int basex, int basey, int scalex, int scaley, int additionalrowbytes);
-void blitgraphics16(struct osd_bitmap *bitmap, UINT8 *vrambase,
-	int vrampos, int vramsize, UINT8 *db, int sizex, int sizey, int basex,
-	int basey, int scalex, int scaley, int additionalrowbytes);
+int internal_m6847_vh_start(const struct m6847_init_params *params, int dirtyramsize);
+void internal_m6847_vh_screenrefresh(struct rasterbits_source *rs,
+	struct rasterbits_videomode *rvm, struct rasterbits_frame *rf, int full_refresh,
+	const int *metapalette, UINT8 *vrambase, int skew_up, int border_color, int wf, artifactproc artifact);
 
 /* ----------------------------------------------------------------------- *
  * from vidhrdw/dragon.c                                                   *
@@ -36,6 +27,7 @@ extern void coco3_ram_b8_w (offs_t offset, data8_t data);
 extern void coco3_ram_b9_w (offs_t offset, data8_t data);
 extern void coco3_vh_sethires(int hires);
 extern int dragon_vh_start(void);
+extern int coco2b_vh_start(void);
 extern int coco3_vh_start(void);
 extern void coco3_vh_stop(void);
 extern void coco3_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
@@ -83,12 +75,14 @@ extern READ_HANDLER ( coco_floppy_r );
 extern WRITE_HANDLER ( coco_floppy_w );
 extern READ_HANDLER(dragon_floppy_r);
 extern WRITE_HANDLER ( dragon_floppy_w );
-extern void coco3_vblank(void);
+extern int coco3_hblank(void);
+/*extern int coco3_vblank(void);*/
 extern int coco3_mmu_translate(int block, int offset);
 extern int dragon_floppy_init(int id);
 extern int coco_bitbanger_init (int id);
 extern void coco_bitbanger_exit (int id);
 extern void coco_bitbanger_output (int id, int data);
+extern int coco3_calculate_rows(int *bordertop, int *borderbottom);
 
 /* Returns whether a given piece of logical memory is contiguous or not */
 extern int coco3_mmu_ismemorycontiguous(int logicaladdr, int len);

@@ -3,21 +3,38 @@
  * Nate Woods
  *
  * Originally based on src/mess/vidhrdw/dragon.c by Mathis Rosenhauer
+ *
+ * Sources:
+ *  M6847 data sheet (http://www.spies.com/arcade/schematics/DataSheets/6847.pdf)
+ *  M6847T1 info from Rainbow magazine (10/86-12/86)
  */
 
 #include "m6847.h"
 #include "vidhrdw/generic.h"
+#include "includes/rstrbits.h"
 
 /* The "Back doors" are declared here */
 #include "includes/dragon.h"
 
-static int vram_mask;
-static int video_offset;
-static int video_gmode;
-static int video_vmode;
-static int video_rowheight;
-static m6847_vblank_proc vblankproc;
-static int artifact_dipswitch;
+struct m6847_state {
+	struct m6847_init_params initparams;
+	int modebits;
+	int videooffset;
+	int rowsize;
+};
+
+static struct m6847_state the_state;
+
+enum {
+	M6847_MODEBIT_AG		= 0x80,
+	M6847_MODEBIT_AS		= 0x40,
+	M6847_MODEBIT_INTEXT	= 0x20,
+	M6847_MODEBIT_INV		= 0x10,
+	M6847_MODEBIT_CSS		= 0x08,
+	M6847_MODEBIT_GM2		= 0x04,
+	M6847_MODEBIT_GM1		= 0x02,
+	M6847_MODEBIT_GM0		= 0x01
+};
 
 #define MAX_VRAM 6144
 
@@ -110,6 +127,40 @@ static unsigned char fontdata8x12[] =
 	0x00, 0x00, 0x00, 0x10, 0x08, 0x04, 0x02, 0x04, 0x08, 0x10, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x18, 0x24, 0x04, 0x08, 0x08, 0x00, 0x08, 0x00, 0x00,
 
+	/* Lower case */
+	0x00, 0x00, 0x00, 0x0C, 0x12, 0x10, 0x38, 0x10, 0x12, 0x3C, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x02, 0x1E, 0x22, 0x1E, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x20, 0x20, 0x3C, 0x22, 0x22, 0x22, 0x3C, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x20, 0x20, 0x20, 0x1C, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x02, 0x02, 0x1E, 0x22, 0x22, 0x22, 0x1E, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x22, 0x3E, 0x20, 0x1C, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x0C, 0x12, 0x10, 0x38, 0x10, 0x10, 0x10, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x22, 0x22, 0x22, 0x1E, 0x02, 0x1C,
+	0x00, 0x00, 0x00, 0x20, 0x20, 0x3C, 0x22, 0x22, 0x22, 0x22, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x08, 0x00, 0x18, 0x08, 0x08, 0x08, 0x1C, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x04, 0x00, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x24, 0x18,
+	0x00, 0x00, 0x00, 0x20, 0x20, 0x24, 0x28, 0x38, 0x24, 0x22, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x18, 0x08, 0x08, 0x08, 0x08, 0x08, 0x1C, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x2A, 0x2A, 0x2A, 0x2A, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x32, 0x22, 0x22, 0x22, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x22, 0x22, 0x22, 0x1C, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x22, 0x22, 0x22, 0x3C, 0x20, 0x20,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x22, 0x22, 0x22, 0x1E, 0x02, 0x03,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x32, 0x20, 0x20, 0x20, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x20, 0x1C, 0x02, 0x3C, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x10, 0x3C, 0x10, 0x10, 0x10, 0x12, 0x0C, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x22, 0x22, 0x26, 0x1A, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x22, 0x14, 0x14, 0x08, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x2A, 0x2A, 0x1C, 0x14, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x14, 0x08, 0x14, 0x22, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x22, 0x22, 0x22, 0x1E, 0x02, 0x1C,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x04, 0x08, 0x10, 0x3E, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x08, 0x10, 0x10, 0x20, 0x10, 0x10, 0x08, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x08, 0x08, 0x08, 0x00, 0x08, 0x08, 0x08, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x08, 0x04, 0x04, 0x02, 0x04, 0x04, 0x08, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x08, 0x08, 0x08, 0x08, 0x2A, 0x1C, 0x08, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x08, 0x04, 0x3E, 0x04, 0x08, 0x00, 0x00, 0x00, 0x00,
+
 	/* Semigraphics 6 */
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x0f, 0x0f, 0x0f,
@@ -192,56 +243,8 @@ static unsigned char fontdata8x12[] =
 	0xff,0xff,0xff,0xff,0xff,0xff, 0x00,0x00,0x00,0x00,0x00,0x00,
 	0xff,0xff,0xff,0xff,0xff,0xff, 0x0f,0x0f,0x0f,0x0f,0x0f,0x0f,
 	0xff,0xff,0xff,0xff,0xff,0xff, 0xf0,0xf0,0xf0,0xf0,0xf0,0xf0,
-	0xff,0xff,0xff,0xff,0xff,0xff, 0xff,0xff,0xff,0xff,0xff,0xff,
-
-	/* Lower case */
-	0x00, 0x00, 0x00, 0x0C, 0x12, 0x10, 0x38, 0x10, 0x12, 0x3C, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x02, 0x1E, 0x22, 0x1E, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x20, 0x20, 0x3C, 0x22, 0x22, 0x22, 0x3C, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x20, 0x20, 0x20, 0x1C, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x02, 0x02, 0x1E, 0x22, 0x22, 0x22, 0x1E, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x22, 0x3E, 0x20, 0x1C, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x0C, 0x12, 0x10, 0x38, 0x10, 0x10, 0x10, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x22, 0x22, 0x22, 0x1E, 0x02, 0x1C,
-	0x00, 0x00, 0x00, 0x20, 0x20, 0x3C, 0x22, 0x22, 0x22, 0x22, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x08, 0x00, 0x18, 0x08, 0x08, 0x08, 0x1C, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x04, 0x00, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x24, 0x18,
-	0x00, 0x00, 0x00, 0x20, 0x20, 0x24, 0x28, 0x38, 0x24, 0x22, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x18, 0x08, 0x08, 0x08, 0x08, 0x08, 0x1C, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x2A, 0x2A, 0x2A, 0x2A, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x32, 0x22, 0x22, 0x22, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x22, 0x22, 0x22, 0x1C, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x22, 0x22, 0x22, 0x3C, 0x20, 0x20,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x22, 0x22, 0x22, 0x1E, 0x02, 0x03,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x32, 0x20, 0x20, 0x20, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x20, 0x1C, 0x02, 0x3C, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x10, 0x3C, 0x10, 0x10, 0x10, 0x12, 0x0C, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x22, 0x22, 0x26, 0x1A, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x22, 0x14, 0x14, 0x08, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x2A, 0x2A, 0x1C, 0x14, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x14, 0x08, 0x14, 0x22, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x22, 0x22, 0x22, 0x1E, 0x02, 0x1C,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x04, 0x08, 0x10, 0x3E, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x08, 0x10, 0x10, 0x20, 0x10, 0x10, 0x08, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x08, 0x08, 0x08, 0x00, 0x08, 0x08, 0x08, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x08, 0x04, 0x04, 0x02, 0x04, 0x04, 0x08, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x08, 0x08, 0x08, 0x08, 0x2A, 0x1C, 0x08, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x08, 0x04, 0x3E, 0x04, 0x08, 0x00, 0x00, 0x00, 0x00
+	0xff,0xff,0xff,0xff,0xff,0xff, 0xff,0xff,0xff,0xff,0xff,0xff
 };
-
-static void calc_videoram_size(void)
-{
-	static int videoramsizes[] = {
-		512,	512,	512,	512,	512,	512,	512,	512,
-		1024,	1024,	2048,	1536,	3072,	3072,	6144,	6144
-	};
-	static int rowheights[] = {
-		12,		12,		12,		12,		12,		12,		12,		12,
-		3,		3,		3,		2,		2,		1,		1,		1
-	};
-	videoram_size = videoramsizes[video_vmode >> 1];
-	video_rowheight = rowheights[video_vmode >> 1];
-}
 
 /* --------------------------------------------------
  * Initialization and termination
@@ -252,403 +255,112 @@ void m6847_vh_init_palette(unsigned char *sys_palette, unsigned short *sys_color
 	memcpy(sys_palette,palette,sizeof(palette));
 }
 
-int internal_m6847_vh_start(int maxvram)
+int internal_m6847_vh_start(const struct m6847_init_params *params, int dirtyramsize)
 {
-	vram_mask = 0;
-	video_offset = 0;
-	video_gmode = 0;
-	video_vmode = 0;
-	vblankproc = NULL;
-	artifact_dipswitch = -1;
+	the_state.initparams = *params;
+	the_state.modebits = 0;
+	the_state.videooffset = 0;
+	the_state.rowsize = 12;
 
-	calc_videoram_size();
-
-	videoram_size = maxvram;
+	videoram_size = dirtyramsize;
 	if (generic_vh_start())
 		return 1;
 
 	return 0;
 }
 
-int m6847_vh_start(void)
+int m6847_vh_start(const struct m6847_init_params *params)
 {
-	return internal_m6847_vh_start(MAX_VRAM);
+	return internal_m6847_vh_start(params, MAX_VRAM);
 }
 
-void m6847_set_vram(void *ram, int rammask)
+void m6847_set_ram_size(int ramsize)
 {
-	videoram = ram;
-	vram_mask = rammask;
+	the_state.initparams.ramsize = ramsize;
 }
 
-void m6847_set_vram_mask(int rammask)
+static UINT8 *mapper_alphanumeric(UINT8 *mem, int param, int *fg, int *bg, int *attr)
 {
-	vram_mask = rammask;
-}
-
-void m6847_set_vblank_proc(m6847_vblank_proc proc)
-{
-	vblankproc = proc;
-}
-
-void m6847_set_artifact_dipswitch(int sw)
-{
-	artifact_dipswitch = sw;
-}
-
-/* --------------------------------------------------
- * The big one - updating the display
- * -------------------------------------------------- */
-
-/*
- * Note that 'sizex' is in bytes, and 'sizey' is in pixels
- */
-void blitgraphics2(struct osd_bitmap *bitmap, UINT8 *vrambase, int vrampos,
-	int vramsize, UINT8 *db, const int *metapalette, int sizex, int sizey,
-	int basex, int basey, int scalex, int scaley, int additionalrowbytes)
-{
-	int x, y;
-	int fg, bg;
-	int p, b;
-	UINT8 *vidram;
-
-	if (metapalette) {
-		bg = Machine->pens[metapalette[0]];
-		fg = Machine->pens[metapalette[1]];
-	}
-	else {
-		bg = Machine->pens[0];
-		fg = Machine->pens[1];
-	}
-
-	vidram = vrambase + vrampos;
-
-	for (y = 0; y < sizey; y++) {
-		for (x = 0; x < sizex; x++) {
-			if (!db || *db) {
-				for (b = 0; b < 8; b++) {
-					p = ((*vidram) & (1<<(7-b))) ? fg : bg;
-					plot_box(bitmap, (x * 8 + b) * scalex + basex, y * scaley + basey, scalex, scaley, p);
-				}
-				if (db)
-					*(db++) = 0;
-			}
-			else {
-				db++;
-			}
-			vidram++;
-		}
-		vidram += additionalrowbytes;
-		if (db)
-			db += additionalrowbytes;
-
-		/* Check to see if the video RAM has wrapped around */
-		if (vidram > vrambase + vramsize)
-			vidram -= vramsize;
-	}
-}
-
-void blitgraphics4(struct osd_bitmap *bitmap, UINT8 *vrambase, int vrampos,
-	int vramsize, UINT8 *db, const int *metapalette, int sizex, int sizey,
-	int basex, int basey, int scalex, int scaley, int additionalrowbytes)
-{
-	int x, y;
-	int c[4];
-	int p, b;
-	int crunlen, crunc =0, thisx =0, thisy;
-	UINT8 *vidram;
-
-	if (metapalette) {
-		c[0] = Machine->pens[metapalette[0]];
-		c[1] = Machine->pens[metapalette[1]];
-		c[2] = Machine->pens[metapalette[2]];
-		c[3] = Machine->pens[metapalette[3]];
-	}
-	else {
-		c[0] = Machine->pens[0];
-		c[1] = Machine->pens[1];
-		c[2] = Machine->pens[2];
-		c[3] = Machine->pens[3];
-	}
-
-	vidram = vrambase + vrampos;
-
-	for (y = 0; y < sizey; y++) {
-		crunlen = 0;
-		thisy = y * scaley + basey;
-		for (x = 0; x < sizex; x++) {
-			if (!db || *db) {
-				for (b = 0; b < 4; b++) {
-					p = (((*vidram) >> (6-(2*b)))) & 3;
-
-					if (crunlen == 0) {
-						thisx = (x * 4 + b) * scalex + basex;
-						crunlen = 1;
-						crunc = p;
-					}
-					else if (crunc == p) {
-						crunlen++;
-					}
-					else {
-						plot_box(bitmap, thisx, thisy, scalex * crunlen, scaley, c[crunc]);
-						thisx += scalex * crunlen;
-						crunlen = 1;
-						crunc = p;
-					}
-				}
-				if (db)
-					*(db++) = 0;
-			}
-			else {
-				if (crunlen) {
-					plot_box(bitmap, thisx, thisy, scalex * crunlen, scaley, c[crunc]);
-					crunlen = 0;
-				}
-				db++;
-			}
-			vidram++;
-		}
-
-		if (crunlen) {
-			plot_box(bitmap, thisx, thisy, scalex * crunlen, scaley, c[crunc]);
-			crunlen = 0;
-		}
-
-		vidram += additionalrowbytes;
-		if (db)
-			db += additionalrowbytes;
-
-		/* Check to see if the video RAM has wrapped around */
-		if (vidram > vrambase + vramsize)
-			vidram -= vramsize;
-	}
-}
-
-static void blitgraphics4artifact(struct osd_bitmap *bitmap, UINT8 *vrambase,
-	int vrampos, int vramsize, UINT8 *db, const int *metapalette, int sizex,
-	int sizey, int basex, int basey, int scalex, int scaley)
-{
-	/* Arifacting isn't truely the same resolution as PMODE 3
-	 * it has a bias to the higher resolution.  We need to
-	 * emulate this because some things are unreadable if we
-	 * say that its just like PMODE 3 with different colors
-	 */
-
-	/* This is the blur correction table. For any given pixel,
-	 * you can take color of that pixel, the color to the left
-	 * and right, and compute what the two resulting pixels
-	 * should look like.  The table is accessed like this:
-	 *
-	 *		blurcorrection[pix(x-1,y)*16+pix(x,y)*4+pix(x+1,y)]
-	 *
-	 * This gives you a pair of pixels to display pix(x,y) as
-	 *
-	 * Special thanks to Derek Snider for coming up with the
-	 * basis for the values in this table
-	 */
-	static int blurcorrection[64][2] = {
-		{0, 0}, {0, 0}, {0, 0}, {0, 0},
-		{0, 1}, {0, 1}, {0, 3}, {0, 3},
-		{2, 0}, {2, 0}, {2, 2}, {2, 2},
-		{3, 3}, {3, 3}, {3, 3}, {3, 3},
-
-		{0, 0}, {0, 0}, {0, 0}, {0, 0},
-		{1, 1}, {1, 1}, {1, 3}, {1, 3},
-		{3, 0}, {3, 0}, {3, 2}, {3, 2},
-		{3, 3}, {3, 3}, {3, 3}, {3, 3},
-
-		{0, 0}, {0, 0}, {0, 0}, {0, 0},
-		{0, 1}, {0, 1}, {0, 3}, {0, 3},
-		{2, 0}, {2, 0}, {2, 2}, {2, 2},
-		{3, 3}, {3, 3}, {3, 3}, {3, 3},
-
-		{0, 0}, {0, 0}, {0, 0}, {0, 0},
-		{1, 1}, {1, 1}, {1, 3}, {1, 3},
-		{3, 0}, {3, 0}, {3, 2}, {3, 2},
-		{3, 3}, {3, 3}, {3, 3}, {3, 3}
-	};
-
-	int x, y;
-	int c[4];
-	int b;
-	int c1, c2;
-	int crunc =0, crunlen;
-	int drunlen;
-	int thisx, thisy;
-	UINT8 *vidram;
-	UINT32 w;
-	int *blur;
-
-	c[0] = Machine->pens[metapalette[0]];
-	c[1] = Machine->pens[metapalette[1]];
-	c[2] = Machine->pens[metapalette[2]];
-	c[3] = Machine->pens[metapalette[3]];
-
-	vidram = vrambase + vrampos;
-	thisy = basey;
-
-	for (y = 0; y < sizey; y++) {
-		x = 0;
-		while(x < sizex) {
-			if (db[0] || ((x < (sizex-1)) && db[1])) {
-				/* We are in a run; calculate the size of the run */
-				drunlen = 1;
-				while((x + drunlen < (sizex-1)) && db[drunlen])
-					drunlen++;
-				if (x + drunlen < (sizex-1))
-					drunlen++;
-
-				thisx = (x * 8) * scalex + basex;
-
-				/* Artifacting causes pixels to appear differently depending on
-				 * their neighbors.  Thus we use 'w' to hold all bits in the
-				 * vicinity:
-				 *
-				 * bits 23-16: previous byte
-				 * bits 15-08: current byte
-				 * bits 07-00: next byte
-				 *
-				 * As we plot the run, we shift 'w' left, and bring in new data
-				 */
-				w = (((UINT32) vidram[0]) << 8);
-				if (x == 0)
-					w |= (w << 2) & 0x030000;
-				else
-					w |= ((UINT32) vidram[-1]) << 16;
-
-				crunlen = 0;
-				memset(db, 0, drunlen);
-				db += drunlen;
-				x += drunlen;
-
-				while(drunlen--) {
-					/* Bring new data into 'w' */
-					if (drunlen || (x < sizex))
-						w |= (UINT32) vidram[1];
-					else
-						w |= (w >> 2) & 0x0000e0;
-
-					for (b = 0; b < 4; b++) {
-						blur = blurcorrection[(w & 0x3f000) >> 12];
-						c1 = c[blur[0]];
-						c2 = c[blur[1]];
-						w <<= 2;
-
-						if (crunlen == 0) {
-							crunlen = 1;
-							crunc = c1;
-						}
-						else if (crunc == c1) {
-							crunlen++;
-						}
-						else {
-							plot_box(bitmap, thisx, thisy, scalex * crunlen, scaley, crunc);
-							thisx += scalex * crunlen;
-							crunlen = 1;
-							crunc = c1;
-						}
-						if (crunc == c2) {
-							crunlen++;
-						}
-						else {
-							plot_box(bitmap, thisx, thisy, scalex * crunlen, scaley, crunc);
-							thisx += scalex * crunlen;
-							crunlen = 1;
-							crunc = c2;
-						}
-					}
-					vidram++;
-				}
-				plot_box(bitmap, thisx, thisy, scalex * crunlen, scaley, crunc);
-			}
-			else {
-				db++;
-				vidram++;
-				x++;
-			}
-		}
-
-		thisy += scaley;
-
-		/* Check to see if the video RAM has wrapped around */
-		if (vidram > vrambase + vramsize)
-			vidram -= vramsize;
-	}
-}
-
-void blitgraphics16(struct osd_bitmap *bitmap, UINT8 *vrambase,
-	int vrampos, int vramsize, UINT8 *db, int sizex, int sizey, int basex,
-	int basey, int scalex, int scaley, int additionalrowbytes)
-{
-	int x, y;
-	int thisx =0, thisy;
-	int crunlen, crunc =0;
-	UINT8 *vidram;
 	UINT8 b;
+	UINT8 *character;
+	int bgc = 0, fgc = 0;
 
-	vidram = vrambase + vrampos;
-	thisy = basey;
+	b = *mem;
 
-	for (y = 0; y < sizey; y++) {
-		crunlen = 0;
-		for (x = 0; x < sizex; x++) {
-			if (!db || *db) {
-				b = *vidram;
+	/* Give the host machine a chance to pull our strings */
+	the_state.initparams.charproc(b);
 
-				if (crunlen == 0) {
-					thisx = (x * 2) * scalex + basex;
-					crunlen = 1;
-					crunc = b >> 4;
-				}
-				else if (crunc == (b >> 4)) {
-					crunlen++;
-				}
-				else {
-					plot_box(bitmap, thisx, thisy, scalex * crunlen, scaley, Machine->pens[crunc]);
-					thisx += scalex * crunlen;
-					crunlen = 1;
-					crunc = b >> 4;
-				}
+	if (the_state.modebits & M6847_MODEBIT_AS) {
+		/* Semigraphics */
+		bgc = 8;
 
-				if (crunc == (b & 15)) {
-					crunlen++;
-				}
-				else {
-					plot_box(bitmap, thisx, thisy, scalex * crunlen, scaley, Machine->pens[crunc]);
-					thisx += scalex * crunlen;
-					crunlen = 1;
-					crunc = b & 15;
-				}
-
-				if (db)
-					*(db++) = 0;
+		if ((the_state.modebits & M6847_MODEBIT_INTEXT) && (the_state.initparams.version != M6847_VERSION_M6847T1)) {
+			/* Semigraphics 6 */
+			character = &fontdata8x12[(96 + (b & 0x3f)) * 12];
+			fgc = ((b >> 6) & 0x3);
+			if (the_state.modebits & M6847_MODEBIT_CSS)
+				fgc += 4;
+		}
+		else {
+			/* Semigraphics 4 */
+			switch(b & 0x0f) {
+			case 0:
+				bgc = 8;
+				character = NULL;
+				break;
+			case 15:
+				bgc = (b >> 4) & 0x7;
+				character = NULL;
+				break;
+			default:
+				bgc = 8;
+				fgc = (b >> 4) & 0x7;
+				character = &fontdata8x12[(160 + (b & 0x0f)) * 12];
+				break;
 			}
-			else {
-				db++;
-
-				if (crunlen > 0) {
-					plot_box(bitmap, thisx, thisy, scalex * crunlen, scaley, Machine->pens[crunc]);
-					crunlen = 0;
-				}
-			}
-			vidram++;
 		}
 
-		if (crunlen > 0) {
-			plot_box(bitmap, thisx, thisy, scalex * crunlen, scaley, Machine->pens[crunc]);
-			crunlen = 0;
-		}
-
-		thisy += scaley;
-
-		vidram += additionalrowbytes;
-		if (db)
-			db += additionalrowbytes;
-
-		/* Check to see if the video RAM has wrapped around */
-		if (vidram > vrambase + vramsize)
-			vidram -= vramsize;
 	}
+	else {
+		/* Text */
+		fgc = (the_state.modebits & M6847_MODEBIT_CSS) ? 15 : 13;
+
+		/* Inverse the character, if appropriate */
+		if (the_state.modebits & M6847_MODEBIT_INV)
+			fgc ^= 1;
+
+		if (the_state.initparams.version == M6847_VERSION_M6847T1) {
+			/* M6847T1 specific features */
+
+			/* Lowercase */
+			if ((the_state.modebits & M6847_MODEBIT_GM0) && (b < 0x20))
+				b += 0x40;
+			else
+				b &= 0x3f;
+
+			/* Inverse (The following was verified in Rainbow Magazine 12/86) */
+			if (the_state.modebits & M6847_MODEBIT_GM1)
+				fgc ^= 1;
+		}
+		else {
+			b &= 0x3f;
+		}
+
+
+		if (b == 0x20) {
+			character = NULL;
+		}
+		else {
+			character = &fontdata8x12[b * 12];
+			if (param)
+				character += 1;	/* Skew up */
+		}
+		bgc = fgc ^ 1;
+	}
+
+	*bg = bgc;
+	*fg = fgc;
+	return character;
 }
 
 /* This is a refresh function used by the Dragon/CoCo as well as the CoCo 3 when in lo-res
@@ -662,127 +374,71 @@ void blitgraphics16(struct osd_bitmap *bitmap, UINT8 *vrambase,
  *     bit 1    1=b/w graphics, 0=color graphics
  *     bit 0	color set
  */
-void internal_m6847_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh,
-	const int *metapalette, UINT8 *vrambase, int vrampos, int vramsize,
-	int has_lowercase, int basex, int basey, int wf, artifactproc artifact)
+void internal_m6847_vh_screenrefresh(struct rasterbits_source *rs,
+	struct rasterbits_videomode *rvm, struct rasterbits_frame *rf, int full_refresh,
+	const int *metapalette, UINT8 *vrambase,
+	int skew_up, int border_color, int wf, artifactproc artifact)
 {
-	int x, y, fg, bg, x2, y2;
-	int rowbytes;
-	int artifacting;
-	UINT8 *db;
-	UINT8 b;
-	int artifactpalette[4];
-	UINT8 *cptr;
+/*	static int rowheights[] = {
+		12,		12,		12,		12,		12,		12,		12,		12,
+		3,		3,		3,		2,		2,		1,		1,		1
+	};
+*/
+	rs->videoram = vrambase;
+	rs->size = the_state.initparams.ramsize;
+	rs->position = the_state.videooffset;
+	rs->db = full_refresh ? NULL : dirtybuffer;
+	rvm->height = 192 / the_state.rowsize;
+	rvm->offset = 0;
+	rf->width = 256 * wf;
+	rf->height = 192;
+	rf->total_scanlines = -1;
+	rf->top_scanline = -1;
+	rf->border_pen = (border_color == -1) ? -1 : Machine->pens[border_color];
 
-	db = dirtybuffer;
 	if (full_refresh) {
-		memset(dirtybuffer, 1, videoram_size);
+		/* Since we are not passing the dirty buffer to raster_bits(), we should clear it here */
+		memset(dirtybuffer, 0, videoram_size);
 	}
 
-	if (video_gmode & 0x10)
+	if (the_state.modebits & M6847_MODEBIT_AG)
 	{
-		if ((video_gmode & 0x02) && !(artifact && ((video_gmode & 0x1e) == M6847_MODE_G4R)))
+		rvm->flags = RASTERBITS_FLAG_GRAPHICS;
+
+		if (the_state.modebits & M6847_MODEBIT_GM0)
 		{
 			/* Resolution modes */
+			rvm->bytesperrow = ((the_state.modebits & (M6847_MODEBIT_GM2|M6847_MODEBIT_GM1)) == (M6847_MODEBIT_GM2|M6847_MODEBIT_GM1)) ? 32 : 16;
+			rvm->width = rvm->bytesperrow * 8;
+			rvm->depth = 1;
+			rvm->metapalette = &metapalette[the_state.modebits & M6847_MODEBIT_CSS ? 10 : 8];
 
-			rowbytes = ((video_gmode & 0x1e) == M6847_MODE_G4R) ? 32 : 16;
-			blitgraphics2(bitmap, vrambase, vrampos, vramsize, db, &metapalette[video_gmode & 0x1 ? 10 : 8],
-				rowbytes, 192 / video_rowheight, basex, basey, (32 / rowbytes) * wf, video_rowheight, 0);
+			if (artifact && (rvm->bytesperrow == 32)) {
+				/* I am here because we are doing PMODE 4 artifact colors */
+				rvm->flags |= RASTERBITS_FLAG_ARTIFACT;
+				rvm->u.artifact = artifact;
+			}
 		}
 		else
 		{
 			/* Color modes */
-			rowbytes = ((video_gmode & 0x1e) != M6847_MODE_G1C) ? 32 : 16;
-
-			/* Are we doing PMODE 4 artifact colors? */
-			artifacting = ((video_gmode & 0x0c) == 0x0c) && (video_gmode & 0x02);
-			if (artifacting) {
-				/* I am here because we are doing PMODE 4 artifact colors */
-				artifactpalette[0] = metapalette[video_gmode & 0x1 ? 10: 8];
-				artifactpalette[3] = metapalette[video_gmode & 0x1 ? 11: 9];
-				artifact(artifactpalette);
-
-				blitgraphics4artifact(bitmap, vrambase, vrampos, vramsize, db, artifactpalette,
-					rowbytes, 192 / video_rowheight, basex, basey, 32 / rowbytes * wf, video_rowheight);
-			}
-			else {
-				/* If not, calculate offset normally */
-				blitgraphics4(bitmap, vrambase, vrampos, vramsize, db, &metapalette[video_gmode & 0x1 ? 4: 0],
-					rowbytes, 192 / video_rowheight, basex, basey, 64 / rowbytes * wf, video_rowheight, 0);
-			}
+			rvm->bytesperrow = ((the_state.modebits & (M6847_MODEBIT_GM2|M6847_MODEBIT_GM1)) != 0) ? 32 : 16;
+			rvm->width = rvm->bytesperrow * 4;
+			rvm->depth = 2;
+			rvm->metapalette = &metapalette[the_state.modebits & M6847_MODEBIT_CSS ? 4: 0];
 		}
 	}
 	else
 	{
-		UINT8 *vidram;
-
-		vidram = vrambase + vrampos;
-
-		for (y = 0; y < (192 / video_rowheight); y++) {
-			for (x = 0; x < 32; x++) {
-				if (*db) {
-					b = *vidram;
-
-					if (!has_lowercase && (video_gmode & 0x02)) {
-						/* Semigraphics 6 */
-						bg = 8;
-						fg = ((b >> 6) & 0x3) + (video_gmode & 0x1 ? 4: 0);
-						b = 64 + (b & 0x3f);
-					}
-					else if (*vidram & 0x80) {
-						/* Semigraphics 4 */
-						bg = 8;
-						fg = (b >> 4) & 0x7;
-						b = 128 + (b & 0x0f);
-					}
-					else {
-						/* Text */
-						bg = (video_gmode & 0x01) ? 14 : 12;
-
-						/* On the M6847T1 and the CoCo 3 GIME chip, bit 2 of video_gmode
-						 * reversed the colors
-						 *
-						 * TODO: Find out what the normal M6847 did with bit 2
-						 */
-						if (video_gmode & 0x04)
-							bg ^= 1;
-
-						/* Is this character lowercase or inverse? */
-						if ((video_gmode & 0x02) && (b < 0x20)) {
-							/* This character is lowercase */
-							b += 144;
-						}
-						else if (b < 0x40) {
-							/* This character is inverse */
-							bg ^= 1;
-						}
-
-						fg = bg;
-						bg ^= 1;
-						b &= 0xbf;
-					}
-
-					cptr = &fontdata8x12[((int) b) * 12];
-					bg = Machine->pens[metapalette[bg]];
-					fg = Machine->pens[metapalette[fg]];
-
-					for (y2 = (y * video_rowheight); y2 < ((y+1) * video_rowheight); y2++) {
-						b = cptr[y2 % 12];
-						for (x2 = 0; x2 < (8*wf); x2++) {
-							plot_pixel(bitmap, x*8*wf+x2+basex, y2+basey, b & (1<<(7-(x2/wf))) ? fg : bg);
-						}
-					}
-
-					*db = 0;
-				}
-				vidram++;
-				db++;
-			}
-		}
-
-		/* Check to see if the video RAM has wrapped around */
-		if (vidram > vrambase + vramsize)
-			vidram -= vramsize;
+		rvm->flags = RASTERBITS_FLAG_TEXT | RASTERBITS_FLAG_TEXTMODULO;
+		rvm->bytesperrow = 32;
+		rvm->width = 32;
+		rvm->depth = 8;
+		rvm->metapalette = metapalette;
+		rvm->u.text.mapper = mapper_alphanumeric;
+		rvm->u.text.mapper_param = skew_up;
+		rvm->u.text.fontheight = 12;
+		rvm->u.text.underlinepos = -1;
 	}
 }
 
@@ -815,37 +471,33 @@ static void m6847_artifact_blue(int *artifactcolors)
 	}
 }
 
-void internal_m6847_drawborder(struct osd_bitmap *bitmap, int screenx, int screeny, int pen)
+int m6847_get_bordercolor(void)
 {
-	int left, right, top, bottom;
-	int borderpen;
-	struct rectangle r;
+	int bordercolor;
 
-	borderpen = Machine->pens[pen];
-
-	left = (bitmap->width - screenx) / 2;
-	right = left + screenx;
-	top = (bitmap->height - screeny) / 2;
-	bottom = top + screeny;
-
-	r.min_x = 0;
-	r.min_y = 0;
-	r.max_x = bitmap->width - 1;
-	r.max_y = top-1;
-	fillbitmap(bitmap, borderpen, &r);
-	r.min_y = bottom;
-	r.max_y = bitmap->height - 1;
-	fillbitmap(bitmap, borderpen, &r);
-	r.min_y = top;
-	r.max_x = left-1;
-	r.max_y = bottom-1;
-	fillbitmap(bitmap, borderpen, &r);
-	r.min_x = right;
-	r.max_x = bitmap->width - 1;
-	fillbitmap(bitmap, borderpen, &r);
+	if (the_state.modebits & M6847_MODEBIT_AG) {
+		if (the_state.modebits & M6847_MODEBIT_CSS)
+			bordercolor = M6847_BORDERCOLOR_WHITE;
+		else
+			bordercolor = M6847_BORDERCOLOR_GREEN;
+	}
+	else {
+		if ((the_state.initparams.version == M6847_VERSION_M6847T1)
+				&& ((the_state.modebits & (M6847_MODEBIT_GM2|M6847_MODEBIT_GM1)) == M6847_MODEBIT_GM2)) {
+			/* We are on the new VDG; and we have a colored border */
+			if (the_state.modebits & M6847_MODEBIT_CSS)
+				bordercolor = M6847_BORDERCOLOR_ORANGE;
+			else
+				bordercolor = M6847_BORDERCOLOR_GREEN;
+		}
+		else {
+			bordercolor = M6847_BORDERCOLOR_BLACK;
+		}
+	}
+	return bordercolor;
 }
 
-static void m6847_drawborder(struct osd_bitmap *bitmap, int screenx, int screeny)
+static int m6847_bordercolor(void)
 {
 	int pen = 0;
 
@@ -860,10 +512,10 @@ static void m6847_drawborder(struct osd_bitmap *bitmap, int screenx, int screeny
 		pen = 5;
 		break;
 	case M6847_BORDERCOLOR_ORANGE:
-		pen = 8;
+		pen = 16;
 		break;
 	}
-	internal_m6847_drawborder(bitmap, screenx, screeny, pen);
+	return pen;
 }
 
 void m6847_vh_update(struct osd_bitmap *bitmap,int full_refresh)
@@ -876,64 +528,24 @@ void m6847_vh_update(struct osd_bitmap *bitmap,int full_refresh)
 		m6847_artifact_red,
 		m6847_artifact_blue
 	};
+	struct rasterbits_source rs;
+	struct rasterbits_videomode rvm;
+	struct rasterbits_frame rf;
 	int artifact_value;
 
-	if (vblankproc)
-		vblankproc();
+	artifact_value = (the_state.initparams.artifactdipswitch == -1) ? 0 : readinputport(the_state.initparams.artifactdipswitch);
 
-	artifact_value = (artifact_dipswitch == -1) ? 0 : readinputport(artifact_dipswitch);
-
-	if (full_refresh)
-		m6847_drawborder(bitmap, 256, 192);
-
-	internal_m6847_vh_screenrefresh(bitmap, full_refresh, m6847_metapalette, videoram,
-		video_offset, vram_mask + 1, FALSE,
-		(bitmap->width - 256) / 2, (bitmap->height - 192) / 2,
+	internal_m6847_vh_screenrefresh(&rs, &rvm, &rf,
+		full_refresh, m6847_metapalette, the_state.initparams.ram,
+		0, (full_refresh ? m6847_bordercolor() : -1),
 		1, artifacts[artifact_value & 3]);
+
+	raster_bits(bitmap, &rs, &rvm, &rf, NULL);
 }
 
 /* --------------------------------------------------
  * Petty accessors
  * -------------------------------------------------- */
-
-void m6847_set_gmode(int mode)
-{
-#if LOG_M6847
-	logerror("m6847_set_gmode(): offset=$%02x\n", mode);
-#endif
-
-	mode &= 0x1f;
-
-	if (mode != video_gmode) {
-		video_gmode = mode;
-		schedule_full_refresh();
-	}
-}
-
-void m6847_set_vmode(int mode)
-{
-#if LOG_M6847
-	logerror("m6847_set_vmode(): offset=$%02x\n", mode);
-#endif
-
-	mode &= 0x1f;
-
-	if (mode != video_vmode) {
-		video_vmode = mode;
-		calc_videoram_size();
-		schedule_full_refresh();
-	}
-}
-
-int m6847_get_gmode(void)
-{
-	return video_gmode;
-}
-
-int m6847_get_vmode(void)
-{
-	return video_vmode;
-}
 
 void m6847_set_video_offset(int offset)
 {
@@ -941,88 +553,79 @@ void m6847_set_video_offset(int offset)
 	logerror("m6847_set_video_offset(): offset=$%04x\n", offset);
 #endif
 
-	offset &= vram_mask;
-	if (offset != video_offset) {
-		video_offset = offset;
+	offset %= the_state.initparams.ramsize;
+	if (offset != the_state.videooffset) {
+		the_state.videooffset = offset;
 		schedule_full_refresh();
 	}
 }
 
 int m6847_get_video_offset(void)
 {
-	return video_offset;
+	return the_state.videooffset;
 }
 
 void m6847_touch_vram(int offset)
 {
-	offset -= video_offset;
-	offset &= vram_mask;
+	offset -= the_state.videooffset;
+	offset %= the_state.initparams.ramsize;
 
 	if (offset < videoram_size)
 		dirtybuffer[offset] = 1;
 }
 
-int m6847_get_bordercolor(void)
+void m6847_set_row_height(int rowheight)
 {
-	/* TODO: Verify this table.  I am pretty sure that it is true
-	 * for the CoCo 3 and M6847T1, but I'm not sure if it is true
-	 * for plain M6847
-	 */
-	static int bordercolortable[] = {
-		/* Text modes */
-		M6847_BORDERCOLOR_BLACK,	M6847_BORDERCOLOR_BLACK,
-		M6847_BORDERCOLOR_BLACK,	M6847_BORDERCOLOR_BLACK,
-		M6847_BORDERCOLOR_BLACK,	M6847_BORDERCOLOR_BLACK,
-		M6847_BORDERCOLOR_BLACK,	M6847_BORDERCOLOR_BLACK,
-		M6847_BORDERCOLOR_BLACK,	M6847_BORDERCOLOR_BLACK,
-		M6847_BORDERCOLOR_GREEN,	M6847_BORDERCOLOR_ORANGE,
-		M6847_BORDERCOLOR_BLACK,	M6847_BORDERCOLOR_BLACK,
-		M6847_BORDERCOLOR_BLACK,	M6847_BORDERCOLOR_BLACK,
-
-		M6847_BORDERCOLOR_GREEN,	M6847_BORDERCOLOR_WHITE,
-		M6847_BORDERCOLOR_GREEN,	M6847_BORDERCOLOR_WHITE,
-		M6847_BORDERCOLOR_GREEN,	M6847_BORDERCOLOR_WHITE,
-		M6847_BORDERCOLOR_GREEN,	M6847_BORDERCOLOR_WHITE,
-		M6847_BORDERCOLOR_GREEN,	M6847_BORDERCOLOR_WHITE,
-		M6847_BORDERCOLOR_GREEN,	M6847_BORDERCOLOR_WHITE,
-		M6847_BORDERCOLOR_GREEN,	M6847_BORDERCOLOR_WHITE,
-		M6847_BORDERCOLOR_GREEN,	M6847_BORDERCOLOR_WHITE
-	};
-	return bordercolortable[video_gmode];
-}
-
-void m6847_get_bordercolor_rgb(int *red, int *green, int *blue)
-{
-	switch(m6847_get_bordercolor()) {
-	case M6847_BORDERCOLOR_BLACK:
-		*red = 0;
-		*green = 0;
-		*blue = 0;
-		break;
-
-	case M6847_BORDERCOLOR_GREEN:
-		*red = 0;
-		*green = 255;
-		*blue = 0;
-		break;
-
-	case M6847_BORDERCOLOR_WHITE:
-		*red = 255;
-		*green = 255;
-		*blue = 255;
-		break;
-
-	case M6847_BORDERCOLOR_ORANGE:
-		*red = 255;
-		*green = 128;
-		*blue = 0;
-		break;
+	if (rowheight != the_state.rowsize) {
+		the_state.rowsize = rowheight;
+		schedule_full_refresh();
 	}
 }
 
-int m6847_get_vram_size(void)
+void m6847_set_cannonical_row_height(void)
 {
-	calc_videoram_size();
-	return videoram_size;
+	static const int graphics_rowheights[] = { 3, 3, 3, 2, 2, 1, 1, 1 };
+	int rowheight;
+
+	if (the_state.modebits & M6847_MODEBIT_AG) {
+		rowheight = graphics_rowheights[the_state.modebits & (M6847_MODEBIT_GM2|M6847_MODEBIT_GM1|M6847_MODEBIT_GM0)];
+	}
+	else {
+		rowheight = 12;
+	}
+	m6847_set_row_height(rowheight);
 }
 
+READ_HANDLER( m6847_ag_r )		{ return (the_state.modebits & M6847_MODEBIT_AG) ? 1 : 0; }
+READ_HANDLER( m6847_as_r )		{ return (the_state.modebits & M6847_MODEBIT_AS) ? 1 : 0; }
+READ_HANDLER( m6847_intext_r )	{ return (the_state.modebits & M6847_MODEBIT_INTEXT) ? 1 : 0; }
+READ_HANDLER( m6847_inv_r )		{ return (the_state.modebits & M6847_MODEBIT_INV) ? 1 : 0; }
+READ_HANDLER( m6847_css_r )		{ return (the_state.modebits & M6847_MODEBIT_CSS) ? 1 : 0; }
+READ_HANDLER( m6847_gm2_r )		{ return (the_state.modebits & M6847_MODEBIT_GM2) ? 1 : 0; }
+READ_HANDLER( m6847_gm1_r )		{ return (the_state.modebits & M6847_MODEBIT_GM1) ? 1 : 0; }
+READ_HANDLER( m6847_gm0_r )		{ return (the_state.modebits & M6847_MODEBIT_GM0) ? 1 : 0; }
+
+static void write_modebits(int data, int mask, int causesrefresh)
+{
+	int newmodebits;
+
+	if (data)
+		newmodebits = the_state.modebits | mask;
+	else
+		newmodebits = the_state.modebits & ~mask;
+
+	if (newmodebits != the_state.modebits) {
+		the_state.modebits = newmodebits;
+		if (causesrefresh)
+			schedule_full_refresh();
+	}
+}
+
+WRITE_HANDLER( m6847_ag_w )		{ write_modebits(data, M6847_MODEBIT_AG, 1); }
+WRITE_HANDLER( m6847_as_w )		{ write_modebits(data, M6847_MODEBIT_AS, 0); }
+WRITE_HANDLER( m6847_intext_w )	{ write_modebits(data, M6847_MODEBIT_INTEXT, 0); }
+WRITE_HANDLER( m6847_inv_w )	{ write_modebits(data, M6847_MODEBIT_INV, 0); }
+WRITE_HANDLER( m6847_css_w )	{ write_modebits(data, M6847_MODEBIT_CSS, 1); }
+WRITE_HANDLER( m6847_gm2_w )	{ write_modebits(data, M6847_MODEBIT_GM2, 1); }
+WRITE_HANDLER( m6847_gm1_w )	{ write_modebits(data, M6847_MODEBIT_GM1, 1); }
+WRITE_HANDLER( m6847_gm0_w )	{ write_modebits(data, M6847_MODEBIT_GM0, 1); }

@@ -68,52 +68,52 @@ struct RunningMachine
 };
 
 #ifdef MESS
-#define MAX_IMAGES  32
+#define MAX_IMAGES	32
 /*
  * This is a filename and it's associated peripheral type
  * The types are defined in mess.h (IO_...)
  */
 struct ImageFile {
-    const char *name;
-    int type;
+	const char *name;
+	int type;
 };
 #endif
 
 /* The host platform should fill these fields with the preferences specified in the GUI */
 /* or on the commandline. */
 struct GameOptions {
-    void *record;
-    void *playback;
-    void *language_file; /* LBO 042400 */
+	void *record;
+	void *playback;
+	void *language_file; /* LBO 042400 */
 
-    int mame_debug;
-    int cheat;
-    int gui_host;
+	int mame_debug;
+	int cheat;
+	int gui_host;
 
-    int samplerate;
-    int use_samples;
-    int use_emulated_ym3812;
+	int samplerate;
+	int use_samples;
+	int use_emulated_ym3812;
 
-    int color_depth;    /* 8 or 16, any other value means auto */
-    int vector_width;   /* requested width for vector games; 0 means default (640) */
-    int vector_height;  /* requested height for vector games; 0 means default (480) */
-    int debug_width;    /* initial size of the debug_bitmap */
-    int debug_height;
-    int norotate;
-    int ror;
-    int rol;
-    int flipx;
-    int flipy;
-    int beam;
-    int flicker;
-    int translucency;
-    int antialias;
-    int use_artwork;
+	int color_depth;	/* 8 or 16, any other value means auto */
+	int vector_width;	/* requested width for vector games; 0 means default (640) */
+	int vector_height;	/* requested height for vector games; 0 means default (480) */
+	int debug_width;	/* initial size of the debug_bitmap */
+	int debug_height;
+	int norotate;
+	int ror;
+	int rol;
+	int flipx;
+	int flipy;
+	int beam;
+	int flicker;
+	int translucency;
+	int antialias;
+	int use_artwork;
 
-    #ifdef MESS
-    struct ImageFile image_files[MAX_IMAGES];
-    int image_count;
-    #endif
+	#ifdef MESS
+	struct ImageFile image_files[MAX_IMAGES];
+	int image_count;
+	#endif
 };
 
 extern struct GameOptions options;

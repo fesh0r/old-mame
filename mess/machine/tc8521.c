@@ -126,8 +126,30 @@ struct tc8521
 	unsigned long thirty_two_hz_counter;
 };
 
-
 static struct tc8521 rtc;
+
+
+/* read tc8521 data from supplied file */
+void	tc8521_load_stream(void *file)
+{
+	if (file)
+	{
+		osd_fread(file, &rtc.registers[0], sizeof(unsigned char)*16*4);
+		osd_fread(file, &rtc.alarm_outputs, sizeof(unsigned long));
+		osd_fread(file, &rtc.thirty_two_hz_counter, sizeof(unsigned long));
+	}
+}
+
+/* write tc8521 data to supplied file */
+void	tc8521_save_stream(void *file)
+{
+	if (file)
+	{
+		osd_fwrite(file, &rtc.registers[0], sizeof(unsigned char)*16*4);
+		osd_fwrite(file, &rtc.alarm_outputs, sizeof(unsigned long));
+		osd_fwrite(file, &rtc.thirty_two_hz_counter, sizeof(unsigned long));
+	}
+}
 
 static void tc8521_set_alarm_output(void)
 {
@@ -306,7 +328,7 @@ READ_HANDLER(tc8521_r)
 			case 0x0e:
 			case 0x0f:
 #ifdef VERBOSE
-				logerror("8521 RTC R: %04x %02x\r\n", offset, rtc.registers[offset]);
+				logerror("8521 RTC R: %04x %02x\n", offset, rtc.registers[offset]);
 #endif
         		return rtc.registers[offset];
 		
@@ -317,7 +339,7 @@ READ_HANDLER(tc8521_r)
 		/* register in selected page */
         register_index = ((rtc.registers[TC8521_MODE_REGISTER] & 0x03)<<4) | (offset & 0x0f);
 #ifdef VERBOSE
-		logerror("8521 RTC R: %04x %02x\r\n", offset, rtc.registers[register_index]);
+		logerror("8521 RTC R: %04x %02x\n", offset, rtc.registers[register_index]);
 #endif
 		/* data from selected page */
 		return rtc.registers[register_index];
@@ -329,7 +351,7 @@ WRITE_HANDLER(tc8521_w)
 	unsigned long register_index;
 
 #ifdef VERBOSE
-        logerror("8521 RTC W: %04x %02x\r\n", offset, data);
+        logerror("8521 RTC W: %04x %02x\n", offset, data);
 
 		switch (offset)
         {
@@ -337,15 +359,15 @@ WRITE_HANDLER(tc8521_w)
                 {
                         if (data & 0x08)
                         {
-                            logerror("timer enable\r\n");
+                            logerror("timer enable\n");
                         }
 
                         if (data & 0x04)
                         {
-                            logerror("alarm enable\r\n");
+                            logerror("alarm enable\n");
                         }
 
-						logerror("page %02x selected\r\n", data & 0x03);
+						logerror("page %02x selected\n", data & 0x03);
 	              }
                 break;
 
@@ -353,46 +375,46 @@ WRITE_HANDLER(tc8521_w)
                 {
                         if (data & 0x08)
                         {
-                            logerror("test 3\r\n");
+                            logerror("test 3\n");
                         }
 
                         if (data & 0x04)
                         {
-                            logerror("test 2\r\n");
+                            logerror("test 2\n");
                         }
 
                         if (data & 0x02)
                         {
-                            logerror("test 1\r\n");
+                            logerror("test 1\n");
                         }
 
                         if (data & 0x01)
                         {
-                            logerror("test 0\r\n");
+                            logerror("test 0\n");
                         }
                 }
                 break;
 
                 case 0x0f:
                 {
-                        if (data & 0x08)
+                        if ((data & 0x08)==0)
                         {
-                           logerror("1hz enable\r\n");
+                           logerror("1hz enable\n");
                         }
 
-                        if (data & 0x04)
+                        if ((data & 0x04)==0)
                         {
-                           logerror("16hz enable\r\n");
+                           logerror("16hz enable\n");
                         }
 
                         if (data & 0x02)
                         {
-                           logerror("reset timer\r\n");
+                           logerror("reset timer\n");
                         }
 
                         if (data & 0x01)
                         {
-                           logerror("reset alarm\r\n");
+                           logerror("reset alarm\n");
                         }
                 }
                 break;

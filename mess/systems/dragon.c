@@ -544,6 +544,53 @@ static struct MachineDriver machine_driver_coco =
 	}
 };
 
+static struct MachineDriver machine_driver_coco2b =
+{
+	/* basic machine hardware */
+	{
+		{
+			CPU_M6809,
+			894886,	/* 0,894886 Mhz */
+			d64_readmem,d64_writemem,
+			0, 0,
+			dragon_interrupt, 1,
+			0, 0,
+		},
+	},
+	60, 0,		 /* frames per second, vblank duration */
+	0,
+	coco_init_machine,
+	dragon_stop_machine,
+
+	/* video hardware */
+	320,					/* screen width */
+	240,					/* screen height (pixels doubled) */
+	{ 0, 319, 0, 239 },		/* visible_area */
+	0,						/* graphics decode info */
+	M6847_TOTAL_COLORS,
+	0,
+	m6847_vh_init_palette,						/* initialise palette */
+
+	VIDEO_TYPE_RASTER | VIDEO_SUPPORTS_DIRTY,
+	0,
+	coco2b_vh_start,
+	m6847_vh_stop,
+	m6847_vh_update,
+
+	/* sound hardware */
+	0, 0, 0, 0,
+	{
+		{
+			SOUND_DAC,
+			&d_dac_interface
+		},
+        {
+			SOUND_WAVE,
+            &d_wave_interface
+        }
+	}
+};
+
 static struct MachineDriver machine_driver_coco3 =
 {
 	/* basic machine hardware */
@@ -553,7 +600,7 @@ static struct MachineDriver machine_driver_coco3 =
 			894886,	/* 0,894886 Mhz */
 			coco3_readmem,coco3_writemem,
 			0, 0,
-			dragon_interrupt, 1,
+			coco3_hblank, 263,
 			0, 0,
 		},
 	},
@@ -600,7 +647,7 @@ static struct MachineDriver machine_driver_coco3h =
 			894886,	/* 0,894886 Mhz */
 			coco3_readmem,coco3_writemem,
 			0, 0,
-			dragon_interrupt, 1,
+			coco3_hblank, 262,
 			0, 0,
 		},
 	},
@@ -645,25 +692,32 @@ static struct MachineDriver machine_driver_coco3h =
 ***************************************************************************/
 
 ROM_START(dragon32)
-	ROM_REGION(0x10000,REGION_CPU1)
+	ROM_REGION(0x10000,REGION_CPU1,0)
 	ROM_LOAD("d32.rom",    0x8000,  0x4000, 0xe3879310)
 ROM_END
 
 ROM_START(coco)
-     ROM_REGION(0x18000,REGION_CPU1)
+     ROM_REGION(0x18000,REGION_CPU1,0)
      ROM_LOAD(			"bas12.rom",	0x12000, 0x2000, 0x54368805)
      ROM_LOAD_OPTIONAL(	"extbas11.rom",	0x10000, 0x2000, 0xa82a6254)
      ROM_LOAD_OPTIONAL(	"disk11.rom",	0x14000, 0x2000, 0x0b9c5415)
 ROM_END
 
+ROM_START(coco2b)
+     ROM_REGION(0x18000,REGION_CPU1,0)
+     ROM_LOAD(			"bas13.rom",	0x12000, 0x2000, 0xd8f4d15e)
+     ROM_LOAD_OPTIONAL(	"extbas11.rom",	0x10000, 0x2000, 0xa82a6254)
+     ROM_LOAD_OPTIONAL(	"disk11.rom",	0x14000, 0x2000, 0x0b9c5415)
+ROM_END
+
 ROM_START(coco3)
-     ROM_REGION(0x90000,REGION_CPU1)
+     ROM_REGION(0x90000,REGION_CPU1,0)
 	 ROM_LOAD(			"coco3.rom",	0x80000, 0x8000, 0xb4c88d6c)
      ROM_LOAD_OPTIONAL(	"disk11.rom",	0x8C000, 0x2000, 0x0b9c5415)
 ROM_END
 
 ROM_START(cp400)
-     ROM_REGION(0x18000,REGION_CPU1)
+     ROM_REGION(0x18000,REGION_CPU1,0)
      ROM_LOAD("cp400bas.rom",  0x10000, 0x4000, 0x878396a5)
      ROM_LOAD("cp400dsk.rom",  0x14000, 0x2000, 0xe9ad60a0)
 ROM_END
@@ -703,9 +757,12 @@ static const struct IODevice io_coco3[] = {
 };
 
 #define io_coco3h io_coco3
+#define io_coco2b io_coco
 
 /*     YEAR  NAME       PARENT  MACHINE    INPUT     INIT     COMPANY               FULLNAME */
 COMP(  1982, coco,      0,		coco,      coco,     0,		  "Tandy Radio Shack",  "Color Computer" )
+COMPX(  198?, coco2b,    coco,	coco2b,    coco,     0,		  "Tandy Radio Shack",  "Color Computer 2B",
+ GAME_ALIAS )
 COMP(  1986, coco3,     coco, 	coco3,	   coco3,    0,		  "Tandy Radio Shack",  "Color Computer 3" )
 COMP(  1982, dragon32,  coco, 	dragon32,  dragon32, 0,		  "Dragon Data Ltd",    "Dragon 32" )
 COMP(  1984, cp400,     coco, 	coco,      coco,     0,		  "Prologica",          "Prologica CP400" )

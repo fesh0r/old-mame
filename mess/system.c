@@ -149,6 +149,7 @@ TESTDRIVER( saturn )	/* Sega Saturn									  */
 	DRIVER( astrocde )	/* Bally Astrocade								  */
 
 	/* RCA */
+TESTDRIVER( vip )		/* Cosmac VIP									  */
 	DRIVER( studio2 )	/* Studio II									  */
 /*	DRIVER( cstudio2 )*//* Colour Studio II								  */
 
@@ -157,6 +158,7 @@ TESTDRIVER( saturn )	/* Sega Saturn									  */
 
 	/* COLECO */
 	DRIVER( coleco )	/* ColecoVision (Original BIOS )				  */
+	DRIVER( colecoa )	/* ColecoVision (Thick Characters)				  */
 #if 0					/* Please dont include these next 2 in a distribution, they are Hacks	*/
 	DRIVER( colecofb )	/* ColecoVision (Fast BIOS load)				  */
 	DRIVER( coleconb )	/* ColecoVision (No BIOS load)					  */
@@ -189,6 +191,7 @@ TESTDRIVER( odyssey2 )	/* Magnavox Odyssey 2 - 1978-1983				  */
     /* ACORN */
 #ifndef MESS_EXCLUDE_ACORN
     DRIVER( atom )      /* 1979 Acorn Atom                                */
+    DRIVER( atomeb )      /* 1979 Acorn Atom                                */
     DRIVER( bbca )      /* 1981 BBC Micro Model A                         */
     DRIVER( bbcb )      /* 1981 BBC Micro Model B                         */
     DRIVER( bbcb1770 )  /* 1981 BBC Micro Model B with WD 1770 disc       */
@@ -251,9 +254,22 @@ TESTDRIVER( z88 )		/*												  */
 	DRIVER( apple2e )	/* 1983 Apple //e								  */
 	DRIVER( apple2ee )	/* 1985 Apple //e Enhanced						  */
 	DRIVER( apple2ep )	/* 1987 Apple //e Platinum						  */
-
-	DRIVER( lisa2 ) 	/*												  */
-
+/*
+ * Lisa 				 January			 1983
+ * Lisa 2 				 January			 1984
+ * Macintosh XL 		 January			 1985
+ */
+	DRIVER( lisa2 ) 	/* 1984 Apple Lisa 2							  */
+	DRIVER( lisa210 ) 	/* 1984 Apple Lisa 2/10							  */
+	DRIVER( macxl ) 	/* 1984 Apple Macintosh XL						  */
+/*
+ * Macintosh 			 January			 1984
+ * Macintosh 512k		 July?				 1984
+ * Macintosh 512ke		 ?					 1986
+ * Macintosh Plus 		 ?					 1986
+ * Macintosh SE			 ?					 1987
+ * Macintosh II 		 ?					 1987
+ */
 /*	DRIVER( mac512k )*/	/* 1984 Apple Macintosh 512k					  */
 	DRIVER( mac512ke )  /* 1986 Apple Macintosh 512ke                     */
 	DRIVER( macplus )	/* 1986 Apple Macintosh Plus					  */
@@ -262,7 +278,7 @@ TESTDRIVER( z88 )		/*												  */
 
 #ifndef MESS_EXCLUDE_ATARI
 	/* ATARI */
-/* 
+/*
 400/800 10kB OS roms
 A    NTSC  (?)         (?)         (?)
 A    PAL   (?)         0x72b3fed4  CO15199, CO15299, CO12399B
@@ -290,8 +306,8 @@ XL/XE 16kB OS roms
 #ifndef MESS_EXCLUDE_CBM
 	/* COMMODORE */
 	DRIVER( kim1 )		/* Commodore (MOS) KIM-1 1975					  */
-/*  DRIVER( sym1 )*/	/* Synertek SYM1								  */
-/*  DRIVER( aim65 )*/	/* Rockwell AIM65								  */
+TESTDRIVER( sym1 )		/* Synertek SYM1								  */
+TESTDRIVER( aim65 )		/* Rockwell AIM65								  */
 
 	DRIVER( pet )		/* PET2001/CBM20xx Series (Basic 1) 			  */
 	DRIVER( cbm30 ) 	/* Commodore 30xx (Basic 2) 					  */
@@ -365,30 +381,29 @@ TESTDRIVER( c128d )		/* Commodore 128D - NTSC 						  */
 
 #ifndef MESS_EXCLUDE_IBMPC
 	/* IBM PC & Clones */
-TESTDRIVER( ibmpc )		/*		IBM PC									  */
-	DRIVER( ibmpca )	/* 1982 PC										  */
-	DRIVER( pcmda ) 	/* 1983 PC with MDA (MGA aka Hercules)			  */
-	DRIVER( pc )		/* 1983 PC with CGA								  */
-TESTDRIVER( europc )	/*		Schneider Euro PC (CGA or Hercules)		  */
-TESTDRIVER( bondwell )	/*		Bondwell (CGA)                         	  */
+	DRIVER( ibmpc )		/* 1982	IBM PC									  */
+	DRIVER( ibmpca )	/* 1982 IBM PC									  */
+	DRIVER( pcmda ) 	/* 1987 PC with MDA (MGA aka Hercules)			  */
+	DRIVER( pc )		/* 1987 PC with CGA								  */
+TESTDRIVER( bondwell )	/* 1985	Bondwell (CGA)                         	  */
+	DRIVER( europc )	/* 1988	Schneider Euro PC (CGA or Hercules)		  */
 
 	/* pc junior */
 TESTDRIVER( ibmpcjr )	/*      IBM PC Jr								  */
 	DRIVER( t1000hx )	/* 1987 Tandy 1000HX (similiar to PCJr) 		  */
 
 	/* xt */
-TESTDRIVER( ibmxt )		/*		IBM XT									  */
+	DRIVER( ibmxt )		/* 1986	IBM XT									  */
 	DRIVER( pc1512 )	/* 1986 Amstrad PC1512 (CGA compatible)			  */
 	DRIVER( pc1640 )	/* 1987 Amstrad PC1640 (EGA compatible)			  */
 
-TESTDRIVER( xtcga ) 	/* 1983 IBMPC-XT (CGA, MF2 Keyboard)			  */
 	DRIVER( xtvga ) 	/* 198? PC-XT (VGA, MF2 Keyboard)				  */
 
 	/* at */
-TESTDRIVER( ibmat )		/*		IBM AT									  */
-	DRIVER( at )		/* 1984 PC-AT (CGA, MF2 Keyboard)				  */
+TESTDRIVER( ibmat )		/* 1985	IBM AT									  */
+	DRIVER( at )		/* 1987 AMI Bios and Diagnostics				  */
 TESTDRIVER( atvga ) 	/*												  */
-TESTDRIVER( neat )		/*		New Enhanced AT chipset, AMI BIOS		  */
+TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS		  */
 #endif
 
 #ifndef MESS_EXCLUDE_SINCLAIR
@@ -448,7 +463,7 @@ TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 								  */
 	DRIVER( ti99_4a )	/* 1981 TI 99/4A								  */
 	DRIVER( ti99_4ae )	/* 1981 TI 99/4AE								  */
 
-TESTDRIVER( avigo ) 	/*												  */
+    DRIVER( avigo )     /*                                                */
 #endif
 
 #ifndef MESS_EXCLUDE_MISC_COMPUTERS
@@ -474,22 +489,25 @@ TESTDRIVER( avigo ) 	/*												  */
 	DRIVER( trs80l1 )	/* TRS-80 Model I	- Radio Shack Level I BASIC   */
 	DRIVER( trs80 ) 	/* TRS-80 Model I	- Radio Shack Level II BASIC  */
 	DRIVER( trs80alt )	/* TRS-80 Model I	- R/S L2 BASIC				  */
+	DRIVER( sys80 ) 	/* EACA System 80								  */
 /*	DRIVER( trs80m2 )*/	/* TRS-80 Model II -							  */
 TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 		  */
 
 	DRIVER( coco )		/* Color Computer								  */
 /*	DRIVER( coco2 )*/ 	/* Color Computer 2 							  */
+	DRIVER( coco2b ) 	/* Color Computer 2B (uses M6847T1 video chip)    */
 	DRIVER( coco3 ) 	/* Color Computer 3 							  */
 	DRIVER( coco3h )	/* Hacked Color Computer 3 (6309)				  */
+	DRIVER( dragon32 )	/* Dragon32 									  */
 	DRIVER( cp400 ) 	/* Prologica CP400								  */
 	DRIVER( mc10 )		/* MC-10										  */
 
-	/* DRAGON DATA LTD */
-	DRIVER( dragon32 )	/* Dragon32 									  */
+	/* dragon 32 coco compatible */
+/*	DRIVER( dragon64 */	/* Dragon 64									  */
 
 	/* EACA */
-	DRIVER( cgenie )	/* Colour Genie 								  */
-	DRIVER( sys80 ) 	/* System 80									  */
+	DRIVER( cgenie )	/* Colour Genie EG2000							  */
+	/* system 80 trs80 compatible */
 
 	/* VIDEO TECHNOLOGY */
 	DRIVER( laser110 )	/* 1983 Laser 110								  */
@@ -509,7 +527,7 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 		  */
 
 	DRIVER( oric1 ) 	/* 1983 Oric 1									  */
 	DRIVER( orica ) 	/* 1984 Oric Atmos								  */
-TESTDRIVER( telestrat ) /* ??? Oric Telestrat/Stratos                       */
+    DRIVER( telestrat ) /* ??? Oric Telestrat/Stratos                       */
 
 	/* PHILIPS */
 	DRIVER( p2000t )	/* 1980 P2000T									  */
@@ -525,7 +543,6 @@ TESTDRIVER( telestrat ) /* ??? Oric Telestrat/Stratos                       */
 	DRIVER( msx )		/* 1983 MSX 									  */
 	DRIVER( msxj )		/* 1983 MSX Jap 								  */
 	DRIVER( msxkr ) 	/* 1983 MSX Korean								  */
-	DRIVER( msxkra ) 	/* 1983 MSX Korean								  */
 	DRIVER( msxuk ) 	/* 1983 MSX UK									  */
 
 	/* NASCOM MICROCOMPUTERS */
@@ -546,7 +563,7 @@ TESTDRIVER( mekd2 )     /* 1977 Motorola Evaluation Kit                   */
 	DRIVER( mtx512 )    /* 1983 Memotech MTX512                           */
 
 	/* MATTEL */
-TESTDRIVER( intvkbd )	/* 1981 - Mattel Intellivision Keyboard Component */
+//TESTDRIVER( intvkbd )	/* 1981 - Mattel Intellivision Keyboard Component */
 						/* (Test marketed, later recalled )				  */
 	DRIVER( aquarius )	/* 1983 Aquarius								  */
 
@@ -567,9 +584,12 @@ TESTDRIVER( comquest )	/* Comquest Plus German							*/
 	/* PIC1655A (NMOS, not CMOS 16C55) dumping problems */
 /*	DRIVER( maniac )*/	/* Maniac										  */
 
-	/* Quelle International */
+	/* Computer Electronic */
 TESTDRIVER( mk1 )		/* Chess Champion MK I							  */
+	/* Quelle International */
 	DRIVER( mk2 )		/* Chess Champion MK II							  */
+	/* NOVAG Industries Ltd. */
+TESTDRIVER( ssystem3 )	/* Chess Champion Super System III / MK III		  */
 
 	/* tchibo */
 	/* single chip with ram, rom, io without label, how to dump? */

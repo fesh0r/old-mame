@@ -182,12 +182,12 @@ void c128_bankswitch_64 (int reset)
 	if ((!c64_game && c64_exrom)
 		|| (charen && (loram || hiram)))
 	{
-		cpu_setbankhandler_r (13, c128_read_io);
+		memory_set_bankhandler_r (13, 0, c128_read_io);
 		c128_write_io = 1;
 	}
 	else
 	{
-		cpu_setbankhandler_r (13, MRA_BANK5);
+		memory_set_bankhandler_r (13, 0, MRA_BANK5);
 		c128_write_io = 0;
 		if ((!charen && (loram || hiram)))
 		{
@@ -391,17 +391,17 @@ static int mmu_page0, mmu_page1;
 		else
 			c128_ram_top = 0x10000;
 
-		cpu_setbankhandler_r (15, c128_mmu8722_ff00_r);
+		memory_set_bankhandler_r (15, 0, c128_mmu8722_ff00_r);
 
 		if (MMU_IO_ON)
 			{
-				cpu_setbankhandler_r (13, c128_read_io);
+				memory_set_bankhandler_r (13, 0, c128_read_io);
 				c128_write_io = 1;
 			}
 		else
 			{
 				c128_write_io = 0;
-				cpu_setbankhandler_r (13, MRA_BANK13);
+				memory_set_bankhandler_r (13, 0, MRA_BANK13);
 			}
 
 		if (MMU_RAM_HI)
@@ -483,9 +483,9 @@ static void c128_bankswitch (int reset)
 				{
 					DBG_LOG (1, "switching to z80",
 							 ("active %d\n",cpu_getactivecpu()) );
-					memorycontextswap(0);
+					memory_set_context(0);
 					c128_bankswitch_z80();
-					memorycontextswap(1);
+					memory_set_context(1);
 					cpu_set_halt_line (0, 0);
 					cpu_set_halt_line (1, 1);
 				}
@@ -494,9 +494,9 @@ static void c128_bankswitch (int reset)
 			{
 				DBG_LOG (1, "switching to m6502",
 						 ("active %d\n",cpu_getactivecpu()) );
-				memorycontextswap(1);
+				memory_set_context(1);
 				c128_bankswitch_128(reset);
-				memorycontextswap(0);
+				memory_set_context(0);
 				cpu_set_halt_line (1, 0);
 				cpu_set_halt_line (0, 1);
 			}
@@ -730,6 +730,33 @@ static void c128_common_driver_init (void)
 {
 	UINT8 *gfx=memory_region(REGION_GFX1);
 	int i;
+
+#if 0
+	{0x100000, 0x107fff, MWA_ROM, &c128_basic},	/* maps to 0x4000 */
+	{0x108000, 0x109fff, MWA_ROM, &c64_basic},	/* maps to 0xa000 */
+	{0x10a000, 0x10bfff, MWA_ROM, &c64_kernal},	/* maps to 0xe000 */
+	{0x10c000, 0x10cfff, MWA_ROM, &c128_editor},
+	{0x10d000, 0x10dfff, MWA_ROM, &c128_z80},		/* maps to z80 0 */
+	{0x10e000, 0x10ffff, MWA_ROM, &c128_kernal},
+	{0x110000, 0x117fff, MWA_ROM, &c128_internal_function},
+	{0x118000, 0x11ffff, MWA_ROM, &c128_external_function},
+	{0x120000, 0x120fff, MWA_ROM, &c64_chargen},
+	{0x121000, 0x121fff, MWA_ROM, &c128_chargen},
+	{0x122000, 0x1227ff, MWA_RAM, &c64_colorram},
+	{0x122800, 0x1327ff, MWA_RAM, &c128_vdcram},
+#endif
+		c128_basic=memory_region(REGION_CPU1)+0x100000;
+		c64_basic=memory_region(REGION_CPU1)+0x108000;
+		c64_basic=memory_region(REGION_CPU1)+0x10a000;
+		c128_editor=memory_region(REGION_CPU1)+0x10c000;
+		c128_z80=memory_region(REGION_CPU1)+0x10d000;
+		c128_kernal=memory_region(REGION_CPU1)+0x10e000;
+		c128_internal_function=memory_region(REGION_CPU1)+0x110000;
+		c128_external_function=memory_region(REGION_CPU1)+0x118000;
+		c64_chargen=memory_region(REGION_CPU1)+0x120000;
+		c128_chargen=memory_region(REGION_CPU1)+0x121000;
+		c64_colorram=memory_region(REGION_CPU1)+0x122000;
+		c128_vdcram=memory_region(REGION_CPU1)+0x122800;
 
 	for (i=0; i<0x100; i++) gfx[i]=i;
 

@@ -8,11 +8,13 @@
 #include "includes/rriot.h"
 #include "cpu/m6502/m6502.h"
 
+#define M6504_MEMORY_LAYOUT
+
 /* usage:
 
    under the black keys are operations to be added as first sign
    black and white box are only changing the player
-   
+
    for the computer to start as white
     switch to black (h enter)
 	swap players (g enter)
@@ -42,20 +44,38 @@ MOS MPS 6332 005 2179
  */
 // only lower 12 address bits on bus!
 static MEMORY_READ_START( mk2_readmem )
+#ifdef M6504_MEMORY_LAYOUT
+	MEMORY_ADDRESS_BITS(13) // m6504
+	{ 0x0000, 0x01ff, MRA_RAM }, // 2 2111, should be mirrored
+	{ 0x0b00, 0x0b0f, rriot_0_r },
+	{ 0x0b80, 0x0bbf, MRA_RAM }, // rriot ram
+	{ 0x0c00, 0x0fff, MRA_ROM }, // rriot rom
+	{ 0x1000, 0x1fff, MRA_ROM },
+#else
 	{ 0x0000, 0x01ff, MRA_RAM }, // 2 2111, should be mirrored
 	{ 0x8009, 0x8009, MRA_NOP },// bit $8009 (ora #$80) causes false accesses
 	{ 0x8b00, 0x8b0f, rriot_0_r },
 	{ 0x8b80, 0x8bbf, MRA_RAM }, // rriot ram
 	{ 0x8c00, 0x8fff, MRA_ROM }, // rriot rom
 	{ 0xf000, 0xffff, MRA_ROM },
+#endif
 MEMORY_END
 
 static MEMORY_WRITE_START( mk2_writemem )
+#ifdef M6504_MEMORY_LAYOUT
+	MEMORY_ADDRESS_BITS(13) // m6504
+	{ 0x0000, 0x01ff, MWA_RAM },
+	{ 0x0b00, 0x0b0f, rriot_0_w },
+	{ 0x0b80, 0x0bbf, MWA_RAM },
+	{ 0x0c00, 0x0fff, MWA_ROM },
+	{ 0x1000, 0x1fff, MWA_ROM },
+#else
 	{ 0x0000, 0x01ff, MWA_RAM },
 	{ 0x8b00, 0x8b0f, rriot_0_w },
 	{ 0x8b80, 0x8bbf, MWA_RAM },
 	{ 0x8c00, 0x8fff, MWA_ROM },
 	{ 0xf000, 0xffff, MWA_ROM },
+#endif
 MEMORY_END
 
 #define DIPS_HELPER(bit, name, keycode, r) \
@@ -146,9 +166,14 @@ static struct MachineDriver machine_driver_mk2 =
 };
 
 ROM_START(mk2)
-	ROM_REGION(0x10000,REGION_CPU1)
+	ROM_REGION(0x10000,REGION_CPU1,0)
+#ifdef M6504_MEMORY_LAYOUT
+	ROM_LOAD("024_1879", 0x0c00, 0x0400, 0x4f28c443)
+	ROM_LOAD("005_2179", 0x1000, 0x1000, 0x6f10991b) // chess mate 7.5
+#else
 	ROM_LOAD("024_1879", 0x8c00, 0x0400, 0x4f28c443)
 	ROM_LOAD("005_2179", 0xf000, 0x1000, 0x6f10991b) // chess mate 7.5
+#endif
 ROM_END
 
 static const struct IODevice io_mk2[] = {
@@ -207,7 +232,7 @@ static void mk2_write_a(int chip, int value)
 {
 	int temp=rriot_0_b_r(0);
 
-	
+
 	switch(temp&0x3) {
 	case 0: case 1: case 2: case 3:
 		mk2_led[temp&3]|=value;
@@ -243,8 +268,8 @@ void init_mk2(void)
 	rriot_config(0,&riot);
 }
 
-// seams to be developed by mostek (MK)
 CONS( 1979,	mk2,	0, 		mk2,	mk2,	mk2,	  "Quelle International",  "Chess Champion MK II")
+// second design sold (same computer/program?)
 
 #ifdef RUNTIME_LOADER
 extern void mk2_runtime_loader_init(void)

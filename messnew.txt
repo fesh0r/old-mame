@@ -1,3 +1,45 @@
+0.37b9 
+---------
+Several drivers may be broken due to the MAME memory handling changes.
+And as a result, the Amiga has been temporarily removed.
+---------
+
+Note: .inp record/playback does still not work currently.
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- CoCo 2B (CoCo with a M6847T1 VDG chip) [Nate Woods]
+- EURO PC, IBMXT [PeT]
+
+System Driver Changes:
+----------------------
+
+- [NC100,NC100A,NC200] Implemented serial hardware: Programs can be loaded into emulation
+using the NC's built in terminal program. Some characters are dropped, could be synchronisation
+problems. XModem transfer not supported at this time. Implemented printer emulation: Documents 
+can be printed now. [Kev Thacker]
+- [COCO 3] Basics of mid-frame video mode changing made.  Crystal City runs a bit better, but
+some timing is still probably off.  Hi-res text will now display the underline in the proper
+place when the lines per row is not 8.  Lo-res font now skewed one scanline, as was the original
+machine.  Fixed Composite Monitor colors.  [Nate Woods]
+- [COCO & COCO 3] Fixed the border colors when POKE 65314, [64-79;88-95] is invoked. [Nate Woods]
+- [ORIC] fixed a bug in microdisc memory paging. Some discs start to boot now.
+Added a dipswitch to enable/disable microdisc interface [Kev Thacker]
+- [PC & compatibles] repartitioned, several problems fixed,
+  major rewrite of graphic subsytems (dirtybuffering disabled temporary),
+  Tandy 1000HX now uses EURO PC'S fontrom for acceptable displayment of its 8x9 characters,
+  EURO PC supports CGA and MDA/Hercules (adjust it in its emulated setup) [PeT]
+
+Other Changes:
+--------------
+
+- The core is based on MAME 0.37b9. This incorporates all 
+  features of the update to this core.  [MAME team] 
+
+- The M6847 interfaces were given a facelift, and now more correctly mimic the signals on the chip.
+[Nate Woods]
+
+-------------------------------------------------------------------------------
 0.37b8 
 ---------
 Several drivers may be broken due to the MAME memory handling changes.
@@ -15,7 +57,8 @@ System Driver Changes:
 
 - [ATOM] Finished floppy disc emulation. To use it you require a rom using
   the original 8271 memory locations (0x0a00-0x0a04). Linked in 6522via,
-  more programs should work with it. [Kev Thacker, Kees van Oss]
+  more programs should work with it. Added printer support. 
+  [Kev Thacker, Kees van Oss]
 
 - [BBC] Added a new BBC clone (BBCB1770) to use the WD1770 disc controller.
   Much improved SAA5050 teletext support (mode 7), There is still a
@@ -78,7 +121,7 @@ System Driver Changes:
 
 - [BBC B] Updated to use updated 8271 FDC code. Disk images can be used and games
   can be loaded and played. [Kev Thacker]
-  
+ 
 - [BBC B] Cleaned up the memory accessing a little. This fixed a problem with
   the DNFS rom thinking it found an econet controller. [Gordon Jefferyes]
 

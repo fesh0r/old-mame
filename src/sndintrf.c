@@ -941,6 +941,7 @@ struct snd_interface sndintf[] =
 	},
 #endif
 #if (HAS_BEEP)
+/* !!! This entry does not have a build rule in src/rules.mak !!! */
 	{
 		SOUND_BEEP,
 		"Beep",

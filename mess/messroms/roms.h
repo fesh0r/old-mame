@@ -1,6 +1,14 @@
+/* the main goal of the list is to identify 
+   roms
+    currently not used
+	bad dumps
+	merged, combined, modified sets */
+
 static struct {
 	int crc32; int size; char *text;
 } roms[]= {
+	{ 0x5be0a51f,  0x200, "VIP monitor" },
+	{ 0x3e0f50f0,  0x200, "VIP chip8 interpreter" },
 	{ 0xa494b339,  0x800, "STUDIO2 bios" },
 
 	{ 0x279e33d1 , 0x400, "ADVENTURE VISION bios" },
@@ -79,14 +87,11 @@ static struct {
 	{ 0xa30b6af5 , 0x100, "APPLE1 bios" },
 	{ 0xbe70bb85 , 0x400, "APPLE1 characterset" },
 
-	{ 0x24d73c7b, 0x1000, "APPLE2? d000" },
-	{ 0x0d494efd, 0x1000, "APPLE2? e000" },
-	{ 0xb58f1ca1, 0x1000, "APPLE2? f000" },
+	{ 0x24d73c7b, 0x1000, "APPLE2 d000" },
+	{ 0x0d494efd, 0x1000, "APPLE2 e000" },
+	{ 0xb58f1ca1, 0x1000, "APPLE2 f000" },
 	{ 0xf66f9c26 , 0x3000, "MERGED APPLE2? (0x24d73c7b+0x0d494efd+0xb58f1ca1)" },
 
-	{ 0xf0edaa1b , 0x4000, "APPLE2C bios" },
-	{ 0xc8b979b3 , 0x8000, "APPLE2C0 bios" },
-	{ 0x0b996420 , 0x8000, "APPLE2CP bios" },
 	{ 0xe248835e , 0x2000, "APPLE2E bios c000 (?+0x24d73c7b)" },
 	{ 0xfc3d59d8 , 0x2000, "APPLE2E bios e000 (0x0d494efd+?)" },
 	{ 0x443aa7c4 , 0x2000, "APPLE2EE bios c000" },
@@ -95,6 +100,10 @@ static struct {
 	{ 0x65989942, 0x4000, "BAD DUMP APPLE2E (0x?+0x95e10034!+0x443aa7c4+0x95e10034!)" },
 
 	{ 0x02b648c8 , 0x4000, "APPLE2EP bios c000" },
+	{ 0xf0edaa1b , 0x4000, "APPLE2C bios" },
+	{ 0xc8b979b3 , 0x8000, "APPLE2C0 bios" },
+	{ 0x0b996420 , 0x8000, "APPLE2CP bios" },
+
 	{ 0xce7144f6 , 0x100, "APPLE2E disk" },
 	{ 0x816a86f1 , 0x1000, "APPLE2E characterset" },
 	{ 0x2651014d , 0x1000, "APPLE2C characterset" },
@@ -224,11 +233,10 @@ static struct {
 	{ 0xc0cb1145, 0x4000, "CPC464+ basic" },
 	{ 0xf6159e18, 0x4000, "BAD DUMP CPC464+ disk (2nd half ff)" },
 
-	{ 0xdf31eb22, 480, "REPROGRAMMED PCW8256 older than 0x9864fd78" },
-	{ 0x621d58a7, 589, "REPROGRAMMED PCW8256 older than 0x9864fd78" },
-	{ 0xb3140dcb, 608, "REPROGRAMMED PCW8256 older than 0x9864fd78" },
-	{ 0x679b0287, 608, "REPROGRAMMED PCW8256 older than 0x9864fd78" },
-	{ 0x9864fd78, 608, "REPROGRAMMED PCW8256" },
+	{ 0xdf31eb22, 480, "REPROGRAMMED PCW8256 older than 0x679b0287" },
+	{ 0x621d58a7, 589, "REPROGRAMMED PCW8256 older than 0x679b0287" },
+	{ 0xb3140dcb, 608, "REPROGRAMMED PCW8256 older than 0x679b0287" },
+	{ 0x679b0287, 608, "REPROGRAMMED PCW8256" },
 	{ 0xc642f498 , 0x80000, "PCW16 045" },
 
 	{ 0x849884f9, 0x40000, "NC100" },
@@ -593,10 +601,11 @@ static struct {
 	{ 0x7c20e2c9 , 0x8000, "ZX128 plus3e" },
 	{ 0x4a700c7e , 0x8000, "ZX128 plus3e" },
 
-	{ 0x5cc6b3ac, 0xc000, "QL" },
-	{ 0x54e93572, 0xc000, "QL" },
-	{ 0xe2b94296, 0xc000, "QL" },
-	{ 0x0f95aab5, 0xc000, "QL" },
+	{ 0x5cc6b3ac, 0xc000, "QL mcg" },
+	{ 0x54e93572, 0xc000, "QL mf" },
+	{ 0xe2b94296, 0xc000, "QL jm" },
+	{ 0x0f95aab5, 0xc000, "QL js" },
+	{ 0x953f8f51, 0xc000, "QL js-4," },
 
 /* tandy *************************************************************************/
 	{ 0x54368805 , 0x2000, "COCO basic" },
@@ -649,7 +658,7 @@ static struct {
 	{ 0xee229390 , 0x8000, "MSXJ" },
 	{ 0xe9ccd789 , 0x8000, "MSXUK" },
 	{ 0x3ab0cd3b , 0x8000, "MSXKR" },
-	{ 0xa781f7ca , 0x8000, "MSXKR alt" },
+	{ 0xa781f7ca , 0x8000, "MSXKR 0x3ab0cd3b hacked to boot like jap/eu msx for increased compatiblity" },
 
 	{ 0x97478efb , 0x4000, "BAD DUMP? MSXKR han" },
 
@@ -833,6 +842,7 @@ static struct {
 	{ 0x278f7bf3 , 0x800, "7916E C48091 82c210-1 Chess Champion MK1 (2716 compatible)" },
 	{ 0x4f28c443 , 0x400, "MOS6530 024 1879 Chess Champion MK2" },
 	{ 0x6f10991b , 0x1000, "MOS6332 005 2179 Chess Champion MK2 (not full 2732 compatible)" },
+	{ 0x52741e0b , 0x1000, "Signetics c19082 Chess Champion MK3 (not full 2732 compatible)" },
 
 	{ 0x2bf4b1a8 , 0x80000, "Epoxy DIL32 Comquest Plus German (dumped as 278001, gave 2 identical halfes" },
 

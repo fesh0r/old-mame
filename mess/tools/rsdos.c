@@ -40,19 +40,27 @@ static int rsdos_diskimage_nextenum(IMAGEENUM *enumeration, imgtool_dirent *ent)
 static void rsdos_diskimage_closeenum(IMAGEENUM *enumeration);
 static size_t rsdos_diskimage_freespace(IMAGE *img);
 static int rsdos_diskimage_readfile(IMAGE *img, const char *fname, STREAM *destf);
-static int rsdos_diskimage_writefile(IMAGE *img, const char *fname, STREAM *sourcef, const file_options *options);
+static int rsdos_diskimage_writefile(IMAGE *img, const char *fname, STREAM *sourcef, const ResolvedOption *writeoptions);
 static int rsdos_diskimage_deletefile(IMAGE *img, const char *fname);
-static int rsdos_diskimage_create(STREAM *f, const geometry_options *options);
+static int rsdos_diskimage_create(STREAM *f, const ResolvedOption *createoptions);
+
+static struct OptionTemplate rsdos_fileopts[] =
+{
+	{ "ftype", IMGOPTION_FLAG_TYPE_INTEGER | IMGOPTION_FLAG_HASDEFAULT,	0,		3,		"1"	},	/* [0] */
+	{ "ascii", IMGOPTION_FLAG_TYPE_CHAR | IMGOPTION_FLAG_HASDEFAULT,	'A',	'B',	"B"	},	/* [1] */
+	{ NULL, 0, 0, 0, 0 }
+};
+
+#define RSDOS_OPTION_FTYPE	0
+#define RSDOS_OPTION_ASCII	1
 
 IMAGEMODULE(
 	rsdos,
 	"Tandy CoCo RS-DOS disk image",			/* human readable name */
 	"dsk",									/* file extension */
-	IMAGE_USES_FTYPE | IMAGE_USES_FASCII,	/* flags */
 	NULL,									/* crcfile */
 	NULL,									/* crc system name */
-	NULL,									/* geometry ranges */
-	NULL,									/* init by name function */
+	EOLN_CR,									/* eoln */
 	rsdos_diskimage_init,					/* init function */
 	rsdos_diskimage_exit,					/* exit function */
 	NULL,									/* info function */
@@ -64,9 +72,10 @@ IMAGEMODULE(
 	rsdos_diskimage_writefile,				/* write file */
 	rsdos_diskimage_deletefile,				/* delete file */
 	rsdos_diskimage_create,					/* create image */
-	NULL,									/* extract function */
-	NULL,
-	NULL
+	NULL,									/* read sector */
+	NULL,									/* write sector */
+	rsdos_fileopts,							/* file options */
+	NULL									/* create options */
 )
 
 static int get_rsdos_dirent(STREAM *f, int index_loc, rsdos_dirent *ent)
@@ -155,6 +164,8 @@ static size_t process_rsdos_file(rsdos_dirent *ent, rsdos_diskimage *img, STREAM
 	if ((i < 0xc0) || (i > 0xc9))
 		return (size_t) -1;
 
+	if (lastgransize)
+		i--;
 	lastgransize += (256 * (i - 0xc0));
 
 	if (destf) {
@@ -376,7 +387,7 @@ static int rsdos_diskimage_readfile(IMAGE *img, const char *fname, STREAM *destf
 	return 0;
 }
 
-static int rsdos_diskimage_writefile(IMAGE *img, const char *fname, STREAM *sourcef, const file_options *options)
+static int rsdos_diskimage_writefile(IMAGE *img, const char *fname, STREAM *sourcef, const ResolvedOption *writeoptions)
 {
 	int err;
 	rsdos_diskimage *rsimg = (rsdos_diskimage *) img;
@@ -399,6 +410,8 @@ static int rsdos_diskimage_writefile(IMAGE *img, const char *fname, STREAM *sour
 	if (err)
 		return err;
 
+	ent.ftype = writeoptions[RSDOS_OPTION_FTYPE].i;
+	ent.asciiflag = writeoptions[RSDOS_OPTION_ASCII].i - 'B';
 	ent.lastsectorbytes_lsb = sz % 256;
 	ent.lastsectorbytes_msb = (((sz % 256) == 0) && (sz > 0)) ? 1 : 0;
 	gptr = &ent.first_granule;
@@ -425,7 +438,7 @@ static int rsdos_diskimage_writefile(IMAGE *img, const char *fname, STREAM *sour
 	}
 	while(sz > 0);
 
-	*gptr = 0xc0 + ((i - 1) / 256);
+	*gptr = 0xc0 + ((i + 255) / 256);
 
 	i = 0;
 	do {
@@ -473,7 +486,7 @@ static int rsdos_diskimage_deletefile(IMAGE *img, const char *fname)
 	return 0;
 }
 
-static int rsdos_diskimage_create(STREAM *f, const geometry_options *options)
+static int rsdos_diskimage_create(STREAM *f, const ResolvedOption *createoptions)
 {
 	return (stream_fill(f, 0xff, 35*18*256) == 35*18*256) ? 0 : IMGTOOLERR_WRITEERROR;
 }

@@ -15,6 +15,9 @@
 #define MSM8251_STATUS_TX_EMPTY		0x04
 #define MSM8251_STATUS_RX_READY	0x02
 
+#define MSM8251_TRANSFER_RECEIVE_WAITING_FOR_START_BIT	0x0001
+#define MSM8251_TRANSFER_RECEIVE_SYNCHRONISED			0x0002
+
 struct msm8251_interface
 {
 	/* state of txrdy output */
@@ -39,11 +42,27 @@ struct msm8251
 	/* status of msm8251 */
 	UINT8 status;
 	UINT8 command;
-	UINT8 data;
+	/* mode byte - bit definitions depend on mode - e.g. synchronous, asynchronous */
+	UINT8 mode_byte;
+
+	/* data being received */
+	UINT8 data;	
+
+	int bit_count_received;
+	int bit_count_transmitted;
+
+	unsigned long State;
 
 	unsigned long baud_rate;
 
+	unsigned long receive_flags;
+	/* this data byte includes start, stop and parity bits */
+	unsigned long receive_char;
+	unsigned long receive_char_length;
+
 	void *timer;
+
+	void (*msm8251_updated_callback)(int id, unsigned long State);
 
 	struct msm8251_interface interface;
 };
@@ -71,4 +90,6 @@ void msm8251_stop(void);
 /* this chip doesn't have an internal baud rate generator, so it must be set externally */
 void msm8251_set_baud_rate(unsigned long);
 
+
+void	msm8251_init_serial_transfer(int id);
 #endif

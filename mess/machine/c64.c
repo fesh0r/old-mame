@@ -471,12 +471,12 @@ static void c64_bankswitch (int reset)
 		|| (loram && hiram && !c64_exrom))
 	{
 		cpu_setbank (1, roml);
-		cpu_setbankhandler_w (2, MWA_NOP);
+		memory_set_bankhandler_w (2, 0, MWA_NOP);
 	}
 	else
 	{
 		cpu_setbank (1, c64_memory + 0x8000);
-		cpu_setbankhandler_w (2, MWA_RAM);
+		memory_set_bankhandler_w (2, 0, MWA_RAM);
 	}
 
 	if ((!c64_game && c64_exrom && hiram)
@@ -496,13 +496,13 @@ static void c64_bankswitch (int reset)
 	if ((!c64_game && c64_exrom)
 		|| (charen && (loram || hiram)))
 	{
-		cpu_setbankhandler_r (5, c64_read_io);
-		cpu_setbankhandler_w (6, c64_write_io);
+		memory_set_bankhandler_r (5, 0, c64_read_io);
+		memory_set_bankhandler_w (6, 0, c64_write_io);
 	}
 	else
 	{
-		cpu_setbankhandler_r (5, MRA_BANK5);
-		cpu_setbankhandler_w (6, MWA_BANK6);
+		memory_set_bankhandler_r (5, 0, MRA_BANK5);
+		memory_set_bankhandler_w (6, 0, MWA_BANK6);
 		cpu_setbank (6, c64_memory + 0xd000);
 		if (!charen && (loram || hiram))
 		{
@@ -517,11 +517,11 @@ static void c64_bankswitch (int reset)
 	if (!c64_game && c64_exrom)
 	{
 		cpu_setbank (7, romh);
-		cpu_setbankhandler_w (8, MWA_NOP);
+		memory_set_bankhandler_w (8, 0, MWA_NOP);
 	}
 	else
 	{
-		cpu_setbankhandler_w (8, MWA_RAM);
+		memory_set_bankhandler_w (8, 0, MWA_RAM);
 		if (hiram)
 		{
 			cpu_setbank (7, c64_kernal);
@@ -676,6 +676,20 @@ static int c64_dma_read_color (int offset)
 static void c64_common_driver_init (void)
 {
 	/*    memset(c64_memory, 0, 0xfd00); */
+	c64_basic=memory_region(REGION_CPU1)+0x10000;
+	c64_kernal=memory_region(REGION_CPU1)+0x12000;
+	c64_chargen=memory_region(REGION_CPU1)+0x14000;
+	c64_colorram=memory_region(REGION_CPU1)+0x15000;
+	c64_roml=memory_region(REGION_CPU1)+0x15400;
+	c64_romh=memory_region(REGION_CPU1)+0x17400;
+#if 0
+	{0x10000, 0x11fff, MWA_ROM, &c64_basic},	/* basic at 0xa000 */
+	{0x12000, 0x13fff, MWA_ROM, &c64_kernal},	/* kernal at 0xe000 */
+	{0x14000, 0x14fff, MWA_ROM, &c64_chargen},	/* charrom at 0xd000 */
+	{0x15000, 0x153ff, MWA_RAM, &c64_colorram},		/* colorram at 0xd800 */
+	{0x15400, 0x173ff, MWA_ROM, &c64_roml},	/* basic at 0xa000 */
+	{0x17400, 0x193ff, MWA_ROM, &c64_romh},	/* kernal at 0xe000 */
+#endif
 
 	if (c64_tape_on)
 		vc20_tape_open (c64_tape_read);

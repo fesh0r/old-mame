@@ -19,8 +19,10 @@
 	maybe SoundBlaster? EGA? VGA?
 
 ***************************************************************************/
+#include <assert.h>
 #include "driver.h"
 #include "machine/8255ppi.h"
+#include "vidhrdw/generic.h"
 
 #include "includes/pic8259.h"
 #include "includes/pit8253.h"
@@ -30,6 +32,7 @@
 #include "includes/vga.h"
 #include "includes/pc_cga.h"
 #include "includes/pc_mda.h"
+#include "includes/pc_aga.h"
 
 #include "includes/pc_flopp.h"
 #include "includes/pc_mouse.h"
@@ -38,8 +41,22 @@
 #include "includes/pclpt.h"
 #include "includes/centroni.h"
 
+#include "includes/pc_hdc.h"
+#include "includes/nec765.h"
 #include "includes/amstr_pc.h"
+#include "includes/europc.h"
+#include "includes/ibmpc.h"
+
 #include "includes/pc.h"
+#include "includes/state.h"
+
+#define VERBOSE_DBG 0       /* general debug messages */
+#if VERBOSE_DBG
+#define DBG_LOG(N,M,A) \
+	if(VERBOSE_DBG>=N){ if( M )logerror("%11.6f: %-24s",timer_get_time(),(char*)M ); logerror A; }
+#else
+#define DBG_LOG(n,m,a)
+#endif
 
 // preliminary machines setup 
 //#define MESS_MENU
@@ -47,8 +64,6 @@
 #include "menu.h"
 #include "menuentr.h"
 #endif
-
-UINT8 pc_port[0x400];
 
 #define FDC_DMA 2
 
@@ -105,38 +120,6 @@ static uart8250_interface com_interface[4]=
 		pc_com_refresh_connected
 	}
 };
-
-/* static int pc_ppi_porta_r(int chip ); */
-/* static int pc_ppi_portb_r(int chip ); */
-static int pc_ppi_portc_r(int chip);
-static void pc_ppi_porta_w(int chip, int data );
-/* static void pc_ppi_portb_w( int chip, int data ); */
-static void pc_ppi_portc_w(int chip, int data );
-
-
-/* PC-XT has a 8255 which is connected to keyboard and other
-status information */
-static ppi8255_interface pc_ppi8255_interface =
-{
-	1,
-	pc_ppi_porta_r,
-	pc_ppi_portb_r,
-	pc_ppi_portc_r,
-	pc_ppi_porta_w,
-	pc_ppi_portb_w,
-	pc_ppi_portc_w
-};
-
-static void pc_sh_speaker_change_clock(double pc_clock)
-{
-	switch( pc_port[0x61] & 3 )
-	{
-		case 0: pc_sh_speaker(0); break;
-		case 1: pc_sh_speaker(1); break;
-		case 2: pc_sh_speaker(1); break;
-		case 3: pc_sh_speaker(2); break;
-    }
-}
 
 /*
  * timer0	heartbeat IRQ
@@ -662,6 +645,8 @@ void pc_init_setup(PC_SETUP *setup)
 	}
 }
 
+static DMA8237_CONFIG dma= { DMA8237_PC };
+
 void init_pc_common(void)
 {
 	pit8253_config(0,&pc_pit8253_config);
@@ -700,16 +685,18 @@ void init_pc_common(void)
 	at_keyboard_set_scan_code_set(1);
 	at_keyboard_set_input_port_base(4);
 
-	/* should be in init for DMA controller? */
-	pc_DMA_status &= ~(0x10 << FDC_DMA);	/* reset DMA running flag */
-	pc_DMA_status |= 0x01 << FDC_DMA;		/* set DMA terminal count flag */
+	state_add_function(pc_harddisk_state);
+//	state_add_function(nec765_state);
 }
 
 void init_pccga(void)
 {
 	pc_cga_init();
 	init_pc_common();
+	dma8237_config(dma8237,&dma);
+	dma8237_reset(dma8237);
 	at_keyboard_set_type(AT_KEYBOARD_TYPE_PC);
+	pc_rtc_init();
 }
 
 void init_bondwell(void)
@@ -717,6 +704,8 @@ void init_bondwell(void)
 	pc_init_setup(pc_setup);
 	pc_cga_init();
 	init_pc_common();
+	dma8237_config(dma8237,&dma);
+	dma8237_reset(dma8237);
 	at_keyboard_set_type(AT_KEYBOARD_TYPE_PC);
 //	at_keyboard_set_type(AT_KEYBOARD_TYPE_MF2);
 }
@@ -726,29 +715,50 @@ void init_pcmda(void)
 	pc_init_setup(pc_setup);
 	pc_mda_init();
 	init_pc_common();
+	dma8237_config(dma8237,&dma);
+	dma8237_reset(dma8237);
 	at_keyboard_set_type(AT_KEYBOARD_TYPE_PC);
 }
 
 void init_europc(void)
 {
 	UINT8 *gfx = &memory_region(REGION_GFX1)[0x2000];
+	UINT8 *rom = &memory_region(REGION_CPU1)[0];
 	int i;
+
     /* just a plain bit pattern for graphics data generation */
     for (i = 0; i < 256; i++)
 		gfx[i] = i;
 
+	/*
+	  fix century rom bios bug !
+	  if year >79 month (and not CENTURY) is loaded with 0x20
+	*/
+	if (rom[0xff93e]==0xb6){ // mov dh,
+		UINT8 a;
+		rom[0xff93e]=0xb5; // mov ch,
+		for (i=0xf8000, a=0; i<0xfffff; i++ ) a+=rom[i];
+		rom[0xfffff]=256-a;
+	}
+
 	pc_init_setup(europc);
 	init_pc_common();
+	dma8237_config(dma8237,&dma);
+	dma8237_reset(dma8237);
 
+#if 0
 	install_mem_read_handler(0, 0xb8000, 0xbbfff, MRA_RAM );
 	install_mem_write_handler(0, 0xb8000, 0xbbfff, pc_cga_videoram_w );
 	videoram=memory_region(REGION_CPU1)+0xb8000; videoram_size=0x4000;
 
 	install_port_read_handler(0, 0x3d0, 0x3df, pc_CGA_r );
 	install_port_write_handler(0, 0x3d0, 0x3df, pc_CGA_w );
+#endif
 
 	at_keyboard_set_type(AT_KEYBOARD_TYPE_PC);
-	mc146818_init(MC146818_IGNORE_CENTURY);
+	europc_rtc_init();
+	pc_aga_set_mode(AGA_COLOR);
+//	europc_rtc_set_time();
 }
 
 void init_pc1512(void)
@@ -770,6 +780,8 @@ void init_pc1512(void)
 	install_port_read_handler(0, 0x278, 0x27b, pc_parallelport2_r );
 
 	init_pc_common();
+	dma8237_config(dma8237,&dma);
+	dma8237_reset(dma8237);
 	at_keyboard_set_type(AT_KEYBOARD_TYPE_PC);
 	mc146818_init(MC146818_IGNORE_CENTURY);
 }
@@ -798,6 +810,8 @@ extern void init_pc1640(void)
 	install_port_read_handler(0, 0x4278, 0x427b, pc1640_port4278_r );
 
 	init_pc_common();
+	dma8237_config(dma8237,&dma);
+	dma8237_reset(dma8237);
 	at_keyboard_set_type(AT_KEYBOARD_TYPE_PC);
 
 	mc146818_init(MC146818_IGNORE_CENTURY);
@@ -807,6 +821,8 @@ void init_pc_vga(void)
 {
 	pc_init_setup(pc_setup);
 	init_pc_common();
+	dma8237_config(dma8237,&dma);
+	dma8237_reset(dma8237);
 	at_keyboard_set_type(AT_KEYBOARD_TYPE_PC);
 
 	vga_init(input_port_0_r);
@@ -815,19 +831,27 @@ void init_pc_vga(void)
 
 void pc_mda_init_machine(void)
 {
-	pc_keyboard_init();
-
+//	pc_keyboard_init();
+	dma8237_reset(dma8237);
 }
 
 void pc_cga_init_machine(void)
 {
-	pc_keyboard_init();
+//	pc_keyboard_init();
+	dma8237_reset(dma8237);
+}
+
+void pc_aga_init_machine(void)
+{
+//	pc_keyboard_init();
+	dma8237_reset(dma8237);
 }
 
 void pc_vga_init_machine(void)
 {
 	vga_reset();
-	pc_keyboard_init();
+//	pc_keyboard_init();
+	dma8237_reset(dma8237);
 }
 
 /***********************************/
@@ -900,183 +924,35 @@ WRITE_HANDLER(pc_COM4_w)
 	uart8250_w(3, offset,data);
 }
 
+/*
+   keyboard seams to permanently sent data clocked by the mainboard
+   clock line low for longer means "resync", keyboard sends 0xaa as answer
+   will become automatically 0x00 after a while
+*/
+static struct {
+	UINT8 data;
+	int on;
+} pc_keyb= { 0 };
 
-/*************************************************************************
- *
- *		PIO
- *		parallel input output
- *
- *************************************************************************/
-
-int pc_ppi_porta_r(int chip )
+UINT8 pc_keyb_read(void)
 {
-	int data;
-
-	/* KB port A */
-    data = pc_port[0x60];
-    PIO_LOG(1,"PIO_A_r",("$%02x\n", data));
-    return data;
+	return pc_keyb.data;
 }
 
-int pc_ppi_portb_r(int chip )
+static void pc_keyb_timer(int param)
 {
-	int data;
-
-	/* KB port B */
-	data = pc_port[0x61] /*& 0x03f*/;
-	PIO_LOG(1,"PIO_B_r",("$%02x\n", data));
-	return data;
+	pc_keyboard_init();
+	pc_keyboard();
 }
 
-/* tandy1000hx
-   bit 4 input eeprom data in
-   bit 3 output turbo mode */
-int pc_ppi_portc_r( int chip )
+void pc_keyb_set_clock(int on)
 {
-	int data=0xff;
-
-	data&=~0x80; // no parity error
-	data&=~0x40; // no error on expansion board
-	/* KB port C: equipment flags */
-	if (pc_port[0x61] & 0x08)
-	{
-		/* read hi nibble of S2 */
-		data = (data&0xf0)|((input_port_1_r(0) >> 4) & 0x0f);
-		PIO_LOG(1,"PIO_C_r (hi)",("$%02x\n", data));
+	if ((!pc_keyb.on)&&on) {
+		timer_set(1/200.0, 0, pc_keyb_timer);
 	}
-	else
-	{
-		/* read lo nibble of S2 */
-		data = (data&0xf0)|(input_port_1_r(0) & 0x0f);
-		PIO_LOG(1,"PIO_C_r (lo)",("$%02x\n", data));
-	}
-
-	return data;
+	pc_keyb.on=on;
+	pc_keyboard();
 }
-
-void pc_ppi_porta_w(int chip, int data )
-{
-	/* KB controller port A */
-	PIO_LOG(1,"PIO_A_w",("$%02x\n", data));
-	pc_port[0x60] = data;
-}
-
-void pc_ppi_portb_w(int chip, int data )
-{
-	/* KB controller port B */
-	PIO_LOG(1,"PIO_B_w",("$%02x\n", data));
-	pc_port[0x61] = data;
-	switch( data & 3 )
-	{
-		case 0: pc_sh_speaker(0); break;
-		case 1: pc_sh_speaker(1); break;
-		case 2: pc_sh_speaker(1); break;
-		case 3: pc_sh_speaker(2); break;
-	}
-}
-
-void pc_ppi_portc_w(int chip, int data )
-{
-	/* KB controller port C */
-	PIO_LOG(1,"PIO_C_w",("$%02x\n", data));
-	pc_port[0x62] = data;
-}
-
-/*************************************************************************
- *
- *		JOY
- *		joystick port
- *
- *************************************************************************/
-
-static double JOY_time = 0.0;
-
-WRITE_HANDLER ( pc_JOY_w )
-{
-	JOY_time = timer_get_time();
-}
-
-#if 0
-#define JOY_VALUE_TO_TIME(v) (24.2e-6+11e-9*(100000.0/256)*v)
-READ_HANDLER ( pc_JOY_r )
-{
-	int data, delta;
-	double new_time = timer_get_time();
-
-	data=input_port_15_r(0)^0xf0;
-#if 0
-    /* timer overflow? */
-	if (new_time - JOY_time > 0.01)
-	{
-		//data &= ~0x0f;
-		JOY_LOG(2,"JOY_r",("$%02x, time > 0.01s\n", data));
-	}
-	else
-#endif
-	{
-		delta=new_time-JOY_time;
-		if ( delta>JOY_VALUE_TO_TIME(input_port_16_r(0)) ) data &= ~0x01;
-		if ( delta>JOY_VALUE_TO_TIME(input_port_17_r(0)) ) data &= ~0x02;
-		if ( delta>JOY_VALUE_TO_TIME(input_port_18_r(0)) ) data &= ~0x04;
-		if ( delta>JOY_VALUE_TO_TIME(input_port_19_r(0)) ) data &= ~0x08;
-		JOY_LOG(1,"JOY_r",("$%02x: X:%d, Y:%d, time %8.5f, delta %d\n", data, input_port_16_r(0), input_port_17_r(0), new_time - JOY_time, delta));
-	}
-
-	return data;
-}
-#else
-READ_HANDLER ( pc_JOY_r )
-{
-	int data, delta;
-	double new_time = timer_get_time();
-
-	data=input_port_15_r(0)^0xf0;
-    /* timer overflow? */
-	if (new_time - JOY_time > 0.01)
-	{
-		//data &= ~0x0f;
-		JOY_LOG(2,"JOY_r",("$%02x, time > 0.01s\n", data));
-	}
-	else
-	{
-		delta = (int)( 256 * 1000 * (new_time - JOY_time) );
-		if (input_port_16_r(0) < delta) data &= ~0x01;
-		if (input_port_17_r(0) < delta) data &= ~0x02;
-		if (input_port_18_r(0) < delta) data &= ~0x04;
-		if (input_port_19_r(0) < delta) data &= ~0x08;
-		JOY_LOG(1,"JOY_r",("$%02x: X:%d, Y:%d, time %8.5f, delta %d\n", data, input
-						   _port_16_r(0), input_port_17_r(0), new_time - JOY_time, delta));
-	}
-
-	return data;
-}
-#endif
-
-
-/*************************************************************************
- *
- *		EXP
- *		expansion port
- *
- *************************************************************************/
-WRITE_HANDLER ( pc_EXP_w )
-{
-	DBG_LOG(1,"EXP_unit_w",("$%02x\n", data));
-	pc_port[0x213] = data;
-}
-
-READ_HANDLER ( pc_EXP_r )
-{
-    int data = pc_port[0x213];
-    DBG_LOG(1,"EXP_unit_r",("$%02x\n", data));
-	return data;
-}
-
-/**************************************************************************
- *
- *      Interrupt handlers.
- *
- **************************************************************************/
 
 void pc_keyboard(void)
 {
@@ -1084,16 +960,22 @@ void pc_keyboard(void)
 
 	at_keyboard_polling();
 
-	if( !pic8259_0_irq_pending(1) )
+//	if( !pic8259_0_irq_pending(1) && ((pc_port[0x61]&0xc0)==0xc0) ) // amstrad problems
+	if( !pic8259_0_irq_pending(1) && pc_keyb.on)
 	{
 		if ( (data=at_keyboard_read())!=-1) {
-			pc_port[0x60] = data;
-			DBG_LOG(1,"KB_scancode",("$%02x\n", pc_port[0x60]));
+			pc_keyb.data = data;
+			DBG_LOG(1,"KB_scancode",("$%02x\n", pc_keyb.data));
 			pic8259_0_issue_irq(1);
 		}
 	}
 }
 
+/**************************************************************************
+ *
+ *      Interrupt handlers.
+ *
+ **************************************************************************/
 int pc_mda_frame_interrupt (void)
 {
 	static int turboswitch=-1;
@@ -1127,6 +1009,16 @@ int pc_cga_frame_interrupt (void)
 	}
 
 	pc_cga_timer();
+
+    if( !onscrd_active() && !setup_active() )
+		pc_keyboard();
+
+    return ignore_interrupt ();
+}
+
+int pc_aga_frame_interrupt (void)
+{
+	pc_aga_timer();
 
     if( !onscrd_active() && !setup_active() )
 		pc_keyboard();

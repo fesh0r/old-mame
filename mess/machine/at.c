@@ -4,6 +4,7 @@
 #include "includes/pic8259.h"
 #include "includes/pit8253.h"
 #include "includes/mc146818.h"
+#include "includes/dma8237.h"
 #include "includes/vga.h"
 #include "includes/pc_cga.h"
 #include "includes/pc.h"
@@ -34,10 +35,14 @@
    f059f 0x11 timing of 0x10 bit tested
  */
 
+static DMA8237_CONFIG dma= { DMA8237_AT };
+
 void init_atcga(void)
 {
 	pc_init_setup(pc_setup_at);
 	init_pc_common();
+	dma8237_config(dma8237,&dma);
+	dma8237_config(dma8237+1,&dma);
 	pc_cga_init();
 	mc146818_init(MC146818_STANDARD);
 	/* initialise keyboard */
@@ -51,6 +56,9 @@ void init_at_vga(void)
 {
 	pc_init_setup(pc_setup_at);
 	init_pc_common();
+	dma8237_config(dma8237,&dma);
+	dma8237_config(dma8237+1,&dma);
+
 	pc_vga_init();
 	mc146818_init(MC146818_STANDARD);
 	/* initialise keyboard */
@@ -64,7 +72,8 @@ void init_at_vga(void)
 
 void at_machine_init(void)
 {
-
+	dma8237_reset(dma8237);
+	dma8237_reset(dma8237+1);
 }
 
 static struct {
@@ -85,6 +94,8 @@ static struct {
 
 	int operation_write_state;
 	int status_read_mode;
+
+	int speaker;
 
 	// temporary hack
 	int offset1;
@@ -143,6 +154,7 @@ void at_8042_time(void)
 
 READ_HANDLER(at_8042_r)
 {
+	static int poll_delay=10;
 	int data=0;
 	switch (offset) {
 	case 0:
@@ -152,11 +164,14 @@ READ_HANDLER(at_8042_r)
 		DBG_LOG(1,"AT 8042 read",("%.2x %02x\n",offset, data) );
 		break;
 	case 1:
-		data=pc_ppi_portb_r(offset);
+		data=at_8042.speaker;
 		data&=~0xc0; // at bios don't likes this being set
 
-		/* polled for changes in at bios */
-		at_8042.offset1^=0x10;
+		/* polled for changes in ibmat bios */
+		if (--poll_delay<0) {
+			poll_delay=4;
+			at_8042.offset1^=0x10;
+		}
 		data=(data&~0x10)|at_8042.offset1;
 		break;
 	case 2:
@@ -231,7 +246,8 @@ WRITE_HANDLER(at_8042_w)
 		}
 		break;
 	case 1:
-		pc_ppi_portb_w(offset,data);
+		at_8042.speaker=data;
+		pc_sh_speaker(data&3);
 		break;
 	case 4:
 		DBG_LOG(1,"AT 8042 write",("%.2x %02x\n",offset, data) );

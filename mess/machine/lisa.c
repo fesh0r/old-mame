@@ -1,11 +1,13 @@
 /*
 	experimental LISA driver
 
-	Runs most ROM start-up code successfully, but a floppy bug causes boot to fail.
+	Runs most ROM start-up code successfully, and loads the boot file, but it locks shortly
+	afterwards.
 
 	TODO :
-	* debug floppy controller emulation (indispensable to boot)
+	* *** Boot and run LisaTest !!! ***
 	* finish MMU (does not switch to bank 0 on 68k trap)
+	* support hard disk to boot office system
 	* fix COPS support (what I assumed to be COPS reset line is NO reset line)
 	* finish keyboard/mouse support
 	* finish clock support
@@ -13,9 +15,13 @@
 	* finish sound support (involves adding new features to the 6522 VIA core)
 	* fix warm-reset (I think I need to use a callback when 68k RESET instruction is called)
 	* write support for additionnal hardware (hard disk, etc...)
-	* emulate Macintosh XL
 	* emulate LISA1 (?)
 	* optimize MMU emulation !
+
+	DONE (just a reminder to uplift my spirit) :
+	* the lion's share of MMU (spring 2000)
+	* video hardware (except contrast control) (spring 2000)
+	* LISA2/Mac XL floppy hardware (november 2000)
 
 	Credits :
 	* the lisaemu project (<http://www.sundernet.com/>) has gathered much hardware information
@@ -28,8 +34,8 @@
 
 #include "driver.h"
 #include "machine/6522via.h"
-#include "iwm_lisa.h"
 #include "machine/iwm.h"
+#include "machine/sonydriv.h"
 #include "machine/lisa.h"
 #include "m68k.h"
 
@@ -46,8 +52,8 @@ UINT8 *lisa_rom_ptr;
 #define RAM_OFFSET 0x004000
 #define ROM_OFFSET 0x000000
 
-/* 1kb of RAM for 6504 floppy disk controller (shared with 68000), and 4kb of ROM (8kb,
-actually, but only one 4kb bank is selected, according to the drive type (TWIGGY or 3.5'')) */
+/* 1kb of RAM for 6504 floppy disk controller (shared with 68000), and 4kb of ROM (8kb on some
+boards, but then only one 4kb bank is selected, according to the drive type (TWIGGY or 3.5'')) */
 static UINT8 *fdc_ram;
 static UINT8 *fdc_rom;
 
@@ -98,8 +104,8 @@ static int test_parity;		/* detect parity hard errors */
 static UINT16 mem_err_addr_latch;	/* address when parity error occured */
 static int parity_error_pending;	/* parity error interrupt pending */
 
-static int bad_parity_count;	/* number of RAM bytes which have wrong parity */
-static UINT8 *bad_parity_table;	/* array : 1 bit set for each RAM byte with wrong parity */
+static int bad_parity_count;	/* total number of bytes in RAM which have wrong parity */
+static UINT8 *bad_parity_table;	/* array : 1 bit set for each byte in RAM with wrong parity */
 
 
 /*
@@ -163,6 +169,33 @@ static struct via6522_interface lisa_via6522_intf[2] =
 static int FDIR;
 static int DISK_DIAG;
 
+static int MT1;
+
+static int PWM_floppy_motor_speed;
+
+/*
+	lisa model identification
+*/
+enum
+{
+	/*lisa1,*/		/* twiggy floppy drive */
+	lisa2,		/* 3.5'' Sony floppy drive */
+	lisa210,	/* modified I/O board, and internal 10Meg drive */
+	mac_xl		/* same as above with modified video */
+} lisa_model;
+
+struct
+{
+	unsigned int has_fast_timers : 1;	/* I/O board VIAs are clocked at .625 MHz instead of .5 MHz (Lisa 2/10, Mac XL) */
+	enum
+	{
+		twiggy,			/* twiggy drives (Lisa 1) */
+		sony_lisa2,		/* 3.5'' drive with LisaLite adapter (Lisa 2) */
+		sony_lisa210	/* 3.5'' drive with modified fdc hardware (Lisa 2/10, Mac XL) */
+	} floppy_hardware : 2;
+	unsigned int has_double_sided_floppy : 1;	/* true on lisa 1 and *hacked* lisa 2/10 / Mac XL */
+	unsigned int has_mac_xl_video : 1;	/* modified video for MacXL */
+} lisa_features;
 
 /*
 	protos
@@ -793,7 +826,7 @@ static READ_HANDLER(parallel_via_in_b)
 
 int lisa_vh_start(void)
 {
-	size_t videoram_size = (720 * 360 / 8);
+	size_t videoram_size = 32760;	/*max(720*364, 608*431)/8*/
 
 	old_display = (UINT16 *) malloc(videoram_size);
 	if (! old_display)
@@ -817,13 +850,17 @@ void lisa_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 	UINT8	*v;
 	int		fg, bg, x, y;
 
+	/* resolution is 720/364 on lisa, vs 608/431 on mac XL */
+	int resx = (lisa_features.has_mac_xl_video) ? 38 : 45;
+	int resy = (lisa_features.has_mac_xl_video) ? 431 : 364;
+
 	v = videoram_ptr;
 	bg = Machine->pens[0];
 	fg = Machine->pens[1];
 	old = old_display;
 
-	for (y = 0; y < 360; y++) {
-		for ( x = 0; x < 45; x++ ) {
+	for (y = 0; y < resy; y++) {
+		for ( x = 0; x < resx; x++ ) {
 			data = READ_WORD( v );
 			if (full_refresh || (data != *old)) {
 				plot_pixel( bitmap, ( x << 4 ) + 0x00, y, ( data & 0x8000 ) ? fg : bg );
@@ -851,7 +888,7 @@ void lisa_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 }
 
 
-static OPBASE16_HANDLER (lisa_OPbaseoverride)
+static OPBASE_HANDLER (lisa_OPbaseoverride)
 {
 	offs_t answer;
 
@@ -937,16 +974,72 @@ static OPBASE_HANDLER (lisa_fdc_OPbaseoverride)
 
 int lisa_floppy_init(int id)
 {
-	return iwm_lisa_floppy_init(id, IWM_FLOPPY_ALLOW400K /*| IWM_FLOPPY_ALLOW800K*/);
+	/*if (lisa_features.lisa_floppy_hardware == twiggy)
+		return twiggy_floppy_init(id);
+	else*/
+		return sony_floppy_init(id, (lisa_features.has_double_sided_floppy)
+										? SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K
+										: SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_EXT_SPEED_CONTROL);
 }
 
 void lisa_floppy_exit(int id)
 {
-	iwm_lisa_floppy_exit(id);
+	/*if (lisa_features.lisa_floppy_hardware == twiggy)
+		return twiggy_floppy_exit(id);
+	else*/
+		sony_floppy_exit(id);
 }
 
+/*void init_lisa1(void)
+{
+	lisa_model = lisa1;
+	lisa_features.has_fast_timers = 0;
+	lisa_features.floppy_hardware = twiggy;
+	lisa_features.has_double_sided_floppy = 1;
+	lisa_features.has_mac_xl_video = 0;
+}*/
 
-void lisa_init_machine()
+void init_lisa2(void)
+{
+	lisa_model = lisa2;
+	lisa_features.has_fast_timers = 0;
+	lisa_features.floppy_hardware = sony_lisa2;
+	lisa_features.has_double_sided_floppy = 0;
+	lisa_features.has_mac_xl_video = 0;
+}
+
+void init_lisa210(void)
+{
+	lisa_model = lisa210;
+	lisa_features.has_fast_timers = 1;
+	lisa_features.floppy_hardware = sony_lisa210;
+	lisa_features.has_double_sided_floppy = 0;
+	lisa_features.has_mac_xl_video = 0;
+}
+
+void init_mac_xl(void)
+{
+	lisa_model = mac_xl;
+	lisa_features.has_fast_timers = 1;
+	lisa_features.floppy_hardware = sony_lisa210;
+	lisa_features.has_double_sided_floppy = 0;
+	lisa_features.has_mac_xl_video = 1;
+}
+
+static void lisa2_set_iwm_enable_lines(int enable_mask)
+{
+	/* E1 & E2 is connected to the Sony SEL line (?) */
+	/*logerror("new sel line state %d\n", (enable_mask) ? 0 : 1);*/
+	sony_set_sel_line((enable_mask) ? 0 : 1);
+}
+
+static void lisa210_set_iwm_enable_lines(int enable_mask)
+{
+	/* E2 is connected to the Sony enable line (?) */
+	sony_set_enable_lines(enable_mask >> 1);
+}
+
+void lisa_init_machine(void)
 {
 	lisa_ram_ptr = memory_region(REGION_CPU1) + RAM_OFFSET;
 	lisa_rom_ptr = memory_region(REGION_CPU1) + ROM_OFFSET;
@@ -956,10 +1049,10 @@ void lisa_init_machine()
 
 	videoROM_ptr = memory_region(REGION_GFX1);
 
-	cpu_setOPbaseoverride(0, lisa_OPbaseoverride);
-	cpu_setOPbaseoverride(1, lisa_fdc_OPbaseoverride);
+	memory_set_opbase_handler(0, lisa_OPbaseoverride);
+	memory_set_opbase_handler(1, lisa_fdc_OPbaseoverride);
 
-	/* int MMU */
+	/* init MMU */
 
 	setup = TRUE;
 
@@ -996,7 +1089,31 @@ void lisa_init_machine()
 	COPS_via_out_ca2(0, 0);	/* VIA core forgets to do so */
 
 	/* initialize floppy */
-	iwm_lisa_init();
+	{
+		iwm_interface intf =
+		{
+			sony_set_lines,
+			sony_set_enable_lines,
+
+			sony_read_data,
+			sony_write_data,
+			sony_read_status
+		};
+
+		if (lisa_features.floppy_hardware == sony_lisa2)
+		{
+			intf.set_enable_lines = lisa2_set_iwm_enable_lines;
+		}
+		if (lisa_features.floppy_hardware == sony_lisa210)
+		{
+			intf.set_enable_lines = lisa210_set_iwm_enable_lines;
+		}
+
+		iwm_init(& intf);
+
+		if (lisa_features.floppy_hardware == sony_lisa2)
+			sony_set_enable_lines(1);	/* on lisa2, drive unit 1 is always selected (?) */
+	}
 }
 
 int lisa_interrupt(void)
@@ -1085,6 +1202,61 @@ int lisa_interrupt(void)
 	return 0;
 }
 
+/*
+	Lots of fun with the Lisa fdc hardware
+
+	The iwm floppy select line is connected to the drive SEL line in Lisa2 (which is why Lisa 2
+	cannot support 2 floppy drives)...
+*/
+
+INLINE void lisa_fdc_ttl_glue_access(offs_t offset)
+{
+	switch ((offset & 0x000E) >> 1)
+	{
+	case 0:
+		/*stop = offset & 1;*/	/* stop/run motor pulse generation */
+		break;
+	case 2:
+		/*MT0 = offset & 1;*/	/* ???? */
+		break;
+	case 3:
+		/* enable/disable the motor on Lisa 1 */
+		/* can disable the motor on Lisa 2/10, too (although it is not useful) */
+		/* On lisa 2, commands the loading of the speed register on lisalite board */
+		if (lisa_features.floppy_hardware == sony_lisa2)
+		{
+			int oldMT1 = MT1;
+			MT1 = offset & 1;
+			if (MT1 && ! oldMT1)
+			{
+				PWM_floppy_motor_speed = (PWM_floppy_motor_speed << 1) & 0xff;
+				if (iwm_get_lines() & IWM_PH0)
+					PWM_floppy_motor_speed |= 1;
+				sony_set_speed(((256-PWM_floppy_motor_speed) * 1.3) + 237);
+			}
+		}
+		/*else
+			MT1 = offset & 1;*/
+		break;
+	case 4:
+		/*DIS = offset & 1;*/	/* forbids access from the 68000 to our RAM */
+		break;
+	case 5:
+		/*HDS = offset & 1;*/		/* head select (-> disk side) on twiggy */
+		/*if (lisa_features.floppy_hardware == twiggy)
+			twiggy_set_head_line(offset & 1);
+		else*/ if (lisa_features.floppy_hardware == sony_lisa210)
+			sony_set_sel_line(offset & 1);
+		break;
+	case 6:
+		DISK_DIAG = offset & 1;
+		break;
+	case 7:
+		FDIR = offset & 1;	/* Interrupt request to 68k */
+		lisa_field_interrupts();
+		break;
+	}
+}
 
 READ_HANDLER ( lisa_fdc_io_r )
 {
@@ -1093,45 +1265,20 @@ READ_HANDLER ( lisa_fdc_io_r )
 	switch ((offset & 0x0030) >> 4)
 	{
 	case 0:	/* IWM */
-		answer = iwm_lisa_r(offset);
+		answer = /*iwm_lisa_r*/iwm_r(offset);
 		break;
 
 	case 1:	/* TTL glue */
-		switch ((offset & 0x000E) >> 1)
-		{
-		case 0:
-			/*stop = offset & 1;*/	/* ???? */
-			break;
-		case 2:
-			/*MT0 = offset & 1;*/	/* ???? */
-			break;
-		case 3:
-			/*MT1 = offset & 1;*/	/* ???? */
-			break;
-		case 4:
-			/*DIS = offset & 1;*/	/* ???? */
-			break;
-		case 5:
-			/*HDS = offset & 1;*/		/* head select (-> disk side) */
-			iwm_lisa_set_head_line(offset & 1);
-			break;
-		case 6:
-			DISK_DIAG = offset & 1;
-			break;
-		case 7:
-			FDIR = offset & 1;	/* Interrupt request to 68k */
-			lisa_field_interrupts();
-			break;
-		}
-		answer =  0;	/* ??? */
+		lisa_fdc_ttl_glue_access(offset);
+		answer = 0;	/* ??? */
 		break;
 
 	case 2:	/* pulses the PWM LOAD line (mistake !) */
-		answer =  0;	/* ??? */
+		answer = 0;	/* ??? */
 		break;
 
 	case 3:	/* not used */
-		answer =  0;	/* ??? */
+		answer = 0;	/* ??? */
 		break;
 	}
 
@@ -1143,40 +1290,19 @@ WRITE_HANDLER ( lisa_fdc_io_w )
 	switch ((offset & 0x0030) >> 4)
 	{
 	case 0:	/* IWM */
-		iwm_lisa_w(offset, data);
+		/*iwm_lisa_w*/iwm_w(offset, data);
 		break;
 
 	case 1:	/* TTL glue */
-		switch ((offset & 0x000E) >> 1)
-		{
-		case 0:
-			/*stop = offset & 1;*/	/* stop/run a clock (same as PWM LOAD -  never used) */
-			break;
-		case 2:
-			/*MT0 = offset & 1;*/	/* ???? */
-			break;
-		case 3:
-			/*MT1 = offset & 1;*/	/* enable/disable the clock compare (same as PWM LOAD) */
-			break;
-		case 4:
-			/*DIS = offset & 1;*/	/* ???? */
-			break;
-		case 5:
-			/*HDS = offset & 1;*/		/* head select (-> disk side) */
-			iwm_lisa_set_head_line(offset & 1);
-			break;
-		case 6:
-			DISK_DIAG = offset & 1;
-			break;
-		case 7:
-			FDIR = offset & 1;	/* Interrupt request to 68k */
-			lisa_field_interrupts();
-			break;
-		}
+		lisa_fdc_ttl_glue_access(offset);
 		break;
 
-	case 2:	/* pulses the PWM LOAD line (never used) */
-		/* reload a clock with value written */
+	case 2:	/* writes the PWM register */
+		/* the written value is used to generate the motor speed control signal */
+		/*if (lisa_features.floppy_hardware == twiggy)
+			twiggy_set_speed((256-data) * ??? + ???);
+		else*/ if (lisa_features.floppy_hardware == sony_lisa210)
+			sony_set_speed(((256-data) * 1.3) + 237);
 		break;
 
 	case 3:	/* not used */
@@ -1200,6 +1326,22 @@ READ_HANDLER ( lisa_fdc_r )
 		return fdc_rom[offset & 0x0fff];
 }
 
+READ_HANDLER ( lisa210_fdc_r )
+{
+	if (! (offset & 0x1000))
+	{
+		if (! (offset & 0x0400))
+			if (! (offset & 0x0800))
+				return fdc_ram[offset & 0x03ff];
+			else
+				return lisa_fdc_io_r(offset & 0x03ff);
+		else
+			return 0;	/* ??? */
+	}
+	else
+		return fdc_rom[offset & 0x0fff];
+}
+
 WRITE_HANDLER ( lisa_fdc_w )
 {
 	if (! (offset & 0x1000))
@@ -1207,14 +1349,26 @@ WRITE_HANDLER ( lisa_fdc_w )
 		if (! (offset & 0x0800))
 		{
 			if (! (offset & 0x0400))
-				fdc_ram[offset & 0x0fff] = data;
+				fdc_ram[offset & 0x03ff] = data;
 			else
 				lisa_fdc_io_w(offset & 0x03ff, data);
 		}
-
 	}
 }
 
+WRITE_HANDLER ( lisa210_fdc_w )
+{
+	if (! (offset & 0x1000))
+	{
+		if (! (offset & 0x0400))
+		{
+			if (! (offset & 0x0800))
+				fdc_ram[offset & 0x03ff] = data;
+			else
+				lisa_fdc_io_w(offset & 0x03ff, data);
+		}
+	}
+}
 
 READ16_HANDLER ( lisa_r )
 {
@@ -1468,12 +1622,14 @@ WRITE16_HANDLER ( lisa_w )
 			COMBINE_DATA((UINT16 *) (lisa_ram_ptr + address));
 			if (diag2)
 			{
-				if (! (data & 0x00ff0000))
+				if ((ACCESSING_LSB)
+					&& ! (bad_parity_table[address >> 3] & (0x1 << (address & 0x7))))
 				{
 					bad_parity_table[address >> 3] |= 0x1 << (address & 0x7);
 					bad_parity_count++;
 				}
-				if (! (data & 0xff000000))
+				if ((ACCESSING_MSB)
+					&& ! (bad_parity_table[address >> 3] & (0x2 << (address & 0x7))))
 				{
 					bad_parity_table[address >> 3] |= 0x2 << (address & 0x7);
 					bad_parity_count++;
@@ -1481,13 +1637,13 @@ WRITE16_HANDLER ( lisa_w )
 			}
 			else if (bad_parity_table[address >> 3] & (0x3 << (address & 0x7)))
 			{
-				if ((! (data & 0x00ff0000))
+				if ((ACCESSING_LSB)
 					&& (bad_parity_table[address >> 3] & (0x1 << (address & 0x7))))
 				{
 					bad_parity_table[address >> 3] &= ~ (0x1 << (address & 0x7));
 					bad_parity_count--;
 				}
-				if ((! (data & 0xff000000))
+				if ((ACCESSING_MSB)
 					&& (bad_parity_table[address >> 3] & (0x2 << (address & 0x7))))
 				{
 					bad_parity_table[address >> 3] &= ~ (0x2 << (address & 0x7));
@@ -1505,12 +1661,14 @@ WRITE16_HANDLER ( lisa_w )
 			COMBINE_DATA((UINT16 *) (lisa_ram_ptr + address));
 			if (diag2)
 			{
-				if (ACCESSING_LSB)
+				if ((ACCESSING_LSB)
+					&& ! (bad_parity_table[address >> 3] & (0x1 << (address & 0x7))))
 				{
 					bad_parity_table[address >> 3] |= 0x1 << (address & 0x7);
 					bad_parity_count++;
 				}
-				if (ACCESSING_MSB)
+				if ((ACCESSING_MSB)
+					&& ! (bad_parity_table[address >> 3] & (0x2 << (address & 0x7))))
 				{
 					bad_parity_table[address >> 3] |= 0x2 << (address & 0x7);
 					bad_parity_count++;
@@ -1572,6 +1730,61 @@ WRITE16_HANDLER ( lisa_w )
 *   00f8xx status register                                                             *
 *                                                                                      *
 \**************************************************************************************/
+
+INLINE void cpu_board_control_access(offs_t offset)
+{
+	switch ((offset & 0x03ff) << 1)
+	{
+	case 0x0002:	/* Set DIAG1 Latch */
+	case 0x0000:	/* Reset DIAG1 Latch */
+		break;
+	case 0x0006:	/* Set Diag2 Latch */
+		diag2 = TRUE;
+		break;
+	case 0x0004:	/* ReSet Diag2 Latch */
+		diag2 = FALSE;
+		break;
+	case 0x000A:	/* SEG1 Context Selection bit SET */
+		/*logerror("seg bit 0 set\n");*/
+		seg |= 1;
+		break;
+	case 0x0008:	/* SEG1 Context Selection bit RESET */
+		/*logerror("seg bit 0 clear\n");*/
+		seg &= ~1;
+		break;
+	case 0x000E:	/* SEG2 Context Selection bit SET */
+		/*logerror("seg bit 1 set\n");*/
+		seg |= 2;
+		break;
+	case 0x000C:	/* SEG2 Context Selection bit RESET */
+		/*logerror("seg bit 1 clear\n");*/
+		seg &= ~2;
+		break;
+	case 0x0010:	/* SETUP register SET */
+		setup = TRUE;
+		break;
+	case 0x0012:	/* SETUP register RESET */
+		setup = FALSE;
+		break;
+	case 0x001A:	/* Enable Vertical Retrace Interrupt */
+		VTMSK = TRUE;
+		break;
+	case 0x0018:	/* Disable Vertical Retrace Interrupt */
+		VTMSK = FALSE;
+		set_VTIR(FALSE);
+		break;
+	case 0x0016:	/* Enable Soft Error Detect. */
+	case 0x0014:	/* Disable Soft Error Detect. */
+		break;
+	case 0x001E:	/* Enable Hard Error Detect */
+		test_parity = TRUE;
+		break;
+	case 0x001C:	/* Disable Hard Error Detect */
+		test_parity = FALSE;
+		set_parity_error_pending(FALSE);
+		break;
+	}
+}
 
 static READ16_HANDLER ( lisa_IO_r )
 {
@@ -1640,57 +1853,7 @@ static READ16_HANDLER ( lisa_IO_r )
 		switch ((offset & 0x0C00) >> 10)
 		{
 		case 0x0:	/* cpu board control */
-			switch ((offset & 0x03ff) << 1)
-			{
-			case 0x0002:	/* Set DIAG1 Latch */
-			case 0x0000:	/* Reset DIAG1 Latch */
-				break;
-			case 0x0006:	/* Set Diag2 Latch */
-				diag2 = TRUE;
-				break;
-			case 0x0004:	/* ReSet Diag2 Latch */
-				diag2 = FALSE;
-				break;
-			case 0x000A:	/* SEG1 Context Selection bit SET */
-				/*logerror("seg bit 0 set\n");*/
-				seg |= 1;
-				break;
-			case 0x0008:	/* SEG1 Context Selection bit RESET */
-				/*logerror("seg bit 0 clear\n");*/
-				seg &= ~1;
-				break;
-			case 0x000E:	/* SEG2 Context Selection bit SET */
-				/*logerror("seg bit 1 set\n");*/
-				seg |= 2;
-				break;
-			case 0x000C:	/* SEG2 Context Selection bit RESET */
-				/*logerror("seg bit 1 clear\n");*/
-				seg &= ~2;
-				break;
-			case 0x0010:	/* SETUP register SET */
-				setup = TRUE;
-				break;
-			case 0x0012:	/* SETUP register RESET */
-				setup = FALSE;
-				break;
-			case 0x001A:	/* Enable Vertical Retrace Interrupt */
-				VTMSK = TRUE;
-				break;
-			case 0x0018:	/* Disable Vertical Retrace Interrupt */
-				VTMSK = FALSE;
-				set_VTIR(FALSE);
-				break;
-			case 0x0016:	/* Enable Soft Error Detect. */
-			case 0x0014:	/* Disable Soft Error Detect. */
-				break;
-			case 0x001E:	/* Enable Hard Error Detect */
-				test_parity = TRUE;
-				break;
-			case 0x001C:	/* Disable Hard Error Detect */
-				test_parity = FALSE;
-				set_parity_error_pending(FALSE);
-				break;
-			}
+			cpu_board_control_access(offset & 0x03ff);
 			break;
 
 		case 0x1:	/* Video Address Latch */
@@ -1780,52 +1943,7 @@ static WRITE16_HANDLER ( lisa_IO_w )
 		switch ((offset & 0x0C00) >> 10)
 		{
 		case 0x0:	/* cpu board control */
-			switch ((offset & 0x03ff) << 1)
-			{
-			case 0x0002:	/* Set DIAG1 Latch */
-			case 0x0000:	/* Reset DIAG1 Latch */
-				break;
-			case 0x0006:	/* Set Diag2 Latch */
-				diag2 = TRUE;
-				break;
-			case 0x0004:	/* ReSet Diag2 Latch */
-				diag2 = FALSE;
-				break;
-			case 0x000A:	/* SEG1 Context Selection bit SET */
-				seg |= 1;
-				break;
-			case 0x0008:	/* SEG1 Context Selection bit RESET */
-				seg &= ~1;
-				break;
-			case 0x000E:	/* SEG2 Context Selection bit SET */
-				seg |= 2;
-				break;
-			case 0x000C:	/* SEG2 Context Selection bit RESET */
-				seg &= ~2;
-				break;
-			case 0x0010:	/* SETUP register SET */
-				setup = TRUE;
-				break;
-			case 0x0012:	/* SETUP register RESET */
-				setup = FALSE;
-				break;
-			case 0x001A:	/* Enable Vertical Retrace Interrupt */
-				VTMSK = TRUE;
-				break;
-			case 0x0018:	/* Disable Vertical Retrace Interrupt */
-				VTMSK = FALSE;
-				break;
-			case 0x0016:	/* Enable Soft Error Detect. */
-			case 0x0014:	/* Disable Soft Error Detect. */
-				break;
-			case 0x001E:	/* Enable Hard Error Detect */
-				test_parity = TRUE;
-				break;
-			case 0x001C:	/* Disable Hard Error Detect */
-				test_parity = FALSE;
-				set_parity_error_pending(FALSE);
-				break;
-			}
+			cpu_board_control_access(offset & 0x03ff);
 			break;
 
 		case 0x1:	/* Video Address Latch */

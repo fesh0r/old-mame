@@ -61,7 +61,11 @@ struct MachineSound
 #include "sound/tiaintf.h"
 #endif
 #if (HAS_NES)
+ #ifndef MESS
+#include "sound/nes_apu.h"
+ #else
 #include "sound/nesintf.h"
+ #endif
 #endif
 #if (HAS_ASTROCADE)
 #include "sound/astrocde.h"
@@ -288,6 +292,7 @@ enum
 	SOUND_WAVE,
 #endif
 #if (HAS_BEEP)
+/* !!! This entry does not have a build rule in src/rules.mak !!! */
 	SOUND_BEEP,
 #endif
 	SOUND_COUNT

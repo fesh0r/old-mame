@@ -82,11 +82,9 @@ IMAGEMODULE(
 	vmsx_tap,
 	"Virtual MSX Tape archive",		/* human readable name */
 	"tap",								/* file extension */
-	0,	/* flags */
 	NULL,								/* crcfile */
 	NULL,								/* crc system name */
-	NULL,								/* geometry ranges */
-	NULL,
+	NULL,								/* eoln */
 	vmsx_tap_image_init,				/* init function */
 	vmsx_tap_image_exit,				/* exit function */
 	NULL,								/* info function */
@@ -98,6 +96,7 @@ IMAGEMODULE(
 	NULL,/* write file */
 	NULL,/* delete file */
 	NULL,/* create image */
+	NULL,
 	NULL,
 	NULL,
 	NULL

@@ -82,10 +82,12 @@ MEMORY_READ_START( readmem_mz700 )
 	{ 0x0d000, 0x0d7ff, MRA_BANK6 },
 	{ 0x0d800, 0x0dfff, MRA_BANK7 },
 	{ 0x0e000, 0x0ffff, MRA_BANK8 },
+#if 0 //mame37b9 traps
 	{ 0x10000, 0x10fff, MRA_ROM },
 	{ 0x12000, 0x127ff, MRA_RAM },
 	{ 0x12800, 0x12fff, MRA_RAM },
 	{ 0x16000, 0x16fff, MRA_RAM },
+#endif
 MEMORY_END
 
 MEMORY_WRITE_START( writemem_mz700 )
@@ -94,9 +96,11 @@ MEMORY_WRITE_START( writemem_mz700 )
 	{ 0x0d000, 0x0d7ff, MWA_BANK6 },
 	{ 0x0d800, 0x0dfff, MWA_BANK7 },
 	{ 0x0e000, 0x0ffff, MWA_BANK8 },
+#if 0
 	{ 0x12000, 0x127ff, videoram_w, &videoram, &videoram_size },
 	{ 0x12800, 0x12fff, colorram_w, &colorram },
 	{ 0x16000, 0x16fff, pcgram_w },
+#endif
 MEMORY_END
 
 PORT_READ_START( readport_mz700 )
@@ -116,9 +120,11 @@ MEMORY_READ_START( readmem_mz800 )
 	{ 0x0d000, 0x0d7ff, MRA_BANK6 },
 	{ 0x0d800, 0x0dfff, MRA_BANK7 },
 	{ 0x0e000, 0x0ffff, MRA_BANK8 },
+#if 0
 	{ 0x10000, 0x10fff, MRA_ROM },
 	{ 0x11000, 0x11fff, MRA_ROM },
 	{ 0x12000, 0x15fff, MRA_RAM },
+#endif
 MEMORY_END
 
 MEMORY_WRITE_START( writemem_mz800 )
@@ -131,10 +137,12 @@ MEMORY_WRITE_START( writemem_mz800 )
 	{ 0x0d000, 0x0d7ff, MWA_BANK6 },
 	{ 0x0d800, 0x0dfff, MWA_BANK7 },
 	{ 0x0e000, 0x0ffff, MWA_BANK8 },
+#if 0
 	{ 0x10000, 0x10fff, MWA_ROM },
 	{ 0x11000, 0x11fff, MWA_ROM },
     { 0x12000, 0x16fff, videoram_w, &videoram, &videoram_size },
 	{ 0x12800, 0x12fff, colorram_w, &colorram },
+#endif
 MEMORY_END
 
 PORT_READ_START( readport_mz800 )
@@ -388,25 +396,25 @@ static struct MachineDriver machine_driver_mz800 =
 };
 
 ROM_START(mz700)
-	ROM_REGION(0x18000,REGION_CPU1)
+	ROM_REGION(0x18000,REGION_CPU1,0)
 		ROM_LOAD("1z-013a.rom", 0x10000, 0x1000, 0x4c6c6b7b)
-	ROM_REGION(0x01000,REGION_GFX1)
+	ROM_REGION(0x01000,REGION_GFX1,0)
 		ROM_LOAD("mz700fon.int",0x00000, 0x1000, 0x42b9e8fb)
 ROM_END
 
 ROM_START(mz700j)
-	ROM_REGION(0x18000,REGION_CPU1)
+	ROM_REGION(0x18000,REGION_CPU1,0)
 		ROM_LOAD("1z-013a.rom", 0x10000, 0x1000, 0x4c6c6b7b)
-	ROM_REGION(0x01000,REGION_GFX1)
+	ROM_REGION(0x01000,REGION_GFX1,0)
 		ROM_LOAD("mz700fon.jap",0x00000, 0x1000, 0x425eedf5)
 ROM_END
 
 ROM_START(mz800)
-	ROM_REGION(0x18000,REGION_CPU1)
+	ROM_REGION(0x18000,REGION_CPU1,0)
 		ROM_LOAD("mz800h.rom",  0x10000, 0x2000, 0x0c281675)
-	ROM_REGION(0x10000,REGION_USER1)
+	ROM_REGION(0x10000,REGION_USER1,0)
 		/* RAMDISK */
-    ROM_REGION(0x01000,REGION_GFX1)
+    ROM_REGION(0x01000,REGION_GFX1,0)
 		ROM_LOAD("mz700fon.int",0x00000, 0x1000, 0x42b9e8fb)
 ROM_END
 
