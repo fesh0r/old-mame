@@ -9,21 +9,15 @@
 
 #include "includes/studio2.h"
 
-static UINT8 *studio2_mem;
-
-static struct MemoryReadAddress studio2_readmem[] =
-{
+static MEMORY_READ_START( studio2_readmem )
 	{ 0x0000, 0x07ff, MRA_ROM },
 	{ 0x0800, 0x09ff, MRA_RAM },
-	MEMORY_TABLE_END
-};
+MEMORY_END
 
-static struct MemoryWriteAddress studio2_writemem[] =
-{
-	{ 0x0000, 0x07ff, MWA_ROM, &studio2_mem },
+static MEMORY_WRITE_START( studio2_writemem )
+	{ 0x0000, 0x07ff, MWA_ROM },
 	{ 0x0800, 0x09ff, MWA_RAM },
-	MEMORY_TABLE_END
-};
+MEMORY_END
 
 #define DIPS_HELPER(bit, name, keycode, r) \
    PORT_BITX(bit, IP_ACTIVE_HIGH, IPT_KEYBOARD, name, keycode, r)
@@ -33,22 +27,22 @@ INPUT_PORTS_START( studio2 )
 	DIPS_HELPER( 0x002, "Player 1/Left 1", KEYCODE_1, CODE_NONE)
 	DIPS_HELPER( 0x004, "Player 1/Left 2", KEYCODE_2, CODE_NONE)
 	DIPS_HELPER( 0x008, "Player 1/Left 3", KEYCODE_3, CODE_NONE)
-	DIPS_HELPER( 0x010, "Player 1/Left 4", KEYCODE_4, CODE_NONE)
-	DIPS_HELPER( 0x020, "Player 1/Left 5", KEYCODE_5, CODE_NONE)
-	DIPS_HELPER( 0x040, "Player 1/Left 6", KEYCODE_6, CODE_NONE)
-	DIPS_HELPER( 0x080, "Player 1/Left 7", KEYCODE_7, CODE_NONE)
-	DIPS_HELPER( 0x100, "Player 1/Left 8", KEYCODE_8, CODE_NONE)
-	DIPS_HELPER( 0x200, "Player 1/Left 9", KEYCODE_9, CODE_NONE)
-	DIPS_HELPER( 0x001, "Player 1/Left 0", KEYCODE_0, CODE_NONE)
+	DIPS_HELPER( 0x010, "Player 1/Left 4", KEYCODE_4, KEYCODE_Q)
+	DIPS_HELPER( 0x020, "Player 1/Left 5", KEYCODE_5, KEYCODE_W)
+	DIPS_HELPER( 0x040, "Player 1/Left 6", KEYCODE_6, KEYCODE_E)
+	DIPS_HELPER( 0x080, "Player 1/Left 7", KEYCODE_7, KEYCODE_A)
+	DIPS_HELPER( 0x100, "Player 1/Left 8", KEYCODE_8, KEYCODE_S)
+	DIPS_HELPER( 0x200, "Player 1/Left 9", KEYCODE_9, KEYCODE_D)
+	DIPS_HELPER( 0x001, "Player 1/Left 0", KEYCODE_0, KEYCODE_X)
 	PORT_START
 	DIPS_HELPER( 0x002, "Player 2/Right 1", KEYCODE_1_PAD, CODE_NONE)
-	DIPS_HELPER( 0x004, "Player 2/Right 2", KEYCODE_2_PAD, CODE_NONE)
+	DIPS_HELPER( 0x004, "Player 2/Right 2", KEYCODE_2_PAD, KEYCODE_UP)
 	DIPS_HELPER( 0x008, "Player 2/Right 3", KEYCODE_3_PAD, CODE_NONE)
-	DIPS_HELPER( 0x010, "Player 2/Right 4", KEYCODE_4_PAD, CODE_NONE)
+	DIPS_HELPER( 0x010, "Player 2/Right 4", KEYCODE_4_PAD, KEYCODE_LEFT)
 	DIPS_HELPER( 0x020, "Player 2/Right 5", KEYCODE_5_PAD, CODE_NONE)
-	DIPS_HELPER( 0x040, "Player 2/Right 6", KEYCODE_6_PAD, CODE_NONE)
+	DIPS_HELPER( 0x040, "Player 2/Right 6", KEYCODE_6_PAD, KEYCODE_RIGHT)
 	DIPS_HELPER( 0x080, "Player 2/Right 7", KEYCODE_7_PAD, CODE_NONE)
-	DIPS_HELPER( 0x100, "Player 2/Right 8", KEYCODE_8_PAD, CODE_NONE)
+	DIPS_HELPER( 0x100, "Player 2/Right 8", KEYCODE_8_PAD, KEYCODE_DOWN)
 	DIPS_HELPER( 0x200, "Player 2/Right 9", KEYCODE_9_PAD, CODE_NONE)
 	DIPS_HELPER( 0x001, "Player 2/Right 0", KEYCODE_0_PAD, CODE_NONE)
 INPUT_PORTS_END
@@ -110,8 +104,8 @@ static int studio2_in_ef(void)
 	int a=0;
 	if (studio2_get_vsync()) a|=1;
 
-	if (input_port_0_r(0)&(1<<studio2_keyboard_select)) a|=4;
-	if (input_port_1_r(0)&(1<<studio2_keyboard_select)) a|=8;
+	if (readinputport(0)&(1<<studio2_keyboard_select)) a|=4;
+	if (readinputport(1)&(1<<studio2_keyboard_select)) a|=8;
 	
 	return a;
 }
@@ -207,9 +201,61 @@ ROM_START(studio2)
 	ROM_REGION(0x100,REGION_GFX1)
 ROM_END
 
+static int studio2_id_rom(int id)
+{
+	return ID_OK;	/* no id possible */
+
+}
+
+static int studio2_load_rom(int id)
+{
+	FILE *cartfile;
+	UINT8 *rom = memory_region(REGION_CPU1);
+	int size;
+
+	if (device_filename(IO_CARTSLOT, id) == NULL)
+	{
+/* A cartridge isn't strictly mandatory, but it's recommended */
+		return 0;
+	}
+	
+	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0)))
+	{
+		logerror("%s not found\n",device_filename(IO_CARTSLOT,id));
+		return 1;
+	}	
+	size=osd_fsize(cartfile);
+
+	if (osd_fread(cartfile, rom+0x400, size)!=size) {
+		logerror("%s load error\n",device_filename(IO_CARTSLOT,id));
+		osd_fclose(cartfile);
+		return 1;
+	}
+	osd_fclose(cartfile);
+	return 0;
+}
 
 static const struct IODevice io_studio2[] = {
 	// cartridges at 0x400-0x7ff ?
+	{
+		IO_CARTSLOT,					/* type */
+		1,								/* count */
+		"bin\0",                        /* file extensions */
+		IO_RESET_ALL,					/* reset if file changed */
+		studio2_id_rom,					/* id */
+		studio2_load_rom, 				/* init */
+		NULL,							/* exit */
+		NULL,							/* info */
+		NULL,							/* open */
+		NULL,							/* close */
+		NULL,							/* status */
+		NULL,							/* seek */
+		NULL,							/* tell */
+		NULL,							/* input */
+		NULL,							/* output */
+		NULL,							/* input_chunk */
+		NULL							/* output_chunk */
+	},
     { IO_END }
 };
 
@@ -226,4 +272,15 @@ void init_studio2(void)
 // rca cosmac elf development board (2 7segment leds, some switches/keys)
 // rca cosmac vip ditto
 CONS( 1976, studio2,	  0, 		studio2,  studio2, 	studio2,	  "RCA",  "Studio II")
+// hanimex mpt-02
 // colour studio 2 (m1200) with little color capability
+
+#ifdef RUNTIME_LOADER
+extern void studio2_runtime_loader_init(void)
+{
+	int i;
+	for (i=0; drivers[i]; i++) {
+		if ( strcmp(drivers[i]->name,"studio2")==0) drivers[i]=&driver_studio2;
+	}
+}
+#endif

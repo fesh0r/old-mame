@@ -19,7 +19,6 @@
 		- Discussions with L. Curtis Boyle (LCB) and John Kowalski (JK)
 
   TODO:
-		- Implement serial/printer
 		- Implement unimplemented SAM registers
 		- Implement unimplemented interrupts (serial)
 		- Choose and implement more appropriate ratios for the speed up poke
@@ -58,6 +57,8 @@
 	screen starts and the scanline that the v-interrupt triggers..etc.
 ***************************************************************************/
 
+#include <math.h>
+
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
@@ -67,6 +68,7 @@
 #include "formats/cocopak.h"
 #include "formats/cococas.h"
 #include "includes/basicdsk.h"
+#include "machine/counter.h"
 
 static UINT8 *coco_rom;
 static int coco3_enable_64k;
@@ -117,7 +119,7 @@ static void coco3_pia1_firq_b(int state);
 #define COCO_TIMER_VSYNC		(COCO_CPU_SPEED * 14934.0)
 #define COCO_TIMER_CMPCARRIER	(COCO_CPU_SPEED * 0.25)
 
-static void coco3_timer_recalculate(int newcounterval, int allowreset);
+static void coco3_timer_reset(void);
 
 static struct pia6821_interface dragon_pia_intf[] =
 {
@@ -628,6 +630,7 @@ static WRITE_HANDLER ( d_pia1_pa_w )
 	else
 		device_output(IO_CASSETTE, 0, ((int) d_dac - 0x80) * 0x100);
 
+	device_output(IO_BITBANGER, 0, (data & 2) >> 1);
 }
 
 /*
@@ -837,34 +840,15 @@ WRITE_HANDLER(dragon_sam_memory_size)
   lin)
 ***************************************************************************/
 
-static void *coco3_timer;
+static void *coco3_timer_counter;
 static int coco3_timer_interval;	/* interval: 1=280 nsec, 0=63.5 usec */
 static int coco3_timer_base;
-static int coco3_timer_counter;
 
 static void coco3_timer_init(void)
 {
-	coco3_timer = 0;
+	coco3_timer_counter = NULL;
 	coco3_timer_interval = 0;
-}
-
-static void coco3_timer_uncallback(int dummy)
-{
-	/* This "uncallback" is used to unassert the line */
-}
-
-static void coco3_timer_reset(void)
-{
-	/* This resets the timer back to the original value
-	 *
-	 * JK tells me that when the timer resets, it gets reset to a value that
-	 * is 1 (with the 1986 GIME) above or 2 (with the 1987 GIME) above the
-	 * value written into the timer.  coco3_timer_base keeps track of the value
-	 * placed into the variable, so we increment that here
-	 *
-	 * For now, we are emulating the 1986 GIME
-	 */
-	coco3_timer_recalculate(coco3_timer_base ? coco3_timer_base + 1 : coco3_timer_base, 1);
+	coco3_timer_base = 0;
 }
 
 static void coco3_timer_callback(int dummy)
@@ -872,7 +856,7 @@ static void coco3_timer_callback(int dummy)
 #if LOG_INT_TMR
 	logerror("CoCo3 GIME: Triggering TMR interrupt\n");
 #endif
-	coco3_timer = 0;
+	coco3_timer_counter = NULL;
 	coco3_raise_interrupt(COCO3_INT_TMR, 1);
 
 	/* HACKHACK - This should not happen until the next timer tick */
@@ -880,7 +864,6 @@ static void coco3_timer_callback(int dummy)
 
 	coco3_timer_reset();
 	coco3_vh_blink();
-
 }
 
 static double coco3_timer_interval_time(void)
@@ -894,81 +877,62 @@ static double coco3_timer_interval_time(void)
 	return coco3_timer_interval ? COCO_TIMER_CMPCARRIER : COCO_TIMER_HSYNC;
 }
 
-/* This function takes the value in coco3_timer_counter, and sets up the timer
- * and the coco3_time_counter_time for it
- */
-static void coco3_timer_recalculate(int newcounterval, int allowreset)
+static void coco3_timer_reset(void)
 {
-	if (coco3_timer)
-		timer_remove(coco3_timer);
+	/* This resets the timer back to the original value
+	 *
+	 * JK tells me that when the timer resets, it gets reset to a value that
+	 * is 1 (with the 1986 GIME) above or 2 (with the 1987 GIME) above the
+	 * value written into the timer.  coco3_timer_base keeps track of the value
+	 * placed into the variable, so we increment that here
+	 *
+	 * For now, we are emulating the 1986 GIME
+	 */
 
-	if (newcounterval || !allowreset) {
-		coco3_timer = timer_set(newcounterval * coco3_timer_interval_time(),
-			0, coco3_timer_callback);
-#if LOG_INT_TMR
-		logerror("CoCo3 GIME: Timer will elapse in %f\n", newcounterval * coco3_timer_interval_time());
-		if (!coco3_timer)
-			logerror("CoCo3 GIME: Timer allocation failed!\n");
-#endif
-	}
-	else {
-		coco3_timer = 0;
-#if LOG_INT_TMR
-		logerror("CoCo3 GIME: Turning timer off\n");
-#endif
-	}
+	if (coco3_timer_counter)
+		counter_remove(coco3_timer_counter);
 
-	coco3_timer_counter = newcounterval;
+	if (coco3_timer_base)
+		coco3_timer_counter = counter_set(coco3_timer_base + 1, coco3_timer_interval_time(), 0, coco3_timer_callback);
+	else
+		coco3_timer_counter = NULL;
 }
 
 static int coco3_timer_r(void)
 {
 	int result = 0;
 
-	if (coco3_timer) {
-		result = coco3_timer_counter -
-			(timer_timeleft(coco3_timer) / coco3_timer_interval_time());
+	if (coco3_timer_counter) {
+		result = counter_get_value(coco3_timer_counter);
 
-		/* This shouldn't happen, but I'm prepared anyways */
-		if (result < 0)
-			result = 0;
-		else if (result > 4095)
+		/* TODO - Verify that this applies.  This could happen because of the
+		 * +1/+2 reset adjustments
+		 */
+		if (result > 4095)
 			result = 4095;
 	}
 	return result;	/* result = 0..4095 */
 }
 
-static void coco3_timer_w(int data)	/* data = 0..4095 */
-{
-	coco3_timer_base = (data & 4095);
-	coco3_timer_reset();
-}
-
 static void coco3_timer_msb_w(int data)
 {
-	coco3_timer_w(((data & 0x0f) << 8) | (coco3_timer_base & 0xff));
+	coco3_timer_base &= 0xff;
+	coco3_timer_base |= (data & 0x0f) << 8;
+	coco3_timer_reset();
 }
 
 static void coco3_timer_lsb_w(int data)
 {
-	coco3_timer_w((coco3_timer_base & 0xf00) | (data & 0xff));
+	coco3_timer_base &= 0xff00;
+	coco3_timer_base |= (data & 0xff);
+	coco3_timer_reset();
 }
 
 static void coco3_timer_set_interval(int interval)
 {
-	int oldtimerval;
-
-	if (interval != coco3_timer_interval) {
-		if (coco3_timer) {
-			oldtimerval = coco3_timer_r();
-
-			coco3_timer_interval = interval;
-			coco3_timer_recalculate(oldtimerval, 0);
-		}
-		else {
-			coco3_timer_interval = interval;
-		}
-	}
+	coco3_timer_interval = interval;
+	if (coco3_timer_counter)
+		counter_set_period(coco3_timer_counter, coco3_timer_interval_time());
 }
 
 /***************************************************************************
@@ -1142,8 +1106,8 @@ void coco3_mmu_readlogicalmemory(UINT8 *buffer, int logicaladdr, int len)
 static void coco3_mmu_update(int lowblock, int hiblock)
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
-	typedef void (*writehandler)(UINT32 wh_offset, UINT32 data);
-	static writehandler handlers[] = {
+
+	static mem_write_handler handlers[] = {
 		coco3_ram_b1_w, coco3_ram_b2_w,
 		coco3_ram_b3_w, coco3_ram_b4_w,
 		coco3_ram_b5_w, coco3_ram_b6_w,
@@ -1452,8 +1416,8 @@ void coco_cassette_exit(int id)
 
 static int haltenable;
 static int dskreg;
-static int raise_nmi;
 static void coco_fdc_callback(int event);
+static int ff4b_count;
 
 enum {
 	HW_COCO,
@@ -1464,7 +1428,12 @@ static void coco_fdc_init(void)
 {
     wd179x_init(coco_fdc_callback);
 	dskreg = -1;
-	raise_nmi = 0;
+	ff4b_count = 0x100;
+}
+
+static void raise_nmi(int dummy)
+{
+	cpu_set_nmi_line(0, ASSERT_LINE);
 }
 
 static void coco_fdc_callback(int event)
@@ -1480,7 +1449,7 @@ static void coco_fdc_callback(int event)
 		cpu_set_nmi_line(0, CLEAR_LINE);
 		break;
 	case WD179X_IRQ_SET:
-		raise_nmi = 1;
+		/* timer_set(COCO_CPU_SPEED * 11 / timer_get_overclock(0), 0, raise_nmi); */
 		break;
 	case WD179X_DRQ_CLR:
 		cpu_set_halt_line(0, CLEAR_LINE);
@@ -1526,8 +1495,6 @@ static void set_dskreg(int data, int hardware)
 	UINT8 head = 0;
 	int motor_mask = 0;
 	int haltenable_mask = 0;
-        /*int tracks;*/
-        /*void *fd;*/
 
 	switch(hardware) {
 	case HW_COCO:
@@ -1571,7 +1538,7 @@ static void set_dskreg(int data, int hardware)
 
 	if (data & motor_mask) {
 		wd179x_set_drive(drive);
-                wd179x_set_side(head);
+		wd179x_set_side(head);
 	}
 //	else {
 //		wd179x_stop_drive();
@@ -1594,6 +1561,8 @@ static int dc_floppy_r(int offset)
 		result = wd179x_sector_r(0);
 		break;
 	case 11:
+		if (ff4b_count-- == 0)
+			raise_nmi(0);
 		result = wd179x_data_r(0);
 		break;
 	}
@@ -1611,14 +1580,11 @@ static void dc_floppy_w(int offset, int data, int hardware)
 	case 5:
 	case 6:
 	case 7:
-		if (raise_nmi) {
-			cpu_set_nmi_line(0, ASSERT_LINE);
-			raise_nmi = 0;
-		}
 		set_dskreg(data, hardware);
 		break;
 	case 8:
 		wd179x_command_w(0, data);
+		ff4b_count = 0x100;
 		break;
 	case 9:
 		wd179x_track_w(0, data);
@@ -1627,7 +1593,10 @@ static void dc_floppy_w(int offset, int data, int hardware)
 		wd179x_sector_w(0, data);
 		break;
 	case 11:
-		wd179x_data_w(0, data);
+		if (ff4b_count-- == 0)
+			raise_nmi(0);
+		else
+			wd179x_data_w(0, data);
 		break;
 	};
 }
@@ -1663,6 +1632,49 @@ READ_HANDLER(dragon_floppy_r)
 WRITE_HANDLER(dragon_floppy_w)
 {
 	dc_floppy_w(offset ^ 8, data, HW_DRAGON);
+}
+
+/***************************************************************************
+  Bitbanger port
+***************************************************************************/
+
+static void *bitbanger_file;
+static int bitbanger_word;
+static int bitbanger_line;
+
+static void coco_bitbanger_poll(int dummy)
+{
+	char c;
+
+	bitbanger_word >>= 1;
+	if (bitbanger_line)
+		bitbanger_word |= 0x400;
+
+	if ((bitbanger_word & 0x403) == 0x401) {
+		c = (char) (bitbanger_word >> 2);
+		if (bitbanger_file)
+			osd_fwrite(bitbanger_file, &c, 1);
+		bitbanger_word = 0;
+	}
+}
+
+int coco_bitbanger_init (int id)
+{
+	bitbanger_word = 0;
+	bitbanger_line = 0;
+	bitbanger_file = image_fopen (IO_BITBANGER, id, OSD_FILETYPE_IMAGE_RW, OSD_FOPEN_RW_CREATE);
+	return INIT_OK;
+}
+
+void coco_bitbanger_exit (int id)
+{
+	if (bitbanger_file)
+		osd_fclose(bitbanger_file);
+}
+
+void coco_bitbanger_output (int id, int data)
+{
+	bitbanger_line = data;
 }
 
 /***************************************************************************
@@ -1710,6 +1722,8 @@ static void generic_init_machine(struct pia6821_interface *piaintf)
 
 	coco_fdc_init();
 	autocenter_init(12, 0x04);
+
+	timer_pulse(TIME_IN_HZ(600), 0, coco_bitbanger_poll);
 }
 
 void dragon32_init_machine(void)
@@ -1818,7 +1832,7 @@ static const char *os9syscalls[] = {
 	"F$SUser",         /* Set User ID number */
 	"F$UnLoad",        /* Unlink Module by name */
 	"F$Alarm",         /* Color Computer Alarm Call (system wide) */
-	NULL,						
+	NULL,
 	NULL,
 	"F$NMLink",        /* Color Computer NonMapping Link */
 	"F$NMLoad",        /* Color Computer NonMapping Load */

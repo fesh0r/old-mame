@@ -38,22 +38,21 @@ Priority:  Todo:                                                  Done:
 #include "driver.h"
 #include "vidhrdw/generic.h"
 #include "machine/gb.h"
+#include "includes/gb.h"
 
-static struct MemoryReadAddress readmem[] =
-{
+static MEMORY_READ_START (readmem)
 	{ 0x0000, 0x3fff, MRA_ROM },   /* 16k fixed ROM BANK #0*/
 	{ 0x4000, 0x7fff, MRA_BANK1 }, /* 16k switched ROM bank */
 	{ 0x8000, 0x9fff, MRA_RAM },   /* 8k video ram */
 	{ 0xa000, 0xbfff, MRA_BANK2 }, /* 8k RAM bank (on cartridge) */
-	{ 0xc000, 0xff03, MRA_RAM },   /* internal ram + echo + sprite Ram & IO */
+	{ 0xc000, 0xfeff, MRA_RAM },   /* internal ram + echo + sprite Ram & IO */
+	{ 0xff00, 0xff03, gb_ser_regs },    /* serial regs */
 	{ 0xff04, 0xff04, gb_r_divreg },    /* special case for the division reg */
 	{ 0xff05, 0xff05, gb_r_timer_cnt }, /* special case for the timer count reg */
 	{ 0xff06, 0xffff, MRA_RAM },   /* IO */
-	{ -1 }	/* end of table */
-};
+MEMORY_END
 
-static struct MemoryWriteAddress writemem[] =
-{
+static MEMORY_WRITE_START (writemem)
 	{ 0x0000, 0x1fff, MWA_ROM },            /* plain rom */
 	{ 0x2000, 0x3fff, gb_rom_bank_select }, /* rom bank select */
 	{ 0x4000, 0x5fff, gb_ram_bank_select }, /* ram bank select */
@@ -62,8 +61,7 @@ static struct MemoryWriteAddress writemem[] =
 	{ 0xa000, 0xbfff, MWA_BANK2 },          /* banked (cartridge) ram */
 	{ 0xc000, 0xfeff, MWA_RAM, &videoram, &videoram_size }, /* video & sprite ram */
 	{ 0xff00, 0xffff, gb_w_io },	        /* gb io */
-	{ -1 }	/* end of table */
-};
+MEMORY_END
 
 static struct GfxDecodeInfo gfxdecodeinfo[] =
 {
@@ -106,6 +104,12 @@ static void gb_init_palette(unsigned char *sys_palette, unsigned short *sys_colo
 	memcpy(sys_colortable,colortable,sizeof(colortable));
 }
 
+static struct CustomSound_interface gameboy_sound_interface = {
+	gameboy_sh_start,
+	0,
+	0
+};
+
 static struct MachineDriver machine_driver_gameboy =
 {
 	/* basic machine hardware */
@@ -138,6 +142,10 @@ static struct MachineDriver machine_driver_gameboy =
 
 	/* sound hardware */
 	0,0,0,0,
+	{
+		{ SOUND_CUSTOM, &gameboy_sound_interface },
+	}
+
 };
 
 static const struct IODevice io_gameboy[] = {
@@ -172,5 +180,5 @@ static const struct IODevice io_gameboy[] = {
 #define rom_gameboy NULL
 
 /*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-CONSX( 1990, gameboy,  0,		 gameboy,  gameboy,  0,		   "Nintendo", "GameBoy", GAME_NOT_WORKING | GAME_NO_SOUND )
+CONSX( 1990, gameboy,  0,		 gameboy,  gameboy,  0,		   "Nintendo", "GameBoy", GAME_NO_SOUND )
 

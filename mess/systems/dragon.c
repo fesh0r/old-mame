@@ -9,9 +9,9 @@
 #include "vidhrdw/m6847.h"
 #include "includes/dragon.h"
 #include "includes/basicdsk.h"
+#include "printer.h"
 
-static struct MemoryReadAddress dragon32_readmem[] =
-{
+static MEMORY_READ_START( dragon32_readmem )
 	{ 0x0000, 0x7fff, MRA_RAM },
 	{ 0x8000, 0xbfff, MRA_ROM },
 	{ 0xc000, 0xfeff, MRA_ROM }, /* cart area */
@@ -19,11 +19,9 @@ static struct MemoryReadAddress dragon32_readmem[] =
 	{ 0xff20, 0xff3f, pia_1_r },
 	{ 0xff40, 0xff5f, coco_floppy_r },
 	{ 0xfff0, 0xffff, dragon_mapped_irq_r },
-	{ -1 }	/* end of table */
-};
+MEMORY_END
 
-static struct MemoryWriteAddress dragon32_writemem[] =
-{
+static MEMORY_WRITE_START( dragon32_writemem )
 	{ 0x0000, 0x7fff, coco_ram_w },
 	{ 0x8000, 0xbfff, MWA_ROM },
 	{ 0xc000, 0xfeff, MWA_ROM }, /* cart area */
@@ -35,22 +33,18 @@ static struct MemoryWriteAddress dragon32_writemem[] =
 	{ 0xffd4, 0xffd5, dragon_sam_page_mode },
 	{ 0xffd6, 0xffd9, dragon_sam_speedctrl },
 	{ 0xffda, 0xffdd, dragon_sam_memory_size },
-	{ -1 }	/* end of table */
-};
+MEMORY_END
 
-static struct MemoryReadAddress d64_readmem[] =
-{
+static MEMORY_READ_START( d64_readmem )
 	{ 0x0000, 0x7fff, MRA_RAM },
 	{ 0x8000, 0xfeff, MRA_BANK1 },
 	{ 0xff00, 0xff1f, pia_0_r },
 	{ 0xff20, 0xff3f, pia_1_r },
 	{ 0xff40, 0xff5f, coco_floppy_r },
 	{ 0xfff0, 0xffff, dragon_mapped_irq_r },
-	{ -1 }	/* end of table */
-};
+MEMORY_END
 
-static struct MemoryWriteAddress d64_writemem[] =
-{
+static MEMORY_WRITE_START( d64_writemem )
 	{ 0x0000, 0x7fff, coco_ram_w},
 	{ 0x8000, 0xfeff, MWA_BANK1 },
 	{ 0xff00, 0xff1f, pia_0_w },
@@ -62,11 +56,9 @@ static struct MemoryWriteAddress d64_writemem[] =
 	{ 0xffd6, 0xffd9, dragon_sam_speedctrl },
 	{ 0xffda, 0xffdd, dragon_sam_memory_size },
 	{ 0xffde, 0xffdf, dragon64_sam_himemmap },
-	{ -1 }	/* end of table */
-};
+MEMORY_END
 
-static struct MemoryReadAddress coco3_readmem[] =
-{
+static MEMORY_READ_START( coco3_readmem )
 	{ 0x0000, 0x1fff, MRA_BANK1 },
 	{ 0x2000, 0x3fff, MRA_BANK2 },
 	{ 0x4000, 0x5fff, MRA_BANK3 },
@@ -84,8 +76,7 @@ static struct MemoryReadAddress coco3_readmem[] =
 	{ 0xffa0, 0xffaf, coco3_mmu_r },
 	{ 0xffb0, 0xffbf, paletteram_r },
 	{ 0xfff0, 0xffff, coco3_mapped_irq_r },
-	{ -1 }	/* end of table */
-};
+MEMORY_END
 
 /* Note that the CoCo 3 doesn't use the SAM VDG mode registers
  *
@@ -95,8 +86,7 @@ static struct MemoryReadAddress coco3_readmem[] =
  * Tepolt implies that $FFD4-$FFD7 and $FFDA-$FFDD are ignored on the CoCo 3,
  * which would make sense, but I'm not sure.
  */
-static struct MemoryWriteAddress coco3_writemem[] =
-{
+static MEMORY_WRITE_START( coco3_writemem )
 	{ 0x0000, 0x1fff, MWA_BANK1 },
 	{ 0x2000, 0x3fff, MWA_BANK2 },
 	{ 0x4000, 0x5fff, MWA_BANK3 },
@@ -120,8 +110,7 @@ static struct MemoryWriteAddress coco3_writemem[] =
 	{ 0xffd8, 0xffd9, coco3_sam_speedctrl },
 	{ 0xffda, 0xffdd, dragon_sam_memory_size },
 	{ 0xffde, 0xffdf, coco3_sam_himemmap },
-	{ -1 }	/* end of table */
-};
+MEMORY_END
 
 /* Dragon keyboard
 
@@ -681,50 +670,11 @@ ROM_END
 
 #define rom_coco3h	rom_coco3
 
-#define IO_FLOPPY_COCO \
-	{\
-		IO_FLOPPY,\
-		4,\
-		"dsk\0",\
-		IO_RESET_NONE,\
-		basicdsk_floppy_id,\
-		dragon_floppy_init,\
-		basicdsk_floppy_exit,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL \
-    }
-
-#define IO_SNAPSHOT_COCOPAK(loadproc) \
-	{\
-		IO_SNAPSHOT,\
-		1,\
-		"pak\0",\
-		IO_RESET_ALL,\
-        NULL,\
-		loadproc,\
-		NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL\
-    }
-
 static const struct IODevice io_coco[] = {
 	IO_SNAPSHOT_COCOPAK(dragon64_rom_load),
 	IO_CASSETTE_WAVE(1, "cas\0wav\0", NULL, coco_cassette_init, coco_cassette_exit),
 	IO_FLOPPY_COCO,
+	IO_BITBANGER_PORT,
     { IO_END }
 };
 
@@ -732,6 +682,7 @@ static const struct IODevice io_dragon32[] = {
 	IO_SNAPSHOT_COCOPAK(dragon32_rom_load),
 	IO_CASSETTE_WAVE(1, "cas\0wav\0", NULL, coco_cassette_init, coco_cassette_exit),
 	IO_FLOPPY_COCO,
+	IO_BITBANGER_PORT,
     { IO_END }
 };
 
@@ -739,6 +690,7 @@ static const struct IODevice io_cp400[] = {
 	IO_SNAPSHOT_COCOPAK(dragon64_rom_load),
 	IO_CASSETTE_WAVE(1, "cas\0wav\0", NULL, coco_cassette_init, coco_cassette_exit),
 	IO_FLOPPY_COCO,
+	IO_BITBANGER_PORT,
     { IO_END }
 };
 
@@ -746,6 +698,7 @@ static const struct IODevice io_coco3[] = {
 	IO_SNAPSHOT_COCOPAK(coco3_rom_load),
 	IO_CASSETTE_WAVE(1, "cas\0wav\0", NULL, coco_cassette_init, coco_cassette_exit),
 	IO_FLOPPY_COCO,
+	IO_BITBANGER_PORT,
     { IO_END }
 };
 

@@ -157,7 +157,7 @@ when problems start with -log and look into error.log file
 #define VERBOSE_DBG 0
 #include "includes/cbm.h"
 #include "includes/c16.h"
-#include "includes/c1551.h"
+#include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "includes/vc20tape.h"
 #include "includes/ted7360.h"
@@ -197,8 +197,7 @@ when problems start with -log and look into error.log file
  * at 0xfc00 till 0xfcff is ram or rom kernal readable
  */
 
-static struct MemoryReadAddress c16_readmem[] =
-{
+static MEMORY_READ_START( c16_readmem )
 	{0x0000, 0x0001, c16_m7501_port_r},
 	{0x0002, 0x3fff, MRA_RAM},
 	{0x4000, 0x7fff, MRA_BANK1},	   /* only ram memory configuration */
@@ -215,11 +214,9 @@ static struct MemoryReadAddress c16_readmem[] =
 	{0xff00, 0xff1f, ted7360_port_r},
 	{0xff20, 0xffff, MRA_BANK8},
 /*	{ 0x10000, 0x3ffff, MRA_ROM }, */
-	MEMORY_TABLE_END
-};
+MEMORY_END
 
-static struct MemoryWriteAddress c16_writemem[] =
-{
+static MEMORY_WRITE_START( c16_writemem )
 	{0x0000, 0x0001, c16_m7501_port_w, &c16_memory},
 	{0x0002, 0x3fff, MWA_RAM},
 #ifndef NEW_BANKHANDLER
@@ -251,11 +248,9 @@ static struct MemoryWriteAddress c16_writemem[] =
 	{0xff40, 0xffff, c16_write_ff40},  /*configure in c16_common_init */
 	{0x10000, 0x3ffff, MWA_ROM},
 #endif
-	MEMORY_TABLE_END
-};
+MEMORY_END
 
-static struct MemoryReadAddress plus4_readmem[] =
-{
+static MEMORY_READ_START( plus4_readmem )
 	{0x0000, 0x0001, c16_m7501_port_r},
 	{0x0002, 0x7fff, MRA_RAM},
 	{0x8000, 0xbfff, MRA_BANK2},
@@ -272,11 +267,9 @@ static struct MemoryReadAddress plus4_readmem[] =
 	{0xff00, 0xff1f, ted7360_port_r},
 	{0xff20, 0xffff, MRA_BANK8},
 /*	{ 0x10000, 0x3ffff, MRA_ROM }, */
-	MEMORY_TABLE_END
-};
+MEMORY_END
 
-static struct MemoryWriteAddress plus4_writemem[] =
-{
+static MEMORY_WRITE_START( plus4_writemem )
 	{0x0000, 0x0001, c16_m7501_port_w, &c16_memory},
 	{0x0002, 0xfcff, MWA_RAM},
 	{0xfd00, 0xfd0f, c16_6551_port_w},
@@ -296,11 +289,9 @@ static struct MemoryWriteAddress plus4_writemem[] =
 	{0xff3f, 0xff3f, plus4_switch_to_ram},
 	{0xff40, 0xffff, MWA_RAM},
 	{0x10000, 0x3ffff, MWA_ROM},
-	MEMORY_TABLE_END
-};
+MEMORY_END
 
-static struct MemoryReadAddress c364_readmem[] =
-{
+static MEMORY_READ_START( c364_readmem )
 	{0x0000, 0x0001, c16_m7501_port_r},
 	{0x0002, 0x7fff, MRA_RAM},
 	{0x8000, 0xbfff, MRA_BANK2},
@@ -318,11 +309,9 @@ static struct MemoryReadAddress c364_readmem[] =
 	{0xff00, 0xff1f, ted7360_port_r},
 	{0xff20, 0xffff, MRA_BANK8},
 /*	{ 0x10000, 0x3ffff, MRA_ROM }, */
-	MEMORY_TABLE_END
-};
+MEMORY_END
 
-static struct MemoryWriteAddress c364_writemem[] =
-{
+static MEMORY_WRITE_START( c364_writemem )
 	{0x0000, 0x0001, c16_m7501_port_w, &c16_memory},
 	{0x0002, 0xfcff, MWA_RAM},
 	{0xfd00, 0xfd0f, c16_6551_port_w},
@@ -343,8 +332,7 @@ static struct MemoryWriteAddress c364_writemem[] =
 	{0xff3f, 0xff3f, plus4_switch_to_ram},
 	{0xff40, 0xffff, MWA_RAM},
 	{0x10000, 0x3ffff, MWA_ROM},
-	MEMORY_TABLE_END
-};
+MEMORY_END
 
 #define DIPS_HELPER(bit, name, keycode) \
    PORT_BITX(bit, IP_ACTIVE_HIGH, IPT_KEYBOARD, name, keycode, IP_JOY_NONE)
@@ -730,6 +718,42 @@ ROM_START (c364)
 	 ROM_LOAD ("spk3cc4.bin", 0x28000, 0x4000, 0x5227c2ee)
 ROM_END
 
+static SID6581_interface sidc16_sound_interface =
+{
+	{
+		sid6581_custom_start,
+		sid6581_custom_stop,
+		sid6581_custom_update
+	},
+	1,
+	{
+		{
+			MIXER(50, MIXER_PAN_CENTER),
+			MOS6581,
+			TED7360PAL_CLOCK/4,
+			NULL
+		}
+	}
+};
+
+static SID6581_interface sidplus4_sound_interface =
+{
+	{
+		sid6581_custom_start,
+		sid6581_custom_stop,
+		sid6581_custom_update
+	},
+	1,
+	{
+		{
+			MIXER(50, MIXER_PAN_CENTER),
+			MOS6581,
+			TED7360NTSC_CLOCK/4,
+			NULL
+		}
+	}
+};
+
 static struct MachineDriver machine_driver_c16 =
 {
   /* basic machine hardware */
@@ -766,7 +790,7 @@ static struct MachineDriver machine_driver_c16 =
 	0, 0, 0, 0,
 	{
 		{SOUND_CUSTOM, &ted7360_sound_interface},
-		{SOUND_CUSTOM, &sid6581_sound_interface},
+		{SOUND_CUSTOM, &sidc16_sound_interface},
 		{SOUND_DAC, &vc20tape_sound_interface}
 	}
 };
@@ -812,7 +836,7 @@ static struct MachineDriver machine_driver_c16c =
 	0, 0, 0, 0,
 	{
 		{SOUND_CUSTOM, &ted7360_sound_interface},
-		{SOUND_CUSTOM, &sid6581_sound_interface},
+		{SOUND_CUSTOM, &sidc16_sound_interface},
 		{SOUND_DAC, &vc20tape_sound_interface}
 	}
 };
@@ -858,7 +882,7 @@ static struct MachineDriver machine_driver_c16v =
 	0, 0, 0, 0,
 	{
 		{SOUND_CUSTOM, &ted7360_sound_interface},
-		{SOUND_CUSTOM, &sid6581_sound_interface},
+		{SOUND_CUSTOM, &sidc16_sound_interface},
 		{SOUND_DAC, &vc20tape_sound_interface}
 	}
 };
@@ -899,7 +923,7 @@ static struct MachineDriver machine_driver_plus4 =
 	0, 0, 0, 0,
 	{
 		{SOUND_CUSTOM, &ted7360_sound_interface},
-		{SOUND_CUSTOM, &sid6581_sound_interface},
+		{SOUND_CUSTOM, &sidplus4_sound_interface},
 		{SOUND_DAC, &vc20tape_sound_interface}
 	}
 };
@@ -946,7 +970,7 @@ static struct MachineDriver machine_driver_plus4c =
 	0, 0, 0, 0,
 	{
 		{SOUND_CUSTOM, &ted7360_sound_interface},
-		{SOUND_CUSTOM, &sid6581_sound_interface},
+		{SOUND_CUSTOM, &sidplus4_sound_interface},
 		{SOUND_DAC, &vc20tape_sound_interface}
 	}
 };
@@ -993,7 +1017,7 @@ static struct MachineDriver machine_driver_plus4v =
 	0, 0, 0, 0,
 	{
 		{SOUND_CUSTOM, &ted7360_sound_interface},
-		{SOUND_CUSTOM, &sid6581_sound_interface},
+		{SOUND_CUSTOM, &sidplus4_sound_interface},
 		{SOUND_DAC, &vc20tape_sound_interface}
 	}
 };
@@ -1035,7 +1059,7 @@ static struct MachineDriver machine_driver_c364 =
 	0, 0, 0, 0,
 	{
 		{SOUND_CUSTOM, &ted7360_sound_interface},
-		{SOUND_CUSTOM, &sid6581_sound_interface},
+		{SOUND_CUSTOM, &sidplus4_sound_interface},
 		{SOUND_DAC, &vc20tape_sound_interface}
 	}
 };
@@ -1135,7 +1159,7 @@ static const struct IODevice io_c16v[] =
 
 /*		YEAR	NAME	PARENT	MACHINE INPUT	INIT	COMPANY 								FULLNAME */
 COMPX ( 1984,	c16,	0,		c16,	c16,	c16,	"Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL)", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
-COMPX ( 1984,	c16hun, c16,	c16,	c16,	c16,	"Commodore Business Machines Co.",      "Commodore 16 (PAL), Hungarian Character Set Hack", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
+COMPX ( 1984,	c16hun, c16,	c16,	c16,	c16,	"Commodore Business Machines Co.",      "Commodore 16 Novotrade (PAL, Hungarian Character Set)", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
 COMPX ( 1984,	c16c,	c16,	c16c,	c16c,	c16,	"Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL), 1551", GAME_NOT_WORKING | GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
 COMPX ( 1984,	plus4,	c16,	plus4,	plus4,	plus4,	"Commodore Business Machines Co.",      "Commodore +4 (NTSC)", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
 COMPX ( 1984,	plus4c, c16,	plus4c, plus4c, plus4,	"Commodore Business Machines Co.",      "Commodore +4 (NTSC), 1551", GAME_NOT_WORKING | GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
@@ -1144,3 +1168,19 @@ COMPX ( 198?,	c364,	c16,	c364,	plus4,	plus4,	"Commodore Business Machines Co.", 
 COMPX ( 1984,	c16v,	c16,	c16v,	c16v,	c16,	"Commodore Business Machines Co.",      "Commodore 16/116/232/264 (PAL), VC1541", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
 COMPX ( 1984,	plus4v, c16,	plus4v, plus4v, plus4,	"Commodore Business Machines Co.",      "Commodore +4 (NTSC), VC1541", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND)
 
+#ifdef RUNTIME_LOADER
+extern void c16_runtime_loader_init(void)
+{
+	int i;
+	for (i=0; drivers[i]; i++) {
+		if ( strcmp(drivers[i]->name,"c16")==0) drivers[i]=&driver_c16;
+		if ( strcmp(drivers[i]->name,"c16hun")==0) drivers[i]=&driver_c16hun;
+		if ( strcmp(drivers[i]->name,"c16c")==0) drivers[i]=&driver_c16c;
+		if ( strcmp(drivers[i]->name,"c16v")==0) drivers[i]=&driver_c16v;
+		if ( strcmp(drivers[i]->name,"plus4")==0) drivers[i]=&driver_plus4;
+		if ( strcmp(drivers[i]->name,"plus4c")==0) drivers[i]=&driver_plus4c;
+		if ( strcmp(drivers[i]->name,"plus4v")==0) drivers[i]=&driver_plus4v;
+		if ( strcmp(drivers[i]->name,"c364")==0) drivers[i]=&driver_c364;
+	}
+}
+#endif

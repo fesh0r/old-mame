@@ -1,3 +1,66 @@
+0.37b8 
+---------
+Several drivers may be broken due to the MAME memory handling changes.
+And as a result, the Amiga has been temporarily removed.
+---------
+
+Note: .inp record/playback does still not work currently.
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Chess Champion MK II [PeT]
+
+System Driver Changes:
+----------------------
+
+- [ATOM] Finished floppy disc emulation. To use it you require a rom using
+  the original 8271 memory locations (0x0a00-0x0a04). Linked in 6522via,
+  more programs should work with it. [Kev Thacker, Kees van Oss]
+
+- [BBC] Added a new BBC clone (BBCB1770) to use the WD1770 disc controller.
+  Much improved SAA5050 teletext support (mode 7), There is still a
+  problem with the Mode 7 cursor.
+  Added two new BBC clones they are BBCBP the BBC B Plus with 64K and
+  the BBCBP128 the BBC B plus with 128K.
+  Also Joystick support has now been added [Gordon Jefferyes]
+
+- [AMSTRAD CPC] Added support for printer. [Kev Thacker]
+
+- [GameBoy] Finally fixed the interrupt problem, which in turn helped a lot of carts 
+  actually run now. [Lee Ward] 
+
+- [Vectrex] Loading carts should work again. [Mathis Rosenhauer]
+
+- [ORIC] Rewrote to use 6522via code in MESS core. Previously it had it's own 
+  implementation which was not complete. Added floppy disc emulation (emulates a 
+  Microdisc interface). Added support for MFM_DISK disk image type as used by 
+  Euphoric. This driver uses the IO_CASSETTE device, and can be controlled with 
+  the "Tape Control" menu. However, this is not working yet.
+  Previous method for loading tapes has been disabled. Floppy disc emulation
+  does not appear to be working fully yet. [Kev Thacker]
+
+- [COCO/DRAGON] Added support for printer.  Optimized graphics emulation. [Nate
+  Woods]
+
+- [Studio II] added cartridge support [PeT]
+
+Other Changes:
+--------------
+- The core is based on MAME 0.37b8. This incorporates all 
+  features of the update to this core.  [MAME team] 
+
+- pure DOS mode crash fixed [Ben Bruscella]
+
+- SID6581 Approximation [PeT]
+  Interface changed,
+  partitioned, unused parts removed, cleaned up 
+  support for multiple chips finished
+
+- Imgtool now supports Virtual MSX Tape Archives (converts them to .cas files)
+  and imgtool can convert .cas to .wav files. [Sean Young]
+
+
+-------------------------------------------------------------------------------
 0.37b7 
 
 Note: .inp record/playback does still not work currently.
@@ -21,7 +84,7 @@ System Driver Changes:
 
 - [SAM COUPE] Updated Sam Coupe to use WD179x code (same as WD1772). [Kev Thacker]
 
-- [COCO] Updated CoCo and CoCo 3 drivers with new romsets to match the actual chips 
+- [COCO] Updated CoCo and CoCo 3 drivers with new rom sets to match the actual chips 
   in the system.  coco.rom split into bas12.rom, extbas11.rom and disk11.rom, and 
   coco3.rom now must be of length 32768.  This requires a dump from an EPROM reader.  
   Fixed a bug in cassette writing.  Cassette tape controls and CoCo motor signal now 

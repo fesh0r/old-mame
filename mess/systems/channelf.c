@@ -64,7 +64,7 @@ int channelf_load_rom(int id)
 
 READ_HANDLER( channelf_port_0_r )
 {
-	data_t data = readinputport(0);
+	int data = readinputport(0);
 	data = (data ^ 0xff) | latch[0];
     LOG(("port_0_r: $%02x\n",data));
 	return data;
@@ -72,7 +72,7 @@ READ_HANDLER( channelf_port_0_r )
 
 READ_HANDLER( channelf_port_1_r )
 {
-	data_t data = readinputport(1);
+	int data = readinputport(1);
 	data = (data ^ 0xff) | latch[1];
     LOG(("port_1_r: $%02x\n",data));
 	return data;
@@ -80,7 +80,7 @@ READ_HANDLER( channelf_port_1_r )
 
 READ_HANDLER( channelf_port_4_r )
 {
-	data_t data = readinputport(2);
+	int data = readinputport(2);
 	data = (data ^ 0xff) | latch[2];
     LOG(("port_4_r: $%02x\n",data));
 	return data;
@@ -88,7 +88,7 @@ READ_HANDLER( channelf_port_4_r )
 
 READ_HANDLER( channelf_port_5_r )
 {
-	data_t data = 0xff;
+	int data = 0xff;
 	data = (data ^ 0xff) | latch[3];
     LOG(("port_5_r: $%02x\n",data));
 	return data;
@@ -118,12 +118,12 @@ WRITE_HANDLER( channelf_port_0_w )
 			}
 			else if (channelf_col_reg == 0x7e)
 			{
-				osd_mark_dirty(0,channelf_row_reg,127,channelf_row_reg,0);
+				osd_mark_dirty(0,channelf_row_reg,127,channelf_row_reg);
 			}
 			if (channelf_col_reg < 0x76)
 			{
 				osd_mark_dirty(channelf_col_reg,channelf_row_reg,
-				               channelf_col_reg,channelf_row_reg,0);
+				               channelf_col_reg,channelf_row_reg);
 			}
 		}
 	}
@@ -159,37 +159,29 @@ WRITE_HANDLER( channelf_port_5_w )
     latch[3] = data;
 }
 
-static struct MemoryReadAddress readmem[] =
-{
+static MEMORY_READ_START (readmem)
 	{ 0x0000, 0x07ff, MRA_ROM },
 	{ 0x0800, 0x0fff, MRA_ROM },
-    {-1}
-};
+MEMORY_END
 
-static struct MemoryWriteAddress writemem[] =
-{
+static MEMORY_WRITE_START (writemem)
 	{ 0x0000, 0x03ff, MWA_ROM },
 	{ 0x0400, 0x07ff, MWA_ROM },
-    {-1}
-};
+MEMORY_END
 
-static struct IOReadPort readport[] =
-{
+static PORT_READ_START (readport)
 	{ 0x00, 0x00,	channelf_port_0_r }, /* Front panel switches */
 	{ 0x01, 0x01,	channelf_port_1_r }, /* Right controller     */
 	{ 0x04, 0x04,	channelf_port_4_r }, /* Left controller      */
 	{ 0x05, 0x05,	channelf_port_5_r },
-    {-1}
-};
+PORT_END
 
-static struct IOWritePort writeport[] =
-{
+static PORT_WRITE_START (writeport)
 	{ 0x00, 0x00,	channelf_port_0_w }, /* Enable Controllers & ARM WRT */
 	{ 0x01, 0x01,	channelf_port_1_w }, /* Video Write Data */
 	{ 0x04, 0x04,	channelf_port_4_w }, /* Video Horiz */
 	{ 0x05, 0x05,	channelf_port_5_w }, /* Video Vert & Sound */
-    {-1}
-};
+PORT_END
 
 INPUT_PORTS_START( channelf )
 	PORT_START /* Front panel buttons */

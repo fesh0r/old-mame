@@ -29,9 +29,7 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-
-extern char vtech1_frame_message[64+1];
-extern int vtech1_frame_time;
+#include "includes/vtech1.h"
 
 int vtech1_latch = -1;
 
@@ -323,7 +321,7 @@ static void vtech1_snapshot_copy(void)
 		{
 			memcpy(&RAM[start], &vtech1_snapshot_data[24], end - start);
             sprintf(vtech1_frame_message, "BASIC snapshot %04x-%04x", start, end);
-			vtech1_frame_time = Machine->drv->frames_per_second;
+			vtech1_frame_time = (int)Machine->drv->frames_per_second;
 			logerror("VTECH1 BASIC snapshot %04x-%04x\n", start, end);
             /* patch BASIC variables */
 			RAM[0x78a4] = start % 256;
@@ -339,7 +337,7 @@ static void vtech1_snapshot_copy(void)
 		{
 			memcpy(&RAM[start], &vtech1_snapshot_data[24], end - start);
 			sprintf(vtech1_frame_message, "M-Code snapshot %04x-%04x", start, end);
-			vtech1_frame_time = Machine->drv->frames_per_second;
+			vtech1_frame_time = (int)Machine->drv->frames_per_second;
 			logerror("VTECH1 MCODE snapshot %04x-%04x\n", start, end);
             /* set USR() address */
 			RAM[0x788e] = start % 256;
@@ -385,13 +383,13 @@ int vtech1_snapshot_init(int id)
     if( file )
 	{
 		vtech1_snapshot_size = osd_fsize(file);
-		vtech1_snapshot_data = malloc(vtech1_snapshot_size);
+		vtech1_snapshot_data =(UINT8*) malloc(vtech1_snapshot_size);
         if( vtech1_snapshot_data )
 		{
 			osd_fread(file, vtech1_snapshot_data, vtech1_snapshot_size);
 			osd_fclose(file);
 			/* 1/2 second delay after the READY message */
-			vtech1_snapshot_count = Machine->drv->frames_per_second / 2;
+			vtech1_snapshot_count = (int)Machine->drv->frames_per_second / 2;
             return INIT_OK;
 		}
 		osd_fclose(file);
@@ -492,7 +490,7 @@ static void vtech1_put_track(void)
 #define PHI2(n) (((n)>>2)&1)
 #define PHI3(n) (((n)>>3)&1)
 
-int vtech1_fdc_r(int offset)
+READ_HANDLER( vtech1_fdc_r )
 {
     int data = 0xff;
     switch( offset )
@@ -536,7 +534,7 @@ int vtech1_fdc_r(int offset)
     return data;
 }
 
-void vtech1_fdc_w(int offset, int data)
+WRITE_HANDLER( vtech1_fdc_w )
 {
 	int drive;
 
@@ -628,7 +626,7 @@ void vtech1_fdc_w(int offset, int data)
     }
 }
 
-int vtech1_joystick_r(int offset)
+READ_HANDLER( vtech1_joystick_r )
 {
     int data = 0xff;
 
@@ -653,7 +651,7 @@ int vtech1_joystick_r(int offset)
 #define KEY_UP  0x02
 #define KEY_INS 0x01
 
-int vtech1_keyboard_r(int offset)
+READ_HANDLER( vtech1_keyboard_r )
 {
 	static int cassette_bit = 0;
 	int level, data = 0xff;
@@ -732,7 +730,7 @@ int vtech1_keyboard_r(int offset)
  * 1    cassette out (LSB)
  * 0    speaker A
  ************************************************/
-void vtech1_latch_w(int offset, int data)
+WRITE_HANDLER( vtech1_latch_w )
 {
     logerror("vtech1_latch_w $%02X\n", data);
 	/* cassette data bits toggle? */
@@ -749,8 +747,7 @@ void vtech1_latch_w(int offset, int data)
     /* mode or the background color are toggle? */
 	if( (vtech1_latch ^ data) & 0x18 )
 	{
-		extern int bitmap_dirty;
-        bitmap_dirty = 1;
+        schedule_full_refresh();
 		if( (vtech1_latch ^ data) & 0x10 )
 			logerror("vtech1_latch_w: change background %d\n", (data>>4)&1);
 		if( (vtech1_latch ^ data) & 0x08 )

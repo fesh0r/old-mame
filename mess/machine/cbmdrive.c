@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "snprintf.h"
 #include <ctype.h>
 #include <string.h>
 #include "driver.h"
@@ -7,7 +8,7 @@
 
 #define VERBOSE_DBG 1				   /* general debug messages */
 #include "includes/cbm.h"
-#include "includes/c1551.h"
+#include "includes/cbmserb.h"
 #include "includes/cbmieeeb.h"
 
 #include "includes/cbmdrive.h"

@@ -4,6 +4,10 @@
 
 #include "flopdrv.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define WD179X_IRQ_CLR	0
 #define WD179X_IRQ_SET	1
 /* R Nabet : added events for the DRQ pin... */
@@ -112,6 +116,8 @@ typedef struct {
 
 	UINT8	ddam;					/* ddam of sector found - used when reading */
 	UINT8	sector_data_id;
+	void	*timer;
+	int		data_direction;
 }	WD179X;
 
 extern void wd179x_init(void (*callback)(int));
@@ -128,6 +134,8 @@ void wd179x_set_side(UINT8);
 /* set density */
 void wd179x_set_density(DENSITY);
 
+void	wd179x_reset(void);
+
 extern WRITE_HANDLER ( wd179x_command_w );
 extern WRITE_HANDLER ( wd179x_track_w );
 extern WRITE_HANDLER ( wd179x_sector_w );
@@ -137,6 +145,10 @@ extern READ_HANDLER ( wd179x_status_r );
 extern READ_HANDLER ( wd179x_track_r );
 extern READ_HANDLER ( wd179x_sector_r );
 extern READ_HANDLER ( wd179x_data_r );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

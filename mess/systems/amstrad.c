@@ -19,6 +19,10 @@
 
  ******************************************************************************/
 #include "driver.h"
+
+#include "includes/centroni.h"
+#include "printer.h"
+
 /* for 8255 ppi */
 #include "machine/8255ppi.h"
 /* for cycle tables */
@@ -156,7 +160,7 @@ static void update_psg(void)
 
 
 /* ppi port a read */
-READ_HANDLER(amstrad_ppi_porta_r)
+int amstrad_ppi_porta_r( int chip)
 {
 	update_psg();
 
@@ -166,30 +170,39 @@ READ_HANDLER(amstrad_ppi_porta_r)
 
 /* ppi port b read
  Bit 7 = Cassette tape input
- bit 6 =
+ bit 6 = printer busy/online
  bit 5 =
  bit 4 =
  bit 3,2,1 = PCB links to define computer name.
 In MESS I have used the dipswitch feature.
  Bit 0 = VSYNC from CRTC */
 
-READ_HANDLER(amstrad_ppi_portb_r)
+int amstrad_ppi_portb_r (int chip)
 {
-	int cassette_data;
+	int data;
 
 #ifndef AMSTRAD_VIDEO_EVENT_LIST
 		amstrad_update_video();
 #endif
 
-	cassette_data = 0x0;
+	/* cassette read */
+	data = 0x0;
 
 	if (device_input(IO_CASSETTE,0) > 255)
-		cassette_data |=0x080;
+		data |=0x080;
 
-		return ((ppi_port_inputs[1] & 0x07e) | amstrad_vsync | cassette_data);
+	/* printer busy */
+	if (device_status (IO_PRINTER, 0, 0)==0 )
+		data |=0x040;
+
+	/* vsync state from CRTC */
+	data |= amstrad_vsync;
+
+	data |= ppi_port_inputs[1] & 0x03e;
+	return data;
 }
 
-WRITE_HANDLER(amstrad_ppi_porta_w)
+void amstrad_ppi_porta_w (int chip, int data)
 {
 		ppi_port_outputs[0] = data;
 
@@ -206,7 +219,7 @@ WRITE_HANDLER(amstrad_ppi_porta_w)
 /* previous value */
 static int previous_ppi_portc_w;
 
-WRITE_HANDLER(amstrad_ppi_portc_w)
+void amstrad_ppi_portc_w (int chip, int data)
 {
 		int changed_data;
 
@@ -591,6 +604,8 @@ READ_HANDLER ( AmstradCPC_ReadPortHandler )
 
 //static int previous_crtc_write_time = 0;
 
+static unsigned char previous_printer_data_byte;
+
 /* Offset handler for write */
 WRITE_HANDLER ( AmstradCPC_WritePortHandler )
 {
@@ -668,6 +683,26 @@ WRITE_HANDLER ( AmstradCPC_WritePortHandler )
 		default:
 			break;
 		}
+	}
+
+	
+	if ((offset & 0x01000)==0)
+	{
+		/* on CPC, write to printer through LS chip */
+		/* the amstrad is crippled with a 7-bit port :( */
+		/* bit 7 of the data is the printer /strobe */
+
+		/* strobe state changed? */
+		if (((previous_printer_data_byte^data) & 0x080)!=0)
+		{
+			/* check for only one transition */
+			if ((data & 0x080)==0)
+			{
+				/* output data to printer */
+				device_output (IO_PRINTER, 0, data & 0x07f);	
+			}
+		}
+		previous_printer_data_byte = data;
 	}
 
 	if ((offset & 0x02000) == 0)
@@ -2432,8 +2467,7 @@ static void amstrad_init_palette(unsigned char *sys_palette, unsigned short *sys
 /* Memory is banked in 16k blocks. However, the multiface
 pages the memory in 8k blocks! The ROM can
 be paged into bank 0 and bank 3. */
-static struct MemoryReadAddress readmem_amstrad[] =
-{
+static MEMORY_READ_START (readmem_amstrad)
 	{0x00000, 0x01fff, MRA_BANK1},
 	{0x02000, 0x03fff, MRA_BANK2},
 	{0x04000, 0x05fff, MRA_BANK3},
@@ -2445,12 +2479,9 @@ static struct MemoryReadAddress readmem_amstrad[] =
 	{0x010000, 0x013fff, MRA_ROM},	   /* OS */
 	{0x014000, 0x017fff, MRA_ROM},	   /* BASIC */
 	{0x018000, 0x01bfff, MRA_ROM},	   /* AMSDOS */
-	{-1}							   /* end of table */
-};
+MEMORY_END
 
-
-static struct MemoryWriteAddress writemem_amstrad[] =
-{
+static MEMORY_WRITE_START (writemem_amstrad)
 	{0x00000, 0x01fff, MWA_BANK9},
 	{0x02000, 0x03fff, MWA_BANK10},
 	{0x04000, 0x05fff, MWA_BANK11},
@@ -2459,23 +2490,18 @@ static struct MemoryWriteAddress writemem_amstrad[] =
 	{0x0a000, 0x0bfff, MWA_BANK14},
 	{0x0c000, 0x0dfff, MWA_BANK15},
 	{0x0e000, 0x0ffff, MWA_BANK16},
-	{-1}							   /* end of table */
-};
+MEMORY_END
 
 /* I've handled the I/O ports in this way, because the ports
 are not fully decoded by the CPC h/w. Doing it this way means
 I can decode it myself and a lot of  software should work */
-static struct IOReadPort readport_amstrad[] =
-{
+static PORT_READ_START (readport_amstrad)
 	{0x0000, 0x0ffff, AmstradCPC_ReadPortHandler},
-	{-1}							   /* end of table */
-};
+PORT_END
 
-static struct IOWritePort writeport_amstrad[] =
-{
+static PORT_WRITE_START (writeport_amstrad)
 	{0x0000, 0x0ffff, AmstradCPC_WritePortHandler},
-	{-1}							   /* end of table */
-};
+PORT_END
 
 /* read PSG port A */
 READ_HANDLER ( amstrad_psg_porta_read )
@@ -2621,6 +2647,8 @@ static struct AY8910interface amstrad_ay_interface =
 
 
 
+/* Steph 2000-10-27	I remapped the 'Machine Name' Dip Switches (easier to understand) */
+
 INPUT_PORTS_START(amstrad)
 
 	KEYBOARD_PORTS
@@ -2629,19 +2657,24 @@ INPUT_PORTS_START(amstrad)
 	 * curcuit board. The links are open or closed when the PCB is made, and are set depending on which country
 	 * the Amstrad system was to go to */
 
-	PORT_START
-	PORT_BITX(0x02, 0x02, IPT_DIPSWITCH_NAME | IPF_TOGGLE, "Machine Name (bit 0)", IP_KEY_NONE, IP_JOY_NONE)
-	PORT_DIPSETTING(0, DEF_STR( Off) )
-	PORT_DIPSETTING(0x02, DEF_STR( On) )
-	PORT_BITX(0x04, 0x04, IPT_DIPSWITCH_NAME | IPF_TOGGLE, "Machine Name (bit 1)", IP_KEY_NONE, IP_JOY_NONE)
-	PORT_DIPSETTING(0, DEF_STR( Off) )
-	PORT_DIPSETTING(0x04, DEF_STR( On) )
-	PORT_BITX(0x08, 0x08, IPT_DIPSWITCH_NAME | IPF_TOGGLE, "Machine Name (bit 2)", IP_KEY_NONE, IP_JOY_NONE)
-	PORT_DIPSETTING(0, DEF_STR( Off) )
-	PORT_DIPSETTING(0x08, DEF_STR( On) )
-	PORT_BITX(0x010, 0x010, IPT_DIPSWITCH_NAME | IPF_TOGGLE, "TV Refresh Rate", IP_KEY_NONE, IP_JOY_NONE)
-	PORT_DIPSETTING(0x00, "60hz")
-	PORT_DIPSETTING(0x010, "50hz")
+	PORT_DIPNAME( 0x07, 0x07, "Machine Name" )
+	PORT_DIPSETTING(    0x00, "Isp" )
+	PORT_DIPSETTING(    0x01, "Triumph" )
+	PORT_DIPSETTING(    0x02, "Saisho" )
+	PORT_DIPSETTING(    0x03, "Solavox" )
+	PORT_DIPSETTING(    0x04, "Awa" )
+	PORT_DIPSETTING(    0x05, "Schneider" )
+	PORT_DIPSETTING(    0x06, "Orion" )
+	PORT_DIPSETTING(    0x07, "Amstrad" )
+
+	/* Steph's comment/question :
+		I don't understand why there is a IPF_TOGGLE here ...
+		Couldn't we use a standard PORT_DIPNAME instead ?
+		PORT_DIPNAME( 0x10, 0x10, "TV Refresh Rate" ) */
+
+	PORT_BITX(    0x10, 0x10, IPT_DIPSWITCH_NAME | IPF_TOGGLE, "TV Refresh Rate", IP_KEY_NONE, IP_JOY_NONE)
+	PORT_DIPSETTING(    0x00, "60hz" )
+	PORT_DIPSETTING(    0x10, "50hz" )
 
 	MULTIFACE_PORTS
 
@@ -2890,7 +2923,7 @@ static const struct IODevice io_cpc6128[] =
 		NULL						/* output_chunk */
 	},
 	IO_CASSETTE_WAVE(1,"wav\0",NULL,amstrad_cassette_init,amstrad_cassette_exit),
-
+	IO_PRINTER_PORT(1,"\0"),
 	{IO_END}
 };
 

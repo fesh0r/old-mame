@@ -4,25 +4,26 @@
 #include "cpu/i86/i86intf.h"
 #include "vidhrdw/generic.h"
 
+
+#ifdef RUNTIME_LOADER
+# ifdef __cplusplus
+	extern "C" void pc_runtime_loader_init(void);
+# else
+	extern void pc_runtime_loader_init(void);
+# endif
+#endif
+
 /* enable and set level for verbosity of the various parts of emulation */
 
 
-#define VERBOSE_DBG 1       /* general debug messages */
+#define VERBOSE_DBG 0       /* general debug messages */
 
 #define VERBOSE_DMA 0		/* DMA (direct memory access) */
 #define VERBOSE_PIO 0		/* PIO (keyboard controller) */
-#define VERBOSE_PIT 0		/* PIT (programmable interrupt timer) */
-#define VERBOSE_PIC 0		/* PIC (programmable interrupt controller) */
 
-#define VERBOSE_MDA 0		/* MDA (Monochrome Display Adapter) */
-#define VERBOSE_CGA 0		/* CGA (Color Graphics Adapter) */
-#define VERBOSE_T1T 0		/* T1T (Tandy 100 Graphics Adapter) */
-
-#define VERBOSE_FDC 1		/* FDC (floppy disk controller) */
-#define VERBOSE_HDC 0		/* HDC (hard disk controller) */
+#define VERBOSE_FDC 0		/* FDC (floppy disk controller) */
 
 #define VERBOSE_LPT 0		/* LPT (line printer) */
-#define VERBOSE_COM 0		/* COM (communication / serial) */
 #define VERBOSE_JOY 0		/* JOY (joystick port) */
 #define VERBOSE_SND 0		/* SND (sound / speaker) */
 
@@ -48,44 +49,11 @@ extern UINT8 pc_port[0x400];
 #define PIO_LOG(n,m,a)
 #endif
 
-#if VERBOSE_MDA
-#define MDA_LOG(n,m,a) LOG(VERBOSE_MDA,n,m,a)
-#else
-#define MDA_LOG(n,m,a)
-#endif
-
-#if VERBOSE_CGA
-#define CGA_LOG(n,m,a) LOG(VERBOSE_CGA,n,m,a)
-#else
-#define CGA_LOG(n,m,a)
-#endif
-
-#if VERBOSE_T1T
-#define T1T_LOG(n,m,a) LOG(VERBOSE_T1T,n,m,a)
-#else
-#define T1T_LOG(n,m,a)
-#endif
-
-
 #if VERBOSE_FDC
 #define FDC_LOG(n,m,a) LOG(VERBOSE_FDC,n,m,a)
 #else
 #define FDC_LOG(n,m,a)
 #endif
-
-#if VERBOSE_COM
-#define COM_LOG(n,m,a) LOG(VERBOSE_COM,n,m,a)
-#else
-#define COM_LOG(n,m,a)
-#endif
-
-
-#if VERBOSE_HDC
-#define HDC_LOG(n,m,a) LOG(VERBOSE_HDC,n,m,a)
-#else
-#define HDC_LOG(n,m,a)
-#endif
-
 
 #if VERBOSE_JOY
 #define JOY_LOG(n,m,a) LOG(VERBOSE_JOY,n,m,a)
@@ -99,39 +67,35 @@ extern UINT8 pc_port[0x400];
 #define SND_LOG(n,m,a)
 #endif
 
-/* from machine/pc.c */
-extern int	pc_floppy_init(int id);
-extern void pc_floppy_exit(int id);
-extern int	pc_harddisk_init(int id);
-extern void pc_harddisk_exit(int id);
+struct _PC_SETUP;
+extern struct _PC_SETUP pc_setup_at[], pc_setup_t1000hx[];
+void pc_init_setup(struct _PC_SETUP *setup);
 
-void init_pc_common(void);
-extern void init_pc(void);
+
+extern void init_pccga(void);
+extern void init_pcmda(void);
+void init_europc(void);
+void init_bondwell(void);
 extern void init_pc1512(void);
 extern void init_pc1640(void);
 extern void init_pc_vga(void);
 extern void pc_mda_init_machine(void);
 extern void pc_cga_init_machine(void);
 extern void pc_vga_init_machine(void);
-extern void pc_shutdown_machine(void);
-extern void pc1512_close_machine(void);
-extern void pc1640_close_machine(void);
 
-extern WRITE_HANDLER( pc_ppi_portb_w );
-extern READ_HANDLER( pc_ppi_portb_r );
-extern READ_HANDLER( pc_ppi_porta_r );
+void init_pc_common(void);
+void pc_cga_init(void);
+void pc_mda_init(void);
+void pc_vga_init(void);
+
+extern void pc_ppi_portb_w(int chip, int data );
+extern int pc_ppi_portb_r(int chip );
+extern int pc_ppi_porta_r(int chip );
 
 void pc_keyboard(void);
 
 extern WRITE_HANDLER ( pc_EXP_w );
 extern READ_HANDLER ( pc_EXP_r );
-
-extern WRITE_HANDLER ( pc_LPT1_w );
-extern READ_HANDLER ( pc_LPT1_r );
-extern WRITE_HANDLER ( pc_LPT2_w );
-extern READ_HANDLER ( pc_LPT2_r );
-extern WRITE_HANDLER ( pc_LPT3_w );
-extern READ_HANDLER ( pc_LPT3_r );
 
 extern WRITE_HANDLER ( pc_COM1_w );
 extern READ_HANDLER ( pc_COM1_r );
@@ -145,19 +109,9 @@ extern READ_HANDLER ( pc_COM4_r );
 extern WRITE_HANDLER ( pc_JOY_w );
 extern READ_HANDLER ( pc_JOY_r );
 
-extern WRITE_HANDLER ( pc_FDC_w );
-extern READ_HANDLER ( pc_FDC_r );
-
-extern WRITE_HANDLER ( pc_HDC1_w );
-extern READ_HANDLER (	pc_HDC1_r );
-extern WRITE_HANDLER ( pc_HDC2_w );
-extern READ_HANDLER ( pc_HDC2_r );
-
 extern int  pc_cga_frame_interrupt(void);
 extern int  pc_mda_frame_interrupt(void);
 extern int  pc_vga_frame_interrupt(void);
-
-/* from vidhrdw/pc.c */
 
 /* from sndhrdw/pc.c */
 extern int  pc_sh_init(const char *name);
@@ -170,51 +124,7 @@ extern void pc_sh_update(int param, INT16 *buff, int length);
 extern void pc_sh_speaker(int mode);
 
 /* from machine/pc_fdc.c */
-extern void pc_fdc_command_w(int data);
-extern void pc_fdc_data_rate_w(int data);
-extern void pc_fdc_DOR_w(int data);
-
-extern int	pc_fdc_data_r(void);
-extern int	pc_fdc_status_r(void);
-extern int	pc_fdc_DIR_r(void);
-
-extern void *pc_fdc_file[2];
-extern UINT8 pc_fdc_spt[2];
-extern UINT8 pc_fdc_heads[2];
-extern UINT8 pc_fdc_scl[2];
-
-#if 0
-/* from machine/pc_ide.c */
-extern void pc_ide_data_w(int data);
-extern void pc_ide_write_precomp_w(int data);
-extern void pc_ide_sector_count_w(int data);
-extern void pc_ide_sector_number_w(int data);
-extern void pc_ide_cylinder_number_l_w(int data);
-extern void pc_ide_cylinder_number_h_w(int data);
-extern void pc_ide_drive_head_w(int data);
-extern void pc_ide_command_w(int data);
-
-extern int	pc_ide_data_r(void);
-extern int	pc_ide_error_r(void);
-extern int	pc_ide_sector_count_r(void);
-extern int	pc_ide_sector_number_r(void);
-extern int	pc_ide_cylinder_number_l_r(void);
-extern int	pc_ide_cylinder_number_h_r(void);
-extern int	pc_ide_drive_head_r(void);
-extern int	pc_ide_status_r(void);
-#endif
-
-/* from machine/pc_hdc.c */
-extern void *pc_hdc_file[4];
-
-extern void pc_hdc_data_w(int n, int data);
-extern void pc_hdc_reset_w(int n, int data);
-extern void pc_hdc_select_w(int n, int data);
-extern void pc_hdc_control_w(int n, int data);
-
-extern int	pc_hdc_data_r(int n);
-extern int	pc_hdc_status_r(int n);
-extern int	pc_hdc_dipswitch_r(int n);
+void pc_fdc_setup(void);
 
 /***************************************************************************
 

@@ -4,7 +4,8 @@
 ** Todo:
 **
 ** - memory emulation needs be rewritten
-** - add support for printer and serial ports
+** - add support for serial ports
+** - fix mouse support
 ** - add support for SCC+ and megaRAM
 ** - add support for diskdrives
 **
@@ -12,24 +13,27 @@
 */
 
 #include "driver.h"
-#include "msx.h"
+#include "includes/msx.h"
 #include "vidhrdw/generic.h"
+#include "cpu/z80/z80.h"
 #include "machine/8255ppi.h"
 #include "vidhrdw/tms9928a.h"
 #include "sndhrdw/scc.h"
 #include "formats/fmsx_cas.h"
+#include "printer.h"
+#include "utils.h"
 
 MSX msx1;
 static void msx_set_all_mem_banks (void);
-static WRITE_HANDLER( msx_ppi_port_a_w );
-static READ_HANDLER( msx_ppi_port_b_r );
-static WRITE_HANDLER( msx_ppi_port_c_w );
+static void msx_ppi_port_a_w (int chip, int data);
+static void msx_ppi_port_c_w (int chip, int data);
+static int msx_ppi_port_b_r (int chip);
 static ppi8255_interface msx_ppi8255_interface = {
     1,
     NULL,
     msx_ppi_port_b_r,
     NULL,
-    msx_ppi_port_a_w, 
+    msx_ppi_port_a_w,
     NULL,
     msx_ppi_port_c_w
 };
@@ -57,6 +61,9 @@ static int msx_probe_type (UINT8* pmem, int size)
     int kon4, kon5, asc8, asc16, i;
 
     if (size <= 0x10000) return 0;
+
+    if ( (pmem[0x10] == 'Y') && (pmem[0x11] == 'Z') && (size > 0x18000) )
+        return 6;
 
     kon4 = kon5 = asc8 = asc16 = 0;
 
@@ -99,6 +106,8 @@ static int msx_probe_type (UINT8* pmem, int size)
         return (asc8 > asc16) ? 4 : 5;
 }
 
+static UINT16 DiskPatches[] = { 0x10,0x13,0x16,0x1C,0x1F,0 };
+
 int msx_load_rom (int id)
 {
     void *F;
@@ -110,7 +119,7 @@ int msx_load_rom (int id)
         "Konami Game Master 2", "ASCII/8kB with 8kB SRAM",
         "ASCII/16kB with 2kB SRAM", "R-Type", "Konami Majutsushi",
         "Panasonic FM-PAC", "ASCII/16kB (bogus; use type 5)",
-        "Konami Synthesizer" };
+        "Konami Synthesizer", "Cross Blaim", "Disk ROM" };
 
     /* try to load it */
     F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE_R, 0);
@@ -125,21 +134,20 @@ int msx_load_rom (int id)
     }
     /* get mapper type */
     pext = (char *)device_extrainfo (IO_CARTSLOT, id);
-    if (!pext || (1 != sscanf (pext, "%d", &type) ) )
-    {
-        logerror("Cart #%d No extra info found in crc file\n", id);
-        type = -1;
-    }
-    else
-    {
-        if (type < 0 || type > 13)
-        {
-            logerror("Cart #%d Invalid extra info\n", id);
-            type = -1;
-        }
-        else logerror("Cart %d extra info: %s\n", id, pext);
-    }
-
+	if (!pext || (1 != sscanf (pext, "%d", &type) ) )
+   		{
+       	logerror("Cart #%d No extra info found in crc file\n", id);
+       	type = -1;
+   		}
+   	else
+   		{
+       	if (type < 0 || type > 15)
+       		{
+           	logerror("Cart #%d Invalid extra info\n", id);
+           	type = -1;
+       		}
+       	else logerror("Cart %d extra info: %s\n", id, pext);
+   		}
 
     /* calculate aligned size (8, 16, 32, 64, 128, 256, etc. (kB) ) */
     size_aligned = 0x2000;
@@ -205,7 +213,7 @@ int msx_load_rom (int id)
         free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
         return 1;
     }
-    strcpy (msx1.cart[id].sramfile, device_filename (IO_CARTSLOT, id) );
+    strcpy (msx1.cart[id].sramfile, osd_basename (device_filename (IO_CARTSLOT, id) ) );
     pext = strrchr (msx1.cart[id].sramfile, '.');
     if (pext) *pext = 0;
     /* do some stuff for some types :)) */
@@ -282,18 +290,43 @@ int msx_load_rom (int id)
             free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
             return 1;
         }
+
+		i = 0;
         F = osd_fopen (Machine->gamedrv->name, msx1.cart[id].sramfile,
                 OSD_FILETYPE_MEMCARD, 0);
-        if (F && (osd_fread (F, pmem + 0x21000, 0x2000) == 0x2000) )
-        {
-            memcpy (pmem + 0x20000, pmem + 0x21000, 0x1000);
-            memcpy (pmem + 0x23000, pmem + 0x22000, 0x1000);
-            logerror("Cart #%d SRAM loaded\n", id);
-        } else {
+		if (F)
+			{
+			n = osd_fsize (F);
+			if (n == 0x2000)
+				{
+	        	if (osd_fread (F, pmem + 0x21000, 0x2000) == 0x2000)
+	   		    	{
+   	         		memcpy (pmem + 0x20000, pmem + 0x21000, 0x1000);
+            		memcpy (pmem + 0x23000, pmem + 0x22000, 0x1000);
+            		i = 1;
+					}
+				}
+
+			/* if it's an Virtual MSX Game Master 2 file, convert */
+			if (n == 0x4000)
+				{
+	        	if (osd_fread (F, pmem + 0x20000, 0x4000) == 0x4000)
+	   		    	{
+   	         		memcpy (pmem + 0x20000, pmem + 0x21000, 0x1000);
+            		memcpy (pmem + 0x22000, pmem + 0x23000, 0x1000);
+            		i = 1;
+					}
+				}
+			}
+
+        if (F) osd_fclose (F);
+
+		if (i) logerror ("Cart #%d SRAM loaded\n", id);
+		else
+			{
             memset (pmem + 0x20000, 0, 0x4000);
             logerror("Cart #%d Failed to load SRAM\n", id);
-        }
-        if (F) osd_fclose (F);
+        	}
 
         msx1.cart[id].mem = pmem;
         break;
@@ -402,7 +435,26 @@ int msx_load_rom (int id)
         msx1.cart[id].banks[2] = 0;
         msx1.cart[id].banks[3] = 1;
         break;
-    }
+	case 15: /* disk rom */
+        pmem = realloc (msx1.cart[id].mem, 0x8000);
+        if (!pmem)
+        {
+            free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
+            return 1;
+        }
+		msx1.cart[id].mem = pmem;
+		memset (pmem + 0x4000, 0xff, 0x4000);
+		i = 0;
+		while (DiskPatches[i])
+			{
+			pmem[DiskPatches[i]] = 0xd3; /* out (n),A */
+			pmem[DiskPatches[i]+1] = 0xd0; /* n - operand */
+			pmem[DiskPatches[i]+2] = 0xc9; /* ret */
+			i++;
+			}
+		break;
+	}
+
     if (msx1.run) msx_set_all_mem_banks ();
     return 0;
 }
@@ -487,7 +539,7 @@ void msx_ch_reset(void) {
         msx1.ram = (UINT8*)malloc (0x10000);
         if (!msx1.ram || !msx1.empty)
         {
-            logerror("malloc () in init_msx () failed!\n");
+            logerror("malloc () in msx_ch_reset () failed!\n");
             return;
         }
 
@@ -499,17 +551,73 @@ void msx_ch_reset(void) {
     return;
 }
 
+/* z80 stuff */
+static int z80_table_num[5] = { Z80_TABLE_op, Z80_TABLE_xy,
+	Z80_TABLE_ed, Z80_TABLE_cb, Z80_TABLE_xycb };
+static UINT8 *old_z80_tables[5], *z80_table;
+
 void init_msx (void)
-{
+    {
+    int i,n;
+
     /* this function is called at a very early stage, and not after a reset. */
     TMS9928A_int_callback(msx_vdp_interrupt);
-}
 
-void msx_ch_stop (void) {
+    /* adjust z80 cycles for the M1 wait state */
+    z80_table = malloc (0x500);
+    if (!z80_table)
+		logerror ("Cannot malloc z80 cycle table, using default values\n");
+	else
+		{
+        for (i=0;i<5;i++)
+			{
+			old_z80_tables[i] = z80_get_cycle_table (z80_table_num[i]);
+			for (n=0;n<256;n++)
+				{
+				z80_table[i*0x100+n] = old_z80_tables[i][n] + (i > 1 ? 2 : 1);
+				}
+			z80_set_cycle_table (i, z80_table + i*0x100);
+			}
+		}
+    }
+
+void msx_ch_stop (void)
+	{
+	int i;
+
     free (msx1.empty); msx1.empty = NULL;
     free (msx1.ram); msx1.ram = NULL;
+	if (z80_table)
+		{
+		for (i=0;i<5;i++)
+			z80_set_cycle_table (i, old_z80_tables[i]);
+
+		free (z80_table);
+		}
     msx1.run = 0;
-}
+	}
+
+int msx_interrupt()
+	{
+    int i;
+
+    for (i=0;i<2;i++)
+        {
+        msx1.mouse[i] = readinputport (12+i);
+        msx1.mouse_stat[i] = -1;
+        }
+
+    TMS9928A_set_spriteslimit (readinputport (11) & 0x20);
+    TMS9928A_interrupt();
+
+	/* floppy stuff */
+	device_status (IO_FLOPPY, 0, (readinputport (11) & 0x0010) > 0);
+	device_output (IO_FLOPPY, 0, readinputport (11) & 0x000f);
+	device_status (IO_FLOPPY, 1, (readinputport (11) & 0x1000) > 0);
+	device_output (IO_FLOPPY, 1, (readinputport (11) & 0x0f00) / 256);
+
+    return ignore_interrupt();
+	}
 
 /*
 ** The I/O funtions
@@ -546,16 +654,54 @@ WRITE_HANDLER ( msx_psg_w )
 
 READ_HANDLER ( msx_psg_port_a_r )
 {
-    int data;
+    int data, inp;
 
     data = (device_input (IO_CASSETTE, 0) > 255 ? 0x80 : 0);
 
-    if (msx1.psg_b & 0x40)
-        data |= input_port_10_r (0) & 0x7f;
-    else
-        data |= input_port_9_r (0) & 0x7f;
+    if ( (msx1.psg_b ^ readinputport (11) ) & 0x40)
+		{
+		/* game port 2 */
+        inp = input_port_10_r (0) & 0x7f;
+		if ( !(inp & 0x80) )
+			{
+			/* joystick */
+			return (inp & 0x7f) | data;
+			}
+		else
+			{
+			/* mouse */
+			data |= inp & 0x70;
+			if (msx1.mouse_stat[1] < 0)
+				inp = 0xf;
+			else
+				inp = ~(msx1.mouse[1] >> (4*msx1.mouse_stat[1]) ) & 15;
 
-    return data;
+			return data | inp;
+			}
+		}
+    else
+		{
+		/* game port 1 */
+        inp = input_port_9_r (0) & 0x7f;
+		if ( !(inp & 0x80) )
+			{
+			/* joystick */
+			return (inp & 0x7f) | data;
+			}
+		else
+			{
+			/* mouse */
+			data |= inp & 0x70;
+			if (msx1.mouse_stat[0] < 0)
+				inp = 0xf;
+			else
+				inp = ~(msx1.mouse[0] >> (4*msx1.mouse_stat[0]) ) & 15;
+
+			return data | inp;
+			}
+		}
+
+    return 0;
 }
 
 READ_HANDLER ( msx_psg_port_b_r )
@@ -572,21 +718,49 @@ WRITE_HANDLER ( msx_psg_port_b_w )
 {
     /* Arabic or kana mode led */
 	if ( (data ^ msx1.psg_b) & 0x80) set_led_status (1, !(data & 0x80) );
-        msx1.psg_b = data;
+
+    if ( (msx1.psg_b ^ data) & 0x10)
+		{
+		if (++msx1.mouse_stat[0] > 3) msx1.mouse_stat[0] = -1;
+		}
+    if ( (msx1.psg_b ^ data) & 0x20)
+		{
+		if (++msx1.mouse_stat[1] > 3) msx1.mouse_stat[1] = -1;
+		}
+
+    msx1.psg_b = data;
 }
 
 WRITE_HANDLER ( msx_printer_w )
-{
-     if (offset == 1) {
-        /* SIMPL emulation */
-        DAC_signed_data_w (0, data);
-     }
-}
+	{
+	if (readinputport (11) & 0x80)
+		{
+		/* SIMPL emulation */
+		if (offset == 1)
+        	DAC_signed_data_w (0, data);
+		}
+	else
+		{
+   		if (offset == 1)
+			msx1.prn_data = data;
+		else
+			{
+			if ( (msx1.prn_strobe & 2) && !(data & 2) )
+				device_output (IO_PRINTER, 0, msx1.prn_data);
+
+			msx1.prn_strobe = data;
+			}
+		}
+	}
 
 READ_HANDLER ( msx_printer_r )
-{
+	{
+	if (offset == 0 && ! (readinputport (11) & 0x80) &&
+		device_status (IO_PRINTER, 0, 0) )
+		return 253;
+
     return 0xff;
-}
+	}
 
 WRITE_HANDLER ( msx_fmpac_w )
 {
@@ -598,16 +772,166 @@ WRITE_HANDLER ( msx_fmpac_w )
 }
 
 /*
+** The evil disk functions ...
+*/
+
+WRITE_HANDLER (msx_dsk_w)
+	{
+	int ret, msx_write, sects, drive, trans, sect;
+	UINT8 sector[512];
+
+	switch (z80_get_pc () )
+		{
+		case 0x4012:
+			msx_write = (z80_get_reg (Z80_AF) & 1);
+			sects = (z80_get_reg (Z80_BC) / 256) * 512;
+			drive = (z80_get_reg (Z80_AF) / 256);
+			trans = z80_get_reg (Z80_HL);
+			sect = z80_get_reg (Z80_DE) * 512;
+			device_seek (IO_FLOPPY, drive, sect, 0);
+			if (msx_write)
+				{
+				/*ret =*/ device_output_chunk (IO_FLOPPY, drive,
+					msx1.ram + trans, sects);
+				ret = 0;
+				}
+			else
+				{
+				/*ret =*/ device_input_chunk (IO_FLOPPY, drive,
+					msx1.ram + trans, sects);
+				ret = 0;
+				}
+
+			switch (ret & MSX_DSK_ERR_MASK)
+				{
+				case MSX_DSK_ERR_OFFLINE:
+					z80_set_reg (Z80_AF, 0x0201); break;
+				case MSX_DSK_ERR_SECTORNOTFOUND:
+					z80_set_reg (Z80_AF, 0x0601); break;
+				case MSX_DSK_ERR_WRITEPROTECTED:
+					z80_set_reg (Z80_AF, 0x0001); break;
+				default:
+					z80_set_reg (Z80_AF, 0);
+				}
+
+			sects = (ret & ~MSX_DSK_ERR_MASK) / 512;
+			z80_set_reg (Z80_BC, sects * 256);
+
+			break;
+
+		case 0x4015:
+			drive = z80_get_reg (Z80_AF) / 256;
+			if (drive > 1)
+				{
+				z80_set_reg (Z80_AF, 0x0c01);
+				break;
+				}
+
+			if ( !device_status (IO_FLOPPY, drive, -1) )
+				{
+				z80_set_reg (Z80_AF, 0x0201);
+				break;
+				}
+
+			z80_set_reg (Z80_AF, z80_get_reg (Z80_AF) & 0xff00);
+			z80_set_reg (Z80_BC, z80_get_reg (Z80_BC) & 0x00ff);
+		case 0x4018:
+            {
+            int       BytesPerSector, SectorsPerDisk,
+                      SectorsPerFAT,ReservedSectors, I, J ;
+            UINT16 wAddress ;
+
+			drive = z80_get_reg (Z80_AF) / 256;
+			device_seek (IO_FLOPPY, drive, 0, SEEK_SET);
+			ret = device_input_chunk (IO_FLOPPY, drive, sector, 512);
+			switch (ret & MSX_DSK_ERR_MASK)
+				{
+				case MSX_DSK_ERR_OFFLINE:
+					z80_set_reg (Z80_AF, 0x0201); break;
+				case MSX_DSK_ERR_SECTORNOTFOUND:
+					z80_set_reg (Z80_AF, 0x0601); break;
+				case MSX_DSK_ERR_WRITEPROTECTED:
+					z80_set_reg (Z80_AF, 0x0001); break;
+				}
+
+            BytesPerSector  = (int)sector[0x0C]*256 + sector[0x0B] ;
+            SectorsPerDisk  = (int)sector[0x14]*256 + sector[0x13] ;
+            SectorsPerFAT   = (int)sector[0x17]*256 + sector[0x16] ;
+            ReservedSectors = (int)sector[0x0F]*256 + sector[0x0E] ;
+
+            wAddress = z80_get_reg (Z80_HL) + 1;
+
+            /* Format ID [F8h-FFh] */
+            msx1.ram[wAddress++] = sector[0x15] ;
+            /* Sector size         */
+            msx1.ram[wAddress++] = sector[0x0B] ;
+            msx1.ram[wAddress++] = sector[0x0C] ;
+            /* Directory mask/shft */
+            J=(BytesPerSector>>5)-1;
+            for(I=0;J&(1<<I);I++);
+            msx1.ram[wAddress++] = (UINT8)J ;
+            msx1.ram[wAddress++] = (UINT8)I ;
+            /* Cluster mask/shift  */
+            J=sector[0x0D]-1;
+            for(I=0;J&(1<<I);I++);
+            msx1.ram[wAddress++] = (UINT8)J ;
+            msx1.ram[wAddress++] = (UINT8)(I+1) ;
+            /* Sector # of 1st FAT */
+            msx1.ram[wAddress++] = sector[0x0E] ;
+            msx1.ram[wAddress++] = sector[0x0F] ;
+            /* Number of FATs      */
+            msx1.ram[wAddress++] = sector[0x10] ;
+            /* Number of dirent-s  */
+            msx1.ram[wAddress++] = sector[0x11] ;
+            J=ReservedSectors+sector[0x10]*SectorsPerFAT;
+            if (BytesPerSector)
+                J+=32*sector[0x11]/BytesPerSector ;
+            else
+                J=0 ;
+            /* Sector # of data    */
+            msx1.ram[wAddress++] = J & 0xff;
+            msx1.ram[wAddress++] = J / 256 ;
+            if (sector[0x0D])
+                J=(SectorsPerDisk-J)/sector[0x0D] ;
+            else
+                J=0 ;
+            /* Number of clusters  */
+            msx1.ram[wAddress++] = J & 0xff;
+            msx1.ram[wAddress++] = J / 256 ;
+            /* Sectors per FAT     */
+            msx1.ram[wAddress++] = sector[0x16] ;
+            J=ReservedSectors+sector[0x10]*SectorsPerFAT;
+            /* Sector # of dir.    */
+            msx1.ram[wAddress++] = J & 0xff ;
+            msx1.ram[wAddress++] = J / 256;
+
+			z80_set_reg (Z80_AF, 0);
+
+			break;
+			}
+		case 0x401e:
+			/* format disk */
+			break;
+		case 0x4021: /* stop drives */
+			/* NOP */
+			break;
+		default:
+			logerror ("Uncaught trap: %04x\n", z80_get_pc ());
+		}
+
+	}
+
+/*
 ** The PPI functions
 */
 
-static WRITE_HANDLER( msx_ppi_port_a_w )
-{
+static void msx_ppi_port_a_w (int chip, int data)
+	{
     msx_set_all_mem_banks ();
-}
+	}
 
-static WRITE_HANDLER( msx_ppi_port_c_w )
-{
+static void msx_ppi_port_c_w (int chip, int data)
+	{
     static int old_val = 0xff;
 
     /* caps lock */
@@ -624,16 +948,16 @@ static WRITE_HANDLER( msx_ppi_port_c_w )
         device_output (IO_CASSETTE, 0, (data & 0x20) ? -32768 : 32767);
 
     old_val = data;
-}
+	}
 
-static READ_HANDLER( msx_ppi_port_b_r )
-{
+static int msx_ppi_port_b_r (int chip)
+	{
     int row;
 
     row = ppi8255_0_r (2) & 0x0f;
     if (row <= 8) return readinputport (row);
     else return 0xff;
-}
+	}
 
 
 /*
@@ -643,7 +967,7 @@ static void msx_set_slot_0 (int page)
 {
     unsigned char *ROM;
     ROM = memory_region(REGION_CPU1);
-    if (page < (strcmp (Machine->gamedrv->name, "msxkr") ? 2 : 3) )
+    if (page < (strncmp (Machine->gamedrv->name, "msxkr", 5) ? 2 : 3) )
     {
         cpu_setbank (1 + page * 2, ROM + page * 0x4000);
         cpu_setbank (2 + page * 2, ROM + page * 0x4000 + 0x2000);
@@ -862,6 +1186,21 @@ static void msx_cart_write (int cart, int offset, int data)
                     (msx1.cart[cart].bank_mask+1)*0x2000] = data;
         }
         break;
+	case 14: /* Cross Blaim */
+		if (offset == 0x0045)
+			{
+            n = (data * 2) & msx1.cart[cart].bank_mask;
+
+            /* page 2 */
+            msx1.cart[cart].banks[2] = n;
+            msx1.cart[cart].banks[3] = n + 1;
+            if (msx_cart_page_2 (cart) )
+	            {
+                cpu_setbank (5,msx1.cart[cart].mem + n * 0x2000);
+                cpu_setbank (6,msx1.cart[cart].mem + (n + 1) * 0x2000);
+                }
+			}
+		break;
     case 8: /* ASCII 16kB */
         if ( (offset & 0x6800) == 0x2000)
         {
@@ -1023,14 +1362,11 @@ WRITE_HANDLER ( msx_writemem3 )
 ** Cassette functions
 */
 
-static UINT16* cas_samples;
+static INT16* cas_samples;
 static int cas_len;
 
 int msx_cassette_fill_wave (INT16* samples, int wavlen, UINT8* casdata)
 {
-/* HJB: these are (currently?) unused
- *	int cas_pos, samples_size, bit, state = 1, samples_pos, size, n, i, p;
- */
 	if (casdata == CODE_HEADER || casdata == CODE_TRAILER)
 		return 0;
 
@@ -1052,7 +1388,7 @@ static int check_fmsx_cas (void *f)
 
     caslen = osd_fsize (f);
 	if (caslen < 9) return -1;
-	
+
     casdata = (UINT8*)malloc (caslen);
     if (!casdata)
 	{
@@ -1065,6 +1401,10 @@ static int check_fmsx_cas (void *f)
    	osd_fseek (f, 0, SEEK_SET);
 
     ret = fmsx_cas_to_wav (casdata, caslen, &cas_samples, &cas_len);
+    if (ret == 2)
+	logerror ("cas2wav: out of memory\n");
+    else if (ret)
+	logerror ("cas2wav: conversion error\n");
 
     free (casdata);
 

@@ -9,13 +9,13 @@
 #include "vidhrdw/generic.h"
 #include "machine/8255ppi.h"
 #include "vidhrdw/tms9928a.h"
-#include "machine/msx.h"
+#include "includes/msx.h"
 #include "sndhrdw/scc.h"
+#include "printer.h"
 
 extern MSX msx1;
 
-static struct MemoryReadAddress readmem[] =
-{
+static MEMORY_READ_START (readmem) 
     { 0x0000, 0x1fff, MRA_BANK1 },
     { 0x2000, 0x3fff, MRA_BANK2 },
     { 0x4000, 0x5fff, MRA_BANK3 },
@@ -24,37 +24,103 @@ static struct MemoryReadAddress readmem[] =
     { 0xa000, 0xbfff, MRA_BANK6 },
     { 0xc000, 0xdfff, MRA_BANK7 },
     { 0xe000, 0xffff, MRA_BANK8 },
-        { -1 }  /* end of table */
-};
+MEMORY_END
 
-static struct MemoryWriteAddress writemem[] =
-{
+static MEMORY_WRITE_START( writemem )
     { 0x0000, 0x3fff, msx_writemem0 },
     { 0x4000, 0x7fff, msx_writemem1 },
     { 0x8000, 0xbfff, msx_writemem2 },
     { 0xc000, 0xffff, msx_writemem3 },
-        { -1 }  /* end of table */
-};
+MEMORY_END
 
-static struct IOReadPort readport[] =
-{
+
+static PORT_READ_START (readport)
     { 0x90, 0x91, msx_printer_r },
     { 0xa0, 0xa7, msx_psg_r },
     { 0xa8, 0xab, ppi8255_0_r },
     { 0x98, 0x99, msx_vdp_r },
-        { -1 }  /* end of table */
-};
+PORT_END
 
-static struct IOWritePort writeport[] =
-{
+static PORT_WRITE_START (writeport)
     { 0x7c, 0x7d, msx_fmpac_w },
     { 0x90, 0x91, msx_printer_w },
     { 0xa0, 0xa7, msx_psg_w },
     { 0xa8, 0xab, ppi8255_0_w },
     { 0x98, 0x99, msx_vdp_w },
-        { -1 }  /* end of table */
-};
+	{ 0xd0, 0xd0, msx_dsk_w },
+PORT_END
 
+/* start define for the special ports (DIPS, joystick, mouse) */
+#define MSX_DIPS \
+ PORT_START /* 9 */    \
+  PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP)    \
+  PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN)    \
+  PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT)    \
+  PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT)    \
+  PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON1)    \
+  PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_BUTTON2)    \
+  PORT_BITX (0x40, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)    \
+  PORT_DIPNAME( 0x80, 0, "Game port 1")    \
+   PORT_DIPSETTING(    0x00, "Joystick")    \
+   PORT_DIPSETTING(    0x80, "Mouse")    \
+    \
+ PORT_START /* 10 */    \
+  PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER2)    \
+  PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER2)    \
+  PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER2)    \
+  PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER2)    \
+  PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2)    \
+  PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2)    \
+  PORT_BITX (0x40, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)    \
+  PORT_DIPNAME( 0x80, 0, "Game port 2")    \
+   PORT_DIPSETTING( 0x00, "Joystick")    \
+   PORT_DIPSETTING( 0x80, "Mouse")    \
+    \
+ PORT_START /* 11 */    \
+  PORT_DIPNAME( 0x40, 0, "Swap game port 1 and 2")    \
+   PORT_DIPSETTING( 0, DEF_STR( No ) )    \
+   PORT_DIPSETTING( 0x40, DEF_STR( Yes ) )    \
+  PORT_DIPNAME( 0x80, 0, "SIMPL")    \
+   PORT_DIPSETTING( 0x00, DEF_STR ( Off ) )    \
+   PORT_DIPSETTING( 0x80, DEF_STR ( On ) )    \
+  PORT_DIPNAME( 0x20, 0x20, "Enforce 4 sprites/line")    \
+   PORT_DIPSETTING( 0, DEF_STR( No ) )    \
+   PORT_DIPSETTING( 0x20, DEF_STR( Yes ) )    \
+ PORT_DIPNAME(0x000f, 0, "Multi disk A:")        \
+  PORT_DIPSETTING(0, "1")       \
+  PORT_DIPSETTING(1, "2")       \
+  PORT_DIPSETTING(2, "3")       \
+  PORT_DIPSETTING(3, "4")       \
+  PORT_DIPSETTING(4, "5")       \
+  PORT_DIPSETTING(5, "6")       \
+  PORT_DIPSETTING(6, "7")       \
+  PORT_DIPSETTING(7, "8")       \
+  PORT_DIPSETTING(8, "9")       \
+ PORT_DIPNAME( 0x10, 0, "Disk A: Write Protected")    \
+   PORT_DIPSETTING( 0x00, DEF_STR ( No ) )    \
+   PORT_DIPSETTING( 0x10, DEF_STR ( Yes ) )    \
+ PORT_DIPNAME(0x0f00, 0, "Multi disk B:")        \
+  PORT_DIPSETTING(0x0000, "1")  \
+  PORT_DIPSETTING(0x0100, "2")  \
+  PORT_DIPSETTING(0x0200, "3")  \
+  PORT_DIPSETTING(0x0400, "4")  \
+  PORT_DIPSETTING(0x0300, "5")  \
+  PORT_DIPSETTING(0x0500, "6")  \
+  PORT_DIPSETTING(0x0600, "7")  \
+  PORT_DIPSETTING(0x0700, "8")  \
+  PORT_DIPSETTING(0x0800, "9")  \
+ PORT_DIPNAME( 0x1000, 0, "Disk B: Write Protected")    \
+   PORT_DIPSETTING( 0x0000, DEF_STR ( No ) )    \
+   PORT_DIPSETTING( 0x1000, DEF_STR ( Yes ) )    \
+    \
+ PORT_START /* 12 */    \
+  PORT_ANALOGX( 0xff00, 0x00, IPT_TRACKBALL_X | IPF_PLAYER1, 100, 0, 0, 0, KEYCODE_NONE, KEYCODE_NONE, JOYCODE_NONE, JOYCODE_NONE)    \
+  PORT_ANALOGX( 0x00ff, 0x00, IPT_TRACKBALL_Y | IPF_PLAYER1, 100, 0, 0, 0, KEYCODE_NONE, KEYCODE_NONE, JOYCODE_NONE, JOYCODE_NONE)    \
+    \
+ PORT_START /* 13 */    \
+  PORT_ANALOGX( 0xff00, 0x00, IPT_TRACKBALL_X | IPF_PLAYER2, 100, 0, 0, 0, KEYCODE_NONE, KEYCODE_NONE, JOYCODE_NONE, JOYCODE_NONE)    \
+  PORT_ANALOGX( 0x00ff, 0x00, IPT_TRACKBALL_Y | IPF_PLAYER2, 100, 0, 0, 0, KEYCODE_NONE, KEYCODE_NONE, JOYCODE_NONE, JOYCODE_NONE)    \
+/* end define for the special ports (DIPS, joystick, mouse) */
 
 INPUT_PORTS_START( msx )
  PORT_START /* 0 */
@@ -147,23 +213,7 @@ INPUT_PORTS_START( msx )
   PORT_BITX (0x40, IP_ACTIVE_LOW, IPT_KEYBOARD, "DOWN", KEYCODE_DOWN, IP_JOY_NONE)
   PORT_BITX (0x80, IP_ACTIVE_LOW, IPT_KEYBOARD, "RIGHT", KEYCODE_RIGHT, IP_JOY_NONE)
 
- PORT_START /* 9 */
-  PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP)
-  PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN)
-  PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT)
-  PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT)
-  PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON1)
-  PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_BUTTON2)
-  PORT_BITX (0xc0, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)
-
- PORT_START /* 10 */
-  PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER2)
-  PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER2)
-  PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER2)
-  PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER2)
-  PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2)
-  PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2)
-  PORT_BITX (0xc0, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)
+MSX_DIPS
 
 INPUT_PORTS_END
 
@@ -258,23 +308,8 @@ INPUT_PORTS_START( msxuk )
   PORT_BITX (0x40, IP_ACTIVE_LOW, IPT_KEYBOARD, "DOWN", KEYCODE_DOWN, IP_JOY_NONE)
   PORT_BITX (0x80, IP_ACTIVE_LOW, IPT_KEYBOARD, "RIGHT", KEYCODE_RIGHT, IP_JOY_NONE)
 
- PORT_START /* 9 */
-  PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP)
-  PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN)
-  PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT)
-  PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT)
-  PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON1)
-  PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_BUTTON2)
-  PORT_BITX (0xc0, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)
+MSX_DIPS
 
- PORT_START /* 10 */
-  PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER2)
-  PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER2)
-  PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER2)
-  PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER2)
-  PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2)
-  PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2)
-  PORT_BITX (0xc0, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( msxj )
@@ -368,23 +403,8 @@ INPUT_PORTS_START( msxj )
   PORT_BITX (0x40, IP_ACTIVE_LOW, IPT_KEYBOARD, "DOWN", KEYCODE_DOWN, IP_JOY_NONE)
   PORT_BITX (0x80, IP_ACTIVE_LOW, IPT_KEYBOARD, "RIGHT", KEYCODE_RIGHT, IP_JOY_NONE)
 
- PORT_START /* 9 */
-  PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP)
-  PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN)
-  PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT)
-  PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT)
-  PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON1)
-  PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_BUTTON2)
-  PORT_BITX (0xc0, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)
+MSX_DIPS
 
- PORT_START /* 10 */
-  PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_PLAYER2)
-  PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_PLAYER2)
-  PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_PLAYER2)
-  PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_PLAYER2)
-  PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2)
-  PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2)
-  PORT_BITX (0xc0, IP_ACTIVE_LOW, IPT_UNUSED, DEF_STR( Unused ), IP_KEY_NONE, IP_JOY_NONE)
 INPUT_PORTS_END
 
 static struct GfxDecodeInfo gfxdecodeinfo[] =
@@ -428,13 +448,6 @@ static struct Wave_interface wave_interface = {
     1,              /* number of waves */
     { 25 }          /* mixing levels */
 };
-
-
-static int msx_interrupt(void)
-{
-    TMS9928A_interrupt();
-    return ignore_interrupt();
-}
 
 int msx_vh_start(void)
 {
@@ -576,6 +589,12 @@ ROM_START (msxkr)
     ROM_LOAD_OPTIONAL ("msxhan.rom", 0x8000, 0x4000, 0x97478efb)
 ROM_END
 
+ROM_START (msxkra)
+    ROM_REGION (0x10000, REGION_CPU1)
+    ROM_LOAD ("msxkra.rom", 0x0000, 0x8000, 0xa781f7ca)
+    ROM_LOAD_OPTIONAL ("msxhan.rom", 0x8000, 0x4000, 0x97478efb)
+ROM_END
+
 static const struct IODevice io_msx[] = {
 {
     IO_CARTSLOT,                /* type */
@@ -596,16 +615,38 @@ static const struct IODevice io_msx[] = {
     NULL,                       /* input_chunk */
     NULL                        /* output_chunk */
 },
-    IO_CASSETTE_WAVE (1, "wav\0cas\0", NULL, msx_cassette_init, msx_cassette_exit),
+{
+    IO_FLOPPY,                	/* type */
+    2,              		 	/* count */
+    "dsk\0",                    /* file extensions */
+    IO_RESET_NONE,              /* reset if file changed */ 
+    msx_dsk_id,                 /* id */
+	msx_dsk_init,               /* init */
+    msx_dsk_exit,               /* exit */
+    NULL,                       /* info */
+    NULL,                       /* open */
+    NULL,                       /* close */
+    msx_dsk_status,             /* status */
+    msx_dsk_seek,               /* seek */
+    msx_dsk_tell,               /* tell */
+    msx_dsk_input,              /* input */
+    msx_dsk_output,             /* output */
+    msx_dsk_input_chunk,        /* input_chunk */
+    msx_dsk_output_chunk		/* output_chunk */
+},
+    IO_CASSETTE_WAVE (1, "cas\0wav\0", NULL, msx_cassette_init, msx_cassette_exit),
+	IO_PRINTER_PORT (1, "prn\0"),
     { IO_END }
 };
 
 #define io_msxj io_msx
 #define io_msxkr io_msx
+#define io_msxkra io_msx
 #define io_msxuk io_msx
 
 /*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
 COMP( 1983, msx, 0, msx_pal, msx, msx, "ASCII & Microsoft", "MSX1" )
 COMP( 1983, msxj, msx, msx, msxj, msx, "ASCII & Microsoft", "MSX1 (Japan)" )
 COMP( 1983, msxkr, msx, msx, msxj, msx, "ASCII & Microsoft", "MSX1 (Korean)" )
+COMP( 1983, msxkra, msx, msx, msxj, msx, "ASCII & Microsoft", "MSX1 (Korean ALT)" )
 COMP( 1983, msxuk, msx, msx_pal, msxuk, msx, "ASCII & Microsoft", "MSX1 (UK)" )

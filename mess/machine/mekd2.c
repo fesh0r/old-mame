@@ -11,6 +11,8 @@
 #include "cpu/m6502/m6502.h"
 #include "vidhrdw/generic.h"
 
+#include "includes/mekd2.h"
+
 #ifndef VERBOSE
 #define VERBOSE 1
 #endif
@@ -540,7 +542,7 @@ void init_mekd2(void)
 
 	dst = memory_region(2);
 	memset(dst, 0, 24 * 18 * 24 / 8);
-	for (i = 0; i < 24; i++)
+	for (i = 0; (i < 24)&&(keys[i]); i++) // only 23 keys inited!
 	{
 		for (y = 0; y < 18; y++)
 		{
@@ -586,7 +588,7 @@ int mekd2_rom_load(int id)
 			osd_fread(file, buff, sizeof (buff));
 			if (memcmp(buff, magic, sizeof (buff)))
 			{
-				LOG(( "mekd2_rom_load: magic '%s' not found\n", magic));
+				logerror( "mekd2_rom_load: magic '%s' not found\n", magic);
 				return 1;
 			}
 			osd_fread_lsbfirst(file, &addr, 2);
@@ -614,7 +616,7 @@ int mekd2_rom_id(int id)
 		osd_fread(file, buff, sizeof (buff));
 		if (memcmp(buff, magic, sizeof (buff)) == 0)
 		{
-			LOG(( "mekd2_rom_id: magic '%s' found\n", magic));
+			logerror( "mekd2_rom_id: magic '%s' found\n", magic);
 			return 1;
 		}
 	}

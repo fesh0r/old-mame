@@ -3,6 +3,11 @@
 
 #include "osdepend.h"
 
+#define ARRAY_LENGTH(x) (sizeof(x)/sizeof(x[0]))
+
+// must be defined in the root makefile
+//#define MESS_DEBUG
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -261,9 +266,8 @@ extern void device_output_chunk(int type, int id, void *src, int chunks);
 
 /* This is the dummy GameDriver with flag NOT_A_DRIVER set
    It allows us to use an empty PARENT field in the macros. */
-extern const struct GameDriver driver_0;
 
-/* Flag is used to bail out in mame.c/run_game() and cpuintrf.c/run_cpu()
+ /* Flag is used to bail out in mame.c/run_game() and cpuintrf.c/run_cpu()
  * but keep the program going. It will be set eg. if the filename for a
  * device which has IO_RESET_ALL flag set is changed
  */
@@ -276,6 +280,7 @@ extern int mess_keep_going;
  ******************************************************************************/
 #define CONS(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,COMPANY,FULLNAME)	\
 extern const struct GameDriver driver_##PARENT; \
+extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
 {											\
 	__FILE__,								\
@@ -294,6 +299,7 @@ const struct GameDriver driver_##NAME = 	\
 
 #define CONSX(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,COMPANY,FULLNAME,FLAGS)	\
 extern const struct GameDriver driver_##PARENT;   \
+extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
 {											\
 	__FILE__,								\
@@ -312,6 +318,7 @@ const struct GameDriver driver_##NAME = 	\
 
 #define COMP(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,COMPANY,FULLNAME)	\
 extern const struct GameDriver driver_##PARENT;   \
+extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
 {											\
 	__FILE__,								\
@@ -330,6 +337,7 @@ const struct GameDriver driver_##NAME = 	\
 
 #define COMPX(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,COMPANY,FULLNAME,FLAGS)	\
 extern const struct GameDriver driver_##PARENT;   \
+extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
 {											\
 	__FILE__,								\
@@ -345,6 +353,9 @@ const struct GameDriver driver_##NAME = 	\
 	io_##NAME, 								\
 	ROT0|GAME_COMPUTER|(FLAGS)	 			\
 };
+
+//duplicate declaration!
+//extern const struct GameDriver *drivers[];
 
 #ifdef __cplusplus
 }

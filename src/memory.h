@@ -23,8 +23,6 @@ extern "C" {
 #define COMBINE_WORD(w,d)	  (((w) & ((d) >> 16)) | ((d) & 0xffff))
 #define COMBINE_WORD_MEM(a,d) (WRITE_WORD((a), (READ_WORD(a) & ((d) >> 16)) | (d)))
 
-
-
 /***************************************************************************
 
 Note that the memory hooks are not passed the actual memory address where
@@ -399,6 +397,10 @@ constants for each address space type we support.
 #define ABITS1_16W	12
 #define ABITS2_16W	3
 #define ABITS_MIN_16W 1			/* minimum memory block is 2 bytes */
+/*18 bits address */
+#define ABITS1_18		12
+#define ABITS2_18		6
+#define ABITS_MIN_18	0			/* minimum memory block is 1 byte */
 /* 20 bits address */
 #define ABITS1_20		12
 #define ABITS2_20		8
@@ -533,6 +535,14 @@ extern UINT8 *cpu_bankbase[];	/* array of bank bases */
 int memory_init(void);
 void memory_shutdown(void);
 void memorycontextswap(int activecpu);
+
+/* weird handler for pdp 1 */
+data32_t cpu_readmem16_18_dword(offs_t address);
+void cpu_writemem16_18_dword(offs_t address, data32_t data);
+void cpu_setOPbase16_18(offs_t pc);
+/* these are not used, but are here to keep the MAME core happy... */
+data8_t cpu_readmem16_18(offs_t address);
+void cpu_writemem16_18(offs_t address, data8_t data);
 
 /* ----- memory read functions ----- */
 data8_t cpu_readmem16(offs_t address);

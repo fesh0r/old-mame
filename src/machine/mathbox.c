@@ -3,7 +3,7 @@
  *
  * Copyright 1991, 1992, 1993, 1996 Eric Smith
  *
- * $Header: /home/cvs/mess/src/machine/mathbox.c,v 1.3 2000/09/05 18:39:06 hjb Exp $
+ * $Header: /home/cvs/mess/src/machine/mathbox.c,v 1.7 2000/10/14 04:32:58 ben Exp $
  */
 
 #include "driver.h"

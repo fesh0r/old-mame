@@ -5,7 +5,7 @@
 #include "imgtool.h"
 #include "osd_cpu.h"
 #include "config.h"
-#include "osdtools.h"
+#include "utils.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -41,7 +41,12 @@ extern struct ImageModule imgmod_x64;	/* commodore vc1541 disketts */
 extern struct ImageModule imgmod_d71;	/* commodore 128d/1571 disketts */
 extern struct ImageModule imgmod_d81;	/* commodore 65/1565/1581 disketts */
 extern struct ImageModule imgmod_c64crt;	/* c64 cartridge */
+extern struct ImageModule imgmod_vmsx_tap;	/* vMSX .tap archiv */
+extern struct ImageModule imgmod_vmsx_gm2;	/* vMSX gmaster2.ram file */
+extern struct ImageModule imgmod_fmsx_cas;	/* fMSX style .cas file */
+extern struct ImageModule imgmod_msx_dsk;	/* bogus MSX images */
 
+extern struct ImageModule imgmod_rom16;
 extern struct ImageModule imgmod_zip;
 extern struct ImageModule imgmod_fs;
 
@@ -76,8 +81,13 @@ static const struct ImageModule *images[] = {
 	&imgmod_ti99_4a,
 	&imgmod_vc20,
 	&imgmod_vectrex,
-	&imgmod_vic20
+	&imgmod_vic20,
+	&imgmod_vmsx_tap,
+	&imgmod_vmsx_gm2,
+	&imgmod_fmsx_cas,
+	&imgmod_msx_dsk
 #if 1 /* these are only here for testing of these two */
+	,&imgmod_rom16
 	,&imgmod_fs,
 	&imgmod_zip
 #endif
@@ -311,7 +321,7 @@ int img_putfile(IMAGE *img, const char *newfname, const char *source, const file
 	STREAM *f;
 
 	if (!newfname)
-		newfname = basename(source);
+		newfname = osd_basename(source);
 
 	f = stream_open(source, OSD_FOPEN_READ);
 	if (!f)

@@ -10,15 +10,13 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
+#include "includes/vtech2.h"
 
 #define BORDER_H	64
 #define BORDER_V	32
 
-/* from mame.c */
-extern int bitmap_dirty;
-
 /* from machine/laser350.c */
-extern int laser_latch;
+//extern int laser_latch;
 
 /* public */
 char laser_frame_message[64+1];
@@ -53,7 +51,7 @@ static int laser_two_color = 0;
 int laser_vh_start(void)
 {
 	videoram_size = 0x04000;
-	dirtybuffer = malloc(videoram_size);
+	dirtybuffer = (UINT8*)malloc(videoram_size);
 	if (!dirtybuffer)
 		return 1;
 	return 0;
@@ -355,25 +353,25 @@ void laser_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 		ui_text(bitmap, laser_frame_message, 2, Machine->visible_area.max_y - 9);
 		/* if the message timed out, clear it on the next frame */
 		if( --laser_frame_time == 0 )
-			bitmap_dirty = 1;
+			schedule_full_refresh();
 	}
 }
 
-void laser_bg_mode_w(int offs, int data)
+WRITE_HANDLER( laser_bg_mode_w )
 {
     if (laser_bg_mode != data)
     {
-        bitmap_dirty = 1;
+        schedule_full_refresh();
         laser_bg_mode = data;
 		logerror("laser border:$%X mode:$%X\n", data >> 4, data & 15);
     }
 }
 
-void laser_two_color_w(int offs, int data)
+WRITE_HANDLER( laser_two_color_w )
 {
 	if (laser_two_color != data)
 	{
-		bitmap_dirty = 1;
+		schedule_full_refresh();
 		laser_two_color = data;
 		logerror("laser foreground:$%X background:$%X\n", data >> 4, data & 15);
     }

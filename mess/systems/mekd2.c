@@ -29,6 +29,8 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
+#include "includes/mekd2.h"
+
 #ifndef VERBOSE
 #define VERBOSE 1
 #endif
@@ -38,21 +40,6 @@
 #else
 #define LOG(x)	/* x */
 #endif
-
-/* from src/mess/machine/mekd2.c */
-extern void init_mekd2(void);
-extern void mekd2_init_machine(void);
-
-extern int mekd2_rom_load (int id);
-extern int mekd2_rom_id (int id);
-
-extern int mekd2_interrupt(void);
-
-/* from src/mess/vidhrdw/mekd2.c */
-extern void mekd2_init_colors (unsigned char *palette, unsigned short *colortable, const unsigned char *color_prom);
-extern int mekd2_vh_start (void);
-extern void mekd2_vh_stop (void);
-extern void mekd2_vh_screenrefresh (struct osd_bitmap *bitmap, int full_refresh);
 
 static READ_HANDLER(mekd2_pia_r) { return 0xff; }
 static READ_HANDLER(mekd2_cas_r) { return 0xff; }
@@ -105,8 +92,7 @@ static WRITE_HANDLER(mekd2_kbd_w)
 }
 
 
-static struct MemoryReadAddress readmem[] =
-{
+static MEMORY_READ_START( readmem )
 	{ 0x0000, 0x00ff, MRA_RAM },
 //	{ 0x0100, 0x01ff, MRA_RAM },	/* optional, set up in mekd2_init_machine */
 //	{ 0x6000, 0x67ff, MRA_ROM },	/* -"- */
@@ -117,11 +103,9 @@ static struct MemoryReadAddress readmem[] =
 //	{ 0xc000, 0xc7ff, MRA_RAM },	/* optional, set up in mekd2_init_machine */
 	{ 0xe000, 0xe3ff, MRA_ROM },	/* JBUG ROM */
 	{ 0xe400, 0xffff, mekd2_mirror_r },
-	{-1}
-};
+MEMORY_END
 
-static struct MemoryWriteAddress writemem[] =
-{
+static MEMORY_WRITE_START( writemem )
 	{ 0x0000, 0x00ff, MWA_RAM },
 //	{ 0x0100, 0x01ff, MWA_RAM },	/* optional, set up in mekd2_init_machine */
 //	{ 0x6000, 0x67ff, MWA_ROM },	/* -"- */
@@ -131,8 +115,7 @@ static struct MemoryWriteAddress writemem[] =
 	{ 0xa000, 0xa07f, MWA_RAM },
 //	{ 0xc000, 0xc7ff, MWA_RAM },	/* optional, set up in mekd2_init_machine */
 	{ 0xe000, 0xe3ff, MWA_ROM },	/* JBUG ROM */
-	{-1}
-};
+MEMORY_END
 
 INPUT_PORTS_START( mekd2 )
 	PORT_START			/* IN0 keys row 0 */
@@ -263,3 +246,12 @@ static const struct IODevice io_mekd2[] = {
 /*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	  COMPANY	  FULLNAME */
 CONS( 1977, mekd2,	   0,		mekd2,	  mekd2,	mekd2,	  "Motorola", "MEK6800D2" )
 
+#ifdef RUNTIME_LOADER
+extern void mekd2_runtime_loader_init(void)
+{
+	int i;
+	for (i=0; drivers[i]; i++) {
+		if ( strcmp(drivers[i]->name,"mekd2")==0) drivers[i]=&driver_mekd2;
+	}
+}
+#endif

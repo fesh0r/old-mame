@@ -14,6 +14,8 @@
 #include "vidhrdw/generic.h"
 #include "vidhrdw/pdp1.h"
 #include "cpu/pdp1/pdp1.h"
+#include "includes/pdp1.h"
+
 
 int fio_dec=0;
 int concise=0;
@@ -114,7 +116,7 @@ static void clear_points(struct osd_bitmap *bitmap)
 		int y=(&old_list[i])->y;
 
 		bitmap->line[y][x]=bg;
-		osd_mark_dirty(x,y,x,y,1);
+		osd_mark_dirty(x,y,x,y);
 	}
 	old_index=0;
 }
@@ -130,7 +132,7 @@ static void set_points(struct osd_bitmap *bitmap)
 		int y=(&new_list[i])->y;
 
 		bitmap->line[y][x]=fg;
-		osd_mark_dirty(x,y,x,y,1);
+		osd_mark_dirty(x,y,x,y);
 	}
 }
 

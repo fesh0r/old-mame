@@ -2,6 +2,8 @@
 #include "vidhrdw/vector.h"
 #include "machine/6522via.h"
 
+#include "includes/vectrex.h"
+
 #define RAMP_DELAY 6.333e-6
 #define BLANK_DELAY 0
 #define SH_DELAY 6.333e-6
@@ -23,26 +25,14 @@
 #define M_SQRT1_2 0.70710678118654752440
 #endif
 
-/* From machine/vectrex.c */
-extern int vectrex_refresh_with_T2;
-extern int vectrex_imager_status;
-extern int vectrex_beam_color;
-extern unsigned char vectrex_via_out[2];
-
-extern void vectrex_imager_left_eye (double time);
-extern void vectrex_configuration(void);
-extern int v_via_pa_r (int offset);
-extern int v_via_pb_r (int offset);
-extern void v_via_irq (int level);
-
 /*********************************************************************
   Local variables
  *********************************************************************/
-static void v_via_pa_w (int offset, int data);
-static void v_via_pb_w (int offset, int data);
-static void vectrex_screen_update (double time);
+static WRITE_HANDLER ( v_via_pa_w );
+static WRITE_HANDLER( v_via_pb_w );
+static void vectrex_screen_update (double time_);
 static void vectrex_shift_reg_w (int via_sr);
-static void v_via_ca2_w (int offset, int level);
+static WRITE_HANDLER ( v_via_ca2_w );
 
 static struct via6522_interface vectrex_via6522_interface =
 {
@@ -75,21 +65,22 @@ static float z_factor;
 
 static int T2_running; /* This turns zero if VIA timer 2 (the refresh timer) isn't running */
 static void *backup_timer = NULL;
+static int vectrex_full_refresh;
 
 void (*vector_add_point_function) (int, int, int, int) = vector_add_point;
 
 /*********************************************************************
   Screen updating
  *********************************************************************/
-static void vectrex_screen_update (double time)
+static void vectrex_screen_update (double time_)
 {
 	if (vectrex_imager_status)
-		vectrex_imager_left_eye(time);
+		vectrex_imager_left_eye(time_);
 
 	if (vectrex_refresh_with_T2)
 	{
 		T2_running = 3;
-		vector_vh_screenrefresh(tmpbitmap, 0);
+		vector_vh_screenrefresh(tmpbitmap, vectrex_full_refresh);
 		vector_clear_list();
 	}
 }
@@ -101,20 +92,18 @@ static void vectrex_screen_update_backup (int param)
 			       * for a longer time. */
 	else
 	{
-		vector_vh_screenrefresh(tmpbitmap, 0);
+		vector_vh_screenrefresh(tmpbitmap, vectrex_full_refresh);
 		vector_clear_list();
 	}
 }
 
 void vectrex_vh_update (struct osd_bitmap *bitmap, int full_refresh)
 {
-	palette_recalc();
+	vectrex_full_refresh = full_refresh;
 
+	palette_recalc();
 	vectrex_configuration();
 	copybitmap(bitmap, tmpbitmap,0,0,0,0,0,TRANSPARENCY_NONE,0);
-
-	if (full_refresh)
-		osd_mark_dirty (0, 0, bitmap->width, bitmap->height, 0);
 }
 
 /*********************************************************************
@@ -123,16 +112,16 @@ void vectrex_vh_update (struct osd_bitmap *bitmap, int full_refresh)
 void vector_add_point_stereo (int x, int y, int color, int intensity)
 {
 	if (vectrex_imager_status == 1) /* left = 2, right = 1 */
-		vector_add_point (y*M_SQRT1_2, ((x_max-x)*M_SQRT1_2)+y_center, color, intensity);
+		vector_add_point ((int)(y*M_SQRT1_2), (int)(((x_max-x)*M_SQRT1_2)+y_center), color, intensity);
 	else
-		vector_add_point (y*M_SQRT1_2, (x_max-x)*M_SQRT1_2, color, intensity);
+		vector_add_point ((int)(y*M_SQRT1_2), (int)((x_max-x)*M_SQRT1_2), color, intensity);
 }
 
 INLINE void vectrex_zero_integrators(void)
 {
 	if (last_point)
 		vector_add_point_function (last_point_x, last_point_y, vectrex_beam_color,
-					   MIN(last_point_z*((timer_get_time()-last_point_starttime)*3E4),255));
+					   MIN((int)(last_point_z*((timer_get_time()-last_point_starttime)*3E4)),255));
 	last_point = 0;
 
 	x_int=x_center-(analog_sig[2]*INT_PER_CLOCK);
@@ -144,7 +133,7 @@ INLINE void vectrex_dot(void)
 {
 	last_point_x = x_int;
 	last_point_y = y_int;
-	last_point_z = analog_sig[3] > 0? analog_sig[3] * z_factor: 0;
+	last_point_z = analog_sig[3] > 0? (int)(analog_sig[3] * z_factor): 0;
 	last_point_starttime = timer_get_time();
 	last_point = 1;
 }
@@ -153,11 +142,11 @@ INLINE void vectrex_shift_out(int shift, int pattern)
 {
 	int x = (analog_sig[0] - analog_sig[2]) * INT_PER_CLOCK * 2;
 	int y = (analog_sig[1] + analog_sig[2]) * INT_PER_CLOCK * 2;
-	int z = analog_sig[3] > 0? analog_sig[3] * z_factor: 0;
+	int z = analog_sig[3] > 0? (int)(analog_sig[3] * z_factor): 0;
 
 	if (last_point && (!(pattern & 0x80) || !z))
 		vector_add_point_function(last_point_x, last_point_y, vectrex_beam_color,
-				  MIN(last_point_z*((timer_get_time()-last_point_starttime)*3E4),255));
+				  MIN( (int)(last_point_z*((timer_get_time()-last_point_starttime)*3E4)),255));
 	last_point = 0;
 
 	while (shift)
@@ -183,10 +172,10 @@ INLINE void vectrex_shift_out(int shift, int pattern)
 	}
 }
 
-INLINE void vectrex_solid_line(double time, int pattern)
+INLINE void vectrex_solid_line(double time_, int pattern)
 {
-	int z = analog_sig[3] > 0? analog_sig[3]*z_factor: 0;
-    int length = VECTREX_CLOCK * INT_PER_CLOCK * time;
+	int z = analog_sig[3] > 0? (int)(analog_sig[3]*z_factor): 0;
+    int length = (int)(VECTREX_CLOCK * INT_PER_CLOCK * time_);
 
 	/* The BIOS draws lines as follows: First put a pattern in the VIA SR (this causes a dot). Then
 	 * turn on RAMP and let the integrators do their job (this causes a line to be drawn).
@@ -195,7 +184,7 @@ INLINE void vectrex_solid_line(double time, int pattern)
 	 * black (a move). */
 	if (last_point && (!(pattern & 0x80) || !z))
 		vector_add_point_function(last_point_x, last_point_y, vectrex_beam_color,
-				  MIN(last_point_z*((timer_get_time()-last_point_starttime)*3E4),255));
+				  MIN((int)(last_point_z*((timer_get_time()-last_point_starttime)*3E4)),255));
 	last_point = 0;
 
 	x_int += (int)(length * (analog_sig[0] - analog_sig[2]));
@@ -249,8 +238,9 @@ void vectrex_new_palette (unsigned char *palette)
 	else
 		sprintf(overlay_name,"mine.png"); /* load the minestorm overlay (built in game) */
 
+	artwork_kill(); /* remove existing overlay */
 	overlay_load(overlay_name, nextfree, Machine->drv->total_colors-nextfree);
-	
+
 	if ((artwork_overlay != NULL))
 	{
 		overlay_set_palette (palette, MIN(256, Machine->drv->total_colors) - nextfree);
@@ -293,18 +283,19 @@ void vectrex_set_palette (void)
 		logerror("Not enough memory!\n");
 		return;
 	}
-	
+
 	memset (palette, 0, Machine->drv->total_colors * 3);
 	vectrex_new_palette (palette);
-	palette_recalc();
 
-
-	i = (Machine->scrbitmap->depth == 8) ? MIN(256,Machine->drv->total_colors) 
+	i = (Machine->scrbitmap->depth == 8) ? MIN(256,Machine->drv->total_colors)
 		: Machine->drv->total_colors;
 
 	while (--i >= 0)
 		palette_change_color(i, palette[i*3], palette[i*3+1], palette[i*3+2]);
-		
+
+	palette_recalc();
+	artwork_remap(); /* this should be done in the core */
+
 	free (palette);
 	return;
 }
@@ -316,16 +307,7 @@ int vectrex_start (void)
 {
 	int width, height;
 
-	/* Set the whole cart ROM area to 1. This is needed to work around a bug (?)
-	 * in Minestorm where the exec-rom attempts to access a vector list here.
-	 * 1 signals the end of the vector list.
-	 */
-	memset (memory_region(REGION_CPU1), 1, 0x8000);
-
 	vectrex_set_palette ();
-
-	if (vector_vh_start())
-		return 1;
 
 	if (Machine->orientation & ORIENTATION_SWAP_XY)
 	{
@@ -362,6 +344,10 @@ int vectrex_start (void)
 	via_config(0, &vectrex_via6522_interface);
 	via_reset();
 	z_factor =  translucency? 1.5: 2;
+
+	if (vector_vh_start())
+		return 1;
+
 	return 0;
 }
 
@@ -385,7 +371,7 @@ INLINE void vectrex_multiplexer (int mux)
 		DAC_data_w(0,(signed char)vectrex_via_out[PORTA]+0x80);
 }
 
-static void v_via_pb_w (int offset, int data)
+static WRITE_HANDLER ( v_via_pb_w )
 {
 	if (!(data & 0x80))
 	{
@@ -397,9 +383,9 @@ static void v_via_pb_w (int offset, int data)
 			/* MUX has been enabled */
 			/* This is a rare case used by some new games */
 		{
-			double time = timer_get_time()+SH_DELAY;
-			vectrex_solid_line(time-start_time, old_via_sr);
-			start_time = time;
+			double time_ = timer_get_time()+SH_DELAY;
+			vectrex_solid_line(time_-start_time, old_via_sr);
+			start_time = time_;
 		}
 	}
 	else
@@ -428,9 +414,9 @@ static void v_via_pb_w (int offset, int data)
 	vectrex_via_out[PORTB] = data;
 }
 
-static void v_via_pa_w (int offset, int data)
+static WRITE_HANDLER ( v_via_pa_w )
 {
-	double time;
+	double time_;
 
 	if (!(vectrex_via_out[PORTB] & 0x80))  /* RAMP active (low) ? */
 	{
@@ -439,9 +425,9 @@ static void v_via_pa_w (int offset, int data)
 		 * Draw the vector with the current settings
 		 * before updating the signals.
 		 */
-		time = timer_get_time() + SH_DELAY;
-		vectrex_solid_line(time - start_time, old_via_sr);
-		start_time = time;
+		time_ = timer_get_time() + SH_DELAY;
+		vectrex_solid_line(time_ - start_time, old_via_sr);
+		start_time = time_;
 	}
 	/* DAC output always goes into X integrator */
 	vectrex_via_out[PORTA] = analog_sig[0] = (signed char)data;
@@ -454,7 +440,7 @@ static void v_via_pa_w (int offset, int data)
 
 static void vectrex_shift_reg_w (int via_sr)
 {
-	double time;
+	double time_;
 
 	if (vectrex_via_out[PORTB] & 0x80)
 	{
@@ -466,17 +452,17 @@ static void vectrex_shift_reg_w (int via_sr)
 	else
 	{
 		/* RAMP active */
-		time = timer_get_time() + BLANK_DELAY;
-		vectrex_solid_line(time - start_time, old_via_sr);
+		time_ = timer_get_time() + BLANK_DELAY;
+		vectrex_solid_line(time_ - start_time, old_via_sr);
 		vectrex_shift_out(8, via_sr);
-		start_time = time + TIME_IN_CYCLES(16, 0);
+		start_time = time_ + TIME_IN_CYCLES(16, 0);
 	}
 	old_via_sr = via_sr;
 }
 
-static void v_via_ca2_w (int offset, int level)
+static WRITE_HANDLER ( v_via_ca2_w )
 {
-	if  (!level)    /* ~ZERO low ? Then zero integrators*/
+	if  (!data)    /* ~ZERO low ? Then zero integrators*/
 		vectrex_zero_integrators();
 }
 
@@ -487,7 +473,7 @@ static void v_via_ca2_w (int offset, int level)
 *****************************************************************/
 
 extern int png_read_artwork(const char *file_name, struct osd_bitmap **bitmap, unsigned char **palette, int *num_palette, unsigned char **trans, int *num_trans);
-extern int s1_via_pb_r (int offset);
+extern READ_HANDLER ( s1_via_pb_r );
 
 static struct via6522_interface spectrum1_via6522_interface =
 {
@@ -520,13 +506,15 @@ void raaspec_init_colors (unsigned char *palette, unsigned short *colortable,con
 	/* artwork */
 	if (Machine->orientation & ORIENTATION_SWAP_XY)
 	{
-		artwork_load_size(&buttons, "spec_bt.png", 64, Machine->drv->total_colors - 64, Machine->scrbitmap->height * 0.1151961, Machine->scrbitmap->height);
+		artwork_load_size(&buttons, "spec_bt.png", 64, Machine->drv->total_colors - 64, 
+						  (int)(Machine->scrbitmap->height * 0.1151961), Machine->scrbitmap->height);
 		if (buttons)
 			artwork_load_size(&led, "led.png", buttons->start_pen + buttons->num_pens_used, Machine->drv->total_colors - 64 - buttons->num_pens_used, buttons->artwork->width, buttons->artwork->height / 8);
 	}
 	else
 	{
-		artwork_load_size(&buttons, "spec_bt.png", 64, Machine->drv->total_colors - 64, Machine->scrbitmap->width, Machine->scrbitmap->width * 0.1151961);
+		artwork_load_size(&buttons, "spec_bt.png", 64, Machine->drv->total_colors - 64, 
+						  Machine->scrbitmap->width, (int)(Machine->scrbitmap->width * 0.1151961));
 		if (buttons)
 			artwork_load_size(&led, "led.png", buttons->start_pen + buttons->num_pens_used, Machine->drv->total_colors - 64 - buttons->num_pens_used, buttons->artwork->width / 8, buttons->artwork->height);
 	}
@@ -541,7 +529,7 @@ void raaspec_init_colors (unsigned char *palette, unsigned short *colortable,con
 		}
 }
 
-void raaspec_led_w (int offset, int data)
+WRITE_HANDLER( raaspec_led_w )
 {
 	int i, y, width;
 	struct rectangle clip;
@@ -576,7 +564,7 @@ void raaspec_led_w (int offset, int data)
 					copybitmap(tmpbitmap, buttons->artwork, 0, 0, 0, y, &clip, TRANSPARENCY_NONE, 0);
 				else
 					copybitmap(tmpbitmap, led->artwork, 0,0,i*width, y,&clip,TRANSPARENCY_PEN, Machine->pens[transparent_pen]);
-				osd_mark_dirty (clip.min_x,clip.min_y,clip.max_x,clip.max_y,0);
+				osd_mark_dirty (clip.min_x,clip.min_y,clip.max_x,clip.max_y);
 			}
 		old_data=data;
 	}

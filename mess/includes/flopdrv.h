@@ -1,6 +1,10 @@
 #ifndef __FLOP_DRIVE_HEADER_INCLUDED__
 #define __FLOP_DRIVE_HEADER_INCLUDED__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
         DEN_FM_LO = 0,
         DEN_FM_HI,
@@ -137,7 +141,11 @@ void floppy_drive_seek(int drive, signed int signed_tracks);
 void	floppy_drive_format_sector(int drive, int side, int sector_index, int c, int h, int r, int n, int filler);
 void    floppy_drive_read_sector_data(int drive, int side, int index1, char *pBuffer, int length);
 void    floppy_drive_write_sector_data(int drive, int side, int index1, char *pBuffer, int length, int ddam);
+int		floppy_drive_get_datarate_in_us(DENSITY density);
 
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

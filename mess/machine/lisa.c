@@ -5,6 +5,7 @@
 
 	TODO :
 	* debug floppy controller emulation (indispensable to boot)
+	* finish MMU (does not switch to bank 0 on 68k trap)
 	* fix COPS support (what I assumed to be COPS reset line is NO reset line)
 	* finish keyboard/mouse support
 	* finish clock support
@@ -117,13 +118,13 @@ static UINT16 *old_display;		/* points to a copy of the screen, so that we can s
 	a hard disk
 */
 
-static int COPS_via_in_b(int offset);
-static void COPS_via_out_a(int offset, int val);
-static void COPS_via_out_b(int offset, int val);
-static void COPS_via_out_ca2(int offset, int val);
-static void COPS_via_out_cb2(int offset, int val);
+static READ_HANDLER(COPS_via_in_b);
+static WRITE_HANDLER(COPS_via_out_a);
+static WRITE_HANDLER(COPS_via_out_b);
+static WRITE_HANDLER(COPS_via_out_ca2);
+static WRITE_HANDLER(COPS_via_out_cb2);
 static void COPS_via_irq_func(int val);
-static int parallel_via_in_b(int offset);
+static READ_HANDLER(parallel_via_in_b);
 
 static int KBIR;	/* COPS VIA interrupt pending */
 
@@ -167,8 +168,8 @@ static int DISK_DIAG;
 	protos
 */
 
-static READ_HANDLER ( lisa_IO_r );
-static WRITE_HANDLER ( lisa_IO_w );
+static READ16_HANDLER ( lisa_IO_r );
+static WRITE16_HANDLER ( lisa_IO_w );
 
 
 /*
@@ -681,14 +682,14 @@ static void init_COPS(void)
 	CA1 (I) : COPS sending valid data
 	CA2 (O) : VIA -> COPS handshake
 */
-static void COPS_via_out_a(int offset, int val)
+static WRITE_HANDLER(COPS_via_out_a)
 {
-	COPS_command = val;
+	COPS_command = data;
 }
 
-static void COPS_via_out_ca2(int offset, int val)
+static WRITE_HANDLER(COPS_via_out_ca2)
 {
-	hold_COPS_data = val;
+	hold_COPS_data = data;
 
 	/*logerror("COPS CA2 line state : %d\n", val);*/
 
@@ -710,7 +711,7 @@ static void COPS_via_out_ca2(int offset, int val)
 	CB1 : not used
 	CB2 (O) : sound output
 */
-static int COPS_via_in_b(int offset)
+static READ_HANDLER(COPS_via_in_b)
 {
 	int val = 0;
 
@@ -723,9 +724,9 @@ static int COPS_via_in_b(int offset)
 	return val;
 }
 
-static void COPS_via_out_b(int offset, int val)
+static WRITE_HANDLER(COPS_via_out_b)
 {
-	if (val & 0x01)
+	if (data & 0x01)
 		COPS_reset_line = FALSE;
 	else if (! COPS_reset_line)
 	{
@@ -734,9 +735,9 @@ static void COPS_via_out_b(int offset, int val)
 	}
 }
 
-static void COPS_via_out_cb2(int offset, int val)
+static WRITE_HANDLER(COPS_via_out_cb2)
 {
-	speaker_level_w(0, val);
+	speaker_level_w(0, data);
 }
 
 static void COPS_via_irq_func(int val)
@@ -768,7 +769,7 @@ static void COPS_via_irq_func(int val)
 	CB1 : not used
 	CB2 (I) : current parity latch value
 */
-static int parallel_via_in_b(int offset)
+static READ_HANDLER(parallel_via_in_b)
 {
 	int val = 0;
 
@@ -850,7 +851,7 @@ void lisa_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 }
 
 
-static OPBASE_HANDLER (lisa_OPbaseoverride)
+static OPBASE16_HANDLER (lisa_OPbaseoverride)
 {
 	offs_t answer;
 
@@ -1215,7 +1216,7 @@ WRITE_HANDLER ( lisa_fdc_w )
 }
 
 
-READ_HANDLER ( lisa_r )
+READ16_HANDLER ( lisa_r )
 {
 	int answer=0;
 
@@ -1223,23 +1224,23 @@ READ_HANDLER ( lisa_r )
 	int the_seg = seg;
 
 	/* upper 7 bits -> segment # */
-	int segment = (offset >> 17) & 0x7f;
+	int segment = (offset >> 16) & 0x7f;
 
 
 	/*logerror("read, logical address%lX\n", offset);*/
 
 	if (setup)
 	{	/* special setup mode */
-		if (offset & 0x004000)
+		if (offset & 0x002000)
 		{
 			the_seg = 0;	/* correct ??? */
 		}
 		else
 		{
-			if (offset & 0x008000)
+			if (offset & 0x004000)
 			{	/* read MMU register */
 				/*logerror("read from segment registers (%X:%X) ", the_seg, segment);*/
-				if (offset & 0x000008)
+				if (offset & 0x000004)
 				{	/* sorg register */
 					answer = real_mmu_regs[the_seg][segment].sorg;
 					/*logerror("sorg, data = %X\n", answer);*/
@@ -1252,7 +1253,7 @@ READ_HANDLER ( lisa_r )
 			}
 			else
 			{	/* system ROMs */
-				answer = READ_WORD(lisa_rom_ptr + (offset & 0x003fff));
+				answer = ((UINT16*)lisa_rom_ptr)[offset & 0x001fff];
 
 				/*logerror("dst address in ROM (setup mode)\n");*/
 			}
@@ -1263,7 +1264,7 @@ READ_HANDLER ( lisa_r )
 
 	{
 		/* offset in segment */
-		int seg_offset = offset & 0x01ffff;
+		int seg_offset = (offset & 0x00ffff) << 1;
 
 		/* add revelant origin -> address */
 		offs_t address = (mmu_regs[the_seg][segment].sorg + seg_offset) & 0x1fffff;
@@ -1309,7 +1310,7 @@ READ_HANDLER ( lisa_r )
 			break;
 
 		case IO:
-			answer = lisa_IO_r(address & 0x00ffff);
+			answer = lisa_IO_r((address & 0x00ffff) >> 1);
 			break;
 
 		case invalid:		/* unmapped segment */
@@ -1371,27 +1372,27 @@ READ_HANDLER ( lisa_r )
 	return answer;
 }
 
-WRITE_HANDLER ( lisa_w )
+WRITE16_HANDLER ( lisa_w )
 {
 	/* segment register set */
 	int the_seg = seg;
 
 	/* upper 7 bits -> segment # */
-	int segment = (offset >> 17) & 0x7f;
+	int segment = (offset >> 16) & 0x7f;
 
 
 	if (setup)
 	{
-		if (offset & 0x004000)
+		if (offset & 0x002000)
 		{
 			the_seg = 0;	/* correct ??? */
 		}
 		else
 		{
-			if (offset & 0x008000)
+			if (offset & 0x004000)
 			{	/* write to MMU register */
 				/*logerror("write to segment registers (%X:%X) ", the_seg, segment);*/
-				if (offset & 0x000008)
+				if (offset & 0x000004)
 				{	/* sorg register */
 					/*logerror("sorg, data = %X\n", data);*/
 					real_mmu_regs[the_seg][segment].sorg = data;
@@ -1450,7 +1451,7 @@ WRITE_HANDLER ( lisa_w )
 
 	{
 		/* offset in segment */
-		int seg_offset = offset & 0x01ffff;
+		int seg_offset = (offset & 0x00ffff) << 1;
 
 		/* add revelant origin -> address */
 		offs_t address = (mmu_regs[the_seg][segment].sorg + seg_offset) & 0x1fffff;
@@ -1464,7 +1465,7 @@ WRITE_HANDLER ( lisa_w )
 				/* out of segment limits : bus error */
 
 			}
-			COMBINE_WORD_MEM(lisa_ram_ptr + address, data);
+			COMBINE_DATA((UINT16 *) (lisa_ram_ptr + address));
 			if (diag2)
 			{
 				if (! (data & 0x00ff0000))
@@ -1501,15 +1502,15 @@ WRITE_HANDLER ( lisa_w )
 				/* out of segment limits : bus error */
 
 			}
-			COMBINE_WORD_MEM(lisa_ram_ptr + address, data);
+			COMBINE_DATA((UINT16 *) (lisa_ram_ptr + address));
 			if (diag2)
 			{
-				if (! (data & 0x00ff0000))
+				if (ACCESSING_LSB)
 				{
 					bad_parity_table[address >> 3] |= 0x1 << (address & 0x7);
 					bad_parity_count++;
 				}
-				if (! (data & 0xff000000))
+				if (ACCESSING_MSB)
 				{
 					bad_parity_table[address >> 3] |= 0x2 << (address & 0x7);
 					bad_parity_count++;
@@ -1517,13 +1518,13 @@ WRITE_HANDLER ( lisa_w )
 			}
 			else if (bad_parity_table[address >> 3] & (0x3 << (address & 0x7)))
 			{
-				if ((! (data & 0x00ff0000))
+				if ((ACCESSING_LSB)
 					&& (bad_parity_table[address >> 3] & (0x1 << (address & 0x7))))
 				{
 					bad_parity_table[address >> 3] &= ~ (0x1 << (address & 0x7));
 					bad_parity_count--;
 				}
-				if ((! (data & 0xff000000))
+				if ((ACCESSING_MSB)
 					&& (bad_parity_table[address >> 3] & (0x2 << (address & 0x7))))
 				{
 					bad_parity_table[address >> 3] &= ~ (0x2 << (address & 0x7));
@@ -1533,7 +1534,7 @@ WRITE_HANDLER ( lisa_w )
 			break;
 
 		case IO:
-			lisa_IO_w(address, data);
+			lisa_IO_w((address & 0x00ffff) >> 1, data, mem_mask);
 			break;
 
 		case RAM_stack_r:	/* read-only */
@@ -1572,11 +1573,11 @@ WRITE_HANDLER ( lisa_w )
 *                                                                                      *
 \**************************************************************************************/
 
-static READ_HANDLER ( lisa_IO_r )
+static READ16_HANDLER ( lisa_IO_r )
 {
 	int answer=0;
 
-	switch ((offset & 0xe000) >> 13)
+	switch ((offset & 0x7000) >> 12)
 	{
 	case 0x0:
 		/* Slot 0 Low */
@@ -1603,17 +1604,17 @@ static READ_HANDLER ( lisa_IO_r )
 		break;
 
 	case 0x6:
-		if (! (offset & 0x1000))
+		if (! (offset & 0x800))
 		{
-			if (! (offset & 0x0800))
+			if (! (offset & 0x400))
 			{
-				answer = fdc_ram[(offset >> 1) & 0x03ff] & 0xff;	/* right ??? */
+				answer = fdc_ram[offset & 0x03ff] & 0xff;	/* right ??? */
 			}
 		}
 		else
 		{
 			/* I/O Board Devices */
-			switch ((offset & 0x0c00) >> 10)
+			switch ((offset & 0x0600) >> 9)
 			{
 			case 0:	/* serial ports control */
 				/*SCCBCTL	        .EQU    $FCD241	        ;SCC channel B control
@@ -1623,12 +1624,12 @@ static READ_HANDLER ( lisa_IO_r )
 
 			case 2:	/* parallel port */
 				/* 1 VIA located at 0xD901 */
-				return via_read(1, (offset >> 3) & 0xf);
+				return via_read(1, (offset >> 2) & 0xf);
 				break;
 
 			case 3:	/* keyboard/mouse cops via */
 				/* 1 VIA located at 0xDD81 */
-				return via_read(0, (offset >> 1) & 0xf);
+				return via_read(0, offset & 0xf);
 				break;
 			}
 		}
@@ -1636,10 +1637,10 @@ static READ_HANDLER ( lisa_IO_r )
 
 	case 0x7:
 		/* CPU Board Devices */
-		switch ((offset & 0x1800) >> 11)
+		switch ((offset & 0x0C00) >> 10)
 		{
 		case 0x0:	/* cpu board control */
-			switch (offset & 0x07ff)
+			switch ((offset & 0x03ff) << 1)
 			{
 			case 0x0002:	/* Set DIAG1 Latch */
 			case 0x0000:	/* Reset DIAG1 Latch */
@@ -1715,9 +1716,9 @@ static READ_HANDLER ( lisa_IO_r )
 	return answer;
 }
 
-static WRITE_HANDLER ( lisa_IO_w )
+static WRITE16_HANDLER ( lisa_IO_w )
 {
-	switch ((offset & 0xe000) >> 13)
+	switch ((offset & 0x7000) >> 12)
 	{
 	case 0x0:
 		/* Slot 0 Low */
@@ -1744,31 +1745,31 @@ static WRITE_HANDLER ( lisa_IO_w )
 		break;
 
 	case 0x6:
-		if (! (offset & 0x1000))
+		if (! (offset & 0x0800))
 		{
 			/* Floppy Disk Controller shared RAM */
-			if (! (offset & 0x0800))
+			if (! (offset & 0x0400))
 			{
-				if (! (data & 0x00ff0000))
-					fdc_ram[(offset >> 1) & 0x03ff] = data & 0xff;
+				if (ACCESSING_LSB)
+					fdc_ram[offset & 0x03ff] = data & 0xff;
 			}
 		}
 		else
 		{
 			/* I/O Board Devices */
-			switch ((offset & 0x0c00) >> 10)
+			switch ((offset & 0x0600) >> 9)
 			{
 			case 0:	/* serial ports control */
 				break;
 
 			case 2:	/* paralel port */
-				if (! (data & 0x00ff0000))
-					via_write(1, (offset >> 3) & 0xf, data & 0xff);
+				if (ACCESSING_LSB)
+					via_write(1, (offset >> 2) & 0xf, data & 0xff);
 				break;
 
 			case 3:	/* keyboard/mouse cops via */
-				if (! (data & 0x00ff0000))
-					via_write(0, (offset >> 1) & 0xf, data & 0xff);
+				if (ACCESSING_LSB)
+					via_write(0, offset & 0xf, data & 0xff);
 				break;
 			}
 		}
@@ -1776,10 +1777,10 @@ static WRITE_HANDLER ( lisa_IO_w )
 
 	case 0x7:
 		/* CPU Board Devices */
-		switch ((offset & 0x1800) >> 11)
+		switch ((offset & 0x0C00) >> 10)
 		{
 		case 0x0:	/* cpu board control */
-			switch (offset & 0x07ff)
+			switch ((offset & 0x03ff) << 1)
 			{
 			case 0x0002:	/* Set DIAG1 Latch */
 			case 0x0000:	/* Reset DIAG1 Latch */
@@ -1829,7 +1830,7 @@ static WRITE_HANDLER ( lisa_IO_w )
 
 		case 0x1:	/* Video Address Latch */
 			/*logerror("video address latch write offs=%X, data=%X\n", offset, data);*/
-			COMBINE_WORD_MEM(& video_address_latch, data);
+			COMBINE_DATA(& video_address_latch);
 			videoram_ptr = lisa_ram_ptr + ((video_address_latch << 7) & 0x1f8000);
 			/*logerror("video address latch %X -> base address %X\n", video_address_latch,
 							(video_address_latch << 7) & 0x1f8000);*/

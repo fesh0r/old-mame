@@ -66,6 +66,8 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
+#include "includes/vtech2.h"
+
 #define VERBOSE 0
 
 #if VERBOSE
@@ -74,73 +76,30 @@
 #define LOG(x)	/* x */
 #endif
 
-/* from mame.c */
-extern int bitmap_dirty;
-
-/* from machine/laser350.c */
-extern int laser_latch;
-
-extern void init_laser(void);
-extern void laser350_init_machine(void);
-extern void laser500_init_machine(void);
-extern void laser700_init_machine(void);
-extern void laser_shutdown_machine(void);
-
-extern int laser_rom_id(int id);
-extern int laser_rom_init(int id);
-extern void laser_rom_exit(int id);
-
-extern int laser_floppy_id(int id);
-extern int laser_floppy_init(int id);
-extern void laser_floppy_exit(int id);
-
-extern int laser_cassette_id(int id);
-extern int laser_cassette_init(int id);
-extern void laser_cassette_exit(int id);
-
-extern READ_HANDLER ( laser_fdc_r );
-extern WRITE_HANDLER ( laser_fdc_w );
-extern WRITE_HANDLER ( laser_bank_select_w );
-
-/* from vidhrdw/laser350.c */
-extern int laser_vh_start(void);
-extern void laser_vh_stop(void);
-extern void laser_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh);
-extern WRITE_HANDLER ( laser_bg_mode_w );
-extern WRITE_HANDLER ( laser_two_color_w );
-
-static struct MemoryReadAddress readmem[] =
-{
+static MEMORY_READ_START( readmem )
 	{ 0x00000, 0x03fff, MRA_BANK1 },
 	{ 0x04000, 0x07fff, MRA_BANK2 },
 	{ 0x08000, 0x0bfff, MRA_BANK3 },
 	{ 0x0c000, 0x0ffff, MRA_BANK4 },
-	{ -1 }  /* end of table */
-};
+MEMORY_END
 
-static struct MemoryWriteAddress writemem[] =
-{
+static MEMORY_WRITE_START( writemem )
 	{ 0x00000, 0x03fff, MWA_BANK1 },
 	{ 0x04000, 0x07fff, MWA_BANK2 },
 	{ 0x08000, 0x0bfff, MWA_BANK3 },
 	{ 0x0c000, 0x0ffff, MWA_BANK4 },
-    { -1 }  /* end of table */
-};
+MEMORY_END
 
-static struct IOReadPort readport[] =
-{
+static PORT_READ_START( readport )
 	{ 0x10, 0x1f, laser_fdc_r },
-    { -1 }
-};
+PORT_END
 
-static struct IOWritePort writeport[] =
-{
+static PORT_WRITE_START( writeport )
 	{ 0x10, 0x1f, laser_fdc_w },
 	{ 0x40, 0x43, laser_bank_select_w },
 	{ 0x44, 0x44, laser_bg_mode_w },
 	{ 0x45, 0x45, laser_two_color_w },
-    { -1 }
-};
+PORT_END
 
 INPUT_PORTS_START( laser350 )
 	PORT_START /* IN0 KEY ROW 0 */
@@ -757,3 +716,14 @@ COMP( 1984?, laser350, 0,		 laser350, laser350, laser,    "Video Technology",  "
 COMP( 1984?, laser500, laser350, laser500, laser500, laser,    "Video Technology",  "Laser 500" )
 COMP( 1984?, laser700, laser350, laser700, laser500, laser,    "Video Technology",  "Laser 700" )
 
+#ifdef RUNTIME_LOADER
+extern void vtech2_runtime_loader_init(void)
+{
+	int i;
+	for (i=0; drivers[i]; i++) {
+		if ( strcmp(drivers[i]->name,"laser350")==0) drivers[i]=&driver_laser350;
+		if ( strcmp(drivers[i]->name,"laser500")==0) drivers[i]=&driver_laser500;
+		if ( strcmp(drivers[i]->name,"laser700")==0) drivers[i]=&driver_laser700;
+	}
+}
+#endif

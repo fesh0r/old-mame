@@ -25,7 +25,7 @@
 ** nes_apu.h
 **
 ** NES APU emulation header file
-** $Id: nes_apu.h,v 1.8 2000/09/13 03:27:23 hjb Exp $
+** $Id: nes_apu.h,v 1.10 2000/10/09 13:52:30 ben Exp $
 */
 
 #ifndef _NES_APU_H_
@@ -298,6 +298,9 @@ extern void apu_write(uint32 address, uint8 value);
 
 /*
 ** $Log: nes_apu.h,v $
+** Revision 1.10  2000/10/09 13:52:30  ben
+** NES update
+**
 ** Revision 1.8  2000/09/13 03:27:23  hjb
 ** Incorporated the interface changes (cpunum for readmem and IRQ generation)
 ** in the files which Matthew originally submitted.

@@ -145,13 +145,12 @@ when problems start with -log and look into error.log file
 #include "includes/cia6526.h"
 #include "includes/vic6567.h"
 #include "includes/sid6581.h"
-#include "includes/c1551.h"
+#include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 
 #include "includes/c65.h"
 
-static struct MemoryReadAddress c65_readmem[] =
-{
+static MEMORY_READ_START( c65_readmem )
 	{0x00000, 0x00001, c64_m6510_port_r},
 	{0x00002, 0x07fff, MRA_RAM},
 	{0x08000, 0x09fff, MRA_BANK1},
@@ -166,11 +165,9 @@ static struct MemoryReadAddress c65_readmem[] =
 	{0x40000, 0x7ffff, MRA_NOP},
 	{0x80000, 0xfffff, MRA_RAM},
 	/* 8 megabyte full address space! */
-	MEMORY_TABLE_END
-};
+MEMORY_END
 
-static struct MemoryWriteAddress c65_writemem[] =
-{
+static MEMORY_WRITE_START( c65_writemem )
 	{0x00000, 0x00001, c64_m6510_port_w, &c64_memory},
 	{0x00002, 0x07fff, MWA_RAM},
 	{0x08000, 0x09fff, MWA_RAM},
@@ -196,8 +193,7 @@ static struct MemoryWriteAddress c65_writemem[] =
 	{0x40000, 0x7ffff, MWA_NOP},
 	{0x80000, 0xfffff, MWA_RAM},
 /*	{0x80000, 0xfffff, MWA_BANK16}, */
-	MEMORY_TABLE_END
-};
+MEMORY_END
 
 #define DIPS_HELPER(bit, name, keycode) \
    PORT_BITX(bit, IP_ACTIVE_HIGH, IPT_KEYBOARD, name, keycode, IP_JOY_NONE)
@@ -488,6 +484,54 @@ ROM_START (c65a)
 ROM_END
 
 
+static SID6581_interface ntsc_sound_interface =
+{
+	{
+		sid6581_custom_start,
+		sid6581_custom_stop,
+		sid6581_custom_update
+	},
+	2,
+	{
+		{
+			MIXER(50, MIXER_PAN_LEFT),
+			MOS8580,
+			985248,
+			c64_paddle_read
+		},
+		{
+			MIXER(50, MIXER_PAN_RIGHT),
+			MOS8580,
+			985248,
+			NULL
+		}
+	}		
+};
+
+static SID6581_interface pal_sound_interface =
+{
+	{
+		sid6581_custom_start,
+		sid6581_custom_stop,
+		sid6581_custom_update
+	},
+	2,
+	{
+		{
+			MIXER(50, MIXER_PAN_LEFT),
+			MOS8580,
+			1022727,
+			c64_paddle_read
+		},
+		{
+			MIXER(50, MIXER_PAN_RIGHT),
+			MOS8580,
+			1022727,
+			NULL
+		}
+	}		
+};
+
 static struct MachineDriver machine_driver_c65 =
 {
   /* basic machine hardware */
@@ -523,7 +567,7 @@ static struct MachineDriver machine_driver_c65 =
   /* sound hardware */
 	0, 0, 0, 0,
 	{
-		{ SOUND_CUSTOM, &sid6581_sound_interface },
+		{ SOUND_CUSTOM, &ntsc_sound_interface },
 		{ 0 }
 	}
 };
@@ -564,7 +608,7 @@ static struct MachineDriver machine_driver_c65pal =
   /* sound hardware */
 	0, 0, 0, 0,
 	{
-		{ SOUND_CUSTOM, &sid6581_sound_interface },
+		{ SOUND_CUSTOM, &pal_sound_interface },
 		{ 0 }
 	}
 };
@@ -597,3 +641,17 @@ COMPX ( 199?,	c65c,	c65,	c65,	c65,	c65,		"Commodore Business Machines Co.",  "C6
 COMPX ( 199?,	c65ger, c65,	c65pal, c65ger, c65pal, 	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, German PAL, 910429)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
 COMPX ( 199?,	c65a,	c65,	c65,	c65,	c65_alpha1, "Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910111)",        GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
 
+#ifdef RUNTIME_LOADER
+extern void c65_runtime_loader_init(void)
+{
+	int i;
+	for (i=0; drivers[i]; i++) {
+		if ( strcmp(drivers[i]->name,"c65")==0) drivers[i]=&driver_c65;
+		if ( strcmp(drivers[i]->name,"c65e")==0) drivers[i]=&driver_c65e;
+		if ( strcmp(drivers[i]->name,"c65d")==0) drivers[i]=&driver_c65d;
+		if ( strcmp(drivers[i]->name,"c65c")==0) drivers[i]=&driver_c65c;
+		if ( strcmp(drivers[i]->name,"c65ger")==0) drivers[i]=&driver_c65ger;
+		if ( strcmp(drivers[i]->name,"c65a")==0) drivers[i]=&driver_c65a;
+	}
+}
+#endif

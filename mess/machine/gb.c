@@ -10,6 +10,7 @@
 #include "driver.h"
 #include "machine/gb.h"
 #include "cpu/z80gb/z80gb.h"
+#include "includes/gb.h"
 
 static UINT8 MBCType;				   /* MBC type: 1 for MBC2, 0 for MBC1            */
 static UINT8 *ROMMap[256];			   /* Addresses of ROM banks                      */
@@ -107,6 +108,7 @@ WRITE_HANDLER ( gb_w_io )
 
 	offset += 0xFF00;
 
+	logerror("Hardware hit %04x, %02x\n", offset, data);
 	switch (offset)
 	{
 	case 0xFF00:
@@ -263,14 +265,16 @@ WRITE_HANDLER ( gb_w_io )
 		gb_spal1[3] = Machine->pens[((data & 0xC0) >> 6) + 8];
 		break;
 	default:
-#ifdef SOUND
+
 		if ((offset >= 0xFF10) && (offset <= 0xFF26))
 		{
-			Adlib_WriteSoundReg (offset, data);
+            logerror("SOUND WRITE offset: %x  data: %x\n",offset,data);
+            gameboy_sound_w(offset,data);
+			gb_ram [offset] = data;
 			return;
 		}
-#else
-		if (offset == 0xFF26)
+
+/*		if (offset == 0xFF26)
 		{
 			if (data & 0x80)
 				gb_ram [0xFF26] = 0xFF;
@@ -278,9 +282,33 @@ WRITE_HANDLER ( gb_w_io )
 				gb_ram [0xFF26] = 0;
 			return;
 		}
-#endif
+*/
 	}
 	gb_ram [offset] = data;
+}
+
+READ_HANDLER ( gb_ser_regs )
+{
+	offset += 0xFF00;
+
+	switch(offset)
+	{
+		case 0xFF00:
+						logerror("Location read 0xff00\n");
+						break;
+		case 0xFF01:
+						logerror("Location read 0xff01\n");
+						break;
+		case 0xFF02:
+						logerror("Location read 0xff02\n");
+						break;
+		case 0xFF03:
+						logerror("Location read 0xff03\n");
+						break;
+	}
+
+	return gb_ram[offset];
+
 }
 
 READ_HANDLER ( gb_r_divreg )
@@ -644,6 +672,8 @@ int gb_scanline_interrupt (void)
 
 		CURLINE = (CURLINE + 1) % 154;
 
+		//gb_ram[0xFF44] = CURLINE;
+
 		if (CURLINE < 144)
 		{
 			/* first  lcdstate change after aprox 49 uS */
@@ -657,7 +687,10 @@ int gb_scanline_interrupt (void)
 
 			/* generate lcd interrupt if requested */
 			if( LCDSTAT & 0x08 )
-				cpu_set_irq_line(0, LCD_INT, HOLD_LINE);
+				{
+					logerror("generating lcd interrupt\n");
+					cpu_set_irq_line(0, LCD_INT, HOLD_LINE);
+				}
 		}
 		else
 		{

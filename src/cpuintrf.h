@@ -36,6 +36,9 @@ enum
 #if (HAS_Z80)
 	CPU_Z80,
 #endif
+#if (HAS_SH2)
+	CPU_SH2,
+#endif
 #if (HAS_Z80GB)
 	CPU_Z80GB,
 #endif
@@ -109,46 +112,46 @@ enum
 	CPU_V33,
 #endif
 #if (HAS_I8035)
-	CPU_I8035,
+	CPU_I8035,	/* same as CPU_I8039 */
 #endif
 #if (HAS_I8039)
 	CPU_I8039,
 #endif
 #if (HAS_I8048)
-	CPU_I8048,
+	CPU_I8048,	/* same as CPU_I8039 */
 #endif
 #if (HAS_N7751)
-	CPU_N7751,
+	CPU_N7751,	/* same as CPU_I8039 */
 #endif
 #if (HAS_M6800)
-	CPU_M6800,
+	CPU_M6800,	/* same as CPU_M6802/CPU_M6808 */
 #endif
 #if (HAS_M6801)
-	CPU_M6801,
+	CPU_M6801,	/* same as CPU_M6803 */
 #endif
 #if (HAS_M6802)
-	CPU_M6802,
+	CPU_M6802,	/* same as CPU_M6800/CPU_M6808 */
 #endif
 #if (HAS_M6803)
-	CPU_M6803,
+	CPU_M6803,	/* same as CPU_M6801 */
 #endif
 #if (HAS_M6808)
-	CPU_M6808,
+	CPU_M6808,	/* same as CPU_M6800/CPU_M6802 */
 #endif
 #if (HAS_HD63701)
-	CPU_HD63701,
+	CPU_HD63701,	/* 6808 with some additional opcodes */
 #endif
 #if (HAS_NSC8105)
-	CPU_NSC8105,
+	CPU_NSC8105,	/* same(?) as CPU_M6802(?) with scrambled opcodes. There is at least one new opcode. */
 #endif
 #if (HAS_M6805)
 	CPU_M6805,
 #endif
 #if (HAS_M68705)
-	CPU_M68705,
+	CPU_M68705,	/* same as CPU_M6805 */
 #endif
 #if (HAS_HD63705)
-	CPU_HD63705,
+	CPU_HD63705,	/* M6805 family but larger address space, different stack size */
 #endif
 #if (HAS_HD6309)
 	CPU_HD6309,
@@ -261,13 +264,13 @@ enum
 
 
 /* The old system is obsolete and no longer supported by the core */
-#define NEW_INTERRUPT_SYSTEM	1
+#define NEW_INTERRUPT_SYSTEM    1
 
-#define MAX_IRQ_LINES	16		/* maximum number of IRQ lines per CPU */
+#define MAX_IRQ_LINES   8       /* maximum number of IRQ lines per CPU */
 
 #define CLEAR_LINE		0		/* clear (a fired, held or pulsed) line */
-#define ASSERT_LINE 	1		/* assert an interrupt immediately */
-#define HOLD_LINE		2		/* hold interrupt line until enable is true */
+#define ASSERT_LINE     1       /* assert an interrupt immediately */
+#define HOLD_LINE       2       /* hold interrupt line until enable is true */
 #define PULSE_LINE		3		/* pulse interrupt line for one instruction */
 
 #define MAX_REGS		128 	/* maximum number of register of any CPU */
@@ -320,7 +323,7 @@ struct cpu_interface
 	void (*set_context)(void *reg);
 	void *(*get_cycle_table)(int which);
 	void (*set_cycle_table)(int which, void *new_table);
-	unsigned (*get_pc)(void);
+    unsigned (*get_pc)(void);
 	void (*set_pc)(unsigned val);
 	unsigned (*get_sp)(void);
 	void (*set_sp)(unsigned val);
@@ -615,11 +618,6 @@ unsigned cpunum_align_unit(int cpunum);
 /* Return maximum instruction length */
 unsigned cpunum_max_inst_len(int cpunum);
 
-/* Read memory from the specified CPU number of the running machine */
-data_t cpunum_readmem(int cpunum, offs_t offset);
-/* Write memory for the specified CPU number of the running machine */
-void cpunum_writemem(int cpunum, offs_t offset, data_t data);
-
 /* Get a register value for the specified CPU number of the running machine */
 unsigned cpunum_get_reg(int cpunum, int regnum);
 /* Set a register value for the specified CPU number of the running machine */
@@ -654,16 +652,16 @@ void cpu_dump_states(void);
 
 /* daisy-chain link */
 typedef struct {
-	void (*reset)(int); 			/* reset callback	  */
-	int  (*interrupt_entry)(int);	/* entry callback	  */
-	void (*interrupt_reti)(int);	/* reti callback	  */
-	int irq_param;					/* callback paramater */
+	void (*reset)(int);             /* reset callback     */
+	int  (*interrupt_entry)(int);   /* entry callback     */
+	void (*interrupt_reti)(int);    /* reti callback      */
+	int irq_param;                  /* callback paramater */
 }	Z80_DaisyChain;
 
 #define Z80_MAXDAISY	4		/* maximum of daisy chan device */
 
-#define Z80_INT_REQ 	0x01	/* interrupt request mask		*/
-#define Z80_INT_IEO 	0x02	/* interrupt disable mask(IEO)	*/
+#define Z80_INT_REQ     0x01    /* interrupt request mask       */
+#define Z80_INT_IEO     0x02    /* interrupt disable mask(IEO)  */
 
 #define Z80_VECTOR(device,state) (((device)<<8)|(state))
 
@@ -672,4 +670,3 @@ typedef struct {
 #endif
 
 #endif	/* CPUINTRF_H */
-

@@ -10,9 +10,14 @@
 
 #include "driver.h"
 #include "includes/bbc.h"
-#include "vidhrdw/bbc.h"
 #include "vidhrdw/m6845.h"
-#include "vidhrdw/ttchar.h"
+#include "vidhrdw/bbctext.h"
+
+
+/* just needed here temp. while the SAA5050 is being worked on */
+void BBC_ula_showteletext(int col);
+
+
 
 /************************************************************************
  * video_refresh flag is used in optimising the screen redrawing
@@ -21,11 +26,11 @@
  * The vidmem array is used to optimise the screen redrawing
  * whenever a memory location is written to the same location is set in the vidmem array
  * if none of the video registers have been changed and a full redraw is not needed
- * the video display emulation will only redraw the video memory location that have been changed.
+ * the video display emulation will only redraw the video memory locations that have been changed.
  ************************************************************************/
 
 static int video_refresh;
-unsigned char vidmem[0x8000];
+unsigned char vidmem[0x10000];
 
 /************************************************************************
  * video memory lookup arrays.
@@ -112,7 +117,7 @@ void set_video_memory_lookups(int ramsize)
 					m=((ma&0xff)<<3)|(s<<11);
 				} else {
 					m=((ma&0x3ff)|0x3c00)|((s&0x8)<<11);
-				};
+				}
 				if (ramsize==16)
 				{
 					video_ram_lookup[ma]=m & 0x3fff;
@@ -120,9 +125,9 @@ void set_video_memory_lookups(int ramsize)
 					video_ram_lookup[ma]=m;
 				}
 
-			};
-		};
-	};
+			}
+		}
+	}
 }
 
 
@@ -136,6 +141,138 @@ void setscreenstart(int c0,int c1)
 
 	// emulation refresh optimisation
 	video_refresh=1;
+}
+
+
+/************************************************************************
+ * SAA5050 Teletext
+ ************************************************************************/
+
+static char *tt_lookup=teletext_characters;
+static char *tt_graphics=teletext_graphics;
+static int tt_colour=7;
+static int tt_bgcolour=0;
+static int tt_start_line=0;
+static int tt_double_height=0;
+static int tt_double_height_set=0;
+static int tt_double_height_offset=0;
+static int tt_linecount=0;
+
+void teletext_DEW(void)
+{
+	tt_linecount=9;
+	tt_double_height_set=0;
+	tt_double_height_offset=0;
+}
+
+void teletext_LOSE(void)
+{
+	tt_lookup=teletext_characters;
+	tt_colour=7;
+	tt_bgcolour=0;
+	tt_graphics=teletext_graphics;
+	tt_linecount=(tt_linecount+1)%10;
+	tt_start_line=0;
+	tt_double_height=0;
+
+
+	/* this double hight stuff works but has got a bit messy I will have another go and clean it up soon */
+	if (tt_linecount==0)
+	{
+		if (tt_double_height_set==1)
+		{
+			if (tt_double_height_offset)
+			{
+				tt_double_height_offset=0;
+			} else {
+				tt_double_height_offset=10;
+			}
+		} else {
+			tt_double_height_offset=0;
+		}
+		tt_double_height_set=0;
+	}
+}
+
+
+
+
+void SAA5050_clock(int code)
+{
+	int sc1;
+
+	code=code&0x7f;
+
+	switch (code)
+	{
+		// 0x00 Not used
+
+		case 0x01: case 0x02: case 0x03: case 0x04:
+		case 0x05: case 0x06: case 0x07:
+			tt_lookup=teletext_characters;
+			tt_colour=code;
+			break;
+
+
+		// 0x08		Flash      TO BE DONE
+		// 0x09		Steady     TO BE DOME
+
+		// 0x0a		End Box    NOT USED
+		// 0x0b     Start Box  NOT USED
+
+		case 0x0c:	// Normal Height
+			tt_double_height=0;
+			tt_start_line=0;
+			break;
+		case 0x0d:	// Double Height
+			tt_double_height=1;
+			tt_double_height_set=1;
+			tt_start_line=tt_double_height_offset;
+			break;
+
+		// 0x0e		S0         NOT USED
+		// 0x0f		S1         NOT USED
+		// 0x10		DLE        NOT USED
+
+		case 0x11: case 0x12: case 0x13: case 0x14:
+		case 0x15: case 0x16: case 0x17:
+			tt_lookup=teletext_graphics;
+			tt_colour=code&0x07;
+			break;
+
+		// 0x18		Conceal Display
+
+		case 0x19:	//  Contiguois Graphics
+			tt_graphics=teletext_graphics;
+			if (tt_lookup!=teletext_characters)
+				tt_lookup=tt_graphics;
+			break;
+		case 0x1a:	//  Separated Graphics
+			tt_graphics=teletext_separated_graphics;
+			if (tt_lookup!=teletext_characters)
+				tt_lookup=tt_graphics;
+			break;
+
+		// 0x1b		ESC        NOT USED
+
+		case 0x1c:  //  Black Background
+			tt_bgcolour=0;
+			break;
+		case 0x1d:  //  New Background
+			tt_bgcolour=tt_colour;
+			break;
+
+		// 0x1e		Hold Graphics    TO BE DONE
+		// 0x1f		Release Graphics TO BE DONE
+
+	}
+
+	if (code<0x20) {code=0x20;}
+	code=(code-0x20)*60+(6*((tt_linecount+tt_start_line)>>tt_double_height));
+	for(sc1=0;sc1<6;sc1++)
+	{
+		BBC_ula_showteletext(tt_lookup[code++]?tt_colour:tt_bgcolour);
+	}
 }
 
 
@@ -187,7 +324,7 @@ void videoULA_select_pallet(void)
 // -96 sets the screen display to the middle of emulated screen.
 static int x_screen_offset=-96;
 
-static int y_screen_offset=0;
+static int y_screen_offset=-8;
 
 WRITE_HANDLER ( videoULA_w )
 {
@@ -220,7 +357,7 @@ WRITE_HANDLER ( videoULA_w )
 			pixels_per_byte=pixels_per_byte_set[videoULA_characters_per_line|(videoULA_6845_clock_rate<<2)];
 			pixels_per_clock=pixels_per_clock_set[videoULA_characters_per_line];
 			x_screen_offset=-96;
-			y_screen_offset=0;
+			y_screen_offset=-8;
 		}
 
 		break;
@@ -234,7 +371,7 @@ WRITE_HANDLER ( videoULA_w )
 		videoULA_pallet2[tpal]=Machine->pens[tcol^7];
 		videoULA_pallet3[tpal]=tcol>7?Machine->pens[tcol^7^7]:Machine->pens[tcol^7];
 		break;
-	};
+	}
 
 
 	// emulation refresh optimisation
@@ -271,6 +408,8 @@ static int BBC_DE=0;
 
 
 static unsigned char *BBC_Video_RAM;
+static unsigned char *vidmem_RAM;
+
 static unsigned char *BBC_display;
 static struct osd_bitmap *BBC_bitmap;
 
@@ -291,9 +430,9 @@ void BBC_draw_hi_res_enabled(void)
 	// the logic for the memory location address is very complicated so it
 	// is stored in a number of look up arrays (and is calculated once at the start of the emulator).
 	meml=video_ram_lookup[crtc6845_memory_address_r(0)]|(BBC_Character_Row&0x7);
-	if (vidmem[meml] || video_refresh )
+	if (vidmem_RAM[meml] || video_refresh )
 	{
-		vidmem[meml]=0;
+		vidmem_RAM[meml]=0;
 		i=BBC_Video_RAM[meml];
 
 		for(sc1=0;sc1<pixels_per_byte;sc1++)
@@ -307,29 +446,38 @@ void BBC_draw_hi_res_enabled(void)
 
 }
 
+
+/*********************
+part of the video ula
+that recieves the output from the teletext IC
+**********************/
+
+static unsigned int teletext_cursor_state=7;
+
+void teletext_set_cursor(void)
+{
+	teletext_cursor_state=VideoULA_CR?0:7;
+}
+
+static int ttx_c;
+
+void BBC_ula_showteletext(int col)
+{
+	int tcol;
+	tcol=Machine->pens[col^teletext_cursor_state];
+	BBC_display[ttx_c++]=tcol;
+	BBC_display[ttx_c++]=tcol;
+	BBC_display[ttx_c++]=tcol;
+}
+
+
+
 void BBC_draw_teletext_enabled(void)
 {
-	int meml;
-	unsigned char i=0;
-	int sc1;
-	int t1;
-	int c=0;
-	int pixel_temp=0;
-
-	meml=video_ram_lookup[crtc6845_memory_address_r(0)-1];
-	i=BBC_Video_RAM[meml]&0x7f;
-	if (i<0x20) {i=0x20;}
-	i=i-0x20;
-
-	for(sc1=0;sc1<6;sc1++)
-	{
-		t1=teletext_characters[(60*i)+sc1+(6*(BBC_Character_Row/2))]?7:0;
-		pixel_temp=Machine->pens[7-t1];
-		BBC_display[c++]=pixel_temp;
-		BBC_display[c++]=pixel_temp;
-		BBC_display[c++]=pixel_temp;
-	}
+	ttx_c=0;
+	SAA5050_clock( BBC_Video_RAM[ video_ram_lookup[crtc6845_memory_address_r(0)-1] ]&0x7f );
 }
+
 
 void BBC_draw_screen_disabled(void)
 {
@@ -351,6 +499,7 @@ void BBC_Set_VideoULA_DE(void)
 	{
 		if (BBC_DE)
 		{
+			teletext_LOSE();
 			draw_function=*BBC_draw_teletext_enabled;
 		} else {
 			draw_function=*BBC_draw_screen_disabled;
@@ -389,6 +538,8 @@ void BBC_Set_HSync(int offset, int data)
 		y_screen_pos+=1;
 		x_screen_pos=x_screen_offset;
 		BBC_display=(BBC_bitmap->line[y_screen_pos])+x_screen_pos;
+
+
 	}
 }
 
@@ -400,7 +551,9 @@ void BBC_Set_VSync(int offset, int data)
 	{
 		y_screen_pos=y_screen_offset;
 		BBC_display=(BBC_bitmap->line[y_screen_pos])+x_screen_pos;
-	};
+
+		teletext_DEW();
+	}
 }
 
 // called when the 6845 changes the Display Enabled
@@ -408,6 +561,7 @@ void BBC_Set_DE(int offset, int data)
 {
 	BBC_DE=data;
 	BBC_Set_VideoULA_DE();
+
 }
 
 // called when the 6845 changes the Cursor Enabled
@@ -420,7 +574,8 @@ void BBC_Set_CR(int offset, int data)
 		video_refresh=video_refresh|4;
 		// set the pallet to the cursor pallet
 		videoULA_select_pallet();
-	};
+		teletext_set_cursor();
+	}
 }
 
 // If the cursor is on there is a counter in the VideoULA to control the length of the Cursor
@@ -431,6 +586,7 @@ void BBC_Clock_CR(void)
 		VideoULA_CR=0;
 		video_refresh=video_refresh&0xfb;
 		videoULA_select_pallet();
+		teletext_set_cursor();
 	}
 }
 
@@ -478,6 +634,9 @@ READ_HANDLER (BBC_6845_r)
 }
 
 
+
+
+
 /************************************************************************
  * bbc_vh_screenrefresh
  * resfresh the BBC video screen
@@ -506,7 +665,7 @@ void bbc_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 		// Clock the 6845
 		crtc6845_clock();
 		c++;
-	};
+	}
 
 
 	// loop until the Vertical Sync pulse goes high
@@ -549,6 +708,17 @@ void bbc_vh_screenrefresh(struct osd_bitmap *bitmap, int full_refresh)
 
 }
 
+void bbcbp_setvideoshadow(int vdusel)
+{
+	if (vdusel)
+	{
+		BBC_Video_RAM= memory_region(REGION_CPU1)+0x8000;
+		vidmem_RAM=(vidmem)+0x8000;
+	} else {
+		BBC_Video_RAM= memory_region(REGION_CPU1);
+		vidmem_RAM=vidmem;
+	}
+}
 
 /************************************************************************
  * bbc_vh_start
@@ -562,6 +732,7 @@ int bbc_vh_starta(void)
 	crtc6845_config(&BBC6845);
 
 	BBC_Video_RAM= memory_region(REGION_CPU1);
+	vidmem_RAM=vidmem;
 	draw_function=*BBC_draw_screen_disabled;
 	return 0;
 
@@ -575,6 +746,22 @@ int bbc_vh_startb(void)
 	crtc6845_config(&BBC6845);
 
 	BBC_Video_RAM= memory_region(REGION_CPU1);
+	vidmem_RAM=vidmem;
+	draw_function=*BBC_draw_screen_disabled;
+	return 0;
+
+}
+
+
+int bbc_vh_startbp(void)
+{
+	/* need to set up the lookups to work with the BBC B plus memory */
+	set_pixel_lookup();
+	set_video_memory_lookups(32);
+	crtc6845_config(&BBC6845);
+
+	BBC_Video_RAM= memory_region(REGION_CPU1);
+	vidmem_RAM=vidmem;
 	draw_function=*BBC_draw_screen_disabled;
 	return 0;
 

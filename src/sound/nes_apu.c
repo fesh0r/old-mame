@@ -8,14 +8,14 @@
 ** LGPL, as outlined below.
 **
 ** This program is free software; you can redistribute it and/or
-** modify it under the terms of version 2 of the GNU Library General 
+** modify it under the terms of version 2 of the GNU Library General
 ** Public License as published by the Free Software Foundation.
 **
-** This program is distributed in the hope that it will be useful, 
+** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-** Library General Public License for more details.  To obtain a 
-** copy of the GNU Library General Public License, write to the Free 
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+** Library General Public License for more details.  To obtain a
+** copy of the GNU Library General Public License, write to the Free
 ** Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
 ** Any permitted reproduction of these routines, in whole or in part,
@@ -25,7 +25,7 @@
 ** nes_apu.c
 **
 ** NES APU emulation
-** $Id: nes_apu.c,v 1.11 2000/09/13 03:27:23 hjb Exp $
+** $Id: nes_apu.c,v 1.13 2000/10/09 13:52:30 ben Exp $
 */
 
 #include <string.h>
@@ -210,7 +210,7 @@ static int32 apu_rectangle(rectangle_t *chan)
    }
 
    /* TODO: using a table of max frequencies is not technically
-   ** clean, but it is fast and (or should be) accurate 
+   ** clean, but it is fast and (or should be) accurate
    */
    if (chan->freq < 8 || (FALSE == chan->sweep_inc && chan->freq > chan->freq_limit))
       return APU_RECTANGLE_OUTPUT;
@@ -373,7 +373,7 @@ static int32 apu_noise(noise_t *chan)
    chan->phaseacc -= apu->cycle_rate; /* # of cycles per sample */
    if (chan->phaseacc >= 0)
       return APU_NOISE_OUTPUT;
-   
+
 #ifdef APU_OVERSAMPLE
    num_times = total = 0;
 
@@ -480,17 +480,17 @@ static int32 apu_dmc(dmc_t *chan)
    if (chan->dma_length)
    {
       chan->phaseacc -= apu->cycle_rate; /* # of cycles per sample */
-      
+
       while (chan->phaseacc < 0)
       {
          chan->phaseacc += chan->freq;
-         
+
          delta_bit = (chan->dma_length & 7) ^ 7;
-         
+
          if (7 == delta_bit)
          {
-            chan->cur_byte = cpunum_readmem(apu->cpunum, chan->address);
-            
+            /* FIX!!! chan->cur_byte = cpunum_readmem(apu->cpunum, chan->address); */
+
             /* steal a cycle from CPU */
             //nes6502_burn(1);
 
@@ -530,7 +530,7 @@ static int32 apu_dmc(dmc_t *chan)
             }
          }
          /* negative delta */
-         else            
+         else
          {
             if (chan->regs[1] > 1)
             {
@@ -546,7 +546,7 @@ static int32 apu_dmc(dmc_t *chan)
 
 
 void apu_write(uint32 address, uint8 value)
-{  
+{
    int chan;
 
    ASSERT(apu);
@@ -572,7 +572,7 @@ void apu_write(uint32 address, uint8 value)
       apu->rectangle[chan].sweep_on = (value & 0x80) ? TRUE : FALSE;
       apu->rectangle[chan].sweep_shifts = value & 7;
       apu->rectangle[chan].sweep_delay = decay_lut[(value >> 4) & 7];
-      
+
       apu->rectangle[chan].sweep_inc = (value & 0x08) ? TRUE : FALSE;
       apu->rectangle[chan].freq_limit = freq_limit[value & 7];
       break;
@@ -615,16 +615,16 @@ void apu_write(uint32 address, uint8 value)
    case APU_WRC3:
 
       apu->triangle.regs[2] = value;
-  
-      /* this is somewhat of a hack.  there appears to be some latency on 
-      ** the Real Thing between when trireg0 is written to and when the 
-      ** linear length counter actually begins its countdown.  we want to 
-      ** prevent the case where the program writes to the freq regs first, 
-      ** then to reg 0, and the counter accidentally starts running because 
+
+      /* this is somewhat of a hack.  there appears to be some latency on
+      ** the Real Thing between when trireg0 is written to and when the
+      ** linear length counter actually begins its countdown.  we want to
+      ** prevent the case where the program writes to the freq regs first,
+      ** then to reg 0, and the counter accidentally starts running because
       ** of the sound queue's timestamp processing.
       **
-      ** set latency to a couple hundred cycles -- should be plenty of time 
-      ** for the 6502 code to do a couple of table dereferences and load up 
+      ** set latency to a couple hundred cycles -- should be plenty of time
+      ** for the 6502 code to do a couple of table dereferences and load up
       ** the other triregs
       */
 
@@ -758,7 +758,7 @@ void apu_write(uint32 address, uint8 value)
    case 0x4009:
    case 0x400D:
       break;
-   
+
    default:
       break;
    }
@@ -827,7 +827,7 @@ void apu_process(void *buffer, int num_samples)
    if (NULL != buffer)
    {
       /* bleh */
-      apu->buffer = buffer; 
+      apu->buffer = buffer;
 
       while (num_samples--)
       {
@@ -1006,6 +1006,9 @@ void apu_setext(apu_t *src_apu, apuext_t *ext)
 
 /*
 ** $Log: nes_apu.c,v $
+** Revision 1.13  2000/10/09 13:52:30  ben
+** NES update
+**
 ** Revision 1.11  2000/09/13 03:27:23  hjb
 ** Incorporated the interface changes (cpunum for readmem and IRQ generation)
 ** in the files which Matthew originally submitted.

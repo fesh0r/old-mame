@@ -11,13 +11,14 @@
 #include "includes/cbm.h"
 #include "includes/cia6526.h"
 #include "includes/tpi6525.h"
-#include "includes/c1551.h"
+#include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "includes/vc20tape.h"
 #include "includes/cbmieeeb.h"
 #include "includes/vic6567.h"
 #include "includes/crtc6845.h"
 #include "includes/sid6581.h"
+#include "includes/state.h"
 
 #include "includes/cbmb.h"
 
@@ -219,21 +220,21 @@ static int cbmb_dma_read_color(int offset)
 	return cbmb_colorram[offset&0x3ff];
 }
 
+static void cbmb_change_font(int level)
+{
+	cbmb_vh_set_font(level);
+}
+
 static void cbmb_common_driver_init (void)
 {
 	/*    memset(c64_memory, 0, 0xfd00); */
 
-#if 0
-	sid6581_0_init (c64_paddle_read);
-#else
-	sid6581_0_init (NULL, 1);
-#endif
 	cbmb_cia.todin50hz = 0;
 	cia6526_config (0, &cbmb_cia);
 
 	tpi6525[0].a.read=cbmb_tpi0_port_a_r;
 	tpi6525[0].a.output=cbmb_tpi0_port_a_w;
-	tpi6525[0].ca.output=crtc6845_address_line_12;
+	tpi6525[0].ca.output=cbmb_change_font;
 	tpi6525[0].interrupt.output=cbmb_irq;
 	tpi6525[1].a.read=cbmb_keyboard_line_a;
 	tpi6525[1].b.read=cbmb_keyboard_line_b;
@@ -251,32 +252,44 @@ static void cbmb_common_driver_init (void)
 	cbm_ieee_open();
 }
 
+static CRTC6845_CONFIG cbm600_crtc= { 1600000 /*?*/, cbmb_vh_cursor };
 void cbm600_driver_init (void)
 {
 	cbmb_common_driver_init ();
-	raster2.display_state=cbmb_state;
-	crtc6845_cbm600_init(cbmb_videoram);
+	state_add_function(cbmb_state);
+	cbm600_vh_init();
+	crtc6845_init(crtc6845, &cbm600_crtc);
 }
 
 void cbm600pal_driver_init (void)
 {
 	cbmb_common_driver_init ();
-	raster2.display_state=cbmb_state;
-	crtc6845_cbm600pal_init(cbmb_videoram);
+	state_add_function(cbmb_state);
+	cbm600_vh_init();
+	crtc6845_init(crtc6845, &cbm600_crtc);
 }
 
+void cbm600hu_driver_init (void)
+{
+	cbmb_common_driver_init ();
+	state_add_function(cbmb_state);
+	crtc6845_init(crtc6845, &cbm600_crtc);
+}
+
+static CRTC6845_CONFIG cbm700_crtc= { 2000000 /*?*/, cbmb_vh_cursor };
 void cbm700_driver_init (void)
 {
 	cbmb_common_driver_init ();
-	raster2.display_state=cbmb_state;
-	crtc6845_cbm700_init(cbmb_videoram);
+	state_add_function(cbmb_state);
+	cbm700_vh_init();
+	crtc6845_init(crtc6845, &cbm700_crtc);
 }
 
 void cbm500_driver_init (void)
 {
 	cbmb_common_driver_init ();
 	cbm500=1;
-	raster1.display_state=cbmb_state;
+	state_add_function(cbmb_state);
 	vic6567_init (0, 0, cbmb_dma_read, cbmb_dma_read_color, NULL);
 }
 
@@ -286,7 +299,7 @@ void cbmb_driver_shutdown (void)
 
 void cbmb_init_machine (void)
 {
-	sid6581_0_reset();
+	sid6581_reset(0);
 	cia6526_reset ();
 	tpi6525_0_reset();
 	tpi6525_1_reset();
@@ -607,25 +620,19 @@ void cbmb_frame_interrupt (int param)
 #endif
 }
 
-void cbmb_state(PRASTER *This)
+void cbmb_state(void)
 {
 #if VERBOSE_DBG
-	int y;
 	char text[70];
-
-	y = Machine->visible_area.max_y + 1 - Machine->uifont->height;
 
 	snprintf(text, sizeof(text),
 			 "%.2x %.2x",
 			 MODELL_700, VIDEO_NTSC);
-	praster_draw_text (This, text, &y);
-
-	crtc6845_status(text, sizeof(text));
-	praster_draw_text (This, text, &y);
+	state_display_text (text);
 
 #if 0
 	cia6526_status (text, sizeof (text));
-	praster_draw_text (This, text, &y);
+	state_display_text (text);
 #endif
 #endif
 }

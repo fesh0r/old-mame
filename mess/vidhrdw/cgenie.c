@@ -8,13 +8,7 @@
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
-#include "vidhrdw/cgenie.h"
-
-/* from src/mame.c */
-extern int bitmap_dirty;
-
-/* from src/mess/machine/cgenie.c */
-extern int cgenie_tv_mode;
+#include "includes/cgenie.h"
 
 int cgenie_font_offset[4] = {0, 0, 0, 0};
 char cgenie_frame_message[64];
@@ -46,13 +40,13 @@ int cgenie_vh_start(void)
 	if( !dlybitmap )
 		return 1;
 
-    cleanbuffer = malloc(64 * 32 * 8);
+    cleanbuffer = (UINT8*)malloc(64 * 32 * 8);
 	if( !cleanbuffer )
 		return 1;
 	memset(cleanbuffer, 0, 64 * 32 * 8);
 
 
-	colorbuffer = malloc(64 * 32 * 8);
+	colorbuffer = (UINT8*)malloc(64 * 32 * 8);
 	if( !colorbuffer )
 		return 1;
 	memset(colorbuffer, 0, 64 * 32 * 8);
@@ -105,7 +99,7 @@ static void cgenie_offset_xy(void)
 	if( off_y > 128 )
 		off_y = 128;
 
-	bitmap_dirty = 1;
+	schedule_full_refresh();
 
 // if( errorlog ) fprintf(errorlog, "cgenie offset x:%d  y:%d\n", off_x, off_y);
 }
@@ -129,7 +123,7 @@ WRITE_HANDLER ( cgenie_register_w )
 		case 1:
 			if( crt.horizontal_displayed == data )
 				break;
-			bitmap_dirty = 1;
+			schedule_full_refresh();
 			crt.horizontal_displayed = data;
 			break;
 		case 2:
@@ -156,7 +150,7 @@ WRITE_HANDLER ( cgenie_register_w )
 		case 6:
 			if( crt.vertical_displayed == data )
 				break;
-			bitmap_dirty = 1;
+			schedule_full_refresh();
 			crt.vertical_displayed = data;
 			break;
 		case 7:
@@ -535,6 +529,6 @@ void cgenie_vh_screenrefresh(struct osd_bitmap * bitmap, int full_refresh)
 		ui_text(bitmap, cgenie_frame_message, 2, Machine->visible_area.max_y - 9);
 		/* if the message timed out, clear it on the next frame */
 		if( --cgenie_frame_time == 0 )
-			bitmap_dirty = 1;
+			schedule_full_refresh();
     }
 }

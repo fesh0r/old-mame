@@ -47,6 +47,8 @@ New (0005) :
 	* fixed some tape bugs.  The CS1 unit now works occasionally
 New (000531) :
 	* various small bugfixes
+New (001004) :
+	* updated for new mem handling
 */
 
 #include "driver.h"
@@ -61,12 +63,12 @@ New (000531) :
 /*
 	pointers in RAM areas
 */
-unsigned char *ti99_scratch_RAM;
-unsigned char *ti99_xRAM_low;
-unsigned char *ti99_xRAM_high;
+UINT16 *ti99_scratch_RAM;
+UINT16 *ti99_xRAM_low;
+UINT16 *ti99_xRAM_high;
 
-unsigned char *ti99_cart_mem;
-unsigned char *ti99_DSR_mem;
+/*UINT16 *ti99_cart_mem;*/
+UINT16 *ti99_DSR_mem;
 
 /*
 	GROM support.
@@ -193,10 +195,10 @@ extern int tms9900_ICount;
 	initialization, cart loading, etc.
 ================================================================*/
 
-static unsigned char *cartidge_pages[2] = {NULL, NULL};
+static UINT16 *cartidge_pages[2] = {NULL, NULL};
 static int cartidge_minimemory = FALSE;
 static int cartidge_paged = FALSE;
-static unsigned char *current_page_ptr;
+static UINT16 *current_page_ptr;
 /* tells the cart file types - needed for cleanup... */
 typedef enum slot_type_t { SLOT_EMPTY = -1, SLOT_GROM = 0, SLOT_CROM = 1, SLOT_DROM = 2, SLOT_MINIMEM = 3 } slot_type_t;
 static slot_type_t slot_type[3] = { SLOT_EMPTY, SLOT_EMPTY, SLOT_EMPTY};
@@ -213,7 +215,7 @@ int ti99_floppy_init(int id)
 
 	return INIT_FAILED;
 }
-                
+
 int ti99_cassette_init(int id)
 {
 	void *file;
@@ -268,9 +270,8 @@ int ti99_load_rom(int id)
 
 	int slot_empty = ! (name && name[0]);
 
-	/* ti99_cart_mem is not initialized yet, so we initialize a local equivalent */
-	cartidge_pages[0] = memory_region(REGION_CPU1)+0x06000;
-	cartidge_pages[1] = memory_region(REGION_CPU1)+0x10000;
+	cartidge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+0x06000);
+	cartidge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+0x10000);
 
 	if (slot_empty)
 		slot_type[id] = SLOT_EMPTY;
@@ -498,21 +499,21 @@ int ti99_vblank_interrupt(void)
 	* GRAM support
 	* GPL paging support
 	* DSR support
-	* minimem support
+	* better minimem support ?
 
 ================================================================*/
 
 /*
 	Same as MRA_NOP, but with an additionnal delay.
 */
-READ_HANDLER ( ti99_rw_null8bits )
+READ16_HANDLER ( ti99_rw_null8bits )
 {
 	tms9900_ICount -= 4;
 
 	return (0);
 }
 
-WRITE_HANDLER ( ti99_ww_null8bits )
+WRITE16_HANDLER ( ti99_ww_null8bits )
 {
 	tms9900_ICount -= 4;
 }
@@ -521,56 +522,56 @@ WRITE_HANDLER ( ti99_ww_null8bits )
 	Memory extension : same as MRA_RAM, but with an additionnal delay.
 */
 /* low 8 kb : 0x2000-0x3fff */
-READ_HANDLER ( ti99_rw_xramlow )
+READ16_HANDLER ( ti99_rw_xramlow )
 {
 	tms9900_ICount -= 4;
 
-	return READ_WORD(ti99_xRAM_low + offset);
+	return ti99_xRAM_low[offset];
 }
 
-WRITE_HANDLER ( ti99_ww_xramlow )
+WRITE16_HANDLER ( ti99_ww_xramlow )
 {
 	tms9900_ICount -= 4;
 
-	WRITE_WORD(ti99_xRAM_low + offset, data | (READ_WORD(ti99_xRAM_low + offset) & (data >> 16)));
+	COMBINE_DATA(ti99_xRAM_low + offset);
 }
 
 /* high 24 kb : 0xa000-0xffff */
-READ_HANDLER ( ti99_rw_xramhigh )
+READ16_HANDLER ( ti99_rw_xramhigh )
 {
 	tms9900_ICount -= 4;
 
-	return READ_WORD(ti99_xRAM_high + offset);
+	return ti99_xRAM_high[offset];
 }
 
-WRITE_HANDLER ( ti99_ww_xramhigh )
+WRITE16_HANDLER ( ti99_ww_xramhigh )
 {
 	tms9900_ICount -= 4;
 
-	WRITE_WORD(ti99_xRAM_high + offset, data | (READ_WORD(ti99_xRAM_high + offset) & (data >> 16)));
+	COMBINE_DATA(ti99_xRAM_high + offset);
 }
 
 /*
 	Cartidge read : same as MRA_ROM, but with an additionnal delay.
 */
-READ_HANDLER ( ti99_rw_cartmem )
+READ16_HANDLER ( ti99_rw_cartmem )
 {
 	tms9900_ICount -= 4;
 
-	return READ_WORD(current_page_ptr + offset);
+	return current_page_ptr[offset];
 }
 
 /*
 	this handler handles ROM switching in cartidges
 */
-WRITE_HANDLER ( ti99_ww_cartmem )
+WRITE16_HANDLER ( ti99_ww_cartmem )
 {
 	tms9900_ICount -= 4;
 
-	if (cartidge_minimemory && offset >= 0x1000)
-		WRITE_WORD(current_page_ptr+offset, data | (READ_WORD(current_page_ptr+offset) & (data >> 16)));
+	if (cartidge_minimemory && offset >= 0x800)
+		COMBINE_DATA(current_page_ptr+offset);
 	else if (cartidge_paged)
-		current_page_ptr = cartidge_pages[( offset >> 1 )& 1];
+		current_page_ptr = cartidge_pages[offset & 1];
 }
 
 /*----------------------------------------------------------------
@@ -581,18 +582,17 @@ WRITE_HANDLER ( ti99_ww_cartmem )
 /*
 	PAD read
 */
-READ_HANDLER ( ti99_rw_scratchpad )
+READ16_HANDLER ( ti99_rw_scratchpad )
 {
-	return READ_WORD(ti99_scratch_RAM + (offset & 0xff));
+	return ti99_scratch_RAM[offset & 0x7f];
 }
 
 /*
 	PAD write
 */
-WRITE_HANDLER ( ti99_ww_scratchpad )
+WRITE16_HANDLER ( ti99_ww_scratchpad )
 {
-	WRITE_WORD(ti99_scratch_RAM + (offset & 0xff),
-				data | (READ_WORD(ti99_scratch_RAM + (offset & 0xff)) & (data >> 16)));
+	COMBINE_DATA(ti99_scratch_RAM + (offset & 0x7f));
 }
 
 /*----------------------------------------------------------------
@@ -628,7 +628,7 @@ WRITE_HANDLER ( ti99_ww_scratchpad )
 /*
 	TMS9919 sound chip write
 */
-WRITE_HANDLER ( ti99_ww_wsnd )
+WRITE16_HANDLER ( ti99_ww_wsnd )
 {
 	tms9900_ICount -= 4;
 
@@ -638,28 +638,28 @@ WRITE_HANDLER ( ti99_ww_wsnd )
 /*
 	TMS9918A VDP read
 */
-READ_HANDLER ( ti99_rw_rvdp )
+READ16_HANDLER ( ti99_rw_rvdp )
 {
 	tms9900_ICount -= 4;
 
-	if (offset & 2)
+	if (offset & 1)
 	{	/* read VDP status */
-		return (TMS9928A_register_r() << 8);
+		return ((int) TMS9928A_register_r()) << 8;
 	}
 	else
 	{	/* read VDP RAM */
-		return (TMS9928A_vram_r() << 8);
+		return ((int) TMS9928A_vram_r()) << 8;
 	}
 }
 
 /*
 	TMS9918A vdp write
 */
-WRITE_HANDLER ( ti99_ww_wvdp )
+WRITE16_HANDLER ( ti99_ww_wvdp )
 {
 	tms9900_ICount -= 4;
 
-	if (offset & 2)
+	if (offset & 1)
 	{	/* write VDP adress */
 		TMS9928A_register_w((data >> 8) & 0xff);
 	}
@@ -672,17 +672,17 @@ WRITE_HANDLER ( ti99_ww_wvdp )
 /*
 	TMS5200 speech chip read
 */
-READ_HANDLER ( ti99_rw_rspeech )
+READ16_HANDLER ( ti99_rw_rspeech )
 {
 	tms9900_ICount -= 4;				/* much more, actually */
 
-	return tms5220_status_r(offset) << 8;
+	return ((int) tms5220_status_r(offset)) << 8;
 }
 
 /*
 	TMS5200 speech chip write
 */
-WRITE_HANDLER ( ti99_ww_wspeech )
+WRITE16_HANDLER ( ti99_ww_wspeech )
 {
 	tms9900_ICount -= 4;				/* much more, actually */
 
@@ -695,13 +695,13 @@ static int gpl_addr = 0;
 /*
 	GPL read
 */
-READ_HANDLER ( ti99_rw_rgpl )
+READ16_HANDLER ( ti99_rw_rgpl )
 {
 	tms9900_ICount -= 4;				/* much more, actually */
 
-/*int page = (offset & 0x3C) >> 2; *//* GROM/GRAM can be paged */
+/*int page = (offset & 0x1E) >> 1; *//* GROM/GRAM can be paged */
 
-	if (offset & 2)
+	if (offset & 1)
 	{	/* read GPL adress */
 		int value;
 
@@ -724,15 +724,15 @@ READ_HANDLER ( ti99_rw_rgpl )
 /*
 	GPL write
 */
-WRITE_HANDLER ( ti99_ww_wgpl )
+WRITE16_HANDLER ( ti99_ww_wgpl )
 {
 	tms9900_ICount -= 4;				/* much more, actually */
 
 	data = (data >> 8) & 0xff;
 
-/*int page = (offset & 0x3C) >> 2; *//* GROM/GRAM can be paged */
+/*int page = (offset & 0x1E) >> 1; *//* GROM/GRAM can be paged */
 
-	if (offset & 2)
+	if (offset & 1)
 	{	/* write GPL adress */
 		gpl_addr = ((gpl_addr & 0xFF) << 8) | (data & 0xFF);
 	}
@@ -763,7 +763,7 @@ int diskromon = 0;
 /*
 	read a byte in disk DSR.
 */
-READ_HANDLER ( ti99_rw_disk )
+READ16_HANDLER ( ti99_rw_disk )
 {
 	tms9900_ICount -= 4;
 
@@ -772,20 +772,20 @@ READ_HANDLER ( ti99_rw_disk )
 
 	switch (offset)
 	{
-	case 0x1FF0:						/* Status register */
+	case 0xFF8:						/* Status register */
 		return (wd179x_status_r(offset) ^ 0xFF) << 8;
 		break;
-	case 0x1FF2:						/* Track register */
+	case 0xFF9:						/* Track register */
 		return (wd179x_track_r(offset) ^ 0xFF) << 8;
 		break;
-	case 0x1FF4:						/* Sector register */
+	case 0xFFA:						/* Sector register */
 		return (wd179x_sector_r(offset) ^ 0xFF) << 8;
 		break;
-	case 0x1FF6:						/* Data register */
+	case 0xFFB:						/* Data register */
 		return (wd179x_data_r(offset) ^ 0xFF) << 8;
 		break;
 	default:
-		return READ_WORD(ti99_DSR_mem + offset);
+		return ti99_DSR_mem[offset];
 		break;
 	}
 }
@@ -793,7 +793,7 @@ READ_HANDLER ( ti99_rw_disk )
 /*
 	write a byte in disk DSR.
 */
-WRITE_HANDLER ( ti99_ww_disk )
+WRITE16_HANDLER ( ti99_ww_disk )
 {
 	tms9900_ICount -= 4;
 
@@ -804,16 +804,16 @@ WRITE_HANDLER ( ti99_ww_disk )
 
 	switch (offset)
 	{
-	case 0x1FF8:						/* Command register */
+	case 0xFFC:						/* Command register */
 		wd179x_command_w(offset, data);
 		break;
-	case 0x1FFA:						/* Track register */
+	case 0xFFD:						/* Track register */
 		wd179x_track_w(offset, data);
 		break;
-	case 0x1FFC:						/* Sector register */
+	case 0xFFE:						/* Sector register */
 		wd179x_sector_w(offset, data);
 		break;
-	case 0x1FFE:						/* Data register */
+	case 0xFFF:						/* Data register */
 		wd179x_data_w(offset, data);
 		break;
 	}
@@ -1132,10 +1132,10 @@ WRITE_HANDLER ( ti99_DSKsel )
 		if (drive != DSKnum)			/* turn on drive... already on ? */
 		{
 			DSKnum = drive;
-			
+
 			wd179x_set_drive(DSKnum);
 			wd179x_set_side(DSKside);
-                }
+		}
 	}
 	else
 	{

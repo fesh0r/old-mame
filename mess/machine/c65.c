@@ -12,16 +12,14 @@
 #define VERBOSE_DBG 1
 #include "includes/cbm.h"
 #include "includes/cia6526.h"
-#include "includes/c1551.h"
+#include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "includes/vic6567.h"
 #include "includes/sid6581.h"
+#include "includes/state.h"
 
 #include "includes/c65.h"
 
-unsigned char c65_keyline = { 0xff };
-int c65=0;
-UINT8 c65_6511_port=0xff;
 static int c65_charset_select=0;
 
 static int c64mode=0;
@@ -756,14 +754,12 @@ static void c65_common_driver_init (void)
 	cbm_drive_attach_fs (0);
 	cbm_drive_attach_fs (1);
 
-	sid6581_0_init (c64_paddle_read,c64_pal);
-	sid6581_1_init (NULL,c64_pal);
 	c64_cia0.todin50hz = c64_cia1.todin50hz = c64_pal;
 	cia6526_config (0, &c64_cia0);
 	cia6526_config (1, &c64_cia1);
 	vic4567_init (c64_pal, c65_dma_read, c65_dma_read_color,
 				  c64_vic_interrupt, c65_bankswitch_interface);
-	raster1.display_state=c65_state;
+	state_add_function(c65_state);
 }
 
 void c65_driver_init (void)
@@ -795,10 +791,8 @@ void c65_init_machine (void)
 {
 	memset(c64_memory+0x40000, 0xff, 0xc0000);
 
-	sid6581_0_reset();
-	sid6581_1_reset();
-	sid6581_0_configure(SID8580);
-	sid6581_1_configure(SID8580);
+	sid6581_reset(0);
+	sid6581_reset(1);
 
 	cbm_serial_reset_write (0);
 	cbm_drive_0_config (SERIAL8ON ? SERIAL : 0, 10);
@@ -821,24 +815,20 @@ void c65_shutdown_machine (void)
 {
 }
 
-void c65_state (PRASTER *This)
+void c65_state (void)
 {
-	int y;
 	char text[70];
-
-	y = Machine->visible_area.max_y + 1
-		- Machine->uifont->height;
 
 #if VERBOSE_DBG
 	cia6526_status (text, sizeof (text));
-	praster_draw_text (This, text, &y);
+	state_display_text (text);
 
 	snprintf (text, sizeof(text), "c65 vic:%.4x m6510:%d c64:%d",
 			  c64_vicaddr - c64_memory, c64_port6510 & 7, c64mode);
 #endif
 	cbm_drive_0_status (text, sizeof (text));
-	praster_draw_text (This, text, &y);
+	state_display_text (text);
 
 	cbm_drive_1_status (text, sizeof (text));
-	praster_draw_text (This, text, &y);
+	state_display_text (text);
 }

@@ -79,11 +79,19 @@
 
 
  ******************************************************************************/
+/* PeT 19.October 2000 
+   added/changed printer support
+   not working reliable, seams to expect parallelport in epp/ecp mode 
+   epp/ecp modes in parallel port not supported yet 
+   so ui disabled */
+
 #include "driver.h"
 #include "includes/pcw16.h"
 
 // PC-Parallel Port
 #include "includes/pclpt.h"
+#include "includes/centroni.h" // centronics printer handshake simulation
+#include "printer.h" // printer device
 // PC-AT keyboard
 #include "includes/pckeybrd.h"
 // change to superio later
@@ -216,14 +224,12 @@ void pcw16_timer_callback(int dummy)
 	}
 }
 
-static struct MemoryReadAddress readmem_pcw16[] =
-{
+MEMORY_READ_START( readmem_pcw16 )
 	{0x0000, 0x03fff, MRA_BANK1},
 	{0x4000, 0x07fff, MRA_BANK2},
 	{0x8000, 0x0Bfff, MRA_BANK3},
 	{0xC000, 0x0ffff, MRA_BANK4},
-	{-1}							   /* end of table */
-};
+MEMORY_END
 
 extern int pcw16_colour_palette[16];
 
@@ -864,14 +870,12 @@ static void pcw16_keyboard_timer_callback(int dummy)
 	}
 }
 
-static struct MemoryWriteAddress writemem_pcw16[] =
-{
+MEMORY_WRITE_START( writemem_pcw16 )
 	{0x00000, 0x03fff, MWA_BANK5},
 	{0x04000, 0x07fff, MWA_BANK6},
 	{0x08000, 0x0bfff, MWA_BANK7},
 	{0x0c000, 0x0ffff, MWA_BANK8},
-	{-1}							   /* end of table */
-};
+MEMORY_END
 
 static unsigned char rtc_seconds;
 static unsigned char rtc_minutes;
@@ -1349,15 +1353,14 @@ static uart8250_interface pcw16_com_interface[2]=
 
 
 
-static struct IOReadPort readport_pcw16[] =
-{
+PORT_READ_START( readport_pcw16 )
 	/* super i/o chip */
 	{0x01c, 0x01c, pcw16_superio_fdc_main_status_register_r},
 	{0x01d, 0x01d, pcw16_superio_fdc_data_r},
 	{0x01f, 0x01f, pcw16_superio_fdc_digital_input_register_r},
 	{0x020, 0x027, uart8250_0_r},
 	{0x028, 0x02f, uart8250_1_r},
-	{0x038, 0x03a, pc_LPT1_r},
+	{0x038, 0x03a, pc_parallelport0_r},
 	/* anne asic */
 	{0x0f0, 0x0f3, pcw16_bankhw_r},
 	{0x0f4, 0x0f4, pcw16_keyboard_data_shift_r},
@@ -1371,18 +1374,16 @@ static struct IOReadPort readport_pcw16[] =
 	{0x0fd, 0x0fd, rtc_days_r},
 	{0x0fe, 0x0fe, rtc_month_r},
 	{0x0ff, 0x0ff, rtc_year_invalid_r},
-	{-1}							   /* end of table */
-};
+PORT_END
 
-static struct IOWritePort writeport_pcw16[] =
-{
+PORT_WRITE_START( writeport_pcw16 )
 	/* super i/o */
 	{0x01a, 0x01a, pcw16_superio_fdc_digital_output_register_w},
 	{0x01d, 0x01d, pcw16_superio_fdc_data_w},
 	{0x01f, 0x01f, pcw16_superio_fdc_datarate_w},
 	{0x020, 0x027, uart8250_0_w},
 	{0x028, 0x02f, uart8250_1_w},
-	{0x038, 0x03a, pc_LPT1_w},
+	{0x038, 0x03a, pc_parallelport0_w},
 	/* anne asic */
 	{0x0e0, 0x0ef, pcw16_palette_w},
 	{0x0f0, 0x0f3, pcw16_bankhw_w},
@@ -1397,8 +1398,7 @@ static struct IOWritePort writeport_pcw16[] =
 	{0x0fd, 0x0fd, rtc_days_w},
 	{0x0fe, 0x0fe, rtc_month_w},
 	{0x0ff, 0x0ff, rtc_year_w},
-	{-1}							   /* end of table */
-};
+PORT_END
 
 void pcw16_reset(void)
 {
@@ -1428,6 +1428,17 @@ void pcw16_reset(void)
 	flash_reset(1);
 }
 
+
+static PC_LPT_CONFIG lpt_config={
+	1,
+	LPT_UNIDIRECTIONAL, // more one of these epp/ecp aware ports
+	NULL
+};
+static CENTRONICS_CONFIG cent_config={
+	PRINTER_CENTRONICS,
+	pc_lpt_handshake_in
+};
+	
 
 void pcw16_init_machine(void)
 {
@@ -1470,7 +1481,11 @@ void pcw16_init_machine(void)
 	pc_fdc_init(&pcw16_fdc_interface);
 	uart8250_init(0, pcw16_com_interface);
 	uart8250_init(1, pcw16_com_interface+1);
-	
+
+	pc_lpt_config(0, &lpt_config);
+	centronics_config(0, &cent_config);
+	pc_lpt_set_device(0, &CENTRONICS_PRINTER_DEVICE);
+
 	/* initialise mouse */
 	pc_mouse_set_protocol(TYPE_MOUSE_SYSTEMS);
 	pc_mouse_set_input_base(1);
@@ -1632,6 +1647,7 @@ static const struct IODevice io_pcw16[] =
         NULL,               /* input_chunk */
         NULL                /* output_chunk */
     },
+//	IO_PRINTER_PORT(1,"\0"),
 	{IO_END}
 };
 
