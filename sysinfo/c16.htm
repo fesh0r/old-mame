@@ -25,7 +25,7 @@ Within the emulation, use LOAD or LOAD"" or LOAD"",1 for loading normal programs
 LOAD"",1,1 for loading programs to a special address.<br>
 <p><b>Diskette Usage:</b><br>
 Disk drives are simulated at the moment, and only file loads from drive 8 and 9 <br>
-are implemented. You can load a program file from the rom directory (*.prg,*.p00)<br>
+are implemented. You can load a program file from the ROM directory (*.prg,*.p00)<br>
 (This must NOT be specified on command line, start the c16 emulation with no images specified)<br>
 The directory command LOAD"$",8 is supported when using d64 images.<br>
 <br>
@@ -40,16 +40,16 @@ loading other file types, writing...) Some games also rely on starting programs 
 floppy drive's processor (and therefore CPU level emulation of the 1541 is needed).<br>
 <p><b>Cartridge Usage:</b><br>
 Cartridges may have any of the following extensions: .bin .rom .lo .hi .prg<br>
-Files with boot-sign in it are recognized as roms. Some cartridges require more than one <br>
+Files with boot-sign in it are recognized as ROMs. Some cartridges require more than one <br>
 image to load (e.g., tutor.lo tutor.hi).<br>
  <br>
 .prg files loaded at address in its first two bytes<br>
  <br>
-.bin, .rom, .lo , .hi roms are loaded to cs1 low, cs1 high, cs2 low, cs2 high addresses <br>
+.bin, .rom, .lo , .hi ROMs are loaded to cs1 low, cs1 high, cs2 low, cs2 high addresses <br>
 accordingly to their order in the command line.<br>
  <br>
 Note that .prg and .p00 files are assigned to the quickloader (so you have to use <br>
-the -cart switch when loading rom images).<br>
+the -cart switch when loading ROM images).<br>
 <p><b>Quickloader Usage:</b><br>
 A quickloader is available via the f8 key. It supports program image files <br>
 with the .prg extension. This loads the program into memory and sets the program end <br>
@@ -147,7 +147,7 @@ JOY 1 and JOY 2, just as a hint for collectors :-)<br>
  <br>
 Note that like the C116, the C16 lacks a user port.<br>
 <hr>
-<center><font size=-2>Generated on Fri Sep 05 10:55:22 2003
+<center><font size=-2>Generated on Sun Sep 21 17:27:54 2003
 </font></center>
 </body>
 </html>

@@ -18,9 +18,9 @@ hardware emulation mode for c64<br>
  c64 cartridges<br>
  c64 userport<br>
  only the c64 standard keys available<br>
-country support (keyboard, character rom, kernel (keyboard polling))<br>
- character rom german<br>
- character rom french, belgium, italian<br>
+country support (keyboard, character ROM, kernel (keyboard polling))<br>
+ character ROM german<br>
+ character ROM french, belgium, italian<br>
  editor, kernel for german<br>
  editor, kernel for swedish<br>
  editor, kernel for finish<br>
@@ -30,19 +30,19 @@ country support (keyboard, character rom, kernel (keyboard polling))<br>
 enhanced keyboard<br>
 m8502 processor (additional port pin)<br>
 additional vdc videochip for 80 column modes with own connector (rgbi)<br>
- 16k byte ram for this chip<br>
-128 kbyte ram, 64 kbyte rom, 8k byte charrom, 2k byte static colorram<br>
- (1 mbyte ram possible)<br>
+ 16k byte RAM for this chip<br>
+128 kbyte RAM, 64 kbyte ROM, 8k byte charrom, 2k byte static colorram<br>
+ (1 mbyte RAM possible)<br>
 sid6581 soundchip<br>
 c64 expansion port with some additional pins<br>
 z80 CPU for CPM mode<br>
 <p><b>c128d:</b><br>
- c1571 floppy drive build in<br>
- 64kb vdc ram<br>
+ c1571 floppy drive built in<br>
+ 64kb vdc RAM<br>
  sid8580 sound chip<br>
 <p><b>c128cr/c128dcr:</b><br>
  cost reduced<br>
- only modified for cheaper production (newer rams, ...)<br>
+ only modified for cheaper production (newer RAM, ...)<br>
 <p><b>MESS emulation state:</b><br>
 uses c64 emulation for c64 mode<br>
 so only notes for the additional subsystems here<br>
@@ -62,7 +62,7 @@ z80 emulation<br>
  floppy simulation not enough for booting CPM<br>
  so simplified z80 memory management not tested<br>
 no CPU clock doubling<br>
-no internal function rom<br>
+no internal function ROM<br>
 c64 mode<br>
  differences to real c64???<br>
 no sound<br>
@@ -87,10 +87,10 @@ serial bus<br>
 expansion modules<br>
  no c128 modules<br>
 expansion modules c64<br>
- rom cartridges (exrom)<br>
- ultimax rom cartridges (game)<br>
- c64 cartridges (only standard rom cartridges)<br>
- no other rom cartridges (bankswitching logic in it, switching exrom, game)<br>
+ ROM cartridges (exrom)<br>
+ ultimax ROM cartridges (game)<br>
+ c64 cartridges (only standard ROM cartridges)<br>
+ no other ROM cartridges (bankswitching logic in it, switching exrom, game)<br>
  no ieee488 support<br>
  no cpm cartridge<br>
  no speech cartridge (no circuit diagram found)<br>
@@ -99,7 +99,7 @@ expansion modules c64<br>
 no userport<br>
  no rs232/v.24 interface<br>
 <p><b>Video notes:</b><br>
-if the game runs too fast with the NTSC version, try the PAL version!<br>
+If the game runs too fast with the NTSC version, try the PAL version!<br>
 flickering affects in one video version, try the other video version<br>
 <p><b>Keys:</b><br>
 Some PC-Keyboards does not behave well when special two or more keys are<br>
@@ -130,7 +130,7 @@ several programs relies on more features<br>
 (loading other file types, writing, ...)<br>
 <p><b>Discs:</b><br>
 only file load from drive 8 and 9 implemented<br>
- loads file from rom directory (*.prg,*.p00) (must NOT be specified on command line)<br>
+ loads file from ROM directory (*.prg,*.p00) (must NOT be specified on command line)<br>
  or file from d64 image (here also directory LOAD"$",8 supported)<br>
 use LOAD"filename",8<br>
 or LOAD"filename",8,1 (for loading machine language programs at their address)<br>
@@ -145,16 +145,16 @@ most games rely on starting own programs in the floppy drive<br>
 .crt<br>
 .80 .90 .a0 .b0 .e0 .f0<br>
 files with boot-sign in it<br>
-  recognized as roms<br>
+  recognized as ROMs<br>
 .prg files loaded at address in its first two bytes<br>
 .?0 files to address specified in extension<br>
-.crt roms to addresses in crt file<br>
+.crt ROMs to addresses in crt file<br>
 <p><b>Quickloader:</b><br>
 .prg and .p00 files supported<br>
 loads program into memory and sets program end pointer<br>
 (works with most programs)<br>
 program ready to get started with RUN<br>
-loads first rom when you press quickload key (numeric slash)<br>
+loads first ROM when you press quickload key (numeric slash)<br>
 <p><b>c64 mode:</b><br>
 hold down commodore key while resetting or turning on<br>
 type go64 at the c128 command mode<br>
@@ -165,7 +165,7 @@ or<br>
 type boot at the c128 command mode<br>
 when problems start with -log and look into error.log file<br>
 <p><b>rom dumping:</b><br>
-<p><b>Dumping of the roms from the running machine:</b><br>
+<p><b>Dumping of the ROMs from the running machine:</b><br>
 in the monitor program<br>
 s "drive:name",device,start,end<br>
 s "0:basic",8,f4000,fc000<br>
@@ -225,29 +225,29 @@ copying the bios to puffers.<br>
 Then you could read this buffer into the computer, or write<br>
 these buffers to disk.<br>
 <p><b>Transportation to your pc:</b><br>
-1571 writing to mfm encoded disketts (in cpm mode only, or use program)<br>
+1571 writing to mfm encoded diskettes (in cpm mode only, or use program)<br>
  maybe the IBM CPM-86 formats are like the standard DOS formats.<br>
  but using dd may create images known by some other emulators.<br>
 <p><b>1581 writes mfm encoded:</b><br>
  can one of these drives to a format know by linux?<br>
 Some years ago I build a simple adapter pc/parport to vc1541<br>
  floppy disk drive.<br>
-<p><b>Dumping roms with epromer:</b><br>
+<p><b>Dumping ROM with epromer:</b><br>
 c128<br>
-U18       (read compatible 2764?) 8kB c64 character rom, c128 character rom<br>
+U18       (read compatible 2764?) 8kB c64 character ROM, c128 character ROM<br>
 U32 23128 (read compatible 27128?) 16kB c64 Basic, c64 Kernel<br>
 U33 23128 (read compatible 27128?) 16kB c128 Basic at 0x4000<br>
 U34 23128 (read compatible 27128?) 16kB c128 Basic at 0x8000<br>
 U35 23128 (read compatible 27128?) 16kB c128 Editor, Z80Bios, C128 Kernel<br>
 c128 cost reduced<br>
-U18       (read compatible 2764?) 8kB c64 character rom, c128 character rom<br>
+U18       (read compatible 2764?) 8kB c64 character ROM, c128 character ROM<br>
 U32 23256 (read compatible 27256?) 32kB c64 Basic, c64 Kernel, c128 Editor, Z80Bios, C128 Kernel<br>
 U34 23256 (read compatible 27256?) 32kB C128 Basic<br>
 c128dcr<br>
 as c128 cr<br>
-U102 23256 (read compatible 27256?) 32kB 1571 system rom<br>
+U102 23256 (read compatible 27256?) 32kB 1571 system ROM<br>
 <hr>
-<center><font size=-2>Generated on Fri Sep 05 10:55:22 2003
+<center><font size=-2>Generated on Sun Sep 21 17:27:54 2003
 </font></center>
 </body>
 </html>

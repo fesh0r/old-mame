@@ -3113,7 +3113,7 @@ struct InputPort* input_port_allocate(const struct InputPortTiny *src)
 			case IPT_CONFIG_SETTING :
 #endif
 				seq_default = CODE_NONE;
-				break;
+			break;
 			default:
 				seq_default = CODE_DEFAULT;
 				break;

@@ -18,17 +18,17 @@ implement them).<br>
 The disk drive interface has a boot-rom which loads the DOS from the disc<br>
 in the drive. <br>
 <p><b>The driver supports 2 versions of the disc interface:</b><br>
-- "low dos 8d" has a 256 byte boot rom and supports DOS v1.0 to v1.30 ("Apple 2" on dipswitch)<br>
-- "high dos 8d" has a 512 byte boot rom and supports DOS v2.10 and higher. ("Apple 2 v2" on dipswitch)<br>
+- "low dos 8d" has a 256 byte boot ROM and supports DOS v1.0 to v1.30 ("Apple 2" on dipswitch)<br>
+- "high dos 8d" has a 512 byte boot ROM and supports DOS v2.10 and higher. ("Apple 2 v2" on dipswitch)<br>
 <p><b>If you are using the standard prav8d driver you will need to type:</b><br>
 CALL #320<br>
 to start the boot procedure.<br>
-If you are using prav8dd (with the "BOBY" rom), then the disc is booted<br>
+If you are using prav8dd (with the "BOBY" ROM), then the disc is booted<br>
 automatically.<br>
 The Pravetz 8D uses Apple 2 compatible disk drives only and these<br>
 are supported by the driver. <br>
 <p><b>Here is a brief listing of DOS commands provided by George:</b><br>
-<p><b>options:</b><br>
+<p><b>Options:</b><br>
 f - FileName (1-30 signs)<br>
 d - drive (one or two)<br>
 v - volume<br>
@@ -37,12 +37,12 @@ e - end address<br>
 l - record length<br>
 r - record number<br>
 b - number of byte in the record<br>
-<p><b>filetypes:</b><br>
+<p><b>Filetypes:</b><br>
 B - Basic program<br>
 C - Bynary file<br>
 T - Text file<br>
 M - Text file, created with Make command ( batch file:) )<br>
-<p><b>commands:</b><br>
+<p><b>Commands:</b><br>
 DIR [1] [2] - not comment<br>
 INIT [,Vv] [,Dd] - formatting Disk (in first or second Disk Drive)<br>
 DOS [f] [,Dd], [,Vv] - writing Dos on the disk without formatting It. File f automatically starts after booting<br>
@@ -98,10 +98,9 @@ used in conjunction with a new version of the DOS allowed programs to use the wh
 also a new version of BIOS which detected the presence of the interface and automatically booted<br>
 the DOS from the disk.<br>
 <p><b>Thanks to:</b><br>
-Joro Dramchev, Ventzislav Alexandrov and Todor Arnaudov for Pravetz information,<br>
-Fabrice Frances for Oric information.<br>
+Joro Dramchev, Ventzislav Alexandrov and Todor Arnaudov for Pravetz information, Fabrice Frances for Oric information.<br>
 <hr>
-<center><font size=-2>Generated on Fri Sep 05 10:55:22 2003
+<center><font size=-2>Generated on Sun Sep 21 17:27:54 2003
 </font></center>
 </body>
 </html>

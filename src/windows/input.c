@@ -621,7 +621,7 @@ static BOOL CALLBACK enum_joystick_callback(LPCDIDEVICEINSTANCE instance, LPVOID
 #else
 	flags = DISCL_FOREGROUND | DISCL_EXCLUSIVE;
 #endif
-	result = IDirectInputDevice_SetCooperativeLevel(joystick_device[joystick_count], win_video_window, 
+	result = IDirectInputDevice_SetCooperativeLevel(joystick_device[joystick_count], win_video_window,
 					flags);
 	if (result != DI_OK)
 		goto cant_set_coop_level;

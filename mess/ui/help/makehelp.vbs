@@ -30,11 +30,20 @@ Function HtmlEncode(ByVal strText)
 	HtmlEncode = strHtml
 End Function
 
+Sub MakeParentDirectories(ByVal strPath)
+	On Error Resume Next	
+	objFSO.CreateFolder(objFSO.GetParentFolderName(strPath))
+	On Error Goto 0
+End Sub
+
 Sub AddTopic(ByVal objTextStream, ByVal strBaseDir, ByVal strRelPath, ByVal strTitle)
 	Dim objFile
 	WScript.Echo "Adding File " & strBaseDir & "\" & strRelPath & " ..."
 	Set objFile = objFSO.GetFile(strBaseDir & "\" & strRelPath)
+
+	MakeParentDirectories(strObjDir & "\" & strRelPath)
 	objFile.Copy(strObjDir & "\" & strRelPath)
+	
 	objTextStream.WriteLine("		<LI> <OBJECT type=""text/sitemap"">")
 	objTextStream.WriteLine("			<param name=""Name"" value=""" & strTitle & """>")
 	objTextStream.WriteLine("			<param name=""Local"" value=""" & strRelPath & """>")
@@ -43,7 +52,17 @@ End Sub
 
 Sub AddFile(ByVal objTextStream, ByVal strBaseDir, ByVal strRelPath)
 	Dim objFile
+	
+	On Error Resume Next
 	Set objFile = objFSO.GetFile(strBaseDir & "\" & strRelPath)
+	On Error Goto 0
+	
+	If objFile = Empty Then
+		WScript.Echo "File Not Found: " & strBaseDir & "\" & strRelPath
+		WScript.Quit
+	End If
+	
+	MakeParentDirectories(strObjDir & "\" & strRelPath)
 	objFile.Copy(strObjDir & "\" & strRelPath)
 End Sub
 
@@ -92,7 +111,51 @@ Sub AddTopics(ByVal objTextStream, ByVal objHelpXmlNode)
 	On Error Goto 0
 End Sub
 
-strObjDir = "obj\mess\mess\ui\help\"
+' ---------------------------------------------------------------------------
+' Load Topics XML file
+' ---------------------------------------------------------------------------
+
+If WScript.Arguments.Count <> 1 Then
+	WScript.Echo "Need Topics XML path"
+	WScript.Quit
+End If
+
+Dim strTopicXmlPath
+strTopicXmlPath = WScript.Arguments(0)
+
+'Help files
+Dim objTopicXml
+Set objTopicXml = CreateObject("MSXML.DOMDocument")
+objTopicXml.Load(strTopicXmlPath)
+If objTopicXml.Xml = "" Then
+	WScript.Echo "Cannot Open Topics.xml: " & objTopicXml.ParseError.Reason
+	WScript.Quit
+End If
+
+' ---------------------------------------------------------------------------
+' Get main parameters
+' ---------------------------------------------------------------------------
+Dim strHelpTitle
+Dim strDefaultTopic
+Dim strHelpProjectPath
+Dim strOutputFile
+
+strOutputFile = "help.chm"
+
+On Error Resume Next
+strHelpTitle	= CStr(objTopicXml.SelectSingleNode("/help/@title").Text)
+strObjDir		= CStr(objTopicXml.SelectSingleNode("/help/@objdir").Text)
+strOutputFile	= CStr(objTopicXml.SelectSingleNode("/help/@target").Text)
+strDefaultTopic	= CStr(objTopicXml.SelectSingleNode("/help/topic/@filepath").Text)
+strDefaultTopic	= CStr(objTopicXml.SelectSingleNode("/help/topic[@default]/@filepath").Text)
+On Error Goto 0
+
+strObjDir		= Replace(strObjDir, "/", "\")
+strDefaultTopic	= Replace(strDefaultTopic, "/", "\")
+strHelpProjectPath = strObjDir & "\mess.hhp"
+
+' ---------------------------------------------------------------------------
+
 strSysInfoFile = "sysinfo.dat"
 strHHC = """C:\Program Files\HTML Help Workshop\hhc.exe"""
 
@@ -100,18 +163,15 @@ Set objFSO = CreateObject("Scripting.FileSystemObject")
 If objFSO.FileExists(strObjDir & "mess.chm") Then
 	objFSO.DeleteFile(strObjDir & "mess.chm")
 End If
-On Error Resume Next
-objFSO.CreateFolder(strObjDir)
-objFSO.CreateFolder(strObjDir & "sysinfo")
-objFSO.CreateFolder(strObjDir & "html")
-objFSO.CreateFolder(strObjDir & "images")
-On Error Goto 0
 
 ' ---------------------------------------------------------------------------
 ' Make sysinfo pages
 ' ---------------------------------------------------------------------------
 Set objSysInfoDictionary = CreateObject("Scripting.Dictionary")
 Set objTextStream = objFSO.OpenTextFile(strSysInfoFile)
+MakeParentDirectories strObjDir & "\"
+MakeParentDirectories strObjDir & "\sysinfo\"
+MakeParentDirectories strObjDir & "\sysinfo\foo.blah"
 Do While Not objTextStream.AtEndOfStream
 	strLine = objTextStream.ReadLine
 	If Len(strLine) > 0 Then
@@ -122,7 +182,7 @@ Do While Not objTextStream.AtEndOfStream
 			Case "$bio"
 				strSystemText = ""
 			Case "$end"
-				Set objTextStream2 = objFSO.CreateTextFile(strObjDir & "sysinfo\" & strSystem & ".htm")
+				Set objTextStream2 = objFSO.CreateTextFile(strObjDir & "\sysinfo\" & strSystem & ".htm")
 				objTextStream2.Write strSystemText
 				objTextStream2.Close
 				strSystem = ""
@@ -163,20 +223,21 @@ Next
 ' ---------------------------------------------------------------------------
 ' Make help project
 ' ---------------------------------------------------------------------------
-Set objTextStream = objFSO.CreateTextFile(strObjDir & "mess.hhp")
+MakeParentDirectories(strHelpProjectPath)
+Set objTextStream = objFSO.CreateTextFile(strHelpProjectPath)
 objTextStream.WriteLine("[OPTIONS]")
 objTextStream.WriteLine("Compiled file=mess.chm")
 objTextStream.WriteLine("Contents file=mess.hhc")
-objTextStream.WriteLine("Default topic=html\mess_overview.htm")
+objTextStream.WriteLine("Default topic=" & strDefaultTopic)
 objTextStream.WriteLine("Language=0x409 English (United States)")
-objTextStream.WriteLine("Title=MESS Help")
+objTextStream.WriteLine("Title=" & strHelpTitle)
 objTextStream.WriteLine("")
 objTextStream.Close
 
 ' ---------------------------------------------------------------------------
 ' Make help contents
 ' ---------------------------------------------------------------------------
-Set objTextStream = objFSO.CreateTextFile(strObjDir & "mess.hhc")
+Set objTextStream = objFSO.CreateTextFile(strObjDir & "\\mess.hhc")
 objTextStream.WriteLine("<!DOCTYPE HTML PUBLIC ""-//IETF//DTD HTML//EN"">")
 objTextStream.WriteLine("<HTML>")
 objTextStream.WriteLine("<HEAD>")
@@ -188,16 +249,13 @@ objTextStream.WriteLine("<param name=""Font"" value=""Arial,8,0"">")
 objTextStream.WriteLine("</OBJECT>")
 objTextStream.WriteLine("<UL>")
 
-'Help files
-Dim objTopicXml
-Set objTopicXml = CreateObject("MSXML.DOMDocument")
-objTopicXml.Load("mess/ui/help/topics.xml")
-If objTopicXml.Xml = "" Then
-	WScript.Echo "Cannot Open Topics.xml: " & objTopicXml.ParseError.Reason
+If WScript.Arguments.Count <> 1 Then
+	WScript.Echo "Need Topics XML path"
 	WScript.Quit
 End If
+
+'Help files
 AddTopics objTextStream, objTopicXml.SelectSingleNode("/help")
-Set objTopicXml = Nothing
 
 ' Emulated systems
 BeginFolder	objTextStream,	"Emulated systems"
@@ -216,6 +274,6 @@ objTextStream.Close
 ' ---------------------------------------------------------------------------
 ' Invoke help compiler
 ' ---------------------------------------------------------------------------
-WScript.CreateObject("WScript.Shell").Run strHHC & " " & strObjDir & "mess.hhp",, True
-objFSO.GetFile(strObjDir & "mess.chm").Copy("mess.chm")
+WScript.CreateObject("WScript.Shell").Run strHHC & " " & strHelpProjectPath,, True
+objFSO.GetFile(strObjDir & "\\mess.chm").Copy(strOutputFile)
 

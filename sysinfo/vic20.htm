@@ -13,7 +13,7 @@
 <h4>Commodore VIC20 and VC20</h4>
 <p><b>Cartridge Usage:</b><br>
 Cartridges may have any of the following extensions: .bin .rom .a0 .20 .40 .60 .prg<br>
-Files with boot-sign in it are recognized as roms. Some cartridges require more than one <br>
+Files with boot-sign in it are recognized as ROMs. Some cartridges require more than one <br>
 image (for example, defender.60 defender.a0).<br>
 .20 files loaded at 0x2000 <br>
 .40 files loaded at 0x4000<br>
@@ -23,7 +23,7 @@ image (for example, defender.60 defender.a0).<br>
 .bin and .rom files are loaded at 0x4000 when 0x4000 bytes long, <br>
 otherwise they are loaded at 0xa000<br>
 Note that .prg files are assigned to the quickloader (so you have to use <br>
-the -cart switch when loading rom images).<br>
+the -cart switch when loading ROM images).<br>
 <p><b>Cassette Usage:</b><br>
 Cassette images with the .wav or .prg extensions as well as multiple .prg files <br>
 contained within a zip file can be loaded. Zip files must be placed in the current directory, <br>
@@ -38,7 +38,7 @@ Within the emulation, use LOAD or LOAD"" or LOAD"",1 for loading normal programs
 LOAD"",1,1 for loading programs to a special address.<br>
 <p><b>Diskette Usage:</b><br>
 Disk drives are simulated at the moment, and only file loads from drive 8 and 9 <br>
-are implemented. You can load a program file from the rom directory (*.prg,*.p00)<br>
+are implemented. You can load a program file from the ROM directory (*.prg,*.p00)<br>
 (This must NOT be specified on command line, start the vc20 emulation with no images specified)<br>
  <br>
 You can also load a file from a d64 image (The directory command LOAD"$",8 is supported when <br>
@@ -63,7 +63,7 @@ mode (when the graphic driver supports this). For an acceptable display under XM
 use the following switches: <br>
 -scalewidth 3 -scaleheight 2<br>
 If you run into difficulty, be sure to start the emulation with the -log switch, and look into<br>
-the error.log file that is created in your mess directory.<br>
+the error.log file that is created in your MESS directory.<br>
 See "Keys (This Machine)" in the TAB/Options menu for key assignments. Some key usages of note: <br>
 stop-restore in many cases will cause the prompt to reappear.<br>
 shift-cbm switches between upper-only and normal character set (if wrong characters are on <br>
@@ -83,7 +83,7 @@ No special expansion modules like ieee488 interface are supported in the expansi
 Image compatibility is quite high, see vic20.crc for a partial list. The emulation features a<br>
 rasterline based video system which should be enough for all vic20 games and programs. The <br>
 emulation supports the keyboard, as well as joysticks, paddles and lightpen, via the emulated<br>
-gameport, and simple Disk and Tape support. The expansion slot supports ram and rom <br>
+gameport, and simple Disk and Tape support. The expansion slot supports RAM and ROM <br>
 cartridges, though not special expansion modules (see known issues). For a more complete vic20 <br>
 emulation, take a look at the very good vice emulator.<br>
 <p><b>History and Trivia:</b><br>
@@ -96,7 +96,7 @@ obsolete, Commodore replaced it by the Commodore 16 which had no success.<br>
 Note that its name came from the name of its video chip VIC (Video Interface Chip) and <br>
 its memory size : 5 KB RAM + 15 KB ROM = 20 KB ! The European VC20 stands for VolksComputer.<br>
 <hr>
-<center><font size=-2>Generated on Fri Sep 05 10:55:22 2003
+<center><font size=-2>Generated on Sun Sep 21 17:27:54 2003
 </font></center>
 </body>
 </html>
