@@ -246,26 +246,12 @@ ROM_START(hp48g)
 	ROM_REGION(0x100,REGION_GFX1,0)
 ROM_END
 
-static const struct IODevice io_hp48s[] = {
-    { IO_END }
-};
+#define io_hp48s	io_NULL
+#define io_hp48g	io_NULL
 
-#define io_hp48g io_hp48s
+SYSTEM_CONFIG_START(hp48)
+SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      MONITOR	COMPANY   FULLNAME */
-// hp71b 84 cpu 1lf2
-// hp71b    cpu 1lk7
-// hp18c 86
-// hp28c 87
-// hp17b 88 cpu 1lt8 in lewis
-// hp19b 88
-// hp27s 88
-// hp28s 88
-// hp48sx 91 cpu 1lt8 in clarke
-// hp48s (hp48sx with only 32kb ram)
-// hp48gx 93 cpu 1lt8 in yorke
-// hp48g (hp48gx with only 32kb ram)
-// hp38g  95 cpu 1lt8 in yorke
-// hp49????
-COMP( 1989, hp48s,	  0, 		hp48s,  hp48s, 	hp48s,	  "Hewlett Packard",  "HP48S/SX")
-COMP( 1993, hp48g,	  0, 		hp48g,  hp48s, 	hp48g,	  "Hewlett Packard",  "HP48G/GX")
+/*   YEAR	NAME	PARENT	MACHINE	INPUT	INIT	CONFIG	MONITOR	COMPANY   FULLNAME */
+COMP(1989,	hp48s,	0,		hp48s,	hp48s,	hp48s,	hp48,	"Hewlett Packard",  "HP48S/SX")
+COMP(1993,	hp48g,	0,		hp48g,	hp48s,	hp48g,	hp48,	"Hewlett Packard",  "HP48G/GX")

@@ -45,7 +45,7 @@ typedef struct
 } basicdsk;
 
 /* init */
-int     basicdsk_floppy_init(int id);
+int     basicdsk_floppy_init(int id, void *fp, int open_mode);
 /* exit and free up data */
 void basicdsk_floppy_exit(int id);
 
@@ -76,6 +76,12 @@ void basicdsk_set_geometry(UINT8 drive, UINT16 tracks, UINT8 sides, UINT8 sec_pe
 /* set data mark/deleted data mark for the sector specified. If ddam!=0, the sector will
 have a deleted data mark, if ddam==0, the sector will have a data mark */
 void	basicdsk_set_ddam(UINT8 physical_drive, UINT8 physical_track, UINT8 physical_side, UINT8 sector_id,UINT8 ddam);
+
+
+#define CONFIG_DEVICE_FLOPPY_BASICDSK(count, file_extensions, init)		\
+	CONFIG_DEVICE(IO_FLOPPY, (count), (file_extensions), IO_RESET_NONE,	\
+		OSD_FOPEN_RW_CREATE_OR_READ, (init), basicdsk_floppy_exit,		\
+		NULL, NULL, NULL, floppy_status, NULL, NULL, NULL, NULL, NULL)	\
 
 #ifdef __cplusplus
 }

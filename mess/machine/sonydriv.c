@@ -3,32 +3,40 @@
 
 	Nate Woods, Raphael Nabet
 
-	This floppy drive was present in all variants of Lisa 2 (including Mac XL), and in all
-	Macintosh in production before 1988, when SIWM and superdrive were introduced.
+	This floppy drive was present in all variants of Lisa 2 (including Mac XL),
+	and in all Macintosh in production before 1988, when SIWM and superdrive
+	were introduced.
 
 	There were two variants :
-	- A single-sided 400k unit which was used on Lisa 2/Mac XL, and Macintosh 128k/512k.
-	  This unit needs the computer to send the proper pulses to control the drive motor
-	  rotation.  It can be connected to all early Macintosh (but not Mac Classic ?) as an
-	  external unit.
-	- A double-sided 800k unit which was used on Macintosh Plus, 512ke, and early SE and II*.
-	  This unit generates its own drive motor rotation control signals.  It can be connected
-	  to earlier (and later) Macintosh as an external or internal unit.  Some Lisa2/10 and
-	  Mac XL were upgraded to use it, too, but a fdc ROM upgrade was required.
+	- A single-sided 400k unit which was used on Lisa 2/Mac XL, and Macintosh
+	  128k/512k.  This unit needs the computer to send the proper pulses to
+	  control the drive motor rotation.  It can be connected to all early
+	  Macintosh (but not Mac Classic?) as an external unit.
+	- A double-sided 800k unit which was used on Macintosh Plus, 512ke, and
+	  early SE and II*.  This unit generates its own drive motor rotation
+	  control signals.  It can be connected to earlier (and later) Macintosh as
+	  an external or internal unit.  Some Lisa2/10 and Mac XL were upgraded to
+	  use it, too, but a fdc ROM upgrade was required.
 
-	* I don't know for sure whether some Mac II were actually produced with a Superdrive unit...
+	* Note: I don't know for sure whether some Mac II were actually produced
+	  with a Superdrive unit, though Apple did sell an upgrade kit, made of
+	  a Superdrive unit, a SIWM controller and upgraded systems ROMs, which
+	  added HD and MFM support to existing Macintosh II.
 
 	TODO :
-	* bare images are supposed to be in Macintosh format (look for formatByte in
-	sony_floppy_init(), and you will understand).  We need to support Lisa, Apple II...
-	* support for other image formats ?
-	* should we support more than 2 floppy disk units ? (Mac SE *MAY* have supported 3 drives)
+	* bare images are supposed to be in Macintosh format (look for formatByte
+	  in sony_floppy_init(), and you will understand).  We need to support
+	  Lisa, Apple II...
+	* support for other image formats?
+	* should we support more than 2 floppy disk units? (Mac SE *MAY* have
+	  supported 3 drives)
 */
 
 #include "sonydriv.h"
 #include "mame.h"
 #include "timer.h"
 #include "cpuintrf.h"
+#include "image.h"
 
 #ifdef MAME_DEBUG
 #define LOG_SONY		1
@@ -57,7 +65,10 @@ static int sony_sel_line;			/* one single line Is 0 or 1 */
 
 static unsigned int rotation_speed;		/* drive rotation speed - ignored if ext_speed_control == 0 */
 
-
+/*
+	Structure that describes the state of a floppy drive, and the associated
+	disk image
+*/
 typedef struct
 {
 	void *fd;
@@ -109,6 +120,23 @@ static const UINT8 sony_tracklen_800kb[80] =
 };
 
 
+/*
+	header of diskcopy 4.2 images
+*/
+typedef struct diskcopy_header_t
+{
+	UINT8 diskName[64];	/* name of the disk */
+	UINT32 dataSize;	/* total size of data for all sectors (512*number_of_sectors) */
+	UINT32 tagSize;		/* total size of tag data for all sectors (12*number_of_sectors for GCR 3.5" floppies, 20*number_of_sectors for HD20, 0 otherwise) */
+	UINT32 dataChecksum;/* CRC32 checksum of all sector data */
+	UINT32 tagChecksum;	/* CRC32 checksum of all tag data */
+	UINT8 diskFormat;	/* 0 = 400K, 1 = 800K, 2 = 720K, 3 = 1440K  (other values reserved) */
+	UINT8 formatByte;	/* should be $00 Apple II, $01 Lisa, $02 Mac MFS ??? */
+						/* $12 = 400K, $22 = >400K Macintosh (DiskCopy uses this value for
+						   all Apple II disks not 800K in size, and even for some of those),
+						   $24 = 800K Apple II disk */
+	UINT16 private;		/* always $0100 (otherwise, the file may be in a different format. */
+} diskcopy_header_t;
 
 
 
@@ -1285,10 +1313,11 @@ static void sony_doaction(void)
 	the allowablesizes tells which formats should be supported
 	(single-sided and double-sided 3.5'' GCR)
 */
-int sony_floppy_init(int id, int allowablesizes)
+int sony_floppy_init(int id, void *fp, int open_mode, int allowablesizes)
 {
 	floppy *f;
 	long image_len=0;
+
 
 	f = &sony_floppy[id];
 
@@ -1297,34 +1326,18 @@ int sony_floppy_init(int id, int allowablesizes)
 	f->ext_speed_control = (allowablesizes & SONY_FLOPPY_EXT_SPEED_CONTROL) ? 1 : 0;
 	f->drive_sides = (allowablesizes & SONY_FLOPPY_ALLOW800K) ? 1 : 0;
 
-	if (!device_filename(IO_FLOPPY,id))
+	if (fp == NULL)
 		return INIT_PASS;
 
-	f->fd = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
-	if (!f->fd)
-	{
-		f->fd = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-		if (!f->fd)
-			goto error;
-		f->wp = 1;
-	}
+	/* open file */
+	f->fd = fp;
+	/* tell whether the image is writable */
+	f->wp = ! (is_effective_mode_writable(open_mode));
+
 
 	/* R. Nabet : added support for the diskcopy format to allow exchanges with real-world macs */
 	{
-		struct
-		{
-			UINT8 diskName[64];
-			UINT32 dataSize;
-			UINT32 tagSize;
-			UINT32 dataChecksum;
-			UINT32 tagChecksum;
-			UINT8 diskFormat;	/* 0 = 400K, 1 = 800K, 2 = 720K, 3 = 1440K  (other values reserved) */
-			UINT8 formatByte;	/* should be $00 Apple II, $01 Lisa, $02 Mac MFS ??? */
-								/* $12 = 400K, $22 = >400K Macintosh (DiskCopy uses this value for
-								   all Apple II disks not 800K in size, and even for some of those),
-								   $24 = 800K Apple II disk */
-			UINT16 private;		/* always $0100 (otherwise, the file may be in a different format. */
-		} header;
+		diskcopy_header_t header;
 
 		f->image_format = bare;	/* default */
 
@@ -1398,7 +1411,7 @@ int sony_floppy_init(int id, int allowablesizes)
 
 #if LOG_SONY
 	logerror("macplus_floppy_init(): Loaded %s-sided floppy; id=%i name='%s' wp=%i\n",
-		(f->disk_sides ? "double" : "single"), (int) id, device_filename(IO_FLOPPY,id), (int) f->wp);
+		(f->disk_sides ? "double" : "single"), (int) id, image_filename(IO_FLOPPY,id), (int) f->wp);
 #endif
 
 	return INIT_PASS;
@@ -1510,6 +1523,6 @@ void sony_set_speed(int speed)
 
 /*int sony_get_sel_line(void)
 {
-	return iwm_sel_line;
+	return sony_sel_line;
 }*/
 

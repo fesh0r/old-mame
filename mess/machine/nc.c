@@ -8,7 +8,7 @@
 #include "includes/nc.h"
 #include "includes/serial.h"
 #include "includes/msm8251.h"
-
+#include "image.h"
 
 /*************************************************************************************************/
 /* PCMCIA Ram Card management */
@@ -36,7 +36,7 @@ static void	nc_card_save(int id)
 	logerror("attempting card save\n");
 
 	/* open file for writing */
-	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_WRITE);
+	file = image_fopen_custom(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_WRITE);
 
 	if (file)
 	{
@@ -71,12 +71,8 @@ static int nc_card_calculate_mask(int size)
 
 
 /* load card image */
-static int nc_card_load(int id, unsigned char **ptr)
+static int nc_card_load(int id, void *file, unsigned char **ptr)
 {
-	void *file;
-
-	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-
 	if (file)
 	{
 		int datasize;
@@ -120,11 +116,11 @@ static int nc_card_load(int id, unsigned char **ptr)
 }
 
 /* load pcmcia card */
-int nc_pcmcia_card_load(int id)
+int nc_pcmcia_card_load(int id, void *fp, int open_mode)
 {
 	/* a pcmcia card is not required for this machine,
 	so if no image is specified, initialisation has succeeded */
-	if (device_filename(IO_CARTSLOT,id)==NULL)
+	if (fp == NULL)
 	{
 		/* card not present */
 		nc_set_card_present_state(0);
@@ -138,7 +134,7 @@ int nc_pcmcia_card_load(int id)
 	/* filename specified */
 
 	/* attempt to load file */
-	if (nc_card_load(id,&nc_card_ram))
+	if (nc_card_load(id, fp, &nc_card_ram))
 	{
 		if (nc_card_ram!=NULL)
 		{
@@ -176,15 +172,15 @@ void nc_pcmcia_card_exit(int id)
 /*************************************************************************************************/
 /* Serial */
 
-int	nc_serial_init(int id)
+int	nc_serial_init(int id, void *fp, int open_mode)
 {
 	/* serial device is not require for this machine, so if no image
 	is specified, initialisation has succeeded */
-	if (device_filename(IO_SERIAL, id)==NULL)
+	if (fp == NULL)
 		return INIT_PASS;
 
 	/* filename specified */
-	if (serial_device_init(id)==INIT_PASS)
+	if (serial_device_init(id, fp)==INIT_PASS)
 	{
 		/* setup transmit parameters */
 		serial_device_setup(id, 9600, 8, 1,SERIAL_PARITY_NONE);

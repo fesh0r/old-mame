@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+#include "messdrv.h"
+
 struct Wave_interface {
 	int num;
 	int mixing_level[MAX_WAVE];
@@ -38,12 +40,15 @@ extern void wave_output(int id, int data);
 extern int wave_input_chunk(int id, void *dst, int chunks);
 extern int wave_output_chunk(int id, void *src, int chunks);
 
+extern void cassette_exit(int id);
+
 #define IO_CASSETTE_WAVE(count,fileext,id,init,exit)	\
 {														\
 	IO_CASSETTE,		/* type */						\
 	count,				/* count */ 					\
 	fileext,			/* file extensions */			\
 	IO_RESET_NONE,		/* reset depth */				\
+	/*OSD_FOPEN_DUMMY*/OSD_FOPEN_READ_OR_WRITE,	/* open mode */					\
 	id, 				/* id */						\
 	init,				/* init */						\
 	exit,				/* exit */						\
@@ -58,6 +63,11 @@ extern int wave_output_chunk(int id, void *src, int chunks);
 	wave_input_chunk,	/* input_chunk */				\
 	wave_output_chunk	/* output_chunk */				\
 }
+
+#define CONFIG_DEVICE_CASSETTE(count,fileext,init)											\
+	CONFIG_DEVICE(IO_CASSETTE, (count), "wav\0" fileext, IO_RESET_NONE, /*OSD_FOPEN_DUMMY*/OSD_FOPEN_READ_OR_WRITE,	\
+		(init), cassette_exit,	wave_info, wave_open, wave_close, wave_status, wave_seek,	\
+		wave_tell, wave_input, wave_output, NULL)											\
 
 /*****************************************************************************
  * Use this structure for the "void *args" argument of device_open()

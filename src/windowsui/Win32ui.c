@@ -449,6 +449,7 @@ static ResizeItem main_resize_items[] =
 	{ RA_ID,   { IDC_SSPICTURE },RA_RIGHT | RA_BOTTOM | RA_TOP,     NULL },
 	{ RA_ID,   { IDC_HISTORY },  RA_RIGHT | RA_BOTTOM | RA_TOP,     NULL },
 	{ RA_ID,   { IDC_SSDEFPIC }, RA_RIGHT | RA_TOP,                 NULL },
+	{ RA_ID,   { IDC_SSTAB },    RA_RIGHT | RA_TOP,                 NULL },
 #ifdef MESS
 	{ RA_ID,   { IDC_LIST2 },    RA_RIGHT | RA_BOTTOM | RA_TOP,     NULL },
 	{ RA_ID,   { IDC_SPLITTER3 },RA_RIGHT | RA_BOTTOM | RA_TOP,     NULL },
@@ -563,10 +564,6 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 {
 	char pModule[_MAX_PATH];
 	options_type* pOpts;
-#ifdef MESS
-	int i;
-	extern struct rc_option mess_opts[1];
-#endif
 
 	GetModuleFileName(GetModuleHandle(NULL), pModule, _MAX_PATH);
 
@@ -575,14 +572,7 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	sprintf(pCmdLine, "%s %s", pModule, drivers[nGameIndex]->name);
 
 #ifdef MESS
-	for (i = 0; i < options.image_count; i++)
-	{
-		const char *optname = mess_opts[options.image_files[i].type].shortname;
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -%s \"%s\"", optname, options.image_files[i].name);
-	}
-
-	if (pOpts->ram_size != 0)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -ramsize %d", pOpts->ram_size);
+	MessCreateCommandLine(pCmdLine, pOpts, drivers[nGameIndex]);
 #endif
 
 #ifdef MESS
@@ -934,28 +924,44 @@ void GetRealColumnOrder(int order[])
 
 BOOL GameUsesTrackball(int game)
 {
-	int port;
+    const struct InputPortTiny* input_ports;
 
 	/* new trackball support */
-	if (drivers[game]->input_ports != 0)
-	{
-		port = 0;
-		while (drivers[game]->input_ports[port].type != IPT_END)
-		{
-			int type = drivers[game]->input_ports[port].type & ~IPF_MASK;
-			if (type == IPT_DIAL
-			||	type == IPT_PADDLE
-			||	type == IPT_TRACKBALL_X
-			||	type == IPT_TRACKBALL_Y
-			||	type == IPT_AD_STICK_X
-			||	type == IPT_AD_STICK_Y)
-			{
-				return TRUE;
-			}
-			port++;
-		}
-		return FALSE;
-	}
+
+	if ( drivers[game]->input_ports == 0 )
+    {
+        /* no input ports, so no trackball */
+
+        return FALSE;
+    }
+
+    input_ports = drivers[game]->input_ports;
+
+    for ( ; ; )
+    {
+        UINT32  type;
+
+        type = (*input_ports).type;
+        if ( type == IPT_END )
+        {
+            break;
+        }
+
+        type &= ~IPF_MASK;
+        
+        if (type == IPT_DIAL
+            ||	type == IPT_PADDLE
+            ||	type == IPT_TRACKBALL_X
+            ||	type == IPT_TRACKBALL_Y
+            ||	type == IPT_AD_STICK_X
+            ||	type == IPT_AD_STICK_Y)
+        {
+            return TRUE;
+        }
+        
+        ++input_ports;
+    }
+
 	return FALSE;
 }
 
@@ -1522,9 +1528,7 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	g_mame32_message = RegisterWindowMessage("MAME32");
 	g_bDoBroadcast = GetBroadcast();
 
-#if HAS_HELP
 	Help_Init();
-#endif
 
 	/* init files after OptionsInit to init paths */
 	File_Init();
@@ -1803,9 +1807,7 @@ static void Win32UI_exit()
 
 	File_Exit();
 
-#if HAS_HELP
 	Help_Exit();
-#endif
 }
 
 static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lParam)
@@ -2157,11 +2159,15 @@ static BOOL PumpMessage()
 static BOOL PumpAndReturnMessage(MSG *pmsg)
 {
 	if (!(GetMessage(pmsg, NULL, 0, 0)))
+    {
 		return FALSE;
+    }
 
-#if HAS_HELP
-	if (!Help_HtmlHelp(NULL, NULL, HH_PRETRANSLATEMESSAGE, (DWORD)pmsg))
-#endif
+    /* I couldn't see any difference without this call here,
+        and it chews up alot of cpu time if it's present,
+        so I removed it as this is critical path code */
+    
+	/* if (!Help_HtmlHelp(NULL, NULL, HH_PRETRANSLATEMESSAGE, (DWORD)pmsg)) */
 	{
 		if (IsWindow(hMain))
 		{
@@ -3284,7 +3290,6 @@ static void SetView(int menu_id, int listview_style)
 
 static void ResetListView()
 {
-	RECT	rect;
 	int 	i;
 	int 	current_game;
 	LV_ITEM lvi;
@@ -3293,13 +3298,17 @@ static void ResetListView()
 	LPTREEFOLDER lpFolder = GetCurrentFolder();
 
 	if (!lpFolder)
+    {
 		return;
+    }
 
 	SetWindowRedraw(hwndList, FALSE);
 
 	/* If the last folder was empty, no_selection is TRUE */
 	if (have_selection == FALSE)
+    {
 		no_selection = TRUE;
+    }
 
 	current_game = GetSelectedPickItem();
 
@@ -3344,22 +3353,23 @@ static void ResetListView()
 
 	ColumnSort(column - 1, TRUE);
 
-	/* If last folder was empty, select the first item in this folder */
-	if (no_selection)
+	if (bListReady)
 	{
-		SetSelectedPick(0);
-	}
-	else
-		SetSelectedPickItem(current_game);
+	    /* If last folder was empty, select the first item in this folder */
+	    if (no_selection)
+		    SetSelectedPick(0);
 
-	GetClientRect(hwndList, &rect);
-	InvalidateRect(hwndList, &rect, TRUE);
+		else
+		    SetSelectedPickItem(current_game);
+	}
 	/* if (current_view_id == ID_VIEW_SMALL_ICON) */
 		ListView_Arrange(hwndList, LVA_DEFAULT);/* LVA_ALIGNTOP); */
 
+	SetWindowRedraw(hwndList, TRUE);
+    InvalidateRect( hwndList, NULL, FALSE );
+
 	UpdateStatusBar();
 
-	SetWindowRedraw(hwndList, TRUE);
 }
 
 static void UpdateGameList()
@@ -3763,19 +3773,25 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 				  LanguageDialogProc);
 		return TRUE;
 
-#if HAS_HELP
 	case ID_HELP_CONTENTS:
+#ifdef MESS
+		Help_HtmlHelp(hMain, MAME32HELP "::/html/mess_overview.htm", HH_DISPLAY_TOPIC, 0);
+#else
 		Help_HtmlHelp(hMain, MAME32HELP "::/html/mame32_overview.htm", HH_DISPLAY_TOPIC, 0);
+#endif
 		break;
 
+#ifndef MESS
 	case ID_HELP_WHATS_NEW32:
 		Help_HtmlHelp(hMain, MAME32HELP "::/html/mame32_changes.htm", HH_DISPLAY_TOPIC, 0);
 		break;
+#endif
 
+#ifndef MESS
 	case ID_HELP_TROUBLE:
 		Help_HtmlHelp(hMain, MAME32HELP "::/html/mame32_support.htm", HH_DISPLAY_TOPIC, 0);
 		break;
-#endif /* HAS_HELP */
+#endif
 
 	case ID_HELP_RELEASE:
 		DisplayTextFile(hMain, HELPTEXT_RELEASE);
@@ -3783,8 +3799,9 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 		break;
 
 	case ID_HELP_WHATS_NEW:
+//		DisplayTextFile(hMain, HELPTEXT_WHATS_NEW);
 #ifdef MESS
-		DisplayTextFile(hMain, HELPTEXT_WHATS_NEW);
+		Help_HtmlHelp(hMain, MAME32HELP "::/messnew.txt", HH_DISPLAY_TOPIC, 0);
 #else
 		Help_HtmlHelp(hMain, MAME32HELP "::/docs/whatsnew.txt", HH_DISPLAY_TOPIC, 0);
 #endif
@@ -4463,11 +4480,9 @@ static BOOL SelectLanguageFile(HWND hWnd, TCHAR* filename)
 static INT_PTR CALLBACK LanguageDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
 	TCHAR pLangFile[MAX_PATH];
-#if HAS_HELP
 	DWORD dwHelpIDs[] = { IDC_LANGUAGECHECK, HIDC_LANGUAGECHECK,
 						  IDC_LANGUAGEEDIT,  HIDC_LANGUAGEEDIT,
 						  0, 0};
-#endif /* HAS_HELP */
 
 	switch (Msg)
 	{
@@ -4492,7 +4507,6 @@ static INT_PTR CALLBACK LanguageDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 			return TRUE;
 		}
 
-#if HAS_HELP
 	case WM_HELP:
 		Help_HtmlHelp(((LPHELPINFO)lParam)->hItemHandle, MAME32CONTEXTHELP, HH_TP_HELP_WM_HELP, (DWORD)dwHelpIDs);
 		break;
@@ -4500,7 +4514,6 @@ static INT_PTR CALLBACK LanguageDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 	case WM_CONTEXTMENU:
 		Help_HtmlHelp((HWND)wParam, MAME32CONTEXTHELP, HH_TP_HELP_CONTEXTMENU, (DWORD)dwHelpIDs);
 		break;
-#endif /* HAS_HELP */
 
 	case WM_COMMAND:
 		switch (GET_WM_COMMAND_ID(wParam, lParam))

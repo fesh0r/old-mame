@@ -10,6 +10,7 @@
 #include "cpu/m6502/m6502.h"
 
 #include "includes/svision.h"
+#include "image.h"
 
 /*
 supervision
@@ -379,31 +380,25 @@ ROM_END
  dd6a clear 0x2000 at ($57/58) (0x4000)
  */
 
-static int svision_load_rom(int id)
+static int svision_load_rom(int id, void *cartfile, int open_mode)
 {
-	FILE *cartfile;
 	UINT8 *rom = memory_region(REGION_CPU1);
 	int size;
 
-	if (device_filename(IO_CARTSLOT, id) == NULL)
+	if (cartfile == NULL)
 	{
 		printf("%s requires Cartridge!\n", Machine->gamedrv->name);
 		return 0;
 	}
 
-	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror("%s not found\n",device_filename(IO_CARTSLOT,id));
-		return 1;
-	}
 	size=osd_fsize(cartfile);
 	if (size>0x10000) {
-	    logerror("%s: size %d not yet supported\n",device_filename(IO_CARTSLOT,id), size);
+	    logerror("%s: size %d not yet supported\n",image_filename(IO_CARTSLOT,id), size);
 	    return 1;
 	}
 
 	if (osd_fread(cartfile, rom+0x20000-size, size)!=size) {
-		logerror("%s load error\n",device_filename(IO_CARTSLOT,id));
+		logerror("%s load error\n",image_filename(IO_CARTSLOT,id));
 		osd_fclose(cartfile);
 		return 1;
 	}
@@ -415,40 +410,19 @@ static int svision_load_rom(int id)
 	return 0;
 }
 
-static const struct IODevice io_svision[] = {
-	{
-		IO_CARTSLOT,					/* type */
-		1,								/* count */
-		"bin\0",                        /* file extensions */
-		IO_RESET_ALL,					/* reset if file changed */
-		0,
-		svision_load_rom, 				/* init */
-		NULL,							/* exit */
-		NULL,							/* info */
-		NULL,							/* open */
-		NULL,							/* close */
-		NULL,							/* status */
-		NULL,							/* seek */
-		NULL,							/* tell */
-		NULL,							/* input */
-		NULL,							/* output */
-		NULL,							/* input_chunk */
-		NULL							/* output_chunk */
-	},
-    { IO_END }
-};
+#define io_svision	io_NULL
 
-/*    YEAR      NAME            PARENT  MACHINE   INPUT     INIT
-	  COMPANY                 FULLNAME */
-CONSX( 1992, svision,       0,          svision,  svision,    svision,   "Watara", "Super Vision", GAME_IMPERFECT_SOUND)
+SYSTEM_CONFIG_START(svision)
+	CONFIG_DEVICE_CARTSLOT(1, "bin\0", svision_load_rom, NULL, NULL)
+SYSTEM_CONFIG_END
+
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
+
+/*    YEAR  NAME		PARENT	MACHINE		INPUT		INIT		CONFIG		COMPANY		FULLNAME */
+CONSX(1992,	svision,	0,		svision,	svision,	svision,	svision,	"Watara",	"Super Vision", GAME_IMPERFECT_SOUND)
 // marketed under a ton of firms and names
 
-#ifdef RUNTIME_LOADER
-extern void svision_runtime_loader_init(void)
-{
-	int i;
-	for (i=0; drivers[i]; i++) {
-		if ( strcmp(drivers[i]->name,"svision")==0) drivers[i]=&driver_svision;
-	}
-}
-#endif

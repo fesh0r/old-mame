@@ -102,6 +102,7 @@ FF00-FFFF       Jump table, vectors
 #include "snprintf.h"
 
 #include "driver.h"
+#include "image.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6522via.h"
 
@@ -638,13 +639,11 @@ static struct via6522_interface via2 =
 	vc1541_via1_irq
 };
 
-int vc1541_init (int id)
+int vc1541_init (int id, void *in, int open_mode)
 {
-	FILE *in;
 	int size;
 
 	/*memset (&(drive->d64), 0, sizeof (drive->d64)); */
-	in = (FILE*)image_fopen (IO_FLOPPY, id, OSD_FILETYPE_IMAGE, 0);
 	if (!in)
 		return INIT_FAIL;
 
@@ -662,7 +661,7 @@ int vc1541_init (int id)
 	}
 	osd_fclose (in);
 
-	logerror("floppy image %s loaded\n", device_filename(IO_FLOPPY, id));
+	logerror("floppy image %s loaded\n", image_filename(IO_FLOPPY, id));
 
 	vc1541->timer = timer_alloc(vc1541_timer);
 
@@ -1009,7 +1008,7 @@ MEMORY_WRITE_START( c1551_writemem )
 	{0xc000, 0xffff, MWA_ROM},
 MEMORY_END
 
-void c1551x_write_data (TPI6525 *This, int data)
+static void c1551x_write_data (TPI6525 *This, int data)
 {
 	DBG_LOG(1, "c1551 cpu", ("%d write data %.2x\n",
 						 cpu_getactivecpu (), data));
@@ -1019,7 +1018,7 @@ void c1551x_write_data (TPI6525 *This, int data)
 	tpi6525_0_port_a_w(0,data);
 }
 
-int c1551x_read_data (TPI6525 *This)
+static int c1551x_read_data (TPI6525 *This)
 {
 	int data=0xff;
 #ifdef CPU_SYNC
@@ -1031,7 +1030,7 @@ int c1551x_read_data (TPI6525 *This)
 	return data;
 }
 
-void c1551x_write_handshake (TPI6525 *This, int data)
+static void c1551x_write_handshake (TPI6525 *This, int data)
 {
 	DBG_LOG(1, "c1551 cpu",("%d write handshake %.2x\n",
 						 cpu_getactivecpu (), data));
@@ -1041,7 +1040,7 @@ void c1551x_write_handshake (TPI6525 *This, int data)
 	tpi6525_0_port_c_w(0,data&0x40?0xff:0x7f);
 }
 
-int c1551x_read_handshake (TPI6525 *This)
+static int c1551x_read_handshake (TPI6525 *This)
 {
 	int data=0xff;
 #ifdef CPU_SYNC
@@ -1053,7 +1052,7 @@ int c1551x_read_handshake (TPI6525 *This)
 	return data;
 }
 
-int c1551x_read_status (TPI6525 *This)
+static int c1551x_read_status (TPI6525 *This)
 {
 	int data=0xff;
 #ifdef CPU_SYNC

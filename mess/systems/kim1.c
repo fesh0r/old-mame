@@ -233,7 +233,8 @@ static const struct IODevice io_kim1[] = {
 		IO_CASSETTE,		/* type */
         1,                  /* count */
 		"kim\0",            /* file extensions */
-		IO_RESET_ALL,		/* reset if file changed */
+		IO_RESET_CPU,		/* reset if file changed */
+		OSD_FOPEN_READ,		/* open mode */
         0,
 		kim1_cassette_init, /* init */
 		kim1_cassette_exit, /* exit */
@@ -251,6 +252,8 @@ static const struct IODevice io_kim1[] = {
     { IO_END }
 };
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMP( 1975, kim1,	  0, 		kim1,	  kim1, 	kim1,	  "MOS Technologies",  "KIM-1" )
+SYSTEM_CONFIG_START(kim1)
+SYSTEM_CONFIG_END
 
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      CONFIG  COMPANY   FULLNAME */
+COMP( 1975, kim1,	  0, 		kim1,	  kim1, 	kim1,	  kim1,	  "MOS Technologies",  "KIM-1" )

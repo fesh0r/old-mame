@@ -303,54 +303,16 @@ ROM_START (atomeb)
 	ROM_LOAD ("atomicw.rom",0x018000,0x1000,0xa3fd737d)
 ROM_END
 
-static const struct IODevice io_atom[] =
-{
-	{
-		IO_QUICKLOAD,
-		1,						/* count */
-		"atm\0",				/* file extn */
-		IO_RESET_NONE,			/* reset if file changed */
-        NULL,                   /* id */
-		atom_init_atm,			/* init */
-		NULL,					/* exit */
-		NULL,					/* info */
-		NULL,					/* open */
-		NULL,					/* close */
-		NULL,					/* status */
-		NULL,					/* seek */
-		NULL,					/* tell */
-		NULL,					/* input */
-		NULL,					/* output */
-		NULL,					/* input_chunk */
-		NULL					/* output_chunk */
-	},
-	{
-		IO_FLOPPY,				/* type */
-		2,						/* count */
-		"ssd\0",                /* file extensions */
-		IO_RESET_NONE,			/* reset if file changed */
-		0,
-		atom_floppy_init,		/* init */
-		basicdsk_floppy_exit,	/* exit */
-		NULL,					/* info */
-		NULL,					/* open */
-		NULL,					/* close */
-		floppy_status,			/* status */
-		NULL,					/* seek */
-		NULL,					/* tell */
-		NULL,					/* input */
-		NULL,					/* output */
-		NULL,					/* input_chunk */
-		NULL					/* output_chunk */
-	},
-    /* these are not working properly yet! */
-	IO_CASSETTE_WAVE(1,"wav\0",NULL,atom_cassette_init,atom_cassette_exit),
-    IO_PRINTER_PORT (1, "prn\0"),
-	{ IO_END }
-};
+#define io_atom		io_NULL
+#define io_atomeb	io_NULL
 
-#define io_atomeb io_atom
+SYSTEM_CONFIG_START(atom)
+	CONFIG_DEVICE_CASSETTE			(1, "",			atom_cassette_init)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(2, "ssd\0",	atom_floppy_init)
+	CONFIG_DEVICE_PRINTER			(1)
+	CONFIG_DEVICE_QUICKLOAD			(	"atm\0",	atom_init_atm, NULL)
+SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMP( 1979, atom,     0,        atom,     atom,     0,        "Acorn",  "Atom" )
-COMP( 1979, atomeb,   atom,     atomeb,     atom,     0,        "Acorn",  "Atom with Eprom Box" )
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      CONFIG   COMPANY   FULLNAME */
+COMP( 1979, atom,     0,        atom,     atom,     0,        atom,    "Acorn",  "Atom" )
+COMP( 1979, atomeb,   atom,     atomeb,   atom,     0,        atom,    "Acorn",  "Atom with Eprom Box" )

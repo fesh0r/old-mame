@@ -3,6 +3,7 @@
 #include "machine/z80fmly.h"
 #include "cpu/z80/z80.h"
 #include "includes/kc.h"
+#include "image.h"
 
 #define KC_DEBUG
 
@@ -39,7 +40,7 @@ bit 0: TRUCK */
 
 
 /* load image */
-void kc_dump_ram(void)
+static void kc_dump_ram(void)
 {
 	void *file;
 
@@ -64,12 +65,8 @@ void kc_dump_ram(void)
 }
 
 /* load image */
-int kc_load(int type, int id, unsigned char **ptr)
+static int kc_load(int type, int id, void *file, unsigned char **ptr)
 {
-	void *file;
-
-	file = image_fopen(type, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-
 	if (file)
 	{
 		int datasize;
@@ -124,14 +121,14 @@ struct kcc_header
 /* now type name that has appeared! */
 
 /* load snapshot */
-int kc_quickload_load(int id)
+int kc_quickload_load(int id, void *fp, int open_mode)
 {
 	unsigned char *data;
 
-	if (device_filename(IO_QUICKLOAD,id)==NULL)
+	if (fp == NULL)
 		return INIT_PASS;
 
-	if (kc_load(IO_QUICKLOAD,id,&data))
+	if (kc_load(IO_QUICKLOAD, id, fp, &data))
 	{
 		struct kcc_header *header = (struct kcc_header *)data;
 		int addr;
@@ -171,12 +168,12 @@ int kc_quickload_load(int id)
 /* bit 4: Index pulse from disc */
 static unsigned char kc85_disc_hw_input_gate;
 
-int kc85_floppy_init(int id)
+int kc85_floppy_init(int id, void *fp, int open_mode)
 {
-	if (device_filename(IO_FLOPPY, id)==NULL)
+	if (fp == NULL)
 		return INIT_PASS;
 
-	if (basicdsk_floppy_init(id)==INIT_PASS)
+	if (basicdsk_floppy_init(id, fp, open_mode)==INIT_PASS)
 	{
 		basicdsk_set_geometry(id, 80, 2, 9, 512, 1, 0);
 		return INIT_PASS;
@@ -279,7 +276,7 @@ static void kc85_disk_reset_timer_callback(int dummy)
 	cpunum_set_pc(0,0x0f000);
 }
 
-void kc_disc_interface_init(void)
+static void kc_disc_interface_init(void)
 {
 	timer_set(TIME_NOW, 0, kc85_disk_reset_timer_callback);
 
@@ -293,7 +290,7 @@ void kc_disc_interface_init(void)
 }
 
 
-void kc_disc_interface_exit(void)
+static void kc_disc_interface_exit(void)
 {
 	nec765_stop();
 }
@@ -441,46 +438,39 @@ static void kc85_module_system_init(void)
 
 #define KC_CASSETTE_TIMER_FREQUENCY TIME_IN_HZ(4800)
 
-int kc_cassette_device_init(int id)
+int kc_cassette_device_init(int id, void *file, int open_mode)
 {
-	void *file;
-
-	if (device_filename(IO_CASSETTE, id)==NULL)
+	if (file == NULL)
 		return INIT_PASS;
 
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-	if (file)
+	if( file )
 	{
-		struct wave_args wa = {0,};
-		wa.file = file;
-		wa.display = 1;
+		if (! is_effective_mode_create(open_mode))
+		{
+			struct wave_args wa = {0,};
+			wa.file = file;
+			wa.display = 1;
 
-		if (device_open(IO_CASSETTE, id, 0, &wa))
-			return INIT_FAIL;
+			if (device_open(IO_CASSETTE, id, 0, &wa))
+				return INIT_FAIL;
 
-		return INIT_PASS;
+			return INIT_PASS;
+		}
+		else
+		/* HJB 02/18: no file, created a new file instead */
+		{
+			struct wave_args wa = {0,};
+			wa.file = file;
+			wa.display = 1;
+			wa.smpfreq = 22050; /* maybe 11025 Hz would be sufficient? */
+			/* open in write mode */
+			if (device_open(IO_CASSETTE, id, 1, &wa))
+				return INIT_FAIL;
+			return INIT_PASS;
+		}
 	}
 
-	/* HJB 02/18: no file, create a new file instead */
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_WRITE);
-	if (file)
-	{
-		struct wave_args wa = {0,};
-		wa.file = file;
-		wa.display = 1;
-		wa.smpfreq = 22050; /* maybe 11025 Hz would be sufficient? */
-		/* open in write mode */
-        if (device_open(IO_CASSETTE, id, 1, &wa))
-            return INIT_FAIL;
-		return INIT_PASS;
-    }
-
 	return INIT_FAIL;
-}
-
-void kc_cassette_device_exit(int id)
-{
-	device_close(IO_CASSETTE, id);
 }
 
 /* this timer is used to update the cassette */

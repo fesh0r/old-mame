@@ -17,6 +17,7 @@
 
 #include "driver.h"
 #include "includes/flopdrv.h"
+#include "image.h"
 
 #define MAX_DRIVES 4
 

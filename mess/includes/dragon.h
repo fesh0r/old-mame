@@ -65,7 +65,12 @@ extern WRITE_HANDLER ( coco_ram_w );
 extern READ_HANDLER ( coco3_gimevh_r );
 extern WRITE_HANDLER ( coco3_gimevh_w );
 extern WRITE_HANDLER ( coco3_palette_w );
+
+extern void coco3_vh_reset(void);
 extern void coco3_vh_blink(void);
+extern int coco3_calculate_rows(int *bordertop, int *borderbottom);
+
+#define REORDERED_VBLANK
 
 /* ----------------------------------------------------------------------- *
  * from machine/dragon.c                                                   *
@@ -79,13 +84,12 @@ extern MACHINE_INIT( coco3 );
 extern MACHINE_STOP( coco );
 
 extern INTERRUPT_GEN( coco3_vh_interrupt );
-extern int coco_cassette_init(int id);
+extern int coco_cassette_init(int id, void *fp, int open_mode);
 extern int coco3_cassette_init(int id);
-extern void coco_cassette_exit(int id);
-extern int coco_rom_load(int id);
-extern int coco3_rom_load(int id);
-extern int coco_pak_load(int id);
-extern int coco3_pak_load(int id);
+extern int coco_rom_load(int id, void *fp, int open_mode);
+extern int coco3_rom_load(int id, void *fp, int open_mode);
+extern int coco_pak_load(int id, void *fp, int open_mode);
+extern int coco3_pak_load(int id, void *fp, int open_mode);
 extern READ_HANDLER ( dragon_mapped_irq_r );
 extern READ_HANDLER ( coco3_mapped_irq_r );
 extern READ_HANDLER ( coco3_mmu_r );
@@ -103,16 +107,14 @@ extern WRITE_HANDLER( coco_m6847_fs_w );
 extern WRITE_HANDLER( coco3_m6847_hs_w );
 extern WRITE_HANDLER( coco3_m6847_fs_w );
 extern int coco3_mmu_translate(int bank, int offset);
-extern int dragon_floppy_init(int id);
+extern int dragon_floppy_init(int id, void *fp, int open_mode);
 extern int dragon_floppy_id(int id);
 extern void dragon_floppy_exit(int id);
-extern int coco_vhd_init(int id);
+extern int coco_vhd_init(int id, void *fp, int open_mode);
 extern void coco_vhd_exit(int id);
 extern READ_HANDLER(coco_vhd_io_r);
 extern WRITE_HANDLER(coco_vhd_io_w);
 extern int coco_bitbanger_init (int id);
-extern void coco_bitbanger_exit (int id);
-extern void coco_bitbanger_output (int id, int data);
 extern READ_HANDLER( coco_pia_1_r );
 extern READ_HANDLER( coco3_pia_1_r );
 extern void dragon_sound_update(void);
@@ -134,6 +136,7 @@ extern int coco3_mmu_translatelogicaladdr(int logicaladdr);
 		4,\
 		"dsk\0",\
 		IO_RESET_NONE,\
+		OSD_FOPEN_RW_CREATE_OR_READ,\
 		0,\
 		dragon_floppy_init,\
 		dragon_floppy_exit,\
@@ -148,69 +151,7 @@ extern int coco3_mmu_translatelogicaladdr(int logicaladdr);
         NULL \
     }
 
-#define IO_CARTRIDGE_COCO(loadproc) \
-	{\
-		IO_CARTSLOT,\
-		1,\
-		"rom\0",\
-		IO_RESET_ALL,\
-        NULL,\
-		loadproc,\
-		NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL\
-    }
-
-#define IO_SNAPSHOT_COCOPAK(loadproc) \
-	{\
-		IO_SNAPSHOT,\
-		1,\
-		"pak\0",\
-		IO_RESET_ALL,\
-        NULL,\
-		loadproc,\
-		NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL,\
-        NULL\
-    }
-
 #define IO_BITBANGER IO_PRINTER
-
-#define IO_BITBANGER_PORT								\
-{														\
-	IO_BITBANGER,				/* type */				\
-	1,							/* count */				\
-	"prn\0",					/* file extensions */	\
-	IO_RESET_NONE,				/* reset depth */		\
-	NULL,						/* id */				\
-	coco_bitbanger_init,		/* init */				\
-	coco_bitbanger_exit,		/* exit */				\
-	NULL,						/* info */				\
-	NULL,						/* open */				\
-	NULL,						/* close */				\
-	NULL,						/* status */			\
-	NULL,						/* seek */				\
-	NULL,						/* tell */				\
-	NULL,						/* input */				\
-	coco_bitbanger_output,		/* output */			\
-	NULL,						/* input chunk */		\
-	NULL						/* output chunk */		\
-}
-
 #define IO_VHD IO_HARDDISK
 
 #define IO_VHD_PORT								\
@@ -219,6 +160,7 @@ extern int coco3_mmu_translatelogicaladdr(int logicaladdr);
 	1,							/* count */				\
 	"vhd\0",					/* file extensions */	\
 	IO_RESET_NONE,				/* reset depth */		\
+	OSD_FOPEN_RW_CREATE,		/* open mode */			\
 	NULL,						/* id */				\
 	coco_vhd_init,				/* init */				\
 	coco_vhd_exit,				/* exit */				\

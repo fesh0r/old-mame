@@ -544,18 +544,17 @@ ROM_START(ti99_232)
 	ROM_CONTINUE(0x10000,0x2000)
 ROM_END
 
-static const struct IODevice io_ti99_2[] =
-{
+#define io_ti99_2	io_NULL
+#define io_ti99_224 io_NULL
+#define io_ti99_232 io_NULL
+
+SYSTEM_CONFIG_START(ti99_2)
 	/* one expansion/cartridge port on the back */
 	/* one cassette unit port */
 	/* Hex-bus disk controller: supports up to 4 floppy disk drives */
 	/* None of these is supported (tape should be easy to emulate) */
-    { IO_END }
-};
+SYSTEM_CONFIG_END
 
-#define io_ti99_224 io_ti99_2
-#define io_ti99_232 io_ti99_2
-
-/*		YEAR	NAME		PARENT		MACHINE		INPUT	INIT		COMPANY					FULLNAME */
-COMP(	1983,	ti99_224,	0,			ti99_2,		ti99_2,	ti99_2_24,	"Texas Instruments",	"TI-99/2 BASIC Computer (24kb ROMs)" )
-COMP(	1983,	ti99_232,	ti99_224,	ti99_2,		ti99_2,	ti99_2_32,	"Texas Instruments",	"TI-99/2 BASIC Computer (32kb ROMs)" )
+/*		YEAR	NAME		PARENT		MACHINE		INPUT	INIT		CONFIG		COMPANY					FULLNAME */
+COMP(	1983,	ti99_224,	0,			ti99_2,		ti99_2,	ti99_2_24,	ti99_2,		"Texas Instruments",	"TI-99/2 BASIC Computer (24kb ROMs)" )
+COMP(	1983,	ti99_232,	ti99_224,	ti99_2,		ti99_2,	ti99_2_32,	ti99_2,		"Texas Instruments",	"TI-99/2 BASIC Computer (32kb ROMs)" )

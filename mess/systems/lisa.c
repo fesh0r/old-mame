@@ -306,6 +306,7 @@ static const struct IODevice io_lisa2[] = {
 		1,					/* count */
 		"img\0image\0",		/* file extensions */
 		IO_RESET_NONE,		/* reset if file changed */
+		OSD_FOPEN_RW_OR_READ,/* open mode */
         NULL,               /* id */
 		lisa_floppy_init,	/* init */
 		lisa_floppy_exit,	/* exit */
@@ -325,12 +326,15 @@ static const struct IODevice io_lisa2[] = {
 #define io_lisa210 io_lisa2 /* actually, there is an additionnal 10 meg HD, but it is not implemented... */
 #define io_macxl io_lisa210
 
+SYSTEM_CONFIG_START(lisa)
+SYSTEM_CONFIG_END
+
 /*
 	Lisa drivers boot MacWorks, but do not boot the Lisa OS, which is why we set
 	the GAME_NOT_WORKING flag...
 */
-/*	   YEAR  NAME	   PARENT	 MACHINE   INPUT	 INIT	   COMPANY	 FULLNAME */
-COMPX( 1984, lisa2,    0,        lisa,     lisa,	 lisa2,    "Apple Computer",  "Lisa2", GAME_NOT_WORKING )
-COMPX( 1984, lisa210,  lisa2,    lisa210,  lisa,	 lisa210,  "Apple Computer",  "Lisa2/10", GAME_NOT_WORKING )
-COMPX( 1985, macxl,    lisa2,    macxl,    lisa,	 mac_xl,   "Apple Computer",  "Macintosh XL", /*GAME_NOT_WORKING*/0 )
+/*	   YEAR  NAME	   PARENT	 MACHINE   INPUT	 INIT	   CONFIG	COMPANY	 FULLNAME */
+COMPX( 1984, lisa2,    0,        lisa,     lisa,	 lisa2,    lisa,	"Apple Computer",  "Lisa2", GAME_NOT_WORKING )
+COMPX( 1984, lisa210,  lisa2,    lisa210,  lisa,	 lisa210,  lisa,	"Apple Computer",  "Lisa2/10", GAME_NOT_WORKING )
+COMPX( 1985, macxl,    lisa2,    macxl,    lisa,	 mac_xl,   lisa,	"Apple Computer",  "Macintosh XL", /*GAME_NOT_WORKING*/0 )
 

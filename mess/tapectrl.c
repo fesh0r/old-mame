@@ -1,5 +1,5 @@
 #include "driver.h"
-
+#include "image.h"
 
 int tapecontrol(struct mame_bitmap *bitmap, int selected)
 {
@@ -15,13 +15,14 @@ int tapecontrol(struct mame_bitmap *bitmap, int selected)
     int arrowize;
 	int status;
 
-	if (device_count(IO_CASSETTE)==0) return 0;
+	if (!device_find(Machine->gamedrv, IO_CASSETTE))
+		return 0;
 
     total = 0;
     sel = selected - 1;
 
     menu_item[total] = device_typename_id(IO_CASSETTE,id);
-	menu_subitem[total] = device_filename(IO_CASSETTE,id) ? device_filename(IO_CASSETTE,id) : "---";
+	menu_subitem[total] = image_filename(IO_CASSETTE,id) ? image_filename(IO_CASSETTE,id) : "---";
 	flag[total] = 0;
 	total++;
 

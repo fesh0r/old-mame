@@ -213,39 +213,27 @@ ROM_END
 //  ROM_LOAD ("coleconb.rom", 0x0000, 0x2000, 0x66cda476) /* no title screen */
 //ROM_END
 
-static const struct IODevice io_coleco[] = {
-    {
-        IO_CARTSLOT,        /* type */
-        1,                  /* count */
-        "rom\0col\0",       /* file extensions */
-        IO_RESET_CPU,       /* reset if file changed */
-        0,
-        coleco_init_cart,	/* init */
-        NULL,               /* exit */
-        NULL,               /* info */
-        NULL,               /* open */
-        NULL,               /* close */
-        NULL,               /* status */
-        NULL,               /* seek */
-        NULL,               /* tell */
-        NULL,               /* input */
-        NULL,               /* output */
-        NULL,               /* input_chunk */
-        NULL                /* output_chunk */
-    },
-    { IO_END }
-};
+#define io_coleco	io_NULL
+#define io_colecoa	io_NULL
 
-#define io_colecoa io_coleco
+SYSTEM_CONFIG_START(coleco)
+	CONFIG_DEVICE_CARTSLOT( 1, "rom\0col\0", coleco_init_cart, NULL, NULL)
+SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-CONS( 1982, coleco,   0,        coleco,   coleco,   0,        "Coleco", "Colecovision" )
-CONS( 1982, colecoa,  coleco,   coleco,   coleco,   0,        "Coleco", "Colecovision (Thick Characters)" )
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
+
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT	CONFIG	COMPANY   FULLNAME */
+CONS( 1982, coleco,   0,        coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision" )
+CONS( 1982, colecoa,  coleco,   coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision (Thick Characters)" )
 
 #ifdef COLECO_HACKS
-CONSX( 1982, colecofb, coleco,   coleco,   coleco,   0,        "Coleco", "Colecovision (Fast BIOS Hack)"
+CONSX(1982, colecofb, coleco,   coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision (Fast BIOS Hack)"
 , GAME_COMPUTER_MODIFIED )
-CONSX( 1982, coleconb, coleco,   coleco,   coleco,   0,        "Coleco", "Colecovision (NO BIOS Hack)"
+CONSX(1982, coleconb, coleco,   coleco,   coleco,   0,		coleco,	"Coleco", "Colecovision (NO BIOS Hack)"
 , GAME_COMPUTER_MODIFIED )
 #endif
 

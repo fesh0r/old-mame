@@ -26,6 +26,7 @@
 #include "formats/fmsx_cas.h"
 #include "printer.h"
 #include "utils.h"
+#include "image.h"
 
 static MSX msx1;
 static void msx_set_all_mem_banks (void);
@@ -95,12 +96,13 @@ static int msx_probe_type (UINT8* pmem, int size)
         return (asc8 > asc16) ? 4 : 5;
 }
 
-int msx_load_rom (int id)
+int msx_load_rom (int id, void *F, int open_mode)
 {
-    void *F;
     UINT8 *pmem,*m;
     int size,size_aligned,n,p,type,i;
-    char *pext, buf[PAC_HEADER_LEN + 2];
+    const char *pext;
+	char *pext2;
+	char buf[PAC_HEADER_LEN + 2];
     static char *mapper_types[] = { "none", "MSX-DOS 2", "konami5 with SCC",
         "konami4 without SCC", "ASCII/8kB", "ASCII//16kB",
         "Konami Game Master 2", "ASCII/8kB with 8kB SRAM",
@@ -109,22 +111,20 @@ int msx_load_rom (int id)
         "Konami Synthesizer", "Cross Blaim", "Disk ROM",
 		"Korean 80-in-1", "Korean 126-in-1" };
 
-	if (!device_filename(IO_CARTSLOT,id) || !strlen(device_filename(IO_CARTSLOT,id) ))
-		return 0;
+	if (F == NULL)
+		return INIT_PASS;
 
     /* try to load it */
-    F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
-    if (!F) return 1;
     size = osd_fsize (F);
     if (size < 0x2000)
     {
         logerror("%s: file to small\n",
-            device_filename (IO_CARTSLOT, id));
+            image_filename (IO_CARTSLOT, id));
         osd_fclose (F);
         return 1;
     }
     /* get mapper type */
-    pext = (char *)device_extrainfo (IO_CARTSLOT, id);
+    pext = image_extrainfo (IO_CARTSLOT, id);
 	if (!pext || (1 != sscanf (pext, "%d", &type) ) )
    		{
        	logerror("Cart #%d No extra info found in crc file\n", id);
@@ -155,7 +155,7 @@ int msx_load_rom (int id)
     if (osd_fread (F, pmem, size) != size)
     {
         logerror("%s: can't read file\n",
-            device_filename (IO_CARTSLOT, id));
+            image_filename (IO_CARTSLOT, id));
         osd_fclose (F);
         free (msx1.cart[id].mem); msx1.cart[id].mem = NULL;
         return 1;
@@ -169,7 +169,7 @@ int msx_load_rom (int id)
 
         if ( !( (pmem[0] == 'A') && (pmem[1] == 'B') ) )
         {
-            logerror("%s: May not be a valid ROM file\n",device_filename (IO_CARTSLOT, id) );
+            logerror("%s: May not be a valid ROM file\n",image_filename (IO_CARTSLOT, id) );
         }
 
         logerror("Probed cartridge mapper %s\n", mapper_types[type]);
@@ -197,7 +197,7 @@ int msx_load_rom (int id)
     for (i=0;i<4;i++) msx1.cart[id].banks[i] = (i & msx1.cart[id].bank_mask);
     logerror("Cart #%d size %d, mask %d, type: %s\n",id, size, msx1.cart[id].bank_mask, mapper_types[type]);
     /* set filename for sram (memcard) */
-    msx1.cart[id].sramfile = malloc (strlen (device_filename
+    msx1.cart[id].sramfile = malloc (strlen (image_filename
         (IO_CARTSLOT, id)) + 1);
     if (!msx1.cart[id].sramfile)
     {
@@ -208,10 +208,12 @@ int msx_load_rom (int id)
 	/* the cast to (char*) is there to make sure the argument for 
 	   osd_basename is OK. Note that IMHO osd_basename should take
 	   and return const */
-    strcpy (msx1.cart[id].sramfile, osd_basename ((char*)device_filename (IO_CARTSLOT, id) ) );
-    pext = strrchr (msx1.cart[id].sramfile, '.');
-    if (pext) *pext = 0;
-    /* do some stuff for some types :)) */
+    strcpy (msx1.cart[id].sramfile, osd_basename ((char*)image_filename (IO_CARTSLOT, id) ) );
+    pext2 = strrchr (msx1.cart[id].sramfile, '.');
+    if (pext2)
+		*pext2 = 0;
+
+	/* do some stuff for some types :)) */
     switch (type) {
     case 0:
         /*
@@ -855,7 +857,7 @@ static void msx_wd179x_int (int state)
 		}
 	}
 
-READ_HANDLER (msx_disk_p1_r)
+static READ_HANDLER (msx_disk_p1_r)
 	{
 	switch (offset)
 		{
@@ -868,7 +870,7 @@ READ_HANDLER (msx_disk_p1_r)
 		}
 	}
 
-READ_HANDLER (msx_disk_p2_r)
+static READ_HANDLER (msx_disk_p2_r)
 	{
 	if (offset >= 0x1ff8)
 		{
@@ -886,7 +888,7 @@ READ_HANDLER (msx_disk_p2_r)
 		return 0xff;
 	}
 
-WRITE_HANDLER (msx_disk_w)
+static WRITE_HANDLER (msx_disk_w)
 	{
 	switch (offset)
 		{
@@ -915,19 +917,16 @@ WRITE_HANDLER (msx_disk_w)
 		}
 	}
 
-int msx_floppy_init (int id)
+int msx_floppy_init (int id, void *fp, int open_mode)
 	{
-	void *f;
 	int size, heads = 2;
 
-	if (!device_filename(IO_FLOPPY,id) || !strlen(device_filename(IO_FLOPPY,id) ))
-		return 0;
+	if (fp == NULL)
+		return INIT_PASS;
 
-	f = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-	if (f)
+	if (fp && ! is_effective_mode_create(open_mode))
 		{
-		size = osd_fsize (f);
-		osd_fclose (f);
+		size = osd_fsize (fp);
 
 		switch (size)
 			{
@@ -942,7 +941,7 @@ int msx_floppy_init (int id)
 	else
 		return INIT_FAIL;
 
-	if (basicdsk_floppy_init (id) != INIT_PASS)
+	if (basicdsk_floppy_init (id, fp, open_mode) != INIT_PASS)
 		return INIT_FAIL;
 
 	basicdsk_set_geometry (id, 80, heads, 9, 512, 1, 0);
@@ -1526,7 +1525,7 @@ READ_HANDLER (msx_mapper_r)
 static INT16* cas_samples;
 static int cas_len;
 
-int msx_cassette_fill_wave (INT16* samples, int wavlen, UINT8* casdata)
+static int msx_cassette_fill_wave (INT16* samples, int wavlen, UINT8* casdata)
 {
 	if (casdata == CODE_HEADER || casdata == CODE_TRAILER)
 		return 0;
@@ -1572,56 +1571,51 @@ static int check_fmsx_cas (void *f)
     return ret;
 }
 
-int msx_cassette_init(int id)
+int msx_cassette_init(int id, void *file, int open_mode)
 {
-    void *file;
 	int ret;
 
-	if (!device_filename(IO_CASSETTE,id) || !strlen(device_filename(IO_CASSETTE,id) ))
-		return 0;
 
-    file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-    if( file )
-    {
-        struct wave_args wa = {0,};
-        wa.file = file;
-        wa.display = 1;
-		/* for cas files */
-		cas_samples = NULL;
-		cas_len = -1;
-		if (!check_fmsx_cas (file) )
+	if (file == NULL)
+		return INIT_PASS;
+
+	if( file )
+	{
+		if (! is_effective_mode_create(open_mode))
 		{
-			wa.smpfreq = 22050;
-			wa.fill_wave = msx_cassette_fill_wave;
-			wa.header_samples = cas_len;
-			wa.trailer_samples = 0;
-			wa.chunk_size = cas_len;
-			wa.chunk_samples = 0;
+			struct wave_args wa = {0,};
+			wa.file = file;
+			wa.display = 1;
+			/* for cas files */
+			cas_samples = NULL;
+			cas_len = -1;
+			if (!check_fmsx_cas (file) )
+			{
+				wa.smpfreq = 22050;
+				wa.fill_wave = msx_cassette_fill_wave;
+				wa.header_samples = cas_len;
+				wa.trailer_samples = 0;
+				wa.chunk_size = cas_len;
+				wa.chunk_samples = 0;
+			}
+			ret = device_open(IO_CASSETTE,id,0,&wa);
+			free (cas_samples);
+			cas_samples = NULL;
+			cas_len = -1;
+
+			return (ret ? INIT_FAIL : INIT_PASS);
 		}
-        ret = device_open(IO_CASSETTE,id,0,&wa);
-		free (cas_samples);
-		cas_samples = NULL;
-		cas_len = -1;
-
-		return (ret ? INIT_FAIL : INIT_PASS);
-    }
-    file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE,
-        OSD_FOPEN_RW_CREATE);
-    if( file )
-    {
-        struct wave_args wa = {0,};
-        wa.file = file;
-        wa.display = 1;
-        wa.smpfreq = 44100;
-        if( device_open(IO_CASSETTE,id,1,&wa) )
-            return INIT_FAIL;
-        return INIT_PASS;
-    }
-    return INIT_FAIL;
-}
-
-void msx_cassette_exit(int id)
-{
-    device_close(IO_CASSETTE,id);
+		else
+		{
+			struct wave_args wa = {0,};
+			wa.file = file;
+			wa.display = 1;
+			wa.smpfreq = 44100;
+			if( device_open(IO_CASSETTE,id,1,&wa) )
+				return INIT_FAIL;
+			return INIT_PASS;
+		}
+	}
+	return INIT_FAIL;
 }
 

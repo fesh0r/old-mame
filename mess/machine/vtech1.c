@@ -31,6 +31,7 @@
 #include "vidhrdw/m6847.h"
 #include "includes/vtech1.h"
 #include "cpu/z80/z80.h"
+#include "image.h"
 
 int vtech1_latch = -1;
 
@@ -255,43 +256,38 @@ static int fill_wave(INT16 *buffer, int length, UINT8 *code)
     return BYTESAMPLES;
 }
 
-int vtech1_cassette_init(int id)
+int vtech1_cassette_init(int id, void *file, int open_mode)
 {
-	void *file;
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if( file )
 	{
-		struct wave_args wa = {0,};
-		wa.file = file;
-		wa.display = 1;
-		wa.fill_wave = fill_wave;
-		wa.smpfreq = 600*BITSAMPLES;
-		wa.header_samples = SILENCE;
-		wa.trailer_samples = SILENCE;
-		wa.chunk_size = 1;
-		wa.chunk_samples = BYTESAMPLES;
-		if( device_open(IO_CASSETTE,id,0,&wa) )
-			return INIT_FAIL;
-		return INIT_PASS;
-    }
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
-	if( file )
-    {
-		struct wave_args wa = {0,};
-		wa.file = file;
-		wa.display = 1;
-		wa.fill_wave = fill_wave;
-		wa.smpfreq = 600*BITSAMPLES;
-		if( device_open(IO_CASSETTE,id,1,&wa) )
-			return INIT_FAIL;
-        return INIT_PASS;
-    }
+		if (! is_effective_mode_create(open_mode))
+		{
+			struct wave_args wa = {0,};
+			wa.file = file;
+			wa.display = 1;
+			wa.fill_wave = fill_wave;
+			wa.smpfreq = 600*BITSAMPLES;
+			wa.header_samples = SILENCE;
+			wa.trailer_samples = SILENCE;
+			wa.chunk_size = 1;
+			wa.chunk_samples = BYTESAMPLES;
+			if( device_open(IO_CASSETTE,id,0,&wa) )
+				return INIT_FAIL;
+			return INIT_PASS;
+		}
+		else
+	    {
+			struct wave_args wa = {0,};
+			wa.file = file;
+			wa.display = 1;
+			wa.fill_wave = fill_wave;
+			wa.smpfreq = 600*BITSAMPLES;
+			if( device_open(IO_CASSETTE,id,1,&wa) )
+				return INIT_FAIL;
+	        return INIT_PASS;
+		}
+	}
     return INIT_PASS;
-}
-
-void vtech1_cassette_exit(int id)
-{
-	device_close(IO_CASSETTE,id);
 }
 
 /***************************************************************************
@@ -348,7 +344,7 @@ int vtech1_snapshot_id(int id)
     void *file;
 
 	logerror("VTECH snapshot_id\n");
-    file = image_fopen(IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
+    file = image_fopen_new(IO_SNAPSHOT, id, NULL);
     if( file )
     {
         osd_fread(file, buff, sizeof(buff));
@@ -368,12 +364,9 @@ int vtech1_snapshot_id(int id)
 }
 */
 
-int vtech1_snapshot_init(int id)
+int vtech1_snapshot_init(int id, void *file, int open_mode)
 {
-	void *file;
-
 	logerror("VTECH snapshot_init\n");
-    file = image_fopen(IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
     if( file )
 	{
 		vtech1_snapshot_size = osd_fsize(file);
@@ -418,25 +411,14 @@ int vtech1_floppy_id(int id)
 }
 */
 
-int vtech1_floppy_init(int id)
+int vtech1_floppy_init(int id, void *fp, int open_mode)
 {
-	/* first try to open existing image RW */
-	vtech1_fdc_wrprot[id] = 0x00;
-	vtech1_fdc_file[id] = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
-	/* failed? */
-	if( !vtech1_fdc_file[id] )
-	{
-		/* try to open existing image RO */
-		vtech1_fdc_wrprot[id] = 0x80;
-		vtech1_fdc_file[id] = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-	}
-	/* failed? */
-	if( !vtech1_fdc_file[id] )
-	{
-		/* create new image RW */
+	vtech1_fdc_file[id] = fp;
+	if ((vtech1_fdc_file[id]) && is_effective_mode_writable(open_mode))
 		vtech1_fdc_wrprot[id] = 0x00;
-		vtech1_fdc_file[id] = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
-	}
+	else
+		vtech1_fdc_wrprot[id] = 0x80;
+
 	return INIT_PASS;
 }
 

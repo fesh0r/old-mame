@@ -44,6 +44,7 @@ and the java source).
 
 */
 
+#include <math.h>
 
 #include "driver.h"
 
@@ -51,8 +52,6 @@ and the java source).
 #include "includes/pdp1.h"
 
 /*
- * PRECISION CRT DISPLAY (TYPE 30)
- * is the only display - hardware emulated, this is needed for SPACEWAR!
  *
  * The loading storing OS... is not emulated (I haven't a clue where to
  * get programs for the machine)
@@ -272,29 +271,21 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 };
 
 
-/* palette: grey levels follow an exponential law, so that decrementing the color index periodically
-will simulate the remanence of a cathode ray tube */
+/*
+	The static palette only includes the pens for the control panel and
+	the typewriter, as the CRT palette is generated dynamically.
+
+	The CRT palette defines various levels of intensity between white and
+	black.  Grey levels follow an exponential law, so that decrementing the
+	color index periodically will simulate the remanence of a cathode ray tube.
+*/
 static unsigned char palette[] =
 {
-	0x00,0x00,0x00, /* black */
-	11,11,11,
-	14,14,14,
-	18,18,18,
-	22,22,22,
-	27,27,27,
-	34,34,34,
-	43,43,43,
-	53,53,53,
-	67,67,67,
-	84,84,84,
-	104,104,104,
-	131,131,131,
-	163,163,163,
-	204,204,204,
-	0xFF,0xFF,0xFF,  /* white */
-	0x00,0xFF,0x00,  /* green */
-	0x00,0x40,0x00,  /* dark green */
-	0xFF,0x00,0x00   /* red */
+	0xFF,0xFF,0xFF,	/* white */
+	0x00,0xFF,0x00,	/* green */
+	0x00,0x40,0x00,	/* dark green */
+	0xFF,0x00,0x00,	/* red */
+	0x80,0x80,0x80	/* light gray */
 };
 
 static unsigned short colortable[] =
@@ -307,10 +298,61 @@ static unsigned short colortable[] =
 /* Initialise the palette */
 static void palette_init_pdp1(unsigned short *sys_colortable, const unsigned char *dummy)
 {
+	/* rgb components for the two color emissions */
+	const double r1 = .1, g1 = .1, b1 = .924, r2 = .7, g2 = .7, b2 = .076;
+	/* half period in seconds for the two color emissions */
+	const double half_period_1 = .05, half_period_2 = .20;
+	/* refresh period in seconds */
+	const double update_period = 1./refresh_rate;
+	double decay_1, decay_2;
+	double cur_level_1, cur_level_2;
+#ifdef MAME_DEBUG
+	/* level at which we stop emulating the decay and say the pixel is black */
+	double cut_level = .02;
+#endif
 	int i;
+	int r, g, b;
 
-	for (i=0; i<(sizeof(palette)/3); i++)
-		palette_set_color(i, palette[i*3], palette[i*3+1], palette[i*3+2]);
+
+	/* initialize CRT palette */
+
+	/* compute the decay factor per refresh frame */
+	decay_1 = pow(.5, update_period / half_period_1);
+	decay_2 = pow(.5, update_period / half_period_2);
+
+	cur_level_1 = cur_level_2 = 255.;	/* start with maximum level */
+
+	for (i=pen_crt_max_intensity; i>0; i--)
+	{
+		/* compute the current color */
+		r = (int) ((r1*cur_level_1 + r2*cur_level_2) + .5);
+		g = (int) ((g1*cur_level_1 + g2*cur_level_2) + .5);
+		b = (int) ((b1*cur_level_1 + b2*cur_level_2) + .5);
+		/* write color in palette */
+		palette_set_color(i, r, g, b);
+		/* apply decay for next iteration */
+		cur_level_1 *= decay_1;
+		cur_level_2 *= decay_2;
+	}
+
+#ifdef MAME_DEBUG
+	{
+		int recommended_pen_crt_num_levels;
+		if (decay_1 > decay_2)
+			recommended_pen_crt_num_levels = ceil(log(cut_level)/log(decay_1))+1;
+		else
+			recommended_pen_crt_num_levels = ceil(log(cut_level)/log(decay_2))+1;
+		if (recommended_pen_crt_num_levels != pen_crt_num_levels)
+			printf("File %s line %d: recommended value for pen_crt_num_levels is %d\n", __FILE__, __LINE__, recommended_pen_crt_num_levels);
+	}
+	/*if ((cur_level_1 > 255.*cut_level) || (cur_level_2 > 255.*cut_level))
+		printf("File %s line %d: Please take higher value for pen_crt_num_levels or smaller value for decay\n", __FILE__, __LINE__);*/
+#endif
+
+	palette_set_color(0, 0, 0, 0);
+
+	/* load static palette */
+	palette_set_colors(pen_crt_num_levels, palette, sizeof(palette) / sizeof(palette[0]) / 3);
 
 	memcpy(sys_colortable, colortable, sizeof(colortable));
 }
@@ -324,13 +366,13 @@ pdp1_reset_param_t pdp1_reset_param =
 		as the primary source (as it goes more into details) b) the handbook and the maintainance
 		manual occasionnally contradict each other. */
 	/*	(iot)		rpa			rpb			tyo			tyi			ppa			ppb			dpy */
-		NULL,		pdp1_iot,	pdp1_iot,	pdp1_iot,	pdp1_iot,	pdp1_iot,	pdp1_iot,	pdp1_iot,
+		NULL,		iot_rpa,	iot_rpb,	iot_tyo,	iot_tyi,	iot_ppa,	iot_ppb,	iot_dpy,
 	/*				spacewar																 */
-		NULL,		pdp1_iot,	NULL,		NULL,		NULL,		NULL,		NULL,		NULL,
+		NULL,		iot_011,	NULL,		NULL,		NULL,		NULL,		NULL,		NULL,
 	/*							lag												glf?/jsp?	gpl?/gpr?/gcf? */
 		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,
 	/*	rrb			rcb?		rcc?		cks			mcs			mes			mel			 */
-		pdp1_iot,	NULL,		NULL,		pdp1_iot,	NULL,		NULL,		NULL,		NULL,
+		iot_rrb,	NULL,		NULL,		iot_cks,	NULL,		NULL,		NULL,		NULL,
 	/*	cad?		rac?		rbc?		pac						lpr/lfb/lsp swc/sci/sdf?/shr?	scv? */
 		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,
 	/*	(dsc)		(asc)		(isb)		(cac)		(lsm)		(esm)		(cbs)		 */
@@ -362,12 +404,12 @@ static MACHINE_DRIVER_START(pdp1)
 	MDRV_CPU_VBLANK_INT(pdp1_interrupt, 1)
 	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
 
-	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_FRAMES_PER_SECOND(refresh_rate)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
 	MDRV_MACHINE_INIT( pdp1 )
-	/*MDRV_MACHINE_STOP( NULL )*/
+	MDRV_MACHINE_STOP( pdp1 )
 	/*MDRV_NVRAM_HANDLER( NULL )*/
 
 	/* video hardware (includes the control panel and typewriter output) */
@@ -375,14 +417,15 @@ static MACHINE_DRIVER_START(pdp1)
 	/*MDRV_ASPECT_RATIO(num, den)*/
 	MDRV_SCREEN_SIZE(virtual_width, virtual_height)
 	MDRV_VISIBLE_AREA(0, virtual_width-1, 0, virtual_height-1)
+	/*MDRV_VISIBLE_AREA(0, crt_window_width-1, 0, crt_window_height-1)*/
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(sizeof(palette) / sizeof(palette[0]) / 3)
+	MDRV_PALETTE_LENGTH(pen_crt_num_levels + (sizeof(palette) / sizeof(palette[0]) / 3))
 	MDRV_COLORTABLE_LENGTH(sizeof(colortable) / sizeof(colortable[0]))
 
 	MDRV_PALETTE_INIT(pdp1)
 	MDRV_VIDEO_START(pdp1)
-	/*MDRV_VIDEO_EOF(name)*/
+	MDRV_VIDEO_EOF(pdp1)
 	MDRV_VIDEO_UPDATE(pdp1)
 
 	/* no sound */
@@ -396,6 +439,7 @@ static const struct IODevice io_pdp1[] =
 		2,						/* count */
 		"tap\0rim\0",			/* file extensions */
 		IO_RESET_NONE,			/* reset if file changed */
+		OSD_FOPEN_NONE,			/* open mode */
 		NULL,					/* id */
 		pdp1_tape_init,			/* init */
 		pdp1_tape_exit,			/* exit */
@@ -415,6 +459,7 @@ static const struct IODevice io_pdp1[] =
 		1,							/* count */
 		"typ\0",					/* file extensions */
 		IO_RESET_NONE,				/* reset depth */
+		OSD_FOPEN_WRITE,			/* open mode */
 		NULL,						/* id */
 		pdp1_typewriter_init,		/* init */
 		pdp1_typewriter_exit,		/* exit */
@@ -450,12 +495,11 @@ ROM_START(pdp1)
 		/* space filled with our font */
 ROM_END
 
-
-/*COMPUTER_CONFIG_START(pdp1)
-	CONFIG_RAM_DEFAULT(4 * 1024)
+SYSTEM_CONFIG_START(pdp1)
+	/*CONFIG_RAM_DEFAULT(4 * 1024)
 	CONFIG_RAM(32 * 1024)
-	CONFIG_RAM(64 * 1024)
-COMPUTER_CONFIG_END*/
+	CONFIG_RAM(64 * 1024)*/
+SYSTEM_CONFIG_END
 
 
 /***************************************************************************
@@ -464,5 +508,5 @@ COMPUTER_CONFIG_END*/
 
 ***************************************************************************/
 
-/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	  COMPANY	FULLNAME */
-COMP( 1961, pdp1,	  0, 		pdp1,	  pdp1, 	pdp1,	  "Digital Equipment Corporation",  "PDP-1" )
+/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	CONFIG	COMPANY	FULLNAME */
+COMP( 1961, pdp1,	  0, 		pdp1,	  pdp1, 	pdp1,	pdp1,	"Digital Equipment Corporation",  "PDP-1" )

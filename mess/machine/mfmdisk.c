@@ -207,7 +207,7 @@ static unsigned char *mfm_disk_get_track_ptr(int id, int track, int side)
 }
 
 /* this is endian safe */
-unsigned long mfm_get_long(unsigned char *addr)
+static unsigned long mfm_get_long(unsigned char *addr)
 {
 	int i;
 	unsigned long Data = 0;
@@ -227,6 +227,7 @@ unsigned long mfm_get_long(unsigned char *addr)
 	return Data;
 }
 
+#if 0
 /* check a mfm_disk image is valid */
 int	mfm_disk_floppy_id(int id)
 {
@@ -289,15 +290,12 @@ int	mfm_disk_floppy_id(int id)
 
 	return result;
 }
+#endif
 
 
 /* load image */
-static int mfm_disk_load(int type, int id, unsigned char **ptr)
+static int mfm_disk_load(int type, int id, void *file, unsigned char **ptr)
 {
-	void *file;
-
-	file = image_fopen(type, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-
 	if (file)
 	{
 		int datasize;
@@ -334,13 +332,13 @@ static int mfm_disk_load(int type, int id, unsigned char **ptr)
 	return 0;
 }
 
-int mfm_disk_floppy_init(int id)
+int mfm_disk_floppy_init(int id, void *fp)
 {
 	if ((id<0) || (id>=MAX_MFM_DISK))
 		return INIT_FAIL;
 
 	/* load data */
-	if (mfm_disk_load(IO_FLOPPY, id, &mfm_disks[id].pData))
+	if (mfm_disk_load(IO_FLOPPY, id, fp, &mfm_disks[id].pData))
 	{
 		mfm_disks[id].NumTracks = mfm_get_long(&mfm_disks[id].pData[12]);
 		mfm_disks[id].NumSides = mfm_get_long(&mfm_disks[id].pData[16]);

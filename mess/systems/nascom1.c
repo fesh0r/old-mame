@@ -318,6 +318,7 @@ static	const	struct	IODevice	io_nascom1[] =
 		1,						/* count */
 		"nas\0bin\0",			/* file extn */
 		IO_RESET_NONE,			/* reset if file changed */
+		OSD_FOPEN_READ,			/* open mode */
         NULL,                   /* id */
 		nascom1_init_cassette,	/* init */
 		nascom1_exit_cassette,	/* exit */
@@ -332,27 +333,6 @@ static	const	struct	IODevice	io_nascom1[] =
 		NULL,					/* input_chunk */
 		NULL					/* output_chunk */
 	},
-#ifdef CART
-	{
-		IO_CARTSLOT,			/* type */
-		1,						/* count */
-		"nas\0bin\0",			/* file extn */
-		IO_RESET_ALL,			/* reset if file changed */
-        NULL,                   /* id */
-		nascom1_init_cartridge,	/* init */
-		NULL,					/* exit */
-		NULL,					/* info */
-		NULL,					/* open */
-		NULL,					/* close */
-		NULL,					/* status */
-		NULL,					/* seek */
-		NULL,					/* tell */
-		NULL,					/* input */
-		NULL,					/* output */
-		NULL,					/* input_chunk */
-		NULL					/* output_chunk */
-	},
-#endif
 	{ IO_END }
 };
 
@@ -363,6 +343,7 @@ static	const	struct	IODevice	io_nascom2[] =
 		1,						/* count */
 		"cas\0nas\0bin\0",		/* file extn */
 		IO_RESET_NONE,			/* reset if file changed */
+		OSD_FOPEN_READ,			/* open mode */
         NULL,                   /* id */
 		nascom1_init_cassette,	/* init */
 		nascom1_exit_cassette,	/* exit */
@@ -377,36 +358,23 @@ static	const	struct	IODevice	io_nascom2[] =
 		NULL,					/* input_chunk */
 		NULL					/* output_chunk */
 	},
-#ifdef CART
-	{
-		IO_CARTSLOT,			/* type */
-		1,						/* count */
-		"nas\0bin\0",			/* file extn */
-		IO_RESET_ALL,			/* reset if file changed */
-        NULL,                   /* id */
-		nascom1_init_cartridge,	/* init */
-		NULL,					/* exit */
-		NULL,					/* info */
-		NULL,					/* open */
-		NULL,					/* close */
-		NULL,					/* status */
-		NULL,					/* seek */
-		NULL,					/* tell */
-		NULL,					/* input */
-		NULL,					/* output */
-		NULL,					/* input_chunk */
-		NULL					/* output_chunk */
-	},
-#endif
 	{ IO_END }
 };
 
 #define io_nascom1a io_nascom1
 #define io_nascom1b io_nascom1
 #define io_nascom2a io_nascom2
-/*	YEAR	NAME		PARENT		MACHINE		INPUT		INIT	COMPANY		FULLNAME */
-COMP(	1978,	nascom1,	0,		nascom1,	nascom1,	0,		"Nascom Microcomputers",	"Nascom 1 (NasBug T1)" )
-COMP(	1978,	nascom1a,	nascom1,	nascom1,	nascom1,	0,		"Nascom Microcomputers",	"Nascom 1 (NasBug T2)" )
-COMP(	1978,	nascom1b,	nascom1,	nascom1,	nascom1,	0,		"Nascom Microcomputers",	"Nascom 1 (NasBug T4)" )
-COMP(	1979,	nascom2,	nascom1,	nascom2,	nascom1,	0,		"Nascom Microcomputers",	"Nascom 2 (NasSys 1)" )
-COMP(	1979,	nascom2a,	nascom1,	nascom2,	nascom1,	0,		"Nascom Microcomputers",	"Nascom 2 (NasSys 3)" )
+
+SYSTEM_CONFIG_START(nascom)
+#ifdef CART
+	CONFIG_DEVICE_CARTSLOT(1, "nas\0bin\0", nascom1_init_cartridge, NULL, NULL)
+#endif
+SYSTEM_CONFIG_END
+
+
+/*	  YEAR	NAME		PARENT		MACHINE		INPUT		INIT	CONFIG		COMPANY		FULLNAME */
+COMP( 1978,	nascom1,	0,			nascom1,	nascom1,	0,		nascom,		"Nascom Microcomputers",	"Nascom 1 (NasBug T1)" )
+COMP( 1978,	nascom1a,	nascom1,	nascom1,	nascom1,	0,		nascom,		"Nascom Microcomputers",	"Nascom 1 (NasBug T2)" )
+COMP( 1978,	nascom1b,	nascom1,	nascom1,	nascom1,	0,		nascom,		"Nascom Microcomputers",	"Nascom 1 (NasBug T4)" )
+COMP( 1979,	nascom2,	nascom1,	nascom2,	nascom1,	0,		nascom,		"Nascom Microcomputers",	"Nascom 2 (NasSys 1)" )
+COMP( 1979,	nascom2a,	nascom1,	nascom2,	nascom1,	0,		nascom,		"Nascom Microcomputers",	"Nascom 2 (NasSys 3)" )

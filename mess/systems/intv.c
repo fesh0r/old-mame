@@ -457,75 +457,10 @@ ROM_START(intvkbd)
 
 ROM_END
 
-static const struct IODevice io_intv[] = {
-	{
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"rom\0",            /* file extensions */
-		IO_RESET_CPU,		/* reset if file changed */
-		0,
-		intv_load_rom,		/* init */
-		NULL,				/* exit */
-		NULL,				/* info */
-		NULL,               /* open */
-		NULL,               /* close */
-		NULL,               /* status */
-		NULL,               /* seek */
-		NULL,				/* tell */
-        NULL,               /* input */
-		NULL,               /* output */
-		NULL,               /* input_chunk */
-		NULL,				/* output_chunk */
-		NULL				/* correct CRC */
-    },
-    { IO_END }
-};
-
-static const struct IODevice io_intvsrs[] = {
-	{
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"rom\0",            /* file extensions */
-		IO_RESET_CPU,		/* reset if file changed */
-		0,
-		intv_load_rom,		/* init */
-		NULL,				/* exit */
-		NULL,				/* info */
-		NULL,               /* open */
-		NULL,               /* close */
-		NULL,               /* status */
-		NULL,               /* seek */
-		NULL,				/* tell */
-        NULL,               /* input */
-		NULL,               /* output */
-		NULL,               /* input_chunk */
-		NULL,				/* output_chunk */
-		NULL				/* correct CRC */
-    },
-    { IO_END }
-};
+#define io_intv		io_NULL
+#define io_intvsrs	io_NULL
 
 static const struct IODevice io_intvkbd[] = {
-	{
-		IO_CARTSLOT,		/* type */
-		2,					/* count */
-		"rom\0bin\0",       /* file extensions */
-		IO_RESET_CPU,		/* reset if file changed */
-		0,
-		intvkbd_load_rom,	/* init */
-		NULL,				/* exit */
-		NULL,				/* info */
-		NULL,               /* open */
-		NULL,               /* close */
-		NULL,               /* status */
-		NULL,               /* seek */
-		NULL,				/* tell */
-        NULL,               /* input */
-		NULL,               /* output */
-		NULL,               /* input_chunk */
-		NULL,				/* output_chunk */
-		NULL				/* correct CRC */
-    },
 	{
 		IO_CASSETTE,		/* type */	/* Actually a tape drive! */
 		1,					/* count */
@@ -549,7 +484,21 @@ static const struct IODevice io_intvkbd[] = {
     { IO_END }
 };
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY      FULLNAME */
-CONSX( 1979, intv,     0,		intv,     intv, 	intv,	  "Mattel",    "Intellivision", GAME_NOT_WORKING )
-CONSX( 19??, intvsrs,  0,		intv,     intv, 	intv,	  "Mattel",    "Intellivision (Sears)", GAME_NOT_WORKING )
-COMPX( 1981, intvkbd,  0,		intvkbd,  intvkbd, 	intvkbd,  "Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)
+SYSTEM_CONFIG_START(intv)
+	CONFIG_DEVICE_CARTSLOT( 1, "rom\0", intv_load_rom, NULL, NULL)
+SYSTEM_CONFIG_END
+
+SYSTEM_CONFIG_START(intvkbd)
+	CONFIG_DEVICE_CARTSLOT( 2, "rom\0bin\0", intvkbd_load_rom, NULL, NULL)
+SYSTEM_CONFIG_END
+
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
+
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT		CONFIG		COMPANY      FULLNAME */
+CONSX( 1979, intv,     0,		intv,     intv, 	intv,		intv,		"Mattel",    "Intellivision", GAME_NOT_WORKING )
+CONSX( 19??, intvsrs,  0,		intv,     intv, 	intv,		intv,		"Mattel",    "Intellivision (Sears)", GAME_NOT_WORKING )
+COMPX( 1981, intvkbd,  0,		intvkbd,  intvkbd, 	intvkbd,	intvkbd,	"Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)

@@ -77,23 +77,18 @@ MACHINE_INIT( apple2e )
 	apple2_slot6_init();
 }
 
+#if 0
 /***************************************************************************
   apple2_id_rom
 ***************************************************************************/
-#if 1
-/* R Nabet : the proto does not match the function at all !!! */
-int  apple2_id_rom(const char *name, const char * gamename)
-{
-	return 0;
-}
-#else
 int apple2_id_rom (int id)
 {
 	FILE *romfile;
 	UINT8 magic[4];
 	int retval;
 
-	if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0))) return 0;
+	/* open read-only image */
+	if (!(romfile = image_fopen_new(IO_CARTSLOT, id, NULL))) return 0;
 
 	retval = 0;
 	/* Verify the file is in Apple II format */
@@ -104,7 +99,6 @@ int apple2_id_rom (int id)
 	osd_fclose (romfile);
 	return retval;
 }
-#endif
 
 /***************************************************************************
   apple2e_load_rom
@@ -127,6 +121,7 @@ int apple2ee_load_rom (int id)
 
 	return INIT_PASS;
 }
+#endif
 
 /***************************************************************************
   apple2_interrupt
@@ -152,7 +147,7 @@ void apple2_interrupt(void)
 /***************************************************************************
   apple2_LC_ram1_w
 ***************************************************************************/
-WRITE_HANDLER ( apple2_LC_ram1_w )
+static WRITE_HANDLER ( apple2_LC_ram1_w )
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
 	/* If the aux switch is set, use the aux language card bank as well */
@@ -164,7 +159,7 @@ WRITE_HANDLER ( apple2_LC_ram1_w )
 /***************************************************************************
   apple2_LC_ram2_w
 ***************************************************************************/
-WRITE_HANDLER ( apple2_LC_ram2_w )
+static WRITE_HANDLER ( apple2_LC_ram2_w )
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
 	/* If the aux switch is set, use the aux language card bank as well */
@@ -176,7 +171,7 @@ WRITE_HANDLER ( apple2_LC_ram2_w )
 /***************************************************************************
   apple2_LC_ram_w
 ***************************************************************************/
-WRITE_HANDLER ( apple2_LC_ram_w )
+static WRITE_HANDLER ( apple2_LC_ram_w )
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
 	/* If the aux switch is set, use the aux language card bank as well */

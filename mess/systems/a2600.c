@@ -782,6 +782,7 @@ static MACHINE_DRIVER_START( a2600 )
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_INIT( a2600 )
+	MDRV_MACHINE_STOP( a2600 )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -798,6 +799,12 @@ static MACHINE_DRIVER_START( a2600 )
 	MDRV_SOUND_ADD(TIA, tia_interface)
 MACHINE_DRIVER_END
 
+#define io_a2600		io_NULL
+
+SYSTEM_CONFIG_START(a2600)
+	CONFIG_DEVICE_CARTSLOT( 1, "bin\0", a2600_load_rom, NULL, NULL)
+SYSTEM_CONFIG_END
+
 /***************************************************************************
 
   Game driver
@@ -808,29 +815,6 @@ ROM_START(a2600)
     ROM_REGION(0x20000, REGION_CPU1,0)        /* 6502 memory */
 ROM_END
 
-static const struct IODevice io_a2600[] =
-{
-    {
-        IO_CARTSLOT,                    /* type */
-        1,                              /* count */
-        "bin\0",                        /* file extensions */
-        IO_RESET_ALL,                   /* reset if file changed */
-        0,
-        a2600_load_rom,                 /* init */
-        NULL,                           /* exit */
-        NULL,                           /* info */
-        NULL,                           /* open */
-        NULL,                           /* close */
-        NULL,                           /* status */
-        NULL,                           /* seek */
-        NULL,                           /* tell */
-        NULL,                           /* input */
-        NULL,                           /* output */
-        NULL,                           /* input_chunk */
-        NULL                            /* output_chunk */
-    },
-    {IO_END}
-};
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-CONSX(1977, a2600,    0,        a2600,    a2600,    NULL,     "Atari",  "Atari 2600", GAME_NOT_WORKING)
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      CONFIG,	COMPANY   FULLNAME */
+CONSX(1977, a2600,    0,        a2600,    a2600,    NULL,     a2600,	"Atari",  "Atari 2600", GAME_NOT_WORKING)

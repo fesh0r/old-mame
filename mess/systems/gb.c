@@ -259,33 +259,13 @@ static MACHINE_DRIVER_START( gbcolor )
 	MDRV_PALETTE_INIT(gbc)
 MACHINE_DRIVER_END
 
-static const struct IODevice io_gameboy[] =
-{
-	{
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"gb\0gmb\0cgb\0gbc\0sgb\0",		/* file extensions */
-		IO_RESET_ALL,		/* reset if file changed */
-		0,
-		gb_load_rom,		/* init */
-		NULL,				/* exit */
-		NULL,				/* info */
-		NULL,				/* open */
-		NULL,				/* close */
-		NULL,				/* status */
-		NULL,				/* seek */
-		NULL,				/* tell */
-		NULL,				/* input */
-		NULL,				/* output */
-		NULL,				/* input_chunk */
-		NULL				/* output_chunk */
-	},
-	{ IO_END }
-};
+#define io_gameboy	io_NULL
+#define io_supergb	io_NULL
+#define io_gbcolor	io_NULL
 
-#define io_supergb  io_gameboy
-#define io_gbcolor  io_gameboy
-
+SYSTEM_CONFIG_START(gameboy)
+	CONFIG_DEVICE_CARTSLOT( 1, "gb\0gmb\0cgb\0gbc\0sgb\0", gb_load_rom, NULL, NULL)
+SYSTEM_CONFIG_END
 
 /***************************************************************************
 
@@ -307,8 +287,8 @@ ROM_START( gbcolor )
 ROM_END
 
 
-/*     YEAR  NAME     PARENT   MACHINE  INPUT    INIT  COMPANY     FULLNAME         FLAGS*/
-CONSX( 1990, gameboy, 0,       gameboy, gameboy, 0,    "Nintendo", "GameBoy",       GAME_IMPERFECT_SOUND )
-CONSX( 1994, supergb, gameboy, supergb, gameboy, 0,    "Nintendo", "Super GameBoy", GAME_IMPERFECT_SOUND )
-CONSX( 1998, gbcolor, gameboy, gbcolor, gameboy, 0,    "Nintendo", "GameBoy Color", GAME_IMPERFECT_SOUND )
+/*     YEAR  NAME     PARENT   MACHINE  INPUT    INIT	CONFIG		COMPANY     FULLNAME         FLAGS*/
+CONSX( 1990, gameboy, 0,       gameboy, gameboy, 0,		gameboy,	"Nintendo", "GameBoy",       GAME_IMPERFECT_SOUND )
+CONSX( 1994, supergb, gameboy, supergb, gameboy, 0,		gameboy,	"Nintendo", "Super GameBoy", GAME_IMPERFECT_SOUND )
+CONSX( 1998, gbcolor, gameboy, gbcolor, gameboy, 0,		gameboy,	"Nintendo", "GameBoy Color", GAME_IMPERFECT_SOUND )
 

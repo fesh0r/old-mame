@@ -3,6 +3,7 @@
 #include "driver.h"
 #include "includes/d88.h"
 #include "includes/flopdrv.h"
+#include "image.h"
 
 #define d88image_MAX_DRIVES 4
 #define VERBOSE 1
@@ -26,7 +27,7 @@ floppy_interface d88image_floppy_interface=
 };
 
 /* attempt to insert a disk into the drive specified with id */
-int d88image_floppy_init(int id)
+int d88image_floppy_init(int id, void *fp, int open_mode)
 {
 	UINT8 tmp8;
 	UINT16 tmp16;
@@ -34,27 +35,16 @@ int d88image_floppy_init(int id)
 	int i,j,k;
 	unsigned long toffset;
 
-	const char *name = device_filename(IO_FLOPPY, id);
 	/* do we have an image name ? */
-	if (!name)
+	if (fp == NULL)
 		return INIT_PASS;
 
 	if (id < d88image_MAX_DRIVES)
 	{
 		d88image *w = &d88image_drives[id];
 
-		w->mode = 1;
-		w->image_file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
-		if( !w->image_file )
-		{
-			w->mode = 0;
-			w->image_file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-			if( !w->image_file )
-			{
-				w->mode = 1;
-				w->image_file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
-			}
-		}
+		w->image_file = fp;
+		w->mode = (w->image_file) && is_effective_mode_writable(open_mode);
 
 		/* the following line is unsafe, but floppy_drives_init assumes we start on track 0,
 		so we need to reflect this */

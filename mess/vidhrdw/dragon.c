@@ -45,10 +45,10 @@
 #include "includes/dragon.h"
 
 static int coco3_hires;
-static int coco3_gimevhreg[8];
 static int sam_videomode;
 static int coco3_blinkstatus;
 static int coco3_vidbase;
+static int coco3_gimevhreg[8];
 
 #define MAX_HIRES_VRAM	57600
 
@@ -67,7 +67,6 @@ static int coco3_vidbase;
 #endif /* MAME_DEBUG */
 
 static int coco3_palette_recalc(int force);
-int coco3_calculate_rows(int *bordertop, int *borderbottom);
 
 /* --------------------------------------------------
  * CoCo 1/2 Stuff
@@ -235,7 +234,7 @@ static UINT8 internal_coco3_hires_charproc(UINT32 c, int row)
 		/* subtracting here so that we can get an offset that looks like a real CoCo address */
 		ROM = memory_region(REGION_CPU1) - 0x8000;
 
-		c &= 0xff;
+		c &= 0x7f;
 		if (c < 32)
 			resultptr = &ROM[0xfa10 + (c * 8)];	/* characters 0-31 are at $FA10 - $FB0F */
 		else
@@ -425,7 +424,6 @@ static struct videomap_interface coco3_videomap_interface =
 
 VIDEO_START( coco3 )
 {
-    int i;
 	struct m6847_init_params p;
 
 	m6847_vh_normalparams(&p);
@@ -448,12 +446,18 @@ VIDEO_START( coco3 )
 		return 1;
 	}
 
+	coco3_vh_reset();
+	return 0;
+}
+
+void coco3_vh_reset(void)
+{
+	int i;
 	for (i = 0; i < (sizeof(coco3_gimevhreg) / sizeof(coco3_gimevhreg[0])); i++)
 		coco3_gimevhreg[i] = 0;
 
 	coco3_hires = coco3_blinkstatus = 0;
 	coco3_palette_recalc(1);
-	return 0;
 }
 
 static void get_composite_color(int color, int *r, int *g, int *b)
@@ -615,14 +619,14 @@ void coco3_vh_blink(void)
 
 WRITE_HANDLER(coco3_palette_w)
 {
+	videomap_invalidate_lineinfo();
+
 	data &= 0x3f;
 	paletteram[offset] = data;
 
 #if LOG_PALETTE
 	logerror("CoCo3 Palette: %i <== $%02x\n", offset, data);
 #endif
-
-	videomap_invalidate_lineinfo();
 }
 
 int coco3_calculate_rows(int *bordertop, int *borderbottom)
@@ -677,6 +681,11 @@ int coco3_calculate_rows(int *bordertop, int *borderbottom)
 		b = 12;
 		break;
 	}
+
+#ifdef REORDERED_VBLANK
+	t -= 4;
+	b -= 4;
+#endif
 
 	if (bordertop)
 		*bordertop = t;

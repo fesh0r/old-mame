@@ -575,30 +575,11 @@ ROM_END
 
 static const struct IODevice io_laser[] = {
 	{
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"rom\0",            /* file extensions */
-		IO_RESET_ALL,		/* reset if file changed */
-        0,
-		laser_rom_init, 	/* init */
-		laser_rom_exit, 	/* exit */
-        NULL,               /* info */
-        NULL,               /* open */
-        NULL,               /* close */
-        NULL,               /* status */
-        NULL,               /* seek */
-		NULL,				/* tell */
-        NULL,               /* input */
-        NULL,               /* output */
-        NULL,               /* input_chunk */
-        NULL                /* output_chunk */
-    },
-	IO_CASSETTE_WAVE(1,"wav\0cas\0",0,laser_cassette_init,laser_cassette_exit),
-	{
 		IO_FLOPPY,			/* type */
 		2,					/* count */
 		"dsk\0",            /* file extensions */
 		IO_RESET_NONE,		/* reset if file changed */
+		OSD_FOPEN_READ,		/* open mode */
         0,
 		laser_floppy_init,	/* init */
 		laser_floppy_exit,	/* exit */
@@ -620,19 +601,12 @@ static const struct IODevice io_laser[] = {
 #define io_laser500 io_laser
 #define io_laser700 io_laser
 
-/*	  YEAR	 NAME	   PARENT	 MACHINE   INPUT	 INIT	   COMPANY	 FULLNAME */
-COMP( 1984?, laser350, 0,		 laser350, laser350, laser,    "Video Technology",  "Laser 350" )
-COMP( 1984?, laser500, laser350, laser500, laser500, laser,    "Video Technology",  "Laser 500" )
-COMP( 1984?, laser700, laser350, laser700, laser500, laser,    "Video Technology",  "Laser 700" )
+SYSTEM_CONFIG_START(laser)
+	CONFIG_DEVICE_CASSETTE(1, "cas\0", laser_cassette_init)
+	CONFIG_DEVICE_CARTSLOT(1, "rom\0", laser_rom_init, laser_rom_exit, NULL)
+SYSTEM_CONFIG_END
 
-#ifdef RUNTIME_LOADER
-extern void vtech2_runtime_loader_init(void)
-{
-	int i;
-	for (i=0; drivers[i]; i++) {
-		if ( strcmp(drivers[i]->name,"laser350")==0) drivers[i]=&driver_laser350;
-		if ( strcmp(drivers[i]->name,"laser500")==0) drivers[i]=&driver_laser500;
-		if ( strcmp(drivers[i]->name,"laser700")==0) drivers[i]=&driver_laser700;
-	}
-}
-#endif
+/*	  YEAR	 NAME	   PARENT	 MACHINE   INPUT	 INIT	   CONFIG	COMPANY	 FULLNAME */
+COMP( 1984?, laser350, 0,		 laser350, laser350, laser,    laser,	"Video Technology",  "Laser 350" )
+COMP( 1984?, laser500, laser350, laser500, laser500, laser,    laser,	"Video Technology",  "Laser 500" )
+COMP( 1984?, laser700, laser350, laser700, laser500, laser,    laser,	"Video Technology",  "Laser 700" )

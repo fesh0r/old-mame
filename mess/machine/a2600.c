@@ -21,6 +21,7 @@
 #include "drawgfx.h"
 #include "zlib.h"
 #include "vidhrdw/generic.h"
+#include "image.h"
 
 #include "includes/a2600.h"
 
@@ -836,7 +837,7 @@ WRITE_HANDLER( a2600_TIA_w )
   Stop MAchine
 
 ***************************************************************************/
-void a2600_stop_machine(void)
+MACHINE_STOP( a2600 )
 {
 	/* Make sane the hardware */
 	timer_reset(HSYNC_timer, TIME_IN_CYCLES(76, 0));
@@ -1322,23 +1323,17 @@ MACHINE_INIT( a2600 )
   Cartridge Loading
 
 ***************************************************************************/
-int a2600_load_rom(int id)
+int a2600_load_rom(int id, void *cartfile, int open_mode)
 {
-	FILE *cartfile;
 	UINT8 *ROM = memory_region(REGION_CPU1);
 
-	if (device_filename(IO_CARTSLOT, id) == NULL)
+	if (cartfile == NULL)
 	{
 		printf("a2600 Requires Cartridge!\n");
 		return INIT_FAIL;
 	}
 
 	/* A cartridge isn't strictly mandatory, but it's recommended */
-	cartfile = NULL;
-	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		return 1;
-	}
 
 	a2600_cartridge_rom = &(ROM[0x10000]);	/* Load the cart outside the cpuspace for b/s purposes */
 

@@ -11,6 +11,7 @@
 
 #include "driver.h"
 #include "dmkdsk.h"
+#include "image.h"
 
 #define dmkdsk_MAX_DRIVES 4
 static dmkdsk     dmkdsk_drives[dmkdsk_MAX_DRIVES];
@@ -145,9 +146,8 @@ UINT32 dmkdsk_GetRealDiskCode( dmkHeader_p header )
 }
 
 /* attempt to insert a disk into the drive specified with id */
-int dmkdsk_floppy_init(int id)
+int dmkdsk_floppy_init(int id, void *fp, int open_mode)
 {
-	const char *name = device_filename(IO_FLOPPY, id);
 	int			result = 0;
 	dmkdsk 		*w = &dmkdsk_drives[id];
 
@@ -155,23 +155,18 @@ int dmkdsk_floppy_init(int id)
 	{
 
 		/* do we have an image name ? */
-		if (!name || !name[0])
+		if (fp == NULL)
 		{
 			return INIT_FAIL;
 		}
-		w->mode = 1;
-		w->image_file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
-		if( !w->image_file )
+		if (is_effective_mode_create(open_mode))
 		{
-			w->mode = 0;
-			w->image_file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-			if( !w->image_file )
-			{
-				/* DMK creation not supported (this will be implemented in imgtool) */
-				logerror("DMK disk creation not supported");
-				return INIT_FAIL;
-			}
+			/* DMK creation not supported (this will be implemented in imgtool) */
+			logerror("DMK disk creation not supported");
+			return INIT_FAIL;
 		}
+		w->mode = is_effective_mode_writable(open_mode);
+		w->image_file = fp;
 
 		w->image_size = osd_fsize( w->image_file );
 
@@ -192,8 +187,6 @@ int dmkdsk_floppy_init(int id)
 				id, w->header.trackCount,  ((w->header.diskOptions & 0x10) == 0) ? '2' : '1' );
 #endif
 		}
-		else
-		 	osd_fclose( w->image_file );
 	}
 
 	return result;

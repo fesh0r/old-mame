@@ -73,9 +73,8 @@ static int genesis_verify_cart(unsigned char *temp,unsigned int len)
 	return retval;
 }
 
-int genesis_init_cart (int id)
+int genesis_init_cart (int id, void *romfile, int open_mode)
 {
-	FILE *romfile = NULL;
 	unsigned char *tmpROMnew, *tmpROM;
 	unsigned char *secondhalf;
 	unsigned char *rawROM;
@@ -101,7 +100,6 @@ int genesis_init_cart (int id)
     }
 	genesis_soundram = memory_region(REGION_CPU2);
 
-	romfile = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
 	if (!romfile)
     {
         printf("Genesis Requires Cartridge!\n");

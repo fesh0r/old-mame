@@ -347,6 +347,7 @@ static const struct IODevice io_mac512ke[] = {
 		2,					/* count */
 		"dsk\0img\0",       /* file extensions */
 		IO_RESET_NONE,		/* reset if file changed */
+		OSD_FOPEN_RW_OR_READ,/* open mode */
 		NULL,				/* id */
 		mac_floppy_init,	/* init */
 		mac_floppy_exit,	/* exit */
@@ -370,6 +371,7 @@ static const struct IODevice io_macplus[] = {
 		2,					/* count */
 		"dsk\0img\0",       /* file extensions */
 		IO_RESET_NONE,		/* reset if file changed */
+		OSD_FOPEN_RW_OR_READ,/* open mode */
 		NULL,				/* id */
 		mac_floppy_init,	/* init */
 		mac_floppy_exit,	/* exit */
@@ -386,11 +388,14 @@ static const struct IODevice io_macplus[] = {
 	{ IO_END }
 };
 
-/*	   YEAR  NAME	   PARENT	 MACHINE   INPUT	 INIT	   COMPANY	 FULLNAME */
-/*COMPX( 1984, mac128k,  0, 	   mac128k,  macplus,	 mac128k,  "Apple Computer",  "Macintosh 128k",  0 )
-COMPX( 1984, mac512k,  mac128k,  mac128k,  macplus,  mac512k,  "Apple Computer",  "Macintosh 512k",  0 )*/
-COMPX( 1986, mac512ke, macplus,  mac512ke, macplus,  mac512ke, "Apple Computer",  "Macintosh 512ke", 0 )
-COMPX( 1986, macplus,  0,		 macplus,  macplus,  macplus,  "Apple Computer",  "Macintosh Plus",  0 )
+SYSTEM_CONFIG_START(macplus)
+SYSTEM_CONFIG_END
+
+/*	   YEAR		NAME	  PARENT	MACHINE   INPUT		INIT		CONFIG		COMPANY				FULLNAME */
+/*COMPX( 1984,	mac128k,  0, 		mac128k,  macplus,	mac128k,	macplus,	"Apple Computer",	"Macintosh 128k",  0 )
+COMPX( 1984,	mac512k,  mac128k,	mac128k,  macplus,  mac512k,	macplus,	"Apple Computer",	"Macintosh 512k",  0 )*/
+COMPX( 1986,	mac512ke, macplus,  mac512ke, macplus,  mac512ke,	macplus,	"Apple Computer",	"Macintosh 512ke", 0 )
+COMPX( 1986,	macplus,  0,		macplus,  macplus,  macplus,	macplus,	"Apple Computer",	"Macintosh Plus",  0 )
 
 #if 0
 
@@ -468,9 +473,7 @@ ROM_START( mac2 )
 	ROM_LOAD_WIDE( "256k.rom",  0x800000, 0x40000, 0x00000000)
 ROM_END
 
-static const struct IODevice io_mac2[] = {
-	{ IO_END }
-};
+#define io_mac2	io_NULL
 
 COMPX( 1987, mac2,	   0,		 mac2,	   mac2,	 0/*mac2*/,  "Apple Computer",    "Macintosh II",  GAME_NOT_WORKING )
 

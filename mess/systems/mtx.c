@@ -331,7 +331,7 @@ static WRITE_HANDLER ( mtx_bankswitch_w )
 
 }
 
-unsigned char mtx_peek(int address)
+static unsigned char mtx_peek(int address)
 {
 	int base_address = 0;
 	unsigned char rtn = 0;
@@ -414,7 +414,7 @@ return(rtn);
 
 }
 
-void mtx_poke(int address, unsigned char data)
+static void mtx_poke(int address, unsigned char data)
 {
 	int base_address = 0;
 	int offset = address & 0x1fff;
@@ -888,32 +888,12 @@ ROM_START (mtx512)
 	ROM_LOAD ("assemrom", 0x14000, 0x2000, 0x9d7538c3)
 ROM_END
 
-static const struct IODevice io_mtx512[] = {
-    {
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"bin\0",			/* file extensions */
-		IO_RESET_ALL,		/* reset if file changed */
-        NULL,               /* id */
-		NULL,				/* init */
-		NULL,				/* exit */
-		NULL,				/* info */
-		NULL,               /* open */
-		NULL,               /* close */
-		NULL,               /* status */
-		NULL,               /* seek */
-		NULL,				/* tell */
-        NULL,               /* input */
-		NULL,               /* output */
-		NULL,               /* input_chunk */
-		NULL                /* output_chunk */
-	},
-	{ IO_END }
-};
+#define io_mtx512	io_NULL
 
-COMPUTER_CONFIG_START(mtx512)
+SYSTEM_CONFIG_START(mtx512)
 	CONFIG_RAM_DEFAULT(512 * 1024)
-COMPUTER_CONFIG_END
+	CONFIG_DEVICE_CARTSLOT(1, "bin\0", NULL, NULL, NULL)
+SYSTEM_CONFIG_END
 
-/*     YEAR  NAME      PARENT  MACHINE   INPUT     INIT     CONFIG,  COMPANY          FULLNAME */
-COMPC( 1983, mtx512,   0,      mtx512,   mtx512,   0,       mtx512,  "Memotech Ltd.", "MTX 512" )
+/*    YEAR  NAME      PARENT  MACHINE   INPUT     INIT     CONFIG,  COMPANY          FULLNAME */
+COMP( 1983, mtx512,   0,      mtx512,   mtx512,   0,       mtx512,  "Memotech Ltd.", "MTX 512" )

@@ -26,6 +26,9 @@
 #include "mamedbg.h"
 #include "../window.h"
 
+#ifdef MESS
+#include "menu.h"
+#endif
 
 
 //============================================================
@@ -46,10 +49,16 @@ extern UINT8 win_trying_to_quit;
 // window styles
 #define WINDOW_STYLE			WS_OVERLAPPEDWINDOW
 #define WINDOW_STYLE_EX			0
+#ifndef MESS
+#define WINDOW_HAS_MENU			FALSE
+#else
+#define WINDOW_HAS_MENU			FALSE
+#endif
 
 // debugger window styles
 #define DEBUG_WINDOW_STYLE		WS_OVERLAPPED
 #define DEBUG_WINDOW_STYLE_EX	0
+#define DEBUG_WINDOW_HAS_MENU	FALSE
 
 // full screen window styles
 #define FULLSCREEN_STYLE		WS_OVERLAPPED
@@ -194,7 +203,7 @@ INLINE int wnd_extra_width(void)
 	RECT window = { 100, 100, 200, 200 };
 	if (!win_window_mode)
 		return 0;
-	AdjustWindowRectEx(&window, WINDOW_STYLE, FALSE, WINDOW_STYLE_EX);
+	AdjustWindowRectEx(&window, WINDOW_STYLE, WINDOW_HAS_MENU, WINDOW_STYLE_EX);
 	return (window.right - window.left) - 100;
 }
 
@@ -209,7 +218,7 @@ INLINE int wnd_extra_height(void)
 	RECT window = { 100, 100, 200, 200 };
 	if (!win_window_mode)
 		return 0;
-	AdjustWindowRectEx(&window, WINDOW_STYLE, FALSE, WINDOW_STYLE_EX);
+	AdjustWindowRectEx(&window, WINDOW_STYLE, WINDOW_HAS_MENU, WINDOW_STYLE_EX);
 	return (window.bottom - window.top) - 100;
 }
 
@@ -224,7 +233,7 @@ INLINE int wnd_extra_left(void)
 	RECT window = { 100, 100, 200, 200 };
 	if (!win_window_mode)
 		return 0;
-	AdjustWindowRectEx(&window, WINDOW_STYLE, FALSE, WINDOW_STYLE_EX);
+	AdjustWindowRectEx(&window, WINDOW_STYLE, WINDOW_HAS_MENU, WINDOW_STYLE_EX);
 	return 100 - window.left;
 }
 
@@ -387,7 +396,8 @@ INLINE void get_work_area(RECT *maximum)
 int win_init_window(void)
 {
 	static int classes_created = 0;
-	char title[256];
+	TCHAR title[256];
+	HMENU menu = NULL;
 
 	// disable win_old_scanlines if a win_blit_effect is active
 	if (win_blit_effect != 0)
@@ -399,7 +409,7 @@ int win_init_window(void)
 		WNDCLASS wc = { 0 };
 
 		// initialize the description of the window class
-		wc.lpszClassName 	= "MAME";
+		wc.lpszClassName 	= TEXT("MAME");
 		wc.hInstance 		= GetModuleHandle(NULL);
 		wc.lpfnWndProc		= video_window_proc;
 		wc.hCursor			= LoadCursor(NULL, IDC_ARROW);
@@ -417,7 +427,7 @@ int win_init_window(void)
 		// possibly register the debug window class
 		if (options.mame_debug)
 		{
-			wc.lpszClassName 	= "MAMEDebug";
+			wc.lpszClassName 	= TEXT("MAMEDebug");
 			wc.lpfnWndProc		= debug_window_proc;
 
 			// register the class; fail if we can't
@@ -431,12 +441,17 @@ int win_init_window(void)
 	sprintf(title, "MAME: %s [%s]", Machine->gamedrv->description, Machine->gamedrv->name);
 #else
 	sprintf(title, "MESS: %s [%s]", Machine->gamedrv->description, Machine->gamedrv->name);
+#if WINDOW_HAS_MENU
+	menu = win_create_menus();
+	if (!menu)
+		return 1;
+#endif
 #endif
 
 	// create the window, but don't show it yet
 	win_video_window = CreateWindowEx(win_window_mode ? WINDOW_STYLE_EX : FULLSCREEN_STYLE_EX,
-			"MAME", title, win_window_mode ? WINDOW_STYLE : FULLSCREEN_STYLE,
-			20, 20, 100, 100, NULL, NULL, GetModuleHandle(NULL), NULL);
+			TEXT("MAME"), title, win_window_mode ? WINDOW_STYLE : FULLSCREEN_STYLE,
+			20, 20, 100, 100, NULL, menu, GetModuleHandle(NULL), NULL);
 	if (!win_video_window)
 		return 1;
 
@@ -658,12 +673,19 @@ static LRESULT CALLBACK video_window_proc(HWND wnd, UINT message, WPARAM wparam,
 	// handle a few messages
 	switch (message)
 	{
+		// non-client paint: punt if full screen
+		case WM_NCPAINT:
+			if (win_window_mode)
+				return DefWindowProc(wnd, message, wparam, lparam);
+			break;
+	
 		// paint: redraw the last bitmap
 		case WM_PAINT:
 		{
 			PAINTSTRUCT pstruct;
 			HDC hdc = BeginPaint(wnd, &pstruct);
-			draw_video_contents(hdc, NULL, NULL, NULL, 1);
+			if (win_video_window)
+				draw_video_contents(hdc, NULL, NULL, NULL, 1);
 			EndPaint(wnd, &pstruct);
 			break;
 		}
@@ -729,7 +751,11 @@ static LRESULT CALLBACK video_window_proc(HWND wnd, UINT message, WPARAM wparam,
 
 		// everything else: defaults
 		default:
+#ifdef MESS
+			return win_mess_window_proc(wnd, message, wparam, lparam);
+#else
 			return DefWindowProc(wnd, message, wparam, lparam);
+#endif
 	}
 
 	return 0;
@@ -1170,9 +1196,11 @@ int win_process_events(void)
 			// ignore keyboard messages
 			case WM_SYSKEYUP:
 			case WM_SYSKEYDOWN:
+#ifndef MESS
 			case WM_KEYUP:
 			case WM_KEYDOWN:
 			case WM_CHAR:
+#endif
 				break;
 
 			// process everything else
@@ -1388,7 +1416,7 @@ static int create_debug_window(void)
 {
 #ifdef MAME_DEBUG
 	RECT bounds, work_bounds;
-	char title[256];
+	TCHAR title[256];
 
 	sprintf(title, "Debug: %s [%s]", Machine->gamedrv->description, Machine->gamedrv->name);
 
@@ -1396,13 +1424,13 @@ static int create_debug_window(void)
 	bounds.top = bounds.left = 0;
 	bounds.right = options.debug_width;
 	bounds.bottom = options.debug_height;
-	AdjustWindowRectEx(&bounds, WINDOW_STYLE, FALSE, WINDOW_STYLE_EX);
+	AdjustWindowRectEx(&bounds, WINDOW_STYLE, DEBUG_WINDOW_HAS_MENU, WINDOW_STYLE_EX);
 
 	// get the work bounds
 	SystemParametersInfo(SPI_GETWORKAREA, 0, &work_bounds, 0);
 
 	// create the window
-	win_debug_window = CreateWindowEx(DEBUG_WINDOW_STYLE_EX, "MAMEDebug", title, DEBUG_WINDOW_STYLE,
+	win_debug_window = CreateWindowEx(DEBUG_WINDOW_STYLE_EX, TEXT("MAMEDebug"), title, DEBUG_WINDOW_STYLE,
 			work_bounds.right - (bounds.right - bounds.left),
 			work_bounds.bottom - (bounds.bottom - bounds.top),
 			bounds.right - bounds.left, bounds.bottom - bounds.top,

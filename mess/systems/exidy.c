@@ -69,17 +69,14 @@
 #include "cpu/z80/z80.h"
 #include "includes/wd179x.h"
 #include "includes/basicdsk.h"
+#include "image.h"
 
-
-int exidy_floppy_init(int id)
+static int exidy_floppy_init(int id, void *fp, int open_mode)
 {
-	if (device_filename(IO_FLOPPY, id)==NULL)
+	if (!image_exists(IO_FLOPPY, id))
 		return INIT_PASS;
 
-	if (strlen(device_filename(IO_FLOPPY, id))==0)
-		return INIT_PASS;
-
-	if (basicdsk_floppy_init(id)==INIT_PASS)
+	if (basicdsk_floppy_init(id, fp, open_mode)==INIT_PASS)
 	{
 		/* not correct */
 		basicdsk_set_geometry(id, 80, 2, 9, 512, 1, 0);
@@ -820,32 +817,13 @@ ROM_START(exidy)
 	ROM_LOAD_OPTIONAL("exsb1-4.dat", 0x0d800, 0x0800, 0xa370cb19)	
 ROM_END
 
-static const struct IODevice io_exidy[] =
-{
-	//IO_CASSETTE_WAVE(2,"wav\0",NULL,exidy_cassette_init,exidy_cassette_exit),
-	IO_PRINTER_PORT(1,"prn\0"),
-	{
-		IO_FLOPPY,					/* type */
-		4,							/* count */
-		"dsk\0",                    /* file extensions */
-		IO_RESET_NONE,				/* reset if file changed */
-		0,
-		exidy_floppy_init,			/* init */
-		basicdsk_floppy_exit,			/* exit */
-		NULL,						/* info */
-		NULL,						/* open */
-		NULL,						/* close */
-        floppy_status,                                           /* status */
-        NULL,                                           /* seek */
-		NULL,						/* tell */
-		NULL,						/* input */
-		NULL,						/* output */
-		NULL,						/* input_chunk */
-		NULL						/* output_chunk */
-	},
-	{IO_END}
-};
+#define io_exidy	io_NULL
 
+SYSTEM_CONFIG_START(exidy)
+	CONFIG_DEVICE_PRINTER			(1)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	exidy_floppy_init)
+	//CONFIG_DEVICE_CASSETTE		(2,	"",			exidy_cassette_init)
+SYSTEM_CONFIG_END
 
-/*	  YEAR	NAME	 PARENT	MACHINE INPUT 	INIT COMPANY        FULLNAME */
-COMPX( 1979, exidy,   0,     exidy,  exidy,  0,   "Exidy Inc", "Sorcerer", GAME_NOT_WORKING | GAME_NO_SOUND)
+/*	  YEAR	NAME	PARENT	MACHINE	INPUT	INIT	CONFIG	COMPANY        FULLNAME */
+COMPX(1979,	exidy,	0,		exidy,	exidy,	0,		exidy,	"Exidy Inc", "Sorcerer", GAME_NOT_WORKING | GAME_NO_SOUND)

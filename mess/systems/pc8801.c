@@ -1,6 +1,6 @@
 /***************************************************************************
 
-  $Id: pc8801.c,v 1.10 2002/07/06 11:33:19 npwoods Exp $
+  $Id: pc8801.c,v 1.13 2002/09/13 16:13:31 rnabet Exp $
 
 ***************************************************************************/
 
@@ -19,6 +19,7 @@ static const struct IODevice io_pc88srl[] = {
     2,                      /* count */
     "d88\0",                /* file extensions */
     IO_RESET_NONE,          /* reset if file changed */
+	OSD_FOPEN_RW_CREATE_OR_READ,/* open mode */
     0,
     d88image_floppy_init,   /* init */
     d88image_floppy_exit,   /* exit */
@@ -664,6 +665,10 @@ static MACHINE_DRIVER_START( pc88srh )
 MACHINE_DRIVER_END
 
 
-/*	  YEAR	NAME	  PARENT		MACHINE   INPUT 	INIT	  COMPANY	FULLNAME */
-COMPX( 1985, pc88srl, 0,			pc88srl, pc88sr, 0,		  "Nippon Electronic Company",  "PC-8801 MKIISR (Lores display, VSYNC 15KHz)", 0 )
-COMPX( 1985, pc88srh, pc88srl,		pc88srh, pc88sr, 0,		  "Nippon Electronic Company",  "PC-8801 MKIISR (Hires display, VSYNC 24KHz)", 0 )
+SYSTEM_CONFIG_START(pc88)
+SYSTEM_CONFIG_END
+
+
+/*	  YEAR	NAME	  PARENT		MACHINE   INPUT		INIT	CONFIG	COMPANY	FULLNAME */
+COMPX( 1985, pc88srl, 0,			pc88srl,  pc88sr,	0,		pc88,	"Nippon Electronic Company",  "PC-8801 MKIISR (Lores display, VSYNC 15KHz)", 0 )
+COMPX( 1985, pc88srh, pc88srl,		pc88srh,  pc88sr,	0,		pc88,	"Nippon Electronic Company",  "PC-8801 MKIISR (Hires display, VSYNC 24KHz)", 0 )

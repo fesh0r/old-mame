@@ -127,7 +127,6 @@ ROM_START(sym1)
 ROM_END
 
 static const struct IODevice io_sym1[] = {
-	IODEVICE_CBM_ROM("60\00080\0c0\0"),
 #if 0
     {
 		IO_CASSETTE,		/* type */
@@ -152,5 +151,9 @@ static const struct IODevice io_sym1[] = {
     { IO_END }
 };
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMPX( 1978, sym1,	  0, 		sym1,	  sym1, 	sym1,	  "Synertek Systems Corp",  "SYM-1/SY-VIM-1", GAME_NOT_WORKING)
+SYSTEM_CONFIG_START(sym1)
+	CONFIG_DEVICE_CBM_CARTSLOT("60\00080\0c0\0")
+SYSTEM_CONFIG_END
+
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT	CONFIG	COMPANY   FULLNAME */
+COMPX( 1978, sym1,	  0, 		sym1,	  sym1, 	sym1,	sym1,	"Synertek Systems Corp",  "SYM-1/SY-VIM-1", GAME_NOT_WORKING)

@@ -365,56 +365,21 @@ ROM_END
   Game driver(s)
 
 ***************************************************************************/
-static const struct IODevice io_mbee[] = {
-    {
-        IO_CARTSLOT,            /* type */
-        1,                      /* count */
-        "rom\0",                /* file extensions */
-        IO_RESET_CPU,           /* reset if file changed */
-        0,
-        mbee_rom_load,          /* init */
-        NULL,                   /* exit */
-        NULL,                   /* info */
-        NULL,                   /* open */
-        NULL,                   /* close */
-        NULL,                   /* status */
-        NULL,                   /* seek */
-        NULL,                   /* tell */
-        NULL,                   /* input */
-        NULL,                   /* output */
-        NULL,                   /* input_chunk */
-        NULL                    /* output_chunk */
-    },
-    IO_CASSETTE_WAVE(1,"wav\0",NULL,mbee_cassette_init,mbee_cassette_exit),
-    {
-        IO_FLOPPY,              /* type */
-        4,                      /* count */
-        "dsk\0",                /* file extensions */
-        IO_RESET_NONE,          /* reset if file changed */
-        0,
-        basicdsk_floppy_init,   /* init */
-        basicdsk_floppy_exit,   /* exit */
-        NULL,                   /* info */
-        NULL,                   /* open */
-        NULL,                   /* close */
-        floppy_status,          /* status */
-        NULL,                   /* seek */
-        NULL,                   /* tell */
-        NULL,                   /* input */
-        NULL,                   /* output */
-        NULL,                   /* input_chunk */
-        NULL                    /* output_chunk */
-    },
-    { IO_END }
-};
 
-#define io_mbeepc    io_mbee
-#define io_mbeepc85  io_mbee
-#define io_mbee56    io_mbee
+#define io_mbee		io_NULL
+#define io_mbeepc	io_NULL
+#define io_mbeepc85	io_NULL
+#define io_mbee56	io_NULL
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMP( 1982, mbee,     0,        mbee,     mbee,     0,        "Applied Technology",  "Microbee 32 IC" )
-COMP( 1982, mbeepc,   mbee,     mbee,     mbee,     0,        "Applied Technology",  "Microbee 32 PC" )
-COMP( 1985?,mbeepc85, mbee,     mbee,     mbee,     0,        "Applied Technology",  "Microbee 32 PC85" )
-COMP( 1983, mbee56,   mbee,     mbee56 ,  mbee,     0,        "Applied Technology",  "Microbee 56" )
+SYSTEM_CONFIG_START(mbee)
+	CONFIG_DEVICE_CASSETTE			(1, "",			mbee_cassette_init)
+	CONFIG_DEVICE_CARTSLOT			(1, "rom\0",	mbee_rom_load, NULL, NULL)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	basicdsk_floppy_init)
+SYSTEM_CONFIG_END
+
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      CONFIG	COMPANY   FULLNAME */
+COMP( 1982, mbee,     0,        mbee,     mbee,     0,        mbee,		"Applied Technology",  "Microbee 32 IC" )
+COMP( 1982, mbeepc,   mbee,     mbee,     mbee,     0,        mbee,		"Applied Technology",  "Microbee 32 PC" )
+COMP( 1985?,mbeepc85, mbee,     mbee,     mbee,     0,        mbee,		"Applied Technology",  "Microbee 32 PC85" )
+COMP( 1983, mbee56,   mbee,     mbee56 ,  mbee,     0,        mbee,		"Applied Technology",  "Microbee 56" )
 

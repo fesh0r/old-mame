@@ -303,11 +303,8 @@ $(OBJ)/cbm.a: \
 
 $(OBJ)/coco.a:   \
 	  $(OBJ)/mess/machine/6883sam.o  \
-	  $(OBJ)/mess/formats/cocopak.o  \
-	  $(OBJ)/mess/formats/cococas.o  \
 	  $(OBJ)/mess/machine/cococart.o \
-	  $(OBJ)/mess/machine/ds1315.o \
-	  $(OBJ)/mess/formats/dmkdsk.o   \
+	  $(OBJ)/mess/machine/ds1315.o	 \
 	  $(OBJ)/mess/machine/ds1315.o   \
 	  $(OBJ)/mess/machine/m6242b.o   \
 	  $(OBJ)/mess/formats/cocovdk.o  \
@@ -315,8 +312,11 @@ $(OBJ)/coco.a:   \
 	  $(OBJ)/mess/systems/mc10.o	 \
 	  $(OBJ)/mess/machine/dragon.o	 \
 	  $(OBJ)/mess/vidhrdw/dragon.o	 \
-	  $(OBJ)/mess/systems/dragon.o
-
+	  $(OBJ)/mess/systems/dragon.o	 \
+	  $(OBJ)/mess/formats/cocopak.o  \
+	  $(OBJ)/mess/formats/cococas.o  \
+	  $(OBJ)/mess/formats/dmkdsk.o   \
+	  $(OBJ)/mess/formats/coco_dsk.o \
 
 $(OBJ)/trs80.a:    \
 	  $(OBJ)/mess/machine/trs80.o	 \
@@ -401,6 +401,8 @@ $(OBJ)/ti99.a:	   \
 	  $(OBJ)/mess/machine/990_tap.o	 \
 	  $(OBJ)/mess/vidhrdw/911_vdt.o  \
 	  $(OBJ)/mess/systems/ti990_10.o \
+	  $(OBJ)/mess/machine/ti990.o \
+	  $(OBJ)/mess/machine/mm58274c.o \
 #	  $(OBJ)/mess/systems/ti99_2.o	 \
 #	  $(OBJ)/mess/systems/ti990_4.o  \
 
@@ -688,15 +690,17 @@ $(OBJ)/tatung.a:     \
 
 # MESS specific core $(OBJ)s
 COREOBJS += \
-	$(OBJ)/cheat.o  	       \
-	$(OBJ)/mess/mess.o	       \
+	$(OBJ)/cheat.o  			   \
+	$(OBJ)/mess/mess.o			   \
+	$(OBJ)/mess/image.o		       \
+	$(OBJ)/mess/pool.o			   \
 	$(OBJ)/mess/system.o	       \
 	$(OBJ)/mess/device.o	       \
 	$(OBJ)/mess/config.o	       \
+	$(OBJ)/mess/inputx.o		   \
 	$(OBJ)/mess/filemngr.o	       \
 	$(OBJ)/mess/compcfg.o	       \
 	$(OBJ)/mess/tapectrl.o	       \
-	$(OBJ)/mess/menu.o	       \
 	$(OBJ)/mess/printer.o	       \
 	$(OBJ)/mess/cassette.o	       \
 	$(OBJ)/mess/menuentr.o	       \

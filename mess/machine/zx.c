@@ -131,11 +131,8 @@ MACHINE_INIT( pow3000 )
 	memory_set_opbase_handler(0, pow3000_setopbase);
 }
 
-int zx_cassette_init(int id)
+int zx_cassette_init(int id, void *file, int open_mode)
 {
-	void *file;
-
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if (file)
 	{
 		tape_size = osd_fsize(file);

@@ -5,21 +5,13 @@
 
 #include "driver.h"
 #include "printer.h"
+#include "image.h"
 
 static void *prn_ports[MAX_PRINTER]= { 0 };
 
-int printer_init (int id)
+int printer_init(int id, void *fp, int open_mode)
 {
-	void *f;
-
-	if (!device_filename(IO_PRINTER,id) || !strlen(device_filename(IO_PRINTER,id) ))
-		return 0;
-
-	f = image_fopen (IO_PRINTER, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_WRITE);
-	if (!f)
-		return INIT_FAIL;
-
-	prn_ports[id] = f;
+	prn_ports[id] = fp;
 	return INIT_PASS;
 }
 

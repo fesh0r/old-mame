@@ -43,14 +43,14 @@ icq3250a-d
 
 #include "includes/comquest.h"
 
-READ_HANDLER(comquest_read)
+static READ_HANDLER(comquest_read)
 {
 	UINT8 data=0;
 	logerror("comquest read %.4x %.2x\n",offset,data);
 	return data;
 }
 
-WRITE_HANDLER(comquest_write)
+static WRITE_HANDLER(comquest_write)
 {
 	logerror("comquest read %.4x %.2x\n",offset,data);
 }
@@ -320,37 +320,24 @@ ROM_START(comquest)
 	ROM_LOAD("comquest.bin", 0x00000, 0x80000, 0x2bf4b1a8)
 ROM_END
 
-static const struct IODevice io_comquest[] = {
-#if 0
-	{
-		IO_CARTSLOT,					/* type */
-		1,								/* count */
-		"bin\0",						/* file extensions */
-		IO_RESET_ALL,							/* private */
-		0,
-		a2600_load_rom,					/* init */
-		NULL,							/* exit */
-		NULL,							/* info */
-		NULL,							/* open */
-		NULL,							/* close */
-		NULL,							/* status */
-		NULL,							/* seek */
-		NULL,							/* tell */
-		NULL,							/* input */
-		NULL,							/* output */
-		NULL,							/* input_chunk */
-		NULL							/* output_chunk */
-	},
-#endif
-    { IO_END }
-};
+#define io_comquest	io_NULL
 
-DRIVER_INIT( comquest )
+SYSTEM_CONFIG_START(comquest)
+	/*CONFIG_DEVICE_CARTSLOT( 1, "bin\0", a2600_load_rom, NULL, NULL)*/
+SYSTEM_CONFIG_END
+
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
+
+static DRIVER_INIT( comquest )
 {
 //	int i;
 //	UINT8 *gfx=memory_region(REGION_GFX1);
 //	for (i=0; i<256; i++) gfx[i]=i;
 }
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      MONITOR	COMPANY   FULLNAME */
-CONS( 19??, comquest, 0, 		comquest, comquest, comquest, "Data Concepts",  "Comquest Plus German")
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT		CONFIG		MONITOR	COMPANY   FULLNAME */
+CONS( 19??, comquest, 0, 		comquest, comquest, comquest,	comquest,	"Data Concepts",  "Comquest Plus German")

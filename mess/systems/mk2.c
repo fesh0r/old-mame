@@ -161,9 +161,16 @@ ROM_START(mk2)
 #endif
 ROM_END
 
-static const struct IODevice io_mk2[] = {
-    { IO_END }
-};
+#define io_mk2	io_NULL
+
+SYSTEM_CONFIG_START(mk2)
+SYSTEM_CONFIG_END
+
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
 
 /*
    port a
@@ -248,20 +255,10 @@ static RRIOT_CONFIG riot={
 	mk2_irq
 };
 
-void init_mk2(void)
+static void init_mk2(void)
 {
 	rriot_init(0,&riot);
 }
 
-CONS( 1979,	mk2,	0, 		mk2,	mk2,	mk2,	  "Quelle International",  "Chess Champion MK II")
+CONS( 1979,	mk2,	0, 		mk2,	mk2,	mk2,	mk2,	  "Quelle International",  "Chess Champion MK II")
 // second design sold (same computer/program?)
-
-#ifdef RUNTIME_LOADER
-extern void mk2_runtime_loader_init(void)
-{
-	int i;
-	for (i=0; drivers[i]; i++) {
-		if ( strcmp(drivers[i]->name,"mk2")==0) drivers[i]=&driver_mk2;
-	}
-}
-#endif

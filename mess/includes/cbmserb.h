@@ -13,6 +13,7 @@ void cbm_drive_close (void);
    2,				   /* count */\
    "d64\0",            /* G64 later *//*file extensions */\
    IO_RESET_NONE,	   /* reset if file changed */\
+	OSD_FOPEN_READ,		/* open mode */\
    NULL,               /* id */\
    cbm_drive_attach_image,        /* init */\
    NULL,			   /* exit */\
@@ -35,7 +36,7 @@ void cbm_drive_0_config (int interface, int serialnr);
 void cbm_drive_1_config (int interface, int serialnr);
 
 /* open an d64 image */
-int cbm_drive_attach_image (int id);
+int cbm_drive_attach_image(int id, void *fp, int open_mode);
 
 /* load *.prg files directy from filesystem (rom directory) */
 int cbm_drive_attach_fs (int id);

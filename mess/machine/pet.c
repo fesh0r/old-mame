@@ -250,7 +250,7 @@ static struct {
 	int rom; /* rom socket 6502? at 0x9000 */
 } spet= { 0 };
 
-WRITE_HANDLER(cbm8096_io_w)
+static WRITE_HANDLER(cbm8096_io_w)
 {
 	if (offset<0x10) ;
 	else if (offset<0x14) pia_0_w(offset&3,data);
@@ -262,7 +262,7 @@ WRITE_HANDLER(cbm8096_io_w)
 	else if (offset<0x82) crtc6845_0_port_w(offset&1,data);
 }
 
-extern READ_HANDLER(cbm8096_io_r)
+static READ_HANDLER(cbm8096_io_r)
 {
 	int data=0xff;
 	if (offset<0x10) ;
@@ -554,14 +554,14 @@ int pet_rom_id (int id)
 	int retval = 0;
 	unsigned char magic[] =
 	{0xc3, 0xc2, 0xcd, 0x38, 0x30}, buffer[sizeof (magic)];
-	FILE *romfile;
+	void *romfile;
 	char *cp;
 
-	logerror("c64_rom_id %s\n", device_filename(IO_CARTSLOT,id));
+	logerror("c64_rom_id %s\n", image_filename(IO_CARTSLOT,id));
 	retval = 0;
-	if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
+	if (!(romfile = image_fopen_new(IO_CARTSLOT, id, NULL)))
 	{
-		logerror("rom %s not found\n", device_filename(IO_CARTSLOT,id));
+		logerror("rom %s not found\n", image_filename(IO_CARTSLOT,id));
 		return 0;
 	}
 
@@ -582,7 +582,7 @@ void pet_rom_load(void)
 	}
 }
 
-void pet_keyboard_business(void)
+static void pet_keyboard_business(void)
 {
 	int value;
 
@@ -697,7 +697,7 @@ void pet_keyboard_business(void)
 	pet_keyline[9] = value;
 }
 
-void pet_keyboard_normal(void)
+static void pet_keyboard_normal(void)
 {
 	int value;
 	value = 0;

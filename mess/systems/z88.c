@@ -34,7 +34,7 @@ static void blink_reset(void)
 }
 
 /* load image */
-void z88_dump_ram(void)
+static void z88_dump_ram(void)
 {
 	void *file;
 
@@ -531,7 +531,7 @@ static void blink_pb_w(int offset, int data, int reg_index)
 
 
 /* segment register write */
-WRITE_HANDLER(blink_srx_w)
+static WRITE_HANDLER(blink_srx_w)
 {
 	blink.mem[offset] = data;
 
@@ -549,7 +549,7 @@ blink w: 03b1 03
 blink w: 03b6 03
 */
 
-WRITE_HANDLER(z88_port_w)
+static WRITE_HANDLER(z88_port_w)
 {
 	unsigned char port;
 
@@ -677,7 +677,7 @@ WRITE_HANDLER(z88_port_w)
 
 }
 
-READ_HANDLER(z88_port_r)
+static READ_HANDLER(z88_port_r)
 {
 	unsigned char port;
 
@@ -925,13 +925,11 @@ ROM_START(z88)
     ROM_LOAD("z88v400.rom", 0x010000, 0x020000, 0x1356d440)
 ROM_END
 
-static const struct IODevice io_z88[] =
-{
+#define io_z88	io_NULL
 
-	{IO_END}
-};
+SYSTEM_CONFIG_START(z88)
+SYSTEM_CONFIG_END
 
-
-/*	  YEAR	NAME	PARENT	MACHINE		INPUT		INIT		COMPANY					FULLNAME */
-COMPX( 1987,	z88,	0,		z88,		z88,		0,			"Cambridge Computers",	"Z88",GAME_NOT_WORKING)
+/*	   YEAR	    NAME	PARENT	MACHINE		INPUT		INIT	CONFIG	COMPANY					FULLNAME */
+COMPX( 1988,	z88,	0,		z88,		z88,		0,		z88,	"Cambridge Computers",	"Z88",GAME_NOT_WORKING)
 

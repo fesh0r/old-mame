@@ -8,8 +8,9 @@
 #include "cpu/s2650/s2650.h"
 
 #include "includes/vc4000.h"
+#include "image.h"
 
-READ_HANDLER(vc4000_key_r)
+static READ_HANDLER(vc4000_key_r)
 {
 	UINT8 data=0;
 	switch(offset) {
@@ -220,27 +221,21 @@ ROM_START(vc4000)
 	ROM_REGION(0x100,REGION_GFX1, 0)
 ROM_END
 
-static int vc4000_load_rom(int id)
+static int vc4000_load_rom(int id, void *cartfile, int open_mode)
 {
-	FILE *cartfile;
 	UINT8 *rom = memory_region(REGION_CPU1);
 	int size;
 
-	if (device_filename(IO_CARTSLOT, id) == NULL)
+	if (cartfile == NULL)
 	{
 		printf("%s requires Cartridge!\n", Machine->gamedrv->name);
 		return 0;
 	}
 
-	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror("%s not found\n",device_filename(IO_CARTSLOT,id));
-		return 1;
-	}
 	size=osd_fsize(cartfile);
 
 	if (osd_fread(cartfile, rom, size)!=size) {
-		logerror("%s load error\n",device_filename(IO_CARTSLOT,id));
+		logerror("%s load error\n",image_filename(IO_CARTSLOT,id));
 		osd_fclose(cartfile);
 		return 1;
 	}
@@ -248,28 +243,17 @@ static int vc4000_load_rom(int id)
 	return 0;
 }
 
-static const struct IODevice io_vc4000[] = {
-	{
-		IO_CARTSLOT,					/* type */
-		1,								/* count */
-		"bin\0",                        /* file extensions */
-		IO_RESET_ALL,					/* reset if file changed */
-		0,
-		vc4000_load_rom, 				/* init */
-		NULL,							/* exit */
-		NULL,							/* info */
-		NULL,							/* open */
-		NULL,							/* close */
-		NULL,							/* status */
-		NULL,							/* seek */
-		NULL,							/* tell */
-		NULL,							/* input */
-		NULL,							/* output */
-		NULL,							/* input_chunk */
-		NULL							/* output_chunk */
-	},
-    { IO_END }
-};
+#define io_vc4000	io_NULL
+
+SYSTEM_CONFIG_START(vc4000)
+	CONFIG_DEVICE_CARTSLOT(1, "bin\0", vc4000_load_rom, NULL, NULL)
+SYSTEM_CONFIG_END
+
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
 
 static DRIVER_INIT( vc4000 )
 {
@@ -278,5 +262,5 @@ static DRIVER_INIT( vc4000 )
 	for (i=0; i<256; i++) gfx[i]=i;
 }
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-CONSX( 1978, vc4000,	0,	vc4000,  vc4000,  vc4000,		"Interton",		"VC4000", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND )
+/*    YEAR	NAME	PARENT	MACHINE	INPUT	INIT	CONFIG	COMPANY		FULLNAME */
+CONSX(1978,	vc4000,	0,		vc4000,	vc4000,	vc4000,	vc4000,	"Interton",	"VC4000", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND )

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "driver.h"
+#include "image.h"
 #include "includes/sms.h"
 
 UINT8 smsRomPageCount;
@@ -12,7 +13,6 @@ int systemType;
 UINT8 biosPort;
 
 UINT8 smsNVRam[NVRAM_SIZE];
-char *smsNVRamName;
 int smsNVRAMSaved = 0;
 UINT8 ggSIO[5] = { 0x7F, 0xFF, 0x00, 0xFF, 0x00 };
 
@@ -485,9 +485,8 @@ static int sms_verify_cart(char * magic, int size) {
 	return retval;
 }
 
-int sms_init_cart(int id) {
+int sms_init_cart(int id, void *handle, int open_mode) {
 	int size;
-	FILE *handle;
 	UINT8 *USER_RAM, *RAM;
 
 	if (!strcmp(Machine->gamedrv->name, "sms")) {
@@ -542,7 +541,7 @@ int sms_init_cart(int id) {
 	}
 
 	/* Ensure filename was specified */
-	if (device_filename(IO_CARTSLOT, id) == NULL) {
+	if (handle == NULL) {
 		switch (systemType) {
 			case CONSOLE_SMS_U_V13:
 			case CONSOLE_SMS_E_V13:
@@ -574,16 +573,6 @@ int sms_init_cart(int id) {
 				return (INIT_FAIL);
 		}
 	} else {
-		/* Get handle to the rom */
-		handle = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
-		if (handle == NULL) {
-			logerror("Cannot open cartridge for read operation!\n");
-			return (INIT_FAIL);
-		}
-
-		/* Strip off file extension if it exists */
-		smsNVRamName = osd_strip_extension((char *)device_filename(IO_CARTSLOT, id));
-
 		/* Get file size */
 		size = osd_fsize(handle);
 
@@ -628,12 +617,6 @@ int sms_init_cart(int id) {
 	setup_rom();
 
 	return (INIT_PASS);
-}
-
-void sms_exit_cart(int id) {
-	if (smsNVRamName != NULL) {
-		free(smsNVRamName);
-	}
 }
 
 MACHINE_INIT(sms) {

@@ -26,6 +26,7 @@
 #include "mamedbg.h"
 #include "window.h"
 
+
 #ifndef INVALID
 #define INVALID -1
 #endif
@@ -133,6 +134,8 @@ static int dbg_dasm_case = 0;
 static int dbg_dasm_relative_jumps = 0;
 
 static const char *dbg_info_once = NULL;
+
+static int dbg_show_scanline = 0;
 
 /****************************************************************************
  * Color settings
@@ -326,6 +329,7 @@ static void cmd_set_mem_squeezed( void );
 static void cmd_set_element_color( void );
 static void cmd_brk_exec_toggle( void );
 static void cmd_brk_data_toggle( void );
+static void cmd_toggle_scanlines( void );
 
 static void cmd_switch_window( void );
 static void cmd_dasm_up( void );
@@ -524,8 +528,6 @@ struct GfxElement *build_debugger_font(void)
 {
 	struct GfxElement *font;
 
-	switch_debugger_orientation(NULL);
-
 	font = decodegfx(fontdata,&fontlayout);
 
 	if (font)
@@ -534,8 +536,6 @@ struct GfxElement *build_debugger_font(void)
 		font->total_colors = DEBUGGER_TOTAL_COLORS*DEBUGGER_TOTAL_COLORS;
 	}
 
-	switch_true_orientation(NULL);
-
 	return font;
 }
 
@@ -543,7 +543,6 @@ static void toggle_cursor(struct mame_bitmap *bitmap, struct GfxElement *font)
 {
 	int sx, sy, x, y;
 
-	switch_debugger_orientation(bitmap);
 	sx = cursor_x * font->width;
 	sy = cursor_y * font->height;
 	for (y = 0; y < font->height; y++)
@@ -563,9 +562,8 @@ static void toggle_cursor(struct mame_bitmap *bitmap, struct GfxElement *font)
 			plot_pixel(bitmap, sx+x, sy+y, pen);
 		}
 	}
-	switch_true_orientation(bitmap);
 	cursor_on ^= 1;
-
+	
 	debugger_bitmap_changed = 1;
 }
 
@@ -574,11 +572,9 @@ void dbg_put_screen_char(int ch, int attr, int x, int y)
 	struct mame_bitmap *bitmap = Machine->debug_bitmap;
 	struct GfxElement *font = Machine->debugger_font;
 
-	switch_debugger_orientation(bitmap);
 	drawgfx(bitmap, font,
 		ch, attr, 0, 0, x*font->width, y*font->height,
 		0, TRANSPARENCY_NONE, 0);
-	switch_true_orientation(bitmap);
 
 	debugger_bitmap_changed = 1;
 }
@@ -849,6 +845,11 @@ static s_command commands[] = {
 	"[either OPCODES (from OP_ROM, default) or DATA (from OP_RAM), also 0|1].",
 	cmd_save_to_file },
 {	(1<<EDIT_CMDS),
+	"SCANLINE",     0,          CODE_NONE,
+	"",
+	"Toggles the display of scanlines",
+	cmd_toggle_scanlines },
+{	(1<<EDIT_CMDS),
 	"IGNORE",       0,          CODE_NONE,
 	"<cpunum>",
 	"Ignore CPU #<cpunum> while debugging or tracing",
@@ -1060,22 +1061,22 @@ INLINE unsigned order( unsigned offset, unsigned size )
 /* adjust an offset by shifting it left activecpu_address_shift() times */
 INLINE unsigned lshift( unsigned offset )
 {
-	switch( ASHIFT )
-	{
-	case -1: return offset / 2;
-	case  3: return offset * 8;
-	}
+	int shift = ASHIFT;
+	if (shift > 0)
+		offset <<= shift;
+	else
+		offset >>= -shift;
 	return offset;
 }
 
 /* adjust an offset by shifting it right activecpu_address_shift() times */
 INLINE unsigned rshift( unsigned offset )
 {
-	switch( ASHIFT )
-	{
-	case -1: return offset * 2;
-	case  3: return offset / 8;
-	}
+	int shift = ASHIFT;
+	if (shift > 0)
+		offset >>= shift;
+	else
+		offset <<= -shift;
 	return offset;
 }
 
@@ -2462,6 +2463,12 @@ static void dump_regs( void )
 			}
 		}
 	}
+
+	if (dbg_show_scanline)
+	{
+		win_printf( win, "Scanline: %d Horz: %d\n", cpu_getscanline(), cpu_gethorzbeampos());
+	}
+
 	regs->top = y;
 	y = 0;
 
@@ -4948,6 +4955,15 @@ static void cmd_brk_data_toggle( void )
 }
 
 /**************************************************************************
+ * cmd_toggle_scanlines
+ * Toggles the display of scanlines in the display
+ **************************************************************************/
+static void cmd_toggle_scanlines( void )
+{
+	dbg_show_scanline = !dbg_show_scanline;
+}
+
+/**************************************************************************
  * cmd_run_to_cursor
  * Set temporary break point at cursor line and go
  **************************************************************************/
@@ -5269,6 +5285,7 @@ void mame_debug_init(void)
 	debug_key_pressed = 1;
 
 	first_time = 1;
+	dbg_show_scanline = 0;
 }
 
 /**************************************************************************

@@ -51,10 +51,10 @@ static unsigned char *Amstrad_ROM_Table[256];
 /* MULTIFACE */
 static void multiface_rethink_memory(void);
 static WRITE_HANDLER(multiface_io_write);
-void multiface_init(void);
-void multiface_stop(void);
-int multiface_hardware_enabled(void);
-void multiface_reset(void);
+static void multiface_init(void);
+static void multiface_stop(void);
+static int multiface_hardware_enabled(void);
+static void multiface_reset(void);
 
 /*-------------------------------------------*/
 static void amstrad_clear_top_bit_of_int_counter(void);
@@ -114,7 +114,6 @@ static int ppi_port_outputs[3];
 /* keyboard line 0-9 */
 static int amstrad_keyboard_line;
 /*static int crtc_vsync_output;*/
-extern int amstrad_vsync;
 
 static void update_psg(void)
 {
@@ -150,7 +149,7 @@ static void update_psg(void)
 
 
 /* ppi port a read */
-READ_HANDLER ( amstrad_ppi_porta_r )
+static READ_HANDLER ( amstrad_ppi_porta_r )
 {
 	update_psg();
 	
@@ -225,7 +224,7 @@ function 11:
 */
 
 
-READ_HANDLER (amstrad_ppi_portb_r)
+static READ_HANDLER (amstrad_ppi_portb_r)
 {
 	int data;
 
@@ -251,7 +250,7 @@ READ_HANDLER (amstrad_ppi_portb_r)
 	return data;
 }
 
-WRITE_HANDLER ( amstrad_ppi_porta_w )
+static WRITE_HANDLER ( amstrad_ppi_porta_w )
 {
 	ppi_port_outputs[0] = data;
 
@@ -262,7 +261,7 @@ WRITE_HANDLER ( amstrad_ppi_porta_w )
 /* previous value */
 static int previous_ppi_portc_w;
 
-WRITE_HANDLER ( amstrad_ppi_portc_w )
+static WRITE_HANDLER ( amstrad_ppi_portc_w )
 {
 	int changed_data;
 
@@ -412,7 +411,7 @@ void Amstrad_RethinkMemory(void)
 
 
 /* simplified ram configuration - e.g. only correct for 128k machines */
-void AmstradCPC_GA_SetRamConfiguration(void)
+static void AmstradCPC_GA_SetRamConfiguration(void)
 {
 	int ConfigurationIndex = AmstradCPC_GA_RamConfiguration & 0x07;
 	int BankIndex;
@@ -517,8 +516,6 @@ void AmstradCPC_GA_Write(int Data)
 		break;
 
 	case 3:
-		return;
-
 		{
 			AmstradCPC_GA_RamConfiguration = Data;
 
@@ -557,7 +554,7 @@ void AmstradCPC_SetUpperRom(int Data)
 
 
 /* port handler */
-READ_HANDLER ( AmstradCPC_ReadPortHandler )
+static READ_HANDLER ( AmstradCPC_ReadPortHandler )
 {
 	unsigned char data = 0x0ff;
 
@@ -627,7 +624,7 @@ READ_HANDLER ( AmstradCPC_ReadPortHandler )
 static unsigned char previous_printer_data_byte;
 
 /* Offset handler for write */
-WRITE_HANDLER ( AmstradCPC_WritePortHandler )
+static WRITE_HANDLER ( AmstradCPC_WritePortHandler )
 {
 	if ((offset & 0x0c000) == 0x04000)
 	{
@@ -802,7 +799,7 @@ It is believed that it is used to make multiface invisible to programs */
 
 
 /* used to setup computer if a snapshot was specified */
-OPBASE_HANDLER( amstrad_multiface_opbaseoverride )
+static OPBASE_HANDLER( amstrad_multiface_opbaseoverride )
 {
 		int pc;
 
@@ -1126,7 +1123,7 @@ void amstrad_interrupt_timer_update(void)
 	}
 }
 
-void	amstrad_interrupt_timer_callback(int dummy)
+static void	amstrad_interrupt_timer_callback(int dummy)
 {
 #ifndef AMSTRAD_VIDEO_EVENT_LIST
 	amstrad_update_video();
@@ -1143,7 +1140,7 @@ static void amstrad_clear_top_bit_of_int_counter(void)
 }
 
 /* called when cpu acknowledges int */
-int 	amstrad_cpu_acknowledge_int(int cpu)
+static int 	amstrad_cpu_acknowledge_int(int cpu)
 {
 	amstrad_clear_top_bit_of_int_counter();
 
@@ -2270,7 +2267,7 @@ static const void *previous_xycb_table;
 static const void *previous_ex_table;
 
 
-void amstrad_common_init(void)
+static void amstrad_common_init(void)
 {
 
 	/* set all colours to black */
@@ -2456,7 +2453,7 @@ static PORT_WRITE_START (writeport_amstrad)
 PORT_END
 
 /* read PSG port A */
-READ_HANDLER ( amstrad_psg_porta_read )
+static READ_HANDLER ( amstrad_psg_porta_read )
 {	
 	/* read cpc keyboard */
 	return AmstradCPC_ReadKeyboard();
@@ -2781,35 +2778,15 @@ ROM_START(cpc464p)
 	ROM_REGION(0, REGION_CPU1,0)
 ROM_END
 
-#define AMSTRAD_IO_SNAPSHOT \
-	{ \
-		IO_SNAPSHOT,				/* type */ \
-		1,							/* count */ \
-		"sna\0",                    /* file extensions */ \
-		IO_RESET_ALL,				/* reset if file changed */ \
-		0, \
-		amstrad_snapshot_load,		/* init */ \
-		amstrad_snapshot_exit,		/* exit */ \
-		NULL,						/* info */ \
-		NULL,						/* open */ \
-		NULL,						/* close */ \
-		NULL,						/* status */ \
-		NULL,						/* seek */ \
-		NULL,						/* tell */ \
-		NULL,						/* input */ \
-		NULL,						/* output */ \
-		NULL,						/* input_chunk */ \
-		NULL						/* output_chunk */ \
-	}
-
 #define AMSTRAD_IO_DISK \
 	{ \
 		IO_FLOPPY,					/* type */ \
 		2,							/* count */ \
 		"dsk\0",                    /* file extensions */ \
 		IO_RESET_NONE,				/* reset if file changed */ \
+		OSD_FOPEN_NONE,				/* open mode */ \
 		0, \
-		amstrad_floppy_init,			/* init */ \
+		amstrad_floppy_init,		/* init */ \
 		dsk_floppy_exit,			/* exit */ \
 		NULL,						/* info */ \
 		NULL,						/* open */ \
@@ -2823,18 +2800,9 @@ ROM_END
 		NULL						/* output_chunk */ \
 	}
 
-#define AMSTRAD_IO_CASSETTE \
-	IO_CASSETTE_WAVE(1,"wav\0",NULL,amstrad_cassette_init,amstrad_cassette_exit)
-
-#define AMSTRAD_IO_PRINTER \
-	IO_PRINTER_PORT(1,"prn\0")
-
 static const struct IODevice io_cpc6128[] =
 {
-	AMSTRAD_IO_SNAPSHOT,
 	AMSTRAD_IO_DISK,
-	AMSTRAD_IO_CASSETTE,
-	AMSTRAD_IO_PRINTER,
 	{IO_END}
 };
 
@@ -2844,45 +2812,30 @@ static const struct IODevice io_cpc6128[] =
 
 static const struct IODevice io_cpcplus[] =
 {
-	AMSTRAD_IO_SNAPSHOT,
 	AMSTRAD_IO_DISK,
-	AMSTRAD_IO_CASSETTE,
-	AMSTRAD_IO_PRINTER,
-	{
-		IO_CARTSLOT,				/* type */
-		1,							/* count */
-		"cpr\0",                    /* file extensions */
-		IO_RESET_NONE,				/* reset if file changed */
-		0,
-		amstrad_plus_cartridge_init,	/* init */
-		amstrad_plus_cartridge_exit,	/* exit */
-		NULL,						/* info */
-		NULL,						/* open */
-		NULL,						/* close */
-		NULL,                                           /* status */
-		NULL,                                           /* seek */
-		NULL,						/* tell */
-		NULL,						/* input */
-		NULL,						/* output */
-		NULL,						/* input_chunk */
-		NULL						/* output_chunk */
-	},
 	{ IO_END }
 };
 
 #define io_cpc6128p io_cpcplus
 #define io_cpc464p io_cpcplus
 
-COMPUTER_CONFIG_START(amstrad)
+SYSTEM_CONFIG_START(cpc6128)
 	CONFIG_RAM_DEFAULT(128 * 1024)
-COMPUTER_CONFIG_END
+	CONFIG_DEVICE_CASSETTE(1, "", amstrad_cassette_init)
+	CONFIG_DEVICE_PRINTER(1)
+SYSTEM_CONFIG_END
 
+SYSTEM_CONFIG_START(cpcplus)
+	CONFIG_IMPORT_FROM(cpc6128)
+	CONFIG_DEVICE_CARTSLOT(1,	"cpr\0", amstrad_plus_cartridge_init, amstrad_plus_cartridge_exit, NULL)
+	CONFIG_DEVICE_SNAPSHOT(		"sna\0", amstrad_snapshot_load, amstrad_snapshot_exit)
+SYSTEM_CONFIG_END
 
 /*      YEAR  NAME       PARENT  MACHINE    INPUT    INIT    CONFIG,  COMPANY               FULLNAME */
-COMPCX( 1984, cpc464,   0,		amstrad,  amstrad,	0,		amstrad, "Amstrad plc", "Amstrad/Schneider CPC464", GAME_NOT_WORKING)
-COMPCX( 1985, cpc664,   cpc464,	amstrad,  amstrad,	0,	    amstrad, "Amstrad plc", "Amstrad/Schneider CPC664", GAME_NOT_WORKING)
-COMPCX( 1985, cpc6128,  cpc464,	amstrad,  amstrad,	0,	    amstrad, "Amstrad plc", "Amstrad/Schneider CPC6128", GAME_NOT_WORKING)
-COMPCX( 1990, cpc464p,  0,		cpcplus,  amstrad,	0,	    amstrad, "Amstrad plc", "Amstrad 464plus", GAME_NOT_WORKING)
-COMPCX( 1990, cpc6128p,  0,		cpcplus,  amstrad,	0,	    amstrad, "Amstrad plc", "Amstrad 6128plus", GAME_NOT_WORKING)
-COMPCX( 1989, kccomp,   cpc464,	kccomp,   kccomp,	0,	    amstrad, "VEB Mikroelektronik", "KC Compact", GAME_NOT_WORKING)
+COMP( 1984, cpc464,   0,		amstrad,  amstrad,	0,		cpc6128, "Amstrad plc", "Amstrad/Schneider CPC464")
+COMP( 1985, cpc664,   cpc464,	amstrad,  amstrad,	0,	    cpc6128, "Amstrad plc", "Amstrad/Schneider CPC664")
+COMP( 1985, cpc6128,  cpc464,	amstrad,  amstrad,	0,	    cpc6128, "Amstrad plc", "Amstrad/Schneider CPC6128")
+COMP( 1990, cpc464p,  0,		cpcplus,  amstrad,	0,	    cpcplus, "Amstrad plc", "Amstrad 464plus")
+COMP( 1990, cpc6128p, 0,		cpcplus,  amstrad,	0,	    cpcplus, "Amstrad plc", "Amstrad 6128plus")
+COMP( 1989, kccomp,   cpc464,	kccomp,   kccomp,	0,	    cpc6128, "VEB Mikroelektronik", "KC Compact")
 

@@ -1,6 +1,9 @@
 #ifndef MESSDRV_H
 #define MESSDRV_H
 
+#include <assert.h>
+#include "formats.h"
+
 /******************************************************************************
  * This is a start at the proposed peripheral structure.
  * It will be filled with live starting with the next release (I hope).
@@ -29,8 +32,9 @@ struct IODevice {
 	int count;
 	const char *file_extensions;
 	int reset_depth;
+	int open_mode;
 	char *dummy;
-	int (*init)(int id);
+	int (*init)(int id, void *fp, int open_mode);
 	void (*exit)(int id);
 	const void *(*info)(int id, int whatinfo);
 	int (*open)(int id, int mode, void *args);
@@ -45,38 +49,70 @@ struct IODevice {
 	UINT32 (*partialcrc)(const unsigned char *buf, unsigned int size);
 };
 
-struct ComputerConfigEntry
+struct SystemConfigurationParamBlock
 {
-	UINT8 type;
-	UINT32 param;
+	int max_ram_options;
+	int actual_ram_options;
+	int default_ram_option;
+	UINT32 *ram_options;
+	int device_num;
+	const struct IODevice *dev;
 };
 
-enum
-{
-	CCE_END,
-	CCE_RAM,
-	CCE_RAM_DEFAULT
-};
+#define SYSTEM_CONFIG_START(name)															\
+	static void construct_sysconfig_##name(struct SystemConfigurationParamBlock *cfg)		\
+	{																						\
 
-#define COMPUTER_CONFIG_START(name) \
-	static const struct ComputerConfigEntry computer_config_##name[] = {
+#define SYSTEM_CONFIG_END																	\
+	}																						\
 
-#define COMPUTER_CONFIG_END \
-	{ CCE_END, 0 } \
-	};
+#define CONFIG_IMPORT_FROM(name)															\
+		construct_sysconfig_##name(cfg);													\
 
-#define CONFIG_RAM(ram) \
-	{ CCE_RAM, (ram) },
+#define CONFIG_RAM(ram)																		\
+	if (cfg->max_ram_options > 0)															\
+	{																						\
+		assert(cfg->actual_ram_options < cfg->max_ram_options);								\
+		assert(cfg->ram_options);															\
+		cfg->ram_options[cfg->actual_ram_options++] = (ram);								\
+	}																						\
 
-#define CONFIG_RAM_DEFAULT(ram) \
-	{ CCE_RAM_DEFAULT, (ram) },
+#define CONFIG_RAM_DEFAULT(ram)																\
+	if (cfg->max_ram_options > 0)															\
+	{																						\
+		cfg->default_ram_option = cfg->actual_ram_options;									\
+		CONFIG_RAM(ram);																	\
+	}																						\
+
+
+#define CONFIG_DEVICE(type, count, file_extensions, reset_depth, open_mode, init, exit,		\
+						info, open, close, status, seek, tell, input, output, partialcrc)	\
+	if (cfg->device_num-- == 0)																\
+	{																						\
+		static struct IODevice device = { (type), (count), (file_extensions), (reset_depth),\
+			(open_mode), NULL, (init), (exit), (info), (open), (close), (status), (seek),	\
+			(tell), (input), (output), NULL, NULL, (partialcrc) };							\
+		cfg->dev = &device;																	\
+	}																						\
+
+#define CONFIG_DEVICE_CARTSLOT(count,file_extensions,init,exit,partialcrc)					\
+	CONFIG_DEVICE(IO_CARTSLOT, (count), (file_extensions), IO_RESET_CPU, OSD_FOPEN_READ,	\
+		(init), (exit),	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (partialcrc))		\
+
+#define CONFIG_DEVICE_SNAPSHOT(file_extensions,init,exit)									\
+	CONFIG_DEVICE(IO_SNAPSHOT, 1, (file_extensions), IO_RESET_CPU, OSD_FOPEN_READ,			\
+		(init), (exit),	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)				\
+
+#define CONFIG_DEVICE_QUICKLOAD(file_extensions,init,exit)									\
+	CONFIG_DEVICE(IO_QUICKLOAD, 1, (file_extensions), IO_RESET_CPU, OSD_FOPEN_READ,			\
+		(init), (exit),	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)				\
 
 /******************************************************************************
  * MESS' version of the GAME() and GAMEX() macros of MAME
  * CONS and CONSX are for consoles
  * COMP and COMPX are for computers
  ******************************************************************************/
-#define CONS(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,COMPANY,FULLNAME)	\
+#define CONS(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME)	\
 extern const struct GameDriver driver_##PARENT; \
 extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
@@ -92,11 +128,11 @@ const struct GameDriver driver_##NAME = 	\
 	init_##INIT,							\
 	rom_##NAME,								\
 	io_##NAME, 								\
-	NULL,									\
+	construct_sysconfig_##CONFIG,			\
 	ROT0									\
 };
 
-#define CONSX(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,COMPANY,FULLNAME,FLAGS)	\
+#define CONSX(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME,FLAGS)	\
 extern const struct GameDriver driver_##PARENT;   \
 extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
@@ -112,11 +148,11 @@ const struct GameDriver driver_##NAME = 	\
 	init_##INIT,							\
 	rom_##NAME,								\
 	io_##NAME, 								\
-	NULL,									\
+	construct_sysconfig_##CONFIG,			\
 	ROT0|(FLAGS)							\
 };
 
-#define COMP(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,COMPANY,FULLNAME)	\
+#define COMP(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME)	\
 extern const struct GameDriver driver_##PARENT;   \
 extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
@@ -132,11 +168,11 @@ const struct GameDriver driver_##NAME = 	\
 	init_##INIT,							\
 	rom_##NAME,								\
 	io_##NAME, 								\
-	NULL,									\
+	construct_sysconfig_##CONFIG,			\
 	ROT0|GAME_COMPUTER 						\
 };
 
-#define COMPX(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,COMPANY,FULLNAME,FLAGS)	\
+#define COMPX(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME,FLAGS)	\
 extern const struct GameDriver driver_##PARENT;   \
 extern const struct GameDriver driver_##NAME;   \
 const struct GameDriver driver_##NAME = 	\
@@ -152,49 +188,13 @@ const struct GameDriver driver_##NAME = 	\
 	init_##INIT,							\
 	rom_##NAME,								\
 	io_##NAME, 								\
-	NULL,									\
+	construct_sysconfig_##CONFIG,			\
 	ROT0|GAME_COMPUTER|(FLAGS)	 			\
 };
 
-#define COMPC(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME)	\
-extern const struct GameDriver driver_##PARENT;   \
-extern const struct GameDriver driver_##NAME;   \
-const struct GameDriver driver_##NAME = 	\
-{											\
-	__FILE__,								\
-	&driver_##PARENT,						\
-	#NAME,									\
-	FULLNAME,								\
-	#YEAR,									\
-	COMPANY,								\
-	construct_##MACHINE,					\
-	input_ports_##INPUT,					\
-	init_##INIT,							\
-	rom_##NAME,								\
-	io_##NAME, 								\
-	computer_config_##CONFIG,				\
-	ROT0|GAME_COMPUTER 						\
-};
+#define construct_sysconfig_NULL	(NULL)
 
-#define COMPCX(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,CONFIG,COMPANY,FULLNAME,FLAGS)	\
-extern const struct GameDriver driver_##PARENT;   \
-extern const struct GameDriver driver_##NAME;   \
-const struct GameDriver driver_##NAME = 	\
-{											\
-	__FILE__,								\
-	&driver_##PARENT,						\
-	#NAME,									\
-	FULLNAME,								\
-	#YEAR,									\
-	COMPANY,								\
-	construct_##MACHINE,					\
-	input_ports_##INPUT,					\
-	init_##INIT,							\
-	rom_##NAME,								\
-	io_##NAME, 								\
-	computer_config_##CONFIG,				\
-	ROT0|GAME_COMPUTER|(FLAGS)	 			\
-};
+extern const struct IODevice io_NULL[];
 
 #endif /* MESSDRV_H */
 

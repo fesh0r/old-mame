@@ -166,7 +166,7 @@ I have removed CPU_AUDIO_CPU from the Z(0 so this is no longer necessary
 }
 
 
-READ16_HANDLER( qsound_rom_r )
+static READ16_HANDLER( qsound_rom_r )
 {
 	unsigned char *rom = memory_region(REGION_USER1);
 
@@ -483,7 +483,7 @@ WRITE16_HANDLER( qsound_sharedram1_w )
 		qsound_sharedram1[offset] = data;
 }
 
-WRITE16_HANDLER( cps2_qsound_sharedram_w )
+static WRITE16_HANDLER( cps2_qsound_sharedram_w )
 {
     qsound_sharedram1_w(offset/2, data, 0xff00);
 }
@@ -542,12 +542,17 @@ ROM_START( sfzch )
 ROM_END
 
 
+#define io_sfzch		io_NULL
 
-static const struct IODevice io_sfzch[] = {
+SYSTEM_CONFIG_START(sfzch)
+SYSTEM_CONFIG_END
 
-    { IO_END }
-};
+/***************************************************************************
 
+  Game driver(s)
 
-CONS( 1995, sfzch,    0,        sfzch,     sfzch,    0,        "Capcom", "CPS Changer (Street Fighter ZERO)" )
+***************************************************************************/
+
+/*	  YEAR	NAME	  PARENT	MACHINE   INPUT		INIT	CONFIG	COMPANY		FULLNAME */
+CONS( 1995, sfzch,    0,        sfzch,	  sfzch,    0,		sfzch,	"Capcom", "CPS Changer (Street Fighter ZERO)" )
 

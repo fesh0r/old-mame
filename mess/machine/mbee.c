@@ -13,6 +13,7 @@
 #include "includes/mbee.h"
 #include "cassette.h"
 #include "cpu/z80/z80.h"
+#include "image.h"
 
 static UINT8 fdc_drv = 0;
 static UINT8 fdc_head = 0;
@@ -142,31 +143,24 @@ void mbee_interrupt(void)
     z80pio_p_w(0, 1, 0x00);
 }
 
-int mbee_cassette_init(int id)
+int mbee_cassette_init(int id, void *fp, int open_mode)
 {
 	struct cassette_args args;
 	memset(&args, 0, sizeof(args));
 	args.create_smpfreq = 11025;
-	return cassette_init(id, &args);
+	return cassette_init(id, fp, open_mode, &args);
 }
 
-void mbee_cassette_exit(int id)
-{
-	device_close(IO_CASSETTE,id);
-}
 #if 0
 int mbee_floppy_init(int id)
 {
-	flop_specified[id] = device_filename(IO_FLOPPY,id) != NULL;
+	flop_specified[id] = image_exists(IO_FLOPPY, id);
 	return 0;
 }
 #endif
 
-int mbee_rom_load(int id)
+int mbee_rom_load(int id, void *file, int open_mode)
 {
-    void *file;
-
-	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if( file )
 	{
 		int size = osd_fsize(file);

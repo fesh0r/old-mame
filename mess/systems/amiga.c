@@ -117,6 +117,7 @@ static const struct IODevice io_amiga[] = {
         4,                  /* count */
         "adf\0",            /* file extensions */
         IO_RESET_NONE,      /* reset if file changed */
+		OSD_FOPEN_READ,		/* open mode */
         NULL,               /* id */
         amiga_fdc_init,     /* init */
         NULL,               /* exit */
@@ -133,9 +134,11 @@ static const struct IODevice io_amiga[] = {
     },
     { IO_END }
 };
+SYSTEM_CONFIG_START(amiga)
+SYSTEM_CONFIG_END
 
-/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMPX( 1984, amiga,    0,        ntsc,     amiga,    0,        "Commodore Business Machines Co.",  "Amiga 500 (NTSC)", GAME_NOT_WORKING )
+/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT	CONFIG	COMPANY	FULLNAME */
+COMPX( 1984, amiga,    0,        ntsc,     amiga,    0,		amiga,	"Commodore Business Machines Co.",  "Amiga 500 (NTSC)", GAME_NOT_WORKING )
 
 ROM_START( cdtv )
     ROM_REGION(0x200000,REGION_CPU1,ROMREGION_16BIT) /* for ram, etc */
@@ -148,6 +151,7 @@ static const struct IODevice io_cdtv[] = {
         4,                  /* count */
         "adf\0",            /* file extensions */
         IO_RESET_NONE,      /* reset if file changed */
+		OSD_FOPEN_READ,		/* open mode */
         NULL,               /* id */
         amiga_fdc_init,     /* init */
         NULL,               /* exit */
@@ -165,5 +169,5 @@ static const struct IODevice io_cdtv[] = {
     { IO_END }
 };
 
-/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMPX( 1990, cdtv,     0,        ntsc,     amiga,    0,        "Commodore Business Machines Co.",  "Amiga CDTV (NTSC)", GAME_NOT_WORKING )
+/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT	CONFIG	COMPANY	FULLNAME */
+COMPX( 1990, cdtv,     0,        ntsc,     amiga,    0,		amiga,	"Commodore Business Machines Co.",  "Amiga CDTV (NTSC)", GAME_NOT_WORKING )

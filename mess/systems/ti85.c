@@ -21,6 +21,10 @@ Needed:
 4. Artworks.
 
 New:
+05/10/2002 TI-85 serial link works again.
+17/09/2002 TI-85 snapshots loading fixed. Few code cleanups.
+	   TI-86 SNAPSHOT LOADING DOESNT WORK.
+	   TI-85, TI-86 SERIAL LINK DOESNT WORK.
 08/09/2001 TI-81, TI-85, TI-86 modified to new core.
 	   TI-81, TI-85, TI-86 reset corrected.
 21/08/2001 TI-81, TI-85, TI-86 NVRAM corrected.
@@ -501,95 +505,9 @@ ROM_START (ti86grom)
 	ROM_LOAD ("ti86grom.bin", 0x10000, 0x40000, 0xd2c67280)
 ROM_END
 
-static const struct IODevice io_ti81[] = {
-    { IO_END }
-};
-
-static const struct IODevice io_ti85[] = {
-    {
-	IO_SNAPSHOT,		/* type */
-	1,			/* count */
-	"sav\0",        	/* file extensions */
-	IO_RESET_ALL,		/* reset if file changed */
-        0,               	/* id */
-	ti85_load_snap,		/* load */
-	ti85_exit_snap,		/* exit */
-        NULL,		        /* info */
-        NULL,           	/* open */
-        NULL,               	/* close */
-        NULL,               	/* status */
-        NULL,               	/* seek */
-	NULL,			/* tell */
-        NULL,           	/* input */
-        NULL,               	/* output */
-        NULL,               	/* input_chunk */
-        NULL                	/* output_chunk */
-    },
-    {
-	IO_SERIAL,		/* type */
-	1,			/* count */
-	"85p\085s\085i\085n\085c\085l\085k\085m\085v\085d\085e\085r\085g\085b\0",
-				/* file extensions */
-	IO_RESET_NONE,		/* reset if file changed */
-	0,			/* id */
-	ti85_serial_init,	/* init */
-	ti85_serial_exit,		/* exit */
-	NULL,                   /* info */
-	NULL,                   /* open */
-	NULL,                   /* close */
-	NULL,                   /* status */
-	NULL,                   /* seek */
-	NULL,                   /* tell */
-	NULL,                   /* input */
-	NULL,                   /* output */
-	NULL,                   /* input chunk */
-	NULL,                   /* output chunk */
-    },		
-    { IO_END }
-};
-
-static const struct IODevice io_ti86[] = {
-    {
-	IO_SNAPSHOT,		/* type */
-	1,			/* count */
-	"sav\0",        	/* file extensions */
-	IO_RESET_ALL,		/* reset if file changed */
-        0,               	/* id */
-	ti85_load_snap,		/* init */
-	ti85_exit_snap,		/* exit */
-        NULL,		        /* info */
-        NULL,           	/* open */
-        NULL,               	/* close */
-        NULL,               	/* status */
-        NULL,               	/* seek */
-	NULL,			/* tell */
-        NULL,           	/* input */
-        NULL,               	/* output */
-        NULL,               	/* input_chunk */
-        NULL                	/* output_chunk */
-    },
-    {
-	IO_SERIAL,		/* type */
-	1,			/* count */
-	"86p\086s\086i\086n\086c\086l\086k\086m\086v\086d\086e\086r\086g\0",
-				/* file extensions */
-	IO_RESET_NONE,		/* reset if file changed */
-	0,			/* id */
-	ti85_serial_init,	/* init */
-	ti85_serial_exit,		/* exit */
-	NULL,                   /* info */
-	NULL,                   /* open */
-	NULL,                   /* close */
-	NULL,                   /* status */
-	NULL,                   /* seek */
-	NULL,                   /* tell */
-	NULL,                   /* input */
-	NULL,                   /* output */
-	NULL,                   /* input chunk */
-	NULL,                   /* output chunk */
-    },		
-    { IO_END }
-};
+#define io_ti81	io_NULL
+#define io_ti85	io_NULL
+#define io_ti86	io_NULL
 
 #define	io_ti85v40	io_ti85
 #define	io_ti85v50	io_ti85
@@ -603,21 +521,40 @@ static const struct IODevice io_ti86[] = {
 #define io_ti86v15	io_ti86
 #define io_ti86v16	io_ti86
 #define io_ti86grom	io_ti86
-                                                       
-/*    YEAR     NAME  PARENT  MACHINE  INPUT  INIT              COMPANY        FULLNAME */
-COMP( 1990, ti81,          0,    ti81,  ti81,    0, "Texas Instruments", "TI-81 Ver. 1.8" )
 
-COMP( 1992, ti85,          0,    ti85,  ti85,    0, "Texas Instruments", "TI-85 ver. 3.0a" )
-COMP( 1992, ti85v40,    ti85,    ti85,  ti85,    0, "Texas Instruments", "TI-85 ver. 4.0" )
-COMP( 1992, ti85v50,    ti85,    ti85,  ti85,    0, "Texas Instruments", "TI-85 ver. 5.0" )
-COMP( 1992, ti85v60,    ti85,    ti85,  ti85,    0, "Texas Instruments", "TI-85 ver. 6.0" )
-COMP( 1992, ti85v80,    ti85,    ti85,  ti85,    0, "Texas Instruments", "TI-85 ver. 8.0" )
-COMP( 1992, ti85v90,    ti85,    ti85,  ti85,    0, "Texas Instruments", "TI-85 ver. 9.0" )
-COMP( 1992, ti85v100,   ti85,    ti85,  ti85,    0, "Texas Instruments", "TI-85 ver. 10.0" )
+SYSTEM_CONFIG_START(ti81)
+SYSTEM_CONFIG_END
 
-COMP( 1997, ti86,   	   0,    ti86,  ti85,    0, "Texas Instruments", "TI-86 ver. 1.2" )
-COMP( 1997, ti86v13,   	ti86,    ti86,  ti85,    0, "Texas Instruments", "TI-86 ver. 1.3" )
-COMP( 1997, ti86v14,   	ti86,    ti86,  ti85,    0, "Texas Instruments", "TI-86 ver. 1.4" )
-COMP( 1997, ti86v15,   	ti86,    ti86,  ti85,    0, "Texas Instruments", "TI-86 ver. 1.5" )
-COMP( 1997, ti86v16,   	ti86,    ti86,  ti85,    0, "Texas Instruments", "TI-86 ver. 1.6" )
-COMP( 1997, ti86grom,   ti86,    ti86,  ti85,    0, "Texas Instruments", "TI-86 homebrew rom by Daniel Foesch" )
+SYSTEM_CONFIG_START(ti85)
+	CONFIG_DEVICE ( IO_SERIAL, 1,
+			"85p\085s\085i\085n\085c\085l\085k\085m\085v\085d\085e\085r\085g\085b\0",
+			IO_RESET_NONE, OSD_FOPEN_READ, ti85_serial_init, ti85_serial_exit,
+			NULL, NULL, NULL, NULL,	NULL, NULL, NULL, NULL,	NULL )
+	CONFIG_DEVICE_SNAPSHOT ( "sav\0", ti8x_snapshot_load, NULL )
+SYSTEM_CONFIG_END
+
+SYSTEM_CONFIG_START(ti86)
+	CONFIG_DEVICE ( IO_SERIAL, 1,
+			"86p\086s\086i\086n\086c\086l\086k\086m\086v\086d\086e\086r\086g\0",
+			IO_RESET_NONE, OSD_FOPEN_READ, ti85_serial_init, ti85_serial_exit,
+			NULL, NULL, NULL, NULL,	NULL, NULL, NULL, NULL,	NULL )
+	CONFIG_DEVICE_SNAPSHOT ( "sav\0", ti8x_snapshot_load, NULL )
+SYSTEM_CONFIG_END
+                            
+/*    YEAR  NAME		PARENT	MACHINE INPUT	INIT	CONFIG	COMPANY        FULLNAME */
+COMP( 1990, ti81,          0,   ti81,	ti81,	0,		ti81,	"Texas Instruments", "TI-81 Ver. 1.8" )
+
+COMP( 1992, ti85,          0,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 3.0a" )
+COMP( 1992, ti85v40,    ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 4.0" )
+COMP( 1992, ti85v50,    ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 5.0" )
+COMP( 1992, ti85v60,    ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 6.0" )
+COMP( 1992, ti85v80,    ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 8.0" )
+COMP( 1992, ti85v90,    ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 9.0" )
+COMP( 1992, ti85v100,   ti85,   ti85,	ti85,	0,		ti85,	"Texas Instruments", "TI-85 ver. 10.0" )
+
+COMP( 1997, ti86,   	   0,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.2" )
+COMP( 1997, ti86v13,   	ti86,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.3" )
+COMP( 1997, ti86v14,   	ti86,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.4" )
+COMP( 1997, ti86v15,   	ti86,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.5" )
+COMP( 1997, ti86v16,   	ti86,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 ver. 1.6" )
+COMP( 1997, ti86grom,   ti86,   ti86,	ti85,	0,		ti86,	"Texas Instruments", "TI-86 homebrew rom by Daniel Foesch" )

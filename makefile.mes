@@ -83,7 +83,7 @@ EMULATORGUI = $(GUINAME)$(EXE)
 EMULATORALL = $(EMULATORDLL) $(EMULATORCLI) $(EMULATORGUI)
 EMULATOR    = $(EMULATORCLI)
 
-DEFS = -DX86_ASM -DLSB_FIRST -DINLINE="static __inline__" -Dasm=__asm__ -DWIN32 -DWINNT -D_WIN32_WINNT=0x0400 -DMAME32NAME='"MESS"' -DMAMENAME='"MESS"'
+DEFS = -Dindex=__index -Dalloca=__builtin_alloca -Drestrict=restrict__ -DX86_ASM -DLSB_FIRST -DINLINE="static __inline__" -Dasm=__asm__ -DWIN32 -DWINNT -D_WIN32_WINNT=0x0400 -DMAME32NAME='"MESS"' -DMAMENAME='"MESS"'
 
 ifdef SYMBOLS
 CFLAGS = -Imess -Imess/includes -Imess/$(MAMEOS) -Isrc -Isrc/includes -Isrc/$(MAMEOS) -I$(OBJ)/cpu/m68000 -Isrc/cpu/m68000 \
@@ -166,11 +166,11 @@ extra:	$(TOOLS) $(TEXTS)
 CDEFS = $(DEFS) $(COREDEFS) $(CPUDEFS) $(SOUNDDEFS) $(ASMDEFS) $(DBGDEFS)
 
 # primary target
-$(EMULATORDLL): $(OBJS) $(COREOBJS) $(OSOBJS) $(DRVLIBS)
+$(EMULATORDLL): $(OBJS) $(COREOBJS) $(OSOBJS) $(DRVLIBS) $(RESFILE)
 # always recompile the version string
 	$(CC) $(CDEFS) $(CFLAGS) -c src/version.c -o $(OBJ)/version.o
 	@echo Linking $@...
-	@dllwrap --output-lib=lib$(NAME).a --dllname=$@ --driver-name=gcc $(LDFLAGS) $(OBJS) $(COREOBJS) $(OSOBJS) $(LIBS) $(DRVLIBS)
+	@dllwrap --output-lib=lib$(NAME).a --dllname=$@ --driver-name=gcc $(LDFLAGS) $(OBJS) $(COREOBJS) $(OSOBJS) $(LIBS) $(DRVLIBS) $(RESFILE)
 ifndef DEBUG
 ifdef UPX
 	$(UPX) $@
@@ -178,7 +178,7 @@ endif
 endif
 
 # gui target
-$(EMULATORGUI):	$(EMULATORDLL) $(OBJ)/mess/windowsui/guimain.o $(RESFILE)
+$(EMULATORGUI):	$(EMULATORDLL) $(OBJ)/mess/windowsui/guimain.o $(GUIRESFILE)
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $(WINDOWS_PROGRAM) $^ -o $@
 ifndef DEBUG
@@ -275,6 +275,9 @@ $(OBJ)/%.a:
 	@echo Archiving $@...
 	$(RM) $@
 	$(AR) cr $@ $^
+
+mess.chm::
+	cscript mess\\windowsui\\help\\makehelp.vbs
 
 makedir:
 	@echo make makedir is no longer necessary, just type make

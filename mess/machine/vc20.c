@@ -15,6 +15,7 @@
 #include "driver.h"
 #include "osd_cpu.h"
 #include "driver.h"
+#include "image.h"
 #include "cpu/m6502/m6502.h"
 #include "vidhrdw/generic.h"
 
@@ -599,79 +600,70 @@ MACHINE_INIT( vc20 )
 	via_0_ca1_w (0, vc20_via0_read_ca1(0) );
 }
 
-static int vc20_rom_id (int id)
+static int vc20_rom_id (int id, void *romfile)
 {
-	FILE *romfile;
 	unsigned char magic[] =
 	{0x41, 0x30, 0x20, 0xc3, 0xc2, 0xcd};	/* A0 CBM at 0xa004 (module offset 4) */
 	unsigned char buffer[sizeof (magic)];
-	char *cp;
+	const char *cp;
 	int retval;
 
-	logerror("vc20_rom_id %s\n", device_filename(IO_CARTSLOT,id));
-	if (!(romfile = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror("rom %s not found\n", device_filename(IO_CARTSLOT,id));
-		return 0;
-	}
+	logerror("vc20_rom_id %s\n", image_filename(IO_CARTSLOT,id));
 
 	retval = 0;
 
 	osd_fseek (romfile, 4, SEEK_SET);
 	osd_fread (romfile, buffer, sizeof (magic));
-	osd_fclose (romfile);
 
 	if (!memcmp (buffer, magic, sizeof (magic)))
 		retval = 1;
 
-	if ((cp = strrchr (device_filename(IO_CARTSLOT,id), '.')) != NULL)
+	cp = image_filetype(IO_CARTSLOT, id);
+	if (cp)
 	{
-		if ((stricmp (cp + 1, "a0") == 0)
-			|| (stricmp (cp + 1, "20") == 0)
-			|| (stricmp (cp + 1, "40") == 0)
-			|| (stricmp (cp + 1, "60") == 0)
-			|| (stricmp (cp + 1, "bin") == 0)
-			|| (stricmp (cp + 1, "rom") == 0)
-			|| (stricmp (cp + 1, "prg") == 0))
+		if ((stricmp (cp, "a0") == 0)
+			|| (stricmp (cp, "20") == 0)
+			|| (stricmp (cp, "40") == 0)
+			|| (stricmp (cp, "60") == 0)
+			|| (stricmp (cp, "bin") == 0)
+			|| (stricmp (cp, "rom") == 0)
+			|| (stricmp (cp, "prg") == 0))
 			retval = 1;
 	}
 
 		if (retval)
-			logerror("rom %s recognized\n", device_filename(IO_CARTSLOT,id));
+			logerror("rom %s recognized\n", image_filename(IO_CARTSLOT,id));
 		else
-			logerror("rom %s not recognized\n", device_filename(IO_CARTSLOT,id));
+			logerror("rom %s not recognized\n", image_filename(IO_CARTSLOT,id));
 
 	return retval;
 }
 
-int vc20_rom_load (int id)
+int vc20_rom_load (int id, void *fp, int open_mode)
 {
 	UINT8 *mem = memory_region (REGION_CPU1);
-	FILE *fp;
+	//void *fp;
 	int size, read;
-	char *cp;
+	const char *cp;
 	int addr = 0;
 
 	vc20_memory_init();
 
-	if (device_filename(IO_CARTSLOT,id)==NULL) return 0;
+	if (fp == NULL)
+		return INIT_PASS;
 
-	if (!vc20_rom_id (id))
+	if (!vc20_rom_id (id, fp))
 		return 1;
-	fp = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
-	if (!fp)
-	{
-		logerror("%s file not found\n", device_filename(IO_CARTSLOT,id));
-		return 1;
-	}
+	osd_fseek (fp, 0, SEEK_SET);
 
 	size = osd_fsize (fp);
 
-	if ((cp = strrchr (device_filename(IO_CARTSLOT,id), '.')) != NULL)
+	cp = image_filetype(IO_CARTSLOT, id);
+	if (cp)
 	{
-		if ((cp[1] != 0) && (cp[2] == '0') && (cp[3] == 0))
+		if ((cp[0] != 0) && (cp[1] == '0') && (cp[2] == 0))
 		{
-			switch (toupper (cp[1]))
+			switch (toupper (cp[0]))
 			{
 			case 'A':
 				addr = 0xa000;
@@ -689,7 +681,7 @@ int vc20_rom_load (int id)
 		}
 		else
 		{
-			if (stricmp (cp, ".prg") == 0)
+			if (stricmp (cp, "prg") == 0)
 			{
 				unsigned short in;
 
@@ -712,7 +704,7 @@ int vc20_rom_load (int id)
 		}
 	}
 
-	logerror("loading rom %s at %.4x size:%.4x\n",device_filename(IO_CARTSLOT,id), addr, size);
+	logerror("loading rom %s at %.4x size:%.4x\n",image_filename(IO_CARTSLOT,id), addr, size);
 	read = osd_fread (fp, mem + addr, size);
 	osd_fclose (fp);
 	if (read != size)

@@ -168,9 +168,17 @@ ROM_START(ssystem3)
 
 ROM_END
 
-static const struct IODevice io_ssystem3[] = {
-    { IO_END }
-};
+#define io_ssystem3	io_NULL
 
-CONS( 1979,	ssystem3,	0, 		ssystem3,	ssystem3,	ssystem3,	  "NOVAG Industries Ltd.",  "Chess Champion Super System III") 
+SYSTEM_CONFIG_START(ssystem3)
+SYSTEM_CONFIG_END
+
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
+
+/*	  YEAR	NAME	  PARENT	MACHINE   INPUT		INIT		CONFIG		COMPANY		FULLNAME */
+CONS( 1979,	ssystem3, 0, 		ssystem3, ssystem3,	ssystem3,	ssystem3,	"NOVAG Industries Ltd.",  "Chess Champion Super System III") 
 //chess champion MK III in germany

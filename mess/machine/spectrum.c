@@ -30,6 +30,8 @@
 #include "eventlst.h"
 #include "vidhrdw/border.h"
 #include "cassette.h"
+#include "image.h"
+#include "utils.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
@@ -111,12 +113,8 @@ MACHINE_INIT( spectrum )
 	}
 }
 
-int spectrum_snap_load(int id)
+int spectrum_snap_load(int id, void *file, int open_mode)
 {
-	void *file;
-
-	file = image_fopen(IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-
 	if (file)
 	{
 		int datasize;
@@ -126,7 +124,7 @@ int spectrum_snap_load(int id)
 
 		if (datasize != 0)
 		{
-			data = malloc(datasize);
+			data = image_malloc(IO_SNAPSHOT, id, datasize);
 
 			if (data != NULL)
 			{
@@ -136,7 +134,7 @@ int spectrum_snap_load(int id)
 				osd_fread(file, data, datasize);
 				osd_fclose(file);
 
-				if (!stricmp(device_filename(IO_SNAPSHOT, id) + strlen(device_filename(IO_SNAPSHOT, id) ) - 4, ".sna"))
+				if (!strcmpi(image_filetype(IO_SNAPSHOT, id), "sna"))
 				{
 					if ((SnapshotDataSize != 49179) && (SnapshotDataSize != 131103) && (SnapshotDataSize != 14787))
 					{
@@ -147,7 +145,7 @@ int spectrum_snap_load(int id)
 				}
 				else
 				{
-					if (!stricmp(device_filename(IO_SNAPSHOT, id) + strlen(device_filename(IO_SNAPSHOT, id) ) - 3, ".sp"))
+					if (!strcmpi(image_filetype(IO_SNAPSHOT, id), "sp"))
 					{
 						if (data[0]!='S' && data[1]!='P')
 						{
@@ -174,7 +172,6 @@ void spectrum_snap_exit(int id)
 	if (pSnapshotData != NULL)
 	{
 		/* free snapshot/tape data */
-		free(pSnapshotData);
 		pSnapshotData = NULL;
 
 		/* ensure op base is cleared */
@@ -854,7 +851,7 @@ typedef enum {
 }
 SPECTRUM_Z80_SNAPSHOT_TYPE;
 
-SPECTRUM_Z80_SNAPSHOT_TYPE spectrum_identify_z80 (unsigned char *pSnapshot, unsigned long SnapshotSize)
+static SPECTRUM_Z80_SNAPSHOT_TYPE spectrum_identify_z80 (unsigned char *pSnapshot, unsigned long SnapshotSize)
 {
 	unsigned char lo, hi, data;
 
@@ -1167,34 +1164,32 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
  SPECTRUM WAVE CASSETTE SUPPORT
 --------------------------------------------------*/
 
-int spectrum_cassette_init(int id)
+int spectrum_cassette_init(int id, void *fp, int open_mode)
 {
-	void *file;
 	struct cassette_args args;
 
-	if ((device_filename(IO_CASSETTE, id) != NULL) &&
-		!stricmp(device_filename(IO_CASSETTE, id) + strlen(device_filename(IO_CASSETTE, id) ) - 4, ".tap"))
+	if (fp && (! is_effective_mode_create(open_mode))
+			&& ! stricmp(image_filetype(IO_CASSETTE, id), "tap"))
 	{
 		int datasize;
 		unsigned char *data;
 
-		file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 		logerror(".TAP file found\n");
-		if (file)
-			datasize = osd_fsize(file);
+		if (fp)
+			datasize = osd_fsize(fp);
 		else
 			datasize = 0;
 		if (datasize != 0)
 		{
-			data = malloc(datasize);
+			data = image_malloc(IO_SNAPSHOT, id, datasize);
 
 			if (data != NULL)
 			{
 				pSnapshotData = data;
 				SnapshotDataSize = datasize;
 
-				osd_fread(file, data, datasize);
-				osd_fclose(file);
+				osd_fread(fp, data, datasize);
+				osd_fclose(fp);
 
 				/* Always reset tape position when loading new tapes */
 				TapePosition = 0;
@@ -1204,18 +1199,18 @@ int spectrum_cassette_init(int id)
 				return INIT_PASS;
 			}
 		}
-		osd_fclose(file);
+		osd_fclose(fp);
 		return INIT_FAIL;
 	}
 
 	memset(&args, 0, sizeof(args));
 	args.create_smpfreq = 22050;	/* maybe 11025 Hz would be sufficient? */
-	return cassette_init(id, &args);
+	return cassette_init(id, fp, open_mode, &args);
 }
 
 void spectrum_cassette_exit(int id)
 {
-	device_close(IO_CASSETTE, id);
+	cassette_exit(id);
 	spectrum_snap_exit(id);
 }
 
@@ -1225,26 +1220,21 @@ void spectrum_cassette_exit(int id)
  *
  *************************************/
 
-void spectrum_nmi_generate(int param)
+static void spectrum_nmi_generate(int param)
 {
 	cpu_set_irq_line(0, 0, IRQ_LINE_NMI);
 }
 
-int spec_quick_init(int id)
+int spec_quick_init(int id, void *fp, int open_mode)
 {
-	FILE *fp;
-	int read;
+	int read_;
 
 	memset(&quick, 0, sizeof (quick));
 
-	if (device_filename(IO_QUICKLOAD, id) == NULL)
+	if (fp == NULL)
 		return INIT_PASS;
 
 /*	quick.name = name; */
-
-	fp = image_fopen(IO_QUICKLOAD, id, OSD_FILETYPE_IMAGE, 0);
-	if (!fp)
-		return INIT_FAIL;
 
 	quick.length = osd_fsize(fp);
 	quick.addr = 0x4000;
@@ -1254,9 +1244,9 @@ int spec_quick_init(int id)
 		osd_fclose(fp);
 		return INIT_FAIL;
 	}
-	read = osd_fread(fp, quick.data, quick.length);
+	read_ = osd_fread(fp, quick.data, quick.length);
 	osd_fclose(fp);
-	return read != quick.length;
+	return read_ != quick.length;
 }
 
 void spec_quick_exit(int id)
@@ -1277,17 +1267,14 @@ int spec_quick_open(int id, int mode, void *arg)
 		cpu_writemem16(i + quick.addr, quick.data[i]);
 	}
 	logerror("quick loading %s at %.4x size:%.4x\n",
-			 device_filename(IO_QUICKLOAD, id), quick.addr, quick.length);
+			 image_filename(IO_QUICKLOAD, id), quick.addr, quick.length);
 
 	return 0;
 }
 
-int spectrum_cart_load(int id)
+int spectrum_cart_load(int id, void *file, int open_mode)
 {
-	void *file;
-
 	logerror("Trying to load cartridge!\n");
-	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if (file)
 	{
 		int datasize;
@@ -1315,9 +1302,8 @@ int spectrum_cart_load(int id)
 	return 0;
 }
 
-int timex_cart_load(int id)
+int timex_cart_load(int id, void *file, int open_mode)
 {
-	void *file;
 	int file_size;
 	UINT8 * file_data;
 
@@ -1325,19 +1311,10 @@ int timex_cart_load(int id)
 
 	int i;
 
-	if (device_filename(IO_CARTSLOT, id) == NULL)
-	{
+	if (file==NULL)
 		return INIT_PASS;
-	}
 
 	logerror ("Trying to load cart\n");
-
-	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-	if (file==NULL)
-	{
-		logerror ("Error opening cart file\n");
-		return INIT_FAIL;
-	}
 
 	file_size = osd_fsize(file);
 

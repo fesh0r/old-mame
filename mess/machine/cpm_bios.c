@@ -14,6 +14,7 @@
 #include "cpu/z80/z80.h"
 #include "includes/wd179x.h"
 #include "cpm_bios.h"
+#include "image.h"
 
 #define VERBOSE 		1
 #define VERBOSE_FDD 	1
@@ -108,9 +109,24 @@ static void cpm_jumptable(void)
 	RAM[BIOS_EXEC + 2] = 0xc9;			/* RET */
 }
 
-int cpm_floppy_init(int id)
+int cpm_floppy_init(int id, void *file, int open_mode)
 {
-	ff[id] = device_filename(IO_FLOPPY,id) != NULL;
+	ff[id] = (file != NULL);
+
+	/* now try to open the image if a filename is given */
+	if (ff[id])
+	{
+		{
+			fp[id] = file;
+			mode[id] = (fp[id]) && is_effective_mode_writable(open_mode);
+
+			if( !fp[id] )
+			{
+				ff[id] = 0;
+			}
+		}
+	}
+
 	return 0;
 }
 
@@ -245,29 +261,6 @@ int cpm_init(int n, const char *ids[])
 		RAM[DPH0 + d * DPHL + 13] = dph[d].csv >> 8;
 		RAM[DPH0 + d * DPHL + 14] = dph[d].alv & 0xff;
 		RAM[DPH0 + d * DPHL + 15] = dph[d].alv >> 8;
-
-		/* now try to open the image if a filename is given */
-		if( ff[d] && strlen(device_filename(IO_FLOPPY,d)) )
-		{
-			{
-				mode[d] = 1;
-				fp[d] = image_fopen(IO_FLOPPY, d, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
-				if( !fp[d] )
-				{
-					mode[d] = 0;
-					fp[d] = image_fopen(IO_FLOPPY, d, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-				}
-				if( !fp[d] )
-				{
-					mode[d] = 1;
-					fp[d] = image_fopen(IO_FLOPPY, d, OSD_FILETYPE_IMAGE, OSD_FOPEN_WRITE);
-				}
-				if( !fp[d] )
-				{
-					ff[d] = 0;
-				}
-			}
-		}
 	}
 
 	/* create a file to receive list output (ie. PIP LST:=FILE.EXT) */

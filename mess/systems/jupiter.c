@@ -235,29 +235,11 @@ ROM_END
 
 static const struct IODevice io_jupiter[] = {
     {
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"ace\0",            /* file extensions */
-		IO_RESET_ALL,		/* reset if file changed */
-        NULL,               /* id */
-		jupiter_load_ace,	/* init */
-		jupiter_exit_ace,	/* exit */
-        NULL,               /* info */
-        NULL,               /* open */
-        NULL,               /* close */
-        NULL,               /* status */
-        NULL,               /* seek */
-		NULL,				/* tell */
-        NULL,               /* input */
-        NULL,               /* output */
-        NULL,               /* input_chunk */
-        NULL                /* output_chunk */
-    },
-    {
 		IO_CASSETTE,		/* type */
 		1,					/* count */
 		"tap\0",            /* file extensions */
-		IO_RESET_ALL,		/* reset if file changed */
+		IO_RESET_CPU,		/* reset if file changed */
+		OSD_FOPEN_READ,		/* open mode */
         NULL,               /* id */
 		jupiter_load_tap,	/* init */
 		jupiter_exit_tap,	/* exit */
@@ -275,5 +257,9 @@ static const struct IODevice io_jupiter[] = {
     { IO_END }
 };
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMP( 1981, jupiter,  0,		jupiter,  jupiter,	0,		  "Cantab",  "Jupiter Ace" )
+SYSTEM_CONFIG_START(jupiter)
+	CONFIG_DEVICE_CARTSLOT(1, "ace\0", jupiter_load_ace, NULL, NULL)
+SYSTEM_CONFIG_END
+
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      CONFIG	COMPANY   FULLNAME */
+COMP( 1981, jupiter,  0,		jupiter,  jupiter,	0,		  jupiter,	"Cantab",  "Jupiter Ace" )

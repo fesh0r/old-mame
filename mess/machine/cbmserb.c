@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <string.h>
 #include "driver.h"
+#include "image.h"
 
 #define VERBOSE_DBG 0				   /* general debug messages */
 #include "includes/cbm.h"
@@ -115,20 +116,14 @@ int cbm_drive_attach_fs (int id)
 	return 0;
 }
 
-static int d64_open (int id)
+static int d64_open (int id, void *in)
 {
-	FILE *in;
 	int size;
 
 	memset (&(cbm_drive[id].d.d64), 0, sizeof (cbm_drive[id].d.d64));
 
 	cbm_drive[id].d.d64.image_type = IO_FLOPPY;
 	cbm_drive[id].d.d64.image_id = id;
-	if (!(in = (FILE*)image_fopen (IO_FLOPPY, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror(" image %s not found\n", device_filename(IO_FLOPPY,id));
-		return 1;
-	}
 	size = osd_fsize (in);
 	if (!(cbm_drive[id].d.d64.image = (UINT8*)malloc (size)))
 	{
@@ -144,17 +139,17 @@ static int d64_open (int id)
 	osd_fclose (in);
 
 	logerror("floppy image %s loaded\n",
-				 device_filename(IO_FLOPPY,id));
+				 image_filename(IO_FLOPPY,id));
 
 	cbm_drive[id].drive = D64_IMAGE;
 	return 0;
 }
 
 /* open an d64 image */
-int cbm_drive_attach_image (int id)
+int cbm_drive_attach_image (int id, void *fp, int open_mode)
 {
 #if 1
-	if (device_filename(IO_FLOPPY,id)==NULL)
+	if (!image_exists(IO_FLOPPY, id))
 		return cbm_drive_attach_fs (id);
 #else
     CBM_Drive *drive = cbm_drive + id;
@@ -162,7 +157,7 @@ int cbm_drive_attach_image (int id)
 
 	}
 #endif
-	return d64_open (id);
+	return d64_open (id, fp);
 }
 
 

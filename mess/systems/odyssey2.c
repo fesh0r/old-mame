@@ -196,29 +196,12 @@ static DRIVER_INIT( odyssey2 )
 		gfx[i]=i;
 }
 
-static const struct IODevice io_odyssey2[] = {
-	{
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"bin\0",            /* file extensions */
-		IO_RESET_ALL,		/* reset if file changed */
-		NULL,				/* id */
-		odyssey2_load_rom,	/* init */
-		NULL,				/* exit */
-		NULL,				/* info */
-		NULL,				/* open */
-		NULL,				/* close */
-		NULL,				/* status */
-		NULL,				/* seek */
-		NULL,				/* tell */
-		NULL,				/* input */
-		NULL,				/* output */
-		NULL,				/* input_chunk */
-		NULL				/* output_chunk */
-	},
-	{ IO_END }
-};
+#define io_odyssey2	io_NULL
 
-/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	  COMPANY	FULLNAME */
-COMPX( 1982, odyssey2, 0,		odyssey2, odyssey2, odyssey2,		  "Magnavox",  "ODYSSEY 2", GAME_NOT_WORKING|GAME_NO_SOUND )
+SYSTEM_CONFIG_START(odyssey2)
+	CONFIG_DEVICE_CARTSLOT(1, "bin\0", odyssey2_load_rom, NULL, NULL)
+SYSTEM_CONFIG_END
+
+/*	   YEAR  NAME		PARENT	MACHINE   INPUT 	INIT		CONFIG		COMPANY	FULLNAME */
+COMPX( 1982, odyssey2,	0,		odyssey2, odyssey2, odyssey2,	odyssey2,	"Magnavox",  "ODYSSEY 2", GAME_NOT_WORKING|GAME_NO_SOUND )
 // philips g7000/videopac

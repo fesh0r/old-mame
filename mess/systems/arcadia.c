@@ -7,8 +7,8 @@
 #include <assert.h>
 #include "driver.h"
 #include "cpu/s2650/s2650.h"
-
 #include "includes/arcadia.h"
+#include "image.h"
 
 static MEMORY_READ_START( arcadia_readmem )
 { 0x0000, 0x0fff, MRA_ROM },
@@ -269,28 +269,22 @@ ROM_START(vcg)
 	ROM_REGION(0x100,REGION_GFX1, 0)
 ROM_END
 
-static int arcadia_init_cart(int id)
+static int arcadia_init_cart(int id, void *cartfile, int open_mode)
 {
-	FILE *cartfile;
 	UINT8 *rom = memory_region(REGION_CPU1);
 	int size;
 
-	if (device_filename(IO_CARTSLOT, id) == NULL)
+	if (cartfile == NULL)
 	{
 		printf("%s requires Cartridge!\n", Machine->gamedrv->name);
 		return INIT_FAIL;
 	}
 
 	memset(rom, 0, 0x8000);
-	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror("%s not found\n",device_filename(IO_CARTSLOT,id));
-		return INIT_FAIL;
-	}
 	size=osd_fsize(cartfile);
 
 	if (osd_fread(cartfile, rom, size)!=size) {
-		logerror("%s load error\n",device_filename(IO_CARTSLOT,id));
+		logerror("%s load error\n",image_filename(IO_CARTSLOT,id));
 		osd_fclose(cartfile);
 		return INIT_FAIL;
 	}
@@ -328,32 +322,20 @@ static int arcadia_init_cart(int id)
 	return INIT_PASS;
 }
 
-static const struct IODevice io_arcadia[] = {
-	{
-		IO_CARTSLOT,					/* type */
-		1,								/* count */
-		"bin\0",                        /* file extensions */
-		IO_RESET_ALL,					/* reset if file changed */
-		0,
-		arcadia_init_cart, 				/* init */
-		NULL,							/* exit */
-		NULL,							/* info */
-		NULL,							/* open */
-		NULL,							/* close */
-		NULL,							/* status */
-		NULL,							/* seek */
-		NULL,							/* tell */
-		NULL,							/* input */
-		NULL,							/* output */
-		NULL,							/* input_chunk */
-		NULL							/* output_chunk */
-	},
-    { IO_END }
-};
+#define io_arcadia	io_NULL
+#define io_vcg		io_NULL
 
-#define io_vcg io_arcadia
+SYSTEM_CONFIG_START(arcadia)
+	CONFIG_DEVICE_CARTSLOT( 1, "bin\0", arcadia_init_cart, NULL, NULL)
+SYSTEM_CONFIG_END
 
-void init_arcadia(void)
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
+
+static void init_arcadia(void)
 {
 	int i;
 	UINT8 *gfx=memory_region(REGION_GFX1);
@@ -490,7 +472,7 @@ void init_arcadia(void)
 /*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
 // marketed from several firms/names
 
-CONSX( 1982, arcadia,	0,	arcadia,  arcadia,  arcadia,		"Emerson",		"Arcadia 2001", GAME_IMPERFECT_SOUND )
+CONSX( 1982, arcadia,	0,	arcadia,  arcadia,  arcadia,	arcadia,		"Emerson",		"Arcadia 2001", GAME_IMPERFECT_SOUND )
 // schmid tvg 2000 (developer? PAL)
 
 // different cartridge connector
@@ -498,4 +480,4 @@ CONSX( 1982, arcadia,	0,	arcadia,  arcadia,  arcadia,		"Emerson",		"Arcadia 2001
 
 // different cartridge connector (same size as mpt03, but different pinout!)
 // 16 keys instead of 12
-CONSX( 198?, vcg,	arcadia,arcadia,  vcg,  arcadia,		"Palladium",		"VIDEO - COMPUTER - GAME", GAME_IMPERFECT_SOUND )
+CONSX( 198?, vcg,	arcadia,arcadia,  vcg,  arcadia,	arcadia,		"Palladium",		"VIDEO - COMPUTER - GAME", GAME_IMPERFECT_SOUND )

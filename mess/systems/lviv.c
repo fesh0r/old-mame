@@ -443,14 +443,9 @@ static MACHINE_DRIVER_START( lviv )
 	MDRV_SOUND_ADD(WAVE, lviv_wave_interface)
 MACHINE_DRIVER_END
 
-
-static const struct IODevice io_lviv[] = {
-    IO_CASSETTE_WAVE(1,"lv?\0wav\0",NULL,lviv_tape_init,lviv_tape_exit),
-    { IO_END }
-};
-
-#define io_lviva io_lviv
-#define io_lvive io_lviv
+#define io_lviv		io_NULL
+#define io_lviva	io_NULL
+#define io_lvive	io_NULL
 
 ROM_START(lviv)
 	ROM_REGION(0x14000,REGION_CPU1,0)
@@ -467,12 +462,13 @@ ROM_START(lvive)
 	ROM_LOAD("lvive.bin", 0x10000, 0x4000, 0xf171c282)
 ROM_END
 
-COMPUTER_CONFIG_START(lviv)
+SYSTEM_CONFIG_START(lviv)
 	CONFIG_RAM_DEFAULT(64 * 1024)
-COMPUTER_CONFIG_END
+	CONFIG_DEVICE_CASSETTE(1, "lv?\0", lviv_tape_init)
+SYSTEM_CONFIG_END
 
 
-/*     YEAR  NAME       PARENT  MACHINE    INPUT     INIT     CONFIG,  COMPANY               FULLNAME */
-COMPC( 1989, lviv,      0,      lviv,      lviv,     0,       lviv,    "", "PK-01 Lviv" )
-COMPC( 1989, lviva,     lviv,   lviv,      lviv,     0,       lviv,    "", "PK-01 Lviv (alternate)" )
-COMPC( 1986, lvive,     lviv,   lviv,      lviv,     0,       lviv,    "", "PK-01 Lviv (early)" )
+/*    YEAR  NAME       PARENT  MACHINE    INPUT     INIT     CONFIG,  COMPANY               FULLNAME */
+COMP( 1989, lviv,      0,      lviv,      lviv,     0,       lviv,    "", "PK-01 Lviv" )
+COMP( 1989, lviva,     lviv,   lviv,      lviv,     0,       lviv,    "", "PK-01 Lviv (alternate)" )
+COMP( 1986, lvive,     lviv,   lviv,      lviv,     0,       lviv,    "", "PK-01 Lviv (early)" )

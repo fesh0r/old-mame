@@ -160,12 +160,12 @@ static int genesis_sharedram_r (int offset)
 
 
 #ifdef EASPORTS_HACK
-READ16_HANDLER(cartridge_ram_r)
+static READ16_HANDLER(cartridge_ram_r)
 {
 	logerror("cartridge ram read.. %x\n", offset);
 	return cartridge_ram[(offset&0xffff)>>1];
 }
-WRITE16_HANDLER(cartridge_ram_w)
+static WRITE16_HANDLER(cartridge_ram_w)
 {
 	logerror("cartridge ram write.. %x to %x\n", data, offset);
 	cartridge_ram[offset] = data;
@@ -337,29 +337,11 @@ ROM_START(genesis)
 	ROM_REGION(0x415000,REGION_CPU1,0)
 ROM_END
 
-static const struct IODevice io_genesis[] = {
-	{
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"smd\0bin\0md\0",	/* file extensions */
-		IO_RESET_ALL,		/* reset if file changed */
-		0,
-		genesis_init_cart,	/* init */
-		NULL,				/* exit */
-		NULL,				/* info */
-		NULL,				/* open */
-		NULL,				/* close */
-		NULL,				/* status */
-		NULL,				/* seek */
-		NULL,				/* tell */
-		NULL,				/* input */
-		NULL,				/* output */
-		NULL,				/* input_chunk */
-		NULL,				/* output_chunk */
-		genesis_partialcrc /* get 'true' crc even if .smd format */
-	},
-	{ IO_END }
-};
+#define io_genesis	io_NULL
+
+SYSTEM_CONFIG_START(genesis)
+	CONFIG_DEVICE_CARTSLOT( 1, "smd\0bin\0md\0", genesis_init_cart, NULL, genesis_partialcrc)
+SYSTEM_CONFIG_END
 
 /***************************************************************************
 
@@ -367,6 +349,6 @@ static const struct IODevice io_genesis[] = {
 
 ***************************************************************************/
 
-/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	  COMPANY	FULLNAME */
-CONS( 1988, genesis,  0,		genesis,  genesis,	0,		  "Sega",   "Megadrive / Genesis" )
+/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	CONFIG		COMPANY	FULLNAME */
+CONS( 1988, genesis,  0,		genesis,  genesis,	0,		genesis,	"Sega",   "Megadrive / Genesis" )
 

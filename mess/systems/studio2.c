@@ -8,6 +8,7 @@
 #include "cpu/cdp1802/cdp1802.h"
 
 #include "includes/studio2.h"
+#include "image.h"
 
 static MEMORY_READ_START( studio2_readmem )
 	{ 0x0000, 0x07ff, MRA_ROM },
@@ -270,27 +271,21 @@ ROM_START(vip)
 	ROM_REGION(0x100,REGION_GFX1, 0)
 ROM_END
 
-static int studio2_load_rom(int id)
+static int studio2_load_rom(int id, void *cartfile, int open_mode)
 {
-	FILE *cartfile;
 	UINT8 *rom = memory_region(REGION_CPU1);
 	int size;
 
-	if (device_filename(IO_CARTSLOT, id) == NULL)
+	if (cartfile == NULL)
 	{
-/* A cartridge isn't strictly mandatory, but it's recommended */
+		/* A cartridge isn't strictly mandatory, but it's recommended */
 		return 0;
 	}
 
-	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror("%s not found\n",device_filename(IO_CARTSLOT,id));
-		return 1;
-	}
 	size=osd_fsize(cartfile);
 
 	if (osd_fread(cartfile, rom+0x400, size)!=size) {
-		logerror("%s load error\n",device_filename(IO_CARTSLOT,id));
+		logerror("%s load error\n",image_filename(IO_CARTSLOT,id));
 		osd_fclose(cartfile);
 		return 1;
 	}
@@ -298,62 +293,46 @@ static int studio2_load_rom(int id)
 	return 0;
 }
 
-static const struct IODevice io_studio2[] = {
-	// cartridges at 0x400-0x7ff ?
-	{
-		IO_CARTSLOT,					/* type */
-		1,								/* count */
-		"bin\0",                        /* file extensions */
-		IO_RESET_ALL,					/* reset if file changed */
-		0,
-		studio2_load_rom, 				/* init */
-		NULL,							/* exit */
-		NULL,							/* info */
-		NULL,							/* open */
-		NULL,							/* close */
-		NULL,							/* status */
-		NULL,							/* seek */
-		NULL,							/* tell */
-		NULL,							/* input */
-		NULL,							/* output */
-		NULL,							/* input_chunk */
-		NULL							/* output_chunk */
-	},
-    { IO_END }
-};
+#define io_studio2	io_NULL
+#define io_vip	io_NULL
 
+SYSTEM_CONFIG_START(studio2)
+	/* maybe quickloader */
+	/* tape */
+	/* cartridges at 0x400-0x7ff ? */
+	CONFIG_DEVICE_CARTSLOT(1, "bin\0", studio2_load_rom, NULL, NULL)
+SYSTEM_CONFIG_END
 
-static const struct IODevice io_vip[] = {
-	// maybe quickloader
-	// tape
-    { IO_END }
-};
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
 
 static DRIVER_INIT( studio2 )
 {
 	int i;
-	UINT8 *gfx=memory_region(REGION_GFX1);
-	for (i=0; i<256; i++) gfx[i]=i;
-
+	UINT8 *gfx = memory_region(REGION_GFX1);
+	for (i=0; i<256; i++)
+		gfx[i]=i;
 	beep_set_frequency(0, 300);
 }
 
 static DRIVER_INIT( vip )
 {
 	int i;
-	UINT8 *gfx=memory_region(REGION_GFX1);
-	for (i=0; i<256; i++) gfx[i]=i;
-
+	UINT8 *gfx = memory_region(REGION_GFX1);
+	for (i=0; i<256; i++)
+		gfx[i]=i;
 	beep_set_frequency(0, 300);
-
-	memory_region(REGION_CPU1)[0x8022]=0x3e; //bn3, default monitor
+	memory_region(REGION_CPU1)[0x8022] = 0x3e; //bn3, default monitor
 }
 
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
+/*    YEAR	NAME		PARENT	MACHINE		INPUT		INIT		CONFIG      COMPANY   FULLNAME */
 // rca cosmac elf development board (2 7segment leds, some switches/keys)
 // rca cosmac elf2 16 key keyblock
-CONSX( 1977, vip,		0,		vip,		vip,		vip,		"RCA",		"COSMAC VIP", GAME_NOT_WORKING )
-CONSX( 1976, studio2,	0,		studio2,	studio2, 	studio2,	"RCA",		"Studio II", GAME_NOT_WORKING )
+CONSX(1977,	vip,		0,		vip,		vip,		vip,		studio2,	"RCA",		"COSMAC VIP", GAME_NOT_WORKING )
+CONSX(1976,	studio2,	0,		studio2,	studio2,	studio2,	studio2,	"RCA",		"Studio II", GAME_NOT_WORKING )
 // hanimex mpt-02
 // colour studio 2 (m1200) with little color capability

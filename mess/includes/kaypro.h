@@ -11,7 +11,7 @@
 #include "includes/wd179x.h"
 #include "machine/cpm_bios.h"
 
-extern int kaypro_floppy_init(int id);
+extern int kaypro_floppy_init(int id, void *fp, int open_mode);
 extern void init_kaypro(void);
 extern MACHINE_INIT( kaypro );
 extern MACHINE_STOP( kaypro );
@@ -32,10 +32,6 @@ extern READ_HANDLER ( kaypro_conin_r );
 extern WRITE_HANDLER ( kaypro_conin_w );
 extern READ_HANDLER ( kaypro_conout_r );
 extern WRITE_HANDLER ( kaypro_conout_w );
-
-extern int	kaypro_sh_start(const struct MachineSound *msound);
-extern void kaypro_sh_stop(void);
-extern void kaypro_sh_update(void);
 
 extern void kaypro_bell(void);
 extern void kaypro_click(void);

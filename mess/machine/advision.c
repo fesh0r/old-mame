@@ -9,6 +9,7 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 #include "includes/advision.h"
+#include "image.h"
 
 unsigned char *advision_ram;
 int advision_rambank;
@@ -27,23 +28,15 @@ MACHINE_INIT( advision )
     advision_videoenable = 0;
 }
 
-int advision_load_rom (int id)
+int advision_load_rom(int id, void *cartfile, int open_mode)
 {
-    FILE *cartfile;
-
-	if(device_filename(IO_CARTSLOT,id) == NULL)
+	if (cartfile == NULL)
 	{
 		printf("%s requires Cartridge!\n", Machine->gamedrv->name);
 		return INIT_FAIL;
     }
 
     ROM = memory_region(REGION_CPU1);
-    cartfile = NULL;
-	if (!(cartfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror("Advision - Unable to locate cartridge: %s\n",device_filename(IO_CARTSLOT,id) );
-		return 1;
-	}
 	osd_fread (cartfile, &ROM[0x0000], 4096);
     osd_fclose (cartfile);
 

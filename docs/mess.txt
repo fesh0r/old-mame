@@ -5,7 +5,7 @@
                     Official Page at: http://www.mess.org
                    ==========================================
 
-This document is generated for MESS 0.61 (Sep  5 2002)
+This document is generated for MESS 0.61.1 (Oct 18 2002)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.61 (Sep  5 2002)
+Here is the list of systems supported by MESS 0.61.1 (Oct 18 2002)
 Variants of the same system are not included, you can use the -listclones command
 to get a list of the alternate versions of a given system.
 
@@ -88,6 +88,9 @@ dat2html.exe.
 | APF Imagination Machine                 |   No  |  Yes  |  Yes  | apfimag  |
 | APF M-1000                              |   No  |  Yes  |  Yes  | apfm1000 |
 | Adventurevision                         |  Yes  |  Yes  |   No  | advision |
+| Amstrad 464plus                         |  Yes  |  Yes  |  Yes  | cpc464p  |
+| Amstrad 6128plus                        |  Yes  |  Yes  |  Yes  | cpc6128p |
+| Amstrad/Schneider CPC464                |  Yes  |  Yes  |  Yes  | cpc464   |
 | Apple //c                               |  Yes  |  Yes  |  Yes  | apple2c  |
 | Apple //e                               |  Yes  |  Yes  |  Yes  | apple2e  |
 | Apple I                                 |  Yes  |  Yes  |  Yes  | apple1   |
@@ -96,8 +99,7 @@ dat2html.exe.
 | Atari 2600                              |   No  |  Yes  |  Yes  | a2600    |
 | Atari 400                               |  Yes  |  Yes  |  Yes  | a400     |
 | Atari 5200                              |  Yes  |  Yes  |  Yes  | a5200    |
-| Atari 7800                              |  Yes  |  Yes  |  Yes  | a7800    |
-| Atari 7800 PAL                          |  Yes  |  Yes  |  Yes  | a7800p   |
+| Atari 7800 NTSC                         |  Yes  |  Yes  |  Yes  | a7800    |
 | Atari 800                               |  Yes  |  Yes  |  Yes  | a800     |
 | Atom                                    |  Yes  |  Yes  |  Yes  | atom     |
 | BBC Micro Model A                       |  Yes  |  Yes  |  Yes  | bbca     |

@@ -210,31 +210,11 @@ static MACHINE_DRIVER_START( pce )
 	MDRV_NVRAM_HANDLER( pce )
 MACHINE_DRIVER_END
 
+#define io_pce	io_NULL
 
-static const struct IODevice io_pce[] = {
-    {
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"pce\0",            /* file extensions */
-		IO_RESET_ALL,		/* reset if file changed */
-        NULL,				/* id */
-		pce_load_rom,		/* init */
-		NULL,				/* exit */
-		NULL,				/* info */
-		NULL,               /* open */
-		NULL,               /* close */
-		NULL,               /* status */
-		NULL,               /* seek */
-		NULL,				/* tell */
-        NULL,               /* input */
-		NULL,               /* output */
-		NULL,               /* input_chunk */
-		NULL                /* output_chunk */
-	},
-	{ IO_END }
-};
-
-#define rom_pce NULL
+SYSTEM_CONFIG_START(pce)
+	CONFIG_DEVICE_CARTSLOT(1, "pce\0", pce_load_rom, NULL, NULL)
+SYSTEM_CONFIG_END
 
 /***************************************************************************
 
@@ -242,6 +222,8 @@ static const struct IODevice io_pce[] = {
 
 ***************************************************************************/
 
-/*	   YEAR  NAME	   PARENT	 MACHINE   INPUT	 INIT	   COMPANY	 FULLNAME */
-CONSX( 1987, pce,	   0,		 pce,	   pce, 	 0,		   "Nippon Electronic Company", "PC Engine/TurboGrafx 16", GAME_NOT_WORKING | GAME_NO_SOUND )
+#define rom_pce NULL
+
+/*	   YEAR  NAME	   PARENT	 MACHINE   INPUT	 INIT	CONFIG  COMPANY	 FULLNAME */
+CONSX( 1987, pce,	   0,		 pce,	   pce, 	 0,		pce,	"Nippon Electronic Company", "PC Engine/TurboGrafx 16", GAME_NOT_WORKING | GAME_NO_SOUND )
 

@@ -10,6 +10,7 @@ extern struct DACinterface vc20tape_sound_interface;
    1,                  /* count */\
    "wav\0",    /* TAP, LNX and T64(maybe) later file extensions */\
    IO_RESET_NONE,      /* reset if file changed */\
+	OSD_FOPEN_NONE,		/* open mode */\
    NULL,               /* id */\
    vc20_tape_attach_image,	/* init */\
    vc20_tape_detach_image,	/* exit */\
@@ -31,7 +32,7 @@ extern void c16_tape_open (void);
 extern void vc20_tape_close (void);
 
 /* call this with the name of the tape image */
-int vc20_tape_attach_image (int id);
+int vc20_tape_attach_image(int id, void *fp, int open_mode);
 void vc20_tape_detach_image (int id);
 
 /* must be high active keys */

@@ -414,8 +414,8 @@ struct GameDriver
 
 	const struct RomModule *rom;
 #ifdef MESS
-	const struct IODevice *dev;
-	const struct ComputerConfigEntry *compcfg;
+	const struct IODevice *dev_;
+	void (*sysconfig_ctor)(struct SystemConfigurationParamBlock *cfg);
 #endif
 
 	UINT32 flags;	/* orientation and other flags; see defines below */

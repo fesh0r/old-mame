@@ -196,9 +196,9 @@ static int wave_read(int id)
 		int channel;
 		unsigned i;
 
-		UINT8 ch;
-		/*intmax_t*/long sample_buf;
-		/*intmax_t*/long this_buf;
+		int ch;	/* NPW 07-Sep-2002 - This must be int so that it can have EOF */
+		long sample_buf;
+		long this_buf;
 
 		UINT16 *dst = w->data;
 
@@ -215,10 +215,8 @@ static int wave_read(int id)
 				/* read ceil(wave_file->bitsPerSample/8) bits */
 				for (bit=0; bit<bitsPerSample; bit+=8)
 				{
-					/*ch = getc(wave_file->handle);
+					ch = osd_fgetc(w->file);
 					if (ch == EOF)
-						return read_error;*/
-					if (! osd_fread(w->file, &ch, 1))
 						return WAVE_ERR;
 
 					sample_buf |= ((/*uintmax_t*/unsigned long) (ch /*& 0xff*/)) << bit;
@@ -547,6 +545,7 @@ const void *wave_info(int id, int whatinfo)
 /*
 	hurk - no wave write support
 */
+#if 0
 int wave_init(int id, const char *name)
 {
 	void *file;
@@ -564,6 +563,7 @@ int wave_init(int id, const char *name)
     }
 	return INIT_FAIL;
 }
+#endif
 
 void wave_exit(int id)
 {
@@ -841,7 +841,7 @@ void wave_close(int id)
 #endif
 
     if( w->mode )
-	{	/* if image is writable , we do write it to disk */
+	{	/* if image is writable, we do write it to disk */
 		wave_output(id,0);
 		wave_write(id);
 		w->mode = 0;

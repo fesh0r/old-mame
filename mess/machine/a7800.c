@@ -24,6 +24,7 @@
 #include "sound/tiasound.h"
 #include "cpuintrf.h"
 #include "zlib.h"
+#include "image.h"
 
 #include "includes/a7800.h"
 
@@ -53,7 +54,7 @@ unsigned long a7800_cart_size;
 unsigned char a7800_stick_type;
 static UINT8 *ROM;
 
-void a7800_init_machine_cmn(void)
+static void a7800_init_machine_cmn(void)
 {
 	a7800_ctrl_lock = 0;
 	a7800_ctrl_reg = 0;
@@ -133,18 +134,6 @@ UINT32 a7800_partialcrc(const unsigned char *buf,unsigned int size)
 	return crc;
 }
 
-
-void a7800_exit_rom(int id)
-{
-	if(a7800_bios_bkup)
-		free(a7800_bios_bkup);
-	a7800_bios_bkup = NULL;
-
-	if(a7800_cart_bkup)
-		free(a7800_cart_bkup);
-	a7800_cart_bkup = NULL;
-}
-
 static int a7800_verify_cart(char header[128])
 {
 	char* tag = "ATARI7800";
@@ -159,13 +148,15 @@ static int a7800_verify_cart(char header[128])
 	return IMAGE_VERIFY_PASS;
 }
 
-int a7800_init_cart_cmn(int id)
+static int a7800_init_cart_cmn(int id, void *cartfile)
 {
-	FILE *cartfile =NULL;
 	long len,start;
 	unsigned char header[128];
 
 	ROM = memory_region(REGION_CPU1);
+
+	a7800_bios_bkup = NULL;
+	a7800_cart_bkup = NULL;
 
 	/* set banks to default states */
 	cpu_setbank( 1, ROM + 0x4000 );
@@ -174,8 +165,7 @@ int a7800_init_cart_cmn(int id)
 	cpu_setbank( 4, ROM + 0xC000 );
 
 	/* A cartridge is mandatory, since it doesnt do much without one */
-	if(device_filename(IO_CARTSLOT,id) == NULL ||
-		strlen(device_filename(IO_CARTSLOT,id)) == 0)
+	if (cartfile == NULL)
 	{
 		if( !a7800_ispal )
 		{
@@ -183,29 +173,19 @@ int a7800_init_cart_cmn(int id)
 			return INIT_FAIL;
 		}
 	}
-	else
-	{
-		if(!(cartfile =(FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-		{
-			logerror("A7800 - Unable to locate cartridge: %s\n",device_filename(IO_CARTSLOT,id) == NULL);
-			return INIT_FAIL;
-		}
-	}
 
 	/* Allocate memory for BIOS bank switching */
-	a7800_bios_bkup =(UINT8*)malloc( 0x4000 );
-	if(!a7800_bios_bkup)
+	a7800_bios_bkup = (UINT8*) image_malloc(IO_CARTSLOT, id, 0x4000);
+	if (!a7800_bios_bkup)
 	{
 		logerror("Could not allocate ROM memory\n");
 		return INIT_FAIL;
 	}
 
-	a7800_cart_bkup =(UINT8*)malloc( 0x4000 );
-	if(!a7800_cart_bkup)
+	a7800_cart_bkup = (UINT8*) image_malloc(IO_CARTSLOT, id,  0x4000);
+	if (!a7800_cart_bkup)
 	{
 		logerror("Could not allocate ROM memory\n");
-		free(a7800_bios_bkup);
-		a7800_bios_bkup = NULL;
 		return INIT_FAIL;
 	}
 
@@ -330,16 +310,16 @@ int a7800_init_cart_cmn(int id)
 	return 0;
 }
 
-int a7800_init_cart( int id )
+int a7800_init_cart(int id, void *cartfile, int open_mode)
 {
 	a7800_ispal = 0;
-	return a7800_init_cart_cmn( id );
+	return a7800_init_cart_cmn(id, cartfile);
 }
 
-int a7800p_init_cart( int id )
+int a7800p_init_cart(int id, void *cartfile, int open_mode)
 {
 	a7800_ispal = 1;
-	return a7800_init_cart_cmn( id );
+	return a7800_init_cart_cmn(id, cartfile);
 }
 
 
@@ -388,10 +368,10 @@ WRITE_HANDLER( a7800_TIA_w )
 				a7800_ctrl_lock = data & 0x01;
 				a7800_ctrl_reg = data;
 
-				if(data & 0x04)
-			   	memcpy( ROM + 0xC000, a7800_cart_bkup, 0x4000 );
+				if (data & 0x04)
+					memcpy( ROM + 0xC000, a7800_cart_bkup, 0x4000 );
 				else
-			   	memcpy( ROM + 0xC000, a7800_bios_bkup, 0x4000 );
+					memcpy( ROM + 0xC000, a7800_bios_bkup, 0x4000 );
 			}
 		break;
 	}

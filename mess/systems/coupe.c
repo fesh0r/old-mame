@@ -46,7 +46,7 @@ MEMORY_WRITE_START( coupe_writemem )	 {
 	{ 0xC000, 0xFFFF, MWA_BANK4 },
 MEMORY_END
 
-INTERRUPT_GEN( coupe_line_interrupt )
+static INTERRUPT_GEN( coupe_line_interrupt )
 {
 	struct mame_bitmap *bitmap = tmpbitmap;
 	int interrupted=0;	/* This is used to allow me to clear the STAT flag (easiest way I can do it!) */
@@ -101,7 +101,7 @@ INTERRUPT_GEN( coupe_line_interrupt )
 		STAT=0x1F;
 }
 
-unsigned char getSamKey1(unsigned char hi)
+static unsigned char getSamKey1(unsigned char hi)
 {
 	unsigned char result;
 
@@ -125,7 +125,7 @@ unsigned char getSamKey1(unsigned char hi)
 	return result;
 }
 
-unsigned char getSamKey2(unsigned char hi)
+static unsigned char getSamKey2(unsigned char hi)
 {
 	unsigned char result;
 
@@ -152,7 +152,7 @@ unsigned char getSamKey2(unsigned char hi)
 }
 
 
-READ_HANDLER( coupe_port_r )
+static READ_HANDLER( coupe_port_r )
 {
     if (offset==SSND_ADDR)  /* Sound address request */
 		return SOUND_ADDR;
@@ -201,7 +201,7 @@ READ_HANDLER( coupe_port_r )
 }
 
 
-WRITE_HANDLER( coupe_port_w )
+static WRITE_HANDLER( coupe_port_w )
 {
 	if (offset==SSND_ADDR)						// Set sound address
 	{
@@ -465,37 +465,14 @@ ROM_START(coupe)
 	ROM_LOAD("sam_rom1.rom", 0x4000, 0x4000, 0xF031AED4)
 ROM_END
 
-static const struct IODevice io_coupe[] =
-{
-	{
-		IO_FLOPPY,				/* type */
-		2,						/* count */
-/* Only .DSK (raw dump images) are supported at present */
-        "dsk\0",                /* file extensions */
-		IO_RESET_NONE,			/* reset if file changed */
-		NULL,					/* id */
-		coupe_floppy_init,		/* init */
-		basicdsk_floppy_exit,	/* exit */
-		NULL,					/* info */
-		NULL,					/* open */
-		NULL,					/* close */
-		floppy_status,			/* status */
-		NULL,					/* seek */
-		NULL,					/* tell */
-		NULL,					/* input */
-		NULL,					/* output */
-		NULL,					/* input_chunk */
-		NULL					/* output_chunk */
-    },
-	{ IO_END }
-};
-#define io_coupe256 io_coupe
-#define io_coupe512 io_coupe
+#define io_coupe	io_NULL
 
-COMPUTER_CONFIG_START(coupe)
+SYSTEM_CONFIG_START(coupe)
 	CONFIG_RAM_DEFAULT(256 * 1024)
 	CONFIG_RAM(512 * 1024)
-COMPUTER_CONFIG_END
+
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(2, "dsk\0", coupe_floppy_init)
+SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT    MACHINE         INPUT     INIT  CONFIG  COMPANY                 		  FULLNAME */
-COMPC( 1989, coupe,	  0,		coupe,			coupe,	  0,	coupe,	"Miles Gordon Technology plc",    "Sam Coupe" )
+COMP( 1989, coupe,	  0,		coupe,			coupe,	  0,	coupe,	"Miles Gordon Technology plc",    "Sam Coupe" )

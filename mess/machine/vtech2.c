@@ -15,7 +15,7 @@
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
-
+#include "image.h"
 #include "includes/vtech2.h"
 
 /* public */
@@ -26,8 +26,6 @@ static UINT8 *mem = NULL;
 static int laser_bank_mask = 0x0000;	/* up to 16 4K banks supported */
 static int laser_bank[4] = {-1,-1,-1,-1};
 static int laser_video_bank = 0;
-
-static UINT8 *cassette_image = NULL;
 
 #define TRKSIZE_VZ	0x9a0	/* arbitrary (actually from analyzing format) */
 #define TRKSIZE_FM	3172	/* size of a standard FM mode track */
@@ -350,15 +348,13 @@ static void mwa_bank(int bank, int offs, int data)
     }
 }
 
-int laser_rom_init(int id)
+int laser_rom_init(int id, void *file, int open_mode)
 {
 	int size = 0;
-    void *file;
 
-	if (device_filename(IO_CARTSLOT,id) == NULL)
+	if (file == NULL)
 		return INIT_PASS;
 
-	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
     if( file )
     {
 		size = osd_fread(file, &mem[0x30000], 0x10000);
@@ -516,56 +512,48 @@ int laser_cassette_verify (UINT8 buff[])
 }
 */
 
-int laser_cassette_init(int id)
+int laser_cassette_init(int id, void *file, int open_mode)
 {
-	void *file;
-	if (device_filename(IO_CASSETTE,id) == NULL)
+	if (file == NULL)
 		return INIT_PASS;
 
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if( file )
 	{
-		struct wave_args wa = {0,};
-		wa.file = file;
-		wa.display = 1;
-		wa.fill_wave = fill_wave;
-		wa.smpfreq = 600*BITSAMPLES;
-		wa.header_samples = SILENCE;
-		wa.trailer_samples = SILENCE;
-		wa.chunk_size = 1;
-		wa.chunk_samples = BYTESAMPLES;
-		if( device_open(IO_CASSETTE,id,0,&wa) )
-			return INIT_FAIL;
-		return INIT_PASS;
-    }
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
-	if( file )
-    {
-		struct wave_args wa = {0,};
-		wa.file = file;
-		wa.display = 1;
-		wa.fill_wave = fill_wave;
-		wa.smpfreq = 600*BITSAMPLES;
-		if( device_open(IO_CASSETTE,id,1,&wa) )
-			return INIT_FAIL;
-        return INIT_PASS;
-    }
+		if (! is_effective_mode_create(open_mode))
+		{
+			struct wave_args wa = {0,};
+			wa.file = file;
+			wa.display = 1;
+			wa.fill_wave = fill_wave;
+			wa.smpfreq = 600*BITSAMPLES;
+			wa.header_samples = SILENCE;
+			wa.trailer_samples = SILENCE;
+			wa.chunk_size = 1;
+			wa.chunk_samples = BYTESAMPLES;
+			if( device_open(IO_CASSETTE,id,0,&wa) )
+				return INIT_FAIL;
+			return INIT_PASS;
+		}
+		else
+	    {
+			struct wave_args wa = {0,};
+			wa.file = file;
+			wa.display = 1;
+			wa.fill_wave = fill_wave;
+			wa.smpfreq = 600*BITSAMPLES;
+			if( device_open(IO_CASSETTE,id,1,&wa) )
+				return INIT_FAIL;
+			return INIT_PASS;
+		}
+	}
     return INIT_FAIL;
 }
 
-void laser_cassette_exit(int id)
+int laser_floppy_init(int id, void *file, int open_mode)
 {
-	if( cassette_image )
-		free(cassette_image);
-	cassette_image = NULL;
-}
-
-int laser_floppy_init(int id)
-{
-	void *file;
 	UINT8 buff[32];
 
-	if (device_filename(IO_FLOPPY,id) == NULL)
+	if (file == NULL)
 	{
 		flop_specified[id] = 0;
 		return INIT_PASS;
@@ -573,7 +561,6 @@ int laser_floppy_init(int id)
 	else
 		flop_specified[id] = 1;
 
-	file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
     if( file )
     {
         osd_fread(file, buff, sizeof(buff));

@@ -40,7 +40,7 @@ speaker?
 
 static UINT8 mk1_f8[2];
 
-READ_HANDLER(mk1_f8_r)
+static READ_HANDLER(mk1_f8_r)
 {
     UINT8 data = mk1_f8[offset];
 
@@ -86,7 +86,7 @@ READ_HANDLER(mk1_f8_r)
     return data;
 }
 
-WRITE_HANDLER(mk1_f8_w)
+static WRITE_HANDLER(mk1_f8_w)
 {
 	/* 0 is high and allows also input */
 	mk1_f8[offset]=data;
@@ -195,7 +195,7 @@ static void mk1_interrupt(UINT16 addr, bool level)
     cpu_set_irq_line(0, F8_INT_INTR, level);
 }
 
-DRIVER_INIT( mk1 )
+static DRIVER_INIT( mk1 )
 {
     F3853_CONFIG config;
 	struct InternalMachineDriver drv;
@@ -208,11 +208,18 @@ DRIVER_INIT( mk1 )
     f3853_init(&config);
 }
 
-static const struct IODevice io_mk1[] = {
-    { IO_END }
-};
+#define io_mk1	io_NULL
+
+SYSTEM_CONFIG_START(mk1)
+SYSTEM_CONFIG_END
+
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
 
 // seams to be developed by mostek (MK)
-/*     YEAR   NAME  PARENT  MACHINE INPUT   INIT    COMPANY                 FULLNAME */
-CONSX( 1979,  mk1,  0, 		mk1,	mk1,	mk1,	"Computer Electronic",  "Chess Champion MK I", GAME_NOT_WORKING)
+/*     YEAR   NAME  PARENT  MACHINE INPUT   INIT	CONFIG	COMPANY                 FULLNAME */
+CONSX( 1979,  mk1,  0, 		mk1,	mk1,	mk1,	mk1,	"Computer Electronic",  "Chess Champion MK I", GAME_NOT_WORKING)
 

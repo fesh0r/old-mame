@@ -835,73 +835,37 @@ ROM_START (msxkra)
 ROM_END
 */
 
-static const struct IODevice io_msx[] = {
-{
-    IO_CARTSLOT,                /* type */
-    MSX_MAX_CARTS,              /* count */
-    "rom\0",                    /* file extensions */
-	IO_RESET_NONE,				/* reset if file changed */
-    0,
-    msx_load_rom,               /* init */
-    msx_exit_rom,               /* exit */
-    NULL,                       /* info */
-    NULL,                       /* open */
-    NULL,                       /* close */
-    NULL,                       /* status */
-    NULL,                       /* seek */
-    NULL,                       /* tell */
-    NULL,                       /* input */
-    NULL,                       /* output */
-    NULL,                       /* input_chunk */
-    NULL                        /* output_chunk */
-},
-    {
-        IO_FLOPPY,              /* type */
-        2,                      /* count */
-        "dsk\0",                /* file extensions */
-        IO_RESET_NONE,          /* reset if file changed */
-        0,
-        msx_floppy_init,   	/* init */
-        basicdsk_floppy_exit,   /* exit */
-        NULL,                   /* info */
-        NULL,                   /* open */
-        NULL,                   /* close */
-        floppy_status,          /* status */
-        NULL,                   /* seek */
-        NULL,                   /* tell */
-        NULL,                   /* input */
-        NULL,                   /* output */
-        NULL,                   /* input_chunk */
-        NULL                    /* output_chunk */
-    },
-    IO_CASSETTE_WAVE (1, "cas\0wav\0", NULL, msx_cassette_init, msx_cassette_exit),
-	IO_PRINTER_PORT (1, "prn\0"),
-    { IO_END }
-};
+#define	io_msx		io_NULL
+#define io_msxj		io_NULL
+#define io_msxkr	io_NULL
+#define io_msxkra	io_NULL
+#define io_msxuk	io_NULL
+#define io_msx2		io_NULL
+#define io_msx2a	io_NULL
+#define io_msx2j	io_NULL
+#define io_hotbit11	io_NULL
+#define io_hotbit12	io_NULL
+#define io_expert10	io_NULL
+#define io_expert11	io_NULL
 
-#define io_msxj io_msx
-#define io_msxkr io_msx
-/* #define io_msxkra io_msx */
-#define io_msxuk io_msx
-#define io_msx2  io_msx
-#define io_msx2a io_msx
-#define io_msx2j io_msx
-#define io_hotbit11 io_msx
-#define io_hotbit12 io_msx
-#define io_expert10 io_msx
-#define io_expert11 io_msx
+SYSTEM_CONFIG_START(msx)
+	CONFIG_DEVICE_CASSETTE(1, "cas\0", msx_cassette_init)
+	CONFIG_DEVICE_PRINTER(1)
+	CONFIG_DEVICE_CARTSLOT(MSX_MAX_CARTS, "rom\0", msx_load_rom, msx_exit_rom, NULL)
+	CONFIG_DEVICE_FLOPPY_BASICDSK(2, "dsk\0", msx_floppy_init)
+SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT  MACHINE  INPUT     INIT   COMPANY              FULLNAME */
-COMP( 1983, msx,      0,      msx_pal, msx,      msx,   "ASCII & Microsoft", "MSX 1" )
-COMP( 1983, msxj,     msx,    msx,     msxj,     msx,   "ASCII & Microsoft", "MSX 1 (Japan)" )
-COMP( 1983, msxkr,    msx,    msx,     msxkr,    msx,   "ASCII & Microsoft", "MSX 1 (Korea)" )
-/* COMP( 1983, msxkra, msx, msx, msxkr, msx, "ASCII & Microsoft", "MSX 1 (Korea ALT)" ) */
-COMP( 1983, msxuk,    msx,    msx_pal, msxuk,    msx,   "ASCII & Microsoft", "MSX 1 (UK)" )
-COMP( 1985, hotbit11, msx,    msx,     hotbit,   msx,   "Sharp / Epcom",     "HB-8000 Hotbit 1.1" )
-COMP( 1985, hotbit12, msx,    msx,     hotbit,   msx,   "Sharp / Epcom",     "HB-8000 Hotbit 1.2" )
-COMP( 1985, expert10, msx,    msx,     expert10, msx,   "Gradiente",         "XP-800 Expert 1.0" )
-COMP( 1985, expert11, msx,    msx,     expert11, msx,   "Gradiente",         "XP-800 Expert 1.1" )
-COMPX( 1985, msx2,    msx,    msx2,    msx2,      msx2,   "ASCII & Microsoft", "MSX 2", GAME_NOT_WORKING )
-COMPX( 1985, msx2a,   msx,    msx2,    msx2,      msx2,   "ASCII & Microsoft", "MSX 2 (BASIC 2.1)", GAME_NOT_WORKING )
-COMPX( 1985, msx2j,  msx,    msx2,     msx2j,     msx2,   "ASCII & Microsoft", "MSX 2 (Japan)", GAME_NOT_WORKING )
+/*    YEAR  NAME      PARENT  MACHINE  INPUT     INIT   CONFIG  COMPANY              FULLNAME */
+COMP( 1983,	msx,      0,      msx_pal, msx,      msx,	msx,	"ASCII & Microsoft", "MSX 1" )
+COMP( 1983, msxj,     msx,    msx,     msxj,     msx,	msx,	"ASCII & Microsoft", "MSX 1 (Japan)" )
+COMP( 1983, msxkr,    msx,    msx,     msxkr,    msx,	msx,	"ASCII & Microsoft", "MSX 1 (Korea)" )
+/*COMP(1983,msxkra, msx, msx, msxkr, msx, "ASCII & Microsoft", "MSX 1 (Korea ALT)" ) */
+COMP( 1983, msxuk,    msx,    msx_pal, msxuk,    msx,	msx,	"ASCII & Microsoft", "MSX 1 (UK)" )
+COMP( 1985, hotbit11, msx,    msx,     hotbit,   msx,	msx,	"Sharp / Epcom",     "HB-8000 Hotbit 1.1" )
+COMP( 1985, hotbit12, msx,    msx,     hotbit,   msx,	msx,	"Sharp / Epcom",     "HB-8000 Hotbit 1.2" )
+COMP( 1985, expert10, msx,    msx,     expert10, msx,	msx,	"Gradiente",         "XP-800 Expert 1.0" )
+COMP( 1985, expert11, msx,    msx,     expert11, msx,	msx,	"Gradiente",         "XP-800 Expert 1.1" )
+COMPX(1985, msx2,     msx,    msx2,    msx2,     msx2,	msx,	"ASCII & Microsoft", "MSX 2", GAME_NOT_WORKING )
+COMPX(1985, msx2a,    msx,    msx2,    msx2,     msx2,	msx,	"ASCII & Microsoft", "MSX 2 (BASIC 2.1)", GAME_NOT_WORKING )
+COMPX(1985, msx2j,    msx,    msx2,     msx2j,   msx2,	msx,	"ASCII & Microsoft", "MSX 2 (Japan)", GAME_NOT_WORKING )
 

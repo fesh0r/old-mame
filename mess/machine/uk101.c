@@ -9,6 +9,7 @@
 
 #include <stdarg.h>
 #include "driver.h"
+#include "image.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/mc6850.h"
 #include "includes/uk101.h"
@@ -76,18 +77,15 @@ READ_HANDLER (uk101_acia0_statin )
 
 /* || */
 
-int	uk101_init_cassette(int id)
+int	uk101_init_cassette(int id, void *file, int open_mode)
 {
-	void	*file;
+	/* a cassette for the uk101 isnt needed */
+	if (file == NULL)
+	{
+			logerror("UK101/Superboard - warning: no cassette specified!\n");
+			return INIT_PASS;
+	}                                                                                                                                     
 
-        /* a cassette for the uk101 isnt needed */
-        if (!device_filename(IO_CASSETTE,id) || !strlen(device_filename(IO_CASSETTE,id) ))
-        {
-                logerror("UK101/Superboard - warning: no cassette specified!\n");
-                return INIT_PASS;
-        }                                                                                                                                     
-
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if (file)
 	{
 		uk101_tape_size = osd_fsize(file);

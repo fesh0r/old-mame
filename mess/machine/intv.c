@@ -2,6 +2,7 @@
 #include "vidhrdw/stic.h"
 #include "includes/intv.h"
 #include "cpu/cp1600/cp1600.h"
+#include "image.h"
 
 UINT8 intv_gramdirty;
 UINT8 intv_gram[512];
@@ -333,10 +334,8 @@ WRITE16_HANDLER( intv_ram16_w )
 	intv_ram16[offset] = data&0xffff;
 }
 
-int intv_load_rom_file(int id, int required)
+static int intv_load_rom_file(int id, void *romfile, int required)
 {
-	const char *rom_name = device_filename(IO_CARTSLOT,id);
-    FILE *romfile;
     int i;
 
 	UINT8 temp;
@@ -352,7 +351,7 @@ int intv_load_rom_file(int id, int required)
 
 	UINT8 *memory = memory_region(REGION_CPU1);
 
-	if(!rom_name)
+	if (romfile == NULL)
 	{
 		if (required)
 		{
@@ -361,11 +360,6 @@ int intv_load_rom_file(int id, int required)
 		}
 		else
 			printf("intvkbd legacy cartridge slot empty - ok\n");
-	}
-
-	if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		return INIT_FAIL;
 	}
 
 	osd_fread(romfile,&temp,1);			/* header */
@@ -413,7 +407,7 @@ int intv_load_rom_file(int id, int required)
 	return INIT_PASS;
 }
 
-int intv_load_rom(int id)
+int intv_load_rom(int id, void *fp, int open_mode)
 {
 	/* First, initialize these as empty so that the intellivision
 	 * will think that the playcable and keyboard are not attached */
@@ -427,7 +421,7 @@ int intv_load_rom(int id)
 	memory[0x7000<<1] = 0xff;
 	memory[(0x7000<<1)+1] = 0xff;
 
-	return intv_load_rom_file(id, 1);
+	return intv_load_rom_file(id, fp, 1);
 }
 
 /* Set Reset and INTR/INTRM Vector */
@@ -447,7 +441,7 @@ MACHINE_INIT( intv )
 }
 
 
-void intv_interrupt_complete(int x)
+static void intv_interrupt_complete(int x)
 {
 	cpu_set_irq_line(0, CP1600_INT_INTRM, CLEAR_LINE);
 }
@@ -510,7 +504,7 @@ void init_intvkbd(void)
 {
 }
 
-int intvkbd_load_rom (int id)
+int intvkbd_load_rom (int id, void *romfile, int open_mode)
 {
 	if (id == 0) /* Legacy cartridge slot */
 	{
@@ -522,25 +516,17 @@ int intvkbd_load_rom (int id)
 		memory[0x4800<<1] = 0xff;
 		memory[(0x4800<<1)+1] = 0xff;
 
-		intv_load_rom_file(id, 0);
+		intv_load_rom_file(id, romfile, 0);
 	}
 
 	if (id == 1) /* Keyboard component cartridge slot */
 	{
-		const char *rom_name = device_filename(IO_CARTSLOT,id);
-    	FILE *romfile;
-
 		UINT8 *memory = memory_region(REGION_CPU2);
 
-		if(!rom_name)
+		if (romfile == NULL)
 		{
 			printf("intvkbd cartridge slot empty - ok\n");
 			return INIT_PASS;
-		}
-
-		if (!(romfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-		{
-			return INIT_FAIL;
 		}
 
 		/* Assume an 8K cart, like BASIC */

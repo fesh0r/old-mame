@@ -41,6 +41,7 @@
 /* PI-5 interface is required. mode 2 of the 8255 is used to communicate with the FD-5 */
 
 #include "includes/nec765.h"
+#include "image.h"
 
 static MACHINE_INIT( sord_m5 );
 
@@ -61,7 +62,7 @@ static int obfa,ibfa, intra;
 static int fd5_port_0x020_data;
 
 /* stb and ack automatically set on read/write? */
-WRITE_HANDLER(fd5_communication_w)
+static WRITE_HANDLER(fd5_communication_w)
 {
 	cpu_yield();
 
@@ -71,7 +72,7 @@ WRITE_HANDLER(fd5_communication_w)
 #endif
 }
 
-READ_HANDLER(fd5_communication_r)
+static READ_HANDLER(fd5_communication_r)
 {
 	int data;
 
@@ -85,7 +86,7 @@ READ_HANDLER(fd5_communication_r)
 	return data;
 }
 
-READ_HANDLER(fd5_data_r)
+static READ_HANDLER(fd5_data_r)
 {
 	cpu_yield();
 
@@ -100,7 +101,7 @@ READ_HANDLER(fd5_data_r)
 	return fd5_databus;
 }
 
-WRITE_HANDLER(fd5_data_w)
+static WRITE_HANDLER(fd5_data_w)
 {
 #ifdef SORD_DEBUG
 	logerror("fd5 0x010 w: %02x %04x\n",data,activecpu_get_pc());
@@ -116,7 +117,7 @@ WRITE_HANDLER(fd5_data_w)
 	cpu_yield();
 }
 
-WRITE_HANDLER(fd5_drive_control_w)
+static WRITE_HANDLER(fd5_drive_control_w)
 {
 	int state;
 	
@@ -135,7 +136,7 @@ WRITE_HANDLER(fd5_drive_control_w)
 	floppy_drive_set_ready_state(1,1,1);
 }
 
-WRITE_HANDLER(fd5_tc_w)
+static WRITE_HANDLER(fd5_tc_w)
 {
 	nec765_set_tc_state(1);
 	nec765_set_tc_state(0);
@@ -201,14 +202,14 @@ static MACHINE_INIT( sord_m5_fd5 )
 /*********************************************************************************************/
 /* PI-5 */
 
-READ_HANDLER(sord_ppi_porta_r)
+static READ_HANDLER(sord_ppi_porta_r)
 {
 	cpu_yield(); 
 
 	return fd5_databus;
 }
 
-READ_HANDLER(sord_ppi_portb_r)
+static READ_HANDLER(sord_ppi_portb_r)
 {
 	cpu_yield();
 
@@ -219,7 +220,7 @@ READ_HANDLER(sord_ppi_portb_r)
 	return 0x0ff;
 }
 
-READ_HANDLER(sord_ppi_portc_r)
+static READ_HANDLER(sord_ppi_portc_r)
 {
 	cpu_yield();
 
@@ -252,14 +253,14 @@ READ_HANDLER(sord_ppi_portc_r)
 			);
 }
 
-WRITE_HANDLER(sord_ppi_porta_w)
+static WRITE_HANDLER(sord_ppi_porta_w)
 {
 	cpu_yield(); 
 
 	fd5_databus = data;
 }
 
-WRITE_HANDLER(sord_ppi_portb_w)
+static WRITE_HANDLER(sord_ppi_portb_w)
 {
 	cpu_yield();
 
@@ -283,7 +284,7 @@ WRITE_HANDLER(sord_ppi_portb_w)
 /* C,H,N */
 
 
-WRITE_HANDLER(sord_ppi_portc_w)
+static WRITE_HANDLER(sord_ppi_portc_w)
 {
 	cpu_yield();
 #ifdef SORD_DEBUG
@@ -291,21 +292,21 @@ WRITE_HANDLER(sord_ppi_portc_w)
 #endif
 }
 
-WRITE_HANDLER(sord_ppi_obfa_write)
+static WRITE_HANDLER(sord_ppi_obfa_write)
 {
 //	logerror("ppi obfa write %02x %04x\n",data,activecpu_get_pc());
 	obfa = data & 0x01;
 	cpu_yield();
 }
 
-WRITE_HANDLER(sord_ppi_intra_write)
+static WRITE_HANDLER(sord_ppi_intra_write)
 {
 //	logerror("ppi intra write %02x %04x\n",data,activecpu_get_pc());
 	intra = data & 0x01;
 	cpu_yield();
 }
 
-WRITE_HANDLER(sord_ppi_ibfa_write)
+static WRITE_HANDLER(sord_ppi_ibfa_write)
 {
 //	logerror("ppi ibfa write %02x %04x\n",data,activecpu_get_pc());
 	ibfa = data & 0x01;
@@ -335,17 +336,10 @@ static ppi8255_interface sord_ppi8255_interface =
 
 static char cart_data[0x06fff-0x02000];
 
-int		sord_cartslot_init(int id)
+static int sord_cartslot_init(int id, void *file, int open_mode)
 {
-	void *file;
-
-	if (device_filename(IO_CARTSLOT,id)==NULL)
+	if (file == NULL)
 		return INIT_FAIL;
-
-	if (strlen(device_filename(IO_CARTSLOT,id))==0)
-		return INIT_FAIL;
-
-	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 
 	if (file)
 	{
@@ -367,16 +361,12 @@ int		sord_cartslot_init(int id)
 	return INIT_FAIL;
 }
 
-void	sord_cartslot_exit(int id)
+static int sord_floppy_init(int id, void *fp, int open_mode)
 {
-}
-
-int sord_floppy_init(int id)
-{
-	if (device_filename(IO_FLOPPY,id)==NULL)
+	if (!image_exists(IO_FLOPPY, id))
 		return INIT_PASS;
 
-	if (basicdsk_floppy_init(id)==INIT_PASS)
+	if (basicdsk_floppy_init(id, fp, open_mode)==INIT_PASS)
 	{
 		/* 40 tracks, single sided, 256 bytes per sector, 18 sectors */
 		basicdsk_set_geometry(id, 40, 1, 18, 256, 1,0);
@@ -388,19 +378,13 @@ int sord_floppy_init(int id)
 
 
 
-int sord_cassette_init(int id)
+static int sord_cassette_init(int id, void *fp, int open_mode)
 {
 	struct cassette_args args;
 	memset(&args, 0, sizeof(args));
 	args.create_smpfreq = 22050;	/* maybe 11025 Hz would be sufficient? */
-	return cassette_init(id, &args);
+	return cassette_init(id, fp, open_mode, &args);
 }
-
-void sord_cassette_exit(int id)
-{
-	device_close(IO_CASSETTE, id);
-}
-
 
 static void sord_m5_ctc_interrupt(int state)
 {
@@ -629,7 +613,7 @@ static MACHINE_INIT( sord_m5 )
 #define SORD_DUMP_RAM
 
 #ifdef SORD_DUMP_RAM
-void sord_dump_ram(void)
+static void sord_dump_ram(void)
 {
 	void *file;
 
@@ -653,7 +637,7 @@ void sord_dump_ram(void)
 	}
 }
 
-void sordfd5_dump_ram(void)
+static void sordfd5_dump_ram(void)
 {
 	void *file;
 
@@ -879,73 +863,21 @@ ROM_START(srdm5fd5)
 	ROM_LOAD("sordfd5.rom",0x0000, 0x04000, 0x01)
 ROM_END
 
-#define sord_m5_cart_device \
-	{ \
-		IO_CARTSLOT,\
-		1,						/* count */\
-		"rom\0",                /* file extensions */\
-		IO_RESET_NONE,			/* reset if file changed */\
-		NULL,					/* id */\
-		sord_cartslot_init,		/* init */\
-		sord_cartslot_exit,		/* exit */\
-		NULL,					/* info */\
-		NULL,					/* open */\
-		NULL,					/* close */\
-		NULL,					/* status */\
-		NULL,					/* seek */\
-		NULL,					/* tell */\
-		NULL,					/* input */\
-		NULL,					/* output */\
-		NULL,					/* input_chunk */\
-		NULL					/* output_chunk */\
-	}
+#define io_sordm5	io_NULL
+#define	io_srdm5fd5	io_NULL
 
-#define sord_m5_printer \
-	IO_PRINTER_PORT(1,"prn\0")
-
-#define sord_m5_cassette \
-	IO_CASSETTE_WAVE(1,"wav\0",NULL,sord_cassette_init,sord_cassette_exit)
-
-static const struct IODevice io_sordm5[] =
-{
-	sord_m5_cart_device,
-	sord_m5_printer,
-	sord_m5_cassette,
-	{IO_END},
-};
-
-static const struct IODevice io_srdm5fd5[] = 
-{
-	sord_m5_cart_device,
-	sord_m5_printer,
-	sord_m5_cassette,
-	{
-		IO_FLOPPY,				/* type */
-		4,						/* count */
-		"dsk\0",                /* file extensions */
-		IO_RESET_NONE,			/* reset if file changed */
-		NULL, /*basicdsk_floppy_id,*/ 	/* id */
-		sord_floppy_init, /* init */
-		basicdsk_floppy_exit,	/* exit */
-		NULL,					/* info */
-		NULL,					/* open */
-		NULL,					/* close */
-		floppy_status,			/* status */
-		NULL,					/* seek */
-		NULL,					/* tell */
-		NULL,					/* input */
-		NULL,					/* output */
-		NULL,					/* input_chunk */
-		NULL					/* output_chunk */
-	},
-	{IO_END}
-};
-
-
-COMPUTER_CONFIG_START(sordm5)
+SYSTEM_CONFIG_START(sordm5)
 	CONFIG_RAM_DEFAULT(64 * 1024)
-COMPUTER_CONFIG_END
+	CONFIG_DEVICE_PRINTER			(1)
+	CONFIG_DEVICE_CASSETTE			(1, "",			sord_cassette_init)
+	CONFIG_DEVICE_CARTSLOT			(1, "rom\0",	sord_cartslot_init, NULL, NULL)
+SYSTEM_CONFIG_END
 
-/*     YEAR  NAME       PARENT  MACHINE    INPUT     INIT     CONFIG,  COMPANY               FULLNAME */
-COMPC( 1983, sordm5,      0,    sord_m5,   sord_m5,  0,       sordm5, "Sord", "Sord M5")
-COMPCX( 1983, srdm5fd5,	0,	sord_m5_fd5, sord_m5, 0, sordm5, "Sord", "Sord M5 + PI5 + FD5", GAME_NOT_WORKING)
+SYSTEM_CONFIG_START(srdm5fd5)
+	CONFIG_IMPORT_FROM(sordm5)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	sord_floppy_init)
+SYSTEM_CONFIG_END
+
+/*    YEAR  NAME		PARENT  MACHINE			INPUT		INIT	CONFIG		COMPANY		FULLNAME */
+COMP( 1983, sordm5,		0,		sord_m5,		sord_m5,	0,		sordm5,		"Sord",		"Sord M5")
+COMPX(1983, srdm5fd5,	0,		sord_m5_fd5,	sord_m5,	0,		srdm5fd5,	"Sord",		"Sord M5 + PI5 + FD5", GAME_NOT_WORKING)

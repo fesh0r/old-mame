@@ -24,6 +24,7 @@
 #include "includes/basicdsk.h"
 /* for CPCEMU style disk images */
 #include "includes/dsk.h"
+#include "image.h"
 
 /* there are 64us per line, although in reality
    about 50 are visible. */
@@ -67,7 +68,7 @@ static unsigned char * Enterprise_Pages_Write[256];
 static int Enterprise_KeyboardLine = 0;
 
 /* set read/write pointers for CPU page */
-void	Enterprise_SetMemoryPage(int CPU_Page, int EP_Page)
+static void	Enterprise_SetMemoryPage(int CPU_Page, int EP_Page)
 {
 	cpu_setbank((CPU_Page+1), Enterprise_Pages_Read[EP_Page & 0x0ff]);
 	cpu_setbank((CPU_Page+5), Enterprise_Pages_Write[EP_Page & 0x0ff]);
@@ -154,7 +155,7 @@ static void enterprise_dave_reg_read(int RegIndex)
 	}
 }
 
-void enterprise_dave_interrupt(int state)
+static void enterprise_dave_interrupt(int state)
 {
 	if (state)
 		cpu_set_irq_line(0,0,HOLD_LINE);
@@ -314,7 +315,7 @@ MEMORY_END
    bit 7 - in use
 */
 
-int EXDOS_GetDriveSelection(int data)
+static int EXDOS_GetDriveSelection(int data)
 {
 	 if (data & 0x01)
 	 {
@@ -553,16 +554,12 @@ INPUT_PORTS_START( ep128 )
 
 INPUT_PORTS_END
 
-int	enterprise_dsk_floppy_init(int id)
+static int	enterprise_dsk_floppy_init(int id, void *fp, int open_mode)
 {
-	 if (device_filename(IO_FLOPPY,id)==NULL)
+	 if (!image_exists(IO_FLOPPY, id))
 		 return INIT_PASS;
-
-
-	 return dsk_floppy_load(id);
- }
-
-
+	 return dsk_floppy_load(id, fp, open_mode);
+}
 
 static struct CustomSound_interface dave_custom_sound=
 {
@@ -618,35 +615,16 @@ ROM_END
 
 #define io_ep128a io_ep128
 
-static const struct IODevice io_ep128[] = {
-#if 0
-	{
-		IO_FLOPPY,				/* type */
-		4,						/* count */
-		"dsk\0",                /* file extensions */
-		IO_RESET_NONE,			/* reset if file changed */
-		0,
-		enterprise_floppy_init, /* init */
-		basicdsk_floppy_exit,	/* exit */
-		NULL,					/* info */
-		NULL,					/* open */
-		NULL,					/* close */
-		floppy_status,			/* status */
-		NULL,					/* seek */
-		NULL,					/* tell */
-		NULL,					/* input */
-		NULL,					/* output */
-		NULL,					/* input_chunk */
-		NULL					/* output_chunk */
-	},
-#endif
+static const struct IODevice io_ep128[] =
+{
 	{
 		IO_FLOPPY,					/* type */
 		4,							/* count */
 		"dsk\0",                    /* file extensions */
 		IO_RESET_NONE,				/* reset if file changed */
+		OSD_FOPEN_NONE,				/* open mode */
 		0,
-		enterprise_dsk_floppy_init,			/* init */
+		enterprise_dsk_floppy_init,	/* init */
 		dsk_floppy_exit,			/* exit */
 		NULL,						/* info */
 		NULL,						/* open */
@@ -668,11 +646,14 @@ static const struct IODevice io_ep128[] = {
 
 ***************************************************************************/
 
-COMPUTER_CONFIG_START(ep128)
+SYSTEM_CONFIG_START(ep128)
 	CONFIG_RAM_DEFAULT((128*1024)+32768)
-COMPUTER_CONFIG_END
+#if 0
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	enterprise_floppy_init)
+#endif
+SYSTEM_CONFIG_END
 
 /*      YEAR  NAME     PARENT   MACHINE   INPUT     INIT  CONFIG, COMPANY                 FULLNAME */
-COMPCX( 1984, ep128,   0,		ep128,	  ep128,	0,	  ep128,  "Intelligent Software", "Enterprise 128", GAME_IMPERFECT_SOUND )
-COMPCX( 1984, ep128a,  ep128,	ep128,	  ep128,	0,	  ep128,  "Intelligent Software", "Enterprise 128 (EXOS 2.1)", GAME_IMPERFECT_SOUND )
+COMPX( 1984, ep128,   0,		ep128,	  ep128,	0,	  ep128,  "Intelligent Software", "Enterprise 128", GAME_IMPERFECT_SOUND )
+COMPX( 1984, ep128a,  ep128,	ep128,	  ep128,	0,	  ep128,  "Intelligent Software", "Enterprise 128 (EXOS 2.1)", GAME_IMPERFECT_SOUND )
 

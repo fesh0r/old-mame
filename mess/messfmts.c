@@ -1,7 +1,9 @@
-#include "formats.h"
+#include "messfmts.h"
 #include "osdepend.h"
 #include "mess.h"
 #include "includes/flopdrv.h"
+#include "image.h"
+#include "utils.h"
 
 struct mess_bdf
 {
@@ -37,24 +39,26 @@ static int bdf_get_sectors_per_track(int drive, int side)
 	messbdf = get_messbdf(drive);
 	if (!messbdf)
 		return 0;
-	return bdf_get_geometry(messbdf->bdf)->sectors;
+	
+	return bdf_get_sector_count(messbdf->bdf, messbdf->track, side);
 }
 
 static void bdf_get_id_callback(int drive, chrn_id *id, int id_index, int side)
 {
 	struct mess_bdf *messbdf;
-	const struct disk_geometry *geo;
+	UINT16 sector_size;
+	UINT8 sector;
 	
 	messbdf = get_messbdf(drive);
-	geo = bdf_get_geometry(messbdf);
 
+	bdf_get_sector_info(messbdf->bdf, messbdf->track, side, id_index, &sector, &sector_size);
 	id->C = messbdf->track;
 	id->H = side;
-	id->R = geo->first_sector_id + id_index;
-	id->data_id = geo->first_sector_id + id_index;
+	id->R = sector;
+	id->data_id = sector;
 	id->flags = 0;
 
-	switch(geo->sector_size) {
+	switch(sector_size) {
 	case 128:
 		id->N = 0;
 		break;
@@ -113,12 +117,10 @@ static floppy_interface bdf_floppy_interface =
 	NULL
 };
 
-int bdf_floppy_init(int id, const formatdriver_ctor *open_formats, formatdriver_ctor create_format)
+static int bdf_floppy_init_internal(int id, void *file, int mode, const formatdriver_ctor *open_formats, formatdriver_ctor create_format, void *fp, int open_mode)
 {
-	void *file;
 	const char *name;
-	int mode;
-	char *ext;
+	const char *ext;
 	formatdriver_ctor fmts[2];
 	int device_type = IO_FLOPPY;
 	int err;
@@ -126,23 +128,9 @@ int bdf_floppy_init(int id, const formatdriver_ctor *open_formats, formatdriver_
 	assert(id < (sizeof(bdfs) / sizeof(bdfs[0])));
 	memset(&bdfs[id], 0, sizeof(bdfs[id]));
 
-	name = device_filename(device_type, id);
-	if (name)
+	if (file)
 	{
-		mode = OSD_FOPEN_RW;
-		file = image_fopen(device_type, id, OSD_FILETYPE_IMAGE, mode);
-		if (!file)
-		{
-			mode = OSD_FOPEN_READ;
-			file = image_fopen(device_type, id, OSD_FILETYPE_IMAGE, mode);
-			if (!file)
-			{
-				mode = OSD_FOPEN_RW_CREATE;
-				file = image_fopen(device_type, id, OSD_FILETYPE_IMAGE, mode);
-				if (!file)
-					return INIT_FAIL;
-			}
-		}
+		name = image_filename(device_type, id);
 
 		if (mode == OSD_FOPEN_RW_CREATE)
 		{
@@ -156,9 +144,8 @@ int bdf_floppy_init(int id, const formatdriver_ctor *open_formats, formatdriver_
 				fmts[1] = NULL;
 				open_formats = fmts;				
 			}
-			ext = osd_strip_extension(name);
+			ext = image_filetype(device_type, id);
 			err = bdf_open(&mess_bdf_procs, open_formats, file, (mode == OSD_FOPEN_READ), ext, &bdfs[id].bdf);
-			free(ext);
 		}
 		if (err)
 			return INIT_FAIL;
@@ -168,7 +155,22 @@ int bdf_floppy_init(int id, const formatdriver_ctor *open_formats, formatdriver_
 	return INIT_PASS;
 }
 
-void bdf_floppy_exit(int id)
+static int bdf_floppy_init(int id, void *fp, int open_mode)
+{
+	const struct IODevice *dev;
+	const formatdriver_ctor *open_formats;
+	formatdriver_ctor create_format;
+
+	dev = device_find(Machine->gamedrv, IO_FLOPPY);
+	assert(dev);
+
+	open_formats = (const formatdriver_ctor *) dev->input;
+	create_format = (formatdriver_ctor) dev->output;
+
+	return bdf_floppy_init_internal(id, fp, open_mode, open_formats, create_format, fp, open_mode);
+}
+
+static void bdf_floppy_exit(int id)
 {
 	if (bdfs[id].bdf)
 	{
@@ -176,3 +178,61 @@ void bdf_floppy_exit(int id)
 		memset(&bdfs[id], 0, sizeof(bdfs[id]));
 	}
 }
+
+static void specify_extension(char *extbuf, size_t extbuflen, formatdriver_ctor format)
+{
+	struct InternalBdFormatDriver drv;
+	size_t len;
+
+	format(&drv);
+
+	if (drv.extension)
+	{
+		while(*extbuf)
+		{
+			/* already have this extension? */
+			if (!strcmpi(extbuf, drv.extension))
+				return;
+
+			len = strlen(extbuf) + 1;
+			extbuf += len;
+			extbuflen -= len;
+		}
+
+		assert(strlen(drv.extension)+1 <= extbuflen);
+		strncpyz(extbuf, drv.extension, extbuflen);
+	}
+}
+
+const struct IODevice *bdf_device_specify(struct IODevice *iodev, char *extbuf, size_t extbuflen,
+	int count, const formatdriver_ctor *open_formats, formatdriver_ctor create_format)
+{
+	int i;
+
+	assert(count);
+	if (iodev->count == 0)
+	{
+		memset(extbuf, 0, extbuflen);
+		if (open_formats)
+		{
+			for(i = 0; open_formats[i]; i++)
+				specify_extension(extbuf, extbuflen, open_formats[i]);
+		}
+		if (create_format)
+			specify_extension(extbuf, extbuflen, create_format);
+		assert(extbuf[0]);
+
+		memset(iodev, 0, sizeof(*iodev));
+		iodev->type = IO_FLOPPY;
+		iodev->count = count;
+		iodev->file_extensions = extbuf;
+		iodev->reset_depth = IO_RESET_NONE;
+		iodev->open_mode = create_format ? OSD_FOPEN_RW_CREATE_OR_READ : OSD_FOPEN_RW_OR_READ;
+		iodev->init = bdf_floppy_init;
+		iodev->exit = bdf_floppy_exit;
+		iodev->input = (int (*)(int)) (void *) open_formats;
+		iodev->output = (void (*)(int, int)) (void *) create_format;
+	}
+	return iodev;
+}
+

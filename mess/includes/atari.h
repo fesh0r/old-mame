@@ -50,16 +50,16 @@ extern MACHINE_INIT( a800 );
 extern MACHINE_INIT( a800xl );
 extern MACHINE_INIT( a5200 );
 
-extern int a800_floppy_init(int id);
+extern int a800_floppy_init(int id, void *fp, int open_mode);
 extern void a800_floppy_exit(int id);
 
-extern int a800_rom_init(int id);
+extern int a800_rom_init(int id, void *fp, int open_mode);
 extern void a800_rom_exit(int id);
 
-extern int a800xl_load_rom(int id);
+extern int a800xl_load_rom(int id, void *fp, int open_mode);
 extern int a800xl_id_rom(int id);
 
-extern int a5200_rom_init(int id);
+extern int a5200_rom_init(int id, void *fp, int open_mode);
 extern void a5200_rom_exit(int id);
 
 extern READ_HANDLER ( MRA_GTIA );
@@ -76,6 +76,9 @@ extern void atari_interrupt_cb(int mask);
 
 extern void a800_handle_keyboard(void);
 extern void a5200_handle_keypads(void);
+
+extern void gtia_reset(void);
+extern void antic_reset(void);
 
 /* video */
 

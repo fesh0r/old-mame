@@ -76,7 +76,7 @@ static void coco_fdc_init(const struct cartridge_callback *callbacks)
     wd179x_init(WD_TYPE_179X,coco_fdc_callback);
 	dskreg = 0;
 	cartcallbacks = callbacks;
-	drq_state = CLEAR_LINE;
+	drq_state = ASSERT_LINE;
 	intrq_state = CLEAR_LINE;
 }
 
@@ -170,28 +170,26 @@ void dragon_floppy_exit( int id)
 	}
 }
 
-int dragon_floppy_init(int id)
+int dragon_floppy_init(int id, void *fp, int open_mode)
 {
-	if (dmkdsk_floppy_init(id)==INIT_PASS)
+	if (dmkdsk_floppy_init(id, fp, open_mode)==INIT_PASS)
 	{
 		diskKind[ id ] = DSK_DMK;
 		return INIT_PASS;
 	}
 
-	if(cocovdk_floppy_init(id)==INIT_PASS)
+	if(cocovdk_floppy_init(id, fp, open_mode)==INIT_PASS)
 	{
 		diskKind[ id ] = DSK_BASIC;
 		return INIT_PASS;
 	}
 
-	if (basicdsk_floppy_init(id)==INIT_PASS)
+	if (basicdsk_floppy_init(id, fp, open_mode)==INIT_PASS)
 	{
-		void *file;
-
 		diskKind[ id ] = DSK_BASIC;
-		file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-		if (file) {
-			int 	filesize = osd_fsize(file),
+		osd_fseek(fp, 0, SEEK_SET);
+		if (fp) {
+			int 	filesize = osd_fsize(fp),
 					headerSize = filesize % 256,
 					sectorPerTrack = 18,
 					sectorSizeCode = 1,
@@ -204,7 +202,7 @@ int dragon_floppy_init(int id)
 			if( buffer == NULL )
 				return INIT_FAIL;
 
-			osd_fread(file, buffer, headerSize);
+			osd_fread(fp, buffer, headerSize);
 
 			if( headerSize > 0 )
 				sectorPerTrack = buffer[0];
@@ -224,7 +222,7 @@ int dragon_floppy_init(int id)
 
 				if( attributeFlag != 0 )
 				{
-					osd_fclose(file);
+					//osd_fclose(fp);
 					free( buffer );
 					logerror("JVC: Attribute bytes not supported.\n");
 					return INIT_FAIL;
@@ -235,7 +233,7 @@ int dragon_floppy_init(int id)
 
 			if( (filesize - headerSize) != (tracks * sectorPerTrack * (128 << sectorSizeCode) * sideCount) )
 			{
-				osd_fclose(file);
+				//osd_fclose(fp);
 				free( buffer );
 				logerror("JVC: Not a JVC disk.\n");
 				return INIT_FAIL;
@@ -244,7 +242,6 @@ int dragon_floppy_init(int id)
 			basicdsk_set_geometry(id, tracks, sideCount, sectorPerTrack, (128 << sectorSizeCode), firstSectorID, headerSize);
 
 			free( buffer );
-			osd_fclose(file);
 		}
 	}
 	return INIT_PASS;
@@ -618,7 +615,7 @@ UINT8	vhdStatus;
 
 void coco_vhd_readwrite( UINT8 data );
 
-int coco_vhd_init(int id)
+int coco_vhd_init(int id, void *fp, int open_mode)
 {
 	vhdFile = NULL;
 	vhdStatus = 0xff; /* -1, Power on state */
@@ -626,7 +623,7 @@ int coco_vhd_init(int id)
 	if( id != 0 )
 		return INIT_FAIL;
 
-	vhdFile = image_fopen(IO_VHD, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
+	vhdFile = fp;
 
 	logicalRecordNumber = 0;
 	bufferAddress = 0;
@@ -746,7 +743,7 @@ void coco_vhd_readwrite( UINT8 data )
 		case 2: /* Flush file cache */
 			osd_fclose( vhdFile );
 			vhdFile = NULL;
-			vhdFile = image_fopen(IO_VHD, 0, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
+			vhdFile = image_fopen_custom(IO_VHD, 0, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
 
 			if( vhdFile == NULL )
 				vhdStatus = 2; /* Unable to open image */

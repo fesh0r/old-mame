@@ -38,9 +38,12 @@ enum
 /* offsets for region_dsr */
 enum
 {
-	offset_fdc_dsr = 0x0000,
-	offset_evpc_dsr= 0x2000,
-	region_dsr_len = 0x12000
+	offset_fdc_dsr = 0x0000,		/* TI FDC DSR (8kbytes) */
+	offset_bwg_dsr = 0x2000,		/* BwG FDC DSR (32kbytes) */
+	offset_bwg_ram = 0xa000,		/* BwG FDC RAM (2kbytes) */
+	offset_evpc_dsr= 0xa800,		/* EVPC DSR (64kbytes) */
+	offset_ide_ram = 0x1a800,		/* IDE card RAM (32 to 512kbytes) */
+	region_dsr_len = 0x11a800
 };
 
 /* enum for RAM config */
@@ -55,6 +58,14 @@ typedef enum
 	xRAM_kind_myarc_512k,		/* 512kb myarc clone (no ROM) */
 	xRAM_kind_99_4p_1Mb			/* ti99/4p super AMS clone */
 } xRAM_kind_t;
+
+/* enum for fdc config */
+typedef enum
+{
+	fdc_kind_none = 0,
+	fdc_kind_TI,				/* TI fdc */
+	fdc_kind_BwG				/* SNUG's BwG fdc */
+} fdc_kind_t;
 
 /* defines for input ports */
 enum
@@ -72,7 +83,7 @@ enum
 	config_speech_bit	= 3,
 	config_speech_mask	= 0x1,
 	config_fdc_bit		= 4,
-	config_fdc_mask		= 0x1
+	config_fdc_mask		= 0x3	/* 2 bits */
 };
 
 
@@ -86,12 +97,11 @@ void init_ti99_4p(void);
 void machine_init_ti99(void);
 void machine_stop_ti99(void);
 
-int ti99_floppy_init(int id);
+int ti99_floppy_init(int id, void *fp, int open_mode);
 
-int ti99_cassette_init(int id);
-void ti99_cassette_exit(int id);
+int ti99_cassette_init(int id, void *fp, int open_mode);
 
-int ti99_load_rom(int id);
+int ti99_load_rom(int id, void *fp, int open_mode);
 void ti99_rom_cleanup(int id);
 
 int video_start_ti99_4(void);

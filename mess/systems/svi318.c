@@ -371,56 +371,20 @@ ROM_START (svi328a)
     ROM_LOAD ("svi111.rom", 0x0000, 0x8000, 0xbc433df6)
 ROM_END
 
-static const struct IODevice io_svi318[] = {
+#define	io_svi318	io_NULL
+#define io_svi328	io_NULL
+#define io_svi328a	io_NULL
+
+SYSTEM_CONFIG_START(svi318)
+	CONFIG_DEVICE_PRINTER			(1)
+	CONFIG_DEVICE_CASSETTE			(1,	"cas\0",	svi318_cassette_init)
+	CONFIG_DEVICE_CARTSLOT			(1,	"rom\0",	svi318_load_rom, svi318_exit_rom, NULL)
 #ifdef SVI_DISK
-    {
-        IO_FLOPPY,              /* type */
-        2,                      /* count */
-        "dsk\0",                /* file extensions */
-        IO_RESET_NONE,          /* reset if file changed */
-        0,
-        svi318_floppy_init,     /* init */
-        basicdsk_floppy_exit,   /* exit */
-        NULL,                   /* info */
-        NULL,                   /* open */
-        NULL,                   /* close */
-        floppy_status,          /* status */
-        NULL,                   /* seek */
-        NULL,                   /* tell */
-        NULL,                   /* input */
-        NULL,                   /* output */
-        NULL,                   /* input_chunk */
-        NULL                    /* output_chunk */
-    },
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(2,	"dsk\0",	svi318_floppy_init)
 #endif
-	{
-    	IO_CARTSLOT,                /* type */
-    	1,              			/* count */
-    	"rom\0",                    /* file extensions */
-		IO_RESET_NONE,				/* reset if file changed */
-    	0,
-    	svi318_load_rom,            /* init */
-    	svi318_exit_rom,            /* exit */
-    	NULL,                       /* info */
-    	NULL,                       /* open */
-    	NULL,                       /* close */
-    	NULL,                       /* status */
-    	NULL,                       /* seek */
-    	NULL,                       /* tell */
-    	NULL,                       /* input */
-    	NULL,                       /* output */
-    	NULL,                       /* input_chunk */
-    	NULL                        /* output_chunk */
-	},
-		IO_CASSETTE_WAVE (1, "cas\0wav\0", NULL, svi318_cassette_init, svi318_cassette_exit),
-		IO_PRINTER_PORT (1, "prn\0"),
-		{ IO_END }
-	};
+SYSTEM_CONFIG_END
 
-#define io_svi328  io_svi318
-#define io_svi328a io_svi318
-
-/*    YEAR   NAME    PARENT  MACHINE INPUT   INIT    COMPANY FULLNAME */
-COMP( 1983,  svi318, 0,      svi318, svi318, svi318, "Spectravideo", "SVI-318" )
-COMP( 1983,  svi328, svi318, svi318, svi328, svi318, "Spectravideo", "SVI-328" )
-COMP( 1983,  svi328a,svi318, svi318, svi328, svi318, "Spectravideo", "SVI-328 (BASIC 1.11)" )
+/*   YEAR	NAME		PARENT	MACHINE	INPUT	INIT	CONFIG	COMPANY FULLNAME */
+COMP(1983,	svi318,		0,		svi318,	svi318,	svi318, svi318,	"Spectravideo", "SVI-318" )
+COMP(1983,	svi328,		svi318,	svi318,	svi328,	svi318, svi318,	"Spectravideo", "SVI-328" )
+COMP(1983,	svi328a,	svi318,	svi318,	svi328,	svi318, svi318,	"Spectravideo", "SVI-328 (BASIC 1.11)" )

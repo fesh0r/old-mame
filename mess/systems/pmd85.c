@@ -219,19 +219,20 @@ static MACHINE_DRIVER_START( pmd85 )
 	MDRV_VIDEO_UPDATE( pmd85 )
 MACHINE_DRIVER_END
 
-static const struct IODevice io_pmd85[] = {
-	{ IO_END }
-};
+/* NPW 20-Sep-2002 - changed this because the io_* arrays are deprecated, and I am
+ * using io_NULL to mark places where the change is complete
+ */
+#define io_pmd85	io_NULL
 
 ROM_START(pmd85)
 	ROM_REGION(0x14000,REGION_CPU1,0)
 	ROM_LOAD("pmd85-1.bin", 0x10000, 0x1000, 0x9bc5e6ec)
 ROM_END
 
-COMPUTER_CONFIG_START(pmd85)
+SYSTEM_CONFIG_START(pmd85)
 	CONFIG_RAM_DEFAULT(64 * 1024)
-COMPUTER_CONFIG_END
+SYSTEM_CONFIG_END
 
 
-/*     YEAR  NAME   PARENT MACHINE INPUT  INIT CONFIG COMPANY  FULLNAME */
-COMPC( 1989, pmd85, 0,     pmd85,  pmd85, 0,   pmd85, "Tesla", "PMD-85" )
+/*    YEAR  NAME   PARENT MACHINE INPUT  INIT CONFIG COMPANY  FULLNAME */
+COMP( 1989, pmd85, 0,     pmd85,  pmd85, 0,   pmd85, "Tesla", "PMD-85" )

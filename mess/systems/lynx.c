@@ -10,6 +10,7 @@
 #include "cpu/m6502/m6502.h"
 
 #include "includes/lynx.h"
+#include "image.h"
 #include <zlib.h>
 
 static int rotate=0;
@@ -260,7 +261,7 @@ UINT32 lynx_partialcrc(const unsigned char *buf,unsigned int size)
 	return (UINT32)crc;
 }
 
-int lynx_verify_cart (char *header)
+static int lynx_verify_cart (char *header)
 {
 
 	logerror("Trying Header Compare\n");
@@ -276,18 +277,17 @@ int lynx_verify_cart (char *header)
 static void lynx_crc_keyword(int io_device, int id)
 {
     const char *info;
-    info=device_extrainfo(io_device, id);
+    info=image_extrainfo(io_device, id);
     rotate=0;
     if (info!=NULL) {
-	if (strcmp(info, "ROTATE90DEGREE")==0) rotate=1;
-	else if (strcmp(info, "ROTATE270DEGREE")==0) rotate=2;
+		if (strcmp(info, "ROTATE90DEGREE")==0) rotate=1;
+		else if (strcmp(info, "ROTATE270DEGREE")==0) rotate=2;
     }
 }
 
 
-static int lynx_init_cart(int id)
+static int lynx_init_cart(int id, void *cartfile, int open_mode)
 {
-	FILE *cartfile;
 	UINT8 *rom = memory_region(REGION_USER1);
 	int size;
 	UINT8 header[0x40];
@@ -299,19 +299,12 @@ static int lynx_init_cart(int id)
    22 chars manufacturer
 */
 
-	if (device_filename(IO_CARTSLOT, id) == NULL)
-	{
+	if (cartfile == NULL)
 		return 0;
-	}
 
-	if (!(cartfile = (FILE*)image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror("%s not found\n",device_filename(IO_CARTSLOT,id));
-		return 1;
-	}
 	size=osd_fsize(cartfile);
 	if (osd_fread(cartfile, header, 0x40)!=0x40) {
-		logerror("%s load error\n",device_filename(IO_CARTSLOT,id));
+		logerror("%s load error\n",image_filename(IO_CARTSLOT,id));
 		osd_fclose(cartfile);
 		return 1;
 	}
@@ -330,7 +323,7 @@ static int lynx_init_cart(int id)
 			  header+10,size/1024,lynx_granularity, header+42);
 
 	if (osd_fread(cartfile, rom, size)!=size) {
-		logerror("%s load error\n",device_filename(IO_CARTSLOT,id));
+		logerror("%s load error\n",image_filename(IO_CARTSLOT,id));
 		osd_fclose(cartfile);
 		return 1;
 	}
@@ -341,29 +334,21 @@ static int lynx_init_cart(int id)
 	return 0;
 }
 
-static int lynx_quickload(int id)
+static int lynx_quickload(int id, void *cartfile, int open_mode)
 {
-	FILE *cartfile;
 	UINT8 *rom = memory_region(REGION_CPU1);
 	int size;
 	UINT8 header[10]; // 80 08 dw Start dw Len B S 9 3
 	// maybe the first 2 bytes must be used to identify the endianess of the file
 	UINT16 start;
 
-	if (device_filename(IO_QUICKLOAD, id) == NULL)
-	{
+	if (cartfile == NULL)
 		return 0;
-	}
 
-	if (!(cartfile = (FILE*)image_fopen(IO_QUICKLOAD, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror("%s not found\n",device_filename(IO_QUICKLOAD,id));
-		return 1;
-	}
 	size=osd_fsize(cartfile);
 
 	if (osd_fread(cartfile, header, sizeof(header))!=sizeof(header)) {
-		logerror("%s load error\n",device_filename(IO_QUICKLOAD,id));
+		logerror("%s load error\n",image_filename(IO_QUICKLOAD,id));
 		osd_fclose(cartfile);
 		return 1;
 	}
@@ -371,7 +356,7 @@ static int lynx_quickload(int id)
 	start=header[3]|(header[2]<<8); //! big endian format in file format for little endian cpu
 
 	if (osd_fread(cartfile, rom+start, size)!=size) {
-		logerror("%s load error\n",device_filename(IO_QUICKLOAD,id));
+		logerror("%s load error\n",image_filename(IO_QUICKLOAD,id));
 		osd_fclose(cartfile);
 		return 1;
 	}
@@ -385,65 +370,33 @@ static int lynx_quickload(int id)
 	return 0;
 }
 
-static const struct IODevice io_lynx[] = {
-	{
-		IO_CARTSLOT,					/* type */
-		1,								/* count */
-		"lnx\0",                        /* file extensions */
-		IO_RESET_ALL,					/* reset if file changed */
-		0,
-		lynx_init_cart, 				/* init */
-		NULL,							/* exit */
-		NULL,							/* info */
-		NULL,							/* open */
-		NULL,							/* close */
-		NULL,							/* status */
-		NULL,							/* seek */
-		NULL,							/* tell */
-		NULL,							/* input */
-		NULL,							/* output */
-		NULL,							/* input_chunk */
-		NULL,							/* output_chunk */
-		lynx_partialcrc,				/* partial crc */
-	},
-	{
-		IO_QUICKLOAD,					/* type */
-		1,								/* count */
-		"o\0",                        /* file extensions */
-		IO_RESET_ALL,					/* reset if file changed */
-		0,
-		lynx_quickload, 				/* init */
-		NULL,							/* exit */
-		NULL,							/* info */
-		NULL,							/* open */
-		NULL,							/* close */
-		NULL,							/* status */
-		NULL,							/* seek */
-		NULL,							/* tell */
-		NULL,							/* input */
-		NULL,							/* output */
-		NULL,							/* input_chunk */
-		NULL,							/* output_chunk */
-	},
-    { IO_END }
-};
+#define io_lynx		io_NULL
+#define io_lynxa	io_NULL
+#define io_lynx2	io_NULL
 
-void init_lynx(void)
+SYSTEM_CONFIG_START(lynx)
+	CONFIG_DEVICE_CARTSLOT(1, "lnx\0",	lynx_init_cart, NULL, lynx_partialcrc)
+	CONFIG_DEVICE_QUICKLOAD(  "o\0",	lynx_quickload, NULL)
+SYSTEM_CONFIG_END
+
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
+
+static DRIVER_INIT( lynx )
 {
 	int i;
-	UINT8 *gfx=memory_region(REGION_GFX1);
+	UINT8 *gfx = memory_region(REGION_GFX1);
 
-	for (i=0; i<256; i++) gfx[i]=i;
-
-	lynx_quickload(0);
-
-
+	for (i=0; i<256; i++)
+		gfx[i]=i;
+	// R. Nabet: what on earth is the purpose of this???
+	lynx_quickload(0, NULL, OSD_FOPEN_NONE);
 }
 
-#define io_lynxa io_lynx
-#define io_lynx2 io_lynx
-
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      MONITOR	COMPANY   FULLNAME */
-CONSX( 1989, lynx,	  0, 		lynx,  lynx, 	lynx,	  "Atari",  "Lynx", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-CONSX( 1989, lynxa,	  lynx, 	lynx,  lynx, 	lynx,	  "Atari",  "Lynx (alternate rom save!)", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-CONSX( 1991, lynx2,	  lynx, 	lynx2,  lynx, 	lynx,	  "Atari",  "Lynx II", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+/*    YEAR  NAME      PARENT    MACHINE	INPUT	INIT	CONFIG	MONITOR	COMPANY   FULLNAME */
+CONSX( 1989, lynx,	  0, 		lynx,	lynx,	lynx,	lynx,	"Atari",  "Lynx", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+CONSX( 1989, lynxa,	  lynx, 	lynx,	lynx,	lynx,	lynx,	"Atari",  "Lynx (alternate rom save!)", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+CONSX( 1991, lynx2,	  lynx, 	lynx2,	lynx,	lynx,	lynx,	"Atari",  "Lynx II", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)

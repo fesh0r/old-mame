@@ -26,7 +26,7 @@ typedef struct {
 	int devicenr;
 } VC1541_CONFIG;
 
-int vc1541_init(int id);
+int vc1541_init(int id, void *fp, int open_mode);
 void vc1541_exit(int id);
 
 int vc1541_config(int id, int mode, VC1541_CONFIG*config);
@@ -46,6 +46,7 @@ int c1551_config(int id, int mode, C1551_CONFIG*config);
    1,                                      /* count */\
    "d64\0",            /* G64 later *//*file extensions */\
    IO_RESET_CPU,       /* reset if file changed */\
+	OSD_FOPEN_READ,		/* open mode */\
    NULL,               /* id */\
    vc1541_init,        /* init */\
    vc1541_exit,        /* exit */\
@@ -68,6 +69,7 @@ int c1551_config(int id, int mode, C1551_CONFIG*config);
    1,                                      /* count */\
    "d64\0",            /* G64 later *//*file extensions */\
    IO_RESET_CPU,       /* reset if file changed */\
+	OSD_FOPEN_READ,		/* open mode */\
    NULL,               /* id */\
    vc1541_init,        /* init */\
    vc1541_exit,        /* exit */\
@@ -88,6 +90,7 @@ int c1551_config(int id, int mode, C1551_CONFIG*config);
    1,                                      /* count */\
    "d64\0",            /* G64 later *//*file extensions */\
    IO_RESET_CPU,       /* reset if file changed */\
+	OSD_FOPEN_READ,		/* open mode */\
    NULL,               /* id */\
    vc1541_init,        /* init */\
    vc1541_exit,        /* exit */\

@@ -35,6 +35,7 @@
 #include "driver.h"
 #include "machine/gb.h"
 #include "includes/gb.h"
+#include "image.h"
 
 static UINT8 MBCType;				   /* MBC type: 0 for none                        */
 static UINT8 CartType;				   /* Cart Type (battery, ram, timer etc)         */
@@ -236,7 +237,7 @@ MACHINE_STOP( gb )
 			memcpy( ptr, RAMMap[I], 0x2000 );
 			ptr += 0x2000;
 		}
-		battery_save( device_filename(IO_CARTSLOT, 0), battery_ram, RAMBanks * 0x2000 );
+		battery_save( image_filename(IO_CARTSLOT, 0), battery_ram, RAMBanks * 0x2000 );
 
 		free( battery_ram );
 	}
@@ -1224,7 +1225,7 @@ READ_HANDLER ( gb_r_io )
 	}
 }
 
-int gb_load_rom (int id)
+int gb_load_rom (int id, void *F, int open_mode)
 {
 	static char *CartTypes[] =
 	{
@@ -1354,13 +1355,12 @@ int gb_load_rom (int id)
 
 	int Checksum, I, J;
 	char *P, S[50];
-	void *F;
 	int rambanks[5] = {0, 1, 1, 4, 16};
 
 	for (I = 0; I < 256; I++)
 		RAMMap[I] = ROMMap[I] = NULL;
 
-	if(device_filename(IO_CARTSLOT,id)==NULL)
+	if (F == NULL)
 	{
 		printf("Cartridge name required!\n");
 		return INIT_FAIL;
@@ -1376,7 +1376,7 @@ int gb_load_rom (int id)
 	memset (gb_ram, 0, 0x10000);
 
 	/* FIXME should check first if a file is given, should give a more clear error */
-	if (!(F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ)))
+	if (!F)
 	{
 		logerror("image_fopen failed in gb_load_rom.\n");
 		return INIT_FAIL;
@@ -1387,17 +1387,26 @@ int gb_load_rom (int id)
    the reads fails and then check if we have 512 bytes too much, so its a file
    with header or not */
 
+#if 0
     for (J = 0x4000; J == 0x4000;)
 		J = osd_fread (F, gb_ram, 0x4000);
 
 	osd_fclose (F);
 
 	/* FIXME: should check first if a file is given, should give a more clear error */
-	if (!(F = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ)))
+	if (!(F = image_fopen_new(IO_CARTSLOT, id, NULL)))
 	{
 		logerror("image_fopen failed in gb_load_rom.\n");
 		return INIT_FAIL;
 	}
+#elif 0
+	osd_fseek(F, 0, SEEK_END);
+	J = osd_ftell(F) % 0x4000;
+
+	osd_fseek(F, 0, SEEK_SET);
+#else
+	J = image_length(IO_CARTSLOT, id) % 0x4000;
+#endif
 
 	if (J == 512)
 	{
@@ -1407,7 +1416,7 @@ int gb_load_rom (int id)
 
 	if (osd_fread (F, gb_ram, 0x4000) != 0x4000)
 	{
-		logerror("Error while reading from file: %s\n", device_filename(IO_CARTSLOT,id));
+		logerror("Error while reading from file: %s\n", image_filename(IO_CARTSLOT,id));
 		osd_fclose (F);
 		return INIT_FAIL;
 	}
@@ -1561,7 +1570,7 @@ int gb_load_rom (int id)
 			}
 			else
 			{
-				logerror("Error while reading from file: %s\n", device_filename(IO_CARTSLOT,id));
+				logerror("Error while reading from file: %s\n", image_filename(IO_CARTSLOT,id));
 				break;
 			}
 		}
@@ -1607,7 +1616,7 @@ int gb_load_rom (int id)
 		battery_ram = (UINT8 *)malloc( RAMBanks * 0x2000 );
 		if( battery_ram )
 		{
-			battery_load( device_filename(IO_CARTSLOT,id), battery_ram, RAMBanks * 0x2000 );
+			battery_load( image_filename(IO_CARTSLOT,id), battery_ram, RAMBanks * 0x2000 );
 			ptr = battery_ram;
 			for( I = 0; I < RAMBanks; I++ )
 			{

@@ -376,30 +376,11 @@ MACHINE_DRIVER_END
 
 static const struct IODevice io_famicom[] = {
     {
-        IO_CARTSLOT,        /* type */
-        1,                  /* count */
-        "nes\0",            /* file extensions */
-        IO_RESET_CPU,       /* reset if file changed */
-        0,
-        nes_init_cart,      /* init */
-        NULL,               /* exit */
-        NULL,               /* info */
-        NULL,               /* open */
-        NULL,               /* close */
-        NULL,               /* status */
-        NULL,               /* seek */
-        NULL,               /* tell */
-        NULL,               /* input */
-        NULL,               /* output */
-        NULL,               /* input_chunk */
-        NULL,               /* output_chunk */
-	nes_partialcrc
-    },
-    {
         IO_FLOPPY,          /* type */
         1,                  /* count */
         "dsk\0fds\0",       /* file extensions */
         IO_RESET_NONE,      /* reset if file changed */
+		OSD_FOPEN_READ,		/* open mode */
         NULL,               /* id */
         nes_load_disk,      /* init */
         nes_exit_disk,      /* exit */
@@ -418,53 +399,12 @@ static const struct IODevice io_famicom[] = {
     { IO_END }
 };
 
-static const struct IODevice io_nes[] = {
-    {
-        IO_CARTSLOT,        /* type */
-        1,                  /* count */
-        "nes\0",            /* file extensions */
-        IO_RESET_CPU,       /* reset if file changed */
-        0,
-        nes_init_cart,      /* init */
-        NULL,               /* exit */
-        NULL,               /* info */
-        NULL,               /* open */
-        NULL,               /* close */
-        NULL,               /* status */
-        NULL,               /* seek */
-        NULL,               /* tell */
-        NULL,               /* input */
-        NULL,               /* output */
-        NULL,               /* input_chunk */
-        NULL,                /* output_chunk */
-        nes_partialcrc      /* correct CRC */
-    },
-    { IO_END }
-};
+#define io_nes		io_NULL
+#define	io_nespal	io_NULL
 
-static const struct IODevice io_nespal[] = {
-    {
-        IO_CARTSLOT,        /* type */
-        1,                  /* count */
-        "nes\0",            /* file extensions */
-        IO_RESET_CPU,       /* reset if file changed */
-        0,
-        nes_init_cart,      /* init */
-        NULL,               /* exit */
-        NULL,               /* info */
-        NULL,               /* open */
-        NULL,               /* close */
-        NULL,               /* status */
-        NULL,               /* seek */
-        NULL,               /* tell */
-        NULL,               /* input */
-        NULL,               /* output */
-        NULL,               /* input_chunk */
-        NULL,                /* output_chunk */
-        nes_partialcrc      /* correct CRC */
-    },
-    { IO_END }
-};
+SYSTEM_CONFIG_START(nes)
+	CONFIG_DEVICE_CARTSLOT(1, "nes\0", nes_init_cart, NULL, nes_partialcrc)
+SYSTEM_CONFIG_END
 
 /***************************************************************************
 
@@ -472,8 +412,8 @@ static const struct IODevice io_nespal[] = {
 
 ***************************************************************************/
 
-/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-CONS( 1983, famicom,   0,        nes,      famicom,  nes,      "Nintendo", "Famicom" )
-CONS( 1985, nes,       0,        nes,      nes,      nes,      "Nintendo", "Nintendo Entertainment System (NTSC)" )
-CONS( 1987, nespal,    nes,      nespal,   nes,      nespal,   "Nintendo", "Nintendo Entertainment System (PAL)" )
+/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT      CONFIG,	COMPANY   FULLNAME */
+CONS( 1983, famicom,   0,        nes,      famicom,  nes,      nes,		"Nintendo", "Famicom" )
+CONS( 1985, nes,       0,        nes,      nes,      nes,      nes,		"Nintendo", "Nintendo Entertainment System (NTSC)" )
+CONS( 1987, nespal,    nes,      nespal,   nes,      nespal,   nes,		"Nintendo", "Nintendo Entertainment System (PAL)" )
 

@@ -46,18 +46,12 @@ cylinder apexc_cylinder;
 /*
 	Open cylinder image and read RAM
 */
-static int apexc_cylinder_init(int id)
+static int apexc_cylinder_init(int id, void *fp, int open_mode)
 {
 	/* open file */
-	/* first try read/write mode */
-	apexc_cylinder.fd = image_fopen(IO_CYLINDER, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
-	if (apexc_cylinder.fd)
-		apexc_cylinder.writable = 1;
-	else
-	{	/* else try read-only mode */
-		apexc_cylinder.writable = 0;
-		apexc_cylinder.fd = image_fopen(IO_CYLINDER, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-	}
+	apexc_cylinder.fd = fp;
+	/* tell whether the image is writable */
+	apexc_cylinder.writable = (apexc_cylinder.fd) && is_effective_mode_writable(open_mode);
 
 	if (apexc_cylinder.fd)
 	{	/* load RAM contents */
@@ -164,14 +158,14 @@ tape apexc_tapes[2];
 /*
 	Open a tape image
 */
-static int apexc_tape_init(int id)
+static int apexc_tape_init(int id, void *fp, int open_mode)
 {
 	tape *t = &apexc_tapes[id];
 
 	/* open file */
 	/* unit 0 is read-only, unit 1 is write-only */
-	t->fd = image_fopen(IO_PUNCHTAPE, id, OSD_FILETYPE_IMAGE,
-							(id==0) ? OSD_FOPEN_READ : OSD_FOPEN_WRITE);
+	t->fd = image_fopen_custom(IO_PUNCHTAPE, id, OSD_FILETYPE_IMAGE,
+								(id==0) ? OSD_FOPEN_READ : OSD_FOPEN_WRITE);
 
 	return INIT_PASS;
 }
@@ -439,18 +433,31 @@ static unsigned short apexc_colortable[] =
 #define APEXC_PALETTE_SIZE sizeof(apexc_palette)/3
 #define APEXC_COLORTABLE_SIZE sizeof(apexc_colortable)/2
 
-static struct mame_bitmap *apexc_bitmap1;
-static struct mame_bitmap *apexc_bitmap2;
+static struct mame_bitmap *apexc_bitmap;
+
+enum
+{
+	/* size and position of panel window */
+	panel_window_width = 256,
+	panel_window_height = 64,
+	panel_window_offset_x = 0,
+	panel_window_offset_y = 0,
+	/* size and position of teletyper window */
+	teletyper_window_width = 256,
+	teletyper_window_height = 128,
+	teletyper_window_offset_x = 0,
+	teletyper_window_offset_y = panel_window_height
+};
 
 static const struct rectangle panel_window =
 {
-	0,	256-1,	/* min_x, max_x */
-	0,	64-1,	/* min_y, max_y */
+	panel_window_offset_x,	panel_window_offset_x+panel_window_width-1,	/* min_x, max_x */
+	panel_window_offset_y,	panel_window_offset_y+panel_window_height-1,/* min_y, max_y */
 };
 static const struct rectangle teletyper_window =
 {
-	0,	256-1,	/* min_x, max_x */
-	64,	192-1,	/* min_y, max_y */
+	teletyper_window_offset_x,	teletyper_window_offset_x+teletyper_window_width-1,	/* min_x, max_x */
+	teletyper_window_offset_y,	teletyper_window_offset_y+teletyper_window_height-1,/* min_y, max_y */
 };
 enum
 {
@@ -458,8 +465,8 @@ enum
 };
 static const struct rectangle teletyper_scroll_clear_window =
 {
-	0,	256-1,	/* min_x, max_x */
-	192-teletyper_scroll_step,	192-1,	/* min_y, max_y */
+	teletyper_window_offset_x,	teletyper_window_offset_x+teletyper_window_width-1,	/* min_x, max_x */
+	teletyper_window_offset_y+teletyper_window_height-teletyper_scroll_step,	teletyper_window_offset_y+teletyper_window_height-1,	/* min_y, max_y */
 };
 static const int var_teletyper_scroll_step = - teletyper_scroll_step;
 
@@ -475,12 +482,10 @@ static PALETTE_INIT( apexc )
 
 static VIDEO_START( apexc )
 {
-	if ((apexc_bitmap1 = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height)) == NULL)
-		return 1;
-	if ((apexc_bitmap2 = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height)) == NULL)
+	if ((apexc_bitmap = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height)) == NULL)
 		return 1;
 
-	fillbitmap(apexc_bitmap1, Machine->pens[0], &/*Machine->visible_area*/teletyper_window);
+	fillbitmap(apexc_bitmap, Machine->pens[0], &/*Machine->visible_area*/teletyper_window);
 	return 0;
 }
 
@@ -518,9 +523,9 @@ static void video_update_apexc(struct mame_bitmap *bitmap, const struct rectangl
 {
 	int i;
 	char the_char;
-	/*int full_refresh = get_vh_global_attribute_changed();
 
-	if (full_refresh)*/
+
+	/*if (full_refresh)*/
 	{
 		fillbitmap(bitmap, Machine->pens[0], &/*Machine->visible_area*/panel_window);
 		apexc_draw_string(bitmap, "power", 8, 0, 0);
@@ -528,7 +533,7 @@ static void video_update_apexc(struct mame_bitmap *bitmap, const struct rectangl
 		apexc_draw_string(bitmap, "data :", 0, 24, 0);
 	}
 
-	copybitmap(bitmap, apexc_bitmap1, 0, 0, 0, 0, &teletyper_window, TRANSPARENCY_NONE, 0);
+	copybitmap(bitmap, apexc_bitmap, 0, 0, 0, 0, &teletyper_window, TRANSPARENCY_NONE, 0);
 
 
 	apexc_draw_led(bitmap, 0, 0, 1);
@@ -559,17 +564,16 @@ static void apexc_teletyper_init(void)
 
 static void apexc_teletyper_linefeed(void)
 {
-	struct mame_bitmap *tmp;
+	UINT8 buf[teletyper_window_width];
+	int y;
 
-	copyscrollbitmap(apexc_bitmap2, apexc_bitmap1, 0, NULL, 1, &var_teletyper_scroll_step,
-						&Machine->visible_area, TRANSPARENCY_NONE, 0);
+	for (y=teletyper_window_offset_y; y<teletyper_window_offset_y+teletyper_window_height-teletyper_scroll_step; y++)
+	{
+		extract_scanline8(apexc_bitmap, teletyper_window_offset_x, y+teletyper_scroll_step, teletyper_window_width, buf);
+		draw_scanline8(apexc_bitmap, teletyper_window_offset_x, y, teletyper_window_width, buf, Machine->pens, -1);
+	}
 
-	fillbitmap(apexc_bitmap2, Machine->pens[0], &teletyper_scroll_clear_window);
-
-	/* swap apexc_bitmap1 & apexc_bitmap2 (goofy, but faster than calling copybitmap) */
-	tmp = apexc_bitmap1;
-	apexc_bitmap1 = apexc_bitmap2;
-	apexc_bitmap2 = tmp;
+	fillbitmap(apexc_bitmap, Machine->pens[0], &teletyper_scroll_clear_window);
 }
 
 static void apexc_teletyper_putchar(int character)
@@ -636,7 +640,7 @@ static void apexc_teletyper_putchar(int character)
 		/* print character */
 		buffer[0] = ascii_table[letters][character];	/* lookup ASCII equivalent in table */
 		buffer[1] = '\0';								/* terminate string */
-		apexc_draw_string(apexc_bitmap1, buffer, 8*pos, 176, 0);	/* print char */
+		apexc_draw_string(apexc_bitmap, buffer, 8*pos, 176, 0);	/* print char */
 		pos++;											/* step carriage forward */
 
 		break;
@@ -844,7 +848,8 @@ static const struct IODevice io_apexc[] =
 		IO_CYLINDER,			/* type */
 		1,						/* count */
 		"apc\0",				/* file extensions */
-		IO_RESET_ALL,			/* reset if file changed */
+		IO_RESET_CPU,			/* reset if file changed */
+		OSD_FOPEN_RW_OR_READ,		/* open mode */
 		NULL,					/* id */
 		apexc_cylinder_init,	/* init */
 		apexc_cylinder_exit,	/* exit */
@@ -864,6 +869,7 @@ static const struct IODevice io_apexc[] =
 		2,						/* count */
 		"tap\0",				/* file extensions */
 		IO_RESET_NONE,			/* reset if file changed */
+		OSD_FOPEN_NONE,			/* open mode */
 		NULL,					/* id */
 		apexc_tape_init,		/* init */
 		apexc_tape_exit,		/* exit */
@@ -890,6 +896,9 @@ ROM_START(apexc)
 		/* space filled with our font */
 ROM_END
 
-/*		YEAR	NAME		PARENT	MACHINE		INPUT	INIT	COMPANY		FULLNAME */
-/*COMP( c. 1951,	apexc53,	0,		apexc53,	apexc,	apexc,	"Booth",	"APEXC (as described in 1953)" )*/
-COMP( 1955,	apexc,		/*apexc53*/0,		apexc,		apexc,	apexc,	"Booth",	"APEXC (as described in 1957)" )
+SYSTEM_CONFIG_START(apexc)
+SYSTEM_CONFIG_END
+
+/*		   YEAR		NAME		PARENT			MACHINE		INPUT	INIT	CONFIG	COMPANY		FULLNAME */
+/*COMP( c. 1951,	apexc53,	0,				apexc53,	apexc,	apexc,	apexc,	"Booth",	"APEXC (as described in 1953)" )*/
+COMP(      1955,	apexc,		/*apexc53*/0,	apexc,		apexc,	apexc,	apexc,	"Booth",	"APEXC (as described in 1957)" )

@@ -27,24 +27,23 @@ rom/ram selection
 #include "includes/nec765.h"
 #include "includes/dsk.h"
 #include "cassette.h"
-
-
+#include "image.h"
 
 static unsigned char *snapshot = NULL;
 static int snapshot_loaded = 0;
 
-int amstrad_floppy_init(int id)
+int amstrad_floppy_init(int id, void *fp, int open_mode)
 {
-	if (device_filename(IO_FLOPPY, id)==NULL)
+	if (!image_exists(IO_FLOPPY, id))
 		return INIT_PASS;
 
-	return dsk_floppy_load(id);
+	return dsk_floppy_load(id, fp, open_mode);
 }
 
 
 
 /* used to setup computer if a snapshot was specified */
-OPBASE_HANDLER( amstrad_opbaseoverride )
+static OPBASE_HANDLER( amstrad_opbaseoverride )
 {
 	/* clear op base override */
 	memory_set_opbase_handler(0,0);
@@ -82,19 +81,13 @@ void amstrad_setup_machine(void)
 
 
 
-int amstrad_cassette_init(int id)
+int amstrad_cassette_init(int id, void *fp, int open_mode)
 {
 	struct cassette_args args;
 	memset(&args, 0, sizeof(args));
 	args.create_smpfreq = 22050;	/* maybe 11025 Hz would be sufficient? */
-	return cassette_init(id, &args);
+	return cassette_init(id, fp, open_mode, &args);
 }
-
-void amstrad_cassette_exit(int id)
-{
-	device_close(IO_CASSETTE, id);
-}
-
 
 /* load CPCEMU style snapshots */
 void amstrad_handle_snapshot(unsigned char *pSnapshot)
@@ -233,13 +226,9 @@ void amstrad_handle_snapshot(unsigned char *pSnapshot)
 	Amstrad_RethinkMemory();
 }
 
-/* load image */
-int amstrad_load(int type, int id, unsigned char **ptr)
+/* load image (i.e. open image, allocate buffer, load the entire image in buffer, close image) */
+static int amstrad_load(int type, int id, void *file, unsigned char **ptr)
 {
-	void *file;
-
-	file = image_fopen(type, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-
 	if (file)
 	{
 		int datasize;
@@ -277,18 +266,18 @@ int amstrad_load(int type, int id, unsigned char **ptr)
 }
 
 /* load snapshot */
-int amstrad_snapshot_load(int id)
+int amstrad_snapshot_load(int id, void *fp, int open_mode)
 {
 	/* machine can be started without a snapshot */
 	/* if filename not specified, then init is ok */
-	if (device_filename(IO_SNAPSHOT, id)==NULL)
+	if (fp == NULL)
 		return INIT_PASS;
 
 	/* filename specified */
 	snapshot_loaded = 0;
 
 	/* load and verify image */
-	if (amstrad_load(IO_SNAPSHOT,id,&snapshot))
+	if (amstrad_load(IO_SNAPSHOT, id, fp, &snapshot))
 	{
 		snapshot_loaded = 1;
 		if (memcmp(snapshot, "MV - SNA", 8)==0)
@@ -306,13 +295,12 @@ void amstrad_snapshot_exit(int id)
 		free(snapshot);
 
 	snapshot_loaded = 0;
-
 }
 
-int	amstrad_plus_cartridge_init(int id)
+int	amstrad_plus_cartridge_init(int id, void *fp, int open_mode)
 {
 	/* cpc+ requires a cartridge to be inserted to run */
-	if (device_filename(IO_CARTSLOT, id)==NULL)
+	if (!image_exists(IO_CARTSLOT, id))
 		return INIT_FAIL;
 
 	return INIT_PASS;
@@ -320,8 +308,5 @@ int	amstrad_plus_cartridge_init(int id)
 
 void amstrad_plus_cartridge_exit(int id)
 {
-
-
-
 }
 

@@ -1,6 +1,7 @@
 /*
-	990_hd.c: emulation of a generic ti990 hard disk controller, for use with TILINE-based
-	TI990 systems (TI990/10, /12, /12LR, /10A, Business system 300 and 600).
+	990_hd.c: emulation of a generic ti990 hard disk controller, for use with
+	TILINE-based TI990 systems (TI990/10, /12, /12LR, /10A, Business system 300
+	and 300A).
 
 	This core will emulate the common feature set found in every disk controller.
 	Most controllers support additional features, but are still compatible with
@@ -18,21 +19,25 @@
 #include "driver.h"
 
 #include "990_hd.h"
+#include "image.h"
 
 static void update_interrupt(void);
 
-/* max disk units per controller: 4 is the protocol limit, but it may be overriden if more
-than one controller is used */
+/* max disk units per controller: 4 is the protocol limit, but it may be
+overriden if more than one controller is used */
 #define MAX_DISK_UNIT 4
 
-/* Max sector lenght is bytes.  Generally 256, except for a few older disk units which use
-288-byte-long sectors, and SCSI units which generally use standard 512-byte-long sectors. */
-/* I chose a limit of 512.  No need to use more until someone write CD-ROMs for TI990. */
+/* Max sector lenght is bytes.  Generally 256, except for a few older disk
+units which use 288-byte-long sectors, and SCSI units which generally use
+standard 512-byte-long sectors. */
+/* I chose a limit of 512.  No need to use more until someone write CD-ROMs
+for TI990. */
 #define MAX_SECTOR_SIZE 512
 
 /* disk image header */
-/* I had rather I used MAME's harddisk.c image handler, but this format only supports
-512-byte-long sectors (whereas TI990 generally uses 256- or 288-byte-long sectors). */
+/* I had rather I used MAME's harddisk.c image handler, but this format only
+supports 512-byte-long sectors (whereas TI990 generally uses 256- or
+288-byte-long sectors). */
 typedef struct disk_image_header
 {
 	UINT8 cylinders[4];			/* number of cylinders on hard disk (big-endian) */
@@ -140,11 +145,12 @@ INLINE UINT32 get_bigendian_uint32(UINT8 *base)
 /*
 	Initialize hard disk unit and open a hard disk image
 */
-int ti990_hd_init(int id)
+int ti990_hd_init(int id, void *fp, int open_mode)
 {
 	hd_unit_t *d;
 	disk_image_header header;
 	int bytes_read;
+
 
 	if ((id < 0) || (id >= MAX_DISK_UNIT))
 		return INIT_FAIL;
@@ -152,17 +158,14 @@ int ti990_hd_init(int id)
 	d = &hdc.d[id];
 	memset(d, 0, sizeof(*d));
 
-	if (!device_filename(IO_HARDDISK,id))
+	if (fp == NULL)
 		return INIT_PASS;
 
-	d->fd = image_fopen(IO_HARDDISK, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_RW);
-	if (!d->fd)
-	{
-		d->fd = image_fopen(IO_HARDDISK, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-		if (!d->fd)
-			goto error;
-		d->wp = 1;
-	}
+	/* open file */
+	d->fd = fp;
+	/* tell whether the image is writable */
+	d->wp = ! ((d->fd) && is_effective_mode_writable(open_mode));
+
 	d->unsafe = 1;
 	/* set attention line */
 	hdc.w[0] |= (0x80 >> id);
@@ -189,11 +192,6 @@ int ti990_hd_init(int id)
 	}
 
 	return INIT_PASS;
-
-error:
-	if (d->fd)
-		osd_fclose(d->fd);
-	return INIT_FAIL;
 }
 
 /*

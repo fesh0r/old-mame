@@ -211,28 +211,11 @@ ROM_START( astrocde )
     ROM_LOAD( "astro.bin",  0x0000, 0x2000, 0xebc77f3a )
 ROM_END
 
-static const struct IODevice io_astrocde[] = {
-    {
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"bin\0",            /* file extensions */
-		IO_RESET_CPU,		/* reset if file changed */
-        NULL,   			/* id */
-		astrocade_load_rom, /* init */
-		NULL,				/* exit */
-		NULL,				/* info */
-		NULL,               /* open */
-		NULL,               /* close */
-		NULL,               /* status */
-		NULL,               /* seek */
-		NULL,				/* tell */
-        NULL,               /* input */
-		NULL,               /* output */
-		NULL,               /* input_chunk */
-		NULL                /* output_chunk */
-	},
-	{ IO_END }
-};
+#define io_astrocde	io_NULL
+
+SYSTEM_CONFIG_START(astrocde)
+	CONFIG_DEVICE_CARTSLOT( 1, "bin\0", astrocade_load_rom, NULL, NULL)
+SYSTEM_CONFIG_END
 
 /***************************************************************************
 
@@ -240,6 +223,6 @@ static const struct IODevice io_astrocde[] = {
 
 ***************************************************************************/
 
-/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	  COMPANY	FULLNAME */
-CONS( 1978, astrocde, 0,		astrocde, astrocde, 0,		  "Bally Manufacturing", "Bally Pro Arcade/Astrocade")
+/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	CONFIG		COMPANY	FULLNAME */
+CONS( 1978, astrocde, 0,		astrocde, astrocde, 0,		astrocde,	"Bally Manufacturing", "Bally Pro Arcade/Astrocade")
 

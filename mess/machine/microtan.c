@@ -14,6 +14,7 @@
 
 #include "includes/microtan.h"
 #include "cassette.h"
+#include "image.h"
 
 #ifndef VERBOSE
 #define VERBOSE 0
@@ -347,7 +348,7 @@ static struct via6522_interface via6522[2] =
     }
 };
 
-void microtan_read_cassette(int param)
+static void microtan_read_cassette(int param)
 {
     int level = device_input(IO_CASSETTE,0);
 
@@ -441,7 +442,7 @@ WRITE_HANDLER ( microtan_bffx_w )
     }
 }
 
-int microtan_cassette_init(int id)
+int microtan_cassette_init(int id, void *fp, int open_mode)
 {
 	struct cassette_args args;
 	memset(&args, 0, sizeof(args));
@@ -449,12 +450,7 @@ int microtan_cassette_init(int id)
 	args.chunk_samples = 8;
 	args.input_smpfreq = Machine->sample_rate;
 	args.create_smpfreq = Machine->sample_rate;
-	return cassette_init(id, &args);
-}
-
-void microtan_cassette_exit(int id)
-{
-    device_close(IO_CASSETTE,id);
+	return cassette_init(id, fp, open_mode, &args);
 }
 
 static int microtan_varify_snapshot(UINT8 *data, int size)
@@ -476,18 +472,15 @@ static int microtan_varify_snapshot(UINT8 *data, int size)
     return IMAGE_VERIFY_FAIL;
 }
 
-int microtan_snapshot_init(int id)
+int microtan_snapshot_init(int id, void *file, int open_mode)
 {
-    void *file;
-
 	/* If no image specified, I guess we should start! */
-	if (!device_filename(IO_SNAPSHOT,id) || !strlen(device_filename(IO_SNAPSHOT,id) ))
+	if (file == NULL)
 	{
 		logerror("warning: no sanpshot specified!\n");
 		return INIT_PASS;
 	}
 
-    file = image_fopen(IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE, 0);
     if (file)
     {
         snapshot_size = osd_fsize(file);
@@ -516,7 +509,7 @@ void microtan_snapshot_exit(int id)
     snapshot_size = 0;
 }
 
-int parse_intel_hex(char *src)
+static int parse_intel_hex(char *src)
 {
     char line[128];
     int row = 0, column = 0, last_addr = 0, last_size = 0;
@@ -597,7 +590,7 @@ int parse_intel_hex(char *src)
     return INIT_PASS;
 }
 
-int parse_zillion_hex(char *src)
+static int parse_zillion_hex(char *src)
 {
     char line[128];
     int parsing = 0, row = 0, column = 0;
@@ -680,18 +673,15 @@ int parse_zillion_hex(char *src)
     return INIT_PASS;
 }
 
-int microtan_hexfile_init(int id)
+int microtan_hexfile_init(int id, void *file, int open_mode)
 {
-    void *file;
-
 	/* If no image specified, I guess we should start! */
-	if (!device_filename(IO_QUICKLOAD,id) || !strlen(device_filename(IO_QUICKLOAD,id) ))
+	if (file == NULL)
 	{
 		logerror("warning: no quikload specified!\n");
 		return INIT_PASS;
 	}
 
-    file = image_fopen(IO_QUICKLOAD, id, OSD_FILETYPE_IMAGE, 0);
     if (file)
     {
         int size = osd_fsize(file);

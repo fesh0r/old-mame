@@ -25,9 +25,9 @@ UINT8 STAT; 			/* returned when port 249 read */
 
 extern UINT8 *sam_screen;
 
-int coupe_floppy_init(int id)
+int coupe_floppy_init(int id, void *fp, int open_mode)
 {
-	if (basicdsk_floppy_init(id)==INIT_PASS)
+	if (basicdsk_floppy_init(id, fp, open_mode)==INIT_PASS)
 	{
 
 		basicdsk_set_geometry(id, 80, 2, 10, 512, 1, 0);
@@ -152,7 +152,7 @@ MACHINE_INIT( coupe )
  *
  *************************************/
 
-void coupe_nmi_generate(int param)
+static void coupe_nmi_generate(int param)
 {
 	cpu_set_irq_line(0, IRQ_LINE_NMI, PULSE_LINE);
 }

@@ -4,7 +4,8 @@
 
   File to handle the sound emulation of the Nintendo Super NES.
 
-  Anthony kruize
+  Anthony Kruize
+  Based on the original MESS driver by Lee Hammerton (aka Savoury Snax)
 
   Just a shell for the moment.
 
@@ -13,6 +14,7 @@
 #include "includes/snes.h"
 
 static int channel;
+UINT8 fakeapu_port[4] = { 0xaa, 0xbb, 0x00, 0x00 };	/* This is just temporary */
 
 int snes_sh_start( const struct MachineSound *driver )
 {
@@ -81,7 +83,7 @@ void snes_sh_update( int param, INT16 **buffer, int length )
 	}
 }
 
-UINT16 snes_dsp_r_io( UINT16 offset )
+static UINT16 snes_dsp_r_io( UINT16 offset )
 {
 	switch( offset )
 	{
@@ -89,7 +91,7 @@ UINT16 snes_dsp_r_io( UINT16 offset )
 	return 0xff;
 }
 
-void snes_dsp_w_io( UINT16 offset, UINT8 data )
+static void snes_dsp_w_io( UINT16 offset, UINT8 data )
 {
 	switch( offset )
 	{
@@ -173,4 +175,102 @@ WRITE_HANDLER( spc_w_io )
 			spc_ram[0xf0 + offset] = data;
 			break;
 	}
+}
+
+/* --- Fake APU stuff --- */
+/* This is here until I can get the 65816 and SPC700 to stay in sync with each
+ * other. */
+
+void snes_fakeapu_w_port( UINT8 port, UINT8 data )
+{
+	if( port == 0 )
+	{
+		fakeapu_port[2]++;
+		fakeapu_port[3]++;
+	}
+
+	fakeapu_port[port] = data;
+}
+
+UINT8 snes_fakeapu_r_port( UINT8 port )
+{
+/*  G65816_PC=1, G65816_S, G65816_P, G65816_A, G65816_X, G65816_Y,
+ *  G65816_PB, G65816_DB, G65816_D, G65816_E,
+ *  G65816_NMI_STATE, G65816_IRQ_STATE
+ */
+
+	static UINT8 portcount[2] = {0,0};
+	UINT8 retVal = 0;
+
+	switch( port )
+	{
+		case 0:
+		case 1:
+		{
+			switch( portcount[0] )
+			{
+				case 0:
+					retVal = fakeapu_port[port];
+					break;
+				case 1:
+					retVal = activecpu_get_reg(4) & 0xFF;
+					break;
+				case 2:
+					retVal = (activecpu_get_reg(4) >> 8) & 0xFF;
+					break;
+				case 3:
+					retVal = activecpu_get_reg(5) & 0xFF;
+					break;
+				case 4:
+					retVal = (activecpu_get_reg(5) >> 8) & 0xFF;
+					break;
+				case 5:
+					retVal = activecpu_get_reg(6) & 0xFF;
+					break;
+				case 6:
+					retVal = (activecpu_get_reg(6) >> 8) & 0xFF;
+					break;
+				case 7:
+					retVal = 0xAA;
+					break;
+				case 8:
+					retVal = 0xBB;
+					break;
+				case 9:
+				case 10:
+					retVal = rand() & 0xFF;
+					break;
+			}
+			portcount[0]++;
+			if( portcount[0] > 10 )
+				portcount[0] = 0;
+			return retVal;
+		} break;
+		case 2:
+		case 3:
+		{
+			switch( portcount[1] )
+			{
+				case 0:
+					retVal = fakeapu_port[port];
+					break;
+				case 1:
+					retVal = activecpu_get_reg(4) & 0xFF;
+					break;
+				case 2:
+					retVal = (activecpu_get_reg(4) >> 8) & 0xFF;
+					break;
+				case 3:
+				case 4:
+					retVal = rand() & 0xFF;
+					break;
+			}
+			portcount[1]++;
+			if( portcount[1] > 4 )
+				portcount[1] = 0;
+			return retVal;
+		} break;
+	}
+
+	return fakeapu_port[port];
 }

@@ -267,10 +267,10 @@ ROM_START(aquarius)
 	ROM_LOAD("aq2.chr", 0x0000, 0x0800, BADCRC(0x0b3edeed))
 ROM_END
 
-static	const	struct	IODevice	io_aquarius[] =
-{
-	{ IO_END }
-};
+#define io_aquarius		io_NULL
 
-/*		YEAR	NAME		PARENT		MACHINE		INPUT		INIT	COMPANY		FULLNAME */
-COMP(	1983,	aquarius,	0,			aquarius,	aquarius,	0,		"Mattel",	"Aquarius" )
+SYSTEM_CONFIG_START(aquarius)
+SYSTEM_CONFIG_END
+
+/*		YEAR	NAME		PARENT		MACHINE		INPUT		INIT	CONFIG		COMPANY		FULLNAME */
+COMP(	1983,	aquarius,	0,			aquarius,	aquarius,	0,		aquarius,	"Mattel",	"Aquarius" )

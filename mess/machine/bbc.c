@@ -17,7 +17,7 @@
 #include "includes/upd7002.h"
 #include "includes/i8271.h"
 #include "includes/basicdsk.h"
-
+#include "image.h"
 
 int startbank;
 
@@ -745,7 +745,7 @@ bbcb_user_via= {
 BBC Joystick Support
 **************************************/
 
-int BBC_get_analogue_input(int channel_number)
+static int BBC_get_analogue_input(int channel_number)
 {
 	switch(channel_number)
 	{
@@ -766,7 +766,7 @@ int BBC_get_analogue_input(int channel_number)
 	return 0;
 }
 
-void BBC_uPD7002_EOC(int data)
+static void BBC_uPD7002_EOC(int data)
 {
 	via_0_cb1_w(0,data);
 }
@@ -781,9 +781,9 @@ BBC_uPD7002= {
    load floppy disc
 ***************************************/
 
-int bbc_floppy_init(int id)
+int bbc_floppy_init(int id, void *fp, int open_mode)
 {
-	if (basicdsk_floppy_init(id)==INIT_PASS)
+	if (basicdsk_floppy_init(id, fp, open_mode)==INIT_PASS)
 	{
 		/* sector id's 0-9 */
 		/* drive, tracks, heads, sectors per track, sector length, dir_sector, dir_length, first sector id */
@@ -801,7 +801,7 @@ int bbc_floppy_init(int id)
 
 static int previous_i8271_int_state;
 
-void	bbc_i8271_interrupt(int state)
+static void	bbc_i8271_interrupt(int state)
 {
 	/* I'm assuming that the nmi is edge triggered */
 	/* a interrupt from the fdc will cause a change in line state, and
@@ -904,7 +904,7 @@ density disc image
 */
 
 
-void bbc_wd177x_callback(int event)
+static void bbc_wd177x_callback(int event)
 {
 	int state;
 	/* wd177x_IRQ_SET and latch bit 4 (nmi_enable) are NAND'ED together
@@ -976,7 +976,7 @@ void bbc_wd177x_callback(int event)
 }
 
 
-void bbc_wd177x_status_w(int offset,int data)
+static void bbc_wd177x_status_w(int offset,int data)
 {
 	int drive;
 	int density;
@@ -1070,30 +1070,21 @@ WRITE_HANDLER ( bbc_wd1770_write )
    BBC B Rom loading functions
 ***************************************/
 
-int bbcb_load_rom(int id)
+int bbcb_load_rom(int id, void *fp, int open_mode)
 {
 	UINT8 *mem = memory_region (REGION_USER1);
-	FILE *fp;
 	int size, read;
 	int addr = 0;
 
-
-	if (device_filename(IO_CARTSLOT,id)==NULL) return 0;
-
-	fp = (FILE*)image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
-
-	if (!fp)
-	{
-		logerror("%s file not found\n", device_filename(IO_CARTSLOT,id));
-		return 1;
-	}
+	if (fp == NULL)
+		return INIT_PASS;
 
 	size = osd_fsize (fp);
 
     addr= 0x8000+(0x4000*id);
 
 
-	logerror("loading rom %s at %.4x size:%.4x\n",device_filename(IO_CARTSLOT,id), addr, size);
+	logerror("loading rom %s at %.4x size:%.4x\n",image_filename(IO_CARTSLOT,id), addr, size);
 
 
 	switch (size)

@@ -20,8 +20,7 @@
 
 #include "driver.h"
 #include "includes/apple2.h"
-
-extern void apple2_floppy_exit(int id);
+#include "image.h"
 
 #define TOTAL_TRACKS		35 /* total number of tracks we support, can be 40 */
 #define NIBBLE_SIZE			374
@@ -84,15 +83,14 @@ void apple2_slot6_stop (void)
 	apple2_floppy_exit(1);
 }
 
-int apple2_floppy_init(int id)
+int apple2_floppy_init(int id, void *f, int open_mode)
 {
-    void *f;
 	int t, s;
 	int pos;
 	int volume;
 	int i;
 
-	if (device_filename(IO_FLOPPY,id) == NULL)
+	if (f == NULL)
 		return INIT_PASS;
 
     a2_drives[id].data = malloc (NIBBLE_SIZE*16*TOTAL_TRACKS);
@@ -108,13 +106,6 @@ int apple2_floppy_init(int id)
 	a2_drives[id].volume = volume = 254;
 	a2_drives[id].bytepos = 0;
 	a2_drives[id].trackpos = 0;
-
-	f = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-	if (f==NULL)
-	{
-		logerror("Couldn't open image.\n");
-		return INIT_FAIL;
-	}
 
 	for (t = 0; t < TOTAL_TRACKS; t ++)
 	{

@@ -19,17 +19,6 @@ extern "C" {
  * c128
  * c65*/
 
-#if 0
-#include "snprintf.h"
-//#else
-/* quick (and unsafe as sprintf) snprintf */
-#define snprintf cbm_snprintf
-int DECL_SPEC cbm_snprintf (char *str, size_t size, const char *format,...);
-#endif
-
-#define memset16 cbm_memset16
-void *cbm_memset16 (void *dest, int value, size_t size);
-
 /**************************************************************************
  * Logging
  * call the XXX_LOG with XXX_LOG("info",(errorlog,"%fmt\n",args));
@@ -77,8 +66,7 @@ typedef int bool;
 #endif
 #endif
 
-void cbm_quick_exit (int id);
-int cbm_quick_init (int id);
+int cbm_quick_init (int id, void *fp, int open_mode);
 /* pet with basic 1 */
 int cbm_pet1_quick_open (int id, int mode, void *arg);
 int cbm_pet_quick_open (int id, int mode, void *arg);
@@ -93,9 +81,10 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
    1,				   /* count */\
    "p00\0prg\0",       /*file extensions */\
    IO_RESET_CPU,	   /* reset if file changed */\
+	OSD_FOPEN_READ,		/* open mode */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
-   cbm_quick_exit,     /* exit */\
+   NULL,			  /* exit */\
    NULL,               /* info */\
    cbm_pet1_quick_open,     /* open */\
    NULL,               /* close */\
@@ -113,9 +102,10 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
    1,                                      /* count */\
    "p00\0prg\0",            /*file extensions */\
    IO_RESET_CPU,	   /* reset if file changed */\
+	OSD_FOPEN_READ,		/* open mode */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
-   cbm_quick_exit,     /* exit */\
+   NULL,				/* exit */\
    NULL,               /* info */\
    cbm_pet_quick_open,     /* open */\
    NULL,               /* close */\
@@ -133,9 +123,10 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
    1,                                      /* count */\
    "p00\0prg\0",            /*file extensions */\
    IO_RESET_CPU,	   /* reset if file changed */\
+	OSD_FOPEN_READ,		/* open mode */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
-   cbm_quick_exit,     /* exit */\
+   NULL,				/* exit */\
    NULL,               /* info */\
    cbm_quick_open,     /* open */\
    NULL,               /* close */\
@@ -153,9 +144,10 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
    1,                                      /* count */\
    "p00\0prg\0",            /*file extensions */\
    IO_RESET_CPU,	   /* reset if file changed */\
+	OSD_FOPEN_READ,		/* open mode */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
-   cbm_quick_exit,     /* exit */\
+   NULL,				 /* exit */\
    NULL,               /* info */\
    cbmb_quick_open,     /* open */\
    NULL,               /* close */\
@@ -173,9 +165,10 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
    1,                                      /* count */\
    "p00\0prg\0",            /*file extensions */\
    IO_RESET_CPU,	   /* reset if file changed */\
+	OSD_FOPEN_READ,		/* open mode */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
-   cbm_quick_exit,     /* exit */\
+   NULL,				/* exit */\
    NULL,               /* info */\
    cbm500_quick_open,     /* open */\
    NULL,               /* close */\
@@ -193,9 +186,10 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
    1,                                      /* count */\
    "p00\0prg\0",            /*file extensions */\
    IO_RESET_CPU,	   /* reset if file changed */\
+	OSD_FOPEN_READ,		/* open mode */\
    NULL,               /* id */\
    cbm_quick_init,     /* init */\
-   cbm_quick_exit,     /* exit */\
+   NULL,				 /* exit */\
    NULL,               /* info */\
    cbm_c65_quick_open,     /* open */\
    NULL,               /* close */\
@@ -209,7 +203,7 @@ int cbm_c65_quick_open (int id, int mode, void *arg);
 
 /* use to functions to parse, load the rom images into memory
    and then use the cbm_rom var */
-int cbm_rom_init(int id);
+int cbm_rom_init(int id, void *fp, int open_mode);
 void cbm_rom_exit(int id);
 
 typedef struct {
@@ -225,25 +219,8 @@ extern INT8 cbm_c64_game;
 extern INT8 cbm_c64_exrom;
 extern CBM_ROM cbm_rom[0x20];
 
-#define IODEVICE_CBM_ROM(extensions) \
-{\
-   IO_CARTSLOT,        /* type */\
-   2,                  /* in reality 1 *//* count */\
-   extensions,            /*file extensions */\
-   IO_RESET_ALL,	   /* reset if file changed */\
-   0, \
-   cbm_rom_init,       /* init */\
-   cbm_rom_exit,       /* exit */\
-   NULL,               /* info */\
-   NULL,               /* open */\
-   NULL,               /* close */\
-   NULL,               /* status */\
-   NULL,               /* seek */\
-   NULL,               /* input */\
-   NULL,               /* output */\
-   NULL,               /* input_chunk */\
-   NULL                /* output_chunk */\
-}
+#define CONFIG_DEVICE_CBM_CARTSLOT(file_extensions) \
+	CONFIG_DEVICE_CARTSLOT(2, (file_extensions), cbm_rom_init, cbm_rom_exit, NULL)
 
 /* prg file format
  * sfx file format

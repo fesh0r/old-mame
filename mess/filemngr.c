@@ -1,6 +1,6 @@
 #include "driver.h"
-#include <signal.h>
 #include "utils.h"
+#include "image.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
@@ -214,7 +214,7 @@ enum {
 } FILESELECT_ENTRY_TYPE;
 
 
-char *fs_dupe(const char *src, int len)
+static char *fs_dupe(const char *src, int len)
 {
 	char *dst;
 	int display_length;
@@ -241,7 +241,7 @@ char *fs_dupe(const char *src, int len)
 }
 
 
-void fs_free(void)
+static void fs_free(void)
 {
 	if (fs_chunk > 0)
 	{
@@ -267,7 +267,7 @@ void fs_free(void)
 	}
 }
 
-int fs_alloc(void)
+static int fs_alloc(void)
 {
 	if (fs_total < fs_chunk)
 	{
@@ -299,7 +299,7 @@ int fs_alloc(void)
 	if (!fs_item || !fs_subitem || !fs_flags || !fs_types || !fs_order)
 	{
 		logerror("failed to allocate fileselect buffers!\n");
-		raise(SIGABRT);
+		exit(-1);
 	}
 
 	fs_order[fs_total] = fs_total;
@@ -698,18 +698,14 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 	int types[40];
 	int ids[40];
 	char flag[40];
-
 	int sel, total, arrowize, type, id;
-
-	const struct IODevice *dev = Machine->gamedrv->dev;
+	const struct IODevice *dev;
 
 	sel = selected - 1;
-
-
 	total = 0;
 
 	/* Cycle through all devices for this system */
-	while(dev->type != IO_END)
+	for(dev = device_first(Machine->gamedrv); dev; dev = device_next(Machine->gamedrv, dev))
 	{
 		type = dev->type;
 		for (id = 0; id < dev->count; id++)
@@ -718,7 +714,7 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 
 			menu_item[total] = (name) ? name : "---";
 
-			name = device_filename(type, id);
+			name = image_filename(type, id);
 
 			menu_subitem[total] = (name) ? name : "---";
 
@@ -727,16 +723,14 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 			ids[total] = id;
 
 			total++;
-
 		}
-		dev++;
 	}
 
 
 	/* if the fileselect() mode is active */
 	if (sel & (2 << SEL_BITS))
 	{
-		sel = fileselect(bitmap, selected & ~(2 << SEL_BITS), device_filename(types[previous_sel & SEL_MASK], ids[previous_sel & SEL_MASK]));
+		sel = fileselect(bitmap, selected & ~(2 << SEL_BITS), image_filename(types[previous_sel & SEL_MASK], ids[previous_sel & SEL_MASK]));
 		if (sel != 0 && sel != -1 && sel!=-2)
 			return sel | (2 << SEL_BITS);
 
@@ -748,7 +742,7 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 			previous_sel = previous_sel & SEL_MASK;
 
 			/* attempt a filename change */
-			device_filename_change(types[previous_sel], ids[previous_sel], entered_filename[0] ? entered_filename : NULL);
+			image_load(types[previous_sel], ids[previous_sel], entered_filename[0] ? entered_filename : NULL);
 		}
 
 		sel = previous_sel;
@@ -786,10 +780,7 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 		{
 			/* yes */
 			sel &= SEL_MASK;
-			if (strlen(name) == 0)
-				device_filename_change(types[sel], ids[sel], NULL);
-			else
-				device_filename_change(types[sel], ids[sel], name);
+			image_load(types[sel], ids[sel], NULL);
 		}
 
 		schedule_full_refresh();
@@ -822,7 +813,7 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 			if (os_sel == 1)
 			{
 				/* attempt a filename change */
-				device_filename_change(types[sel], ids[sel], entered_filename);
+				image_load(types[sel], ids[sel], entered_filename);
 			}
 		}
 		/* osd code won't handle it, lets use our clunky interface */

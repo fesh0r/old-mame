@@ -452,63 +452,21 @@ ROM_START(kc85_3)
 	ROM_LOAD("caos__e0.853", 0x12000, 0x2000, 0x52bc2199)
 ROM_END
 
+#define io_kc85_3	io_NULL
+#define io_kc85_4	io_NULL
+#define io_kc85_4d	io_NULL
 
+SYSTEM_CONFIG_START(kc85)
+	CONFIG_DEVICE_CASSETTE			(1, "",			kc_cassette_device_init)
+	CONFIG_DEVICE_QUICKLOAD			(	"kcc\0",	kc_quickload_load, NULL)
+SYSTEM_CONFIG_END
 
-#define KC85_IO \
-{ \
-   IO_QUICKLOAD,	   /* type */ \
-   1,				   /* count */ \
-   "kcc\0",       /*file extensions */ \
-   0,	   /* reset if file changed */ \
-   NULL,               /* id */ \
-   kc_quickload_load,     /* init */ \
-   NULL,     /* exit */ \
-   NULL,               /* info */ \
-   NULL,     /* open */ \
-   NULL,               /* close */ \
-   NULL,               /* status */ \
-   NULL,               /* seek */ \
-   NULL,               /* input */ \
-   NULL,               /* output */ \
-   NULL,               /* input_chunk */ \
-   NULL                /* output_chunk */ \
-}, \
-IO_CASSETTE_WAVE(1,"wav\0",NULL,kc_cassette_device_init,kc_cassette_device_exit)
+SYSTEM_CONFIG_START(kc85d)
+	CONFIG_IMPORT_FROM(kc85)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0",	kc85_floppy_init)
+SYSTEM_CONFIG_END
 
-
-static const struct IODevice io_kc85_4[] =
-{
-	KC85_IO,
-	{IO_END}
-};
-
-static const struct IODevice io_kc85_4d[] =
-{
-	KC85_IO,
-	{
-		IO_FLOPPY,				/* type */
-		4,						/* count */
-		"dsk\0",                /* file extensions */
-		IO_RESET_NONE,			/* reset if file changed */
-		0,
-		kc85_floppy_init, /* init */
-		basicdsk_floppy_exit,	/* exit */
-		NULL,					/* info */
-		NULL,					/* open */
-		NULL,					/* close */
-		floppy_status,			/* status */
-		NULL,					/* seek */
-		NULL,					/* tell */
-		NULL,					/* input */
-		NULL,					/* output */
-		NULL,					/* input_chunk */
-		NULL					/* output_chunk */
-	},
-	{IO_END}
-};
-#define io_kc85_3 io_kc85_4
-
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMPX( 1987, kc85_3,   0,     kc85_3,  kc85,        0,                "VEB Mikroelektronik", "KC 85/3", GAME_NOT_WORKING)
-COMPX( 1989, kc85_4,   kc85_3,     kc85_4,  kc85,        0,                "VEB Mikroelektronik", "KC 85/4", GAME_NOT_WORKING)
-COMPX( 1989, kc85_4d,  kc85_3,     kc85_4d,  kc85,        0,                "VEB Mikroelektronik", "KC 85/4 + Disk Interface Module (D004)", GAME_NOT_WORKING)
+/*     YEAR  NAME      PARENT   MACHINE  INPUT     INIT  CONFIG  COMPANY   FULLNAME */
+COMPX( 1987, kc85_3,   0,		kc85_3,  kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/3", GAME_NOT_WORKING)
+COMPX( 1989, kc85_4,   kc85_3,  kc85_4,  kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/4", GAME_NOT_WORKING)
+COMPX( 1989, kc85_4d,  kc85_3,  kc85_4d, kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/4 + Disk Interface Module (D004)", GAME_NOT_WORKING)

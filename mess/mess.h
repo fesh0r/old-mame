@@ -6,6 +6,9 @@
 #include "osdepend.h"
 #include "device.h"
 #include "driver.h"
+#include "image.h"
+
+#define MAX_DEV_INSTANCES 5
 
 #define LCD_FRAMES_PER_SECOND	30
 
@@ -80,9 +83,6 @@ extern int tapecontrol(struct mame_bitmap *bitmap, int selected);
 #define IPT_KEYBOARD	IPT_TILT
 /* driver.h - end */
 
-/* The wrapper for osd_fopen() */
-void *image_fopen(int type, int id, int filetype, int read_or_write);
-
 /* IODevice Initialisation return values.  Use these to determine if */
 /* the emulation can continue if IODevice initialisation fails */
 #define INIT_PASS 0
@@ -90,7 +90,13 @@ void *image_fopen(int type, int id, int filetype, int read_or_write);
 #define IMAGE_VERIFY_PASS 0
 #define IMAGE_VERIFY_FAIL 1
 
-/* possible values for osd_fopen() last argument
+/* handy functions for memory pools */
+void pool_init(void **pool);
+void pool_exit(void **pool);
+void *pool_malloc(void **pool, size_t size);
+char *pool_strdup(void **pool, const char *src);
+
+/* possible values for osd_fopen() last argument:
  * OSD_FOPEN_READ
  *	open existing file in read only mode.
  *	ZIP images can be opened only in this mode, unless
@@ -109,8 +115,33 @@ void *image_fopen(int type, int id, int filetype, int read_or_write);
  *	it shall be created. Used to 'format' new floppy or harddisk
  *	images from within the emulation. A driver might use this
  *	if both, OSD_FOPEN_RW and OSD_FOPEN_READ modes, failed.
+ *
+ * extra values for IODevice openmode field (modes are not supported by
+ * osd_fopen() yet, image_fopen_new emulates them):
+ * OSD_FOPEN_RW_OR_READ
+ *  open existing file in read/write mode.  If it fails, try to open it as
+ *  read-only.
+ * OSD_FOPEN_RW_CREATE_OR_READ
+ *  open existing file in read/write mode.  If it fails, try to open it as
+ *  read-only.  If it fails, try to create a new R/W image
+ * OSD_FOPEN_READ_OR_WRITE
+ *  open existing file in read-only mode if it exists.  If it does not, open
+ *  the file as write-only.  (used by wave.c)
+ * OSD_FOPEN_NONE
+ *  Leaves the open mode undefined: implies that image_fopen_custom() will be
+ *  called with the proper open mode (this style is deprecated and not
+ *  recommended, though it may still prove useful in some rare cases).
  */
-enum { OSD_FOPEN_READ, OSD_FOPEN_WRITE, OSD_FOPEN_RW, OSD_FOPEN_RW_CREATE };
+enum
+{
+	OSD_FOPEN_READ, OSD_FOPEN_WRITE, OSD_FOPEN_RW, OSD_FOPEN_RW_CREATE,
+	OSD_FOPEN_RW_OR_READ, OSD_FOPEN_RW_CREATE_OR_READ, OSD_FOPEN_READ_OR_WRITE,
+
+	OSD_FOPEN_NONE = -1
+};
+
+#define is_effective_mode_writable(mode) ((mode) != OSD_FOPEN_READ)
+#define is_effective_mode_create(mode) (((mode) == OSD_FOPEN_RW_CREATE) || ((mode) == OSD_FOPEN_WRITE))
 
 
 #ifdef MAX_KEYS
@@ -121,8 +152,7 @@ enum { OSD_FOPEN_READ, OSD_FOPEN_WRITE, OSD_FOPEN_RW, OSD_FOPEN_RW_CREATE };
 
 enum {
 	IO_RESET_NONE,	/* changing the device file doesn't reset anything 								*/
-	IO_RESET_CPU,	/* only reset the CPU 															*/
-	IO_RESET_ALL	/* restart the driver including audio/video 									*/
+	IO_RESET_CPU	/* only reset the CPU 															*/
 };
 
 #ifdef MAME_DEBUG
@@ -142,33 +172,18 @@ extern void exit_devices(void);
 extern int system_supports_cassette_device (void);
 
 /* access mess.c internal fields for a device type (instance id) */
-extern int          device_count(int type);
+extern int			device_count(int type);
 extern const char  *device_typename(int type);
 extern const char  *device_brieftypename(int type);
 extern const char  *device_typename_id(int type, int id);
-extern const char  *device_filename(int type, int id);
-extern unsigned int device_length(int type, int id);
-extern unsigned int device_crc(int type, int id);
-extern void         device_set_crc(int type, int id, UINT32 new_crc);
-extern const char  *device_longname(int type, int id);
-extern const char  *device_manufacturer(int type, int id);
-extern const char  *device_year(int type, int id);
-extern const char  *device_playable(int type, int id);
-extern const char  *device_extrainfo(int type, int id);
 extern const char  *device_file_extension(int type, int extnum);
-extern int          device_filename_change(int type, int id, const char *name);
 
 /* access functions from the struct IODevice arrays of a driver */
 extern const void *device_info(int type, int id);
 
-/* This is the dummy GameDriver with flag NOT_A_DRIVER set
-   It allows us to use an empty PARENT field in the macros. */
-
-/* Flag is used to bail out in mame.c/run_game() and cpuintrf.c/run_cpu()
- * but keep the program going. It will be set eg. if the filename for a
- * device which has IO_RESET_ALL flag set is changed
- */
-extern int mess_keep_going;
+const struct IODevice *device_first(const struct GameDriver *gamedrv);
+const struct IODevice *device_next(const struct GameDriver *gamedrv, const struct IODevice *dev);
+const struct IODevice *device_find(const struct GameDriver *gamedrv, int type);
 
 /* functions to load and save battery backed NVRAM */
 int battery_load(const char *filename, void *buffer, int length);

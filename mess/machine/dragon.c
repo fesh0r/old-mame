@@ -65,6 +65,7 @@
 #include "cassette.h"
 #include "bitbngr.h"
 #include "printer.h"
+#include "image.h"
 
 static UINT8 *coco_rom;
 static int coco3_enable_64k;
@@ -365,11 +366,8 @@ static void pak_load_trailer_callback(int param)
 	pak_load_trailer(&trailer);
 }
 
-static int generic_pak_load(int id, UINT8 *rambase, UINT8 *rombase, UINT8 *pakbase)
+static int generic_pak_load(int id, void *fp, UINT8 *rambase, UINT8 *rombase, UINT8 *pakbase)
 {
-	void *fp;
-
-	fp = image_fopen (IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE, 0);
 	if (fp)
 	{
 		int paklength;
@@ -457,16 +455,16 @@ static int generic_pak_load(int id, UINT8 *rambase, UINT8 *rombase, UINT8 *pakba
 	return INIT_PASS;
 }
 
-int coco_pak_load(int id)
+int coco_pak_load(int id, void *fp, int open_mode)
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	return generic_pak_load(id, mess_ram, &ROM[0], &ROM[0x4000]);
+	return generic_pak_load(id, fp, mess_ram, &ROM[0], &ROM[0x4000]);
 }
 
-int coco3_pak_load(int id)
+int coco3_pak_load(int id, void *fp, int open_mode)
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	return generic_pak_load(id, mess_ram + (0x70000 % mess_ram_size), &ROM[0x0000], &ROM[0xc000]);
+	return generic_pak_load(id, fp, mess_ram + (0x70000 % mess_ram_size), &ROM[0x0000], &ROM[0xc000]);
 }
 
 /***************************************************************************
@@ -476,15 +474,13 @@ int coco3_pak_load(int id)
   be used in place of PAK files, when possible
 ***************************************************************************/
 
-static int generic_rom_load(int id, UINT8 *dest, UINT16 destlength)
+static int generic_rom_load(int id, void *fp, UINT8 *dest, UINT16 destlength)
 {
 	UINT8 *rombase;
 	int   romsize;
-	void *fp;
 
 	cart_inserted = 0;
 
-	fp = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
 	if (fp) {
 
 		romsize = osd_fsize(fp);
@@ -496,7 +492,7 @@ static int generic_rom_load(int id, UINT8 *dest, UINT16 destlength)
 		   from a CoCo2. Thus we need to skip ahead in the ROM file. On
 		   the CoCo3 the entire 32K ROM is accessable. */
 
-		if ( device_crc(IO_CARTSLOT, 0) == 0x25C3AA70 )     /* Test for Arkanoid  */
+		if (image_crc(IO_CARTSLOT, 0) == 0x25C3AA70)     /* Test for Arkanoid  */
 		{
 			if ( destlength == 0x4000 )						/* Test if CoCo2      */
 			{
@@ -528,31 +524,29 @@ static int generic_rom_load(int id, UINT8 *dest, UINT16 destlength)
 	return INIT_PASS;
 }
 
-int coco_rom_load(int id)
+int coco_rom_load(int id, void *fp, int open_mode)
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	return generic_rom_load(id, &ROM[0x4000], 0x4000);
+	return generic_rom_load(id, fp, &ROM[0x4000], 0x4000);
 }
 
-int coco3_rom_load(int id)
+int coco3_rom_load(int id, void *fp, int open_mode)
 {
 	UINT8 	*ROM = memory_region(REGION_CPU1);
 	int		count;
-	void	*fp;
 
-	fp = image_fopen(IO_CARTSLOT, 0, OSD_FILETYPE_IMAGE, 0);
 	count = count_bank();
 	if (fp)
-		osd_fclose(fp);
+		osd_fseek(fp, 0, SEEK_SET);
 
 	if( count == 0 )
 		/* Load roms starting at 0x8000 and mirror upwards. */
 		/* ROM size is 32K max */
-		return generic_rom_load(id, &ROM[0x8000], 0x8000);
+		return generic_rom_load(id, fp, &ROM[0x8000], 0x8000);
 	else
 		/* Load roms starting at 0x8000 and mirror upwards. */
 		/* ROM bank is 16K max */
-		return generic_rom_load(id, &ROM[0x8000], 0x4000);
+		return generic_rom_load(id, fp, &ROM[0x8000], 0x4000);
 }
 
 /***************************************************************************
@@ -736,32 +730,25 @@ WRITE_HANDLER( coco3_m6847_hs_w )
 	coco3_raise_interrupt(COCO3_INT_HBORD, data);
 }
 
-int coco3_calculate_rows(int *bordertop, int *borderbottom);
-
 INTERRUPT_GEN( coco3_vh_interrupt )
 {
-	int border_top, border_bottom, body_scanlines;
+	int border_top, body_scanlines;
 	int scanline;
 
-	body_scanlines = coco3_calculate_rows(&border_top, &border_bottom);
+	body_scanlines = coco3_calculate_rows(&border_top, NULL);
 
 	scanline = internal_m6847_getadjustedscanline();
-
-#if 1
-	{
-		static int last_scanline = 0;
-		if (scanline < last_scanline)
-			logerror("scanline=%d\n", scanline);
-		last_scanline = scanline;
-	}
-#endif
 
 	if (scanline == 0)
 		coco3_raise_interrupt(COCO3_INT_VBORD, CLEAR_LINE);
 	else if (scanline >= border_top+body_scanlines)
 		coco3_raise_interrupt(COCO3_INT_VBORD, ASSERT_LINE);
 
+#ifdef REORDERED_VBLANK
+	internal_m6847_vh_interrupt(scanline, 0, 263-4);
+#else
 	internal_m6847_vh_interrupt(scanline, 4, 0);
+#endif
 }
 
 
@@ -1534,16 +1521,21 @@ static void coco3_timer_set_interval(int interval)
   MMU
 ***************************************************************************/
 
-static WRITE_HANDLER ( dragon64_ram_w )
+static WRITE_HANDLER ( coco_ram8000_w )
 {
 	coco_ram_w(offset + 0x8000, data);
+}
+
+static WRITE_HANDLER ( coco_ramc000_w )
+{
+	coco_ram_w(offset + 0xc000, data);
 }
 
 static void d_sam_set_maptype(int val)
 {
 	if (val && (mess_ram_size > 0x8000)) {
 		cpu_setbank(2, &mess_ram[0x8000]);
-		memory_set_bankhandler_w(2, 0, dragon64_ram_w);
+		memory_set_bankhandler_w(2, 0, coco_ram8000_w);
 	}
 	else {
 		cpu_setbank(2, coco_rom);
@@ -1572,7 +1564,9 @@ static void dragon64_sethipage(int type, int val)
 	if (hipage & DRAGON64_SAMMAP)
 	{
 		cpu_setbank(2, &mess_ram[0x8000]);
-		memory_set_bankhandler_w(2, 0, dragon64_ram_w);
+		memory_set_bankhandler_w(2, 0, coco_ram8000_w);
+		cpu_setbank(3, &mess_ram[0xc000]);
+		memory_set_bankhandler_w(3, 0, coco_ramc000_w);
 	}
 	else
 	{
@@ -1581,19 +1575,19 @@ static void dragon64_sethipage(int type, int val)
 		 *
 		 * Perhaps something to do with the PIA original state?
 		 */
-		if ((hipage & DRAGON64_PIAMAP) || ((cpu_getactivecpu() >= 0) && ((activecpu_get_pc() & 0xc000) == 0x8000)))
+		if ((hipage & DRAGON64_PIAMAP) || ((cpu_getactivecpu() >= 0) && (activecpu_get_pc() >= 0x024D) && (type == DRAGON64_PIAMAP)))
 			bank = coco_rom;
 		else
 			bank = coco_rom + 0x8000;
 		cpu_setbank(2, bank);
 		memory_set_bankhandler_w(2, 0, MWA_ROM);
+		cpu_setbank(3, coco_rom + 0x4000);
+		memory_set_bankhandler_w(3, 0, MWA_ROM);
 	}
 
 #if LOG_D64MEM
 	logerror("dragon64_sethipage(): hipage=%i\n", hipage);
 #endif
-
-	cpu_setbank(3, &mess_ram[0xc000]);
 }
 
 static void dragon64_sam_set_maptype(int val)
@@ -1941,14 +1935,9 @@ static struct cassette_args coco_cassette_args =
 	19200											/* create_smpfreq */
 };
 
-int coco_cassette_init(int id)
+int coco_cassette_init(int id, void *fp, int open_mode)
 {
-	return cassette_init(id, &coco_cassette_args);
-}
-
-void coco_cassette_exit(int id)
-{
-	device_close(IO_CASSETTE,id);
+	return cassette_init(id, fp, open_mode, &coco_cassette_args);
 }
 
 /***************************************************************************
@@ -1995,66 +1984,6 @@ static void coco_cartridge_enablesound(int enable)
 }
 
 /***************************************************************************
-  Bitbanger port
-***************************************************************************/
-
-static int coco_bitbanger_filter(int id, const int *pulses, int total_pulses, int total_duration)
-{
-	int i;
-	int result = 0;
-	int word;
-	int pos;
-	int pulse_type;
-	int c;
-
-	if (total_duration >= 11)
-	{
-		word = 0;
-		pos = 0;
-		pulse_type = 0;
-		result = 1;
-
-		for (i = 0; i < total_pulses; i++)
-		{
-			if (pulse_type)
-				word |= ((1 << pulses[i]) - 1) << pos;
-			pulse_type ^= 1;
-			pos += pulses[i];
-		}
-
-		c = (word >> 1) & 0xff;
-		printer_output(id, c);
-	}
-	return result;
-}
-
-int coco_bitbanger_init (int id)
-{
-	static const struct bitbanger_config cfg =
-	{
-		coco_bitbanger_filter,
-		1.0 / 10.0,
-		0.2,
-		2,
-		10,
-		0,
-		0
-	};
-
-	return bitbanger_init(id, &cfg);
-}
-
-void coco_bitbanger_exit (int id)
-{
-	printer_exit(id);
-}
-
-void coco_bitbanger_output (int id, int data)
-{
-	bitbanger_output(id, data);
-}
-
-/***************************************************************************
   Machine Initialization
 ***************************************************************************/
 
@@ -2076,7 +2005,7 @@ static int count_bank(void)
 	unsigned int	crc;
 	/* This function, and all calls of it, are hacks for bankswitched games */
 
-	crc = device_crc(IO_CARTSLOT, 0);
+	crc = image_crc(IO_CARTSLOT, 0);
 
 	switch( crc )
 	{
@@ -2103,7 +2032,7 @@ static int is_Orch90(void)
 	unsigned int	crc;
 	/* This function, and all calls of it, are hacks for bankswitched games */
 
-	crc = device_crc(IO_CARTSLOT, 0);
+	crc = image_crc(IO_CARTSLOT, 0);
 
 	return crc == 0x15FB39AF;
 }
@@ -2115,7 +2044,7 @@ static void generic_setcartbank(int bank, UINT8 *cartpos)
 	if (count_bank() > 0) {
 		/* Pin variable to proper bit width */
 		bank &= count_bank();
-		fp = image_fopen(IO_CARTSLOT, 0, OSD_FILETYPE_IMAGE, 0);
+		fp = image_fopen_custom(IO_CARTSLOT, 0, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 		if (fp) {
 			if (bank)
 				osd_fseek(fp, 0x4000 * bank, SEEK_SET);
@@ -2172,6 +2101,7 @@ static void generic_init_machine(struct pia6821_interface *piaintf, struct sam68
 	pia_reset();
 
 	sam_init(samintf);
+	sam_reset();
 
 	if (trailer_load) {
 		trailer_load = 0;
@@ -2222,8 +2152,9 @@ MACHINE_INIT( coco3 )
 {
 	int i;
 
-	/* Tepolt verifies that the GIME registers are all cleared on initialization */
+	videomap_reset();
 
+	/* Tepolt verifies that the GIME registers are all cleared on initialization */
 	coco3_enable_64k = 0;
 	gime_irq = 0;
 	gime_firq = 0;
@@ -2236,6 +2167,7 @@ MACHINE_INIT( coco3 )
 
 	coco3_mmu_update(0, 8);
 	coco3_timer_init();
+	coco3_vh_reset();
 
 	coco3_interupt_line = 0;
 
@@ -2247,7 +2179,6 @@ MACHINE_STOP( coco )
 {
 	if (coco_cart_interface && coco_cart_interface->term)
 		coco_cart_interface->term();
-	sam_reset();
 }
 
 /***************************************************************************

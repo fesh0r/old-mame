@@ -49,7 +49,7 @@ OSOBJS += \
         #$(OBJ)/windowsui/options.o \		<<--- included from MESS' version
 
 # add resource file
-RESFILE = $(OBJ)/mess/windowsui/mess32.res
+GUIRESFILE = $(OBJ)/mess/windowsui/mess32.res
 
 #####################################################################
 # compiler
@@ -69,6 +69,7 @@ DEFS += -DDIRECTSOUND_VERSION=0x0300 \
         -DCLIB_DECL=__cdecl \
         -DDECL_SPEC=__cdecl \
         -DZEXTERN=extern \
+        -DMAME32HELP=\"mess.chm\" \
 
 #####################################################################
 # Resources
@@ -78,11 +79,15 @@ RC = windres --use-temp-file
 
 RCDEFS = -DMESS -DNDEBUG -D_WIN32_IE=0x0400
 
-RCFLAGS = -O coff --include-dir mess/windowsui --include-dir src/windowsui
+RCFLAGS = -O coff --include-dir src --include-dir mess/windowsui --include-dir src/windowsui
 
 ifdef DEBUG
 RCFLAGS += -DMAME_DEBUG
 endif
+
+$(OBJ)/mess/windows/%.res: mess/windows/%.rc
+	@echo Compiling resources $<...
+	$(RC) $(RCDEFS) $(RCFLAGS) -o $@ -i $<
 
 $(OBJ)/mess/windowsui/%.res: mess/windowsui/%.rc
 	@echo Compiling resources $<...

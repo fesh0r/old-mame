@@ -1,6 +1,6 @@
 /**********************************************************************
 
-  machine.c
+  mess/machine/nascom1.c
 
   Functions to emulate general aspects of the machine (RAM, ROM, interrups,
   I/O ports)
@@ -11,6 +11,7 @@
 #include "driver.h"
 #include "cpu/z80/z80.h"
 #include "includes/nascom1.h"
+#include "image.h"
 
 static	int		nascom1_tape_size = 0;
 static	UINT8	*nascom1_tape_image = NULL;
@@ -115,18 +116,15 @@ WRITE_HANDLER (	nascom1_port_01_w )
 {
 }
 
-int	nascom1_init_cassette(int id)
+int	nascom1_init_cassette(int id, void *file, int open_mode)
 {
-	void	*file;
-
 	/* a cassette for the nascom1 isnt needed */
-	if (!device_filename(IO_CASSETTE,id) || !strlen(device_filename(IO_CASSETTE,id) ))
+	if (file == NULL)
 	{
 		logerror("Namcom - warning: no cassette specified!\n");
 		return INIT_PASS;
 	}
 
-	file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if (file)
 	{
 		nascom1_tape_size = osd_fsize(file);
@@ -171,9 +169,8 @@ int	nascom1_read_cassette(void)
    Note <addr> and <byte> are in hex.
 */
 
-int	nascom1_init_cartridge(int id)
+int	nascom1_init_cartridge(int id, void *file)
 {
-	void	*file;
 	int		done;
 	char	fileaddr[5];
 	/* int	filebyt1, filebyt2, filebyt3, filebyt4;
@@ -182,7 +179,6 @@ int	nascom1_init_cartridge(int id)
 
 	return (1);
 
-	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 	if (file)
 	{
 		done = 0;

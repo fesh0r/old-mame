@@ -43,6 +43,8 @@ enum
 
 struct InternalBdFormatDriver
 {
+	const char *name;
+	const char *humanname;
 	const char *extension;
 	UINT8 tracks_options[8];
 	UINT8 heads_options[8];
@@ -54,6 +56,9 @@ struct InternalBdFormatDriver
 	int (*header_encode)(void *buffer, UINT32 *header_size, const struct disk_geometry *geometry);
 	int (*read_sector)(void *bdf, const void *header, UINT8 track, UINT8 head, UINT8 sector, int offset, void *buffer, int length);
 	int (*write_sector)(void *bdf, const void *header, UINT8 track, UINT8 head, UINT8 sector, int offset, const void *buffer, int length);
+	int (*format_track)(struct InternalBdFormatDriver *drv, void *bdf, const struct disk_geometry *geometry, UINT8 track, UINT8 head);
+	void (*get_sector_info)(void *bdf, const void *header, UINT8 track, UINT8 head, UINT8 sector_index, UINT8 *sector, UINT16 *sector_size);
+	UINT8 (*get_sector_count)(void *bdf, const void *header, UINT8 track, UINT8 head);
 	int flags;
 };
 
@@ -86,6 +91,8 @@ void validate_construct_formatdriver(struct InternalBdFormatDriver *drv, int tra
 #define BLOCKDEVICE_FORMATDRIVER_EXTERN( format_name )												\
 	extern void construct_formatdriver_##format_name(struct InternalBdFormatDriver *drv)
 
+#define	BDFD_NAME(name_)							drv->name = name_;
+#define	BDFD_HUMANNAME(humanname_)					drv->humanname = humanname_;
 #define	BDFD_EXTENSION(ext)							drv->extension = ext;
 #define BDFD_TRACKS_OPTION(tracks_option)			drv->tracks_options[tracks_optnum++] = tracks_option;
 #define BDFD_HEADS_OPTION(heads_option)				drv->heads_options[heads_optnum++] = heads_option;
@@ -98,7 +105,10 @@ void validate_construct_formatdriver(struct InternalBdFormatDriver *drv, int tra
 #define BDFD_HEADER_DECODE(header_decode_)			drv->header_decode = header_decode_;
 #define BDFD_FILLER_BYTE(filler_byte_)				drv->filler_byte = filler_byte_;
 #define BDFD_READ_SECTOR(read_sector_)				drv->read_sector = read_sector_;
-#define BDFD_WRITE_SECTOR(read_sector_)				drv->write_sector = write_sector_;
+#define BDFD_WRITE_SECTOR(write_sector_)			drv->write_sector = write_sector_;
+#define BDFD_FORMAT_TRACK(format_track_)			drv->format_track = format_track_;
+#define BDFD_GET_SECTOR_INFO(get_sector_info_)		drv->get_sector_info = get_sector_info_;
+#define BDFD_GET_SECTOR_COUNT(get_sector_count_)	drv->get_sector_count = get_sector_count_;
 
 /***************************************************************************
 
@@ -133,7 +143,12 @@ enum
 {
 	BLOCKDEVICE_ERROR_SUCCESS,
 	BLOCKDEVICE_ERROR_OUTOFMEMORY,
-	BLOCKDEVICE_ERROR_CANTDECODEFORMAT
+	BLOCKDEVICE_ERROR_CANTDECODEFORMAT,
+	BLOCKDEVICE_ERROR_CANTENCODEFORMAT,
+	BLOCKDEVICE_ERROR_SECORNOTFOUND,
+	BLOCKDEVICE_ERROR_CORRUPTDATA,
+	BLOCKDEVICE_ERROR_UNEXPECTEDLENGTH,
+	BLOCKDEVICE_ERROR_UNDEFINEERROR
 };
 
 int bdf_create(const struct bdf_procs *procs, formatdriver_ctor format,
@@ -147,6 +162,8 @@ int bdf_seek(void *bdf, int offset, int whence);
 const struct disk_geometry *bdf_get_geometry(void *bdf);
 int bdf_read_sector(void *bdf, UINT8 track, UINT8 head, UINT8 sector, int offset, void *buffer, int length);
 int bdf_write_sector(void *bdf, UINT8 track, UINT8 head, UINT8 sector, int offset, const void *buffer, int length);
+void bdf_get_sector_info(void *bdf, UINT8 track, UINT8 head, UINT8 sector_index, UINT8 *sector, UINT16 *sector_size);
+UINT8 bdf_get_sector_count(void *bdf, UINT8 track, UINT8 head);
 int bdf_is_readonly(void *bdf);
 
 #endif /* FORMATS_H */

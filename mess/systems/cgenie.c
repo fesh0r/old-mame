@@ -457,29 +457,11 @@ ROM_END
 
 static const struct IODevice io_cgenie[] = {
 	{
-		IO_CARTSLOT,			/* type */
-		1,						/* count */
-		"rom\0",                /* file extensions */
-		IO_RESET_CPU,			/* reset if file changed */
-		0,
-		cgenie_rom_load,		/* init */
-		NULL,					/* exit */
-		NULL,					/* info */
-		NULL,					/* open */
-		NULL,					/* close */
-		NULL,					/* status */
-		NULL,					/* seek */
-		NULL,					/* tell */
-		NULL,					/* input */
-		NULL,					/* output */
-		NULL,					/* input_chunk */
-		NULL					/* output_chunk */
-	},
-	{
 		IO_CASSETTE,			/* type */
 		1,						/* count */
 		"cas\0",                /* file extensions */
 		IO_RESET_NONE,			/* reset if file changed */
+		OSD_FOPEN_NONE,			/* open mode */
 		NULL,					/* id */
 		cgenie_cassette_init,	/* init */
 		NULL,					/* exit */
@@ -494,58 +476,16 @@ static const struct IODevice io_cgenie[] = {
 		NULL,					/* input_chunk */
 		NULL					/* output_chunk */
 	},
-#if 0	/* not yet working */
-    {
-		IO_QUICKLOAD,			/* type */
-		1,						/* count */
-		"cmd\0",                /* file extensions */
-		IO_RESET_CPU,			/* reset if file changed */
-		NULL,					/* id */
-		cgenie_snapshot_init,	/* init */
-		NULL,					/* exit */
-		NULL,					/* info */
-		NULL,					/* open */
-		NULL,					/* close */
-		NULL,					/* status */
-		NULL,					/* seek */
-		NULL,					/* tell */
-		NULL,					/* input */
-		NULL,					/* output */
-		NULL,					/* input_chunk */
-		NULL					/* output_chunk */
-	},
-#endif
-    {
-		IO_FLOPPY,				/* type */
-		4,						/* count */
-		"dsk\0",                /* file extensions */
-		IO_RESET_NONE,			/* reset if changed */
-		0,
-		cgenie_floppy_init, 	/* init */
-		basicdsk_floppy_exit,	/* exit */
-		NULL,					/* info */
-		NULL,					/* open */
-		NULL,					/* close */
-		floppy_status,			/* status */
-		NULL,					/* seek */
-		NULL,					/* tell */
-		NULL,					/* input */
-		NULL,					/* output */
-		NULL,					/* input_chunk */
-		NULL					/* output_chunk */
-	},
 	{ IO_END }
 };
 
-/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	  COMPANY	FULLNAME */
-COMP( 1982, cgenie,   0,		cgenie,   cgenie,	cgenie,   "EACA Computers Ltd.",  "Colour Genie EG2000" )
-
-#ifdef RUNTIME_LOADER
-extern void cgenie_runtime_loader_init(void)
-{
-	int i;
-	for (i=0; drivers[i]; i++) {
-		if ( strcmp(drivers[i]->name,"cgenie")==0) drivers[i]=&driver_cgenie;
-	}
-}
+SYSTEM_CONFIG_START(cgenie)
+	CONFIG_DEVICE_CARTSLOT			(1, "rom\0", cgenie_rom_load, NULL, NULL)
+	CONFIG_DEVICE_FLOPPY_BASICDSK	(4,	"dsk\0", cgenie_floppy_init)
+#if 0	/* not yet working */
+	CONFIG_DEVICE_QUICKLOAD			(	"cmd\0", cgenie_snapshot_init, NULL)
 #endif
+SYSTEM_CONFIG_END
+
+/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	  CONFIG     COMPANY	FULLNAME */
+COMP( 1982, cgenie,   0,		cgenie,   cgenie,	cgenie,   cgenie,    "EACA Computers Ltd.",  "Colour Genie EG2000" )

@@ -3,6 +3,7 @@
 #include "vidhrdw/vdc.h"
 #include "cpu/h6280/h6280.h"
 #include "includes/pce.h"
+#include "image.h"
 
 /* the largest possible cartridge image, excluding special games */
 #define PCE_ROM_MAXSIZE  (0x2000 * 256 + 512)
@@ -19,16 +20,13 @@ unsigned char *pce_save_ram;    /* battery backed RAM at F7 */
 static int joystick_port_select;        /* internal index of joystick ports */
 static int joystick_data_select;        /* which nibble of joystick data we want */
 
-int pce_load_rom(int id)
+int pce_load_rom(int id, void *fp, int open_mode)
 {
 	int size;
-    FILE *fp = NULL;
 	unsigned char *ROM;
-	logerror("*** pce_load_rom : %s\n", device_filename(IO_CARTSLOT,id));
+	logerror("*** pce_load_rom : %s\n", image_filename(IO_CARTSLOT,id));
 
     /* open file to get size */
-	fp = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
-    if(!fp) return 1;
 	if( new_memory_region(REGION_CPU1,PCE_ROM_MAXSIZE,0) )
 		return 1;
 	ROM = memory_region(REGION_CPU1);

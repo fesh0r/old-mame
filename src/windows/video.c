@@ -191,7 +191,11 @@ struct rc_option video_opts[] =
 	{ "frames_to_run", "ftr", rc_int, &frames_to_display, "0", 0, 0, NULL, "sets the number of frames to run within the game" },
 	{ "effect", NULL, rc_string, &effect, "none", 0, 0, decode_effect, "specify the blitting effect" },
 	{ "screen_aspect", NULL, rc_string, &aspect, "4:3", 0, 0, decode_aspect, "specify an alternate monitor aspect ratio" },
+#ifndef MESS
 	{ "sleep", NULL, rc_bool, &allow_sleep, "1", 0, 0, NULL, "allow MAME to give back time to the system when it's not needed" },
+#else
+	{ "sleep", NULL, rc_bool, &allow_sleep, "1", 0, 0, NULL, "allow MESS to give back time to the system when it's not needed" },
+#endif
 	{ NULL,	NULL, rc_end, NULL, NULL, 0, 0,	NULL, NULL }
 };
 
@@ -287,7 +291,7 @@ void win_orient_rect(struct rectangle *rect)
 		temp = rect->min_x; rect->min_x = rect->min_y; rect->min_y = temp;
 		temp = rect->max_x; rect->max_x = rect->max_y; rect->max_y = temp;
 	}
-
+	
 	// apply X flip
 	if (blit_flipx)
 	{
@@ -295,7 +299,7 @@ void win_orient_rect(struct rectangle *rect)
 		rect->min_x = video_width - rect->max_x - 1;
 		rect->max_x = temp;
 	}
-
+	
 	// apply Y flip
 	if (blit_flipy)
 	{
@@ -330,7 +334,7 @@ void win_disorient_rect(struct rectangle *rect)
 		rect->min_x = video_width - rect->max_x - 1;
 		rect->max_x = temp;
 	}
-
+	
 	// unapply X/Y swap last
 	if (blit_swapxy)
 	{
@@ -350,7 +354,7 @@ int osd_create_display(const struct osd_create_params *params, UINT32 *rgb_compo
 	struct mame_display dummy_display;
 	double aspect_ratio;
 	int r, g, b;
-
+	
 	logerror("width %d, height %d depth %d\n", params->width, params->height, params->depth);
 
 	// copy the parameters into globals for later use
@@ -369,7 +373,7 @@ int osd_create_display(const struct osd_create_params *params, UINT32 *rgb_compo
 	// extract useful parameters from the attributes
 	vector_game			= ((params->video_attributes & VIDEO_TYPE_VECTOR) != 0);
 	rgb_direct			= ((params->video_attributes & VIDEO_RGB_DIRECT) != 0);
-
+	
 	// create the window
 	if (!blit_swapxy)
 		aspect_ratio = (double)params->aspect_x / (double)params->aspect_y;
@@ -377,7 +381,7 @@ int osd_create_display(const struct osd_create_params *params, UINT32 *rgb_compo
 		aspect_ratio = (double)params->aspect_y / (double)params->aspect_x;
 	if (win_create_window(video_width, video_height, video_depth, video_attributes, aspect_ratio))
 		return 1;
-
+	
 	// initialize the palette to a fixed 5-5-5 mapping
 	for (r = 0; r < 32; r++)
 		for (g = 0; g < 32; g++)
@@ -458,11 +462,11 @@ const char *osd_get_fps_text(const struct performance_info *performance)
 {
 	static char buffer[1024];
 	char *dest = buffer;
-
+	
 	// display the FPS, frameskip, percent, fps and target fps
-	dest += sprintf(dest, "%s%2d%4d%%%4d/%d fps",
-			autoframeskip ? "auto" : "fskp", frameskip,
-			(int)(performance->game_speed_percent + 0.5),
+	dest += sprintf(dest, "%s%2d%4d%%%4d/%d fps", 
+			autoframeskip ? "auto" : "fskp", frameskip, 
+			(int)(performance->game_speed_percent + 0.5), 
 			(int)(performance->frames_per_second + 0.5),
 			(int)(Machine->drv->frames_per_second + 0.5));
 
@@ -475,7 +479,7 @@ const char *osd_get_fps_text(const struct performance_info *performance)
 	{
 		dest += sprintf(dest, "\n %d partial updates", performance->partial_updates_this_frame);
 	}
-
+	
 	/* return a pointer to the static buffer */
 	return buffer;
 }
@@ -625,7 +629,7 @@ static void update_palette(struct mame_display *display)
 		if (dirtyflags)
 		{
 			display->game_palette_dirty[i / 32] = 0;
-
+			
 			// loop over all 32 bits and update dirty entries
 			for (j = 0; j < 32; j++, dirtyflags >>= 1)
 				if (dirtyflags & 1)
@@ -635,14 +639,14 @@ static void update_palette(struct mame_display *display)
 					int r = RGB_RED(rgbvalue);
 					int g = RGB_GREEN(rgbvalue);
 					int b = RGB_BLUE(rgbvalue);
-
+					
 					// update both lookup tables
 					palette_16bit_lookup[i + j] = win_color16(r, g, b) * 0x10001;
 					palette_32bit_lookup[i + j] = win_color32(r, g, b);
 				}
 		}
 	}
-
+	
 	// reset the invalidate flag
 	palette_lookups_invalid = 0;
 }
@@ -695,7 +699,7 @@ void update_autoframeskip(void)
 	if (!game_was_paused && !debugger_was_visible && cpu_getcurrentframe() > 2 * FRAMESKIP_LEVELS)
 	{
 		const struct performance_info *performance = mame_get_performance_info();
-
+	
 		// if we're too fast, attempt to increase the frameskip
 		if (performance->game_speed_percent >= 99.5)
 		{
@@ -802,7 +806,7 @@ void osd_update_video_and_audio(struct mame_display *display)
 	// if this is the first frame in a sequence, adjust the base time for this frame
 	if (frameskip_counter == 0)
 		this_frame_base = last_skipcount0_time + (int)((double)FRAMESKIP_LEVELS * (double)cps / video_fps);
-
+	
 	// if the visible area has changed, update it
 	if (display->changed_flags & GAME_VISIBLE_AREA_CHANGED)
 		update_visible_area(display);
@@ -819,7 +823,7 @@ void osd_update_video_and_audio(struct mame_display *display)
 	if (display->changed_flags & GAME_BITMAP_CHANGED)
 	{
 		win_orient_rect(&updatebounds);
-
+	
 		if (display->changed_flags & VECTOR_PIXELS_CHANGED)
 			render_frame(display->game_bitmap, &updatebounds, display->vector_dirty_pixels);
 		else
@@ -873,13 +877,13 @@ void osd_save_snapshot(struct mame_bitmap *bitmap, const struct rectangle *bound
 	copy = bitmap_alloc_depth(w, h, bitmap->depth);
 	if (!copy)
 		return;
-
+	
 	// populate the copy
 	for (y = bounds->min_y; y <= bounds->max_y; y++)
 		for (x = bounds->min_x; x <= bounds->max_x; x++)
 		{
 			int tx = x, ty = y;
-
+			
 			// apply the rotation/flipping
 			if (blit_swapxy)
 			{
@@ -889,7 +893,7 @@ void osd_save_snapshot(struct mame_bitmap *bitmap, const struct rectangle *bound
 				tx = copy->width - tx - 1;
 			if (blit_flipy)
 				ty = copy->height - ty - 1;
-
+			
 			// read the old pixel and copy to the new location
 			switch (copy->depth)
 			{
@@ -898,14 +902,14 @@ void osd_save_snapshot(struct mame_bitmap *bitmap, const struct rectangle *bound
 					*((UINT16 *)copy->base + ty * copy->rowpixels + tx) =
 							*((UINT16 *)bitmap->base + y * bitmap->rowpixels + x);
 					break;
-
+				
 				case 32:
 					*((UINT32 *)copy->base + ty * copy->rowpixels + tx) =
 							*((UINT32 *)bitmap->base + y * bitmap->rowpixels + x);
 					break;
 			}
 		}
-
+	
 	// compute the oriented bounds
 	newbounds = *bounds;
 
@@ -915,7 +919,7 @@ void osd_save_snapshot(struct mame_bitmap *bitmap, const struct rectangle *bound
 		t = newbounds.min_x; newbounds.min_x = newbounds.min_y; newbounds.min_y = t;
 		t = newbounds.max_x; newbounds.max_x = newbounds.max_y; newbounds.max_y = t;
 	}
-
+	
 	// apply X flip
 	if (blit_flipx)
 	{
@@ -923,7 +927,7 @@ void osd_save_snapshot(struct mame_bitmap *bitmap, const struct rectangle *bound
 		newbounds.min_x = copy->width - newbounds.max_x - 1;
 		newbounds.max_x = t;
 	}
-
+	
 	// apply Y flip
 	if (blit_flipy)
 	{
@@ -931,7 +935,7 @@ void osd_save_snapshot(struct mame_bitmap *bitmap, const struct rectangle *bound
 		newbounds.min_y = copy->height - newbounds.max_y - 1;
 		newbounds.max_y = t;
 	}
-
+	
 	// now save the copy and nuke it when done
 	save_screen_snapshot(copy, &newbounds);
 	bitmap_free(copy);

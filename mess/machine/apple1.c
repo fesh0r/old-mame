@@ -15,6 +15,7 @@
 #include "cpu/m6502/m6502.h"
 #include "inptport.h"
 #include "includes/apple1.h"
+#include "image.h"
 
 
 /*****************************************************************************
@@ -79,15 +80,6 @@ MACHINE_INIT( apple1 )
 	pia_config(0, PIA_8BIT | PIA_AUTOSENSE, &apple1_pia0);
 }
 
-
-/*****************************************************************************
-**	apple1_stop_machine
-*****************************************************************************/
-void apple1_stop_machine(void)
-{
-}
-
-
 /*****************************************************************************
 **	apple1_verify_header
 *****************************************************************************/
@@ -121,26 +113,20 @@ static int apple1_verify_header (UINT8 *data)
 **	Where xxyy is the hex value to load the Data zzzzzzz to
 **
 *****************************************************************************/
-int apple1_load_snap (int id)
+int apple1_load_snap(int id, void *snapfile, int open_mode)
 {
-	void *snapfile = NULL;
 	UINT8 *memptr;
 	UINT8 snapdata[0x1000];
 	UINT16 starting_offset = 0x0000;
 
 	/* A snapshot isn't mandatory for the apple1 */
-	if (!device_filename(IO_SNAPSHOT,id) || !strlen(device_filename(IO_SNAPSHOT,id) ))
+	if (snapfile == NULL)
 	{
 		logerror("Apple1 - warning: no snapshot specified - OK\n");
 		return INIT_PASS;
 	}
 
 	/* Load the specified Snapshot */
-	if (!(snapfile = image_fopen (IO_SNAPSHOT, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror("Apple1 - Unable to locate snapshot: %s\n",device_filename(IO_SNAPSHOT,id) );
-		return INIT_FAIL;
-	}
 
 	/* Read the snapshot data into a temporary array */
 	osd_fread (snapfile, snapdata, 0x1000);

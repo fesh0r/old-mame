@@ -19,6 +19,7 @@
 #include "machine/8255ppi.h"
 #include "vidhrdw/tms9928a.h"
 #include "printer.h"
+#include "image.h"
 
 static SVI_318 svi;
 static UINT8 *pcart;
@@ -40,20 +41,18 @@ static int svi318_verify_cart (UINT8 magic[2])
 
 
 
-int svi318_load_rom (int id)
+int svi318_load_rom (int id, void *f, int open_mode)
 {
-	void *f;
 	UINT8 *p;
 	int size;
 
 	/* A cartridge isn't strictly mandatory */
-	if (!device_filename(IO_CARTSLOT,id) || !strlen(device_filename(IO_CARTSLOT,id) ))
+	if (f == NULL)
 	{
 		logerror("SVI318 - warning: no cartridge specified!\n");
 		return INIT_PASS;
 	}
 
-	f = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
 	if (f)
 	{
 		p = malloc (0x8000);
@@ -67,7 +66,7 @@ int svi318_load_rom (int id)
 		size = osd_fsize (f);
 		if (osd_fread (f, p, size) != size)
 		{
-			logerror ("can't read file %s\n", device_filename (IO_CASSETTE, id) );
+			logerror ("can't read file %s\n", image_filename (IO_CASSETTE, id) );
 			osd_fclose (f);
 			free (p);
 			return INIT_FAIL;
@@ -553,7 +552,7 @@ static void svi318_set_banks ()
 static INT16* cas_samples;
 static int cas_len;
 
-int svi318_cassette_fill_wave (INT16* samples, int wavlen, UINT8* casdata)
+static int svi318_cassette_fill_wave (INT16* samples, int wavlen, UINT8* casdata)
 	{
 	if (casdata == CODE_HEADER || casdata == CODE_TRAILER)
 		return 0;
@@ -599,65 +598,60 @@ static int check_svi_cas (void *f)
     return ret;
 	}
 
-int svi318_cassette_init(int id)
+int svi318_cassette_init(int id, void *file, int open_mode)
 	{
-    void *file;
 	int ret;
 
-   	/* A cartridge isn't strictly mandatory for the coleco */
-	if (!device_filename(IO_CASSETTE,id) || !strlen(device_filename(IO_CASSETTE,id) ))
+
+   	/* A cassette isn't mandatory */
+	if (file == NULL)
 	{
 		logerror("SVI318 - warning: no cassette specified!\n");
 		return INIT_PASS;
 	}
 
-    file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-    if( file )
-    	{
-        struct wave_args wa = {0,};
-        wa.file = file;
-        wa.display = 1;
-		/* for cas files */
-		cas_samples = NULL;
-		cas_len = -1;
-		if (!check_svi_cas (file) )
+	if( file )
+	{
+		if (! is_effective_mode_create(open_mode))
+		{
+			struct wave_args wa = {0,};
+			wa.file = file;
+			wa.display = 1;
+			/* for cas files */
+			cas_samples = NULL;
+			cas_len = -1;
+			if (!check_svi_cas (file) )
 			{
-			wa.smpfreq = 22050;
-			wa.fill_wave = svi318_cassette_fill_wave;
-			wa.header_samples = cas_len;
-			wa.trailer_samples = 0;
-			wa.chunk_size = cas_len;
-			wa.chunk_samples = 0;
+				wa.smpfreq = 22050;
+				wa.fill_wave = svi318_cassette_fill_wave;
+				wa.header_samples = cas_len;
+				wa.trailer_samples = 0;
+				wa.chunk_size = cas_len;
+				wa.chunk_samples = 0;
 			}
-        ret = device_open(IO_CASSETTE,id,0,&wa);
-		free (cas_samples);
-		cas_samples = NULL;
-		cas_len = -1;
+			ret = device_open(IO_CASSETTE,id,0,&wa);
+			free (cas_samples);
+			cas_samples = NULL;
+			cas_len = -1;
 
-		return (ret ? INIT_FAIL : INIT_PASS);
-    	}
-    file = image_fopen(IO_CASSETTE, id, OSD_FILETYPE_IMAGE,
-        OSD_FOPEN_RW_CREATE);
-    if( file )
-    	{
-        struct wave_args wa = {0,};
-        wa.file = file;
-        wa.display = 1;
-        wa.smpfreq = 44100;
-        if( device_open(IO_CASSETTE,id,1,&wa) )
-            return INIT_FAIL;
-        return INIT_PASS;
-    	}
+			return (ret ? INIT_FAIL : INIT_PASS);
+		}
+		else
+		{
+			struct wave_args wa = {0,};
+			wa.file = file;
+			wa.display = 1;
+			wa.smpfreq = 44100;
+			if( device_open(IO_CASSETTE,id,1,&wa) )
+				return INIT_FAIL;
+			return INIT_PASS;
+		}
+	}
     return INIT_FAIL;
 	}
 
-void svi318_cassette_exit(int id)
-	{
-    device_close(IO_CASSETTE,id);
-	}
-
 int svi318_cassette_present (int id)
-	{
-	return device_filename (IO_CASSETTE, id) != NULL;
-	}
+{
+	return image_exists(IO_CASSETTE, id);
+}
 

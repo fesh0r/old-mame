@@ -20,9 +20,7 @@
 #include "includes/centroni.h"
 #include "printer.h"
 
-
-extern int apple2_floppy_init(int id);
-extern void apple2_floppy_exit(int id);
+#include "includes/apple2.h"
 
 /*
 	Explaination of memory regions:
@@ -538,16 +536,15 @@ ROM_END
 
 static const struct IODevice io_oric1[] =
 {
-	IO_CASSETTE_WAVE(1,"tap\0wav\0",NULL,oric_cassette_init,oric_cassette_exit),
- 	IO_PRINTER_PORT(1,"prn\0"),
 	{
 		IO_FLOPPY,				/* type */
 		4,						/* count */
 		"dsk\0",                /* file extensions */
 		IO_RESET_NONE,			/* reset if file changed */
+		OSD_FOPEN_RW_CREATE_OR_READ,/* open mode */
 		0,
-		oric_floppy_init, /* init */
-		oric_floppy_exit,	/* exit */
+		oric_floppy_init,		/* init */
+		oric_floppy_exit,		/* exit */
 		NULL,					/* info */
 		NULL,					/* open */
 		NULL,					/* close */
@@ -564,13 +561,12 @@ static const struct IODevice io_oric1[] =
 
 static const struct IODevice io_prav8[] =
 {
-	IO_CASSETTE_WAVE(1,"tap\0wav\0",NULL,oric_cassette_init,oric_cassette_exit),
- 	IO_PRINTER_PORT(1,"prn\0"),
 	{
 		IO_FLOPPY,				/* type */
 		1,						/* count */
 		"dsk\0",                /* file extensions */
 		IO_RESET_NONE,			/* reset if file changed */
+		OSD_FOPEN_READ,			/* open mode */
 		NULL, 					/* id */
 		apple2_floppy_init,		/* init */
 		apple2_floppy_exit,		/* exit */
@@ -594,10 +590,15 @@ static const struct IODevice io_prav8[] =
 #define io_orica io_oric1
 #define io_telstrat io_oric1
 
-/*    YEAR   NAME       PARENT  MACHINE     INPUT       INIT    COMPANY         FULLNAME */
-COMP( 1983,  oric1,     0,      oric,       oric,	    0,	    "Tangerine",    "Oric 1" )
-COMP( 1984,  orica,     oric1,	oric,	    orica,	    0,	    "Tangerine",    "Oric Atmos" )
-COMP( 1985,  prav8d,    oric1,  oric,       prav8d,     0,      "Pravetz",      "Pravetz 8D")
-COMPX( 1989, prav8dd,   oric1,  oric,       prav8d,     0,      "Pravetz",      "Pravetz 8D (Disk ROM)", GAME_COMPUTER_MODIFIED)
-COMPX( 1992, prav8dda,  oric1,  oric,       prav8d,     0,      "Pravetz",      "Pravetz 8D (Disk ROM, RadoSoft)", GAME_COMPUTER_MODIFIED)
-COMPX( 1986,  telstrat,  oric1,  telstrat,   telstrat,   0,      "Tangerine",    "Oric Telestrat", GAME_NOT_WORKING )
+SYSTEM_CONFIG_START(oric)
+	CONFIG_DEVICE_CASSETTE(1, "tap\0", oric_cassette_init)
+	CONFIG_DEVICE_PRINTER(1)
+SYSTEM_CONFIG_END
+
+/*    YEAR   NAME       PARENT  MACHINE     INPUT       INIT    CONFIG    COMPANY         FULLNAME */
+COMP( 1983,  oric1,     0,      oric,       oric,	    0,	    oric,     "Tangerine",    "Oric 1" )
+COMP( 1984,  orica,     oric1,	oric,	    orica,	    0,	    oric,     "Tangerine",    "Oric Atmos" )
+COMP( 1985,  prav8d,    oric1,  oric,       prav8d,     0,      oric,     "Pravetz",      "Pravetz 8D")
+COMPX( 1989, prav8dd,   oric1,  oric,       prav8d,     0,      oric,     "Pravetz",      "Pravetz 8D (Disk ROM)", GAME_COMPUTER_MODIFIED)
+COMPX( 1992, prav8dda,  oric1,  oric,       prav8d,     0,      oric,     "Pravetz",      "Pravetz 8D (Disk ROM, RadoSoft)", GAME_COMPUTER_MODIFIED)
+COMPX( 1986, telstrat,  oric1,  telstrat,   telstrat,   0,      oric,     "Tangerine",    "Oric Telestrat", GAME_NOT_WORKING )

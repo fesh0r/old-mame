@@ -11,6 +11,7 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 #include "includes/channelf.h"
+#include "image.h"
 
 #ifndef VERBOSE
 #define VERBOSE 1
@@ -24,7 +25,7 @@
 
 static UINT8 latch[4];
 
-void init_channelf(void)
+static void init_channelf(void)
 {
 	UINT8 *mem = memory_region(REGION_GFX1);
 	int i;
@@ -33,17 +34,13 @@ void init_channelf(void)
 		mem[i] = i;
 }
 
-int channelf_load_rom(int id)
+static int channelf_load_rom(int id, void *file, int open_mode)
 {
 	UINT8 *mem = memory_region(REGION_CPU1);
-    void *file;
 	int size;
 
-    if (device_filename(IO_CARTSLOT,id) == NULL)
+    if (file == NULL)
 		return INIT_PASS;
-	file = image_fopen(IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0);
-	if (!file)
-		return INIT_FAIL;
 	size = osd_fread(file, &mem[0x0800], 0x0800);
 	osd_fclose(file);
 
@@ -53,7 +50,7 @@ int channelf_load_rom(int id)
     return INIT_FAIL;
 }
 
-READ_HANDLER( channelf_port_0_r )
+static READ_HANDLER( channelf_port_0_r )
 {
 	int data = readinputport(0);
 	data = (data ^ 0xff) | latch[0];
@@ -61,7 +58,7 @@ READ_HANDLER( channelf_port_0_r )
 	return data;
 }
 
-READ_HANDLER( channelf_port_1_r )
+static READ_HANDLER( channelf_port_1_r )
 {
 	int data = readinputport(1);
 	data = (data ^ 0xff) | latch[1];
@@ -69,7 +66,7 @@ READ_HANDLER( channelf_port_1_r )
 	return data;
 }
 
-READ_HANDLER( channelf_port_4_r )
+static READ_HANDLER( channelf_port_4_r )
 {
 	int data = readinputport(2);
 	data = (data ^ 0xff) | latch[2];
@@ -77,7 +74,7 @@ READ_HANDLER( channelf_port_4_r )
 	return data;
 }
 
-READ_HANDLER( channelf_port_5_r )
+static READ_HANDLER( channelf_port_5_r )
 {
 	int data = 0xff;
 	data = (data ^ 0xff) | latch[3];
@@ -85,7 +82,7 @@ READ_HANDLER( channelf_port_5_r )
 	return data;
 }
 
-WRITE_HANDLER( channelf_port_0_w )
+static WRITE_HANDLER( channelf_port_0_w )
 {
 	int offs;
 
@@ -107,7 +104,7 @@ WRITE_HANDLER( channelf_port_0_w )
 	latch[0] = data;
 }
 
-WRITE_HANDLER( channelf_port_1_w )
+static WRITE_HANDLER( channelf_port_1_w )
 {
 	LOG(("port_1_w: $%02x\n",data));
 
@@ -116,7 +113,7 @@ WRITE_HANDLER( channelf_port_1_w )
 	latch[1] = data;
 }
 
-WRITE_HANDLER( channelf_port_4_w )
+static WRITE_HANDLER( channelf_port_4_w )
 {
 	LOG(("port_4_w: $%02x\n",data));
 
@@ -125,7 +122,7 @@ WRITE_HANDLER( channelf_port_4_w )
     latch[2] = data;
 }
 
-WRITE_HANDLER( channelf_port_5_w )
+static WRITE_HANDLER( channelf_port_5_w )
 {
 	LOG(("port_5_w: $%02x\n",data));
 
@@ -229,31 +226,19 @@ ROM_START(channelf)
 		/* bit pattern is stored here */
 ROM_END
 
-static const struct IODevice io_channelf[] = {
-	{
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"bin\0",            /* file extensions */
-		IO_RESET_CPU,		/* reset if file changed */
-		0,
-		channelf_load_rom,	/* init */
-		NULL,				/* exit */
-		NULL,				/* info */
-		NULL,               /* open */
-		NULL,               /* close */
-		NULL,               /* status */
-		NULL,               /* seek */
-		NULL,				/* tell */
-        NULL,               /* input */
-		NULL,               /* output */
-		NULL,               /* input_chunk */
-		NULL,				/* output_chunk */
-		NULL				/* correct CRC */
-    },
-    { IO_END }
-};
+#define io_channelf	io_NULL
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT      COMPANY      FULLNAME */
-CONS( 1976, channelf, 0,		channelf, channelf, channelf, "Fairchild", "Channel F" )
+SYSTEM_CONFIG_START(channelf)
+	CONFIG_DEVICE_CARTSLOT( 1, "bin\0", channelf_load_rom, NULL, NULL)
+SYSTEM_CONFIG_END
+
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
+
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT		COMPANY		FULLNAME */
+CONS( 1976, channelf, 0,		channelf, channelf, channelf,	channelf,	"Fairchild", "Channel F" )
 
 

@@ -836,24 +836,6 @@ MACHINE_DRIVER_END
 static const struct IODevice io_vc20[] =
 {
 	IODEVICE_CBM_QUICK,
-	{
-		IO_CARTSLOT,				   /* type */
-		2,							   /* normal 1 *//* count */
-		"a0\00020\00040\00060\0rom\0bin\0",/* file extensions */
-		IO_RESET_ALL,				   /* reset if file changed */
-		0,
-		vc20_rom_load,				   /* init */
-		NULL,						   /* exit */
-		NULL,						   /* info */
-		NULL,						   /* open */
-		NULL,						   /* close */
-		NULL,						   /* status */
-		NULL,						   /* seek */
-		NULL,						   /* input */
-		NULL,						   /* output */
-		NULL,						   /* input_chunk */
-		NULL						   /* output_chunk */
-	},
 	IODEVICE_VC20TAPE,
 	IODEVICE_CBM_DRIVE,
 	{IO_END}
@@ -862,24 +844,6 @@ static const struct IODevice io_vc20[] =
 static const struct IODevice io_vc20v[] =
 {
 	IODEVICE_CBM_QUICK,
-	{
-		IO_CARTSLOT,				   /* type */
-		2,							   /* normal 1 *//* count */
-		"a0\00020\00040\00060\0rom\0bin\0",/* file extensions */
-		IO_RESET_ALL,				   /* reset if file changed */
-		0,
-		vc20_rom_load,				   /* init */
-		NULL,						   /* exit */
-		NULL,						   /* info */
-		NULL,						   /* open */
-		NULL,						   /* close */
-		NULL,						   /* status */
-		NULL,						   /* seek */
-		NULL,						   /* input */
-		NULL,						   /* output */
-		NULL,						   /* input_chunk */
-		NULL						   /* output_chunk */
-	},
 	IODEVICE_VC20TAPE,
 	IODEVICE_VC1541,
 	{IO_END}
@@ -889,24 +853,6 @@ static const struct IODevice io_vc20v[] =
 static const struct IODevice io_vc20i[] =
 {
 	IODEVICE_CBM_QUICK,
-	{
-		IO_CARTSLOT,				   /* type */
-		2,							   /* normal 1 *//* count */
-		"a0\00020\00040\00060\0rom\0bin\0",/* file extensions */
-		IO_RESET_ALL,				   /* reset if file changed */
-		0,
-		vc20_rom_load,				   /* init */
-		NULL,						   /* exit */
-		NULL,						   /* info */
-		NULL,						   /* open */
-		NULL,						   /* close */
-		NULL,						   /* status */
-		NULL,						   /* seek */
-		NULL,						   /* input */
-		NULL,						   /* output */
-		NULL,						   /* input_chunk */
-		NULL						   /* output_chunk */
-	},
 	IODEVICE_VC20TAPE,
 	IODEVICE_C2031,
 	{IO_END}
@@ -924,30 +870,26 @@ static const struct IODevice io_vc20i[] =
 /*#define io_vic20i 	io_vc20i */
 #define io_vic20i		io_vc20
 
-/*		YEAR	NAME		PARENT	MACHINE INPUT		INIT	COMPANY 							FULLNAME */
+SYSTEM_CONFIG_START(vc20)
+	CONFIG_DEVICE_CARTSLOT(2, "a0\00020\00040\00060\0rom\0bin\0", vc20_rom_load, NULL, NULL)
+SYSTEM_CONFIG_END
 
-COMPX ( 1981,	vic20,		0,		vic20,	vic20,		vic20,	"Commodore Business Machines Co.",  "VIC20 (NTSC)", GAME_IMPERFECT_SOUND)
-COMPX ( 1981,	vic20i, 	vic20,	vic20i, vic20i, 	vic20i, "Commodore Business Machines Co.",  "VIC20 (NTSC), IEEE488 Interface (SYS45065)",   GAME_IMPERFECT_SOUND)
-COMPX ( 1981,	vic1001,	vic20,	vic20,	vic1001,		vic20,	"Commodore Business Machines Co.",  "VIC1001 (NTSC)", GAME_IMPERFECT_SOUND)
-COMPX ( 1981,	vc20,		vic20,	vc20,	vc20,		vc20,	"Commodore Business Machines Co.",  "VIC20/VC20(German) PAL",       GAME_IMPERFECT_SOUND)
-COMPX ( 1981,	vic20swe,	vic20,	vc20,	vic20swe,		vc20,	"Commodore Business Machines Co.",  "VIC20 PAL, Swedish Expansion Kit", GAME_IMPERFECT_SOUND)
-// please leave the following as testdriver only
-COMPX ( 1981,	vic20v, 	vic20,	vic20v, vic20,		vic20,	"Commodore Business Machines Co.",  "VIC20 (NTSC), VC1540", GAME_IMPERFECT_SOUND)
-COMPX ( 1981,	vc20v,		vic20,	vc20v,	vic20,		vc20,	"Commodore Business Machines Co.",  "VC20 (PAL), VC1541", GAME_IMPERFECT_SOUND)
+SYSTEM_CONFIG_START(vc20v)
+	CONFIG_DEVICE_CARTSLOT(2, "a0\00020\00040\00060\0rom\0bin\0", vc20_rom_load, NULL, NULL)
+SYSTEM_CONFIG_END
 
-
-#ifdef RUNTIME_LOADER
-extern void vc20_runtime_loader_init(void)
-{
-	int i;
-	for (i=0; drivers[i]; i++) {
-		if ( strcmp(drivers[i]->name,"vic20")==0) drivers[i]=&driver_vic20;
-		if ( strcmp(drivers[i]->name,"vic1001")==0) drivers[i]=&driver_vic1001;
-		if ( strcmp(drivers[i]->name,"vic20i")==0) drivers[i]=&driver_vic20i;
-		if ( strcmp(drivers[i]->name,"vc20")==0) drivers[i]=&driver_vc20;
-		if ( strcmp(drivers[i]->name,"vic20swe")==0) drivers[i]=&driver_vic20swe;
-		if ( strcmp(drivers[i]->name,"vic20v")==0) drivers[i]=&driver_vic20v;
-		if ( strcmp(drivers[i]->name,"vc20v")==0) drivers[i]=&driver_vc20v;
-	}
-}
+#ifdef PET_TEST_CODE
+SYSTEM_CONFIG_START(vc20i)
+	CONFIG_DEVICE_CARTSLOT(2, "a0\00020\00040\00060\0rom\0bin\0", vc20_rom_load, NULL, NULL)
+SYSTEM_CONFIG_END
 #endif
+
+/*		YEAR	NAME		PARENT	MACHINE INPUT		INIT	CONFIG     COMPANY 							FULLNAME */
+COMPX ( 1981,	vic20,		0,		vic20,	vic20,		vic20,	vc20,      "Commodore Business Machines Co.",  "VIC20 (NTSC)", GAME_IMPERFECT_SOUND)
+COMPX ( 1981,	vic20i, 	vic20,	vic20i, vic20i, 	vic20i, vc20,      "Commodore Business Machines Co.",  "VIC20 (NTSC), IEEE488 Interface (SYS45065)",   GAME_IMPERFECT_SOUND)
+COMPX ( 1981,	vic1001,	vic20,	vic20,	vic1001,	vic20,	vc20,      "Commodore Business Machines Co.",  "VIC1001 (NTSC)", GAME_IMPERFECT_SOUND)
+COMPX ( 1981,	vc20,		vic20,	vc20,	vc20,		vc20,	vc20,      "Commodore Business Machines Co.",  "VIC20/VC20(German) PAL",       GAME_IMPERFECT_SOUND)
+COMPX ( 1981,	vic20swe,	vic20,	vc20,	vic20swe,	vc20,	vc20,      "Commodore Business Machines Co.",  "VIC20 PAL, Swedish Expansion Kit", GAME_IMPERFECT_SOUND)
+// please leave the following as testdriver only
+COMPX ( 1981,	vic20v, 	vic20,	vic20v, vic20,		vic20,	vc20v,     "Commodore Business Machines Co.",  "VIC20 (NTSC), VC1540", GAME_IMPERFECT_SOUND)
+COMPX ( 1981,	vc20v,		vic20,	vc20v,	vic20,		vc20,	vc20v,     "Commodore Business Machines Co.",  "VC20 (PAL), VC1541", GAME_IMPERFECT_SOUND)

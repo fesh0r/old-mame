@@ -15,6 +15,7 @@
 #include "includes/cgenie.h"
 #include "includes/wd179x.h"
 #include "includes/basicdsk.h"
+#include "image.h"
 
 #define AYWriteReg(chip,port,value) \
 	AY8910_control_port_0_w(0,port);  \
@@ -80,7 +81,6 @@ static UINT8 irq_status = 0;
 static UINT8 motor_drive = 0;
 static UINT8 head = 0;
 
-static int cass_specified = 0;
 /* current tape file handles */
 static char tape_name[12+1];
 static void *tape_put_file = 0;
@@ -124,7 +124,7 @@ static OPBASE_HANDLER (opbaseoverride)
 	if( cgenie_load_cas && RAM[0x4400+3*40] == 0x3e )
 	{
 		cgenie_load_cas = 0;
-		if( cass_specified && strlen(device_filename(IO_CASSETTE,0)) )
+		if (image_exists(IO_CASSETTE, 0))
 		{
 			UINT8 *buff = (UINT8*)malloc(65536), *s, data;
 			UINT16 size, entry = 0, block_len, block_ofs = 0;
@@ -135,12 +135,12 @@ static OPBASE_HANDLER (opbaseoverride)
 				logerror("failed to allocate 64K buff\n");
 				return address;
 			}
-			cmd = image_fopen(IO_CASSETTE, 0, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
+			cmd = image_fopen_custom(IO_CASSETTE, 0, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 			if( !cmd )
-				  cmd = image_fopen(IO_SNAPSHOT, 0, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
+				  cmd = image_fopen_custom(IO_SNAPSHOT, 0, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
 			if( !cmd )
 			{
-				logerror("failed to open '%s'\n", device_filename(IO_CASSETTE,0));
+				logerror("failed to open '%s'\n", image_filename(IO_CASSETTE,0));
 			}
 			else
 			{
@@ -340,10 +340,9 @@ MACHINE_STOP( cgenie )
 	tape_put_close();
 }
 
-int cgenie_cassette_init(int id)
+int cgenie_cassette_init(int id, void *fp, int open_mode)
 {
-	cass_specified = device_filename(IO_CASSETTE,id) != NULL;
-	return 0;
+	return INIT_PASS;
 }
 
 #if 0
@@ -371,24 +370,20 @@ int cgenie_cassette_init(int id)
  * of tracks, number of sides, number of sectors etc, so we need to
  * set that up here
  */
-int cgenie_floppy_init(int id)
+int cgenie_floppy_init(int id, void *fp, int open_mode)
 {
-		void *file;
-
 	/* A Floppy Isnt manditory, so return if none */
-	if (!device_filename(IO_FLOPPY,id) || !strlen(device_filename(IO_FLOPPY,id) ))
+	if (fp == NULL)
 	{
 		logerror("CGENIE - warning: no floppy specified!\n");
 		return INIT_PASS;
 	}
 
-	if (basicdsk_floppy_init(id) != INIT_PASS)
+	if (basicdsk_floppy_init(id, fp, open_mode) != INIT_PASS)
 		return INIT_FAIL;
 
-	/* open file and determine image geometry */
-	file = image_fopen(IO_FLOPPY, id, OSD_FILETYPE_IMAGE, OSD_FOPEN_READ);
-
-	if (file)
+	/* determine image geometry */
+	if (fp)
 	{
 		int i, j, dir_offset;
 		UINT8 buff[16];
@@ -397,11 +392,14 @@ int cgenie_floppy_init(int id)
 		UINT8 spt = 0;
 		short dir_sector = 0;
 		short dir_length = 0;
+
+		osd_fseek(fp, 0, SEEK_SET);
+
 		/* determine geometry from disk contents */
 		for( i = 0; i < 12; i++ )
 		{
-			osd_fseek(file, pd_list[i].SPT * 256, SEEK_SET);
-			osd_fread(file, buff, 16);
+			osd_fseek(fp, pd_list[i].SPT * 256, SEEK_SET);
+			osd_fread(fp, buff, 16);
 			/* find an entry with matching DDSL */
 			if (buff[0] != 0x00 || buff[1] != 0xfe || buff[2] != pd_list[i].DDSL)
 				continue;
@@ -415,9 +413,9 @@ int cgenie_floppy_init(int id)
 			for( j = 16; j < 32; j += 8 )
 			{
 				dir_offset = dir_sector * 256 + j * 32;
-				if( osd_fseek(file, dir_offset, SEEK_SET) < 0 )
+				if( osd_fseek(fp, dir_offset, SEEK_SET) < 0 )
 					break;
-				if( osd_fread(file, buff, 16) != 16 )
+				if( osd_fread(fp, buff, 16) != 16 )
 					break;
 				if( !strncmp((char*)buff + 5, "DIR     SYS", 11) ||
 					!strncmp((char*)buff + 5, "NCW1983 JHL", 11) )
@@ -468,14 +466,13 @@ int cgenie_floppy_init(int id)
 
 		}
 
-		osd_fclose(file);
 		return INIT_PASS;
 	}
 
 	return INIT_FAIL;
 }
 
-int cgenie_rom_load(int id)
+int cgenie_rom_load(int id, void *fp, int open_mode)
 {
 	int result = 0;
 	UINT8 *ROM = memory_region(REGION_CPU1);
@@ -1272,7 +1269,7 @@ INTERRUPT_GEN( cgenie_frame_interrupt )
 	}
 }
 
-void cgenie_nmi_generate(int param)
+static void cgenie_nmi_generate(int param)
 {
 	cpu_set_nmi_line(0, PULSE_LINE);
 }

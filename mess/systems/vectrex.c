@@ -116,30 +116,11 @@ static MACHINE_DRIVER_START( vectrex )
 	MDRV_SOUND_ADD(DAC, dac_interface)
 MACHINE_DRIVER_END
 
+#define io_vectrex io_NULL
 
-static const struct IODevice io_vectrex[] = {
-	{
-		IO_CARTSLOT,		/* type */
-		1,					/* count */
-		"bin\0gam\0",       /* file extensions */
-		IO_RESET_ALL,		/* reset if file changed */
-        0,
-		vectrex_init_cart,	/* init */
-		NULL,				/* exit */
-		NULL,				/* info */
-		NULL,				/* open */
-		NULL,				/* close */
-		NULL,				/* status */
-		NULL,				/* seek */
-		NULL,				/* tell */
-		NULL,				/* input */
-		NULL,				/* output */
-		NULL,				/* input_chunk */
-		NULL				/* output_chunk */
-    },
-	{ IO_END }
-};
-
+SYSTEM_CONFIG_START(vectrex)
+	CONFIG_DEVICE_CARTSLOT(1, "bin\0gam\0", vectrex_init_cart, NULL, NULL)
+SYSTEM_CONFIG_END
 
 ROM_START(vectrex)
     ROM_REGION(0x10000,REGION_CPU1, 0)
@@ -210,10 +191,7 @@ static MACHINE_DRIVER_START( raaspec )
 	MDRV_VIDEO_START( raaspec )
 MACHINE_DRIVER_END
 
-
-static const struct IODevice io_raaspec[] = {
-	{ IO_END }
-};
+#define io_raaspec	io_NULL
 
 ROM_START(raaspec)
 	ROM_REGION(0x10000,REGION_CPU1, 0)
@@ -221,6 +199,12 @@ ROM_START(raaspec)
 	ROM_LOAD("system.img", 0xe000, 0x2000, 0xba13fb57)
 ROM_END
 
-/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	  COMPANY	FULLNAME */
-CONS( 1982, vectrex,  0, 		vectrex,  vectrex,	0,		  "General Consumer Electronics",   "Vectrex" )
-CONS( 1984, raaspec,  vectrex,	raaspec,  raaspec,	0,		  "Roy Abel & Associates",   "Spectrum I+" )
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
+
+/*	  YEAR	NAME	  PARENT	MACHINE   INPUT 	INIT	CONFIG		COMPANY	FULLNAME */
+CONS( 1982, vectrex,  0, 		vectrex,  vectrex,	0,		vectrex,	"General Consumer Electronics",   "Vectrex" )
+CONS( 1984, raaspec,  vectrex,	raaspec,  raaspec,	0,		NULL,		"Roy Abel & Associates",   "Spectrum I+" )

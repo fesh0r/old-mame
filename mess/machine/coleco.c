@@ -11,6 +11,7 @@
 #include "driver.h"
 #include "vidhrdw/tms9928a.h"
 #include "includes/coleco.h"
+#include "image.h"
 
 static int JoyMode=0;
 
@@ -27,25 +28,19 @@ static int coleco_verify_cart (UINT8 *cartdata)
 	return retval;
 }
 
-int coleco_init_cart (int id)
+int coleco_init_cart (int id, void *cartfile, int open_mode)
 {
-    void *cartfile = NULL;
 	UINT8 *cartdata;
 	int init_result = INIT_FAIL;
 
 	/* A cartridge isn't strictly mandatory for the coleco */
-	if (!device_filename(IO_CARTSLOT,id) || !strlen(device_filename(IO_CARTSLOT,id) ))
+	if (cartfile == NULL)
 	{
 		logerror("Coleco - warning: no cartridge specified!\n");
 		return INIT_PASS;
 	}
 
 	/* Load the specified Cartridge File */
-	if (!(cartfile = image_fopen (IO_CARTSLOT, id, OSD_FILETYPE_IMAGE, 0)))
-	{
-		logerror("Coleco - Unable to locate cartridge: %s\n",device_filename(IO_CARTSLOT,id) );
-		return INIT_FAIL;
-	}
 
 	/* All seems OK */
 	cartdata = memory_region(REGION_CPU1) + 0x8000;

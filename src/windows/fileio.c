@@ -9,6 +9,9 @@
 #include "driver.h"
 #include "unzip.h"
 #include "rc.h"
+#ifdef MESS
+#include "image.h"
+#endif
 
 //============================================================
 //	EXTERNALS
@@ -62,6 +65,7 @@ extern char *cheatfile;
 #define FILEFLAG_CAN_BE_ABSOLUTE	0x20
 #define FILEFLAG_OPEN_ZIPS			0x40
 #define FILEFLAG_CREATE_GAME_DIR	0x80
+#define FILEFLAG_MUSTEXIST			0x100
 #endif
 
 #define STATCACHE_SIZE			64
@@ -272,6 +276,9 @@ void *osd_fopen(const char *gamename, const char *filename, int filetype, int op
 					break;
 
 				case OSD_FOPEN_RW:
+					flags |= FILEFLAG_OPENREAD | FILEFLAG_OPENWRITE | FILEFLAG_MUSTEXIST;
+					break;
+
 				case OSD_FOPEN_RW_CREATE:
 					flags |= FILEFLAG_OPENREAD | FILEFLAG_OPENWRITE;
 					break;
@@ -322,6 +329,13 @@ void *osd_fopen(const char *gamename, const char *filename, int filetype, int op
 		case OSD_FILETYPE_STATE:
 		{
 			char temp[256];
+#ifdef MESS
+			if (!strcmp(filename, "\1"))
+			{
+				extern char *win_state_hack;
+				return generic_fopen(pathc, pathv, NULL, win_state_hack, extension, 0, (openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD) | FILEFLAG_CAN_BE_ABSOLUTE);
+			}
+#endif
 			sprintf(temp, "%s-%s", gamename, filename);
 			return generic_fopen(pathc, pathv, NULL, temp, extension, 0, openforwrite ? FILEFLAG_OPENWRITE : FILEFLAG_OPENREAD);
 		}
@@ -1540,6 +1554,10 @@ static void *generic_fopen(int pathc, const char **pathv, const char *gamename, 
 						closezip(z);
 				}
 			}
+			else if ((flags & FILEFLAG_MUSTEXIST) && (cache_stat(name, &stat_buffer) != 0))
+			{
+				// if FILEFLAG_MUSTEXIST is set and the file isn't there, don't open it
+			}
 #endif
 			// otherwise, just open it straight
 			else
@@ -1799,6 +1817,6 @@ void build_crc_database_filename(int game_index)
 
 void osd_device_eject(int type, int id)
 {
-	device_filename_change(type, id, NULL);
+	image_unload(type, id);
 }
 #endif
