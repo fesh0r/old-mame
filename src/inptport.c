@@ -2803,6 +2803,17 @@ void set_default_player_controls(int player)
 /***************************************************************************/
 /* InputPort conversion */
 
+static unsigned input_port_size(const struct InputPortTiny *port)
+{
+	/* returns the size of this input port */
+	UINT32 type = port->type & ~IPF_MASK;
+	if (type > IPT_ANALOG_START && type < IPT_ANALOG_END)
+		return 2;
+	else
+		return 1;
+}
+
+
 static unsigned input_port_count(const struct InputPortTiny *src)
 {
 	unsigned total;
@@ -2811,10 +2822,20 @@ static unsigned input_port_count(const struct InputPortTiny *src)
 	while (src->type != IPT_END)
 	{
 		int type = src->type & ~IPF_MASK;
-		if (type > IPT_ANALOG_START && type < IPT_ANALOG_END)
-			total += 2;
-		else if (type != IPT_EXTENSION)
-			++total;
+		switch(type)
+		{
+			case IPT_EXTENSION:
+#ifdef MESS
+			case IPT_CATEGORY:
+			case IPT_UCHAR:
+#endif /* MESS */
+				break;
+
+			default:
+				total += input_port_size(src);
+				break;
+
+		}
 		++src;
 	}
 
@@ -2842,13 +2863,10 @@ struct InputPort* input_port_allocate(const struct InputPortTiny *src)
 	{
 		int type = src->type & ~IPF_MASK;
 		const struct InputPortTiny *ext;
-		const struct InputPortTiny *src_end;
 		InputCode seq_default;
+		int port_size, i;
 
-		if (type > IPT_ANALOG_START && type < IPT_ANALOG_END)
-			src_end = src + 2;
-		else
-			src_end = src + 1;
+		port_size = input_port_size(src);
 
 		switch (type)
 		{
@@ -2859,7 +2877,9 @@ struct InputPort* input_port_allocate(const struct InputPortTiny *src)
 #ifdef MESS
 			case IPT_CONFIG_NAME :
 			case IPT_CONFIG_SETTING :
-#endif
+			case IPT_CATEGORY_NAME :
+			case IPT_CATEGORY_SETTING :
+#endif /* MESS */
 				seq_default = CODE_NONE;
 			break;
 			default:
@@ -2867,16 +2887,19 @@ struct InputPort* input_port_allocate(const struct InputPortTiny *src)
 				break;
 		}
 
-		ext = src_end;
-		while (src != src_end)
+		ext = src + port_size;
+		for (i = 0; i < port_size; i++)
 		{
-			dst->type = src->type;
-			dst->mask = src->mask;
-			dst->default_value = src->default_value;
-			dst->name = src->name;
+			/* copy in key values from the InputPortTiny into our copy */
+			dst[i].type = src[i].type;
+			dst[i].mask = src[i].mask;
+			dst[i].default_value = src[i].default_value;
+			dst[i].name = src[i].name;
 
   			if (ext->type == IPT_EXTENSION)
   			{
+				/* this IPT has an extension describing the input codes for
+				 * this input */
 				InputCode or1 =	IP_GET_CODE_OR1(ext);
 				InputCode or2 =	IP_GET_CODE_OR2(ext);
 				InputCode or3;
@@ -2901,33 +2924,34 @@ struct InputPort* input_port_allocate(const struct InputPortTiny *src)
 				if (or1 < __code_max)
 				{
 					if (or3 < __code_max)
-						seq_set_5(&dst->seq, or1, CODE_OR, or2, CODE_OR, or3);
+						seq_set_5(&dst[i].seq, or1, CODE_OR, or2, CODE_OR, or3);
 					else if (or2 < __code_max)
-						seq_set_3(&dst->seq, or1, CODE_OR, or2);
+						seq_set_3(&dst[i].seq, or1, CODE_OR, or2);
 					else
-						seq_set_1(&dst->seq, or1);
+						seq_set_1(&dst[i].seq, or1);
 				} else {
 					if (or1 == CODE_NONE)
-						seq_set_1(&dst->seq, or2);
+						seq_set_1(&dst[i].seq, or2);
 					else
-						seq_set_1(&dst->seq, or1);
+						seq_set_1(&dst[i].seq, or1);
 				}
 
   				++ext;
-  			} else {
-				seq_set_1(&dst->seq,seq_default);
   			}
-
-			++src;
-			++dst;
+			else
+			{
+				/* no IPT_EXTENSION; use the defaults */
+				seq_set_1(&dst[i].seq, seq_default);
+  			}
 		}
 
 #ifdef MESS
-		while((ext->type & ~IPF_MASK) == IPT_UCHAR)
-			ext++;
-#endif
+		/* process MESS specific extensions to the port */
+		ext = inputx_handle_mess_extensions(ext, dst, port_size);
+#endif /* MESS */
 
 		src = ext;
+		dst += port_size;
 	}
 
 	dst->type = IPT_END;

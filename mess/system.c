@@ -118,6 +118,8 @@ const struct GameDriver *test_drivers[] =
 	DRIVER( snes )		/* Nintendo Super Nintendo NTSC						*/
 	DRIVER( snespal )	/* Nintendo Super Nintendo PAL						*/
 
+	DRIVER( megaduck )	/* Megaduck											*/
+	
 	/* SEGA */
 	DRIVER( gamegear )	/* Sega GameGear									*/
 	DRIVER( gamegj )	/* Sega GameGear (Japanese)							*/
@@ -140,7 +142,9 @@ const struct GameDriver *test_drivers[] =
 	DRIVER( smsehs24 )	/* Sega Master System								*/
 	DRIVER( smsuh34 )	/* Sega Master System								*/
 	DRIVER( smseh34 )	/* Sega Master System								*/
-	DRIVER( genesis )	/* Sega Genesis/MegaDrive							*/
+	DRIVER( gen_usa )	/* Sega Genesis/MegaDrive USA							*/
+	DRIVER( gen_eur )	/* Sega Genesis/MegaDrive Europe						*/
+	DRIVER( gen_jpn )	/* Sega Genesis/MegaDrive Japan						*/
 TESTDRIVER( saturn )	/* Sega Saturn										*/
 
 	/* BALLY */
@@ -213,6 +217,7 @@ TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
 	DRIVER( cpc464 )	/* Amstrad (Schneider in Germany) 1984				*/
 	DRIVER( cpc664 )	/* Amstrad (Schneider in Germany) 1985				*/
 	DRIVER( cpc6128 )	/* Amstrad (Schneider in Germany) 1985				*/
+	DRIVER( cpc6128fr )	/* Amstrad (Schneider in Germany) 1985 (AZERTY)		*/
 	DRIVER( cpc464p )	/* Amstrad CPC464  Plus - 1987						*/
 	DRIVER( cpc6128p )	/* Amstrad CPC6128 Plus - 1987						*/
 	DRIVER( kccomp )	/* VEB KC compact									*/
@@ -405,40 +410,42 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 	DRIVER( at386 )		/* 19?? IBM AT 386									*/
 
 	/* SINCLAIR */
-TESTDRIVER( zx80 )		/* Sinclair ZX-80									*/
-TESTDRIVER( zx81 )		/* Sinclair ZX-81									*/
-TESTDRIVER( zx81a )
-TESTDRIVER( zx81b )
-TESTDRIVER( ts1000 )	/* Timex Sinclair 1000								*/
-TESTDRIVER( aszmic )	/* ASZMIC ZX-81 ROM swap							*/
-TESTDRIVER( pc8300 )	/* Your Computer - PC8300							*/
-TESTDRIVER( pow3000 )	/* Creon Enterprises - Power 3000					*/
-TESTDRIVER( lambda )	/* Lambda 8300										*/
+	DRIVER( zx80 )		/* Sinclair ZX-80						*/
+	DRIVER( zx81 )		/* Sinclair ZX-81						*/
+	DRIVER( zx81a )		/* Sinclair ZX-81 (2nd rev)					*/
+	DRIVER( zx81b )		/* Sinclair ZX-81 (3nd rev)					*/
+	DRIVER( ts1000 )	/* Timex Sinclair 1000						*/
+	DRIVER( aszmic )	/* ASZMIC ZX-81 ROM swap					*/
+	DRIVER( pc8300 )	/* Your Computer - PC8300					*/
+	DRIVER( pow3000 )	/* Creon Enterprises - Power 3000				*/
+	DRIVER( lambda )	/* Lambda 8300							*/
+TESTDRIVER( h4th )		/* Sinclair ZX-81 Forth by David Husband			*/
+TESTDRIVER( tree4th )		/* Sinclair ZX-81 Tree-Forth by Tree Systems			*/
 
-	DRIVER( spectrum )	/* 1982 ZX Spectrum 								*/
-	DRIVER( specpls4 )	/* 2000 ZX Spectrum +4								*/
-	DRIVER( specbusy )	/* 1994 ZX Spectrum (BusySoft Upgrade v1.18)		*/
+	DRIVER( spectrum )	/* 1982 ZX Spectrum 						*/
+	DRIVER( specpls4 )	/* 2000 ZX Spectrum +4						*/
+	DRIVER( specbusy )	/* 1994 ZX Spectrum (BusySoft Upgrade v1.18)			*/
 	DRIVER( specpsch )	/* 19?? ZX Spectrum (Maly's Psycho Upgrade)			*/
 	DRIVER( specgrot )	/* ???? ZX Spectrum (De Groot's Upgrade)			*/
 	DRIVER( specimc )	/* 1985 ZX Spectrum (Collier's Upgrade)				*/
-	DRIVER( speclec )	/* 1987 ZX Spectrum (LEC Upgrade)					*/
-	DRIVER( inves ) 	/* 1986 Inves Spectrum 48K+ 						*/
-	DRIVER( tk90x ) 	/* 1985 TK90x Color Computer						*/
-	DRIVER( tk95 )		/* 1986 TK95 Color Computer 						*/
-	DRIVER( tc2048 )	/* 198? TC2048										*/
-	DRIVER( ts2068 )	/* 1983 TS2068										*/
-	DRIVER( uk2086 )	/* 1986 UK2086										*/
+	DRIVER( speclec )	/* 1987 ZX Spectrum (LEC Upgrade)				*/
+	DRIVER( inves ) 	/* 1986 Inves Spectrum 48K+ 					*/
+	DRIVER( tk90x ) 	/* 1985 TK90x Color Computer					*/
+	DRIVER( tk95 )		/* 1986 TK95 Color Computer 					*/
+	DRIVER( tc2048 )	/* 198? TC2048							*/
+	DRIVER( ts2068 )	/* 1983 TS2068							*/
+	DRIVER( uk2086 )	/* 1986 UK2086							*/
 
-	DRIVER( spec128 )	/* 1986 ZX Spectrum 128								*/
-	DRIVER( spec128s )	/* 1985 ZX Spectrum 128 (Spain)						*/
-	DRIVER( specpls2 )	/* 1986 ZX Spectrum +2								*/
-	DRIVER( specpl2a )	/* 1987 ZX Spectrum +2a 							*/
-	DRIVER( specpls3 )	/* 1987 ZX Spectrum +3								*/
-	DRIVER( specp2fr )	/* 1986 ZX Spectrum +2 (France) 					*/
-	DRIVER( specp2sp )	/* 1986 ZX Spectrum +2 (Spain)						*/
-	DRIVER( specp3sp )	/* 1987 ZX Spectrum +3 (Spain)						*/
-	DRIVER( specpl3e )	/* 2000 ZX Spectrum +3e 							*/
-	DRIVER( specp3es )	/* 2000 ZX Spectrum +3e (Spain)						*/
+	DRIVER( spec128 )	/* 1986 ZX Spectrum 128						*/
+	DRIVER( spec128s )	/* 1985 ZX Spectrum 128 (Spain)					*/
+	DRIVER( specpls2 )	/* 1986 ZX Spectrum +2						*/
+	DRIVER( specpl2a )	/* 1987 ZX Spectrum +2a 					*/
+	DRIVER( specpls3 )	/* 1987 ZX Spectrum +3						*/
+	DRIVER( specp2fr )	/* 1986 ZX Spectrum +2 (France) 				*/
+	DRIVER( specp2sp )	/* 1986 ZX Spectrum +2 (Spain)					*/
+	DRIVER( specp3sp )	/* 1987 ZX Spectrum +3 (Spain)					*/
+	DRIVER( specpl3e )	/* 2000 ZX Spectrum +3e 					*/
+	DRIVER( specp3es )	/* 2000 ZX Spectrum +3e (Spain)					*/
 
 	/* SHARP */
 	DRIVER( pc1251 )	/* Pocket Computer 1251 							*/
@@ -563,13 +570,18 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 			*/
 
 	/* VIDEO TECHNOLOGY */
 	DRIVER( laser110 )	/* 1983 Laser 110									*/
-	DRIVER( laser200 )	/* 1983 Laser 200									*/
-	DRIVER( laser210 )	/* 1983 Laser 210 (indentical to Laser 200 ?)		*/
-	DRIVER( laser310 )	/* 1983 Laser 310 (210 with diff. keyboard and RAM)	*/
-	DRIVER( vz200 ) 	/* 1983 Dick Smith Electronics / Sanyo VZ200		*/
-	DRIVER( vz300 ) 	/* 1983 Dick Smith Electronics / Sanyo VZ300		*/
+	DRIVER( las110de )  /* 1983 Sanyo Laser 110 (Germany)                   */
+	DRIVER( laser200 )	/* 1983 Laser 200 (color version of 110)			*/
+	DRIVER( vz200de  )  /* 1983 VZ-200 (Germany)                            */
 	DRIVER( fellow )	/* 1983 Salora Fellow (Finland) 					*/
 	DRIVER( tx8000 )	/* 1983 Texet TX-8000 (U.K.)						*/
+	DRIVER( laser210 )	/* 1984 Laser 210 (200 with more memory)            */
+	DRIVER( las210de )  /* 1984 Sanyo Laser 210 (Germany)                   */
+	DRIVER( vz200 ) 	/* 1984 Dick Smith Electronics VZ-200               */
+	DRIVER( laser310 )	/* 1984 Laser 310 (210 with diff. keyboard and RAM)	*/
+	DRIVER( las31021 )  /* 1984? Laser 310 (Basic V2.1)                     */
+	DRIVER( vz300 ) 	/* 1984 Dick Smith Electronics VZ-300               */
+	DRIVER( vz300_21 ) 	/* 1984 Dick Smith Electronics VZ-300 (Basic V2.1)  */
 	DRIVER( laser350 )	/* 1984? Laser 350									*/
 	DRIVER( laser500 )	/* 1984? Laser 500									*/
 	DRIVER( laser700 )	/* 1984? Laser 700									*/

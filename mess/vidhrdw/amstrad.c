@@ -15,36 +15,54 @@
 #include "vidhrdw/m6845.h"
 
 static crtc6845_state amstrad_vidhrdw_6845_state;
-#ifdef AMSTRAD_VIDEO_EVENT_LIST
-static int amstrad_rendering;
-#endif
-
-#ifdef AMSTRAD_VIDEO_EVENT_LIST
-/* event list for storing colour changes, mode changes and CRTC writes */
-#include "eventlst.h"
-#endif
 
 /***************************************************************************
   Start the video hardware emulation.
 ***************************************************************************/
 
+extern int amstrad_cycles_last_write;
+extern int amstrad_vh_execute_crtc_cycles_count;
 
-/*************************************************************************/
-/* Amstrad CPC 
+/* CRTC status */
+static int amstrad_CRTC_MA = 0; /* MA = Memory Address output */
+static int amstrad_CRTC_RA = 0; /* RA = Row Address output */
+static int amstrad_CRTC_HS = 0; /* HS = Horizontal Sync */
+int amstrad_CRTC_VS = 0;        /* VS = Vertical Sync */
+static int amstrad_CRTC_DE = 0; /* DE = Display Enabled */
+int amstrad_CRTC_CR = 0;        /* CR = Cursor Enabled */
+
+/* this is the real pixel position */
+static int x_screen_pos;
+static int y_screen_pos;
+
+/* this is the pixel position of the start of a scanline for the amstrad screen */
+static int x_screen_offset = -224;
+static int y_screen_offset = -32;
+
+/* this contains the colours in Machine->pens form.*/
+/* this is updated from the eventlist and reflects the current state
+of the render colours - these may be different to the current colour palette values */
+/* colours can be changed at any time and will take effect immediatly */
+static unsigned long amstrad_GateArray_render_colours[17];
+/* The gate array counts CRTC HSYNC pulses. (It has a internal 6-bit counter). */
+int amstrad_CRTC_HS_Counter;
+/* 2 HSYNCS after the VSYNC Counter */
+int amstrad_CRTC_HS_After_VS_Counter;
+
+static struct mame_bitmap	*amstrad_bitmap;
+
+/* the mode is re-loaded at each HSYNC */
+/* current mode to render */
+static int amstrad_render_mode;
+/* current programmed mode */
+static int amstrad_current_mode;
  
-The Amstrad CPC has a fixed palette of 27 colours generated from 3 levels of Red, 
-Green and Blue.
+static unsigned long Mode0Lookup[256];
+static unsigned long Mode1Lookup[256];
+static unsigned long Mode3Lookup[256];
 
-The hardware allows selection of 32 colours, but these extra colours are copies
-of existing colours.
-*/ 
-
-static unsigned short amstrad_colour_table[32] =
-{
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-	16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-	29, 30, 31
-};
+/* The Amstrad CPC has a fixed palette of 27 colours generated from 3 levels of Red, Green and Blue.
+The hardware allows selection of 32 colours, but these extra colours are copies of existing colours.*/ 
 
 unsigned char amstrad_palette[32 * 3] =
 {
@@ -79,7 +97,7 @@ unsigned char amstrad_palette[32 * 3] =
 	0x080, 0x000, 0x000,			   /* Red */
 	0x080, 0x000, 0x0ff,			   /* mauve */
 	0x080, 0x080, 0x000,			   /* yellow */
-	0x080, 0x080, 0x0ff,			   /* pastel blue */
+	0x080, 0x080, 0x0ff	  		   /* pastel blue */
 };
 
 
@@ -87,7 +105,6 @@ unsigned char amstrad_palette[32 * 3] =
 PALETTE_INIT( amstrad_cpc )
 {
 	palette_set_colors(0, amstrad_palette, sizeof(amstrad_palette) / 3);
-	memcpy(colortable, amstrad_colour_table, sizeof (amstrad_colour_table));
 }
 
 /*************************************************************************/
@@ -129,10 +146,10 @@ static unsigned char kccomp_get_colour_element(int colour_value)
 		case 2:
 			return 0x60;
 		case 3:
-			return 0x0ff;
+			return 0xff;
 	}
 
-	return 0x0ff;
+	return 0xff;
 }
 
 
@@ -184,29 +201,6 @@ PALETTE_INIT( amstrad_plus )
 }
 
 
-/* this contains the colours in Machine->pens form.*/
-/* this is updated from the eventlist and reflects the current state
-of the render colours - these may be different to the current colour palette values */
-/* colours can be changed at any time and will take effect immediatly */
-static unsigned long amstrad_render_colours[17];
-
-#ifndef AMSTRAD_VIDEO_EVENT_LIST
-static struct mame_bitmap	*amstrad_bitmap;
-#endif
-
-/* the mode is re-loaded at each HSYNC */
-/* current mode to render */
-static int amstrad_render_mode;
-
-int amstrad_vsync;
-
-/* current programmed mode */
-static int amstrad_current_mode;
-
-static unsigned long Mode0Lookup[256];
-static unsigned long Mode1Lookup[256];
-static unsigned long Mode3Lookup[256];
-
 static void amstrad_init_lookups(void)
 {
 	int i;
@@ -236,285 +230,27 @@ static void amstrad_init_lookups(void)
 	}
 }
 
-static int x_screen_offset=0;
-
-/* there are about 21 lines of monitor retrace */
-static int y_screen_offset=-21;
-
-static int amstrad_HSync=0;
-static int amstrad_VSync=0;
-static int amstrad_Character_Row=0;
-static int amstrad_DE=0;
-
-
-//static unsigned char *amstrad_Video_RAM;
-static UINT16 *amstrad_display;
-//static struct mame_bitmap *amstrad_bitmap;
-
-static int x_screen_pos;
-static int y_screen_pos;
-
-static void (*draw_function)(void);
-#if 0
-void amstrad_draw_screen_enabled(void)
-{
-	int sc1;
-	int ma, ra;
-	int addr;
-	int byte1, byte2;
-
-	sc1 = 0;
-	ma = crtc6845_memory_address_r(0);
-	ra = crtc6845_row_address_r(0);
-
-	/* calc mem addr to fetch data from
-	based on ma, and ra */
-	addr = (((ma>>(4+8)) & 0x03)<<14) |
-			((ra & 0x07)<<11) |
-			((ma & 0x03ff)<<1);
-
-	/* amstrad fetches two bytes per CRTC clock. */
-	byte1 = mess_ram[addr];
-	byte2 = mess_ram[addr+1];
-
-    /* depending on the mode! */
-	switch (amstrad_render_mode)		
-	{
-    
-		/* mode 0 - low resolution - 16 colours */
-		case 0:
-		{
-			int cpcpen,messpen;
-			unsigned char data;
-
-			data = byte1;
-
-			{
-				cpcpen = Mode0Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
-
-				amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-
-				data = data<<1;
-
-				cpcpen = Mode0Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
-			
-				amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                
-			}
-
-			data = byte2;
-
-			{
-				cpcpen = Mode0Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
-				amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                
-
-				data = data<<1;
-
-				cpcpen = Mode0Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
-				amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                
-                	}
-		}
-		break;
-
-        /* mode 1 - medium resolution - 4 colours */
-		case 1:
-		{
-                        int i;
-                        int cpcpen;
-                        int messpen;
-                        unsigned char data;
-
-                        data = byte1;
-
-                        for (i=0; i<4; i++)
-                        {
-				cpcpen = Mode1Lookup[data & 0x0ff];
-				messpen = amstrad_render_colours[cpcpen];
-    			amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                
-				data = data<<1;
-			}
-
-                        data = byte2;
-
-                        for (i=0; i<4; i++)
-			{
-				cpcpen = Mode1Lookup[data & 0x0ff];
-				messpen = amstrad_render_colours[cpcpen];
-				amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                
-				data = data<<1;
-			}
-
-		}
-		break;
-
-		/* mode 2: high resolution - 2 colours */
-		case 2:
-		{
-			int i;
-			unsigned long Data = (byte1<<8) | byte2;
-			int cpcpen,messpen;
-
-			for (i=0; i<16; i++)
-			{
-				cpcpen = (Data>>15) & 0x01;
-				messpen = amstrad_render_colours[cpcpen];
-				amstrad_display[sc1] = messpen;
-				sc1++;
-                
-				Data = Data<<1;
-
-			}
-
-		}
-		break;
-
-		/* undocumented mode. low resolution - 4 colours */
-		case 3:
-		{
-			int cpcpen,messpen;
-			unsigned char data;
-
-			data = byte1;
-
-			{
-				cpcpen = Mode3Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
-
-				amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-
-				data = data<<1;
-
-				cpcpen = Mode3Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
-			
-				amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                
-			}
-
-			data = byte2;
-
-			{
-				cpcpen = Mode3Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
-				amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                
-
-				data = data<<1;
-
-				cpcpen = Mode3Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
-				amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                amstrad_display[sc1] = messpen;
-				sc1++;
-                
-                	}
-
-
-		}
-		break;
-
-		default:
-			break;
-	}
-
-
-}
-#endif
 static void amstrad_draw_screen_enabled(void)
 {
 	struct mame_bitmap *bitmap = amstrad_bitmap;
-	int x = x_screen_pos;
-	int y = y_screen_pos;
 
-	int ma, ra;
-	int addr;
-	int byte1, byte2;
-
-	ma = crtc6845_memory_address_r(0);
-	ra = crtc6845_row_address_r(0);
-
-	/* calc mem addr to fetch data from
-	based on ma, and ra */
-	addr = (((ma>>(4+8)) & 0x03)<<14) |
+	int ma = amstrad_CRTC_MA; // crtc6845_memory_address_r(0);
+	int ra = amstrad_CRTC_RA; // crtc6845_row_address_r(0);
+	/* calc mem addr to fetch data from	based on ma, and ra */
+	unsigned int addr = (((ma>>(4+8)) & 0x03)<<14) |
 			((ra & 0x07)<<11) |
 			((ma & 0x03ff)<<1);
 
 	/* amstrad fetches two bytes per CRTC clock. */
-	byte1 = mess_ram[addr];
-	byte2 = mess_ram[addr+1];
+	int byte1 = mess_ram[addr];
+	int byte2 = mess_ram[addr+1];
 
-    /* depending on the mode! */
+	int x = x_screen_pos;
+	int y = y_screen_pos;
+  
+	/* render screen depending on the mode! */
 	switch (amstrad_render_mode)		
 	{
-    
 		/* mode 0 - low resolution - 16 colours */
 		case 0:
 		{
@@ -523,9 +259,8 @@ static void amstrad_draw_screen_enabled(void)
 
 			data = byte1;
 
-			{
 				cpcpen = Mode0Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
+				messpen = amstrad_GateArray_render_colours[cpcpen];
 
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
@@ -539,7 +274,7 @@ static void amstrad_draw_screen_enabled(void)
 				data = data<<1;
 
 				cpcpen = Mode0Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
+				messpen = amstrad_GateArray_render_colours[cpcpen];
 			
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
@@ -549,13 +284,11 @@ static void amstrad_draw_screen_enabled(void)
 				x++;
 				plot_pixel(bitmap,x,y,messpen);
 				x++;                
-			}
 
-			data = byte2;
+				data = byte2;
 
-			{
 				cpcpen = Mode0Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
+				messpen = amstrad_GateArray_render_colours[cpcpen];
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
 				plot_pixel(bitmap,x,y,messpen);
@@ -564,13 +297,11 @@ static void amstrad_draw_screen_enabled(void)
 				x++;
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
-
-                
 
 				data = data<<1;
 
 				cpcpen = Mode0Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
+				messpen = amstrad_GateArray_render_colours[cpcpen];
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
 				plot_pixel(bitmap,x,y,messpen);
@@ -579,9 +310,6 @@ static void amstrad_draw_screen_enabled(void)
 				x++;
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
-
-                
-                	}
 		}
 		break;
 
@@ -598,7 +326,7 @@ static void amstrad_draw_screen_enabled(void)
                         for (i=0; i<4; i++)
                         {
 				cpcpen = Mode1Lookup[data & 0x0ff];
-				messpen = amstrad_render_colours[cpcpen];
+				messpen = amstrad_GateArray_render_colours[cpcpen];
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
 				plot_pixel(bitmap,x,y,messpen);
@@ -612,7 +340,7 @@ static void amstrad_draw_screen_enabled(void)
                         for (i=0; i<4; i++)
 			{
 				cpcpen = Mode1Lookup[data & 0x0ff];
-				messpen = amstrad_render_colours[cpcpen];
+				messpen = amstrad_GateArray_render_colours[cpcpen];
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
 				plot_pixel(bitmap,x,y,messpen);
@@ -628,17 +356,17 @@ static void amstrad_draw_screen_enabled(void)
 		case 2:
 		{
 			int i;
-			unsigned long Data = (byte1<<8) | byte2;
+			unsigned long data = (byte1<<8) | byte2;
 			int cpcpen,messpen;
 
 			for (i=0; i<16; i++)
 			{
-				cpcpen = (Data>>15) & 0x01;
-				messpen = amstrad_render_colours[cpcpen];
+				cpcpen = (data>>15) & 0x01;
+				messpen = amstrad_GateArray_render_colours[cpcpen];
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
                 
-				Data = Data<<1;
+				data = data<<1;
 
 			}
 
@@ -655,7 +383,7 @@ static void amstrad_draw_screen_enabled(void)
 
 			{
 				cpcpen = Mode3Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
+				messpen = amstrad_GateArray_render_colours[cpcpen];
 
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
@@ -668,7 +396,7 @@ static void amstrad_draw_screen_enabled(void)
 				data = data<<1;
 
 				cpcpen = Mode3Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
+				messpen = amstrad_GateArray_render_colours[cpcpen];
 			
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
@@ -685,7 +413,7 @@ static void amstrad_draw_screen_enabled(void)
 
 			{
 				cpcpen = Mode3Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
+				messpen = amstrad_GateArray_render_colours[cpcpen];
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
 				plot_pixel(bitmap,x,y,messpen);
@@ -699,7 +427,7 @@ static void amstrad_draw_screen_enabled(void)
 				data = data<<1;
 
 				cpcpen = Mode3Lookup[data];
-				messpen = amstrad_render_colours[cpcpen];
+				messpen = amstrad_GateArray_render_colours[cpcpen];
 				plot_pixel(bitmap,x,y,messpen);
 				x++;
 				plot_pixel(bitmap,x,y,messpen);
@@ -710,208 +438,181 @@ static void amstrad_draw_screen_enabled(void)
 				x++;
                 
                 	}
-
-
 		}
 		break;
 
 		default:
 			break;
 	}
-
-
 }
 
-#if 0
-void amstrad_draw_screen_disabled(void)
-{
-	int sc1;
-	int border_colour;
-
-	border_colour = amstrad_render_colours[16];	
-
-	/* if the display is not enable, draw border colour */
-	for(sc1=0;sc1<16;sc1++)
-	{
-		amstrad_display[sc1]=border_colour;	
-	}
-}
-#endif
 static void amstrad_draw_screen_disabled(void)
 {
-	struct mame_bitmap *bitmap = amstrad_bitmap;
-	int x = x_screen_pos;
-	int y = y_screen_pos;
-	int border_colour;
-
-	border_colour = amstrad_render_colours[16];	
-	
-	plot_box(bitmap,x,y,16,1,border_colour);
-}
-
-
-/* Select the Function to draw the screen area */
-static void amstrad_Set_VideoULA_DE(void)
-{
-	if (amstrad_DE)
-	{
-		draw_function=*amstrad_draw_screen_enabled;
-	} 
-	else 
-	{
-		draw_function=*amstrad_draw_screen_disabled;
-	}
+	plot_box(amstrad_bitmap,x_screen_pos,y_screen_pos,(AMSTRAD_CHARACTERS*2),1,amstrad_GateArray_render_colours[16]);
 }
 
 
 /************************************************************************
- * amstrad 6845 Outputs to Video ULA
+ * amstrad CRTC 6845 Status
  ************************************************************************/
-
-// called when the 6845 changes the character row
-static void amstrad_Set_Character_Row(int offset, int data)
+/* CRTC - Set the new Memory Address output */
+static void amstrad_Set_MA(int offset, int data)
 {
-	amstrad_Character_Row=data;
-	amstrad_Set_VideoULA_DE();
+	amstrad_CRTC_MA = data;
 }
-
-/* the horizontal screen position on the display is determined
-by the length of the HSYNC and the position of the hsync */
-static void amstrad_Set_HSync(int offset, int data)
+/* CRTC - Set the new Row Address output */
+static void amstrad_Set_RA(int offset, int data)
 {
-//	if (amstrad_rendering)
-//	{
-
-		/* hsync changed state? */
-		if ((amstrad_HSync^data)!=0)
-		{
-
-				if (data!=0)
-				{
-								/* start of hsync */
-#ifndef AMSTRAD_VIDEO_EVENT_LIST
-                amstrad_interrupt_timer_update();
-					
-#endif
-					/* set new render mode */
-					amstrad_render_mode = amstrad_current_mode;
-				}
-					else
-					{
-							/* end of hsync */
-							y_screen_pos+=1;
-
-							if (y_screen_pos>312)
-							{
-									y_screen_pos = 0;
-							}
-
-							if ((y_screen_pos>=0) && (y_screen_pos<AMSTRAD_SCREEN_HEIGHT))
-							{
-									x_screen_pos=x_screen_offset;
-									amstrad_display=(UINT16 *)((unsigned long)(amstrad_bitmap->line[y_screen_pos])+(unsigned long)(x_screen_pos<<1));
-							}
-					}
-		}
-//	}
-
-
-	amstrad_HSync=data;
+	amstrad_CRTC_RA = data;
 }
-
-static void amstrad_Set_VSync(int offset, int data)
+/* CRTC - Set new Horizontal Sync Status */
+static void amstrad_Set_HS(int offset, int data)
 {
-
-        amstrad_vsync = data;
-
-//        logerror("%d\r\n",amstrad_vsync);
-
-    /* vsync changed state? */
-    if ((amstrad_VSync^data)!=0)
+//  if (((amstrad_CRTC_HS^data) != 0)&&(data != 0)) {// New CRTC_HSync ? 
+	if (data != 0)
 	{
-        if (data!=0)
-        {
-	//		if (amstrad_rendering)
-	//		{
-				y_screen_pos=y_screen_offset;
+		amstrad_render_mode = amstrad_current_mode;
+		x_screen_pos = x_screen_offset;
+	}
+	else
+	{
+		/* End of CRTC_HSync */
+		if (y_screen_pos<AMSTRAD_SCREEN_HEIGHT)
+		{
+			y_screen_pos++;
+		} /* else {y_screen_pos = y_screen_offset;} */
 
-			   if ((y_screen_pos>=0) && (y_screen_pos<=AMSTRAD_SCREEN_HEIGHT))
-			   {
-					amstrad_display=(UINT16 *)((unsigned long)(amstrad_bitmap->line[y_screen_pos])+(unsigned long)(x_screen_pos<<1));
-				}
-	//		}
-	//		else
-	//		{
-			   /* setup interrupt counter reset */
-//				 amstrad_interrupt_timer_trigger_reset_by_vsync();
-	//		}
-		}
-   }
-    
-	
-	amstrad_VSync=data;
+/* -----------------------------------------------------------
+   - Interrupt Generation Facility of the Amstrad Gate Array -
+   -----------------------------------------------------------
+In the CPC the Gate Array generates maskable interrupts, to do this it uses the HSYNC and VSYNC signals from the CRTC, a 6-bit internal counter and monitors the interrupt acknowledge from the Z80. 
 
+The 6-bit counter is incremented after each HSYNC from the CRTC. (When standard CRTC display settings are used, this is equivalent to counting scan-lines). (to be confirmed: does gate array count positive or negative edge transitions of HSYNC signal?) 
+
+When the counter equals "52", it is cleared to "0" and the Gate-Array will issue a interrupt request to the Z80, the interrupt request remains active until the Z80 acknowledges it.
+These two operations will continue even if the interrupt has not been acknowledged.
+(When standard CRTC display settings are used, this has the potential to generate a interrupt every 52 scan-lines giving 6 possible interrupts per video frame). 
+
+The Z80 will acknowledge if the interrupt acknowledge is enabled. (Z80 internal flag IFF1="1"; this flag can be set with the EI instruction). (When the Z80 acknowledges a interrupt /IORQ = "0" and /M1 = "0" from the Z80.) If IFF1="0" interrupts are ignored and there is no acknowledge. 
+
+When the interrupt is acknowledged, this is sensed by the Gate-Array. The top bit (bit 5), of the counter is set to "0" and the interrupt request is cleared. This prevents the next interrupt from occuring closer than 32 HSYNCs time. 
+
+If bit 4 of the "Select screen mode and rom configuration" register of the Gate-Array (bit 7="1" and bit 6="0") is set to "1" then the interrupt request is cleared and the 6-bit counter is reset to "0". 
+
+The Gate-Array senses the VSYNC signal. If two HSYNCs have been detected following the start of the VSYNC then there are two possible actions: 
+
+If the top bit of the 6-bit counter is set to "1" (i.e. the counter >=32), then there is no interrupt request, and the 6-bit counter is reset to "0". (If a interrupt was requested and acknowledged it would be closer than 32 HSYNCs compared to the position of the previous interrupt). 
+If the top bit of the 6-bit counter is set to "0" (i.e. the counter <32), then a interrupt request is issued, and the 6-bit counter is reset to "0". 
+In both cases the following interrupt requests are synchronised with the VSYNC. 
+
+Interrupts generated by the Gate-Array are the only source of interrupts in the CPC system unless they are generated by expansion devices. 
+
+The NMI interrupt of the Z80 is not used by the Amstrad CPC hardware but is available for expansion devices to use.
+*/	
+//	The GA has a counter that increments on every falling edge of the CRTC generated HSYNC signal.
+ 
+  amstrad_CRTC_HS_Counter++;
+
+  	if (amstrad_CRTC_HS_After_VS_Counter > 0) {
+  
+  		amstrad_CRTC_HS_After_VS_Counter--;
+  
+  		if (amstrad_CRTC_HS_After_VS_Counter == 0) {
+      	if (amstrad_CRTC_HS_Counter >= 32) {
+          cpu_set_irq_line(0,0, HOLD_LINE);
+        }	else {
+       	  cpu_set_irq_line(0,0, CLEAR_LINE);
+        }
+    	  amstrad_CRTC_HS_Counter = 0;
+  		}
+  	}
+  	if (amstrad_CRTC_HS_Counter == 52) {
+  		amstrad_CRTC_HS_Counter = 0;
+      cpu_set_irq_line(0,0, HOLD_LINE);
+  	}
+  }
+  amstrad_CRTC_HS = data;
 }
 
-// called when the 6845 changes the Display Enabled
+/* CRTC - Set new Vertical Sync Status*/
+static void amstrad_Set_VS(int offset, int data)
+{
+/* New CRTC_VSync */
+//  if (((amstrad_CRTC_VS^data) != 0)&&(data != 0)) {
+  if (data != 0) {
+    y_screen_pos = y_screen_offset;
+      x_screen_pos = x_screen_offset;
+/* Reset the amstrad_CRTC_HS_After_VS_Counter */
+    amstrad_CRTC_HS_After_VS_Counter = 2;
+  }
+  amstrad_CRTC_VS = data;
+}
+
+/* CRTC - Set new Display Enabled Status*/
 static void amstrad_Set_DE(int offset, int data)
 {
-	amstrad_DE=data;
-	amstrad_Set_VideoULA_DE();
+	amstrad_CRTC_DE = data;
 }
 
+/* CRTC - Set new Cursor Status */
+static void amstrad_Set_CR(int offset, int data)
+{
+	amstrad_CRTC_CR = data;
+}
+/* The cursor is not used on Amstrad. The CURSOR signal is available on the Expansion port for other hardware to use. */
 
-/* The cursor is not used on Amstrad. The CURSOR signal is available on the Expansion port
-for other hardware to use, but as far as I know it is not used by anything. */
-
-/* use this when rendering */
-
-static struct crtc6845_interface
-amstrad6845= {
-	0,// Memory Address register
-	amstrad_Set_Character_Row,// Row Address register
-	amstrad_Set_HSync,// Horizontal status
-	amstrad_Set_VSync,// Vertical status
-	amstrad_Set_DE,// Display Enabled status
-	NULL,// Cursor status 
+static struct crtc6845_interface amstrad6845= {
+	amstrad_Set_MA, // Memory Address register
+	amstrad_Set_RA, // Row Address register
+	amstrad_Set_HS, // Horizontal status
+	amstrad_Set_VS, // Vertical status
+	amstrad_Set_DE, // Display Enabled status
+	amstrad_Set_CR, // Cursor status 
 };
 
-/* update the amstrad colours */
+/* Set the new colour from the GateArray */
 void amstrad_vh_update_colour(int PenIndex, int hw_colour_index)
 {
-	amstrad_render_colours[PenIndex] = Machine->pens[hw_colour_index];
+	amstrad_GateArray_render_colours[PenIndex] = Machine->pens[hw_colour_index];
 }
 
-/* update mode */
-void amstrad_vh_update_mode(int Mode)
+/* Set the new screen mode (0,1,2,4) from the GateArray */
+void amstrad_vh_update_mode(int new_mode)
 {
-	amstrad_current_mode = Mode;
+	amstrad_current_mode = new_mode;
 }
 
 /* execute crtc_execute_cycles of crtc */
 void amstrad_vh_execute_crtc_cycles(int crtc_execute_cycles)
 {
-    while (crtc_execute_cycles>0)
-	{
+  while (crtc_execute_cycles > 0) {
 		/* check that we are on the emulated screen area. */
-		if ((x_screen_pos>=0) && (x_screen_pos<AMSTRAD_SCREEN_WIDTH) && (y_screen_pos>=0) && (y_screen_pos<AMSTRAD_SCREEN_HEIGHT))
-		{
 			/* render the screen */
-			(draw_function)();
-		}
-
-        /* Move the CRT Beam on one 6845 character distance */
-        x_screen_pos=x_screen_pos+16; 
+/* Move the CRT Beam on two 6845 character distance */
         
-/*		if (x_screen_pos>800)
+/*      if ((((x_screen_pos)==0)||(x_screen_pos == AMSTRAD_SCREEN_WIDTH-16))&&(y_screen_pos == 0))
 		{
-			x_screen_pos = 0;
+      	logerror("VSync CRTC STATUS(%04d,%04d) : MA(%04x) RA(%01x) HS(%01x) VS(%01x) DE(%01x) CR(%01x) Counter(%02d)\n"
+        ,x_screen_pos
+        ,y_screen_pos
+        ,amstrad_CRTC_MA // Memory Address register
+        ,amstrad_CRTC_RA // Row Address register
+        ,amstrad_CRTC_HS // Horizontal status
+        ,amstrad_CRTC_VS // Vertical status
+        ,amstrad_CRTC_DE // Display Enabled status
+        ,amstrad_CRTC_CR // Cursor status
+        ,amstrad_CRTC_HS_After_VS_Counter);
 		}
 */
-		amstrad_display=amstrad_display+16; 
-
-
-		/* Clock the 6845 */
+		if ((x_screen_pos>=0) && (x_screen_pos<AMSTRAD_SCREEN_WIDTH) && (y_screen_pos>=0) && (y_screen_pos<AMSTRAD_SCREEN_HEIGHT)) {
+      if (amstrad_CRTC_DE == 0) {
+        amstrad_draw_screen_disabled();
+      } else {
+        amstrad_draw_screen_enabled();
+      }
+    }
+      x_screen_pos += (AMSTRAD_CHARACTERS*2);
+// Clock the 6845
 		crtc6845_clock();
 		crtc_execute_cycles--;
 	}
@@ -924,7 +625,6 @@ void amstrad_vh_execute_crtc_cycles(int crtc_execute_cycles)
 
 VIDEO_UPDATE( amstrad )
 {
-#ifndef AMSTRAD_VIDEO_EVENT_LIST
 	struct rectangle rect;
 
 	rect.min_x = 0;
@@ -932,110 +632,9 @@ VIDEO_UPDATE( amstrad )
 	rect.min_y = 0;
 	rect.max_y = AMSTRAD_SCREEN_HEIGHT-1;
 
-
     copybitmap(bitmap, amstrad_bitmap, 0,0,0,0,&rect, TRANSPARENCY_NONE,0); 
-
-#else
-	int c;
-
-
-	int crtc_execute_cycles;
-	int num_cycles_remaining;
-	EVENT_LIST_ITEM *pItem;
-	int NumItemsRemaining;
-	int previous_time;
-
-	amstrad_rendering = 1;
-	crtc6845_set_state(0, &amstrad_vidhrdw_6845_state);
-
-	previous_time = 0;
-        num_cycles_remaining = cycles_currently_ran()>>2;	//get19968; //cpu_getfperiod();
-
-	amstrad_bitmap=bitmap;
-	amstrad_display = amstrad_bitmap->line[0];
-	c=0;
-
-	// video_refresh is set if any of the 6845 or Video ULA registers are changed
-	// this then forces a full screen redraw
-
-
-        pItem = EventList_GetFirstItem();
-        NumItemsRemaining = EventList_NumEvents();
-
-	do
-	{
-                if (NumItemsRemaining==0)
-		{
-			crtc_execute_cycles = num_cycles_remaining;
-			num_cycles_remaining = 0;
-		}
-		else
-		{
-			int time_delta;
-
-			/* calculate time between last event and this event */
-			time_delta = pItem->Event_Time - previous_time;
-		
-			crtc_execute_cycles = time_delta/4;
-
-			num_cycles_remaining -= time_delta/4;
-
-        }
-
-		amstrad_vh_execute_crtc_cycles(crtc_execute_cycles);
-
-		if (NumItemsRemaining!=0)
-		{
-			switch ((pItem->Event_ID>>6) & 0x03)
-			{
-				case EVENT_LIST_CODE_GA_COLOUR:
-				{
-					int PenIndex = pItem->Event_ID & 0x03f;
-					int Colour = pItem->Event_Data;
-
-					amstrad_vh_update_colour(PenIndex, Colour);
-				}
-				break;
-
-				case EVENT_LIST_CODE_GA_MODE:
-				{
-					amstrad_vh_update_mode(pItem->Event_Data);
-				}
-				break;
-
-				case EVENT_LIST_CODE_CRTC_INDEX_WRITE:
-				{
-					/* register select */
-					crtc6845_address_w(0,pItem->Event_Data);
-				}
-				break;
-
-				case EVENT_LIST_CODE_CRTC_WRITE:
-				{
-					crtc6845_register_w(0, pItem->Event_Data);
-				}
-				break;
-
-				default:
-					break;
-			}
-		
-			/* store time for next calculation */
-			previous_time = pItem->Event_Time;
-			pItem++;
-			NumItemsRemaining--;		
-		}
-	}
-	while (num_cycles_remaining>0);
-
-    /* Assume all other routines have processed their data from the list */
-    EventList_Reset();
-    EventList_SetOffsetStartTime ( cycles_currently_ran() );
-
-	crtc6845_get_state(0, &amstrad_vidhrdw_6845_state);
-	amstrad_rendering = 0;
-#endif
 }
+
 
 
 /************************************************************************
@@ -1045,8 +644,6 @@ VIDEO_UPDATE( amstrad )
 
 VIDEO_START( amstrad )
 {
-        int i;
-
 	amstrad_init_lookups();
 
 	crtc6845_start();
@@ -1054,24 +651,12 @@ VIDEO_START( amstrad )
 	crtc6845_reset(0);
 	crtc6845_get_state(0, &amstrad_vidhrdw_6845_state);
 	
-	draw_function=*amstrad_draw_screen_disabled;
+	amstrad_cycles_last_write = 0;
+	amstrad_CRTC_HS_After_VS_Counter = 2;
+	x_screen_pos = x_screen_offset;
+	y_screen_pos = y_screen_offset;
 
-
-	/* 64 us Per Line, 312 lines (PAL) = 19968 */
-    amstrad_render_mode = 0;
-    amstrad_current_mode = 0;
-    for (i=0; i<17; i++)
-    {
-		amstrad_vh_update_colour(i, 0x014);
-    }
-
-#ifdef AMSTRAD_VIDEO_EVENT_LIST
-	amstrad_rendering = 0;
-	EventList_Initialise(19968);
-#else
 	amstrad_bitmap = auto_bitmap_alloc_depth(AMSTRAD_SCREEN_WIDTH, AMSTRAD_SCREEN_HEIGHT,16);
-	amstrad_display = amstrad_bitmap->line[0];
-#endif
 
 	return 0;
 

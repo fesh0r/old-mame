@@ -11,6 +11,7 @@
 #include "cpu/m6502/m6502.h"
 #include "includes/atari.h"
 #include "image.h"
+#include "state.h"
 
 #define VERBOSE_POKEY	0
 #define VERBOSE_SERIAL	0
@@ -73,10 +74,6 @@ static void a800_setbank(int n)
 			read_addr = &mem[0x10000];
 			write_addr = NULL;
 			break;
-		case 2:
-			read_addr = &mem[0x12000];
-			write_addr = NULL;
-			break;
 		default:
 			if( atari <= ATARI_400 )
 			{
@@ -86,15 +83,15 @@ static void a800_setbank(int n)
 			}
 			else
 			{
-				read_addr = &mem[0x0a000];
-				write_addr = &mem[0x0a000];
+				read_addr = &mess_ram[0x08000];
+				write_addr = &mess_ram[0x08000];
 			}
 			break;
 	}
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0,
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0,
 		read_addr ? MRA8_BANK1 : MRA8_NOP);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0,
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0,
 		write_addr ? MWA8_BANK1 : MWA8_NOP);
 	if (read_addr)
 		cpu_setbank(1, read_addr);
@@ -146,8 +143,6 @@ DEVICE_LOAD( a800_cart )
 		a800_cart_is_16k = size > 0x2000;
 		logerror("%s loaded left cartridge '%s' size %s\n", Machine->gamedrv->name, image_filename(image) , (a800_cart_is_16k) ? "16K":"8K");
 	}
-	if (a800_cart_loaded)
-		a800_setbank(1);
 	return INIT_PASS;
 }
 
@@ -1443,11 +1438,11 @@ void a800_handle_keyboard(void)
     modifiers = 0;
 
     /* with shift ? */
-	if( keyboard_pressed(KEYCODE_LSHIFT) || keyboard_pressed(KEYCODE_RSHIFT) )
+	if( code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT) )
 		modifiers |= 1;
 
     /* with control ? */
-	if( keyboard_pressed(KEYCODE_LCONTROL) || keyboard_pressed(KEYCODE_RCONTROL) )
+	if( code_pressed(KEYCODE_LCONTROL) || code_pressed(KEYCODE_RCONTROL) )
 		modifiers |= 2;
 
 	for( i = 0; i < 64; i++ )
@@ -1489,11 +1484,11 @@ void a5200_handle_keypads(void)
     modifiers = 0;
 
     /* with shift ? */
-	if (keyboard_pressed(KEYCODE_LSHIFT) || keyboard_pressed(KEYCODE_RSHIFT))
+	if (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT))
 		modifiers |= 1;
 
     /* with control ? */
-	if (keyboard_pressed(KEYCODE_LCONTROL) || keyboard_pressed(KEYCODE_RCONTROL))
+	if (code_pressed(KEYCODE_LCONTROL) || code_pressed(KEYCODE_RCONTROL))
 		modifiers |= 2;
 
 	/* check keypad */
@@ -1530,5 +1525,26 @@ void a5200_handle_keypads(void)
 	/* remove key pressed status bit from skstat */
 	pokey1_kbcode_w(0xFF, 0);
 	atari_last = 0xff;
+}
+
+
+
+DRIVER_INIT( atari )
+{
+	offs_t ram_top;
+	
+	/* install RAM */
+	ram_top = MAX(mess_ram_size, 0x8000) - 1;
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,
+		0x0000, ram_top, 0, MRA8_BANK2);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,
+		0x0000, ram_top, 0, MWA8_BANK2);
+	cpu_setbank(2, mess_ram);
+
+	/* save states */
+	state_save_register_UINT8("atari", 0, "antic_r", (UINT8 *) &antic.r, sizeof(antic.r));
+	state_save_register_UINT8("atari", 0, "antic_w", (UINT8 *) &antic.w, sizeof(antic.w));
+	state_save_register_UINT8("atari", 0, "gtia_r", (UINT8 *) &gtia.r, sizeof(gtia.r));
+	state_save_register_UINT8("atari", 0, "gtia_w", (UINT8 *) &gtia.w, sizeof(gtia.w));
 }
 
