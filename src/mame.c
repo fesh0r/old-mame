@@ -224,6 +224,7 @@ static int init_buffered_spriteram(void);
 #define handle_user_interface	handle_mess_user_interface
 #endif
 
+
 /***************************************************************************
 
 	Inline functions
@@ -394,13 +395,6 @@ static int init_machine(void)
 	}
 #endif
 
-	/* first init the timers; some CPUs have built-in timers and will need */
-	/* to allocate them up front */
-	timer_init();
-	cpu_init_refresh_timer();
-
-	/* now set up all the CPUs */
-	cpu_init();
 
 	/* load input ports settings (keys, dip switches, and so on) */
 	settingsloaded = load_input_port_settings();
@@ -966,7 +960,7 @@ static void scale_vectorgames(int gfx_width, int gfx_height, int *width, int *he
 	/* compute the scale values */
 	x_scale = (double)gfx_width / (double)(*width);
 	y_scale = (double)gfx_height / (double)(*height);
-
+	
 	/* pick the smaller scale factor */
 	scale = (x_scale < y_scale) ? x_scale : y_scale;
 
@@ -1055,7 +1049,7 @@ void set_visible_area(int min_x, int max_x, int min_y, int max_y)
 		Machine->absolute_visible_area.min_y = 0;
 		Machine->absolute_visible_area.max_y = Machine->scrbitmap->height - 1;
 	}
-
+	
 	/* raster games need to use the visible area */
 	else
 		Machine->absolute_visible_area = Machine->visible_area;
@@ -1362,24 +1356,6 @@ const struct performance_info *mame_get_performance_info(void)
 
 
 /*-------------------------------------------------
-	mame_find_cpu_index - return the index of the
-	given CPU, or -1 if not found
--------------------------------------------------*/
-
-int mame_find_cpu_index(const char *tag)
-{
-	int cpunum;
-
-	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
-		if (Machine->drv->cpu[cpunum].tag && strcmp(Machine->drv->cpu[cpunum].tag, tag) == 0)
-			return cpunum;
-
-	return -1;
-}
-
-
-
-/*-------------------------------------------------
 	machine_add_cpu - add a CPU during machine
 	driver expansion
 -------------------------------------------------*/
@@ -1664,6 +1640,10 @@ static int validitychecks(void)
 			}
 		}
 
+#ifndef MESS	// MAME core: You forgot to tell that your PDP-1 driver misses the sound emulation.
+				// MESS dev: PDP-1 does not "miss" sound emulation, as it never had any sound generator.
+				// MAME core: Huh? Don't you know that every arcade in the world has sound, except minivadr.
+				// MESS dev: I see...
 		if ((drivers[i]->flags & NOT_A_DRIVER) == 0)
 		{
 			if (drv.sound[0].sound_type == 0 && (drivers[i]->flags & GAME_NO_SOUND) == 0 &&
@@ -1673,6 +1653,7 @@ static int validitychecks(void)
 				error = 1;
 			}
 		}
+#endif
 
 		romp = drivers[i]->rom;
 

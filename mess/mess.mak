@@ -307,7 +307,6 @@ $(OBJ)/coco.a:   \
 	  $(OBJ)/mess/machine/ds1315.o	 \
 	  $(OBJ)/mess/machine/ds1315.o   \
 	  $(OBJ)/mess/machine/m6242b.o   \
-	  $(OBJ)/mess/formats/cocovdk.o  \
 	  $(OBJ)/mess/machine/mc10.o	 \
 	  $(OBJ)/mess/systems/mc10.o	 \
 	  $(OBJ)/mess/machine/dragon.o	 \
@@ -315,7 +314,6 @@ $(OBJ)/coco.a:   \
 	  $(OBJ)/mess/systems/dragon.o	 \
 	  $(OBJ)/mess/formats/cocopak.o  \
 	  $(OBJ)/mess/formats/cococas.o  \
-	  $(OBJ)/mess/formats/dmkdsk.o   \
 	  $(OBJ)/mess/formats/coco_dsk.o \
 
 $(OBJ)/trs80.a:    \
@@ -362,6 +360,7 @@ $(OBJ)/apple.a:   \
 	  $(OBJ)/mess/vidhrdw/apple2.o	 \
 	  $(OBJ)/mess/machine/apple2.o	 \
 	  $(OBJ)/mess/systems/apple2.o   \
+	  $(OBJ)/mess/formats/ap2_disk.o \
 	  $(OBJ)/mess/machine/ay3600.o	 \
 	  $(OBJ)/mess/sndhrdw/mac.o	 \
 	  $(OBJ)/mess/machine/sonydriv.o \
@@ -625,6 +624,7 @@ $(OBJ)/pmd85.a:   \
 $(OBJ)/magnavox.a: \
 	  $(OBJ)/mess/machine/odyssey2.o \
 	  $(OBJ)/mess/vidhrdw/odyssey2.o \
+	  $(OBJ)/mess/sndhrdw/odyssey2.o \
 	  $(OBJ)/mess/systems/odyssey2.o
 
 $(OBJ)/teamconc.a: \
@@ -661,6 +661,7 @@ $(OBJ)/motorola.a: \
 $(OBJ)/svi.a:      \
 	  $(OBJ)/mess/machine/svi318.o   \
 	  $(OBJ)/mess/systems/svi318.o   \
+	  $(OBJ)/mess/machine/svi318dk.o \
 	  $(OBJ)/mess/formats/svi_cas.o
 
 $(OBJ)/exidy.a:    \
@@ -704,13 +705,14 @@ COREOBJS += \
 	$(OBJ)/mess/tapectrl.o	       \
 	$(OBJ)/mess/printer.o	       \
 	$(OBJ)/mess/cassette.o	       \
-	$(OBJ)/mess/utils.o	       \
-	$(OBJ)/mess/bcd.o	       \
+	$(OBJ)/mess/utils.o            \
+	$(OBJ)/mess/bcd.o              \
 	$(OBJ)/mess/gregoria.o	       \
 	$(OBJ)/mess/led.o              \
-	$(OBJ)/mess/eventlst.o \
+	$(OBJ)/mess/eventlst.o         \
 	$(OBJ)/mess/videomap.o         \
 	$(OBJ)/mess/bitbngr.o          \
+	$(OBJ)/mess/snapquik.o          \
 	$(OBJ)/mess/statetxt.o         \
 	$(OBJ)/mess/formats.o          \
 	$(OBJ)/mess/messfmts.o         \

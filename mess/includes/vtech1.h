@@ -1,3 +1,5 @@
+#include "snapquik.h"
+
 /* from machine/vtech1.c */
 
 /* #define OLD_VIDEO */
@@ -10,12 +12,10 @@ extern int vtech1_latch;
 extern MACHINE_INIT( laser110 );
 extern MACHINE_INIT( laser210 );
 extern MACHINE_INIT( laser310 );
-extern MACHINE_STOP( vtech1 );
 
 extern int vtech1_cassette_init(int id, void *fp, int open_mode);
 
-extern int vtech1_snapshot_init(int id, void *fp, int open_mode);
-extern void vtech1_snapshot_exit(int id);
+extern SNAPSHOT_LOAD( vtech1 );
 
 extern int vtech1_floppy_init(int id, void *fp, int open_mode);
 extern void vtech1_floppy_exit(int id);

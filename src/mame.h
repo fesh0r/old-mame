@@ -95,41 +95,41 @@ struct RunningMachine
 	/* ----- input-related information ----- */
 
 	/* the input ports definition from the driver is copied here and modified */
-	struct InputPort *		input_ports;
+	struct InputPort *input_ports;	
 
 	/* original input_ports without modifications */
-	struct InputPort *		input_ports_default;
+	struct InputPort *input_ports_default;
 
 
 	/* ----- user interface-related information ----- */
 
 	/* font used by the user interface */
-	struct GfxElement *		uifont;
-
+	struct GfxElement *uifont;
+	
 	/* font parameters */
-	int 					uifontwidth, uifontheight;
+	int uifontwidth,uifontheight;
 
 	/* user interface visible area */
-	int 					uixmin, uiymin;
-	int 					uiwidth, uiheight;
+	int uixmin,uiymin;
+	int uiwidth,uiheight;
 
 	/* user interface orientation */
-	int 					ui_orientation;
+	int ui_orientation;
 
 
 	/* ----- debugger-related information ----- */
 
 	/* bitmap where the debugger is rendered */
-	struct mame_bitmap *	debug_bitmap;
-
+	struct mame_bitmap *debug_bitmap;
+	
 	/* pen array for the debugger, analagous to the pens above */
-	pen_t *					debug_pens;
+	pen_t *debug_pens;
 
 	/* colortable mapped through the pens, as for the game */
-	pen_t *					debug_remapped_colortable;
+	pen_t *debug_remapped_colortable;
 
 	/* font used by the debugger */
-	struct GfxElement *		debugger_font;
+	struct GfxElement *debugger_font;
 };
 
 
@@ -185,8 +185,8 @@ struct GameOptions
 	float	brightness;		/* brightness of the display */
 	float	gamma;			/* gamma correction of the display */
 	int		color_depth;	/* 15, 16, or 32, any other value means auto */
-	int		vector_width;	/* requested width for vector games; 0 means default (640) */
-	int		vector_height;	/* requested height for vector games; 0 means default (480) */
+	int vector_width;	/* requested width for vector games; 0 means default (640) */
+	int vector_height;	/* requested height for vector games; 0 means default (480) */
 	int		ui_orientation;	/* orientation of the UI relative to the video */
 
 	int		beam;			/* vector beam width */
@@ -349,7 +349,6 @@ const struct performance_info *mame_get_performance_info(void);
 
 /* return the index of the given CPU, or -1 if not found */
 int mame_find_cpu_index(const char *tag);
-
 
 #ifdef MESS
 #include "mess.h"

@@ -53,7 +53,6 @@ extern UINT8 win_trying_to_quit;
 // debugger window styles
 #define DEBUG_WINDOW_STYLE		WS_OVERLAPPED
 #define DEBUG_WINDOW_STYLE_EX	0
-#define DEBUG_WINDOW_HAS_MENU	FALSE
 
 // full screen window styles
 #define FULLSCREEN_STYLE		WS_POPUP
@@ -213,8 +212,7 @@ INLINE int wnd_extra_height(void)
 	RECT window = { 100, 100, 200, 200 };
 	if (!win_window_mode)
 		return 0;
-	AdjustWindowRectEx(&window, win_window_mode ? WINDOW_STYLE : FULLSCREEN_STYLE, WINDOW_HAS_MENU && GetMenu(win_video_window),
-		win_window_mode ? WINDOW_STYLE_EX : FULLSCREEN_STYLE_EX);
+	AdjustWindowRectEx(&window, win_window_mode ? WINDOW_STYLE : FULLSCREEN_STYLE, WINDOW_HAS_MENU && GetMenu(win_video_window), WINDOW_STYLE_EX);
 	return (window.bottom - window.top) - 100;
 }
 
@@ -673,11 +671,13 @@ static LRESULT CALLBACK video_window_proc(HWND wnd, UINT message, WPARAM wparam,
 	switch (message)
 	{
 		// non-client paint: punt if full screen
+#if !WINDOW_HAS_MENU
 		case WM_NCPAINT:
 			if (win_window_mode)
 				return DefWindowProc(wnd, message, wparam, lparam);
 			break;
-
+#endif
+	
 		// paint: redraw the last bitmap
 		case WM_PAINT:
 		{
@@ -1416,7 +1416,7 @@ static int create_debug_window(void)
 	bounds.top = bounds.left = 0;
 	bounds.right = options.debug_width;
 	bounds.bottom = options.debug_height;
-	AdjustWindowRectEx(&bounds, WINDOW_STYLE, DEBUG_WINDOW_HAS_MENU, WINDOW_STYLE_EX);
+	AdjustWindowRectEx(&bounds, WINDOW_STYLE, FALSE, WINDOW_STYLE_EX);
 
 	// get the work bounds
 	SystemParametersInfo(SPI_GETWORKAREA, 0, &work_bounds, 0);

@@ -2,6 +2,8 @@
 #include "image.h"
 #include "ui_text.h"
 
+#if HAS_WAVE
+
 int tapecontrol(struct mame_bitmap *bitmap, int selected)
 {
 	static int id = 0;
@@ -179,4 +181,4 @@ int tapecontrol(struct mame_bitmap *bitmap, int selected)
     return sel + 1;
 }
 
-
+#endif /* HAS_WAVE */

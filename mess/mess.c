@@ -47,45 +47,6 @@ int system_supports_cassette_device (void)
 	return device_find(Machine->gamedrv, IO_CASSETTE) ? TRUE : FALSE;
 }
 
-/* Return a name for a device of type 'type' with id 'id' */
-const char *device_typename_id(int type, int id)
-{
-	static char typename_id[40][31+1];
-	static int which = 0;
-	if (type < IO_COUNT)
-	{
-		which = (which + 1) % 40;
-		/* for the average user counting starts at #1 ;-) */
-		sprintf(typename_id[which], "%s #%d", ui_getstring(UI_filespecification+type), id+1);
-		return typename_id[which];
-	}
-	return "UNKNOWN";
-}
-
-/*
- * Return the 'num'th file extension for a device of type 'type',
- * NULL if no file extensions of that type are available.
- */
-const char *device_file_extension(int type, int extnum)
-{
-	const struct IODevice *dev;
-	const char *ext;
-
-	for(dev = device_first(Machine->gamedrv); dev; dev = device_next(Machine->gamedrv, dev))
-	{
-		if( type == dev->type )
-		{
-			ext = dev->file_extensions;
-			while( ext && *ext && extnum-- > 0 )
-				ext = ext + strlen(ext) + 1;
-			if( ext && !*ext )
-				ext = NULL;
-			return ext;
-		}
-	}
-	return NULL;
-}
-
 struct distributed_images
 {
 	const char *names[IO_COUNT][MAX_DEV_INSTANCES];
@@ -353,7 +314,7 @@ int displayimageinfo(struct mame_bitmap *bitmap, int selected)
 				char *base_filename_noextension;
 
 				base_filename = image_basename(type, id);
-				base_filename_noextension = osd_strip_extension(base_filename);
+				base_filename_noextension = osd_strip_extension((char *) base_filename);
 
 				/* display device type and filename */
 				dst += sprintf(dst,"%s: %s\n", device_typename_id(type,id), base_filename);
@@ -538,6 +499,23 @@ void palette_set_colors(pen_t color_base, const UINT8 *colors, int color_count)
 	{
 		palette_set_color(color_base++, colors[0], colors[1], colors[2]);
 		colors += 3;
+	}
+}
+
+void ram_dump(const char *filename)
+{
+	void *file;
+
+	if (!filename)
+		filename = "ram.bin";
+
+	file = osd_fopen(Machine->gamedrv->name, filename, OSD_FILETYPE_NVRAM, OSD_FOPEN_WRITE);
+	if (file)
+	{
+		osd_fwrite(file, mess_ram, mess_ram_size);
+
+		/* close file */
+		osd_fclose(file);
 	}
 }
 

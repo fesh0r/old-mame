@@ -9,9 +9,11 @@
 #include "driver.h"
 #include "unzip.h"
 #include "rc.h"
+
 #ifdef MESS
 #include "image.h"
 #endif
+
 
 //============================================================
 //	EXTERNALS
@@ -141,10 +143,12 @@ const char *pcrcfile = pcrcfilename;
 //	PROTOTYPES
 //============================================================
 
+#ifndef ZEXPORT
 #ifdef _MSC_VER
 #define ZEXPORT __stdcall
 #else
 #define ZEXPORT
+#endif
 #endif
 
 extern unsigned int ZEXPORT crc32 (unsigned int crc, const UINT8 *buf, unsigned int len);
@@ -1491,7 +1495,7 @@ static int get_pathlist_for_filetype(int filetype, const char ***pathlist, const
 #ifdef MESS
 //============================================================
 //	stuff for processing absolute file paths (only applicable
-//  in MESS)
+//	in MESS)
 //============================================================
 static int is_zipfile(const char *filename)
 {

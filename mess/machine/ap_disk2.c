@@ -22,6 +22,14 @@
 #include "includes/apple2.h"
 #include "image.h"
 
+#ifdef MAME_DEBUG
+#define LOG(x)	logerror x
+#else
+#define LOG(x)
+#endif /* MAME_DEBUG */
+
+#define PROFILER_SLOT6	PROFILER_USER1
+
 #define TOTAL_TRACKS		35 /* total number of tracks we support, can be 40 */
 #define NIBBLE_SIZE			374
 
@@ -71,16 +79,6 @@ void apple2_slot6_init(void)
 	runbyte6[0]   = runbyte6[1]   = 0;
 	disk6byte     = 0;
 	read_state    = 1;
-
-	return;
-}
-
-void apple2_floppy_exit(int id);
-
-void apple2_slot6_stop (void)
-{
-	apple2_floppy_exit(0);
-	apple2_floppy_exit(1);
 }
 
 int apple2_floppy_init(int id, void *f, int open_mode)
@@ -93,8 +91,9 @@ int apple2_floppy_init(int id, void *f, int open_mode)
 	if (f == NULL)
 		return INIT_PASS;
 
-    a2_drives[id].data = malloc (NIBBLE_SIZE*16*TOTAL_TRACKS);
-	if (!a2_drives[id].data) return INIT_FAIL;
+    a2_drives[id].data = image_malloc(IO_FLOPPY, id, NIBBLE_SIZE*16*TOTAL_TRACKS);
+	if (!a2_drives[id].data)
+		return INIT_FAIL;
 
 	/* Default everything to sync byte 0xFF */
 	memset(a2_drives[id].data, 0xff, NIBBLE_SIZE*16*TOTAL_TRACKS);
@@ -111,7 +110,7 @@ int apple2_floppy_init(int id, void *f, int open_mode)
 	{
 		if (osd_fseek(f,256*16*t,SEEK_CUR)!=0)
 		{
-			logerror("Couldn't find track %d.\n", t);
+			LOG(("Couldn't find track %d.\n", t));
 			return INIT_FAIL;
 		}
 
@@ -126,13 +125,13 @@ int apple2_floppy_init(int id, void *f, int open_mode)
 			sec_pos = 256*r_skewing6[s] + t*256*16;
 			if (osd_fseek(f,sec_pos,SEEK_SET)!=0)
 			{
-				logerror("Couldn't find sector %d.\n", s);
+				LOG(("Couldn't find sector %d.\n", s));
 				return INIT_FAIL;
 			}
 
 			if (osd_fread(f,data,256)<256)
 			{
-				logerror("Couldn't read track %d sector %d (pos: %d).\n", t, s, sec_pos);
+				LOG(("Couldn't read track %d sector %d (pos: %d).\n", t, s, sec_pos));
 				return INIT_FAIL;
 			}
 
@@ -195,8 +194,6 @@ int apple2_floppy_init(int id, void *f, int open_mode)
 		}
 	}
 
-	osd_fclose(f);
-
 #if 0
 	{
 		FILE *dump;
@@ -211,15 +208,6 @@ int apple2_floppy_init(int id, void *f, int open_mode)
 	return INIT_PASS;
 }
 
-void	apple2_floppy_exit(int id)
-{
-	if (a2_drives[id].data)
-	{
-		free (a2_drives[id].data);
-		a2_drives[id].data = NULL;
-	}
-}
-
 
 /* For now, make disks read-only!!! */
 static void WriteByte(int drive, int theByte)
@@ -232,7 +220,7 @@ static int ReadByte(int drive)
 	int value;
 
 	/* no image initialized for that drive ? */
-	if (!a2_drives[drive].data)
+	if (!image_exists(IO_FLOPPY, drive))
 		return 0xFF;
 
 	/* Our drives are always turned on baby, yeah!
@@ -256,7 +244,7 @@ static int ReadByte(int drive)
 		a2_drives[drive].bytepos = 0;
 	}
 
-//	logerror("pos: %d (track %d sector %d)\n", a2_drives[drive].bytepos, a2_drives[drive].track / 2, a2_drives[drive].bytepos / NIBBLE_SIZE);
+//	LOG(("pos: %d (track %d sector %d)\n", a2_drives[drive].bytepos, a2_drives[drive].track / 2, a2_drives[drive].bytepos / NIBBLE_SIZE));
 	return value;
 }
 
@@ -267,6 +255,9 @@ READ_HANDLER ( apple2_c0xx_slot6_r )
 {
 	int cur_drive;
 	int phase;
+	data8_t result = 0x00;
+
+	profiler_mark(PROFILER_SLOT6);
 
 	cur_drive = a2_drives_num;
 
@@ -292,7 +283,7 @@ READ_HANDLER ( apple2_c0xx_slot6_r )
 			if (phase==3)				        a2_drives[cur_drive].track--;
 			if (a2_drives[cur_drive].track<0)	a2_drives[cur_drive].track=0;
 			a2_drives[cur_drive].trackpos = (a2_drives[cur_drive].track/2) * NIBBLE_SIZE*16;
-			logerror("new track: %02x\n", a2_drives[cur_drive].track / 2);
+			LOG(("new track: %02x\n", a2_drives[cur_drive].track / 2));
 			break;
 		/* MOTOROFF */
 		case 0x08:
@@ -330,22 +321,16 @@ READ_HANDLER ( apple2_c0xx_slot6_r )
 			a2_drives[cur_drive].Q6 = SWITCH_OFF;
 			/* TODO: remove following ugly hacked-in code */
 			if (read_state)
-			{
-				return ReadByte(cur_drive);
-			}
+				result = ReadByte(cur_drive);
 			else
-			{
 				WriteByte(cur_drive,disk6byte);
-			}
 			break;
 		/* Q6H - set transistor Q6 high */
 		case 0x0D:
 			a2_drives[cur_drive].Q6 = SWITCH_ON;
 			/* TODO: remove following ugly hacked-in code */
 			if (a2_drives[cur_drive].write_protect)
-			{
-				return 0x80;
-			}
+				result = 0x80;
 			break;
 		/* Q7L - set transistor Q7 low */
 		case 0x0E:
@@ -353,9 +338,7 @@ READ_HANDLER ( apple2_c0xx_slot6_r )
 			/* TODO: remove following ugly hacked-in code */
 			read_state = 1;
 			if (a2_drives[cur_drive].write_protect)
-			{
-				return 0x80;
-			}
+				result = 0x80;
 			break;
 		/* Q7H - set transistor Q7 high */
 		case 0x0F:
@@ -365,7 +348,8 @@ READ_HANDLER ( apple2_c0xx_slot6_r )
 			break;
 	}
 
-	return 0x00;
+	profiler_mark(PROFILER_END);
+	return result;
 }
 
 /***************************************************************************
@@ -373,6 +357,7 @@ READ_HANDLER ( apple2_c0xx_slot6_r )
 ***************************************************************************/
 WRITE_HANDLER (  apple2_c0xx_slot6_w )
 {
+	profiler_mark(PROFILER_SLOT6);
 	switch (offset)
 	{
 		case 0x0D:	/* Store byte for writing */
@@ -380,12 +365,12 @@ WRITE_HANDLER (  apple2_c0xx_slot6_w )
 			disk6byte = data;
 			break;
 		default:	/* Otherwise, do same as slot6_r ? */
-			logerror("slot6_w\n");
+			LOG(("slot6_w\n"));
 			apple2_c0xx_slot6_r(offset);
 			break;
 	}
 
-	return;
+	profiler_mark(PROFILER_END);
 }
 
 /***************************************************************************

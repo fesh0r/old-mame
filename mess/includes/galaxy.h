@@ -1,7 +1,9 @@
+#include "snapquik.h"
+
 /* machine/galaxy.c */
 extern MACHINE_INIT( galaxy );
 extern INTERRUPT_GEN( galaxy_interrupt );
-extern int galaxy_snapshot_load(int, void *fp, int open_mode);
+extern SNAPSHOT_LOAD( galaxy );
 extern int galaxy_interrupts_enabled;
 extern READ_HANDLER( galaxy_kbd_r );
 extern WRITE_HANDLER( galaxy_kbd_w );

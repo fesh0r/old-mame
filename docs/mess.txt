@@ -5,7 +5,7 @@
                     Official Page at: http://www.mess.org
                    ==========================================
 
-This document is generated for MESS 0.61.2 (Nov 11 2002)
+This document is generated for MESS 0.62 (Dec  9 2002)
 
 Please note that many people helped with this project, either directly or by
 releasing source code which was used to write the drivers. We are not trying to
@@ -53,7 +53,7 @@ we are perfectly capable of finding it ourselves, thank you.
 
 Complete Emulated System List
 =============================
-Here is the list of systems supported by MESS 0.61.2 (Nov 11 2002)
+Here is the list of systems supported by MESS 0.62 (Dec  9 2002)
 Variants of the same system are not included, you can use the -listclones command
 to get a list of the alternate versions of a given system.
 
@@ -122,8 +122,8 @@ dat2html.exe.
 | Game Gear - European/American           |  Yes  |  Yes  |  Yes  | gamegear |
 | GameBoy                                 |  Yes  |  Yes  |  Yes  | gameboy  |
 | IBM PC 10/27/82                         |  Yes  |  Yes  |  Yes  | ibmpc    |
-| Intellivision                           |   No  |  Yes  |  Yes  | intv     |
 | Intellivision                           |   No  |  Yes  |  Yes  | intvsrs  |
+| Intellivision                           |   No  |  Yes  |  Yes  | intv     |
 | Intellivision Keyboard Component        |   No  |  Yes  |  Yes  | intvkbd  |
 | Jupiter Ace                             |  Yes  |  Yes  |  Yes  | jupiter  |
 | KC 85/3                                 |   No  |  Yes  |  Yes  | kc85_3   |
@@ -146,6 +146,7 @@ dat2html.exe.
 | Microtan 65                             |  Yes  |  Yes  |  Yes  | microtan |
 | Nascom 1                                |  Yes  |  Yes  |  Yes  | nascom1  |
 | Nintendo Entertainment System           |  Yes  |  Yes  |  Yes  | nes      |
+| Odyssey 2                               |   No  |  Yes  |Partial| odyssey2 |
 | Oric 1                                  |  Yes  |  Yes  |  Yes  | oric1    |
 | PC Engine/TurboGrafx 16                 |   No  |  Yes  |   No  | pce      |
 | PC-8801 MKIISR                          |  Yes  |  Yes  |  Yes  | pc88srl  |
@@ -160,7 +161,6 @@ dat2html.exe.
 | Pocket Computer 1403                    |   No  |  Yes  |  Yes  | pc1403   |
 | SVI-318                                 |  Yes  |  Yes  |  Yes  | svi318   |
 | Sam Coupe                               |  Yes  |  Yes  |  Yes  | coupe    |
-| Saturn                                  |   No  |  Yes  |  Yes  | saturn   |
 | Sorcerer                                |   No  |  Yes  |   No  | exidy    |
 | Sord M5                                 |  Yes  |  Yes  |  Yes  | sordm5   |
 | Super Nintendo Entertainment System     |   No  |  Yes  |  Yes  | snes     |

@@ -100,22 +100,24 @@ extern void apple2_slotrom_disable(int offset, int data);
 
 extern READ_HANDLER ( apple2_c00x_r );
 extern WRITE_HANDLER ( apple2_c00x_w );
+
 extern READ_HANDLER ( apple2_c01x_r );
 extern WRITE_HANDLER ( apple2_c01x_w );
-extern READ_HANDLER ( apple2_c02x_r );
-extern WRITE_HANDLER ( apple2_c02x_w );
+
 extern READ_HANDLER ( apple2_c03x_r );
 extern WRITE_HANDLER ( apple2_c03x_w );
-extern READ_HANDLER ( apple2_c04x_r );
-extern WRITE_HANDLER ( apple2_c04x_w );
+
 extern READ_HANDLER ( apple2_c05x_r );
 extern WRITE_HANDLER ( apple2_c05x_w );
+
 extern READ_HANDLER ( apple2_c06x_r );
-extern WRITE_HANDLER ( apple2_c06x_w );
+
 extern READ_HANDLER ( apple2_c07x_r );
 extern WRITE_HANDLER ( apple2_c07x_w );
+
 extern READ_HANDLER ( apple2_c08x_r );
 extern WRITE_HANDLER ( apple2_c08x_w );
+
 extern READ_HANDLER ( apple2_c0xx_slot1_r );
 extern READ_HANDLER ( apple2_c0xx_slot2_r );
 extern READ_HANDLER ( apple2_c0xx_slot3_r );
@@ -145,9 +147,7 @@ extern READ_HANDLER ( apple2_slot7_r );
 
 /* machine/ap_disk2.c */
 extern void apple2_slot6_init(void);
-extern void apple2_slot6_stop(void);
 extern int	apple2_floppy_init(int id, void *fp, int open_mode);
-extern void apple2_floppy_exit(int id);
 
 extern READ_HANDLER ( apple2_c0xx_slot6_r );
 extern WRITE_HANDLER ( apple2_c0xx_slot6_w );
@@ -155,18 +155,8 @@ extern WRITE_HANDLER ( apple2_slot6_w );
 
 
 /* vidhrdw/apple2.c */
-extern UINT8 *apple2_lores_text1_ram;
-extern UINT8 *apple2_lores_text2_ram;
-extern UINT8 *apple2_hires1_ram;
-extern UINT8 *apple2_hires2_ram;
-
 extern VIDEO_START( apple2 );
 extern VIDEO_UPDATE( apple2 );
-
-extern void apple2_lores_text1_w(int offset, int data);
-extern void apple2_lores_text2_w(int offset, int data);
-extern void apple2_hires1_w(int offset, int data);
-extern void apple2_hires2_w(int offset, int data);
-
+extern void apple2_video_touch(offs_t offset);
 
 #endif

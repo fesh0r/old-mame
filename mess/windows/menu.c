@@ -19,6 +19,11 @@
 #include "ui_text.h"
 #include "strconv.h"
 #include "utils.h"
+#include "artwork.h"
+
+#ifdef UNDER_CE
+#include "invokegx.h"
+#endif
 
 //============================================================
 //	IMPORTS
@@ -26,6 +31,10 @@
 
 // from input.c
 extern UINT8 win_trying_to_quit;
+
+// from usrintrf.c
+extern int showfps;
+extern int showfpstemp;
 
 //============================================================
 //	PARAMETERS
@@ -56,9 +65,11 @@ enum
 #endif
 
 #ifdef UNDER_CE
-#define HAS_TOGGLEMENUBAR	0
+#define HAS_TOGGLEMENUBAR		0
+#define HAS_TOGGLEFULLSCREEN	0
 #else
-#define HAS_TOGGLEMENUBAR	1
+#define HAS_TOGGLEMENUBAR		1
+#define HAS_TOGGLEFULLSCREEN	1
 #endif
 
 #ifdef UNDER_CE
@@ -166,6 +177,24 @@ static void setjoystick(int joystick_num)
 done:
 	if (dlg)
 		win_dialog_exit(dlg);
+}
+
+//============================================================
+//	hasdipswitches
+//============================================================
+
+static int hasdipswitches(void)
+{
+	struct InputPort *in;
+	for (in = Machine->input_ports; in->type != IPT_END; in++)
+	{
+		switch(in->type & ~IPF_MASK) {
+		case IPT_DIPSWITCH_NAME:
+		case IPT_DIPSWITCH_SETTING:
+			return 1;
+		}
+	}
+	return 0;
 }
 
 //============================================================
@@ -523,7 +552,6 @@ static void prepare_menus(void)
 	HMENU sub_menu;
 	UINT_PTR new_item;
 	UINT flags_for_exists;
-	int status;
 
 	if (!win_menu_bar)
 		return;
@@ -532,7 +560,11 @@ static void prepare_menus(void)
 
 	set_command_state(win_menu_bar, ID_OPTIONS_PAUSE,		is_paused					? MFS_CHECKED : MFS_ENABLED);
 	set_command_state(win_menu_bar, ID_OPTIONS_THROTTLE,	throttle					? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_OPTIONS_DIPSWITCHES,	hasdipswitches()			? MFS_ENABLED : MFS_GRAYED);
+#if HAS_TOGGLEFULLSCREEN
 	set_command_state(win_menu_bar, ID_OPTIONS_FULLSCREEN,	!win_window_mode			? MFS_CHECKED : MFS_ENABLED);
+#endif
+	set_command_state(win_menu_bar, ID_OPTIONS_TOGGLEFPS,	(showfps || showfpstemp)	? MFS_CHECKED : MFS_ENABLED);
 #if HAS_PROFILER
 	set_command_state(win_menu_bar, ID_OPTIONS_PROFILER,	show_profiler				? MFS_CHECKED : MFS_ENABLED);
 #endif
@@ -564,8 +596,10 @@ static void prepare_menus(void)
 			append_menu(sub_menu, MF_STRING,		new_item + DEVOPTION_MOUNT,	UI_mount);
 			append_menu(sub_menu, flags_for_exists,	new_item + DEVOPTION_UNMOUNT,	UI_unmount);
 
+#if HAS_WAVE
 			if (dev->type == IO_CASSETTE)
 			{
+				int status;
 				status = device_status(IO_CASSETTE, i, -1);
 				append_menu(sub_menu, MF_SEPARATOR, 0, -1);
 				append_menu(sub_menu, flags_for_exists | (status & WAVE_STATUS_MOTOR_ENABLE) ? 0 : MF_CHECKED,	new_item + DEVOPTION_CASSETTE_STOPPAUSE,	UI_pauseorstop);
@@ -573,6 +607,7 @@ static void prepare_menus(void)
 				append_menu(sub_menu, flags_for_exists,															new_item + DEVOPTION_CASSETTE_REWIND,		UI_rewind);
 				append_menu(sub_menu, flags_for_exists,															new_item + DEVOPTION_CASSETTE_FASTFORWARD,	UI_fastforward);
 			}
+#endif /* HAS_WAVE */
 			s = image_exists(dev->type, i) ? image_filename(dev->type, i) : ui_getstring(UI_emptyslot);
 
 			snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%s: %s", device_typename_id(dev->type, i), s);
@@ -611,13 +646,33 @@ void win_toggle_menubar(void)
 
 
 //============================================================
+//	toggle_fps
+//============================================================
+
+static void toggle_fps(void)
+{
+	/* if we're temporarily on, turn it off immediately */
+	if (showfpstemp)
+	{
+		showfpstemp = 0;
+		schedule_full_refresh();
+	}
+
+	/* otherwise, just toggle; force a refresh if going off */
+	else
+	{
+		showfps ^= 1;
+		if (!showfps)
+			schedule_full_refresh();
+	}
+}
+
+//============================================================
 //	device_command
 //============================================================
 
 static void device_command(const struct IODevice *dev, int id, int devoption)
 {
-	int status;
-
 	switch(devoption) {
 	case DEVOPTION_MOUNT:
 		change_device(dev, id);
@@ -629,7 +684,10 @@ static void device_command(const struct IODevice *dev, int id, int devoption)
 
 	default:
 		switch(dev->type) {
+#if HAS_WAVE
 		case IO_CASSETTE:
+		{
+			int status;
 			status = device_status(IO_CASSETTE, id, -1);
 			switch(devoption) {
 			case DEVOPTION_CASSETTE_PLAYRECORD:
@@ -650,7 +708,9 @@ static void device_command(const struct IODevice *dev, int id, int devoption)
 				device_seek(IO_CASSETTE, id, +11025, SEEK_CUR);
 				break;
 			}
-
+			break;
+		}
+#endif /* HAS_WAVE */
 		}
 	}
 }
@@ -725,6 +785,10 @@ static int invoke_command(UINT command)
 		loadsave(LOADSAVE_SAVE);
 		break;
 
+	case ID_FILE_SAVESCREENSHOT:
+		artwork_save_snapshot(artwork_get_ui_bitmap());
+		break;
+
 	case ID_FILE_EXIT:
 		PostMessage(win_video_window, WM_DESTROY, 0, 0);
 		break;
@@ -745,7 +809,11 @@ static int invoke_command(UINT command)
 		pause();
 		break;
 
-	case ID_OPTIONS_RESET:
+	case ID_OPTIONS_HARDRESET:
+		memset(mess_ram, 0xcd, mess_ram_size);
+		/* fall through */
+
+	case ID_OPTIONS_SOFTRESET:
 		machine_reset();
 		break;
 
@@ -770,8 +838,14 @@ static int invoke_command(UINT command)
 		setdipswitches();
 		break;
 
+#if HAS_TOGGLEFULLSCREEN
 	case ID_OPTIONS_FULLSCREEN:
 		win_toggle_full_screen();
+		break;
+#endif
+
+	case ID_OPTIONS_TOGGLEFPS:
+		toggle_fps();
 		break;
 
 #if HAS_TOGGLEMENUBAR
@@ -844,6 +918,20 @@ static int count_joysticks(void)
 }
 
 //============================================================
+//	set_menu_text
+//============================================================
+
+void set_menu_text(HMENU menu_bar, int command, const char *text)
+{
+	MENUITEMINFO mii;
+	memset(&mii, 0, sizeof(mii));
+	mii.cbSize = sizeof(mii);
+	mii.fMask = MIIM_TYPE;
+	mii.dwTypeData = (LPTSTR) A2T(text);
+	SetMenuItemInfo(menu_bar, command, FALSE, &mii);	
+}
+
+//============================================================
 //	win_setup_menus
 //============================================================
 
@@ -853,7 +941,6 @@ int win_setup_menus(HMENU menu_bar)
 	HMENU joystick_menu;
 	char buf[256];
 	int i, joystick_count = 0;
-	MENUITEMINFO mii;
 
 	assert((ID_DEVICE_0 + IO_COUNT * MAX_DEV_INSTANCES * DEVOPTION_MAX) < ID_JOYSTICK_0);
 	is_paused = 0;
@@ -865,6 +952,14 @@ int win_setup_menus(HMENU menu_bar)
 	DeleteMenu(menu_bar, ID_OPTIONS_PROFILER, MF_BYCOMMAND);
 #endif
 
+#if !HAS_TOGGLEFULLSCREEN
+	DeleteMenu(menu_bar, ID_OPTIONS_FULLSCREEN, MF_BYCOMMAND);
+#endif
+
+#if !HAS_TOGGLEMENUBAR
+	DeleteMenu(menu_bar, ID_OPTIONS_TOGGLEMENUBAR, MF_BYCOMMAND);
+#endif
+
 	// set up frameskip menu
 	frameskip_menu = find_sub_menu(menu_bar, "&Options\0&Frameskip\0", FALSE);
 	if (!frameskip_menu)
@@ -873,6 +968,13 @@ int win_setup_menus(HMENU menu_bar)
 	{
 		snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%i", i);
 		AppendMenu(frameskip_menu, MF_STRING, ID_FRAMESKIP_0 + i, A2T(buf));
+	}
+
+	// set up the reset options
+	if (ram_option_count(Machine->gamedrv) == 0)
+	{
+		RemoveMenu(menu_bar, ID_OPTIONS_HARDRESET, MF_BYCOMMAND);
+		set_menu_text(menu_bar, ID_OPTIONS_SOFTRESET, "&Reset");
 	}
 
 	// set up joystick menu
@@ -894,11 +996,7 @@ int win_setup_menus(HMENU menu_bar)
 
 	// set the help menu to refer to this machine
 	snprintf(buf, sizeof(buf) / sizeof(buf[0]), "About %s (%s)...", Machine->gamedrv->description, Machine->gamedrv->name);
-	memset(&mii, 0, sizeof(mii));
-	mii.cbSize = sizeof(mii);
-	mii.fMask = MIIM_TYPE;
-	mii.dwTypeData = (LPTSTR) A2T(buf);
-	SetMenuItemInfo(menu_bar, ID_HELP_ABOUTSYSTEM, FALSE, &mii);	
+	set_menu_text(menu_bar, ID_HELP_ABOUTSYSTEM, buf);
 
 	win_menu_bar = menu_bar;
 	return 0;

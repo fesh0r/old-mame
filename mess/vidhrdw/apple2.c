@@ -8,364 +8,278 @@
 #include "vidhrdw/generic.h"
 #include "includes/apple2.h"
 
-unsigned char *apple2_lores_text1_ram;
-unsigned char *apple2_lores_text2_ram;
-unsigned char *apple2_hires1_ram;
-unsigned char *apple2_hires2_ram;
+/***************************************************************************/
 
-/* temp bitmaps for quicker blitting */
-static struct mame_bitmap *apple2_text[2];
-static struct mame_bitmap *apple2_lores[2];
-static struct mame_bitmap *apple2_hires[2];
+static struct tilemap *text_tilemap;
+static struct tilemap *lores_tilemap;
+static int text_videobase;
+static int lores_videobase;
+static UINT16 *artifact_map;
 
-/* dirty video markers */
-static unsigned char *dirty_text[2];
-static unsigned char *dirty_lores[2];
-static unsigned char *dirty_hires[2];
-static unsigned char any_dirty_text[2];
-static unsigned char any_dirty_lores[2];
-static unsigned char any_dirty_hires[2];
+#define	BLACK	0
+#define PURPLE	3
+#define	BLUE	6
+#define ORANGE	9
+#define GREEN	12
+#define	WHITE	15
+
+#define PROFILER_VIDEOTOUCH PROFILER_USER3
 
 /***************************************************************************
-  apple2_vh_start
+  helpers
 ***************************************************************************/
+
+static void apple2_draw_tilemap(struct mame_bitmap *bitmap, int beginrow, int endrow,
+	struct tilemap *tm, int raw_videobase, int *tm_videobase)
+{
+	struct rectangle cliprect;
+
+	cliprect.min_x = 0;
+	cliprect.max_x = 280*2-1;
+	cliprect.min_y = beginrow;
+	cliprect.max_y = endrow;
+
+	if (a2.RAMRD)
+		raw_videobase += 0x10000;
+
+	if (raw_videobase != *tm_videobase)
+	{
+		*tm_videobase = raw_videobase;
+		tilemap_mark_all_tiles_dirty(tm);
+	}
+	tilemap_draw(bitmap, &cliprect, tm, 0, 0);
+}
+
+/***************************************************************************
+  text
+***************************************************************************/
+
+static void apple2_text_gettileinfo(int memory_offset)
+{
+	SET_TILE_INFO(
+		0,											/* gfx */
+		mess_ram[text_videobase + memory_offset],	/* character */
+		WHITE,										/* color */
+		0)											/* flags */
+}
+
+static UINT32 apple2_text_getmemoryoffset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows)
+{
+	/* Special Apple II addressing.  Gotta love it. */
+	return (((row & 0x07) << 7) | ((row & 0x18) * 5 + col));
+}
+
+static void apple2_text_draw(struct mame_bitmap *bitmap, int page, int beginrow, int endrow)
+{
+	apple2_draw_tilemap(bitmap, beginrow, endrow, text_tilemap, page ? 0x800 : 0x400, &text_videobase);
+}
+
+/***************************************************************************
+  low resolution graphics
+***************************************************************************/
+
+static void apple2_lores_gettileinfo(int memory_offset)
+{
+	SET_TILE_INFO(
+		2 + (memory_offset & 0x01),							/* gfx */
+		mess_ram[lores_videobase + memory_offset] & 0x7f,	/* character */
+		WHITE,												/* color */
+		0)													/* flags */
+}
+
+static void apple2_lores_draw(struct mame_bitmap *bitmap, int page, int beginrow, int endrow)
+{
+	apple2_draw_tilemap(bitmap, beginrow, endrow, lores_tilemap, page ? 0x800 : 0x400, &lores_videobase);
+}
+
+/***************************************************************************
+  high resolution graphics
+***************************************************************************/
+
+static UINT32 apple2_hires_getmemoryoffset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows)
+{
+	/* Special Apple II addressing.  Gotta love it. */
+	return apple2_text_getmemoryoffset(col, row / 8, num_cols, num_rows) | ((row & 7) << 10);
+}
+
+struct drawtask_params
+{
+	struct mame_bitmap *bitmap;
+	UINT8 *vram;
+	int beginrow;
+	int rowcount;
+};
+
+static void apple2_hires_draw_task(void *param, int task_num, int task_count)
+{
+	struct drawtask_params *dtparams;
+	struct mame_bitmap *bitmap;
+	UINT8 *vram;
+	int beginrow;
+	int endrow;
+	int row, col, b;
+	int offset;
+	UINT8 vram_row[42];
+	UINT16 v;
+	UINT16 *p;
+	UINT32 w;
+	UINT16 *artifact_map_ptr;
+
+	dtparams = (struct drawtask_params *) param;
+
+	bitmap = dtparams->bitmap;
+	vram = dtparams->vram;
+	beginrow = dtparams->beginrow + (dtparams->rowcount / task_count) * task_num;
+	endrow = beginrow + (dtparams->rowcount / task_count) - 1;
+
+	vram_row[0] = 0;
+	vram_row[41] = 0;
+
+	for (row = beginrow; row <= endrow; row++)
+	{
+		for (col = 0; col < 40; col++)
+		{
+			offset = apple2_hires_getmemoryoffset(col, row, 0, 0);
+			vram_row[1+col] = vram[offset];
+		}
+
+		p = (UINT16 *) bitmap->line[row];
+
+		for (col = 0; col < 40; col++)
+		{
+			w =		(((UINT32) vram_row[col+0] & 0x7f) <<  0)
+				|	(((UINT32) vram_row[col+1] & 0x7f) <<  7)
+				|	(((UINT32) vram_row[col+2] & 0x7f) << 14);
+
+			artifact_map_ptr = &artifact_map[((vram_row[col+1] & 0x80) >> 7) * 16];
+			
+			for (b = 0; b < 7; b++)
+			{
+				v = artifact_map_ptr[((w >> (b + 7-1)) & 0x07) | (((b ^ col) & 0x01) << 3)];
+				*(p++) = v;
+				*(p++) = v;
+			}
+		}
+	}
+}
+
+static void apple2_hires_draw(struct mame_bitmap *bitmap, int page, int beginrow, int endrow)
+{
+	struct drawtask_params dtparams;
+
+	dtparams.vram = mess_ram + (page ? 0x4000 : 0x2000);
+	if (a2.RAMRD)
+		dtparams.vram += 0x10000;
+
+	dtparams.bitmap = bitmap;
+	dtparams.beginrow = beginrow;
+	dtparams.rowcount = (endrow + 1) - beginrow;
+
+	osd_parallelize(apple2_hires_draw_task, &dtparams, dtparams.rowcount);
+}
+
+/***************************************************************************
+  video core
+***************************************************************************/
+
 VIDEO_START( apple2 )
 {
 	int i;
+	int j;
+	UINT16 c;
 
-	apple2_text[0] = apple2_text[1] = 0;
-	apple2_lores[0] = apple2_lores[1] = 0;
-	apple2_hires[0] = apple2_hires[1] = 0;
-
-	dirty_text[0] = dirty_text[1] = 0;
-	dirty_lores[0] = dirty_lores[1] = 0;
-	dirty_hires[0] = dirty_hires[1] = 0;
-
-	for (i=0; i<2; i++)
+	static UINT16 artifact_color_table[] =
 	{
-		if ((apple2_text[i] = auto_bitmap_alloc(280*2,192*2)) == 0)
-			return 1;
-		if ((apple2_lores[i] = auto_bitmap_alloc(280*2,192*2)) == 0)
-			return 1;
-		if ((apple2_hires[i] = auto_bitmap_alloc(280*2,192*2)) == 0)
-			return 1;
-		if ((dirty_text[i] = auto_malloc(0x400)) == 0)
-			return 1;
-		if ((dirty_lores[i] = auto_malloc(0x400)) == 0)
-			return 1;
-		if ((dirty_hires[i] = auto_malloc(0x2000)) == 0)
-			return 1;
+		BLACK,	PURPLE,	GREEN,	WHITE,
+		BLACK,	BLUE,	ORANGE,	WHITE
+	};
 
-		memset(dirty_text[i],1,0x400);
-		memset(dirty_lores[i],1,0x400);
-		memset(dirty_hires[i],1,0x2000);
-		any_dirty_text[i] = any_dirty_lores[i] = any_dirty_hires[i] = 1;
+	text_tilemap = tilemap_create(
+		apple2_text_gettileinfo,
+		apple2_text_getmemoryoffset,
+		TILEMAP_OPAQUE,
+		7*2, 8,
+		40, 24);
+
+	lores_tilemap = tilemap_create(
+		apple2_lores_gettileinfo,
+		apple2_text_getmemoryoffset,
+		TILEMAP_OPAQUE,
+		14, 8,
+		40, 24);
+
+	/* 2^3 dependent pixels * 2 color sets * 2 offsets */
+	artifact_map = auto_malloc(sizeof(UINT16) * 8 * 2 * 2);
+
+	if (!text_tilemap || !lores_tilemap || !artifact_map)
+		return 1;
+
+	for (i = 0; i < 8; i++)
+	{
+		for (j = 0; j < 2; j++)
+		{
+			if (i & 0x02)
+			{
+				if ((i & 0x05) != 0)
+					c = 3;
+				else
+					c = j ? 2 : 1;
+			}
+			else
+			{
+				if ((i & 0x05) == 0x05)
+					c = j ? 1 : 2;
+				else
+					c = 0;
+			}
+			artifact_map[ 0 + j*8 + i] = artifact_color_table[c];
+			artifact_map[16 + j*8 + i] = artifact_color_table[c+4];
+		}
 	}
 
+	text_videobase = lores_videobase = 0;
 	return 0;
 }
 
-/***************************************************************************
-  apple2_text_draw
-***************************************************************************/
-static void apple2_text_draw(int page)
-{
-	int x,y;
-	int offset;
-	unsigned char *text_ram;
-
-#if 0
-	if (!any_dirty_text[page])
-		return;
-
-	if (page==0)
-		text_ram = apple2_lores_text1_ram;
-	else
-		text_ram = apple2_lores_text2_ram;
-#else
-{
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	int auxram = a2.RAMRD ? 0x10000 : 0x0000;
-
-	if (page==0)
-		text_ram = &RAM[0x400 + auxram];
-	else
-		text_ram = &RAM[0x800 + auxram];
-}
-#endif
-
-	for (offset = 0x3FF; offset >= 0; offset--)
-	{
-//		if (dirty_text[page][offset])
-		{
-			dirty_text[page][offset] = 0;
-
-			/* Special Apple II addressing.  Gotta love it. */
-			x = (offset & 0x7F);
-			y = (offset >> 7) & 0x07;
-			if (x >= 0x50)
-				y += 16;
-			else if (x >= 0x28)
-				y += 8;
-			x = x % 40;
-
-			drawgfx(apple2_text[page], Machine->gfx[0],
-					text_ram[offset],	/* Character */
-					12,		/* Color */
-					0,0,
-					x*7*2,y*8,
-					0,TRANSPARENCY_NONE,0);
-		}
-	}
-	any_dirty_text[page] = 0;
-}
-
-/***************************************************************************
-  apple2_lores_draw
-***************************************************************************/
-static void apple2_lores_draw(int page)
-{
-	int x,y;
-	int offset;
-	unsigned char *lores_ram;
-
-#if 0
-	if (!any_dirty_lores[page])
-		return;
-
-	if (page==0)
-		lores_ram = apple2_lores_text1_ram;
-	else
-		lores_ram = apple2_lores_text2_ram;
-#else
-{
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	int auxram = a2.RAMRD ? 0x10000 : 0x0000;
-
-	if (page==0)
-		lores_ram = &RAM[0x400 + auxram];
-	else
-		lores_ram = &RAM[0x800 + auxram];
-}
-#endif
-
-	for (offset = 0x3FF; offset >= 0; offset--)
-	{
-//		if (dirty_lores[page][offset])
-		{
-			dirty_lores[page][offset] = 0;
-
-			/* Special Apple II addressing.  Gotta love it. */
-			x = (offset & 0x7F);
-			y = (offset >> 7) & 0x07;
-			if (x >= 0x50)
-				y += 16;
-			else if (x >= 0x28)
-				y += 8;
-			x = x % 40;
-
-			drawgfx(apple2_lores[page], Machine->gfx[2 + (x & 0x01)],
-					lores_ram[offset],	/* Character */
-					12,		/* Color */
-					0,0,
-					x*7*2,y*8,
-					0,TRANSPARENCY_NONE,0);
-		}
-	}
-	any_dirty_lores[page] = 0;
-}
-
-/***************************************************************************
-  apple2_hires_draw
-***************************************************************************/
-static void apple2_hires_draw(int page)
-{
-	int x,y;
-	int offset;
-	unsigned char *hires_ram;
-
-#if 0
-	if (!any_dirty_hires[page])
-		return;
-
-	if (page==0)
-		hires_ram = apple2_hires1_ram;
-	else
-		hires_ram = apple2_hires2_ram;
-#else
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	int auxram = a2.RAMRD ? 0x10000 : 0x0000;
-
-	if (page==0)
-		hires_ram = &RAM[0x2000 + auxram];
-	else
-		hires_ram = &RAM[0x4000 + auxram];
-#endif
-
-	for (offset = 0x1FFF; offset >= 0; offset--)
-	{
-//		if (dirty_hires[page][offset])
-		{
-			dirty_hires[page][offset] = 0;
-
-			/* Special Apple II addressing.  Gotta love it. */
-			x = (offset & 0x007F);
-			y = (offset & 0x0380) >> 7;
-			if (x >= 0x50)
-				y += 16;
-			else if (x >= 0x28)
-				y += 8;
-			x = x % 40;
-
-			y = y * 8;
-			y += ((offset & 0x1C00) >> 10);
-
-#if 0
-			drawgfx(apple2_hires[page], Machine->gfx[5 + ((hires_ram[offset] & 0x80) >> 7)],
-					(hires_ram[offset] & 0x7F),	/* Character */
-					12,		/* Color */
-					0,0,
-					x*7*2,y,
-					0,TRANSPARENCY_NONE,0);
-#else
-			if (hires_ram[offset] & 0x80)
-				drawgfx(apple2_hires[page], Machine->gfx[5],
-					(hires_ram[offset] & 0x7F),	/* Character */
-					12,		/* Color */
-					0,0,
-					x*7*2+1,y,
-					0,TRANSPARENCY_NONE,0);
-			else
-				drawgfx(apple2_hires[page], Machine->gfx[5],
-					(hires_ram[offset] & 0x7F),	/* Character */
-					12,		/* Color */
-					0,0,
-					x*7*2,y,
-					0,TRANSPARENCY_NONE,0);
-
-#endif
-		}
-	}
-	any_dirty_hires[page] = 0;
-}
-
-/***************************************************************************
-  apple2_lores_text1_w
-***************************************************************************/
-void apple2_lores_text1_w(int offset, int data)
-{
-	if (apple2_lores_text1_ram[offset] == data)
-		return;
-
-	apple2_lores_text1_ram[offset] = data;
-
-	if (((offset & 0x007F) >= 0x0078) && ((offset & 0x007F) <= 0x007F))
-		return;
-
-	dirty_text[0][offset] = 1;
-	dirty_lores[0][offset] = 1;
-	any_dirty_text[0] = any_dirty_lores[0] = 1;
-}
-
-/***************************************************************************
-  apple2_lores_text2_w
-***************************************************************************/
-void apple2_lores_text2_w(int offset, int data)
-{
-	if (apple2_lores_text2_ram[offset] == data)
-		return;
-
-	apple2_lores_text2_ram[offset] = data;
-
-	if (((offset & 0x007F) >= 0x0078) && ((offset & 0x007F) <= 0x007F))
-		return;
-
-	dirty_text[1][offset] = 1;
-	dirty_lores[1][offset] = 1;
-	any_dirty_text[1] = any_dirty_lores[1] = 1;
-}
-
-/***************************************************************************
-  apple2_hires1_w
-***************************************************************************/
-void apple2_hires1_w(int offset, int data)
-{
-	if (apple2_hires1_ram[offset] == data)
-		return;
-
-	apple2_hires1_ram[offset] = data;
-
-	if (((offset & 0x007F) >= 0x0078) && ((offset & 0x007F) <= 0x007F))
-		return;
-
-	dirty_hires[0][offset] = 1;
-	any_dirty_hires[0] = 1;
-}
-
-/***************************************************************************
-  apple2_hires2_w
-***************************************************************************/
-void apple2_hires2_w(int offset, int data)
-{
-	if (apple2_hires2_ram[offset] == data)
-		return;
-
-	apple2_hires2_ram[offset] = data;
-
-	if (((offset & 0x007F) >= 0x0078) && ((offset & 0x007F) <= 0x007F))
-		return;
-
-	dirty_hires[1][offset] = 1;
-	any_dirty_hires[1] = 1;
-}
-
-/***************************************************************************
-  apple2_vh_screenrefresh
-***************************************************************************/
 VIDEO_UPDATE( apple2 )
 {
-    struct rectangle mixed_rect;
 	int page;
-
-    mixed_rect.min_x=0;
-    mixed_rect.max_x=280*2-1;
-    mixed_rect.min_y=0;
-    mixed_rect.max_y=(160*2)-1;
 
 	page = (a2.PAGE2>>7);
 
 	if (a2.TEXT)
 	{
-		apple2_text_draw(page);
-		copybitmap(bitmap,apple2_text[page],0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		apple2_text_draw(bitmap, page, 0, 191);
 	}
 	else if ((a2.HIRES) && (a2.MIXED))
 	{
-		apple2_text_draw(page);
-		apple2_hires_draw(page);
-		copybitmap(bitmap,apple2_hires[page],0,0,0,0,&mixed_rect,TRANSPARENCY_NONE,0);
-	    mixed_rect.min_y=(160*2);
-	    mixed_rect.max_y=(192*2)-1;
-		copybitmap(bitmap,apple2_text[page],0,0,0,0,&mixed_rect,TRANSPARENCY_NONE,0);
+		apple2_hires_draw(bitmap, page, 0, 159);
+		apple2_text_draw(bitmap, page, 160, 191);
 	}
 	else if (a2.HIRES)
 	{
-		apple2_hires_draw(page);
-		copybitmap(bitmap,apple2_hires[page],0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		apple2_hires_draw(bitmap, page, 0, 191);
 	}
 	else if (a2.MIXED)
 	{
-		apple2_text_draw(page);
-		apple2_lores_draw(page);
-		copybitmap(bitmap,apple2_lores[page],0,0,0,0,&mixed_rect,TRANSPARENCY_NONE,0);
-	    mixed_rect.min_y=(160*2);
-	    mixed_rect.max_y=(192*2)-1;
-		copybitmap(bitmap,apple2_text[page],0,0,0,0,&mixed_rect,TRANSPARENCY_NONE,0);
+		apple2_lores_draw(bitmap, page, 0, 159);
+		apple2_text_draw(bitmap, page, 160, 191);
 	}
 	else
 	{
-		apple2_lores_draw(page);
-		copybitmap(bitmap,apple2_lores[page],0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		apple2_lores_draw(bitmap, page, 0, 191);
 	}
+}
+
+void apple2_video_touch(offs_t offset)
+{
+	profiler_mark(PROFILER_VIDEOTOUCH);
+
+	if (offset >= text_videobase)
+		tilemap_mark_tile_dirty(text_tilemap, offset - text_videobase);
+	if (offset >= lores_videobase)
+		tilemap_mark_tile_dirty(lores_tilemap, offset - lores_videobase);
+
+	profiler_mark(PROFILER_END);
 }
 

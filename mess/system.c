@@ -45,6 +45,11 @@ const struct GameDriver * drivers[] =
   0             /* end of array */
 };
 
+const struct GameDriver *test_drivers[] =
+{
+	0	/* end of array */
+};
+
 #else
 
 #ifndef DRIVER_RECURSIVE
@@ -73,6 +78,17 @@ const struct GameDriver *drivers[] =
 {
 #include "system.c"
   0             /* end of array */
+};
+
+/* step 2: define the test_drivers[] array */
+#undef DRIVER
+#undef TESTDRIVER
+#define DRIVER(NAME)
+#define TESTDRIVER(NAME) &driver_##NAME,
+const struct GameDriver *test_drivers[] =
+{
+#include "system.c"
+	0	/* end of array */
 };
 
 #else /* DRIVER_RECURSIVE */
@@ -127,7 +143,7 @@ const struct GameDriver *drivers[] =
 //	DRIVER( smsumd3d )	/* Sega Master System								*/
 //	DRIVER( smsemd3d )	/* Sega Master System								*/
 	DRIVER( genesis )	/* Sega Genesis/MegaDrive							*/
-	DRIVER( saturn )	/* Sega Saturn										*/
+TESTDRIVER( saturn )	/* Sega Saturn										*/
 
 	/* BALLY */
 	DRIVER( astrocde )	/* Bally Astrocade									*/
@@ -170,7 +186,7 @@ TESTDRIVER( coleconb )	/* ColecoVision (No BIOS load)						*/
 TESTDRIVER( sfzch ) 	/* CPS Changer (Street Fighter ZERO)				*/
 
 	/* MAGNAVOX */
-TESTDRIVER( odyssey2 )	/* Magnavox Odyssey 2 - 1978-1983					*/
+	DRIVER( odyssey2 )	/* Magnavox Odyssey 2 - 1978-1983					*/
 
 	/* WATARA */
 	DRIVER( svision )	/* Super Vision	Handheld							*/
@@ -443,16 +459,16 @@ TESTDRIVER( mz800  )	/* 1982 Sharp MZ800 								*/
 
 	/* TEXAS INSTRUMENTS */
 	DRIVER( ti990_10 )	/* 1975 TI 990/10									*/
-TESTDRIVER( ti990_4 )	/* 1976 TI 990/4									*/
+/*TESTDRIVER( ti990_4 )*/	/* 1976 TI 990/4									*/
 
-TESTDRIVER( ti99_224 )	/* 1983 TI 99/2 (24kb ROMs) 						*/
-TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 (32kb ROMs) 						*/
+/*TESTDRIVER( ti99_224 )*/	/* 1983 TI 99/2 (24kb ROMs) 						*/
+/*TESTDRIVER( ti99_232 )*/	/* 1983 TI 99/2 (32kb ROMs) 						*/
 	DRIVER( ti99_4 )	/* 1979 TI 99/4 									*/
 	DRIVER( ti99_4e )	/* 1980 TI 99/4 with 50Hz video						*/
 	DRIVER( ti99_4a )	/* 1981 TI 99/4A									*/
 	DRIVER( ti99_4ae )	/* 1981 TI 99/4A with 50Hz video					*/
 	DRIVER( ti99_4ev)	/* 1994 TI 99/4A with EVPC video card				*/
-TESTDRIVER( ti99_4p )	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
+/*TESTDRIVER( ti99_4p )*/	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
 
 	DRIVER( avigo )     /*												    */
 

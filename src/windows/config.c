@@ -26,6 +26,7 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include <time.h>
+#include <windows.h>
 #include "driver.h"
 #include "rc.h"
 #include "misc.h"

@@ -1,15 +1,12 @@
 #include "driver.h"
+#include "snapquik.h"
 
 //#define AMSTRAD_VIDEO_USE_EVENT_LIST
 
 void amstrad_setup_machine(void);
 void amstrad_shutdown_machine(void);
 
-int amstrad_floppy_init(int, void *fp, int open_mode);
-
-
-int amstrad_snapshot_load(int, void *fp, int open_mode);
-void amstrad_snapshot_exit(int);
+extern SNAPSHOT_LOAD( amstrad );
 
 int amstrad_floppy_load(int);
 void amstrad_floppy_exit(int);
@@ -101,6 +98,5 @@ extern PALETTE_INIT( kccomp );
 extern PALETTE_INIT( amstrad_plus );
 
 int amstrad_plus_cartridge_init(int id, void *fp, int open_mode);
-void amstrad_plus_cartridge_exit(int id);
 
 

@@ -154,6 +154,7 @@ union {
 static UINT8 collision;
 static int line;
 static double line_time;
+static UINT32 o2_snd_shift[2];
 
 /***************************************************************************
 
@@ -162,12 +163,15 @@ static double line_time;
 ***************************************************************************/
 VIDEO_START( odyssey2 )
 {
-    odyssey2_vh_hpos = 0;
+	o2_snd_shift[0] = Machine->sample_rate / 983;
+	o2_snd_shift[1] = Machine->sample_rate / 3933;
+
+	odyssey2_vh_hpos = 0;
 	odyssey2_display = (UINT8 *) auto_malloc(8 * 8 * 256);
 	if( !odyssey2_display )
 		return 1;
 	memset(odyssey2_display, 0, 8 * 8 * 256);
-    return 0;
+	return 0;
 }
 
 /***************************************************************************
@@ -206,7 +210,11 @@ extern READ_HANDLER ( odyssey2_video_r )
 
 extern WRITE_HANDLER ( odyssey2_video_w )
 {
-    o2_vdc.reg[offset]=data;
+	/* Update the sound */
+	if( offset >= 0xa7 && offset <= 0xaa )
+		stream_update( odyssey2_sh_channel, 0 );
+
+	o2_vdc.reg[offset]=data;
 }
 
 extern READ_HANDLER ( odyssey2_t1_r )
@@ -300,109 +308,170 @@ INLINE void odyssey2_draw_char(struct mame_bitmap *bitmap, UINT8 bg[][320], int 
 
 VIDEO_UPDATE( odyssey2 )
 {
-    int i, j, x, y;
-    int color;
-    UINT8 bg[300][320]= { { 0 } };
+	int i, j, x, y;
+	int color;
+	UINT8 bg[300][320]= { { 0 } };
 
-    assert(bitmap->width<=ARRAY_LENGTH(bg[0])
-	   && bitmap->height<=ARRAY_LENGTH(bg));
+	assert(bitmap->width<=ARRAY_LENGTH(bg[0])
+		&& bitmap->height<=ARRAY_LENGTH(bg));
 
-    plot_box(bitmap, 0, 0, bitmap->width, bitmap->height, Machine->pens[(o2_vdc.s.color>>3)&0x7]);
-    if (o2_vdc.s.control&8) {
-	// grid 8 points right compared to characters, sprites
+	plot_box(bitmap, 0, 0, bitmap->width, bitmap->height, Machine->pens[(o2_vdc.s.color>>3)&0x7]);
+	if (o2_vdc.s.control & 8)
+	{
+		// grid 8 points right compared to characters, sprites
 #define WIDTH 16
 #define HEIGHT 24
-	int w=2;
-	color=o2_vdc.s.color&7;
-	color|=(o2_vdc.s.color>>3)&8;
-	for (i=0, x=0; x<9; x++, i++) {
-	    for (j=1, y=0; y<9; y++, j<<=1) {
-		if ( ((j<=0x80)&&(o2_vdc.s.hgrid[0][i]&j))
-		     ||((j>0x80)&&(o2_vdc.s.hgrid[1][i]&1)) ) {
-		    odyssey2_draw_box(bg,8+x*WIDTH,24+y*HEIGHT, WIDTH,3, 0x20);
-		    plot_box(bitmap,8+x*WIDTH,24+y*HEIGHT,WIDTH,3,Machine->pens[color]);
+		int w=2;
+		color=o2_vdc.s.color&7;
+		color|=(o2_vdc.s.color>>3)&8;
+		for (i=0, x=0; x<9; x++, i++) {
+			for (j=1, y=0; y<9; y++, j<<=1) {
+				if ( ((j<=0x80)&&(o2_vdc.s.hgrid[0][i]&j))
+						||((j>0x80)&&(o2_vdc.s.hgrid[1][i]&1)) )
+				{
+					odyssey2_draw_box(bg,8+x*WIDTH,24+y*HEIGHT, WIDTH,3, 0x20);
+					plot_box(bitmap,8+x*WIDTH,24+y*HEIGHT,WIDTH,3,Machine->pens[color]);
+				}
+		    }
 		}
-	    }
-	}
-	if (o2_vdc.s.control&0x80) w=WIDTH;
-	for (i=0, x=0; x<10; x++, i++) {
-	    for (j=1, y=0; y<8; y++, j<<=1) {
-		if (o2_vdc.s.vgrid[i]&j) {
-		    odyssey2_draw_box(bg,8+x*WIDTH,24+y*HEIGHT,w,HEIGHT, 0x10);
-		    plot_box(bitmap,8+x*WIDTH,24+y*HEIGHT,w,HEIGHT,Machine->pens[color]);
+		if (o2_vdc.s.control&0x80) w=WIDTH;
+		for (i=0, x=0; x<10; x++, i++) {
+			for (j=1, y=0; y<8; y++, j<<=1)
+			{
+				if (o2_vdc.s.vgrid[i]&j) {
+				    odyssey2_draw_box(bg,8+x*WIDTH,24+y*HEIGHT,w,HEIGHT, 0x10);
+				    plot_box(bitmap,8+x*WIDTH,24+y*HEIGHT,w,HEIGHT,Machine->pens[color]);
+				}
+			}
 		}
-	    }
-	}
     }
-    if (o2_vdc.s.control&0x20) {
-	for (i=0; i<ARRAY_LENGTH(o2_vdc.s.foreground); i++) {
-	    odyssey2_draw_char(bitmap,bg,
-			       o2_vdc.s.foreground[i].x, o2_vdc.s.foreground[i].y,
-			       o2_vdc.s.foreground[i].ptr, o2_vdc.s.foreground[i].color);
-	}
-	for (i=0; i<ARRAY_LENGTH(o2_vdc.s.quad); i++) {
-	    x=o2_vdc.s.quad[i].single[0].x;
-	    for (j=0; j<ARRAY_LENGTH(o2_vdc.s.quad[0].single); j++, x+=2*8) {
-		odyssey2_draw_char(bitmap,bg,
-				   x, y=o2_vdc.s.quad[i].single[0].y,
-				   o2_vdc.s.quad[i].single[j].ptr, o2_vdc.s.quad[i].single[j].color);
-	    }
-	}
-	for (i=0; i<ARRAY_LENGTH(o2_vdc.s.sprites); i++) {
-	    Machine->gfx[0]->colortable[1]=Machine->pens[16+((o2_vdc.s.sprites[i].color>>3)&7)];
-	    y=o2_vdc.s.sprites[i].y;
-	    x=o2_vdc.s.sprites[i].x;
-	    for (j=0; j<8; j++) {
-		if (o2_vdc.s.sprites[i].color&4) {
-		    if (y+4*j>=bitmap->height) break;
-		    odyssey2_draw_sprite(bg, o2_vdc.s.shape[i][j], x, y+j*4, 2, 4, 1<<i);
-		    drawgfxzoom(bitmap, Machine->gfx[1], o2_vdc.s.shape[i][j],0,
-				0,0,x,y+j*4,
-				0, TRANSPARENCY_PEN,0,0x20000, 0x40000);
-		} else {
-		    if (y+j*2>=bitmap->height) break;
-		    odyssey2_draw_sprite(bg, o2_vdc.s.shape[i][j], x, y+j*2, 1, 2, 1<<i);
-		    drawgfxzoom(bitmap, Machine->gfx[1], o2_vdc.s.shape[i][j],0,
-				0,0,x,y+j*2,
-				0, TRANSPARENCY_PEN,0, 0x10000, 0x20000);
+    if (o2_vdc.s.control&0x20)
+	{
+		for (i=0; i<ARRAY_LENGTH(o2_vdc.s.foreground); i++) {
+			odyssey2_draw_char(bitmap,bg,
+				o2_vdc.s.foreground[i].x, o2_vdc.s.foreground[i].y,
+				o2_vdc.s.foreground[i].ptr, o2_vdc.s.foreground[i].color);
 		}
-	    }
-	}
-    }
-    collision=0;
-//    for (y=0; y<bitmap->height; y++) {
-//	for (x=0; x<bitmap->width; x++) {
-    for (y=0; y<200; y++) {
-	for (x=0; x<200; x++) {
-	    switch (bg[y][x]) {
-	    case 0: case 1: case 2: case 4: case 8:
-	    case 0x10: case 0x20: case 0x80:
-		break;
-	    default:
-		if (bg[y][x]&o2_vdc.s.collision) {
-		    collision|=bg[y][x];
+		for (i=0; i<ARRAY_LENGTH(o2_vdc.s.quad); i++)
+		{
+			x=o2_vdc.s.quad[i].single[0].x;
+			for (j=0; j<ARRAY_LENGTH(o2_vdc.s.quad[0].single); j++, x+=2*8)
+			{
+				odyssey2_draw_char(bitmap,bg,
+					x, y=o2_vdc.s.quad[i].single[0].y,
+					o2_vdc.s.quad[i].single[j].ptr, o2_vdc.s.quad[i].single[j].color);
+			}
 		}
-	    }
+		for (i=0; i<ARRAY_LENGTH(o2_vdc.s.sprites); i++)
+		{
+			Machine->gfx[0]->colortable[1]=Machine->pens[16+((o2_vdc.s.sprites[i].color>>3)&7)];
+			y=o2_vdc.s.sprites[i].y;
+			x=o2_vdc.s.sprites[i].x;
+			for (j=0; j<8; j++)
+			{
+				if (o2_vdc.s.sprites[i].color&4)
+				{
+					if (y+4*j>=bitmap->height) break;
+					odyssey2_draw_sprite(bg, o2_vdc.s.shape[i][j], x, y+j*4, 2, 4, 1<<i);
+					drawgfxzoom(bitmap, Machine->gfx[1], o2_vdc.s.shape[i][j],0,
+						0,0,x,y+j*4,
+						0, TRANSPARENCY_PEN,0,0x20000, 0x40000);
+				}
+				else
+				{
+					if (y+j*2>=bitmap->height) break;
+					odyssey2_draw_sprite(bg, o2_vdc.s.shape[i][j], x, y+j*2, 1, 2, 1<<i);
+					drawgfxzoom(bitmap, Machine->gfx[1], o2_vdc.s.shape[i][j],0,
+						0,0,x,y+j*2,
+						0, TRANSPARENCY_PEN,0, 0x10000, 0x20000);
+				}
+			}
+		}
 	}
-    }
+	collision=0;
+//	for (y=0; y<bitmap->height; y++) {
+//		for (x=0; x<bitmap->width; x++) {
+	for (y=0; y<300; y++)
+	{
+		for (x=0; x<320; x++)
+		{
+			switch (bg[y][x]) {
+			case 0: case 1: case 2: case 4: case 8:
+			case 0x10: case 0x20: case 0x80:
+				break;
+
+			default:
+				if (bg[y][x]&o2_vdc.s.collision)
+				{
+				    collision|=bg[y][x]&(~o2_vdc.s.collision);
+				}
+				break;
+			}
+		}
+	}
 
 #if 0
-    char str[0x40];
-    for (i=0; i<4; i++) {
-	snprintf(str, sizeof(str), "%.2x:%.2x %.2x",
-		 o2_vdc.s.sprites[i].x,
-		 o2_vdc.s.sprites[i].y,
-		 o2_vdc.s.sprites[i].color);
+	char str[0x40];
+	for (i=0; i<4; i++)
+	{
+		snprintf(str, sizeof(str), "%.2x:%.2x %.2x",
+				o2_vdc.s.sprites[i].x,
+				o2_vdc.s.sprites[i].y,
+				o2_vdc.s.sprites[i].color);
+		ui_text(bitmap, str, 160, i*8);
+	}
+	snprintf(str, sizeof(str), "%.2x %.2x",
+			o2_vdc.s.collision,
+			collision);
 	ui_text(bitmap, str, 160, i*8);
-    }
-    snprintf(str, sizeof(str), "%.2x %.2x",
-	     o2_vdc.s.collision,
-	     collision);
-    ui_text(bitmap, str, 160, i*8);
-
-
 #endif
     return;
 }
 
+void odyssey2_sh_update( int param, INT16 *buffer, int length )
+{
+	static UINT32 signal;
+	static UINT16 count = 0;
+	int ii;
+	int period;
 
+	/* Generate the signal */
+	signal = o2_vdc.s.shift3 | (o2_vdc.s.shift2 << 8) | (o2_vdc.s.shift1 << 16);
+
+	if( o2_vdc.s.sound & 0x80 )	/* Sound is enabled */
+	{
+		for( ii = 0; ii < length; ii++, buffer++ )
+		{
+			*buffer = 0;
+			*buffer = signal & 0x1;
+			period = (o2_vdc.s.sound & 0x20) ? 11 : 44;
+			if( ++count >= period )
+			{
+				count = 0;
+				signal >>= 1;
+				/* Loop sound */
+				if( o2_vdc.s.sound & 0x40 )
+				{
+					signal |= *buffer << 23;
+				}
+			}
+
+			/* Throw an interrupt if enabled */
+			if( o2_vdc.s.control & 0x4 )
+			{
+				cpu_set_irq_line(0, 1, HOLD_LINE); /* Is this right? */
+			}
+
+			/* Adjust volume */
+			*buffer *= o2_vdc.s.sound & 0xf;
+			/* Pump the volume up */
+			*buffer <<= 10;
+		}
+	}
+	else
+	{
+		/* Sound disabled, so clear the buffer */
+		for( ii = 0; ii < length; ii++, buffer++ )
+			*buffer = 0;
+	}
+}

@@ -563,7 +563,7 @@ static void toggle_cursor(struct mame_bitmap *bitmap, struct GfxElement *font)
 		}
 	}
 	cursor_on ^= 1;
-	
+
 	debugger_bitmap_changed = 1;
 }
 

@@ -19,13 +19,14 @@
 #include "includes/dragon.h"
 #include "includes/basicdsk.h"
 #include "includes/6551.h"
-#include "formats/dmkdsk.h"
 #include "printer.h"
 #include "messfmts.h"
 #include "formats/coco_dsk.h"
 #include "cassette.h"
 #include "bitbngr.h"
+#include "snapquik.h"
 #include "inputx.h"
+#include "snprintf.h"
 
 #define SHOW_FULL_AREA			0
 #define JOYSTICK_DELTA			10
@@ -725,6 +726,25 @@ static const struct bitbanger_config coco_bitbanger_config =
 
 /* ----------------------------------------------------------------------- */
 
+GET_CUSTOM_DEVICENAME( coco )
+{
+	const char *name = NULL;
+	switch(type) {
+	case IO_VHD:
+		name = "Virtual Hard Disk";
+		break;
+
+	case IO_FLOPPY:
+		/* CoCo people like their floppy drives zero counted */
+		snprintf(buf, bufsize, "Floppy #%d", id);
+		name = buf;
+		break;
+	}
+	return name;
+}
+
+/* ----------------------------------------------------------------------- */
+
 SYSTEM_CONFIG_START( generic_coco )
 	/* bitbanger port */
 	CONFIG_DEVICE_BITBANGER (1, &coco_bitbanger_config )
@@ -734,12 +754,15 @@ SYSTEM_CONFIG_START( generic_coco )
 
 	/* floppy */
 	CONFIG_DEVICE_FLOPPY	(4, coco, coco_jvc )
+
+	/* custom devicename */
+	CONFIG_GET_CUSTOM_DEVICENAME( coco )
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START( generic_coco12 )
 	CONFIG_IMPORT_FROM		( generic_coco )
 	CONFIG_DEVICE_CARTSLOT	( 1, "rom\0", coco_rom_load, NULL, NULL )
-	CONFIG_DEVICE_SNAPSHOT	(    "pak\0", coco_pak_load, NULL )
+	CONFIG_DEVICE_SNAPSHOT	(    "pak\0", coco_pak )
 SYSTEM_CONFIG_END
 
 /* ----------------------------------------------------------------------- */
@@ -761,8 +784,8 @@ SYSTEM_CONFIG_END
 SYSTEM_CONFIG_START(coco3)
 	CONFIG_IMPORT_FROM		( generic_coco )
 	CONFIG_DEVICE_CARTSLOT	( 1, "rom\0", coco3_rom_load, NULL, NULL )
-	CONFIG_DEVICE_SNAPSHOT	(    "pak\0", coco3_pak_load, NULL )
-	CONFIG_DEVICE_LEGACY	(IO_VHD, 1, "vhd\0", IO_RESET_NONE, OSD_FOPEN_RW_CREATE, coco_vhd_init, coco_vhd_exit, NULL)
+	CONFIG_DEVICE_SNAPSHOT	(    "pak\0", coco3_pak )
+	CONFIG_DEVICE_LEGACY	(IO_VHD, 1, "vhd\0", IO_RESET_NONE, OSD_FOPEN_RW_CREATE, coco_vhd_init, NULL, NULL)
 	CONFIG_RAM				(128 * 1024)
 	CONFIG_RAM_DEFAULT		(512 * 1024)
 	CONFIG_RAM				(2048 * 1024)

@@ -2,6 +2,8 @@
 #include "cassette.h"
 #include "image.h"
 
+#if HAS_WAVE
+
 int cassette_init(int id, void *file, int open_mode, const struct cassette_args *args)
 {
 	struct wave_args_legacy wa;
@@ -64,4 +66,6 @@ void cassette_exit(int id)
 {
 	device_close(IO_CASSETTE, id);
 }
+
+#endif /* HAS_WAVE */
 

@@ -34,6 +34,7 @@
 #include "includes/nec765.h"
 /* for CPCEMU style disk images */
 #include "includes/dsk.h"
+#include "snapquik.h"
 
 #ifdef AMSTRAD_VIDEO_EVENT_LIST
 /* for event list */
@@ -2780,15 +2781,15 @@ ROM_END
 
 SYSTEM_CONFIG_START(cpc6128)
 	CONFIG_RAM_DEFAULT(128 * 1024)
-	CONFIG_DEVICE_LEGACY(IO_FLOPPY, 2, "dsk\0", IO_RESET_NONE, OSD_FOPEN_NONE, amstrad_floppy_init, dsk_floppy_exit, floppy_status)
+	CONFIG_DEVICE_LEGACY_DSK(2)
 	CONFIG_DEVICE_CASSETTE(1, "", amstrad_cassette_init)
 	CONFIG_DEVICE_PRINTER(1)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(cpcplus)
 	CONFIG_IMPORT_FROM(cpc6128)
-	CONFIG_DEVICE_CARTSLOT(1,	"cpr\0", amstrad_plus_cartridge_init, amstrad_plus_cartridge_exit, NULL)
-	CONFIG_DEVICE_SNAPSHOT(		"sna\0", amstrad_snapshot_load, amstrad_snapshot_exit)
+	CONFIG_DEVICE_CARTSLOT(1,	"cpr\0", amstrad_plus_cartridge_init, NULL, NULL)
+	CONFIG_DEVICE_SNAPSHOT(		"sna\0", amstrad)
 SYSTEM_CONFIG_END
 
 /*      YEAR  NAME       PARENT  MACHINE    INPUT    INIT    CONFIG,  COMPANY               FULLNAME */

@@ -11,6 +11,7 @@
 
 #include "includes/lynx.h"
 #include "image.h"
+#include "snapquik.h"
 #include <zlib.h>
 
 static int rotate=0;
@@ -305,14 +306,12 @@ static int lynx_init_cart(int id, void *cartfile, int open_mode)
 	size=osd_fsize(cartfile);
 	if (osd_fread(cartfile, header, 0x40)!=0x40) {
 		logerror("%s load error\n",image_filename(IO_CARTSLOT,id));
-		osd_fclose(cartfile);
 		return 1;
 	}
 
 	/* Check the image */
 	if (lynx_verify_cart((char*)header) == IMAGE_VERIFY_FAIL)
 	{
-		osd_fclose(cartfile);
 		return INIT_FAIL;
 	}
 
@@ -324,55 +323,40 @@ static int lynx_init_cart(int id, void *cartfile, int open_mode)
 
 	if (osd_fread(cartfile, rom, size)!=size) {
 		logerror("%s load error\n",image_filename(IO_CARTSLOT,id));
-		osd_fclose(cartfile);
 		return 1;
 	}
-	osd_fclose(cartfile);
 
 	lynx_crc_keyword(IO_CARTSLOT, id);
 
 	return 0;
 }
 
-static int lynx_quickload(int id, void *cartfile, int open_mode)
+static QUICKLOAD_LOAD( lynx )
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
-	int size;
 	UINT8 header[10]; // 80 08 dw Start dw Len B S 9 3
 	// maybe the first 2 bytes must be used to identify the endianess of the file
 	UINT16 start;
 
-	if (cartfile == NULL)
-		return 0;
+	if (osd_fread(fp, header, sizeof(header)) != sizeof(header))
+		return INIT_FAIL;
 
-	size=osd_fsize(cartfile);
+	quickload_size -= sizeof(header);
+	start = header[3] | (header[2]<<8); //! big endian format in file format for little endian cpu
 
-	if (osd_fread(cartfile, header, sizeof(header))!=sizeof(header)) {
-		logerror("%s load error\n",image_filename(IO_QUICKLOAD,id));
-		osd_fclose(cartfile);
-		return 1;
-	}
-	size-=sizeof(header);
-	start=header[3]|(header[2]<<8); //! big endian format in file format for little endian cpu
+	if (osd_fread(fp, rom+start, quickload_size) != quickload_size)
+		return INIT_FAIL;
 
-	if (osd_fread(cartfile, rom+start, size)!=size) {
-		logerror("%s load error\n",image_filename(IO_QUICKLOAD,id));
-		osd_fclose(cartfile);
-		return 1;
-	}
-	osd_fclose(cartfile);
+	rom[0xfffc+0x200] = start&0xff;
+	rom[0xfffd+0x200] = start>>8;
 
-	rom[0xfffc+0x200]=start&0xff;
-	rom[0xfffd+0x200]=start>>8;
-
-	lynx_crc_keyword(IO_QUICKLOAD, id);
-
+	lynx_crc_keyword(IO_QUICKLOAD, 0);
 	return 0;
 }
 
 SYSTEM_CONFIG_START(lynx)
 	CONFIG_DEVICE_CARTSLOT(1, "lnx\0",	lynx_init_cart, NULL, lynx_partialcrc)
-	CONFIG_DEVICE_QUICKLOAD(  "o\0",	lynx_quickload, NULL)
+	CONFIG_DEVICE_QUICKLOAD(  "o\0",	lynx)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -388,8 +372,6 @@ static DRIVER_INIT( lynx )
 
 	for (i=0; i<256; i++)
 		gfx[i]=i;
-	// R. Nabet: what on earth is the purpose of this???
-	lynx_quickload(0, NULL, OSD_FOPEN_NONE);
 }
 
 /*    YEAR  NAME      PARENT    MACHINE	INPUT	INIT	CONFIG	MONITOR	COMPANY   FULLNAME */

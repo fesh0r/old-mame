@@ -79,8 +79,8 @@ static int osd_selected;
 static int jukebox_selected;
 static int single_step;
 
-static int showfps;
-static int showfpstemp;
+int showfps;
+int showfpstemp;
 
 UINT8 ui_dirty;
 
@@ -1137,23 +1137,23 @@ static void showcharset(struct mame_bitmap *bitmap)
 				{
 					total_colors = Machine->drv->total_colors;
 					colortable = Machine->pens;
-					strcpy(buf,ui_getstring (UI_palette));
+					strcpy(buf,"PALETTE");
 				}
 				else if (bank == 1)	/* clut */
 				{
 					total_colors = Machine->drv->color_table_len;
 					colortable = Machine->remapped_colortable;
-					strcpy(buf,ui_getstring (UI_clut));
+					strcpy(buf,"CLUT");
 				}
 				else
 				{
 					buf[0] = 0;
 					total_colors = 0;
 					colortable = 0;
-		}
+				}
 
 				/*if (changed) -- temporary */
-		{
+				{
 					erase_screen(bitmap);
 
 					if (total_colors)
@@ -1270,7 +1270,7 @@ static void showcharset(struct mame_bitmap *bitmap)
 
 					erase_screen(bitmap);
 					tilemap_nb_draw (bitmap, bank, tilemap_xpos, tilemap_ypos);
-					sprintf(buf, "%s %d (%dx%d)  X:%d  Y:%d", ui_getstring (UI_tilemap), bank, tilemap_width, tilemap_height, tilemap_xpos, tilemap_ypos);
+					sprintf(buf, "TILEMAP %d (%dx%d)  X:%d  Y:%d", bank, tilemap_width, tilemap_height, tilemap_xpos, tilemap_ypos);
 					ui_text(bitmap,buf,0,0);
 					changed = 0;
 					skip_tmap = 0;
@@ -2278,12 +2278,12 @@ int showcopyright(struct mame_bitmap *bitmap)
 	char buf[1000];
 	char buf2[256];
 
-	strcpy (buf, ui_getstring (UI_copyright1));
+	strcpy (buf, ui_getstring(UI_copyright1));
 	strcat (buf, "\n\n");
-	sprintf(buf2, ui_getstring (UI_copyright2), Machine->gamedrv->description);
+	sprintf(buf2, ui_getstring(UI_copyright2), Machine->gamedrv->description);
 	strcat (buf, buf2);
 	strcat (buf, "\n\n");
-	strcat (buf, ui_getstring (UI_copyright3));
+	strcat (buf, ui_getstring(UI_copyright3));
 
 	setup_selected = -1;////
 	done = 0;
@@ -2393,7 +2393,7 @@ static int displaygameinfo(struct mame_bitmap *bitmap,int selected)
 		sprintf(&buf[strlen(buf)],"%d x %d (%s) %f Hz\n",
 				Machine->visible_area.max_x - Machine->visible_area.min_x + 1,
 				Machine->visible_area.max_y - Machine->visible_area.min_y + 1,
-				(Machine->gamedrv->flags & ORIENTATION_SWAP_XY) ? ui_getstring (UI_orient_vert) : ui_getstring (UI_orient_horz),
+				(Machine->gamedrv->flags & ORIENTATION_SWAP_XY) ? "V" : "H",
 				Machine->drv->frames_per_second);
 #if 0
 		{
@@ -2423,10 +2423,10 @@ static int displaygameinfo(struct mame_bitmap *bitmap,int selected)
 			pixelx /= tmin;
 			pixely /= tmin;
 
-			sprintf(&buf[strlen(buf)],"%s %d:%d\n",
-					ui_getstring (UI_pix_asp_rat),pixelx,pixely);
+			sprintf(&buf[strlen(buf)],"pixel aspect ratio %d:%d\n",
+					pixelx,pixely);
 		}
-		sprintf(&buf[strlen(buf)],"%d &s ",ui_getstring (UI_colors),Machine->drv->total_colors);
+		sprintf(&buf[strlen(buf)],"%d colors ",Machine->drv->total_colors);
 #endif
 	}
 
@@ -2819,7 +2819,11 @@ static int displayhistory (struct mame_bitmap *bitmap, int selected)
 		if (buf)
 		{
 			/* try to load entry */
+			#ifndef MESS
+			if (load_driver_history (Machine->gamedrv, buf, 8192) == 0)
+			#else
 			if (load_driver_history (Machine->gamedrv, buf, 200*1024) == 0)
+			#endif
 			{
 				scroll = 0;
 				wordwrap_text_buffer (buf, maxcols);
@@ -2847,7 +2851,7 @@ static int displayhistory (struct mame_bitmap *bitmap, int selected)
 			char msg[80];
 
 			strcpy(msg,"\t");
-			strcat(msg,ui_getstring (UI_historymissing));
+			strcat(msg,ui_getstring(UI_historymissing));
 			strcat(msg,"\n\n\t");
 			strcat(msg,ui_getstring (UI_lefthilight));
 			strcat(msg," ");
@@ -3083,7 +3087,9 @@ static void setup_menu_init(void)
 #else
 	menu_item[menu_total] = ui_getstring (UI_imageinfo); menu_action[menu_total++] = UI_IMAGEINFO;
 	menu_item[menu_total] = ui_getstring (UI_filemanager); menu_action[menu_total++] = UI_FILEMANAGER;
+#if HAS_WAVE
 	menu_item[menu_total] = ui_getstring (UI_tapecontrol); menu_action[menu_total++] = UI_TAPECONTROL;
+#endif
 	menu_item[menu_total] = ui_getstring (UI_history); menu_action[menu_total++] = UI_HISTORY;
 #endif
 
@@ -3157,9 +3163,11 @@ static int setup_menu(struct mame_bitmap *bitmap, int selected)
 			case UI_FILEMANAGER:
 				res = filemanager(bitmap, sel >> SEL_BITS);
 				break;
+#if HAS_WAVE
 			case UI_TAPECONTROL:
 				res = tapecontrol(bitmap, sel >> SEL_BITS);
 				break;
+#endif /* HAS_WAVE */
 #endif
 			case UI_HISTORY:
 				res = displayhistory(bitmap, sel >> SEL_BITS);
@@ -3673,9 +3681,9 @@ void do_loadsave(struct mame_bitmap *bitmap, int request_loadsave)
 		InputCode code;
 
 		if (request_loadsave == LOADSAVE_SAVE)
-			displaymessage(bitmap, ui_getstring (UI_select_save));
+			displaymessage(bitmap, "Select position to save to");
 		else
-			displaymessage(bitmap, ui_getstring (UI_select_load));
+			displaymessage(bitmap, "Select position to load from");
 
 		update_video_and_audio();
 		reset_partial_updates();
@@ -3701,17 +3709,17 @@ void do_loadsave(struct mame_bitmap *bitmap, int request_loadsave)
 	if (file > 0)
 	{
 		if (request_loadsave == LOADSAVE_SAVE)
-			usrintf_showmessage("%s %c", ui_getstring (UI_save_to), file);
+			usrintf_showmessage("Save to position %c", file);
 		else
-			usrintf_showmessage("%s %c", ui_getstring (UI_load_from),file);
+			usrintf_showmessage("Load from position %c", file);
 		cpu_loadsave_schedule(request_loadsave, file);
 	}
 	else
 	{
 		if (request_loadsave == LOADSAVE_SAVE)
-			usrintf_showmessage(ui_getstring (UI_save_canc));
+			usrintf_showmessage("Save cancelled");
 		else
-			usrintf_showmessage(ui_getstring (UI_load_canc));
+			usrintf_showmessage("Load cancelled");
 	}
 }
 
@@ -3723,7 +3731,7 @@ void ui_show_fps_temp(double seconds)
 }
 
 
-static void display_fps(struct mame_bitmap *bitmap)
+void display_fps(struct mame_bitmap *bitmap)
 {
 	const char *text, *end;
 	char textbuf[256];
@@ -3733,10 +3741,10 @@ static void display_fps(struct mame_bitmap *bitmap)
 	/* if we're not currently displaying, skip it */
 	if (!showfps && !showfpstemp)
 		return;
-	
+
 	/* get the current FPS text */
 	text = osd_get_fps_text(mame_get_performance_info());
-	
+
 	/* loop over lines */
 	while (!done)
 	{
@@ -3774,68 +3782,7 @@ int show_profiler;
 int handle_user_interface(struct mame_bitmap *bitmap)
 {
 #ifdef MESS
-if (Machine->gamedrv->flags & GAME_COMPUTER)
-{
-	static int ui_active = 0, ui_toggle_key = 0;
-	static int ui_display_count = 4 * 60;
-
-	if( input_ui_pressed(IPT_UI_TOGGLE_UI) )
-	{
-		if( !ui_toggle_key )
-		{
-			ui_toggle_key = 1;
-			ui_active = !ui_active;
-			ui_display_count = 4 * 60;
-			schedule_full_refresh();
-		 }
-	}
-	else
-	{
-		ui_toggle_key = 0;
-	}
-
-	if( ui_active )
-	{
-		if( ui_display_count > 0 )
-		{
-			char text[] = "KBD: UI  (ScrLock)";
-			int x, x0 = uirotwidth - sizeof(text) * Machine->uifont->width - 2;
-			int y0 = uirotbounds.min_y + uirotheight - Machine->uifont->height - 2;
-			for( x = 0; text[x]; x++ )
-			{
-				artwork_mark_ui_dirty(x0 + x * Machine->uifont->width, y0,
-						x0 + x * Machine->uifont->width + uirotcharwidth - 1, y0 + uirotcharheight - 1);
-				drawgfx(bitmap,
-					Machine->uifont,text[x],0,0,0,
-					x0+x*Machine->uifont->width,
-					y0,0,TRANSPARENCY_NONE,0);
-			}
-			if( --ui_display_count == 0 )
-				schedule_full_refresh();
-		}
-	}
-	else
-	{
-		if( ui_display_count > 0 )
-		{
-			char text[] = "KBD: EMU (ScrLock)";
-			int x, x0 = uirotwidth - sizeof(text) * Machine->uifont->width - 2;
-			int y0 = uirotbounds.min_y + uirotheight - Machine->uifont->height - 2;
-			for( x = 0; text[x]; x++ )
-			{
-				artwork_mark_ui_dirty(x0 + x * Machine->uifont->width, y0,
-						x0 + x * Machine->uifont->width + uirotcharwidth - 1, y0 + uirotcharheight - 1);
-				drawgfx(bitmap,
-					Machine->uifont,text[x],0,0,0,
-					x0+x*Machine->uifont->width,
-					y0,0,TRANSPARENCY_NONE,0);
-			}
-			if( --ui_display_count == 0 )
-				schedule_full_refresh();
-		}
-		return 0;
-	}
-}
+	extern int mess_pause_for_ui;
 #endif
 
 	/* if the user pressed F12, save the screen to a file */
@@ -3914,7 +3861,7 @@ if (Machine->gamedrv->flags & GAME_COMPUTER)
 		{
 			jukebox_selected = (jukebox_selected - 16) & 0xff;
 		}
-		sprintf(buf,"%s %02x",ui_getstring (UI_sound_cmd), jukebox_selected);
+		sprintf(buf,"sound cmd %02x",jukebox_selected);
 		displaymessage(buf);
 	}
 #endif

@@ -32,7 +32,7 @@ enum { LIST_SHORT = 1, LIST_INFO, LIST_FULL, LIST_SAMDIR, LIST_ROMS, LIST_SAMPLE
 		LIST_WRONGORIENTATION, LIST_WRONGFPS, LIST_CRC, LIST_DUPCRC, LIST_WRONGMERGE,
 		LIST_ROMSIZE, LIST_ROMDISTRIBUTION, LIST_ROMNUMBER, LIST_PALETTESIZE,
 		LIST_CPU, LIST_CPUCLASS, LIST_NOSOUND, LIST_SOUND, LIST_NVRAM, LIST_SOURCEFILE,
-		LIST_GAMESPERSOURCEFILE, LIST_MESSINFO };
+		LIST_GAMESPERSOURCEFILE, LIST_MESSTEXT, LIST_MESSDEVICES, LIST_MESSCREATEDIR };
 #endif
 
 #define VERIFY_ROMS		0x00000001
@@ -543,7 +543,7 @@ int frontend_help (char *gamename)
 					printf("%-10s",drivers[i]->name);
 
 					namecopy(name,drivers[i]->description);
-					printf("\"%s",name);
+						printf("\"%s",name);
 
 					/* print the additional description only if we are listing clones */
 					if (listclones)
@@ -905,7 +905,7 @@ int frontend_help (char *gamename)
 					printf("%-5s%-36s ",drivers[i]->year,drivers[i]->manufacturer);
 
 					namecopy(name,drivers[i]->description);
-					printf("%s",name);
+						printf("%s",name);
 
 					/* print the additional description only if we are listing clones */
 					if (listclones)
@@ -1295,7 +1295,7 @@ int frontend_help (char *gamename)
 					printf("%d\t%d\n",i+1,numcount[i]);
 
 				#undef MAXCOUNT
-			}
+				}
 			return 0;
 			break;
 
@@ -1361,7 +1361,7 @@ int frontend_help (char *gamename)
 					printf("\t%d",8<<j);
 				printf("\n");
 
-				for (year = 1975;year <= 2000;year++)
+				for (year = 1900;year <= 2000;year++)
 				{
 					int count[CPU_COUNT];
 					int count_buswidth[3];
