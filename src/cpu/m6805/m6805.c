@@ -934,13 +934,13 @@ static UINT8 m68705_win_layout[] = {
 void m68705_reset(void *param)
 {
 	UINT32 *p_amask = param;
-    m6805_reset(param);
+	m6805_reset(param);
 	/* Overide default 6805 type */
 	m6805.subtype = SUBTYPE_M68705;
 	if (p_amask)
 		AMASK = *p_amask;
 	else
-		AMASK = 0x7ff;
+		AMASK = 0x7ff; /* default if no AMASK is specified */
 	RM16( AMASK-1, &m6805.pc );
 }
 void m68705_exit(void) { m6805_exit(); }
