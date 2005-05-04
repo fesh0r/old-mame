@@ -12,8 +12,6 @@
 #include <mame.h>
 #include "machine/ay3600.h"
 
-#define APDISK_DEVTAG	"apdsk_525"
-
 /* -----------------------------------------------------------------------
  * Softswitch values
  * ----------------------------------------------------------------------- */
@@ -59,7 +57,6 @@ struct apple2_slotdevice
 
 struct apple2_config
 {
-	ay3600_keyboard_type_t keyboard_type;
 	const struct apple2_slotdevice *slots[APPLE2_SLOT_COUNT];
 };
 
@@ -78,23 +75,12 @@ DRIVER_INIT( apple2 );
 MACHINE_INIT( apple2 );
 MACHINE_STOP( apple2 );
 data8_t apple2_getfloatingbusvalue(void);
+READ8_HANDLER( apple2_c0xx_r );
+WRITE8_HANDLER( apple2_c0xx_w );
 
 void apple2_interrupt(void);
 
-READ8_HANDLER ( apple2_c0xx_r );
-WRITE8_HANDLER ( apple2_c0xx_w );
-
-READ8_HANDLER ( apple2_c0xx_slot6_r );
-WRITE8_HANDLER ( apple2_c0xx_slot6_w );
-
 void apple2_setvar(UINT32 val, UINT32 mask);
-
-/* machine/ap_disk2.c */
-void apple2_slot6_init(void);
-DEVICE_LOAD ( apple2_floppy );
-UINT8 apple2_slot6_readbyte(mess_image *image);
-void apple2_slot6_writebyte(mess_image *image, UINT8 byte);
-void apple2_slot6_set_lines(mess_image *image, UINT8 new_state);
 
 /* vidhrdw/apple2.c */
 int apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo);
@@ -111,7 +97,6 @@ int apple2_get_bgcolor(void);
 /* keyboard wrappers */
 #define pressed_specialkey(key)	(readinputportbytag("keyb_special") & (key))
 #define SPECIALKEY_CAPSLOCK		0x01
-#define SPECIALKEY_REPT			0x01
 #define SPECIALKEY_SHIFT		0x06
 #define SPECIALKEY_CONTROL		0x08
 #define SPECIALKEY_BUTTON0		0x10	/* open apple */

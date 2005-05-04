@@ -18,8 +18,9 @@
 #include "cpu/m6502/m6502.h"
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
+#include "machine/applefdc.h"
 #include "machine/sonydriv.h"
-#include "machine/iwm.h"
+#include "machine/appldriv.h"
 #include "devices/flopdrv.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
@@ -462,6 +463,20 @@ static void apple2_mem_C800(offs_t begin, offs_t end, struct apple2_meminfo *mem
 	meminfo->write_mem			= APPLE2_MEM_FLOATING;
 }
 
+static void apple2_mem_CE00(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+{
+	if ((a2 & VAR_ROMSWITCH) && !strcmp(Machine->gamedrv->name, "apple2cp"))
+	{
+		meminfo->read_mem		= APPLE2_MEM_AUX;
+		meminfo->write_mem		= APPLE2_MEM_AUX;
+	}
+	else
+	{
+		meminfo->read_mem		= (begin & 0x0FFF) | (a2 & VAR_ROMSWITCH ? 0x4000 : 0x0000) | APPLE2_MEM_ROM;
+		meminfo->write_mem		= APPLE2_MEM_FLOATING;
+	}
+}
+
 static void apple2_mem_D000(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
 {
 	if (a2 & VAR_LCRAM)
@@ -526,7 +541,8 @@ static const struct apple2_memmap_entry apple2_memmap_entries[] =
 	{ 0xC100, 0xC2FF, apple2_mem_Cx00, A2MEM_MONO },
 	{ 0xC300, 0xC3FF, apple2_mem_C300, A2MEM_MONO },
 	{ 0xC400, 0xC7FF, apple2_mem_Cx00, A2MEM_MONO },
-	{ 0xC800, 0xCFFF, apple2_mem_C800, A2MEM_MONO },
+	{ 0xC800, 0xCDFF, apple2_mem_C800, A2MEM_MONO },
+	{ 0xCE00, 0xCFFF, apple2_mem_CE00, A2MEM_MONO },
 	{ 0xD000, 0xDFFF, apple2_mem_D000, A2MEM_DUAL },
 	{ 0xE000, 0xFFFF, apple2_mem_E000, A2MEM_DUAL },
 	{ 0 }
@@ -723,7 +739,7 @@ MACHINE_INIT( apple2 )
 		|| !strcmp(Machine->gamedrv->name, "apple2cp");
 	apple2_setvar(need_intcxrom ? VAR_INTCXROM : 0, ~0);
 
-	AY3600_init(a2_config->keyboard_type);
+	AY3600_init();
 
 	a2_speaker_state = 0;
 
@@ -1269,56 +1285,18 @@ const struct apple2_slotdevice apple2_slot_mockingboard =
 
 
 /* -----------------------------------------------------------------------
- * 5.25" Floppy Drive
+ * Floppy disk controller
  * ----------------------------------------------------------------------- */
 
-static void *apple2_floppy525_init(int slot)
+static int apple2_fdc_has_35;
+static int apple2_fdc_has_525;
+static int apple2_fdc_diskreg;
+
+static void apple2_fdc_set_lines(data8_t lines)
 {
-	return (void *) ~0;
-}
-
-
-
-static data8_t apple2_floppy525_read(void *token, offs_t offset)
-{
-	return apple2_c0xx_slot6_r(offset);
-}
-
-
-
-static void apple2_floppy525_write(void *token, offs_t offset, data8_t data)
-{
-	apple2_c0xx_slot6_w(offset, data);
-}
-
-
-
-const struct apple2_slotdevice apple2_slot_floppy525 =
-{
-	"floppy525",
-	"5.25\" Floppy Drive",
-	apple2_floppy525_init,
-	NULL,
-	apple2_floppy525_read,
-	apple2_floppy525_write
-};
-
-
-
-/* -----------------------------------------------------------------------
- * IWM
- * ----------------------------------------------------------------------- */
-
-static int apple2_iwm_has_35;
-static int apple2_iwm_has_525;
-static int apple2_iwm_diskreg;
-static mess_image *apple2_iwm_cur_slot6_image;
-
-static void apple2_iwm_set_lines(data8_t lines)
-{
-	if (apple2_iwm_diskreg & 0x40)
+	if (apple2_fdc_diskreg & 0x40)
 	{
-		if (apple2_iwm_has_35)
+		if (apple2_fdc_has_35)
 		{
 			/* slot 5: 3.5" disks */
 			sony_set_lines(lines);
@@ -1326,58 +1304,48 @@ static void apple2_iwm_set_lines(data8_t lines)
 	}
 	else
 	{
-		if (apple2_iwm_has_525)
+		if (apple2_fdc_has_525)
 		{
 			/* slot 6: 5.25" disks */
-			if (apple2_iwm_cur_slot6_image)
-				apple2_slot6_set_lines(apple2_iwm_cur_slot6_image, lines);
+			apple525_set_lines(lines);
 		}
 	}
 }
 
 
 
-static void apple2_iwm_set_enable_lines(int enable_mask)
+static void apple2_fdc_set_enable_lines(int enable_mask)
 {
 	int slot5_enable_mask = 0;
 	int slot6_enable_mask = 0;
-	mess_image *image;
 
-	if (apple2_iwm_diskreg & 0x40)
+	if (apple2_fdc_diskreg & 0x40)
 		slot5_enable_mask = enable_mask;
 	else
 		slot6_enable_mask = enable_mask;
 
-	if (apple2_iwm_has_35)
+	if (apple2_fdc_has_35)
 	{
 		/* set the 3.5" enable lines */
 		sony_set_enable_lines(slot5_enable_mask);
 	}
 
-	if (apple2_iwm_has_525)
+	if (apple2_fdc_has_525)
 	{
 		/* set the 5.25" enable lines */
-		apple2_iwm_cur_slot6_image = NULL;
-		image = image_from_devtag_and_index(APDISK_DEVTAG, 0);
-		floppy_drive_set_motor_state(image, (slot6_enable_mask == 1));
-		if (slot6_enable_mask == 1)
-			apple2_iwm_cur_slot6_image = image;
-		image = image_from_devtag_and_index(APDISK_DEVTAG, 1);
-		floppy_drive_set_motor_state(image, (slot6_enable_mask == 2));
-		if (slot6_enable_mask == 2)
-			apple2_iwm_cur_slot6_image = image;
+		apple525_set_enable_lines(slot6_enable_mask);
 	}
 }
 
 
 
-static data8_t apple2_iwm_read_data(void)
+static data8_t apple2_fdc_read_data(void)
 {
 	data8_t result = 0x00;
 
-	if (apple2_iwm_diskreg & 0x40)
+	if (apple2_fdc_diskreg & 0x40)
 	{
-		if (apple2_iwm_has_35)
+		if (apple2_fdc_has_35)
 		{
 			/* slot 5: 3.5" disks */
 			result = sony_read_data();
@@ -1385,11 +1353,10 @@ static data8_t apple2_iwm_read_data(void)
 	}
 	else
 	{
-		if (apple2_iwm_has_525)
+		if (apple2_fdc_has_525)
 		{
 			/* slot 6: 5.25" disks */
-			if (apple2_iwm_cur_slot6_image)
-				result = apple2_slot6_readbyte(apple2_iwm_cur_slot6_image);
+			result = apple525_read_data();
 		}
 	}
 	return result;
@@ -1397,11 +1364,11 @@ static data8_t apple2_iwm_read_data(void)
 
 
 
-static void apple2_iwm_write_data(data8_t data)
+static void apple2_fdc_write_data(data8_t data)
 {
-	if (apple2_iwm_diskreg & 0x40)
+	if (apple2_fdc_diskreg & 0x40)
 	{
-		if (apple2_iwm_has_35)
+		if (apple2_fdc_has_35)
 		{
 			/* slot 5: 3.5" disks */
 			sony_write_data(data);
@@ -1409,24 +1376,23 @@ static void apple2_iwm_write_data(data8_t data)
 	}
 	else
 	{
-		if (apple2_iwm_has_525)
+		if (apple2_fdc_has_525)
 		{
 			/* slot 6: 5.25" disks */
-			if (apple2_iwm_cur_slot6_image)
-				apple2_slot6_writebyte(apple2_iwm_cur_slot6_image, data);
+			apple525_write_data(data);
 		}
 	}
 }
 
 
 
-static int apple2_iwm_read_status(void)
+static int apple2_fdc_read_status(void)
 {
 	int result = 0;
 
-	if (apple2_iwm_diskreg & 0x40)
+	if (apple2_fdc_diskreg & 0x40)
 	{
-		if (apple2_iwm_has_35)
+		if (apple2_fdc_has_35)
 		{
 			/* slot 5: 3.5" disks */
 			result = sony_read_status();
@@ -1434,11 +1400,10 @@ static int apple2_iwm_read_status(void)
 	}
 	else
 	{
-		if (apple2_iwm_has_525)
+		if (apple2_fdc_has_525)
 		{
 			/* slot 6: 5.25" disks */
-			if (apple2_iwm_cur_slot6_image)
-				result = image_is_writable(apple2_iwm_cur_slot6_image) ? 0x00 : 0x80;
+			result = apple525_read_status();
 		}
 	}
 	return result;
@@ -1448,64 +1413,89 @@ static int apple2_iwm_read_status(void)
 
 void apple2_iwm_setdiskreg(data8_t data)
 {
-	apple2_iwm_diskreg = data & 0xC0;
-	if (apple2_iwm_has_35)
-		sony_set_sel_line(apple2_iwm_diskreg & 0x80);
+	apple2_fdc_diskreg = data & 0xC0;
+	if (apple2_fdc_has_35)
+		sony_set_sel_line(apple2_fdc_diskreg & 0x80);
 }
 
 
 
 data8_t apple2_iwm_getdiskreg(void)
 {
-	return apple2_iwm_diskreg;
+	return apple2_fdc_diskreg;
 }
 
 
 
-static const struct iwm_interface apple2_iwm_interface =
-{
-	apple2_iwm_set_lines,
-	apple2_iwm_set_enable_lines,
-	apple2_iwm_read_data,
-	apple2_iwm_write_data,
-	apple2_iwm_read_status
-};
-
-
-
-static void *apple2_iwm_init(int slot)
+static void *apple2_fdc_init(int slot, applefdc_t fdc_type)
 {
 	const struct IODevice *dev;
+	struct applefdc_interface intf;
 
-	apple2_iwm_has_35 = FALSE;
-	apple2_iwm_has_525 = FALSE;
-	apple2_iwm_diskreg = 0x00;
+	apple2_fdc_has_35 = FALSE;
+	apple2_fdc_has_525 = FALSE;
+	apple2_fdc_diskreg = 0x00;
+
+	/* setup interface */
+	memset(&intf, 0, sizeof(intf));
+	intf.type = fdc_type;
+	intf.set_lines = apple2_fdc_set_lines;
+	intf.set_enable_lines = apple2_fdc_set_enable_lines;
+	intf.read_status = apple2_fdc_read_status;
+	intf.read_data = apple2_fdc_read_data;
+	intf.write_data = apple2_fdc_write_data;
 
 	for (dev = Machine->devices; dev->type < IO_COUNT; dev++)
 	{
 		if (!strcmp(dev->tag, "sonydriv"))
-			apple2_iwm_has_35 = !dev->not_working;
-		else if (!strcmp(dev->tag, APDISK_DEVTAG))
-			apple2_iwm_has_525 = !dev->not_working;
+			apple2_fdc_has_35 = !dev->not_working;
+		else if (!strcmp(dev->tag, "apple525driv"))
+			apple2_fdc_has_525 = !dev->not_working;
 	}
 
-	iwm_init(&apple2_iwm_interface);
+	applefdc_init(&intf);
 	return (void *) ~0;
 }
 
 
 
-static data8_t apple2_iwm_read(void *token, offs_t offset)
+static void *apple2_fdc_apple2_init(int slot)
 {
-	return iwm_r(offset);
+	return apple2_fdc_init(slot, APPLEFDC_APPLE2);
 }
 
 
 
-static void apple2_iwm_write(void *token, offs_t offset, data8_t data)
+static void *apple2_fdc_iwm_init(int slot)
 {
-	iwm_w(offset, data);
+	return apple2_fdc_init(slot, APPLEFDC_IWM);
 }
+
+
+
+static data8_t apple2_fdc_read(void *token, offs_t offset)
+{
+	return applefdc_r(offset);
+}
+
+
+
+static void apple2_fdc_write(void *token, offs_t offset, data8_t data)
+{
+	applefdc_w(offset, data);
+}
+
+
+
+const struct apple2_slotdevice apple2_slot_floppy525 =
+{
+	"floppy525",
+	"5.25\" Floppy Drive",
+	apple2_fdc_apple2_init,
+	NULL,
+	apple2_fdc_read,
+	apple2_fdc_write
+};
 
 
 
@@ -1513,10 +1503,10 @@ const struct apple2_slotdevice apple2_slot_iwm =
 {
 	"iwm",
 	"IWM",
-	apple2_iwm_init,
+	apple2_fdc_iwm_init,
 	NULL,
-	apple2_iwm_read,
-	apple2_iwm_write
+	apple2_fdc_read,
+	apple2_fdc_write
 };
 
 
@@ -1557,9 +1547,6 @@ void apple2_init_common(const struct apple2_config *config)
 		}
 	}
 	
-	/* initialise 5.25" floppy */
-	apple2_slot6_init();
-
 	/* --------------------------------------------- *
 	 * set up the softswitch mask/set                *
 	 * --------------------------------------------- */
@@ -1580,22 +1567,14 @@ DRIVER_INIT( apple2 )
 {
 	struct apple2_memmap_config mem_cfg;
 	struct apple2_config a2_cfg;
+	void *apple2cp_ce00_ram = NULL;
 	
 	memset(&a2_cfg, 0, sizeof(a2_cfg));
 
-	/* determine keyboard type */
-	if (!strcmp(Machine->gamedrv->name, "apple2"))
-		a2_cfg.keyboard_type = AP2_KEYBOARD_2;
-	else if (!strcmp(Machine->gamedrv->name, "apple2p"))
-		a2_cfg.keyboard_type = AP2_KEYBOARD_2P;
-	else if (!strcmp(Machine->gamedrv->name, "apple2ep"))
-		a2_cfg.keyboard_type = AP2_KEYBOARD_2GS;
-	else
-		a2_cfg.keyboard_type = AP2_KEYBOARD_2E;
-
 	/* specify slots */
 	if (!strcmp(Machine->gamedrv->name, "apple2c0") ||
-		!strcmp(Machine->gamedrv->name, "apple2c3"))
+		!strcmp(Machine->gamedrv->name, "apple2c3") ||
+		!strcmp(Machine->gamedrv->name, "apple2cp"))
 	{
 		a2_cfg.slots[0] = &apple2_slot_langcard;
 		a2_cfg.slots[4] = &apple2_slot_mockingboard;
@@ -1608,14 +1587,18 @@ DRIVER_INIT( apple2 )
 		a2_cfg.slots[6] = &apple2_slot_floppy525;
 	}
 
+	/* there appears to be some hidden RAM that is swapped in on the Apple
+	 * IIc plus; I have not found any official documentation but the BIOS
+	 * clearly uses this area as writeable memory */
+	if (!strcmp(Machine->gamedrv->name, "apple2cp"))
+		apple2cp_ce00_ram = auto_malloc(0x200);
+
 	apple2_init_common(&a2_cfg);
 
 	memset(&mem_cfg, 0, sizeof(mem_cfg));
 	mem_cfg.first_bank = 1;
 	mem_cfg.memmap = apple2_memmap_entries;
+	mem_cfg.auxmem = apple2cp_ce00_ram;
 	apple2_setup_memory(&mem_cfg);
 }
-
-
-
 

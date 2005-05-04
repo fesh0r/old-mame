@@ -511,7 +511,7 @@ typedef struct
 
 #if (TMS99XX_MODEL == TMS9995_ID)
 	/* additionnal registers */
-	UINT16 flag;    /* flag register */
+	UINT16 flag; 	  /* flag register */
 	int MID_flag;   /* MID flag register */
 
 	/* chip config, which can be set on reset */
@@ -542,7 +542,7 @@ static tms99xx_Regs I =
 	0,0,0,0,  /* don't care */
 	0,        /* no pending interrupt */
 	0,        /* LOAD* inactive */
-	16, 0,    /* INTREQ* inactive */
+  16, 0,    /* INTREQ* inactive */
 };
 static UINT8 lastparity;  /* rather than handling ST_OP directly, we copy the last value which
                                   would set it here */
@@ -851,7 +851,7 @@ WRITE8_HANDLER(tms9995_internal2_w)
 			return val;
 		}
 	}
-	static void writebyte(int addr, int data)
+	static void writebyte (int addr, int data)
 	{
 		TMS99XX_ICOUNT -= 2;
 		if (addr & 1)
@@ -1003,7 +1003,7 @@ WRITE8_HANDLER(tms9995_internal2_w)
 		}
 	}
 
-	static void writeword(int addr, int data)
+	static void writeword (int addr, int data)
 	{
 		if ((addr < 0xf000) || (I.is_mp9537))
 		{
@@ -1072,7 +1072,7 @@ WRITE8_HANDLER(tms9995_internal2_w)
 		}
 	}
 
-	static void writebyte(int addr, int data)
+	static void writebyte (int addr, int data)
 	{
 		if ((addr < 0xf000) || (I.is_mp9537))
 		{
@@ -1098,124 +1098,6 @@ WRITE8_HANDLER(tms9995_internal2_w)
 		else
 		{
 			I.RAM[BYTE_XOR_BE(addr - 0xff00)] = data;
-		}
-	}
-
-#ifdef MAME_DEBUG
-	static data16_t dasm_readop(offs_t addr)
-	{
-		return readword(addr);
-	}
-#endif
-
-#else
-
-	#error "memory access not implemented"
-
-#endif
-
-#if !HAS_MAPPING
-	#define readwordX(addr, map_file) readword(addr)
-	#define writewordX(addr, data, map_file) writeword((addr), (data))
-	#define readbyteX(addr, map_file) readbyte(addr)
-	#define writebyteX(addr, data, map_file) writebyte((addr), (data))
-#endif
-
-#define READREG(reg)         readword((I.WP+(reg)) & 0xffff)
-#define WRITEREG(reg, data)  writeword((I.WP+(reg)) & 0xffff, (data))
-
-#if (TMS99XX_MODEL == TI990_10_ID)
-	READ8_HANDLER(ti990_10_mapper_cru_r)
-	{
-		int reply = 0;
-
-		switch(I.mapper_cru_read_register)
-		{
-		case 0xb000:
-			reply = I.map_files[I.cur_map].B[0];
-			break;
-		case 0xb001:
-			reply = I.map_files[I.cur_map].B[1];
-			break;
-		case 0xb010:
-			reply = I.map_files[I.cur_map].B[2];
-			break;
-		case 0xb011:
-			reply = I.map_files[I.cur_map].L[0];
-			break;
-		case 0xb100:
-			reply = I.map_files[I.cur_map].L[1];
-			break;
-		case 0xb101:
-			reply = I.map_files[I.cur_map].L[2];
-			break;
-		case 0xb110:
-			reply = I.mapper_address_latch;
-			break;
-		case 0xb111:
-			reply = I.mapper_address_latch >> 16;
-			break;
-		}
-
-		if (offset)
-			return (reply >> 8) & 0xff;
-		else
-			return reply & 0xff;
-	}
-
-	WRITE8_HANDLER(ti990_10_mapper_cru_w)
-	{
-		switch (offset)
-		{
-		case 0:
-		case 1:
-		case 2:
-			/* read register select */
-			if (data)
-				I.mapper_cru_read_register |= (1 << offset);
-			else
-				I.mapper_cru_read_register &= ~ (1 << offset);
-			break;
-		case 3:
-			/* enable mapping */
-			I.mapping_on = data;
-			break;
-		case 4:
-			/* reset flags */
-			I.reset_maperr = data;
-			if (data)
-			{
-				I.error_interrupt_register &= ~ EIR_MAPERR;
-				I.diaglat = 0;
-			}
-			break;
-		case 5:
-		case 6:
-		case 7:
-			/* latch control */
-			I.latch_control[7-offset] = data;
-			break;
-		}
-	}
-
-	INLINE void handle_error_interrupt(void)
-	{
-		if (I.error_interrupt_callback)
-			(*I.error_interrupt_callback)(I.error_interrupt_register ? 1 : 0);
-	}
-
-	READ8_HANDLER(ti990_10_eir_cru_r)
-	{
-		return (offset == 1) ? (I.error_interrupt_register & 0xff) : 0;
-	}
-
-	WRITE8_HANDLER(ti990_10_eir_cru_w)
-	{
-		if (offset < 4)	/* does not work for EIR_MAPERR */
-		{
-			I.error_interrupt_register &= ~ (1 << offset);
-
-			handle_error_interrupt();
 		}
 	}
 
@@ -1443,26 +1325,11 @@ static void tms99xx_reset(void *p)
 			I.is_mp9537 = param->is_mp9537;
 	}
 
-	#if (TMS99XX_MODEL == TMS9995_ID)
-		/* we can ask at reset time that the CPU always generates one wait state automatically */
-		if (param == NULL)
-		{	/* if no param, the default is currently "wait state added" */
-			I.memory_wait_states_byte = 4;
-			I.memory_wait_states_word = 12;
-			I.is_mp9537 = 0;
-		}
-		else
-		{
-			I.memory_wait_states_byte = (param->auto_wait_state) ? 4 : 0;
-			I.memory_wait_states_word = (param->auto_wait_state) ? 12 : 4;
-			I.is_mp9537 = param->is_mp9537;
-		}
+	I.MID_flag = 0;
 
-		I.MID_flag = 0;
-
-		/* Clear flag bits 0 & 1 */
-		set_flag0(0);
-		set_flag1(0);
+	/* Clear flag bits 0 & 1 */
+	set_flag0(0);
+	set_flag1(0);
 
 		/* Clear internal interrupt latches */
 	I.int_latch = 0;
@@ -1554,9 +1421,9 @@ static int tms99xx_execute(int cycles)
 					else
 					I.STATUS &= ~ST_IM; /* clear mask (is this correct???) */
 
-				#if (TMS99XX_MODEL == TMS9995_ID)
+#if (TMS99XX_MODEL == TMS9995_ID)
 					I.STATUS &= 0xFE00;
-				#endif
+#endif
 
 					/* clear IDLE status if necessary */
 				if (I.IDLE)
@@ -1566,7 +1433,7 @@ static int tms99xx_execute(int cycles)
 						(*I.idle_callback)(0);
 				}
 
-				#if (TMS99XX_MODEL == TMS9995_ID)
+#if (TMS99XX_MODEL == TMS9995_ID)
 					/* Clear bit in latch */
 					/* I think tms9989 does this, too */
 					if (level != 2)
@@ -1583,76 +1450,7 @@ static int tms99xx_execute(int cycles)
 						else if (level == 4)
 							(* I.irq_callback)(1);
 					}
-				#endif
-
-				CYCLES(6, 22, 14);
-			}
-			else
-#if SILLY_INTERRUPT_HACK
-			if (I.interrupt_pending)  /* we may have just cleared this */
 #endif
-			{
-				logerror("tms9900.c : the interrupt_pending flag was set incorrectly\n");
-				I.interrupt_pending = 0;
-			}
-		}
-
-		#ifdef MAME_DEBUG
-		{
-			if (mame_debug)
-			{
-				int icount_save = TMS99XX_ICOUNT;
-
-				I.FR[ 0] = READREG(R0);
-				I.FR[ 1] = READREG(R1);
-				I.FR[ 2] = READREG(R2);
-				I.FR[ 3] = READREG(R3);
-				I.FR[ 4] = READREG(R4);
-				I.FR[ 5] = READREG(R5);
-				I.FR[ 6] = READREG(R6);
-				I.FR[ 7] = READREG(R7);
-				I.FR[ 8] = READREG(R8);
-				I.FR[ 9] = READREG(R9);
-				I.FR[10] = READREG(R10);
-				I.FR[11] = READREG(R11);
-				I.FR[12] = READREG(R12);
-				I.FR[13] = READREG(R13);
-				I.FR[14] = READREG(R14);
-				I.FR[15] = READREG(R15);
-
-				#if 0		/* Trace */
-				logerror("> PC %4.4x :%4.4x %4.4x : R=%4.4x %4.4x %4.4x %4.4x %4.4x %4.4x %4.4x %4.4x %4.4x %4.4x%4.4x %4.4x %4.4x %4.4x %4.4x %4.4x :T=%d\n",I.PC,I.STATUS,I.WP,I.FR[0],I.FR[1],I.FR[2],I.FR[3],I.FR[4],I.FR[5],I.FR[6],I.FR[7],I.FR[8],I.FR[9],I.FR[10],I.FR[11],I.FR[12],I.FR[13],I.FR[14],I.FR[15],TMS99XX_ICOUNT);
-					#if 0	/* useful with TI99/4a driver */
-					#ifdef MESS
-					if (I.PC == 0x0078)
-					{
-						extern struct
-						{
-							/* pointer to GROM data */
-							UINT8 *data_ptr;
-							/* current address pointer for the active GROM in port (16 bits) */
-							unsigned int addr;
-							/* GROM data buffer */
-							UINT8 buf;
-							/* internal flip-flops that are set after the first access to the GROM
-							address so that next access is mapped to the LSB, and cleared after each
-							data access */
-							char raddr_LSB, waddr_LSB;
-						} console_GROMs;
-						logerror("> GPL pointer %4.4X\n", console_GROMs.addr);
-					}
-					#endif
-					#endif
-				#endif
-
-				TMS99XX_ICOUNT = icount_save;
-
-				MAME_Debug();
-
-				TMS99XX_ICOUNT = icount_save;
-			}
-		}
-		#endif
 
 				CYCLES(6, 22, 14);
 				}
@@ -2141,16 +1939,6 @@ static void tms99xx_set_irq_line(int irqline, int state)
 
 static void field_interrupt(void)
 {
-	if (I.irq_state & 1)
-		I.irq_level = 1;
-	else if (I.irq_state & 2)
-		I.irq_level = 2;
-	else if (I.irq_state & 4)
-		I.irq_level = 3;
-	else
-		I.irq_level = 4;
-		/* trick : 4 will always be bigger than the IM (0-3), so there will never be interrupts */
-
 	I.interrupt_pending = ((I.irq_level <= IMASK) || (I.load_state));
 }
 
@@ -2632,7 +2420,7 @@ static int readCRU(int CRUAddr, int Number)
 		0x01FF,0x03FF,0x07FF,0x0FFF,0x1FFF,0x3FFF,0x7FFF,0xFFFF
 	};
 
-	int Offset, Location, Value;
+	int Offset,Location,Value;
 
 	/*logerror("Read CRU %x for %x\n",CRUAddr,Number);*/
 
@@ -2919,24 +2707,8 @@ static UINT16 decipheraddrbyte(UINT16 opcode)
 		I.disable_interrupt_recognition = 1; \
 	}
 #else
-	#define HANDLE_ILLEGAL
-	#warning "don't know"
-#endif
-
-#if HAS_PRIVILEGE
-	#if (TMS99XX_MODEL == TI990_10_ID)
-		/* TI990/10 generates an error interrupt */
-		/* timings are unknown */
-		#define HANDLE_PRIVILEGE_VIOLATION									\
-		{																	\
-			I.error_interrupt_register |= EIR_PRIVOP;						\
-			if (I.error_interrupt_callback)									\
-				(*I.error_interrupt_callback)(1);							\
-		}
-	#else
-		#define HANDLE_PRIVILEGE_VIOLATION
-		#warning "don't know"
-	#endif
+#define HANDLE_ILLEGAL
+#warning "don't know"
 #endif
 
 #if HAS_PRIVILEGE
@@ -3030,10 +2802,9 @@ static void h0000(UINT16 opcode)
 
 		break;
 
-		default:
-			HANDLE_ILLEGAL;
-			break;
-		}
+	default:
+		HANDLE_ILLEGAL;
+		break;
 	}
 }
 }
@@ -3147,7 +2918,7 @@ static void h0100(UINT16 opcode)
 		break;
 #endif
 
-	case 2:   /* DIVS */
+  case 2:   /* DIVS */
 		/* DIVS -- DIVide Signed */
 		/* R0 = (R0:R1)/S   R1 = (R0:R1)%S */
 		{
@@ -3172,7 +2943,7 @@ static void h0100(UINT16 opcode)
 		}
 		break;
 
-	case 3:   /* MPYS */
+  case 3:   /* MPYS */
 		/* MPYS -- MultiPlY Signed */
 		/* Results:  R0:R1 = R0*S */
 		{
@@ -3281,7 +3052,12 @@ static void h0200(UINT16 opcode)
 			if (opcode >= 0x03F0)
 			{	/* EP ---- Extended Precision */
 		}
-	#endif
+		else
+#endif
+		HANDLE_ILLEGAL;
+		return;
+	}
+#endif
 
 	switch ((opcode & 0x1e0) >> 5)
 	{
@@ -4408,6 +4184,10 @@ static void xop(UINT16 opcode)
 #if (TMS99XX_MODEL == TMS9940_ID) || (TMS99XX_MODEL == TMS9985_ID)
 		switch (immediate)
 		{
+		case 0: /* DCA */
+			/* DCA --- Decimal Correct Addition */
+			operand = decipheraddrbyte(opcode);
+			{
 			int value = readbyte(operand);
 			int X = (value >> 4) & 0xf;
 			int Y = value & 0xf;
@@ -4434,12 +4214,12 @@ static void xop(UINT16 opcode)
 			}
 
 			writebyte(operand, (X << 4) | Y);
-		}
-		break;
-	case 1:	/* DCS */
-		/* DCS --- Decimal Correct Substraction */
-		operand = decipheraddrbyte(opcode);
-		{
+			}
+			break;
+		case 1:	/* DCS */
+			/* DCS --- Decimal Correct Substraction */
+			operand = decipheraddrbyte(opcode);
+			{
 			int value = readbyte(operand);
 
 			if (! (I.STATUS & ST_DC))
@@ -4474,7 +4254,7 @@ static void xop(UINT16 opcode)
 
 	#if ((TMS99XX_MODEL <= TMS9989_ID) && (TMS99XX_MODEL != TI990_10_ID))
 		(void)readword(operand & ~1); /*dummy read (personnal guess)*/
-	#endif
+#endif
 
 	contextswitchX(0x40 + (immediate << 2));
 
@@ -4946,7 +4726,7 @@ void TMS99XX_GET_INFO(UINT32 state, union cpuinfo *info)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case CPUINFO_INT_CONTEXT_SIZE:					info->i = sizeof(I);					break;
-		case CPUINFO_INT_INPUT_LINES:						info->i = 3;							break;
+		case CPUINFO_INT_INPUT_LINES:					info->i = 3;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;

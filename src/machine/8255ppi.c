@@ -106,7 +106,7 @@ void ppi8255_init( ppi8255_interface *intfce )
 }
 
 
-int ppi8255_r( int which, int offset )
+int ppi8255_r(int which, int offset)
 {
 	ppi8255 *chip = &chips[which];
 
@@ -281,7 +281,7 @@ int ppi8255_r( int which, int offset )
 }
 
 
-void ppi8255_w( int which, int offset, int data )
+void ppi8255_w(int which, int offset, int data)
 {
 	ppi8255	*chip;
 
@@ -367,14 +367,6 @@ void ppi8255_w( int which, int offset, int data )
 
 			}
 			break;
-		}
-	}
-	break;
-
-	case 1: /* Port B write */
-		chip->latch[1] = data;
-		PPI8255_PORT_B_WRITE();
-		break;
 
 			case 2:
 			{
@@ -393,12 +385,9 @@ void ppi8255_w( int which, int offset, int data )
 		case 3: /* Control word */
 			if (data & 0x80)
 			{
-				chip->latch[2] = data;
-				PPI8255_PORT_C_WRITE();
+				set_mode(which, data & 0x7f, 1);
 			}
-			break;
-
-			case 1:
+			else
 			{
   			/* bit set/reset */
   			int bit;
@@ -524,14 +513,8 @@ static void set_mode(int which, int data, int call_handlers)
 {
 	ppi8255 *chip = &chips[which];
 
-	chip->groupA_mode = ( data >> 5 ) & 3;
-	chip->groupB_mode = ( data >> 2 ) & 1;
-
-	if (chip->groupA_mode == 3)
-		chip->groupA_mode = 2;
-
-        logerror("8255 chip %d: group A mode %d\n",which,chip->groupA_mode);
-        logerror("8255 chip %d: group B mode %d\n",which,chip->groupB_mode);
+	chip->groupA_mode = (data >> 5) & 3;
+	chip->groupB_mode = (data >> 2) & 1;
 
 	if (chip->groupA_mode == 3)
 		chip->groupA_mode = 2;
@@ -578,13 +561,8 @@ static void set_mode(int which, int data, int call_handlers)
   	if ( data & 0x01 )
 		chip->io[2] |= 0x0f;
 
-			/* output buffer empty */
-			ppi8255_obfa_w(which, 0);
-			/* input buffer empty */
-			ppi8255_ibfa_w(which, 0);
-			
-			ppi8255_set_intra(which);
-		}
+	/* KT: 25-Dec-99 - 8255 resets latches when mode set */
+	chip->latch[0] = chip->latch[1] = chip->latch[2] = 0;
 
 	if (call_handlers)
 	{

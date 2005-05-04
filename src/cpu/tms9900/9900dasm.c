@@ -743,28 +743,6 @@ unsigned Dasm9900 (char *buffer, unsigned pc, int model_id, data16_t (*readop)(o
 			default:
 				condition_code = "??";
 				break;
-			case 6:
-				condition_code = "le";
-				break;
-			case 7:
-				condition_code = "h";
-				break;
-			case 8:
-				condition_code = "lte";
-				break;
-			case 9:
-				condition_code = "gt";
-				break;
-			default:
-				condition_code = "??";
-				break;
-			}
-
-			buffer += sprintf (buffer, "%-4s %s,", mnemonic, condition_code);
-			buffer += print_arg (buffer, smode, sarg, readop_arg);
-			buffer += sprintf (buffer, ",");
-			buffer += print_arg (buffer, dmode, darg, readop_arg);
-			break;
 		}
 
 			buffer += sprintf (buffer, "%-4s %s,", mnemonic, condition_code);

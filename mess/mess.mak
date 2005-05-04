@@ -95,9 +95,9 @@ CPUS+=ARM@
 #CPUS+=ARM7@
 CPUS+=JAGUAR@
 #CPUS+=R3000@
-#CPUS+=R4600@
+CPUS+=R4600@
 #CPUS+=R4700@
-#CPUS+=R5000@
+CPUS+=R5000@
 #CPUS+=QED5271@
 #CPUS+=RM7000@
 CPUS+=SH2@
@@ -307,6 +307,8 @@ DRVLIBS = \
 	$(OBJ)/telmac.a		\
 	$(OBJ)/tx0.a		\
 	$(OBJ)/luxor.a		\
+	$(OBJ)/sgi.a		\
+	$(OBJ)/primo.a		\
 
 
 $(OBJ)/neocd.a:						\
@@ -476,20 +478,22 @@ $(OBJ)/apple.a:   \
 	$(OBJ)/mess/formats/ap2_dsk.o		\
 	$(OBJ)/mess/formats/ap_dsk35.o		\
 	$(OBJ)/mess/machine/ay3600.o		\
-	$(OBJ)/mess/machine/ap_disk2.o		\
 	$(OBJ)/mess/machine/lisa.o			\
 	$(OBJ)/mess/systems/lisa.o			\
-	$(OBJ)/mess/machine/iwm.o			\
+	$(OBJ)/mess/machine/applefdc.o		\
 	$(OBJ)/mess/machine/8530scc.o		\
 	$(OBJ)/mess/machine/sonydriv.o		\
+	$(OBJ)/mess/machine/appldriv.o		\
 	$(OBJ)/mess/sndhrdw/mac.o			\
-	$(OBJ)/mess/machine/sonydriv.o		\
 	$(OBJ)/mess/vidhrdw/mac.o			\
 	$(OBJ)/mess/machine/mac.o			\
 	$(OBJ)/mess/systems/mac.o			\
 	$(OBJ)/mess/vidhrdw/apple1.o		\
 	$(OBJ)/mess/machine/apple1.o		\
-	$(OBJ)/mess/systems/apple1.o
+	$(OBJ)/mess/systems/apple1.o		\
+	$(OBJ)/mess/vidhrdw/apple3.o		\
+	$(OBJ)/mess/machine/apple3.o		\
+	$(OBJ)/mess/systems/apple3.o
 
 
 $(OBJ)/avigo.a: \
@@ -877,6 +881,16 @@ $(OBJ)/tx0.a:				\
 $(OBJ)/luxor.a:					\
 	$(OBJ)/mess/systems/abc80.o	\
 
+$(OBJ)/sgi.a:						\
+	$(OBJ)/mess/machine/sgi.o		\
+	$(OBJ)/mess/systems/ip20.o		\
+	$(OBJ)/mess/systems/ip22.o
+
+$(OBJ)/primo.a:				\
+	$(OBJ)/mess/systems/primo.o	\
+	$(OBJ)/mess/machine/primo.o	\
+	$(OBJ)/mess/vidhrdw/primo.o	\
+	$(OBJ)/mess/formats/primoptp.o
 
 # MESS specific core $(OBJ)s
 COREOBJS +=							\

@@ -190,7 +190,7 @@ LDFLAGS = -s
 endif
 
 ifdef MAP
-MAPFLAGS = -Wl,-M >$(NAME).map
+MAPFLAGS = -Wl,-Map,$(NAME).map
 else
 MAPFLAGS =
 endif
@@ -252,7 +252,11 @@ ifeq ($(MAMEOS),windows)
 include mess/tools/imgtool/windows/wimgtool.mak
 endif
 include src/rules.mak
+ifeq ($(MAMEOS),windows)
+include mess/$(MAMEOS)/$(MAMEOS).mak
+else
 include src/$(MAMEOS)/$(MAMEOS).mak
+endif
 include mess/rules_ms.mak
 
 ifdef DEBUG
@@ -277,7 +281,7 @@ $(EMULATORDLL): $(OBJS) $(COREOBJS) $(OSOBJS) $(DRVLIBS) $(RESFILE)
 # always recompile the version string
 	$(CC) $(CDEFS) $(CFLAGS) -c src/version.c -o $(OBJ)/version.o
 	@echo Linking $@...
-	@dllwrap --image-base=0x10080000 --output-lib=lib$(NAME).a --dllname=$@ --driver-name=gcc $(LDFLAGS) $(OBJS) $(COREOBJS) $(OSOBJS) $(LIBS) $(DRVLIBS) $(RESFILE)
+	@dllwrap --image-base=0x10080000 --output-lib=lib$(NAME).a --dllname=$@ --driver-name=gcc $(LDFLAGS) $(OBJS) $(COREOBJS) $(OSOBJS) $(LIBS) $(DRVLIBS) $(RESFILE) $(MAPFLAGS)
 
 # gui target
 $(EMULATORGUI):	$(EMULATORDLL) $(OBJ)/mess/ui/guimain.o $(GUIRESFILE)

@@ -154,6 +154,10 @@ void osd_image_load_status_changed(mess_image *img, int is_final_unload)
 {
 }
 
+void osd_config_save_xml(int type, mame_file *file)
+{
+}
+
 #ifdef NEW_DEBUGGER
 void osd_wait_for_debugger(void)
 {
@@ -195,3 +199,15 @@ void osd_free_executable(void *ptr)
 
 
 
+//============================================================
+//	osd_is_bad_read_ptr
+//============================================================
+
+int osd_is_bad_read_ptr(const void *ptr, size_t size)
+{
+#ifdef WIN32
+	return IsBadReadPtr(ptr, size);
+#else
+	return !ptr;
+#endif
+}

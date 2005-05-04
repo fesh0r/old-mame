@@ -107,7 +107,7 @@
 #include "includes/apple2gs.h"
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
-#include "machine/iwm.h"
+#include "machine/applefdc.h"
 #include "machine/sonydriv.h"
 #include "machine/8530scc.h"
 #include "devices/flopdrv.h"
@@ -1534,7 +1534,7 @@ static void apple2gs_xxCxxx_w(offs_t address, data8_t data)
 
 static OPBASE_HANDLER( apple2gs_opbase )
 {
-	const UINT8 *opptr = NULL;
+	UINT8 *opptr = NULL;
 	int slot;
 	
 	if (((address & 0xFEF000) == 0x00C000) || ((address & 0xFEF000) == 0xE0C000))
@@ -1555,8 +1555,17 @@ static OPBASE_HANDLER( apple2gs_opbase )
 			if ((slot > 7) || ((apple2gs_sltromsel & (1 << slot)) == 0))
 				opptr = apple2gs_getslotmem(address);
 		}
+
+		if (opptr)
+		{
+			opcode_mask = ~0;
+			opcode_base = opcode_arg_base = opptr - address;
+			opcode_memory_min = address;
+			opcode_memory_max = address;
+			address = ~0;
+		}
 	}
-	return opptr ? (offs_t) (opptr - address) : ~0;
+	return address;
 }
 
 
@@ -1622,7 +1631,7 @@ static void apple2gs_setup_memory(void)
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe0c000, 0xe0cfff, 0, 0, apple2gs_E0Cxxx_w);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe1c000, 0xe1cfff, 0, 0, apple2gs_E1Cxxx_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe1c000, 0xe1cfff, 0, 0, apple2gs_E1Cxxx_w);
-	memory_set_opbase_handler( 0, apple2gs_opbase );
+	memory_set_opbase_handler(0, apple2gs_opbase);
 
 	/* install aux memory writes (for shadowing) */
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x010400, 0x0107FF, 0, 0, apple2gs_aux0400_w);
@@ -1656,7 +1665,6 @@ DRIVER_INIT( apple2gs )
 	struct apple2_config cfg;
 	
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.keyboard_type = AP2_KEYBOARD_2GS;
 	cfg.slots[0] = &apple2_slot_langcard;
 	cfg.slots[4] = &apple2_slot_mockingboard;
 	cfg.slots[6] = &apple2_slot_iwm;

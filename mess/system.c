@@ -266,9 +266,11 @@ TESTDRIVER( nc200 )		/* 19?? NC200										*/
 	DRIVER( apple2g1 )	/* 1987 Apple IIgs ROM01							*/
 	DRIVER( apple2gs )	/* 1989 Apple IIgs ROM03							*/
 	DRIVER( ace100 )    /* 1982 Apple ][ clone								*/
-	DRIVER( laser128 )   /* 1987 Apple //c clone							*/
+	DRIVER( laser128 )  /* 1987 Apple //c clone								*/
 	DRIVER( las128ex )  /* 1987 Apple //c clone								*/
-	DRIVER( las3000 )  /* 1983 (semi) Apple ][+ clone								*/
+	DRIVER( las3000 )   /* 1983 (semi) Apple ][+ clone						*/
+	DRIVER( apple3 )    /* 1980 Apple ///     								*/
+
 /*
  * Lisa 				 January			 1983
  * Lisa 2 				 January			 1984
@@ -749,6 +751,12 @@ TESTDRIVER( mekd2 )		/* 1977 Motorola Evaluation Kit						*/
 	DRIVER( mato )		/* Mato (Basic ROM) (PMD-85.2 clone)								*/
 	DRIVER( matoh )		/* Mato (Games ROM) (PMD-85.2 clone)								*/
 
+	/* Microkey */
+	DRIVER( primoa32 )	/* Primo A-32											*/
+TESTDRIVER( primoa48 )		/* Primo A-48											*/
+	DRIVER( primoa64 )	/* Primo A-64											*/
+	DRIVER( primob64 )	/* Primo B-64											*/
+
 	/* Team Concepts */
 	/* CPU not known, else should be easy, look into systems/comquest.c */
 TESTDRIVER( comquest )	/* Comquest Plus German								*/
@@ -806,6 +814,10 @@ TESTDRIVER( hp48g ) 	/* HP48 G/GX										*/
 	DRIVER( abc800m )
 	DRIVER( abc800c )
 	DRIVER( abc806 )
+
+	/* SGI */
+	DRIVER( ip204415 )	/* IP20 IRIS Indigo workstation                     */
+	DRIVER( ip225015 )	/* IP22 Indy workstation                            */
 
 /****************Games*******************************************************/
 	/* Computer Electronic */
