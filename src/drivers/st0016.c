@@ -1,6 +1,6 @@
 /*******************************************
   Seta custom ST-0016 chip based games.
-	driver by Tomasz Slanina
+    driver by Tomasz Slanina
 ********************************************
 
 
@@ -85,9 +85,9 @@ ADDRESS_MAP_END
 static READ8_HANDLER(mux_r)
 {
 /*
-	76543210
-	    xxxx - input port #2
-	xxxx     - dip switches (2x8 bits) (multiplexed)
+    76543210
+        xxxx - input port #2
+    xxxx     - dip switches (2x8 bits) (multiplexed)
 */
 	int retval=input_port_2_r(0)&0x0f;
 	switch(mux_port&0x30)
@@ -114,6 +114,7 @@ WRITE8_HANDLER(st0016_rom_bank_w)
 READ8_HANDLER(st0016_dma_r);
 
 static ADDRESS_MAP_START( st0016_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0xbf) AM_READ(st0016_vregs_r) AM_WRITE(st0016_vregs_w) /* video/crt regs ? */
 	AM_RANGE(0xc0, 0xc0) AM_READ(input_port_0_r) AM_WRITE(mux_select_w)
 	AM_RANGE(0xc1, 0xc1) AM_READ(input_port_1_r) AM_WRITENOP
@@ -270,7 +271,7 @@ INPUT_PORTS_END
 
 static struct GfxDecodeInfo gfxdecodeinfo[] =
 {
-//	{ 0, 0, &charlayout,      0, 16*4  },
+//  { 0, 0, &charlayout,      0, 16*4  },
 	{ -1 }	/* end of array */
 };
 
@@ -536,17 +537,17 @@ INPUT_PORTS_END
 Mayjinsen (JPN Ver.)
 (c)1994 Seta
 
-CPU:	UPD70732-25 V810 ?
-Sound:	Custom (ST-0016 ?)
+CPU:    UPD70732-25 V810 ?
+Sound:  Custom (ST-0016 ?)
 
-sx003.01	main prg
+sx003.01    main prg
 sx003.02
 sx003.03
-sx003.04	/
+sx003.04    /
 
-sx003.05d	chr
+sx003.05d   chr
 sx003.06
-sx003.07d	/
+sx003.07d   /
 
 -----------
 
@@ -628,6 +629,7 @@ static ADDRESS_MAP_START( v810_mem,ADDRESS_SPACE_PROGRAM, 32 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( st0016_m2_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0xbf) AM_READ(st0016_vregs_r) AM_WRITE(st0016_vregs_w)
 	AM_RANGE(0xc0, 0xc3)	AM_READ(latch8_r) AM_WRITE(latch8_w)
 
@@ -685,7 +687,8 @@ INPUT_PORTS_START( mayjisn2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT( 0x60, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* buttons ? */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* buttons ? */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
 	PORT_START_TAG("IN1")
@@ -694,7 +697,8 @@ INPUT_PORTS_START( mayjisn2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT( 0x60, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* buttons ? */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* buttons ? */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
 	PORT_START_TAG("IN2")

@@ -94,24 +94,24 @@ ADDRESS_MAP_END
 static READ8_HANDLER(mux_r)
 {
 //
-//	76543210
-//	    xxxx - input port #2
-//	xxxx     - dip switches (2x8 bits) (multiplexed)
+//  76543210
+//      xxxx - input port #2
+//  xxxx     - dip switches (2x8 bits) (multiplexed)
 
-	int retval=input_port_2_r(0)&0x0f;
-	switch(mux_port&0x30)
-	{
-		case 0x00: retval|=((input_port_4_r(0)&1)<<4)|((input_port_4_r(0)&0x10)<<1)|((input_port_5_r(0)&1)<<6)|((input_port_5_r(0)&0x10)<<3);break;
-		case 0x10: retval|=((input_port_4_r(0)&2)<<3)|((input_port_4_r(0)&0x20)   )|((input_port_5_r(0)&2)<<5)|((input_port_5_r(0)&0x20)<<2);break;
-		case 0x20: retval|=((input_port_4_r(0)&4)<<2)|((input_port_4_r(0)&0x40)>>1)|((input_port_5_r(0)&4)<<4)|((input_port_5_r(0)&0x40)<<1);break;
-		case 0x30: retval|=((input_port_4_r(0)&8)<<1)|((input_port_4_r(0)&0x80)>>2)|((input_port_5_r(0)&8)<<3)|((input_port_5_r(0)&0x80)   );break;
-	}
-	return retval;
+    int retval=input_port_2_r(0)&0x0f;
+    switch(mux_port&0x30)
+    {
+        case 0x00: retval|=((input_port_4_r(0)&1)<<4)|((input_port_4_r(0)&0x10)<<1)|((input_port_5_r(0)&1)<<6)|((input_port_5_r(0)&0x10)<<3);break;
+        case 0x10: retval|=((input_port_4_r(0)&2)<<3)|((input_port_4_r(0)&0x20)   )|((input_port_5_r(0)&2)<<5)|((input_port_5_r(0)&0x20)<<2);break;
+        case 0x20: retval|=((input_port_4_r(0)&4)<<2)|((input_port_4_r(0)&0x40)>>1)|((input_port_5_r(0)&4)<<4)|((input_port_5_r(0)&0x40)<<1);break;
+        case 0x30: retval|=((input_port_4_r(0)&8)<<1)|((input_port_4_r(0)&0x80)>>2)|((input_port_5_r(0)&8)<<3)|((input_port_5_r(0)&0x80)   );break;
+    }
+    return retval;
 }
 
 static WRITE8_HANDLER(mux_select_w)
 {
-	mux_port=data;
+    mux_port=data;
 }
 */
 static WRITE8_HANDLER(st0016_rom_bank_w)
@@ -152,6 +152,7 @@ static READ8_HANDLER(macs_rand_r)
 }
 
 static ADDRESS_MAP_START( st0016_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0xbf) AM_READ(st0016_vregs_r) AM_WRITE(st0016_vregs_w) /* video/crt regs ? */
 	AM_RANGE(0xc0, 0xc0) AM_READ(macs_dips) AM_WRITE(rambank2_w) //AM_WRITENOP
 	AM_RANGE(0xc1, 0xc1)	AM_READ(macs_dips) AM_WRITENOP
@@ -177,7 +178,7 @@ ADDRESS_MAP_END
 
 static struct GfxDecodeInfo gfxdecodeinfo[] =
 {
-//	{ 0, 0, &charlayout,      0, 16*4  },
+//  { 0, 0, &charlayout,      0, 16*4  },
 	{ -1 }	/* end of array */
 };
 
@@ -295,7 +296,7 @@ static MACHINE_DRIVER_START(macs )
 	MDRV_VIDEO_UPDATE(st0016)
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	
+
 	MDRV_SOUND_ADD(ST0016, 0)
 	MDRV_SOUND_CONFIG(st0016_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)

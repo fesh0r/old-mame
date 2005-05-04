@@ -1,8 +1,8 @@
 /***************************************************************************
 
-	cpuexec.h
+    cpuexec.h
 
-	Core multi-CPU execution engine.
+    Core multi-CPU execution engine.
 
 ***************************************************************************/
 
@@ -21,7 +21,7 @@ extern "C" {
 
 /*************************************
  *
- *	CPU description for drivers
+ *  CPU description for drivers
  *
  *************************************/
 
@@ -43,7 +43,7 @@ struct MachineCPU
 
 /*************************************
  *
- *	CPU flag constants
+ *  CPU flag constants
  *
  *************************************/
 
@@ -51,13 +51,7 @@ enum
 {
 	/* set this flag to disable execution of a CPU (if one is there for documentation */
 	/* purposes only, for example */
-	CPU_DISABLE = 0x0004,
-	
-	/* this is an obsolete flag */
-	CPU_AUDIO_CPU = 0x0000,
-
-	/* the Z80 can be wired to use 16 bit addressing for I/O ports */
-	CPU_16BIT_PORT = 0x0001
+	CPU_DISABLE = 0x0001
 };
 
 
@@ -65,7 +59,7 @@ enum
 
 /*************************************
  *
- *	Core CPU execution
+ *  Core CPU execution
  *
  *************************************/
 
@@ -85,7 +79,7 @@ void machine_reset(void);
 
 /*************************************
  *
- *	Save/restore
+ *  Save/restore
  *
  *************************************/
 
@@ -104,7 +98,7 @@ void cpu_loadsave_reset(void);
 
 /*************************************
  *
- *	Optional watchdog
+ *  Optional watchdog
  *
  *************************************/
 
@@ -128,7 +122,7 @@ void watchdog_enable(int enable);
 
 /*************************************
  *
- *	CPU scheduling
+ *  CPU scheduling
  *
  *************************************/
 
@@ -179,7 +173,7 @@ void cpu_boost_interleave(double timeslice_time, double boost_duration);
 
 /*************************************
  *
- *	Timing helpers
+ *  Timing helpers
  *
  *************************************/
 
@@ -210,7 +204,7 @@ int cpu_scalebyfcount(int value);
 
 /*************************************
  *
- *	Video timing
+ *  Video timing
  *
  *************************************/
 
@@ -247,7 +241,7 @@ int cpu_getcurrentframe(void);
 
 /*************************************
  *
- *	Synchronization
+ *  Synchronization
  *
  *************************************/
 
@@ -291,7 +285,7 @@ void cpu_yielduntil_time(double duration);
 
 /*************************************
  *
- *	Core timing
+ *  Core timing
  *
  *************************************/
 
@@ -306,7 +300,7 @@ int cpu_getiloops(void);
 
 /*************************************
  *
- *	Z80 daisy chain
+ *  Z80 daisy chain
  *
  *************************************/
 
@@ -315,16 +309,16 @@ int cpu_getiloops(void);
 /* daisy-chain link */
 typedef struct
 {
-	void (*reset)(int); 			/* reset callback	  */
-	int  (*interrupt_entry)(int);	/* entry callback	  */
-	void (*interrupt_reti)(int);	/* reti callback	  */
+	void (*reset)(int); 			/* reset callback     */
+	int  (*interrupt_entry)(int);	/* entry callback     */
+	void (*interrupt_reti)(int);	/* reti callback      */
 	int irq_param;					/* callback paramater */
 } Z80_DaisyChain;
 
 #define Z80_MAXDAISY	4		/* maximum of daisy chan device */
 
-#define Z80_INT_REQ 	0x01	/* interrupt request mask		*/
-#define Z80_INT_IEO 	0x02	/* interrupt disable mask(IEO)	*/
+#define Z80_INT_REQ 	0x01	/* interrupt request mask       */
+#define Z80_INT_IEO 	0x02	/* interrupt disable mask(IEO)  */
 
 #define Z80_VECTOR(device,state) (((device)<<8)|(state))
 

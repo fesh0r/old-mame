@@ -139,17 +139,17 @@ bit3 - SOUND Chan#8 name=AY-3-8910 #2 Ch C
 
 	percent = (gain_control & 1) ? 1.0 : 0.50;
 	sndti_set_output_gain(SOUND_AY8910, 0, 0, percent);
-//fixme:	set_RC_filter(0,10000,100000000,0,10000);	/* 10K, 10000pF = 0.010uF */
+//fixme:    set_RC_filter(0,10000,100000000,0,10000);   /* 10K, 10000pF = 0.010uF */
 
 	percent = (gain_control & 2) ? 0.45 : 0.23;
 	sndti_set_output_gain(SOUND_AY8910, 0, 1, percent);
 	sndti_set_output_gain(SOUND_AY8910, 0, 2, percent);
 	sndti_set_output_gain(SOUND_AY8910, 1, 0, percent);
 	sndti_set_output_gain(SOUND_AY8910, 1, 1, percent);
-//fixme:	set_RC_filter(1,4700,100000000,0,4700);	/*  4.7K, 4700pF = 0.0047uF */
-//fixme:	set_RC_filter(2,4700,100000000,0,4700);	/*  4.7K, 4700pF = 0.0047uF */
-//fixme:	set_RC_filter(3,4700,100000000,0,4700);	/*  4.7K, 4700pF = 0.0047uF */
-//fixme:	set_RC_filter(4,4700,100000000,0,4700);	/*  4.7K, 4700pF = 0.0047uF */
+//fixme:    set_RC_filter(1,4700,100000000,0,4700); /*  4.7K, 4700pF = 0.0047uF */
+//fixme:    set_RC_filter(2,4700,100000000,0,4700); /*  4.7K, 4700pF = 0.0047uF */
+//fixme:    set_RC_filter(3,4700,100000000,0,4700); /*  4.7K, 4700pF = 0.0047uF */
+//fixme:    set_RC_filter(4,4700,100000000,0,4700); /*  4.7K, 4700pF = 0.0047uF */
 
 	percent = (gain_control & 4) ? 0.45 : 0.23;
 	sndti_set_output_gain(SOUND_AY8910, 1, 2, percent);
@@ -210,10 +210,12 @@ static ADDRESS_MAP_START( magmax_soundwritemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( magmax_soundreadport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x06, 0x06) AM_READ(magmax_sound_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( magmax_soundwriteport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_control_port_1_w)
@@ -351,14 +353,14 @@ static MACHINE_DRIVER_START( magmax )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80,10000000/4)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 2.5 MHz */
+	/* audio CPU */	/* 2.5 MHz */
 	MDRV_CPU_PROGRAM_MAP(magmax_soundreadmem,magmax_soundwritemem)
 	MDRV_CPU_IO_MAP(magmax_soundreadport,magmax_soundwriteport)
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
- 
+
 	MDRV_MACHINE_INIT(magmax)
 
 	/* video hardware */

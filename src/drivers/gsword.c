@@ -10,33 +10,33 @@ Credits:
 - Jarek Parchanski: Dip Switch Fixes, Color improvements, ADPCM Interface code
 - Tatsuyuki Satoh: sound improvements, NEC 8741 emulation,adpcm improvements
 - Charlie Miltenberger: sprite colors improvements & precious hardware
-			information and screenshots
+            information and screenshots
 
 Trick:
 If you want fight with ODILION swordsman patch program for 1st CPU
 at these addresses, otherwise you won't never fight with him.
 
-		ROM[0x2256] = 0
-		ROM[0x2257] = 0
-		ROM[0x2258] = 0
-		ROM[0x2259] = 0
-		ROM[0x225A] = 0
+        ROM[0x2256] = 0
+        ROM[0x2257] = 0
+        ROM[0x2258] = 0
+        ROM[0x2259] = 0
+        ROM[0x225A] = 0
 
 
 There are 3 Z80s and two AY-3-8910s..
 
 Prelim memory map (last updated 6/15/98)
 *****************************************
-GS1		z80 Main Code	(8K)	0000-1FFF
+GS1     z80 Main Code   (8K)    0000-1FFF
 Gs2     z80 Game Data   (8K)    2000-3FFF
 Gs3     z80 Game Data   (8K)    4000-5FFF
 Gs4     z80 Game Data   (8K)    6000-7FFF
 Gs5     z80 Game Data   (4K)    8000-8FFF
 Gs6     Sprites         (8K)
 Gs7     Sprites         (8K)
-Gs8		Sprites			(8K)
-Gs10	Tiles			(8K)
-Gs11	Tiles			(8K)
+Gs8     Sprites         (8K)
+Gs10    Tiles           (8K)
+Gs11    Tiles           (8K)
 Gs12    3rd z80 CPU &   (8K)
         ADPCM Samples?
 Gs13    ADPCM Samples?  (8K)
@@ -49,7 +49,7 @@ Gs16    2nd z80 Data    (8K)    2000-3FFF
 *Main Z80*
 **********
 
-	9000 - 9fff	Work Ram
+    9000 - 9fff Work Ram
         982e - 982e Free play
         98e0 - 98e0 Coin Input
         98e1 - 98e1 Player 1 Controls
@@ -59,16 +59,16 @@ Gs16    2nd z80 Data    (8K)    2000-3FFF
         9e00 - 9e7f Sprites in working ram!
         9e80 - 9eff Sprite X & Y in working ram!
 
-	a000 - afff	Sprite RAM & Video Attributes
-        a000 - a37F	???
-        a380 - a77F	Sprite Tile #s
-        a780 - a7FF	Sprite Y & X positions
-        a980 - a980	Background Tile Bank Select
-        ab00 - ab00	Background Tile Y-Scroll register
-        ab80 - abff	Sprite Attributes(X & Y Flip)
+    a000 - afff Sprite RAM & Video Attributes
+        a000 - a37F ???
+        a380 - a77F Sprite Tile #s
+        a780 - a7FF Sprite Y & X positions
+        a980 - a980 Background Tile Bank Select
+        ab00 - ab00 Background Tile Y-Scroll register
+        ab80 - abff Sprite Attributes(X & Y Flip)
 
-	b000 - b7ff	Screen RAM
-	b800 - ffff	not used?!
+    b000 - b7ff Screen RAM
+    b800 - ffff not used?!
 
 PORTS:
 7e 8741-#0 data port
@@ -330,24 +330,27 @@ static ADDRESS_MAP_START( writemem_cpu2, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_cpu3, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_cpu3, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(gsword_adpcm_data_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x7e, 0x7f) AM_READ(TAITO8741_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x7e, 0x7f) AM_WRITE(TAITO8741_0_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport_cpu2, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x01) AM_READ(TAITO8741_2_r)
 	AM_RANGE(0x20, 0x21) AM_READ(TAITO8741_3_r)
 	AM_RANGE(0x40, 0x41) AM_READ(TAITO8741_1_r)
@@ -359,6 +362,7 @@ static ADDRESS_MAP_START( readport_cpu2, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_cpu2, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x01) AM_WRITE(TAITO8741_2_w)
 	AM_RANGE(0x20, 0x21) AM_WRITE(TAITO8741_3_w)
 	AM_RANGE(0x40, 0x41) AM_WRITE(TAITO8741_1_w)
@@ -376,23 +380,25 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( josvolly_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_READ(MRA8_ROM)
-//	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_ROM) another ROM probably, not sure which one (tested on boot)
+//  AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_ROM) another ROM probably, not sure which one (tested on boot)
 	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
-//	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
+//  AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( josvolly_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0x4000, 0x43ff) AM_WRITE(MWA8_RAM)
-//	AM_RANGE(0x8000, 0x8000) AM_WRITE(gsword_adpcm_data_w)
+//  AM_RANGE(0x8000, 0x8000) AM_WRITE(gsword_adpcm_data_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( josvolly_sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x40, 0x40) AM_READ(AY8910_read_port_1_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( josvolly_sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_control_port_1_w)
@@ -449,9 +455,9 @@ INPUT_PORTS_START( gsword )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
 
 	PORT_START	/* DSW0 */
-	/* NOTE: Switches 0 & 1, 6,7,8 not used 	 */
-	/*	 Coins configurations were handled 	 */
-	/*	 via external hardware & not via program */
+	/* NOTE: Switches 0 & 1, 6,7,8 not used      */
+	/*   Coins configurations were handled   */
+	/*   via external hardware & not via program */
 	PORT_DIPNAME( 0x1c, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x1c, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(    0x18, DEF_STR( 4C_1C ) )
@@ -503,7 +509,7 @@ INPUT_PORTS_START( gsword )
 	PORT_DIPSETTING(    0x00, "Fencing" )
 	PORT_DIPSETTING(    0x10, "Kendo" )
 	PORT_DIPSETTING(    0x20, "Roman" )
-//	PORT_DIPSETTING(    0x30, "Kendo" )
+//  PORT_DIPSETTING(    0x30, "Kendo" )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
@@ -588,7 +594,7 @@ static MACHINE_DRIVER_START( josvolly )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 3000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(josvolly_sound_readmem,josvolly_sound_writemem)
 	MDRV_CPU_IO_MAP(josvolly_sound_readport,josvolly_sound_writeport)
 
@@ -638,7 +644,7 @@ static MACHINE_DRIVER_START( gsword )
 	MDRV_CPU_VBLANK_INT(gsword_snd_interrupt,4)
 
 	MDRV_CPU_ADD(Z80, 3000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu3,writemem_cpu3)
 
 	MDRV_FRAMES_PER_SECOND(60)
@@ -652,7 +658,7 @@ static MACHINE_DRIVER_START( gsword )
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(256+16)
+	MDRV_PALETTE_LENGTH(256)
 	MDRV_COLORTABLE_LENGTH(64*4+64*4)
 
 	MDRV_PALETTE_INIT(gsword)
@@ -715,46 +721,113 @@ ROM_START( josvolly )
 	ROM_LOAD( "005.3h",       0x0440, 0x0020, CRC(e8d6dec0) SHA1(d15cba9a4b24255d41046b15c2409391ab13ce95) )	/* address decoder? not used */
 ROM_END
 
+
+// ac10-* ROM labels were written using a typewriter. The board is a Taito original however.
 ROM_START( gsword )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64K for main CPU */
-	ROM_LOAD( "gs1",          0x0000, 0x2000, CRC(565c4d9e) SHA1(17b86e86ab95aeb458b8368c8c04666a1ccd9eee) )
-	ROM_LOAD( "gs2",          0x2000, 0x2000, CRC(d772accf) SHA1(08028c6f026c118cc375ecff5c24dcb549475633) )
-	ROM_LOAD( "gs3",          0x4000, 0x2000, CRC(2cee1871) SHA1(df099209c56f2807e4fdb83c625368f5e7e583e5) )
-	ROM_LOAD( "gs4",          0x6000, 0x2000, CRC(ca9d206d) SHA1(887eedc4e10218bf149c84399edd5d1e32c85051) )
-	ROM_LOAD( "gs5",          0x8000, 0x1000, CRC(2a892326) SHA1(a2cd91263714480c2569d3bbc73d62d222175e89) )
+	ROM_LOAD( "ac10-01.2c",   0x0000, 0x2000, CRC(511b9389) SHA1(d24a083e812663522a06138dcc3aa60e48d27434) )
+	ROM_LOAD( "ac1-2.2d",     0x2000, 0x2000, CRC(d772accf) SHA1(08028c6f026c118cc375ecff5c24dcb549475633) )
+	ROM_LOAD( "ac10-03.2e",   0x4000, 0x2000, CRC(413a0ce6) SHA1(3dde7889db9f449aec5a05a4a3d27e12786df869) )
+	ROM_LOAD( "ac1-4.2f",     0x6000, 0x2000, CRC(ca9d206d) SHA1(887eedc4e10218bf149c84399edd5d1e32c85051) )
+	ROM_LOAD( "ac1-5.2h",     0x8000, 0x1000, CRC(2a892326) SHA1(a2cd91263714480c2569d3bbc73d62d222175e89) )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64K for 2nd CPU */
-	ROM_LOAD( "gs15",         0x0000, 0x2000, CRC(1aa4690e) SHA1(7b0dbc38f3e6af2c9efa44b6759a3cdd9adc992d) )
-	ROM_LOAD( "gs16",         0x2000, 0x2000, CRC(10accc10) SHA1(311961bfe852582a9c66aaecf9bc4c8f0ac7fccf) )
+	ROM_LOAD( "ac10-15.5h",   0x0000, 0x2000, CRC(b74e9d43) SHA1(d6e9e05e2e652c9d467dba1f1501d2a7ec8f851c) )
+	ROM_LOAD( "ac0-16.7h",    0x2000, 0x2000, CRC(10accc10) SHA1(311961bfe852582a9c66aaecf9bc4c8f0ac7fccf) )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64K for 3nd z80 */
-	ROM_LOAD( "gs12",         0x0000, 0x2000, CRC(a6589068) SHA1(9385abe2449c5c5bac8f49d2afd140acea1791c3) )
-	ROM_LOAD( "gs13",         0x2000, 0x2000, CRC(4ee79796) SHA1(3353625903f63910a18fae0a9568a96d75592328) )
-	ROM_LOAD( "gs14",         0x4000, 0x2000, CRC(455364b6) SHA1(ebabf077d1ba113c13e7620d61720ed141acb5ad) )
+	ROM_LOAD( "ac10-12.3a",   0x0000, 0x2000, CRC(56eac59f) SHA1(22bde858ddcafad3f731030c39fd525458ecdbdd) )
+	ROM_LOAD( "ac10-13.4a",   0x2000, 0x2000, CRC(3a920eaa) SHA1(256fafda0d522dee993b6840e60532f11a705345) )
+	ROM_LOAD( "ac10-14.3d",   0x4000, 0x2000, CRC(819db933) SHA1(5e8b10d94ca6ba608a074bd5f30f14b95122fe85) )
+	ROM_LOAD( "ac10-17.4d",   0x6000, 0x2000, CRC(87817985) SHA1(370399a4622958829ca6d1545e614b121f09c2c0) )
+
+	ROM_REGION( 0x10000, REGION_CPU4, 0 )	/* 8741 */
+	ROM_LOAD( "aa-013.5a",    0x0000, 0x0800, NO_DUMP )
+
+	ROM_REGION( 0x10000, REGION_CPU5, 0 )	/* 8741 */
+	ROM_LOAD( "aa-016.9c",    0x0000, 0x0800, NO_DUMP )
+
+	ROM_REGION( 0x10000, REGION_CPU6, 0 )	/* 8741 */
+	ROM_LOAD( "aa-017.9g",    0x0000, 0x0800, NO_DUMP )
 
 	ROM_REGION( 0x4000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "gs10",         0x0000, 0x2000, CRC(517c571b) SHA1(05572a8ea416922da50143936fda9ba038f0b91e) )	/* tiles */
-	ROM_LOAD( "gs11",         0x2000, 0x2000, CRC(7a1d8a3a) SHA1(3f90be9ddba3cf7a879fd69ac67c2b67fd63b9ee) )
+	ROM_LOAD( "ac1-10.9n",    0x0000, 0x2000, CRC(517c571b) SHA1(05572a8ea416922da50143936fda9ba038f0b91e) )	/* tiles */
+	ROM_LOAD( "ac1-11.9p",    0x2000, 0x2000, CRC(7a1d8a3a) SHA1(3f90be9ddba3cf7a879fd69ac67c2b67fd63b9ee) )
 
 	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "gs6",          0x0000, 0x2000, CRC(1b0a3cb7) SHA1(0b0f17b9844d7310b46110559e09cfc3b50bb38b) )	/* sprites */
+	ROM_LOAD( "ac1-6.9e",     0x0000, 0x2000, CRC(1b0a3cb7) SHA1(0b0f17b9844d7310b46110559e09cfc3b50bb38b) )	/* sprites */
 
 	ROM_REGION( 0x4000, REGION_GFX3, ROMREGION_DISPOSE )
-	ROM_LOAD( "gs7",          0x0000, 0x2000, CRC(ef5f28c6) SHA1(85d943e5c5136d9458118f676b0c79fcf3aaf0c4) )
-	ROM_LOAD( "gs8",          0x2000, 0x2000, CRC(46824b30) SHA1(f6880b1c31ae795e3781d16ee96145df1db60328) )
+	ROM_LOAD( "ac0-7.9f",     0x0000, 0x2000, CRC(ef5f28c6) SHA1(85d943e5c5136d9458118f676b0c79fcf3aaf0c4) )
+	ROM_LOAD( "ac0-8.9h",     0x2000, 0x2000, CRC(46824b30) SHA1(f6880b1c31ae795e3781d16ee96145df1db60328) )
 
 	ROM_REGION( 0x0360, REGION_PROMS, 0 )
-	ROM_LOAD( "ac0-1.bpr",    0x0000, 0x0100, CRC(5c4b2adc) SHA1(0a6fdd60bdbd56bb7573147e4a976e5d0ddf43b5) )	/* palette low bits */
-	ROM_LOAD( "ac0-2.bpr",    0x0100, 0x0100, CRC(966bda66) SHA1(05439508113b3e51a16ee87d3f4691aa8901ebcb) )	/* palette high bits */
-	ROM_LOAD( "ac0-3.bpr",    0x0200, 0x0100, CRC(dae13f77) SHA1(d4d105542955e806311987dd3c4ffce1e13caf91) )	/* sprite lookup table */
-	ROM_LOAD( "003",          0x0300, 0x0020, CRC(43a548b8) SHA1(d01529d7f8f5101232cdf3490fdb2c61bf179181) )	/* address decoder? not used */
-	ROM_LOAD( "004",          0x0320, 0x0020, CRC(43a548b8) SHA1(d01529d7f8f5101232cdf3490fdb2c61bf179181) )	/* address decoder? not used */
-	ROM_LOAD( "005",          0x0340, 0x0020, CRC(e8d6dec0) SHA1(d15cba9a4b24255d41046b15c2409391ab13ce95) )	/* address decoder? not used */
+	ROM_LOAD( "ac0-1.11c",    0x0000, 0x0100, CRC(5c4b2adc) SHA1(0a6fdd60bdbd56bb7573147e4a976e5d0ddf43b5) )	/* palette low bits */
+	ROM_LOAD( "ac0-2.11cd",   0x0100, 0x0100, CRC(966bda66) SHA1(05439508113b3e51a16ee87d3f4691aa8901ebcb) )	/* palette high bits */
+	ROM_LOAD( "ac0-3.8c",     0x0200, 0x0100, CRC(dae13f77) SHA1(d4d105542955e806311987dd3c4ffce1e13caf91) )	/* sprite lookup table */
+	ROM_LOAD( "003.4e",       0x0300, 0x0020, CRC(43a548b8) SHA1(d01529d7f8f5101232cdf3490fdb2c61bf179181) )	/* address decoder? not used */
+	ROM_LOAD( "004.4d",       0x0320, 0x0020, CRC(43a548b8) SHA1(d01529d7f8f5101232cdf3490fdb2c61bf179181) )	/* address decoder? not used */
+	ROM_LOAD( "005.3h",       0x0340, 0x0020, CRC(e8d6dec0) SHA1(d15cba9a4b24255d41046b15c2409391ab13ce95) )	/* address decoder? not used */
+ROM_END
+
+ROM_START( gsword2 )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64K for main CPU */
+	ROM_LOAD( "ac1-1.2c",     0x0000, 0x2000, CRC(565c4d9e) SHA1(17b86e86ab95aeb458b8368c8c04666a1ccd9eee) )
+	ROM_LOAD( "ac1-2.2d",     0x2000, 0x2000, CRC(d772accf) SHA1(08028c6f026c118cc375ecff5c24dcb549475633) )
+	ROM_LOAD( "ac1-3.2e",     0x4000, 0x2000, CRC(2cee1871) SHA1(df099209c56f2807e4fdb83c625368f5e7e583e5) )
+	ROM_LOAD( "ac1-4.2f",     0x6000, 0x2000, CRC(ca9d206d) SHA1(887eedc4e10218bf149c84399edd5d1e32c85051) )
+	ROM_LOAD( "ac1-5.2h",     0x8000, 0x1000, CRC(2a892326) SHA1(a2cd91263714480c2569d3bbc73d62d222175e89) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64K for 2nd CPU */
+	ROM_LOAD( "ac0-15.5h",    0x0000, 0x2000, CRC(1aa4690e) SHA1(7b0dbc38f3e6af2c9efa44b6759a3cdd9adc992d) )
+	ROM_LOAD( "ac0-16.7h",    0x2000, 0x2000, CRC(10accc10) SHA1(311961bfe852582a9c66aaecf9bc4c8f0ac7fccf) )
+
+	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64K for 3nd z80 */
+	ROM_LOAD( "ac0-12.3a",    0x0000, 0x2000, CRC(a6589068) SHA1(9385abe2449c5c5bac8f49d2afd140acea1791c3) )
+	ROM_LOAD( "ac0-13.4a",    0x2000, 0x2000, CRC(4ee79796) SHA1(3353625903f63910a18fae0a9568a96d75592328) )
+	ROM_LOAD( "ac0-14.3d",    0x4000, 0x2000, CRC(455364b6) SHA1(ebabf077d1ba113c13e7620d61720ed141acb5ad) )
+	/* 6000-7fff empty */
+
+	ROM_REGION( 0x10000, REGION_CPU4, 0 )	/* 8741 */
+	ROM_LOAD( "aa-013.5a",    0x0000, 0x0800, NO_DUMP )
+
+	ROM_REGION( 0x10000, REGION_CPU5, 0 )	/* 8741 */
+	ROM_LOAD( "aa-016.9c",    0x0000, 0x0800, NO_DUMP )
+
+	ROM_REGION( 0x10000, REGION_CPU6, 0 )	/* 8741 */
+	ROM_LOAD( "aa-017.9g",    0x0000, 0x0800, NO_DUMP )
+
+	ROM_REGION( 0x4000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "ac1-10.9n",    0x0000, 0x2000, CRC(517c571b) SHA1(05572a8ea416922da50143936fda9ba038f0b91e) )	/* tiles */
+	ROM_LOAD( "ac1-11.9p",    0x2000, 0x2000, CRC(7a1d8a3a) SHA1(3f90be9ddba3cf7a879fd69ac67c2b67fd63b9ee) )
+
+	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "ac1-6.9e",     0x0000, 0x2000, CRC(1b0a3cb7) SHA1(0b0f17b9844d7310b46110559e09cfc3b50bb38b) )	/* sprites */
+
+	ROM_REGION( 0x4000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_LOAD( "ac0-7.9f",     0x0000, 0x2000, CRC(ef5f28c6) SHA1(85d943e5c5136d9458118f676b0c79fcf3aaf0c4) )
+	ROM_LOAD( "ac0-8.9h",     0x2000, 0x2000, CRC(46824b30) SHA1(f6880b1c31ae795e3781d16ee96145df1db60328) )
+
+	ROM_REGION( 0x0360, REGION_PROMS, 0 )
+	ROM_LOAD( "ac0-1.11c",    0x0000, 0x0100, CRC(5c4b2adc) SHA1(0a6fdd60bdbd56bb7573147e4a976e5d0ddf43b5) )	/* palette low bits */
+	ROM_LOAD( "ac0-2.11cd",   0x0100, 0x0100, CRC(966bda66) SHA1(05439508113b3e51a16ee87d3f4691aa8901ebcb) )	/* palette high bits */
+	ROM_LOAD( "ac0-3.8c",     0x0200, 0x0100, CRC(dae13f77) SHA1(d4d105542955e806311987dd3c4ffce1e13caf91) )	/* sprite lookup table */
+	ROM_LOAD( "003.4e",       0x0300, 0x0020, CRC(43a548b8) SHA1(d01529d7f8f5101232cdf3490fdb2c61bf179181) )	/* address decoder? not used */
+	ROM_LOAD( "004.4d",       0x0320, 0x0020, CRC(43a548b8) SHA1(d01529d7f8f5101232cdf3490fdb2c61bf179181) )	/* address decoder? not used */
+	ROM_LOAD( "005.3h",       0x0340, 0x0020, CRC(e8d6dec0) SHA1(d15cba9a4b24255d41046b15c2409391ab13ce95) )	/* address decoder? not used */
 ROM_END
 
 
-
 static DRIVER_INIT( gsword )
+{
+	UINT8 *ROM2 = memory_region(REGION_CPU2);
+
+	ROM2[0x1da] = 0xc3; /* patch for rom self check */
+	ROM2[0x71e] = 0;    /* patch for sound protection or time out function */
+	ROM2[0x71f] = 0;
+}
+
+static DRIVER_INIT( gsword2 )
 {
 	UINT8 *ROM2 = memory_region(REGION_CPU2);
 
@@ -763,6 +836,6 @@ static DRIVER_INIT( gsword )
 	ROM2[0x727] = 0;
 }
 
-
-GAMEX( 1983, josvolly, 0, josvolly, gsword, 0,      ROT90, "Taito Corporation", "Joshi Volleyball", GAME_NOT_WORKING )
-GAMEX( 1984, gsword,   0, gsword,   gsword, gsword, ROT0,  "Taito Corporation", "Great Swordsman", GAME_IMPERFECT_COLORS )
+GAMEX(1983, josvolly, 0,      josvolly, gsword, 0,       ROT90, "Taito Corporation", "Joshi Volleyball", GAME_NOT_WORKING )
+GAME( 1984, gsword,   0,      gsword,   gsword, gsword,  ROT0,  "Taito Corporation", "Great Swordsman (World?)" )
+GAME( 1984, gsword2,  gsword, gsword,   gsword, gsword2, ROT0,  "Taito Corporation", "Great Swordsman (Japan?)" )

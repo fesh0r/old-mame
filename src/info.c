@@ -75,9 +75,9 @@ static void print_game_switch(FILE* out, const struct GameDriver* game)
 	const struct InputPort* input;
 
 	begin_resource_tracking();
-	
+
 	input = input_port_allocate(game->construct_ipt);
-	
+
 	while (input->type != IPT_END)
 	{
 		if (input->type==IPT_DIPSWITCH_NAME)
@@ -108,7 +108,7 @@ static void print_game_switch(FILE* out, const struct GameDriver* game)
 		else
 			++input;
 	}
-	
+
 	end_resource_tracking();
 }
 
@@ -123,9 +123,9 @@ static void print_game_input(FILE* out, const struct GameDriver* game)
 	const char* tilt = 0;
 
 	begin_resource_tracking();
-	
+
 	input = input_port_allocate(game->construct_ipt);
-	
+
 	while (input->type != IPT_END)
 			{
 		if (nplayer < input->player+1)
@@ -285,7 +285,7 @@ static void print_game_rom(FILE* out, const struct GameDriver* game)
 {
 	const struct RomModule *region, *rom, *chunk;
 	const struct RomModule *pregion, *prom, *fprom=NULL;
-//	extern struct GameDriver driver_0;
+//  extern struct GameDriver driver_0;
 
 	if (!game->rom)
 		return;
@@ -509,10 +509,7 @@ static void print_game_micro(FILE* out, const struct GameDriver* game)
 		if (cpu[j].cpu_type!=0)
 		{
 			fprintf(out, "\t\t<chip");
-			if (cpu[j].cpu_flags & CPU_AUDIO_CPU)
-				fprintf(out, " type=\"cpu\" soundonly=\"yes\"");
-			else
-				fprintf(out, " type=\"cpu\"");
+			fprintf(out, " type=\"cpu\"");
 
 			fprintf(out, " name=\"%s\"", normalize_string(cputype_name(cpu[j].cpu_type)));
 
@@ -617,13 +614,6 @@ static void print_game_sound(FILE* out, const struct GameDriver* game)
 	while (i < MAX_SOUND && !has_sound)
 	{
 		if (sound[i].sound_type)
-			has_sound = 1;
-		++i;
-	}
-	i = 0;
-	while (i < MAX_CPU && !has_sound)
-	{
-		if  ((cpu[i].cpu_flags & CPU_AUDIO_CPU)!=0)
 			has_sound = 1;
 		++i;
 	}

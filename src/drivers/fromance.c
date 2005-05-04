@@ -1,33 +1,33 @@
 /******************************************************************************
 
-	Game Driver for Video System Mahjong series.
+    Game Driver for Video System Mahjong series.
 
-	Idol-Mahjong Final Romance (Japan)
-	(c)1991 Video System Co.,Ltd.
+    Idol-Mahjong Final Romance (Japan)
+    (c)1991 Video System Co.,Ltd.
 
-	Nekketsu Mahjong Sengen! AFTER 5 (Japan)
-	(c)1991 Video System Co.,Ltd.
+    Nekketsu Mahjong Sengen! AFTER 5 (Japan)
+    (c)1991 Video System Co.,Ltd.
 
-	Mahjong Daiyogen (Japan)
-	(c)1990 Video System Co.,Ltd.
+    Mahjong Daiyogen (Japan)
+    (c)1990 Video System Co.,Ltd.
 
-	Mahjong Fun Club - Idol Saizensen (Japan)
-	(c)1989 Video System Co.,Ltd.
+    Mahjong Fun Club - Idol Saizensen (Japan)
+    (c)1989 Video System Co.,Ltd.
 
-	Mahjong Natsu Monogatari (Mahjong Summer Story) (Japan)
-	(c)1989 Video System Co.,Ltd.
+    Mahjong Natsu Monogatari (Mahjong Summer Story) (Japan)
+    (c)1989 Video System Co.,Ltd.
 
-	Natsuiro Mahjong (Mahjong Summer Story) (Japan)
-	(c)1989 Video System Co.,Ltd.
+    Natsuiro Mahjong (Mahjong Summer Story) (Japan)
+    (c)1989 Video System Co.,Ltd.
 
-	Idol-Mahjong Housoukyoku (Japan)
-	(c)1988 System Service Co.,Ltd.
+    Idol-Mahjong Housoukyoku (Japan)
+    (c)1988 System Service Co.,Ltd.
 
-	Rettou Juudan Nekkyoku Janshi - Higashi Nippon Hen (Japan)
-	(c)1988 Video System Co.,Ltd.
+    Rettou Juudan Nekkyoku Janshi - Higashi Nippon Hen (Japan)
+    (c)1988 Video System Co.,Ltd.
 
-	Driver by Takahiro Nogi <nogi@kt.rim.or.jp> 2001/02/04 -
-	and Nicola Salmoria, Aaron Giles
+    Driver by Takahiro Nogi <nogi@kt.rim.or.jp> 2001/02/04 -
+    and Nicola Salmoria, Aaron Giles
 
 ******************************************************************************/
 /******************************************************************************
@@ -61,7 +61,7 @@ static UINT8 fromance_vclk_left;
 
 /*************************************
  *
- *	Machine init
+ *  Machine init
  *
  *************************************/
 
@@ -80,7 +80,7 @@ static MACHINE_INIT( fromance )
 
 /*************************************
  *
- *	Master/slave communication
+ *  Master/slave communication
  *
  *************************************/
 
@@ -130,7 +130,7 @@ static WRITE8_HANDLER( fromance_busycheck_sub_w )
 
 /*************************************
  *
- *	Slave CPU ROM banking
+ *  Slave CPU ROM banking
  *
  *************************************/
 
@@ -145,7 +145,7 @@ static WRITE8_HANDLER( fromance_rombank_w )
 
 /*************************************
  *
- *	ADPCM interface
+ *  ADPCM interface
  *
  *************************************/
 
@@ -188,7 +188,7 @@ static void fromance_adpcm_int(int irq)
 
 /*************************************
  *
- *	Input handlers
+ *  Input handlers
  *
  *************************************/
 
@@ -220,7 +220,7 @@ static READ8_HANDLER( fromance_keymatrix_r )
 
 /*************************************
  *
- *	Coin counters
+ *  Coin counters
  *
  *************************************/
 
@@ -233,7 +233,7 @@ static WRITE8_HANDLER( fromance_coinctr_w )
 
 /*************************************
  *
- *	Master CPU memory handlers
+ *  Master CPU memory handlers
  *
  *************************************/
 
@@ -282,7 +282,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Slave CPU memory handlers
+ *  Slave CPU memory handlers
  *
  *************************************/
 
@@ -323,17 +323,19 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Slave CPU port handlers
+ *  Slave CPU port handlers
  *
  *************************************/
 
 static ADDRESS_MAP_START( nekkyoku_readport_sub, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x12, 0x12) AM_READ(MRA8_NOP)				// unknown
 	AM_RANGE(0xe1, 0xe1) AM_READ(fromance_busycheck_sub_r)
 	AM_RANGE(0xe6, 0xe6) AM_READ(fromance_commanddata_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( nekkyoku_writeport_sub, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x10, 0x10) AM_WRITE(fromance_crtc_data_w)
 	AM_RANGE(0x11, 0x11) AM_WRITE(fromance_crtc_register_w)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(fromance_rombank_w)
@@ -347,12 +349,14 @@ static ADDRESS_MAP_START( nekkyoku_writeport_sub, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fromance_readport_sub, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x12, 0x12) AM_READ(MRA8_NOP)				// unknown
 	AM_RANGE(0x21, 0x21) AM_READ(fromance_busycheck_sub_r)
 	AM_RANGE(0x26, 0x26) AM_READ(fromance_commanddata_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( idolmj_writeport_sub, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x10, 0x10) AM_WRITE(fromance_crtc_data_w)
 	AM_RANGE(0x11, 0x11) AM_WRITE(fromance_crtc_register_w)
 	AM_RANGE(0x20, 0x20) AM_WRITE(fromance_rombank_w)
@@ -366,6 +370,7 @@ static ADDRESS_MAP_START( idolmj_writeport_sub, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fromance_writeport_sub, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x10, 0x10) AM_WRITE(fromance_crtc_data_w)
 	AM_RANGE(0x11, 0x11) AM_WRITE(fromance_crtc_register_w)
 	AM_RANGE(0x20, 0x20) AM_WRITE(fromance_rombank_w)
@@ -382,7 +387,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Port definitions
+ *  Port definitions
  *
  *************************************/
 
@@ -1008,7 +1013,7 @@ INPUT_PORTS_END
 
 /*************************************
  *
- *	Graphics definitions
+ *  Graphics definitions
  *
  *************************************/
 
@@ -1035,7 +1040,7 @@ static struct GfxDecodeInfo fromance_gfxdecodeinfo[] =
 
 /*************************************
  *
- *	Sound definitions
+ *  Sound definitions
  *
  *************************************/
 
@@ -1048,7 +1053,7 @@ static struct MSM5205interface msm5205_interface =
 
 /*************************************
  *
- *	Machine drivers
+ *  Machine drivers
  *
  *************************************/
 
@@ -1169,7 +1174,7 @@ MACHINE_DRIVER_END
 
 /*************************************
  *
- *	ROM definitions
+ *  ROM definitions
  *
  *************************************/
 
@@ -1374,7 +1379,7 @@ ROM_END
 
 /*************************************
  *
- *	Game drivers
+ *  Game drivers
  *
  *************************************/
 

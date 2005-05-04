@@ -144,26 +144,26 @@ static READ8_HANDLER( mrflea_io_r ){
 /*******************************************************/
 
 static READ8_HANDLER( mrflea_main_status_r ){
-	/*	0x01: main CPU command pending
-		0x08: io cpu ready */
+	/*  0x01: main CPU command pending
+        0x08: io cpu ready */
 	return mrflea_status^0x08;
 }
 
 static READ8_HANDLER( mrflea_io_status_r ){
-	/*	0x08: IO CPU command pending
-		0x01: main cpu ready */
+	/*  0x08: IO CPU command pending
+        0x01: main cpu ready */
 	return mrflea_status^0x01;
 }
 
 INTERRUPT_GEN( mrflea_io_interrupt ){
-	if( cpu_getiloops()==0 || (mrflea_status&0x08) ) 
+	if( cpu_getiloops()==0 || (mrflea_status&0x08) )
 		cpunum_set_input_line(1, 0, HOLD_LINE);
 }
 
 static READ8_HANDLER( mrflea_interrupt_type_r ){
 /* there are two interrupt types:
-	1. triggered (in response to sound command)
-	2. heartbeat (for music timing)
+    1. triggered (in response to sound command)
+    2. heartbeat (for music timing)
 */
 	if( mrflea_status&0x08 ) return 0x00; /* process command */
 	return 0x01; /* music/sound update? */
@@ -172,11 +172,13 @@ static READ8_HANDLER( mrflea_interrupt_type_r ){
 /*******************************************************/
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x41, 0x41) AM_READ(mrflea_main_r)
 	AM_RANGE(0x42, 0x42) AM_READ(mrflea_main_status_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(MWA8_NOP) /* watchdog? */
 	AM_RANGE(0x40, 0x40) AM_WRITE(mrflea_io_w)
 	AM_RANGE(0x43, 0x43) AM_WRITE(MWA8_NOP) /* 0xa6,0x0d,0x05 */
@@ -226,6 +228,7 @@ static READ8_HANDLER( mrflea_input3_r ){
 /*******************************************************/
 
 static ADDRESS_MAP_START( readport_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x10, 0x10) AM_READ(mrflea_interrupt_type_r) /* ? */
 	AM_RANGE(0x20, 0x20) AM_READ(mrflea_io_r)
 	AM_RANGE(0x22, 0x22) AM_READ(mrflea_io_status_r)
@@ -254,6 +257,7 @@ static WRITE8_HANDLER( mrflea_data3_w ){
 }
 
 static ADDRESS_MAP_START( writeport_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(MWA8_NOP) /* watchdog */
 	AM_RANGE(0x10, 0x10) AM_WRITE(MWA8_NOP) /* irq ACK */
 	AM_RANGE(0x11, 0x11) AM_WRITE(MWA8_NOP) /* 0x83,0x00,0xfc */
@@ -298,13 +302,13 @@ static MACHINE_DRIVER_START( mrflea )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	
+
 	MDRV_SOUND_ADD(AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	
+
 	MDRV_SOUND_ADD(AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -362,9 +366,9 @@ INPUT_PORTS_START( mrflea )
 
 	PORT_START /* DSW1 */
 /*
-	------xx
-	-----x--
-	----x---
+    ------xx
+    -----x--
+    ----x---
 */
 	PORT_DIPNAME( 0x03, 0x03, "Bonus?" )
 	PORT_DIPSETTING( 0x03, "A" )

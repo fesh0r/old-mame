@@ -3,8 +3,8 @@
   Tao Taido             (c) 1993 Video System
 
 
-	driver by David Haywood - Dip Switches and Inputs by Stephane Humbert
-	based on other Video System drivers
+    driver by David Haywood - Dip Switches and Inputs by Stephane Humbert
+    based on other Video System drivers
 
 Stephh's notes (based on the games M68000 code and some tests) :
 
@@ -45,15 +45,15 @@ Stephh's notes (based on the games M68000 code and some tests) :
 /* Tao Taido
 (c)1993 Video System
 
-CPU:	68000-16
-Sound:	Z80-B
-		YM2610
-OSC:	14.31818MHz
-		20.0000MHz
-		32.0000MHz
-Chips:	VS9108
-		VS920B
-		VS9209 x2
+CPU:    68000-16
+Sound:  Z80-B
+        YM2610
+OSC:    14.31818MHz
+        20.0000MHz
+        32.0000MHz
+Chips:  VS9108
+        VS920B
+        VS9209 x2
 
 ****************************************************************************
 
@@ -166,12 +166,14 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( taotaido_sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(YM2610_status_port_0_A_r)
 	AM_RANGE(0x02, 0x02) AM_READ(YM2610_status_port_0_B_r)
 	AM_RANGE(0x0c, 0x0c) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( taotaido_sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM2610_control_port_0_A_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM2610_data_port_0_A_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YM2610_control_port_0_B_w)
@@ -305,11 +307,11 @@ INPUT_PORTS_START( taotaido )
 	PORT_DIPSETTING(    0x00, "US" )				// also (c) Mc O'River Inc
 	PORT_DIPSETTING(    0x01, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x02, "Hong-Kong/Taiwan" )
-//	PORT_DIPSETTING(    0x03, DEF_STR( Japan ) )
+//  PORT_DIPSETTING(    0x03, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x04, "Korea" )
-//	PORT_DIPSETTING(    0x05, DEF_STR( Japan ) )
-//	PORT_DIPSETTING(    0x06, DEF_STR( Japan ) )
-//	PORT_DIPSETTING(    0x07, DEF_STR( Japan ) )
+//  PORT_DIPSETTING(    0x05, DEF_STR( Japan ) )
+//  PORT_DIPSETTING(    0x06, DEF_STR( Japan ) )
+//  PORT_DIPSETTING(    0x07, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( World ) )
 	/* 0x09 to 0x0f : DEF_STR( Japan ) */
 
@@ -376,7 +378,7 @@ static MACHINE_DRIVER_START( taotaido )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80,20000000/4) // ??
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(taotaido_sound_readport,taotaido_sound_writeport)
 								/* IRQs are triggered by the YM2610 */

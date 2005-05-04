@@ -1,8 +1,8 @@
 /*
 
- Multi 5 / New Multi Game 5		(c) 1998 Yun Sung
- Search Eye						(c) 1999 Yun Sung
- Puzzle Club					(c) 2000 Yun Sung
+ Multi 5 / New Multi Game 5     (c) 1998 Yun Sung
+ Search Eye                     (c) 1999 Yun Sung
+ Puzzle Club                    (c) 2000 Yun Sung
 
  driver by Pierpaolo Prazzoli
 
@@ -73,7 +73,7 @@ static WRITE8_HANDLER( oki_banking_w )
 
 /*******************************************************************
 
-							Main Cpu
+                            Main Cpu
 
 ********************************************************************/
 
@@ -118,7 +118,7 @@ ADDRESS_MAP_END
 
 /*******************************************************************
 
-							Sound Cpu
+                            Sound Cpu
 
 ********************************************************************/
 
@@ -133,6 +133,7 @@ static ADDRESS_MAP_START( pclubys_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(oki_banking_w)
 	AM_RANGE(0x10, 0x10) AM_READWRITE(YM3812_status_port_0_r, YM3812_control_port_0_w)
 	AM_RANGE(0x11, 0x11) AM_WRITE(YM3812_write_port_0_w)
@@ -225,7 +226,7 @@ INPUT_PORTS_START( searchey )
 	PORT_DIPSETTING(      0x0001, "Fast" )
 	PORT_DIPSETTING(      0x0002, "Slow" )
 	PORT_DIPSETTING(      0x0003, "Slowest" )
-	PORT_DIPNAME( 0x000c, 0x000c, "Number of Helps" )	
+	PORT_DIPNAME( 0x000c, 0x000c, "Number of Helps" )
 	PORT_DIPSETTING(      0x000c, "1" )
 	PORT_DIPSETTING(      0x0008, "2" )
 	PORT_DIPSETTING(      0x0004, "3" )
@@ -540,7 +541,7 @@ static MACHINE_DRIVER_START( nmg5 )
 	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 4000000)		/* 4 MHz */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(nmg5_sound_map,0)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 

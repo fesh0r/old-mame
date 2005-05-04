@@ -75,7 +75,7 @@ ADR14 ADR13 | READ                                      | WRITE
 ------------+-------------------------------------------+-------------------------------
 
 Driver by
-	Mike Coates
+    Mike Coates
 
 Hardware Info
  Malcolm & Darren
@@ -118,7 +118,7 @@ READ8_HANDLER( cvs_character_mode_r );
 
 
 /***************************************************************************
-	Speech Calls
+    Speech Calls
 ***************************************************************************/
 
 static int speech_rom_address = 0;
@@ -381,7 +381,7 @@ static MACHINE_DRIVER_START( cvs )
 	MDRV_CPU_VBLANK_INT(cvs_interrupt,1)
 
 	MDRV_CPU_ADD(S2650,894886.25)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(cvs_cpu2_program,0)
 	MDRV_CPU_IO_MAP(cvs_cpu2_io,0)
 
@@ -402,7 +402,7 @@ static MACHINE_DRIVER_START( cvs )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 

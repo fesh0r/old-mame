@@ -82,6 +82,7 @@ INLINE UINT32 ppc_get_dcr(int dcr)
 			osd_die("ppc: get_dcr: Unimplemented DCR %X\n", dcr);
 			break;
 	}
+	return 0;
 }
 
 
@@ -133,7 +134,7 @@ void ppc403_exception(int exception)
 		case EXCEPTION_IRQ:		/* External Interrupt */
 			if( ppc_get_msr() & MSR_EE ) {
 				UINT32 msr = ppc_get_msr();
-				
+
 				SRR0 = ppc.npc;
 				SRR1 = msr;
 
@@ -261,6 +262,7 @@ static UINT8 ppc403_spu_r(UINT32 a)
 		case 0x9:		return ppc.spu.sprb;
 		default:		osd_die("ppc: spu_r: %02X\n", a & 0xf);
 	}
+	return 0;
 }
 
 static void ppc403_spu_w(UINT32 a, UINT8 d)
@@ -274,19 +276,19 @@ static void ppc403_spu_w(UINT32 a, UINT8 d)
 			if( d & 0x10 )	ppc.spu.spls &= ~0x10;
 			if( d & 0x08 )	ppc.spu.spls &= ~0x08;
 			break;
-		
+
 		case 0x2:
 			ppc.spu.sphs = d;
 			break;
-		
+
 		case 0x4:
-			ppc.spu.brd &= 0xff; 
+			ppc.spu.brd &= 0xff;
 			ppc.spu.brd |= (d << 8);
 			break;
-		
+
 		case 0x5:
-			ppc.spu.brd &= 0xff00; 
-			ppc.spu.brd |= d; 
+			ppc.spu.brd &= 0xff00;
+			ppc.spu.brd |= d;
 			printf("ppc: SPU Baud rate: %d\n", (3686400 / (ppc.spu.brd + 1)) / 16);
 			break;
 
@@ -302,7 +304,7 @@ static void ppc403_spu_w(UINT32 a, UINT8 d)
 			ppc.spu.sptc = d;
 			break;
 
-		case 0x9:		
+		case 0x9:
 			ppc.spu.sptb = d;
 			break;
 
@@ -344,7 +346,7 @@ static void ppc403_dma_exec(int ch)
 	{
 		/* transfer width */
 		width = dma_transfer_width[(ppc.dma[ch].cr >> 26) & 0x3];
-		
+
 		if( ppc.dma[ch].cr & DMA_DAI )
 			dai = width;
 		else
@@ -361,9 +363,9 @@ static void ppc403_dma_exec(int ch)
 		{
 			case 0:		/* buffered DMA */
 				if( ppc.dma[ch].cr & DMA_TD )	/* peripheral to mem */
-				{			
+				{
 					printf("ppc: dma_exec: buffered DMA (peripheral to mem) not implemented (DA: %08X, CT: %08X)\n", ppc.dma[ch].da, ppc.dma[ch].ct);
-					
+
 					for( i=0; i < ppc.dma[ch].ct; i++ ) {
 						program_write_byte_32be(ppc.dma[ch].da++, 0xdb);
 					}

@@ -1,97 +1,97 @@
 /***************************************************************************
 
-	Data East MLC Hardware:
+    Data East MLC Hardware:
 
-	The MLC system is basically an 8" x 6" x 2" plastic box with a JAMMA connector on it.
-	The PCB's are very compact and have almost entirely surface mounted components on both
-	sides of both boards. One board contains the RAM, sound hardware and I/O, the other
-	board contains the CPU and ROMs. All main boards are identical between the MLC games and
-	can be changed just by plugging in another game and pressing test to reset the EEPROM
-	defaults.
+    The MLC system is basically an 8" x 6" x 2" plastic box with a JAMMA connector on it.
+    The PCB's are very compact and have almost entirely surface mounted components on both
+    sides of both boards. One board contains the RAM, sound hardware and I/O, the other
+    board contains the CPU and ROMs. All main boards are identical between the MLC games and
+    can be changed just by plugging in another game and pressing test to reset the EEPROM
+    defaults.
 
-	PCB Layout
-	----------
+    PCB Layout
+    ----------
 
-	Jamma Side:
+    Jamma Side:
 
-	DE-0444-1
-	|-----------------------------|
-	|                             |
-	| W24257            DE150     |
-	|   W24257                    |
-	|                             |
-	|J                      93C45 |
-	|A                            |
-	|M                            |
-	|M               DE223        |
-	|A                            |
-	|                             |
-	|                42MHz  W24257|
-	|                       W24257|
-	|                       W24257|
-	|            XILINK     W24257|
-	|5            XC3130          |
-	|0                            |
-	|P                            |
-	|I YMZ280B   YAC513           |
-	|N                            |
-	|-----------------------------|
-	Notes:
-		- Yamaha YMZ280B clock: 14.000MHz (42 / 3)
-		- DE150 custom (GFX)
-		- DE223 custom (GFX)
-		- Xilinx XC3130 (TQFP100, Bus Controller?)
-		- YAC513 D/A converter
-		- 93C45 EEPROM, 128 bytes x 8 bit (equivalent to 93C46)
-		- All SRAM is Winbond W24257S-70LL (32kx8)
-		- 50 PIN connector looks like flat cable SCSI connector used on any regular PC SCSI controller card. It appears
-		to be used for extra controls and hookup of a 2nd speaker for stereo output. It could also be used for externally
-		programming some IC's or factory diagnostic/repairs?
-		- Bottom side of the JAMMA side contains nothing significant except a sound AMP, test SW, LED, some
-		logic chips and connectors for joining the PCBs together.
-		- Vsync: 58Hz
+    DE-0444-1
+    |-----------------------------|
+    |                             |
+    | W24257            DE150     |
+    |   W24257                    |
+    |                             |
+    |J                      93C45 |
+    |A                            |
+    |M                            |
+    |M               DE223        |
+    |A                            |
+    |                             |
+    |                42MHz  W24257|
+    |                       W24257|
+    |                       W24257|
+    |            XILINK     W24257|
+    |5            XC3130          |
+    |0                            |
+    |P                            |
+    |I YMZ280B   YAC513           |
+    |N                            |
+    |-----------------------------|
+    Notes:
+        - Yamaha YMZ280B clock: 14.000MHz (42 / 3)
+        - DE150 custom (GFX)
+        - DE223 custom (GFX)
+        - Xilinx XC3130 (TQFP100, Bus Controller?)
+        - YAC513 D/A converter
+        - 93C45 EEPROM, 128 bytes x 8 bit (equivalent to 93C46)
+        - All SRAM is Winbond W24257S-70LL (32kx8)
+        - 50 PIN connector looks like flat cable SCSI connector used on any regular PC SCSI controller card. It appears
+        to be used for extra controls and hookup of a 2nd speaker for stereo output. It could also be used for externally
+        programming some IC's or factory diagnostic/repairs?
+        - Bottom side of the JAMMA side contains nothing significant except a sound AMP, test SW, LED, some
+        logic chips and connectors for joining the PCBs together.
+        - Vsync: 58Hz
 
-	As the CPU is stored on the game board it is possible that each game could
-	have a different CPU - however there are only two known configurations.  Avengers
-	in Galactic Storm uses a SH2 processor, whereas all the others use a custom Deco
-	processor (156 - thought to be encrypted ARM).
+    As the CPU is stored on the game board it is possible that each game could
+    have a different CPU - however there are only two known configurations.  Avengers
+    in Galactic Storm uses a SH2 processor, whereas all the others use a custom Deco
+    processor (156 - thought to be encrypted ARM).
 
-	Skull Fang:
+    Skull Fang:
 
-	DE-0445-1 (top)						DE-0445-1 (bottom)
-	|-----------------------------|		|-----------------------------|
-	|                             |		|                             |
-	|                             |		|                             |
-	|                             |		|           DE156     MCH-07  |
-	|  MCH-06             SH00-0  |		|                             |
-	|                             |		|                             |
-	|                     SH01-0  |		|                             |
-	|                             |		|                             |
-	|                             |		|                             |
-	|                             |		|                             |
-	|                             |		|                             |
-	|                             |		|                             |
-	| MCH-04    MCH-02    MCH-00  |		|                             |
-	|                             |		|                             |
-	|                             |		| MCH-01    MCH-03    MCH-05  |
-	|                             |		|                             |
-	| SH02-0                      |		|                             |
-	|                             |		|                             |
-	|                             |		|                             |
-	|                             |		|                             |
-	|-----------------------------|		|-----------------------------|
+    DE-0445-1 (top)                     DE-0445-1 (bottom)
+    |-----------------------------|     |-----------------------------|
+    |                             |     |                             |
+    |                             |     |                             |
+    |                             |     |           DE156     MCH-07  |
+    |  MCH-06             SH00-0  |     |                             |
+    |                             |     |                             |
+    |                     SH01-0  |     |                             |
+    |                             |     |                             |
+    |                             |     |                             |
+    |                             |     |                             |
+    |                             |     |                             |
+    |                             |     |                             |
+    | MCH-04    MCH-02    MCH-00  |     |                             |
+    |                             |     |                             |
+    |                             |     | MCH-01    MCH-03    MCH-05  |
+    |                             |     |                             |
+    | SH02-0                      |     |                             |
+    |                             |     |                             |
+    |                             |     |                             |
+    |                             |     |                             |
+    |-----------------------------|     |-----------------------------|
 
-	Notes:
-		- DE156 clock: 7.000MHz (42MHz / 6, QFP100, clock measured on pin 90)
+    Notes:
+        - DE156 clock: 7.000MHz (42MHz / 6, QFP100, clock measured on pin 90)
 
-	Driver todo:
-		Decrypt program roms using 156 processor.
-		Sprite X flip seems broken in Avengrgs - this seems to be a CPU bug in that
-		the sprite flip is not set in software, meaning that many backgrounds appear
-		incomplete (two identical sprites drawn on top of each other instead of
-		flipped side by side) and Captain America always faces the wrong way.
-		Text tilemap colours are wrong.
-		Sound is wrong.
+    Driver todo:
+        Decrypt program roms using 156 processor.
+        Sprite X flip seems broken in Avengrgs - this seems to be a CPU bug in that
+        the sprite flip is not set in software, meaning that many backgrounds appear
+        incomplete (two identical sprites drawn on top of each other instead of
+        flipped side by side) and Captain America always faces the wrong way.
+        Text tilemap colours are wrong.
+        Sound is wrong.
 
     Driver by Bryan McPhail, thank you to Avedis and The Guru.
 
@@ -118,14 +118,14 @@ static READ32_HANDLER( avengrs_control_r )
 
 static READ32_HANDLER(test2_r)
 {
-//	if (offset==0)
-//		return readinputport(0); //0xffffffff;
-//	logerror("%08x:  Test2_r %d\n",activecpu_get_pc(),offset);
+//  if (offset==0)
+//      return readinputport(0); //0xffffffff;
+//  logerror("%08x:  Test2_r %d\n",activecpu_get_pc(),offset);
 	return 0xffffffff;
 }
 static READ32_HANDLER(test3_r)
 {
-//	logerror("%08x:  Test3_r %d\n",activecpu_get_pc(),offset);
+//  logerror("%08x:  Test3_r %d\n",activecpu_get_pc(),offset);
 	return 0xffffffff;
 }
 
@@ -370,7 +370,7 @@ static MACHINE_DRIVER_START( mlc )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(ARM,42000000/6) /* 42 MHz -> 7MHz clock confirmed on real board */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-//	MDRV_CPU_VBLANK_INT(avengrgs_interrupt,1)
+//  MDRV_CPU_VBLANK_INT(avengrgs_interrupt,1)
 
 	MDRV_FRAMES_PER_SECOND(58)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
@@ -471,6 +471,49 @@ ROM_START( stadh96a )
 	ROM_LOAD16_WORD_SWAP( "mcm-06.6a",  0x000000, 0x400000,  CRC(fbc178f3) SHA1(f44cb913177b6552b30c139505c3284bc445ba13) )
 ROM_END
 
+ROM_START( hoops96 )
+	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_LOAD32_WORD_SWAP( "sz00-0.2a", 0x000002, 0x80000, CRC(971b4376) SHA1(e60d8d628bd1dc95d7f2b8840b0b188e68905c12) )
+	ROM_LOAD32_WORD_SWAP( "sz01-0.2b", 0x000000, 0x80000, CRC(b9679d7b) SHA1(3510b97390f2214cedb3387d32c7a7fd639a0a6e) )
+
+	ROM_REGION( 0x0c00000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD16_BYTE( "mce-00.2e", 0x0000001, 0x200000, CRC(11b9bd96) SHA1(ed17fa9008b8e42951fd1f4c50939f1dd99cfeaf) )
+	ROM_LOAD16_BYTE( "mce-01.8m", 0x0000000, 0x200000, CRC(6817d0c6) SHA1(ac1ee407b3981e0a9d45c429d301a93997f52c35) )
+	ROM_LOAD16_BYTE( "mce-02.4e", 0x0400001, 0x200000, CRC(be7ff8ba) SHA1(40991d000dfbe7fc7f4f053e14c1b7b0b3cf2865) )
+	ROM_LOAD16_BYTE( "mce-03.10m",0x0400000, 0x200000, CRC(756c282e) SHA1(5095bf8d8aae8133543bdc3f5b787efd403a5cf6) )
+
+	ROM_REGION( 0x200000, REGION_GFX2, 0 )
+	ROM_LOAD( "mce-04.8n",0x0000000, 0x200000, CRC(91da9b4f) SHA1(25c3a7abbaca006ad345150b5d689faf8b13affb) )
+
+	ROM_REGION( 0x80000, REGION_GFX4, 0 )
+	ROM_LOAD( "rr02-0.6h", 0x000000, 0x20000, CRC(9490041c) SHA1(febedd0683dbcb080d304d03e4a3b501caeb6bb8) )
+
+	ROM_REGION( 0x400000, REGION_SOUND1, 0 )
+	ROM_LOAD16_WORD_SWAP( "mce-05.6a",  0x000000, 0x400000,  CRC(e7a9355a) SHA1(039b23666e224c33ebb02baa80e496f8bce0514f) )
+ROM_END
+
+ROM_START( ddream95 )
+	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_LOAD32_WORD_SWAP( "rl00-2.2a", 0x000002, 0x80000, CRC(07645092) SHA1(5f24bd6102b7e6212888b703f86bed5a19e08e85) )
+	ROM_LOAD32_WORD_SWAP( "rl01-2.2b", 0x000000, 0x80000, CRC(cfc629fc) SHA1(c0bcfa75c6446def4af99b14a1a869b5576c244f) )
+
+	ROM_REGION( 0x0c00000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD16_BYTE( "mce-00.2e", 0x0000001, 0x200000, CRC(11b9bd96) SHA1(ed17fa9008b8e42951fd1f4c50939f1dd99cfeaf) )
+	ROM_LOAD16_BYTE( "mce-01.8m", 0x0000000, 0x200000, CRC(6817d0c6) SHA1(ac1ee407b3981e0a9d45c429d301a93997f52c35) )
+	ROM_LOAD16_BYTE( "mce-02.4e", 0x0400001, 0x200000, CRC(be7ff8ba) SHA1(40991d000dfbe7fc7f4f053e14c1b7b0b3cf2865) )
+	ROM_LOAD16_BYTE( "mce-03.10m",0x0400000, 0x200000, CRC(756c282e) SHA1(5095bf8d8aae8133543bdc3f5b787efd403a5cf6) )
+
+	ROM_REGION( 0x200000, REGION_GFX2, 0 )
+	ROM_LOAD( "mce-04.8n",0x0000000, 0x200000, CRC(91da9b4f) SHA1(25c3a7abbaca006ad345150b5d689faf8b13affb) )
+
+	ROM_REGION( 0x80000, REGION_GFX4, 0 )
+	ROM_LOAD( "rl02-0.6h", 0x000000, 0x20000, CRC(9490041c) SHA1(febedd0683dbcb080d304d03e4a3b501caeb6bb8) )
+
+	ROM_REGION( 0x400000, REGION_SOUND1, 0 )
+	ROM_LOAD16_WORD_SWAP( "mce-05.6a",  0x000000, 0x400000,  CRC(e7a9355a) SHA1(039b23666e224c33ebb02baa80e496f8bce0514f) )
+ROM_END
+
+
 ROM_START( skullfng )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )
 	ROM_LOAD32_WORD_SWAP( "sh00-0.2a", 0x000002, 0x80000, CRC(e50358e8) SHA1(e66ac5e1b16273cb905254c99b2bce435145a414) )
@@ -497,7 +540,7 @@ ROM_END
 static READ32_HANDLER( avengrgs_speedup_r )
 {
 	data32_t a=avengrgs_ram[0x89a0/4];
-//	logerror("Read %08x\n",activecpu_get_pc());
+//  logerror("Read %08x\n",activecpu_get_pc());
 	if (activecpu_get_pc()==0x3236 && (a&1)) cpu_spinuntil_int();
 
 	return a;
@@ -520,4 +563,5 @@ GAMEX(1995, avengrgs, 0,        avengrgs, avengrgs, avengrgs, ROT0,   "Data East
 GAMEX(1996, stadhr96, 0,        mlc,      avengrgs, mlc,      ROT0,   "Data East Corporation", "Stadium Hero 96 (Version EAD)", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
 GAMEX(1996, stadh96a, stadhr96, mlc,      avengrgs, mlc,      ROT0,   "Data East Corporation", "Stadium Hero 96 (Version EAJ)", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
 GAMEX(1996, skullfng, 0,        mlc,      avengrgs, mlc,      ROT270, "Data East Corporation", "Skull Fang (Japan)", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING)
-/* Hoops / Dunk Dream is also a MLC System game */
+GAMEX(1996, hoops96,  0,        mlc,      avengrgs, mlc,      ROT0,   "Data East Corporation", "Hoops '96", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING)
+GAMEX(1996, ddream95, hoops96,  mlc,      avengrgs, mlc,      ROT0,   "Data East Corporation", "Dunk Dream '95", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING)

@@ -76,6 +76,7 @@ WRITE16_HANDLER( K052109_lsb_w );
 void K052109_set_RMRD_line(int state);
 void K052109_tilemap_update(void);
 int K052109_is_IRQ_enabled(void);
+void K052109_set_layer_offsets(int layer, int dx, int dy);
 
 
 /*
@@ -268,7 +269,8 @@ void K056832_SetExtLinescroll(void);	/* Lethal Enforcers */
 
 int K056832_vh_start(int gfx_memory_region, int bpp, int big,
 			int (*scrolld)[4][2],
-			void (*callback)(int, int *, int *));
+			void (*callback)(int, int *, int *),
+			int djmain_hack);
 READ16_HANDLER( K056832_ram_word_r );
 WRITE16_HANDLER( K056832_ram_word_w );
 READ16_HANDLER( K056832_ram_half_word_r );

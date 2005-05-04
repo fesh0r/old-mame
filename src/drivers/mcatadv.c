@@ -192,7 +192,7 @@ static ADDRESS_MAP_START( mcatadv_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x200000, 0x200005) AM_READ(MRA16_RAM)
 	AM_RANGE(0x300000, 0x300005) AM_READ(MRA16_RAM)
 
-//	AM_RANGE(0x180018, 0x18001f) AM_READ(MRA16_NOP) // ?
+//  AM_RANGE(0x180018, 0x18001f) AM_READ(MRA16_NOP) // ?
 
 	AM_RANGE(0x400000, 0x401fff) AM_READ(MRA16_RAM) // Tilemap 0
 	AM_RANGE(0x500000, 0x501fff) AM_READ(MRA16_RAM) // Tilemap 1
@@ -228,7 +228,7 @@ static ADDRESS_MAP_START( mcatadv_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x700000, 0x707fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size) // Sprites, two halves for double buffering
 	AM_RANGE(0x708000, 0x70ffff) AM_WRITE(MWA16_RAM) // Tests more than is needed?
 
-//	AM_RANGE(0x900000, 0x900001) AM_WRITE(mcat_coin_w) // Lockout / Counter MCAT Only
+//  AM_RANGE(0x900000, 0x900001) AM_WRITE(mcat_coin_w) // Lockout / Counter MCAT Only
 	AM_RANGE(0xb00000, 0xb0000f) AM_WRITE(MWA16_RAM) AM_BASE(&mcatadv_vidregs)
 	AM_RANGE(0xb00018, 0xb00019) AM_WRITE(watchdog_reset16_w) // NOST Only
 	AM_RANGE(0xc00000, 0xc00001) AM_WRITE(mcat_soundlatch_w)
@@ -264,10 +264,12 @@ static ADDRESS_MAP_START( mcatadv_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mcatadv_sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x80, 0x80) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mcatadv_sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x80, 0x80) AM_WRITE(soundlatch2_w)
 ADDRESS_MAP_END
 
@@ -285,12 +287,14 @@ static ADDRESS_MAP_START( nost_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( nost_sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x04, 0x05) AM_READ(YM2610_status_port_0_A_r)
 	AM_RANGE(0x06, 0x07) AM_READ(YM2610_status_port_0_B_r)
 	AM_RANGE(0x80, 0x80) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( nost_sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM2610_control_port_0_A_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM2610_data_port_0_A_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YM2610_control_port_0_B_w)
@@ -375,7 +379,7 @@ INPUT_PORTS_START( mcatadv )
 	PORT_DIPSETTING(    0x40, "Upright 1 Player" )
 	PORT_DIPSETTING(    0xc0, "Upright 2 Players" )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
-//	PORT_DIPSETTING(    0x00, "Upright 2 Players" )		// duplicated setting (NEVER tested)
+//  PORT_DIPSETTING(    0x00, "Upright 2 Players" )     // duplicated setting (NEVER tested)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( nost )
@@ -606,6 +610,35 @@ ROM_START( mcatadvj )
 	ROM_LOAD( "mca-u53.bin", 0x00000, 0x80000, CRC(64c76e05) SHA1(379cef5e0cba78d0e886c9cede41985850a3afb7) )
 ROM_END
 
+ROM_START( catt )
+	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* M68000 */
+	ROM_LOAD16_BYTE( "catt-u30.bin",  0x00000, 0x80000, CRC(8c921e1e) SHA1(2fdaa9b743e1731f3cfe9d8334f1b759cf46855d) )
+	ROM_LOAD16_BYTE( "catt-u29.bin",  0x00001, 0x80000, CRC(e725af6d) SHA1(78c08fa5744a6a953e13c0ff39736ccd4875fb72) )
+
+	ROM_REGION( 0x030000, REGION_CPU2, 0 ) /* Z80-A */
+	ROM_LOAD( "u9.bin", 0x00000, 0x20000, CRC(fda05171) SHA1(2c69292573ec35034572fa824c0cae2839d23919) )
+	ROM_RELOAD( 0x10000, 0x20000 )
+
+	ROM_REGION( 0x500000, REGION_GFX1, 0 ) /* Sprites */
+	ROM_LOAD16_BYTE( "mca-u82.bin", 0x000000, 0x100000, CRC(5f01d746) SHA1(11b241456e15299912ee365eedb8f9d5e5ca875d) )
+	ROM_LOAD16_BYTE( "mca-u83.bin", 0x000001, 0x100000, CRC(4e1be5a6) SHA1(cb19aad42dba54d6a4a33859f27254c2a3271e8c) )
+	ROM_LOAD16_BYTE( "u84.bin",     0x200000, 0x100000, CRC(843fd624) SHA1(2e16d8a909fe9447da37a87428bff0734af59a00) )
+	ROM_LOAD16_BYTE( "u85.bin",     0x200001, 0x100000, CRC(5ee7b628) SHA1(feedc212ed4893d784dc6b3361930b9199c6876d) )
+	ROM_LOAD16_BYTE( "mca-u86e",    0x400000, 0x080000, CRC(017bf1da) SHA1(f6446a7219275c0eff62129f59fdfa3a6a3e06c8) )
+	ROM_LOAD16_BYTE( "mca-u87e",    0x400001, 0x080000, CRC(bc9dc9b9) SHA1(f525c9f994d5107752aa4d3a499ee376ec75f42b) )
+
+	ROM_REGION( 0x100000, REGION_GFX2, 0 ) /* BG0 */
+	ROM_LOAD( "u58.bin",     0x00000, 0x100000, CRC(73c9343a) SHA1(9efdddbad6244c1ed267bd954563ab43a1017c96) )
+
+	ROM_REGION( 0x280000, REGION_GFX3, 0 ) /* BG1 */
+	ROM_LOAD( "mca-u60.bin", 0x000000, 0x100000, CRC(c8942614) SHA1(244fccb9abbb04e33839dd2cd0e2de430819a18c) )
+	ROM_LOAD( "mca-u61.bin", 0x100000, 0x100000, CRC(51af66c9) SHA1(1055cf78ea286f02003b0d1bf08c2d7829b36f90) )
+	ROM_LOAD( "mca-u100",    0x200000, 0x080000, CRC(b273f1b0) SHA1(39318fe2aaf2792b85426ec6791b3360ac964de3) )
+
+	ROM_REGION( 0x100000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_LOAD( "u53.bin",     0x00000, 0x100000, CRC(99f2a624) SHA1(799e8e40e8bdcc8fa4cd763a366cc32473038a49) )
+ROM_END
+
 ROM_START( nost )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* M68000 */
 	ROM_LOAD16_BYTE( "nos-pe-u.bin", 0x00000, 0x80000, CRC(4b080149) SHA1(e1dbbe5bf554c7c5731cc3079850f257417e3caa) )
@@ -695,6 +728,7 @@ ROM_END
 
 GAMEX( 1993, mcatadv,  0,       mcatadv, mcatadv, mcatadv, ROT0,   "Wintechno", "Magical Cat Adventure", GAME_NO_COCKTAIL )
 GAMEX( 1993, mcatadvj, mcatadv, mcatadv, mcatadv, mcatadv, ROT0,   "Wintechno", "Magical Cat Adventure (Japan)", GAME_NO_COCKTAIL )
+GAMEX( 1993, catt,     mcatadv, mcatadv, mcatadv, mcatadv, ROT0,   "Wintechno", "Catt (Japan)", GAME_NO_COCKTAIL )
 GAMEX( 1993, nost,     0,       nost,    nost,    mcatadv, ROT270, "Face",      "Nostradamus", GAME_NO_COCKTAIL )
 GAMEX( 1993, nostj,    nost,    nost,    nost,    mcatadv, ROT270, "Face",      "Nostradamus (Japan)", GAME_NO_COCKTAIL )
 GAMEX( 1993, nostk,    nost,    nost,    nost,    mcatadv, ROT270, "Face",      "Nostradamus (Korea)", GAME_NO_COCKTAIL )

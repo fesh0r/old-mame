@@ -5,8 +5,8 @@ Driver by Tomasz Slanina  dox@space.pl
 ***************************************************************************
 
 RAM :
-	1 x GM76c28-10 (6116) RAM
-	3 x 2114  - VRAM (only 10 bits are used )
+    1 x GM76c28-10 (6116) RAM
+    3 x 2114  - VRAM (only 10 bits are used )
 
 ROM:
   27256 + 27128 for code/data
@@ -15,25 +15,25 @@ ROM:
 PROM:
  82S123 32x8
  Used for system control
- 	(d0 - connected to ROM5 /CS , d1 - ROM4 /CS, d2 - RAM /CS , d3 - to some logic(gfx control), and Z80 WAIT )
+    (d0 - connected to ROM5 /CS , d1 - ROM4 /CS, d2 - RAM /CS , d3 - to some logic(gfx control), and Z80 WAIT )
 
 Memory Map :
   0x0000 - 0xbfff - ROM
   0xc000 - 0xcfff - RAM
   0xd000 - 0xdfff - VRAM mirrored write,
-  		tilemap offset = address & 0x3ff
-  		tile number =  bits 0-7 = data, bits 8,9  = address bits 10,11
+        tilemap offset = address & 0x3ff
+        tile number =  bits 0-7 = data, bits 8,9  = address bits 10,11
 
 Video :
-	No scrolling , no sprites.
-	32x32 Tilemap stored in VRAM (10 bits/tile (tile numebr 0-1023))
+    No scrolling , no sprites.
+    32x32 Tilemap stored in VRAM (10 bits/tile (tile numebr 0-1023))
 
-	3 gfx ROMS
-	ROM1 - R component (ROM ->(parallel in) shift register 74166 (serial out) -> jamma output
-	ROM2 - B component
-	ROM3 - G component
+    3 gfx ROMS
+    ROM1 - R component (ROM ->(parallel in) shift register 74166 (serial out) -> jamma output
+    ROM2 - B component
+    ROM3 - G component
 
-	Default MAME color palette is used
+    Default MAME color palette is used
 
 Sound :
  AY 3 8910
@@ -91,12 +91,14 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x23, 0x23) AM_WRITE(sound_data_w)
 	AM_RANGE(0x33, 0x33) AM_WRITE(sound_control_w)
 ADDRESS_MAP_END

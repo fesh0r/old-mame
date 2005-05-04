@@ -109,7 +109,7 @@ ADDRESS_MAP_END
 
 /***************************************************************************
 
-	Input Ports
+    Input Ports
 
 ***************************************************************************/
 
@@ -148,7 +148,7 @@ INPUT_PORTS_START( rockrage )
 	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
-//	PORT_DIPSETTING(    0x00, "Invalid" )
+//  PORT_DIPSETTING(    0x00, "Invalid" )
 
 	PORT_START	/* DSW #2 */
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ) )
@@ -242,7 +242,7 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 
 /***************************************************************************
 
-	Machine Driver
+    Machine Driver
 
 ***************************************************************************/
 
@@ -260,7 +260,7 @@ static MACHINE_DRIVER_START( rockrage )
 	MDRV_CPU_VBLANK_INT(rockrage_interrupt,1)
 
 	MDRV_CPU_ADD(M6809, 2000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)		/* 24MHz/12 (?) */
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(rockrage_readmem_sound,rockrage_writemem_sound)
 
 	MDRV_FRAMES_PER_SECOND(60)

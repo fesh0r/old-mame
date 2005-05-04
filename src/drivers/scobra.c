@@ -355,11 +355,13 @@ ADDRESS_MAP_END
 
 
 ADDRESS_MAP_START( scobra_sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x20, 0x20) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x80, 0x80) AM_READ(AY8910_read_port_1_r)
 ADDRESS_MAP_END
 
 ADDRESS_MAP_START( scobra_sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x10, 0x10) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x20, 0x20) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_control_port_1_w)
@@ -368,10 +370,12 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( hustlerb_sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x80, 0x80) AM_READ(AY8910_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hustlerb_sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
@@ -401,7 +405,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL\
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )\
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
-	
+
 #define SCOBRA_IN2\
 	PORT_START_TAG("IN2")\
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL\
@@ -604,7 +608,7 @@ INPUT_PORTS_END
 /* same as above, but coinage is different */
 INPUT_PORTS_START( moonwara )
 	MOONWAR_COMMON
-	
+
 	PORT_START_TAG("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_DIPNAME( 0x06, 0x00, DEF_STR( Coinage ) )
@@ -869,7 +873,7 @@ INPUT_PORTS_START( anteatg )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
-	
+
 	PORT_START_TAG("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
@@ -1230,7 +1234,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( mimonkey )
 	MM_COMMON1
-	
+
 	PORT_START_TAG("IN1")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
@@ -1245,7 +1249,7 @@ INPUT_PORTS_START( mimonkey )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
 	MM_COMMON2
-	
+
 INPUT_PORTS_END
 
 /* Same as 'mimonkey' but different "Lives" Dip Switch */
@@ -1284,7 +1288,7 @@ static MACHINE_DRIVER_START( type1 )
 	MDRV_CPU_PROGRAM_MAP(type1_readmem,type1_writemem)
 
 	MDRV_CPU_ADD(Z80,14318000/8)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1.78975 MHz */
+	/* audio CPU */	/* 1.78975 MHz */
 	MDRV_CPU_PROGRAM_MAP(scobra_sound_readmem,scobra_sound_writemem)
 	MDRV_CPU_IO_MAP(scobra_sound_readport,scobra_sound_writeport)
 
@@ -1430,7 +1434,7 @@ static MACHINE_DRIVER_START( hustler )
 	MDRV_CPU_PROGRAM_MAP(hustler_readmem,hustler_writemem)
 
 	MDRV_CPU_ADD(Z80,14318000/8)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1.78975 MHz */
+	/* audio CPU */	/* 1.78975 MHz */
 	MDRV_CPU_PROGRAM_MAP(frogger_sound_readmem,frogger_sound_writemem)
 	MDRV_CPU_IO_MAP(frogger_sound_readport,frogger_sound_writeport)
 
@@ -1456,7 +1460,7 @@ static MACHINE_DRIVER_START( hustlerb )
 	MDRV_CPU_PROGRAM_MAP(hustlerb_readmem,hustlerb_writemem)
 
 	MDRV_CPU_ADD(Z80,14318000/8)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1.78975 MHz */
+	/* audio CPU */	/* 1.78975 MHz */
 	MDRV_CPU_PROGRAM_MAP(scobra_sound_readmem,hustlerb_sound_writemem)
 	MDRV_CPU_IO_MAP(hustlerb_sound_readport,hustlerb_sound_writeport)
 
@@ -1855,7 +1859,7 @@ ROM_START( anteatg )
 ROM_END
 
 ROM_START( anteatgb )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */	
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
 	ROM_LOAD( "ant1.bin",     0x0000, 0x0400, CRC(69debc90) SHA1(2ad4c86a1cbaf86d0b76bb07b885f61bc6604009) )
 	ROM_CONTINUE(             0x4600, 0x0a00 )
 	ROM_CONTINUE(             0x6400, 0x1200 )

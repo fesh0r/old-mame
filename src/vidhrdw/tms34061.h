@@ -1,10 +1,10 @@
 /****************************************************************************
- *																			*
- *	Function prototypes and constants used by the TMS34061 emulator			*
- *																			*
- *  Created by Zsolt Vasvari on 5/26/1998.	                                *
- *	Updated by Aaron Giles on 11/21/2000.									*
- *																			*
+ *                                                                          *
+ *  Function prototypes and constants used by the TMS34061 emulator         *
+ *                                                                          *
+ *  Created by Zsolt Vasvari on 5/26/1998.                                  *
+ *  Updated by Aaron Giles on 11/21/2000.                                   *
+ *                                                                          *
  ****************************************************************************/
 
 
@@ -39,7 +39,6 @@ struct tms34061_interface
 {
 	UINT8			rowshift;					/* VRAM address is (row << rowshift) | col */
 	UINT32			vramsize;					/* size of video RAM */
-	UINT32			dirtychunk;					/* size of dirty chunks (must be power of 2) */
 	void			(*interrupt)(int state);	/* interrupt gen callback */
 };
 
@@ -50,7 +49,6 @@ struct tms34061_display
 	UINT8			blanked;					/* true if blanked */
 	UINT8 *			vram;						/* base of VRAM */
 	UINT8 *			latchram;					/* base of latch RAM */
-	UINT8 *			dirty;						/* pointer to array of dirty rows */
 	UINT16 *		regs;						/* pointer to array of registers */
 	offs_t			dispstart;					/* display start */
 };

@@ -1,90 +1,90 @@
 /***************************************************************************
 
-	inptport.c
+    inptport.c
 
-	Input port handling.
+    Input port handling.
 
 ****************************************************************************
 
-	Theory of operation
+    Theory of operation
 
-	------------
-	OSD controls
-	------------
+    ------------
+    OSD controls
+    ------------
 
-	There are three types of controls that the OSD can provide as potential
-	input devices: digital controls, absolute analog controls, and relative
-	analog controls.
+    There are three types of controls that the OSD can provide as potential
+    input devices: digital controls, absolute analog controls, and relative
+    analog controls.
 
-	Digital controls have only two states: on or off. They are generally
-	mapped to buttons and digital joystick directions (like a gamepad or a
-	joystick hat). The OSD layer must return either 0 (off) or 1 (on) for
-	these types of controls.
+    Digital controls have only two states: on or off. They are generally
+    mapped to buttons and digital joystick directions (like a gamepad or a
+    joystick hat). The OSD layer must return either 0 (off) or 1 (on) for
+    these types of controls.
 
-	Absolute analog controls are analog in the sense that they return a
-	range of values depending on how much a given control is moved, but they
-	are physically bounded. This means that there is a minimum and maximum
-	limit to how far the control can be moved. They are generally mapped to
-	analog joystick axes, lightguns, most PC steering wheels, and pedals.
-	The OSD layer must determine the minimum and maximum range of each
-	analog device and scale that to a value between -65536 and +65536
-	representing the position of the control. -65536 generally refers to
-	the topmost or leftmost position, while +65536 refers to the bottommost
-	or rightmost position. Note that pedals are a special case here,
-	mapping only in one direction, with a range of 0 to -65536.
+    Absolute analog controls are analog in the sense that they return a
+    range of values depending on how much a given control is moved, but they
+    are physically bounded. This means that there is a minimum and maximum
+    limit to how far the control can be moved. They are generally mapped to
+    analog joystick axes, lightguns, most PC steering wheels, and pedals.
+    The OSD layer must determine the minimum and maximum range of each
+    analog device and scale that to a value between -65536 and +65536
+    representing the position of the control. -65536 generally refers to
+    the topmost or leftmost position, while +65536 refers to the bottommost
+    or rightmost position. Note that pedals are a special case here,
+    mapping only in one direction, with a range of 0 to -65536.
 
-	Relative analog controls are analog as well, but are not physically
-	bounded. They can be moved continually in one direction without limit.
-	They are generally mapped to trackballs and mice. Because they are
-	unbounded, the OSD layer can only return delta values since the last
-	read. Because of this, it is difficult to scale appropriately. For
-	MAME's purposes, when mapping a mouse devices to a relative analog
-	control, one pixel of movement should correspond to 512 units. Other
-	analog control types should be scaled to return values of a similar
-	magnitude. Like absolute analog controls, negative values refer to
-	upward or leftward movement, while positive values refer to downward
-	or rightward movement.
+    Relative analog controls are analog as well, but are not physically
+    bounded. They can be moved continually in one direction without limit.
+    They are generally mapped to trackballs and mice. Because they are
+    unbounded, the OSD layer can only return delta values since the last
+    read. Because of this, it is difficult to scale appropriately. For
+    MAME's purposes, when mapping a mouse devices to a relative analog
+    control, one pixel of movement should correspond to 512 units. Other
+    analog control types should be scaled to return values of a similar
+    magnitude. Like absolute analog controls, negative values refer to
+    upward or leftward movement, while positive values refer to downward
+    or rightward movement.
 
-	-------------
-	Game controls
-	-------------
+    -------------
+    Game controls
+    -------------
 
-	Similarly, the types of controls used by arcade games fall into the same
-	three categories: digital, absolute analog, and relative analog. The
-	tricky part is how to map any arbitrary type of OSD control to an
-	arbitrary type of game control.
+    Similarly, the types of controls used by arcade games fall into the same
+    three categories: digital, absolute analog, and relative analog. The
+    tricky part is how to map any arbitrary type of OSD control to an
+    arbitrary type of game control.
 
-	Digital controls: used for game buttons and standard 4/8-way joysticks,
-	as well as many other types of game controls. Mapping an OSD digital
-	control to a game's OSD control is trivial. For OSD analog controls,
-	the MAME core does not directly support mapping any OSD analog devices
-	to digital controls. However, the OSD layer is free to enumerate digital
-	equivalents for analog devices. For example, each analog axis in the
-	Windows OSD code enumerates to two digital controls, one for the
-	negative direction (up/left) and one for the position direction
-	(down/right). When these "digital" inputs are queried, the OSD layer
-	checks the axis position against the center, adding in a dead zone,
-	and returns 0 or 1 to indicate its position.
+    Digital controls: used for game buttons and standard 4/8-way joysticks,
+    as well as many other types of game controls. Mapping an OSD digital
+    control to a game's OSD control is trivial. For OSD analog controls,
+    the MAME core does not directly support mapping any OSD analog devices
+    to digital controls. However, the OSD layer is free to enumerate digital
+    equivalents for analog devices. For example, each analog axis in the
+    Windows OSD code enumerates to two digital controls, one for the
+    negative direction (up/left) and one for the position direction
+    (down/right). When these "digital" inputs are queried, the OSD layer
+    checks the axis position against the center, adding in a dead zone,
+    and returns 0 or 1 to indicate its position.
 
-	Absolute analog controls: used for analog joysticks, lightguns, pedals,
-	and wheel controls. Mapping an OSD absolute analog control to this type
-	is easy. OSD relative analog controls can be mapped here as well by
-	accumulating the deltas and bounding the results. OSD digital controls
-	are mapped to these types of controls in pairs, one for a decrement and
-	one for an increment, but apart from that, operate the same as the OSD
-	relative analog controls by accumulating deltas and applying bounds.
-	The speed of the digital delta is user-configurable per analog input.
-	In addition, most absolute analog control types have an autocentering
-	feature that is activated when using the digital increment/decrement
-	sequences, which returns the control back to the center at a user-
-	controllable speed if no digital sequences are pressed.
+    Absolute analog controls: used for analog joysticks, lightguns, pedals,
+    and wheel controls. Mapping an OSD absolute analog control to this type
+    is easy. OSD relative analog controls can be mapped here as well by
+    accumulating the deltas and bounding the results. OSD digital controls
+    are mapped to these types of controls in pairs, one for a decrement and
+    one for an increment, but apart from that, operate the same as the OSD
+    relative analog controls by accumulating deltas and applying bounds.
+    The speed of the digital delta is user-configurable per analog input.
+    In addition, most absolute analog control types have an autocentering
+    feature that is activated when using the digital increment/decrement
+    sequences, which returns the control back to the center at a user-
+    controllable speed if no digital sequences are pressed.
 
-	Relative analog controls: used for trackballs and dial controls. Again,
-	mapping an OSD relative analog control to this type is straightforward.
-	OSD absolute analog controls can't map directly to these, but if the OSD
-	layer provides a digital equivalent for each direction, it can be done.
-	OSD digital controls map just like they do for absolute analog controls,
-	except that the accumulated deltas are not bounded, but rather wrap.
+    Relative analog controls: used for trackballs and dial controls. Again,
+    mapping an OSD relative analog control to this type is straightforward.
+    OSD absolute analog controls can't map directly to these, but if the OSD
+    layer provides a digital equivalent for each direction, it can be done.
+    OSD digital controls map just like they do for absolute analog controls,
+    except that the accumulated deltas are not bounded, but rather wrap.
 
 ***************************************************************************/
 
@@ -99,7 +99,7 @@
 
 /*************************************
  *
- *	Externals (ick)
+ *  Externals (ick)
  *
  *************************************/
 
@@ -110,7 +110,7 @@ extern void *playback;
 
 /*************************************
  *
- *	Constants
+ *  Constants
  *
  *************************************/
 
@@ -133,7 +133,7 @@ extern void *playback;
 
 /*************************************
  *
- *	Type definitions
+ *  Type definitions
  *
  *************************************/
 
@@ -187,7 +187,7 @@ struct IptInitParams
 
 /*************************************
  *
- *	Macros
+ *  Macros
  *
  *************************************/
 
@@ -203,7 +203,7 @@ struct IptInitParams
 
 /*************************************
  *
- *	Local variables
+ *  Local variables
  *
  *************************************/
 
@@ -226,7 +226,7 @@ static UINT8 ui_memory[__ipt_max];
 
 /*************************************
  *
- *	Port handler tables
+ *  Port handler tables
  *
  *************************************/
 
@@ -272,7 +272,7 @@ static const read32_handler port_handler32[] =
 
 /*************************************
  *
- *	Common shared strings
+ *  Common shared strings
  *
  *************************************/
 
@@ -349,6 +349,8 @@ const char *inptport_default_strings[] =
 	"Italian",
 	"Spanish",
 	"Very Easy",
+	"Easiest",
+	"Easier",
 	"Easy",
 	"Normal",
 	"Medium",
@@ -390,7 +392,7 @@ const char *inptport_default_strings[] =
 
 /*************************************
  *
- *	Default input ports
+ *  Default input ports
  *
  *************************************/
 
@@ -900,12 +902,12 @@ static const struct InputPortDefinition inputport_list_defaults[] =
 static struct InputPortDefinition inputport_list[sizeof(inputport_list_defaults) / sizeof(inputport_list_defaults[0])];
 static struct InputPortDefinition inputport_list_backup[sizeof(inputport_list_defaults) / sizeof(inputport_list_defaults[0])];
 static const int inputport_count = sizeof(inputport_list_defaults) / sizeof(inputport_list_defaults[0]);
-
+static struct InputPortDefinition *inputport_list_lookup[__ipt_max][MAX_PLAYERS];
 
 
 /*************************************
  *
- *	Function prototypes
+ *  Function prototypes
  *
  *************************************/
 
@@ -918,13 +920,13 @@ static void interpolate_analog_port(int port);
 
 /*************************************
  *
- *	Settings save/load frontend
+ *  Settings save/load frontend
  *
  *************************************/
 
 int load_input_port_settings(void)
 {
-	int loaded;
+	int loaded, ipnum;
 
 	/* start with the raw defaults and ask the OSD to customize them in the backup array */
 	memcpy(inputport_list_backup, inputport_list_defaults, sizeof(inputport_list_backup));
@@ -950,6 +952,11 @@ int load_input_port_settings(void)
 	/* initialize the various port states */
 	inputport_init();
 
+	/* fill lookup table */
+	memset(inputport_list_lookup, 0, sizeof(inputport_list_lookup));
+	for (ipnum = 0; inputport_list[ipnum].type != IPT_END; ipnum++)
+		inputport_list_lookup[inputport_list[ipnum].type][inputport_list[ipnum].player] = &inputport_list[ipnum];
+
 	/* if we didn't find a saved config, return 0 so the main core knows that it */
 	/* is the first time the game is run and it should diplay the disclaimer. */
 	return loaded;
@@ -967,7 +974,7 @@ void save_input_port_settings(void)
 
 /*************************************
  *
- *	Input port initialization
+ *  Input port initialization
  *
  *************************************/
 
@@ -1130,7 +1137,7 @@ static void inputport_init(void)
 
 /*************************************
  *
- *	Input port construction
+ *  Input port construction
  *
  *************************************/
 
@@ -1248,7 +1255,7 @@ struct InputPort *input_port_allocate(void construct_ipt(struct IptInitParams *p
 
 /*************************************
  *
- *	List access
+ *  List access
  *
  *************************************/
 
@@ -1267,19 +1274,17 @@ struct InputPortDefinition *get_input_port_list_backup(void)
 
 /*************************************
  *
- *	Input port tokens
+ *  Input port tokens
  *
  *************************************/
 
 const char *port_type_to_token(int type, int player)
 {
 	static char tempbuf[32];
-	int ipnum;
 
-	/* scan the token list to find the one we want */
-	for (ipnum = 0; ipnum < inputport_count; ipnum++)
-		if (inputport_list[ipnum].type == type && inputport_list[ipnum].player == player)
-			return inputport_list[ipnum].token;
+	/* look up the port and return the token */
+	if (inputport_list_lookup[type][player])
+		return inputport_list_lookup[type][player]->token;
 
 	/* if that fails, carry on */
 	sprintf(tempbuf, "TYPE_OTHER(%d,%d)", type, player);
@@ -1312,7 +1317,7 @@ int token_to_port_type(const char *string, int *player)
 
 /*************************************
  *
- *	Input port getters
+ *  Input port getters
  *
  *************************************/
 
@@ -1340,10 +1345,8 @@ int port_type_in_use(int type)
 
 int port_type_to_group(int type, int player)
 {
-	int ipnum;
-	for (ipnum = 0; ipnum < inputport_count; ipnum++)
-		if (inputport_list[ipnum].type == type && inputport_list[ipnum].player == player)
-			return inputport_list[ipnum].group;
+	if (inputport_list_lookup[type][player])
+		return inputport_list_lookup[type][player]->group;
 	return IPG_INVALID;
 }
 
@@ -1383,16 +1386,13 @@ read32_handler port_tag_to_handler32(const char *tag)
 
 const char *input_port_name(const struct InputPort *port)
 {
-	int listnum;
-
 	/* if we have a non-default name, use that */
 	if (port->name != IP_NAME_DEFAULT)
 		return port->name;
 
-	/* search the defaults for the type */
-	for (listnum = 0; listnum < inputport_count; listnum++)
-		if (inputport_list[listnum].type == port->type && inputport_list[listnum].player == port->player)
-			return inputport_list[listnum].name;
+	/* if the port exists, return the default name */
+	if (inputport_list_lookup[port->type][port->player])
+		return inputport_list_lookup[port->type][port->player]->name;
 
 	/* should never get here */
 	return NULL;
@@ -1443,23 +1443,19 @@ input_seq_t *input_port_seq(struct InputPort *port, int seqtype)
 input_seq_t *input_port_default_seq(int type, int player, int seqtype)
 {
 	static input_seq_t ip_none = SEQ_DEF_1(CODE_NONE);
-	int ipnum;
 
 	/* find the default setting */
-	for (ipnum = 0; inputport_list[ipnum].type != IPT_END; ipnum++)
-		if (inputport_list[ipnum].type == type && inputport_list[ipnum].player == player)
+	struct InputPortDefinition *const ip = inputport_list_lookup[type][player];
+	if (ip)
+		switch (seqtype)
 		{
-			switch (seqtype)
-			{
-				case SEQ_TYPE_STANDARD:
-					return &inputport_list[ipnum].defaultseq;
-				case SEQ_TYPE_INCREMENT:
-					return &inputport_list[ipnum].defaultincseq;
-				case SEQ_TYPE_DECREMENT:
-					return &inputport_list[ipnum].defaultdecseq;
-			}
+			case SEQ_TYPE_STANDARD:
+				return &ip->defaultseq;
+			case SEQ_TYPE_INCREMENT:
+				return &ip->defaultincseq;
+			case SEQ_TYPE_DECREMENT:
+				return &ip->defaultdecseq;
 		}
-
 	return &ip_none;
 }
 
@@ -1480,18 +1476,14 @@ int input_port_condition(const struct InputPort *in)
 
 /*************************************
  *
- *	Key sequence handlers
+ *  Key sequence handlers
  *
  *************************************/
 
 int input_port_type_pressed(int type, int player)
 {
-	int listnum;
-
-	/* search the defaults for the type */
-	for (listnum = 0; inputport_list[listnum].type != IPT_END; listnum++)
-		if (inputport_list[listnum].type == type && inputport_list[listnum].player == player)
-			return seq_pressed(&inputport_list[listnum].defaultseq);
+	if (inputport_list_lookup[type][player])
+		return seq_pressed(&inputport_list_lookup[type][player]->defaultseq);
 
 	return 0;
 }
@@ -1575,7 +1567,7 @@ profiler_mark(PROFILER_END);
 
 /*************************************
  *
- *	Playback/record helpers
+ *  Playback/record helpers
  *
  *************************************/
 
@@ -1602,7 +1594,7 @@ static void write_port_value(mame_file *f, UINT32 value)
 
 /*************************************
  *
- *	VBLANK start routine
+ *  VBLANK start routine
  *
  *************************************/
 
@@ -1731,7 +1723,7 @@ profiler_mark(PROFILER_END);
 
 /*************************************
  *
- *	VBLANK end routine
+ *  VBLANK end routine
  *
  *************************************/
 
@@ -1758,7 +1750,7 @@ profiler_mark(PROFILER_END);
 
 /*************************************
  *
- *	Digital joystick updating
+ *  Digital joystick updating
  *
  *************************************/
 
@@ -1798,16 +1790,16 @@ static void update_digital_joysticks(void)
 					info->current4way = info->current;
 
 					/*
-						If joystick is pointing at a diagonal, acknowledge that the player moved
-						the joystick by favoring a direction change.  This minimizes frustration
-						when using a keyboard for input, and maximizes responsiveness.
+                        If joystick is pointing at a diagonal, acknowledge that the player moved
+                        the joystick by favoring a direction change.  This minimizes frustration
+                        when using a keyboard for input, and maximizes responsiveness.
 
-					 	For example, if you are holding "left" then switch to "up" (where both left
-					 	and up are briefly pressed at the same time), we'll transition immediately
-					 	to "up."
+                        For example, if you are holding "left" then switch to "up" (where both left
+                        and up are briefly pressed at the same time), we'll transition immediately
+                        to "up."
 
-					 	Zero any switches that didn't change from the previous to current state.
-					 */
+                        Zero any switches that didn't change from the previous to current state.
+                     */
 					if ((info->current4way & (JOYDIR_UP_BIT | JOYDIR_DOWN_BIT)) &&
 						(info->current4way & (JOYDIR_LEFT_BIT | JOYDIR_RIGHT_BIT)))
 					{
@@ -1815,16 +1807,16 @@ static void update_digital_joysticks(void)
 					}
 
 					/*
-						If we are still pointing at a diagonal, we are in an indeterminant state.
+                        If we are still pointing at a diagonal, we are in an indeterminant state.
 
-					 	This could happen if the player moved the joystick from the idle position directly
-					 	to a diagonal, or from one diagonal directly to an extreme diagonal.
+                        This could happen if the player moved the joystick from the idle position directly
+                        to a diagonal, or from one diagonal directly to an extreme diagonal.
 
-					 	The chances of this happening with a keyboard are slim, but we still need to
-					 	constrain this case.
+                        The chances of this happening with a keyboard are slim, but we still need to
+                        constrain this case.
 
-					 	For now, just resolve randomly.
-					 */
+                        For now, just resolve randomly.
+                     */
 					if ((info->current4way & (JOYDIR_UP_BIT | JOYDIR_DOWN_BIT)) &&
 						(info->current4way & (JOYDIR_LEFT_BIT | JOYDIR_RIGHT_BIT)))
 					{
@@ -1842,7 +1834,7 @@ static void update_digital_joysticks(void)
 
 /*************************************
  *
- *	Analog minimum/maximum clamping
+ *  Analog minimum/maximum clamping
  *
  *************************************/
 
@@ -1880,7 +1872,7 @@ INLINE INT32 apply_analog_min_max(const struct AnalogPortInfo *info, INT32 value
 
 /*************************************
  *
- *	Analog port updating
+ *  Analog port updating
  *
  *************************************/
 
@@ -1971,7 +1963,7 @@ static void update_analog_port(int portnum)
 
 /*************************************
  *
- *	Analog port interpolation
+ *  Analog port interpolation
  *
  *************************************/
 
@@ -2030,7 +2022,7 @@ profiler_mark(PROFILER_END);
 
 /*************************************
  *
- *	Input port reading
+ *  Input port reading
  *
  *************************************/
 
@@ -2066,7 +2058,7 @@ UINT32 readinputportbytag_safe(const char *tag, UINT32 defvalue)
 
 /*************************************
  *
- *	Port reading helpers
+ *  Port reading helpers
  *
  *************************************/
 

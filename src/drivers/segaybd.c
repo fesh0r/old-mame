@@ -1,11 +1,11 @@
 /***************************************************************************
 
-	Sega Y-board hardware
+    Sega Y-board hardware
 
 ****************************************************************************
 
-	Known bugs:
-		* still seems to be some glitchiness in the games in general
+    Known bugs:
+        * still seems to be some glitchiness in the games in general
 
 ***************************************************************************/
 
@@ -27,7 +27,7 @@
 
 /*************************************
  *
- *	Statics
+ *  Statics
  *
  *************************************/
 
@@ -43,7 +43,7 @@ static data16_t *backupram;
 
 /*************************************
  *
- *	Configuration
+ *  Configuration
  *
  *************************************/
 
@@ -58,7 +58,7 @@ static void yboard_generic_init(void)
 
 /*************************************
  *
- *	Initialization & interrupts
+ *  Initialization & interrupts
  *
  *************************************/
 
@@ -90,37 +90,37 @@ static void update_main_irqs(void)
 
 
 /*
-	IRQ2 timing: the timing of this interrupt is VERY sensitive! If it is at the
-	wrong time, many games will screw up their rendering. Also, since there is
-	no ack on the interrupt, it only fires for a single scanline, so if it fires
-	too early, it's possible it could be missed.
+    IRQ2 timing: the timing of this interrupt is VERY sensitive! If it is at the
+    wrong time, many games will screw up their rendering. Also, since there is
+    no ack on the interrupt, it only fires for a single scanline, so if it fires
+    too early, it's possible it could be missed.
 
-	As far as I can tell, the interrupt is not programmable. It comes from the
-	pair of rotation/video sync chips. There is no obvious location in the
-	rotation RAM where it is specified, so I am assuming it is a hard-coded
-	interrupt.
+    As far as I can tell, the interrupt is not programmable. It comes from the
+    pair of rotation/video sync chips. There is no obvious location in the
+    rotation RAM where it is specified, so I am assuming it is a hard-coded
+    interrupt.
 
-	Through trial and error, here is what I have found. Scanline 170 seems to
-	be the earliest we can fire it and have it work reliably. Firing it later
-	seems to introduce some glitches. Firing it too early means it will get
-	missed and even worse things happen.
+    Through trial and error, here is what I have found. Scanline 170 seems to
+    be the earliest we can fire it and have it work reliably. Firing it later
+    seems to introduce some glitches. Firing it too early means it will get
+    missed and even worse things happen.
 
-	Enable the TWEAK_IRQ2_SCANLINE define at the top of this file to fiddle with
-	the timing.
+    Enable the TWEAK_IRQ2_SCANLINE define at the top of this file to fiddle with
+    the timing.
 
-	pdrift:
-		100-110 = glitchy logo
-		120     = glitchy logo + flickering 16B during logo
-		150-170 = ok, very little logo glitching
-		180-200 = ok, slightly glitchy logo
-		210-220 = ok, but no palette fade
+    pdrift:
+        100-110 = glitchy logo
+        120     = glitchy logo + flickering 16B during logo
+        150-170 = ok, very little logo glitching
+        180-200 = ok, slightly glitchy logo
+        210-220 = ok, but no palette fade
 
-	gforce2:
-		140     = no palette fade up
-		150-200 = ok
+    gforce2:
+        140     = no palette fade up
+        150-200 = ok
 
-	strkfgtr:
-		150-200 = ok
+    strkfgtr:
+        150-200 = ok
 */
 
 static int irq2_scanline = 170;
@@ -187,7 +187,7 @@ MACHINE_INIT( yboard )
 
 /*************************************
  *
- *	Sound comm and interrupts
+ *  Sound comm and interrupts
  *
  *************************************/
 
@@ -210,7 +210,7 @@ static WRITE16_HANDLER( sound_latch_w )
 
 /*************************************
  *
- *	I/O space
+ *  I/O space
  *
  *************************************/
 
@@ -283,14 +283,14 @@ static WRITE16_HANDLER( io_chip_w )
 		/* miscellaneous output */
 		case 0x08/2:
 			/*
-				D7 = /KILL
-				D6 = CONT
-				D5 = /WDCL
-				D4 = /SRES
-				D3 = XRES
-				D2 = YRES
-				D1-D0 = ADC0-1
-			*/
+                D7 = /KILL
+                D6 = CONT
+                D5 = /WDCL
+                D4 = /SRES
+                D3 = XRES
+                D2 = YRES
+                D1-D0 = ADC0-1
+            */
 			segaic16_set_display_enable(data & 0x80);
 			if (((old ^ data) & 0x20) && !(data & 0x20)) watchdog_reset_w(0,0);
 			cpunum_set_input_line(3, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
@@ -315,7 +315,7 @@ static WRITE16_HANDLER( io_chip_w )
 
 /*************************************
  *
- *	Analog ports
+ *  Analog ports
  *
  *************************************/
 
@@ -343,7 +343,7 @@ static WRITE16_HANDLER( analog_w )
 
 /*************************************
  *
- *	Rail Chase Custom video
+ *  Rail Chase Custom video
  *
  *************************************/
 
@@ -362,7 +362,7 @@ static VIDEO_UPDATE( rchase )
 
 /*************************************
  *
- *	Capacitor-backed RAM
+ *  Capacitor-backed RAM
  *
  *************************************/
 
@@ -378,7 +378,7 @@ static NVRAM_HANDLER( yboard )
 
 /*************************************
  *
- *	Main CPU memory handlers
+ *  Main CPU memory handlers
  *
  *************************************/
 
@@ -388,7 +388,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x080000, 0x080007) AM_MIRROR(0x001ff8) AM_READWRITE(segaic16_multiply_0_r, segaic16_multiply_0_w)
 	AM_RANGE(0x082000, 0x083fff) AM_WRITE(sound_latch_w)
 	AM_RANGE(0x084000, 0x08401f) AM_MIRROR(0x001fe0) AM_READWRITE(segaic16_divide_0_r, segaic16_divide_0_w)
-//	AM_RANGE(0x086000, 0x087fff) /DEA0
+//  AM_RANGE(0x086000, 0x087fff) /DEA0
 	AM_RANGE(0x0c0000, 0x0cffff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x100000, 0x10001f) AM_READWRITE(io_chip_r, io_chip_w)
 	AM_RANGE(0x100040, 0x100047) AM_READWRITE(analog_r, analog_w)
@@ -399,7 +399,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Sub CPU memory handlers
+ *  Sub CPU memory handlers
  *
  *************************************/
 
@@ -432,7 +432,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Sound CPU memory handlers
+ *  Sound CPU memory handlers
  *
  *************************************/
 
@@ -444,7 +444,7 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x3e) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x3e) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_READ(soundlatch_r)
@@ -454,7 +454,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Generic port definitions
+ *  Generic port definitions
  *
  *************************************/
 
@@ -551,7 +551,7 @@ INPUT_PORTS_END
 
 /*************************************
  *
- *	Game-specific port definitions
+ *  Game-specific port definitions
  *
  *************************************/
 
@@ -786,7 +786,7 @@ INPUT_PORTS_END
 
 /*************************************
  *
- *	Sound definitions
+ *  Sound definitions
  *
  *************************************/
 
@@ -806,7 +806,7 @@ static struct SEGAPCMinterface segapcm_interface =
 
 /*************************************
  *
- *	Generic machine drivers
+ *  Generic machine drivers
  *
  *************************************/
 
@@ -823,7 +823,7 @@ static MACHINE_DRIVER_START( yboard )
 	MDRV_CPU_PROGRAM_MAP(suby_map,0)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, SOUND_CLOCK/4)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 
@@ -867,15 +867,15 @@ MACHINE_DRIVER_END
 
 /*************************************
  *
- *	ROM definition(s)
+ *  ROM definition(s)
  *
  *************************************/
 
 /**************************************************************************************************************************
  **************************************************************************************************************************
  **************************************************************************************************************************
-	Galaxy Force 2, Sega Y-board
-	CPU: 68000 (317-????)
+    Galaxy Force 2, Sega Y-board
+    CPU: 68000 (317-????)
 */
 ROM_START( gforce2 )
 	ROM_REGION( 0x080000, REGION_CPU1, 0 ) // M
@@ -943,8 +943,8 @@ ROM_START( gforce2 )
 ROM_END
 
 /**************************************************************************************************************************
-	Galaxy Force 2, Sega Y-board
-	CPU: 68000 (317-????)
+    Galaxy Force 2, Sega Y-board
+    CPU: 68000 (317-????)
 */
 ROM_START( gforce2j )
 	ROM_REGION( 0x080000, REGION_CPU1, 0 ) // M
@@ -1015,8 +1015,8 @@ ROM_END
 /**************************************************************************************************************************
  **************************************************************************************************************************
  **************************************************************************************************************************
-	G-Loc, Sega Y-board
-	CPU: 68000 (317-????)
+    G-Loc, Sega Y-board
+    CPU: 68000 (317-????)
 */
 ROM_START( gloc )
 	ROM_REGION( 0x080000, REGION_CPU1, 0 ) // M
@@ -1034,11 +1034,8 @@ ROM_START( gloc )
 	ROM_LOAD16_BYTE( "13029",  0x000001, 0x20000, CRC(f3638efb) SHA1(f82a46fc8616cbe0235746161c587e54adecfe50) )
 
 	ROM_REGION16_BE( 0x200000, REGION_GFX2, 0)
-	/* some gfx roms are missing .. */
-	ROM_LOAD16_BYTE( "13039",  0x000000, 0x80000, NO_DUMP )
-	ROM_LOAD16_BYTE( "13037",  0x000001, 0x80000, NO_DUMP )
-	ROM_FILL(0, 0x100000, 0xff)
-	/* these were taken from strkfgtr; based on the ROM number, they should be correct */
+	ROM_LOAD16_BYTE( "13039",  0x000000, 0x80000, CRC(d7e1266d) SHA1(b0fc4cc60a7e876ae2af343bba6da3fb926ea9c5) )
+	ROM_LOAD16_BYTE( "13037",  0x000001, 0x80000, CRC(b801a250) SHA1(7d1f6a1f2022a4f302f22d11fa79057cf8134ad2) )
 	ROM_LOAD16_BYTE( "13040",  0x100000, 0x80000, CRC(4aeb3a85) SHA1(5521fd2d3956839bdbe7b70a9e60cd9fb72a42f1) )
 	ROM_LOAD16_BYTE( "13038",  0x100001, 0x80000, CRC(0b2edb6d) SHA1(04944d6e6f020cd6d33641110847706516630227) )
 
@@ -1092,8 +1089,8 @@ ROM_END
 /**************************************************************************************************************************
  **************************************************************************************************************************
  **************************************************************************************************************************
-	Power Drift, Sega Y-board
-	CPU: 68000 (317-????)
+    Power Drift, Sega Y-board
+    CPU: 68000 (317-????)
 */
 ROM_START( pdrift )
 	ROM_REGION( 0x080000, REGION_CPU1, 0 ) // M
@@ -1169,8 +1166,8 @@ ROM_START( pdrift )
 ROM_END
 
 /**************************************************************************************************************************
-	Power Drift, Sega Y-board
-	CPU: 68000 (317-????)
+    Power Drift, Sega Y-board
+    CPU: 68000 (317-????)
 */
 ROM_START( pdriftj )
 	ROM_REGION( 0x080000, REGION_CPU1, 0 ) // M
@@ -1249,8 +1246,8 @@ ROM_END
 /**************************************************************************************************************************
  **************************************************************************************************************************
  **************************************************************************************************************************
-	Rail Chase, Sega Y-board
-	CPU: 68000 (317-????)
+    Rail Chase, Sega Y-board
+    CPU: 68000 (317-????)
 */
 ROM_START( rchase )
 	ROM_REGION( 0x080000, REGION_CPU1, 0 ) // M
@@ -1313,8 +1310,8 @@ ROM_END
 /**************************************************************************************************************************
  **************************************************************************************************************************
  **************************************************************************************************************************
-	Strike Fighter, Sega Y-board
-	CPU: 68000 (317-????)
+    Strike Fighter, Sega Y-board
+    CPU: 68000 (317-????)
 */
 ROM_START( strkfgtr )
 	ROM_REGION( 0x080000, REGION_CPU1, 0 ) // M
@@ -1387,7 +1384,7 @@ ROM_END
 
 /*************************************
  *
- *	Generic driver initialization
+ *  Generic driver initialization
  *
  *************************************/
 
@@ -1400,13 +1397,13 @@ static DRIVER_INIT( generic_yboard )
 
 /*************************************
  *
- *	Game driver(s)
+ *  Game driver(s)
  *
  *************************************/
 
 GAME( 1988, gforce2,  0,       yboard, gforce2,  generic_yboard, ROT0, "Sega", "Galaxy Force 2"  )
 GAME( 1988, gforce2j, gforce2, yboard, gforce2,  generic_yboard, ROT0, "Sega", "Galaxy Force 2 (Japan)"  )
-GAMEX(1990, gloc,     0,       yboard, gloc,     generic_yboard, ROT0, "Sega", "G-LOC Air Battle (US)",GAME_IMPERFECT_GRAPHICS  )
+GAME( 1990, gloc,     0,       yboard, gloc,     generic_yboard, ROT0, "Sega", "G-LOC Air Battle (US)"  )
 GAME( 1988, pdrift,   0,       yboard, pdrift,   generic_yboard, ROT0, "Sega", "Power Drift"  )
 GAME( 1988, pdriftj,  pdrift,  yboard, pdrift,   generic_yboard, ROT0, "Sega", "Power Drift (Japan)" )
 GAME( 1991, rchase,   0,       rchase, rchase,   generic_yboard, ROT0, "Sega", "Rail Chase (Japan)" )

@@ -1,4 +1,4 @@
-/*	Konami ZR107 */
+/*  Konami ZR107 */
 
 #include "driver.h"
 #include "vidhrdw/konamiic.h"
@@ -45,7 +45,7 @@ VIDEO_START( zr107 )
 	 	{{ 0, 0}, {0, 0}, {0, 0}, {0, 0}}
 	};
 
-	if (K056832_vh_start(REGION_GFX1, K056832_BPP_4dj, 1, scrolld, game_tile_callback))
+	if (K056832_vh_start(REGION_GFX1, K056832_BPP_4dj, 1, scrolld, game_tile_callback, 0))
 		return 1;
 
 	return 0;
@@ -220,7 +220,7 @@ static READ16_HANDLER( sndcomm68k_r )
 
 static WRITE16_HANDLER( sndcomm68k_w )
 {
-//	logerror("68K: write %x to %x\n", data, offset);
+//  logerror("68K: write %x to %x\n", data, offset);
 	sndtoppc[offset] = data;
 }
 
@@ -252,7 +252,7 @@ static MACHINE_DRIVER_START( zr107 )
 	MDRV_CPU_PROGRAM_MAP(zr107_map, 0)
 
 	MDRV_CPU_ADD(M68000, 64000000/8)	/* 8MHz */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
 
 	MDRV_FRAMES_PER_SECOND(60)

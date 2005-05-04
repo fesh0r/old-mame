@@ -1,15 +1,15 @@
 /*******************************************************************************
 
-	Irem M107 games:
+    Irem M107 games:
 
-	Fire Barrel 							(c) 1993 Irem Corporation
-	Dream Soccer '94						(c) 1994 Data East Corporation
-	World PK Soccer							(c) 1995 Jaleco
+    Fire Barrel                             (c) 1993 Irem Corporation
+    Dream Soccer '94                        (c) 1994 Data East Corporation
+    World PK Soccer                         (c) 1995 Jaleco
 
 
-	Graphics glitches in both games.
+    Graphics glitches in both games.
 
-	Emulation by Bryan McPhail, mish@tendril.co.uk
+    Emulation by Bryan McPhail, mish@tendril.co.uk
 
 *******************************************************************************/
 
@@ -99,7 +99,7 @@ static WRITE8_HANDLER( m92_soundlatch_w )
 	{
 		timer_set(TIME_NOW,V30_ASSERT,setvector_callback);
 		soundlatch_w(0,data);
-//		logerror("soundlatch_w %02x\n",data);
+//      logerror("soundlatch_w %02x\n",data);
 	}
 }
 
@@ -115,7 +115,7 @@ static READ8_HANDLER( m92_soundlatch_r )
 	if (offset == 0)
 	{
 		int res = soundlatch_r(offset);
-//		logerror("soundlatch_r %02x\n",res);
+//      logerror("soundlatch_r %02x\n",res);
 		return res;
 	}
 	else return 0xff;
@@ -133,7 +133,7 @@ static WRITE8_HANDLER( m92_sound_status_w )
 {
 	if (offset == 0)
 	{
-//		usrintf_showmessage("sound answer %02x",data);
+//      usrintf_showmessage("sound answer %02x",data);
 		sound_status = data;
 	}
 }
@@ -516,7 +516,7 @@ static MACHINE_DRIVER_START( firebarr )
 	MDRV_CPU_VBLANK_INT(m107_raster_interrupt,256) /* 8 prelines, 240 visible lines, 8 for vblank? */
 
 	MDRV_CPU_ADD(V30, 14318000/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 14.318 MHz */
+	/* audio CPU */	/* 14.318 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(60)
@@ -556,7 +556,7 @@ static MACHINE_DRIVER_START( dsoccr94 )
 	MDRV_CPU_VBLANK_INT(m107_interrupt,1)
 
 	MDRV_CPU_ADD(V30, 14318000/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 14.318 MHz */
+	/* audio CPU */	/* 14.318 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(60)

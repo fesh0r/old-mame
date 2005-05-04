@@ -6,10 +6,10 @@
 
   Crypt Killer
   Konami, 1995
-  
+
   PCB Layout
   ----------
-  
+
   GQ420  PWB354905B
   |----------------------------------------------------------|
   |CN14     420A01.2G  420A02.3M           CN6  CN7   CN8    |
@@ -36,7 +36,7 @@
   | KM48V514  KM48V514                (U420UAA04)            |
   | KM48V514  KM48V514                                       |
   |----------------------------------------------------------|
-  
+
   Notes:
         CN6, CN7, CN8: For connection of guns.
         CN3 : For connection of extra controls/buttons.
@@ -424,7 +424,7 @@ static MACHINE_DRIVER_START( konamigq )
 	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
 
 	MDRV_CPU_ADD_TAG( "sound", M68000, 8000000 )
-	MDRV_CPU_FLAGS( CPU_AUDIO_CPU )
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP( sndreadmem, sndwritemem )
 	MDRV_CPU_PERIODIC_INT( irq2_line_hold, 480 )
 

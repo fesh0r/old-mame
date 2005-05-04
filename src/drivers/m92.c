@@ -1,96 +1,97 @@
 /*****************************************************************************
 
-	Irem M92 system games:
+    Irem M92 system games:
 
-	Gunforce (World)				M92-A	(c) 1991 Irem Corp
-	Gunforce (USA)					M92-A	(c) 1991 Irem America Corp
-	Gunforce (Japan)				M92-A	(c) 1991 Irem Corp
-	Blademaster	(World)						(c) 1991 Irem Corp
-	Lethal Thunder (World)					(c) 1991 Irem Corp
-	Thunder Blaster (Japan)					(c) 1991 Irem Corp
-	Undercover Cops	(World)					(c) 1992 Irem Corp
-	Undercover Cops	(Japan)					(c) 1992 Irem Corp
-	Mystic Riders (World)					(c) 1992 Irem Corp
-	Gun Hohki (Japan)						(c) 1992 Irem Corp
-	Major Title 2 (World)			M92-F	(c) 1992 Irem Corp
-	The Irem Skins Game (USA Set 1)	M92-F	(c) 1992 Irem America Corp
-	The Irem Skins Game (USA Set 2)	M92-F	(c) 1992 Irem America Corp
-	Hook (World)							(c) 1992 Irem Corp
-	Hook (USA)								(c) 1992 Irem America Corp
-	R-Type Leo (World)						(c) 1992 Irem Corp
-	R-Type Leo (Japan)						(c) 1992 Irem Corp
-	In The Hunt	(World)				M92-E	(c) 1993 Irem Corp
-	In The Hunt	(USA)				M92-E	(c) 1993 Irem Corp
-	Kaitei Daisensou (Japan)		M92-E	(c) 1993 Irem Corp
-	Ninja Baseball Batman (USA)				(c) 1993 Irem America Corp
-	Yakyuu Kakutou League-Man (Japan)		(c) 1993 Irem Corp
-	Perfect Soldiers (Japan)		M92-G	(c) 1993 Irem Corp
-	Dream Soccer 94 (Japan)			M92-G	(c) 1994 Irem Corp
-	Gunforce 2 (US)					M92-G	(c) 1994 Irem Corp
-	Geostorm (Japan)				M92-G	(c) 1994 Irem Corp
+    Gunforce (World)                M92-A   (c) 1991 Irem Corp
+    Gunforce (USA)                  M92-A   (c) 1991 Irem America Corp
+    Gunforce (Japan)                M92-A   (c) 1991 Irem Corp
+    Blademaster (World)                     (c) 1991 Irem Corp
+    Lethal Thunder (World)                  (c) 1991 Irem Corp
+    Thunder Blaster (Japan)                 (c) 1991 Irem Corp
+    Undercover Cops (World)                 (c) 1992 Irem Corp
+    Undercover Cops (Japan)                 (c) 1992 Irem Corp
+    Mystic Riders (World)                   (c) 1992 Irem Corp
+    Gun Hohki (Japan)                       (c) 1992 Irem Corp
+    Major Title 2 (World)           M92-F   (c) 1992 Irem Corp
+    The Irem Skins Game (USA Set 1) M92-F   (c) 1992 Irem America Corp
+    The Irem Skins Game (USA Set 2) M92-F   (c) 1992 Irem America Corp
+    Hook (World)                            (c) 1992 Irem Corp
+    Hook (Japan)                            (c) 1992 Irem Corp
+    Hook (USA)                              (c) 1992 Irem America Corp
+    R-Type Leo (World)                      (c) 1992 Irem Corp
+    R-Type Leo (Japan)                      (c) 1992 Irem Corp
+    In The Hunt (World)             M92-E   (c) 1993 Irem Corp
+    In The Hunt (USA)               M92-E   (c) 1993 Irem Corp
+    Kaitei Daisensou (Japan)        M92-E   (c) 1993 Irem Corp
+    Ninja Baseball Batman (USA)             (c) 1993 Irem America Corp
+    Yakyuu Kakutou League-Man (Japan)       (c) 1993 Irem Corp
+    Perfect Soldiers (Japan)        M92-G   (c) 1993 Irem Corp
+    Dream Soccer 94 (Japan)         M92-G   (c) 1994 Irem Corp
+    Gunforce 2 (US)                 M92-G   (c) 1994 Irem Corp
+    Geostorm (Japan)                M92-G   (c) 1994 Irem Corp
 
 System notes:
-	Each game has an encrypted sound cpu (see irem_cpu.c), the sound cpu and
-	the sprite chip are on the game board rather than the main board and
-	can differ between games.
+    Each game has an encrypted sound cpu (see irem_cpu.c), the sound cpu and
+    the sprite chip are on the game board rather than the main board and
+    can differ between games.
 
-	Irem Skins Game has an eeprom and ticket payout(?).
-	R-Type Leo & Lethal Thunder have a memory card.
+    Irem Skins Game has an eeprom and ticket payout(?).
+    R-Type Leo & Lethal Thunder have a memory card.
 
-	Many games use raster IRQ's for special video effects, eg,
-		* Scrolling water in Undercover Cops
-		* Score display in R-Type Leo
+    Many games use raster IRQ's for special video effects, eg,
+        * Scrolling water in Undercover Cops
+        * Score display in R-Type Leo
 
-	These are slow to emulate, and can be turned on/off by pressing
-	F1 - they are on by default.
-	Todo:  Raster effects don't work in flipscreen mode.
+    These are slow to emulate, and can be turned on/off by pressing
+    F1 - they are on by default.
+    Todo:  Raster effects don't work in flipscreen mode.
 
 Glitch list!
 
-	Gunforce:
-		Animated water sometimes doesn't appear on level 5 (but it
-		always appears if you cheat and jump straight to the level).
-		Almost certainly a core bug.
+    Gunforce:
+        Animated water sometimes doesn't appear on level 5 (but it
+        always appears if you cheat and jump straight to the level).
+        Almost certainly a core bug.
 
-	Irem Skins:
-		- Priority bug: you can't see the arrow on the top right map.
-		- Gfx problems at the players information during attract mode in
-		  Skins Game *only*, Major Title is fine (that part of attract mode
-		  is different).
-		- Eeprom load/save not yet implemented - when done, MT2EEP should
-		  be removed from the ROM definition.
+    Irem Skins:
+        - Priority bug: you can't see the arrow on the top right map.
+        - Gfx problems at the players information during attract mode in
+          Skins Game *only*, Major Title is fine (that part of attract mode
+          is different).
+        - Eeprom load/save not yet implemented - when done, MT2EEP should
+          be removed from the ROM definition.
 
-	Perfect Soliders:
-		Shortly into the fight, the sound CPU enters a tight loop, conitnuously
-		writing to the status port and with interrupts disabled. I don't see how
-		it is supposed to get out of that loop. Maybe it's not supposed to enter
-		it at all?
+    Perfect Soliders:
+        Shortly into the fight, the sound CPU enters a tight loop, conitnuously
+        writing to the status port and with interrupts disabled. I don't see how
+        it is supposed to get out of that loop. Maybe it's not supposed to enter
+        it at all?
 
-	LeagueMan:
-		Raster effects don't work properly (not even cpu time per line?).
+    LeagueMan:
+        Raster effects don't work properly (not even cpu time per line?).
 
-	Dream Soccer 94:
-		Slight priority problems when goal scoring animation is played
+    Dream Soccer 94:
+        Slight priority problems when goal scoring animation is played
 
-	Emulation by Bryan McPhail, mish@tendril.co.uk
-	Thanks to Chris Hardy and Olli Bergmann too!
+    Emulation by Bryan McPhail, mish@tendril.co.uk
+    Thanks to Chris Hardy and Olli Bergmann too!
 
 
 Sound programs:
 
 Game                          Year  ID string
 ----------------------------  ----  ------------
-Gunforce					  1991  -
-Blade Master				  1991  -
-Lethal Thunder				  1991  -
-Undercover Cops				  1992  Rev 3.40 M92
-Mystic Riders				  1992  Rev 3.44 M92
-Major Title 2				  1992  Rev 3.44 M92
-Hook						  1992  Rev 3.45 M92
-R-Type Leo					  1992  Rev 3.45 M92
-In The Hunt					  1993  Rev 3.45 M92
-Ninja Baseball Batman		  1993  Rev 3.50 M92
-Perfect Soldiers			  1993  Rev 3.50 M92
+Gunforce                      1991  -
+Blade Master                  1991  -
+Lethal Thunder                1991  -
+Undercover Cops               1992  Rev 3.40 M92
+Mystic Riders                 1992  Rev 3.44 M92
+Major Title 2                 1992  Rev 3.44 M92
+Hook                          1992  Rev 3.45 M92
+R-Type Leo                    1992  Rev 3.45 M92
+In The Hunt                   1993  Rev 3.45 M92
+Ninja Baseball Batman         1993  Rev 3.50 M92
+Perfect Soldiers              1993  Rev 3.50 M92
 World PK Soccer               1995  Rev 3.51 M92
 Fire Barrel                   1993  Rev 3.52 M92
 Dream Soccer '94              1994  Rev 3.53 M92
@@ -248,14 +249,14 @@ static void set_m92_bank(void)
 static READ8_HANDLER( m92_eeprom_r )
 {
 	unsigned char *RAM = memory_region(REGION_USER1);
-//	logerror("%05x: EEPROM RE %04x\n",activecpu_get_pc(),offset);
+//  logerror("%05x: EEPROM RE %04x\n",activecpu_get_pc(),offset);
 	return RAM[offset/2];
 }
 
 static WRITE8_HANDLER( m92_eeprom_w )
 {
 	unsigned char *RAM = memory_region(REGION_USER1);
-//	logerror("%05x: EEPROM WR %04x\n",activecpu_get_pc(),offset);
+//  logerror("%05x: EEPROM WR %04x\n",activecpu_get_pc(),offset);
 	RAM[offset/2]=data;
 }
 
@@ -314,7 +315,7 @@ static WRITE8_HANDLER( m92_soundlatch_w )
 	{
 		timer_set(TIME_NOW,V30_ASSERT,setvector_callback);
 		soundlatch_w(0,data);
-//		logerror("soundlatch_w %02x\n",data);
+//      logerror("soundlatch_w %02x\n",data);
 	}
 }
 
@@ -331,7 +332,7 @@ static READ8_HANDLER( m92_soundlatch_r )
 	if (offset == 0)
 	{
 		int res = soundlatch_r(offset);
-//		logerror("soundlatch_r %02x\n",res);
+//      logerror("soundlatch_r %02x\n",res);
 		return res;
 	}
 	else return 0xff;
@@ -418,7 +419,7 @@ static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x88, 0x8f) AM_WRITE(m92_pf2_control_w)
 	AM_RANGE(0x90, 0x97) AM_WRITE(m92_pf3_control_w)
 	AM_RANGE(0x98, 0x9f) AM_WRITE(m92_master_control_w)
-//	AM_RANGE(0xc0, 0xc1) AM_WRITE(m92_unknown_w)	// sound related?
+//  AM_RANGE(0xc0, 0xc1) AM_WRITE(m92_unknown_w)    // sound related?
 ADDRESS_MAP_END
 
 /******************************************************************************/
@@ -476,7 +477,7 @@ INPUT_PORTS_START( bmaster )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
+	PORT_START	/* Dip switch bank 3 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -566,7 +567,7 @@ INPUT_PORTS_START( lethalth )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
+	PORT_START	/* Dip switch bank 3 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -623,31 +624,7 @@ INPUT_PORTS_START( hook )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	IREM_PORT_UNUSED	/* Game manual only mentions 2 dips */
 INPUT_PORTS_END
 
 INPUT_PORTS_START( majtitl2 )
@@ -659,21 +636,21 @@ INPUT_PORTS_START( majtitl2 )
 	IREM_SYSTEM_DIPSWITCH_4PLAYERS
 
 	PORT_START	/* Dip switch bank 1 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) ) /* Probably difficulty */
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x01, 0x01, "Given Holes/Stroke Play" )
+	PORT_DIPSETTING(    0x00, "1" )
+	PORT_DIPSETTING(    0x01, "2" )
+	PORT_DIPNAME( 0x02, 0x02, "Ginen Holes/Match or Skins" )
+	PORT_DIPSETTING(    0x00, "1" )
+	PORT_DIPSETTING(    0x02, "2" )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) ) /* One of these is continue */
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, "Control Panel" )	/* 4 Way joysticks with 2 buttons each player */
+	PORT_DIPSETTING(    0x10, "2 Joysticks" )
+	PORT_DIPSETTING(    0x00, "4 Joysticks" )
 	PORT_DIPNAME( 0x20, 0x00, "Any Button to Start" )
 	PORT_DIPSETTING(    0x20, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
@@ -682,16 +659,15 @@ INPUT_PORTS_START( majtitl2 )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
-	PORT_DIPNAME( 0x01, 0x01, "Clear Data" ) /* This could actually be a service button, rather tham a DIP */
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_START	/* Dip switch bank 3 */
+	PORT_DIPNAME( 0x01, 0x01, "Ticket Dispenser" )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )	/* "Ticket payout function is not working now" will be shown on screen */
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )	/* Stored data is shown on screen with the option to clear data */
+	PORT_DIPNAME( 0x02, 0x06, "Points Per Ticket" ) /* Conversion Rate for Ticket */
+	PORT_DIPSETTING(    0x06, "1 Point - 1 Ticket" )
+	PORT_DIPSETTING(    0x06, "2 Points - 1 Ticket" )
+	PORT_DIPSETTING(    0x02, "5 Points - 1 Ticket" )
+	PORT_DIPSETTING(    0x00, "10 Points - 1 Ticket" )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -704,9 +680,9 @@ INPUT_PORTS_START( majtitl2 )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, "Deltronics Model" ) /* Ticket Despenser Model Type */
+	PORT_DIPSETTING(    0x80, "DL 1275" )
+	PORT_DIPSETTING(    0x00, "DL 4SS" )
 INPUT_PORTS_END
 
 INPUT_PORTS_START( mysticri )
@@ -740,7 +716,7 @@ INPUT_PORTS_START( mysticri )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
+	PORT_START	/* Dip switch bank 3 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -799,31 +775,7 @@ INPUT_PORTS_START( uccops )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	IREM_PORT_UNUSED	/* Game manual only mentions 2 dips */
 INPUT_PORTS_END
 
 INPUT_PORTS_START( rtypeleo )
@@ -881,39 +833,15 @@ INPUT_PORTS_START( inthunt )
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, "Any Button to Start" )
+	PORT_DIPSETTING(    0x20, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	IREM_PORT_UNUSED	/* Game manual only mentions 2 dips */
 INPUT_PORTS_END
 
 INPUT_PORTS_START( nbbatman )
@@ -947,7 +875,7 @@ INPUT_PORTS_START( nbbatman )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
+	PORT_START	/* Dip switch bank 3 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1023,7 +951,7 @@ INPUT_PORTS_START( psoldier )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) ) /* One of these is continue */
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x00, "Any Button to Start" )
@@ -1034,7 +962,7 @@ INPUT_PORTS_START( psoldier )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
+	PORT_START	/* Dip switch bank 3 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1092,7 +1020,7 @@ INPUT_PORTS_START( dsccr94j )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
+	PORT_START	/* Dip switch bank 3 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1313,7 +1241,7 @@ static MACHINE_DRIVER_START( nonraster )
 	MDRV_CPU_VBLANK_INT(m92_interrupt,1)
 
 	MDRV_CPU_ADD(V30, 14318180/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 14.31818 MHz */
+	/* audio CPU */	/* 14.31818 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(60)
@@ -1352,7 +1280,7 @@ static MACHINE_DRIVER_START( lethalth )
 	MDRV_CPU_VBLANK_INT(m92_interrupt,1)
 
 	MDRV_CPU_ADD(V30, 14318180/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 14.31818 MHz */
+	/* audio CPU */	/* 14.31818 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(60)
@@ -1391,7 +1319,7 @@ static MACHINE_DRIVER_START( psoldier )
 	MDRV_CPU_VBLANK_INT(m92_interrupt,1)
 
 	MDRV_CPU_ADD(V30, 14318180/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 14.31818 MHz */
+	/* audio CPU */	/* 14.31818 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(60)
@@ -2301,7 +2229,7 @@ static READ8_HANDLER( kaiteids_cycle_r ) // by bkc
 
 	/* If possible skip this cpu segment - idle loop */
 	if (d>159 && d<0xf0000000 && line<247) {
-		if ((activecpu_get_pc()==0x885 || activecpu_get_pc()==0x8ac) 
+		if ((activecpu_get_pc()==0x885 || activecpu_get_pc()==0x8ac)
 			&& m92_ram[0x25f]==0 && offset==1) { // 0x8ac , 0x885
 			/* Adjust in-game counter, based on cycles left to run */
 			int old;
@@ -2542,7 +2470,7 @@ static DRIVER_INIT( lethalth )
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x20, 0x21, 0, 0, MWA8_NOP);
 
 	/* This game sets the raster IRQ position, but the interrupt routine
-		is just an iret, no need to emulate it */
+        is just an iret, no need to emulate it */
 	m92_raster_enable=0;
 	m92_game_kludge=3; /* No upper palette bank? It could be a different motherboard */
 }

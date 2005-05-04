@@ -257,7 +257,7 @@ INLINE void sync( void )
 	hd6309.int_state |= HD6309_SYNC;	 /* HJB 990227 */
 	CHECK_IRQ_LINES();
 	/* if HD6309_SYNC has not been cleared by CHECK_IRQ_LINES(),
-	 * stop execution until the interrupt lines change. */
+     * stop execution until the interrupt lines change. */
 	if( hd6309.int_state & HD6309_SYNC )
 		if (hd6309_ICount > 0) hd6309_ICount = 0;
 }
@@ -265,11 +265,13 @@ INLINE void sync( void )
 /* $14 sexw inherent */
 INLINE void sexw( void )
 {
-	UINT16 t;
-	t = SIGNED(F);
-	W = t;
-	CLR_NZ;
-	SET_NZ16(t);
+	PAIR q;
+	q.d = SIGNED_16(W);
+	D = q.w.h;
+	W = q.w.l;
+	CLR_NZV;
+	SET_N16(D);
+	SET_Z(q.d);
 }
 
 /* $15 ILLEGAL */
@@ -1390,10 +1392,10 @@ INLINE void cwai( void )
 	IMMBYTE(t);
 	CC &= t;
 	/*
-	 * CWAI stacks the entire machine state on the hardware stack,
-	 * then waits for an interrupt; when the interrupt is taken
-	 * later, the state is *not* saved again after CWAI.
-	 */
+     * CWAI stacks the entire machine state on the hardware stack,
+     * then waits for an interrupt; when the interrupt is taken
+     * later, the state is *not* saved again after CWAI.
+     */
 	CC |= CC_E; 		/* HJB 990225: save entire state */
 	PUSHWORD(pPC);
 	PUSHWORD(pU);
@@ -4496,7 +4498,7 @@ INLINE void adcd_di( void )
 {
 	UINT32	r;
 	PAIR	t;
-	
+
 	DIRWORD(t);
 	r = D + t.w.l + (CC & CC_C);
 	CLR_NZVC;

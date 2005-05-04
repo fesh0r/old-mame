@@ -1,8 +1,8 @@
 /******************************************************************************
 
-	nbmj8891 - Nichibutsu Mahjong games for years 1988-1991
+    nbmj8891 - Nichibutsu Mahjong games for years 1988-1991
 
-	Driver by Takahiro Nogi <nogi@kt.rim.or.jp> 1999/11/05 -
+    Driver by Takahiro Nogi <nogi@kt.rim.or.jp> 1999/11/05 -
 
 ******************************************************************************/
 /******************************************************************************
@@ -88,10 +88,10 @@ static DRIVER_INIT( gionbana )
 	int i;
 
 	/* this is one possible way to rearrange the protection ROM data to get the
-	   expected 0x5ece checksum. It's probably completely wrong! But since the
-	   game doesn't do anything else with that ROM, this is more than enough. I
-	   could just fill this are with fake data, the only thing that matters is
-	   the checksum. */
+       expected 0x5ece checksum. It's probably completely wrong! But since the
+       game doesn't do anything else with that ROM, this is more than enough. I
+       could just fill this are with fake data, the only thing that matters is
+       the checksum. */
 	for (i = 0;i < 0x20000;i++)
 	{
 		prot[i] = BITSWAP8(prot[i],2,7,3,5,0,6,4,1);
@@ -116,10 +116,10 @@ static DRIVER_INIT( omotesnd )
 	int i;
 
 	/* this is one possible way to rearrange the protection ROM data to get the
-	   expected 0x5ece checksum. It's probably completely wrong! But since the
-	   game doesn't do anything else with that ROM, this is more than enough. I
-	   could just fill this are with fake data, the only thing that matters is
-	   the checksum. */
+       expected 0x5ece checksum. It's probably completely wrong! But since the
+       game doesn't do anything else with that ROM, this is more than enough. I
+       could just fill this are with fake data, the only thing that matters is
+       the checksum. */
 	for (i = 0;i < 0x20000;i++)
 	{
 		prot[i] = BITSWAP8(prot[i],2,7,3,5,0,6,4,1);
@@ -138,8 +138,8 @@ static DRIVER_INIT( omotesnd )
 	ROM[0x0233] = 0x00;
 	ROM[0x0234] = 0x00;
 	// Voice ROM check skip
-//	ROM[0x0269] = 0x00;
-//	ROM[0x026a] = 0x00;
+//  ROM[0x0269] = 0x00;
+//  ROM[0x026a] = 0x00;
 #endif
 
 	init_nb1413m3();
@@ -174,10 +174,10 @@ static DRIVER_INIT( telmahjn )
 	int i;
 
 	/* this is one possible way to rearrange the protection ROM data to get the
-	   expected 0x7354 checksum. It's probably completely wrong! But since the
-	   game doesn't do anything else with that ROM, this is more than enough. I
-	   could just fill this are with fake data, the only thing that matters is
-	   the checksum. */
+       expected 0x7354 checksum. It's probably completely wrong! But since the
+       game doesn't do anything else with that ROM, this is more than enough. I
+       could just fill this are with fake data, the only thing that matters is
+       the checksum. */
 	for (i = 0;i < 0x20000;i++)
 	{
 		prot[i] = BITSWAP8(prot[i + 0x20000],7,0,4,1,5,2,6,3);
@@ -194,10 +194,10 @@ static DRIVER_INIT( mgmen89 )
 	int i;
 
 	/* this is one possible way to rearrange the protection ROM data to get the
-	   expected 0x4b98 checksum. It's probably completely wrong! But since the
-	   game doesn't do anything else with that ROM, this is more than enough. I
-	   could just fill this are with fake data, the only thing that matters is
-	   the checksum. */
+       expected 0x4b98 checksum. It's probably completely wrong! But since the
+       game doesn't do anything else with that ROM, this is more than enough. I
+       could just fill this are with fake data, the only thing that matters is
+       the checksum. */
 	for (i = 0;i < 0x20000;i++)
 	{
 		prot[i] = BITSWAP8(prot[i],5,6,1,0,7,3,2,4);
@@ -218,10 +218,10 @@ static DRIVER_INIT( mjfocus )
 	for (i = 0; i < 0x800; i++) ram[i] = 0x00;
 
 	/* this is one possible way to rearrange the protection ROM data to get the
-	   expected 0x7354 checksum. It's probably completely wrong! But since the
-	   game doesn't do anything else with that ROM, this is more than enough. I
-	   could just fill this are with fake data, the only thing that matters is
-	   the checksum. */
+       expected 0x7354 checksum. It's probably completely wrong! But since the
+       game doesn't do anything else with that ROM, this is more than enough. I
+       could just fill this are with fake data, the only thing that matters is
+       the checksum. */
 	for (i = 0;i < 0x20000;i++)
 	{
 		prot[i] = BITSWAP8(prot[i + 0x20000],7,0,4,1,5,2,6,3);
@@ -276,10 +276,10 @@ static DRIVER_INIT( mjnanpas )
 	memory_region(REGION_CPU1)[0x003d] = 0x01;	// force the protection check to be executed
 
 	/* this is one possible way to rearrange the protection ROM data to get the
-	   expected 0xfe1a checksum. It's probably completely wrong! But since the
-	   game doesn't do anything else with that ROM, this is more than enough. I
-	   could just fill this are with fake data, the only thing that matters is
-	   the checksum. */
+       expected 0xfe1a checksum. It's probably completely wrong! But since the
+       game doesn't do anything else with that ROM, this is more than enough. I
+       could just fill this are with fake data, the only thing that matters is
+       the checksum. */
 	for (i = 0;i < 0x20000;i++)
 	{
 		prot[i] = BITSWAP8(prot[i + 0x20000],0,5,2,3,6,7,1,4);
@@ -353,10 +353,10 @@ static DRIVER_INIT( pairsnb )
 	int i;
 
 	/* this is one possible way to rearrange the protection ROM data to get the
-	   expected 0x4b98 checksum. It's probably completely wrong! But since the
-	   game doesn't do anything else with that ROM, this is more than enough. I
-	   could just fill this are with fake data, the only thing that matters is
-	   the checksum. */
+       expected 0x4b98 checksum. It's probably completely wrong! But since the
+       game doesn't do anything else with that ROM, this is more than enough. I
+       could just fill this are with fake data, the only thing that matters is
+       the checksum. */
 	for (i = 0;i < 0x20000;i++)
 	{
 		prot[i] = BITSWAP8(prot[i],5,6,1,0,7,3,2,4);
@@ -373,10 +373,10 @@ static DRIVER_INIT( pairsten )
 	int i;
 
 	/* this is one possible way to rearrange the protection ROM data to get the
-	   expected 0x8374 checksum. It's probably completely wrong! But since the
-	   game doesn't do anything else with that ROM, this is more than enough. I
-	   could just fill this are with fake data, the only thing that matters is
-	   the checksum. */
+       expected 0x8374 checksum. It's probably completely wrong! But since the
+       game doesn't do anything else with that ROM, this is more than enough. I
+       could just fill this are with fake data, the only thing that matters is
+       the checksum. */
 	for (i = 0;i < 0x20000;i++)
 	{
 		prot[i] = BITSWAP8(prot[i + 0x20000],5,6,0,4,3,7,1,2);
@@ -560,6 +560,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( readport_gionbana, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
 	AM_RANGE(0x90, 0x90) AM_READ(nb1413m3_inputport0_r)
 	AM_RANGE(0xa0, 0xa0) AM_READ(nb1413m3_inputport1_r)
@@ -570,6 +571,7 @@ static ADDRESS_MAP_START( readport_gionbana, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_gionbana, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0x20, 0x27) AM_WRITE(nbmj8891_blitter_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(nbmj8891_clutsel_w)
@@ -579,13 +581,14 @@ static ADDRESS_MAP_START( writeport_gionbana, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x81, 0x81) AM_WRITE(YM3812_write_port_0_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
-//	AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(nbmj8891_vramsel_w)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_mgion, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0x30, 0x37) AM_WRITE(nbmj8891_blitter_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(nbmj8891_clutsel_w)
@@ -595,13 +598,14 @@ static ADDRESS_MAP_START( writeport_mgion, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x81, 0x81) AM_WRITE(YM3812_write_port_0_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
-//	AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(nbmj8891_vramsel_w)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport_omotesnd, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
 	AM_RANGE(0x81, 0x81) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x90, 0x90) AM_READ(nb1413m3_inputport0_r)
@@ -614,12 +618,13 @@ static ADDRESS_MAP_START( readport_omotesnd, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_omotesnd, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x07) AM_WRITE(nbmj8891_blitter_w)
 	AM_RANGE(0x30, 0x30) AM_WRITE(nbmj8891_vramsel_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(nbmj8891_romsel_w)
 	AM_RANGE(0x20, 0x20) AM_WRITE(nbmj8891_clutsel_w)
 	AM_RANGE(0x40, 0x4f) AM_WRITE(nbmj8891_clut_w)
-//	AM_RANGE(0x50, 0x50) AM_WRITE(nb1413m3_nmi_clock_w)
+//  AM_RANGE(0x50, 0x50) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0x70, 0x70) AM_WRITE(nbmj8891_scrolly_w)
 	AM_RANGE(0x82, 0x82) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x83, 0x83) AM_WRITE(AY8910_control_port_0_w)
@@ -632,6 +637,7 @@ AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_hanamomo, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0x30, 0x37) AM_WRITE(nbmj8891_blitter_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(nbmj8891_clutsel_w)
@@ -641,13 +647,14 @@ static ADDRESS_MAP_START( writeport_hanamomo, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x81, 0x81) AM_WRITE(YM3812_write_port_0_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
-//	AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
-//	AM_RANGE(0xe0, 0xe0) AM_WRITE(MWA8_NOP)
-//	AM_RANGE(0xf0, 0xf0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xe0, 0xe0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xf0, 0xf0) AM_WRITE(MWA8_NOP)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_msjiken, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(nbmj8891_clutsel_w)
 	AM_RANGE(0x50, 0x57) AM_WRITE(nbmj8891_blitter_w)
@@ -657,13 +664,14 @@ static ADDRESS_MAP_START( writeport_msjiken, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x81, 0x81) AM_WRITE(YM3812_write_port_0_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
-//	AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
-//	AM_RANGE(0xe0, 0xe0) AM_WRITE(MWA8_NOP)
-//	AM_RANGE(0xf0, 0xf0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xe0, 0xe0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xf0, 0xf0) AM_WRITE(MWA8_NOP)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_scandal, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x40, 0x4f) AM_WRITE(nbmj8891_clut_w)
 	AM_RANGE(0x00, 0x07) AM_WRITE(nbmj8891_blitter_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(nbmj8891_romsel_w)
@@ -675,11 +683,12 @@ static ADDRESS_MAP_START( writeport_scandal, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
-//	AM_RANGE(0xe0, 0xe0) AM_WRITE(MWA8_NOP)
-//	AM_RANGE(0xf0, 0xf0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xe0, 0xe0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xf0, 0xf0) AM_WRITE(MWA8_NOP)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport_scandalm, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
 	AM_RANGE(0x81, 0x81) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x90, 0x90) AM_READ(nb1413m3_inputport0_r)
@@ -691,6 +700,7 @@ static ADDRESS_MAP_START( readport_scandalm, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_scandalm, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x40, 0x4f) AM_WRITE(nbmj8891_clut_w)
 	AM_RANGE(0x00, 0x07) AM_WRITE(nbmj8891_blitter_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(nbmj8891_romsel_w)
@@ -702,11 +712,12 @@ static ADDRESS_MAP_START( writeport_scandalm, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
-//	AM_RANGE(0xe0, 0xe0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xe0, 0xe0) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_bananadr, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x40, 0x4f) AM_WRITE(nbmj8891_clut_w)
 	AM_RANGE(0x00, 0x07) AM_WRITE(nbmj8891_blitter_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(nbmj8891_romsel_w)
@@ -719,11 +730,12 @@ static ADDRESS_MAP_START( writeport_bananadr, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
-//	AM_RANGE(0xe0, 0xe0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xe0, 0xe0) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport_lovehous, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
 	AM_RANGE(0x90, 0x90) AM_READ(nb1413m3_inputport0_r)
 	AM_RANGE(0xa0, 0xa0) AM_READ(nb1413m3_inputport1_r)
@@ -734,6 +746,7 @@ static ADDRESS_MAP_START( readport_lovehous, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_lovehous, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(nbmj8891_clutsel_w)
 	AM_RANGE(0x50, 0x57) AM_WRITE(nbmj8891_blitter_w)
@@ -741,7 +754,7 @@ static ADDRESS_MAP_START( writeport_lovehous, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x70, 0x70) AM_WRITE(nbmj8891_scrolly_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(YM3812_control_port_0_w)
 	AM_RANGE(0x81, 0x81) AM_WRITE(YM3812_write_port_0_w)
-//	AM_RANGE(0x90, 0x90) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0x90, 0x90) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
@@ -750,6 +763,7 @@ static ADDRESS_MAP_START( writeport_lovehous, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport_maiko, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
 	AM_RANGE(0x90, 0x90) AM_READ(nb1413m3_inputport0_r)
 	AM_RANGE(0xa0, 0xa0) AM_READ(nb1413m3_inputport1_r)
@@ -760,6 +774,7 @@ static ADDRESS_MAP_START( readport_maiko, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_maiko, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(nbmj8891_clutsel_w)
 	AM_RANGE(0x50, 0x57) AM_WRITE(nbmj8891_blitter_w)
@@ -769,19 +784,20 @@ static ADDRESS_MAP_START( writeport_maiko, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x81, 0x81) AM_WRITE(YM3812_write_port_0_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
-//	AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(nbmj8891_vramsel_w)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport_taiwanmb, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
 	AM_RANGE(0x81, 0x81) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x90, 0x90) AM_READ(nb1413m3_inputport0_r)
 	AM_RANGE(0xa0, 0xa0) AM_READ(nb1413m3_inputport1_r)
 	AM_RANGE(0xb0, 0xb0) AM_READ(nb1413m3_inputport2_r)
-//	AM_RANGE(0xd0, 0xd0) AM_READ(ff_r)	// irq ack? watchdog?
+//  AM_RANGE(0xd0, 0xd0) AM_READ(ff_r)  // irq ack? watchdog?
 	AM_RANGE(0xe0, 0xe0) AM_READ(nb1413m3_dipsw3_h_r)
 	AM_RANGE(0xe1, 0xe1) AM_READ(nb1413m3_dipsw3_l_r)
 	AM_RANGE(0xf0, 0xf0) AM_READ(nb1413m3_dipsw2_r)
@@ -789,12 +805,13 @@ static ADDRESS_MAP_START( readport_taiwanmb, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_taiwanmb, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x82, 0x82) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x83, 0x83) AM_WRITE(AY8910_control_port_0_w)
-//	AM_RANGE(0x90, 0x90) AM_WRITE(MWA8_NOP)						// ?
+//  AM_RANGE(0x90, 0x90) AM_WRITE(MWA8_NOP)                     // ?
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
-//	AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)						// ?
+//  AM_RANGE(0xc0, 0xc0) AM_WRITE(MWA8_NOP)                     // ?
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(nbmj8891_taiwanmb_gfxdraw_w)	// blitter draw start
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
@@ -3062,7 +3079,7 @@ static MACHINE_DRIVER_START( gionbana )
 	MDRV_CPU_ADD_TAG("main", Z80, 20000000/4)	/* 5.00 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(readmem_gionbana, writemem_gionbana)
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_gionbana)
-//	MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 132)	// nmiclock = 60
+//  MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 132)    // nmiclock = 60
 	MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 1)
 
 	MDRV_FRAMES_PER_SECOND(60)
@@ -3126,7 +3143,7 @@ static MACHINE_DRIVER_START( mjcamerb )
 	MDRV_IMPORT_FROM(gionbana)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_hanamomo)
-//	MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 142)	// ?
+//  MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 142)    // ?
 
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
@@ -3141,7 +3158,7 @@ static MACHINE_DRIVER_START( mmcamera )
 	MDRV_IMPORT_FROM(gionbana)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_hanamomo)
-//	MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 128)
+//  MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 128)
 
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
@@ -3157,7 +3174,7 @@ static MACHINE_DRIVER_START( hanamomo )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(readmem_hanamomo, writemem_hanamomo)
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_hanamomo)
-//	MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 128)
+//  MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 128)
 
 	/* video hardware */
 	MDRV_VISIBLE_AREA(0, 512-1, 16, 240-1)
@@ -3172,7 +3189,7 @@ static MACHINE_DRIVER_START( msjiken )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(readmem_gionbana, writemem_gionbana)
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_msjiken)
-//	MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 142)	// nmiclock = 70
+//  MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 142)    // nmiclock = 70
 MACHINE_DRIVER_END
 
 
@@ -3183,7 +3200,7 @@ static MACHINE_DRIVER_START( telmahjn )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gionbana)
 	MDRV_CPU_MODIFY("main")
-//	MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 142)	// nmiclock = 70
+//  MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 142)    // nmiclock = 70
 
 	/* video hardware */
 	MDRV_VIDEO_START(nbmj8891_1layer)
@@ -3195,7 +3212,7 @@ static MACHINE_DRIVER_START( mgmen89 )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(telmahjn)
 	MDRV_CPU_MODIFY("main")
-//	MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 128)
+//  MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 128)
 MACHINE_DRIVER_END
 
 
@@ -3294,7 +3311,7 @@ static MACHINE_DRIVER_START( mjfocusm )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(readmem_scandalm, writemem_scandalm)
 	MDRV_CPU_IO_MAP(readport_scandalm, writeport_scandalm)
-//	MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 128)
+//  MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 128)
 
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
@@ -3316,7 +3333,7 @@ static MACHINE_DRIVER_START( taiwanmb )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(readmem_taiwanmb, writemem_taiwanmb)
 	MDRV_CPU_IO_MAP(readport_taiwanmb, writeport_taiwanmb)
-//	MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 1)
+//  MDRV_CPU_VBLANK_INT(nb1413m3_interrupt, 1)
 
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
@@ -3576,7 +3593,7 @@ ROM_START( mjfocus )
 
 	ROM_REGION( 0x40000, REGION_USER1, 0 ) /* protection data */
 	/* this ROM was not dumped, but the program expects the same checksum
-	   as peepshow, so it's a safe assumption that it's the same. */
+       as peepshow, so it's a safe assumption that it's the same. */
 	ROM_LOAD( "mask",   0x00000, 0x40000, CRC(2199e3e9) SHA1(965af4a29db4ff909dbeeebab1b828eb4f23f57e) )	// same as housemnq/1i.bin gfx data
 ROM_END
 
@@ -3638,8 +3655,8 @@ ROM_START( peepshow )
 
 	ROM_REGION( 0x40000, REGION_USER1, 0 ) /* protection data */
 	/* this ROM was not dumped correctly - FIXED BITS (xxxxxxxx11111111).
-	   However, what's in there matches the telmahjn one, and the program expects
-	   the same checksum, so it's a safe assumption that it's the same. */
+       However, what's in there matches the telmahjn one, and the program expects
+       the same checksum, so it's a safe assumption that it's the same. */
 	ROM_LOAD( "mask",   0x00000, 0x40000, CRC(2199e3e9) SHA1(965af4a29db4ff909dbeeebab1b828eb4f23f57e) )	// same as housemnq/1i.bin gfx data
 ROM_END
 
@@ -3721,7 +3738,7 @@ ROM_START( mjnanpas )
 
 	ROM_REGION( 0x40000, REGION_USER1, 0 ) /* protection data */
 	/* the protection data is not used at all! They forgot a debug flag set in the
-	   code which skips the protection check. */
+       code which skips the protection check. */
 	ROM_LOAD( "mnst_m1.bin", 0x00000, 0x40000, CRC(77ba1eaf) SHA1(bde55b4d2938f44fd07ff7d5b5a845f2ea64b4fc) )	// same as housemnq/5i.bin gfx data
 ROM_END
 
@@ -3757,7 +3774,7 @@ ROM_START( mjnanpaa )
 
 	ROM_REGION( 0x40000, REGION_USER1, 0 ) /* protection data */
 	/* the protection data is not used at all! They forgot a debug flag set in the
-	   code which skips the protection check. */
+       code which skips the protection check. */
 	ROM_LOAD( "mnst_m1.bin", 0x00000, 0x40000, CRC(77ba1eaf) SHA1(bde55b4d2938f44fd07ff7d5b5a845f2ea64b4fc) )	// same as housemnq/5i.bin gfx data
 ROM_END
 
@@ -3793,7 +3810,7 @@ ROM_START( mjnanpau )
 
 	ROM_REGION( 0x40000, REGION_USER1, 0 ) /* protection data */
 	/* the protection data is not used at all! They forgot a debug flag set in the
-	   code which skips the protection check. */
+       code which skips the protection check. */
 	ROM_LOAD( "mnst_m1.bin", 0x00000, 0x40000, CRC(77ba1eaf) SHA1(bde55b4d2938f44fd07ff7d5b5a845f2ea64b4fc) )	// same as housemnq/5i.bin gfx data
 ROM_END
 

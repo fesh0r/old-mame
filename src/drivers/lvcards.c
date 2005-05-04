@@ -12,24 +12,24 @@ After you get into Check Mode (F2), press the Hit key to switch pages.
 
 Memory Mapped:
 
-0000-5fff   R	ROM
+0000-5fff   R   ROM
 6000-67ff   RW  Battery Backed RAM
 8000-83ff   RW  Video RAM
 8400-87ff   RW  Color RAM
-				Bits 0-3 - color
- 				Bits 4-5 - character bank
-				Bit  6   - flip x
-				Bit  7   - Is it used?
-a000		R	Input Port 0
-a001		R	Input Port 1
-a002		R	Input Port 2
-a001		 W  Control Port 0
-a002		 W  Control Port 1
+                Bits 0-3 - color
+                Bits 4-5 - character bank
+                Bit  6   - flip x
+                Bit  7   - Is it used?
+a000        R   Input Port 0
+a001        R   Input Port 1
+a002        R   Input Port 2
+a001         W  Control Port 0
+a002         W  Control Port 1
 
 I/O Ports:
-00			RW  YM2149 Data	Port
-				Port A - DSW #1
-				Port B - DSW #2
+00          RW  YM2149 Data Port
+                Port A - DSW #1
+                Port B - DSW #2
 01           W  YM2149 Control Port
 
 
@@ -86,6 +86,7 @@ static ADDRESS_MAP_START( lvcards_map, ADDRESS_SPACE_PROGRAM, 8  )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( lvcards_io_map, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_control_port_0_w)
 ADDRESS_MAP_END

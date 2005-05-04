@@ -1,23 +1,23 @@
 /***************************************************************************
 
-	Pushman							(c) 1990 Comad
+    Pushman                         (c) 1990 Comad
 
-	With 'Debug Mode' on button 2 advances a level, button 3 goes back.
+    With 'Debug Mode' on button 2 advances a level, button 3 goes back.
 
-	The microcontroller mainly controls the animation of the enemy robots,
-	the communication between the 68000 and MCU is probably not emulated
-	100% correct but it works.  Later levels (using the cheat mode) seem
-	to have some corrupt tilemaps, I'm not sure if this is a driver bug
-	or a game bug from using the cheat mode.
+    The microcontroller mainly controls the animation of the enemy robots,
+    the communication between the 68000 and MCU is probably not emulated
+    100% correct but it works.  Later levels (using the cheat mode) seem
+    to have some corrupt tilemaps, I'm not sure if this is a driver bug
+    or a game bug from using the cheat mode.
 
-	Emulation by Bryan McPhail, mish@tendril.co.uk
+    Emulation by Bryan McPhail, mish@tendril.co.uk
 
-	The hardware is actually very similar to F1-Dream and Tiger Road but
-	with a 68705 for protection.
+    The hardware is actually very similar to F1-Dream and Tiger Road but
+    with a 68705 for protection.
 
  **************************************************************************
 
-	Bouncing Balls						(c) 1991 Comad
+    Bouncing Balls                      (c) 1991 Comad
 
 ***************************************************************************/
 
@@ -181,6 +181,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(YM2203_control_port_1_w)
@@ -368,7 +369,7 @@ INPUT_PORTS_START( bballs )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0xc000, 0xc000, DEF_STR( Service_Mode ) )
 	PORT_DIPSETTING(      0xc000, DEF_STR( Off ) )
-//	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
+//  PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x4000, "Inputs/Outputs" )
 	PORT_DIPSETTING(      0x0000, "Graphics" )
 INPUT_PORTS_END
@@ -445,7 +446,7 @@ static MACHINE_DRIVER_START( pushman )
 	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(0,sound_writeport)
 
@@ -486,7 +487,7 @@ static MACHINE_DRIVER_START( bballs )
 	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(0,sound_writeport)
 

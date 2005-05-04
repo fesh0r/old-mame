@@ -22,7 +22,7 @@ Stephh's notes :
   IPF_CHEAT flag for the Dip Switch and the 3rd button of each player.
 
 TODO:
-	* adpcm samples don't seem to be playing at the proper tempo - too fast?
+    * adpcm samples don't seem to be playing at the proper tempo - too fast?
 
 
 ***************************************************************************/
@@ -210,7 +210,7 @@ static MACHINE_DRIVER_START( zerozone )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 1000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1 MHz ??? */
+	/* audio CPU */	/* 1 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(60)

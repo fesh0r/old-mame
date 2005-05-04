@@ -270,7 +270,7 @@ void identify_file(const char* name)
 {
 	FILE *f;
 	int length;
-	char* data;
+	unsigned char* data;
 	char hash[HASH_BUF_SIZE];
 
 	f = fopen(name,"rb");
@@ -297,7 +297,7 @@ void identify_file(const char* name)
 	}
 
 	/* allocate space for entire file */
-	data = (char*)malloc(length);
+	data = (unsigned char*)malloc(length);
 	if (!data) {
 		fclose(f);
 		return;
@@ -318,8 +318,8 @@ void identify_file(const char* name)
 	fclose(f);
 
 	/* Compute checksum of all the available functions. Since MAME for
-	   now carries inforamtions only for CRC and SHA1, we compute only
-	   these */
+       now carries inforamtions only for CRC and SHA1, we compute only
+       these */
 	if (options.crc_only)
 		hash_compute(hash, data, length, HASH_CRC);
 	else
@@ -346,13 +346,13 @@ void identify_zip(const char* zipname)
 			char hash[HASH_BUF_SIZE];
 			UINT8 crcs[4];
 
-//			sprintf(buf,"%s/%s",zipname,ent->name);
+//          sprintf(buf,"%s/%s",zipname,ent->name);
 			sprintf(buf,"%-12s",ent->name);
 
 			/* Decompress the ROM from the ZIP, and compute all the needed
-			   checksums. Since MAME for now carries informations only for CRC and
-			   SHA1, we compute only these (actually, CRC is extracted from the
-			   ZIP header) */
+               checksums. Since MAME for now carries informations only for CRC and
+               SHA1, we compute only these (actually, CRC is extracted from the
+               ZIP header) */
 			hash_data_clear(hash);
 
 			if (!options.crc_only)
@@ -451,12 +451,16 @@ void CLIB_DECL terse_printf(const char *fmt,...)
 
 int CLIB_DECL compare_names(const void *elem1, const void *elem2)
 {
+	int cmp;
 	struct GameDriver *drv1 = *(struct GameDriver **)elem1;
 	struct GameDriver *drv2 = *(struct GameDriver **)elem2;
 	char name1[200],name2[200];
 	namecopy(name1,drv1->description);
 	namecopy(name2,drv2->description);
-	return strcmp(name1,name2);
+	cmp = stricmp(name1,name2);
+	if (cmp == 0)
+		cmp = stricmp(drv1->description, drv2->description);
+	return cmp;
 }
 
 
@@ -683,7 +687,7 @@ int frontend_help (const char *gamename)
 				for (i = 0; drivers[i]; i++)
 				{
 					static int first_missing = 1;
-//					get_rom_sample_path (argc, argv, i, NULL);
+//                  get_rom_sample_path (argc, argv, i, NULL);
 					if (RomsetMissing (i))
 					{
 						if (first_missing)
@@ -748,12 +752,7 @@ int frontend_help (const char *gamename)
 					/* Then, cpus */
 
 					for(j=0;j<MAX_CPU;j++)
-					{
-						if (x_cpu[j].cpu_flags & CPU_AUDIO_CPU)
-							printf("[%-6s] ",cputype_name(x_cpu[j].cpu_type));
-						else
-							printf("%-8s ",cputype_name(x_cpu[j].cpu_type));
-					}
+						printf("%-8s ",cputype_name(x_cpu[j].cpu_type));
 
 					/* Then, sound chips */
 
@@ -1172,8 +1171,8 @@ int frontend_help (const char *gamename)
 										if (strcmp(ROM_GETNAME(rom), ROM_GETNAME(rom1)) && hash_data_is_equal(ROM_GETHASHDATA(rom), ROM_GETHASHDATA(rom1), 0))
 										{
 											/* Dump checksum infos only on the first match for a given
-											   ROM. This reduces the output size and makes it more
-											   readable. */
+                                               ROM. This reduces the output size and makes it more
+                                               readable. */
 											if (first_match)
 										{
 												char buf[512];
@@ -1306,7 +1305,7 @@ int frontend_help (const char *gamename)
 						}
 					}
 
-//					printf("%-8s\t%-5s\t%u\t%u\t%u\t%u\n",drivers[i]->name,drivers[i]->year,romtotal,romcpu,romgfx,romsound);
+//                  printf("%-8s\t%-5s\t%u\t%u\t%u\t%u\n",drivers[i]->name,drivers[i]->year,romtotal,romcpu,romgfx,romsound);
 					printf("%-8s\t%-5s\t%u\n",drivers[i]->name,drivers[i]->year,romtotal);
 				}
 			}
@@ -1438,7 +1437,7 @@ int frontend_help (const char *gamename)
 					}
 
 					printf("%s\t%d\n",cputype_name(type),count_main+count_slave);
-//					printf("%s\t%d\t%d\n",cputype_name(type),count_main,count_slave);
+//                  printf("%s\t%d\t%d\n",cputype_name(type),count_main,count_slave);
 				}
 			}
 
@@ -1450,8 +1449,8 @@ int frontend_help (const char *gamename)
 			{
 				int year;
 
-//				for (j = 1;j < CPU_COUNT;j++)
-//					printf("\t%s",cputype_name(j));
+//              for (j = 1;j < CPU_COUNT;j++)
+//                  printf("\t%s",cputype_name(j));
 				for (j = 0;j < 3;j++)
 					printf("\t%d",8<<j);
 				printf("\n");
@@ -1479,7 +1478,7 @@ int frontend_help (const char *gamename)
 
 							if (atoi(drivers[i]->year) == year)
 							{
-//								for (j = 0;j < MAX_CPU;j++)
+//                              for (j = 0;j < MAX_CPU;j++)
 j = 0;	// count only the main cpu
 								{
 									count[x_cpu[j].cpu_type]++;
@@ -1497,8 +1496,8 @@ j = 0;	// count only the main cpu
 					}
 
 					printf("%d",year);
-//					for (j = 1;j < CPU_COUNT;j++)
-//						printf("\t%d",count[j]);
+//                  for (j = 1;j < CPU_COUNT;j++)
+//                      printf("\t%d",count[j]);
 					for (j = 0;j < 3;j++)
 						printf("\t%d",count_buswidth[j]);
 					printf("\n");
@@ -1580,7 +1579,7 @@ j = 0;	// count only the main cpu
 					}
 
 					if (count)
-//						printf("%s (%d-%d)\t%d\n",soundtype_name(type),minyear,maxyear,count);
+//                      printf("%s (%d-%d)\t%d\n",soundtype_name(type),minyear,maxyear,count);
 						printf("%s\t%d\n",sndtype_name(type),count);
 				}
 			}
@@ -1652,7 +1651,7 @@ j = 0;	// count only the main cpu
 				continue;
 
 			/* set rom and sample path correctly */
-//			get_rom_sample_path (argc, argv, i, NULL);
+//          get_rom_sample_path (argc, argv, i, NULL);
 
 			if (verify & VERIFY_ROMS)
 			{

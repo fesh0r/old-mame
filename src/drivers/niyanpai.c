@@ -1,20 +1,20 @@
 /******************************************************************************
 
-	Game Driver for Nichibutsu Mahjong series.
+    Game Driver for Nichibutsu Mahjong series.
 
-	Niyanpai
-	(c)1996 Nihon Bussan Co.,Ltd.
+    Niyanpai
+    (c)1996 Nihon Bussan Co.,Ltd.
 
-	Musoubana
-	(c)1995 Nihon Bussan Co.,Ltd. / Yubis Co.,Ltd.
+    Musoubana
+    (c)1995 Nihon Bussan Co.,Ltd. / Yubis Co.,Ltd.
 
-	Mahjong 4P Simasyo
-	(c)1994 SPHINX/AV JAPAN
+    Mahjong 4P Simasyo
+    (c)1994 SPHINX/AV JAPAN
 
-	Mahjong Housoukyoku Honbanchuu
-	(c)199? Nihon Bussan Co.,Ltd.
+    Mahjong Housoukyoku Honbanchuu
+    (c)199? Nihon Bussan Co.,Ltd.
 
-	Driver by Takahiro Nogi <nogi@kt.rim.or.jp> 2000/12/23 -
+    Driver by Takahiro Nogi <nogi@kt.rim.or.jp> 2000/12/23 -
 
 ******************************************************************************/
 /******************************************************************************
@@ -297,9 +297,9 @@ static READ16_HANDLER( musobana_inputport_0_r )
 static READ16_HANDLER( musobana_inputport_1_r )
 {
 	// tmp68301_parallel_interface[0x05]
-	// 	bit 0	coin counter
-	// 	bit 2	motor on
-	// 	bit 3	coin lock
+	//  bit 0   coin counter
+	//  bit 2   motor on
+	//  bit 3   coin lock
 
 	if (tmp68301_parallel_interface_r(0x0005, 0x00ff) & 0x0004) musobana_outcoin_flag ^= 1;
 	else musobana_outcoin_flag = 1;
@@ -510,6 +510,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x10, 0x13) AM_READ(z80ctc_0_r)
 	AM_RANGE(0x50, 0x50) AM_READ(tmpz84c011_0_pa_r)
 	AM_RANGE(0x51, 0x51) AM_READ(tmpz84c011_0_pb_r)
@@ -524,6 +525,7 @@ static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x10, 0x13) AM_WRITE(z80ctc_0_w)
 	AM_RANGE(0x50, 0x50) AM_WRITE(tmpz84c011_0_pa_w)
 	AM_RANGE(0x51, 0x51) AM_WRITE(tmpz84c011_0_pb_w)
@@ -860,7 +862,7 @@ static MACHINE_DRIVER_START( niyanpai )
 
 	MDRV_CPU_ADD(Z80, 8000000/1)					/* TMPZ84C011, 8.00 MHz */
 	MDRV_CPU_CONFIG(daisy_chain_sound)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem, sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport, sound_writeport)
 
@@ -972,7 +974,7 @@ ROM_START( mhhonban )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* TMP68301 main program */
 	ROM_LOAD16_BYTE( "u209.bin", 0x00000, 0x20000, CRC(121c861f) SHA1(70a6b695998904dccb8791ea5d9acbf7484bd812) )
 	ROM_LOAD16_BYTE( "u208.bin", 0x00001, 0x20000, CRC(d6712d0b) SHA1(a384c8f508ec6885bccb989d150cfd7f36a6898d) )
-                                                    
+
 	ROM_REGION( 0x20000, REGION_CPU2, 0 ) /* TMPZ84C011 sound program */
 	ROM_LOAD( "u804.bin",  0x000000, 0x20000, CRC(48407507) SHA1(afd24d16d487fd2b6548d967e2f1ae122e2633a2) )
 

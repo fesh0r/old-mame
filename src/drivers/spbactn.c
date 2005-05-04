@@ -168,7 +168,7 @@ static ADDRESS_MAP_START( spbactn_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	/* this is an awful lot of unknowns */
 	AM_RANGE(0x90000, 0x90001) AM_WRITE(MWA16_NOP)
 	AM_RANGE(0x90010, 0x90011) AM_WRITE(soundcommand_w)
-//	AM_RANGE(0x90020, 0x90021) AM_WRITE(soundcommand_w)
+//  AM_RANGE(0x90020, 0x90021) AM_WRITE(soundcommand_w)
 	AM_RANGE(0x90030, 0x90031) AM_WRITE(MWA16_NOP)
 
 	AM_RANGE(0x90080, 0x90081) AM_WRITE(MWA16_NOP)
@@ -360,7 +360,7 @@ static MACHINE_DRIVER_START( spbactn )
 	MDRV_CPU_VBLANK_INT(irq3_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ??? */
+	/* audio CPU */	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(60)

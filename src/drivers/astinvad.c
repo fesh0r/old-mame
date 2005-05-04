@@ -2,13 +2,13 @@
 
 Misc early Z80 games with simple color bitmap graphics
 
-	- Space King 2    (c) Konami
-	- Kamikaze        (c) Leijac
-	- Astro Invader   (c) Stern
-	- Space Intruder  (c) Shoei
+    - Space King 2    (c) Konami
+    - Kamikaze        (c) Leijac
+    - Astro Invader   (c) Stern
+    - Space Intruder  (c) Shoei
 
 Space Intruder emulation by Lee Taylor (lee@defender.demon.co.uk),
-	December 1998.
+    December 1998.
 
 ***************************************************************************/
 
@@ -76,23 +76,27 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( astinvad_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x08, 0x08) AM_READ(input_port_0_r)
 	AM_RANGE(0x09, 0x09) AM_READ(input_port_1_r)
 	AM_RANGE(0x0a, 0x0a) AM_READ(input_port_2_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( astinvad_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x04, 0x04) AM_WRITE(astinvad_sound1_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(astinvad_sound2_w)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( spaceint_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( spaceint_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x02, 0x02) AM_WRITE(spaceint_sound1_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(spaceint_color_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(spaceint_sound2_w)
@@ -270,7 +274,7 @@ static MACHINE_DRIVER_START( astinvad )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(SAMPLES, 0)
 	MDRV_SOUND_CONFIG(astinvad_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
@@ -311,7 +315,7 @@ static MACHINE_DRIVER_START( spaceint )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(SAMPLES, 0)
 	MDRV_SOUND_CONFIG(astinvad_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)

@@ -240,7 +240,7 @@ WRITE16_HANDLER( toypop_m68000_interrupt_disable_w )
 
 /*************************************
  *
- *	Main CPU memory handlers
+ *  Main CPU memory handlers
  *
  *************************************/
 
@@ -304,7 +304,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Sound CPU memory handlers
+ *  Sound CPU memory handlers
  *
  *************************************/
 
@@ -325,7 +325,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	68k CPU memory handlers
+ *  68k CPU memory handlers
  *
  *************************************/
 
@@ -569,7 +569,7 @@ static MACHINE_DRIVER_START( liblrabl )
 	MDRV_CPU_VBLANK_INT(toypop_main_interrupt,1)
 
 	MDRV_CPU_ADD(M6809, 1536000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1.536 MHz (measured on Libble Rabble board) */
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_soundCPU,writemem_soundCPU)
 	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
 
@@ -615,7 +615,7 @@ MACHINE_DRIVER_END
 
 /*************************************
  *
- *	ROM definitions
+ *  ROM definitions
  *
  *************************************/
 

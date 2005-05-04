@@ -61,9 +61,15 @@ data16_t *sslam_spriteram, *sslam_regs;
    All commentry and most sound effects are correct, however the music
    tracks may be playing at the wrong times.
    Accordingly, the commands for playing the below samples is just a guess:
-   1A, 1B, 1C, 1D, 1E, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 6A, 6B, 6C
+   1A, 1B, 1C, 1D, 1E, 60, 61, 62, 65, 66, 67, 68, 69, 6B, 6C.
+   Samples 63, 64 and 6A are currently not fitted anywhere :-(
    Note: that samples 60, 61 and 62 combine to form a music track.
    Ditto for samples 65, 66, 67 and 68.
+   Command 29 is fired when the game is completed successfully. It requires
+   a melody from bank one to be playing, but we're already using the bank
+   one melody during game play.
+   The sound CPU simulation can only be perfected once it can be compared
+   against a real game board.
 */
 
 static const data8_t sslam_cmd_snd[128] =
@@ -73,7 +79,7 @@ static const data8_t sslam_cmd_snd[128] =
 /*10*/	0x72, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14,
 /*18*/	0x15, 0x16, 0x17, 0x18, 0x19, 0x73, 0x74, 0x75,
 /*20*/	0x76, 0x1a, 0x1b, 0x1c, 0x1d, 0x00, 0x1f, 0x6c,
-/*28*/	0x1e, 0x00, 0x00, 0x00, 0x60, 0x20, 0x69, 0x65,
+/*28*/	0x1e, 0x65, 0x00, 0x00, 0x60, 0x20, 0x69, 0x65,
 /*30*/	0x00, 0x00, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
 /*38*/	0x29, 0x2a, 0x2b, 0x00, 0x6b, 0x00, 0x00, 0x00
 };
@@ -205,7 +211,7 @@ static void sslam_play(int melody, int data)
 	int status = OKIM6295_status_0_r(0);
 
 	logerror("Playing sample %01x:%02x from command %02x\n",sslam_snd_bank,sslam_sound,data);
-	if (sslam_sound == 0 ) usrintf_showmessage("Unknown sound command %02x",sslam_sound);
+	if (sslam_sound == 0) usrintf_showmessage("Unknown sound command %02x",sslam_sound);
 
 	if (melody) {
 		if (sslam_melody != sslam_sound) {
@@ -258,7 +264,7 @@ WRITE16_HANDLER( sslam_snd_w )
 				if (sslam_snd_bank != 1)
 					OKIM6295_set_bank_base(0, (1 * 0x40000));
 				sslam_snd_bank = 1;
-				sslam_play(4, data);
+				sslam_play(0, data);
 			}
 			else if (sslam_sound >= 0x69) {
 				if (sslam_snd_bank != 2)
@@ -316,7 +322,7 @@ static INTERRUPT_GEN( sslam_interrupt )
 
 		if (sslam_melody_loop)
 		{
-//			logerror("Changing to sample %02x\n",sslam_melody_loop);
+//          logerror("Changing to sample %02x\n",sslam_melody_loop);
 			OKIM6295_data_0_w(0,((0x80 | sslam_melody_loop) & 0xff));
 			OKIM6295_data_0_w(0,0x81);
 		}
@@ -424,9 +430,9 @@ INPUT_PORTS_START( sslam )
 	PORT_DIPSETTING(    0x20, "3-4" )
 	PORT_DIPSETTING(    0x10, "3-3" )
 	PORT_DIPSETTING(    0x00, "0-0" )
-	PORT_DIPNAME( 0x40, 0x40, "Max Players" )
-	PORT_DIPSETTING(    0x00, "2" )
-	PORT_DIPSETTING(    0x40, "4" )
+	PORT_DIPNAME( 0x40, 0x40, "Play Mode" )
+	PORT_DIPSETTING(    0x00, "2 Players" )
+	PORT_DIPSETTING(    0x40, "4 Players" )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -567,7 +573,7 @@ ROM_START( sslam )
 	ROM_LOAD( "6.u39",     0x080000, 0x80000, CRC(6928065c) SHA1(ad5b1889bebf0358df0295d6041b798ac53ac625) )
 	ROM_LOAD( "5.u42",     0x100000, 0x80000, CRC(8d18bdc6) SHA1(cacc4f475f85438a00ead4911730202e995983a7) )
 	ROM_LOAD( "4.u36",     0x180000, 0x80000, CRC(8e15fb9d) SHA1(47917d8aac1bce2e15f36904f5c2534e5b80236b) )
-	
+
 	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE  ) /* Sprites */
 	ROM_LOAD( "8.u83",     0x000000, 0x80000, CRC(19bb89dd) SHA1(c2a0c32d350a193d366b5086502998281fd0bec4) )
 	ROM_LOAD( "9.u84",     0x080000, 0x80000, CRC(d50d86c7) SHA1(7ecbcc03851a8174610f7f5ad889e40543da928e) )
@@ -624,7 +630,7 @@ ROM_START( sslama )
 	ROM_LOAD( "6.u39",     0x080000, 0x80000, CRC(6928065c) SHA1(ad5b1889bebf0358df0295d6041b798ac53ac625) )
 	ROM_LOAD( "5.u42",     0x100000, 0x80000, CRC(8d18bdc6) SHA1(cacc4f475f85438a00ead4911730202e995983a7) )
 	ROM_LOAD( "4.u36",     0x180000, 0x80000, CRC(8e15fb9d) SHA1(47917d8aac1bce2e15f36904f5c2534e5b80236b) )
-	
+
 	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE  ) /* Sprites */
 	ROM_LOAD( "8.u83",     0x000000, 0x80000, CRC(19bb89dd) SHA1(c2a0c32d350a193d366b5086502998281fd0bec4) )
 	ROM_LOAD( "9.u84",     0x080000, 0x80000, CRC(d50d86c7) SHA1(7ecbcc03851a8174610f7f5ad889e40543da928e) )

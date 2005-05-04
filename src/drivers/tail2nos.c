@@ -114,6 +114,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x07, 0x07) AM_READ(soundlatch_r)
 #if 0
 	AM_RANGE(0x18, 0x18) AM_READ(YM2610_status_port_0_A_r)
@@ -122,6 +123,7 @@ static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x07, 0x07) AM_WRITE(MWA8_NOP)	/* clear pending command */
 	AM_RANGE(0x08, 0x08) AM_WRITE(YM2608_control_port_0_A_w)
 	AM_RANGE(0x09, 0x09) AM_WRITE(YM2608_data_port_0_A_w)
@@ -162,7 +164,7 @@ INPUT_PORTS_START( tail2nos )
 	PORT_DIPSETTING(      0x000d, "5 Coins/6 Credits" )
 	PORT_DIPSETTING(      0x000e, DEF_STR( 4C_5C ) )
 	PORT_DIPSETTING(      0x000a, DEF_STR( 2C_3C ) )
-//	PORT_DIPSETTING(      0x000f, DEF_STR( 2C_3C ) )
+//  PORT_DIPSETTING(      0x000f, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x0003, DEF_STR( 1C_4C ) )
@@ -179,7 +181,7 @@ INPUT_PORTS_START( tail2nos )
 	PORT_DIPSETTING(      0x00d0, "5 Coins/6 Credits" )
 	PORT_DIPSETTING(      0x00e0, DEF_STR( 4C_5C ) )
 	PORT_DIPSETTING(      0x00a0, DEF_STR( 2C_3C ) )
-//	PORT_DIPSETTING(      0x00f0, DEF_STR( 2C_3C ) )
+//  PORT_DIPSETTING(      0x00f0, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(      0x0010, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(      0x0020, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x0030, DEF_STR( 1C_4C ) )
@@ -270,7 +272,7 @@ static MACHINE_DRIVER_START( tail2nos )
 	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
 
 	MDRV_CPU_ADD(Z80,8000000/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ??? */
+	/* audio CPU */	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 								/* IRQs are triggered by the YM2608 */

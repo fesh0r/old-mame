@@ -10,7 +10,7 @@ MAIN BOARD:
 3800-3bff Color RAM
 3c00-3fff Video RAM
 4000-5fff ROM (?)
-5ff0	  Watchdog (?)
+5ff0      Watchdog (?)
 6000-ffff ROM
 
 
@@ -252,7 +252,7 @@ static MACHINE_DRIVER_START( mikie )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
 
 	MDRV_CPU_ADD(Z80, CLK)	// 3.58 MHz
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 
 	MDRV_FRAMES_PER_SECOND(60)

@@ -65,18 +65,18 @@ Info taken from sheet supplied with PCB, no info for SW3.
 
 ROMs: (on ALL ROMs is written only "EB26")
 
-EB26_100.BIN	16M Mask	\
-EB26_101.BIN	16M Mask	|
-EB26IC09.BIN	16M Mask	|  GFX (near VS9210, 053936 & VS920D)
-EB26IC10.BIN	16M Mask	|
-EB26IC12.BIN	16M Mask	/
-EB26IC36.BIN	16M Mask
-EB26IC43.BIN	16M Mask	   GFX (Near VS920F & VS920E)
-EB26IC59.BIN	8M Mask		   Sound (Near YM2610)
-EB26IC66.BIN	16M Mask	   Sound (Near YM2610)
-EB26IC38.BIN	27C1001	           Sound Program (Near Z80B)
-EB26IC47.BIN	27C240		\
-EB26IC73.BIN	27C240		/  Main Program
+EB26_100.BIN    16M Mask    \
+EB26_101.BIN    16M Mask    |
+EB26IC09.BIN    16M Mask    |  GFX (near VS9210, 053936 & VS920D)
+EB26IC10.BIN    16M Mask    |
+EB26IC12.BIN    16M Mask    /
+EB26IC36.BIN    16M Mask
+EB26IC43.BIN    16M Mask       GFX (Near VS920F & VS920E)
+EB26IC59.BIN    8M Mask        Sound (Near YM2610)
+EB26IC66.BIN    16M Mask       Sound (Near YM2610)
+EB26IC38.BIN    27C1001            Sound Program (Near Z80B)
+EB26IC47.BIN    27C240      \
+EB26IC73.BIN    27C240      /  Main Program
 
 ******************************************************************************/
 
@@ -156,7 +156,7 @@ static ADDRESS_MAP_START( suprslam_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xfd0000, 0xfdffff) AM_WRITE(MWA16_RAM)
 	AM_RANGE(0xfe0000, 0xfe0fff) AM_WRITE(suprslam_screen_videoram_w) AM_BASE(&suprslam_screen_videoram)
 	AM_RANGE(0xff0000, 0xff1fff) AM_WRITE(suprslam_bg_videoram_w) AM_BASE(&suprslam_bg_videoram)
-//	AM_RANGE(0xff2000, 0xff203f) AM_WRITE(MWA16_RAM) /* ?? */
+//  AM_RANGE(0xff2000, 0xff203f) AM_WRITE(MWA16_RAM) /* ?? */
 	AM_RANGE(0xff8000, 0xff8fff) AM_WRITE(MWA16_RAM) AM_BASE(&K053936_0_linectrl)
 	AM_RANGE(0xff9000, 0xff9001) AM_WRITE(sound_command_w)
 	AM_RANGE(0xffa000, 0xffafff) AM_WRITE(paletteram16_xGGGGGBBBBBRRRRR_word_w) AM_BASE(&paletteram16)
@@ -177,12 +177,14 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( suprslam_sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_r)
 	AM_RANGE(0x08, 0x08) AM_READ(YM2610_status_port_0_A_r)
 	AM_RANGE(0x0a, 0x0a) AM_READ(YM2610_status_port_0_B_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( suprslam_sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(suprslam_sh_bankswitch_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(pending_command_clear_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(YM2610_control_port_0_A_w)
@@ -331,7 +333,7 @@ static MACHINE_DRIVER_START( suprslam )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80,8000000/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ??? */
+	/* audio CPU */	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(suprslam_sound_readport,suprslam_sound_writeport)
 

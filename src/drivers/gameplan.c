@@ -143,8 +143,8 @@ static void via_irq_delayed(int state)
 static void via_irq(int state)
 {
 	/* Kaos sits in a tight loop polling the VIA irq flags register, but that register is
-	   cleared by the irq handler. Therefore, I wait a bit before triggering the irq to
-	   leave time for the program to see the flag change. */
+       cleared by the irq handler. Therefore, I wait a bit before triggering the irq to
+       leave time for the program to see the flag change. */
 	timer_set(TIME_IN_USEC(50), state, via_irq_delayed);
 }
 
@@ -947,7 +947,7 @@ static MACHINE_DRIVER_START( gameplan )
 	MDRV_CPU_VBLANK_INT(gameplan_interrupt,1)
 
 	MDRV_CPU_ADD(M6502,3579000 / 4)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)		/* 894.750 kHz */
+	/* audio CPU */		/* 894.750 kHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_snd,writemem_snd)
 
 	MDRV_FRAMES_PER_SECOND(57)

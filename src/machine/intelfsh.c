@@ -1,17 +1,18 @@
 /*
-	Flash ROM emulation
+    Flash ROM emulation
 
-	Explicitly supports:
-	Intel 28F016S5 (byte-wide)
-	AMD/Fujitsu 29F016 (byte-wide)
-	Sharp LH28F400 (word-wide)
+    Explicitly supports:
+    Intel 28F016S5 (byte-wide)
+    AMD/Fujitsu 29F016 (byte-wide)
+    Sharp LH28F400 (word-wide)
 
-	Flash ROMs use a standardized command set accross manufacturers,
-	so this emulation should work even for non-Intel and non-Sharp chips
-	as long as the game doesn't query the maker ID.
+    Flash ROMs use a standardized command set accross manufacturers,
+    so this emulation should work even for non-Intel and non-Sharp chips
+    as long as the game doesn't query the maker ID.
 */
 
 #include "driver.h"
+#include "state.h"
 #include "intelfsh.h"
 
 enum
@@ -94,6 +95,10 @@ void intelflash_init(int chip, int type, void *data)
 	c->flash_mode = FM_NORMAL;
 	c->flash_master_lock = 0;
 	c->flash_memory = data;
+
+	state_save_register_int( "intelfsh", chip, "flash_mode", &c->flash_mode );
+	state_save_register_int( "intelfsh", chip, "flash_master_lock", &c->flash_master_lock );
+	state_save_register_UINT8( "intelfsh", chip, "flash_memory", c->flash_memory, c->size );
 }
 
 data32_t intelflash_read(int chip, data32_t address)
@@ -115,22 +120,20 @@ data32_t intelflash_read(int chip, data32_t address)
 		{
 		case 8:
 			{
-				data8_t *flash_memory;
-				flash_memory = c->flash_memory;
+				data8_t *flash_memory = c->flash_memory;
 				data = flash_memory[ address ];
 			}
 			break;
 		case 16:
 			{
-				data16_t *flash_memory;
-				flash_memory = c->flash_memory;
+				data16_t *flash_memory = c->flash_memory;
 				data = flash_memory[ address ];
 			}
 			break;
 		}
 		break;
 	case FM_READSTATUS:
-//		c->flash_mode = FM_NORMAL;
+//      c->flash_mode = FM_NORMAL;
 		data = 0x80;
 		break;
 	case FM_READAMDID3:
@@ -170,7 +173,7 @@ data32_t intelflash_read(int chip, data32_t address)
 		break;
 	}
 
-//	logerror( "%08x: intelflash_read( %d, %08x ) %08x\n", activecpu_get_pc(), chip, address, data );
+//  logerror( "%08x: intelflash_read( %d, %08x ) %08x\n", activecpu_get_pc(), chip, address, data );
 
 	return data;
 }
@@ -185,7 +188,7 @@ void intelflash_write(int chip, data32_t address, data32_t data)
 	}
 	c = &chips[ chip ];
 
-//	logerror( "%08x: intelflash_write( %d, %08x, %08x )\n", activecpu_get_pc(), chip, address, data );
+//  logerror( "%08x: intelflash_write( %d, %08x, %08x )\n", activecpu_get_pc(), chip, address, data );
 
 	switch( c->flash_mode )
 	{
@@ -214,7 +217,7 @@ void intelflash_write(int chip, data32_t address, data32_t data)
 		case 0x60:	// set master lock
 			c->flash_mode = FM_SETMASTER;
 			break;
-		case 0x70:	// read status	
+		case 0x70:	// read status
 			c->flash_mode = FM_READSTATUS;
 			break;
 		case 0xaa:	// AMD ID select part 1
@@ -255,24 +258,36 @@ void intelflash_write(int chip, data32_t address, data32_t data)
 			{
 				data8_t *flash_memory = c->flash_memory;
 				flash_memory[ address ] = data;
-				break;
 			}
+			break;
 		case 16:
 			{
 				data16_t *flash_memory = c->flash_memory;
 				flash_memory[ address ] = data;
-				break;
 			}
+			break;
 		}
 		c->flash_mode = FM_READSTATUS;
 		break;
 	case FM_CLEARPART1:
 		if( ( data & 0xff ) == 0xd0 )
 		{
-			// clear the 64k block containing the current address
-			// to all 0xffs
-			data8_t *flash_memory = c->flash_memory;
-			memset( &flash_memory[ address & 0xff0000 ], 0xff, 64 * 1024 );
+			// clear the 64k block containing the current address to all 0xffs
+			switch( c->bits )
+			{
+			case 8:
+				{
+					data8_t *flash_memory = c->flash_memory;
+					memset( &flash_memory[ address & ~0xffff ], 0xff, 64 * 1024 );
+				}
+				break;
+			case 16:
+				{
+					data16_t *flash_memory = c->flash_memory;
+					memset( &flash_memory[ address & ~0x7fff ], 0xff, 64 * 1024 );
+				}
+				break;
+			}
 			c->flash_mode = FM_READSTATUS;
 			break;
 		}
@@ -292,66 +307,37 @@ void intelflash_write(int chip, data32_t address, data32_t data)
 	}
 }
 
-static void nvram_handler_intelflash(int chip,mame_file *file,int read_or_write)
+void nvram_handler_intelflash(int chip,mame_file *file,int read_or_write)
 {
 	struct flash_chip *c;
 	if( chip >= FLASH_CHIPS_MAX )
 	{
-		logerror( "nvram_handler_intelflash: invalid chip %d\n", chip );
+		logerror( "intelflash_nvram: invalid chip %d\n", chip );
 		return;
 	}
 	c = &chips[ chip ];
 
-	if (read_or_write)
+	switch( c->bits )
 	{
-		mame_fwrite( file, c->flash_memory, c->size );
-	}
-	else
-	{
-		if (file)
+	case 8:
+		if (read_or_write)
+		{
+			mame_fwrite( file, c->flash_memory, c->size );
+		}
+		else if (file)
 		{
 			mame_fread( file, c->flash_memory, c->size );
 		}
-	}
-}
-
-NVRAM_HANDLER( intelflash_0 ) { nvram_handler_intelflash( 0, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_1 ) { nvram_handler_intelflash( 1, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_2 ) { nvram_handler_intelflash( 2, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_3 ) { nvram_handler_intelflash( 3, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_4 ) { nvram_handler_intelflash( 4, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_5 ) { nvram_handler_intelflash( 5, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_6 ) { nvram_handler_intelflash( 6, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_7 ) { nvram_handler_intelflash( 7, file, read_or_write ); }
-
-static void nvram_handler_intelflash_16le( int chip, mame_file *file, int read_or_write )
-{
-	struct flash_chip *c;
-	if( chip >= FLASH_CHIPS_MAX )
-	{
-		logerror( "nvram_handler_intelflash_16le: invalid chip %d\n", chip );
-		return;
-	}
-	c = &chips[ chip ];
-
-	if (read_or_write)
-	{
-		mame_fwrite_lsbfirst( file, c->flash_memory, c->size );
-	}
-	else
-	{
-		if (file)
+		break;
+	case 16:
+		if (read_or_write)
+		{
+			mame_fwrite_lsbfirst( file, c->flash_memory, c->size );
+		}
+		else if (file)
 		{
 			mame_fread_lsbfirst( file, c->flash_memory, c->size );
 		}
+		break;
 	}
 }
-
-NVRAM_HANDLER( intelflash_16le_0 ) { nvram_handler_intelflash_16le( 0, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_16le_1 ) { nvram_handler_intelflash_16le( 1, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_16le_2 ) { nvram_handler_intelflash_16le( 2, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_16le_3 ) { nvram_handler_intelflash_16le( 3, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_16le_4 ) { nvram_handler_intelflash_16le( 4, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_16le_5 ) { nvram_handler_intelflash_16le( 5, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_16le_6 ) { nvram_handler_intelflash_16le( 6, file, read_or_write ); }
-NVRAM_HANDLER( intelflash_16le_7 ) { nvram_handler_intelflash_16le( 7, file, read_or_write ); }

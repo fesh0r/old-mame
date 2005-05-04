@@ -5,28 +5,28 @@ Space Force Memory Map
 driver by Zsolt Vasvari
 
 
-0000-3fff   R	ROM
-4000-43ff	R/W	RAM
-7000-7002	R   input ports 0-2
-7000		  W sound command
-7001	      W sound CPU IRQ trigger on bit 3 falling edge
-7002		  W unknown
-7008		  W unknown
-7009		  W unknown
-700a		  W unknown
-700b		  W flip screen
-700c		  W unknown
-700d		  W unknown
-700e		  W main CPU interrupt enable (it uses RST7.5)
-700f		  W unknown
+0000-3fff   R   ROM
+4000-43ff   R/W RAM
+7000-7002   R   input ports 0-2
+7000          W sound command
+7001          W sound CPU IRQ trigger on bit 3 falling edge
+7002          W unknown
+7008          W unknown
+7009          W unknown
+700a          W unknown
+700b          W flip screen
+700c          W unknown
+700d          W unknown
+700e          W main CPU interrupt enable (it uses RST7.5)
+700f          W unknown
 8000-83ff   R/W bit 0-7 of character code
 9000-93ff   R/W attributes RAM
-				bit 0   - bit 8 of character code
-				bit 1-3 - unused
-				bit 4-6 - color
-				bit 7   - unused
-a000-a3ff	R/W X/Y scroll position of each character (can be scrolled up
-				to 7 pixels in each direction)
+                bit 0   - bit 8 of character code
+                bit 1-3 - unused
+                bit 4-6 - color
+                bit 7   - unused
+a000-a3ff   R/W X/Y scroll position of each character (can be scrolled up
+                to 7 pixels in each direction)
 
 
 ***************************************************************************/
@@ -259,7 +259,7 @@ static MACHINE_DRIVER_START( spcforce )
 	MDRV_CPU_VBLANK_INT(irq3_line_hold,1)
 
 	MDRV_CPU_ADD(I8035,6144000/8)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)		/* divisor ??? */
+	/* audio CPU */		/* divisor ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 

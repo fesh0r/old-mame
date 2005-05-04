@@ -144,7 +144,8 @@ static ADDRESS_MAP_START( writemem_CPUB, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport_sound, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0000, 0x0000) AM_READ(MRA8_NOP)
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	AM_RANGE(0x00, 0x00) AM_READ(MRA8_NOP)
 ADDRESS_MAP_END
 
 
@@ -232,7 +233,7 @@ INPUT_PORTS_END
 
 /***************************************************************************
 **
-**	Graphics Layout
+**  Graphics Layout
 **
 ***************************************************************************/
 
@@ -275,7 +276,7 @@ static struct GfxDecodeInfo jcross_gfxdecodeinfo[] =
 
 /***************************************************************************
 **
-**	Machine Driver
+**  Machine Driver
 **
 ***************************************************************************/
 
@@ -290,7 +291,7 @@ static MACHINE_DRIVER_START( jcross )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 	MDRV_CPU_IO_MAP(readport_sound,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 244)
@@ -310,10 +311,10 @@ static MACHINE_DRIVER_START( jcross )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35)
-	
+
 	MDRV_SOUND_ADD(AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35)
 

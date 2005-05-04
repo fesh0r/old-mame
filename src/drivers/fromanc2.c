@@ -1,18 +1,18 @@
 /******************************************************************************
 
-	Game Driver for Video System Mahjong series.
+    Game Driver for Video System Mahjong series.
 
-	Taisen Idol-Mahjong Final Romance 2 (Japan)
-	(c)1995 Video System Co.,Ltd.
+    Taisen Idol-Mahjong Final Romance 2 (Japan)
+    (c)1995 Video System Co.,Ltd.
 
-	Taisen Mahjong FinalRomance R (Japan)
-	(c)1995 Video System Co.,Ltd.
+    Taisen Mahjong FinalRomance R (Japan)
+    (c)1995 Video System Co.,Ltd.
 
-	Taisen Mahjong FinalRomance 4 (Japan)
-	(c)1998 Video System Co.,Ltd.
+    Taisen Mahjong FinalRomance 4 (Japan)
+    (c)1998 Video System Co.,Ltd.
 
-	Driver by Takahiro Nogi <nogi@kt.rim.or.jp> 2001/02/28 -
-	Special thanks to Uki.
+    Driver by Takahiro Nogi <nogi@kt.rim.or.jp> 2001/02/28 -
+    Special thanks to Uki.
 
 ******************************************************************************/
 /******************************************************************************
@@ -82,7 +82,7 @@ static UINT8 fromanc2_sndcpu_nmi_flag;
 
 
 // ----------------------------------------------------------------------------
-// 	MACHINE INITIALYZE
+//  MACHINE INITIALYZE
 // ----------------------------------------------------------------------------
 
 static MACHINE_INIT( fromanc2 )
@@ -128,7 +128,7 @@ static DRIVER_INIT( fromanc4 )
 
 
 // ----------------------------------------------------------------------------
-// 	MAIN CPU Interrupt (fromanc2, fromancr, fromanc4)	TEST ROUTINE
+//  MAIN CPU Interrupt (fromanc2, fromancr, fromanc4)   TEST ROUTINE
 // ----------------------------------------------------------------------------
 
 static INTERRUPT_GEN( fromanc2_interrupt )
@@ -149,12 +149,12 @@ static INTERRUPT_GEN( fromanc2_interrupt )
 		usrintf_showmessage("PLAYER-%01X SIDE", fromanc2_playerside + 1);
 
 		if (!fromanc2_playerside) {
-//			mixer_set_stereo_volume(3, 75, 75);	// 1P (LEFT)
-//			mixer_set_stereo_volume(4,  0,  0);	// 2P (RIGHT)
+//          mixer_set_stereo_volume(3, 75, 75); // 1P (LEFT)
+//          mixer_set_stereo_volume(4,  0,  0); // 2P (RIGHT)
 		}
 		else {
-//			mixer_set_stereo_volume(3,  0,  0);	// 1P (LEFT)
-//			mixer_set_stereo_volume(4, 75, 75);	// 2P (RIGHT)
+//          mixer_set_stereo_volume(3,  0,  0); // 1P (LEFT)
+//          mixer_set_stereo_volume(4, 75, 75); // 2P (RIGHT)
 		}
 
 		fromanc2_set_dispvram_w(fromanc2_playerside);
@@ -165,7 +165,7 @@ static INTERRUPT_GEN( fromanc2_interrupt )
 
 
 // ----------------------------------------------------------------------------
-// 	Sound Command Interface (fromanc2, fromancr, fromanc4)
+//  Sound Command Interface (fromanc2, fromancr, fromanc4)
 // ----------------------------------------------------------------------------
 
 static WRITE16_HANDLER( fromanc2_sndcmd_w )
@@ -178,7 +178,7 @@ static WRITE16_HANDLER( fromanc2_sndcmd_w )
 }
 
 // ----------------------------------------------------------------------------
-// 	Input Port Interface (COIN, TEST, KEY MATRIX, EEPROM)
+//  Input Port Interface (COIN, TEST, KEY MATRIX, EEPROM)
 // ----------------------------------------------------------------------------
 
 static WRITE16_HANDLER( fromanc2_portselect_w )
@@ -274,7 +274,7 @@ static WRITE16_HANDLER( fromanc4_eeprom_w )
 }
 
 // ----------------------------------------------------------------------------
-// 	MAIN CPU, SUB CPU Communication Interface (fromanc2, fromancr)
+//  MAIN CPU, SUB CPU Communication Interface (fromanc2, fromancr)
 // ----------------------------------------------------------------------------
 
 static WRITE16_HANDLER( fromanc2_subcpu_w )
@@ -343,7 +343,7 @@ static WRITE8_HANDLER( fromanc2_subcpu_rombank_w )
 
 
 // ----------------------------------------------------------------------------
-//	MAIN Program (fromanc2, fromancr, fromanc4)
+//  MAIN Program (fromanc2, fromancr, fromanc4)
 // ----------------------------------------------------------------------------
 
 static ADDRESS_MAP_START( fromanc2_readmem_main, ADDRESS_SPACE_PROGRAM, 16 )
@@ -479,7 +479,7 @@ ADDRESS_MAP_END
 
 
 // ----------------------------------------------------------------------------
-// 	Z80 SUB Program (fromanc2, fromancr)
+//  Z80 SUB Program (fromanc2, fromancr)
 // ----------------------------------------------------------------------------
 
 static ADDRESS_MAP_START( fromanc2_readmem_sub, ADDRESS_SPACE_PROGRAM, 8 )
@@ -497,11 +497,13 @@ static ADDRESS_MAP_START( fromanc2_writemem_sub, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fromanc2_readport_sub, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x02, 0x02) AM_READ(fromanc2_maincpu_r_l)			// to MAIN CPU
 	AM_RANGE(0x04, 0x04) AM_READ(fromanc2_maincpu_r_h)			// to MAIN CPU
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fromanc2_writeport_sub, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(fromanc2_subcpu_rombank_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(fromanc2_maincpu_w_l)			// from MAIN CPU
 	AM_RANGE(0x04, 0x04) AM_WRITE(fromanc2_maincpu_w_h)			// from MAIN CPU
@@ -510,7 +512,7 @@ ADDRESS_MAP_END
 
 
 // ----------------------------------------------------------------------------
-// 	Z80 Sound Program (fromanc2, fromancr, fromanc4)
+//  Z80 Sound Program (fromanc2, fromancr, fromanc4)
 // ----------------------------------------------------------------------------
 
 static ADDRESS_MAP_START( fromanc2_readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
@@ -524,6 +526,7 @@ static ADDRESS_MAP_START( fromanc2_writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fromanc2_readport_sound, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch_r)					// snd cmd (1P)
 	AM_RANGE(0x04, 0x04) AM_READ(soundlatch2_r)					// snd cmd (2P)
 	AM_RANGE(0x09, 0x09) AM_READ(MRA8_NOP)						// ?
@@ -533,6 +536,7 @@ static ADDRESS_MAP_START( fromanc2_readport_sound, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fromanc2_writeport_sound, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(MWA8_NOP)						// ?
 	AM_RANGE(0x08, 0x08) AM_WRITE(YM2610_control_port_0_A_w)
 	AM_RANGE(0x09, 0x09) AM_WRITE(YM2610_data_port_0_A_w)
@@ -745,7 +749,7 @@ static MACHINE_DRIVER_START( fromanc2 )
 	MDRV_CPU_VBLANK_INT(fromanc2_interrupt,1)
 
 	MDRV_CPU_ADD(Z80,32000000/4)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)		/* 8.00 MHz */
+	/* audio CPU */		/* 8.00 MHz */
 	MDRV_CPU_PROGRAM_MAP(fromanc2_readmem_sound,fromanc2_writemem_sound)
 	MDRV_CPU_IO_MAP(fromanc2_readport_sound,fromanc2_writeport_sound)
 
@@ -787,7 +791,7 @@ static MACHINE_DRIVER_START( fromancr )
 	MDRV_CPU_VBLANK_INT(fromanc2_interrupt,1)
 
 	MDRV_CPU_ADD(Z80,32000000/4)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)		/* 8.00 MHz */
+	/* audio CPU */		/* 8.00 MHz */
 	MDRV_CPU_PROGRAM_MAP(fromanc2_readmem_sound,fromanc2_writemem_sound)
 	MDRV_CPU_IO_MAP(fromanc2_readport_sound,fromanc2_writeport_sound)
 
@@ -829,7 +833,7 @@ static MACHINE_DRIVER_START( fromanc4 )
 	MDRV_CPU_VBLANK_INT(fromanc2_interrupt,1)
 
 	MDRV_CPU_ADD(Z80,32000000/4)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)		/* 8.00 MHz */
+	/* audio CPU */		/* 8.00 MHz */
 	MDRV_CPU_PROGRAM_MAP(fromanc2_readmem_sound,fromanc2_writemem_sound)
 	MDRV_CPU_IO_MAP(fromanc2_readport_sound,fromanc2_writeport_sound)
 

@@ -37,7 +37,7 @@ OSOBJS += $(OBJ)/windows/mame.res
 endif
 
 ifdef NEW_DEBUGGER
-OSOBJS += $(OBJ)/windows/debugwin.o 
+OSOBJS += $(OBJ)/windows/debugwin.o
 endif
 
 RESFILE=$(OBJ)/mess/windows/mess.res

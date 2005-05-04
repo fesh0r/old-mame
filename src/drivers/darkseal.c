@@ -1,12 +1,12 @@
 /***************************************************************************
 
-	Dark Seal (Rev 3)    (c) 1990 Data East Corporation (World version)
-	Dark Seal (Rev 1)    (c) 1990 Data East Corporation (World version)
-	Dark Seal            (c) 1990 Data East Corporation (Japanese version)
-	Gate Of Doom (Rev 4) (c) 1990 Data East Corporation (USA version)
-	Gate of Doom (Rev 1) (c) 1990 Data East Corporation (USA version)
+    Dark Seal (Rev 3)    (c) 1990 Data East Corporation (World version)
+    Dark Seal (Rev 1)    (c) 1990 Data East Corporation (World version)
+    Dark Seal            (c) 1990 Data East Corporation (Japanese version)
+    Gate Of Doom (Rev 4) (c) 1990 Data East Corporation (USA version)
+    Gate of Doom (Rev 1) (c) 1990 Data East Corporation (USA version)
 
-	Emulation by Bryan McPhail, mish@tendril.co.uk
+    Emulation by Bryan McPhail, mish@tendril.co.uk
 
 ***************************************************************************/
 
@@ -294,7 +294,7 @@ static MACHINE_DRIVER_START( darkseal )
 	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)/* VBL */
 
 	MDRV_CPU_ADD(H6280, 32220000/8) /* Custom chip 45, Audio section crystal is 32.220 MHz */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(58)

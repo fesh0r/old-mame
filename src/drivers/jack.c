@@ -12,8 +12,8 @@ Main CPU
 b000-b07f  sprite ram
 b400       command for sound CPU
 b500-b505  input ports
-b506	   screen flip off
-b507	   screen flip on
+b506       screen flip off
+b507       screen flip on
 b600-b61f  palette ram
 b800-bbff  video ram
 bc00-bfff  color ram
@@ -147,10 +147,12 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x40, 0x40) AM_READ(AY8910_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x80, 0x80) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
@@ -331,7 +333,7 @@ INPUT_PORTS_START( zzyzzyxx )
 	PORT_DIPSETTING(    0x00, "3 under 4000 pts" )
 	PORT_DIPSETTING(    0x80, "5 under 4000 pts" )
 	PORT_DIPSETTING(    0x40, DEF_STR( None ) )			// 3 under 0 pts
-//	PORT_DIPSETTING(    0xc0, DEF_STR( None ) )			// 5 under 0 pts
+//  PORT_DIPSETTING(    0xc0, DEF_STR( None ) )         // 5 under 0 pts
 
 	PORT_START_TAG("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
@@ -562,17 +564,16 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( joinem )
 	PORT_START
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) )
+	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 4C_3C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x0c, DEF_STR( 4C_3C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "2" )
 	PORT_DIPSETTING(    0x10, "5" )
@@ -626,7 +627,7 @@ INPUT_PORTS_START( joinem )
 
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -686,7 +687,7 @@ static MACHINE_DRIVER_START( jack )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1) /* jack needs 1 or its too fast */
 
 	MDRV_CPU_ADD(Z80,18000000/12)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1.5 MHz */
+	/* audio CPU */	/* 1.5 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 
@@ -705,7 +706,7 @@ static MACHINE_DRIVER_START( jack )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 18000000/12)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
@@ -733,7 +734,7 @@ INTERRUPT_GEN( joinem_interrupts )
 }
 
 static MACHINE_DRIVER_START( joinem )
-	
+
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(jack)
 	MDRV_CPU_MODIFY("main")

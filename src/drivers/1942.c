@@ -26,7 +26,7 @@ c800      command for the audio CPU
 c802-c803 background scroll
 c804      bit 7: flip screen
           bit 4: cpu B reset
-		  bit 0: coin counter
+          bit 0: coin counter
 c805      background palette bank selector
 c806      bit 0-1 ROM bank selector 00=1-N5.BIN
                                     01=1-N6.BIN
@@ -263,7 +263,7 @@ static MACHINE_DRIVER_START( 1942 )
 	MDRV_CPU_VBLANK_INT(c1942_interrupt,2)
 
 	MDRV_CPU_ADD(Z80, 3000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 3 MHz ??? */
+	/* audio CPU */	/* 3 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)
 

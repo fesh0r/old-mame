@@ -116,10 +116,10 @@ static READ16_HANDLER( rng_sysregs_r )
 
 		case 0x04/2:
 			/*
-				bit0-7: coin mechs and services
-				bit8 : freeze
-				bit9 : joysticks layout(auto detect???)
-			*/
+                bit0-7: coin mechs and services
+                bit8 : freeze
+                bit9 : joysticks layout(auto detect???)
+            */
 			return(input_port_0_word_r(0, 0));
 		break;
 
@@ -149,13 +149,13 @@ static WRITE16_HANDLER( rng_sysregs_w )
 	{
 		case 0x08/2:
 			/*
-				bit0  : EEPROM_write_bit
-				bit1  : EEPROM_set_cs_line
-				bit2  : EEPROM_set_clock_line
-				bit3  : coin counter?
-				bit7  : set before massive memory writes
-				bit10 : IRQ5 ACK
-			*/
+                bit0  : EEPROM_write_bit
+                bit1  : EEPROM_set_cs_line
+                bit2  : EEPROM_set_clock_line
+                bit3  : coin counter?
+                bit7  : set before massive memory writes
+                bit10 : IRQ5 ACK
+            */
 			if (ACCESSING_LSB)
 			{
 				EEPROM_write_bit((data & 0x01) ? 1 : 0);
@@ -169,11 +169,11 @@ static WRITE16_HANDLER( rng_sysregs_w )
 
 		case 0x0c/2:
 			/*
-				bit 0 : also enables IRQ???
-				bit 1 : disable PSAC2 input?
-				bit 2 : OBJCHA
-				bit 3 : enable IRQ 5
-			*/
+                bit 0 : also enables IRQ???
+                bit 1 : disable PSAC2 input?
+                bit 2 : OBJCHA
+                bit 3 : enable IRQ 5
+            */
 			K053246_set_OBJCHA_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
 		break;
 	}
@@ -337,7 +337,7 @@ static MACHINE_DRIVER_START( rng )
 	MDRV_CPU_VBLANK_INT(rng_interrupt,1)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 10000000) // 8Mhz (10Mhz is much safer in self-test due to heavy sync)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_PERIODIC_INT(audio_interrupt, 480)
 
@@ -505,7 +505,7 @@ ROM_START( runguna )
 
 	/* sound program */
 	ROM_REGION( 0x030000, REGION_CPU2, 0 )
-	ROM_LOAD("247a05",  0x000000, 0x20000, CRC(64e85430) SHA1(542919c3be257c8f118fc21d3835d7b6426a22ed) )
+	ROM_LOAD("1.13g",  0x000000, 0x20000, CRC(c0b35df9) SHA1(a0c73d993eb32bd0cd192351b5f86794efd91949) )
 	ROM_RELOAD(         0x010000, 0x20000 )
 
 	/* '936 tiles */

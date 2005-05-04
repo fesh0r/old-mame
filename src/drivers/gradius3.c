@@ -13,10 +13,6 @@ my way in.
 There's also something wrong in the way tile banks are implemented in
 konamiic.c. They don't seem to be used by this game.
 
-The visible area is dubious. It looks like it is supposed to be asymmetrical,
-I've set it that way however this will break cocktail flip (since it expects
-a symmetrical visible area).
-
 ***************************************************************************/
 
 #include "driver.h"
@@ -51,7 +47,7 @@ static WRITE16_HANDLER( K052109_halfword_w )
 	/* is this a bug in the game or something else? */
 	if (!ACCESSING_LSB)
 		K052109_w(offset,(data >> 8) & 0xff);
-//		logerror("%06x half %04x = %04x\n",activecpu_get_pc(),offset,data);
+//      logerror("%06x half %04x = %04x\n",activecpu_get_pc(),offset,data);
 }
 
 static READ16_HANDLER( K051937_halfword_r )
@@ -322,7 +318,7 @@ INPUT_PORTS_START( gradius3 )
 	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
-//	PORT_DIPSETTING(    0x00, "Invalid" )
+//  PORT_DIPSETTING(    0x00, "Invalid" )
 
 	PORT_START	/* DSW2 */
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Lives ) )
@@ -390,7 +386,7 @@ static MACHINE_DRIVER_START( gradius3 )
 								/* 4 is triggered by cpu A, the others are unknown but */
 								/* required for the game to run. */
 	MDRV_CPU_ADD(Z80, 3579545)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 3.579545 MHz */
+	/* audio CPU */	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(gradius3_s_readmem,gradius3_s_writemem)
 
 	MDRV_FRAMES_PER_SECOND(60)
@@ -402,7 +398,7 @@ static MACHINE_DRIVER_START( gradius3 )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
-	MDRV_VISIBLE_AREA(12*8, (64-14)*8-1, 2*8, 30*8-1 )	/* asymmetrical! */
+	MDRV_VISIBLE_AREA(12*8, (64-12)*8-1, 2*8, 30*8-1 )
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(gradius3)
@@ -414,7 +410,7 @@ static MACHINE_DRIVER_START( gradius3 )
 	MDRV_SOUND_ADD(YM2151, 3579545)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
-	
+
 	MDRV_SOUND_ADD(K007232, 3579545)
 	MDRV_SOUND_CONFIG(k007232_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.20)

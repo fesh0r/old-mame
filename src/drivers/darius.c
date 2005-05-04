@@ -7,11 +7,11 @@ David Graves, Jarek Burczynski
 
 Sound panning and other enhancements: Hiromitsu Shioya
 
-Sources:		MAME Rastan driver
-			Raine source - invaluable for this driver -
-			many thanks to Richard Bush and the Raine Team.
+Sources:        MAME Rastan driver
+            Raine source - invaluable for this driver -
+            many thanks to Richard Bush and the Raine Team.
 
-				*****
+                *****
 
 Rom Versions
 ------------
@@ -50,9 +50,9 @@ Darius (Old JPN Ver.)
 -----------------------
 Sound Board
 K1100228A
-CPU 	:Z80 x2
-Sound	:YM2203C x2
-OSC 	:8.000MHz
+CPU     :Z80 x2
+Sound   :YM2203C x2
+OSC     :8.000MHz
 -----------------------
 A96_56.18
 A96_57.33
@@ -60,8 +60,8 @@ A96_57.33
 -----------------------
 M4300067A
 K1100226A
-CPU 	:MC68000P8 x2
-OSC 	:16000.00KHz
+CPU     :MC68000P8 x2
+OSC     :16000.00KHz
 -----------------------
 A96_28.152
 A96_29.185
@@ -88,8 +88,8 @@ A96_47.201
 
 -----------------------
 K1100227A
-OSC 	:26686.00KHz
-Other	:PC080SN x3
+OSC     :26686.00KHz
+Other   :PC080SN x3
 -----------------------
 A96_48.103
 A96_48.24
@@ -173,7 +173,7 @@ void parse_control( void )	/* assumes Z80 sandwiched between 68Ks */
 {
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
-	   if cpu B is disabled !! */
+       if cpu B is disabled !! */
 	cpunum_set_input_line(2, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
 
 }
@@ -327,7 +327,7 @@ static int nmi_enable = 0;
 static void reset_sound_region(void)
 {
 	cpu_setbank( STATIC_BANK1, memory_region(REGION_CPU2) + (banknum * 0x8000) + 0x10000 );
-//	cpu_setbank( 1, memory_region(REGION_CPU2) + (banknum * 0x8000) + 0x10000 );
+//  cpu_setbank( 1, memory_region(REGION_CPU2) + (banknum * 0x8000) + 0x10000 );
 
 }
 
@@ -335,8 +335,8 @@ static WRITE8_HANDLER( sound_bankswitch_w )
 {
 		banknum = data &0x03;
 		reset_sound_region();
-//		banknum = data;
-//		reset_sound_region();
+//      banknum = data;
+//      reset_sound_region();
 }
 
 static WRITE8_HANDLER( adpcm_command_w )
@@ -527,7 +527,7 @@ static ADDRESS_MAP_START( darius_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xcc00, 0xcc00) AM_WRITE(darius_psg1_pan)
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(darius_da_pan)
 	AM_RANGE(0xd400, 0xd400) AM_WRITE(adpcm_command_w)	/* ADPCM command for second Z80 to read from port 0x00 */
-//	AM_RANGE(0xd800, 0xd800) AM_WRITE(display_value)	/* ??? */
+//  AM_RANGE(0xd800, 0xd800) AM_WRITE(display_value)    /* ??? */
 	AM_RANGE(0xdc00, 0xdc00) AM_WRITE(sound_bankswitch_w)
 ADDRESS_MAP_END
 
@@ -591,12 +591,14 @@ static WRITE8_HANDLER( adpcm_data_w )
 }
 
 static ADDRESS_MAP_START( darius_sound2_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(adpcm_command_read)
 	AM_RANGE(0x02, 0x02) AM_READ(readport2)	/* ??? */
 	AM_RANGE(0x03, 0x03) AM_READ(readport3)	/* ??? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darius_sound2_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(adpcm_nmi_disable)
 	AM_RANGE(0x01, 0x01) AM_WRITE(adpcm_nmi_enable)
 	AM_RANGE(0x02, 0x02) AM_WRITE(adpcm_data_w)
@@ -865,7 +867,7 @@ static MACHINE_DRIVER_START( darius )
 	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
 
 	MDRV_CPU_ADD(Z80,8000000/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ? */
+	/* audio CPU */	/* 4 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(darius_sound_readmem,darius_sound_writemem)
 
 	MDRV_CPU_ADD(M68000,16000000/2)	/* 8 MHz ? */
@@ -873,7 +875,7 @@ static MACHINE_DRIVER_START( darius )
 	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
 
 	MDRV_CPU_ADD(Z80,8000000/2) /* 4 MHz ? */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* ADPCM player using MSM5205 */
+	/* audio CPU */	/* ADPCM player using MSM5205 */
 	MDRV_CPU_PROGRAM_MAP(darius_sound2_readmem,darius_sound2_writemem)
 	MDRV_CPU_IO_MAP(darius_sound2_readport,darius_sound2_writeport)
 
@@ -993,7 +995,7 @@ ROM_START( darius )
 
 	ROM_REGION( 0x60000, REGION_GFX1, ROMREGION_DISPOSE )
 	/* There are THREE of each SCR gfx rom on the actual board,
-	   making a complete set for every PC080SN tilemap chip */
+       making a complete set for every PC080SN tilemap chip */
 	ROM_LOAD16_BYTE( "a96_48.24",    0x00000, 0x10000, CRC(39c9b3aa) SHA1(43a91d916c5a09207dfa37413feb5025636f37ae) )	/* 8x8 SCR tiles */
 	ROM_LOAD16_BYTE( "a96_49.25",    0x20000, 0x10000, CRC(37a7d88a) SHA1(cede0d810d74ec460dcc4b391bb1acd5a669a7b4) )
 	ROM_LOAD16_BYTE( "a96_50.26",    0x40000, 0x10000, CRC(75d738e4) SHA1(634606da46136ab605f5477af5639a20e39b44c4) )
@@ -1196,7 +1198,7 @@ ROM_END
 
 static DRIVER_INIT( darius )
 {
-//	taitosnd_setz80_soundcpu( 2 );
+//  taitosnd_setz80_soundcpu( 2 );
 
 	cpua_ctrl = 0xff;
 	state_save_register_UINT16("main1", 0, "control", &cpua_ctrl, 1);

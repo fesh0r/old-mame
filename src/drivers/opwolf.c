@@ -5,10 +5,10 @@ Operation Wolf  (c) Taito 1987
 
 David Graves, Jarek Burczynski
 
-Sources:		MAME Rastan driver
-			MAME Taito F2 driver
-			Raine source - many thanks to Richard Bush
-			  and the Raine Team.
+Sources:        MAME Rastan driver
+            MAME Taito F2 driver
+            Raine source - many thanks to Richard Bush
+              and the Raine Team.
 
 Main CPU: MC68000 uses irq 5.
 Sound   : Z80 & YM2151 & MSM5205
@@ -84,7 +84,7 @@ static WRITE16_HANDLER( cchip_w )
 }
 
 /**********************************************************
-				GAME INPUTS
+                GAME INPUTS
 **********************************************************/
 
 static READ16_HANDLER( opwolf_lightgun_r )
@@ -115,7 +115,7 @@ static READ8_HANDLER( z80_input2_r )
 
 
 /******************************************************
-				SOUND
+                SOUND
 ******************************************************/
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -124,7 +124,7 @@ static WRITE8_HANDLER( sound_bankswitch_w )
 }
 
 /***********************************************************
-			 MEMORY STRUCTURES
+             MEMORY STRUCTURES
 ***********************************************************/
 
 static ADDRESS_MAP_START( opwolf_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -161,9 +161,9 @@ static ADDRESS_MAP_START( opwolf_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 /***************************************************************************
-	This extra Z80 substitutes for the c-chip in the bootleg,
-	but we also use it as a fake c-chip to get the original
-	working. */
+    This extra Z80 substitutes for the c-chip in the bootleg,
+    but we also use it as a fake c-chip to get the original
+    working. */
 
 static ADDRESS_MAP_START( sub_z80_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
@@ -249,7 +249,7 @@ static WRITE8_HANDLER( opwolf_adpcm_b_w )
 		MSM5205_reset_w(0, 0);
 	}
 
-//	logerror("CPU #1     b00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );
+//  logerror("CPU #1     b00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );
 }
 
 
@@ -271,18 +271,18 @@ static WRITE8_HANDLER( opwolf_adpcm_c_w )
 		MSM5205_reset_w(1, 0);
 	}
 
-//	logerror("CPU #1     c00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );
+//  logerror("CPU #1     c00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );
 }
 
 
 static WRITE8_HANDLER( opwolf_adpcm_d_w )
 {
-//	logerror("CPU #1         d00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );
+//  logerror("CPU #1         d00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );
 }
 
 static WRITE8_HANDLER( opwolf_adpcm_e_w )
 {
-//	logerror("CPU #1         e00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );
+//  logerror("CPU #1         e00%i-data=%2x   pc=%4x\n",offset,data,activecpu_get_pc() );
 }
 
 
@@ -301,7 +301,7 @@ ADDRESS_MAP_END
 
 
 /***********************************************************
-			 INPUT PORTS, DIPs
+             INPUT PORTS, DIPs
 ***********************************************************/
 
 #define TAITO_COINAGE_WORLD_8 \
@@ -386,7 +386,7 @@ INPUT_PORTS_END
 
 
 /**************************************************************
-				GFX DECODING
+                GFX DECODING
 **************************************************************/
 
 static struct GfxLayout charlayout =
@@ -449,7 +449,7 @@ static struct GfxDecodeInfo opwolfb_gfxdecodeinfo[] =
 
 
 /**************************************************************
-			     YM2151 (SOUND)
+                 YM2151 (SOUND)
 **************************************************************/
 
 /* handler called by the YM2151 emulator when the internal timers cause an IRQ */
@@ -476,7 +476,7 @@ static struct MSM5205interface msm5205_interface =
 
 
 /***********************************************************
-			     MACHINE DRIVERS
+                 MACHINE DRIVERS
 ***********************************************************/
 
 static MACHINE_DRIVER_START( opwolf )
@@ -574,31 +574,55 @@ MACHINE_DRIVER_END
 
 
 /***************************************************************************
-					DRIVERS
+                    DRIVERS
 ***************************************************************************/
 
 ROM_START( opwolf )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 )     /* 256k for 68000 code */
-	ROM_LOAD16_BYTE( "opwlf.40",  0x00000, 0x10000, CRC(3ffbfe3a) SHA1(e41257e6af18bab4e36267a0c25a6aaa742972d2) )
-	ROM_LOAD16_BYTE( "opwlf.30",  0x00001, 0x10000, CRC(fdabd8a5) SHA1(866ec6168489024b8d157f2d5b1553d7f6e3d9b7) )
-	ROM_LOAD16_BYTE( "opwlf.39",  0x20000, 0x10000, CRC(216b4838) SHA1(2851cae00bb3e32e20f35fdab8ed6f149e658363) )
-	ROM_LOAD16_BYTE( "opwlf.29",  0x20001, 0x10000, CRC(b71bc44c) SHA1(5b404bd7630f01517ab98bda40ca43c11268035a) )
+	ROM_LOAD16_BYTE( "b20-05-02.40",  0x00000, 0x10000, CRC(3ffbfe3a) SHA1(e41257e6af18bab4e36267a0c25a6aaa742972d2) )
+	ROM_LOAD16_BYTE( "b20-03-02.30",  0x00001, 0x10000, CRC(fdabd8a5) SHA1(866ec6168489024b8d157f2d5b1553d7f6e3d9b7) )
+	ROM_LOAD16_BYTE( "b20-04.39",     0x20000, 0x10000, CRC(216b4838) SHA1(2851cae00bb3e32e20f35fdab8ed6f149e658363) )
+	ROM_LOAD16_BYTE( "b20-20.29",     0x20001, 0x10000, CRC(d244431a) SHA1(cb6c1d330a526f05c205f68247328161b8d4a1ba) )
 
 	ROM_REGION( 0x20000, REGION_CPU2, 0 )      /* sound cpu */
-	ROM_LOAD( "opwlf_s.10",  0x00000, 0x04000, CRC(45c7ace3) SHA1(06f7393f6b973b7735c27e8380cb4148650cfc16) )
-	ROM_CONTINUE(            0x10000, 0x0c000 ) /* banked stuff */
+	ROM_LOAD( "b20-07.10",  0x00000, 0x04000, CRC(45c7ace3) SHA1(06f7393f6b973b7735c27e8380cb4148650cfc16) )
+	ROM_CONTINUE(           0x10000, 0x0c000 ) /* banked stuff */
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )      /* fake Z80 from the bootleg */
-	ROM_LOAD( "opwlfb.09",   0x00000, 0x08000, CRC(ab27a3dd) SHA1(cf589e7a9ccf3e86020b86f917fb91f3d8ba7512) )
+	ROM_LOAD( "opwlfb.09",  0x00000, 0x08000, CRC(ab27a3dd) SHA1(cf589e7a9ccf3e86020b86f917fb91f3d8ba7512) )
 
 	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "opwlf.13",  0x00000, 0x80000, CRC(f6acdab1) SHA1(716b94ab3fa330ecf22df576f6a9f47a49c7554a) )	/* SCR tiles (8 x 8) */
+	ROM_LOAD( "b20-13.13",  0x00000, 0x80000, CRC(f6acdab1) SHA1(716b94ab3fa330ecf22df576f6a9f47a49c7554a) )	/* SCR tiles (8 x 8) */
 
 	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "opwlf.72",  0x00000, 0x80000, CRC(89f889e5) SHA1(1592f6ce4fbb75e33d6ab957e5b90242a7a7a8c4) )	/* Sprites (16 x 16) */
+	ROM_LOAD( "b20-14.72",  0x00000, 0x80000, CRC(89f889e5) SHA1(1592f6ce4fbb75e33d6ab957e5b90242a7a7a8c4) )	/* Sprites (16 x 16) */
 
 	ROM_REGION( 0x80000, REGION_SOUND1, 0 )	/* ADPCM samples */
-	ROM_LOAD( "opwlf_s.21",   0x00000, 0x80000, CRC(f3e19c64) SHA1(39d48645f776c9c2ade537d959ecc6f9dc6dfa1b) )
+	ROM_LOAD( "b20-08.21",  0x00000, 0x80000, CRC(f3e19c64) SHA1(39d48645f776c9c2ade537d959ecc6f9dc6dfa1b) )
+ROM_END
+
+ROM_START( opwolfu )
+	ROM_REGION( 0x40000, REGION_CPU1, 0 )     /* 256k for 68000 code */
+	ROM_LOAD16_BYTE( "b20-05-02.40",  0x00000, 0x10000, CRC(3ffbfe3a) SHA1(e41257e6af18bab4e36267a0c25a6aaa742972d2) )
+	ROM_LOAD16_BYTE( "b20-03-02.30",  0x00001, 0x10000, CRC(fdabd8a5) SHA1(866ec6168489024b8d157f2d5b1553d7f6e3d9b7) )
+	ROM_LOAD16_BYTE( "b20-04.39",     0x20000, 0x10000, CRC(216b4838) SHA1(2851cae00bb3e32e20f35fdab8ed6f149e658363) )
+	ROM_LOAD16_BYTE( "opwlf.29",      0x20001, 0x10000, CRC(b71bc44c) SHA1(5b404bd7630f01517ab98bda40ca43c11268035a) )
+
+	ROM_REGION( 0x20000, REGION_CPU2, 0 )      /* sound cpu */
+	ROM_LOAD( "b20-07.10",  0x00000, 0x04000, CRC(45c7ace3) SHA1(06f7393f6b973b7735c27e8380cb4148650cfc16) )
+	ROM_CONTINUE(           0x10000, 0x0c000 ) /* banked stuff */
+
+	ROM_REGION( 0x10000, REGION_CPU3, 0 )      /* fake Z80 from the bootleg */
+	ROM_LOAD( "opwlfb.09",  0x00000, 0x08000, CRC(ab27a3dd) SHA1(cf589e7a9ccf3e86020b86f917fb91f3d8ba7512) )
+
+	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "b20-13.13",  0x00000, 0x80000, CRC(f6acdab1) SHA1(716b94ab3fa330ecf22df576f6a9f47a49c7554a) )	/* SCR tiles (8 x 8) */
+
+	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "b20-14.72",  0x00000, 0x80000, CRC(89f889e5) SHA1(1592f6ce4fbb75e33d6ab957e5b90242a7a7a8c4) )	/* Sprites (16 x 16) */
+
+	ROM_REGION( 0x80000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_LOAD( "b20-08.21",  0x00000, 0x80000, CRC(f3e19c64) SHA1(39d48645f776c9c2ade537d959ecc6f9dc6dfa1b) )
 ROM_END
 
 ROM_START( opwolfb )
@@ -671,5 +695,6 @@ static DRIVER_INIT( opwolfb )
 
 
 /*    year  rom       parent    machine   inp       init */
-GAMEX( 1987, opwolf,   0,        opwolf,   opwolf,   opwolf,   ROT0, "Taito America Corporation", "Operation Wolf (US)", GAME_IMPERFECT_SOUND )
+GAMEX( 1987, opwolf,   0,        opwolf,   opwolf,   opwolf,   ROT0, "Taito Corporation Japan", "Operation Wolf (World)", GAME_IMPERFECT_SOUND )
+GAMEX( 1987, opwolfu,  opwolf,   opwolf,   opwolf,   opwolf,   ROT0, "Taito America Corporation", "Operation Wolf (US)", GAME_IMPERFECT_SOUND )
 GAMEX( 1987, opwolfb,  opwolf,   opwolfb,  opwolf,   opwolfb,  ROT0, "bootleg", "Operation Bear", GAME_IMPERFECT_SOUND )

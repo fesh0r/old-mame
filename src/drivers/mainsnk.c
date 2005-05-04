@@ -1,6 +1,6 @@
 /* Main Event - SNK
-   driver by	David Haywood
-   		Tomasz Slanina
+   driver by    David Haywood
+        Tomasz Slanina
 
  ROM doesn't pass its internal checksum
 
@@ -115,7 +115,8 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport_sound, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0000, 0x0000) AM_READ(MRA8_NOP)
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	AM_RANGE(0x00, 0x00) AM_READ(MRA8_NOP)
 ADDRESS_MAP_END
 
 INPUT_PORTS_START( mainsnk )
@@ -213,7 +214,7 @@ static MACHINE_DRIVER_START( mainsnk)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_CPU_ADD(Z80,4000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
  	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
  	MDRV_CPU_IO_MAP(readport_sound,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 244)
@@ -230,10 +231,10 @@ static MACHINE_DRIVER_START( mainsnk)
 	MDRV_VIDEO_UPDATE(mainsnk)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35)
-	
+
 	MDRV_SOUND_ADD(AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35)
 

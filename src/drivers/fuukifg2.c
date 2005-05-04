@@ -1,15 +1,15 @@
 /***************************************************************************
 
-						  -= Fuuki 16 Bit Games =-
+                          -= Fuuki 16 Bit Games =-
 
-					driver by	Luca Elia (l.elia@tin.it)
+                    driver by   Luca Elia (l.elia@tin.it)
 
 
-Main  CPU	:	M68000
-Sound Chips	:	YM2203  +  YM3812  +  M6295
-Video Chips	:	FI-002K (208pin PQFP, GA2)
-				FI-003K (208pin PQFP, GA3)
-Other		:	Mitsubishi M60067-0901FP 452100 (208pin PQFP, GA1)
+Main  CPU   :   M68000
+Sound Chips :   YM2203  +  YM3812  +  M6295
+Video Chips :   FI-002K (208pin PQFP, GA2)
+                FI-003K (208pin PQFP, GA3)
+Other       :   Mitsubishi M60067-0901FP 452100 (208pin PQFP, GA1)
 
 
 ---------------------------------------------------------------------------
@@ -61,7 +61,7 @@ VIDEO_UPDATE( fuuki16 );
 /***************************************************************************
 
 
-							Memory Maps - Main CPU
+                            Memory Maps - Main CPU
 
 
 ***************************************************************************/
@@ -72,7 +72,7 @@ static WRITE16_HANDLER( fuuki16_sound_command_w )
 	{
 		soundlatch_w(0,data & 0xff);
 		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
-//		cpu_spinuntil_time(TIME_IN_USEC(50));	// Allow the other CPU to reply
+//      cpu_spinuntil_time(TIME_IN_USEC(50));   // Allow the other CPU to reply
 		cpu_boost_interleave(0, TIME_IN_USEC(50)); // Fixes glitching in rasters
 	}
 }
@@ -113,7 +113,7 @@ ADDRESS_MAP_END
 /***************************************************************************
 
 
-							Memory Maps - Sound CPU
+                            Memory Maps - Sound CPU
 
 
 To do: ADPCM samples banking in gogomile.
@@ -141,12 +141,14 @@ static ADDRESS_MAP_START( fuuki16_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fuuki16_sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x11, 0x11) AM_READ(soundlatch_r				)	// From Main CPU
 	AM_RANGE(0x50, 0x50) AM_READ(YM3812_status_port_0_r	)	// YM3812
 	AM_RANGE(0x60, 0x60) AM_READ(OKIM6295_status_0_r		)	// M6295
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fuuki16_sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(fuuki16_sound_rombank_w 	)	// ROM Bank
 	AM_RANGE(0x11, 0x11) AM_WRITE(MWA8_NOP					)	// ? To Main CPU
 	AM_RANGE(0x20, 0x20) AM_WRITE(MWA8_NOP					)	// ? 0x10, 0x32, 0x54: 2 volumes ?
@@ -162,7 +164,7 @@ ADDRESS_MAP_END
 /***************************************************************************
 
 
-								Input Ports
+                                Input Ports
 
 
 ***************************************************************************/
@@ -373,18 +375,18 @@ INPUT_PORTS_START( pbancho )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( On ) )
 	PORT_DIPNAME( 0x001c, 0x001c, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(      0x0008, "Easiest" )	// 1
+	PORT_DIPSETTING(      0x0008, DEF_STR( Easiest ) )	// 1
 	PORT_DIPSETTING(      0x0010, DEF_STR( Easy )    )	// 2
 	PORT_DIPSETTING(      0x001c, DEF_STR( Normal )  )	// 3
 	PORT_DIPSETTING(      0x0018, DEF_STR( Hard )    )	// 4
 	PORT_DIPSETTING(      0x0004, DEF_STR( Hardest ) )	// 5
-//	PORT_DIPSETTING(      0x0000, DEF_STR( Normal )  )	// 3
-//	PORT_DIPSETTING(      0x000c, DEF_STR( Normal )  )	// 3
-//	PORT_DIPSETTING(      0x0014, DEF_STR( Normal )  )	// 3
+//  PORT_DIPSETTING(      0x0000, DEF_STR( Normal )  )  // 3
+//  PORT_DIPSETTING(      0x000c, DEF_STR( Normal )  )  // 3
+//  PORT_DIPSETTING(      0x0014, DEF_STR( Normal )  )  // 3
 	PORT_DIPNAME( 0x0060, 0x0060, "Lives (Vs Mode)" )
 	PORT_DIPSETTING(      0x0000, "1" )	// 1 1
 	PORT_DIPSETTING(      0x0060, "2" )	// 2 3
-//	PORT_DIPSETTING(      0x0020, "2" )	// 2 3
+//  PORT_DIPSETTING(      0x0020, "2" ) // 2 3
 	PORT_DIPSETTING(      0x0040, "3" )	// 3 5
 	PORT_DIPNAME( 0x0080, 0x0080, "? Senin Mode ?" )
 	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
@@ -395,7 +397,7 @@ INPUT_PORTS_START( pbancho )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0200, 0x0200, "Allow Game Selection" )	// "unused" in the manual?
 	PORT_DIPSETTING(      0x0200, DEF_STR( Yes ) )
-//	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )	// Why cripple the game!?
+//  PORT_DIPSETTING(      0x0000, DEF_STR( No ) )   // Why cripple the game!?
 	PORT_DIPNAME( 0x1c00, 0x1c00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0c00, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(      0x1400, DEF_STR( 3C_1C ) )
@@ -422,7 +424,7 @@ INPUT_PORTS_END
 /***************************************************************************
 
 
-							Graphics Layouts
+                            Graphics Layouts
 
 
 ***************************************************************************/
@@ -479,7 +481,7 @@ static struct GfxDecodeInfo fuuki16_gfxdecodeinfo[] =
 /***************************************************************************
 
 
-								Machine Drivers
+                                Machine Drivers
 
 
 ***************************************************************************/
@@ -495,15 +497,15 @@ static struct YM3812interface fuuki16_ym3812_intf =
 };
 
 /*
-	- Interrupts (pbancho) -
+    - Interrupts (pbancho) -
 
-	Lev 1:	Sets bit 5 of $400010. Prints "credit .." with sprites.
-	Lev 2:	Sets bit 7 of $400010. Clears $8c0012.
-			It seems unused by the game.
-	Lev 3:	VBlank.
-	Lev 5:	Programmable to happen on a raster line. Used to do raster
-			effects when you die and its clearing the blocks
-			also used for water effects and titlescreen linescroll on gogomile
+    Lev 1:  Sets bit 5 of $400010. Prints "credit .." with sprites.
+    Lev 2:  Sets bit 7 of $400010. Clears $8c0012.
+            It seems unused by the game.
+    Lev 3:  VBlank.
+    Lev 5:  Programmable to happen on a raster line. Used to do raster
+            effects when you die and its clearing the blocks
+            also used for water effects and titlescreen linescroll on gogomile
 */
 #define INTERRUPTS_NUM	(256-1) // Give much better results than 256..
 INTERRUPT_GEN( fuuki16_interrupt )
@@ -511,8 +513,8 @@ INTERRUPT_GEN( fuuki16_interrupt )
 	if ( cpu_getiloops() == 1 )
 		cpunum_set_input_line(0, 1, PULSE_LINE);
 
-//	if ( cpu_getiloops() == 2 ) /* Not used - Glitches hiscore table? */
-//		cpunum_set_input_line(0, 2, PULSE_LINE);
+//  if ( cpu_getiloops() == 2 ) /* Not used - Glitches hiscore table? */
+//      cpunum_set_input_line(0, 2, PULSE_LINE);
 
 	if ( cpu_getiloops() == 0 )
 	{
@@ -540,7 +542,7 @@ static MACHINE_DRIVER_START( fuuki16 )
 	MDRV_CPU_VBLANK_INT(fuuki16_interrupt,INTERRUPTS_NUM)
 
 	MDRV_CPU_ADD(Z80, 3000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* ? */
+	/* audio CPU */	/* ? */
 	MDRV_CPU_PROGRAM_MAP(fuuki16_sound_readmem,fuuki16_sound_writemem)
 	MDRV_CPU_IO_MAP(fuuki16_sound_readport,fuuki16_sound_writeport)
 
@@ -579,14 +581,14 @@ MACHINE_DRIVER_END
 /***************************************************************************
 
 
-								ROMs Loading
+                                ROMs Loading
 
 
 ***************************************************************************/
 
 /***************************************************************************
 
-					Go! Go! Mile Smile / Susume! Mile Smile
+                    Go! Go! Mile Smile / Susume! Mile Smile
 
 (c)1995 Fuuki
 FG-1C AI AM-2 (same board as Gyakuten Puzzle Banchou)
@@ -685,7 +687,7 @@ ROM_END
 
 /***************************************************************************
 
-							Gyakuten!! Puzzle Bancho
+                            Gyakuten!! Puzzle Bancho
 
 (c)1996 Fuuki
 FG-1C AI AM-2
@@ -747,7 +749,7 @@ ROM_END
 /***************************************************************************
 
 
-								Game Drivers
+                                Game Drivers
 
 
 ***************************************************************************/

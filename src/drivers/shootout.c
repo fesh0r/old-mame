@@ -1,39 +1,39 @@
 /*******************************************************************************
 
-	Shoot Out (USA) 			(c) 1985 Data East USA		DE-0219
-	Shoot Out (Japan)			(c) 1985 Data East USA		DE-0203
-	Shoot Out (Korean bootleg)	(c) 1985 Data East USA		DE-0203 bootleg
+    Shoot Out (USA)             (c) 1985 Data East USA      DE-0219
+    Shoot Out (Japan)           (c) 1985 Data East USA      DE-0203
+    Shoot Out (Korean bootleg)  (c) 1985 Data East USA      DE-0203 bootleg
 
-	Shoot Out (Japan) is an interesting board, it runs on an earlier PCB design
-	than the USA version, has no sound CPU, uses half as many sprites and
-	unusually for a Deco Japanese game it is credited to 'Data East USA'.
-	Perhaps the USA arm of Deco designed this game rather than the Japanese
-	arm?
+    Shoot Out (Japan) is an interesting board, it runs on an earlier PCB design
+    than the USA version, has no sound CPU, uses half as many sprites and
+    unusually for a Deco Japanese game it is credited to 'Data East USA'.
+    Perhaps the USA arm of Deco designed this game rather than the Japanese
+    arm?
 
-	Shoot Out (Japan) uses the YM2203 ports for CPU bankswitching so it does
-	not work with sound turned off.
+    Shoot Out (Japan) uses the YM2203 ports for CPU bankswitching so it does
+    not work with sound turned off.
 
-	Shoot Out (Korean bootleg) is based on the earlier DE-0203 board but
-	strangely features the same encryption as used on the DE-0219 board.  It
-	also has some edited graphics.
+    Shoot Out (Korean bootleg) is based on the earlier DE-0203 board but
+    strangely features the same encryption as used on the DE-0219 board.  It
+    also has some edited graphics.
 
-	Driver by:
-		Ernesto Corvi (ernesto@imagina.com)
-		Phil Stroffolino
-		Shoot Out (Japan) and fixes added by Bryan McPhail (mish@tendril.co.uk)
+    Driver by:
+        Ernesto Corvi (ernesto@imagina.com)
+        Phil Stroffolino
+        Shoot Out (Japan) and fixes added by Bryan McPhail (mish@tendril.co.uk)
 
-	TODO:
+    TODO:
 
-	- Fix coin counter
-	- Lots of unmapped memory reads
+    - Fix coin counter
+    - Lots of unmapped memory reads
 
 *******************************************************************************/
 
 /*
 
-	2003-06-01	Added cocktail support to shootout
-	2003-10-08	Added cocktail support to shootouj/shootoub
-	2003-10-21	Removed input port hack
+    2003-06-01  Added cocktail support to shootout
+    2003-10-08  Added cocktail support to shootouj/shootoub
+    2003-10-21  Removed input port hack
 
 */
 
@@ -300,7 +300,7 @@ static MACHINE_DRIVER_START( shootout )
 	MDRV_CPU_VBLANK_INT(shootout_interrupt,1) /* nmi's are triggered at coin up */
 
 	MDRV_CPU_ADD(M6502, 1500000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(60)

@@ -1,9 +1,9 @@
 /*
- *	Thunder Ceptor board
- *	(C) 1986 Namco
+ *  Thunder Ceptor board
+ *  (C) 1986 Namco
  *
- *	Hardware analyzed by nono
- *	Driver by BUT
+ *  Hardware analyzed by nono
+ *  Driver by BUT
  */
 
 #include "driver.h"
@@ -516,11 +516,11 @@ static MACHINE_DRIVER_START( tceptor )
 	MDRV_CPU_VBLANK_INT(m6809_vb_interrupt,1)
 
 	MDRV_CPU_ADD(M65C02, 49152000/24)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(m6502_a_readmem,m6502_a_writemem)
 
 	MDRV_CPU_ADD(M65C02, 49152000/24)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(m6502_b_readmem,m6502_b_writemem)
 
 	MDRV_CPU_ADD(M68000, 49152000/4)

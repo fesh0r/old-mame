@@ -1,14 +1,14 @@
 /***************************************************************************
 
-	Pocket Gal						(c) 1987 Data East Corporation
-	Pocket Gal (Bootleg)			(c) 1989 Yada East Corporation(!!!)
-	Super Pool III					(c) 1989 Data East Corporation
-	Pocket Gal 2					(c) 1989 Data East Corporation
-	Super Pool III (I-Vics Inc)		(c) 1990 Data East Corporation
+    Pocket Gal                      (c) 1987 Data East Corporation
+    Pocket Gal (Bootleg)            (c) 1989 Yada East Corporation(!!!)
+    Super Pool III                  (c) 1989 Data East Corporation
+    Pocket Gal 2                    (c) 1989 Data East Corporation
+    Super Pool III (I-Vics Inc)     (c) 1990 Data East Corporation
 
-	Pocket Gal (Bootleg) is often called 'Sexy Billiards'
+    Pocket Gal (Bootleg) is often called 'Sexy Billiards'
 
-	Emulation by Bryan McPhail, mish@tendril.co.uk
+    Emulation by Bryan McPhail, mish@tendril.co.uk
 
 ***************************************************************************/
 
@@ -236,7 +236,7 @@ static struct GfxDecodeInfo bootleg_gfxdecodeinfo[] =
 static struct MSM5205interface msm5205_interface =
 {
 	pcktgal_adpcm_int,	/* interrupt function */
-	MSM5205_S48_4B		/* 8KHz			   */
+	MSM5205_S48_4B		/* 8KHz            */
 };
 
 /***************************************************************************/
@@ -249,7 +249,7 @@ static MACHINE_DRIVER_START( pcktgal )
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
 
 	MDRV_CPU_ADD(M6502, 1500000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 							/* IRQs are caused by the ADPCM chip */
 							/* NMIs are caused by the main CPU */

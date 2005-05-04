@@ -81,7 +81,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3b0a, 0x3b0b) AM_WRITE(gng_bgscrolly_w)
 	AM_RANGE(0x3c00, 0x3c00) AM_WRITE(MWA8_NOP)   /* watchdog? */
 	AM_RANGE(0x3d00, 0x3d00) AM_WRITE(gng_flipscreen_w)
-//	{ 0x3d01, 0x3d01, reset sound cpu?
+//  { 0x3d01, 0x3d01, reset sound cpu?
 	AM_RANGE(0x3d02, 0x3d03) AM_WRITE(gng_coin_counter_w)
 	AM_RANGE(0x3e00, 0x3e00) AM_WRITE(gng_bankswitch_w)
 	AM_RANGE(0x4000, 0xffff) AM_WRITE(MWA8_ROM)
@@ -334,7 +334,7 @@ static MACHINE_DRIVER_START( gng )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 3000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 3 MHz (?) */
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)
 

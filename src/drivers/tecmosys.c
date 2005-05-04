@@ -155,7 +155,7 @@ static READ16_HANDLER(reg_f80000_r)
 		// 68k code.
 		if (device_write_ptr == 0x10000)
 		{
-//			logerror("DEVICE write finished\n");
+//          logerror("DEVICE write finished\n");
 			device_status = DS_READ_ACK;
 			device_write_ptr = 0;
 			device_read_ptr = 0;
@@ -175,14 +175,14 @@ static READ16_HANDLER(reg_f80000_r)
 
 	if (device_status == DS_READ_ACK)
 	{
-//		logerror("Read ACK\n");
+//      logerror("Read ACK\n");
 		device_status = DS_READ;
 		return 0;
 	}
 
 	dt = device[device_read_ptr];
 
-//	logerror("DEVICE read %x: %x (at %x)\n", device_read_ptr, dt, cpunum_get_pc(0));
+//  logerror("DEVICE read %x: %x (at %x)\n", device_read_ptr, dt, cpunum_get_pc(0));
 
 	device_read_ptr++;
 	device_read_ptr &= 0xFFFF;
@@ -219,7 +219,7 @@ static WRITE16_HANDLER(reg_e80000_w)
 		switch (data)
 		{
 		case 0x13:
-//			logerror("DEVICE mode WRITE (cmd 0x13)\n");
+//          logerror("DEVICE mode WRITE (cmd 0x13)\n");
 			device_status = DS_WRITE;
 			device_write_ptr = 0;
 			break;
@@ -231,7 +231,7 @@ static WRITE16_HANDLER(reg_e80000_w)
 	// @@@ Should skip the writes while in read mode?
 	if (device_status == DS_READ || device_status == DS_READ_ACK)
 	{
-//		logerror("EEPROM write %x: %x\n", device_write_ptr, data);
+//      logerror("EEPROM write %x: %x\n", device_write_ptr, data);
 		return;
 	}
 
@@ -374,12 +374,14 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(YMF262_status_0_r)
 	AM_RANGE(0x40, 0x40) AM_READ(soundlatch_r)
 	//AM_RANGE(0x60, 0x60) AM_READ(YMZ280B_status_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(YMF262_register_A_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YMF262_data_A_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YMF262_register_B_0_w)
@@ -545,7 +547,7 @@ static MACHINE_DRIVER_START( deroon )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 16000000/2 )	/* 8 MHz ??? */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 

@@ -1,19 +1,19 @@
 /***************************************************************************
 
-							-=  SunA 16 Bit Games =-
+                            -=  SunA 16 Bit Games =-
 
-					driver by	Luca Elia (l.elia@tin.it)
+                    driver by   Luca Elia (l.elia@tin.it)
 
 
-CPU:	68000   +  Z80 [Music]  +  Z80 x 2 [4 Bit PCM]
-Sound:	YM2151  +  DAC x 4
+CPU:    68000   +  Z80 [Music]  +  Z80 x 2 [4 Bit PCM]
+Sound:  YM2151  +  DAC x 4
 
 
 ---------------------------------------------------------------------------
-Year + Game					By		Hardware
+Year + Game                 By      Hardware
 ---------------------------------------------------------------------------
-96	Back Street Soccer		SunA	68000 + Z80 x 3 + YM2151 + DAC x 4
-96	Ultra Balloon			SunA	68000 + Z80 x 2 + YM2151 + DAC x 2
+96  Back Street Soccer      SunA    68000 + Z80 x 3 + YM2151 + DAC x 4
+96  Ultra Balloon           SunA    68000 + Z80 x 2 + YM2151 + DAC x 2
 ---------------------------------------------------------------------------
 
 
@@ -38,7 +38,7 @@ VIDEO_UPDATE( suna16 );
 /***************************************************************************
 
 
-								Main CPU
+                                Main CPU
 
 
 ***************************************************************************/
@@ -81,7 +81,7 @@ WRITE16_HANDLER( uballoon_leds_w )
 
 
 /***************************************************************************
-							Back Street Soccer
+                            Back Street Soccer
 ***************************************************************************/
 
 static ADDRESS_MAP_START( bssoccer_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -113,7 +113,7 @@ ADDRESS_MAP_END
 
 
 /***************************************************************************
-								Ultra Balloon
+                                Ultra Balloon
 ***************************************************************************/
 
 WRITE16_HANDLER( uballoon_spriteram16_w )
@@ -154,16 +154,16 @@ ADDRESS_MAP_END
 /***************************************************************************
 
 
-									Z80 #1
+                                    Z80 #1
 
-		Plays the music (YM2151) and controls the 2 Z80s in charge
-		of playing the PCM samples
+        Plays the music (YM2151) and controls the 2 Z80s in charge
+        of playing the PCM samples
 
 
 ***************************************************************************/
 
 /***************************************************************************
-							Back Street Soccer
+                            Back Street Soccer
 ***************************************************************************/
 
 static ADDRESS_MAP_START( bssoccer_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -183,7 +183,7 @@ static ADDRESS_MAP_START( bssoccer_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 /***************************************************************************
-								Ultra Balloon
+                                Ultra Balloon
 ***************************************************************************/
 
 static ADDRESS_MAP_START( uballoon_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -206,15 +206,15 @@ ADDRESS_MAP_END
 /***************************************************************************
 
 
-								Z80 #2 & #3
+                                Z80 #2 & #3
 
-		Dumb PCM samples players (e.g they don't even have RAM!)
+        Dumb PCM samples players (e.g they don't even have RAM!)
 
 
 ***************************************************************************/
 
 /***************************************************************************
-							Back Street Soccer
+                            Back Street Soccer
 ***************************************************************************/
 
 /* Bank Switching */
@@ -273,17 +273,21 @@ static WRITE8_HANDLER( bssoccer_DAC_2_w )
 
 
 static ADDRESS_MAP_START( bssoccer_pcm_1_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch2_r 				)	// From The Sound Z80
 ADDRESS_MAP_END
 static ADDRESS_MAP_START( bssoccer_pcm_1_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x01) AM_WRITE(bssoccer_DAC_1_w				)	// 2 x DAC
 	AM_RANGE(0x03, 0x03) AM_WRITE(bssoccer_pcm_1_bankswitch_w	)	// Rom Bank
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bssoccer_pcm_2_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch3_r 				)	// From The Sound Z80
 ADDRESS_MAP_END
 static ADDRESS_MAP_START( bssoccer_pcm_2_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x01) AM_WRITE(bssoccer_DAC_2_w				)	// 2 x DAC
 	AM_RANGE(0x03, 0x03) AM_WRITE(bssoccer_pcm_2_bankswitch_w	)	// Rom Bank
 ADDRESS_MAP_END
@@ -291,7 +295,7 @@ ADDRESS_MAP_END
 
 
 /***************************************************************************
-								Ultra Balloon
+                                Ultra Balloon
 ***************************************************************************/
 
 /* Bank Switching */
@@ -316,9 +320,11 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( uballoon_pcm_1_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch2_r 				)	// From The Sound Z80
 ADDRESS_MAP_END
 static ADDRESS_MAP_START( uballoon_pcm_1_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x01) AM_WRITE(bssoccer_DAC_1_w				)	// 2 x DAC
 	AM_RANGE(0x03, 0x03) AM_WRITE(uballoon_pcm_1_bankswitch_w	)	// Rom Bank
 ADDRESS_MAP_END
@@ -326,7 +332,7 @@ ADDRESS_MAP_END
 /***************************************************************************
 
 
-								Input Ports
+                                Input Ports
 
 
 ***************************************************************************/
@@ -343,7 +349,7 @@ ADDRESS_MAP_END
 
 
 /***************************************************************************
-							Back Street Soccer
+                            Back Street Soccer
 ***************************************************************************/
 
 INPUT_PORTS_START( bssoccer )
@@ -426,7 +432,7 @@ INPUT_PORTS_END
 
 
 /***************************************************************************
-								Ultra Balloon
+                                Ultra Balloon
 ***************************************************************************/
 
 INPUT_PORTS_START( uballoon )
@@ -465,8 +471,8 @@ INPUT_PORTS_START( uballoon )
 	PORT_DIPNAME( 0x3000, 0x3000, "Copyright" )	// Jumpers
 	PORT_DIPSETTING(	  0x3000, "Distributer Unico" )
 	PORT_DIPSETTING(	  0x2000, "All Rights Reserved" )
-//	PORT_DIPSETTING(	  0x1000, "Distributer Unico" )
-//	PORT_DIPSETTING(	  0x0000, "All Rights Reserved" )
+//  PORT_DIPSETTING(      0x1000, "Distributer Unico" )
+//  PORT_DIPSETTING(      0x0000, "All Rights Reserved" )
 	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_START2   )
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_COIN2    )
 
@@ -525,7 +531,7 @@ INPUT_PORTS_END
 /***************************************************************************
 
 
-								Graphics Layouts
+                                Graphics Layouts
 
 
 ***************************************************************************/
@@ -555,14 +561,14 @@ static struct GfxDecodeInfo suna16_gfxdecodeinfo[] =
 /***************************************************************************
 
 
-								Machine drivers
+                                Machine drivers
 
 
 ***************************************************************************/
 
 
 /***************************************************************************
-							Back Street Soccer
+                            Back Street Soccer
 ***************************************************************************/
 
 INTERRUPT_GEN( bssoccer_interrupt )
@@ -582,16 +588,16 @@ static MACHINE_DRIVER_START( bssoccer )
 	MDRV_CPU_VBLANK_INT(bssoccer_interrupt,2)
 
 	MDRV_CPU_ADD(Z80, 3579545)		/* Z80B */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(bssoccer_sound_readmem,bssoccer_sound_writemem)
 
 	MDRV_CPU_ADD(Z80, 5000000)		/* Z80B */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(bssoccer_pcm_1_readmem,bssoccer_pcm_1_writemem)
 	MDRV_CPU_IO_MAP(bssoccer_pcm_1_readport,bssoccer_pcm_1_writeport)
 
 	MDRV_CPU_ADD(Z80, 5000000)		/* Z80B */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(bssoccer_pcm_2_readmem,bssoccer_pcm_2_writemem)
 	MDRV_CPU_IO_MAP(bssoccer_pcm_2_readport,bssoccer_pcm_2_writeport)
 
@@ -632,7 +638,7 @@ MACHINE_DRIVER_END
 
 
 /***************************************************************************
-								Ultra Balloon
+                                Ultra Balloon
 ***************************************************************************/
 
 static MACHINE_DRIVER_START( uballoon )
@@ -643,11 +649,11 @@ static MACHINE_DRIVER_START( uballoon )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 3579545)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* ? */
+	/* audio CPU */	/* ? */
 	MDRV_CPU_PROGRAM_MAP(uballoon_sound_readmem,uballoon_sound_writemem)
 
 	MDRV_CPU_ADD(Z80, 5000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* ? */
+	/* audio CPU */	/* ? */
 	MDRV_CPU_PROGRAM_MAP(uballoon_pcm_1_readmem,uballoon_pcm_1_writemem)
 	MDRV_CPU_IO_MAP(uballoon_pcm_1_readport,uballoon_pcm_1_writeport)
 
@@ -684,7 +690,7 @@ MACHINE_DRIVER_END
 /***************************************************************************
 
 
-								ROMs Loading
+                                ROMs Loading
 
 
 ***************************************************************************/
@@ -692,22 +698,22 @@ MACHINE_DRIVER_END
 
 /***************************************************************************
 
-							[ Back Street Soccer ]
+                            [ Back Street Soccer ]
 
-  68000-10	32MHz
-			14.318MHz
-  01   02					 12
-  03   04					Z80B
-  6264 6264 	  YM2151
-				  6116
-				   11	   13
-  62256 		  Z80B	  Z80B
+  68000-10  32MHz
+            14.318MHz
+  01   02                    12
+  03   04                   Z80B
+  6264 6264       YM2151
+                  6116
+                   11      13
+  62256           Z80B    Z80B
   62256
-  62256   05 06 				 SW2
-		  07 08 				 SW1
-		  09 10 		 6116-45
-									 6116-45
-						 6116-45	 6116-45
+  62256   05 06                  SW2
+          07 08                  SW1
+          09 10          6116-45
+                                     6116-45
+                         6116-45     6116-45
 
 ***************************************************************************/
 
@@ -742,7 +748,7 @@ ROM_END
 
 /***************************************************************************
 
-							[ Ultra Ballon ]
+                            [ Ultra Ballon ]
 
 the gameplay on this game a like bubble bobble in many ways,it uses a
 68k@8MHz as the main cpu,2 z80's and a ym2151,the names of the rom files
@@ -750,12 +756,12 @@ are just my guess.
 
 prg1.rom      27c040
 prg2.rom      27c040
-gfx1.rom	  27c040
-gfx2.rom	  27c040
-gfx3.rom	  27c040
-gfx4.rom	  27c040
-audio1.rom	  27c512
-audio2.rom	  27c010
+gfx1.rom      27c040
+gfx2.rom      27c040
+gfx3.rom      27c040
+gfx4.rom      27c040
+audio1.rom    27c512
+audio2.rom    27c010
 
 ***************************************************************************/
 
@@ -800,7 +806,7 @@ DRIVER_INIT( uballoon )
 /***************************************************************************
 
 
-								Games Drivers
+                                Games Drivers
 
 
 ***************************************************************************/

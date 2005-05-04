@@ -102,7 +102,7 @@ static ADDRESS_MAP_START( matmania_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3000, 0x3000) AM_WRITE(MWA8_RAM) AM_BASE(&matmania_pageselect)
 	AM_RANGE(0x3010, 0x3010) AM_WRITE(matmania_sh_command_w)
 	AM_RANGE(0x3020, 0x3020) AM_WRITE(MWA8_RAM) AM_BASE(&matmania_scroll)
-//	AM_RANGE(0x3030, 0x3030) AM_WRITE(MWA8_NOP)	/* ?? */
+//  AM_RANGE(0x3030, 0x3030) AM_WRITE(MWA8_NOP) /* ?? */
 	AM_RANGE(0x3050, 0x307f) AM_WRITE(matmania_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0x4000, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
@@ -347,7 +347,7 @@ static MACHINE_DRIVER_START( matmania )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_CPU_ADD(M6502, 1200000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1.2 MHz ???? */
+	/* audio CPU */	/* 1.2 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,15)	/* ???? */
 								/* IRQs are caused by the main CPU */
@@ -369,10 +369,10 @@ static MACHINE_DRIVER_START( matmania )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
-	
+
 	MDRV_SOUND_ADD(AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
@@ -402,7 +402,7 @@ static MACHINE_DRIVER_START( maniach )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_CPU_ADD(M6809, 1500000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1.5 MHz ???? */
+	/* audio CPU */	/* 1.5 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(maniach_sound_readmem,maniach_sound_writemem)
 								/* IRQs are caused by the main CPU */
 	MDRV_CPU_ADD(M68705, 500000)	/* .5 MHz (don't know really how fast, but it doesn't need to even be this fast) */

@@ -194,12 +194,14 @@ static ADDRESS_MAP_START( heberpop_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( heberpop_sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(YM3438_status_port_0_A_r)
 	AM_RANGE(0x80, 0x80) AM_READ(OKIM6295_status_0_r)
 	AM_RANGE(0xc0, 0xc0) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( heberpop_sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM3438_control_port_0_A_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM3438_data_port_0_A_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YM3438_control_port_0_B_w)
@@ -515,7 +517,7 @@ static MACHINE_DRIVER_START( shangha3 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 1500000)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
@@ -552,7 +554,7 @@ static MACHINE_DRIVER_START( heberpop )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(YM3438, 8000000)
 	MDRV_SOUND_CONFIG(ym3438_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 0.40)
@@ -590,7 +592,7 @@ static MACHINE_DRIVER_START( blocken )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(YM3438, 8000000)
 	MDRV_SOUND_CONFIG(ym3438_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 0.40)

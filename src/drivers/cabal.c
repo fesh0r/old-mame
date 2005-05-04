@@ -77,7 +77,7 @@ static void cabalbl_play_adpcm( int channel, int which ){
 			start = RAM[offset+which] + 256*RAM[offset+which+1];
 			len = (RAM[offset+start]*256 + RAM[offset+start+1])*2;
 			start+=2;
-//			ADPCM_play( channel,offset+start,len );
+//          ADPCM_play( channel,offset+start,len );
 		}
 	}
 }
@@ -340,9 +340,9 @@ ADDRESS_MAP_END
 	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Demo_Sounds ) )\
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )\
 	PORT_DIPSETTING(      0x8000, DEF_STR( On ) )
-  
+
   INPUT_PORTS_START( cabal )
-  
+
 CABALDSW
 	PORT_START_TAG("IN0")
   	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
@@ -477,7 +477,7 @@ static MACHINE_DRIVER_START( cabal )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz */
+	/* audio CPU */	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 
 	MDRV_FRAMES_PER_SECOND(60)
@@ -517,7 +517,7 @@ static MACHINE_DRIVER_START( cabalbl )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz */
+	/* audio CPU */	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(cabalbl_readmem_sound,cabalbl_writemem_sound)
 
 	MDRV_FRAMES_PER_SECOND(60)

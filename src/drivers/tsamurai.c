@@ -1,12 +1,12 @@
 /****************************************************************************
 
-	Preliminary driver for Samurai, Nunchackun, Yuke Yuke Yamaguchi-kun
-	(c) Taito 1985
+    Preliminary driver for Samurai, Nunchackun, Yuke Yuke Yamaguchi-kun
+    (c) Taito 1985
 
-	Known Issues:
-	- some color problems (need screenshots)
-	- Nunchackun has wrong colors; sprites look better if you subtract sprite color from 0x2d
-	- Yuke Yuke Yamaguchi-kun isn't playable (sprite problem only?)
+    Known Issues:
+    - some color problems (need screenshots)
+    - Nunchackun has wrong colors; sprites look better if you subtract sprite color from 0x2d
+    - Yuke Yuke Yamaguchi-kun isn't playable (sprite problem only?)
 
 driver by Phil Stroffolino
 
@@ -15,7 +15,7 @@ Mission 660 extensions by Paul Swan (swan@easynet.co.uk)
 The game appears to use the same video board as Samurai et al. There is a
 character column scroll feature that I have added. Its used to scroll in
 the "660" logo on the title screen at the beginning. Not sure if Samurai
-at al use it but it's likely their boards have the feature.	Extra banking
+at al use it but it's likely their boards have the feature. Extra banking
 of the forground is done using an extra register. A bit in the background
 video RAM selects the additional background character space.
 
@@ -226,14 +226,17 @@ static ADDRESS_MAP_START( writemem_m660, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_writeport_m660, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(MWA8_NOP)		       /* ? */
 	AM_RANGE(0x01, 0x01) AM_WRITE(MWA8_NOP)               /* Written continuously. Increments with level. */
 	AM_RANGE(0x02, 0x02) AM_WRITE(MWA8_NOP)               /* Always follows above with 0x01 data */
@@ -324,9 +327,11 @@ ADDRESS_MAP_END
 /*******************************************************************************/
 
 static ADDRESS_MAP_START( readport_sound3_m660, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_sound3_m660, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
@@ -752,11 +757,11 @@ static MACHINE_DRIVER_START( tsamurai )
 	MDRV_CPU_VBLANK_INT(samurai_interrupt,1)
 
 	MDRV_CPU_ADD(Z80, 2000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound1,writemem_sound1)
 
 	MDRV_CPU_ADD(Z80, 2000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound2,writemem_sound2)
 
 	MDRV_FRAMES_PER_SECOND(60)
@@ -775,7 +780,7 @@ static MACHINE_DRIVER_START( tsamurai )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
@@ -796,15 +801,15 @@ static MACHINE_DRIVER_START( m660 )
 	MDRV_CPU_VBLANK_INT(samurai_interrupt,1)
 
 	MDRV_CPU_ADD(Z80, 2000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound1_m660,writemem_sound1_m660)
 
 	MDRV_CPU_ADD(Z80, 2000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound2_m660,writemem_sound2_m660)
 
 	MDRV_CPU_ADD(Z80, 2000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound3_m660,writemem_sound3_m660)
 	MDRV_CPU_IO_MAP(readport_sound3_m660,writeport_sound3_m660)
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
@@ -825,7 +830,7 @@ static MACHINE_DRIVER_START( m660 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
@@ -865,7 +870,7 @@ static MACHINE_DRIVER_START( vsgongf )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 

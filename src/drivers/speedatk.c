@@ -22,9 +22,9 @@ Notes:
 SPEED ATTACK!
 (c)SETA
 
-CPU	:Z80 x 1
-SOUND	:AY-3-8910 x 1
-XTAL	:12MHZ
+CPU :Z80 x 1
+SOUND   :AY-3-8910 x 1
+XTAL    :12MHZ
 
 SETA CUSTOM ?
 AC-002 , AC-003
@@ -171,6 +171,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x40, 0x40) AM_READ(input_port_0_r)
 	/* are these not used? after they're read it sets bit 7 */
 	AM_RANGE(0x60, 0x60) AM_READ(MRA8_NOP)
@@ -179,6 +180,7 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x01, 0x01) AM_WRITE(speedatk_flip_screen_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x41, 0x41) AM_WRITE(AY8910_write_port_0_w)
@@ -291,7 +293,7 @@ static MACHINE_DRIVER_START( speedatk )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 4000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END

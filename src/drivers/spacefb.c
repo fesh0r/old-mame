@@ -12,13 +12,13 @@ Space Firebird memory map (preliminary)
   pcb.
 
 TODO
-	- Add Starfield. It is NOT a Galaxians starfield
-	- Need to verify that the red background is correct. Currently every sprite has 8x8 or 4x4 opaque pixels.
-	  This is correct for the sprite over sprite graphics, but maybe incorrect for the background colour and stars
+    - Add Starfield. It is NOT a Galaxians starfield
+    - Need to verify that the red background is correct. Currently every sprite has 8x8 or 4x4 opaque pixels.
+      This is correct for the sprite over sprite graphics, but maybe incorrect for the background colour and stars
 
-0000-3FFF ROM		Code
-8000-83FF RAM		Sprite RAM
-C000-C7FF RAM		Game ram
+0000-3FFF ROM       Code
+8000-83FF RAM       Sprite RAM
+C000-C7FF RAM       Game ram
 
 IO Ports
 
@@ -108,14 +108,14 @@ Port 2 - Video control
 These are passed to the sound board and are used to produce a
 red flash effect when you die.
 
-   bit 0 = CONT R		Changes contrast of the red/green/blue part of the stars. This is used to make the starfield flicker
+   bit 0 = CONT R       Changes contrast of the red/green/blue part of the stars. This is used to make the starfield flicker
    bit 1 = CONT G
    bit 2 = CONT B
-   bit 3 = ALRD			Turns background red on
-   bit 4 = ALBU			Turns background blue on
+   bit 3 = ALRD         Turns background red on
+   bit 4 = ALBU         Turns background blue on
    bit 5 = unused
    bit 6 = unused
-   bit 7 = ALBA			Turns on Starfield or turns background colour to white
+   bit 7 = ALBA         Turns on Starfield or turns background colour to white
 
 
 ***************************************************************************/
@@ -186,12 +186,12 @@ static WRITE8_HANDLER( spacefb_port_1_w )
 	bit6 = bit;
 
 /*
-	Explosion Noise
+    Explosion Noise
 
-	Actual sample has a bit of attack at the start, but these doesn't seem to be an easy way
-	to play the attack part, then loop the middle bit until the sample is turned off
-	Fortunately it seems like the recorded sample of the spaceship death is the longest the sample plays for.
-	We loop it just in case it runs out
+    Actual sample has a bit of attack at the start, but these doesn't seem to be an easy way
+    to play the attack part, then loop the middle bit until the sample is turned off
+    Fortunately it seems like the recorded sample of the spaceship death is the longest the sample plays for.
+    We loop it just in case it runs out
 */
 	bit = 1-((data >> 7) & 1);
 	if (bit ^ bit7)
@@ -243,6 +243,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r) /* IN 0 */
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r) /* IN 1 */
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r) /* Coin - Start */
@@ -250,6 +251,7 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(spacefb_video_control_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(spacefb_port_1_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(spacefb_port_2_w)
@@ -423,7 +425,7 @@ static MACHINE_DRIVER_START( spacefb )
 	MDRV_CPU_VBLANK_INT(spacefb_interrupt,2) /* two int's per frame */
 
 	MDRV_CPU_ADD(I8035,6000000/15)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 	MDRV_CPU_IO_MAP(readport_sound,writeport_sound)
 

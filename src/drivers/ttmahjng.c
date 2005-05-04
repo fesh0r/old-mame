@@ -175,7 +175,6 @@ static MACHINE_DRIVER_START( ttmahjng )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,2500000)
-	MDRV_CPU_FLAGS(CPU_16BIT_PORT)	/* 10MHz / 4 = 2.5MHz */
 	MDRV_CPU_PROGRAM_MAP(cpu1_readmem,cpu1_writemem)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
@@ -197,7 +196,7 @@ static MACHINE_DRIVER_START( ttmahjng )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 10000000/8)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END

@@ -12,15 +12,15 @@
 
 Note: it's important that REGION_USER1 is 0xa0000 bytes with empty space filled
       with 0xff, because the built-in roms test checks how many question roms
-	  the games has and the type of each one.
-	  The  type is stored in one byte in an offset which change for every game
-	  (it's the offset stored in rom_type variable).
+      the games has and the type of each one.
+      The  type is stored in one byte in an offset which change for every game
+      (it's the offset stored in rom_type variable).
 
-	  Rom type byte legend:
-	  0 -> 0x02000 bytes rom
-	  1 -> 0x04000 bytes rom
-	  2 -> 0x08000 bytes rom
-	  3 -> 0x10000 bytes rom
+      Rom type byte legend:
+      0 -> 0x02000 bytes rom
+      1 -> 0x04000 bytes rom
+      2 -> 0x08000 bytes rom
+      3 -> 0x10000 bytes rom
 
 */
 
@@ -123,7 +123,7 @@ WRITE8_HANDLER( low_offset_w )
 		byte_low = 0x100;
 	}
 	else
-//		byte_low = offset;
+//      byte_low = offset;
 		byte_low = data;
 
 	logerror("low:  offset = %02X data = %02X\n",offset,data);
@@ -132,7 +132,7 @@ WRITE8_HANDLER( low_offset_w )
 WRITE8_HANDLER( high_offset_w )
 {
 	byte_high = offset;
-//	byte_high = data;
+//  byte_high = data;
 	logerror("high: offset = %02X data = %02X\n",offset,data);
 }
 
@@ -154,6 +154,7 @@ static ADDRESS_MAP_START( phrcraze_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( phrcraze_io_map, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x04, 0x04) AM_WRITENOP
 ADDRESS_MAP_END
 
@@ -175,6 +176,7 @@ static ADDRESS_MAP_START( tictac_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tictac_io_map, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x0c, 0x0c) AM_WRITENOP
 ADDRESS_MAP_END
 
@@ -197,6 +199,7 @@ static ADDRESS_MAP_START( trvwhiz_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( trvwhiz_io_map, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITENOP
 ADDRESS_MAP_END
 
@@ -406,7 +409,7 @@ static MACHINE_DRIVER_START( phrcraze )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 2500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -540,6 +543,8 @@ ROM_START( trvwhiz )
 	ROM_LOAD( "spo_101.01a",  0x50000, 0x8000, CRC(9dc4ba98) SHA1(4ce2bbbd7436a0ba8140879d5d8614bddbd5a8ec) )
 	ROM_LOAD( "spo_101.02a",  0x60000, 0x8000, CRC(9c106ad9) SHA1(1d1a5c91152283e3937a2df17cd57b8fe04072b7) )
 	ROM_LOAD( "spo_101.03a",  0x70000, 0x8000, CRC(3d69c3a3) SHA1(9f16d45660f3cb15e44e9fc0d940a7b2b12819e8) )
+	ROM_LOAD( "sex-101.01a",  0x80000, 0x8000, CRC(301d65c2) SHA1(48d260077e9c9ed82f6dfa176b1103723dc9e19a) )
+	ROM_LOAD( "sex-101.02a",  0x90000, 0x8000, CRC(2596091b) SHA1(7fbb9c2c3f74e12714513928c8cf3769bf29fc8b) )
 ROM_END
 
 ROM_START( trvwhzii )

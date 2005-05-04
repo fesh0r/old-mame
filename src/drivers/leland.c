@@ -1,39 +1,40 @@
 /***************************************************************************
 
-	Cinemat/Leland driver
+    Cinemat/Leland driver
 
-	driver by Aaron Giles and Paul Leaman
+    driver by Aaron Giles and Paul Leaman
 
-	Games supported:
-		* Cerberus
-		* Mayhem 2002
-		* Power Play
-		* World Series: The Season
-		* Alley Master
-		* Danger Zone
-		* Baseball The Season II
-		* Super Baseball Double Play Home Run Derby
-		* Strike Zone Baseball
-		* Redline Racer
-		* Quarterback
-		* Viper
-		* John Elway's Team Quarterback
-		* All American Football
-		* Ironman Stewart's Super Off-Road
-		* Pigout
+    Games supported:
+        * Cerberus
+        * Mayhem 2002
+        * Power Play
+        * World Series: The Season
+        * Alley Master
+        * Up Your Alley
+        * Danger Zone
+        * Baseball The Season II
+        * Super Baseball Double Play Home Run Derby
+        * Strike Zone Baseball
+        * Redline Racer
+        * Quarterback
+        * Viper
+        * John Elway's Team Quarterback
+        * All American Football
+        * Ironman Stewart's Super Off-Road
+        * Pigout
 
-	Known bugs:
-		* none at this time
+    Known bugs:
+        * none at this time
 
 ****************************************************************************
 
-	To enter service mode in most games, press 1P start and then press
-	the service switch (F2).
+    To enter service mode in most games, press 1P start and then press
+    the service switch (F2).
 
-	For Redline Racer, hold the service switch down and reset the machine.
+    For Redline Racer, hold the service switch down and reset the machine.
 
-	For Super Offroad, press the blue nitro button (3P button 1) and then
-	press the service switch.
+    For Super Offroad, press the blue nitro button (3P button 1) and then
+    press the service switch.
 
 ***************************************************************************/
 
@@ -49,7 +50,7 @@
 
 /*************************************
  *
- *	Master CPU memory handlers
+ *  Master CPU memory handlers
  *
  *************************************/
 
@@ -65,6 +66,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( master_map_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(leland_master_alt_bankswitch_w)
     AM_RANGE(0xf2, 0xf2) AM_READWRITE(leland_i86_response_r, leland_i86_command_lo_w)
 	AM_RANGE(0xf4, 0xf4) AM_WRITE(leland_i86_command_hi_w)
@@ -75,7 +77,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Slave CPU memory handlers
+ *  Slave CPU memory handlers
  *
  *************************************/
 
@@ -100,6 +102,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( slave_map_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x1f) AM_READWRITE(leland_svram_port_r, leland_svram_port_w)
 	AM_RANGE(0x40, 0x5f) AM_READWRITE(leland_svram_port_r, leland_svram_port_w)
 ADDRESS_MAP_END
@@ -108,7 +111,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Port definitions
+ *  Port definitions
  *
  *************************************/
 
@@ -251,6 +254,42 @@ INPUT_PORTS_START( alleymas )		/* complete, verified from code */
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )		/* redundant inputs */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )		/* redundant inputs */
+
+	PORT_START      /* 0xD1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 ) PORT_PLAYER(1)
+	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START      /* Analog joystick 1 */
+	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0,255) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
+	PORT_START
+	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0,224) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
+	PORT_START      /* Analog joystick 2 */
+	PORT_START
+	PORT_START      /* Analog joystick 3 */
+	PORT_START
+INPUT_PORTS_END
+
+
+INPUT_PORTS_START( upyoural )		/* complete, verified from code */
+	PORT_START      /* 0xC0 */
+	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON4 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
+
+	PORT_START      /* 0xC1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START      /* 0xD0 */
+	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
 	PORT_START      /* 0xD1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
@@ -623,7 +662,7 @@ INPUT_PORTS_END
 
 /*************************************
  *
- *	Graphics definitions
+ *  Graphics definitions
  *
  *************************************/
 
@@ -648,7 +687,7 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 
 /*************************************
  *
- *	Sound definitions
+ *  Sound definitions
  *
  *************************************/
 
@@ -690,7 +729,7 @@ static struct CustomSound_interface redline_custom_interface =
 
 /*************************************
  *
- *	Machine driver
+ *  Machine driver
  *
  *************************************/
 
@@ -729,11 +768,11 @@ static MACHINE_DRIVER_START( leland )
 	MDRV_SOUND_ADD_TAG("ay8910.1", AY8910, 10000000/6)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	
+
 	MDRV_SOUND_ADD_TAG("ay8910.2", AY8910, 10000000/6)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	
+
 	MDRV_SOUND_ADD_TAG("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(dac_custom_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
@@ -745,7 +784,7 @@ static MACHINE_DRIVER_START( redline )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(leland)
 	MDRV_CPU_ADD_TAG("sound", I186, 16000000/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(leland_i86_map_program,0)
 	MDRV_CPU_IO_MAP(redline_i86_map_io,0)
 
@@ -782,7 +821,7 @@ MACHINE_DRIVER_END
 
 /*************************************
  *
- *	ROM definitions
+ *  ROM definitions
  *
  *************************************/
 
@@ -1013,6 +1052,56 @@ ROM_START( alleymas )
 	ROM_LOAD( "090",  0x14000, 0x2000, CRC(0e1769e3) SHA1(7ca5e3205e790d90e0a39dc88766c582f25147b7) )
 	/* U67 = Empty */
 	/* U89 = Empty */
+
+    ROM_REGION( LELAND_BATTERY_RAM_SIZE, REGION_USER2, 0 ) /* extra RAM regions */
+ROM_END
+
+
+ROM_START( upyoural )
+	ROM_REGION( 0x28000, REGION_CPU1, 0 )
+	ROM_LOAD( "uya-u101.bin", 0x00000, 0x02000, CRC(82bf3b7a) SHA1(1a23da0535c736fa2f49a83fe5e33b8d60117bd1) )
+	ROM_LOAD( "uya-u102.bin", 0x10000, 0x02000, CRC(e1681268) SHA1(205519bf59e3be1ec485de7d81e3c4751e6630f6) )
+	ROM_CONTINUE(             0x1c000, 0x02000 )
+	ROM_LOAD( "uya-u103.bin", 0x12000, 0x02000, CRC(0d36aa78) SHA1(77241adf02e65e5ff85dcc4a2f70411a637eed54) )
+	ROM_CONTINUE(             0x1e000, 0x02000 )
+	ROM_LOAD( "uya-u104.bin", 0x14000, 0x02000, CRC(a4473886) SHA1(af63f8c0e96b3f9ce58469948a0ebdb6a853f5c4) )
+	ROM_CONTINUE(             0x20000, 0x02000 )
+	ROM_LOAD( "uya-u105.bin", 0x16000, 0x02000, CRC(4cad86a4) SHA1(f330800ca276aec7301a76c7c974736ee25290ce) )
+	ROM_CONTINUE(             0x22000, 0x02000 )
+	ROM_LOAD( "uya-u106.bin", 0x18000, 0x02000, CRC(26f4848e) SHA1(b76179b89483a19ca3ca16e0b56af3667c252d8b) )
+	ROM_CONTINUE(             0x24000, 0x02000 )
+	ROM_LOAD( "uya-u107.bin", 0x1a000, 0x02000, CRC(fd087cc7) SHA1(96b70e94d96baf4ea66d98b225cf67bf69cdd972) )
+	ROM_CONTINUE(             0x26000, 0x02000 )
+
+	ROM_REGION( 0x28000, REGION_CPU2, 0 )
+	ROM_LOAD( "uya-u3.bin",  0x00000, 0x02000, CRC(3fee63ae) SHA1(519fe4981dc2c6d025fc2f27af6682103c99dd5e) )
+	ROM_LOAD( "uya-u4.bin",  0x10000, 0x02000, CRC(d302b5d1) SHA1(77263944d7b4e335fbc3b91d69def6cc85648ec6) )
+	ROM_CONTINUE(            0x1c000, 0x02000 )
+	ROM_LOAD( "uya-u5.bin",  0x12000, 0x02000, CRC(79bdb24d) SHA1(f64c3c5a715d5f4a27e01aeb31e1c43f1f3d5b17) )
+	ROM_CONTINUE(            0x1e000, 0x02000 )
+	ROM_LOAD( "uya-u6.bin",  0x14000, 0x02000, CRC(f0b15d68) SHA1(8017fce4b30e2f3bee74fba82d2a0154b3a1ab6d) )
+	ROM_CONTINUE(            0x20000, 0x02000 )
+	ROM_LOAD( "uya-u7.bin",  0x16000, 0x02000, CRC(6974036c) SHA1(222dd4d8c6d69f6b44b76681a508ff2cfafe1acc) )
+	ROM_CONTINUE(            0x22000, 0x02000 )
+	ROM_LOAD( "uya-u8.bin",  0x18000, 0x02000, CRC(a4357b5a) SHA1(c58505e1ef66641f4da5f29edbb197c5a09a367b) )
+	ROM_CONTINUE(            0x24000, 0x02000 )
+	ROM_LOAD( "uya-u9.bin",  0x1a000, 0x02000, CRC(6d74274e) SHA1(10bb04243eabeb8178884b4e0691c5e1765a1dc4) )
+	ROM_CONTINUE(            0x26000, 0x02000 )
+
+	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "uya-u93.bin", 0x00000, 0x04000, CRC(e8addd70) SHA1(6fd6a09fbdbe866440c3205b103e4bede7e4b2d5) )
+	ROM_LOAD( "uya-u94.bin", 0x04000, 0x04000, CRC(3fd3be09) SHA1(abdafbf9472fe3320be1a3effd13407dadf66709) )
+	ROM_LOAD( "uya-u95.bin", 0x08000, 0x04000, CRC(37088dd1) SHA1(35e4a3b338baceae2e4b8ac6d95691af49ebc3c1) )
+
+	ROM_REGION( 0x20000, REGION_USER1, 0 )   /* Ordering: 70/92/69/91/68/90/67/89 */
+	/* U70 = Empty */
+	ROM_LOAD( "uya-u92.bin",  0x04000, 0x2000, CRC(a020eab5) SHA1(2f4f51f0eff8a042bf23d5f3ff42166db56e7822) )
+	ROM_LOAD( "uya-u69.bin",  0x08000, 0x2000, CRC(79abb979) SHA1(dfff8ea4d13dd0db2836e75b6b57f5f3ddac0201) )
+	/* U91 = Empty */
+	ROM_LOAD( "uya-u68.bin",  0x10000, 0x2000, CRC(0c583385) SHA1(4bf5648991441470c4427c88ce17265b447d30d0) )
+	ROM_LOAD( "uya-u90.bin",  0x14000, 0x2000, CRC(0e1769e3) SHA1(7ca5e3205e790d90e0a39dc88766c582f25147b7) )
+	ROM_LOAD( "uya-u67.bin",  0x18000, 0x4000, CRC(d30a385d) SHA1(a1e83d360acef6087c24235c5a56457d25ccd937) )
+	ROM_LOAD( "uya-u89.bin",  0x1c000, 0x4000, CRC(5c17401e) SHA1(2759b1d336ee43116cc4e34db36bd9c56762cca9) )
 
     ROM_REGION( LELAND_BATTERY_RAM_SIZE, REGION_USER2, 0 ) /* extra RAM regions */
 ROM_END
@@ -1826,7 +1915,7 @@ ROM_END
 
 /*************************************
  *
- *	Driver initialization
+ *  Driver initialization
  *
  *************************************/
 
@@ -1834,27 +1923,27 @@ ROM_END
 /*
 Copy this code into the init function and modify:
 {
-	UINT8 *ram = memory_region(REGION_CPU1);
-	FILE *output;
+    UINT8 *ram = memory_region(REGION_CPU1);
+    FILE *output;
 
-	output = fopen("indyheat.m", "w");
-	dasm_chunk("Resident", 		&ram[0x00000], 0x0000, 0x2000, output);
-	dasm_chunk("Bank 0x02000:", &ram[0x02000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x10000:", &ram[0x10000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x18000:", &ram[0x18000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x20000:", &ram[0x20000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x28000:", &ram[0x28000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x30000:", &ram[0x30000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x38000:", &ram[0x38000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x40000:", &ram[0x40000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x48000:", &ram[0x48000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x50000:", &ram[0x50000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x58000:", &ram[0x58000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x60000:", &ram[0x60000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x68000:", &ram[0x68000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x70000:", &ram[0x70000], 0x2000, 0x8000, output);
-	dasm_chunk("Bank 0x78000:", &ram[0x78000], 0x2000, 0x8000, output);
-	fclose(output);
+    output = fopen("indyheat.m", "w");
+    dasm_chunk("Resident",      &ram[0x00000], 0x0000, 0x2000, output);
+    dasm_chunk("Bank 0x02000:", &ram[0x02000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x10000:", &ram[0x10000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x18000:", &ram[0x18000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x20000:", &ram[0x20000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x28000:", &ram[0x28000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x30000:", &ram[0x30000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x38000:", &ram[0x38000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x40000:", &ram[0x40000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x48000:", &ram[0x48000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x50000:", &ram[0x50000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x58000:", &ram[0x58000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x60000:", &ram[0x60000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x68000:", &ram[0x68000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x70000:", &ram[0x70000], 0x2000, 0x8000, output);
+    dasm_chunk("Bank 0x78000:", &ram[0x78000], 0x2000, 0x8000, output);
+    fclose(output);
 }
 */
 
@@ -2051,6 +2140,31 @@ static DRIVER_INIT( alleymas )
 	/* it gets cleared by the code, but there is no obvious way for the value to be set to a */
 	/* non-zero value. If the value is zero, the joystick is never read. */
 	alleymas_kludge_mem = memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe0ca, 0xe0ca, 0, 0, alleymas_joystick_kludge);
+}
+
+
+static DRIVER_INIT( upyoural )
+{
+	/* initialize the default EEPROM state */
+	static const UINT16 upyoural_eeprom_data[] =
+	{
+		0x0c,0x07bb,
+		0x0d,0xf483,
+		0x13,0xfefe,
+		0x14,0xfefe,
+		0x15,0xfbfb,
+		0x17,0x00ff,
+		0x18,0xff00,
+		0x37,0x00ff,
+		0xffff
+	};
+	leland_init_eeprom(0xff, upyoural_eeprom_data, 0x0c, SERIAL_TYPE_ENCRYPT_XOR);
+
+	/* master CPU bankswitching */
+	leland_update_master_bank = mayhem_bankswitch;
+
+	/* set up the master CPU I/O ports */
+	init_master_ports(0x00, 0xc0);
 }
 
 
@@ -2493,7 +2607,7 @@ static DRIVER_INIT( pigout )
 
 /*************************************
  *
- *	Game drivers
+ *  Game drivers
  *
  *************************************/
 
@@ -2503,6 +2617,7 @@ GAME( 1985, mayhem,   0,       leland,  mayhem,   mayhem,   ROT0,   "Cinematroni
 GAME( 1985, powrplay, 0,       leland,  mayhem,   powrplay, ROT0,   "Cinematronics", "Power Play" )
 GAME( 1985, wseries,  0,       leland,  wseries,  wseries,  ROT0,   "Cinematronics", "World Series: The Season" )
 GAME( 1986, alleymas, 0,       leland,  alleymas, alleymas, ROT270, "Cinematronics", "Alley Master" )
+GAME( 1987, upyoural, 0,       leland,  upyoural, upyoural, ROT270, "Cinematronics", "Up Your Alley" )
 
 /* odd master banks, small slave banks */
 GAME( 1986, dangerz,  0,       leland,  dangerz,  dangerz,  ROT0,   "Cinematronics", "Danger Zone" )

@@ -1,22 +1,22 @@
 /***************************************************************************
 
-	1943: The Battle of Midway
-	Capcom
+    1943: The Battle of Midway
+    Capcom
 
-	driver by Paul Leaman
+    driver by Paul Leaman
 
-	Games supported:
-		* 1943: The Battle of Midway (US)
-		* 1943: Midway Kaisen (Japan)
-		* 1943 Kai: Midway Kaisen (Japan)
-		
+    Games supported:
+        * 1943: The Battle of Midway (US)
+        * 1943: Midway Kaisen (Japan)
+        * 1943 Kai: Midway Kaisen (Japan)
+
 ***************************************************************************/
 
 /*
 
-	TODO:
-	
-	- use priority PROM for drawing sprites
+    TODO:
+
+    - use priority PROM for drawing sprites
 
 */
 
@@ -42,13 +42,13 @@ extern VIDEO_UPDATE( 1943 );
 
 static READ8_HANDLER( c1943_protection_r )
 {
-	/* 
-		This is a protection check. The game crashes (thru a jump to 0x8000)
-	    if a read from this address doesn't return the value it expects. 
-	*/
+	/*
+        This is a protection check. The game crashes (thru a jump to 0x8000)
+        if a read from this address doesn't return the value it expects.
+    */
 
 	int data = activecpu_get_reg(Z80_BC) >> 8;
-//	logerror("protection read, PC: %04x Result:%02x\n",activecpu_get_pc(),data);
+//  logerror("protection read, PC: %04x Result:%02x\n",activecpu_get_pc(),data);
 	return data;
 }
 
@@ -257,7 +257,7 @@ static MACHINE_DRIVER_START( 1943 )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
 
 	MDRV_CPU_ADD(Z80, 3000000)	// 3 MHz
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold, 4)
 

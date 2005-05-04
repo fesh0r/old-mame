@@ -16,9 +16,9 @@ read:
           bit 4-7 dsw
 03        bit 0 dsw
           bit 1 high score name reset
-		  bit 2 service
-		  bit 3 tilt
-		  bit 4-7 from chip PC3092; coin inputs & start buttons
+          bit 2 service
+          bit 3 tilt
+          bit 4-7 from chip PC3092; coin inputs & start buttons
 06-0a-0e  mirror addresses for 02; address lines 2 and 3 go to the PC3256 chip
           so they probably alter its output, while the dsw bits (4-7) stay the same.
 
@@ -107,7 +107,7 @@ WRITE8_HANDLER( crbaloon_06_w )
 			/* BREATH changes slf_res to 10k (middle of two 10k resistors) */
 			SN76477_set_slf_res(0, RES_K(10));
 			/* it also puts a tantal capacitor agains GND on the output,
-			   but this section of the schematics is not readable. */
+               but this section of the schematics is not readable. */
 		}
 		else
 		{
@@ -231,10 +231,12 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x0f) AM_READ(crbaloon_IN_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x02, 0x04) AM_WRITE(crbaloon_spritectrl_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(crbaloon_tone_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(crbaloon_06_w)
@@ -349,36 +351,36 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 
 static struct SN76477interface sn76477_interface =
 {
-	RES_K( 47)   ,		/*	4  noise_res		 */
-	RES_K(330)   ,		/*	5  filter_res		 */
-	CAP_P(470)   ,		/*	6  filter_cap		 */
-	RES_K(220)   ,		/*	7  decay_res		 */
-	CAP_U(1.0)   ,		/*	8  attack_decay_cap  */
-	RES_K(4.7)   ,		/* 10  attack_res		 */
-	RES_M(  1)   ,		/* 11  amplitude_res	 */
-	RES_K(200)   ,		/* 12  feedback_res 	 */
-	5.0		   ,		/* 16  vco_voltage		 */
-	CAP_P(470)   ,		/* 17  vco_cap			 */
-	RES_K(330)   ,		/* 18  vco_res			 */
-	5.0		   ,		/* 19  pitch_voltage	 */
-	RES_K( 20)   ,		/* 20  slf_res			 */
-	CAP_P(420)   ,		/* 21  slf_cap			 */
-	CAP_U(1.0)   ,		/* 23  oneshot_cap		 */
-	RES_K( 47)   		/* 24  oneshot_res		 */
+	RES_K( 47)   ,		/*  4  noise_res         */
+	RES_K(330)   ,		/*  5  filter_res        */
+	CAP_P(470)   ,		/*  6  filter_cap        */
+	RES_K(220)   ,		/*  7  decay_res         */
+	CAP_U(1.0)   ,		/*  8  attack_decay_cap  */
+	RES_K(4.7)   ,		/* 10  attack_res        */
+	RES_M(  1)   ,		/* 11  amplitude_res     */
+	RES_K(200)   ,		/* 12  feedback_res      */
+	5.0		   ,		/* 16  vco_voltage       */
+	CAP_P(470)   ,		/* 17  vco_cap           */
+	RES_K(330)   ,		/* 18  vco_res           */
+	5.0		   ,		/* 19  pitch_voltage     */
+	RES_K( 20)   ,		/* 20  slf_res           */
+	CAP_P(420)   ,		/* 21  slf_cap           */
+	CAP_U(1.0)   ,		/* 23  oneshot_cap       */
+	RES_K( 47)   		/* 24  oneshot_res       */
 };
 
 
 static void crbaloon_tone_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int len)
 {
 	stream_sample_t *buffer = outputs[0];
-	
-	memset(buffer, 0, len * sizeof(INT16));
+
+	memset(buffer, 0, len * sizeof(stream_sample_t));
 
 	if (crbaloon_tone_step)
 	{
 		while (len-- > 0)
 		{
-			*buffer++ = crbaloon_tone_pos & 0x80000000 ? 0x7fff : 0x8000;
+			*buffer++ = crbaloon_tone_pos & 0x80000000 ? 32767 : -32768;
 			crbaloon_tone_pos += crbaloon_tone_step;
 		}
 	}
@@ -410,7 +412,7 @@ static MACHINE_DRIVER_START( crbaloon )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	
+
 	MDRV_MACHINE_INIT(crbaloon)
 
 	/* video hardware */

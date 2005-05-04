@@ -9,10 +9,10 @@
 
 /* Save state file format:
  *
- *	0.. 7  'MAMESAVE"
- *	8	   Format version (this is format 1)
- *	9	   Flags
- *	a..13  Game name padded with \0
+ *  0.. 7  'MAMESAVE"
+ *  8      Format version (this is format 1)
+ *  9      Flags
+ *  a..13  Game name padded with \0
  * 14..17  Signature
  * 18..end Save game data
  */
@@ -31,7 +31,7 @@ enum {
 #define TRACE(x)
 #endif
 
-enum {MAX_INSTANCES = 25};
+enum {MAX_INSTANCES = 56};
 
 enum {
 	SS_INT8,

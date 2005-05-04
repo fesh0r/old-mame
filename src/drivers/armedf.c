@@ -53,15 +53,15 @@ Stephh's notes (based on the games M68000 code and some tests) :
     but NEVER reports an error if the checksum isn't correct due
     to the instruction at 0x000480 (see where it branches) :
 
-	000466: 7000                     moveq   #$0, D0
-	000468: 41FA FC98                lea     (-$368,PC), A0; ($102)
-	00046C: D058                     add.w   (A0)+, D0
-	00046E: B1FC 0004 0000           cmpa.l  #$40000, A0
-	000474: 66F6                     bne     46c
-	000476: 33C0 0006 2CAE           move.w  D0, $62cae.l
-	00047C: B078 0100                cmp.w   $100.w, D0
-	000480: 6600 0002                bne     484
-	000484: 41FA FF86                lea     (-$7a,PC), A0; ($40c)
+    000466: 7000                     moveq   #$0, D0
+    000468: 41FA FC98                lea     (-$368,PC), A0; ($102)
+    00046C: D058                     add.w   (A0)+, D0
+    00046E: B1FC 0004 0000           cmpa.l  #$40000, A0
+    000474: 66F6                     bne     46c
+    000476: 33C0 0006 2CAE           move.w  D0, $62cae.l
+    00047C: B078 0100                cmp.w   $100.w, D0
+    000480: 6600 0002                bne     484
+    000484: 41FA FF86                lea     (-$7a,PC), A0; ($40c)
 
   - 3 Dip Switches which are told to be unused have an effect if
     [0x062d53] != 0x00 (check code at 0x00d7ea).
@@ -87,16 +87,16 @@ Stephh's notes (based on the games M68000 code and some tests) :
   - The ROM test (code at 0x000292) ALWAYS displays "OK", but memory is
     in fact NEVER scanned ! Original behaviour or is the game a bootleg ?
 
-	000292: 45F8 0000                lea     $0.w, A2
-	000296: 303C 7FFF                move.w  #$7fff, D0
-	00029A: 7200                     moveq   #$0, D1
-	00029C: D29A                     add.l   (A2)+, D1
-	00029E: 0C81 0000 0000           cmpi.l  #$0, D1
-	0002A4: 4E71                     nop
-	0002A6: 23FC 004F 004B 0006 83AA move.l  #$4f004b, $683aa.l
-	0002B0: 4EF9 0000 0124           jmp     $124.l
-	...
-	0002C2: 4EF9 0000 0124           jmp     $124.l
+    000292: 45F8 0000                lea     $0.w, A2
+    000296: 303C 7FFF                move.w  #$7fff, D0
+    00029A: 7200                     moveq   #$0, D1
+    00029C: D29A                     add.l   (A2)+, D1
+    00029E: 0C81 0000 0000           cmpi.l  #$0, D1
+    0002A4: 4E71                     nop
+    0002A6: 23FC 004F 004B 0006 83AA move.l  #$4f004b, $683aa.l
+    0002B0: 4EF9 0000 0124           jmp     $124.l
+    ...
+    0002C2: 4EF9 0000 0124           jmp     $124.l
 
 
 2b) 'terrafu'
@@ -104,16 +104,16 @@ Stephh's notes (based on the games M68000 code and some tests) :
   - The ROM test (code at 0x000292) NEVER displays "OK", but memory is
     in fact NEVER scanned ! Original behaviour or is the game a bootleg ?
 
-	000292: 45F8 0000                lea     $0.w, A2
-	000296: 303C 7FFF                move.w  #$7fff, D0
-	00029A: 7200                     moveq   #$0, D1
-	00029C: D29A                     add.l   (A2)+, D1
-	00029E: 0C81 0000 0000           cmpi.l  #$0, D1
-	0002A4: 661C                     bne     2c2
-	0002A6: 23FC 004F 004B 0006 83AA move.l  #$4f004b, $683aa.l
-	0002B0: 4EF9 0000 0124           jmp     $124.l
-	...
-	0002C2: 4EF9 0000 0124           jmp     $124.l
+    000292: 45F8 0000                lea     $0.w, A2
+    000296: 303C 7FFF                move.w  #$7fff, D0
+    00029A: 7200                     moveq   #$0, D1
+    00029C: D29A                     add.l   (A2)+, D1
+    00029E: 0C81 0000 0000           cmpi.l  #$0, D1
+    0002A4: 661C                     bne     2c2
+    0002A6: 23FC 004F 004B 0006 83AA move.l  #$4f004b, $683aa.l
+    0002B0: 4EF9 0000 0124           jmp     $124.l
+    ...
+    0002C2: 4EF9 0000 0124           jmp     $124.l
 
 
 3)  'kodure'
@@ -139,7 +139,9 @@ Stephh's notes (based on the games M68000 code and some tests) :
 
 /*
 
-	2003-06-01	Added cocktail support to all games
+    2003-06-01  Added cocktail support to all games
+
+    2005-04-02  Sebastien Chevalier : various update to video on terrafu, plus some typos here and there
 
 */
 
@@ -169,12 +171,14 @@ WRITE16_HANDLER( armedf_fg_scrollx_w );
 WRITE16_HANDLER( armedf_fg_scrolly_w );
 WRITE16_HANDLER( armedf_bg_scrollx_w );
 WRITE16_HANDLER( armedf_bg_scrolly_w );
+WRITE16_HANDLER( armedf_mcu_cmd );
 
 extern data16_t armedf_vreg;
 extern data16_t *armedf_bg_videoram;
 extern data16_t *armedf_fg_videoram;
 extern data16_t *terraf_text_videoram;
-
+extern data16_t *legion_cmd;
+extern struct tilemap *tx_tilemap;
 
 static WRITE16_HANDLER( io_w )
 {
@@ -182,6 +186,26 @@ static WRITE16_HANDLER( io_w )
 	/* bits 0 and 1 of armedf_vreg are coin counters */
 	/* bit 12 seems to handle screen flipping */
 	flip_screen_set(armedf_vreg & 0x1000);
+}
+
+static WRITE16_HANDLER( terraf_io_w )
+{
+	COMBINE_DATA(&armedf_vreg);
+	/* bits 0 and 1 of armedf_vreg are coin counters */
+	/* bit 12 seems to handle screen flipping */
+	flip_screen_set(armedf_vreg & 0x1000);
+
+	if ((armedf_vreg & 0x4000) && !(armedf_vreg & 0x0100))
+	{
+		int i;
+		for (i = 0x10; i < 0x1000; i++)
+		{
+			terraf_text_videoram[i]=0x20;
+		}
+		tilemap_mark_all_tiles_dirty( tx_tilemap );
+		//logerror("vreg WIPE TX\n");
+	}
+	//logerror("VReg = %04x\n", armedf_vreg);
 }
 
 static WRITE16_HANDLER( kodure_io_w )
@@ -206,6 +230,12 @@ static WRITE16_HANDLER( sound_command_w )
 {
 	if (ACCESSING_LSB)
 		soundlatch_w(0,((data & 0x7f) << 1) | 1);
+}
+
+static WRITE16_HANDLER( legion_command_c )
+{
+	COMBINE_DATA(&legion_cmd[offset]);
+	//logerror("Legion CMD %04x=%04x", offset, data);
 }
 
 
@@ -235,12 +265,14 @@ static ADDRESS_MAP_START( terraf_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x06C000, 0x06C9ff) AM_WRITE(MWA16_RAM)
 	AM_RANGE(0x070000, 0x070fff) AM_WRITE(armedf_fg_videoram_w) AM_BASE(&armedf_fg_videoram)
 	AM_RANGE(0x074000, 0x074fff) AM_WRITE(armedf_bg_videoram_w) AM_BASE(&armedf_bg_videoram)
-	AM_RANGE(0x07c000, 0x07c001) AM_WRITE(io_w)
+	AM_RANGE(0x07c000, 0x07c001) AM_WRITE(terraf_io_w)
 	AM_RANGE(0x07c002, 0x07c003) AM_WRITE(armedf_bg_scrollx_w)
 	AM_RANGE(0x07c004, 0x07c005) AM_WRITE(armedf_bg_scrolly_w)
-	AM_RANGE(0x07c006, 0x07c007) AM_WRITE(terraf_fg_scrollx_w)
+	AM_RANGE(0x07c006, 0x07c007) AM_WRITE(terraf_fg_scrollx_w)	/* not use in terrafu, 0x07c008 neither */
 	AM_RANGE(0x07c008, 0x07c009) AM_WRITE(terraf_fg_scrolly_w)	/* written twice, lsb and msb */
 	AM_RANGE(0x07c00a, 0x07c00b) AM_WRITE(sound_command_w)
+	AM_RANGE(0x07c00c, 0x07c00d) AM_WRITE(MWA16_NOP)		/* Watchdog ? cycle 0000 -> 0100 -> 0200 back to 0000 */
+	AM_RANGE(0x07c00e, 0x07c00f) AM_WRITE(armedf_mcu_cmd)		/* MCU Command ? */
 	AM_RANGE(0x0c0000, 0x0c0001) AM_WRITE(terraf_fg_scroll_msb_arm_w) /* written between two consecutive writes to 7c008 */
 ADDRESS_MAP_END
 
@@ -307,6 +339,48 @@ static ADDRESS_MAP_START( cclimbr2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x07c002, 0x07c003) AM_WRITE(armedf_bg_scrollx_w)
 	AM_RANGE(0x07c004, 0x07c005) AM_WRITE(armedf_bg_scrolly_w)
 	AM_RANGE(0x07c00a, 0x07c00b) AM_WRITE(sound_command_w)
+	AM_RANGE(0x07c00e, 0x07c00f) AM_WRITE(MWA16_NOP)		/* ? */
+	AM_RANGE(0x07c00c, 0x07c00d) AM_WRITE(MWA16_NOP)		/* Watchdog ? cycle 0000 -> 0100 -> 0200 back to 0000 */
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( legion_writemem, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x05ffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x060000, 0x060fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x061000, 0x063fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x064000, 0x064fff) AM_WRITE(paletteram16_xxxxRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x068000, 0x069fff) AM_WRITE(armedf_text_videoram_w) AM_BASE(&terraf_text_videoram)
+	AM_RANGE(0x06a000, 0x06a9ff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x06c000, 0x06c9ff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x06ca00, 0x06cbff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x070000, 0x070fff) AM_WRITE(armedf_fg_videoram_w) AM_BASE(&armedf_fg_videoram)
+	AM_RANGE(0x074000, 0x074fff) AM_WRITE(armedf_bg_videoram_w) AM_BASE(&armedf_bg_videoram)
+	AM_RANGE(0x07c000, 0x07c001) AM_WRITE(terraf_io_w)
+	AM_RANGE(0x07c002, 0x07c003) AM_WRITE(armedf_bg_scrollx_w)
+	AM_RANGE(0x07c004, 0x07c005) AM_WRITE(armedf_bg_scrolly_w)
+	AM_RANGE(0x07c00a, 0x07c00b) AM_WRITE(sound_command_w)
+	AM_RANGE(0x07c00e, 0x07c00f) AM_WRITE(armedf_mcu_cmd)		/* MCU Command ? */
+	AM_RANGE(0x07c00c, 0x07c00d) AM_WRITE(MWA16_NOP)		/* Watchdog ? cycle 0000 -> 0100 -> 0200 back to 0000 */
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( legiono_writemem, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x040000, 0x04003f) AM_WRITE(MWA16_RAM) AM_BASE(&legion_cmd)
+	AM_RANGE(0x040040, 0x05ffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x060000, 0x060fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x061000, 0x063fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x064000, 0x064fff) AM_WRITE(paletteram16_xxxxRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x068000, 0x069fff) AM_WRITE(armedf_text_videoram_w) AM_BASE(&terraf_text_videoram)
+	AM_RANGE(0x06a000, 0x06a9ff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x06c000, 0x06c9ff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x06ca00, 0x06cbff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x070000, 0x070fff) AM_WRITE(armedf_fg_videoram_w) AM_BASE(&armedf_fg_videoram)
+	AM_RANGE(0x074000, 0x074fff) AM_WRITE(armedf_bg_videoram_w) AM_BASE(&armedf_bg_videoram)
+	AM_RANGE(0x07c000, 0x07c001) AM_WRITE(terraf_io_w)
+	AM_RANGE(0x07c002, 0x07c003) AM_WRITE(armedf_bg_scrollx_w)
+	AM_RANGE(0x07c004, 0x07c005) AM_WRITE(armedf_bg_scrolly_w)
+	AM_RANGE(0x07c00a, 0x07c00b) AM_WRITE(sound_command_w)
+	//AM_RANGE(0x07c00e, 0x07c00f) AM_WRITE(armedf_mcu_cmd)     /* MCU Command ? */
+	//AM_RANGE(0x07c00c, 0x07c00d) AM_WRITE(MWA16_NOP)      /* Watchdog ? cycle 0000 -> 0100 -> 0200 back to 0000 */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( armedf_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -370,11 +444,13 @@ static READ8_HANDLER( soundlatch_clear_r )
 }
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x4, 0x4) AM_READ(soundlatch_clear_r)
 	AM_RANGE(0x6, 0x6) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x0, 0x0) AM_WRITE(YM3812_control_port_0_w)
 	AM_RANGE(0x1, 0x1) AM_WRITE(YM3812_write_port_0_w)
   	AM_RANGE(0x2, 0x2) AM_WRITE(DAC_0_signed_data_w)
@@ -512,12 +588,12 @@ INPUT_PORTS_START( terraf )
 
 	PORT_START_TAG("DSW0")
 	NIHON_LIVES
-//	PORT_DIPNAME( 0x04, 0x04, "1st Bonus Life" )
-//	PORT_DIPSETTING(    0x04, "20k" )
-//	PORT_DIPSETTING(    0x00, "50k" )
-//	PORT_DIPNAME( 0x08, 0x08, "2nd Bonus Life" )
-//	PORT_DIPSETTING(    0x08, "60k" )
-//	PORT_DIPSETTING(    0x00, "90k" )
+//  PORT_DIPNAME( 0x04, 0x04, "1st Bonus Life" )
+//  PORT_DIPSETTING(    0x04, "20k" )
+//  PORT_DIPSETTING(    0x00, "50k" )
+//  PORT_DIPNAME( 0x08, 0x08, "2nd Bonus Life" )
+//  PORT_DIPSETTING(    0x08, "60k" )
+//  PORT_DIPSETTING(    0x00, "90k" )
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x0c, "20k then every 60k" )
 	PORT_DIPSETTING(    0x04, "20k then every 90k" )
@@ -562,12 +638,12 @@ INPUT_PORTS_START( kodure )
 
 	PORT_START_TAG("DSW0")
 	NIHON_LIVES
-//	PORT_DIPNAME( 0x04, 0x04, "1st Bonus Life" )
-//	PORT_DIPSETTING(    0x04, "00k" )
-//	PORT_DIPSETTING(    0x00, "50k" )
-//	PORT_DIPNAME( 0x08, 0x08, "2nd Bonus Life" )
-//	PORT_DIPSETTING(    0x08, "60k" )
-//	PORT_DIPSETTING(    0x00, "90k" )
+//  PORT_DIPNAME( 0x04, 0x04, "1st Bonus Life" )
+//  PORT_DIPSETTING(    0x04, "00k" )
+//  PORT_DIPSETTING(    0x00, "50k" )
+//  PORT_DIPNAME( 0x08, 0x08, "2nd Bonus Life" )
+//  PORT_DIPSETTING(    0x08, "60k" )
+//  PORT_DIPSETTING(    0x00, "90k" )
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x08, "50k then every 60k" )
 	PORT_DIPSETTING(    0x00, "50k then every 90k" )
@@ -628,12 +704,12 @@ INPUT_PORTS_START( cclimbr2 )
 
 	PORT_START_TAG("DSW0")
 	NIHON_LIVES
-//	PORT_DIPNAME( 0x04, 0x04, "1st Bonus Life" )
-//	PORT_DIPSETTING(    0x04, "30k" )
-//	PORT_DIPSETTING(    0x00, "60k" )
-//	PORT_DIPNAME( 0x08, 0x08, "2nd Bonus Life" )
-//	PORT_DIPSETTING(    0x08, "70k" )
-//	PORT_DIPSETTING(    0x00, "00k" )
+//  PORT_DIPNAME( 0x04, 0x04, "1st Bonus Life" )
+//  PORT_DIPSETTING(    0x04, "30k" )
+//  PORT_DIPSETTING(    0x00, "60k" )
+//  PORT_DIPNAME( 0x08, 0x08, "2nd Bonus Life" )
+//  PORT_DIPSETTING(    0x08, "70k" )
+//  PORT_DIPSETTING(    0x00, "00k" )
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x0c, "30K and 100k" )
 	PORT_DIPSETTING(    0x08, "60k and 130k" )
@@ -681,12 +757,12 @@ INPUT_PORTS_START( armedf )
 
 	PORT_START_TAG("DSW0")
 	NIHON_LIVES
-//	PORT_DIPNAME( 0x04, 0x04, "1st Bonus Life" )
-//	PORT_DIPSETTING(    0x04, "20k" )
-//	PORT_DIPSETTING(    0x00, "40k" )
-//	PORT_DIPNAME( 0x08, 0x08, "2nd Bonus Life" )
-//	PORT_DIPSETTING(    0x08, "60k" )
-//	PORT_DIPSETTING(    0x00, "80k" )
+//  PORT_DIPNAME( 0x04, 0x04, "1st Bonus Life" )
+//  PORT_DIPSETTING(    0x04, "20k" )
+//  PORT_DIPSETTING(    0x00, "40k" )
+//  PORT_DIPNAME( 0x08, 0x08, "2nd Bonus Life" )
+//  PORT_DIPSETTING(    0x08, "60k" )
+//  PORT_DIPSETTING(    0x00, "80k" )
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x0c, "20k then every 60k" )
 	PORT_DIPSETTING(    0x04, "20k then every 80k" )
@@ -778,7 +854,7 @@ static MACHINE_DRIVER_START( terraf )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 3072000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 3.072 MHz???? */
+	/* audio CPU */	/* 3.072 MHz???? */
 	MDRV_CPU_PROGRAM_MAP(soundreadmem,soundwritemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,128)
@@ -818,7 +894,7 @@ static MACHINE_DRIVER_START( kodure )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 3072000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 3.072 MHz???? */
+	/* audio CPU */	/* 3.072 MHz???? */
 	MDRV_CPU_PROGRAM_MAP(soundreadmem,soundwritemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,128)
@@ -858,7 +934,7 @@ static MACHINE_DRIVER_START( armedf )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 3072000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 3.072 MHz???? */
+	/* audio CPU */	/* 3.072 MHz???? */
 	MDRV_CPU_PROGRAM_MAP(soundreadmem,soundwritemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,128)
@@ -898,7 +974,87 @@ static MACHINE_DRIVER_START( cclimbr2 )
 	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 3072000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 3.072 MHz???? */
+	/* audio CPU */	/* 3.072 MHz???? */
+	MDRV_CPU_PROGRAM_MAP(cclimbr2_soundreadmem,cclimbr2_soundwritemem)
+	MDRV_CPU_IO_MAP(readport,writeport)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,128)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(2048)
+
+	MDRV_VIDEO_EOF(armedf)
+	MDRV_VIDEO_START(armedf)
+	MDRV_VIDEO_UPDATE(armedf)
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+
+	MDRV_SOUND_ADD(YM3812, 4000000)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
+
+	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( legion )
+
+	/* basic machine hardware */
+	MDRV_CPU_ADD(M68000, 8000000) /* 8 MHz?? */
+	MDRV_CPU_PROGRAM_MAP(cclimbr2_readmem,legion_writemem)
+	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
+
+	MDRV_CPU_ADD(Z80, 3072000)
+	/* audio CPU */	/* 3.072 MHz???? */
+	MDRV_CPU_PROGRAM_MAP(cclimbr2_soundreadmem,cclimbr2_soundwritemem)
+	MDRV_CPU_IO_MAP(readport,writeport)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,128)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(2048)
+
+	MDRV_VIDEO_EOF(armedf)
+	MDRV_VIDEO_START(armedf)
+	MDRV_VIDEO_UPDATE(armedf)
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+
+	MDRV_SOUND_ADD(YM3812, 4000000)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
+
+	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( legiono )
+
+	/* basic machine hardware */
+	MDRV_CPU_ADD(M68000, 8000000) /* 8 MHz?? */
+	MDRV_CPU_PROGRAM_MAP(cclimbr2_readmem,legiono_writemem)
+	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
+
+	MDRV_CPU_ADD(Z80, 3072000)
+	/* audio CPU */	/* 3.072 MHz???? */
 	MDRV_CPU_PROGRAM_MAP(cclimbr2_soundreadmem,cclimbr2_soundwritemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,128)
@@ -1195,10 +1351,16 @@ DRIVER_INIT( terraf )
 	armedf_setgfxtype(0);
 }
 
+DRIVER_INIT( terrafu )
+{
+	armedf_setgfxtype(5);
+}
+
 DRIVER_INIT( armedf )
 {
 	armedf_setgfxtype(1);
 }
+
 
 DRIVER_INIT( kodure )
 {
@@ -1229,7 +1391,7 @@ DRIVER_INIT( legiono )
 	/* No need to patch the checksum routine (see notes) ! */
 #endif
 
-	armedf_setgfxtype(3);
+	armedf_setgfxtype(6);
 }
 
 DRIVER_INIT( cclimbr2 )
@@ -1239,10 +1401,10 @@ DRIVER_INIT( cclimbr2 )
 
 
 /*     YEAR, NAME,   PARENT,   MACHINE,  INPUT,    INIT,     MONITOR, COMPANY,     FULLNAME, FLAGS */
-GAMEX( 1987, legion,   0,        cclimbr2, legion,   legion,   ROT270, "Nichibutsu", "Legion (ver 2.03)",  GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )
-GAMEX( 1987, legiono,  legion,   cclimbr2, legion,   legiono,  ROT270, "Nichibutsu", "Legion (ver 1.05)",  GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )
+GAMEX( 1987, legion,   0,        legion,   legion,   legion,   ROT270, "Nichibutsu", "Legion (ver 2.03)",  GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )
+GAMEX( 1987, legiono,  legion,   legiono,  legion,   legiono,  ROT270, "Nichibutsu", "Legion (ver 1.05)",  GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )
 GAMEX( 1987, terraf,   0,        terraf,   terraf,   terraf,   ROT0,   "Nichibutsu", "Terra Force",  GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )
-GAMEX( 1987, terrafu,  terraf,   terraf,   terraf,   terraf,   ROT0,   "Nichibutsu USA", "Terra Force (US)",  GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )
+GAMEX( 1987, terrafu,  terraf,   terraf,   terraf,   terrafu,  ROT0,   "Nichibutsu USA", "Terra Force (US)",  GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )
 GAMEX( 1987, kodure,   0,        kodure,   kodure,   kodure,   ROT0,   "Nichibutsu", "Kodure Ookami (Japan)", GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )
 GAME(  1988, cclimbr2, 0,        cclimbr2, cclimbr2, cclimbr2, ROT0,   "Nichibutsu", "Crazy Climber 2 (Japan)")
 GAME(  1988, cclmbr2a, cclimbr2, cclimbr2, cclimbr2, cclimbr2, ROT0,   "Nichibutsu", "Crazy Climber 2 (Japan Harder)")

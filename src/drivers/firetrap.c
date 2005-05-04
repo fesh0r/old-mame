@@ -359,9 +359,9 @@ INPUT_PORTS_START( firetrap )
 
 	PORT_START      /* DSW0 */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
-//	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(    0x02, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x02, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 1C_3C ) )
@@ -442,9 +442,9 @@ INPUT_PORTS_START( firetpbl )
 
 	PORT_START      /* DSW0 */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
-//	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(    0x02, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x02, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 1C_3C ) )
@@ -555,7 +555,7 @@ static INTERRUPT_GEN( firetrap )
 			latch=0;
 
 		/* Make sure coin IRQ's aren't generated when another command is pending, the main cpu
-			definitely doesn't expect them as it locks out the coin routine */
+            definitely doesn't expect them as it locks out the coin routine */
 		if (coin_command_pending && !i8751_current_command) {
 			i8751_return=coin_command_pending;
 			cpunum_set_input_line_and_vector(0,0,HOLD_LINE,0xff);
@@ -581,7 +581,7 @@ static MACHINE_DRIVER_START( firetrap )
 	MDRV_CPU_VBLANK_INT(firetrap,2)
 
 	MDRV_CPU_ADD(M6502,3072000/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1.536 MHz? */
+	/* audio CPU */	/* 1.536 MHz? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 							/* IRQs are caused by the ADPCM chip */
 							/* NMIs are caused by the main CPU */
@@ -619,7 +619,7 @@ static MACHINE_DRIVER_START( firetpbl )
 	MDRV_CPU_VBLANK_INT(bootleg,1)
 
 	MDRV_CPU_ADD(M6502,3072000/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1.536 MHz? */
+	/* audio CPU */	/* 1.536 MHz? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 							/* IRQs are caused by the ADPCM chip */
 							/* NMIs are caused by the main CPU */

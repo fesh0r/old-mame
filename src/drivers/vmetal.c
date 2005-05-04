@@ -7,12 +7,14 @@ Notes:
 It has Sega and Taito logos in the roms ?!
 
 whats going on with the dipswitches
-also has a strange sound chip + oki
 
 scrolling behavior is incorrect, see background on second attract demo
 tilemap priorities can change
 
 spriteram clear or list markers? (i clear it after drawing each sprite at the moment)
+
+ES8712 sound may not be quite right. Samples are currently looped, but
+whether they should and how, is unknown.
 
 cleanup
 
@@ -25,7 +27,7 @@ board ID ES-9309B-B
 main cpu 68000 @ 16Mhz
 
 sound oki m6295 (rom VM8)
-      es8712    (rom VM7)
+      ES8712    (rom VM7)
 
 program roms VM5 and VM6
 
@@ -38,10 +40,8 @@ roms are 23C160 except for code and OKI 27C4001
 
 #include "driver.h"
 #include "sound/okim6295.h"
-#include "sound/msm5205.h"
+#include "sound/es8712.h"
 
-int vmetal_es8712_start;
-int vmetal_es8712_end;
 data16_t *vmetal_texttileram;
 data16_t *vmetal_mid1tileram;
 data16_t *vmetal_mid2tileram;
@@ -54,15 +54,7 @@ static struct tilemap *vmetal_mid1tilemap;
 static struct tilemap *vmetal_mid2tilemap;
 
 static data16_t *varia_spriteram16;
-static data16_t *vmetal_es8712;
 
-
-
-MACHINE_INIT( vmetal_reset )
-{
-	vmetal_es8712_start = 0;
-	vmetal_es8712_end = 0;
-}
 
 
 READ16_HANDLER ( varia_crom_read )
@@ -74,7 +66,7 @@ READ16_HANDLER ( varia_crom_read )
 	offset = offset << 1;
 	offset |= (vmetal_videoregs[0x0ab/2]&0x7f) << 16;
 	retdat = (cgrom[offset] <<8)| (cgrom[offset+1]);
-//	usrintf_showmessage("varia romread offset %06x data %04x",offset, retdat);
+//  usrintf_showmessage("varia romread offset %06x data %04x",offset, retdat);
 
 	return retdat;
 }
@@ -82,7 +74,7 @@ READ16_HANDLER ( varia_crom_read )
 
 READ16_HANDLER ( varia_random )
 {
-//	return rand();  // dips etc.. weird
+//  return rand();  // dips etc.. weird
 	return 0xffff;
 }
 
@@ -182,7 +174,7 @@ static void varia_drawsprites( struct mame_bitmap *bitmap, const struct rectangl
 		}
 
 		/* I see no end of list marker or register ... so I'm clearing the sprite ram after I draw each sprite */
-	//	source[0] = source[1] = source[2] = source[3] = 0;
+	//  source[0] = source[1] = source[2] = source[3] = 0;
 	// done in VIDEO_EOF
 	}
 }
@@ -231,104 +223,68 @@ static READ16_HANDLER ( varia_dips_bit3_r ) { return ((readinputport(3) & 0x04) 
 static READ16_HANDLER ( varia_dips_bit2_r ) { return ((readinputport(3) & 0x02) << 6) | ((readinputport(2) & 0x02) << 5); }
 static READ16_HANDLER ( varia_dips_bit1_r ) { return ((readinputport(3) & 0x01) << 7) | ((readinputport(2) & 0x01) << 6); }
 
+static WRITE16_HANDLER( vmetal_control_w )
+{
+	/* Lower nibble is the coin control bits shown in
+       service mode, but in game mode they're different */
+	coin_counter_w(0,data & 0x04);
+	coin_counter_w(1,data & 0x08);	/* 2nd coin schute activates coin 0 counter in game mode?? */
+//  coin_lockout_w(0,data & 0x01);  /* always on in game mode?? */
+	coin_lockout_w(1,data & 0x02);	/* never activated in game mode?? */
+
+	if ((data & 0x40) == 0)
+		sndti_reset(SOUND_ES8712, 0);
+	else
+		ES8712_play(0);
+
+	if (data & 0x10)
+		ES8712_set_bank_base(0, 0x100000);
+	else
+		ES8712_set_bank_base(0, 0x000000);
+
+	if (data & 0xa0)
+		logerror("PC:%06x - Writing unknown bits %04x to $200000\n",activecpu_get_previouspc(),data);
+}
 
 static WRITE16_HANDLER( vmetal_es8712_w )
 {
 	/* Many samples in the ADPCM ROM are actually not used.
 
-	Snd			Offset Writes				  Sample Range
-		 0000 0004 0002 0006 000a 0008 000c
-	--   ----------------------------------   -------------
-	00   006e 0001 00ab 003c 0002 003a 003a   01ab6e-023a3c
-	01   003d 0002 003a 001d 0002 007e 007e   023a3d-027e1d
-	02   00e2 0003 0005 002e 0003 00f3 00f3   0305e2-03f32e
-	03   000a 0005 001e 00f6 0005 00ec 00ec   051e0a-05ecf6
-	04   00f7 0005 00ec 008d 0006 0060 0060   05ecf7-06608d
-	05   0016 0008 002e 0014 0009 0019 0019   082e16-091914
-	06   0015 0009 0019 0094 000b 0015 0015   091915-0b1594
-	07   0010 000d 0012 00bf 000d 0035 0035   0d1210-0d35bf
-	08   00ce 000e 002f 0074 000f 0032 0032   0e2fce-0f3274
-	09   0000 0000 0000 003a 0000 007d 007d   000000-007d3a
-	0a   0077 0000 00fa 008d 0001 00b6 00b6   00fa77-01b68d
-	0b   008e 0001 00b6 00b3 0002 0021 0021   01b68e-0221b3
-	0c   0062 0002 00f7 0038 0003 00de 00de   02f762-03de38
-	0d   00b9 0005 00ab 00ef 0006 0016 0016   05abb9-0616ef
-	0e   00dd 0007 0058 00db 0008 001a 001a   0758dd-081adb
-	0f   00dc 0008 001a 002e 0008 008a 008a   081adc-088a2e
-	10   00db 0009 00d7 00ff 000a 0046 0046   09d7db-0a46ff
-	11   0077 000c 0003 006d 000c 0080 0080   0c0377-0c806d
-	12   006e 000c 0080 006c 000d 0002 0002   0c806e-0d026c
-	13   006d 000d 0002 002b 000d 0041 0041   0d026d-0d412b
-	14   002c 000d 0041 002a 000d 00be 00be   0d412c-0dbe2a
-	15   002b 000d 00be 0029 000e 0083 0083   0dbe2b-0e8329
-	16   002a 000e 0083 00ee 000f 0069 0069   0e832a-0f69ee
-	*/
+    Snd         Offset Writes                 Sample Range
+         0000 0004 0002 0006 000a 0008 000c
+    --   ----------------------------------   -------------
+    00   006e 0001 00ab 003c 0002 003a 003a   01ab6e-023a3c
+    01   003d 0002 003a 001d 0002 007e 007e   023a3d-027e1d
+    02   00e2 0003 0005 002e 0003 00f3 00f3   0305e2-03f32e
+    03   000a 0005 001e 00f6 0005 00ec 00ec   051e0a-05ecf6
+    04   00f7 0005 00ec 008d 0006 0060 0060   05ecf7-06608d
+    05   0016 0008 002e 0014 0009 0019 0019   082e16-091914
+    06   0015 0009 0019 0094 000b 0015 0015   091915-0b1594
+    07   0010 000d 0012 00bf 000d 0035 0035   0d1210-0d35bf
+    08   00ce 000e 002f 0074 000f 0032 0032   0e2fce-0f3274
+    09   0000 0000 0000 003a 0000 007d 007d   000000-007d3a
+    0a   0077 0000 00fa 008d 0001 00b6 00b6   00fa77-01b68d
+    0b   008e 0001 00b6 00b3 0002 0021 0021   01b68e-0221b3
+    0c   0062 0002 00f7 0038 0003 00de 00de   02f762-03de38
+    0d   00b9 0005 00ab 00ef 0006 0016 0016   05abb9-0616ef
+    0e   00dd 0007 0058 00db 0008 001a 001a   0758dd-081adb
+    0f   00dc 0008 001a 002e 0008 008a 008a   081adc-088a2e
+    10   00db 0009 00d7 00ff 000a 0046 0046   09d7db-0a46ff
+    11   0077 000c 0003 006d 000c 0080 0080   0c0377-0c806d
+    12   006e 000c 0080 006c 000d 0002 0002   0c806e-0d026c
+    13   006d 000d 0002 002b 000d 0041 0041   0d026d-0d412b
+    14   002c 000d 0041 002a 000d 00be 00be   0d412c-0dbe2a
+    15   002b 000d 00be 0029 000e 0083 0083   0dbe2b-0e8329
+    16   002a 000e 0083 00ee 000f 0069 0069   0e832a-0f69ee
+    */
 
-	COMBINE_DATA(&vmetal_es8712[offset]);
-	logerror("Writing %04x to ES8712 port %02x\n",data,offset);
-
-	if ((offset == 0) && (ACCESSING_MSB))
-	{
-//		ADPCM_stop(0);
-		vmetal_es8712_start = 0;
-		vmetal_es8712_end = 0;
-	}
-
-	if ((offset == 0x06) && ACCESSING_LSB)
-	{
-		vmetal_es8712_start  = ((vmetal_es8712[0] & 0x00ff) << 0);
-		vmetal_es8712_start |= ((vmetal_es8712[1] & 0x00ff) << 8);
-		vmetal_es8712_start |= ((vmetal_es8712[2] & 0x000f) << 16);
-//		vmetal_es8712_start |= ((vmetal_es8712[0] & 0x1000) << 8);
-
-		vmetal_es8712_end    = ((vmetal_es8712[3] & 0x00ff) << 0);
-		vmetal_es8712_end   |= ((vmetal_es8712[4] & 0x00ff) << 8);
-		vmetal_es8712_end   |= ((vmetal_es8712[5] & 0x000f) << 16);
-//		vmetal_es8712_end   |= ((vmetal_es8712[0] & 0x1000) << 8);
-
-		/*	The MSB of offset 0x0000 is unreliable in setting the ADPCM bank.
-			How is it really done? Let's do it manually for now */
-		switch (vmetal_es8712_start)
-		{
-			case 0x000000:
-			case 0x00fa77:
-			case 0x01b68e:
-			case 0x02f762:
-			case 0x05abb9:
-			case 0x0758dd:
-			case 0x081adc:
-			case 0x09d7db:
-			case 0x0c0377:
-			case 0x0c806e:
-			case 0x0d026d:
-			case 0x0d412c:
-			case 0x0dbe2b:
-			case 0x0e832a:	vmetal_es8712_start |= 0x100000; vmetal_es8712_end |= 0x100000; break;
-			default:		break;
-		}
-
-		logerror("Start=%08x  End=%08x  Length=%08x\n",vmetal_es8712_start,vmetal_es8712_end,vmetal_es8712_end - vmetal_es8712_start);
-
-		if (vmetal_es8712_start < vmetal_es8712_end)
-		{
-//			ADPCM_stop(0);
-//			ADPCM_play(0, vmetal_es8712_start, vmetal_es8712_end - vmetal_es8712_start);
-		}
-	}
-}
-
-static INTERRUPT_GEN( vmetal_interrupt )
-{
-	/* Loop any music playback - probably wrong */
-//	if (vmetal_es8712_end && (ADPCM_playing(0) == 0))
-//	{
-//		ADPCM_play(0, vmetal_es8712_start, vmetal_es8712_end - vmetal_es8712_start);
-//	}
+	ES8712_data_0_lsb_w(offset, data, mem_mask);
+	logerror("PC:%06x - Writing %04x to ES8712 offset %02x\n",activecpu_get_previouspc(),data,offset);
 }
 
 
 static ADDRESS_MAP_START( varia_program_map, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_RAM
+	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 	AM_RANGE(0x100000, 0x11ffff) AM_READWRITE(MRA16_RAM, vmetal_texttileram_w) AM_BASE(&vmetal_texttileram)
 	AM_RANGE(0x120000, 0x13ffff) AM_READWRITE(MRA16_RAM, vmetal_mid1tileram_w) AM_BASE(&vmetal_mid1tileram)
 	AM_RANGE(0x140000, 0x15ffff) AM_READWRITE(MRA16_RAM, vmetal_mid2tileram_w) AM_BASE(&vmetal_mid2tileram)
@@ -342,7 +298,7 @@ static ADDRESS_MAP_START( varia_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x178000, 0x1787ff) AM_RAM AM_BASE(&vmetal_tlookup)
 	AM_RANGE(0x178800, 0x17ffff) AM_RAM AM_BASE(&vmetal_videoregs)
 
-	AM_RANGE(0x200000, 0x200001) AM_READWRITE(input_port_0_word_r, MWA16_NOP)
+	AM_RANGE(0x200000, 0x200001) AM_READWRITE(input_port_0_word_r, vmetal_control_w)
 	AM_RANGE(0x200002, 0x200003) AM_READ(input_port_1_word_r )
 
 	/* i have no idea whats meant to be going on here .. it seems to read one bit of the dips from some of them, protection ??? */
@@ -366,7 +322,7 @@ static ADDRESS_MAP_START( varia_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x400000, 0x400001) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w )
 	AM_RANGE(0x400002, 0x400003) AM_WRITE(OKIM6295_data_0_lsb_w )	// Volume/channel info
-	AM_RANGE(0x500000, 0x50000d) AM_WRITE(vmetal_es8712_w) AM_BASE(&vmetal_es8712)
+	AM_RANGE(0x500000, 0x50000d) AM_WRITE(vmetal_es8712_w)
 
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
@@ -374,7 +330,7 @@ ADDRESS_MAP_END
 
 
 INPUT_PORTS_START( varia )
-	PORT_START	/* DSW */
+	PORT_START		/* IN0 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -392,7 +348,7 @@ INPUT_PORTS_START( varia )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START		/* IN0 */
+	PORT_START		/* IN1 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_TILT )
@@ -416,9 +372,9 @@ INPUT_PORTS_START( varia )
 	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0020, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -481,12 +437,6 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-
-static struct MSM5205interface msm5205_interface =
-{
-	NULL,				/* VCK function */
-	MSM5205_S48_4B		/* 8 kHz */
-};
 
 static void get_vmetal_texttilemap_tile_info(int tile_index)
 {
@@ -552,12 +502,9 @@ static MACHINE_DRIVER_START( varia )
 	MDRV_CPU_ADD(M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(varia_program_map, 0)
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1) // also level 3
-	MDRV_CPU_PERIODIC_INT(vmetal_interrupt, 240)
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_MACHINE_INIT(vmetal_reset)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(2048, 2048)
@@ -576,8 +523,8 @@ static MACHINE_DRIVER_START( varia )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.75)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.75)
 
-	MDRV_SOUND_ADD(MSM5205, 12000*48)
-	MDRV_SOUND_CONFIG(msm5205_interface)
+	MDRV_SOUND_ADD(ES8712, 12000)
+	MDRV_SOUND_CONFIG(es8712_interface_region_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END

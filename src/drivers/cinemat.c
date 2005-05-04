@@ -1,31 +1,31 @@
 /***************************************************************************
 
-	Cinematronics vector hardware
+    Cinematronics vector hardware
 
-	driver by Aaron Giles
+    driver by Aaron Giles
 
-	Special thanks to Neil Bradley, Zonn Moore, and Jeff Mitchell of the
-	Retrocade Alliance
+    Special thanks to Neil Bradley, Zonn Moore, and Jeff Mitchell of the
+    Retrocade Alliance
 
-	Games supported:
-		* Space Wars
-		* Barrier
-		* Star Hawk
-		* Star Castle
-		* Tailgunner
-		* Rip Off
-		* Speed Freak
-		* Sundance
-		* Warrior
-		* Armor Attack
-		* Solar Quest
-		* Demon
-		* War of the Worlds
-		* Boxing Bugs
-		* QB-3
+    Games supported:
+        * Space Wars
+        * Barrier
+        * Star Hawk
+        * Star Castle
+        * Tailgunner
+        * Rip Off
+        * Speed Freak
+        * Sundance
+        * Warrior
+        * Armor Attack
+        * Solar Quest
+        * Demon
+        * War of the Worlds
+        * Boxing Bugs
+        * QB-3
 
-	To do:
-		* look into bad sample latency
+    To do:
+        * look into bad sample latency
 
 ***************************************************************************/
 
@@ -51,7 +51,7 @@ static UINT8 qb3_ram_bank;
 
 /*************************************
  *
- *	General machine init
+ *  General machine init
  *
  *************************************/
 
@@ -70,7 +70,7 @@ MACHINE_INIT( cinemat )
 
 /*************************************
  *
- *	General input handlers
+ *  General input handlers
  *
  *************************************/
 
@@ -90,7 +90,7 @@ static READ8_HANDLER( switches_r )
 
 /*************************************
  *
- *	Coin handlers
+ *  Coin handlers
  *
  *************************************/
 
@@ -114,7 +114,7 @@ static READ8_HANDLER( coin_input_r )
 
 /*************************************
  *
- *	General output handlers
+ *  General output handlers
  *
  *************************************/
 
@@ -137,7 +137,7 @@ static WRITE8_HANDLER( mux_select_w )
 
 /*************************************
  *
- *	Joystick inputs
+ *  Joystick inputs
  *
  *************************************/
 
@@ -155,7 +155,7 @@ static UINT8 joystick_read(void)
 
 /*************************************
  *
- *	Speed Freak inputs
+ *  Speed Freak inputs
  *
  *************************************/
 
@@ -195,7 +195,7 @@ static READ8_HANDLER( speedfrk_gear_r )
 
 /*************************************
  *
- *	Sundance inputs
+ *  Sundance inputs
  *
  *************************************/
 
@@ -240,7 +240,7 @@ static READ8_HANDLER( sundance_inputs_r )
 
 /*************************************
  *
- *	Boxing Bugs inputs
+ *  Boxing Bugs inputs
  *
  *************************************/
 
@@ -255,7 +255,7 @@ static READ8_HANDLER( boxingb_dial_r )
 
 /*************************************
  *
- *	QB3 inputs & RAM banking
+ *  QB3 inputs & RAM banking
  *
  *************************************/
 
@@ -276,7 +276,7 @@ static WRITE8_HANDLER( qb3_ram_bank_w )
 
 /*************************************
  *
- *	Video overlays
+ *  Video overlays
  *
  *************************************/
 
@@ -308,7 +308,7 @@ OVERLAY_END
 
 /*************************************
  *
- *	Main CPU memory handlers
+ *  Main CPU memory handlers
  *
  *************************************/
 
@@ -357,7 +357,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Port definitions
+ *  Port definitions
  *
  *************************************/
 
@@ -920,7 +920,7 @@ INPUT_PORTS_START( demon )
 	PORT_DIPSETTING(    0x30, "1" )
 	PORT_DIPSETTING(    0x10, "5" )
 	PORT_DIPSETTING(    0x00, "10" )
-/*	PORT_DIPSETTING(    0x20, "1" )*/
+/*  PORT_DIPSETTING(    0x20, "1" )*/
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Free_Play ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -977,7 +977,7 @@ INPUT_PORTS_END
 
 /*************************************
  *
- *	CPU configurations
+ *  CPU configurations
  *
  *************************************/
 
@@ -997,7 +997,7 @@ static struct CCPUConfig config_jmi =
 
 /*************************************
  *
- *	Core machine drivers
+ *  Core machine drivers
  *
  *************************************/
 
@@ -1065,7 +1065,7 @@ MACHINE_DRIVER_END
 
 /*************************************
  *
- *	Game-specific machine drivers
+ *  Game-specific machine drivers
  *
  *************************************/
 
@@ -1181,7 +1181,7 @@ MACHINE_DRIVER_END
 
 /*************************************
  *
- *	ROM definitions
+ *  ROM definitions
  *
  *************************************/
 
@@ -1362,6 +1362,16 @@ ROM_START( stellcas )
 	CCPU_PROMS
 ROM_END
 
+ROM_START( spaceftr )
+	ROM_REGION( 0x2000, REGION_CPU1, 0 )	/* 8k for code */
+	ROM_LOAD16_BYTE( "2716.t7",      0x0000, 0x0800, CRC(65d0a225) SHA1(e1fbee5ff42dd040ab2e90bbe2189fcb76d6167e) )
+	ROM_LOAD16_BYTE( "2716.p7",      0x0001, 0x0800, CRC(1a32aed6) SHA1(89c16a33288265e06e6fbd8426ba4ee9d81c221f) )
+	ROM_LOAD16_BYTE( "2716.u7",      0x1000, 0x0800, CRC(13b0287c) SHA1(366a23fd10684975bd5ee190e5227e47a0298ad5) )
+	ROM_LOAD16_BYTE( "2716.r7",      0x1001, 0x0800, CRC(a2c1ed52) SHA1(ed9743f44ee98c9e7c2a6819ec681af7c7a97fc9) )
+
+	CCPU_PROMS
+ROM_END
+
 
 ROM_START( solarq )
 	ROM_REGION( 0x4000, REGION_CPU1, 0 )	/* 16k for code */
@@ -1442,7 +1452,7 @@ ROM_END
 
 /*************************************
  *
- *	Driver initialization
+ *  Driver initialization
  *
  *************************************/
 
@@ -1496,7 +1506,7 @@ static DRIVER_INIT( qb3 )
 
 /*************************************
  *
- *	Game drivers
+ *  Game drivers
  *
  *************************************/
 
@@ -1516,6 +1526,7 @@ GAME( 1980, starcas1, starcas, starcas,  starcas,  starcas,  ORIENTATION_FLIP_Y,
 GAME( 1980, starcasp, starcas, starcas,  starcas,  starcas,  ORIENTATION_FLIP_Y,   "Cinematronics", "Star Castle (prototype)" )
 GAME( 1980, starcase, starcas, starcas,  starcas,  starcas,  ORIENTATION_FLIP_Y,   "Cinematronics (Mottoeis license)", "Star Castle (Mottoeis)" )
 GAME( 1980, stellcas, starcas, starcas,  starcas,  starcas,  ORIENTATION_FLIP_Y,   "bootleg", "Stellar Castle (Elettronolo)" )
+GAME( 1981, spaceftr, starcas, starcas,  starcas,  starcas,  ORIENTATION_FLIP_Y,   "Zaccaria", "Space Fortress (Zaccaria)" )
 GAME( 1981, solarq,   0,       solarq,   solarq,   solarq,   ORIENTATION_FLIP_Y ^ ORIENTATION_FLIP_X, "Cinematronics", "Solar Quest" )
 GAME( 1981, boxingb,  0,       boxingb,  boxingb,  boxingb,  ORIENTATION_FLIP_Y,   "Cinematronics", "Boxing Bugs" )
 GAME( 1981, wotw,     0,       wotw,     wotw,     0,        ORIENTATION_FLIP_Y,   "Cinematronics", "War of the Worlds" )

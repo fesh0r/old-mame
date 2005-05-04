@@ -1,26 +1,26 @@
 /***************************************************************************
 
-	Leland Ataxx-era driver
+    Leland Ataxx-era driver
 
-	driver by Aaron Giles and Paul Leaman
+    driver by Aaron Giles and Paul Leaman
 
-	Games supported:
-		* Ataxx
-		* World Soccer Finals
-		* Danny Sullivan's Indy Heat
-		* Brute Force
-		* Asylum (prototype)
+    Games supported:
+        * Ataxx
+        * World Soccer Finals
+        * Danny Sullivan's Indy Heat
+        * Brute Force
+        * Asylum (prototype)
 
 ****************************************************************************
 
-	To enter service mode in Ataxx and Brute Force, press 1P start and
-	then press the service switch (F2).
+    To enter service mode in Ataxx and Brute Force, press 1P start and
+    then press the service switch (F2).
 
-	For World Soccer Finals, press the 1P button B and then press the
-	service switch.
+    For World Soccer Finals, press the 1P button B and then press the
+    service switch.
 
-	For Indy Heat, press the red turbo button (1P button 1) and then
-	press the service switch.
+    For Indy Heat, press the red turbo button (1P button 1) and then
+    press the service switch.
 
 ***************************************************************************/
 
@@ -37,7 +37,7 @@
 
 /*************************************
  *
- *	Master CPU memory handlers
+ *  Master CPU memory handlers
  *
  *************************************/
 
@@ -52,6 +52,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( master_map_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
     AM_RANGE(0x04, 0x04) AM_READ(leland_i86_response_r)
     AM_RANGE(0x05, 0x05) AM_WRITE(leland_i86_command_hi_w)
     AM_RANGE(0x06, 0x06) AM_WRITE(leland_i86_command_lo_w)
@@ -66,7 +67,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Slave CPU memory handlers
+ *  Slave CPU memory handlers
  *
  *************************************/
 
@@ -82,6 +83,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( slave_map_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x60, 0x7f) AM_READWRITE(ataxx_svram_port_r, ataxx_svram_port_w)
 ADDRESS_MAP_END
 
@@ -89,7 +91,7 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *	Port definitions
+ *  Port definitions
  *
  *************************************/
 
@@ -282,7 +284,7 @@ INPUT_PORTS_END
 
 /*************************************
  *
- *	Graphics definitions
+ *  Graphics definitions
  *
  *************************************/
 
@@ -307,7 +309,7 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 
 /*************************************
  *
- *	Sound definitions
+ *  Sound definitions
  *
  *************************************/
 
@@ -320,7 +322,7 @@ static struct CustomSound_interface i186_custom_interface =
 
 /*************************************
  *
- *	Machine driver
+ *  Machine driver
  *
  *************************************/
 
@@ -336,7 +338,7 @@ static MACHINE_DRIVER_START( ataxx )
 	MDRV_CPU_IO_MAP(slave_map_io,0)
 
 	MDRV_CPU_ADD_TAG("sound", I186, 16000000/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(leland_i86_map_program,0)
 	MDRV_CPU_IO_MAP(ataxx_i86_map_io,0)
 
@@ -381,7 +383,7 @@ MACHINE_DRIVER_END
 
 /*************************************
  *
- *	ROM definitions
+ *  ROM definitions
  *
  *************************************/
 
@@ -686,7 +688,7 @@ ROM_END
 
 /*************************************
  *
- *	Driver initialization
+ *  Driver initialization
  *
  *************************************/
 
@@ -849,7 +851,7 @@ static DRIVER_INIT( asylum )
 
 	leland_rotate_memory(0);
 	leland_rotate_memory(1);
-	
+
 	/* asylum appears to have some extra RAM for the slave CPU */
 	memory_install_read8_handler(1, ADDRESS_SPACE_PROGRAM, 0xf000, 0xfffb, 0, 0, MRA8_RAM);
 	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0xf000, 0xfffb, 0, 0, MWA8_RAM);
@@ -867,7 +869,7 @@ static DRIVER_INIT( asylum )
 
 /*************************************
  *
- *	Game drivers
+ *  Game drivers
  *
  *************************************/
 

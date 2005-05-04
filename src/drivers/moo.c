@@ -224,9 +224,9 @@ static READ16_HANDLER( sound_status_r )
 	int latch = soundlatch3_r(0);
 
 	/* make test pass with sound off.
-	   these games are trickier than your usual konami stuff, they expect to
-	   read 0xff (meaning the z80 booted properly) then 0x80 (z80 busy) then
-	   the self-test result */
+       these games are trickier than your usual konami stuff, they expect to
+       read 0xff (meaning the z80 booted properly) then 0x80 (z80 busy) then
+       the self-test result */
 	if (!Machine->sample_rate) {
 		if (init_nosound_count < 10)
 		{
@@ -648,7 +648,7 @@ static MACHINE_DRIVER_START( moo )
 	MDRV_CPU_VBLANK_INT(moo_interrupt, 1)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 8000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(60)

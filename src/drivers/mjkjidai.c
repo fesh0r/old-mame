@@ -2,9 +2,9 @@
 
 Mahjong Kyou Jidai     (c)1986 Sanritsu
 
-CPU	:Z80
-Sound	:SN76489*2 CUSTOM
-OSC	:10MHz ??MHz
+CPU :Z80
+Sound   :SN76489*2 CUSTOM
+OSC :10MHz ??MHz
 
 driver by Nicola Salmoria
 
@@ -15,7 +15,7 @@ TODO:
   - some sprites are misplaced by 1pixel vertically
   - during the tile distribution at the beginning of a match, there's something
     wrong with the stacks moved around, they aremisaligned and something is
-	missing.
+    missing.
 
 - unknown reads from port 01. Only the top two bits seem to be used.
 
@@ -37,7 +37,7 @@ WRITE8_HANDLER( mjkjidai_ctrl_w );
 
 static WRITE8_HANDLER( adpcm_w )
 {
-//	ADPCM_play(0,(data & 0x07) * 0x1000,0x1000*2);
+//  ADPCM_play(0,(data & 0x07) * 0x1000,0x1000*2);
 }
 
 
@@ -47,7 +47,7 @@ static READ8_HANDLER( keyboard_r )
 {
 	int res = 0x3f,i;
 
-//	logerror("%04x: keyboard_r\n",activecpu_get_pc());
+//  logerror("%04x: keyboard_r\n",activecpu_get_pc());
 
 	for (i = 0;i < 12;i++)
 	{
@@ -71,7 +71,7 @@ static READ8_HANDLER( keyboard_r )
 
 static WRITE8_HANDLER( keyboard_select_w )
 {
-//	logerror("%04x: keyboard_select %d = %02x\n",activecpu_get_pc(),offset,data);
+//  logerror("%04x: keyboard_select %d = %02x\n",activecpu_get_pc(),offset,data);
 
 	switch (offset)
 	{
@@ -115,6 +115,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(keyboard_r)
 	AM_RANGE(0x01, 0x01) AM_READ(MRA8_NOP)	// ???
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
@@ -123,6 +124,7 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x01, 0x02) AM_WRITE(keyboard_select_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(mjkjidai_ctrl_w)	// rom bank, coin counter, flip screen etc
 	AM_RANGE(0x20, 0x20) AM_WRITE(SN76496_0_w)

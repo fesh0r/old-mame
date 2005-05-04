@@ -1,14 +1,14 @@
 /***************************************************************************
 
-						  -= Yun Sung 16 Bit Games =-
+                          -= Yun Sung 16 Bit Games =-
 
-					driver by	Luca Elia (l.elia@tin.it)
+                    driver by   Luca Elia (l.elia@tin.it)
 
 
 Main  CPU    :  MC68000
 Sound CPU    :  Z80 [Optional]
-Video Chips  :	?
-Sound Chips  :	OKI M6295 + YM3812 [Optional]
+Video Chips  :  ?
+Sound Chips  :  OKI M6295 + YM3812 [Optional]
 
 
 ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ VIDEO_UPDATE( yunsun16 );
 /***************************************************************************
 
 
-							Memory Maps - Main CPU
+                            Memory Maps - Main CPU
 
 
 ***************************************************************************/
@@ -123,14 +123,14 @@ number 0 on each voice. That sample is 00000-00000.
 
 DRIVER_INIT( magicbub )
 {
-//	remove_mem_write16_handler (0, 0x800180, 0x800181 );
+//  remove_mem_write16_handler (0, 0x800180, 0x800181 );
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800188, 0x800189, 0, 0, magicbub_sound_command_w);
 }
 
 /***************************************************************************
 
 
-							Memory Maps - Sound CPU
+                            Memory Maps - Sound CPU
 
 
 ***************************************************************************/
@@ -146,12 +146,14 @@ static ADDRESS_MAP_START( yunsun16_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( yunsun16_sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x10, 0x10) AM_READ(YM3812_status_port_0_r	)	// YM3812
 	AM_RANGE(0x18, 0x18) AM_READ(soundlatch_r				)	// From Main CPU
 	AM_RANGE(0x1c, 0x1c) AM_READ(OKIM6295_status_0_r		)	// M6295
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( yunsun16_sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x10, 0x10) AM_WRITE(YM3812_control_port_0_w	)	// YM3812
 	AM_RANGE(0x11, 0x11) AM_WRITE(YM3812_write_port_0_w		)
 	AM_RANGE(0x1c, 0x1c) AM_WRITE(OKIM6295_data_0_w			)	// M6295
@@ -161,14 +163,14 @@ ADDRESS_MAP_END
 /***************************************************************************
 
 
-								Input Ports
+                                Input Ports
 
 
 ***************************************************************************/
 
 
 /***************************************************************************
-								Magic Bubble
+                                Magic Bubble
 ***************************************************************************/
 
 INPUT_PORTS_START( magicbub )
@@ -254,7 +256,7 @@ INPUT_PORTS_END
 
 
 /***************************************************************************
-								Shocking
+                                Shocking
 ***************************************************************************/
 
 INPUT_PORTS_START( shocking )
@@ -345,7 +347,7 @@ INPUT_PORTS_END
 /***************************************************************************
 
 
-							Graphics Layouts
+                            Graphics Layouts
 
 
 ***************************************************************************/
@@ -387,13 +389,13 @@ static struct GfxDecodeInfo yunsun16_gfxdecodeinfo[] =
 /***************************************************************************
 
 
-								Machine Drivers
+                                Machine Drivers
 
 
 ***************************************************************************/
 
 /***************************************************************************
-								Magic Bubble
+                                Magic Bubble
 ***************************************************************************/
 
 static void soundirq(int state)
@@ -414,7 +416,7 @@ static MACHINE_DRIVER_START( magicbub )
 	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 3000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* ? */
+	/* audio CPU */	/* ? */
 	MDRV_CPU_PROGRAM_MAP(yunsun16_sound_readmem,yunsun16_sound_writemem)
 	MDRV_CPU_IO_MAP(yunsun16_sound_readport,yunsun16_sound_writeport)
 
@@ -447,7 +449,7 @@ MACHINE_DRIVER_END
 
 
 /***************************************************************************
-								Shocking
+                                Shocking
 ***************************************************************************/
 
 static MACHINE_DRIVER_START( shocking )
@@ -484,14 +486,14 @@ MACHINE_DRIVER_END
 /***************************************************************************
 
 
-								ROMs Loading
+                                ROMs Loading
 
 
 ***************************************************************************/
 
 /***************************************************************************
 
-								Magic Bubble
+                                Magic Bubble
 
 by Yung Sung YS102
 
@@ -525,7 +527,7 @@ ROM_START( magicbub )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )		/* Z80 Code */
 	ROM_LOAD( "magbuble.143", 0x00000, 0x10000, CRC(04192753) SHA1(9c56ba70e1d074906ea1dc593c2a8516c6ba2074) )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )	/* 16x16x8 */
+	ROM_REGION( 0x200000*8, REGION_GFX1, ROMREGION_ERASEFF | ROMREGION_DISPOSE )	/* 16x16x8 */
 	ROMX_LOAD( "magbuble.u67", 0x000000, 0x080000, CRC(6355e57d) SHA1(5e9234dd474ddcf0a9e1001080f3de11c7d0ee55) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "magbuble.u68", 0x000002, 0x080000, CRC(53ae6c2b) SHA1(43c02aa4cfdfa5bc009b42cd4be633787a35cb59) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "magbuble.u69", 0x000004, 0x080000, CRC(b892e64c) SHA1(b1156c8f02371ee2c5d6c930483c50eef5da10b5) , ROM_GROUPWORD | ROM_SKIP(6))
@@ -545,7 +547,7 @@ ROM_END
 
 /***************************************************************************
 
-								Shocking
+                                Shocking
 
 ***************************************************************************/
 
@@ -555,7 +557,7 @@ ROM_START( shocking )
 	ROM_LOAD16_BYTE( "yunsun16.u33", 0x000000, 0x040000, CRC(8a155521) SHA1(000c9095558e6cae30ce43a885c3fbcf55713f40) )
 	ROM_LOAD16_BYTE( "yunsun16.u32", 0x000001, 0x040000, CRC(c4998c10) SHA1(431ae1f9982a70421650e1bfe4bf87152e2fe85c) )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )	/* 16x16x8 */
+	ROM_REGION( 0x200000*8, REGION_GFX1, ROMREGION_ERASEFF | ROMREGION_DISPOSE )	/* 16x16x8 */
 	ROMX_LOAD( "yunsun16.u67", 0x000000, 0x080000, CRC(e30fb2c4) SHA1(0d33a1593d7ebcd5da6971a04c3300c0b4eef219) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "yunsun16.u68", 0x000002, 0x080000, CRC(7d702538) SHA1(ae4c8ca6f172e204589f2f70ca114f7c38e7cabd) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "yunsun16.u69", 0x000004, 0x080000, CRC(97447fec) SHA1(e52184f96b2337ccbef130ada21a959c8bc1d73b) , ROM_GROUPWORD | ROM_SKIP(6))
@@ -577,7 +579,7 @@ ROM_END
 /***************************************************************************
 
 
-								Game Drivers
+                                Game Drivers
 
 
 ***************************************************************************/

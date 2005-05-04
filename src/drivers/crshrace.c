@@ -75,11 +75,11 @@ Stephh's notes (based on the games M68000 code and some tests) :
   - Even if there is code for it, there is NO possibility to select a 3 players
     game due to code at 0x003778 which "invalidates" the previous reading of DSW 3 :
 
-	00363C: 13F8 F00B 00FE 1C85      move.b  $f00b.w, $fe1c85.l
-	...
-	003650: 4639 00FE 1C85           not.b   $fe1c85.l
-	...
-	003778: 51F9 00FE 1C85           sf      $fe1c85.l
+    00363C: 13F8 F00B 00FE 1C85      move.b  $f00b.w, $fe1c85.l
+    ...
+    003650: 4639 00FE 1C85           not.b   $fe1c85.l
+    ...
+    003778: 51F9 00FE 1C85           sf      $fe1c85.l
 
   - When in the "test mode" with the extended menu, pressing "P1 start" +
     "P2 start" + the 3 buttons of the SAME player causes a reset of the game
@@ -94,11 +94,11 @@ Stephh's notes (based on the games M68000 code and some tests) :
   - Even if there is code for it, there is NO possibility to select a 3 players
     game due to code at 0x003796 which "invalidates" the previous reading of DSW 3 :
 
-	00365A: 13F8 F00B 00FE 1C85      move.b  $f00b.w, $fe1c85.l
-	...
-	00366E: 4639 00FE 1C85           not.b   $fe1c85.l
-	...
-	003796: 51F9 00FE 1C85           sf      $fe1c85.l
+    00365A: 13F8 F00B 00FE 1C85      move.b  $f00b.w, $fe1c85.l
+    ...
+    00366E: 4639 00FE 1C85           not.b   $fe1c85.l
+    ...
+    003796: 51F9 00FE 1C85           sf      $fe1c85.l
 
   - When in the "test mode" with the extended menu, pressing "P1 start" +
     "P2 start" + the 3 buttons of the SAME player causes a reset of the game
@@ -230,12 +230,14 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_r)
 	AM_RANGE(0x08, 0x08) AM_READ(YM2610_status_port_0_A_r)
 	AM_RANGE(0x0a, 0x0a) AM_READ(YM2610_status_port_0_B_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(crshrace_sh_bankswitch_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(pending_command_clear_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(YM2610_control_port_0_A_w)
@@ -384,19 +386,19 @@ INPUT_PORTS_START( crshrace )
 	PORT_DIPSETTING(      0x0200, "Korea" )
 	PORT_DIPSETTING(      0x0400, "Hong Kong & Taiwan" )
 /*
-	the following are all the same and seem to act like the World setting, possibly
-	with a slightly different attract sequence
-	PORT_DIPSETTING(      0x0300, "5" )
-	PORT_DIPSETTING(      0x0500, "5" )
-	PORT_DIPSETTING(      0x0600, "5" )
-	PORT_DIPSETTING(      0x0700, "5" )
-	PORT_DIPSETTING(      0x0900, "5" )
-	PORT_DIPSETTING(      0x0a00, "5" )
-	PORT_DIPSETTING(      0x0b00, "5" )
-	PORT_DIPSETTING(      0x0c00, "5" )
-	PORT_DIPSETTING(      0x0d00, "5" )
-	PORT_DIPSETTING(      0x0e00, "5" )
-	PORT_DIPSETTING(      0x0f00, "5" )
+    the following are all the same and seem to act like the World setting, possibly
+    with a slightly different attract sequence
+    PORT_DIPSETTING(      0x0300, "5" )
+    PORT_DIPSETTING(      0x0500, "5" )
+    PORT_DIPSETTING(      0x0600, "5" )
+    PORT_DIPSETTING(      0x0700, "5" )
+    PORT_DIPSETTING(      0x0900, "5" )
+    PORT_DIPSETTING(      0x0a00, "5" )
+    PORT_DIPSETTING(      0x0b00, "5" )
+    PORT_DIPSETTING(      0x0c00, "5" )
+    PORT_DIPSETTING(      0x0d00, "5" )
+    PORT_DIPSETTING(      0x0e00, "5" )
+    PORT_DIPSETTING(      0x0f00, "5" )
 */
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* pending sound command */
 INPUT_PORTS_END
@@ -540,19 +542,19 @@ INPUT_PORTS_START( crshrac2 )
 	PORT_DIPSETTING(      0x0200, "Korea" )
 	PORT_DIPSETTING(      0x0400, "Hong Kong & Taiwan" )
 /*
-	the following are all the same and seem to act like the World setting, possibly
-	with a slightly different attract sequence
-	PORT_DIPSETTING(      0x0300, "5" )
-	PORT_DIPSETTING(      0x0500, "5" )
-	PORT_DIPSETTING(      0x0600, "5" )
-	PORT_DIPSETTING(      0x0700, "5" )
-	PORT_DIPSETTING(      0x0900, "5" )
-	PORT_DIPSETTING(      0x0a00, "5" )
-	PORT_DIPSETTING(      0x0b00, "5" )
-	PORT_DIPSETTING(      0x0c00, "5" )
-	PORT_DIPSETTING(      0x0d00, "5" )
-	PORT_DIPSETTING(      0x0e00, "5" )
-	PORT_DIPSETTING(      0x0f00, "5" )
+    the following are all the same and seem to act like the World setting, possibly
+    with a slightly different attract sequence
+    PORT_DIPSETTING(      0x0300, "5" )
+    PORT_DIPSETTING(      0x0500, "5" )
+    PORT_DIPSETTING(      0x0600, "5" )
+    PORT_DIPSETTING(      0x0700, "5" )
+    PORT_DIPSETTING(      0x0900, "5" )
+    PORT_DIPSETTING(      0x0a00, "5" )
+    PORT_DIPSETTING(      0x0b00, "5" )
+    PORT_DIPSETTING(      0x0c00, "5" )
+    PORT_DIPSETTING(      0x0d00, "5" )
+    PORT_DIPSETTING(      0x0e00, "5" )
+    PORT_DIPSETTING(      0x0f00, "5" )
 */
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* pending sound command */
 INPUT_PORTS_END
@@ -628,7 +630,7 @@ static MACHINE_DRIVER_START( crshrace )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80,4000000)	/* 4 MHz ??? */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 

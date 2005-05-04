@@ -54,7 +54,7 @@ Notes:
       C416    : Namco custom QFP176
       H8/3002 : Hitachi H8/3002 HD6413002F16 QFP100 microcontroller (H8/3002 has no internal ROM capability)
       MACH210 : PLCC44 CPLD, Namco KEYCUS, stamped 'KC001'
-      62256   : 32K x8 SOJ28 SRAM 
+      62256   : 32K x8 SOJ28 SRAM
       *       : Unpopulated position for SOP44 Mask ROM 'CG1'
 
       NC1_MAIN0B.14D: 512K x16 EPROM type 27C240
@@ -302,7 +302,7 @@ static MACHINE_DRIVER_START( namcond1 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	
+
 	MDRV_SOUND_ADD(C352, 0)
 	MDRV_SOUND_CONFIG(c352_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
@@ -310,7 +310,6 @@ static MACHINE_DRIVER_START( namcond1 )
 	MDRV_SOUND_ROUTE(2, "left", 0.50)
 	MDRV_SOUND_ROUTE(3, "right", 0.50)
 MACHINE_DRIVER_END
-
 
 ROM_START( ncv1 )
 	ROM_REGION( 0x100000,REGION_CPU1, 0 )		/* 16MB for Main CPU */
@@ -361,7 +360,6 @@ ROM_START( ncv2 )
 	ROM_REGION( 0x100000,REGION_CPU1, 0 )		/* 16MB for Main CPU */
 	ROM_LOAD16_WORD( "ncs1mn0.14e", 0x00000, 0x80000, CRC(fb8a4123) SHA1(47acdfe9b5441d0e3649aaa9780e676f760c4e42) )
 	ROM_LOAD16_WORD( "ncs1mn1.13e", 0x80000, 0x80000, CRC(7a5ef23b) SHA1(0408742424a6abad512b5baff63409fe44353e10) )
-
 
 	ROM_REGION( 0x80000,REGION_CPU2, 0 )		/* sub CPU */
 	ROM_LOAD( "ncs1sub.1d",          0x00000, 0x80000, CRC(365cadbf) SHA1(7263220e1630239e3e88b828c00389d02628bd7d) )

@@ -15,23 +15,23 @@ buttons 1,2,3 are used to select and play sound/music
 
 
 - CPU1 manages sprites, which are also used to display text
-		irq (0x10) - timing/watchdog
-		irq (0x30) - processes sprites
-		nmi: wakes up this cpu
+        irq (0x10) - timing/watchdog
+        irq (0x30) - processes sprites
+        nmi: wakes up this cpu
 
 - CPU2 manages the protection device, palette, and tilemap(s)
-		nmi: resets this cpu
-		irq: game update
-		additional protection at d8xx?
+        nmi: resets this cpu
+        irq: game update
+        additional protection at d8xx?
 
 - CPU3 manages sound chips
-		irq: update music
-		nmi: handle sound command
+        irq: update music
+        nmi: handle sound command
 
-	The protection device provides an API to poll dipswitches and inputs.
-	It is probably involved with the memory range 0xd800..0xd8ff, which CPU2 reads.
-	It handles coin input and coinage internally.
-	The real game shouts "DJ Boy!" every time a credit is inserted.
+    The protection device provides an API to poll dipswitches and inputs.
+    It is probably involved with the memory range 0xd800..0xd8ff, which CPU2 reads.
+    It handles coin input and coinage internally.
+    The real game shouts "DJ Boy!" every time a credit is inserted.
 
 
 Genre: Scrolling Fighter
@@ -115,7 +115,7 @@ static WRITE8_HANDLER( cpu1_bankswitch_w )
 static WRITE8_HANDLER( cpu2_bankswitch_w )
 {
 	data8_t *RAM = memory_region(REGION_CPU2);
-	
+
 	djboy_set_videoreg( data );
 
 	switch( data&0xf )
@@ -155,7 +155,7 @@ static WRITE8_HANDLER( cpu2_data_w )
 	case 0x7987: /* 0x03 memtest write */
 		prot_offs = 0;
 		break;
-	
+
 	case 0x73a5: /* 1 is written; preceeds protection read */
 		return;
 
@@ -197,7 +197,7 @@ static WRITE8_HANDLER( cpu2_data_w )
 
 	case 0x726a: /* 0x08 (?) protection */
 		break;
-	
+
 	case 0x7146: break; /* prot(0x01) */
 	case 0x71f4: break; /* prot(0x02) */
 
@@ -246,17 +246,17 @@ static READ8_HANDLER( cpu2_data_r )
 
 	case 0x73b5:
 		/**
-		 * used to poll for "events"
-		 * possible values include:
-		 * 0x00, 0x01, 0x80,0x81,...0x8e
-		 *
-		 * Each value dispatches to a different routine.  Most of them do very little.
-		 */
+         * used to poll for "events"
+         * possible values include:
+         * 0x00, 0x01, 0x80,0x81,...0x8e
+         *
+         * Each value dispatches to a different routine.  Most of them do very little.
+         */
 		result = 0x82; // 'normal' - polls inputs
 		if( code_pressed( KEYCODE_Q ) ) result = 0;
 		if( code_pressed( KEYCODE_5 ) ) result = 1; /* "PUSH 1P START" */
 		if( code_pressed( KEYCODE_6 ) ) result = 0x8b; /* "COIN ERROR" */
-//		if( code_pressed( KEYCODE_B ) ) result = 0x8e;
+//      if( code_pressed( KEYCODE_B ) ) result = 0x8e;
 		return result;
 
 	case 0x7204: result = readinputport(1); break; /* (ix+$42) */
@@ -308,7 +308,7 @@ static READ8_HANDLER( cpu2_status_r )
 	case 0x72b4: return 0;//!0x04
 	case 0x72db: return 1<<2;
 	case 0x72fe: return 0;//!0x04
-	
+
 	case 0x7311: return 0;//!0x04
 	case 0x738f: return 1<<2;
 	case 0x73ac: return 0;//!0x04
@@ -377,6 +377,7 @@ static ADDRESS_MAP_START( cpu1_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cpu1_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(cpu1_bankswitch_w)
 ADDRESS_MAP_END
 
@@ -402,11 +403,13 @@ static ADDRESS_MAP_START( cpu2_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport2, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x04, 0x04) AM_READ(cpu2_data_r)
 	AM_RANGE(0x0c, 0x0c) AM_READ(cpu2_status_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport2, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(cpu2_bankswitch_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(cpu3_nmi_soundcommand_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(cpu2_data_w)
@@ -430,6 +433,7 @@ static ADDRESS_MAP_START( cpu3_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cpu3_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x02, 0x02) AM_READ(YM2203_status_port_0_r)
 	AM_RANGE(0x03, 0x03) AM_READ(YM2203_read_port_0_r)
 	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_r)
@@ -438,6 +442,7 @@ static ADDRESS_MAP_START( cpu3_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cpu3_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(cpu3_bankswitch_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(YM2203_write_port_0_w)
@@ -477,8 +482,8 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 static INTERRUPT_GEN( djboy_interrupt )
 {
 	/* CPU1 uses interrupt mode 2.
-	 * For now, just alternate the two interrupts.  It isn't known what triggers them
-	 */
+     * For now, just alternate the two interrupts.  It isn't known what triggers them
+     */
 	static int addr = 0xff;
 	addr ^= 0x02;
 	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, addr);
@@ -496,7 +501,7 @@ static MACHINE_DRIVER_START( djboy )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_CPU_ADD(Z80, 6000000) /* ? */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(cpu3_readmem,cpu3_writemem)
 	MDRV_CPU_IO_MAP(cpu3_readport,cpu3_writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
@@ -517,13 +522,13 @@ static MACHINE_DRIVER_START( djboy )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	MDRV_SOUND_ADD(YM2203, 3000000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MDRV_SOUND_ADD(OKIM6295, 12000000/4/165)
+	MDRV_SOUND_ADD(OKIM6295, 8000000/4/165)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(OKIM6295, 12000000/4/165)
+	MDRV_SOUND_ADD(OKIM6295, 8000000/4/165)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END

@@ -35,8 +35,8 @@ static void get_bg_tile_info(int tile_index)
 {
 	int code;
 	code = bg_vram[tile_index];
-//	color = colorram[tile_index] & 0x0f;
-//	region = (colorram[tile_index] & 0x10) >> 4;
+//  color = colorram[tile_index] & 0x0f;
+//  region = (colorram[tile_index] & 0x10) >> 4;
 
 	SET_TILE_INFO(0, code, 0, 0)
 }
@@ -45,8 +45,8 @@ static void get_tx_tile_info(int tile_index)
 {
 	int code;
 	code = tx_vram[tile_index]*2;
-//	color = colorram[tile_index] & 0x0f;
-//	region = (colorram[tile_index] & 0x10) >> 4;
+//  color = colorram[tile_index] & 0x0f;
+//  region = (colorram[tile_index] & 0x10) >> 4;
 
 	SET_TILE_INFO(1, code, 0, 0)
 }
@@ -177,7 +177,6 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 
 static MACHINE_DRIVER_START( couple )
 	MDRV_CPU_ADD(Z80,18432000/3)		 /* ?? */
-	MDRV_CPU_FLAGS(CPU_16BIT_PORT)
 	MDRV_CPU_PROGRAM_MAP(mem,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 

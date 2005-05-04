@@ -265,24 +265,24 @@ There are read/writes on bit 7 of 0xfff009 ($f009) ...
 */
 /*******************************************************************************
 
-	Miyasu Nonki no Quiz 18-Kin (Japan)
-	(c)1992 EIM
+    Miyasu Nonki no Quiz 18-Kin (Japan)
+    (c)1992 EIM
 
-	Added by Takahiro Nogi <nogi@kt.rim.or.jp> 2003/08/15 -
+    Added by Takahiro Nogi <nogi@kt.rim.or.jp> 2003/08/15 -
 
 
-Board:	OW-13 CPU
-CPU:	68000-10
-		Z80-B
-Sound:	YM2610
-OSC:	20.00000MHz
-		14.31818MHz
-		12.000MHz
-		8.000MHz
-Custom:	C7-01 GGA
-		VS8803
-		VS8904
-		VS8905
+Board:  OW-13 CPU
+CPU:    68000-10
+        Z80-B
+Sound:  YM2610
+OSC:    20.00000MHz
+        14.31818MHz
+        12.000MHz
+        8.000MHz
+Custom: C7-01 GGA
+        VS8803
+        VS8904
+        VS8905
 
 
 1-IC8.BIN    main prg.
@@ -413,12 +413,14 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x08, 0x08) AM_READ(YM2610_status_port_0_A_r)
 	AM_RANGE(0x0a, 0x0a) AM_READ(YM2610_status_port_0_B_r)
 	AM_RANGE(0x10, 0x10) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(welltris_sh_bankswitch_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(YM2610_control_port_0_A_w)
 	AM_RANGE(0x09, 0x09) AM_WRITE(YM2610_data_port_0_A_w)
@@ -462,7 +464,7 @@ INPUT_PORTS_START( welltris )
 
 #if WELLTRIS_4P_HACK
 	/* These can actually be read in the test mode even if they're not used by the game without patching the code
-	   might be useful if a real 4 player version ever turns up if it was ever produced */
+       might be useful if a real 4 player version ever turns up if it was ever produced */
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
@@ -754,7 +756,7 @@ static MACHINE_DRIVER_START( welltris )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_CPU_ADD(Z80,8000000/2)		/* 4 MHz ??? */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 								/* IRQs are triggered by the YM2610 */

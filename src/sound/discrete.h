@@ -71,7 +71,7 @@
  *
  *  DISCRETE_SOUND_START(test_interface)
  *      DISCRETE_INPUT_LOGIC(NODE_01)
- *      DISCRETE_SQUAREWFIX(NODE_11, 1, 0.5, 1, 50, 1.0/2, 0)	// Output 0:1
+ *      DISCRETE_SQUAREWFIX(NODE_11, 1, 0.5, 1, 50, 1.0/2, 0)   // Output 0:1
  *      DISCRETE_SINEWAVE(NODE_12, NODE_11, 2000, 10000, 0, 0)
  *      DISCRETE_LOGIC_INVERT(NODE_13, 1, NODE_11)
  *      DISCRETE_SINEWAVE(NODE_14, NODE_13, 4000, 10000, 0, 0)
@@ -466,7 +466,7 @@
  *                   max 2 count static value,
  *                   clock type  (see DISCRETE_COUNTER))
  *
- * EXAMPLES: see Polaris
+ * EXAMPLES: see Polaris, Blockade
  *
  ***********************************************************************
  *
@@ -1997,7 +1997,7 @@
  *                                             |
  *                                            gnd
  *
- * EXAMPLES: see
+ * EXAMPLES: see Phoenix
  *
  *          --------------------------------------------------
  *
@@ -2160,6 +2160,9 @@
  *
  *  Waveform Types: (ORed with output types)
  *     DISC_555_OUT_SQW     - Output is Squarewave.  0 or v555high. (DEFAULT)
+ *                            When the state changes from low to high (or high to low)
+ *                            during a sample, the output will high (or low) for that
+ *                            sample.  This can cause alaising effects.
  *     DISC_555_OUT_CAP     - Output is Timing Capacitor 'C' voltage.
  *     DISC_555_OUT_COUNT_F - If the 555 frequency is greater then half the sample
  *                            rate, then the output may change state more then once
@@ -2169,6 +2172,23 @@
  *                            to counter circuits.  The Output Type flag is ingnored
  *                            when this flag is used.
  *     DISC_555_OUT_COUNT_R - Same as DISC_555_OUT_COUNT_F but with rising edges.
+ *     DISC_555_OUT_ENERGY  - Same SQR, but will help reduce aliasing effects.
+ *                            This should be used when the 555 squarewave output is used
+ *                            as a final output and not as a clock source.
+ *                            If the state changes from low to high 1/4 of the way
+ *                            through the sample, then the output will be 75% of the
+ *                            normal high value.
+ *     DISC_555_OUT_LOGIC_X - This will output the 0/1 level of the flip-flop with
+ *                            some eXtra info.  This X info is in decimal remainder.
+ *                            It lets you know the percent of sample time where the
+ *                            flip-flop changed state.  If 0, the change did not happen
+ *                            during the sample.  1.75 means the flip-flop is 1 and
+ *                            switched over 1/4 of the way through the sample.
+ *                            0.2 means the flip-flop is 0 and switched over 4/5 of
+ *                            the way through the sample.
+ *                            X modules can be used with counters to reduce alaising.
+ *   DISC_555_OUT_COUNT_F_X - Same as DISC_555_OUT_COUNT_F but with X info.
+ *   DISC_555_OUT_COUNT_R_X - Same as DISC_555_OUT_COUNT_R but with X info.
  *
  *  other options - DISCRETE_555_ASTABLE only:
  *     DISC_555_ASTABLE_HAS_FAST_CHARGE_DIODE - diode used to bypass rDischarge
@@ -2220,10 +2240,12 @@
  *                                   trigger555 to activate.
  *
  *  Output Types: (ORed with trigger types)
- *     See DISCRETE_555_ASTABLE for description.
+ *     DISC_555_OUT_DC - Output is actual DC. (DEFAULT)
+ *     DISC_555_OUT_AC - A cheat to make the waveform AC.
  *
  *  Waveform Types: (ORed with trigger types)
- *     See DISCRETE_555_ASTABLE for description.
+ *     DISC_555_OUT_SQW     - Output is Squarewave.  0 or v555high. (DEFAULT)
+ *     DISC_555_OUT_CAP     - Output is Timing Capacitor 'C' voltage.
  *
  * EXAMPLES: see Frogs
  *
@@ -2373,7 +2395,7 @@
 
 /*************************************
  *
- *	Core constants
+ *  Core constants
  *
  *************************************/
 
@@ -2385,7 +2407,7 @@
 
 /*************************************
  *
- *	Node-specific constants
+ *  Node-specific constants
  *
  *************************************/
 
@@ -2399,12 +2421,18 @@
 #define DISC_COMP_P_RESISTOR			0x01
 
 /* clk types */
+#define DISC_CLK_MASK			0x03
 #define DISC_CLK_ON_F_EDGE		0x00
 #define DISC_CLK_ON_R_EDGE		0x01
 #define DISC_CLK_BY_COUNT		0x02
 #define DISC_CLK_IS_FREQ		0x03
 
-#define DISC_COUNTER_IS_7492	0x10
+#define DISC_COUNTER_IS_7492	0x08
+
+#define DISC_OUT_MASK			0x30
+#define DISC_OUT_DEFAULT		0x00
+#define DISC_OUT_IS_ENERGY		0x10
+#define DISC_OUT_HAS_XTIME		0x20
 
 /* Function possibilities for the LFSR feedback nodes */
 /* 2 inputs, one output                               */
@@ -2500,22 +2528,26 @@ enum
 #define DISC_SCHMITT_OSC_ENAB_IS_NOR	0x06
 
 #define DISC_SCHMITT_OSC_ENAB_MASK		0x06	/* Bits that define output enable type.
-						 						 * Used only internally in module. */
+                                                 * Used only internally in module. */
 
 /* 555 Common output flags */
 #define DISC_555_OUT_DC					0x00
-#define DISC_555_OUT_AC					0x01
+#define DISC_555_OUT_AC					0x10
 
 #define DISC_555_TRIGGER_IS_LOGIC		0x00
 #define DISC_555_TRIGGER_IS_VOLTAGE		0x40
 
 #define DISC_555_OUT_SQW				0x00	/* Squarewave */
-#define DISC_555_OUT_CAP				0x10	/* Cap charge waveform */
-#define DISC_555_OUT_COUNT_F			0x20	/* Falling count */
-#define DISC_555_OUT_COUNT_R			0x30	/* Rising count */
+#define DISC_555_OUT_CAP				0x01	/* Cap charge waveform */
+#define DISC_555_OUT_COUNT_F			0x02	/* Falling count */
+#define DISC_555_OUT_COUNT_R			0x03	/* Rising count */
+#define DISC_555_OUT_ENERGY				0x04
+#define DISC_555_OUT_LOGIC_X			0x05
+#define DISC_555_OUT_COUNT_F_X			0x06
+#define DISC_555_OUT_COUNT_R_X			0x07
 
-#define DISC_555_OUT_MASK				0x30	/* Bits that define output type.
-												 * Used only internally in module. */
+#define DISC_555_OUT_MASK				0x07	/* Bits that define output type.
+                                                 * Used only internally in module. */
 
 #define DISC_555_ASTABLE_HAS_FAST_CHARGE_DIODE		0x80
 
@@ -2528,7 +2560,7 @@ enum
 #define DISC_566_OUT_LOGIC				0x20	/* 0/1 logic output */
 
 #define DISC_566_OUT_MASK				0x30	/* Bits that define output type.
-												 * Used only internally in module. */
+                                                 * Used only internally in module. */
 
 /* Oneshot types */
 #define DISC_ONESHOT_FEDGE				0x00
@@ -2543,8 +2575,8 @@ enum
 
 /*************************************
  *
- *	The discrete sound blocks as
- *	defined in the drivers
+ *  The discrete sound blocks as
+ *  defined in the drivers
  *
  *************************************/
 
@@ -2562,7 +2594,7 @@ struct discrete_sound_block
 
 /*************************************
  *
- *	Discrete module definition
+ *  Discrete module definition
  *
  *************************************/
 
@@ -2580,7 +2612,7 @@ struct discrete_module
 
 /*************************************
  *
- *	Internal structure of a node
+ *  Internal structure of a node
  *
  *************************************/
 
@@ -2603,7 +2635,7 @@ struct node_description
 
 /*************************************
  *
- *	Node-specific struct types
+ *  Node-specific struct types
  *
  *************************************/
 
@@ -2804,7 +2836,7 @@ struct discrete_adsr
 
 /*************************************
  *
- *	The node numbers themselves
+ *  The node numbers themselves
  *
  *************************************/
 
@@ -2851,13 +2883,13 @@ enum { NODE_00=0x40000000
 
 /*************************************
  *
- *	Enumerated values for Node types
- *	in the simulation
+ *  Enumerated values for Node types
+ *  in the simulation
  *
- *		DSS - Discrete Sound Source
- *		DST - Discrete Sound Transform
- *		DSD - Discrete Sound Device
- *		DSO - Discrete Sound Output
+ *      DSS - Discrete Sound Source
+ *      DST - Discrete Sound Transform
+ *      DSD - Discrete Sound Device
+ *      DSO - Discrete Sound Output
  *
  *************************************/
 
@@ -2922,7 +2954,7 @@ enum
 	DST_MIXER,			/* Final Mixing Stage */
 	DST_TVCA_OP_AMP,	/* Triggered Op Amp Voltage controlled  amplifier circuits */
 	DST_VCA,			/* IC Voltage controlled  amplifiers */
-//	DST_DELAY,			/* Phase shift/Delay line */
+//  DST_DELAY,          /* Phase shift/Delay line */
 
 	/* from disc_flt.c */
 	/* generic modules */
@@ -2959,8 +2991,8 @@ enum
 
 /*************************************
  *
- *	Encapsulation macros for defining
- *	your simulation
+ *  Encapsulation macros for defining
+ *  your simulation
  *
  *************************************/
 
@@ -3097,7 +3129,7 @@ enum
 
 /*************************************
  *
- *	Interface to the external world
+ *  Interface to the external world
  *
  *************************************/
 

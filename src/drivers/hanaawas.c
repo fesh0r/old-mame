@@ -57,7 +57,7 @@ static READ8_HANDLER( hanaawas_input_port_0_r )
 		buttons = readinputport(3);
 		break;
 	}
-	
+
 
 	/* map button pressed into 1-10 range */
 
@@ -95,12 +95,14 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(hanaawas_input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READNOP /* it must return 0 */
 	AM_RANGE(0x10, 0x10) AM_READ(AY8910_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(hanaawas_inputs_mux_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x11, 0x11) AM_WRITE(AY8910_write_port_0_w)
@@ -228,7 +230,7 @@ static MACHINE_DRIVER_START( hanaawas )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 18432000/12)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)

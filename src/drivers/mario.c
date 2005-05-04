@@ -170,7 +170,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7f00, 0x7f07) AM_WRITE(mario_sh3_w) /* Misc discrete samples */
 	AM_RANGE(0x7e00, 0x7e00) AM_WRITE(mario_sh_tuneselect_w)
 	AM_RANGE(0x7000, 0x73ff) AM_WRITE(MWA8_NOP)	/* ??? */
-//	AM_RANGE(0x7e85, 0x7e85) AM_WRITE(MWA8_RAM)	/* Sets alternative 1 and 0 */
+//  AM_RANGE(0x7e85, 0x7e85) AM_WRITE(MWA8_RAM) /* Sets alternative 1 and 0 */
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
@@ -191,6 +191,7 @@ static ADDRESS_MAP_START( masao_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mario_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(MWA8_NOP)  /* unknown... is this a trigger? */
 ADDRESS_MAP_END
 
@@ -395,7 +396,7 @@ static MACHINE_DRIVER_START( mario )
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
 
 	MDRV_CPU_ADD(I8039, 730000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)         /* 730 kHz */
+	/* audio CPU */         /* 730 kHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 	MDRV_CPU_IO_MAP(readport_sound,writeport_sound)
 
@@ -416,10 +417,10 @@ static MACHINE_DRIVER_START( mario )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	
+
 	MDRV_SOUND_ADD(SAMPLES, 0)
 	MDRV_SOUND_CONFIG(samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
@@ -434,7 +435,7 @@ static MACHINE_DRIVER_START( masao )
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
 
 	MDRV_CPU_ADD(Z80,24576000/16)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* ???? */
+	/* audio CPU */	/* ???? */
 	MDRV_CPU_PROGRAM_MAP(masao_sound_readmem,masao_sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(60)
@@ -454,7 +455,7 @@ static MACHINE_DRIVER_START( masao )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 14318000/6)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)

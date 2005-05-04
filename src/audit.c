@@ -10,8 +10,8 @@ static tAuditRecord *gAudits = NULL;
 static const struct GameDriver *chd_gamedrv;
 
 /*-------------------------------------------------
-	audit_chd_open - interface for opening
-	a hard disk image
+    audit_chd_open - interface for opening
+    a hard disk image
 -------------------------------------------------*/
 
 struct chd_interface_file *audit_chd_open(const char *filename, const char *mode)
@@ -33,8 +33,8 @@ struct chd_interface_file *audit_chd_open(const char *filename, const char *mode
 
 
 /*-------------------------------------------------
-	audit_chd_close - interface for closing
-	a hard disk image
+    audit_chd_close - interface for closing
+    a hard disk image
 -------------------------------------------------*/
 
 void audit_chd_close(struct chd_interface_file *file)
@@ -45,8 +45,8 @@ void audit_chd_close(struct chd_interface_file *file)
 
 
 /*-------------------------------------------------
-	audit_chd_read - interface for reading
-	from a hard disk image
+    audit_chd_read - interface for reading
+    from a hard disk image
 -------------------------------------------------*/
 
 UINT32 audit_chd_read(struct chd_interface_file *file, UINT64 offset, UINT32 count, void *buffer)
@@ -58,8 +58,8 @@ UINT32 audit_chd_read(struct chd_interface_file *file, UINT64 offset, UINT32 cou
 
 
 /*-------------------------------------------------
-	audit_chd_write - interface for writing
-	to a hard disk image
+    audit_chd_write - interface for writing
+    to a hard disk image
 -------------------------------------------------*/
 
 UINT32 audit_chd_write(struct chd_interface_file *file, UINT64 offset, UINT32 count, const void *buffer)
@@ -69,8 +69,8 @@ UINT32 audit_chd_write(struct chd_interface_file *file, UINT64 offset, UINT32 co
 
 
 /*-------------------------------------------------
-	audit_chd_length - interface for getting
-	the length a hard disk image
+    audit_chd_length - interface for getting
+    the length a hard disk image
 -------------------------------------------------*/
 
 UINT64 audit_chd_length(struct chd_interface_file *file)
@@ -208,7 +208,7 @@ int AuditRomSet (int game, tAuditRecord **audit)
 				aud->exphash = ROM_GETHASHDATA(rom);
 
 				/* Copy into the variable we pass to the functions
-				   to support load-by-checksum */
+                   to support load-by-checksum */
 				hash_data_copy(aud->hash, aud->exphash);
 
 				count++;
@@ -241,6 +241,28 @@ int AuditRomSet (int game, tAuditRecord **audit)
 					{
 						/* not found */
 						aud->status = AUD_ROM_NOT_FOUND;
+
+						drv = gamedrv->clone_of;
+
+						/* If missing ROM is also present in a parent set, indicate that */
+						while (drv)
+						{
+							if (RomInSet (drv, aud->exphash))
+							{
+								if (drv->flags & NOT_A_DRIVER)
+								{
+									aud->status = AUD_ROM_NOT_FOUND_BIOS;
+									break;
+								}
+								else
+									aud->status = AUD_ROM_NOT_FOUND_PARENT;
+							}
+
+							// Walk up the inheritance list. If this ROM is a clone of a set which
+							// contains a BIOS that is missing, we can correctly mark it as
+							// such.
+							drv = drv->clone_of;
+						}
 					}
 				}
 				/* all cases below assume the ROM was at least found */
@@ -307,7 +329,7 @@ int AuditRomSet (int game, tAuditRecord **audit)
 						hash_data_insert_binary_checksum(aud->hash, HASH_MD5, header.md5);
 					if (memcmp(nullhash, header.sha1, sizeof(header.sha1)))
 						hash_data_insert_binary_checksum(aud->hash, HASH_SHA1, header.sha1);
-					
+
 					 if (hash_data_has_info(aud->exphash, HASH_INFO_NO_DUMP))
 					{
 						aud->status = AUD_DISK_NEED_DUMP;
@@ -412,6 +434,16 @@ int VerifyRomSet (int game, verify_printf_proc verify_printf)
 					drivers[game]->name, aud->rom, aud->explength);
 				VerifyDumpHashData(aud->exphash, NULL, verify_printf);
 				break;
+			case AUD_ROM_NOT_FOUND_PARENT:
+				verify_printf ("%-8s: %-12s %7d bytes NOT FOUND (shared with parent)\n",
+					drivers[game]->name, aud->rom, aud->explength);
+				VerifyDumpHashData(aud->exphash, NULL, verify_printf);
+				break;
+			case AUD_ROM_NOT_FOUND_BIOS:
+				verify_printf ("%-8s: %-12s %7d bytes NOT FOUND (BIOS)\n",
+					drivers[game]->name, aud->rom, aud->explength);
+				VerifyDumpHashData(aud->exphash, NULL, verify_printf);
+				break;
 			case AUD_OPTIONAL_ROM_NOT_FOUND:
 				verify_printf ("%-8s: %-12s %7d bytes NOT FOUND BUT OPTIONAL\n",
 					drivers[game]->name, aud->rom, aud->explength);
@@ -481,7 +513,7 @@ int VerifyRomSet (int game, verify_printf_proc verify_printf)
 		aud++;
 	}
 
-	if (archive_status & (AUD_ROM_NOT_FOUND|AUD_BAD_CHECKSUM|AUD_MEM_ERROR|AUD_LENGTH_MISMATCH|AUD_DISK_NOT_FOUND|AUD_DISK_BAD_MD5))
+	if (archive_status & (AUD_ROM_NOT_FOUND|AUD_ROM_NOT_FOUND_PARENT|AUD_ROM_NOT_FOUND_BIOS|AUD_BAD_CHECKSUM|AUD_MEM_ERROR|AUD_LENGTH_MISMATCH|AUD_DISK_NOT_FOUND|AUD_DISK_BAD_MD5))
 		return INCORRECT;
 	if (archive_status & (AUD_ROM_NEED_DUMP|AUD_ROM_NEED_REDUMP|AUD_NOT_AVAILABLE|AUD_DISK_NOT_AVAILABLE|AUD_DISK_NEED_DUMP))
 		return BEST_AVAILABLE;

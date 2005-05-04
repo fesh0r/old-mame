@@ -2,7 +2,7 @@
 
 Mahjong Sisters (c) 1986 Toa Plan
 
-	Driver by Uki
+    Driver by Uki
 
 *****************************************************************************/
 
@@ -135,7 +135,7 @@ static READ8_HANDLER( mjsister_keys_r )
 	int p,i,ret = 0;
 
 	p = mjsister_input_sel1 & 0x3f;
-//	p |= ((mjsister_input_sel2 & 8) << 4) | ((mjsister_input_sel2 & 0x20) << 1);
+//  p |= ((mjsister_input_sel2 & 8) << 4) | ((mjsister_input_sel2 & 0x20) << 1);
 
 	for (i=0; i<6; i++)
 	{
@@ -161,12 +161,14 @@ static ADDRESS_MAP_START( mjsister_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mjsister_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x11, 0x11) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x20, 0x20) AM_READ(mjsister_keys_r)
 	AM_RANGE(0x21, 0x21) AM_READ(input_port_2_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mjsister_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x01) AM_WRITE(MWA8_NOP) /* HD46505? */
 	AM_RANGE(0x10, 0x10) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x12, 0x12) AM_WRITE(AY8910_write_port_0_w)
@@ -324,12 +326,12 @@ static MACHINE_DRIVER_START( mjsister )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, MCLK/8)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(DAC, 0)	
+	MDRV_SOUND_ADD(DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 

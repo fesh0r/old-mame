@@ -521,6 +521,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( tx1_sound_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x41, 0x41) AM_WRITE(AY8910_control_port_0_w)
 ADDRESS_MAP_END
@@ -671,6 +672,7 @@ ADDRESS_MAP_END
 
 /* Common to both versions*/
 static ADDRESS_MAP_START( buggyboy_sound_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x40, 0x40) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
        	AM_RANGE(0x41, 0x41) AM_WRITE(AY8910_control_port_0_w)
 
@@ -872,10 +874,11 @@ static MACHINE_INIT( buggyboy )
 
 static MACHINE_INIT( tx1 )
 {
-       ppi8255_init(&tx1_ppi8255_intf);
-
-       data8_t *rom = (data8_t *)memory_region(REGION_CPU1);
+        data8_t *rom = (data8_t *)memory_region(REGION_CPU1);
        data8_t *rom_b = (data8_t *)memory_region(REGION_CPU2);
+
+	   ppi8255_init(&tx1_ppi8255_intf);
+
 
        /* Needed to skip the startup tests */
 
@@ -916,7 +919,7 @@ static MACHINE_DRIVER_START( tx1 )
 	MDRV_CPU_PROGRAM_MAP(tx1_slave,0)
 
 	MDRV_CPU_ADD(Z80,3750000 )                  /* Guess */
-        MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+        /* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(tx1_sound_prg,0)
 	MDRV_CPU_IO_MAP(tx1_sound_io,0)
         MDRV_CPU_PERIODIC_INT(irq0_line_hold, 915.52734375/2 )         /* Guess */
@@ -955,7 +958,7 @@ static MACHINE_DRIVER_START( buggyboy )
 	MDRV_CPU_PROGRAM_MAP(buggyboy_slave,0)
 
 	MDRV_CPU_ADD(Z80,3750000 )
-        MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+        /* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(buggyboy_sound_prg,0)
         MDRV_CPU_PERIODIC_INT(z80_irq, 915.52734375/2 )  /* To do: verify against real PCB */
 	MDRV_CPU_IO_MAP(buggyboy_sound_io,0)
@@ -979,7 +982,7 @@ static MACHINE_DRIVER_START( buggyboy )
 
 	/* Sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("Front Left", "Front Right")
-     /*	MDRV_SPEAKER_STANDARD_STEREO("Rear Left", "Rear Right") */
+     /* MDRV_SPEAKER_STANDARD_STEREO("Rear Left", "Rear Right") */
 
 	MDRV_SOUND_ADD(AY8910, 1875000)
 	MDRV_SOUND_CONFIG(buggyboy_ay8910_interface_1)
@@ -1002,7 +1005,7 @@ static MACHINE_DRIVER_START( buggyb1 )
 	MDRV_CPU_PROGRAM_MAP(buggyboy_slave,0)
 
 	MDRV_CPU_ADD(Z80,3750000 )
-        MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+        /* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(buggyb1_sound_prg,0)
         MDRV_CPU_PERIODIC_INT(z80_irq, 915.52734375/2 )  /* To do: verify against real PCB*/
 	MDRV_CPU_IO_MAP(buggyboy_sound_io,0)
@@ -1026,7 +1029,7 @@ static MACHINE_DRIVER_START( buggyb1 )
 
 	/* Sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("Front Left", "Front Right")
-     /*	MDRV_SPEAKER_STANDARD_STEREO("Rear Left", "Rear Right") */
+     /* MDRV_SPEAKER_STANDARD_STEREO("Rear Left", "Rear Right") */
 
 	MDRV_SOUND_ADD(AY8910, 1875000)
 	MDRV_SOUND_CONFIG(buggyboy_ay8910_interface_1)

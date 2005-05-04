@@ -21,12 +21,6 @@ World Beach Volley:
 - The histogram functions don't seem to work.
 - Sound is controlled by a pic16c57 whose ROM is missing for this game.
 
-Excelsior:
-- bitmap position is wrong at the end of the level and it should be trasparent
-- bitmap should be entirely visible in test mode and after the level end
-- sprite/tile priority issue during high scores (text should go behind rocks)
-  and on title screen (stars should be behind title)
-
 ***************************************************************************/
 
 #include "driver.h"
@@ -43,7 +37,6 @@ static data8_t playmark_oki_command;
 
 
 extern data16_t *bigtwin_bgvideoram;
-extern size_t bigtwin_bgvideoram_size;
 extern data16_t *wbeachvl_videoram1,*wbeachvl_videoram2,*wbeachvl_videoram3;
 extern data16_t *wbeachvl_rowscroll;
 
@@ -158,11 +151,11 @@ static READ8_HANDLER( playmark_snd_command_r )
 
 	if ((playmark_oki_control & 0x38) == 0x30) {
 		data = playmark_snd_command;
-//		logerror("PortB reading %02x from the 68K\n",data);
+//      logerror("PortB reading %02x from the 68K\n",data);
 	}
 	else if ((playmark_oki_control & 0x38) == 0x28) {
 		data = (OKIM6295_status_0_r(0) & 0x0f);
-//		logerror("PortB reading %02x from the OKI status port\n",data);
+//      logerror("PortB reading %02x from the OKI status port\n",data);
 	}
 
 	return data;
@@ -201,25 +194,25 @@ static WRITE8_HANDLER( playmark_oki_w )
 
 static WRITE8_HANDLER( playmark_snd_control_w )
 {
-	/*	This port controls communications to and from the 68K, and the OKI
-		device.
+	/*  This port controls communications to and from the 68K, and the OKI
+        device.
 
-		bit legend
-		7w  ???  (No read or writes to Port B)
-		6r  Flag from 68K to notify the PIC that a command is coming
-		5w  Latch write data to OKI? (active low)
-		4w  Activate read signal to OKI? (active low)
-		3w  Set Port 1 to read sound to play command from 68K. (active low)
-		2w  ???  (Read Port B)
-		1   Not used
-		0   Not used
-	*/
+        bit legend
+        7w  ???  (No read or writes to Port B)
+        6r  Flag from 68K to notify the PIC that a command is coming
+        5w  Latch write data to OKI? (active low)
+        4w  Activate read signal to OKI? (active low)
+        3w  Set Port 1 to read sound to play command from 68K. (active low)
+        2w  ???  (Read Port B)
+        1   Not used
+        0   Not used
+    */
 
 	playmark_oki_control = data;
 
 	if ((data & 0x38) == 0x18)
 	{
-//		logerror("Writing %02x to OKI1, PortC=%02x, Code=%02x\n",playmark_oki_command,playmark_oki_control,playmark_snd_command);
+//      logerror("Writing %02x to OKI1, PortC=%02x, Code=%02x\n",playmark_oki_command,playmark_oki_control,playmark_snd_command);
 		OKIM6295_data_0_w(0, playmark_oki_command);
 	}
 }
@@ -243,7 +236,7 @@ static ADDRESS_MAP_START( bigtwin_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x504000, 0x50ffff) AM_WRITE(MWA16_NOP)	/* unused RAM? */
 	AM_RANGE(0x510000, 0x51000b) AM_WRITE(bigtwin_scroll_w)
 	AM_RANGE(0x51000c, 0x51000d) AM_WRITENOP	/* always 3? */
-	AM_RANGE(0x600000, 0x67ffff) AM_WRITE(bigtwin_bgvideoram_w) AM_BASE(&bigtwin_bgvideoram) AM_SIZE(&bigtwin_bgvideoram_size)
+	AM_RANGE(0x600000, 0x67ffff) AM_RAM AM_BASE(&bigtwin_bgvideoram)
 	AM_RANGE(0x700010, 0x700011) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x700012, 0x700013) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x700014, 0x700015) AM_READ(input_port_2_word_r)
@@ -252,7 +245,7 @@ static ADDRESS_MAP_START( bigtwin_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x70001c, 0x70001d) AM_READ(input_port_4_word_r)
 	AM_RANGE(0x70001e, 0x70001f) AM_WRITE(playmark_snd_command_w)
 	AM_RANGE(0x780000, 0x7807ff) AM_WRITE(bigtwin_paletteram_w) AM_BASE(&paletteram16)
-//	AM_RANGE(0xe00000, 0xe00001) ?? written on startup
+//  AM_RANGE(0xe00000, 0xe00001) ?? written on startup
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -265,15 +258,15 @@ static ADDRESS_MAP_START( wbeachvl_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x50f000, 0x50ffff) AM_RAM AM_BASE(&wbeachvl_rowscroll)
 	AM_RANGE(0x510000, 0x51000b) AM_WRITE(wbeachvl_scroll_w)
 	AM_RANGE(0x51000c, 0x51000d) AM_WRITENOP	/* 2 and 3 */
-//	AM_RANGE(0x700000, 0x700001) ?? written on startup
+//  AM_RANGE(0x700000, 0x700001) ?? written on startup
 	AM_RANGE(0x710010, 0x710011) AM_READ(wbeachvl_port0_r)
 	AM_RANGE(0x710012, 0x710013) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x710014, 0x710015) AM_READ(input_port_2_word_r)
 	AM_RANGE(0x710016, 0x710017) AM_WRITE(wbeachvl_coin_eeprom_w)
 	AM_RANGE(0x710018, 0x710019) AM_READ(input_port_3_word_r)
 	AM_RANGE(0x71001a, 0x71001b) AM_READ(input_port_4_word_r)
-//	AM_RANGE(0x71001c, 0x71001d) AM_READ(playmark_snd_status???)
-//	AM_RANGE(0x71001e, 0x71001f) AM_WRITE(MWA16_NOP)//playmark_snd_command_w },
+//  AM_RANGE(0x71001c, 0x71001d) AM_READ(playmark_snd_status???)
+//  AM_RANGE(0x71001e, 0x71001f) AM_WRITE(MWA16_NOP)//playmark_snd_command_w },
 	AM_RANGE(0x780000, 0x780fff) AM_WRITE(paletteram16_RRRRRGGGGGBBBBBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
@@ -286,7 +279,7 @@ static ADDRESS_MAP_START( excelsr_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x501000, 0x501fff) AM_RAM AM_WRITE(wbeachvl_txvideoram_w) AM_BASE(&wbeachvl_videoram1)
 	AM_RANGE(0x510000, 0x51000b) AM_WRITE(excelsr_scroll_w)
 	AM_RANGE(0x51000c, 0x51000d) AM_WRITENOP	/* 2 and 3 */
-	AM_RANGE(0x600000, 0x67ffff) AM_RAM AM_WRITE(bigtwin_bgvideoram_w) AM_BASE(&bigtwin_bgvideoram) AM_SIZE(&bigtwin_bgvideoram_size)
+	AM_RANGE(0x600000, 0x67ffff) AM_RAM AM_BASE(&bigtwin_bgvideoram)
 	AM_RANGE(0x700010, 0x700011) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x700012, 0x700013) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x700014, 0x700015) AM_READ(input_port_2_word_r)
@@ -508,7 +501,7 @@ INPUT_PORTS_START( excelsr )
 	PORT_DIPSETTING(    0x01, "4" )
 	PORT_DIPNAME( 0x0c, 0x00, "Censor Pictures" )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-//	PORT_DIPSETTING(    0x04, DEF_STR( No ) )
+//  PORT_DIPSETTING(    0x04, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x08, "50%" )
 	PORT_DIPSETTING(    0x0c, "100%" )
 	PORT_DIPNAME( 0x30, 0x20, DEF_STR( Difficulty ) )
@@ -689,7 +682,7 @@ static MACHINE_DRIVER_START( bigtwin )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_VISIBLE_AREA(0*8, 40*8-1, 2*8, 32*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(1024)
@@ -713,9 +706,9 @@ static MACHINE_DRIVER_START( wbeachvl )
 	MDRV_CPU_PROGRAM_MAP(wbeachvl_main_map, 0)
 	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
 
-//	MDRV_CPU_ADD(PIC16C57, ((32000000/8)/PIC16C5x_CLOCK_DIVIDER))	/* 4MHz ? */
+//  MDRV_CPU_ADD(PIC16C57, ((32000000/8)/PIC16C5x_CLOCK_DIVIDER))   /* 4MHz ? */
 	/* Program and Data Maps are internal to the MCU */
-//	MDRV_CPU_IO_MAP(playmark_sound_io_map, 0)
+//  MDRV_CPU_IO_MAP(playmark_sound_io_map, 0)
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
@@ -724,7 +717,7 @@ static MACHINE_DRIVER_START( wbeachvl )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_VISIBLE_AREA(0*8, 40*8-1, 2*8, 32*8-1)
 	MDRV_GFXDECODE(wbeachvl_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(2048)
@@ -756,7 +749,7 @@ static MACHINE_DRIVER_START( excelsr )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_VISIBLE_AREA(0*8, 40*8-1, 2*8, 32*8-1)
 	MDRV_GFXDECODE(excelsr_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(1024)
@@ -785,7 +778,7 @@ ROM_START( bigtwin )
 	ROM_LOAD16_BYTE( "3.301",        0x000001, 0x80000, CRC(5aba6990) SHA1(4f664a91819fdd27821fa607425701d83fcbd8ce) )
 
 	ROM_REGION( 0x1000, REGION_CPU2, 0 )	/* sound (PIC16C57) */
-//	ROM_LOAD( "16c57hs.bin",  0x0000, 0x1000, CRC(b4c95cc3) SHA1(7fc9b141e7782aa5c17310ee06db99d884537c30) )
+//  ROM_LOAD( "16c57hs.bin",  0x0000, 0x1000, CRC(b4c95cc3) SHA1(7fc9b141e7782aa5c17310ee06db99d884537c30) )
 	/* ROM will be copied here by the init code from REGION_USER1 */
 
 	ROM_REGION( 0x3000, REGION_USER1, ROMREGION_DISPOSE )
@@ -970,4 +963,4 @@ static DRIVER_INIT( bigtwin )
 
 GAMEX( 1995, bigtwin,  0, bigtwin,  bigtwin,  bigtwin, ROT0, "Playmark", "Big Twin", GAME_NO_COCKTAIL )
 GAMEX( 1995, wbeachvl, 0, wbeachvl, wbeachvl, 0,       ROT0, "Playmark", "World Beach Volley", GAME_NO_COCKTAIL | GAME_NO_SOUND )
-GAMEX( 199?, excelsr,  0, excelsr,  excelsr,  bigtwin, ROT0, "Playmark", "Excelsior", GAME_IMPERFECT_GRAPHICS )
+GAME(  199?, excelsr,  0, excelsr,  excelsr,  bigtwin, ROT0, "Playmark", "Excelsior" )

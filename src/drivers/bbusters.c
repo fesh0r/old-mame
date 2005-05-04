@@ -1,20 +1,20 @@
 /***************************************************************************
 
-	Beast Busters			A9003	(c) 1989 SNK Corporation
-	Mechanized Attack		A8002	(c) 1989 SNK Corporation
+    Beast Busters           A9003   (c) 1989 SNK Corporation
+    Mechanized Attack       A8002   (c) 1989 SNK Corporation
 
-	Beast Busters is a large dedicated (non-jamma) triple machine gun game,
-	the gun positions values are read in an interrupt routine that must be
-	called for each position (X and Y for 3 guns, so at least 6 times a
-	frame).  However I can't make it work reliably..  So for the moment
-	I'm writing the gun positions directly to memory and bypassing
-	the IRQ routine.
+    Beast Busters is a large dedicated (non-jamma) triple machine gun game,
+    the gun positions values are read in an interrupt routine that must be
+    called for each position (X and Y for 3 guns, so at least 6 times a
+    frame).  However I can't make it work reliably..  So for the moment
+    I'm writing the gun positions directly to memory and bypassing
+    the IRQ routine.
 
-	Mechanized Attack (A8002) is an earlier design, it only has one sprite
-	chip, no eeprom, and only 2 machine guns, but the tilemaps are twice
-	the size.
+    Mechanized Attack (A8002) is an earlier design, it only has one sprite
+    chip, no eeprom, and only 2 machine guns, but the tilemaps are twice
+    the size.
 
-	Emulation by Bryan McPhail, mish@tendril.co.uk
+    Emulation by Bryan McPhail, mish@tendril.co.uk
 
 
 Stephh's notes (based on the games M68000 code and some tests) :
@@ -193,15 +193,15 @@ static MACHINE_INIT( bbusters )
 	int data = readinputportbytag("FAKE1") & 0x03;
 
 	/* Country/Version :
-	     - 0x0000 : Japan?
+         - 0x0000 : Japan?
            - 0x0004 : US?
-           - 0x0008 : World?	(default)
-           - 0x000c : World?	(same as 0x0008)
-	*/
+           - 0x0008 : World?    (default)
+           - 0x000c : World?    (same as 0x0008)
+    */
 
 	RAM[0x003954/2] = data * 4;
 
-//	memset (eprom_data, 0xff, 0x80);	// Force EEPROM reset
+//  memset (eprom_data, 0xff, 0x80);    // Force EEPROM reset
 }
 #endif
 
@@ -212,11 +212,11 @@ static MACHINE_INIT( mechatt )
 	int data = readinputportbytag("FAKE1") & 0x03;
 
 	/* Country :
-	     - 0x0000 : Japan
-           - 0x1111 : World	(default)
+         - 0x0000 : Japan
+           - 0x1111 : World (default)
            - 0x2222 : US
            - 0x3333 : Asia?
-	*/
+    */
 
 	RAM[0x06a000/2] = (data << 12) | (data << 8) | (data << 4) | (data << 0);
 }
@@ -366,11 +366,13 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(YM2610_status_port_0_A_r)
 	AM_RANGE(0x02, 0x02) AM_READ(YM2610_status_port_0_B_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM2610_control_port_0_A_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM2610_data_port_0_A_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YM2610_control_port_0_B_w)
@@ -379,11 +381,13 @@ static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sounda_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(YM2608_status_port_0_A_r)
 	AM_RANGE(0x02, 0x02) AM_READ(YM2608_status_port_0_B_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sounda_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM2608_control_port_0_A_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM2608_data_port_0_A_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YM2608_control_port_0_B_w)
@@ -490,7 +494,7 @@ INPUT_PORTS_START( bbusters )
 	PORT_DIPSETTING(    0x00, "Japan?" )
 	PORT_DIPSETTING(    0x01, "US?" )
 	PORT_DIPSETTING(    0x02, "World?" )
-//	PORT_DIPSETTING(    0x03, "World?" )			// Same as "0008" - impossible choice ?
+//  PORT_DIPSETTING(    0x03, "World?" )            // Same as "0008" - impossible choice ?
 #endif
 INPUT_PORTS_END
 
@@ -704,7 +708,7 @@ static MACHINE_DRIVER_START( bbusters )
 	MDRV_CPU_VBLANK_INT(bbuster,4)
 
 	MDRV_CPU_ADD(Z80,4000000) /* Accurate */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 
@@ -746,7 +750,7 @@ static MACHINE_DRIVER_START( mechatt )
 	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
 
 	MDRV_CPU_ADD(Z80,4000000) /* Accurate */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sounda_readport,sounda_writeport)
 

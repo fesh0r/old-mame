@@ -7,37 +7,37 @@ MAME driver by Ernesto Corvi and Phil Stroffolino
 
 Known Issues:
 
--	PC3259 handling (for collision detection) is not accurate.
-	Collision detection does work, but there are bits which define
-	the type of collision (and determine whether a pit stop is
-	required) that I don't know how to handle.
+-   PC3259 handling (for collision detection) is not accurate.
+    Collision detection does work, but there are bits which define
+    the type of collision (and determine whether a pit stop is
+    required) that I don't know how to handle.
 
--	sound: missing speech and engine noise
+-   sound: missing speech and engine noise
 
--	rain rendering is probably wrong
+-   rain rendering is probably wrong
 
--	"radar" is probably wrong
+-   "radar" is probably wrong
 
--	LED and tachometer display are missing/faked
-	Note that a dipswitch setting allows score to be displayed
-	onscreen, but there's no equivalent for tachometer.
+-   LED and tachometer display are missing/faked
+    Note that a dipswitch setting allows score to be displayed
+    onscreen, but there's no equivalent for tachometer.
 
 Notes:
 
--	The object of the game is to avoid the opposing cars.
+-   The object of the game is to avoid the opposing cars.
 
--	The player has to drive through Dark Tunnels, Rain,
-	Lightning, Sleet, Snow, and a Track that suddenly
-	divides to get to the Finish Line first.
+-   The player has to drive through Dark Tunnels, Rain,
+    Lightning, Sleet, Snow, and a Track that suddenly
+    divides to get to the Finish Line first.
 
--	"GRAND CHAMPION" has a Radar Feature which enables
-	the Player to see his position relative to the other
-	cars.
+-   "GRAND CHAMPION" has a Radar Feature which enables
+    the Player to see his position relative to the other
+    cars.
 
--	A Rank Feature is also provided which shows the
-	Player's numerical rank all through the race.
+-   A Rank Feature is also provided which shows the
+    Player's numerical rank all through the race.
 
--	The Speech Feature enhances the game play.
+-   The Speech Feature enhances the game play.
 
 ***************************************************************************/
 
@@ -82,9 +82,9 @@ static UINT8 grchamp_led_data1;
 static UINT8 grchamp_led_data2;
 
 UINT8 grchamp_led_reg[8][3];
-/*	5 digits for score
-**	2 digits for time
-**	1 digit for rank (?)
+/*  5 digits for score
+**  2 digits for time
+**  1 digit for rank (?)
 */
 
 WRITE8_HANDLER( grchamp_led_data0_w )
@@ -272,6 +272,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_3_r)		/* accel */
 	AM_RANGE(0x01, 0x01) AM_READ(PC3259_0_r)
 	AM_RANGE(0x02, 0x02) AM_READ(grchamp_port_0_r)	/* comm */
@@ -286,6 +287,7 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(grchamp_control0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(PC3259_control_w) // ?
 	AM_RANGE(0x02, 0x02) AM_WRITE(grchamp_player_xpos_w)
@@ -324,10 +326,12 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( readport2, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x03) AM_READ(grchamp_port_1_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport2, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x0f) AM_WRITE(grchamp_port_1_w)
 ADDRESS_MAP_END
 
@@ -336,8 +340,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
 	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
-//	AM_RANGE(0x4801, 0x4801) AM_READ(AY8910_read_port_0_r)
-//	AM_RANGE(0x4803, 0x4803) AM_READ(AY8910_read_port_1_r)
+//  AM_RANGE(0x4801, 0x4801) AM_READ(AY8910_read_port_0_r)
+//  AM_RANGE(0x4803, 0x4803) AM_READ(AY8910_read_port_1_r)
 	AM_RANGE(0x4805, 0x4805) AM_READ(AY8910_read_port_2_r)
 	AM_RANGE(0x5000, 0x5000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
@@ -380,7 +384,7 @@ static MACHINE_DRIVER_START( grchamp )
 	MDRV_CPU_VBLANK_INT(grchamp_interrupt,1)	/* irq's are triggered from the main cpu */
 
 	MDRV_CPU_ADD(Z80, 3000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU) /* 3 MHz (confirmed) */
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold,75)		/* irq's are triggered every 75 Hz */
 

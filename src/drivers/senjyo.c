@@ -163,17 +163,17 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9c00, 0x9dff) AM_WRITE(paletteram_IIBBGGRR_w) AM_BASE(&paletteram)
 	AM_RANGE(0x9e00, 0x9e1f) AM_WRITE(MWA8_RAM) AM_BASE(&senjyo_fgscroll)
 	AM_RANGE(0x9e20, 0x9e21) AM_WRITE(MWA8_RAM) AM_BASE(&senjyo_scrolly3)
-/*	{ 0x9e22, 0x9e23, height of the layer (Senjyo only, fixed at 0x380) */
+/*  { 0x9e22, 0x9e23, height of the layer (Senjyo only, fixed at 0x380) */
 	AM_RANGE(0x9e25, 0x9e25) AM_WRITE(MWA8_RAM) AM_BASE(&senjyo_scrollx3)
 	AM_RANGE(0x9e27, 0x9e27) AM_WRITE(senjyo_bgstripes_w) AM_BASE(&senjyo_bgstripesram)	/* controls width of background stripes */
 	AM_RANGE(0x9e28, 0x9e29) AM_WRITE(MWA8_RAM) AM_BASE(&senjyo_scrolly2)
-/*	{ 0x9e2a, 0x9e2b, height of the layer (Senjyo only, fixed at 0x200) */
+/*  { 0x9e2a, 0x9e2b, height of the layer (Senjyo only, fixed at 0x200) */
 	AM_RANGE(0x9e2d, 0x9e2d) AM_WRITE(MWA8_RAM) AM_BASE(&senjyo_scrollx2)
 	AM_RANGE(0x9e30, 0x9e31) AM_WRITE(MWA8_RAM) AM_BASE(&senjyo_scrolly1)
-/*	{ 0x9e32, 0x9e33, height of the layer (Senjyo only, fixed at 0x100) */
+/*  { 0x9e32, 0x9e33, height of the layer (Senjyo only, fixed at 0x100) */
 	AM_RANGE(0x9e35, 0x9e35) AM_WRITE(MWA8_RAM) AM_BASE(&senjyo_scrollx1)
-/*	{ 0x9e38, 0x9e38, probably radar y position (Senjyo only, fixed at 0x61) */
-/*	{ 0x9e3d, 0x9e3d, probably radar x position (Senjyo only, 0x00/0xc0 depending on screen flip) */
+/*  { 0x9e38, 0x9e38, probably radar y position (Senjyo only, fixed at 0x61) */
+/*  { 0x9e3d, 0x9e3d, probably radar x position (Senjyo only, 0x00/0xc0 depending on screen flip) */
 AM_RANGE(0x9e00, 0x9e3f) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xa000, 0xa7ff) AM_WRITE(senjyo_bg3videoram_w) AM_BASE(&senjyo_bg3videoram)
 	AM_RANGE(0xa800, 0xafff) AM_WRITE(senjyo_bg2videoram_w) AM_BASE(&senjyo_bg2videoram)
@@ -203,11 +203,13 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x03) AM_READ(z80pio_0_r)
 	AM_RANGE(0x08, 0x0b) AM_READ(z80ctc_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x03) AM_WRITE(z80pio_0_w)
 	AM_RANGE(0x08, 0x0b) AM_WRITE(z80ctc_0_w)
 ADDRESS_MAP_END
@@ -362,7 +364,7 @@ INPUT_PORTS_START( starforc )
 	PORT_DIPSETTING(    0x06, "200k only" )
 	PORT_DIPSETTING(    0x07, DEF_STR( None ) )
 	PORT_DIPNAME( 0x38, 0x00, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x00, "Easiest" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Easiest ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Medium ) )
 	PORT_DIPSETTING(    0x18, "Difficult" )
@@ -565,7 +567,7 @@ static MACHINE_DRIVER_START( senjyo )
 
 	MDRV_CPU_ADD(Z80, 2000000)
 	MDRV_CPU_CONFIG(daisy_chain)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 2 MHz? */
+	/* audio CPU */	/* 2 MHz? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 

@@ -1,19 +1,19 @@
 /****************************************************
    Pit&Run - Taito 1984
 
- driver by  Tomasz Slanina and	Pierpaolo Prazzoli
+ driver by  Tomasz Slanina and  Pierpaolo Prazzoli
 
 
 TODO:
 
  - analog sound
    writes to $a8xx triggering analog sound :
-   	$a800 - drivers are gettin into the cars
-   	$a801 - collisions
-   	$a802 - same as above
-   	$a803 - slide on water
-   	$a804 - accelerate
-   	$a807 - analog sound reset
+    $a800 - drivers are gettin into the cars
+    $a801 - collisions
+    $a802 - same as above
+    $a803 - slide on water
+    $a804 - accelerate
+    $a807 - analog sound reset
 
 
 -----------------------------------------------------
@@ -156,6 +156,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(soundlatch_clear_w)
 	AM_RANGE(0x8c, 0x8c) AM_WRITE(AY8910_control_port_1_w)
 	AM_RANGE(0x8d, 0x8d) AM_WRITE(AY8910_write_port_1_w)
@@ -167,6 +168,7 @@ static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x8f, 0x8f) AM_READ(AY8910_read_port_0_r)
 ADDRESS_MAP_END
 
@@ -293,7 +295,7 @@ static MACHINE_DRIVER_START( pitnrun )
 
 	MDRV_CPU_ADD(Z80, 10000000/4)     /* 2.5 MHz */
 
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
@@ -315,7 +317,7 @@ static MACHINE_DRIVER_START( pitnrun )
 	MDRV_PALETTE_INIT(pitnrun)
 	MDRV_VIDEO_START(pitnrun)
 	MDRV_VIDEO_UPDATE(pitnrun)
-	
+
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
@@ -385,7 +387,7 @@ ROM_START( pitnruna )
 	ROM_REGION( 0x4000, REGION_GFX2, 0 )
 	ROM_LOAD( "pr-4.6d", 0x0000, 0x2000, CRC(fbae3504) SHA1(ce799dfd653462c0814e7530f3f8a686ab0ad7f4) )
 	ROM_LOAD( "pr-5.6f", 0x2000, 0x2000, CRC(c9177180) SHA1(98c8f8f586b78b88dba254bd662642ee27f9b131) )
-	
+
 	ROM_REGION( 0x2000, REGION_GFX3, 0 )
 	ROM_LOAD( "pr-6.3m", 0x0000, 0x1000, CRC(c53cb897) SHA1(81a73e6031b52fa45ec507ff4264b14474ef42a2) )
 	ROM_LOAD( "pr-7.3p", 0x1000, 0x1000, CRC(7cdf9a55) SHA1(404dface7e09186e486945981e39063929599efc) )

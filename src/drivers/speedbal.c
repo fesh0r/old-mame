@@ -14,14 +14,14 @@ f000-feff RAM
 ff00-ffff Sprites (64 total: four bytes to one)
 
 in:
-00	DSW ONE
-10	DSW TWO
-20	IN1  JOY 1 STATUS & COIN & START
-30	IN2  JOY 2 STATUS & TILT
+00  DSW ONE
+10  DSW TWO
+20  IN1  JOY 1 STATUS & COIN & START
+30  IN2  JOY 2 STATUS & TILT
 
 out:
-40	????
-50	????  maybe VSYNC ????
+40  ????
+50  ????  maybe VSYNC ????
 
  ======================================================================
 
@@ -31,15 +31,15 @@ dc00-dfff shared with MAIN CPU
 f000-dfff RAM
 
 out:
-00	YM3812 control
-01	YM3812 data
-20	??
+00  YM3812 control
+01  YM3812 data
+20  ??
 
  ======================================================================
 
   Colors :   2 bits for foreground characters =  4 colors * 16 palettes
-	     4 bits for background tiles      = 16 colors * 16 palettes
-	     4 bits for sprites	       = 16 colors * 16 palettes
+         4 bits for background tiles      = 16 colors * 16 palettes
+         4 bits for sprites        = 16 colors * 16 palettes
 
 ***************************************************************************/
 
@@ -111,6 +111,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x10, 0x10) AM_READ(input_port_1_r)
 	AM_RANGE(0x20, 0x20) AM_READ(input_port_2_r)
@@ -119,10 +120,12 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READ(YM3812_status_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM3812_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM3812_write_port_0_w)
 ADDRESS_MAP_END
@@ -138,7 +141,7 @@ INPUT_PORTS_START( speedbal )
 	PORT_DIPSETTING(    0x04, "100000 300000" )
 	PORT_DIPSETTING(    0x01, "200000 1M" )
 	PORT_DIPSETTING(    0x05, "200000" )
-/*	PORT_DIPSETTING(    0x02, "200000" ) */
+/*  PORT_DIPSETTING(    0x02, "200000" ) */
 	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )

@@ -32,8 +32,8 @@
  Change Log:
  20 Jun 2001 | Did Pretty Much everything else, the game is now playable.
  19 Jun 2001 | Started the driver, based on Raine, the WWF Superstars driver,
-			 | and the Double Dragon 3 Driver, got most of the basics done,
-			 | the game will boot showing some graphics.
+             | and the Double Dragon 3 Driver, got most of the basics done,
+             | the game will boot showing some graphics.
 
 *******************************************************************************/
 
@@ -304,7 +304,7 @@ INPUT_PORTS_START( wwfwfest )
 	PORT_DIPSETTING(    0x01, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Players ) )
-//	PORT_DIPSETTING(	0x00, "2" )
+//  PORT_DIPSETTING(    0x00, "2" )
 	PORT_DIPSETTING(	0x04, "2" )
 	PORT_DIPSETTING(	0x08, "3" )
 	PORT_DIPSETTING(	0x0c, "4" )
@@ -413,7 +413,7 @@ static MACHINE_DRIVER_START( wwfwfest )
 	MDRV_CPU_VBLANK_INT(wwfwfest_interrupt,2)
 
 	MDRV_CPU_ADD(Z80, 3579545)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 
 	MDRV_FRAMES_PER_SECOND(60)

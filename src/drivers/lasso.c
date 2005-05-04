@@ -2,14 +2,14 @@
 
  Lasso and similar hardware
 
-		driver by Phil Stroffolino, Nicola Salmoria, Luca Elia
+        driver by Phil Stroffolino, Nicola Salmoria, Luca Elia
 
 ---------------------------------------------------------------------------
-Year + Game					By				CPUs		Sound Chips
+Year + Game                 By              CPUs        Sound Chips
 ---------------------------------------------------------------------------
-82	Lasso					SNK				3 x 6502	2 x SN76489
-83	Chameleon				Jaleco			2 x 6502	2 x SN76489
-84	Wai Wai Jockey Gate-In!	Jaleco/Casio	2 x 6502	2 x SN76489 + DAC
+82  Lasso                   SNK             3 x 6502    2 x SN76489
+83  Chameleon               Jaleco          2 x 6502    2 x SN76489
+84  Wai Wai Jockey Gate-In! Jaleco/Casio    2 x 6502    2 x SN76489 + DAC
 84  Pinbo                   Jaleco          6502 + Z80  2 x AY-8910
 ---------------------------------------------------------------------------
 
@@ -77,7 +77,7 @@ static WRITE8_HANDLER( sound_command_w )
 
 static READ8_HANDLER( sound_status_r )
 {
-	/*	0x01: chip#0 ready; 0x02: chip#1 ready */
+	/*  0x01: chip#0 ready; 0x02: chip#1 ready */
 	return 0x03;
 }
 
@@ -254,12 +254,14 @@ static ADDRESS_MAP_START( pinbo_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pinbo_sound_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x02, 0x02) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x06, 0x06) AM_READ(AY8910_read_port_1_r)
 	AM_RANGE(0x08, 0x08) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pinbo_sound_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(AY8910_control_port_1_w)
@@ -301,14 +303,14 @@ INPUT_PORTS_START( lasso )
 	PORT_DIPSETTING(	0x08, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(	0x04, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(	0x0c, DEF_STR( 1C_6C ) )
-//	PORT_DIPSETTING(	0x06, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(	0x0a, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x06, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x0a, DEF_STR( 1C_1C ) )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x30, "3" )
 	PORT_DIPSETTING(    0x10, "4" )
 	PORT_DIPSETTING(    0x20, "5" )
-//	PORT_DIPSETTING(    0x00, "3" )
+//  PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(	0x40, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
@@ -366,13 +368,13 @@ INPUT_PORTS_START( chameleo )
 	PORT_DIPSETTING(	0x08, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(	0x04, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(	0x0c, DEF_STR( 1C_6C ) )
-//	PORT_DIPSETTING(	0x06, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(	0x0a, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x06, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x0a, DEF_STR( 1C_1C ) )
 	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x30, "5" )
-//	PORT_DIPSETTING(    0x10, "5" )
+//  PORT_DIPSETTING(    0x10, "5" )
 	PORT_DIPSETTING(    0x20, "Infinite (Cheat)")
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(	0x40, DEF_STR( 2C_1C ) )
@@ -431,9 +433,9 @@ INPUT_PORTS_START( wwjgtin )
 	PORT_DIPSETTING(	0x08, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(	0x04, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(	0x0c, DEF_STR( 1C_6C ) )
-//	PORT_DIPSETTING(	0x06, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(	0x0a, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x06, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x0a, DEF_STR( 1C_1C ) )
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )	/* probably unused */
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -497,9 +499,9 @@ INPUT_PORTS_START( pinbo )
 	PORT_DIPSETTING(	0x08, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(	0x04, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(	0x0c, DEF_STR( 1C_6C ) )
-//	PORT_DIPSETTING(	0x06, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
-//	PORT_DIPSETTING(	0x0a, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x06, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+//  PORT_DIPSETTING(    0x0a, DEF_STR( 1C_1C ) )
 	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x10, "4" )
@@ -621,7 +623,7 @@ static MACHINE_DRIVER_START( lasso )
 	MDRV_CPU_VBLANK_INT(lasso_interrupt,2)		/* IRQ = VBlank, NMI = Coin Insertion */
 
 	MDRV_CPU_ADD_TAG("audio", M6502, 600000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)		/* ?? (controls music tempo) */
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(lasso_sound_readmem,lasso_sound_writemem)
 
 	MDRV_CPU_ADD_TAG("blitter", M6502, 2000000)	/* 2 MHz (?) */
@@ -963,7 +965,7 @@ ROM_END
 
 /***************************************************************************
 
-								Game Drivers
+                                Game Drivers
 
 ***************************************************************************/
 

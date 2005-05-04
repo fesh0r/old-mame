@@ -9,13 +9,13 @@ MAIN CPU:
 0000-7fff ROM (not all games use the entire region)
 8000-87ff RAM
 8c18-8c3f sprite RAM (Hoccer only)
-8800-8bff video RAM	 \ (contains sprite RAM in invisible regions)
-9000-93ff color RAM	 /
+8800-8bff video RAM  \ (contains sprite RAM in invisible regions)
+9000-93ff color RAM  /
 
 read:
-a000	  IN0
-a800	  IN1
-b000	  DSW
+a000      IN0
+a800      IN1
+b000      DSW
 b800      IN2/watchdog reset
 
 write:
@@ -25,7 +25,7 @@ write:
 a000      NMI interrupt acknowledge/enable
 a001      flipy
 a002      flipx
-b800	  ???
+b800      ???
 
 
 I/0 ports:
@@ -98,11 +98,13 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( marineb_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x08, 0x08) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x09, 0x09) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wanted_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_control_port_1_w)
@@ -639,34 +641,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( bcruzm12 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 3072000)	/* 3.072 MHz  */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_IO_MAP(0,wanted_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(5000)
+	MDRV_IMPORT_FROM(wanted)
 	MDRV_MACHINE_INIT(springer)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(wanted_gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_PALETTE_INIT(espial)
-
-	MDRV_VIDEO_START(generic)
-	MDRV_VIDEO_UPDATE(springer)
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
-	MDRV_SOUND_REPLACE("8910", AY8910, 1500000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-
-	MDRV_SOUND_ADD(AY8910, 1500000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -716,11 +692,11 @@ ROM_END
 
 ROM_START( changesa )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
-	ROM_LOAD( "changes3.1",    0x0000, 0x1000, CRC(ff80cad7) SHA1(00a97137c0b92e8b9532c824bade89002ec5d63c) ) 
+	ROM_LOAD( "changes3.1",    0x0000, 0x1000, CRC(ff80cad7) SHA1(00a97137c0b92e8b9532c824bade89002ec5d63c) )
 	ROM_LOAD( "changes.2",     0x1000, 0x1000, CRC(0e627f0b) SHA1(59012c8f65b921387b381dbc5157a7a22b3d50dc) )
-	ROM_LOAD( "changes3.3",    0x2000, 0x1000, CRC(359bf7e1) SHA1(9c3cc4415ccaa0276f98224ca373922c2425bb40) ) 
+	ROM_LOAD( "changes3.3",    0x2000, 0x1000, CRC(359bf7e1) SHA1(9c3cc4415ccaa0276f98224ca373922c2425bb40) )
 	ROM_LOAD( "changes.4",     0x3000, 0x1000, CRC(a8e9aa22) SHA1(fbccf017851eb099960ad51ef3060a16bc0107a5) )
-	ROM_LOAD( "changes3.5",    0x4000, 0x1000, CRC(c197e64a) SHA1(86b9f5f51f208bc9cdda3d13176147dbcafdc913) ) 
+	ROM_LOAD( "changes3.5",    0x4000, 0x1000, CRC(c197e64a) SHA1(86b9f5f51f208bc9cdda3d13176147dbcafdc913) )
 
 	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "changes.7",     0x0000, 0x2000, CRC(2204194e) SHA1(97ee40dd804158e92a2a1034f8e910f1057a7b54) )

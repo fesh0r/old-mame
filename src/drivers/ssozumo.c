@@ -85,7 +85,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(ssozumo_flipscreen_w)
 	AM_RANGE(0x4010, 0x4010) AM_WRITE(ssozumo_sh_command_w)
 	AM_RANGE(0x4020, 0x4020) AM_WRITE(ssozumo_scroll_w)
-//	AM_RANGE(0x4030, 0x4030) AM_WRITE(MWA8_RAM)
+//  AM_RANGE(0x4030, 0x4030) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x4050, 0x407f) AM_WRITE(ssozumo_paletteram_w) AM_BASE(&paletteram)
 
 	AM_RANGE(0x6000, 0xffff) AM_WRITE(MWA8_ROM)
@@ -240,7 +240,7 @@ static MACHINE_DRIVER_START( ssozumo )
 	MDRV_CPU_VBLANK_INT(ssozumo_interrupt,1)
 
 	MDRV_CPU_ADD(M6502, 975000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU) 		/* 975 kHz ?? */
+	/* audio CPU */ 		/* 975 kHz ?? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,16)	/* IRQs are triggered by the main CPU */
 
@@ -261,10 +261,10 @@ static MACHINE_DRIVER_START( ssozumo )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
-	
+
 	MDRV_SOUND_ADD(AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 

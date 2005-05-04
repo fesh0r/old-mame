@@ -395,48 +395,48 @@ static WRITE8_HANDLER(zpu_bcd_decoder_w)
 {
 
 /*
-name:			Strobe(bcd_value)	BIT
+name:           Strobe(bcd_value)   BIT
 ---------------------------------------
-ZPU switch 1	0					6
-ZPU switch 2	0					7
+ZPU switch 1    0                   6
+ZPU switch 2    0                   7
 
-dipsw 35		1					7
-dipsw 34		1					6
-dipsw 33		1					5
-dipsw 32		1					4
-dipsw 31		1					3
-dipsw 30		1					2
-dipsw 29		1					1
-dipsw 28		1					0
-dipsw 27		2					7
-dipsw 26		2					6
+dipsw 35        1                   7
+dipsw 34        1                   6
+dipsw 33        1                   5
+dipsw 32        1                   4
+dipsw 31        1                   3
+dipsw 30        1                   2
+dipsw 29        1                   1
+dipsw 28        1                   0
+dipsw 27        2                   7
+dipsw 26        2                   6
 ...
-dipsw 8			4					4
-dipsw 7			4					3
-dipsw 6			4					2
-dipsw 5			4					1
-dipsw 4			4					0
+dipsw 8         4                   4
+dipsw 7         4                   3
+dipsw 6         4                   2
+dipsw 5         4                   1
+dipsw 4         4                   0
 
-Right Coin Sw.	5					0
-Left Coin Sw.	5					1
-Player One		5					2
-Player Two		5					3
-Fire Button		5					4
+Right Coin Sw.  5                   0
+Left Coin Sw.   5                   1
+Player One      5                   2
+Player Two      5                   3
+Fire Button     5                   4
 
 Horizontal movement of gun is Strobe 6, Bits 0-7.
-	Movement is from 0000 0000 to 1111 1111
+    Movement is from 0000 0000 to 1111 1111
 
 Vertical movement of gun is Strobe 7, Bits 0-7.
-	Movement is from 0000 0000 to 1111 1111
+    Movement is from 0000 0000 to 1111 1111
 
 
 Great Guns has two guns and here is necessary support for second gun:
 
 Horizontal movement of gun is Strobe 8, Bits 0-7.
-	Movement is from 0000 0000 to 1111 1111
+    Movement is from 0000 0000 to 1111 1111
 
 Vertical movement of gun is Strobe 9, Bits 0-7.
-	Movement is from 0000 0000 to 1111 1111
+    Movement is from 0000 0000 to 1111 1111
 
 */
 	bcd_7445 = data & 15;
@@ -479,11 +479,13 @@ static WRITE8_HANDLER(zpu_coin_counter_w)
 }
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x4c, 0x4f) AM_READ(ls670_1_r)
 	AM_RANGE(0x62, 0x62) AM_READ(zpu_inputs_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x4c, 0x4f) AM_WRITE(ls670_0_w)
 	AM_RANGE(0x60, 0x60) AM_WRITE(zpu_bcd_decoder_w)
 	AM_RANGE(0x68, 0x68) AM_WRITE(zpu_coin_counter_w)
@@ -519,10 +521,12 @@ static WRITE8_HANDLER( vsb_ls273_audio_control_w )
 
 
 static ADDRESS_MAP_START( readport_cpu2, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x80, 0x83) AM_READ(ls670_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_cpu2, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(vsb_ls273_audio_control_w)
 	AM_RANGE(0x80, 0x83) AM_WRITE(ls670_1_w)
 ADDRESS_MAP_END
@@ -628,10 +632,12 @@ static READ8_HANDLER( cfb_port_02_r )
 }
 
 static ADDRESS_MAP_START( readport_cpu3, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x02, 0x02) AM_READ(cfb_port_02_r)	/* VCU status ? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_cpu3_mb, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x01, 0x01) AM_WRITE(cfb_backgnd_color_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(cfb_led_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(cfb_zpu_int_req_set_w)
@@ -641,6 +647,7 @@ ADDRESS_MAP_END
 
 /* Great Guns has a little different banking layout */
 static ADDRESS_MAP_START( writeport_cpu3_gg, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0x01, 0x01) AM_WRITE(cfb_backgnd_color_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(cfb_led_w)
@@ -692,22 +699,22 @@ UINT8 color_base=0;
 unsigned char * rom = memory_region(REGION_CPU3) + (gfx_rom_bank * 0x2000) + 0x10000;
 
 /*
-	if ((mode<=0x07) || (mode>=0x10))
-	{
-		logerror("paradr=");
-		logerror("%3x ",VCU_gfx_param_addr );
+    if ((mode<=0x07) || (mode>=0x10))
+    {
+        logerror("paradr=");
+        logerror("%3x ",VCU_gfx_param_addr );
 
-		logerror("%02x ", cfb_ram[VCU_gfx_param_addr + 0] );
-		logerror("x=%04x ", xpos );					//1,2
-		logerror("y=%04x ", ypos );					//3,4
-		logerror("color=%02x ", color);				//5
-		logerror("color2=%02x ", color2);			//6
-		logerror("mode=%02x ", mode );				//7
-		logerror("xpix=%02x ", pix_xsize );			//8
-		logerror("ypix=%02x ", pix_ysize );			//9
+        logerror("%02x ", cfb_ram[VCU_gfx_param_addr + 0] );
+        logerror("x=%04x ", xpos );                 //1,2
+        logerror("y=%04x ", ypos );                 //3,4
+        logerror("color=%02x ", color);             //5
+        logerror("color2=%02x ", color2);           //6
+        logerror("mode=%02x ", mode );              //7
+        logerror("xpix=%02x ", pix_xsize );         //8
+        logerror("ypix=%02x ", pix_ysize );         //9
 
-		logerror("addr=%4i bank=%1i\n", offset, gfx_rom_bank);
-	}
+        logerror("addr=%4i bank=%1i\n", offset, gfx_rom_bank);
+    }
 */
 
 	VCU_gfx_addr = offset;
@@ -857,32 +864,32 @@ UINT8 color_base=0;
 unsigned char * rom = memory_region(REGION_CPU3) + (gfx_rom_bank * 0x2000) + 0x10000;
 
 /*
-	//if (0) //(mode != 0x07)
-	{
-		logerror("paladr=");
-		logerror("%3x ",VCU_gfx_param_addr );
+    //if (0) //(mode != 0x07)
+    {
+        logerror("paladr=");
+        logerror("%3x ",VCU_gfx_param_addr );
 
-		logerror("%02x ", cfb_ram[VCU_gfx_param_addr + 0] );
-		logerror("x=%04x ", xpos );					//1,2
-		logerror("y=%04x ", ypos );					//3,4
-		logerror("color=%02x ", color);				//5
-		logerror("color2=%02x ", color2 );			//6
-		logerror("mode=%02x ", mode );				//7
-		logerror("xpix=%02x ", pix_xsize );			//8
-		logerror("ypix=%02x ", pix_ysize );			//9
+        logerror("%02x ", cfb_ram[VCU_gfx_param_addr + 0] );
+        logerror("x=%04x ", xpos );                 //1,2
+        logerror("y=%04x ", ypos );                 //3,4
+        logerror("color=%02x ", color);             //5
+        logerror("color2=%02x ", color2 );          //6
+        logerror("mode=%02x ", mode );              //7
+        logerror("xpix=%02x ", pix_xsize );         //8
+        logerror("ypix=%02x ", pix_ysize );         //9
 
-		logerror("addr=%4i bank=%1i\n", offset, gfx_rom_bank);
+        logerror("addr=%4i bank=%1i\n", offset, gfx_rom_bank);
 
-		for (y=0; y<16; y++)
-		{
-			logerror("%04x: ",offset+y*16);
-			for (x=0; x<16; x++)
-			{
-				logerror("%02x ",cfb_ram[offset+x+y*16]);
-			}
-			logerror("\n");
-		}
-	}
+        for (y=0; y<16; y++)
+        {
+            logerror("%04x: ",offset+y*16);
+            for (x=0; x<16; x++)
+            {
+                logerror("%02x ",cfb_ram[offset+x+y*16]);
+            }
+            logerror("\n");
+        }
+    }
 
 */
 
@@ -1091,9 +1098,11 @@ static WRITE8_HANDLER( main_sound_w )
 
 
 static ADDRESS_MAP_START( gg_readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x62, 0x62) AM_READ(zpu_inputs_r)
 ADDRESS_MAP_END
 static ADDRESS_MAP_START( gg_writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x4c, 0x4c) AM_WRITE(main_sound_w)
 	AM_RANGE(0x60, 0x60) AM_WRITE(zpu_bcd_decoder_w)
 	AM_RANGE(0x66, 0x66) AM_WRITE(MWA8_NOP)
@@ -1322,8 +1331,8 @@ INPUT_PORTS_START( greatgun )
 	PORT_DIPSETTING(	0x10, "7000" )
 	PORT_DIPSETTING(	0x00, "8000" )
 	/* from manual:
-		"This switch is used when an optional coin return or ticket dispenser is used"
-	*/
+        "This switch is used when an optional coin return or ticket dispenser is used"
+    */
 	PORT_DIPNAME( 0x80, 0x00, "Number of coins or tickets returned" )
 	PORT_DIPSETTING(	0x80, "1" )
 	PORT_DIPSETTING(	0x00, "2" )

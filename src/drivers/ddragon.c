@@ -26,10 +26,10 @@ banking in Toffy / Super toffy
 
 Super Toffy - Unico 1994
 
-Main cpu: 	MC6809EP
-Sound cpu: 	MC6809P
-Sound: 		YM2151
-Clocks:		12 MHz, 3.579MHz
+Main cpu:   MC6809EP
+Sound cpu:  MC6809P
+Sound:      YM2151
+Clocks:     12 MHz, 3.579MHz
 
 Graphics custom: MDE-2001
 
@@ -140,7 +140,7 @@ static WRITE8_HANDLER( toffy_bankswitch_w )
 	ddragon_scrolly_hi = ( ( data & 0x02 ) << 7 );
 	ddragon_scrollx_hi = ( ( data & 0x01 ) << 8 );
 
-//	flip_screen_set(~data & 0x04);
+//  flip_screen_set(~data & 0x04);
 
 	/* bit 3 unknown */
 
@@ -157,7 +157,7 @@ static WRITE8_HANDLER( darktowr_bankswitch_w )
 	ddragon_scrolly_hi = ( ( data & 0x02 ) << 7 );
 	ddragon_scrollx_hi = ( ( data & 0x01 ) << 8 );
 
-//	flip_screen_set(~data & 0x04);
+//  flip_screen_set(~data & 0x04);
 
 	/* bit 3 unknown */
 
@@ -167,8 +167,8 @@ static WRITE8_HANDLER( darktowr_bankswitch_w )
 		cpunum_set_input_line( 1, sprite_irq, (sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
 
 	darktowr_bank=(data & 0xe0) >> 5;
-//	cpu_setbank( 1,&RAM[ 0x10000 + ( 0x4000 * ( ( data & 0xe0) >> 5 ) ) ] );
-//	logerror("Bank %05x %02x %02x\n",activecpu_get_pc(),darktowr_bank,data);
+//  cpu_setbank( 1,&RAM[ 0x10000 + ( 0x4000 * ( ( data & 0xe0) >> 5 ) ) ] );
+//  logerror("Bank %05x %02x %02x\n",activecpu_get_pc(),darktowr_bank,data);
 }
 
 static READ8_HANDLER( darktowr_bank_r )
@@ -254,8 +254,8 @@ static WRITE8_HANDLER( ddragon_hd63701_internal_registers_w )
 	/* I don't know why port 0x17 is used..  Doesn't seem to be a standard MCU port */
 	if (offset==0x17) {
 		/* This is a guess, but makes sense.. The mcu definitely interrupts the main cpu.
-		I don't know what bit is the assert and what is the clear though (in comparison
-		it's quite obvious from the Double Dragon 2 code, below). */
+        I don't know what bit is the assert and what is the clear though (in comparison
+        it's quite obvious from the Double Dragon 2 code, below). */
 		if (data&3) {
 			cpunum_set_input_line(0,M6809_IRQ_LINE,ASSERT_LINE);
 			cpunum_set_input_line(1,sprite_irq, CLEAR_LINE );
@@ -900,7 +900,7 @@ static MACHINE_DRIVER_START( ddragon )
 	MDRV_CPU_PROGRAM_MAP(sub_readmem,sub_writemem)
 
  	MDRV_CPU_ADD(HD6309, 3579545)
- 	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+ 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(((12000000.0 / 256.0) / 3.0) / 272.0)
@@ -947,7 +947,7 @@ static MACHINE_DRIVER_START( darktowr )
 	MDRV_CPU_PROGRAM_MAP(sub_readmem,sub_writemem)
 
  	MDRV_CPU_ADD(HD6309, 3579545)
- 	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* ? */
+ 	/* audio CPU */	/* ? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_CPU_ADD(M68705,8000000/2)  /* ? MHz */
@@ -997,7 +997,7 @@ static MACHINE_DRIVER_START( ddragonb )
 	MDRV_CPU_PROGRAM_MAP(sub_readmem,sub_writemem)
 
  	MDRV_CPU_ADD(HD6309, 3579545)
- 	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* ? */
+ 	/* audio CPU */	/* ? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(((12000000.0 / 256.0) / 3.0) / 272.0)
@@ -1044,7 +1044,7 @@ static MACHINE_DRIVER_START( ddragon2 )
 	MDRV_CPU_PROGRAM_MAP(dd2_sub_readmem,dd2_sub_writemem)
 
 	MDRV_CPU_ADD(Z80, 3579545)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 3.579545 MHz */
+	/* audio CPU */	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(dd2_sound_readmem,dd2_sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(((12000000.0 / 256.0) / 3.0) / 272.0)
@@ -1084,7 +1084,7 @@ static MACHINE_DRIVER_START( toffy )
 	MDRV_CPU_VBLANK_INT(ddragon_interrupt,272)
 
 	MDRV_CPU_ADD(M6809, 3579545)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_FRAMES_PER_SECOND(((12000000.0 / 256.0) / 3.0) / 272.0)

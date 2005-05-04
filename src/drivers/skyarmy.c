@@ -1,22 +1,22 @@
 /*
  05/01/2003  MooglyGuy/Ryan Holtz
-	- Corrected second AY (shouldn't have been there)
-	- Added first AY's status read
-	- Added coinage DIP
-	- What the hell are those unmapped port writes!? Not AY...
+    - Corrected second AY (shouldn't have been there)
+    - Added first AY's status read
+    - Added coinage DIP
+    - What the hell are those unmapped port writes!? Not AY...
 
- 2003.01.01. Tomasz Slanina 
-  
+ 2003.01.01. Tomasz Slanina
+
   changes :
- 	- nmi generation ( incorrect freq probably)
- 	- music/sfx (partially)
- 	- more sprite tiles (twice than before)
- 	- fixed sprites flips 
- 	- scrolling (2nd game level)
- 	- better colors (weird 'hack' .. but works in most cases ( comparing with screens from emustatus ))
- 	- dips - lives 
- 	- visible area .. a bit smaller (at least bg 'generation' is not visible for scrolling levels )
- 	- cpu clock .. now 4 mhz 
+    - nmi generation ( incorrect freq probably)
+    - music/sfx (partially)
+    - more sprite tiles (twice than before)
+    - fixed sprites flips
+    - scrolling (2nd game level)
+    - better colors (weird 'hack' .. but works in most cases ( comparing with screens from emustatus ))
+    - dips - lives
+    - visible area .. a bit smaller (at least bg 'generation' is not visible for scrolling levels )
+    - cpu clock .. now 4 mhz
 */
 
 
@@ -33,7 +33,7 @@ static void get_skyarmy_tile_info(int tile_index)
 {
         int code = skyarmy_videoram[tile_index];
         int attr = skyarmy_colorram[tile_index];
-        
+
 	/* bit 0 <-> bit 2 ????? */
 	switch(attr)
 	{
@@ -77,17 +77,17 @@ PALETTE_INIT( skyarmy )
 	for (i = 0;i < 32;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
-	
+
 		bit0 = (*color_prom >> 0) & 0x01;
 		bit1 = (*color_prom >> 1) & 0x01;
 		bit2 = (*color_prom >> 2) & 0x01;
 		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-	
+
 		bit0 = (*color_prom >> 3) & 0x01;
 		bit1 = (*color_prom >> 4) & 0x01;
 		bit2 = (*color_prom >> 5) & 0x01;
 		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-	
+
 		bit0=0;
 		bit1 = (*color_prom >> 6) & 0x01;
 		bit2 = (*color_prom >> 7) & 0x01;
@@ -113,14 +113,14 @@ VIDEO_UPDATE( skyarmy )
         int sx, sy, flipx, flipy, offs,pal;
         int i;
 	for(i=0;i<0x20;i++)tilemap_set_scrolly( skyarmy_tilemap,i,skyarmy_scrollram[i]);
-       
+
         tilemap_draw(bitmap,cliprect,skyarmy_tilemap,0,0);
-	
+
 	for (offs = 0 ; offs < 0x40; offs+=4)
 	{
-		
+
 		pal=spriteram[offs+2]&0x7;
-		
+
 		switch(pal)
 		{
 		 case 1: pal=4; break;
@@ -176,9 +176,9 @@ static ADDRESS_MAP_START( skyarmy_writemem, ADDRESS_SPACE_PROGRAM, 8 )
         AM_RANGE(0x9800, 0x983F) AM_WRITE(spriteram_w) AM_BASE(&spriteram) AM_SIZE(&spriteram_size) /* Sprites */
         AM_RANGE(0x9840, 0x985F) AM_WRITE(skyarmy_scrollram_w) AM_BASE(&skyarmy_scrollram) /* Sprites */
         AM_RANGE(0xa004, 0xa004) AM_WRITE(nmi_enable_w) // ???
-        AM_RANGE(0xa005, 0xa005) AM_WRITE(MWA8_NOP) 
-        AM_RANGE(0xa006, 0xa006) AM_WRITE(MWA8_NOP) 
-        AM_RANGE(0xa007, 0xa007) AM_WRITE(MWA8_NOP) 
+        AM_RANGE(0xa005, 0xa005) AM_WRITE(MWA8_NOP)
+        AM_RANGE(0xa006, 0xa006) AM_WRITE(MWA8_NOP)
+        AM_RANGE(0xa007, 0xa007) AM_WRITE(MWA8_NOP)
 ADDRESS_MAP_END
 
 INPUT_PORTS_START( skyarmy )
@@ -255,10 +255,12 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 };
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x06, 0x06) AM_READ(AY8910_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x04, 0x04) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
@@ -276,7 +278,7 @@ static MACHINE_DRIVER_START( skyarmy )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(32*8,32*8)
-	MDRV_VISIBLE_AREA(0*8,32*8-1,1*8,31*8-1) 
+	MDRV_VISIBLE_AREA(0*8,32*8-1,1*8,31*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(32)
 

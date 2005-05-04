@@ -2,8 +2,8 @@
 
 Nintendo VS UniSystem and DualSystem - (c) 1984 Nintendo of America
 
-	Portions of this code are heavily based on
-	Brad Oliver's MESS implementation of the NES.
+    Portions of this code are heavily based on
+    Brad Oliver's MESS implementation of the NES.
 
 RP2C04-001:
 - Baseball
@@ -63,34 +63,34 @@ RC2C05-04:
 - Top Gun
 
 Graphic hack games:
-- Skate Kids								(by Two-Bit Score, 1988; hack of Vs. Super Mario Bros.)
+- Skate Kids                                (by Two-Bit Score, 1988; hack of Vs. Super Mario Bros.)
 
 Needed roms:
-- Babel no Tou								(by Namco, 198?)
-- Family Boxing								(by Namco/Woodplace, 198?)
-- Family Stadium '87						(by Namco, 1987)
-- Family Stadium '88						(by Namco, 1988)
-- Family Tennis								(by Namco, 198?)
-- Head to Head Baseball						(ever finished/released?, by Nintendo, 1986)
-- Japanese version of Vs. Soccer			(1985)
+- Babel no Tou                              (by Namco, 198?)
+- Family Boxing                             (by Namco/Woodplace, 198?)
+- Family Stadium '87                        (by Namco, 1987)
+- Family Stadium '88                        (by Namco, 1988)
+- Family Tennis                             (by Namco, 198?)
+- Head to Head Baseball                     (ever finished/released?, by Nintendo, 1986)
+- Japanese version of Vs. Soccer            (1985)
 - Japanese version of Vs. Super Mario Bros. (1986)
-- Lionex									(prototype by Sunsoft, 1987)
-- Madura no Tsubasa							(prototype by Sunsoft, 1987)
-- Predators									(prototype by Williams, 84)
-- Pro Yakyuu Family Stadium					(by Namco, 1986?)
-- Quest of Ki								(by Namco/Game Studio, 198?)
-- Super Chinese								(by Namco/Culture Brain, 1988)
-- Toukaidou 53tsugi							(prototype by Sunsoft, 1985)
-- Trojan									(by Capcom, 1987)
-- Urban Champion							(1984)
-- Volleyball								(1986)
-- Walkure no Bouken							(by Namco, 198?)
-- Wild Gunman								(1984, light gun game)
+- Lionex                                    (prototype by Sunsoft, 1987)
+- Madura no Tsubasa                         (prototype by Sunsoft, 1987)
+- Predators                                 (prototype by Williams, 84)
+- Pro Yakyuu Family Stadium                 (by Namco, 1986?)
+- Quest of Ki                               (by Namco/Game Studio, 198?)
+- Super Chinese                             (by Namco/Culture Brain, 1988)
+- Toukaidou 53tsugi                         (prototype by Sunsoft, 1985)
+- Trojan                                    (by Capcom, 1987)
+- Urban Champion                            (1984)
+- Volleyball                                (1986)
+- Walkure no Bouken                         (by Namco, 198?)
+- Wild Gunman                               (1984, light gun game)
 
 TO DO:
-	- Check others bits in coin counter
-	- Check other values in bnglngby irq
-	- Top Gun: cpu #0 (PC=00008016): unmapped memory byte read from 00007FFF ???
+    - Check others bits in coin counter
+    - Check other values in bnglngby irq
+    - Top Gun: cpu #0 (PC=00008016): unmapped memory byte read from 00007FFF ???
 
 Changes:
 
@@ -102,30 +102,30 @@ Changes:
   16/10/2003 Pierpaolo Prazzoli
 
   - Added
-		- Vs. Freedom Force
-		- Vs. Super Xevious
+        - Vs. Freedom Force
+        - Vs. Super Xevious
 
   24/12/2002 Pierpaolo Prazzoli
 
   - Added
-		- Vs. Mighty Bomb Jack (Japan)
-		- Vs. Ninja Jajamaru Kun (Japan)
-		- Vs. Raid on Bungeling Bay (Japan)
-		- Vs. Top Gun
-		- Vs. Mach Rider (Japan, Fighting Course Version)
-		- Vs. Ice Climber (Japan)
-		- Vs. Gumshoe (partially working)
-		- Vs. Freedom Force (not working)
-		- Vs. Stroke and Match Golf (Men set 2) (not working)
-		- Vs. BaseBall (Japan set 3) (not working)
+        - Vs. Mighty Bomb Jack (Japan)
+        - Vs. Ninja Jajamaru Kun (Japan)
+        - Vs. Raid on Bungeling Bay (Japan)
+        - Vs. Top Gun
+        - Vs. Mach Rider (Japan, Fighting Course Version)
+        - Vs. Ice Climber (Japan)
+        - Vs. Gumshoe (partially working)
+        - Vs. Freedom Force (not working)
+        - Vs. Stroke and Match Golf (Men set 2) (not working)
+        - Vs. BaseBall (Japan set 3) (not working)
   - Added coin counter
   - Added Extra Ram in vstetris
   - Added Demo Sound in vsmahjng
   - Fixed vsskykid inputs
   - Fixed protection in Vs. Super Xevious
   - Corrected or checked dip-switches in Castlevania, Duck Hunt, Excitebike,
-	Gradius, Hogan's Alley, Ice Climber, R.B.I. Baseball, Slalom, Soccer,
-	Super Mario Bros., Top Gun, BaseBall, Tennis, Stroke and Match Golf
+    Gradius, Hogan's Alley, Ice Climber, R.B.I. Baseball, Slalom, Soccer,
+    Super Mario Bros., Top Gun, BaseBall, Tennis, Stroke and Match Golf
 
 ***************************************************************************/
 
@@ -605,7 +605,7 @@ INPUT_PORTS_START( golf )
 	PORT_DIPSETTING(	0x00, "Large" )
 	PORT_DIPSETTING(	0x08, "Small" )
 	PORT_DIPNAME( 0x10, 0x00, "Points per Stroke" )
-	PORT_DIPSETTING(	0x00, "Easier" )
+	PORT_DIPSETTING(	0x00, DEF_STR( Easier ) )
 	PORT_DIPSETTING(	0x10, DEF_STR( Harder ) )
 	PORT_DIPNAME( 0x60, 0x00, "Starting Points" )
 	PORT_DIPSETTING(	0x00, "10" )
@@ -635,7 +635,7 @@ INPUT_PORTS_START( golf4s )
 	PORT_DIPSETTING(	0x00, "Large" )
 	PORT_DIPSETTING(	0x08, "Small" )
 	PORT_DIPNAME( 0x10, 0x00, "Points per Stroke" )
-	PORT_DIPSETTING(	0x00, "Easier" )
+	PORT_DIPSETTING(	0x00, DEF_STR( Easier ) )
 	PORT_DIPSETTING(	0x10, DEF_STR( Harder ) )
 	PORT_DIPNAME( 0x60, 0x00, "Starting Points" )
 	PORT_DIPSETTING(	0x00, "10" )
@@ -1617,12 +1617,11 @@ INPUT_PORTS_START( vsskykid )
 	VS_CONTROLS_REVERSE( IPT_START1, IPT_START2, IPT_UNKNOWN, IPT_UNKNOWN )
 
 	PORT_START /* DSW0 - bit 0 and 1 read from bit 3 and 4 on $4016, rest of the bits read on $4017 */
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( On ) )
+	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Easy ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( Normal ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Medium ) )
+	PORT_DIPSETTING(	0x03, DEF_STR( Hard ) )
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Lives ) )
 	PORT_DIPSETTING(	0x00, "2" )
 	PORT_DIPSETTING(	0x04, "3" )
@@ -1631,7 +1630,7 @@ INPUT_PORTS_START( vsskykid )
 	PORT_DIPSETTING(	0x10, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(	0x08, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0xe0, 0x20, "Color Palette" )
+	PORT_DIPNAME( 0xe0, 0x20, "Color Palette" ) // marked as MUST BE OFF
 	PORT_DIPSETTING(	0x20, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x00, "Wrong 1" )
 	PORT_DIPSETTING(	0x40, "Wrong 2" )
@@ -2079,7 +2078,7 @@ static MACHINE_DRIVER_START( vsnes )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(NES, 0)
 	MDRV_SOUND_CONFIG(nes_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
@@ -2118,11 +2117,11 @@ static MACHINE_DRIVER_START( vsdual )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	
+
 	MDRV_SOUND_ADD(NES, 0)
 	MDRV_SOUND_CONFIG(nes_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	
+
 	MDRV_SOUND_ADD(NES, 0)
 	MDRV_SOUND_CONFIG(nes_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
@@ -2755,7 +2754,7 @@ ROM_END
 
 /******************************************************************************/
 
-/*    YEAR  NAME      PARENT    MACHINE  INPUT     INIT  	   MONITOR  */
+/*    YEAR  NAME      PARENT    MACHINE  INPUT     INIT        MONITOR  */
 GAME( 1985, btlecity, 0,        vsnes,   btlecity, btlecity, ROT0, "Namco",     "Vs. Battle City" )
 GAME( 1985, starlstr, 0,        vsnes,   starlstr, vsnormal, ROT0, "Namco",     "Vs. Star Luster" )
 GAME( 1987,	cstlevna, 0,        vsnes,   cstlevna, cstlevna, ROT0, "Konami",    "Vs. Castlevania" )

@@ -1,13 +1,13 @@
 /******************************************************************************
 
-	Video Hardware for Video System Games.
+    Video Hardware for Video System Games.
 
-	Quiz & Variety Sukusuku Inufuku (Japan)
-	(c)1998 Video System Co.,Ltd.
+    Quiz & Variety Sukusuku Inufuku (Japan)
+    (c)1998 Video System Co.,Ltd.
 
-	Driver by Takahiro Nogi <nogi@kt.rim.or.jp> 2003/08/09 -
+    Driver by Takahiro Nogi <nogi@kt.rim.or.jp> 2003/08/09 -
 
-	based on other Video System drivers
+    based on other Video System drivers
 
 ******************************************************************************/
 /******************************************************************************
@@ -96,7 +96,7 @@ WRITE16_HANDLER( inufuku_scrollreg_w );
 
 /******************************************************************************
 
-	Sound CPU interface
+    Sound CPU interface
 
 ******************************************************************************/
 
@@ -128,7 +128,7 @@ static WRITE8_HANDLER( inufuku_soundrombank_w )
 
 /******************************************************************************
 
-	Machine initialization / Driver initialization
+    Machine initialization / Driver initialization
 
 ******************************************************************************/
 
@@ -146,7 +146,7 @@ static DRIVER_INIT( inufuku )
 
 /******************************************************************************
 
-	Input/Output port interface
+    Input/Output port interface
 
 ******************************************************************************/
 
@@ -178,7 +178,7 @@ static WRITE16_HANDLER( inufuku_eeprom_w )
 
 /******************************************************************************
 
-	Main CPU memory handlers
+    Main CPU memory handlers
 
 ******************************************************************************/
 
@@ -227,7 +227,7 @@ ADDRESS_MAP_END
 
 /******************************************************************************
 
-	Sound CPU memory handlers
+    Sound CPU memory handlers
 
 ******************************************************************************/
 
@@ -244,6 +244,7 @@ static ADDRESS_MAP_START( inufuku_writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( inufuku_readport_sound, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_r)
 	AM_RANGE(0x08, 0x08) AM_READ(YM2610_status_port_0_A_r)
 	AM_RANGE(0x09, 0x09) AM_READ(YM2610_read_port_0_r)
@@ -251,6 +252,7 @@ static ADDRESS_MAP_START( inufuku_readport_sound, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( inufuku_writeport_sound, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(inufuku_soundrombank_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(pending_command_clear_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(YM2610_control_port_0_A_w)
@@ -262,7 +264,7 @@ ADDRESS_MAP_END
 
 /******************************************************************************
 
-	Port definitions
+    Port definitions
 
 ******************************************************************************/
 
@@ -333,7 +335,7 @@ INPUT_PORTS_END
 
 /******************************************************************************
 
-	Graphics definitions
+    Graphics definitions
 
 ******************************************************************************/
 
@@ -372,7 +374,7 @@ static struct GfxDecodeInfo inufuku_gfxdecodeinfo[] =
 
 /******************************************************************************
 
-	Sound definitions
+    Sound definitions
 
 ******************************************************************************/
 
@@ -391,7 +393,7 @@ static struct YM2610interface ym2610_interface =
 
 /******************************************************************************
 
-	Machine driver
+    Machine driver
 
 ******************************************************************************/
 
@@ -403,7 +405,7 @@ static MACHINE_DRIVER_START( inufuku )
 	MDRV_CPU_VBLANK_INT(irq1_line_hold, 1)
 
 	MDRV_CPU_ADD(Z80, 32000000/4)		/* 8.00 MHz */
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(inufuku_readmem_sound, inufuku_writemem_sound)
 	MDRV_CPU_IO_MAP(inufuku_readport_sound, inufuku_writeport_sound)
 								/* IRQs are triggered by the YM2610 */
@@ -436,7 +438,7 @@ MACHINE_DRIVER_END
 
 /******************************************************************************
 
-	ROM definitions
+    ROM definitions
 
 ******************************************************************************/
 
@@ -468,7 +470,7 @@ ROM_END
 
 /******************************************************************************
 
-	Game drivers
+    Game drivers
 
 ******************************************************************************/
 

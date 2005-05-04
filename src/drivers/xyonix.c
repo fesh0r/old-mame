@@ -47,7 +47,7 @@ void handle_coins(int coin)
 	int coinage_table[4][2] = {{2,3},{2,1},{1,2},{1,1}};
 	int tmp = 0;
 
-//	usrintf_showmessage("Coin %d",coin);
+//  usrintf_showmessage("Coin %d",coin);
 
 	if (coin & 1)	// Coin 2 !
 	{
@@ -134,15 +134,15 @@ READ8_HANDLER ( xyonix_io_r )
 		}
 	}
 
-//	logerror ("xyonix_port_e0_r - PC = %04x - port = %02x\n", regPC, e0_data);
-//	usrintf_showmessage("%02x",e0_data);
+//  logerror ("xyonix_port_e0_r - PC = %04x - port = %02x\n", regPC, e0_data);
+//  usrintf_showmessage("%02x",e0_data);
 
 	return 0xff;
 }
 
 WRITE8_HANDLER ( xyonix_io_w )
 {
-//	logerror ("xyonix_port_e0_w %02x - PC = %04x\n", data, activecpu_get_pc());
+//  logerror ("xyonix_port_e0_w %02x - PC = %04x\n", data, activecpu_get_pc());
 	e0_data = data;
 }
 
@@ -161,11 +161,13 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( port_readmem, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x20, 0x21) AM_READ(MRA8_NOP)	/* SN76496 ready signal */
 	AM_RANGE(0xe0, 0xe0) AM_READ(xyonix_io_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( port_writemem, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x20, 0x20) AM_WRITE(SN76496_0_w)
 	AM_RANGE(0x21, 0x21) AM_WRITE(SN76496_1_w)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(xyonix_io_w)

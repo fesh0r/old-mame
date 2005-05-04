@@ -1,23 +1,23 @@
 /*****************************************************************************
  *
- *	 m6502.c
- *	 Portable 6502/65c02/65sc02/6510/n2a03 emulator V1.2
+ *   m6502.c
+ *   Portable 6502/65c02/65sc02/6510/n2a03 emulator V1.2
  *
- *	 Copyright (c) 1998,1999,2000 Juergen Buchmueller, all rights reserved.
- *	 65sc02 core Copyright (c) 2000 Peter Trauner.
- *	 Deco16 portions Copyright (c) 2001-2003 Bryan McPhail.
+ *   Copyright (c) 1998,1999,2000 Juergen Buchmueller, all rights reserved.
+ *   65sc02 core Copyright (c) 2000 Peter Trauner.
+ *   Deco16 portions Copyright (c) 2001-2003 Bryan McPhail.
  *
- *	 - This source code is released as freeware for non-commercial purposes.
- *	 - You are free to use and redistribute this code in modified or
- *	   unmodified form, provided you list me in the credits.
- *	 - If you modify this source code, you must add a notice to each modified
- *	   source file that it has been changed.  If you're a nice person, you
- *	   will clearly mark each change too.  :)
- *	 - If you wish to use this for commercial purposes, please contact me at
- *	   pullmoll@t-online.de
- *	 - The author of this copywritten work reserves the right to change the
- *	   terms of its usage and license at any time, including retroactively
- *	 - This entire notice must remain in the source code.
+ *   - This source code is released as freeware for non-commercial purposes.
+ *   - You are free to use and redistribute this code in modified or
+ *     unmodified form, provided you list me in the credits.
+ *   - If you modify this source code, you must add a notice to each modified
+ *     source file that it has been changed.  If you're a nice person, you
+ *     will clearly mark each change too.  :)
+ *   - If you wish to use this for commercial purposes, please contact me at
+ *     pullmoll@t-online.de
+ *   - The author of this copywritten work reserves the right to change the
+ *     terms of its usage and license at any time, including retroactively
+ *   - This entire notice must remain in the source code.
  *
  *****************************************************************************/
 /* 2.February 2000 PeT added 65sc02 subtype */
@@ -88,6 +88,8 @@ typedef struct
 	UINT8	irq_state;
 	UINT8   so_state;
 	int 	(*irq_callback)(int irqline);	/* IRQ callback */
+	read8_handler rdmem_id;					/* readmem callback for indexed instructions */
+	write8_handler wrmem_id;				/* readmem callback for indexed instructions */
 }	m6502_Regs;
 
 int m6502_ICount = 0;
@@ -125,13 +127,18 @@ static m6502_Regs m6502;
 
 /*****************************************************************************
  *
- *		6502 CPU interface functions
+ *      6502 CPU interface functions
  *
  *****************************************************************************/
 
-static void m6502_state_register(const char *type)
+static void m6502_common_init(UINT8 subtype, void (**insn)(void), const char *type)
 {
 	int cpu = cpu_getactivecpu();
+
+	m6502.subtype = subtype;
+	m6502.insn = insn;
+	m6502.rdmem_id = program_read_byte_8;
+	m6502.wrmem_id = program_write_byte_8;
 
 	state_save_register_UINT16(type, cpu, "PC", &m6502.pc.w.l, 2);
 	state_save_register_UINT16(type, cpu, "SP", &m6502.sp.w.l, 2);
@@ -148,9 +155,7 @@ static void m6502_state_register(const char *type)
 
 static void m6502_init(void)
 {
-	m6502.subtype = SUBTYPE_6502;
-	m6502.insn = insn6502;
-	m6502_state_register("m6502");
+	m6502_common_init(SUBTYPE_6502, insn6502, "m6502");
 }
 
 static void m6502_reset(void *param)
@@ -336,9 +341,7 @@ static UINT8 n2a03_reg_layout[] = {
 
 static void n2a03_init(void)
 {
-	m6502.subtype = SUBTYPE_2A03;
-	m6502.insn = insn2a03;
-	m6502_state_register("n2a03");
+	m6502_common_init(SUBTYPE_2A03, insn2a03, "n2a03");
 }
 
 /* The N2A03 is integrally tied to its PSG (they're on the same die).
@@ -364,9 +367,7 @@ static UINT8 m6510_reg_layout[] = {
 
 static void m6510_init (void)
 {
-	m6502.subtype = SUBTYPE_6510;
-	m6502.insn = insn6510;
-	m6502_state_register("m6510");
+	m6502_common_init(SUBTYPE_6510, insn6510, "m6510");
 }
 
 static offs_t m6510_dasm(char *buffer, offs_t pc)
@@ -394,9 +395,7 @@ static UINT8 m65c02_reg_layout[] = {
 
 static void m65c02_init(void)
 {
-	m6502.subtype = SUBTYPE_65C02;
-	m6502.insn = insn65c02;
-	m6502_state_register("m65c02");
+	m6502_common_init(SUBTYPE_65C02, insn65c02, "m65c02");
 }
 
 static void m65c02_reset (void *param)
@@ -502,9 +501,7 @@ static void m65c02_set_irq_line(int irqline, int state)
 #if (HAS_M65SC02)
 static void m65sc02_init(void)
 {
-	m6502.subtype = SUBTYPE_65SC02;
-	m6502.insn = insn65sc02;
-	m6502_state_register("m65sc02");
+	m6502_common_init(SUBTYPE_65SC02, insn65sc02, "m65sc02");
 }
 #endif
 
@@ -520,9 +517,7 @@ static UINT8 deco16_reg_layout[] = {
 
 static void deco16_init(void)
 {
-	m6502.subtype = SUBTYPE_DECO16;
-	m6502.insn = insndeco16;
-	m6502_state_register("deco16");
+	m6502_common_init(SUBTYPE_DECO16, insndeco16, "deco16");
 }
 
 
@@ -678,9 +673,11 @@ static void m6502_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + M6502_Y:			m6502.y = info->i;						break;
 		case CPUINFO_INT_REGISTER + M6502_EA:			m6502.ea.w.l = info->i;					break;
 		case CPUINFO_INT_REGISTER + M6502_ZP:			m6502.zp.w.l = info->i;					break;
-		
+
 		/* --- the following bits of info are set as pointers to data or functions --- */
 		case CPUINFO_PTR_IRQ_CALLBACK:					m6502.irq_callback = info->irqcallback;	break;
+		case CPUINFO_PTR_M6502_READINDEXED_CALLBACK:	m6502.rdmem_id = (read8_handler) info->f;	break;
+		case CPUINFO_PTR_M6502_WRITEINDEXED_CALLBACK:	m6502.wrmem_id = (write8_handler) info->f;	break;
 	}
 }
 
@@ -704,7 +701,7 @@ void m6502_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 3;							break;
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1;							break;
 		case CPUINFO_INT_MAX_CYCLES:					info->i = 10;							break;
-		
+
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 8;					break;
 		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_PROGRAM: info->i = 16;					break;
 		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_PROGRAM: info->i = 0;					break;
@@ -747,6 +744,8 @@ void m6502_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &m6502_ICount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = m6502_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = m6502_win_layout;				break;
+		case CPUINFO_PTR_M6502_READINDEXED_CALLBACK:	info->f = (genf *) m6502.rdmem_id;		break;
+		case CPUINFO_PTR_M6502_WRITEINDEXED_CALLBACK:	info->f = (genf *) m6502.wrmem_id;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "M6502"); break;
