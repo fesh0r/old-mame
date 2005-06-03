@@ -7,22 +7,22 @@
 #include "driver.h"
 #include "sound/3812intf.h"
 #include "machine/8255ppi.h"
+#include "machine/uart8250.h"
+#include "machine/mc146818.h"
+#include "machine/pic8259.h"
 #include "vidhrdw/generic.h"
 #include "devices/printer.h"
 
-#include "includes/uart8250.h"
-#include "includes/pic8259.h"
 #include "includes/pit8253.h"
-#include "includes/mc146818.h"
-#include "includes/pc_vga.h"
-#include "includes/pc_cga.h"
-#include "includes/pc_mda.h"
-#include "includes/pc_video.h"
+#include "vidhrdw/pc_vga.h"
+#include "vidhrdw/pc_cga.h"
+#include "vidhrdw/pc_mda.h"
+#include "vidhrdw/pc_video.h"
 #include "includes/pc.h"
 
 #include "machine/pc_hdc.h"
 #include "includes/pc_ide.h"
-#include "includes/pc_fdc_h.h"
+#include "machine/pc_fdc.h"
 #include "includes/pckeybrd.h"
 #include "includes/pclpt.h"
 #include "includes/sblaster.h"
@@ -108,12 +108,12 @@ static WRITE8_HANDLER(at_dma8237_1_w)
 
 static READ32_HANDLER(at32_dma8237_1_r)
 {
-	return read32_with_read8_handler(at_dma8237_1_r, offset, mem_mask);
+	return read32le_with_read8_handler(at_dma8237_1_r, offset, mem_mask);
 }
 
 static WRITE32_HANDLER(at32_dma8237_1_w)
 {
-	write32_with_write8_handler(at_dma8237_1_w, offset, data, mem_mask);
+	write32le_with_write8_handler(at_dma8237_1_w, offset, data, mem_mask);
 }
 
 
@@ -150,12 +150,12 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(at386_io, ADDRESS_SPACE_IO, 32)
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE(dma8237_32_0_r,			dma8237_32_0_w)
-	AM_RANGE(0x0020, 0x003f) AM_READWRITE(pic8259_32_0_r,			pic8259_32_0_w)
+	AM_RANGE(0x0020, 0x003f) AM_READWRITE(pic8259_32le_0_r,			pic8259_32le_0_w)
 	AM_RANGE(0x0040, 0x005f) AM_READWRITE(pit8253_32_0_r,			pit8253_32_0_w)
 	AM_RANGE(0x0060, 0x006f) AM_READWRITE(at_8042_32_r,				at_8042_32_w)
-	AM_RANGE(0x0070, 0x007f) AM_READWRITE(mc146818_port32_r,		mc146818_port32_w)
+	AM_RANGE(0x0070, 0x007f) AM_READWRITE(mc146818_port32le_r,		mc146818_port32le_w)
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE(at_page32_r,				at_page32_w)
-	AM_RANGE(0x00a0, 0x00bf) AM_READWRITE(pic8259_32_1_r,			pic8259_32_1_w)
+	AM_RANGE(0x00a0, 0x00bf) AM_READWRITE(pic8259_32le_1_r,			pic8259_32le_1_w)
 	AM_RANGE(0x00c0, 0x00df) AM_READWRITE(at32_dma8237_1_r,			at32_dma8237_1_w)
 	AM_RANGE(0x0278, 0x027f) AM_READWRITE(pc32_parallelport2_r,		pc32_parallelport2_w)
 	AM_RANGE(0x02e8, 0x02ef) AM_READWRITE(pc32_COM4_r,				pc32_COM4_w)
@@ -163,7 +163,7 @@ static ADDRESS_MAP_START(at386_io, ADDRESS_SPACE_IO, 32)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc32_HDC1_r,				pc32_HDC1_w)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc32_HDC2_r,				pc32_HDC2_w)
 	AM_RANGE(0x0378, 0x037f) AM_READWRITE(pc32_parallelport1_r,		pc32_parallelport1_w)
-	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE(pc32_fdc_r,				pc32_fdc_w)
+	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE(pc32le_fdc_r,				pc32le_fdc_w)
 	AM_RANGE(0x03bc, 0x03bf) AM_READWRITE(pc32_parallelport0_r,		pc32_parallelport0_w)
 	AM_RANGE(0x03f8, 0x03ff) AM_READWRITE(pc32_COM1_r,				pc32_COM1_w)
 ADDRESS_MAP_END

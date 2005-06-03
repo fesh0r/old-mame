@@ -161,10 +161,17 @@ int devices_initialload(const struct GameDriver *gamedrv, int ispreload)
 	devcount = 0;
 	for (dev = Machine->devices; dev->type < IO_COUNT; dev++)
 		devcount++;
-	allocated_slots = malloc(devcount * sizeof(*allocated_slots));
-	if (!allocated_slots)
-		goto error;
-	memset(allocated_slots, 0, devcount * sizeof(*allocated_slots));
+	if (devcount > 0)
+	{
+		allocated_slots = malloc(devcount * sizeof(*allocated_slots));
+		if (!allocated_slots)
+			goto error;
+		memset(allocated_slots, 0, devcount * sizeof(*allocated_slots));
+	}
+	else
+	{
+		allocated_slots = NULL;
+	}
 
 	/* distribute images to appropriate devices */
 	for (i = 0; i < options.image_count; i++)
@@ -408,7 +415,13 @@ UINT32 hash_data_extract_crc32(const char *d)
 }
 
 
-data32_t read32_with_read8_handler(read8_handler handler, offs_t offset, data32_t mem_mask)
+/***************************************************************************
+
+	Reading read8 handlers with other types
+
+***************************************************************************/
+
+data32_t read32le_with_read8_handler(read8_handler handler, offs_t offset, data32_t mem_mask)
 {
 	data32_t result = 0;
 	if ((mem_mask & 0x000000FF) == 0)
@@ -424,7 +437,7 @@ data32_t read32_with_read8_handler(read8_handler handler, offs_t offset, data32_
 
 
 
-void write32_with_write8_handler(write8_handler handler, offs_t offset, data32_t data, data32_t mem_mask)
+void write32le_with_write8_handler(write8_handler handler, offs_t offset, data32_t data, data32_t mem_mask)
 {
 	if ((mem_mask & 0x000000FF) == 0)
 		handler(offset * 4 + 0, data >> 0);
@@ -434,6 +447,75 @@ void write32_with_write8_handler(write8_handler handler, offs_t offset, data32_t
 		handler(offset * 4 + 2, data >> 16);
 	if ((mem_mask & 0xFF000000) == 0)
 		handler(offset * 4 + 3, data >> 24);
+}
+
+
+
+data64_t read64be_with_read8_handler(read8_handler handler, offs_t offset, data64_t mem_mask)
+{
+	data64_t result = 0;
+	int i;
+
+	for (i = 0; i < 8; i++)
+	{
+		if (((mem_mask >> (56 - i * 8)) & 0xFF) == 0)
+			result |= ((data64_t) handler(offset * 8 + i)) << (56 - i * 8);
+	}
+	return result;
+}
+
+
+
+void write64be_with_write8_handler(write8_handler handler, offs_t offset, data64_t data, data64_t mem_mask)
+{
+	int i;
+
+	for (i = 0; i < 8; i++)
+	{
+		if (((mem_mask >> (56 - i * 8)) & 0xFF) == 0)
+			handler(offset * 8 + i, data >> (56 - i * 8));
+	}
+}
+
+
+
+data64_t read64le_with_32le_handler(read32_handler handler, offs_t offset, data64_t mem_mask)
+{
+	data64_t result = 0;
+	if ((mem_mask & U64(0x00000000FFFFFFFF)) != U64(0x00000000FFFFFFFF))
+		result |= ((data64_t) handler(offset * 2 + 0, (data32_t) (mem_mask >> 0))) << 0;
+	if ((mem_mask & U64(0xFFFFFFFF00000000)) != U64(0xFFFFFFFF00000000))
+		result |= ((data64_t) handler(offset * 2 + 1, (data32_t) (mem_mask >> 0))) << 32;
+	return result;
+}
+
+
+
+void write64le_with_32le_handler(write32_handler handler, offs_t offset, data64_t data, data64_t mem_mask)
+{
+	if ((mem_mask & U64(0x00000000FFFFFFFF)) != U64(0x00000000FFFFFFFF))
+		handler(offset * 2 + 0, data >>  0, mem_mask >>  0);
+	if ((mem_mask & U64(0xFFFFFFFF00000000)) != U64(0xFFFFFFFF00000000))
+		handler(offset * 2 + 1, data >> 32, mem_mask >> 32);
+}
+
+
+
+data64_t read64be_with_32le_handler(read32_handler handler, offs_t offset, data64_t mem_mask)
+{
+	data64_t result;
+	mem_mask = FLIPENDIAN_INT64(mem_mask);
+	result = read64le_with_32le_handler(handler, offset, mem_mask);
+	return FLIPENDIAN_INT64(result);
+}
+
+
+
+void write64be_with_32le_handler(write32_handler handler, offs_t offset, data64_t data, data64_t mem_mask)
+{
+	data = FLIPENDIAN_INT64(data);
+	mem_mask = FLIPENDIAN_INT64(mem_mask);
+	write64le_with_32le_handler(handler, offset, data, mem_mask);
 }
 
 

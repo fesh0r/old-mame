@@ -13,9 +13,9 @@
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6522via.h"
+#include "machine/mc146818.h"
 #include "includes/bbc.h"
 #include "includes/upd7002.h"
-#include "includes/mc146818.h"
 #include "devices/basicdsk.h"
 #include "devices/cartslot.h"
 #include "devices/printer.h"
@@ -472,7 +472,7 @@ INPUT_PORTS_START(bbca)
 	PORT_DIPSETTING(    0x01, "Acorn DNFS 1.20 (read only)" )
 	PORT_DIPSETTING(    0x02, "Watford DFS 1.44 (read only)" )
 	PORT_DIPSETTING(    0x03, "Acorn DFS E00 (hack / read only)" )
-	PORT_DIPSETTING(    0x04, "Acorn DDFS " )
+	PORT_DIPSETTING(    0x04, "Acorn DDFS" )
 	PORT_DIPSETTING(    0x05, "Watford DDFS (not working)" )
 	PORT_DIPSETTING(    0x06, "Opus Challenger 512K (ram drive only)" )
 	PORT_DIPSETTING(    0x07, DEF_STR( None ) )

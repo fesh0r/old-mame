@@ -17,9 +17,9 @@
 #include "vidhrdw/generic.h"
 #include "machine/8255ppi.h"
 #include "machine/mm58274c.h"
+#include "machine/pic8259.h"
 #include "includes/compis.h"
 #include "includes/pit8253.h"
-#include "includes/pic8259.h"
 #include "includes/nec765.h"
 #include "includes/msm8251.h"
 #include "devices/basicdsk.h"
@@ -1575,9 +1575,20 @@ void compis_cpu_init(void)
 /* Name: compis                                                            */
 /* Desc: Driver - Init                                                     */
 /*-------------------------------------------------------------------------*/
+static void compis_pic_set_int_line(int interrupt)
+{
+	cpunum_set_input_line(0, 0, interrupt ? HOLD_LINE : CLEAR_LINE);
+}
+
+static int compis_irq_callback(int irqline)
+{
+	return pic8259_acknowledge(0);
+}
+
 DRIVER_INIT( compis )
 {
-	pic8259_init(2);
+	cpu_set_irq_callback(0,	compis_irq_callback);
+	pic8259_init(2, compis_pic_set_int_line);
 	memset (&compis, 0, sizeof (compis) );
 }
 
@@ -1609,8 +1620,8 @@ MACHINE_INIT( compis )
 	/* Keyboard */
 	compis_keyb_init();
 
-	/* OSP PIC 8259	*/
-	pic8259_reset();
+	/* OSP PIC 8259 */
+	cpu_set_irq_callback(0, compis_irq_callback);
 }
 
 /*-------------------------------------------------------------------------*/

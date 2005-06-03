@@ -1,6 +1,6 @@
 //============================================================
 //
-//	video.c - Win32 video handling
+//  video.c - Win32 video handling
 //
 //============================================================
 
@@ -31,7 +31,7 @@
 
 
 //============================================================
-//	IMPORTS
+//  IMPORTS
 //============================================================
 
 // from input.c
@@ -49,7 +49,7 @@ extern struct rc_option win_d3d_opts[];
 
 
 //============================================================
-//	PARAMETERS
+//  PARAMETERS
 //============================================================
 
 // frameskipping
@@ -58,7 +58,7 @@ extern struct rc_option win_d3d_opts[];
 
 
 //============================================================
-//	GLOBAL VARIABLES
+//  GLOBAL VARIABLES
 //============================================================
 
 // screen to draw on
@@ -85,7 +85,7 @@ UINT8 blit_swapxy;
 
 
 //============================================================
-//	LOCAL VARIABLES
+//  LOCAL VARIABLES
 //============================================================
 
 // screen info
@@ -172,7 +172,7 @@ static const int waittable[FRAMESKIP_LEVELS][FRAMESKIP_LEVELS] =
 
 
 //============================================================
-//	OPTIONS
+//  OPTIONS
 //============================================================
 
 // prototypes
@@ -232,7 +232,7 @@ struct rc_option video_opts[] =
 
 
 //============================================================
-//	decode_cleanstretch
+//  decode_cleanstretch
 //============================================================
 
 static int decode_cleanstretch(struct rc_option *option, const char *arg, int priority)
@@ -275,7 +275,7 @@ static int decode_cleanstretch(struct rc_option *option, const char *arg, int pr
 
 
 //============================================================
-//	video_set_resolution
+//  video_set_resolution
 //============================================================
 
 static int video_set_resolution(struct rc_option *option, const char *arg, int priority)
@@ -312,13 +312,13 @@ static int video_set_resolution(struct rc_option *option, const char *arg, int p
 
 
 //============================================================
-//	decode_ftr
+//  decode_ftr
 //============================================================
 
 static int decode_ftr(struct rc_option *option, const char *arg, int priority)
 {
 	int ftr;
-	
+
 	if (sscanf(arg, "%d", &ftr) != 1)
 	{
 		fprintf(stderr, "error: invalid value for frames_to_run: %s\n", arg);
@@ -337,7 +337,7 @@ static int decode_ftr(struct rc_option *option, const char *arg, int priority)
 
 
 //============================================================
-//	decode_effect
+//  decode_effect
 //============================================================
 
 static int decode_effect(struct rc_option *option, const char *arg, int priority)
@@ -358,7 +358,7 @@ static int decode_effect(struct rc_option *option, const char *arg, int priority
 
 
 //============================================================
-//	decode_aspect
+//  decode_aspect
 //============================================================
 
 static int decode_aspect(struct rc_option *option, const char *arg, int priority)
@@ -379,7 +379,7 @@ static int decode_aspect(struct rc_option *option, const char *arg, int priority
 
 
 //============================================================
-//	win_orient_rect
+//  win_orient_rect
 //============================================================
 
 void win_orient_rect(struct rectangle *rect)
@@ -392,7 +392,7 @@ void win_orient_rect(struct rectangle *rect)
 		temp = rect->min_x; rect->min_x = rect->min_y; rect->min_y = temp;
 		temp = rect->max_x; rect->max_x = rect->max_y; rect->max_y = temp;
 	}
-	
+
 	// apply X flip
 	if (blit_flipx)
 	{
@@ -400,7 +400,7 @@ void win_orient_rect(struct rectangle *rect)
 		rect->min_x = video_width - rect->max_x - 1;
 		rect->max_x = temp;
 	}
-	
+
 	// apply Y flip
 	if (blit_flipy)
 	{
@@ -413,7 +413,7 @@ void win_orient_rect(struct rectangle *rect)
 
 
 //============================================================
-//	win_disorient_rect
+//  win_disorient_rect
 //============================================================
 
 void win_disorient_rect(struct rectangle *rect)
@@ -435,7 +435,7 @@ void win_disorient_rect(struct rectangle *rect)
 		rect->min_x = video_width - rect->max_x - 1;
 		rect->max_x = temp;
 	}
-	
+
 	// unapply X/Y swap last
 	if (blit_swapxy)
 	{
@@ -447,9 +447,9 @@ void win_disorient_rect(struct rectangle *rect)
 
 
 //============================================================
-//	devices_enum_callback
+//  devices_enum_callback
 //============================================================
-static BOOL WINAPI devices_enum_callback(GUID *lpGUID, LPSTR lpDriverDescription, 
+static BOOL WINAPI devices_enum_callback(GUID *lpGUID, LPSTR lpDriverDescription,
 										 LPSTR lpDriverName, LPVOID lpContext, HMONITOR hm)
 {
 	if (verbose)
@@ -474,7 +474,7 @@ static BOOL WINAPI devices_enum_callback(GUID *lpGUID, LPSTR lpDriverDescription
 
 
 //============================================================
-//	osd_create_display
+//  osd_create_display
 //============================================================
 
 int osd_create_display(const struct osd_create_params *params, UINT32 *rgb_components)
@@ -483,7 +483,7 @@ int osd_create_display(const struct osd_create_params *params, UINT32 *rgb_compo
 	double aspect_ratio;
 	int r, g, b;
 	HRESULT result;
-	
+
 	logerror("width %d, height %d depth %d\n", params->width, params->height, params->depth);
 
 	// copy the parameters into globals for later use
@@ -502,7 +502,7 @@ int osd_create_display(const struct osd_create_params *params, UINT32 *rgb_compo
 	// extract useful parameters from the attributes
 	vector_game			= ((params->video_attributes & VIDEO_TYPE_VECTOR) != 0);
 	rgb_direct			= ((params->video_attributes & VIDEO_RGB_DIRECT) != 0);
-	
+
 	if (!blit_swapxy)
 		aspect_ratio = (double)params->aspect_x / (double)params->aspect_y;
 	else
@@ -510,7 +510,7 @@ int osd_create_display(const struct osd_create_params *params, UINT32 *rgb_compo
 
 	// if not using the primary display, enumerate the display devices and find the
 	// proper screen
-	
+
 	screen_guid_ptr = NULL;
 	ddraw_device_found = FALSE;
 	monitor = NULL;
@@ -535,7 +535,7 @@ int osd_create_display(const struct osd_create_params *params, UINT32 *rgb_compo
 	// create the window
 	if (win_create_window(video_width, video_height, video_depth, video_attributes, aspect_ratio))
 		return 1;
-	
+
 	// initialize the palette to a fixed 5-5-5 mapping
 	for (r = 0; r < 32; r++)
 		for (g = 0; g < 32; g++)
@@ -578,7 +578,7 @@ int osd_create_display(const struct osd_create_params *params, UINT32 *rgb_compo
 
 
 //============================================================
-//	osd_close_display
+//  osd_close_display
 //============================================================
 
 void osd_close_display(void)
@@ -597,7 +597,7 @@ void osd_close_display(void)
 
 
 //============================================================
-//	osd_skip_this_frame
+//  osd_skip_this_frame
 //============================================================
 
 int osd_skip_this_frame(void)
@@ -609,18 +609,18 @@ int osd_skip_this_frame(void)
 
 
 //============================================================
-//	osd_get_fps_text
+//  osd_get_fps_text
 //============================================================
 
 const char *osd_get_fps_text(const struct performance_info *performance)
 {
 	static char buffer[1024];
 	char *dest = buffer;
-	
+
 	// display the FPS, frameskip, percent, fps and target fps
-	dest += sprintf(dest, "%s%2d%4d%%%4d/%d fps", 
-			autoframeskip ? "auto" : "fskp", frameskip, 
-			(int)(performance->game_speed_percent + 0.5), 
+	dest += sprintf(dest, "%s%2d%4d%%%4d/%d fps",
+			autoframeskip ? "auto" : "fskp", frameskip,
+			(int)(performance->game_speed_percent + 0.5),
 			(int)(performance->frames_per_second + 0.5),
 			(int)(Machine->refresh_rate + 0.5));
 
@@ -633,7 +633,7 @@ const char *osd_get_fps_text(const struct performance_info *performance)
 	{
 		dest += sprintf(dest, "\n %d partial updates", performance->partial_updates_this_frame);
 	}
-	
+
 	/* return a pointer to the static buffer */
 	return buffer;
 }
@@ -641,7 +641,7 @@ const char *osd_get_fps_text(const struct performance_info *performance)
 
 
 //============================================================
-//	check_inputs
+//  check_inputs
 //============================================================
 
 static void check_inputs(void)
@@ -722,7 +722,7 @@ static void check_inputs(void)
 
 
 //============================================================
-//	throttle_speed
+//  throttle_speed
 //============================================================
 
 static void throttle_speed(void)
@@ -780,7 +780,7 @@ static void throttle_speed(void)
 
 
 //============================================================
-//	update_palette
+//  update_palette
 //============================================================
 
 static void update_palette(struct mame_display *display)
@@ -791,11 +791,11 @@ static void update_palette(struct mame_display *display)
 	for (i = 0; i < display->game_palette_entries; i += 32)
 	{
 		UINT32 dirtyflags = palette_lookups_invalid ? ~0 : display->game_palette_dirty[i / 32];
-//		UINT32 dirtyflags = display->game_palette_dirty[i / 32];
+//      UINT32 dirtyflags = display->game_palette_dirty[i / 32];
 		if (dirtyflags)
 		{
 			display->game_palette_dirty[i / 32] = 0;
-			
+
 			// loop over all 32 bits and update dirty entries
 			for (j = 0; (j < 32) && (i+j < display->game_palette_entries); j++, dirtyflags >>= 1)
 				if (dirtyflags & 1)
@@ -805,7 +805,7 @@ static void update_palette(struct mame_display *display)
 					int r = RGB_RED(rgbvalue);
 					int g = RGB_GREEN(rgbvalue);
 					int b = RGB_BLUE(rgbvalue);
-					
+
 					// update both lookup tables
 					palette_16bit_lookup[i + j] = win_color16(r, g, b) * 0x10001;
 					palette_32bit_lookup[i + j] = win_color32(r, g, b);
@@ -820,7 +820,7 @@ static void update_palette(struct mame_display *display)
 
 
 //============================================================
-//	update_visible_area
+//  update_visible_area
 //============================================================
 
 static void update_visible_area(struct mame_display *display)
@@ -855,7 +855,7 @@ static void update_visible_area(struct mame_display *display)
 
 
 //============================================================
-//	update_autoframeskip
+//  update_autoframeskip
 //============================================================
 
 void update_autoframeskip(void)
@@ -865,7 +865,7 @@ void update_autoframeskip(void)
 	if (!game_was_paused && !debugger_was_visible && cpu_getcurrentframe() > 2 * FRAMESKIP_LEVELS)
 	{
 		const struct performance_info *performance = mame_get_performance_info();
-	
+
 		// if we're too fast, attempt to increase the frameskip
 		if (performance->game_speed_percent >= 99.5)
 		{
@@ -908,7 +908,7 @@ void update_autoframeskip(void)
 
 
 //============================================================
-//	render_frame
+//  render_frame
 //============================================================
 
 static void render_frame(struct mame_bitmap *bitmap, const struct rectangle *bounds, void *vector_dirty_pixels)
@@ -936,10 +936,10 @@ static void render_frame(struct mame_bitmap *bitmap, const struct rectangle *bou
 		{
 			char name[20];
 			mame_file *fp;
-			
+
 			// make a filename with an underscore prefix
 			sprintf(name, "_%.8s", Machine->gamedrv->name);
-			
+
 			// write out the screenshot
 			if ((fp = mame_fopen(Machine->gamedrv->name, name, FILETYPE_SCREENSHOT, 1)) != NULL)
 			{
@@ -968,7 +968,7 @@ static void render_frame(struct mame_bitmap *bitmap, const struct rectangle *bou
 
 
 //============================================================
-//	osd_update_video_and_audio
+//  osd_update_video_and_audio
 //============================================================
 
 void osd_update_video_and_audio(struct mame_display *display)
@@ -991,7 +991,7 @@ void osd_update_video_and_audio(struct mame_display *display)
 	// if this is the first frame in a sequence, adjust the base time for this frame
 	if (frameskip_counter == 0)
 		this_frame_base = last_skipcount0_time + (int)((double)FRAMESKIP_LEVELS * (double)cps / video_fps);
-	
+
 	// if the visible area has changed, update it
 	if (display->changed_flags & GAME_VISIBLE_AREA_CHANGED)
 		update_visible_area(display);
@@ -1017,7 +1017,7 @@ void osd_update_video_and_audio(struct mame_display *display)
 	if (display->changed_flags & GAME_BITMAP_CHANGED)
 	{
 		win_orient_rect(&updatebounds);
-	
+
 		if (display->changed_flags & VECTOR_PIXELS_CHANGED)
 			render_frame(display->game_bitmap, &updatebounds, display->vector_dirty_pixels);
 		else
@@ -1051,7 +1051,7 @@ void osd_update_video_and_audio(struct mame_display *display)
 
 
 //============================================================
-//	osd_override_snapshot
+//  osd_override_snapshot
 //============================================================
 
 struct mame_bitmap *osd_override_snapshot(struct mame_bitmap *bitmap, struct rectangle *bounds)
@@ -1136,7 +1136,7 @@ struct mame_bitmap *osd_override_snapshot(struct mame_bitmap *bitmap, struct rec
 
 
 //============================================================
-//	osd_pause
+//  osd_pause
 //============================================================
 
 void osd_pause(int paused)

@@ -8,18 +8,19 @@
 
 #include "cpu/i86/i286.h"
 
-#include "includes/pic8259.h"
+#include "machine/pic8259.h"
+#include "machine/8237dma.h"
+#include "machine/mc146818.h"
+
+#include "vidhrdw/pc_vga.h"
+#include "vidhrdw/pc_cga.h"
+
 #include "includes/pit8253.h"
-#include "includes/mc146818.h"
-#include "includes/pc_vga.h"
-#include "includes/pc_cga.h"
 #include "includes/pcshare.h"
 #include "includes/ibmat.h"
 #include "includes/at.h"
 #include "includes/pckeybrd.h"
 #include "includes/sblaster.h"
-
-#include "8237dma.h"
 
 static SOUNDBLASTER_CONFIG soundblaster = { 1,5, {1,0} };
 
@@ -97,6 +98,16 @@ DRIVER_INIT( at386 )
 
 
 
+static const struct pc_vga_interface vga_interface =
+{
+	input_port_0_r,
+
+	ADDRESS_SPACE_IO,
+	0x0000
+};
+
+
+
 DRIVER_INIT( at_vga )
 {
 	AT8042_CONFIG at8042={
@@ -105,7 +116,7 @@ DRIVER_INIT( at_vga )
 
 	init_at_common(&at8042);
 	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
-	pc_vga_init(input_port_0_r);
+	pc_vga_init(&vga_interface);
 }
 
 
@@ -117,7 +128,14 @@ DRIVER_INIT( ps2m30286 )
 	};
 	init_at_common(&at8042);
 	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
-	pc_vga_init(input_port_0_r);
+	pc_vga_init(&vga_interface);
+}
+
+
+
+static int at_irq_callback(int irqline)
+{
+	return pic8259_acknowledge(0);
 }
 
 
@@ -125,7 +143,7 @@ DRIVER_INIT( ps2m30286 )
 MACHINE_INIT( at )
 {
 	dma8237_reset();
-	pic8259_reset();
+	cpu_set_irq_callback(0, at_irq_callback);
 }
 
 
@@ -134,7 +152,7 @@ MACHINE_INIT( at_vga )
 {
 	pc_vga_reset();
 	dma8237_reset();
-	pic8259_reset();
+	cpu_set_irq_callback(0, at_irq_callback);
 }
 
 void at_cga_frame_interrupt (void)

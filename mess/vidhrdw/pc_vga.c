@@ -20,17 +20,16 @@
 #include "driver.h"
 
 #include "includes/crtc6845.h"
-#include "includes/pc_vga.h"
-#include "includes/pc_video.h"
+#include "vidhrdw/pc_vga.h"
+#include "vidhrdw/pc_video.h"
 #include "mscommon.h"
+#include "mess.h"
 
 /***************************************************************************
 
 	Static declarations
 
 ***************************************************************************/
-
-#define DBG_LOG(n,m,a)
 
 #ifdef MAME_DEBUG
 #define LOG(x)	logerror x
@@ -196,11 +195,11 @@ static PALETTE_INIT( vga )
 static UINT8 rotate_right[8][256];
 static UINT8 color_bitplane_to_packed[4/*plane*/][8/*pixel*/][256];
 
-static struct {
-	read8_handler read_dipswitch;
+static struct
+{
+	struct pc_vga_interface intf;
 
 	UINT8 *memory;
-	UINT8 *dirty;
 	UINT8 *fontdirty;
 	UINT16 pens[16]; /* the current 16 pens */
 
@@ -367,19 +366,14 @@ static int vga_get_crtc_sync_columns(void)
 
 INLINE WRITE8_HANDLER(vga_dirty_w)
 {
-	if (vga.memory[offset]!=data)
-	{
-		vga.memory[offset]=data;
-		vga.dirty[offset]=1;
-	}
+	vga.memory[offset] = data;
 }
 
 INLINE WRITE8_HANDLER(vga_dirty_font_w)
 {
-	if (vga.memory[offset]!=data)
+	if (vga.memory[offset] != data)
 	{
-		vga.memory[offset]=data;
-		vga.dirty[offset]=1;
+		vga.memory[offset] = data;
 		if ((offset&3)==2)
 			vga.fontdirty[offset>>7]=1;
 	}
@@ -510,6 +504,7 @@ static void vga_cpu_interface(void)
 	read8_handler read_handler;
 	write8_handler write_handler;
 	data8_t sel;
+	int buswidth;
 
 	if ((gc==vga.gc.data[6])&&(sequencer==vga.sequencer.data[4])) return;
 
@@ -520,36 +515,39 @@ static void vga_cpu_interface(void)
 	{
 		read_handler = vga_vga_r;
 		write_handler = vga_vga_w;
-		DBG_LOG(1,"vga memory",("vga\n"));
 	}
 	else if (vga.sequencer.data[4] & 4)
 	{
 		read_handler = vga_ega_r;
 		write_handler = vga_ega_w;
-		DBG_LOG(1,"vga memory",("ega\n"));
 	}
 	else
 	{
 		read_handler = vga_text_r;
 		write_handler = vga_text_w;
-		DBG_LOG(1,"vga memory",("text\n"));
 	}
 
-	sel = vga.gc.data[6] & 0x0c;
-	if (sel)
+	buswidth = cputype_databus_width(Machine->drv->cpu[0].cpu_type, ADDRESS_SPACE_PROGRAM);
+	switch(buswidth)
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,  0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? read_handler  : MRA8_NOP);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,  0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? read_handler  : MRA8_NOP);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,  0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? read_handler  : MRA8_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? write_handler : MWA8_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? write_handler : MWA8_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? write_handler : MWA8_NOP);
-	}
-	else
-	{
-		cpu_setbank(1, vga.memory);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,  0xa0000, 0xbffff, 0, 0, MRA8_BANK1 );
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xbffff, 0, 0, MWA8_BANK1 );
+		case 8:
+			sel = vga.gc.data[6] & 0x0c;
+			if (sel)
+			{
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,  0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? read_handler  : MRA8_NOP);
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,  0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? read_handler  : MRA8_NOP);
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,  0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? read_handler  : MRA8_NOP);
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? write_handler : MWA8_NOP);
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? write_handler : MWA8_NOP);
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? write_handler : MWA8_NOP);
+			}
+			else
+			{
+				cpu_setbank(1, vga.memory);
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,  0xa0000, 0xbffff, 0, 0, MRA8_BANK1 );
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xbffff, 0, 0, MWA8_BANK1 );
+			}
+			break;
 	}
 }
 
@@ -562,7 +560,6 @@ static  READ8_HANDLER(vga_crtc_r)
 	case 5:
 		if (vga.crtc.index<sizeof(vga.crtc.data))
 			data=vga.crtc.data[vga.crtc.index];
-		DBG_LOG(1,"vga crtc read",("%.2x %.2x\n",vga.crtc.index,data));
 		break;
 	case 0xa:
 		vga.attribute.state=0;
@@ -608,180 +605,175 @@ static  READ8_HANDLER(vga_crtc_r)
 			data|=(vga.attribute.data[0x11]&0xc0)>>2;
 			break;
 		}
-
-		/*DBG_LOG(1,"vga crtc 0x3[bd]a",("%.2x %.2x\n",offset,data)); */
 		break;
 	case 0xf:
 		/* oak test */
 		data=0;
 		/* pega bios on/off */
 		data=0x80;
-		DBG_LOG(1,"0x3[bd]0 read",("%.2x %.2x\n",offset,data));
 		break;
-	default:
-		DBG_LOG(1,"0x3[bd]0 read",("%.2x %.2x\n",offset,data));
 	}
 	return data;
 }
 
 static WRITE8_HANDLER(vga_crtc_w)
 {
-	switch (offset) {
-	case 0xa:
-		DBG_LOG(1,"vga feature control write",("%.2x %.2x\n",offset,data));
-		vga.feature_control=data;
-		break;
+	switch (offset)
+	{
+		case 0xa:
+			vga.feature_control=data;
+			break;
 
-	case 4:
-		vga.crtc.index = data;
-		break;
+		case 4:
+			vga.crtc.index = data;
+			break;
 
-	case 5:
-		DBG_LOG(1,"vga crtc write",("%.2x %.2x\n",vga.crtc.index,data));
-		if (vga.crtc.index<sizeof(vga.crtc.data))
-		{
-			switch (vga.crtc.index) {
-			case 0xa:case 0xb: case 0xe: case 0xf:
-				vga.dirty[CRTC6845_CURSOR_POS<<2]=1;
-				break;
-			}
-			vga.crtc.data[vga.crtc.index]=data;
-		}
-		break;
-
-	default:
-		DBG_LOG(1,"0x3[bd]0 write",("%.2x %.2x\n",offset,data));
-		break;
+		case 5:
+			if (vga.crtc.index < sizeof(vga.crtc.data))
+				vga.crtc.data[vga.crtc.index] = data;
+			break;
 	}
 }
 
- READ8_HANDLER( vga_port_03b0_r )
+
+
+READ8_HANDLER( vga_port_03b0_r )
 {
-	int data=0xff;
+	data8_t data = 0xff;
 	if (CRTC_PORT_ADDR==0x3b0)
 		data=vga_crtc_r(offset);
-	/*DBG_LOG(1,"vga 0x3b0 read",("%.2x %.2x\n", offset, data)); */
 	return data;
 }
 
- READ8_HANDLER( ega_port_03c0_r)
+
+
+READ8_HANDLER( ega_port_03c0_r)
 {
-	int data=0xff;
+	data8_t data = 0xff;
 	switch (offset) {
 	case 2: data=0xff;/*!*/break;
 	}
-	DBG_LOG(1,"ega 0x3c0 read",("%.2x %.2x\n", offset, data));
 	return data;
 }
 
- READ8_HANDLER( vga_port_03c0_r )
+READ8_HANDLER( vga_port_03c0_r )
 {
-	int data=0xff;
-	switch (offset) {
-	case 1:
-		if (vga.attribute.state==0) {
-			data=vga.attribute.index;
-			DBG_LOG(2,"vga attr index read",("%.2x %.2x\n",offset,data));
-		} else {
-			if ((vga.attribute.index&0x1f)<sizeof(vga.attribute.data))
-				data=vga.attribute.data[vga.attribute.index&0x1f];
-			DBG_LOG(1,"vga attr read",("%.2x %.2x\n",vga.attribute.index&0x1f,data));
-		}
-		break;
-	case 2:
-		data=0;
-		switch ((vga.miscellaneous_output>>2)&3) {
-		case 3:
-			if (vga.read_dipswitch(0)&1) data|=0x10;
-			break;
-		case 2:
-			if (vga.read_dipswitch(0)&2) data|=0x10;
-			break;
+	data8_t data = 0xff;
+
+	switch (offset)
+	{
 		case 1:
-			if (vga.read_dipswitch(0)&4) data|=0x10;
-			break;
-		case 0:
-			if (vga.read_dipswitch(0)&8) data|=0x10;
-			break;
-		}
-		DBG_LOG(1,"vga dipswitch read",("%.2x %.2x\n",offset,data));
-		break;
-	case 3: data=vga.oak.reg;break;
-	case 4:
-		data=vga.sequencer.index;
-		DBG_LOG(2,"vga sequencer index read",("%.2x %.2x\n",offset,data));
-		break;
-	case 5:
-		if (vga.sequencer.index<sizeof(vga.sequencer.data))
-			data=vga.sequencer.data[vga.sequencer.index];
-		DBG_LOG(1,"vga sequencer read",("%.2x %.2x\n",vga.sequencer.index,data));
-		break;
-	case 6:
-		data=vga.dac.mask;
-		DBG_LOG(3,"vga dac mask read",("%.2x %.2x\n",offset,data));
-		break;
-	case 7:
-		if (vga.dac.read) data=0;
-		else data=3;
-		DBG_LOG(3,"vga dac status read",("%.2x %.2x\n",offset,data));
-		break;
-	case 8:
-		data=vga.dac.write_index;
-		DBG_LOG(3,"vga dac writeindex read",("%.2x %.2x\n",offset,data));
-		break;
-	case 9:
-		if (vga.dac.read) {
-			switch (vga.dac.state++) {
-			case 0:
-				data=vga.dac.color[vga.dac.read_index].red;
-				DBG_LOG(3,"vga dac red read",("%.2x %.2x\n",offset,data));
-				break;
-			case 1:
-				data=vga.dac.color[vga.dac.read_index].green;
-				DBG_LOG(3,"vga dac green read",("%.2x %.2x\n",offset,data));
-				break;
-			case 2:
-				data=vga.dac.color[vga.dac.read_index].blue;
-				DBG_LOG(3,"vga dac blue read",("%.2x %.2x\n",offset,data));
-				break;
+			if (vga.attribute.state==0)
+			{
+				data = vga.attribute.index;
 			}
-			if (vga.dac.state==3) {
-				vga.dac.state=0; vga.dac.read_index++;
+			else
+			{
+				if ((vga.attribute.index&0x1f)<sizeof(vga.attribute.data))
+					data=vga.attribute.data[vga.attribute.index&0x1f];
 			}
-		} else {
-			DBG_LOG(1,"vga dac color read",("%.2x %.2x\n",offset,data));
-		}
-		break;
-	case 0xa:
-		data=vga.feature_control;
-		DBG_LOG(1,"vga feature control read",("%.2x %.2x\n",offset,data));
-		break;
-	case 0xc:
-		data=vga.miscellaneous_output;
-		DBG_LOG(1,"vga miscellaneous read",("%.2x %.2x\n",offset,data));
-		break;
-	case 0xe:
-		data=vga.gc.index;
-		DBG_LOG(2,"vga gc index read",("%.2x %.2x\n",offset,data));
-		break;
-	case 0xf:
-		if (vga.gc.index<sizeof(vga.gc.data)) {
-			data=vga.gc.data[vga.gc.index];
-		}
-		DBG_LOG(1,"vga gc read",("%.2x %.2x\n",vga.gc.index,data));
-		break;
-	default:
-		DBG_LOG(1,"03c0 read",("%.2x %.2x\n",offset,data));
+			break;
+
+		case 2:
+			data = 0;
+			switch ((vga.miscellaneous_output>>2)&3)
+			{
+				case 3:
+					if (vga.intf.read_dipswitch && vga.intf.read_dipswitch(0) & 0x01)
+						data |= 0x10;
+					break;
+				case 2:
+					if (vga.intf.read_dipswitch && vga.intf.read_dipswitch(0) & 0x02)
+						data |= 0x10;
+					break;
+				case 1:
+					if (vga.intf.read_dipswitch && vga.intf.read_dipswitch(0) & 0x04)
+						data |= 0x10;
+					break;
+				case 0:
+					if (vga.intf.read_dipswitch && vga.intf.read_dipswitch(0) & 0x08)
+						data |= 0x10;
+					break;
+			}
+			break;
+
+		case 3:
+			data = vga.oak.reg;
+			break;
+
+		case 4:
+			data = vga.sequencer.index;
+			break;
+
+		case 5:
+			if (vga.sequencer.index < sizeof(vga.sequencer.data))
+				data = vga.sequencer.data[vga.sequencer.index];
+			break;
+
+		case 6:
+			data = vga.dac.mask;
+			break;
+
+		case 7:
+			if (vga.dac.read)
+				data = 0;
+			else
+				data = 3;
+			break;
+
+		case 8:
+			data = vga.dac.write_index;
+			break;
+
+		case 9:
+			if (vga.dac.read)
+			{
+				switch (vga.dac.state++)
+				{
+					case 0:
+						data = vga.dac.color[vga.dac.read_index].red;
+						break;
+					case 1:
+						data = vga.dac.color[vga.dac.read_index].green;
+						break;
+					case 2:
+						data = vga.dac.color[vga.dac.read_index].blue;
+						break;
+				}
+
+				if (vga.dac.state==3)
+				{
+					vga.dac.state = 0;
+					vga.dac.read_index++;
+				}
+			}
+			break;
+
+		case 0xa:
+			data = vga.feature_control;
+			break;
+
+		case 0xc:
+			data = vga.miscellaneous_output;
+			break;
+
+		case 0xe:
+			data = vga.gc.index;
+			break;
+
+		case 0xf:
+			if (vga.gc.index < sizeof(vga.gc.data))
+				data = vga.gc.data[vga.gc.index];
+			break;
 	}
 	return data;
 }
 
- READ8_HANDLER(vga_port_03d0_r)
+READ8_HANDLER(vga_port_03d0_r)
 {
 	int data=0xff;
 	if (CRTC_PORT_ADDR==0x3d0)
 		data=vga_crtc_r(offset);
-	/*DBG_LOG(1,"vga 0x3d0 read",("%.2x %.2x\n", offset, data)); */
 	return data;
 }
 
@@ -799,64 +791,61 @@ WRITE8_HANDLER(vga_port_03c0_w)
 
 	switch (offset) {
 	case 0:
-		if (vga.attribute.state==0) {
+		if (vga.attribute.state==0)
+		{
 			vga.attribute.index=data;
-			DBG_LOG(2,"vga attr index write",("%.2x %.2x\n",offset,data));
-		} else {
+		}
+		else
+		{
 			if ((vga.attribute.index&0x1f)<sizeof(vga.attribute.data))
 				vga.attribute.data[vga.attribute.index&0x1f]=data;
-			DBG_LOG(1,"vga attr write",("%.2x %.2x\n",vga.attribute.index,data));
 		}
 		vga.attribute.state=!vga.attribute.state;
 		break;
 	case 2:
 		vga.miscellaneous_output=data;
-		DBG_LOG(1,"vga miscellaneous write",("%.2x %.2x\n",offset,data));
 		break;
 	case 3:
-		vga.oak.reg=data;
+		vga.oak.reg = data;
 		break;
 	case 4:
-		vga.sequencer.index=data;
-		DBG_LOG(2,"vga sequencer index write",("%.2x %.2x\n",offset,data));
+		vga.sequencer.index = data;
 		break;
 	case 5:
-		if (vga.sequencer.index<sizeof(vga.sequencer.data))
-			vga.sequencer.data[vga.sequencer.index]=data;
-		vga_cpu_interface();
-		if (vga.sequencer.index==0) vga.monitor.start_time=timer_get_time();
-		DBG_LOG(1,"vga sequencer write",("%.2x %.2x\n",vga.sequencer.index,data));
+		if (vga.sequencer.index < sizeof(vga.sequencer.data))
+		{
+			vga.sequencer.data[vga.sequencer.index] = data;
+			vga_cpu_interface();
+	
+			if (vga.sequencer.index == 0)
+				vga.monitor.start_time = timer_get_time();
+		}
 		break;
 	case 6:
 		vga.dac.mask=data;
-		DBG_LOG(3,"vga dac mask write",("%.2x %.2x\n",offset,data));
 		break;
 	case 7:
 		vga.dac.read_index=data;
 		vga.dac.state=0;
 		vga.dac.read=1;
-		DBG_LOG(3,"vga dac readindex write",("%.2x %.2x\n",offset,data));
 		break;
 	case 8:
 		vga.dac.write_index=data;
 		vga.dac.state=0;
 		vga.dac.read=0;
-		DBG_LOG(3,"vga dac writeindex write",("%.2x %.2x\n",offset,data));
 		break;
 	case 9:
-		if (!vga.dac.read) {
+		if (!vga.dac.read)
+		{
 			switch (vga.dac.state++) {
 			case 0:
 				vga.dac.color[vga.dac.write_index].red=data;
-				DBG_LOG(3,"vga dac red write",("%.2x %.2x\n",offset,data));
 				break;
 			case 1:
 				vga.dac.color[vga.dac.write_index].green=data;
-				DBG_LOG(3,"vga dac green write",("%.2x %.2x\n",offset,data));
 				break;
 			case 2:
 				vga.dac.color[vga.dac.write_index].blue=data;
-				DBG_LOG(3,"vga dac blue write",("%.2x %.2x\n",offset,data));
 				break;
 			}
 			vga.dac.dirty=1;
@@ -875,24 +864,22 @@ WRITE8_HANDLER(vga_port_03c0_w)
 				}
 #endif
 			}
-		} else {
-			DBG_LOG(1,"vga dac color write",("%.2x %.2x\n",offset,data));
 		}
 		break;
 	case 0xe:
 		vga.gc.index=data;
-		DBG_LOG(2,"vga gc index write",("%.2x %.2x\n",offset,data));
 		break;
 	case 0xf:
 		if (vga.gc.index<sizeof(vga.gc.data))
+		{
 			vga.gc.data[vga.gc.index]=data;
-		vga_cpu_interface();
-		DBG_LOG(1,"vga gc data write",("%.2x %.2x\n",vga.gc.index,data));
+			vga_cpu_interface();
+		}
 		break;
-	default:
-		DBG_LOG(1,"vga write",("%.3x %.2x\n",0x3c0+offset,data));
 	}
 }
+
+
 
 WRITE8_HANDLER(vga_port_03d0_w)
 {
@@ -902,44 +889,61 @@ WRITE8_HANDLER(vga_port_03d0_w)
 		vga_crtc_w(offset,data);
 }
 
- READ8_HANDLER( paradise_ega_03c0_r )
+
+
+READ8_HANDLER( paradise_ega_03c0_r )
 {
-	int data=vga_port_03c0_r(offset);
-	if (offset==2) {
+	data8_t data = vga_port_03c0_r(offset);
+
+	if (offset == 2)
+	{
 		if ( (vga.feature_control&3)==2 ) {
-			data=(data&~0x60)|((vga.read_dipswitch(0)&0xc0)>>1);
+			data=(data&~0x60)|((vga.intf.read_dipswitch(0)&0xc0)>>1);
 		} else if ((vga.feature_control&3)==1 ) {
-			data=(data&~0x60)|((vga.read_dipswitch(0)&0x30)<<1);
+			data=(data&~0x60)|((vga.intf.read_dipswitch(0)&0x30)<<1);
 		}
 	}
 	return data;
 }
 
+
+
 void pc_vga_reset(void)
 {
-	UINT8 *memory=vga.memory, *dirty=vga.dirty, *fontdirty=vga.fontdirty;
-
-    read8_handler read_dipswitch=vga.read_dipswitch;
+	UINT8 *memory = vga.memory;
+	UINT8 *fontdirty = vga.fontdirty;
+	struct pc_vga_interface intf = vga.intf;
 
 	memset(&vga,0, sizeof(vga));
 
-	vga.memory=memory;
-	vga.dirty=dirty;
-	vga.fontdirty=fontdirty;
+	vga.memory = memory;
+	vga.fontdirty = fontdirty;
+	vga.intf = intf;
 
-	vga.read_dipswitch=read_dipswitch;
-	vga.log=0;
-	vga.gc.data[6]=0xc; /* prevent xtbios excepting vga ram as system ram */
+	vga.log = 0;
+	vga.gc.data[6] = 0xc; /* prevent xtbios excepting vga ram as system ram */
 /* amstrad pc1640 bios relies on the position of
    the video memory area,
    so I introduced the reset to switch to b8000 area */
-	vga.sequencer.data[4]=0;
+	vga.sequencer.data[4] = 0;
 	vga_cpu_interface();
 }
 
-void pc_vga_init(read8_handler read_dipswitch)
+
+
+static READ64_HANDLER( vga_port64be_03b0_r ) { return read64be_with_read8_handler(vga_port_03b0_r, offset, mem_mask); }
+static READ64_HANDLER( vga_port64be_03c0_r ) { return read64be_with_read8_handler(vga_port_03c0_r, offset, mem_mask); }
+static READ64_HANDLER( vga_port64be_03d0_r ) { return read64be_with_read8_handler(vga_port_03d0_r, offset, mem_mask); }
+
+static WRITE64_HANDLER( vga_port64be_03b0_w ) { write64be_with_write8_handler(vga_port_03b0_w, offset, data, mem_mask); }
+static WRITE64_HANDLER( vga_port64be_03c0_w ) { write64be_with_write8_handler(vga_port_03c0_w, offset, data, mem_mask); }
+static WRITE64_HANDLER( vga_port64be_03d0_w ) { write64be_with_write8_handler(vga_port_03d0_w, offset, data, mem_mask); }
+
+
+
+void pc_vga_init(const struct pc_vga_interface *intf)
 {
-	int i, j, k, mask;
+	int i, j, k, mask, buswidth;
 
 	memset(&vga, 0, sizeof(vga));
 
@@ -961,28 +965,38 @@ void pc_vga_init(read8_handler read_dipswitch)
 		}
 	}
 
-	vga.read_dipswitch = read_dipswitch;
+	vga.intf = *intf;
 	vga.memory =	(UINT8*) auto_malloc(0x40000);
-	vga.dirty =		(UINT8*) auto_malloc(0x40000);
 	vga.fontdirty =	(UINT8*) auto_malloc(0x800);
+	memset(vga.memory, '\0', 0x40000);
+	memset(vga.fontdirty, '\0', 0x800);
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xaffff, 0, 0, MRA8_BANK1 );
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb7fff, 0, 0, MRA8_BANK2 );
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, MRA8_BANK3 );
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc0000, 0xc7fff, 0, 0, MRA8_ROM );
+	buswidth = cputype_databus_width(Machine->drv->cpu[0].cpu_type, ADDRESS_SPACE_PROGRAM);
+	switch(buswidth)
+	{
+		case 8:
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc0000, 0xc7fff, 0, 0, MRA8_ROM );
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc0000, 0xc7fff, 0, 0, MWA8_ROM );
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xaffff, 0, 0, MWA8_BANK1 );
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb7fff, 0, 0, MWA8_BANK2 );
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, MWA8_BANK3 );
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc0000, 0xc7fff, 0, 0, MWA8_ROM );
+			memory_install_read8_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3b0, vga.intf.port_offset + 0x3bf, 0, 0, vga_port_03b0_r );
+			memory_install_read8_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3c0, vga.intf.port_offset + 0x3cf, 0, 0, vga_port_03c0_r );
+			memory_install_read8_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3d0, vga.intf.port_offset + 0x3df, 0, 0, vga_port_03d0_r );
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, 0, vga_port_03b0_r );
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3c0, 0x3cf, 0, 0, vga_port_03c0_r );
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, vga_port_03d0_r );
+			memory_install_write8_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3b0, vga.intf.port_offset + 0x3bf, 0, 0, vga_port_03b0_w );
+			memory_install_write8_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3c0, vga.intf.port_offset + 0x3cf, 0, 0, vga_port_03c0_w );
+			memory_install_write8_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3d0, vga.intf.port_offset + 0x3df, 0, 0, vga_port_03d0_w );
+			break;
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, 0, vga_port_03b0_w );
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3c0, 0x3cf, 0, 0, vga_port_03c0_w );
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, vga_port_03d0_w );
+		case 64:
+			memory_install_read64_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3b0, vga.intf.port_offset + 0x3bf, 0, 0, vga_port64be_03b0_r );
+			memory_install_read64_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3c0, vga.intf.port_offset + 0x3cf, 0, 0, vga_port64be_03c0_r );
+			memory_install_read64_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3d0, vga.intf.port_offset + 0x3df, 0, 0, vga_port64be_03d0_r );
+
+			memory_install_write64_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3b0, vga.intf.port_offset + 0x3bf, 0, 0, vga_port64be_03b0_w );
+			memory_install_write64_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3c0, vga.intf.port_offset + 0x3cf, 0, 0, vga_port64be_03c0_w );
+			memory_install_write64_handler(0, vga.intf.port_addressspace, vga.intf.port_offset + 0x3d0, vga.intf.port_offset + 0x3df, 0, 0, vga_port64be_03d0_w );
+			break;
+	}		
 
 	pc_vga_reset();
 }
@@ -1136,27 +1150,21 @@ static void vga_vh_vga(struct mame_bitmap *bitmap, struct crtc6845 *crtc)
 	int pos, line, column, c, addr;
 	UINT16 *bitmapline;
 
-	for (addr=VGA_START_ADDRESS, line=0; line<LINES; line++, addr+=VGA_LINE_LENGTH)
+	for (addr = VGA_START_ADDRESS, line=0; line<LINES; line++, addr+=VGA_LINE_LENGTH)
 	{
 		bitmapline = (UINT16 *) bitmap->line[line];
+		addr %= 0x40000;
+
 		for (pos=addr, c=0, column=0; column<VGA_COLUMNS; column++, c+=8, pos+=0x20)
 		{
-			//if (*(UINT32*)(vga.dirty+pos))
-			{
-				bitmapline[c+0] = vga.memory[pos+0];
-				bitmapline[c+1] = vga.memory[pos+1];
-				bitmapline[c+2] = vga.memory[pos+2];
-				bitmapline[c+3] = vga.memory[pos+3];
-				//*(UINT32*)(vga.dirty+pos)=0;
-			}
-			//if (*(UINT32*)(vga.dirty+pos+0x10))
-			{
-				bitmapline[c+4] = vga.memory[pos+0x10];
-				bitmapline[c+5] = vga.memory[pos+0x11];
-				bitmapline[c+6] = vga.memory[pos+0x12];
-				bitmapline[c+7] = vga.memory[pos+0x13];
-				//*(UINT32*)(vga.dirty+pos+0x10)=0;
-			}
+			bitmapline[c+0] = vga.memory[pos+0];
+			bitmapline[c+1] = vga.memory[pos+1];
+			bitmapline[c+2] = vga.memory[pos+2];
+			bitmapline[c+3] = vga.memory[pos+3];
+			bitmapline[c+4] = vga.memory[pos+0x10];
+			bitmapline[c+5] = vga.memory[pos+0x11];
+			bitmapline[c+6] = vga.memory[pos+0x12];
+			bitmapline[c+7] = vga.memory[pos+0x13];
 		}
 	}
 }

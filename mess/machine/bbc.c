@@ -16,7 +16,7 @@
 #include "includes/bbc.h"
 #include "includes/upd7002.h"
 #include "includes/i8271.h"
-#include "includes/mc146818.h"
+#include "machine/mc146818.h"
 #include "machine/mc6850.h"
 #include "devices/basicdsk.h"
 #include "devices/cassette.h"
@@ -2129,7 +2129,7 @@ MACHINE_INIT( bbcb )
 		break;
 	}
 
-	tms5220_reset_chip(sndti_token(SOUND_TMS5220, 0));
+	sndti_reset(SOUND_TMS5220, 0);
 }
 
 

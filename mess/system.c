@@ -236,40 +236,28 @@ TESTDRIVER( nc200 )		/* 19?? NC200										*/
  * CPU Model			 Month			 Year
  * -------------		 -----			 ----
  *
- * Apple I				 July			 1976
- * Apple II 			 April			 1977
- * Apple II Plus		 June			 1979
- * Apple III			 May			 1980
- * Apple IIe			 January		 1983
  * Apple III Plus		 December		 1983
- * Apple IIe Enhanced	 March			 1985
- * Apple IIc			 April			 1984
- * Apple IIc ROM 0		 ?				 1985
- * Apple IIc ROM 3		 September		 1986
  * Apple IIgs			 September		 1986
- * Apple IIe Platinum	 January		 1987
- * Apple IIgs ROM 01	 September		 1987
  * Apple IIc ROM 4		 ?				 198?
- * Apple IIc Plus		 September		 1988
- * Apple IIgs ROM 3 	 August 		 1989
  */
 	DRIVER( apple1 )	/* 1976 Apple 1 									*/
 	DRIVER( apple2 )	/* 1977 Apple ][ 									*/
 	DRIVER( apple2p )	/* 1979 Apple ][+ 									*/
+	DRIVER( apple2e )	/* 1983 Apple //e									*/
+	DRIVER( apple2ee )	/* 1985 Apple //e Enhanced							*/
+	DRIVER( apple2ep )	/* 1987 Apple //e Platinum							*/
 	DRIVER( apple2c )	/* 1984 Apple //c									*/
 	DRIVER( apple2c0 )	/* 1986 Apple //c (3.5 ROM) 						*/
 	DRIVER( apple2c3 )	/* 1986 Apple //c (Original Mem. Exp.)				*/
 	DRIVER( apple2cp )	/* 1988 Apple //c+									*/
-	DRIVER( apple2e )	/* 1983 Apple //e									*/
-	DRIVER( apple2ee )	/* 1985 Apple //e Enhanced							*/
-	DRIVER( apple2ep )	/* 1987 Apple //e Platinum							*/
+TESTDRIVER( apple2g0 )  /* 1986 Apple IIgs ROM00							*/
 	DRIVER( apple2g1 )	/* 1987 Apple IIgs ROM01							*/
 	DRIVER( apple2gs )	/* 1989 Apple IIgs ROM03							*/
-	DRIVER( ace100 )    /* 1982 Apple ][ clone								*/
-	DRIVER( laser128 )  /* 1987 Apple //c clone								*/
-	DRIVER( las128ex )  /* 1987 Apple //c clone								*/
-	DRIVER( las3000 )   /* 1983 (semi) Apple ][+ clone						*/
 	DRIVER( apple3 )    /* 1980 Apple ///     								*/
+	DRIVER( ace100 )    /* 1982 Franklin Ace 100							*/
+	DRIVER( laser128 )  /* 1987 Laser 128									*/
+	DRIVER( las128ex )  /* 1987 Laser 128 EX								*/
+TESTDRIVER( las3000 )   /* 1983 Laser 3000									*/
 
 /*
  * Lisa 				 January			 1983
@@ -483,6 +471,12 @@ TESTDRIVER( trs80pc3 )	/* Tandy TRS80 PC-3									*/
 	DRIVER( mz700 ) 	/* 1982 Sharp MZ700 								*/
 	DRIVER( mz700j )	/* 1982 Sharp MZ700 Japan							*/
 TESTDRIVER( mz800  )	/* 1982 Sharp MZ800 								*/
+
+	/* SILICON GRAPHICS */
+	DRIVER( ip204415 )	/* IP20 Indigo2 */
+	DRIVER( ip225015 )
+	DRIVER( ip224613 )
+	DRIVER( ip244415 )
 
 	/* TEXAS INSTRUMENTS */
 	DRIVER( ti990_10 )	/* 1975 TI 990/10									*/
@@ -753,8 +747,10 @@ TESTDRIVER( mekd2 )		/* 1977 Motorola Evaluation Kit						*/
 
 	/* Microkey */
 	DRIVER( primoa32 )	/* Primo A-32											*/
-TESTDRIVER( primoa48 )		/* Primo A-48											*/
+	DRIVER( primoa48 )	/* Primo A-48											*/
 	DRIVER( primoa64 )	/* Primo A-64											*/
+TESTDRIVER( primob32 )		/* Primo B-32											*/
+TESTDRIVER( primob48 )		/* Primo B-48											*/
 	DRIVER( primob64 )	/* Primo B-64											*/
 
 	/* Team Concepts */
@@ -814,10 +810,6 @@ TESTDRIVER( hp48g ) 	/* HP48 G/GX										*/
 	DRIVER( abc800m )
 	DRIVER( abc800c )
 	DRIVER( abc806 )
-
-	/* SGI */
-	DRIVER( ip204415 )	/* IP20 IRIS Indigo workstation                     */
-	DRIVER( ip225015 )	/* IP22 Indy workstation                            */
 
 /****************Games*******************************************************/
 	/* Computer Electronic */

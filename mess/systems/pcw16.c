@@ -95,12 +95,12 @@
 // PC-AT keyboard
 #include "includes/pckeybrd.h"
 // change to superio later
-#include "includes/pc_fdc_h.h"
+#include "machine/pc_fdc.h"
 // for pc disk images
 #include "devices/mflopimg.h"
 #include "formats/pc_dsk.h"
 // for pc com port
-#include "includes/uart8250.h"
+#include "machine/uart8250.h"
 // for pc serial mouse
 #include "includes/pc_mouse.h"
 // pcw/pcw16 beeper
@@ -1200,7 +1200,7 @@ static void	pcw16_fdc_interrupt(int state)
 	pcw16_trigger_fdc_int();
 }
 
-pc_fdc_hw_interface pcw16_fdc_interface=
+static const struct pc_fdc_interface pcw16_fdc_interface=
 {
 	pcw16_fdc_interrupt,
 	NULL

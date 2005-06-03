@@ -4,7 +4,7 @@
 
 **********************************************************************/
 
-#include "includes/pic8259.h"
+#include "machine/pic8259.h"
 
 /* NPW 22-Nov-2002 - fun with Microsoft... */
 #ifdef x86
@@ -26,6 +26,7 @@
 struct pic8259
 {
 	mame_timer *timer;
+	void (*set_int_line)(int interrupt);
 
 	UINT8 enable;
 	UINT8 in_service;
@@ -56,13 +57,8 @@ static struct pic8259 *pic;
 static void pic8259_timerproc(int which);
 
 
-static int irq_callback(int irqline)
+int pic8259_acknowledge(int which)
 {
-	/* The only IRQ line the 8259 uses is line 0, so ignore	the	argument */
-
-	/* Todo: what about ACKs on the	other PICs? */
-	int which =	0;
-
 	struct pic8259 *p = &pic[which];
 	UINT8 mask;
 	int irq;
@@ -82,26 +78,20 @@ static int irq_callback(int irqline)
 			return irq + p->base;
 		}
 	}
-	assert(0);
 	return 0;
 }
 
-void pic8259_reset(void)
-{
-	/* MESS	doesn't currently support any machines which have an 8259 and
-	   multiple	CPUs. When it does,	this will need to be changed. */
-	cpu_set_irq_callback(0,	irq_callback);
-}
+
 
 /* initializer */
-int pic8259_init(int count)
+int pic8259_init(int count, void (*set_int_line)(int interrupt))
 {
 	int i;
 
+	/* allocate pic structures */
 	pic = auto_malloc(count * sizeof(struct pic8259));
 	if (!pic)
 		return 1;
-
 	memset(pic, 0, count * sizeof(struct pic8259));
 
 	for (i = 0; i < count; i++)
@@ -109,6 +99,7 @@ int pic8259_init(int count)
 		pic[i].timer = mame_timer_alloc(pic8259_timerproc);
 		if (!pic[i].timer)
 			return 1;
+		pic[i].set_int_line = set_int_line;
 	}
 
 	return 0;
@@ -139,12 +130,13 @@ static void pic8259_timerproc(int which)
 		if ((p->pending & mask) && !(p->enable & mask))
 		{
 			LOG(("pic8259_timerproc(): PIC #%d triggering IRQ #%d\n", which, irq));
-
-			cpunum_set_input_line(0, 0, HOLD_LINE);
+			if (p->set_int_line)
+				p->set_int_line(1);
 			return;
 		}
 	}
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	if (p->set_int_line)
+		p->set_int_line(0);
 }
 
 
@@ -371,11 +363,15 @@ READ8_HANDLER ( pic8259_1_r )	{ return pic8259_read(1, offset); }
 WRITE8_HANDLER ( pic8259_0_w )	{ pic8259_write(0, offset, data); }
 WRITE8_HANDLER ( pic8259_1_w )	{ pic8259_write(1, offset, data); }
 
-READ32_HANDLER ( pic8259_32_0_r ) { return read32_with_read8_handler(pic8259_0_r, offset, mem_mask); }
-READ32_HANDLER ( pic8259_32_1_r ) { return read32_with_read8_handler(pic8259_1_r, offset, mem_mask); }
-WRITE32_HANDLER ( pic8259_32_0_w ) { write32_with_write8_handler(pic8259_0_w, offset, data, mem_mask); }
-WRITE32_HANDLER ( pic8259_32_1_w ) { write32_with_write8_handler(pic8259_1_w, offset, data, mem_mask); }
+READ32_HANDLER ( pic8259_32le_0_r ) { return read32le_with_read8_handler(pic8259_0_r, offset, mem_mask); }
+READ32_HANDLER ( pic8259_32le_1_r ) { return read32le_with_read8_handler(pic8259_1_r, offset, mem_mask); }
+WRITE32_HANDLER ( pic8259_32le_0_w ) { write32le_with_write8_handler(pic8259_0_w, offset, data, mem_mask); }
+WRITE32_HANDLER ( pic8259_32le_1_w ) { write32le_with_write8_handler(pic8259_1_w, offset, data, mem_mask); }
 
+READ64_HANDLER ( pic8259_64be_0_r ) { return read64be_with_read8_handler(pic8259_0_r, offset, mem_mask); }
+READ64_HANDLER ( pic8259_64be_1_r ) { return read64be_with_read8_handler(pic8259_1_r, offset, mem_mask); }
+WRITE64_HANDLER ( pic8259_64be_0_w ) { write64be_with_write8_handler(pic8259_0_w, offset, data, mem_mask); }
+WRITE64_HANDLER ( pic8259_64be_1_w ) { write64be_with_write8_handler(pic8259_1_w, offset, data, mem_mask); }
 
 
 /* ----------------------------------------------------------------------- */

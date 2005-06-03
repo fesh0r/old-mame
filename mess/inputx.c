@@ -491,14 +491,17 @@ int inputx_validitycheck(const struct GameDriver *gamedrv)
 					port_count++;
 			}
 
-			for (i = 0; i < NUM_CODES; i++)
+			if (port_count > 0)
 			{
-				for (j = 0; j < NUM_SIMUL_KEYS; j++)
+				for (i = 0; i < NUM_CODES; i++)
 				{
-					if (codes[i].port[j] >= port_count)
+					for (j = 0; j < NUM_SIMUL_KEYS; j++)
 					{
-						printf("%s: invalid inputx translation for code %i port %i\n", gamedrv->name, i, j);
-						error = 1;
+						if (codes[i].port[j] >= port_count)
+						{
+							printf("%s: invalid inputx translation for code %i port %i\n", gamedrv->name, i, j);
+							error = 1;
+						}
 					}
 				}
 			}
@@ -877,7 +880,11 @@ void inputx_handle_mess_extensions(struct InputPort *ipt)
 			}
 
 			rtrim(buf);
-			ipt->name = auto_strdup(buf);
+
+			if (buf[0])
+				ipt->name = auto_strdup(buf);
+			else
+				ipt->name = "Unnamed Key";
 		}
 		ipt++;
 	}

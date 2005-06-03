@@ -23,20 +23,20 @@
 #include <assert.h>
 #include "driver.h"
 #include "machine/8255ppi.h"
+#include "machine/uart8250.h"
+#include "machine/mc146818.h"
+#include "machine/pic8259.h"
 #include "vidhrdw/generic.h"
 
-#include "includes/pic8259.h"
 #include "includes/pit8253.h"
-#include "includes/mc146818.h"
-#include "includes/uart8250.h"
-#include "includes/pc_vga.h"
-#include "includes/pc_cga.h"
-#include "includes/pc_mda.h"
-#include "includes/pc_aga.h"
+#include "vidhrdw/pc_vga.h"
+#include "vidhrdw/pc_cga.h"
+#include "vidhrdw/pc_mda.h"
+#include "vidhrdw/pc_aga.h"
 
 #include "includes/pc_mouse.h"
 #include "includes/pckeybrd.h"
-#include "includes/pc_fdc_h.h"
+#include "machine/pc_fdc.h"
 
 #include "includes/pclpt.h"
 #include "includes/centroni.h"
@@ -314,14 +314,14 @@ WRITE8_HANDLER(at_page8_w)
 
 READ32_HANDLER(at_page32_r)
 {
-	return read32_with_read8_handler(at_page8_r, offset, mem_mask);
+	return read32le_with_read8_handler(at_page8_r, offset, mem_mask);
 }
 
 
 
 WRITE32_HANDLER(at_page32_w)
 {
-	write32_with_write8_handler(at_page8_w, offset, data, mem_mask);
+	write32le_with_write8_handler(at_page8_w, offset, data, mem_mask);
 }
 
 
@@ -361,6 +361,41 @@ static struct dma8237_interface pc_dma =
 
 /* ----------------------------------------------------------------------- */
 
+static void pc_fdc_interrupt(int state)
+{
+	if (state)
+	{
+		/* issue IRQ */
+		pic8259_0_issue_irq(6);
+	}
+}
+
+
+
+static void pc_fdc_dma_drq(int state, int read_)
+{
+	dma8237_drq_write(0, FDC_DMA, state);
+}
+
+
+
+static const struct pc_fdc_interface fdc_interface =
+{
+	pc_fdc_interrupt,
+	pc_fdc_dma_drq,
+};
+
+
+
+/* ----------------------------------------------------------------------- */
+
+static void pc_pic_set_int_line(int interrupt)
+{
+	cpunum_set_input_line(0, 0, interrupt ? HOLD_LINE : CLEAR_LINE);
+}
+
+
+
 void init_pc_common(UINT32 flags)
 {
 	/* MESS managed RAM */
@@ -374,7 +409,7 @@ void init_pc_common(UINT32 flags)
 		pit8253_init(1, &pc_pit8253_config);
 
 	/* FDC/HDC hardware */
-	pc_fdc_setup();
+	pc_fdc_init(&fdc_interface);
 	pc_hdc_setup();
 
 	/* com hardware */
@@ -412,7 +447,7 @@ void init_pc_common(UINT32 flags)
 	at_keyboard_set_input_port_base(4);
 
 	/* PIC */
-	pic8259_init(2);
+	pic8259_init(2, pc_pic_set_int_line);
 
 	/* DMA */
 	if (flags & PCCOMMON_DMA8237_AT)
@@ -492,14 +527,14 @@ WRITE8_HANDLER(pc_COM2_w) { uart8250_w(1, offset, data); }
 WRITE8_HANDLER(pc_COM3_w) { uart8250_w(2, offset, data); }
 WRITE8_HANDLER(pc_COM4_w) { uart8250_w(3, offset, data); }
 
-READ32_HANDLER(pc32_COM1_r)  { return read32_with_read8_handler(pc_COM1_r, offset, mem_mask); }
-READ32_HANDLER(pc32_COM2_r)  { return read32_with_read8_handler(pc_COM2_r, offset, mem_mask); }
-READ32_HANDLER(pc32_COM3_r)  { return read32_with_read8_handler(pc_COM3_r, offset, mem_mask); }
-READ32_HANDLER(pc32_COM4_r)  { return read32_with_read8_handler(pc_COM4_r, offset, mem_mask); }
-WRITE32_HANDLER(pc32_COM1_w) { write32_with_write8_handler(pc_COM1_w, offset, data, mem_mask); }
-WRITE32_HANDLER(pc32_COM2_w) { write32_with_write8_handler(pc_COM2_w, offset, data, mem_mask); }
-WRITE32_HANDLER(pc32_COM3_w) { write32_with_write8_handler(pc_COM3_w, offset, data, mem_mask); }
-WRITE32_HANDLER(pc32_COM4_w) { write32_with_write8_handler(pc_COM4_w, offset, data, mem_mask); }
+READ32_HANDLER(pc32_COM1_r)  { return read32le_with_read8_handler(pc_COM1_r, offset, mem_mask); }
+READ32_HANDLER(pc32_COM2_r)  { return read32le_with_read8_handler(pc_COM2_r, offset, mem_mask); }
+READ32_HANDLER(pc32_COM3_r)  { return read32le_with_read8_handler(pc_COM3_r, offset, mem_mask); }
+READ32_HANDLER(pc32_COM4_r)  { return read32le_with_read8_handler(pc_COM4_r, offset, mem_mask); }
+WRITE32_HANDLER(pc32_COM1_w) { write32le_with_write8_handler(pc_COM1_w, offset, data, mem_mask); }
+WRITE32_HANDLER(pc32_COM2_w) { write32le_with_write8_handler(pc_COM2_w, offset, data, mem_mask); }
+WRITE32_HANDLER(pc32_COM3_w) { write32le_with_write8_handler(pc_COM3_w, offset, data, mem_mask); }
+WRITE32_HANDLER(pc32_COM4_w) { write32le_with_write8_handler(pc_COM4_w, offset, data, mem_mask); }
 
 
 

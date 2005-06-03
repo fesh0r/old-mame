@@ -178,7 +178,7 @@
 #include "includes/pckeybrd.h"
 #include "includes/ibmat.h"
 #include "includes/pit8253.h"
-#include "includes/pic8259.h"
+#include "machine/pic8259.h"
 #include "includes/pcshare.h"
 
 
@@ -601,12 +601,12 @@ WRITE8_HANDLER(at_8042_8_w)
 
 READ32_HANDLER(at_8042_32_r)
 {
-	return read32_with_read8_handler(at_8042_8_r, offset, mem_mask);
+	return read32le_with_read8_handler(at_8042_8_r, offset, mem_mask);
 }
 
 
 
 WRITE32_HANDLER( at_8042_32_w )
 {
-	write32_with_write8_handler(at_8042_8_w, offset, data, mem_mask);
+	write32le_with_write8_handler(at_8042_8_w, offset, data, mem_mask);
 }

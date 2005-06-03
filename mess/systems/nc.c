@@ -93,10 +93,10 @@
 
  ******************************************************************************/
 #include "driver.h"
+#include "machine/mc146818.h"	/* for NC200 real time clock */
 #include "includes/nc.h"
 #include "includes/tc8521.h"	/* for NC100 real time clock */
 #include "includes/msm8251.h"	/* for NC100 uart */
-#include "includes/mc146818.h"	/* for NC200 real time clock */
 #include "includes/nec765.h"	/* for NC200 disk drive interface */
 #include "devices/mflopimg.h"	/* for NC200 disk image */
 #include "formats/pc_dsk.h"		/* for NC200 disk image */
@@ -122,7 +122,7 @@ UINT8 nc_type;
 
 static char nc_memory_config[4];
 unsigned long nc_display_memory_start;
-static void *nc_keyboard_timer = NULL;
+static mame_timer *nc_keyboard_timer = NULL;
 
 static int nc_membank_rom_mask;
 static int nc_membank_internal_ram_mask;
@@ -1084,6 +1084,7 @@ static WRITE8_HANDLER(nc100_memory_card_wait_state_w)
 
 
 static ADDRESS_MAP_START(nc100_io, ADDRESS_SPACE_IO, 8)
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
 	AM_RANGE(0x00, 0x0f) AM_WRITE(nc100_display_memory_start_w)
 	AM_RANGE(0x10, 0x13) AM_READWRITE(nc_memory_management_r, nc_memory_management_w)
@@ -1139,7 +1140,7 @@ INPUT_PORTS_START(nc100)
 	/* 3 */
 	PORT_START
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3") PORT_CODE(KEYCODE_3)
-	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2 \" ") PORT_CODE(KEYCODE_2)
+	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2 \"") PORT_CODE(KEYCODE_2)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Q") PORT_CODE(KEYCODE_Q)
 	PORT_BIT(0x008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("W") PORT_CODE(KEYCODE_W)
 	PORT_BIT(0x010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E)
@@ -1179,7 +1180,7 @@ INPUT_PORTS_START(nc100)
 	/* 7 */
 	PORT_START
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("+ =") PORT_CODE(KEYCODE_EQUALS)
-	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("7 & ") PORT_CODE(KEYCODE_7)
+	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("7 &") PORT_CODE(KEYCODE_7)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("/ |") PORT_CODE(KEYCODE_BACKSLASH)
 	PORT_BIT(0x008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("UP") PORT_CODE(KEYCODE_UP)
 	PORT_BIT(0x010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("MENU") PORT_CODE(KEYCODE_PGUP)
@@ -1544,6 +1545,7 @@ static WRITE8_HANDLER(nc200_poweroff_control_w)
 }
 
 static ADDRESS_MAP_START(nc200_io, ADDRESS_SPACE_IO, 8)
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x0f) AM_WRITE(nc100_display_memory_start_w)
 	AM_RANGE(0x10, 0x13) AM_READWRITE(nc_memory_management_r, nc_memory_management_w)
 	AM_RANGE(0x20, 0x20) AM_WRITE(nc200_memory_card_wait_state_w)

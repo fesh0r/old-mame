@@ -52,8 +52,8 @@
 #include "state.h"
 
 #include "includes/crtc6845.h"
-#include "includes/pc_cga.h"
-#include "includes/pc_video.h"
+#include "vidhrdw/pc_cga.h"
+#include "vidhrdw/pc_video.h"
 #include "mscommon.h"
 
 #define VERBOSE_CGA 0		/* CGA (Color Graphics Adapter) */
@@ -502,14 +502,14 @@ WRITE8_HANDLER( pc_cga8_w )
 
 READ32_HANDLER( pc_cga32_r )
 {
-	return read32_with_read8_handler(pc_cga8_r, offset, mem_mask);
+	return read32le_with_read8_handler(pc_cga8_r, offset, mem_mask);
 }
 
 
 
 WRITE32_HANDLER( pc_cga32_w )
 {
-	write32_with_write8_handler(pc_cga8_w, offset, data, mem_mask);
+	write32le_with_write8_handler(pc_cga8_w, offset, data, mem_mask);
 }
 
 
