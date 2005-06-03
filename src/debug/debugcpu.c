@@ -70,6 +70,7 @@ static int break_on_interrupt_cpunum;
 static int break_on_interrupt_irqline;
 
 static struct debug_cpu_info debug_cpuinfo[MAX_CPU];
+static struct symbol_table *global_symtable;
 
 static UINT64 tempvar[NUM_TEMP_VARIABLES];
 
@@ -240,18 +241,22 @@ void debug_cpu_init(void)
 	step_overout_cpunum = 0;
 	key_check_counter = 0;
 
+	/* create a global symbol table */
+	global_symtable = debug_symtable_alloc();
+	debug_expression_set_global_symtable(global_symtable);
+
 	/* add "wpaddr", "wpdata", "cycles", "cpunum" to the global symbol table */
-	debug_symtable_add_register(GLOBAL_SYMBOL_TABLE, "wpaddr", 0, get_wpaddr, NULL);
-	debug_symtable_add_register(GLOBAL_SYMBOL_TABLE, "wpdata", 0, get_wpdata, NULL);
-	debug_symtable_add_register(GLOBAL_SYMBOL_TABLE, "cycles", 0, get_cycles, NULL);
-	debug_symtable_add_register(GLOBAL_SYMBOL_TABLE, "cpunum", 0, get_cpunum, NULL);
+	debug_symtable_add_register(global_symtable, "wpaddr", 0, get_wpaddr, NULL);
+	debug_symtable_add_register(global_symtable, "wpdata", 0, get_wpdata, NULL);
+	debug_symtable_add_register(global_symtable, "cycles", 0, get_cycles, NULL);
+	debug_symtable_add_register(global_symtable, "cpunum", 0, get_cpunum, NULL);
 
 	/* add the temporary variables to the global symbol table */
 	for (regnum = 0; regnum < NUM_TEMP_VARIABLES; regnum++)
 	{
 		char symname[10];
 		sprintf(symname, "temp%d", regnum);
-		debug_symtable_add_register(GLOBAL_SYMBOL_TABLE, symname, regnum, get_tempvar, set_tempvar);
+		debug_symtable_add_register(global_symtable, symname, regnum, get_tempvar, set_tempvar);
 	}
 
 	/* reset the CPU info */
@@ -272,6 +277,11 @@ void debug_cpu_init(void)
 		debug_cpuinfo[cpunum].opwidth = cpunum_min_instruction_bytes(cpunum);
 		debug_cpuinfo[cpunum].ignoring = 0;
 		debug_cpuinfo[cpunum].temp_breakpoint_pc = ~0;
+
+		/* fetch the memory accessors */
+		debug_cpuinfo[cpunum].read = (int (*)(int, UINT32, int, UINT64 *))cpunum_get_info_fct(cpunum, CPUINFO_PTR_READ);
+		debug_cpuinfo[cpunum].write = (int (*)(int, UINT32, int, UINT64))cpunum_get_info_fct(cpunum, CPUINFO_PTR_WRITE);
+		debug_cpuinfo[cpunum].readop = (int (*)(UINT32, int, UINT64 *))cpunum_get_info_fct(cpunum, CPUINFO_PTR_READOP);
 
 		/* allocate a symbol table */
 		debug_cpuinfo[cpunum].symtable = debug_symtable_alloc();
@@ -351,6 +361,10 @@ void debug_cpu_exit(void)
 				debug_watchpoint_clear(debug_cpuinfo[cpunum].space[spacenum].first_wp->index);
 		}
 	}
+
+	/* free the global symbol table */
+	if (global_symtable)
+		debug_symtable_free(global_symtable);
 }
 
 
@@ -1218,8 +1232,8 @@ int debug_watchpoint_set(int cpunum, int spacenum, int type, offs_t address, off
 	wp->index = next_index++;
 	wp->enabled = 1;
 	wp->type = type;
-	wp->address = address;
-	wp->length = length;
+	wp->address = ADDR2BYTE(address, &debug_cpuinfo[cpunum], spacenum);
+	wp->length = ADDR2BYTE(length, &debug_cpuinfo[cpunum], spacenum);
 	wp->condition = condition;
 	wp->action = NULL;
 	if (action)
@@ -1316,10 +1330,15 @@ const int *debug_watchpoint_count_ptr(int cpunum)
 
 data8_t debug_read_byte(int spacenum, offs_t address)
 {
+	const struct debug_cpu_info *info = &debug_cpuinfo[cpu_getactivecpu()];
 	data8_t result;
+	UINT64 custom;
 
 	memory_set_debugger_access(1);
-	result = (*address_space[spacenum].accessors->read_byte)(address);
+	if (info->read && (*info->read)(spacenum, address, 1, &custom))
+		result = custom;
+	else
+		result = (*address_space[spacenum].accessors->read_byte)(address);
 	memory_set_debugger_access(0);
 	return result;
 }
@@ -1332,8 +1351,19 @@ data8_t debug_read_byte(int spacenum, offs_t address)
 
 data16_t debug_read_word(int spacenum, offs_t address)
 {
+	const struct debug_cpu_info *info = &debug_cpuinfo[cpu_getactivecpu()];
 	data16_t result;
 
+	if (info->read)
+	{
+		UINT64 custom;
+		int handled;
+		memory_set_debugger_access(1);
+		handled = (*info->read)(spacenum, address, 2, &custom);
+		memory_set_debugger_access(0);
+		if (handled)
+			return custom;
+	}
 	if (address_space[spacenum].accessors->read_word)
 	{
 		memory_set_debugger_access(1);
@@ -1360,8 +1390,19 @@ data16_t debug_read_word(int spacenum, offs_t address)
 
 data32_t debug_read_dword(int spacenum, offs_t address)
 {
+	const struct debug_cpu_info *info = &debug_cpuinfo[cpu_getactivecpu()];
 	data32_t result;
 
+	if (info->read)
+	{
+		UINT64 custom;
+		int handled;
+		memory_set_debugger_access(1);
+		handled = (*info->read)(spacenum, address, 4, &custom);
+		memory_set_debugger_access(0);
+		if (handled)
+			return custom;
+	}
 	if (address_space[spacenum].accessors->read_dword)
 	{
 		memory_set_debugger_access(1);
@@ -1388,8 +1429,19 @@ data32_t debug_read_dword(int spacenum, offs_t address)
 
 data64_t debug_read_qword(int spacenum, offs_t address)
 {
+	const struct debug_cpu_info *info = &debug_cpuinfo[cpu_getactivecpu()];
 	data64_t result;
 
+	if (info->read)
+	{
+		UINT64 custom;
+		int handled;
+		memory_set_debugger_access(1);
+		handled = (*info->read)(spacenum, address, 8, &custom);
+		memory_set_debugger_access(0);
+		if (handled)
+			return custom;
+	}
 	if (address_space[spacenum].accessors->read_qword)
 	{
 		memory_set_debugger_access(1);
@@ -1416,8 +1468,12 @@ data64_t debug_read_qword(int spacenum, offs_t address)
 
 void debug_write_byte(int spacenum, offs_t address, data8_t data)
 {
+	const struct debug_cpu_info *info = &debug_cpuinfo[cpu_getactivecpu()];
 	memory_set_debugger_access(1);
-	(*address_space[spacenum].accessors->write_byte)(address, data);
+	if (info->write && (*info->write)(spacenum, address, 1, data))
+		;
+	else
+		(*address_space[spacenum].accessors->write_byte)(address, data);
 	memory_set_debugger_access(0);
 }
 
@@ -1429,6 +1485,16 @@ void debug_write_byte(int spacenum, offs_t address, data8_t data)
 
 void debug_write_word(int spacenum, offs_t address, data16_t data)
 {
+	const struct debug_cpu_info *info = &debug_cpuinfo[cpu_getactivecpu()];
+	if (info->write)
+	{
+		int handled;
+		memory_set_debugger_access(1);
+		handled = (*info->write)(spacenum, address, 2, data);
+		memory_set_debugger_access(0);
+		if (handled)
+			return;
+	}
 	if (address_space[spacenum].accessors->write_word)
 	{
 		memory_set_debugger_access(1);
@@ -1455,6 +1521,16 @@ void debug_write_word(int spacenum, offs_t address, data16_t data)
 
 void debug_write_dword(int spacenum, offs_t address, data32_t data)
 {
+	const struct debug_cpu_info *info = &debug_cpuinfo[cpu_getactivecpu()];
+	if (info->write)
+	{
+		int handled;
+		memory_set_debugger_access(1);
+		handled = (*info->write)(spacenum, address, 4, data);
+		memory_set_debugger_access(0);
+		if (handled)
+			return;
+	}
 	if (address_space[spacenum].accessors->write_dword)
 	{
 		memory_set_debugger_access(1);
@@ -1481,6 +1557,16 @@ void debug_write_dword(int spacenum, offs_t address, data32_t data)
 
 void debug_write_qword(int spacenum, offs_t address, data64_t data)
 {
+	const struct debug_cpu_info *info = &debug_cpuinfo[cpu_getactivecpu()];
+	if (info->write)
+	{
+		int handled;
+		memory_set_debugger_access(1);
+		handled = (*info->write)(spacenum, address, 8, data);
+		memory_set_debugger_access(0);
+		if (handled)
+			return;
+	}
 	if (address_space[spacenum].accessors->write_qword)
 	{
 		memory_set_debugger_access(1);
@@ -1513,6 +1599,15 @@ UINT64 debug_read_opcode(UINT32 offset, int size)
 
 	/* adjust the offset */
 	memory_set_opbase(offset);
+
+	/* shortcut if we have a custom routine */
+	if (info->readop)
+	{
+		UINT64 result;
+		if ((*info->readop)(offset, size, &result))
+			return result;
+	}
+
 	switch (info->space[ADDRESS_SPACE_PROGRAM].databytes * 10 + size)
 	{
 		/* dump opcodes in bytes from a byte-sized bus */
@@ -1651,3 +1746,24 @@ void debug_trace_printf(int cpunum, const char *fmt, ...)
 	}
 }
 
+
+/*-------------------------------------------------
+    debug_source_script - specifies a debug command
+    script to use
+-------------------------------------------------*/
+
+void debug_source_script(const char *file)
+{
+	if (debug_source_file)
+	{
+		fclose(debug_source_file);
+		debug_source_file = NULL;
+	}
+
+	if (file)
+	{
+		debug_source_file = fopen(file, "r");
+		if (!debug_source_file)
+			debug_console_printf("Cannot open command file '%s'\n", file);
+	}
+}

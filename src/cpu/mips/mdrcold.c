@@ -228,15 +228,14 @@ static UINT32 compile_one(struct drccore *drc, UINT32 pc)
 	/* handle the results */
 	if (!(result & RECOMPILE_SUCCESSFUL))
 	{
-		printf("Unimplemented op %08X (%02X,%02X)\n", *opptr, *opptr >> 26, *opptr & 0x3f);
 		mips3_exit();
-		exit(1);
+		osd_die("Unimplemented op %08X (%02X,%02X)\n", *opptr, *opptr >> 26, *opptr & 0x3f);
 	}
 	pcdelta = (INT8)(result >> 24);
 	cycles = (INT8)(result >> 16);
 
 	/* absorb any NOPs following */
-	#if (STRIP_NOPS)
+	if (STRIP_NOPS && !mame_debug)
 	{
 		if (!(result & (RECOMPILE_END_OF_STRING | RECOMPILE_CHECK_INTERRUPTS | RECOMPILE_CHECK_SW_INTERRUPTS)))
 			while (pcdelta < 120 && opptr[pcdelta/4] == 0)
@@ -245,7 +244,6 @@ static UINT32 compile_one(struct drccore *drc, UINT32 pc)
 				cycles += 1;
 			}
 	}
-	#endif
 
 	/* epilogue */
 	drc_append_standard_epilogue(drc, cycles, pcdelta, 1);
@@ -439,8 +437,16 @@ static void ddivu(UINT64 *rs, UINT64 *rt)
 
 static int recompile_delay_slot(struct drccore *drc, UINT32 pc)
 {
-	UINT8 *saved_top = drc->cache_top;
+	UINT8 *saved_top;
 	UINT32 result;
+
+#ifdef MAME_DEBUG
+	/* emit debugging */
+	_mov_r32_imm(REG_EDI, pc);
+	drc_append_call_debugger(drc);
+#endif
+
+	saved_top = drc->cache_top;
 
 	/* recompile the instruction as-is */
 	in_delay_slot = 1;
@@ -469,7 +475,6 @@ static UINT32 recompile_lui(struct drccore *drc, UINT32 pc, UINT32 op)
 	UINT32 address = UIMMVAL << 16;
 	UINT32 targetreg = RTREG;
 
-#if OPTIMIZE_LUI
 	UINT32 nextop = cpu_readop32(pc + 4);
 	UINT8 nextrsreg = (nextop >> 21) & 31;
 	UINT8 nextrtreg = (nextop >> 16) & 31;
@@ -477,7 +482,8 @@ static UINT32 recompile_lui(struct drccore *drc, UINT32 pc, UINT32 op)
 	void *memory;
 
 	/* if the next instruction is a load or store, see if we can consolidate */
-	if (!in_delay_slot)
+	if (OPTIMIZE_LUI && !in_delay_slot && !mame_debug)
+	{
 		switch (nextop >> 26)
 		{
 			case 0x08:	/* addi */
@@ -829,7 +835,7 @@ static UINT32 recompile_lui(struct drccore *drc, UINT32 pc, UINT32 op)
 					_mov_m64abs_imm32(memory, 0);							// mov  [memory],0
 				return RECOMPILE_SUCCESSFUL_CP(2,8);
 		}
-#endif
+	}
 
 	/* default case: standard LUI */
 	_mov_m64abs_imm32(&mips3.r[targetreg], address);					// mov  [rtreg],const << 16

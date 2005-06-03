@@ -85,7 +85,7 @@ static int apply_window(const char *inst_name,int srcbpp, UINT32 *srcaddr, XY *d
 		int ey = sy + *dy - 1;
 		int diff, cycles = 3;
 
-		if (state.window_checking == 1 || state.window_checking == 2)
+		if (state.window_checking == 2)
 			logerror("%08x: %s apply_window window mode %d not supported!\n", activecpu_get_pc(), inst_name, state.window_checking);
 
 		if (state.window_checking == 1)
@@ -167,7 +167,7 @@ static int apply_window(const char *inst_name,int srcbpp, UINT32 *srcaddr, XY *d
 
 *******************************************************************/
 
-int compute_fill_cycles(int left_partials, int right_partials, int full_words, int rows, int op_timing)
+int compute_fill_cycles(int left_partials, int right_partials, int full_words, int op_timing)
 {
 	int dstwords;
 
@@ -175,7 +175,7 @@ int compute_fill_cycles(int left_partials, int right_partials, int full_words, i
 	if (right_partials) full_words += 1;
 	dstwords = full_words;
 
-	return (dstwords * op_timing) * rows + 2;
+	return (dstwords * op_timing);
 }
 
 int compute_pixblt_cycles(int left_partials, int right_partials, int full_words, int op_timing)
@@ -1022,10 +1022,6 @@ static void fill_xy(void)
 #define PIXELS_PER_WORD (16 / BITS_PER_PIXEL)
 #define PIXEL_MASK ((1 << BITS_PER_PIXEL) - 1)
 
-#ifdef macintosh
-#pragma optimization_level 1
-#endif
-
 static void FUNCTION_NAME(pixblt)(int src_is_linear, int dst_is_linear)
 {
 	/* if this is the first time through, perform the operation */
@@ -1035,6 +1031,7 @@ static void FUNCTION_NAME(pixblt)(int src_is_linear, int dst_is_linear)
 		void (*word_write)(offs_t address,data16_t data);
 		data16_t (*word_read)(offs_t address);
 		UINT32 saddr, daddr;
+		XY dstxy;
 
 		/* determine read/write functions */
 		if (IOREG(REG_DPYCTL) & 0x0800)
@@ -1060,9 +1057,9 @@ static void FUNCTION_NAME(pixblt)(int src_is_linear, int dst_is_linear)
 		state.gfxcycles = 7 + (src_is_linear ? 0 : 2);
 		if (!dst_is_linear)
 		{
-			XY temp = DADDR_XY;
-			state.gfxcycles += 2 + (!src_is_linear) + apply_window("PIXBLT", BITS_PER_PIXEL, &saddr, &temp, &dx, &dy);
-			daddr = DXYTOL(temp);
+			dstxy = DADDR_XY;
+			state.gfxcycles += 2 + (!src_is_linear) + apply_window("PIXBLT", BITS_PER_PIXEL, &saddr, &dstxy, &dx, &dy);
+			daddr = DXYTOL(dstxy);
 		}
 		else
 			daddr = DADDR;
@@ -1072,6 +1069,18 @@ static void FUNCTION_NAME(pixblt)(int src_is_linear, int dst_is_linear)
 		/* bail if we're clipped */
 		if (dx <= 0 || dy <= 0)
 			return;
+
+		/* window mode 1: just return and interrupt if we are within the window */
+		if (state.window_checking == 1 && !dst_is_linear)
+		{
+			CLR_V;
+			DADDR_XY = dstxy;
+			DYDX_X = dx;
+			DYDX_Y = dy;
+			IOREG(REG_INTPEND) |= TMS34010_WV;
+			check_interrupt();
+			return;
+		}
 
 		/* handle flipping the addresses */
 		yreverse = (IOREG(REG_CONTROL) >> 9) & 1;
@@ -1207,6 +1216,7 @@ static void FUNCTION_NAME(pixblt)(int src_is_linear, int dst_is_linear)
 					/* fetch another word if necessary */
 					if (srcmask == 0)
 					{
+		LOGGFX(("  right fetch @ %08x\n", swordaddr));
 						srcword = (*word_read)(swordaddr++ << 1);
 						srcmask = PIXEL_MASK;
 					}
@@ -1280,6 +1290,7 @@ static void FUNCTION_NAME(pixblt_r)(int src_is_linear, int dst_is_linear)
 		void (*word_write)(offs_t address,data16_t data);
 		data16_t (*word_read)(offs_t address);
 		UINT32 saddr, daddr;
+		XY dstxy;
 
 		/* determine read/write functions */
 		if (IOREG(REG_DPYCTL) & 0x0800)
@@ -1305,9 +1316,9 @@ static void FUNCTION_NAME(pixblt_r)(int src_is_linear, int dst_is_linear)
 		state.gfxcycles = 7 + (src_is_linear ? 0 : 2);
 		if (!dst_is_linear)
 		{
-			XY temp = DADDR_XY;
-			state.gfxcycles += 2 + (!src_is_linear) + apply_window("PIXBLT R", BITS_PER_PIXEL, &saddr, &temp, &dx, &dy);
-			daddr = DXYTOL(temp);
+			dstxy = DADDR_XY;
+			state.gfxcycles += 2 + (!src_is_linear) + apply_window("PIXBLT R", BITS_PER_PIXEL, &saddr, &dstxy, &dx, &dy);
+			daddr = DXYTOL(dstxy);
 		}
 		else
 			daddr = DADDR;
@@ -1317,6 +1328,18 @@ static void FUNCTION_NAME(pixblt_r)(int src_is_linear, int dst_is_linear)
 		/* bail if we're clipped */
 		if (dx <= 0 || dy <= 0)
 			return;
+
+		/* window mode 1: just return and interrupt if we are within the window */
+		if (state.window_checking == 1 && !dst_is_linear)
+		{
+			CLR_V;
+			DADDR_XY = dstxy;
+			DYDX_X = dx;
+			DYDX_Y = dy;
+			IOREG(REG_INTPEND) |= TMS34010_WV;
+			check_interrupt();
+			return;
+		}
 
 		/* handle flipping the addresses */
 		yreverse = (IOREG(REG_CONTROL) >> 9) & 1;
@@ -1374,6 +1397,13 @@ static void FUNCTION_NAME(pixblt_r)(int src_is_linear, int dst_is_linear)
 				/* loop over partials */
 				for (x = 0; x < right_partials; x++)
 				{
+					/* fetch source pixel if necessary */
+					if (srcmask == 0)
+					{
+						srcword = (*word_read)(--swordaddr << 1);
+						srcmask = PIXEL_MASK << (16 - BITS_PER_PIXEL);
+					}
+
 					/* process the pixel */
 					pixel = srcword & srcmask;
 					if (dstmask > srcmask)
@@ -1386,11 +1416,6 @@ static void FUNCTION_NAME(pixblt_r)(int src_is_linear, int dst_is_linear)
 
 					/* update the source */
 					srcmask >>= BITS_PER_PIXEL;
-					if (srcmask == 0)
-					{
-						srcword = (*word_read)(--swordaddr << 1);
-						srcmask = PIXEL_MASK << (16 - BITS_PER_PIXEL);
-					}
 
 					/* update the destination */
 					dstmask >>= BITS_PER_PIXEL;
@@ -1414,6 +1439,13 @@ static void FUNCTION_NAME(pixblt_r)(int src_is_linear, int dst_is_linear)
 				/* loop over partials */
 				for (x = 0; x < PIXELS_PER_WORD; x++)
 				{
+					/* fetch source pixel if necessary */
+					if (srcmask == 0)
+					{
+						srcword = (*word_read)(--swordaddr << 1);
+						srcmask = PIXEL_MASK << (16 - BITS_PER_PIXEL);
+					}
+
 					/* process the pixel */
 					pixel = srcword & srcmask;
 					if (dstmask > srcmask)
@@ -1426,11 +1458,6 @@ static void FUNCTION_NAME(pixblt_r)(int src_is_linear, int dst_is_linear)
 
 					/* update the source */
 					srcmask >>= BITS_PER_PIXEL;
-					if (srcmask == 0)
-					{
-						srcword = (*word_read)(--swordaddr << 1);
-						srcmask = PIXEL_MASK << (16 - BITS_PER_PIXEL);
-					}
 
 					/* update the destination */
 					dstmask >>= BITS_PER_PIXEL;
@@ -1450,6 +1477,13 @@ static void FUNCTION_NAME(pixblt_r)(int src_is_linear, int dst_is_linear)
 				/* loop over partials */
 				for (x = 0; x < left_partials; x++)
 				{
+					/* fetch the source pixel if necessary */
+					if (srcmask == 0)
+					{
+						srcword = (*word_read)(--swordaddr << 1);
+						srcmask = PIXEL_MASK << (16 - BITS_PER_PIXEL);
+					}
+
 					/* process the pixel */
 					pixel = srcword & srcmask;
 					if (dstmask > srcmask)
@@ -1462,11 +1496,6 @@ static void FUNCTION_NAME(pixblt_r)(int src_is_linear, int dst_is_linear)
 
 					/* update the source */
 					srcmask >>= BITS_PER_PIXEL;
-					if (srcmask == 0)
-					{
-						srcword = (*word_read)(--swordaddr << 1);
-						srcmask = PIXEL_MASK << (16 - BITS_PER_PIXEL);
-					}
 
 					/* update the destination */
 					dstmask >>= BITS_PER_PIXEL;
@@ -1515,10 +1544,6 @@ static void FUNCTION_NAME(pixblt_r)(int src_is_linear, int dst_is_linear)
 	}
 }
 
-#ifdef macintosh
-#pragma optimization_level reset
-#endif
-
 static void FUNCTION_NAME(pixblt_b)(int dst_is_linear)
 {
 	/* if this is the first time through, perform the operation */
@@ -1528,6 +1553,7 @@ static void FUNCTION_NAME(pixblt_b)(int dst_is_linear)
 		void (*word_write)(offs_t address,data16_t data);
 		data16_t (*word_read)(offs_t address);
 		UINT32 saddr, daddr;
+		XY dstxy;
 
 		/* determine read/write functions */
 		if (IOREG(REG_DPYCTL) & 0x0800)
@@ -1552,9 +1578,9 @@ static void FUNCTION_NAME(pixblt_b)(int dst_is_linear)
 		state.gfxcycles = 4;
 		if (!dst_is_linear)
 		{
-			XY temp = DADDR_XY;
-			state.gfxcycles += 2 + apply_window("PIXBLT B", 1, &saddr, &temp, &dx, &dy);
-			daddr = DXYTOL(temp);
+			dstxy = DADDR_XY;
+			state.gfxcycles += 2 + apply_window("PIXBLT B", 1, &saddr, &dstxy, &dx, &dy);
+			daddr = DXYTOL(dstxy);
 		}
 		else
 			daddr = DADDR;
@@ -1564,6 +1590,18 @@ static void FUNCTION_NAME(pixblt_b)(int dst_is_linear)
 		/* bail if we're clipped */
 		if (dx <= 0 || dy <= 0)
 			return;
+
+		/* window mode 1: just return and interrupt if we are within the window */
+		if (state.window_checking == 1 && !dst_is_linear)
+		{
+			CLR_V;
+			DADDR_XY = dstxy;
+			DYDX_X = dx;
+			DYDX_Y = dy;
+			IOREG(REG_INTPEND) |= TMS34010_WV;
+			check_interrupt();
+			return;
+		}
 
 		/* how many left and right partial pixels do we have? */
 		left_partials = (PIXELS_PER_WORD - ((daddr & 15) / BITS_PER_PIXEL)) & (PIXELS_PER_WORD - 1);
@@ -1729,6 +1767,7 @@ static void FUNCTION_NAME(fill)(int dst_is_linear)
 		void (*word_write)(offs_t address,data16_t data);
 		data16_t (*word_read)(offs_t address);
 		UINT32 daddr;
+		XY dstxy;
 
 		/* determine read/write functions */
 		if (IOREG(REG_DPYCTL) & 0x0800)
@@ -1750,9 +1789,9 @@ static void FUNCTION_NAME(fill)(int dst_is_linear)
 		state.gfxcycles = 4;
 		if (!dst_is_linear)
 		{
-			XY temp = DADDR_XY;
-			state.gfxcycles += 2 + apply_window("FILL", 0, NULL, &temp, &dx, &dy);
-			daddr = DXYTOL(temp);
+			dstxy = DADDR_XY;
+			state.gfxcycles += 2 + apply_window("FILL", 0, NULL, &dstxy, &dx, &dy);
+			daddr = DXYTOL(dstxy);
 		}
 		else
 			daddr = DADDR;
@@ -1762,6 +1801,18 @@ static void FUNCTION_NAME(fill)(int dst_is_linear)
 		/* bail if we're clipped */
 		if (dx <= 0 || dy <= 0)
 			return;
+
+		/* window mode 1: just return and interrupt if we are within the window */
+		if (state.window_checking == 1 && !dst_is_linear)
+		{
+			CLR_V;
+			DADDR_XY = dstxy;
+			DYDX_X = dx;
+			DYDX_Y = dy;
+			IOREG(REG_INTPEND) |= TMS34010_WV;
+			check_interrupt();
+			return;
+		}
 
 		/* how many left and right partial pixels do we have? */
 		left_partials = (PIXELS_PER_WORD - ((daddr & 15) / BITS_PER_PIXEL)) & (PIXELS_PER_WORD - 1);
@@ -1773,8 +1824,7 @@ static void FUNCTION_NAME(fill)(int dst_is_linear)
 			full_words /= PIXELS_PER_WORD;
 
 		/* compute cycles */
-		/* TODO: when state.window_checking == 1, we should count only the time to the first pixel hit */
-		state.gfxcycles += compute_fill_cycles(left_partials, right_partials, full_words, dy, PIXEL_OP_TIMING);
+		state.gfxcycles += 2;
 		P_FLAG = 1;
 
 		/* loop over rows */
@@ -1785,6 +1835,9 @@ static void FUNCTION_NAME(fill)(int dst_is_linear)
 
 			/* use byte addresses each row */
 			dwordaddr = daddr >> 4;
+
+			/* compute cycles */
+			state.gfxcycles += compute_fill_cycles(left_partials, right_partials, full_words, PIXEL_OP_TIMING);
 
 			/* handle the left partial word */
 			if (left_partials != 0)
@@ -1800,15 +1853,7 @@ static void FUNCTION_NAME(fill)(int dst_is_linear)
 					pixel = COLOR1 & dstmask;
 					PIXEL_OP(dstword, dstmask, pixel);
 					if (!TRANSPARENCY || pixel != 0)
-					{
-						if (state.window_checking == 1 && !dst_is_linear)
-						{
-							CLR_V;
-							goto bailout;
-						}
-						else
-							dstword = (dstword & ~dstmask) | pixel;
-					}
+						dstword = (dstword & ~dstmask) | pixel;
 
 					/* update the destination */
 					dstmask <<= BITS_PER_PIXEL;
@@ -1835,15 +1880,7 @@ static void FUNCTION_NAME(fill)(int dst_is_linear)
 					pixel = COLOR1 & dstmask;
 					PIXEL_OP(dstword, dstmask, pixel);
 					if (!TRANSPARENCY || pixel != 0)
-					{
-						if (state.window_checking == 1 && !dst_is_linear)
-						{
-							CLR_V;
-							goto bailout;
-						}
-						else
-							dstword = (dstword & ~dstmask) | pixel;
-					}
+						dstword = (dstword & ~dstmask) | pixel;
 
 					/* update the destination */
 					dstmask <<= BITS_PER_PIXEL;
@@ -1867,15 +1904,7 @@ static void FUNCTION_NAME(fill)(int dst_is_linear)
 					pixel = COLOR1 & dstmask;
 					PIXEL_OP(dstword, dstmask, pixel);
 					if (!TRANSPARENCY || pixel != 0)
-					{
-						if (state.window_checking == 1 && !dst_is_linear)
-						{
-							CLR_V;
-							goto bailout;
-						}
-						else
 						dstword = (dstword & ~dstmask) | pixel;
-					}
 
 					/* update the destination */
 					dstmask <<= BITS_PER_PIXEL;
@@ -1888,7 +1917,7 @@ static void FUNCTION_NAME(fill)(int dst_is_linear)
 			/* update for next row */
 			daddr += DPTCH;
 		}
-bailout:
+
 		LOGGFX(("  (%d cycles)\n", state.gfxcycles));
 	}
 
@@ -1906,28 +1935,7 @@ bailout:
 		if (dst_is_linear)
 			DADDR += DYDX_Y * DPTCH;
 		else
-		{
-			if (state.window_checking == 1)
-			{
-				int dx = (INT16)DYDX_X;
-				int dy = (INT16)DYDX_Y;
-				int v = V_FLAG;
-
-				apply_window("FILL clip", 0, NULL, &DADDR_XY, &dx, &dy);
-				DYDX_X = dx;
-				DYDX_Y = dy;
-
-				V_FLAG = v;	/* thrashed by apply_window */
-
-				if (v == 0)
-				{
-					IOREG(REG_INTPEND) |= TMS34010_WV;
-					check_interrupt();
-				}
-			}
-			else
-				DADDR_Y += DYDX_Y;
-		}
+			DADDR_Y += DYDX_Y;
 	}
 }
 

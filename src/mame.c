@@ -505,7 +505,8 @@ static int run_machine(void)
 	{
 		/* initialize tilemaps */
 		tilemap_init();
-		
+		flip_screen_set(0);
+
 		/* start up the driver's video */
 		if (Machine->drv->video_start && (*Machine->drv->video_start)())
 			bail_and_print("Unable to start video emulation");
@@ -2136,6 +2137,8 @@ int mame_validitychecks(void)
 		/* consistency checks on input ports */
 		if (drivers[i]->construct_ipt)
 		{
+			int empty_string_found = 0;
+
 			begin_resource_tracking();
 			
 			inp = input_port_allocate(drivers[i]->construct_ipt);
@@ -2149,8 +2152,7 @@ int mame_validitychecks(void)
 				}
 				else if (inp->name && inp->name != IP_NAME_DEFAULT)
 				{
-					j = 0;
-
+					/* check for strings that should be DEF_STR */
 					for (j = 0;j < STR_TOTAL;j++)
 					{
 						if (inp->name == inptport_default_strings[j]) break;
@@ -2161,6 +2163,7 @@ int mame_validitychecks(void)
 						}
 					}
 
+					/* check for inverted off/on dispswitch order */
 					if (inp->type == IPT_DIPSWITCH_SETTING && (inp+1)->type == IPT_DIPSWITCH_SETTING)
 					{
 						if (inp->name == DEF_STR( On ) && (inp+1)->name == DEF_STR( Off ))
@@ -2198,12 +2201,14 @@ int mame_validitychecks(void)
 						error = 1;
 					}
 
+					/* check for inverted upright/concktail order */
 					if (inp->name == DEF_STR( Cocktail ) && (inp+1)->name == DEF_STR( Upright ))
 					{
 						printf("%s: %s has inverted Upright/Cocktail dipswitch order\n",drivers[i]->source_file,drivers[i]->name);
 						error = 1;
 					}
 
+					/* check for unsorted coinage */
 					if (inp->name >= DEF_STR( 9C_1C ) && inp->name <= DEF_STR( Free_Play )
 							&& (inp+1)->name >= DEF_STR( 9C_1C ) && (inp+1)->name <= DEF_STR( Free_Play )
 							&& inp->name >= (inp+1)->name && !memcmp(&inp->dipsetting, &(inp+1)->dipsetting, sizeof(inp->dipsetting)))
@@ -2212,12 +2217,14 @@ int mame_validitychecks(void)
 						error = 1;
 					}
 
+					/* check for bad flip screen options */
 					if (inp->name == DEF_STR( Flip_Screen ) && (inp+1)->name != DEF_STR( Off ))
 					{
 						printf("%s: %s has wrong Flip Screen option %s\n",drivers[i]->source_file,drivers[i]->name,(inp+1)->name);
 						error = 1;
 					}
 
+					/* check for bad demo sounds defaults */
 					if (inp->name == DEF_STR( Demo_Sounds ) && (inp+2)->name == DEF_STR( On )
 							&& inp->default_value != (inp+2)->default_value)
 					{
@@ -2225,10 +2232,26 @@ int mame_validitychecks(void)
 						error = 1;
 					}
 
+					/* check for demo sounds using the text 'No' */
 					if (inp->name == DEF_STR( Demo_Sounds ) && (inp+1)->name == DEF_STR( No ))
 					{
 						printf("%s: %s has wrong Demo Sounds option No instead of Off\n",drivers[i]->source_file,drivers[i]->name);
 						error = 1;
+					}
+
+					/* check for trailing spaces */
+					if (inp->name[0] && inp->name[strlen(inp->name)-1] == ' ')
+					{
+						printf("%s: %s input '%s' has trailing spaces\n",drivers[i]->source_file,drivers[i]->name,inp->name);
+						error = 1;
+					}
+
+					/* check for empty string */
+					if (!inp->name[0] && !empty_string_found)
+					{
+						printf("%s: %s has an input with an empty string\n",drivers[i]->source_file,drivers[i]->name);
+						error = 1;
+						empty_string_found = 1;
 					}
 				}
 

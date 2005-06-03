@@ -703,12 +703,38 @@ static void ppc_lmw(UINT32 op)
 
 static void ppc_lswi(UINT32 op)
 {
-	osd_die("ppc: lswi unimplemented\n");
+	int n, r, i;
+	UINT32 ea = 0;
+	if( RA != 0 )
+		ea = REG(RA);
+
+	if( RB == 0 )
+		n = 32;
+	else
+		n = RB;
+
+	r = RT - 1;
+	i = 0;
+
+	while(n > 0)
+	{
+		if (i == 0) {
+			r = (r + 1) % 32;
+			REG(r) = 0;
+		}
+		REG(r) |= ((READ8(ea) & 0xff) << (24 - i));
+		i += 8;
+		if (i == 32) {
+			i = 0;
+		}
+		ea++;
+		n--;
+	}
 }
 
 static void ppc_lswx(UINT32 op)
 {
-	osd_die("ppc: lswx unimplemented\n");
+	osd_die("ppc: lswx unimplemented at %08X\n", ppc.pc);
 }
 
 static void ppc_lwarx(UINT32 op)
@@ -1000,10 +1026,26 @@ static void ppc_rlwnmx(UINT32 op)
 	}
 }
 
+#ifndef PPC_DRC
 static void ppc_sc(UINT32 op)
 {
-	ppc603_exception(EXCEPTION_SYSTEM_CALL);
+#if (HAS_PPC603)
+	if (ppc.is603) {
+		ppc603_exception(EXCEPTION_SYSTEM_CALL);
+	}
+#endif
+#if (HAS_PPC602)
+	if (ppc.is602) {
+		ppc602_exception(EXCEPTION_SYSTEM_CALL);
+	}
+#endif
+#if (HAS_PPC403)
+	if (IS_PPC403()) {
+		ppc403_exception(EXCEPTION_SYSTEM_CALL);
+	}
+#endif
 }
+#endif
 
 static void ppc_slwx(UINT32 op)
 {
@@ -1028,7 +1070,10 @@ static void ppc_srawx(UINT32 op)
 	XER &= ~XER_CA;
 
 	if( sh > 31 ) {
-		REG(RA) = (INT32)(REG(RS)) >> 31;
+		if (REG(RS) & 0x80000000)
+			REG(RA) = 0xffffffff;
+		else
+			REG(RA) = 0;
 		if( REG(RA) )
 			XER |= XER_CA;
 	}
@@ -1188,7 +1233,32 @@ static void ppc_stmw(UINT32 op)
 
 static void ppc_stswi(UINT32 op)
 {
-	osd_die("ppc: stswi unimplemented\n");
+	int n, r, i;
+	UINT32 ea = 0;
+	if( RA != 0 )
+		ea = REG(RA);
+
+	if( RB == 0 )
+		n = 32;
+	else
+		n = RB;
+
+	r = RT - 1;
+	i = 0;
+
+	while(n > 0)
+	{
+		if (i == 0) {
+			r = (r + 1) % 32;
+		}
+		WRITE8(ea, (REG(r) >> (24-i)) & 0xff);
+		i += 8;
+		if (i == 32) {
+			i = 0;
+		}
+		ea++;
+		n--;
+	}
 }
 
 static void ppc_stswx(UINT32 op)
@@ -1380,51 +1450,93 @@ static void ppc_sync(UINT32 op)
 
 }
 
+#ifndef PPC_DRC
 static void ppc_tw(UINT32 op)
 {
+	int exception = 0;
 	INT32 a = REG(RA);
 	INT32 b = REG(RB);
 	int to = RT;
 
 	if( (a < b) && (to & 0x10) ) {
-		ppc603_exception(EXCEPTION_TRAP);
+		exception = 1;
 	}
 	if( (a > b) && (to & 0x08) ) {
-		ppc603_exception(EXCEPTION_TRAP);
+		exception = 1;
 	}
 	if( (a == b) && (to & 0x04) ) {
-		ppc603_exception(EXCEPTION_TRAP);
+		exception = 1;
 	}
 	if( ((UINT32)a < (UINT32)b) && (to & 0x02) ) {
-		ppc603_exception(EXCEPTION_TRAP);
+		exception = 1;
 	}
 	if( ((UINT32)a > (UINT32)b) && (to & 0x01) ) {
-		ppc603_exception(EXCEPTION_TRAP);
+		exception = 1;
+	}
+
+	if (exception) {
+#if (HAS_PPC603)
+		if (ppc.is603) {
+			ppc603_exception(EXCEPTION_TRAP);
+		}
+#endif
+#if (HAS_PPC602)
+		if (ppc.is602) {
+			ppc602_exception(EXCEPTION_TRAP);
+		}
+#endif
+#if (HAS_PPC403)
+		if (IS_PPC403()) {
+			ppc403_exception(EXCEPTION_TRAP);
+		}
+#endif
 	}
 }
+#endif
 
+#ifndef PPC_DRC
 static void ppc_twi(UINT32 op)
 {
+	int exception = 0;
 	INT32 a = REG(RA);
 	INT32 i = SIMM16;
 	int to = RT;
 
 	if( (a < i) && (to & 0x10) ) {
-		ppc603_exception(EXCEPTION_TRAP);
+		exception = 1;
 	}
 	if( (a > i) && (to & 0x08) ) {
-		ppc603_exception(EXCEPTION_TRAP);
+		exception = 1;
 	}
 	if( (a == i) && (to & 0x04) ) {
-		ppc603_exception(EXCEPTION_TRAP);
+		exception = 1;
 	}
 	if( ((UINT32)a < (UINT32)i) && (to & 0x02) ) {
-		ppc603_exception(EXCEPTION_TRAP);
+		exception = 1;
 	}
 	if( ((UINT32)a > (UINT32)i) && (to & 0x01) ) {
-		ppc603_exception(EXCEPTION_TRAP);
+		exception = 1;
+	}
+
+	if (exception) {
+#if (HAS_PPC603)
+		if (ppc.is603) {
+			ppc603_exception(EXCEPTION_TRAP);
+		}
+#endif
+#if (HAS_PPC602)
+		if (ppc.is602) {
+			ppc602_exception(EXCEPTION_TRAP);
+		}
+#endif
+#if (HAS_PPC403)
+		if (IS_PPC403()) {
+			ppc403_exception(EXCEPTION_TRAP);
+		}
+#endif
 	}
 }
+#endif
 
 static void ppc_xorx(UINT32 op)
 {
@@ -1933,9 +2045,39 @@ static void ppc_faddx(UINT32 op)
 
 static void ppc_fcmpo(UINT32 op)
 {
+	UINT32 b = RB;
+	UINT32 a = RA;
+	UINT32 t = (RT >> 2);
+	UINT32 c;
+
 	CHECK_FPU_AVAILABLE();
 
-    ppc_unimplemented(op);
+	SET_VXSNAN(FPR(a), FPR(b));
+
+	if(is_nan_double(FPR(a)) || is_nan_double(FPR(b)))
+	{
+		c = 1; /* OX */
+		if(is_snan_double(FPR(a)) || is_snan_double(FPR(b))) {
+			ppc.fpscr |= 0x01000000; /* VXSNAN */
+
+			if(!(ppc.fpscr & 0x40000000) || is_qnan_double(FPR(a)) || is_qnan_double(FPR(b)))
+				ppc.fpscr |= 0x00080000; /* VXVC */
+		}
+	}
+	else if(FPR(a).fd < FPR(b).fd){
+		c = 8; /* FX */
+	}
+	else if(FPR(a).fd > FPR(b).fd){
+		c = 4; /* FEX */
+	}
+	else {
+		c = 2; /* VX */
+	}
+
+	CR(t) = c;
+
+	ppc.fpscr &= ~0x0001F000;
+	ppc.fpscr |= (c << 12);
 }
 
 static void ppc_fcmpu(UINT32 op)
