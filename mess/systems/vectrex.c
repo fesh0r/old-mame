@@ -9,26 +9,18 @@ Bruce Tomlin (hardware info)
 *****************************************************************/
 
 #include "driver.h"
+#include "inputx.h"
 #include "vidhrdw/vector.h"
 #include "machine/6522via.h"
 #include "includes/vectrex.h"
 #include "devices/cartslot.h"
 #include "sound/ay8910.h"
 
-ADDRESS_MAP_START( vectrex_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x7fff) AM_READ( MRA8_ROM )
-	AM_RANGE( 0xc800, 0xcbff) AM_READ( MRA8_RAM )
-	AM_RANGE( 0xcc00, 0xcfff) AM_READ( vectrex_mirrorram_r )
-	AM_RANGE( 0xd000, 0xd7ff) AM_READ( via_0_r )    /* VIA 6522 */
-	AM_RANGE( 0xe000, 0xffff) AM_READ( MRA8_ROM )
-ADDRESS_MAP_END
-
-ADDRESS_MAP_START( vectrex_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x7fff) AM_WRITE( MWA8_ROM )
-	AM_RANGE( 0xc800, 0xcbff) AM_WRITE( MWA8_RAM) AM_BASE( &vectrex_ram )
-	AM_RANGE( 0xcc00, 0xcfff) AM_WRITE( vectrex_mirrorram_w )
-	AM_RANGE( 0xd000, 0xd7ff) AM_WRITE( via_0_w )    /* VIA 6522 */
-	AM_RANGE( 0xe000, 0xffff) AM_WRITE( MWA8_ROM )
+ADDRESS_MAP_START( vectrex_map , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE( 0x0000, 0x7fff) AM_ROM
+	AM_RANGE( 0xc800, 0xcbff) AM_RAM AM_MIRROR( 0x0400 )
+	AM_RANGE( 0xd000, 0xd7ff) AM_READWRITE( via_0_r, via_0_w )
+	AM_RANGE( 0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 INPUT_PORTS_START( vectrex )
@@ -42,17 +34,19 @@ INPUT_PORTS_START( vectrex )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4) PORT_PLAYER(2)
 
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH,  IPT_JOYSTICK_RIGHT) PORT_8WAY
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH,  IPT_JOYSTICK_LEFT) PORT_8WAY
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH,  IPT_JOYSTICK_UP) PORT_8WAY
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH,  IPT_JOYSTICK_DOWN) PORT_8WAY
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH,  IPT_JOYSTICK_RIGHT) PORT_PLAYER(2) PORT_8WAY
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH,  IPT_JOYSTICK_LEFT) PORT_PLAYER(2) PORT_8WAY
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH,  IPT_JOYSTICK_UP) PORT_PLAYER(2) PORT_8WAY
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH,  IPT_JOYSTICK_DOWN) PORT_PLAYER(2) PORT_8WAY
+	PORT_START	/* IN1 */
+	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30)
 
-	PORT_START
+	PORT_START	/* IN2 */
+	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_REVERSE
+
+	PORT_START	/* IN3 */
+	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_PLAYER(2)
+
+	PORT_START	/* IN4 */
+	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_REVERSE PORT_PLAYER(2)
+
+	PORT_START /* IN5 */
 	//PORT_DIPNAME( 0x01, 0x00, "3D Imager", CODE_NONE )
 	PORT_DIPNAME( 0x01, 0x00, "3D Imager")
 	PORT_DIPSETTING(0x00, DEF_STR ( Off ))
@@ -75,6 +69,21 @@ INPUT_PORTS_START( vectrex )
 	PORT_DIPSETTING(0x40, "Green")
 	PORT_DIPSETTING(0x60, "Blue")
 	PORT_DIPSETTING(0x80, "Color")
+
+	PORT_START /* IN6 */
+	PORT_DIPNAME( 0x03, 0x00, "Lightpen")
+	PORT_DIPSETTING(0x00, DEF_STR ( Off ))
+	PORT_DIPSETTING(0x01, "left port")
+	PORT_DIPSETTING(0x02, "right port")
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON5) PORT_CODE(MOUSECODE_1_BUTTON1)
+
+    PORT_START /* Lightpen - X AXIS */
+    PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(35) PORT_KEYDELTA(1) PORT_PLAYER(1)
+
+    PORT_START /* Lightpen - Y AXIS */
+    PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(35) PORT_KEYDELTA(1) PORT_PLAYER(1)
+
+
 INPUT_PORTS_END
 
 
@@ -91,7 +100,7 @@ static struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( vectrex )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6809, 1500000)        /* 1.5 Mhz */
-	MDRV_CPU_PROGRAM_MAP(vectrex_readmem, vectrex_writemem)
+	MDRV_CPU_PROGRAM_MAP(vectrex_map, 0)
 
 	MDRV_FRAMES_PER_SECOND(60)
 
@@ -147,25 +156,33 @@ ROM_END
   after that 2 and 3. You can leave the screen where you enter
   ads by pressing 8 several times.
 
+  Character matrix is: 
+
+  btn| 1  2  3  4  5  6  7  8
+  ---+------------------------
+  1  | 0  1  2  3  4  5  6  7  
+  2  | 8  9  A  B  C  D  E  F
+  3  | G  H  I  J  K  L  M  N
+  4  | O  P  Q  R  S  T  U  V
+  5  | W  X  Y  Z  sp !  "  #
+  6  | $  %  &  '  (  )  *  +
+  7  | ,  -  _  /  :  ;  ?  =
+  8  |bs ret up dn l  r hom esc
+
+  The first page of ads is shown with the "result" of the
+  test. Remaining pages are shown in attract mode. If no extra
+  ram is present, the word COLOR is scrolled in big vector!
+  letters in attract mode.
+
 *****************************************************************/
 
-ADDRESS_MAP_START( raaspec_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x7fff) AM_READ( MRA8_ROM )
-	AM_RANGE( 0x8000, 0x87ff) AM_READ( MRA8_RAM ) /* Battery backed RAM for the Spectrum I+ */
-	AM_RANGE( 0xc800, 0xcbff) AM_READ( MRA8_RAM )
-	AM_RANGE( 0xcc00, 0xcfff) AM_READ( vectrex_mirrorram_r )
-	AM_RANGE( 0xd000, 0xd7ff) AM_READ( via_0_r )
-	AM_RANGE( 0xe000, 0xffff) AM_READ( MRA8_ROM )
-ADDRESS_MAP_END
-
-ADDRESS_MAP_START( raaspec_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x7fff) AM_WRITE( MWA8_ROM )
-	AM_RANGE( 0x8000, 0x87ff) AM_WRITE( MWA8_RAM )
+ADDRESS_MAP_START( raaspec_map , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE( 0x0000, 0x7fff) AM_ROM
+	AM_RANGE( 0x8000, 0x87ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE( 0xa000, 0xa000) AM_WRITE( raaspec_led_w )
-	AM_RANGE( 0xc800, 0xcbff) AM_WRITE( MWA8_RAM) AM_BASE( &vectrex_ram )
-	AM_RANGE( 0xcc00, 0xcfff) AM_WRITE( vectrex_mirrorram_w )
-	AM_RANGE( 0xd000, 0xd7ff) AM_WRITE( via_0_w )
-	AM_RANGE( 0xe000, 0xffff) AM_WRITE( MWA8_ROM )
+	AM_RANGE( 0xc800, 0xcbff) AM_RAM AM_RAM AM_MIRROR( 0x0400 )
+	AM_RANGE( 0xd000, 0xd7ff) AM_READWRITE ( via_0_r,  via_0_w)
+	AM_RANGE( 0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 INPUT_PORTS_START( raaspec )
@@ -188,7 +205,8 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( raaspec )
 	MDRV_IMPORT_FROM( vectrex )
 	MDRV_CPU_MODIFY( "main" )
-	MDRV_CPU_PROGRAM_MAP( raaspec_readmem, raaspec_writemem )
+	MDRV_CPU_PROGRAM_MAP( raaspec_map, 0 )
+	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	MDRV_PALETTE_LENGTH(254)
 

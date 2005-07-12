@@ -19,8 +19,8 @@
 #include "machine/mm58274c.h"
 #include "machine/pic8259.h"
 #include "includes/compis.h"
-#include "includes/pit8253.h"
-#include "includes/nec765.h"
+#include "machine/pit8253.h"
+#include "machine/nec765.h"
 #include "includes/msm8251.h"
 #include "devices/basicdsk.h"
 #include "devices/printer.h"
@@ -194,7 +194,8 @@ void compis_irq_set(UINT8 irq)
 
 void compis_osp_pic_irq(UINT8 irq)
 {
-	pic8259_0_issue_irq(irq);
+	pic8259_set_irq_line(0, irq, 1);
+	pic8259_set_irq_line(0, irq, 0);
 }
 
  READ8_HANDLER ( compis_osp_pic_r )

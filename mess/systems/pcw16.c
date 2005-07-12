@@ -93,7 +93,7 @@
 #include "includes/centroni.h" // centronics printer handshake simulation
 #include "devices/printer.h" // printer device
 // PC-AT keyboard
-#include "includes/pckeybrd.h"
+#include "machine/pckeybrd.h"
 // change to superio later
 #include "machine/pc_fdc.h"
 // for pc disk images
@@ -1202,6 +1202,7 @@ static void	pcw16_fdc_interrupt(int state)
 
 static const struct pc_fdc_interface pcw16_fdc_interface=
 {
+	NEC765A,
 	pcw16_fdc_interrupt,
 	NULL
 };

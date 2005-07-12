@@ -6,8 +6,16 @@
 
 // standard windows headers
 #define WIN32_LEAN_AND_MEAN
+#ifndef WINVER
+#define WINVER 0x500
+#define COMPILE_MULTIMON_STUBS
 #include <windows.h>
 #include <windowsx.h>
+#include <multimon.h>
+#else
+#include <windows.h>
+#include <windowsx.h>
+#endif
 
 // missing stuff from the mingw headers
 #ifndef ENUM_CURRENT_SETTINGS
@@ -29,7 +37,6 @@
 #include <math.h>
 
 // MAME headers
-#include "multidef.h"
 #include "driver.h"
 #include "window.h"
 #include "winddraw.h"

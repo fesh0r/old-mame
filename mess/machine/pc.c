@@ -24,16 +24,16 @@
 #include "vidhrdw/pc_mda.h"
 #include "vidhrdw/pc_t1t.h"
 
-#include "includes/pit8253.h"
+#include "machine/pit8253.h"
 
 #include "includes/pc_mouse.h"
-#include "includes/pckeybrd.h"
+#include "machine/pckeybrd.h"
 
 #include "includes/pclpt.h"
 #include "includes/centroni.h"
 
 #include "machine/pc_hdc.h"
-#include "includes/nec765.h"
+#include "machine/nec765.h"
 #include "includes/amstr_pc.h"
 #include "includes/europc.h"
 #include "includes/ibmpc.h"
@@ -155,8 +155,29 @@ DRIVER_INIT( pc1512 )
 
 
 
+static void pc_map_vga_memory(offs_t begin, offs_t end, read8_handler rh, write8_handler wh)
+{
+	int buswidth;
+	buswidth = cputype_databus_width(Machine->drv->cpu[0].cpu_type, ADDRESS_SPACE_PROGRAM);
+	switch(buswidth)
+	{
+		case 8:
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xA0000, 0xBFFFF, 0, 0, MRA8_NOP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xA0000, 0xBFFFF, 0, 0, MWA8_NOP);
+
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, rh);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, wh);
+			break;
+	}
+}
+
+
+
 static const struct pc_vga_interface vga_interface =
 {
+	1,
+	pc_map_vga_memory,
+
 	input_port_0_r,
 
 	ADDRESS_SPACE_IO,
@@ -167,7 +188,7 @@ static const struct pc_vga_interface vga_interface =
 
 DRIVER_INIT( pc1640 )
 {
-	pc_vga_init(&vga_interface);
+	pc_vga_init(&vga_interface, NULL);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xaffff, 0, 0, MRA8_BANK1 );
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb7fff, 0, 0, MRA8_BANK2 );
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, MRA8_BANK3 );
@@ -197,7 +218,7 @@ DRIVER_INIT( pc_vga )
 	init_pc_common(PCCOMMON_KEYBOARD_PC | PCCOMMON_DMA8237_PC | PCCOMMON_TIMER_8253);
 	ppi8255_init(&pc_ppi8255_interface);
 
-	pc_vga_init(&vga_interface);
+	pc_vga_init(&vga_interface, NULL);
 }
 
 static int pc_irq_callback(int irqline)

@@ -12,8 +12,16 @@
 **********************************************************************/
 
 #include "machine/pc_fdc.h"
-#include "includes/nec765.h"
+#include "machine/nec765.h"
 
+
+/* if not 1, DACK and TC inputs to FDC are disabled, and DRQ and IRQ are held
+ * at high impedance i.e they are not affective */
+#define PC_FDC_FLAGS_DOR_DMA_ENABLED	(1<<3)
+#define PC_FDC_FLAGS_DOR_FDC_ENABLED	(1<<2)
+#define PC_FDC_FLAGS_DOR_MOTOR_ON		(1<<4)
+
+#define LOG_FDC		0
 
 /* registers etc */
 struct pc_fdc
@@ -37,26 +45,17 @@ struct pc_fdc
 	struct pc_fdc_interface fdc_interface;
 } pc_fdc;
 
-
-
-#define VERBOSE	0
-
-#if VERBOSE
-#define LOG(msg)	logerror msg
-#else
-#define LOG(msg)	(void)(0)
-#endif
-
-
 static struct pc_fdc *fdc;
 
 static void pc_fdc_hw_interrupt(int state);
 static void pc_fdc_hw_dma_drq(int,int);
+static mess_image *pc_fdc_get_image(int floppy_index);
 
 static nec765_interface pc_fdc_nec765_interface = 
 {
 	pc_fdc_hw_interrupt,
-	pc_fdc_hw_dma_drq
+	pc_fdc_hw_dma_drq,
+	pc_fdc_get_image
 };
 
 static void pc_fdc_reset(void)
@@ -90,7 +89,7 @@ void pc_fdc_init(const struct pc_fdc_interface *iface)
 		memcpy(&fdc->fdc_interface, iface, sizeof(fdc->fdc_interface));
 
 	/* setup nec765 interface */
-	nec765_init(&pc_fdc_nec765_interface, NEC765A);
+	nec765_init(&pc_fdc_nec765_interface, iface->nec765_type);
 
 	pc_fdc_reset();
 
@@ -99,6 +98,24 @@ void pc_fdc_init(const struct pc_fdc_interface *iface)
 		img = image_from_devtype_and_index(IO_FLOPPY, i);
 		floppy_drive_set_geometry(img, FLOPPY_DRIVE_DS_80);
 	}
+}
+
+
+
+static mess_image *pc_fdc_get_image(int floppy_index)
+{
+	mess_image *image = NULL;
+
+	if (!fdc->fdc_interface.get_image)
+	{
+		if (floppy_index < device_count(IO_FLOPPY))
+			image = image_from_devtype_and_index(IO_FLOPPY, floppy_index);
+	}
+	else
+	{
+		image = fdc->fdc_interface.get_image(floppy_index);
+	}
+	return image;
 }
 
 
@@ -214,7 +231,6 @@ static void pc_fdc_dor_w(data8_t data)
 	int selected_drive;
 	int floppy_count;
 
-	LOG(("FDC DOR: %02x\r\n",data));
 	floppy_count = device_count(IO_FLOPPY);
 
 	if (floppy_count > (fdc->digital_output_register & 0x03))
@@ -318,6 +334,9 @@ READ8_HANDLER ( pc_fdc_r )
 			data = fdc->digital_input_register;
 			break;
     }
+
+	if (LOG_FDC)
+		logerror("pc_fdc_r(): pc=0x%08x offset=%d result=0x%02X\n", (unsigned) activecpu_get_reg(REG_PC), offset, data);
 	return data;
 }
 
@@ -325,6 +344,9 @@ READ8_HANDLER ( pc_fdc_r )
 
 WRITE8_HANDLER ( pc_fdc_w )
 {
+	if (LOG_FDC)
+		logerror("pc_fdc_w(): pc=0x%08x offset=%d data=0x%02X\n", (unsigned) activecpu_get_reg(REG_PC), offset, data);
+
 	switch(offset)
 	{
 		case 0:	/* n/a */

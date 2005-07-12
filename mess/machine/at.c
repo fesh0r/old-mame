@@ -15,11 +15,11 @@
 #include "vidhrdw/pc_vga.h"
 #include "vidhrdw/pc_cga.h"
 
-#include "includes/pit8253.h"
+#include "machine/pit8253.h"
 #include "includes/pcshare.h"
-#include "includes/ibmat.h"
+#include "machine/8042kbdc.h"
 #include "includes/at.h"
-#include "includes/pckeybrd.h"
+#include "machine/pckeybrd.h"
 #include "includes/sblaster.h"
 
 static SOUNDBLASTER_CONFIG soundblaster = { 1,5, {1,0} };
@@ -68,20 +68,28 @@ static void at386_set_gate_a20(int a20)
 
 
 
-static void init_at_common(AT8042_CONFIG *at8042)
+static void init_at_common(const struct kbdc8042_interface *at8042)
 {
 	init_pc_common(PCCOMMON_KEYBOARD_AT | PCCOMMON_DMA8237_AT | PCCOMMON_TIMER_8254);
 	mc146818_init(MC146818_STANDARD);
 	soundblaster_config(&soundblaster);
-	at_8042_init(at8042);
+	kbdc8042_init(at8042);
+}
+
+
+
+static void at_keyboard_interrupt(int state)
+{
+	pic8259_set_irq_line(0, 1, state);
 }
 
 
 
 DRIVER_INIT( atcga )
 {
-	AT8042_CONFIG at8042={
-		AT8042_STANDARD, at286_set_gate_a20
+	struct kbdc8042_interface at8042 =
+	{
+		KBDC8042_STANDARD, at286_set_gate_a20, at_keyboard_interrupt
 	};
 	init_at_common(&at8042);
 }
@@ -90,16 +98,38 @@ DRIVER_INIT( atcga )
 
 DRIVER_INIT( at386 )
 {
-	AT8042_CONFIG at8042={
-		AT8042_AT386, at386_set_gate_a20
+	struct kbdc8042_interface at8042 =
+	{
+		KBDC8042_AT386, at386_set_gate_a20, at_keyboard_interrupt
 	};
 	init_at_common(&at8042);
 }
 
 
 
+static void at_map_vga_memory(offs_t begin, offs_t end, read8_handler rh, write8_handler wh)
+{
+	int buswidth;
+	buswidth = cputype_databus_width(Machine->drv->cpu[0].cpu_type, ADDRESS_SPACE_PROGRAM);
+	switch(buswidth)
+	{
+		case 8:
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xA0000, 0xBFFFF, 0, 0, MRA8_NOP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xA0000, 0xBFFFF, 0, 0, MWA8_NOP);
+
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, rh);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, wh);
+			break;
+	}
+}
+
+
+
 static const struct pc_vga_interface vga_interface =
 {
+	1,
+	at_map_vga_memory,
+
 	input_port_0_r,
 
 	ADDRESS_SPACE_IO,
@@ -110,25 +140,27 @@ static const struct pc_vga_interface vga_interface =
 
 DRIVER_INIT( at_vga )
 {
-	AT8042_CONFIG at8042={
-		AT8042_STANDARD, at286_set_gate_a20
+	struct kbdc8042_interface at8042 =
+	{
+		KBDC8042_STANDARD, at286_set_gate_a20, at_keyboard_interrupt
 	};
 
 	init_at_common(&at8042);
 	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
-	pc_vga_init(&vga_interface);
+	pc_vga_init(&vga_interface, NULL);
 }
 
 
 
 DRIVER_INIT( ps2m30286 )
 {
-	AT8042_CONFIG at8042={
-		AT8042_PS2, at386_set_gate_a20
+	struct kbdc8042_interface at8042 =
+	{
+		KBDC8042_PS2, at386_set_gate_a20, at_keyboard_interrupt
 	};
 	init_at_common(&at8042);
 	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
-	pc_vga_init(&vga_interface);
+	pc_vga_init(&vga_interface, NULL);
 }
 
 
@@ -153,18 +185,4 @@ MACHINE_INIT( at_vga )
 	pc_vga_reset();
 	dma8237_reset();
 	cpu_set_irq_callback(0, at_irq_callback);
-}
-
-void at_cga_frame_interrupt (void)
-{
-	at_keyboard_polling();
-	at_8042_time();
-}
-
-void at_vga_frame_interrupt (void)
-{
-//	vga_timer();
-
-	at_keyboard_polling();
-	at_8042_time();
 }

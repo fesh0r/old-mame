@@ -1,5 +1,6 @@
 /* IBM/Motorola PowerPC 4xx/6xx Emulator */
 
+#include <setjmp.h>
 #include "driver.h"
 #include "ppc.h"
 #include "mamedbg.h"
@@ -249,6 +250,7 @@ typedef struct {
 	UINT32 ibr;
 
 	/* PowerPC function pointers for memory accesses/exceptions */
+	jmp_buf exception_jmpbuf;
 	data8_t (*read8)(offs_t address);
 	data16_t (*read16)(offs_t address);
 	data32_t (*read32)(offs_t address);
@@ -470,7 +472,14 @@ INLINE void ppc_set_spr(int spr, UINT32 value)
 				if((value & 0x80000000) && !(DEC & 0x80000000))
 				{
 					/* trigger interrupt */
-					osd_die("ERROR: set_spr to DEC triggers IRQ\n");
+#if HAS_PPC602
+					if (IS_PPC602())
+						ppc602_exception(EXCEPTION_DECREMENTER);
+#endif
+#if HAS_PPC603
+					if (IS_PPC603())
+						ppc603_exception(EXCEPTION_DECREMENTER);
+#endif
 				}
 				write_decrementer(value);
 				return;

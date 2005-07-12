@@ -577,6 +577,7 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 			*/
 	DRIVER( dragon32 )	/* Dragon 32 										*/
 	DRIVER( dragon64 )	/* Dragon 64 										*/
 	DRIVER( dgnalpha )	/* Dragon Alpha 									*/
+	DRIVER( dgnbeta )	/* Dragon Beta 									*/
 	DRIVER( cp400 ) 	/* Prologica CP400									*/
 	DRIVER( mc10 )		/* MC-10											*/
 
@@ -810,6 +811,9 @@ TESTDRIVER( hp48g ) 	/* HP48 G/GX										*/
 	DRIVER( abc800m )
 	DRIVER( abc800c )
 	DRIVER( abc806 )
+
+	/* Be Incorporated */
+	DRIVER( bebox )
 
 /****************Games*******************************************************/
 	/* Computer Electronic */

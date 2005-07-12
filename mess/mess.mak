@@ -130,7 +130,7 @@ CPUS+=I386@
 #CPUS+=M37710@
 #CPUS+=PPC403@
 #CPUS+=PPC602@
-#CPUS+=PPC603@
+CPUS+=PPC603@
 #CPUS+=SE3208@
 #CPUS+=MC68HC11@
 CPUS+=Z80GB@
@@ -309,6 +309,8 @@ DRVLIBS = \
 	$(OBJ)/luxor.a		\
 	$(OBJ)/sgi.a		\
 	$(OBJ)/primo.a		\
+	$(OBJ)/dgn_beta.a	\
+	$(OBJ)/be.a			\
 
 
 $(OBJ)/neocd.a:						\
@@ -430,6 +432,11 @@ $(OBJ)/coco.a:   \
 	$(OBJ)/mess/devices/coco_vhd.o	\
 	$(OBJ)/mess/machine/mc10.o		\
 	$(OBJ)/mess/systems/mc10.o		\
+
+$(OBJ)/dgn_beta.a:	\
+	$(OBJ)/mess/machine/dgn_beta.o	\
+	$(OBJ)/mess/vidhrdw/dgn_beta.o	\
+	$(OBJ)/mess/systems/dgn_beta.o	
 
 $(OBJ)/trs80.a:    \
 	$(OBJ)/mess/machine/trs80.o	 \
@@ -583,7 +590,7 @@ $(OBJ)/pc.a:	   \
 
 $(OBJ)/at.a:	   \
 	$(OBJ)/mess/machine/pc_ide.o   \
-	$(OBJ)/mess/machine/ibmat.o    \
+	$(OBJ)/mess/machine/8042kbdc.o    \
 	$(OBJ)/mess/machine/ps2.o	 \
 	$(OBJ)/mess/machine/at.o       \
 	$(OBJ)/mess/systems/at.o
@@ -895,6 +902,15 @@ $(OBJ)/primo.a:				\
 	$(OBJ)/mess/machine/primo.o	\
 	$(OBJ)/mess/vidhrdw/primo.o	\
 	$(OBJ)/mess/formats/primoptp.o
+
+$(OBJ)/be.a:						\
+	$(OBJ)/mess/systems/bebox.o		\
+	$(OBJ)/mess/machine/bebox.o		\
+	$(OBJ)/mess/machine/pci.o		\
+	$(OBJ)/mess/machine/mpc105.o	\
+	$(OBJ)/mess/vidhrdw/cirrus.o	\
+	$(OBJ)/machine/intelfsh.o		\
+	$(OBJ)/machine/53c810.o
 
 # MESS specific core $(OBJ)s
 COREOBJS +=							\

@@ -24,7 +24,7 @@
 #include "machine/pic8259.h"
 #include "vidhrdw/generic.h"
 
-#include "includes/pit8253.h"
+#include "machine/pit8253.h"
 #include "vidhrdw/pc_vga.h"
 #include "vidhrdw/pc_cga.h"
 #include "vidhrdw/pc_mda.h"
@@ -34,7 +34,7 @@
 
 #include "includes/pc_ide.h"
 #include "machine/pc_fdc.h"
-#include "includes/pckeybrd.h"
+#include "machine/pckeybrd.h"
 #include "includes/pclpt.h"
 #include "includes/sblaster.h"
 #include "includes/pc_mouse.h"

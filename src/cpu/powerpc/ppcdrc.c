@@ -4,6 +4,7 @@
     Written by Ville Linde
 */
 
+#include <setjmp.h>
 #include "driver.h"
 #include "ppc.h"
 #include "mamedbg.h"
@@ -262,6 +263,8 @@ typedef struct {
 	void *		generate_syscall_exception;
 	void *		generate_decrementer_exception;
 	void *		generate_trap_exception;
+	void *		generate_dsi_exception;
+	void *		generate_isi_exception;
 
 	// PowerPC 60x specific registers */
 	UINT32 dec;
@@ -279,6 +282,7 @@ typedef struct {
 	UINT32 ibr;
 
 	/* PowerPC function pointers for memory accesses/exceptions */
+	jmp_buf exception_jmpbuf;
 	data8_t (*read8)(offs_t address);
 	data16_t (*read16)(offs_t address);
 	data32_t (*read32)(offs_t address);
@@ -468,7 +472,8 @@ INLINE void ppc_set_spr(int spr, UINT32 value)
 				if((value & 0x80000000) && !(DEC & 0x80000000))
 				{
 					/* trigger interrupt */
-					osd_die("ERROR: set_spr to DEC triggers IRQ\n");
+					if( MSR & MSR_EE )
+						longjmp(ppc.exception_jmpbuf, EXCEPTION_DECREMENTER);
 				}
 				write_decrementer(value);
 				return;
@@ -1103,10 +1108,19 @@ static void ppcdrc603_reset(void *param)
 
 static int ppcdrc603_execute(int cycles)
 {
+	int exception_type;
+
 	/* count cycles and interrupt cycles */
 	ppc_icount = cycles;
 	ppc_tb_base_icount = cycles;
 	ppc_dec_base_icount = cycles;
+	
+	exception_type = setjmp(ppc.exception_jmpbuf);
+	if (exception_type)
+	{
+		//ppc.npc = ppc.pc;
+		//ppc603_exception(exception_type);
+	}
 
 	// check if decrementer exception occurs during execution
 	if ((UINT32)(DEC - ppc_icount) > (UINT32)(DEC))
@@ -1283,6 +1297,8 @@ static void ppcdrc602_reset(void *param)
 
 static int ppcdrc602_execute(int cycles)
 {
+	int exception_type;
+
 	/* count cycles and interrupt cycles */
 	ppc_icount = cycles;
 	ppc_tb_base_icount = cycles;
@@ -1296,6 +1312,13 @@ static int ppcdrc602_execute(int cycles)
 	else
 	{
 		ppc_dec_trigger_cycle = 0x7fffffff;
+	}
+
+	exception_type = setjmp(ppc.exception_jmpbuf);
+	if (exception_type)
+	{
+		//ppc.npc = ppc.pc;
+		//ppc602_exception(exception_type);
 	}
 
 	drc_execute(ppc.drc);
