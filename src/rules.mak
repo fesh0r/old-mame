@@ -625,6 +625,19 @@ else
 CPUDEFS += -DHAS_M68020=0
 endif
 
+CPU=$(strip $(findstring M68040@,$(CPUS)))
+ifneq ($(CPU),)
+OBJDIRS += $(OBJ)/cpu/m68000
+CPUDEFS += -DHAS_M68040=1
+M68000_GENERATED_OBJS = \
+$(OBJ)/cpu/m68000/m68kops.o $(OBJ)/cpu/m68000/m68kopac.o \
+$(OBJ)/cpu/m68000/m68kopdm.o $(OBJ)/cpu/m68000/m68kopnz.o
+CPUOBJS += $(M68000_GENERATED_OBJS) $(OBJ)/cpu/m68000/m68kcpu.o $(OBJ)/cpu/m68000/m68kmame.o
+DBGOBJS += $(OBJ)/cpu/m68000/m68kdasm.o
+else
+CPUDEFS += -DHAS_M68040=0
+endif
+
 CPU=$(strip $(findstring T11@,$(CPUS)))
 ifneq ($(CPU),)
 OBJDIRS += $(OBJ)/cpu/t11
@@ -1405,10 +1418,10 @@ OBJDIRS += $(OBJ)/cpu/powerpc
 CPUDEFS += -DHAS_PPC403=1
 ifdef X86_PPC_DRC
 CPUOBJS += $(OBJ)/cpu/powerpc/ppcdrc.o
-$(OBJ)/cpu/powerpc/ppcdrc.o: ppcdrc.c ppc.h drc_ops.c drc_ops.h ppc_ops.c ppc403.c
+$(OBJ)/cpu/powerpc/ppcdrc.o: ppcdrc.c ppc.h drc_ops.c drc_ops.h ppc_ops.c ppc_mem.c ppc403.c
 else
 CPUOBJS += $(OBJ)/cpu/powerpc/ppc.o
-$(OBJ)/cpu/powerpc/ppc.o: ppc.c ppc.h ppc_ops.c ppc_ops.h ppc403.c
+$(OBJ)/cpu/powerpc/ppc.o: ppc.c ppc.h ppc_ops.c ppc_ops.c ppc_mem.c ppc403.c
 endif
 DBGOBJS += $(OBJ)/cpu/powerpc/ppc_dasm.o
 else
@@ -1421,10 +1434,10 @@ OBJDIRS += $(OBJ)/cpu/powerpc
 CPUDEFS += -DHAS_PPC602=1
 ifdef X86_PPC_DRC
 CPUOBJS += $(OBJ)/cpu/powerpc/ppcdrc.o
-$(OBJ)/cpu/powerpc/ppcdrc.o: ppcdrc.c ppc.h drc_ops.c drc_ops.h ppc_ops.c ppc602.c
+$(OBJ)/cpu/powerpc/ppcdrc.o: ppcdrc.c ppc.h drc_ops.c drc_ops.h ppc_ops.c ppc_mem.c ppc602.c
 else
 CPUOBJS += $(OBJ)/cpu/powerpc/ppc.o
-$(OBJ)/cpu/powerpc/ppc.o: ppc.c ppc.h ppc_ops.c ppc_ops.h ppc602.c
+$(OBJ)/cpu/powerpc/ppc.o: ppc.c ppc.h ppc_ops.c ppc_ops.c ppc_mem.c ppc602.c
 endif
 DBGOBJS += $(OBJ)/cpu/powerpc/ppc_dasm.o
 else
@@ -1437,10 +1450,10 @@ OBJDIRS += $(OBJ)/cpu/powerpc
 CPUDEFS += -DHAS_PPC603=1
 ifdef X86_PPC_DRC
 CPUOBJS += $(OBJ)/cpu/powerpc/ppcdrc.o
-$(OBJ)/cpu/powerpc/ppcdrc.o: ppcdrc.c ppc.h drc_ops.c drc_ops.h ppc_ops.c ppc603.c
+$(OBJ)/cpu/powerpc/ppcdrc.o: ppcdrc.c ppc.h drc_ops.c drc_ops.h ppc_ops.c ppc_mem.c ppc603.c
 else
 CPUOBJS += $(OBJ)/cpu/powerpc/ppc.o
-$(OBJ)/cpu/powerpc/ppc.o: ppc.c ppc.h ppc_ops.c ppc_ops.h ppc603.c
+$(OBJ)/cpu/powerpc/ppc.o: ppc.c ppc.h ppc_ops.c ppc_ops.c ppc_mem.c ppc603.c
 endif
 DBGOBJS += $(OBJ)/cpu/powerpc/ppc_dasm.o
 else
@@ -1469,6 +1482,16 @@ else
 CPUDEFS += -DHAS_MC68HC11=0
 endif
 
+CPU=$(strip $(findstring ADSP21062@,$(CPUS)))
+ifneq ($(CPU),)
+OBJDIRS += $(OBJ)/cpu/sharc
+CPUDEFS += -DHAS_ADSP21062=1
+CPUOBJS += $(OBJ)/cpu/sharc/sharc.o
+DBGOBJS += $(OBJ)/cpu/sharc/sharcdsm.o
+$(OBJ)/cpu/sharc/sharc.o: sharc.c sharc.h sharcops.c sharcops.h sharcdsm.c sharcdsm.h compute.c
+else
+CPUDEFS += -DHAS_ADSP21062=0
+endif
 
 SOUND=$(strip $(findstring CDDA@,$(SOUNDS)))
 ifneq ($(SOUND),)

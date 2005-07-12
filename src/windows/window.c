@@ -29,6 +29,7 @@
 #include <math.h>
 
 // MAME headers
+#include "multidef.h"
 #include "driver.h"
 #include "window.h"
 #include "winddraw.h"

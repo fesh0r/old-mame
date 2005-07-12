@@ -20,9 +20,9 @@ void ppc602_exception(int exception)
 					ppc.npc = 0xfff00000 | 0x0500;
 				else
 					ppc.npc = ppc.ibr | 0x0500;
-			}
-			else {
-				ppc.exception_pending = 1 << EXCEPTION_IRQ;
+
+				ppc.interrupt_pending &= ~0x1;
+				change_pc(ppc.npc);
 			}
 			break;
 
@@ -44,9 +44,9 @@ void ppc602_exception(int exception)
 					ppc.npc = 0xfff00000 | 0x0900;
 				else
 					ppc.npc = ppc.ibr | 0x0900;
-			}
-			else {
-				ppc.exception_pending |= 1 << EXCEPTION_DECREMENTER;
+
+				ppc.interrupt_pending &= ~0x2;
+				change_pc(ppc.npc);
 			}
 			break;
 
@@ -67,6 +67,7 @@ void ppc602_exception(int exception)
 					ppc.npc = 0xfff00000 | 0x0700;
 				else
 					ppc.npc = ppc.ibr | 0x0700;
+				change_pc(ppc.npc);
 			}
 			break;
 
@@ -87,6 +88,7 @@ void ppc602_exception(int exception)
 					ppc.npc = 0xfff00000 | 0x0c00;
 				else
 					ppc.npc = ppc.ibr | 0x0c00;
+				change_pc(ppc.npc);
 			}
 			break;
 
@@ -100,7 +102,7 @@ void ppc602_exception(int exception)
 static void ppc602_set_irq_line(int irqline, int state)
 {
 	if( state ) {
-		ppc602_exception(EXCEPTION_IRQ);
+		ppc.interrupt_pending |= 0x1;
 		if (ppc.irq_callback)
 		{
 			ppc.irq_callback(irqline);
@@ -108,36 +110,73 @@ static void ppc602_set_irq_line(int irqline, int state)
 	}
 }
 
+INLINE void ppc602_check_interrupts(void)
+{
+	if (MSR & MSR_EE)
+	{
+		if (ppc.interrupt_pending != 0)
+		{
+			if (ppc.interrupt_pending & 0x1)
+			{
+				ppc602_exception(EXCEPTION_IRQ);
+			}
+			else if (ppc.interrupt_pending & 0x2)
+			{
+				ppc602_exception(EXCEPTION_DECREMENTER);
+			}
+		}
+	}
+}
+
 static void ppc602_reset(void *param)
 {
+	float multiplier;
 	ppc_config *config = param;
 	ppc.pc = ppc.npc = 0xfff00100;
 	ppc.pvr = config->pvr;
+
+	multiplier = (float)((config->bus_frequency_multiplier >> 4) & 0xf) +
+				 (float)(config->bus_frequency_multiplier & 0xf) / 10.0f;
+	bus_freq_multiplier = (int)(multiplier * 2);
 
 	ppc_set_msr(0x40);
 	change_pc(ppc.pc);
 
 	ppc.hid0 = 1;
 
-	ppc.exception_pending = 0;
+	ppc.interrupt_pending = 0;
 }
 
 static int ppc602_execute(int cycles)
 {
-	UINT32 opcode, dec_old;
+	UINT32 opcode;
 	ppc_icount = cycles;
+	ppc_tb_base_icount = cycles;
+	ppc_dec_base_icount = cycles;
+
+	// check if decrementer exception occurs during execution
+	if ((UINT32)(DEC - ppc_icount) > (UINT32)(DEC))
+	{
+		ppc_dec_trigger_cycle = ppc_icount - DEC;
+	}
+	else
+	{
+		ppc_dec_trigger_cycle = 0x7fffffff;
+	}
+
 	change_pc(ppc.npc);
 
 	while( ppc_icount > 0 )
 	{
-		//int cc = (ppc_icount >> 2) & 0x1;
-		dec_old = DEC;
 		ppc.pc = ppc.npc;
 		CALL_MAME_DEBUG;
 
-		ppc.npc = ppc.pc + 4;
+		if (MSR & MSR_IR)
+			opcode = ppc_readop_translated(ppc.pc);
+		else
 		opcode = ROPCODE64(ppc.pc);
 
+		ppc.npc = ppc.pc + 4;
 		switch(opcode >> 26)
 		{
 			case 19:	optable19[(opcode >> 1) & 0x3ff](opcode); break;
@@ -149,13 +188,20 @@ static int ppc602_execute(int cycles)
 
 		ppc_icount--;
 
-		ppc.tb += 1;
-
-		DEC -= 1;
-		if(DEC > dec_old) {
-			ppc602_exception(EXCEPTION_DECREMENTER);
+		if(ppc_icount == ppc_dec_trigger_cycle) {
+			ppc.interrupt_pending |= 0x2;
 		}
+
+		ppc602_check_interrupts();
 	}
+
+	// update timebase
+	// timebase is incremented once every four core clock cycles, so adjust the cycles accordingly
+	ppc.tb += ((ppc_tb_base_icount - ppc_icount) / 4);
+
+	// update decrementer
+	DEC -= ((ppc_dec_base_icount - ppc_icount) / (bus_freq_multiplier * 2));
+
 
 	return cycles - ppc_icount;
 }

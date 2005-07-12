@@ -13,7 +13,7 @@
 #include "debugcmd.h"
 #include "debugcpu.h"
 #include "debugcon.h"
-#include "debugexp.h"
+#include "express.h"
 #include <ctype.h>
 
 
@@ -36,7 +36,7 @@
 #define DASM_LINES			(1000)
 #define DASM_WIDTH			(50)
 #define DASM_MAX_BYTES		(16)
-#define DASM_MAX_CHARS		(8 + 2 + DASM_WIDTH + 2 + 2*DASM_MAX_BYTES)
+#define DASM_MAX_CHARS		(8 + 2 + DASM_WIDTH + 2 + 3*DASM_MAX_BYTES)
 
 
 
@@ -1006,7 +1006,7 @@ static void disasm_free(struct debug_view *view)
 	if (dasmdata)
 	{
 		if (dasmdata->expression)
-			debug_expression_free(dasmdata->expression);
+			expression_free(dasmdata->expression);
 		if (dasmdata->expression_string)
 			free(dasmdata->expression_string);
 		free(dasmdata);
@@ -1088,35 +1088,39 @@ static offs_t disasm_back_up(int cpunum, const struct debug_cpu_info *cpuinfo, o
     byte values
 -------------------------------------------------*/
 
-static void disasm_generate_bytes(offs_t pcbyte, int numbytes, const struct debug_cpu_info *cpuinfo, int minbytes, char *string)
+static void disasm_generate_bytes(offs_t pcbyte, int numbytes, const struct debug_cpu_info *cpuinfo, int minbytes, char *string, int maxchars)
 {
-	int byte, offset;
+	int byte, offset = 0;
 	UINT64 val;
 
 	switch (minbytes)
 	{
 		case 1:
-			offset = sprintf(string, "%02X", (UINT32)debug_read_opcode(pcbyte, 1));
-			for (byte = 1; byte < numbytes; byte++)
+			if (maxchars >= 2)
+				offset = sprintf(string, "%02X", (UINT32)debug_read_opcode(pcbyte, 1));
+			for (byte = 1; byte < numbytes && offset + 3 < maxchars; byte++)
 				offset += sprintf(&string[offset], " %02X", (UINT32)debug_read_opcode(pcbyte + byte, 1));
 			break;
 
 		case 2:
-			offset = sprintf(string, "%04X", (UINT32)debug_read_opcode(pcbyte, 2));
-			for (byte = 2; byte < numbytes; byte += 2)
+			if (maxchars >= 4)
+				offset = sprintf(string, "%04X", (UINT32)debug_read_opcode(pcbyte, 2));
+			for (byte = 2; byte < numbytes && offset + 5 < maxchars; byte += 2)
 				offset += sprintf(&string[offset], " %04X", (UINT32)debug_read_opcode(pcbyte + byte, 2));
 			break;
 
 		case 4:
-			offset = sprintf(string, "%08X", (UINT32)debug_read_opcode(pcbyte, 4));
-			for (byte = 4; byte < numbytes; byte += 4)
+			if (maxchars >= 8)
+				offset = sprintf(string, "%08X", (UINT32)debug_read_opcode(pcbyte, 4));
+			for (byte = 4; byte < numbytes && offset + 9 < maxchars; byte += 4)
 				offset += sprintf(&string[offset], " %08X", (UINT32)debug_read_opcode(pcbyte + byte, 4));
 			break;
 
 		case 8:
 			val = debug_read_opcode(pcbyte, 8);
-			offset = sprintf(string, "%08X%08X", (UINT32)(val >> 32), (UINT32)val);
-			for (byte = 8; byte < numbytes; byte += 8)
+			if (maxchars >= 16)
+				offset = sprintf(string, "%08X%08X", (UINT32)(val >> 32), (UINT32)val);
+			for (byte = 8; byte < numbytes && offset + 17 < maxchars; byte += 8)
 			{
 				val = debug_read_opcode(pcbyte + byte, 8);
 				offset += sprintf(&string[offset], " %08X%08X", (UINT32)(val >> 32), (UINT32)val);
@@ -1127,6 +1131,11 @@ static void disasm_generate_bytes(offs_t pcbyte, int numbytes, const struct debu
 			osd_die("disasm_generate_bytes: unknown size = %d\n", minbytes);
 			break;
 	}
+
+	/* if we ran out of room, indicate more */
+	string[maxchars - 1] = 0;
+	if (byte < numbytes && maxchars > 3)
+		string[maxchars - 2] = string[maxchars - 3] = string[maxchars - 4] = '.';
 }
 
 
@@ -1197,7 +1206,7 @@ static void disasm_recompute(struct debug_view *view)
 
 		/* get the bytes */
 		numbytes = ADDR2BYTE(numbytes, cpuinfo, ADDRESS_SPACE_PROGRAM);
-		disasm_generate_bytes(pcbyte, numbytes, cpuinfo, minbytes, &dasmdata->dasm[instr][dasmdata->divider2]);
+		disasm_generate_bytes(pcbyte, numbytes, cpuinfo, minbytes, &dasmdata->dasm[instr][dasmdata->divider2], DASM_MAX_CHARS - dasmdata->divider2);
 	}
 
 	/* update our CPU number and opcode base */
@@ -1235,13 +1244,13 @@ static void disasm_update(struct debug_view *view)
 		struct parsed_expression *expr;
 
 		/* parse the new expression */
-		exprerr = debug_expression_parse(dasmdata->expression_string, debug_get_cpu_info(view->cpunum)->symtable, &expr);
+		exprerr = expression_parse(dasmdata->expression_string, debug_get_cpu_info(view->cpunum)->symtable, &expr);
 
 		/* if it worked, update the expression */
 		if (exprerr == EXPRERR_NONE)
 		{
 			if (dasmdata->expression)
-				debug_expression_free(dasmdata->expression);
+				expression_free(dasmdata->expression);
 			dasmdata->expression = expr;
 		}
 	}
@@ -1252,7 +1261,7 @@ static void disasm_update(struct debug_view *view)
 		UINT64 result;
 
 		/* recompute the value of the expression */
-		exprerr = debug_expression_execute(dasmdata->expression, &result);
+		exprerr = expression_execute(dasmdata->expression, &result);
 		if (exprerr == EXPRERR_NONE && result != dasmdata->last_result)
 		{
 			offs_t resultbyte = ADDR2BYTE(result, cpuinfo, ADDRESS_SPACE_PROGRAM);
@@ -1461,7 +1470,7 @@ static void memory_free(struct debug_view *view)
 	if (memdata)
 	{
 		if (memdata->expression)
-			debug_expression_free(memdata->expression);
+			expression_free(memdata->expression);
 		if (memdata->expression_string)
 			free(memdata->expression_string);
 		free(memdata);
@@ -1751,13 +1760,13 @@ static void memory_update(struct debug_view *view)
 		struct parsed_expression *expr;
 
 		/* parse the new expression */
-		exprerr = debug_expression_parse(memdata->expression_string, debug_get_cpu_info(view->cpunum)->symtable, &expr);
+		exprerr = expression_parse(memdata->expression_string, debug_get_cpu_info(view->cpunum)->symtable, &expr);
 
 		/* if it worked, update the expression */
 		if (exprerr == EXPRERR_NONE)
 		{
 			if (memdata->expression)
-				debug_expression_free(memdata->expression);
+				expression_free(memdata->expression);
 			memdata->expression = expr;
 			memdata->expression_dirty = 1;
 		}
@@ -1769,7 +1778,7 @@ static void memory_update(struct debug_view *view)
 		UINT64 result;
 
 		/* recompute the value of the expression */
-		exprerr = debug_expression_execute(memdata->expression, &result);
+		exprerr = expression_execute(memdata->expression, &result);
 
 		/* no longer dirty */
 		memdata->expression_dirty = 0;

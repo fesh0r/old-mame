@@ -1603,7 +1603,7 @@ static MACHINE_INIT( ms32 )
 static MACHINE_DRIVER_START( ms32 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(V70, 20000000/9) // 20MHz
+	MDRV_CPU_ADD(V70, 20000000) // 20MHz
 	MDRV_CPU_PROGRAM_MAP(ms32_readmem,ms32_writemem)
 	MDRV_CPU_VBLANK_INT(ms32_interrupt,32)
 
@@ -2337,15 +2337,6 @@ static DRIVER_INIT (47pie2)
 	init_ss92048_01();
 }
 
-static DRIVER_INIT (tp2m32)
-{
-	data32_t *pROM = (data32_t *)memory_region(REGION_CPU1);
-	/* fix SBR register */
-	pROM[0x1b848/4] &= 0x0000ffff;
-
-	init_ss91022_10();
-}
-
 static DRIVER_INIT (f1superb)
 {
 	data32_t *pROM = (data32_t *)memory_region(REGION_CPU1);
@@ -2367,7 +2358,7 @@ GAMEX( 1995, akiss,    0,        ms32, kirarast, kirarast,   ROT0,   "Jaleco", "
 GAMEX( 1996, gratia,   0,        ms32, gratia,   ss92047_01, ROT0,   "Jaleco", "Gratia - Second Earth (92047-01 version)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAMEX( 1996, gratiaa,  gratia,   ms32, gratia,   ss91022_10, ROT0,   "Jaleco", "Gratia - Second Earth (91022-10 version)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAMEX( 1996, kirarast, 0,        ms32, kirarast, kirarast,   ROT0,   "Jaleco", "Ryuusei Janshi Kirara Star", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAMEX( 1997, tp2m32,   tetrisp2, ms32, tp2m32,   tp2m32,     ROT0,   "Jaleco", "Tetris Plus 2 (MegaSystem 32 Version)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAMEX( 1997, tp2m32,   tetrisp2, ms32, tp2m32,   ss91022_10, ROT0,   "Jaleco", "Tetris Plus 2 (MegaSystem 32 Version)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 
 /* these boot and show something */
 GAMEX( 1994, f1superb, 0,        ms32, f1superb, f1superb, ROT0,   "Jaleco", "F1 Super Battle", GAME_NOT_WORKING | GAME_NO_SOUND )

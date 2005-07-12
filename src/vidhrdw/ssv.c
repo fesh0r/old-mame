@@ -18,20 +18,20 @@
 
     Offset:     Bits:                   Value:
 
-        0.w     f--- ---- ---- ----     Shadow
+        0.h     f--- ---- ---- ----     Shadow
                 -edc ---- ---- ----     Each bit enables 2 bitplanes*
                 ---- ba-- ---- ----     X Size (1,2,4,8 tiles)
                 ---- --98 ---- ----     Y Size (1,2,4,8 tiles)
                 ---- ---- 765- ----     Index of a scroll to apply to the single-sprite(s)
                 ---- ---- ---4 3210     Number of single-sprites, minus 1
 
-        2.w     f--- ---- ---- ----     List end
+        2.h     f--- ---- ---- ----     List end
                 -edc ba98 7654 3210     Offset of the single-sprite(s) data
 
-        4.w     fedc ba-- ---- ----
+        4.h     fedc ba-- ---- ----
                 ---- --98 7654 3210     X displacement (ignored by tilemap sprites?)
 
-        4.w     fedc ba-- ---- ----
+        6.h     fedc ba-- ---- ----
                 ---- --98 7654 3210     Y displacement (ignored by tilemap sprites?)
 
 
@@ -47,20 +47,20 @@
     Rectangle case(1):
     Offset:     Bits:                   Value:
 
-        0.w                             Code (low bits)
+        0.h                             Code (low bits)
 
-        2.w     f--- ---- ---- ----     Flip X
+        2.h     f--- ---- ---- ----     Flip X
                 -e-- ---- ---- ----     Flip Y
                 --dc ba-- ---- ----     Code (high bits)
                 ---- --9- ---- ----     Code? Color?
                 ---- ---8 7654 3210     Color code (64 color steps)
 
-        4.w     f--- ---- ---- ----     Shadow
+        4.h     f--- ---- ---- ----     Shadow
                 -edc ---- ---- ----     Each bit enables 2 bitplanes*
                 ---- ba-- ---- ----     X Size (1,2,4,8 tiles)
                 ---- --98 7654 3210     X
 
-        6.w     fedc ---- ---- ----
+        6.h     fedc ---- ---- ----
                 ---- ba-- ---- ----     Y Size (1,2,4 tiles) **
                 ---- --98 7654 3210     Y
 
@@ -68,15 +68,15 @@
     Tilemap case(2):
     Offset:     Bits:                   Value:
 
-        0.w     fedc ba98 7654 3---
+        0.h     fedc ba98 7654 3---
                 ---- ---- ---- -210     Scroll index (see below)
 
-        2.w                             Always 0
+        2.h                             Always 0
 
-        4.w     fedc ba-- ---- ----
+        4.h     fedc ba-- ---- ----
                 ---- --98 7654 3210     X?
 
-        6.w     fedc ---- ---- ----
+        6.h     fedc ---- ---- ----
                 ---- ba-- ---- ----     **
                 ---- --98 7654 3210     Y
 
@@ -88,13 +88,13 @@
 
     Offset:     Bits:                   Value:
 
-        0.w                             Scroll X
+        0.h                             Scroll X
 
-        2.w                             Scroll Y
+        2.h                             Scroll Y
 
-        4.w                             ? 0000, 05ff, 057f
+        4.h                             Priority ? (0000, 0401, 0440, 057f, 05ff)
 
-        6.w     fed- ---- ---- ----     Tilemap width (games only use 1 -> $200, 2 -> $400)
+        6.h     fed- ---- ---- ----     Tilemap width (games only use 1 -> $200, 2 -> $400)
                 ---c ---- ---- ----     ?
                 ---- b--- ---- ----     Shadow
                 ---- -a98 ---- ----     Each bit enables 2 bitplanes*
@@ -107,9 +107,9 @@
 
     Offset:     Bits:                   Value:
 
-        0.w                             Code (low bits)***
+        0.h                             Code (low bits)***
 
-        2.w     f--- ---- ---- ----     Flip X
+        2.h     f--- ---- ---- ----     Flip X
                 -e-- ---- ---- ----     Flip Y
                 --dc ba-- ---- ----     Code (high bits)
                 ---- --9- ---- ----     Code? Color?
@@ -129,7 +129,7 @@
     The low bits of the pens from a "shadowing" tile (regardless of color code)
     substitute the top bits of the color index (0-7fff) in the frame buffer.
     The number of low bits from the "shadowing tile" is 4 or 2, depending on
-    bit 7 of 1c0077.
+    bit 7 of 1c0076.
 
 Note: press Z to show some info on each sprite (debug builds only)
 
@@ -197,15 +197,68 @@ VIDEO_START( ssv )
 	return 0;
 }
 
+VIDEO_START( eaglshot )
+{
+	if ( video_start_ssv() )
+		return 1;
+
+	eaglshot_gfxram		=	(data16_t*)auto_malloc(16 * 0x40000);
+	eaglshot_dirty_tile	=	(char*)auto_malloc(16 * 0x40000 / (16*8));
+
+	if ( !eaglshot_gfxram || !eaglshot_dirty_tile )
+		return 1;
+
+	return 0;
+}
+
+static struct tilemap *gdfs_tmap;
+
+static void get_tile_info_0(int tile_index)
+{
+	data16_t tile = gdfs_tmapram[tile_index];
+	SET_TILE_INFO(3, tile, 0, TILE_FLIPXY( tile >> 14 ));
+}
+
+WRITE16_HANDLER( gdfs_tmapram_w )
+{
+	data16_t old_data	=	gdfs_tmapram[offset];
+	data16_t new_data	=	COMBINE_DATA(&gdfs_tmapram[offset]);
+	if (old_data != new_data)	tilemap_mark_tile_dirty(gdfs_tmap, offset);
+}
+
+VIDEO_START( gdfs )
+{
+	if ( video_start_ssv() )
+		return 1;
+
+	Machine->gfx[2]->color_granularity = 64; /* 256 colour sprites with palette selectable on 64 colour boundaries */
+
+	eaglshot_gfxram		=	(data16_t*)auto_malloc(4 * 0x100000);
+	eaglshot_dirty_tile	=	(char*)auto_malloc(4 * 0x100000 / (16*8));
+
+	gdfs_tmap			=	tilemap_create(	get_tile_info_0, tilemap_scan_rows,
+											TILEMAP_TRANSPARENT, 16,16, 0x100,0x100	);
+
+	if ( !eaglshot_gfxram || !eaglshot_dirty_tile || !gdfs_tmap)
+		return 1;
+
+	tilemap_set_transparent_pen(gdfs_tmap, 0);
+
+	return 0;
+}
+
 /* Scroll values + CRT controller registers */
 data16_t *ssv_scroll;
 
-int ssv_special;	// kludge for hypreac2
+int ssv_special;	// game specific kludges
 
 int ssv_tile_code[16];
 
 int ssv_sprites_offsx, ssv_sprites_offsy;
 int ssv_tilemap_offsx, ssv_tilemap_offsy;
+
+data16_t *eaglshot_gfxram, *gdfs_tmapram, *gdfs_tmapscroll;
+char eaglshot_dirty, *eaglshot_dirty_tile;
 
 /***************************************************************************
 
@@ -245,6 +298,18 @@ int ssv_tilemap_offsx, ssv_tilemap_offsy;
     drifto94:   0000 0025 00cd 01c6 - 0001 0013 0101 0106
                 0300 0711 0500 0000 - 0015 5940 0000 0000
                 03ea      5558  (flip)
+
+    dynagear:   002b 002c 00d4 01c6 - 0001 0012 0102 0106
+                02fd 0000 0500 0000 - 0015 5940 0000 0000
+                ????      ????  (flip)
+
+    eaglshot:   0021 002a 00ca 01c6 - 0001 0016 00f6 0106
+                0301 0000 0500 d000 - 0015 5940 0000 0000
+                ????      ????  (flip)
+
+    gdfs:       002b 002c 00d5 01c6 - 0001 0012 0102 0106
+                03ec 0711 0500 0000 - 00d5 5950 0000 0000
+                03ec      1557  (flip)
 
     hypreact:   0021 0022 00cb 01c6 - 0001 000e 00fe 0106
                 0301 0000 0500 c000 - 0015 5140 0000 0000
@@ -286,13 +351,30 @@ int ssv_tilemap_offsx, ssv_tilemap_offsy;
                 03f1 0711 5550 c080 - 0015 5940 0000 0000 <- 711 becomes 0 during gameplay
                 0301      0500  (flip)
 
+    survarts:   002b 002c 00d4 01c6 - 0001 0012 0102 0106
+                0301 0000 0500 0000 - 0015 5140 0000 0000
+                03e9      5558  (flip)
+
     sxyreact:   0021 0022 00cb 01c6 - 0001 000e 00fe 0106
                 0301 0000 0500 c000 - 0015 5140 0000 0000
                 03ef      5558  (flip)
 
-    survarts:   002b 002c 00d4 01c6 - 0001 0012 0102 0106
-                0301 0000 0500 0000 - 0015 5140 0000 0000
-                03e9      5558  (flip)
+    sxyreac2:   0021 0023 00cb 01c6 - 0001 000e 00fe 0106
+                0301 0000 0500 c000 - 0015 5140 0000 0000
+                ????      ????  (flip)
+
+    twineag2:   002b 002c 00d4 01c6 - 0001 0012 0102 0106
+                ffec 0000 e500 4000 - 0315 7940 0000 0000
+                ????      ????  (flip)
+
+    ultrax:     002b 002c 00d4 01c6 - 0001 0012 0102 0106
+                ffec 0000 e500 4000 - 0315 7940 0000 0000
+                02fe      b558  (flip)
+
+    vasara &    0021 0024 00cc 01c6 - 0001 000e 00fe 0106
+    vasara2:    03f1 0000 6500 c000 - 0015 5140 0000 0000
+                0301      3558  (flip)
+
 
 ***************************************************************************/
 
@@ -482,10 +564,20 @@ writings on finish      100130: 6109 4840 004e 0058 "good work"
 sprite begin of lev1    100010: 6b60 4280 0016 00a0
                         121400: 51a0 0042 6800 0c00 (64x64)
 
+[eaglshot]
+title logo              100040: 001b 2920 0048 00e0
+                        114900: 2130 0060 7018 0fd0 (16x64)
+
+play                    100020: 0003 290c 0000 0000
+                        114860: 0003 0000 03f0 0ce0 (tilemap)
+
+sammy logo              100020: 0003 1000 0000 0000
+                        108000: 0001 0000 4380 0ce0 (tilemap)
+
 From the above some noteworthy cases are:
 
             101f60: 0006 0825 00b0 000c
-            104128: 1a3a 0000 63d4 0400     consider y size & depth
+            104128: 1a3a 0000 63d4 0400     consider y size
 
             101030: 717f 40c0 0010 0000
             120600: 0000 0000 0000 ffff     ignore y size & depth
@@ -497,10 +589,10 @@ From the above some noteworthy cases are:
             11c498: 00e0 00b2 6c00 0800     consider x size & y size
 
             100100: 701f 051b 0041 0020
-            1028d8: 05aa 0030 f000 0470     consider depth
+            1028d8: 05aa 0030 f000 0470     consider shadow (16x16 shadow)
 
             100010: 6b60 4280 0016 00a0
-            121400: 51a0 0042 6800 0c00
+            121400: 51a0 0042 6800 0c00     (64x64)
 
             100140: 6003 04ca 0000 0000     tilemap
             102650: 0003 0000 0000 0c00
@@ -554,8 +646,12 @@ static void ssv_draw_row(struct mame_bitmap *bitmap, int sx, int sy, int scroll)
 
 	x		=	ssv_scroll[ scroll * 4 + 0 ];	// x scroll
 	y		=	ssv_scroll[ scroll * 4 + 1 ];	// y scroll
-//              ssv_scroll[ scroll * 4 + 2 ];   // ? 0, 05ff, 057f
+	//          ssv_scroll[ scroll * 4 + 2 ];   // Priority ?
 	mode	=	ssv_scroll[ scroll * 4 + 3 ];	// shadow, depth etc.
+
+	// Priority ?
+	if ( (ssv_scroll[ scroll * 4 + 2 ] < ssv_scroll[ 0 * 4 + 2 ]) )
+		return;
 
 	/* How is the background layer disabled ? */
 	if ((mode & 0x0700) == 0)	return;
@@ -694,46 +790,39 @@ static void ssv_draw_sprites(struct mame_bitmap *bitmap)
 			local_xnum		=	sx & 0x0c00;
 			local_ynum		=	sy & 0x0c00;
 
-			depth = global_depth ? global_depth : local_depth;
-			xnum = local_xnum;
-			ynum = local_ynum;
-
-
-			if (global_depth && global_depth != local_depth)
+			if (ssv_scroll[0x76/2] & 0x4000)
 			{
-				if (global_xnum || global_ynum)
-				{
-					xnum = global_xnum;
-					ynum = global_ynum;
-				}
-				else
-					depth = local_depth;
+				xnum	=	local_xnum;
+				ynum	=	local_ynum;
+				depth	=	local_depth;
+			}
+			else
+			{
+				xnum	=	global_xnum;
+				ynum	=	global_ynum;
+				depth	=	global_depth;
 			}
 
-
-
-
-
-
-if (( (ssv_special !=4 ) && ( xnum == 0 && ynum == 0x0c00 )) || (ssv_special == 4 && ( global_xnum == 0 && global_ynum == 0x0c00 )))
+			if ( s2[0] <= 7 && s2[1] == 0 && xnum == 0 && ynum == 0x0c00)
 			{
+				// Tilemap Sprite
 				int scroll;
 
-				scroll	=		s2[ 0 ];	// scroll index
-//                              s2[ 1 ];    // always 0
-//                              s2[ 2 ];    // ignore x offset?
-//                              s2[ 3 ];    // ignore y offset?
+				scroll	=	s2[ 0 ];	// scroll index
 
+				switch( ssv_scroll[0x7a/2] )
+				{
+					case 0x4940:	sy += 0x60;		break;		// srmp4
+					case 0x5940:	sy -= 0x20;		break;		// drifto94, dynagear, eaglshot, keithlcy, mslider, stmblade
+					case 0x5950:	sy += 0xdf;		break;		// gdfs
+				}
 
-
-
-				// Kludge for srmp4
-				if (ssv_scroll[0x7a/2] == 0x4940)	sy+=0x60;
-
-				if (ssv_special !=3) // dynagears draws rows over sprites?! (but needs rows for hi-score table..)
-					ssv_draw_row(bitmap, sx, sy, scroll);
+				ssv_draw_row(bitmap, sx, sy, scroll);
 			}
-/*  "normal" sprite
+			else
+			{
+				// "Normal" Sprite
+/*
     hot spots:
     "warning" in hypreac2 has mode & 0x0100 and is not 16x16
     keithlcy high scores has mode & 0x0100 and y & 0x0c00 can be 0x0c00
@@ -741,8 +830,7 @@ if (( (ssv_special !=4 ) && ( xnum == 0 && ynum == 0x0c00 )) || (ssv_special == 
     ultrax (begin of lev1): 100010: 6b60 4280 0016 00a0
                             121400: 51a0 0042 6800 0c00 needs to be a normal sprite
 */
-			else
-			{
+
 				int shadow, gfx;
 				if (s2 >= end2)	break;
 
@@ -777,14 +865,24 @@ if (( (ssv_special !=4 ) && ( xnum == 0 && ynum == 0x0c00 )) || (ssv_special == 
 				sx	=	(sx & 0x1ff) - (sx & 0x200);
 				sy	=	(sy & 0x1ff) - (sy & 0x200);
 
-				/* Tweak it (game specific) */
-				if (ssv_special == 2) sy = 232 - sy; // vasara, wheres the register for this?
+				if (ssv_scroll[0x74/2] == 0x6500)	// vasara
+					sy = 0xe8 - sy;
 
-				sx	=	ssv_sprites_offsx + sx;
-if (ssv_scroll[0x74/2] & 0x8000)	// srmp7, twineag2, ultrax
-				sy	=	ssv_sprites_offsy + sy;	// ?
-else
-				sy	=	ssv_sprites_offsy - sy - (ynum-1) * 8;
+				if (ssv_scroll[0x74/2] & 0x8000)	// srmp7, twineag2, ultrax
+				{
+					sx	=	ssv_sprites_offsx + sx;
+					sy	=	ssv_sprites_offsy + sy;
+				}
+				else if (ssv_scroll[0x76/2] & 0x1000)	// eaglshot
+				{
+					sx	=	ssv_sprites_offsx + sx - (xnum-1) * 8;
+					sy	=	ssv_sprites_offsy - sy - (ynum * 8) / 2;	// sy is the sprite center
+				}
+				else
+				{
+					sx	=	ssv_sprites_offsx + sx;
+					sy	=	ssv_sprites_offsy - sy - (ynum-1) * 8;
+				}
 
 				/* Draw the tiles */
 
@@ -827,6 +925,236 @@ else
 
 ***************************************************************************/
 
+VIDEO_UPDATE( eaglshot )
+{
+	int tile;
+
+	// Decode tiles from ram
+	if (eaglshot_dirty)
+	{
+		eaglshot_dirty = 0;
+
+		for (tile = 0; tile < (16 * 0x40000 / (16*8)); tile++)
+		{
+			if (eaglshot_dirty_tile[tile])
+			{
+				eaglshot_dirty_tile[tile] = 0;
+
+				decodechar(Machine->gfx[0], tile, (UINT8 *)eaglshot_gfxram, Machine->drv->gfxdecodeinfo[0].gfxlayout);
+				decodechar(Machine->gfx[1], tile, (UINT8 *)eaglshot_gfxram, Machine->drv->gfxdecodeinfo[1].gfxlayout);
+			}
+		}
+	}
+
+	video_update_ssv(bitmap, cliprect);
+}
+
+/*
+    Sprites RAM is 0x80000 bytes long. The first 0x2000? bytes hold a list
+    of sprites to display (the list can be made shorter using an end-of-list
+    marker).
+
+    Each entry in the list (16 bytes) is a multi-sprite (e.g it tells the
+    hardware to display several single-sprites).
+
+    The list looks like this:
+
+    Offset:     Bits:                   Value:
+
+        0.h     fedc ba-- ---- ----
+                ---- --98 7654 3210     X displacement
+
+        2.h     fedc ba-- ---- ----
+                ---- --98 7654 3210     Y displacement
+
+        4.h     f--- ---- ---- ----     List end
+                -edc ba98 7654 3210     Offset of the single-sprite(s) data
+
+        0.h                             Number of single-sprites (how many bits?)
+
+    A single-sprite is:
+
+    Offset:     Bits:                   Value:
+
+        0.h                             Code
+
+        2.h     f--- ---- ---- ----     Flip X
+                -e-- ---- ---- ----     Flip Y
+                ---- -a-- ---- ----     0 = 256 color steps, 1 = 64 color steps
+                ---- --98 7654 3210     Color code
+
+        4.h     fedc ba-- ---- ----
+                ---- --98 7654 3210     X displacement
+
+        6.h     fedc ba-- ---- ----
+                ---- --98 7654 3210     Y displacement
+
+        8.h     fedc ba98 ---- ----     Y Size
+                ---- ---- 7654 3210     X Size
+
+        A.h     fedc ba98 ---- ----
+                ---- ---- 7654 ----     Priority
+                ---- ---- ---- 32--     Y Tiles (1,2,4,8)
+                ---- ---- ---- --10     X Tiles (1,2,4,8)
+
+        C.h                             Unused
+
+        E.h                             Unused
+
+*/
+static void gdfs_draw_zooming_sprites(struct mame_bitmap *bitmap, int priority)
+{
+	/* Sprites list */
+
+	data16_t *s1	=	spriteram16_2;
+	data16_t *end1	=	spriteram16_2 + 0x02000/2;
+	data16_t *s2;
+
+	priority <<= 4;
+
+	for ( ; s1 < end1; s1+=8/2 )
+	{
+		int attr, code, color, num, sprite, zoom, size;
+		int sx, x, xoffs, flipx, xnum, xstart, xend, xinc, xdim, xscale;
+		int sy, y, yoffs, flipy, ynum, ystart, yend, yinc, ydim, yscale;
+
+		xoffs	=		s1[ 0 ];
+		yoffs	=		s1[ 1 ];
+		sprite	=		s1[ 2 ];
+		num		=		s1[ 3 ] % 0x101;
+
+		/* Last sprite */
+		if (sprite & 0x8000) break;
+
+		/* Single-sprite address */
+		s2		=		&spriteram16_2[ (sprite & 0x7fff) * 16/2 ];
+
+		for( ; num > 0; num--,s2+=16/2 )
+		{
+			code	=	s2[ 0 ];
+			attr	=	s2[ 1 ];
+			sx		=	s2[ 2 ];
+			sy		=	s2[ 3 ];
+			zoom	=	s2[ 4 ];
+			size	=	s2[ 5 ];
+
+			if (priority != (size & 0xf0))
+				break;
+
+			flipx	=	(attr & 0x8000);
+			flipy	=	(attr & 0x4000);
+			color	=	(attr & 0x0400) ? attr : attr * 4;
+
+			/* Single-sprite tile size */
+			xnum = 1 << ((size >> 0) & 3);
+			ynum = 1 << ((size >> 2) & 3);
+
+			xnum = (xnum + 1) / 2;
+
+			if (flipx)	{ xstart = xnum-1;  xend = -1;    xinc = -1; }
+			else		{ xstart = 0;       xend = xnum;  xinc = +1; }
+
+			if (flipy)	{ ystart = ynum-1;  yend = -1;    yinc = -1; }
+			else		{ ystart = 0;       yend = ynum;  yinc = +1; }
+
+			/* Apply global offsets */
+			sx	+=	xoffs;
+			sy	+=	yoffs;
+
+			/* Sign extend the position */
+			sx	=	(sx & 0x1ff) - (sx & 0x200);
+			sy	=	(sy & 0x1ff) - (sy & 0x200);
+
+			sy	=	-sy;
+
+			/* Use fixed point values (16.16), for accuracy */
+			sx <<= 16;
+			sy <<= 16;
+
+			xdim	=	( ( ((zoom >> 0) & 0xff) + 1) << 16 ) / xnum;
+			ydim	=	( ( ((zoom >> 8) & 0xff) + 1) << 16 ) / ynum;
+
+			xscale	=	xdim / 16;
+			yscale	=	ydim / 8;
+
+			/* Let's approximate to the nearest greater integer value
+               to avoid holes in between tiles */
+			if (xscale & 0xffff)	xscale += (1<<16) / 16;
+			if (yscale & 0xffff)	yscale += (1<<16) / 8;
+
+			/* Draw the tiles */
+
+			for (x = xstart; x != xend; x += xinc)
+			{
+				for (y = ystart; y != yend; y += yinc)
+				{
+					drawgfxzoom(	bitmap,	Machine->gfx[2],
+									code++,
+									color,
+									flipx, flipy,
+									(sx + x * xdim) / 0x10000, (sy + y * ydim) / 0x10000,
+									&Machine->visible_area, TRANSPARENCY_PEN, 0,
+									xscale, yscale
+					);
+				}
+			}
+
+			#ifdef MAME_DEBUG
+			if (code_pressed(KEYCODE_Z))	/* Display some info on each sprite */
+			{	struct DisplayText dt[2];	char buf[10];
+				sprintf(buf, "%X",size);
+				dt[0].text = buf;	dt[0].color = UI_COLOR_INVERSE;
+				dt[0].x = sx / 0x10000;		dt[0].y = sy / 0x10000;
+				dt[1].text = 0;	/* terminate array */
+				displaytext(Machine->scrbitmap,dt);		}
+			#endif
+		}	/* single-sprites */
+
+	}	/* sprites list */
+}
+
+VIDEO_UPDATE( gdfs )
+{
+	int tile, pri;
+
+	video_update_ssv(bitmap, cliprect);
+
+	// Decode zooming sprites tiles from ram
+	if (eaglshot_dirty)
+	{
+		eaglshot_dirty = 0;
+
+		for (tile = 0; tile < (4 * 0x100000 / (16*8)); tile++)
+		{
+			if (eaglshot_dirty_tile[tile])
+			{
+				eaglshot_dirty_tile[tile] = 0;
+
+				decodechar(Machine->gfx[2], tile, (UINT8 *)eaglshot_gfxram, Machine->drv->gfxdecodeinfo[2].gfxlayout);
+			}
+		}
+	}
+
+	for (pri = 0; pri <= 0xf; pri++)
+		gdfs_draw_zooming_sprites(bitmap, pri);
+
+	tilemap_set_scrollx(gdfs_tmap,0,gdfs_tmapscroll[0x0c/2]);
+	tilemap_set_scrolly(gdfs_tmap,0,gdfs_tmapscroll[0x10/2]);
+	tilemap_draw(bitmap,cliprect, gdfs_tmap, 0, 0);
+
+#if 0
+	draw_crosshair(bitmap,
+		Machine->visible_area.min_x + ((Machine->visible_area.max_x - Machine->visible_area.min_x) * readinputport(5)) / 255,
+		Machine->visible_area.min_y + ((Machine->visible_area.max_y - Machine->visible_area.min_y) * readinputport(6)) / 255,
+		cliprect,0);
+
+	draw_crosshair(bitmap,
+		Machine->visible_area.min_x + ((Machine->visible_area.max_x - Machine->visible_area.min_x) * readinputport(7)) / 255,
+		Machine->visible_area.min_y + ((Machine->visible_area.max_y - Machine->visible_area.min_y) * readinputport(8)) / 255,
+		cliprect,1);
+#endif
+}
+
 static int enable_video;
 
 void ssv_enable_video(int enable)
@@ -854,16 +1182,7 @@ VIDEO_UPDATE( ssv )
 
 	if (!enable_video)	return;
 
-	if (ssv_special !=3)
-	{
-		ssv_draw_layer(bitmap,0);	// "background layer"
-		ssv_draw_sprites(bitmap);	// sprites list
-	} // dynagears is weird, whats really going on?
-	else
-	{
-		ssv_draw_layer(bitmap,0);
-		ssv_draw_layer(bitmap,1);
-		ssv_draw_sprites(bitmap);
-		ssv_draw_layer(bitmap,3);
-	}
+	ssv_draw_layer(bitmap,0);	// "background layer"
+
+	ssv_draw_sprites(bitmap);	// sprites list
 }

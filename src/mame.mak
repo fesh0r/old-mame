@@ -53,6 +53,7 @@ CPUS+=M68000@
 CPUS+=M68010@
 CPUS+=M68EC020@
 CPUS+=M68020@
+CPUS+=M68040@
 CPUS+=T11@
 CPUS+=S2650@
 CPUS+=TMS34010@
@@ -123,6 +124,7 @@ CPUS+=PPC602@
 CPUS+=PPC603@
 CPUS+=SE3208@
 CPUS+=MC68HC11@
+CPUS+=ADSP21062@
 
 # uncomment the following lines to include a sound core
 SOUNDS+=CUSTOM@
@@ -412,7 +414,7 @@ $(OBJ)/taito.a: \
 	$(OBJ)/vidhrdw/darius.o $(OBJ)/drivers/darius.o \
 	$(OBJ)/vidhrdw/rastan.o $(OBJ)/drivers/rastan.o \
 	$(OBJ)/machine/rainbow.o $(OBJ)/drivers/rainbow.o \
-	$(OBJ)/drivers/opwolf.o \
+	$(OBJ)/drivers/opwolf.o $(OBJ)/machine/opwolf.o \
 	$(OBJ)/vidhrdw/othunder.o $(OBJ)/drivers/othunder.o \
 	$(OBJ)/vidhrdw/topspeed.o $(OBJ)/drivers/topspeed.o \
 	$(OBJ)/machine/arkanoid.o $(OBJ)/vidhrdw/arkanoid.o $(OBJ)/drivers/arkanoid.o \
@@ -534,8 +536,8 @@ $(OBJ)/sega.a: \
 	$(OBJ)/drivers/system18.o \
 	$(OBJ)/drivers/system24.o $(OBJ)/machine/system24.o $(OBJ)/vidhrdw/system24.o \
 	$(OBJ)/machine/s24fd.o $(OBJ)/vidhrdw/segaic24.o \
-	$(OBJ)/drivers/segas32.o $(OBJ)/machine/segas32.o $(OBJ)/drivers/multi32.o \
-	$(OBJ)/vidhrdw/system32.o \
+	$(OBJ)/drivers/segas32.o $(OBJ)/machine/segas32.o \
+	$(OBJ)/vidhrdw/segas32.o \
 	$(OBJ)/drivers/model1.o $(OBJ)/machine/model1.o $(OBJ)/vidhrdw/model1.o \
 	$(OBJ)/drivers/model2.o \
 	$(OBJ)/vidhrdw/model3.o $(OBJ)/machine/model3.o $(OBJ)/drivers/model3.o \
@@ -693,7 +695,7 @@ $(OBJ)/konami.a: \
 	$(OBJ)/machine/intelfsh.o $(OBJ)/drivers/konamigv.o \
 	$(OBJ)/machine/scsicd.o $(OBJ)/machine/scsihd.o \
 	$(OBJ)/drivers/gticlub.o \
-	$(OBJ)/machine/timekpr.o $(OBJ)/drivers/hornet.o \
+	$(OBJ)/machine/timekpr.o $(OBJ)/drivers/hornet.o $(OBJ)/machine/konppc.o \
 	$(OBJ)/drivers/nwk-tr.o \
 	$(OBJ)/drivers/zr107.o \
 

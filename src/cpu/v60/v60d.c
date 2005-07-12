@@ -392,11 +392,11 @@ static int decode_AM(unsigned ipc, unsigned pc, int m, int opsize, char *out)
 
 			case 29: // PC Double Displacement (16 bit)
 				out_AM_PCDoubleDisplacement(ipc, read16(pc+1), read16(pc+3), opsize, out);
-				return 3;
+				return 5;
 
 			case 30: // PC Double Displacement (32 bit)
 				out_AM_PCDoubleDisplacement(ipc, read32(pc+1), read32(pc+5), opsize, out);
-				return 3;
+				return 9;
 
 			default:
 				strcat(out, "!ERRAM5");
@@ -414,7 +414,7 @@ static int decode_AM(unsigned ipc, unsigned pc, int m, int opsize, char *out)
 static int decode_F1(const char *opnm, int opsize1, int opsize2, unsigned ipc, unsigned pc, char *out)
 {
 	unsigned char code = readop(pc);
-	sprintf(out, "%s ", opnm);
+	sprintf(out, "%-8s", opnm);
 	if(code & 0x20) {
 		int ret = decode_AM(ipc, pc+1, code & 0x40, opsize1, out + strlen(out)) + 2;
 		strcat(out, ", ");
@@ -431,7 +431,7 @@ static int decode_F2(const char *opnm, int opsize1, int opsize2, unsigned ipc, u
 {
 	int ret;
 	unsigned char code = readop(pc);
-	sprintf(out, "%s ", opnm);
+	sprintf(out, "%-8s", opnm);
 	ret = decode_AM(ipc, pc+1, code & 0x40, opsize1, out + strlen(out));
 	strcat(out, ", ");
 	ret += decode_AM(ipc, pc+1+ret, code & 0x20, opsize2, out + strlen(out));
@@ -448,19 +448,19 @@ static int decode_F1F2(const char *opnm, int opsize1, int opsize2, unsigned ipc,
 
 static int decode_F3(const char *opnm, int opsize1, int opsize2, unsigned ipc, unsigned pc, char *out)
 {
-	sprintf(out, "%s ", opnm);
+	sprintf(out, "%-8s", opnm);
 	return decode_AM(ipc, pc, readop(pc-1) & 1, opsize1, out + strlen(out)) + 1;
 }
 
 static int decode_F4a(const char *opnm, int opsize1, int opsize2, unsigned ipc, unsigned pc, char *out)
 {
-	sprintf(out, "%s %X", opnm, ipc+read8(pc));
+	sprintf(out, "%-8s%X", opnm, ipc+read8(pc));
 	return 2;
 }
 
 static int decode_F4b(const char *opnm, int opsize1, int opsize2, unsigned ipc, unsigned pc, char *out)
 {
-	sprintf(out, "%s %X", opnm, ipc+read16(pc));
+	sprintf(out, "%-8s%X", opnm, ipc+read16(pc));
 	return 3;
 }
 
@@ -472,7 +472,7 @@ static int decode_F5(const char *opnm, int opsize1, int opsize2, unsigned ipc, u
 
 static int decode_F6(const char *opnm, int opsize1, int opsize2, unsigned ipc, unsigned pc, char *out)
 {
-	sprintf(out, "%s %s, %X[PC]", opnm, v60_reg_names[readop(pc) & 0x1f], ipc+read16(pc+1));
+	sprintf(out, "%-8s%s, %X[PC]", opnm, v60_reg_names[readop(pc) & 0x1f], ipc+read16(pc+1));
 	return 4;
 }
 
@@ -482,7 +482,7 @@ static int decode_F7a(const char *opnm, int opsize1, int opsize2, unsigned ipc, 
 	unsigned char code = readop(pc);
 	unsigned char code2;
 
-	sprintf(out, "%s ", opnm);
+	sprintf(out, "%-8s", opnm);
 	ret = decode_AM(ipc, pc+1, code & 0x40, opsize1, out + strlen(out));
 	strcat(out, ", ");
 
@@ -511,7 +511,7 @@ static int decode_F7b(const char *opnm, int opsize1, int opsize2, unsigned ipc, 
 	unsigned char code = readop(pc);
 	unsigned char code2;
 
-	sprintf(out, "%s ", opnm);
+	sprintf(out, "%-8s", opnm);
 	ret = decode_AM(ipc, pc+1, code & 0x40, opsize1, out + strlen(out));
 	strcat(out, ", ");
 
@@ -533,7 +533,7 @@ static int decode_F7c(const char *opnm, int opsize1, int opsize2, unsigned ipc, 
 	unsigned char code = readop(pc);
 	unsigned char code2;
 
-	sprintf(out, "%s ", opnm);
+	sprintf(out, "%-8s", opnm);
 	ret = decode_AM(ipc, pc+1, code & 0x40, opsize1, out + strlen(out));
 	strcat(out, ", ");
 
@@ -551,6 +551,7 @@ static int decode_F7c(const char *opnm, int opsize1, int opsize2, unsigned ipc, 
 
 static int (*dasm_optable[256])(unsigned ipc, unsigned pc, char *out);
 static int (*dasm_optable_58[64])(unsigned ipc, unsigned pc, char *out);
+static int (*dasm_optable_59[64])(unsigned ipc, unsigned pc, char *out);
 static int (*dasm_optable_5A[64])(unsigned ipc, unsigned pc, char *out);
 static int (*dasm_optable_5B[64])(unsigned ipc, unsigned pc, char *out);
 static int (*dasm_optable_5C[64])(unsigned ipc, unsigned pc, char *out);
@@ -625,6 +626,11 @@ static int dop58(unsigned ipc, unsigned pc, char *out)
 	return dasm_optable_58[readop(pc) & 0x1f](ipc, pc, out);
 }
 
+static int dop59(unsigned ipc, unsigned pc, char *out)
+{
+	return dasm_optable_59[readop(pc) & 0x1f](ipc, pc, out);
+}
+
 static int dop5A(unsigned ipc, unsigned pc, char *out)
 {
 	return dasm_optable_5A[readop(pc) & 0x1f](ipc, pc, out);
@@ -671,6 +677,12 @@ static int dopC7(unsigned ipc, unsigned pc, char *out)
 		return decode_ ## ftype(opnm, opsize1, opsize2, ipc, pc, out); \
 	}
 
+#define DEFINE_EASY_OPCODE_EX(name, opnm, ftype, opsize1, opsize2, flags) \
+	static int dop ## name(unsigned ipc, unsigned pc, char *out) \
+	{ \
+		return decode_ ## ftype(opnm, opsize1, opsize2, ipc, pc, out) | (flags); \
+	}
+
 #define DEFINE_TRIPLE_OPCODE(name, string, ftype) \
 	DEFINE_EASY_OPCODE(name##B,string ".b", ftype, 0, 0) \
 	DEFINE_EASY_OPCODE(name##H,string ".h", ftype, 1, 1) \
@@ -688,6 +700,7 @@ static int dopC7(unsigned ipc, unsigned pc, char *out)
 DEFINE_FPU_OPCODE(ABSF, "absf", F2)
 DEFINE_TRIPLE_OPCODE(ADD, "add", F1F2)
 DEFINE_TRIPLE_OPCODE(ADDC, "addc", F1F2)
+DEFINE_EASY_OPCODE(ADDDC, "adddc", F7c, 0, 0)
 DEFINE_FPU_OPCODE(ADDF, "addf", F2)
 DEFINE_TRIPLE_OPCODE(AND, "and", F1F2)
 DEFINE_EASY_OPCODE(ANDBSU, "andbsu", F7b, 0x80, 0x80)
@@ -726,8 +739,8 @@ DEFINE_EASY_OPCODE(BR8, "br", F4a, 0, 0)
 DEFINE_EASY_OPCODE(BR16, "br", F4b, 0, 0)
 DEFINE_EASY_OPCODE(BRK, "brk", F5, 0, 0)
 DEFINE_EASY_OPCODE(BRKV, "brkv", F5, 0, 0)
-DEFINE_EASY_OPCODE(BSR, "bsr", F4b, 0, 0)
-DEFINE_EASY_OPCODE(CALL, "call", F1F2, 0, 2)
+DEFINE_EASY_OPCODE_EX(BSR, "bsr", F4b, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(CALL, "call", F1F2, 0, 2, DASMFLAG_STEP_OVER)
 DEFINE_EASY_OPCODE(CAXI, "caxi", F1, 2, 2)
 DEFINE_EASY_OPCODE(CHKAR, "chkar", F1F2, 0, 0) // ?
 DEFINE_EASY_OPCODE(CHKAW, "chkaw", F1F2, 0, 0) // ?
@@ -750,21 +763,23 @@ DEFINE_EASY_OPCODE(CVTWS, "cvt.ws", F2, 2, 0)
 DEFINE_EASY_OPCODE(CVTWL, "cvt.wl", F2, 2, 1)
 DEFINE_EASY_OPCODE(CVTSW, "cvt.sw", F2, 0, 2)
 DEFINE_EASY_OPCODE(CVTLW, "cvt.lw", F2, 1, 2)
-DEFINE_EASY_OPCODE(DBGT, "dbgt", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBGE, "dbge", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBLT, "dbgt", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBLE, "dbge", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBH, "dbh", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBNL, "dbnl", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBL, "dbl", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBNH, "dbnh", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBE, "dbe", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBNE, "dbne", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBV, "dbe", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBNV, "dbne", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBN, "dbn", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBP, "dbp", F6, 0, 0)
-DEFINE_EASY_OPCODE(DBR, "dbr", F6, 0, 0)
+DEFINE_EASY_OPCODE(CVTDPZ, "cvtd.pz", F7c, 0, 1)
+DEFINE_EASY_OPCODE(CVTDZP, "cvtd.zp", F7c, 1, 0)
+DEFINE_EASY_OPCODE_EX(DBGT, "dbgt", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBGE, "dbge", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBLT, "dbgt", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBLE, "dbge", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBH, "dbh", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBNL, "dbnl", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBL, "dbl", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBNH, "dbnh", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBE, "dbe", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBNE, "dbne", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBV, "dbe", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBNV, "dbne", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBN, "dbn", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBP, "dbp", F6, 0, 0, DASMFLAG_STEP_OVER)
+DEFINE_EASY_OPCODE_EX(DBR, "dbr", F6, 0, 0, DASMFLAG_STEP_OVER)
 DEFINE_TRIPLE_OPCODE(DEC, "dec", F3)
 DEFINE_EASY_OPCODE(DISPOSE, "dispose", F5, 0, 0)
 DEFINE_TRIPLE_OPCODE(DIV, "div", F1F2)
@@ -785,7 +800,7 @@ DEFINE_TRIPLE_OPCODE(INC, "inc", F3)
 DEFINE_EASY_OPCODE(INSBFL, "insbfl", F7c, 2, 0x82)
 DEFINE_EASY_OPCODE(INSBFR, "insbfr", F7c, 2, 0x82)
 DEFINE_EASY_OPCODE(JMP, "jmp", F3, 0, 0)
-DEFINE_EASY_OPCODE(JSR, "jsr", F3, 0, 0)
+DEFINE_EASY_OPCODE_EX(JSR, "jsr", F3, 0, 0, DASMFLAG_STEP_OVER)
 DEFINE_EASY_OPCODE(LDPR, "ldpr", F1F2, 2, 2)
 DEFINE_EASY_OPCODE(LDTASK, "ldtask", F1F2, 2, 2)
 DEFINE_TRIPLE_OPCODE(MOV, "mov", F1F2)
@@ -835,16 +850,16 @@ DEFINE_EASY_OPCODE(PUSH, "push", F3, 2, 0)
 DEFINE_EASY_OPCODE(PUSHM, "pushm", F3, 2, 0)
 DEFINE_TRIPLE_OPCODE(REM, "rem", F1F2)
 DEFINE_TRIPLE_OPCODE(REMU, "remu", F1F2)
-DEFINE_EASY_OPCODE(RET, "ret", F3, 2, 0)
-DEFINE_EASY_OPCODE(RETIU, "retiu", F3, 1, 0)
-DEFINE_EASY_OPCODE(RETIS, "retis", F3, 1, 0)
+DEFINE_EASY_OPCODE_EX(RET, "ret", F3, 2, 0, DASMFLAG_STEP_OUT)
+DEFINE_EASY_OPCODE_EX(RETIU, "retiu", F3, 1, 0, DASMFLAG_STEP_OUT)
+DEFINE_EASY_OPCODE_EX(RETIS, "retis", F3, 1, 0, DASMFLAG_STEP_OUT)
 DEFINE_EASY_OPCODE(ROTB, "rot.b", F1F2, 0, 0)
 DEFINE_EASY_OPCODE(ROTH, "rot.h", F1F2, 0, 1)
 DEFINE_EASY_OPCODE(ROTW, "rot.w", F1F2, 0, 2)
 DEFINE_EASY_OPCODE(ROTCB, "rotc.b", F1F2, 0, 0)
 DEFINE_EASY_OPCODE(ROTCH, "rotc.h", F1F2, 0, 1)
 DEFINE_EASY_OPCODE(ROTCW, "rotc.w", F1F2, 0, 2)
-DEFINE_EASY_OPCODE(RSR, "rsr", F5, 0, 0)
+DEFINE_EASY_OPCODE_EX(RSR, "rsr", F5, 0, 0, DASMFLAG_STEP_OUT)
 DEFINE_EASY_OPCODE(RVBIT, "rvbit", F1F2, 0, 0)
 DEFINE_EASY_OPCODE(RVBYT, "rvbyt", F1F2, 2, 2)
 DEFINE_EASY_OPCODE(SCH0BSU, "sch0bsu", F7b, 0x80, 2)
@@ -873,12 +888,14 @@ DEFINE_EASY_OPCODE(STPR, "stpr", F1F2, 2, 2)
 DEFINE_EASY_OPCODE(STTASK, "sttask", F3, 2, 0)
 DEFINE_TRIPLE_OPCODE(SUB, "sub", F1F2)
 DEFINE_TRIPLE_OPCODE(SUBC, "subc", F1F2)
+DEFINE_EASY_OPCODE(SUBDC, "subdc", F7c, 0, 0)
+DEFINE_EASY_OPCODE(SUBRDC, "subrdc", F7c, 0, 0)
 DEFINE_FPU_OPCODE(SUBF, "subf", F2)
 DEFINE_EASY_OPCODE(TASI, "tasi", F3, 0, 0)
 DEFINE_EASY_OPCODE(TB, "tb", F6, 0, 0)
 DEFINE_TRIPLE_OPCODE(TEST, "test", F3)
 DEFINE_EASY_OPCODE(TEST1, "test1", F1F2, 2, 2)
-DEFINE_EASY_OPCODE(TRAP, "trap", F3, 0, 0)
+DEFINE_EASY_OPCODE_EX(TRAP, "trap", F3, 0, 0, DASMFLAG_STEP_OVER)
 DEFINE_EASY_OPCODE(TRAPFL, "trapfl", F5, 0, 0)
 DEFINE_EASY_OPCODE(UPDATE, "update", F1F2, 0, 3) // ?
 DEFINE_EASY_OPCODE(UPDPSWH, "updpsw.h", F1F2, 2, 2)
@@ -900,6 +917,7 @@ void v60_dasm_init(void)
 	for (i=0; i<64; i++)
 	{
 		dasm_optable_58[i] = dop58UNHANDLED;
+		dasm_optable_59[i] = dop58UNHANDLED;
 		dasm_optable_5A[i] = dop5AUNHANDLED;
 		dasm_optable_5B[i] = dop5BUNHANDLED;
 		dasm_optable_5C[i] = dop5CUNHANDLED;
@@ -953,6 +971,12 @@ void v60_dasm_init(void)
 	dasm_optable_5E[0x1A] = dopMULFL;
 	dasm_optable_5C[0x1B] = dopDIVFS;
 	dasm_optable_5E[0x1B] = dopDIVFL;
+
+	dasm_optable_59[0x00] = dopADDDC;
+	dasm_optable_59[0x01] = dopSUBDC;
+	dasm_optable_59[0x02] = dopSUBRDC;
+	dasm_optable_59[0x10] = dopCVTDPZ;
+	dasm_optable_59[0x18] = dopCVTDZP;
 
 	dasm_optable_5F[0x00] = dopCVTWS;
 	dasm_optable_5F[0x01] = dopCVTSW;
@@ -1068,6 +1092,7 @@ void v60_dasm_init(void)
 	dasm_optable[0x54] = dopREMW;
 	dasm_optable[0x55] = dopREMUW;
 	dasm_optable[0x58] = dop58;
+	dasm_optable[0x59] = dop59;
 	dasm_optable[0x5A] = dop5A;
 	dasm_optable[0x5B] = dop5B;
 	dasm_optable[0x5C] = dop5C;
@@ -1222,12 +1247,12 @@ void v60_dasm_init(void)
 offs_t v60_dasm(char *buffer, offs_t pc)
 {
 	readop = program_read_byte_16le;
-	return dasm_optable[readop(pc)](pc, pc+1, buffer);
+	return dasm_optable[readop(pc)](pc, pc+1, buffer) | DASMFLAG_SUPPORTED;
 }
 
 offs_t v70_dasm(char *buffer, offs_t pc)
 {
 	readop = program_read_byte_32le;
-	return dasm_optable[readop(pc)](pc, pc+1, buffer);
+	return dasm_optable[readop(pc)](pc, pc+1, buffer) | DASMFLAG_SUPPORTED;
 }
 #endif

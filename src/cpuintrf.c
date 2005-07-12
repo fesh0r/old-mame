@@ -79,6 +79,7 @@ void m68008_get_info(UINT32 state, union cpuinfo *info);
 void m68010_get_info(UINT32 state, union cpuinfo *info);
 void m68ec020_get_info(UINT32 state, union cpuinfo *info);
 void m68020_get_info(UINT32 state, union cpuinfo *info);
+void m68040_get_info(UINT32 state, union cpuinfo *info);
 void t11_get_info(UINT32 state, union cpuinfo *info);
 void s2650_get_info(UINT32 state, union cpuinfo *info);
 void tms34010_get_info(UINT32 state, union cpuinfo *info);
@@ -157,6 +158,7 @@ void ppc602_get_info(UINT32 state, union cpuinfo *info);
 void ppc603_get_info(UINT32 state, union cpuinfo *info);
 void SE3208_get_info(UINT32 state, union cpuinfo *info);
 void mc68hc11_get_info(UINT32 state, union cpuinfo *info);
+void adsp21062_get_info(UINT32 state, union cpuinfo *info);
 
 #ifdef MESS
 void apexc_get_info(UINT32 state, union cpuinfo *info);
@@ -393,7 +395,7 @@ const struct
 #if (HAS_I8751)
 	{ CPU_I8751, i8751_get_info },
 #endif
-#if (HAS_I8751)
+#if (HAS_I8752)
 	{ CPU_I8752, i8752_get_info },
 #endif
 #if (HAS_M6800)
@@ -452,6 +454,9 @@ const struct
 #endif
 #if (HAS_M68020)
 	{ CPU_M68020, m68020_get_info },
+#endif
+#if (HAS_M68040)
+	{ CPU_M68040, m68040_get_info },
 #endif
 #if (HAS_T11)
 	{ CPU_T11, t11_get_info },
@@ -672,6 +677,9 @@ const struct
 #endif
 #if (HAS_MC68HC11)
 	{ CPU_MC68HC11, mc68hc11_get_info },
+#endif
+#if (HAS_ADSP21062)
+	{ CPU_ADSP21062, adsp21062_get_info },
 #endif
 
 #ifdef MESS
@@ -984,7 +992,12 @@ void cpuintrf_exit_cpu(int cpunum)
 {
 	/* if the CPU core defines an exit function, call it now */
 	if (cpu[cpunum].intf.exit)
+	{
+		/* switch contexts to the CPU during the exit */
+		cpuintrf_push_context(cpunum);
 		(*cpu[cpunum].intf.exit)();
+		cpuintrf_pop_context();
+	}
 
 	/* free the context buffer for that CPU */
 	if (cpu[cpunum].context)

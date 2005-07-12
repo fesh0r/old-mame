@@ -1,9 +1,8 @@
 /* Sega System 32 Protection related functions */
 
 #include "driver.h"
+#include "segas32.h"
 
-extern data16_t* segas32_workram;
-extern data16_t* segas32_protram;
 
 /******************************************************************************
  ******************************************************************************
@@ -69,8 +68,6 @@ void decrypt_ga2_protrom(void)
 	nec_v25_cpu_decrypt();
 }
 
-extern data8_t *ga2_dpram;
-
 
 WRITE16_HANDLER( ga2_dpram_w )
 {
@@ -127,23 +124,23 @@ WRITE16_HANDLER(sonic_level_load_protection)
 {
 	unsigned short level;
 //Perform write
-	segas32_workram[CLEARED_LEVELS / 2] = (data & ~mem_mask) | (segas32_workram[CLEARED_LEVELS / 2] & mem_mask);
+	system32_workram[CLEARED_LEVELS / 2] = (data & ~mem_mask) | (system32_workram[CLEARED_LEVELS / 2] & mem_mask);
 
 //Refresh current level
-		if (segas32_workram[CLEARED_LEVELS / 2] == 0)
+		if (system32_workram[CLEARED_LEVELS / 2] == 0)
 		{
 			level = 0x0007;
 		}
 		else
 		{
-			level =  *((memory_region(REGION_CPU1) + LEVEL_ORDER_ARRAY) + (segas32_workram[CLEARED_LEVELS / 2] * 2) - 1);
-			level |= *((memory_region(REGION_CPU1) + LEVEL_ORDER_ARRAY) + (segas32_workram[CLEARED_LEVELS / 2] * 2) - 2) << 8;
+			level =  *((memory_region(REGION_CPU1) + LEVEL_ORDER_ARRAY) + (system32_workram[CLEARED_LEVELS / 2] * 2) - 1);
+			level |= *((memory_region(REGION_CPU1) + LEVEL_ORDER_ARRAY) + (system32_workram[CLEARED_LEVELS / 2] * 2) - 2) << 8;
 		}
-		segas32_workram[CURRENT_LEVEL / 2] = level;
+		system32_workram[CURRENT_LEVEL / 2] = level;
 
 //Reset level status
-		segas32_workram[CURRENT_LEVEL_STATUS / 2] = 0x0000;
-		segas32_workram[(CURRENT_LEVEL_STATUS + 2) / 2] = 0x0000;
+		system32_workram[CURRENT_LEVEL_STATUS / 2] = 0x0000;
+		system32_workram[(CURRENT_LEVEL_STATUS + 2) / 2] = 0x0000;
 }
 
 
@@ -170,23 +167,23 @@ READ16_HANDLER(brival_protection_r)
 		}
 	}
 
-	return segas32_workram[0xba00/2 + offset];
+	return system32_workram[0xba00/2 + offset];
 }
 
-WRITE16_HANDLER(brival_protboard_w)
+WRITE16_HANDLER(brival_protection_w)
 {
 	static const int protAddress[6][2] =
 	{
-		{ 0x9517, 0x00/2 },
-		{ 0x9597, 0x10/2 },
-		{ 0x9597, 0x20/2 },
-		{ 0x9597, 0x30/2 },
-		{ 0x9597, 0x40/2 },
-		{ 0x9617, 0x50/2 },
+		{ 0x109517, 0x00/2 },
+		{ 0x109597, 0x10/2 },
+		{ 0x109597, 0x20/2 },
+		{ 0x109597, 0x30/2 },
+		{ 0x109597, 0x40/2 },
+		{ 0x109617, 0x50/2 },
 	};
 	char ret[32];
 	int curProtType;
-	unsigned char *ROM = memory_region(REGION_USER1);
+	unsigned char *ROM = memory_region(REGION_CPU1);
 
 	switch (offset)
 	{
@@ -211,7 +208,7 @@ WRITE16_HANDLER(brival_protboard_w)
 		default:
 			if (offset >= 0xa00/2 && offset < 0xc00/2)
 				return;
-			logerror("brival_protboard_w: UNKNOWN WRITE: offset %x value %x\n", offset, data);
+			logerror("brival_protection_w: UNKNOWN WRITE: offset %x value %x\n", offset, data);
 			return;
 			break;
 	}
@@ -219,8 +216,61 @@ WRITE16_HANDLER(brival_protboard_w)
 	memcpy(ret, &ROM[protAddress[curProtType][0]], 16);
 	ret[16] = '\0';
 
-	memcpy(&segas32_protram[protAddress[curProtType][1]], ret, 16);
+	memcpy(&system32_protram[protAddress[curProtType][1]], ret, 16);
 }
+
+
+/******************************************************************************
+ ******************************************************************************
+  Dark Edge
+ ******************************************************************************
+ ******************************************************************************/
+
+static void darkedge_protection_update(int param)
+{
+	cpuintrf_push_context(0);
+	program_write_word(0x20f072, 0);
+	cpuintrf_pop_context();
+}
+
+WRITE16_HANDLER( darkedge_protection_w )
+{
+	logerror("%06x:darkedge_prot_w(%06X) = %04X & %04X\n",
+		activecpu_get_pc(), 0xa00000 + 2*offset, data, mem_mask ^ 0xffff);
+	if (offset == 0 && data == 0)
+		timer_set(TIME_IN_USEC(50), 0, darkedge_protection_update);
+}
+
+
+READ16_HANDLER( darkedge_protection_r )
+{
+	logerror("%06x:darkedge_prot_r(%06X) & %04X\n",
+		activecpu_get_pc(), 0xa00000 + 2*offset, mem_mask ^ 0xffff);
+	return 0xffff;
+}
+
+
+
+/******************************************************************************
+ ******************************************************************************
+  DBZ VRVS
+ ******************************************************************************
+ ******************************************************************************/
+
+WRITE16_HANDLER( dbzvrvs_protection_w )
+{
+	logerror("%06x:dbzvrvs_prot_w(%06X) = %04X & %04X\n",
+		activecpu_get_pc(), 0xa00000 + 2*offset, data, mem_mask ^ 0xffff);
+}
+
+
+READ16_HANDLER( dbzvrvs_protection_r )
+{
+	logerror("%06x:dbzvrvs_prot_r(%06X) & %04X\n",
+		activecpu_get_pc(), 0xa00000 + 2*offset, mem_mask ^ 0xffff);
+	return 0xffff;
+}
+
 
 
 /******************************************************************************
@@ -231,7 +281,7 @@ WRITE16_HANDLER(brival_protboard_w)
 
 
 // protection ram is 8-bits wide and only occupies every other address
-READ16_HANDLER(arabfgt_protboard_r)
+READ16_HANDLER(arabfgt_protection_r)
 {
 	int PC = activecpu_get_pc();
 	int cmpVal;
@@ -251,7 +301,7 @@ READ16_HANDLER(arabfgt_protboard_r)
 	return 0;
 }
 
-WRITE16_HANDLER(arabfgt_protboard_w)
+WRITE16_HANDLER(arabfgt_protection_w)
 {
 }
 

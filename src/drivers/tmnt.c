@@ -2647,8 +2647,8 @@ static MACHINE_DRIVER_START( detatwin )
 
 	MDRV_SOUND_ADD(K053260, 3579545)
 	MDRV_SOUND_CONFIG(k053260_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.75)
-	MDRV_SOUND_ROUTE(1, "right", 0.75)
+	MDRV_SOUND_ROUTE(0, "right", 0.75)	/* fixed inverted stereo channels */
+	MDRV_SOUND_ROUTE(1, "left", 0.75)
 MACHINE_DRIVER_END
 
 
@@ -2662,7 +2662,7 @@ static struct GfxLayout zoomlayout =
 	{ 1*4, 0*4, 3*4, 2*4, 5*4, 4*4, 7*4, 6*4,
 			9*4, 8*4, 11*4, 10*4, 13*4, 12*4, 15*4, 14*4 },
 	{ 0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64,
-			8*64, 9*64, 10*64, 11*64, 12*64, 13*64, 14*64, 15*64, },
+			8*64, 9*64, 10*64, 11*64, 12*64, 13*64, 14*64, 15*64 },
 	16*64
 };
 static struct GfxDecodeInfo glfgreat_gfxdecodeinfo[] =

@@ -1104,6 +1104,9 @@ static void showcharset(struct mame_bitmap *bitmap)
 
 	changed = 1;
 
+	/* mark all the tilemaps dirty on entry so they are re-drawn consistently in the viewer */
+	tilemap_mark_all_tiles_dirty(NULL);
+
 	do
 	{
 		static const struct rectangle fullrect = { 0, 10000, 0, 10000 };
@@ -1492,6 +1495,9 @@ static void showcharset(struct mame_bitmap *bitmap)
 			!input_ui_pressed(IPT_UI_CANCEL));
 
 	schedule_full_refresh();
+
+	/* mark all the tilemaps dirty on exit so they are updated correctly on the next frame */
+	tilemap_mark_all_tiles_dirty(NULL);
 }
 
 
@@ -3017,6 +3023,16 @@ static int displayhistory (struct mame_bitmap *bitmap, int selected)
 		{
 			if (scroll == 0) scroll = 2;	/* 1 would be the same as 0, but with arrow on top */
 			else scroll++;
+		}
+
+		if (input_ui_pressed_repeat(IPT_UI_HOME, 4))
+		{
+			scroll = 0;
+		}
+
+		if (input_ui_pressed_repeat(IPT_UI_END, 4))
+		{
+			scroll = count_lines_in_buffer(buf); /* display_scroll_message will fix it */
 		}
 
 		if (input_ui_pressed_repeat(IPT_UI_PAN_UP, 4))

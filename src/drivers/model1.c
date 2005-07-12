@@ -303,7 +303,7 @@ static WRITE16_HANDLER( m1_snd_mpcm0_w )
 
 static WRITE16_HANDLER( m1_snd_mpcm0_bnk_w )
 {
-	MultiPCM_bank_0_w(0, data);
+	multipcm_set_bank(0, 0x100000 * (data & 3), 0x100000 * (data & 3));
 }
 
 static READ16_HANDLER( m1_snd_mpcm1_r )
@@ -318,7 +318,7 @@ static WRITE16_HANDLER( m1_snd_mpcm1_w )
 
 static WRITE16_HANDLER( m1_snd_mpcm1_bnk_w )
 {
-	MultiPCM_bank_1_w(0, data);
+	multipcm_set_bank(1, 0x100000 * (data & 3), 0x100000 * (data & 3));
 }
 
 static READ16_HANDLER( m1_snd_ym_r )
@@ -371,15 +371,11 @@ ADDRESS_MAP_END
 
 static struct MultiPCM_interface m1_multipcm_interface_1 =
 {
-	MULTIPCM_MODE_MODEL1,
-	(1024*1024),
 	REGION_SOUND1
 };
 
 static struct MultiPCM_interface m1_multipcm_interface_2 =
 {
-	MULTIPCM_MODE_MODEL1,
-	(1024*1024),
 	REGION_SOUND2
 };
 
@@ -818,7 +814,7 @@ ROM_START( wingwara )
 ROM_END
 
 static MACHINE_DRIVER_START( model1 )
-	MDRV_CPU_ADD(V60, 16000000/12) // Reality is 16Mhz
+	MDRV_CPU_ADD(V60, 16000000)
 	MDRV_CPU_PROGRAM_MAP(model1_mem, 0)
 	MDRV_CPU_IO_MAP(model1_io, 0)
 	MDRV_CPU_VBLANK_INT(model1_interrupt, 2)

@@ -179,7 +179,7 @@ static struct GfxLayout tile_layout =
 	16,16,
 	RGN_FRAC(1,2),
 	4,
-	{ 4, 0, RGN_FRAC(1,2)+4, RGN_FRAC(1,2)+0, },
+	{ 4, 0, RGN_FRAC(1,2)+4, RGN_FRAC(1,2)+0 },
 	{ 0, 1, 2, 3, 8+0, 8+1, 8+2, 8+3,
 			16*16+0, 16*16+1, 16*16+2, 16*16+3, 16*16+8+0, 16*16+8+1, 16*16+8+2, 16*16+8+3 },
 	{ 0*16, 1*16, 2*16, 3*16, 4*16, 5*16, 6*16, 7*16,
@@ -718,7 +718,7 @@ ROM_START( madgear )
 	ROM_LOAD( "ls-05",        0x20000, 0x20000, CRC(b06e03b5) SHA1(7d17e5cfb57866c60146bea1a4535e961c73327c) )
 
 	ROM_REGION( 0x0100, REGION_PROMS, 0 )
-	ROM_LOAD( "prom",         0x0000, 0x0100, NO_DUMP )	/* priority (not used) */
+	ROM_LOAD( "63s141.14k",   0x0000, 0x0100, CRC(7f862e1e) SHA1(7134c4f741463007a177d55922e1284d132f60e3) )	/* priority (not used) */
 ROM_END
 
 ROM_START( madgearj )
@@ -756,7 +756,7 @@ ROM_START( madgearj )
 	ROM_LOAD( "ls-05",        0x20000, 0x20000, CRC(b06e03b5) SHA1(7d17e5cfb57866c60146bea1a4535e961c73327c) )
 
 	ROM_REGION( 0x0100, REGION_PROMS, 0 )
-	ROM_LOAD( "prom",         0x0000, 0x0100, NO_DUMP )	/* priority (not used) */
+	ROM_LOAD( "63s141.14k",   0x0000, 0x0100, CRC(7f862e1e) SHA1(7134c4f741463007a177d55922e1284d132f60e3) )	/* priority (not used) */
 ROM_END
 
 ROM_START( ledstorm )
@@ -794,7 +794,7 @@ ROM_START( ledstorm )
 	ROM_LOAD( "ls-05",        0x20000, 0x20000, CRC(b06e03b5) SHA1(7d17e5cfb57866c60146bea1a4535e961c73327c) )
 
 	ROM_REGION( 0x0100, REGION_PROMS, 0 )
-	ROM_LOAD( "prom",         0x0000, 0x0100, NO_DUMP )	/* priority (not used) */
+	ROM_LOAD( "63s141.14k",   0x0000, 0x0100, CRC(7f862e1e) SHA1(7134c4f741463007a177d55922e1284d132f60e3) )	/* priority (not used) */
 ROM_END
 
 /******************************************************************************/

@@ -79,6 +79,7 @@
 #define SPR603E_HID0		1008	/* 603E */
 #define SPR603E_HID1		1009	/* 603E */
 #define SPR603E_IABR		1010	/* 603E */
+#define SPR603E_HID2		1011	/* 603E */
 
 #define SPR602_TCR			984		/* 602 */
 #define SPR602_IBR			986		/* 602 */
@@ -127,8 +128,12 @@ enum {
 	EXCEPTION_TRAP						= 3,
 	EXCEPTION_SYSTEM_CALL				= 4,
 	EXCEPTION_SMI						= 5,
+	EXCEPTION_DSI						= 6,
+	EXCEPTION_ISI						= 7,
+	EXCEPTION_PROGRAMMABLE_INTERVAL_TIMER   = 20,
 	EXCEPTION_FIXED_INTERVAL_TIMER		= 21,
 	EXCEPTION_WATCHDOG_TIMER			= 22,
+	EXCEPTION_CRITICAL_INTERRUPT			= 23,
 };
 
 enum {
@@ -143,6 +148,7 @@ enum {
 	PPC_LR,
 	PPC_CTR,
 	PPC_XER,
+	PPC_DEC,
 	PPC_R0,
 	PPC_R1,
 	PPC_R2,
@@ -197,20 +203,113 @@ typedef enum {
 	PPC_MODEL_755				= 0x00083203	/* "Goldfinger", version 2.3 */
 } PPC_MODEL;
 
+typedef enum {
+	BUS_FREQUENCY_16MHZ = 0,
+	BUS_FREQUENCY_20MHZ,
+	BUS_FREQUENCY_25MHZ,
+	BUS_FREQUENCY_33MHZ,
+	BUS_FREQUENCY_40MHZ,
+	BUS_FREQUENCY_50MHZ,
+	BUS_FREQUENCY_60MHZ,
+	BUS_FREQUENCY_66MHZ,
+	BUS_FREQUENCY_75MHZ,
+} PPC_BUS_FREQUENCY;
+
+// PLL Configuration based on the table in MPC603EUM page 7-31
+static const int mpc603e_pll_config[12][9] =
+{
+	// 16,  20,  25,  33,  40,  50,  60,  66,  75
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 },
+	{ 0x2, 0x2, 0x2, 0x1, 0x1, 0x1,  -1, 0x0,  -1 },
+	{  -1,  -1,  -1,  -1,  -1, 0xc,  -1, 0xc,  -1 },
+	{ 0x5, 0x5, 0x5, 0x4, 0x4, 0x4,  -1,  -1,  -1 },
+	{  -1,	-1,  -1, 0x6, 0x6,  -1,  -1,  -1,  -1 },
+	{  -1,  -1, 0x8, 0x8,  -1,  -1,  -1,  -1,  -1 },
+	{  -1, 0xe, 0xe,  -1,  -1,  -1,  -1,  -1,  -1 },
+	{ 0xa, 0xa, 0xa,  -1,  -1,  -1,  -1,  -1,  -1 },
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 },
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 },
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 },
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 },
+};
+
+// PLL Configuration based on the table in MPC603E7VEC page 29
+static const int mpc603ev_pll_config[12][9] =
+{
+	// 16,  20,  25,  33,  40,  50,  60,  66,  75
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 },
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 },
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 },
+	// 2:1
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1, 0x4, 0x4 },
+	// 2.5:1
+	{  -1,  -1,  -1,  -1,  -1, 0x6, 0x6, 0x6, 0x6 },
+	// 3:1
+	{  -1,  -1,  -1,  -1, 0x8, 0x8, 0x8, 0x8, 0x8 },
+	// 3.5:1
+	{  -1,  -1,  -1,  -1, 0xe, 0xe, 0xe, 0xe,  -1 },
+	// 4:1
+	{  -1,  -1,  -1, 0xa, 0xa, 0xa, 0xa,  -1,  -1 },
+	// 4.5:1
+	{  -1,  -1,  -1, 0x7, 0x7, 0x7,  -1,  -1,  -1 },
+	// 5:1
+	{  -1,  -1, 0xb, 0xb, 0xb,  -1,  -1,  -1,  -1 },
+	// 5.5:1
+	{  -1,  -1, 0x9, 0x9, 0x9,  -1,  -1,  -1,  -1 },
+	// 6:1
+	{  -1,  -1, 0xd, 0xd, 0xd,  -1,  -1,  -1,  -1 }
+};
+
+// PLL Configuration based on the table in MPC603E7TEC page 23
+static const int mpc603r_pll_config[12][9] =
+{
+	// 16,  20,  25,  33,  40,  50,  60,  66,  75
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 },
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 },
+	{  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 },
+	// 2:1
+	{  -1,  -1,  -1,  -1, 0x5, 0x5, 0x5, 0x5, 0x5 },
+	// 2.5:1
+	{  -1,  -1,  -1,  -1,  -1,  -1, 0x6, 0x6, 0x6 },
+	// 3:1
+	{  -1,  -1,  -1,  -1,  -1, 0x8, 0x8, 0x8, 0x8 },
+	// 3.5:1
+	{  -1,  -1,  -1,  -1,  -1, 0xe, 0xe, 0xe, 0xe },
+	// 4:1
+	{  -1,  -1,  -1,  -1, 0xa, 0xa, 0xa, 0xa, 0xa },
+	// 4.5:1
+	{  -1,  -1,  -1, 0x7, 0x7, 0x7, 0x7, 0x7,  -1 },
+	// 5:1
+	{  -1,  -1,  -1, 0xb, 0xb, 0xb, 0xb,  -1,  -1 },
+	// 5.5:1
+	{  -1,  -1,  -1, 0x9, 0x9, 0x9,  -1,  -1,  -1 },
+	// 6:1
+	{  -1,  -1, 0xd, 0xd, 0xd, 0xd,  -1,  -1,  -1 },
+};
+
 typedef struct {
 	PPC_MODEL pvr;
+	int bus_frequency_multiplier;
+	PPC_BUS_FREQUENCY bus_frequency;
 } ppc_config;
 
 #if (HAS_PPC403)
 typedef UINT8 (* SPU_RX_HANDLER)(void);
 typedef void  (* SPU_TX_HANDLER)(UINT8);
+typedef void (* PPC_DMA_HANDLER)(int);
+
 void ppc403_get_info(UINT32 state, union cpuinfo *info);
 void ppc403_spu_rx(UINT8 data);
 void ppc403_install_spu_rx_handler(SPU_RX_HANDLER rx_handler);
 void ppc403_install_spu_tx_handler(SPU_TX_HANDLER tx_handler);
+void ppc403_install_spu_rx_dma_handler(PPC_DMA_HANDLER rx_dma_handler, UINT8 *buffer);
+void ppc403_install_spu_tx_dma_handler(PPC_DMA_HANDLER tx_dma_handler, UINT8 *buffer);
+void ppc403_install_dma_read_handler(int ch, PPC_DMA_HANDLER dma_handler, UINT8 *buffer);
+void ppc403_install_dma_write_handler(int ch, PPC_DMA_HANDLER dma_handler, UINT8 *buffer);
 
 #define PPC403_SPU_RX		5
 #define PPC403_SPU_TX		6
+#define PPC403_CRITICAL_IRQ		7
 
 #endif
 
