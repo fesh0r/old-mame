@@ -226,7 +226,7 @@ VIDEO_UPDATE(maxaflex)
 {
 	static char text[100];
 
-	video_update_atari(bitmap,cliprect);
+	video_update_atari(screen,bitmap,cliprect);
 
 	if ( digitA != -1 )
 	{
@@ -488,7 +488,7 @@ static MACHINE_DRIVER_START( a600xl )
 
 	MDRV_CPU_ADD(M68705, 3579545)
 	MDRV_CPU_PROGRAM_MAP(mcu_mem,0)
-	MDRV_CPU_PERIODIC_INT( supervisor_board_check_coin_input,10 )
+	MDRV_CPU_PERIODIC_INT( supervisor_board_check_coin_input,TIME_IN_HZ(10) )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )

@@ -1220,18 +1220,7 @@ void force_partial_update(int scanline)
 	if (clip.min_y <= clip.max_y)
 	{
 		profiler_mark(PROFILER_VIDEO);
-#ifdef MESS
-		{
-			int update_says_skip = 0;
-			(*Machine->drv->video_update)(Machine->scrbitmap, &clip, &update_says_skip);
-			if (!update_says_skip)
-				skip_this_frame = 0;
-			else if (skip_this_frame == -1)
-				skip_this_frame = 1;
-		}
-#else
-		(*Machine->drv->video_update)(Machine->scrbitmap, &clip);
-#endif
+		(*Machine->drv->video_update)(0, Machine->scrbitmap, &clip);
 		performance.partial_updates_this_frame++;
 		profiler_mark(PROFILER_END);
 	}
@@ -1246,17 +1235,11 @@ void force_partial_update(int scanline)
     draw_screen - render the final screen bitmap
     and update any artwork
 -------------------------------------------------*/
-int gbPriorityBitmapIsDirty;
 
 void draw_screen(void)
 {
 	/* finish updating the screen */
 	force_partial_update(Machine->visible_area.max_y);
-	if( gbPriorityBitmapIsDirty )
-	{
-		fillbitmap( priority_bitmap, 0x00, NULL );
-		gbPriorityBitmapIsDirty = 0;
-	}
 }
 
 

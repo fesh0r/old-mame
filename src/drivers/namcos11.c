@@ -575,7 +575,7 @@ static UINT32 m_p_n_bankoffset[ 8 ];
 INLINE void bankswitch_update( int n_bank )
 {
 	verboselog( 1, "bankswitch_update( %d ) = %08x\n", n_bank, m_p_n_bankoffset[ n_bank ] );
-	cpu_setbank( 1 + n_bank, memory_region( REGION_USER2 ) + m_p_n_bankoffset[ n_bank ] );
+	memory_set_bankptr( 1 + n_bank, memory_region( REGION_USER2 ) + m_p_n_bankoffset[ n_bank ] );
 }
 
 static void bankswitch_update_all( void )
@@ -870,7 +870,7 @@ static int lightguny( int port )
 
 static VIDEO_UPDATE( lightgun )
 {
-	video_update_psx( bitmap, cliprect );
+	video_update_psx( screen, bitmap, cliprect );
 
 	draw_crosshair( bitmap, lightgunx( 6 ), lightguny( 7 ), cliprect, 0 );
 	draw_crosshair( bitmap, lightgunx( 8 ), lightguny( 9 ), cliprect, 1 );

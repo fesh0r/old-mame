@@ -773,7 +773,7 @@ static int cur_sound_region;
 
 static void reset_sound_region(void)
 {
-	cpu_setbank(2, memory_region(REGION_CPU2) + 0x10000 + cur_sound_region*0x4000);
+	memory_set_bankptr(2, memory_region(REGION_CPU2) + 0x10000 + cur_sound_region*0x4000);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -928,7 +928,7 @@ static MACHINE_DRIVER_START( mystwarr )
 	MDRV_CPU_ADD_TAG("sound", Z80, 8000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 480)
+	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, TIME_IN_HZ(480))
 
 	MDRV_INTERLEAVE(32);
 	MDRV_FRAMES_PER_SECOND(60)
@@ -951,13 +951,13 @@ static MACHINE_DRIVER_START( mystwarr )
 
 	MDRV_SOUND_ADD(K054539, 48000)
 	MDRV_SOUND_CONFIG(k054539_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "right", 1.0)	/* stereo channels are inverted */
+	MDRV_SOUND_ROUTE(1, "left", 1.0)
 
 	MDRV_SOUND_ADD(K054539, 48000)
 	MDRV_SOUND_CONFIG(k054539_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "right", 1.0)	/* stereo channels are inverted */
+	MDRV_SOUND_ROUTE(1, "left", 1.0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( viostorm )
@@ -2092,21 +2092,21 @@ static DRIVER_INIT(mwcommon)
 
 
 /*           ROM       parent    machine   inp       init */
-GAMEX( 1993, mystwarr, 0,        mystwarr, mystwarr, mwcommon, ROT0,  "Konami", "Mystic Warriors (Europe ver EAA)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, mystwaru, mystwarr, mystwarr, mystwarr, mwcommon, ROT0,  "Konami", "Mystic Warriors (US ver UAA)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, mmaulers, 0,        dadandrn, dadandrn, mwcommon, ROT0,  "Konami", "Monster Maulers (Europe ver EAA)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, dadandrn, mmaulers, dadandrn, dadandrn, mwcommon, ROT0,  "Konami", "Kyukyoku Sentai Dadandarn (Japan ver JAA)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, viostorm, 0,        viostorm, viostorm, mwcommon, ROT0,  "Konami", "Violent Storm (Europe ver EAB)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, viostrmu, viostorm, viostorm, viostorm, mwcommon, ROT0,  "Konami", "Violent Storm (US ver UAB)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, viostrmj, viostorm, viostorm, viostorm, mwcommon, ROT0,  "Konami", "Violent Storm (Japan ver JAC)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, viostrma, viostorm, viostorm, viostorm, mwcommon, ROT0,  "Konami", "Violent Storm (Asia ver AAC)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, metamrph, 0,        metamrph, metamrph, metamrph, ROT0,  "Konami", "Metamorphic Force (US ver UAA)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, metamrpj, metamrph, metamrph, metamrph, metamrph, ROT0,  "Konami", "Metamorphic Force (Japan ver JAA)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, mtlchamp, 0,        martchmp, martchmp, mwcommon, ROT0,  "Konami", "Martial Champion (Europe ver EAA)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, mtlchmpu, mtlchamp, martchmp, martchmp, mwcommon, ROT0,  "Konami", "Martial Champion (US ver UAD)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, mtlchmpj, mtlchamp, martchmp, martchmp, mwcommon, ROT0,  "Konami", "Martial Champion (Japan ver JAA)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, mtlchmpa, mtlchamp, martchmp, martchmp, mwcommon, ROT0,  "Konami", "Martial Champion (Asia ver AAA)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, gaiapols, 0,        gaiapols, dadandrn, mwcommon, ROT90, "Konami", "Gaiapolis (Europe ver EAF)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, gaiapolu, gaiapols, gaiapols, dadandrn, mwcommon, ROT90, "Konami", "Gaiapolis (US ver UAF)", GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1993, gaiapolj, gaiapols, gaiapols, dadandrn, mwcommon, ROT90, "Konami", "Gaiapolis (Japan ver JAF)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, mystwarr, 0,        mystwarr, mystwarr, mwcommon, ROT0,  "Konami", "Mystic Warriors (ver EAA)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, mystwaru, mystwarr, mystwarr, mystwarr, mwcommon, ROT0,  "Konami", "Mystic Warriors (ver UAA)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, mmaulers, 0,        dadandrn, dadandrn, mwcommon, ROT0,  "Konami", "Monster Maulers (ver EAA)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, dadandrn, mmaulers, dadandrn, dadandrn, mwcommon, ROT0,  "Konami", "Kyukyoku Sentai Dadandarn (ver JAA)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, viostorm, 0,        viostorm, viostorm, mwcommon, ROT0,  "Konami", "Violent Storm (ver EAB)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, viostrmu, viostorm, viostorm, viostorm, mwcommon, ROT0,  "Konami", "Violent Storm (ver UAB)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, viostrmj, viostorm, viostorm, viostorm, mwcommon, ROT0,  "Konami", "Violent Storm (ver JAC)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, viostrma, viostorm, viostorm, viostorm, mwcommon, ROT0,  "Konami", "Violent Storm (ver AAC)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, metamrph, 0,        metamrph, metamrph, metamrph, ROT0,  "Konami", "Metamorphic Force (ver UAA)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, metamrpj, metamrph, metamrph, metamrph, metamrph, ROT0,  "Konami", "Metamorphic Force (ver JAA)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, mtlchamp, 0,        martchmp, martchmp, mwcommon, ROT0,  "Konami", "Martial Champion (ver EAA)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, mtlchmpu, mtlchamp, martchmp, martchmp, mwcommon, ROT0,  "Konami", "Martial Champion (ver UAD)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, mtlchmpj, mtlchamp, martchmp, martchmp, mwcommon, ROT0,  "Konami", "Martial Champion (ver JAA)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, mtlchmpa, mtlchamp, martchmp, martchmp, mwcommon, ROT0,  "Konami", "Martial Champion (ver AAA)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, gaiapols, 0,        gaiapols, dadandrn, mwcommon, ROT90, "Konami", "Gaiapolis (ver EAF)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, gaiapolu, gaiapols, gaiapols, dadandrn, mwcommon, ROT90, "Konami", "Gaiapolis (ver UAF)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993, gaiapolj, gaiapols, gaiapols, dadandrn, mwcommon, ROT90, "Konami", "Gaiapolis (ver JAF)", GAME_IMPERFECT_GRAPHICS )
 

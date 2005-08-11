@@ -1,198 +1,404 @@
-/*
+/***************************************************************************
 
-Double Cheese (c) 1993 HAR
+    HAR MadMax hardware
 
-CPU: 68000
-Sound: 6809, BSMt2000 D15505N
-RAM: 84256 (x2), 5116
-Other: TRW9312HH (x2), LSI L1A6017 (MAX1 EXIT)
+****************************************************************************
 
-Notes: PCB labeled "Exit Entertainment MADMAX version 5". Title screen reports
-(c)1993 Midway Manufacturing. ROM labels (c) 1993 HAR
+    Games supported:
+        * Double Cheese
 
-*/
+    Other games on this hardware:
+        * Lotto Fun (not dumped)
+
+    Known bugs:
+        * Test/tilt buttons seem to be swapped compared to test mode
+        * Don't know what the opto switches do
+
+**************************************************************************/
+
 
 #include "driver.h"
+#include "machine/eeprom.h"
+#include "machine/ticket.h"
 #include "vidhrdw/generic.h"
 #include "sound/bsmt2000.h"
+#include "dcheese.h"
 
-/* main cpu */
 
-// read only once
-static READ16_HANDLER( blitter_ready_r )
+
+/*************************************
+ *
+ *  Local variables
+ *
+ *************************************/
+
+static UINT8 irq_state[5];
+static UINT8 soundlatch_full;
+
+
+
+/*************************************
+ *
+ *  Interrupts
+ *
+ *************************************/
+
+static void update_irq_state(void)
 {
-	return 5;
+	int i;
+
+	/* loop from high priority to low; if we find a live IRQ, assert it */
+	for (i = 4; i >= 0; i--)
+		if (irq_state[i])
+		{
+			cpunum_set_input_line(0, i, ASSERT_LINE);
+			return;
+		}
+
+	/* otherwise, clear them all */
+	cpunum_set_input_line(0, 7, CLEAR_LINE);
 }
 
-static READ16_HANDLER( fake_r )
+
+static int irq_callback(int which)
 {
-	static int ret = 0;
-	ret ^= 0x80;
-	return ret;
+	/* auto-ack the IRQ */
+	irq_state[which] = 0;
+	update_irq_state();
+
+	/* vector is 0x40 + index */
+	return 0x40 + which;
 }
+
+
+void dcheese_signal_irq(int which)
+{
+	irq_state[which] = 1;
+	update_irq_state();
+}
+
+
+static INTERRUPT_GEN( dcheese_vblank )
+{
+	logerror("---- VBLANK ----\n");
+	dcheese_signal_irq(4);
+}
+
+
+
+/*************************************
+ *
+ *  Machine init
+ *
+ *************************************/
+
+static MACHINE_INIT( dcheese )
+{
+	cpu_set_irq_callback(0, irq_callback);
+}
+
+
+
+/*************************************
+ *
+ *  I/O ports
+ *
+ *************************************/
+
+static READ16_HANDLER( port_0_r )
+{
+	return (readinputport(0) & 0xff7f) | (EEPROM_read_bit() << 7);
+}
+
+
+static READ16_HANDLER( port_2_r )
+{
+	return (readinputport(2) & 0xff1f) | (!soundlatch_full << 7) | (ticket_dispenser_r(0) >> 2);
+}
+
+
+static WRITE16_HANDLER( eeprom_control_w )
+{
+	/* toggles bit $0100 very frequently while waiting for things */
+	/* bits $0080-$0010 are probably lamps */
+	if (ACCESSING_LSB)
+	{
+		EEPROM_set_cs_line(~data & 8);
+		EEPROM_write_bit(data & 2);
+		EEPROM_set_clock_line(data & 4);
+		ticket_dispenser_w(0, (data & 1) << 7);
+	}
+}
+
+
+static WRITE16_HANDLER( sound_command_w )
+{
+	if (ACCESSING_LSB)
+	{
+		/* write the latch and set the IRQ */
+		soundlatch_full = 1;
+		cpunum_set_input_line(1, 0, ASSERT_LINE);
+		soundlatch_w(0, data & 0xff);
+	}
+}
+
+
+
+/*************************************
+ *
+ *  Sound CPU handlers
+ *
+ *************************************/
+
+static READ8_HANDLER( sound_command_r )
+{
+	/* read the latch and clear the IRQ */
+	soundlatch_full = 0;
+	cpunum_set_input_line(1, 0, CLEAR_LINE);
+	return soundlatch_r(0);
+}
+
+
+static READ8_HANDLER( sound_status_r )
+{
+	/* seems to be ready signal on BSMT or latching hardware */
+	return 0x80;
+}
+
+
+static WRITE8_HANDLER( sound_control_w )
+{
+	/* bit 0x20 = LED */
+	if (data != 0x40 && data != 0x60)
+		logerror("%04X:sound_control_w = %02X\n", activecpu_get_pc(), data);
+}
+
+
+static WRITE8_HANDLER( bsmt_data_w )
+{
+	static UINT8 latch;
+
+	/* writes come in pairs; even bytes latch, odd bytes write */
+	if (offset % 2 == 0)
+		latch = data;
+	else
+		BSMT2000_data_0_w(offset/2, (latch << 8) | data, 0);
+}
+
+
+
+/*************************************
+ *
+ *  Main CPU memory handlers
+ *
+ *************************************/
 
 static ADDRESS_MAP_START( main_cpu_map, ADDRESS_SPACE_PROGRAM, 16 )
-ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
-
+	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM
-
-	AM_RANGE(0x200000, 0x200001) AM_READ(fake_r) // PC 0x16AC
-	AM_RANGE(0x2a0036, 0x2a0037) AM_READ(blitter_ready_r) // PC 0x1F8C
-	AM_RANGE(0x100000, 0x10ffff) AM_RAM
-	AM_RANGE(0x200000, 0x200001) AM_RAM
-	AM_RANGE(0x220000, 0x220001) AM_RAM
-	AM_RANGE(0x240000, 0x240001) AM_RAM
-	AM_RANGE(0x260000, 0x26001f) AM_RAM
-	AM_RANGE(0x280000, 0x28001f) AM_RAM
-	AM_RANGE(0x2a0000, 0x2a0001) AM_RAM
-	AM_RANGE(0x2a0010, 0x2a001f) AM_RAM
-	AM_RANGE(0x2a0022, 0x2a0023) AM_RAM
-	AM_RANGE(0x2a002e, 0x2a002f) AM_RAM
-	AM_RANGE(0x2a0032, 0x2a0033) AM_RAM
-	AM_RANGE(0x2a0038, 0x2a0039) AM_RAM
-	AM_RANGE(0x300000, 0x300001) AM_RAM
+	AM_RANGE(0x200000, 0x200001) AM_READWRITE(port_0_r, watchdog_reset16_w)
+	AM_RANGE(0x220000, 0x220001) AM_READWRITE(input_port_1_word_r, madmax_blitter_color_w)
+	AM_RANGE(0x240000, 0x240001) AM_READWRITE(port_2_r, eeprom_control_w)
+	AM_RANGE(0x260000, 0x26001f) AM_WRITE(madmax_blitter_xparam_w)
+	AM_RANGE(0x280000, 0x28001f) AM_WRITE(madmax_blitter_yparam_w)
+	AM_RANGE(0x2a0000, 0x2a003f) AM_READWRITE(madmax_blitter_vidparam_r, madmax_blitter_vidparam_w)
+	AM_RANGE(0x2e0000, 0x2e0001) AM_WRITE(sound_command_w)
+	AM_RANGE(0x300000, 0x300001) AM_WRITE(madmax_blitter_unknown_w)
 ADDRESS_MAP_END
 
-/* sound cpu */
+
+
+/*************************************
+ *
+ *  Sound CPU memory handlers
+ *
+ *************************************/
 
 static ADDRESS_MAP_START( sound_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0100, 0x0100) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1002, 0x1002) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1003, 0x1003) AM_WRITE(MWA8_RAM)
+	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	AM_RANGE(0x0100, 0x0100) AM_READWRITE(sound_status_r, sound_control_w)
+	AM_RANGE(0x0800, 0x0800) AM_READ(sound_command_r)
+	AM_RANGE(0x1000, 0x10ff) AM_WRITE(bsmt_data_w)
 	AM_RANGE(0x1800, 0x1fff) AM_RAM
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 
+
+/*************************************
+ *
+ *  Input port definitions
+ *
+ *************************************/
+
 INPUT_PORTS_START( dcheese )
+	PORT_START	/* 200000 */
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x000c, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SERVICE )		/* says tilt */
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_TILT )			/* says test */
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_SPECIAL )		/* EEPROM data */
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON3 )		/* bump left */
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON4 )		/* bump right */
+	PORT_BIT( 0x1800, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 )		/* brake right */
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON1 )		/* brake left */
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START	/* 220000 */
+	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START	/* 240000 */
+	PORT_BIT( 0x001f, IP_ACTIVE_LOW, IPT_UNKNOWN )		/* low 5 bits read as a unit */
+	PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_SPECIAL )		/* ticket status */
+	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_SPECIAL )		/* sound->main buffer status (0=empty) */
+	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_SPECIAL )		/* main->sound buffer status (1=empty) */
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_VOLUME_DOWN )
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_VOLUME_UP )
+	PORT_BIT( 0xf000, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START	/* 2a0002 */
+	PORT_BIT( 0x000f, IP_ACTIVE_LOW, IPT_UNKNOWN )	// read as a unit
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)	// opto 1
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)	// opto 2
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_SPECIAL )
+	PORT_BIT( 0xfc00, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START	/* 2a000e */
+	PORT_BIT( 0x00ff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(30)
+	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
 
-/* constants */
-#define SRCBITMAP_WIDTH		4096
 
-#define DSTBITMAP_WIDTH		256*2
-#define DSTBITMAP_HEIGHT	256*2
-
-static UINT8 *srcbitmap;
-static UINT8 *dstbitmap;
-static UINT32 srcbitmap_height_mask;
-
-VIDEO_START( dcheese )
-{
-	/* the source bitmap is in ROM */
-	srcbitmap = memory_region(REGION_GFX1);
-
-	/* compute the height */
-	srcbitmap_height_mask = (memory_region_length(REGION_GFX1) / SRCBITMAP_WIDTH) - 1;
-
-	/* the destination bitmap is not directly accessible to the CPU */
-	dstbitmap = auto_malloc(DSTBITMAP_WIDTH * DSTBITMAP_HEIGHT);
-	if (!dstbitmap)
-		return 1;
-
-	return 0;
-}
-
-VIDEO_UPDATE( dcheese )
-{
-	int width = cliprect->max_x - cliprect->min_x + 1;
-	int y;
-
-	static int en = 1, off=0;
-	int i;
-
-	if(code_pressed_memory(KEYCODE_W))
-	{
-		en ^= 1;
-	}
-
-	if(code_pressed_memory(KEYCODE_Q))
-	{
-		off = (off + 1) & 0x3;
-	}
-
-	if(code_pressed_memory(KEYCODE_A))
-	{
-		off = (off - 1) & 0x3;
-	}
-
-	if(en)
-	{
-		en = 0;
-		for(i=0;i<DSTBITMAP_WIDTH * DSTBITMAP_HEIGHT;i++)
-		{
-			dstbitmap[i] = srcbitmap[i + off * 0x40000];
-		}
-	}
-
-	/* render all the scanlines from the dstbitmap to MAME's bitmap */
-	for (y = cliprect->min_y; y <= cliprect->max_y; y++)
-		draw_scanline8(bitmap, cliprect->min_x, y, width, &dstbitmap[DSTBITMAP_WIDTH * y + cliprect->min_x], NULL, -1);
-}
+/*************************************
+ *
+ *  Sound definitions
+ *
+ *************************************/
 
 static struct BSMT2000interface bsmt2000_interface =
 {
-	12,
+	11,
 	REGION_SOUND1
 };
+
+
+
+/*************************************
+ *
+ *  Machine driver
+ *
+ *************************************/
 
 static MACHINE_DRIVER_START( dcheese )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(main_cpu_map,0)
-	/* no irq ? */
+	MDRV_CPU_VBLANK_INT(dcheese_vblank,1)
 
 	MDRV_CPU_ADD(M6809, 1250000)
-	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_cpu_map,0)
+	MDRV_CPU_PERIODIC_INT(irq1_line_hold,TIME_IN_HZ(500))	/* guess */
 
+	MDRV_MACHINE_INIT(dcheese)
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(64*8, 64*8)
-	MDRV_VISIBLE_AREA(0, 64*8-1, 0, 64*8-1)
+	MDRV_SCREEN_SIZE(320, 240)
+	MDRV_VISIBLE_AREA(0, 319, 0, 239)
 
-	MDRV_PALETTE_LENGTH(0x100)
+	MDRV_PALETTE_LENGTH(65534)
 
+	MDRV_PALETTE_INIT(dcheese)
 	MDRV_VIDEO_START(dcheese)
 	MDRV_VIDEO_UPDATE(dcheese)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(BSMT2000, 12000000/2)
+	MDRV_SOUND_ADD(BSMT2000, 12000000*2)	/* guess */
 	MDRV_SOUND_CONFIG(bsmt2000_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
+
+
+/*************************************
+ *
+ *  ROM definition(s)
+ *
+ *************************************/
+
+/*
+    Double Cheese (c) 1993 HAR
+
+    CPU: 68000
+    Sound: 6809, BSMt2000 D15505N
+    RAM: 84256 (x2), 5116
+    Other: TRW9312HH (x2), LSI L1A6017 (MAX1 EXIT)
+
+    Notes: PCB labeled "Exit Entertainment MADMAX version 5". Title screen reports
+    (c)1993 Midway Manufacturing. ROM labels (c) 1993 HAR
+*/
 ROM_START( dcheese )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68k */
-	ROM_LOAD16_BYTE( "dchez.104", 0x000000, 0x20000, CRC(5b6233d8) SHA1(7fdb606b5780dd8f45db07d3ee50e14a27f39533) )
-	ROM_LOAD16_BYTE( "dchez.103", 0x000001, 0x20000, CRC(599c73ff) SHA1(f33e617ab7e9489c52b2434cfc61a5e1696e9400) )
+	ROM_LOAD16_BYTE( "dchez.104", 0x00000, 0x20000, CRC(5b6233d8) SHA1(7fdb606b5780dd8f45db07d3ee50e14a27f39533) )
+	ROM_LOAD16_BYTE( "dchez.103", 0x00001, 0x20000, CRC(599c73ff) SHA1(f33e617ab7e9489c52b2434cfc61a5e1696e9400) )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* M6809 */
 	ROM_LOAD( "dchez.102", 0x8000, 0x8000, CRC(5d110061) SHA1(10d852a408a75979b8e8843afc7b39737ca2c6c8) )
 
 	ROM_REGION( 0x100000, REGION_GFX1, 0 )
 	ROM_LOAD( "dchez.123", 0x00000, 0x40000, CRC(2293dd9a) SHA1(3f0550c2a6f59a233c5b1010cecdb19404170dc0) )
-	ROM_LOAD( "dchez.125", 0x40000, 0x40000, CRC(ddf28bab) SHA1(0f3bc86d0db7afebf8c6094b8337e5f343a82f29) )
-	ROM_LOAD( "dchez.127", 0x80000, 0x40000, CRC(372f9d67) SHA1(74f73f0344bfb890b5e457fcde3d82c9106e7edd) )
+	ROM_LOAD( "dchez.127", 0x40000, 0x40000, CRC(372f9d67) SHA1(74f73f0344bfb890b5e457fcde3d82c9106e7edd) )
+	ROM_LOAD( "dchez.125", 0x80000, 0x40000, CRC(ddf28bab) SHA1(0f3bc86d0db7afebf8c6094b8337e5f343a82f29) )
 
-	ROM_REGION( 0xc0000, REGION_SOUND1, 0 )
-	ROM_LOAD( "dchez.ar0", 0x00000, 0x40000, CRC(6a9e2b12) SHA1(f7cb4d6b4a459682a68f734b2b2e27e3639b9ed5) )
-	ROM_LOAD( "dchez.ar1", 0x40000, 0x40000, CRC(5f3a5f41) SHA1(30e0c7b2ab43a3224432204a9388d509a6a06a11) )
-	ROM_LOAD( "dchez.ar2", 0x80000, 0x20000, CRC(d79b0d41) SHA1(cc84ddf6635097ba0aad2f1838ad0606c5bb8166) )
-	ROM_LOAD( "dchez.ar3", 0xa0000, 0x20000, CRC(2056c1fd) SHA1(4c44930fb87ea6ad71326cc29313f3b817919d08) )
+	ROM_REGION( 0x400000, REGION_SOUND1, 0 )
+	ROM_LOAD( "dchez.ar0", 0x0c0000, 0x40000, CRC(6a9e2b12) SHA1(f7cb4d6b4a459682a68f734b2b2e27e3639b9ed5) )
+	ROM_LOAD( "dchez.ar1", 0x1c0000, 0x40000, CRC(5f3a5f41) SHA1(30e0c7b2ab43a3224432204a9388d509a6a06a11) )
+	ROM_LOAD( "dchez.ar2", 0x2c0000, 0x20000, CRC(d79b0d41) SHA1(cc84ddf6635097ba0aad2f1838ad0606c5bb8166) )
+	ROM_LOAD( "dchez.ar3", 0x3c0000, 0x20000, CRC(2056c1fd) SHA1(4c44930fb87ea6ad71326cc29313f3b817919d08) )
 
-	ROM_REGION( 0x20000, REGION_USER1, 0 ) /* code ? */
-	ROM_LOAD( "dchez.144", 0x000000, 0x10000, CRC(52c96252) SHA1(46de465c25e4602aa360336315b3c8e1a9a0b5f3) )
-	ROM_LOAD( "dchez.145", 0x010000, 0x10000, CRC(a11b92d0) SHA1(265f93cb3657910aabca21ed8afbb55bdc86a964) )
+	ROM_REGION16_LE( 0x20000, REGION_USER1, 0 )
+	ROM_LOAD16_BYTE( "dchez.144", 0x00000, 0x10000, CRC(52c96252) SHA1(46de465c25e4602aa360336315b3c8e1a9a0b5f3) )
+	ROM_LOAD16_BYTE( "dchez.145", 0x00001, 0x10000, CRC(a11b92d0) SHA1(265f93cb3657910aabca21ed8afbb55bdc86a964) )
 ROM_END
 
-GAMEX( 1993, dcheese, 0, dcheese, dcheese, 0, ROT0, "HAR", "Double Cheese", GAME_NOT_WORKING )
+
+
+/*************************************
+ *
+ *  Driver configuration
+ *
+ *************************************/
+
+static DRIVER_INIT( dcheese )
+{
+	EEPROM_init(&eeprom_interface_93C46);
+	ticket_dispenser_init(200, TICKET_MOTOR_ACTIVE_HIGH, TICKET_STATUS_ACTIVE_LOW);
+}
+
+
+
+/*************************************
+ *
+ *  Game driver(s)
+ *
+ *************************************/
+
+GAME( 1993, dcheese, 0, dcheese, dcheese, dcheese, ROT90, "HAR", "Double Cheese" )

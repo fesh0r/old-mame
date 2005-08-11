@@ -233,7 +233,7 @@ VIDEO_UPDATE( nwktr )
 {
 	fillbitmap(bitmap, Machine->remapped_colortable[0], cliprect);
 
-	video_update_voodoo(bitmap, cliprect);
+	video_update_voodoo(screen, bitmap, cliprect);
 
 	K001604_tile_update();
 	K001604_tile_draw(bitmap, cliprect);
@@ -378,7 +378,7 @@ ADDRESS_MAP_END
 
 /*****************************************************************************/
 
-UINT32 dataram[0x100000];
+static UINT32 dataram[0x100000];
 
 static READ32_HANDLER( dsp_dataram_r )
 {

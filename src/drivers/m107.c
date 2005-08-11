@@ -32,7 +32,6 @@ extern int m107_raster_irq_position,m107_sprite_list;
 #define m107_IRQ_3 ((m107_irq_vectorbase+12)/4) /* ??? */
 
 WRITE8_HANDLER( m107_spritebuffer_w );
-void m107_vh_raster_partial_refresh(struct mame_bitmap *bitmap,int start_line,int end_line);
 void m107_screenrefresh(struct mame_bitmap *bitmap,const struct rectangle *clip);
 VIDEO_UPDATE( m107 );
 VIDEO_UPDATE( dsoccr );
@@ -48,7 +47,7 @@ static WRITE8_HANDLER( bankswitch_w )
 	unsigned char *RAM = memory_region(REGION_CPU1);
 
 	if (offset==1) return; /* Unused top byte */
-	cpu_setbank(1,&RAM[0x100000 + ((data&0x7)*0x10000)]);
+	memory_set_bankptr(1,&RAM[0x100000 + ((data&0x7)*0x10000)]);
 }
 
 static READ8_HANDLER( m107_port_4_r )
@@ -466,13 +465,12 @@ static struct IremGA20_interface iremGA20_interface =
 static INTERRUPT_GEN( m107_interrupt )
 {
 	m107_vblank=0;
-	m107_vh_raster_partial_refresh(Machine->scrbitmap,0,248);
+	force_partial_update(248+128);
 	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, m107_IRQ_0); /* VBL */
 }
 
 static INTERRUPT_GEN( m107_raster_interrupt )
 {
-	static int last_line=0;
 	int line = 256 - cpu_getiloops();
 
 	if (code_pressed_memory(KEYCODE_F1)) {
@@ -485,10 +483,7 @@ static INTERRUPT_GEN( m107_raster_interrupt )
 
 	/* Raster interrupt */
 	if (raster_enable && line==m107_raster_irq_position) {
-		if (osd_skip_this_frame()==0)
-			m107_vh_raster_partial_refresh(Machine->scrbitmap,last_line,line);
-		last_line=line+1;
-
+		force_partial_update(line);
 		cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, m107_IRQ_2);
 	}
 
@@ -500,9 +495,7 @@ static INTERRUPT_GEN( m107_raster_interrupt )
 
 	/* Redraw screen, then set vblank and trigger the VBL interrupt */
 	else if (line==248) {
-		if (osd_skip_this_frame()==0)
-			m107_vh_raster_partial_refresh(Machine->scrbitmap,last_line,248);
-		last_line=0;
+		force_partial_update(248);
 		m107_vblank=1;
 		cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, m107_IRQ_0);
 	}
@@ -691,7 +684,7 @@ static DRIVER_INIT( firebarr )
 	unsigned char *RAM = memory_region(REGION_CPU1);
 
 	memcpy(RAM+0xffff0,RAM+0x7fff0,0x10); /* Start vector */
-	cpu_setbank(1,&RAM[0xa0000]); /* Initial bank */
+	memory_set_bankptr(1,&RAM[0xa0000]); /* Initial bank */
 
 	RAM = memory_region(REGION_CPU2);
 	memcpy(RAM+0xffff0,RAM+0x1fff0,0x10); /* Sound cpu Start vector */
@@ -709,7 +702,7 @@ static DRIVER_INIT( dsoccr94 )
 	unsigned char *RAM = memory_region(REGION_CPU1);
 
 	memcpy(RAM+0xffff0,RAM+0x7fff0,0x10); /* Start vector */
-	cpu_setbank(1,&RAM[0xa0000]); /* Initial bank */
+	memory_set_bankptr(1,&RAM[0xa0000]); /* Initial bank */
 
 	RAM = memory_region(REGION_CPU2);
 	memcpy(RAM+0xffff0,RAM+0x1fff0,0x10); /* Sound cpu Start vector */
@@ -728,7 +721,7 @@ static DRIVER_INIT( wpksoc )
 	unsigned char *RAM = memory_region(REGION_CPU1);
 
 	memcpy(RAM+0xffff0,RAM+0x7fff0,0x10); /* Start vector */
-	cpu_setbank(1,&RAM[0xa0000]); /* Initial bank */
+	memory_set_bankptr(1,&RAM[0xa0000]); /* Initial bank */
 
 	RAM = memory_region(REGION_CPU2);
 	memcpy(RAM+0xffff0,RAM+0x1fff0,0x10); /* Sound cpu Start vector */
