@@ -233,20 +233,15 @@ static MACHINE_DRIVER_START( arcadia )
 	MDRV_CPU_ADD_TAG("main", S2650, 3580000/3)        /* 1.796 Mhz */
 	MDRV_CPU_PROGRAM_MAP(arcadia_readmem,arcadia_writemem)
 	MDRV_CPU_IO_MAP(arcadia_readport,arcadia_writeport)
-	MDRV_CPU_PERIODIC_INT(arcadia_video_line, 262*60)
+	MDRV_CPU_PERIODIC_INT(arcadia_video_line, TIME_IN_HZ(262*60))
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-#if arcadia_DEBUG
-	MDRV_SCREEN_SIZE(128+2*XPOS+40, 262)
-	MDRV_VISIBLE_AREA(0, 2*XPOS+128-1+40, 0, 262-1)
-#else
 	MDRV_SCREEN_SIZE(128+2*XPOS, 262)
 	MDRV_VISIBLE_AREA(0, 2*XPOS+128-1, 0, 262-1)
-#endif
 	MDRV_GFXDECODE( arcadia_gfxdecodeinfo )
 	MDRV_PALETTE_LENGTH(sizeof (arcadia_palette) / sizeof (arcadia_palette[0]))
 	MDRV_COLORTABLE_LENGTH(sizeof (arcadia_colortable) / sizeof(arcadia_colortable[0][0]))

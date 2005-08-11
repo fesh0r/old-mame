@@ -1,3 +1,59 @@
+0.99
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- VC4000 [PeT, Manfred Schneider]
+
+
+
+System Driver Changes:
+----------------------
+- [AMSTRAD] Added green screen display configuration setting.  [bobz]
+
+- [COCO/DRAGON] Fixed a rounding error in cassette loading that affected the
+  Dragon game "Screaming Abdabs".  (bug #735) [Nate Woods]
+
+- [DGNALPHA] Fixed NMI interrupt, so that Dragon Data Alpha OS-9 can now boot.
+  [Phill Harvey-Smith]
+
+- [MAC] Fixed endian problems under big endian hosts.  [Nate Woods]
+
+
+
+User Interface Changes:
+-----------------------
+- [Windows GUI] Refactored INI parsing out of the main option code.  This
+  should make it easier to swap out a different configuration file system.
+  [Nate Woods]
+
+- [Windows GUI] Fixed minor cosmetic bug in the Interface Options dialog.
+  (bug #732) [Nate Woods]
+
+- [Windows GUI] Added a feature whereby the GUI will watch the BIOS directories
+  and automatically reaudit files that are added, removed or modified in those
+  directories.  [Nate Woods]
+
+- [Windows GUI] Changing BIOS or Samples directories will now only reaudit
+  systems for which they are relevant.  [Nate Woods]
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.99.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- [Messtest] Now raises an error when a blank screenshot is emitted, as that
+  is almost always a sign of an error.  [Nate Woods]
+  
+
+
 0.98
 
 New System Drivers Supported (in no particular order):

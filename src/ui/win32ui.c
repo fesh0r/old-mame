@@ -69,6 +69,7 @@
 #include "bitmask.h"
 #include "TreeView.h"
 #include "Splitters.h"
+#include "DirWatch.h"
 #include "help.h"
 #include "history.h"
 #include "options.h"
@@ -250,7 +251,7 @@ static long WINAPI      MameWindowProc(HWND hwnd,UINT message,UINT wParam,LONG l
 
 static void             SetView(int menu_id);
 static void             ResetListView(void);
-static void             UpdateGameList(void);
+static void             UpdateGameList(BOOL bUpdateRomAudit, BOOL bUpdateSampleAudit);
 static void             DestroyIcons(void);
 static void             ReloadIcons(void);
 static void             PollGUIJoystick(void);
@@ -298,7 +299,7 @@ static void             MamePlayGame(void);
 static void             MamePlayGameWithOptions(int nGame);
 static INT_PTR CALLBACK LoadProgressDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam);
 static int UpdateLoadProgress(const char* name, const struct rom_load_data *romdata);
-static BOOL             GameCheck(void);
+static BOOL GameCheck(void);
 static BOOL FolderCheck(void);
 
 static void             ToggleScreenShot(void);
@@ -479,7 +480,7 @@ static HINSTANCE hInst = NULL;
 
 static HFONT hFont = NULL;     /* Font for list view */
 
-static int              game_count = 0;
+static int game_count = 0;
 static int optionfolder_count = 0;
 
 /* global data--know where to send messages */
@@ -500,6 +501,11 @@ static BOOL bShowStatusBar = 1;
 static BOOL bShowTabCtrl   = 1;
 static BOOL bProgressShown = FALSE;
 static BOOL bListReady     = FALSE;
+
+#define	WM_MAME32_FILECHANGED	(WM_USER + 0)
+#define	WM_MAME32_AUDITGAME		(WM_USER + 1)
+
+static PDIRWATCHER s_pWatcher;
 
 /* use a joystick subsystem in the gui? */
 static struct OSDJoystick* g_pJoyGUI = NULL;
@@ -726,7 +732,7 @@ const char* column_names[COLUMN_MAX] =
 	"Manufacturer",
 	"Year",
 	"Clone Of",
-    "Source",
+	"Source",
 	"Play Time"
 };
 
@@ -858,7 +864,7 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -screen_aspect %s",          pOpts->aspect);
 
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -cs %s",                     GetCleanStretchShortName(pOpts->clean_stretch));
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -zoom %i", pOpts->zoom);
+	sprintf(&pCmdLine[strlen(pCmdLine)], " -zoom %i",                   pOpts->zoom);
 
 	// d3d
 	if (pOpts->use_d3d)
@@ -878,9 +884,8 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	/* input */
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%smouse",                   pOpts->use_mouse       ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sjoy",                     pOpts->use_joystick    ? "" : "no");
-	if (pOpts->use_joystick) {
+	if (pOpts->use_joystick)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -a2d %f",                pOpts->f_a2d);
-	}
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%ssteady",                  pOpts->steadykey       ? "" : "no");
 
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sgun",!pOpts->window_mode && pOpts->lightgun ? "" : "no");
@@ -891,6 +896,22 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 
 	if (strlen(pOpts->ctrlr) > 0)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -ctrlr \"%s\"",              pOpts->ctrlr);
+	if (strlen(pOpts->digital) > 0)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -digital \"%s\"",            pOpts->digital);
+	/* controller mapping*/
+	if (strlen(pOpts->paddle) > 0)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -paddle \"%s\"",             pOpts->paddle);
+	if (strlen(pOpts->adstick) > 0)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -adstick \"%s\"",            pOpts->adstick);
+	if (strlen(pOpts->pedal) > 0)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -pedal \"%s\"",              pOpts->pedal);
+	if (strlen(pOpts->dial) > 0)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -dial \"%s\"",               pOpts->dial);
+	if (strlen(pOpts->trackball) > 0)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -trackball \"%s\"",          pOpts->trackball);
+	if (strlen(pOpts->lightgun_device) > 0)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -lightgun_device \"%s\"",    pOpts->lightgun_device);
+
 	
 	/* core video */
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -bright %f",                 pOpts->f_bright_correct); 
@@ -1097,7 +1118,7 @@ static DWORD RunMAME(int nGameIndex)
 	SaveGameOptions(nGameIndex);
 #endif
 
-	CreateCommandLine(nGameIndex, pCmdLine);
+	CreateCommandLine(nGameIndex, pCmdLine );
 
 	ZeroMemory(&si, sizeof(si));
 	ZeroMemory(&pi, sizeof(pi));
@@ -1497,7 +1518,7 @@ void UpdateScreenShot(void)
 		ClientToScreen(hMain, &p);
 		GetWindowRect(GetDlgItem(hMain, IDC_SSFRAME), &fRect);
 		OffsetRect(&fRect, -p.x, -p.y);
-			
+
 		// show history on this tab IFF
 		// - we have history for the game
 		// - we're on the first tab
@@ -1857,12 +1878,12 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	sorted_drivers = (driver_data_type *) auto_malloc(sizeof(driver_data_type) * game_count);
 	if (!sorted_drivers)
 		return FALSE;
-    for (i=0;i<game_count;i++)
-    {
-        sorted_drivers[i].name = drivers[i]->name;
-        sorted_drivers[i].index = i;
-    }
-    qsort(sorted_drivers,game_count,sizeof(driver_data_type),DriverDataCompareFunc );
+	for (i=0;i<game_count;i++)
+	{
+		sorted_drivers[i].name = drivers[i]->name;
+		sorted_drivers[i].index = i;
+	}
+	qsort(sorted_drivers,game_count,sizeof(driver_data_type),DriverDataCompareFunc );
 
 	wndclass.style		   = CS_HREDRAW | CS_VREDRAW;
 	wndclass.lpfnWndProc   = MameWindowProc;
@@ -1913,12 +1934,19 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 
 	HelpInit();
 
-	strcpy(last_directory, GetInpDir());
+	strcpy(last_directory,GetInpDir());
 	hMain = CreateDialog(hInstance, MAKEINTRESOURCE(IDD_MAIN), 0, NULL);
 	if (hMain == NULL)
 	{
 		dprintf("error creating main dialog, aborting");
 		return FALSE;
+	}
+
+	s_pWatcher = DirWatcher_Init(hMain, WM_MAME32_FILECHANGED);
+	if (s_pWatcher)
+	{
+		DirWatcher_Watch(s_pWatcher, 0, GetRomDirs(), TRUE);
+		DirWatcher_Watch(s_pWatcher, 1, GetSampleDirs(), TRUE);
 	}
 
 	SetMainTitle();
@@ -2020,7 +2048,7 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	idle_work    = TRUE;
 	game_index   = 0;
 
-	bShowTree	   = GetShowFolderList();
+	bShowTree      = GetShowFolderList();
 	bShowToolBar   = GetShowToolBar();
 	bShowStatusBar = GetShowStatusBar();
 	bShowTabCtrl   = GetShowTabCtrl();
@@ -2199,7 +2227,7 @@ static void Win32UI_exit()
 		g_pJoyGUI->exit();
 
 	/* Free GDI resources */
-	
+
 	if (hMissing_bitmap)
 	{
 		DeleteObject(hMissing_bitmap);
@@ -2474,11 +2502,11 @@ static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lPa
 		if (MouseHasBeenMoved())
 			ShowCursor(TRUE);
 		
-	    if (g_listview_dragging)
-		   MouseMoveListViewDrag(MAKEPOINTS(lParam));
+		if (g_listview_dragging)
+			MouseMoveListViewDrag(MAKEPOINTS(lParam));
 		else
-		   /* for splitters */
-		OnMouseMove(hWnd, (UINT)wParam, MAKEPOINTS(lParam));
+			/* for splitters */
+			OnMouseMove(hWnd, (UINT)wParam, MAKEPOINTS(lParam));
 		break;
 	}
 
@@ -2487,7 +2515,7 @@ static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lPa
 		    ButtonUpListViewDrag(MAKEPOINTS(lParam));
 		else
 		   /* for splitters */
-		OnLButtonUp(hWnd, (UINT)wParam, MAKEPOINTS(lParam));
+		   OnLButtonUp(hWnd, (UINT)wParam, MAKEPOINTS(lParam));
 		break;
 
 	case WM_NOTIFY:
@@ -2507,7 +2535,7 @@ static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lPa
 
 			GetClassName(lpNmHdr->hwndFrom, szClass, sizeof(szClass) / sizeof(szClass[0]));
 			if (!strcmp(szClass, "SysListView32"))
-				return Picker_HandleNotify(lpNmHdr);
+				return Picker_HandleNotify(lpNmHdr);	
 			if (!strcmp(szClass, "SysTabControl32"))
 				return TabView_HandleNotify(lpNmHdr);
 		}
@@ -2547,6 +2575,87 @@ static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lPa
 
 		return TRUE;
 	}
+
+	case WM_MAME32_FILECHANGED:
+		{
+			char szFileName[32];
+			char *s;
+			int nGameIndex;
+			const struct GameDriver *drv;
+			int (*pfnGetAuditResults)(int driver_index) = NULL;
+			void (*pfnSetAuditResults)(int driver_index, int audit_results) = NULL;
+
+			switch(HIWORD(wParam))
+			{
+				case 0:
+					pfnGetAuditResults = GetRomAuditResults;
+					pfnSetAuditResults = SetRomAuditResults;
+					break;
+
+				case 1:
+					pfnGetAuditResults = GetSampleAuditResults;
+					pfnSetAuditResults = SetSampleAuditResults;
+					break;
+			}
+
+			if (pfnGetAuditResults && pfnSetAuditResults)
+			{
+				snprintf(szFileName, sizeof(szFileName), "%s", (LPCTSTR) lParam);
+				s = strchr(szFileName, '.');
+				if (s)
+					*s = '\0';
+				s = strchr(szFileName, '\\');
+				if (s)
+					*s = '\0';
+
+				for (nGameIndex = 0; drivers[nGameIndex]; nGameIndex++)
+				{
+					for (drv = drivers[nGameIndex]; drv; drv = drv->clone_of)
+					{
+						if (!stricmp(drv->name, szFileName))
+						{
+							if (pfnGetAuditResults(nGameIndex) != UNKNOWN)
+							{
+								pfnSetAuditResults(nGameIndex, UNKNOWN);
+								PostMessage(hMain, WM_MAME32_AUDITGAME, wParam, nGameIndex);
+							}
+							break;
+						}
+					}
+				}
+			}
+		}
+		break;
+
+	case WM_MAME32_AUDITGAME:
+		{
+			LV_FINDINFO lvfi;
+			int nGameIndex;
+
+			nGameIndex = lParam;
+
+			switch(HIWORD(wParam))
+			{
+				case 0:
+					Mame32VerifyRomSet(nGameIndex);
+					break;
+				case 1:
+					Mame32VerifySampleSet(nGameIndex);
+					break;
+			}
+
+			memset(&lvfi, 0, sizeof(lvfi));
+			lvfi.flags	= LVFI_PARAM;
+			lvfi.lParam = nGameIndex;
+
+			i = ListView_FindItem(hwndList, -1, &lvfi);
+			if (i != -1)
+			{
+				ListView_RedrawItems(hwndList, i, i);
+			}
+		}
+		break;
+
 	default:
 
 		break;
@@ -2696,8 +2805,8 @@ static BOOL FolderCheck(void)
 static BOOL GameCheck(void)
 {
 	LV_FINDINFO lvfi;
-	int 		i;
-	BOOL		changed = FALSE;
+	int i;
+	BOOL changed = FALSE;
 
 	if (game_index == 0)
 		ProgressBarShow();
@@ -2737,8 +2846,8 @@ static BOOL GameCheck(void)
 
 static BOOL OnIdle(HWND hWnd)
 {
-	static int	bFirstTime = TRUE;
-	static int	bResetList = TRUE;
+	static int bFirstTime = TRUE;
+	static int bResetList = TRUE;
 
 	char *pDescription;
 	int driver_index;
@@ -2922,9 +3031,9 @@ static void ProgressBarHide()
 	int  numParts = 4;
 
 	if (hProgWnd == NULL)
-    {
-        return;
-    }
+	{
+		return;
+	}
 
     hDC = GetDC(hProgWnd);
 
@@ -3447,7 +3556,7 @@ char* ConvertAmpersandString(const char *s)
 	{
 		if (*s == '&')
 			*ptr++ = *s;
-			*ptr++ = *s++;
+		*ptr++ = *s++;
 	}
 	*ptr = 0;
 
@@ -3753,8 +3862,8 @@ static void PollGUIJoystick()
 	{
 		SendMessage(hMain, WM_COMMAND, ID_UI_HISTORY_DOWN, 0);
 	}
-
-	// User pressed EXECUTE COMMANDLINE
+  
+  // User pressed EXECUTE COMMANDLINE
 	if (g_pJoyGUI->is_joy_pressed(JOYCODE(GetUIJoyExec(0), GetUIJoyExec(1), GetUIJoyExec(2),GetUIJoyExec(3))))
 	{
 		if (++exec_counter >= GetExecWait()) // Button has been pressed > exec timeout
@@ -3848,7 +3957,7 @@ static void ResetListView()
 	ListView_DeleteAllItems(hwndList);
 
 	// hint to have it allocate it all at once
-	ListView_SetItemCount(hwndList, game_count);
+	ListView_SetItemCount(hwndList,game_count);
 
 	lvi.mask = LVIF_TEXT | LVIF_IMAGE | LVIF_PARAM;
 	lvi.stateMask = 0;
@@ -3895,14 +4004,16 @@ static void ResetListView()
 
 }
 
-static void UpdateGameList()
+static void UpdateGameList(BOOL bUpdateRomAudit, BOOL bUpdateSampleAudit)
 {
 	int i;
 
 	for (i = 0; i < game_count; i++)
 	{
-		SetRomAuditResults(i, UNKNOWN);
-		SetSampleAuditResults(i, UNKNOWN);
+		if (bUpdateRomAudit && DriverUsesRoms(i))
+			SetRomAuditResults(i, UNKNOWN);
+		if (bUpdateSampleAudit && DriverUsesSamples(i))
+			SetSampleAuditResults(i, UNKNOWN);
 	}
 
 	idle_work	 = TRUE;
@@ -4026,34 +4137,34 @@ static void PickFont(void)
 
 static void PickColor(COLORREF *cDefault)
 {
-	CHOOSECOLOR cc;
-	COLORREF choice_colors[16];
-	int i;
-
-	for (i=0;i<16;i++)
+ 	CHOOSECOLOR cc;
+ 	COLORREF choice_colors[16];
+ 	int i;
+	
+ 	for (i=0;i<16;i++)
  		choice_colors[i] = GetCustomColor(i);
-
-	cc.lStructSize = sizeof(CHOOSECOLOR);
-	cc.hwndOwner   = hMain;
+ 
+ 	cc.lStructSize = sizeof(CHOOSECOLOR);
+ 	cc.hwndOwner   = hMain;
  	cc.rgbResult   = *cDefault;
-	cc.lpCustColors = choice_colors;
-	cc.Flags       = CC_ANYCOLOR | CC_RGBINIT | CC_SOLIDCOLOR;
-	if (!ChooseColor(&cc))
-		return;
+ 	cc.lpCustColors = choice_colors;
+ 	cc.Flags       = CC_ANYCOLOR | CC_RGBINIT | CC_SOLIDCOLOR;
+ 	if (!ChooseColor(&cc))
+ 		return;
  	for (i=0;i<16;i++)
  		SetCustomColor(i,choice_colors[i]);
  	*cDefault = cc.rgbResult;
- }
-
+}
+ 
 static void PickCloneColor(void)
 {
  	COLORREF cClonecolor;
  	cClonecolor = GetListCloneColor();
  	PickColor( &cClonecolor);
  	SetListCloneColor(cClonecolor);
-	InvalidateRect(hwndList,NULL,FALSE);
+ 	InvalidateRect(hwndList,NULL,FALSE);
 }
-
+ 
 static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 {
 	int i;
@@ -4233,11 +4344,11 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 
 		// ScreenShot Context Menu
 		// select current tab
-	case ID_VIEW_TAB_SCREENSHOT:
-	case ID_VIEW_TAB_FLYER:
-	case ID_VIEW_TAB_CABINET:
-	case ID_VIEW_TAB_MARQUEE:
-	case ID_VIEW_TAB_TITLE:
+	case ID_VIEW_TAB_SCREENSHOT :
+	case ID_VIEW_TAB_FLYER :
+	case ID_VIEW_TAB_CABINET :
+	case ID_VIEW_TAB_MARQUEE :
+	case ID_VIEW_TAB_TITLE :
 	case ID_VIEW_TAB_CONTROL_PANEL :
 	case ID_VIEW_TAB_HISTORY:
 		if (id == ID_VIEW_TAB_HISTORY && GetShowTab(TAB_HISTORY) == FALSE)
@@ -4368,7 +4479,7 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 		break;
 
 	case ID_UPDATE_GAMELIST:
-		UpdateGameList();
+		UpdateGameList(TRUE, TRUE);
 		break;
 
 	case ID_OPTIONS_FONT:
@@ -4412,11 +4523,19 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 
 			if (bUpdateSoftware)
 				MessUpdateSoftwareList();
-#endif
+#endif /* MESS */
+
+			if (s_pWatcher)
+			{
+				if (bUpdateRoms)
+					DirWatcher_Watch(s_pWatcher, 0, GetRomDirs(), TRUE);
+				if (bUpdateSamples)
+					DirWatcher_Watch(s_pWatcher, 1, GetSampleDirs(), TRUE);
+			}
 
 			/* update game list */
 			if (bUpdateRoms == TRUE || bUpdateSamples == TRUE)
-				UpdateGameList();
+				UpdateGameList(bUpdateRoms, bUpdateSamples);
 
 			SetFocus(hwndList);
 		}
@@ -4427,9 +4546,8 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 					  MAKEINTRESOURCE(IDD_RESET), hMain, ResetDialogProc) == TRUE)
         {
 			// these may have been changed
-			// WTF?
 			SaveDefaultOptions();
-			DestroyWindow( hwnd );
+			DestroyWindow(hwnd);
 			PostQuitMessage(0);
         }
 		return TRUE;
@@ -4452,24 +4570,24 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 			OPENFILENAMEA OpenFileName;
 			static char szFile[MAX_PATH] = "\0";
 
-			OpenFileName.lStructSize       = sizeof(OPENFILENAME);                                             
-			OpenFileName.hwndOwner         = hMain;                                                             
-			OpenFileName.hInstance         = 0;                                                          
+			OpenFileName.lStructSize       = sizeof(OPENFILENAME);
+			OpenFileName.hwndOwner         = hMain;
+			OpenFileName.hInstance         = 0;
 			OpenFileName.lpstrFilter       = "Image Files (*.png, *.bmp)\0*.PNG;*.BMP\0";
-			OpenFileName.lpstrCustomFilter = NULL;                                                             
-			OpenFileName.nMaxCustFilter    = 0;                                                                
-			OpenFileName.nFilterIndex      = 1;                                                                
-			OpenFileName.lpstrFile         = szFile;                                                           
-			OpenFileName.nMaxFile          = sizeof(szFile);                                                   
-			OpenFileName.lpstrFileTitle    = NULL;                                                             
-			OpenFileName.nMaxFileTitle     = 0;                                                                
-			OpenFileName.lpstrInitialDir   = GetBgDir();                                                             
+			OpenFileName.lpstrCustomFilter = NULL;
+			OpenFileName.nMaxCustFilter    = 0;
+			OpenFileName.nFilterIndex      = 1;
+			OpenFileName.lpstrFile         = szFile;
+			OpenFileName.nMaxFile          = sizeof(szFile);
+			OpenFileName.lpstrFileTitle    = NULL;
+			OpenFileName.nMaxFileTitle     = 0;
+			OpenFileName.lpstrInitialDir   = GetBgDir();
 			OpenFileName.lpstrTitle        = "Select a Background Image";
-			OpenFileName.nFileOffset       = 0;                                                                
-			OpenFileName.nFileExtension    = 0;                                                                
-			OpenFileName.lpstrDefExt       = NULL;                                                             
+			OpenFileName.nFileOffset       = 0;
+			OpenFileName.nFileExtension    = 0;
+			OpenFileName.lpstrDefExt       = NULL;
 			OpenFileName.lCustData         = 0;                                                 
-			OpenFileName.lpfnHook 		   = NULL;                                                  
+			OpenFileName.lpfnHook 		   = NULL;
 			OpenFileName.lpTemplateName    = NULL;                                    
 			OpenFileName.Flags             = OFN_NOCHANGEDIR | OFN_SHOWHELP | OFN_EXPLORER;
 
@@ -4517,7 +4635,7 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 			TreeView_EndEditLabelNow(hTreeView, TRUE);
 		break;
 
-	case IDC_PLAY_GAME:
+	case IDC_PLAY_GAME :
 		if (have_selection)
 			MamePlayGame();
 		break;
@@ -4802,28 +4920,28 @@ static void InitListView()
 
 	static const struct PickerCallbacks s_gameListCallbacks =
 	{
-		SetSortColumn,					/* pfnSetSortColumn */
-		GetSortColumn,					/* pfnGetSortColumn */
-		SetSortReverse,					/* pfnSetSortReverse */
-		GetSortReverse,					/* pfnGetSortReverse */
-		SetViewMode,					/* pfnSetViewMode */
-		GetViewMode,					/* pfnGetViewMode */
-		SetColumnWidths,				/* pfnSetColumnWidths */
-		GetColumnWidths,				/* pfnGetColumnWidths */
-		SetColumnOrder,					/* pfnSetColumnOrder */
-		GetColumnOrder,					/* pfnGetColumnOrder */
-		SetColumnShown,					/* pfnSetColumnShown */
-		GetColumnShown,					/* pfnGetColumnShown */
-		GetOffsetClones,				/* pfnGetOffsetChildren */
+		SetSortColumn,				/* pfnSetSortColumn */
+		GetSortColumn,				/* pfnGetSortColumn */
+		SetSortReverse,				/* pfnSetSortReverse */
+		GetSortReverse,				/* pfnGetSortReverse */
+		SetViewMode,				/* pfnSetViewMode */
+		GetViewMode,				/* pfnGetViewMode */
+		SetColumnWidths,			/* pfnSetColumnWidths */
+		GetColumnWidths,			/* pfnGetColumnWidths */
+		SetColumnOrder,				/* pfnSetColumnOrder */
+		GetColumnOrder,				/* pfnGetColumnOrder */
+		SetColumnShown,				/* pfnSetColumnShown */
+		GetColumnShown,				/* pfnGetColumnShown */
+		GetOffsetClones,			/* pfnGetOffsetChildren */
 
-		GamePicker_Compare,				/* pfnCompare */
-		MamePlayGame,					/* pfnDoubleClick */
-		GamePicker_GetItemString,		/* pfnGetItemString */
-		GamePicker_GetItemImage,		/* pfnGetItemImage */
-		GamePicker_LeavingItem,			/* pfnLeavingItem */
-		GamePicker_EnteringItem,		/* pfnEnteringItem */
-		BeginListViewDrag,				/* pfnBeginListViewDrag */
-		GamePicker_FindItemParent,		/* pfnFindItemParent */
+		GamePicker_Compare,			/* pfnCompare */
+		MamePlayGame,				/* pfnDoubleClick */
+		GamePicker_GetItemString,	/* pfnGetItemString */
+		GamePicker_GetItemImage,	/* pfnGetItemImage */
+		GamePicker_LeavingItem,		/* pfnLeavingItem */
+		GamePicker_EnteringItem,	/* pfnEnteringItem */
+		BeginListViewDrag,			/* pfnBeginListViewDrag */
+		GamePicker_FindItemParent,	/* pfnFindItemParent */
 		OnIdle,							/* pfnIdle */
 		GamePicker_OnHeaderContextMenu,	/* pfnOnHeaderContextMenu */
 		GamePicker_OnBodyContextMenu	/* pfnOnBodyContextMenu */
@@ -4864,7 +4982,7 @@ static void AddDriverIcon(int nItem,int default_icon_index)
 
 	hIcon = LoadIconFromFile((char *)drivers[nItem]->name);
 	if (hIcon == NULL && drivers[nItem]->clone_of != NULL)
-		{
+	{
 		hIcon = LoadIconFromFile((char *)drivers[nItem]->clone_of->name);
 		if (hIcon == NULL && drivers[nItem]->clone_of->clone_of != NULL)
 			hIcon = LoadIconFromFile((char *)drivers[nItem]->clone_of->clone_of->name);
@@ -5037,7 +5155,7 @@ static int GamePicker_Compare(HWND hwndPicker, int index1, int index2, int sort_
 	int value;
 	const char *name1 = NULL;
 	const char *name2 = NULL;
-	int   nTemp1, nTemp2;
+	int nTemp1, nTemp2;
 
 #ifdef DEBUG
 	if (strcmp(drivers[index1]->name,"1941") == 0 && strcmp(drivers[index2]->name,"1942") == 0)
@@ -5398,14 +5516,14 @@ static INT_PTR CALLBACK LanguageDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 			return TRUE;
 
 		case IDC_LANGUAGECHECK:
-			{
-				BOOL bCheck = Button_GetCheck(GetDlgItem(hDlg, IDC_LANGUAGECHECK));
-				EnableWindow(GetDlgItem(hDlg, IDC_LANGUAGEEDIT),   bCheck);
-				EnableWindow(GetDlgItem(hDlg, IDC_LANGUAGEBROWSE), bCheck);
-				if (bCheck == FALSE)
-					Edit_SetText(GetDlgItem(hDlg, IDC_LANGUAGEEDIT), "");
-				return TRUE;
-			}
+		{
+			BOOL bCheck = Button_GetCheck(GetDlgItem(hDlg, IDC_LANGUAGECHECK));
+			EnableWindow(GetDlgItem(hDlg, IDC_LANGUAGEEDIT),   bCheck);
+			EnableWindow(GetDlgItem(hDlg, IDC_LANGUAGEBROWSE), bCheck);
+			if (bCheck == FALSE)
+				Edit_SetText(GetDlgItem(hDlg, IDC_LANGUAGEEDIT), "");
+			return TRUE;
+		}
 
 		case IDC_LANGUAGEBROWSE:
 			Edit_GetText(GetDlgItem(hDlg, IDC_LANGUAGEEDIT), pLangFile, MAX_PATH);
@@ -6150,7 +6268,7 @@ static LRESULT CALLBACK HistoryWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 		case WM_PAINT:
 		{
 			POINT p = { 0, 0 };
-			
+  			
 			/* get base point of background bitmap */
 			MapWindowPoints(hWnd,hTreeView,&p,1);
 			PaintBackgroundImage(hWnd, NULL, p.x, p.y);
@@ -6174,7 +6292,7 @@ static LRESULT CALLBACK PictureFrameWndProc(HWND hWnd, UINT uMsg, WPARAM wParam,
 		break;
     }
   
-	case WM_NCHITTEST :
+    case WM_NCHITTEST :
 	{
 		POINT pt;
 		RECT  rect;
@@ -6677,10 +6795,10 @@ void ButtonUpListViewDrag(POINTS p)
 	tvi.mask  = TVIF_PARAM | TVIF_HANDLE;
 	tvi.hItem = htiTarget;
 
-	if (TreeView_GetItem( hTreeView, &tvi))
+	if (TreeView_GetItem(hTreeView, &tvi))
 	{
-	   LPTREEFOLDER folder = (LPTREEFOLDER)tvi.lParam;
-	   AddToCustomFolder(folder,game_dragged);
+		LPTREEFOLDER folder = (LPTREEFOLDER)tvi.lParam;
+		AddToCustomFolder(folder,game_dragged);
 	}
 
 }
@@ -7058,10 +7176,10 @@ HWND GetGameWindow(void)
 
 void SendIconToProcess(LPPROCESS_INFORMATION pi, int nGameIndex)
 {
-	HICON hIcon;
-	hIcon = LoadIconFromFile(drivers[nGameIndex]->name);
-	if( hIcon == NULL )
-	{
+	HICON hIcon; 
+	hIcon = LoadIconFromFile(drivers[nGameIndex]->name); 
+	if( hIcon == NULL ) 
+	{ 
 		//Check if clone, if so try parent icon first 
 		if( DriverIsClone(nGameIndex) ) 
 		{ 
@@ -7076,9 +7194,9 @@ void SendIconToProcess(LPPROCESS_INFORMATION pi, int nGameIndex)
 			hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_MAME32_ICON)); 
 		} 
 	} 
-	WaitForInputIdle( pi->hProcess, INFINITE );
-	SendMessageToProcess( pi, WM_SETICON, ICON_SMALL, (LPARAM)hIcon );
-	SendMessageToProcess( pi, WM_SETICON, ICON_BIG, (LPARAM)hIcon );
+	WaitForInputIdle( pi->hProcess, INFINITE ); 
+	SendMessageToProcess( pi, WM_SETICON, ICON_SMALL, (LPARAM)hIcon ); 
+	SendMessageToProcess( pi, WM_SETICON, ICON_BIG, (LPARAM)hIcon ); 
 }
 
 void SendMessageToProcess(LPPROCESS_INFORMATION lpProcessInformation, 

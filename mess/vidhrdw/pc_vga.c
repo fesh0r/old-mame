@@ -566,7 +566,7 @@ static void vga_cpu_interface(void)
 				vga.vga_intf.map_vga_memory(0xA0000, 0xBFFFF, read_handler, write_handler);
 
 				if (vga.vga_intf.vga_memory_bank != 0)
-					cpu_setbank(vga.vga_intf.vga_memory_bank, vga.memory);
+					memory_set_bankptr(vga.vga_intf.vga_memory_bank, vga.memory);
 				break;
 			case 0x04:
 				vga.vga_intf.map_vga_memory(0xA0000, 0xAFFFF, read_handler, write_handler);
@@ -596,7 +596,7 @@ static void vga_cpu_interface(void)
 			}
 			else
 			{
-				cpu_setbank(1, vga.memory);
+				memory_set_bankptr(1, vga.memory);
 				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,  0xa0000, 0xbffff, 0, 0, MRA8_BANK1 );
 				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xbffff, 0, 0, MWA8_BANK1 );
 			}
@@ -1215,7 +1215,7 @@ static void vga_vh_ega(struct mame_bitmap *bitmap, struct crtc6845 *crtc)
 	for (addr=EGA_START_ADDRESS, pos=0, line=0; line<LINES;
 		 line += height, addr=(addr+EGA_LINE_LENGTH)&0x3ffff)
 	{
-		bitmapline = (UINT16 *) Machine->scrbitmap->line[line];
+		bitmapline = (UINT16 *) bitmap->line[line];
 
 		for (pos=addr, c=0, column=0; column<EGA_COLUMNS; column++, c+=8, pos=(pos+4)&0x3ffff)
 		{
@@ -1243,7 +1243,7 @@ static void vga_vh_ega(struct mame_bitmap *bitmap, struct crtc6845 *crtc)
 			if (line + i >= LINES)
 				break;
 
-			newbitmapline = (UINT16 *) Machine->scrbitmap->line[line+i];
+			newbitmapline = (UINT16 *) bitmap->line[line+i];
 			memcpy(newbitmapline, bitmapline, EGA_COLUMNS * 8 * sizeof(UINT16));
 		}
 	}

@@ -1220,7 +1220,18 @@ void force_partial_update(int scanline)
 	if (clip.min_y <= clip.max_y)
 	{
 		profiler_mark(PROFILER_VIDEO);
+#ifdef MESS
+		{
+			int update_says_skip = 0;
+			(*Machine->drv->video_update)(0, Machine->scrbitmap, &clip, &update_says_skip);
+			if (!update_says_skip)
+				skip_this_frame = 0;
+			else if (skip_this_frame == -1)
+				skip_this_frame = 1;
+		}
+#else
 		(*Machine->drv->video_update)(0, Machine->scrbitmap, &clip);
+#endif
 		performance.partial_updates_this_frame++;
 		profiler_mark(PROFILER_END);
 	}

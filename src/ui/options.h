@@ -45,17 +45,6 @@ enum
 	UNKNOWN	= -1
 };
 
-// config helpers types
-enum
-{
-	RO_BOOL = 0, // BOOL value
-	RO_INT,      // int value
-	RO_DOUBLE,   // double value
-	RO_COLOR,    // COLORREF value
-	RO_STRING,   // pointer to string    - m_vpData is an allocated buffer
-	RO_ENCODE    // encode/decode string - calls decode/encode functions
-};
-
 /* Default input */
 enum 
 {
@@ -100,18 +89,6 @@ enum
 	D3D_PRESCALE_AUTO = 1,
 	MAX_D3D_PRESCALE = 10,
 };
-
-// used to be "registry option", now is just for a game/global option
-typedef struct
-{
-	char ini_name[40]; // ini name
-	int  m_iType;                                 // key type
-	void *m_vpData;                               // key data
-	const char *m_pDefaultValue;                  // default value on startup
-	BOOL m_bOnlyOnGame;                           // use this option only on games
-	void (*encode)(void *data, char *str);        // encode function
-	void (*decode)(const char *str, void *data);  // decode function
-} REG_OPTION;
 
 typedef struct
 {
@@ -173,6 +150,13 @@ typedef struct
 	BOOL   dual_lightgun;
 	BOOL   offscreen_reload;
 	char *ctrlr;
+	char *digital;
+	char *paddle;
+	char *adstick;
+	char *pedal;
+	char *dial;
+	char *trackball;
+	char *lightgun_device;
 
 	/* Core video */
 	double f_bright_correct; /* "1.0", 0.5, 2.0 */
@@ -408,8 +392,7 @@ void FolderOptionsInit(void);
 void OptionsExit(void);
 
 void FreeGameOptions(options_type *o);
-void CopyGameOptions(options_type *source,options_type *dest);
-void SyncInGameOptions(options_type *opts, const char *filename);
+void CopyGameOptions(const options_type *source,options_type *dest);
 void SyncInFolderOptions(options_type *opts, int folder_index);
 options_type * GetDefaultOptions(int iProperty, BOOL bVectorFolder);
 options_type * GetFolderOptions(int folder_index, BOOL bIsVector);

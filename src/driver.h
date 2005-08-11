@@ -6,8 +6,6 @@
 
 ***************************************************************************/
 
-#pragma once
-
 #ifndef __DRIVER_H__
 #define __DRIVER_H__
 
@@ -32,7 +30,11 @@
 #define VIDEO_START(name)		int video_start_##name(void)
 #define VIDEO_STOP(name)		void video_stop_##name(void)
 #define VIDEO_EOF(name)			void video_eof_##name(void)
+#ifdef MESS
+#define VIDEO_UPDATE(name)		void video_update_##name(int screen, struct mame_bitmap *bitmap, const struct rectangle *cliprect, int *do_skip)
+#else
 #define VIDEO_UPDATE(name)		void video_update_##name(int screen, struct mame_bitmap *bitmap, const struct rectangle *cliprect)
+#endif
 
 /* NULL versions */
 #define init_NULL				NULL
@@ -351,7 +353,11 @@ struct InternalMachineDriver
 	int (*video_start)(void);
 	void (*video_stop)(void);
 	void (*video_eof)(void);
+#ifdef MESS
+	void (*video_update)(int screen, struct mame_bitmap *bitmap, const struct rectangle *cliprect, int *do_skip);
+#else
 	void (*video_update)(int screen, struct mame_bitmap *bitmap,const struct rectangle *cliprect);
+#endif
 
 	struct MachineSound sound[MAX_SOUND];
 	struct MachineSpeaker speaker[MAX_SPEAKER];

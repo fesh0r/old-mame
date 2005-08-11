@@ -535,7 +535,7 @@ static void cga_text_inten(struct mame_bitmap *bitmap, struct crtc6845 *crtc)
 
 	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height)
 	{
-		if (r.min_y >= Machine->scrbitmap->height)
+		if (r.min_y >= Machine->drv->screen_height)
 			break;
 		for (sx=0, r.min_x=0, r.max_x=7; sx<columns; 
 			 sx++, offs=(offs+2)&0x3fff, r.min_x+=8, r.max_x+=8)
@@ -650,7 +650,7 @@ static void cga_text_blink(struct mame_bitmap *bitmap, struct crtc6845 *crtc)
 
 	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height)
 	{
-		if (r.min_y >= Machine->scrbitmap->height)
+		if (r.min_y >= Machine->drv->screen_height)
 			break;
 
 		for (sx=0, r.min_x=0, r.max_x=7; sx<columns; 
@@ -728,7 +728,7 @@ static void cga_text_blink_alt(struct mame_bitmap *bitmap, struct crtc6845 *crtc
 
 	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height)
 	{
-		if (r.min_y >= Machine->scrbitmap->height)
+		if (r.min_y >= Machine->drv->screen_height)
 			break;
 
 		for (sx=0, r.min_x=0, r.max_x=7; sx<columns; 
@@ -1338,7 +1338,7 @@ WRITE8_HANDLER ( pc1512_w )
 
 	case 0xe:
 		pc1512.read = data;
-		cpu_setbank(1, videoram + videoram_offset[data & 3]);
+		memory_set_bankptr(1, videoram + videoram_offset[data & 3]);
 		break;
 
 	/* The PC1512 doesn't have a full 6845; writes to the first 9 6845
@@ -1418,7 +1418,7 @@ VIDEO_START( pc1512 )
 		return 1;
 
 	videoram_size = 0x4000; //! used in cga this way, size of plain memory in 1 bank
-	cpu_setbank(1,videoram + videoram_offset[0]);
+	memory_set_bankptr(1,videoram + videoram_offset[0]);
 	pc1512.write = 0xf;
 	pc1512.read = 0;
 	

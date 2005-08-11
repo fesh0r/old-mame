@@ -42,6 +42,7 @@
 #include "splitters.h"
 #include "dijoystick.h"
 #include "audit.h"
+#include "optcore.h"
 #include "options.h"
 #include "picker.h"
 #include "windows/config.h"
@@ -55,25 +56,13 @@
  ***************************************************************************/
 
 #ifdef MAME_DEBUG
-static BOOL CheckOptions(REG_OPTION *opts, BOOL bPassedToMAME);
+static BOOL CheckOptions(const REG_OPTION *opts, BOOL bPassedToMAME);
 #endif // MAME_DEBUG
 
 static void LoadFolderFilter(int folder_index,int filters);
 
-static REG_OPTION * GetOption(REG_OPTION *option_array, const char *key);
-static void LoadOption(REG_OPTION *option,const char *value_str);
 static BOOL LoadGameVariableOrFolderFilter(char *key,const char *value);
-static void ParseKeyValueStrings(char *buffer,char **key,char **value);
 static void LoadOptionsAndSettings(void);
-static BOOL LoadOptions(const char *filename,options_type *o,BOOL load_global_game_options);
-
-static void WriteStringOptionToFile(FILE *fptr,const char *key,const char *value);
-static void WriteIntOptionToFile(FILE *fptr,const char *key,int value);
-static void WriteBoolOptionToFile(FILE *fptr,const char *key,BOOL value);
-static void WriteColorOptionToFile(FILE *fptr,const char *key,COLORREF value);
-
-static BOOL IsOptionEqual(int option_index,options_type *o1,options_type *o2);
-static void WriteOptionToFile(FILE *fptr,REG_OPTION *regOpt);
 
 static void  ColumnEncodeString(void* data, char* str);
 static void  ColumnDecodeString(const char* str, void* data);
@@ -113,8 +102,6 @@ static void FolderFlagsDecodeString(const char *str,void *data);
 static void TabFlagsEncodeString(void *data,char *str);
 static void TabFlagsDecodeString(const char *str,void *data);
 
-static const char * GetDefaultOptionsFilename(void);
-
 #ifdef _MSC_VER
 #define snprintf _snprintf
 #endif
@@ -142,348 +129,350 @@ typedef struct
 
 static settings_type settings;
 
-static options_type gOpts;  // Used in conjunction with regGameOpts
-
 static options_type global; // Global 'default' options
 static options_type *game_options;  // Array of Game specific options
 static options_type *folder_options;  // Array of Folder specific options
 static int *folder_options_redirect;  // Array of Folder Ids for redirecting Folder specific options
 static game_variables_type *game_variables;  // Array of game specific extra data
 
+static BOOL OnlyOnGame(int driver_index)
+{
+	return driver_index >= 0;
+}
+
 // UI options in mame32ui.ini
-static REG_OPTION regSettings[] =
+static const REG_OPTION regSettings[] =
 {
 #ifdef MESS
-	{ "default_system",             RO_STRING,  &settings.default_game,              "nes" },
+	{ "default_system",             RO_STRING,  offsetof(settings_type, default_game),    "nes" },
 #else
-	{ "default_game",               RO_STRING,  &settings.default_game,              "puckman" },
+	{ "default_game",               RO_STRING,  offsetof(settings_type, default_game),    "puckman" },
 #endif
-	{ "default_folder_id",          RO_INT,     &settings.folder_id,		         "0" },
-	{ "show_image_section",         RO_BOOL,    &settings.show_screenshot,           "1" },
-	{ "current_tab",                RO_STRING,  &settings.current_tab,               "0" },
-	{ "show_tool_bar",              RO_BOOL,    &settings.show_toolbar,              "1" },
-	{ "show_status_bar",            RO_BOOL,    &settings.show_statusbar,            "1" },
+	{ "default_folder_id",          RO_INT,     offsetof(settings_type, folder_id),		         "0" },
+	{ "show_image_section",         RO_BOOL,    offsetof(settings_type, show_screenshot),           "1" },
+	{ "current_tab",                RO_STRING,  offsetof(settings_type, current_tab),               "0" },
+	{ "show_tool_bar",              RO_BOOL,    offsetof(settings_type, show_toolbar),              "1" },
+	{ "show_status_bar",            RO_BOOL,    offsetof(settings_type, show_statusbar),            "1" },
 #ifdef MESS
-	{ "show_folder_section",        RO_BOOL,    &settings.show_folderlist,           "0" },
+	{ "show_folder_section",        RO_BOOL,    offsetof(settings_type, show_folderlist),           "0" },
 #else
-	{ "show_folder_section",        RO_BOOL,    &settings.show_folderlist,           "1" },
+	{ "show_folder_section",        RO_BOOL,    offsetof(settings_type, show_folderlist),           "1" },
 #endif
-	{ "hide_folders",               RO_ENCODE,  &settings.show_folder_flags,         NULL, FALSE, FolderFlagsEncodeString, FolderFlagsDecodeString },
+	{ "hide_folders",               RO_ENCODE,  offsetof(settings_type, show_folder_flags),         NULL, NULL, FolderFlagsEncodeString, FolderFlagsDecodeString },
 
 #ifdef MESS
-	{ "show_tabs",                  RO_BOOL,    &settings.show_tabctrl,              "0" },
-	{ "hide_tabs",                  RO_ENCODE,  &settings.show_tab_flags,            "flyer, cabinet, marquee, title, cpanel", FALSE, TabFlagsEncodeString, TabFlagsDecodeString },
-	{ "history_tab",				RO_INT,		&settings.history_tab,				 "1" },
+	{ "show_tabs",                  RO_BOOL,    offsetof(settings_type, show_tabctrl),              "0" },
+	{ "hide_tabs",                  RO_ENCODE,  offsetof(settings_type, show_tab_flags),            "flyer, cabinet, marquee, title, cpanel", NULL, TabFlagsEncodeString, TabFlagsDecodeString },
+	{ "history_tab",				RO_INT,		offsetof(settings_type, history_tab),				 "1" },
 #else
-	{ "show_tabs",                  RO_BOOL,    &settings.show_tabctrl,              "1" },
-	{ "hide_tabs",                  RO_ENCODE,  &settings.show_tab_flags,            "marquee, title, cpanel, history", FALSE, TabFlagsEncodeString, TabFlagsDecodeString },
-	{ "history_tab",				RO_INT,		&settings.history_tab,				 0, 0},
+	{ "show_tabs",                  RO_BOOL,    offsetof(settings_type, show_tabctrl),              "1" },
+	{ "hide_tabs",                  RO_ENCODE,  offsetof(settings_type, show_tab_flags),            "marquee, title, cpanel, history", NULL, TabFlagsEncodeString, TabFlagsDecodeString },
+	{ "history_tab",				RO_INT,		offsetof(settings_type, history_tab),				 0, 0},
 #endif
 
-	{ "check_game",                 RO_BOOL,    &settings.game_check,                "1" },
-	{ "joystick_in_interface",      RO_BOOL,    &settings.use_joygui,                "0" },
-	{ "keyboard_in_interface",      RO_BOOL,    &settings.use_keygui,                "0" },
-	{ "broadcast_game_name",        RO_BOOL,    &settings.broadcast,                 "0" },
-	{ "random_background",          RO_BOOL,    &settings.random_bg,                 "0" },
+	{ "check_game",                 RO_BOOL,    offsetof(settings_type, game_check),                "1" },
+	{ "joystick_in_interface",      RO_BOOL,    offsetof(settings_type, use_joygui),                "0" },
+	{ "keyboard_in_interface",      RO_BOOL,    offsetof(settings_type, use_keygui),                "0" },
+	{ "broadcast_game_name",        RO_BOOL,    offsetof(settings_type, broadcast),                 "0" },
+	{ "random_background",          RO_BOOL,    offsetof(settings_type, random_bg),                 "0" },
 
-	{ "sort_column",                RO_INT,     &settings.sort_column,               "0" },
-	{ "sort_reversed",              RO_BOOL,    &settings.sort_reverse,              "0" },
-	{ "window_x",                   RO_INT,     &settings.area.x,                    "0" },
-	{ "window_y",                   RO_INT,     &settings.area.y,                    "0" },
-	{ "window_width",               RO_INT,     &settings.area.width,                "640" },
-	{ "window_height",              RO_INT,     &settings.area.height,		         "400" },
-	{ "window_state",               RO_INT,     &settings.windowstate,               "1" },
+	{ "sort_column",                RO_INT,     offsetof(settings_type, sort_column),               "0" },
+	{ "sort_reversed",              RO_BOOL,    offsetof(settings_type, sort_reverse),              "0" },
+	{ "window_x",                   RO_INT,     offsetof(settings_type, area.x),                    "0" },
+	{ "window_y",                   RO_INT,     offsetof(settings_type, area.y),                    "0" },
+	{ "window_width",               RO_INT,     offsetof(settings_type, area.width),                "640" },
+	{ "window_height",              RO_INT,     offsetof(settings_type, area.height),		         "400" },
+	{ "window_state",               RO_INT,     offsetof(settings_type, windowstate),               "1" },
 
-	{ "text_color",                 RO_COLOR,   &settings.list_font_color,           "-1",                          FALSE },
-	{ "clone_color",                RO_COLOR,   &settings.list_clone_color,          "-1",                          FALSE },
-	{ "custom_color",               RO_ENCODE,  settings.custom_color,               "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0", FALSE, CusColorEncodeString, CusColorDecodeString},
+	{ "text_color",                 RO_COLOR,   offsetof(settings_type, list_font_color),           "-1",                          NULL },
+	{ "clone_color",                RO_COLOR,   offsetof(settings_type, list_clone_color),          "-1",                          NULL },
+	{ "custom_color",               RO_ENCODE,  offsetof(settings_type, custom_color),               "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0", NULL, CusColorEncodeString, CusColorDecodeString},
 	/* ListMode needs to be before ColumnWidths settings */
-	{ "list_mode",                  RO_ENCODE,  &settings.view,                      "5",                           FALSE, ListEncodeString,     ListDecodeString},
+	{ "list_mode",                  RO_ENCODE,  offsetof(settings_type, view),                      "5",                           NULL, ListEncodeString,     ListDecodeString},
 #ifdef MESS
-	{ "splitters",                  RO_ENCODE,  settings.splitter,                   "152,310,468",                 FALSE, SplitterEncodeString, SplitterDecodeString},
+	{ "splitters",                  RO_ENCODE,  offsetof(settings_type, splitter),                   "152,310,468",                 NULL, SplitterEncodeString, SplitterDecodeString},
 #else
-	{ "splitters",                  RO_ENCODE,  settings.splitter,                   "152,362",                     FALSE, SplitterEncodeString, SplitterDecodeString},
+	{ "splitters",                  RO_ENCODE,  offsetof(settings_type, splitter),                   "152,362",                     NULL, SplitterEncodeString, SplitterDecodeString},
 #endif
-	{ "list_font",                  RO_ENCODE,  &settings.list_font,                 "-8,0,0,0,400,0,0,0,0,0,0,0,0,MS Sans Serif", FALSE, FontEncodeString,     FontDecodeString},
-	{ "column_widths",              RO_ENCODE,  &settings.column_width,              "185,68,84,84,64,88,74,108,60,144,84,60", FALSE, ColumnEncodeString,   ColumnDecodeWidths},
-	{ "column_order",               RO_ENCODE,  &settings.column_order,              "0,2,3,4,5,6,7,8,9,1,10,11",   FALSE, ColumnEncodeString,   ColumnDecodeString},
-	{ "column_shown",               RO_ENCODE,  &settings.column_shown,              "1,0,1,1,1,1,1,1,1,1,0,0",     FALSE, ColumnEncodeString,   ColumnDecodeString},
+	{ "list_font",                  RO_ENCODE,  offsetof(settings_type, list_font),                 "-8,0,0,0,400,0,0,0,0,0,0,0,0,MS Sans Serif", NULL, FontEncodeString,     FontDecodeString},
+	{ "column_widths",              RO_ENCODE,  offsetof(settings_type, column_width),              "185,68,84,84,64,88,74,108,60,144,84,60", NULL, ColumnEncodeString,   ColumnDecodeWidths},
+	{ "column_order",               RO_ENCODE,  offsetof(settings_type, column_order),              "0,2,3,4,5,6,7,8,9,1,10,11",   NULL, ColumnEncodeString,   ColumnDecodeString},
+	{ "column_shown",               RO_ENCODE,  offsetof(settings_type, column_shown),              "1,0,1,1,1,1,1,1,1,1,0,0",     NULL, ColumnEncodeString,   ColumnDecodeString},
 
-	{ "ui_key_up",                  RO_ENCODE,  &settings.ui_key_up,                 "KEYCODE_UP",                  FALSE, KeySeqEncodeString,   KeySeqDecodeString},
-	{ "ui_key_down",                RO_ENCODE,  &settings.ui_key_down,               "KEYCODE_DOWN",                FALSE, KeySeqEncodeString,   KeySeqDecodeString},
-	{ "ui_key_left",                RO_ENCODE,  &settings.ui_key_left,               "KEYCODE_LEFT",                FALSE, KeySeqEncodeString,   KeySeqDecodeString},
-	{ "ui_key_right",               RO_ENCODE,  &settings.ui_key_right,              "KEYCODE_RIGHT",               FALSE, KeySeqEncodeString,   KeySeqDecodeString},
-	{ "ui_key_start",               RO_ENCODE,  &settings.ui_key_start,              "KEYCODE_ENTER NOT KEYCODE_LALT",FALSE, KeySeqEncodeString, KeySeqDecodeString},
-	{ "ui_key_pgup",                RO_ENCODE,  &settings.ui_key_pgup,               "KEYCODE_PGUP",                FALSE, KeySeqEncodeString,   KeySeqDecodeString},
-	{ "ui_key_pgdwn",               RO_ENCODE,  &settings.ui_key_pgdwn,              "KEYCODE_PGDN",                FALSE, KeySeqEncodeString,   KeySeqDecodeString},
-	{ "ui_key_home",                RO_ENCODE,  &settings.ui_key_home,               "KEYCODE_HOME",                FALSE, KeySeqEncodeString,   KeySeqDecodeString},
-	{ "ui_key_end",                 RO_ENCODE,  &settings.ui_key_end,                "KEYCODE_END",                 FALSE, KeySeqEncodeString,   KeySeqDecodeString},
-	{ "ui_key_ss_change",           RO_ENCODE,  &settings.ui_key_ss_change,          "KEYCODE_INSERT",              FALSE, KeySeqEncodeString,   KeySeqDecodeString},
-	{ "ui_key_history_up",          RO_ENCODE,  &settings.ui_key_history_up,         "KEYCODE_DEL",                 FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-	{ "ui_key_history_down",        RO_ENCODE,  &settings.ui_key_history_down,       "KEYCODE_LALT KEYCODE_0",      FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+	{ "ui_key_up",                  RO_ENCODE,  offsetof(settings_type, ui_key_up),                 "KEYCODE_UP",                  NULL, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_down",                RO_ENCODE,  offsetof(settings_type, ui_key_down),               "KEYCODE_DOWN",                NULL, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_left",                RO_ENCODE,  offsetof(settings_type, ui_key_left),               "KEYCODE_LEFT",                NULL, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_right",               RO_ENCODE,  offsetof(settings_type, ui_key_right),              "KEYCODE_RIGHT",               NULL, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_start",               RO_ENCODE,  offsetof(settings_type, ui_key_start),              "KEYCODE_ENTER NOT KEYCODE_LALT",NULL, KeySeqEncodeString, KeySeqDecodeString},
+	{ "ui_key_pgup",                RO_ENCODE,  offsetof(settings_type, ui_key_pgup),               "KEYCODE_PGUP",                NULL, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_pgdwn",               RO_ENCODE,  offsetof(settings_type, ui_key_pgdwn),              "KEYCODE_PGDN",                NULL, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_home",                RO_ENCODE,  offsetof(settings_type, ui_key_home),               "KEYCODE_HOME",                NULL, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_end",                 RO_ENCODE,  offsetof(settings_type, ui_key_end),                "KEYCODE_END",                 NULL, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_ss_change",           RO_ENCODE,  offsetof(settings_type, ui_key_ss_change),          "KEYCODE_INSERT",              NULL, KeySeqEncodeString,   KeySeqDecodeString},
+	{ "ui_key_history_up",          RO_ENCODE,  offsetof(settings_type, ui_key_history_up),         "KEYCODE_DEL",                 NULL, KeySeqEncodeString,  KeySeqDecodeString},
+	{ "ui_key_history_down",        RO_ENCODE,  offsetof(settings_type, ui_key_history_down),       "KEYCODE_LALT KEYCODE_0",      NULL, KeySeqEncodeString,  KeySeqDecodeString},
 
-    { "ui_key_context_filters",     RO_ENCODE,  &settings.ui_key_context_filters,     "KEYCODE_LCONTROL KEYCODE_F", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_select_random",       RO_ENCODE,  &settings.ui_key_select_random,       "KEYCODE_LCONTROL KEYCODE_R", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_game_audit",          RO_ENCODE,  &settings.ui_key_game_audit,          "KEYCODE_LALT KEYCODE_A",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_game_properties",     RO_ENCODE,  &settings.ui_key_game_properties,     "KEYCODE_LALT KEYCODE_ENTER", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_help_contents",       RO_ENCODE,  &settings.ui_key_help_contents,       "KEYCODE_F1",                 FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_update_gamelist",     RO_ENCODE,  &settings.ui_key_update_gamelist,     "KEYCODE_F5",                 FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_folders",        RO_ENCODE,  &settings.ui_key_view_folders,        "KEYCODE_LALT KEYCODE_D",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_fullscreen",     RO_ENCODE,  &settings.ui_key_view_fullscreen,     "KEYCODE_F11",                FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_pagetab",        RO_ENCODE,  &settings.ui_key_view_pagetab,        "KEYCODE_LALT KEYCODE_B",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_picture_area",   RO_ENCODE,  &settings.ui_key_view_picture_area,   "KEYCODE_LALT KEYCODE_P",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_status",         RO_ENCODE,  &settings.ui_key_view_status,         "KEYCODE_LALT KEYCODE_S",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_toolbars",       RO_ENCODE,  &settings.ui_key_view_toolbars,       "KEYCODE_LALT KEYCODE_T",     FALSE, KeySeqEncodeString,  KeySeqDecodeString},
- 
-    { "ui_key_view_tab_cabinet",    RO_ENCODE,  &settings.ui_key_view_tab_cabinet,    "KEYCODE_LALT KEYCODE_3", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_tab_cpanel",     RO_ENCODE,  &settings.ui_key_view_tab_cpanel,     "KEYCODE_LALT KEYCODE_6", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_tab_flyer",      RO_ENCODE,  &settings.ui_key_view_tab_flyer,      "KEYCODE_LALT KEYCODE_2", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_tab_history",    RO_ENCODE,  &settings.ui_key_view_tab_history,    "KEYCODE_LALT KEYCODE_7", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_tab_marquee",    RO_ENCODE,  &settings.ui_key_view_tab_marquee,    "KEYCODE_LALT KEYCODE_4", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_tab_screenshot", RO_ENCODE,  &settings.ui_key_view_tab_screenshot, "KEYCODE_LALT KEYCODE_1", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_view_tab_title",      RO_ENCODE,  &settings.ui_key_view_tab_title,      "KEYCODE_LALT KEYCODE_5", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
-    { "ui_key_quit",			    RO_ENCODE,  &settings.ui_key_quit,				  "KEYCODE_LALT KEYCODE_Q", FALSE, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_context_filters",     RO_ENCODE,  offsetof(settings_type, ui_key_context_filters),     "KEYCODE_LCONTROL KEYCODE_F", NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_select_random",       RO_ENCODE,  offsetof(settings_type, ui_key_select_random),       "KEYCODE_LCONTROL KEYCODE_R", NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_game_audit",          RO_ENCODE,  offsetof(settings_type, ui_key_game_audit),          "KEYCODE_LALT KEYCODE_A",     NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_game_properties",     RO_ENCODE,  offsetof(settings_type, ui_key_game_properties),     "KEYCODE_LALT KEYCODE_ENTER", NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_help_contents",       RO_ENCODE,  offsetof(settings_type, ui_key_help_contents),       "KEYCODE_F1",                 NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_update_gamelist",     RO_ENCODE,  offsetof(settings_type, ui_key_update_gamelist),     "KEYCODE_F5",                 NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_folders",        RO_ENCODE,  offsetof(settings_type, ui_key_view_folders),        "KEYCODE_LALT KEYCODE_D",     NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_fullscreen",     RO_ENCODE,  offsetof(settings_type, ui_key_view_fullscreen),     "KEYCODE_F11",                NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_pagetab",        RO_ENCODE,  offsetof(settings_type, ui_key_view_pagetab),        "KEYCODE_LALT KEYCODE_B",     NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_picture_area",   RO_ENCODE,  offsetof(settings_type, ui_key_view_picture_area),   "KEYCODE_LALT KEYCODE_P",     NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_status",         RO_ENCODE,  offsetof(settings_type, ui_key_view_status),         "KEYCODE_LALT KEYCODE_S",     NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_toolbars",       RO_ENCODE,  offsetof(settings_type, ui_key_view_toolbars),       "KEYCODE_LALT KEYCODE_T",     NULL, KeySeqEncodeString,  KeySeqDecodeString},
 
-	{ "ui_joy_up",                  RO_ENCODE,  &settings.ui_joy_up,                  NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_down",                RO_ENCODE,  &settings.ui_joy_down,                NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_left",                RO_ENCODE,  &settings.ui_joy_left,                NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_right",               RO_ENCODE,  &settings.ui_joy_right,               NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_start",               RO_ENCODE,  &settings.ui_joy_start,               NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_pgup",                RO_ENCODE,  &settings.ui_joy_pgup,                NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_pgdwn",               RO_ENCODE,  &settings.ui_joy_pgdwn,               NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_home",                RO_ENCODE,  &settings.ui_joy_home,                "0,0,0,0", FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_end",                 RO_ENCODE,  &settings.ui_joy_end,                 "0,0,0,0", FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_ss_change",           RO_ENCODE,  &settings.ui_joy_ss_change,           NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_history_up",          RO_ENCODE,  &settings.ui_joy_history_up,          NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_history_down",        RO_ENCODE,  &settings.ui_joy_history_down,        NULL, FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "ui_joy_exec",                RO_ENCODE,  &settings.ui_joy_exec,                "0,0,0,0", FALSE, JoyInfoEncodeString,  JoyInfoDecodeString},
-	{ "exec_command",               RO_STRING,  &settings.exec_command,               "" },
-	{ "exec_wait",                  RO_INT,     &settings.exec_wait,                  "0" },
-	{ "hide_mouse",                 RO_BOOL,    &settings.hide_mouse,                 "0" },
-	{ "full_screen",                RO_BOOL,    &settings.full_screen,                "0" },
-	{ "cycle_screenshot",           RO_INT,     &settings.cycle_screenshot,           "0" },
-	{ "stretch_screenshot_larger",  RO_BOOL,    &settings.stretch_screenshot_larger,  "0" },
- 	{ "screenshot_bordersize",      RO_INT,     &settings.screenshot_bordersize,      "11" },
- 	{ "screenshot_bordercolor",	  RO_COLOR,   &settings.screenshot_bordercolor,     "-1",	FALSE },
-	{ "inherit_filter",             RO_BOOL,    &settings.inherit_filter,             "0" },
-	{ "offset_clones",              RO_BOOL,    &settings.offset_clones,              "0" },
-	{ "game_caption",               RO_BOOL,    &settings.game_caption,               "1" },
+    { "ui_key_view_tab_cabinet",    RO_ENCODE,  offsetof(settings_type, ui_key_view_tab_cabinet),    "KEYCODE_LALT KEYCODE_3", NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_cpanel",     RO_ENCODE,  offsetof(settings_type, ui_key_view_tab_cpanel),     "KEYCODE_LALT KEYCODE_6", NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_flyer",      RO_ENCODE,  offsetof(settings_type, ui_key_view_tab_flyer),      "KEYCODE_LALT KEYCODE_2", NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_history",    RO_ENCODE,  offsetof(settings_type, ui_key_view_tab_history),    "KEYCODE_LALT KEYCODE_7", NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_marquee",    RO_ENCODE,  offsetof(settings_type, ui_key_view_tab_marquee),    "KEYCODE_LALT KEYCODE_4", NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_screenshot", RO_ENCODE,  offsetof(settings_type, ui_key_view_tab_screenshot), "KEYCODE_LALT KEYCODE_1", NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_view_tab_title",      RO_ENCODE,  offsetof(settings_type, ui_key_view_tab_title),      "KEYCODE_LALT KEYCODE_5", NULL, KeySeqEncodeString,  KeySeqDecodeString},
+    { "ui_key_quit",			    RO_ENCODE,  offsetof(settings_type, ui_key_quit),				  "KEYCODE_LALT KEYCODE_Q", NULL, KeySeqEncodeString,  KeySeqDecodeString},
 
-	{ "language",                   RO_STRING,  &settings.language,         "english" },
-	{ "flyer_directory",            RO_STRING,  &settings.flyerdir,         "flyers" },
-	{ "cabinet_directory",          RO_STRING,  &settings.cabinetdir,       "cabinets" },
-	{ "marquee_directory",          RO_STRING,  &settings.marqueedir,       "marquees" },
-	{ "title_directory",            RO_STRING,  &settings.titlesdir,        "titles" },
-	{ "cpanel_directory",           RO_STRING,  &settings.cpaneldir,        "cpanel" },
-	{ "background_directory",       RO_STRING,  &settings.bgdir,            "bkground" },
-	{ "folder_directory",           RO_STRING,  &settings.folderdir,        "folders" },
-	{ "icons_directory",            RO_STRING,  &settings.iconsdir,         "icons" },
+	{ "ui_joy_up",                  RO_ENCODE,  offsetof(settings_type, ui_joy_up),                  NULL, NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_down",                RO_ENCODE,  offsetof(settings_type, ui_joy_down),                NULL, NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_left",                RO_ENCODE,  offsetof(settings_type, ui_joy_left),                NULL, NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_right",               RO_ENCODE,  offsetof(settings_type, ui_joy_right),               NULL, NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_start",               RO_ENCODE,  offsetof(settings_type, ui_joy_start),               NULL, NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_pgup",                RO_ENCODE,  offsetof(settings_type, ui_joy_pgup),                NULL, NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_pgdwn",               RO_ENCODE,  offsetof(settings_type, ui_joy_pgdwn),               NULL, NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_home",                RO_ENCODE,  offsetof(settings_type, ui_joy_home),                "0,0,0,0", NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_end",                 RO_ENCODE,  offsetof(settings_type, ui_joy_end),                 "0,0,0,0", NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_ss_change",           RO_ENCODE,  offsetof(settings_type, ui_joy_ss_change),           NULL, NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_history_up",          RO_ENCODE,  offsetof(settings_type, ui_joy_history_up),          NULL, NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_history_down",        RO_ENCODE,  offsetof(settings_type, ui_joy_history_down),        NULL, NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "ui_joy_exec",                RO_ENCODE,  offsetof(settings_type, ui_joy_exec),                "0,0,0,0", NULL, JoyInfoEncodeString,  JoyInfoDecodeString},
+	{ "exec_command",               RO_STRING,  offsetof(settings_type, exec_command),               "" },
+	{ "exec_wait",                  RO_INT,     offsetof(settings_type, exec_wait),                  "0" },
+	{ "hide_mouse",                 RO_BOOL,    offsetof(settings_type, hide_mouse),                 "0" },
+	{ "full_screen",                RO_BOOL,    offsetof(settings_type, full_screen),                "0" },
+	{ "cycle_screenshot",           RO_INT,     offsetof(settings_type, cycle_screenshot),           "0" },
+	{ "stretch_screenshot_larger",  RO_BOOL,    offsetof(settings_type, stretch_screenshot_larger),  "0" },
+ 	{ "screenshot_bordersize",      RO_INT,     offsetof(settings_type, screenshot_bordersize),      "11" },
+ 	{ "screenshot_bordercolor",     RO_COLOR,   offsetof(settings_type, screenshot_bordercolor),     "-1" },
+	{ "inherit_filter",             RO_BOOL,    offsetof(settings_type, inherit_filter),             "0" },
+	{ "offset_clones",              RO_BOOL,    offsetof(settings_type, offset_clones),              "0" },
+	{ "game_caption",               RO_BOOL,    offsetof(settings_type, game_caption),               "1" },
+
+	{ "language",                   RO_STRING,  offsetof(settings_type, language),         "english" },
+	{ "flyer_directory",            RO_STRING,  offsetof(settings_type, flyerdir),         "flyers" },
+	{ "cabinet_directory",          RO_STRING,  offsetof(settings_type, cabinetdir),       "cabinets" },
+	{ "marquee_directory",          RO_STRING,  offsetof(settings_type, marqueedir),       "marquees" },
+	{ "title_directory",            RO_STRING,  offsetof(settings_type, titlesdir),        "titles" },
+	{ "cpanel_directory",           RO_STRING,  offsetof(settings_type, cpaneldir),        "cpanel" },
+	{ "background_directory",       RO_STRING,  offsetof(settings_type, bgdir),            "bkground" },
+	{ "folder_directory",           RO_STRING,  offsetof(settings_type, folderdir),        "folders" },
+	{ "icons_directory",            RO_STRING,  offsetof(settings_type, iconsdir),         "icons" },
 
 #ifdef MESS
-	{ "mess_column_widths",         RO_ENCODE,  &settings.mess.mess_column_width, "186, 230, 88, 84, 84, 68, 248, 248",	FALSE, MessColumnEncodeString, MessColumnDecodeWidths},
-	{ "mess_column_order",          RO_ENCODE,  &settings.mess.mess_column_order,   "0,   1,  2,  3,  4,  5,   6,   7",	FALSE, MessColumnEncodeString, MessColumnDecodeString},
-	{ "mess_column_shown",          RO_ENCODE,  &settings.mess.mess_column_shown,   "1,   1,  1,  1,  1,  0,   0,   0",	FALSE, MessColumnEncodeString, MessColumnDecodeString},
+	{ "mess_column_widths",         RO_ENCODE,  offsetof(settings_type, mess.mess_column_width), "186, 230, 88, 84, 84, 68, 248, 248",	NULL, MessColumnEncodeString, MessColumnDecodeWidths},
+	{ "mess_column_order",          RO_ENCODE,  offsetof(settings_type, mess.mess_column_order),   "0,   1,  2,  3,  4,  5,   6,   7",	NULL, MessColumnEncodeString, MessColumnDecodeString},
+	{ "mess_column_shown",          RO_ENCODE,  offsetof(settings_type, mess.mess_column_shown),   "1,   1,  1,  1,  1,  0,   0,   0",	NULL, MessColumnEncodeString, MessColumnDecodeString},
 
-	{ "mess_sort_column",           RO_INT,     &settings.mess.mess_sort_column,    "0" },
-	{ "mess_sort_reversed",         RO_BOOL,    &settings.mess.mess_sort_reverse,   "0" },
+	{ "mess_sort_column",           RO_INT,     offsetof(settings_type, mess.mess_sort_column),    "0" },
+	{ "mess_sort_reversed",         RO_BOOL,    offsetof(settings_type, mess.mess_sort_reverse),   "0" },
 
-	{ "current_software_tab",       RO_STRING,  &settings.mess.software_tab,        "0" },
+	{ "current_software_tab",       RO_STRING,  offsetof(settings_type, mess.software_tab),        "0" },
 #endif
 	{ "" }
 };
 
 // options in mame32.ini or (gamename).ini
-static REG_OPTION regGameOpts[] =
+static const REG_OPTION regGameOpts[] =
 {
 	// video
-	{ "autoframeskip",          RO_BOOL,    &gOpts.autoframeskip,                   "0" },
-	{ "frameskip",              RO_INT,     &gOpts.frameskip,                       "0" },
-	{ "waitvsync",              RO_BOOL,    &gOpts.wait_vsync,                      "0" },
-	{ "triplebuffer",           RO_BOOL,    &gOpts.use_triplebuf,                   "0" },
-	{ "window",                 RO_BOOL,    &gOpts.window_mode,                     "0" },
-	{ "ddraw",                  RO_BOOL,    &gOpts.use_ddraw,                       "1" },
-	{ "hwstretch",              RO_BOOL,    &gOpts.ddraw_stretch,                   "1" },
-	{ "resolution",             RO_STRING,  &gOpts.resolution,                      "auto" },
-	{ "refresh",                RO_INT,     &gOpts.gfx_refresh,                     "0" },
-	{ "scanlines",              RO_BOOL,    &gOpts.scanlines,                       "0" },
-	{ "switchres",              RO_BOOL,    &gOpts.switchres,                       "1" },
-	{ "switchbpp",              RO_BOOL,    &gOpts.switchbpp,                       "1" },
-	{ "maximize",               RO_BOOL,    &gOpts.maximize,                        "1" },
-	{ "keepaspect",             RO_BOOL,    &gOpts.keepaspect,                      "1" },
-	{ "matchrefresh",           RO_BOOL,    &gOpts.matchrefresh,                    "0" },
-	{ "syncrefresh",            RO_BOOL,    &gOpts.syncrefresh,                     "0" },
-	{ "throttle",               RO_BOOL,    &gOpts.throttle,                        "1" },
-	{ "full_screen_brightness", RO_DOUBLE,  &gOpts.gfx_brightness,                  "1.0" },
-	{ "frames_to_run",          RO_INT,     &gOpts.frames_to_display,               "0" },
-	{ "effect",                 RO_STRING,  &gOpts.effect,                          "none" },
-	{ "screen_aspect",          RO_STRING,  &gOpts.aspect,                          "4:3" },
-	{ "cleanstretch",           RO_ENCODE,  &gOpts.clean_stretch,                   "auto", FALSE, CleanStretchEncodeString, CleanStretchDecodeString },
-	{ "zoom",                   RO_INT,     &gOpts.zoom,                            "2" },
-	{ "screen",					RO_STRING,  &gOpts.screen,                          "" },
+	{ "autoframeskip",          RO_BOOL,    offsetof(options_type, autoframeskip),                   "0" },
+	{ "frameskip",              RO_INT,     offsetof(options_type, frameskip),                       "0" },
+	{ "waitvsync",              RO_BOOL,    offsetof(options_type, wait_vsync),                      "0" },
+	{ "triplebuffer",           RO_BOOL,    offsetof(options_type, use_triplebuf),                   "0" },
+	{ "window",                 RO_BOOL,    offsetof(options_type, window_mode),                     "0" },
+	{ "ddraw",                  RO_BOOL,    offsetof(options_type, use_ddraw),                       "1" },
+	{ "hwstretch",              RO_BOOL,    offsetof(options_type, ddraw_stretch),                   "1" },
+	{ "resolution",             RO_STRING,  offsetof(options_type, resolution),                      "auto" },
+	{ "refresh",                RO_INT,     offsetof(options_type, gfx_refresh),                     "0" },
+	{ "scanlines",              RO_BOOL,    offsetof(options_type, scanlines),                       "0" },
+	{ "switchres",              RO_BOOL,    offsetof(options_type, switchres),                       "1" },
+	{ "switchbpp",              RO_BOOL,    offsetof(options_type, switchbpp),                       "1" },
+	{ "maximize",               RO_BOOL,    offsetof(options_type, maximize),                        "1" },
+	{ "keepaspect",             RO_BOOL,    offsetof(options_type, keepaspect),                      "1" },
+	{ "matchrefresh",           RO_BOOL,    offsetof(options_type, matchrefresh),                    "0" },
+	{ "syncrefresh",            RO_BOOL,    offsetof(options_type, syncrefresh),                     "0" },
+	{ "throttle",               RO_BOOL,    offsetof(options_type, throttle),                        "1" },
+	{ "full_screen_brightness", RO_DOUBLE,  offsetof(options_type, gfx_brightness),                  "1.0" },
+	{ "frames_to_run",          RO_INT,     offsetof(options_type, frames_to_display),               "0" },
+	{ "effect",                 RO_STRING,  offsetof(options_type, effect),                          "none" },
+	{ "screen_aspect",          RO_STRING,  offsetof(options_type, aspect),                          "4:3" },
+	{ "cleanstretch",           RO_ENCODE,  offsetof(options_type, clean_stretch),                   "auto", NULL, CleanStretchEncodeString, CleanStretchDecodeString },
+	{ "zoom",                   RO_INT,     offsetof(options_type, zoom),                            "2" },
+	{ "screen",					RO_STRING,  offsetof(options_type, screen),                          "" },
 
 	// d3d
-	{ "d3d",                    RO_BOOL,    &gOpts.use_d3d,                         "0" },
-	{ "d3dtexmanage",           RO_BOOL,    &gOpts.d3d_texture_management,          "1" },
-	{ "d3dfilter",              RO_INT,     &gOpts.d3d_filter,                      "1" },
-	{ "d3deffect",              RO_ENCODE,  &gOpts.d3d_effect,                      "auto", FALSE, D3DEffectEncodeString,   D3DEffectDecodeString },
-	{ "d3dprescale",            RO_ENCODE,  &gOpts.d3d_prescale,                    "auto", FALSE, D3DPrescaleEncodeString, D3DPrescaleDecodeString },
-	{ "d3deffectrotate",        RO_BOOL,    &gOpts.d3d_rotate_effects,              "1" },
-	{ "d3dscan",                RO_INT,     &gOpts.d3d_scanlines,                   "100" },
-	{ "d3dfeedback",            RO_INT,     &gOpts.d3d_feedback,                    "100" },
-
-	{ "mouse",                  RO_BOOL,    &gOpts.use_mouse,                       "0" },
-	{ "joystick",               RO_BOOL,    &gOpts.use_joystick,                    "0" },
-	{ "a2d",                    RO_DOUBLE,  &gOpts.f_a2d,                           "0.3" },
-	{ "steadykey",              RO_BOOL,    &gOpts.steadykey,                       "0" },
-	{ "lightgun",               RO_BOOL,    &gOpts.lightgun,                        "0" },
-	{ "dual_lightgun",          RO_BOOL,    &gOpts.dual_lightgun,                   "0" },
-	{ "offscreen_reload",       RO_BOOL,    &gOpts.offscreen_reload,                "0" },
-	{ "ctrlr",                  RO_STRING,  &gOpts.ctrlr,                           "" },
+	{ "d3d",                    RO_BOOL,    offsetof(options_type, use_d3d),                         "0" },
+	{ "d3dtexmanage",           RO_BOOL,    offsetof(options_type, d3d_texture_management),          "1" },
+	{ "d3dfilter",              RO_INT,     offsetof(options_type, d3d_filter),                      "1" },
+	{ "d3deffect",              RO_ENCODE,  offsetof(options_type, d3d_effect),                      "auto", NULL, D3DEffectEncodeString,   D3DEffectDecodeString },
+	{ "d3dprescale",            RO_ENCODE,  offsetof(options_type, d3d_prescale),                    "auto", NULL, D3DPrescaleEncodeString, D3DPrescaleDecodeString },
+	{ "d3deffectrotate",        RO_BOOL,    offsetof(options_type, d3d_rotate_effects),              "1" },
+	{ "d3dscan",                RO_INT,     offsetof(options_type, d3d_scanlines),                   "100" },
+	{ "d3dfeedback",            RO_INT,     offsetof(options_type, d3d_feedback),                    "100" },
+	
+	//input
+	{ "mouse",                  RO_BOOL,    offsetof(options_type, use_mouse),                       "0" },
+	{ "joystick",               RO_BOOL,    offsetof(options_type, use_joystick),                    "0" },
+	{ "a2d",                    RO_DOUBLE,  offsetof(options_type, f_a2d),                           "0.3" },
+	{ "steadykey",              RO_BOOL,    offsetof(options_type, steadykey),                       "0" },
+	{ "lightgun",               RO_BOOL,    offsetof(options_type, lightgun),                        "0" },
+	{ "dual_lightgun",          RO_BOOL,    offsetof(options_type, dual_lightgun),                   "0" },
+	{ "offscreen_reload",       RO_BOOL,    offsetof(options_type, offscreen_reload),                "0" },
+	{ "ctrlr",                  RO_STRING,  offsetof(options_type, ctrlr),                           "" },
+	{ "digital",                RO_STRING,  offsetof(options_type, digital),                         "" },
+	{ "paddle",	                RO_STRING,  offsetof(options_type, paddle),					        "" },
+	{ "adstick",	            RO_STRING,  offsetof(options_type, adstick),			                "" },
+	{ "pedal",			        RO_STRING,  offsetof(options_type, pedal),				            "" },
+	{ "dial",				    RO_STRING,  offsetof(options_type, dial),		                    "" },
+	{ "trackball",				RO_STRING,  offsetof(options_type, trackball),                       "" },
+	{ "lightgun_device",        RO_STRING,  offsetof(options_type, lightgun_device),                 "" },
 
 	// core video
-	{ "brightness",             RO_DOUBLE,  &gOpts.f_bright_correct,                "1.0" }, 
-	{ "pause_brightness",       RO_DOUBLE,  &gOpts.f_pause_bright,                  "0.65" }, 
-	{ "norotate",               RO_BOOL,    &gOpts.norotate,                        "0" },
-	{ "ror",                    RO_BOOL,    &gOpts.ror,                             "0" },
-	{ "rol",                    RO_BOOL,    &gOpts.rol,                             "0" },
-	{ "autoror",                RO_BOOL,    &gOpts.auto_ror,                        "0" },
-	{ "autorol",                RO_BOOL,    &gOpts.auto_rol,                        "0" },
-	{ "flipx",                  RO_BOOL,    &gOpts.flipx,                           "0" },
-	{ "flipy",                  RO_BOOL,    &gOpts.flipy,                           "0" },
-	{ "debug_resolution",       RO_STRING,  &gOpts.debugres,                        "auto" },
-	{ "gamma",                  RO_DOUBLE,  &gOpts.f_gamma_correct,                 "1.0" },
+	{ "brightness",             RO_DOUBLE,  offsetof(options_type, f_bright_correct),                "1.0" }, 
+	{ "pause_brightness",       RO_DOUBLE,  offsetof(options_type, f_pause_bright),                  "0.65" }, 
+	{ "norotate",               RO_BOOL,    offsetof(options_type, norotate),                        "0" },
+	{ "ror",                    RO_BOOL,    offsetof(options_type, ror),                             "0" },
+	{ "rol",                    RO_BOOL,    offsetof(options_type, rol),                             "0" },
+	{ "autoror",                RO_BOOL,    offsetof(options_type, auto_ror),                        "0" },
+	{ "autorol",                RO_BOOL,    offsetof(options_type, auto_rol),                        "0" },
+	{ "flipx",                  RO_BOOL,    offsetof(options_type, flipx),                           "0" },
+	{ "flipy",                  RO_BOOL,    offsetof(options_type, flipy),                           "0" },
+	{ "debug_resolution",       RO_STRING,  offsetof(options_type, debugres),                        "auto" },
+	{ "gamma",                  RO_DOUBLE,  offsetof(options_type, f_gamma_correct),                 "1.0" },
 
 	// vector
-	{ "antialias",              RO_BOOL,    &gOpts.antialias,                       "1" },
-	{ "translucency",           RO_BOOL,    &gOpts.translucency,                    "1" },
-	{ "beam",                   RO_DOUBLE,  &gOpts.f_beam,                          "1.0" },
-	{ "flicker",                RO_DOUBLE,  &gOpts.f_flicker,                       "0.0" },
-	{ "intensity",              RO_DOUBLE,  &gOpts.f_intensity,                     "1.5" },
+	{ "antialias",              RO_BOOL,    offsetof(options_type, antialias),                       "1" },
+	{ "translucency",           RO_BOOL,    offsetof(options_type, translucency),                    "1" },
+	{ "beam",                   RO_DOUBLE,  offsetof(options_type, f_beam),                          "1.0" },
+	{ "flicker",                RO_DOUBLE,  offsetof(options_type, f_flicker),                       "0.0" },
+	{ "intensity",              RO_DOUBLE,  offsetof(options_type, f_intensity),                     "1.5" },
 
 	// sound
-	{ "samplerate",             RO_INT,     &gOpts.samplerate,                      "44100" },
-	{ "samples",                RO_BOOL,    &gOpts.use_samples,                     "1" },
-	{ "resamplefilter",         RO_BOOL,    &gOpts.use_filter,                      "1" },
-	{ "sound",                  RO_BOOL,    &gOpts.enable_sound,                    "1" },
-	{ "volume",                 RO_INT,     &gOpts.attenuation,                     "0" },
-	{ "audio_latency",          RO_INT,     &gOpts.audio_latency,                   "1" },
+	{ "samplerate",             RO_INT,     offsetof(options_type, samplerate),                      "44100" },
+	{ "samples",                RO_BOOL,    offsetof(options_type, use_samples),                     "1" },
+	{ "resamplefilter",         RO_BOOL,    offsetof(options_type, use_filter),                      "1" },
+	{ "sound",                  RO_BOOL,    offsetof(options_type, enable_sound),                    "1" },
+	{ "volume",                 RO_INT,     offsetof(options_type, attenuation),                     "0" },
+	{ "audio_latency",          RO_INT,     offsetof(options_type, audio_latency),                   "1" },
 
 	// misc artwork options
-	{ "artwork",                RO_BOOL,    &gOpts.use_artwork,                     "1" },
-	{ "backdrop",               RO_BOOL,    &gOpts.backdrops,                       "1" },
-	{ "overlay",                RO_BOOL,    &gOpts.overlays,                        "1" },
-	{ "bezel",                  RO_BOOL,    &gOpts.bezels,                          "1" },
-	{ "artwork_crop",           RO_BOOL,    &gOpts.artwork_crop,                    "0" },
-	{ "artres",                 RO_INT,     &gOpts.artres,                          "0" },
+	{ "artwork",                RO_BOOL,    offsetof(options_type, use_artwork),                     "1" },
+	{ "backdrop",               RO_BOOL,    offsetof(options_type, backdrops),                       "1" },
+	{ "overlay",                RO_BOOL,    offsetof(options_type, overlays),                        "1" },
+	{ "bezel",                  RO_BOOL,    offsetof(options_type, bezels),                          "1" },
+	{ "artwork_crop",           RO_BOOL,    offsetof(options_type, artwork_crop),                    "0" },
+	{ "artres",                 RO_INT,     offsetof(options_type, artres),                          "0" },
 
 	// misc
-	{ "cheat",                  RO_BOOL,    &gOpts.cheat,                           "0" },
-	{ "debug",                  RO_BOOL,    &gOpts.mame_debug,                      "0" },
-	{ "log",                    RO_BOOL,    &gOpts.errorlog,                        "0" },
-	{ "sleep",                  RO_BOOL,    &gOpts.sleep,                           "0" },
-	{ "rdtsc",                  RO_BOOL,    &gOpts.old_timing,                      "1" },
-	{ "leds",                   RO_BOOL,    &gOpts.leds,                            "0" },
-	{ "led_mode",               RO_STRING,  &gOpts.ledmode,                         "ps/2" },
-	{ "high_priority",          RO_BOOL,    &gOpts.high_priority,                   "0" },
-	{ "skip_disclaimer",        RO_BOOL,    &gOpts.skip_disclaimer,                 "0" },
-	{ "skip_gameinfo",          RO_BOOL,    &gOpts.skip_gameinfo,                   "0" },
-	{ "skip_validitychecks",    RO_BOOL,    &gOpts.skip_validitychecks,             "1" },
-	{ "crconly",                RO_BOOL,    &gOpts.crc_only,                        "0" },
-	{ "bios",                   RO_INT,     &gOpts.bios,                            "0" },
+	{ "cheat",                  RO_BOOL,    offsetof(options_type, cheat),                           "0" },
+	{ "debug",                  RO_BOOL,    offsetof(options_type, mame_debug),                      "0" },
+	{ "log",                    RO_BOOL,    offsetof(options_type, errorlog),                        "0" },
+	{ "sleep",                  RO_BOOL,    offsetof(options_type, sleep),                           "0" },
+	{ "rdtsc",                  RO_BOOL,    offsetof(options_type, old_timing),                      "1" },
+	{ "leds",                   RO_BOOL,    offsetof(options_type, leds),                            "0" },
+	{ "led_mode",               RO_STRING,  offsetof(options_type, ledmode),                         "ps/2" },
+	{ "high_priority",          RO_BOOL,    offsetof(options_type, high_priority),                   "0" },
+	{ "skip_disclaimer",        RO_BOOL,    offsetof(options_type, skip_disclaimer),                 "0" },
+	{ "skip_gameinfo",          RO_BOOL,    offsetof(options_type, skip_gameinfo),                   "0" },
+	{ "skip_validitychecks",    RO_BOOL,    offsetof(options_type, skip_validitychecks),             "1" },
+	{ "crconly",                RO_BOOL,    offsetof(options_type, crc_only),                        "0" },
+	{ "bios",                   RO_INT,     offsetof(options_type, bios),                            "0" },
 
 #ifdef MESS
 	/* mess options */
-	{ "newui",                  RO_BOOL,    &gOpts.mess.use_new_ui,                 "1" },
-	{ "ramsize",                RO_INT,     &gOpts.mess.ram_size,                   NULL, TRUE},
+	{ "newui",                  RO_BOOL,    offsetof(options_type, mess.use_new_ui),                 "1" },
+	{ "ramsize",                RO_INT,     offsetof(options_type, mess.ram_size),                   NULL, OnlyOnGame },
 
-	{ "cartridge",              RO_STRING,  &gOpts.mess.software[IO_CARTSLOT],      "", TRUE },
-	{ "floppydisk",             RO_STRING,  &gOpts.mess.software[IO_FLOPPY],        "", TRUE },
-	{ "harddisk",               RO_STRING,  &gOpts.mess.software[IO_HARDDISK],      "", TRUE },
-	{ "cylinder",               RO_STRING,  &gOpts.mess.software[IO_CYLINDER],      "", TRUE },
-	{ "cassette",               RO_STRING,  &gOpts.mess.software[IO_CASSETTE],      "", TRUE },
-	{ "punchcard",              RO_STRING,  &gOpts.mess.software[IO_PUNCHCARD],     "", TRUE },
-	{ "punchtape",              RO_STRING,  &gOpts.mess.software[IO_PUNCHTAPE],     "", TRUE },
-	{ "printer",                RO_STRING,  &gOpts.mess.software[IO_PRINTER],       "", TRUE },
-	{ "serial",                 RO_STRING,  &gOpts.mess.software[IO_SERIAL],        "", TRUE },
-	{ "parallel",               RO_STRING,  &gOpts.mess.software[IO_PARALLEL],      "", TRUE },
-	{ "snapshot",               RO_STRING,  &gOpts.mess.software[IO_SNAPSHOT],      "", TRUE },
-	{ "quickload",              RO_STRING,  &gOpts.mess.software[IO_QUICKLOAD],     "", TRUE },
-	{ "memcard",                RO_STRING,  &gOpts.mess.software[IO_MEMCARD],       "", TRUE },
+	{ "cartridge",              RO_STRING,  offsetof(options_type, mess.software[IO_CARTSLOT]),      "", OnlyOnGame },
+	{ "floppydisk",             RO_STRING,  offsetof(options_type, mess.software[IO_FLOPPY]),        "", OnlyOnGame },
+	{ "harddisk",               RO_STRING,  offsetof(options_type, mess.software[IO_HARDDISK]),      "", OnlyOnGame },
+	{ "cylinder",               RO_STRING,  offsetof(options_type, mess.software[IO_CYLINDER]),      "", OnlyOnGame },
+	{ "cassette",               RO_STRING,  offsetof(options_type, mess.software[IO_CASSETTE]),      "", OnlyOnGame },
+	{ "punchcard",              RO_STRING,  offsetof(options_type, mess.software[IO_PUNCHCARD]),     "", OnlyOnGame },
+	{ "punchtape",              RO_STRING,  offsetof(options_type, mess.software[IO_PUNCHTAPE]),     "", OnlyOnGame },
+	{ "printer",                RO_STRING,  offsetof(options_type, mess.software[IO_PRINTER]),       "", OnlyOnGame },
+	{ "serial",                 RO_STRING,  offsetof(options_type, mess.software[IO_SERIAL]),        "", OnlyOnGame },
+	{ "parallel",               RO_STRING,  offsetof(options_type, mess.software[IO_PARALLEL]),      "", OnlyOnGame },
+	{ "snapshot",               RO_STRING,  offsetof(options_type, mess.software[IO_SNAPSHOT]),      "", OnlyOnGame },
+	{ "quickload",              RO_STRING,  offsetof(options_type, mess.software[IO_QUICKLOAD]),     "", OnlyOnGame },
+	{ "memcard",                RO_STRING,  offsetof(options_type, mess.software[IO_MEMCARD]),       "", OnlyOnGame },
 
-	{ "cartridge_dir",          RO_STRING,  &gOpts.mess.softwaredirs[IO_CARTSLOT],  "", TRUE },
-	{ "floppydisk_dir",         RO_STRING,  &gOpts.mess.softwaredirs[IO_FLOPPY],    "", TRUE },
-	{ "harddisk_dir",           RO_STRING,  &gOpts.mess.softwaredirs[IO_HARDDISK],  "", TRUE },
-	{ "cylinder_dir",           RO_STRING,  &gOpts.mess.softwaredirs[IO_CYLINDER],  "", TRUE },
-	{ "cassette_dir",           RO_STRING,  &gOpts.mess.softwaredirs[IO_CASSETTE],  "", TRUE },
-	{ "punchcard_dir",          RO_STRING,  &gOpts.mess.softwaredirs[IO_PUNCHCARD], "", TRUE },
-	{ "punchtape_dir",          RO_STRING,  &gOpts.mess.softwaredirs[IO_PUNCHTAPE], "", TRUE },
-	{ "printer_dir",            RO_STRING,  &gOpts.mess.softwaredirs[IO_PRINTER],   "", TRUE },
-	{ "serial_dir",             RO_STRING,  &gOpts.mess.softwaredirs[IO_SERIAL],    "", TRUE },
-	{ "parallel_dir",           RO_STRING,  &gOpts.mess.softwaredirs[IO_PARALLEL],  "", TRUE },
-	{ "snapshot_dir",           RO_STRING,  &gOpts.mess.softwaredirs[IO_SNAPSHOT],  "", TRUE },
-	{ "quickload_dir",          RO_STRING,  &gOpts.mess.softwaredirs[IO_QUICKLOAD], "", TRUE },
-	{ "memcard_dir",            RO_STRING,  &gOpts.mess.softwaredirs[IO_MEMCARD],   "", TRUE },
+	{ "cartridge_dir",          RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_CARTSLOT]),  "", OnlyOnGame },
+	{ "floppydisk_dir",         RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_FLOPPY]),    "", OnlyOnGame },
+	{ "harddisk_dir",           RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_HARDDISK]),  "", OnlyOnGame },
+	{ "cylinder_dir",           RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_CYLINDER]),  "", OnlyOnGame },
+	{ "cassette_dir",           RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_CASSETTE]),  "", OnlyOnGame },
+	{ "punchcard_dir",          RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_PUNCHCARD]), "", OnlyOnGame },
+	{ "punchtape_dir",          RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_PUNCHTAPE]), "", OnlyOnGame },
+	{ "printer_dir",            RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_PRINTER]),   "", OnlyOnGame },
+	{ "serial_dir",             RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_SERIAL]),    "", OnlyOnGame },
+	{ "parallel_dir",           RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_PARALLEL]),  "", OnlyOnGame },
+	{ "snapshot_dir",           RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_SNAPSHOT]),  "", OnlyOnGame },
+	{ "quickload_dir",          RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_QUICKLOAD]), "", OnlyOnGame },
+	{ "memcard_dir",            RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_MEMCARD]),   "", OnlyOnGame },
 #endif /* MESS */
 	{ "" }
 };
 
 // options in mame32.ini that we'll never override with with game-specific options
-static REG_OPTION global_game_options[] =
+static const REG_OPTION global_game_options[] =
 {
-	{"skip_disclaimer",         RO_BOOL,    &settings.skip_disclaimer,   "0" },
-	{"skip_gameinfo",           RO_BOOL,    &settings.skip_gameinfo,     "0" },
-	{"skip_validitychecks",    RO_BOOL,    &settings.skip_validitychecks,     "0" },
-	{"high_priority",           RO_BOOL,    &settings.high_priority,     "0" },
+	{"skip_disclaimer",         RO_BOOL,    offsetof(settings_type, skip_disclaimer),   "0" },
+	{"skip_gameinfo",           RO_BOOL,    offsetof(settings_type, skip_gameinfo),     "0" },
+	{"skip_validitychecks",     RO_BOOL,    offsetof(settings_type, skip_validitychecks),     "0" },
+	{"high_priority",           RO_BOOL,    offsetof(settings_type, high_priority),     "0" },
 
 
 #ifdef MESS
-	{ "biospath",               RO_STRING,  &settings.romdirs,          "bios" },
-	{ "softwarepath",           RO_STRING,  &settings.mess.softwaredirs,"software" },
-	{ "hash_directory",         RO_STRING,  &settings.mess.hashdir,     "hash" },
+	{ "biospath",               RO_STRING,  offsetof(settings_type, romdirs),          "bios" },
+	{ "softwarepath",           RO_STRING,  offsetof(settings_type, mess.softwaredirs),"software" },
+	{ "hash_directory",         RO_STRING,  offsetof(settings_type, mess.hashdir),     "hash" },
 #else
-	{ "rompath",                RO_STRING,  &settings.romdirs,          "roms" },
+	{ "rompath",                RO_STRING,  offsetof(settings_type, romdirs),          "roms" },
 #endif
-	{ "samplepath",             RO_STRING,  &settings.sampledirs,       "samples", },
-	{ "inipath",                RO_STRING,  &settings.inidir,           "ini" },
-	{ "cfg_directory",          RO_STRING,  &settings.cfgdir,           "cfg" },
-	{ "nvram_directory",        RO_STRING,  &settings.nvramdir,         "nvram" },
-	{ "memcard_directory",      RO_STRING,  &settings.memcarddir,       "memcard" },
-	{ "input_directory",        RO_STRING,  &settings.inpdir,           "inp" },
-	{ "hiscore_directory",      RO_STRING,  &settings.hidir,            "hi" },
-	{ "state_directory",        RO_STRING,  &settings.statedir,         "sta" },
-	{ "artwork_directory",      RO_STRING,  &settings.artdir,           "artwork" },
-	{ "snapshot_directory",     RO_STRING,  &settings.imgdir,           "snap" },
-	{ "diff_directory",         RO_STRING,  &settings.diffdir,          "diff" },
-	{ "cheat_file",             RO_STRING,  &settings.cheat_filename,   "cheat.dat" },
+	{ "samplepath",             RO_STRING,  offsetof(settings_type, sampledirs),       "samples", },
+	{ "inipath",                RO_STRING,  offsetof(settings_type, inidir),           "ini" },
+	{ "cfg_directory",          RO_STRING,  offsetof(settings_type, cfgdir),           "cfg" },
+	{ "nvram_directory",        RO_STRING,  offsetof(settings_type, nvramdir),         "nvram" },
+	{ "memcard_directory",      RO_STRING,  offsetof(settings_type, memcarddir),       "memcard" },
+	{ "input_directory",        RO_STRING,  offsetof(settings_type, inpdir),           "inp" },
+	{ "hiscore_directory",      RO_STRING,  offsetof(settings_type, hidir),            "hi" },
+	{ "state_directory",        RO_STRING,  offsetof(settings_type, statedir),         "sta" },
+	{ "artwork_directory",      RO_STRING,  offsetof(settings_type, artdir),           "artwork" },
+	{ "snapshot_directory",     RO_STRING,  offsetof(settings_type, imgdir),           "snap" },
+	{ "diff_directory",         RO_STRING,  offsetof(settings_type, diffdir),          "diff" },
+	{ "cheat_file",             RO_STRING,  offsetof(settings_type, cheat_filename),   "cheat.dat" },
 #ifdef MESS
-	{ "sysinfo_file",           RO_STRING,  &settings.history_filename, "sysinfo.dat" },
-	{ "messinfo_file",          RO_STRING,  &settings.mameinfo_filename,"messinfo.dat" },
+	{ "sysinfo_file",           RO_STRING,  offsetof(settings_type, history_filename), "sysinfo.dat" },
+	{ "messinfo_file",          RO_STRING,  offsetof(settings_type, mameinfo_filename),"messinfo.dat" },
 #else
-	{ "history_file",           RO_STRING,  &settings.history_filename, "history.dat" },
-	{ "mameinfo_file",          RO_STRING,  &settings.mameinfo_filename,"mameinfo.dat" },
+	{ "history_file",           RO_STRING,  offsetof(settings_type, history_filename), "history.dat" },
+	{ "mameinfo_file",          RO_STRING,  offsetof(settings_type, mameinfo_filename),"mameinfo.dat" },
 #endif
-	{ "ctrlr_directory",        RO_STRING,  &settings.ctrlrdir,         "ctrlr" },
+	{ "ctrlr_directory",        RO_STRING,  offsetof(settings_type, ctrlrdir),         "ctrlr" },
 	{ "" }
 
 };
 
-typedef struct
+static const REG_OPTION gamevariable_options[] =
 {
-	const char *name;
-	int m_iType;
-	size_t m_iOffset;
-	BOOL (*m_pfnQualifier)(int driver_index);
-	const void *m_vpDefault;
-} GAMEVARIABLE_OPTION;
-
-static GAMEVARIABLE_OPTION gamevariable_options[] =
-{
-	{ "play_count",		RO_INT,		offsetof(game_variables_type, play_count),				NULL,				(const void *) 0},
-	{ "play_time",		RO_INT, 	offsetof(game_variables_type, play_time),				NULL,				(const void *) 0},
-	{ "rom_audit",		RO_INT,		offsetof(game_variables_type, rom_audit_results),		NULL,				(const void *) UNKNOWN },
-	{ "samples_audit",	RO_INT,		offsetof(game_variables_type, samples_audit_results),	DriverUsesSamples,	(const void *) UNKNOWN },
+	{ "play_count",		RO_INT,		offsetof(game_variables_type, play_count),                "0" },
+	{ "play_time",		RO_INT, 	offsetof(game_variables_type, play_time),                 "0" },
+	{ "rom_audit",		RO_INT,		offsetof(game_variables_type, rom_audit_results),         "-1" },
+	{ "samples_audit",	RO_INT,		offsetof(game_variables_type, samples_audit_results),     "-1", DriverUsesSamples },
 #ifdef MESS
-	{ "extra_software",	RO_STRING,	offsetof(game_variables_type, mess.extra_software_paths),	NULL,				(const void *) "" }
+	{ "extra_software",	RO_STRING,	offsetof(game_variables_type, mess.extra_software_paths), "" }
 #endif
 };
 
@@ -492,9 +481,9 @@ static GAMEVARIABLE_OPTION gamevariable_options[] =
 // (TAB_...)
 const char* image_tabs_long_name[MAX_TAB_TYPES] =
 {
-	"Snapshot",
-	"Flyer",
-	"Cabinet",
+	"Snapshot ",
+	"Flyer ",
+	"Cabinet ",
 	"Marquee",
 	"Title",
 	"Control Panel",
@@ -624,18 +613,6 @@ int num_folder_filters;
 
 
 
-static void LoadDefaultOptions(REG_OPTION *opts)
-{
-	int i;
-	for (i = 0; opts[i].ini_name[0]; i++)
-	{
-		if (opts[i].m_pDefaultValue)
-			LoadOption(&opts[i], opts[i].m_pDefaultValue);
-	}
-}
-
-
-
 /***************************************************************************
     External functions  
  ***************************************************************************/
@@ -656,11 +633,9 @@ BOOL OptionsInit()
 	num_games = GetNumGames();
 	code_init();
 	// Load all default settings
-	LoadDefaultOptions(regSettings);
-	LoadDefaultOptions(global_game_options);
-	LoadDefaultOptions(regGameOpts);
-	memcpy(&global, &gOpts, sizeof(global));
-	memset(&gOpts, 0, sizeof(gOpts));
+	LoadDefaultOptions(&settings, regSettings);
+	LoadDefaultOptions(&settings, global_game_options);
+	LoadDefaultOptions(&global, regGameOpts);
 
 	settings.view            = VIEW_GROUPED;
 	settings.show_folder_flags = NewBits(MAX_FOLDERS);
@@ -741,7 +716,7 @@ BOOL OptionsInit()
 
 	size_folder_filters = 1;
 	num_folder_filters = 0;
-	folder_filters = (folder_filter_type *) malloc(size_folder_filters * sizeof(folder_filter_type));
+	folder_filters = (folder_filter_type *)malloc(size_folder_filters*sizeof(folder_filter_type));
 	if (!folder_filters)
 		return FALSE;
 
@@ -749,8 +724,8 @@ BOOL OptionsInit()
 
 	// have our mame core (file code) know about our rom path
 	// this leaks a little, but the win32 file core writes to this string
-	set_pathlist(FILETYPE_ROM, strdup(settings.romdirs));
-	set_pathlist(FILETYPE_SAMPLE, strdup(settings.sampledirs));
+	set_pathlist(FILETYPE_ROM,strdup(settings.romdirs));
+	set_pathlist(FILETYPE_SAMPLE,strdup(settings.sampledirs));
 #ifdef MESS
 	set_pathlist(FILETYPE_HASH, strdup(settings.mess.hashdir));
 #endif
@@ -772,7 +747,7 @@ void OptionsExit(void)
 {
 	int i;
 
-	for (i = 0; i < num_games; i++)
+	for (i=0;i<num_games;i++)
 	{
 		FreeGameOptions(&game_options[i]);
 	}
@@ -786,36 +761,17 @@ void OptionsExit(void)
 	free(folder_options);
 
 	FreeGameOptions(&global);
+	FreeOptionStruct(&settings, regSettings);
 
-	for (i = 0; regSettings[i].ini_name[0]; i++)
-	{
-		if (regSettings[i].m_iType == RO_STRING)
-			FreeIfAllocated(regSettings[i].m_vpData);
-	}
 	free(folder_options_redirect);
 	DeleteBits(settings.show_folder_flags);
 	settings.show_folder_flags = NULL;
-
 }
 
 // frees the sub-data (strings)
 void FreeGameOptions(options_type *o)
 {
-	int i;
-
-	for (i = 0; regGameOpts[i].ini_name[0]; i++)
-	{
-		if (regGameOpts[i].m_iType == RO_STRING)
-		{
-			char **string_to_free = 
-				(char **)((char *)o + ((char *)regGameOpts[i].m_vpData - (char *)&gOpts));
-			if (*string_to_free  != NULL)
-			{
-				free(*string_to_free);
-				*string_to_free = NULL;
-			}
-		}
-	}
+	FreeOptionStruct(o, regGameOpts);
 }
 
 int GetRedirectIndex(int folder_index)
@@ -846,43 +802,18 @@ int GetRedirectValue(int index)
 }
 
 // performs a "deep" copy--strings in source are allocated and copied in dest
-void CopyGameOptions(options_type *source,options_type *dest)
+void CopyGameOptions(const options_type *source,options_type *dest)
 {
-	int i;
-
-	*dest = *source;
-
-	// now there's a bunch of strings in dest that need to be reallocated
-	// to be a separate copy
-	for (i = 0; regGameOpts[i].ini_name[0]; i++)
-	{
-		if (regGameOpts[i].m_iType == RO_STRING)
-		{
-			char **string_to_copy = 
-				(char **)((char *)dest + ((char *)regGameOpts[i].m_vpData - (char *)&gOpts));
-			if (*string_to_copy != NULL)
-			{
-				*string_to_copy = strdup(*string_to_copy);
-			}
-		}
-	}
+	CopyOptionStruct(dest, source, regGameOpts, sizeof(options_type));
 }
 
-// sync in the options specified in filename
-void SyncInGameOptions(options_type *opts, const char *filename)
+static DWORD GetFolderSettingsFileID(int folder_index)
 {
-	LoadOptions(filename, opts, FALSE);
-}
-
-// sync in the options specified in filename
-void SyncInFolderOptions(options_type *opts, int folder_index)
-{
-	char buffer[512];
-	char title[512];
-	int i;
 	extern FOLDERDATA g_folderData[];
 	extern LPEXFOLDERDATA ExtraFolderData[];
 	extern int numExtraFolders;
+	DWORD nSettingsFile = 0;
+	int i, j;
 	const char *pParent;
 
 	for( i = 0; i<=folder_index; i++ )
@@ -891,18 +822,17 @@ void SyncInFolderOptions(options_type *opts, int folder_index)
 		{
 			if( g_folderData[i].m_nFolderId == folder_index )
 			{
-				snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),g_folderData[i].m_lpTitle );
+				nSettingsFile = i | SETTINGS_FILE_FOLDER;				
 				break;
 			}
 		}
 		else if( folder_index < MAX_FOLDERS + numExtraFolders)
 		{
-			
 			if( ExtraFolderData[i] )
 			{
 				if( ExtraFolderData[i]->m_nFolderId == folder_index )
 				{
-					snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),ExtraFolderData[i]->m_szTitle );
+					nSettingsFile = i | SETTINGS_FILE_EXFOLDER;				
 					break;
 				}
 			}
@@ -916,24 +846,35 @@ void SyncInFolderOptions(options_type *opts, int folder_index)
 				pParent = GetFolderNameByID(ExtraFolderData[folder_index]->m_nParent);
 				if( pParent )
 				{
+					nSettingsFile = folder_index | SETTINGS_FILE_EXFOLDERPARENT;
+
 					if( ExtraFolderData[folder_index]->m_nParent == FOLDER_SOURCE )
 					{
-						//we have a source ini to create, so remove the ".c" at the end of the title
-						strncpy(title, ExtraFolderData[folder_index]->m_szTitle, strlen(ExtraFolderData[folder_index]->m_szTitle)-2 );
-						title[strlen(ExtraFolderData[folder_index]->m_szTitle)-2] = '\0';
-						//Core expects it there
-						snprintf(buffer,sizeof(buffer),"%s\\drivers\\%s.ini",GetIniDir(), title );
-					}
-					else
-					{
-						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, ExtraFolderData[folder_index]->m_szTitle );
+						for (j = 0; drivers[j]; j++)
+						{
+							if (!strcmp(drivers[j]->source_file, ExtraFolderData[folder_index]->m_szTitle))
+							{
+								nSettingsFile = j | SETTINGS_FILE_SOURCEFILE;
+								break;
+							}
+						}
 					}
 					break;
 				}
 			}
 		}
 	}
-	SyncInGameOptions(opts, buffer);
+	return nSettingsFile;
+}
+
+// sync in the options specified in filename
+void SyncInFolderOptions(options_type *opts, int folder_index)
+{
+	DWORD nSettingsFile;
+
+	nSettingsFile = GetFolderSettingsFileID(folder_index);
+	if (nSettingsFile)
+		LoadSettingsFile(nSettingsFile, opts, regGameOpts);
 }
 
 
@@ -972,12 +913,11 @@ options_type * GetFolderOptions(int folder_index, BOOL bIsVector)
 	if( bIsVector)
 	{
 		SyncInFolderOptions(&folder_options[redirect_index], FOLDER_VECTOR);
-		CopyGameOptions(&gOpts, &folder_options[redirect_index] );
 	}
 	return &folder_options[redirect_index];
 }
 
-int * GetFolderOptionsRedirectArr()
+int * GetFolderOptionsRedirectArr(void)
 {
 	return &folder_options_redirect[0];
 }
@@ -990,71 +930,68 @@ void SetFolderOptionsRedirectArr(int *redirect_arr)
 
 options_type * GetVectorOptions(void)
 {
-	//initialize gOpts with global settings, we accumulate all settings there and copy them 
+	static options_type vector_ops;
+
+	//initialize vector_ops with global settings, we accumulate all settings there and copy them 
 	//to game_options[driver_index] in the end
-	CopyGameOptions(&global,&gOpts);
+	CopyGameOptions(&global, &vector_ops);
 	
 	//If it is a Vector game sync in the Vector.ini settings
-	SyncInFolderOptions(&gOpts, FOLDER_VECTOR);
+	SyncInFolderOptions(&vector_ops, FOLDER_VECTOR);
 
-	return &gOpts;
+	return &vector_ops;
 }
 
 options_type * GetSourceOptions(int driver_index )
 {
 	char buffer[512];
 	char title[512];
+	static options_type source_opts;
+
 	assert(0 <= driver_index && driver_index < num_games);
-	//initialize gOpts with global settings, we accumulate all settings there and copy them 
+	//initialize source_opts with global settings, we accumulate all settings there and copy them 
 	//to game_options[driver_index] in the end
-	CopyGameOptions(&global,&gOpts);
+	CopyGameOptions(&global, &source_opts);
 	
 	if( DriverIsVector(driver_index) )
 	{
 		//If it is a Vector game sync in the Vector.ini settings
-		SyncInFolderOptions(&game_options[driver_index], FOLDER_VECTOR);
+		SyncInFolderOptions(&source_opts, FOLDER_VECTOR);
 	}
 	//If it has source folder settings sync in the source\sourcefile.ini settings
 	strcpy(title, GetDriverFilename(driver_index) );
 	title[strlen(title)-2] = '\0';
 	//Core expects it there
 	snprintf(buffer,sizeof(buffer),"%s\\drivers\\%s.ini",GetIniDir(), title );
-	SyncInGameOptions(&game_options[driver_index], buffer);
-	return &gOpts;
+	return &source_opts;
 }
 
 options_type * GetGameOptions(int driver_index, int folder_index )
 {
-	char buffer[512];
-	char title[512];
+	int parent_index;
+
 	assert(0 <= driver_index && driver_index < num_games);
-	//initialize gOpts with global settings, we accumulate all settings there and copy them 
-	//to game_options[driver_index] in the end
-	CopyGameOptions(&global,&gOpts);
+
+	CopyGameOptions(&global, &game_options[driver_index]);
 	
 	if( DriverIsVector(driver_index) )
 	{
 		//If it is a Vector game sync in the Vector.ini settings
 		SyncInFolderOptions(&game_options[driver_index], FOLDER_VECTOR);
 	}
+	
 	//If it has source folder settings sync in the source\sourcefile.ini settings
-	strcpy(title, GetDriverFilename(driver_index) );
-	title[strlen(title)-2] = '\0';
-	//Core expects it there
-	snprintf(buffer,sizeof(buffer),"%s\\drivers\\%s.ini",GetIniDir(), title );
-	SyncInGameOptions(&game_options[driver_index], buffer);
+	LoadSettingsFile(driver_index | SETTINGS_FILE_SOURCEFILE, &game_options[driver_index], regGameOpts);
+	
 	//Sync in parent settings if it has one
 	if( DriverIsClone(driver_index))
 	{
-		snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),drivers[driver_index]->clone_of->name );
-		SyncInGameOptions(&game_options[driver_index], buffer);
+		parent_index = GetDriverIndex(drivers[driver_index]->clone_of);
+		LoadSettingsFile(parent_index | SETTINGS_FILE_GAME, &game_options[driver_index], regGameOpts);
 	}
-	//last but not least, sync in game specific settings
-	snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),drivers[driver_index]->name );
-	SyncInGameOptions(&game_options[driver_index], buffer);
-	//now copy the synced up settings in game options
-	CopyGameOptions(&gOpts,&game_options[driver_index]);
 
+	//last but not least, sync in game specific settings
+	LoadSettingsFile(driver_index | SETTINGS_FILE_GAME, &game_options[driver_index], regGameOpts);
 	return &game_options[driver_index];
 }
 
@@ -1241,7 +1178,7 @@ void SetFilterInherit(BOOL inherit)
 BOOL GetFilterInherit(void)
 {
 	return settings.inherit_filter;
- }
+}
 
 void SetOffsetClones(BOOL offset)
 {
@@ -1251,7 +1188,7 @@ void SetOffsetClones(BOOL offset)
 BOOL GetOffsetClones(void)
 {
 	return settings.offset_clones;
- }
+}
 
 void SetGameCaption(BOOL caption)
 {
@@ -1483,7 +1420,7 @@ BOOL AllowedToSetShowTab(int tab,BOOL show)
 	return show_tab_flags != 0;
 }
 
-int GetHistoryTab()
+int GetHistoryTab(void)
 {
 	return settings.history_tab;
 }
@@ -1824,7 +1761,7 @@ void SetControlPanelDir(const char *path)
 		settings.cpaneldir = strdup(path);
 }
 
-const char* GetDiffDir(void)
+const char * GetDiffDir(void)
 {
 	return settings.diffdir;
 }
@@ -1860,7 +1797,7 @@ void SetBgDir (const char* path)
 	FreeIfAllocated(&settings.bgdir);
 
 	if (path != NULL)
-		settings.bgdir = strdup (path);
+		settings.bgdir = strdup(path);
 }
 
 const char* GetFolderDir(void)
@@ -2871,81 +2808,17 @@ static void TabFlagsDecodeString(const char *str,void *data)
 	}
 }
 
-static REG_OPTION * GetOption(REG_OPTION *option_array, const char *key)
-{
-	int i;
-
-	for (i = 0; option_array[i].ini_name[0]; i++)
-	{
-		if (strcmp(option_array[i].ini_name,key) == 0)
-			return &option_array[i];
-	}
-	return NULL;
-}
-
-static void LoadOption(REG_OPTION *option,const char *value_str)
-{
-	//dprintf("trying to load %s type %i [%s]",option->ini_name,option->m_iType,value_str);
-
-	switch (option->m_iType)
-	{
-	case RO_DOUBLE :
-		*((double *)option->m_vpData) = atof(value_str);
-		break;
-
-	case RO_COLOR :
-	{
-		unsigned int r,g,b;
-		if (sscanf(value_str,"%u,%u,%u",&r,&g,&b) == 3)
-			*((COLORREF *)option->m_vpData) = RGB(r,g,b);
-		else if (!strchr(value_str, ',') && (atoi(value_str) == -1))
-			*((COLORREF *)option->m_vpData) = -1;
-		break;
-	}
-
-	case RO_STRING:
-		if (*(char**)option->m_vpData != NULL)
-			free(*(char**)option->m_vpData);
-		*(char **)option->m_vpData = strdup(value_str);
-		break;
-
-	case RO_BOOL:
-	{
-		int value_int;
-		if (sscanf(value_str,"%i",&value_int) == 1)
-			*((int *)option->m_vpData) = (value_int != 0);
-		break;
-	}
-
-	case RO_INT:
-	{
-		int value_int;
-		if (sscanf(value_str,"%i",&value_int) == 1)
-			*((int *)option->m_vpData) = value_int;
-		break;
-	}
-
-	case RO_ENCODE:
-		option->decode(value_str,option->m_vpData);
-		break;
-
-	default:
-		break;
-	}
-	
-}
-
 static BOOL LoadGameVariableOrFolderFilter(char *key,const char *value)
 {
-	REG_OPTION fake_option;
 	int i;
 	int driver_index;
 	const char *suffix;
+	char buf[32];
 
 	for (i = 0; i < sizeof(gamevariable_options) / sizeof(gamevariable_options[0]); i++)
 	{
-		snprintf(fake_option.ini_name, sizeof(fake_option.ini_name), "drivername_%s", gamevariable_options[i].name);
-		suffix = strchr(fake_option.ini_name, '_');
+		snprintf(buf, sizeof(buf), "drivername_%s", gamevariable_options[i].ini_name);
+		suffix = strchr(buf, '_');
 
 		if (StringIsSuffixedBy(key, suffix))
 		{
@@ -2957,9 +2830,7 @@ static BOOL LoadGameVariableOrFolderFilter(char *key,const char *value)
 				return TRUE;
 			}
 
-			fake_option.m_iType = gamevariable_options[i].m_iType;
-			fake_option.m_vpData = (void *) (((UINT8 *) &game_variables[driver_index]) + gamevariable_options[i].m_iOffset);
-			LoadOption(&fake_option,value);
+			LoadOption(&game_variables[driver_index], &gamevariable_options[i], value);
 			return TRUE;
 		}
 	}
@@ -2989,138 +2860,38 @@ static BOOL LoadGameVariableOrFolderFilter(char *key,const char *value)
 	return FALSE;
 }
 
-// out of a string, parse two substrings (non-blanks, or quoted).
-// we modify buffer, and return key and value to point to the substrings, or NULL
-static void ParseKeyValueStrings(char *buffer,char **key,char **value)
-{
-	char *ptr;
-	BOOL quoted;
-
-	*key = NULL;
-	*value = NULL;
-
-	ptr = buffer;
-	while (*ptr == ' ' || *ptr == '\t')
-		ptr++;
-	*key = ptr;
-	quoted = FALSE;
-	while (1)
-	{
-		if (*ptr == 0 || (!quoted && (*ptr == ' ' || *ptr == '\t')) || (quoted && *ptr == '\"'))
-		{
-			// found end of key
-			if (*ptr == 0)
-				return;
-
-			*ptr = '\0';
-			ptr++;
-			break;
-		}
-
-		if (*ptr == '\"')
-			quoted = TRUE;
-		ptr++;
-	}
-
-	while (*ptr == ' ' || *ptr == '\t')
-		ptr++;
-
-	*value = ptr;
-	quoted = FALSE;
-	while (1)
-	{
-		if (*ptr == 0 || (!quoted && (*ptr == ' ' || *ptr == '\t')) || (quoted && *ptr == '\"'))
-		{
-			// found end of value;
-			*ptr = '\0';
-			break;
-		}
-
-		if (*ptr == '\"')
-			quoted = TRUE;
-		ptr++;
-	}
-
-	if (**key == '\"')
-		(*key)++;
-
-	if (**value == '\"')
-		(*value)++;
-
-	if (**key == '\0')
-	{
-		*key = NULL;
-		*value = NULL;
-	}
-}
-
 /* Register access functions below */
 static void LoadOptionsAndSettings(void)
 {
-	char buffer[2048];
-	FILE *fptr;
+	struct SettingsHandler handlers[3];
 
-	fptr = fopen(UI_INI_FILENAME,"rt");
-	if (fptr != NULL)
-	{
-		while (fgets(buffer,sizeof(buffer),fptr) != NULL)
-		{
-			char *key,*value_str;
-			REG_OPTION *option;
+	memset(handlers, 0, sizeof(handlers));
 
-			if (buffer[0] == '\0' || buffer[0] == '#')
-				continue;
+	handlers[0].type = SH_OPTIONSTRUCT;
+	handlers[0].u.option_struct.option_struct = &settings;
+	handlers[0].u.option_struct.option_array = regSettings;
+	handlers[1].type = SH_MANUAL;
+	handlers[1].u.manual.parse = LoadGameVariableOrFolderFilter;
+	handlers[2].type = SH_END;
+	LoadSettingsFileEx(SETTINGS_FILE_UI, handlers);
 
-			// we're guaranteed that strlen(buffer) >= 1 now
-			buffer[strlen(buffer)-1] = '\0';
-
-			ParseKeyValueStrings(buffer,&key,&value_str);
-			if (key == NULL || value_str == NULL)
-			{
-				//dprintf("invalid line [%s]",buffer);
-				continue;
-			}
-
-			option = GetOption(regSettings, key);
-			if (option == NULL)
-			{
-				// search for game_have_rom/have_sample/play_count/play_time thing
-				if (LoadGameVariableOrFolderFilter(key,value_str) == FALSE)
-				{
-					dprintf("found unknown option %s",key);
-				}
-			}
-			else
-			{
-				LoadOption(option,value_str);
-			}
-
-		}
-
-		fclose(fptr);
-	}
-
-	snprintf(buffer,sizeof(buffer),"%s\\%s",GetIniDir(),GetDefaultOptionsFilename());
-	gOpts = global;
-	if (LoadOptions(buffer,&global,TRUE))
-	{
-		global = gOpts;
-		ZeroMemory(&gOpts,sizeof(gOpts));
-	}
-
+	handlers[0].type = SH_OPTIONSTRUCT;
+	handlers[0].u.option_struct.option_struct = &global;
+	handlers[0].u.option_struct.option_array = regGameOpts;
+	handlers[1].type = SH_OPTIONSTRUCT;
+	handlers[1].u.option_struct.option_struct = &settings;
+	handlers[1].u.option_struct.option_array = global_game_options;
+	handlers[2].type = SH_END;
+	LoadSettingsFileEx(SETTINGS_FILE_GLOBAL, handlers);
 }
 
 void LoadGameOptions(int driver_index)
 {
-	char buffer[512];
+	CopyGameOptions(&global, &game_options[driver_index]);
 
-	snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),drivers[driver_index]->name);
-	
-	CopyGameOptions(&global,&gOpts);
-	if (LoadOptions(buffer,&game_options[driver_index],FALSE))
+	if (LoadSettingsFile(driver_index, &game_options[driver_index], regGameOpts))
 	{
 		// successfully loaded
-		game_options[driver_index] = gOpts;
 		game_variables[driver_index].use_default = FALSE;
 	}
 }
@@ -3154,142 +2925,22 @@ const char * GetFolderNameByID(UINT nID)
 
 void LoadFolderOptions(int folder_index )
 {
-	char buffer[512];
-	char title[512];
-	int i;
 	int redirect_index;
-	extern FOLDERDATA g_folderData[];
-	extern LPEXFOLDERDATA ExtraFolderData[];
-	extern int numExtraFolders;
-	const char *pParent;
+	DWORD nSettingsFile;
 
-	for( i = 0; i<=folder_index; i++ )
-	{
-		if( folder_index < MAX_FOLDERS)
-		{
-			if( g_folderData[i].m_nFolderId == folder_index )
-			{
-				snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),g_folderData[i].m_lpTitle );
-				break;
-			}
-		}
-		else if( folder_index < MAX_FOLDERS + numExtraFolders)
-		{
-			
-			if( ExtraFolderData[i] )
-			{
-				if( ExtraFolderData[i]->m_nFolderId == folder_index )
-				{
-					snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),ExtraFolderData[i]->m_szTitle );
-					break;
-				}
-			}
-		}
-		else
-		{
-			//we jump to the corrsponding folderData
-			if( ExtraFolderData[folder_index] )
-			{
-				//SubDirName is ParentFolderName
-				pParent = GetFolderNameByID(ExtraFolderData[folder_index]->m_nParent);
-				if( pParent )
-				{
-					if( ExtraFolderData[folder_index]->m_nParent == FOLDER_SOURCE )
-					{
-						//we have a source ini to create, so remove the ".c" at the end of the title
-						strncpy(title, ExtraFolderData[folder_index]->m_szTitle, strlen(ExtraFolderData[folder_index]->m_szTitle)-2 );
-						title[strlen(ExtraFolderData[folder_index]->m_szTitle)-2] = '\0';
-						//Core expects it there
-						snprintf(buffer,sizeof(buffer),"%s\\drivers\\%s.ini",GetIniDir(), title );
-					}
-					else
-					{
-						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, ExtraFolderData[folder_index]->m_szTitle );
-					}
-					break;
-				}
-			}
-		}
-	}
+	nSettingsFile = GetFolderSettingsFileID(folder_index);
 	
 	//Use the redirect array, to get correct folder
 	redirect_index = GetRedirectIndex(folder_index);
 	if( redirect_index < 0)
 		return;
 
-	CopyGameOptions(&global,&gOpts);
-	if (LoadOptions(buffer,&folder_options[redirect_index],FALSE))
-	{
-		// successfully loaded
-		CopyGameOptions(&gOpts, &folder_options[redirect_index] );
-	}
-	else
+	CopyGameOptions(&global, &folder_options[redirect_index]);
+	if (LoadSettingsFile(nSettingsFile, &folder_options[redirect_index], regGameOpts))
 	{
 		// uses globals
 		CopyGameOptions(&global, &folder_options[redirect_index] );
 	}
-}
-
-
-static BOOL LoadOptions(const char *filename,options_type *o,BOOL load_global_game_options)
-{
-	FILE *fptr;
-	char buffer[512];
-
-	fptr = fopen(filename,"rt");
-	if (fptr == NULL)
-		return FALSE;
-
-	while (fgets(buffer,sizeof(buffer),fptr) != NULL)
-	{
-		char *key,*value_str;
-		REG_OPTION *option;
-
-		if (buffer[0] == '\0')
-			continue;
-
-		// we're guaranteed that strlen(buffer) >= 1 now
-		// strip new-line
-		buffer[strlen(buffer)-1] = '\0';
-
-		// continue if it was an empty line
-		if (buffer[0] == '\0')
-			continue;
-		
-		// # starts a comment, but #* is a special MAME32 code
-		// saying it's an option for us, but NOT for the main
-		// MAME
-		if (buffer[0] == '#')
-		{
-			if (buffer[1] != '*')
-				continue;
-		}
-
-		ParseKeyValueStrings(buffer,&key,&value_str);
-		if (key == NULL || value_str == NULL)
-		{
-			dprintf("invalid line [%s]",buffer);
-			continue;
-		}
-		option = GetOption(regGameOpts, key);
-		if (option == NULL)
-		{
-			if (load_global_game_options)
-				option = GetOption(global_game_options, key);
-			
-			if (option == NULL)
-			{
-				dprintf("load game options found unknown option %s",key);
-				continue;
-			}
-		}
-
-		//dprintf("loading option <%s> <%s>",option,value_str);
-		LoadOption(option,value_str);
-	}
-
-	fclose(fptr);
-	return TRUE;
 }
 
 DWORD GetFolderFlags(int folder_index)
@@ -3305,187 +2956,170 @@ DWORD GetFolderFlags(int folder_index)
 	return 0;
 }
 
-void SaveOptions(void)
+static void EmitFolderFilters(void (*emit_callback)(void *param_, const char *key, const char *value_str, const char *comment), void *param)
 {
 	int i;
-	FILE *fptr;
+	char key[32];
+	char value_str[32];
 
-	fptr = fopen(UI_INI_FILENAME,"wt");
-	if (fptr != NULL)
+	for (i = 0; i < GetNumFolders(); i++)
 	{
-		fprintf(fptr,"### " UI_INI_FILENAME " ###\n\n");
-		fprintf(fptr,"### interface ###\n\n");
-		
-		if (save_gui_settings)
+		LPTREEFOLDER lpFolder = GetFolder(i);
+
+		if ((lpFolder->m_dwFlags & F_MASK) != 0)
 		{
-			for (i = 0; regSettings[i].ini_name[0]; i++)
-			{
-				if ((regSettings[i].ini_name[0] != '\0') && !regSettings[i].m_bOnlyOnGame)
-					WriteOptionToFile(fptr,&regSettings[i]);
-			}
+			sprintf(key, "%i_filters", i);
+			sprintf(value_str, "%i", (int)(lpFolder->m_dwFlags & F_MASK));
+			emit_callback(param, key, value_str, lpFolder->m_lpTitle);
 		}
-		
-		fprintf(fptr,"\n");
-		fprintf(fptr,"### folder filters ###\n\n");
-		
-		for (i=0;i<GetNumFolders();i++)
+	}
+}
+
+
+
+static void EmitGameVariables(void (*emit_callback)(void *param_, const char *key, const char *value_str, const char *comment), void *param)
+{
+	int i, j;
+	int driver_index;
+	int nValue;
+	const char *pValue;
+	char key[32];
+	char value_str[32];
+	void *pv;
+
+	for (i = 0; i < num_games; i++)
+	{
+		driver_index = GetIndexFromSortedIndex(i); 
+
+		// need to improve this to not save too many
+		for (j = 0; j < sizeof(gamevariable_options) / sizeof(gamevariable_options[0]); j++)
 		{
-			LPTREEFOLDER lpFolder = GetFolder(i);
-
-			if ((lpFolder->m_dwFlags & F_MASK) != 0)
+			if (!gamevariable_options[j].m_pfnQualifier || gamevariable_options[j].m_pfnQualifier(driver_index))
 			{
-				fprintf(fptr,"# %s\n",lpFolder->m_lpTitle);
-				fprintf(fptr,"%i_filters %i\n",i,(int)(lpFolder->m_dwFlags & F_MASK));
-			}
-		}
+				snprintf(key, sizeof(key), "%s_%s", drivers[driver_index]->name, gamevariable_options[j].ini_name);
+				pv = ((UINT8 *) &game_variables[driver_index]) + gamevariable_options[j].m_iDataOffset;
 
-		fprintf(fptr,"\n");
-		fprintf(fptr,"### game variables ###\n\n");
-		for (i=0;i<num_games;i++)
-		{
-			int j;
-			int nValue;
-			const char *pValue;
-			void *pv;
-			int driver_index = GetIndexFromSortedIndex(i); 
-
-			// need to improve this to not save too many
-			for (j = 0; j < sizeof(gamevariable_options) / sizeof(gamevariable_options[0]); j++)
-			{
-				if (!gamevariable_options[j].m_pfnQualifier || gamevariable_options[j].m_pfnQualifier(driver_index))
-				{
-					pv = ((UINT8 *) &game_variables[driver_index]) + gamevariable_options[j].m_iOffset;
-
-					switch(gamevariable_options[j].m_iType) {
-					case RO_INT:
-					case RO_BOOL:
-						nValue = *((int *) pv);
-						if (nValue != (int) gamevariable_options[j].m_vpDefault)
-						{
-							fprintf(fptr, "%s_%s %i\n",
-								drivers[driver_index]->name,
-								gamevariable_options[j].name,
-								nValue);
-						}
-						break;
-
-					case RO_STRING:
-						pValue = *((const char **) pv);
-						if (!pValue)
-							pValue = "";
-
-						if (strcmp(pValue, (const char *) gamevariable_options[j].m_vpDefault))
-						{
-							fprintf(fptr, "%s_%s \"%s\"\n",
-								drivers[driver_index]->name,
-								gamevariable_options[j].name,
-								pValue);
-						}
-						break;
-
-					default:
-						assert(0);
-						break;
+				switch(gamevariable_options[j].m_iType) {
+				case RO_INT:
+				case RO_BOOL:
+					nValue = *((int *) pv);
+					if (nValue != atoi(gamevariable_options[j].m_pDefaultValue))
+					{
+						snprintf(value_str, sizeof(value_str), "%i", nValue);
+						emit_callback(param, key, value_str, NULL);
 					}
+					break;
+
+				case RO_STRING:
+					pValue = *((const char **) pv);
+					if (!pValue)
+						pValue = "";
+
+					if (strcmp(pValue, gamevariable_options[j].m_pDefaultValue))
+					{
+						emit_callback(param, key, pValue, NULL);
+					}
+					break;
+
+				default:
+					assert(0);
+					break;
 				}
 			}
 		}
-		fclose(fptr);
 	}
+}
+
+
+
+void SaveOptions(void)
+{
+	int i;
+	struct SettingsHandler handlers[4];
+
+	memset(handlers, 0, sizeof(handlers));
+	i = 0;
+
+	if (save_gui_settings)
+	{
+		handlers[i].type = SH_OPTIONSTRUCT;
+		handlers[i].comment = "interface";
+		handlers[i].u.option_struct.option_struct = (void *) &settings;
+		handlers[i].u.option_struct.option_array = regSettings;
+		handlers[i].u.option_struct.qualifier_param = -1;
+		i++;
+	}
+
+	handlers[i].type = SH_MANUAL;
+	handlers[i].comment = "folder filters";
+	handlers[i].u.manual.emit = EmitFolderFilters;
+	i++;
+
+	handlers[i].type = SH_MANUAL;
+	handlers[i].comment = "game variables";
+	handlers[i].u.manual.emit = EmitGameVariables;
+	i++;
+
+	handlers[i].type = SH_END;
+
+	SaveSettingsFileEx(SETTINGS_FILE_UI, handlers);
 }
 
 //returns true if different
 BOOL GetVectorUsesDefaultsMem(void)
 {
-	BOOL options_different = FALSE;
-	options_type Opts;
-	int i;
 	int redirect_index = 0;
-	CopyGameOptions( &global, &Opts );
+
 	//Use the redirect array, to get correct folder
 	redirect_index = GetRedirectIndex(FOLDER_VECTOR);
 	if( redirect_index < 0)
 		return TRUE;
 
-	for (i = 0; regGameOpts[i].ini_name[0]; i++)
-	{
-		if (IsOptionEqual(i,&folder_options[redirect_index], &Opts ) == FALSE)
-		{
-			options_different = TRUE;
-		}
-
-	}
-	return options_different;
+	return AreOptionsEqual(regGameOpts, &folder_options[redirect_index], &global);
 }
 
 //returns true if different
 BOOL GetFolderUsesDefaultsMem(int folder_index, int driver_index)
 {
-	BOOL options_different = FALSE;
-	options_type Opts;
-	int i;
+	const options_type *opts;
 	int redirect_index;
 
 	if( DriverIsVector(driver_index) )
-		CopyGameOptions( GetVectorOptions(), &Opts );
+		opts = GetVectorOptions();
 	else
-		CopyGameOptions( &global, &Opts );
+		opts = &global;
+
 	//Use the redirect array, to get correct folder
 	redirect_index = GetRedirectIndex(folder_index);
 	if( redirect_index < 0)
 		return TRUE;
 
-	for (i = 0; regGameOpts[i].ini_name[0]; i++)
-	{
-		if (IsOptionEqual(i,&folder_options[redirect_index], &Opts ) == FALSE)
-		{
-			options_different = TRUE;
-		}
-
-	}
-	return options_different;
+	return AreOptionsEqual(regGameOpts, &folder_options[redirect_index], opts);
 }
 
 //returns true if different
 BOOL GetGameUsesDefaultsMem(int driver_index)
 {
-	BOOL options_different = FALSE;
-	options_type Opts;
-	int i;
+	const options_type *opts;
 	int nParentIndex= -1;
-	if( driver_index >= 0)
+
+	if ((driver_index >= 0) && DriverIsClone(driver_index))
 	{
-		if( DriverIsClone(driver_index) )
-		{
-			nParentIndex = GetGameNameIndex( drivers[driver_index]->clone_of->name );
-			if( nParentIndex >= 0)
-				CopyGameOptions(GetGameOptions(nParentIndex, FALSE), &Opts );
-			else
-				//No Parent found, use source
-				CopyGameOptions(GetSourceOptions(driver_index), &Opts);
-		}
+		nParentIndex = GetGameNameIndex( drivers[driver_index]->clone_of->name );
+		if( nParentIndex >= 0)
+			opts = GetGameOptions(nParentIndex, FALSE);
 		else
-			CopyGameOptions( GetSourceOptions(driver_index), &Opts );
+			//No Parent found, use source
+			opts = GetSourceOptions(driver_index);
 	}
 	else
-		CopyGameOptions( GetSourceOptions(driver_index), &Opts );
+		opts = GetSourceOptions(driver_index);
 
-	for (i = 0; regGameOpts[i].ini_name[0]; i++)
-	{
-		if (IsOptionEqual(i,&game_options[driver_index], &Opts ) == FALSE)
-		{
-			options_different = TRUE;
-		}
-
-	}
-	return options_different;
+	return AreOptionsEqual(regGameOpts, &game_options[driver_index], opts);
 }
 
 void SaveGameOptions(int driver_index)
 {
-	int i;
-	FILE *fptr;
-	char buffer[512];
 	BOOL options_different = FALSE;
 	options_type Opts;
 	int nParentIndex= -1;
@@ -3505,73 +3139,26 @@ void SaveGameOptions(int driver_index)
 	}
 	else
 		CopyGameOptions( GetSourceOptions(driver_index), &Opts );
+
 	if (game_variables[driver_index].use_default == FALSE)
 	{
-		for (i = 0; regGameOpts[i].ini_name[0]; i++)
-		{
-			if (IsOptionEqual(i,&game_options[driver_index], &Opts ) == FALSE)
-			{
-				options_different = TRUE;
-			}
-
-		}
+		options_different = !AreOptionsEqual(regGameOpts, &game_options[driver_index], &Opts);
 	}
 
-	snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),drivers[driver_index]->name);
-	if (options_different)
-	{
-		fptr = fopen(buffer,"wt");
-		if (fptr != NULL)
-		{
-			fprintf(fptr,"### ");
-			fprintf(fptr,"%s",drivers[driver_index]->name);
-			fprintf(fptr," ###\n\n");
-
-			for (i = 0; regGameOpts[i].ini_name[0]; i++)
-			{
-				if (IsOptionEqual(i,&game_options[driver_index],&Opts) == FALSE)
-				{
-					gOpts = game_options[driver_index];
-					WriteOptionToFile(fptr,&regGameOpts[i]);
-				}
-			}
-
-			fclose(fptr);
-		}
-	}
-	else
-	{
-		DWORD dwAttributes =  GetFileAttributes( buffer );
-		if( dwAttributes != 0xFFFFFFFF)
-		{
-			/*We successfully obtained the Attributes, so File exists, and we can delete it*/
-			if (DeleteFile(buffer) == 0)
-			{
-				dprintf("error deleting %s; error %d\n",buffer, GetLastError());
-			}
-		}
-	}
+	SaveSettingsFile(driver_index | SETTINGS_FILE_GAME,
+		&game_options[driver_index],
+		&Opts,
+		regGameOpts);
 }
 
 void SaveFolderOptions(int folder_index, int game_index)
 {
-	int i;
-	FILE *fptr;
-	char buffer[512];
-	char subdir[512];
-	char title[512];
-	char *inititle = NULL;
+	DWORD nSettingsFile;
 	int redirect_index = 0;
-	extern FOLDERDATA g_folderData[];
-	extern LPEXFOLDERDATA ExtraFolderData[];
-	extern int numExtraFolders;
 	BOOL options_different = FALSE;
-	const char *pParent;
 	options_type *pOpts;
 	options_type Opts;
-	struct stat file_stat;
-	*buffer = 0;
-	*subdir = 0;
+
 	if( DriverIsVector(game_index) && folder_index != FOLDER_VECTOR )
 	{
 		CopyGameOptions( GetVectorOptions(), &Opts );
@@ -3584,380 +3171,50 @@ void SaveFolderOptions(int folder_index, int game_index)
 	if( redirect_index < 0)
 		return;
 
-	for (i = 0; regGameOpts[i].ini_name[0]; i++)
-	{
-		if (IsOptionEqual(i,&folder_options[redirect_index],pOpts) == FALSE)
-		{
-			options_different = TRUE;
-		}
+	options_different = !AreOptionsEqual(regGameOpts, &folder_options[redirect_index], pOpts);
 
-	}
 	//Find the Title
-	for( i = 0; i<=folder_index; i++ )
-	{
-		if( folder_index < MAX_FOLDERS)
-		{
-			if( g_folderData[i].m_nFolderId == folder_index )
-			{
-				snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),g_folderData[i].m_lpTitle );
-				inititle = strdup(g_folderData[i].m_lpTitle );
-				break;
-			}
-		}
-		else if( folder_index < MAX_FOLDERS + numExtraFolders)
-		{
-			
-			if( ExtraFolderData[i] )
-			{
-				if( ExtraFolderData[i]->m_nFolderId == folder_index )
-				{
-					snprintf(buffer,sizeof(buffer),"%s\\%s.ini",GetIniDir(),ExtraFolderData[i]->m_szTitle );
-					inititle = strdup(ExtraFolderData[i]->m_szTitle );
-					break;
-				}
-			}
-		}
-		else
-		{
-			//we jump to the corrsponding folderData
-			if( ExtraFolderData[folder_index] )
-			{
-				//SubDirName is ParentFolderName
-				pParent = GetFolderNameByID(ExtraFolderData[folder_index]->m_nParent);
-				if( pParent )
-				{
-					if( ExtraFolderData[folder_index]->m_nParent == FOLDER_SOURCE )
-					{
-						//we have a source ini to create, so remove the ".c" at the end of the title
-						strncpy(title, ExtraFolderData[folder_index]->m_szTitle, strlen(ExtraFolderData[folder_index]->m_szTitle)-2 );
-						title[strlen(ExtraFolderData[folder_index]->m_szTitle)-2] = '\0';
-						//Core expects it there
-						snprintf(buffer,sizeof(buffer),"%s\\drivers\\%s.ini",GetIniDir(), title );
-						snprintf(subdir,sizeof(subdir),"%s\\drivers\\",GetIniDir() );
-					}
-					else
-					{
-						snprintf(buffer,sizeof(buffer),"%s\\%s\\%s.ini",GetIniDir(),pParent, ExtraFolderData[folder_index]->m_szTitle );
-						snprintf(subdir,sizeof(subdir),"%s\\%s",GetIniDir(),pParent );
-					}
-					inititle = strdup(ExtraFolderData[folder_index]->m_szTitle );
-					//need to check if Subdirectory Exists
-					/* Don't allow empty entries. */
-					if (strcmp(subdir, ""))
-					{
-						char *tmp, tmp1[MAX_PATH];
-						tmp = strdup(subdir);
-						tmp = strtok(tmp,"\\");
-						strcpy(tmp1, tmp);
-						while( tmp != NULL)
- 						{
-							/* Check validity of edited directory. */
-							if (! (stat(tmp1, &file_stat) == 0
-							&&	(file_stat.st_mode & S_IFDIR)) )
-							{
-								//Create all parts of it 
-								CreateDirectory( tmp1, NULL );
-							}
-							tmp = strtok(NULL,"\\");
-							if( tmp != NULL)
-							{
-								strcat(tmp1,"\\");
-								strcat(tmp1, tmp);
-							}
- 						}
-						free(tmp);
-					}
-					break;
-				}
-			}
-		}
-	}
-	if (options_different)
-	{
-		fptr = fopen(buffer,"wt");
-		if (fptr != NULL)
-		{
-			fprintf(fptr,"### ");
-			fprintf(fptr,"%s",inititle);
-			fprintf(fptr," ###\n\n");
+	nSettingsFile = GetFolderSettingsFileID(folder_index);
 
-			for (i = 0; regGameOpts[i].ini_name[0]; i++)
-			{
-				if (IsOptionEqual(i,&folder_options[redirect_index],pOpts) == FALSE)
-				{
-					gOpts = folder_options[redirect_index];
-					WriteOptionToFile(fptr,&regGameOpts[i]);
-				}
-			}
-
-			fclose(fptr);
-		}
-	}
-	else
-	{
-		/*No Differences between Standard Options and Folder Options*/
-		DWORD dwAttributes =  GetFileAttributes( buffer );
-		if( dwAttributes != 0xFFFFFFFF)
-		{
-			/*We successfully obtained the Attributes, so File exists, and we can delete it*/
-			if (DeleteFile(buffer) == 0)
-			{
-				dprintf("error deleting %s; error %d\n",buffer, GetLastError());
-			}
-		}
-		//Check if SubDir
-		if( subdir )
-		{
-			//we just call rmdir on the subdirs, if they are empty, they get deleted, 
- 			//otherwise it just stays as is
-			char *tmp, *tmp1;
-			int result;
-			tmp = strdup(subdir);
-			tmp1 = strrchr(tmp-1,'\\');
-			while( tmp != NULL && tmp1 != NULL)
-			{
-				_rmdir( tmp );
-				result = tmp1-tmp;
-				strncpy(tmp, subdir, result);
-				tmp[result] = '\0';
-				tmp1 = strrchr(tmp-1,'\\');
-			}
-			free(tmp);
- 		}
- 	}
-	if( inititle != NULL)
-		free(inititle);
- }
+	SaveSettingsFile(nSettingsFile, &folder_options[redirect_index], pOpts, regGameOpts);
+}
 
 
 void SaveDefaultOptions(void)
 {
-	int i;
-	FILE *fptr;
-	char buffer[512];
+	int i = 0;
+	struct SettingsHandler handlers[3];
 
-	snprintf(buffer,sizeof(buffer),"%s\\%s",GetIniDir(),GetDefaultOptionsFilename());
+	memset(handlers, 0, sizeof(handlers));
 
-	fptr = fopen(buffer,"wt");
-	if( fptr == NULL && GetLastError() == ERROR_PATH_NOT_FOUND )
+	if (save_gui_settings)
 	{
-		CreateDirectory( GetIniDir(), NULL);
-		fptr = fopen(buffer,"wt");
+		handlers[i].type = SH_OPTIONSTRUCT;
+		handlers[i].comment = "global-only options";
+		handlers[i].u.option_struct.option_struct = &settings;
+		handlers[i].u.option_struct.option_array = global_game_options;
+		handlers[i].u.option_struct.qualifier_param = -1;
+		i++;
 	}
-	if (fptr != NULL)
+
+	if (save_default_options)
 	{
-		char s[_MAX_PATH];
-		snprintf(s,sizeof(s),"### %s ###\n\n",GetDefaultOptionsFilename());
-		
-		if (save_gui_settings)
-		{
-			fprintf(fptr,"### global-only options ###\n\n");
-		
-			for (i = 0; global_game_options[i].ini_name[0]; i++)
-			{
-				if (!global_game_options[i].m_bOnlyOnGame)
-					WriteOptionToFile(fptr,&global_game_options[i]);
-			}
-		}
-
-		if (save_default_options)
-		{
-			fprintf(fptr,"\n### default game options ###\n\n");
-			gOpts = global;
-
-			for (i = 0; regGameOpts[i].ini_name[0]; i++)
-			{
-				if (!regGameOpts[i].m_bOnlyOnGame)
-					WriteOptionToFile(fptr,&regGameOpts[i]);
-			}
-		}
-
-		fclose(fptr);
+		handlers[i].type = SH_OPTIONSTRUCT;
+		handlers[i].comment = "default game options";
+		handlers[i].u.option_struct.option_struct = &global;
+		handlers[i].u.option_struct.option_array = regGameOpts;
+		handlers[i].u.option_struct.qualifier_param = -1;
+		i++;
 	}
+
+	handlers[i].type = SH_END;
+
+	SaveSettingsFileEx(SETTINGS_FILE_GLOBAL, handlers);
 }
 
-static void WriteStringOptionToFile(FILE *fptr,const char *key,const char *value)
-{
-	if (value[0] && !strchr(value,' '))
-		fprintf(fptr,"%s %s\n",key,value);
-	else
-		fprintf(fptr,"%s \"%s\"\n",key,value);
-}
-
-static void WriteIntOptionToFile(FILE *fptr,const char *key,int value)
-{
-	fprintf(fptr,"%s %i\n",key,value);
-}
-
-static void WriteBoolOptionToFile(FILE *fptr,const char *key,BOOL value)
-{
-	fprintf(fptr,"%s %i\n",key,value ? 1 : 0);
-}
-
-static void WriteColorOptionToFile(FILE *fptr,const char *key,COLORREF value)
-{
-	fprintf(fptr,"%s %i,%i,%i\n",key,(int)(value & 0xff),(int)((value >> 8) & 0xff),
-			(int)((value >> 16) & 0xff));
-}
-
-static BOOL IsOptionEqual(int option_index,options_type *o1,options_type *o2)
-{
-	switch (regGameOpts[option_index].m_iType)
-	{
-	case RO_DOUBLE:
-	{
-		double a,b;
-		gOpts = *o1;
-		a = *(double *)regGameOpts[option_index].m_vpData;
-		gOpts = *o2;
-		b = *(double *)regGameOpts[option_index].m_vpData;
-		return fabs(a-b) < 0.000001;
-	}
-	case RO_COLOR :
-	{
-		COLORREF a,b;
-		gOpts = *o1;
-		a = *(COLORREF *)regGameOpts[option_index].m_vpData;
-		gOpts = *o2;
-		b = *(COLORREF *)regGameOpts[option_index].m_vpData;
-		return a == b;
-	}
-	case RO_STRING:
-	{
-		char *a,*b;
-		gOpts = *o1;
-		a = *(char **)regGameOpts[option_index].m_vpData;
-		gOpts = *o2;
-		b = *(char **)regGameOpts[option_index].m_vpData;
-		if( a != NULL && b != NULL )
-			return strcmp(a,b) == 0;
-		else 
-			return FALSE;
-	}
-	case RO_BOOL:
-	{
-		BOOL a,b;
-		gOpts = *o1;
-		a = *(BOOL *)regGameOpts[option_index].m_vpData;
-		gOpts = *o2;
-		b = *(BOOL *)regGameOpts[option_index].m_vpData;
-		return a == b;
-	}
-	case RO_INT:
-	{
-		int a,b;
-		gOpts = *o1;
-		a = *(int *)regGameOpts[option_index].m_vpData;
-		gOpts = *o2;
-		b = *(int *)regGameOpts[option_index].m_vpData;
-		return a == b;
-	}
-	case RO_ENCODE:
-	{
-		char a[1000],b[1000];
-		gOpts = *o1;
-		regGameOpts[option_index].encode(regGameOpts[option_index].m_vpData,a);
-		gOpts = *o2;
-		regGameOpts[option_index].encode(regGameOpts[option_index].m_vpData,b);
-		if( a != NULL && b != NULL )
-			return strcmp(a,b) == 0;
-		else 
-			return FALSE;
-	}
-
-	default:
-		break;
-	}
-
-	return TRUE;
-}
-
-
-static void WriteOptionToFile(FILE *fptr,REG_OPTION *regOpt)
-{
-	BOOL*	pBool;
-	int*	pInt;
-	char*	pString;
-	double* pDouble;
-	const char *key = regOpt->ini_name;
-	char	cTemp[1000];
-	
-	switch (regOpt->m_iType)
-	{
-	case RO_DOUBLE:
-		pDouble = (double*)regOpt->m_vpData;
-        _gcvt( *pDouble, 10, cTemp );
-		WriteStringOptionToFile(fptr, key, cTemp);
-		break;
-
-	case RO_COLOR :
-	{
-		COLORREF color = *(COLORREF *)regOpt->m_vpData;
-		if (color != (COLORREF)-1)
-			WriteColorOptionToFile(fptr,key,color);
-		break;
-	}
-
-	case RO_STRING:
-		pString = *((char **)regOpt->m_vpData);
-		if (pString != NULL && pString[0] != 0)
-		    WriteStringOptionToFile(fptr, key, pString);
-		break;
-
-	case RO_BOOL:
-		pBool = (BOOL*)regOpt->m_vpData;
-		WriteBoolOptionToFile(fptr, key, *pBool);
-		break;
-
-	case RO_INT:
-		pInt = (int*)regOpt->m_vpData;
-		WriteIntOptionToFile(fptr, key, *pInt);
-		break;
-
-	case RO_ENCODE:
-		regOpt->encode(regOpt->m_vpData, cTemp);
-		WriteStringOptionToFile(fptr, key, cTemp);
-		break;
-
-	default:
-		break;
-	}
-
-}
-
-char* GetVersionString(void)
+char * GetVersionString(void)
 {
 	return build_version;
-}
-
-static const char * GetDefaultOptionsFilename()
-{
-	static char pModule[_MAX_PATH];
-	char *ptr;
-
-	GetModuleFileName(GetModuleHandle(NULL), pModule, _MAX_PATH);
-
-	// take out the path if there is one
-	ptr = strrchr(pModule,'\\');
-	if (ptr != NULL)
-	{
-		// move length of string, minus the backslash but plus the terminating 0
-		memmove(pModule,ptr+1,strlen(ptr));
-	}
-
-	// take out the extension
-	ptr = strrchr(pModule,'.');
-	if (ptr != NULL)
-	{
-		*ptr = 0;
-	}
-
-	// add .ini
-	strcat(pModule,".ini");
-
-	//dprintf("got [%s] for ini name\n",pModule);
-
-	return pModule;
 }
 
 
@@ -3966,7 +3223,7 @@ static const char * GetDefaultOptionsFilename()
  ***************************************************************************/
 
 #ifdef MAME_DEBUG
-static BOOL CheckOptions(REG_OPTION *opts, BOOL bPassedToMAME)
+static BOOL CheckOptions(const REG_OPTION *opts, BOOL bPassedToMAME)
 {
 	struct rc_struct *rc;
 	int i;
@@ -4002,6 +3259,9 @@ static BOOL CheckOptions(REG_OPTION *opts, BOOL bPassedToMAME)
 				dprintf("CheckOptions(): Option '%s' needs both an encode and a decode callback\n", opts[i].ini_name);
 				nBadOptions++;
 			}
+			break;
+
+		default:
 			break;
 		}
 	}

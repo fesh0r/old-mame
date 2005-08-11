@@ -174,7 +174,10 @@ static int ppc_translate_address(offs_t *addr_ptr, int flags)
 	sr = ppc.sr[(address >> 28) & 0x0F];
 	if (sr & 0x80000000)
 	{
-		osd_die("ppc: direct store translation not yet implemented");
+		/* direct store translation */
+		if ((flags & PPC_TRANSLATE_NOEXCEPTION) == 0)
+			osd_die("ppc: direct store translation not yet implemented");
+		return 0;
 	}
 	else
 	{
@@ -258,7 +261,7 @@ exception:
 	{
 		if (flags & PPC_TRANSLATE_CODE)
 		{
-			longjmp(ppc.exception_jmpbuf, EXCEPTION_ISI);
+			ppc_exception(EXCEPTION_ISI);
 		}
 		else
 		{
@@ -268,7 +271,7 @@ exception:
 			else
 				ppc.dsisr = dsisr;
 
-			longjmp(ppc.exception_jmpbuf, EXCEPTION_DSI);
+			ppc_exception(EXCEPTION_DSI);
 		}
 	}
 	return 0;

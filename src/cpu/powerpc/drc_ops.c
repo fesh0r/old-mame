@@ -130,6 +130,13 @@ static void ppcdrc_recompile(struct drccore *drc)
 		pc += (INT8)(result >> 24);
 		if (result & RECOMPILE_END_OF_STRING)
 			break;
+
+		/* do not recompile across MMU page boundaries */
+		if ((pc & 0x0FFF) == 0)
+		{
+			remaining = 0;
+			break;
+		}
 	}
 
 	/* add dispatcher just in case */
@@ -153,21 +160,6 @@ static void update_counters(struct drccore *drc)
 		_or_m32abs_imm(&ppc.exception_pending, 0x2);
 		_resolve_link(&link1);
 	}
-}
-
-static void *ppcdrc_exception_handler(int exception_type)
-{
-	switch(exception_type)
-	{
-		case EXCEPTION_DECREMENTER:
-			return ppc.generate_decrementer_exception;
-		case EXCEPTION_DSI:
-			return ppc.generate_dsi_exception;
-		case EXCEPTION_ISI:
-			return ppc.generate_isi_exception;
-	}
-	osd_die("Unknown exception %d\n", exception_type);
-	return NULL;
 }
 
 static void ppcdrc_entrygen(struct drccore *drc)

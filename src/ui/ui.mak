@@ -20,6 +20,8 @@ OBJDIRS += $(OBJ)/ui
 
 $(OBJ)/mess/ui/mess32ui.o: src/ui/win32ui.c mess/ui/mess32ui.c
 
+$(OBJ)/mess/ui/optionsms.o: src/ui/options.c mess/ui/optionsms.c
+
 $(OBJ)/mess/ui/mess32.res:	src/ui/mame32.rc mess/ui/mess32.rc src/ui/resource.h mess/ui/resourcems.h
 
 # only OS specific output files and rules
@@ -42,7 +44,10 @@ OSOBJS += \
 	$(OBJ)/ui/tabview.o \
 	$(OBJ)/ui/help.o \
 	$(OBJ)/ui/history.o \
-	$(OBJ)/ui/dialogs.o
+	$(OBJ)/ui/dialogs.o \
+	$(OBJ)/ui/optcore.o	\
+	$(OBJ)/ui/inifile.o	\
+	$(OBJ)/ui/dirwatch.o	\
 	
 ifdef MESS
 OSOBJS += \

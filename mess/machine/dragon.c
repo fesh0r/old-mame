@@ -1,6 +1,6 @@
 /***************************************************************************
 
-  machine.c
+  machine/dragon.c
 
   Functions to emulate general aspects of the machine (RAM, ROM, interrupts,
   I/O ports)
@@ -52,6 +52,9 @@ Dragon Alpha code added 21-Oct-2004,
 			Phill Harvey-Smith (afra@aurigae.demon.co.uk)
 
 			Added AY-8912 and FDC code 30-Oct-2004.
+
+Fixed Dragon Alpha NMI enable/disable, following circuit traces on a real machine.
+	P.Harvey-Smith, 11-Aug-2005.
 
 ***************************************************************************/
 
@@ -143,12 +146,14 @@ static READ8_HANDLER ( dgnalpha_pia2_pa_r );
 static READ8_HANDLER ( dgnalpha_pia2_pb_r );
 static WRITE8_HANDLER ( dgnalpha_pia2_pa_w );
 static WRITE8_HANDLER ( dgnalpha_pia2_pb_w );
+static WRITE8_HANDLER ( d_pia2_ca2_w);
 static void d_pia2_firq_a(int state);
 static void d_pia2_firq_b(int state);
 
 static int pia2_firq_a, pia2_firq_b;
 
-static int dgnalpha_just_reset;				/* Reset flag used to ignore first NMI after reset */
+static int dgnalpha_just_reset;		/* Reset flag used to ignore first NMI after reset */
+static int alpha_nmi_en;			/* Is ALpha NMI enabled ? */
 
 /* End Dragon Alpha */
 
@@ -341,7 +346,7 @@ static struct pia6821_interface dgnalpha_pia_intf[] =
 	/* PIA 2 */
 	{
 		/*inputs : A/B,CA/B1,CA/B2 */ dgnalpha_pia2_pa_r,dgnalpha_pia2_pb_r, 0, 0, 0, 0,
-		/*outputs: A/B,CA/B2	   */ dgnalpha_pia2_pa_w,dgnalpha_pia2_pb_w, 0,0,
+		/*outputs: A/B,CA/B2	   */ dgnalpha_pia2_pa_w,dgnalpha_pia2_pb_w, d_pia2_ca2_w,0,
 		/*irqs	 : A/B	   		   */ d_pia2_firq_a, d_pia2_firq_b
 	}
 
@@ -1441,7 +1446,10 @@ static WRITE8_HANDLER( dgnalpha_pia2_pb_w )
 	pia2_pb = data;
 }
 
-
+static WRITE8_HANDLER ( d_pia2_ca2_w )
+{
+	alpha_nmi_en = data;	// used to enable/disable NMI ?
+}
 
 /* Controls rom paging in Dragon 64, and Dragon Alpha */
 /* On 64, switches between the two versions of the basic rom mapped in at 0x8000 */
@@ -1479,7 +1487,10 @@ static void	dgnalpha_fdc_callback(int event)
 		    if(dgnalpha_just_reset)
 				dgnalpha_just_reset=0;
 			else
-				cpunum_set_input_line(0, INPUT_LINE_NMI, ASSERT_LINE);
+			{	
+				if(alpha_nmi_en) 
+					cpunum_set_input_line(0, INPUT_LINE_NMI, ASSERT_LINE);
+			}
 			break;
 		case WD179X_DRQ_CLR:
 			pia_2_cb1_w(0,CARTLINE_CLEAR);
@@ -1904,7 +1915,7 @@ static void d_sam_set_maptype(int val)
 		writebank = MWA8_ROM;
 	}
 
-	cpu_setbank(2, readbank);
+	memory_set_bankptr(2, readbank);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xfeff, 0, 0, writebank);
 }
 
@@ -1937,8 +1948,8 @@ static void dragon64_sam_set_maptype(int val)
 		writebank3 = MWA8_ROM;
 	}
 
-	cpu_setbank(2, readbank2);
-	cpu_setbank(3, readbank3);
+	memory_set_bankptr(2, readbank2);
+	memory_set_bankptr(3, readbank3);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, writebank2);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xfeff, 0, 0, writebank3);
 }
@@ -2080,7 +2091,7 @@ static void coco3_mmu_update(int lowblock, int hiblock)
 			readbank = &mess_ram[offset];
 			writebank = bank_info[i].handler;
 		}
-		cpu_setbank(i + 1, readbank);
+		memory_set_bankptr(i + 1, readbank);
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, bank_info[i].start, bank_info[i].end, 0, 0, writebank);
 
 #if LOG_MMU
@@ -2460,7 +2471,7 @@ static void generic_init_machine(struct pia6821_interface *piaintf, struct sam68
 
 MACHINE_INIT( dragon32 )
 {
-	cpu_setbank(1, &mess_ram[0]);
+	memory_set_bankptr(1, &mess_ram[0]);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, coco_ram_w);
 	generic_init_machine(coco_pia_intf, &coco_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks, d_recalc_interrupts);
 
@@ -2469,7 +2480,7 @@ MACHINE_INIT( dragon32 )
 
 MACHINE_INIT( dragon64 )
 {
-	cpu_setbank(1, &mess_ram[0]);
+	memory_set_bankptr(1, &mess_ram[0]);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, coco_ram_w);
 	generic_init_machine(dragon64_pia_intf, &dragon64_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks, d_recalc_interrupts);
 	acia_6551_init();
@@ -2479,7 +2490,7 @@ MACHINE_INIT( dragon64 )
 
 MACHINE_INIT( dgnalpha )
 {
-	cpu_setbank(1, &mess_ram[0]);
+	memory_set_bankptr(1, &mess_ram[0]);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, coco_ram_w);
 
 	generic_init_machine(dgnalpha_pia_intf, &dragon64_sam_intf, 0 /*&cartridge_fdc_dragon*/, &coco_cartcallbacks, d_recalc_interrupts);
@@ -2489,6 +2500,7 @@ MACHINE_INIT( dgnalpha )
 	/* dgnalpha_just_reset, is here to flag that we should ignore the first irq generated */
 	/* by the WD2797, it is reset to 0 after the first inurrupt */
 	dgnalpha_just_reset=1;
+	alpha_nmi_en=1;
 	
 	wd179x_init(WD_TYPE_179X,dgnalpha_fdc_callback);
 
@@ -2497,7 +2509,7 @@ MACHINE_INIT( dgnalpha )
 
 MACHINE_INIT( coco )
 {
-	cpu_setbank(1, &mess_ram[0]);
+	memory_set_bankptr(1, &mess_ram[0]);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, coco_ram_w);
 	generic_init_machine(coco_pia_intf, &coco_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks, d_recalc_interrupts);
 
@@ -2506,7 +2518,7 @@ MACHINE_INIT( coco )
 
 MACHINE_INIT( coco2 )
 {
-	cpu_setbank(1, &mess_ram[0]);
+	memory_set_bankptr(1, &mess_ram[0]);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, coco_ram_w);
 	generic_init_machine(coco2_pia_intf, &coco_sam_intf, &cartridge_fdc_coco, &coco_cartcallbacks, d_recalc_interrupts);
 

@@ -188,7 +188,7 @@ VIDEO_UPDATE( vectrex )
 		i = (i+1) % MAX_POINTS;
 	}
 
-	video_update_vector(bitmap, &Machine->visible_area, do_skip);
+	video_update_vector(screen, bitmap, &Machine->visible_area, do_skip);
 	vector_clear_list();
 }
 
@@ -254,8 +254,8 @@ VIDEO_START( vectrex )
 {
 	int width, height;
 
-	width = Machine->scrbitmap->width;
-	height = Machine->scrbitmap->height;
+	width = Machine->drv->screen_width;
+	height = Machine->drv->screen_height;
 
 	x_center=((Machine->visible_area.max_x
 		  -Machine->visible_area.min_x) / 2) << VEC_SHIFT;

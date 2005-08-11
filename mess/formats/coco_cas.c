@@ -34,6 +34,7 @@
 #include "coco_cas.h"
 #include "utils.h"
 #include "timer.h"
+#include "mamecore.h"
 
 #define COCO_WAVESAMPLES_HEADER		TIME_IN_SEC(1.0)
 #define COCO_WAVESAMPLES_TRAILER	TIME_IN_SEC(1.0)
@@ -250,7 +251,7 @@ static casserr_t coco_cas_load(cassette_image *cassette)
 	}
 
 	/* all futher data is undecipherable, so output it verbatim */
-	err = cassette_read_modulated_data(cassette, 0, time_index, offset, image_size - offset, &coco_cas_modulation, NULL);
+	err = cassette_read_modulated_data(cassette, 0, time_index, offset, image_size - offset, &coco_cas_modulation, &time_displacement);
 	if (err)
 		return err;
 	time_index += time_displacement;
