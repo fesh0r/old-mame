@@ -1191,7 +1191,7 @@ void konami_rom_deinterleave_2(int mem_region)
 /* hacked version of rom_deinterleave_2_half for Lethal Enforcers */
 void konami_rom_deinterleave_2_half(int mem_region)
 {
-	data8_t *rgn = memory_region(mem_region);
+	UINT8 *rgn = memory_region(mem_region);
 
 	shuffle((UINT16 *)rgn,memory_region_length(mem_region)/4);
 	shuffle((UINT16 *)(rgn+memory_region_length(mem_region)/2),memory_region_length(mem_region)/4);
@@ -1282,17 +1282,17 @@ WRITE8_HANDLER( K007121_ctrl_1_w )
  *
  */
 
-void K007121_sprites_draw(int chip,struct mame_bitmap *bitmap,const struct rectangle *cliprect,
+void K007121_sprites_draw(int chip,mame_bitmap *bitmap,const rectangle *cliprect,
 		const unsigned char *source,int base_color,int global_x_offset,int bank_base,
 		UINT32 pri_mask)
 {
-	const struct GfxElement *gfx = Machine->gfx[chip];
+	const gfx_element *gfx = Machine->gfx[chip];
 	int flipscreen = K007121_flipscreen[chip];
 	int i,num,inc,offs[5],trans;
 	int is_flakatck = K007121_ctrlram[chip][0x06] & 0x04;	/* WRONG!!!! */
 
 #if 0
-usrintf_showmessage("%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x  %02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
+ui_popup("%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x  %02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
 	K007121_ctrlram[0][0x00],K007121_ctrlram[0][0x01],K007121_ctrlram[0][0x02],K007121_ctrlram[0][0x03],K007121_ctrlram[0][0x04],K007121_ctrlram[0][0x05],K007121_ctrlram[0][0x06],K007121_ctrlram[0][0x07],
 	K007121_ctrlram[1][0x00],K007121_ctrlram[1][0x01],K007121_ctrlram[1][0x02],K007121_ctrlram[1][0x03],K007121_ctrlram[1][0x04],K007121_ctrlram[1][0x05],K007121_ctrlram[1][0x06],K007121_ctrlram[1][0x07]);
 
@@ -1303,7 +1303,7 @@ if (code_pressed(KEYCODE_D))
 	if (fp)
 	{
 		fwrite(source, 0x800, 1, fp);
-		usrintf_showmessage("saved");
+		ui_popup("saved");
 		fclose(fp);
 	}
 }
@@ -1378,7 +1378,7 @@ if (code_pressed(KEYCODE_D))
 				case 0x08: width = height = 4; number &= (~3); break;
 				default: width = 1; height = 1;
 //                  logerror("Unknown sprite size %02x\n",attr&0xe);
-//                  usrintf_showmessage("Unknown sprite size %02x\n",attr&0xe);
+//                  ui_popup("Unknown sprite size %02x\n",attr&0xe);
 			}
 
 			for (y = 0;y < height;y++)
@@ -1449,8 +1449,8 @@ static int K007342_scrolly[2];
 static unsigned char *K007342_videoram_0,*K007342_colorram_0;
 static unsigned char *K007342_videoram_1,*K007342_colorram_1;
 static int K007342_regs[8];
-static void (*K007342_callback)(int tilemap, int bank, int *code, int *color);
-static struct tilemap *K007342_tilemap[2];
+static void (*K007342_callback)(int tmap, int bank, int *code, int *color);
+static tilemap *K007342_tilemap[2];
 
 /***************************************************************************
 
@@ -1474,7 +1474,7 @@ static UINT32 K007342_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows
 	return (col & 0x1f) + ((row & 0x1f) << 5) + ((col & 0x20) << 5);
 }
 
-INLINE void K007342_get_tile_info(int tile_index,int layer,data8_t *cram,data8_t *vram)
+INLINE void K007342_get_tile_info(int tile_index,int layer,UINT8 *cram,UINT8 *vram)
 {
 	int color, code;
 
@@ -1498,7 +1498,7 @@ static void K007342_get_tile_info1(int tile_index) { K007342_get_tile_info(tile_
 
 
 
-int K007342_vh_start(int gfx_index, void (*callback)(int tilemap, int bank, int *code, int *color))
+int K007342_vh_start(int gfx_index, void (*callback)(int tmap, int bank, int *code, int *color))
 {
 	K007342_gfxnum = gfx_index;
 	K007342_callback = callback;
@@ -1630,7 +1630,7 @@ void K007342_tilemap_update(void)
 			break;
 
 		default:
-//          usrintf_showmessage("unknown scroll ctrl %02x",K007342_regs[2] & 0x1c);
+//          ui_popup("unknown scroll ctrl %02x",K007342_regs[2] & 0x1c);
 			break;
 	}
 
@@ -1645,7 +1645,7 @@ void K007342_tilemap_update(void)
 		tilemap_set_enable(K007342_tilemap[current_layer], 1);
 		tilemap_set_enable(K007342_tilemap[!current_layer], 0);
 
-		usrintf_showmessage("regs:%02x %02x %02x %02x-%02x %02x %02x %02x:%02x",
+		ui_popup("regs:%02x %02x %02x %02x-%02x %02x %02x %02x:%02x",
 			K007342_regs[0], K007342_regs[1], K007342_regs[2], K007342_regs[3],
 			K007342_regs[4], K007342_regs[5], K007342_regs[6], K007342_regs[7],
 			current_layer);
@@ -1653,12 +1653,12 @@ void K007342_tilemap_update(void)
 #endif
 }
 
-void K007342_tilemap_set_enable(int tilemap, int enable)
+void K007342_tilemap_set_enable(int tmap, int enable)
 {
-	tilemap_set_enable(K007342_tilemap[tilemap], enable);
+	tilemap_set_enable(K007342_tilemap[tmap], enable);
 }
 
-void K007342_tilemap_draw(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int num,int flags,UINT32 priority)
+void K007342_tilemap_draw(mame_bitmap *bitmap,const rectangle *cliprect,int num,int flags,UINT32 priority)
 {
 	tilemap_draw(bitmap,cliprect,K007342_tilemap[num],flags,priority);
 }
@@ -1676,7 +1676,7 @@ int K007342_is_INT_enabled(void)
 /*                                                                         */
 /***************************************************************************/
 
-static struct GfxElement *K007420_gfx;
+static gfx_element *K007420_gfx;
 static void (*K007420_callback)(int *code,int *color);
 static unsigned char *K007420_ram;
 static int K007420_banklimit;
@@ -1725,7 +1725,7 @@ WRITE8_HANDLER( K007420_w )
  *   7  | xxxxxxxx | unused
  */
 
-void K007420_sprites_draw(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
+void K007420_sprites_draw(mame_bitmap *bitmap,const rectangle *cliprect)
 {
 #define K007420_SPRITERAM_SIZE 0x200
 	int offs;
@@ -1859,7 +1859,7 @@ void K007420_sprites_draw(struct mame_bitmap *bitmap,const struct rectangle *cli
 		if (code_pressed_memory(KEYCODE_Z)) current_sprite = (current_sprite+1) & ((K007420_SPRITERAM_SIZE/8)-1);
 		if (code_pressed_memory(KEYCODE_X)) current_sprite = (current_sprite-1) & ((K007420_SPRITERAM_SIZE/8)-1);
 
-		usrintf_showmessage("%02x:%02x %02x %02x %02x %02x %02x %02x %02x", current_sprite,
+		ui_popup("%02x:%02x %02x %02x %02x %02x %02x %02x %02x", current_sprite,
 			K007420_ram[(current_sprite*8)+0], K007420_ram[(current_sprite*8)+1],
 			K007420_ram[(current_sprite*8)+2], K007420_ram[(current_sprite*8)+3],
 			K007420_ram[(current_sprite*8)+4], K007420_ram[(current_sprite*8)+5],
@@ -1883,7 +1883,7 @@ void K007420_set_banklimit(int limit)
 
 static int K052109_memory_region;
 static int K052109_gfxnum;
-static void (*K052109_callback)(int tilemap,int bank,int *code,int *color);
+static void (*K052109_callback)(int tmap,int bank,int *code,int *color);
 static unsigned char *K052109_ram;
 static unsigned char *K052109_videoram_F,*K052109_videoram2_F,*K052109_colorram_F;
 static unsigned char *K052109_videoram_A,*K052109_videoram2_A,*K052109_colorram_A;
@@ -1895,7 +1895,7 @@ static int K052109_tileflip_enable;
 static int K052109_irq_enabled;
 static int K052109_dx[3], K052109_dy[3];
 static unsigned char K052109_romsubbank,K052109_scrollctrl;
-struct tilemap *K052109_tilemap[3];
+tilemap *K052109_tilemap[3];
 
 
 
@@ -1916,7 +1916,7 @@ struct tilemap *K052109_tilemap[3];
   color RAM    ------xx  depends on external connections (usually banking, flip)
 */
 
-INLINE void K052109_get_tile_info(int tile_index,int layer,data8_t *cram,data8_t *vram1,data8_t *vram2)
+INLINE void K052109_get_tile_info(int tile_index,int layer,UINT8 *cram,UINT8 *vram1,UINT8 *vram2)
 {
 	int flipy = 0;
 	int code = vram1[tile_index] + 256 * vram2[tile_index];
@@ -1961,10 +1961,10 @@ static void K052109_tileflip_reset(void)
 
 
 int K052109_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int plane3,
-		void (*callback)(int tilemap,int bank,int *code,int *color))
+		void (*callback)(int tmap,int bank,int *code,int *color))
 {
 	int gfx_index, i;
-	static struct GfxLayout charlayout =
+	static gfx_layout charlayout =
 	{
 		8,8,
 		0,				/* filled in later */
@@ -2097,7 +2097,7 @@ else
 		addr = (code << 5) + (offset & 0x1f);
 		addr &= memory_region_length(K052109_memory_region)-1;
 
-//  usrintf_showmessage("%04x: off%04x sub%02x (bnk%x) adr%06x",activecpu_get_pc(),offset,K052109_romsubbank,bank,addr);
+//  ui_popup("%04x: off%04x sub%02x (bnk%x) adr%06x",activecpu_get_pc(),offset,K052109_romsubbank,bank,addr);
 
 		return memory_region(K052109_memory_region)[addr];
 	}
@@ -2126,7 +2126,7 @@ WRITE8_HANDLER( K052109_w )
 		{
 			if (K052109_scrollctrl != data)
 			{
-//usrintf_showmessage("scrollcontrol = %02x",data);
+//ui_popup("scrollcontrol = %02x",data);
 //logerror("%04x: rowscrollcontrol = %02x\n",activecpu_get_pc(),data);
 				K052109_scrollctrl = data;
 			}
@@ -2245,7 +2245,7 @@ void K052109_tilemap_update(void)
 {
 #if 0
 {
-usrintf_showmessage("%x %x %x %x",
+ui_popup("%x %x %x %x",
 	K052109_charrombank[0],
 	K052109_charrombank[1],
 	K052109_charrombank[2],
@@ -2390,7 +2390,7 @@ if ((K052109_scrollctrl & 0x03) == 0x01 ||
 		((K052109_scrollctrl & 0x04) && (K052109_scrollctrl & 0x03)) ||
 		((K052109_scrollctrl & 0x20) && (K052109_scrollctrl & 0x18)) ||
 		(K052109_scrollctrl & 0xc0) != 0)
-	usrintf_showmessage("scrollcontrol = %02x",K052109_scrollctrl);
+	ui_popup("scrollcontrol = %02x",K052109_scrollctrl);
 
 if (code_pressed(KEYCODE_F))
 {
@@ -2399,7 +2399,7 @@ if (code_pressed(KEYCODE_F))
 	if (fp)
 	{
 		fwrite(K052109_ram, 0x6000, 1, fp);
-		usrintf_showmessage("saved");
+		ui_popup("saved");
 		fclose(fp);
 	}
 }
@@ -2425,7 +2425,7 @@ void K052109_set_layer_offsets(int layer, int dx, int dy)
 /***************************************************************************/
 
 static int K051960_memory_region;
-static struct GfxElement *K051960_gfx;
+static gfx_element *K051960_gfx;
 static void (*K051960_callback)(int *code,int *color,int *priority,int *shadow);
 static int K051960_romoffset;
 static int K051960_spriteflip,K051960_readroms;
@@ -2438,7 +2438,7 @@ int K051960_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int 
 		void (*callback)(int *code,int *color,int *priority,int *shadow))
 {
 	int gfx_index,i;
-	static struct GfxLayout spritelayout =
+	static gfx_layout spritelayout =
 	{
 		16,16,
 		0,				/* filled in later */
@@ -2485,7 +2485,7 @@ int K051960_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int 
 
 #if VERBOSE
 	if (!(Machine->drv->video_attributes & VIDEO_HAS_SHADOWS))
-		usrintf_showmessage("driver should use VIDEO_HAS_SHADOWS");
+		ui_popup("driver should use VIDEO_HAS_SHADOWS");
 #endif
 
 	/* prepare shadow draw table */
@@ -2522,7 +2522,7 @@ static int K051960_fetchromdata(int byte)
 	addr = (code << 7) | (off1 << 2) | byte;
 	addr &= memory_region_length(K051960_memory_region)-1;
 
-//  usrintf_showmessage("%04x: addr %06x",activecpu_get_pc(),addr);
+//  ui_popup("%04x: addr %06x",activecpu_get_pc(),addr);
 
 	return memory_region(K051960_memory_region)[addr];
 }
@@ -2582,7 +2582,7 @@ WRITE8_HANDLER( K051937_w )
 	if (offset == 0)
 	{
 
-//if (data & 0xc2) usrintf_showmessage("051937 reg 00 = %02x",data);
+//if (data & 0xc2) ui_popup("051937 reg 00 = %02x",data);
 
 		/* bit 0 is IRQ enable */
 		K051960_irq_enabled = (data & 0x01);
@@ -2603,7 +2603,7 @@ WRITE8_HANDLER( K051937_w )
 	}
 	else if (offset == 1)
 	{
-//  usrintf_showmessage("%04x: write %02x to 051937 address %x",activecpu_get_pc(),data,offset);
+//  ui_popup("%04x: write %02x to 051937 address %x",activecpu_get_pc(),data,offset);
 //logerror("%04x: write %02x to unknown 051937 address %x\n",activecpu_get_pc(),data,offset);
 	}
 	else if (offset >= 2 && offset < 5)
@@ -2612,7 +2612,7 @@ WRITE8_HANDLER( K051937_w )
 	}
 	else
 	{
-//  usrintf_showmessage("%04x: write %02x to 051937 address %x",activecpu_get_pc(),data,offset);
+//  ui_popup("%04x: write %02x to 051937 address %x",activecpu_get_pc(),data,offset);
 //logerror("%04x: write %02x to unknown 051937 address %x\n",activecpu_get_pc(),data,offset);
 	}
 }
@@ -2663,7 +2663,7 @@ WRITE16_HANDLER( K051937_word_w )
  * Note that Aliens also uses the shadow bit to select the second sprite bank.
  */
 
-void K051960_sprites_draw(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int min_priority,int max_priority)
+void K051960_sprites_draw(mame_bitmap *bitmap,const rectangle *cliprect,int min_priority,int max_priority)
 {
 #define NUM_SPRITES 128
 	int offs,pri_code;
@@ -2826,7 +2826,7 @@ if (code_pressed(KEYCODE_D))
 	if (fp)
 	{
 		fwrite(K051960_ram, 0x400, 1, fp);
-		usrintf_showmessage("saved");
+		ui_popup("saved");
 		fclose(fp);
 	}
 }
@@ -2913,19 +2913,19 @@ void K05324x_set_z_rejection(int zcode)
 #define MAX_K053245_CHIPS 2
 
 static int K053245_memory_region[MAX_K053245_CHIPS];
-static struct GfxElement *K053245_gfx[MAX_K053245_CHIPS];
+static gfx_element *K053245_gfx[MAX_K053245_CHIPS];
 static void (*K053245_callback[MAX_K053245_CHIPS])(int *code,int *color,int *priority);
 static int K053244_rombank[MAX_K053245_CHIPS];
 static int K053245_ramsize[MAX_K053245_CHIPS];
-static data16_t *K053245_ram[MAX_K053245_CHIPS], *K053245_buffer[MAX_K053245_CHIPS];
-static data8_t K053244_regs[MAX_K053245_CHIPS][0x10];
+static UINT16 *K053245_ram[MAX_K053245_CHIPS], *K053245_buffer[MAX_K053245_CHIPS];
+static UINT8 K053244_regs[MAX_K053245_CHIPS][0x10];
 static int K053245_dx[MAX_K053245_CHIPS], K053245_dy[MAX_K053245_CHIPS];
 
 int K053245_vh_start(int chip, int gfx_memory_region,int plane0,int plane1,int plane2,int plane3,
 		void (*callback)(int *code,int *color,int *priority))
 {
 	int gfx_index,i;
-	static struct GfxLayout spritelayout =
+	static gfx_layout spritelayout =
 	{
 		16,16,
 		0,				/* filled in later */
@@ -2981,7 +2981,7 @@ int K053245_vh_start(int chip, int gfx_memory_region,int plane0,int plane1,int p
 
 #if VERBOSE
 	if (!(Machine->drv->video_attributes & VIDEO_HAS_SHADOWS))
-		usrintf_showmessage("driver should use VIDEO_HAS_SHADOWS");
+		ui_popup("driver should use VIDEO_HAS_SHADOWS");
 #endif
 
 	/* prepare shadow draw table */
@@ -3075,7 +3075,7 @@ UINT8 K053244_chip_r (int chip, int offset)
 			| ((offset & 3) ^ 1);
 		addr &= memory_region_length(K053245_memory_region[chip])-1;
 
-//  usrintf_showmessage("%04x: offset %02x addr %06x",activecpu_get_pc(),offset&3,addr);
+//  ui_popup("%04x: offset %02x addr %06x",activecpu_get_pc(),offset&3,addr);
 
 		return memory_region(K053245_memory_region[chip])[addr];
 	}
@@ -3103,7 +3103,7 @@ void K053244_chip_w(int chip, int offset, int data)
 	switch(offset) {
 	case 0x05: {
 //      if (data & 0xc8)
-//          usrintf_showmessage("053244 reg 05 = %02x",data);
+//          ui_popup("053244 reg 05 = %02x",data);
 		/* bit 2 = unknown, Parodius uses it */
 		/* bit 5 = unknown, Rollergames uses it */
 //      logerror("%04x: write %02x to 053244 address 5\n",activecpu_get_pc(),data);
@@ -3184,7 +3184,7 @@ void K053244_bankselect(int chip, int bank)
  * The rest of the sprite remains normal.
  */
 
-void K053245_sprites_draw(int chip, struct mame_bitmap *bitmap,const struct rectangle *cliprect) //*
+void K053245_sprites_draw(int chip, mame_bitmap *bitmap,const rectangle *cliprect) //*
 {
 #define NUM_SPRITES 128
 	int offs,pri_code,i;
@@ -3403,7 +3403,7 @@ if (code_pressed(KEYCODE_D))
 	if (fp)
 	{
 		fwrite(K053245_buffer, 0x800, 1, fp);
-		usrintf_showmessage("saved");
+		ui_popup("saved");
 		fclose(fp);
 	}
 }
@@ -3413,7 +3413,7 @@ if (code_pressed(KEYCODE_D))
 
 /* Lethal Enforcers has 2 of these chips hooked up in parallel to give 6bpp gfx.. lets cheat a
   bit and make emulating it a little less messy by using a custom function instead */
-void K053245_sprites_draw_lethal(int chip, struct mame_bitmap *bitmap,const struct rectangle *cliprect) //*
+void K053245_sprites_draw_lethal(int chip, mame_bitmap *bitmap,const rectangle *cliprect) //*
 {
 #define NUM_SPRITES 128
 	int offs,pri_code,i;
@@ -3632,7 +3632,7 @@ if (code_pressed(KEYCODE_D))
 	if (fp)
 	{
 		fwrite(K053245_buffer, 0x800, 1, fp);
-		usrintf_showmessage("saved");
+		ui_popup("saved");
 		fclose(fp);
 	}
 }
@@ -3648,14 +3648,14 @@ if (code_pressed(KEYCODE_D))
 /***************************************************************************/
 
 static int K053247_memory_region, K053247_dx, K053247_dy, K053247_wraparound;
-static data8_t  K053246_regs[8];
-static data16_t K053247_regs[16];
-data16_t *K053247_ram=0;
-static struct GfxElement *K053247_gfx;
+static UINT8  K053246_regs[8];
+static UINT16 K053247_regs[16];
+UINT16 *K053247_ram=0;
+static gfx_element *K053247_gfx;
 static void (*K053247_callback)(int *code,int *color,int *priority);
 static int K053246_OBJCHA_line;
 
-void K053247_export_config(data16_t **ram, struct GfxElement **gfx, void (**callback)(int *, int *, int *), int *dx, int *dy)
+void K053247_export_config(UINT16 **ram, gfx_element **gfx, void (**callback)(int *, int *, int *), int *dx, int *dy)
 {
 	if(ram)
 		*ram = K053247_ram;
@@ -3687,7 +3687,7 @@ int K053247_vh_start(int gfx_memory_region, int dx, int dy, int plane0,int plane
 					 void (*callback)(int *code,int *color,int *priority))
 {
 	int gfx_index,i;
-	static struct GfxLayout spritelayout =
+	static gfx_layout spritelayout =
 	{
 		16,16,
 		0,				/* filled in later */
@@ -3736,12 +3736,12 @@ int K053247_vh_start(int gfx_memory_region, int dx, int dy, int plane0,int plane
 	if (Machine->color_depth == 32)
 	{
 		if ((Machine->drv->video_attributes & (VIDEO_HAS_SHADOWS|VIDEO_HAS_HIGHLIGHTS)) != VIDEO_HAS_SHADOWS+VIDEO_HAS_HIGHLIGHTS)
-			usrintf_showmessage("driver missing SHADOWS or HIGHLIGHTS flag");
+			ui_popup("driver missing SHADOWS or HIGHLIGHTS flag");
 	}
 	else
 	{
 		if (!(Machine->drv->video_attributes & VIDEO_HAS_SHADOWS))
-			usrintf_showmessage("driver should use VIDEO_HAS_SHADOWS");
+			ui_popup("driver should use VIDEO_HAS_SHADOWS");
 	}
 #endif
 
@@ -3779,7 +3779,7 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 {
 	int gfx_index;
 
-	static struct GfxLayout spritelayout =	/* System GX sprite layout */
+	static gfx_layout spritelayout =	/* System GX sprite layout */
 	{
 		16,16,
 		32768,				/* filled in later */
@@ -3790,7 +3790,7 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 		  10*8*9, 10*8*10, 10*8*11, 10*8*12, 10*8*13, 10*8*14, 10*8*15 },
 		16*16*5
 	};
-	static struct GfxLayout spritelayout2 =	/* Run and Gun sprite layout */
+	static gfx_layout spritelayout2 =	/* Run and Gun sprite layout */
 	{
 		16,16,
 		32768,				/* filled in later */
@@ -3800,7 +3800,7 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 		{ 0, 64, 128, 192, 256, 320, 384, 448, 512, 576, 640, 704, 768, 832, 896, 960 },
 		16*16*4
 	};
-	static struct GfxLayout spritelayout3 =	/* Lethal Enforcers II sprite layout */
+	static gfx_layout spritelayout3 =	/* Lethal Enforcers II sprite layout */
 	{
 		16,16,
 		32768,				/* filled in later */
@@ -3811,7 +3811,7 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 		  128*8, 128*9, 128*10, 128*11, 128*12, 128*13, 128*14, 128*15 },
 		128*16
 	};
-	static struct GfxLayout spritelayout4 =	/* System GX 6bpp sprite layout */
+	static gfx_layout spritelayout4 =	/* System GX 6bpp sprite layout */
 	{
 		16,16,
 		32768,				/* filled in later */
@@ -3824,7 +3824,7 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 	};
 	unsigned char *s1, *s2, *d;
 	long i, c;
-	data16_t *K055673_rom;
+	UINT16 *K055673_rom;
 
 	/* find first empty slot to decode gfx */
 	for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
@@ -3840,8 +3840,8 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 		size4 *= 4*1024*1024;
 		/* set the # of tiles based on the 4bpp section */
 		spritelayout.total = size4 / 128;
-		if (!(K055673_rom = (data16_t *)auto_malloc(size4 * 5))) return 1;
-		d = (data8_t *)K055673_rom;
+		if (!(K055673_rom = (UINT16 *)auto_malloc(size4 * 5))) return 1;
+		d = (UINT8 *)K055673_rom;
 		// now combine the graphics together to form 5bpp
 		s1 = memory_region(gfx_memory_region); // 4bpp area
 		s2 = s1 + (size4);	 // 1bpp area
@@ -3854,29 +3854,29 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 			*d++ = *s2++;
 		}
 		/* decode the graphics */
-		Machine->gfx[gfx_index] = decodegfx((data8_t *)K055673_rom, &spritelayout);
+		Machine->gfx[gfx_index] = decodegfx((UINT8 *)K055673_rom, &spritelayout);
 		break;
 	}
 	case K055673_LAYOUT_RNG:
-		K055673_rom = (data16_t *)memory_region(gfx_memory_region);
+		K055673_rom = (UINT16 *)memory_region(gfx_memory_region);
 		spritelayout2.total = memory_region_length(gfx_memory_region) / (16*16/2);
 
 		/* decode the graphics */
-		Machine->gfx[gfx_index] = decodegfx((data8_t *)K055673_rom, &spritelayout2);
+		Machine->gfx[gfx_index] = decodegfx((UINT8 *)K055673_rom, &spritelayout2);
 		break;
 	case K055673_LAYOUT_LE2:
-		K055673_rom = (data16_t *)memory_region(gfx_memory_region);
+		K055673_rom = (UINT16 *)memory_region(gfx_memory_region);
 		spritelayout3.total = memory_region_length(gfx_memory_region) / (16*16);
 
 		/* decode the graphics */
-		Machine->gfx[gfx_index] = decodegfx((data8_t *)K055673_rom, &spritelayout3);
+		Machine->gfx[gfx_index] = decodegfx((UINT8 *)K055673_rom, &spritelayout3);
 		break;
 	case K055673_LAYOUT_GX6:
-		K055673_rom = (data16_t *)memory_region(gfx_memory_region);
+		K055673_rom = (UINT16 *)memory_region(gfx_memory_region);
 		spritelayout4.total = memory_region_length(gfx_memory_region) / (16*16*6/8);
 
 		/* decode the graphics */
-		Machine->gfx[gfx_index] = decodegfx((data8_t *)K055673_rom, &spritelayout4);
+		Machine->gfx[gfx_index] = decodegfx((UINT8 *)K055673_rom, &spritelayout4);
 		break;
 	}
 
@@ -3897,7 +3897,7 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 
 #if VERBOSE
 	if (!(Machine->drv->video_attributes & VIDEO_HAS_SHADOWS))
-		usrintf_showmessage("driver should use VIDEO_HAS_SHADOWS");
+		ui_popup("driver should use VIDEO_HAS_SHADOWS");
 #endif
 
 	/* prepare shadow draw table */
@@ -3994,8 +3994,8 @@ WRITE8_HANDLER( K053247_w )
 // in this window, +0 = 32 bits from one set of ROMs, and +8 = 32 bits from another set
 READ16_HANDLER( K055673_rom_word_r )	// 5bpp
 {
-	data8_t *ROM8 = (data8_t *)memory_region(K053247_memory_region);
-	data16_t *ROM = (data16_t *)memory_region(K053247_memory_region);
+	UINT8 *ROM8 = (UINT8 *)memory_region(K053247_memory_region);
+	UINT16 *ROM = (UINT16 *)memory_region(K053247_memory_region);
 	int size4 = (memory_region_length(K053247_memory_region)/(1024*1024))/5;
 	int romofs;
 
@@ -4040,7 +4040,7 @@ READ16_HANDLER( K055673_rom_word_r )	// 5bpp
 
 READ16_HANDLER( K055673_GX6bpp_rom_word_r )
 {
-	data16_t *ROM = (data16_t *)memory_region(K053247_memory_region);
+	UINT16 *ROM = (UINT16 *)memory_region(K053247_memory_region);
 	int romofs;
 
 	romofs = K053246_regs[6]<<16 | K053246_regs[7]<<8 | K053246_regs[4];
@@ -4089,7 +4089,7 @@ READ8_HANDLER( K053246_r )
 		addr = (K053246_regs[6] << 17) | (K053246_regs[7] << 9) | (K053246_regs[4] << 1) | ((offset & 1) ^ 1);
 		addr &= memory_region_length(K053247_memory_region)-1;
 #if VERBOSE
-	usrintf_showmessage("%04x: offset %02x addr %06x",activecpu_get_pc(),offset,addr);
+	ui_popup("%04x: offset %02x addr %06x",activecpu_get_pc(),offset,addr);
 #endif
 		return memory_region(K053247_memory_region)[addr];
 	}
@@ -4174,7 +4174,7 @@ int K053246_is_IRQ_enabled(void)
  * The rest of the sprite remains normal.
  */
 
-void K053247_sprites_draw(struct mame_bitmap *bitmap,const struct rectangle *cliprect) //*
+void K053247_sprites_draw(mame_bitmap *bitmap,const rectangle *cliprect) //*
 {
 #define NUM_SPRITES 256
 
@@ -4553,7 +4553,7 @@ static int K051316_bpp[MAX_K051316];
 static void (*K051316_callback[MAX_K051316])(int *code,int *color);
 static unsigned char *K051316_ram[MAX_K051316];
 static unsigned char K051316_ctrlram[MAX_K051316][16];
-static struct tilemap *K051316_tilemap[MAX_K051316];
+static tilemap *K051316_tilemap[MAX_K051316];
 
 /***************************************************************************
 
@@ -4598,7 +4598,7 @@ int K051316_vh_start(int chip, int gfx_memory_region,int bpp,
 
 	if (bpp == 4)
 	{
-		static struct GfxLayout charlayout =
+		static gfx_layout charlayout =
 		{
 			16,16,
 			0,				/* filled in later */
@@ -4620,7 +4620,7 @@ int K051316_vh_start(int chip, int gfx_memory_region,int bpp,
 	}
 	else if (bpp == 7 || bpp == 8)
 	{
-		static struct GfxLayout charlayout =
+		static gfx_layout charlayout =
 		{
 			16,16,
 			0,				/* filled in later */
@@ -4763,7 +4763,7 @@ int K051316_rom_r(int chip, int offset)
 		if (K051316_bpp[chip] <= 4) addr /= 2;
 		addr &= memory_region_length(K051316_memory_region[chip])-1;
 
-//  usrintf_showmessage("%04x: offset %04x addr %04x",activecpu_get_pc(),offset,addr);
+//  ui_popup("%04x: offset %04x addr %04x",activecpu_get_pc(),offset,addr);
 
 		return memory_region(K051316_memory_region[chip])[addr];
 	}
@@ -4824,7 +4824,7 @@ void K051316_set_offset(int chip, int xoffs, int yoffs)
 }
 
 
-void K051316_zoom_draw(int chip, struct mame_bitmap *bitmap,const struct rectangle *cliprect,int flags,UINT32 priority)
+void K051316_zoom_draw(int chip, mame_bitmap *bitmap,const rectangle *cliprect,int flags,UINT32 priority)
 {
 	UINT32 startx,starty;
 	int incxx,incxy,incyx,incyy;
@@ -4848,7 +4848,7 @@ void K051316_zoom_draw(int chip, struct mame_bitmap *bitmap,const struct rectang
 			flags,priority);
 
 #if 0
-	usrintf_showmessage("%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+	ui_popup("%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
 			K051316_ctrlram[chip][0x00],
 			K051316_ctrlram[chip][0x01],
 			K051316_ctrlram[chip][0x02],
@@ -4868,17 +4868,17 @@ void K051316_zoom_draw(int chip, struct mame_bitmap *bitmap,const struct rectang
 #endif
 }
 
-void K051316_zoom_draw_0(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int flags,UINT32 priority)
+void K051316_zoom_draw_0(mame_bitmap *bitmap,const rectangle *cliprect,int flags,UINT32 priority)
 {
 	K051316_zoom_draw(0,bitmap,cliprect,flags,priority);
 }
 
-void K051316_zoom_draw_1(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int flags,UINT32 priority)
+void K051316_zoom_draw_1(mame_bitmap *bitmap,const rectangle *cliprect,int flags,UINT32 priority)
 {
 	K051316_zoom_draw(1,bitmap,cliprect,flags,priority);
 }
 
-void K051316_zoom_draw_2(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int flags,UINT32 priority)
+void K051316_zoom_draw_2(mame_bitmap *bitmap,const rectangle *cliprect,int flags,UINT32 priority)
 {
 	K051316_zoom_draw(2,bitmap,cliprect,flags,priority);
 }
@@ -4893,19 +4893,19 @@ void K051316_zoom_draw_2(struct mame_bitmap *bitmap,const struct rectangle *clip
 
 #define K053936_MAX_CHIPS 2
 
-data16_t *K053936_0_ctrl,*K053936_0_linectrl;
-data16_t *K053936_1_ctrl,*K053936_1_linectrl;
+UINT16 *K053936_0_ctrl,*K053936_0_linectrl;
+UINT16 *K053936_1_ctrl,*K053936_1_linectrl;
 static int K053936_offset[K053936_MAX_CHIPS][2];
 static int K053936_wraparound[K053936_MAX_CHIPS];
 
 
-static void K053936_zoom_draw(int chip,data16_t *ctrl,data16_t *linectrl,struct mame_bitmap *bitmap,const struct rectangle *cliprect,struct tilemap *tilemap,int flags,UINT32 priority)
+static void K053936_zoom_draw(int chip,UINT16 *ctrl,UINT16 *linectrl,mame_bitmap *bitmap,const rectangle *cliprect,tilemap *tmap,int flags,UINT32 priority)
 {
 	if (ctrl[0x07] & 0x0040)	/* "super" mode */
 	{
 		UINT32 startx,starty;
 		int incxx,incxy;
-		struct rectangle my_clip;
+		rectangle my_clip;
 		int y,maxy;
 
 		if ((ctrl[0x07] & 0x0002) && ctrl[0x09])	/* wrong, but fixes glfgreat */
@@ -4935,7 +4935,7 @@ static void K053936_zoom_draw(int chip,data16_t *ctrl,data16_t *linectrl,struct 
 
 		while (y <= maxy)
 		{
-			data16_t *lineaddr = linectrl + 4*((y - K053936_offset[chip][1]) & 0x1ff);
+			UINT16 *lineaddr = linectrl + 4*((y - K053936_offset[chip][1]) & 0x1ff);
 			my_clip.min_y = my_clip.max_y = y;
 
 			startx = 256 * (INT16)(lineaddr[0] + ctrl[0x00]);
@@ -4949,7 +4949,7 @@ static void K053936_zoom_draw(int chip,data16_t *ctrl,data16_t *linectrl,struct 
 			startx -= K053936_offset[chip][0] * incxx;
 			starty -= K053936_offset[chip][0] * incxy;
 
-			tilemap_draw_roz(bitmap,&my_clip,tilemap,startx << 5,starty << 5,
+			tilemap_draw_roz(bitmap,&my_clip,tmap,startx << 5,starty << 5,
 					incxx << 5,incxy << 5,0,0,
 					K053936_wraparound[chip],
 					flags,priority);
@@ -4978,7 +4978,7 @@ static void K053936_zoom_draw(int chip,data16_t *ctrl,data16_t *linectrl,struct 
 		startx -= K053936_offset[chip][0] * incxx;
 		starty -= K053936_offset[chip][0] * incxy;
 
-		tilemap_draw_roz(bitmap,cliprect,tilemap,startx << 5,starty << 5,
+		tilemap_draw_roz(bitmap,cliprect,tmap,startx << 5,starty << 5,
 				incxx << 5,incxy << 5,incyx << 5,incyy << 5,
 				K053936_wraparound[chip],
 				flags,priority);
@@ -4986,7 +4986,7 @@ static void K053936_zoom_draw(int chip,data16_t *ctrl,data16_t *linectrl,struct 
 
 #if 0
 if (code_pressed(KEYCODE_D))
-	usrintf_showmessage("%04x %04x %04x %04x\n%04x %04x %04x %04x\n%04x %04x %04x %04x\n%04x %04x %04x %04x",
+	ui_popup("%04x %04x %04x %04x\n%04x %04x %04x %04x\n%04x %04x %04x %04x\n%04x %04x %04x %04x",
 			ctrl[0x00],
 			ctrl[0x01],
 			ctrl[0x02],
@@ -5007,14 +5007,14 @@ if (code_pressed(KEYCODE_D))
 }
 
 
-void K053936_0_zoom_draw(struct mame_bitmap *bitmap,const struct rectangle *cliprect,struct tilemap *tilemap,int flags,UINT32 priority)
+void K053936_0_zoom_draw(mame_bitmap *bitmap,const rectangle *cliprect,tilemap *tmap,int flags,UINT32 priority)
 {
-	K053936_zoom_draw(0,K053936_0_ctrl,K053936_0_linectrl,bitmap,cliprect,tilemap,flags,priority);
+	K053936_zoom_draw(0,K053936_0_ctrl,K053936_0_linectrl,bitmap,cliprect,tmap,flags,priority);
 }
 
-void K053936_1_zoom_draw(struct mame_bitmap *bitmap,const struct rectangle *cliprect,struct tilemap *tilemap,int flags,UINT32 priority)
+void K053936_1_zoom_draw(mame_bitmap *bitmap,const rectangle *cliprect,tilemap *tmap,int flags,UINT32 priority)
 {
-	K053936_zoom_draw(1,K053936_1_ctrl,K053936_1_linectrl,bitmap,cliprect,tilemap,flags,priority);
+	K053936_zoom_draw(1,K053936_1_ctrl,K053936_1_linectrl,bitmap,cliprect,tmap,flags,priority);
 }
 
 
@@ -5040,7 +5040,7 @@ void K053936_set_offset(int chip, int xoffs, int yoffs)
 
 static unsigned char K053251_ram[16];
 static int K053251_palette_index[5];
-static struct tilemap *K053251_tilemaps[5];
+static tilemap *K053251_tilemaps[5];
 static int K053251_tilemaps_set;
 
 static void K053251_reset_indexes(void)
@@ -5062,7 +5062,7 @@ int K053251_vh_start(void)
 	return 0;
 }
 
-void K053251_set_tilemaps(struct tilemap *ci0,struct tilemap *ci1,struct tilemap *ci2,struct tilemap *ci3,struct tilemap *ci4)
+void K053251_set_tilemaps(tilemap *ci0,tilemap *ci1,tilemap *ci2,tilemap *ci3,tilemap *ci4)
 {
 	K053251_tilemaps[0] = ci0;
 	K053251_tilemaps[1] = ci1;
@@ -5310,28 +5310,28 @@ READ8_HANDLER( K051733_r )
 /*                                                                         */
 /***************************************************************************/
 
-static struct tilemap *K054157_tilemap[4], *K054157_cur_tilemap;
-static struct tilemap *K054157_tilemapb[4], *K054157_tilemaps[4];
+static tilemap *K054157_tilemap[4], *K054157_cur_tilemap;
+static tilemap *K054157_tilemapb[4], *K054157_tilemaps[4];
 
-static data16_t K054157_regs[0x20], K054157_regsb[4];
+static UINT16 K054157_regs[0x20], K054157_regsb[4];
 static void (*K054157_linescroll_updater[4])(int layer);
 
 static int K054157_cur_rombank, K054157_romnbbanks;
 static int K054157_uses_tile_banks, K054157_cur_tile_bank;
 static int K054157_gfxnum, K054157_memory_region;
 static int K054157_cur_offset;
-static data16_t *K054157_rambase, *K054157_cur_spbase, *K054157_cur_rambase;
-static data8_t *K054157_rombase;
-static data16_t *K054157_rambasel[8];
+static UINT16 *K054157_rambase, *K054157_cur_spbase, *K054157_cur_rambase;
+static UINT8 *K054157_rombase;
+static UINT16 *K054157_rambasel[8];
 static int K054157_tilemapl[8], K054157_offsetl[8];
 
 static void (*K054157_callback)(int, int *, int *);
 
 INLINE void K054157_get_tile_info(int tile_index,int layer)
 {
-	data16_t *addr;
+	UINT16 *addr;
 	int attr, code;
-	data16_t *lbase = K054157_rambase + 0x2000*layer;
+	UINT16 *lbase = K054157_rambase + 0x2000*layer;
 	if(tile_index < 64*32)
 		addr = lbase + (tile_index<<1);
 	else
@@ -5359,7 +5359,7 @@ static void K054157_lsu_1_256(int layer)
 	int y;
 	int basey = K054157_regs[0x10|layer];
 
-	data16_t *baseram = K054157_cur_spbase + layer*0x400;
+	UINT16 *baseram = K054157_cur_spbase + layer*0x400;
 	for(y=0; y<256; y++) {
 		int offset = (((basey + y) & 0x1ff) << 1) | 1;
 		tilemap_set_scrollx(K054157_tilemap[layer], y, baseram[offset]);
@@ -5371,7 +5371,7 @@ static void K054157_lsu_1_512(int layer)
 	int y;
 	int basey = K054157_regs[0x10|layer];
 
-	data16_t *baseram = K054157_cur_spbase + layer*0x400;
+	UINT16 *baseram = K054157_cur_spbase + layer*0x400;
 	for(y=0; y<512; y++) {
 		int offset = (((basey + y) & 0x1ff) << 1) | 1;
 		tilemap_set_scrollx(K054157_tilemap[layer], y, baseram[offset]);
@@ -5383,7 +5383,7 @@ static void K054157_lsu_8_256(int layer)
 	int y;
 	int basey = K054157_regs[0x10|layer];
 
-	data16_t *baseram = K054157_cur_spbase + layer*0x400;
+	UINT16 *baseram = K054157_cur_spbase + layer*0x400;
 	for(y=0; y<256; y++) {
 		int offset = (((basey + y) & 0x1f8) << 1) | 1;
 		tilemap_set_scrollx(K054157_tilemap[layer], y, baseram[offset]);
@@ -5395,7 +5395,7 @@ static void K054157_lsu_8_512(int layer)
 	int y;
 	int basey = K054157_regs[0x10|layer];
 
-	data16_t *baseram = K054157_cur_spbase + layer*0x400;
+	UINT16 *baseram = K054157_cur_spbase + layer*0x400;
 	for(y=0; y<512; y++) {
 		int offset = (((basey + y) & 0x1f8) << 1) | 1;
 		tilemap_set_scrollx(K054157_tilemap[layer], y, baseram[offset]);
@@ -5522,14 +5522,14 @@ static void K054157_change_rombank(void)
 		bank = K054157_regs[0x1a] | (K054157_regs[0x1b] << 16);
 
 	K054157_cur_rombank = bank % K054157_romnbbanks;
-//usrintf_showmessage("%04x: %04x %04x %04x",activecpu_get_pc(),K054157_regs[0x1a],K054157_regs[0x1b],K054157_cur_rombank);
+//ui_popup("%04x: %04x %04x %04x",activecpu_get_pc(),K054157_regs[0x1a],K054157_regs[0x1b],K054157_cur_rombank);
 }
 
 int K054157_vh_start(int gfx_memory_region, int big, int (*scrolld)[4][2], int plane0,int plane1,int plane2,int plane3, void (*callback)(int, int *, int *))
 {
 	int gfx_index;
 	int i;
-	static struct GfxLayout charlayout =
+	static gfx_layout charlayout =
 	{
 		8, 8,
 		0,				/* filled in later */
@@ -5680,7 +5680,7 @@ READ16_HANDLER( K054157_rom_word_r )
 {
 	int addr = 0x2000*K054157_cur_rombank + 2*offset;
 
-//  usrintf_showmessage("%04x: addr %06x",activecpu_get_pc(),addr);
+//  ui_popup("%04x: addr %06x",activecpu_get_pc(),addr);
 
 	return K054157_rombase[addr+1] | (K054157_rombase[addr] << 8);
 }
@@ -5689,15 +5689,15 @@ READ16_HANDLER( K054157_rom_word_8000_r )
 {
 	int addr = 0x8000*K054157_cur_rombank + 2*offset;
 
-//  usrintf_showmessage("%04x: addr %06x",activecpu_get_pc(),addr);
+//  ui_popup("%04x: addr %06x",activecpu_get_pc(),addr);
 
 	return K054157_rombase[addr+1] | (K054157_rombase[addr] << 8);
 }
 
 WRITE16_HANDLER( K054157_ram_word_w )
 {
-	data16_t *adr = K054157_cur_rambase + offset;
-	data16_t old = *adr;
+	UINT16 *adr = K054157_cur_rambase + offset;
+	UINT16 old = *adr;
 
 	COMBINE_DATA(adr);
 	if(*adr != old && K054157_cur_tilemap)
@@ -5706,8 +5706,8 @@ WRITE16_HANDLER( K054157_ram_word_w )
 
 WRITE16_HANDLER( K054157_ram_half_word_w )
 {
-	data16_t *adr = K054157_cur_rambase + (((offset << 1) & 0xffe) | 1);
-	data16_t old = *adr;
+	UINT16 *adr = K054157_cur_rambase + (((offset << 1) & 0xffe) | 1);
+	UINT16 old = *adr;
 
 	COMBINE_DATA(adr);
 	if(*adr != old)
@@ -5776,7 +5776,7 @@ void K054157_tilemap_update(void)
 	}
 }
 
-void K054157_tilemap_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int num, int flags, UINT32 priority)
+void K054157_tilemap_draw(mame_bitmap *bitmap, const rectangle *cliprect, int num, int flags, UINT32 priority)
 {
 	tilemap_draw(bitmap,cliprect, K054157_tilemap[num], flags, priority);
 }
@@ -5829,14 +5829,14 @@ void K054157_set_tile_bank(int bank)
 #define K056832_PAGE_WIDTH  (K056832_PAGE_COLS*8)
 #define K056832_PAGE_COUNT 16
 
-static struct tilemap *K056832_tilemap[K056832_PAGE_COUNT];
-static struct mame_bitmap *K056832_pixmap[K056832_PAGE_COUNT];
+static tilemap *K056832_tilemap[K056832_PAGE_COUNT];
+static mame_bitmap *K056832_pixmap[K056832_PAGE_COUNT];
 
-static data16_t K056832_regs[0x20];	// 157/832 regs group 1
-static data16_t K056832_regsb[4];	// 157/832 regs group 2, board dependent
+static UINT16 K056832_regs[0x20];	// 157/832 regs group 1
+static UINT16 K056832_regsb[4];	// 157/832 regs group 2, board dependent
 
-static data8_t *K056832_rombase;	// pointer to tile gfx data
-data16_t *K056832_videoram;
+static UINT8 *K056832_rombase;	// pointer to tile gfx data
+UINT16 *K056832_videoram;
 static int K056832_NumGfxBanks;		// depends on size of graphics ROMs
 static int K056832_CurGfxBank;		// cached info for K056832_regs[0x1a]
 static int K056832_gfxnum;			// graphics element index for unpacked tiles
@@ -5992,7 +5992,7 @@ INLINE void K056832_get_tile_info( int tile_index, int pageIndex )
 
 	struct K056832_SHIFTMASKS *smptr;
 	int layer, flip, fbits, attr, code;
-	data16_t *pMem;
+	UINT16 *pMem;
 
 	pMem  = &K056832_videoram[(pageIndex<<12)+(tile_index<<1)];
 
@@ -6102,10 +6102,10 @@ void K056832_set_tile_bank(int bank)
 
 int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][2], void (*callback)(int, int *, int *), int djmain_hack)
 {
-	struct tilemap *tilemap;
+	tilemap *tmap;
 	int gfx_index;
 	int i;
-	struct GfxLayout charlayout8 =
+	gfx_layout charlayout8 =
 	{
 		8, 8,
 		0, /* filled in later */
@@ -6115,7 +6115,7 @@ int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][
 		{ 0, 8*8, 8*8*2, 8*8*3, 8*8*4, 8*8*5, 8*8*6, 8*8*7 },
 		8*8*8
 	};
-	struct GfxLayout charlayout8le =
+	gfx_layout charlayout8le =
 	{
 		8, 8,
 		0,
@@ -6126,7 +6126,7 @@ int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][
 		{ 0*8*4, 1*8*4, 2*8*4, 3*8*4, 4*8*4, 5*8*4, 6*8*4, 7*8*4 },
 		8*8*4
 	};
-	struct GfxLayout charlayout6 =
+	gfx_layout charlayout6 =
 	{
 		8, 8,
 		0, /* filled in later */
@@ -6136,7 +6136,7 @@ int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][
 		{ 0, 6*8, 6*8*2, 6*8*3, 6*8*4, 6*8*5, 6*8*6, 6*8*7 },
 		8*8*6
 	};
-	struct GfxLayout charlayout5 =
+	gfx_layout charlayout5 =
 	{
 		8, 8,
 		0, /* filled in later */
@@ -6146,7 +6146,7 @@ int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][
 		{ 0, 5*8, 5*8*2, 5*8*3, 5*8*4, 5*8*5, 5*8*6, 5*8*7 },
 		8*8*5
 	};
-	struct GfxLayout charlayout4 =
+	gfx_layout charlayout4 =
 	{
 		8, 8,
 		0,
@@ -6156,7 +6156,7 @@ int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][
 		{ 0*8*4, 1*8*4, 2*8*4, 3*8*4, 4*8*4, 5*8*4, 6*8*4, 7*8*4 },
 		8*8*4
 	};
-	static struct GfxLayout charlayout4dj =
+	static gfx_layout charlayout4dj =
 	{
 		8, 8,
 		0,				/* filled in later */
@@ -6305,11 +6305,11 @@ int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][
 
 	for (i=0; i<K056832_PAGE_COUNT; i++)
 	{
-		if (!(tilemap = K056832_tilemap[i])) return 1;
+		if (!(tmap = K056832_tilemap[i])) return 1;
 
-		K056832_pixmap[i] = tilemap_get_pixmap(tilemap);
+		K056832_pixmap[i] = tilemap_get_pixmap(tmap);
 
-		tilemap_set_transparent_pen(tilemap, 0);
+		tilemap_set_transparent_pen(tmap, 0);
 	}
 
 	memset(K056832_videoram, 0x00, 0x20000);
@@ -6348,10 +6348,10 @@ void K056832_SetExtLinescroll(void)
 /* generic helper routine for ROM checksumming */
 static int K056832_rom_read_b(int offset, int blksize, int blksize2, int zerosec)
 {
-	data8_t *rombase;
+	UINT8 *rombase;
 	int base, ret;
 
-	rombase = (data8_t *)memory_region(K056832_memory_region);
+	rombase = (UINT8 *)memory_region(K056832_memory_region);
 
 	if ((K056832_rom_half) && (zerosec))
 	{
@@ -6456,7 +6456,7 @@ READ32_HANDLER( K056832_6bpp_rom_long_r )
 READ16_HANDLER( K056832_rom_word_r )
 {
 	int ofs16, ofs8;
-	data8_t *rombase;
+	UINT8 *rombase;
 	int ret;
 
 	ofs16 = (offset / 8)*5;
@@ -6469,7 +6469,7 @@ READ16_HANDLER( K056832_rom_word_r )
 	{
 		K056832_rombase = memory_region(K056832_memory_region);
 	}
-	rombase = (data8_t *)K056832_rombase;
+	rombase = (UINT8 *)K056832_rombase;
 
 	ret = (rombase[ofs8+4]<<8);
 	if ((offset % 8) >= 4)
@@ -6484,9 +6484,93 @@ READ16_HANDLER( K056832_rom_word_r )
 	return ret;
 }
 
+// data is arranged like this:
+// 0000 1111 22 0000 1111 22
+READ16_HANDLER( K056832_mw_rom_word_r )
+{
+	int bank = 10240*K056832_CurGfxBank;
+	int addr;
+
+	if (!K056832_rombase)
+	{
+		K056832_rombase = memory_region(K056832_memory_region);
+	}
+
+	if (K056832_regsb[2] & 0x8)
+	{
+		// we want only the 2s
+		int bit;
+		int res, temp;
+
+		bit = offset % 4;
+		addr = (offset / 4) * 5;
+
+		temp = K056832_rombase[addr+4+bank];
+
+		switch (bit)
+		{
+			case 0:
+				res = (temp & 0x80) << 5;
+				res |= ((temp & 0x40) >> 2);
+				break;
+
+			case 1:
+				res = (temp & 0x20) << 7;
+				res |= (temp & 0x10);
+				break;
+
+			case 2:
+				res = (temp & 0x08) << 9;
+				res |= ((temp & 0x04) << 2);
+				break;
+
+			case 3:
+				res = (temp & 0x02) << 11;
+				res |= ((temp & 0x01) << 4);
+				break;
+		}
+
+		return res;
+	}
+	else
+	{
+		// we want only the 0s and 1s.
+
+		addr = (offset>>1) * 5;
+
+		if (offset & 1)
+		{
+			addr += 2;
+		}
+
+		addr += bank;
+
+		return K056832_rombase[addr+1] | (K056832_rombase[addr] << 8);
+	}
+
+	return 0;
+}
+
+READ16_HANDLER( K056832_bishi_rom_word_r )
+{
+	int addr = 0x4000*K056832_CurGfxBank+offset;
+
+	if (!K056832_rombase)
+	{
+		K056832_rombase = memory_region(K056832_memory_region);
+	}
+
+	return K056832_rombase[addr+2] | (K056832_rombase[addr] << 8);
+}
+
 READ16_HANDLER( K056832_old_rom_word_r )
 {
-	int addr = 0x2000*K056832_CurGfxBank + 2*offset;
+	int addr = 0x2000*K056832_CurGfxBank + (2*offset);
+
+	if (!K056832_rombase)
+	{
+		K056832_rombase = memory_region(K056832_memory_region);
+	}
 
 	return K056832_rombase[addr+1] | (K056832_rombase[addr] << 8);
 }
@@ -6513,7 +6597,7 @@ READ16_HANDLER( K056832_ram_half_word_r )
 
 READ32_HANDLER( K056832_ram_long_r )
 {
-	data16_t *pMem = &K056832_videoram[K056832_SelectedPagex4096+offset*2];
+	UINT16 *pMem = &K056832_videoram[K056832_SelectedPagex4096+offset*2];
 
 	// reading from tile RAM resets the ROM readback "half" offset
 	K056832_rom_half = 0;
@@ -6524,35 +6608,35 @@ READ32_HANDLER( K056832_ram_long_r )
 /* special 8-bit handlers for Lethal Enforcers */
 READ8_HANDLER( K056832_ram_code_lo_r )
 {
-	data16_t *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)+1];
+	UINT16 *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)+1];
 
 	return *adr & 0xff;
 }
 
 READ8_HANDLER( K056832_ram_code_hi_r )
 {
-	data16_t *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)+1];
+	UINT16 *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)+1];
 
 	return *adr>>8;
 }
 
 READ8_HANDLER( K056832_ram_attr_lo_r )
 {
-	data16_t *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)];
+	UINT16 *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)];
 
 	return *adr & 0xff;
 }
 
 READ8_HANDLER( K056832_ram_attr_hi_r )
 {
-	data16_t *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)];
+	UINT16 *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)];
 
 	return *adr>>8;
 }
 
 WRITE8_HANDLER( K056832_ram_code_lo_w )
 {
-	data16_t *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)+1];
+	UINT16 *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)+1];
 
 	*adr &= 0xff00;
 	*adr |= data;
@@ -6568,7 +6652,7 @@ WRITE8_HANDLER( K056832_ram_code_lo_w )
 
 WRITE8_HANDLER( K056832_ram_code_hi_w )
 {
-	data16_t *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)+1];
+	UINT16 *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)+1];
 
 	*adr &= 0x00ff;
 	*adr |= data<<8;
@@ -6584,7 +6668,7 @@ WRITE8_HANDLER( K056832_ram_code_hi_w )
 
 WRITE8_HANDLER( K056832_ram_attr_lo_w )
 {
-	data16_t *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)];
+	UINT16 *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)];
 
 	*adr &= 0xff00;
 	*adr |= data;
@@ -6600,7 +6684,7 @@ WRITE8_HANDLER( K056832_ram_attr_lo_w )
 
 WRITE8_HANDLER( K056832_ram_attr_hi_w )
 {
-	data16_t *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)];
+	UINT16 *adr = &K056832_videoram[K056832_SelectedPagex4096+(offset*2)];
 
 	*adr &= 0x00ff;
 	*adr |= data<<8;
@@ -6616,8 +6700,8 @@ WRITE8_HANDLER( K056832_ram_attr_hi_w )
 
 WRITE16_HANDLER( K056832_ram_word_w )
 {
-	data16_t *tile_ptr;
-	data16_t old_mask, old_data;
+	UINT16 *tile_ptr;
+	UINT16 old_mask, old_data;
 
 	tile_ptr = &K056832_videoram[K056832_SelectedPagex4096+offset];
 	old_mask = mem_mask;
@@ -6639,8 +6723,8 @@ WRITE16_HANDLER( K056832_ram_word_w )
 
 WRITE16_HANDLER( K056832_ram_half_word_w )
 {
-	data16_t *adr = &K056832_videoram[K056832_SelectedPagex4096+(((offset << 1) & 0xffe) | 1)];
-	data16_t old = *adr;
+	UINT16 *adr = &K056832_videoram[K056832_SelectedPagex4096+(((offset << 1) & 0xffe) | 1)];
+	UINT16 old = *adr;
 
 	COMBINE_DATA(adr);
 	if(*adr != old)
@@ -6658,13 +6742,13 @@ WRITE16_HANDLER( K056832_ram_half_word_w )
 
 WRITE32_HANDLER( K056832_ram_long_w )
 {
-	data16_t *tile_ptr;
-	data32_t old_mask, old_data;
+	UINT16 *tile_ptr;
+	UINT32 old_mask, old_data;
 
 	tile_ptr = &K056832_videoram[K056832_SelectedPagex4096+offset*2];
 	old_mask = mem_mask;
 	mem_mask = ~mem_mask;
-	old_data = (data32_t)tile_ptr[0]<<16 | (data32_t)tile_ptr[1];
+	old_data = (UINT32)tile_ptr[0]<<16 | (UINT32)tile_ptr[1];
 	data = (data & mem_mask) | (old_data & old_mask);
 
 	if (data != old_data)
@@ -6848,7 +6932,7 @@ WRITE32_HANDLER( K056832_b_long_w )
 	}
 }
 
-static int K056832_update_linemap(struct mame_bitmap *bitmap, int page, int flags)
+static int K056832_update_linemap(mame_bitmap *bitmap, int page, int flags)
 {
 #define LINE_WIDTH 512
 
@@ -6857,11 +6941,11 @@ static int K056832_update_linemap(struct mame_bitmap *bitmap, int page, int flag
 	{ pen += basepen; xpr_ptr[count+N] = TILE_FLAG_FG_OPAQUE; dst_ptr[count+N] = pen; } else \
 	{ xpr_ptr[count+N] = 0; }
 
-	struct rectangle zerorect;
-	struct tilemap *tilemap;
-	struct mame_bitmap *pixmap, *xprmap;
+	rectangle zerorect;
+	tilemap *tmap;
+	mame_bitmap *pixmap, *xprmap;
 	UINT8 *xprdata;
-	const struct GfxElement *src_gfx;
+	const gfx_element *src_gfx;
 
 	UINT32 *dirty;
 	int all_dirty, line;
@@ -6880,10 +6964,10 @@ static int K056832_update_linemap(struct mame_bitmap *bitmap, int page, int flag
 	if (K056832_PageTileMode[page]) return(0);
 	if (!K056832_linemap_enabled) return(1);
 
-	tilemap = K056832_tilemap[page];
+	tmap = K056832_tilemap[page];
 	pixmap  = K056832_pixmap[page];
-	xprmap  = tilemap_get_transparency_bitmap(tilemap);
-	xprdata = tilemap_get_transparency_data(tilemap);
+	xprmap  = tilemap_get_transparency_bitmap(tmap);
+	xprdata = tilemap_get_transparency_data(tmap);
 
 	dirty = K056832_LineDirty[page];
 	all_dirty = K056832_AllLinesDirty[page];
@@ -6895,8 +6979,8 @@ static int K056832_update_linemap(struct mame_bitmap *bitmap, int page, int flag
 
 		// force tilemap into a clean, static state
 		// *really ugly but it minimizes alteration to tilemap.c
-		memset (&zerorect, 0, sizeof(struct rectangle));	// zero dimension
-		tilemap_draw(bitmap, &zerorect, tilemap, 0, 0);	// dummy call to reset tile_dirty_map
+		memset (&zerorect, 0, sizeof(rectangle));	// zero dimension
+		tilemap_draw(bitmap, &zerorect, tmap, 0, 0);	// dummy call to reset tile_dirty_map
 		fillbitmap(xprmap, 0, 0);						// reset pixel transparency_bitmap;
 		memset(xprdata, TILE_FLAG_FG_OPAQUE, 0x800);	// reset tile transparency_data;
 	}
@@ -6953,7 +7037,7 @@ static int K056832_update_linemap(struct mame_bitmap *bitmap, int page, int flag
 #undef DRAW_PIX
 }
 
-void K056832_tilemap_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int layer, int flags, UINT32 priority)
+void K056832_tilemap_draw(mame_bitmap *bitmap, const rectangle *cliprect, int layer, int flags, UINT32 priority)
 {
 	static int last_colorbase[K056832_PAGE_COUNT];
 
@@ -6965,10 +7049,10 @@ void K056832_tilemap_draw(struct mame_bitmap *bitmap, const struct rectangle *cl
 	int pageIndex, flipx, flipy, corr, r, c;
 	int cminy, cmaxy, cminx, cmaxx;
 	int dminy, dmaxy, dminx, dmaxx;
-	struct rectangle drawrect;
-	struct tilemap *tilemap;
-	data16_t *pScrollData;
-	data16_t ram16[2];
+	rectangle drawrect;
+	tilemap *tmap;
+	UINT16 *pScrollData;
+	UINT16 ram16[2];
 
 	int rowstart = K056832_Y[layer];
 	int colstart = K056832_X[layer];
@@ -7153,8 +7237,8 @@ void K056832_tilemap_draw(struct mame_bitmap *bitmap, const struct rectangle *cl
 
 		if (K056832_update_linemap(bitmap, pageIndex, flags)) continue;
 
-		tilemap = K056832_tilemap[pageIndex];
-		tilemap_set_scrolly(tilemap, 0, ay);
+		tmap = K056832_tilemap[pageIndex];
+		tilemap_set_scrolly(tmap, 0, ay);
 
 		last_dx = 0x100000;
 		last_visible = 0;
@@ -7221,10 +7305,10 @@ void K056832_tilemap_draw(struct mame_bitmap *bitmap, const struct rectangle *cl
 			drawrect.min_x = (dminx < cminx ) ? cminx : dminx;
 			drawrect.max_x = (dmaxx > cmaxx ) ? cmaxx : dmaxx;
 
-			tilemap_set_scrollx(tilemap, 0, dx);
+			tilemap_set_scrollx(tmap, 0, dx);
 
 			LINE_SHORTCIRCUIT:
-			tilemap_draw(bitmap, &drawrect, tilemap, flags, priority);
+			tilemap_draw(bitmap, &drawrect, tmap, flags, priority);
 
 		} // end of line loop
 	} // end of column loop
@@ -7234,7 +7318,7 @@ void K056832_tilemap_draw(struct mame_bitmap *bitmap, const struct rectangle *cl
 
 } // end of function
 
-void K056832_tilemap_draw_dj(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int layer, int flags, UINT32 priority) //*
+void K056832_tilemap_draw_dj(mame_bitmap *bitmap, const rectangle *cliprect, int layer, int flags, UINT32 priority) //*
 {
 	static int last_colorbase[K056832_PAGE_COUNT];
 
@@ -7246,10 +7330,10 @@ void K056832_tilemap_draw_dj(struct mame_bitmap *bitmap, const struct rectangle 
 	int pageIndex, flipx, flipy, corr, r, c;
 	int cminy, cmaxy, cminx, cmaxx;
 	int dminy, dmaxy, dminx, dmaxx;
-	struct rectangle drawrect;
-	struct tilemap *tilemap;
-	data16_t *pScrollData;
-	data16_t ram16[2];
+	rectangle drawrect;
+	tilemap *tmap;
+	UINT16 *pScrollData;
+	UINT16 ram16[2];
 
 	int rowstart = K056832_Y[layer];
 	int colstart = K056832_X[layer];
@@ -7410,8 +7494,8 @@ void K056832_tilemap_draw_dj(struct mame_bitmap *bitmap, const struct rectangle 
 
 		if (K056832_update_linemap(bitmap, pageIndex, flags)) continue;
 
-		tilemap = K056832_tilemap[pageIndex];
-		tilemap_set_scrolly(tilemap, 0, ay);
+		tmap = K056832_tilemap[pageIndex];
+		tilemap_set_scrolly(tmap, 0, ay);
 
 		last_dx = 0x100000;
 		last_visible = 0;
@@ -7478,10 +7562,10 @@ void K056832_tilemap_draw_dj(struct mame_bitmap *bitmap, const struct rectangle 
 			drawrect.min_x = (dminx < cminx ) ? cminx : dminx;
 			drawrect.max_x = (dmaxx > cmaxx ) ? cmaxx : dmaxx;
 
-			tilemap_set_scrollx(tilemap, 0, dx);
+			tilemap_set_scrollx(tmap, 0, dx);
 
 			LINE_SHORTCIRCUIT:
-			tilemap_draw(bitmap, &drawrect, tilemap, flags, priority);
+			tilemap_draw(bitmap, &drawrect, tmap, flags, priority);
 
 		} // end of line loop
 	} // end of column loop
@@ -7550,16 +7634,16 @@ int K056832_read_register(int regnum)
 /* K055555 5-bit-per-pixel priority encoder */
 /* This device has 48 8-bit-wide registers */
 
-static data8_t k55555_regs[128];
+static UINT8 k55555_regs[128];
 
 void K055555_vh_start(void)
 {
 	state_save_register_UINT8("K055555", 0, "registers", k55555_regs, 64);
 
-	memset(k55555_regs, 0, 64*sizeof(data8_t));
+	memset(k55555_regs, 0, 64*sizeof(UINT8));
 }
 
-void K055555_write_reg(data8_t regnum, data8_t regdat)
+void K055555_write_reg(UINT8 regnum, UINT8 regdat)
 {
 	#if VERBOSE
 	static const char *rnames[46] =
@@ -7583,7 +7667,7 @@ void K055555_write_reg(data8_t regnum, data8_t regdat)
 
 WRITE32_HANDLER( K055555_long_w )
 {
-	data8_t regnum, regdat;
+	UINT8 regnum, regdat;
 
 	if (!(mem_mask & 0xff000000))
 	{
@@ -7637,7 +7721,7 @@ int K055555_get_palette_index(int idx)
 /*                                                                         */
 /***************************************************************************/
 
-static data16_t k54338_regs[32];
+static UINT16 k54338_regs[32];
 static int K054338_shdRGB[9];
 static int K054338_alphainverted;
 
@@ -7647,7 +7731,7 @@ static int K054338_alphainverted;
 // register-handling shell.
 int K054338_vh_start(void)
 {
-	memset(k54338_regs, 0, sizeof(data16_t)*32);
+	memset(k54338_regs, 0, sizeof(UINT16)*32);
 	memset(K054338_shdRGB, 0, sizeof(int)*9);
 	K054338_alphainverted = 1;
 
@@ -7692,7 +7776,7 @@ void K054338_update_all_shadows(void)
 }
 
 // K054338 BG color fill
-void K054338_fill_solid_bg(struct mame_bitmap *bitmap)
+void K054338_fill_solid_bg(mame_bitmap *bitmap)
 {
 	UINT32 bgcolor;
 	UINT32 *pLine;
@@ -7712,7 +7796,7 @@ void K054338_fill_solid_bg(struct mame_bitmap *bitmap)
 }
 
 // Unified K054338/K055555 BG color fill
-void K054338_fill_backcolor(struct mame_bitmap *bitmap, int mode) // (see p.67)
+void K054338_fill_backcolor(mame_bitmap *bitmap, int mode) // (see p.67)
 {
 	int clipx, clipy, clipw, cliph, i, dst_pitch;
 	int BGC_CBLK, BGC_SET;
@@ -7795,7 +7879,7 @@ void K054338_fill_backcolor(struct mame_bitmap *bitmap, int mode) // (see p.67)
 // addition blending unimplemented (requires major changes to drawgfx and tilemap.c)
 int K054338_set_alpha_level(int pblend)
 {
-	data16_t *regs;
+	UINT16 *regs;
 	int ctrl, mixpri, mixset, mixlv;
 
 	if (pblend <= 0 || pblend > 3)
@@ -7834,7 +7918,7 @@ int K054338_set_alpha_level(int pblend)
 		alpha_set_level(mixlv);
 
 		#if VERBOSE
-			usrintf_showmessage("MIXSET%1d %s addition mode: %02x",pblend,(mixpri)?"dst":"src",mixset&0x1f);
+			ui_popup("MIXSET%1d %s addition mode: %02x",pblend,(mixpri)?"dst":"src",mixset&0x1f);
 		#endif
 	}
 
@@ -7864,10 +7948,10 @@ static struct
 	int chips;
 	struct K053250_CHIPTAG
 	{
-		data8_t regs[8];
-		data8_t *base;
-		data16_t *ram, *rammax;
-		data16_t *buffer[2];
+		UINT8 regs[8];
+		UINT8 *base;
+		UINT16 *ram, *rammax;
+		UINT16 *buffer[2];
 		UINT32 rommask;
 		int page[2];
 		int frame, offsx, offsy;
@@ -7921,7 +8005,7 @@ void K053250_unpack_pixels(int region)
 
 int K053250_vh_start(int chips, int *region)
 {
-	data16_t *ram;
+	UINT16 *ram;
 	int chip;
 
 	K053250_info.chips = chips;
@@ -8046,7 +8130,7 @@ READ16_HANDLER( K053250_1_rom_r )
 	}
 
 static void K053250_pdraw_scanline8(
-		struct mame_bitmap *bitmap,int x,int y,int length,
+		mame_bitmap *bitmap,int x,int y,int length,
 		const UINT8 *src,pen_t *pens,int transparent_pen,UINT32 orient,int pri)
 {
 	/* 8bpp destination */
@@ -8219,13 +8303,13 @@ static void K053250_pdraw_scanline8(
 	}
 }
 
-void K053250_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int chip, int colorbase, int pri)
+void K053250_draw(mame_bitmap *bitmap, const rectangle *cliprect, int chip, int colorbase, int pri)
 {
 	static int pmode[2] = {-1,-1};
 	static int kc=-1, kk=0, kxx=-105, kyy=0;
 
-	const struct rectangle area = Machine->visible_area;
-	data16_t *line;
+	const rectangle area = Machine->visible_area;
+	UINT16 *line;
 	int delta, dim1, dim1_max, dim2_max;
 	UINT32 mask1, mask2;
 	int sp;
@@ -8309,7 +8393,7 @@ void K053250_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect, 
 #if 0
 		if(kx) {
 			UINT16 *l1 = line + ((4*kc) & 0x7ff);
-			usrintf_showmessage("Line %d [%02x] (%04x %04x %04x %04x)", kc,
+			ui_popup("Line %d [%02x] (%04x %04x %04x %04x)", kc,
 								K053250_info.chip[chip].regs[4],
 								l1[0],
 								l1[1],
@@ -8318,7 +8402,7 @@ void K053250_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect, 
 		}
 
 		if(kkc)
-			usrintf_showmessage("(%d, %d)", kxx, kyy);
+			ui_popup("(%d, %d)", kxx, kyy);
 #endif
 	}
 
@@ -8361,9 +8445,9 @@ void K053250_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect, 
 		mask1 = 0;
 
 	for(dim1 = 0; dim1 < dim1_max; dim1++) {
-		data16_t color  = *line++;
+		UINT16 color  = *line++;
 		UINT16   start  = *line++;
-		data16_t inc    = *line++;
+		UINT16 inc    = *line++;
 		INT16    offset = *line++;
 		int dim2;
 		unsigned char *pixel;
@@ -8421,8 +8505,8 @@ void K053250_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect, 
 #else
 
 // utility function to render a clipped scanline vertically or horizontally
-INLINE void K053250_pdraw_scanline32(struct mame_bitmap *bitmap, pen_t *palette, UINT8 *source,
-		const struct rectangle *cliprect, int linepos, int scroll, int zoom,
+INLINE void K053250_pdraw_scanline32(mame_bitmap *bitmap, pen_t *palette, UINT8 *source,
+		const rectangle *cliprect, int linepos, int scroll, int zoom,
 		UINT32 clipmask, UINT32 wrapmask, UINT32 orientation, int priority)
 {
 // a sixteen-bit fixed point resolution should be adequate to our application
@@ -8648,11 +8732,11 @@ INLINE void K053250_pdraw_scanline32(struct mame_bitmap *bitmap, pen_t *palette,
 #undef FIXPOINT_PRECISION_HALF
 }
 
-void K053250_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int chip, int colorbase, int flags, int priority)
+void K053250_draw(mame_bitmap *bitmap, const rectangle *cliprect, int chip, int colorbase, int flags, int priority)
 {
 	struct K053250_CHIPTAG *chip_ptr;
-	data16_t *line_ram;
-	data8_t *pix_base, *pix_ptr, *regs;
+	UINT16 *line_ram;
+	UINT8 *pix_base, *pix_ptr, *regs;
 	pen_t *pal_base, *pal_ptr;
 	UINT32 rommask, src_clipmask, src_wrapmask, dst_wrapmask;
 	int map_scrollx, map_scrolly, ctrl, orientation;
@@ -8874,7 +8958,7 @@ void K053250_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect, 
 /***************************************************************************/
 
 // K053252 CRT and interrupt control unit
-static data16_t K053252_regs[16];
+static UINT16 K053252_regs[16];
 
 READ16_HANDLER( K053252_word_r )
 {

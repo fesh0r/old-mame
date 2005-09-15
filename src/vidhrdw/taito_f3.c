@@ -211,21 +211,21 @@ Playfield tile info:
 #define DARIUSG_KLUDGE
 //#define DEBUG_F3 1
 
-static struct tilemap *pf1_tilemap,*pf2_tilemap,*pf3_tilemap,*pf4_tilemap;
-static struct tilemap *pixel_layer,*vram_layer;
-static data32_t *spriteram32_buffered;
+static tilemap *pf1_tilemap,*pf2_tilemap,*pf3_tilemap,*pf4_tilemap;
+static tilemap *pixel_layer,*vram_layer;
+static UINT32 *spriteram32_buffered;
 static int vram_dirty[256];
 static int pivot_changed,vram_changed;
-static data32_t f3_control_0[8];
-static data32_t f3_control_1[8];
+static UINT32 f3_control_0[8];
+static UINT32 f3_control_1[8];
 static int flipscreen;
 
 static UINT8 *pivot_dirty;
 
-static data32_t *f3_pf_data_1,*f3_pf_data_2,*f3_pf_data_3,*f3_pf_data_4;
+static UINT32 *f3_pf_data_1,*f3_pf_data_2,*f3_pf_data_3,*f3_pf_data_4;
 
-data32_t *f3_vram,*f3_line_ram;
-data32_t *f3_pf_data,*f3_pivot_ram;
+UINT32 *f3_vram,*f3_line_ram;
+UINT32 *f3_pf_data,*f3_pivot_ram;
 
 extern int f3_game;
 
@@ -292,7 +292,7 @@ struct tempsprite
 static struct tempsprite *spritelist;
 static const struct tempsprite *sprite_end;
 
-static void get_sprite_info(const data32_t *spriteram32_ptr);
+static void get_sprite_info(const UINT32 *spriteram32_ptr);
 static int sprite_lag=1;
 static UINT8 sprite_pri_usage=0;
 
@@ -335,7 +335,7 @@ static struct f3_playfield_line_inf *pf_line_inf;
 static struct f3_spritealpha_line_inf *sa_line_inf;
 
 
-static struct mame_bitmap *pri_alp_bitmap;
+static mame_bitmap *pri_alp_bitmap;
 /*
 pri_alp_bitmap
 ---- ---1    sprite priority 0
@@ -367,112 +367,83 @@ static UINT8 *tile_opaque_pf;
 
 /******************************************************************************/
 
-static void print_debug_info(struct mame_bitmap *bitmap)
+static void print_debug_info(mame_bitmap *bitmap)
 {
-	int j,l[16];
-	char buf[64];
+	int l[16];
+	char buf[64*16];
+	char *bufptr = buf;
 
-	sprintf(buf,"%04X %04X %04X %04X",f3_control_0[0]>>22,(f3_control_0[0]&0xffff)>>6,f3_control_0[1]>>22,(f3_control_0[1]&0xffff)>>6);
-	for (j = 0;j< 16+3;j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,40,0,TRANSPARENCY_NONE,0);
-	sprintf(buf,"%04X %04X %04X %04X",f3_control_0[2]>>23,(f3_control_0[2]&0xffff)>>7,f3_control_0[3]>>23,(f3_control_0[3]&0xffff)>>7);
-	for (j = 0;j< 16+3;j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,48,0,TRANSPARENCY_NONE,0);
-	sprintf(buf,"%04X %04X %04X %04X",f3_control_1[0]>>16,f3_control_1[0]&0xffff,f3_control_1[1]>>16,f3_control_1[1]&0xffff);
-	for (j = 0;j< 16+3;j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,58,0,TRANSPARENCY_NONE,0);
-	sprintf(buf,"%04X %04X %04X %04X",f3_control_1[2]>>16,f3_control_1[2]&0xffff,f3_control_1[3]>>16,f3_control_1[3]&0xffff);
-	for (j = 0;j< 16+3;j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,66,0,TRANSPARENCY_NONE,0);
+	bufptr += sprintf(bufptr,"%04X %04X %04X %04X\n",f3_control_0[0]>>22,(f3_control_0[0]&0xffff)>>6,f3_control_0[1]>>22,(f3_control_0[1]&0xffff)>>6);
+	bufptr += sprintf(bufptr,"%04X %04X %04X %04X\n",f3_control_0[2]>>23,(f3_control_0[2]&0xffff)>>7,f3_control_0[3]>>23,(f3_control_0[3]&0xffff)>>7);
+	bufptr += sprintf(bufptr,"%04X %04X %04X %04X\n",f3_control_1[0]>>16,f3_control_1[0]&0xffff,f3_control_1[1]>>16,f3_control_1[1]&0xffff);
+	bufptr += sprintf(bufptr,"%04X %04X %04X %04X\n",f3_control_1[2]>>16,f3_control_1[2]&0xffff,f3_control_1[3]>>16,f3_control_1[3]&0xffff);
 
-	sprintf(buf,"%04X %04X %04X %04X %04X %04X %04X %04X",spriteram32_buffered[0]>>16,spriteram32_buffered[0]&0xffff,spriteram32_buffered[1]>>16,spriteram32_buffered[1]&0xffff,spriteram32_buffered[2]>>16,spriteram32_buffered[2]&0xffff,spriteram32_buffered[3]>>16,spriteram32_buffered[3]&0xffff);
-	for (j = 0;j< 32+7;j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,76,0,TRANSPARENCY_NONE,0);
-	sprintf(buf,"%04X %04X %04X %04X %04X %04X %04X %04X",spriteram32_buffered[4]>>16,spriteram32_buffered[4]&0xffff,spriteram32_buffered[5]>>16,spriteram32_buffered[5]&0xffff,spriteram32_buffered[6]>>16,spriteram32_buffered[6]&0xffff,spriteram32_buffered[7]>>16,spriteram32_buffered[7]&0xffff);
-	for (j = 0;j< 32+7;j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,84,0,TRANSPARENCY_NONE,0);
-	sprintf(buf,"%04X %04X %04X %04X %04X %04X %04X %04X",spriteram32_buffered[8]>>16,spriteram32_buffered[8]&0xffff,spriteram32_buffered[9]>>16,spriteram32_buffered[9]&0xffff,spriteram32_buffered[10]>>16,spriteram32_buffered[10]&0xffff,spriteram32_buffered[11]>>16,spriteram32_buffered[11]&0xffff);
-	for (j = 0;j< 32+7;j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,92,0,TRANSPARENCY_NONE,0);
+	bufptr += sprintf(bufptr,"%04X %04X %04X %04X %04X %04X %04X %04X\n",spriteram32_buffered[0]>>16,spriteram32_buffered[0]&0xffff,spriteram32_buffered[1]>>16,spriteram32_buffered[1]&0xffff,spriteram32_buffered[2]>>16,spriteram32_buffered[2]&0xffff,spriteram32_buffered[3]>>16,spriteram32_buffered[3]&0xffff);
+	bufptr += sprintf(bufptr,"%04X %04X %04X %04X %04X %04X %04X %04X\n",spriteram32_buffered[4]>>16,spriteram32_buffered[4]&0xffff,spriteram32_buffered[5]>>16,spriteram32_buffered[5]&0xffff,spriteram32_buffered[6]>>16,spriteram32_buffered[6]&0xffff,spriteram32_buffered[7]>>16,spriteram32_buffered[7]&0xffff);
+	bufptr += sprintf(bufptr,"%04X %04X %04X %04X %04X %04X %04X %04X\n",spriteram32_buffered[8]>>16,spriteram32_buffered[8]&0xffff,spriteram32_buffered[9]>>16,spriteram32_buffered[9]&0xffff,spriteram32_buffered[10]>>16,spriteram32_buffered[10]&0xffff,spriteram32_buffered[11]>>16,spriteram32_buffered[11]&0xffff);
 
 	l[0]=f3_line_ram[0x0040]&0xffff;
 	l[1]=f3_line_ram[0x00c0]&0xffff;
 	l[2]=f3_line_ram[0x0140]&0xffff;
 	l[3]=f3_line_ram[0x01c0]&0xffff;
-	sprintf(buf,"Ctr1: %04x %04x %04x %04x",l[0],l[1],l[2],l[3]);
-	for (j = 0;j < 16+9; j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,8*13,0,TRANSPARENCY_NONE,0);
+	bufptr += sprintf(bufptr,"Ctr1: %04x %04x %04x %04x\n",l[0],l[1],l[2],l[3]);
 
 	l[0]=f3_line_ram[0x0240]&0xffff;
 	l[1]=f3_line_ram[0x02c0]&0xffff;
 	l[2]=f3_line_ram[0x0340]&0xffff;
 	l[3]=f3_line_ram[0x03c0]&0xffff;
-	sprintf(buf,"Ctr2: %04x %04x %04x %04x",l[0],l[1],l[2],l[3]);
-	for (j = 0;j < 16+9; j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,8*14,0,TRANSPARENCY_NONE,0);
+	bufptr += sprintf(bufptr,"Ctr2: %04x %04x %04x %04x\n",l[0],l[1],l[2],l[3]);
 
 	l[0]=f3_line_ram[0x2c60]&0xffff;
 	l[1]=f3_line_ram[0x2ce0]&0xffff;
 	l[2]=f3_line_ram[0x2d60]&0xffff;
 	l[3]=f3_line_ram[0x2de0]&0xffff;
-	sprintf(buf,"Pri : %04x %04x %04x %04x",l[0],l[1],l[2],l[3]);
-	for (j = 0;j < 16+9; j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,8*15,0,TRANSPARENCY_NONE,0);
+	bufptr += sprintf(bufptr,"Pri : %04x %04x %04x %04x\n",l[0],l[1],l[2],l[3]);
 
 	l[0]=f3_line_ram[0x2060]&0xffff;
 	l[1]=f3_line_ram[0x20e0]&0xffff;
 	l[2]=f3_line_ram[0x2160]&0xffff;
 	l[3]=f3_line_ram[0x21e0]&0xffff;
-	sprintf(buf,"Zoom: %04x %04x %04x %04x",l[0],l[1],l[2],l[3]);
-	for (j = 0;j < 16+9; j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,8*16,0,TRANSPARENCY_NONE,0);
+	bufptr += sprintf(bufptr,"Zoom: %04x %04x %04x %04x\n",l[0],l[1],l[2],l[3]);
 
 	l[0]=f3_line_ram[0x2860]&0xffff;
 	l[1]=f3_line_ram[0x28e0]&0xffff;
 	l[2]=f3_line_ram[0x2960]&0xffff;
 	l[3]=f3_line_ram[0x29e0]&0xffff;
-	sprintf(buf,"Line: %04x %04x %04x %04x",l[0],l[1],l[2],l[3]);
-	for (j = 0;j < 16+9; j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,8*17,0,TRANSPARENCY_NONE,0);
+	bufptr += sprintf(bufptr,"Line: %04x %04x %04x %04x\n",l[0],l[1],l[2],l[3]);
 
 	l[0]=f3_line_ram[0x1c60]&0xffff;
 	l[1]=f3_line_ram[0x1ce0]&0xffff;
 	l[2]=f3_line_ram[0x1d60]&0xffff;
 	l[3]=f3_line_ram[0x1de0]&0xffff;
-	sprintf(buf,"Sprt: %04x %04x %04x %04x",l[0],l[1],l[2],l[3]);
-	for (j = 0;j < 16+9; j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,8*18,0,TRANSPARENCY_NONE,0);
+	bufptr += sprintf(bufptr,"Sprt: %04x %04x %04x %04x\n",l[0],l[1],l[2],l[3]);
 
 	l[0]=f3_line_ram[0x1860]&0xffff;
 	l[1]=f3_line_ram[0x18e0]&0xffff;
 	l[2]=f3_line_ram[0x1960]&0xffff;
 	l[3]=f3_line_ram[0x19e0]&0xffff;
-	sprintf(buf,"Pivt: %04x %04x %04x %04x",l[0],l[1],l[2],l[3]);
-	for (j = 0;j < 16+9; j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,8*19,0,TRANSPARENCY_NONE,0);
+	bufptr += sprintf(bufptr,"Pivt: %04x %04x %04x %04x\n",l[0],l[1],l[2],l[3]);
 
 	l[0]=f3_line_ram[0x1060]&0xffff;
 	l[1]=f3_line_ram[0x10e0]&0xffff;
 	l[2]=f3_line_ram[0x1160]&0xffff;
 	l[3]=f3_line_ram[0x11e0]&0xffff;
-	sprintf(buf,"Colm: %04x %04x %04x %04x",l[0],l[1],l[2],l[3]);
-	for (j = 0;j < 16+9; j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,8*20,0,TRANSPARENCY_NONE,0);
+	bufptr += sprintf(bufptr,"Colm: %04x %04x %04x %04x\n",l[0],l[1],l[2],l[3]);
 
 	l[0]=f3_line_ram[0x1460]&0xffff;
 	l[1]=f3_line_ram[0x14e0]&0xffff;
 	l[2]=f3_line_ram[0x1560]&0xffff;
 	l[3]=f3_line_ram[0x15e0]&0xffff;
-	sprintf(buf,"5000: %04x %04x %04x %04x",l[0],l[1],l[2],l[3]);
-	for (j = 0;j < 16+9; j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,60+6*j,8*21,0,TRANSPARENCY_NONE,0);
+	bufptr += sprintf(bufptr,"5000: %04x %04x %04x %04x\n",l[0],l[1],l[2],l[3]);
+
+	ui_draw_text(buf, 60, 40);
 }
 
 /******************************************************************************/
 
-INLINE void get_tile_info(int tile_index, data32_t *gfx_base)
+INLINE void get_tile_info(int tile_index, UINT32 *gfx_base)
 {
-	data32_t tile=gfx_base[tile_index];
+	UINT32 tile=gfx_base[tile_index];
 	UINT8 abtype=(tile>>(16+9))&0x1f;
 
 	SET_TILE_INFO(
@@ -677,7 +648,7 @@ VIDEO_START( f3 )
 	init_alpha_blend_func();
 
 	{
-		const struct GfxElement *sprite_gfx = Machine->gfx[2];
+		const gfx_element *sprite_gfx = Machine->gfx[2];
 		int c;
 
 		for (c = 0;c < sprite_gfx->total_elements;c++)
@@ -701,7 +672,7 @@ VIDEO_START( f3 )
 
 
 	{
-		const struct GfxElement *pf_gfx = Machine->gfx[1];
+		const gfx_element *pf_gfx = Machine->gfx[1];
 		int c;
 
 		for (c = 0;c < pf_gfx->total_elements;c++)
@@ -905,7 +876,7 @@ static int (**dpix_sp[9])(UINT32 s_pix);
 {										\
 	int level = s;						\
 	if(level == 0) level = -1;			\
-	d = alpha_cache.alpha[level+1];		\
+	d = drawgfx_alpha_cache.alpha[level+1];		\
 }
 
 INLINE void f3_alpha_set_level(void)
@@ -1398,7 +1369,7 @@ static void init_alpha_blend_func(void)
 /*============================================================================*/
 
 INLINE void f3_drawscanlines(
-		struct mame_bitmap *bitmap,int xsize,INT16 *draw_line_num,
+		mame_bitmap *bitmap,int xsize,INT16 *draw_line_num,
 		const struct f3_playfield_line_inf **line_t,
 		const int *sprite,
 		UINT32 orient,
@@ -1617,9 +1588,9 @@ INLINE void f3_drawscanlines(
 static void visible_tile_check(struct f3_playfield_line_inf *line_t,
 								int line,
 								UINT32 x_index_fx,UINT32 y_index,
-								data32_t *f3_pf_data_n)
+								UINT32 *f3_pf_data_n)
 {
-	data32_t *pf_base;
+	UINT32 *pf_base;
 	int i,trans_all,tile_index,tile_num;
 	int alpha_type,alpha_mode;
 	int opaque_all;
@@ -1786,7 +1757,7 @@ static void calculate_clip(int y, UINT16 pri, UINT32* clip0, UINT32* clip1, int*
 		}
 		break;
 	default:
-		// usrintf_showmessage("Illegal clip mode");
+		// ui_popup("Illegal clip mode");
 		break;
 	}
 }
@@ -1906,11 +1877,11 @@ static void get_spritealphaclip_info(void)
 }
 
 /* sx and sy are 16.16 fixed point numbers */
-static void get_line_ram_info(struct tilemap *tilemap, int sx, int sy, int pos, data32_t *f3_pf_data_n)
+static void get_line_ram_info(tilemap *tmap, int sx, int sy, int pos, UINT32 *f3_pf_data_n)
 {
 	struct f3_playfield_line_inf *line_t=&pf_line_inf[pos];
-	const struct mame_bitmap *srcbitmap;
-	const struct mame_bitmap *transbitmap;
+	const mame_bitmap *srcbitmap;
+	const mame_bitmap *transbitmap;
 
 	int y,y_start,y_end,y_inc;
 	int line_base,zoom_base,col_base,pri_base,inc;
@@ -2087,8 +2058,8 @@ static void get_line_ram_info(struct tilemap *tilemap, int sx, int sy, int pos, 
 	}
 
 	/* set pixmap pointer */
-	srcbitmap = tilemap_get_pixmap(tilemap);
-	transbitmap = tilemap_get_transparency_bitmap(tilemap);
+	srcbitmap = tilemap_get_pixmap(tmap);
+	transbitmap = tilemap_get_transparency_bitmap(tmap);
 
 	y=y_start;
 	while(y!=y_end)
@@ -2126,12 +2097,12 @@ static void get_line_ram_info(struct tilemap *tilemap, int sx, int sy, int pos, 
 	}
 }
 
-static void get_vram_info(struct tilemap *vram_tilemap, struct tilemap *pixel_tilemap, int sx, int sy)
+static void get_vram_info(tilemap *vram_tilemap, tilemap *pixel_tilemap, int sx, int sy)
 {
 	const struct f3_spritealpha_line_inf *sprite_alpha_line_t=&sa_line_inf[0];
 	struct f3_playfield_line_inf *line_t=&pf_line_inf[4];
-	const struct mame_bitmap *srcbitmap_pixel, *srcbitmap_vram;
-	const struct mame_bitmap *transbitmap_pixel, *transbitmap_vram;
+	const mame_bitmap *srcbitmap_pixel, *srcbitmap_vram;
+	const mame_bitmap *transbitmap_pixel, *transbitmap_vram;
 
 	int y,y_start,y_end,y_inc;
 	int pri_base,inc;
@@ -2254,7 +2225,7 @@ static void get_vram_info(struct tilemap *vram_tilemap, struct tilemap *pixel_ti
 
 /******************************************************************************/
 
-static void f3_scanline_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect)
+static void f3_scanline_draw(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int i,j,y,ys,ye;
 	int y_start,y_end,y_start_next,y_end_next;
@@ -2676,15 +2647,15 @@ static void f3_scanline_draw(struct mame_bitmap *bitmap, const struct rectangle 
 	dest++;						\
 	pri++;
 
-INLINE void f3_drawgfx( struct mame_bitmap *dest_bmp,const struct GfxElement *gfx,
+INLINE void f3_drawgfx( mame_bitmap *dest_bmp,const gfx_element *gfx,
 		unsigned int code,
 		unsigned int color,
 		int flipx,int flipy,
 		int sx,int sy,
-		const struct rectangle *clip,
+		const rectangle *clip,
 		UINT8 pri_dst)
 {
-	struct rectangle myclip;
+	rectangle myclip;
 
 	pri_dst=1<<pri_dst;
 
@@ -2839,16 +2810,16 @@ INLINE void f3_drawgfx( struct mame_bitmap *dest_bmp,const struct GfxElement *gf
 #undef NEXT_P
 
 
-INLINE void f3_drawgfxzoom( struct mame_bitmap *dest_bmp,const struct GfxElement *gfx,
+INLINE void f3_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 		unsigned int code,
 		unsigned int color,
 		int flipx,int flipy,
 		int sx,int sy,
-		const struct rectangle *clip,
+		const rectangle *clip,
 		int scalex, int scaley,
 		UINT8 pri_dst)
 {
-	struct rectangle myclip;
+	rectangle myclip;
 
 	pri_dst=1<<pri_dst;
 
@@ -2975,7 +2946,7 @@ INLINE void f3_drawgfxzoom( struct mame_bitmap *dest_bmp,const struct GfxElement
 	/*zoom##p = p##_addition << 12;*/							\
 }
 
-static void get_sprite_info(const data32_t *spriteram32_ptr)
+static void get_sprite_info(const UINT32 *spriteram32_ptr)
 {
 	const int min_x=Machine->visible_area.min_x,max_x=Machine->visible_area.max_x;
 	const int min_y=Machine->visible_area.min_y,max_y=Machine->visible_area.max_y;
@@ -3006,9 +2977,9 @@ static void get_sprite_info(const data32_t *spriteram32_ptr)
 
 		/* Check if the sprite list jump command bit is set */
 		if ((spriteram32_ptr[current_offs+3]>>16) & 0x8000) {
-			data32_t jump = (spriteram32_ptr[current_offs+3]>>16)&0x3ff;
+			UINT32 jump = (spriteram32_ptr[current_offs+3]>>16)&0x3ff;
 
-			data32_t new_offs=((offs&0x2000)|((jump<<4)/4));
+			UINT32 new_offs=((offs&0x2000)|((jump<<4)/4));
 			if (new_offs==offs)
 				break;
 			offs=new_offs - 4;
@@ -3016,7 +2987,7 @@ static void get_sprite_info(const data32_t *spriteram32_ptr)
 
 		/* Check if special command bit is set */
 		if (spriteram32_ptr[current_offs+1] & 0x8000) {
-			data32_t cntrl=(spriteram32_ptr[current_offs+2])&0xffff;
+			UINT32 cntrl=(spriteram32_ptr[current_offs+2])&0xffff;
 			flipscreen=cntrl&0x2000;
 
 			/*  cntrl&0x1000 = disabled?  (From F2 driver, doesn't seem used anywhere)
@@ -3238,10 +3209,10 @@ static void get_sprite_info(const data32_t *spriteram32_ptr)
 #undef CALC_ZOOM
 
 
-static void f3_drawsprites(struct mame_bitmap *bitmap, const struct rectangle *cliprect)
+static void f3_drawsprites(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	const struct tempsprite *sprite_ptr;
-	const struct GfxElement *sprite_gfx = Machine->gfx[2];
+	const gfx_element *sprite_gfx = Machine->gfx[2];
 
 	sprite_ptr = sprite_end;
 	sprite_pri_usage=0;

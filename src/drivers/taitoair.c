@@ -187,9 +187,9 @@ cpu #2 (PC=0000060E): unmapped memory word read from 0000683A & FFFF
 
 static int dsp_HOLD_signal;
 
-static data16_t *taitoh_68000_mainram;
-data16_t *taitoair_line_ram;
-static data16_t *dsp_ram;	/* Shared 68000/TMS32025 RAM */
+static UINT16 *taitoh_68000_mainram;
+UINT16 *taitoair_line_ram;
+static UINT16 *dsp_ram;	/* Shared 68000/TMS32025 RAM */
 
 VIDEO_START( taitoair );
 VIDEO_UPDATE( taitoair );
@@ -592,7 +592,7 @@ INPUT_PORTS_END
                 GFX DECODING
 ************************************************************/
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,	/* 16x16 pixels */
 	RGN_FRAC(1,4),
@@ -607,7 +607,7 @@ static struct GfxLayout tilelayout =
 	16*16
 };
 
-static struct GfxDecodeInfo airsys_gfxdecodeinfo[] =
+static gfx_decode airsys_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout, 0, 32*16 },
 	{ -1 } /* end of array */

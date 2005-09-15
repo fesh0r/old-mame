@@ -10,12 +10,12 @@
 #include "tilemap.h"
 #include "vidhrdw/generic.h"
 
-data16_t *glass_spriteram;
-data16_t *glass_vregs;
-data16_t *glass_videoram;
+UINT16 *glass_spriteram;
+UINT16 *glass_vregs;
+UINT16 *glass_videoram;
 
-static struct tilemap *pant[2];
-static struct mame_bitmap *screen_bitmap;
+static tilemap *pant[2];
+static mame_bitmap *screen_bitmap;
 
 static int glass_blitter_serial_buffer[5];
 static int current_command = 0;
@@ -173,10 +173,10 @@ VIDEO_START( glass )
       3  | xxxxxxxx xxxxxxxx | sprite code
 */
 
-static void glass_draw_sprites(struct mame_bitmap *bitmap, const struct rectangle *cliprect)
+static void glass_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int i;
-	const struct GfxElement *gfx = Machine->gfx[0];
+	const gfx_element *gfx = Machine->gfx[0];
 
 	for (i = 3; i < (0x1000 - 6)/2; i += 4){
 		int sx = glass_spriteram[i+2] & 0x01ff;

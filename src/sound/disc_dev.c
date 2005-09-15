@@ -142,7 +142,7 @@ void dsd_555_astbl_step(struct node_description *node)
 	int		count_r = 0;
 	double	dt;					// change in time
 	double	xTime;				// time since change happened
-	double	tRC;				// RC time constant
+	double	tRC = 0;			// RC time constant
 	double	vC = context->vCap;	// Current voltage on capacitor, before dt
 	double	vCnext = 0;			// Voltage on capacitor, after dt
 
@@ -249,9 +249,17 @@ void dsd_555_astbl_step(struct node_description *node)
 			else
 			{
 				/* Discharging */
-				tRC = DSD_555_ASTBL__R2 * DSD_555_ASTBL__C;
-				vCnext = vC - (vC * (1 - exp(-(dt / tRC))));
-				dt = 0;
+				if(DSD_555_ASTBL__R2!=0)
+				{
+					tRC = DSD_555_ASTBL__R2 * DSD_555_ASTBL__C;
+					vCnext = vC - (vC * (1 - exp(-(dt / tRC))));
+					dt = 0;
+				}
+				else
+				{
+					vCnext = context->trigger;
+					dt = 0;
+				}
 
 				/* has it discharged past lower limit? */
 				if (vCnext < context->trigger)
@@ -313,12 +321,8 @@ void dsd_555_astbl_reset(struct node_description *node)
 	context->use_ctrlv = (node->input_is_node >> 4) & 1;
 	context->wav_type = info->options & DISC_555_OUT_MASK;
 
-	context->is_ac = info->options & DISC_555_OUT_AC;
-	context->ac_shift = 0;
-	/* Calculate DC shift needed to make squarewave waveform AC */
-	context->ac_shift = context->vHigh / 2.0;
-
 	/* Use the supplied values or set to defaults. */
+	context->vHigh = (info->v555high == DEFAULT_555_HIGH) ? info->v555 - 1.2 : info->v555high;
 	if ((DSD_555_ASTBL__CTRLV != -1) && !context->use_ctrlv)
 	{
 		/* Setup based on supplied static value */
@@ -330,8 +334,11 @@ void dsd_555_astbl_reset(struct node_description *node)
 		/* use values passed in structure */
 		context->threshold = (info->threshold555 == DEFAULT_555_THRESHOLD) ? info->v555 *2 /3 : info->threshold555;
 		context->trigger =  (info->trigger555 == DEFAULT_555_TRIGGER) ? info->v555 /3 : info->trigger555;
-		context->vHigh = (info->v555high == DEFAULT_555_HIGH) ? info->v555 - 1.2 : info->v555high;
 	}
+
+	context->is_ac = info->options & DISC_555_OUT_AC;
+	/* Calculate DC shift needed to make squarewave waveform AC */
+	context->ac_shift = context->is_ac ? -context->vHigh / 2.0 : 0;
 
 	context->error = test_555(context->threshold, context->trigger, info->v555, node->node);
 
@@ -461,15 +468,14 @@ void dsd_555_mstbl_reset(struct node_description *node)
 		context->wav_type = DISC_555_OUT_SQW;
 	}
 
-	context->is_ac = info->options & DISC_555_OUT_AC;
-	context->ac_shift = 0;
-	/* Calculate DC shift needed to make squarewave waveform AC */
-	context->ac_shift = context->vHigh / 2.0;
-
 	/* Use the supplied values or set to defaults. */
 	context->threshold = (info->threshold555 == DEFAULT_555_THRESHOLD) ? info->v555 *2 /3 : info->threshold555;
 	context->trigger =  (info->trigger555 == DEFAULT_555_TRIGGER) ? info->v555 /3 : info->trigger555;
 	context->vHigh = (info->v555high == DEFAULT_555_HIGH) ? info->v555 - 1.2 : info->v555high;
+
+	context->is_ac = info->options & DISC_555_OUT_AC;
+	/* Calculate DC shift needed to make squarewave waveform AC */
+	context->ac_shift = context->is_ac ? -context->vHigh / 2.0 : 0;
 
 	context->error = test_555(context->threshold, context->trigger, info->v555, node->node);
 
@@ -769,11 +775,6 @@ void dsd_555_cc_reset(struct node_description *node)
 
 	context->wav_type = info->options & DISC_555_OUT_MASK;
 
-	context->is_ac = info->options & DISC_555_OUT_AC;
-	context->ac_shift = 0;
-	/* Calculate DC shift needed to make squarewave waveform AC */
-	context->ac_shift = context->vHigh / 2.0;
-
 	/* Used to adjust the ratio depending on if it is the extra percent or energy */
 	context->x_init = 0;
 	if (context->wav_type == DISC_555_OUT_ENERGY)
@@ -783,6 +784,10 @@ void dsd_555_cc_reset(struct node_description *node)
 	context->threshold = (info->threshold555 == DEFAULT_555_THRESHOLD) ? info->v555 *2 /3 : info->threshold555;
 	context->trigger =  (info->trigger555 == DEFAULT_555_TRIGGER) ? info->v555 /3 : info->trigger555;
 	context->vHigh = (info->v555high == DEFAULT_555_HIGH) ? info->v555 - 1.2 : info->v555high;
+
+	context->is_ac = info->options & DISC_555_OUT_AC;
+	/* Calculate DC shift needed to make squarewave waveform AC */
+	context->ac_shift = context->is_ac ? -context->vHigh / 2.0 : 0;
 
 	context->error = test_555(context->threshold, context->trigger, info->v555, node->node);
 

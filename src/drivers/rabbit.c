@@ -86,24 +86,24 @@ Custom: Imagetek 15000 (2ch video & 2ch sound)
 #define VERBOSE_AUDIO_LOG (0)	// enable to show audio writes (very noisy when music is playing)
 
 /* debug */
-static data32_t *rabbit_viewregs0;
-static data32_t *rabbit_viewregs6;
-static data32_t *rabbit_viewregs7;
-static data32_t *rabbit_viewregs9;
-static data32_t *rabbit_viewregs10;
+static UINT32 *rabbit_viewregs0;
+static UINT32 *rabbit_viewregs6;
+static UINT32 *rabbit_viewregs7;
+static UINT32 *rabbit_viewregs9;
+static UINT32 *rabbit_viewregs10;
 
-static data32_t *rabbit_tilemap_regs[4];
-static data32_t *rabbit_spriteregs;
-static data32_t *rabbit_blitterregs;
-static struct mame_bitmap *rabbit_sprite_bitmap;
-struct rectangle rabbit_sprite_clip;
+static UINT32 *rabbit_tilemap_regs[4];
+static UINT32 *rabbit_spriteregs;
+static UINT32 *rabbit_blitterregs;
+static mame_bitmap *rabbit_sprite_bitmap;
+rectangle rabbit_sprite_clip;
 
 static int rabbit_vblirqlevel, rabbit_bltirqlevel, rabbit_banking;
 
-data32_t *rabbit_tilemap_ram[4];
+UINT32 *rabbit_tilemap_ram[4];
 
-data32_t *rabbit_spriteram;
-static struct tilemap *rabbit_tilemap[4];
+UINT32 *rabbit_spriteram;
+static tilemap *rabbit_tilemap[4];
 
 /* call with tilesize = 0 for 8x8 or 1 for 16x16 */
 INLINE void get_rabbit_tilemap_info(int whichtilemap, int tilesize, int tile_index)
@@ -214,14 +214,14 @@ sprites invisible at the end of a round in rabbit, why?
 
 */
 
-static void rabbit_drawsprites( struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+static void rabbit_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	int xpos,ypos,tileno,xflip,yflip, colr;
-	const struct GfxElement *gfx = Machine->gfx[1];
+	const gfx_element *gfx = Machine->gfx[1];
 	int todraw = (rabbit_spriteregs[5]&0x0fff0000)>>16; // how many sprites to draw (start/end reg..) what is the other half?
 
-	data32_t *source = (rabbit_spriteram+ (todraw*2))-2;
-	data32_t *finish = rabbit_spriteram;
+	UINT32 *source = (rabbit_spriteram+ (todraw*2))-2;
+	UINT32 *finish = rabbit_spriteram;
 
 //  fillbitmap(rabbit_sprite_bitmap, 0x0, &rabbit_sprite_clip); // sloooow
 
@@ -253,7 +253,7 @@ static void rabbit_drawsprites( struct mame_bitmap *bitmap, const struct rectang
 }
 
 /* the sprite bitmap can probably be handled better than this ... */
-static void rabbit_clearspritebitmap( struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+static void rabbit_clearspritebitmap( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	UINT32 startx, starty;
 	int y;
@@ -279,7 +279,7 @@ static void rabbit_clearspritebitmap( struct mame_bitmap *bitmap, const struct r
 }
 
 /* todo: fix zoom, its inaccurate and this code is ugly */
-static void rabbit_drawsprite_bitmap( struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+static void rabbit_drawsprite_bitmap( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 
 	UINT32 x,y;
@@ -384,7 +384,7 @@ each line represents the differences on each tilemap for unknown variables
 
 */
 
-static void rabbit_drawtilemap( struct mame_bitmap *bitmap, const struct rectangle *cliprect, int whichtilemap )
+static void rabbit_drawtilemap( mame_bitmap *bitmap, const rectangle *cliprect, int whichtilemap )
 {
 	INT32 startx, starty, incxx, incxy, incyx, incyy, tran;
 
@@ -413,18 +413,18 @@ VIDEO_UPDATE(rabbit)
 
 	fillbitmap(bitmap,get_black_pen(),cliprect);
 
-//  usrintf_showmessage("%08x %08x", rabbit_viewregs0[0], rabbit_viewregs0[1]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[0][0],rabbit_tilemap_regs[0][1],rabbit_tilemap_regs[0][2],rabbit_tilemap_regs[0][3],rabbit_tilemap_regs[0][4],rabbit_tilemap_regs[0][5]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[1][0],rabbit_tilemap_regs[1][1],rabbit_tilemap_regs[1][2],rabbit_tilemap_regs[1][3],rabbit_tilemap_regs[1][4],rabbit_tilemap_regs[1][5]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[2][0],rabbit_tilemap_regs[2][1],rabbit_tilemap_regs[2][2],rabbit_tilemap_regs[2][3],rabbit_tilemap_regs[2][4],rabbit_tilemap_regs[2][5]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[3][0],rabbit_tilemap_regs[3][1],rabbit_tilemap_regs[3][2],rabbit_tilemap_regs[3][3],rabbit_tilemap_regs[3][4],rabbit_tilemap_regs[3][5]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x %08x %08x", rabbit_spriteregs[0],rabbit_spriteregs[1],rabbit_spriteregs[2],rabbit_spriteregs[3],rabbit_spriteregs[4],rabbit_spriteregs[5], rabbit_spriteregs[6]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x", rabbit_viewregs6[0],rabbit_viewregs6[1],rabbit_viewregs6[2],rabbit_viewregs6[3],rabbit_viewregs6[4]);
-//  usrintf_showmessage("%08x", rabbit_viewregs7[0]);
-//  usrintf_showmessage("%08x %08x %08x %08x", rabbit_blitterregs[0],rabbit_blitterregs[1],rabbit_blitterregs[2],rabbit_blitterregs[3]);
-//  usrintf_showmessage("%08x %08x %08x %08x", rabbit_viewregs9[0],rabbit_viewregs9[1],rabbit_viewregs9[2],rabbit_viewregs9[3]);
+//  ui_popup("%08x %08x", rabbit_viewregs0[0], rabbit_viewregs0[1]);
+//  ui_popup("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[0][0],rabbit_tilemap_regs[0][1],rabbit_tilemap_regs[0][2],rabbit_tilemap_regs[0][3],rabbit_tilemap_regs[0][4],rabbit_tilemap_regs[0][5]);
+//  ui_popup("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[1][0],rabbit_tilemap_regs[1][1],rabbit_tilemap_regs[1][2],rabbit_tilemap_regs[1][3],rabbit_tilemap_regs[1][4],rabbit_tilemap_regs[1][5]);
+//  ui_popup("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[2][0],rabbit_tilemap_regs[2][1],rabbit_tilemap_regs[2][2],rabbit_tilemap_regs[2][3],rabbit_tilemap_regs[2][4],rabbit_tilemap_regs[2][5]);
+//  ui_popup("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[3][0],rabbit_tilemap_regs[3][1],rabbit_tilemap_regs[3][2],rabbit_tilemap_regs[3][3],rabbit_tilemap_regs[3][4],rabbit_tilemap_regs[3][5]);
+//  ui_popup("%08x %08x %08x %08x %08x %08x %08x", rabbit_spriteregs[0],rabbit_spriteregs[1],rabbit_spriteregs[2],rabbit_spriteregs[3],rabbit_spriteregs[4],rabbit_spriteregs[5], rabbit_spriteregs[6]);
+//  ui_popup("%08x %08x %08x %08x %08x", rabbit_viewregs6[0],rabbit_viewregs6[1],rabbit_viewregs6[2],rabbit_viewregs6[3],rabbit_viewregs6[4]);
+//  ui_popup("%08x", rabbit_viewregs7[0]);
+//  ui_popup("%08x %08x %08x %08x", rabbit_blitterregs[0],rabbit_blitterregs[1],rabbit_blitterregs[2],rabbit_blitterregs[3]);
+//  ui_popup("%08x %08x %08x %08x", rabbit_viewregs9[0],rabbit_viewregs9[1],rabbit_viewregs9[2],rabbit_viewregs9[3]);
 
-//  usrintf_showmessage("%08x %08x %08x %08x %08x", rabbit_viewregs10[0],rabbit_viewregs10[1],rabbit_viewregs10[2],rabbit_viewregs10[3],rabbit_viewregs10[4]);
+//  ui_popup("%08x %08x %08x %08x %08x", rabbit_viewregs10[0],rabbit_viewregs10[1],rabbit_viewregs10[2],rabbit_viewregs10[3],rabbit_viewregs10[4]);
 
 	/* prio isnt certain but seems to work.. */
 	for (prilevel = 0xf; prilevel >0; prilevel--)
@@ -934,7 +934,7 @@ INPUT_PORTS_START( tmmjprd )
 INPUT_PORTS_END
 
 
-static struct GfxLayout rabbit_sprite_8x8x4_layout =
+static gfx_layout rabbit_sprite_8x8x4_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -945,7 +945,7 @@ static struct GfxLayout rabbit_sprite_8x8x4_layout =
 	8*32
 };
 
-static struct GfxLayout rabbit_sprite_8x8x8_layout =
+static gfx_layout rabbit_sprite_8x8x8_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -958,7 +958,7 @@ static struct GfxLayout rabbit_sprite_8x8x8_layout =
 
 
 
-static struct GfxLayout rabbit_sprite_16x16x4_layout =
+static gfx_layout rabbit_sprite_16x16x4_layout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -969,7 +969,7 @@ static struct GfxLayout rabbit_sprite_16x16x4_layout =
 	16*32
 };
 
-static struct GfxLayout rabbit_sprite_16x16x8_layout =
+static gfx_layout rabbit_sprite_16x16x8_layout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -980,7 +980,7 @@ static struct GfxLayout rabbit_sprite_16x16x8_layout =
 	16*64
 };
 
-static struct GfxLayout rabbit_8x8x4_layout =
+static gfx_layout rabbit_8x8x4_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -991,7 +991,7 @@ static struct GfxLayout rabbit_8x8x4_layout =
 	8*32
 };
 
-static struct GfxLayout rabbit_16x16x4_layout =
+static gfx_layout rabbit_16x16x4_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1002,7 +1002,7 @@ static struct GfxLayout rabbit_16x16x4_layout =
 	16*64
 };
 
-static struct GfxLayout rabbit_8x8x8_layout =
+static gfx_layout rabbit_8x8x8_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -1013,7 +1013,7 @@ static struct GfxLayout rabbit_8x8x8_layout =
 	8*64
 };
 
-static struct GfxLayout rabbit_16x16x8_layout =
+static gfx_layout rabbit_16x16x8_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1025,7 +1025,7 @@ static struct GfxLayout rabbit_16x16x8_layout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	/* this seems to be sprites */
 	{ REGION_USER1, 0, &rabbit_sprite_8x8x4_layout,   0x0, 0x1000  },
@@ -1162,18 +1162,18 @@ VIDEO_UPDATE( tmmjprd )
 	tilemap_set_scrolly(rabbit_tilemap[1], 0, rabbit_tilemap_regs[1][2] >> 20);
 	tilemap_set_scrolly(rabbit_tilemap[0], 0, rabbit_tilemap_regs[0][2] >> 20);
 
-//  usrintf_showmessage("%08x %08x", rabbit_viewregs0[0], rabbit_viewregs0[1]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[0][0],rabbit_tilemap_regs[0][1],rabbit_tilemap_regs[0][2],rabbit_tilemap_regs[0][3],rabbit_tilemap_regs[0][4],rabbit_tilemap_regs[0][5]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[1][0],rabbit_tilemap_regs[1][1],rabbit_tilemap_regs[1][2],rabbit_tilemap_regs[1][3],rabbit_tilemap_regs[1][4],rabbit_tilemap_regs[1][5]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[2][0],rabbit_tilemap_regs[2][1],rabbit_tilemap_regs[2][2],rabbit_tilemap_regs[2][3],rabbit_tilemap_regs[2][4],rabbit_tilemap_regs[2][5]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[3][0],rabbit_tilemap_regs[3][1],rabbit_tilemap_regs[3][2],rabbit_tilemap_regs[3][3],rabbit_tilemap_regs[3][4],rabbit_tilemap_regs[3][5]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x %08x %08x", rabbit_spriteregs[0],rabbit_spriteregs[1],rabbit_spriteregs[2],rabbit_spriteregs[3],rabbit_spriteregs[4],rabbit_spriteregs[5], rabbit_spriteregs[6]);
-//  usrintf_showmessage("%08x %08x %08x %08x %08x", rabbit_viewregs6[0],rabbit_viewregs6[1],rabbit_viewregs6[2],rabbit_viewregs6[3],rabbit_viewregs6[4]);
-//  usrintf_showmessage("%08x", rabbit_viewregs7[0]);
-//  usrintf_showmessage("%08x %08x %08x %08x", rabbit_blitterregs[0],rabbit_blitterregs[1],rabbit_blitterregs[2],rabbit_blitterregs[3]);
-//  usrintf_showmessage("%08x %08x %08x %08x", rabbit_viewregs9[0],rabbit_viewregs9[1],rabbit_viewregs9[2],rabbit_viewregs9[3]);
+//  ui_popup("%08x %08x", rabbit_viewregs0[0], rabbit_viewregs0[1]);
+//  ui_popup("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[0][0],rabbit_tilemap_regs[0][1],rabbit_tilemap_regs[0][2],rabbit_tilemap_regs[0][3],rabbit_tilemap_regs[0][4],rabbit_tilemap_regs[0][5]);
+//  ui_popup("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[1][0],rabbit_tilemap_regs[1][1],rabbit_tilemap_regs[1][2],rabbit_tilemap_regs[1][3],rabbit_tilemap_regs[1][4],rabbit_tilemap_regs[1][5]);
+//  ui_popup("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[2][0],rabbit_tilemap_regs[2][1],rabbit_tilemap_regs[2][2],rabbit_tilemap_regs[2][3],rabbit_tilemap_regs[2][4],rabbit_tilemap_regs[2][5]);
+//  ui_popup("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[3][0],rabbit_tilemap_regs[3][1],rabbit_tilemap_regs[3][2],rabbit_tilemap_regs[3][3],rabbit_tilemap_regs[3][4],rabbit_tilemap_regs[3][5]);
+//  ui_popup("%08x %08x %08x %08x %08x %08x %08x", rabbit_spriteregs[0],rabbit_spriteregs[1],rabbit_spriteregs[2],rabbit_spriteregs[3],rabbit_spriteregs[4],rabbit_spriteregs[5], rabbit_spriteregs[6]);
+//  ui_popup("%08x %08x %08x %08x %08x", rabbit_viewregs6[0],rabbit_viewregs6[1],rabbit_viewregs6[2],rabbit_viewregs6[3],rabbit_viewregs6[4]);
+//  ui_popup("%08x", rabbit_viewregs7[0]);
+//  ui_popup("%08x %08x %08x %08x", rabbit_blitterregs[0],rabbit_blitterregs[1],rabbit_blitterregs[2],rabbit_blitterregs[3]);
+//  ui_popup("%08x %08x %08x %08x", rabbit_viewregs9[0],rabbit_viewregs9[1],rabbit_viewregs9[2],rabbit_viewregs9[3]);
 
-//  usrintf_showmessage("%08x %08x %08x %08x %08x", rabbit_viewregs10[0],rabbit_viewregs10[1],rabbit_viewregs10[2],rabbit_viewregs10[3],rabbit_viewregs10[4]);
+//  ui_popup("%08x %08x %08x %08x %08x", rabbit_viewregs10[0],rabbit_viewregs10[1],rabbit_viewregs10[2],rabbit_viewregs10[3],rabbit_viewregs10[4]);
 
 	fillbitmap(bitmap,get_black_pen(),cliprect);
 	tilemap_draw(bitmap,cliprect,rabbit_tilemap[3],0,0);

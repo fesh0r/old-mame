@@ -39,8 +39,8 @@ DSW1          6116
 #include "driver.h"
 #include "sound/okim6295.h"
 
-data16_t *gumbo_bg_videoram;
-data16_t *gumbo_fg_videoram;
+UINT16 *gumbo_bg_videoram;
+UINT16 *gumbo_fg_videoram;
 
 WRITE16_HANDLER( gumbo_bg_videoram_w );
 WRITE16_HANDLER( gumbo_fg_videoram_w );
@@ -280,7 +280,7 @@ INPUT_PORTS_START( dblpoint )
 	PORT_SERVICE( 0x8000, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
-static struct GfxLayout gumbo_layout =
+static gfx_layout gumbo_layout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -291,7 +291,7 @@ static struct GfxLayout gumbo_layout =
 	8*32
 };
 
-static struct GfxLayout gumbo2_layout =
+static gfx_layout gumbo2_layout =
 {
 	4,4,
 	RGN_FRAC(1,2),
@@ -302,7 +302,7 @@ static struct GfxLayout gumbo2_layout =
 	4*16
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &gumbo_layout,   0x0, 2  }, /* bg tiles */
 	{ REGION_GFX2, 0, &gumbo2_layout,  0x0, 2  }, /* fg tiles */

@@ -14,20 +14,18 @@
 #include "cpu/m6502/m6502.h"
 
 static int background_color,background_disable;
-static struct tilemap *background_tilemap, *fix_tilemap;
-static data8_t deco16_io_ram[16];
+static tilemap *background_tilemap, *fix_tilemap;
+static UINT8 deco16_io_ram[16];
 
 #if 0
-void debug_print(struct mame_bitmap *bitmap)
+void debug_print(mame_bitmap *bitmap)
 {
 	int i,j;
-	char buf[20];
+	char buf[20*16];
+	char *bufptr = buf;
 	for (i = 0;i < 16;i+=2)
-	{
-		sprintf(buf,"%04X",deco16_io_ram[i+1]|(deco16_io_ram[i]<<8));
-		for (j = 0;j < 4;j++)
-			drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,10+3*6*i+6*j,6*6,0,TRANSPARENCY_NONE,0);
-	}
+		bufptr += sprintf(bufptr,"%04X",deco16_io_ram[i+1]|(deco16_io_ram[i]<<8));
+	ui_draw_text(buf, 10, 6*6);
 }
 #endif
 
@@ -45,7 +43,7 @@ static UINT32 fix_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 
 static void get_back_tile_info( int tile_index )
 {
-	const data8_t *RAM = memory_region(REGION_USER1);
+	const UINT8 *RAM = memory_region(REGION_USER1);
 	int tile,bank;
 
 	/* Convert tile index of 512x512 to paged format */
@@ -199,7 +197,7 @@ PALETTE_INIT( liberate )
 
 /***************************************************************************/
 
-static void liberate_drawsprites(struct mame_bitmap *bitmap)
+static void liberate_drawsprites(mame_bitmap *bitmap)
 {
 	int offs;
 
@@ -250,7 +248,7 @@ static void liberate_drawsprites(struct mame_bitmap *bitmap)
 	}
 }
 
-static void prosport_drawsprites(struct mame_bitmap *bitmap)
+static void prosport_drawsprites(mame_bitmap *bitmap)
 {
 	int offs,multi,fx,fy,sx,sy,sy2,code,code2,color;
 
@@ -305,7 +303,7 @@ static void prosport_drawsprites(struct mame_bitmap *bitmap)
 	}
 }
 
-static void boomrang_drawsprites(struct mame_bitmap *bitmap, int pri)
+static void boomrang_drawsprites(mame_bitmap *bitmap, int pri)
 {
 	int offs,multi,fx,fy,sx,sy,sy2,code,code2,color;
 

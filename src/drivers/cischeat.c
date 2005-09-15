@@ -162,13 +162,13 @@ To Do:
 
 /* Variables only used here: */
 
-static data16_t *rom_1, *rom_2, *rom_3;
-static data16_t *sharedram1, *sharedram2;
+static UINT16 *rom_1, *rom_2, *rom_3;
+static UINT16 *sharedram1, *sharedram2;
 
 /* Variables defined in vidhrdw: */
 
-extern data16_t *cischeat_roadram[2];
-extern data16_t *f1gpstr2_ioready;
+extern UINT16 *cischeat_roadram[2];
+extern UINT16 *f1gpstr2_ioready;
 
 /* Functions defined in vidhrdw: */
 
@@ -219,7 +219,7 @@ static READ16_HANDLER( rom_3_r ) {return rom_3[offset];}
 
 WRITE16_HANDLER( bigrun_paletteram16_w )
 {
-	data16_t word = COMBINE_DATA(&paletteram16[offset]);
+	UINT16 word = COMBINE_DATA(&paletteram16[offset]);
 	int r = ((word >> 8) & 0xF0 ) | ((word << 0) & 0x08);
 	int g = ((word >> 4) & 0xF0 ) | ((word << 1) & 0x08);
 	int b = ((word >> 0) & 0xF0 ) | ((word << 2) & 0x08);
@@ -268,9 +268,9 @@ static ADDRESS_MAP_START( bigrun_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 
 	/* Only writes to the first 0x40000 bytes affect the tilemaps:             */
 	/* either these games support larger tilemaps or have more ram than needed */
-	AM_RANGE(0x090000, 0x093fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram_0	)	// Scroll ram 0
-	AM_RANGE(0x094000, 0x097fff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram_1	)	// Scroll ram 1
-	AM_RANGE(0x098000, 0x09bfff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram_2	)	// Scroll ram 2
+	AM_RANGE(0x090000, 0x093fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0]	)	// Scroll ram 0
+	AM_RANGE(0x094000, 0x097fff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1]	)	// Scroll ram 1
+	AM_RANGE(0x098000, 0x09bfff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2]	)	// Scroll ram 2
 
 	AM_RANGE(0x09c000, 0x09ffff) AM_WRITE(bigrun_paletteram16_w) AM_BASE(&paletteram16	)	// Palettes
 ADDRESS_MAP_END
@@ -291,7 +291,7 @@ ADDRESS_MAP_END
 
 WRITE16_HANDLER( cischeat_paletteram16_w )
 {
-	data16_t word = COMBINE_DATA(&paletteram16[offset]);
+	UINT16 word = COMBINE_DATA(&paletteram16[offset]);
 	int r = ((word >> 8) & 0xF0 ) | ((word << 0) & 0x08);
 	int g = ((word >> 4) & 0xF0 ) | ((word << 1) & 0x08);
 	int b = ((word >> 0) & 0xF0 ) | ((word << 2) & 0x08);
@@ -345,9 +345,9 @@ static ADDRESS_MAP_START( cischeat_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 
 	/* Only writes to the first 0x40000 bytes affect the tilemaps:             */
 	/* either these games support larger tilemaps or have more ram than needed */
-	AM_RANGE(0x0a0000, 0x0a7fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram_0	)	// Scroll ram 0
-	AM_RANGE(0x0a8000, 0x0affff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram_1	)	// Scroll ram 1
-	AM_RANGE(0x0b0000, 0x0b7fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram_2	)	// Scroll ram 2
+	AM_RANGE(0x0a0000, 0x0a7fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0]	)	// Scroll ram 0
+	AM_RANGE(0x0a8000, 0x0affff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1]	)	// Scroll ram 1
+	AM_RANGE(0x0b0000, 0x0b7fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2]	)	// Scroll ram 2
 
 	AM_RANGE(0x0b8000, 0x0bffff) AM_WRITE(cischeat_paletteram16_w) AM_BASE(&paletteram16	)	// Palettes
 ADDRESS_MAP_END
@@ -359,7 +359,7 @@ ADDRESS_MAP_END
 
 WRITE16_HANDLER( f1gpstar_paletteram16_w )
 {
-	data16_t word = COMBINE_DATA(&paletteram16[offset]);
+	UINT16 word = COMBINE_DATA(&paletteram16[offset]);
 	int r = ((word >> 8) & 0xF0 ) | ((word << 0) & 0x08);
 	int g = ((word >> 4) & 0xF0 ) | ((word << 1) & 0x08);
 	int b = ((word >> 0) & 0xF0 ) | ((word << 2) & 0x08);
@@ -415,9 +415,9 @@ static ADDRESS_MAP_START( f1gpstar_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 
 	/* Only writes to the first 0x40000 bytes affect the tilemaps:             */
 	/* either these games support larger tilemaps or have more ram than needed */
-	AM_RANGE(0x0a0000, 0x0a7fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram_0	)	// Scroll ram 0
-	AM_RANGE(0x0a8000, 0x0affff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram_1	)	// Scroll ram 1
-	AM_RANGE(0x0b0000, 0x0b7fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram_2	)	// Scroll ram 2
+	AM_RANGE(0x0a0000, 0x0a7fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0]	)	// Scroll ram 0
+	AM_RANGE(0x0a8000, 0x0affff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1]	)	// Scroll ram 1
+	AM_RANGE(0x0b0000, 0x0b7fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2]	)	// Scroll ram 2
 
 	AM_RANGE(0x0b8000, 0x0bffff) AM_WRITE(f1gpstar_paletteram16_w) AM_BASE(&paletteram16	)	// Palettes
 ADDRESS_MAP_END
@@ -457,9 +457,9 @@ static ADDRESS_MAP_START( f1gpstr2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 
 	/* Only writes to the first 0x40000 bytes affect the tilemaps:             */
 	/* either these games support larger tilemaps or have more ram than needed */
-	AM_RANGE(0x0a0000, 0x0a7fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram_0	)	// Scroll ram 0
-	AM_RANGE(0x0a8000, 0x0affff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram_1	)	// Scroll ram 1
-	AM_RANGE(0x0b0000, 0x0b7fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram_2	)	// Scroll ram 2
+	AM_RANGE(0x0a0000, 0x0a7fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0]	)	// Scroll ram 0
+	AM_RANGE(0x0a8000, 0x0affff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1]	)	// Scroll ram 1
+	AM_RANGE(0x0b0000, 0x0b7fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2]	)	// Scroll ram 2
 
 	AM_RANGE(0x0b8000, 0x0bffff) AM_WRITE(f1gpstar_paletteram16_w) AM_BASE(&paletteram16	)	// Palettes
 ADDRESS_MAP_END
@@ -486,7 +486,7 @@ WRITE16_HANDLER( scudhamm_paletteram16_w )
 }
 
 
-data16_t scudhamm_motor_command;
+UINT16 scudhamm_motor_command;
 
 /*  Motor Status.
 
@@ -588,9 +588,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( writemem_scudhamm, ADDRESS_SPACE_PROGRAM, 16 )
  	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM					)	// ROM
 	AM_RANGE(0x0f0000, 0x0fffff) AM_WRITE(MWA16_RAM) AM_BASE(				&megasys1_ram			)	// Work RAM + Spriteram
-	AM_RANGE(0x082000, 0x082fff) AM_WRITE(scudhamm_vregs_w) AM_BASE(			&megasys1_vregs			)	// Video Registers + RAM
-	AM_RANGE(0x0a0000, 0x0a3fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(	&megasys1_scrollram_0	)	// Scroll RAM 0
-	AM_RANGE(0x0b0000, 0x0b3fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(	&megasys1_scrollram_2	)	// Scroll RAM 2
+	AM_RANGE(0x082000, 0x082fff) AM_WRITE(scudhamm_vregs_w) AM_BASE(		&megasys1_vregs			)	// Video Registers + RAM
+	AM_RANGE(0x0a0000, 0x0a3fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(	&megasys1_scrollram[0]	)	// Scroll RAM 0
+	AM_RANGE(0x0b0000, 0x0b3fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(	&megasys1_scrollram[2]	)	// Scroll RAM 2
 	AM_RANGE(0x0b8000, 0x0bffff) AM_WRITE(scudhamm_paletteram16_w) AM_BASE(	&paletteram16			)	// Palette
  	AM_RANGE(0x100000, 0x100001) AM_WRITE(scudhamm_oki_bank_w		)	// Sound
  	AM_RANGE(0x100008, 0x100009) AM_WRITE(scudhamm_leds_w			)	// Leds
@@ -1425,7 +1425,7 @@ INPUT_PORTS_END
 **************************************************************************/
 
 /* 8x8x4, straightforward layout */
-static struct GfxLayout tiles_8x8 =
+static gfx_layout tiles_8x8 =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -1437,7 +1437,7 @@ static struct GfxLayout tiles_8x8 =
 };
 
 /* 16x16x4, straightforward layout */
-static struct GfxLayout tiles_16x16 =
+static gfx_layout tiles_16x16 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1449,7 +1449,7 @@ static struct GfxLayout tiles_16x16 =
 };
 
 /* 16x16x4, made of four 8x8 tiles */
-static struct GfxLayout tiles_16x16_quad =
+static gfx_layout tiles_16x16_quad =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1461,7 +1461,7 @@ static struct GfxLayout tiles_16x16_quad =
 };
 
 /* Road: 64 x 1 x 4 */
-static struct GfxLayout road_layout =
+static gfx_layout road_layout =
 {
 	64,1,
 	RGN_FRAC(1,1),
@@ -1477,7 +1477,7 @@ static struct GfxLayout road_layout =
                                 Big Run
 **************************************************************************/
 
-static struct GfxDecodeInfo bigrun_gfxdecodeinfo[] =
+static gfx_decode bigrun_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tiles_8x8,	0x0000, 16 }, // [0] Scroll 0
 	{ REGION_GFX2, 0, &tiles_8x8,	0x0100, 16 }, // [1] Scroll 1
@@ -1492,7 +1492,7 @@ static struct GfxDecodeInfo bigrun_gfxdecodeinfo[] =
                                 Cisco Heat
 **************************************************************************/
 
-static struct GfxDecodeInfo cischeat_gfxdecodeinfo[] =
+static gfx_decode cischeat_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tiles_8x8,	0x0000, 32  }, // [0] Scroll 0
 	{ REGION_GFX2, 0, &tiles_8x8,	0x0200, 32  }, // [1] Scroll 1
@@ -1507,7 +1507,7 @@ static struct GfxDecodeInfo cischeat_gfxdecodeinfo[] =
                             F1 GrandPrix Star
 **************************************************************************/
 
-static struct GfxDecodeInfo f1gpstar_gfxdecodeinfo[] =
+static gfx_decode f1gpstar_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tiles_8x8,	0x0000, 16  }, // [0] Scroll 0
 	{ REGION_GFX2, 0, &tiles_8x8,	0x0100, 16  }, // [1] Scroll 1
@@ -1522,7 +1522,7 @@ static struct GfxDecodeInfo f1gpstar_gfxdecodeinfo[] =
                                 Scud Hammer
 **************************************************************************/
 
-static struct GfxDecodeInfo gfxdecodeinfo_scudhamm[] =
+static gfx_decode gfxdecodeinfo_scudhamm[] =
 {
 	{ REGION_GFX1, 0, &tiles_8x8,			0x0000, 16  },	// [0] Scroll 0
 	{ REGION_GFX1, 0, &tiles_8x8,			0x0000, 16  },	// [1] UNUSED
@@ -1921,7 +1921,7 @@ ROM_END
 DRIVER_INIT( bigrun )
 {
 	/* Split ROMs */
-	rom_1 = (data16_t *) memory_region(REGION_USER1);
+	rom_1 = (UINT16 *) memory_region(REGION_USER1);
 
 	cischeat_untangle_sprites(REGION_GFX4);	// Untangle sprites
 	phantasm_rom_decode(3);					// Decrypt sound cpu code
@@ -2043,17 +2043,17 @@ ROM_END
 DRIVER_INIT( cischeat )
 {
 	/* Split ROMs */
-	rom_1 = (data16_t *) (memory_region(REGION_USER1) + 0x00000);
-	rom_2 = (data16_t *) (memory_region(REGION_CPU2)  + 0x40000);
-	rom_3 = (data16_t *) (memory_region(REGION_CPU3)  + 0x40000);
+	rom_1 = (UINT16 *) (memory_region(REGION_USER1) + 0x00000);
+	rom_2 = (UINT16 *) (memory_region(REGION_CPU2)  + 0x40000);
+	rom_3 = (UINT16 *) (memory_region(REGION_CPU3)  + 0x40000);
 
 	memcpy(memory_region(REGION_USER1) + 0x80000, rom_2, 0x40000);
 	memset(rom_2, 0, 0x40000);
-	rom_2 = (data16_t *) (memory_region(REGION_USER1) + 0x80000);
+	rom_2 = (UINT16 *) (memory_region(REGION_USER1) + 0x80000);
 
 	memcpy(memory_region(REGION_USER1) + 0xc0000, rom_3, 0x40000);
 	memset(rom_3, 0, 0x40000);
-	rom_3 = (data16_t *) (memory_region(REGION_USER1) + 0xc0000);
+	rom_3 = (UINT16 *) (memory_region(REGION_USER1) + 0xc0000);
 
 	cischeat_untangle_sprites(REGION_GFX4);	// Untangle sprites
 	astyanax_rom_decode(3);					// Decrypt sound cpu code
@@ -2270,7 +2270,7 @@ ROM_END
 DRIVER_INIT( f1gpstar )
 {
 	/* Split ROMs */
-	rom_1 = (data16_t *) memory_region(REGION_USER1);
+	rom_1 = (UINT16 *) memory_region(REGION_USER1);
 
 	cischeat_untangle_sprites(REGION_GFX4);
 }

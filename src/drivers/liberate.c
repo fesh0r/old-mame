@@ -30,7 +30,7 @@ VIDEO_START( boomrang );
 VIDEO_START( liberate );
 
 static int deco16_bank;
-static data8_t *scratchram;
+static UINT8 *scratchram;
 
 WRITE8_HANDLER( deco16_io_w );
 WRITE8_HANDLER( prosport_paletteram_w );
@@ -40,7 +40,7 @@ WRITE8_HANDLER( liberate_videoram_w );
 
 static READ8_HANDLER( deco16_bank_r )
 {
-	const data8_t *ROM = memory_region(REGION_USER1);
+	const UINT8 *ROM = memory_region(REGION_USER1);
 
 	/* The tilemap bank can be swapped into main memory */
 	if (deco16_bank)
@@ -63,7 +63,7 @@ static WRITE8_HANDLER( deco16_bank_w )
 
 static READ8_HANDLER( deco16_io_r )
 {
-	const data8_t *ROM = memory_region(REGION_CPU1);
+	const UINT8 *ROM = memory_region(REGION_CPU1);
 
 	if (deco16_bank) {
 		if (offset==0) return readinputportbytag("IN1"); /* Player 1 controls */
@@ -605,7 +605,7 @@ INPUT_PORTS_END
 
 /***************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -616,7 +616,7 @@ static struct GfxLayout charlayout =
 	8*8
 };
 
-static struct GfxLayout sprites =
+static gfx_layout sprites =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -628,7 +628,7 @@ static struct GfxLayout sprites =
 	16*16
 };
 
-static struct GfxLayout pro_tiles =
+static gfx_layout pro_tiles =
 {
 	16,16,
 	16,
@@ -644,7 +644,7 @@ static struct GfxLayout pro_tiles =
 	64*8
 };
 
-static struct GfxLayout tiles1 =
+static gfx_layout tiles1 =
 {
 	16,16,
 	128,
@@ -660,7 +660,7 @@ static struct GfxLayout tiles1 =
 	64*8
 };
 
-static struct GfxLayout tiles2 =
+static gfx_layout tiles2 =
 {
 	16,16,
 	128,
@@ -674,7 +674,7 @@ static struct GfxLayout tiles2 =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &charlayout,  0, 4 },
 	{ REGION_GFX1, 0x00000, &sprites,     0, 4 },
@@ -683,7 +683,7 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo prosport_gfxdecodeinfo[] =
+static gfx_decode prosport_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &charlayout,  0, 4 },
 	{ REGION_GFX1, 0x00000, &sprites,     0, 4 },
@@ -1126,7 +1126,7 @@ ROM_END
 
 static void sound_cpu_decrypt(void)
 {
-	data8_t *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(REGION_CPU2);
 	int i;
 
 	/* Bit swapping on sound cpu - Opcodes only */

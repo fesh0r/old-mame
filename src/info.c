@@ -4,7 +4,6 @@
 #include "sound/samples.h"
 #include "info.h"
 #include "hash.h"
-#include "datafile.h"
 
 /* The size of our hardcoded BIOS ROM array */
 #define MAX_BIOS 32
@@ -18,7 +17,7 @@
 #define XML_TOP "game"
 #endif
 
-extern struct GameDriver driver_0;
+extern game_driver driver_0;
 
 /* Print a free format string */
 static const char *normalize_string(const char* s)
@@ -72,9 +71,9 @@ static void print_free_string(FILE *out, const char* s)
 	}
 }
 
-static void print_game_switch(FILE* out, const struct GameDriver* game)
+static void print_game_switch(FILE* out, const game_driver* game)
 {
-	const struct InputPort* input;
+	const input_port_entry* input;
 
 	begin_resource_tracking();
 
@@ -114,9 +113,9 @@ static void print_game_switch(FILE* out, const struct GameDriver* game)
 	end_resource_tracking();
 }
 
-static void print_game_input(FILE* out, const struct GameDriver* game)
+static void print_game_input(FILE* out, const game_driver* game)
 {
-	const struct InputPort* input;
+	const input_port_entry* input;
 	int nplayer = 0;
 	const char* control = 0;
 	int nbutton = 0;
@@ -256,9 +255,9 @@ static void print_game_input(FILE* out, const struct GameDriver* game)
 	end_resource_tracking();
 }
 
-static void print_game_bios(FILE* out, const struct GameDriver* game)
+static void print_game_bios(FILE* out, const game_driver* game)
 {
-	const struct SystemBios *thisbios;
+	const bios_entry *thisbios;
 
 	if(!game->bios)
 		return;
@@ -283,10 +282,10 @@ static void print_game_bios(FILE* out, const struct GameDriver* game)
 	}
 }
 
-static void print_game_rom(FILE* out, const struct GameDriver* game)
+static void print_game_rom(FILE* out, const game_driver* game)
 {
-	const struct RomModule *region, *rom, *chunk;
-	const struct RomModule *pregion, *prom, *fprom=NULL;
+	const rom_entry *region, *rom, *chunk;
+	const rom_entry *pregion, *prom, *fprom=NULL;
 
 	if (!game->rom)
 		return;
@@ -323,7 +322,7 @@ static void print_game_rom(FILE* out, const struct GameDriver* game)
 			found_bios = 0;
 			if(!is_disk && is_bios && game->bios)
 			{
-				const struct SystemBios *thisbios = game->bios;
+				const bios_entry *thisbios = game->bios;
 
 				/* Match against bios short names */
 				while(!found_bios && !BIOSENTRY_ISEND(thisbios) )
@@ -431,10 +430,10 @@ static void print_game_rom(FILE* out, const struct GameDriver* game)
 	}
 }
 
-static void print_game_sampleof(FILE* out, const struct GameDriver* game)
+static void print_game_sampleof(FILE* out, const game_driver* game)
 {
 #if (HAS_SAMPLES)
-	struct InternalMachineDriver drv;
+	machine_config drv;
 	int i;
 
 	expand_machine_driver(game->drv, &drv);
@@ -458,10 +457,10 @@ static void print_game_sampleof(FILE* out, const struct GameDriver* game)
 #endif
 }
 
-static void print_game_sample(FILE* out, const struct GameDriver* game)
+static void print_game_sample(FILE* out, const game_driver* game)
 {
 #if (HAS_SAMPLES)
-	struct InternalMachineDriver drv;
+	machine_config drv;
 	int i;
 
 	expand_machine_driver(game->drv, &drv);
@@ -494,11 +493,11 @@ static void print_game_sample(FILE* out, const struct GameDriver* game)
 #endif
 }
 
-static void print_game_micro(FILE* out, const struct GameDriver* game)
+static void print_game_micro(FILE* out, const game_driver* game)
 {
-	struct InternalMachineDriver driver;
-	const struct MachineCPU* cpu;
-	const struct MachineSound* sound;
+	machine_config driver;
+	const cpu_config* cpu;
+	const sound_config* sound;
 	int j;
 
 	expand_machine_driver(game->drv, &driver);
@@ -533,9 +532,9 @@ static void print_game_micro(FILE* out, const struct GameDriver* game)
 	}
 }
 
-static void print_game_video(FILE* out, const struct GameDriver* game)
+static void print_game_video(FILE* out, const game_driver* game)
 {
-	struct InternalMachineDriver driver;
+	machine_config driver;
 
 	int dx;
 	int dy;
@@ -597,11 +596,11 @@ static void print_game_video(FILE* out, const struct GameDriver* game)
 	fprintf(out, "/>\n");
 }
 
-static void print_game_sound(FILE* out, const struct GameDriver* game)
+static void print_game_sound(FILE* out, const game_driver* game)
 {
-	struct InternalMachineDriver driver;
-	const struct MachineCPU* cpu;
-	const struct MachineSound* sound;
+	machine_config driver;
+	const cpu_config* cpu;
+	const sound_config* sound;
 
 	/* check if the game have sound emulation */
 	int has_sound = 0;
@@ -636,23 +635,9 @@ static void print_game_sound(FILE* out, const struct GameDriver* game)
 	fprintf(out, "/>\n");
 }
 
-#define HISTORY_BUFFER_MAX 16384
-
-static void print_game_history(FILE* out, const struct GameDriver* game)
+static void print_game_driver(FILE* out, const game_driver* game)
 {
-	char buffer[HISTORY_BUFFER_MAX];
-
-	if (load_driver_history(game,buffer,HISTORY_BUFFER_MAX)==0)
-	{
-		fprintf(out, "\t\t<history>");
-		print_free_string(out, buffer);
-		fprintf(out, "</history>\n");
-	}
-}
-
-static void print_game_driver(FILE* out, const struct GameDriver* game)
-{
-	struct InternalMachineDriver driver;
+	machine_config driver;
 
 	expand_machine_driver(game->drv, &driver);
 
@@ -709,7 +694,7 @@ static void print_game_driver(FILE* out, const struct GameDriver* game)
 }
 
 #ifdef MESS
-static void print_game_device(FILE* out, const struct GameDriver* game)
+static void print_game_device(FILE* out, const game_driver* game)
 {
 	const struct IODevice* dev;
 
@@ -746,7 +731,7 @@ static void print_game_device(FILE* out, const struct GameDriver* game)
 
 
 /* Print the MAME info record for a game */
-static void print_game_info(FILE* out, const struct GameDriver* game)
+static void print_game_info(FILE* out, const game_driver* game)
 {
 	const char *start;
 
@@ -781,7 +766,6 @@ static void print_game_info(FILE* out, const struct GameDriver* game)
 	if (game->manufacturer)
 		fprintf(out, "\t\t<manufacturer>%s</manufacturer>\n", normalize_string(game->manufacturer));
 
-	print_game_history(out, game);
 	print_game_bios(out, game);
 	print_game_rom(out, game);
 	print_game_sample(out, game);
@@ -800,7 +784,7 @@ static void print_game_info(FILE* out, const struct GameDriver* game)
 
 #if !defined(MESS)
 /* Print the resource info */
-static void print_resource_info(FILE* out, const struct GameDriver* game)
+static void print_resource_info(FILE* out, const game_driver* game)
 {
 	const char *start;
 
@@ -840,11 +824,11 @@ static void print_resource_info(FILE* out, const struct GameDriver* game)
 }
 
 /* Print resource info for all games */
-static void print_resources_data(FILE* out, const struct GameDriver* games[])
+static void print_resources_data(FILE* out, const game_driver* games[])
 {
 	int i, j;
 	int total_bios=0;
-	struct GameDriver *resources[MAX_BIOS];
+	game_driver *resources[MAX_BIOS];
 
 	/* Build a driver list containing all the NOT_A_DRIVER entries */
 	/* This won't catch clones of games with bioses, but the parent should be in games[] anyway */
@@ -861,7 +845,7 @@ static void print_resources_data(FILE* out, const struct GameDriver* games[])
 			}
 
 			if (j == total_bios)
-				resources[total_bios++] = (struct GameDriver *)drivers[i]->clone_of;
+				resources[total_bios++] = (game_driver *)drivers[i]->clone_of;
 
 			if (total_bios == MAX_BIOS)
 			{
@@ -877,7 +861,7 @@ static void print_resources_data(FILE* out, const struct GameDriver* games[])
 }
 #endif
 
-static void print_mame_data(FILE* out, const struct GameDriver* games[])
+static void print_mame_data(FILE* out, const game_driver* games[])
 {
 	int j;
 
@@ -892,7 +876,7 @@ static void print_mame_data(FILE* out, const struct GameDriver* games[])
 }
 
 /* Print the MAME database in XML format */
-void print_mame_xml(FILE* out, const struct GameDriver* games[])
+void print_mame_xml(FILE* out, const game_driver* games[])
 {
 	fprintf(out,
 		"<?xml version=\"1.0\"?>\n"

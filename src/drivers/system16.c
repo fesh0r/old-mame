@@ -192,7 +192,7 @@ WRITE8_HANDLER( sys16_7751_sh_rom_select_w );
 
 /***************************************************************************/
 
-static data16_t coinctrl;
+static UINT16 coinctrl;
 
 static WRITE16_HANDLER( sys16_3d_coinctrl_w )
 {
@@ -455,7 +455,7 @@ static WRITE16_HANDLER( sound_command_nmi_w )
 	}
 }
 
-//static data16_t coinctrl;
+//static UINT16 coinctrl;
 
 
 static WRITE16_HANDLER( sys16_coinctrl_w )
@@ -1469,7 +1469,7 @@ static int passht4b_io3_val;
 
 static READ16_HANDLER( passht4b_service_r )
 {
-	data16_t val=input_port_2_word_r(offset,0);
+	UINT16 val=input_port_2_word_r(offset,0);
 	if(!(readinputport(0) & 0x40)) val&=0xef;
 	if(!(readinputport(1) & 0x40)) val&=0xdf;
 	if(!(readinputport(5) & 0x40)) val&=0xbf;
@@ -2496,9 +2496,6 @@ ROM_START( fpointbj )
 	ROM_REGION( 0x0120, REGION_PROMS, 0 )
 	ROM_LOAD( "82s129.1",  0x0000, 0x0100, CRC(a7c22d96) SHA1(160deae8053b09c09328325246598b3518c7e20b) )
 	ROM_LOAD( "82s123.2",  0x0100, 0x0020, CRC(58bcf8bd) SHA1(e4d3d179b08c0f3424a6bec0f15058fb1b56f8d8) )
-
-	ROM_REGION( 0x800, REGION_USER2, 0 )
-	ROM_LOAD( "d2716.rom",  0x0000, 0x0800, CRC(d7fd8ac4) SHA1(87e5f1c24350adab129ad79a1f68af402580f8f0) )
 ROM_END
 
 ROM_START( goldnabl )
@@ -2520,7 +2517,7 @@ ROM_START( goldnabl )
 	ROM_LOAD( "ga29.b12", 0x40000, 0x10000, CRC(22f0667e) SHA1(2d11b2ce105a3db9c914942cace85aff17deded9) )
 	ROM_LOAD( "ga28.b11", 0x50000, 0x10000, CRC(afb1a7e4) SHA1(726fded9db72a881128b43f449d2baf450131f63) )
 
-	ROM_REGION( 0x180000, REGION_GFX2, 0 ) /* sprites */
+	ROM_REGION( 0x1c0000, REGION_GFX2, 0 ) /* sprites */
 	/* wrong! */
 	ROM_LOAD16_BYTE( "ga34.b17", 		0x000001, 0x10000, CRC(28ba70c8) SHA1(a6f33e1404928b6d1006943494646d6cfbd60a4b) )
 	ROM_LOAD16_BYTE( "ga35.b18", 		0x010000, 0x10000, CRC(2ed96a26) SHA1(edcf915243e6f92d31cdfc53965438f6b6bff51d) )
@@ -2770,7 +2767,7 @@ GAMEX(1989, bayrtbl2, bayroute, bayroute, bayroute, bayrtbl1, ROT0,   "bootleg",
 GAME( 1989, dduxbl,   ddux,     dduxbl,   ddux,     dduxbl,   ROT0,   "bootleg", "Dynamite Dux (bootleg)" )
 GAME( 1989, eswatbl,  eswat,    eswatbl,  eswat,    eswatbl,  ROT0,   "bootleg", "E-Swat - Cyber Police (bootleg)" )
 GAME( 1989, fpointbl, fpoint,   fpointbl, fpoint,   fpointbl, ROT0,   "bootleg", "Flash Point (World, bootleg)" )
-GAME( 1989, fpointbj, fpoint,   fpointbl, fpointbj, fpointbl, ROT0,   "bootleg", "Flash Point (Japan, bootleg)" )
+GAMEX( 1989, fpointbj, fpoint,   fpointbl, fpointbj, fpointbl, ROT0,   "bootleg", "Flash Point (Japan, bootleg)", GAME_WRONG_COLORS )
 
 GAMEX(1989, goldnabl, goldnaxe, goldnaxe, goldnaxe, goldnabl, ROT0,   "bootleg", "Golden Axe (bootleg)", GAME_NOT_WORKING )
 

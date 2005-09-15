@@ -47,7 +47,7 @@ static WRITE8_HANDLER( kopunch_lamp_w )
 	set_led_status(0,~data & 0x80);
 
 //  if ((data & 0x7f) != 0x7f)
-//      usrintf_showmessage("port 38 = %02x",data);
+//      ui_popup("port 38 = %02x",data);
 }
 
 static WRITE8_HANDLER( kopunch_coin_w )
@@ -56,7 +56,7 @@ static WRITE8_HANDLER( kopunch_coin_w )
 	coin_counter_w(1,~data & 0x40);
 
 //  if ((data & 0x3f) != 0x3f)
-//      usrintf_showmessage("port 34 = %02x",data);
+//      ui_popup("port 34 = %02x",data);
 }
 
 
@@ -145,7 +145,7 @@ INPUT_PORTS_START( kopunch )
 INPUT_PORTS_END
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -156,7 +156,7 @@ static struct GfxLayout charlayout =
 	8*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 1 },
 	{ REGION_GFX2, 0, &charlayout, 0, 1 },

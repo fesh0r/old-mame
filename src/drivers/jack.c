@@ -84,7 +84,7 @@ static WRITE8_HANDLER( joinem_misc_w )
 
 static READ8_HANDLER( joinem_input1_r )
 {
-	data8_t ret = readinputport(1) & ~0x20;
+	UINT8 ret = readinputport(1) & ~0x20;
 
 	if((readinputport(4) & 0x80) && !joinem_snd_bit)
 		ret |= 0x20;
@@ -116,7 +116,7 @@ static READ8_HANDLER( striv_question_r )
 	// Read the actual byte from question roms
 	else
 	{
-		data8_t *ROM = memory_region(REGION_USER1);
+		UINT8 *ROM = memory_region(REGION_USER1);
 		int real_address;
 
 		real_address = question_address | (offset & 0x3f0) | remap_address[offset & 0x0f];
@@ -128,7 +128,6 @@ static READ8_HANDLER( striv_question_r )
 			real_address |= 0x8000 * question_rom;
 
 		return ROM[real_address];
-
 	}
 
 	return 0; // the value read from the configuration reads is discarded
@@ -686,14 +685,14 @@ INPUT_PORTS_START( striv )
 	PORT_DIPSETTING(    0x02, "Horizontal" )
 	PORT_DIPSETTING(    0x00, "Vertical" )
 	PORT_DIPNAME( 0x05, 0x05, "Gaming Option Number" )
-	PORT_DIPSETTING(    0x01, "2" ) PORT_DIPCONDITION(0,0x20,PORTCOND_EQUALS,0x20)
-	PORT_DIPSETTING(    0x05, "3" ) PORT_DIPCONDITION(0,0x20,PORTCOND_EQUALS,0x20)
-	PORT_DIPSETTING(    0x00, "4" ) PORT_DIPCONDITION(0,0x20,PORTCOND_EQUALS,0x20)
-	PORT_DIPSETTING(    0x04, "5" ) PORT_DIPCONDITION(0,0x20,PORTCOND_EQUALS,0x20)
-	PORT_DIPSETTING(    0x01, "4" ) PORT_DIPCONDITION(0,0x20,PORTCOND_NOTEQUALS,0x20)
-	PORT_DIPSETTING(    0x05, "5" ) PORT_DIPCONDITION(0,0x20,PORTCOND_NOTEQUALS,0x20)
-	PORT_DIPSETTING(    0x00, "6" ) PORT_DIPCONDITION(0,0x20,PORTCOND_NOTEQUALS,0x20)
-	PORT_DIPSETTING(    0x04, "7" ) PORT_DIPCONDITION(0,0x20,PORTCOND_NOTEQUALS,0x20)
+	PORT_DIPSETTING(    0x01, "2" ) PORT_CONDITION("DSW1",0x20,PORTCOND_EQUALS,0x20)
+	PORT_DIPSETTING(    0x05, "3" ) PORT_CONDITION("DSW1",0x20,PORTCOND_EQUALS,0x20)
+	PORT_DIPSETTING(    0x00, "4" ) PORT_CONDITION("DSW1",0x20,PORTCOND_EQUALS,0x20)
+	PORT_DIPSETTING(    0x04, "5" ) PORT_CONDITION("DSW1",0x20,PORTCOND_EQUALS,0x20)
+	PORT_DIPSETTING(    0x01, "4" ) PORT_CONDITION("DSW1",0x20,PORTCOND_NOTEQUALS,0x20)
+	PORT_DIPSETTING(    0x05, "5" ) PORT_CONDITION("DSW1",0x20,PORTCOND_NOTEQUALS,0x20)
+	PORT_DIPSETTING(    0x00, "6" ) PORT_CONDITION("DSW1",0x20,PORTCOND_NOTEQUALS,0x20)
+	PORT_DIPSETTING(    0x04, "7" ) PORT_CONDITION("DSW1",0x20,PORTCOND_NOTEQUALS,0x20)
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
@@ -740,7 +739,7 @@ INPUT_PORTS_START( striv )
 INPUT_PORTS_END
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	1024,	/* 1024 characters */
@@ -751,13 +750,13 @@ static struct GfxLayout charlayout =
 	8*8	/* every char takes 16 bytes */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 8 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxLayout joinem_charlayout =
+static gfx_layout joinem_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -768,7 +767,7 @@ static struct GfxLayout joinem_charlayout =
 	8*8
 };
 
-static struct GfxDecodeInfo joinem_gfxdecodeinfo[] =
+static gfx_decode joinem_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &joinem_charlayout, 0, 32 },
 	{ -1 }
@@ -1197,10 +1196,10 @@ ROM_START( striv )
 	ROM_LOAD( "snd.5a",       0x0000, 0x1000, CRC(b7ddf84f) SHA1(fa4cc0b2e5a88c82c62492c03e97ac6aa8a905b1) )
 
 	ROM_REGION( 0x4000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "chr3.5a",      0x0000, 0x1000, CRC(8f982a9c) SHA1(dd6f454dfd3e03d008080890881cfafd79758a40) )
+	ROM_LOAD( "chr0.1a",      0x0000, 0x1000, CRC(8f60229b) SHA1(96a888ae02797a205e1c6202395d3b42a820ad4d) )
 	ROM_LOAD( "chr2.4a",      0x1000, 0x1000, CRC(8f982a9c) SHA1(dd6f454dfd3e03d008080890881cfafd79758a40) )
-	ROM_LOAD( "chr1.2a",      0x2000, 0x1000, CRC(7ad4358e) SHA1(dd3a03c78fa8bf435e9905b901dc5a9987cd52e4) )
-	ROM_LOAD( "chr0.1a",      0x3000, 0x1000, CRC(8f60229b) SHA1(96a888ae02797a205e1c6202395d3b42a820ad4d) )
+	ROM_LOAD( "chr3.5a",      0x2000, 0x1000, CRC(8f982a9c) SHA1(dd6f454dfd3e03d008080890881cfafd79758a40) )
+	ROM_LOAD( "chr1.2a",      0x3000, 0x1000, CRC(7ad4358e) SHA1(dd3a03c78fa8bf435e9905b901dc5a9987cd52e4) )
 
 	ROM_REGION( 0x80000, REGION_USER1, ROMREGION_ERASEFF ) /* Question roms */
 	ROM_LOAD( "rom.u6",       0x00000, 0x8000, CRC(a32d7a28) SHA1(fbad0b5c9f1dbeb4f245a2198248c18ceae556fa) )
@@ -1284,7 +1283,7 @@ static DRIVER_INIT( zzyzzyxx )
 static DRIVER_INIT( striv )
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	data8_t data;
+	UINT8 data;
 	int A;
 
 	/* decrypt program rom */
@@ -1330,4 +1329,4 @@ GAME( 1984, sucasino, 0,        jack,    sucasino, jack,     ROT90, "Data Amusem
 GAME( 1981, tripool,  0,        tripool, tripool,  jack,     ROT90, "Noma (Casino Tech license)", "Tri-Pool (Casino Tech)" )
 GAME( 1981, tripoola, tripool,  tripool, tripool,  jack,     ROT90, "Noma (Costal Games license)", "Tri-Pool (Costal Games)" )
 GAME( 1986, joinem,   0,        joinem,  joinem,   zzyzzyxx, ROT90, "Global Corporation", "Joinem" )
-GAMEX(1985, striv,    0,        jack,    striv,    striv,    ROT270,"Hara Industries", "Super Triv", GAME_IMPERFECT_SOUND )
+GAMEX(1985, striv,    0,        jack,    striv,    striv,    ROT270,"Hara Industries", "Super Triv", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_COLORS )

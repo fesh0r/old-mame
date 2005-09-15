@@ -33,8 +33,8 @@ WRITE16_HANDLER( madmotor_pf3_data_w );
 WRITE16_HANDLER( madmotor_pf1_control_w );
 WRITE16_HANDLER( madmotor_pf2_control_w );
 WRITE16_HANDLER( madmotor_pf3_control_w );
-extern data16_t *madmotor_pf1_rowscroll;
-extern data16_t *madmotor_pf1_data,*madmotor_pf2_data,*madmotor_pf3_data;
+extern UINT16 *madmotor_pf1_rowscroll;
+extern UINT16 *madmotor_pf1_data,*madmotor_pf2_data,*madmotor_pf3_data;
 
 
 /******************************************************************************/
@@ -213,7 +213,7 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 chars */
 	4096,
@@ -224,7 +224,7 @@ static struct GfxLayout charlayout =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	2048,
@@ -237,7 +237,7 @@ static struct GfxLayout tilelayout =
 	16*16
 };
 
-static struct GfxLayout tilelayout2 =
+static gfx_layout tilelayout2 =
 {
 	16,16,
 	4096,
@@ -250,7 +250,7 @@ static struct GfxLayout tilelayout2 =
 	16*16
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	4096*2,
@@ -263,7 +263,7 @@ static struct GfxLayout spritelayout =
 	16*16
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,     0, 16 },	/* Characters 8x8 */
 	{ REGION_GFX2, 0, &tilelayout,   512, 16 },	/* Tiles 16x16 */

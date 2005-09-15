@@ -37,7 +37,7 @@ Known issues:
 //****************************************************************************
 // Imports
 
-extern struct GfxLayout bwing_tilelayout;
+extern gfx_layout bwing_tilelayout;
 
 extern WRITE8_HANDLER( bwing_paletteram_w );
 extern WRITE8_HANDLER( bwing_videoram_w );
@@ -51,9 +51,9 @@ extern VIDEO_UPDATE( bwing );
 //****************************************************************************
 // Local Vars
 
-static data8_t sound_fifo[MAX_SOUNDS];
-static data8_t *bwp123_membase[3], *bwp3_rombase;
-static data8_t *bwp1_sharedram1, *bwp2_sharedram1;
+static UINT8 sound_fifo[MAX_SOUNDS];
+static UINT8 *bwp123_membase[3], *bwp3_rombase;
+static UINT8 *bwp1_sharedram1, *bwp2_sharedram1;
 static size_t bwp3_romsize;
 static int bwp3_nmimask, bwp3_u8F_d, ffcount, ffhead, fftail;
 
@@ -63,7 +63,7 @@ static int bwp3_nmimask, bwp3_u8F_d, ffcount, ffhead, fftail;
 INTERRUPT_GEN ( bwp1_interrupt )
 {
 	static int coin = 0;
-	data8_t latch_data;
+	UINT8 latch_data;
 
 	switch (cpu_getiloops())
 	{
@@ -349,7 +349,7 @@ INPUT_PORTS_END
 //****************************************************************************
 // Graphics Layouts
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8, 8,
 	256,
@@ -360,7 +360,7 @@ static struct GfxLayout charlayout =
 	8*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16, 16,
 	512,
@@ -373,7 +373,7 @@ static struct GfxLayout spritelayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1,  0, &charlayout,       0x00, 1 }, // chars
 	{ REGION_GFX2,  0, &spritelayout,     0x20, 2 }, // sprites

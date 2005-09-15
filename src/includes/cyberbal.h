@@ -9,7 +9,7 @@
 /*----------- defined in sndhrdw/cyberbal.c -----------*/
 
 void cyberbal_sound_reset(void);
-int cyberbal_samples_start(const struct MachineSound *msound);
+int cyberbal_samples_start(const sound_config *msound);
 void cyberbal_samples_stop(void);
 
 INTERRUPT_GEN( cyberbal_sound_68k_irq_gen );
@@ -41,5 +41,5 @@ VIDEO_UPDATE( cyberbal );
 
 void cyberbal_scanline_update(int param);
 
-extern data16_t *cyberbal_paletteram_0;
-extern data16_t *cyberbal_paletteram_1;
+extern UINT16 *cyberbal_paletteram_0;
+extern UINT16 *cyberbal_paletteram_1;

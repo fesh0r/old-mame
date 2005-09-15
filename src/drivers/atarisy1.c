@@ -361,7 +361,7 @@ static READ8_HANDLER( via_pa_r )
 
 static WRITE8_HANDLER( via_pb_w )
 {
-	data8_t old = tms5220_ctl;
+	UINT8 old = tms5220_ctl;
 	tms5220_ctl = data;
 
 	/* write strobe */
@@ -698,7 +698,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct GfxLayout anlayout =
+static gfx_layout anlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -710,7 +710,7 @@ static struct GfxLayout anlayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &anlayout,       0, 64 },
 	{ -1 }

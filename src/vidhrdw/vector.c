@@ -80,7 +80,7 @@ static UINT32 *pTcosin;            /* adjust line width */
 static UINT8 Tgamma[256];         /* quick gamma anti-alias table  */
 static UINT8 Tgammar[256];        /* same as above, reversed order */
 
-static struct mame_bitmap *vecbitmap;
+static mame_bitmap *vecbitmap;
 static int vecwidth, vecheight;
 static int xmin, ymin, xmax, ymax; /* clipping area */
 
@@ -238,6 +238,9 @@ VIDEO_START( vector )
 
 	/* build gamma correction table */
 	vector_set_gamma (gamma_correction);
+
+	/* make sure we reset the list */
+	vector_dirty_list[0] = VECTOR_PIXEL_END;
 
 	return 0;
 }

@@ -32,8 +32,8 @@ static int b000_val = 0;
 static int b000_ret = 0;
 static int b800_prev = 0;
 
-static data8_t *bg_videoram, *fg_videoram;
-static struct tilemap *bg_tilemap, *fg_tilemap;
+static UINT8 *bg_videoram, *fg_videoram;
+static tilemap *bg_tilemap, *fg_tilemap;
 
 static WRITE8_HANDLER( ettrivia_fg_w )
 {
@@ -63,7 +63,7 @@ static WRITE8_HANDLER( ettrivia_control_w )
 
 static READ8_HANDLER( ettrivia_question_r )
 {
-	data8_t *QUESTIONS = memory_region(REGION_USER1);
+	UINT8 *QUESTIONS = memory_region(REGION_USER1);
 	return QUESTIONS[offset + 0x10000 * question_bank];
 }
 
@@ -150,7 +150,7 @@ INPUT_PORTS_START( ettrivia )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
 INPUT_PORTS_END
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -161,14 +161,14 @@ static struct GfxLayout charlayout =
 	8*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,    0, 32 },
 	{ REGION_GFX2, 0, &charlayout, 32*4, 32 },
 	{ -1 }
 };
 
-INLINE void get_tile_info(int tile_index, data8_t *vidram, int gfx_code)
+INLINE void get_tile_info(int tile_index, UINT8 *vidram, int gfx_code)
 {
 	int code = vidram[tile_index];
 	int color = (code >> 5) + 8 * palreg;

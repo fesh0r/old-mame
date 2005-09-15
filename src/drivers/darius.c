@@ -151,12 +151,12 @@ VIDEO_UPDATE( darius );
 static UINT16 cpua_ctrl;
 static UINT16 coin_word=0;
 
-extern data16_t *darius_fg_ram;
+extern UINT16 *darius_fg_ram;
 READ16_HANDLER ( darius_fg_layer_r );
 WRITE16_HANDLER( darius_fg_layer_w );
 
 static size_t sharedram_size;
-static data16_t *sharedram;
+static UINT16 *sharedram;
 
 
 static READ16_HANDLER( sharedram_r )
@@ -247,7 +247,7 @@ static WRITE16_HANDLER( darius_ioc_w )
 			return;
 
 		case 0x28:	/* unknown, written by both cpus - always 0? */
-//usrintf_showmessage(" address %04x value %04x",offset,data);
+//ui_popup(" address %04x value %04x",offset,data);
 			return;
 
 		case 0x30:	/* coin control */
@@ -258,7 +258,7 @@ static WRITE16_HANDLER( darius_ioc_w )
 			coin_counter_w(0, data & 0x08);
 			coin_counter_w(1, data & 0x40);
 			coin_word = data &0xffff;
-//usrintf_showmessage(" address %04x value %04x",offset,data);
+//ui_popup(" address %04x value %04x",offset,data);
 			return;
 	}
 
@@ -348,7 +348,7 @@ static WRITE8_HANDLER( adpcm_command_w )
 #if 0
 static WRITE8_HANDLER( display_value )
 {
-	usrintf_showmessage("d800=%x",data);
+	ui_popup("d800=%x",data);
 }
 #endif
 
@@ -458,8 +458,8 @@ static WRITE8_HANDLER( darius_da_pan )
 static WRITE8_HANDLER( darius_write_portA0 )
 {
 	// volume control FM #0 PSG #0 A
-	//usrintf_showmessage(" pan %02x %02x %02x %02x %02x", darius_pan[0], darius_pan[1], darius_pan[2], darius_pan[3], darius_pan[4] );
-	//usrintf_showmessage(" A0 %02x A1 %02x B0 %02x B1 %02x", port[0], port[1], port[2], port[3] );
+	//ui_popup(" pan %02x %02x %02x %02x %02x", darius_pan[0], darius_pan[1], darius_pan[2], darius_pan[3], darius_pan[4] );
+	//ui_popup(" A0 %02x A1 %02x B0 %02x B1 %02x", port[0], port[1], port[2], port[3] );
 	darius_vol[0] = darius_def_vol[(data>>4)&0x0f];
 	darius_vol[6] = darius_def_vol[(data>>0)&0x0f];
 	update_fm0();
@@ -469,7 +469,7 @@ static WRITE8_HANDLER( darius_write_portA0 )
 static WRITE8_HANDLER( darius_write_portA1 )
 {
 	// volume control FM #1 PSG #1 A
-	//usrintf_showmessage(" pan %02x %02x %02x %02x %02x", darius_pan[0], darius_pan[1], darius_pan[2], darius_pan[3], darius_pan[4] );
+	//ui_popup(" pan %02x %02x %02x %02x %02x", darius_pan[0], darius_pan[1], darius_pan[2], darius_pan[3], darius_pan[4] );
 	darius_vol[3] = darius_def_vol[(data>>4)&0x0f];
 	darius_vol[7] = darius_def_vol[(data>>0)&0x0f];
 	update_fm1();
@@ -479,7 +479,7 @@ static WRITE8_HANDLER( darius_write_portA1 )
 static WRITE8_HANDLER( darius_write_portB0 )
 {
 	// volume control PSG #0 B/C
-	//usrintf_showmessage(" pan %02x %02x %02x %02x %02x", darius_pan[0], darius_pan[1], darius_pan[2], darius_pan[3], darius_pan[4] );
+	//ui_popup(" pan %02x %02x %02x %02x %02x", darius_pan[0], darius_pan[1], darius_pan[2], darius_pan[3], darius_pan[4] );
 	darius_vol[1] = darius_def_vol[(data>>4)&0x0f];
 	darius_vol[2] = darius_def_vol[(data>>0)&0x0f];
 	update_psg0( 1 );
@@ -489,7 +489,7 @@ static WRITE8_HANDLER( darius_write_portB0 )
 static WRITE8_HANDLER( darius_write_portB1 )
 {
 	// volume control PSG #1 B/C
-	//usrintf_showmessage(" pan %02x %02x %02x %02x %02x", darius_pan[0], darius_pan[1], darius_pan[2], darius_pan[3], darius_pan[4] );
+	//ui_popup(" pan %02x %02x %02x %02x %02x", darius_pan[0], darius_pan[1], darius_pan[2], darius_pan[3], darius_pan[4] );
 	darius_vol[4] = darius_def_vol[(data>>4)&0x0f];
 	darius_vol[5] = darius_def_vol[(data>>0)&0x0f];
 	update_psg1( 1 );
@@ -782,7 +782,7 @@ INPUT_PORTS_END
                            GFX DECODING
 **************************************************************/
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,	/* 16*16 sprites */
 	RGN_FRAC(1,1),
@@ -796,7 +796,7 @@ static struct GfxLayout tilelayout =
 	128*8	/* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	RGN_FRAC(1,1),
@@ -807,7 +807,7 @@ static struct GfxLayout charlayout =
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxLayout char2layout =
+static gfx_layout char2layout =
 {
 	8,8,	/* 8*8 characters */
 	RGN_FRAC(1,1),
@@ -818,7 +818,7 @@ static struct GfxLayout char2layout =
 	16*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxDecodeInfo darius_gfxdecodeinfo[] =
+static gfx_decode darius_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &tilelayout,   0, 256 },	/* sprites */
 	{ REGION_GFX1, 0, &charlayout,   0, 256 },	/* scr tiles */

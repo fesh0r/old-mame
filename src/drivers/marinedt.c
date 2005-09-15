@@ -333,7 +333,7 @@ INPUT_PORTS_START( marinedt )
     PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(10)
 INPUT_PORTS_END
 
-static struct GfxLayout marinedt_charlayout =
+static gfx_layout marinedt_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -344,7 +344,7 @@ static struct GfxLayout marinedt_charlayout =
 	8*8
 };
 
-static struct GfxLayout marinedt_objlayout =
+static gfx_layout marinedt_objlayout =
 {
 	32,32,
 	RGN_FRAC(1,1),
@@ -355,7 +355,7 @@ static struct GfxLayout marinedt_objlayout =
 	32*32*2
 };
 
-static struct GfxDecodeInfo marinedt_gfxdecodeinfo[] =
+static gfx_decode marinedt_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &marinedt_charlayout, 0,  4 },	//really only 1 colour set?
 	{ REGION_GFX2, 0, &marinedt_objlayout,  48, 4 },
@@ -446,16 +446,16 @@ fillbitmap(bitmap, Machine->pens[0], cliprect);
 {
 //  char buf[40];
 //  sprintf(buf,"%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X", marinedt_p2, marinedt_p3, marinedt_p4, marinedt_p5, marinedt_p6, marinedt_p8, marinedt_p9, marinedt_pa, marinedt_pd, marinedt_pf);
-//  usrintf_showmessage(buf);
+//  ui_popup(buf);
 //  ui_drawbox(bitmap, 16, 230, 200,25);
-//  ui_text(bitmap, "02 03 04 05 06 08 09 0a 0d 0f", 20, 234);
-//  ui_text(bitmap, buf, 20, 244);
+//  ui_draw_text("02 03 04 05 06 08 09 0a 0d 0f", 20, 234);
+//  ui_draw_text(buf, 20, 244);
 
-//      if (marinedt_sound&0x02) ui_text(bitmap, "dot", 10, 4+36);
-//      if (marinedt_sound&0x04) ui_text(bitmap, "col", 50, 4+36);
-//      if (marinedt_sound&0x08) ui_text(bitmap, "ink", 90, 4+36);
-//      if (marinedt_sound&0x10) ui_text(bitmap, "foam", 130, 4+36);
-//      if (marinedt_sound&0x20) ui_text(bitmap, "jet", 180, 4+36);
+//      if (marinedt_sound&0x02) ui_draw_text("dot", 10, 4+36);
+//      if (marinedt_sound&0x04) ui_draw_text("col", 50, 4+36);
+//      if (marinedt_sound&0x08) ui_draw_text("ink", 90, 4+36);
+//      if (marinedt_sound&0x10) ui_draw_text("foam", 130, 4+36);
+//      if (marinedt_sound&0x20) ui_draw_text("jet", 180, 4+36);
 
 //obj to obj coll
 collh=0;cxh=0;cyrh=0;cyqh=0;

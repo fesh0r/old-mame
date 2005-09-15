@@ -185,6 +185,7 @@ READ8_HANDLER( taitosj_68705_portC_r );
 WRITE8_HANDLER( taitosj_68705_portA_w );
 WRITE8_HANDLER( taitosj_68705_portB_w );
 
+READ8_HANDLER( spacecr_prot_r );
 WRITE8_HANDLER( alpine_protection_w );
 WRITE8_HANDLER( alpinea_bankswitch_w );
 READ8_HANDLER( alpine_port_2_r );
@@ -349,7 +350,7 @@ static READ8_HANDLER ( kikstart_gears_read )
 	if (kikstart_gear == 2) portreturn |= (0x03);
 	if (kikstart_gear == 3) portreturn |= (0x01);
 
-//usrintf_showmessage   ("Kikstart gear %02x",  kikstart_gear);
+//ui_popup   ("Kikstart gear %02x",  kikstart_gear);
 //Is there a more attractive way to display this mid game?
 	return portreturn;
 }
@@ -1767,7 +1768,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,    /* 8*8 characters */
 	256,    /* 256 characters */
@@ -1777,7 +1778,7 @@ static struct GfxLayout charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8     /* every char takes 8 consecutive bytes */
 };
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,  /* 16*16 sprites */
 	64,             /* 64 sprites */
@@ -1792,7 +1793,7 @@ static struct GfxLayout spritelayout =
 
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ 0, 0x9000, &charlayout,   0, 16 },    /* the game dynamically modifies this */
 	{ 0, 0x9000, &spritelayout, 0, 16 },    /* the game dynamically modifies this */
@@ -2574,6 +2575,11 @@ ROM_START( kikstart )
 ROM_END
 
 
+static DRIVER_INIT( spacecr )
+{
+	/* install protection handler */
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd48b, 0xd48b, 0, 0, spacecr_prot_r);
+}
 
 static DRIVER_INIT( alpine )
 {
@@ -2601,7 +2607,7 @@ static DRIVER_INIT( kikstart )
 }
 
 GAME( 1981, spaceskr, 0,        nomcu,    spaceskr,   0,       ROT180, "Taito Corporation", "Space Seeker" )
-GAME( 1981, spacecr,  0,        nomcu,    spacecr,    0,       ROT90,  "Taito Corporation", "Space Cruiser" )
+GAME( 1981, spacecr,  0,        nomcu,    spacecr,    spacecr, ROT90,  "Taito Corporation", "Space Cruiser" )
 GAME( 1982, junglek,  0,        nomcu,    junglek,    0,       ROT0,   "Taito Corporation", "Jungle King (Japan)" )
 GAME( 1982, junglkj2, junglek,  nomcu,    junglek,    0,       ROT0,   "Taito Corporation", "Jungle King (Japan, earlier)" )
 GAME( 1982, jungleh,  junglek,  nomcu,    junglek,    0,       ROT0,   "Taito America Corporation", "Jungle Hunt (US)" )

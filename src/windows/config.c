@@ -50,7 +50,6 @@ extern int frontend_help(char *gamename);
 static int config_handle_arg(char *arg);
 
 static FILE *logfile;
-static int maxlogsize;
 static int curlogsize;
 static int errorlog;
 static int erroroslog;
@@ -66,7 +65,6 @@ struct rc_struct *rc;
 /* instead of relying on the name of an osd variable */
 extern int attenuation;
 
-static char *debugres;
 static char *playbackname;
 static char *recordname;
 static char *gamename;
@@ -130,22 +128,6 @@ static int video_set_intensity(struct rc_option *option, const char *arg, int pr
 	return 0;
 }
 
-static int video_set_debugres(struct rc_option *option, const char *arg, int priority)
-{
-	if (!strcmp(arg, "auto"))
-	{
-		options.debug_width = options.debug_height = 0;
-	}
-	else if(sscanf(arg, "%dx%d", &options.debug_width, &options.debug_height) != 2)
-	{
-		options.debug_width = options.debug_height = 0;
-		fprintf(stderr, "error: invalid value for debugres: %s\n", arg);
-		return -1;
-	}
-	option->priority = priority;
-	return 0;
-}
-
 static int init_errorlog(struct rc_option *option, const char *arg, int priority)
 {
 	/* provide errorlog from here on */
@@ -186,7 +168,6 @@ static struct rc_option opts[] = {
 	{ "autorol", NULL, rc_bool, &video_autorol, "0", 0, 0, NULL, "automatically rotate screen anti-clockwise for vertical " GAMESNOUN },
 	{ "flipx", NULL, rc_bool, &video_flipx, "0", 0, 0, NULL, "flip screen upside-down" },
 	{ "flipy", NULL, rc_bool, &video_flipy, "0", 0, 0, NULL, "flip screen left-right" },
-	{ "debug_resolution", "dr", rc_string, &debugres, "auto", 0, 0, video_set_debugres, "set resolution for debugger window" },
 	{ "gamma", NULL, rc_float, &options.gamma, "1.0", 0.5, 2.0, NULL, "gamma correction"},
 	{ "brightness", "bright", rc_float, &options.brightness, "1.0", 0.5, 2.0, NULL, "brightness correction"},
 	{ "pause_brightness", NULL, rc_float, &options.pause_bright, "0.65", 0.5, 2.0, NULL, "additional pause brightness"},
@@ -203,7 +184,6 @@ static struct rc_option opts[] = {
 	{ "Mame CORE sound options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
 	{ "samplerate", "sr", rc_int, &options.samplerate, "44100", 5000, 50000, NULL, "set samplerate" },
 	{ "samples", NULL, rc_bool, &options.use_samples, "1", 0, 0, NULL, "use samples" },
-	{ "resamplefilter", NULL, rc_bool, &options.use_filter, "1", 0, 0, NULL, "resample if samplerate does not match" },
 	{ "sound", NULL, rc_bool, &enable_sound, "1", 0, 0, NULL, "enable/disable sound and sound CPUs" },
 	{ "volume", "vol", rc_int, &attenuation, "0", -32, 0, NULL, "volume (range [-32,0])" },
 
@@ -221,12 +201,9 @@ static struct rc_option opts[] = {
 	{ "playback", "pb", rc_string, &playbackname, NULL, 0, 0, NULL, "playback an input file" },
 	{ "record", "rec", rc_string, &recordname, NULL, 0, 0, NULL, "record an input file" },
 	{ "log", NULL, rc_bool, &errorlog, "0", 0, 0, init_errorlog, "generate error.log" },
-	{ "maxlogsize", NULL, rc_int, &maxlogsize, "10000", 1, 2000000, NULL, "maximum error.log size (in KB)" },
 	{ "oslog", NULL, rc_bool, &erroroslog, "0", 0, 0, NULL, "output error log to debugger" },
-	{ "skip_disclaimer", NULL, rc_bool, &options.skip_disclaimer, "0", 0, 0, NULL, "skip displaying the disclaimer screen" },
 	{ "skip_gameinfo", NULL, rc_bool, &options.skip_gameinfo, "0", 0, 0, NULL, "skip displaying the " GAMENOUN " info screen" },
 	{ "skip_validitychecks", NULL, rc_bool, &options.skip_validitychecks, "0", 0, 0, NULL, "skip doing the code validity checks" },
-	{ "crconly", NULL, rc_bool, &options.crc_only, "0", 0, 0, NULL, "use only CRC for all integrity checks" },
 	{ "bios", NULL, rc_string, &options.bios, "default", 0, 14, NULL, "change system bios" },
 	{ "state", NULL, rc_string, &statename, NULL, 0, 0, NULL, "state to load" },
 
@@ -335,7 +312,7 @@ void show_approx_matches(void)
  * return 0 --> no problem
  * return 1 --> something went wrong
  */
-int parse_config (const char* filename, const struct GameDriver *gamedrv)
+int parse_config (const char* filename, const game_driver *gamedrv)
 {
 	mame_file *f;
 	char buffer[128];
@@ -407,7 +384,7 @@ struct rc_struct *cli_rc_create(void)
 
 int cli_frontend_init (int argc, char **argv)
 {
-	struct InternalMachineDriver drv;
+	machine_config drv;
 	char buffer[128];
 	char *cmd_name;
 	int game_index;
@@ -497,10 +474,10 @@ int cli_frontend_init (int argc, char **argv)
 	/* check for game name embedded in .inp header */
 	if (options.playback)
 	{
-		INP_HEADER inp_header;
+		inp_header inp_header;
 
 		/* read playback header */
-		mame_fread(options.playback, &inp_header, sizeof(INP_HEADER));
+		mame_fread(options.playback, &inp_header, sizeof(inp_header));
 
 		if (!isalnum(inp_header.name[0])) /* If first byte is not alpha-numeric */
 			mame_fseek(options.playback, 0, SEEK_SET); /* old .inp file - no header */
@@ -579,7 +556,7 @@ int cli_frontend_init (int argc, char **argv)
 
 	/* nice hack: load source_file.ini (omit if referenced later any) */
 	{
-		const struct GameDriver *tmp_gd;
+		const game_driver *tmp_gd;
 
 		sprintf(buffer, "%s", drivers[game_index]->source_file+4);
 		buffer[strlen(buffer) - 2] = 0;
@@ -617,9 +594,9 @@ int cli_frontend_init (int argc, char **argv)
 
 	if (options.record)
 	{
-		INP_HEADER inp_header;
+		inp_header inp_header;
 
-		memset(&inp_header, '\0', sizeof(INP_HEADER));
+		memset(&inp_header, '\0', sizeof(inp_header));
 		strcpy(inp_header.name, drivers[game_index]->name);
 		/* MAME32 stores the MAME version numbers at bytes 9 - 11
          * MAME DOS keeps this information in a string, the
@@ -630,7 +607,7 @@ int cli_frontend_init (int argc, char **argv)
            inp_header.version[1] = VERSION;
            inp_header.version[2] = BETA_VERSION;
          */
-		mame_fwrite(options.record, &inp_header, sizeof(INP_HEADER));
+		mame_fwrite(options.record, &inp_header, sizeof(inp_header));
 	}
 
 	if( statename )
@@ -830,15 +807,7 @@ static int config_handle_arg(char *arg)
 static void vlogerror(const char *text, va_list arg)
 {
 	if (errorlog && logfile)
-	{
 		curlogsize += vfprintf(logfile, text, arg);
-		if (curlogsize > maxlogsize * 1024)
-		{
-			fclose(logfile);
-			logfile = NULL;
-			exit(1);
-		}
-	}
 
 	if (erroroslog)
 	{

@@ -40,8 +40,8 @@ typedef struct
 	unsigned char backfill;
 	unsigned char fill_background;
 	unsigned int backshift;
-	struct mame_bitmap *horizbackbitmap;
-	struct mame_bitmap *vertbackbitmap;
+	mame_bitmap *horizbackbitmap;
+	mame_bitmap *vertbackbitmap;
 } SEGAR_VID_STRUCT;
 
 static SEGAR_VID_STRUCT sv;
@@ -221,7 +221,7 @@ VIDEO_START( segar )
 This is the refresh code that is common across all the G80 games.  This
 corresponds to the VIDEO I board.
 ***************************************************************************/
-static void segar_common_screenrefresh(struct mame_bitmap *bitmap, int sprite_transparency, int copy_transparency)
+static void segar_common_screenrefresh(mame_bitmap *bitmap, int sprite_transparency, int copy_transparency)
 {
 	int offs;
 	int charcode;
@@ -230,7 +230,7 @@ static void segar_common_screenrefresh(struct mame_bitmap *bitmap, int sprite_tr
 	/* since last time and update it accordingly. */
 	for (offs = videoram_size - 1;offs >= 0;offs--)
 	{
-		if ((sv.char_refresh) && (sv.dirtychar[videoram[offs]]))
+		if ((sv.char_refresh) || (sv.dirtychar[videoram[offs]]))
 			dirtybuffer[offs]=1;
 
 		/* Redraw every character if our palette or scene changed */
@@ -564,6 +564,70 @@ WRITE8_HANDLER( monsterb_back_port_w )
 	}
 }
 
+/* for set 2 */
+/* other ports are also used */
+static UINT8 monster2_bbdata;
+static UINT8 monster2_b9data;
+
+WRITE8_HANDLER( monster2_bb_back_port_w )
+{
+	unsigned int temp_scene, temp_charset;
+
+	/* maybe */
+	monster2_bbdata=data;
+
+	temp_scene   = (monster2_b9data & 0x03)|monster2_bbdata<<2;
+	temp_charset = monster2_b9data & 0x03;
+
+	temp_scene = 0x400*temp_scene;
+
+	sv.back_scene = temp_scene;
+	sv.refresh=1;
+
+	sv.back_charset = temp_charset;
+	sv.refresh=1;
+
+//  printf("bb_data %02x\n",data);
+}
+
+WRITE8_HANDLER( monster2_b9_back_port_w )
+{
+	unsigned int temp_scene, temp_charset;
+
+	monster2_b9data = data;
+
+
+	temp_scene   = (monster2_b9data & 0x03)|monster2_bbdata<<2;
+	temp_charset = monster2_b9data & 0x03;
+
+	temp_scene = 0x400*temp_scene;
+
+//  printf("data %02x\n",data);
+
+	if (sv.back_scene != temp_scene)
+	{
+		sv.back_scene = temp_scene;
+		sv.refresh=1;
+	}
+	if (sv.back_charset != temp_charset)
+	{
+		sv.back_charset = temp_charset;
+		sv.refresh=1;
+	}
+
+	/* This bit turns the background off and on. */
+	if ((data & 0x80) && (sv.background_enable==0))
+	{
+		sv.background_enable=1;
+		sv.refresh=1;
+	}
+	else if (((data & 0x80)==0) && (sv.background_enable==1))
+	{
+		sv.background_enable=0;
+		sv.refresh=1;
+	}
+}
+
 /***************************************************************************
 Special refresh for Monster Bash, this code refreshes the static background.
 ***************************************************************************/
@@ -588,7 +652,7 @@ VIDEO_UPDATE( monsterb )
 		/* since last time and update it accordingly. */
 		for (offs = videoram_size - 1;offs >= 0;offs--)
 		{
-			if ((sv.char_refresh) && (sv.dirtychar[videoram[offs]]))
+			if ((sv.char_refresh) || (sv.dirtychar[videoram[offs]]))
 				dirtybuffer[offs]=1;
 
 			/* Redraw every background character if our palette or scene changed */
@@ -765,7 +829,7 @@ VIDEO_UPDATE( sindbadm )
 		/* since last time and update it accordingly. */
 		for (offs = videoram_size - 1;offs >= 0;offs--)
 		{
-			if ((sv.char_refresh) && (sv.dirtychar[videoram[offs]]))
+			if ((sv.char_refresh) || (sv.dirtychar[videoram[offs]]))
 				dirtybuffer[offs]=1;
 
 			/* Redraw every background character if our palette or scene changed */

@@ -13,7 +13,7 @@ unsigned char *msisaac_videoram2;
 
 static int textbank1, bg2_textbank;
 
-static struct tilemap *background, *background2, *foreground;
+static tilemap *background, *background2, *foreground;
 
 
 /***************************************************************************
@@ -169,7 +169,7 @@ WRITE8_HANDLER( msisaac_fg_videoram_w )
   Display refresh
 
 ***************************************************************************/
-static void draw_sprites( struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	const unsigned char *source = spriteram+32*4-4;
 	const unsigned char *finish = spriteram; /* ? */
@@ -185,7 +185,7 @@ static void draw_sprites( struct mame_bitmap *bitmap, const struct rectangle *cl
 		int flipx = (attributes&0x1);
 		int flipy = (attributes&0x2);
 
-		struct GfxElement *gfx = Machine->gfx[2];
+		gfx_element *gfx = Machine->gfx[2];
 
 		if (attributes&4)
 		{

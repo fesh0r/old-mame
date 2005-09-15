@@ -903,7 +903,7 @@ INPUT_PORTS_START( nomnlndg )
 INPUT_PORTS_END
 
 
-static struct GfxLayout cosmic_spritelayout16 =
+static gfx_layout cosmic_spritelayout16 =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -916,7 +916,7 @@ static struct GfxLayout cosmic_spritelayout16 =
 	32*8
 };
 
-static struct GfxLayout cosmic_spritelayout32 =
+static gfx_layout cosmic_spritelayout32 =
 {
 	32,32,
 	RGN_FRAC(1,2),
@@ -934,14 +934,14 @@ static struct GfxLayout cosmic_spritelayout32 =
 };
 
 
-static struct GfxDecodeInfo panic_gfxdecodeinfo[] =
+static gfx_decode panic_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &cosmic_spritelayout16,  0, 8 },
 	{ REGION_GFX1, 0, &cosmic_spritelayout32,  0, 8 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo cosmica_gfxdecodeinfo[] =
+static gfx_decode cosmica_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &cosmic_spritelayout16,  0, 16 },
 	{ REGION_GFX1, 0, &cosmic_spritelayout32,  0, 16 },
@@ -1485,9 +1485,9 @@ static DRIVER_INIT( cosmicg )
 
     for (offs =0; offs < memory_region_length(REGION_CPU1); offs++)
 	{
-        data8_t scrambled = memory_region(REGION_CPU1)[offs];
+        UINT8 scrambled = memory_region(REGION_CPU1)[offs];
 
-        data8_t normal = (scrambled >> 3 & 0x11)
+        UINT8 normal = (scrambled >> 3 & 0x11)
                        | (scrambled >> 1 & 0x22)
                        | (scrambled << 1 & 0x44)
                        | (scrambled << 3 & 0x88);

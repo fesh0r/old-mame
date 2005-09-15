@@ -12,8 +12,8 @@ Notes:
 #include "sound/2203intf.h"
 
 
-extern data8_t *mosaic_fgvideoram;
-extern data8_t *mosaic_bgvideoram;
+extern UINT8 *mosaic_fgvideoram;
+extern UINT8 *mosaic_bgvideoram;
 WRITE8_HANDLER( mosaic_fgvideoram_w );
 WRITE8_HANDLER( mosaic_bgvideoram_w );
 VIDEO_START( mosaic );
@@ -255,7 +255,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -267,7 +267,7 @@ static struct GfxLayout charlayout =
 	16*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 1 },
 	{ REGION_GFX2, 0, &charlayout, 0, 1 },

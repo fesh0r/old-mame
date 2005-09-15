@@ -193,7 +193,7 @@ static READ8_HANDLER( macs_input_r )
 		case 5: return readinputportbytag("DSW3");
 		case 6: return readinputportbytag("DSW4");
 		case 7: return readinputportbytag("SYS1");
-		default: 	usrintf_showmessage("Unmapped I/O read at PC = %06x offset = %02x",activecpu_get_pc(),offset+0xc0);
+		default: 	ui_popup("Unmapped I/O read at PC = %06x offset = %02x",activecpu_get_pc(),offset+0xc0);
 	}
 
 	return 0xff;
@@ -207,7 +207,7 @@ static WRITE8_HANDLER( macs_output_w )
 	{
 		case 2: mux_data = data; break;
 		//logerror("Unmapped I/O write at PC = %06x offset = %02x data = %02x\n",activecpu_get_pc(),offset+0xc0,data);
-		//default: usrintf_showmessage("Unmapped I/O write at PC = %06x offset = %02x data = %02x",activecpu_get_pc(),offset+0xc0,data);
+		//default: ui_popup("Unmapped I/O write at PC = %06x offset = %02x data = %02x",activecpu_get_pc(),offset+0xc0,data);
 	}
 }
 
@@ -225,7 +225,7 @@ static ADDRESS_MAP_START( st0016_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xf0, 0xf0) AM_READ(st0016_dma_r)
 ADDRESS_MAP_END
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 //  { 0, 0, &charlayout,      0, 16*4  },
 	{ -1 }	/* end of array */
@@ -435,7 +435,7 @@ INPUT_PORTS_START( macs )
 INPUT_PORTS_END
 
 
-extern data8_t *st0016_charram;
+extern UINT8 *st0016_charram;
 static struct ST0016interface st0016_interface =
 {
 	&st0016_charram

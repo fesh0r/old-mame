@@ -30,7 +30,7 @@
  *
  *************************************/
 
-static data16_t *shared_ram;
+static UINT16 *shared_ram;
 
 static READ16_HANDLER( pfram_r ) { return atarigen_playfield[offset]; }
 static READ16_HANDLER( moram_r ) { return atarimo_0_spriteram[offset]; }
@@ -240,7 +240,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct GfxLayout anlayout =
+static gfx_layout anlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -252,7 +252,7 @@ static struct GfxLayout anlayout =
 };
 
 
-static struct GfxLayout pfmolayout =
+static gfx_layout pfmolayout =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -264,7 +264,7 @@ static struct GfxLayout pfmolayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &pfmolayout,  256, 32 },		/* sprites & playfield */
 	{ REGION_GFX2, 0, &anlayout,      0, 64 },		/* characters 8x8 */

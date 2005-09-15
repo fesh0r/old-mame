@@ -126,7 +126,7 @@ RAM         RW      0f0000-0f3fff       0e0000-0effff?      <
 
 /* Variables only used here: */
 
-static data16_t ip_select, ip_select_values[5];
+static UINT16 ip_select, ip_select_values[5];
 static UINT8 megasys1_ignore_oki_status = 0;	/* used in MACHINE_INIT */
 
 /* Variables defined in vidhrdw: */
@@ -231,9 +231,9 @@ static ADDRESS_MAP_START( writemem_A, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x084000, 0x0843ff) AM_WRITE(megasys1_vregs_A_w) AM_BASE(&megasys1_vregs)
 	AM_RANGE(0x088000, 0x0887ff) AM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x08e000, 0x08ffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_objectram)
-	AM_RANGE(0x090000, 0x093fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram_0)
-	AM_RANGE(0x094000, 0x097fff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram_1)
-	AM_RANGE(0x098000, 0x09bfff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram_2)
+	AM_RANGE(0x090000, 0x093fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0])
+	AM_RANGE(0x094000, 0x097fff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1])
+	AM_RANGE(0x098000, 0x09bfff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2])
 	AM_RANGE(0x0f0000, 0x0fffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_ram)
 ADDRESS_MAP_END
 
@@ -319,9 +319,9 @@ static ADDRESS_MAP_START( writemem_B, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x044000, 0x0443ff) AM_WRITE(megasys1_vregs_A_w) AM_BASE(&megasys1_vregs)
 	AM_RANGE(0x048000, 0x0487ff) AM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x04e000, 0x04ffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_objectram)
-	AM_RANGE(0x050000, 0x053fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram_0)
-	AM_RANGE(0x054000, 0x057fff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram_1)
-	AM_RANGE(0x058000, 0x05bfff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram_2)
+	AM_RANGE(0x050000, 0x053fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0])
+	AM_RANGE(0x054000, 0x057fff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1])
+	AM_RANGE(0x058000, 0x05bfff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2])
 	AM_RANGE(0x060000, 0x07ffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_ram)
 	AM_RANGE(0x080000, 0x0bffff) AM_WRITE(MWA16_ROM)
 	AM_RANGE(0x0e0000, 0x0e0001) AM_WRITE(ip_select_w)
@@ -355,9 +355,9 @@ static ADDRESS_MAP_START( writemem_C, ADDRESS_SPACE_PROGRAM, 16 )
  	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM)
 	AM_RANGE(0x0c0000, 0x0cffff) AM_WRITE(megasys1_vregs_C_w) AM_BASE(&megasys1_vregs)
 	AM_RANGE(0x0d2000, 0x0d3fff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_objectram)
-	AM_RANGE(0x0e0000, 0x0e3fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram_0)
-	AM_RANGE(0x0e8000, 0x0ebfff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram_1)
-	AM_RANGE(0x0f0000, 0x0f3fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram_2)
+	AM_RANGE(0x0e0000, 0x0e3fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0])
+	AM_RANGE(0x0e8000, 0x0ebfff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1])
+	AM_RANGE(0x0f0000, 0x0f3fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2])
 	AM_RANGE(0x0f8000, 0x0f87ff) AM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0d8000, 0x0d8001) AM_WRITE(ip_select_w)
 	AM_RANGE(0x1f0000, 0x1fffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_ram)
@@ -396,11 +396,11 @@ static ADDRESS_MAP_START( writemem_D, ADDRESS_SPACE_PROGRAM, 16 )
  	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
 	AM_RANGE(0x0c0000, 0x0c9fff) AM_WRITE(megasys1_vregs_D_w) AM_BASE(&megasys1_vregs)
 	AM_RANGE(0x0ca000, 0x0cbfff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_objectram)
-	AM_RANGE(0x0d0000, 0x0d3fff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram_1)
-	AM_RANGE(0x0d4000, 0x0d7fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram_2)
+	AM_RANGE(0x0d0000, 0x0d3fff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1])
+	AM_RANGE(0x0d4000, 0x0d7fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2])
 	AM_RANGE(0x0d8000, 0x0d87ff) AM_WRITE(paletteram16_RRRRRGGGGGBBBBBx_word_w)
 	AM_RANGE(0x0db000, 0x0db7ff) AM_WRITE(paletteram16_RRRRRGGGGGBBBBBx_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x0e8000, 0x0ebfff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram_0)
+	AM_RANGE(0x0e8000, 0x0ebfff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0])
 	AM_RANGE(0x0f8000, 0x0f8001) AM_WRITE(OKIM6295_data_0_lsb_w)
 //  { 0x100000, 0x100001  protection
 	AM_RANGE(0x1f0000, 0x1fffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_ram)
@@ -586,7 +586,7 @@ ADDRESS_MAP_END
 
 
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -597,7 +597,7 @@ static struct GfxLayout tilelayout =
 	8*8*4
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -608,7 +608,7 @@ static struct GfxLayout spritelayout =
 	16*16*4
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo_Z[] =
+static gfx_decode gfxdecodeinfo_Z[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,   256*0, 16 },	// [0] Scroll 0
 	{ REGION_GFX2, 0, &tilelayout,   256*2, 16 },	// [1] Scroll 1
@@ -616,7 +616,7 @@ static struct GfxDecodeInfo gfxdecodeinfo_Z[] =
 	{ -1 }
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo_ABC[] =
+static gfx_decode gfxdecodeinfo_ABC[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,   256*0, 16 },	// [0] Scroll 0
 	{ REGION_GFX2, 0, &tilelayout,   256*1, 16 },	// [1] Scroll 1
@@ -2635,7 +2635,7 @@ INPUT_PORTS_END
 
 
 
-data16_t protection_val;
+UINT16 protection_val;
 
 /* Read the input ports, through a protection device */
 static READ16_HANDLER( protection_peekaboo_r )
@@ -3287,13 +3287,13 @@ INPUT_PORTS_END
 
 void phantasm_rom_decode(int cpu)
 {
-	data16_t	*RAM	=	(data16_t *) memory_region(REGION_CPU1+cpu);
+	UINT16	*RAM	=	(UINT16 *) memory_region(REGION_CPU1+cpu);
 	int i,		size	=	memory_region_length(REGION_CPU1+cpu);
 	if (size > 0x40000)	size = 0x40000;
 
 	for (i = 0 ; i < size/2 ; i++)
 	{
-		data16_t x,y;
+		UINT16 x,y;
 
 		x = RAM[i];
 
@@ -3321,13 +3321,13 @@ void phantasm_rom_decode(int cpu)
 
 void astyanax_rom_decode(int cpu)
 {
-	data16_t	*RAM	=	(data16_t *) memory_region(REGION_CPU1+cpu);
+	UINT16	*RAM	=	(UINT16 *) memory_region(REGION_CPU1+cpu);
 	int i,		size	=	memory_region_length(REGION_CPU1+cpu);
 	if (size > 0x40000)	size = 0x40000;
 
 	for (i = 0 ; i < size/2 ; i++)
 	{
-		data16_t x,y;
+		UINT16 x,y;
 
 		x = RAM[i];
 
@@ -3355,13 +3355,13 @@ void astyanax_rom_decode(int cpu)
 
 void rodland_rom_decode(int cpu)
 {
-	data16_t	*RAM	=	(data16_t *) memory_region(REGION_CPU1+cpu);
+	UINT16	*RAM	=	(UINT16 *) memory_region(REGION_CPU1+cpu);
 	int i,		size	=	memory_region_length(REGION_CPU1+cpu);
 	if (size > 0x40000)	size = 0x40000;
 
 	for (i = 0 ; i < size/2 ; i++)
 	{
-		data16_t x,y;
+		UINT16 x,y;
 
 		x = RAM[i];
 
@@ -3390,9 +3390,9 @@ void rodland_rom_decode(int cpu)
 
 static void rodlandj_gfx_unmangle(int region)
 {
-	data8_t *rom = memory_region(REGION_GFX1+region);
+	UINT8 *rom = memory_region(REGION_GFX1+region);
 	int size = memory_region_length(REGION_GFX1+region);
-	data8_t *buffer;
+	UINT8 *buffer;
 	int i;
 
 	/* data lines swap: 76543210 -> 64537210 */
@@ -3423,9 +3423,9 @@ static void rodlandj_gfx_unmangle(int region)
 
 static void jitsupro_gfx_unmangle(int region)
 {
-	data8_t *rom = memory_region(REGION_GFX1+region);
+	UINT8 *rom = memory_region(REGION_GFX1+region);
 	int size = memory_region_length(REGION_GFX1+region);
-	data8_t *buffer;
+	UINT8 *buffer;
 	int i;
 
 	/* data lines swap: 76543210 -> 43576210 */
@@ -3454,7 +3454,7 @@ static void jitsupro_gfx_unmangle(int region)
 
 static DRIVER_INIT( 64street )
 {
-//  data16_t *RAM = (data16_t *) memory_region(REGION_CPU1);
+//  UINT16 *RAM = (UINT16 *) memory_region(REGION_CPU1);
 //  RAM[0x006b8/2] = 0x6004;        // d8001 test
 //  RAM[0x10EDE/2] = 0x6012;        // watchdog
 
@@ -3467,11 +3467,11 @@ static DRIVER_INIT( 64street )
 
 static DRIVER_INIT( astyanax )
 {
-	data16_t *RAM;
+	UINT16 *RAM;
 
 	astyanax_rom_decode(0);
 
-	RAM = (data16_t *) memory_region(REGION_CPU1);
+	RAM = (UINT16 *) memory_region(REGION_CPU1);
 	RAM[0x0004e6/2] = 0x6040;	// protection
 }
 
@@ -3528,21 +3528,21 @@ static DRIVER_INIT( edf )
 
 static DRIVER_INIT( hachoo )
 {
-	data16_t *RAM;
+	UINT16 *RAM;
 
 	astyanax_rom_decode(0);
 
-	RAM  = (data16_t *) memory_region(REGION_CPU1);
+	RAM  = (UINT16 *) memory_region(REGION_CPU1);
 	RAM[0x0006da/2] = 0x6000;	// protection
 }
 
 static DRIVER_INIT( iganinju )
 {
-	data16_t *RAM;
+	UINT16 *RAM;
 
 	phantasm_rom_decode(0);
 
-	RAM  = (data16_t *) memory_region(REGION_CPU1);
+	RAM  = (UINT16 *) memory_region(REGION_CPU1);
 	RAM[0x02f000/2] = 0x835d;	// protection
 
 	RAM[0x00006e/2] = 0x0420;	// the only game that does
@@ -3562,7 +3562,7 @@ static WRITE16_HANDLER( OKIM6295_data_1_both_w )
 
 static DRIVER_INIT( jitsupro )
 {
-	data16_t *RAM  = (data16_t *) memory_region(REGION_CPU1);
+	UINT16 *RAM  = (UINT16 *) memory_region(REGION_CPU1);
 
 	astyanax_rom_decode(0);		// Code
 
@@ -3590,11 +3590,11 @@ static DRIVER_INIT( phantasm )
 
 static DRIVER_INIT( plusalph )
 {
-	data16_t *RAM;
+	UINT16 *RAM;
 
 	astyanax_rom_decode(0);
 
-	RAM  = (data16_t *) memory_region(REGION_CPU1);
+	RAM  = (UINT16 *) memory_region(REGION_CPU1);
 	RAM[0x0012b6/2] = 0x0000;	// protection
 }
 
@@ -3622,11 +3622,11 @@ static DRIVER_INIT( soldam )
 
 static DRIVER_INIT( stdragon )
 {
-	data16_t *RAM;
+	UINT16 *RAM;
 
 	phantasm_rom_decode(0);
 
-	RAM  = (data16_t *) memory_region(REGION_CPU1);
+	RAM  = (UINT16 *) memory_region(REGION_CPU1);
 	RAM[0x00045e/2] = 0x0098;	// protection
 }
 

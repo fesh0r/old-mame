@@ -187,9 +187,9 @@ Stadium Cross EPR15093  EPR15094  EPR15018  EPR15019  EPR15192  EPR15020  EPR150
  *
  *************************************/
 
-data8_t *ga2_dpram;
-data16_t *system32_workram;
-data16_t *system32_protram;
+UINT8 *ga2_dpram;
+UINT16 *system32_workram;
+UINT16 *system32_protram;
 
 
 
@@ -200,7 +200,7 @@ data16_t *system32_protram;
  *************************************/
 
 static const UINT8 *system32_default_eeprom;
-static data8_t *z80_shared_ram;
+static UINT8 *z80_shared_ram;
 
 /* V60 interrupt controller */
 static UINT8 v60_irq_control[0x10];
@@ -423,7 +423,7 @@ static INTERRUPT_GEN( start_of_vblank_int )
  *
  *************************************/
 
-static data16_t common_io_chip_r(int which, offs_t offset, data16_t mem_mask)
+static UINT16 common_io_chip_r(int which, offs_t offset, UINT16 mem_mask)
 {
 	offset &= 0x1f/2;
 
@@ -477,7 +477,7 @@ static data16_t common_io_chip_r(int which, offs_t offset, data16_t mem_mask)
 }
 
 
-static void common_io_chip_w(int which, offs_t offset, data16_t data, data16_t mem_mask)
+static void common_io_chip_w(int which, offs_t offset, UINT16 data, UINT16 mem_mask)
 {
 	UINT8 old;
 
@@ -676,7 +676,7 @@ static WRITE32_HANDLER( io_expansion_1_w )
 
 static READ16_HANDLER( analog_custom_io_r )
 {
-	data16_t result;
+	UINT16 result;
 	switch (offset)
 	{
 		case 0x10/2:
@@ -1037,12 +1037,12 @@ static ADDRESS_MAP_START( multi32_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(24) )
 	AM_RANGE(0x000000, 0x1fffff) AM_ROM
 	AM_RANGE(0x200000, 0x21ffff) AM_MIRROR(0x0e0000) AM_RAM
-	AM_RANGE(0x300000, 0x31ffff) AM_MIRROR(0x0e0000) AM_READWRITE(multi32_videoram_r, multi32_videoram_w) AM_BASE((data32_t **)&system32_videoram)
-	AM_RANGE(0x400000, 0x41ffff) AM_MIRROR(0x0e0000) AM_READWRITE(multi32_spriteram_r, multi32_spriteram_w) AM_BASE((data32_t **)&system32_spriteram)
+	AM_RANGE(0x300000, 0x31ffff) AM_MIRROR(0x0e0000) AM_READWRITE(multi32_videoram_r, multi32_videoram_w) AM_BASE((UINT32 **)&system32_videoram)
+	AM_RANGE(0x400000, 0x41ffff) AM_MIRROR(0x0e0000) AM_READWRITE(multi32_spriteram_r, multi32_spriteram_w) AM_BASE((UINT32 **)&system32_spriteram)
 	AM_RANGE(0x500000, 0x50000f) AM_MIRROR(0x0ffff0) AM_READWRITE(multi32_sprite_control_r, multi32_sprite_control_w)
-	AM_RANGE(0x600000, 0x60ffff) AM_MIRROR(0x060000) AM_READWRITE(multi32_paletteram_0_r, multi32_paletteram_0_w) AM_BASE((data32_t **)&system32_paletteram[0])
+	AM_RANGE(0x600000, 0x60ffff) AM_MIRROR(0x060000) AM_READWRITE(multi32_paletteram_0_r, multi32_paletteram_0_w) AM_BASE((UINT32 **)&system32_paletteram[0])
 	AM_RANGE(0x610000, 0x61007f) AM_MIRROR(0x06ff80) AM_WRITE(multi32_mixer_0_w)
-	AM_RANGE(0x680000, 0x68ffff) AM_MIRROR(0x060000) AM_READWRITE(multi32_paletteram_1_r, multi32_paletteram_1_w) AM_BASE((data32_t **)&system32_paletteram[1])
+	AM_RANGE(0x680000, 0x68ffff) AM_MIRROR(0x060000) AM_READWRITE(multi32_paletteram_1_r, multi32_paletteram_1_w) AM_BASE((UINT32 **)&system32_paletteram[1])
 	AM_RANGE(0x690000, 0x69007f) AM_MIRROR(0x06ff80) AM_WRITE(multi32_mixer_1_w)
 	AM_RANGE(0x700000, 0x701fff) AM_MIRROR(0x0fe000) AM_READWRITE(shared_ram_32_r, shared_ram_32_w)
 	AM_RANGE(0xc00000, 0xc0001f) AM_MIRROR(0x07ff80) AM_READWRITE(io_chip_0_r, io_chip_0_w)
@@ -1269,7 +1269,7 @@ INPUT_PORTS_START( arescue )
 	PORT_BIT( 0x30, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("ANALOG1")
-	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0,255) PORT_SENSITIVITY(30) PORT_KEYDELTA(10)
+	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0,255) PORT_SENSITIVITY(30) PORT_KEYDELTA(10) PORT_REVERSE
 
 	PORT_START_TAG("ANALOG2")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0,255) PORT_SENSITIVITY(30) PORT_KEYDELTA(10)
@@ -1939,7 +1939,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct GfxLayout bgcharlayout =
+static gfx_layout bgcharlayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1952,7 +1952,7 @@ static struct GfxLayout bgcharlayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &bgcharlayout,   0x00, 0x3ff  },
 	{ -1 } /* end of array */
@@ -3385,17 +3385,122 @@ static DRIVER_INIT( alien3 )
 	common_init(analog_custom_io_r, analog_custom_io_w, alien3_default_eeprom);
 }
 
-
-static READ16_HANDLER( arescue_unknown_r )
+static READ16_HANDLER( arescue_handshake_r )
 {
-	logerror("unk_r? %06x %06x\n", activecpu_get_pc(), 0x800000+offset*2);
-	return 0x0001;
+	return 0;
+}
+
+static READ16_HANDLER( arescue_818000_r )
+{
+	return 0; // 0/1 master/slave
+}
+
+static READ16_HANDLER( arescue_81000f_r )
+{
+	return 1; // 0/1 2player/1player
+}
+
+/*
+    protection
+    a00000 - a00002 dsp i/o
+    a00004 - dsp int/ack
+
+    dsp uses its p0/p1 for address select
+    dsp.sr = ???0 read a00000 into dsp.a
+    dsp.sr = ???1 read a00002 into dsp.b
+    dsp.sr = ???2 write dsp.b in a00000
+    dsp.sr = ???3 write dsp.a in a00002
+
+    Use of p0/p1 means there's no other way for dsp to communicate with V60, unless it shares RAM.
+    99.99% of the dsp code is unused because the V60 ROM is hardcoded as part of a twin set,
+    maybe the standalone board was for dev only? nop the 3 bytes at 0x06023A for standalone. (centred intro text)
+
+    Must be a jumper for this? You'd always want the LHS machine on the LHS.
+    818000 - left hand machine(master) = 0, right hand machine(slave) = 1
+           - master reads game state from dsp, and writes to 810000,
+           - In 2player modeslave reads game state from 810000,
+             however in 1player mode, the slave generates its own game sequence without using the dsp!
+
+    communications
+    810000 - game stage master write, slave read
+    810001 - handshake/watchdog
+    810004 - ???
+    810005 - ???
+    810006 - synch signal master write, slave clear
+    81000a - synch signal slave write, master clear
+    81000f - 1player/2player game
+    810010 - intro cutscene select
+             (this doesn't seem to ever change, set to 1 during intro for
+             a very nice FMV cutscene instead of the scroller.)
+    810014 - dsp timeout
+    810020 - paired with 810040 master writes
+    81002D - ???
+    81003E - used in 2player only ???
+    810040 - paired with 810020 slave writes
+    81004D - ???
+    81005e - used in 2player only ???
+*/
+static UINT16 arescue_dsp_io[6] = {0,0,0,0,0,0};
+static READ16_HANDLER( arescue_dsp_r )
+{
+	if( offset == 4/2 )
+	{
+		switch( arescue_dsp_io[0] )
+		{
+			case 0:
+			case 1:
+			case 2:
+				break;
+
+			case 3:
+				arescue_dsp_io[0] = 0x8000;
+				arescue_dsp_io[2/2] = 0x0001;
+				break;
+
+			case 6:
+				arescue_dsp_io[0] = 4 * arescue_dsp_io[2/2];
+				break;
+
+			default:
+				logerror("Unhandled DSP cmd %04x (%04x).\n", arescue_dsp_io[0], arescue_dsp_io[1] );
+				break;
+		}
+	}
+
+	return arescue_dsp_io[offset];
+}
+
+static WRITE16_HANDLER( arescue_dsp_w )
+{
+	COMBINE_DATA(&arescue_dsp_io[offset]);
+}
+
+static UINT16* arescue_comms;
+static WRITE16_HANDLER( arescue_comms_w )
+{
+	COMBINE_DATA(&arescue_comms[offset]);
+}
+
+static READ16_HANDLER( arescue_comms_r )
+{
+	return arescue_comms[offset];
 }
 
 static DRIVER_INIT( arescue )
 {
+	arescue_comms = auto_malloc(0x2000);
 	common_init(analog_custom_io_r, analog_custom_io_w, NULL);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x8fffff, 0, 0, arescue_unknown_r); // protection? communication?
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa00000, 0xa00006, 0, 0, arescue_dsp_r);  		// protection
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa00000, 0xa00006, 0, 0, arescue_dsp_w);
+
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x818000, 0x818003, 0, 0, arescue_818000_r);	// master/slave
+
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810000, 0x810fff, 0, 0, arescue_comms_r);		// comms space
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810000, 0x810fff, 0, 0, arescue_comms_w);
+
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810001, 0x810001, 0, 0, arescue_handshake_r); //  handshake
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x81000f, 0x81000f, 0, 0, arescue_81000f_r);	//  1player game
+
 }
 
 
@@ -3488,7 +3593,7 @@ static DRIVER_INIT( holo )
 static DRIVER_INIT( jpark )
 {
 	/* Temp. Patch until we emulate the 'Drive Board', thanks to Malice */
-	data16_t *pROM = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *pROM = (UINT16 *)memory_region(REGION_CPU1);
 
 	common_init(analog_custom_io_r, analog_custom_io_w, NULL);
 
@@ -3594,7 +3699,7 @@ static DRIVER_INIT( titlef )
  *
  *************************************/
 
-GAMEX(1992, arescue,  0,        system32,     arescue,  arescue,  ROT0, "Sega",   "Air Rescue", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS )
+GAMEX(1992, arescue,  0,        system32,     arescue,  arescue,  ROT0, "Sega",   "Air Rescue", GAME_IMPERFECT_GRAPHICS )
 GAMEX(1993, alien3,   0,        system32,     alien3,   alien3,   ROT0, "Sega",   "Alien3: The Gun", GAME_IMPERFECT_GRAPHICS )
 GAMEX(1992, arabfgt,  0,        system32,     arabfgt,  arabfgt,  ROT0, "Sega",   "Arabian Fight (US)", GAME_IMPERFECT_GRAPHICS )
 GAMEX(1992, arabfgtj, arabfgt,  system32,     arabfgt,  arabfgt,  ROT0, "Sega",   "Arabian Fight (Japan)", GAME_IMPERFECT_GRAPHICS )

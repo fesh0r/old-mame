@@ -135,7 +135,7 @@
 
 static UINT8 speech_val;
 static UINT8 last_speech_write;
-static data16_t sound_reset_val;
+static UINT16 sound_reset_val;
 
 
 
@@ -481,7 +481,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct GfxLayout anlayout =
+static gfx_layout anlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -493,7 +493,7 @@ static struct GfxLayout anlayout =
 };
 
 
-static struct GfxLayout pfmolayout =
+static gfx_layout pfmolayout =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -505,7 +505,7 @@ static struct GfxLayout pfmolayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &pfmolayout,  256, 32 },
 	{ REGION_GFX1, 0, &anlayout,      0, 64 },

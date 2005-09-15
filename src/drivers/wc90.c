@@ -57,16 +57,16 @@ Press one of the start buttons to exit.
 #include "sound/2608intf.h"
 
 
-extern data8_t *wc90_fgvideoram,*wc90_bgvideoram,*wc90_txvideoram;
+extern UINT8 *wc90_fgvideoram,*wc90_bgvideoram,*wc90_txvideoram;
 
 
-extern data8_t *wc90_scroll0xlo, *wc90_scroll0xhi;
-extern data8_t *wc90_scroll1xlo, *wc90_scroll1xhi;
-extern data8_t *wc90_scroll2xlo, *wc90_scroll2xhi;
+extern UINT8 *wc90_scroll0xlo, *wc90_scroll0xhi;
+extern UINT8 *wc90_scroll1xlo, *wc90_scroll1xhi;
+extern UINT8 *wc90_scroll2xlo, *wc90_scroll2xhi;
 
-extern data8_t *wc90_scroll0ylo, *wc90_scroll0yhi;
-extern data8_t *wc90_scroll1ylo, *wc90_scroll1yhi;
-extern data8_t *wc90_scroll2ylo, *wc90_scroll2yhi;
+extern UINT8 *wc90_scroll0ylo, *wc90_scroll0yhi;
+extern UINT8 *wc90_scroll1ylo, *wc90_scroll1yhi;
+extern UINT8 *wc90_scroll2ylo, *wc90_scroll2yhi;
 
 VIDEO_START( wc90 );
 VIDEO_START( wc90t );
@@ -76,7 +76,7 @@ WRITE8_HANDLER( wc90_txvideoram_w );
 VIDEO_UPDATE( wc90 );
 
 
-static data8_t *wc90_shared;
+static UINT8 *wc90_shared;
 
 static READ8_HANDLER( wc90_shared_r )
 {
@@ -91,7 +91,7 @@ static WRITE8_HANDLER( wc90_shared_w )
 static WRITE8_HANDLER( wc90_bankswitch_w )
 {
 	int bankaddress;
-	data8_t *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
 
 	bankaddress = 0x10000 + ( ( data & 0xf8 ) << 8 );
@@ -101,7 +101,7 @@ static WRITE8_HANDLER( wc90_bankswitch_w )
 static WRITE8_HANDLER( wc90_bankswitch1_w )
 {
 	int bankaddress;
-	data8_t *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(REGION_CPU2);
 
 
 	bankaddress = 0x10000 + ( ( data & 0xf8 ) << 8 );
@@ -287,7 +287,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -298,7 +298,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -311,7 +311,7 @@ static struct GfxLayout tilelayout =
 	128*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -324,7 +324,7 @@ static struct GfxLayout spritelayout =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &charlayout,      	1*16*16, 16*16 },
 	{ REGION_GFX2, 0x00000, &tilelayout,		2*16*16, 16*16 },

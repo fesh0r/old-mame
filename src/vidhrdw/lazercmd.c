@@ -53,7 +53,7 @@ void lazercmd_marker_dirty(int marker)
 /* plot a bitmap marker */
 /* hardware has 2 marker sizes 2x2 and 4x2 selected by jumper */
 /* meadows lanes normaly use 2x2 pixels and lazer command uses either */
-static void plot_pattern(struct mame_bitmap *bitmap, int x, int y)
+static void plot_pattern(mame_bitmap *bitmap, int x, int y)
 {
 	int xbit, ybit, size;
 
@@ -84,9 +84,6 @@ VIDEO_START( lazercmd )
 	if( video_start_generic() )
 		return 1;
 
-	/* is overlay enabled? */
-	artwork_show(OVERLAY_TAG, (input_port_2_r(0) & 0x80) >> 7);
-
 	return 0;
 }
 
@@ -94,6 +91,9 @@ VIDEO_START( lazercmd )
 VIDEO_UPDATE( lazercmd )
 {
 	int i,x,y;
+
+	/* is overlay enabled? */
+	artwork_show(OVERLAY_TAG, (input_port_2_r(0) & 0x80) >> 7);
 
 	if (video_inverted != (input_port_2_r(0) & 0x20))
 	{

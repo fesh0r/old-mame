@@ -18,8 +18,8 @@ VIDEO_UPDATE( magmax );
 VIDEO_START( magmax );
 
 extern unsigned short magmax_vreg;
-extern data16_t *magmax_scroll_x;
-extern data16_t *magmax_scroll_y;
+extern UINT16 *magmax_scroll_x;
+extern UINT16 *magmax_scroll_y;
 
 
 static unsigned char sound_latch = 0;
@@ -135,7 +135,7 @@ bit3 - SOUND Chan#8 name=AY-3-8910 #2 Ch C
 
 	gain_control = data & 0x0f;
 
-	/*usrintf_showmessage("gain_ctrl = %2x",data&0x0f);*/
+	/*ui_popup("gain_ctrl = %2x",data&0x0f);*/
 
 	percent = (gain_control & 1) ? 1.0 : 0.50;
 	sndti_set_output_gain(SOUND_AY8910, 0, 0, percent);
@@ -304,7 +304,7 @@ INPUT_PORTS_START( magmax )
 INPUT_PORTS_END
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8, 8,	/* 8*8 characters */
 	256,	/* 256 characters */
@@ -315,7 +315,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16, 16,	/* 16*16 characters */
 	512,	/* 512 characters */
@@ -328,7 +328,7 @@ static struct GfxLayout spritelayout =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,           0,  1 }, /*no color codes*/
 	{ REGION_GFX2, 0, &spritelayout,      1*16, 16 }, /*16 color codes*/

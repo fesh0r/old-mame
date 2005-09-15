@@ -26,7 +26,7 @@ TODO:
 #include "sound/sn76496.h"
 #include "sound/msm5205.h"
 
-extern data8_t *mjkjidai_videoram;
+extern UINT8 *mjkjidai_videoram;
 
 VIDEO_START( mjkjidai );
 VIDEO_UPDATE( mjkjidai );
@@ -80,7 +80,7 @@ static WRITE8_HANDLER( keyboard_select_w )
 	}
 }
 
-static data8_t *nvram;
+static UINT8 *nvram;
 static size_t nvram_size;
 
 void nvram_handler_mjkjidai(mame_file *file, int read_or_write)
@@ -256,7 +256,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -267,7 +267,7 @@ static struct GfxLayout charlayout =
 	8*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -280,7 +280,7 @@ static struct GfxLayout spritelayout =
 	32*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0, 32 },
 	{ REGION_GFX1, 0, &spritelayout, 0, 16 },

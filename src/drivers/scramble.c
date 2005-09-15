@@ -442,6 +442,23 @@ static ADDRESS_MAP_START( mimonscr_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( frogf_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x2fff) AM_ROM
+	AM_RANGE(0x8000, 0x87ff) AM_RAM
+	AM_RANGE(0x8800, 0x8bff) AM_RAM AM_WRITE(galaxian_videoram_w) AM_BASE(&galaxian_videoram)
+	AM_RANGE(0x9000, 0x903f) AM_RAM AM_WRITE(galaxian_attributesram_w) AM_BASE(&galaxian_attributesram)
+	AM_RANGE(0x9040, 0x905f) AM_RAM AM_BASE(&galaxian_spriteram) AM_SIZE(&galaxian_spriteram_size)
+	AM_RANGE(0x9060, 0x90ff) AM_RAM
+	AM_RANGE(0xa802, 0xa802) AM_WRITE(galaxian_flip_screen_x_w)
+	AM_RANGE(0xa804, 0xa804) AM_WRITE(galaxian_nmi_enable_w)
+	AM_RANGE(0xa806, 0xa806) AM_WRITE(galaxian_flip_screen_y_w)
+	AM_RANGE(0xa808, 0xa808) AM_WRITE(galaxian_coin_counter_1_w)
+	AM_RANGE(0xa80e, 0xa80e) AM_WRITE(galaxian_coin_counter_0_w)
+	AM_RANGE(0xb800, 0xb800) AM_READ(watchdog_reset_r)
+	AM_RANGE(0xd000, 0xd018) AM_READWRITE(hustler_ppi8255_0_r, hustler_ppi8255_0_w)
+	AM_RANGE(0xe000, 0xe018) AM_READWRITE(hustler_ppi8255_1_r, hustler_ppi8255_1_w)
+ADDRESS_MAP_END
+
 static ADDRESS_MAP_START( ad2083_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM
@@ -513,7 +530,7 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( scorpion_extra_sound_w )
 {
 	if(data != 0xff)
-		usrintf_showmessage("Played sample/speech %02X",data);
+		ui_popup("Played sample/speech %02X",data);
 }
 
 static WRITE8_HANDLER( scorpion_sound_cmd_w )
@@ -1559,7 +1576,7 @@ INPUT_PORTS_START( ad2083 )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-static struct GfxLayout devilfsh_charlayout =
+static gfx_layout devilfsh_charlayout =
 {
 	8,8,	/* 8*8 characters */
 	256,	/* 256 characters */
@@ -1569,7 +1586,7 @@ static struct GfxLayout devilfsh_charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8	/* every char takes 8 consecutive bytes */
 };
-static struct GfxLayout devilfsh_spritelayout =
+static gfx_layout devilfsh_spritelayout =
 {
 	16,16,	/* 16*16 sprites */
 	64,	/* 64 sprites */
@@ -1581,7 +1598,7 @@ static struct GfxLayout devilfsh_spritelayout =
 			16*8, 17*8, 18*8, 19*8, 20*8, 21*8, 22*8, 23*8 },
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
-static struct GfxLayout newsin7_charlayout =
+static gfx_layout newsin7_charlayout =
 {
 	8,8,	/* 8*8 characters */
 	256,	/* 256 characters */
@@ -1591,7 +1608,7 @@ static struct GfxLayout newsin7_charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8	/* every char takes 8 consecutive bytes */
 };
-static struct GfxLayout newsin7_spritelayout =
+static gfx_layout newsin7_spritelayout =
 {
 	16,16,	/* 16*16 sprites */
 	64,	/* 64 sprites */
@@ -1604,7 +1621,7 @@ static struct GfxLayout newsin7_spritelayout =
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxLayout mrkougar_charlayout =
+static gfx_layout mrkougar_charlayout =
 {
 	8,8,
 	256,
@@ -1614,7 +1631,7 @@ static struct GfxLayout mrkougar_charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	16*8
 };
-static struct GfxLayout mrkougar_spritelayout =
+static gfx_layout mrkougar_spritelayout =
 {
 	16,16,
 	64,
@@ -1627,7 +1644,7 @@ static struct GfxLayout mrkougar_spritelayout =
 	64*8
 };
 
-static struct GfxLayout sfx_charlayout =
+static gfx_layout sfx_charlayout =
 {
 	8,8,	/* 8*8 characters */
 	RGN_FRAC(1,4),
@@ -1637,7 +1654,7 @@ static struct GfxLayout sfx_charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8	/* every char takes 8 consecutive bytes */
 };
-static struct GfxLayout sfx_spritelayout =
+static gfx_layout sfx_spritelayout =
 {
 	16,16,	/* 16*16 sprites */
 	RGN_FRAC(1,4),
@@ -1650,7 +1667,7 @@ static struct GfxLayout sfx_spritelayout =
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxLayout ad2083_charlayout =
+static gfx_layout ad2083_charlayout =
 {
 	8,8,	/* 8*8 characters */
 	RGN_FRAC(1,2),
@@ -1660,7 +1677,7 @@ static struct GfxLayout ad2083_charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8	/* every char takes 8 consecutive bytes */
 };
-static struct GfxLayout ad2083_spritelayout =
+static gfx_layout ad2083_spritelayout =
 {
 	16,16,	/* 16*16 sprites */
 	RGN_FRAC(1,2),
@@ -1674,35 +1691,35 @@ static struct GfxLayout ad2083_spritelayout =
 };
 
 
-static struct GfxDecodeInfo devilfsh_gfxdecodeinfo[] =
+static gfx_decode devilfsh_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &devilfsh_charlayout,   0, 8 },
 	{ REGION_GFX1, 0x0800, &devilfsh_spritelayout, 0, 8 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo newsin7_gfxdecodeinfo[] =
+static gfx_decode newsin7_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &newsin7_charlayout,   0, 4 },
 	{ REGION_GFX1, 0x0800, &newsin7_spritelayout, 0, 4 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo mrkougar_gfxdecodeinfo[] =
+static gfx_decode mrkougar_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &mrkougar_charlayout,   0, 8 },
 	{ REGION_GFX1, 0x0000, &mrkougar_spritelayout, 0, 8 },
 	{ -1 } /* end of array */
 };
 
-struct GfxDecodeInfo sfx_gfxdecodeinfo[] =
+gfx_decode sfx_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0800, &sfx_charlayout,    0, 8 },
 	{ REGION_GFX1, 0x0000, &sfx_spritelayout,  0, 8 },
 	{ -1 } /* end of array */
 };
 
-struct GfxDecodeInfo ad2083_gfxdecodeinfo[] =
+gfx_decode ad2083_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &ad2083_charlayout,    0, 8 },
 	{ REGION_GFX1, 0x0000, &ad2083_spritelayout,  0, 8 },
@@ -1816,6 +1833,31 @@ static MACHINE_DRIVER_START( froggers )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(scramble)
+	MDRV_CPU_MODIFY("audio")
+	MDRV_CPU_PROGRAM_MAP(frogger_sound_readmem,frogger_sound_writemem)
+	MDRV_CPU_IO_MAP(frogger_sound_readport,frogger_sound_writeport)
+
+	/* video hardware */
+	MDRV_PALETTE_INIT(frogger)
+	MDRV_VIDEO_START(froggers)
+
+	/* sound hardware */
+	MDRV_SOUND_MODIFY("8910.1")
+	MDRV_SOUND_CONFIG(frogger_ay8910_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.33)
+
+	MDRV_SOUND_REMOVE("8910.2")
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( frogf )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(scramble)
+
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_PROGRAM_MAP(frogf_map,0)
+
 	MDRV_CPU_MODIFY("audio")
 	MDRV_CPU_PROGRAM_MAP(frogger_sound_readmem,frogger_sound_writemem)
 	MDRV_CPU_IO_MAP(frogger_sound_readport,frogger_sound_writeport)
@@ -2316,11 +2358,30 @@ ROM_START( froggers )
 	ROM_LOAD( "frogger.610",  0x1000, 0x0800, CRC(31d7eb27) SHA1(2e1d34ae4da385fd7cac94707d25eeddf4604e1a) )
 
 	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "epr-1036.1k",  0x0000, 0x0800, CRC(658745f8) SHA1(e4e5c3e011c8a7233a36d29e10e08905873500aa) )
-	ROM_LOAD( "frogger.607",  0x0800, 0x0800, CRC(05f7d883) SHA1(78831fd287da18928651a8adb7e578d291493eff) )
+	ROM_LOAD( "frogger.607",  0x0000, 0x0800, CRC(05f7d883) SHA1(78831fd287da18928651a8adb7e578d291493eff) )
+	ROM_LOAD( "epr-1036.1k",  0x0800, 0x0800, CRC(658745f8) SHA1(e4e5c3e011c8a7233a36d29e10e08905873500aa) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
-	ROM_LOAD( "vid_e6.bin",   0x0000, 0x0020, CRC(0b878b54) SHA1(3667aca564ebfef5b88d7f74fabbd16dd23183b4) )
+	ROM_LOAD( "pr-91.6l",     0x0000, 0x0020, CRC(413703bf) SHA1(66648b2b28d3dcbda5bdb2605d1977428939dd3c) )
+ROM_END
+
+ROM_START( frogf )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+	ROM_LOAD( "6.bin",        0x0000, 0x1000, CRC(8ff0a973) SHA1(adb1c28617d915fbcfa9190bd8589a56a8858e25) )
+	ROM_LOAD( "7.bin",        0x1000, 0x1000, CRC(3087bb4b) SHA1(3fe1f68a2ad12b1cadba89d99afe574cf5342d81) )
+	ROM_LOAD( "8.bin",        0x2000, 0x1000, CRC(c3869d12) SHA1(7bd95c12fc1fe1a3cfc0140b64cf76fa57aa3fb4) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the audio CPU */
+	ROM_LOAD( "frogger.608",  0x0000, 0x0800, CRC(e8ab0256) SHA1(f090afcfacf5f13cdfa0dfda8e3feb868c6ce8bc) )
+	ROM_LOAD( "frogger.609",  0x0800, 0x0800, CRC(7380a48f) SHA1(75582a94b696062cbdb66a4c5cf0bc0bb94f81ee) )
+	ROM_LOAD( "frogger.610",  0x1000, 0x0800, CRC(31d7eb27) SHA1(2e1d34ae4da385fd7cac94707d25eeddf4604e1a) )
+
+	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "frogger.607",  0x0000, 0x0800, CRC(05f7d883) SHA1(78831fd287da18928651a8adb7e578d291493eff) )
+	ROM_LOAD( "epr-1036.1k",  0x0800, 0x0800, CRC(658745f8) SHA1(e4e5c3e011c8a7233a36d29e10e08905873500aa) )
+
+	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_LOAD( "pr-91.6l",     0x0000, 0x0020, CRC(413703bf) SHA1(66648b2b28d3dcbda5bdb2605d1977428939dd3c) )
 ROM_END
 
 ROM_START( amidars )
@@ -2881,6 +2942,7 @@ GAME( 1981, atlants2, atlantis, scramble, atlantis, atlantis,     ROT90, "Comsof
 GAME( 1980, theend,   0,        theend,   theend,   theend,       ROT90, "Konami", "The End" )
 GAME( 1980, theends,  theend,   theend,   theend,   theend,       ROT90, "[Konami] (Stern license)", "The End (Stern)" )
 GAME( 1981, froggers, frogger,  froggers, froggers, froggers,     ROT90, "bootleg", "Frog" )
+GAME( 1981, frogf,    frogger,  frogf,    froggers, froggers,     ROT90, "Falcon", "Frogger (Falcon bootleg)" )
 GAME( 1982, amidars,  amidar,   scramble, amidars,  atlantis,     ROT90, "Konami", "Amidar (Scramble hardware)" )
 GAME( 1982, triplep,  0,        triplep,  triplep,  scramble_ppi, ROT90, "KKI", "Triple Punch" )
 GAME( 1982, knockout, triplep,  triplep,  triplep,  scramble_ppi, ROT90, "KKK", "Knock Out!!" )

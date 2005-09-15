@@ -67,11 +67,11 @@ WRITE16_HANDLER( sshangha_control_0_w );
 WRITE16_HANDLER( sshangha_palette_24bit_w );
 WRITE16_HANDLER (sshangha_video_w);
 
-extern data16_t *sshangha_pf1_data;
-extern data16_t *sshangha_pf2_data;
-extern data16_t *sshangha_pf1_rowscroll, *sshangha_pf2_rowscroll;
+extern UINT16 *sshangha_pf1_data;
+extern UINT16 *sshangha_pf2_data;
+extern UINT16 *sshangha_pf1_rowscroll, *sshangha_pf2_rowscroll;
 
-static data16_t *sshangha_prot_data;
+static UINT16 *sshangha_prot_data;
 
 /******************************************************************************/
 
@@ -247,23 +247,23 @@ INPUT_PORTS_START( sshangha )
 	PORT_DIPSETTING(    0x10, "Mode 1" )
 	PORT_DIPSETTING(    0x00, "Mode 2" )
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_EQUALS,0x10)//Mode 1
-	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_EQUALS,0x10)//Mode 1
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_EQUALS,0x10)//Mode 1
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_EQUALS,0x10)//Mode 1
-	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
-	PORT_DIPSETTING(    0x08, DEF_STR( 3C_1C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
-	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_4C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
+	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_EQUALS,0x10)//Mode 1
+	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_EQUALS,0x10)//Mode 1
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_EQUALS,0x10)//Mode 1
+	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_EQUALS,0x10)//Mode 1
+	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
+	PORT_DIPSETTING(    0x08, DEF_STR( 3C_1C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
+	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
+	PORT_DIPSETTING(    0x04, DEF_STR( 1C_4C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_EQUALS,0x10)//Mode 1
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_EQUALS,0x10)//Mode 1
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_EQUALS,0x10)//Mode 1
-	PORT_DIPSETTING(    0x01, DEF_STR( 1C_2C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_EQUALS,0x10)//Mode 1
-	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
-	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
-	PORT_DIPSETTING(    0x01, DEF_STR( 1C_4C ) )PORT_DIPCONDITION(3,0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
+	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_EQUALS,0x10)//Mode 1
+	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_EQUALS,0x10)//Mode 1
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_EQUALS,0x10)//Mode 1
+	PORT_DIPSETTING(    0x01, DEF_STR( 1C_2C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_EQUALS,0x10)//Mode 1
+	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
+	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
+	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
+	PORT_DIPSETTING(    0x01, DEF_STR( 1C_4C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
 
 	PORT_START_TAG("DSW2")	/* Dip switch bank 2 (0xfec04b.b, inverted bits order) */
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Difficulty ) )
@@ -297,7 +297,7 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 chars */
 	4096,
@@ -308,7 +308,7 @@ static struct GfxLayout charlayout =
 	16*8
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -321,7 +321,7 @@ static struct GfxLayout tilelayout =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,  256, 64 }, /* Characters 8x8 */
 	{ REGION_GFX1, 0, &tilelayout,  256, 64 }, /* Tiles 16x16 */
@@ -428,7 +428,7 @@ static DRIVER_INIT( sshangha )
 #if SSHANGHA_HACK
 	/* This is a hack to allow you to use the extra features
          of the first "Unused" Dip Switch (see notes above). */
-	data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 	RAM[0x000384/2] = 0x4e71;
 	RAM[0x000386/2] = 0x4e71;
 	RAM[0x000388/2] = 0x4e71;

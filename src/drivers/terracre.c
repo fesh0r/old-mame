@@ -87,11 +87,11 @@ AT-2
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
 
-static const data16_t *mpProtData;
-static data8_t mAmazonProtCmd;
-static data8_t mAmazonProtReg[6];
+static const UINT16 *mpProtData;
+static UINT8 mAmazonProtCmd;
+static UINT8 mAmazonProtReg[6];
 
-extern data16_t *amazon_videoram;
+extern UINT16 *amazon_videoram;
 
 extern PALETTE_INIT( amazon );
 extern WRITE16_HANDLER( amazon_background_w );
@@ -102,7 +102,7 @@ extern WRITE16_HANDLER( amazon_flipscreen_w );
 extern VIDEO_START( amazon );
 extern VIDEO_UPDATE( amazon );
 
-static const data16_t mAmazonProtData[] =
+static const UINT16 mAmazonProtData[] =
 {
 	/* default high scores (0x40db4) - wrong data ? */
 	0x0000,0x5000,0x5341,0x4b45,0x5349,0x4755,0x5245,
@@ -116,7 +116,7 @@ static const data16_t mAmazonProtData[] =
 	0xc800 /* checksum */
 };
 
-static const data16_t mAmatelasProtData[] =
+static const UINT16 mAmatelasProtData[] =
 {
 	/* default high scores (0x40db4) */
 	0x0000,0x5000,0x5341,0x4b45,0x5349,0x4755,0x5245,
@@ -130,7 +130,7 @@ static const data16_t mAmatelasProtData[] =
 	0x6100 /* checksum */
 };
 
-static const data16_t mHoreKidProtData[] =
+static const UINT16 mHoreKidProtData[] =
 {
 	/* N/A */
 	0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,
@@ -173,7 +173,7 @@ static READ16_HANDLER( amazon_protection_r )
 	offset = mAmazonProtReg[2];
 	if( offset<=0x56 )
 	{
-		data16_t data;
+		UINT16 data;
 		data = mpProtData[offset/2];
 		if( offset&1 ) return data&0xff;
 		return data>>8;
@@ -513,7 +513,7 @@ INPUT_PORTS_START( horekid )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-static struct GfxLayout char_layout =
+static gfx_layout char_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -524,7 +524,7 @@ static struct GfxLayout char_layout =
 	32*8
 };
 
-static struct GfxLayout tile_layout =
+static gfx_layout tile_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -541,7 +541,7 @@ static struct GfxLayout tile_layout =
 	64*16
 };
 
-static struct GfxLayout sprite_layout =
+static gfx_layout sprite_layout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -560,7 +560,7 @@ static struct GfxLayout sprite_layout =
 	32*16
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &char_layout,            0,   1 },
 	{ REGION_GFX2, 0, &tile_layout,         1*16,  16 },

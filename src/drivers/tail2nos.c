@@ -16,7 +16,7 @@ press F1+F3 to see ROM/RAM tests and the final animation
 #include "sound/2608intf.h"
 
 
-extern data16_t *tail2nos_bgvideoram;
+extern UINT16 *tail2nos_bgvideoram;
 
 WRITE16_HANDLER( tail2nos_bgvideoram_w );
 READ16_HANDLER( tail2nos_zoomdata_r );
@@ -212,7 +212,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout tail2nos_charlayout =
+static gfx_layout tail2nos_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -223,7 +223,7 @@ static struct GfxLayout tail2nos_charlayout =
 	32*8
 };
 
-static struct GfxLayout tail2nos_spritelayout =
+static gfx_layout tail2nos_spritelayout =
 {
 	16,32,
 	RGN_FRAC(1,2),
@@ -238,7 +238,7 @@ static struct GfxLayout tail2nos_spritelayout =
 	128*8
 };
 
-static struct GfxDecodeInfo tail2nos_gfxdecodeinfo[] =
+static gfx_decode tail2nos_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tail2nos_charlayout,   0, 128 },
 	{ REGION_GFX2, 0, &tail2nos_spritelayout, 0, 128 },

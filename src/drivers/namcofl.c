@@ -123,12 +123,12 @@ VIDEO_START( namcofl );
 VIDEO_UPDATE( namcofl );
 //WRITE32_HANDLER( namcofl_videoram_w );
 
-extern data32_t *namcofl_spritebank32;
-//extern data32_t *namcofl_tilebank32;
-//extern data32_t *namcofl_scrollram32;
-extern data32_t *namcofl_mcuram;
+extern UINT32 *namcofl_spritebank32;
+//extern UINT32 *namcofl_tilebank32;
+//extern UINT32 *namcofl_scrollram32;
+extern UINT32 *namcofl_mcuram;
 
-static data32_t *namcofl_workram;
+static UINT32 *namcofl_workram;
 
 static READ32_HANDLER( fl_unk1_r )
 {
@@ -166,7 +166,7 @@ static ADDRESS_MAP_START( sysfl_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x000fffff) AM_READWRITE(MRA32_BANK1, MWA32_BANK1)
 	AM_RANGE(0x10000000, 0x100fffff) AM_READWRITE(MRA32_BANK2, MWA32_BANK2)
 	AM_RANGE(0x20000000, 0x201fffff) AM_ROM AM_REGION(REGION_USER1, 0)	/* data */
-	AM_RANGE(0x30000000, 0x30001fff) AM_RAM	AM_BASE((data32_t **)&generic_nvram) AM_SIZE(&generic_nvram_size) /* nvram */
+	AM_RANGE(0x30000000, 0x30001fff) AM_RAM	AM_BASE((UINT32 **)&generic_nvram) AM_SIZE(&generic_nvram_size) /* nvram */
 	AM_RANGE(0x30100000, 0x30100003) AM_WRITENOP	/* watchdog? */
 	AM_RANGE(0x30280000, 0x3028ffff) AM_RAM	AM_BASE(&namcofl_mcuram) /* shared RAM with C75 MCU */
 	AM_RANGE(0x30300000, 0x30303fff) AM_RAM /* COMRAM */
@@ -224,7 +224,7 @@ INPUT_PORTS_START( sysfl )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-static struct GfxLayout obj_layout =
+static gfx_layout obj_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -246,7 +246,7 @@ static struct GfxLayout obj_layout =
 	16*128
 };
 
-static struct GfxLayout tile_layout =
+static gfx_layout tile_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -257,7 +257,7 @@ static struct GfxLayout tile_layout =
 	8*64
 };
 
-static struct GfxLayout roz_layout =
+static gfx_layout roz_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -270,7 +270,7 @@ static struct GfxLayout roz_layout =
 	16*128
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo2[] =
+static gfx_decode gfxdecodeinfo2[] =
 {
 	{ NAMCONB1_TILEGFXREGION,	0, &tile_layout,	0x1000, 0x08 },
 	{ NAMCONB1_SPRITEGFXREGION,	0, &obj_layout,		0x0000, 0x10 },

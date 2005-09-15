@@ -132,7 +132,7 @@ Notes:
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 
-extern data16_t *gaiden_videoram,*gaiden_videoram2,*gaiden_videoram3;
+extern UINT16 *gaiden_videoram,*gaiden_videoram2,*gaiden_videoram3;
 extern int gaiden_sprite_sizey;
 
 extern int raiga_alpha;
@@ -350,7 +350,7 @@ static WRITE16_HANDLER( raiga_protection_w )
 				if (raiga_jumppoints[jumpcode] == -1)
 				{
 					logerror("unknown jumpcode %02x\n",jumpcode);
-					usrintf_showmessage("unknown jumpcode %02x",jumpcode);
+					ui_popup("unknown jumpcode %02x",jumpcode);
 					jumpcode = 0;
 				}
 				prot = 0x20;
@@ -877,7 +877,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	8,8,	/* tile size */
 	RGN_FRAC(1,1),	/* number of tiles */
@@ -888,7 +888,7 @@ static struct GfxLayout tilelayout =
 	32*8	/* offset to next tile */
 };
 
-static struct GfxLayout tile2layout =
+static gfx_layout tile2layout =
 {
 	16,16,	/* tile size */
 	RGN_FRAC(1,1),	/* number of tiles */
@@ -902,7 +902,7 @@ static struct GfxLayout tile2layout =
 	128*8	/* offset to next tile */
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	8,8,	/* sprites size */
 	RGN_FRAC(1,2),	/* number of sprites */
@@ -913,7 +913,7 @@ static struct GfxLayout spritelayout =
 	16*8	/* offset to next sprite */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,        256, 4096 - 256 },	/* tiles 8x8  */
 	{ REGION_GFX2, 0, &tile2layout,       768, 4096 - 768 },	/* tiles 16x16 */
@@ -922,7 +922,7 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxLayout drgnbowl_tile2layout =
+static gfx_layout drgnbowl_tile2layout =
 {
 	16,16,
 	RGN_FRAC(1,8),
@@ -933,7 +933,7 @@ static struct GfxLayout drgnbowl_tile2layout =
 	32*8
 };
 
-static struct GfxLayout drgnbowl_spritelayout =
+static gfx_layout drgnbowl_spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -944,7 +944,7 @@ static struct GfxLayout drgnbowl_spritelayout =
 	32*8
 };
 
-static struct GfxDecodeInfo drgnbowl_gfxdecodeinfo[] =
+static gfx_decode drgnbowl_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0,       &tilelayout,                0, 16 },	/* tiles 8x8  */
 	{ REGION_GFX2, 0x00000, &drgnbowl_tile2layout,  0x300, 16 },	/* tiles 16x16 */
@@ -1436,9 +1436,9 @@ static DRIVER_INIT( raiga )
 static DRIVER_INIT( drgnbowl )
 {
 	int i;
-	data8_t *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(REGION_CPU1);
 	size_t  size = memory_region_length(REGION_CPU1);
-	data8_t *buffer = malloc(size);
+	UINT8 *buffer = malloc(size);
 
 	if(!buffer) return;
 

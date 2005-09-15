@@ -91,9 +91,9 @@ Notes:
 #include "machine/eeprom.h"
 #include "sound/okim6295.h"
 
-extern data16_t *pirates_tx_tileram, *pirates_spriteram;
-extern data16_t *pirates_fg_tileram,  *pirates_bg_tileram;
-extern data16_t *pirates_scroll;
+extern UINT16 *pirates_tx_tileram, *pirates_spriteram;
+extern UINT16 *pirates_fg_tileram,  *pirates_bg_tileram;
+extern UINT16 *pirates_scroll;
 
 VIDEO_START(pirates);
 WRITE16_HANDLER( pirates_tx_tileram_w );
@@ -250,7 +250,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -261,7 +261,7 @@ static struct GfxLayout charlayout =
 	8*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -274,7 +274,7 @@ static struct GfxLayout spritelayout =
 	16*16
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 
 	{ REGION_GFX1, 0, &charlayout,   0x0000, 3*128 },
@@ -472,7 +472,7 @@ static void pirates_decrypt_oki(void)
 
 static DRIVER_INIT( pirates )
 {
-	data16_t *rom = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
 
 	pirates_decrypt_68k();
 	pirates_decrypt_p();

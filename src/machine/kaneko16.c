@@ -13,7 +13,7 @@
 
 #define MCU_RESPONSE(d) memcpy(&mcu_ram[mcu_offset], d, sizeof(d))
 
-data16_t *mcu_ram;
+UINT16 *mcu_ram;
 
 /***************************************************************************
                                 Gals Panic (set 2)
@@ -47,7 +47,7 @@ READ16_HANDLER(galpanib_calc_r)
 			return watchdog_reset_r(0);
 
 		case 0x02/2: // unknown (yet!), used by *MANY* games !!!
-			//usrintf_showmessage("unknown collision reg");
+			//ui_popup("unknown collision reg");
 			break;
 
 		case 0x04/2: // similar to the hit detection from SuperNova, but much simpler
@@ -199,7 +199,7 @@ CALC3_MCU_COM_W(3)
 
 void calc3_mcu_run(void)
 {
-	data16_t mcu_command;
+	UINT16 mcu_command;
 
 	if ( calc3_mcu_status != (1|2|4|8) )	return;
 
@@ -432,11 +432,11 @@ void bloodwar_mcu_run(void);
 void bonkadv_mcu_run(void);
 void gtmr_mcu_run(void);
 
-static data16_t toybox_mcu_com[4];
+static UINT16 toybox_mcu_com[4];
 
 void toybox_mcu_init(void)
 {
-	memset(toybox_mcu_com, 0, 4 * sizeof( data16_t) );
+	memset(toybox_mcu_com, 0, 4 * sizeof( UINT16) );
 }
 
 #define TOYBOX_MCU_COM_W(_n_)							\
@@ -448,7 +448,7 @@ WRITE16_HANDLER( toybox_mcu_com##_n_##_w )				\
 	if (toybox_mcu_com[2] != 0xFFFF)	return;			\
 	if (toybox_mcu_com[3] != 0xFFFF)	return;			\
 														\
-	memset(toybox_mcu_com, 0, 4 * sizeof( data16_t ) );	\
+	memset(toybox_mcu_com, 0, 4 * sizeof( UINT16 ) );	\
 	toybox_mcu_run();									\
 }
 
@@ -457,14 +457,15 @@ TOYBOX_MCU_COM_W(1)
 TOYBOX_MCU_COM_W(2)
 TOYBOX_MCU_COM_W(3)
 
-extern const struct GameDriver driver_bloodwar;
-extern const struct GameDriver driver_bonkadv;
-extern const struct GameDriver driver_gtmr;
-extern const struct GameDriver driver_gtmre;
-extern const struct GameDriver driver_gtmrusa;
-extern const struct GameDriver driver_gtmr2;
-extern const struct GameDriver driver_gtmr2u;
-extern const struct GameDriver driver_gtmr2a;
+extern const game_driver driver_bloodwar;
+extern const game_driver driver_bonkadv;
+extern const game_driver driver_gtmr;
+extern const game_driver driver_gtmre;
+extern const game_driver driver_gtmrusa;
+extern const game_driver driver_gtmr2;
+extern const game_driver driver_gtmr2u;
+extern const game_driver driver_gtmr2a;
+extern const game_driver driver_gtmra;
 
 void toybox_mcu_run(void)
 {
@@ -479,6 +480,7 @@ void toybox_mcu_run(void)
 	}
 	else
 	if ( (Machine->gamedrv == &driver_gtmr)    ||
+		 (Machine->gamedrv == &driver_gtmra)   ||
 		 (Machine->gamedrv == &driver_gtmre)   ||
 		 (Machine->gamedrv == &driver_gtmrusa) ||
 		 (Machine->gamedrv == &driver_gtmr2)   ||
@@ -506,9 +508,9 @@ READ16_HANDLER( toybox_mcu_status_r )
 
 void bloodwar_mcu_run(void)
 {
-	data16_t mcu_command	=	mcu_ram[0x0010/2];
-	data16_t mcu_offset		=	mcu_ram[0x0012/2] / 2;
-	data16_t mcu_data		=	mcu_ram[0x0014/2];
+	UINT16 mcu_command	=	mcu_ram[0x0010/2];
+	UINT16 mcu_offset		=	mcu_ram[0x0012/2] / 2;
+	UINT16 mcu_data		=	mcu_ram[0x0014/2];
 
 	logerror("CPU #0 (PC=%06X) : MCU executed command: %04X %04X %04X\n", activecpu_get_pc(), mcu_command, mcu_offset*2, mcu_data);
 
@@ -638,9 +640,9 @@ void bloodwar_mcu_run(void)
 
 void bonkadv_mcu_run(void)
 {
-	data16_t mcu_command	=	mcu_ram[0x0010/2];
-	data16_t mcu_offset		=	mcu_ram[0x0012/2] / 2;
-	data16_t mcu_data		=	mcu_ram[0x0014/2];
+	UINT16 mcu_command	=	mcu_ram[0x0010/2];
+	UINT16 mcu_offset		=	mcu_ram[0x0012/2] / 2;
+	UINT16 mcu_data		=	mcu_ram[0x0014/2];
 
 	switch (mcu_command >> 8)
 	{
@@ -755,9 +757,9 @@ void bonkadv_mcu_run(void)
 
 void gtmr_mcu_run(void)
 {
-	data16_t mcu_command	=	mcu_ram[0x0010/2];
-	data16_t mcu_offset		=	mcu_ram[0x0012/2] / 2;
-	data16_t mcu_data		=	mcu_ram[0x0014/2];
+	UINT16 mcu_command	=	mcu_ram[0x0010/2];
+	UINT16 mcu_offset		=	mcu_ram[0x0012/2] / 2;
+	UINT16 mcu_data		=	mcu_ram[0x0014/2];
 
 	logerror("CPU #0 PC %06X : MCU executed command: %04X %04X %04X\n", activecpu_get_pc(), mcu_command, mcu_offset*2, mcu_data);
 
@@ -794,7 +796,8 @@ void gtmr_mcu_run(void)
 
 		case 0x04:	// TEST (2 versions)
 		{
-			if (Machine->gamedrv == &driver_gtmr)
+			if ((Machine->gamedrv == &driver_gtmr) ||
+			    (Machine->gamedrv == &driver_gtmra))
 			{
 				/* MCU writes the string "MM0525-TOYBOX199" to shared ram */
 				mcu_ram[mcu_offset+0] = 0x4d4d;

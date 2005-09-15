@@ -18,7 +18,7 @@ PALETTE_INIT( hcastle );
 VIDEO_UPDATE( hcastle );
 VIDEO_START( hcastle );
 
-extern data8_t *hcastle_pf1_videoram,*hcastle_pf2_videoram;
+extern UINT8 *hcastle_pf1_videoram,*hcastle_pf2_videoram;
 
 WRITE8_HANDLER( hcastle_pf1_video_w );
 WRITE8_HANDLER( hcastle_pf2_video_w );
@@ -242,7 +242,7 @@ INPUT_PORTS_END
 
 /*****************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	32768,
@@ -253,7 +253,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,       0, 8*16 },	/* 007121 #0 */
 	{ REGION_GFX2, 0, &charlayout, 8*16*16, 8*16 },	/* 007121 #1 */

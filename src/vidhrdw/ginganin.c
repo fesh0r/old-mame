@@ -59,11 +59,11 @@ Note:   if MAME_DEBUG is defined, pressing Z with:
 #include "vidhrdw/generic.h"
 
 /* Variables only used here */
-static struct tilemap *bg_tilemap, *fg_tilemap, *tx_tilemap;
+static tilemap *bg_tilemap, *fg_tilemap, *tx_tilemap;
 static int layers_ctrl, flipscreen;
 
 /* Variables that driver has access to */
-data16_t *ginganin_fgram16, *ginganin_txtram16, *ginganin_vregs16;
+UINT16 *ginganin_fgram16, *ginganin_txtram16, *ginganin_vregs16;
 
 /* Variables defined in drivers */
 
@@ -100,7 +100,7 @@ static void get_bg_tile_info(int tile_index)
 
 static void get_fg_tile_info(int tile_index)
 {
-	data16_t code = ginganin_fgram16[tile_index];
+	UINT16 code = ginganin_fgram16[tile_index];
 	SET_TILE_INFO(
 			FG_GFX,
 			code,
@@ -110,7 +110,7 @@ static void get_fg_tile_info(int tile_index)
 
 WRITE16_HANDLER( ginganin_fgram16_w )
 {
-	data16_t oldword = ginganin_fgram16[offset];
+	UINT16 oldword = ginganin_fgram16[offset];
 	COMBINE_DATA(&ginganin_fgram16[offset]);
 	if (oldword != ginganin_fgram16[offset])
 		tilemap_mark_tile_dirty(fg_tilemap,offset);
@@ -125,7 +125,7 @@ WRITE16_HANDLER( ginganin_fgram16_w )
 
 static void get_txt_tile_info(int tile_index)
 {
-	data16_t code = ginganin_txtram16[tile_index];
+	UINT16 code = ginganin_txtram16[tile_index];
 	SET_TILE_INFO(
 			TXT_GFX,
 			code,
@@ -135,7 +135,7 @@ static void get_txt_tile_info(int tile_index)
 
 WRITE16_HANDLER( ginganin_txtram16_w )
 {
-	data16_t oldword = ginganin_txtram16[offset];
+	UINT16 oldword = ginganin_txtram16[offset];
 	COMBINE_DATA(&ginganin_txtram16[offset]);
 	if (oldword != ginganin_txtram16[offset])
 		tilemap_mark_tile_dirty(tx_tilemap,offset);
@@ -218,7 +218,7 @@ Offset:         Values:         Format:
 
 ------------------------------------------------------------------------ */
 
-static void draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
+static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 {
 int offs;
 
@@ -274,7 +274,7 @@ if (code_pressed(KEYCODE_Z))
 	tilemap_set_scrolly(bg_tilemap, 0, posy); \
 	tilemap_set_scrollx(fg_tilemap, 0, posx); \
 	tilemap_set_scrolly(fg_tilemap, 0, posy); \
-	usrintf_showmessage("B>%04X:%04X F>%04X:%04X",posx%(BG_NX*16),posy%(BG_NY*16),posx%(FG_NX*16),posy%(FG_NY*16));
+	ui_popup("B>%04X:%04X F>%04X:%04X",posx%(BG_NX*16),posy%(BG_NY*16),posx%(FG_NX*16),posy%(FG_NY*16));
 
 	if (code_pressed(KEYCODE_L))	{ posx +=8; SETSCROLL }
 	if (code_pressed(KEYCODE_J))	{ posx -=8; SETSCROLL }

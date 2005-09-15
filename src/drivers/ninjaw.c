@@ -161,7 +161,7 @@ VIDEO_UPDATE( ninjaw );
 static UINT16 cpua_ctrl = 0xff;
 
 static size_t sharedram_size;
-static data16_t *sharedram;
+static UINT16 *sharedram;
 
 
 static READ16_HANDLER( sharedram_r )
@@ -221,7 +221,7 @@ static WRITE16_HANDLER( ninjaw_sound_w )
 
 #ifdef MAME_DEBUG
 	if (data & 0xff00)
-		usrintf_showmessage("ninjaw_sound_w to high byte: %04x",data);
+		ui_popup("ninjaw_sound_w to high byte: %04x",data);
 #endif
 }
 
@@ -239,7 +239,7 @@ WRITE8_HANDLER( ninjaw_pancontrol )
 {
   offset = offset&3;
   ninjaw_pandata[offset] = (float)data * (100.f / 255.0f);
-  //usrintf_showmessage(" pan %02x %02x %02x %02x", ninjaw_pandata[0], ninjaw_pandata[1], ninjaw_pandata[2], ninjaw_pandata[3] );
+  //ui_popup(" pan %02x %02x %02x %02x", ninjaw_pandata[0], ninjaw_pandata[1], ninjaw_pandata[2], ninjaw_pandata[3] );
   flt_volume_set_volume(offset, ninjaw_pandata[offset] / 100.0);
 }
 
@@ -584,7 +584,7 @@ INPUT_PORTS_END
     (Thanks to Raine for the obj decoding)
 ***********************************************************/
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,	/* 16*16 sprites */
 	RGN_FRAC(1,1),
@@ -598,7 +598,7 @@ static struct GfxLayout tilelayout =
 	128*8	/* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	RGN_FRAC(1,1),
@@ -609,7 +609,7 @@ static struct GfxLayout charlayout =
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxDecodeInfo ninjaw_gfxdecodeinfo[] =
+static gfx_decode ninjaw_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &tilelayout,  0, 256 },	/* sprites */
 	{ REGION_GFX1, 0, &charlayout,  0, 256 },	/* scr tiles (screen 1) */
@@ -641,7 +641,7 @@ static struct YM2610interface ym2610_interface =
 **************************************************************/
 
 #if 0
-static int subwoofer_sh_start(const struct MachineSound *msound)
+static int subwoofer_sh_start(const sound_config *msound)
 {
 	/* Adjust the lowpass filter of the first three YM2610 channels */
 

@@ -208,7 +208,7 @@ TODO:
 VIDEO_START( othunder );
 VIDEO_UPDATE( othunder );
 
-extern data16_t *othunder_ram;
+extern UINT16 *othunder_ram;
 
 
 /***********************************************************
@@ -279,7 +279,7 @@ The eeprom unlock command is different, and the write/clock/reset
 bits are different.
 ******************************************************************/
 
-static data8_t default_eeprom[128]=
+static UINT8 default_eeprom[128]=
 {
 	0x00,0x00,0x00,0xff,0x00,0x01,0x41,0x41,0x00,0x00,0x00,0xff,0x00,0x00,0xf0,0xf0,
 	0x00,0x00,0x00,0xff,0x00,0x01,0x41,0x41,0x00,0x00,0x00,0xff,0x00,0x00,0xf0,0xf0,
@@ -344,7 +344,7 @@ static WRITE16_HANDLER( othunder_TC0220IOC_w )
 				set_led_status(1, data & 2);
 
 if (data & 4)
-	usrintf_showmessage("OBPRI SET!");
+	ui_popup("OBPRI SET!");
 
 				EEPROM_write_bit(data & 0x40);
 				EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
@@ -638,7 +638,7 @@ INPUT_PORTS_END
                 GFX DECODING
 ***********************************************************/
 
-static struct GfxLayout tile16x8_layout =
+static gfx_layout tile16x8_layout =
 {
 	16,8,
 	RGN_FRAC(1,1),
@@ -649,7 +649,7 @@ static struct GfxLayout tile16x8_layout =
 	64*8
 };
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -660,7 +660,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxDecodeInfo othunder_gfxdecodeinfo[] =
+static gfx_decode othunder_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &tile16x8_layout, 0, 256 },	/* sprite parts */
 	{ REGION_GFX1, 0, &charlayout,      0, 256 },	/* sprites & playfield */

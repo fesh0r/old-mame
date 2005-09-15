@@ -360,9 +360,9 @@ INLINE void blitter_plot_pixel(int layer,int mask, int x, int y, int pen, int wr
 
 static int blitter_drawgfx( int layer, int mask, int gfx, int src, int pen, int x, int y, int wrap, int flags )
 {
-	data8_t cmd;
+	UINT8 cmd;
 
-	data8_t *ROM		=	memory_region( gfx );
+	UINT8 *ROM		=	memory_region( gfx );
 	size_t   ROM_size	=	memory_region_length( gfx );
 
 	int sx;
@@ -372,7 +372,7 @@ static int blitter_drawgfx( int layer, int mask, int gfx, int src, int pen, int 
 	else
 		pen = (pen >> 4) & 0xf;
 
-if (flags & 0xf4) usrintf_showmessage("flags %02x",flags);
+if (flags & 0xf4) ui_popup("flags %02x",flags);
 	if ( flags & 1 )
 	{
 		int start,len;
@@ -440,7 +440,7 @@ if (flags & 0xf4) usrintf_showmessage("flags %02x",flags);
 	{
 		if (src >= ROM_size)
 		{
-usrintf_showmessage("GFXROM OVER %08x",src);
+ui_popup("GFXROM OVER %08x",src);
 			return src;
 		}
 		cmd = ROM[src++];
@@ -460,12 +460,12 @@ usrintf_showmessage("GFXROM OVER %08x",src);
 			break;
 
 		case 0xe:	// unused ? was "change dest mask" in the "rev1" blitter
-			usrintf_showmessage("Blitter unknown command %06X: %02X\n", src-1, cmd);
+			ui_popup("Blitter unknown command %06X: %02X\n", src-1, cmd);
 
 		case 0xd:	// Skip X pixels
 			if (src >= ROM_size)
 			{
-usrintf_showmessage("GFXROM OVER %08x",src);
+ui_popup("GFXROM OVER %08x",src);
 				return src;
 			}
 			x = sx + ROM[src++];
@@ -474,7 +474,7 @@ usrintf_showmessage("GFXROM OVER %08x",src);
 		case 0xc:	// Draw N pixels
 			if (src >= ROM_size)
 			{
-usrintf_showmessage("GFXROM OVER %08x",src);
+ui_popup("GFXROM OVER %08x",src);
 				return src;
 			}
 			cmd = ROM[src++];
@@ -834,7 +834,7 @@ VIDEO_START( neruton )
 
 ***************************************************************************/
 
-void hanamai_copylayer(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int i)
+void hanamai_copylayer(mame_bitmap *bitmap,const rectangle *cliprect,int i)
 {
 	int color;
 	int scrollx,scrolly;
@@ -899,7 +899,7 @@ void hanamai_copylayer(struct mame_bitmap *bitmap,const struct rectangle *clipre
 }
 
 
-void jantouki_copylayer(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int i, int y)
+void jantouki_copylayer(mame_bitmap *bitmap,const rectangle *cliprect,int i, int y)
 {
 	int color,scrollx,scrolly,palettes,palbank;
 
@@ -968,7 +968,7 @@ void jantouki_copylayer(struct mame_bitmap *bitmap,const struct rectangle *clipr
 }
 
 
-void mjdialq2_copylayer(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int i)
+void mjdialq2_copylayer(mame_bitmap *bitmap,const rectangle *cliprect,int i)
 {
 	int color;
 	int scrollx,scrolly;
@@ -1054,13 +1054,13 @@ static int debug_mask(void)
     I,O        -  Change palette (-,+)
     J,K & N,M  -  Change "tile"  (-,+, slow & fast)
     R          -  move "tile" to the next 1/8th of the gfx  */
-static int debug_viewer(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
+static int debug_viewer(mame_bitmap *bitmap,const rectangle *cliprect)
 {
 #ifdef MAME_DEBUG
 	static int toggle;
 	if (code_pressed_memory(KEYCODE_T))	toggle = 1-toggle;
 	if (toggle)	{
-		data8_t *RAM	=	memory_region( REGION_GFX1 );
+		UINT8 *RAM	=	memory_region( REGION_GFX1 );
 		size_t size		=	memory_region_length( REGION_GFX1 );
 		static int i = 0, c = 0, r = 0;
 
@@ -1083,7 +1083,7 @@ static int debug_viewer(struct mame_bitmap *bitmap,const struct rectangle *clipr
 			blitter_drawgfx(0,1,REGION_GFX1,i,0,cliprect->min_x,cliprect->min_y,3,0);
 		if (layer_layout != LAYOUT_MJDIALQ2)	hanamai_copylayer(bitmap, cliprect, 0);
 		else									mjdialq2_copylayer(bitmap,cliprect, 0);
-		usrintf_showmessage("%06X C%02X",i,c);
+		ui_popup("%06X C%02X",i,c);
 
 		return 1;
 	}
@@ -1111,7 +1111,7 @@ VIDEO_UPDATE( hanamai )
 
 	switch (hanamai_priority)
 	{
-		default:	usrintf_showmessage("unknown priority %02x",hanamai_priority);
+		default:	ui_popup("unknown priority %02x",hanamai_priority);
 		case 0x10:	lay[0] = 0; lay[1] = 1; lay[2] = 2; lay[3] = 3; break;
 		case 0x11:	lay[0] = 0; lay[1] = 3; lay[2] = 2; lay[3] = 1; break;
 		case 0x12:	lay[0] = 0; lay[1] = 1; lay[2] = 3; lay[3] = 2; break;
@@ -1145,7 +1145,7 @@ VIDEO_UPDATE( hnoridur )
 
 	if (pri > 7)
 	{
-		usrintf_showmessage("unknown priority %02x",hanamai_priority);
+		ui_popup("unknown priority %02x",hanamai_priority);
 		pri = 0;
 	}
 
@@ -1181,7 +1181,7 @@ VIDEO_UPDATE( sprtmtch )
 
 VIDEO_UPDATE( jantouki )
 {
-	struct rectangle cliprect1 = Machine->visible_area, cliprect2 = Machine->visible_area;
+	rectangle cliprect1 = Machine->visible_area, cliprect2 = Machine->visible_area;
 	int middle_y = (Machine->visible_area.min_y + Machine->visible_area.max_y + 1) / 2;
 
 	int layers_ctrl = dynax_layer_enable;

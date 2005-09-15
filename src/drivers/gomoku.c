@@ -35,12 +35,12 @@ extern WRITE8_HANDLER( gomoku_bgram_w );
 extern WRITE8_HANDLER( gomoku_flipscreen_w );
 extern WRITE8_HANDLER( gomoku_bg_dispsw_w );
 
-extern data8_t *gomoku_videoram;
-extern data8_t *gomoku_colorram;
-extern data8_t *gomoku_bgram;
+extern UINT8 *gomoku_videoram;
+extern UINT8 *gomoku_colorram;
+extern UINT8 *gomoku_bgram;
 
-extern data8_t *gomoku_soundregs1;
-extern data8_t *gomoku_soundregs2;
+extern UINT8 *gomoku_soundregs1;
+extern UINT8 *gomoku_soundregs2;
 extern WRITE8_HANDLER( gomoku_sound1_w );
 extern WRITE8_HANDLER( gomoku_sound2_w );
 
@@ -145,7 +145,7 @@ INPUT_PORTS_START( gomoku )
 INPUT_PORTS_END
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8, 8,		/* 8*8 characters */
 	256,		/* 256 characters */
@@ -156,7 +156,7 @@ static struct GfxLayout charlayout =
 	16*8		/* every char takes 16 consecutive bytes */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 32 },
 	{ -1 } /* end of array */

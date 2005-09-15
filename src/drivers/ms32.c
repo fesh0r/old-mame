@@ -167,18 +167,18 @@ Games marked * need dumping / redumping
 #include "driver.h"
 #include "sound/ymf271.h"
 
-extern data32_t *ms32_fce00000;
-extern data32_t *ms32_roz_ctrl;
-extern data32_t *ms32_tx_scroll;
-extern data32_t *ms32_bg_scroll;
-extern data32_t *ms32_priram;
-extern data32_t *ms32_palram;
-extern data32_t *ms32_bgram;
-extern data32_t *ms32_rozram;
-extern data32_t *ms32_lineram;
-extern data32_t *ms32_spram;
-extern data32_t *ms32_txram;
-extern data32_t *ms32_mainram;
+extern UINT32 *ms32_fce00000;
+extern UINT32 *ms32_roz_ctrl;
+extern UINT32 *ms32_tx_scroll;
+extern UINT32 *ms32_bg_scroll;
+extern UINT32 *ms32_priram;
+extern UINT32 *ms32_palram;
+extern UINT32 *ms32_bgram;
+extern UINT32 *ms32_rozram;
+extern UINT32 *ms32_lineram;
+extern UINT32 *ms32_spram;
+extern UINT32 *ms32_txram;
+extern UINT32 *ms32_mainram;
 
 WRITE32_HANDLER( ms32_brightness_w );
 WRITE32_HANDLER( ms32_palram_w );
@@ -198,11 +198,11 @@ WRITE32_HANDLER( ms32_gfxctrl_w );
 VIDEO_START( ms32 );
 VIDEO_UPDATE( ms32 );
 
-static data32_t *ms32_fc000000;
+static UINT32 *ms32_fc000000;
 
-static data32_t *ms32_mahjong_input_select;
+static UINT32 *ms32_mahjong_input_select;
 
-static data32_t to_main;
+static UINT32 to_main;
 
 /********** READ INPUTS **********/
 
@@ -359,7 +359,7 @@ ADDRESS_MAP_END
 static WRITE32_HANDLER( pip_w )
 {
 	if (data)
-		usrintf_showmessage("fce00a7c = %02x",data);
+		ui_popup("fce00a7c = %02x",data);
 }
 
 static ADDRESS_MAP_START( ms32_writemem, ADDRESS_SPACE_PROGRAM, 32 )
@@ -1443,7 +1443,7 @@ INPUT_PORTS_END
 /********** GFX DECODE **********/
 
 /* sprites are contained in 256x256 "tiles" */
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	256,256,
 	RGN_FRAC(1,1),
@@ -1454,7 +1454,7 @@ static struct GfxLayout spritelayout =
 	256*256*8	/* char modulo */
 };
 
-static struct GfxLayout bglayout =
+static gfx_layout bglayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1466,7 +1466,7 @@ static struct GfxLayout bglayout =
 };
 
 
-static struct GfxLayout txlayout =
+static gfx_layout txlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -1477,7 +1477,7 @@ static struct GfxLayout txlayout =
 	8*8*8		/* char modulo */
 };
 
-static struct GfxDecodeInfo ms32_gfxdecodeinfo[] =
+static gfx_decode ms32_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &spritelayout, 0x0000, 0x10 },
 	{ REGION_GFX2, 0, &bglayout,     0x2000, 0x10 },
@@ -2356,7 +2356,7 @@ static DRIVER_INIT (47pie2)
 
 static DRIVER_INIT (f1superb)
 {
-	data32_t *pROM = (data32_t *)memory_region(REGION_CPU1);
+	UINT32 *pROM = (UINT32 *)memory_region(REGION_CPU1);
 	pROM[0x19d04/4]=0x167a021a; // bne->br  : sprite Y offset table is always copied to RAM
 	init_ss92046_01();
 }

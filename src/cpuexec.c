@@ -126,12 +126,14 @@ enum
  *
  *************************************/
 
-struct cpudata
+struct _cpuexec_data
 {
-	int		suspend;				/* suspend reason mask (0 = not suspended) */
-	int		nextsuspend;			/* pending suspend reason mask */
-	int		eatcycles;				/* true if we eat cycles while suspended */
-	int		nexteatcycles;			/* pending value */
+	UINT8	saveable;				/* true if saveable */
+
+	UINT8	suspend;				/* suspend reason mask (0 = not suspended) */
+	UINT8	nextsuspend;			/* pending suspend reason mask */
+	UINT8	eatcycles;				/* true if we eat cycles while suspended */
+	UINT8	nexteatcycles;			/* pending value */
 	int		trigger;				/* pending trigger to release a trigger suspension */
 
 	int 	iloops; 				/* number of interrupts remaining this frame */
@@ -149,6 +151,7 @@ struct cpudata
 	void *	timedint_timer;			/* reference to this CPU's timer */
 	mame_time timedint_period; 		/* timing period of the timed interrupt */
 };
+typedef struct _cpuexec_data cpuexec_data;
 
 
 
@@ -158,10 +161,11 @@ struct cpudata
  *
  *************************************/
 
-static struct cpudata cpu[MAX_CPU];
+static cpuexec_data cpu[MAX_CPU];
 
 static int time_to_reset;
 static int time_to_quit;
+static int is_paused;
 
 static int vblank;
 static int current_frame;
@@ -182,6 +186,8 @@ static mame_timer *vblank_timer;
 static int vblank_countdown;
 static int vblank_multiplier;
 static mame_time vblank_period;
+
+static mame_timer *update_timer;
 
 static mame_timer *refresh_timer;
 static mame_time refresh_period;
@@ -205,7 +211,9 @@ static mame_timer *watchdog_timer;
  *
  *************************************/
 
+static UINT8 loadsave_allowed;
 static int loadsave_schedule;
+static mame_time loadsave_schedule_time;
 static char *loadsave_schedule_name;
 
 
@@ -216,6 +224,7 @@ static char *loadsave_schedule_name;
  *
  *************************************/
 
+static void cpu_init_refresh_timer(void);
 static void cpu_timeslice(void);
 static void cpu_inittimers(void);
 static void cpu_vblankreset(void);
@@ -223,7 +232,7 @@ static void cpu_vblankcallback(int param);
 static void cpu_updatecallback(int param);
 static void end_interleave_boost(int param);
 static void compute_perfect_interleave(void);
-static void watchdog_setup(void);
+static void watchdog_setup(int alloc_new);
 
 static void handle_loadsave(void);
 
@@ -257,17 +266,24 @@ int cpu_init(void)
 {
 	int cpunum;
 
+	/* initialize the refresh timer */
+	cpu_init_refresh_timer();
+
+	/* by default, saves/loads are allowed */
+	loadsave_allowed = TRUE;
+
 	/* loop over all our CPUs */
 	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
 	{
 		int cputype = Machine->drv->cpu[cpunum].cpu_type;
+		int num_regs;
 
 		/* if this is a dummy, stop looking */
 		if (cputype == CPU_DUMMY)
 			break;
 
 		/* set the save state tag */
-		state_save_set_current_tag(cpunum + 1);
+		state_save_push_tag(cpunum + 1);
 
 		/* initialize the cpuinfo struct */
 		memset(&cpu[cpunum], 0, sizeof(cpu[cpunum]));
@@ -282,17 +298,45 @@ int cpu_init(void)
 		cycles_per_second[cpunum] = sec_to_cycles[cpunum];
 		subseconds_per_cycle[cpunum] = MAX_SUBSECONDS / sec_to_cycles[cpunum];
 
+		/* register some of our variables for later */
+		state_save_register_UINT8 ("cpu", 0, "suspend", &cpu[cpunum].suspend, 1);
+		state_save_register_UINT8 ("cpu", 0, "nextsuspend", &cpu[cpunum].nextsuspend, 1);
+		state_save_register_UINT8 ("cpu", 0, "eatcycles", &cpu[cpunum].eatcycles, 1);
+		state_save_register_UINT8 ("cpu", 0, "nexteatcycles", &cpu[cpunum].nexteatcycles, 1);
+		state_save_register_int   ("cpu", 0, "trigger", &cpu[cpunum].trigger);
+
+		state_save_register_UINT64("cpu", 0, "totalcycles", &cpu[cpunum].totalcycles, 1);
+		state_save_register_INT32 ("cpu", 0, "localtime.sec", &cpu[cpunum].localtime.seconds, 1);
+		state_save_register_INT64 ("cpu", 0, "localtime.sub", &cpu[cpunum].localtime.subseconds, 1);
+		state_save_register_int   ("cpu", 0, "clock", &cpu[cpunum].clock);
+		state_save_register_double("cpu", 0, "clockscale", &cpu[cpunum].clockscale, 1);
+
+		state_save_register_int   ("cpu", 0, "vblankint_countdown", &cpu[cpunum].vblankint_countdown);
+
 		/* initialize this CPU */
+		num_regs = state_save_get_reg_count();
 		if (cpuintrf_init_cpu(cpunum, cputype))
 			return 1;
+		num_regs = state_save_get_reg_count() - num_regs;
+
+		/* if no state registered for saving, we can't save */
+		if (num_regs == 0)
+			logerror("CPU #%d (%s) did not register any state to save!\n", cpunum, cputype_name(cputype));
+
+		/* pop the state tag */
+		state_save_pop_tag();
 	}
 
 	/* compute the perfect interleave factor */
 	compute_perfect_interleave();
 
-	/* save some stuff in tag 0 */
-	state_save_set_current_tag(0);
-	state_save_register_INT32("cpu", 0, "watchdog count", &watchdog_counter, 1);
+	/* save some stuff in the default tag */
+	state_save_push_tag(0);
+	state_save_register_int("cpu", 0, "vblank", &vblank);
+	state_save_register_int("cpu", 0, "current_frame", &current_frame);
+	state_save_register_INT32("cpu", 0, "watchdog_counter", &watchdog_counter, 1);
+	state_save_register_int("cpu", 0, "vblank_countdown", &vblank_countdown);
+	state_save_pop_tag();
 
 	/* reset the IRQ lines and save those */
 	if (cpuint_init())
@@ -317,6 +361,9 @@ static void cpu_pre_run(void)
 
 	begin_resource_tracking();
 
+	/* allow save state registrations starting here */
+	state_save_allow_registration(TRUE);
+
 	/* read hi scores information from hiscore.dat */
 	hs_open(Machine->gamedrv->name);
 	hs_init();
@@ -324,7 +371,7 @@ static void cpu_pre_run(void)
 	/* initialize the various timers (suspends all CPUs at startup) */
 	cpu_inittimers();
 	watchdog_counter = WATCHDOG_IS_INVALID;
-	watchdog_setup();
+	watchdog_setup(TRUE);
 
 	/* reset sound chips */
 	sound_reset();
@@ -359,6 +406,9 @@ static void cpu_pre_run(void)
 	/* reset the globals */
 	cpu_vblankreset();
 	current_frame = 0;
+
+	/* disallow save state registrations starting here */
+	state_save_allow_registration(FALSE);
 	state_save_dump_registry();
 }
 
@@ -399,14 +449,15 @@ void cpu_run(void)
 #endif
 
 	/* loop over multiple resets, until the user quits */
-	time_to_quit = 0;
+	time_to_quit = FALSE;
 	while (!time_to_quit)
 	{
 		/* prepare everything to run */
 		cpu_pre_run();
 
 		/* loop until the user quits or resets */
-		time_to_reset = 0;
+		time_to_reset = FALSE;
+		is_paused = FALSE;
 		while (!time_to_quit && !time_to_reset)
 		{
 			profiler_mark(PROFILER_EXTRA);
@@ -415,8 +466,16 @@ void cpu_run(void)
 			if (loadsave_schedule != LOADSAVE_NONE)
 				handle_loadsave();
 
-			/* execute CPUs */
-			cpu_timeslice();
+			/* execute CPUs if not paused */
+			if (!is_paused)
+				cpu_timeslice();
+
+			/* otherwise, just pump video updates through */
+			else
+			{
+				time_to_quit = updatescreen();
+				reset_partial_updates();
+			}
 
 			profiler_mark(PROFILER_END);
 		}
@@ -453,6 +512,19 @@ void cpu_exit(void)
 
 /*************************************
  *
+ *  Pause/resume execution of CPUs
+ *
+ *************************************/
+
+void cpu_pause(int pause)
+{
+	is_paused = pause;
+}
+
+
+
+/*************************************
+ *
  *  Force a reset at the end of this
  *  timeslice
  *
@@ -460,7 +532,7 @@ void cpu_exit(void)
 
 void machine_reset(void)
 {
-	time_to_reset = 1;
+	time_to_reset = TRUE;
 }
 
 
@@ -482,17 +554,35 @@ static void handle_save(void)
 	mame_file *file;
 	int cpunum;
 
+	/* if there are anonymous timers, we can't save just yet */
+	if (timer_count_anonymous() > 0)
+	{
+		/* if more than a second has passed, we're probably screwed */
+		if (sub_mame_times(mame_timer_get_time(), loadsave_schedule_time).seconds > 0)
+		{
+			ui_popup("Unable to save due to pending anonymous timers. See error.log for details.");
+			cpu_loadsave_reset();
+		}
+		return;
+	}
+
 	/* open the file */
 	file = mame_fopen(Machine->gamedrv->name, loadsave_schedule_name, FILETYPE_STATE, 1);
-
 	if (file)
 	{
 		/* write the save state */
-		state_save_save_begin(file);
+		if (state_save_save_begin(file))
+		{
+			ui_popup("Error: Unable to save state due to illegal registrations. See error.log for details.");
+			cpu_loadsave_reset();
+			mame_fclose(file);
+			return;
+		}
 
-		/* write tag 0 */
-		state_save_set_current_tag(0);
+		/* write the default tag */
+		state_save_push_tag(0);
 		state_save_save_continue();
+		state_save_pop_tag();
 
 		/* loop over CPUs */
 		for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
@@ -503,8 +593,9 @@ static void handle_save(void)
 			activecpu_reset_banking();
 
 			/* save the CPU data */
-			state_save_set_current_tag(cpunum + 1);
+			state_save_push_tag(cpunum + 1);
 			state_save_save_continue();
+			state_save_pop_tag();
 
 			cpuintrf_pop_context();
 		}
@@ -514,9 +605,7 @@ static void handle_save(void)
 		mame_fclose(file);
 	}
 	else
-	{
-		usrintf_showmessage("Error: Failed to save state");
-	}
+		ui_popup("Error: Failed to save state");
 
 	/* unschedule the save */
 	cpu_loadsave_reset();
@@ -545,8 +634,9 @@ static void handle_load(void)
 		if (!state_save_load_begin(file))
 		{
 			/* read tag 0 */
-			state_save_set_current_tag(0);
+			state_save_push_tag(0);
 			state_save_load_continue();
+			state_save_pop_tag();
 
 			/* loop over CPUs */
 			for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
@@ -557,8 +647,9 @@ static void handle_load(void)
 				activecpu_reset_banking();
 
 				/* load the CPU data */
-				state_save_set_current_tag(cpunum + 1);
+				state_save_push_tag(cpunum + 1);
 				state_save_load_continue();
+				state_save_pop_tag();
 
 				cpuintrf_pop_context();
 			}
@@ -569,9 +660,7 @@ static void handle_load(void)
 		mame_fclose(file);
 	}
 	else
-	{
-		usrintf_showmessage("Error: Failed to load state");
-	}
+		ui_popup("Error: Failed to load state");
 
 	/* unschedule the load */
 	cpu_loadsave_reset();
@@ -587,14 +676,41 @@ static void handle_load(void)
 
 static void handle_loadsave(void)
 {
-	/* it's one or the other */
-	if (loadsave_schedule == LOADSAVE_SAVE)
-		handle_save();
-	else if (loadsave_schedule == LOADSAVE_LOAD)
-		handle_load();
+	mame_file *file;
 
-	/* reset the schedule */
-	cpu_loadsave_reset();
+	/* if we're not allowed, say so */
+	if (!loadsave_allowed)
+	{
+		ui_popup("Save/load capability not implemented for this game. See error.log for details.");
+		cpu_loadsave_reset();
+	}
+
+	switch (loadsave_schedule)
+	{
+		case LOADSAVE_SAVE:
+			handle_save();
+			break;
+
+		case LOADSAVE_LOAD:
+			file = mame_fopen(Machine->gamedrv->name, loadsave_schedule_name, FILETYPE_STATE, 0);
+			if (file)
+			{
+				if (state_save_check_file(file, Machine->gamedrv->name, TRUE, ui_popup) == 0)
+				{
+					mame_fclose(file);
+					machine_reset();
+					loadsave_schedule = LOADSAVE_LOAD_POSTRESET;
+					break;
+				}
+				mame_fclose(file);
+			}
+			cpu_loadsave_reset();
+			break;
+
+		case LOADSAVE_LOAD_POSTRESET:
+			handle_load();
+			break;
+	}
 }
 
 
@@ -609,11 +725,16 @@ void cpu_loadsave_schedule_file(int type, const char *name)
 {
 	cpu_loadsave_reset();
 
+	/* allocate memory for the name */
 	loadsave_schedule_name = malloc(strlen(name) + 1);
 	if (loadsave_schedule_name)
 	{
+		/* copy it in and set the scheduled action */
 		strcpy(loadsave_schedule_name, name);
 		loadsave_schedule = type;
+
+		/* remember the time we asked to start */
+		loadsave_schedule_time = mame_timer_get_time();
 	}
 }
 
@@ -651,6 +772,21 @@ void cpu_loadsave_reset(void)
 }
 
 
+
+/*************************************
+ *
+ *  Disallows save/loads for this
+ *  game
+ *
+ *************************************/
+
+void cpu_loadsave_disallow(void)
+{
+	loadsave_allowed = FALSE;
+}
+
+
+
 #if 0
 #pragma mark -
 #pragma mark WATCHDOG
@@ -676,7 +812,7 @@ static void watchdog_callback(int param)
  *
  *************************************/
 
-static void watchdog_setup(void)
+static void watchdog_setup(int alloc_new)
 {
 	if (watchdog_counter != WATCHDOG_IS_DISABLED)
 	{
@@ -688,7 +824,8 @@ static void watchdog_setup(void)
 		else if (Machine->drv->watchdog_time != 0)
 		{
 			/* Start a time based watchdog. */
-			watchdog_timer = timer_alloc(watchdog_callback);
+			if (alloc_new)
+				watchdog_timer = timer_alloc(watchdog_callback);
 			timer_adjust(watchdog_timer, Machine->drv->watchdog_time, 0, 0);
 			watchdog_counter = WATCHDOG_IS_TIMER_BASED;
 		}
@@ -737,7 +874,7 @@ static void watchdog_reset(void)
 			logerror("(vblank) watchdog armed by reset\n");
 		}
 
-		watchdog_setup();
+		watchdog_setup(FALSE);
 	}
 }
 
@@ -754,8 +891,6 @@ void watchdog_enable(int enable)
 	if (!enable)
 	{
 		// Disable all timers
-		if (watchdog_counter == WATCHDOG_IS_TIMER_BASED)
-			timer_remove(watchdog_timer);
 		watchdog_counter = WATCHDOG_IS_DISABLED;
 	}
 	else
@@ -764,7 +899,7 @@ void watchdog_enable(int enable)
 	if (watchdog_counter == WATCHDOG_IS_DISABLED)
 	{
 		watchdog_counter = WATCHDOG_IS_BEING_STARTED;
-		watchdog_setup();
+		watchdog_setup(FALSE);
 	}
 }
 
@@ -866,9 +1001,7 @@ static void cpu_timeslice(void)
 
 #ifdef MAME_DEBUG
 				if (ran < cycles_stolen)
-				{
 					osd_die("Negative CPU cycle count!");
-				}
 #endif /* MAME_DEBUG */
 
 				ran -= cycles_stolen;
@@ -1294,7 +1427,7 @@ int cpu_scalebyfcount(int value)
  *
  *************************************/
 
-void cpu_init_refresh_timer(void)
+static void cpu_init_refresh_timer(void)
 {
 	/* we rely on this being NULL for the time being */
 	vblank_timer = NULL;
@@ -1684,8 +1817,22 @@ static void cpu_vblankreset(void)
 	/* read hi scores from disk */
 	hs_update();
 
+	/* update the cheat engine */
+	if (options.cheat)
+		cheat_periodic();
+
 	/* read keyboard & update the status of the input ports */
-	inputport_vblank_start();
+	input_port_vblank_start();
+
+	/* check the watchdog */
+	if (watchdog_counter > 0)
+	{
+		if (--watchdog_counter == 0)
+		{
+			logerror("reset caused by the (vblank) watchdog\n");
+			machine_reset();
+		}
+	}
 
 	/* reset the cycle counters */
 	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
@@ -1772,7 +1919,7 @@ static void cpu_vblankcallback(int param)
 			time_to_quit = updatescreen();
 
 		/* Set the timer to update the screen */
-		mame_timer_set(double_to_mame_time(TIME_IN_USEC(Machine->drv->vblank_duration)), 0, cpu_updatecallback);
+		mame_timer_adjust(update_timer, double_to_mame_time(TIME_IN_USEC(Machine->drv->vblank_duration)), 0, time_zero);
 
 		/* reset the globals */
 		cpu_vblankreset();
@@ -1803,20 +1950,10 @@ static void cpu_updatecallback(int param)
 	vblank = 0;
 
 	/* update IPT_VBLANK input ports */
-	inputport_vblank_end();
+	input_port_vblank_end();
 
 	/* reset partial updating */
 	reset_partial_updates();
-
-	/* check the watchdog */
-	if (watchdog_counter > 0)
-	{
-		if (--watchdog_counter == 0)
-		{
-			logerror("reset caused by the (vblank) watchdog\n");
-			machine_reset();
-		}
-	}
 
 	/* track total frames */
 	current_frame++;
@@ -1978,6 +2115,9 @@ static void cpu_inittimers(void)
 	vblank_period = double_to_mame_time(1.0 / (Machine->refresh_rate * vblank_multiplier));
 	vblank_timer = mame_timer_alloc(cpu_vblankcallback);
 	vblank_countdown = vblank_multiplier;
+
+	/* allocate an update timer that will be used to time the actual screen updates */
+	update_timer = mame_timer_alloc(cpu_updatecallback);
 
 	/*
      *      The following code creates individual timers for each CPU whose interrupts are not

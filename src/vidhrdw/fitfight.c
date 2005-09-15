@@ -2,23 +2,23 @@
 
 #include "driver.h"
 
-extern data16_t *fitfight_spriteram;
-extern data16_t *fof_100000, *fof_600000, *fof_700000, *fof_800000, *fof_900000, *fof_a00000;
+extern UINT16 *fitfight_spriteram;
+extern UINT16 *fof_100000, *fof_600000, *fof_700000, *fof_800000, *fof_900000, *fof_a00000;
 
-extern data16_t *fof_bak_tileram;
-static struct tilemap *fof_bak_tilemap;
-extern data16_t *fof_mid_tileram;
-static struct tilemap *fof_mid_tilemap;
-extern data16_t *fof_txt_tileram;
-static struct tilemap *fof_txt_tilemap;
+extern UINT16 *fof_bak_tileram;
+static tilemap *fof_bak_tilemap;
+extern UINT16 *fof_mid_tileram;
+static tilemap *fof_mid_tilemap;
+extern UINT16 *fof_txt_tileram;
+static tilemap *fof_txt_tilemap;
 
 extern char bbprot_kludge;
 
-static void fitfight_drawsprites( struct mame_bitmap *bitmap, const struct rectangle *cliprect, int layer )
+static void fitfight_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect, int layer )
 {
-	const struct GfxElement *gfx = Machine->gfx[3];
-	data16_t *source = fitfight_spriteram;
-	data16_t *finish = source + 0x800/2;
+	const gfx_element *gfx = Machine->gfx[3];
+	UINT16 *source = fitfight_spriteram;
+	UINT16 *finish = source + 0x800/2;
 
 	while( source<finish )
 	{
@@ -161,7 +161,7 @@ VIDEO_UPDATE(fitfight)
 
 		tilemap_draw(bitmap,cliprect,fof_txt_tilemap,0,0);
 	}
-/*  usrintf_showmessage ("Regs %04x %04x %04x %04x %04x %04x",
+/*  ui_popup ("Regs %04x %04x %04x %04x %04x %04x",
             fof_100000[0], fof_600000[0], fof_700000[0],
             fof_800000[0], fof_900000[0],
             fof_a00000[0] );

@@ -25,7 +25,7 @@ some bits by David Haywood
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
-extern data16_t *crospang_bg_videoram,*crospang_fg_videoram;
+extern UINT16 *crospang_bg_videoram,*crospang_fg_videoram;
 
 extern VIDEO_START( crospang );
 extern VIDEO_UPDATE( crospang );
@@ -144,7 +144,7 @@ INPUT_PORTS_START( crospang )
 	PORT_DIPNAME( 0x0020, 0x0020, "Number of Powers" )
 	PORT_DIPSETTING(      0x0000, "1" )
 	PORT_DIPSETTING(      0x0020, "2" )
-	PORT_DIPNAME( 0x00c0, 0x00c0, "Extra Balls" )
+	PORT_DIPNAME( 0x00c0, 0x0040, "Extra Balls" )
 	PORT_DIPSETTING(      0x00c0, "1" )
 	PORT_DIPSETTING(      0x0080, "2" )
 	PORT_DIPSETTING(      0x0040, "3" )
@@ -158,7 +158,7 @@ INPUT_PORTS_START( crospang )
 	PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0400, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x1800, 0x1800, "Minimum Balls per Row" )
+	PORT_DIPNAME( 0x1800, 0x1000, "Minimum Balls per Row" )
 	PORT_DIPSETTING(      0x1800, "3" )
 	PORT_DIPSETTING(      0x1000, "4" )
 	PORT_DIPSETTING(      0x0800, "5" )
@@ -172,7 +172,7 @@ INPUT_PORTS_START( crospang )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
 
-static struct GfxLayout layout_16x16x4a =
+static gfx_layout layout_16x16x4a =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -183,7 +183,7 @@ static struct GfxLayout layout_16x16x4a =
 	8*32
 };
 
-static struct GfxLayout layout_16x16x4 =
+static gfx_layout layout_16x16x4 =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -194,7 +194,7 @@ static struct GfxLayout layout_16x16x4 =
 	8*32
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_16x16x4a, 0, 0x10 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_16x16x4,  0, 0x30 }, // [1] Tiles

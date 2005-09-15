@@ -34,6 +34,58 @@ typedef UINT32 FPTR;
 #endif
 
 
+/* ----- for generic function pointers ----- */
+typedef void genf(void);
+
+
+
+/* These are forward struct declarations that are used to break
+   circular dependencies in the code */
+
+typedef struct _mame_display mame_display;
+typedef struct _game_driver game_driver;
+typedef struct _machine_config machine_config;
+typedef struct _rom_load_data rom_load_data;
+typedef struct _xml_data_node xml_data_node;
+typedef struct _performance_info performance_info;
+
+
+typedef struct _osd_file osd_file;
+
+
+/* pen_t is used to represent pixel values in mame_bitmaps */
+typedef UINT32 pen_t;
+
+
+/* mame_bitmaps are used throughout the code */
+struct _mame_bitmap
+{
+	int width,height;	/* width and height of the bitmap */
+	int depth;			/* bits per pixel */
+	void **line;		/* pointers to the start of each line - can be UINT8 **, UINT16 ** or UINT32 ** */
+
+	/* alternate way of accessing the pixels */
+	void *base;			/* pointer to pixel (0,0) (adjusted for padding) */
+	int rowpixels;		/* pixels per row (including padding) */
+	int rowbytes;		/* bytes per row (including padding) */
+
+	/* functions to render in the correct orientation */
+	void (*plot)(struct _mame_bitmap *bitmap,int x,int y,pen_t pen);
+	pen_t (*read)(struct _mame_bitmap *bitmap,int x,int y);
+	void (*plot_box)(struct _mame_bitmap *bitmap,int x,int y,int width,int height,pen_t pen);
+};
+typedef struct _mame_bitmap mame_bitmap;
+
+
+/* rectangles are used throughout the code */
+struct _rectangle
+{
+	int min_x,max_x;
+	int min_y,max_y;
+};
+typedef struct _rectangle rectangle;
+
+
 
 /***************************************************************************
  * Union of UINT8, UINT16 and UINT32 in native endianess of the target
@@ -53,6 +105,28 @@ typedef union
 #endif
 	UINT32 d;
 } PAIR;
+
+
+
+
+/***************************************************************************
+ * Union of UINT8, UINT16, UINT32, and UINT64 in native endianess of
+ * the target.  This is used to access bytes and words in a machine
+ * independent manner.
+***************************************************************************/
+typedef union
+{
+#ifdef LSB_FIRST
+	struct { UINT8 l,h,h2,h3,h4,h5,h6,h7; } b;
+	struct { UINT16 l,h,h2,h3; } w;
+	struct { UINT32 l,h; } d;
+#else
+	struct { UINT8 h7,h6,h5,h4,h3,h2,h,l; } b;
+	struct { UINT16 h3,h2,h,l; } w;
+	struct { UINT32 h,l; } d;
+#endif
+	UINT64 lw;
+} PAIR64;
 
 
 
@@ -78,6 +152,14 @@ typedef union
     Common macros
 
 ***************************************************************************/
+
+/* Standard MIN/MAX macros */
+#ifndef MIN
+#define MIN(x,y) ((x)<(y)?(x):(y))
+#endif
+#ifndef MAX
+#define MAX(x,y) ((x)>(y)?(x):(y))
+#endif
 
 /* Highly useful macro for compile-time knowledge of an array size */
 #define ARRAY_LENGTH(x) (sizeof(x) / sizeof(x[0]))
@@ -238,6 +320,15 @@ INLINE int my_stricmp(const char *dst, const char *src)
 	return *dst - *src;
 }
 
+/* compute the intersection of two rectangles */
+INLINE void sect_rect(rectangle *dst, const rectangle *src)
+{
+	if (src->min_x > dst->min_x) dst->min_x = src->min_x;
+	if (src->max_x < dst->max_x) dst->max_x = src->max_x;
+	if (src->min_y > dst->min_y) dst->min_y = src->min_y;
+	if (src->max_y < dst->max_y) dst->max_y = src->max_y;
+}
+
 /* convert a series of 32 bits into a float */
 INLINE float u2f(UINT32 v)
 {
@@ -296,18 +387,36 @@ INLINE UINT64 d2u(double d)
 #endif
 
 
+
 /* Some optimizations/warnings cleanups for GCC */
-#if (__GNUC__ > 2) || (__GNUC__ == 2 && __GNUC_MINOR__ > 8)
-#define UNUSEDARG __attribute__((__unused__))
+#if defined(__GNUC__) && (__GNUC__ >= 3)
+#define ATTR_UNUSED			__attribute__((__unused__))
+#define ATTR_NORETURN		__attribute__((noreturn))
+#define ATTR_PRINTF(x,y)	__attribute__((format(printf, x, y)))
+#define ATTR_MALLOC			__attribute__((malloc))
+#define ATTR_PURE			__attribute__((pure))
+#define ATTR_CONST			__attribute__((const))
+#define UNEXPECTED(exp)		__builtin_expect((exp), 0)
 #else
-#define UNUSEDARG
+#define ATTR_UNUSED
+#define ATTR_NORETURN
+#define ATTR_PRINTF(x,y)
+#define ATTR_MALLOC
+#define ATTR_PURE
+#define ATTR_CONST
+#define UNEXPECTED(exp)		(exp)
 #endif
 
-#if (__GNUC__ >= 3)
-#define UNEXPECTED(exp)	 __builtin_expect((exp), 0)
+
+
+/* And some MSVC optimizations/warnings */
+#if defined(_MSC_VER)
+#define DECL_NORETURN		__declspec(noreturn)
 #else
-#define UNEXPECTED(exp)	(exp)
+#define DECL_NORETURN
 #endif
+
+
 
 
 #endif	/* __MAMECORE_H__ */

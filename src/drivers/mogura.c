@@ -3,9 +3,9 @@
 #include "driver.h"
 #include "sound/dac.h"
 
-data8_t *mogura_tileram;
-data8_t* mogura_gfxram;
-static struct tilemap *mogura_tilemap;
+UINT8 *mogura_tileram;
+UINT8* mogura_gfxram;
+static tilemap *mogura_tilemap;
 
 PALETTE_INIT( mogura )
 {
@@ -62,7 +62,7 @@ VIDEO_START( mogura )
 VIDEO_UPDATE( mogura )
 {
 	/* tilemap layout is a bit strange ... */
-	struct rectangle clip;
+	rectangle clip;
 	clip.min_x = Machine->visible_area.min_x;
 	clip.max_x = 256-1;
 	clip.min_y = Machine->visible_area.min_y;
@@ -194,7 +194,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout tiles8x8_layout =
+static gfx_layout tiles8x8_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -205,7 +205,7 @@ static struct GfxLayout tiles8x8_layout =
 	16*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tiles8x8_layout, 0, 8 },
 	{ -1 }

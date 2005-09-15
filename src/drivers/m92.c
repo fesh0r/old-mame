@@ -1086,7 +1086,7 @@ INPUT_PORTS_END
 
 /***************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	RGN_FRAC(1,4),
@@ -1097,7 +1097,7 @@ static struct GfxLayout charlayout =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -1110,7 +1110,7 @@ static struct GfxLayout spritelayout =
 	32*8
 };
 
-static struct GfxLayout spritelayout2 =
+static gfx_layout spritelayout2 =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -1122,14 +1122,14 @@ static struct GfxLayout spritelayout2 =
 	32*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0, 128 },
 	{ REGION_GFX2, 0, &spritelayout, 0, 128 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo2[] =
+static gfx_decode gfxdecodeinfo2[] =
 {
 	{ REGION_GFX1, 0, &charlayout,    0, 128 },
 	{ REGION_GFX2, 0, &spritelayout2, 0, 128 },
@@ -2417,7 +2417,6 @@ static DRIVER_INIT( rtypeleo )
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe0032, 0xe0033, 0, 0, rtypeleo_cycle_r);
 	init_m92(rtypeleo_decryption_table, 1);
 	m92_irq_vectorbase=0x20;
-	m92_game_kludge=1;
 }
 
 static DRIVER_INIT( rtypelej )
@@ -2425,7 +2424,6 @@ static DRIVER_INIT( rtypelej )
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe0032, 0xe0033, 0, 0, rtypelej_cycle_r);
 	init_m92(rtypeleo_decryption_table, 1);
 	m92_irq_vectorbase=0x20;
-	m92_game_kludge=1;
 }
 
 static DRIVER_INIT( majtitl2 )

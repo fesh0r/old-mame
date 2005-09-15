@@ -166,7 +166,7 @@ WRITE8_HANDLER( warriorb_pancontrol )
 	offset = offset&3;
 	ninjaw_pandata[offset] = (data<<1) + data;   /* original volume*3 */
 
-//  usrintf_showmessage(" pan %02x %02x %02x %02x", ninjaw_pandata[0], ninjaw_pandata[1], ninjaw_pandata[2], ninjaw_pandata[3] );
+//  ui_popup(" pan %02x %02x %02x %02x", ninjaw_pandata[0], ninjaw_pandata[1], ninjaw_pandata[2], ninjaw_pandata[3] );
 
 	flt_volume_set_volume(offset, ninjaw_pandata[offset] / 100.0);
 }
@@ -431,7 +431,7 @@ INPUT_PORTS_END
                         GFX DECODING
 ***********************************************************/
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,	/* 16*16 sprites */
 	RGN_FRAC(1,1),
@@ -442,7 +442,7 @@ static struct GfxLayout tilelayout =
 	128*8	/* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	RGN_FRAC(1,1),
@@ -453,7 +453,7 @@ static struct GfxLayout charlayout =
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxDecodeInfo warriorb_gfxdecodeinfo[] =
+static gfx_decode warriorb_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &tilelayout,  0, 256 },	/* sprites */
 	{ REGION_GFX1, 0, &charlayout,  0, 256 },	/* scr tiles (screen 1) */
@@ -485,7 +485,7 @@ static struct YM2610interface ym2610_interface =
 **************************************************************/
 
 #if 0
-static int subwoofer_sh_start(const struct MachineSound *msound)
+static int subwoofer_sh_start(const sound_config *msound)
 {
 	/* Adjust the lowpass filter of the first three YM2610 channels */
 

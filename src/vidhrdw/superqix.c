@@ -9,14 +9,14 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-data8_t *superqix_videoram;
-data8_t *superqix_bitmapram,*superqix_bitmapram2;
+UINT8 *superqix_videoram;
+UINT8 *superqix_bitmapram,*superqix_bitmapram2;
 int pbillian_show_power;
 
 static int gfxbank;
-static struct mame_bitmap *fg_bitmap[2];
+static mame_bitmap *fg_bitmap[2];
 static int show_bitmap;
-static struct tilemap *bg_tilemap;
+static tilemap *bg_tilemap;
 
 
 /***************************************************************************
@@ -178,7 +178,7 @@ WRITE8_HANDLER( superqix_0410_w )
 
 ***************************************************************************/
 
-static void pb_draw_sprites( struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+static void pb_draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -205,7 +205,7 @@ static void pb_draw_sprites( struct mame_bitmap *bitmap, const struct rectangle 
 	}
 }
 
-static void sqix_draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
+static void sqix_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -249,14 +249,14 @@ VIDEO_UPDATE( pbillian )
 		curr_power = ((readinputport(4)&0x3f)*100)/0x3f;
 		if (last_power[0] != curr_power)
 		{
-			usrintf_showmessage	("Power %d%%", curr_power);
+			ui_popup	("Power %d%%", curr_power);
 			last_power[0] = curr_power;
 		}
 
 		curr_power = ((readinputport(6)&0x3f)*100)/0x3f;
 		if (last_power[1] != curr_power)
 		{
-			usrintf_showmessage	("Power %d%%", curr_power);
+			ui_popup	("Power %d%%", curr_power);
 			last_power[1] = curr_power;
 		}
 	}

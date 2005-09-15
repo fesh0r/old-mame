@@ -46,8 +46,8 @@ VIDEO_UPDATE( amspdwy );
 #define AMSPDWY_WHEEL_R( _n_ ) \
 READ8_HANDLER( amspdwy_wheel_##_n_##_r ) \
 { \
-	static data8_t wheel_old, ret; \
-	data8_t wheel = readinputport(5 + _n_); \
+	static UINT8 wheel_old, ret; \
+	UINT8 wheel = readinputport(5 + _n_); \
 	if (wheel != wheel_old) \
 	{ \
 		wheel = (wheel & 0x7fff) - (wheel & 0x8000); \
@@ -106,7 +106,7 @@ ADDRESS_MAP_END
 
 READ8_HANDLER( amspdwy_port_r )
 {
-	data8_t *Tracks = memory_region(REGION_CPU1)+0x10000;
+	UINT8 *Tracks = memory_region(REGION_CPU1)+0x10000;
 	return Tracks[offset];
 }
 
@@ -217,7 +217,7 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static struct GfxLayout layout_8x8x2 =
+static gfx_layout layout_8x8x2 =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -228,7 +228,7 @@ static struct GfxLayout layout_8x8x2 =
 	8*8
 };
 
-static struct GfxDecodeInfo amspdwy_gfxdecodeinfo[] =
+static gfx_decode amspdwy_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_8x8x2,   0, 8 }, // [0] Layer & Sprites
 	{ -1 }

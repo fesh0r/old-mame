@@ -9,9 +9,9 @@
 *   variables
 */
 
-static struct tilemap *bg_tilemap;
-static struct tilemap *txt_tilemap;
-data8_t * txt_ram;
+static tilemap *bg_tilemap;
+static tilemap *txt_tilemap;
+UINT8 * txt_ram;
 
 /***************************************************************************
 
@@ -159,7 +159,7 @@ WRITE8_HANDLER( tankbust_xscroll_w )
 		if (x>=0x100) x-=0x200;
 		tilemap_set_scrollx(bg_tilemap, 0, x );
 	}
-//usrintf_showmessage("x=%02x %02x", xscroll[0], xscroll[1]);
+//ui_popup("x=%02x %02x", xscroll[0], xscroll[1]);
 }
 
 static UINT8 yscroll[2];
@@ -175,7 +175,7 @@ WRITE8_HANDLER( tankbust_yscroll_w )
 		if (y>=0x80) y-=0x100;
 		tilemap_set_scrolly(bg_tilemap, 0, y );
 	}
-//usrintf_showmessage("y=%02x %02x", yscroll[0], yscroll[1]);
+//ui_popup("y=%02x %02x", yscroll[0], yscroll[1]);
 }
 
 /***************************************************************************
@@ -199,7 +199,7 @@ spriteram format (4 bytes per sprite):
     offset  3   xxxxxxxx    x position (8 LSB bits)
 */
 
-static void draw_sprites( struct mame_bitmap *bitmap, const struct rectangle *cliprect)
+static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int offs;
 

@@ -92,7 +92,7 @@ VIDEO_UPDATE( monzagp )
 //  return;
 	for( sy=0; sy<256; sy++ )
 	{
-		data16_t *dest = bitmap->line[sy];
+		UINT16 *dest = bitmap->line[sy];
 		int sx;
 		for( sx=0; sx<512; sx++ );
 		{
@@ -104,7 +104,7 @@ VIDEO_UPDATE( monzagp )
 /* the master cpu transmits data to the slave CPU one word at a time using a rapid sequence of triggered NMIs
  * the slave cpu pauses as it enters its irq, awaiting this burst of data
  */
-static data8_t mDataBuffer[2];
+static UINT8 mDataBuffer[2];
 static WRITE8_HANDLER ( write_data ) { mDataBuffer[offset] = data; }
 static READ8_HANDLER ( send_data ) { cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE); return 0; }
 static READ8_HANDLER( read_data ){ return mDataBuffer[offset]; }
@@ -142,7 +142,7 @@ ADDRESS_MAP_END
 
 /***************************************************************************/
 
-static struct GfxLayout tile_layout =
+static gfx_layout tile_layout =
 {
 	// game doesn't appear to use character-based graphics, but this allows us to view contents of the data
 	// ROMs that do contain bitmaps
@@ -159,7 +159,7 @@ static struct GfxLayout tile_layout =
 	0x200
 };
 
-static struct GfxLayout tile_layout2 =
+static gfx_layout tile_layout2 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -174,7 +174,7 @@ static struct GfxLayout tile_layout2 =
 	0x200
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &tile_layout,  0, 4 },
 	{ REGION_GFX1, 0x0000, &tile_layout2,  0, 4 },

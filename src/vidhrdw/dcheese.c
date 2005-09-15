@@ -27,12 +27,12 @@
  *
  *************************************/
 
-static data16_t blitter_color[2];
-static data16_t blitter_xparam[16];
-static data16_t blitter_yparam[16];
-static data16_t blitter_vidparam[32];
+static UINT16 blitter_color[2];
+static UINT16 blitter_xparam[16];
+static UINT16 blitter_yparam[16];
+static UINT16 blitter_vidparam[32];
 
-static struct mame_bitmap *dstbitmap;
+static mame_bitmap *dstbitmap;
 static mame_timer *blitter_timer;
 
 
@@ -211,7 +211,7 @@ static void do_blit(void)
 	}
 
 	/* signal an IRQ when done (timing is just a guess) */
-	timer_set(cpu_getscanlineperiod(), 2, dcheese_signal_irq);
+	timer_set(cpu_getscanlineperiod() / 2, 2, dcheese_signal_irq);
 
 	/* these extra parameters are written but they are always zero, so I don't know what they do */
 	if (blitter_xparam[8] != 0 || blitter_xparam[9] != 0 || blitter_xparam[10] != 0 || blitter_xparam[11] != 0 ||

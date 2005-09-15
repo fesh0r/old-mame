@@ -166,6 +166,7 @@ $F987 - Addresses table at $f98d containing four structs:
 #include "vidhrdw/generic.h"
 #include "vidhrdw/crtc6845.h"
 #include "machine/6821pia.h"
+#include "spiders.h"
 
 
 /* VIDHRDW */
@@ -209,33 +210,39 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x007f) AM_READ(MRA8_RAM)
-	AM_RANGE(0x0080, 0x0080) AM_READ(soundlatch_r)
+	AM_RANGE(0x0080, 0x0083) AM_READ(pia_3_r)
 	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x007f) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0080, 0x0083) AM_WRITE(pia_3_w)
 	AM_RANGE(0xf800, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
 
 
 INPUT_PORTS_START( spiders )
+    /* PIA0 PA0 - PA7 */
     PORT_START      /* IN0 */
-    PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE1 )	/* PIA0 PA1 */
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)	/* PIA0 PA2 */
-    PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1 )
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE1 )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN1 )
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+    PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
     PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 )
     PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 )
-    PORT_BIT( 0x90, IP_ACTIVE_HIGH, IPT_UNUSED )
+    PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SERVICE2 )
 
+	/* PIA0 PB0 - PB7 */
     PORT_START      /* IN1 */
-    PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY
-    PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT  ) PORT_2WAY PORT_PLAYER(2)
+    PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(2)
+    PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(1)
+    PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(1)
     PORT_BIT( 0xF3, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-    PORT_START  /* DSW1 */
+    PORT_START  /* IN2, DSW1 */
     PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
     PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
     PORT_DIPSETTING(    0x07, DEF_STR( 1C_1C ) )
@@ -245,7 +252,7 @@ INPUT_PORTS_START( spiders )
     PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
     PORT_BIT(0xf8, IP_ACTIVE_LOW,IPT_UNUSED)
 
-    PORT_START  /* DSW2 */
+    PORT_START  /* IN3, DSW2 */
     PORT_DIPNAME( 0x03, 0x03, "Play mode" )
     PORT_DIPSETTING(    0x00, "A A'" )
     PORT_DIPSETTING(    0x01, "A B'" )
@@ -268,13 +275,13 @@ INPUT_PORTS_START( spiders )
     PORT_DIPSETTING(    0x00, "First screen" )
     PORT_DIPSETTING(    0x80, "Every screen" )
 
-    PORT_START  /* DSW3 */
+    PORT_START  /* IN4, DSW3 */
     PORT_DIPNAME( 0x01, 0x00, DEF_STR( Flip_Screen ) )
     PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x01, DEF_STR( On ) )
-    PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ) )
-    PORT_DIPSETTING(    0x02, DEF_STR( Upright ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
+    PORT_DIPNAME( 0x02, 0x00, DEF_STR( Cabinet ) )
+    PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+    PORT_DIPSETTING(    0x02, DEF_STR( Cocktail ) )
     PORT_DIPNAME( 0x1c, 0x00, "Vertical Adjust" )
     PORT_DIPSETTING(    0x00, "0" )
     PORT_DIPSETTING(    0x04, "1" )
@@ -311,7 +318,7 @@ static MACHINE_DRIVER_START( spiders )
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_PERIODIC_INT(spiders_timed_irq , TIME_IN_HZ(25))   /* Timed Int  */
 
-	MDRV_CPU_ADD(M6802,3000000/4)
+	MDRV_CPU_ADD(M6802, 3000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
@@ -332,6 +339,10 @@ static MACHINE_DRIVER_START( spiders )
 	MDRV_VIDEO_UPDATE(spiders)
 
 	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_CONFIG(spiders_discrete_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -396,6 +407,6 @@ ROM_START( spinner )
 ROM_END
 
 /* this is a newer version with just one bug fix */
-GAMEX( 1981, spiders,  0,       spiders, spiders, 0, ROT270, "Sigma Enterprises Inc.", "Spiders (set 1)", GAME_NO_SOUND | GAME_NO_COCKTAIL )
-GAMEX( 1981, spiders2, spiders, spiders, spiders, 0, ROT270, "Sigma Enterprises Inc.", "Spiders (set 2)", GAME_NO_SOUND | GAME_NO_COCKTAIL )
-GAMEX( 1981, spinner,  spiders, spiders, spiders, 0, ROT270, "bootleg",				   "Spinner",		  GAME_NO_SOUND | GAME_NO_COCKTAIL )
+GAME( 1981, spiders,  0,       spiders, spiders, 0, ROT270, "Sigma Enterprises Inc.", "Spiders (set 1)")
+GAME( 1981, spiders2, spiders, spiders, spiders, 0, ROT270, "Sigma Enterprises Inc.", "Spiders (set 2)")
+GAME( 1981, spinner,  spiders, spiders, spiders, 0, ROT270, "bootleg",				  "Spinner")

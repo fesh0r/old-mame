@@ -49,9 +49,9 @@ WRITE16_HANDLER( bionicc_paletteram_w );
 WRITE16_HANDLER( bionicc_scroll_w );
 WRITE16_HANDLER( bionicc_gfxctrl_w );
 
-extern data16_t *bionicc_bgvideoram;
-extern data16_t *bionicc_fgvideoram;
-extern data16_t *bionicc_txvideoram;
+extern UINT16 *bionicc_bgvideoram;
+extern UINT16 *bionicc_fgvideoram;
+extern UINT16 *bionicc_txvideoram;
 
 VIDEO_START( bionicc );
 VIDEO_UPDATE( bionicc );
@@ -62,7 +62,7 @@ void bionicc_sound_cmd(int data);
 
 
 
-static data16_t bionicc_inp[3];
+static UINT16 bionicc_inp[3];
 
 WRITE16_HANDLER( hacked_controls_w )
 {
@@ -89,7 +89,7 @@ static WRITE16_HANDLER( bionicc_mpu_trigger_w )
 }
 
 
-static data16_t soundcommand;
+static UINT16 soundcommand;
 
 WRITE16_HANDLER( hacked_soundcommand_w )
 {
@@ -258,7 +258,7 @@ INPUT_PORTS_END
 ********************************************************************/
 
 
-static struct GfxLayout spritelayout_bionicc=
+static gfx_layout spritelayout_bionicc=
 {
 	16,16,  /* 16*16 sprites */
 	2048,   /* 2048 sprites */
@@ -276,7 +276,7 @@ static struct GfxLayout spritelayout_bionicc=
 	256   /* every sprite takes 256 consecutive bytes */
 };
 
-static struct GfxLayout vramlayout_bionicc=
+static gfx_layout vramlayout_bionicc=
 {
 	8,8,    /* 8*8 characters */
 	1024,   /* 1024 character */
@@ -287,7 +287,7 @@ static struct GfxLayout vramlayout_bionicc=
 	128   /* every character takes 128 consecutive bytes */
 };
 
-static struct GfxLayout scroll2layout_bionicc=
+static gfx_layout scroll2layout_bionicc=
 {
 	8,8,    /* 8*8 tiles */
 	2048,   /* 2048 tiles */
@@ -298,7 +298,7 @@ static struct GfxLayout scroll2layout_bionicc=
 	128   /* every tile takes 128 consecutive bytes */
 };
 
-static struct GfxLayout scroll1layout_bionicc=
+static gfx_layout scroll1layout_bionicc=
 {
 	16,16,  /* 16*16 tiles */
 	2048,   /* 2048 tiles */
@@ -316,7 +316,7 @@ static struct GfxLayout scroll1layout_bionicc=
 	512   /* each tile takes 512 consecutive bytes */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo_bionicc[] =
+static gfx_decode gfxdecodeinfo_bionicc[] =
 {
 	{ REGION_GFX1, 0, &vramlayout_bionicc,    768, 64 },	/* colors 768-1023 */
 	{ REGION_GFX2, 0, &scroll2layout_bionicc,   0,  4 },	/* colors   0-  63 */

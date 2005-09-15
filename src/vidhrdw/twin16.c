@@ -7,8 +7,6 @@
     - convert background to tilemap
     - clean up sprite drawing
     - sprite-background priorities
-    - rogue sprites in devilw
-    - corrupt sprites in vulcan end sequence
     - sprite lag in devilw
     - sprite Y axis lag in vulcan
     - add shadow sprites (alpha blending) to sprites in at least devilw
@@ -38,7 +36,7 @@ enum {
 	TWIN16_TILE_FLIPY		= 0x20	/* confirmed? Vulcan Venture */
 };
 
-static struct tilemap *fg_tilemap;
+static tilemap *fg_tilemap;
 
 WRITE16_HANDLER( twin16_videoram2_w )
 {
@@ -106,7 +104,7 @@ WRITE16_HANDLER( twin16_video_register_w )
 }
 
 static void draw_sprite( /* slow slow slow, but it's ok for now */
-	struct mame_bitmap *bitmap,
+	mame_bitmap *bitmap,
 	const UINT16 *pen_data,
 	const pen_t *pal_data,
 	int xpos, int ypos,
@@ -209,7 +207,7 @@ shadow bit?
 
  */
 
-static void draw_sprites( struct mame_bitmap *bitmap)
+static void draw_sprites( mame_bitmap *bitmap)
 {
 	int count = 0;
 
@@ -255,6 +253,25 @@ static void draw_sprites( struct mame_bitmap *bitmap)
 				}
 				code &= 0xfff;
 			}
+
+			/* some code masking */
+			if(height == 64 && width == 64)
+			{
+				code &= ~8; // fixes bad sprites in vulcan ending sequence
+			}
+			else if(height == 32 && width == 32)
+			{
+				code &= ~3; // fixes bad sprites in devilw
+			}
+			else if(height == 32 && width == 16)
+			{
+				code &= ~1; // fixes bad sprites in devilw
+			}
+			else if(height == 16 && width == 32)
+			{
+				code &= ~1; // fixes bad sprites in devilw
+			}
+
 			pen_data += code*0x40;
 
 			if( video_register&TWIN16_SCREEN_FLIPY ){
@@ -277,7 +294,7 @@ static void draw_sprites( struct mame_bitmap *bitmap)
 	}
 }
 
-static void draw_layer( struct mame_bitmap *bitmap, int opaque ){
+static void draw_layer( mame_bitmap *bitmap, int opaque ){
 	const UINT16 *gfx_base;
 	const UINT16 *source = videoram16;
 	int i, y1, y2, yd;

@@ -180,12 +180,12 @@ Notes:
 #include "sound/2413intf.h"
 #include "sound/ymz280b.h"
 
-static data16_t *realbrk_dsw_select;
+static UINT16 *realbrk_dsw_select;
 
 /* Read 4 ten bit dip switches */
 static READ16_HANDLER( realbrk_dsw_r )
 {
-	data16_t sel = ~realbrk_dsw_select[0];
+	UINT16 sel = ~realbrk_dsw_select[0];
 	if (sel & 0x01)	return	(readinputport(2) & 0x00ff) << 8;		// DSW1 low bits
 	if (sel & 0x02)	return	(readinputport(3) & 0x00ff) << 8;		// DSW2 low bits
 	if (sel & 0x04)	return	(readinputport(4) & 0x00ff) << 8;		// DSW3 low bits
@@ -220,7 +220,7 @@ static READ16_HANDLER( pkgnsh_input_r )
 
 static READ16_HANDLER( pkgnshdx_input_r )
 {
-	data16_t sel = ~realbrk_dsw_select[0];
+	UINT16 sel = ~realbrk_dsw_select[0];
 
 	switch(offset)
 	{
@@ -251,7 +251,7 @@ static READ16_HANDLER( pkgnshdx_input_r )
 	return 0xffff;
 }
 
-static data16_t *backup_ram;
+static UINT16 *backup_ram;
 
 static READ16_HANDLER( backup_ram_r )
 {
@@ -718,7 +718,7 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static struct GfxLayout layout_8x8x4 =
+static gfx_layout layout_8x8x4 =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -729,7 +729,7 @@ static struct GfxLayout layout_8x8x4 =
 	8*8*4
 };
 
-static struct GfxLayout layout_16x16x4 =
+static gfx_layout layout_16x16x4 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -740,7 +740,7 @@ static struct GfxLayout layout_16x16x4 =
 	16*16*4
 };
 
-static struct GfxLayout layout_16x16x8 =
+static gfx_layout layout_16x16x8 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -751,7 +751,7 @@ static struct GfxLayout layout_16x16x8 =
 	16*16*8
 };
 
-static struct GfxDecodeInfo realbrk_gfxdecodeinfo[] =
+static gfx_decode realbrk_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_16x16x8,		0, 0x80		},	// [0] Backgrounds
 	{ REGION_GFX2, 0, &layout_8x8x4,		0, 0x800	},	// [1] Text

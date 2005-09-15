@@ -26,8 +26,6 @@ TODO:
   is there something connected there?
 Last Day:
 - sprite/fg priority is not understood (tanks, boats should pass below bridges)
-- when you insert a coin, the demo sprites continue to move in the background.
-  Maybe the whole background and sprites are supposed to be disabled.
 Gulf Storm:
 - sprite/fg priority is not understood
 - there seem to be some invisible enemies around the first bridge
@@ -42,6 +40,9 @@ Pop Bingo
 - appears to combine 2 4bpp layers to make 1 8bpp layer, for now we just
   treat it as 1 8bpp layer and ignore the 2nd set of registers.
 - some unknown reads / writes
+Flying Tiger
+- sprite/fg priority is not understood
+- layer2 palette bank
 
 ***************************************************************************/
 
@@ -54,12 +55,13 @@ Pop Bingo
 
 extern unsigned char *lastday_txvideoram;
 extern unsigned char *lastday_bgscroll,*lastday_fgscroll,*bluehawk_fg2scroll;
-extern data16_t *rshark_scroll1,*rshark_scroll2,*rshark_scroll3,*rshark_scroll4;
-extern data16_t *popbingo_scroll, *popbingo_scroll2;
+extern UINT16 *rshark_scroll1,*rshark_scroll2,*rshark_scroll3,*rshark_scroll4;
+extern UINT16 *popbingo_scroll, *popbingo_scroll2;
 
 WRITE8_HANDLER( lastday_ctrl_w );
 WRITE8_HANDLER( pollux_ctrl_w );
 WRITE8_HANDLER( primella_ctrl_w );
+WRITE8_HANDLER( flytiger_ctrl_w );
 WRITE16_HANDLER( rshark_ctrl_w );
 VIDEO_UPDATE( lastday );
 VIDEO_UPDATE( gulfstrm );
@@ -82,7 +84,7 @@ static WRITE8_HANDLER( lastday_bankswitch_w )
 	bankaddress = 0x10000 + (data & 0x07) * 0x4000;
 	memory_set_bankptr(1,&RAM[bankaddress]);
 
-if (data & 0xf8) usrintf_showmessage("bankswitch %02x",data);
+if (data & 0xf8) ui_popup("bankswitch %02x",data);
 }
 
 static WRITE8_HANDLER( flip_screen_w )
@@ -109,8 +111,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( lastday_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc004) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_bgscroll)
-	AM_RANGE(0xc008, 0xc00c) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_fgscroll)
+	AM_RANGE(0xc000, 0xc006) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_bgscroll)
+	AM_RANGE(0xc008, 0xc00e) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_fgscroll)
 	AM_RANGE(0xc010, 0xc010) AM_WRITE(lastday_ctrl_w)	/* coin counter, flip screen */
 	AM_RANGE(0xc011, 0xc011) AM_WRITE(lastday_bankswitch_w)
 	AM_RANGE(0xc012, 0xc012) AM_WRITE(soundlatch_w)
@@ -140,8 +142,8 @@ static ADDRESS_MAP_START( pollux_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(lastday_bankswitch_w)
 	AM_RANGE(0xf008, 0xf008) AM_WRITE(pollux_ctrl_w)	/* coin counter, flip screen */
 	AM_RANGE(0xf010, 0xf010) AM_WRITE(soundlatch_w)
-	AM_RANGE(0xf018, 0xf01c) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_bgscroll)
-	AM_RANGE(0xf020, 0xf024) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_fgscroll)
+	AM_RANGE(0xf018, 0xf01e) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_bgscroll)
+	AM_RANGE(0xf020, 0xf026) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_fgscroll)
 	AM_RANGE(0xf800, 0xffff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
@@ -202,10 +204,10 @@ static ADDRESS_MAP_START( flytiger_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd000, 0xdfff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(lastday_bankswitch_w)
-	AM_RANGE(0xe010, 0xe010) AM_WRITE(pollux_ctrl_w)	/* coin counter, flip screen */
+	AM_RANGE(0xe010, 0xe010) AM_WRITE(flytiger_ctrl_w)	/* coin counter, flip screen */
 	AM_RANGE(0xe020, 0xe020) AM_WRITE(soundlatch_w)
-	AM_RANGE(0xe030, 0xe034) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_fgscroll)
-	AM_RANGE(0xe040, 0xe044) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_bgscroll)
+	AM_RANGE(0xe030, 0xe036) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_bgscroll)
+	AM_RANGE(0xe040, 0xe046) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_fgscroll)
 	AM_RANGE(0xe800, 0xefff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_txvideoram)
 ADDRESS_MAP_END
@@ -304,15 +306,12 @@ static ADDRESS_MAP_START( popbingo_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x040000, 0x04cfff) AM_WRITE(MWA16_RAM)
 	AM_RANGE(0x04d000, 0x04dfff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x04e000, 0x04ffff) AM_WRITE(MWA16_RAM)
-
 	AM_RANGE(0x0c0012, 0x0c0013) AM_WRITE(soundlatch_word_w)
-	AM_RANGE(0x0c0014, 0x0c0015) AM_WRITE(MWA16_NOP) // ctrl_w ?
-	AM_RANGE(0x0c001a, 0x0c001b) AM_WRITE(MWA16_NOP) // ?
-
+	AM_RANGE(0x0c0014, 0x0c0015) AM_WRITE(rshark_ctrl_w)
+	AM_RANGE(0x0c0018, 0x0c001b) AM_WRITE(MWA16_NOP) // ?
 	AM_RANGE(0x0c4000, 0x0c401b) AM_RAM AM_BASE(&popbingo_scroll)
 	AM_RANGE(0x0cc000, 0x0cc01b) AM_RAM AM_BASE(&popbingo_scroll2) // not used atm
 	AM_RANGE(0x0c8000, 0x0c8fff) AM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
-
 	AM_RANGE(0x0dc000, 0x0dc01f) AM_RAM // registers of some kind?
 ADDRESS_MAP_END
 
@@ -377,7 +376,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( dooyongz80_generic )
-	PORT_START
+	PORT_START_TAG("DSW1")
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x02, 0x02, "Coin Type" )
 	PORT_DIPSETTING(    0x02, "A" )
@@ -389,23 +388,23 @@ static INPUT_PORTS_START( dooyongz80_generic )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_EQUALS,0x02)
-	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_EQUALS,0x02)
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_EQUALS,0x02)
-	PORT_DIPSETTING(    0x20, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_EQUALS,0x02)
-	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_NOTEQUALS,0x02)
-	PORT_DIPSETTING(    0x10, DEF_STR( 3C_1C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_NOTEQUALS,0x02)
-	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_NOTEQUALS,0x02)
-	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_NOTEQUALS,0x02)
+	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_EQUALS,0x02)
+	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_EQUALS,0x02)
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_EQUALS,0x02)
+	PORT_DIPSETTING(    0x20, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_EQUALS,0x02)
+	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_NOTEQUALS,0x02)
+	PORT_DIPSETTING(    0x10, DEF_STR( 3C_1C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_NOTEQUALS,0x02)
+	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_NOTEQUALS,0x02)
+	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_NOTEQUALS,0x02)
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_EQUALS,0x02)
-	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_EQUALS,0x02)
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_EQUALS,0x02)
-	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_EQUALS,0x02)
-	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_NOTEQUALS,0x02)
-	PORT_DIPSETTING(    0x80, DEF_STR( 1C_3C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_NOTEQUALS,0x02)
-	PORT_DIPSETTING(    0x40, DEF_STR( 1C_4C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_NOTEQUALS,0x02)
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) )	PORT_DIPCONDITION(0,0x02,PORTCOND_NOTEQUALS,0x02)
+	PORT_DIPSETTING(    0x40, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_EQUALS,0x02)
+	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_EQUALS,0x02)
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_EQUALS,0x02)
+	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_EQUALS,0x02)
+	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_NOTEQUALS,0x02)
+	PORT_DIPSETTING(    0x80, DEF_STR( 1C_3C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_NOTEQUALS,0x02)
+	PORT_DIPSETTING(    0x40, DEF_STR( 1C_4C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_NOTEQUALS,0x02)
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) )	PORT_CONDITION("DSW1",0x02,PORTCOND_NOTEQUALS,0x02)
 
 	PORT_START_TAG("DSW2")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
@@ -471,23 +470,23 @@ static INPUT_PORTS_START( dooyongm68_generic )
 	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0030, 0x0030, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(      0x0010, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x0030, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x0000, DEF_STR( 2C_3C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x0020, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x0000, DEF_STR( 4C_1C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
-	PORT_DIPSETTING(      0x0010, DEF_STR( 3C_1C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
-	PORT_DIPSETTING(      0x0020, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
-	PORT_DIPSETTING(      0x0030, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0010, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x0030, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x0000, DEF_STR( 2C_3C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x0020, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x0000, DEF_STR( 4C_1C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0010, DEF_STR( 3C_1C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0020, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0030, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
 	PORT_DIPNAME( 0x00c0, 0x00c0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(      0x0040, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x00c0, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x0000, DEF_STR( 2C_3C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x0080, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x00c0, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
-	PORT_DIPSETTING(      0x0080, DEF_STR( 1C_3C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
-	PORT_DIPSETTING(      0x0040, DEF_STR( 1C_4C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
-	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_6C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0040, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x00c0, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x0000, DEF_STR( 2C_3C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x0080, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x00c0, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0080, DEF_STR( 1C_3C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0040, DEF_STR( 1C_4C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_6C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
 	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Lives ) )
 	PORT_DIPSETTING(      0x0000, "1" )
 	PORT_DIPSETTING(      0x0200, "2" )
@@ -664,14 +663,14 @@ INPUT_PORTS_START( rshark )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x00c0, 0x00c0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(      0x0040, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x00c0, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x0000, DEF_STR( 2C_3C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x0080, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_EQUALS,0x0002)
-	PORT_DIPSETTING(      0x00c0, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
-	PORT_DIPSETTING(      0x0080, DEF_STR( 1C_3C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
-	PORT_DIPSETTING(      0x0040, DEF_STR( 1C_4C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
-	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_6C ) )	PORT_DIPCONDITION(0,0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0040, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x00c0, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x0000, DEF_STR( 2C_3C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x0080, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_EQUALS,0x0002)
+	PORT_DIPSETTING(      0x00c0, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0080, DEF_STR( 1C_3C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0040, DEF_STR( 1C_4C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
+	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_6C ) )	PORT_CONDITION("DSW",0x0002,PORTCOND_NOTEQUALS,0x0002)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( superx )
@@ -711,7 +710,7 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static struct GfxLayout lastday_charlayout =
+static gfx_layout lastday_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -722,7 +721,7 @@ static struct GfxLayout lastday_charlayout =
 	16*8
 };
 
-static struct GfxLayout bluehawk_charlayout =
+static gfx_layout bluehawk_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -733,7 +732,7 @@ static struct GfxLayout bluehawk_charlayout =
 	32*8
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	32,32,
 	RGN_FRAC(1,1),
@@ -750,7 +749,7 @@ static struct GfxLayout tilelayout =
 	512*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -763,7 +762,7 @@ static struct GfxLayout spritelayout =
 	128*8
 };
 
-static struct GfxLayout rshark_spritelayout =
+static gfx_layout rshark_spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -776,7 +775,7 @@ static struct GfxLayout rshark_spritelayout =
 	128*8
 };
 
-static struct GfxLayout popbingo_tilelayout =
+static gfx_layout popbingo_tilelayout =
 {
 	32,32,
 	RGN_FRAC(1,2),
@@ -794,7 +793,7 @@ static struct GfxLayout popbingo_tilelayout =
 	512*8
 };
 
-static struct GfxDecodeInfo lastday_gfxdecodeinfo[] =
+static gfx_decode lastday_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &lastday_charlayout,   0, 16 },
 	{ REGION_GFX2, 0, &spritelayout,       256, 16 },
@@ -803,7 +802,16 @@ static struct GfxDecodeInfo lastday_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo bluehawk_gfxdecodeinfo[] =
+static gfx_decode flytiger_gfxdecodeinfo[] =
+{
+	{ REGION_GFX1, 0, &lastday_charlayout,   0, 16 },
+	{ REGION_GFX2, 0, &spritelayout,       256, 16 },
+	{ REGION_GFX3, 0, &tilelayout,         768, 16 },
+	{ REGION_GFX4, 0, &tilelayout,         512, 32 },
+	{ -1 } /* end of array */
+};
+
+static gfx_decode bluehawk_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &bluehawk_charlayout,  0, 16 },
 	{ REGION_GFX2, 0, &spritelayout,       256, 16 },
@@ -813,7 +821,7 @@ static struct GfxDecodeInfo bluehawk_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo primella_gfxdecodeinfo[] =
+static gfx_decode primella_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &bluehawk_charlayout,  0, 16 },
 	/* no sprites */
@@ -822,7 +830,7 @@ static struct GfxDecodeInfo primella_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo rshark_gfxdecodeinfo[] =
+static gfx_decode rshark_gfxdecodeinfo[] =
 {
 	/* no chars */
 	{ REGION_GFX1, 0, &rshark_spritelayout,  0, 16 },
@@ -833,11 +841,11 @@ static struct GfxDecodeInfo rshark_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo popbingo_gfxdecodeinfo[] =
+static gfx_decode popbingo_gfxdecodeinfo[] =
 {
 	/* no chars */
-	{ REGION_GFX1, 0, &rshark_spritelayout,  0, 16 },
-	{ REGION_GFX2, 0, &popbingo_tilelayout,       256, 1 },
+	{ REGION_GFX1, 0, &rshark_spritelayout,   0, 16 },
+	{ REGION_GFX2, 0, &popbingo_tilelayout, 256,  1 },
 	{ -1 } /* end of array */
 };
 
@@ -1032,7 +1040,7 @@ static MACHINE_DRIVER_START( flytiger )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
-	MDRV_GFXDECODE(lastday_gfxdecodeinfo)
+	MDRV_GFXDECODE(flytiger_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(1024)
 
 	MDRV_VIDEO_EOF(dooyong)
@@ -1515,7 +1523,7 @@ ROM_START( flytiger )
 
 	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
 	ROM_LOAD( "2.4h",         0x08000, 0x08000, CRC(2fb72912) SHA1(34453e2b49cf3a6bc9e87a8400428d95f626b97a) )
-	ROM_CONTINUE( 0x0000,0x8000)
+	ROM_CONTINUE(             0x00000, 0x8000 )
 
 	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )	/* sprites */
 	ROM_LOAD16_BYTE( "13.4h", 0x00000, 0x20000, CRC(8a158b95) SHA1(ed09d9c40b76a27e06601381e463a00b16555f1e) )
@@ -1523,10 +1531,10 @@ ROM_START( flytiger )
 	ROM_LOAD16_BYTE( "14.4k", 0x40000, 0x20000, CRC(df66b6f3) SHA1(3a29ae69a09306c5a2a2786acbf227832b408152) )
 	ROM_LOAD16_BYTE( "16.2k", 0x40001, 0x20000, CRC(f24a5099) SHA1(408559057989a40ca298baa85d5fe7cbde72d2b8) )
 
-	ROM_REGION( 0x80000, REGION_GFX4,0 )	/* tiles + tilemaps */
+	ROM_REGION( 0x80000, REGION_GFX3,0 )	/* tiles + tilemaps */
 	ROM_LOAD16_WORD_SWAP( "dy-ft-m1.11n",   0x00000, 0x80000, CRC(f06589c2) SHA1(fb4aa12257e2e0162f2219ebea5177e8bb15e3f0) )
 
-	ROM_REGION( 0x80000, REGION_GFX3,0 )	/* tiles + tilemaps */
+	ROM_REGION( 0x80000, REGION_GFX4,0 )	/* tiles + tilemaps */
 	ROM_LOAD16_WORD_SWAP("dy-ft-m2.11g",   0x00000, 0x80000, CRC(7545f9c9) SHA1(dcab4d64a8fada5afd4a352f5a30c868676d2b57) )
 
 	ROM_REGION( 0x80000, REGION_SOUND1, 0 )	/* OKI6295 samples */
@@ -1871,7 +1879,7 @@ GAMEX(1991, gulfstrm, 0,        gulfstrm, gulfstrm, 0, ROT270, "Dooyong", "Gulf 
 GAMEX(1991, gulfstr2, gulfstrm, gulfstrm, gulfstrm, 0, ROT270, "Dooyong (Media Shoji license)", "Gulf Storm (Media Shoji)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAMEX(1991, pollux,   0,        pollux,   pollux,   0, ROT270, "Dooyong", "Pollux (set 1)", GAME_IMPERFECT_SOUND )
 GAMEX(1991, polluxa,  pollux,   pollux,   pollux,   0, ROT270, "Dooyong", "Pollux (set 2)", GAME_IMPERFECT_SOUND )
-GAMEX(1992, flytiger, 0,        flytiger, flytiger, 0, ROT270, "Dooyong", "Flying Tiger", GAME_IMPERFECT_GRAPHICS )
+GAMEX(1992, flytiger, 0,        flytiger, flytiger, 0, ROT270, "Dooyong", "Flying Tiger", GAME_IMPERFECT_GRAPHICS | GAME_WRONG_COLORS )
 GAMEX(1993, bluehawk, 0,        bluehawk, bluehawk, 0, ROT270, "Dooyong", "Blue Hawk", GAME_IMPERFECT_GRAPHICS )
 GAMEX(1993, bluehawn, bluehawk, bluehawk, bluehawk, 0, ROT270, "[Dooyong] (NTC license)", "Blue Hawk (NTC)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1993, sadari,   0,        primella, primella, 0, ROT0,   "[Dooyong] (NTC license)", "Sadari" )

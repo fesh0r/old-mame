@@ -51,7 +51,7 @@ VIDEO_UPDATE( fantland );
 
 ***************************************************************************/
 
-static data8_t fantland_nmi_enable;
+static UINT8 fantland_nmi_enable;
 
 static WRITE8_HANDLER( fantland_nmi_enable_w )
 {
@@ -135,7 +135,7 @@ static WRITE8_HANDLER( borntofi_nmi_enable_w )
 	if ((fantland_nmi_enable != 0) && (fantland_nmi_enable != 8))
 		logerror("CPU #0 PC = %04X: nmi_enable = %02x\n", activecpu_get_pc(), data);
 
-//  usrintf_showmessage("%02X",data);
+//  ui_popup("%02X",data);
 }
 
 // Trackball doesn't work correctly
@@ -144,7 +144,7 @@ static READ8_HANDLER( borntofi_inputs_r )
 {
 	int x,y,f;
 	static int old_x[2], old_y[2], old_f[2];
-	static data8_t ret[2];
+	static UINT8 ret[2];
 
 	switch (readinputport(7) & 0x03)
 	{
@@ -170,7 +170,7 @@ static READ8_HANDLER( borntofi_inputs_r )
 	if		(old_y[offset] > 0)	{	ret[offset]	=	(ret[offset] ^ 0x10) | ((  ret[offset]  & 0x10) << 1);	old_y[offset]--;	}
 	else if	(old_y[offset] < 0)	{	ret[offset]	=	(ret[offset] ^ 0x10) | (((~ret[offset]) & 0x10) << 1);	old_y[offset]++;	}
 
-//  if (offset == 0)    usrintf_showmessage("x %02d y %02d",old_x[offset], old_y[offset]);
+//  if (offset == 0)    ui_popup("x %02d y %02d",old_x[offset], old_y[offset]);
 
 	if ((f - old_f[offset]) > 0)
 	{
@@ -293,7 +293,7 @@ static WRITE8_HANDLER( borntofi_msm5205_w )
 
 static void borntofi_adpcm_int(int voice)
 {
-	data8_t *rom;
+	UINT8 *rom;
 	size_t   len;
 	int start, stop;
 
@@ -638,7 +638,7 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static struct GfxLayout layout16x16x6 =
+static gfx_layout layout16x16x6 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -649,7 +649,7 @@ static struct GfxLayout layout16x16x6 =
 	16*16*6
 };
 
-static struct GfxDecodeInfo fantland_gfxdecodeinfo[] =
+static gfx_decode fantland_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout16x16x6, 0, 4 }, // [0] Sprites
 	{ -1 }

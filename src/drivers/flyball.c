@@ -20,7 +20,7 @@ extern UINT8* flyball_playfield_ram;
 static UINT8 flyball_potmask;
 static UINT8 flyball_potsense;
 
-static data8_t *rombase;
+static UINT8 *rombase;
 
 
 static void flyball_joystick_callback(int potsense)
@@ -207,7 +207,7 @@ INPUT_PORTS_START( flyball )
 INPUT_PORTS_END
 
 
-static struct GfxLayout flyball_tiles_layout =
+static gfx_layout flyball_tiles_layout =
 {
 	8, 16,    /* width, height */
 	128,      /* total         */
@@ -223,7 +223,7 @@ static struct GfxLayout flyball_tiles_layout =
 	0x80      /* increment */
 };
 
-static struct GfxLayout flyball_sprites_layout =
+static gfx_layout flyball_sprites_layout =
 {
 	16, 16,   /* width, height */
 	16,       /* total         */
@@ -240,7 +240,7 @@ static struct GfxLayout flyball_sprites_layout =
 	0x100     /* increment */
 };
 
-static struct GfxDecodeInfo flyball_gfx_decode_info[] =
+static gfx_decode flyball_gfx_decode_info[] =
 {
 	{ REGION_GFX1, 0, &flyball_tiles_layout, 0, 2 },
 	{ REGION_GFX2, 0, &flyball_sprites_layout, 2, 2 },

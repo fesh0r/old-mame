@@ -114,16 +114,16 @@ Notes:
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
-static data16_t vreg;
+static UINT16 vreg;
 
-data16_t *text_videoram;
-data16_t *bg_videoram;
-data16_t *fg_videoram;
-data16_t *sharedram16;
-static data16_t fg_scrollx,fg_scrolly;
+UINT16 *text_videoram;
+UINT16 *bg_videoram;
+UINT16 *fg_videoram;
+UINT16 *sharedram16;
+static UINT16 fg_scrollx,fg_scrolly;
 
 
-static struct tilemap *bg_tilemap, *fg_tilemap, *tx_tilemap;
+static tilemap *bg_tilemap, *fg_tilemap, *tx_tilemap;
 
 static void get_fg_tile_info( int tile_index )
 {
@@ -202,21 +202,21 @@ WRITE16_HANDLER( fg_scrolly_w )
 
 WRITE16_HANDLER( bg_scrollx_w )
 {
-	static data16_t scroll;
+	static UINT16 scroll;
 	COMBINE_DATA(&scroll);
 	tilemap_set_scrollx(bg_tilemap,0,scroll);
 }
 
 WRITE16_HANDLER( bg_scrolly_w )
 {
-	static data16_t scroll;
+	static UINT16 scroll;
 	COMBINE_DATA(&scroll);
 	tilemap_set_scrolly(bg_tilemap,0,scroll);
 }
 
 
 
-static void draw_sprites( struct mame_bitmap *bitmap, const struct rectangle *cliprect, int priority )
+static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect, int priority )
 {
 	int offs;
 	for (offs = 0;offs < spriteram_size/2;offs += 4)
@@ -372,7 +372,7 @@ static ADDRESS_MAP_START( soundport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x6, 0x6) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
-static struct GfxLayout char_layout =
+static gfx_layout char_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -383,7 +383,7 @@ static struct GfxLayout char_layout =
 	32*8
 };
 
-static struct GfxLayout tile_layout =
+static gfx_layout tile_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -396,7 +396,7 @@ static struct GfxLayout tile_layout =
 	128*8
 };
 
-static struct GfxLayout sprite_layout =
+static gfx_layout sprite_layout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -409,7 +409,7 @@ static struct GfxLayout sprite_layout =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &char_layout,		 0*16,	32 },
 	{ REGION_GFX2, 0, &tile_layout,		64*16,	32 },
@@ -542,7 +542,7 @@ INPUT_PORTS_END
 DRIVER_INIT( bigfghtr )
 {
 	//RAM TESTS
-	data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 	RAM[0x2e8cc/2] = 0x4ef9;
 	RAM[0x2e8ce/2] = 0x0002;
 	RAM[0x2e8d0/2] = 0xea58;

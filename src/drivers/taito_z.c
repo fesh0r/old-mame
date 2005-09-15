@@ -802,13 +802,13 @@ static UINT16 cpua_ctrl = 0xff;
 static int sci_int6 = 0;
 static int dblaxle_int6 = 0;
 static int ioc220_port = 0;
-static data16_t eep_latch = 0;
+static UINT16 eep_latch = 0;
 
-//static data16_t *taitoz_ram;
-//static data16_t *motor_ram;
+//static UINT16 *taitoz_ram;
+//static UINT16 *motor_ram;
 
 static size_t taitoz_sharedram_size;
-data16_t *taitoz_sharedram;	/* read externally to draw Spacegun crosshair */
+UINT16 *taitoz_sharedram;	/* read externally to draw Spacegun crosshair */
 
 static READ16_HANDLER( sharedram_r )
 {
@@ -937,7 +937,7 @@ static INTERRUPT_GEN( dblaxle_cpub_interrupt )
                               EEPROM
 ******************************************************************/
 
-static data8_t default_eeprom[128]=
+static UINT8 default_eeprom[128]=
 {
 	0x00,0x00,0x00,0xff,0x00,0x01,0x41,0x41,0x00,0x00,0x00,0xff,0x00,0x00,0xf0,0xf0,
 	0x00,0x00,0x00,0xff,0x00,0x01,0x41,0x41,0x00,0x00,0x00,0xff,0x00,0x00,0xf0,0xf0,
@@ -1019,7 +1019,7 @@ static READ16_HANDLER( contcirc_input_bypass_r )
 {
 	/* Bypass TC0220IOC controller for analog input */
 
-	data8_t port = TC0220IOC_port_r(0);	/* read port number */
+	UINT8 port = TC0220IOC_port_r(0);	/* read port number */
 	int steer = 0;
 	int fake = input_port_6_word_r(0,0);
 
@@ -1059,7 +1059,7 @@ static READ16_HANDLER( chasehq_input_bypass_r )
 {
 	/* Bypass TC0220IOC controller for extra inputs */
 
-	data8_t port = TC0220IOC_port_r(0);	/* read port number */
+	UINT8 port = TC0220IOC_port_r(0);	/* read port number */
 	int steer = 0;
 	int fake = input_port_10_word_r(0,0);
 
@@ -1128,7 +1128,7 @@ logerror("CPU #0 PC %06x: warning - read unmapped stick offset %06x\n",activecpu
 	return 0xff;
 }
 
-static data8_t nightstr_stick[128]=
+static UINT8 nightstr_stick[128]=
 {
 	0xb8,0xb9,0xba,0xbb,0xbc,0xbd,0xbe,0xbf,0xc0,0xc1,0xc2,0xc3,0xc4,0xc5,0xc6,0xc7,
 	0xc8,0xc9,0xca,0xcb,0xcc,0xcd,0xce,0xcf,0xd0,0xd1,0xd2,0xd3,0xd4,0xd5,0xd6,0xd7,
@@ -1352,7 +1352,7 @@ static WRITE16_HANDLER( taitoz_sound_w )
 //      char buf[80];
 //
 //      sprintf(buf,"taitoz_sound_w to high byte: %04x",data);
-//      usrintf_showmessage(buf);
+//      ui_popup(buf);
 //  }
 #endif
 }
@@ -1378,7 +1378,7 @@ static WRITE16_HANDLER( taitoz_msb_sound_w )
 		char buf[80];
 
 		sprintf(buf,"taitoz_msb_sound_w to low byte: %04x",data);
-		usrintf_showmessage(buf);
+		ui_popup(buf);
 	}
 #endif
 }
@@ -3033,7 +3033,7 @@ INPUT_PORTS_END
                        GFX DECODING
 ***********************************************************/
 
-static struct GfxLayout tile16x8_layout =
+static gfx_layout tile16x8_layout =
 {
 	16,8,	/* 16*8 sprites */
 	RGN_FRAC(1,1),
@@ -3044,7 +3044,7 @@ static struct GfxLayout tile16x8_layout =
 	64*8	/* every sprite takes 64 consecutive bytes */
 };
 
-static struct GfxLayout tile16x16_layout =
+static gfx_layout tile16x16_layout =
 {
 	16,16,	/* 16*16 sprites */
 	RGN_FRAC(1,1),
@@ -3056,7 +3056,7 @@ static struct GfxLayout tile16x16_layout =
 	64*16	/* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	RGN_FRAC(1,1),
@@ -3067,7 +3067,7 @@ static struct GfxLayout charlayout =
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxLayout dblaxle_charlayout =
+static gfx_layout dblaxle_charlayout =
 {
 	16,16,    /* 16*16 characters */
 	RGN_FRAC(1,1),
@@ -3078,7 +3078,7 @@ static struct GfxLayout dblaxle_charlayout =
 	128*8     /* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxDecodeInfo taitoz_gfxdecodeinfo[] =
+static gfx_decode taitoz_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0x0, &tile16x8_layout,  0, 256 },	/* sprite parts */
 	{ REGION_GFX1, 0x0, &charlayout,  0, 256 },		/* sprites & playfield */
@@ -3088,7 +3088,7 @@ static struct GfxDecodeInfo taitoz_gfxdecodeinfo[] =
 /* taitoic.c TC0100SCN routines expect scr stuff to be in second gfx
    slot, so 2nd batch of obj must be placed third */
 
-static struct GfxDecodeInfo chasehq_gfxdecodeinfo[] =
+static gfx_decode chasehq_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0x0, &tile16x16_layout,  0, 256 },	/* sprite parts */
 	{ REGION_GFX1, 0x0, &charlayout,  0, 256 },		/* sprites & playfield */
@@ -3096,7 +3096,7 @@ static struct GfxDecodeInfo chasehq_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo dblaxle_gfxdecodeinfo[] =
+static gfx_decode dblaxle_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0x0, &tile16x8_layout,  0, 256 },	/* sprite parts */
 	{ REGION_GFX1, 0x0, &dblaxle_charlayout,  0, 256 },	/* sprites & playfield */
@@ -3145,7 +3145,7 @@ static struct YM2610interface ym2610_interfaceb =
 **************************************************************/
 
 #if 0
-static int subwoofer_sh_start(const struct MachineSound *msound)
+static int subwoofer_sh_start(const sound_config *msound)
 {
 	/* Adjust the lowpass filter of the first three YM2610 channels */
 

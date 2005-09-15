@@ -58,7 +58,7 @@ Notes:
 #include "state.h"
 #include "sound/sn76496.h"
 
-extern data8_t *sprcros2_fgvideoram, *sprcros2_spriteram, *sprcros2_bgvideoram;
+extern UINT8 *sprcros2_fgvideoram, *sprcros2_spriteram, *sprcros2_bgvideoram;
 extern size_t sprcros2_spriteram_size;
 
 WRITE8_HANDLER( sprcros2_fgvideoram_w );
@@ -69,7 +69,7 @@ WRITE8_HANDLER( sprcros2_bgscrolly_w );
 PALETTE_INIT( sprcros2 );
 VIDEO_START( sprcros2 );
 VIDEO_UPDATE( sprcros2 );
-static data8_t *sprcros2_sharedram;
+static UINT8 *sprcros2_sharedram;
 int sprcros2_m_port7 = 0;
 static int sprcros2_s_port3 = 0;
 
@@ -233,7 +233,7 @@ INPUT_PORTS_START( sprcros2 )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
-static struct GfxLayout sprcros2_bglayout =
+static gfx_layout sprcros2_bglayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -244,7 +244,7 @@ static struct GfxLayout sprcros2_bglayout =
 	8*8
 };
 
-static struct GfxLayout sprcros2_spritelayout =
+static gfx_layout sprcros2_spritelayout =
 {
 	32,32,
 	RGN_FRAC(1,3),
@@ -255,7 +255,7 @@ static struct GfxLayout sprcros2_spritelayout =
 	32*32
 };
 
-static struct GfxLayout sprcros2_fglayout =
+static gfx_layout sprcros2_fglayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -266,7 +266,7 @@ static struct GfxLayout sprcros2_fglayout =
 	8*8*2
 };
 
-static struct GfxDecodeInfo sprcros2_gfxdecodeinfo[] =
+static gfx_decode sprcros2_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &sprcros2_bglayout,     0,   16 },
 	{ REGION_GFX2, 0, &sprcros2_spritelayout, 256, 6  },

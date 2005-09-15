@@ -48,13 +48,6 @@
  *
  * windows/fronthlp.c:  Updated -identrom to the new hash engine, now
  *    support any hash function available.
- *    Added -crconly to disable advanced integrity checks.
- *    This should be needed for people with very slow computers
- *    whose loading time is affected too much by the new hashing
- *    calculations (hello, stephh).
- *    This also means that for -identrom MAME will not have to
- *    decompress the ROM from the ZIP to calculate checksum
- *    informations, since the CRC will be extracted from the header.
  *    Added -listsha1 and -listmd5. It would be possible to add
  *    also a -listbad now, to list bad dumps (ROMS we need a
  *    redump for)
@@ -62,10 +55,6 @@
  *    The output is also a bit more useful and readable, even if it
  *    is still not optimal.
  *    Update -listwrongmerge to check for all the available checksums.
- *
- * mame.h: Added new field crc_only to struct GameOptions.
- *
- * windows/config.c: Added new option -crconly
  *
  * windows/fileio.c: Removed check for FILE_TYPE_NOCRC (does not exist
  *    anymore).
@@ -146,7 +135,7 @@
 #define FALSE   0
 #endif
 
-typedef struct
+struct _hash_function_desc
 {
 	const char* name;           // human-readable name
 	char code;                  // single-char code used within the hash string
@@ -157,7 +146,8 @@ typedef struct
 	void (*calculate_buffer)(const void* mem, unsigned long len);
 	void (*calculate_end)(UINT8* bin_chksum);
 
-} hash_function_desc;
+};
+typedef struct _hash_function_desc hash_function_desc;
 
 static void h_crc_begin(void);
 static void h_crc_buffer(const void* mem, unsigned long len);
@@ -686,7 +676,7 @@ static void h_crc_end(UINT8* bin_chksum)
 }
 
 
-struct sha1_ctx sha1ctx;
+static struct sha1_ctx sha1ctx;
 
 static void h_sha1_begin(void)
 {

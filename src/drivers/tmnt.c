@@ -111,7 +111,7 @@ VIDEO_EOF( detatwin );
 
 static int tmnt_soundlatch;
 static int cbj_snd_irqlatch, cbj_nvram_bank;
-static data16_t cbj_nvram[0x400*0x20];	// 32k paged in a 1k window
+static UINT16 cbj_nvram[0x400*0x20];	// 32k paged in a 1k window
 static INT16 *sampledata;
 
 static READ16_HANDLER( K052109_word_noA12_r )
@@ -291,7 +291,7 @@ static WRITE16_HANDLER( prmrsocr_sound_irq_w )
 
 static WRITE8_HANDLER( prmrsocr_s_bankswitch_w )
 {
-	data8_t *rom = memory_region(REGION_CPU2) + 0x10000;
+	UINT8 *rom = memory_region(REGION_CPU2) + 0x10000;
 
 	memory_set_bankptr(1,rom + (data & 7) * 0x4000);
 }
@@ -429,7 +429,7 @@ static READ16_HANDLER( ssriders_protection_r )
 			return data;
 
 		default:
-			usrintf_showmessage("%06x: unknown protection read",activecpu_get_pc());
+			ui_popup("%06x: unknown protection read",activecpu_get_pc());
 			logerror("%06x: read 1c0800 (D7=%02x 1058fc=%02x 105a0a=%02x)\n",activecpu_get_pc(),(UINT32)activecpu_get_reg(M68K_D7),cmd,data);
 			return 0xffff;
     }
@@ -1009,8 +1009,8 @@ static ADDRESS_MAP_START( tmnt2_readmem, ADDRESS_SPACE_PROGRAM, 16 ) //*
 	AM_RANGE(0x600000, 0x603fff) AM_READ(K052109_word_r)
 ADDRESS_MAP_END
 
-static data16_t *tmnt2_1c0800,*sunset_104000;
-static data16_t *tmnt2_rom;
+static UINT16 *tmnt2_1c0800,*sunset_104000;
+static UINT16 *tmnt2_rom;
 
 #if 1 //*
 INLINE UINT32 tmnt2_get_word(UINT32 addr)
@@ -1160,7 +1160,7 @@ WRITE16_HANDLER( tmnt2_1c0800_w )
 	{
 		unsigned int CellSrc;
 		unsigned int CellVar;
-		data16_t *src;
+		UINT16 *src;
 		int dst;
 		int x,y;
 
@@ -1169,7 +1169,7 @@ WRITE16_HANDLER( tmnt2_1c0800_w )
 		CellSrc = tmnt2_1c0800[0x00] | (tmnt2_1c0800[0x01] << 16 );
 //        if ( CellDest >= 0x180000 && CellDest < 0x183fe0 ) {
         CellVar -= 0x104000;
-		src = (data16_t *)(memory_region(REGION_CPU1) + CellSrc);
+		src = (UINT16 *)(memory_region(REGION_CPU1) + CellSrc);
 
 		CellVar >>= 1;
 
@@ -2653,7 +2653,7 @@ MACHINE_DRIVER_END
 
 
 
-static struct GfxLayout zoomlayout =
+static gfx_layout zoomlayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -2665,7 +2665,7 @@ static struct GfxLayout zoomlayout =
 			8*64, 9*64, 10*64, 11*64, 12*64, 13*64, 14*64, 15*64 },
 	16*64
 };
-static struct GfxDecodeInfo glfgreat_gfxdecodeinfo[] =
+static gfx_decode glfgreat_gfxdecodeinfo[] =
 {
 	{ REGION_GFX3, 0, &zoomlayout, 0x400, 16 },
 	{ -1 }
@@ -3640,6 +3640,28 @@ ROM_START( ssrdrebc )
 	ROM_REGION( 0x100000, REGION_SOUND1, 0 )	/* samples for the 053260 */
 	ROM_LOAD( "sr_1d.rom",    0x0000, 0x100000, CRC(59810df9) SHA1(a0affc6330bdbfab1447dc0cf13c20ff708c2c71) )
 ROM_END
+ROM_START( ssrdreaa )
+	ROM_REGION( 0xc0000, REGION_CPU1, 0 )
+	ROM_LOAD16_BYTE( "064eaa02.bin",  0x000000, 0x40000, CRC(4844660f) SHA1(d2ef7a1b20f09cb63564e62dfe09bfed098a0faa) )
+	ROM_LOAD16_BYTE( "064eaa03.bin",  0x000001, 0x40000, CRC(0b9bcc7c) SHA1(d291da7f1eaa79ab1dfa402b862ba69061c83bdb) )
+	ROM_LOAD16_BYTE( "064eaa04.bin",  0x080000, 0x20000, CRC(5d917c1c) SHA1(3a8b410b27bf5e37f9263945abf85ac69f217350) )
+	ROM_LOAD16_BYTE( "064eaa05.bin",  0x080001, 0x20000, CRC(f4647b74) SHA1(653ecbf1f3fc8d304e1c7683b2a1a20bed0aefe0) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* 64k for the audio CPU */
+	ROM_LOAD( "064eaa01.bin",   0x0000, 0x10000, CRC(bce45d82) SHA1(7f6d17fad0b556243c59d25a94925d259d98d81a) )
+
+    ROM_REGION( 0x100000, REGION_GFX1, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_LOAD( "sr_16k.rom",   0x000000, 0x080000, CRC(e2bdc619) SHA1(04449deb267b0beacfa33640b593eb16194aa0d9) )	/* tiles */
+	ROM_LOAD( "sr_12k.rom",   0x080000, 0x080000, CRC(2d8ca8b0) SHA1(7c882f79c2402cf75979c681071007d76e4db9ae) )
+
+	ROM_REGION( 0x200000, REGION_GFX2, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_LOAD( "sr_7l.rom",    0x000000, 0x100000, CRC(4160c372) SHA1(0b36181e5ccd785c7fb89b9f41e458066a42c3b0) )	/* sprites */
+	ROM_LOAD( "sr_3l.rom",    0x100000, 0x100000, CRC(64dd673c) SHA1(bea4d17a71dd21c635866ee69b4892dc9d0ab455) )
+
+	ROM_REGION( 0x100000, REGION_SOUND1, 0 )	/* samples for the 053260 */
+	ROM_LOAD( "sr_1d.rom",    0x0000, 0x100000, CRC(59810df9) SHA1(a0affc6330bdbfab1447dc0cf13c20ff708c2c71) )
+ROM_END
+
 
 ROM_START( ssrdruda )
 	ROM_REGION( 0xc0000, REGION_CPU1, 0 )
@@ -4133,7 +4155,7 @@ static DRIVER_INIT( glfgreat )
 
 static DRIVER_INIT( cuebrckj )
 {
-	generic_nvram = (data8_t *)cbj_nvram;
+	generic_nvram = (UINT8 *)cbj_nvram;
 	generic_nvram_size = 0x400*0x20;
 
 	/* ROMs are interleaved at byte level */
@@ -4179,6 +4201,7 @@ GAMEX(1991, ssriders, 0,        ssriders, ssridr4p, gfx,      ROT0,  "Konami", "
 GAMEX(1991, ssrdrebd, ssriders, ssriders, ssriders, gfx,      ROT0,  "Konami", "Sunset Riders (2 Players ver EBD)", GAME_IMPERFECT_GRAPHICS )
 GAMEX(1991, ssrdrebc, ssriders, ssriders, ssriders, gfx,      ROT0,  "Konami", "Sunset Riders (2 Players ver EBC)", GAME_IMPERFECT_GRAPHICS )
 GAMEX(1991, ssrdruda, ssriders, ssriders, ssrid4ps, gfx,      ROT0,  "Konami", "Sunset Riders (4 Players ver UDA)", GAME_IMPERFECT_GRAPHICS )
+GAMEX(1991, ssrdreaa, ssriders, ssriders, ssrid4ps, gfx,      ROT0,  "Konami", "Sunset Riders (4 Players ver EAA)", GAME_IMPERFECT_GRAPHICS )
 GAMEX(1991, ssrdruac, ssriders, ssriders, ssridr4p, gfx,      ROT0,  "Konami", "Sunset Riders (4 Players ver UAC)", GAME_IMPERFECT_GRAPHICS )
 GAMEX(1991, ssrdrubc, ssriders, ssriders, ssriders, gfx,      ROT0,  "Konami", "Sunset Riders (2 Players ver UBC)", GAME_IMPERFECT_GRAPHICS )
 GAMEX(1991, ssrdrabd, ssriders, ssriders, ssriders, gfx,      ROT0,  "Konami", "Sunset Riders (2 Players ver ABD)", GAME_IMPERFECT_GRAPHICS )

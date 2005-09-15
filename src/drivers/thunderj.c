@@ -24,8 +24,8 @@
 
 
 
-static data16_t *shared_ram;
-static data16_t *rom_base[2];
+static UINT16 *shared_ram;
+static UINT16 *rom_base[2];
 
 
 /*************************************
@@ -63,8 +63,8 @@ static MACHINE_INIT( thunderj )
 	atarigen_interrupt_reset(update_interrupts);
 	atarijsa_reset();
 
-	rom_base[0] = (data16_t *)memory_region(REGION_CPU1);
-	rom_base[1] = (data16_t *)memory_region(REGION_CPU2);
+	rom_base[0] = (UINT16 *)memory_region(REGION_CPU1);
+	rom_base[1] = (UINT16 *)memory_region(REGION_CPU2);
 	memory_set_bankptr(1, shared_ram);
 }
 
@@ -126,7 +126,7 @@ static void shared_sync_callback(int param)
 
 static READ16_HANDLER( shared_ram_r )
 {
-	data16_t result = shared_ram[offset];
+	UINT16 result = shared_ram[offset];
 
 	/* look for a byte access, and then check for the high bit and a TAS opcode */
 	if (mem_mask != 0 && (result & ~mem_mask & 0x8080))
@@ -304,7 +304,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct GfxLayout anlayout =
+static gfx_layout anlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -316,7 +316,7 @@ static struct GfxLayout anlayout =
 };
 
 
-static struct GfxLayout pfmolayout =
+static gfx_layout pfmolayout =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -328,7 +328,7 @@ static struct GfxLayout pfmolayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &pfmolayout,  512,  96 },	/* sprites & playfield */
 	{ REGION_GFX2, 0, &pfmolayout,  256, 112 },	/* sprites & playfield */

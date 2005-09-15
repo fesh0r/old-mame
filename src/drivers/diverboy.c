@@ -49,7 +49,7 @@
 #include "driver.h"
 #include "sound/okim6295.h"
 
-extern data16_t *diverboy_spriteram;
+extern UINT16 *diverboy_spriteram;
 extern size_t diverboy_spriteram_size;
 
 VIDEO_START(diverboy);
@@ -68,7 +68,7 @@ static WRITE16_HANDLER( soundcmd_w )
 static WRITE8_HANDLER( okibank_w )
 {
 	/* bit 2 might be reset */
-//  usrintf_showmessage("%02x",data);
+//  ui_popup("%02x",data);
 
 	OKIM6295_set_bank_base(0,(data & 3) * 0x40000);
 }
@@ -171,7 +171,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout diverboy_spritelayout =
+static gfx_layout diverboy_spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -184,7 +184,7 @@ static struct GfxLayout diverboy_spritelayout =
 	16*64
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &diverboy_spritelayout, 0, 4*16 },
 	{ REGION_GFX2, 0, &diverboy_spritelayout, 0, 4*16 },

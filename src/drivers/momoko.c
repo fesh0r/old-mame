@@ -20,8 +20,8 @@ Flipped screen looks wrong, but it is correct.
 #include "vidhrdw/generic.h"
 #include "sound/2203intf.h"
 
-extern data8_t *momoko_bg_scrollx;
-extern data8_t *momoko_bg_scrolly;
+extern UINT8 *momoko_bg_scrollx;
+extern UINT8 *momoko_bg_scrolly;
 
 VIDEO_UPDATE( momoko );
 
@@ -38,7 +38,7 @@ WRITE8_HANDLER( momoko_bg_priority_w);
 
 WRITE8_HANDLER( momoko_bg_read_bank_w )
 {
-	data8_t *BG_MAP = memory_region(REGION_USER1);
+	UINT8 *BG_MAP = memory_region(REGION_USER1);
 	int bank_address = (data & 0x1f) * 0x1000;
 	memory_set_bankptr(1, &BG_MAP[bank_address]);
 }
@@ -190,7 +190,7 @@ INPUT_PORTS_END
 
 /****************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,    /* 8*8 characters */
 	256,    /* 256 characters */
@@ -201,7 +201,7 @@ static struct GfxLayout charlayout =
 	8*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	8,16,     /* 8*16 characters */
 	2048-128, /* 1024 sprites ( ccc 0ccccccc ) */
@@ -213,7 +213,7 @@ static struct GfxLayout spritelayout =
 	8*32
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	8,8,      /* 8*8 characters */
 	8192-256, /* 4096 tiles ( cccc0 cccccccc ) */
@@ -224,7 +224,7 @@ static struct GfxLayout tilelayout =
 	8*16
 };
 
-static struct GfxLayout charlayout1 =
+static gfx_layout charlayout1 =
 {
 	8,1,    /* 8*1 characters */
 	256*8,  /* 2048 characters */
@@ -235,7 +235,7 @@ static struct GfxLayout charlayout1 =
 	8*1
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &charlayout1,      0,  24 }, /* TEXT */
 	{ REGION_GFX2, 0x0000, &tilelayout,     256,  16 }, /* BG */

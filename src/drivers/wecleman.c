@@ -277,17 +277,17 @@ TODO:
 #include "sound/k007232.h"
 
 /* Variables only used here: */
-static data16_t *sharedram, *blitter_regs;
+static UINT16 *sharedram, *blitter_regs;
 static int multiply_reg[2];
-static data16_t *wecleman_protection_ram;
+static UINT16 *wecleman_protection_ram;
 static int spr_color_offs;
 
 /* Variables that vidhrdw has acces to: */
 int wecleman_selected_ip, wecleman_irqctrl;
 
 /* Variables defined in vidhrdw: */
-extern data16_t *wecleman_videostatus;
-extern data16_t *wecleman_pageram, *wecleman_txtram, *wecleman_roadram;
+extern UINT16 *wecleman_videostatus;
+extern UINT16 *wecleman_pageram, *wecleman_txtram, *wecleman_roadram;
 extern size_t wecleman_roadram_size;
 extern int wecleman_bgpage[4], wecleman_fgpage[4], *wecleman_gfx16_RAM;
 
@@ -1051,7 +1051,7 @@ INPUT_PORTS_END
                             WEC Le Mans 24 Graphics Layout
 ***************************************************************************/
 
-static struct GfxLayout wecleman_bg_layout =
+static gfx_layout wecleman_bg_layout =
 {
 	8,8,
 	8*0x8000*3/(8*8*3),
@@ -1063,7 +1063,7 @@ static struct GfxLayout wecleman_bg_layout =
 };
 
 /* We draw the road, made of 512 pixel lines, using 64x1 tiles */
-static struct GfxLayout wecleman_road_layout =
+static gfx_layout wecleman_road_layout =
 {
 	64,1,
 	8*0x4000*3/(64*1*3),
@@ -1082,7 +1082,7 @@ static struct GfxLayout wecleman_road_layout =
 	64*1
 };
 
-static struct GfxDecodeInfo wecleman_gfxdecodeinfo[] =
+static gfx_decode wecleman_gfxdecodeinfo[] =
 {
 	// REGION_GFX1 holds sprite, which are not decoded here
 	{ REGION_GFX2, 0, &wecleman_bg_layout,   0, 2048/8 },	// [0] bg + fg + txt
@@ -1097,7 +1097,7 @@ static struct GfxDecodeInfo wecleman_gfxdecodeinfo[] =
 
 /* We draw the road, made of 512 pixel lines, using 64x1 tiles */
 /* tiles are doubled horizontally */
-static struct GfxLayout hotchase_road_layout =
+static gfx_layout hotchase_road_layout =
 {
 	64,1,
 	RGN_FRAC(1,1),
@@ -1111,7 +1111,7 @@ static struct GfxLayout hotchase_road_layout =
 	32*4
 };
 
-static struct GfxDecodeInfo hotchase_gfxdecodeinfo[] =
+static gfx_decode hotchase_gfxdecodeinfo[] =
 {
 	// REGION_GFX1 holds sprite, which are not decoded here
 	// REGION_GFX2 and 3 are for the 051316
@@ -1319,9 +1319,9 @@ void wecleman_unpack_sprites(void)
 	}
 }
 
-static void bitswap(data8_t *src,size_t len,int _14,int _13,int _12,int _11,int _10,int _f,int _e,int _d,int _c,int _b,int _a,int _9,int _8,int _7,int _6,int _5,int _4,int _3,int _2,int _1,int _0)
+static void bitswap(UINT8 *src,size_t len,int _14,int _13,int _12,int _11,int _10,int _f,int _e,int _d,int _c,int _b,int _a,int _9,int _8,int _7,int _6,int _5,int _4,int _3,int _2,int _1,int _0)
 {
-	data8_t *buffer = malloc(len);
+	UINT8 *buffer = malloc(len);
 
 	if (buffer)
 	{
@@ -1342,7 +1342,7 @@ DRIVER_INIT( wecleman )
 {
 	int i;
 	unsigned char *RAM;
-//  data16_t *RAM1 = (data16_t *) memory_region(REGION_CPU1);   /* Main CPU patches */
+//  UINT16 *RAM1 = (UINT16 *) memory_region(REGION_CPU1);   /* Main CPU patches */
 //  RAM1[0x08c2/2] = 0x601e;    // faster self test
 
 	/* Decode GFX Roms - Compensate for the address lines scrambling */
@@ -1483,7 +1483,7 @@ void hotchase_sprite_decode( int num16_banks, int bank_size )
 /* Unpack sprites data and do some patching */
 DRIVER_INIT( hotchase )
 {
-//  data16_t *RAM1 = (data16_t) memory_region(REGION_CPU1); /* Main CPU patches */
+//  UINT16 *RAM1 = (UINT16) memory_region(REGION_CPU1); /* Main CPU patches */
 //  RAM[0x1140/2] = 0x0015; RAM[0x195c/2] = 0x601A; // faster self test
 
 	unsigned char *RAM;

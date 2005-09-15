@@ -105,7 +105,7 @@ int start_megatech_video_normal(void)
 	return 0;
 }
 
-void update_megatech_video_normal(struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+void update_megatech_video_normal(mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	int i;
 
@@ -118,7 +118,7 @@ void update_megatech_video_normal(struct mame_bitmap *bitmap, const struct recta
 		draw_scanline8(bitmap,0,i,256,&cache_bitmap[i * (16+256+16) +16],&Machine->pens[segasyse_palettebase],-1);
 }
 
-void update_megaplay_video_normal(struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+void update_megaplay_video_normal(mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	int i;
 
@@ -428,10 +428,13 @@ void segae_drawscanline(int line, int chips, int blank)
 		}
 	}
 
-	if (blank) memset(dest+16, 32+16, 8); /* Clear Leftmost column, there should be a register for this like on the SMS i imagine    */
-							   			  /* on the SMS this is bit 5 of register 0 (according to CMD's SMS docs) for system E this  */
-							   			  /* appears to be incorrect, most games need it blanked 99% of the time so we blank it      */
-
+	/* FIX ME!! */
+	if (blank)
+	{
+		if (strcmp(Machine->gamedrv->name,"tetrisse")) /* and we really don't want to do it on tetrise */
+			memset(dest+16, 32+16, 8); /* Clear Leftmost column, there should be a register for this like on the SMS i imagine    */
+							   			  /* on the SMS this is bit 5 of register 0 (according to CMD's SMS docs) for system E this  */							   			  /* appears to be incorrect, most games need it blanked 99% of the time so we blank it      */
+	}
 }
 
 /*-- Drawing a line of tiles --*/

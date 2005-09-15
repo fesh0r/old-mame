@@ -26,7 +26,7 @@ f1gp2:
 
 
 
-static data16_t *sharedram;
+static UINT16 *sharedram;
 
 static READ16_HANDLER( sharedram_r )
 {
@@ -40,7 +40,7 @@ static WRITE16_HANDLER( sharedram_w )
 
 static READ16_HANDLER( extrarom_r )
 {
-	data8_t *rom = memory_region(REGION_USER1);
+	UINT8 *rom = memory_region(REGION_USER1);
 
 	offset *= 2;
 
@@ -49,7 +49,7 @@ static READ16_HANDLER( extrarom_r )
 
 static READ16_HANDLER( extrarom2_r )
 {
-	data8_t *rom = memory_region(REGION_USER2);
+	UINT8 *rom = memory_region(REGION_USER2);
 
 	offset *= 2;
 
@@ -58,7 +58,7 @@ static READ16_HANDLER( extrarom2_r )
 
 static WRITE8_HANDLER( f1gp_sh_bankswitch_w )
 {
-	data8_t *rom = memory_region(REGION_CPU3) + 0x10000;
+	UINT8 *rom = memory_region(REGION_CPU3) + 0x10000;
 
 	memory_set_bankptr(1,rom + (data & 0x01) * 0x8000);
 }
@@ -416,7 +416,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -427,7 +427,7 @@ static struct GfxLayout charlayout =
 	64*8
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -440,7 +440,7 @@ static struct GfxLayout tilelayout =
 	64*16
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -453,7 +453,7 @@ static struct GfxLayout spritelayout =
 	128*8
 };
 
-static struct GfxDecodeInfo f1gp_gfxdecodeinfo[] =
+static gfx_decode f1gp_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0x000,  1 },
 	{ REGION_GFX2, 0, &spritelayout, 0x100, 16 },
@@ -462,7 +462,7 @@ static struct GfxDecodeInfo f1gp_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo f1gp2_gfxdecodeinfo[] =
+static gfx_decode f1gp2_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0x000,  1 },
 	{ REGION_GFX2, 0, &spritelayout, 0x200, 32 },

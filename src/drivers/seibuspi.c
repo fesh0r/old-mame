@@ -16,7 +16,7 @@
 
       Hardware:
 
-          Intel 386 DX 25MHz / 33MHz
+          Intel 386 DX 25MHz
           Z80 8MHz (sound)
           YMF271F Sound chip
           Seibu Custom GFX chip
@@ -24,17 +24,6 @@
       SYS386 seems like a lower-cost version of single-board SPI.
       It has a 40MHz AMD 386 and a considerably weaker sound system (dual MSM6295).
 
-      Bugs:
-
-      Raiden Fighters : Game pauses for a brief second when bosses are encountered
-      Senkyu / BBalls : ---
-      Viper Phase 1   : OLD version (viprp1o) Game locks up / crashes after a few attract loops
-                    (386 writes to z80 fifo with data read from unmapped addresses in steps of 0x20000
-                     past the end of z80 ram)
-                      : lockups / pauses if you keep hold of fire before continue appears
-      RF Jet          : Tile banking problems, sometimes tile banking does not work as it should
-                        resulting in scenes being corrupt sometimes (for example mission briefing)
-      E-Jan HS        : ---
 
 TODO:
 - Alpha blending. Screen shot on www.system16.com show that during attract mode
@@ -603,9 +592,7 @@ WRITE32_HANDLER( video_dma_address_w );
 WRITE32_HANDLER( sprite_dma_start_w );
 
 extern UINT32 *scroll_ram;
-extern int old_vidhw;
-extern int bg_size;
-data32_t *spimainram;
+UINT32 *spimainram;
 
 /********************************************************************/
 static int z80_prg_fifo_pos = 0;
@@ -754,24 +741,19 @@ static WRITE32_HANDLER( ds2404_clk_w )
 	}
 }
 
-static READ32_HANDLER( eeprom_r )
-{
-	/* TODO */
-	return 0;
-}
-
 static WRITE32_HANDLER( eeprom_w )
 {
 	// tile banks
 	if( !(mem_mask & 0x00ff0000) ) {
 		rf2_set_layer_banks(data >> 16);
+		EEPROM_write_bit((data & 0x800000) ? 1 : 0);
+		EEPROM_set_clock_line((data & 0x400000) ? ASSERT_LINE : CLEAR_LINE);
+		EEPROM_set_cs_line((data & 0x200000) ? CLEAR_LINE : ASSERT_LINE);
 	}
 
 	// oki banking
 	if (sndti_to_sndnum(SOUND_OKIM6295, 1) >= 0)
 		OKIM6295_set_bank_base(1, (data & 0x4000000) ? 0x40000 : 0);
-
-	/* TODO */
 }
 
 static WRITE32_HANDLER( z80_prg_fifo_w )
@@ -809,13 +791,10 @@ static READ32_HANDLER( spi_controls1_r )
 	return 0xffffffff;
 }
 
-static int control_bit40 = 0;
-
 static READ32_HANDLER( spi_controls2_r )
 {
 	if( ACCESSING_LSB32 ) {
-		control_bit40 ^= 0x40;
-		return ((readinputport(2) | 0xffffff00) & ~0x40 ) | control_bit40;
+		return ((readinputport(2) | 0xffffff00) & ~0x40) | (EEPROM_read_bit() << 6);
 	}
 	return 0xffffffff;
 }
@@ -882,6 +861,11 @@ static READ8_HANDLER( z80_jp1_r )
 	return readinputport(3);
 }
 
+static READ8_HANDLER( z80_coin_r )
+{
+	return readinputport(4);
+}
+
 static READ32_HANDLER( soundrom_r )
 {
 	UINT8 *sound = (UINT8*)memory_region(REGION_USER2);
@@ -889,7 +873,6 @@ static READ32_HANDLER( soundrom_r )
 
 	if (mem_mask == 0xffffff00)
 	{
-//      printf("8bit sound read %08x\n",offset);
 		return sound[offset];
 	}
 	else if (mem_mask == 0x00000000)
@@ -925,6 +908,7 @@ static ADDRESS_MAP_START( spi_readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000608, 0x0000060b) AM_READ(spi_unknown_r)		/* Unknown */
 	AM_RANGE(0x0000060c, 0x0000060f) AM_READ(spi_controls2_r)	/* Player controls (start) */
 	AM_RANGE(0x00000684, 0x00000687) AM_READ(sound_fifo_status_r)
+	AM_RANGE(0x00000690, 0x00000693) AM_NOP
 	AM_RANGE(0x000006dc, 0x000006df) AM_READ(ds2404_data_r)
 	AM_RANGE(0x00000800, 0x0003ffff) AM_READ(MRA32_RAM)
 	AM_RANGE(0x00200000, 0x003fffff) AM_ROM AM_SHARE(2)
@@ -956,7 +940,7 @@ static ADDRESS_MAP_START( spisound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4008, 0x4008) AM_READ(z80_soundfifo_r)
 	AM_RANGE(0x4009, 0x4009) AM_READ(z80_soundfifo_status_r)
 	AM_RANGE(0x400a, 0x400a) AM_READ(z80_jp1_r)
-	AM_RANGE(0x4013, 0x4013) AM_READNOP
+	AM_RANGE(0x4013, 0x4013) AM_READ(z80_coin_r)
 	AM_RANGE(0x6000, 0x600f) AM_READ(YMF271_0_r)
 	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_BANK4)		/* Banked ram */
 ADDRESS_MAP_END
@@ -1027,7 +1011,7 @@ static ADDRESS_MAP_START( seibu386_readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000420, 0x0000042b) AM_READ(MRA32_RAM) AM_BASE(&scroll_ram)
 	AM_RANGE(0x0000042c, 0x00000603) AM_READ(MRA32_RAM)
 	AM_RANGE(0x00000604, 0x00000607) AM_READ(spi_controls1_r)	/* Player controls */
-	AM_RANGE(0x00000608, 0x0000060b) AM_READ(eeprom_r)
+	AM_RANGE(0x00000608, 0x0000060b) AM_READ(spi_unknown_r)
 	AM_RANGE(0x0000060c, 0x0000060f) AM_READ(spi_controls2_r)	/* Player controls (start) */
 	AM_RANGE(0x00000800, 0x0003ffff) AM_READ(MRA32_RAM)
 	AM_RANGE(0x00200000, 0x003fffff) AM_ROM AM_SHARE(2)
@@ -1078,14 +1062,19 @@ INPUT_PORTS_START( spi_2button )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW) /* Test Button */
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Coin") PORT_CODE(KEYCODE_7)
+	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("JP1")		/* JP1 */
 	PORT_DIPNAME( 0x03, 0x03, "JP1" )
 	PORT_DIPSETTING(	0x03, "Update"  )
 	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START_TAG("IN3")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -1113,8 +1102,8 @@ INPUT_PORTS_START( spi_3button )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) /* Test Button */
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Coin") PORT_CODE(KEYCODE_7)
+	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("JP1")
 	PORT_DIPNAME( 0x03, 0x03, "JP1" )
@@ -1122,6 +1111,48 @@ INPUT_PORTS_START( spi_3button )
 	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START_TAG("IN3")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
+INPUT_PORTS_END
+
+INPUT_PORTS_START( seibu386_2button )
+	PORT_START_TAG("IN0")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_START_TAG("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START_TAG("IN2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW) /* Test Button */
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Coin") PORT_CODE(KEYCODE_7)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START_TAG("JP1")		/* JP1 */
+	PORT_DIPNAME( 0x03, 0x03, "JP1" )
+	PORT_DIPSETTING(	0x03, "Update"  )
+	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_BUTTON4 )
 INPUT_PORTS_END
 
 /* E-Jan Highschool has a keyboard with the following keys
@@ -1175,7 +1206,7 @@ INPUT_PORTS_START( spi_ejanhs )
 
 	PORT_START_TAG("IN2")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) /* Test Button */
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Coin") PORT_CODE(KEYCODE_7)
 	PORT_BIT( 0xf3, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START_TAG("JP1")
@@ -1183,6 +1214,11 @@ INPUT_PORTS_START( spi_ejanhs )
 	PORT_DIPSETTING(	0x03, "Update"  )
 	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START_TAG("IN3")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -1192,7 +1228,7 @@ INPUT_PORTS_END
 #define PLANE_TILE 0
 #define PLANE_SPRITE 1
 
-static struct GfxLayout spi_charlayout =
+static gfx_layout spi_charlayout =
 {
 	8,8,		/* 8*8 characters */
 	4096,		/* 4096 characters */
@@ -1204,7 +1240,7 @@ static struct GfxLayout spi_charlayout =
 };
 
 #if PLANE_CHAR
-static struct GfxLayout spi_charlayout0 =
+static gfx_layout spi_charlayout0 =
 {
 	8,8,		/* 8*8 characters */
 	4096,		/* 4096 characters */
@@ -1215,7 +1251,7 @@ static struct GfxLayout spi_charlayout0 =
 	6*8*8
 };
 
-static struct GfxLayout spi_charlayout1 =
+static gfx_layout spi_charlayout1 =
 {
 	8,8,		/* 8*8 characters */
 	4096,		/* 4096 characters */
@@ -1226,7 +1262,7 @@ static struct GfxLayout spi_charlayout1 =
 	6*8*8
 };
 
-static struct GfxLayout spi_charlayout2 =
+static gfx_layout spi_charlayout2 =
 {
 	8,8,		/* 8*8 characters */
 	4096,		/* 4096 characters */
@@ -1237,7 +1273,7 @@ static struct GfxLayout spi_charlayout2 =
 	6*8*8
 };
 
-static struct GfxLayout spi_charlayout3 =
+static gfx_layout spi_charlayout3 =
 {
 	8,8,		/* 8*8 characters */
 	4096,		/* 4096 characters */
@@ -1248,7 +1284,7 @@ static struct GfxLayout spi_charlayout3 =
 	6*8*8
 };
 
-static struct GfxLayout spi_charlayout4 =
+static gfx_layout spi_charlayout4 =
 {
 	8,8,		/* 8*8 characters */
 	4096,		/* 4096 characters */
@@ -1259,7 +1295,7 @@ static struct GfxLayout spi_charlayout4 =
 	6*8*8
 };
 
-static struct GfxLayout spi_charlayout5 =
+static gfx_layout spi_charlayout5 =
 {
 	8,8,		/* 8*8 characters */
 	4096,		/* 4096 characters */
@@ -1271,7 +1307,7 @@ static struct GfxLayout spi_charlayout5 =
 };
 #endif
 
-static struct GfxLayout spi_tilelayout =
+static gfx_layout spi_tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1290,7 +1326,7 @@ static struct GfxLayout spi_tilelayout =
 };
 
 #if PLANE_TILE
-static struct GfxLayout spi_tilelayout0 =
+static gfx_layout spi_tilelayout0 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1308,7 +1344,7 @@ static struct GfxLayout spi_tilelayout0 =
 	6*16*16
 };
 
-static struct GfxLayout spi_tilelayout1 =
+static gfx_layout spi_tilelayout1 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1326,7 +1362,7 @@ static struct GfxLayout spi_tilelayout1 =
 	6*16*16
 };
 
-static struct GfxLayout spi_tilelayout2 =
+static gfx_layout spi_tilelayout2 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1344,7 +1380,7 @@ static struct GfxLayout spi_tilelayout2 =
 	6*16*16
 };
 
-static struct GfxLayout spi_tilelayout3 =
+static gfx_layout spi_tilelayout3 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1362,7 +1398,7 @@ static struct GfxLayout spi_tilelayout3 =
 	6*16*16
 };
 
-static struct GfxLayout spi_tilelayout4 =
+static gfx_layout spi_tilelayout4 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1380,7 +1416,7 @@ static struct GfxLayout spi_tilelayout4 =
 	6*16*16
 };
 
-static struct GfxLayout spi_tilelayout5 =
+static gfx_layout spi_tilelayout5 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1399,7 +1435,7 @@ static struct GfxLayout spi_tilelayout5 =
 };
 #endif
 
-static struct GfxLayout spi_spritelayout =
+static gfx_layout spi_spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -1415,7 +1451,7 @@ static struct GfxLayout spi_spritelayout =
 };
 
 #if PLANE_SPRITE
-static struct GfxLayout spi_spritelayout0 =
+static gfx_layout spi_spritelayout0 =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -1430,7 +1466,7 @@ static struct GfxLayout spi_spritelayout0 =
 	16*32
 };
 
-static struct GfxLayout spi_spritelayout1 =
+static gfx_layout spi_spritelayout1 =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -1445,7 +1481,7 @@ static struct GfxLayout spi_spritelayout1 =
 	16*32
 };
 
-static struct GfxLayout spi_spritelayout2 =
+static gfx_layout spi_spritelayout2 =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -1460,7 +1496,7 @@ static struct GfxLayout spi_spritelayout2 =
 	16*32
 };
 
-static struct GfxLayout spi_spritelayout3 =
+static gfx_layout spi_spritelayout3 =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -1475,7 +1511,7 @@ static struct GfxLayout spi_spritelayout3 =
 	16*32
 };
 
-static struct GfxLayout spi_spritelayout4 =
+static gfx_layout spi_spritelayout4 =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -1490,7 +1526,7 @@ static struct GfxLayout spi_spritelayout4 =
 	16*32
 };
 
-static struct GfxLayout spi_spritelayout5 =
+static gfx_layout spi_spritelayout5 =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -1506,7 +1542,7 @@ static struct GfxLayout spi_spritelayout5 =
 };
 #endif
 
-static struct GfxDecodeInfo spi_gfxdecodeinfo[] =
+static gfx_decode spi_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &spi_charlayout,   5632, 16 },
 	{ REGION_GFX2, 0, &spi_tilelayout,   4096, 24 },
@@ -1556,12 +1592,26 @@ static NVRAM_HANDLER( spi )
 	nvram_handler_intelflash(1, file, read_or_write);
 }
 
+/* this is a 93C46 but with reset delay */
+static struct EEPROM_interface eeprom_interface =
+{
+	6,				/* address bits */
+	16,				/* data bits */
+	"*110",			/*  read command */
+	"*101",			/* write command */
+	"*111",			/* erase command */
+	"*10000xxxx",	/* lock command */
+	"*10011xxxx",	/* unlock command */
+	1,				/* enable_multi_read */
+	1				/* reset_delay */
+};
+
 static NVRAM_HANDLER( sxx2f )
 {
 	if( read_or_write ) {
 		EEPROM_save(file);
 	} else {
-		EEPROM_init(&eeprom_interface_93C46);
+		EEPROM_init(&eeprom_interface);
 
 		if(file)
 			EEPROM_load(file);
@@ -1647,7 +1697,8 @@ MACHINE_DRIVER_END
 
 static MACHINE_INIT( sxx2f )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00000688, 0x0000068b, 0, 0, eeprom_r);
+	memory_set_bankptr(4, memory_region(REGION_CPU2));
+
 	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000068c, 0x0000068f, 0, 0, eeprom_w);
 }
 
@@ -1785,8 +1836,6 @@ static DRIVER_INIT( rdft )
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00298d0, 0x00298d3, 0, 0, rdft_speedup_r );
 
 	init_spi();
-	old_vidhw = 0;
-	bg_size = 1;
 }
 
 static DRIVER_INIT( senkyu )
@@ -1794,8 +1843,6 @@ static DRIVER_INIT( senkyu )
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0018cb4, 0x0018cb7, 0, 0, senkyu_speedup_r );
 
 	init_spi();
-	old_vidhw = 1;
-	bg_size = 0;
 }
 
 static DRIVER_INIT( senkyua )
@@ -1803,8 +1850,6 @@ static DRIVER_INIT( senkyua )
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0018c9c, 0x0018c9f, 0, 0, senkyua_speedup_r );
 
 	init_spi();
-	old_vidhw = 1;
-	bg_size = 0;
 }
 
 static DRIVER_INIT( batlball )
@@ -1812,8 +1857,6 @@ static DRIVER_INIT( batlball )
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0018db4, 0x0018db7, 0, 0, batlball_speedup_r );
 
 	init_spi();
-	old_vidhw = 1;
-	bg_size = 0;
 }
 
 static DRIVER_INIT( ejanhs )
@@ -1822,8 +1865,6 @@ static DRIVER_INIT( ejanhs )
 //  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x002d224, 0x002d227, 0, 0, ejanhs_speedup_r );
 
 	init_spi();
-	old_vidhw = 1;
-	bg_size = 1;
 }
 
 static DRIVER_INIT( viprp1 )
@@ -1831,8 +1872,6 @@ static DRIVER_INIT( viprp1 )
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x001e2e0, 0x001e2e3, 0, 0, viprp1_speedup_r );
 
 	init_spi();
-	old_vidhw = 1;
-	bg_size = 1;
 }
 
 static DRIVER_INIT( viprp1o )
@@ -1840,8 +1879,6 @@ static DRIVER_INIT( viprp1o )
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x001d49c, 0x001d49f, 0, 0, viprp1o_speedup_r );
 
 	init_spi();
-	old_vidhw = 1;
-	bg_size = 1;
 }
 
 
@@ -1862,15 +1899,11 @@ static DRIVER_INIT( rf2 )
 static DRIVER_INIT( rdft2 )
 {
 	init_rf2();
-	old_vidhw = 0;
-	bg_size = 2;
 }
 
 static DRIVER_INIT( rdft2us )
 {
 	init_rf2();
-	old_vidhw = 0;
-	bg_size = 2;
 }
 
 
@@ -1885,9 +1918,6 @@ static DRIVER_INIT( rfjet )
 	seibuspi_rise11_sprite_decrypt(memory_region(REGION_GFX3), 0x800000);
 
 	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x560, 0x563, 0, 0, sprite_dma_start_w);
-
-	old_vidhw = 0;
-	bg_size = 2;
 }
 
 /* SYS386 */
@@ -1895,8 +1925,6 @@ static DRIVER_INIT( rfjet )
 static DRIVER_INIT( rdft22kc )
 {
 	init_rf2();
-	old_vidhw = 0;
-	bg_size = 2;
 }
 
 static MACHINE_INIT( seibu386 )
@@ -1957,7 +1985,7 @@ ROM_START(senkyu)
 	ROM_LOAD24_WORD("fb_6.413", 0x000000, 0x20000, CRC(b57115c9) SHA1(eb95f416f522032ca949bfb6348f1ff824101f2d) )
 	ROM_LOAD24_BYTE("fb_5.48",	0x000002, 0x10000, CRC(440a9ae3) SHA1(3f57e6da91f0dac2d816c873759f1e1d3259caf1) )
 
-	ROM_REGION( 0x600000, REGION_GFX2, 0)	/* background layer roms */
+	ROM_REGION( 0x300000, REGION_GFX2, 0)	/* background layer roms */
 	ROM_LOAD24_WORD("fb_bg-1d.415", 0x000000, 0x200000, CRC(eae7a1fc) SHA1(26d8a9f4e554848977ec1f6a8aad8751b558a8d4) )
 	ROM_LOAD24_BYTE("fb_bg-1p.410", 0x000002, 0x100000, CRC(b46e774e) SHA1(00b6c1d0b0ea37f4354acab543b270c0bf45896d) )
 
@@ -1988,7 +2016,7 @@ ROM_START(senkyua)
 	ROM_LOAD24_WORD("fb_6.413", 0x000000, 0x20000, CRC(b57115c9) SHA1(eb95f416f522032ca949bfb6348f1ff824101f2d) )
 	ROM_LOAD24_BYTE("fb_5.48",	0x000002, 0x10000, CRC(440a9ae3) SHA1(3f57e6da91f0dac2d816c873759f1e1d3259caf1) )
 
-	ROM_REGION( 0x600000, REGION_GFX2, 0)	/* background layer roms */
+	ROM_REGION( 0x300000, REGION_GFX2, 0)	/* background layer roms */
 	ROM_LOAD24_WORD("fb_bg-1d.415", 0x000000, 0x200000, CRC(eae7a1fc) SHA1(26d8a9f4e554848977ec1f6a8aad8751b558a8d4) )
 	ROM_LOAD24_BYTE("fb_bg-1p.410", 0x000002, 0x100000, CRC(b46e774e) SHA1(00b6c1d0b0ea37f4354acab543b270c0bf45896d) )
 
@@ -2019,7 +2047,7 @@ ROM_START(batlball)
 	ROM_LOAD24_WORD("fb_6.413", 0x000000, 0x20000, CRC(b57115c9) SHA1(eb95f416f522032ca949bfb6348f1ff824101f2d) )
 	ROM_LOAD24_BYTE("fb_5.48",	0x000002, 0x10000, CRC(440a9ae3) SHA1(3f57e6da91f0dac2d816c873759f1e1d3259caf1) )
 
-	ROM_REGION( 0x600000, REGION_GFX2, 0)	/* background layer roms */
+	ROM_REGION( 0x300000, REGION_GFX2, 0)	/* background layer roms */
 	ROM_LOAD24_WORD("fb_bg-1d.415", 0x000000, 0x200000, CRC(eae7a1fc) SHA1(26d8a9f4e554848977ec1f6a8aad8751b558a8d4) )
 	ROM_LOAD24_BYTE("fb_bg-1p.410", 0x000002, 0x100000, CRC(b46e774e) SHA1(00b6c1d0b0ea37f4354acab543b270c0bf45896d) )
 
@@ -2050,7 +2078,7 @@ ROM_START(batlbala)
 	ROM_LOAD24_WORD("fb_6.413", 0x000000, 0x20000, CRC(b57115c9) SHA1(eb95f416f522032ca949bfb6348f1ff824101f2d) )
 	ROM_LOAD24_BYTE("fb_5.48",	0x000002, 0x10000, CRC(440a9ae3) SHA1(3f57e6da91f0dac2d816c873759f1e1d3259caf1) )
 
-	ROM_REGION( 0x600000, REGION_GFX2, 0)	/* background layer roms */
+	ROM_REGION( 0x300000, REGION_GFX2, 0)	/* background layer roms */
 	ROM_LOAD24_WORD("fb_bg-1d.415", 0x000000, 0x200000, CRC(eae7a1fc) SHA1(26d8a9f4e554848977ec1f6a8aad8751b558a8d4) )
 	ROM_LOAD24_BYTE("fb_bg-1p.410", 0x000002, 0x100000, CRC(b46e774e) SHA1(00b6c1d0b0ea37f4354acab543b270c0bf45896d) )
 
@@ -2857,4 +2885,4 @@ GAMEX( 1997, rdft2us,   rdft2,   sxx2f,    spi_2button, rdft2us,  ROT270, "Seibu
 GAMEX( 1999, rfjetus,   rfjet,   sxx2f,    spi_2button, rfjet,    ROT270, "Seibu Kaihatsu (Fabtek license)", "Raiden Fighters Jet (US, Single Board)", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND  ) // has 1998-99 copyright + planes unlocked
 
 /* SYS386 */
-GAMEX( 2000, rdft22kc,  rdft2,   seibu386, spi_2button, rdft22kc, ROT270, "Seibu Kaihatsu", "Raiden Fighters 2 - 2000 (China)", GAME_IMPERFECT_GRAPHICS )
+GAMEX( 2000, rdft22kc,  rdft2,   seibu386, seibu386_2button, rdft22kc, ROT270, "Seibu Kaihatsu", "Raiden Fighters 2 - 2000 (China)", GAME_IMPERFECT_GRAPHICS )

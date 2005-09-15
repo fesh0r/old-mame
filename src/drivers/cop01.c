@@ -57,7 +57,7 @@ Mighty Guy board layout:
 #define MIGHTGUY_HACK	0
 
 
-extern data8_t *cop01_bgvideoram,*cop01_fgvideoram;
+extern UINT8 *cop01_bgvideoram,*cop01_fgvideoram;
 
 PALETTE_INIT( cop01 );
 VIDEO_START( cop01 );
@@ -363,7 +363,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -374,7 +374,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -385,7 +385,7 @@ static struct GfxLayout tilelayout =
 	32*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -404,7 +404,7 @@ static struct GfxLayout spritelayout =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,         0,  1 },
 	{ REGION_GFX2, 0, &tilelayout,        16,  8 },
@@ -603,7 +603,7 @@ static DRIVER_INIT( mightguy )
 #if MIGHTGUY_HACK
 	/* This is a hack to fix the game code to get a fully working
        "Starting Area" fake Dip Switch */
-	data8_t *RAM = (data8_t *)memory_region(REGION_CPU1);
+	UINT8 *RAM = (UINT8 *)memory_region(REGION_CPU1);
 	RAM[0x00e4] = 0x07;	// rlca
 	RAM[0x00e5] = 0x07;	// rlca
 	RAM[0x00e6] = 0x07;	// rlca

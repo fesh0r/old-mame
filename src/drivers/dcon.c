@@ -29,7 +29,7 @@ VIDEO_START( dcon );
 VIDEO_UPDATE( dcon );
 VIDEO_UPDATE( sdgndmps );
 
-extern data16_t *dcon_back_data,*dcon_fore_data,*dcon_mid_data,*dcon_scroll_ram,*dcon_textram;
+extern UINT16 *dcon_back_data,*dcon_fore_data,*dcon_mid_data,*dcon_scroll_ram,*dcon_textram;
 
 /***************************************************************************/
 
@@ -234,7 +234,7 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static struct GfxLayout dcon_charlayout =
+static gfx_layout dcon_charlayout =
 {
 	8,8,		/* 8*8 characters */
 	RGN_FRAC(1,2),
@@ -245,7 +245,7 @@ static struct GfxLayout dcon_charlayout =
 	128
 };
 
-static struct GfxLayout dcon_tilelayout =
+static gfx_layout dcon_tilelayout =
 {
 	16,16,	/* 16*16 tiles */
 	RGN_FRAC(1,1),
@@ -263,7 +263,7 @@ static struct GfxLayout dcon_tilelayout =
 	1024
 };
 
-static struct GfxDecodeInfo dcon_gfxdecodeinfo[] =
+static gfx_decode dcon_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &dcon_charlayout,    1024+768, 16 },
 	{ REGION_GFX2, 0, &dcon_tilelayout,    1024+0,   16 },
@@ -408,7 +408,7 @@ ROM_END
 /***************************************************************************/
 static DRIVER_INIT( sdgndmps )
 {
-	data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 	RAM[0x1356/2] = 0x4e71; /* beq -> nop */
 	RAM[0x1358/2] = 0x4e71;
 

@@ -32,7 +32,7 @@ extern int m107_raster_irq_position,m107_sprite_list;
 #define m107_IRQ_3 ((m107_irq_vectorbase+12)/4) /* ??? */
 
 WRITE8_HANDLER( m107_spritebuffer_w );
-void m107_screenrefresh(struct mame_bitmap *bitmap,const struct rectangle *clip);
+void m107_screenrefresh(mame_bitmap *bitmap,const rectangle *clip);
 VIDEO_UPDATE( m107 );
 VIDEO_UPDATE( dsoccr );
 VIDEO_START( m107 );
@@ -132,7 +132,7 @@ static WRITE8_HANDLER( m92_sound_status_w )
 {
 	if (offset == 0)
 	{
-//      usrintf_showmessage("sound answer %02x",data);
+//      ui_popup("sound answer %02x",data);
 		sound_status = data;
 	}
 }
@@ -390,7 +390,7 @@ INPUT_PORTS_END
 
 /***************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -401,7 +401,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -414,7 +414,7 @@ static struct GfxLayout spritelayout =
 	32*8
 };
 
-static struct GfxLayout spritelayout2 =
+static gfx_layout spritelayout2 =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -426,14 +426,14 @@ static struct GfxLayout spritelayout2 =
 	32*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0, 128 },
 	{ REGION_GFX2, 0, &spritelayout, 0, 128 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo firebarr_gfxdecodeinfo[] =
+static gfx_decode firebarr_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0, 128 },
 	{ REGION_GFX2, 0, &spritelayout2,0, 128 },
@@ -476,9 +476,9 @@ static INTERRUPT_GEN( m107_raster_interrupt )
 	if (code_pressed_memory(KEYCODE_F1)) {
 		raster_enable ^= 1;
 		if (raster_enable)
-			usrintf_showmessage("Raster IRQ enabled");
+			ui_popup("Raster IRQ enabled");
 		else
-			usrintf_showmessage("Raster IRQ disabled");
+			ui_popup("Raster IRQ disabled");
 	}
 
 	/* Raster interrupt */

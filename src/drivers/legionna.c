@@ -79,8 +79,8 @@ extern VIDEO_UPDATE( godzilla );
 extern VIDEO_UPDATE( sdgndmrb );
 void heatbrl_setgfxbank(UINT16 data);
 
-extern data16_t *legionna_back_data,*legionna_fore_data,*legionna_mid_data,*legionna_scrollram16,*legionna_textram;
-static data16_t *mcu_ram;
+extern UINT16 *legionna_back_data,*legionna_fore_data,*legionna_mid_data,*legionna_scrollram16,*legionna_textram;
+static UINT16 *mcu_ram;
 
 static WRITE16_HANDLER( legionna_paletteram16_w )	/* xBBBBxRRRRxGGGGx */
 {
@@ -542,7 +542,7 @@ static READ16_HANDLER( sdgndmrb_cop_mcu_r )
 	}
 //  return rand();
 //  logerror("CPU0 PC %06x MCU read offset: %04x\n",activecpu_get_previouspc(),offset*2);
-//  usrintf_showmessage("CPU0 PC %06x MCU read offset: %04x",activecpu_get_previouspc(),offset*2);
+//  ui_popup("CPU0 PC %06x MCU read offset: %04x",activecpu_get_previouspc(),offset*2);
 
 	return mcu_ram[offset];
 }
@@ -637,7 +637,7 @@ static WRITE16_HANDLER( sdgndmrb_cop_mcu_w )
 
 //      default:
 //      logerror("CPU0 PC %06x MCU write offset: %04x data: %04x\n",activecpu_get_previouspc(),offset*2,data);
-//      usrintf_showmessage("CPU0 PC %06x MCU write offset: %04x data: %04x",activecpu_get_previouspc(),offset*2,data);
+//      ui_popup("CPU0 PC %06x MCU write offset: %04x data: %04x",activecpu_get_previouspc(),offset*2,data);
 	}
 }
 
@@ -1351,7 +1351,7 @@ INPUT_PORTS_END
 /*****************************************************************************/
 
 
-static struct GfxLayout legionna_charlayout =
+static gfx_layout legionna_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,4),	/* other half is BK3, decoded in char2layout */
@@ -1362,7 +1362,7 @@ static struct GfxLayout legionna_charlayout =
 	16*8
 };
 
-static struct GfxLayout heatbrl_charlayout =
+static gfx_layout heatbrl_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),	/* second half is junk, like legionna we may need a different decode */
@@ -1374,7 +1374,7 @@ static struct GfxLayout heatbrl_charlayout =
 };
 
 
-static struct GfxLayout legionna_char2layout =
+static gfx_layout legionna_char2layout =
 {
 	16,16,
 	256,	/* Can't use RGN_FRAC as (1,16) not supported */
@@ -1389,7 +1389,7 @@ static struct GfxLayout legionna_char2layout =
 	16*8
 };
 
-static struct GfxLayout legionna_tilelayout =
+static gfx_layout legionna_tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1402,7 +1402,7 @@ static struct GfxLayout legionna_tilelayout =
 	128*8
 };
 
-static struct GfxLayout legionna_spritelayout =
+static gfx_layout legionna_spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1415,7 +1415,7 @@ static struct GfxLayout legionna_spritelayout =
 	128*8
 };
 
-static struct GfxDecodeInfo legionna_gfxdecodeinfo[] =
+static gfx_decode legionna_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &legionna_charlayout,   48*16, 16 },
 	{ REGION_GFX3, 0, &legionna_tilelayout,    0*16, 16 },
@@ -1426,7 +1426,7 @@ static struct GfxDecodeInfo legionna_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo heatbrl_gfxdecodeinfo[] =
+static gfx_decode heatbrl_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &heatbrl_charlayout,    48*16, 16 },
 	{ REGION_GFX3, 0, &legionna_tilelayout,    0*16, 16 },
@@ -2173,7 +2173,7 @@ static DRIVER_INIT( legionna )
 {
 	/* Unscramble gfx: quarters 1&2 swapped, quarters 3&4 swapped */
 
-	data8_t *gfx = memory_region(REGION_GFX1);
+	UINT8 *gfx = memory_region(REGION_GFX1);
 	int len = memory_region_length(REGION_GFX1)/2;
 	int a,i;
 

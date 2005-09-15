@@ -31,14 +31,14 @@ WRITE16_HANDLER( gotcha_gfxbank_select_w );
 WRITE16_HANDLER( gotcha_gfxbank_w );
 WRITE16_HANDLER( gotcha_scroll_w );
 
-extern data16_t *gotcha_fgvideoram,*gotcha_bgvideoram;
+extern UINT16 *gotcha_fgvideoram,*gotcha_bgvideoram;
 
 
 
 static WRITE16_HANDLER( gotcha_lamps_w )
 {
 #if 0
-	usrintf_showmessage("%c%c%c%c %c%c%c%c %c%c%c%c",
+	ui_popup("%c%c%c%c %c%c%c%c %c%c%c%c",
 			(data & 0x001) ? 'R' : '-',
 			(data & 0x002) ? 'G' : '-',
 			(data & 0x004) ? 'B' : '-',
@@ -187,7 +187,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -200,7 +200,7 @@ static struct GfxLayout tilelayout =
 	16*16
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -213,7 +213,7 @@ static struct GfxLayout spritelayout =
 	16*16
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,   0x100, 32 },
 	{ REGION_GFX2, 0, &spritelayout, 0x000, 16 },

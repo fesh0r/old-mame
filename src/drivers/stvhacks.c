@@ -6,21 +6,70 @@ to be honest i think some of these cause more problems than they're worth ...
 
 #include "driver.h"
 #include "machine/eeprom.h"
+#include "cpu/sh2/sh2.h"
 
-extern data32_t *stv_workram_h;
-extern data32_t *stv_backupram;
+extern UINT32 *stv_workram_h;
+extern UINT32 *stv_backupram;
 
 DRIVER_INIT ( stv );
 
-/* Hack the boot vectors .. not right but allows several IC13 games (which fail the checksums before hacking) to boot */
-DRIVER_INIT( ic13 )
+/*
+IC-13 rom shifter routine,on 2000000-21fffff the game maps the rom bytes on the
+ODD (in every sense) bytes.This gets the IC-13 rom status to good and ends a emulation
+weird issue once and for all...
+We need to remove this and add the whole thing into the ROM loading structure...
+*/
+static void ic13_shifter(void)
 {
-	/* this is WRONG but works for some games */
-	data32_t *rom = (data32_t *)memory_region(REGION_USER1);
-	rom[0xf10/4] = (rom[0xf10/4] & 0xff000000)|((rom[0xf10/4]/2)&0x00ffffff);
-	rom[0xf20/4] = (rom[0xf20/4] & 0xff000000)|((rom[0xf20/4]/2)&0x00ffffff);
-	rom[0xf30/4] = (rom[0xf30/4] & 0xff000000)|((rom[0xf30/4]/2)&0x00ffffff);
+	UINT32 *rom = (UINT32 *)memory_region(REGION_USER1);
+	UINT32 i;
+	UINT32 *tmp = (UINT32*)malloc(0x80000*2);
 
+	for(i=(0);i<(0x100000-1);i+=8)
+	{
+		//printf("%08x\n",i);
+		tmp[((i)/4)+0] = rom[(i/2)/4]; /*0.0 -> 2.1 -> 4.2*/
+		tmp[((i)/4)+1] = rom[(i/2)/4]; /*1.0 -> 3.1 -> 5.2*/
+	}
+
+	for(i=(0);i<(0x100000-1);i+=8)
+	{
+		//printf("%08x\n",i);
+		tmp[(i/4)+0] = ((tmp[(i/4)+0] & 0xff000000) >> 8) | ((tmp[(i/4)+0] & 0x00ff0000) >> 16);
+		tmp[(i/4)+1] = ((tmp[(i/4)+1] & 0x0000ff00) << 8) | ((tmp[(i/4)+1] & 0x000000ff) >> 0);
+	}
+
+	for(i=(0);i<(0x100000-1);i+=4)
+	{
+		//printf("%08x\n",i);
+		rom[i/4] = tmp[(i)/4];
+	}
+
+	for(i=(0x300000);i<(0x400000-1);i+=8)
+	{
+		//printf("%08x\n",i);
+		tmp[((i-0x300000)/4)+0] = rom[(i/2)/4]; /*0.0 -> 2.1 -> 4.2*/
+		tmp[((i-0x300000)/4)+1] = rom[(i/2)/4]; /*1.0 -> 3.1 -> 5.2*/
+	}
+
+	for(i=(0);i<(0x100000-1);i+=8)
+	{
+		//printf("%08x\n",i);
+		tmp[(i/4)+0] = ((tmp[(i/4)+0] & 0xff000000) >> 8) | ((tmp[(i/4)+0] & 0x00ff0000) >> 16);
+		tmp[(i/4)+1] = ((tmp[(i/4)+1] & 0x0000ff00) << 8) | ((tmp[(i/4)+1] & 0x000000ff) >> 0);
+	}
+
+	for(i=(0x100000);i<(0x200000-1);i+=4)
+	{
+		//printf("%08x\n",i);
+		rom[i/4] = tmp[(i-0x100000)/4];
+	}
+	free(tmp);
+}
+
+DRIVER_INIT ( ic13 )
+{
+	ic13_shifter();
 	init_stv();
 }
 /*
@@ -44,7 +93,7 @@ EEPROM write ffff to address 3d
 EEPROM write ffff to address 3e
 EEPROM write ffff to address 3f
 */
-/*static data8_t stv_default_eeprom[128] = {
+/*static UINT8 stv_default_eeprom[128] = {
     0x53,0x45,0xff,0xff,0xff,0xff,0x3b,0xe2,
     0x00,0x00,0x00,0x00,0x00,0x02,0x01,0x00,
     0x01,0x01,0x00,0x00,0x00,0x00,0x00,0x08,
@@ -63,7 +112,7 @@ EEPROM write ffff to address 3f
     0xff,0xff,0xff,0xff
 };*/
 
-static data8_t shienryu_default_eeprom[128] = {
+static UINT8 shienryu_default_eeprom[128] = {
 	0x53,0x45,0x47,0x41,0x3b,0xe2,0x5e,0x09,
 	0x5e,0x09,0x00,0x00,0x00,0x00,0x00,0x02,
 	0x01,0x00,0x01,0x01,0x00,0x00,0x00,0x00,
@@ -82,7 +131,7 @@ static data8_t shienryu_default_eeprom[128] = {
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
 };
 
-static data8_t *stv_default_eeprom;
+static UINT8 *stv_default_eeprom;
 static int stv_default_eeprom_length;
 
 NVRAM_HANDLER( stv )
@@ -467,14 +516,14 @@ DRIVER_INIT(bakubaku)
 static READ32_HANDLER( groovef_hack1_r )
 {
 	if(activecpu_get_pc() == 0x6005e7e) stv_workram_h[0x0fffcc/4] = 0x00000000;
-//  usrintf_showmessage("1 %08x",activecpu_get_pc());
+//  ui_popup("1 %08x",activecpu_get_pc());
 	return stv_workram_h[0x0fffcc/4];
 }
 
 static READ32_HANDLER( groovef_hack2_r )
 {
 	if(activecpu_get_pc() == 0x6005e88) stv_workram_h[0x0ca6cc/4] = 0x00000000;
-//  usrintf_showmessage("2 %08x",activecpu_get_pc());
+//  ui_popup("2 %08x",activecpu_get_pc());
 	return stv_workram_h[0x0ca6cc/4];
 }
 
@@ -594,3 +643,241 @@ DRIVER_INIT( astrass )
 
 	init_ic13();
 }
+
+/* Treasure Hunt idle loop skipping */
+
+static READ32_HANDLER(thunt_speedup_r)
+{
+	if (activecpu_get_pc() == 0x0602A026) cpu_spinuntil_int();
+	return stv_workram_h[0x00031424/4];
+}
+
+static READ32_HANDLER(thunt_speedup2_r)
+{
+	if (activecpu_get_pc() == 0x06013EEC) cpu_spinuntil_int();
+	return stv_workram_h[0x00075958/4];
+}
+
+static void thunt_slave_speedup(UINT32 data)
+{
+	if (activecpu_get_pc() == 0x0602AAFA)
+		if ( (data & 0x00800000) == 0 )
+			cpunum_spinuntil_trigger(1, 1000);
+}
+
+DRIVER_INIT(thunt)
+{
+/*
+0602A024: MOV.L   @R6,R0    // 06031424
+0602A026: TST     R0,R0
+0602A028: BF      $0602A024
+*/
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x06031424, 0x06031427, 0, 0, thunt_speedup_r );
+
+/*
+06013EE8: MOV.L   @($10,PC),R0
+06013EEA: MOV.B   @R0,R0
+06013EEC: EXTU.B  R0,R0
+06013EEE: TST     R0,R0
+06013EF0: BT      $06013EF6
+06013EF2: RTS
+06013EF4: MOV     #$01,R0
+*/
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x06075958, 0x0607595b, 0, 0, thunt_speedup2_r );
+
+/*
+0602AAF8: MOV.B   @R11,R2
+0602AAFA: EXTU.B  R2,R2
+0602AAFC: AND     R13,R2
+0602AAFE: CMP/EQ  R13,R2
+0602AB00: BF      $0602AB28
+0602AB28: BRA     $0602AAF8
+*/
+
+	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf *)thunt_slave_speedup);
+
+	init_ic13();
+}
+
+static READ32_HANDLER(grdforce_speedup_r)
+{
+	if ( activecpu_get_pc() == 0x06041E34 ) cpu_spinuntil_time(TIME_IN_USEC(20));
+	return stv_workram_h[0x000ffc10/4];
+}
+
+
+DRIVER_INIT(grdforce)
+{
+/*
+06041E2C: MOV.L   @($03C8,GBR),R0
+06041E2E: JSR     R0
+06041E30: NOP
+06041A44: RTS
+06041A46: NOP
+06041E32: MOV.B   @($13,GBR),R0 //060ffc13
+06041E34: CMP/PZ  R0
+06041E36: BT      $06041E2C
+*/
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060ffc10, 0x060ffc13, 0, 0, grdforce_speedup_r );
+
+	init_stv();
+}
+
+static void batmanfr_slave_speedup( UINT32 data )
+{
+	if (activecpu_get_pc() == 0x060125be )
+		if ( (data & 0x00800000) == 0 )
+			cpunum_spinuntil_trigger(1, 1000);
+}
+
+
+DRIVER_INIT(batmanfr)
+{
+	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)batmanfr_slave_speedup );
+
+	init_stv();
+}
+
+static void colmns97_slave_speedup( UINT32 data )
+{
+	if (activecpu_get_pc() == 0x060298a4 )
+		if ( (data & 0x00800000) == 0 )
+			cpunum_spinuntil_trigger(1, 1000);
+}
+
+DRIVER_INIT(colmns97)
+{
+	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)colmns97_slave_speedup );
+
+	init_ic13();
+}
+
+
+static void winterht_slave_speedup( UINT32 data )
+{
+	if (activecpu_get_pc() == 0x0609ae50 )
+		if ( (data & 0x00800000) == 0 )
+			cpunum_spinuntil_trigger(1, 1000);
+}
+
+DRIVER_INIT(winterht)
+{
+	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)winterht_slave_speedup );
+
+	init_ic13();
+}
+
+static void seabass_slave_speedup( UINT32 data )
+{
+	if (activecpu_get_pc() == 0x060321f0 )
+		if ( (data & 0x00800000) == 0 )
+			cpunum_spinuntil_trigger(1, 1000);
+}
+
+DRIVER_INIT(seabass)
+{
+	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)seabass_slave_speedup );
+
+	init_ic13();
+}
+
+static void vfremix_slave_speedup( UINT32 data )
+{
+	if (activecpu_get_pc() == 0x0604C334 )
+		if ( (data & 0x00800000) == 0 )
+			cpunum_spinuntil_trigger(1, 1000);
+}
+
+static READ32_HANDLER(vfremix_speedup_r)
+{
+	if ( activecpu_get_pc() == 0x0602c30e ) cpu_spinuntil_int();
+	return stv_workram_h[0x00074f98/4];
+}
+
+DRIVER_INIT(vfremix)
+{
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x06074f98, 0x06074f9b, 0, 0, vfremix_speedup_r );
+	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)vfremix_slave_speedup );
+
+	init_ic13();
+}
+
+static READ32_HANDLER(diehard_speedup_r)
+{
+	if ( activecpu_get_pc() == 0x06027c9a ) cpu_spinuntil_int();
+	return stv_workram_h[0x000986ac/4];
+}
+
+static READ32_HANDLER(diehard_slave_speedup_r)
+{
+	if ( activecpu_get_pc() == 0x060051f4 )
+		if (stv_workram_h[0x000e0be0/4] == 0)
+			cpunum_spinuntil_trigger(1, 1000);
+
+	return stv_workram_h[0x000986ac/4];
+}
+
+DRIVER_INIT(diehard)
+{
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060986ac, 0x060986af, 0, 0, diehard_speedup_r );
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060e0be0, 0x060e0be3, 0, 0, diehard_slave_speedup_r );
+
+	init_ic13();
+}
+
+static READ32_HANDLER(sss_speedup_r)
+{
+	if ( activecpu_get_pc() == 0x0602639a ) cpu_spinuntil_int();
+	return stv_workram_h[0x000ffc10/4];
+}
+
+static void sss_slave_speedup( UINT32 data )
+{
+	if (activecpu_get_pc() == 0x06028cd8 )
+		if ( (data & 0x00800000) == 0 )
+			cpunum_spinuntil_trigger(1, 1000);
+}
+
+DRIVER_INIT(sss)
+{
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060ffc10, 0x060ffc13, 0, 0, sss_speedup_r );
+	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)sss_slave_speedup );
+
+	init_ic13();
+}
+
+static READ32_HANDLER(othellos_speedup_r)
+{
+	if ( activecpu_get_pc() == 0x0602bcc0 ) cpu_spinuntil_time(TIME_IN_USEC(20));
+	return stv_workram_h[0x000ffc10/4];
+}
+
+static void othellos_slave_speedup( UINT32 data )
+{
+	if (activecpu_get_pc() == 0x0602d390 )
+		if ( (data & 0x00800000) == 0 )
+			cpunum_spinuntil_trigger(1, 1000);
+}
+
+DRIVER_INIT(othellos)
+{
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060ffc10, 0x060ffc13, 0, 0, othellos_speedup_r );
+	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)othellos_slave_speedup );
+
+	init_stv();
+}
+
+static void sassisu_slave_speedup( UINT32 data )
+{
+	if ( activecpu_get_pc() == 0x060710C0 )
+		if ( (data & 0x00800000) == 0 )
+			cpunum_spinuntil_trigger(1, 1000);
+}
+
+DRIVER_INIT(sassisu)
+{
+	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)sassisu_slave_speedup );
+
+	init_ic13();
+}
+

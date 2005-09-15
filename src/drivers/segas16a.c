@@ -145,7 +145,7 @@ Tetris         -         -         -         -         EPR12169  EPR12170  -    
  *
  *************************************/
 
-static data16_t *workram;
+static UINT16 *workram;
 
 static UINT8 video_control;
 static UINT8 mj_input_num;
@@ -1487,7 +1487,7 @@ static struct YM2151interface ym2151_interface =
  *
  *************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -1499,7 +1499,7 @@ static struct GfxLayout charlayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,	0, 1024 },
 	{ -1 }

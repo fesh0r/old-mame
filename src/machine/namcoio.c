@@ -486,7 +486,7 @@ void namcoio_50XX_write(int chipnum,int data)
 	}
 }
 
-data8_t namcoio_50XX_read(int chipnum)
+UINT8 namcoio_50XX_read(int chipnum)
 {
 	int chip = (chipnum < 4) ? 0 : 1;
 #if VERBOSE
@@ -592,7 +592,7 @@ void namcoio_51XX_write(int chip,int data)
 
 				{
 					/* kludge for a possible bug in Xevious */
-					extern const struct GameDriver driver_xevious;
+					extern const game_driver driver_xevious;
 
 					if (Machine->gamedrv == &driver_xevious || Machine->gamedrv->clone_of == &driver_xevious)
 					{
@@ -648,7 +648,7 @@ static int joy_map[16] =
 {	 0xf, 0xe, 0xd, 0x5, 0xc, 0x9, 0x7, 0x6, 0xb, 0x3, 0xa, 0x4, 0x1, 0x2, 0x0, 0x8 };
 
 
-data8_t namcoio_51XX_read(int chip)
+UINT8 namcoio_51XX_read(int chip)
 {
 #if VERBOSE
 	logerror("%04x: custom 51XX read\n",activecpu_get_pc());
@@ -801,7 +801,7 @@ data8_t namcoio_51XX_read(int chip)
 /***************************************************************************/
 
 
-data8_t namcoio_ram[MAX_NAMCOIO * 16];
+UINT8 namcoio_ram[MAX_NAMCOIO * 16];
 
 #define IORAM_READ(offset) (namcoio_ram[chip * 0x10 + (offset)] & 0x0f)
 #define IORAM_WRITE(offset,data) {namcoio_ram[chip * 0x10 + (offset)] = (data) & 0x0f;}
@@ -814,7 +814,7 @@ static void handle_coins(int chip,int swap)
 	int credit_sub = 0;
 	int button;
 
-//usrintf_showmessage("%x %x %x %x %x %x %x %x",IORAM_READ(8),IORAM_READ(9),IORAM_READ(10),IORAM_READ(11),IORAM_READ(12),IORAM_READ(13),IORAM_READ(14),IORAM_READ(15));
+//ui_popup("%x %x %x %x %x %x %x %x",IORAM_READ(8),IORAM_READ(9),IORAM_READ(10),IORAM_READ(11),IORAM_READ(12),IORAM_READ(13),IORAM_READ(14),IORAM_READ(15));
 
 	val = ~READ_PORT(0);	// pins 38-41
 	toggled = val ^ io[chip].lastcoins;
@@ -899,7 +899,7 @@ static void namco_customio_56XX_run(int chip)
 			IORAM_WRITE(2, ~READ_PORT(2));	// pins 26-29
 			IORAM_WRITE(3, ~READ_PORT(3));	// pins 30-33
 
-//usrintf_showmessage("%x %x %x %x %x %x %x %x",IORAM_READ(8),IORAM_READ(9),IORAM_READ(10),IORAM_READ(11),IORAM_READ(12),IORAM_READ(13),IORAM_READ(14),IORAM_READ(15));
+//ui_popup("%x %x %x %x %x %x %x %x",IORAM_READ(8),IORAM_READ(9),IORAM_READ(10),IORAM_READ(11),IORAM_READ(12),IORAM_READ(13),IORAM_READ(14),IORAM_READ(15));
 
 			WRITE_PORT(0,IORAM_READ(9));	// output to pins 13-16 (motos, pacnpal, gaplus)
 			WRITE_PORT(1,IORAM_READ(10));	// output to pins 17-20 (gaplus)
@@ -1006,7 +1006,7 @@ static void namco_customio_58XX_run(int chip)
 			IORAM_WRITE(6, ~READ_PORT(2));	// pins 26-29
 			IORAM_WRITE(7, ~READ_PORT(3));	// pins 30-33
 
-//usrintf_showmessage("%x %x %x %x %x %x %x %x",IORAM_READ(8),IORAM_READ(9),IORAM_READ(10),IORAM_READ(11),IORAM_READ(12),IORAM_READ(13),IORAM_READ(14),IORAM_READ(15));
+//ui_popup("%x %x %x %x %x %x %x %x",IORAM_READ(8),IORAM_READ(9),IORAM_READ(10),IORAM_READ(11),IORAM_READ(12),IORAM_READ(13),IORAM_READ(14),IORAM_READ(15));
 
 			WRITE_PORT(0,IORAM_READ(9));	// output to pins 13-16 (toypop)
 			WRITE_PORT(1,IORAM_READ(10));	// output to pins 17-20 (toypop)
@@ -1220,7 +1220,7 @@ void namco_06xx_init(int chipnum, int cpu,
 
 
 
-static data8_t namcoio_53XX_digdug_read(int chip)
+static UINT8 namcoio_53XX_digdug_read(int chip)
 {
 #if VERBOSE
 	logerror("%04x: custom 53XX read\n",activecpu_get_pc());
@@ -1235,7 +1235,7 @@ static data8_t namcoio_53XX_digdug_read(int chip)
 }
 
 
-static data8_t namcoio_53XX_polepos_read(int chip)
+static UINT8 namcoio_53XX_polepos_read(int chip)
 {
 #if VERBOSE
 	logerror("%04x: custom 53XX read\n",activecpu_get_pc());
@@ -1250,7 +1250,7 @@ static data8_t namcoio_53XX_polepos_read(int chip)
 }
 
 
-static data8_t namco_06xx_data_read(int chipnum)
+static UINT8 namco_06xx_data_read(int chipnum)
 {
 	switch (io[chipnum].type)
 	{
@@ -1264,7 +1264,7 @@ static data8_t namco_06xx_data_read(int chipnum)
 	}
 }
 
-static void namco_06xx_data_write(int chipnum,data8_t data)
+static void namco_06xx_data_write(int chipnum,UINT8 data)
 {
 	switch (io[chipnum].type)
 	{
@@ -1278,7 +1278,7 @@ static void namco_06xx_data_write(int chipnum,data8_t data)
 	}
 }
 
-static data8_t namco_06xx_data_r(int chip,int offset)
+static UINT8 namco_06xx_data_r(int chip,int offset)
 {
 #if VERBOSE
 	logerror("%04x: custom IO read offset %d\n",activecpu_get_pc(),offset);
@@ -1327,7 +1327,7 @@ static void namco_06xx_data_w(int chip,int offset,int data)
 }
 
 
-static data8_t namco_06xx_ctrl_r(int chip)
+static UINT8 namco_06xx_ctrl_r(int chip)
 {
 	return customio_command[chip];
 }

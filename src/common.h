@@ -12,6 +12,8 @@
 #define __COMMON_H__
 
 #include "hash.h"
+#include "xmlfile.h"
+#include "chd.h"
 
 
 
@@ -21,25 +23,7 @@
 
 ***************************************************************************/
 
-struct mame_bitmap
-{
-	int width,height;	/* width and height of the bitmap */
-	int depth;			/* bits per pixel */
-	void **line;		/* pointers to the start of each line - can be UINT8 **, UINT16 ** or UINT32 ** */
-
-	/* alternate way of accessing the pixels */
-	void *base;			/* pointer to pixel (0,0) (adjusted for padding) */
-	int rowpixels;		/* pixels per row (including padding) */
-	int rowbytes;		/* bytes per row (including padding) */
-
-	/* functions to render in the correct orientation */
-	void (*plot)(struct mame_bitmap *bitmap,int x,int y,pen_t pen);
-	pen_t (*read)(struct mame_bitmap *bitmap,int x,int y);
-	void (*plot_box)(struct mame_bitmap *bitmap,int x,int y,int width,int height,pen_t pen);
-};
-
-
-struct RomModule
+struct _rom_entry
 {
 	const char *_name;	/* name of the file to load */
 	UINT32 _offset;		/* offset to load it to */
@@ -47,17 +31,19 @@ struct RomModule
 	UINT32 _flags;		/* flags */
 	const char *_hashdata; /* hashing informations (checksums) */
 };
+typedef struct _rom_entry rom_entry;
 
 
-struct SystemBios
+struct _bios_entry
 {
 	int value;			/* value of mask to apply to ROM_BIOSFLAGS is chosen */
 	const char *_name;	/* name of the bios, e.g "default","japan" */
 	const char *_description;	/* long name of the bios, e.g "Europe MVS (Ver. 2)" */
 };
+typedef struct _bios_entry bios_entry;
 
 
-struct rom_load_data
+struct _rom_load_data
 {
 	int warnings;				/* warning count during processing */
 	int errors;				/* error count during processing */
@@ -73,6 +59,7 @@ struct rom_load_data
 	char errorbuf[4096];			/* accumulated errors */
 	UINT8 tempbuf[65536];			/* temporary buffer */
 };
+/* In mamecore.h: typedef struct _rom_load_data rom_load_data; */
 
 
 
@@ -289,7 +276,7 @@ enum
 ***************************************************************************/
 
 /* ----- start/stop macros ----- */
-#define ROM_START(name)								static const struct RomModule rom_##name[] = {
+#define ROM_START(name)								static const rom_entry rom_##name[] = {
 #define ROM_END                                      { ROMENTRY_END, 0, 0, 0, NULL } };
 
 /* ----- ROM region macros ----- */
@@ -349,7 +336,7 @@ enum
 #define BIOSENTRY_ISEND(b)		((b)->_name == NULL)
 
 /* ----- start/stop macros ----- */
-#define SYSTEM_BIOS_START(name)			static const struct SystemBios system_bios_##name[] = {
+#define SYSTEM_BIOS_START(name)			static const bios_entry system_bios_##name[] = {
 #define SYSTEM_BIOS_END					{ 0, NULL } };
 
 /* ----- ROM region macros ----- */
@@ -391,6 +378,8 @@ int new_memory_region(int num, size_t length, UINT32 flags);
 void free_memory_region(int num);
 
 /* common coin counter helpers */
+void counters_load(int config_type, xml_data_node *parentnode);
+void counters_save(int config_type, xml_data_node *parentnode);
 void coin_counter_reset(void);
 void coin_counter_w(int num,int on);
 void coin_lockout_w(int num,int on);
@@ -398,16 +387,16 @@ void coin_lockout_global_w(int on);  /* Locks out all coin inputs */
 
 /* generic NVRAM handler */
 extern size_t generic_nvram_size;
-extern data8_t *generic_nvram;
-extern data16_t *generic_nvram16;
-extern data32_t *generic_nvram32;
+extern UINT8 *generic_nvram;
+extern UINT16 *generic_nvram16;
+extern UINT32 *generic_nvram32;
 void nvram_handler_generic_0fill(mame_file *file, int read_or_write);
 void nvram_handler_generic_1fill(mame_file *file, int read_or_write);
 
 /* bitmap allocation */
-struct mame_bitmap *bitmap_alloc(int width,int height);
-struct mame_bitmap *bitmap_alloc_depth(int width,int height,int depth);
-void bitmap_free(struct mame_bitmap *bitmap);
+mame_bitmap *bitmap_alloc(int width,int height);
+mame_bitmap *bitmap_alloc_depth(int width,int height,int depth);
+void bitmap_free(mame_bitmap *bitmap);
 
 /* automatic resource management */
 void begin_resource_tracking(void);
@@ -419,10 +408,10 @@ INLINE int get_resource_tag(void)
 }
 
 /* automatically-freeing memory */
-void *auto_malloc(size_t size);
-char *auto_strdup(const char *str);
-struct mame_bitmap *auto_bitmap_alloc(int width,int height);
-struct mame_bitmap *auto_bitmap_alloc_depth(int width,int height,int depth);
+void *auto_malloc(size_t size) ATTR_MALLOC;
+char *auto_strdup(const char *str) ATTR_MALLOC;
+mame_bitmap *auto_bitmap_alloc(int width,int height);
+mame_bitmap *auto_bitmap_alloc_depth(int width,int height,int depth);
 
 /*
   Save a screen shot of the game display. It is suggested to use the core
@@ -432,22 +421,25 @@ struct mame_bitmap *auto_bitmap_alloc_depth(int width,int height,int depth);
   file name. This isn't scrictly necessary, so you can just call
   save_screen_snapshot() to let the core automatically pick a default name.
 */
-void save_screen_snapshot_as(mame_file *fp, struct mame_bitmap *bitmap);
-void save_screen_snapshot(struct mame_bitmap *bitmap);
+void save_screen_snapshot_as(mame_file *fp, mame_bitmap *bitmap);
+void save_screen_snapshot(mame_bitmap *bitmap);
+
+/* Movie recording */
+void record_movie_toggle(void);
+void record_movie_stop(void);
+void record_movie_frame(mame_bitmap *bitmap);
 
 /* disk handling */
-struct chd_file *get_disk_handle(int diskindex);
+chd_file *get_disk_handle(int diskindex);
 
 /* ROM processing */
-int rom_load(const struct RomModule *romp);
-const struct RomModule *rom_first_region(const struct GameDriver *drv);
-const struct RomModule *rom_next_region(const struct RomModule *romp);
-const struct RomModule *rom_first_file(const struct RomModule *romp);
-const struct RomModule *rom_next_file(const struct RomModule *romp);
-const struct RomModule *rom_first_chunk(const struct RomModule *romp);
-const struct RomModule *rom_next_chunk(const struct RomModule *romp);
-
-void printromlist(const struct RomModule *romp,const char *name);
+int rom_load(const rom_entry *romp);
+const rom_entry *rom_first_region(const game_driver *drv);
+const rom_entry *rom_next_region(const rom_entry *romp);
+const rom_entry *rom_first_file(const rom_entry *romp);
+const rom_entry *rom_next_file(const rom_entry *romp);
+const rom_entry *rom_first_chunk(const rom_entry *romp);
+const rom_entry *rom_next_chunk(const rom_entry *romp);
 
 
 

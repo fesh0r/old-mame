@@ -33,8 +33,8 @@ The Sen Jin protection supplies some 68k code seen in the 2760-29cf range
 
 /* Variables defined in vidhrdw: */
 
-extern data16_t *afega_vram_0, *afega_scroll_0;
-extern data16_t *afega_vram_1, *afega_scroll_1;
+extern UINT16 *afega_vram_0, *afega_scroll_0;
+extern UINT16 *afega_vram_1, *afega_scroll_1;
 
 /* Functions defined in vidhrdw: */
 
@@ -572,7 +572,7 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static struct GfxLayout layout_8x8x4 =
+static gfx_layout layout_8x8x4 =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -583,7 +583,7 @@ static struct GfxLayout layout_8x8x4 =
 	8*8*4
 };
 
-static struct GfxLayout layout_16x16x4 =
+static gfx_layout layout_16x16x4 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -594,7 +594,7 @@ static struct GfxLayout layout_16x16x4 =
 	16*16*4
 };
 
-static struct GfxLayout layout_16x16x8 =
+static gfx_layout layout_16x16x8 =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -606,7 +606,7 @@ static struct GfxLayout layout_16x16x8 =
 };
 
 
-static struct GfxLayout layout_16x16x4_swapped =
+static gfx_layout layout_16x16x4_swapped =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -617,7 +617,7 @@ static struct GfxLayout layout_16x16x4_swapped =
 	16*16*4
 };
 
-static struct GfxDecodeInfo grdnstrm_gfxdecodeinfo[] =
+static gfx_decode grdnstrm_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_16x16x4, 256*1, 16 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_16x16x8, 256*3, 16 }, // [1] Layer 0
@@ -625,7 +625,7 @@ static struct GfxDecodeInfo grdnstrm_gfxdecodeinfo[] =
 	{ -1 }
 };
 
-static struct GfxDecodeInfo stagger1_gfxdecodeinfo[] =
+static gfx_decode stagger1_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_16x16x4, 256*1, 16 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_16x16x4,   256*0, 16 }, // [1] Layer 0
@@ -633,7 +633,7 @@ static struct GfxDecodeInfo stagger1_gfxdecodeinfo[] =
 	{ -1 }
 };
 
-static struct GfxDecodeInfo redhawkb_gfxdecodeinfo[] =
+static gfx_decode redhawkb_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_16x16x4_swapped,   256*1, 16 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_16x16x4_swapped,   256*0, 16 }, // [1] Layer 0
@@ -790,9 +790,9 @@ static void decryptcode( int a23, int a22, int a21, int a20, int a19, int a18, i
 	int a11, int a10, int a9, int a8, int a7, int a6, int a5, int a4, int a3, int a2, int a1, int a0 )
 {
 	int i;
-	data8_t *RAM = memory_region( REGION_CPU1 );
+	UINT8 *RAM = memory_region( REGION_CPU1 );
 	size_t  size = memory_region_length( REGION_CPU1 );
-	data8_t *buffer = malloc( size );
+	UINT8 *buffer = malloc( size );
 
 	if( buffer )
 	{

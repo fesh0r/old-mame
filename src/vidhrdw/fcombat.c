@@ -20,7 +20,7 @@ int fcombat_sv;
 #define VISIBLE_Y_MAX			(30*8)
 
 
-struct tilemap *bgmap;
+tilemap *bgmap;
 
 static void get_bg_tile_info(int tile_index)
 {
@@ -143,7 +143,7 @@ WRITE8_HANDLER( fcombat_videoreg_w )
 
 	/* bits 6-7 sprite lookup table bank */
 	sprite_palette = 0;//(data & 0xc0) >> 6;
-	//usrintf_showmessage("%08x",data);
+	//ui_popup("%08x",data);
 }
 
 
@@ -175,7 +175,7 @@ tilemap_mark_all_tiles_dirty(bgmap);
 		int code2 = code;
 
 		int color = ((flags >> 1) & 0x03) | ((code >> 5) & 0x04) | (code & 0x08) | (sprite_palette * 16);
-				const struct GfxElement *gfx =  Machine->gfx[1];
+				const gfx_element *gfx =  Machine->gfx[1];
 
 		if (fcombat_cocktail_flip)
 		{

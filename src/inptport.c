@@ -91,6 +91,7 @@
 #include <math.h>
 #include "driver.h"
 #include "config.h"
+#include "xmlfile.h"
 
 #ifdef MESS
 #include "inputx.h"
@@ -114,8 +115,6 @@ extern void *playback;
  *
  *************************************/
 
-#define MAX_BITS_PER_PORT	32
-
 #define DIGITAL_JOYSTICKS_PER_PLAYER	3
 
 /* these constants must match the order of the joystick directions in the IPT definition */
@@ -137,18 +136,10 @@ extern void *playback;
  *
  *************************************/
 
-struct InputBitInfo
+struct _analog_port_info
 {
-	struct InputPort *	port;		/* port for this input */
-	UINT8				impulse;	/* counter for impulse controls */
-	UINT8				last;		/* were we pressed last time? */
-};
-
-
-struct AnalogPortInfo
-{
-	struct AnalogPortInfo *next;	/* linked list */
-	struct InputPort *	port;		/* pointer to the input port referenced */
+	struct _analog_port_info *next;	/* linked list */
+	input_port_entry *	port;		/* pointer to the input port referenced */
 	INT32				accum;		/* accumulated value (including relative adjustments) */
 	INT32				previous;	/* previous adjusted value */
 	INT32				minimum;	/* minimum adjusted value */
@@ -164,21 +155,47 @@ struct AnalogPortInfo
 	UINT8				interpolate;/* should we do linear interpolation for mid-frame reads? */
 	UINT8				lastdigital;/* was the last modification caused by a digital form? */
 };
+typedef struct _analog_port_info analog_port_info;
 
 
-struct DigitalJoystickInfo
+struct _input_bit_info
 {
-	struct InputPort *	port[4];	/* port for up,down,left,right respectively */
+	input_port_entry *	port;		/* port for this input */
+	UINT8				impulse;	/* counter for impulse controls */
+	UINT8				last;		/* were we pressed last time? */
+};
+typedef struct _input_bit_info input_bit_info;
+
+
+struct _input_port_info
+{
+	const char *		tag;		/* tag for this port */
+	UINT32				defvalue;	/* default value of all the bits */
+	UINT32				analog;		/* value from analog inputs */
+	UINT32				analogmask;	/* mask of all analog inputs */
+	UINT32				digital;	/* value from digital inputs */
+	UINT32				vblank;		/* value of all IPT_VBLANK bits */
+	UINT32				playback;	/* current playback override */
+	input_bit_info 		bit[MAX_BITS_PER_PORT]; /* info about each bit in the port */
+	analog_port_info *	analoginfo;	/* pointer to linked list of analog port info */
+};
+typedef struct _input_port_info input_port_info;
+
+
+struct _digital_joystick_info
+{
+	input_port_entry *	port[4];	/* port for up,down,left,right respectively */
 	UINT8				inuse;		/* is this joystick used? */
 	UINT8				current;	/* current value */
 	UINT8				current4way;/* current 4-way value */
 	UINT8				previous;	/* previous value */
 };
+typedef struct _digital_joystick_info digital_joystick_info;
 
 
-struct IptInitParams
+struct _input_port_init_params
 {
-	struct InputPort *	ports;		/* base of the port array */
+	input_port_entry *	ports;		/* base of the port array */
 	int					max_ports;	/* maximum number of ports we can support */
 	int					current_port;/* current port index */
 };
@@ -208,19 +225,16 @@ struct IptInitParams
  *************************************/
 
 /* current value of all the ports */
-static UINT32 input_port_value[MAX_INPUT_PORTS];
-static UINT32 input_port_vblank[MAX_INPUT_PORTS];
-static const char *input_port_tag[MAX_INPUT_PORTS];
-
-/* tracking information for each port bit */
-static struct InputBitInfo bit_info[MAX_INPUT_PORTS][MAX_BITS_PER_PORT];
+static input_port_info port_info[MAX_INPUT_PORTS];
 
 /* additiona tracking information for special types of controls */
-static struct AnalogPortInfo *analog_info[MAX_INPUT_PORTS];
-static struct DigitalJoystickInfo joystick_info[MAX_PLAYERS][DIGITAL_JOYSTICKS_PER_PLAYER];
+static digital_joystick_info joystick_info[MAX_PLAYERS][DIGITAL_JOYSTICKS_PER_PLAYER];
 
 /* memory for UI keys */
 static UINT8 ui_memory[__ipt_max];
+
+/* XML attributes for the different types */
+static const char *seqtypestrings[] = { "standard", "decrement", "increment" };
 
 
 
@@ -276,7 +290,7 @@ static const read32_handler port_handler32[] =
  *
  *************************************/
 
-const char *inptport_default_strings[] =
+const char *input_port_default_strings[] =
 {
 	"Off",
 	"On",
@@ -402,7 +416,7 @@ const char *inptport_default_strings[] =
 #define INPUT_PORT_ANALOG_DEF(player_,group_,type_,name_,seq_,decseq_,incseq_) \
 	{ IPT_##type_, group_, (player_ == 0) ? player_ : (player_) - 1, (player_ == 0) ? #type_ : ("P" #player_ "_" #type_), name_, seq_, incseq_, decseq_ },
 
-static const struct InputPortDefinition inputport_list_defaults[] =
+static const input_port_default_entry default_ports_builtin[] =
 {
 	INPUT_PORT_DIGITAL_DEF( 1, IPG_PLAYER1,	JOYSTICK_UP,		"P1 Up",				SEQ_DEF_3(KEYCODE_UP, CODE_OR, JOYCODE_1_UP) )
 	INPUT_PORT_DIGITAL_DEF( 1, IPG_PLAYER1,	JOYSTICK_DOWN,      "P1 Down",				SEQ_DEF_3(KEYCODE_DOWN, CODE_OR, JOYCODE_1_DOWN) )
@@ -511,7 +525,6 @@ static const struct InputPortDefinition inputport_list_defaults[] =
 	INPUT_PORT_DIGITAL_DEF( 2, IPG_PLAYER2,	MAHJONG_FLIP_FLOP,  "P2 Mahjong Flip Flop",	SEQ_DEF_0 )
 	INPUT_PORT_DIGITAL_DEF( 2, IPG_PLAYER2,	MAHJONG_BIG,        "P2 Mahjong Big",       SEQ_DEF_0 )
 	INPUT_PORT_DIGITAL_DEF( 2, IPG_PLAYER2,	MAHJONG_SMALL,      "P2 Mahjong Small",     SEQ_DEF_0 )
-
 
 	INPUT_PORT_DIGITAL_DEF( 3, IPG_PLAYER3,	JOYSTICK_UP,		"P3 Up",				SEQ_DEF_3(KEYCODE_I, CODE_OR, JOYCODE_3_UP) )
 	INPUT_PORT_DIGITAL_DEF( 3, IPG_PLAYER3,	JOYSTICK_DOWN,      "P3 Down",    			SEQ_DEF_3(KEYCODE_K, CODE_OR, JOYCODE_3_DOWN) )
@@ -848,7 +861,8 @@ static const struct InputPortDefinition inputport_list_defaults[] =
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_FRAMESKIP_INC,	"Frameskip Inc",		SEQ_DEF_1(KEYCODE_F9) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_THROTTLE,		"Throttle",				SEQ_DEF_1(KEYCODE_F10) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_SHOW_FPS,		"Show FPS",				SEQ_DEF_5(KEYCODE_F11, CODE_NOT, KEYCODE_LCONTROL, CODE_NOT, KEYCODE_LSHIFT) )
-	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_SNAPSHOT,		"Save Snapshot",		SEQ_DEF_1(KEYCODE_F12) )
+	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_SNAPSHOT,		"Save Snapshot",		SEQ_DEF_3(KEYCODE_F12, CODE_NOT, KEYCODE_LSHIFT) )
+	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_RECORD_MOVIE,	"Record Movie",			SEQ_DEF_2(KEYCODE_F12, KEYCODE_LSHIFT) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_TOGGLE_CHEAT,	"Toggle Cheat",			SEQ_DEF_1(KEYCODE_F6) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_UP,				"UI Up",				SEQ_DEF_3(KEYCODE_UP, CODE_OR, JOYCODE_1_UP) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_DOWN,			"UI Down",				SEQ_DEF_3(KEYCODE_DOWN, CODE_OR, JOYCODE_1_DOWN) )
@@ -902,10 +916,11 @@ static const struct InputPortDefinition inputport_list_defaults[] =
 };
 
 
-static struct InputPortDefinition inputport_list[sizeof(inputport_list_defaults) / sizeof(inputport_list_defaults[0])];
-static struct InputPortDefinition inputport_list_backup[sizeof(inputport_list_defaults) / sizeof(inputport_list_defaults[0])];
-static const int inputport_count = sizeof(inputport_list_defaults) / sizeof(inputport_list_defaults[0]);
-static struct InputPortDefinition *inputport_list_lookup[__ipt_max][MAX_PLAYERS];
+static input_port_default_entry default_ports[ARRAY_LENGTH(default_ports_builtin)];
+static input_port_default_entry default_ports_backup[ARRAY_LENGTH(default_ports_builtin)];
+static const int input_port_count = ARRAY_LENGTH(default_ports_builtin);
+static int default_ports_lookup[__ipt_max][MAX_PLAYERS];
+
 
 
 /*************************************
@@ -914,7 +929,6 @@ static struct InputPortDefinition *inputport_list_lookup[__ipt_max][MAX_PLAYERS]
  *
  *************************************/
 
-static void inputport_init(void);
 static void update_digital_joysticks(void);
 static void update_analog_port(int port);
 static void interpolate_analog_port(int port);
@@ -923,54 +937,64 @@ static void interpolate_analog_port(int port);
 
 /*************************************
  *
- *  Settings save/load frontend
+ *  Input port initialize
  *
  *************************************/
 
-int load_input_port_settings(void)
+int input_port_init(void (*construct_ipt)(input_port_init_params *))
 {
-	int loaded, ipnum;
+	int ipnum, player;
 
 	/* start with the raw defaults and ask the OSD to customize them in the backup array */
-	memcpy(inputport_list_backup, inputport_list_defaults, sizeof(inputport_list_backup));
-	osd_customize_inputport_list(inputport_list_backup);
+	memcpy(default_ports_backup, default_ports_builtin, sizeof(default_ports_backup));
+	osd_customize_inputport_list(default_ports_backup);
 
-	/* load the controller-specific info -- note that even though we are still modifying */
-	/* the inputport_list_backup, token_to_port_type relies on inputport_list being valid */
-	memcpy(inputport_list, inputport_list_backup, sizeof(inputport_list));
-	if (options.controller != NULL)
+	/* propogate these changes forward to the final input list */
+	memcpy(default_ports, default_ports_backup, sizeof(default_ports));
+
+	/* make a lookup table mapping type/player to the default port list entry */
+	for (ipnum = 0; ipnum < __ipt_max; ipnum++)
+		for (player = 0; player < MAX_PLAYERS; player++)
+			default_ports_lookup[ipnum][player] = -1;
+	for (ipnum = 0; default_ports[ipnum].type != IPT_END; ipnum++)
+		default_ports_lookup[default_ports[ipnum].type][default_ports[ipnum].player] = ipnum;
+
+	/* reset the port info */
+	memset(port_info, 0, sizeof(port_info));
+
+	/* if we have inputs, process them now */
+	if (construct_ipt)
 	{
-		loaded = config_load_controller(options.controller, inputport_list_backup);
-		if (!loaded)
-			osd_die("Could not load controller file %s.cfg\n", options.controller);
+		input_port_entry *port;
+		int portnum;
+
+		/* allocate input ports */
+		Machine->input_ports = input_port_allocate(construct_ipt);
+		if (!Machine->input_ports)
+			return 1;
+
+		/* allocate default input ports */
+		Machine->input_ports_default = input_port_allocate(construct_ipt);
+		if (!Machine->input_ports_default)
+			return 1;
+
+		/* identify all the tagged ports up front so the memory system can access them */
+		portnum = 0;
+		for (port = Machine->input_ports; port->type != IPT_END; port++)
+			if (port->type == IPT_PORT)
+				port_info[portnum++].tag = port->start.tag;
+
+		/* look up all the tags referenced in conditions */
+		for (port = Machine->input_ports; port->type != IPT_END; port++)
+			if (port->condition.tag)
+			{
+				int tag = port_tag_to_index(port->condition.tag);
+				if (tag == -1)
+					osd_die("Conditional port references invalid tag '%s'", port->condition.tag);
+				port->condition.portnum = tag;
+			}
 	}
-
-	/* propogate that forward to the live list and apply the config on top of that */
-	memcpy(inputport_list, inputport_list_backup, sizeof(inputport_list));
-	config_load_default(inputport_list_backup, inputport_list);
-
-	/* now load the game-specific info */
-	loaded = config_load(Machine->input_ports_default, Machine->input_ports);
-
-	/* initialize the various port states */
-	inputport_init();
-
-	/* fill lookup table */
-	memset(inputport_list_lookup, 0, sizeof(inputport_list_lookup));
-	for (ipnum = 0; inputport_list[ipnum].type != IPT_END; ipnum++)
-		inputport_list_lookup[inputport_list[ipnum].type][inputport_list[ipnum].player] = &inputport_list[ipnum];
-
-	/* if we didn't find a saved config, return 0 so the main core knows that it */
-	/* is the first time the game is run and it should diplay the disclaimer. */
-	return loaded;
-}
-
-
-void save_input_port_settings(void)
-{
-	/* save the default config and the game-specific config */
-	config_save_default(inputport_list_backup, inputport_list);
-	config_save(Machine->input_ports_default, Machine->input_ports);
+	return 0;
 }
 
 
@@ -981,19 +1005,18 @@ void save_input_port_settings(void)
  *
  *************************************/
 
-static void inputport_init(void)
+static void input_port_postload(void)
 {
-	int portnum = -1, bitnum = 0;
-	struct InputPort *port;
+	input_port_entry *port;
+	int portnum, bitnum;
 	UINT32 mask;
 
 	/* reset the pointers */
-	memset(&input_port_tag, 0, sizeof(input_port_tag));
-	memset(&bit_info, 0, sizeof(bit_info));
-	memset(&analog_info, 0, sizeof(analog_info));
 	memset(&joystick_info, 0, sizeof(joystick_info));
 
 	/* loop over the ports and identify all the analog inputs */
+	portnum = -1;
+	bitnum = 0;
 	for (port = Machine->input_ports; port->type != IPT_END; port++)
 	{
 		/* if this is IPT_PORT, increment the port number */
@@ -1001,7 +1024,6 @@ static void inputport_init(void)
 		{
 			portnum++;
 			bitnum = 0;
-			input_port_tag[portnum] = port->start.tag;
 		}
 
 		/* if this is not a DIP setting or config setting, add it to the list */
@@ -1016,14 +1038,14 @@ static void inputport_init(void)
 				osd_die("Error in InputPort definition: too many bits for a port (%d max)\n", MAX_BITS_PER_PORT);
 
 			/* fill in the bit info */
-			bit_info[portnum][bitnum].port = port;
-			bit_info[portnum][bitnum].impulse = 0;
-			bit_info[portnum][bitnum++].last = 0;
+			port_info[portnum].bit[bitnum].port = port;
+			port_info[portnum].bit[bitnum].impulse = 0;
+			port_info[portnum].bit[bitnum++].last = 0;
 
 			/* if this is an analog port, create an info struct for it */
 			if (IS_ANALOG(port))
 			{
-				struct AnalogPortInfo *info;
+				analog_port_info *info;
 
 				/* allocate memory */
 				info = auto_malloc(sizeof(*info));
@@ -1118,14 +1140,14 @@ static void inputport_init(void)
 				info->keyscale = 1.0 / (0.5 * (info->scalepos + info->scaleneg));
 
 				/* hook in the list */
-				info->next = analog_info[portnum];
-				analog_info[portnum] = info;
+				info->next = port_info[portnum].analoginfo;
+				port_info[portnum].analoginfo = info;
 			}
 
 			/* if this is a digital joystick port, update info on it */
 			else if (IS_DIGITAL_JOYSTICK(port))
 			{
-				struct DigitalJoystickInfo *info = JOYSTICK_INFO_FOR_PORT(port);
+				digital_joystick_info *info = JOYSTICK_INFO_FOR_PORT(port);
 				info->port[JOYSTICK_DIR_FOR_PORT(port)] = port;
 				info->inuse = 1;
 			}
@@ -1133,7 +1155,376 @@ static void inputport_init(void)
 	}
 
 	/* run an initial update */
-	inputport_vblank_start();
+	input_port_vblank_start();
+}
+
+
+
+/*************************************
+ *
+ *  Identifies which port types are
+ *  saved/loaded
+ *
+ *************************************/
+
+static int save_this_port_type(int type)
+{
+	switch (type)
+	{
+		case IPT_UNUSED:
+		case IPT_END:
+		case IPT_PORT:
+		case IPT_DIPSWITCH_SETTING:
+		case IPT_CONFIG_SETTING:
+		case IPT_CATEGORY_SETTING:
+		case IPT_VBLANK:
+		case IPT_UNKNOWN:
+			return 0;
+	}
+	return 1;
+}
+
+
+
+/*************************************
+ *
+ *  Input port configuration read
+ *
+ *************************************/
+
+INLINE input_code get_default_code(int config_type, int type)
+{
+	switch (type)
+	{
+		case IPT_DIPSWITCH_NAME:
+		case IPT_CATEGORY_NAME:
+			return CODE_NONE;
+
+		default:
+			if (config_type != CONFIG_TYPE_GAME)
+				return CODE_NONE;
+			else
+				return CODE_DEFAULT;
+	}
+	return CODE_NONE;
+}
+
+
+INLINE int string_to_seq_index(const char *string)
+{
+	int seqindex;
+
+	for (seqindex = 0; seqindex < ARRAY_LENGTH(seqtypestrings); seqindex++)
+		if (!stricmp(string, seqtypestrings[seqindex]))
+			return seqindex;
+
+	return -1;
+}
+
+
+static void apply_remaps(input_code *remaptable)
+{
+	int remapnum, portnum, seqnum;
+
+	/* loop over the remapping table, operating only if something was specified */
+	for (remapnum = 0; remapnum < __code_max; remapnum++)
+		if (remaptable[remapnum] != remapnum)
+
+			/* loop over all default ports, remapping the requested keys */
+			for (portnum = 0; default_ports[portnum].type != IPT_END; portnum++)
+			{
+				/* remap anything in the default sequences */
+				for (seqnum = 0; seqnum < SEQ_MAX; seqnum++)
+					if (default_ports[portnum].defaultseq.code[seqnum] == remapnum)
+						default_ports[portnum].defaultseq.code[seqnum] = remaptable[remapnum];
+				for (seqnum = 0; seqnum < SEQ_MAX; seqnum++)
+					if (default_ports[portnum].defaultdecseq.code[seqnum] == remapnum)
+						default_ports[portnum].defaultdecseq.code[seqnum] = remaptable[remapnum];
+				for (seqnum = 0; seqnum < SEQ_MAX; seqnum++)
+					if (default_ports[portnum].defaultincseq.code[seqnum] == remapnum)
+						default_ports[portnum].defaultincseq.code[seqnum] = remaptable[remapnum];
+			}
+}
+
+
+
+static int apply_config_to_default(xml_data_node *portnode, int type, int player, input_seq *newseq)
+{
+	int portnum;
+
+	/* find a matching port in the list */
+	for (portnum = 0; portnum < ARRAY_LENGTH(default_ports_backup); portnum++)
+	{
+		input_port_default_entry *updateport = &default_ports[portnum];
+		if (updateport->type == type && updateport->player == player)
+		{
+			/* copy the sequence(s) that were specified */
+			if (seq_get_1(&newseq[0]) != __code_max)
+				seq_copy(&updateport->defaultseq, &newseq[0]);
+			if (seq_get_1(&newseq[1]) != __code_max)
+				seq_copy(&updateport->defaultdecseq, &newseq[1]);
+			if (seq_get_1(&newseq[2]) != __code_max)
+				seq_copy(&updateport->defaultincseq, &newseq[2]);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+
+static int apply_config_to_current(xml_data_node *portnode, int type, int player, input_seq *newseq)
+{
+	input_port_entry *updateport;
+	int mask, defvalue, index;
+
+	/* read the mask, index, and defvalue attributes */
+	index = xml_get_attribute_int(portnode, "index", 0);
+	mask = xml_get_attribute_int(portnode, "mask", 0);
+	defvalue = xml_get_attribute_int(portnode, "defvalue", 0);
+
+	/* find the indexed port; we scan the array to make sure we don't read past the end */
+	for (updateport = Machine->input_ports_default; updateport->type != IPT_END; updateport++)
+		if (index-- == 0)
+			break;
+
+	/* verify that it matches */
+	if (updateport->type == type && updateport->player == player &&
+		updateport->mask == mask && (updateport->default_value & mask) == (defvalue & mask))
+	{
+		const char *revstring;
+
+		/* point to the real port */
+		updateport = Machine->input_ports + (updateport - Machine->input_ports_default);
+
+		/* fill in the data from the attributes */
+		updateport->default_value = xml_get_attribute_int(portnode, "value", updateport->default_value);
+		updateport->analog.delta = xml_get_attribute_int(portnode, "keydelta", updateport->analog.delta);
+		updateport->analog.centerdelta = xml_get_attribute_int(portnode, "centerdelta", updateport->analog.centerdelta);
+		updateport->analog.sensitivity = xml_get_attribute_int(portnode, "sensitivity", updateport->analog.sensitivity);
+		revstring = xml_get_attribute_string(portnode, "reverse", NULL);
+		if (revstring)
+			updateport->analog.reverse = (strcmp(revstring, "yes") == 0);
+
+		/* copy the sequence(s) that were specified */
+		if (seq_get_1(&newseq[0]) != __code_max)
+			seq_copy(&updateport->seq, &newseq[0]);
+		if (seq_get_1(&newseq[1]) != __code_max)
+			seq_copy(&updateport->analog.decseq, &newseq[1]);
+		if (seq_get_1(&newseq[2]) != __code_max)
+			seq_copy(&updateport->analog.incseq, &newseq[2]);
+		return 1;
+	}
+	return 0;
+}
+
+
+void input_port_load(int config_type, xml_data_node *parentnode)
+{
+	xml_data_node *portnode;
+	int seqnum;
+
+	/* in the completion phase, we finish the initialization with the final ports */
+	if (config_type == CONFIG_TYPE_FINAL)
+		input_port_postload();
+
+	/* early exit if no data to parse */
+	if (!parentnode)
+		return;
+
+	/* iterate over all the remap nodes for controller configs only */
+	if (config_type == CONFIG_TYPE_CONTROLLER)
+	{
+		xml_data_node *remapnode;
+		input_code remap[__code_max];
+		int remapnum;
+
+		/* reset the remap table to default */
+		for (remapnum = 0; remapnum < __code_max; remapnum++)
+			remap[remapnum] = remapnum;
+
+		/* build up the remap table */
+		for (remapnode = xml_get_sibling(parentnode->child, "remap"); remapnode; remapnode = xml_get_sibling(remapnode->next, "remap"))
+		{
+			input_code origcode = token_to_code(xml_get_attribute_string(remapnode, "origcode", ""));
+			input_code newcode = token_to_code(xml_get_attribute_string(remapnode, "newcode", ""));
+			if (origcode != CODE_NONE && origcode < __code_max && newcode != CODE_NONE)
+				remap[origcode] = newcode;
+		}
+
+		/* apply it */
+		apply_remaps(remap);
+	}
+
+	/* iterate over all the port nodes */
+	for (portnode = xml_get_sibling(parentnode->child, "port"); portnode; portnode = xml_get_sibling(portnode->next, "port"))
+	{
+		input_seq newseq[3], tempseq;
+		xml_data_node *seqnode;
+		int type, player;
+
+		/* get the basic port info from the attributes */
+		type = token_to_port_type(xml_get_attribute_string(portnode, "type", ""), &player);
+
+		/* initialize sequences to invalid defaults */
+		for (seqnum = 0; seqnum < 3; seqnum++)
+			seq_set_1(&newseq[seqnum], __code_max);
+
+		/* loop over new sequences */
+		for (seqnode = xml_get_sibling(portnode->child, "newseq"); seqnode; seqnode = xml_get_sibling(seqnode->next, "newseq"))
+		{
+			/* with a valid type, parse out the new sequence */
+			seqnum = string_to_seq_index(xml_get_attribute_string(seqnode, "type", ""));
+			if (seqnum != -1)
+				if (seqnode->value && string_to_seq(seqnode->value, &tempseq) != 0)
+					seq_copy(&newseq[seqnum], &tempseq);
+		}
+
+		/* if we're loading default ports, apply to the default_ports */
+		if (config_type != CONFIG_TYPE_GAME)
+			apply_config_to_default(portnode, type, player, newseq);
+		else
+			apply_config_to_current(portnode, type, player, newseq);
+	}
+
+	/* after applying the controller config, push that back into the backup, since that is */
+	/* what we will diff against */
+	if (config_type == CONFIG_TYPE_CONTROLLER)
+		memcpy(default_ports_backup, default_ports, sizeof(default_ports_backup));
+}
+
+
+
+/*************************************
+ *
+ *  Input port configuration write
+ *
+ *************************************/
+
+static void add_sequence(xml_data_node *parentnode, int type, int porttype, const input_seq *seq)
+{
+	xml_data_node *seqnode;
+	char seqbuffer[256];
+
+	/* get the string for the sequence */
+	if (seq_get_1(seq) == CODE_NONE)
+		strcpy(seqbuffer, "NONE");
+	else
+		seq_to_string(seq, seqbuffer, sizeof(seqbuffer));
+
+	/* add the new node */
+	seqnode = xml_add_child(parentnode, "newseq", seqbuffer);
+	if (seqnode)
+		xml_set_attribute(seqnode, "type", seqtypestrings[type]);
+}
+
+
+static void save_default_inputs(xml_data_node *parentnode)
+{
+	int portnum;
+
+	/* iterate over ports */
+	for (portnum = 0; portnum < ARRAY_LENGTH(default_ports_backup); portnum++)
+	{
+		input_port_default_entry *defport = &default_ports_backup[portnum];
+		input_port_default_entry *curport = &default_ports[portnum];
+
+		/* only save if something has changed and this port is a type we save */
+		if (save_this_port_type(defport->type) &&
+			(seq_cmp(&defport->defaultseq, &curport->defaultseq) != 0 ||
+			 seq_cmp(&defport->defaultdecseq, &curport->defaultdecseq) != 0 ||
+			 seq_cmp(&defport->defaultincseq, &curport->defaultincseq) != 0))
+		{
+			/* add a new port node */
+			xml_data_node *portnode = xml_add_child(parentnode, "port", NULL);
+			if (portnode)
+			{
+				/* add the port information and attributes */
+				xml_set_attribute(portnode, "type", port_type_to_token(defport->type, defport->player));
+
+				/* add only the sequences that have changed from the defaults */
+				if (seq_cmp(&defport->defaultseq, &curport->defaultseq) != 0)
+					add_sequence(portnode, 0, defport->type, &curport->defaultseq);
+				if (seq_cmp(&defport->defaultdecseq, &curport->defaultdecseq) != 0)
+					add_sequence(portnode, 1, defport->type, &curport->defaultdecseq);
+				if (seq_cmp(&defport->defaultincseq, &curport->defaultincseq) != 0)
+					add_sequence(portnode, 2, defport->type, &curport->defaultincseq);
+			}
+		}
+	}
+}
+
+
+static void save_game_inputs(xml_data_node *parentnode)
+{
+	int portnum;
+
+	/* iterate over ports */
+	for (portnum = 0; Machine->input_ports_default[portnum].type != IPT_END; portnum++)
+	{
+		input_port_entry *defport = &Machine->input_ports_default[portnum];
+		input_port_entry *curport = &Machine->input_ports[portnum];
+
+		/* only save if something has changed and this port is a type we save */
+		if (save_this_port_type(defport->type) &&
+			((defport->default_value & defport->mask) != (curport->default_value & defport->mask) ||
+			 defport->analog.delta != curport->analog.delta ||
+			 defport->analog.centerdelta != curport->analog.centerdelta ||
+			 defport->analog.sensitivity != curport->analog.sensitivity ||
+			 defport->analog.reverse != curport->analog.reverse ||
+			 seq_cmp(&defport->seq, &curport->seq) != 0 ||
+			 seq_cmp(&defport->analog.decseq, &curport->analog.decseq) != 0 ||
+			 seq_cmp(&defport->analog.incseq, &curport->analog.incseq) != 0))
+		{
+			/* add a new port node */
+			xml_data_node *portnode = xml_add_child(parentnode, "port", NULL);
+			if (portnode)
+			{
+				/* add the port information and attributes */
+				xml_set_attribute(portnode, "type", port_type_to_token(defport->type, defport->player));
+				xml_set_attribute_int(portnode, "mask", defport->mask);
+				xml_set_attribute_int(portnode, "index", portnum);
+				xml_set_attribute_int(portnode, "defvalue", defport->default_value & defport->mask);
+
+				/* if the value has changed, add it as well */
+				if (defport->default_value != curport->default_value)
+					xml_set_attribute_int(portnode, "value", curport->default_value & defport->mask);
+
+				/* add analog-specific attributes if they have changed */
+				if (port_type_is_analog(defport->type))
+				{
+					if (defport->analog.delta != curport->analog.delta)
+						xml_set_attribute_int(portnode, "keydelta", curport->analog.delta);
+					if (defport->analog.centerdelta != curport->analog.centerdelta)
+						xml_set_attribute_int(portnode, "centerdelta", curport->analog.centerdelta);
+					if (defport->analog.sensitivity != curport->analog.sensitivity)
+						xml_set_attribute_int(portnode, "sensitivity", curport->analog.sensitivity);
+					if (defport->analog.reverse != curport->analog.reverse)
+						xml_set_attribute(portnode, "reverse", curport->analog.reverse ? "yes" : "no");
+				}
+
+				/* add only the sequences that have changed from the defaults */
+				if (seq_cmp(&defport->seq, &curport->seq) != 0)
+					add_sequence(portnode, 0, defport->type, &curport->seq);
+				if (seq_cmp(&defport->analog.decseq, &curport->analog.decseq) != 0)
+					add_sequence(portnode, 1, defport->type, &curport->analog.decseq);
+				if (seq_cmp(&defport->analog.incseq, &curport->analog.incseq) != 0)
+					add_sequence(portnode, 2, defport->type, &curport->analog.incseq);
+			}
+		}
+	}
+}
+
+
+void input_port_save(int config_type, xml_data_node *parentnode)
+{
+	if (parentnode)
+	{
+		/* default ports save differently */
+		if (config_type == CONFIG_TYPE_DEFAULT)
+			save_default_inputs(parentnode);
+		else
+			save_game_inputs(parentnode);
+	}
 }
 
 
@@ -1144,11 +1535,11 @@ static void inputport_init(void)
  *
  *************************************/
 
-struct InputPort *input_port_initialize(struct IptInitParams *iip, UINT32 type, const char *tag, UINT32 mask)
+input_port_entry *input_port_initialize(input_port_init_params *iip, UINT32 type, const char *tag, UINT32 mask)
 {
 	/* this function is used within an INPUT_PORT callback to set up a single port */
-	struct InputPort *port;
-	input_code_t code;
+	input_port_entry *port;
+	input_code code;
 
 	/* are we modifying an existing port? */
 	if (tag != NULL)
@@ -1217,25 +1608,22 @@ struct InputPort *input_port_initialize(struct IptInitParams *iip, UINT32 type, 
 
 	/* set the default codes */
 	seq_set_1(&port->seq, code);
-	if (IS_ANALOG(port))
-	{
-		seq_set_1(&port->analog.incseq, code);
-		seq_set_1(&port->analog.decseq, code);
-	}
+	seq_set_1(&port->analog.incseq, code);
+	seq_set_1(&port->analog.decseq, code);
 	return port;
 }
 
 
-struct InputPort *input_port_allocate(void construct_ipt(struct IptInitParams *param))
+input_port_entry *input_port_allocate(void construct_ipt(input_port_init_params *param))
 {
-	struct IptInitParams iip;
+	input_port_init_params iip;
 
 	/* set up the port parameter structure */
  	iip.max_ports = MAX_INPUT_PORTS * MAX_BITS_PER_PORT;
  	iip.current_port = 0;
 
 	/* allocate memory for the input ports */
-	iip.ports = (struct InputPort *)auto_malloc(iip.max_ports * sizeof(*iip.ports));
+	iip.ports = (input_port_entry *)auto_malloc(iip.max_ports * sizeof(*iip.ports));
 	if (!iip.ports)
 		return NULL;
 	memset(iip.ports, 0, iip.max_ports * sizeof(*iip.ports));
@@ -1262,15 +1650,15 @@ struct InputPort *input_port_allocate(void construct_ipt(struct IptInitParams *p
  *
  *************************************/
 
-struct InputPortDefinition *get_input_port_list(void)
+input_port_default_entry *get_input_port_list(void)
 {
-	return inputport_list;
+	return default_ports;
 }
 
 
-struct InputPortDefinition *get_input_port_list_backup(void)
+const input_port_default_entry *get_input_port_list_defaults(void)
 {
-	return inputport_list_backup;
+	return default_ports_backup;
 }
 
 
@@ -1284,10 +1672,12 @@ struct InputPortDefinition *get_input_port_list_backup(void)
 const char *port_type_to_token(int type, int player)
 {
 	static char tempbuf[32];
+	int defindex;
 
 	/* look up the port and return the token */
-	if (inputport_list_lookup[type][player])
-		return inputport_list_lookup[type][player]->token;
+	defindex = default_ports_lookup[type][player];
+	if (defindex != -1)
+		return default_ports[defindex].token;
 
 	/* if that fails, carry on */
 	sprintf(tempbuf, "TYPE_OTHER(%d,%d)", type, player);
@@ -1304,11 +1694,11 @@ int token_to_port_type(const char *string, int *player)
 		return ipnum;
 
 	/* find the token in the list */
-	for (ipnum = 0; ipnum < inputport_count; ipnum++)
-		if (inputport_list[ipnum].token != NULL && !strcmp(inputport_list[ipnum].token, string))
+	for (ipnum = 0; ipnum < input_port_count; ipnum++)
+		if (default_ports[ipnum].token != NULL && !strcmp(default_ports[ipnum].token, string))
 		{
-			*player = inputport_list[ipnum].player;
-			return inputport_list[ipnum].type;
+			*player = default_ports[ipnum].player;
+			return default_ports[ipnum].type;
 		}
 
 	/* if we fail, return IPT_UNKNOWN */
@@ -1324,7 +1714,7 @@ int token_to_port_type(const char *string, int *player)
  *
  *************************************/
 
-int input_port_active(const struct InputPort *port)
+int input_port_active(const input_port_entry *port)
 {
 	return (input_port_name(port) != NULL && !port->unused);
 }
@@ -1338,7 +1728,7 @@ int port_type_is_analog(int type)
 
 int port_type_in_use(int type)
 {
-	struct InputPort *port;
+	input_port_entry *port;
 	for (port = Machine->input_ports; port->type != IPT_END; port++)
 		if (port->type == type)
 			return 1;
@@ -1348,8 +1738,9 @@ int port_type_in_use(int type)
 
 int port_type_to_group(int type, int player)
 {
-	if (inputport_list_lookup[type][player])
-		return inputport_list_lookup[type][player]->group;
+	int defindex = default_ports_lookup[type][player];
+	if (defindex != -1)
+		return default_ports[defindex].group;
 	return IPG_INVALID;
 }
 
@@ -1360,7 +1751,7 @@ int port_tag_to_index(const char *tag)
 
 	/* find the matching tag */
 	for (port = 0; port < MAX_INPUT_PORTS; port++)
-		if (input_port_tag[port] != NULL && !strcmp(input_port_tag[port], tag))
+		if (port_info[port].tag != NULL && !strcmp(port_info[port].tag, tag))
 			return port;
 	return -1;
 }
@@ -1387,25 +1778,28 @@ read32_handler port_tag_to_handler32(const char *tag)
 }
 
 
-const char *input_port_name(const struct InputPort *port)
+const char *input_port_name(const input_port_entry *port)
 {
+	int defindex;
+
 	/* if we have a non-default name, use that */
 	if (port->name != IP_NAME_DEFAULT)
 		return port->name;
 
 	/* if the port exists, return the default name */
-	if (inputport_list_lookup[port->type][port->player])
-		return inputport_list_lookup[port->type][port->player]->name;
+	defindex = default_ports_lookup[port->type][port->player];
+	if (defindex != -1)
+		return default_ports[defindex].name;
 
 	/* should never get here */
 	return NULL;
 }
 
 
-input_seq_t *input_port_seq(struct InputPort *port, int seqtype)
+input_seq *input_port_seq(input_port_entry *port, int seqtype)
 {
-	static input_seq_t ip_none = SEQ_DEF_1(CODE_NONE);
-	input_seq_t *portseq;
+	static input_seq ip_none = SEQ_DEF_1(CODE_NONE);
+	input_seq *portseq;
 
 	/* if port is disabled, return no key */
 	if (port->unused)
@@ -1443,34 +1837,36 @@ input_seq_t *input_port_seq(struct InputPort *port, int seqtype)
 }
 
 
-input_seq_t *input_port_default_seq(int type, int player, int seqtype)
+input_seq *input_port_default_seq(int type, int player, int seqtype)
 {
-	static input_seq_t ip_none = SEQ_DEF_1(CODE_NONE);
+	static input_seq ip_none = SEQ_DEF_1(CODE_NONE);
 
 	/* find the default setting */
-	struct InputPortDefinition *const ip = inputport_list_lookup[type][player];
-	if (ip)
+	int defindex = default_ports_lookup[type][player];
+	if (defindex != -1)
+	{
 		switch (seqtype)
 		{
 			case SEQ_TYPE_STANDARD:
-				return &ip->defaultseq;
+				return &default_ports[defindex].defaultseq;
 			case SEQ_TYPE_INCREMENT:
-				return &ip->defaultincseq;
+				return &default_ports[defindex].defaultincseq;
 			case SEQ_TYPE_DECREMENT:
-				return &ip->defaultdecseq;
+				return &default_ports[defindex].defaultdecseq;
 		}
+	}
 	return &ip_none;
 }
 
 
-int input_port_condition(const struct InputPort *in)
+int input_port_condition(const input_port_entry *in)
 {
-	switch (in->dipsetting.condition)
+	switch (in->condition.condition)
 	{
 		case PORTCOND_EQUALS:
-			return ((readinputport(in->dipsetting.portnum) & in->dipsetting.mask) == in->dipsetting.value);
+			return ((readinputport(in->condition.portnum) & in->condition.mask) == in->condition.value);
 		case PORTCOND_NOTEQUALS:
-			return ((readinputport(in->dipsetting.portnum) & in->dipsetting.mask) != in->dipsetting.value);
+			return ((readinputport(in->condition.portnum) & in->condition.mask) != in->condition.value);
 	}
 	return 1;
 }
@@ -1485,8 +1881,9 @@ int input_port_condition(const struct InputPort *in)
 
 int input_port_type_pressed(int type, int player)
 {
-	if (inputport_list_lookup[type][player])
-		return seq_pressed(&inputport_list_lookup[type][player]->defaultseq);
+	int defindex = default_ports_lookup[type][player];
+	if (defindex != -1)
+		return seq_pressed(&default_ports[defindex].defaultseq);
 
 	return 0;
 }
@@ -1570,27 +1967,72 @@ profiler_mark(PROFILER_END);
 
 /*************************************
  *
- *  Playback/record helpers
+ *  Playback/record helper
  *
  *************************************/
 
-static void read_port_value(mame_file *f, UINT32 *result)
+static void update_playback_record(int portnum, UINT32 portvalue)
 {
-	if (mame_fread(f, result, sizeof(*result)) == sizeof(*result))
+	/* handle playback */
+	if (playback != NULL)
 	{
-#ifdef LSB_FIRST
-		*result = (*result >> 24) | ((*result >> 8) & 0xff00) | ((*result & 0xff00) << 8) | (*result << 24);
-#endif
+		UINT32 result;
+
+		/* a successful read goes into the playback field which overrides everything else */
+		if (mame_fread(playback, &result, sizeof(result)) == sizeof(result))
+			portvalue = port_info[portnum].playback = BIG_ENDIANIZE_INT32(result);
+
+		/* a failure causes us to close the playback file and stop playback */
+		else
+		{
+			mame_fclose(playback);
+			playback = NULL;
+		}
+	}
+
+	/* handle recording */
+	if (record != NULL)
+	{
+		UINT32 result = BIG_ENDIANIZE_INT32(portvalue);
+
+		/* a successful write just works */
+		if (mame_fwrite(record, &result, sizeof(result)) == sizeof(result))
+			;
+
+		/* a failure causes us to close the record file and stop recording */
+		else
+		{
+			mame_fclose(record);
+			record = NULL;
+		}
 	}
 }
 
 
-static void write_port_value(mame_file *f, UINT32 value)
+
+/*************************************
+ *
+ *  Update default ports
+ *
+ *************************************/
+
+void input_port_update_defaults(void)
 {
-#ifdef LSB_FIRST
-	value = (value >> 24) | ((value >> 8) & 0xff00) | ((value & 0xff00) << 8) | (value << 24);
-#endif
-	mame_fwrite(f, &value, sizeof(value));
+	int portnum;
+
+	/* loop over all input ports */
+	for (portnum = 0; portnum < MAX_INPUT_PORTS; portnum++)
+	{
+		input_port_info *portinfo = &port_info[portnum];
+		input_bit_info *info;
+		int bitnum;
+
+		/* first compute the default value for the entire port */
+		portinfo->defvalue = 0;
+		for (bitnum = 0, info = &portinfo->bit[0]; bitnum < MAX_BITS_PER_PORT && info->port; bitnum++, info++)
+			if (input_port_condition(info->port))
+				portinfo->defvalue = (portinfo->defvalue & ~info->port->mask) | (info->port->default_value & info->port->mask);
+	}
 }
 
 
@@ -1601,9 +2043,9 @@ static void write_port_value(mame_file *f, UINT32 value)
  *
  *************************************/
 
-void inputport_vblank_start(void)
+void input_port_vblank_start(void)
 {
-	int ui_visible = setup_active() || onscrd_active();
+	int ui_visible = ui_is_setup_active() || ui_is_onscrd_active();
 	int portnum, bitnum;
 
 profiler_mark(PROFILER_INPUT);
@@ -1611,113 +2053,112 @@ profiler_mark(PROFILER_INPUT);
 	/* update the digital joysticks first */
 	update_digital_joysticks();
 
+	/* compute default values for all the ports */
+	input_port_update_defaults();
+
 	/* loop over all input ports */
 	for (portnum = 0; portnum < MAX_INPUT_PORTS; portnum++)
 	{
-		struct InputBitInfo *info;
-		UINT32 vblank = 0;
-		UINT32 value = 0;
+		input_port_info *portinfo = &port_info[portnum];
+		input_bit_info *info;
 
-		/* first compute the default value for the entire port */
-		for (bitnum = 0, info = &bit_info[portnum][0]; bitnum < MAX_BITS_PER_PORT && info->port; bitnum++, info++)
-			value = (value & ~info->port->mask) | (info->port->default_value & info->port->mask);
-
-		/* now loop back and modify based on the inputs */
-		for (bitnum = 0, info = &bit_info[portnum][0]; bitnum < MAX_BITS_PER_PORT && info->port; bitnum++, info++)
-		{
-			struct InputPort *port = info->port;
-
-			/* handle the VBLANK type */
-			if (port->type == IPT_VBLANK)
+		/* compute the VBLANK mask */
+		portinfo->vblank = 0;
+		for (bitnum = 0, info = &portinfo->bit[0]; bitnum < MAX_BITS_PER_PORT && info->port; bitnum++, info++)
+			if (info->port->type == IPT_VBLANK)
 			{
-				vblank ^= port->mask;
-				value ^= port->mask;
+				portinfo->vblank ^= info->port->mask;
 				if (Machine->drv->vblank_duration == 0)
 					logerror("Warning: you are using IPT_VBLANK with vblank_duration = 0. You need to increase vblank_duration for IPT_VBLANK to work.\n");
 			}
 
-			/* handle non-analog types, but only when the UI isn't visible */
-			else if (!IS_ANALOG(port) && !ui_visible)
+		/* now loop back and modify based on the inputs */
+		portinfo->digital = 0;
+		for (bitnum = 0, info = &portinfo->bit[0]; bitnum < MAX_BITS_PER_PORT && info->port; bitnum++, info++)
+			if (input_port_condition(info->port))
 			{
-				/* if the sequence for this port is currently pressed.... */
-				if (seq_pressed(input_port_seq(port, SEQ_TYPE_STANDARD)))
+				input_port_entry *port = info->port;
+
+				/* handle non-analog types, but only when the UI isn't visible */
+				if (port->type != IPT_VBLANK && !IS_ANALOG(port) && !ui_visible)
 				{
+					/* if the sequence for this port is currently pressed.... */
+					if (seq_pressed(input_port_seq(port, SEQ_TYPE_STANDARD)))
+					{
 #ifdef MESS
-					/* (MESS-specific) check for disabled keyboard */
-					if (port->type == IPT_KEYBOARD && osd_keyboard_disabled())
-						continue;
+						/* (MESS-specific) check for disabled keyboard */
+						if (port->type == IPT_KEYBOARD && osd_keyboard_disabled())
+							continue;
 #endif
-					/* skip locked-out coin inputs */
-					if (port->type >= IPT_COIN1 && port->type <= IPT_COIN8 && coinlockedout[port->type - IPT_COIN1])
-						continue;
+						/* skip locked-out coin inputs */
+						if (port->type >= IPT_COIN1 && port->type <= IPT_COIN8 && coinlockedout[port->type - IPT_COIN1])
+							continue;
 
-					/* if this is a downward press and we're an impulse control, reset the count */
-					if (port->impulse)
-					{
-						if (info->last == 0)
-							info->impulse = port->impulse;
-					}
-
-					/* if this is a downward press and we're a toggle control, toggle the value */
-					else if (port->toggle)
-					{
-						if (info->last == 0)
+						/* if this is a downward press and we're an impulse control, reset the count */
+						if (port->impulse)
 						{
-							port->default_value ^= port->mask;
-							value ^= port->mask;
+							if (info->last == 0)
+								info->impulse = port->impulse;
 						}
-					}
 
-					/* if this is a digital joystick type, apply either standard or 4-way rules */
-					else if (IS_DIGITAL_JOYSTICK(port))
-					{
-						struct DigitalJoystickInfo *joyinfo = JOYSTICK_INFO_FOR_PORT(port);
-						UINT8 mask = port->four_way ? joyinfo->current4way : joyinfo->current;
-						if ((mask >> JOYSTICK_DIR_FOR_PORT(port)) & 1)
-							value ^= port->mask;
-					}
+						/* if this is a downward press and we're a toggle control, toggle the value */
+						else if (port->toggle)
+						{
+							if (info->last == 0)
+							{
+								port->default_value ^= port->mask;
+								portinfo->digital ^= port->mask;
+							}
+						}
 
-					/* otherwise, just set it raw */
+						/* if this is a digital joystick type, apply either standard or 4-way rules */
+						else if (IS_DIGITAL_JOYSTICK(port))
+						{
+							digital_joystick_info *joyinfo = JOYSTICK_INFO_FOR_PORT(port);
+							UINT8 mask = port->four_way ? joyinfo->current4way : joyinfo->current;
+							if ((mask >> JOYSTICK_DIR_FOR_PORT(port)) & 1)
+								portinfo->digital ^= port->mask;
+						}
+
+						/* otherwise, just set it raw */
+						else
+							portinfo->digital ^= port->mask;
+
+						/* track the last value */
+						info->last = 1;
+					}
 					else
-						value ^= port->mask;
+						info->last = 0;
 
-					/* track the last value */
-					info->last = 1;
+					/* handle the impulse countdown */
+					if (port->impulse && info->impulse > 0)
+					{
+						info->impulse--;
+						info->last = 1;
+						portinfo->digital ^= port->mask;
+					}
 				}
-				else
-					info->last = 0;
 
-				/* handle the impulse countdown */
-				if (port->impulse && info->impulse > 0)
-				{
-					info->impulse--;
-					info->last = 1;
-					value ^= port->mask;
-				}
+				/* note that analog ports are handled instantaneously at port read time */
 			}
-
-			/* note that analog ports are handled instantaneously at port read time */
-		}
-
-		/* update the value and VBLANK */
-		input_port_value[portnum] = value;
-		input_port_vblank[portnum] = vblank;
 	}
-
-	/* handle playback */
-	if (playback != NULL)
-		for (portnum = 0; portnum < MAX_INPUT_PORTS; portnum++)
-			read_port_value(playback, &input_port_value[portnum]);
 
 #ifdef MESS
 	/* less MESS to MESSy things */
-	inputx_update(input_port_value);
+	inputx_update();
 #endif
 
-	/* handle recording */
-	if (record != NULL)
-		for (portnum = 0; portnum < MAX_INPUT_PORTS; portnum++)
-			write_port_value(record, input_port_value[portnum]);
+	/* handle playback/record */
+	for (portnum = 0; portnum < MAX_INPUT_PORTS; portnum++)
+	{
+		/* analog ports automatically update on every read */
+		if (port_info[portnum].analoginfo)
+			readinputport(portnum);
+
+		/* non-analog ports must be manually updated */
+		else
+			update_playback_record(portnum, readinputport(portnum));
+	}
 
 profiler_mark(PROFILER_END);
 }
@@ -1730,16 +2171,12 @@ profiler_mark(PROFILER_END);
  *
  *************************************/
 
-void inputport_vblank_end(void)
+void input_port_vblank_end(void)
 {
-	int ui_visible = setup_active() || onscrd_active();
+	int ui_visible = ui_is_setup_active() || ui_is_onscrd_active();
 	int port;
 
 profiler_mark(PROFILER_INPUT);
-
-	/* apply the VBLANK XOR across all ports */
-	for (port = 0; port < MAX_INPUT_PORTS; port++)
-		input_port_value[port] ^= input_port_vblank[port];
 
 	/* update all analog ports if the UI isn't visible */
 	if (!ui_visible)
@@ -1765,7 +2202,7 @@ static void update_digital_joysticks(void)
 	for (player = 0; player < MAX_PLAYERS; player++)
 		for (joyindex = 0; joyindex < DIGITAL_JOYSTICKS_PER_PLAYER; joyindex++)
 		{
-			struct DigitalJoystickInfo *info = &joystick_info[player][joyindex];
+			digital_joystick_info *info = &joystick_info[player][joyindex];
 			if (info->inuse)
 			{
 				info->previous = info->current;
@@ -1841,9 +2278,9 @@ static void update_digital_joysticks(void)
  *
  *************************************/
 
-INLINE INT32 apply_analog_min_max(const struct AnalogPortInfo *info, INT32 value)
+INLINE INT32 apply_analog_min_max(const analog_port_info *info, INT32 value)
 {
-	const struct InputPort *port = info->port;
+	const input_port_entry *port = info->port;
 	INT32 adjmax, adjmin;
 
 	/* take the analog minimum and maximum values and apply the inverse of the */
@@ -1881,12 +2318,12 @@ INLINE INT32 apply_analog_min_max(const struct AnalogPortInfo *info, INT32 value
 
 static void update_analog_port(int portnum)
 {
-	struct AnalogPortInfo *info;
+	analog_port_info *info;
 
 	/* loop over all analog ports in this port number */
-	for (info = analog_info[portnum]; info != NULL; info = info->next)
+	for (info = port_info[portnum].analoginfo; info != NULL; info = info->next)
 	{
-		struct InputPort *port = info->port;
+		input_port_entry *port = info->port;
 		INT32 delta = 0, rawvalue;
 		int analog_type, keypressed = 0;
 
@@ -1972,51 +2409,50 @@ static void update_analog_port(int portnum)
 
 static void interpolate_analog_port(int port)
 {
-	struct AnalogPortInfo *info;
+	analog_port_info *info;
 
 profiler_mark(PROFILER_INPUT);
 
+	/* set the default mask and value */
+	port_info[port].analogmask = 0;
+	port_info[port].analog = 0;
+
 	/* loop over all analog ports in this port number */
-	for (info = analog_info[port]; info != NULL; info = info->next)
-	{
-		INT32 current;
-		INT32 value;
+	for (info = port_info[port].analoginfo; info != NULL; info = info->next)
+		if (input_port_condition(info->port))
+		{
+			INT32 current;
+			INT32 value;
 
-		/* interpolate or not */
-		if (info->interpolate && !info->port->analog.reset)
-			current = info->previous + cpu_scalebyfcount(info->accum - info->previous);
-		else
-			current = info->accum;
+			/* interpolate or not */
+			if (info->interpolate && !info->port->analog.reset)
+				current = info->previous + cpu_scalebyfcount(info->accum - info->previous);
+			else
+				current = info->accum;
 
-		/* apply the min/max and then the sensitivity */
-		current = apply_analog_min_max(info, current);
-		current = APPLY_SENSITIVITY(current, info->port->analog.sensitivity);
+			/* apply the min/max and then the sensitivity */
+			current = apply_analog_min_max(info, current);
+			current = APPLY_SENSITIVITY(current, info->port->analog.sensitivity);
 
-		/* apply special reversal rules for pedals */
-		if (info->pedal)
-			current = !info->port->analog.reverse ? (info->maximum - current) : (-info->minimum + current);
+			/* apply special reversal rules for pedals */
+			if (info->pedal)
+				current = !info->port->analog.reverse ? (info->maximum - current) : (-info->minimum + current);
 
-		/* apply standard reversal rules for everything else */
-		else if (info->port->analog.reverse)
-			current = -current;
+			/* apply standard reversal rules for everything else */
+			else if (info->port->analog.reverse)
+				current = -current;
 
-		/* map differently for positive and negative values */
-		if (current >= 0)
-			value = (INT32)(current * info->scalepos);
-		else
-			value = (INT32)(current * info->scaleneg);
-		value += info->port->default_value;
+			/* map differently for positive and negative values */
+			if (current >= 0)
+				value = (INT32)(current * info->scalepos);
+			else
+				value = (INT32)(current * info->scaleneg);
+			value += info->port->default_value;
 
-		/* insert into the port */
-		input_port_value[port] = (input_port_value[port] & ~info->port->mask) | ((value << info->shift) & info->port->mask);
-
-		/* handle playback/record scenarios */
-		if (playback)
-			read_port_value(playback, &input_port_value[port]);
-		if (record)
-			write_port_value(record, input_port_value[port]);
-	}
-
+			/* insert into the port */
+			port_info[port].analogmask |= info->port->mask;
+			port_info[port].analog = (port_info[port].analog & ~info->port->mask) | ((value << info->shift) & info->port->mask);
+		}
 
 profiler_mark(PROFILER_END);
 }
@@ -2031,9 +2467,34 @@ profiler_mark(PROFILER_END);
 
 UINT32 readinputport(int port)
 {
-	/* apply any interpolation and then return the final value */
+	input_port_info *portinfo = &port_info[port];
+	UINT32 result;
+
+	/* interpolate analog values */
 	interpolate_analog_port(port);
-	return input_port_value[port];
+
+	/* compute the current result: default value XOR the digital, merged with the analog */
+	result = ((portinfo->defvalue ^ portinfo->digital) & ~portinfo->analogmask) | portinfo->analog;
+
+	/* if we have analog data, update the recording state */
+	if (port_info[port].analoginfo)
+		update_playback_record(port, result);
+
+	/* if we're playing back, use the recorded value for inputs instead */
+	if (playback != NULL)
+		result = portinfo->playback;
+
+	/* handle VBLANK bits after inputs */
+	if (portinfo->vblank)
+	{
+		/* reset the VBLANK bits to their default value, regardless of inputs */
+		result = (result & ~portinfo->vblank) | (portinfo->defvalue & portinfo->vblank);
+
+		/* toggle VBLANK if we're in a VBLANK state */
+		if (cpu_getvblank())
+			result ^= portinfo->vblank;
+	}
+	return result;
 }
 
 
@@ -2055,6 +2516,21 @@ UINT32 readinputportbytag_safe(const char *tag, UINT32 defvalue)
 	if (port != -1)
 		return readinputport(port);
 	return defvalue;
+}
+
+
+
+/*************************************
+ *
+ *  Input port writing
+ *
+ *************************************/
+
+void input_port_set_digital_value(int portnum, UINT32 value, UINT32 mask)
+{
+	input_port_info *portinfo = &port_info[portnum];
+	portinfo->digital &= ~mask;
+	portinfo->digital |= value;
 }
 
 

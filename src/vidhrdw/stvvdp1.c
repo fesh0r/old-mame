@@ -9,9 +9,8 @@ based on what hanagumi columns needs
 the vdp1 draws to the FRAMEBUFFER which is mapped in memory
 
 Framebuffer todo:
-- map framebuffer into memory
-- implement two framebuffers and swapping
-- add framebuffer erase
+- finish manual erase
+- add proper framebuffer erase
 - 8 bpp support - now we always draw as 16 bpp, but this is not a problem since
   VDP2 interprets framebuffer as 8 bpp in these cases
 */
@@ -19,17 +18,27 @@ Framebuffer todo:
 
 #include "driver.h"
 
-data32_t *stv_vdp1_vram;
-data32_t *stv_vdp1_regs;
+int vdp1_sprite_log = 0;
 
-extern data32_t *stv_scu;
+UINT32 *stv_vdp1_vram;
+UINT32 *stv_vdp1_regs;
 
-UINT16	 *stv_framebuffer;
-UINT16	 **stv_framebuffer_lines;
+extern UINT32 *stv_scu;
+extern int stv_vblank;
+
+UINT16	 *stv_framebuffer[2];
+UINT16	 **stv_framebuffer_draw_lines, **stv_framebuffer_display_lines;
 int		 stv_framebuffer_width;
 int		 stv_framebuffer_height;
 int		 stv_framebuffer_mode;
 int		 stv_framebuffer_double_interlace;
+int		 stv_vdp1_fbcr_accessed;
+int		 stv_vdp1_current_display_framebuffer;
+int		 stv_vdp1_current_draw_framebuffer;
+int		 stv_vdp1_clear_framebuffer_on_next_frame;
+
+int stvvdp1_local_x;
+int stvvdp1_local_y;
 
 /*TV Mode Selection Register */
 /*
@@ -121,6 +130,8 @@ int		 stv_framebuffer_double_interlace;
 
 #include "machine/random.h"
 
+void stv_vdp1_process_list(mame_bitmap *bitmap, const rectangle *cliprect);
+
 READ32_HANDLER( stv_vdp1_regs_r )
 {
 //  static int x;
@@ -133,6 +144,11 @@ READ32_HANDLER( stv_vdp1_regs_r )
 	return stv_vdp1_regs[offset];
 }
 
+static void stv_clear_framebuffer( int which_framebuffer )
+{
+	if ( vdp1_sprite_log ) logerror( "Clearing %d framebuffer\n", stv_vdp1_current_draw_framebuffer );
+	memset( stv_framebuffer[ which_framebuffer ], 0, 1024 * 256 * sizeof(UINT16) * 2 );
+}
 
 int stv_vdp1_start ( void )
 {
@@ -142,21 +158,79 @@ int stv_vdp1_start ( void )
 	memset(stv_vdp1_regs, 0, 0x040000);
 	memset(stv_vdp1_vram, 0, 0x100000);
 
-	stv_framebuffer = auto_malloc( 1024 * 256 * sizeof(UINT16) * 2 ); /* *2 is for double interlace */
-	stv_framebuffer_lines = auto_malloc( 512 * sizeof(UINT16*) );
+	stv_framebuffer[0] = auto_malloc( 1024 * 256 * sizeof(UINT16) * 2 ); /* *2 is for double interlace */
+	stv_framebuffer[1] = auto_malloc( 1024 * 256 * sizeof(UINT16) * 2 );
+
+	stv_framebuffer_display_lines = auto_malloc( 512 * sizeof(UINT16*) );
+	stv_framebuffer_draw_lines = auto_malloc( 512 * sizeof(UINT16*) );
+
 	stv_framebuffer_width = stv_framebuffer_height = 0;
 	stv_framebuffer_mode = -1;
 	stv_framebuffer_double_interlace = -1;
+	stv_vdp1_fbcr_accessed = 0;
+	stv_vdp1_current_display_framebuffer = 0;
+	stv_vdp1_current_draw_framebuffer = 1;
+	stv_clear_framebuffer(stv_vdp1_current_draw_framebuffer);
+	stv_vdp1_clear_framebuffer_on_next_frame = 0;
 	return 0;
+}
+
+static void stv_prepare_framebuffers( void )
+{
+	int i,rowsize;
+
+	rowsize = stv_framebuffer_width;
+	if ( stv_vdp1_current_draw_framebuffer == 0 )
+	{
+		for ( i = 0; i < stv_framebuffer_height; i++ )
+		{
+			stv_framebuffer_draw_lines[i] = &stv_framebuffer[0][ i * rowsize ];
+			stv_framebuffer_display_lines[i] = &stv_framebuffer[1][ i * rowsize ];
+		}
+		for ( ; i < 512; i++ )
+		{
+			stv_framebuffer_draw_lines[i] = &stv_framebuffer[0][0];
+			stv_framebuffer_display_lines[i] = &stv_framebuffer[1][0];
+		}
+
+	}
+	else
+	{
+		for ( i = 0; i < stv_framebuffer_height; i++ )
+		{
+			stv_framebuffer_draw_lines[i] = &stv_framebuffer[1][ i * rowsize ];
+			stv_framebuffer_display_lines[i] = &stv_framebuffer[0][ i * rowsize ];
+		}
+		for ( ; i < 512; i++ )
+		{
+			stv_framebuffer_draw_lines[i] = &stv_framebuffer[1][0];
+			stv_framebuffer_display_lines[i] = &stv_framebuffer[0][0];
+		}
+
+	}
+
+	for ( ; i < 512; i++ )
+	{
+		stv_framebuffer_draw_lines[i] = &stv_framebuffer[0][0];
+		stv_framebuffer_display_lines[i] = &stv_framebuffer[1][0];
+	}
+
+}
+
+static void stv_vdp1_change_framebuffers( void )
+{
+	stv_vdp1_current_display_framebuffer ^= 1;
+	stv_vdp1_current_draw_framebuffer ^= 1;
+	if ( vdp1_sprite_log ) logerror( "Changing framebuffers: %d - draw, %d - display\n", stv_vdp1_current_draw_framebuffer, stv_vdp1_current_display_framebuffer );
+	stv_prepare_framebuffers();
 }
 
 static void stv_set_framebuffer_config( void )
 {
-	int i, rowsize;
-
 	if ( stv_framebuffer_mode == STV_VDP1_TVM &&
 		 stv_framebuffer_double_interlace == STV_VDP1_DIE ) return;
 
+	if ( vdp1_sprite_log ) logerror( "Setting framebuffer config\n" );
 	stv_framebuffer_mode = STV_VDP1_TVM;
 	stv_framebuffer_double_interlace = STV_VDP1_DIE;
 	switch( stv_framebuffer_mode )
@@ -170,20 +244,9 @@ static void stv_set_framebuffer_config( void )
 	}
 	if ( STV_VDP1_DIE ) stv_framebuffer_height *= 2; /* double interlace */
 
-	rowsize = stv_framebuffer_width;
-	for ( i = 0; i < stv_framebuffer_height; i++ )
-	{
-		stv_framebuffer_lines[i] = &stv_framebuffer[ i * rowsize ];
-	}
-	for ( ; i < 512; i++ )
-	{
-		stv_framebuffer_lines[i] = &stv_framebuffer[0];
-	}
-}
-
-static void stv_clear_framebuffer( void )
-{
-	memset( stv_framebuffer, 0, 1024 * 256 * sizeof(UINT16) * 2 );
+	stv_vdp1_current_draw_framebuffer = 0;
+	stv_vdp1_current_display_framebuffer = 1;
+	stv_prepare_framebuffers();
 }
 
 WRITE32_HANDLER( stv_vdp1_regs_w )
@@ -192,7 +255,59 @@ WRITE32_HANDLER( stv_vdp1_regs_w )
 	if ( offset == 0 )
 	{
 		stv_set_framebuffer_config();
+		if ( ACCESSING_LSW32 )
+		{
+			if ( vdp1_sprite_log ) logerror( "VDP1: Access to register FBCR = %1X\n", STV_VDP1_FBCR );
+			stv_vdp1_fbcr_accessed = 1;
+		}
+		else
+		{
+			if ( vdp1_sprite_log ) logerror( "VDP1: Access to register TVMR = %1X\n", STV_VDP1_TVMR );
+			if ( STV_VDP1_VBE && stv_vblank )
+			{
+				stv_clear_framebuffer(stv_vdp1_current_display_framebuffer);
+			}
+
+			/* needed by pblbeach, it doesn't clear local coordinates in its sprite list...*/
+			if ( !strcmp(Machine->gamedrv->name, "pblbeach") )
+			{
+				stvvdp1_local_x = stvvdp1_local_y = 0;
+			}
+		}
 	}
+	else if ( offset == 1 )
+	{
+		if ( ACCESSING_MSW32 )
+		{
+			if ( STV_VDP1_PTMR == 1 )
+			{
+				if ( vdp1_sprite_log ) logerror( "VDP1: Access to register PTMR = %1X\n", STV_VDP1_PTMR );
+				stv_vdp1_process_list( NULL, &Machine->visible_area );
+
+				if(!(stv_scu[40] & 0x2000)) /*Sprite draw end irq*/
+				{
+					logerror( "Interrupt: Sprite draw end, Vector 0x4d, Level 0x02\n" );
+					cpunum_set_input_line_and_vector(0, 2, HOLD_LINE , 0x4d);
+				}
+			}
+		}
+		else if ( ACCESSING_LSW32 )
+		{
+			if ( vdp1_sprite_log ) logerror( "VDP1: Erase data set %08X\n", data );
+		}
+	}
+	else if ( offset == 2 )
+	{
+		if ( ACCESSING_MSW32 )
+		{
+			if ( vdp1_sprite_log ) logerror( "VDP1: Erase upper-left coord set: %08X\n", data );
+		}
+		else if ( ACCESSING_LSW32 )
+		{
+			if ( vdp1_sprite_log ) logerror( "VDP1: Erase lower-right coord set: %08X\n", data );
+		}
+	}
+
 }
 
 READ32_HANDLER ( stv_vdp1_vram_r )
@@ -203,7 +318,7 @@ READ32_HANDLER ( stv_vdp1_vram_r )
 
 WRITE32_HANDLER ( stv_vdp1_vram_w )
 {
-	data8_t *vdp1 = memory_region(REGION_GFX2);
+	UINT8 *vdp1 = memory_region(REGION_GFX2);
 
 	COMBINE_DATA (&stv_vdp1_vram[offset]);
 
@@ -222,23 +337,58 @@ WRITE32_HANDLER ( stv_vdp1_vram_w )
 
 WRITE32_HANDLER ( stv_vdp1_framebuffer0_w )
 {
-	//usrintf_showmessage ("STV VDP1 Framebuffer 0 WRITE offset %08x data %08x",offset, data);
+	//ui_popup ("STV VDP1 Framebuffer 0 WRITE offset %08x data %08x",offset, data);
+	if ( STV_VDP1_TVM & 0 )
+	{
+		/* 8-bit mode */
+	}
+	else
+	{
+		/* 16-bit mode */
+		if ( ACCESSING_MSW32 )
+		{
+			stv_framebuffer[stv_vdp1_current_draw_framebuffer][offset*2] = (data >> 16) & 0xffff;
+		}
+		if ( ACCESSING_LSW32 )
+		{
+			stv_framebuffer[stv_vdp1_current_draw_framebuffer][offset*2+1] = data & 0xffff;
+		}
+	}
 }
 
 READ32_HANDLER ( stv_vdp1_framebuffer0_r )
 {
-	//usrintf_showmessage ("STV VDP1 Framebuffer 0 READ offset %08x",offset);
-	return 0xffff;
+	UINT32 result = 0;
+	//ui_popup ("STV VDP1 Framebuffer 0 READ offset %08x",offset);
+	if ( STV_VDP1_TVM & 0 )
+	{
+		/* 8-bit mode */
+	}
+	else
+	{
+		/* 16-bit mode */
+		if ( ACCESSING_MSW32 )
+		{
+			result |= (stv_framebuffer[stv_vdp1_current_draw_framebuffer][offset*2] << 16);
+		}
+		if ( ACCESSING_LSW32 )
+		{
+			result |= stv_framebuffer[stv_vdp1_current_draw_framebuffer][offset*2+1];
+		}
+
+	}
+
+	return result;
 }
 
 WRITE32_HANDLER ( stv_vdp1_framebuffer1_w )
 {
-	//usrintf_showmessage ("STV VDP1 Framebuffer 1 WRITE offset %08x data %08x",offset, data);
+	//ui_popup ("STV VDP1 Framebuffer 1 WRITE offset %08x data %08x",offset, data);
 }
 
 READ32_HANDLER ( stv_vdp1_framebuffer1_r )
 {
-	//usrintf_showmessage ("STV VDP1 Framebuffer 1 READ offset %08x",offset);
+	//ui_popup ("STV VDP1 Framebuffer 1 READ offset %08x",offset);
 	return 0xffff;
 }
 
@@ -308,8 +458,6 @@ the rest are data used by it
 
 */
 
-int vdp1_sprite_log = 0;
-
 static struct stv_vdp2_sprite_list
 {
 
@@ -323,9 +471,6 @@ static struct stv_vdp2_sprite_list
 	int isalpha;
 
 } stv2_current_sprite;
-
-int stvvdp1_local_x;
-int stvvdp1_local_y;
 
 /* Gouraud shading */
 
@@ -460,119 +605,133 @@ to the framebuffer we CAN'T frameskip the vdp1 drawing as the hardware can READ 
 and if we skip the drawing the content could be incorrect when it reads it, although i have no idea
 why they would want to */
 
-extern data32_t* stv_vdp2_cram;
+extern UINT32* stv_vdp2_cram;
 
 INLINE void drawpixel(UINT16 *dest, int patterndata, int offsetcnt)
 {
-	int pix,mode,transmask;
-	data8_t* gfxdata = memory_region(REGION_GFX2);
+	int pix,mode,transmask,spd = stv2_current_sprite.CMDPMOD & 0x40;
+	UINT8* gfxdata = memory_region(REGION_GFX2);
 	int pix2;
 
-	switch (stv2_current_sprite.CMDPMOD&0x0038)
-	{
-		case 0x0000: // mode 0 16 colour bank mode (4bits) (hanagumi blocks)
-			// most of the shienryu sprites use this mode
-			pix = gfxdata[patterndata+offsetcnt/2];
-			pix = offsetcnt&1 ? (pix & 0x0f):((pix & 0xf0)>>4) ;
-			pix = pix+((stv2_current_sprite.CMDCOLR&0xfff0));
-			mode = 0;
-			transmask = 0xf;
-			break;
-		case 0x0008: // mode 1 16 colour lookup table mode (4bits)
-			// shienryu explosisons (and some enemies) use this mode
-			pix2 = gfxdata[patterndata+offsetcnt/2];
-			pix2 = offsetcnt&1 ?  (pix2 & 0x0f):((pix2 & 0xf0)>>4);
-			pix = pix2&1 ?
-			((((stv_vdp1_vram[(((stv2_current_sprite.CMDCOLR&0xffff)*8)>>2)+((pix2&0xfffe)/2)])) & 0x0000ffff) >> 0):
-			((((stv_vdp1_vram[(((stv2_current_sprite.CMDCOLR&0xffff)*8)>>2)+((pix2&0xfffe)/2)])) & 0xffff0000) >> 16);
-
-
-			mode = 1;
-			transmask = 0xf;
-
-			if (pix2 & 0xf)
-			{
-				if (pix & 0x8000)
-				{
-					mode = 5;
-					transmask = 0x7fff;
-
-				}
-
-
-			}
-			else
-			{
-				pix=pix2; // this is messy .. but just ensures that pen 0 isn't drawn
-			}
-			break;
-		case 0x0010: // mode 2 64 colour bank mode (8bits) (character select portraits on hanagumi)
-			pix = gfxdata[patterndata+offsetcnt];
-			mode = 2;
-			pix = pix+(stv2_current_sprite.CMDCOLR&0xffc0);
-			transmask = 0x3f;
-			break;
-		case 0x0018: // mode 3 128 colour bank mode (8bits) (little characters on hanagumi use this mode)
-			pix = gfxdata[patterndata+offsetcnt];
-			pix = pix+(stv2_current_sprite.CMDCOLR&0xff80);
-			transmask = 0x7f;
-			mode = 3;
-		//  pix = rand();
-			break;
-		case 0x0020: // mode 4 256 colour bank mode (8bits) (hanagumi title)
-			pix = gfxdata[patterndata+offsetcnt];
-			pix = pix+(stv2_current_sprite.CMDCOLR&0xff00);
-			transmask = 0xff;
-			mode = 4;
-			break;
-		case 0x0028: // mode 5 32,768 colour RGB mode (16bits)
-			pix = gfxdata[patterndata+offsetcnt*2+1] | (gfxdata[patterndata+offsetcnt*2]<<8) ;
-			mode = 5;
-			transmask = 0x7fff;
-			break;
-		default: // other settings illegal
-			pix = rand();
-			mode = 0;
-			transmask = 0xff;
-	}
-
-	if (stv2_current_sprite.ispoly)
+	if ( stv2_current_sprite.ispoly )
 	{
 		pix = stv2_current_sprite.CMDCOLR&0xffff;
-			mode = 1;
-			transmask = 0xf;
 
-			if (pix & 0x8000)
-			{
+		transmask = 0xffff;
+		if ( pix & 0x8000 )
+		{
+			mode = 5;
+		}
+		else
+		{
+			mode = 1;
+		}
+	}
+	else
+	{
+		switch (stv2_current_sprite.CMDPMOD&0x0038)
+		{
+			case 0x0000: // mode 0 16 colour bank mode (4bits) (hanagumi blocks)
+				// most of the shienryu sprites use this mode
+				pix = gfxdata[patterndata+offsetcnt/2];
+				pix = offsetcnt&1 ? (pix & 0x0f):((pix & 0xf0)>>4) ;
+				pix = pix+((stv2_current_sprite.CMDCOLR&0xfff0));
+				mode = 0;
+				transmask = 0xf;
+				break;
+			case 0x0008: // mode 1 16 colour lookup table mode (4bits)
+				// shienryu explosisons (and some enemies) use this mode
+				pix2 = gfxdata[patterndata+offsetcnt/2];
+				pix2 = offsetcnt&1 ?  (pix2 & 0x0f):((pix2 & 0xf0)>>4);
+				pix = pix2&1 ?
+				((((stv_vdp1_vram[(((stv2_current_sprite.CMDCOLR&0xffff)*8)>>2)+((pix2&0xfffe)/2)])) & 0x0000ffff) >> 0):
+				((((stv_vdp1_vram[(((stv2_current_sprite.CMDCOLR&0xffff)*8)>>2)+((pix2&0xfffe)/2)])) & 0xffff0000) >> 16);
+
+
+				mode = 1;
+				transmask = 0xf;
+
+				if (pix2 & 0xf)
+				{
+					if (pix & 0x8000)
+					{
+						mode = 5;
+						transmask = 0x7fff;
+
+					}
+
+
+				}
+				else
+				{
+					pix=pix2; // this is messy .. but just ensures that pen 0 isn't drawn
+				}
+				break;
+			case 0x0010: // mode 2 64 colour bank mode (8bits) (character select portraits on hanagumi)
+				pix = gfxdata[patterndata+offsetcnt];
+				mode = 2;
+				pix = pix+(stv2_current_sprite.CMDCOLR&0xffc0);
+				transmask = 0x3f;
+				break;
+			case 0x0018: // mode 3 128 colour bank mode (8bits) (little characters on hanagumi use this mode)
+				pix = gfxdata[patterndata+offsetcnt];
+				pix = pix+(stv2_current_sprite.CMDCOLR&0xff80);
+				transmask = 0x7f;
+				mode = 3;
+			//  pix = rand();
+				break;
+			case 0x0020: // mode 4 256 colour bank mode (8bits) (hanagumi title)
+				pix = gfxdata[patterndata+offsetcnt];
+				pix = pix+(stv2_current_sprite.CMDCOLR&0xff00);
+				transmask = 0xff;
+				mode = 4;
+				break;
+			case 0x0028: // mode 5 32,768 colour RGB mode (16bits)
+				pix = gfxdata[patterndata+offsetcnt*2+1] | (gfxdata[patterndata+offsetcnt*2]<<8) ;
 				mode = 5;
 				transmask = 0x7fff;
-			}
-	}
+				break;
+			default: // other settings illegal
+				pix = rand();
+				mode = 0;
+				transmask = 0xff;
+		}
 
-	// preliminary end code disable support
-	if ( ((stv2_current_sprite.CMDPMOD & 0x80) == 0) &&
-		 ((pix & transmask) == transmask) )
-	{
-		return;
+
+		// preliminary end code disable support
+		if ( ((stv2_current_sprite.CMDPMOD & 0x80) == 0) &&
+			((pix & transmask) == transmask) )
+		{
+			return;
+		}
 	}
 
 	/* MSBON */
 	pix |= stv2_current_sprite.CMDPMOD & 0x8000;
 	if ( mode != 5 )
 	{
-		if ( pix & transmask )
+		if ( (pix & transmask) || spd )
 		{
 			*dest = pix;
 		}
 	}
 	else
 	{
-		if ( pix & transmask )
+		if ( (pix & transmask) || spd )
 		{
 			switch( stv2_current_sprite.CMDPMOD & 0x7 )
 			{
 				case 0:	/* replace */
 					*dest = pix;
+					break;
+				case 1: /* shadow */
+					if ( *dest & 0x8000 )
+					{
+						*dest = ((*dest & ~0x8421) >> 1) | 0x8000;
+					}
+					break;
+				case 2: /* half luminance */
+					*dest = ((pix & ~0x8421) >> 1) | 0x8000;
 					break;
 				case 3: /* half transparent */
 					if ( *dest & 0x8000 )
@@ -589,7 +748,7 @@ INLINE void drawpixel(UINT16 *dest, int patterndata, int offsetcnt)
 					break;
 				default:
 					*dest = pix;
-					//usrintf_showmessage( "Unsupported VDP1 draw mode %x", stv2_current_sprite.CMDPMOD & 0x7 );
+					//ui_popup( "Unsupported VDP1 draw mode %x", stv2_current_sprite.CMDPMOD & 0x7 );
 					break;
 			}
 		}
@@ -605,7 +764,7 @@ struct spoint {
 	INT32 u, v;
 };
 
-static void vdp1_fill_slope(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int patterndata, int xsize,
+static void vdp1_fill_slope(mame_bitmap *bitmap, const rectangle *cliprect, int patterndata, int xsize,
 							INT32 x1, INT32 x2, INT32 sl1, INT32 sl2, INT32 *nx1, INT32 *nx2,
 							INT32 u1, INT32 u2, INT32 slu1, INT32 slu2, INT32 *nu1, INT32 *nu2,
 							INT32 v1, INT32 v2, INT32 slv1, INT32 slv2, INT32 *nv1, INT32 *nv2,
@@ -695,7 +854,7 @@ static void vdp1_fill_slope(struct mame_bitmap *bitmap, const struct rectangle *
 					xx2 = cliprect->max_x;
 
 				while(xx1 <= xx2) {
-					drawpixel(stv_framebuffer_lines[_y1]+xx1,
+					drawpixel(stv_framebuffer_draw_lines[_y1]+xx1,
 							  patterndata,
 							  (v>>FRAC_SHIFT)*xsize+(u>>FRAC_SHIFT));
 					xx1++;
@@ -721,7 +880,7 @@ static void vdp1_fill_slope(struct mame_bitmap *bitmap, const struct rectangle *
 	*nv2 = v2;
 }
 
-static void vdp1_fill_line(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int patterndata, int xsize, INT32 y,
+static void vdp1_fill_line(mame_bitmap *bitmap, const rectangle *cliprect, int patterndata, int xsize, INT32 y,
 						   INT32 x1, INT32 x2, INT32 u1, INT32 u2, INT32 v1, INT32 v2)
 {
 	int xx1 = x1>>FRAC_SHIFT;
@@ -749,7 +908,7 @@ static void vdp1_fill_line(struct mame_bitmap *bitmap, const struct rectangle *c
 			xx2 = cliprect->max_x;
 
 		while(xx1 <= xx2) {
-			drawpixel(stv_framebuffer_lines[y]+xx1,
+			drawpixel(stv_framebuffer_draw_lines[y]+xx1,
 					  patterndata,
 					  (v>>FRAC_SHIFT)*xsize+(u>>FRAC_SHIFT));
 			xx1++;
@@ -759,7 +918,7 @@ static void vdp1_fill_line(struct mame_bitmap *bitmap, const struct rectangle *c
 	}
 }
 
-static void vdp1_fill_quad(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int patterndata, int xsize, const struct spoint *q)
+static void vdp1_fill_quad(mame_bitmap *bitmap, const rectangle *cliprect, int patterndata, int xsize, const struct spoint *q)
 {
 	INT32 sl1, sl2, slu1, slu2, slv1, slv2, cury, limy, x1, x2, u1, u2, v1, v2, delta;
 	int pmin, pmax, i, ps1, ps2;
@@ -914,7 +1073,26 @@ static int y2s(int v)
 	return (INT32)(INT16)v + stvvdp1_local_y;
 }
 
-void stv_vpd1_draw_distorted_sprite(struct mame_bitmap *bitmap, const struct rectangle *cliprect)
+void stv_vdp1_draw_line( mame_bitmap *bitmap, const rectangle *cliprect)
+{
+	struct spoint q[4];
+
+	q[0].x = x2s(stv2_current_sprite.CMDXA);
+	q[0].y = y2s(stv2_current_sprite.CMDYA);
+	q[1].x = x2s(stv2_current_sprite.CMDXB);
+	q[1].y = y2s(stv2_current_sprite.CMDYB);
+	q[2].x = x2s(stv2_current_sprite.CMDXA);
+	q[2].y = y2s(stv2_current_sprite.CMDYA);
+	q[3].x = x2s(stv2_current_sprite.CMDXB);
+	q[3].y = y2s(stv2_current_sprite.CMDYB);
+
+	q[0].u = q[3].u = q[1].u = q[2].u = 0;
+	q[0].v = q[1].v = q[2].v = q[3].v = 0;
+
+	vdp1_fill_quad(bitmap, cliprect, 0, 1, q);
+}
+
+void stv_vpd1_draw_distorted_sprite(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	struct spoint q[4];
 
@@ -924,15 +1102,25 @@ void stv_vpd1_draw_distorted_sprite(struct mame_bitmap *bitmap, const struct rec
 
 	direction = (stv2_current_sprite.CMDCTRL & 0x0030)>>4;
 
-	xsize = (stv2_current_sprite.CMDSIZE & 0x3f00) >> 8;
-	xsize = xsize * 8;
-	if (xsize == 0) return; /* setting prohibited */
+	if ( stv2_current_sprite.ispoly )
+	{
+		xsize = ysize = 1;
+		patterndata = 0;
+	}
+	else
+	{
+		xsize = (stv2_current_sprite.CMDSIZE & 0x3f00) >> 8;
+		xsize = xsize * 8;
+		if (xsize == 0) return; /* setting prohibited */
 
-	ysize = (stv2_current_sprite.CMDSIZE & 0x00ff);
-	if (ysize == 0) return; /* setting prohibited */
+		ysize = (stv2_current_sprite.CMDSIZE & 0x00ff);
+		if (ysize == 0) return; /* setting prohibited */
 
-	patterndata = (stv2_current_sprite.CMDSRCA) & 0xffff;
-	patterndata = patterndata * 0x8;
+		patterndata = (stv2_current_sprite.CMDSRCA) & 0xffff;
+		patterndata = patterndata * 0x8;
+
+	}
+
 
 	q[0].x = x2s(stv2_current_sprite.CMDXA);
 	q[0].y = y2s(stv2_current_sprite.CMDYA);
@@ -961,7 +1149,7 @@ void stv_vpd1_draw_distorted_sprite(struct mame_bitmap *bitmap, const struct rec
 	vdp1_fill_quad(bitmap, cliprect, patterndata, xsize, q);
 }
 
-void stv_vpd1_draw_scaled_sprite(struct mame_bitmap *bitmap, const struct rectangle *cliprect)
+void stv_vpd1_draw_scaled_sprite(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	struct spoint q[4];
 
@@ -1088,7 +1276,7 @@ void stv_vpd1_draw_scaled_sprite(struct mame_bitmap *bitmap, const struct rectan
 }
 
 
-void stv_vpd1_draw_normal_sprite(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int sprite_type)
+void stv_vpd1_draw_normal_sprite(mame_bitmap *bitmap, const rectangle *cliprect, int sprite_type)
 {
 	UINT16 *destline;
 
@@ -1139,7 +1327,7 @@ void stv_vpd1_draw_normal_sprite(struct mame_bitmap *bitmap, const struct rectan
 
 		if ((drawypos >= cliprect->min_y) && (drawypos <= cliprect->max_y))
 		{
-			destline = stv_framebuffer_lines[drawypos];
+			destline = stv_framebuffer_draw_lines[drawypos];
 
 			for (xcnt = 0; xcnt != xsize; xcnt ++)
 			{
@@ -1176,7 +1364,7 @@ void stv_vpd1_draw_normal_sprite(struct mame_bitmap *bitmap, const struct rectan
 	}
 }
 
-void stv_vdp1_process_list(struct mame_bitmap *bitmap, const struct rectangle *cliprect)
+void stv_vdp1_process_list(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int position;
 	int spritecount;
@@ -1346,6 +1534,8 @@ void stv_vdp1_process_list(struct mame_bitmap *bitmap, const struct rectangle *c
 
 				case 0x0006:
 					if (vdp1_sprite_log) logerror ("Sprite List Line\n");
+					stv2_current_sprite.ispoly = 1;
+					stv_vdp1_draw_line(bitmap,cliprect);
 					break;
 
 				case 0x0008:
@@ -1388,8 +1578,10 @@ void stv_vdp1_process_list(struct mame_bitmap *bitmap, const struct rectangle *c
 	if (vdp1_sprite_log) logerror ("End of list processing!\n");
 }
 
-void video_update_vdp1(struct mame_bitmap *bitmap, const struct rectangle *cliprect)
+void video_update_vdp1(mame_bitmap *bitmap, const rectangle *cliprect)
 {
+	int framebufer_changed = 0;
+
 //  int enable;
 //  if (code_pressed (KEYCODE_R)) vdp1_sprite_log = 1;
 //  if (code_pressed (KEYCODE_T)) vdp1_sprite_log = 0;
@@ -1405,19 +1597,58 @@ void video_update_vdp1(struct mame_bitmap *bitmap, const struct rectangle *clipr
 //          fclose(fp);
 //      }
 //  }
-	stv_clear_framebuffer();
+	if (vdp1_sprite_log) logerror("video_update_vdp1 called\n");
+	if (vdp1_sprite_log) logerror( "FBCR = %0x, accessed = %d\n", STV_VDP1_FBCR, stv_vdp1_fbcr_accessed );
+
+	if ( stv_vdp1_clear_framebuffer_on_next_frame )
+	{
+		stv_clear_framebuffer(stv_vdp1_current_display_framebuffer);
+		stv_vdp1_clear_framebuffer_on_next_frame = 0;
+	}
+
+	switch( STV_VDP1_FBCR & 0x3 )
+	{
+		case 0: /* Automatic mode */
+			stv_vdp1_change_framebuffers();
+			stv_clear_framebuffer(stv_vdp1_current_draw_framebuffer);
+			framebufer_changed = 1;
+			break;
+		case 1: /* Setting prohibited */
+			break;
+		case 2: /* Manual mode - erase */
+			if ( stv_vdp1_fbcr_accessed )
+			{
+				stv_vdp1_clear_framebuffer_on_next_frame = 1;
+			}
+			break;
+		case 3: /* Manual mode - change */
+			if ( stv_vdp1_fbcr_accessed )
+			{
+				stv_vdp1_change_framebuffers();
+				if ( STV_VDP1_VBE )
+				{
+					stv_clear_framebuffer(stv_vdp1_current_draw_framebuffer);
+				}
+				framebufer_changed = 1;
+			}
+			break;
+	}
+	stv_vdp1_fbcr_accessed = 0;
+
+	if (vdp1_sprite_log) logerror( "PTM = %0x, TVM = %x\n", STV_VDP1_PTM, STV_VDP1_TVM );
 	switch(STV_VDP1_PTM & 3)
 	{
 		case 0:/*Idle Mode*/
 			break;
 		case 1:/*Draw by request*/
-			//SET_PTM_FROM_1_TO_0;//kiwames doesn't like this ATM...
+			break;
 		case 2:/*Automatic Draw*/
-			stv_vdp1_process_list(bitmap,cliprect);
+			if ( framebufer_changed )
+				stv_vdp1_process_list(bitmap,cliprect);
 			break;
 		case 3:	/*<invalid>*/
 			logerror("Warning: Invalid PTM mode set for VDP1!\n");
 			break;
 	}
-	//usrintf_showmessage("%04x %04x",STV_VDP1_EWRR_X3,STV_VDP1_EWRR_Y3);
+	//ui_popup("%04x %04x",STV_VDP1_EWRR_X3,STV_VDP1_EWRR_Y3);
 }

@@ -56,7 +56,7 @@ f5d6    print 7 digit BCD number: d0.l to (a1)+ color $3000
 /* Variables only used here */
 
 /* Variables defined in vidhrdw */
-extern data16_t *ginganin_fgram16, *ginganin_txtram16, *ginganin_vregs16;
+extern UINT16 *ginganin_fgram16, *ginganin_txtram16, *ginganin_vregs16;
 
 /* Functions defined in vidhrdw */
 WRITE16_HANDLER( ginganin_fgram16_w );
@@ -128,7 +128,7 @@ static WRITE8_HANDLER( MC6840_control_port_0_w )
 		{
 			S_TEMPO = MC6840_register0;
 #ifdef MAME_DEBUG
-			usrintf_showmessage("I0:0x%02X R0:0x%02X I1:0x%02X R1:0x%02X", MC6840_index0, MC6840_register0, MC6840_index1, MC6840_register1);
+			ui_popup("I0:0x%02X R0:0x%02X I1:0x%02X R1:0x%02X", MC6840_index0, MC6840_register0, MC6840_index1, MC6840_register1);
 #endif
 		}
 		MC6809_FLAG = 1;
@@ -272,7 +272,7 @@ INPUT_PORTS_END
 
 
 #define layout16x16(_name_,_romsize_) \
-static struct GfxLayout _name_ =\
+static gfx_layout _name_ =\
 {\
 	16,16,\
 	(_romsize_)*8/(16*16*4),\
@@ -286,7 +286,7 @@ static struct GfxLayout _name_ =\
 };
 
 #define layout8x8(_name_,_romsize_) \
-static struct GfxLayout _name_ =\
+static gfx_layout _name_ =\
 {\
 	8,8,\
 	(_romsize_)*8/(8*8*4),\
@@ -301,7 +301,7 @@ layout16x16(tilelayout,  0x20000)
 layout8x8  (txtlayout,	 0x04000)
 layout16x16(spritelayout,0x50000)
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,	 256*3, 16 }, /* [0] bg */
 	{ REGION_GFX2, 0, &tilelayout,	 256*2, 16 }, /* [1] fg */
@@ -465,10 +465,10 @@ ROM_END
 
 DRIVER_INIT( ginganin )
 {
-	data16_t *rom;
+	UINT16 *rom;
 
 	/* main cpu patches */
-	rom = (data16_t *)memory_region(REGION_CPU1);
+	rom = (UINT16 *)memory_region(REGION_CPU1);
 	/* avoid writes to rom getting to the log */
 	rom[0x408/2] = 0x6000;
 	rom[0x40a/2] = 0x001c;

@@ -131,11 +131,12 @@ for more info on this.
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 #include "machine/nmk004.h"
+#include "machine/nmk112.h"
 
 
-extern data16_t *nmk_bgvideoram,*nmk_fgvideoram,*nmk_txvideoram;
-extern data16_t *gunnail_scrollram;
-extern data16_t tharrier_scroll;
+extern UINT16 *nmk_bgvideoram,*nmk_fgvideoram,*nmk_txvideoram;
+extern UINT16 *gunnail_scrollram;
+extern UINT16 tharrier_scroll;
 
 READ16_HANDLER( nmk_bgvideoram_r );
 WRITE16_HANDLER( nmk_bgvideoram_w );
@@ -217,7 +218,7 @@ WRITE8_HANDLER ( ssmissin_soundbank_w )
 }
 
 
-static data16_t *ram;
+static UINT16 *ram;
 
 
 static WRITE16_HANDLER( tharrier_shared_w )
@@ -285,33 +286,6 @@ static WRITE8_HANDLER( macross2_sound_bank_w )
 	UINT8 *rom = memory_region(REGION_CPU2) + 0x10000;
 
 	memory_set_bankptr(1,rom + (data & 0x07) * 0x4000);
-}
-
-static WRITE8_HANDLER( macross2_oki6295_bankswitch_w )
-{
-	/* The OKI6295 ROM space is divided in four banks, each one indepentently
-       controlled. The sample table at the beginning of the addressing space is
-       divided in four pages as well, banked together with the sample data. */
-	#define TABLESIZE 0x100
-	#define BANKSIZE 0x10000
-	int chip = (offset & 4) >> 2;
-	int banknum = offset & 3;
-	unsigned char *rom = memory_region(REGION_SOUND1 + chip);
-	int size = memory_region_length(REGION_SOUND1 + chip) - 0x40000;
-	int bankaddr = (data * BANKSIZE) & (size-1);
-
-	/* copy the samples */
-	memcpy(rom + banknum * BANKSIZE,rom + 0x40000 + bankaddr,BANKSIZE);
-
-	/* and also copy the samples address table */
-	rom += banknum * TABLESIZE;
-	memcpy(rom,rom + 0x40000 + bankaddr,TABLESIZE);
-}
-
-static WRITE16_HANDLER( bjtwin_oki6295_bankswitch_w )
-{
-	if (ACCESSING_LSB)
-		macross2_oki6295_bankswitch_w(offset,data & 0xff);
 }
 
 static WRITE8_HANDLER( tharrier_oki6295_bankswitch_0_w )
@@ -583,8 +557,8 @@ anything to compare,infact
 
 ******************************************************************************************/
 
-data16_t *mcu_shared_ram;
-data16_t *work_ram;
+UINT16 *mcu_shared_ram;
+UINT16 *work_ram;
 
 #define PROT_JSR(_offs_,_protvalue_,_pc_) \
 	if(mcu_shared_ram[(_offs_)/2] == _protvalue_) \
@@ -1082,7 +1056,7 @@ static ADDRESS_MAP_START( macross2_sound_writeport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(OKIM6295_data_0_w)
 	AM_RANGE(0x88, 0x88) AM_WRITE(OKIM6295_data_1_w)
-	AM_RANGE(0x90, 0x97) AM_WRITE(macross2_oki6295_bankswitch_w)
+	AM_RANGE(0x90, 0x97) AM_WRITE(NMK112_okibank_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bjtwin_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1106,7 +1080,7 @@ static ADDRESS_MAP_START( bjtwin_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x080014, 0x080015) AM_WRITE(nmk_flipscreen_w)
 	AM_RANGE(0x084000, 0x084001) AM_WRITE(OKIM6295_data_0_lsb_w)
 	AM_RANGE(0x084010, 0x084011) AM_WRITE(OKIM6295_data_1_lsb_w)
-	AM_RANGE(0x084020, 0x08402f) AM_WRITE(bjtwin_oki6295_bankswitch_w)
+	AM_RANGE(0x084020, 0x08402f) AM_WRITE(NMK112_okibank_lsb_w)
 	AM_RANGE(0x088000, 0x0887ff) AM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x094000, 0x094001) AM_WRITE(nmk_tilebank_w)
 	AM_RANGE(0x094002, 0x094003) AM_WRITE(MWA16_NOP)	/* IRQ enable? */
@@ -2650,7 +2624,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -2661,7 +2635,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -2674,7 +2648,7 @@ static struct GfxLayout tilelayout =
 	32*32
 };
 
-static struct GfxDecodeInfo tharrier_gfxdecodeinfo[] =
+static gfx_decode tharrier_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0x000, 16 },	/* color 0x200-0x2ff */
 	{ REGION_GFX2, 0, &tilelayout, 0x000, 16 },	/* color 0x000-0x0ff */
@@ -2682,7 +2656,7 @@ static struct GfxDecodeInfo tharrier_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo macross_gfxdecodeinfo[] =
+static gfx_decode macross_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0x200, 16 },	/* color 0x200-0x2ff */
 	{ REGION_GFX2, 0, &tilelayout, 0x000, 16 },	/* color 0x000-0x0ff */
@@ -2690,7 +2664,7 @@ static struct GfxDecodeInfo macross_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo macross2_gfxdecodeinfo[] =
+static gfx_decode macross2_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0x300, 16 },	/* color 0x300-0x3ff */
 	{ REGION_GFX2, 0, &tilelayout, 0x000, 16 },	/* color 0x000-0x0ff */
@@ -2698,7 +2672,7 @@ static struct GfxDecodeInfo macross2_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo bjtwin_gfxdecodeinfo[] =
+static gfx_decode bjtwin_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0x000, 16 },	/* color 0x000-0x0ff */
 	{ REGION_GFX2, 0, &charlayout, 0x000, 16 },	/* color 0x000-0x0ff */
@@ -2706,7 +2680,7 @@ static struct GfxDecodeInfo bjtwin_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo bioship_gfxdecodeinfo[] =
+static gfx_decode bioship_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0x300, 16 },	/* color 0x300-0x3ff */
 	{ REGION_GFX2, 0, &tilelayout, 0x100, 16 },	/* color 0x100-0x1ff */
@@ -2715,7 +2689,7 @@ static struct GfxDecodeInfo bioship_gfxdecodeinfo[] =
 	{ -1 }
 };
 
-static struct GfxDecodeInfo strahl_gfxdecodeinfo[] =
+static gfx_decode strahl_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0x000, 16 },	/* color 0x000-0x0ff */
 	{ REGION_GFX2, 0, &tilelayout, 0x300, 16 },	/* color 0x300-0x3ff */
@@ -2878,10 +2852,6 @@ static MACHINE_DRIVER_START( mustang )
 	MDRV_SOUND_ROUTE(1, "mono", 0.50)
 	MDRV_SOUND_ROUTE(2, "mono", 0.50)
 	MDRV_SOUND_ROUTE(3, "mono", 2.00)
-
-	MDRV_SOUND_ADD(YM2203, 1500000)
-	MDRV_SOUND_CONFIG(ym2203_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90)
 
 	MDRV_SOUND_ADD(OKIM6295, 16000000/4/165)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
@@ -4245,9 +4215,9 @@ ROM_START( raphero )
 	ROM_LOAD16_WORD_SWAP( "rhp94099.9", 0x200000, 0x200000, CRC(ea2e47f0) SHA1(97dfa8f95f27b36deb5ce1c80e3d727bad24e52b) )	/* 16x16 tiles */
 	ROM_LOAD16_WORD_SWAP( "rhp94099.10",0x400000, 0x200000, CRC(512cb839) SHA1(4a2c5ac88e4bf8a6f07c703277c4d33e649fd192) )	/* 16x16 tiles */
 
-	ROM_REGION( 0x400000, REGION_SOUND1, 0 )	/* OKIM6295 samples */
-	ROM_LOAD( "rhp94099.5", 0x000000, 0x200000, CRC(515eba93) SHA1(c35cb5f31f4bc7327be5777624af168f9fb364a5) )	/* all banked */
-	ROM_LOAD( "rhp94099.6", 0x200000, 0x200000, CRC(f1a80e5a) SHA1(218bd7b0c3d8b283bf96b95bf888228810699370) )	/* all banked */
+	ROM_REGION( 0x440000, REGION_SOUND1, 0 )	/* OKIM6295 samples */
+	ROM_LOAD( "rhp94099.5", 0x040000, 0x200000, CRC(515eba93) SHA1(c35cb5f31f4bc7327be5777624af168f9fb364a5) )	/* all banked */
+	ROM_LOAD( "rhp94099.6", 0x240000, 0x200000, CRC(f1a80e5a) SHA1(218bd7b0c3d8b283bf96b95bf888228810699370) )	/* all banked */
 
 	ROM_REGION( 0x240000, REGION_SOUND2, 0 )	/* OKIM6295 samples */
 	ROM_LOAD( "rhp94099.7", 0x040000, 0x200000, CRC(0d99547e) SHA1(2d9630bd55d27010f9d1d2dbdbd07ac265e8ebe6) )	/* all banked */
@@ -4549,7 +4519,7 @@ static DRIVER_INIT( nmk )
 
 static DRIVER_INIT( hachamf )
 {
-	data16_t *rom = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
 
 	//rom[0x0006/2] = 0x7dc2;   /* replace reset vector with the "real" one */
 
@@ -4560,7 +4530,7 @@ static DRIVER_INIT( hachamf )
 
 static DRIVER_INIT( tdragonb )
 {
-	data16_t *rom = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
 
 	decode_tdragonb();
 
@@ -4571,7 +4541,7 @@ static DRIVER_INIT( tdragonb )
 
 static DRIVER_INIT( tdragon )
 {
-	data16_t *rom = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
 
 	//rom[0x94b0/2] = 0; /* Patch out JMP to shared memory (protection) */
 	//rom[0x94b2/2] = 0x92f4;
@@ -4618,7 +4588,7 @@ static WRITE16_HANDLER ( test_2a_mustang_w )
 
 static DRIVER_INIT( blkheart )
 {
-	data16_t *rom = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
 
 	is_blkheart = 1; // sprite enable is different?
 
@@ -4636,7 +4606,7 @@ static DRIVER_INIT( blkheart )
 
 static DRIVER_INIT( mustang )
 {
-	data16_t *rom = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
 
 	is_blkheart = 1; // sprite enable is different?
 
@@ -4671,7 +4641,7 @@ static DRIVER_INIT( bjtwin )
  *  008F7E: 207C 000F 9000           movea.l #$f9000, A0
  */
 
-//  data 16_t *rom = (data16_t *)memory_region(REGION_CPU1);
+//  data 16_t *rom = (UINT16 *)memory_region(REGION_CPU1);
 //  rom[0x09172/2] = 0x6006;    /* patch checksum error */
 //  rom[0x08f74/2] = 0x4e71);
 }

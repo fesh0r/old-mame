@@ -3,12 +3,12 @@
 #include "vidhrdw/generic.h"
 
 
-static struct tilemap *gcpinbal_tilemap[3];
+static tilemap *gcpinbal_tilemap[3];
 
-data16_t *gcpinbal_tilemapram;
-data16_t *gcpinbal_ioc_ram;
+UINT16 *gcpinbal_tilemapram;
+UINT16 *gcpinbal_ioc_ram;
 
-//data16_t *gcpinbal_ctrlram;
+//UINT16 *gcpinbal_ctrlram;
 //static UINT16 gcpinbal_ctrl_reg;
 
 static UINT16 gcpinbal_scrollx[3],gcpinbal_scrolly[3];
@@ -203,7 +203,7 @@ WRITE16_HANDLER( gcpinbal_ctrl_word_w )
 
 ****************************************************************/
 
-static void gcpinbal_draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int y_offs)
+static void gcpinbal_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect,int y_offs)
 {
 	int offs,chain_pos;
 	int x,y,curx,cury;
@@ -268,7 +268,7 @@ static void gcpinbal_draw_sprites(struct mame_bitmap *bitmap,const struct rectan
 	{
 		char buf[80];
 		sprintf(buf,"sprite rotate offs %04x ?",rotate);
-		usrintf_showmessage(buf);
+		ui_popup(buf);
 	}
 #endif
 }
@@ -294,19 +294,19 @@ VIDEO_UPDATE( gcpinbal )
 	if (code_pressed_memory (KEYCODE_V))
 	{
 		dislayer[0] ^= 1;
-		usrintf_showmessage("bg0: %01x",dislayer[0]);
+		ui_popup("bg0: %01x",dislayer[0]);
 	}
 
 	if (code_pressed_memory (KEYCODE_B))
 	{
 		dislayer[1] ^= 1;
-		usrintf_showmessage("bg1: %01x",dislayer[1]);
+		ui_popup("bg1: %01x",dislayer[1]);
 	}
 
 	if (code_pressed_memory (KEYCODE_N))
 	{
 		dislayer[2] ^= 1;
-		usrintf_showmessage("fg: %01x",dislayer[2]);
+		ui_popup("fg: %01x",dislayer[2]);
 	}
 #endif
 
@@ -357,7 +357,7 @@ VIDEO_UPDATE( gcpinbal )
 	{
 //      char buf[80];
 		sprintf(buf,"bg0_gfx: %04x bg1_gfx: %04x ",bg0_gfxset,bg1_gfxset);
-		usrintf_showmessage(buf);
+		ui_popup(buf);
 	}
 #endif
 

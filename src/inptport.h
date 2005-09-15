@@ -28,6 +28,7 @@
 
 #define MAX_INPUT_PORTS		30
 #define MAX_PLAYERS			8
+#define MAX_BITS_PER_PORT	32
 
 #define IP_ACTIVE_HIGH		0x00000000
 #define IP_ACTIVE_LOW		0xffffffff
@@ -218,6 +219,7 @@ enum
 	IPT_UI_THROTTLE,
 	IPT_UI_SHOW_FPS,
 	IPT_UI_SNAPSHOT,
+	IPT_UI_RECORD_MOVIE,
 	IPT_UI_TOGGLE_CHEAT,
 	IPT_UI_UP,
 	IPT_UI_DOWN,
@@ -394,22 +396,25 @@ enum
  *
  *************************************/
 
-struct IptInitParams;
+/* this is an opaque type */
+typedef struct _input_port_init_params input_port_init_params;
 
-struct InputPortDefinition
+
+struct _input_port_default_entry
 {
 	UINT32		type;			/* type of port; see enum above */
 	UINT8		group;			/* which group the port belongs to */
 	UINT8		player;			/* player number (0 is player 1) */
 	const char *token;			/* token used to store settings */
 	const char *name;			/* user-friendly name */
-	input_seq_t	defaultseq;		/* default input sequence */
-	input_seq_t	defaultincseq;	/* default input sequence to increment (analog ports only) */
-	input_seq_t	defaultdecseq;	/* default input sequence to decrement (analog ports only) */
+	input_seq	defaultseq;		/* default input sequence */
+	input_seq	defaultincseq;	/* default input sequence to increment (analog ports only) */
+	input_seq	defaultdecseq;	/* default input sequence to decrement (analog ports only) */
 };
+typedef struct _input_port_default_entry input_port_default_entry;
 
 
-struct InputPort
+struct _input_port_entry
 {
 	UINT32		mask;			/* bits affected */
 	UINT32		default_value;	/* default value for the bits affected */
@@ -438,7 +443,7 @@ struct InputPort
 								/* 2WAY should be used for joysticks wich move only */
 								/* on one axis (e.g. Battle Zone) */
 	const char *name;			/* user-friendly name to display */
-	input_seq_t	seq;			/* input sequence affecting the input bits */
+	input_seq	seq;			/* input sequence affecting the input bits */
 	UINT16		category;		/* (MESS-specific) category */
 
 	/* valid if type is between __ipt_analog_start and __ipt_analog_end */
@@ -451,8 +456,8 @@ struct InputPort
 		INT32	centerdelta;	/* delta to apply each frame no digital inputs are pressed */
 		UINT8	reverse;		/* reverse the sense of the analog axis */
 		UINT8	reset;			/* always preload in->default for relative axes, returning only deltas */
-		input_seq_t incseq;		/* increment sequence */
-		input_seq_t decseq;		/* decrement sequence */
+		input_seq incseq;		/* increment sequence */
+		input_seq decseq;		/* decrement sequence */
 	} analog;
 
 	/* valid if type is IPT_PORT */
@@ -461,14 +466,15 @@ struct InputPort
 		const char *tag;		/* used to tag PORT_START declarations */
 	} start;
 
-	/* valid if type is IPT_DIPSWITCH_SETTING */
+	/* valid for most types */
 	struct
 	{
-		UINT8	portnum;		/* portnumber to use for condition */
+		const char *tag;		/* port tag to use for condition */
+		UINT8	portnum;		/* port number for condition */
 		UINT8	condition;		/* condition to use */
-		UINT32	mask;			/* mask to apply to the portnum */
+		UINT32	mask;			/* mask to apply to the port */
 		UINT32	value;			/* value to compare against */
-	} dipsetting;
+	} condition;
 
 	/* valid if type is IPT_KEYBOARD */
 #ifdef MESS
@@ -478,6 +484,7 @@ struct InputPort
 	} keyboard;
 #endif
 };
+typedef struct _input_port_entry input_port_entry;
 
 
 
@@ -491,10 +498,10 @@ struct InputPort
 
 /* start of table */
 #define INPUT_PORTS_START(name)										\
- 	void construct_ipt_##name(struct IptInitParams *param)			\
+ 	void construct_ipt_##name(input_port_init_params *param)			\
 	{																\
  		const char *modify_tag = NULL;								\
- 		struct InputPort *port;										\
+ 		input_port_entry *port;										\
 		int seq_index[3];											\
 		int key;													\
 		(void) port; (void) seq_index; (void) key; (void)modify_tag;\
@@ -505,13 +512,13 @@ struct InputPort
 
 /* aliasing */
 #define INPUT_PORTS_ALIAS(name, base)								\
- 	void construct_ipt_##name(struct IptInitParams *param)			\
+ 	void construct_ipt_##name(input_port_init_params *param)			\
 	{																\
  		construct_ipt_##base(param);								\
 	}																\
 
 #define INPUT_PORTS_EXTERN(name)									\
-	extern void construct_ipt_##name(struct IptInitParams *param)	\
+	extern void construct_ipt_##name(input_port_init_params *param)	\
 
 /* including */
 #define PORT_INCLUDE(name)											\
@@ -608,11 +615,11 @@ struct InputPort
 	PORT_BIT(0, default, IPT_DIPSWITCH_SETTING) PORT_NAME(name)		\
 
 /* conditionals for dip switch settings */
-#define PORT_DIPCONDITION(port_,mask_,condition_,value_)			\
-	port->dipsetting.portnum = (port_);								\
-	port->dipsetting.mask = (mask_);								\
-	port->dipsetting.condition = (condition_);						\
-	port->dipsetting.value = (value_);								\
+#define PORT_CONDITION(tag_,mask_,condition_,value_)				\
+	port->condition.tag = (tag_);									\
+	port->condition.mask = (mask_);									\
+	port->condition.condition = (condition_);						\
+	port->condition.value = (value_);								\
 
 /* analog adjuster definition */
 #define PORT_ADJUSTER(default,name)									\
@@ -642,9 +649,9 @@ struct InputPort
  *
  *************************************/
 
-extern const char *inptport_default_strings[];
+extern const char *input_port_default_strings[];
 
-#define DEF_STR(str_num) (inptport_default_strings[STR_##str_num])
+#define DEF_STR(str_num) (input_port_default_strings[STR_##str_num])
 
 
 
@@ -654,16 +661,18 @@ extern const char *inptport_default_strings[];
  *
  *************************************/
 
-int load_input_port_settings(void);
-void save_input_port_settings(void);
+int input_port_init(void (*construct_ipt)(input_port_init_params *));
 
-struct InputPort *input_port_initialize(struct IptInitParams *params, UINT32 type, const char *tag, UINT32 mask);
-struct InputPort *input_port_allocate(void construct_ipt(struct IptInitParams *params));
+void input_port_load(int config_type, xml_data_node *parentnode);
+void input_port_save(int config_type, xml_data_node *parentnode);
 
-struct InputPortDefinition *get_input_port_list(void);
-struct InputPortDefinition *get_input_port_list_backup(void);
+input_port_entry *input_port_initialize(input_port_init_params *params, UINT32 type, const char *tag, UINT32 mask);
+input_port_entry *input_port_allocate(void (*construct_ipt)(input_port_init_params *));
 
-int input_port_active(const struct InputPort *in);
+input_port_default_entry *get_input_port_list(void);
+const input_port_default_entry *get_input_port_list_defaults(void);
+
+int input_port_active(const input_port_entry *in);
 int port_type_is_analog(int type);
 int port_type_in_use(int type);
 int port_type_to_group(int type, int player);
@@ -671,10 +680,10 @@ int port_tag_to_index(const char *tag);
 read8_handler port_tag_to_handler8(const char *tag);
 read16_handler port_tag_to_handler16(const char *tag);
 read32_handler port_tag_to_handler32(const char *tag);
-const char *input_port_name(const struct InputPort *in);
-input_seq_t *input_port_seq(struct InputPort *in, int seqtype);
-input_seq_t *input_port_default_seq(int type, int player, int seqtype);
-int input_port_condition(const struct InputPort *in);
+const char *input_port_name(const input_port_entry *in);
+input_seq *input_port_seq(input_port_entry *in, int seqtype);
+input_seq *input_port_default_seq(int type, int player, int seqtype);
+int input_port_condition(const input_port_entry *in);
 
 const char *port_type_to_token(int type, int player);
 int token_to_port_type(const char *string, int *player);
@@ -683,8 +692,11 @@ int input_port_type_pressed(int type, int player);
 int input_ui_pressed(int code);
 int input_ui_pressed_repeat(int code, int speed);
 
-void inputport_vblank_start(void);	/* called by cpuintrf.c - not for external use */
-void inputport_vblank_end(void);	/* called by cpuintrf.c - not for external use */
+void input_port_update_defaults(void);
+void input_port_vblank_start(void);	/* called by cpuintrf.c - not for external use */
+void input_port_vblank_end(void);	/* called by cpuintrf.c - not for external use */
+
+void input_port_set_digital_value(int port, UINT32 value, UINT32 mask);
 
 UINT32 readinputport(int port);
 UINT32 readinputportbytag(const char *tag);

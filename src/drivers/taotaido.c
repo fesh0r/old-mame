@@ -68,10 +68,10 @@ zooming might be wrong
 
 #define TAOTAIDO_SHOW_ALL_INPUTS	0
 
-data16_t *taotaido_spriteram;
-data16_t *taotaido_spriteram2;
-data16_t *taotaido_scrollram;
-data16_t *taotaido_bgram;
+UINT16 *taotaido_spriteram;
+UINT16 *taotaido_spriteram2;
+UINT16 *taotaido_scrollram;
+UINT16 *taotaido_bgram;
 
 WRITE16_HANDLER( taotaido_sprite_character_bank_select_w );
 WRITE16_HANDLER( taotaido_tileregs_w );
@@ -148,7 +148,7 @@ static WRITE8_HANDLER( pending_command_clear_w )
 
 static WRITE8_HANDLER( taotaido_sh_bankswitch_w )
 {
-	data8_t *rom = memory_region(REGION_CPU2) + 0x10000;
+	UINT8 *rom = memory_region(REGION_CPU2) + 0x10000;
 
 	memory_set_bankptr(1,rom + (data & 0x03) * 0x8000);
 }
@@ -340,7 +340,7 @@ INPUT_PORTS_START( taotaido )
 INPUT_PORTS_END
 
 
-static struct GfxLayout taotaido_layout =
+static gfx_layout taotaido_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -353,7 +353,7 @@ static struct GfxLayout taotaido_layout =
 	128*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &taotaido_layout,  0x000, 256  }, /* sprites */
 	{ REGION_GFX2, 0, &taotaido_layout,  0x300, 256  }, /* bg tiles */

@@ -29,7 +29,7 @@ WRITE8_HANDLER( skychut_colorram_w )
 
 WRITE8_HANDLER( skychut_ctrl_w )
 {
-//usrintf_showmessage("%02x",data);
+//ui_popup("%02x",data);
 
 	/* I have NO IDEA if this is correct or not */
 	bottomline = ~data & 0x20;
@@ -110,7 +110,7 @@ VIDEO_UPDATE( skychut )
 }
 
 
-static void iremm15_drawgfx(struct mame_bitmap *bitmap, int ch,
+static void iremm15_drawgfx(mame_bitmap *bitmap, int ch,
 							INT16 color, INT16 back, int x, int y)
 {
 	UINT8 mask;

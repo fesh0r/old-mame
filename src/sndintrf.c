@@ -16,6 +16,8 @@
 #include "driver.h"
 #include "sound/streams.h"
 #include "sound/wavwrite.h"
+#include "config.h"
+#include "state.h"
 
 #define VERBOSE			(0)
 #define MAKE_WAVS		(0)
@@ -26,6 +28,9 @@
 #define VPRINTF(x)
 #endif
 
+#define MAX_MIXER_CHANNELS		100
+
+
 
 /*************************************
  *
@@ -33,44 +38,48 @@
  *
  *************************************/
 
-struct sound_output
+struct _sound_output
 {
-	sound_stream *	stream;							/* associated stream */
-	int				output;							/* output number */
+	sound_stream *	stream;					/* associated stream */
+	int				output;					/* output number */
 };
+typedef struct _sound_output sound_output;
 
 
-struct sound_info
+struct _sound_info
 {
-	const struct MachineSound *sound;				/* pointer to the sound info */
-	int				sndindex;						/* index of this chip */
-	struct snd_interface intf;						/* copy of the sound interface for this chip */
-	void *			token;							/* token returned by the start callback */
-	int				outputs;						/* number of outputs from this instance */
-	struct sound_output *output;					/* array of output information */
+	const sound_config *sound;				/* pointer to the sound info */
+	int				sndindex;				/* index of this chip */
+	sound_interface intf;					/* copy of the sound interface for this chip */
+	void *			token;					/* token returned by the start callback */
+	int				outputs;				/* number of outputs from this instance */
+	sound_output *	output;					/* array of output information */
 };
+typedef struct _sound_info sound_info;
 
 
-struct speaker_input
+struct _speaker_input
 {
-	float			gain;							/* current gain */
-	float			default_gain;					/* default gain */
-	char *			name;							/* name of this input */
+	float			gain;					/* current gain */
+	float			default_gain;			/* default gain */
+	char *			name;					/* name of this input */
 };
+typedef struct _speaker_input speaker_input;
 
 
-struct speaker_info
+struct _speaker_info
 {
-	const struct MachineSpeaker *speaker;			/* pointer to the speaker info */
-	sound_stream *	mixer_stream;					/* mixing stream */
-	int				inputs;							/* number of input streams */
-	struct speaker_input *input;					/* array of input information */
+	const speaker_config *speaker;			/* pointer to the speaker info */
+	sound_stream *	mixer_stream;			/* mixing stream */
+	int				inputs;					/* number of input streams */
+	speaker_input *	input;					/* array of input information */
 #ifdef MAME_DEBUG
-	INT32			max_sample;						/* largest sample value we've seen */
-	INT32			clipped_samples;				/* total number of clipped samples */
-	INT32			total_samples;					/* total number of samples */
+	INT32			max_sample;				/* largest sample value we've seen */
+	INT32			clipped_samples;		/* total number of clipped samples */
+	INT32			total_samples;			/* total number of samples */
 #endif
 };
+typedef struct _speaker_info speaker_info;
 
 
 
@@ -176,7 +185,7 @@ void filter_rc_get_info(void *token, UINT32 state, union sndinfo *info);
  *
  *************************************/
 
-struct snd_interface sndintrf[SOUND_COUNT];
+sound_interface sndintrf[SOUND_COUNT];
 
 const struct
 {
@@ -517,12 +526,12 @@ const struct
 static mame_timer *sound_update_timer;
 
 static int totalsnd;
-static struct sound_info sound[MAX_SOUND];
-static struct sound_info *current_sound_start;
+static sound_info sound[MAX_SOUND];
+static sound_info *current_sound_start;
 static UINT8 sound_matrix[SOUND_COUNT][MAX_SOUND];
 
 static int totalspeakers;
-static struct speaker_info speaker[MAX_SPEAKER];
+static speaker_info speaker[MAX_SPEAKER];
 
 static INT16 *finalmix;
 static INT32 *leftmix, *rightmix;
@@ -557,7 +566,7 @@ static void mixer_update(void *param, stream_sample_t **inputs, stream_sample_t 
  *
  *************************************/
 
-int sound_start(void)
+int sound_init(void)
 {
 	/* handle -nosound */
 	nosound_mode = (Machine->sample_rate == 0);
@@ -605,6 +614,12 @@ int sound_start(void)
 	if (route_sound())
 		return 1;
 
+	/* register globals with the save state system */
+	state_save_push_tag(0);
+	state_save_register_UINT16("sndintrf", 0, "latched_value", latched_value, 4);
+	state_save_register_UINT8("sndintrf", 0, "latch_read", latch_read, 4);
+	state_save_pop_tag();
+
 	if (MAKE_WAVS)
 		wavfile = wav_open("finalmix.wav", Machine->sample_rate, 2);
 
@@ -631,7 +646,7 @@ void sndintrf_init(void)
 	for (mapindex = 0; mapindex < sizeof(sndintrf_map) / sizeof(sndintrf_map[0]); mapindex++)
 	{
 		int sndtype = sndintrf_map[mapindex].sndtype;
-		struct snd_interface *intf = &sndintrf[sndtype];
+		sound_interface *intf = &sndintrf[sndtype];
 		union sndinfo info;
 
 		/* start with the get_info routine */
@@ -669,8 +684,9 @@ static int start_sound_chips(void)
 	/* start up all the sound chips */
 	for (sndnum = 0; sndnum < MAX_SOUND; sndnum++)
 	{
-		const struct MachineSound *msound = &Machine->drv->sound[sndnum];
-		struct sound_info *info;
+		const sound_config *msound = &Machine->drv->sound[sndnum];
+		sound_info *info;
+		int num_regs;
 		int index;
 
 		/* stop when we hit an empty entry */
@@ -698,11 +714,17 @@ static int start_sound_chips(void)
 
 		/* start the chip, tagging all its streams */
 		VPRINTF(("sndnum = %d -- sound_type = %d, index = %d\n", sndnum, msound->sound_type, index));
+		num_regs = state_save_get_reg_count();
 		current_sound_start = info;
 		streams_set_tag(info);
 		info->token = (*info->intf.start)(index, msound->clock, msound->config);
 		current_sound_start = NULL;
 		VPRINTF(("  token = %p\n", info->token));
+
+		/* if no state registered for saving, we can't save */
+		num_regs = state_save_get_reg_count() - num_regs;
+		if (num_regs == 0)
+			logerror("Sound chip #%d (%s) did not register any state to save!\n", sndnum, sndnum_name(sndnum));
 
 		/* if that failed, die */
 		if (!info->token)
@@ -766,8 +788,8 @@ static int start_speakers(void)
 	/* start up all the speakers */
 	for (totalspeakers = 0; totalspeakers < MAX_SPEAKER; totalspeakers++)
 	{
-		const struct MachineSpeaker *mspeaker = &Machine->drv->speaker[totalspeakers];
-		struct speaker_info *info;
+		const speaker_config *mspeaker = &Machine->drv->speaker[totalspeakers];
+		speaker_info *info;
 
 		/* stop when we hit an empty entry */
 		if (!mspeaker->tag)
@@ -794,7 +816,7 @@ static int start_speakers(void)
  *
  *************************************/
 
-static struct speaker_info *find_speaker_by_tag(const char *tag)
+static speaker_info *find_speaker_by_tag(const char *tag)
 {
 	int spknum;
 
@@ -806,7 +828,7 @@ static struct speaker_info *find_speaker_by_tag(const char *tag)
 }
 
 
-static struct sound_info *find_sound_by_tag(const char *tag)
+static sound_info *find_sound_by_tag(const char *tag)
 {
 	int sndnum;
 
@@ -833,14 +855,14 @@ static int route_sound(void)
 	/* iterate over all the sound chips */
 	for (sndnum = 0; sndnum < totalsnd; sndnum++)
 	{
-		struct sound_info *info = &sound[sndnum];
+		sound_info *info = &sound[sndnum];
 
 		/* iterate over all routes */
 		for (routenum = 0; routenum < info->sound->routes; routenum++)
 		{
-			const struct MachineSoundRoute *mroute = &info->sound->route[routenum];
-			struct speaker_info *speaker;
-			struct sound_info *sound;
+			const sound_route *mroute = &info->sound->route[routenum];
+			speaker_info *speaker;
+			sound_info *sound;
 
 			/* find the target */
 			speaker = find_speaker_by_tag(mroute->target);
@@ -868,7 +890,7 @@ static int route_sound(void)
 	streams_set_tag(NULL);
 	for (spknum = 0; spknum < totalspeakers; spknum++)
 	{
-		struct speaker_info *info = &speaker[spknum];
+		speaker_info *info = &speaker[spknum];
 		if (info->inputs)
 		{
 			info->mixer_stream = stream_create(info->inputs, 1, Machine->sample_rate, info, mixer_update);
@@ -882,14 +904,14 @@ static int route_sound(void)
 	/* iterate again over all the sound chips */
 	for (sndnum = 0; sndnum < totalsnd; sndnum++)
 	{
-		struct sound_info *info = &sound[sndnum];
+		sound_info *info = &sound[sndnum];
 
 		/* iterate over all routes */
 		for (routenum = 0; routenum < info->sound->routes; routenum++)
 		{
-			const struct MachineSoundRoute *mroute = &info->sound->route[routenum];
-			struct speaker_info *speaker;
-			struct sound_info *sound;
+			const sound_route *mroute = &info->sound->route[routenum];
+			speaker_info *speaker;
+			sound_info *sound;
 
 			/* find the target */
 			speaker = find_speaker_by_tag(mroute->target);
@@ -923,6 +945,7 @@ static int route_sound(void)
 			}
 		}
 	}
+
 	return 0;
 }
 
@@ -934,7 +957,7 @@ static int route_sound(void)
  *
  *************************************/
 
-void sound_stop(void)
+void sound_exit(void)
 {
 	int sndnum;
 
@@ -948,7 +971,7 @@ void sound_stop(void)
 	/* log the maximum sample values for all speakers */
 	for (spknum = 0; spknum < totalspeakers; spknum++)
 	{
-		struct speaker_info *spk = &speaker[spknum];
+		speaker_info *spk = &speaker[spknum];
 #ifdef WIN32
 		printf("Speaker \"%s\" - max = %d (gain *= %f) - %d%% samples clipped\n", spk->speaker->tag, spk->max_sample, 32767.0 / (spk->max_sample ? spk->max_sample : 1), (int)((double)spk->clipped_samples * 100.0 / spk->total_samples));
 #else
@@ -962,7 +985,7 @@ void sound_stop(void)
 	for (sndnum = 0; sndnum < MAX_SOUND; sndnum++)
 		if (Machine->drv->sound[sndnum].sound_type != 0)
 		{
-			struct sound_info *info = &sound[sndnum];
+			sound_info *info = &sound[sndnum];
 			if (info->intf.stop)
 				(*info->intf.stop)(info->token);
 		}
@@ -981,13 +1004,77 @@ void sound_stop(void)
 
 /*************************************
  *
+ *  Mixer load/save
+ *
+ *************************************/
+
+void sndintrf_load(int config_type, xml_data_node *parentnode)
+{
+	xml_data_node *channelnode;
+	int mixernum;
+
+	/* we only care about game files */
+	if (config_type != CONFIG_TYPE_GAME)
+		return;
+
+	/* might not have any data */
+	if (!parentnode)
+		return;
+
+	/* iterate over channel nodes */
+	for (channelnode = xml_get_sibling(parentnode->child, "channel"); channelnode; channelnode = xml_get_sibling(channelnode->next, "channel"))
+	{
+		mixernum = xml_get_attribute_int(channelnode, "index", -1);
+		if (mixernum >= 0 && mixernum < MAX_MIXER_CHANNELS)
+		{
+			float defvol = xml_get_attribute_float(channelnode, "defvol", -1000.0);
+			float newvol = xml_get_attribute_float(channelnode, "newvol", -1000.0);
+			if (defvol == sound_get_default_gain(mixernum) && newvol != -1000.0)
+				sound_set_user_gain(mixernum, newvol);
+		}
+	}
+}
+
+
+void sndintrf_save(int config_type, xml_data_node *parentnode)
+{
+	int mixernum;
+
+	/* we only care about game files */
+	if (config_type != CONFIG_TYPE_GAME)
+		return;
+
+	/* iterate over mixer channels */
+	if (parentnode)
+		for (mixernum = 0; mixernum < MAX_MIXER_CHANNELS; mixernum++)
+		{
+			float defvol = sound_get_default_gain(mixernum);
+			float newvol = sound_get_user_gain(mixernum);
+
+			if (defvol != newvol)
+			{
+				xml_data_node *channelnode = xml_add_child(parentnode, "channel", NULL);
+				if (channelnode)
+				{
+					xml_set_attribute_int(channelnode, "index", mixernum);
+					xml_set_attribute_float(channelnode, "defvol", defvol);
+					xml_set_attribute_float(channelnode, "newvol", newvol);
+				}
+			}
+		}
+}
+
+
+
+/*************************************
+ *
  *  Mixer update
  *
  *************************************/
 
 static void mixer_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
 {
-	struct speaker_info *speaker = param;
+	speaker_info *speaker = param;
 	int numinputs = speaker->inputs;
 	int pos;
 
@@ -1022,7 +1109,7 @@ void sound_reset(void)
 	for (sndnum = 0; sndnum < MAX_SOUND; sndnum++)
 		if (Machine->drv->sound[sndnum].sound_type != 0)
 		{
-			struct sound_info *info = &sound[sndnum];
+			sound_info *info = &sound[sndnum];
 			if (info->intf.reset)
 				(*info->intf.reset)(info->token);
 		}
@@ -1062,51 +1149,55 @@ void sound_frame_update(void)
 	memset(leftmix, 0, samples_this_frame * sizeof(*leftmix));
 	memset(rightmix, 0, samples_this_frame * sizeof(*rightmix));
 
-	/* force all the speaker streams to generate the proper number of samples */
-	for (spknum = 0; spknum < totalspeakers; spknum++)
+	/* if we're not paused, keep the sounds going */
+	if (!mame_is_paused())
 	{
-		struct speaker_info *spk = &speaker[spknum];
-		stream_sample_t *stream_buf;
-
-		/* get the output buffer */
-		if (spk->mixer_stream)
+		/* force all the speaker streams to generate the proper number of samples */
+		for (spknum = 0; spknum < totalspeakers; spknum++)
 		{
-			stream_buf = stream_consume_output(spk->mixer_stream, 0, samples_this_frame);
+			speaker_info *spk = &speaker[spknum];
+			stream_sample_t *stream_buf;
+
+			/* get the output buffer */
+			if (spk->mixer_stream)
+			{
+				stream_buf = stream_consume_output(spk->mixer_stream, 0, samples_this_frame);
 
 #ifdef MAME_DEBUG
-			/* debug version: keep track of the maximum sample */
-			for (sample = 0; sample < samples_this_frame; sample++)
-			{
-				if (stream_buf[sample] > spk->max_sample)
-					spk->max_sample = stream_buf[sample];
-				else if (-stream_buf[sample] > spk->max_sample)
-					spk->max_sample = -stream_buf[sample];
-				if (stream_buf[sample] > 32767 || stream_buf[sample] < -32768)
-					spk->clipped_samples++;
-				spk->total_samples++;
-			}
+				/* debug version: keep track of the maximum sample */
+				for (sample = 0; sample < samples_this_frame; sample++)
+				{
+					if (stream_buf[sample] > spk->max_sample)
+						spk->max_sample = stream_buf[sample];
+					else if (-stream_buf[sample] > spk->max_sample)
+						spk->max_sample = -stream_buf[sample];
+					if (stream_buf[sample] > 32767 || stream_buf[sample] < -32768)
+						spk->clipped_samples++;
+					spk->total_samples++;
+				}
 #endif
 
-			/* mix if sound is enabled */
-			if (global_sound_enabled && !nosound_mode)
-			{
-				/* if the speaker is centered, send to both left and right */
-				if (spk->speaker->x == 0)
-					for (sample = 0; sample < samples_this_frame; sample++)
-					{
-						leftmix[sample] += stream_buf[sample];
-						rightmix[sample] += stream_buf[sample];
-					}
+				/* mix if sound is enabled */
+				if (global_sound_enabled && !nosound_mode)
+				{
+					/* if the speaker is centered, send to both left and right */
+					if (spk->speaker->x == 0)
+						for (sample = 0; sample < samples_this_frame; sample++)
+						{
+							leftmix[sample] += stream_buf[sample];
+							rightmix[sample] += stream_buf[sample];
+						}
 
-				/* if the speaker is to the left, send only to the left */
-				else if (spk->speaker->x < 0)
-					for (sample = 0; sample < samples_this_frame; sample++)
-						leftmix[sample] += stream_buf[sample];
+					/* if the speaker is to the left, send only to the left */
+					else if (spk->speaker->x < 0)
+						for (sample = 0; sample < samples_this_frame; sample++)
+							leftmix[sample] += stream_buf[sample];
 
-				/* if the speaker is to the right, send only to the right */
-				else
-					for (sample = 0; sample < samples_this_frame; sample++)
-						rightmix[sample] += stream_buf[sample];
+					/* if the speaker is to the right, send only to the right */
+					else
+						for (sample = 0; sample < samples_this_frame; sample++)
+							rightmix[sample] += stream_buf[sample];
+				}
 			}
 		}
 	}
@@ -1133,7 +1224,7 @@ void sound_frame_update(void)
 		finalmix[sample*2+1] = samp;
 	}
 
-	if (wavfile)
+	if (wavfile && !mame_is_paused())
 		wav_add_data_16(wavfile, finalmix, samples_this_frame * 2);
 
 	/* play the result */

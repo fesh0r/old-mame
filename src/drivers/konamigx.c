@@ -129,14 +129,14 @@ WRITE32_HANDLER( konamigx_555_palette_w );
 WRITE32_HANDLER( konamigx_555_palette2_w );
 WRITE32_HANDLER( konamigx_tilebank_w );
 
-data32_t *gx_psacram, *gx_subpaletteram32;
+UINT32 *gx_psacram, *gx_subpaletteram32;
 WRITE32_HANDLER( konamigx_t1_psacmap_w );
 WRITE32_HANDLER( konamigx_t4_psacmap_w );
 
 int konamigx_cfgport;
 
-static data32_t *gx_workram; /* workram pointer for ESC protection fun */
-static data16_t *gx_sndram;
+static UINT32 *gx_workram; /* workram pointer for ESC protection fun */
+static UINT16 *gx_sndram;
 static int gx_rdport1_3, gx_syncen;
 
 static void *dmadelay_timer;
@@ -495,7 +495,7 @@ static READ32_HANDLER( eeprom_r )
 
 static WRITE32_HANDLER( eeprom_w )
 {
-	data32_t odata;
+	UINT32 odata;
 
 	if (!(mem_mask & 0xff000000))
 	{
@@ -593,7 +593,7 @@ static int suspension_active, resume_trigger;
 
 static READ32_HANDLER(waitskip_r)
 {
-	data32_t data = gx_workram[waitskip.offs+offset];
+	UINT32 data = gx_workram[waitskip.offs+offset];
 	mem_mask = ~mem_mask;
 
 	if (activecpu_get_pc() == waitskip.pc && (data & mem_mask) == (waitskip.data & mem_mask))
@@ -754,12 +754,12 @@ static INTERRUPT_GEN(konamigx_hbinterrupt)
 /**********************************************************************************/
 /* sound communication handlers */
 
-static data8_t sndto000[16], sndto020[16];	/* read/write split mapping */
+static UINT8 sndto000[16], sndto020[16];	/* read/write split mapping */
 static int snd020_hack;
 
 static READ32_HANDLER( sound020_r )
 {
-	data32_t reg, MSW, LSW, rv = 0;
+	UINT32 reg, MSW, LSW, rv = 0;
 
 	reg = offset << 1;
 
@@ -916,14 +916,14 @@ static READ32_HANDLER( gx6bppspr_r )
 
 static READ32_HANDLER( type1_roz_r1 )
 {
-	data32_t *ROM = (data32_t *)memory_region(REGION_GFX3);
+	UINT32 *ROM = (UINT32 *)memory_region(REGION_GFX3);
 
 	return ROM[offset];
 }
 
 static READ32_HANDLER( type1_roz_r2 )
 {
-	data32_t *ROM = (data32_t *)memory_region(REGION_GFX3);
+	UINT32 *ROM = (UINT32 *)memory_region(REGION_GFX3);
 
 	ROM += (0x600000/2);
 
@@ -1143,10 +1143,10 @@ static ADDRESS_MAP_START( gx_type1_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xdda000, 0xddafff) AM_WRITE(adc0834_w)
 	AM_RANGE(0xddc000, 0xddcfff) AM_READ(adc0834_r)
 	AM_RANGE(0xdde000, 0xdde003) AM_WRITE(type1_cablamps_w)
-	AM_RANGE(0xe00000, 0xe0001f) AM_RAM AM_BASE((data32_t**)&K053936_1_ctrl)
+	AM_RANGE(0xe00000, 0xe0001f) AM_RAM AM_BASE((UINT32**)&K053936_1_ctrl)
 	AM_RANGE(0xe20000, 0xe2000f) AM_WRITE(MWA32_NOP)
 	AM_RANGE(0xe40000, 0xe40003) AM_WRITE(MWA32_NOP)
-	AM_RANGE(0xe80000, 0xe81fff) AM_RAM AM_BASE((data32_t**)&K053936_1_linectrl) 	// chips 21L+19L / S
+	AM_RANGE(0xe80000, 0xe81fff) AM_RAM AM_BASE((UINT32**)&K053936_1_linectrl) 	// chips 21L+19L / S
 	AM_RANGE(0xec0000, 0xedffff) AM_RAM AM_WRITE(konamigx_t1_psacmap_w) AM_BASE(&gx_psacram)  // chips 20J+23J+18J / S
 	AM_RANGE(0xf00000, 0xf3ffff) AM_READ(type1_roz_r1)	// ROM readback
 	AM_RANGE(0xf40000, 0xf7ffff) AM_READ(type1_roz_r2)	// ROM readback
@@ -1162,10 +1162,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( gx_type3_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xd90000, 0xd97fff) AM_RAM
 	AM_RANGE(0xcc0000, 0xcc0007) AM_WRITE(type4_prot_w)
-	AM_RANGE(0xe00000, 0xe0001f) AM_RAM AM_BASE((data32_t**)&K053936_1_ctrl)
+	AM_RANGE(0xe00000, 0xe0001f) AM_RAM AM_BASE((UINT32**)&K053936_1_ctrl)
 	AM_RANGE(0xe20000, 0xe20003) AM_WRITE(MWA32_NOP)
 	AM_RANGE(0xe40000, 0xe40003) AM_WRITE(MWA32_NOP)
-	AM_RANGE(0xe60000, 0xe60fff) AM_RAM AM_BASE((data32_t**)&K053936_1_linectrl)
+	AM_RANGE(0xe60000, 0xe60fff) AM_RAM AM_BASE((UINT32**)&K053936_1_linectrl)
 	AM_RANGE(0xe80000, 0xe87fff) AM_RAM AM_WRITE(konamigx_555_palette_w) AM_BASE(&paletteram32) 	// main monitor palette (twice as large as reality)
 	AM_RANGE(0xea0000, 0xea3fff) AM_RAM AM_WRITE(konamigx_555_palette2_w) AM_BASE(&gx_subpaletteram32) // sub monitor palette
 	AM_RANGE(0xec0000, 0xec0003) AM_READ(type3_sync_r)
@@ -1175,10 +1175,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( gx_type4_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xcc0000, 0xcc0007) AM_WRITE(type4_prot_w)
 	AM_RANGE(0xd90000, 0xd97fff) AM_RAM
-	AM_RANGE(0xe00000, 0xe0001f) AM_RAM AM_BASE((data32_t**)&K053936_1_ctrl)
+	AM_RANGE(0xe00000, 0xe0001f) AM_RAM AM_BASE((UINT32**)&K053936_1_ctrl)
 	AM_RANGE(0xe20000, 0xe20003) AM_WRITE(MWA32_NOP)
 	AM_RANGE(0xe40000, 0xe40003) AM_WRITE(MWA32_NOP)
-	AM_RANGE(0xe60000, 0xe60fff) AM_RAM AM_BASE((data32_t**)&K053936_1_linectrl)  // 29C & 29G (PSAC2 line control)
+	AM_RANGE(0xe60000, 0xe60fff) AM_RAM AM_BASE((UINT32**)&K053936_1_linectrl)  // 29C & 29G (PSAC2 line control)
 	AM_RANGE(0xe80000, 0xe8ffff) AM_RAM AM_WRITE(konamigx_palette_w) AM_BASE(&paletteram32) // 11G/13G/15G (main screen palette RAM) (twice as large as reality)
 	AM_RANGE(0xea0000, 0xea7fff) AM_RAM AM_WRITE(konamigx_palette2_w) AM_BASE(&gx_subpaletteram32) // 5G/7G/9G (sub screen palette RAM)
 	AM_RANGE(0xec0000, 0xec0003) AM_READ(type3_sync_r)		// type 4 polls this too
@@ -1190,7 +1190,7 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( dual539_r )
 {
-	data16_t ret = 0;
+	UINT16 ret = 0;
 
 	if (ACCESSING_LSB16)
 		ret |= K054539_1_r(offset);
@@ -1243,7 +1243,7 @@ static struct K054539interface k054539_interface =
 /* i think we could reduce the number of machine drivers with different visible areas by adjusting the sprite
    positioning on a per game basis too */
 
-static struct GfxLayout bglayout_8bpp =
+static gfx_layout bglayout_8bpp =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1254,7 +1254,7 @@ static struct GfxLayout bglayout_8bpp =
 	16*128
 };
 
-struct GfxLayout t1_charlayout6 =
+gfx_layout t1_charlayout6 =
 {
 	16, 16,
 	RGN_FRAC(1,1),
@@ -1266,7 +1266,7 @@ struct GfxLayout t1_charlayout6 =
 	16*16*6
 };
 
-struct GfxLayout t1_charlayout8 =
+gfx_layout t1_charlayout8 =
 {
 	16, 16,
 	RGN_FRAC(1,1),
@@ -1279,14 +1279,14 @@ struct GfxLayout t1_charlayout8 =
 };
 
 /* type 1 (opengolf + racinfrc) use 6 and 8 bpp planar layouts for the 53936 */
-static struct GfxDecodeInfo gfxdecodeinfo_opengolf[] =
+static gfx_decode gfxdecodeinfo_opengolf[] =
 {
 	{ REGION_GFX3, 0, &t1_charlayout8, 0x0000, 8 },
 	{ REGION_GFX4, 0, &t1_charlayout6, 0x0000, 8 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo_racinfrc[] =
+static gfx_decode gfxdecodeinfo_racinfrc[] =
 {
 	{ REGION_GFX3, 0, &t1_charlayout6, 0x0000, 8 },
 	{ REGION_GFX4, 0, &t1_charlayout6, 0x0000, 8 },
@@ -1294,7 +1294,7 @@ static struct GfxDecodeInfo gfxdecodeinfo_racinfrc[] =
 };
 
 /* type 3 & 4 games use a simple 8bpp decode for the 53936 */
-static struct GfxDecodeInfo gfxdecodeinfo_type34[] =
+static gfx_decode gfxdecodeinfo_type34[] =
 {
 	{ REGION_GFX3, 0, &bglayout_8bpp, 0x0000, 8 },
 	{ -1 } /* end of array */
@@ -2707,8 +2707,52 @@ ROM_START( dragoona )
 	ROM_LOAD( "417a17.9g", 0x000000, 2*1024*1024, CRC(88d47dfd) SHA1(b5d6dd7ee9ac0c427dc3e714a97945c954260913) )
 ROM_END
 
-/* Soccer Superstars */
+/* Soccer Superstars (Europe ver EAA)*/
 ROM_START( soccerss )
+	/* main program */
+	ROM_REGION( 0x600000, REGION_CPU1, 0 )
+	GX_BIOS
+	ROM_LOAD32_WORD_SWAP( "427ea_c02.28m", 0x200000, 512*1024, CRC(1817b218) SHA1(d69c70f0d8f1cbf385046c755a9533c01fe1eb4a) )
+	ROM_LOAD32_WORD_SWAP( "427ea_c03.30m", 0x200002, 512*1024, CRC(8a17f509) SHA1(c3944b766499f2b6f217357159a02e54e44060c2) )
+
+	/* data roms */
+	ROM_LOAD32_WORD_SWAP( "427a04.28r",   0x400000, 0x080000, CRC(c7d3e1a2) SHA1(5e1e4f4c97def36902ad853248014a7af62e0c5e) )
+	ROM_LOAD32_WORD_SWAP( "427a05.30r",   0x400002, 0x080000, CRC(5372f0a5) SHA1(36e8d0a73918cbd018c1865d1a05445daba8997c) )
+
+	/* sound program */
+	ROM_REGION( 0x40000, REGION_CPU2, 0 )
+	ROM_LOAD16_BYTE("427a07.6m", 0x000000, 128*1024, CRC(8dbaf4c7) SHA1(cb69bf94090a4871b35e7ba1f58e3225077b82cd) )
+	ROM_LOAD16_BYTE("427a06.9m", 0x000001, 128*1024, CRC(979df65d) SHA1(7499e9a27aa562692bd3a296789696492a6254bc) )
+
+	/* tiles */
+	ROM_REGION( 0x500000, REGION_GFX1, ROMREGION_ERASE00 )
+	TILE_WORDS2_ROM_LOAD( "427a15.11r", 0x000000, 0x100000, CRC(33ce2b8e) SHA1(b0936386cdc7c41f33b1d7b4f5ce25fe618d1286) )
+	TILE_BYTES2_ROM_LOAD( "427a14.143", 0x000004, 0x080000, CRC(7575a0ed) SHA1(92fda2747ac090f93e60cff8478af6721b949dc2) )
+
+	/* sprites */
+	ROM_REGION( 0xc00000, REGION_GFX2, ROMREGION_ERASE00 )
+	ROM_LOAD32_WORD( "427a08.140", 0x000000, 2*1024*1024, CRC(221250af) SHA1(fd24e7f0e3024df5aa08506523953c5e35d2267b) )
+	ROM_LOAD32_WORD( "427a09.137", 0x000002, 2*1024*1024, CRC(56bdd480) SHA1(01d164aedc77f71f6310cfd739c00b33289a2e7e) )
+	ROM_LOAD32_WORD( "427a10.25r", 0x400000, 2*1024*1024, CRC(6b3ccb41) SHA1(b246ef350a430e60f0afd1b80ff48139c325e926) )
+	ROM_LOAD32_WORD( "427a11.23r", 0x400002, 2*1024*1024, CRC(c1ca74c1) SHA1(b7286df8e59f8f1939ebf17aaf9345a857b0b100) )
+	ROM_LOAD32_WORD( "427a12.21r", 0x800000, 2*1024*1024, CRC(97d6fd38) SHA1(8d2895850cafdea95db08c84e7eeea90a1921515) )
+	ROM_LOAD32_WORD( "427a13.18r", 0x800002, 2*1024*1024, CRC(815a9b87) SHA1(7d9d5932fff7dd7aa4cbccf0c8d3784dc8042e70) )
+
+	/* PSAC2 tiles */
+	ROM_REGION( 0x100000, REGION_GFX3, ROMREGION_ERASE00 )
+	ROM_LOAD( "427a18.145", 0x000000, 0x100000, CRC(bb6e6ec6) SHA1(aa1365a4318866d9e7e74461a6e6c113f83b6771) )
+
+	/* PSAC2 map data */
+	ROM_REGION( 0x080000, REGION_GFX4, ROMREGION_ERASE00 )
+	ROM_LOAD( "427a17.24c", 0x000000, 0x080000, CRC(fb6eb01f) SHA1(28cdb30ff70ee5fc7624e18fe048dd85dfa49ace) )
+
+	/* sound data */
+	ROM_REGION( 0x400000, REGION_SOUND1, 0 )
+	ROM_LOAD( "427a16.9r", 0x000000, 2*1024*1024,  CRC(39547265) SHA1(c0efd68c0c1ea59141045150842f36d43e1f01d8) )
+ROM_END
+
+/* Soccer Superstars (Japan ver JAA)*/
+ROM_START( soccersj )
 	/* main program */
 	ROM_REGION( 0x600000, REGION_CPU1, 0 )
 	GX_BIOS
@@ -3306,7 +3350,7 @@ static DRIVER_INIT(konamigx)
 
 	else if (!strcmp(Machine->gamedrv->name, "tkmmpzdm"))
 	{
-		data32_t *rom = (data32_t*)memory_region(REGION_CPU1);
+		UINT32 *rom = (UINT32*)memory_region(REGION_CPU1);
 
 		// The display is initialized after POST but the copyright screen disabled
 		// planes B,C,D and didn't bother restoring them. I've spent a good
@@ -3471,7 +3515,8 @@ GAMEX( 1994, fantjour, gokuparo, konamigx, gokuparo, konamigx, ROT0, "Konami", "
 
 
 /* Type 3: dual monitor output and 53936 on the ROM board, external palette RAM */
-GAMEX( 1994, soccerss, konamigx, gxtype3,  type3, konamigx, ROT0, "Konami", "Soccer Superstars (ver JAA)", GAME_NOT_WORKING )
+GAMEX( 1994, soccerss, konamigx, gxtype3,  type3, konamigx, ROT0, "Konami", "Soccer Superstars (ver EAA)", GAME_NOT_WORKING )
+GAMEX( 1994, soccersj, soccerss, gxtype3,  type3, konamigx, ROT0, "Konami", "Soccer Superstars (ver JAA)", GAME_NOT_WORKING )
 GAMEX( 1994, soccersa, soccerss, gxtype3,  type3, konamigx, ROT0, "Konami", "Soccer Superstars (ver AAA)", GAME_NOT_WORKING )
 
 

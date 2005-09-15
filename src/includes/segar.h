@@ -32,7 +32,7 @@ WRITE8_HANDLER( monsterb_sh_offset_a8_a11_w );
 WRITE8_HANDLER( monsterb_sh_rom_select_w );
 
 /* temporary speech handling through samples */
-int astrob_speech_sh_start(const struct MachineSound *msound);
+int astrob_speech_sh_start(const sound_config *msound);
 void astrob_speech_sh_update(void);
 
 /* sample names */
@@ -61,6 +61,8 @@ VIDEO_START( segar );
 VIDEO_UPDATE( segar );
 
 WRITE8_HANDLER( monsterb_back_port_w );
+WRITE8_HANDLER( monster2_b9_back_port_w );
+WRITE8_HANDLER( monster2_bb_back_port_w );
 
 VIDEO_START( monsterb );
 VIDEO_UPDATE( monsterb );

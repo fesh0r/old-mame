@@ -26,9 +26,9 @@ Revisions:
 #include "sound/ay8910.h"
 
 
-extern data8_t *aeroboto_videoram;
-extern data8_t *aeroboto_hscroll, *aeroboto_vscroll, *aeroboto_tilecolor;
-extern data8_t *aeroboto_starx, *aeroboto_stary, *aeroboto_bgcolor;
+extern UINT8 *aeroboto_videoram;
+extern UINT8 *aeroboto_hscroll, *aeroboto_vscroll, *aeroboto_tilecolor;
+extern UINT8 *aeroboto_starx, *aeroboto_stary, *aeroboto_bgcolor;
 
 VIDEO_START( aeroboto );
 VIDEO_UPDATE( aeroboto );
@@ -38,7 +38,7 @@ WRITE8_HANDLER( aeroboto_3000_w );
 WRITE8_HANDLER( aeroboto_videoram_w );
 WRITE8_HANDLER( aeroboto_tilecolor_w );
 
-static data8_t *aeroboto_mainram;
+static UINT8 *aeroboto_mainram;
 static int disable_irq = 0;
 
 
@@ -202,7 +202,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -214,7 +214,7 @@ static struct GfxLayout charlayout =
 };
 /*
 // exact star layout unknown... could be anything
-static struct GfxLayout starlayout =
+static gfx_layout starlayout =
 {
     8,8,
     RGN_FRAC(1,1),
@@ -225,7 +225,7 @@ static struct GfxLayout starlayout =
     8*8
 };
 */
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	8,16,
 	RGN_FRAC(1,3),
@@ -237,7 +237,7 @@ static struct GfxLayout spritelayout =
 	16*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,     0,  64 },     /* chars */
 //  { REGION_GFX2, 0, &starlayout,     0, 128 },     /* sky */

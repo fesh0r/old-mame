@@ -20,7 +20,7 @@ Notes:
 #include "cpu/m6800/m6800.h"
 #include "sound/namco.h"
 
-extern data8_t *skykid_textram, *skykid_videoram, *skykid_spriteram;
+extern UINT8 *skykid_textram, *skykid_videoram, *skykid_spriteram;
 
 /* from vidhrdw/skykid.c */
 VIDEO_START( skykid );
@@ -88,7 +88,7 @@ static WRITE8_HANDLER( skykid_subreset_w )
 static WRITE8_HANDLER( skykid_bankswitch_w )
 {
 	int bit = !BIT(offset,11);
-	data8_t *rom = memory_region(REGION_CPU1) + 0x10000;
+	UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
 
 	memory_set_bankptr(1,rom + 0x2000 * bit);
 }
@@ -315,7 +315,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout text_layout =
+static gfx_layout text_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -326,7 +326,7 @@ static struct GfxLayout text_layout =
 	16*8
 };
 
-static struct GfxLayout tile_layout =
+static gfx_layout tile_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -337,7 +337,7 @@ static struct GfxLayout tile_layout =
 	16*8
 };
 
-static struct GfxLayout sprite_layout =
+static gfx_layout sprite_layout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -350,7 +350,7 @@ static struct GfxLayout sprite_layout =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &text_layout,   0, 64 },
 	{ REGION_GFX2, 0, &tile_layout,   64*4, 128 },
@@ -531,7 +531,7 @@ ROM_END
 
 static DRIVER_INIT( skykid )
 {
-	data8_t *rom;
+	UINT8 *rom;
 	int i;
 
 	/* unpack the third sprite ROM */

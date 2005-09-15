@@ -274,7 +274,7 @@ static void sound_nmi(void)
 
 static WRITE8_HANDLER( le_bankswitch_w )
 {
-	data8_t *prgrom = (data8_t *)memory_region(REGION_CPU1)+0x10000;
+	UINT8 *prgrom = (UINT8 *)memory_region(REGION_CPU1)+0x10000;
 
 	memory_set_bankptr(1, &prgrom[data * 0x2000]);
 }
@@ -573,12 +573,12 @@ static struct K054539interface k054539_interface =
 
 static MACHINE_INIT( lethalen )
 {
-	data8_t *prgrom = (data8_t *)memory_region(REGION_CPU1);
+	UINT8 *prgrom = (UINT8 *)memory_region(REGION_CPU1);
 
 	memory_set_bankptr(1, &prgrom[0x10000]);
 	memory_set_bankptr(2, &prgrom[0x48000]);
 }
-static struct GfxLayout lethal_6bpp =
+static gfx_layout lethal_6bpp =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -592,7 +592,7 @@ static struct GfxLayout lethal_6bpp =
 };
 
 /* we use this decode instead of the one done by the sprite video start due to it being 6bpp */
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &lethal_6bpp,   0x000/*0x400*/, 256  }, /* sprites tiles */
 	{ -1 } /* end of array */

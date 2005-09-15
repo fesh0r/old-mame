@@ -13,10 +13,10 @@
 
 typedef struct
 {
-	data32_t lba, blocks, last_lba, bytes_per_sector, num_subblocks, cur_subblock;
+	UINT32 lba, blocks, last_lba, bytes_per_sector, num_subblocks, cur_subblock;
 	int last_command;
- 	struct cdrom_file *cdrom;
-	data8_t last_packet[16];
+ 	cdrom_file *cdrom;
+	UINT8 last_packet[16];
 } SCSICd;
 
 
@@ -24,9 +24,9 @@ typedef struct
 //
 // Execute a SCSI command passed in via pCmdBuf.
 
-int scsicd_exec_command(SCSICd *our_this, data8_t *pCmdBuf)
+int scsicd_exec_command(SCSICd *our_this, UINT8 *pCmdBuf)
 {
-	struct cdrom_file *cdrom = our_this->cdrom;
+	cdrom_file *cdrom = our_this->cdrom;
 	int retval = 12, trk;
 
 	// remember the last command for the data transfer phase
@@ -187,14 +187,14 @@ int scsicd_exec_command(SCSICd *our_this, data8_t *pCmdBuf)
 //
 // Read data from the device resulting from the execution of a command
 
-void scsicd_read_data(SCSICd *our_this, int bytes, data8_t *pData)
+void scsicd_read_data(SCSICd *our_this, int bytes, UINT8 *pData)
 {
 	int i;
 	UINT32 last_phys_frame;
-	data8_t *fifo = our_this->last_packet;
-	struct cdrom_file *cdrom = our_this->cdrom;
-	data32_t temp;
-	data8_t tmp_buffer[2048];
+	UINT8 *fifo = our_this->last_packet;
+	cdrom_file *cdrom = our_this->cdrom;
+	UINT32 temp;
+	UINT8 tmp_buffer[2048];
 
 	switch (our_this->last_command)
 	{
@@ -329,9 +329,9 @@ void scsicd_read_data(SCSICd *our_this, int bytes, data8_t *pData)
 			{
 				case 0:		// normal
 					{
-						data8_t start_trk = fifo[6];
+						UINT8 start_trk = fifo[6];
 						int trks, len, in_len, dptr;
-						data32_t tstart;
+						UINT32 tstart;
 
 						in_len = fifo[7]<<8 | fifo[8];
 
@@ -418,7 +418,7 @@ void scsicd_read_data(SCSICd *our_this, int bytes, data8_t *pData)
 //
 // Write data to the CD-ROM device as part of the execution of a command
 
-void scsicd_write_data(SCSICd *our_this, int bytes, data8_t *pData)
+void scsicd_write_data(SCSICd *our_this, int bytes, UINT8 *pData)
 {
 	switch (our_this->last_command)
 	{
@@ -454,10 +454,10 @@ void scsicd_write_data(SCSICd *our_this, int bytes, data8_t *pData)
 	}
 }
 
-int scsicd_dispatch(int operation, void *file, INT64 intparm, data8_t *ptrparm)
+int scsicd_dispatch(int operation, void *file, INT64 intparm, UINT8 *ptrparm)
 {
 	SCSICd *instance, **result;
-	struct cdrom_file **devptr;
+	cdrom_file **devptr;
 
 	switch (operation)
 	{
@@ -501,14 +501,14 @@ int scsicd_dispatch(int operation, void *file, INT64 intparm, data8_t *ptrparm)
 			break;
 
 		case SCSIOP_GET_DEVICE:
-			devptr = (struct cdrom_file **)ptrparm;
+			devptr = (cdrom_file **)ptrparm;
 			instance = (SCSICd *)file;
 			*devptr = instance->cdrom;
 			break;
 
 		case SCSIOP_SET_DEVICE:
 			instance = (SCSICd *)file;
-			instance->cdrom = (struct cdrom_file *)ptrparm;
+			instance->cdrom = (cdrom_file *)ptrparm;
 			break;
 	}
 

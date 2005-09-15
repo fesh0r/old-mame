@@ -173,12 +173,12 @@ WRITE16_HANDLER( armedf_bg_scrollx_w );
 WRITE16_HANDLER( armedf_bg_scrolly_w );
 WRITE16_HANDLER( armedf_mcu_cmd );
 
-extern data16_t armedf_vreg;
-extern data16_t *armedf_bg_videoram;
-extern data16_t *armedf_fg_videoram;
-extern data16_t *terraf_text_videoram;
-extern data16_t *legion_cmd;
-extern struct tilemap *armedf_tx_tilemap;
+extern UINT16 armedf_vreg;
+extern UINT16 *armedf_bg_videoram;
+extern UINT16 *armedf_fg_videoram;
+extern UINT16 *terraf_text_videoram;
+extern UINT16 *legion_cmd;
+extern tilemap *armedf_tx_tilemap;
 
 static WRITE16_HANDLER( io_w )
 {
@@ -798,7 +798,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout char_layout =
+static gfx_layout char_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -809,7 +809,7 @@ static struct GfxLayout char_layout =
 	32*8
 };
 
-static struct GfxLayout tile_layout =
+static gfx_layout tile_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -822,7 +822,7 @@ static struct GfxLayout tile_layout =
 	128*8
 };
 
-static struct GfxLayout sprite_layout =
+static gfx_layout sprite_layout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -835,7 +835,7 @@ static struct GfxLayout sprite_layout =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &char_layout,		 0*16,	32 },
 	{ REGION_GFX2, 0, &tile_layout,		64*16,	32 },
@@ -1372,7 +1372,7 @@ DRIVER_INIT( legion )
 #if LEGION_HACK
 	/* This is a hack to allow you to use the extra features
          of 3 of the "Unused" Dip Switches (see notes above). */
-	data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 	RAM[0x0001d6/2] = 0x0001;
 	/* To avoid checksum error */
 	RAM[0x000488/2] = 0x4e71;
@@ -1386,7 +1386,7 @@ DRIVER_INIT( legiono )
 #if LEGION_HACK
 	/* This is a hack to allow you to use the extra features
          of 3 of the "Unused" Dip Switches (see notes above). */
-	data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 	RAM[0x0001d6/2] = 0x0001;
 	/* No need to patch the checksum routine (see notes) ! */
 #endif

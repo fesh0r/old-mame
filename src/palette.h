@@ -77,9 +77,6 @@
     TYPE DEFINITIONS
 -------------------------------------------------*/
 
-struct mame_display;		/* declared elsewhere */
-
-typedef UINT32 pen_t;
 typedef UINT32 rgb_t;
 
 
@@ -107,6 +104,9 @@ typedef UINT32 rgb_t;
 #define RGB_GREEN(rgb)		(((rgb) >> 8) & 0xff)
 #define RGB_BLUE(rgb)		((rgb) & 0xff)
 
+#define RGB_BLACK			(MAKE_RGB(0,0,0))
+#define RGB_WHITE			(MAKE_RGB(255,255,255))
+
 
 
 /*-------------------------------------------------
@@ -116,11 +116,11 @@ typedef UINT32 rgb_t;
 extern UINT32 direct_rgb_components[3];
 extern UINT16 *palette_shadow_table;
 
-extern data8_t *paletteram;
-extern data8_t *paletteram_2;	/* use when palette RAM is split in two parts */
-extern data16_t *paletteram16;
-extern data16_t *paletteram16_2;
-extern data32_t *paletteram32;
+extern UINT8 *paletteram;
+extern UINT8 *paletteram_2;	/* use when palette RAM is split in two parts */
+extern UINT16 *paletteram16;
+extern UINT16 *paletteram16_2;
+extern UINT32 *paletteram32;
 
 
 
@@ -132,7 +132,7 @@ int palette_start(void);
 int palette_init(void);
 int palette_get_total_colors_with_ui(void);
 
-void palette_update_display(struct mame_display *display);
+void palette_update_display(mame_display *display);
 
 void palette_set_color(pen_t pen, UINT8 r, UINT8 g, UINT8 b);
 void palette_get_color(pen_t pen, UINT8 *r, UINT8 *g, UINT8 *b);
@@ -175,6 +175,7 @@ void palette_set_global_brightness_adjust(double adjustment);
 double palette_get_global_brightness(void);
 
 pen_t get_black_pen(void);
+pen_t get_white_pen(void);
 
 
 /* here are some functions to handle commonly used palette layouts, so you don't

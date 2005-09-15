@@ -111,7 +111,7 @@ ae500w07.ad1 - M6295 Samples (23c4001)
 
 static int gametype;
 
-static struct tilemap *txt_tilemap;
+static tilemap *txt_tilemap;
 static void get_tile_info(int tile_index)
 {
 
@@ -124,7 +124,7 @@ static void get_tile_info(int tile_index)
 
 
 
-static data16_t* protram;
+static UINT16* protram;
 
 static UINT8 device[0x10000];
 static UINT32 device_read_ptr = 0;
@@ -320,7 +320,7 @@ INPUT_PORTS_START( deroon )
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_START2 )
 INPUT_PORTS_END
 
-static struct GfxLayout gfxlayout =
+static gfx_layout gfxlayout =
 {
    8,8,
    RGN_FRAC(1,1),
@@ -331,7 +331,7 @@ static struct GfxLayout gfxlayout =
    8*8*4
 };
 
-static struct GfxLayout gfxlayout2 =
+static gfx_layout gfxlayout2 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -345,7 +345,7 @@ static struct GfxLayout gfxlayout2 =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &gfxlayout,   0x40*16, 16 },
 	{ REGION_GFX3, 0, &gfxlayout2,   0, 16 },
@@ -432,19 +432,14 @@ VIDEO_UPDATE(deroon)
 	}
 	command_data &= 0xff;
 
-	sprintf(buf,"keys: Q,A and C");
-	for (j = 0;j < 16;j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,10+6*j,20,0,TRANSPARENCY_NONE,0);
-	sprintf(buf,"command code: %2x", command_data);
-	for (j = 0;j < 16;j++)
-		drawgfx(bitmap,Machine->uifont,buf[j],0,0,0,10+6*j,40,0,TRANSPARENCY_NONE,0);
-
+	sprintf(buf,"keys: Q,A and C\ncommand code: %2x", command_data);
+	ui_draw_text(buf,10,20);
 
 	if (code_pressed_memory(KEYCODE_C))
 	{
 		soundlatch_w(0,command_data);
 		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
-		usrintf_showmessage("command write=%2x",command_data);
+		ui_popup("command write=%2x",command_data);
 	}
 #endif
 
@@ -471,7 +466,7 @@ VIDEO_UPDATE(deroon)
 			cpunum_set_reg(0, M68K_PC, 0x23ae8); /* deroon */
 		else
 		{
-			data16_t *ROM = (data16_t *)memory_region(REGION_CPU1);
+			UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU1);
 			ROM[0x3aaa/2] = 0x4e73; // rte (trap 0)
 			cpunum_set_reg(0, M68K_PC, 0x182a0); /* angel eyes */
 		}
@@ -481,7 +476,7 @@ VIDEO_UPDATE(deroon)
 	{
 		if(gametype)
 		{
-			data16_t *ROM = (data16_t *)memory_region(REGION_CPU1);
+			UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU1);
 			ROM[0x3aaa/2] = 0x4e73; // rte (trap 0)
 			cpunum_set_reg(0, M68K_PC, 0x17d2a); /* angel eyes */
 		}
@@ -661,7 +656,7 @@ static void reset_callback(int param)
 
 static DRIVER_INIT( deroon )
 {
-	data16_t *ROM = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU1);
 	ROM[0x39C2/2] = 0x0001;
 	ROM[0x0448/2] = 0x4E71;
 	ROM[0x044A/2] = 0x4E71;
@@ -673,7 +668,7 @@ static DRIVER_INIT( deroon )
 
 static DRIVER_INIT( tkdensho )
 {
-	data16_t *ROM = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU1);
 	ROM[0x222c/2] = 0x4E71;
 	ROM[0x222c/2] = 0x4E71;
 

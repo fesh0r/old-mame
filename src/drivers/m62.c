@@ -69,8 +69,8 @@ WRITE8_HANDLER( m62_hscroll_low_w );
 WRITE8_HANDLER( m62_hscroll_high_w );
 WRITE8_HANDLER( m62_vscroll_low_w );
 WRITE8_HANDLER( m62_vscroll_high_w );
-extern data8_t *m62_tileram;
-extern data8_t *m62_textram;
+extern UINT8 *m62_tileram;
+extern UINT8 *m62_textram;
 
 VIDEO_START( kungfum );
 VIDEO_UPDATE( kungfum );
@@ -108,23 +108,7 @@ VIDEO_UPDATE( youjyudn );
 VIDEO_START( horizon );
 VIDEO_UPDATE( horizon );
 WRITE8_HANDLER( horizon_scrollram_w );
-extern data8_t *horizon_scrollram;
-
-static int bankaddress;
-static int bankaddress2;
-
-static void set_m64_bank(void)
-{
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	memory_set_bankptr(1,&RAM[bankaddress]);
-}
-
-static void set_m64_bank2(void)
-{
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	memory_set_bankptr(1,&RAM[bankaddress]);
-	memory_set_bankptr(2,&RAM[bankaddress2]);
-}
+extern UINT8 *horizon_scrollram;
 
 
 /* Lode Runner 2 seems to have a simple protection on the bank switching */
@@ -140,14 +124,11 @@ READ8_HANDLER( ldrun2_bankswitch_r )
 {
 	if (ldrun2_bankswap)
 	{
-		unsigned char *RAM = memory_region(REGION_CPU1);
-
-
 		ldrun2_bankswap--;
 
 		/* swap to bank #1 on second read */
 		if (ldrun2_bankswap == 0)
-			memory_set_bankptr(1,&RAM[0x12000]);
+			memory_set_bank(1, 1);
 	}
 	return 0;
 }
@@ -171,8 +152,7 @@ WRITE8_HANDLER( ldrun2_bankswitch_w )
 logerror("unknown bank select %02x\n",data);
 			return;
 		}
-		bankaddress = 0x10000 + (banks[data-1] * 0x2000);
-		set_m64_bank();
+		memory_set_bank(1, banks[data-1]);
 	}
 	else
 	{
@@ -200,35 +180,30 @@ READ8_HANDLER( ldrun3_prot_7_r )
 
 WRITE8_HANDLER( ldrun4_bankswitch_w )
 {
-	bankaddress = 0x10000 + ((data & 0x01) * 0x4000);
-	set_m64_bank();
+	memory_set_bank(1, data & 0x01);
 }
 
 static WRITE8_HANDLER( kidniki_bankswitch_w )
 {
-	bankaddress = 0x10000 + (data & 0x0f) * 0x2000;
-	set_m64_bank();
+	memory_set_bank(1, data & 0x0f);
 }
 
 #define battroad_bankswitch_w kidniki_bankswitch_w
 
 static WRITE8_HANDLER( spelunkr_bankswitch_w )
 {
-	bankaddress = 0x10000 + (data & 0x03) * 0x2000;
-	set_m64_bank();
+	memory_set_bank(1, data & 0x03);
 }
 
-WRITE8_HANDLER( spelunk2_bankswitch_w )
+static WRITE8_HANDLER( spelunk2_bankswitch_w )
 {
-	bankaddress = 0x20000 + 0x1000 * ((data & 0xc0)>>6);
-	bankaddress2 = 0x10000 + 0x0400 *  (data & 0x3c);
-	set_m64_bank2();
+	memory_set_bank(1, (data & 0xc0)>>6);
+	memory_set_bank(2, (data & 0x3c)>>2);
 }
 
 static WRITE8_HANDLER( youjyudn_bankswitch_w )
 {
-	bankaddress = 0x10000 + (data & 0x01) * 0x4000;
-	set_m64_bank();
+	memory_set_bank(1, data & 0x01);
 }
 
 
@@ -1234,7 +1209,7 @@ INPUT_PORTS_START( horizon )
 INPUT_PORTS_END
 
 
-#define TILELAYOUT(NUM) static struct GfxLayout tilelayout_##NUM =  \
+#define TILELAYOUT(NUM) static gfx_layout tilelayout_##NUM =  \
 {                                                                   \
 	8,8,	/* 8*8 characters */                                    \
 	NUM,	/* NUM characters */                                    \
@@ -1250,7 +1225,7 @@ TILELAYOUT(2048);
 TILELAYOUT(4096);
 
 
-static struct GfxLayout battroad_charlayout =
+static gfx_layout battroad_charlayout =
 {
 	8,8,	/* 8*8 characters */
 	1024,	/* number of characters */
@@ -1261,7 +1236,7 @@ static struct GfxLayout battroad_charlayout =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-static struct GfxLayout lotlot_charlayout =
+static gfx_layout lotlot_charlayout =
 {
 	12,10, /* character size */
 	256, /* number of characters */
@@ -1272,7 +1247,7 @@ static struct GfxLayout lotlot_charlayout =
 	32*8	/* every char takes 32 consecutive bytes */
 };
 
-static struct GfxLayout kidniki_charlayout =
+static gfx_layout kidniki_charlayout =
 {
 	12,8, /* character size */
 	1024, /* number of characters */
@@ -1283,7 +1258,7 @@ static struct GfxLayout kidniki_charlayout =
 	16*8	/* every char takes 16 consecutive bytes */
 };
 
-static struct GfxLayout spelunk2_charlayout =
+static gfx_layout spelunk2_charlayout =
 {
 	12,8, /* character size */
 	512, /* number of characters */
@@ -1298,7 +1273,7 @@ static struct GfxLayout spelunk2_charlayout =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-static struct GfxLayout youjyudn_tilelayout =
+static gfx_layout youjyudn_tilelayout =
 {
 	8,16,
 	RGN_FRAC(1,3),
@@ -1310,7 +1285,7 @@ static struct GfxLayout youjyudn_tilelayout =
 	16*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -1323,14 +1298,14 @@ static struct GfxLayout spritelayout =
 	32*8
 };
 
-static struct GfxDecodeInfo kungfum_gfxdecodeinfo[] =
+static gfx_decode kungfum_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout_1024,       0, 32 },	/* use colors   0-255 */
 	{ REGION_GFX2, 0, &spritelayout,        256, 32 },	/* use colors 256-511 */
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo battroad_gfxdecodeinfo[] =
+static gfx_decode battroad_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout_1024,       0, 32 },	/* use colors   0-255 */
 	{ REGION_GFX2, 0, &spritelayout,        256, 32 },	/* use colors 256-511 */
@@ -1338,14 +1313,14 @@ static struct GfxDecodeInfo battroad_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo ldrun3_gfxdecodeinfo[] =
+static gfx_decode ldrun3_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout_2048,      0, 32 },	/* use colors   0-255 */
 	{ REGION_GFX2, 0, &spritelayout,       256, 32 },	/* use colors 256-511 */
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo lotlot_gfxdecodeinfo[] =
+static gfx_decode lotlot_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &lotlot_charlayout,    0, 32 },	/* use colors   0-255 */
 	{ REGION_GFX2, 0, &spritelayout,       256, 32 },	/* use colors 256-511 */
@@ -1353,7 +1328,7 @@ static struct GfxDecodeInfo lotlot_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo kidniki_gfxdecodeinfo[] =
+static gfx_decode kidniki_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout_4096,      0, 32 },	/* use colors   0-255 */
 	{ REGION_GFX2, 0, &spritelayout,       256, 32 },	/* use colors 256-511 */
@@ -1361,7 +1336,7 @@ static struct GfxDecodeInfo kidniki_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo spelunkr_gfxdecodeinfo[] =
+static gfx_decode spelunkr_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout_4096,	     0, 32 },	/* use colors   0-255 */
 	{ REGION_GFX2, 0, &spritelayout,       256, 32 },	/* use colors 256-511 */
@@ -1369,7 +1344,7 @@ static struct GfxDecodeInfo spelunkr_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo spelunk2_gfxdecodeinfo[] =
+static gfx_decode spelunk2_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout_4096,	     0, 64 },	/* use colors   0-511 */
 	{ REGION_GFX2, 0, &spritelayout,       512, 32 },	/* use colors 512-767 */
@@ -1377,7 +1352,7 @@ static struct GfxDecodeInfo spelunk2_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo youjyudn_gfxdecodeinfo[] =
+static gfx_decode youjyudn_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &youjyudn_tilelayout,  0, 32 },	/* use colors   0-255 */
 	{ REGION_GFX2, 0, &spritelayout,       256, 32 },	/* use colors 256-511 */
@@ -2269,7 +2244,7 @@ ROM_START( spelunkr )
 	ROM_CONTINUE(             0x02000, 0x0800 )			/* first and second half identical, */
 	ROM_CONTINUE(             0x00800, 0x0800 )			/* second half not used by the driver */
 	ROM_CONTINUE(             0x02800, 0x0800 )
-	ROM_CONTINUE(             0x00000, 0x0800 )
+	ROM_CONTINUE(             0x01000, 0x0800 )
 	ROM_CONTINUE(             0x03000, 0x0800 )
 	ROM_CONTINUE(             0x00800, 0x0800 )
 	ROM_CONTINUE(             0x03800, 0x0800 )
@@ -2335,7 +2310,7 @@ ROM_START( spelnkrj )
 	ROM_CONTINUE(             0x02000, 0x0800 )			/* first and second half identical, */
 	ROM_CONTINUE(             0x00800, 0x0800 )			/* second half not used by the driver */
 	ROM_CONTINUE(             0x02800, 0x0800 )
-	ROM_CONTINUE(             0x00000, 0x0800 )
+	ROM_CONTINUE(             0x01000, 0x0800 )
 	ROM_CONTINUE(             0x03000, 0x0800 )
 	ROM_CONTINUE(             0x00800, 0x0800 )
 	ROM_CONTINUE(             0x03800, 0x0800 )
@@ -2512,17 +2487,22 @@ ROM_START( horizon )
 ROM_END
 
 
-static DRIVER_INIT( m62 )
+static DRIVER_INIT( battroad )
 {
-	state_save_register_int("main", 0, "bankaddress", &bankaddress);
-	state_save_register_func_postload(set_m64_bank);
+	/* configure memory banks */
+	memory_configure_bank(1, 0, 16, memory_region(REGION_CPU1) + 0x10000, 0x2000);
 }
 
-static DRIVER_INIT( spelunk2 )
+static DRIVER_INIT( ldrun2 )
 {
-	state_save_register_int("main", 0, "bankaddress", &bankaddress);
-	state_save_register_int("main", 0, "bankaddress2", &bankaddress2);
-	state_save_register_func_postload(set_m64_bank2);
+	/* configure memory banks */
+	memory_configure_bank(1, 0, 2, memory_region(REGION_CPU1) + 0x10000, 0x2000);
+}
+
+static DRIVER_INIT( ldrun4 )
+{
+	/* configure memory banks */
+	memory_configure_bank(1, 0, 2, memory_region(REGION_CPU1) + 0x10000, 0x4000);
 }
 
 static DRIVER_INIT( kidniki )
@@ -2532,7 +2512,28 @@ static DRIVER_INIT( kidniki )
 	/* in Kid Niki, bank 0 has code falling from 7fff to 8000, */
 	/* so I have to copy it there because bank switching wouldn't catch it */
 	memcpy(ROM + 0x08000, ROM + 0x10000, 0x2000);
-	init_m62();
+
+	/* configure memory banks */
+	memory_configure_bank(1, 0, 16, memory_region(REGION_CPU1) + 0x10000, 0x2000);
+}
+
+static DRIVER_INIT( spelunkr )
+{
+	/* configure memory banks */
+	memory_configure_bank(1, 0, 4, memory_region(REGION_CPU1) + 0x10000, 0x2000);
+}
+
+static DRIVER_INIT( spelunk2 )
+{
+	/* configure memory banks */
+	memory_configure_bank(1, 0,  4, memory_region(REGION_CPU1) + 0x20000, 0x1000);
+	memory_configure_bank(2, 0, 16, memory_region(REGION_CPU1) + 0x10000, 0x1000);
+}
+
+static DRIVER_INIT( youjyudn )
+{
+	/* configure memory banks */
+	memory_configure_bank(1, 0, 2, memory_region(REGION_CPU1) + 0x10000, 0x4000);
 }
 
 GAME( 1984, kungfum,  0,        kungfum,  kungfum,  0,        ROT0,   "Irem", "Kung-Fu Master" )
@@ -2540,19 +2541,19 @@ GAME( 1984, kungfud,  kungfum,  kungfum,  kungfum,  0,        ROT0,   "Irem (Dat
 GAME( 1984, spartanx, kungfum,  kungfum,  kungfum,  0,        ROT0,   "Irem", "Spartan X (Japan)" )
 GAME( 1984, kungfub,  kungfum,  kungfum,  kungfum,  0,        ROT0,   "bootleg", "Kung-Fu Master (bootleg set 1)" )
 GAME( 1984, kungfub2, kungfum,  kungfum,  kungfum,  0,        ROT0,   "bootleg", "Kung-Fu Master (bootleg set 2)" )
-GAME( 1984, battroad, 0,        battroad, battroad, m62,      ROT90,  "Irem", "The Battle-Road" )
+GAME( 1984, battroad, 0,        battroad, battroad, battroad, ROT90,  "Irem", "The Battle-Road" )
 GAME( 1984, ldrun,    0,        ldrun,    ldrun,    0,        ROT0,   "Irem (licensed from Broderbund)", "Lode Runner (set 1)" )
 GAME( 1984, ldruna,   ldrun,    ldrun,    ldrun,    0,        ROT0,   "Irem (licensed from Broderbund)", "Lode Runner (set 2)" )
-GAME( 1984, ldrun2,   0,        ldrun2,   ldrun2,   m62,      ROT0,   "Irem (licensed from Broderbund)", "Lode Runner II - The Bungeling Strikes Back" )	/* Japanese version is called Bangeringu Teikoku No Gyakushuu */
+GAME( 1984, ldrun2,   0,        ldrun2,   ldrun2,   ldrun2,   ROT0,   "Irem (licensed from Broderbund)", "Lode Runner II - The Bungeling Strikes Back" )	/* Japanese version is called Bangeringu Teikoku No Gyakushuu */
 GAME( 1985, ldrun3,   0,        ldrun3,   ldrun3,   0,        ROT0,   "Irem (licensed from Broderbund)", "Lode Runner III - The Golden Labyrinth" )
 GAME( 1985, ldrun3jp, ldrun3,   ldrun3,   ldrun3,   0,        ROT0,   "Irem (licensed from Broderbund)", "Lode Runner III - Majin No Fukkatsu" )
-GAME( 1986, ldrun4,   0,        ldrun4,   ldrun4,   m62,      ROT0,   "Irem (licensed from Broderbund)", "Lode Runner IV - Teikoku Karano Dasshutsu" )
+GAME( 1986, ldrun4,   0,        ldrun4,   ldrun4,   ldrun4,   ROT0,   "Irem (licensed from Broderbund)", "Lode Runner IV - Teikoku Karano Dasshutsu" )
 GAME( 1985, lotlot,   0,        lotlot,   lotlot,   0,        ROT0,   "Irem (licensed from Tokuma Shoten)", "Lot Lot" )
 GAMEX(1986, kidniki,  0,        kidniki,  kidniki,  kidniki,  ROT0,   "Irem (Data East USA license)", "Kid Niki - Radical Ninja (US)", GAME_IMPERFECT_SOUND )
 GAMEX(1986, yanchamr, kidniki,  kidniki,  kidniki,  kidniki,  ROT0,   "Irem", "Kaiketsu Yanchamaru (Japan)", GAME_IMPERFECT_SOUND )
 GAMEX(1987, lithero,  kidniki,  kidniki,  kidniki,  kidniki,  ROT0,   "bootleg", "Little Hero", GAME_IMPERFECT_SOUND )
-GAME( 1985, spelunkr, 0,        spelunkr, spelunkr, m62,      ROT0,   "Irem (licensed from Broderbund)", "Spelunker" )
-GAME( 1985, spelnkrj, spelunkr, spelunkr, spelunkr, m62,      ROT0,   "Irem (licensed from Broderbund)", "Spelunker (Japan)" )
+GAME( 1985, spelunkr, 0,        spelunkr, spelunkr, spelunkr, ROT0,   "Irem (licensed from Broderbund)", "Spelunker" )
+GAME( 1985, spelnkrj, spelunkr, spelunkr, spelunkr, spelunkr, ROT0,   "Irem (licensed from Broderbund)", "Spelunker (Japan)" )
 GAME( 1986, spelunk2, 0,        spelunk2, spelunk2, spelunk2, ROT0,   "Irem (licensed from Broderbund)", "Spelunker II" )
-GAME( 1986, youjyudn, 0,        youjyudn, youjyudn, m62,      ROT270, "Irem", "Youjyuden (Japan)" )
+GAME( 1986, youjyudn, 0,        youjyudn, youjyudn, youjyudn, ROT270, "Irem", "Youjyuden (Japan)" )
 GAMEX(1985, horizon,  0,        horizon,  horizon,  0,        ROT0,   "Irem", "Horizon", GAME_IMPERFECT_SOUND )

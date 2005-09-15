@@ -47,10 +47,10 @@ VIDEO_START( m90 );
 
 static void set_m90_bank(void)
 {
-	data8_t *rom = memory_region(REGION_USER1);
+	UINT8 *rom = memory_region(REGION_USER1);
 
 	if (!rom)
-		usrintf_showmessage("bankswitch with no banked ROM!");
+		ui_popup("bankswitch with no banked ROM!");
 	else
 		memory_set_bankptr(1,rom + bankaddress);
 }
@@ -651,7 +651,7 @@ INPUT_PORTS_END
 
 /*****************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -662,7 +662,7 @@ static struct GfxLayout charlayout =
 	8*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -675,7 +675,7 @@ static struct GfxLayout spritelayout =
 	32*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,     0, 16 },
 	{ REGION_GFX1, 0, &spritelayout, 256, 16 },

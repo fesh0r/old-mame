@@ -44,9 +44,13 @@
 
 static YGV608 ygv608;
 
-static struct tilemap *tilemap_A = NULL;
-static struct tilemap *tilemap_B = NULL;
-static struct mame_bitmap *work_bitmap = NULL;
+static tilemap *tilemap_A_cache_8[3];
+static tilemap *tilemap_A_cache_16[3];
+static tilemap *tilemap_B_cache_8[3];
+static tilemap *tilemap_B_cache_16[3];
+static tilemap *tilemap_A = NULL;
+static tilemap *tilemap_B = NULL;
+static mame_bitmap *work_bitmap = NULL;
 
 #ifdef MAME_DEBUG
 static void ShowYGV608Registers( void );
@@ -476,6 +480,23 @@ VIDEO_START( ygv608 )
 	ygv608.tilemap_resize = 1;
 	namcond1_gfxbank = 0;
 
+	/* create tilemaps of all sizes and combinations */
+	tilemap_A_cache_8[0] = tilemap_create(get_tile_info_A_8, get_tile_offset, TILEMAP_TRANSPARENT, 8,8, 32,32);
+	tilemap_A_cache_8[1] = tilemap_create(get_tile_info_A_8, get_tile_offset, TILEMAP_TRANSPARENT, 8,8, 64,32);
+	tilemap_A_cache_8[2] = tilemap_create(get_tile_info_A_8, get_tile_offset, TILEMAP_TRANSPARENT, 8,8, 32,64);
+
+	tilemap_A_cache_16[0] = tilemap_create(get_tile_info_A_16, get_tile_offset, TILEMAP_TRANSPARENT, 16,16, 32,32);
+	tilemap_A_cache_16[1] = tilemap_create(get_tile_info_A_16, get_tile_offset, TILEMAP_TRANSPARENT, 16,16, 64,32);
+	tilemap_A_cache_16[2] = tilemap_create(get_tile_info_A_16, get_tile_offset, TILEMAP_TRANSPARENT, 16,16, 32,64);
+
+	tilemap_B_cache_8[0] = tilemap_create(get_tile_info_B_8, get_tile_offset, TILEMAP_TRANSPARENT, 8,8, 32,32);
+	tilemap_B_cache_8[1] = tilemap_create(get_tile_info_B_8, get_tile_offset, TILEMAP_TRANSPARENT, 8,8, 64,32);
+	tilemap_B_cache_8[2] = tilemap_create(get_tile_info_B_8, get_tile_offset, TILEMAP_TRANSPARENT, 8,8, 32,64);
+
+	tilemap_B_cache_16[0] = tilemap_create(get_tile_info_B_16, get_tile_offset, TILEMAP_TRANSPARENT, 16,16, 32,32);
+	tilemap_B_cache_16[1] = tilemap_create(get_tile_info_B_16, get_tile_offset, TILEMAP_TRANSPARENT, 16,16, 64,32);
+	tilemap_B_cache_16[2] = tilemap_create(get_tile_info_B_16, get_tile_offset, TILEMAP_TRANSPARENT, 16,16, 32,64);
+
 	return 0;
 }
 
@@ -485,13 +506,13 @@ VIDEO_STOP( ygv608 )
 	tilemap_B = NULL;
 }
 
-static void draw_sprites( struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 #ifdef _ENABLE_SPRITES
 
   // sprites are always clipped to 512x512
   // - regardless of the visible display dimensions
-  static struct rectangle spriteClip = { 0, 512, 0, 512 };
+  static rectangle spriteClip = { 0, 512, 0, 512 };
 
   PSPRITE_ATTR sa;
   int flipx = 0, flipy = 0;
@@ -689,7 +710,7 @@ VIDEO_UPDATE( ygv608 )
     int xc, yc;
     double r, alpha, sin_theta, cos_theta;
 #endif
-	struct rectangle finalclip;
+	rectangle finalclip;
 
 	// clip to the current bitmap
 	finalclip.min_x = 0;
@@ -731,47 +752,31 @@ VIDEO_UPDATE( ygv608 )
 
 	if( ygv608.tilemap_resize )
 	{
-		if (tilemap_A)
-		{
-			tilemap_dispose( tilemap_A );
-			tilemap_A = NULL;
-		}
+		int index;
+
+		/* based on the page sizes, pick an index */
+		if (ygv608.page_x == 64)
+			index = 1;
+		else if (ygv608.page_y == 64)
+			index = 2;
+		else
+			index = 0;
 
 		if ((ygv608.regs.s.r9 & r9_pts) == PTS_8X8 )
-			tilemap_A = tilemap_create( get_tile_info_A_8,
-										get_tile_offset,
-										TILEMAP_TRANSPARENT,
-										8, 8,
-										ygv608.page_x, ygv608.page_y );
+			tilemap_A = tilemap_A_cache_8[index];
 		else
-			tilemap_A = tilemap_create( get_tile_info_A_16,
-										get_tile_offset,
-										TILEMAP_TRANSPARENT,
-										16, 16,
-										ygv608.page_x, ygv608.page_y );
+			tilemap_A = tilemap_A_cache_16[index];
+		tilemap_mark_all_tiles_dirty(tilemap_A);
 
 		tilemap_set_transparent_pen( tilemap_A, 0 );
 		// for NCV1 it's sufficient to scroll only columns
 		tilemap_set_scroll_cols( tilemap_A, ygv608.page_x );
 
-		if( tilemap_B )
-		{
-			tilemap_dispose( tilemap_B );
-			tilemap_B = NULL;
-		}
-
 		if ((ygv608.regs.s.r9 & r9_pts) == PTS_8X8 )
-			tilemap_B = tilemap_create( get_tile_info_B_8,
-										get_tile_offset,
-										TILEMAP_OPAQUE,
-										8, 8,
-										ygv608.page_x, ygv608.page_y );
+			tilemap_B = tilemap_B_cache_8[index];
 		else
-			tilemap_B = tilemap_create( get_tile_info_B_16,
-										get_tile_offset,
-										TILEMAP_OPAQUE,
-										16, 16,
-										ygv608.page_x, ygv608.page_y );
+			tilemap_B = tilemap_B_cache_16[index];
+		tilemap_mark_all_tiles_dirty(tilemap_B);
 
 		// for NCV1 it's sufficient to scroll only columns
 		tilemap_set_scroll_cols( tilemap_B, ygv608.page_x );
@@ -901,22 +906,22 @@ VIDEO_UPDATE( ygv608 )
 
 #ifdef _SHOW_VIDEO_DEBUG
   /* show screen control information */
-  ui_text( bitmap, mode[(ygv608.regs.s.r7 & r7_md) >> 1], 0, 0 );
+  ui_draw_text( mode[(ygv608.regs.s.r7 & r7_md) >> 1], 0, 0 );
   sprintf( buffer, "%02ux%02u", ygv608.page_x, ygv608.page_y );
-  ui_text( bitmap, buffer, 0, 16 );
-  ui_text( bitmap, psize[(ygv608.regs.s.r9 & r9_pts) >> 6], 0, 32 );
+  ui_draw_text( buffer, 0, 16 );
+  ui_draw_text( psize[(ygv608.regs.s.r9 & r9_pts) >> 6], 0, 32 );
   sprintf( buffer, "A: SX:%d SY:%d",
 	   (int)ygv608.scroll_data_table[0][0x80] +
 	   ( ( (int)ygv608.scroll_data_table[0][0x81] & 0x0f ) << 8 ),
 	   (int)ygv608.scroll_data_table[0][0x00] +
 	   ( ( (int)ygv608.scroll_data_table[0][0x01] & 0x0f ) << 8 ) );
-  ui_text( bitmap, buffer, 0, 48 );
+  ui_draw_text( buffer, 0, 48 );
   sprintf( buffer, "B: SX:%d SY:%d",
 	   (int)ygv608.scroll_data_table[1][0x80] +
 	   ( ( (int)ygv608.scroll_data_table[1][0x81] & 0x0f ) << 8 ),
 	   (int)ygv608.scroll_data_table[1][0x00] +
 	   ( ( (int)ygv608.scroll_data_table[1][0x01] & 0x0f ) << 8 ) );
-  ui_text( bitmap, buffer, 0, 64 );
+  ui_draw_text( buffer, 0, 64 );
 #endif
 }
 
@@ -931,7 +936,7 @@ READ16_HANDLER( ygv608_r )
 	static int p3_state = 0;
 	static int pattern_name_base = 0;  /* pattern name table base address */
 	int pn=0;
-	data16_t  data = 0;
+	UINT16  data = 0;
 
 	switch (offset)
 	{
@@ -1074,7 +1079,7 @@ READ16_HANDLER( ygv608_r )
 
 		case 0x06:
 		case 0x07:
-			return( (data16_t)(ygv608.ports.b[offset]) << 8 );
+			return( (UINT16)(ygv608.ports.b[offset]) << 8 );
 
 		default :
 			logerror( "unknown ygv608 register (%d)\n", offset );
@@ -1340,7 +1345,7 @@ void HandleRomTransfers( void )
 #endif
 }
 
-void nvsram( offs_t offset, data16_t data )
+void nvsram( offs_t offset, UINT16 data )
 {
   static int i = 0;
 

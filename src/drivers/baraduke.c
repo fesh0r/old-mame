@@ -106,7 +106,7 @@ TODO:
 #include "cpu/m6800/m6800.h"
 #include "sound/namco.h"
 
-extern data8_t *baraduke_textram, *spriteram, *baraduke_videoram, *baraduke_spriteram;
+extern UINT8 *baraduke_textram, *spriteram, *baraduke_videoram, *baraduke_spriteram;
 
 /* from vidhrdw/baraduke.c */
 VIDEO_START( baraduke );
@@ -382,7 +382,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout text_layout =
+static gfx_layout text_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -393,7 +393,7 @@ static struct GfxLayout text_layout =
 	16*8
 };
 
-static struct GfxLayout tile_layout =
+static gfx_layout tile_layout =
 {
 	8,8,
 	1024,
@@ -404,7 +404,7 @@ static struct GfxLayout tile_layout =
 	16*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -417,7 +417,7 @@ static struct GfxLayout spritelayout =
 	128*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0,      &text_layout,  0, 512 },
 	{ REGION_GFX2, 0x0000, &tile_layout,  0, 256 },
@@ -595,7 +595,7 @@ ROM_END
 
 static DRIVER_INIT( baraduke )
 {
-	data8_t *rom;
+	UINT8 *rom;
 	int i;
 
 	/* unpack the third tile ROM */

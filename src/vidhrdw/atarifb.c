@@ -16,9 +16,9 @@ unsigned char *atarifb_alphap2_vram;
 unsigned char *atarifb_scroll_register;
 
 
-struct rectangle bigfield_area = {  4*8, 34*8-1, 0*8, 32*8-1 };
-struct rectangle left_area =     {  0*8,  3*8-1, 0*8, 32*8-1 };
-struct rectangle right_area =    { 34*8, 38*8-1, 0*8, 32*8-1 };
+rectangle bigfield_area = {  4*8, 34*8-1, 0*8, 32*8-1 };
+rectangle left_area =     {  0*8,  3*8-1, 0*8, 32*8-1 };
+rectangle right_area =    { 34*8, 38*8-1, 0*8, 32*8-1 };
 
 /***************************************************************************
 ***************************************************************************/
@@ -225,7 +225,6 @@ VIDEO_UPDATE( atarifb )
 /* If this isn't Soccer, print the plays at the top of the screen */
 if (atarifb_game != 4)
 {
-	int x;
 	char buf1[25], buf2[25];
 
 	switch (atarifb_game)
@@ -355,10 +354,7 @@ if (atarifb_game != 4)
 			sprintf (buf2, "                    ");
 			break;
 	}
-	for (x = 0;x < 20;x++)
-			drawgfx(bitmap,Machine->uifont,buf1[x],UI_COLOR_NORMAL,0,0,6*x + 24*8,0,0,TRANSPARENCY_NONE,0);
-
-	for (x = 0;x < 20;x++)
-			drawgfx(bitmap,Machine->uifont,buf2[x],UI_COLOR_NORMAL,0,0,6*x,0,0,TRANSPARENCY_NONE,0);
+	ui_draw_text(buf1, 24*8, 0);
+	ui_draw_text(buf2, 0, 0);
 }
 }

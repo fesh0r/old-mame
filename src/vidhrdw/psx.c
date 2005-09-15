@@ -280,7 +280,7 @@ PALETTE_INIT( psx )
 #if defined( MAME_DEBUG )
 
 #define DEBUG_COORDS ( 10 )
-static struct mame_bitmap *debugmesh;
+static mame_bitmap *debugmesh;
 static int m_b_debugclear;
 static int m_b_debugmesh;
 static int m_n_debugskip;
@@ -453,15 +453,15 @@ static void DebugCheckKeys( void )
 			}
 			if( m_n_debuginterleave == -1 )
 			{
-				usrintf_showmessage_secs( 1, "interleave off" );
+				ui_popup_time( 1, "interleave off" );
 			}
 			else if( m_n_debuginterleave == 0 )
 			{
-				usrintf_showmessage_secs( 1, "4 bit interleave" );
+				ui_popup_time( 1, "4 bit interleave" );
 			}
 			else if( m_n_debuginterleave == 1 )
 			{
-				usrintf_showmessage_secs( 1, "8 bit interleave" );
+				ui_popup_time( 1, "8 bit interleave" );
 			}
 		}
 		else
@@ -471,7 +471,7 @@ static void DebugCheckKeys( void )
 			{
 				m_n_debugskip = 0;
 			}
-			usrintf_showmessage_secs( 1, "debug skip %d", m_n_debugskip );
+			ui_popup_time( 1, "debug skip %d", m_n_debugskip );
 		}
 	}
 
@@ -493,7 +493,7 @@ static void DebugCheckKeys( void )
 	if( code_pressed_memory( KEYCODE_S ) )
 	{
 		FILE *f;
-		usrintf_showmessage_secs( 1, "saving..." );
+		ui_popup_time( 1, "saving..." );
 		f = fopen( "VRAM.BIN", "wb" );
 		for( n_y = 0; n_y < 1024; n_y++ )
 		{
@@ -504,7 +504,7 @@ static void DebugCheckKeys( void )
 	if( code_pressed_memory( KEYCODE_L ) )
 	{
 		FILE *f;
-		usrintf_showmessage_secs( 1, "loading..." );
+		ui_popup_time( 1, "loading..." );
 		f = fopen( "VRAM.BIN", "rb" );
 		for( n_y = 0; n_y < 1024; n_y++ )
 		{
@@ -515,7 +515,7 @@ static void DebugCheckKeys( void )
 #endif
 }
 
-static int DebugMeshDisplay( struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+static int DebugMeshDisplay( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	if( m_b_debugmesh )
 	{
@@ -525,7 +525,7 @@ static int DebugMeshDisplay( struct mame_bitmap *bitmap, const struct rectangle 
 	return m_b_debugmesh;
 }
 
-static int DebugTextureDisplay( struct mame_bitmap *bitmap )
+static int DebugTextureDisplay( mame_bitmap *bitmap )
 {
 	UINT32 n_y;
 
@@ -914,15 +914,15 @@ VIDEO_UPDATE( psx )
 			n_line = n_lines;
 			while( n_line > 0 )
 			{
-				data16_t *p_n_src = m_p_p_vram[ n_y + m_n_displaystarty ] + n_x + n_displaystartx;
-				data16_t *p_n_dest = &( (data16_t *)bitmap->line[ n_y + n_top ] )[ n_x + n_left ];
+				UINT16 *p_n_src = m_p_p_vram[ n_y + m_n_displaystarty ] + n_x + n_displaystartx;
+				UINT16 *p_n_dest = &( (UINT16 *)bitmap->line[ n_y + n_top ] )[ n_x + n_left ];
 
 				n_column = n_columns;
 				while( n_column > 0 )
 				{
-					data32_t n_g0r0 = *( p_n_src++ );
-					data32_t n_r1b0 = *( p_n_src++ );
-					data32_t n_b1g1 = *( p_n_src++ );
+					UINT32 n_g0r0 = *( p_n_src++ );
+					UINT32 n_r1b0 = *( p_n_src++ );
+					UINT32 n_b1g1 = *( p_n_src++ );
 
 					*( p_n_dest++ ) = m_p_n_g0r0[ n_g0r0 ] | m_p_n_b0[ n_r1b0 ];
 					n_column--;
@@ -3620,7 +3620,7 @@ void psx_gpu_write( UINT32 *p_ram, INT32 n_size )
 			break;
 		default:
 #if defined( MAME_DEBUG )
-			usrintf_showmessage_secs( 1, "unknown GPU packet %08x", m_packet.n_entry[ 0 ] );
+			ui_popup_time( 1, "unknown GPU packet %08x", m_packet.n_entry[ 0 ] );
 #endif
 			verboselog( 0, "unknown GPU packet %08x (%08x)\n", m_packet.n_entry[ 0 ], data );
 #if ( STOP_ON_ERROR )
@@ -3784,7 +3784,7 @@ WRITE32_HANDLER( psx_gpu_w )
 			break;
 		default:
 #if defined( MAME_DEBUG )
-			usrintf_showmessage_secs( 1, "unknown GPU command %08x", data );
+			ui_popup_time( 1, "unknown GPU command %08x", data );
 #endif
 			verboselog( 0, "gpu_w( %08x ) unknown GPU command\n", data );
 			break;

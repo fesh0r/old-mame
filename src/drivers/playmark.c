@@ -38,15 +38,15 @@ World Beach Volley:
 #include "sound/okim6295.h"
 
 
-static data16_t playmark_snd_command;
-static data16_t playmark_snd_flag;
-static data8_t playmark_oki_control;
-static data8_t playmark_oki_command;
+static UINT16 playmark_snd_command;
+static UINT16 playmark_snd_flag;
+static UINT8 playmark_oki_control;
+static UINT8 playmark_oki_command;
 
 
-extern data16_t *bigtwin_bgvideoram;
-extern data16_t *wbeachvl_videoram1,*wbeachvl_videoram2,*wbeachvl_videoram3;
-extern data16_t *wbeachvl_rowscroll;
+extern UINT16 *bigtwin_bgvideoram;
+extern UINT16 *wbeachvl_videoram1,*wbeachvl_videoram2,*wbeachvl_videoram3;
+extern UINT16 *wbeachvl_rowscroll;
 
 VIDEO_START( bigtwin );
 VIDEO_START( wbeachvl );
@@ -717,7 +717,7 @@ INPUT_PORTS_START( hotmind )
 INPUT_PORTS_END
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -728,7 +728,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxLayout hotmind_charlayout =
+static gfx_layout hotmind_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -739,7 +739,7 @@ static struct GfxLayout hotmind_charlayout =
 	8*8
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -752,7 +752,7 @@ static struct GfxLayout tilelayout =
 	32*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	32,32,
 	RGN_FRAC(1,4),
@@ -769,7 +769,7 @@ static struct GfxLayout spritelayout =
 	128*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &spritelayout, 0x200, 16 },	/* colors 0x200-0x2ff */
 	{ REGION_GFX1, 0, &tilelayout,   0x000,  8 },	/* colors 0x000-0x07f */
@@ -779,7 +779,7 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 };
 
 
-static struct GfxLayout wcharlayout =
+static gfx_layout wcharlayout =
 {
 	8,8,
 	RGN_FRAC(1,6),
@@ -790,7 +790,7 @@ static struct GfxLayout wcharlayout =
 	8*8
 };
 
-static struct GfxLayout wtilelayout =
+static gfx_layout wtilelayout =
 {
 	16,16,
 	RGN_FRAC(1,6),
@@ -804,7 +804,7 @@ static struct GfxLayout wtilelayout =
 };
 
 /* tiles are 6 bpp, sprites only 5bpp */
-static struct GfxLayout wspritelayout =
+static gfx_layout wspritelayout =
 {
 	16,16,
 	RGN_FRAC(1,6),
@@ -817,7 +817,7 @@ static struct GfxLayout wspritelayout =
 	32*8
 };
 
-static struct GfxDecodeInfo wbeachvl_gfxdecodeinfo[] =
+static gfx_decode wbeachvl_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &wspritelayout, 0x600, 16 },	/* colors 0x600-0x7ff */
 	{ REGION_GFX1, 0, &wtilelayout,   0x000, 16 },	/* colors 0x000-0x3ff */
@@ -825,7 +825,7 @@ static struct GfxDecodeInfo wbeachvl_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo excelsr_gfxdecodeinfo[] =
+static gfx_decode excelsr_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &tilelayout, 0x200, 16 },	/* colors 0x200-0x2ff */
 	{ REGION_GFX1, 0, &tilelayout, 0x000,  8 },	/* colors 0x000-0x07f */
@@ -834,7 +834,7 @@ static struct GfxDecodeInfo excelsr_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo hotmind_gfxdecodeinfo[] =
+static gfx_decode hotmind_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &tilelayout,         0x200, 16 },	/* colors 0x200-0x2ff */
 	{ REGION_GFX1, 0, &tilelayout,         0x000, 16 },	/* colors 0x000-0x0ff */
@@ -1055,6 +1055,51 @@ ROM_START( wbeachvl )
 	ROM_COPY( REGION_USER2, 0x0e0000, 0x1a0000, 0x020000)
 ROM_END
 
+ROM_START( wbeachv2 )
+	ROM_REGION( 0x80000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_LOAD16_BYTE( "2.bin",   0x000000, 0x40000, CRC(8993487e) SHA1(c927ae655807f9046f66ff96a30bd2c6fa671566) )
+	ROM_LOAD16_BYTE( "3.bin",   0x000001, 0x40000, CRC(15904789) SHA1(640c80bbf7302529e1a39c2ae60e018ecb176478) )
+
+	ROM_REGION( 0x1000, REGION_CPU2, 0 )	/* sound (missing) */
+	ROM_LOAD( "pic16c57",     0x0000, 0x1000, NO_DUMP )
+
+	ROM_REGION( 0x600000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "wbv_10.bin",   0x000000, 0x80000, CRC(50680f0b) SHA1(ed76ef6ced70ba7e9558162aa94bbe9f19bbabe6) )
+	ROM_LOAD( "wbv_04.bin",   0x080000, 0x80000, CRC(df9cbff1) SHA1(7197939d9c4e8666d37266b6326134cfb4c761da) )
+	ROM_LOAD( "wbv_11.bin",   0x100000, 0x80000, CRC(e59ad0d1) SHA1(70dfc1ea45246fc8e24c96550563ab7a983f3824) )
+	ROM_LOAD( "wbv_05.bin",   0x180000, 0x80000, CRC(51245c3c) SHA1(5ac27d6fc22555766b4cdd532210199f4d7bd8bb) )
+	ROM_LOAD( "wbv_12.bin",   0x200000, 0x80000, CRC(36b87d0b) SHA1(702b8139d150c7cc9399dfa38536567aab40dcef) )
+	ROM_LOAD( "wbv_06.bin",   0x280000, 0x80000, CRC(9eb808ef) SHA1(0e46557665f1acef0606f22f043a391d1086cfce) )
+	ROM_LOAD( "wbv_13.bin",   0x300000, 0x80000, CRC(7021107b) SHA1(088fe3060dbb196e8000a3b4db1cfa3cb0c4b677) )
+	ROM_LOAD( "wbv_07.bin",   0x380000, 0x80000, CRC(4fff9fe8) SHA1(e29d3b4895692fd8559c9018432f32170aecdcc3) )
+	ROM_LOAD( "wbv_14.bin",   0x400000, 0x80000, CRC(0595e675) SHA1(82aebaedc919fa51b71f5519ee765ce9953d613a) )
+	ROM_LOAD( "wbv_08.bin",   0x480000, 0x80000, CRC(07e4b416) SHA1(a780ef0bd11897ab437359985f6e4852030ddbbf) )
+	ROM_LOAD( "wbv_15.bin",   0x500000, 0x80000, CRC(4e1a82d2) SHA1(9e66b52ba8e8144f772183396fc1a2fbb37ed2bc) )
+	ROM_LOAD( "wbv_09.bin",   0x580000, 0x20000, CRC(894ce354) SHA1(331aeabbe10cd645776da2dc0829acc2275e72dc) )
+	/* 5a0000-5fffff is empty */
+
+	ROM_REGION( 0x100000, REGION_USER2, 0 )	/* OKIM6295 samples */
+	ROM_LOAD( "wbv_01.bin",   0x00000, 0x100000, CRC(ac33f25f) SHA1(5d9ed16650aeb297d565376a99b31c88ab611668) )
+
+	/* $00000-$20000 stays the same in all sound banks, */
+	/* the second half of the bank is what gets switched */
+	ROM_REGION( 0x1c0000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_COPY( REGION_USER2, 0x000000, 0x000000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x020000, 0x020000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x000000, 0x040000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x040000, 0x060000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x000000, 0x080000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x060000, 0x0a0000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x000000, 0x0c0000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x080000, 0x0e0000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x000000, 0x100000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x0a0000, 0x120000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x000000, 0x140000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x0c0000, 0x160000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x000000, 0x180000, 0x020000)
+	ROM_COPY( REGION_USER2, 0x0e0000, 0x1a0000, 0x020000)
+ROM_END
+
 ROM_START( excelsr )
 	ROM_REGION( 0x300000, REGION_CPU1, 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "22.u301", 0x000001, 0x80000, CRC(f0aa1c1b) SHA1(5ed68181defe6cde6f4979508f0cfce9e9743912) )
@@ -1180,8 +1225,8 @@ static UINT8 playmark_asciitohex(UINT8 data)
 
 static DRIVER_INIT( bigtwin )
 {
-	data8_t *playmark_PICROM_HEX = memory_region(REGION_USER1);
-	data16_t *playmark_PICROM = (data16_t *)memory_region(REGION_CPU2);
+	UINT8 *playmark_PICROM_HEX = memory_region(REGION_USER1);
+	UINT16 *playmark_PICROM = (UINT16 *)memory_region(REGION_CPU2);
 	INT32   offs, data;
 	UINT16  src_pos = 0;
 	UINT16  dst_pos = 0;
@@ -1241,7 +1286,8 @@ static DRIVER_INIT( bigtwin )
 	} while (src_pos < 0x2d4c);		/* 0x2d4c is the size of the HEX rom loaded */
 }
 
-GAMEX( 1995, bigtwin,  0, bigtwin,  bigtwin,  bigtwin, ROT0, "Playmark", "Big Twin", GAME_NO_COCKTAIL )
-GAMEX( 1995, wbeachvl, 0, wbeachvl, wbeachvl, 0,       ROT0, "Playmark", "World Beach Volley", GAME_NO_COCKTAIL | GAME_NO_SOUND )
-GAME(  199?, excelsr,  0, excelsr,  excelsr,  bigtwin, ROT0, "Playmark", "Excelsior" )
-GAME(  1995, hotmind,  0, hotmind,  hotmind,  bigtwin, ROT0, "Playmark", "Hot Mind" )
+GAMEX( 1995, bigtwin,  0,        bigtwin,  bigtwin,  bigtwin, ROT0, "Playmark", "Big Twin", GAME_NO_COCKTAIL )
+GAMEX( 1995, wbeachvl, 0,        wbeachvl, wbeachvl, 0,       ROT0, "Playmark", "World Beach Volley (set 1)", GAME_NO_COCKTAIL | GAME_NO_SOUND )
+GAMEX( 1995, wbeachv2, wbeachvl, wbeachvl, wbeachvl, 0,       ROT0, "Playmark", "World Beach Volley (set 2)",  GAME_NO_COCKTAIL | GAME_NO_SOUND )
+GAME(  199?, excelsr,  0,        excelsr,  excelsr,  bigtwin, ROT0, "Playmark", "Excelsior" )
+GAME(  1995, hotmind,  0,        hotmind,  hotmind,  bigtwin, ROT0, "Playmark", "Hot Mind" )

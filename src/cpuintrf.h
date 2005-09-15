@@ -162,6 +162,7 @@ enum
 	CPU_SE3208,
 	CPU_MC68HC11,
 	CPU_ADSP21062,
+	CPU_DSP56156,
 
 #ifdef MESS
 	CPU_APEXC,
@@ -381,7 +382,7 @@ enum
  *
  *************************************/
 
-struct cpu_interface
+struct _cpu_interface
 {
 	/* table of core functions */
 	void		(*get_info)(UINT32 state, union cpuinfo *info);
@@ -400,6 +401,7 @@ struct cpu_interface
 	int			address_shift;
 	int *		icount;
 };
+typedef struct _cpu_interface cpu_interface;
 
 
 
@@ -532,10 +534,10 @@ int cpunum_execute(int cpunum, int cycles);
 void cpunum_reset(int cpunum, void *param, int (*irqack)(int));
 
 /* read a byte from another CPU's memory space */
-data8_t cpunum_read_byte(int cpunum, offs_t address);
+UINT8 cpunum_read_byte(int cpunum, offs_t address);
 
 /* write a byte from another CPU's memory space */
-void cpunum_write_byte(int cpunum, offs_t address, data8_t data);
+void cpunum_write_byte(int cpunum, offs_t address, UINT8 data);
 
 /* return a pointer to the saved context of a given CPU, or NULL if the
    context is active (and contained within the CPU core */
@@ -651,9 +653,9 @@ void cpu_dump_states(void);
  *************************************/
 
 /* return a pointer to the interface struct for a given CPU type */
-INLINE const struct cpu_interface *cputype_get_interface(int cputype)
+INLINE const cpu_interface *cputype_get_interface(int cputype)
 {
-	extern struct cpu_interface cpuintrf[];
+	extern cpu_interface cpuintrf[];
 	return &cpuintrf[cputype];
 }
 

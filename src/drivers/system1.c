@@ -2205,7 +2205,7 @@ INPUT_PORTS_START( ufosensi )
 	PORT_DIPSETTING(	0x00, "Infinite Lives (both set)" )
 INPUT_PORTS_END
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -2216,7 +2216,7 @@ static struct GfxLayout charlayout =
 	8*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	/* sprites use colors 0-511, but are not defined here */
 	{ REGION_GFX1, 0, &charlayout, 512, 128 },
@@ -4154,7 +4154,7 @@ static DRIVER_INIT( noboranb )
 	/* Patch to get PRG ROMS ('T', 'R' and 'S) status as "GOOD" in the "test mode" */
 	/* not really needed */
 
-//  data8_t *ROM = memory_region(REGION_CPU1);
+//  UINT8 *ROM = memory_region(REGION_CPU1);
 
 //  ROM[0x3296] = 0x18;     // 'jr' instead of 'jr z' - 'T' (PRG Main ROM)
 //  ROM[0x32be] = 0x18;     // 'jr' instead of 'jr z' - 'R' (Banked ROM 1)
@@ -4166,7 +4166,7 @@ static DRIVER_INIT( noboranb )
 //  ROM[0x10000 + 0 * 0x8000 + 0x3347] = 0x18;  // 'jr' instead of 'jr z'
 
 	/* Patch to get sound in later levels(the program enters into a tight loop)*/
-	data8_t *ROM2 = memory_region(REGION_CPU2);
+	UINT8 *ROM2 = memory_region(REGION_CPU2);
 
 	ROM2[0x02f9] = 0x28;//'jr z' instead of 'jr'
 }

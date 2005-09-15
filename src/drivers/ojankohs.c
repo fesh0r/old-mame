@@ -125,7 +125,7 @@ static void ojankohs_adpcm_int(int irq)
 
 static WRITE8_HANDLER( ojankoc_ctrl_w )
 {
-	data8_t *BANKROM = memory_region(REGION_USER1);
+	UINT8 *BANKROM = memory_region(REGION_USER1);
 	UINT32 bank_address = (data & 0x0f) * 0x8000;
 
 	memory_set_bankptr(1, &BANKROM[bank_address]);
@@ -908,7 +908,7 @@ INPUT_PORTS_START( ojankoc )
 INPUT_PORTS_END
 
 
-static struct GfxLayout ojankohs_bglayout =
+static gfx_layout ojankohs_bglayout =
 {
 	8, 4,
 	RGN_FRAC(1, 1),
@@ -919,7 +919,7 @@ static struct GfxLayout ojankohs_bglayout =
 	16*8
 };
 
-static struct GfxDecodeInfo ojankohs_gfxdecodeinfo[] =
+static gfx_decode ojankohs_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &ojankohs_bglayout,   0, 64 },
 	{ -1 } 						/* end of array */

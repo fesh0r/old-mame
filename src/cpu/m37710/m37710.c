@@ -279,68 +279,92 @@ static char *m37710_tnames[8] =
 };
 #endif
 
-static void m37710_timer_a0_cb(int num)
+static void m37710_timer_a0_cb(int cpunum)
 {
-	timer_adjust(m37710i_cpu.timers[0], TIME_IN_HZ(m37710i_cpu.reload[0]), 0, 0);
+	cpuintrf_push_context(cpunum);
+	timer_adjust(m37710i_cpu.timers[0], TIME_IN_HZ(m37710i_cpu.reload[0]), cpunum, 0);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[12]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERA0, PULSE_LINE);
+	cpu_triggerint(cpunum);
+	cpuintrf_pop_context();
 }
 
-static void m37710_timer_a1_cb(int num)
+static void m37710_timer_a1_cb(int cpunum)
 {
-	timer_adjust(m37710i_cpu.timers[1], TIME_IN_HZ(m37710i_cpu.reload[1]), 0, 0);
+	cpuintrf_push_context(cpunum);
+	timer_adjust(m37710i_cpu.timers[1], TIME_IN_HZ(m37710i_cpu.reload[1]), cpunum, 0);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[11]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERA1, PULSE_LINE);
+	cpu_triggerint(cpunum);
+	cpuintrf_pop_context();
 }
 
-static void m37710_timer_a2_cb(int num)
+static void m37710_timer_a2_cb(int cpunum)
 {
-	timer_adjust(m37710i_cpu.timers[2], TIME_IN_HZ(m37710i_cpu.reload[2]), 0, 0);
+	cpuintrf_push_context(cpunum);
+	timer_adjust(m37710i_cpu.timers[2], TIME_IN_HZ(m37710i_cpu.reload[2]), cpunum, 0);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[10]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERA2, PULSE_LINE);
+	cpu_triggerint(cpunum);
+	cpuintrf_pop_context();
 }
 
-static void m37710_timer_a3_cb(int num)
+static void m37710_timer_a3_cb(int cpunum)
 {
-	timer_adjust(m37710i_cpu.timers[3], TIME_IN_HZ(m37710i_cpu.reload[3]), 0, 0);
+	cpuintrf_push_context(cpunum);
+	timer_adjust(m37710i_cpu.timers[3], TIME_IN_HZ(m37710i_cpu.reload[3]), cpunum, 0);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[9]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERA3, PULSE_LINE);
+	cpu_triggerint(cpunum);
+	cpuintrf_pop_context();
 }
 
-static void m37710_timer_a4_cb(int num)
+static void m37710_timer_a4_cb(int cpunum)
 {
-	timer_adjust(m37710i_cpu.timers[4], TIME_IN_HZ(m37710i_cpu.reload[4]), 0, 0);
+	cpuintrf_push_context(cpunum);
+	timer_adjust(m37710i_cpu.timers[4], TIME_IN_HZ(m37710i_cpu.reload[4]), cpunum, 0);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[8]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERA4, PULSE_LINE);
+	cpu_triggerint(cpunum);
+	cpuintrf_pop_context();
 }
 
-static void m37710_timer_b0_cb(int num)
+static void m37710_timer_b0_cb(int cpunum)
 {
-	timer_adjust(m37710i_cpu.timers[5], TIME_IN_HZ(m37710i_cpu.reload[5]), 0, 0);
+	cpuintrf_push_context(cpunum);
+	timer_adjust(m37710i_cpu.timers[5], TIME_IN_HZ(m37710i_cpu.reload[5]), cpunum, 0);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[7]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERB0, PULSE_LINE);
+	cpu_triggerint(cpunum);
+	cpuintrf_pop_context();
 }
 
-static void m37710_timer_b1_cb(int num)
+static void m37710_timer_b1_cb(int cpunum)
 {
-	timer_adjust(m37710i_cpu.timers[6], TIME_IN_HZ(m37710i_cpu.reload[6]), 0, 0);
+	cpuintrf_push_context(cpunum);
+	timer_adjust(m37710i_cpu.timers[6], TIME_IN_HZ(m37710i_cpu.reload[6]), cpunum, 0);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[6]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERB1, PULSE_LINE);
+	cpu_triggerint(cpunum);
+	cpuintrf_pop_context();
 }
 
-static void m37710_timer_b2_cb(int num)
+static void m37710_timer_b2_cb(int cpunum)
 {
-	timer_adjust(m37710i_cpu.timers[7], TIME_IN_HZ(m37710i_cpu.reload[7]), 0, 0);
+	cpuintrf_push_context(cpunum);
+	timer_adjust(m37710i_cpu.timers[7], TIME_IN_HZ(m37710i_cpu.reload[7]), cpunum, 0);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[5]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERB2, PULSE_LINE);
+	cpu_triggerint(cpunum);
+	cpuintrf_pop_context();
 }
 
 static void m37710_external_tick(int timer, int state)
@@ -375,6 +399,7 @@ static void m37710_external_tick(int timer, int state)
 
 static void m37710_recalc_timer(int timer)
 {
+	int cpunum = cpu_getactivecpu();
 	int tval;
 	int tcr[8] = { 0x56, 0x57, 0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d };
 	double time;
@@ -404,7 +429,7 @@ static void m37710_recalc_timer(int timer)
 					time = (double)16000000 / tscales[m37710i_cpu.m37710_regs[tcr[timer]]>>6];
 					time /= ((double)tval+1.0);
 
-					timer_adjust(m37710i_cpu.timers[timer], TIME_IN_HZ(time), 0, 0);
+					timer_adjust(m37710i_cpu.timers[timer], TIME_IN_HZ(time), cpunum, 0);
 					m37710i_cpu.reload[timer] = time;
 					break;
 
@@ -439,7 +464,7 @@ static void m37710_recalc_timer(int timer)
 					time = (double)16000000 / tscales[m37710i_cpu.m37710_regs[tcr[timer]]>>6];
 					time /= ((double)tval+1.0);
 
-					timer_adjust(m37710i_cpu.timers[timer], TIME_IN_HZ(time), 0, 0);
+					timer_adjust(m37710i_cpu.timers[timer], TIME_IN_HZ(time), cpunum, 0);
 					m37710i_cpu.reload[timer] = time;
 					break;
 
@@ -465,7 +490,7 @@ static void m37710_recalc_timer(int timer)
 	}
 }
 
-static data8_t m37710_internal_r(int offset)
+static UINT8 m37710_internal_r(int offset)
 {
 	#if M37710_DEBUG
 	if (offset > 1)
@@ -559,7 +584,7 @@ static data8_t m37710_internal_r(int offset)
 	return m37710i_cpu.m37710_regs[offset];
 }
 
-static void m37710_internal_w(int offset, data8_t data)
+static void m37710_internal_w(int offset, UINT8 data)
 {
 	int i;
 
@@ -830,8 +855,8 @@ void m37710i_update_irqs(void)
 //      logerror("taking IRQ %d: PC = %06x, SP = %04x\n", wantedIRQ, REG_PB | REG_PC, REG_S);
 		m37710i_push_8(REG_PB>>16);
 		m37710i_push_16(REG_PC);
-		m37710i_push_8(m37710i_get_reg_p());
 		m37710i_push_8(m37710i_cpu.ipl);
+		m37710i_push_8(m37710i_get_reg_p());
 
 		// set I to 1, set IPL to the interrupt we're taking
 		FLAG_I = IFLAG_SET;

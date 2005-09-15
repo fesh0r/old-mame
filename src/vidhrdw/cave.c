@@ -52,22 +52,22 @@ Note:   if MAME_DEBUG is defined, pressing:
 int cave_spritetype;
 int cave_kludge = 0;
 
-data16_t *cave_videoregs;
+UINT16 *cave_videoregs;
 
-data16_t *cave_vram_0, *cave_vctrl_0;
-data16_t *cave_vram_1, *cave_vctrl_1;
-data16_t *cave_vram_2, *cave_vctrl_2;
-data16_t *cave_vram_3, *cave_vctrl_3;
+UINT16 *cave_vram_0, *cave_vctrl_0;
+UINT16 *cave_vram_1, *cave_vctrl_1;
+UINT16 *cave_vram_2, *cave_vctrl_2;
+UINT16 *cave_vram_3, *cave_vctrl_3;
 
 /* Variables only used here: */
 
-static struct tilemap *tilemap_0;
+static tilemap *tilemap_0;
 static int             tiledim_0, old_tiledim_0;
-static struct tilemap *tilemap_1;
+static tilemap *tilemap_1;
 static int             tiledim_1, old_tiledim_1;
-static struct tilemap *tilemap_2;
+static tilemap *tilemap_2;
 static int             tiledim_2, old_tiledim_2;
-static struct tilemap *tilemap_3;
+static tilemap *tilemap_3;
 static int             tiledim_3, old_tiledim_3;
 
 
@@ -109,7 +109,7 @@ static struct {
 static int num_sprites;
 static struct sprite_cave *sprite_cave;
 static struct sprite_cave *sprite_table[MAX_PRIORITY][MAX_SPRITE_NUM+1];
-struct mame_bitmap *sprite_zbuf;
+mame_bitmap *sprite_zbuf;
 static UINT16 sprite_zbuf_baseval = 0x10000-MAX_SPRITE_NUM;
 
 static void (*get_sprite_info)(void);
@@ -237,7 +237,7 @@ PALETTE_INIT( korokoro )
 
 ***************************************************************************/
 
-INLINE void get_tile_info(int GFX, data16_t *VRAM, int TDIM, int tile_index)
+INLINE void get_tile_info(int GFX, UINT16 *VRAM, int TDIM, int tile_index)
 {
 	UINT32 code, color, pri, tile;
 
@@ -324,7 +324,7 @@ void sailormn_get_tile_info_2(int tile_index)
 }
 
 
-INLINE void vram_w(data16_t *VRAM, struct tilemap *TILEMAP, UNUSEDARG offs_t offset, UNUSEDARG data16_t data, UNUSEDARG data16_t mem_mask)
+INLINE void vram_w(UINT16 *VRAM, tilemap *TILEMAP, ATTR_UNUSED offs_t offset, ATTR_UNUSED UINT16 data, ATTR_UNUSED UINT16 mem_mask)
 {
 	if ((VRAM[offset] & ~mem_mask)==(data & ~mem_mask)) return;
 	COMBINE_DATA(&VRAM[offset]);
@@ -346,7 +346,7 @@ INLINE void vram_w(data16_t *VRAM, struct tilemap *TILEMAP, UNUSEDARG offs_t off
     and 408000-407fff both go to the 8x8 tilemap ram. Use this function
     in this cases. Note that the get_tile_info function looks in the
     4000-7fff range for tiles, so we have to write the data there. */
-INLINE void vram_8x8_w(data16_t *VRAM, struct tilemap *TILEMAP,UNUSEDARG offs_t offset, UNUSEDARG data16_t data, UNUSEDARG data16_t mem_mask)
+INLINE void vram_8x8_w(UINT16 *VRAM, tilemap *TILEMAP,ATTR_UNUSED offs_t offset, ATTR_UNUSED UINT16 data, ATTR_UNUSED UINT16 mem_mask)
 {
 	offset %= 0x4000/2;
 	if ((VRAM[offset] & ~mem_mask)==(data & ~mem_mask)) return;
@@ -537,8 +537,8 @@ static void get_sprite_info_cave(void)
 	const unsigned char  *base_gfx	=	memory_region(region);
 	int                   code_max	=	memory_region_length(region) / (16*16);
 
-	data16_t      *source			=	spriteram16 + ((spriteram_size/2) / 2) * spriteram_bank;
-	data16_t      *finish			=	source + ((spriteram_size/2) / 2);
+	UINT16      *source			=	spriteram16 + ((spriteram_size/2) / 2) * spriteram_bank;
+	UINT16      *finish			=	source + ((spriteram_size/2) / 2);
 
 	struct sprite_cave *sprite			=	sprite_cave;
 
@@ -658,8 +658,8 @@ static void get_sprite_info_donpachi(void)
 	const unsigned char  *base_gfx	=	memory_region(region);
 	int                   code_max	=	memory_region_length(region) / (16*16);
 
-	data16_t      *source			=	spriteram16 + ((spriteram_size/2) / 2) * spriteram_bank;
-	data16_t      *finish			=	source + ((spriteram_size/2) / 2);
+	UINT16      *source			=	spriteram16 + ((spriteram_size/2) / 2) * spriteram_bank;
+	UINT16      *finish			=	source + ((spriteram_size/2) / 2);
 
 	struct sprite_cave *sprite			=	sprite_cave;
 
@@ -761,7 +761,7 @@ static int sprite_init_cave(void)
 }
 
 
-static void cave_sprite_check( const struct rectangle *clip )
+static void cave_sprite_check( const rectangle *clip )
 {
 	{	/* set clip */
 		int left = clip->min_x;
@@ -1285,8 +1285,8 @@ static void sprite_draw_donpachi_zbuf( int priority )
 ***************************************************************************/
 
 INLINE void cave_tilemap_draw(
-	struct mame_bitmap *bitmap, const struct rectangle *cliprect,
-	struct tilemap *TILEMAP, data16_t *VRAM, data16_t *VCTRL,
+	mame_bitmap *bitmap, const rectangle *cliprect,
+	tilemap *TILEMAP, UINT16 *VRAM, UINT16 *VCTRL,
 	UINT32 flags, UINT32 priority, UINT32 priority2 )
 {
 	int sx, sy, flipx, flipy, offs_x, offs_y, offs_row;
@@ -1320,7 +1320,7 @@ INLINE void cave_tilemap_draw(
 
 	if (VCTRL[1] & 0x4000)	// row-select
 	{
-		struct rectangle clip;
+		rectangle clip;
 		int startline, endline, vramdata0, vramdata1;
 
 		/*
@@ -1410,13 +1410,13 @@ INLINE void cave_tilemap_draw(
 	}
 }
 
-void cave_tilemap_0_draw( struct mame_bitmap *bitmap, const struct rectangle *cliprect, UINT32 flags, UINT32 priority, UINT32 priority2 )
+void cave_tilemap_0_draw( mame_bitmap *bitmap, const rectangle *cliprect, UINT32 flags, UINT32 priority, UINT32 priority2 )
 {	 cave_tilemap_draw( bitmap, cliprect, tilemap_0, cave_vram_0, cave_vctrl_0, flags, priority, priority2 );	}
-void cave_tilemap_1_draw( struct mame_bitmap *bitmap, const struct rectangle *cliprect, UINT32 flags, UINT32 priority, UINT32 priority2 )
+void cave_tilemap_1_draw( mame_bitmap *bitmap, const rectangle *cliprect, UINT32 flags, UINT32 priority, UINT32 priority2 )
 {	 cave_tilemap_draw( bitmap, cliprect, tilemap_1, cave_vram_1, cave_vctrl_1, flags, priority, priority2 );	}
-void cave_tilemap_2_draw( struct mame_bitmap *bitmap, const struct rectangle *cliprect, UINT32 flags, UINT32 priority, UINT32 priority2 )
+void cave_tilemap_2_draw( mame_bitmap *bitmap, const rectangle *cliprect, UINT32 flags, UINT32 priority, UINT32 priority2 )
 {	 cave_tilemap_draw( bitmap, cliprect, tilemap_2, cave_vram_2, cave_vctrl_2, flags, priority, priority2 );	}
-void cave_tilemap_3_draw( struct mame_bitmap *bitmap, const struct rectangle *cliprect, UINT32 flags, UINT32 priority, UINT32 priority2 )
+void cave_tilemap_3_draw( mame_bitmap *bitmap, const rectangle *cliprect, UINT32 flags, UINT32 priority, UINT32 priority2 )
 {	 cave_tilemap_draw( bitmap, cliprect, tilemap_3, cave_vram_3, cave_vctrl_3, flags, priority, priority2 );	}
 
 
@@ -1474,15 +1474,15 @@ VIDEO_UPDATE( cave )
 
 #if 1
 		/* Show the video registers (cave_videoregs) */
-		usrintf_showmessage("%04X %04X %04X %04X %04X %04X %04X %04X",
+		ui_popup("%04X %04X %04X %04X %04X %04X %04X %04X",
 			cave_videoregs[0], cave_videoregs[1], cave_videoregs[2], cave_videoregs[3],
 			cave_videoregs[4], cave_videoregs[5], cave_videoregs[6], cave_videoregs[7] );
 #endif
 		/* Show the scroll / flags registers of the selected layer */
-		if ((tilemap_0)&&(msk&0x000f))	usrintf_showmessage("x:%04X y:%04X f:%04X",cave_vctrl_0[0],cave_vctrl_0[1],cave_vctrl_0[2]);
-		if ((tilemap_1)&&(msk&0x00f0))	usrintf_showmessage("x:%04X y:%04X f:%04X",cave_vctrl_1[0],cave_vctrl_1[1],cave_vctrl_1[2]);
-		if ((tilemap_2)&&(msk&0x0f00))	usrintf_showmessage("x:%04X y:%04X f:%04X",cave_vctrl_2[0],cave_vctrl_2[1],cave_vctrl_2[2]);
-		if ((tilemap_3)&&(msk&0xf000))	usrintf_showmessage("x:%04X y:%04X f:%04X",cave_vctrl_3[0],cave_vctrl_3[1],cave_vctrl_3[2]);
+		if ((tilemap_0)&&(msk&0x000f))	ui_popup("x:%04X y:%04X f:%04X",cave_vctrl_0[0],cave_vctrl_0[1],cave_vctrl_0[2]);
+		if ((tilemap_1)&&(msk&0x00f0))	ui_popup("x:%04X y:%04X f:%04X",cave_vctrl_1[0],cave_vctrl_1[1],cave_vctrl_1[2]);
+		if ((tilemap_2)&&(msk&0x0f00))	ui_popup("x:%04X y:%04X f:%04X",cave_vctrl_2[0],cave_vctrl_2[1],cave_vctrl_2[2]);
+		if ((tilemap_3)&&(msk&0xf000))	ui_popup("x:%04X y:%04X f:%04X",cave_vctrl_3[0],cave_vctrl_3[1],cave_vctrl_3[2]);
 	}
 
 	/* Show the row / "column" scroll enable flags, when they change state */
@@ -1497,7 +1497,7 @@ VIDEO_UPDATE( cave )
 						rasflag |= (cave_vctrl_3[1] & 0x4000) ? 0x2000 : 0;	}
 	if (rasflag != old_rasflag)
 	{
-		usrintf_showmessage("Line Effect: 0:%c%c 1:%c%c 2:%c%c 3:%c%c",
+		ui_popup("Line Effect: 0:%c%c 1:%c%c 2:%c%c 3:%c%c",
 			(rasflag&0x0001)?'x':' ', (rasflag&0x0002)?'y':' ',
 			(rasflag&0x0010)?'x':' ', (rasflag&0x0020)?'y':' ',
 			(rasflag&0x0100)?'x':' ', (rasflag&0x0200)?'y':' ',

@@ -1282,7 +1282,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &mcr_bg_layout,     0, 4 },	/* colors 0-15 */
 	{ REGION_GFX2, 0, &mcr_sprite_layout, 0, 4 },	/* colors 16-31 */
@@ -1326,9 +1326,9 @@ static MACHINE_DRIVER_START( mcr_90009 )
 	MDRV_CPU_CONFIG(mcr_daisy_chain)
 	MDRV_CPU_PROGRAM_MAP(cpu_90009_map,0)
 	MDRV_CPU_IO_MAP(cpu_90009_portmap,0)
-	MDRV_CPU_VBLANK_INT(mcr_interrupt,1)
+	MDRV_CPU_VBLANK_INT(mcr_interrupt,2)
 
-	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_FRAMES_PER_SECOND(30)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_30HZ_VBLANK_DURATION)
 	MDRV_WATCHDOG_VBLANK_INIT(16)
 	MDRV_MACHINE_INIT(mcr)
@@ -1337,7 +1337,7 @@ static MACHINE_DRIVER_START( mcr_90009 )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_SCREEN_SIZE(32*16, 30*16)
-	MDRV_VISIBLE_AREA(0*16, 32*16-1, 0*16, 30*8-1)
+	MDRV_VISIBLE_AREA(0*16, 32*16-1, 0*16, 30*16-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(32)
 

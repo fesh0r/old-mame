@@ -30,12 +30,12 @@
 
 
 
-data16_t *midvunit_videoram;
-data32_t *midvunit_textureram;
+UINT16 *midvunit_videoram;
+UINT32 *midvunit_textureram;
 
-static data16_t dma_data[16];
+static UINT16 dma_data[16];
 static UINT8 dma_data_index;
-static data16_t page_control;
+static UINT16 page_control;
 
 static void *scanline_timer;
 
@@ -1066,7 +1066,7 @@ WRITE32_HANDLER( midvunit_page_control_w )
 		if (LOG_DMA && code_pressed(KEYCODE_L))
 			logerror("##########################################################\n");
 #if KEEP_STATISTICS
-		usrintf_showmessage("Polys:%d  Render:%d%%  FPS:%d",
+		ui_popup("Polys:%d  Render:%d%%  FPS:%d",
 				polycount, pixelcount / (512*4), lastfps);
 		polycount = pixelcount = 0;
 		framecount++;

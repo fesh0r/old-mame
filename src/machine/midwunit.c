@@ -19,7 +19,7 @@
 static UINT8	cmos_write_enable;
 
 /* I/O-related variables */
-static data16_t	iodata[8];
+static UINT16	iodata[8];
 static UINT8	ioshuffle[16];
 static UINT8	midxunit_analog_port;
 
@@ -55,7 +55,7 @@ WRITE16_HANDLER( midwunit_cmos_w )
 	else
 	{
 		logerror("%08X:Unexpected CMOS W @ %05X\n", activecpu_get_pc(), offset);
-		usrintf_showmessage("Bad CMOS write");
+		ui_popup("Bad CMOS write");
 	}
 }
 

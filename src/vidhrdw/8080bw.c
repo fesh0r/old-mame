@@ -17,10 +17,10 @@ static int screen_red_enabled;		/* 1 for games that can turn the screen red */
 static int color_map_select;
 static int background_color;
 static UINT8 cloud_pos;
-static data8_t bowler_bonus_display;
+static UINT8 bowler_bonus_display;
 
 static write8_handler videoram_w_p;
-static void (*video_update_p)(int screen,struct mame_bitmap *bitmap,const struct rectangle *cliprect);
+static void (*video_update_p)(int screen,mame_bitmap *bitmap,const rectangle *cliprect);
 
 static WRITE8_HANDLER( bw_videoram_w );
 static WRITE8_HANDLER( schaser_videoram_w );
@@ -210,7 +210,11 @@ DRIVER_INIT( gunfight )
 	artwork_set_overlay(gunfight_overlay);
 }
 
-
+DRIVER_INIT( indianbt )
+{
+	init_8080bw();
+	videoram_w_p = invadpt2_videoram_w;
+}
 
 void c8080bw_flip_screen_w(int data)
 {
@@ -503,7 +507,7 @@ static VIDEO_UPDATE( 8080bw_common )
 }
 
 
-static void draw_sight(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int x_center, int y_center)
+static void draw_sight(mame_bitmap *bitmap,const rectangle *cliprect,int x_center, int y_center)
 {
 	int x,y;
 	int sight_xs;
@@ -608,11 +612,6 @@ WRITE8_HANDLER( bowler_bonus_display_w )
 
 static VIDEO_UPDATE( bowler )
 {
-	int x,y,i;
-
-	char score_line_1[] = "Bonus 200 400 500 700 500 400 200";
-	char score_line_2[] = "      110 220 330 550 330 220 110";
-
 
 	/* update the bitmap */
 	video_update_8080bw_common(screen, bitmap, cliprect);
@@ -621,41 +620,50 @@ static VIDEO_UPDATE( bowler )
 	/* draw the current bonus value - on the original game this
        was done using lamps that lit score displays on the bezel. */
 
-	x = 33 * 8;
-	y = 31 * 8;
+/*
+    int x,y,i;
 
-	for (i = 0; i < 33; i++)
-	{
-		int col;
-
-
-		col = UI_COLOR_NORMAL;
-
-		if ((i >= 6) && ((i % 4) != 1))
-		{
-			int bit = (i - 6) / 4;
-
-			if (bowler_bonus_display & (1 << bit))
-			{
-				col = UI_COLOR_INVERSE;
-			}
-		}
+    char score_line_1[] = "Bonus 200 400 500 700 500 400 200";
+    char score_line_2[] = "      110 220 330 550 330 220 110";
 
 
-		drawgfx(bitmap,Machine->uifont,
-				score_line_1[i],col,
-				0,1,
-				x,y,
-				cliprect,TRANSPARENCY_NONE,0);
+    fix me -- this should be done with artwork
+    x = 33 * 8;
+    y = 31 * 8;
 
-		drawgfx(bitmap,Machine->uifont,
-				score_line_2[i],col,
-				0,1,
-				x+8,y,
-				cliprect,TRANSPARENCY_NONE,0);
+    for (i = 0; i < 33; i++)
+    {
+        int col;
 
-		y -= Machine->uifontwidth;
-	}
+
+        col = UI_COLOR_NORMAL;
+
+        if ((i >= 6) && ((i % 4) != 1))
+        {
+            int bit = (i - 6) / 4;
+
+            if (bowler_bonus_display & (1 << bit))
+            {
+                col = UI_COLOR_INVERSE;
+            }
+        }
+
+
+        drawgfx(bitmap,Machine->uifont,
+                score_line_1[i],col,
+                0,1,
+                x,y,
+                cliprect,TRANSPARENCY_NONE,0);
+
+        drawgfx(bitmap,Machine->uifont,
+                score_line_2[i],col,
+                0,1,
+                x+8,y,
+                cliprect,TRANSPARENCY_NONE,0);
+
+        y -= Machine->uifontwidth;
+    }
+*/
 }
 
 
@@ -689,6 +697,20 @@ PALETTE_INIT( sflush )
 		palette_set_color(i,r,g,b);
 	}
 	palette_set_color(0,0x80,0x80,0xff);
+}
+
+PALETTE_INIT( indianbt )
+{
+	int i;
+
+	for (i = 0;i < Machine->drv->total_colors;i++)
+	{
+		int r = 0xff * ((i >> 0) & 1);
+		int b = 0xff * ((i >> 2) & 1);
+		int g = 0xff * ((i >> 1) & 1);
+		palette_set_color(i,r,g,b);
+	}
+
 }
 
 

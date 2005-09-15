@@ -55,9 +55,9 @@ WRITE8_HANDLER( retofinv_bg_videoram_w );
 WRITE8_HANDLER( retofinv_fg_videoram_w );
 WRITE8_HANDLER( retofinv_gfx_ctrl_w );
 
-extern data8_t *retofinv_fg_videoram;
-extern data8_t *retofinv_bg_videoram;
-extern data8_t *retofinv_sharedram;
+extern UINT8 *retofinv_fg_videoram;
+extern UINT8 *retofinv_bg_videoram;
+extern UINT8 *retofinv_sharedram;
 
 static unsigned char cpu2_m6000=0;
 
@@ -327,7 +327,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),	/* bottom half of ROM is empty */
@@ -338,7 +338,7 @@ static struct GfxLayout charlayout =
 	8*8
 };
 
-static struct GfxLayout bglayout =
+static gfx_layout bglayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -349,7 +349,7 @@ static struct GfxLayout bglayout =
 	16*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -362,7 +362,7 @@ static struct GfxLayout spritelayout =
   	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,             0, 256 },
 	{ REGION_GFX2, 0, &bglayout,     64*16+256*2,  64 },

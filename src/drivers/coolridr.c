@@ -85,8 +85,8 @@ VIDEO_UPDATE(coolridr)
 
 /* end video */
 
-data32_t* sysh1_workram_h;
-data16_t* sysh1_soundram;
+UINT32* sysh1_workram_h;
+UINT16* sysh1_soundram;
 
 static ADDRESS_MAP_START( system_h1_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x000fffff) AM_ROM
@@ -126,7 +126,7 @@ ADDRESS_MAP_END
 INPUT_PORTS_START( coolridr )
 INPUT_PORTS_END
 
-static struct GfxLayout tiles8x8_layout =
+static gfx_layout tiles8x8_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -140,7 +140,7 @@ static struct GfxLayout tiles8x8_layout =
 	16*128
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tiles8x8_layout, 0, 16 },
 	{ REGION_GFX2, 0, &tiles8x8_layout, 0, 16 },

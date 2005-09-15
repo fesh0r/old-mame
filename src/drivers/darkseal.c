@@ -28,9 +28,9 @@ WRITE16_HANDLER( darkseal_control_0_w );
 WRITE16_HANDLER( darkseal_control_1_w );
 WRITE16_HANDLER( darkseal_palette_24bit_rg_w );
 WRITE16_HANDLER( darkseal_palette_24bit_b_w );
-extern data16_t *darkseal_pf12_row, *darkseal_pf34_row;
-extern data16_t *darkseal_pf1_data,*darkseal_pf2_data,*darkseal_pf3_data;
-static data16_t *darkseal_ram;
+extern UINT16 *darkseal_pf12_row, *darkseal_pf34_row;
+extern UINT16 *darkseal_pf1_data,*darkseal_pf2_data,*darkseal_pf3_data;
+static UINT16 *darkseal_ram;
 
 /******************************************************************************/
 
@@ -228,7 +228,7 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 chars */
 	4096,
@@ -239,7 +239,7 @@ static struct GfxLayout charlayout =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-static struct GfxLayout seallayout =
+static gfx_layout seallayout =
 {
 	16,16,
 	4096,
@@ -252,7 +252,7 @@ static struct GfxLayout seallayout =
 	64*8
 };
 
-static struct GfxLayout seallayout2 =
+static gfx_layout seallayout2 =
 {
 	16,16,
 	4096*2,
@@ -265,7 +265,7 @@ static struct GfxLayout seallayout2 =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,    0, 16 },	/* Characters 8x8 */
 	{ REGION_GFX2, 0, &seallayout,  768, 16 },	/* Tiles 16x16 */

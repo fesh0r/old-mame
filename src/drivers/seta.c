@@ -1367,7 +1367,7 @@ static struct YM3438interface utoukond_ym3438_intf =
  Mirror RAM
 
 */
-static data16_t *mirror_ram;
+static UINT16 *mirror_ram;
 
 READ16_HANDLER( mirror_ram_r )
 {
@@ -1393,7 +1393,7 @@ WRITE16_HANDLER( mirror_ram_w )
 
 static READ16_HANDLER( sharedram_68000_r )
 {
-	return ((data16_t) sharedram[offset]) & 0xff;
+	return ((UINT16) sharedram[offset]) & 0xff;
 }
 
 static WRITE16_HANDLER( sharedram_68000_w )
@@ -1440,10 +1440,10 @@ static WRITE16_HANDLER( sub_ctrl_w )
 }
 
 
-const struct GameDriver driver_blandia;
-const struct GameDriver driver_gundhara;
-const struct GameDriver driver_kamenrid;
-const struct GameDriver driver_zingzip;
+const game_driver driver_blandia;
+const game_driver driver_gundhara;
+const game_driver driver_kamenrid;
+const game_driver driver_zingzip;
 
 /*  ---- 3---       Coin #1 Lock Out
     ---- -2--       Coin #0 Lock Out
@@ -1476,7 +1476,7 @@ void seta_coin_lockout_w(int data)
 /* DSW reading for 16 bit CPUs */
 static READ16_HANDLER( seta_dsw_r )
 {
-	data16_t dsw = readinputport(3);
+	UINT16 dsw = readinputport(3);
 	if (offset == 0)	return (dsw >> 8) & 0xff;
 	else				return (dsw >> 0) & 0xff;
 }
@@ -2528,7 +2528,7 @@ ADDRESS_MAP_END
                             Pro Mahjong Kiwame
 ***************************************************************************/
 
-data16_t *kiwame_nvram;
+UINT16 *kiwame_nvram;
 
 READ16_HANDLER( kiwame_nvram_r )
 {
@@ -2758,7 +2758,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( sub_bankswitch_w )
 {
-	data8_t *rom = memory_region(REGION_CPU2);
+	UINT8 *rom = memory_region(REGION_CPU2);
 	int bank = data >> 4;
 
 	memory_set_bankptr(1, &rom[bank * 0x4000 + 0xc000]);
@@ -6027,7 +6027,7 @@ or 6 planes deep and are stored in a wealth of formats.
 
 
 /* The bitplanes are packed togheter */
-static struct GfxLayout layout_packed =
+static gfx_layout layout_packed =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -6042,7 +6042,7 @@ static struct GfxLayout layout_packed =
 
 
 /* The bitplanes are separated (but there are 2 per rom) */
-static struct GfxLayout layout_planes_2roms =
+static gfx_layout layout_planes_2roms =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -6058,7 +6058,7 @@ static struct GfxLayout layout_planes_2roms =
 /* The bitplanes are separated (but there are 2 per rom).
    Each 8x8 tile is additionally split in 2 vertical halves four bits wide,
    stored one after the other */
-static struct GfxLayout layout_planes_2roms_split =
+static gfx_layout layout_planes_2roms_split =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -6078,7 +6078,7 @@ static struct GfxLayout layout_planes_2roms_split =
 
 
 /* The bitplanes are packed together: 3 roms with 2 bits in each */
-static struct GfxLayout layout_packed_6bits_3roms =
+static gfx_layout layout_packed_6bits_3roms =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -6097,7 +6097,7 @@ static struct GfxLayout layout_packed_6bits_3roms =
    ROM_LOAD16_BYTE. This way we can think of it as a 4 planes rom, with the
    upper 2 planes unused.    */
 
-static struct GfxLayout layout_packed_6bits_2roms =
+static gfx_layout layout_packed_6bits_2roms =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -6116,7 +6116,7 @@ static struct GfxLayout layout_packed_6bits_2roms =
                                 Blandia
 ***************************************************************************/
 
-static struct GfxDecodeInfo blandia_gfxdecodeinfo[] =
+static gfx_decode blandia_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,       0,           32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed_6bits_3roms, 16*32+64*32, 32 }, // [1] Layer 1
@@ -6128,7 +6128,7 @@ static struct GfxDecodeInfo blandia_gfxdecodeinfo[] =
                                 DownTown
 ***************************************************************************/
 
-static struct GfxDecodeInfo downtown_gfxdecodeinfo[] =
+static gfx_decode downtown_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,       512*0, 32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_planes_2roms_split, 512*0, 32 }, // [1] Layer 1
@@ -6139,7 +6139,7 @@ static struct GfxDecodeInfo downtown_gfxdecodeinfo[] =
                                 J.J.Squawkers
 ***************************************************************************/
 
-static struct GfxDecodeInfo jjsquawk_gfxdecodeinfo[] =
+static gfx_decode jjsquawk_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,       0,             32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed_6bits_2roms, 512 + 64*32*0, 32 }, // [1] Layer 1
@@ -6151,7 +6151,7 @@ static struct GfxDecodeInfo jjsquawk_gfxdecodeinfo[] =
                             Mobile Suit Gundam
 ***************************************************************************/
 
-static struct GfxDecodeInfo msgundam_gfxdecodeinfo[] =
+static gfx_decode msgundam_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms, 512*0, 32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed,       512*2, 32 }, // [1] Layer 1
@@ -6163,7 +6163,7 @@ static struct GfxDecodeInfo msgundam_gfxdecodeinfo[] =
                                 Quiz Kokology 2
 ***************************************************************************/
 
-static struct GfxDecodeInfo qzkklgy2_gfxdecodeinfo[] =
+static gfx_decode qzkklgy2_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,	512*0, 32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed, 		512*0, 32 }, // [1] Layer 1
@@ -6174,7 +6174,7 @@ static struct GfxDecodeInfo qzkklgy2_gfxdecodeinfo[] =
                                 Thundercade
 ***************************************************************************/
 
-static struct GfxDecodeInfo tndrcade_gfxdecodeinfo[] =
+static gfx_decode tndrcade_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms, 512*0, 32 }, // [0] Sprites
 	{ -1 }
@@ -6184,7 +6184,7 @@ static struct GfxDecodeInfo tndrcade_gfxdecodeinfo[] =
                                 Wiggie Waggle
 ****************************************************************************/
 
-static struct GfxLayout wiggie_layout =
+static gfx_layout wiggie_layout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -6200,7 +6200,7 @@ static struct GfxLayout wiggie_layout =
 };
 
 
-static struct GfxDecodeInfo wiggie_gfxdecodeinfo[] =
+static gfx_decode wiggie_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &wiggie_layout,   0x0, 32  }, /* bg tiles */
 	{ -1 } /* end of array */
@@ -6211,7 +6211,7 @@ static struct GfxDecodeInfo wiggie_gfxdecodeinfo[] =
                                 U.S. Classic
 ***************************************************************************/
 
-static struct GfxDecodeInfo usclssic_gfxdecodeinfo[] =
+static gfx_decode usclssic_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,       0, 32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed_6bits_3roms, 512, 32 }, // [1] Layer 1
@@ -6223,7 +6223,7 @@ static struct GfxDecodeInfo usclssic_gfxdecodeinfo[] =
                                 Zing Zing Zip
 ***************************************************************************/
 
-static struct GfxDecodeInfo zingzip_gfxdecodeinfo[] =
+static gfx_decode zingzip_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,       512*0, 32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed_6bits_2roms, 512*2, 32 }, // [1] Layer 1
@@ -8615,7 +8615,7 @@ READ16_HANDLER( twineagl_debug_r )
 
 /* Extra RAM ? Check code at 0x00ba90 */
 /* 2000F8 = A3 enables it, 2000F8 = 00 disables? see downtown too */
-static data8_t xram[8];
+static UINT8 xram[8];
 READ16_HANDLER( twineagl_200100_r )
 {
 logerror("%04x: twineagl_200100_r %d\n",activecpu_get_pc(),offset);
@@ -8640,7 +8640,7 @@ DRIVER_INIT( twineagl )
 
 
 /* Protection? NVRAM is handled writing commands here */
-data16_t downtown_protection[0x200/2];
+UINT16 downtown_protection[0x200/2];
 static READ16_HANDLER( downtown_protection_r )
 {
 	int job = downtown_protection[0xf8/2] & 0xff;
@@ -8692,7 +8692,7 @@ DRIVER_INIT( arbalest )
 
 DRIVER_INIT( metafox )
 {
-	data16_t *RAM = (data16_t *) memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *) memory_region(REGION_CPU1);
 
 	/* This game uses the 21c000-21ffff area for protection? */
 //  memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x21c000, 0x21ffff, 0, 0, MRA16_NOP);
@@ -8755,7 +8755,7 @@ DRIVER_INIT( zombraid )
 
 DRIVER_INIT( kiwame )
 {
-	data16_t *RAM = (data16_t *) memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *) memory_region(REGION_CPU1);
 
 	/* WARNING: This game writes to the interrupt vector
        table. Lev 1 routine address is stored at $100 */
@@ -8772,9 +8772,9 @@ DRIVER_INIT( rezon )
 
 static DRIVER_INIT(wiggie)
 {
-	data8_t *src;
+	UINT8 *src;
 	int len;
-	data8_t temp[16];
+	UINT8 temp[16];
 	int i,j;
 
 	src = memory_region(REGION_CPU1);

@@ -157,13 +157,13 @@ TODO:
 
 
 /* custom IO chips functions */
-extern data8_t *gaplus_customio_3;
+extern UINT8 *gaplus_customio_3;
 WRITE8_HANDLER( gaplus_customio_3_w );
 READ8_HANDLER( gaplus_customio_3_r );
 
 /* vidhrdw */
-extern data8_t *gaplus_videoram;
-extern data8_t *gaplus_spriteram;
+extern UINT8 *gaplus_videoram;
+extern UINT8 *gaplus_spriteram;
 READ8_HANDLER( gaplus_videoram_r );
 WRITE8_HANDLER( gaplus_videoram_w );
 WRITE8_HANDLER( gaplus_starfield_control_w );
@@ -703,7 +703,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -714,7 +714,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -727,7 +727,7 @@ static struct GfxLayout spritelayout =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &charlayout,      0, 64 },
 	{ REGION_GFX2, 0x0000, &spritelayout, 64*4, 64 },
@@ -1033,7 +1033,7 @@ ROM_END
 
 static void unpack_gfx(void)
 {
-	data8_t *rom;
+	UINT8 *rom;
 	int i;
 
 	rom = memory_region(REGION_GFX1);

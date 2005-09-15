@@ -256,8 +256,8 @@ Notes:
 #include "sound/ics2115.h"
 #include <time.h>
 
-data16_t *pgm_mainram, *pgm_bg_videoram, *pgm_tx_videoram, *pgm_videoregs, *pgm_rowscrollram;
-static data8_t *z80_mainram;
+UINT16 *pgm_mainram, *pgm_bg_videoram, *pgm_tx_videoram, *pgm_videoregs, *pgm_rowscrollram;
+static UINT8 *z80_mainram;
 WRITE16_HANDLER( pgm_tx_videoram_w );
 WRITE16_HANDLER( pgm_bg_videoram_w );
 VIDEO_START( pgm );
@@ -853,7 +853,7 @@ INPUT_PORTS_END
 /* we can't decode the sprite data like this because it isn't tile based.  the
    data decoded by pgm32_charlayout was rearranged at start-up */
 
-static struct GfxLayout pgm8_charlayout =
+static gfx_layout pgm8_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -864,7 +864,7 @@ static struct GfxLayout pgm8_charlayout =
 	8*32
 };
 
-static struct GfxLayout pgm32_charlayout =
+static gfx_layout pgm32_charlayout =
 {
 	32,32,
 	RGN_FRAC(1,1),
@@ -881,7 +881,7 @@ static struct GfxLayout pgm32_charlayout =
 	 32*256
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &pgm8_charlayout,    0x800, 32  }, /* 8x8x4 Tiles */
 	{ REGION_GFX2, 0, &pgm32_charlayout,   0x400, 32  }, /* 32x32x5 Tiles */
@@ -942,8 +942,8 @@ MACHINE_DRIVER_END
 
 static void expand_32x32x5bpp(void)
 {
-	data8_t *src    = memory_region       ( REGION_GFX1 );
-	data8_t *dst    = memory_region       ( REGION_GFX2 );
+	UINT8 *src    = memory_region       ( REGION_GFX1 );
+	UINT8 *dst    = memory_region       ( REGION_GFX2 );
 	size_t  srcsize = memory_region_length( REGION_GFX1 );
 	int cnt, pix;
 
@@ -963,12 +963,12 @@ static void expand_32x32x5bpp(void)
 /* This function expands the sprite colour data (in the A Roms) from 3 pixels
    in each word to a byte per pixel making it easier to use */
 
-data8_t *pgm_sprite_a_region;
+UINT8 *pgm_sprite_a_region;
 size_t	pgm_sprite_a_region_allocate;
 
 static void expand_colourdata(void)
 {
-	data8_t *src    = memory_region       ( REGION_GFX3 );
+	UINT8 *src    = memory_region       ( REGION_GFX3 );
 	size_t  srcsize = memory_region_length( REGION_GFX3 );
 	int cnt;
 	size_t	needed = srcsize / 2 * 3;
@@ -984,7 +984,7 @@ static void expand_colourdata(void)
 
 	for (cnt = 0 ; cnt < srcsize/2 ; cnt++)
 	{
-		data16_t colpack;
+		UINT16 colpack;
 
 		colpack = ((src[cnt*2]) | (src[cnt*2+1] << 8));
 		pgm_sprite_a_region[cnt*3+0] = (colpack >> 0 ) & 0x1f;
@@ -1034,8 +1034,8 @@ static void drgwld2_common_init(void)
 }
 
 static DRIVER_INIT( drgw2 )
-{
-	data16_t *mem16 = (data16_t *)memory_region(REGION_CPU1);
+{	/* incomplete? */
+	UINT16 *mem16 = (UINT16 *)memory_region(REGION_CPU1);
 	drgwld2_common_init();
 	/* patches .. i hate patches .. */
 	mem16[0x131098/2]=0x4e93;
@@ -1045,7 +1045,7 @@ static DRIVER_INIT( drgw2 )
 
 static DRIVER_INIT( drgw2c )
 {
-	data16_t *mem16 = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *mem16 = (UINT16 *)memory_region(REGION_CPU1);
 	drgwld2_common_init();
 	/* this seems to be some strange protection
     ElSemi
@@ -1056,6 +1056,21 @@ static DRIVER_INIT( drgw2c )
 	mem16[0x1303bc/2]=0x4e93;
 	mem16[0x130462/2]=0x4e93;
 	mem16[0x1304F2/2]=0x4e93;
+}
+
+static DRIVER_INIT( drgw2j )
+{
+	UINT16 *mem16 = (UINT16 *)memory_region(REGION_CPU1);
+	drgwld2_common_init();
+	/* this seems to be some strange protection
+    ElSemi
+    patch the jmp (a0) to jmp(a3) (otherwise they jump to illegal code)
+    there are 3 (consecutive functions)
+    303bc, 30462, 304f2
+    */
+	mem16[0x1302C0/2]=0x4e93;
+	mem16[0x130366/2]=0x4e93;
+	mem16[0x1303F6/2]=0x4e93;
 }
 
 static DRIVER_INIT( kov )
@@ -1124,7 +1139,7 @@ static DRIVER_INIT( killbld )
 
 /* ddp2 rubbish */
 
-data16_t *ddp2_protram;
+UINT16 *ddp2_protram;
 static int ddp2_asic27_0xd10000 = 0;
 
 static WRITE16_HANDLER ( ddp2_asic27_0xd10000_w )
@@ -1188,7 +1203,7 @@ static DRIVER_INIT( puzzli2 )
      it uses an arm with no external rom
      an acts in a similar way to kov etc. */
 
-	data16_t *mem16 = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *mem16 = (UINT16 *)memory_region(REGION_CPU1);
 
 	pgm_basic_init();
 
@@ -1569,6 +1584,30 @@ ROM_START( drgw2c )
 	ROM_REGION( 0x600000, REGION_CPU1, 0 ) /* 68000 Code  */
 	ROM_LOAD16_WORD_SWAP( "pgm_p01s.rom", 0x000000, 0x020000, CRC(e42b166e) SHA1(2a9df9ec746b14b74fae48b1a438da14973702ea) )// (BIOS)
 	ROM_LOAD16_WORD_SWAP( "v-100c.u2",    0x100000, 0x080000, CRC(67467981) SHA1(58af01a3871b6179fe42ff471cc39a2161940043) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 - romless */
+
+	ROM_REGION( 0x800000, REGION_GFX1,  ROMREGION_DISPOSE ) /* 8x8 Text Tiles + 32x32 BG Tiles */
+	ROM_LOAD( "pgm_t01s.rom", 0x000000, 0x200000, CRC(1a7123a0) SHA1(cc567f577bfbf45427b54d6695b11b74f2578af3) ) // (BIOS)
+	ROM_LOAD( "pgmt0200.u7",    0x400000, 0x400000, CRC(b0f6534d) SHA1(174cacd81169a0e0d14790ac06d03caed737e05d) )
+
+	ROM_REGION( 0x800000/5*8, REGION_GFX2, ROMREGION_DISPOSE ) /* Region for 32x32 BG Tiles */
+	/* 32x32 Tile Data is put here for easier Decoding */
+
+	ROM_REGION( 0x400000, REGION_GFX3, ROMREGION_DISPOSE ) /* Sprite Colour Data */
+	ROM_LOAD( "pgma0200.u5",    0x0000000, 0x400000, CRC(13b95069) SHA1(4888b06002afb18eab81c010e9362629045767af) )
+
+	ROM_REGION( 0x400000, REGION_GFX4, 0 ) /* Sprite Masks + Colour Indexes */
+	ROM_LOAD( "pgmb0200.u9",    0x0000000, 0x400000, CRC(932d0f13) SHA1(4b8e008f9c617cb2b95effeb81abc065b30e5c86) )
+
+	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* Samples - (8 bit mono 11025Hz) - */
+	ROM_LOAD( "pgm_m01s.rom", 0x000000, 0x200000, CRC(45ae7159) SHA1(d3ed3ff3464557fd0df6b069b2e431528b0ebfa8) ) // (BIOS)
+ROM_END
+
+ROM_START( drgw2j )
+	ROM_REGION( 0x600000, REGION_CPU1, 0 ) /* 68000 Code  */
+	ROM_LOAD16_WORD_SWAP( "pgm_p01s.rom", 0x000000, 0x020000, CRC(e42b166e) SHA1(2a9df9ec746b14b74fae48b1a438da14973702ea) )// (BIOS)
+	ROM_LOAD16_WORD_SWAP( "v-100j.u2",    0x100000, 0x080000, CRC(f8f8393e) SHA1(ef0db668b4e4f661d4c1e95d57afe881bcdf13cc) )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 - romless */
 
@@ -2469,8 +2508,9 @@ GAMEX( 1997, orlegnde, orlegend,   pgm, pgm,   orlegend,   ROT0, "IGS", "Orienta
 GAMEX( 1997, orlegndc, orlegend,   pgm, pgm,   orlegend,   ROT0, "IGS", "Oriental Legend / Xi Yo Gi Shi Re Zuang (ver. 112, Chinese Board)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND  )
 GAMEX( 1997, orld111c, orlegend,   pgm, pgm,   orlegend,   ROT0, "IGS", "Oriental Legend / Xi Yo Gi Shi Re Zuang (ver. 111, Chinese Board)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND  )
 GAMEX( 1997, orld105k, orlegend,   pgm, pgm,   orlegend,   ROT0, "IGS", "Oriental Legend / Xi Yo Gi Shi Re Zuang (ver. 105, Korean Board)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND  )
-GAMEX( 1997, drgw2,    pgm,        pgm, pgm,   drgw2,      ROT0, "IGS", "Dragon World II (ver. 110X, Export)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_UNEMULATED_PROTECTION )
+GAMEX( 1997, drgw2,    pgm,        pgm, pgm,   drgw2,      ROT0, "IGS", "Dragon World II (ver. 110X, Export)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
 GAMEX( 1997, drgw2c,   drgw2,      pgm, pgm,   drgw2c,     ROT0, "IGS", "Zhong Guo Long II (ver. 100C, China)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAMEX( 1997, drgw2j,   drgw2,      pgm, pgm,   drgw2j,     ROT0, "IGS", "Chuugokuryuu II (ver. 100J, Japan)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
 GAMEX( 1999, kov,      pgm,        pgm, sango, kov, 	   ROT0, "IGS", "Knights of Valour / Sangoku Senki (ver. 117)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* ver # provided by protection? */
 GAMEX( 1999, kov115,   kov,        pgm, sango, kov, 	   ROT0, "IGS", "Knights of Valour / Sangoku Senki (ver. 115)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* ver # provided by protection? */
 GAMEX( 1999, kovj,     kov,        pgm, sango, kov, 	   ROT0, "IGS", "Knights of Valour / Sangoku Senki (ver. 100, Japanese Board)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* ver # provided by protection? */

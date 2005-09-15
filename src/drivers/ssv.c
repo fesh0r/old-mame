@@ -177,9 +177,9 @@ To Do:
 ***************************************************************************/
 
 static UINT8 requested_int;
-static data16_t *ssv_irq_vectors;
-static data16_t irq_enable;
-static data16_t *ssv_mainram;
+static UINT16 *ssv_irq_vectors;
+static UINT16 irq_enable;
+static UINT16 *ssv_mainram;
 
 /* Update the IRQ state based on all possible causes */
 static void update_irq_state(void)
@@ -194,7 +194,7 @@ int ssv_irq_callback(int level)
 	{
 		if (requested_int & (1 << i))
 		{
-			data16_t vector = ssv_irq_vectors[i * (16/2)] & 7;
+			UINT16 vector = ssv_irq_vectors[i * (16/2)] & 7;
 			return vector;
 		}
 	}
@@ -290,7 +290,7 @@ INTERRUPT_GEN( gdfs_interrupt )
 */
 static WRITE16_HANDLER( ssv_lockout_w )
 {
-//  usrintf_showmessage("%02X",data & 0xff);
+//  ui_popup("%02X",data & 0xff);
 	if (ACCESSING_LSB)
 	{
 		coin_lockout_w(1,~data & 0x01);
@@ -305,7 +305,7 @@ static WRITE16_HANDLER( ssv_lockout_w )
 /* Same as above but with inverted lockout lines */
 static WRITE16_HANDLER( ssv_lockout_inv_w )
 {
-//  usrintf_showmessage("%02X",data & 0xff);
+//  ui_popup("%02X",data & 0xff);
 	if (ACCESSING_LSB)
 	{
 		coin_lockout_w(1, data & 0x01);
@@ -333,7 +333,7 @@ MACHINE_INIT( ssv )
 
 ***************************************************************************/
 
-static data16_t *ssv_nvram;
+static UINT16 *ssv_nvram;
 static size_t    ssv_nvram_size;
 
 NVRAM_HANDLER( ssv )
@@ -434,7 +434,7 @@ static READ16_HANDLER( fake_r )   {   return ssv_scroll[offset];  }
 //AM_RANGE(0x990000, 0x99007f) AM_WRITE(ssv_scroll_w)
 
 
-static data16_t *ssv_input_sel;
+static UINT16 *ssv_input_sel;
 
 /***************************************************************************
                                 Drift Out '94
@@ -468,7 +468,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static int gdfs_gfxram_bank, gdfs_lightgun_select;
-static data16_t *gdfs_blitram;
+static UINT16 *gdfs_blitram;
 
 READ16_HANDLER( gdfs_eeprom_r )
 {
@@ -477,7 +477,7 @@ READ16_HANDLER( gdfs_eeprom_r )
 
 WRITE16_HANDLER( gdfs_eeprom_w )
 {
-	static data16_t data_old;
+	static UINT16 data_old;
 
 	if (data & ~0x7b00)
 		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
@@ -624,7 +624,7 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( hypreact_input_r )
 {
-	data16_t input_sel = *ssv_input_sel;
+	UINT16 input_sel = *ssv_input_sel;
 	if (input_sel & 0x0001)	return readinputport(5);
 	if (input_sel & 0x0002)	return readinputport(6);
 	if (input_sel & 0x0004)	return readinputport(7);
@@ -772,7 +772,7 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( srmp4_input_r )
 {
-	data16_t input_sel = *ssv_input_sel;
+	UINT16 input_sel = *ssv_input_sel;
 	if (input_sel & 0x0002)	return readinputport(5);
 	if (input_sel & 0x0004)	return readinputport(6);
 	if (input_sel & 0x0008)	return readinputport(7);
@@ -816,12 +816,12 @@ static WRITE16_HANDLER( srmp7_sound_bank_w )
 		for (voice = 0; voice < 32; voice++)
 			ES5506_voice_bank_0_w(voice, bank);
 	}
-//  usrintf_showmessage("%04X",data);
+//  ui_popup("%04X",data);
 }
 
 static READ16_HANDLER( srmp7_input_r )
 {
-	data16_t input_sel = *ssv_input_sel;
+	UINT16 input_sel = *ssv_input_sel;
 	if (input_sel & 0x0002)	return readinputport(5);
 	if (input_sel & 0x0004)	return readinputport(6);
 	if (input_sel & 0x0008)	return readinputport(7);
@@ -875,7 +875,7 @@ ADDRESS_MAP_END
                             Pachinko Sexy Reaction
 ***************************************************************************/
 
-static data16_t serial;
+static UINT16 serial;
 
 static READ16_HANDLER( sxyreact_ballswitch_r )
 {
@@ -905,7 +905,7 @@ static WRITE16_HANDLER( sxyreact_dial_w )
 
 static WRITE16_HANDLER( sxyreact_motor_w )
 {
-//  usrintf_showmessage("%04X",data);   // 8 = motor on; 0 = motor off
+//  ui_popup("%04X",data);   // 8 = motor on; 0 = motor off
 }
 
 static ADDRESS_MAP_START( sxyreact_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -977,7 +977,7 @@ ADDRESS_MAP_END
   Eagle Shot Golf
 ***************************************************************************/
 
-static data8_t trackball_select, gfxrom_select;
+static UINT8 trackball_select, gfxrom_select;
 
 static READ16_HANDLER( eaglshot_gfxrom_r )
 {
@@ -3163,7 +3163,7 @@ INPUT_PORTS_END
 /*  16 x 8 tiles. Depth is 8 bits, but can be decreased to 6 (and maybe
     less) at runtime.   */
 
-static struct GfxLayout layout_16x8x8 =
+static gfx_layout layout_16x8x8 =
 {
 	16,8,
 	RGN_FRAC(1,4),
@@ -3177,7 +3177,7 @@ static struct GfxLayout layout_16x8x8 =
 	16*8*2
 };
 
-static struct GfxLayout layout_16x8x6 =
+static gfx_layout layout_16x8x6 =
 {
 	16,8,
 	RGN_FRAC(1,4),
@@ -3191,14 +3191,14 @@ static struct GfxLayout layout_16x8x6 =
 	16*8*2
 };
 
-static struct GfxDecodeInfo ssv_gfxdecodeinfo[] =
+static gfx_decode ssv_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_16x8x8, 0, 0x8000/64 }, // [0] Sprites (256 colors)
 	{ REGION_GFX1, 0, &layout_16x8x6, 0, 0x8000/64 }, // [1] Sprites (64 colors)
 	{ -1 }
 };
 
-static struct GfxLayout layout_16x8x8_2 =
+static gfx_layout layout_16x8x8_2 =
 {
 	16,8,
 	RGN_FRAC(1,1),
@@ -3209,7 +3209,7 @@ static struct GfxLayout layout_16x8x8_2 =
 	16*8*8
 };
 
-static struct GfxLayout layout_16x8x6_2 =
+static gfx_layout layout_16x8x6_2 =
 {
 	16,8,
 	RGN_FRAC(1,1),
@@ -3220,14 +3220,14 @@ static struct GfxLayout layout_16x8x6_2 =
 	16*8*8
 };
 
-static struct GfxDecodeInfo eaglshot_gfxdecodeinfo[] =
+static gfx_decode eaglshot_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_16x8x8_2, 0, 0x8000/64 }, // [0] Sprites (256 colors, decoded from ram)
 	{ REGION_GFX1, 0, &layout_16x8x6_2, 0, 0x8000/64 }, // [1] Sprites (64 colors, decoded from ram)
 	{ -1 }
 };
 
-static struct GfxLayout layout_16x16x8 =
+static gfx_layout layout_16x16x8 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -3238,7 +3238,7 @@ static struct GfxLayout layout_16x16x8 =
 	16*16*8
 };
 
-static struct GfxDecodeInfo gdfs_gfxdecodeinfo[] =
+static gfx_decode gdfs_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_16x8x8,   0, 0x8000/64  }, // [0] Sprites (256 colors)
 	{ REGION_GFX1, 0, &layout_16x8x6,   0, 0x8000/64  }, // [1] Sprites (64 colors)
@@ -3332,7 +3332,7 @@ DRIVER_INIT( ryorioh )		{	init_ssv();
 DRIVER_INIT( srmp4 )		{	init_ssv();
 								ssv_sprites_offsx = -8;	ssv_sprites_offsy = +0xf0;
 								ssv_tilemap_offsx = +0;	ssv_tilemap_offsy = -0xf0;
-//  ((data16_t *)memory_region(REGION_USER1))[0x2b38/2] = 0x037a;   /* patch to see gal test mode */
+//  ((UINT16 *)memory_region(REGION_USER1))[0x2b38/2] = 0x037a;   /* patch to see gal test mode */
 							}
 DRIVER_INIT( srmp7 )		{	init_ssv();
 								ssv_sprites_offsx = +0;	ssv_sprites_offsy = -0xf;
@@ -5224,7 +5224,7 @@ ROM_END
 
 //     year   rom       clone     machine   inputs    init      monitor manufacturer          title                                               flags
 
-GAMEX( 1993,  dynagear, 0,        dynagear, dynagear, dynagear, ROT0,   "Sammy",              "Dyna Gears",                                       GAME_NO_COCKTAIL | GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1993,  dynagear, 0,        dynagear, dynagear, dynagear, ROT0,   "Sammy",              "Dyna Gear",                                        GAME_NO_COCKTAIL | GAME_IMPERFECT_GRAPHICS )
 GAMEX( 1993,  keithlcy, 0,        keithlcy, keithlcy, keithlcy, ROT0,   "Visco",              "Dramatic Adventure Quiz Keith & Lucy (Japan)",     GAME_NO_COCKTAIL )
 GAMEX( 1993,  srmp4,    0,        srmp4,    srmp4,    srmp4,    ROT0,   "Seta",               "Super Real Mahjong PIV (Japan)",                   GAME_NO_COCKTAIL )
 GAMEX( 1993,  srmp4o,   srmp4,    srmp4,    srmp4,    srmp4,    ROT0,   "Seta",               "Super Real Mahjong PIV (Japan, older set)",        GAME_NO_COCKTAIL ) // by the numbering of the program roms this should be older

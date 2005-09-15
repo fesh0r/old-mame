@@ -36,7 +36,7 @@ WRITE16_HANDLER( supbtime_pf2_data_w );
 WRITE16_HANDLER( supbtime_pf1_data_w );
 WRITE16_HANDLER( supbtime_control_0_w );
 
-extern data16_t *supbtime_pf2_data,*supbtime_pf1_data,*supbtime_pf1_row;
+extern UINT16 *supbtime_pf2_data,*supbtime_pf1_data,*supbtime_pf1_row;
 
 static READ16_HANDLER( supbtime_pf1_data_r ) { return supbtime_pf1_data[offset]; }
 static READ16_HANDLER( supbtime_pf2_data_r ) { return supbtime_pf2_data[offset]; }
@@ -329,7 +329,7 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 chars */
 	4096,
@@ -340,7 +340,7 @@ static struct GfxLayout charlayout =
 	16*8	/* every char takes 8 consecutive bytes */
 };
 
-static struct GfxLayout tile_layout =
+static gfx_layout tile_layout =
 {
 	16,16,
 	4096,
@@ -353,7 +353,7 @@ static struct GfxLayout tile_layout =
 	64*8
 };
 
-static struct GfxLayout sprite_layout =
+static gfx_layout sprite_layout =
 {
 	16,16,
 	4096*2,
@@ -366,7 +366,7 @@ static struct GfxLayout sprite_layout =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   256, 16 },	/* Characters 8x8 */
 	{ REGION_GFX1, 0, &tile_layout,  512, 16 },	/* Tiles 16x16 */

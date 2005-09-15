@@ -104,7 +104,7 @@ static INTERRUPT_GEN( srmp2_interrupt )
 
 static DRIVER_INIT( srmp2 )
 {
-	data16_t *RAM = (data16_t *) memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *) memory_region(REGION_CPU1);
 
 	/* Fix "ERROR BACK UP" and "ERROR IOX" */
 	RAM[0x20c80 / 2] = 0x4e75;								// RTS
@@ -112,7 +112,7 @@ static DRIVER_INIT( srmp2 )
 
 static DRIVER_INIT( srmp3 )
 {
-	data8_t *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
 	/* BANK ROM (0x08000 - 0x1ffff) Check skip [MAIN ROM side] */
 	RAM[0x00000 + 0x7b69] = 0x00;							// NOP
@@ -486,7 +486,7 @@ static WRITE8_HANDLER( srmp3_input_1_w )
 		else if (data == 0x49) qqq49++;
 		else qqqzz++;
 
-//      usrintf_showmessage("%04X %04X %04X %04X", qqq01, qqq02, qqq49, qqqzz);
+//      ui_popup("%04X %04X %04X %04X", qqq01, qqq02, qqq49, qqqzz);
 	}
 }
 
@@ -1050,7 +1050,7 @@ static struct MSM5205interface msm5205_interface =
 };
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	16, 16,
 	RGN_FRAC(1, 2),
@@ -1062,13 +1062,13 @@ static struct GfxLayout charlayout =
 	16*16*2
 };
 
-static struct GfxDecodeInfo srmp2_gfxdecodeinfo[] =
+static gfx_decode srmp2_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 64 },
 	{ -1 }
 };
 
-static struct GfxDecodeInfo srmp3_gfxdecodeinfo[] =
+static gfx_decode srmp3_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 32 },
 	{ -1 }

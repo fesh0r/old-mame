@@ -8,8 +8,8 @@
 #include "vidhrdw/konamiic.h"
 #include "vidhrdw/generic.h"
 
-static struct tilemap *k007121_tilemap[2];
-static struct rectangle k007121_clip[2];
+static tilemap *k007121_tilemap[2];
+static rectangle k007121_clip[2];
 
 unsigned char *k007121_ram;
 
@@ -147,10 +147,10 @@ WRITE8_HANDLER( flkatck_k007121_regs_w )
 
 VIDEO_UPDATE( flkatck )
 {
-	struct rectangle final_clip[2];
+	rectangle final_clip[2];
 
 #if 0
-usrintf_showmessage("%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x  %02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
+ui_popup("%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x  %02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
 	K007121_ctrlram[0][0x00],K007121_ctrlram[0][0x01],K007121_ctrlram[0][0x02],K007121_ctrlram[0][0x03],K007121_ctrlram[0][0x04],K007121_ctrlram[0][0x05],K007121_ctrlram[0][0x06],K007121_ctrlram[0][0x07],
 	K007121_ctrlram[1][0x00],K007121_ctrlram[1][0x01],K007121_ctrlram[1][0x02],K007121_ctrlram[1][0x03],K007121_ctrlram[1][0x04],K007121_ctrlram[1][0x05],K007121_ctrlram[1][0x06],K007121_ctrlram[1][0x07]);
 #endif

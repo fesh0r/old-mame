@@ -23,7 +23,7 @@ TODO:
 #include "cpu/z80/z80.h"
 #include "sound/sn76496.h"
 
-data8_t *xyonix_vidram;
+UINT8 *xyonix_vidram;
 
 /* in vidhrdw/xyonix.c */
 PALETTE_INIT( xyonix );
@@ -47,7 +47,7 @@ void handle_coins(int coin)
 	int coinage_table[4][2] = {{2,3},{2,1},{1,2},{1,1}};
 	int tmp = 0;
 
-//  usrintf_showmessage("Coin %d",coin);
+//  ui_popup("Coin %d",coin);
 
 	if (coin & 1)	// Coin 2 !
 	{
@@ -135,7 +135,7 @@ READ8_HANDLER ( xyonix_io_r )
 	}
 
 //  logerror ("xyonix_port_e0_r - PC = %04x - port = %02x\n", regPC, e0_data);
-//  usrintf_showmessage("%02x",e0_data);
+//  ui_popup("%02x",e0_data);
 
 	return 0xff;
 }
@@ -223,7 +223,7 @@ INPUT_PORTS_END
 
 /* GFX Decode ****************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	4,8,
 	RGN_FRAC(1,2),
@@ -234,7 +234,7 @@ static struct GfxLayout charlayout =
 	4*16
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 16 },
 	{ -1 }

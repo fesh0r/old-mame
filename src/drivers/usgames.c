@@ -33,10 +33,10 @@ WRITE8_HANDLER( usg_charram_w );
 VIDEO_START(usg);
 PALETTE_INIT(usg);
 VIDEO_UPDATE(usg);
-extern struct tilemap *usg_tilemap;
+extern tilemap *usg_tilemap;
 
 
-extern data8_t *usg_videoram,*usg_charram;
+extern UINT8 *usg_videoram,*usg_charram;
 
 
 static WRITE8_HANDLER( usg_rombank_w )
@@ -44,7 +44,7 @@ static WRITE8_HANDLER( usg_rombank_w )
 	unsigned char *RAM = memory_region(REGION_CPU1);
 
 //  logerror ("BANK WRITE? -%02x-\n",data);
-//usrintf_showmessage("%02x",data);
+//ui_popup("%02x",data);
 
 	memory_set_bankptr( 1,&RAM[ 0x10000 + 0x4000 * data] );
 }
@@ -273,7 +273,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	0x100,
@@ -284,7 +284,7 @@ static struct GfxLayout charlayout =
 	8*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_CPU1, 0x2800, &charlayout, 0, 256 },
 	{ -1 } /* end of array */

@@ -71,7 +71,7 @@ VIDEO_UPDATE( snowbros );
 VIDEO_UPDATE( wintbob );
 VIDEO_UPDATE( snowbro3 );
 
-static data16_t *hyperpac_ram;
+static UINT16 *hyperpac_ram;
 int sb3_music_is_playing;
 int sb3_music;
 
@@ -400,7 +400,7 @@ static ADDRESS_MAP_START( finalttr_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 INPUT_PORTS_START( snowbros )
-	PORT_START	/* 500001 */
+	PORT_START_TAG("DSW")	/* 500001 */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Europe ) )
 	PORT_DIPSETTING(    0x01, "America (Romstar license)" )
@@ -412,22 +412,22 @@ INPUT_PORTS_START( snowbros )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(    0x10, DEF_STR( 3C_1C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x01)
+	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x10, DEF_STR( 3C_1C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x01)
 	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x01)
-	PORT_DIPSETTING(    0x20, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x01)
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x01)
+	PORT_DIPSETTING(    0x20, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x01)
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x01)
-	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x01)
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x01)
-	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x01)
-	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(    0x80, DEF_STR( 1C_3C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(    0x40, DEF_STR( 1C_4C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) )	PORT_DIPCONDITION(0,0x01,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x40, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x01)
+	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x01)
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x01)
+	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x01)
+	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x80, DEF_STR( 1C_3C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x40, DEF_STR( 1C_4C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) )	PORT_CONDITION("DSW",0x01,PORTCOND_EQUALS,0x00)
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -951,7 +951,7 @@ INPUT_PORTS_END
 
 /* SnowBros */
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -962,7 +962,7 @@ static struct GfxLayout tilelayout =
 	32*32
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,  0, 16 },
 	{ -1 } /* end of array */
@@ -970,7 +970,7 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 
 /* Winter Bobble */
 
-static struct GfxLayout tilelayout_wb =
+static gfx_layout tilelayout_wb =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -981,7 +981,7 @@ static struct GfxLayout tilelayout_wb =
 	16*64
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo_wb[] =
+static gfx_decode gfxdecodeinfo_wb[] =
 {
 	{ REGION_GFX1, 0, &tilelayout_wb,  0, 16 },
 	{ -1 }
@@ -989,7 +989,7 @@ static struct GfxDecodeInfo gfxdecodeinfo_wb[] =
 
 /* SemiCom */
 
-static struct GfxLayout hyperpac_tilelayout =
+static gfx_layout hyperpac_tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1003,7 +1003,7 @@ static struct GfxLayout hyperpac_tilelayout =
 };
 
 
-static struct GfxLayout sb3_tilebglayout =
+static gfx_layout sb3_tilebglayout =
 {
  	16,16,
  	RGN_FRAC(1,1),
@@ -1017,14 +1017,14 @@ static struct GfxLayout sb3_tilebglayout =
 };
 
 
-static struct GfxDecodeInfo sb3_gfxdecodeinfo[] =
+static gfx_decode sb3_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,  0, 16 },
 	{ REGION_GFX2, 0, &sb3_tilebglayout,  0, 2 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo hyperpac_gfxdecodeinfo[] =
+static gfx_decode hyperpac_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &hyperpac_tilelayout,  0, 16 },
 	{ -1 } /* end of array */
@@ -1053,7 +1053,7 @@ static struct YM2151interface ym2151_interface =
 
 MACHINE_INIT (semiprot)
 {
-	data16_t *PROTDATA = (data16_t*)memory_region(REGION_USER1);
+	UINT16 *PROTDATA = (UINT16*)memory_region(REGION_USER1);
 	int i;
 
 	for (i = 0;i < 0x200/2;i++)
@@ -1062,7 +1062,7 @@ MACHINE_INIT (semiprot)
 
 MACHINE_INIT (finalttr)
 {
-	data16_t *PROTDATA = (data16_t*)memory_region(REGION_USER1);
+	UINT16 *PROTDATA = (UINT16*)memory_region(REGION_USER1);
 	int i;
 
 	for (i = 0;i < 0x200/2;i++)
@@ -1464,6 +1464,34 @@ ROM_START( cookbib2 )
 	ROM_LOAD( "cookbib2.03", 0x100000, 0x40000, CRC(e1604821) SHA1(bede6bdd8331128b9f2b229d718133470bf407c9) )
 ROM_END
 
+ROM_START( cookbib3 )
+	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_LOAD16_BYTE( "u52.bin",  0x00001, 0x40000, CRC(65134893) SHA1(b1f26794d1a85893aedf55adb2195ad244f90132) )
+	ROM_LOAD16_BYTE( "u74.bin",  0x00000, 0x40000, CRC(c4ab8435) SHA1(7f97d3deafb3eb5412a44308ef20d3317405e94c) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 Code */
+	ROM_LOAD( "u35.bin", 0x0c000, 0x4000 ,  CRC(5dfd2a98) SHA1(193c0cd9272144c25cbc3660967424d34d0da185) ) /* bit strange but verified, not the first time semicom have done this, see bcstory.. */
+	ROM_CONTINUE(0x8000,0x4000)
+	ROM_CONTINUE(0x4000,0x4000)
+	ROM_CONTINUE(0x0000,0x4000)
+
+	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* Intel 87C52 MCU Code */
+	ROM_LOAD( "87c52.mcu", 0x00000, 0x10000 , NO_DUMP ) /* can't be dumped */
+
+	ROM_REGION( 0x200, REGION_USER1, 0 ) /* Data from Shared RAM */
+	/* this is not a real rom but instead the data extracted from
+       shared ram, the MCU puts it there */
+	ROM_LOAD16_WORD( "protdata.bin", 0x00000, 0x200 , NO_DUMP )
+
+	ROM_REGION( 0x020000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_LOAD( "u14.bin", 0x00000, 0x20000, CRC(e5bf9288) SHA1(12fb9542f9105fe1a21a74a08cda4d6372b984ee) )
+
+	ROM_REGION( 0x180000, REGION_GFX1, 0 ) /* Sprites */
+	ROM_LOAD( "u75.bin", 0x000000, 0x80000, CRC(cbe4d9c8) SHA1(81b043bd2b45ab2a8c9df0ba599c6220ed0c9fbf) )
+	ROM_LOAD( "u76.bin", 0x080000, 0x80000, CRC(1be17b57) SHA1(57b58cc094d6b47ed6136266f1d34b8bad3f421f) )
+	ROM_LOAD( "u77.bin", 0x100000, 0x80000, CRC(7823600d) SHA1(90d431f324b71758c49f3a72ee07701ceb76403f) )
+ROM_END
+
 ROM_START( 4in1boot ) /* snow bros, tetris, hyperman 1, pacman 2 */
 	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "u52",  0x00001, 0x80000, CRC(71815878) SHA1(e3868f5687c1d8ec817671c50ade6c56ee83bfa1) )
@@ -1544,7 +1572,7 @@ READ16_HANDLER ( moremorp_0a_read )
 
 static DRIVER_INIT( moremorp )
 {
-//  data16_t *PROTDATA = (data16_t*)memory_region(REGION_USER1);
+//  UINT16 *PROTDATA = (UINT16*)memory_region(REGION_USER1);
 //  int i;
 
 //  for (i = 0;i < 0x200/2;i++)
@@ -1557,15 +1585,15 @@ static DRIVER_INIT( moremorp )
 
 static DRIVER_INIT( cookbib2 )
 {
-//  data16_t *HCROM = (data16_t*)memory_region(REGION_CPU1);
-//  data16_t *PROTDATA = (data16_t*)memory_region(REGION_USER1);
+//  UINT16 *HCROM = (UINT16*)memory_region(REGION_CPU1);
+//  UINT16 *PROTDATA = (UINT16*)memory_region(REGION_USER1);
 //  int i;
 //  hyperpac_ram[0xf000/2] = 0x46fc;
 //  hyperpac_ram[0xf002/2] = 0x2700;
 
 // verified on real hardware, need to move this to a file really
 
-//  static data16_t cookbib2_mcu68k[] =
+//  static UINT16 cookbib2_mcu68k[] =
 //  {
 //      // moved to protdata.bin
 //  };
@@ -1920,7 +1948,7 @@ READ16_HANDLER ( _4in1_02_read )
 static DRIVER_INIT(4in1boot)
 {
 	unsigned char *buffer;
-	data8_t *src = memory_region(REGION_CPU1);
+	UINT8 *src = memory_region(REGION_CPU1);
 	int len = memory_region_length(REGION_CPU1);
 
 	/* strange order */
@@ -1953,7 +1981,7 @@ static DRIVER_INIT(4in1boot)
 static DRIVER_INIT(snowbro3)
 {
 	unsigned char *buffer;
-	data8_t *src = memory_region(REGION_CPU1);
+	UINT8 *src = memory_region(REGION_CPU1);
 	int len = memory_region_length(REGION_CPU1);
 
 	/* strange order */
@@ -1987,6 +2015,7 @@ GAME( 1990, wintbob,  snowbros, wintbob,  snowbros, 0, ROT0, "bootleg", "The Win
 GAME( 1995, hyperpac, 0,        semicom, hyperpac, hyperpac, ROT0, "SemiCom", "Hyper Pacman" )
 GAME( 1995, hyperpcb, hyperpac, semicom, hyperpac, 0,        ROT0, "bootleg", "Hyper Pacman (bootleg)" )
 GAME( 1996, cookbib2, 0,        semiprot, cookbib2, cookbib2, ROT0, "SemiCom", "Cookie and Bibi 2" )
+GAMEX(1997, cookbib3, 0,        semiprot, cookbib2, cookbib2, ROT0, "SemiCom", "Cookie and Bibi 3",GAME_NOT_WORKING )
 GAME( 1997, 3in1semi, 0,        semiprot, moremore, 3in1semi, ROT0, "SemiCom", "XESS - The New Revolution (SemiCom 3-in-1)" )
 GAME( 1997, twinkle,  0,        semiprot, moremore, 0,        ROT0, "SemiCom", "Twinkle" )
 GAME( 1999, moremore, 0,        semiprot, moremore, moremorp, ROT0, "SemiCom / Exit", "More More" )

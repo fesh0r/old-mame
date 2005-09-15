@@ -42,7 +42,7 @@ VIDEO_START(hanaroku)
 	return 0;
 }
 
-static void hanaroku_draw_sprites( struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+static void hanaroku_draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	int i;
 
@@ -208,7 +208,7 @@ INPUT_PORTS_START( hanaroku )
 INPUT_PORTS_END
 
 
-static struct GfxLayout hanaroku_charlayout =
+static gfx_layout hanaroku_charlayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -223,7 +223,7 @@ static struct GfxLayout hanaroku_charlayout =
 
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &hanaroku_charlayout,   0, 32  },
 

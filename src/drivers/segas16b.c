@@ -856,7 +856,7 @@ WW.B11    Object 5 - Even
  *
  *************************************/
 
-static data16_t *workram;
+static UINT16 *workram;
 
 static UINT8 rom_board;
 static int atomicp_sound_rate;
@@ -973,7 +973,7 @@ static const struct segaic16_memory_map_entry *region_info_list[] =
  *
  *************************************/
 
-static void sound_w(data8_t data)
+static void sound_w(UINT8 data)
 {
 	if (has_sound_cpu)
 	{
@@ -1312,7 +1312,7 @@ static INTERRUPT_GEN( i8751_main_cpu_vblank )
 
 static void altbeast_common_i8751_sim(offs_t soundoffs, offs_t inputoffs)
 {
-	data16_t temp;
+	UINT16 temp;
 
 	/* signal a VBLANK to the main CPU */
 	cpunum_set_input_line(0, 4, HOLD_LINE);
@@ -1365,7 +1365,7 @@ static void goldnaxe_i8751_init(void)
 
 static void goldnaxe_i8751_sim(void)
 {
-	data16_t temp;
+	UINT16 temp;
 
 	/* signal a VBLANK to the main CPU */
 	cpunum_set_input_line(0, 4, HOLD_LINE);
@@ -1395,7 +1395,7 @@ static void goldnaxe_i8751_sim(void)
 
 static void tturf_i8751_sim(void)
 {
-	data16_t temp;
+	UINT16 temp;
 
 	/* signal a VBLANK to the main CPU */
 	cpunum_set_input_line(0, 4, HOLD_LINE);
@@ -1417,7 +1417,7 @@ static void tturf_i8751_sim(void)
 
 static void wb3_i8751_sim(void)
 {
-	data16_t temp;
+	UINT16 temp;
 
 	/* signal a VBLANK to the main CPU */
 	cpunum_set_input_line(0, 4, HOLD_LINE);
@@ -1434,7 +1434,7 @@ static void wb3_i8751_sim(void)
 
 static void wrestwar_i8751_sim(void)
 {
-	data16_t temp;
+	UINT16 temp;
 
 	/* signal a VBLANK to the main CPU */
 	cpunum_set_input_line(0, 4, HOLD_LINE);
@@ -1451,6 +1451,21 @@ static void wrestwar_i8751_sim(void)
 	workram[0x2082/2] = readinputport(0);
 }
 
+static void ddux_i8751_sim(void)
+{
+	UINT16 temp;
+
+	/* signal a VBLANK to the main CPU */
+	cpunum_set_input_line(0, 4, HOLD_LINE);
+
+	/* process any new sound data */
+	temp = workram[0x0bd0/2];
+	if ((temp & 0xff00) != 0x0000)
+	{
+		segaic16_memory_mapper_w(0x03, temp>>8);
+		workram[0x0bd0/2] = temp & 0x00ff;
+	}
+}
 
 
 /*************************************
@@ -1508,7 +1523,7 @@ static READ16_HANDLER( dunkshot_custom_io_r )
 
 static READ16_HANDLER( hwchamp_custom_io_r )
 {
-	data16_t result;
+	UINT16 result;
 
 	switch (offset & (0x3000/2))
 	{
@@ -1541,7 +1556,7 @@ static WRITE16_HANDLER( hwchamp_custom_io_w )
 
 				case 0x30/2:
 					/* bit 4 is GONG */
-			//      if (data & 0x10) usrintf_showmessage("GONG");
+			//      if (data & 0x10) ui_popup("GONG");
 					/* are the following really lamps? */
 			//      set_led_status(1,data & 0x20);
 			//      set_led_status(2,data & 0x40);
@@ -2968,7 +2983,7 @@ static struct upd7759_interface upd7759_interface =
  *
  *************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -2980,7 +2995,7 @@ static struct GfxLayout charlayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,	0, 1024 },
 	{ -1 }
@@ -3496,8 +3511,6 @@ ROM_START( atomicp )
 	ROM_LOAD( "ap-t4.bin",  0x00000, 0x8000, CRC(332e58f4) SHA1(cf5aeb6c14018cbd8f222a0ecf85ccf467f294a8) )
 	ROM_LOAD( "ap-t3.bin",  0x08000, 0x8000, CRC(dddc122c) SHA1(3411eae360ccd615636fb85e9738affc33c2c0ad) )
 	ROM_LOAD( "ap-t5.bin",  0x10000, 0x8000, CRC(ef5ecd6b) SHA1(07edc8ea4c0a5ad421df7f97e7a62a5e12a8dbd0) )
-
-	ROM_REGION16_BE( 0x2, REGION_GFX2, 0 ) /* sprites */
 ROM_END
 
 /**************************************************************************************************************************
@@ -3516,8 +3529,6 @@ ROM_START( snapper )
 	ROM_LOAD( "snap4.r03",  0x00000, 0x8000, CRC(0f848e1e) SHA1(79a63ff0e5775400716f7294eabda9a0b838d656) )
 	ROM_LOAD( "snap3.r04",  0x08000, 0x8000, CRC(c7f8cf0e) SHA1(08376f7941bc740ce85c6f32be7b54ced192599c) )
 	ROM_LOAD( "snap5.r05",  0x10000, 0x8000, CRC(378e08eb) SHA1(f2c10bd9e885c185ac2d0d51d907ceca1f21dd7a) )
-
-	ROM_REGION16_BE( 0x2, REGION_GFX2, 0 ) /* sprites */
 ROM_END
 
 
@@ -4060,6 +4071,41 @@ ROM_START( ddux )
 
 	ROM_REGION( 0x2000, REGION_USER1, 0 )	/* decryption key */
 	ROM_LOAD( "317-0096.key", 0x0000, 0x2000, CRC(6fd7d26e) SHA1(6e8feaf14d0981e8b0fa8dcf4cc45aabb0a09f83) )
+
+	ROM_REGION( 0x30000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
+	ROM_LOAD( "mpr11917.a14", 0x00000, 0x10000, CRC(6f772190) SHA1(e68dc78785a1cb0da362efc8c4a088ccc580bd6e) )
+	ROM_LOAD( "mpr11918.a15", 0x10000, 0x10000, CRC(c731db95) SHA1(b3b9cbd772f7bfd35355bcb2a7c0801b61eaf19f) )
+	ROM_LOAD( "mpr11919.a16", 0x20000, 0x10000, CRC(64d5a491) SHA1(686151c9a58f524f786f52c03f086cdaa5728233) )
+
+	ROM_REGION16_BE( 0x100000, REGION_GFX2, 0 ) /* sprites */
+	ROM_LOAD16_BYTE( "mpr11920.b1", 0x00001, 0x020000, CRC(e5d1e3cd) SHA1(d8c0f40dab00f1b09f6d018597fd45147f9ca3f6) )
+	ROM_LOAD16_BYTE( "mpr11922.b5", 0x00000, 0x020000, CRC(70b0c4dd) SHA1(b67acab0c6a0f5051fc3fcda2476b8834f65b376) )
+	ROM_LOAD16_BYTE( "mpr11921.b2", 0x40001, 0x020000, CRC(61d2358c) SHA1(216fd295ff9d56976f9b1c465a48806be843dd04) )
+	ROM_LOAD16_BYTE( "mpr11923.b6", 0x40000, 0x020000, CRC(c9ffe47d) SHA1(fd6dc3781c6e7d1734a9f4a8e4a9c44cfc091e0a) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* sound CPU */
+	ROM_LOAD( "916.a10", 0x0000, 0x8000, CRC(7ab541cf) SHA1(feb88022ca1796d020e53e95ad345159bd415530) )
+ROM_END
+
+/*
+
+Dynamite Dux (8751 version) - Sega System16B System - Sega 1988
+
+Game Number 837-6768-09
+Rom Number  834-6767-09
+
+
+Rom Board Type 171-5704
+
+*/
+
+ROM_START( ddux1 )
+	ROM_REGION( 0x0c0000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_LOAD16_BYTE( "epr12189.a7", 0x000000, 0x20000, CRC(558e9b5d) SHA1(d092fe114578d84a7dbfe7c9591c2c44bf5c46f8) )
+	ROM_LOAD16_BYTE( "epr12188.a5", 0x000001, 0x20000, CRC(802a240f) SHA1(f01ca7c38b1fa8baa44eb0f40e74572a45c8f5cc) )
+	/* empty 0x40000 - 0x80000 */
+	ROM_LOAD16_BYTE( "915.a8", 0x080000, 0x20000, CRC(d8ed3132) SHA1(a9d5ad8f79fb635cc234a99fad398688a5f15926) )
+	ROM_LOAD16_BYTE( "913.a6", 0x080001, 0x20000, CRC(30c6cb92) SHA1(2e17c74eeb37c9731fc2e365cc0114f7383c0106) )
 
 	ROM_REGION( 0x30000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
 	ROM_LOAD( "mpr11917.a14", 0x00000, 0x10000, CRC(6f772190) SHA1(e68dc78785a1cb0da362efc8c4a088ccc580bd6e) )
@@ -5832,7 +5878,7 @@ static DRIVER_INIT( sdi )
 static DRIVER_INIT( defense )
 {
 	void fd1089_decrypt_0028(void);
-	data16_t *rom = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
 
 	rom[0x0F77C/2] = rom[0x0F77C/2]^0x80; // one of the program roms is bad :-(
 
@@ -5885,6 +5931,12 @@ static DRIVER_INIT( wrestwar_8751 )
 	i8751_vblank_hook = wrestwar_i8751_sim;
 }
 
+static DRIVER_INIT( ddux_8751 )
+{
+	init_generic_5704();
+	i8751_vblank_hook = ddux_i8751_sim;
+
+}
 
 static DRIVER_INIT( atomicp )
 {
@@ -5932,7 +5984,8 @@ GAMEX(1987, bullet,   0,        system16b,      generic,  generic_5358,  ROT0,  
 GAME( 1991, cotton,   0,        system16b,      cotton,   generic_5704,  ROT0,   "Sega / Success", "Cotton (set 3, World, FD1094 317-0181a)" )
 GAME( 1991, cottonu,  cotton,   system16b,      cotton,   generic_5704,  ROT0,   "Sega / Success", "Cotton (set 2, US, FD1094 317-0180)" )
 GAME( 1991, cottonj,  cotton,   system16b,      cotton,   generic_5704,  ROT0,   "Sega / Success", "Cotton (set 1, Japan, FD1094 317-0179a)" )
-GAME( 1989, ddux,     0,        system16b,      ddux,     generic_5521,  ROT0,   "Sega",           "Dynamite Dux (FD1094 317-0096)" )
+GAME( 1989, ddux,     0,        system16b,      ddux,     generic_5521,  ROT0,   "Sega",           "Dynamite Dux (set 2, FD1094 317-0096)" )
+GAME( 1989, ddux1,    ddux,     system16b_8751, ddux,     ddux_8751,     ROT0,   "Sega",           "Dynamite Dux (set 1, 8751 317-0095)" )
 GAME( 1986, dunkshot, 0,        timescan,       dunkshot, dunkshot,      ROT0,   "Sega",           "Dunk Shot (FD1089 317-0022)" )
 GAME( 1989, eswat,    0,        system16b,      eswat,    generic_5797,  ROT0,   "Sega",           "E-Swat - Cyber Police (set 3, World, FD1094 317-0130)" )
 GAME( 1989, eswatu,   eswat,    system16b,      eswat,    generic_5797,  ROT0,   "Sega",           "E-Swat - Cyber Police (set 2, US, FD1094 317-0129)" )

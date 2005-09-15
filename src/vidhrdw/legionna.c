@@ -7,9 +7,9 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-data16_t *legionna_back_data,*legionna_fore_data,*legionna_mid_data,*legionna_scrollram16,*legionna_textram;
+UINT16 *legionna_back_data,*legionna_fore_data,*legionna_mid_data,*legionna_scrollram16,*legionna_textram;
 
-static struct tilemap *background_layer,*foreground_layer,*midground_layer,*text_layer;
+static tilemap *background_layer,*foreground_layer,*midground_layer,*text_layer;
 //static int legionna_enable;
 
 /******************************************************************************/
@@ -200,7 +200,7 @@ VIDEO_START( cupsoc )
 
 *************************************************************************/
 
-static void draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int pri)
+static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect,int pri)
 {
 	int offs,fx,fy,x,y,color,sprite;
 	int dx,dy,ax,ay;
@@ -265,31 +265,31 @@ VIDEO_UPDATE( legionna )
 	if (code_pressed_memory (KEYCODE_Z))
 	{
 		dislayer[0] ^= 1;
-		usrintf_showmessage("bg0: %01x",dislayer[0]);
+		ui_popup("bg0: %01x",dislayer[0]);
 	}
 
 	if (code_pressed_memory (KEYCODE_X))
 	{
 		dislayer[1] ^= 1;
-		usrintf_showmessage("bg1: %01x",dislayer[1]);
+		ui_popup("bg1: %01x",dislayer[1]);
 	}
 
 	if (code_pressed_memory (KEYCODE_C))
 	{
 		dislayer[2] ^= 1;
-		usrintf_showmessage("bg2: %01x",dislayer[2]);
+		ui_popup("bg2: %01x",dislayer[2]);
 	}
 
 	if (code_pressed_memory (KEYCODE_V))
 	{
 		dislayer[3] ^= 1;
-		usrintf_showmessage("sprites: %01x",dislayer[3]);
+		ui_popup("sprites: %01x",dislayer[3]);
 	}
 
 	if (code_pressed_memory (KEYCODE_B))
 	{
 		dislayer[4] ^= 1;
-		usrintf_showmessage("text: %01x",dislayer[4]);
+		ui_popup("text: %01x",dislayer[4]);
 	}
 #endif
 

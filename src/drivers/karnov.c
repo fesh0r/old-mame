@@ -53,9 +53,9 @@ VIDEO_START( wndrplnt );
 
 enum { KARNOV=0, KARNOVJ, CHELNOV, CHELNOVJ, CHELNOVW, WNDRPLNT };
 
-static data16_t i8751_return,i8751_needs_ack,i8751_coin_pending,i8751_command_queue;
-static data16_t *karnov_ram;
-extern data16_t karnov_scroll[2], *karnov_pf_data;
+static UINT16 i8751_return,i8751_needs_ack,i8751_coin_pending,i8751_command_queue;
+static UINT16 *karnov_ram;
+extern UINT16 karnov_scroll[2], *karnov_pf_data;
 static int microcontroller_id,coin_mask;
 
 /******************************************************************************/
@@ -601,7 +601,7 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static struct GfxLayout chars =
+static gfx_layout chars =
 {
 	8,8,
 	1024,
@@ -612,7 +612,7 @@ static struct GfxLayout chars =
 	8*8	/* every sprite takes 8 consecutive bytes */
 };
 
-static struct GfxLayout sprites =
+static gfx_layout sprites =
 {
 	16,16,
 	4096,
@@ -626,7 +626,7 @@ static struct GfxLayout sprites =
 
 
 /* 16x16 tiles, 4 Planes, each plane is 0x10000 bytes */
-static struct GfxLayout tiles =
+static gfx_layout tiles =
 {
 	16,16,
 	2048,
@@ -638,7 +638,7 @@ static struct GfxLayout tiles =
 	16*16
 };
 
-static struct GfxDecodeInfo karnov_gfxdecodeinfo[] =
+static gfx_decode karnov_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &chars,     0,  4 },	/* colors 0-31 */
 	{ REGION_GFX2, 0, &tiles,   512, 16 },	/* colors 512-767 */
@@ -994,7 +994,7 @@ static DRIVER_INIT( wndrplnt )
 
 static DRIVER_INIT( chelnov )
 {
-	data16_t *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 
 	microcontroller_id=CHELNOV;
 	coin_mask=0xe0;
@@ -1004,7 +1004,7 @@ static DRIVER_INIT( chelnov )
 
 static DRIVER_INIT( chelnovw )
 {
-	data16_t *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 
 	microcontroller_id=CHELNOVW;
 	coin_mask=0xe0;
@@ -1014,7 +1014,7 @@ static DRIVER_INIT( chelnovw )
 
 static DRIVER_INIT( chelnovj )
 {
-	data16_t *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 
 	microcontroller_id=CHELNOVJ;
 	coin_mask=0xe0;

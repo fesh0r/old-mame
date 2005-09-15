@@ -159,6 +159,8 @@ void ppc603_get_info(UINT32 state, union cpuinfo *info);
 void SE3208_get_info(UINT32 state, union cpuinfo *info);
 void mc68hc11_get_info(UINT32 state, union cpuinfo *info);
 void adsp21062_get_info(UINT32 state, union cpuinfo *info);
+void dsp56k_get_info(UINT32 state, union cpuinfo *info);
+
 
 #ifdef MESS
 void apexc_get_info(UINT32 state, union cpuinfo *info);
@@ -265,13 +267,14 @@ void tms7000_exl_get_info(UINT32 state, union cpuinfo *info);
  *
  *************************************/
 
-struct cpudata
+struct _cpuintrf_data
 {
-	struct cpu_interface intf; 		/* copy of the interface data */
+	cpu_interface intf;		 		/* copy of the interface data */
 	int cputype; 					/* type index of this CPU */
 	int family; 					/* family index of this CPU */
 	void *context;					/* dynamically allocated context buffer */
 };
+typedef struct _cpuintrf_data cpuintrf_data;
 
 
 
@@ -281,7 +284,7 @@ struct cpudata
  *
  *************************************/
 
-struct cpu_interface cpuintrf[CPU_COUNT];
+cpu_interface cpuintrf[CPU_COUNT];
 
 const struct
 {
@@ -681,6 +684,9 @@ const struct
 #if (HAS_ADSP21062)
 	{ CPU_ADSP21062, adsp21062_get_info },
 #endif
+#if (HAS_DSP56156)
+	{ CPU_DSP56156, dsp56k_get_info },
+#endif
 
 #ifdef MESS
 #if (HAS_APEXC)
@@ -755,7 +761,7 @@ int activecpu;		/* index of active CPU (or -1) */
 int executingcpu;	/* index of executing CPU (or -1) */
 int totalcpu;		/* total number of CPUs */
 
-static struct cpudata cpu[MAX_CPU];
+static cpuintrf_data cpu[MAX_CPU];
 
 static int cpu_active_context[CPU_COUNT];
 static int cpu_context_stack[4];
@@ -865,7 +871,7 @@ int cpuintrf_init(void)
 	for (mapindex = 0; mapindex < sizeof(cpuintrf_map) / sizeof(cpuintrf_map[0]); mapindex++)
 	{
 		int cputype = cpuintrf_map[mapindex].cputype;
-		struct cpu_interface *intf = &cpuintrf[cputype];
+		cpu_interface *intf = &cpuintrf[cputype];
 		union cpuinfo info;
 
 		/* start with the get_info routine */
@@ -1362,7 +1368,7 @@ void cpunum_reset(int cpunum, void *param, int (*irqack)(int))
     Read a byte
 --------------------------*/
 
-data8_t cpunum_read_byte(int cpunum, offs_t address)
+UINT8 cpunum_read_byte(int cpunum, offs_t address)
 {
 	int result;
 	VERIFY_CPUNUM(0, cpunum_read_byte);
@@ -1377,7 +1383,7 @@ data8_t cpunum_read_byte(int cpunum, offs_t address)
     Write a byte
 --------------------------*/
 
-void cpunum_write_byte(int cpunum, offs_t address, data8_t data)
+void cpunum_write_byte(int cpunum, offs_t address, UINT8 data)
 {
 	VERIFY_CPUNUM_VOID(cpunum_write_byte);
 	cpuintrf_push_context(cpunum);

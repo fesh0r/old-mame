@@ -138,14 +138,14 @@ WRITE16_HANDLER(es5510_dsp_w);
 WRITE16_HANDLER(f3_volume_w);
 WRITE16_HANDLER(f3_es5505_bank_w);
 void f3_68681_reset(void);
-extern data32_t *f3_shared_ram;
+extern UINT32 *f3_shared_ram;
 
 static UINT16 coin_word;
 static UINT16 port_sel = 0;
 extern UINT16 undrfire_rotate_ctrl[8];
 static int frame_counter=0;
 
-data32_t *undrfire_ram;	/* will be read in vidhrdw for gun target calcs */
+UINT32 *undrfire_ram;	/* will be read in vidhrdw for gun target calcs */
 
 
 /***********************************************************
@@ -185,7 +185,7 @@ void undrfire_interrupt5(int x)
                 EPROM
 **********************************************************/
 
-static data8_t default_eeprom[128]=
+static UINT8 default_eeprom[128]=
 {
 	0x02,0x01,0x11,0x12,0x01,0x01,0x01,0x00,0x80,0x80,0x30,0x01,0x00,0x00,0x62,0x45,
 	0xe0,0xa0,0xff,0x28,0xff,0xff,0xfa,0xd7,0x33,0x28,0x00,0x00,0x33,0x28,0x00,0x00,
@@ -521,7 +521,7 @@ INPUT_PORTS_END
                 GFX DECODING
 **********************************************************/
 
-static struct GfxLayout tile16x16_layout =
+static gfx_layout tile16x16_layout =
 {
 	16,16,	/* 16*16 sprites */
 	RGN_FRAC(1,2),
@@ -533,7 +533,7 @@ static struct GfxLayout tile16x16_layout =
 	64*16	/* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	16,16,    /* 16*16 characters */
 	RGN_FRAC(1,1),
@@ -544,7 +544,7 @@ static struct GfxLayout charlayout =
 	128*8     /* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout pivlayout =
+static gfx_layout pivlayout =
 {
 	8,8,    /* 8*8 characters */
 	RGN_FRAC(1,2),
@@ -555,7 +555,7 @@ static struct GfxLayout pivlayout =
 	32*8    /* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxDecodeInfo undrfire_gfxdecodeinfo[] =
+static gfx_decode undrfire_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0x0, &tile16x16_layout,  0, 512 },
 	{ REGION_GFX1, 0x0, &charlayout,        0, 512 },
@@ -571,7 +571,7 @@ static struct GfxDecodeInfo undrfire_gfxdecodeinfo[] =
 static MACHINE_INIT( undrfire )
 {
 	/* Sound cpu program loads to 0xc00000 so we use a bank */
-	data16_t *RAM = (data16_t *)memory_region(REGION_CPU2);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU2);
 	memory_set_bankptr(1,&RAM[0x80000]);
 
 	RAM[0]=RAM[0x80000]; /* Stack and Reset vectors */

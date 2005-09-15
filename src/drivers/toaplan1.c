@@ -41,12 +41,6 @@ Notes:
     after the game has booted. The other Outzone set correctly goes to
     service mode, but this set just loses the plot.
 
-    OutZone sprite priorities are unusual. On level 4, a character with
-    low priority (6) is hidden by a higher priority (8) character, yet it
-    shouldn't be. The character is a shooting enemy hidden by a sliding
-    left to right platform (which he should be standing on).
-    So how does the real hardware deal with this ?
-
     OutZone (set 2) uses different enemies in some stages and has extra
     bonuses compared to set 1. The music sequences are also in different
     orders between the sets. So which is the newest version ?
@@ -1365,7 +1359,7 @@ INPUT_PORTS_START( vimanan )
 INPUT_PORTS_END
 
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	8,8,	/* 8x8 */
 	16384,	/* 16384 tiles */
@@ -1376,7 +1370,7 @@ static struct GfxLayout tilelayout =
 	64
 };
 
-static struct GfxLayout rallybik_spr_layout =
+static gfx_layout rallybik_spr_layout =
 {
 	16,16,	/* 16*16 sprites */
 	2048,	/* 2048 sprites */
@@ -1388,7 +1382,7 @@ static struct GfxLayout rallybik_spr_layout =
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxLayout vm_tilelayout =
+static gfx_layout vm_tilelayout =
 {
 	8,8,	/* 8x8 */
 	32768,	/* 32768 tiles */
@@ -1400,28 +1394,28 @@ static struct GfxLayout vm_tilelayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &tilelayout,		0, 64 },
 	{ REGION_GFX2, 0x00000, &tilelayout,	64*16, 64 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo rallybik_gfxdecodeinfo[] =
+static gfx_decode rallybik_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &tilelayout,			  0, 64 },
 	{ REGION_GFX2, 0x00000, &rallybik_spr_layout, 64*16, 64 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo outzone_gfxdecodeinfo[] =
+static gfx_decode outzone_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &vm_tilelayout, 	0, 64 },
 	{ REGION_GFX2, 0x00000, &tilelayout,	64*16, 64 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo vm_gfxdecodeinfo[] =
+static gfx_decode vm_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &tilelayout,		0, 64 },
 	{ REGION_GFX2, 0x00000, &vm_tilelayout, 64*16, 64 },
@@ -1578,7 +1572,7 @@ static MACHINE_DRIVER_START( zerowing )
 
 	MDRV_VIDEO_START(toaplan1)
 	MDRV_VIDEO_EOF(toaplan1)
-	MDRV_VIDEO_UPDATE(zerowing)
+	MDRV_VIDEO_UPDATE(toaplan1)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

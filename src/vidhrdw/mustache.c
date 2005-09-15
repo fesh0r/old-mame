@@ -9,7 +9,7 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-static struct tilemap *bg_tilemap;
+static tilemap *bg_tilemap;
 static int control_byte;
 
 PALETTE_INIT(mustache)
@@ -98,10 +98,10 @@ VIDEO_START( mustache )
 	return 0;
 }
 
-static void mustache_draw_sprites( struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+static void mustache_draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 {
-	struct rectangle clip = *cliprect;
-	const struct GfxElement *gfx = Machine->gfx[1];
+	rectangle clip = *cliprect;
+	const gfx_element *gfx = Machine->gfx[1];
 	int offs;
 
 	for (offs = 0;offs < spriteram_size;offs += 4)

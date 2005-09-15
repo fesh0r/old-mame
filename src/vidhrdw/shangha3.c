@@ -62,13 +62,13 @@ Word | Bit(s)           | Use
 #include "vidhrdw/generic.h"
 
 
-data16_t *shangha3_ram;
+UINT16 *shangha3_ram;
 size_t shangha3_ram_size;
 
 int shangha3_do_shadows;
 
-static data16_t gfxlist_addr;
-static struct mame_bitmap *rawbitmap;
+static UINT16 gfxlist_addr;
+static mame_bitmap *rawbitmap;
 
 
 
@@ -102,7 +102,7 @@ WRITE16_HANDLER( shangha3_flipscreen_w )
 		/* bit 7 flips screen, the rest seems to always be set to 0x7e */
 		flip_screen_set(data & 0x80);
 
-		if ((data & 0x7f) != 0x7e) usrintf_showmessage("flipscreen_w %02x",data);
+		if ((data & 0x7f) != 0x7e) ui_popup("flipscreen_w %02x",data);
 	}
 }
 
@@ -149,7 +149,7 @@ WRITE16_HANDLER( shangha3_blitter_go_w )
 				/* avoid garbage on startup */
 && sizex < 512 && sizey < 256 && zoomx < 0x1f0 && zoomy < 0x1f0)
 		{
-			struct rectangle myclip;
+			rectangle myclip;
 
 //if (shangha3_ram[offs+11] || shangha3_ram[offs+12])
 //logerror("offs %04x: sx %04x sy %04x zoom %04x %04x %04x %04x fx %d fy %d\n",offs,sx,sy,zoomx,shangha3_ram[offs+11]),shangha3_ram[offs+12],zoomy,flipx,flipy);

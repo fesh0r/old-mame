@@ -66,7 +66,7 @@ extern int technos_video_hw;
 static int dd_sub_cpu_busy;
 static int sprite_irq, sound_irq, ym_irq, snd_cpu;
 static int adpcm_pos[2],adpcm_end[2],adpcm_idle[2];
-static data8_t* darktowr_mcu_ports;
+static UINT8* darktowr_mcu_ports;
 static int VBLK;
 /* end of private globals */
 
@@ -116,7 +116,7 @@ static MACHINE_INIT( ddragon2 )
 
 static WRITE8_HANDLER( ddragon_bankswitch_w )
 {
-	data8_t *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
 	ddragon_scrolly_hi = ( ( data & 0x02 ) << 7 );
 	ddragon_scrollx_hi = ( ( data & 0x01 ) << 8 );
@@ -173,7 +173,7 @@ static WRITE8_HANDLER( darktowr_bankswitch_w )
 
 static READ8_HANDLER( darktowr_bank_r )
 {
-	data8_t *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
 	/* MCU is mapped into main cpu memory as a bank */
 	if (darktowr_bank==4) {
@@ -819,7 +819,7 @@ INPUT_PORTS_END
 
 /*****************************************************************************/
 
-static struct GfxLayout char_layout =
+static gfx_layout char_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -830,7 +830,7 @@ static struct GfxLayout char_layout =
 	32*8
 };
 
-static struct GfxLayout tile_layout =
+static gfx_layout tile_layout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -843,7 +843,7 @@ static struct GfxLayout tile_layout =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &char_layout,   0, 8 },	/* colors   0-127 */
 	{ REGION_GFX2, 0, &tile_layout, 128, 8 },	/* colors 128-255 */
@@ -1525,7 +1525,7 @@ toffy / stoffy are 'encrytped
 static DRIVER_INIT( toffy )
 {
 	/* the program rom has a simple bitswap encryption */
-	data8_t *rom=memory_region(REGION_CPU1);
+	UINT8 *rom=memory_region(REGION_CPU1);
 	int i;
 
 	for (i = 0;i < 0x20000;i++)

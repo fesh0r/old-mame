@@ -517,7 +517,7 @@ else
 						ls195_latch>>=4;
 				}
 				if (ls163_u107 >= 256)
-					usrintf_showmessage("ERROR!!!!");
+					ui_popup("ERROR!!!!");
 			}
 
 			if ( (sy>=cliprect->min_y) && (sy<=cliprect->max_y) )
@@ -846,7 +846,7 @@ static WRITE8_HANDLER( mem_device_select_w )
 
 	if(dev_sel > 3)
 	{
-		usrintf_showmessage("memory device selected = %i", dev_sel);
+		ui_popup("memory device selected = %i", dev_sel);
 	}
 
 	mem_dev_selected = dev_sel * 0x800;
@@ -867,7 +867,7 @@ static WRITE8_HANDLER( mem_device_w )
 	memory_devices[mem_dev_selected + offset] = data;
 
     if((mem_dev_selected==0x800) & (offset>0x3f))
-		usrintf_showmessage("RAM1 offset=%4x",offset);
+		ui_popup("RAM1 offset=%4x",offset);
 
 }
 static READ8_HANDLER( mem_device_r )
@@ -881,13 +881,13 @@ static READ8_HANDLER( mem_device_r )
 static WRITE8_HANDLER( slope_rom_addr_hi_w )
 {
 	slopeROM_bank = (data&3)<<9;
-//  usrintf_showmessage("bank = %04x", slopeROM_bank);
+//  ui_popup("bank = %04x", slopeROM_bank);
 }
 
 static WRITE8_HANDLER( slope_rom_addr_lo_w )
 {
 	address = data;
-//    usrintf_showmessage("address = %04x", address);
+//    ui_popup("address = %04x", address);
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -1074,7 +1074,7 @@ INPUT_PORTS_START( changela )
 INPUT_PORTS_END
 
 
-static struct GfxLayout tile_layout =
+static gfx_layout tile_layout =
 {
 	8,16,
 	RGN_FRAC(1,1),
@@ -1086,7 +1086,7 @@ static struct GfxLayout tile_layout =
 	16*32
 };
 
-static struct GfxLayout obj1_layout =
+static gfx_layout obj1_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -1097,7 +1097,7 @@ static struct GfxLayout obj1_layout =
 	8*8*2
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &tile_layout, 0, 4 },
 	{ REGION_GFX2, 0x0000, &obj1_layout, 0, 16 },

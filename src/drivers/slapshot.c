@@ -146,9 +146,9 @@ VIDEO_EOF( taito_no_buffer );
 VIDEO_START( slapshot );
 VIDEO_UPDATE( slapshot );
 
-static data16_t *color_ram;
+static UINT16 *color_ram;
 
-extern data16_t *taito_sprite_ext;
+extern UINT16 *taito_sprite_ext;
 extern size_t taito_spriteext_size;
 
 
@@ -248,7 +248,7 @@ static WRITE16_HANDLER( slapshot_msb_sound_w )
 
 #ifdef MAME_DEBUG
 	if (data & 0xff)
-		usrintf_showmessage("taito_msb_sound_w to low byte: %04x",data);
+		ui_popup("taito_msb_sound_w to low byte: %04x",data);
 #endif
 }
 
@@ -483,7 +483,7 @@ INPUT_PORTS_END
 
 ***********************************************************/
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -499,7 +499,7 @@ static struct GfxLayout tilelayout =
 	128*8	/* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout slapshot_charlayout =
+static gfx_layout slapshot_charlayout =
 {
 	16,16,    /* 16*16 characters */
 	RGN_FRAC(1,1),
@@ -510,7 +510,7 @@ static struct GfxLayout slapshot_charlayout =
 	128*8     /* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxDecodeInfo slapshot_gfxdecodeinfo[] =
+static gfx_decode slapshot_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0x0, &tilelayout,  0, 256 },	/* sprite parts */
 	{ REGION_GFX1, 0x0, &slapshot_charlayout,  0, 256 },	/* sprites & playfield */

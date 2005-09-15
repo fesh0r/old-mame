@@ -190,7 +190,7 @@ TODO:
 
 
 /*Video functions*/
-extern data8_t *gladiatr_videoram, *gladiatr_colorram,*gladiatr_textram;
+extern UINT8 *gladiatr_videoram, *gladiatr_colorram,*gladiatr_textram;
 WRITE8_HANDLER( gladiatr_videoram_w );
 WRITE8_HANDLER( gladiatr_colorram_w );
 WRITE8_HANDLER( gladiatr_textram_w );
@@ -208,7 +208,7 @@ VIDEO_UPDATE( gladiatr );
 /*Rom bankswitching*/
 WRITE8_HANDLER( gladiatr_bankswitch_w )
 {
-	data8_t *rom = memory_region(REGION_CPU1) + 0x10000;
+	UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
 
 	memory_set_bankptr(1, rom + 0x6000 * (data & 0x01));
 }
@@ -270,7 +270,7 @@ static MACHINE_INIT( gladiator )
 	TAITO8741_start(&gsword_8741interface);
 	/* 6809 bank memory set */
 	{
-		data8_t *rom = memory_region(REGION_CPU3) + 0x10000;
+		UINT8 *rom = memory_region(REGION_CPU3) + 0x10000;
 		memory_set_bankptr(2,rom);
 	}
 }
@@ -297,7 +297,7 @@ static void gladiator_ym_irq(int irq)
 /*Sound Functions*/
 static WRITE8_HANDLER( glad_adpcm_w )
 {
-	data8_t *rom = memory_region(REGION_CPU3) + 0x10000;
+	UINT8 *rom = memory_region(REGION_CPU3) + 0x10000;
 
 	/* bit6 = bank offset */
 	memory_set_bankptr(2,rom + ((data & 0x40) ? 0xc000 : 0));
@@ -600,7 +600,7 @@ INPUT_PORTS_END
 
 /*******************************************************************/
 
-static struct GfxLayout charlayout  =
+static gfx_layout charlayout  =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -611,7 +611,7 @@ static struct GfxLayout charlayout  =
 	8*8
 };
 
-static struct GfxLayout tilelayout  =
+static gfx_layout tilelayout  =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -622,7 +622,7 @@ static struct GfxLayout tilelayout  =
 	16*8
 };
 
-static struct GfxLayout spritelayout  =
+static gfx_layout spritelayout  =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -635,7 +635,7 @@ static struct GfxLayout spritelayout  =
 	64*8
 };
 
-static struct GfxDecodeInfo ppking_gfxdecodeinfo[] =
+static gfx_decode ppking_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 1 },
 	{ REGION_GFX2, 0, &tilelayout, 0, 32 },
@@ -643,7 +643,7 @@ static struct GfxDecodeInfo ppking_gfxdecodeinfo[] =
 	{ -1 }
 };
 
-static struct GfxDecodeInfo gladiatr_gfxdecodeinfo[] =
+static gfx_decode gladiatr_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0x200, 1 },
 	{ REGION_GFX2, 0, &tilelayout,   0x000, 32 },
@@ -959,7 +959,7 @@ ROM_START( greatgur )
 ROM_END
 
 
-static void swap_block(data8_t *src1,data8_t *src2,int len)
+static void swap_block(UINT8 *src1,UINT8 *src2,int len)
 {
 	int i,t;
 
@@ -973,7 +973,7 @@ static void swap_block(data8_t *src1,data8_t *src2,int len)
 
 static DRIVER_INIT( gladiatr )
 {
-	data8_t *rom;
+	UINT8 *rom;
 	int i,j;
 
 	rom = memory_region(REGION_GFX2);
@@ -1018,7 +1018,7 @@ static READ8_HANDLER(f6a3_r)
 
 static DRIVER_INIT(ppking)
 {
-	data8_t *rom;
+	UINT8 *rom;
 	int i,j;
 
 	rom = memory_region(REGION_GFX2);

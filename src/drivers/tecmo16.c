@@ -31,11 +31,11 @@ Notes:
 #include "sound/okim6295.h"
 
 
-extern data16_t *tecmo16_videoram;
-extern data16_t *tecmo16_colorram;
-extern data16_t *tecmo16_videoram2;
-extern data16_t *tecmo16_colorram2;
-extern data16_t *tecmo16_charram;
+extern UINT16 *tecmo16_videoram;
+extern UINT16 *tecmo16_colorram;
+extern UINT16 *tecmo16_videoram2;
+extern UINT16 *tecmo16_colorram2;
+extern UINT16 *tecmo16_charram;
 
 WRITE16_HANDLER( tecmo16_videoram_w );
 WRITE16_HANDLER( tecmo16_colorram_w );
@@ -383,7 +383,7 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	4096,	/* 4096 characters */
@@ -394,7 +394,7 @@ static struct GfxLayout charlayout =
 	32*8	/* every char takes 32 consecutive bytes */
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,	/* 16*16 tiles */
 	8192,	/* 8192 tiles */
@@ -407,7 +407,7 @@ static struct GfxLayout tilelayout =
 	128*8	/* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	8,8,	/* 8*8 sprites */
 	32768,	/* 32768 sprites */
@@ -418,7 +418,7 @@ static struct GfxLayout spritelayout =
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   1*16*16, 16   },
 	{ REGION_GFX2, 0, &tilelayout,   2*16*16, 16*2 },

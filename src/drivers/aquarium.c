@@ -58,10 +58,10 @@ Stephh's notes (based on the game M68000 code and some tests) :
 
 static int aquarium_snd_ack;
 
-data16_t *aquarium_scroll, *aquarium_priority;
-data16_t *aquarium_txt_videoram;
-data16_t *aquarium_mid_videoram;
-data16_t *aquarium_bak_videoram;
+UINT16 *aquarium_scroll, *aquarium_priority;
+UINT16 *aquarium_txt_videoram;
+UINT16 *aquarium_mid_videoram;
+UINT16 *aquarium_bak_videoram;
 
 WRITE16_HANDLER( aquarium_txt_videoram_w );
 WRITE16_HANDLER( aquarium_mid_videoram_w );
@@ -73,7 +73,7 @@ VIDEO_UPDATE(aquarium);
 #if AQUARIUS_HACK
 static MACHINE_INIT( aquarium )
 {
-	data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 	int data = readinputportbytag("FAKE");
 
 	/* Language : 0x0000 = Japanese - Other value = English */
@@ -99,7 +99,7 @@ static WRITE8_HANDLER( aquarium_snd_ack_w )
 
 static WRITE16_HANDLER( aquarium_sound_w )
 {
-//  usrintf_showmessage("sound write %04x",data);
+//  ui_popup("sound write %04x",data);
 
 	soundlatch_w(1,data&0xff);
 	cpunum_set_input_line( 1, INPUT_LINE_NMI, PULSE_LINE );
@@ -108,7 +108,7 @@ static WRITE16_HANDLER( aquarium_sound_w )
 static WRITE8_HANDLER( aquarium_z80_bank_w )
 {
 	int soundbank = ((data & 0x7) + 1) * 0x8000;
-	data8_t *Z80 = (data8_t *)memory_region(REGION_CPU2);
+	UINT8 *Z80 = (UINT8 *)memory_region(REGION_CPU2);
 
 	memory_set_bankptr(1, &Z80[soundbank + 0x10000]);
 }
@@ -281,7 +281,7 @@ INPUT_PORTS_START( aquarium )
 #endif
 INPUT_PORTS_END
 
-static struct GfxLayout char5bpplayout =
+static gfx_layout char5bpplayout =
 {
 	16,16,	/* 16*16 characters */
 	RGN_FRAC(1,2),
@@ -292,7 +292,7 @@ static struct GfxLayout char5bpplayout =
 	128*8	/* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout char_8x8_layout =
+static gfx_layout char_8x8_layout =
 {
 	8,8,	/* 8*8 characters */
 	RGN_FRAC(1,1),
@@ -303,7 +303,7 @@ static struct GfxLayout char_8x8_layout =
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,	/* 16*16 sprites */
 	RGN_FRAC(1,1),
@@ -320,8 +320,8 @@ static DRIVER_INIT( aquarium )
        the roms containing the 1bpp data so we can decode it
        correctly */
 
-	data8_t *DAT2 = memory_region(REGION_GFX1)+0x080000;
-	data8_t *DAT = memory_region(REGION_USER1);
+	UINT8 *DAT2 = memory_region(REGION_GFX1)+0x080000;
+	UINT8 *DAT = memory_region(REGION_USER1);
 	int len = 0x0200000;
 
 	for (len = 0 ; len < 0x020000 ; len ++ )
@@ -356,7 +356,7 @@ static DRIVER_INIT( aquarium )
 }
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX3, 0, &tilelayout,       0x300, 32 },
 	{ REGION_GFX1, 0, &char5bpplayout,   0x400, 32 },

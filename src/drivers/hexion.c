@@ -107,7 +107,7 @@ static WRITE8_HANDLER( coincntr_w )
 	flip_screen_set(data & 0x20);
 
 	/* other bit unknown */
-if ((data & 0xdc) != 0x10) usrintf_showmessage("coincntr %02x",data);
+if ((data & 0xdc) != 0x10) ui_popup("coincntr %02x",data);
 }
 
 
@@ -253,7 +253,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -264,7 +264,7 @@ static struct GfxLayout charlayout =
 	16*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 16 },
 	{ -1 } /* end of array */

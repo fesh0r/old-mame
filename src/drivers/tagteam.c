@@ -192,14 +192,14 @@ INPUT_PORTS_START( tagteam )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 1C_3C ) )PORT_DIPCONDITION(3,0xe0,PORTCOND_NOTEQUALS,0x80) //Mode 1
-	PORT_DIPSETTING(    0x01, DEF_STR( 1C_6C ) )PORT_DIPCONDITION(3,0xe0,PORTCOND_EQUALS,0x80) //Mode 2
+	PORT_DIPSETTING(    0x01, DEF_STR( 1C_3C ) )PORT_CONDITION("DSW2",0xe0,PORTCOND_NOTEQUALS,0x80) //Mode 1
+	PORT_DIPSETTING(    0x01, DEF_STR( 1C_6C ) )PORT_CONDITION("DSW2",0xe0,PORTCOND_EQUALS,0x80) //Mode 2
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )PORT_DIPCONDITION(3,0xe0,PORTCOND_NOTEQUALS,0x80) //Mode 1
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_6C ) )PORT_DIPCONDITION(3,0xe0,PORTCOND_EQUALS,0x80) //Mode 2
+	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )PORT_CONDITION("DSW2",0xe0,PORTCOND_NOTEQUALS,0x80) //Mode 1
+	PORT_DIPSETTING(    0x04, DEF_STR( 1C_6C ) )PORT_CONDITION("DSW2",0xe0,PORTCOND_EQUALS,0x80) //Mode 2
 	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
@@ -235,7 +235,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,    /* 8*8 characters */
 	3072,   /* 3072 characters */
@@ -247,7 +247,7 @@ static struct GfxLayout charlayout =
 };
 
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,  /* 16*16 sprites */
 	768,    /* 768 sprites */
@@ -260,7 +260,7 @@ static struct GfxLayout spritelayout =
 	32*8    /* every sprite takes 32 consecutive bytes */
 };
 
-static struct GfxDecodeInfo tagteam_gfxdecodeinfo[] =
+static gfx_decode tagteam_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0, 4 }, /* chars */
 	{ REGION_GFX1, 0, &spritelayout, 0, 4 }, /* sprites */

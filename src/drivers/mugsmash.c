@@ -43,8 +43,8 @@ behavior we use .
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 
-data16_t *mugsmash_videoram1, *mugsmash_videoram2, *mugs_spriteram;
-data16_t *mugsmash_regs1, *mugsmash_regs2;
+UINT16 *mugsmash_videoram1, *mugsmash_videoram2, *mugs_spriteram;
+UINT16 *mugsmash_regs1, *mugsmash_regs2;
 
 VIDEO_START( mugsmash );
 VIDEO_UPDATE( mugsmash );
@@ -56,7 +56,7 @@ WRITE16_HANDLER( mugsmash_videoram1_w );
 static WRITE16_HANDLER( mugsmash_reg2_w )
 {
 	mugsmash_regs2[offset] = data;
-//  usrintf_showmessage ("Regs2 %04x, %04x, %04x, %04x", mugsmash_regs2[0], mugsmash_regs2[1],mugsmash_regs2[2], mugsmash_regs2[3]);
+//  ui_popup ("Regs2 %04x, %04x, %04x, %04x", mugsmash_regs2[0], mugsmash_regs2[1],mugsmash_regs2[2], mugsmash_regs2[3]);
 
 	switch (offset)
 	{
@@ -388,7 +388,7 @@ INPUT_PORTS_START( mugsmash )
 INPUT_PORTS_END
 #endif
 
-static struct GfxLayout mugsmash_layout =
+static gfx_layout mugsmash_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -400,7 +400,7 @@ static struct GfxLayout mugsmash_layout =
 	16*64
 };
 
-static struct GfxLayout mugsmash2_layout =
+static gfx_layout mugsmash2_layout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -411,7 +411,7 @@ static struct GfxLayout mugsmash2_layout =
 	32*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &mugsmash_layout,   0x00, 16  }, /* sprites */
 	{ REGION_GFX2, 0, &mugsmash2_layout,  0x100, 256  }, /* bg tiles */

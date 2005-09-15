@@ -7,10 +7,10 @@
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-data16_t *zerozone_videoram;
-static data16_t zerozone_tilebank;
+UINT16 *zerozone_videoram;
+static UINT16 zerozone_tilebank;
 
-static struct tilemap *zerozone_tilemap;
+static tilemap *zerozone_tilemap;
 
 WRITE16_HANDLER( zerozone_tilemap_w )
 {
@@ -24,7 +24,7 @@ WRITE16_HANDLER( zerozone_tilemap_w )
 
 WRITE16_HANDLER(zerozone_tilebank_w)
 {
-//  usrintf_showmessage ("Data %04x",data);
+//  ui_popup ("Data %04x",data);
 	zerozone_tilebank = data & 0x7;
 	tilemap_mark_all_tiles_dirty(zerozone_tilemap);
 }

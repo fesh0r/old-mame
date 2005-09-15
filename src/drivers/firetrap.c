@@ -121,7 +121,7 @@ static READ8_HANDLER( firetrap_8751_r )
 static WRITE8_HANDLER( firetrap_8751_w )
 {
 	static int i8751_init_ptr=0;
-	static const data8_t i8751_init_data[]={
+	static const UINT8 i8751_init_data[]={
 		0xf5,0xd5,0xdd,0x21,0x05,0xc1,0x87,0x5f,0x87,0x83,0x5f,0x16,0x00,0xdd,0x19,0xd1,
 		0xf1,0xc9,0xf5,0xd5,0xfd,0x21,0x2f,0xc1,0x87,0x5f,0x16,0x00,0xfd,0x19,0xd1,0xf1,
 		0xc9,0xe3,0xd5,0xc5,0xf5,0xdd,0xe5,0xfd,0xe5,0xe9,0xe1,0xfd,0xe1,0xdd,0xe1,0xf1,
@@ -488,7 +488,7 @@ INPUT_PORTS_START( firetpbl )
 INPUT_PORTS_END
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -498,7 +498,7 @@ static struct GfxLayout charlayout =
 	{ 7*8, 6*8, 5*8, 4*8, 3*8, 2*8, 1*8, 0*8 },
 	8*8
 };
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -510,7 +510,7 @@ static struct GfxLayout tilelayout =
 			7*8, 6*8, 5*8, 4*8, 3*8, 2*8, 1*8, 0*8 },
 	32*8
 };
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -523,7 +523,7 @@ static struct GfxLayout spritelayout =
 	32*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0x00, 16 },	/* colors 0x00-0x3f */
 	{ REGION_GFX2, 0, &tilelayout,   0x80,  4 },	/* colors 0x80-0xbf */

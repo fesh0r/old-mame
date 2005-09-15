@@ -18,7 +18,7 @@
 #ifndef DRIVER_RECURSIVE
 
 /* The "root" driver, defined so we can have &driver_##NAME in macros. */
-struct GameDriver driver_0 =
+game_driver driver_0 =
 {
 	__FILE__,
 	0,
@@ -41,13 +41,13 @@ struct GameDriver driver_0 =
 #define DRIVER_RECURSIVE
 
 /* step 1: declare all external references */
-#define DRIVER(NAME) extern struct GameDriver driver_##NAME;
+#define DRIVER(NAME) extern game_driver driver_##NAME;
 #include "driver.c"
 
 /* step 2: define the drivers[] array */
 #undef DRIVER
 #define DRIVER(NAME) &driver_##NAME,
-const struct GameDriver *drivers[] =
+const game_driver *drivers[] =
 {
 #include "driver.c"
 	0	/* end of array */
@@ -165,6 +165,7 @@ const struct GameDriver *drivers[] =
 	DRIVER( gmgalax )	/* bootleg */
 	DRIVER( pisces )	/* Subelectro */
 	DRIVER( piscesb )	/* bootleg */
+	DRIVER( omni )		/* bootleg */
 	DRIVER( uniwars )	/* (c) Irem */
 	DRIVER( gteikoku )	/* (c) Irem */
 	DRIVER( gteikokb )	/* bootleg */
@@ -230,6 +231,8 @@ const struct GameDriver *drivers[] =
 	DRIVER( racknrol )	/* Status (Senko Kit) */
 	DRIVER( hexpool )	/* Status (Senko Kit) */
 	DRIVER( trvchlng )	/* Senko */
+	DRIVER( luctoday )	/* 1980 Sigma */
+	DRIVER( chewing )	/* ?? unknown */
 
 	/* Has some similarities with Moon Cresta but Board is very different */
 	DRIVER( rockclim )	/* (c)1981 Taito */
@@ -247,6 +250,7 @@ const struct GameDriver *drivers[] =
 	DRIVER( omega )		/* bootleg */
 	DRIVER( ckongs )	/* bootleg */
 	DRIVER( froggers )	/* bootleg */
+	DRIVER( frogf )		/* bootleg */
 	DRIVER( amidars )	/* GX337 (c) 1982 Konami */
 	DRIVER( triplep )	/* (c) 1982 KKI */	/* made by Sanritsu? */
 	DRIVER( knockout )	/* (c) 1982 KKK */
@@ -527,6 +531,7 @@ const struct GameDriver *drivers[] =
 	DRIVER( condor )	/* bootleg */
 	DRIVER( falcon )	/* bootleg */
 	DRIVER( vautour )	/* bootleg (Jeutel) */
+	DRIVER( vautour2 )	/* bootleg */
 	DRIVER( griffon )	/* bootleg (Videotron) */
 	DRIVER( falcona )	/* bootleg */
 	DRIVER( pleiads )	/* (c) 1981 Tehkan */
@@ -728,6 +733,7 @@ const struct GameDriver *drivers[] =
 	DRIVER( sgunnr2j )	/* (c) 1991 (Japan) */
 	DRIVER( cosmogng )	/* (c) 1991 (US) */
 	DRIVER( cosmognj )	/* (c) 1991 (Japan) */
+	DRIVER( bubbletr )	/* (c) 1992 */
 	DRIVER( finalap3 )	/* 92.9  Final Lap 3 */
 	DRIVER( finalp3j )	/* 92.9  Final Lap 3 */
 	DRIVER( luckywld )	/* (c) 1992 */
@@ -1105,6 +1111,7 @@ const struct GameDriver *drivers[] =
 	DRIVER( polaris )	/* PS  (c) 1980 Taito */
 	DRIVER( polarisa )	/* PS  (c) 1980 Taito */
 	DRIVER( ballbomb )	/* TN  (c) 1980 Taito */
+	DRIVER( indianbt )	/* (c) 1980 Taito */
 	DRIVER( m79amb )
 	DRIVER( alieninv )
 	DRIVER( tst_invd )
@@ -1459,6 +1466,7 @@ const struct GameDriver *drivers[] =
 	DRIVER( grchamp )	/* GM  (c) 1981 Taito Corporation */
 	DRIVER( marinedt )	/* ??? (c) 1981 Taito Corporation */
 	DRIVER( changela )	/* ??? (c) 1983 Taito Corporation */
+	DRIVER( jollyjgr )	/* KD  (c) 1982 Taito Corporation */
 	DRIVER( bking )		/* DM  (c) 1982 Taito Corporation */
 	DRIVER( bking2 )	/* AD6 (c) 1983 Taito Corporation */
 	DRIVER( bking3 )	/* A24 (c) 1984 Taito Corporation */
@@ -1648,6 +1656,7 @@ const struct GameDriver *drivers[] =
 	DRIVER( fhawk )		/* B70 (c) 1988 Taito Corporation Japan (World) */
 	DRIVER( fhawkj )	/* B70 (c) 1988 Taito Corporation (Japan) */
 	DRIVER( plotting )	/* B96 (c) 1989 Taito Corporation Japan (World) */
+	DRIVER( plottinu )	/* B96 (c) 1989 Taito Corporation Japan (US) */
 	DRIVER( plottina )	/* B96 (c) 1989 Taito Corporation Japan (World) */
 	DRIVER( champwr )	/* C01 (c) 1989 Taito Corporation Japan (World) */
 	DRIVER( champwru )	/* C01 (c) 1989 Taito America Corporation (US) */
@@ -1669,6 +1678,7 @@ const struct GameDriver *drivers[] =
 
 	/* Taito B-System games */
 	DRIVER( masterw )	/* B72 (c) 1989 Taito Corporation Japan (World) */
+	DRIVER( masterwu )	/* B72 (c) 1989 America Corporation (US) */
 	DRIVER( nastar )	/* B81 (c) 1988 Taito Corporation Japan (World) */
 	DRIVER( nastarw )	/* B81 (c) 1988 Taito America Corporation (US) */
 	DRIVER( rastsag2 )	/* B81 (c) 1988 Taito Corporation (Japan) */
@@ -1932,6 +1942,7 @@ const struct GameDriver *drivers[] =
 	DRIVER( hyperpcb )	/* bootleg */
 	DRIVER( twinkle )	/* (c) 1997 SemiCom */
 	DRIVER( cookbib2 )	/* (c) 1996 SemiCom */
+	DRIVER( cookbib3 )	/* (c) 1997 SemiCom */
 	DRIVER( 3in1semi )	/* (c) 1998 SemiCom */
 	DRIVER( moremore )	/* (c) 1999 SemiCom + Exit */
 	DRIVER( moremorp )	/* (c) 1999 SemiCom + Exit */
@@ -2019,6 +2030,7 @@ V-V                           TP-027
 	/* Cave games */
 	/* Cave was formed in 1994 from the ruins of Toaplan, like Raizing was. */
 	DRIVER( pwrinst2 )	/* (c) 1994 Atlus */
+	DRIVER( pwrins2j )	/* (c) 1994 Atlus */
 	DRIVER( mazinger )	/* (c) 1994 Banpresto (country is in EEPROM) */
 	DRIVER( donpachi )	/* (c) 1995 Atlus/Cave */
 	DRIVER( donpachj )	/* (c) 1995 Atlus/Cave */
@@ -2076,6 +2088,7 @@ V-V                           TP-027
 	DRIVER( maydayb )
 	DRIVER( colony7 )	/* (c) 1981 Taito */
 	DRIVER( colony7a )	/* (c) 1981 Taito */
+	DRIVER( jin )		/* Falcon bootleg/hack */
 	DRIVER( stargate )	/* (c) 1981 */
 	DRIVER( robotron )	/* (c) 1982 */
 	DRIVER( robotryo )	/* (c) 1982 */
@@ -2398,7 +2411,8 @@ V-V                           TP-027
 	DRIVER( 19xxa )		/* 07/12/1995 (c) 1996 (Asia) */
 	DRIVER( 19xxh )		/* 18/12/1995 (c) 1996 (Hispanic) */
 	DRIVER( ddsom )		/* 19/06/1996 (c) 1996 (Euro) */
-	DRIVER( ddsomr1 )	/* 09/02/1996 (c) 1996 (Euro) */
+	DRIVER( ddsomr1 )	/* 23/02/1996 (c) 1996 (Euro) */
+	DRIVER( ddsomr2 )	/* 09/02/1996 (c) 1996 (Euro) */
 	DRIVER( ddsomu )	/* 19/06/1996 (c) 1996 (US) */
 	DRIVER( ddsomur1 )	/* 09/02/1996 (c) 1996 (US) */
 	DRIVER( ddsomjr1 )	/* 06/02/1996 (c) 1996 (Japan) */
@@ -2440,7 +2454,8 @@ V-V                           TP-027
 	DRIVER( vsavj )		/* 19/05/1997 (c) 1997 (Japan) */
 	DRIVER( vsava )		/* 19/05/1997 (c) 1997 (Asia) */
 	DRIVER( vsavh )		/* 19/05/1997 (c) 1997 (Hispanic) */
-	DRIVER( mshvsf )	/* 27/08/1997 (c) 1997 (US) */
+	DRIVER( mshvsf )	/* 25/06/1997 (c) 1997 (Euro) */
+	DRIVER( mshvsfu )	/* 27/08/1997 (c) 1997 (US) */
 	DRIVER( mshvsfu1 )	/* 25/06/1997 (c) 1997 (US) */
 	DRIVER( mshvsfj )	/* 07/07/1997 (c) 1997 (Japan) */
 	DRIVER( mshvsfj1 )	/* 02/07/1997 (c) 1997 (Japan) */
@@ -2726,6 +2741,7 @@ V-V                           TP-027
 	DRIVER( sftm111 )	/* (c) 1995 Capcom/Incredible Technologies */
 	DRIVER( sftmj )		/* (c) 1995 Capcom/Incredible Technologies */
 	DRIVER( shufshot )	/* (c) Strata/Incredible Technologies */
+	DRIVER( sshot139 )	/* (c) Strata/Incredible Technologies */
 	DRIVER( sshot137 )	/* (c) Strata/Incredible Technologies */
 	DRIVER( wcbowldx )	/* (c) 1999 Incredible Technologies */
 
@@ -2846,7 +2862,9 @@ V-V                           TP-027
 	DRIVER( tacscan )	/* (c) */
 	DRIVER( elim2 )		/* (c) 1981 Gremlin */
 	DRIVER( elim2a )	/* (c) 1981 Gremlin */
+	DRIVER( elim2c )	/* (c) 1981 Gremlin */
 	DRIVER( elim4 )		/* (c) 1981 Gremlin */
+	DRIVER( elim4p )	/* (c) 1981 Gremlin */
 	DRIVER( startrek )	/* (c) 1982 */
 
 	/* Sega G-80 raster games */
@@ -2880,9 +2898,9 @@ V-V                           TP-027
 	/* Sega System 1 / System 2 games */
 	DRIVER( starjack )	/* 834-5191 (c) 1983 (S1) */
 	DRIVER( starjacs )	/* (c) 1983 Stern (S1) */
-	DRIVER( regulus )	/* 834-5328 (c) 1983 (S1) */
-	DRIVER( reguluso )	/* 834-5328 (c) 1983 (S1) */
-	DRIVER( regulusu )	/* 834-5328 (c) 1983 (S1) */
+	DRIVER( regulus )	/* 834-5328?(c) 1983 (S1) */
+	DRIVER( reguluso )	/* 834-5328?(c) 1983 (S1) */
+	DRIVER( regulusu )	/* 834-5328?(c) 1983 (S1) */
 	DRIVER( upndown )	/* (c) 1983 (S1) */
 	DRIVER( upndownu )	/* (c) 1983 (S1) */
 	DRIVER( mrviking )	/* 834-5383 (c) 1984 (S1) */
@@ -2954,6 +2972,7 @@ DokiDoki Penguin Land *not confirmed
 	DRIVER( ridleofp )	/* (c) 1986 Sega / Nasco */
 	DRIVER( fantzn2 )
 	DRIVER( opaopa )
+	DRIVER( tetrisse )	/* (c) 1988 */
 
 	/* other Sega 8-bit games */
 	DRIVER( turbo )		/* (c) 1981 Sega */
@@ -3029,6 +3048,7 @@ DokiDoki Penguin Land *not confirmed
 	DRIVER( cottonu )	/* (protected) */
 	DRIVER( cottonj )	/* (protected) */
 	DRIVER( ddux )		/* (c) 1989 (FD1094, decrypted) */
+	DRIVER( ddux1 )		/* (c) 1989 (8751) */
 	DRIVER( dunkshot )	/* (protected) */
 	DRIVER( eswat )		/* (c) 1989 (FD1094, decrypted) */
 	DRIVER( eswatu )	/* (c) 1989 (FD1094, decrypted) */
@@ -3162,6 +3182,7 @@ DokiDoki Penguin Land *not confirmed
 	DRIVER( gforce2 )
 	DRIVER( gforce2j )
 	DRIVER( gloc )
+	DRIVER( r360 )
 	DRIVER( strkfgtr )
 	DRIVER( pdrift )
 	DRIVER( pdriftj )
@@ -3592,7 +3613,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( astrof3 )	/* (c) [1980?] */
 	DRIVER( abattle )	/* Sidam */
 	DRIVER( abattle2 )	/* Sidam */
-	DRIVER( afire )		/* René Pierre */
+	DRIVER( afire )		/* Rene Pierre */
 	DRIVER( acombat )	/* bootleg */
 	DRIVER( tomahawk )	/* (c) [1980?] */
 	DRIVER( tomahaw5 )	/* (c) [1980?] */
@@ -3752,8 +3773,8 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	/* MAO ?? */
 	DRIVER( tumblep )	/* MAP (c) 1991 Data East Corporation (World) */
 	DRIVER( tumblepj )	/* MAP (c) 1991 Data East Corporation (Japan) */
-	DRIVER( tumblepb )	/* bootleg */
-	DRIVER( tumblep2 )	/* bootleg */
+	DRIVER( tumbleb )	/* bootleg */
+	DRIVER( tumbleb2 )	/* bootleg */
 	DRIVER( jumpkids )	/* (c) 1993 Comad */
 	DRIVER( jumppop )	/* (c) 2001 ESD */
 	DRIVER( fncywld )	/* (c) 1996 Unico */
@@ -3854,9 +3875,9 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( pbactio2 )	/* (c) 1985 Tehkan */
 	DRIVER( pbactio3 )	/* (c) 1985 Tehkan */
 	/* 6009 Tank Busters */
-	/* 6011 Pontoon (c) 1985 Tehkan is a gambling game - removed */
-	/* ???? Lovely Poker (c)1985 Tehkan is also a gambling game */
-	DRIVER( lvcards )	/* (c) 1985 Tehkan - not a gambling game? just gambling style? */
+	DRIVER( ponttehk )	/* 6011 - (c) 1985 Tehkan */
+	DRIVER( lvpoker )	/* ???? - (c) 1985 Tehkan */
+	DRIVER( lvcards )	/* (c) 1985 Tehkan */
 	DRIVER( tehkanwc )	/* (c) 1985 Tehkan */
 	DRIVER( gridiron )	/* (c) 1985 Tehkan */
 	DRIVER( teedoff )	/* 6102 - (c) 1986 Tecmo */
@@ -4030,6 +4051,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( aliensj )	/* GX875 (c) 1990 (Japan) */
 	DRIVER( aliensj2 )	/* GX875 (c) 1990 (Japan) */
 	DRIVER( suratk )	/* GX911 (c) 1990 (World) */
+	DRIVER( suratka )	/* GX911 (c) 1990 (Asia) */
 	DRIVER( suratkj )	/* GX911 (c) 1990 (Japan) */
 	DRIVER( parodius )	/* GX955 (c) 1990 (World) */
 	DRIVER( parodisj )	/* GX955 (c) 1990 (Japan) */
@@ -4122,6 +4144,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( ssrdrebd )	/* GX064 (c) 1991 (World) */
 	DRIVER( ssrdrebc )	/* GX064 (c) 1991 (World) */
 	DRIVER( ssrdruda )	/* GX064 (c) 1991 (US) */
+	DRIVER( ssrdreaa )	/* GX064 (c) 1991 (US) */
 	DRIVER( ssrdruac )	/* GX064 (c) 1991 (US) */
 	DRIVER( ssrdrubc )	/* GX064 (c) 1991 (US) */
 	DRIVER( ssrdrabd )	/* GX064 (c) 1991 (Asia) */
@@ -4215,6 +4238,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 
 	/* GX Type 3 */
 	DRIVER( soccerss )	/* GX427 */
+	DRIVER( soccersj )	/* GX427 */
 	DRIVER( soccersa )	/* GX427 */
 
 	/* GX Type 4 */
@@ -4244,6 +4268,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 
 	/* PowerPC based Konami games */
 	DRIVER( gticlub )	/* GX688 (c)1996 */
+	DRIVER( gticlubj )	/* GX688 (c)1996 */
 	DRIVER( gradius4 )	/* GX837 (c)1999 */
 	DRIVER( sscope )	/* GX830 (c)1999 */
 	DRIVER( sscope2 )	/* GX931 (c)2000 */
@@ -4282,6 +4307,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( starfir2 )	/* (c) 1979 Exidy */
 	DRIVER( victory )	/* (c) 1982 */
 	DRIVER( victorba )	/* (c) 1982 */
+	DRIVER( topgunnr )	/* (c) 1986 */
 
 	/* Exidy 440 games */
 	DRIVER( crossbow )	/* (c) 1983 */
@@ -4792,6 +4818,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( powj )		/* A7008 'DG' (c) 1988 */
 	DRIVER( searchar )	/* A8007 'BH' (c) 1989 */
 	DRIVER( sercharu )	/* A8007 'BH' (c) 1989 */
+	DRIVER( sercharj )	/* A8007 'BH' (c) 1989 */
 	DRIVER( streetsm )	/* A8007 'S2' (c) 1989 */
 	DRIVER( streets1 )	/* A7008 'S2' (c) 1989 */
 	DRIVER( streetsw )	/*            (c) 1989 */
@@ -5108,7 +5135,9 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( saiyugou )	/* TA-0023 (c) 1988 (Japan) */
 	DRIVER( saiyugb1 )	/* bootleg */
 	DRIVER( saiyugb2 )	/* bootleg */
-	DRIVER( wwfsstar )	/* TA-0024 (c) 1989 (US) */
+	DRIVER( wwfsstar )	/* TA-0024 (c) 1989 (Europe) */
+	DRIVER( wwfsstau )	/* TA-0024 (c) 1989 (US) */
+	DRIVER( wwfsstaj )	/* TA-0024 (c) 1989 (Japan) */
 	DRIVER( vball )		/* TA-0025 (c) 1988 */
 	DRIVER( vball2pj )	/* TA-0025 (c) 1988 (Japan) */
 	DRIVER( ddragon2 )	/* TA-0026 (c) 1988 (World) */
@@ -5685,6 +5714,8 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( s1945iii )	/* (c) 1999 */
 	DRIVER( dragnblz )	/* (c) 2000 */
 	DRIVER( gnbarich )	/* (c) 2001 */
+	/* tgm2 (c) 2000 -- removed at Arika's request */
+	/* tgm2p (c) 2000 -- removed at Arika's request */
 	DRIVER( hotgmck )	/* (c) 1997 */
 	DRIVER( hgkairak )	/* (c) 1998 */
 	DRIVER( hotgmck3 )	/* (c) 1999 */
@@ -5737,6 +5768,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( paintlad )	/* (c) 1992 - ver 1.3 */
 	DRIVER( roldfrog )	/* not a gaelco game but based on splash code */
 	DRIVER( roldfrga )	/* not a gaelco game but based on splash code */
+	DRIVER( rebus )		/* not a gaelco game but on similar hw to splash */
 	DRIVER( funystrp )	/* not a gaelco game but on similar hw to splash */
 	DRIVER( thoop )		/* (c) 1992 - Ref 922804/1 */
 	DRIVER( squash )	/* (c) 1992 - Ref 922804/2 */
@@ -5800,6 +5832,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( bloodwar )
 	DRIVER( bonkadv )
 	DRIVER( gtmr )		/* (c) 1994 Kaneko */
+	DRIVER( gtmra )		/* (c) 1994 Kaneko */
 	DRIVER( gtmre )		/* (c) 1994 Kaneko */
 	DRIVER( gtmrusa )	/* (c) 1994 Kaneko (US) */
 	DRIVER( gtmr2 )		/* (c) 1995 Kaneko */
@@ -6062,9 +6095,12 @@ Other Sun games
 	DRIVER( sslama )	/* (c) 1993 - hack of Namco's Super World Court */
 	DRIVER( bigtwin )	/* (c) 1995 */
 	DRIVER( wbeachvl )	/* (c) 1995 */
+	DRIVER( wbeachv2 )	/* (c) 1995 */
 	DRIVER( excelsr )	/* (c) 1995 */
 	DRIVER( hotmind )	/* (c) 1995 */
 	DRIVER( drtomy )	/* (c) 1993 no copyright message (1993 on pcb), some code taken from 'Big Karnak' */
+	DRIVER( sderby )	/* (c) 1996 */
+	DRIVER( pmroulet )
 
 	/* Pacific Novelty games */
 	DRIVER( sharkatt )	/* (c) [1980] */
@@ -6128,6 +6164,7 @@ Other Sun games
 	DRIVER( cannball )	/* (c) 1995 Yun Sung / Soft Visio */
 	DRIVER( magix )		/* (c) 1995 Yun Sung */
 	DRIVER( magicbub )	/* (c) Yun Sung */
+	DRIVER( magicbua )	/* (c) Yun Sung */
 	DRIVER( shocking )	/* (c) 1997 Yun Sung */
 	DRIVER( nmg5 )		/* (c) 1998 Yun Sung */
 	DRIVER( searchey )	/* (c) 1999 Yun Sung */
@@ -6201,6 +6238,7 @@ Other Sun games
 	DRIVER( mmpanic )	/* "70" 1992 Nakanihon/Taito */
 	DRIVER( quizchq )	/* "73" (c) 1993 Nakanihon */
 	DRIVER( quizchql )	/* "73" (c) 1993 Laxan */
+	DRIVER( funkyfig )	/* "74" (c) 1993 Nakanihon + East Technology */
 	DRIVER( animaljr )	/* "75" 1993 Nakanihon/Taito */
 	DRIVER( quiz365 )	/* "78" (c) 1994 Nakanihon */
 	DRIVER( quiz365t )	/* "78" (c) 1994 Nakanihon (Taiwan) */
@@ -6231,6 +6269,10 @@ Other Sun games
 	DRIVER( spinner )	/* bootleg */
 
 	/* IGS games ( www.igs.com.tw ) */
+	DRIVER( goldstar )	/* (c) 198? IGS */
+	DRIVER( goldstbl )	/* (c) 198? IGS */
+	DRIVER( csk227it )	/* (c) 198? IGS */
+	DRIVER( csk234it )	/* (c) 198? IGS */
 	DRIVER( iqblock )	/* (c) 1993 */
 	DRIVER( grndtour )	/* (c) 1993 */
 	DRIVER( cabaret )
@@ -6252,6 +6294,7 @@ Other Sun games
 	DRIVER( orld105k )	/* (c) 1997 */
 	DRIVER( drgw2 )		/* (c) 1997 */
 	DRIVER( drgw2c )	/* (c) 1997 */
+	DRIVER( drgw2j )	/* (c) 1997 */
 	DRIVER( drgw3 )		/* (c) 1998 */
 	DRIVER( drgw3k )	/* (c) 1998 */
 	DRIVER( kov )		/* (c) 1999 */
@@ -6401,6 +6444,7 @@ Other Sun games
 	DRIVER( ar_ninj )
 	DRIVER( ar_rdwr )
 	DRIVER( ar_sdwr )
+	DRIVER( ar_socc )
 	DRIVER( ar_spot )
 	DRIVER( ar_sprg )
 	DRIVER( ar_xeon )
@@ -6467,6 +6511,7 @@ Other Sun games
 	DRIVER( plctr13b )  /* (c) 1996 P&P Marketing */
 	DRIVER( sshooter )	/* (c) 1998 P&P Marketing */
 	DRIVER( sshoot12 )	/* (c) 1998 P&P Marketing */
+	DRIVER( sshoot11 )	/* (c) 1998 P&P Marketing */
 	DRIVER( pass )		/* (c) 1992 Oksan */
 	DRIVER( news )		/* "Virus"??? ((c) 1993 Poby in ROM VIRUS.4) */
 	DRIVER( taxidrvr )	/* [1984 Graphic Techno] */
@@ -6581,6 +6626,7 @@ Other Sun games
 	DRIVER( crospang )
 	DRIVER( funybubl )	/* Comad Industries */
 	DRIVER( dcheese )	/* (c) 1993 HAR */
+	DRIVER( lottof2 )	/* (c) 1993 HAR */
 	DRIVER( f15se )		/* Microprose */
 	DRIVER( botss )		/* Microprose */
 	DRIVER( stankatk )	/* Microprose */
@@ -6594,18 +6640,19 @@ Other Sun games
 	DRIVER( yujan )		/* (C) 1999 Yubis */
 	DRIVER( onetwo )	/* (c) 1997 Barko */
 	DRIVER( 1945kiii )	/* (c) 2000 Oriental */
-	DRIVER( pchmp95 )	/* (c) 1992 Sega / Vic Tokai / Excellent Systems */
-	DRIVER( pchmp95v )	/* (c) 1995 Veltmeijer Automaten */
+	DRIVER( witch )		/* (c) 1992 Sega / Vic Tokai / Excellent Systems */
+	DRIVER( pbchmp95 )	/* (c) 1995 Veltmeijer Automaten */
 	DRIVER( bmcbowl )	/* (c) 1994 BMC */
+	DRIVER( pitboss )	/* (c) 1983 Merit */
+	DRIVER( trvwhiz )	/* (c) 1985 Merit */
+	DRIVER( trvwhza )	/* (c) 1985 Merit */
+	DRIVER( trvwhzii )	/* (c) 1985 Merit */
+	DRIVER( tictac )	/* (c) 1985 Merit */
 	DRIVER( phrcraze )	/* (c) 1986 Merit */
-	DRIVER( tictac )	/* (c) 198? Merit */
-	DRIVER( pitboss )	/* (c) 198? Merit */
-	DRIVER( trvwhiz )	/* (c) 198? Merit */
-	DRIVER( trvwhzii )	/* (c) 198? Merit */
 	DRIVER( suprgolf )	/* (c) 19?? Nasco */
 	DRIVER( hotblock )	/* (c) 1993 Nics? / Nix? */
 	DRIVER( pntnpuzl )	/* Century? */
-	DRIVER( trucocl )	/* (c) 1991 Caloi Miky SRL */
+	DRIVER( trucocl )	/* (c) 1991 Miky SRL */
 	DRIVER( ertictac )	/* (c) 1992 Sisteme */
 	DRIVER( ssfindo )	/* (c) 1999 Icarus */
 	DRIVER( monzagp )
@@ -6626,5 +6673,31 @@ Other Sun games
 	DRIVER( dreamwld )	/* (c) 2000 SemiCom */
 	DRIVER( cybertnk )	/* (c) 1990 Coreland */
 	DRIVER( pkscram )	/* (c) 1993 Cosmo Electronics Corporation */
+	DRIVER( jollycrd )	/* (c) 1985 TAB-Austria */
+	DRIVER( jollypkr )	/* (c) 1993 Soft Design */
+	DRIVER( bonuscrd )	/* (c) 1986 Fun World */
+	DRIVER( cuoreuno )	/* (c) 1997 bootleg? */
+	DRIVER( elephfam )	/* (c) 1997 bootleg? */
+	DRIVER( royalcrd )	/* (c) 1997 TAB-Austria */
+	DRIVER( poker4 )	/* (c) 1986 Fun World */
+	DRIVER( poker8 )	/* (c) 1986 Fun World */
+	DRIVER( igpoker )	/* (c) 1990 Inter Games */
+	DRIVER( magiccrd )	/* (c) 1996 Impera */
+	DRIVER( vroulet )	/* (c) 1989 World Game */
+	DRIVER( rcasino )	/* (c) 1984 Dyna Electronics */
+	DRIVER( cmv801 )	/* (c) 198? Corsica */
+	DRIVER( cm2v841 )	/* (c) 198? Dyna Electronics */
+	DRIVER( cm2841a )	/* (c) 198? Dyna Electronics */
+	DRIVER( ampoker2 )	/* (c) 198? Novomatic */
+	DRIVER( ampokr2a )	/* (c) 198? Novomatic */
+	DRIVER( ampokr2b )	/* (c) 198? Novomatic */
+	DRIVER( ampokr2c )	/* (c) 198? Novomatic */
+	DRIVER( lucky8 )	/* (c) 1989 Falcon */
+	DRIVER( starspnr )	/* (c) 1982? ACE */
+	DRIVER( vp906iii )	/* (c) 1985 Casino Electronics Inc. */
+	DRIVER( attckufo )	/* (c) 1980 Ryoto Electric Co. */
+	DRIVER( fortecar )
+	DRIVER( jackpool )	/* (c) 1997 Electronic Projects */
+	DRIVER( murogem )	/* ??? */
 
 #endif	/* DRIVER_RECURSIVE */

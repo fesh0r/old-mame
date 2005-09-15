@@ -46,7 +46,7 @@ Caveman Ninja Issues:
 
 static int cninja_scanline, cninja_irq_mask;
 static void *raster_irq_timer;
-static data16_t *cninja_ram;
+static UINT16 *cninja_ram;
 
 /**********************************************************************************/
 
@@ -747,7 +747,7 @@ INPUT_PORTS_END
 
 /**********************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -758,7 +758,7 @@ static struct GfxLayout charlayout =
 	16*8	/* every char takes 8 consecutive bytes */
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -771,7 +771,7 @@ static struct GfxLayout spritelayout =
 	128*8
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -784,7 +784,7 @@ static struct GfxLayout tilelayout =
 	64*8
 };
 
-static struct GfxLayout tilelayout_8bpp =
+static gfx_layout tilelayout_8bpp =
 {
 	16,16,
 	4096,
@@ -797,7 +797,7 @@ static struct GfxLayout tilelayout_8bpp =
 	64*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,    0, 32 },	/* Characters 8x8 */
 	{ REGION_GFX2, 0, &tilelayout,    0, 32 },	/* Tiles 16x16 */
@@ -806,7 +806,7 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo_robocop2[] =
+static gfx_decode gfxdecodeinfo_robocop2[] =
 {
 	{ REGION_GFX1, 0, &charlayout,    0, 32 },	/* Characters 8x8 */
 	{ REGION_GFX2, 0, &tilelayout,    0, 32 },	/* Tiles 16x16 */
@@ -816,7 +816,7 @@ static struct GfxDecodeInfo gfxdecodeinfo_robocop2[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo_mutantf[] =
+static gfx_decode gfxdecodeinfo_mutantf[] =
 {
 	{ REGION_GFX1, 0, &charlayout,          0, 64 },	/* Characters 8x8 */
 	{ REGION_GFX2, 0, &tilelayout,          0, 64 },	/* Tiles 16x16 */
@@ -1730,14 +1730,14 @@ ROM_END
 
 static void cninja_patch(void)
 {
-	data16_t *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 	int i;
 
 	for (i=0; i<0x80000/2; i++) {
 		int aword=RAM[i];
 
 		if (aword==0x66ff || aword==0x67ff) {
-			data16_t doublecheck=RAM[i-4];
+			UINT16 doublecheck=RAM[i-4];
 
 			/* Cmpi + btst controlling opcodes */
 			if (doublecheck==0xc39 || doublecheck==0x839) {
@@ -1766,8 +1766,8 @@ static DRIVER_INIT( stoneage )
 
 static DRIVER_INIT( mutantf )
 {
-	const data8_t *src = memory_region(REGION_GFX2);
-	data8_t *dst = memory_region(REGION_GFX1);
+	const UINT8 *src = memory_region(REGION_GFX2);
+	UINT8 *dst = memory_region(REGION_GFX1);
 
 	/* The 16x16 graphic has some 8x8 chars in it - decode them in GFX1 */
 	memcpy(dst+0x50000,dst+0x10000,0x10000);

@@ -82,15 +82,15 @@ Notes:
 #include "machine/segacrpt.h"
 #include "sound/ay8910.h"
 
-static data8_t *calorie_fg;
-static data8_t  calorie_bg;
-static data8_t *calorie_sprites;
+static UINT8 *calorie_fg;
+static UINT8  calorie_bg;
+static UINT8 *calorie_sprites;
 
-static struct tilemap *bg_tilemap,*fg_tilemap;
+static tilemap *bg_tilemap,*fg_tilemap;
 
 static void get_bg_tile_info(int tile_index)
 {
-	data8_t *src = memory_region(REGION_USER1);
+	UINT8 *src = memory_region(REGION_USER1);
 	int bg_base = (calorie_bg & 0x0f) * 0x200;
 	int code  = src[bg_base + tile_index] | (((src[bg_base + tile_index + 0x100]) & 0x10) << 4);
 	int color = src[bg_base + tile_index + 0x100] & 0x0f;
@@ -195,14 +195,14 @@ static WRITE8_HANDLER( calorie_flipscreen_w )
 
 static READ8_HANDLER( calorie_soundlatch_r )
 {
-	data8_t latch = soundlatch_r(0);
+	UINT8 latch = soundlatch_r(0);
 	soundlatch_clear_w(0,0);
 	return latch;
 }
 
 static WRITE8_HANDLER( bogus_w )
 {
-	usrintf_showmessage("written to 3rd sound chip: data = %02X port = %02X", data, offset);
+	ui_popup("written to 3rd sound chip: data = %02X port = %02X", data, offset);
 }
 
 static ADDRESS_MAP_START( calorie_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -320,7 +320,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout tiles8x8_layout =
+static gfx_layout tiles8x8_layout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -331,7 +331,7 @@ static struct GfxLayout tiles8x8_layout =
 	8*8
 };
 
-static struct GfxLayout tiles16x16_layout =
+static gfx_layout tiles16x16_layout =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -343,7 +343,7 @@ static struct GfxLayout tiles16x16_layout =
 	8*32
 };
 
-static struct GfxLayout tiles32x32_layout =
+static gfx_layout tiles32x32_layout =
 {
 	32,32,
 	RGN_FRAC(1,3),
@@ -360,7 +360,7 @@ static struct GfxLayout tiles32x32_layout =
 	128*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &tiles8x8_layout,   0, 16 },
 	{ REGION_GFX3, 0, &tiles16x16_layout, 0, 16 },

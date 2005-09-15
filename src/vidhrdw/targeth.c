@@ -10,11 +10,11 @@
 #include "tilemap.h"
 #include "vidhrdw/generic.h"
 
-data16_t *targeth_spriteram;
-data16_t *targeth_vregs;
-data16_t *targeth_videoram;
+UINT16 *targeth_spriteram;
+UINT16 *targeth_vregs;
+UINT16 *targeth_videoram;
 
-static struct tilemap *pant[2];
+static tilemap *pant[2];
 
 
 /***************************************************************************
@@ -114,10 +114,10 @@ VIDEO_START( targeth )
       3  | xx------ -------- | not used?
 */
 
-static void targeth_draw_sprites(struct mame_bitmap *bitmap, const struct rectangle *cliprect)
+static void targeth_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int i;
-	const struct GfxElement *gfx = Machine->gfx[0];
+	const gfx_element *gfx = Machine->gfx[0];
 
 	for (i = 3; i < (0x1000 - 6)/2; i += 4){
 		int sx = targeth_spriteram[i+2] & 0x03ff;

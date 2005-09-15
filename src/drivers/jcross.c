@@ -23,7 +23,7 @@ Could be bad dump ('final' romset is made of two sets marked as 'bad' )
 #include "sound/ay8910.h"
 #include "sound/namco.h"
 
-data8_t *jcr_textram;
+UINT8 *jcr_textram;
 
 WRITE8_HANDLER( snkwave_w );
 
@@ -40,7 +40,7 @@ WRITE8_HANDLER( jcross_palettebank_w );
 
 static int sound_cpu_busy=0;
 
-data8_t *jcr_sharedram;
+UINT8 *jcr_sharedram;
 static READ8_HANDLER(sharedram_r){	return jcr_sharedram[offset];}
 static WRITE8_HANDLER(sharedram_w){	jcr_sharedram[offset]=data;}
 
@@ -237,7 +237,7 @@ INPUT_PORTS_END
 **
 ***************************************************************************/
 
-static struct GfxLayout sprite_layout =
+static gfx_layout sprite_layout =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -253,7 +253,7 @@ static struct GfxLayout sprite_layout =
 	256
 };
 
-static struct GfxLayout tile_layout =
+static gfx_layout tile_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -264,7 +264,7 @@ static struct GfxLayout tile_layout =
 	256
 };
 
-static struct GfxDecodeInfo jcross_gfxdecodeinfo[] =
+static gfx_decode jcross_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tile_layout,	0x080, 8  },
 	{ REGION_GFX2, 0, &tile_layout,	0x110, 1  },

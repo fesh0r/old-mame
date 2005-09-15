@@ -165,7 +165,7 @@ static const UINT8 Div31[POLY5_SIZE] =
 /*                                                                           */
 /*****************************************************************************/
 
-void tia_write(void *_chip, offs_t offset, data8_t data)
+void tia_write(void *_chip, offs_t offset, UINT8 data)
 {
 	struct tia *chip = _chip;
     UINT16 new_val = 0;
@@ -490,7 +490,7 @@ static void poly_init(UINT8 *poly, int size, int left, int right, int add)
 /* Author:  Ron Fries                                                        */
 /* Date:    September 10, 1996                                               */
 /*                                                                           */
-/* Inputs:  struct MachineSound *msound                                      */
+/* Inputs:  sound_config *msound                                      */
 /*          is a pointer to the struct TIAInterface parameters               */
 /*                                                                           */
 /* Outputs: returns zero on success                                          */

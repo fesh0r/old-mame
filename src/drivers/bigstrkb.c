@@ -28,9 +28,9 @@ lev 7 : 0x7c : 0000 05be - xxx
 
 */
 
-data16_t *bsb_videoram, *bsb_videoram2, *bsb_videoram3;
-data16_t *bsb_vidreg1, *bsb_vidreg2;
-data16_t *bigstrkb_spriteram;
+UINT16 *bsb_videoram, *bsb_videoram2, *bsb_videoram3;
+UINT16 *bsb_vidreg1, *bsb_vidreg2;
+UINT16 *bigstrkb_spriteram;
 
 WRITE16_HANDLER( bsb_videoram_w );
 WRITE16_HANDLER( bsb_videoram2_w );
@@ -188,7 +188,7 @@ INPUT_PORTS_END
 
 /* GFX Decode */
 
-static struct GfxLayout bigstrkb_charlayout =
+static gfx_layout bigstrkb_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -199,7 +199,7 @@ static struct GfxLayout bigstrkb_charlayout =
 	8*8
 };
 
-static struct GfxLayout bigstrkb_char16layout =
+static gfx_layout bigstrkb_char16layout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -214,7 +214,7 @@ static struct GfxLayout bigstrkb_char16layout =
 
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &bigstrkb_charlayout,   0x200, 16 },
 	{ REGION_GFX2, 0, &bigstrkb_char16layout,   0, 32 },

@@ -68,7 +68,7 @@ This was pointed out by Bart Puype
 
 /* Variables defined in vidhrdw */
 
-extern data32_t *psikyo_vram_0, *psikyo_vram_1, *psikyo_vregs;
+extern UINT32 *psikyo_vram_0, *psikyo_vram_1, *psikyo_vregs;
 extern int psikyo_ka302c_banking;
 
 /* Functions defined in vidhrdw */
@@ -313,7 +313,7 @@ READ32_HANDLER( s1945_input_r )
 
 static WRITE32_HANDLER( paletteram32_xRRRRRGGGGGBBBBB_dword_w )
 {
-	paletteram16 = (data16_t *)paletteram32;
+	paletteram16 = (UINT16 *)paletteram32;
 	if (ACCESSING_MSW32)
 		paletteram16_xRRRRRGGGGGBBBBB_word_w(offset*2, data >> 16, mem_mask >> 16);
 	if (ACCESSING_LSW32)
@@ -1498,7 +1498,7 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static struct GfxLayout layout_16x16x4 =
+static gfx_layout layout_16x16x4 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1511,7 +1511,7 @@ static struct GfxLayout layout_16x16x4 =
 	16*16*4
 };
 
-static struct GfxDecodeInfo psikyo_gfxdecodeinfo[] =
+static gfx_decode psikyo_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_16x16x4, 0x000, 0x20 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_16x16x4, 0x800, 0x48 }, // [1] Layer 0 + 1

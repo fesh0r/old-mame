@@ -315,10 +315,10 @@ TODO:
 #include "driver.h"
 #include "sound/2610intf.h"
 
-data16_t *welltris_spriteram;
+UINT16 *welltris_spriteram;
 size_t welltris_spriteram_size;
-data16_t *welltris_pixelram;
-data16_t *welltris_charvideoram;
+UINT16 *welltris_pixelram;
+UINT16 *welltris_charvideoram;
 
 READ16_HANDLER( welltris_spriteram_r );
 WRITE16_HANDLER( welltris_spriteram_w );
@@ -333,7 +333,7 @@ VIDEO_UPDATE( welltris );
 
 static WRITE8_HANDLER( welltris_sh_bankswitch_w )
 {
-	data8_t *rom = memory_region(REGION_CPU2) + 0x10000;
+	UINT8 *rom = memory_region(REGION_CPU2) + 0x10000;
 
 	memory_set_bankptr(1,rom + (data & 0x03) * 0x8000);
 }
@@ -684,7 +684,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout welltris_charlayout =
+static gfx_layout welltris_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -695,7 +695,7 @@ static struct GfxLayout welltris_charlayout =
 	32*8
 };
 
-static struct GfxLayout welltris_spritelayout =
+static gfx_layout welltris_spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -708,7 +708,7 @@ static struct GfxLayout welltris_spritelayout =
 	64*8
 };
 
-static struct GfxDecodeInfo welltris_gfxdecodeinfo[] =
+static gfx_decode welltris_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &welltris_charlayout,   16* 0, 4*16 },
 	{ REGION_GFX2, 0, &welltris_spritelayout, 16*96, 2*16 },
@@ -735,7 +735,7 @@ static void init_welltris(void)
 {
 #if WELLTRIS_4P_HACK
 	/* A Hack which shows 4 player mode in code which is disabled */
-	data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 	RAM[0xB91C/2] = 0x4e71;
 	RAM[0xB91E/2] = 0x4e71;
 #endif
@@ -795,8 +795,8 @@ MACHINE_DRIVER_END
 
 ROM_START( welltris )
 	ROM_REGION( 0x180000, REGION_CPU1, 0 )	/* 68000 code */
-	ROM_LOAD16_BYTE( "j2u.8", 0x000000, 0x20000, CRC(00a382a4) SHA1(b6a7e1b360e3cefc582983c8dff6aa28a7c77124) )
-	ROM_LOAD16_BYTE( "j1u.7", 0x000001, 0x20000, CRC(abcb008b) SHA1(c71ed431cbd8aea0b4396029203a7b735a8fdac3) )
+	ROM_LOAD16_BYTE( "j2u.8", 0x000000, 0x20000, BAD_DUMP CRC(00a382a4) SHA1(b6a7e1b360e3cefc582983c8dff6aa28a7c77124) )
+	ROM_LOAD16_BYTE( "j1u.7", 0x000001, 0x20000, BAD_DUMP CRC(abcb008b) SHA1(c71ed431cbd8aea0b4396029203a7b735a8fdac3) )
 	/* Space */
 	ROM_LOAD16_BYTE( "lh532j10.10", 0x100000, 0x40000, CRC(1187c665) SHA1(c6c55016e46805694348b386e521a3ef1a443621) )
 	ROM_LOAD16_BYTE( "lh532j11.9",  0x100001, 0x40000, CRC(18eda9e5) SHA1(c01d1dc6bfde29797918490947c89440b58d5372) )

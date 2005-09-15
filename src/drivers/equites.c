@@ -122,10 +122,10 @@ Other unemulated Alpha Denshi and SNK games that may use similar hardware:
 -----------------------------------------------------------
 Maker        Year Genre Name             Japanese Name
 -----------------------------------------------------------
-Alpha Denshi 1984 (SPT) Champion Croquet チャンピオンクロッケー
-Alpha Denshi 1985 (???) Tune Pit(?)      チェーンピット
-Alpha Denshi 1985 (MAJ) Perfect Janputer パーフェクトジャンピューター
-SNK/Eastern  1985 (ACT) Gekisoh          激走
+Alpha Denshi 1984 (SPT) Champion Croquet ?`?????s?I???N???b?P?[
+Alpha Denshi 1985 (???) Tune Pit(?)      ?`?F?[???s?b?g
+Alpha Denshi 1985 (MAJ) Perfect Janputer ?p?[?t?F?N?g?W?????s???[?^?[
+SNK/Eastern  1985 (ACT) Gekisoh          ????
 
 *******************************************************************************/
 // Directives
@@ -175,7 +175,7 @@ extern WRITE8_HANDLER(equites_8910data_w);
 extern WRITE8_HANDLER(equites_dac0_w);
 extern WRITE8_HANDLER(equites_dac1_w);
 
-extern data16_t *equites_8404ram;
+extern UINT16 *equites_8404ram;
 extern struct MSM5232interface equites_5232intf;
 extern struct AY8910interface equites_8910intf;
 
@@ -225,7 +225,7 @@ extern WRITE16_HANDLER(splndrbt_selchar0_w);
 extern WRITE16_HANDLER(splndrbt_selchar1_w);
 extern WRITE16_HANDLER(splndrbt_scrollram_w);
 extern WRITE16_HANDLER(splndrbt_bgcolor_w);
-extern data16_t *splndrbt_scrollx, *splndrbt_scrolly;
+extern UINT16 *splndrbt_scrollx, *splndrbt_scrolly;
 
 /******************************************************************************/
 // Locals
@@ -237,7 +237,7 @@ static int disablejoyport2 = 0;
 // Exports
 
 // Common
-data16_t *equites_workram;
+UINT16 *equites_workram;
 int equites_id;
 
 // Equites Hardware
@@ -319,7 +319,7 @@ static WRITE16_HANDLER(log16_w)
 {
 	int pc = activecpu_get_pc();
 
-	usrintf_showmessage("%04x: %04x(w)\n", pc, data);
+	ui_popup("%04x: %04x(w)\n", pc, data);
 	logerror("%04x: %04x(w)\n", pc, data);
 }
 #endif
@@ -599,7 +599,7 @@ INPUT_PORTS_END
 // Graphics Layouts
 
 // Equites Hardware
-static struct GfxLayout eq_charlayout =
+static gfx_layout eq_charlayout =
 {
 	8, 8,
 	256,
@@ -610,7 +610,7 @@ static struct GfxLayout eq_charlayout =
 	16*8
 };
 
-static struct GfxLayout eq_tilelayout =
+static gfx_layout eq_tilelayout =
 {
 	16, 16,
 	256,
@@ -626,7 +626,7 @@ static struct GfxLayout eq_tilelayout =
 	64*8
 };
 
-static struct GfxLayout eq_spritelayout =
+static gfx_layout eq_spritelayout =
 {
 	16, 14,
 	256,
@@ -642,7 +642,7 @@ static struct GfxLayout eq_spritelayout =
 	64*8
 };
 
-static struct GfxDecodeInfo equites_gfxdecodeinfo[] =
+static gfx_decode equites_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &eq_charlayout,     0, 32 }, // chars
 	{ REGION_GFX2, 0, &eq_tilelayout,   128, 16 }, // tile set0
@@ -653,7 +653,7 @@ static struct GfxDecodeInfo equites_gfxdecodeinfo[] =
 };
 
 // Splendor Blast Hardware
-static struct GfxLayout sp_charlayout =
+static gfx_layout sp_charlayout =
 {
 	8, 8,
 	512,
@@ -664,7 +664,7 @@ static struct GfxLayout sp_charlayout =
 	16*8
 };
 
-static struct GfxLayout sp_tilelayout =
+static gfx_layout sp_tilelayout =
 {
 	16,16,
 	256,
@@ -680,7 +680,7 @@ static struct GfxLayout sp_tilelayout =
 	64*8
 };
 
-static struct GfxLayout sp_spritelayout =
+static gfx_layout sp_spritelayout =
 {
 	32,32,
 	128,
@@ -701,7 +701,7 @@ static struct GfxLayout sp_spritelayout =
 	8*32*8
 };
 
-static struct GfxDecodeInfo splndrbt_gfxdecodeinfo[] =
+static gfx_decode splndrbt_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &sp_charlayout,     0, 256/4 }, // 512 4-color chars
 	{ REGION_GFX2, 0, &sp_tilelayout,   256, 256/4 }, // 256 4-color tiles

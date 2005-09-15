@@ -47,11 +47,11 @@ static void *rockn_timer_l4;
 
 /* Variables defined in vidhrdw: */
 
-extern data16_t *tetrisp2_vram_bg, *tetrisp2_scroll_bg;
-extern data16_t *tetrisp2_vram_fg, *tetrisp2_scroll_fg;
-extern data16_t *tetrisp2_vram_rot, *tetrisp2_rotregs;
+extern UINT16 *tetrisp2_vram_bg, *tetrisp2_scroll_bg;
+extern UINT16 *tetrisp2_vram_fg, *tetrisp2_scroll_fg;
+extern UINT16 *tetrisp2_vram_rot, *tetrisp2_rotregs;
 
-extern data16_t *tetrisp2_priority;
+extern UINT16 *tetrisp2_priority;
 
 /* Functions defined in vidhrdw: */
 
@@ -138,7 +138,7 @@ static WRITE16_HANDLER( rockn_adpcmbank_w )
 
 	if (bank > 7)
 	{
-		usrintf_showmessage("!!!!! ADPCM BANK OVER:%01X (%04X) !!!!!", bank, data);
+		ui_popup("!!!!! ADPCM BANK OVER:%01X (%04X) !!!!!", bank, data);
 		bank = 0;
 	}
 
@@ -179,7 +179,7 @@ static READ16_HANDLER( tetrisp2_ip_1_word_r )
 
 ***************************************************************************/
 
-static data16_t *tetrisp2_nvram;
+static UINT16 *tetrisp2_nvram;
 static size_t tetrisp2_nvram_size;
 
 NVRAM_HANDLER( tetrisp2 )
@@ -609,7 +609,7 @@ INPUT_PORTS_END
 
 
 /* 8x8x8 tiles */
-static struct GfxLayout layout_8x8x8 =
+static gfx_layout layout_8x8x8 =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -621,7 +621,7 @@ static struct GfxLayout layout_8x8x8 =
 };
 
 /* 16x16x8 tiles */
-static struct GfxLayout layout_16x16x8 =
+static gfx_layout layout_16x16x8 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -632,7 +632,7 @@ static struct GfxLayout layout_16x16x8 =
 	16*16*8
 };
 
-static struct GfxDecodeInfo tetrisp2_gfxdecodeinfo[] =
+static gfx_decode tetrisp2_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_8x8x8,   0x0000, 0x10 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_16x16x8, 0x1000, 0x10 }, // [1] Background

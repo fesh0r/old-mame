@@ -37,7 +37,7 @@ extern void vimana_driver_savestate(void);
 
 extern int toaplan1_unk_reset_port;
 
-extern data8_t *toaplan1_sharedram;
+extern UINT8 *toaplan1_sharedram;
 
 
 
@@ -76,11 +76,10 @@ VIDEO_START( rallybik );
 VIDEO_START( toaplan1 );
 VIDEO_UPDATE( rallybik );
 VIDEO_UPDATE( toaplan1 );
-VIDEO_UPDATE( zerowing );
 VIDEO_UPDATE( demonwld );
 
 
-extern data16_t *toaplan1_colorram1;
-extern data16_t *toaplan1_colorram2;
+extern UINT16 *toaplan1_colorram1;
+extern UINT16 *toaplan1_colorram2;
 extern size_t toaplan1_colorram1_size;
 extern size_t toaplan1_colorram2_size;

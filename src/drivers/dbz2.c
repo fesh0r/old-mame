@@ -66,8 +66,8 @@ Notes:
 
 /* BG LAYER */
 
-data16_t* dbz2_bg_videoram;
-data16_t* dbz2_bg2_videoram;
+UINT16* dbz2_bg_videoram;
+UINT16* dbz2_bg2_videoram;
 
 WRITE16_HANDLER(dbz2_bg_videoram_w);
 WRITE16_HANDLER(dbz2_bg2_videoram_w);
@@ -422,7 +422,7 @@ static struct YM2151interface ym2151_interface =
 
 /**********************************************************************************/
 
-static struct GfxLayout bglayout =
+static gfx_layout bglayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -435,7 +435,7 @@ static struct GfxLayout bglayout =
 	128*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX3, 0, &bglayout,     0x400, 64 },
 	{ REGION_GFX4, 0, &bglayout,	 0x800, 64 },
@@ -579,11 +579,11 @@ static DRIVER_INIT(dbz2)
 
 static DRIVER_INIT(dbz)
 {
-	data16_t *ROM;
+	UINT16 *ROM;
 
 	konami_rom_deinterleave_2(REGION_GFX1);
 
-	ROM = (data16_t *)memory_region(REGION_CPU1);
+	ROM = (UINT16 *)memory_region(REGION_CPU1);
 
 	// nop out dbz1's mask rom test
 	// tile ROM test

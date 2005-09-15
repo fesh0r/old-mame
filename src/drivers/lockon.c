@@ -24,15 +24,15 @@ o Layer mixing
 #include "sound/2203intf.h"
 #include <stdio.h>
 
-static data8_t *lockon_vram0;
-static data8_t *lockon_vram1;
-static data8_t *lockon_vram2;
-static data8_t *object_ram;
-static data8_t *ground_ram;
-static data8_t *z80_ram;
-static data8_t *v30_gnd;
-static data8_t *v30_obj;
-static data8_t *clut_ram;
+static UINT8 *lockon_vram0;
+static UINT8 *lockon_vram1;
+static UINT8 *lockon_vram2;
+static UINT8 *object_ram;
+static UINT8 *ground_ram;
+static UINT8 *z80_ram;
+static UINT8 *v30_gnd;
+static UINT8 *v30_obj;
+static UINT8 *clut_ram;
 
 static int v30_obj_addr=0;
 static int v30_gnd_addr=0;
@@ -41,9 +41,9 @@ static int main_inten=0;
 static size_t objectram_size;
 static size_t lockon_ground_size;
 
-static struct tilemap *lockon_tilemap0;
-static struct tilemap *lockon_tilemap1;
-static struct tilemap *lockon_tilemap2;
+static tilemap *lockon_tilemap0;
+static tilemap *lockon_tilemap1;
+static tilemap *lockon_tilemap2;
 
 
 /*
@@ -64,14 +64,14 @@ A B   Layer                  Colours
 */
 
 /* Very preliminary! */
-static void draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
+static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 {
         int offs=0;
         int index_x=0, index_y=0;
 
-        data16_t *ROM_LUTA = (data16_t *)memory_region(REGION_USER1);
-        data8_t  *ROM_LUTB = (data8_t *)memory_region(REGION_USER2);
-        data8_t  *ROM_LUTC = (data8_t *)memory_region(REGION_USER2)+0x8000;   // Selected by bit 7...
+        UINT16 *ROM_LUTA = (UINT16 *)memory_region(REGION_USER1);
+        UINT8  *ROM_LUTB = (UINT8 *)memory_region(REGION_USER2);
+        UINT8  *ROM_LUTC = (UINT8 *)memory_region(REGION_USER2)+0x8000;   // Selected by bit 7...
 
        	for (offs = 0x0; offs <= (objectram_size); offs += 8)
 		{
@@ -125,7 +125,7 @@ static void draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *clip
 
           int color = 1;
 
-          const struct GfxElement *gfx = Machine->gfx[bank];
+          const gfx_element *gfx = Machine->gfx[bank];
 
 			drawgfxzoom(bitmap, gfx,
 				index,
@@ -361,33 +361,33 @@ static WRITE8_HANDLER(z80_shared_w)
 
 static READ8_HANDLER(main_gnd_r)
 {
-       const data8_t* rom=(data8_t*)memory_region(REGION_CPU2);
+       const UINT8* rom=(UINT8*)memory_region(REGION_CPU2);
        return rom[offset | (v30_gnd_addr << 16)];
 }
 
 static WRITE8_HANDLER(main_gnd_w)
 {
-       data8_t* rom=(data8_t*)memory_region(REGION_CPU2);
+       UINT8* rom=(UINT8*)memory_region(REGION_CPU2);
        rom[offset | (v30_gnd_addr << 16)] = data;
 }
 
 static READ8_HANDLER(main_obj_r)
 {
-       const data8_t* rom=(data8_t*)memory_region(REGION_CPU3);
+       const UINT8* rom=(UINT8*)memory_region(REGION_CPU3);
        return rom[offset | (v30_obj_addr << 16)];
 }
 
 static WRITE8_HANDLER(main_obj_w)
 {
-       data8_t* ram=(data8_t*)memory_region(REGION_CPU3);
+       UINT8* ram=(UINT8*)memory_region(REGION_CPU3);
        ram[offset | (v30_obj_addr << 16)] = data;
 }
 
 
 static WRITE8_HANDLER(testcs_w)
 {
-       data8_t* gnd=(data8_t*)memory_region(REGION_CPU2);
-       data8_t* obj=(data8_t*)memory_region(REGION_CPU3);
+       UINT8* gnd=(UINT8*)memory_region(REGION_CPU2);
+       UINT8* obj=(UINT8*)memory_region(REGION_CPU3);
 
        if(offset<0x800)
        {
@@ -495,7 +495,7 @@ static ADDRESS_MAP_START( sound_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-static struct GfxLayout char_layout =
+static gfx_layout char_layout =
 {
 	8,8,
 	1024,
@@ -506,7 +506,7 @@ static struct GfxLayout char_layout =
 	8*8
 };
 
-static struct GfxLayout object_layout =
+static gfx_layout object_layout =
 {
 	8,8,
 	4096,
@@ -517,7 +517,7 @@ static struct GfxLayout object_layout =
 	8*8
 };
 
-static struct GfxLayout scene_layout =
+static gfx_layout scene_layout =
 {
 	8,8,
 	4096,
@@ -528,7 +528,7 @@ static struct GfxLayout scene_layout =
 	8*8
 };
 
-static struct GfxLayout hud_layout =
+static gfx_layout hud_layout =
 {
 	8,8,
 	1024,
@@ -539,7 +539,7 @@ static struct GfxLayout hud_layout =
 	8*8
 };
 
-static struct GfxLayout ground_layout =
+static gfx_layout ground_layout =
 {
 	8,8,
 	8192,
@@ -551,7 +551,7 @@ static struct GfxLayout ground_layout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &object_layout,  0, 16 },
 	{ REGION_GFX2, 0, &object_layout,  0, 16 },

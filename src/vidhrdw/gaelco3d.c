@@ -26,8 +26,8 @@ offs_t gaelco3d_mask_size;
 #define IS_POLYEND(x)		(((x) ^ ((x) >> 1)) & 0x4000)
 
 
-static struct mame_bitmap *screenbits;
-static struct mame_bitmap *zbuffer;
+static mame_bitmap *screenbits;
+static mame_bitmap *zbuffer;
 static UINT16 *palette;
 static UINT32 *polydata_buffer;
 static UINT32 polydata_count;
@@ -139,7 +139,7 @@ static int render_poly(UINT32 *polydata)
 	int midx = Machine->drv->screen_width/2;
 	int midy = Machine->drv->screen_height/2;
 	struct poly_vertex vert[3];
-	struct rectangle clip;
+	rectangle clip;
 	int i;
 
 	// shut up the compiler
@@ -423,7 +423,7 @@ void gaelco3d_render(void)
 #if DISPLAY_STATS
 {
 	int scan = cpu_getscanline();
-	usrintf_showmessage("Polys = %4d  Timeleft = %3d", polygons, (lastscan < scan) ? (scan - lastscan) : (scan + (lastscan - Machine->visible_area.max_y)));
+	ui_popup("Polys = %4d  Timeleft = %3d", polygons, (lastscan < scan) ? (scan - lastscan) : (scan + (lastscan - Machine->visible_area.max_y)));
 }
 #endif
 
@@ -460,7 +460,7 @@ WRITE32_HANDLER( gaelco3d_render_w )
  *
  *************************************/
 
-INLINE void update_palette_entry(offs_t offset, data16_t data)
+INLINE void update_palette_entry(offs_t offset, UINT16 data)
 {
 	int r = (data >> 10) & 0x1f;
 	int g = (data >> 5) & 0x1f;
@@ -525,7 +525,7 @@ VIDEO_UPDATE( gaelco3d )
 					dest[x] = 0;
 			}
 		}
-		usrintf_showmessage("(%04X,%04X)", xv, yv);
+		ui_popup("(%04X,%04X)", xv, yv);
 	}
 	else
 		copybitmap(bitmap, screenbits, 0,0, 0,0, cliprect, TRANSPARENCY_NONE, 0);

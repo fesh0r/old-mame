@@ -178,7 +178,7 @@ ADDRESS_MAP_END
 INPUT_PORTS_START( lordgun )
 INPUT_PORTS_END
 
-static struct GfxLayout lordgun_16x16x6_layout =
+static gfx_layout lordgun_16x16x6_layout =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -189,7 +189,7 @@ static struct GfxLayout lordgun_16x16x6_layout =
 	16*32
 };
 
-static struct GfxLayout lordgun_8x8x6_layout =
+static gfx_layout lordgun_8x8x6_layout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -199,7 +199,7 @@ static struct GfxLayout lordgun_8x8x6_layout =
 	{ 0*16, 1*16, 2*16, 3*16, 4*16, 5*16, 6*16, 7*16 },
 	8*16
 };
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &lordgun_8x8x6_layout,    0x0, 0x80  },
 	{ REGION_GFX2, 0, &lordgun_16x16x6_layout,  0x0, 0x80  },
@@ -259,12 +259,12 @@ DRIVER_INIT( lordgun )
 {
 
 	int i;
-	data16_t *src = (data16_t *) (memory_region(REGION_CPU1));
+	UINT16 *src = (UINT16 *) (memory_region(REGION_CPU1));
 
 	int rom_size = 0x100000;
 
 	for(i=0; i<rom_size/2; i++) {
-		data16_t x = src[i];
+		UINT16 x = src[i];
 
 		if((i & 0x0120) == 0x0100 || (i & 0x0a00) == 0x0800)
 			x ^= 0x0010;

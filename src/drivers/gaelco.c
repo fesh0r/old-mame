@@ -13,15 +13,15 @@
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
-extern data16_t *gaelco_vregs;
-extern data16_t *gaelco_videoram;
-extern data16_t *gaelco_spriteram;
+extern UINT16 *gaelco_vregs;
+extern UINT16 *gaelco_videoram;
+extern UINT16 *gaelco_spriteram;
 
 /* from vidhrdw/gaelco.c */
 WRITE16_HANDLER( gaelco_vram_w );
 
 
-#define TILELAYOUT8(NUM) static struct GfxLayout tilelayout8_##NUM =	\
+#define TILELAYOUT8(NUM) static gfx_layout tilelayout8_##NUM =	\
 {																		\
 	8,8,									/* 8x8 tiles */				\
 	NUM/8,									/* number of tiles */		\
@@ -32,7 +32,7 @@ WRITE16_HANDLER( gaelco_vram_w );
 	8*8																	\
 }
 
-#define TILELAYOUT16(NUM) static struct GfxLayout tilelayout16_##NUM =				\
+#define TILELAYOUT16(NUM) static gfx_layout tilelayout16_##NUM =				\
 {																					\
 	16,16,									/* 16x16 tiles */						\
 	NUM/32,									/* number of tiles */					\
@@ -43,7 +43,7 @@ WRITE16_HANDLER( gaelco_vram_w );
 	32*8																			\
 }
 
-#define GFXDECODEINFO(NUM,ENTRIES) static struct GfxDecodeInfo gfxdecodeinfo_##NUM[] =	\
+#define GFXDECODEINFO(NUM,ENTRIES) static gfx_decode gfxdecodeinfo_##NUM[] =	\
 {																						\
 	{ REGION_GFX1, 0x000000, &tilelayout8_##NUM,0,	ENTRIES },							\
 	{ REGION_GFX1, 0x000000, &tilelayout16_##NUM,0,	ENTRIES },							\

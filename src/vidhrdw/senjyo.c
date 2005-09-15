@@ -24,12 +24,12 @@ UINT8 *senjyo_bg1videoram,*senjyo_bg2videoram,*senjyo_bg3videoram;
 UINT8 *senjyo_radarram;
 UINT8 *senjyo_bgstripesram;
 
-static struct tilemap *fg_tilemap,*bg1_tilemap,*bg2_tilemap,*bg3_tilemap;
+static tilemap *fg_tilemap,*bg1_tilemap,*bg2_tilemap,*bg3_tilemap;
 
 static int senjyo, scrollhack;
 static int senjyo_bgstripes;
 
-static struct mame_bitmap *bgbitmap;
+static mame_bitmap *bgbitmap;
 
 
 DRIVER_INIT( starforc )
@@ -217,7 +217,7 @@ WRITE8_HANDLER( senjyo_bgstripes_w )
 
 ***************************************************************************/
 
-static void draw_bgbitmap(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
+static void draw_bgbitmap(mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	int x,y,pen,strwid,count;
 
@@ -265,7 +265,7 @@ static void draw_bgbitmap(struct mame_bitmap *bitmap,const struct rectangle *cli
 	copybitmap(bitmap,bgbitmap,0,0,0,0,cliprect,TRANSPARENCY_NONE,0);
 }
 
-static void draw_radar(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
+static void draw_radar(mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	int offs,x;
 
@@ -299,7 +299,7 @@ static void draw_radar(struct mame_bitmap *bitmap,const struct rectangle *clipre
 	}
 }
 
-static void draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int priority)
+static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect,int priority)
 {
 	int offs;
 
@@ -416,7 +416,7 @@ VIDEO_UPDATE( senjyo )
 		senjyo_scrolly3[0x05],
 		senjyo_scrolly3[0x06],
 		senjyo_scrolly3[0x07]);
-	ui_text(baf,0,0);
+	ui_draw_text(baf,0,0);
 	sprintf(baf,"%02x %02x %02x %02x %02x %02x %02x %02x",
 		senjyo_scrolly3[0x08],
 		senjyo_scrolly3[0x09],
@@ -426,7 +426,7 @@ VIDEO_UPDATE( senjyo )
 		senjyo_scrolly3[0x0d],
 		senjyo_scrolly3[0x0e],
 		senjyo_scrolly3[0x0f]);
-	ui_text(baf,0,10);
+	ui_draw_text(baf,0,10);
 	sprintf(baf,"%02x %02x %02x %02x %02x %02x %02x %02x",
 		senjyo_scrolly3[0x10],
 		senjyo_scrolly3[0x11],
@@ -436,7 +436,7 @@ VIDEO_UPDATE( senjyo )
 		senjyo_scrolly3[0x15],
 		senjyo_scrolly3[0x16],
 		senjyo_scrolly3[0x17]);
-	ui_text(baf,0,20);
+	ui_draw_text(baf,0,20);
 	sprintf(baf,"%02x %02x %02x %02x %02x %02x %02x %02x",
 		senjyo_scrolly3[0x18],
 		senjyo_scrolly3[0x19],
@@ -446,7 +446,7 @@ VIDEO_UPDATE( senjyo )
 		senjyo_scrolly3[0x1d],
 		senjyo_scrolly3[0x1e],
 		senjyo_scrolly3[0x1f]);
-	ui_text(baf,0,30);
+	ui_draw_text(baf,0,30);
 }
 #endif
 }

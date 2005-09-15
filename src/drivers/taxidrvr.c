@@ -52,7 +52,7 @@ static WRITE8_HANDLER( p0c_w )
 
 	flip_screen_set(data & 8);
 
-//  usrintf_showmessage("%02x",data&0x0f);
+//  ui_popup("%02x",data&0x0f);
 }
 
 static READ8_HANDLER( p1b_r )
@@ -310,7 +310,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -321,7 +321,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxLayout charlayout2 =
+static gfx_layout charlayout2 =
 {
 	4,4,
 	RGN_FRAC(1,1),
@@ -333,7 +333,7 @@ static struct GfxLayout charlayout2 =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 1 },
 	{ REGION_GFX2, 0, &charlayout, 0, 1 },

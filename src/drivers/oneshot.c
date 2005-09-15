@@ -34,11 +34,11 @@ TO DO :
 #include "sound/3812intf.h"
 
 
-data16_t *oneshot_sprites;
-data16_t *oneshot_bg_videoram;
-data16_t *oneshot_mid_videoram;
-data16_t *oneshot_fg_videoram;
-data16_t *oneshot_scroll;
+UINT16 *oneshot_sprites;
+UINT16 *oneshot_bg_videoram;
+UINT16 *oneshot_mid_videoram;
+UINT16 *oneshot_fg_videoram;
+UINT16 *oneshot_scroll;
 
 int gun_x_p1,gun_y_p1,gun_x_p2,gun_y_p2;
 int gun_x_shift;
@@ -330,7 +330,7 @@ INPUT_PORTS_START( maddonna )
 INPUT_PORTS_END
 
 
-static struct GfxLayout oneshot16x16_layout =
+static gfx_layout oneshot16x16_layout =
 {
 	16,16,
 	RGN_FRAC(1,8),
@@ -343,7 +343,7 @@ static struct GfxLayout oneshot16x16_layout =
 	16*16
 };
 
-static struct GfxLayout oneshot8x8_layout =
+static gfx_layout oneshot8x8_layout =
 {
 	8,8,
 	RGN_FRAC(1,8),
@@ -355,7 +355,7 @@ static struct GfxLayout oneshot8x8_layout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &oneshot16x16_layout,   0x00, 4  }, /* sprites */
 	{ REGION_GFX1, 0, &oneshot8x8_layout,     0x00, 4  }, /* sprites */

@@ -106,10 +106,10 @@ OSC:    12.000MHz
 #include "machine/random.h"
 #include "sound/okim6295.h"
 
-static struct tilemap *sc3_tilemap, *sc0_tilemap,*sc1_tilemap,*sc2_tilemap;
-data16_t *sc3_vram, *sc0_vram,*sc1_vram,*sc2_vram;
-data16_t *jm_regs,*jm_ram,*jm_mcu_code;
-data16_t *jm_scrollram,*jm_vregs;
+static tilemap *sc3_tilemap, *sc0_tilemap,*sc1_tilemap,*sc2_tilemap;
+UINT16 *sc3_vram, *sc0_vram,*sc1_vram,*sc2_vram;
+UINT16 *jm_regs,*jm_ram,*jm_mcu_code;
+UINT16 *jm_scrollram,*jm_vregs;
 static UINT16 sc0bank,pri;
 /*
 MCU program number,different for each game(n.b. the numbering scheme is *mine*,do not
@@ -380,8 +380,8 @@ VIDEO_UPDATE( jalmah )
 		sc_db--;
 	if(sc_db > 3)
 		sc_db = 3;
-	//usrintf_showmessage("%04x %04x %04x %04x %04x %04x",jm_vregs[0],jm_vregs[1],jm_vregs[2],jm_vregs[3],sc0bank,pri);
-	usrintf_showmessage("%04d %04d %04x %02x %01x",jm_scrollram[0+sc_db],jm_scrollram[4+sc_db],jm_vregs[0+sc_db],sc_db,pri);
+	//ui_popup("%04x %04x %04x %04x %04x %04x",jm_vregs[0],jm_vregs[1],jm_vregs[2],jm_vregs[3],sc0bank,pri);
+	ui_popup("%04d %04d %04x %02x %01x",jm_scrollram[0+sc_db],jm_scrollram[4+sc_db],jm_vregs[0+sc_db],sc_db,pri);
 	#endif
 	/*
     Case by case priorities:
@@ -478,7 +478,7 @@ WRITE16_HANDLER( jalmah_tilebank_w )
      xxxx ---- fg bank (used by suchipi)
      ---- xxxx Priority number (trusted,see mjzoomin)
     */
-	//usrintf_showmessage("Write to tilebank %02x",data);
+	//ui_popup("Write to tilebank %02x",data);
 	if (ACCESSING_LSB)
 	{
 		if (sc0bank != ((data & 0xf0) >> 4))
@@ -519,7 +519,7 @@ static WRITE16_HANDLER( jalmah_scroll_w )
 		case (0x2a/2): jm_scrollram[5] = data; break;
 		case (0x32/2): jm_scrollram[6] = data; break;
 		case (0x3a/2): jm_scrollram[7] = data; break;
-		//default:    usrintf_showmessage("[%04x]<-%04x",offset+0x10,data);
+		//default:    ui_popup("[%04x]<-%04x",offset+0x10,data);
 	}
 }
 
@@ -529,7 +529,7 @@ WRITE16_HANDLER( jalmah_okirom_w )
 {
 	if(ACCESSING_LSB)
 	{
-		data8_t *oki = memory_region(REGION_SOUND1);
+		UINT8 *oki = memory_region(REGION_SOUND1);
 		oki_rom = data & 1;
 		memcpy(&oki[0x20000], &oki[(oki_rom * 0x80000) + (oki_bank * 0x20000) + 0x40000], 0x20000);
 	}
@@ -543,7 +543,7 @@ static WRITE16_HANDLER( jalmah_okibank_w )
 {
 	if(ACCESSING_LSB)
 	{
-		data8_t *oki = memory_region(REGION_SOUND1);
+		UINT8 *oki = memory_region(REGION_SOUND1);
 		oki_bank = data & 3;
 		memcpy(&oki[0x20000], &oki[(oki_rom * 0x80000) + (oki_bank * 0x20000) + 0x40000], 0x20000);
 	}
@@ -554,7 +554,7 @@ WRITE16_HANDLER( jalmah_flip_screen_w )
 	/*---- ----x flip screen*/
 	flip_screen_set(data & 1);
 
-//  usrintf_showmessage("%04x",data);
+//  ui_popup("%04x",data);
 }
 
 static ADDRESS_MAP_START( jalmah, ADDRESS_SPACE_PROGRAM, 16 )
@@ -871,7 +871,7 @@ INPUT_PORTS_START( jalmah2 )
 	PORT_BIT( 0xe1e1, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -882,7 +882,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -895,7 +895,7 @@ static struct GfxLayout tilelayout =
 	32*32
 };
 
-static struct GfxDecodeInfo jalmah_gfxdecodeinfo[] =
+static gfx_decode jalmah_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0x300, 16 },
 	{ REGION_GFX2, 0, &tilelayout, 0x200, 16 },
@@ -1231,7 +1231,7 @@ static WRITE16_HANDLER( urashima_mcu_w )
 	{
 		//jm_regs[0x30e/2] = ?
 
-		//usrintf_showmessage("%04x %02x",jm_regs[0x030e/2],data);
+		//ui_popup("%04x %02x",jm_regs[0x030e/2],data);
 
 		/*******************************************************
         1st M68k code uploaded by the MCU (sound prg)
@@ -1765,7 +1765,7 @@ static READ16_HANDLER( kakumei_mcu_r )
 	res = resp[respcount++];
 	if (respcount >= sizeof(resp)/sizeof(resp[0])) respcount = 0;
 
-	//usrintf_showmessage("%04x: mcu_r %02x",activecpu_get_pc(),res);
+	//ui_popup("%04x: mcu_r %02x",activecpu_get_pc(),res);
 
 	return res;
 }
@@ -1786,7 +1786,7 @@ static READ16_HANDLER( suchipi_mcu_r )
 	res = resp[respcount++];
 	if (respcount >= sizeof(resp)/sizeof(resp[0])) respcount = 0;
 
-	//usrintf_showmessage("%04x: mcu_r %02x",activecpu_get_pc(),res);
+	//ui_popup("%04x: mcu_r %02x",activecpu_get_pc(),res);
 
 	return res;
 }

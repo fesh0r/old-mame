@@ -56,9 +56,9 @@ JALCF1   BIN     1,048,576  02-07-99  1:11a JALCF1.BIN
 #include "vidhrdw/generic.h"
 #include "sound/okim6295.h"
 
-static struct tilemap *tx_tilemap,*bg_tilemap;
-data16_t *ac_txvram,*ac_bgvram;
-data16_t *ac_vregs;
+static tilemap *tx_tilemap,*bg_tilemap;
+UINT16 *ac_txvram,*ac_bgvram;
+UINT16 *ac_vregs;
 
 static UINT32 bg_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 {
@@ -86,7 +86,7 @@ static void ac_get_tx_tile_info(int tile_index)
 			0)
 }
 
-static void draw_sprites(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int priority, int pri_mask)
+static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int priority, int pri_mask)
 {
 	int offs;
 
@@ -170,7 +170,7 @@ VIDEO_START( acommand )
 #define SHOW_LEDS	0
 
 #if SHOW_LEDS
-static void draw_led(struct mame_bitmap *bitmap, int x, int y,data8_t value)
+static void draw_led(mame_bitmap *bitmap, int x, int y,UINT8 value)
 {
 	plot_box(bitmap, x, y, 5, 9, 0x00000000);
 
@@ -228,7 +228,7 @@ VIDEO_UPDATE( acommand )
 
 	#if SHOW_LEDS
 		draw_led(bitmap, 3, 53, (led0 & 0xff00) >> 8);
-		usrintf_showmessage("%04x",led0);
+		ui_popup("%04x",led0);
 	#endif
 }
 
@@ -281,12 +281,12 @@ static WRITE16_HANDLER(ac_txscroll_w)
 
 /******************************************************************************************/
 
-data16_t *ac_devram;
+UINT16 *ac_devram;
 
 
 static READ16_HANDLER(ac_devices_r)
 {
-//  usrintf_showmessage("(PC=%06x) read at %04x",activecpu_get_pc(),offset*2);
+//  ui_popup("(PC=%06x) read at %04x",activecpu_get_pc(),offset*2);
 	switch(offset)
 	{
 		case 0x0008/2:
@@ -378,7 +378,7 @@ static WRITE16_HANDLER(ac_devices_w)
 static WRITE16_HANDLER(ac_unk2_w)
 {
 	if(data)
-		usrintf_showmessage("UNK-2 enabled %04x",data);
+		ui_popup("UNK-2 enabled %04x",data);
 }
 
 static ADDRESS_MAP_START( acommand, ADDRESS_SPACE_PROGRAM, 16 )
@@ -497,7 +497,7 @@ INPUT_PORTS_START( acommand )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -508,7 +508,7 @@ static struct GfxLayout charlayout =
 	32*8
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -521,7 +521,7 @@ static struct GfxLayout tilelayout =
 	32*32
 };
 
-static struct GfxDecodeInfo acommand_gfxdecodeinfo[] =
+static gfx_decode acommand_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0x2700, 16 }, /*???*/
 	{ REGION_GFX2, 0, &tilelayout, 0x1800, 256 },

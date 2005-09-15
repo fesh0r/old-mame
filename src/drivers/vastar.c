@@ -66,9 +66,9 @@ write:
 #include "sound/ay8910.h"
 
 
-extern data8_t *vastar_bg1videoram,*vastar_bg2videoram,*vastar_fgvideoram;
-extern data8_t *vastar_bg1_scroll,*vastar_bg2_scroll;
-extern data8_t *vastar_sprite_priority;
+extern UINT8 *vastar_bg1videoram,*vastar_bg2videoram,*vastar_fgvideoram;
+extern UINT8 *vastar_bg1_scroll,*vastar_bg2_scroll;
+extern UINT8 *vastar_sprite_priority;
 
 WRITE8_HANDLER( vastar_bg1videoram_w );
 WRITE8_HANDLER( vastar_bg2videoram_w );
@@ -264,7 +264,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -275,7 +275,7 @@ static struct GfxLayout charlayout =
 	16*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -288,7 +288,7 @@ static struct GfxLayout spritelayout =
 	64*8
 };
 
-static struct GfxLayout spritelayoutdw =
+static gfx_layout spritelayoutdw =
 {
 	16,32,
 	RGN_FRAC(1,1),
@@ -303,7 +303,7 @@ static struct GfxLayout spritelayoutdw =
 	128*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,     0, 64 },
 	{ REGION_GFX2, 0, &spritelayout,   0, 64 },

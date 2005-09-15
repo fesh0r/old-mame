@@ -12,14 +12,14 @@ static int sorted_layer[3];
 static int dim_c,dim_v;	/* ssriders, tmnt2 */
 static int lastdim,lasten;
 
-static struct tilemap *roz_tilemap;
+static tilemap *roz_tilemap;
 
 
 static int glfgreat_roz_rom_bank,glfgreat_roz_char_bank,glfgreat_roz_rom_mode;
 
 static void glfgreat_get_roz_tile_info(int tile_index)
 {
-	data8_t *rom = memory_region(REGION_USER1);
+	UINT8 *rom = memory_region(REGION_USER1);
 	int code;
 
 	tile_index += 0x40000 * glfgreat_roz_rom_bank;
@@ -31,7 +31,7 @@ static void glfgreat_get_roz_tile_info(int tile_index)
 
 static void prmrsocr_get_roz_tile_info(int tile_index)
 {
-	data8_t *rom = memory_region(REGION_USER1);
+	UINT8 *rom = memory_region(REGION_USER1);
 	int code = rom[tile_index+0x20000] + 256*rom[tile_index];
 
 	SET_TILE_INFO(0,code & 0x1fff,code >> 13,0)
@@ -711,7 +711,7 @@ static int glfgreat_pixel;
 READ16_HANDLER( glfgreat_ball_r )
 {
 #ifdef MAME_DEBUG
-usrintf_showmessage("%04x",glfgreat_pixel);
+ui_popup("%04x",glfgreat_pixel);
 #endif
 	/* if out of the ROZ layer palette range, it's in the water - return 0 */
 	if (glfgreat_pixel < 0x400 || glfgreat_pixel >= 0x500) return 0;

@@ -27,6 +27,9 @@
 
 /*****************************************************************************
     Changes
+    20050813 Mariusz Wojcieszek
+    - fixed 64 bit / 32 bit division in division unit
+
     20031015 O. Galibert
     - dma fixes, thanks to sthief
 
@@ -154,6 +157,8 @@ typedef struct
 	int     dma_timer_active[2];
 
 	int     is_slave, cpu_number;
+
+	void	(*ftcsr_read_callback)(UINT32 data);
 } SH2;
 
 static int sh2_icount;
@@ -186,7 +191,7 @@ static void sh2_timer_callback(int data);
 #define Rn	((opcode>>8)&15)
 #define Rm	((opcode>>4)&15)
 
-INLINE data8_t RB(offs_t A)
+INLINE UINT8 RB(offs_t A)
 {
 	if (A >= 0xe0000000)
 		return sh2_internal_r((A & 0x1fc)>>2, ~(0xff << (((~A) & 3)*8))) >> (((~A) & 3)*8);
@@ -200,7 +205,7 @@ INLINE data8_t RB(offs_t A)
 	return program_read_byte_32be(A & AM);
 }
 
-INLINE data16_t RW(offs_t A)
+INLINE UINT16 RW(offs_t A)
 {
 	if (A >= 0xe0000000)
 		return sh2_internal_r((A & 0x1fc)>>2, ~(0xffff << (((~A) & 2)*8))) >> (((~A) & 2)*8);
@@ -214,7 +219,7 @@ INLINE data16_t RW(offs_t A)
 	return program_read_word_32be(A & AM);
 }
 
-INLINE data32_t RL(offs_t A)
+INLINE UINT32 RL(offs_t A)
 {
 	if (A >= 0xe0000000)
 		return sh2_internal_r((A & 0x1fc)>>2, 0);
@@ -228,7 +233,7 @@ INLINE data32_t RL(offs_t A)
   return program_read_dword_32be(A & AM);
 }
 
-INLINE void WB(offs_t A, data8_t V)
+INLINE void WB(offs_t A, UINT8 V)
 {
 
 	if (A >= 0xe0000000)
@@ -249,7 +254,7 @@ INLINE void WB(offs_t A, data8_t V)
 	program_write_byte_32be(A & AM,V);
 }
 
-INLINE void WW(offs_t A, data16_t V)
+INLINE void WW(offs_t A, UINT16 V)
 {
 	if (A >= 0xe0000000)
 	{
@@ -269,7 +274,7 @@ INLINE void WW(offs_t A, data16_t V)
 	program_write_word_32be(A & AM,V);
 }
 
-INLINE void WL(offs_t A, data32_t V)
+INLINE void WL(offs_t A, UINT32 V)
 {
 	if (A >= 0xe0000000)
 	{
@@ -2307,12 +2312,17 @@ static void sh2_reset(void *param)
 	UINT32 *m;
 
 	struct sh2_config *conf = param;
+	void (*f)(UINT32 data);
 
 	m = sh2.m;
 	tsave = sh2.timer;
 	tsaved0 = sh2.dma_timer[0];
 	tsaved1 = sh2.dma_timer[1];
+
+	f = sh2.ftcsr_read_callback;
 	memset(&sh2, 0, sizeof(SH2));
+	sh2.ftcsr_read_callback = f;
+
 	sh2.timer = tsave;
 	sh2.dma_timer[0] = tsaved0;
 	sh2.dma_timer[1] = tsaved1;
@@ -2752,7 +2762,7 @@ WRITE32_HANDLER( sh2_internal_w )
 	case 0x45: // DVDNTL
 		{
 			INT64 a = sh2.m[0x45] | ((UINT64)(sh2.m[0x44]) << 32);
-			INT64 b = sh2.m[0x40];
+			INT64 b = (INT32)sh2.m[0x40];
 			LOG(("SH2 #%d div+mod %lld/%lld\n", cpu_getactivecpu(), a, b));
 			if (b)
 			{
@@ -2833,6 +2843,9 @@ READ32_HANDLER( sh2_internal_r )
 	switch( offset )
 	{
 	case 0x04: // TIER, FTCSR, FRC
+		if ( mem_mask == 0xff00ffff )
+			if ( sh2.ftcsr_read_callback != NULL )
+				sh2.ftcsr_read_callback( (sh2.m[4] & 0xffff0000) | sh2.frc );
 		sh2_timer_resync();
 		return (sh2.m[4] & 0xffff0000) | sh2.frc;
 	case 0x05: // OCRx, TCR, TOCR
@@ -3054,6 +3067,8 @@ static void sh2_set_info(UINT32 state, union cpuinfo *info)
 
 		/* --- the following bits of info are set as pointers to data or functions --- */
 		case CPUINFO_PTR_IRQ_CALLBACK:					sh2.irq_callback = info->irqcallback;	break;
+
+		case CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK:		sh2.ftcsr_read_callback = (void (*) (UINT32 ))info->f;		break;
 	}
 }
 
@@ -3191,5 +3206,8 @@ void sh2_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_STR_REGISTER + SH2_R14:			sprintf(info->s = cpuintrf_temp_str(), "R14 :%08X", sh2.r[14]); break;
 		case CPUINFO_STR_REGISTER + SH2_R15:			sprintf(info->s = cpuintrf_temp_str(), "R15 :%08X", sh2.r[15]); break;
 		case CPUINFO_STR_REGISTER + SH2_EA:				sprintf(info->s = cpuintrf_temp_str(), "EA  :%08X", sh2.ea);    break;
+
+		case CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK:		info->f = (genf*)sh2.ftcsr_read_callback; break;
+
 	}
 }

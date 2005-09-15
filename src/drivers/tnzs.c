@@ -354,7 +354,7 @@ static WRITE8_HANDLER( kageki_csport_w )
 			sample_start_raw(0, sampledata[data], samplesize[data], 7000, 0);
 			sprintf(mess, "VOICE:%02X PLAY", data);
 		}
-	//  usrintf_showmessage(mess);
+	//  ui_popup(mess);
 	}
 }
 
@@ -363,7 +363,7 @@ static WRITE8_HANDLER( kabukiz_sound_bank_w )
 	// to avoid the write when the sound chip is initialized
 	if(data != 0xff)
 	{
-		data8_t *ROM = memory_region(REGION_CPU3);
+		UINT8 *ROM = memory_region(REGION_CPU3);
 		memory_set_bankptr(3, &ROM[0x10000 + 0x4000 * (data & 0x07)]);
 	}
 }
@@ -1241,7 +1241,7 @@ INPUT_PORTS_START( kageki )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-static struct GfxLayout tnzs_charlayout =
+static gfx_layout tnzs_charlayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -1254,7 +1254,7 @@ static struct GfxLayout tnzs_charlayout =
 	32*8
 };
 
-static struct GfxLayout insectx_charlayout =
+static gfx_layout insectx_charlayout =
 {
 	16,16,
 	8192,
@@ -1267,13 +1267,13 @@ static struct GfxLayout insectx_charlayout =
 	64*8
 };
 
-static struct GfxDecodeInfo tnzs_gfxdecodeinfo[] =
+static gfx_decode tnzs_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tnzs_charlayout, 0, 32 },
 	{ -1 }	/* end of array */
 };
 
-static struct GfxDecodeInfo insectx_gfxdecodeinfo[] =
+static gfx_decode insectx_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &insectx_charlayout, 0, 32 },
 	{ -1 }	/* end of array */

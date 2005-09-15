@@ -16,7 +16,7 @@
 #include "vidhrdw/generic.h"
 #include "sound/2203intf.h"
 
-extern data8_t *tryout_gfx_control;
+extern UINT8 *tryout_gfx_control;
 
 extern READ8_HANDLER( tryout_vram_r );
 extern WRITE8_HANDLER( tryout_videoram_w );
@@ -46,7 +46,7 @@ static WRITE8_HANDLER( tryout_sound_irq_ack_w )
 
 static WRITE8_HANDLER( tryout_bankswitch_w )
 {
- 	data8_t *RAM = memory_region(REGION_CPU1);
+ 	UINT8 *RAM = memory_region(REGION_CPU1);
 	int bankaddress;
 
 	bankaddress = 0x10000 + (data & 0x01) * 0x2000;
@@ -139,7 +139,7 @@ INPUT_PORTS_START( tryout )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 INPUT_PORTS_END
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	RGN_FRAC(1,2),
@@ -150,7 +150,7 @@ static struct GfxLayout charlayout =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-static struct GfxLayout vramlayout =
+static gfx_layout vramlayout =
 {
 	16, 16,
 	128,
@@ -162,7 +162,7 @@ static struct GfxLayout vramlayout =
 	64*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -175,7 +175,7 @@ static struct GfxLayout spritelayout =
 	32*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0, 0x20 },
 	{ REGION_GFX2, 0, &spritelayout, 0, 0x20 },

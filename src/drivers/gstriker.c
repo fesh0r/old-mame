@@ -130,7 +130,7 @@ c13_u12.u12     HN624116 - GFX
 
 *** ROMSET: vgoalsca
 
-Tecmo V Goal Soccer ©1994? Tecmo
+Tecmo V Goal Soccer (c)1994? Tecmo
 
 CPU: 68000, Z80
 Sound: YM2610
@@ -176,8 +176,8 @@ VSIS-20V3
 ******************************************************************************/
 
 
-data16_t *gs_videoram3;
-data16_t *gs_mixer_regs;
+UINT16 *gs_videoram3;
+UINT16 *gs_mixer_regs;
 
 /* in vidhrdw */
 WRITE16_HANDLER( gsx_videoram3_w );
@@ -232,7 +232,7 @@ static WRITE8_HANDLER( gs_sh_bankswitch_w )
 
 /*** GFX DECODE **************************************************************/
 
-static struct GfxLayout gs_8x8x4_layout =
+static gfx_layout gs_8x8x4_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -244,7 +244,7 @@ static struct GfxLayout gs_8x8x4_layout =
 };
 
 
-static struct GfxLayout gs_16x16x4_layout =
+static gfx_layout gs_16x16x4_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -260,7 +260,7 @@ static struct GfxLayout gs_16x16x4_layout =
 	16*64
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &gs_8x8x4_layout,     0, 256 },
 	{ REGION_GFX2, 0, &gs_16x16x4_layout,   0, 256 },
@@ -288,7 +288,7 @@ static struct YM2610interface ym2610_interface =
 
 /*** MEMORY LAYOUTS **********************************************************/
 
-static data16_t *work_ram;
+static UINT16 *work_ram;
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
@@ -640,7 +640,7 @@ static WRITE16_HANDLER( twrldc94_mcu_w )
 		case 0x6b: PC(0x00000746); break;
 		/*(after the P.O.S.T.)*/
 		case 0x6e: PC(0x00000746); break;/*WRONG?*/
-		default: usrintf_showmessage("Unknown MCU CMD %04x",data);
+		default: ui_popup("Unknown MCU CMD %04x",data);
 	}
 }
 

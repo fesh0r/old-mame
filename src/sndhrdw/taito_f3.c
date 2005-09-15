@@ -2,11 +2,11 @@
 #include "sound/es5506.h"
 
 static int counter,vector_reg,imr_status;
-static data16_t es5510_dsp_ram[0x200];
-static data32_t	es5510_gpr[0xc0];
-static data32_t	es5510_gpr_latch;
+static UINT16 es5510_dsp_ram[0x200];
+static UINT32	es5510_gpr[0xc0];
+static UINT32	es5510_gpr_latch;
 static void *timer_68681=NULL;
-extern data32_t *f3_shared_ram;
+extern UINT32 *f3_shared_ram;
 static int timer_mode,m68681_imr;
 
 static int es_tmp=1;
@@ -40,7 +40,7 @@ WRITE16_HANDLER( f3_es5505_bank_w )
 {
 	static char count[10];
 	count[data&7]++;
-	usrintf_showmessage("%x %x %x %x %x %x %x %x (%d)",count[0]&0xf,count[1]&0xf,count[2]&0xf,count[3]&0xf,count[4]&0xf,count[5]&0xf,count[6]&0xf,count[7]&0xf, max_banks_this_game);
+	ui_popup("%x %x %x %x %x %x %x %x (%d)",count[0]&0xf,count[1]&0xf,count[2]&0xf,count[3]&0xf,count[4]&0xf,count[5]&0xf,count[6]&0xf,count[7]&0xf, max_banks_this_game);
 }
 #endif
 
@@ -51,7 +51,7 @@ WRITE16_HANDLER( f3_es5505_bank_w )
 
 WRITE16_HANDLER( f3_volume_w )
 {
-	static data16_t channel[8],last_l,last_r;
+	static UINT16 channel[8],last_l,last_r;
 	static int latch;
 
 	if (offset==0) latch=(data>>8)&0x7;

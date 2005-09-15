@@ -23,7 +23,7 @@
  *
  *************************************/
 
-struct MachineCPU
+struct _cpu_config
 {
 	int			cpu_type;					/* index for the CPU type */
 	int			cpu_flags;					/* flags; see #defines below */
@@ -36,6 +36,7 @@ struct MachineCPU
 	void *		reset_param;				/* parameter for cpu_reset */
 	const char *tag;
 };
+typedef struct _cpu_config cpu_config;
 
 
 
@@ -70,6 +71,9 @@ void cpu_run(void);
 /* Clean up after quitting */
 void cpu_exit(void);
 
+/* Pause/resume all the CPUs */
+void cpu_pause(int pause);
+
 /* Force a reset after the current timeslice */
 void machine_reset(void);
 
@@ -86,11 +90,13 @@ enum
 {
 	LOADSAVE_NONE,
 	LOADSAVE_SAVE,
-	LOADSAVE_LOAD
+	LOADSAVE_LOAD,
+	LOADSAVE_LOAD_POSTRESET
 };
 void cpu_loadsave_schedule(int type, char id);
 void cpu_loadsave_schedule_file(int type, const char *name);
 void cpu_loadsave_reset(void);
+void cpu_loadsave_warn(const char *msg);
 
 
 
@@ -205,9 +211,6 @@ int cpu_scalebyfcount(int value);
  *  Video timing
  *
  *************************************/
-
-/* Initialize the refresh timer */
-void cpu_init_refresh_timer(void);
 
 /* Recomputes the scanling timing after, e.g., a visible area change */
 void cpu_compute_scanline_timing(void);

@@ -56,7 +56,7 @@ Supported games:
                ghastly hack
 
                ** update the above two look like genuine Korean release
-          ÿÿ      boards, Raizing probably just missed a few things
+          ??      boards, Raizing probably just missed a few things
 
  ****************************************************************************
  * Battle Garegga and Armed Police Batrider have secret characters.         *
@@ -269,6 +269,7 @@ To Do / Unknowns:
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
+#include "machine/nmk112.h"
 #include "sound/2151intf.h"
 #include "sound/3812intf.h"
 #include "sound/okim6295.h"
@@ -285,19 +286,19 @@ To Do / Unknowns:
 #define CPU_2_V25		0xff
 
 /************ Machine RAM related values ************/
-static data8_t *toaplan2_shared_ram;
-static data8_t *raizing_shared_ram;		/* Shared ram used in Shippumd and Mahoudai */
-static data16_t *toaplan2_shared_ram16;	/* Really 8bit RAM connected to Z180 */
-static data16_t *V25_shared_ram;		/* Really 8bit RAM connected to Z180 */
-static data16_t *battleg_commram16;		/* Comm ram used in Battle Garegga */
-static data16_t *raizing_cpu_comm16;	/* Raizing commands for the Z80 */
-static data8_t  raizing_cpu_reply[2];	/* Raizing replies to the 68K */
+static UINT8 *toaplan2_shared_ram;
+static UINT8 *raizing_shared_ram;		/* Shared ram used in Shippumd and Mahoudai */
+static UINT16 *toaplan2_shared_ram16;	/* Really 8bit RAM connected to Z180 */
+static UINT16 *V25_shared_ram;		/* Really 8bit RAM connected to Z180 */
+static UINT16 *battleg_commram16;		/* Comm ram used in Battle Garegga */
+static UINT16 *raizing_cpu_comm16;	/* Raizing commands for the Z80 */
+static UINT8  raizing_cpu_reply[2];	/* Raizing replies to the 68K */
 
 /************ Video RAM related values ************/
-extern data16_t *toaplan2_txvideoram16;
-extern data16_t *toaplan2_txvideoram16_offs;
-extern data16_t *toaplan2_txscrollram16;
-extern data16_t *toaplan2_tx_gfxram16;
+extern UINT16 *toaplan2_txvideoram16;
+extern UINT16 *toaplan2_txvideoram16_offs;
+extern UINT16 *toaplan2_txscrollram16;
+extern UINT16 *toaplan2_tx_gfxram16;
 size_t toaplan2_tx_vram_size;
 size_t toaplan2_tx_offs_vram_size;
 size_t toaplan2_tx_scroll_vram_size;
@@ -442,7 +443,7 @@ static DRIVER_INIT( fixeight )
 
 static DRIVER_INIT( fixeighb )
 {
-	data16_t *bgdata = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *bgdata = (UINT16 *)memory_region(REGION_CPU1);
 	memory_set_bankptr(1, &bgdata[0x40000]); /* $80000 - $fffff */
 }
 
@@ -453,7 +454,7 @@ static DRIVER_INIT( pipibibi )
 	int A;
 	int oldword, newword;
 
-	data16_t *pipibibi_68k_rom = (data16_t *)(memory_region(REGION_CPU1));
+	UINT16 *pipibibi_68k_rom = (UINT16 *)(memory_region(REGION_CPU1));
 
 	/* unscramble the 68K ROM data. */
 
@@ -531,7 +532,7 @@ static DRIVER_INIT( pipibibi )
 
 static DRIVER_INIT( battleg )
 {
-	data8_t *Z80 = (data8_t *)memory_region(REGION_CPU2);
+	UINT8 *Z80 = (UINT8 *)memory_region(REGION_CPU2);
 
 	/* Set Z80 bank switch */
 	memory_set_bankptr(1, &Z80[0x10000]);		/* Default bank is 2 */
@@ -1036,7 +1037,7 @@ static WRITE16_HANDLER( fixeighb_oki_bankswitch_w )
 		data &= 7;
 		if (data <= 4)
 		{
-			data8_t *fixeighb_oki = memory_region(REGION_SOUND1);
+			UINT8 *fixeighb_oki = memory_region(REGION_SOUND1);
 			memcpy(&fixeighb_oki[0x30000], &fixeighb_oki[(data * 0x10000) + 0x40000], 0x10000);
 		}
 	}
@@ -1073,14 +1074,14 @@ static WRITE16_HANDLER( battleg_commram_w )
 
 static READ8_HANDLER( battleg_commram_check_r0 )
 {
-	data8_t *battleg_common_RAM = (data8_t *)battleg_commram16;
+	UINT8 *battleg_common_RAM = (UINT8 *)battleg_commram16;
 
 	return battleg_common_RAM[BYTE_XOR_BE(offset * 2 + 1)];
 }
 
 static WRITE8_HANDLER( battleg_commram_check_w0 )
 {
-	data8_t *battleg_common_RAM = (data8_t *)battleg_commram16;
+	UINT8 *battleg_common_RAM = (UINT8 *)battleg_commram16;
 
 	battleg_common_RAM[BYTE_XOR_BE(0)] = data;
 	cpu_yield();					/* Command issued so switch control */
@@ -1093,7 +1094,7 @@ static READ16_HANDLER( battleg_z80check_r )
 
 static WRITE8_HANDLER( battleg_bankswitch_w )
 {
-	data8_t *RAM = (data8_t *)memory_region(REGION_CPU2);
+	UINT8 *RAM = (UINT8 *)memory_region(REGION_CPU2);
 	int bankaddress;
 	int bank;
 
@@ -1107,50 +1108,39 @@ static WRITE8_HANDLER( battleg_bankswitch_w )
 	}
 }
 
-static void raizing_oki6295_set_bankbase( int chip, int channel, int base )
-{
-	/* The OKI6295 ROM space is divided in four banks, each one independantly */
-	/* controlled. The sample table at the beginning of the addressing space  */
-	/* is divided in four pages as well, banked together with the sample data */
-
-	data8_t *rom = (data8_t *)memory_region(REGION_SOUND1 + chip);
-
-	/* copy the samples */
-	memcpy(rom + channel * 0x10000, rom + 0x40000 + base, 0x10000);
-
-	/* and also copy the samples address table */
-	rom += channel * 0x100;
-	memcpy(rom, rom + 0x40000 + base, 0x100);
-}
-
+// what chip do battleg and batrider actually use for soundrom banking?
+// it works the same way as the NMK112 but the interface is different...
+// interesting fact: these two games had the same composer & sfx designer
+// (Manabu NAMIKI) as the NMK games which used the NMK112
+// (macross2, tdragon2, quizpani...)
 
 static WRITE8_HANDLER( raizing_okim6295_bankselect_0 )
 {
-	raizing_oki6295_set_bankbase( 0, 0,  (data       & 0x0f) * 0x10000);
-	raizing_oki6295_set_bankbase( 0, 1, ((data >> 4) & 0x0f) * 0x10000);
+	NMK112_okibank_w(0,  data		& 0x0f);	// chip 0 bank 0
+	NMK112_okibank_w(1, (data >> 4)	& 0x0f);	// chip 0 bank 1
 }
 
 static WRITE8_HANDLER( raizing_okim6295_bankselect_1 )
 {
-	raizing_oki6295_set_bankbase( 0, 2,  (data       & 0x0f) * 0x10000);
-	raizing_oki6295_set_bankbase( 0, 3, ((data >> 4) & 0x0f) * 0x10000);
+	NMK112_okibank_w(2,  data		& 0x0f);	// chip 0 bank 2
+	NMK112_okibank_w(3, (data >> 4)	& 0x0f);	// chip 0 bank 3
 }
 
 static WRITE8_HANDLER( raizing_okim6295_bankselect_2 )
 {
-	raizing_oki6295_set_bankbase( 1, 0,  (data       & 0x0f) * 0x10000);
-	raizing_oki6295_set_bankbase( 1, 1, ((data >> 4) & 0x0f) * 0x10000);
+	NMK112_okibank_w(4,  data		& 0x0f);	// chip 1 bank 0
+	NMK112_okibank_w(5, (data >> 4)	& 0x0f);	// chip 1 bank 1
 }
 
 static WRITE8_HANDLER( raizing_okim6295_bankselect_3 )
 {
-	raizing_oki6295_set_bankbase( 1, 2,  (data       & 0x0f) * 0x10000);
-	raizing_oki6295_set_bankbase( 1, 3, ((data >> 4) & 0x0f) * 0x10000);
+	NMK112_okibank_w(6,  data		& 0x0f);	// chip 1 bank 2
+	NMK112_okibank_w(7, (data >> 4)	& 0x0f);	// chip 1 bank 3
 }
 
 static WRITE8_HANDLER( batrider_bankswitch_w )
 {
-	data8_t *RAM = (data8_t *)memory_region(REGION_CPU2);
+	UINT8 *RAM = (UINT8 *)memory_region(REGION_CPU2);
 	int bankaddress;
 	int bank;
 
@@ -1188,7 +1178,7 @@ static WRITE16_HANDLER( batrider_z80_busreq_w )
 
 static READ16_HANDLER( raizing_z80rom_r )
 {
-	data8_t *Z80_ROM_test = (data8_t *)memory_region(REGION_CPU2);
+	UINT8 *Z80_ROM_test = (UINT8 *)memory_region(REGION_CPU2);
 
 	if (offset < 0x8000)
 		return Z80_ROM_test[offset] & 0xff;
@@ -1201,7 +1191,7 @@ static READ16_HANDLER( raizing_z80rom_r )
 /*###################### Battle Bakraid ##############################*/
 
 /* EEPROM contents with battle Bakraid Unlimited version features unlocked */
-static data8_t bbakraid_unlimited_nvram[512] = {
+static UINT8 bbakraid_unlimited_nvram[512] = {
 	0xc2,0x49,0x00,0x07,0xa1,0x20,0x2a,0x2a,0x2a,0x90,0x90,0x90,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02,0x00,0x06,0x1a,0x80,0x2a,0x2a,0x2a,0x94,
 	0x94,0x94,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02,0x00,0x04,
@@ -1327,14 +1317,14 @@ static WRITE16_HANDLER ( raizing_sndcomms_w )
 /****** Battle Bakraid Z80 handlers ******/
 static READ8_HANDLER ( raizing_command_r )
 {
-	data8_t *raizing_cpu_comm = (data8_t *)raizing_cpu_comm16;
+	UINT8 *raizing_cpu_comm = (UINT8 *)raizing_cpu_comm16;
 
 	logerror("Z80 (PC:%04x) reading %02x from $48\n",activecpu_get_pc(),raizing_cpu_comm[BYTE_XOR_BE(1)]);
 	return raizing_cpu_comm[BYTE_XOR_BE(1)];
 }
 static READ8_HANDLER ( raizing_request_r )
 {
-	data8_t *raizing_cpu_comm = (data8_t *)raizing_cpu_comm16;
+	UINT8 *raizing_cpu_comm = (UINT8 *)raizing_cpu_comm16;
 
 	logerror("Z80 (PC:%04x) reading %02x from $4A\n",activecpu_get_pc(),raizing_cpu_comm[BYTE_XOR_BE(3)]);
 	return raizing_cpu_comm[BYTE_XOR_BE(3)];
@@ -3544,11 +3534,11 @@ INPUT_PORTS_START( battlega )
 //  PORT_DIPSETTING(        0x0070, "Invulnerability (Cheat)")
 	PORT_DIPNAME( 0x0080,	0x0000, DEF_STR( Bonus_Life ) )
 	/* Bonus_Life for Japanese territory */
-	PORT_DIPSETTING(		0x0000, "Every 1000k" )			PORT_DIPCONDITION(6,0x03,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(		0x0080, "1000k and 2000k" )		PORT_DIPCONDITION(6,0x03,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(		0x0000, "Every 1000k" )			PORT_CONDITION("JMPR",0x03,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(		0x0080, "1000k and 2000k" )		PORT_CONDITION("JMPR",0x03,PORTCOND_EQUALS,0x00)
 	/* Bonus_Life values for everywhere else */
-	PORT_DIPSETTING(		0x0080, "Every 2000k" )			PORT_DIPCONDITION(6,0x03,PORTCOND_NOTEQUALS,0x00)
-	PORT_DIPSETTING(		0x0000, DEF_STR( None ) )		PORT_DIPCONDITION(6,0x03,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(		0x0080, "Every 2000k" )			PORT_CONDITION("JMPR",0x03,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(		0x0000, DEF_STR( None ) )		PORT_CONDITION("JMPR",0x03,PORTCOND_NOTEQUALS,0x00)
 	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START_TAG("JMPR")
@@ -3703,25 +3693,16 @@ INPUT_PORTS_START( batrider )
 	PORT_DIPSETTING(		0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(		0x1000, DEF_STR( On ) )
 	/*  These Dips are showed only when Coin_A is set to Free_Play.
-        They are the last 3 Unused dips. Seems to be debug options */
-//  PORT_DIPNAME( 0x2000,   0x0000, "Guest Player" )
-//  PORT_DIPSETTING(        0x0000, DEF_STR( Off ) )
-//  PORT_DIPSETTING(        0x2000, DEF_STR( On ) )
-//  PORT_DIPNAME( 0x4000,   0x0000, "Player Select" )
-//  PORT_DIPSETTING(        0x0000, DEF_STR( Off ) )
-//  PORT_DIPSETTING(        0x4000, DEF_STR( On ) )
-//  PORT_DIPNAME( 0x8000,   0x0000, "Special Course" )
-//  PORT_DIPSETTING(        0x0000, DEF_STR( Off ) )
-//  PORT_DIPSETTING(        0x8000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x2000,	0x0000, DEF_STR( Unused ) )
-	PORT_DIPSETTING(		0x0000, DEF_STR( Off ) )
-	PORT_DIPSETTING(		0x2000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x4000,	0x0000, DEF_STR( Unused ) )
-	PORT_DIPSETTING(		0x0000, DEF_STR( Off ) )
-	PORT_DIPSETTING(		0x4000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x8000,	0x0000, DEF_STR( Unused ) )
-	PORT_DIPSETTING(		0x0000, DEF_STR( Off ) )
-	PORT_DIPSETTING(		0x8000, DEF_STR( On ) )
+          But they work with normal play mode too. */
+	PORT_DIPNAME( 0x2000,   0x0000, "Guest Player" )
+	PORT_DIPSETTING(        0x0000, DEF_STR( Off ) )
+	PORT_DIPSETTING(        0x2000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x4000,   0x0000, "Player Select" )
+	PORT_DIPSETTING(        0x0000, DEF_STR( Off ) )
+	PORT_DIPSETTING(        0x4000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x8000,   0x0000, "Special Course" )
+	PORT_DIPSETTING(        0x0000, DEF_STR( Off ) )
+	PORT_DIPSETTING(        0x8000, DEF_STR( On ) )
 
 	PORT_START_TAG("IN3")		/* (3) DSWA and DSWB */
 	PORT_SERVICE( 0x0001,	IP_ACTIVE_HIGH )		/* Service Mode */
@@ -3891,15 +3872,15 @@ INPUT_PORTS_START( bbakraid )
 	PORT_DIPSETTING(		0x0000, "3" )
 	PORT_DIPSETTING(		0x1000, "4" )
 	PORT_DIPNAME( 0xc000,	0x0000, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(		0x0000, "Every 200k" )
-	PORT_DIPSETTING(		0x4000, "Every 300k" )
-	PORT_DIPSETTING(		0x8000, "Every 400k" )
+	PORT_DIPSETTING(		0x0000, "Every 2000k" )
+	PORT_DIPSETTING(		0x4000, "Every 3000k" )
+	PORT_DIPSETTING(		0x8000, "Every 4000k" )
 	PORT_DIPSETTING(		0xc000, DEF_STR( None ) )
 INPUT_PORTS_END
 
 
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,	/* 16x16 */
 	RGN_FRAC(1,2),	/* Number of tiles */
@@ -3912,7 +3893,7 @@ static struct GfxLayout tilelayout =
 	8*4*16
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	8,8,	/* 8x8 */
 	RGN_FRAC(1,2),	/* Number of 8x8 sprites */
@@ -3923,7 +3904,7 @@ static struct GfxLayout spritelayout =
 	8*16
 };
 
-static struct GfxLayout raizing_textlayout =
+static gfx_layout raizing_textlayout =
 {
 	8,8,	/* 8x8 characters */
 	1024,	/* 1024 characters */
@@ -3935,7 +3916,7 @@ static struct GfxLayout raizing_textlayout =
 };
 
 #ifdef LSB_FIRST
-static struct GfxLayout truxton2_tx_tilelayout =
+static gfx_layout truxton2_tx_tilelayout =
 {
 	8,8,	/* 8x8 characters */
 	1024,	/* 1024 characters */
@@ -3946,7 +3927,7 @@ static struct GfxLayout truxton2_tx_tilelayout =
 	8*64
 };
 #else
-static struct GfxLayout truxton2_tx_tilelayout =
+static gfx_layout truxton2_tx_tilelayout =
 {
 	8,8,	/* 8x8 characters */
 	1024,	/* 1024 characters */
@@ -3959,7 +3940,7 @@ static struct GfxLayout truxton2_tx_tilelayout =
 #endif
 
 #ifdef LSB_FIRST
-static struct GfxLayout batrider_tx_tilelayout =
+static gfx_layout batrider_tx_tilelayout =
 {
 	8,8,	/* 8x8 characters */
 	1024,	/* 1024 characters */
@@ -3970,7 +3951,7 @@ static struct GfxLayout batrider_tx_tilelayout =
 	8*32
 };
 #else
-static struct GfxLayout batrider_tx_tilelayout =
+static gfx_layout batrider_tx_tilelayout =
 {
 	8,8,	/* 8x8 characters */
 	1024,	/* 1024 characters */
@@ -3983,7 +3964,7 @@ static struct GfxLayout batrider_tx_tilelayout =
 #endif
 
 
-static struct GfxLayout fixeighblayout =
+static gfx_layout fixeighblayout =
 {
    8,8,
    RGN_FRAC(1,1),
@@ -3994,14 +3975,14 @@ static struct GfxLayout fixeighblayout =
    8*8*4
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,   0, 128 },
 	{ REGION_GFX1, 0, &spritelayout, 0,  64 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo_2[] =
+static gfx_decode gfxdecodeinfo_2[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,   0, 128 },
 	{ REGION_GFX1, 0, &spritelayout, 0,  64 },
@@ -4010,7 +3991,7 @@ static struct GfxDecodeInfo gfxdecodeinfo_2[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo truxton2_gfxdecodeinfo[] =
+static gfx_decode truxton2_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0,       &tilelayout            , 0, 128 },
 	{ REGION_GFX1, 0,       &spritelayout          , 0,  64 },
@@ -4020,7 +4001,7 @@ static struct GfxDecodeInfo truxton2_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo raizing_gfxdecodeinfo[] =
+static gfx_decode raizing_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,         0, 128 },
 	{ REGION_GFX1, 0, &spritelayout,       0,  64 },
@@ -4029,7 +4010,7 @@ static struct GfxDecodeInfo raizing_gfxdecodeinfo[] =
 };
 
 /* This is wrong a bit. Text layer is dynamically changed. */
-static struct GfxDecodeInfo batrider_gfxdecodeinfo[] =
+static gfx_decode batrider_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,             0, 128 },
 	{ REGION_GFX1, 0, &spritelayout,           0,  64 },
@@ -4037,7 +4018,7 @@ static struct GfxDecodeInfo batrider_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo fixeighb_gfxdecodeinfo[] =
+static gfx_decode fixeighb_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout     , 0, 128 },
 	{ REGION_GFX1, 0, &spritelayout   , 0,  64 },

@@ -13,6 +13,7 @@
 
 #include "driver.h"
 #include "namco.h"
+#include "state.h"
 
 
 /* 8 voices max */
@@ -45,13 +46,14 @@ typedef struct
 	int noise_state;
 	int noise_seed;
 	UINT32 noise_counter;
+	int noise_hold;
 	int waveform_select;
 } sound_channel;
 
 
 /* globals available to everyone */
-data8_t *namco_soundregs;
-data8_t *namco_wavedata;
+UINT8 *namco_soundregs;
+UINT8 *namco_wavedata;
 
 struct namco_sound
 {
@@ -75,7 +77,7 @@ struct namco_sound
 
 
 /* update the decoded waveform data */
-static void update_namco_waveform(struct namco_sound *chip, int offset, data8_t data)
+static void update_namco_waveform(struct namco_sound *chip, int offset, UINT8 data)
 {
 	if (chip->wave_size == 1)
 	{
@@ -185,7 +187,9 @@ static void namco_update_mono(void *param, stream_sample_t **inputs, stream_samp
 			/* only update if we have non-zero volume and frequency */
 			if (v && f)
 			{
-				UINT32 delta = f << (chip->f_fracbits - 15 + 4);
+				int hold_time = 1 << (chip->f_fracbits - 16);
+				int hold = voice->noise_hold;
+				UINT32 delta = f << 4;
 				UINT32 c = voice->noise_counter;
 				INT16 noise_data = OUTPUT_LEVEL(0x07 * (v >> 1));
 				int i;
@@ -200,6 +204,14 @@ static void namco_update_mono(void *param, stream_sample_t **inputs, stream_samp
 					else
 						*mix++ -= noise_data;
 
+					if (hold)
+					{
+						hold--;
+						continue;
+					}
+
+					hold = 	hold_time;
+
 					c += delta;
 					cnt = (c >> 12);
 					c &= (1 << 12) - 1;
@@ -211,8 +223,9 @@ static void namco_update_mono(void *param, stream_sample_t **inputs, stream_samp
 					}
 				}
 
-				/* update the counter for this voice */
+				/* update the counter and hold time for this voice */
 				voice->noise_counter = c;
+				voice->noise_hold = hold;
 			}
 		}
 		else
@@ -259,7 +272,9 @@ static void namco_update_stereo(void *param, stream_sample_t **inputs, stream_sa
 			/* only update if we have non-zero volume and frequency */
 			if ((lv || rv) && f)
 			{
-				UINT32 delta = f << (chip->f_fracbits - 15 + 4);
+				int hold_time = 1 << (chip->f_fracbits - 16);
+				int hold = voice->noise_hold;
+				UINT32 delta = f << 4;
 				UINT32 c = voice->noise_counter;
 				INT16 l_noise_data = OUTPUT_LEVEL(0x07 * (lv >> 1));
 				INT16 r_noise_data = OUTPUT_LEVEL(0x07 * (rv >> 1));
@@ -281,6 +296,14 @@ static void namco_update_stereo(void *param, stream_sample_t **inputs, stream_sa
 						*rmix++ -= r_noise_data;
 					}
 
+					if (hold)
+					{
+						hold--;
+						continue;
+					}
+
+					hold = 	hold_time;
+
 					c += delta;
 					cnt = (c >> 12);
 					c &= (1 << 12) - 1;
@@ -292,8 +315,9 @@ static void namco_update_stereo(void *param, stream_sample_t **inputs, stream_sa
 					}
 				}
 
-				/* update the counter for this voice */
+				/* update the counter and hold time for this voice */
 				voice->noise_counter = c;
+				voice->noise_hold = hold;
 			}
 		}
 		else
@@ -370,9 +394,15 @@ static void *namco_start(int sndindex, int clock, const void *config)
 	/* start with sound enabled, many games don't have a sound enable register */
 	chip->sound_enable = 1;
 
+	/* register with the save state system */
+	state_save_register_int("namco", sndindex, "num_voices", &chip->num_voices);
+	state_save_register_int("namco", sndindex, "sound_enable", &chip->sound_enable);
+
 	/* reset all the voices */
 	for (voice = chip->channel_list; voice < chip->last_channel; voice++)
 	{
+		int state_index = sndindex * MAX_VOICES + (voice - chip->channel_list);
+
 		voice->frequency = 0;
 		voice->volume[0] = voice->volume[1] = 0;
 		voice->waveform_select = 0;
@@ -381,6 +411,19 @@ static void *namco_start(int sndindex, int clock, const void *config)
 		voice->noise_state = 0;
 		voice->noise_seed = 1;
 		voice->noise_counter = 0;
+		voice->noise_hold = 0;
+
+		/* register with the save state system */
+		state_save_register_UINT32("namco", state_index, "frequency", &voice->frequency, 1);
+		state_save_register_UINT32("namco", state_index, "counter", &voice->counter, 1);
+		state_save_register_int   ("namco", state_index, "volume0", &voice->volume[0]);
+		state_save_register_int   ("namco", state_index, "volume1", &voice->volume[1]);
+		state_save_register_int   ("namco", state_index, "noise_sw", &voice->noise_sw);
+		state_save_register_int   ("namco", state_index, "noise_state", &voice->noise_state);
+		state_save_register_int   ("namco", state_index, "noise_seed", &voice->noise_seed);
+		state_save_register_int   ("namco", state_index, "noise_hold", &voice->noise_hold);
+		state_save_register_UINT32("namco", state_index, "noise_counter", &voice->noise_counter, 1);
+		state_save_register_int   ("namco", state_index, "waveform_select", &voice->waveform_select);
 	}
 
 	return chip;

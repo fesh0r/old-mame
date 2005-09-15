@@ -124,7 +124,7 @@ INPUT_PORTS_END
 
 /* text-layer characters */
 
-static struct GfxLayout pts_8x8_4bits_layout =
+static gfx_layout pts_8x8_4bits_layout =
 {
 	8,8,	      /* 8*8 pixels */
 	RGN_FRAC(1,1),        /* 65536 patterns */
@@ -135,7 +135,7 @@ static struct GfxLayout pts_8x8_4bits_layout =
 	8*8*4
 };
 
-static struct GfxLayout pts_16x16_4bits_layout =
+static gfx_layout pts_16x16_4bits_layout =
 {
 	16,16,        /* 16*16 pixels */
 	RGN_FRAC(1,1),        /* 16384 patterns */
@@ -146,7 +146,7 @@ static struct GfxLayout pts_16x16_4bits_layout =
 	16*16*4
 };
 
-static struct GfxLayout pts_32x32_4bits_layout =
+static gfx_layout pts_32x32_4bits_layout =
 {
 	32,32,        /* 32*32 pixels */
 	RGN_FRAC(1,1),         /* 4096 patterns */
@@ -157,7 +157,7 @@ static struct GfxLayout pts_32x32_4bits_layout =
 	32*32*4
 };
 
-static struct GfxLayout pts_64x64_4bits_layout =
+static gfx_layout pts_64x64_4bits_layout =
 {
 	64,64,        /* 32*32 pixels */
 	RGN_FRAC(1,1),         /* 1024 patterns */
@@ -170,7 +170,7 @@ static struct GfxLayout pts_64x64_4bits_layout =
 	64*64*4
 };
 
-static struct GfxLayout pts_8x8_8bits_layout =
+static gfx_layout pts_8x8_8bits_layout =
 {
 	8,8,	      /* 8*8 pixels */
 	RGN_FRAC(1,1),        /* 32768 patterns */
@@ -181,7 +181,7 @@ static struct GfxLayout pts_8x8_8bits_layout =
 	8*8*8
 };
 
-static struct GfxLayout pts_16x16_8bits_layout =
+static gfx_layout pts_16x16_8bits_layout =
 {
 	16,16,        /* 16*16 pixels */
 	RGN_FRAC(1,1),         /* 8192 patterns */
@@ -192,7 +192,7 @@ static struct GfxLayout pts_16x16_8bits_layout =
 	16*16*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000000, &pts_8x8_4bits_layout,    0,  16 },
 	{ REGION_GFX1, 0x00000000, &pts_16x16_4bits_layout,  0,  16 },
@@ -303,12 +303,12 @@ static MACHINE_DRIVER_START( namcond1 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(C352, 0)
+	MDRV_SOUND_ADD(C352, 16384000)
 	MDRV_SOUND_CONFIG(c352_interface)
-	MDRV_SOUND_ROUTE(0, "right", 0.50)
-	MDRV_SOUND_ROUTE(1, "left", 0.50)
-	MDRV_SOUND_ROUTE(2, "right", 0.50)
-	MDRV_SOUND_ROUTE(3, "left", 0.50)
+	MDRV_SOUND_ROUTE(0, "right", 1.00)
+	MDRV_SOUND_ROUTE(1, "left", 1.00)
+	MDRV_SOUND_ROUTE(2, "right", 1.00)
+	MDRV_SOUND_ROUTE(3, "left", 1.00)
 MACHINE_DRIVER_END
 
 ROM_START( ncv1 )
@@ -389,7 +389,7 @@ ROM_START( ncv2j )
 ROM_END
 
 GAMEX( 1995, ncv1,      0, namcond1, namcond1, 0, ROT90, "Namco", "Namco Classics Collection Vol.1", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1995, ncv1j,  ncv1, namcond1, namcond1, 0, ROT90, "Namco", "Namco Classics Collection Vol.1 (Japan set 1)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAMEX( 1995, ncv1j2, ncv1, namcond1, namcond1, 0, ROT90, "Namco", "Namco Classics Collection Vol.1 (Japan set 2)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1995, ncv1j,  ncv1, namcond1, namcond1, 0, ROT90, "Namco", "Namco Classics Collection Vol.1 (Japan, v1.00)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAMEX( 1995, ncv1j2, ncv1, namcond1, namcond1, 0, ROT90, "Namco", "Namco Classics Collection Vol.1 (Japan, v1.03)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
 GAMEX( 1996, ncv2,      0, namcond1, namcond1, 0, ROT90, "Namco", "Namco Classics Collection Vol.2", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
 GAMEX( 1996, ncv2j,  ncv2, namcond1, namcond1, 0, ROT90, "Namco", "Namco Classics Collection Vol.2 (Japan)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )

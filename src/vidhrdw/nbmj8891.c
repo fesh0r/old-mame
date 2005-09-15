@@ -24,10 +24,10 @@ static int nbmj8891_clutsel;
 static int nbmj8891_screen_refresh;
 static int gfxdraw_mode;
 
-static struct mame_bitmap *nbmj8891_tmpbitmap0, *nbmj8891_tmpbitmap1;
-static data8_t *nbmj8891_videoram0, *nbmj8891_videoram1;
-static data8_t *nbmj8891_palette;
-static data8_t *nbmj8891_clut;
+static mame_bitmap *nbmj8891_tmpbitmap0, *nbmj8891_tmpbitmap1;
+static UINT8 *nbmj8891_videoram0, *nbmj8891_videoram1;
+static UINT8 *nbmj8891_palette;
+static UINT8 *nbmj8891_clut;
 
 
 static void nbmj8891_vramflip(int vram);
@@ -290,7 +290,7 @@ WRITE8_HANDLER( nbmj8891_romsel_w )
 	if ((0x20000 * nbmj8891_gfxrom) > (memory_region_length(REGION_GFX1) - 1))
 	{
 #ifdef MAME_DEBUG
-		usrintf_showmessage("GFXROM BANK OVER!!");
+		ui_popup("GFXROM BANK OVER!!");
 #endif
 		nbmj8891_gfxrom &= (memory_region_length(REGION_GFX1) / 0x20000 - 1);
 	}
@@ -393,7 +393,7 @@ static void nbmj8891_gfxdraw(void)
 			if ((gfxaddr > (memory_region_length(REGION_GFX1) - 1)))
 			{
 #ifdef MAME_DEBUG
-				usrintf_showmessage("GFXROM ADDRESS OVER!!");
+				ui_popup("GFXROM ADDRESS OVER!!");
 #endif
 				gfxaddr &= (memory_region_length(REGION_GFX1) - 1);
 			}
@@ -521,12 +521,12 @@ VIDEO_START( nbmj8891_2layer )
 {
 	if ((nbmj8891_tmpbitmap0 = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height)) == 0) return 1;
 	if ((nbmj8891_tmpbitmap1 = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height)) == 0) return 1;
-	if ((nbmj8891_videoram0 = auto_malloc(Machine->drv->screen_width * Machine->drv->screen_height * sizeof(data8_t))) == 0) return 1;
-	if ((nbmj8891_videoram1 = auto_malloc(Machine->drv->screen_width * Machine->drv->screen_height * sizeof(data8_t))) == 0) return 1;
-	if ((nbmj8891_palette = auto_malloc(0x200 * sizeof(data8_t))) == 0) return 1;
-	if ((nbmj8891_clut = auto_malloc(0x800 * sizeof(data8_t))) == 0) return 1;
-	memset(nbmj8891_videoram0, 0xff, (Machine->drv->screen_width * Machine->drv->screen_height * sizeof(data8_t)));
-	memset(nbmj8891_videoram1, 0xff, (Machine->drv->screen_width * Machine->drv->screen_height * sizeof(data8_t)));
+	if ((nbmj8891_videoram0 = auto_malloc(Machine->drv->screen_width * Machine->drv->screen_height * sizeof(UINT8))) == 0) return 1;
+	if ((nbmj8891_videoram1 = auto_malloc(Machine->drv->screen_width * Machine->drv->screen_height * sizeof(UINT8))) == 0) return 1;
+	if ((nbmj8891_palette = auto_malloc(0x200 * sizeof(UINT8))) == 0) return 1;
+	if ((nbmj8891_clut = auto_malloc(0x800 * sizeof(UINT8))) == 0) return 1;
+	memset(nbmj8891_videoram0, 0xff, (Machine->drv->screen_width * Machine->drv->screen_height * sizeof(UINT8)));
+	memset(nbmj8891_videoram1, 0xff, (Machine->drv->screen_width * Machine->drv->screen_height * sizeof(UINT8)));
 	Machine->pens[0x07f] = 0xff;	/* palette_transparent_pen */
 	gfxdraw_mode = 1;
 	return 0;

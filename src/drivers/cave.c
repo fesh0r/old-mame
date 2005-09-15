@@ -45,6 +45,7 @@ To Do:
 #include "driver.h"
 #include "vidhrdw/generic.h"
 #include "machine/eeprom.h"
+#include "machine/nmk112.h"
 #include "cpu/z80/z80.h"
 #include "cave.h"
 #include "sound/2203intf.h"
@@ -165,10 +166,10 @@ static READ16_HANDLER( cave_irq_cause_r )
 struct
 {
 	int len;
-	data8_t data[32];
+	UINT8 data[32];
 }	soundbuf;
 
-//static data8_t sound_flag1, sound_flag2;
+//static UINT8 sound_flag1, sound_flag2;
 
 static READ8_HANDLER( soundflags_r )
 {
@@ -218,7 +219,7 @@ static READ16_HANDLER( soundlatch_ack_r )
 {
 	if (soundbuf.len>0)
 	{
-		data8_t data = soundbuf.data[0];
+		UINT8 data = soundbuf.data[0];
 		memmove(soundbuf.data,soundbuf.data+1,(32-1)*sizeof(soundbuf.data[0]));
 		soundbuf.len--;
 		return data;
@@ -266,19 +267,19 @@ static READ16_HANDLER( cave_sound_r )
 
 ***************************************************************************/
 
-static data8_t cave_default_eeprom_type1[16] =	{0x00,0x0C,0x11,0x0D,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x11,0x11,0xFF,0xFF,0xFF,0xFF};  /* DFeveron, Guwange */
-static data8_t cave_default_eeprom_type1feversos[18] =	{0x00,0x0C,0x16,0x27,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x11,0x11,0xFF,0xFF,0xFF,0xFF,0x05,0x19};  /* Fever SOS (code checks for the 0x0519 or it won't boot) */
-static data8_t cave_default_eeprom_type2[16] =	{0x00,0x0C,0xFF,0xFB,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};  /* Esprade, DonPachi, DDonPachi */
-static data8_t cave_default_eeprom_type3[16] =	{0x00,0x03,0x08,0x00,0xFF,0xFF,0xFF,0xFF,0x08,0x00,0x00,0x00,0xFF,0xFF,0xFF,0xFF};  /* UoPoko */
-static data8_t cave_default_eeprom_type4[16] =	{0xF3,0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};  /* Hotdog Storm */
-static data8_t cave_default_eeprom_type5[16] =	{0xED,0xFF,0x00,0x00,0x12,0x31,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};  /* Mazinger Z (6th byte is country code) */
-static data8_t cave_default_eeprom_type6[18] =	{0xa5,0x00,0xa5,0x00,0xa5,0x00,0xa5,0x00,0xa5,0x01,0xa5,0x01,0xa5,0x04,0xa5,0x01,0xa5,0x02};	/* Sailor Moon (last byte is country code) */
+static UINT8 cave_default_eeprom_type1[16] =	{0x00,0x0C,0x11,0x0D,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x11,0x11,0xFF,0xFF,0xFF,0xFF};  /* DFeveron, Guwange */
+static UINT8 cave_default_eeprom_type1feversos[18] =	{0x00,0x0C,0x16,0x27,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x11,0x11,0xFF,0xFF,0xFF,0xFF,0x05,0x19};  /* Fever SOS (code checks for the 0x0519 or it won't boot) */
+static UINT8 cave_default_eeprom_type2[16] =	{0x00,0x0C,0xFF,0xFB,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};  /* Esprade, DonPachi, DDonPachi */
+static UINT8 cave_default_eeprom_type3[16] =	{0x00,0x03,0x08,0x00,0xFF,0xFF,0xFF,0xFF,0x08,0x00,0x00,0x00,0xFF,0xFF,0xFF,0xFF};  /* UoPoko */
+static UINT8 cave_default_eeprom_type4[16] =	{0xF3,0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};  /* Hotdog Storm */
+static UINT8 cave_default_eeprom_type5[16] =	{0xED,0xFF,0x00,0x00,0x12,0x31,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};  /* Mazinger Z (6th byte is country code) */
+static UINT8 cave_default_eeprom_type6[18] =	{0xa5,0x00,0xa5,0x00,0xa5,0x00,0xa5,0x00,0xa5,0x01,0xa5,0x01,0xa5,0x04,0xa5,0x01,0xa5,0x02};	/* Sailor Moon (last byte is country code) */
 // Air Gallet. Byte 1f is the country code (0==JAPAN,U.S.A,EUROPE,HONGKONG,TAIWAN,KOREA)
-static data8_t cave_default_eeprom_type7[48] =	{0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
+static UINT8 cave_default_eeprom_type7[48] =	{0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
 												 0x00,0x00,0x00,0x00,0x00,0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02,
 												 0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0x00,0x00,0xff,0xff,0xff,0xff,0xff,0xff};
 
-static data8_t *cave_default_eeprom;
+static UINT8 *cave_default_eeprom;
 static int cave_default_eeprom_length;
 static int cave_region_byte;
 
@@ -564,39 +565,6 @@ WRITE16_HANDLER( donpachi_videoregs_w )
 }
 #endif
 
-static WRITE16_HANDLER( nmk_oki6295_bankswitch_w )
-{
-	if (Machine->sample_rate == 0)	return;
-
-	if (ACCESSING_LSB)
-	{
-		/* The OKI6295 ROM space is divided in four banks, each one indepentently
-           controlled. The sample table at the beginning of the addressing space is
-           divided in four pages as well, banked together with the sample data. */
-
-		#define TABLESIZE 0x100
-		#define BANKSIZE 0x10000
-
-		int chip	=	offset / 4;
-		int banknum	=	offset % 4;
-
-		unsigned char *rom	=	memory_region(REGION_SOUND1 + chip);
-		int size			=	memory_region_length(REGION_SOUND1 + chip) - 0x40000;
-
-		int bankaddr		=	(data * BANKSIZE) % size;	// % used: size is not a power of 2
-
-		/* copy the samples */
-		memcpy(rom + banknum * BANKSIZE,rom + 0x40000 + bankaddr,BANKSIZE);
-
-		/* and also copy the samples address table (only for chip #1) */
-		if (chip==1)
-		{
-			rom += banknum * TABLESIZE;
-			memcpy(rom,rom + 0x40000 + bankaddr,TABLESIZE);
-		}
-	}
-}
-
 static ADDRESS_MAP_START( donpachi_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM					)	// ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_RAM					)	// RAM
@@ -631,7 +599,7 @@ static ADDRESS_MAP_START( donpachi_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xa08000, 0xa08fff) AM_WRITE(paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
 	AM_RANGE(0xb00000, 0xb00003) AM_WRITE(OKIM6295_data_0_lsb_w				)	// M6295
 	AM_RANGE(0xb00010, 0xb00013) AM_WRITE(OKIM6295_data_1_lsb_w				)	//
-	AM_RANGE(0xb00020, 0xb0002f) AM_WRITE(nmk_oki6295_bankswitch_w			)	//
+	AM_RANGE(0xb00020, 0xb0002f) AM_WRITE(NMK112_okibank_lsb_w				)	//
 	AM_RANGE(0xd00000, 0xd00001) AM_WRITE(cave_eeprom_msb_w					)	// EEPROM
 ADDRESS_MAP_END
 
@@ -811,12 +779,12 @@ ADDRESS_MAP_END
                                Koro Koro Quest
 ***************************************************************************/
 
-static data16_t leds[2];
+static UINT16 leds[2];
 
 static void show_leds(void)
 {
 #ifdef MAME_DEBUG
-//  usrintf_showmessage("led %04X eep %02X",leds[0],(leds[1] >> 8) & ~0x70);
+//  ui_popup("led %04X eep %02X",leds[0],(leds[1] >> 8) & ~0x70);
 #endif
 }
 
@@ -1007,7 +975,7 @@ READ16_HANDLER( pwrinst2_eeprom_r )
 	return ~8 + ((EEPROM_read_bit() & 1) ? 8 : 0);
 }
 
-INLINE void vctrl_w(data16_t *VCTRL, UNUSEDARG offs_t offset, UNUSEDARG data16_t data, UNUSEDARG data16_t mem_mask)
+INLINE void vctrl_w(UINT16 *VCTRL, ATTR_UNUSED offs_t offset, ATTR_UNUSED UINT16 data, ATTR_UNUSED UINT16 mem_mask)
 {
 	if ( offset == 4/2 )
 	{
@@ -1082,7 +1050,7 @@ static READ16_HANDLER( sailormn_input0_r )
 
 static READ16_HANDLER( agallet_irq_cause_r )
 {
-	data16_t irq_cause = cave_irq_cause_r(offset,mem_mask);
+	UINT16 irq_cause = cave_irq_cause_r(offset,mem_mask);
 
 	if (offset == 0)
 	{
@@ -1192,7 +1160,7 @@ ADDRESS_MAP_END
 
 WRITE8_HANDLER( hotdogst_rombank_w )
 {
-	data8_t *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(REGION_CPU2);
 	int bank = data & 0x0f;
 	if ( data & ~0x0f )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
 	if (bank > 1)	bank+=2;
@@ -1201,7 +1169,7 @@ WRITE8_HANDLER( hotdogst_rombank_w )
 
 WRITE8_HANDLER( hotdogst_okibank_w )
 {
-	data8_t *RAM = memory_region(REGION_SOUND1);
+	UINT8 *RAM = memory_region(REGION_SOUND1);
 	int bank1 = (data >> 0) & 0x3;
 	int bank2 = (data >> 4) & 0x3;
 	if (Machine->sample_rate == 0)	return;
@@ -1246,7 +1214,7 @@ ADDRESS_MAP_END
 
 WRITE8_HANDLER( mazinger_rombank_w )
 {
-	data8_t *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(REGION_CPU2);
 	int bank = data & 0x07;
 	if ( data & ~0x07 )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
 	if (bank > 1)	bank+=2;
@@ -1290,7 +1258,7 @@ ADDRESS_MAP_END
 
 WRITE8_HANDLER( metmqstr_rombank_w )
 {
-	data8_t *ROM = memory_region(REGION_CPU2);
+	UINT8 *ROM = memory_region(REGION_CPU2);
 	int bank = data & 0xf;
 	if ( bank != data )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
 	if (bank >= 2)	bank += 2;
@@ -1299,7 +1267,7 @@ WRITE8_HANDLER( metmqstr_rombank_w )
 
 WRITE8_HANDLER( metmqstr_okibank0_w )
 {
-	data8_t *ROM = memory_region(REGION_SOUND1);
+	UINT8 *ROM = memory_region(REGION_SOUND1);
 	int bank1 = (data >> 0) & 0x7;
 	int bank2 = (data >> 4) & 0x7;
 	if (Machine->sample_rate == 0)	return;
@@ -1309,7 +1277,7 @@ WRITE8_HANDLER( metmqstr_okibank0_w )
 
 WRITE8_HANDLER( metmqstr_okibank1_w )
 {
-	data8_t *ROM = memory_region(REGION_SOUND2);
+	UINT8 *ROM = memory_region(REGION_SOUND2);
 	int bank1 = (data >> 0) & 0x7;
 	int bank2 = (data >> 4) & 0x7;
 	if (Machine->sample_rate == 0)	return;
@@ -1353,46 +1321,9 @@ ADDRESS_MAP_END
                                 Power Instinct 2
 ***************************************************************************/
 
-// TODO : FIX SAMPLES TABLE BEING OVERWRITTEN IN DONPACHI
-static WRITE8_HANDLER( pwrinst2_okibank_w )
-{
-	/* The OKI6295 ROM space is divided in four banks, each one indepentently
-       controlled. The sample table at the beginning of the addressing space is
-       divided in four pages as well, banked together with the sample data. */
-
-	#define TABLESIZE 0x100
-	#define BANKSIZE 0x10000
-
-	int chip	=	offset / 4;
-	int banknum	=	offset % 4;
-
-	unsigned char *rom	=	memory_region(REGION_SOUND1 + chip);
-	int size			=	memory_region_length(REGION_SOUND1 + chip) - 0x40000;
-
-	int bankaddr		=	data * BANKSIZE;
-
-	if (Machine->sample_rate == 0)	return;
-
-	if (bankaddr >= size)
-	{
-		bankaddr %= size;
-logerror("CPU #1 - PC %06X: chip %d bank %X<-%02X\n",activecpu_get_pc(),chip,banknum,data);
-	}
-
-	/* copy the samples */
-	if (banknum == 0)		/* skip table */
-		memcpy(rom + banknum * BANKSIZE+0x400,rom + 0x40000 + bankaddr+0x400,BANKSIZE-0x400);
-	else
-		memcpy(rom + banknum * BANKSIZE,rom + 0x40000 + bankaddr,BANKSIZE);
-
-	/* and also copy the samples address table (only for chip #1) */
-	rom += banknum * TABLESIZE;
-	memcpy(rom,rom + 0x40000 + bankaddr,TABLESIZE);
-}
-
 WRITE8_HANDLER( pwrinst2_rombank_w )
 {
-	data8_t *ROM = memory_region(REGION_CPU2);
+	UINT8 *ROM = memory_region(REGION_CPU2);
 	int bank = data & 0x07;
 	if ( data & ~0x07 )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
 	if (bank > 2)	bank+=1;
@@ -1425,7 +1356,7 @@ static ADDRESS_MAP_START( pwrinst2_sound_writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_WRITE(OKIM6295_data_0_w			)	// M6295
 	AM_RANGE(0x08, 0x08) AM_WRITE(OKIM6295_data_1_w			)	//
-	AM_RANGE(0x10, 0x17) AM_WRITE(pwrinst2_okibank_w		)	// Samples bank
+	AM_RANGE(0x10, 0x17) AM_WRITE(NMK112_okibank_w			)	// Samples bank
 	AM_RANGE(0x40, 0x40) AM_WRITE(YM2203_control_port_0_w	)	// YM2203
 	AM_RANGE(0x41, 0x41) AM_WRITE(YM2203_write_port_0_w		)	//
 //  AM_RANGE(0x50, 0x50) AM_WRITE(MWA8_NOP      )   // ?? volume
@@ -1438,7 +1369,7 @@ ADDRESS_MAP_END
                                 Sailor Moon
 ***************************************************************************/
 
-static data8_t *mirror_ram;
+static UINT8 *mirror_ram;
 static READ8_HANDLER( mirror_ram_r )
 {
 	return mirror_ram[offset];
@@ -1450,7 +1381,7 @@ static WRITE8_HANDLER( mirror_ram_w )
 
 WRITE8_HANDLER( sailormn_rombank_w )
 {
-	data8_t *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(REGION_CPU2);
 	int bank = data & 0x1f;
 	if ( data & ~0x1f )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
 	if (bank > 1)	bank+=2;
@@ -1459,7 +1390,7 @@ WRITE8_HANDLER( sailormn_rombank_w )
 
 WRITE8_HANDLER( sailormn_okibank0_w )
 {
-	data8_t *RAM = memory_region(REGION_SOUND1);
+	UINT8 *RAM = memory_region(REGION_SOUND1);
 	int bank1 = (data >> 0) & 0xf;
 	int bank2 = (data >> 4) & 0xf;
 	if (Machine->sample_rate == 0)	return;
@@ -1469,7 +1400,7 @@ WRITE8_HANDLER( sailormn_okibank0_w )
 
 WRITE8_HANDLER( sailormn_okibank1_w )
 {
-	data8_t *RAM = memory_region(REGION_SOUND2);
+	UINT8 *RAM = memory_region(REGION_SOUND2);
 	int bank1 = (data >> 0) & 0xf;
 	int bank2 = (data >> 4) & 0xf;
 	if (Machine->sample_rate == 0)	return;
@@ -1886,7 +1817,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 /* 8x8x4 tiles */
-static struct GfxLayout layout_8x8x4 =
+static gfx_layout layout_8x8x4 =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -1898,7 +1829,7 @@ static struct GfxLayout layout_8x8x4 =
 };
 
 /* 8x8x6 tiles (in a 8x8x8 layout) */
-static struct GfxLayout layout_8x8x6 =
+static gfx_layout layout_8x8x6 =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -1911,7 +1842,7 @@ static struct GfxLayout layout_8x8x6 =
 
 /* 8x8x6 tiles (4 bits in one rom, 2 bits in the other,
    unpacked in 2 pages of 4 bits) */
-static struct GfxLayout layout_8x8x6_2 =
+static gfx_layout layout_8x8x6_2 =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -1923,7 +1854,7 @@ static struct GfxLayout layout_8x8x6_2 =
 };
 
 /* 8x8x8 tiles */
-static struct GfxLayout layout_8x8x8 =
+static gfx_layout layout_8x8x8 =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -1936,7 +1867,7 @@ static struct GfxLayout layout_8x8x8 =
 
 #if 0
 /* 16x16x8 Zooming Sprites - No need to decode them */
-static struct GfxLayout layout_sprites =
+static gfx_layout layout_sprites =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1952,7 +1883,7 @@ static struct GfxLayout layout_sprites =
                                 Dangun Feveron
 ***************************************************************************/
 
-static struct GfxDecodeInfo dfeveron_gfxdecodeinfo[] =
+static gfx_decode dfeveron_gfxdecodeinfo[] =
 {
 	/* There are only $800 colors here, the first half for sprites
        the second half for tiles. We use $8000 virtual colors instead
@@ -1969,7 +1900,7 @@ static struct GfxDecodeInfo dfeveron_gfxdecodeinfo[] =
                                 Dodonpachi
 ***************************************************************************/
 
-static struct GfxDecodeInfo ddonpach_gfxdecodeinfo[] =
+static gfx_decode ddonpach_gfxdecodeinfo[] =
 {
 	/* Layers 0&1 are 4 bit deep and use the first 16 of every 256
        colors for any given color code (a PALETTE_INIT function
@@ -1988,7 +1919,7 @@ static struct GfxDecodeInfo ddonpach_gfxdecodeinfo[] =
                                 Donpachi
 ***************************************************************************/
 
-static struct GfxDecodeInfo donpachi_gfxdecodeinfo[] =
+static gfx_decode donpachi_gfxdecodeinfo[] =
 {
 	/* There are only $800 colors here, the first half for sprites
        the second half for tiles. We use $8000 virtual colors instead
@@ -2006,7 +1937,7 @@ static struct GfxDecodeInfo donpachi_gfxdecodeinfo[] =
                                 Esprade
 ***************************************************************************/
 
-static struct GfxDecodeInfo esprade_gfxdecodeinfo[] =
+static gfx_decode esprade_gfxdecodeinfo[] =
 {
 //    REGION_GFX1                                       // Sprites
 	{ REGION_GFX2, 0, &layout_8x8x8,	0x4000, 0x40 }, // [0] Layer 0
@@ -2019,7 +1950,7 @@ static struct GfxDecodeInfo esprade_gfxdecodeinfo[] =
                                 Hotdog Storm
 ***************************************************************************/
 
-static struct GfxDecodeInfo hotdogst_gfxdecodeinfo[] =
+static gfx_decode hotdogst_gfxdecodeinfo[] =
 {
 	/* There are only $800 colors here, the first half for sprites
        the second half for tiles. We use $8000 virtual colors instead
@@ -2037,7 +1968,7 @@ static struct GfxDecodeInfo hotdogst_gfxdecodeinfo[] =
                                 Koro Koro Quest
 ***************************************************************************/
 
-static struct GfxDecodeInfo korokoro_gfxdecodeinfo[] =
+static gfx_decode korokoro_gfxdecodeinfo[] =
 {
 //    REGION_GFX1                                       // Sprites
 	{ REGION_GFX2, 0, &layout_8x8x4,	0x4400, 0x40 }, // [0] Layer 0
@@ -2048,7 +1979,7 @@ static struct GfxDecodeInfo korokoro_gfxdecodeinfo[] =
                                 Mazinger Z
 ***************************************************************************/
 
-static struct GfxDecodeInfo mazinger_gfxdecodeinfo[] =
+static gfx_decode mazinger_gfxdecodeinfo[] =
 {
 	/*  Sprites are 4 bit deep.
         Layer 0 is 4 bit deep.
@@ -2069,7 +2000,7 @@ static struct GfxDecodeInfo mazinger_gfxdecodeinfo[] =
                                 Power Instinct 2
 ***************************************************************************/
 
-static struct GfxDecodeInfo pwrinst2_gfxdecodeinfo[] =
+static gfx_decode pwrinst2_gfxdecodeinfo[] =
 {
 //    REGION_GFX1                                       // Sprites
 	{ REGION_GFX2, 0, &layout_8x8x4,	0x0800+0x8000, 0x40 }, // [0] Layer 0
@@ -2084,7 +2015,7 @@ static struct GfxDecodeInfo pwrinst2_gfxdecodeinfo[] =
                                 Sailor Moon
 ***************************************************************************/
 
-static struct GfxDecodeInfo sailormn_gfxdecodeinfo[] =
+static gfx_decode sailormn_gfxdecodeinfo[] =
 {
 	/* 4 bit sprites ? */
 //    REGION_GFX1                                       // Sprites
@@ -2099,7 +2030,7 @@ static struct GfxDecodeInfo sailormn_gfxdecodeinfo[] =
                                 Uo Poko
 ***************************************************************************/
 
-static struct GfxDecodeInfo uopoko_gfxdecodeinfo[] =
+static gfx_decode uopoko_gfxdecodeinfo[] =
 {
 //    REGION_GFX1                                       // Sprites
 	{ REGION_GFX2, 0, &layout_8x8x8,	0x4000, 0x40 }, // [0] Layer 0
@@ -3107,7 +3038,7 @@ OSC:          28.000/16.000/4.220MHz
 EEPROM:       ATMEL 93C46
 CUSTOM:       ATLUS 8647-01 013
               038 9429WX727 x3
-              NMK 112 (Sound)
+              NMK 112 (M6295 sample ROM banking)
 
 ---------------------------------------------------
  filenames          devices       kind
@@ -3669,10 +3600,10 @@ ROM_END
 
                             Power Instinct 2
 
-©1994 Atlus
+(c)1994 Atlus
 CPU: 68000, Z80
 Sound: YM2203, AR17961 (x2)
-Custom: NMK 112 (sound?), Atlus 8647-01  013, 038 (x4)
+Custom: NMK 112 (M6295 sample ROM banking), Atlus 8647-01  013, 038 (x4)
 X1 = 12 MHz
 X2 = 28 MHz
 X3 = 16 MHz
@@ -3710,6 +3641,49 @@ ROM_START( pwrinst2 )
 
 	ROM_REGION( 0x080000, REGION_GFX5, ROMREGION_DISPOSE )	/* Layer 3 */
 	ROM_LOAD( "g02.82a", 0x000000, 0x080000, CRC(4b3567d6) SHA1(d3e14783b312d2bea9722a8e3c22bcec81e26166) )
+
+	ROM_REGION( 0x440000, REGION_SOUND1, ROMREGION_SOUNDONLY )	/* OKIM6295 #1 Samples */
+	/* Leave the 0x40000 bytes addressable by the chip empty */
+	ROM_LOAD( "g02.u53", 0x040000, 0x200000, CRC(c4bdd9e0) SHA1(a938a831e789ddf6f3cc5f3e5f3877ec7bd62d4e) )
+	ROM_LOAD( "g02.u54", 0x240000, 0x200000, CRC(1357d50e) SHA1(433766177ce9d6933f90de85ba91bfc6d8d5d664) )
+
+	ROM_REGION( 0x440000, REGION_SOUND2, ROMREGION_SOUNDONLY )	/* OKIM6295 #2 Samples */
+	/* Leave the 0x40000 bytes addressable by the chip empty */
+	ROM_LOAD( "g02.u55", 0x040000, 0x200000, CRC(2d102898) SHA1(bd81f4cd2ba100707db0c5bb1419f0b23c998574) )
+	ROM_LOAD( "g02.u56", 0x240000, 0x200000, CRC(9ff50dda) SHA1(1121685e387c20e228032f2b0f5cbb606376fc15) )
+ROM_END
+
+ROM_START( pwrins2j )
+	ROM_REGION( 0x200000, REGION_CPU1, 0 )		/* 68000 code */
+	ROM_LOAD16_BYTE( "g02j.u45", 0x000000, 0x80000, CRC(42d0abd7) SHA1(c58861d43c4539ccc8b2f93eabc56aab37d3aa34))
+	ROM_LOAD16_BYTE( "g02j.u44", 0x000001, 0x80000, CRC(362b7af3) SHA1(2d15611530cef76f0f9c82ee0411966079ae19c3))
+	ROM_LOAD16_BYTE( "g02j.u43", 0x100000, 0x80000, CRC(c94c596b) SHA1(ee755a344f769e3ed05d8ca57f517b9e8c02f22e) )
+	ROM_LOAD16_BYTE( "g02j.u42", 0x100001, 0x80000, CRC(4f4c8270) SHA1(1fa964f5646bd1d078e3661c21e191b0789c05c9) )
+
+	ROM_REGION( 0x24000, REGION_CPU2, 0 )		/* Z80 code */
+	ROM_LOAD( "g02j.u3a", 0x00000, 0x0c000, CRC(eead01f1) SHA1(0ced6755e471e0303fe397b3d54a5c799762ebd8) )
+	ROM_CONTINUE(        0x10000, 0x14000             )
+
+	ROM_REGION( 0xe00000 * 2, REGION_GFX1, 0 )		/* Sprites (do not dispose) */
+	ROM_LOAD( "g02.u61", 0x000000, 0x200000, CRC(91e30398) SHA1(2b59a5e40bed2a988382054fe30d92808dad3348) )
+	ROM_LOAD( "g02.u62", 0x200000, 0x200000, CRC(d9455dd7) SHA1(afa69fe9a540cd78b8cfecf09cffa1401c01141a) )
+	ROM_LOAD( "g02.u63", 0x400000, 0x200000, CRC(4d20560b) SHA1(ceaee8cf0b69cc366b95ddcb689a5594d79e5114) )
+	ROM_LOAD( "g02.u64", 0x600000, 0x200000, CRC(b17b9b6e) SHA1(fc6213d8322cda4c7f653e2d7d6d314ce84c97b7) )
+	ROM_LOAD( "g02.u65", 0x800000, 0x200000, CRC(08541878) SHA1(138cf077a49a26440a3da1bdc2c399a208359e57) )
+	ROM_LOAD( "g02.u66", 0xa00000, 0x200000, CRC(becf2a36) SHA1(f8b386d0292b1dc745b7253a3df51d1aa8d5e9db) )
+	ROM_LOAD( "g02.u67", 0xc00000, 0x200000, CRC(52fe2b8b) SHA1(dd50aa62f7db995e28f47de9b3fb749aeeaaa5b0) )
+
+	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE )	/* Layer 0 */
+	ROM_LOAD( "g02.u78", 0x000000, 0x200000, CRC(1eca63d2) SHA1(538942b43301f950e3d5139461331c54dc90129d) )
+
+	ROM_REGION( 0x100000, REGION_GFX3, ROMREGION_DISPOSE )	/* Layer 1 */
+	ROM_LOAD( "g02.u81", 0x000000, 0x100000, CRC(8a3ff685) SHA1(4a59ec50ec4470453374fe10f76d3e894494b49f) )
+
+	ROM_REGION( 0x100000, REGION_GFX4, ROMREGION_DISPOSE )	/* Layer 2 */
+	ROM_LOAD( "g02.u89", 0x000000, 0x100000, CRC(373e1f73) SHA1(ec1ae9fab37eee41be8e1bc6dad03809b62fdbce) )
+
+	ROM_REGION( 0x080000, REGION_GFX5, ROMREGION_DISPOSE )	/* Layer 3 */
+	ROM_LOAD( "g02j.82a", 0x000000, 0x080000, CRC(3be86fe1) SHA1(313bfe5fb8dc5fee4462db259738e079759f9390) )
 
 	ROM_REGION( 0x440000, REGION_SOUND1, ROMREGION_SOUNDONLY )	/* OKIM6295 #1 Samples */
 	/* Leave the 0x40000 bytes addressable by the chip empty */
@@ -3981,6 +3955,21 @@ DRIVER_INIT( ddonpach )
 	time_vblank_irq = 90;
 }
 
+DRIVER_INIT( donpachi )
+{
+	init_cave();
+
+	cave_default_eeprom = cave_default_eeprom_type2;
+	cave_default_eeprom_length = sizeof(cave_default_eeprom_type2);
+	cave_region_byte = -1;
+
+	ddonpach_unpack_sprites();
+	cave_spritetype = 1;	// "different" sprites (no zooming?)
+	time_vblank_irq = 90;
+
+	NMK112_set_paged_table(0, 0);	// chip #0 (music) is not paged
+}
+
 DRIVER_INIT( esprade )
 {
 	init_cave();
@@ -4039,7 +4028,7 @@ DRIVER_INIT( hotdogst )
 DRIVER_INIT( mazinger )
 {
 	unsigned char *buffer;
-	data8_t *src = memory_region(REGION_GFX1);
+	UINT8 *src = memory_region(REGION_GFX1);
 	int len = memory_region_length(REGION_GFX1);
 
 	init_cave();
@@ -4079,10 +4068,10 @@ DRIVER_INIT( metmqstr )
 }
 
 
-DRIVER_INIT( pwrinst2 )
+DRIVER_INIT( pwrins2j )
 {
 	unsigned char *buffer;
-	data8_t *src = memory_region(REGION_GFX1);
+	UINT8 *src = memory_region(REGION_GFX1);
 	int len = memory_region_length(REGION_GFX1);
 	int i, j;
 
@@ -4106,18 +4095,29 @@ DRIVER_INIT( pwrinst2 )
 	cave_kludge = 4;
 	time_vblank_irq = 2000;	/**/
 
+
+}
+
+DRIVER_INIT( pwrinst2 )
+{
+	/* this patch fixes on of the moves, why is it needed? is the rom bad or is there another
+       problem? does the Japan set need it or not? */
+	init_pwrins2j();
+
 #if 1		//ROM PATCH
 	{
 		UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
 		rom[0xD46C/2] = 0xD482;			// kurara dash fix  0xd400 -> 0xd482
 	}
 #endif
+
 }
+
 
 DRIVER_INIT( sailormn )
 {
 	unsigned char *buffer;
-	data8_t *src = memory_region(REGION_GFX1);
+	UINT8 *src = memory_region(REGION_GFX1);
 	int len = memory_region_length(REGION_GFX1);
 
 	init_cave();
@@ -4176,10 +4176,11 @@ DRIVER_INIT( korokoro )
 ***************************************************************************/
 
 GAME( 1994, pwrinst2, 0,        pwrinst2, metmqstr, pwrinst2, ROT0,   "Atlus/Cave",                           "Power Instinct 2 (USA)" )
+GAME( 1994, pwrins2j, pwrinst2, pwrinst2, metmqstr, pwrins2j, ROT0,   "Atlus/Cave",                           "Gouketsuji Ichizoku 2 (Japan)" )
 GAME( 1994, mazinger, 0,        mazinger, mazinger, mazinger, ROT90,  "Banpresto/Dynamic Pl. Toei Animation", "Mazinger Z"                               ) // region in eeprom
-GAME( 1995, donpachi, 0,        donpachi, cave,     ddonpach, ROT270, "Atlus/Cave",                           "DonPachi (US)"                            )
-GAME( 1995, donpachj, donpachi, donpachi, cave,     ddonpach, ROT270, "Atlus/Cave",                           "DonPachi (Japan)"                         )
-GAME( 1995, donpachk, donpachi, donpachi, cave,     ddonpach, ROT270, "Atlus/Cave",                           "DonPachi (Korea)"                         )
+GAME( 1995, donpachi, 0,        donpachi, cave,     donpachi, ROT270, "Atlus/Cave",                           "DonPachi (US)"                            )
+GAME( 1995, donpachj, donpachi, donpachi, cave,     donpachi, ROT270, "Atlus/Cave",                           "DonPachi (Japan)"                         )
+GAME( 1995, donpachk, donpachi, donpachi, cave,     donpachi, ROT270, "Atlus/Cave",                           "DonPachi (Korea)"                         )
 GAME( 1995, metmqstr, 0,        metmqstr, metmqstr, metmqstr, ROT0,   "Banpresto/Pandorabox",                 "Metamoqester"                             )
 GAME( 1995, nmaster,  metmqstr, metmqstr, metmqstr, metmqstr, ROT0,   "Banpresto/Pandorabox",                 "Oni - The Ninja Master (Japan)"           )
 GAME( 1995, sailormn, 0,        sailormn, sailormn, sailormn, ROT0,   "Banpresto",                            "Pretty Soldier Sailor Moon (95/03/22B)"   ) // region in eeprom

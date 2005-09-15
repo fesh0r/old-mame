@@ -35,7 +35,7 @@ To Do:
 
 /* Variables defined in vidhrdw: */
 
-extern data8_t *yunsung8_videoram_0, *yunsung8_videoram_1;
+extern UINT8 *yunsung8_videoram_0, *yunsung8_videoram_1;
 extern int yunsung8_layers_ctrl;
 
 /* Functions defined in vidhrdw: */
@@ -378,7 +378,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 /* 8x8x4 tiles in 2 roms */
-static struct GfxLayout layout_8x8x4 =
+static gfx_layout layout_8x8x4 =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -390,7 +390,7 @@ static struct GfxLayout layout_8x8x4 =
 };
 
 /* 8x8x8 tiles in 4 roms */
-static struct GfxLayout layout_8x8x8 =
+static gfx_layout layout_8x8x8 =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -402,7 +402,7 @@ static struct GfxLayout layout_8x8x8 =
 	8*8*8/4
 };
 
-static struct GfxDecodeInfo yunsung8_gfxdecodeinfo[] =
+static gfx_decode yunsung8_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_8x8x8, 0, 0x08 }, // [0] Tiles (Background)
 	{ REGION_GFX2, 0, &layout_8x8x4, 0,	0x40 }, // [1] Tiles (Text)

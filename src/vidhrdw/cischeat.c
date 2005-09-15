@@ -67,19 +67,19 @@ static int debugsprites;	// For debug purposes
 
 /* Variables that driver has access to: */
 
-data16_t *cischeat_roadram[2];
-data16_t *f1gpstr2_ioready;
+UINT16 *cischeat_roadram[2];
+UINT16 *f1gpstr2_ioready;
 
 #ifdef MAME_DEBUG
 #define SHOW_READ_ERROR(_format_,_offset_)\
 {\
-	usrintf_showmessage(_format_,_offset_);\
+	ui_popup(_format_,_offset_);\
 	logerror("CPU #0 PC %06X : Warning, ",activecpu_get_pc()); \
 	logerror(_format_ "\n",_offset_);\
 }
 #define SHOW_WRITE_ERROR(_format_,_offset_,_data_)\
 {\
-	usrintf_showmessage(_format_,_offset_,_data_);\
+	ui_popup(_format_,_offset_,_data_);\
 	logerror("CPU #0 PC %06X : Warning, ",activecpu_get_pc()); \
 	logerror(_format_ "\n",_offset_,_data_); \
 }
@@ -98,10 +98,6 @@ data16_t *f1gpstr2_ioready;
 }
 
 #endif
-
-#define MEGASYS1_VREG_FLAG(_n_) \
-		megasys1_scroll_##_n_##_flag_w(new_data); \
-		if (megasys1_tmap[_n_] == 0) SHOW_WRITE_ERROR("vreg %04X <- %04X NO MEMORY FOR SCREEN",offset*2,data);
 
 #define MEGASYS1_VREG_SCROLL(_n_, _dir_)	megasys1_scroll##_dir_[_n_] = new_data;
 
@@ -255,8 +251,8 @@ READ16_HANDLER( bigrun_vregs_r )
 
 WRITE16_HANDLER( bigrun_vregs_w )
 {
-	data16_t old_data = megasys1_vregs[offset];
-	data16_t new_data = COMBINE_DATA(&megasys1_vregs[offset]);
+	UINT16 old_data = megasys1_vregs[offset];
+	UINT16 new_data = COMBINE_DATA(&megasys1_vregs[offset]);
 
 	switch (offset)
 	{
@@ -292,15 +288,15 @@ WRITE16_HANDLER( bigrun_vregs_w )
 
 		case 0x2000/2+0 : MEGASYS1_VREG_SCROLL(0,x)		break;
 		case 0x2000/2+1 : MEGASYS1_VREG_SCROLL(0,y)		break;
-		case 0x2000/2+2 : MEGASYS1_VREG_FLAG(0)			break;
+		case 0x2000/2+2 : megasys1_set_vreg_flag(0,new_data);break;
 
 		case 0x2008/2+0 : MEGASYS1_VREG_SCROLL(1,x)		break;
 		case 0x2008/2+1 : MEGASYS1_VREG_SCROLL(1,y)		break;
-		case 0x2008/2+2 : MEGASYS1_VREG_FLAG(1)			break;
+		case 0x2008/2+2 : megasys1_set_vreg_flag(1,new_data);break;
 
 		case 0x2100/2+0 : MEGASYS1_VREG_SCROLL(2,x)		break;
 		case 0x2100/2+1 : MEGASYS1_VREG_SCROLL(2,y)		break;
-		case 0x2100/2+2 : MEGASYS1_VREG_FLAG(2)			break;
+		case 0x2100/2+2 : megasys1_set_vreg_flag(2,new_data);break;
 
 		case 0x2108/2   : break;	// ? written with 0 only
 		case 0x2208/2   : break;	// watchdog reset
@@ -349,8 +345,8 @@ READ16_HANDLER( cischeat_vregs_r )
 
 WRITE16_HANDLER( cischeat_vregs_w )
 {
-	data16_t old_data = megasys1_vregs[offset];
-	data16_t new_data = COMBINE_DATA(&megasys1_vregs[offset]);
+	UINT16 old_data = megasys1_vregs[offset];
+	UINT16 new_data = COMBINE_DATA(&megasys1_vregs[offset]);
 
 	switch (offset)
 	{
@@ -380,15 +376,15 @@ WRITE16_HANDLER( cischeat_vregs_w )
 
 		case 0x2000/2+0 : MEGASYS1_VREG_SCROLL(0,x)		break;
 		case 0x2000/2+1 : MEGASYS1_VREG_SCROLL(0,y)		break;
-		case 0x2000/2+2 : MEGASYS1_VREG_FLAG(0)			break;
+		case 0x2000/2+2 : megasys1_set_vreg_flag(0,new_data);break;
 
 		case 0x2008/2+0 : MEGASYS1_VREG_SCROLL(1,x)		break;
 		case 0x2008/2+1 : MEGASYS1_VREG_SCROLL(1,y)		break;
-		case 0x2008/2+2 : MEGASYS1_VREG_FLAG(1)			break;
+		case 0x2008/2+2 : megasys1_set_vreg_flag(1,new_data);break;
 
 		case 0x2100/2+0 : MEGASYS1_VREG_SCROLL(2,x)		break;
 		case 0x2100/2+1 : MEGASYS1_VREG_SCROLL(2,y)		break;
-		case 0x2100/2+2 : MEGASYS1_VREG_FLAG(2)			break;
+		case 0x2100/2+2 : megasys1_set_vreg_flag(2,new_data);break;
 
 		case 0x2108/2   : break;	// ? written with 0 only
 		case 0x2208/2   : break;	// watchdog reset
@@ -488,8 +484,8 @@ READ16_HANDLER( wildplt_vregs_r )
 
 WRITE16_HANDLER( f1gpstar_vregs_w )
 {
-//  data16_t old_data = megasys1_vregs[offset];
-	data16_t new_data = COMBINE_DATA(&megasys1_vregs[offset]);
+//  UINT16 old_data = megasys1_vregs[offset];
+	UINT16 new_data = COMBINE_DATA(&megasys1_vregs[offset]);
 
 	switch (offset)
 	{
@@ -520,15 +516,15 @@ CPU #0 PC 00235C : Warning, vreg 0006 <- 0000
 
 		case 0x2000/2+0 : MEGASYS1_VREG_SCROLL(0,x)		break;
 		case 0x2000/2+1 : MEGASYS1_VREG_SCROLL(0,y)		break;
-		case 0x2000/2+2 : MEGASYS1_VREG_FLAG(0)			break;
+		case 0x2000/2+2 : megasys1_set_vreg_flag(0,new_data);break;
 
 		case 0x2008/2+0 : MEGASYS1_VREG_SCROLL(1,x)		break;
 		case 0x2008/2+1 : MEGASYS1_VREG_SCROLL(1,y)		break;
-		case 0x2008/2+2 : MEGASYS1_VREG_FLAG(1)			break;
+		case 0x2008/2+2 : megasys1_set_vreg_flag(1,new_data);break;
 
 		case 0x2100/2+0 : MEGASYS1_VREG_SCROLL(2,x)		break;
 		case 0x2100/2+1 : MEGASYS1_VREG_SCROLL(2,y)		break;
-		case 0x2100/2+2 : MEGASYS1_VREG_FLAG(2)			break;
+		case 0x2100/2+2 : megasys1_set_vreg_flag(2,new_data);break;
 
 		case 0x2108/2   : break;	// ? written with 0 only
 		case 0x2208/2   : break;	// watchdog reset
@@ -545,8 +541,8 @@ CPU #0 PC 00235C : Warning, vreg 0006 <- 0000
 
 WRITE16_HANDLER( f1gpstr2_vregs_w )
 {
-//  data16_t old_data = megasys1_vregs[offset];
-	data16_t new_data = COMBINE_DATA(&megasys1_vregs[offset]);
+//  UINT16 old_data = megasys1_vregs[offset];
+	UINT16 new_data = COMBINE_DATA(&megasys1_vregs[offset]);
 
 	if ((offset >= 0x1000/2) && (offset < 0x2000/2))
 		return;
@@ -579,16 +575,16 @@ WRITE16_HANDLER( scudhamm_vregs_w )
 	{
 		case 0x000/2+0 : MEGASYS1_VREG_SCROLL(0,x)		break;
 		case 0x000/2+1 : MEGASYS1_VREG_SCROLL(0,y)		break;
-		case 0x000/2+2 : MEGASYS1_VREG_FLAG(0)			break;
+		case 0x000/2+2 : megasys1_set_vreg_flag(0,new_data);break;
 
 //      UNUSED LAYER
 //      case 0x008/2+0 : MEGASYS1_VREG_SCROLL(1,x)      break;
 //      case 0x008/2+1 : MEGASYS1_VREG_SCROLL(1,y)      break;
-//      case 0x008/2+2 : MEGASYS1_VREG_FLAG(1)          break;
+//      case 0x008/2+2 : megasys1_set_vreg_flag(1,new_data);break;
 
 		case 0x100/2+0 : MEGASYS1_VREG_SCROLL(2,x)		break;
 		case 0x100/2+1 : MEGASYS1_VREG_SCROLL(2,y)		break;
-		case 0x100/2+2 : MEGASYS1_VREG_FLAG(2)			break;
+		case 0x100/2+2 : megasys1_set_vreg_flag(2,new_data);break;
 
 		case 0x208/2   : watchdog_reset_w(0,0);	break;
 
@@ -635,15 +631,15 @@ WRITE16_HANDLER( scudhamm_vregs_w )
 /*  Draw the road in the given bitmap. The priority1 and priority2 parameters
     specify the range of lines to draw  */
 
-void cischeat_draw_road(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int road_num, int priority1, int priority2, int transparency)
+void cischeat_draw_road(mame_bitmap *bitmap, const rectangle *cliprect, int road_num, int priority1, int priority2, int transparency)
 {
 	int curr_code,sx,sy;
 	int min_priority, max_priority;
 
-	struct rectangle rect		=	*cliprect;
-	struct GfxElement *gfx		=	Machine->gfx[(road_num & 1)?5:4];
+	rectangle rect		=	*cliprect;
+	gfx_element *gfx		=	Machine->gfx[(road_num & 1)?5:4];
 
-	data16_t *roadram			=	cischeat_roadram[road_num & 1];
+	UINT16 *roadram			=	cischeat_roadram[road_num & 1];
 
 	int min_y = rect.min_y;
 	int max_y = rect.max_y;
@@ -725,16 +721,16 @@ void cischeat_draw_road(struct mame_bitmap *bitmap, const struct rectangle *clip
 /*  Draw the road in the given bitmap. The priority1 and priority2 parameters
     specify the range of lines to draw  */
 
-void f1gpstar_draw_road(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int road_num, int priority1, int priority2, int transparency)
+void f1gpstar_draw_road(mame_bitmap *bitmap, const rectangle *cliprect, int road_num, int priority1, int priority2, int transparency)
 {
 	int sx,sy;
 	int xstart;
 	int min_priority, max_priority;
 
-	struct rectangle rect		=	*cliprect;
-	struct GfxElement *gfx		=	Machine->gfx[(road_num & 1)?5:4];
+	rectangle rect		=	*cliprect;
+	gfx_element *gfx		=	Machine->gfx[(road_num & 1)?5:4];
 
-	data16_t *roadram			=	cischeat_roadram[road_num & 1];
+	UINT16 *roadram			=	cischeat_roadram[road_num & 1];
 
 	int min_y = rect.min_y;
 	int max_y = rect.max_y;
@@ -841,7 +837,7 @@ void f1gpstar_draw_road(struct mame_bitmap *bitmap, const struct rectangle *clip
     sprites whose priority nibble is between 0 and 15 and whose
     colour code's high bit is set.  */
 
-static void cischeat_draw_sprites(struct mame_bitmap *bitmap , const struct rectangle *cliprect, int priority1, int priority2)
+static void cischeat_draw_sprites(mame_bitmap *bitmap , const rectangle *cliprect, int priority1, int priority2)
 {
 	int x, sx, flipx, xzoom, xscale, xdim, xnum, xstart, xend, xinc;
 	int y, sy, flipy, yzoom, yscale, ydim, ynum, ystart, yend, yinc;
@@ -849,8 +845,8 @@ static void cischeat_draw_sprites(struct mame_bitmap *bitmap , const struct rect
 
 	int min_priority, max_priority, high_sprites;
 
-	data16_t		*source	=	spriteram16;
-	const data16_t	*finish	=	source + 0x1000/2;
+	UINT16		*source	=	spriteram16;
+	const UINT16	*finish	=	source + 0x1000/2;
 
 
 	/* Move the priority values in place */
@@ -954,12 +950,9 @@ if ( (debugsprites) && ( ((attr & 0x0300)>>8) != (debugsprites-1) ) ) 	{ continu
 #if 0
 if (code_pressed(KEYCODE_X))
 {	/* Display some info on each sprite */
-	struct DisplayText dt[2];
 	sprintf(buf, "%04x",attr);
-	dt[0].text = buf;	dt[0].color = UI_COLOR_NORMAL;
-	dt[0].x = sx>>16;	dt[0].y = sy>>16;
-	dt[1].text = 0;	/* terminate array */
-	displaytext(bitmap,dt);		}
+	ui_draw_text(buf, sx>>16, sy>>16);
+}
 #endif
 #endif
 	}	/* end sprite loop */
@@ -999,7 +992,7 @@ if (code_pressed(KEYCODE_X))
 
 ***************************************************************************/
 
-static void bigrun_draw_sprites(struct mame_bitmap *bitmap , const struct rectangle *cliprect, int priority1, int priority2)
+static void bigrun_draw_sprites(mame_bitmap *bitmap , const rectangle *cliprect, int priority1, int priority2)
 {
 	int x, sx, flipx, xzoom, xscale, xdim, xnum, xstart, xend, xinc;
 	int y, sy, flipy, yzoom, yscale, ydim, ynum, ystart, yend, yinc;
@@ -1007,8 +1000,8 @@ static void bigrun_draw_sprites(struct mame_bitmap *bitmap , const struct rectan
 
 	int min_priority, max_priority, high_sprites;
 
-	data16_t		*source	=	spriteram16;
-	const data16_t	*finish	=	source + 0x1000/2;
+	UINT16		*source	=	spriteram16;
+	const UINT16	*finish	=	source + 0x1000/2;
 
 	/* Move the priority values in place */
 	high_sprites = (priority1 >= 16) | (priority2 >= 16);
@@ -1111,12 +1104,9 @@ if ( (debugsprites) && ( ((attr & 0x0300)>>8) != (debugsprites-1) ) ) 	{ continu
 #if 0
 if (code_pressed(KEYCODE_X))
 {	/* Display some info on each sprite */
-	struct DisplayText dt[2];
 	sprintf(buf, "%04x",attr);
-	dt[0].text = buf;	dt[0].color = UI_COLOR_NORMAL;
-	dt[0].x = sx>>16;	dt[0].y = sy>>16;
-	dt[1].text = 0;	/* terminate array */
-	displaytext(bitmap,dt);		}
+	ui_draw_text(buf, sx>>16, sy>>16);
+}
 #endif
 #endif
 	}	/* end sprite loop */
@@ -1154,7 +1144,7 @@ if ( code_pressed(KEYCODE_Z) || code_pressed(KEYCODE_X) ) \
 	if ( code_pressed(KEYCODE_Z) && code_pressed_memory(KEYCODE_U) ) \
 		show_unknown ^= 1; \
 	if (show_unknown) \
-		usrintf_showmessage("0:%04X 2:%04X 4:%04X 6:%04X c:%04X", \
+		ui_popup("0:%04X 2:%04X 4:%04X 6:%04X c:%04X", \
 			megasys1_vregs[0],megasys1_vregs[1],megasys1_vregs[2],megasys1_vregs[3],megasys1_vregs[0xc/2] ); \
 }
 
@@ -1330,7 +1320,7 @@ VIDEO_UPDATE( f1gpstar )
                                 Scud Hammer
 **************************************************************************/
 
-extern data16_t scudhamm_motor_command;
+extern UINT16 scudhamm_motor_command;
 
 	READ16_HANDLER( scudhamm_motor_pos_r );
 	READ16_HANDLER( scudhamm_motor_status_r );
@@ -1357,7 +1347,7 @@ if ( code_pressed(KEYCODE_Z) || code_pressed(KEYCODE_X) )
 
 	if (msk != 0) megasys1_active_layers &= msk;
 #if 1
-	usrintf_showmessage("Cmd: %04X Pos:%04X Lim:%04X Inp:%04X",
+	ui_popup("Cmd: %04X Pos:%04X Lim:%04X Inp:%04X",
 						scudhamm_motor_command,
 						scudhamm_motor_pos_r(0,0),
 						scudhamm_motor_status_r(0,0),

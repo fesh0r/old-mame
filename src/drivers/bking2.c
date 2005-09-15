@@ -134,7 +134,7 @@ static WRITE8_HANDLER( mcu_data_w )
 
 static READ8_HANDLER( mcu_data_r )
 {
-//  usrintf_showmessage("MCU-r1 PC = %04x %02x",activecpu_get_pc(),mcu_val);
+//  ui_popup("MCU-r1 PC = %04x %02x",activecpu_get_pc(),mcu_val);
 	switch(mcu_val)
 	{
 		/* Shot counter control at the green (check $bdf and afterwards in that condition)*/
@@ -145,7 +145,7 @@ static READ8_HANDLER( mcu_data_r )
 
 static READ8_HANDLER( mcu_data_r2 )
 {
-//  usrintf_showmessage("MCU-r2 PC = %04x %02x",activecpu_get_pc(),mcu_val);
+//  ui_popup("MCU-r2 PC = %04x %02x",activecpu_get_pc(),mcu_val);
 	return 0x31; //no "bad rom.", no "bad ext."
 }
 
@@ -454,7 +454,7 @@ INPUT_PORTS_START( bking2 )
 INPUT_PORTS_END
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,    /* 8*8 characters */
 	1024,   /* 1024 characters */
@@ -465,7 +465,7 @@ static struct GfxLayout charlayout =
 	8*8     /* every char takes 8 consecutive bytes */
 };
 
-struct GfxLayout crowlayout =
+gfx_layout crowlayout =
 {
 	16,32,	/* 16*32 characters */
 	16,		/* 16 characters */
@@ -482,7 +482,7 @@ struct GfxLayout crowlayout =
 	128*8    /* every sprite takes 128 consecutive bytes */
 };
 
-struct GfxLayout balllayout =
+gfx_layout balllayout =
 {
 	8,16,  /* 8*16 sprites */
 	8,     /* 8 sprites */
@@ -494,7 +494,7 @@ struct GfxLayout balllayout =
 	16*8    /* every sprite takes 16 consecutive bytes */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0,           4  }, /* playfield */
 	{ REGION_GFX2, 0, &crowlayout, 4*8,         4  }, /* crow */

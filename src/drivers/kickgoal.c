@@ -51,7 +51,7 @@ lev 7 : 0x7c : 0000 0000 - x
    Ditto for samples 65, 66, 67 and 68.
 */
 
-static const data8_t kickgoal_cmd_snd[128] =
+static const UINT8 kickgoal_cmd_snd[128] =
 {
 /*00*/	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 /*08*/	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x70, 0x71,
@@ -113,7 +113,7 @@ static int kickgoal_snd_bank;
 static int snd_new, snd_sam[4];
 
 
-data16_t *kickgoal_fgram, *kickgoal_bgram, *kickgoal_bg2ram, *kickgoal_scrram;
+UINT16 *kickgoal_fgram, *kickgoal_bgram, *kickgoal_bg2ram, *kickgoal_scrram;
 
 WRITE16_HANDLER( kickgoal_fgram_w  );
 WRITE16_HANDLER( kickgoal_bgram_w  );
@@ -131,7 +131,7 @@ static void kickgoal_play(int melody, int data)
 	int status = OKIM6295_status_0_r(0);
 
 	logerror("Playing sample %01x:%02x from command %02x\n",kickgoal_snd_bank,kickgoal_sound,data);
-	if (kickgoal_sound == 0) usrintf_showmessage("Unknown sound command %02x",kickgoal_sound);
+	if (kickgoal_sound == 0) ui_popup("Unknown sound command %02x",kickgoal_sound);
 
 	if (melody) {
 		if (kickgoal_melody != kickgoal_sound) {
@@ -342,7 +342,7 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 			m6295_bank += 0x01;
 			m6295_bank &= 0x03;
 			if (m6295_bank == 0x03) m6295_bank = 0x00;
-			usrintf_showmessage("Changing Bank to %02x",m6295_bank);
+			ui_popup("Changing Bank to %02x",m6295_bank);
 			OKIM6295_set_bank_base(0, ((m6295_bank) * 0x40000));
 
 			if (m6295_key_delay == 0xffff) m6295_key_delay = 0x00;
@@ -358,7 +358,7 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 			m6295_bank -= 0x01;
 			m6295_bank &= 0x03;
 			if (m6295_bank == 0x03) m6295_bank = 0x02;
-			usrintf_showmessage("Changing Bank to %02x",m6295_bank);
+			ui_popup("Changing Bank to %02x",m6295_bank);
 			OKIM6295_set_bank_base(0, ((m6295_bank) * 0x40000));
 
 			if (m6295_key_delay == 0xffff) m6295_key_delay = 0x00;
@@ -378,7 +378,7 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 			if (m6295_comm == 0x65) { OKIM6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
 			if (m6295_comm == 0x69) { OKIM6295_set_bank_base(0, (2 * 0x40000)); m6295_bank = 2; }
 			if (m6295_comm == 0x70) { OKIM6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
-			usrintf_showmessage("Sound test command %02x on Bank %02x",m6295_comm,m6295_bank);
+			ui_popup("Sound test command %02x on Bank %02x",m6295_comm,m6295_bank);
 
 			if (m6295_key_delay == 0xffff) m6295_key_delay = 0x00;
 			else m6295_key_delay = (0x5d * oki_time_base);
@@ -397,7 +397,7 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 			if (m6295_comm == 0x68) { OKIM6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
 			if (m6295_comm == 0x6c) { OKIM6295_set_bank_base(0, (2 * 0x40000)); m6295_bank = 2; }
 			if (m6295_comm == 0x76) { OKIM6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
-			usrintf_showmessage("Sound test command %02x on Bank %02x",m6295_comm,m6295_bank);
+			ui_popup("Sound test command %02x on Bank %02x",m6295_comm,m6295_bank);
 
 			if (m6295_key_delay == 0xffff) m6295_key_delay = 0x00;
 			else m6295_key_delay = (0x5d * oki_time_base);
@@ -413,7 +413,7 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 			OKIM6295_data_0_w(0,(0x80 | m6295_comm));
 			OKIM6295_data_0_w(0,0x11);
 
-			usrintf_showmessage("Playing sound %02x on Bank %02x",m6295_comm,m6295_bank);
+			ui_popup("Playing sound %02x on Bank %02x",m6295_comm,m6295_bank);
 
 			if (m6295_key_delay == 0xffff) m6295_key_delay = 0x00;
 			else m6295_key_delay = (0x60 * oki_time_base);
@@ -426,7 +426,7 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 }
 
 
-static data8_t *kickgoal_default_eeprom;
+static UINT8 *kickgoal_default_eeprom;
 static int kickgoal_default_eeprom_length;
 
 static unsigned char kickgoal_default_eeprom_type1[128] = {
@@ -569,7 +569,7 @@ INPUT_PORTS_END
 
 /* GFX Decodes ***************************************************************/
 
-static struct GfxLayout fg816_charlayout =
+static gfx_layout fg816_charlayout =
 {
 	8,16,
 	RGN_FRAC(1,4),
@@ -581,7 +581,7 @@ static struct GfxLayout fg816_charlayout =
 	16*8
 };
 
-static struct GfxLayout bg1632_charlayout =
+static gfx_layout bg1632_charlayout =
 {
 	16,32,
 	RGN_FRAC(1,4),
@@ -593,7 +593,7 @@ static struct GfxLayout bg1632_charlayout =
 	16*16
 };
 
-static struct GfxLayout bg3264_charlayout =
+static gfx_layout bg3264_charlayout =
 {
 	32,64,
 	RGN_FRAC(1,4),
@@ -609,7 +609,7 @@ static struct GfxLayout bg3264_charlayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &fg816_charlayout,   0x000, 0x40 },
 	{ REGION_GFX1, 0, &bg1632_charlayout,  0x000, 0x40 },
@@ -617,7 +617,7 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static struct GfxLayout actionhw_fg88_alt_charlayout =
+static gfx_layout actionhw_fg88_alt_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -629,7 +629,7 @@ static struct GfxLayout actionhw_fg88_alt_charlayout =
 };
 
 
-static struct GfxLayout actionhw_bg1616_charlayout =
+static gfx_layout actionhw_bg1616_charlayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -643,7 +643,7 @@ static struct GfxLayout actionhw_bg1616_charlayout =
 
 
 
-static struct GfxDecodeInfo actionhw_gfxdecodeinfo[] =
+static gfx_decode actionhw_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &actionhw_fg88_alt_charlayout,   0x000, 0x40 },
 	{ REGION_GFX1, 0, &actionhw_bg1616_charlayout,  0x000, 0x40 },
@@ -788,7 +788,7 @@ ROM_END
 DRIVER_INIT( kickgoal )
 {
 #if 0 /* we should find a real fix instead  */
-	data16_t *rom = (data16_t *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
 
 	/* fix "bug" that prevents game from writing to EEPROM */
 	rom[0x12b0/2] = 0x0001;

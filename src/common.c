@@ -10,6 +10,8 @@
 #include "png.h"
 #include "harddisk.h"
 #include "artwork.h"
+#include "config.h"
+#include "state.h"
 #include <stdarg.h>
 #include <ctype.h>
 
@@ -39,11 +41,12 @@
 
 ***************************************************************************/
 
-struct malloc_info
+struct _malloc_info
 {
 	int tag;
 	void *ptr;
 };
+typedef struct _malloc_info malloc_info;
 
 
 
@@ -59,10 +62,8 @@ unsigned int coin_count[COIN_COUNTERS];
 unsigned int coinlockedout[COIN_COUNTERS];
 static unsigned int lastcoin[COIN_COUNTERS];
 
-int snapno;
-
 /* malloc tracking */
-static struct malloc_info malloc_list[MAX_MALLOCS];
+static malloc_info malloc_list[MAX_MALLOCS];
 static int malloc_list_index = 0;
 
 /* resource tracking */
@@ -70,15 +71,20 @@ int resource_tracking_tag = 0;
 
 /* generic NVRAM */
 size_t generic_nvram_size;
-data8_t *generic_nvram;
-data16_t *generic_nvram16;
-data32_t *generic_nvram32;
+UINT8 *generic_nvram;
+UINT16 *generic_nvram16;
+UINT32 *generic_nvram32;
 
 /* disks */
-static struct chd_file *disk_handle[4];
+static chd_file *disk_handle[4];
 
 /* system BIOS */
 int system_bios;
+
+/* movie file */
+static mame_file *movie_file = NULL;
+static int movie_frame = 0;
+
 
 
 /***************************************************************************
@@ -224,6 +230,70 @@ void free_memory_region(int num)
 
 ***************************************************************************/
 
+void counters_load(int config_type, xml_data_node *parentnode)
+{
+	xml_data_node *coinnode, *ticketnode;
+
+	/* on init, reset the counters */
+	if (config_type == CONFIG_TYPE_INIT)
+	{
+		memset(coin_count, 0, sizeof(coin_count));
+		dispensed_tickets = 0;
+	}
+
+	/* only care about game-specific data */
+	if (config_type != CONFIG_TYPE_GAME)
+		return;
+
+	/* might not have any data */
+	if (!parentnode)
+		return;
+
+	/* iterate over coins nodes */
+	for (coinnode = xml_get_sibling(parentnode->child, "coins"); coinnode; coinnode = xml_get_sibling(coinnode->next, "coins"))
+	{
+		int index = xml_get_attribute_int(coinnode, "index", -1);
+		if (index >= 0 && index < COIN_COUNTERS)
+			coin_count[index] = xml_get_attribute_int(coinnode, "number", 0);
+	}
+
+	/* get the single tickets node */
+	ticketnode = xml_get_sibling(parentnode->child, "tickets");
+	if (ticketnode)
+		dispensed_tickets = xml_get_attribute_int(ticketnode, "number", 0);
+}
+
+
+void counters_save(int config_type, xml_data_node *parentnode)
+{
+	int i;
+
+	/* only care about game-specific data */
+	if (config_type != CONFIG_TYPE_GAME)
+		return;
+
+	/* iterate over coin counters */
+	for (i = 0; i < COIN_COUNTERS; i++)
+		if (coin_count[i] != 0)
+		{
+			xml_data_node *coinnode = xml_add_child(parentnode, "coins", NULL);
+			if (coinnode)
+			{
+				xml_set_attribute_int(coinnode, "index", i);
+				xml_set_attribute_int(coinnode, "number", coin_count[i]);
+			}
+		}
+
+	/* output tickets */
+	if (dispensed_tickets != 0)
+	{
+		xml_data_node *tickets = xml_add_child(parentnode, "tickets", NULL);
+		if (tickets)
+			xml_set_attribute_int(tickets, "number", dispensed_tickets);
+	}
+}
+
+
 void coin_counter_reset(void)
 {
 	int counternum;
@@ -341,9 +411,9 @@ void nvram_handler_generic_1fill(mame_file *file, int read_or_write)
     bitmap_alloc_core
 -------------------------------------------------*/
 
-struct mame_bitmap *bitmap_alloc_core(int width,int height,int depth,int use_auto)
+mame_bitmap *bitmap_alloc_core(int width,int height,int depth,int use_auto)
 {
-	struct mame_bitmap *bitmap;
+	mame_bitmap *bitmap;
 
 	/* obsolete kludge: pass in negative depth to prevent orientation swapping */
 	if (depth < 0)
@@ -357,7 +427,7 @@ struct mame_bitmap *bitmap_alloc_core(int width,int height,int depth,int use_aut
 	}
 
 	/* allocate memory for the bitmap struct */
-	bitmap = use_auto ? auto_malloc(sizeof(struct mame_bitmap)) : malloc(sizeof(struct mame_bitmap));
+	bitmap = use_auto ? auto_malloc(sizeof(mame_bitmap)) : malloc(sizeof(mame_bitmap));
 	if (bitmap != NULL)
 	{
 		int i, rowlen, rdwidth, bitmapsize, linearraysize, pixelsize;
@@ -425,7 +495,7 @@ struct mame_bitmap *bitmap_alloc_core(int width,int height,int depth,int use_aut
     current screen depth
 -------------------------------------------------*/
 
-struct mame_bitmap *bitmap_alloc(int width,int height)
+mame_bitmap *bitmap_alloc(int width,int height)
 {
 	return bitmap_alloc_core(width,height,Machine->scrbitmap->depth,0);
 }
@@ -436,7 +506,7 @@ struct mame_bitmap *bitmap_alloc(int width,int height)
     specific depth
 -------------------------------------------------*/
 
-struct mame_bitmap *bitmap_alloc_depth(int width,int height,int depth)
+mame_bitmap *bitmap_alloc_depth(int width,int height,int depth)
 {
 	return bitmap_alloc_core(width,height,depth,0);
 }
@@ -446,7 +516,7 @@ struct mame_bitmap *bitmap_alloc_depth(int width,int height,int depth)
     bitmap_free - free a bitmap
 -------------------------------------------------*/
 
-void bitmap_free(struct mame_bitmap *bitmap)
+void bitmap_free(mame_bitmap *bitmap)
 {
 	/* skip if NULL */
 	if (!bitmap)
@@ -475,7 +545,7 @@ void bitmap_free(struct mame_bitmap *bitmap)
 void *auto_malloc(size_t size)
 {
 	void *result = malloc(size);
-	struct malloc_info *info;
+	malloc_info *info;
 
 	/* fail horribly if it doesn't work */
 	if (!result)
@@ -525,7 +595,7 @@ void auto_free(void)
 	/* start at the end and free everything on the current tag */
 	while (malloc_list_index > 0 && malloc_list[malloc_list_index - 1].tag >= tag)
 	{
-		struct malloc_info *info = &malloc_list[--malloc_list_index];
+		malloc_info *info = &malloc_list[--malloc_list_index];
 		free(info->ptr);
 	}
 }
@@ -536,7 +606,7 @@ void auto_free(void)
     current screen depth
 -------------------------------------------------*/
 
-struct mame_bitmap *auto_bitmap_alloc(int width,int height)
+mame_bitmap *auto_bitmap_alloc(int width,int height)
 {
 	return bitmap_alloc_core(width,height,Machine->scrbitmap->depth,1);
 }
@@ -547,7 +617,7 @@ struct mame_bitmap *auto_bitmap_alloc(int width,int height)
     specific depth
 -------------------------------------------------*/
 
-struct mame_bitmap *auto_bitmap_alloc_depth(int width,int height,int depth)
+mame_bitmap *auto_bitmap_alloc_depth(int width,int height,int depth)
 {
 	return bitmap_alloc_core(width,height,depth,1);
 }
@@ -575,6 +645,7 @@ void end_resource_tracking(void)
 	/* call everyone who tracks resources to let them know */
 	auto_free();
 	timer_free();
+	state_save_free();
 
 	/* decrement the tag counter */
 	resource_tracking_tag--;
@@ -584,19 +655,19 @@ void end_resource_tracking(void)
 
 /***************************************************************************
 
-    Screen snapshot code
+    Screen snapshot and movie recording code
 
 ***************************************************************************/
 
 /*-------------------------------------------------
-    save_screen_snapshot_as - save a snapshot to
-    the given filename
+    save_frame_with - save a frame with a
+    given handler for screenshots and movies
 -------------------------------------------------*/
 
-void save_screen_snapshot_as(mame_file *fp, struct mame_bitmap *bitmap)
+static void save_frame_with(mame_file *fp, mame_bitmap *bitmap, int (*write_handler)(mame_file *, mame_bitmap *))
 {
-	struct rectangle bounds;
-	struct mame_bitmap *osdcopy;
+	rectangle bounds;
+	mame_bitmap *osdcopy;
 	UINT32 saved_rgb_components[3];
 
 	/* allow the artwork system to override certain parameters */
@@ -621,10 +692,12 @@ void save_screen_snapshot_as(mame_file *fp, struct mame_bitmap *bitmap)
 
 	/* now do the actual work */
 	if (Machine->drv->video_attributes & VIDEO_TYPE_VECTOR)
-		png_write_bitmap(fp,bitmap);
+	{
+		write_handler(fp, bitmap);
+	}
 	else
 	{
-		struct mame_bitmap *copy;
+		mame_bitmap *copy;
 		int sizex, sizey, scalex, scaley;
 
 		sizex = bounds.max_x - bounds.min_x + 1;
@@ -684,7 +757,7 @@ void save_screen_snapshot_as(mame_file *fp, struct mame_bitmap *bitmap)
 				logerror("Unknown color depth\n");
 				break;
 			}
-			png_write_bitmap(fp,copy);
+			write_handler(fp, copy);
 			bitmap_free(copy);
 		}
 	}
@@ -696,32 +769,97 @@ void save_screen_snapshot_as(mame_file *fp, struct mame_bitmap *bitmap)
 }
 
 
-
-/*-------------------------------------------------
-    save_screen_snapshot - save a screen snapshot
+ /*-------------------------------------------------
+    save_screen_snapshot_as - save a snapshot to
+    the given file handle
 -------------------------------------------------*/
 
-void save_screen_snapshot(struct mame_bitmap *bitmap)
+void save_screen_snapshot_as(mame_file *fp, mame_bitmap *bitmap)
 {
-	char name[20];
-	mame_file *fp;
+	save_frame_with(fp, bitmap, png_write_bitmap);
+}
+
+
+/*-------------------------------------------------
+    open the next non-existing file of type
+    filetype according to our numbering scheme
+-------------------------------------------------*/
+
+static mame_file *mame_fopen_next(int filetype)
+{
+	char name[FILENAME_MAX];
+	int seq;
 
 	/* avoid overwriting existing files */
-	/* first of all try with "gamename.png" */
+	/* first of all try with "gamename.xxx" */
 	sprintf(name,"%.8s", Machine->gamedrv->name);
-	if (mame_faccess(name,FILETYPE_SCREENSHOT))
+	if (mame_faccess(name, filetype))
 	{
+		seq = 0;
 		do
 		{
-			/* otherwise use "nameNNNN.png" */
-			sprintf(name,"%.4s%04d",Machine->gamedrv->name,snapno++);
-		} while (mame_faccess(name, FILETYPE_SCREENSHOT));
+			/* otherwise use "nameNNNN.xxx" */
+			sprintf(name,"%.4s%04d",Machine->gamedrv->name, seq++);
+		} while (mame_faccess(name, filetype));
 	}
 
-	if ((fp = mame_fopen(Machine->gamedrv->name, name, FILETYPE_SCREENSHOT, 1)) != NULL)
+    return (mame_fopen(Machine->gamedrv->name, name, filetype, 1));
+}
+
+
+ /*-------------------------------------------------
+    save_screen_snapshot - save a snapshot.
+-------------------------------------------------*/
+
+void save_screen_snapshot(mame_bitmap *bitmap)
+{
+	mame_file *fp;
+
+	if ((fp = mame_fopen_next(FILETYPE_SCREENSHOT)) != NULL)
 	{
 		save_screen_snapshot_as(fp, bitmap);
 		mame_fclose(fp);
+	}
+}
+
+ /*-------------------------------------------------
+    record_movie - start, stop and update the
+    recording of a MNG movie
+-------------------------------------------------*/
+
+void record_movie_toggle(void)
+{
+	if (movie_file == NULL)
+	{
+		movie_frame = 0;
+		movie_file = mame_fopen_next(FILETYPE_MOVIE);
+		if (movie_file)
+			ui_popup("REC START");
+	}
+	else
+	{
+		mng_capture_stop(movie_file);
+		mame_fclose(movie_file);
+		movie_file = NULL;
+		ui_popup("REC STOP (%d frames)", movie_frame);
+	}
+}
+
+
+void record_movie_stop(void)
+{
+	if (movie_file)
+		record_movie_toggle();
+}
+
+
+void record_movie_frame(mame_bitmap *bitmap)
+{
+	if (movie_file != NULL && bitmap != NULL)
+	{
+		if (movie_frame++ == 0)
+			save_frame_with(movie_file, bitmap, mng_capture_start);
+		save_frame_with(movie_file, bitmap, mng_capture_frame);
 	}
 }
 
@@ -733,7 +871,7 @@ void save_screen_snapshot(struct mame_bitmap *bitmap)
 
 ***************************************************************************/
 
-struct chd_file *get_disk_handle(int diskindex)
+chd_file *get_disk_handle(int diskindex)
 {
 	return disk_handle[diskindex];
 }
@@ -751,7 +889,7 @@ struct chd_file *get_disk_handle(int diskindex)
     region
 -------------------------------------------------*/
 
-const struct RomModule *rom_first_region(const struct GameDriver *drv)
+const rom_entry *rom_first_region(const game_driver *drv)
 {
 	return drv->rom;
 }
@@ -762,7 +900,7 @@ const struct RomModule *rom_first_region(const struct GameDriver *drv)
     region
 -------------------------------------------------*/
 
-const struct RomModule *rom_next_region(const struct RomModule *romp)
+const rom_entry *rom_next_region(const rom_entry *romp)
 {
 	romp++;
 	while (!ROMENTRY_ISREGIONEND(romp))
@@ -776,7 +914,7 @@ const struct RomModule *rom_next_region(const struct RomModule *romp)
     file
 -------------------------------------------------*/
 
-const struct RomModule *rom_first_file(const struct RomModule *romp)
+const rom_entry *rom_first_file(const rom_entry *romp)
 {
 	romp++;
 	while (!ROMENTRY_ISFILE(romp) && !ROMENTRY_ISREGIONEND(romp))
@@ -790,7 +928,7 @@ const struct RomModule *rom_first_file(const struct RomModule *romp)
     file
 -------------------------------------------------*/
 
-const struct RomModule *rom_next_file(const struct RomModule *romp)
+const rom_entry *rom_next_file(const rom_entry *romp)
 {
 	romp++;
 	while (!ROMENTRY_ISFILE(romp) && !ROMENTRY_ISREGIONEND(romp))
@@ -804,7 +942,7 @@ const struct RomModule *rom_next_file(const struct RomModule *romp)
     chunk
 -------------------------------------------------*/
 
-const struct RomModule *rom_first_chunk(const struct RomModule *romp)
+const rom_entry *rom_first_chunk(const rom_entry *romp)
 {
 	return (ROMENTRY_ISFILE(romp)) ? romp : NULL;
 }
@@ -815,7 +953,7 @@ const struct RomModule *rom_first_chunk(const struct RomModule *romp)
     chunk
 -------------------------------------------------*/
 
-const struct RomModule *rom_next_chunk(const struct RomModule *romp)
+const rom_entry *rom_next_chunk(const rom_entry *romp)
 {
 	romp++;
 	return (ROMENTRY_ISCONTINUE(romp)) ? romp : NULL;
@@ -850,9 +988,9 @@ void CLIB_DECL debugload(const char *string, ...)
     from SystemBios structure and options.bios
 -------------------------------------------------*/
 
-int determine_bios_rom(const struct SystemBios *bios)
+int determine_bios_rom(const bios_entry *bios)
 {
-	const struct SystemBios *firstbios = bios;
+	const bios_entry *firstbios = bios;
 
 	/* set to default */
 	int bios_no = 0;
@@ -895,9 +1033,9 @@ int determine_bios_rom(const struct SystemBios *bios)
     that will need to be loaded
 -------------------------------------------------*/
 
-static int count_roms(const struct RomModule *romp)
+static int count_roms(const rom_entry *romp)
 {
-	const struct RomModule *region, *rom;
+	const rom_entry *region, *rom;
 	int count = 0;
 
 	/* determine the correct biosset to load based on options.bios string */
@@ -931,7 +1069,7 @@ static void fill_random(UINT8 *base, UINT32 length)
     for missing files
 -------------------------------------------------*/
 
-static void handle_missing_file(struct rom_load_data *romdata, const struct RomModule *romp)
+static void handle_missing_file(rom_load_data *romdata, const rom_entry *romp)
 {
 	/* optional files are okay */
 	if (ROM_ISOPTIONAL(romp))
@@ -961,7 +1099,7 @@ static void handle_missing_file(struct rom_load_data *romdata, const struct RomM
     correct checksums for a given ROM
 -------------------------------------------------*/
 
-static void dump_wrong_and_correct_checksums(struct rom_load_data* romdata, const char* hash, const char* acthash)
+static void dump_wrong_and_correct_checksums(rom_load_data* romdata, const char* hash, const char* acthash)
 {
 	unsigned i;
 	char chksum[256];
@@ -1009,7 +1147,7 @@ static void dump_wrong_and_correct_checksums(struct rom_load_data* romdata, cons
     and hash signatures of a file
 -------------------------------------------------*/
 
-static void verify_length_and_hash(struct rom_load_data *romdata, const char *name, UINT32 explength, const char* hash)
+static void verify_length_and_hash(rom_load_data *romdata, const char *name, UINT32 explength, const char* hash)
 {
 	UINT32 actlength;
 	const char* acthash;
@@ -1059,7 +1197,7 @@ static void verify_length_and_hash(struct rom_load_data *romdata, const char *na
     results of ROM loading
 -------------------------------------------------*/
 
-static int display_rom_load_results(struct rom_load_data *romdata)
+static int display_rom_load_results(rom_load_data *romdata)
 {
 	int region;
 
@@ -1082,24 +1220,6 @@ static int display_rom_load_results(struct rom_load_data *romdata)
 
 		/* display the result */
 		printf("%s", romdata->errorbuf);
-
-		/* if we're not getting out of here, wait for a keypress */
-		if (!options.gui_host && !options.skip_warnings && !bailing)
-		{
-			int k;
-
-			/* loop until we get one */
-			printf ("Press any key to continue\n");
-			do
-			{
-				k = code_read_async();
-			}
-			while (k == CODE_NONE || k == KEYCODE_LCONTROL);
-
-			/* bail on a control + C */
-			if (code_pressed(KEYCODE_LCONTROL) && code_pressed(KEYCODE_C))
-				return 1;
-		}
 	}
 
 	/* clean up any regions */
@@ -1117,7 +1237,7 @@ static int display_rom_load_results(struct rom_load_data *romdata)
     byte swapping and inverting data as necessary
 -------------------------------------------------*/
 
-static void region_post_process(struct rom_load_data *romdata, const struct RomModule *regiondata)
+static void region_post_process(rom_load_data *romdata, const rom_entry *regiondata)
 {
 	int type = ROMREGION_GETTYPE(regiondata);
 	int datawidth = ROMREGION_GETWIDTH(regiondata) / 8;
@@ -1171,9 +1291,9 @@ static void region_post_process(struct rom_load_data *romdata, const struct RomM
     up the parent and loading by checksum
 -------------------------------------------------*/
 
-static int open_rom_file(struct rom_load_data *romdata, const struct RomModule *romp)
+static int open_rom_file(rom_load_data *romdata, const rom_entry *romp)
 {
-	const struct GameDriver *drv;
+	const game_driver *drv;
 
 	++romdata->romsloaded;
 
@@ -1198,7 +1318,7 @@ static int open_rom_file(struct rom_load_data *romdata, const struct RomModule *
     random data for a NULL file
 -------------------------------------------------*/
 
-static int rom_fread(struct rom_load_data *romdata, UINT8 *buffer, int length)
+static int rom_fread(rom_load_data *romdata, UINT8 *buffer, int length)
 {
 	/* files just pass through */
 	if (romdata->file)
@@ -1217,7 +1337,7 @@ static int rom_fread(struct rom_load_data *romdata, UINT8 *buffer, int length)
     entry
 -------------------------------------------------*/
 
-static int read_rom_data(struct rom_load_data *romdata, const struct RomModule *romp)
+static int read_rom_data(rom_load_data *romdata, const rom_entry *romp)
 {
 	int datashift = ROM_GETBITSHIFT(romp);
 	int datamask = ((1 << ROM_GETBITWIDTH(romp)) - 1) << datashift;
@@ -1335,7 +1455,7 @@ static int read_rom_data(struct rom_load_data *romdata, const struct RomModule *
     fill_rom_data - fill a region of ROM space
 -------------------------------------------------*/
 
-static int fill_rom_data(struct rom_load_data *romdata, const struct RomModule *romp)
+static int fill_rom_data(rom_load_data *romdata, const rom_entry *romp)
 {
 	UINT32 numbytes = ROM_GETLENGTH(romp);
 	UINT8 *base = romdata->regionbase + ROM_GETOFFSET(romp);
@@ -1364,7 +1484,7 @@ static int fill_rom_data(struct rom_load_data *romdata, const struct RomModule *
     copy_rom_data - copy a region of ROM space
 -------------------------------------------------*/
 
-static int copy_rom_data(struct rom_load_data *romdata, const struct RomModule *romp)
+static int copy_rom_data(rom_load_data *romdata, const rom_entry *romp)
 {
 	UINT8 *base = romdata->regionbase + ROM_GETOFFSET(romp);
 	int srcregion = ROM_GETFLAGS(romp) >> 24;
@@ -1412,7 +1532,7 @@ static int copy_rom_data(struct rom_load_data *romdata, const struct RomModule *
     for a region
 -------------------------------------------------*/
 
-static int process_rom_entries(struct rom_load_data *romdata, const struct RomModule *romp)
+static int process_rom_entries(rom_load_data *romdata, const rom_entry *romp)
 {
 	UINT32 lastflags = 0;
 
@@ -1452,7 +1572,7 @@ static int process_rom_entries(struct rom_load_data *romdata, const struct RomMo
 		{
 			if (!ROM_GETBIOSFLAGS(romp) || (ROM_GETBIOSFLAGS(romp) == (system_bios+1))) /* alternate bios sets */
 			{
-				const struct RomModule *baserom = romp;
+				const rom_entry *baserom = romp;
 				int explength = 0;
 
 				/* open the file */
@@ -1466,7 +1586,7 @@ static int process_rom_entries(struct rom_load_data *romdata, const struct RomMo
 					/* loop until we run out of continues */
 					do
 					{
-						struct RomModule modified_romp = *romp++;
+						rom_entry modified_romp = *romp++;
 						int readresult;
 
 						/* handle flag inheritance */
@@ -1531,7 +1651,7 @@ fatalerror:
     for a region
 -------------------------------------------------*/
 
-static int process_disk_entries(struct rom_load_data *romdata, const struct RomModule *romp)
+static int process_disk_entries(rom_load_data *romdata, const rom_entry *romp)
 {
 	/* loop until we hit the end of this region */
 	while (!ROMENTRY_ISREGIONEND(romp))
@@ -1539,8 +1659,8 @@ static int process_disk_entries(struct rom_load_data *romdata, const struct RomM
 		/* handle files */
 		if (ROMENTRY_ISFILE(romp))
 		{
-			struct chd_file *source, *diff = NULL;
-			struct chd_header header;
+			chd_file *source, *diff = NULL;
+			chd_header header;
 			char filename[1024];
 			char acthash[HASH_BUF_SIZE];
 			int err;
@@ -1632,11 +1752,11 @@ static int process_disk_entries(struct rom_load_data *romdata, const struct RomM
     loading system
 -------------------------------------------------*/
 
-int rom_load(const struct RomModule *romp)
+int rom_load(const rom_entry *romp)
 {
-	const struct RomModule *regionlist[REGION_MAX];
-	const struct RomModule *region;
-	static struct rom_load_data romdata;
+	const rom_entry *regionlist[REGION_MAX];
+	const rom_entry *region;
+	static rom_load_data romdata;
 	int regnum;
 
 	/* reset the region list */
@@ -1725,61 +1845,6 @@ int rom_load(const struct RomModule *romp)
 		}
 
 	/* display the results and exit */
+	Machine->rom_load_warnings = romdata.warnings;
 	return display_rom_load_results(&romdata);
-}
-
-
-/*-------------------------------------------------
-    printromlist - print list of ROMs
--------------------------------------------------*/
-
-void printromlist(const struct RomModule *romp,const char *basename)
-{
-	const struct RomModule *region, *rom, *chunk;
-	char buf[512];
-
-	if (!romp) return;
-
-#ifdef MESS
-	if (!strcmp(basename,"nes")) return;
-#endif
-
-	printf("This is the list of the ROMs required for driver \"%s\".\n"
-			"Name            Size Checksum\n",basename);
-
-	for (region = romp; region; region = rom_next_region(region))
-	{
-		for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
-		{
-			const char *name = ROM_GETNAME(rom);
-			const char* hash = ROM_GETHASHDATA(rom);
-			int length = -1; /* default is for disks! */
-
-			if (ROMREGION_ISROMDATA(region))
-			{
-				length = 0;
-				for (chunk = rom_first_chunk(rom); chunk; chunk = rom_next_chunk(chunk))
-					length += ROM_GETLENGTH(chunk);
-			}
-
-			printf("%-12s ", name);
-			if (length >= 0)
-				printf("%7d",length);
-				else
-				printf("       ");
-
-			if (!hash_data_has_info(hash, HASH_INFO_NO_DUMP))
-			{
-				if (hash_data_has_info(hash, HASH_INFO_BAD_DUMP))
-					printf(" BAD");
-
-				hash_data_print(hash, 0, buf);
-				printf(" %s", buf);
-			}
-			else
-				printf(" NO GOOD DUMP KNOWN");
-
-			printf("\n");
-		}
-	}
 }

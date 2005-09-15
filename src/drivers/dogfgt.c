@@ -13,7 +13,7 @@ driver by Nicola Salmoria
 #include "sound/ay8910.h"
 
 
-static data8_t *sharedram;
+static UINT8 *sharedram;
 
 static READ8_HANDLER( sharedram_r )
 {
@@ -204,7 +204,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -217,7 +217,7 @@ static struct GfxLayout tilelayout =
 	16*16
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -230,7 +230,7 @@ static struct GfxLayout spritelayout =
 	16*16
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,   16, 4 },
 	{ REGION_GFX2, 0, &spritelayout,  0, 2 },

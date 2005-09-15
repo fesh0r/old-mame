@@ -82,9 +82,9 @@ Palette related:
 #include "sound/okim6295.h"
 
 /* from vidhrdw/wrally.c */
-extern data16_t *wrally_vregs;
-extern data16_t *wrally_videoram;
-extern data16_t *wrally_spriteram;
+extern UINT16 *wrally_vregs;
+extern UINT16 *wrally_videoram;
+extern UINT16 *wrally_spriteram;
 
 WRITE16_HANDLER( wrally_vram_w );
 VIDEO_START( wrally );
@@ -113,7 +113,7 @@ ADDRESS_MAP_END
 
 static WRITE16_HANDLER( unknown_w )
 {
-	usrintf_showmessage("write %04x to %04x", data, offset*2 + 0x6a);
+	ui_popup("write %04x to %04x", data, offset*2 + 0x6a);
 }
 
 static ADDRESS_MAP_START( wrally_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -209,7 +209,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout wrally_tilelayout16 =
+static gfx_layout wrally_tilelayout16 =
 {
 	16,16,									/* 16x16 tiles */
 	RGN_FRAC(1,2),							/* number of tiles */
@@ -222,7 +222,7 @@ static struct GfxLayout wrally_tilelayout16 =
 	64*8
 };
 
-static struct GfxDecodeInfo wrally_gfxdecodeinfo[] =
+static gfx_decode wrally_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x000000, &wrally_tilelayout16, 0, 64*8 },
 	{ -1 }

@@ -47,6 +47,8 @@ MACHINE_INIT( schaser );
 MACHINE_INIT( polaris );
 MACHINE_INIT( clowns );
 
+WRITE8_HANDLER( indianbt_sh_port7_w );
+
 extern struct Samplesinterface boothill_samples_interface;
 extern struct Samplesinterface circus_samples_interface;
 extern struct discrete_sound_block clowns_discrete_interface[];
@@ -55,6 +57,7 @@ extern struct Samplesinterface invaders_samples_interface;
 extern struct SN76477interface invad2ct_sn76477_interface_1;
 extern struct SN76477interface invad2ct_sn76477_interface_2;
 extern struct Samplesinterface invad2ct_samples_interface;
+extern struct discrete_sound_block indianbt_discrete_interface[];
 extern struct discrete_sound_block polaris_discrete_interface[];
 extern struct discrete_sound_block schaser_discrete_interface[];
 void schaser_effect_555_cb(int effect);
@@ -84,6 +87,7 @@ DRIVER_INIT( phantom2 );
 DRIVER_INIT( bowler );
 DRIVER_INIT( gunfight );
 DRIVER_INIT( bandido );
+DRIVER_INIT( indianbt );
 
 void c8080bw_flip_screen_w(int data);
 void c8080bw_screen_red_w(int data);
@@ -102,5 +106,6 @@ VIDEO_UPDATE( 8080bw );
 PALETTE_INIT( invadpt2 );
 PALETTE_INIT( sflush );
 PALETTE_INIT( cosmo );
+PALETTE_INIT( indianbt );
 
 WRITE8_HANDLER( bowler_bonus_display_w );

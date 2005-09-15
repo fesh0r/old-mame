@@ -2,8 +2,8 @@
 #include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 
-data16_t *topspeed_spritemap;
-data16_t *topspeed_raster_ctrl;
+UINT16 *topspeed_spritemap;
+UINT16 *topspeed_raster_ctrl;
 
 /****************************************************************************/
 
@@ -39,10 +39,10 @@ VIDEO_START( topspeed )
 
 ********************************************************************************/
 
-void topspeed_draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
+void topspeed_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	int offs,map_offset,x,y,curx,cury,sprite_chunk;
-	data16_t *spritemap = topspeed_spritemap;
+	UINT16 *spritemap = topspeed_spritemap;
 	UINT16 data,tilenum,code,color;
 	UINT8 flipx,flipy,priority,bad_chunks;
 	UINT8 j,k,px,py,zx,zy,zoomx,zoomy;
@@ -133,31 +133,31 @@ VIDEO_UPDATE( topspeed )
 	if (code_pressed_memory (KEYCODE_V))
 	{
 		dislayer[0] ^= 1;
-		usrintf_showmessage("bg: %01x",dislayer[0]);
+		ui_popup("bg: %01x",dislayer[0]);
 	}
 
 	if (code_pressed_memory (KEYCODE_B))
 	{
 		dislayer[1] ^= 1;
-		usrintf_showmessage("fg: %01x",dislayer[1]);
+		ui_popup("fg: %01x",dislayer[1]);
 	}
 
 	if (code_pressed_memory (KEYCODE_N))
 	{
 		dislayer[2] ^= 1;
-		usrintf_showmessage("bg2: %01x",dislayer[2]);
+		ui_popup("bg2: %01x",dislayer[2]);
 	}
 
 	if (code_pressed_memory (KEYCODE_M))
 	{
 		dislayer[3] ^= 1;
-		usrintf_showmessage("fg2: %01x",dislayer[3]);
+		ui_popup("fg2: %01x",dislayer[3]);
 	}
 
 	if (code_pressed_memory (KEYCODE_C))
 	{
 		dislayer[4] ^= 1;
-		usrintf_showmessage("sprites: %01x",dislayer[4]);
+		ui_popup("sprites: %01x",dislayer[4]);
 	}
 #endif
 

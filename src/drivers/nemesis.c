@@ -47,15 +47,15 @@ So this is the correct behavior of real hardware, not an emulation bug.
 #include "sound/k007232.h"
 #include "sound/k051649.h"
 
-static data16_t *ram;
-static data16_t *ram2;
+static UINT16 *ram;
+static UINT16 *ram2;
 
-extern data16_t *nemesis_videoram1b;
-extern data16_t *nemesis_videoram1f;
-extern data16_t *nemesis_videoram2b;
-extern data16_t *nemesis_videoram2f;
-extern data16_t *nemesis_characterram;
-extern data16_t *nemesis_xscroll1,*nemesis_xscroll2, *nemesis_yscroll;
+extern UINT16 *nemesis_videoram1b;
+extern UINT16 *nemesis_videoram1f;
+extern UINT16 *nemesis_videoram2b;
+extern UINT16 *nemesis_videoram2f;
+extern UINT16 *nemesis_characterram;
+extern UINT16 *nemesis_xscroll1,*nemesis_xscroll2, *nemesis_yscroll;
 extern size_t nemesis_characterram_size;
 
 READ16_HANDLER( nemesis_videoram1b_word_r );
@@ -88,7 +88,7 @@ READ16_HANDLER( gx400_yscroll_word_r );
 READ16_HANDLER( gx400_yscroll1_word_r );
 READ16_HANDLER( gx400_yscroll2_word_r );
 
-extern data16_t *nemesis_yscroll1, *nemesis_yscroll2;
+extern UINT16 *nemesis_yscroll1, *nemesis_yscroll2;
 
 WRITE16_HANDLER( nemesis_palette_word_w );
 
@@ -1960,7 +1960,7 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	2048+1,	/* 2048 characters (+ blank one) */
@@ -1971,7 +1971,7 @@ static struct GfxLayout charlayout =
 	32*8     /* every char takes 32 consecutive bytes */
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,	/* 16*16 sprites */
 	512,	/* 512 sprites */
@@ -1984,7 +1984,7 @@ static struct GfxLayout spritelayout =
 	128*8     /* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout spritelayout3216 =
+static gfx_layout spritelayout3216 =
 {
 	32,16,	/* 32*16 sprites */
 	256,	/* 256 sprites */
@@ -1999,7 +1999,7 @@ static struct GfxLayout spritelayout3216 =
 	256*8     /* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout spritelayout1632 =
+static gfx_layout spritelayout1632 =
 {
 	16,32,	/* 16*32 sprites */
 	256,	/* 256 sprites */
@@ -2014,7 +2014,7 @@ static struct GfxLayout spritelayout1632 =
 	256*8     /* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout spritelayout3232 =
+static gfx_layout spritelayout3232 =
 {
 	32,32,	/* 32*32 sprites */
 	128,	/* 128 sprites */
@@ -2031,7 +2031,7 @@ static struct GfxLayout spritelayout3232 =
 	512*8     /* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout spritelayout816 =
+static gfx_layout spritelayout816 =
 {
 	8,16,	/* 16*16 sprites */
 	1024,	/* 1024 sprites */
@@ -2043,7 +2043,7 @@ static struct GfxLayout spritelayout816 =
 	64*8     /* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxLayout spritelayout168 =
+static gfx_layout spritelayout168 =
 {
 	16,8,	/* 16*8 sprites */
 	1024,	/* 1024 sprites */
@@ -2056,7 +2056,7 @@ static struct GfxLayout spritelayout168 =
 
 };
 
-static struct GfxLayout spritelayout6464 =
+static gfx_layout spritelayout6464 =
 {
 	64,64,	/* 32*32 sprites */
 	32,	/* 128 sprites */
@@ -2082,7 +2082,7 @@ static struct GfxLayout spritelayout6464 =
 	2048*8     /* every sprite takes 128 consecutive bytes */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
     { 0, 0x0, &charlayout,   0, 0x80 },	/* the game dynamically modifies this */
     { 0, 0x0, &spritelayout, 0, 0x80 },	/* the game dynamically modifies this */

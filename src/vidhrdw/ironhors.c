@@ -12,7 +12,7 @@
 UINT8 *ironhors_scroll;
 static int palettebank, charbank, spriterambank;
 
-static struct tilemap *bg_tilemap;
+static tilemap *bg_tilemap;
 
 /***************************************************************************
 
@@ -134,7 +134,7 @@ WRITE8_HANDLER( ironhors_palettebank_w )
 
 	/* bit 6 unknown - set after game over */
 
-	if (data & 0x88) usrintf_showmessage("ironhors_palettebank_w %02x",data);
+	if (data & 0x88) ui_popup("ironhors_palettebank_w %02x",data);
 }
 
 WRITE8_HANDLER( ironhors_flipscreen_w )
@@ -172,7 +172,7 @@ VIDEO_START( ironhors )
 	return 0;
 }
 
-static void ironhors_draw_sprites( struct mame_bitmap *bitmap )
+static void ironhors_draw_sprites( mame_bitmap *bitmap )
 {
 	int offs;
 	UINT8 *sr;

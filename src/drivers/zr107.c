@@ -13,7 +13,7 @@
 extern READ32_HANDLER(K001005_r);
 extern WRITE32_HANDLER(K001005_w);
 
-static data8_t led_reg0 = 0x7f, led_reg1 = 0x7f;
+static UINT8 led_reg0 = 0x7f, led_reg1 = 0x7f;
 
 static WRITE32_HANDLER( paletteram32_w )
 {
@@ -124,11 +124,11 @@ static WRITE32_HANDLER( sysreg_w )
 	printf("sysreg_w: %08X, %08X, %08X\n", offset, data, mem_mask);
 }
 
-static data8_t sndto68k[16], sndtoppc[16];	/* read/write split mapping */
+static UINT8 sndto68k[16], sndtoppc[16];	/* read/write split mapping */
 
 static READ32_HANDLER( ppc_sound_r )
 {
-	data32_t reg, w[4], rv = 0;
+	UINT32 reg, w[4], rv = 0;
 
 	reg = offset * 4;
 
@@ -238,7 +238,7 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( dual539_r )
 {
-	data16_t ret = 0;
+	UINT16 ret = 0;
 
 	if (ACCESSING_LSB16)
 		ret |= K054539_1_r(offset);
@@ -283,23 +283,23 @@ static struct K054539interface k054539_interface =
 
 /*****************************************************************************/
 
-static UINT32 dataram[0x100000];
+static UINT32 *sharc_dataram;
 
 static READ32_HANDLER( dsp_dataram_r )
 {
-	return dataram[offset] & 0xffff;
+	return sharc_dataram[offset] & 0xffff;
 }
 
 static WRITE32_HANDLER( dsp_dataram_w )
 {
-	dataram[offset] = data;
+	sharc_dataram[offset] = data;
 }
 
-static ADDRESS_MAP_START( sharc_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x1000000, 0x101ffff) AM_READWRITE(cgboard_dsp_shared_r_sharc, cgboard_dsp_shared_w_sharc)
-	AM_RANGE(0x1400000, 0x14fffff) AM_READWRITE(dsp_dataram_r, dsp_dataram_w)
-	AM_RANGE(0x1800000, 0x18fffff) AM_READWRITE(K001005_r, K001005_w)
-	AM_RANGE(0x1c00000, 0x1c000ff) AM_READWRITE(cgboard_dsp_comm_r_sharc, cgboard_dsp_comm_w_sharc)
+static ADDRESS_MAP_START( sharc_map, ADDRESS_SPACE_DATA, 32 )
+	AM_RANGE(0x400000, 0x41ffff) AM_READWRITE(cgboard_dsp_shared_r_sharc, cgboard_dsp_shared_w_sharc)
+	AM_RANGE(0x500000, 0x5fffff) AM_READWRITE(dsp_dataram_r, dsp_dataram_w)
+	AM_RANGE(0x600000, 0x6fffff) AM_READWRITE(K001005_r, K001005_w)
+	AM_RANGE(0x700000, 0x7000ff) AM_READWRITE(cgboard_dsp_comm_r_sharc, cgboard_dsp_comm_w_sharc)
 ADDRESS_MAP_END
 
 /*****************************************************************************/
@@ -389,7 +389,7 @@ static MACHINE_DRIVER_START( zr107 )
 
 	MDRV_CPU_ADD(ADSP21062, 36000000)
 	MDRV_CPU_CONFIG(sharc_cfg)
-	MDRV_CPU_PROGRAM_MAP(sharc_map, 0)
+	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(0)
@@ -423,6 +423,7 @@ MACHINE_DRIVER_END
 static DRIVER_INIT(zr107)
 {
 	init_konami_cgboard(0);
+	sharc_dataram = auto_malloc(0x100000);
 }
 
 static DRIVER_INIT(midnrun)
@@ -488,4 +489,4 @@ ROM_END
 /*****************************************************************************/
 
 GAMEX( 1995, midnrun,	0,		zr107,	zr107,	midnrun,	ROT0,	"Konami",	"Midnight Run", GAME_NOT_WORKING )
-GAMEX( 1996, windheat,	0,		zr107,	zr107,	0,		ROT0,	"Konami",	"Winding Heat", GAME_NOT_WORKING )
+GAMEX( 1996, windheat,	0,		zr107,	zr107,	zr107,		ROT0,	"Konami",	"Winding Heat", GAME_NOT_WORKING )

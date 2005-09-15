@@ -97,7 +97,7 @@ static void counter_fired_callback(int counter);
  *
  *************************************/
 
-struct GfxLayout mcr_bg_layout =
+gfx_layout mcr_bg_layout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -113,7 +113,7 @@ struct GfxLayout mcr_bg_layout =
 };
 
 
-struct GfxLayout mcr_sprite_layout =
+gfx_layout mcr_sprite_layout =
 {
 	32,32,
 	RGN_FRAC(1,4),
@@ -313,7 +313,7 @@ INTERRUPT_GEN( mcr_interrupt )
 
 	/* CTC line 3 is connected to 493, which is signalled once every */
 	/* frame at 30Hz */
-	if (cpu_getcurrentframe() % 2 == 1)
+	if (cpu_getiloops() == 0)
 	{
 		z80ctc_0_trg3_w(0, 1);
 		z80ctc_0_trg3_w(0, 0);

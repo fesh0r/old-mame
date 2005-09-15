@@ -2,15 +2,15 @@
 
 #include "driver.h"
 
-static struct tilemap *bsb_tilemap, *bsb_tilemap2, *bsb_tilemap3;
+static tilemap *bsb_tilemap, *bsb_tilemap2, *bsb_tilemap3;
 
-extern data16_t *bsb_videoram, *bsb_videoram2, *bsb_videoram3;
-extern data16_t *bsb_vidreg1, *bsb_vidreg2;
-extern data16_t *bigstrkb_spriteram;
+extern UINT16 *bsb_videoram, *bsb_videoram2, *bsb_videoram3;
+extern UINT16 *bsb_vidreg1, *bsb_vidreg2;
+extern UINT16 *bigstrkb_spriteram;
 
 /* Sprites */
 
-static void bigstrkb_drawsprites( struct mame_bitmap *bitmap, const struct rectangle *cliprect )
+static void bigstrkb_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	/*- SPR RAM Format -**
 
@@ -20,9 +20,9 @@ static void bigstrkb_drawsprites( struct mame_bitmap *bitmap, const struct recta
         ( rest unused )
     **- End of Comments -*/
 
-	const struct GfxElement *gfx = Machine->gfx[2];
-	data16_t *source = bigstrkb_spriteram;
-	data16_t *finish = source + 0x800/2;
+	const gfx_element *gfx = Machine->gfx[2];
+	UINT16 *source = bigstrkb_spriteram;
+	UINT16 *finish = source + 0x800/2;
 
 	while( source<finish )
 	{
@@ -154,5 +154,5 @@ VIDEO_UPDATE(bigstrkb)
 	bigstrkb_drawsprites(bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,bsb_tilemap,0,0);
 
-//  usrintf_showmessage ("Regs %08x %08x %08x %08x",bsb_vidreg2[0],bsb_vidreg2[1],bsb_vidreg2[2],bsb_vidreg2[3]);
+//  ui_popup ("Regs %08x %08x %08x %08x",bsb_vidreg2[0],bsb_vidreg2[1],bsb_vidreg2[2],bsb_vidreg2[3]);
 }

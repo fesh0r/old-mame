@@ -79,13 +79,13 @@ World Cup 90 bootleg.
 
 #define TEST_DIPS false /* enable to test unmapped dip switches */
 
-extern data8_t *wc90b_fgvideoram,*wc90b_bgvideoram,*wc90b_txvideoram;
+extern UINT8 *wc90b_fgvideoram,*wc90b_bgvideoram,*wc90b_txvideoram;
 
-extern data8_t *wc90b_scroll1x;
-extern data8_t *wc90b_scroll2x;
+extern UINT8 *wc90b_scroll1x;
+extern UINT8 *wc90b_scroll2x;
 
-extern data8_t *wc90b_scroll1y;
-extern data8_t *wc90b_scroll2y;
+extern UINT8 *wc90b_scroll1y;
+extern UINT8 *wc90b_scroll2y;
 
 VIDEO_START( wc90b );
 WRITE8_HANDLER( wc90b_bgvideoram_w );
@@ -95,7 +95,7 @@ VIDEO_UPDATE( wc90b );
 
 static int msm5205next;
 
-static data8_t *wc90b_shared;
+static UINT8 *wc90b_shared;
 
 static READ8_HANDLER( wc90b_shared_r )
 {
@@ -298,7 +298,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	2048,	/* 2048 characters */
@@ -309,7 +309,7 @@ static struct GfxLayout charlayout =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,	/* 16*16 characters */
 	256,	/* 256 characters */
@@ -322,7 +322,7 @@ static struct GfxLayout tilelayout =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,	/* 32*32 characters */
 	4096,	/* 1024 characters */
@@ -335,7 +335,7 @@ static struct GfxLayout spritelayout =
 	32*8	/* every char takes 128 consecutive bytes */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &charlayout,      	1*16*16, 16*16 },
 	{ REGION_GFX2, 0x00000, &tilelayout,			2*16*16, 16*16 },

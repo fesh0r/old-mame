@@ -20,7 +20,7 @@
  *
  *************************************/
 
-static data16_t *vram_bg, *vram_fg;
+static UINT16 *vram_bg, *vram_fg;
 static int display_start;
 static UINT8 bitvals[32];
 
@@ -183,7 +183,7 @@ static WRITE16_HANDLER( bit_controls_w )
 		}
 		bitvals[offset] = data & 1;
 	}
-//  usrintf_showmessage("%d%d%d%d-%d%d%d%d--%d%d%d%d-%d%d%d%d",
+//  ui_popup("%d%d%d%d-%d%d%d%d--%d%d%d%d-%d%d%d%d",
 /*
         bitvals[0],
         bitvals[1],
@@ -359,7 +359,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct tms34010_config cpu_config =
+static struct tms34010_config tms_config =
 {
 	0,								/* halt on reset */
 	NULL,							/* generate interrupt */
@@ -380,7 +380,7 @@ static struct tms34010_config cpu_config =
 static MACHINE_DRIVER_START( xtheball )
 
 	MDRV_CPU_ADD(TMS34010, 40000000/TMS34010_CLOCK_DIVIDER)
-	MDRV_CPU_CONFIG(cpu_config)
+	MDRV_CPU_CONFIG(tms_config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_PERIODIC_INT(irq1_line_pulse,TIME_IN_HZ(15000))
 

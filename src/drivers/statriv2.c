@@ -92,8 +92,8 @@ unsigned char quaquiz2_default_eeprom[256] = {
 	0x20,0x49,0x49,0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 };
 
-data8_t *statriv2_videoram;
-static struct tilemap* statriv2_tilemap;
+UINT8 *statriv2_videoram;
+static tilemap* statriv2_tilemap;
 
 /* Video Related, move to vidhrdw later */
 
@@ -167,9 +167,9 @@ static NVRAM_HANDLER (quaquiz2)
 		memcpy ( generic_nvram, quaquiz2_default_eeprom, 0x100 );
 }
 
-static data8_t  question_offset_low;
-static data8_t  question_offset_med;
-static data8_t  question_offset_high;
+static UINT8  question_offset_low;
+static UINT8  question_offset_med;
+static UINT8  question_offset_high;
 
 static WRITE8_HANDLER ( question_offset_low_w )
 {
@@ -188,7 +188,7 @@ static WRITE8_HANDLER ( question_offset_high_w )
 
 static READ8_HANDLER (statriv2_questions_read)
 {
-	data8_t *question_data    = memory_region       ( REGION_USER1 );
+	UINT8 *question_data    = memory_region       ( REGION_USER1 );
 	int offs;
 
 	question_offset_low++;
@@ -260,7 +260,7 @@ static READ8_HANDLER (statriv2_questions_read)
 
 static READ8_HANDLER (supertr2_questions_read)
 {
-	data8_t *question_data = memory_region( REGION_USER1 );
+	UINT8 *question_data = memory_region( REGION_USER1 );
 	int offs;
 	int XORval;
 
@@ -277,7 +277,7 @@ static READ8_HANDLER (supertr2_questions_read)
 
 static READ8_HANDLER (supertr3_questions_read)
 {
-	data8_t *question_data = memory_region( REGION_USER1 );
+	UINT8 *question_data = memory_region( REGION_USER1 );
 	int offs;
 
 	offs = (question_offset_high << 16) | (question_offset_med << 8) | question_offset_low;
@@ -287,7 +287,7 @@ static READ8_HANDLER (supertr3_questions_read)
 
 static READ8_HANDLER (hangman_questions_read)
 {
-	data8_t *question_data = memory_region( REGION_USER1 );
+	UINT8 *question_data = memory_region( REGION_USER1 );
 	int offs;
 
 	offs = (question_offset_high << 16) | (question_offset_med << 8) | question_offset_low;
@@ -550,7 +550,7 @@ INPUT_PORTS_START( hangman )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-static struct GfxLayout statriv2_tiles8x16_layout =
+static gfx_layout statriv2_tiles8x16_layout =
 {
 	8,16,
 	RGN_FRAC(1,1),
@@ -562,7 +562,7 @@ static struct GfxLayout statriv2_tiles8x16_layout =
 	16*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &statriv2_tiles8x16_layout, 0, 64 },
 	{ -1 }

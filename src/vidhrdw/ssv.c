@@ -141,9 +141,9 @@ Note: press Z to show some info on each sprite (debug builds only)
 
 int shadow_pen_mask, shadow_pen_shift;
 
-void ssv_drawgfx(	struct mame_bitmap *bitmap, const struct GfxElement *gfx,
+void ssv_drawgfx(	mame_bitmap *bitmap, const gfx_element *gfx,
 					unsigned int code,unsigned int color,int flipx,int flipy,int x0,int y0,
-					const struct rectangle *cliprect, int shadow	)
+					const rectangle *cliprect, int shadow	)
 {
 	UINT8 *source, *addr, pen;
 	UINT16 *dest;
@@ -202,7 +202,7 @@ VIDEO_START( eaglshot )
 	if ( video_start_ssv() )
 		return 1;
 
-	eaglshot_gfxram		=	(data16_t*)auto_malloc(16 * 0x40000);
+	eaglshot_gfxram		=	(UINT16*)auto_malloc(16 * 0x40000);
 	eaglshot_dirty_tile	=	(char*)auto_malloc(16 * 0x40000 / (16*8));
 
 	if ( !eaglshot_gfxram || !eaglshot_dirty_tile )
@@ -211,18 +211,18 @@ VIDEO_START( eaglshot )
 	return 0;
 }
 
-static struct tilemap *gdfs_tmap;
+static tilemap *gdfs_tmap;
 
 static void get_tile_info_0(int tile_index)
 {
-	data16_t tile = gdfs_tmapram[tile_index];
+	UINT16 tile = gdfs_tmapram[tile_index];
 	SET_TILE_INFO(3, tile, 0, TILE_FLIPXY( tile >> 14 ));
 }
 
 WRITE16_HANDLER( gdfs_tmapram_w )
 {
-	data16_t old_data	=	gdfs_tmapram[offset];
-	data16_t new_data	=	COMBINE_DATA(&gdfs_tmapram[offset]);
+	UINT16 old_data	=	gdfs_tmapram[offset];
+	UINT16 new_data	=	COMBINE_DATA(&gdfs_tmapram[offset]);
 	if (old_data != new_data)	tilemap_mark_tile_dirty(gdfs_tmap, offset);
 }
 
@@ -233,7 +233,7 @@ VIDEO_START( gdfs )
 
 	Machine->gfx[2]->color_granularity = 64; /* 256 colour sprites with palette selectable on 64 colour boundaries */
 
-	eaglshot_gfxram		=	(data16_t*)auto_malloc(4 * 0x100000);
+	eaglshot_gfxram		=	(UINT16*)auto_malloc(4 * 0x100000);
 	eaglshot_dirty_tile	=	(char*)auto_malloc(4 * 0x100000 / (16*8));
 
 	gdfs_tmap			=	tilemap_create(	get_tile_info_0, tilemap_scan_rows,
@@ -248,7 +248,7 @@ VIDEO_START( gdfs )
 }
 
 /* Scroll values + CRT controller registers */
-data16_t *ssv_scroll;
+UINT16 *ssv_scroll;
 
 int ssv_special;	// game specific kludges
 
@@ -257,7 +257,7 @@ int ssv_tile_code[16];
 int ssv_sprites_offsx, ssv_sprites_offsy;
 int ssv_tilemap_offsx, ssv_tilemap_offsy;
 
-data16_t *eaglshot_gfxram, *gdfs_tmapram, *gdfs_tmapscroll;
+UINT16 *eaglshot_gfxram, *gdfs_tmapram, *gdfs_tmapscroll;
 char eaglshot_dirty, *eaglshot_dirty_tile;
 
 /***************************************************************************
@@ -397,7 +397,7 @@ WRITE16_HANDLER( ssv_scroll_w )
 WRITE16_HANDLER( paletteram16_xrgb_swap_word_w )
 {
 	int r, g, b;
-	data16_t data0, data1;
+	UINT16 data0, data1;
 
 	COMBINE_DATA(paletteram16 + offset);
 
@@ -413,7 +413,7 @@ WRITE16_HANDLER( paletteram16_xrgb_swap_word_w )
 	palette_set_color(offset>>1, r, g, b);
 
 	if (!(Machine->drv->video_attributes & VIDEO_NEEDS_6BITS_PER_GUN))
-		usrintf_showmessage("driver should use VIDEO_NEEDS_6BITS_PER_GUN flag");
+		ui_popup("driver should use VIDEO_NEEDS_6BITS_PER_GUN flag");
 }
 
 /***************************************************************************
@@ -604,13 +604,13 @@ From the above some noteworthy cases are:
 
 /* Draw a tilemap sprite */
 
-static void ssv_draw_row(struct mame_bitmap *bitmap, int sx, int sy, int scroll)
+static void ssv_draw_row(mame_bitmap *bitmap, int sx, int sy, int scroll)
 {
-	struct rectangle clip;
+	rectangle clip;
 	int attr, code, color, mode, size, page, shadow;
 	int x, x1, sx1, flipx, xnum, xstart, xend, xinc;
 	int y, y1, sy1, flipy, ynum, ystart, yend, yinc;
-	data16_t *s3;
+	UINT16 *s3;
 
 	xnum	=		0x20;		// width in tiles (screen-wide)
 	ynum	=		0x8;		// height in tiles (always 64 pixels?)
@@ -729,7 +729,7 @@ static void ssv_draw_row(struct mame_bitmap *bitmap, int sx, int sy, int scroll)
 
 /* Draw the "background layer" using multiple tilemap sprites */
 
-static void ssv_draw_layer(struct mame_bitmap *bitmap,int  nr)
+static void ssv_draw_layer(mame_bitmap *bitmap,int  nr)
 {
 	int sy;
 	for ( sy = 0; sy <= Machine->visible_area.max_y; sy += 0x40 )
@@ -738,14 +738,14 @@ static void ssv_draw_layer(struct mame_bitmap *bitmap,int  nr)
 
 /* Draw sprites in the sprites list */
 
-static void ssv_draw_sprites(struct mame_bitmap *bitmap)
+static void ssv_draw_sprites(mame_bitmap *bitmap)
 {
 	/* Sprites list */
 
-	data16_t *s1	=	spriteram16;
-	data16_t *end1	=	spriteram16 + 0x02000/2;
-	data16_t *end2	=	spriteram16 + 0x40000/2;
-	data16_t *s2;
+	UINT16 *s1	=	spriteram16;
+	UINT16 *end1	=	spriteram16 + 0x02000/2;
+	UINT16 *end2	=	spriteram16 + 0x40000/2;
+	UINT16 *s2;
 
 	for ( ; s1 < end1; s1+=4 )
 	{
@@ -901,12 +901,10 @@ static void ssv_draw_sprites(struct mame_bitmap *bitmap)
 
 				#ifdef MAME_DEBUG
 				if (code_pressed(KEYCODE_Z))	/* Display some info on each sprite */
-				{	struct DisplayText dt[2];	char buf[10];
+				{	char buf[10];
 					sprintf(buf, "%02X",/*(s2[2] & ~0x3ff)>>8*/mode>>8);
-					dt[0].text = buf;	dt[0].color = ((s1[0] & 0x0200) ? UI_COLOR_INVERSE : UI_COLOR_NORMAL);
-					dt[0].x = sx;		dt[0].y = sy;
-					dt[1].text = 0;	/* terminate array */
-					displaytext(bitmap,dt);		}
+					ui_draw_text(buf, sx, sy);
+				}
 				#endif
 
 			}		/* sprite type */
@@ -1002,13 +1000,13 @@ VIDEO_UPDATE( eaglshot )
         E.h                             Unused
 
 */
-static void gdfs_draw_zooming_sprites(struct mame_bitmap *bitmap, int priority)
+static void gdfs_draw_zooming_sprites(mame_bitmap *bitmap, int priority)
 {
 	/* Sprites list */
 
-	data16_t *s1	=	spriteram16_2;
-	data16_t *end1	=	spriteram16_2 + 0x02000/2;
-	data16_t *s2;
+	UINT16 *s1	=	spriteram16_2;
+	UINT16 *end1	=	spriteram16_2 + 0x02000/2;
+	UINT16 *s2;
 
 	priority <<= 4;
 
@@ -1101,12 +1099,11 @@ static void gdfs_draw_zooming_sprites(struct mame_bitmap *bitmap, int priority)
 
 			#ifdef MAME_DEBUG
 			if (code_pressed(KEYCODE_Z))	/* Display some info on each sprite */
-			{	struct DisplayText dt[2];	char buf[10];
+			{
+				char buf[10];
 				sprintf(buf, "%X",size);
-				dt[0].text = buf;	dt[0].color = UI_COLOR_INVERSE;
-				dt[0].x = sx / 0x10000;		dt[0].y = sy / 0x10000;
-				dt[1].text = 0;	/* terminate array */
-				displaytext(bitmap,dt);		}
+				ui_draw_text(buf, sx / 0x10000, sy / 0x10000);
+			}
 			#endif
 		}	/* single-sprites */
 

@@ -31,9 +31,9 @@
 #include "sound/ay8910.h"
 #include "sound/2203intf.h"
 
-static struct tilemap *bg_tilemap, *fg_tilemap;
+static tilemap *bg_tilemap, *fg_tilemap;
 
-static data8_t *videoram2;
+static UINT8 *videoram2;
 
 static int flipscreen=0;
 static int bg_bank = 0;
@@ -95,7 +95,7 @@ VIDEO_START( zerotrgt )
 	return 0;
 }
 
-static void drawsprites(struct mame_bitmap *bitmap, int pri)
+static void drawsprites(mame_bitmap *bitmap, int pri)
 {
 	int offs;
 
@@ -256,16 +256,14 @@ static int scroll=0;
 {
 
 	int i,j;
-	char buf[20];
+	char buf[60];
 	struct osd_bitmap *mybitmap = bitmap;
-	data8_t *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
+buf[0] = 0;
 for (i = 0;i < 8;i+=2)
-{
-	sprintf(buf,"%04X",RAM[0x3000+i+1]+(RAM[0x3000+i]<<8));
-	for (j = 0;j < 4;j++)
-		drawgfx(mybitmap,Machine->uifont,buf[j],0,0,0,3*8*i+8*j+50,8*6,0,TRANSPARENCY_NONE,0);
-}
+	sprintf(&buf[strlen(buf)],"%04X\n",RAM[0x3000+i+1]+(RAM[0x3000+i]<<8));
+ui_draw_text(buf,50,8*6);
 }
 #endif
 
@@ -653,10 +651,11 @@ INPUT_PORTS_END
 
 /***************************************************************************/
 
-static struct GfxLayout cntsteer_charlayout =
+/* this layout is bad and reads way beyond the end of the array */
+static gfx_layout cntsteer_charlayout =
 {
 	8,8,	/* 8*8 characters */
-	RGN_FRAC(1,1),
+	RGN_FRAC(1,2),
 	2,	/* 2 bits per pixel */
 	{ 0, 4 },	/* the two bitplanes for 4 pixels are packed into one byte */
 	{ 0, 1, 2, 3, 0x800*8+0, 0x800*8+1, 0x800*8+2, 0x800*8+3 },
@@ -664,10 +663,11 @@ static struct GfxLayout cntsteer_charlayout =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-static struct GfxLayout zerotrgt_charlayout =
+/* this layout is bad and reads way beyond the end of the array */
+static gfx_layout zerotrgt_charlayout =
 {
 	8,8,
-	RGN_FRAC(1,1),
+	RGN_FRAC(1,2),
 	2,
 	{ 4,0 },
 	{ 0, 1, 2, 3, 1024*8*8+0, 1024*8*8+1, 1024*8*8+2, 1024*8*8+3 },
@@ -675,7 +675,7 @@ static struct GfxLayout zerotrgt_charlayout =
 	8*8	/* every tile takes 32 consecutive bytes */
 };
 
-static struct GfxLayout sprites =
+static gfx_layout sprites =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -687,10 +687,10 @@ static struct GfxLayout sprites =
 	16*16
 };
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	16,16,
-	0x400,
+	0x200,
 	3,	/* 3 bits per pixel */
 	{ RGN_FRAC(4,8)+4, 0, 4 },
 	{ 3, 2, 1, 0, 11, 10, 9 , 8, 19, 18, 17,16, 27, 26, 25, 24 },
@@ -703,7 +703,7 @@ static struct GfxLayout tilelayout =
 	8*16
 };
 
-static struct GfxDecodeInfo cntsteer_gfxdecodeinfo[] =
+static gfx_decode cntsteer_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &cntsteer_charlayout, 0, 256 }, /* Only 1 used so far :/ */
 	{ REGION_GFX2, 0x00000, &sprites,			  0, 256 },
@@ -712,7 +712,7 @@ static struct GfxDecodeInfo cntsteer_gfxdecodeinfo[] =
 };
 
 
-static struct GfxDecodeInfo zerotrgt_gfxdecodeinfo[] =
+static gfx_decode zerotrgt_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &zerotrgt_charlayout, 0, 256 }, /* Only 1 used so far :/ */
 	{ REGION_GFX2, 0x00000, &sprites,			  0, 256 },
@@ -928,8 +928,8 @@ ROM_END
 
 static void zerotrgt_rearrange_gfx(int romsize, int romarea)
 {
-	data8_t *src = memory_region(REGION_GFX4);
-	data8_t *dst = memory_region(REGION_GFX3);
+	UINT8 *src = memory_region(REGION_GFX4);
+	UINT8 *dst = memory_region(REGION_GFX3);
 	int rm;
 	int cnt1;
 
@@ -949,7 +949,7 @@ static void zerotrgt_rearrange_gfx(int romsize, int romarea)
 #if 0
 static void init_cntsteer(void)
 {
-	data8_t *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(REGION_CPU2);
 
 	RAM[0xc2cf]=0x43; /* Patch out Cpu 1 ram test - it never ends..?! */
 	RAM[0xc2d0]=0x43;

@@ -140,8 +140,8 @@ struct fifo_entry
 {
 	write32_handler writefunc;
 	offs_t offset;
-	data32_t data;
-	data32_t mem_mask;
+	UINT32 data;
+	UINT32 mem_mask;
 };
 
 /* a single triangle vertex */
@@ -180,7 +180,7 @@ static UINT16 *pen_lookup;
 static UINT16 *lod_lookup;
 
 /* register pointers */
-static data32_t voodoo_regs[0x400];
+static UINT32 voodoo_regs[0x400];
 static float *fvoodoo_regs = (float *)voodoo_regs;
 
 /* color DAC fake registers */
@@ -190,7 +190,7 @@ static UINT8 dac_read_result;
 /* clut table */
 static UINT32 clut_table[33];
 
-static data32_t init_enable;
+static UINT32 init_enable;
 
 /* texel tables */
 static UINT32 *texel_lookup[MAX_TMUS][16];
@@ -220,9 +220,9 @@ static UINT8 memory_fifo_texture;
 static UINT8 memory_fifo_in_process;
 
 /* fbzMode variables */
-static struct rectangle *fbz_cliprect;
-static struct rectangle fbz_noclip;
-static struct rectangle fbz_clip;
+static rectangle *fbz_cliprect;
+static rectangle fbz_noclip;
+static rectangle fbz_clip;
 static UINT8 fbz_dithering;
 static UINT8 fbz_rgb_write;
 static UINT8 fbz_depth_write;
@@ -282,7 +282,7 @@ static int num_rasters;
 
 /* debugging/stats */
 static UINT32 polycount, wpolycount, pixelcount, lastfps, framecount, totalframes;
-static char stats_buffer[10][30];
+static char stats_buffer[10*30];
 static UINT16 modes_used;
 static offs_t status_lastpc;
 static int status_lastpc_count;
@@ -362,7 +362,7 @@ static void reset_buffers(void);
 static void update_memory_fifo(void);
 static void swap_buffers(void);
 static void vblank_callback(int scanline);
-static void cmdfifo_process_pending(data32_t old_depth);
+static void cmdfifo_process_pending(UINT32 old_depth);
 
 /* from vooddraw.h */
 static void fastfill(void);
@@ -738,8 +738,8 @@ int voodoo_start_common(void)
 		palette_set_color(i - 1, r, g, b);
 		pen_lookup[i] = i - 1;
 	}
-	pen_lookup[0] = Machine->uifont->colortable[0];
-	pen_lookup[65535] = Machine->uifont->colortable[1];
+	pen_lookup[0] = get_black_pen();
+	pen_lookup[65535] = get_white_pen();
 
 	/* allocate a vblank timer */
 	vblank_timer = timer_alloc(vblank_callback);
@@ -946,14 +946,7 @@ VIDEO_UPDATE( voodoo )
 	}
 	if (display_statistics)
 	{
-		ui_text(bitmap, &stats_buffer[0][0], 0, Machine->uifontheight * 0);
-		ui_text(bitmap, &stats_buffer[1][0], 0, Machine->uifontheight * 1);
-		ui_text(bitmap, &stats_buffer[2][0], 0, Machine->uifontheight * 2);
-		ui_text(bitmap, &stats_buffer[3][0], 0, Machine->uifontheight * 3);
-		ui_text(bitmap, &stats_buffer[4][0], 0, Machine->uifontheight * 4);
-		ui_text(bitmap, &stats_buffer[5][0], 0, Machine->uifontheight * 5);
-		ui_text(bitmap, &stats_buffer[6][0], 0, Machine->uifontheight * 6);
-		ui_text(bitmap, &stats_buffer[7][0], 0, Machine->uifontheight * 7);
+		ui_draw_text(stats_buffer, 0, 0);
 
 		totalframes++;
 		if (totalframes == (int)Machine->drv->frames_per_second)
@@ -992,7 +985,7 @@ VIDEO_UPDATE( voodoo )
  *
  *************************************/
 
-INLINE void add_to_memory_fifo(write32_handler handler, offs_t offset, data32_t data, data32_t mem_mask)
+INLINE void add_to_memory_fifo(write32_handler handler, offs_t offset, UINT32 data, UINT32 mem_mask)
 {
 	struct fifo_entry *entry;
 
@@ -1127,21 +1120,22 @@ static void swap_buffers(void)
 	if (display_statistics)
 	{
 		int screen_area = (Machine->visible_area.max_x - Machine->visible_area.min_x + 1) * (Machine->visible_area.max_y - Machine->visible_area.min_y + 1);
+		char *statsptr = stats_buffer;
 		int i;
 
 		total_swaps++;
 
-		sprintf(&stats_buffer[0][0], "Poly:%5d", polycount);
-		sprintf(&stats_buffer[1][0], "WPol:%5d", wpolycount);
-		sprintf(&stats_buffer[2][0], "Rend:%5d%%", pixelcount * 100 / screen_area);
-		sprintf(&stats_buffer[3][0], " FPS:%5d", lastfps);
-		sprintf(&stats_buffer[4][0], "Swap:%5d", total_swaps);
-		sprintf(&stats_buffer[5][0], "Pend:%5d", num_pending_swaps);
-		sprintf(&stats_buffer[6][0], "FIFO:%5d", memory_fifo_count);
-		sprintf(&stats_buffer[7][0], "TexM:");
+		statsptr += sprintf(statsptr, "Poly:%5d\n", polycount);
+		statsptr += sprintf(statsptr, "WPol:%5d\n", wpolycount);
+		statsptr += sprintf(statsptr, "Rend:%5d%%\n", pixelcount * 100 / screen_area);
+		statsptr += sprintf(statsptr, " FPS:%5d\n", lastfps);
+		statsptr += sprintf(statsptr, "Swap:%5d\n", total_swaps);
+		statsptr += sprintf(statsptr, "Pend:%5d\n", num_pending_swaps);
+		statsptr += sprintf(statsptr, "FIFO:%5d\n", memory_fifo_count);
+		statsptr += sprintf(statsptr, "TexM:");
 		for (i = 0; i < 16; i++)
-			stats_buffer[7][i+5] = (modes_used & (1 << i)) ? "0123456789ABCDEF"[i] : ' ';
-		stats_buffer[7][16+5] = 0;
+			*statsptr++ = (modes_used & (1 << i)) ? "0123456789ABCDEF"[i] : ' ';
+		*statsptr = 0;
 
 		polycount = wpolycount = pixelcount = 0;
 		modes_used = 0;
@@ -1204,7 +1198,7 @@ static void vblank_callback(int scanline)
  *
  *************************************/
 
-void voodoo_set_init_enable(data32_t newval)
+void voodoo_set_init_enable(UINT32 newval)
 {
 	init_enable = newval;
 }
@@ -1439,7 +1433,7 @@ WRITE32_HANDLER( voodoo_textureram_w )
 
 WRITE32_HANDLER( voodoo_regs_w )
 {
-	void (*handler)(int, offs_t, data32_t);
+	void (*handler)(int, offs_t, UINT32);
 	offs_t regnum;
 	int chips;
 
@@ -1497,7 +1491,7 @@ WRITE32_HANDLER( voodoo_regs_w )
 
 READ32_HANDLER( voodoo_regs_r )
 {
-	data32_t result;
+	UINT32 result;
 
 	if ((offset & 0x800c0) == 0x80000 && (voodoo_regs[fbiInit3] & 1))
 		offset = register_alias_map[offset & 0x3f];
@@ -1597,7 +1591,7 @@ READ32_HANDLER( voodoo_regs_r )
 #pragma mark VOODOO 2 COMMAND FIFO
 #endif
 
-static void voodoo2_handle_register_w(offs_t offset, data32_t data);
+static void voodoo2_handle_register_w(offs_t offset, UINT32 data);
 
 
 /*************************************
@@ -1848,7 +1842,7 @@ static UINT32 cmdfifo_execute(UINT32 *fifobase, offs_t readptr)
 }
 
 
-static void cmdfifo_process_pending(data32_t old_depth)
+static void cmdfifo_process_pending(UINT32 old_depth)
 {
 	/* if we have data, process it */
 	if (voodoo_regs[cmdFifoDepth])
@@ -1882,9 +1876,9 @@ static void cmdfifo_process_pending(data32_t old_depth)
  *
  *************************************/
 
-static void voodoo2_handle_register_w(offs_t offset, data32_t data)
+static void voodoo2_handle_register_w(offs_t offset, UINT32 data)
 {
-	void (*handler)(int, offs_t, data32_t);
+	void (*handler)(int, offs_t, UINT32);
 	offs_t regnum;
 	int chips;
 
@@ -1926,7 +1920,7 @@ static void voodoo2_handle_register_w(offs_t offset, data32_t data)
 
 WRITE32_HANDLER( voodoo2_regs_w )
 {
-	data32_t old_depth;
+	UINT32 old_depth;
 	offs_t addr;
 
 	/* if we're blocked on a swap, all writes must go into the FIFO */

@@ -24,10 +24,10 @@
 #include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 
-data8_t *skyarmy_videoram;
-data8_t *skyarmy_colorram;
-data8_t *skyarmy_scrollram;
-static struct tilemap* skyarmy_tilemap;
+UINT8 *skyarmy_videoram;
+UINT8 *skyarmy_colorram;
+UINT8 *skyarmy_scrollram;
+static tilemap* skyarmy_tilemap;
 
 static void get_skyarmy_tile_info(int tile_index)
 {
@@ -223,7 +223,7 @@ INPUT_PORTS_START( skyarmy )
 
 INPUT_PORTS_END
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
         256,
@@ -234,7 +234,7 @@ static struct GfxLayout charlayout =
         8*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
         16,16,
         32*2,
@@ -247,7 +247,7 @@ static struct GfxLayout spritelayout =
         32*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
         { REGION_GFX1, 0, &charlayout,   0, 32 },
         { REGION_GFX2, 0, &spritelayout, 0, 32 },

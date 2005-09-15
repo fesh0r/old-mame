@@ -82,7 +82,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x01c00060, 0x01c0007f) AM_READWRITE(midyunit_protection_r, midyunit_cmos_enable_w)
 	AM_RANGE(0x01e00000, 0x01e0001f) AM_WRITE(midyunit_sound_w)
 	AM_RANGE(0x01f00000, 0x01f0001f) AM_WRITE(midyunit_control_w)
-	AM_RANGE(0x02000000, 0x05ffffff) AM_READ(midyunit_gfxrom_r) AM_BASE((data16_t **)&midyunit_gfx_rom) AM_SIZE(&midyunit_gfx_rom_size)
+	AM_RANGE(0x02000000, 0x05ffffff) AM_READ(midyunit_gfxrom_r) AM_BASE((UINT16 **)&midyunit_gfx_rom) AM_SIZE(&midyunit_gfx_rom_size)
 	AM_RANGE(0xc0000000, 0xc00001ff) AM_READWRITE(tms34010_io_register_r, midyunit_io_register_w)
 	AM_RANGE(0xff800000, 0xffffffff) AM_ROM AM_REGION(REGION_USER1, 0)
 ADDRESS_MAP_END
@@ -842,7 +842,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct tms34010_config cpu_config =
+static struct tms34010_config tms_config =
 {
 	0,								/* halt on reset */
 	NULL,							/* generate interrupt */
@@ -866,7 +866,7 @@ static MACHINE_DRIVER_START( zunit )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(TMS34010, 48000000/TMS34010_CLOCK_DIVIDER)
-	MDRV_CPU_CONFIG(cpu_config)
+	MDRV_CPU_CONFIG(tms_config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	MDRV_FRAMES_PER_SECOND(57)
@@ -900,7 +900,7 @@ static MACHINE_DRIVER_START( yunit_core )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(TMS34010, 50000000/TMS34010_CLOCK_DIVIDER)
-	MDRV_CPU_CONFIG(cpu_config)
+	MDRV_CPU_CONFIG(tms_config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	MDRV_FRAMES_PER_SECOND(MKLA5_FPS)

@@ -182,7 +182,7 @@ TODO:
 #include "sound/namco.h"
 #include "sound/n63701x.h"
 
-extern data8_t *rthunder_videoram1, *rthunder_videoram2, *rthunder_spriteram;
+extern UINT8 *rthunder_videoram1, *rthunder_videoram2, *rthunder_spriteram;
 
 PALETTE_INIT( namcos86 );
 VIDEO_START( namcos86 );
@@ -318,7 +318,7 @@ static WRITE8_HANDLER( cus115_w )
 	/* make sure the expansion board is present */
 	if (!memory_region(REGION_USER1))
 	{
-		usrintf_showmessage("expansion board not present");
+		ui_popup("expansion board not present");
 		return;
 	}
 
@@ -1012,7 +1012,7 @@ INPUT_PORTS_END
 
 /*******************************************************************/
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -1023,7 +1023,7 @@ static struct GfxLayout tilelayout =
 	8*8
 };
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	32,32,
 	RGN_FRAC(1,1),
@@ -1040,7 +1040,7 @@ static struct GfxLayout spritelayout =
 	64*64
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,   2048*0, 256 },
 	{ REGION_GFX2, 0, &tilelayout,   2048*0, 256 },

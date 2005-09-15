@@ -16,9 +16,9 @@
 #endif
 
 
-typedef void (*plot_pixel_proc)(struct mame_bitmap *bitmap,int x,int y,pen_t pen);
-typedef pen_t (*read_pixel_proc)(struct mame_bitmap *bitmap,int x,int y);
-typedef void (*plot_box_proc)(struct mame_bitmap *bitmap,int x,int y,int width,int height,pen_t pen);
+typedef void (*plot_pixel_proc)(mame_bitmap *bitmap,int x,int y,pen_t pen);
+typedef pen_t (*read_pixel_proc)(mame_bitmap *bitmap,int x,int y);
+typedef void (*plot_box_proc)(mame_bitmap *bitmap,int x,int y,int width,int height,pen_t pen);
 
 
 UINT8 gfx_drawmode_table[256];
@@ -68,7 +68,7 @@ INLINE int readbit(const UINT8 *src,int bitnum)
 	return src[bitnum / 8] & (0x80 >> (bitnum % 8));
 }
 
-struct _alpha_cache alpha_cache;
+alpha_cache drawgfx_alpha_cache;
 int alpha_active;
 
 void alpha_init(void)
@@ -76,12 +76,12 @@ void alpha_init(void)
 	int lev, byte;
 	for(lev=0; lev<257; lev++)
 		for(byte=0; byte<256; byte++)
-			alpha_cache.alpha[lev][byte] = (byte*lev) >> 8;
+			drawgfx_alpha_cache.alpha[lev][byte] = (byte*lev) >> 8;
 	alpha_set_level(255);
 }
 
 
-static void calc_penusage(struct GfxElement *gfx,int num)
+static void calc_penusage(gfx_element *gfx,int num)
 {
 	int x,y;
 	UINT8 *dp;
@@ -118,7 +118,7 @@ static void calc_penusage(struct GfxElement *gfx,int num)
 	}
 }
 
-void decodechar(struct GfxElement *gfx,int num,const UINT8 *src,const struct GfxLayout *gl)
+void decodechar(gfx_element *gfx,int num,const UINT8 *src,const gfx_layout *gl)
 {
 	int plane,x,y;
 	UINT8 *dp;
@@ -209,15 +209,15 @@ void decodechar(struct GfxElement *gfx,int num,const UINT8 *src,const struct Gfx
 }
 
 
-struct GfxElement *decodegfx(const UINT8 *src,const struct GfxLayout *gl)
+gfx_element *decodegfx(const UINT8 *src,const gfx_layout *gl)
 {
 	int c;
-	struct GfxElement *gfx;
+	gfx_element *gfx;
 
 
-	if ((gfx = malloc(sizeof(struct GfxElement))) == 0)
+	if ((gfx = malloc(sizeof(gfx_element))) == 0)
 		return 0;
-	memset(gfx,0,sizeof(struct GfxElement));
+	memset(gfx,0,sizeof(gfx_element));
 
 	gfx->width = gl->width;
 	gfx->height = gl->height;
@@ -270,7 +270,7 @@ struct GfxElement *decodegfx(const UINT8 *src,const struct GfxLayout *gl)
 }
 
 
-void freegfx(struct GfxElement *gfx)
+void freegfx(gfx_element *gfx)
 {
 	if (gfx)
 	{
@@ -841,19 +841,19 @@ INLINE UINT32 SHADOW32(UINT32 c) {
 
 ***************************************************************************/
 
-INLINE void common_drawgfx(struct mame_bitmap *dest,const struct GfxElement *gfx,
+INLINE void common_drawgfx(mame_bitmap *dest,const gfx_element *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color,
-		struct mame_bitmap *pri_buffer,UINT32 pri_mask)
+		const rectangle *clip,int transparency,int transparent_color,
+		mame_bitmap *pri_buffer,UINT32 pri_mask)
 {
 	if (!gfx)
 	{
-		usrintf_showmessage("drawgfx() gfx == 0");
+		ui_popup("drawgfx() gfx == 0");
 		return;
 	}
 	if (!gfx->colortable && !is_raw[transparency])
 	{
-		usrintf_showmessage("drawgfx() gfx->colortable == 0");
+		ui_popup("drawgfx() gfx->colortable == 0");
 		return;
 	}
 
@@ -904,27 +904,27 @@ INLINE void common_drawgfx(struct mame_bitmap *dest,const struct GfxElement *gfx
 		drawgfx_core32(dest,gfx,code,color,flipx,flipy,sx,sy,clip,transparency,transparent_color,pri_buffer,pri_mask);
 }
 
-void drawgfx(struct mame_bitmap *dest,const struct GfxElement *gfx,
+void drawgfx(mame_bitmap *dest,const gfx_element *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color)
+		const rectangle *clip,int transparency,int transparent_color)
 {
 	profiler_mark(PROFILER_DRAWGFX);
 	common_drawgfx(dest,gfx,code,color,flipx,flipy,sx,sy,clip,transparency,transparent_color,NULL,0);
 	profiler_mark(PROFILER_END);
 }
 
-void pdrawgfx(struct mame_bitmap *dest,const struct GfxElement *gfx,
+void pdrawgfx(mame_bitmap *dest,const gfx_element *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color,UINT32 priority_mask)
+		const rectangle *clip,int transparency,int transparent_color,UINT32 priority_mask)
 {
 	profiler_mark(PROFILER_DRAWGFX);
 	common_drawgfx(dest,gfx,code,color,flipx,flipy,sx,sy,clip,transparency,transparent_color,priority_bitmap,priority_mask | (1<<31));
 	profiler_mark(PROFILER_END);
 }
 
-void mdrawgfx(struct mame_bitmap *dest,const struct GfxElement *gfx,
+void mdrawgfx(mame_bitmap *dest,const gfx_element *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color,UINT32 priority_mask)
+		const rectangle *clip,int transparency,int transparent_color,UINT32 priority_mask)
 {
 	profiler_mark(PROFILER_DRAWGFX);
 	common_drawgfx(dest,gfx,code,color,flipx,flipy,sx,sy,clip,transparency,transparent_color,priority_bitmap,priority_mask);
@@ -938,8 +938,8 @@ void mdrawgfx(struct mame_bitmap *dest,const struct GfxElement *gfx,
   This function will very likely change in the future.
 
 ***************************************************************************/
-void copybitmap(struct mame_bitmap *dest,struct mame_bitmap *src,int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color)
+void copybitmap(mame_bitmap *dest,mame_bitmap *src,int flipx,int flipy,int sx,int sy,
+		const rectangle *clip,int transparency,int transparent_color)
 {
 	/* translate to proper transparency here */
 	if (transparency == TRANSPARENCY_NONE)
@@ -956,8 +956,8 @@ void copybitmap(struct mame_bitmap *dest,struct mame_bitmap *src,int flipx,int f
 }
 
 
-void copybitmap_remap(struct mame_bitmap *dest,struct mame_bitmap *src,int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color)
+void copybitmap_remap(mame_bitmap *dest,mame_bitmap *src,int flipx,int flipy,int sx,int sy,
+		const rectangle *clip,int transparency,int transparent_color)
 {
 	profiler_mark(PROFILER_COPYBITMAP);
 
@@ -986,9 +986,9 @@ void copybitmap_remap(struct mame_bitmap *dest,struct mame_bitmap *src,int flipx
   scrolls as a whole in at least one direction.
 
 ***************************************************************************/
-void copyscrollbitmap(struct mame_bitmap *dest,struct mame_bitmap *src,
+void copyscrollbitmap(mame_bitmap *dest,mame_bitmap *src,
 		int rows,const int *rowscroll,int cols,const int *colscroll,
-		const struct rectangle *clip,int transparency,int transparent_color)
+		const rectangle *clip,int transparency,int transparent_color)
 {
 	/* translate to proper transparency here */
 	if (transparency == TRANSPARENCY_NONE)
@@ -1004,12 +1004,12 @@ void copyscrollbitmap(struct mame_bitmap *dest,struct mame_bitmap *src,
 	copyscrollbitmap_remap(dest,src,rows,rowscroll,cols,colscroll,clip,transparency,transparent_color);
 }
 
-void copyscrollbitmap_remap(struct mame_bitmap *dest,struct mame_bitmap *src,
+void copyscrollbitmap_remap(mame_bitmap *dest,mame_bitmap *src,
 		int rows,const int *rowscroll,int cols,const int *colscroll,
-		const struct rectangle *clip,int transparency,int transparent_color)
+		const rectangle *clip,int transparency,int transparent_color)
 {
 	int srcwidth,srcheight,destwidth,destheight;
-	struct rectangle orig_clip;
+	rectangle orig_clip;
 
 
 	if (clip)
@@ -1045,7 +1045,7 @@ void copyscrollbitmap_remap(struct mame_bitmap *dest,struct mame_bitmap *src,
 	{
 		/* scrolling columns */
 		int col,colwidth;
-		struct rectangle myclip;
+		rectangle myclip;
 
 
 		colwidth = srcwidth / cols;
@@ -1083,7 +1083,7 @@ void copyscrollbitmap_remap(struct mame_bitmap *dest,struct mame_bitmap *src,
 	{
 		/* scrolling rows */
 		int row,rowheight;
-		struct rectangle myclip;
+		rectangle myclip;
 
 
 		rowheight = srcheight / rows;
@@ -1138,7 +1138,7 @@ void copyscrollbitmap_remap(struct mame_bitmap *dest,struct mame_bitmap *src,
 		/* scrolling columns + horizontal scroll */
 		int col,colwidth;
 		int scrollx;
-		struct rectangle myclip;
+		rectangle myclip;
 
 
 		if (rowscroll[0] < 0) scrollx = srcwidth - (-rowscroll[0]) % srcwidth;
@@ -1188,7 +1188,7 @@ void copyscrollbitmap_remap(struct mame_bitmap *dest,struct mame_bitmap *src,
 		/* scrolling rows + vertical scroll */
 		int row,rowheight;
 		int scrolly;
-		struct rectangle myclip;
+		rectangle myclip;
 
 
 		if (colscroll[0] < 0) scrolly = srcheight - (-colscroll[0]) % srcheight;
@@ -1242,9 +1242,9 @@ void copyscrollbitmap_remap(struct mame_bitmap *dest,struct mame_bitmap *src,
    - startx and starty MUST be UINT32 for calculations to work correctly
    - srcbitmap->width and height are assumed to be a power of 2 to speed up wraparound
    */
-void copyrozbitmap(struct mame_bitmap *dest,struct mame_bitmap *src,
+void copyrozbitmap(mame_bitmap *dest,mame_bitmap *src,
 		UINT32 startx,UINT32 starty,int incxx,int incxy,int incyx,int incyy,int wraparound,
-		const struct rectangle *clip,int transparency,int transparent_color,UINT32 priority)
+		const rectangle *clip,int transparency,int transparent_color,UINT32 priority)
 {
 	profiler_mark(PROFILER_COPYBITMAP);
 
@@ -1264,7 +1264,7 @@ void copyrozbitmap(struct mame_bitmap *dest,struct mame_bitmap *src,
 
 	if (transparency != TRANSPARENCY_PEN)
 	{
-		usrintf_showmessage("copyrozbitmap unsupported trans %02x",transparency);
+		ui_popup("copyrozbitmap unsupported trans %02x",transparency);
 		return;
 	}
 
@@ -1281,7 +1281,7 @@ void copyrozbitmap(struct mame_bitmap *dest,struct mame_bitmap *src,
 
 
 /* fill a bitmap using the specified pen */
-void fillbitmap(struct mame_bitmap *dest,pen_t pen,const struct rectangle *clip)
+void fillbitmap(mame_bitmap *dest,pen_t pen,const rectangle *clip)
 {
 	int sx,sy,ex,ey,y;
 
@@ -1344,12 +1344,12 @@ void fillbitmap(struct mame_bitmap *dest,pen_t pen,const struct rectangle *clip)
 
 
 
-INLINE void common_drawgfxzoom( struct mame_bitmap *dest_bmp,const struct GfxElement *gfx,
+INLINE void common_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color,
-		int scalex, int scaley,struct mame_bitmap *pri_buffer,UINT32 pri_mask)
+		const rectangle *clip,int transparency,int transparent_color,
+		int scalex, int scaley,mame_bitmap *pri_buffer,UINT32 pri_mask)
 {
-	struct rectangle myclip;
+	rectangle myclip;
 	int alphapen = 0;
 
 	UINT8 ah, al;
@@ -1371,7 +1371,7 @@ INLINE void common_drawgfxzoom( struct mame_bitmap *dest_bmp,const struct GfxEle
 			&& transparency != TRANSPARENCY_ALPHA && transparency != TRANSPARENCY_ALPHARANGE
 			&& transparency != TRANSPARENCY_NONE)
 	{
-		usrintf_showmessage("drawgfxzoom unsupported trans %02x",transparency);
+		ui_popup("drawgfxzoom unsupported trans %02x",transparency);
 		return;
 	}
 
@@ -3433,9 +3433,9 @@ INLINE void common_drawgfxzoom( struct mame_bitmap *dest_bmp,const struct GfxEle
 	}
 }
 
-void drawgfxzoom( struct mame_bitmap *dest_bmp,const struct GfxElement *gfx,
+void drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color,int scalex, int scaley)
+		const rectangle *clip,int transparency,int transparent_color,int scalex, int scaley)
 {
 	profiler_mark(PROFILER_DRAWGFX);
 	common_drawgfxzoom(dest_bmp,gfx,code,color,flipx,flipy,sx,sy,
@@ -3443,9 +3443,9 @@ void drawgfxzoom( struct mame_bitmap *dest_bmp,const struct GfxElement *gfx,
 	profiler_mark(PROFILER_END);
 }
 
-void pdrawgfxzoom( struct mame_bitmap *dest_bmp,const struct GfxElement *gfx,
+void pdrawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color,int scalex, int scaley,
+		const rectangle *clip,int transparency,int transparent_color,int scalex, int scaley,
 		UINT32 priority_mask)
 {
 	profiler_mark(PROFILER_DRAWGFX);
@@ -3454,9 +3454,9 @@ void pdrawgfxzoom( struct mame_bitmap *dest_bmp,const struct GfxElement *gfx,
 	profiler_mark(PROFILER_END);
 }
 
-void mdrawgfxzoom( struct mame_bitmap *dest_bmp,const struct GfxElement *gfx,
+void mdrawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color,int scalex, int scaley,
+		const rectangle *clip,int transparency,int transparent_color,int scalex, int scaley,
 		UINT32 priority_mask)
 {
 	profiler_mark(PROFILER_DRAWGFX);
@@ -3465,26 +3465,26 @@ void mdrawgfxzoom( struct mame_bitmap *dest_bmp,const struct GfxElement *gfx,
 	profiler_mark(PROFILER_END);
 }
 
-void plot_pixel2(struct mame_bitmap *bitmap1,struct mame_bitmap *bitmap2,int x,int y,pen_t pen)
+void plot_pixel2(mame_bitmap *bitmap1,mame_bitmap *bitmap2,int x,int y,pen_t pen)
 {
 	plot_pixel(bitmap1, x, y, pen);
 	plot_pixel(bitmap2, x, y, pen);
 }
 
-static void pp_8(struct mame_bitmap *b,int x,int y,pen_t p)  { ((UINT8 *)b->line[y])[x] = p; }
-static void pp_16(struct mame_bitmap *b,int x,int y,pen_t p)  { ((UINT16 *)b->line[y])[x] = p; }
-static void pp_32(struct mame_bitmap *b,int x,int y,pen_t p)  { ((UINT32 *)b->line[y])[x] = p; }
+static void pp_8(mame_bitmap *b,int x,int y,pen_t p)  { ((UINT8 *)b->line[y])[x] = p; }
+static void pp_16(mame_bitmap *b,int x,int y,pen_t p)  { ((UINT16 *)b->line[y])[x] = p; }
+static void pp_32(mame_bitmap *b,int x,int y,pen_t p)  { ((UINT32 *)b->line[y])[x] = p; }
 
-static pen_t rp_8(struct mame_bitmap *b,int x,int y)  { return ((UINT8 *)b->line[y])[x]; }
-static pen_t rp_16(struct mame_bitmap *b,int x,int y)  { return ((UINT16 *)b->line[y])[x]; }
-static pen_t rp_32(struct mame_bitmap *b,int x,int y)  { return ((UINT32 *)b->line[y])[x]; }
+static pen_t rp_8(mame_bitmap *b,int x,int y)  { return ((UINT8 *)b->line[y])[x]; }
+static pen_t rp_16(mame_bitmap *b,int x,int y)  { return ((UINT16 *)b->line[y])[x]; }
+static pen_t rp_32(mame_bitmap *b,int x,int y)  { return ((UINT32 *)b->line[y])[x]; }
 
-static void pb_8(struct mame_bitmap *b,int x,int y,int w,int h,pen_t p)  { int t=x; while(h-->0){ int c=w; x=t; while(c-->0){ ((UINT8 *)b->line[y])[x] = p; x++; } y++; } }
-static void pb_16(struct mame_bitmap *b,int x,int y,int w,int h,pen_t p)  { int t=x; while(h-->0){ int c=w; x=t; while(c-->0){ ((UINT16 *)b->line[y])[x] = p; x++; } y++; } }
-static void pb_32(struct mame_bitmap *b,int x,int y,int w,int h,pen_t p)  { int t=x; while(h-->0){ int c=w; x=t; while(c-->0){ ((UINT32 *)b->line[y])[x] = p; x++; } y++; } }
+static void pb_8(mame_bitmap *b,int x,int y,int w,int h,pen_t p)  { int t=x; while(h-->0){ int c=w; x=t; while(c-->0){ ((UINT8 *)b->line[y])[x] = p; x++; } y++; } }
+static void pb_16(mame_bitmap *b,int x,int y,int w,int h,pen_t p)  { int t=x; while(h-->0){ int c=w; x=t; while(c-->0){ ((UINT16 *)b->line[y])[x] = p; x++; } y++; } }
+static void pb_32(mame_bitmap *b,int x,int y,int w,int h,pen_t p)  { int t=x; while(h-->0){ int c=w; x=t; while(c-->0){ ((UINT32 *)b->line[y])[x] = p; x++; } y++; } }
 
 
-void set_pixel_functions(struct mame_bitmap *bitmap)
+void set_pixel_functions(mame_bitmap *bitmap)
 {
 	if (bitmap->depth == 8)
 	{
@@ -3514,7 +3514,7 @@ void set_pixel_functions(struct mame_bitmap *bitmap)
 }
 
 
-INLINE void plotclip(struct mame_bitmap *bitmap,int x,int y,int pen,const struct rectangle *clip)
+INLINE void plotclip(mame_bitmap *bitmap,int x,int y,int pen,const rectangle *clip)
 {
 	if (x >= clip->min_x && x <= clip->max_x && y >= clip->min_y && y <= clip->max_y)
 		plot_pixel(bitmap,x,y,pen);
@@ -3527,16 +3527,15 @@ void drawgfx_toggle_crosshair(void)
 	crosshair_enable^=1;
 }
 
-void draw_crosshair(struct mame_bitmap *bitmap,int x,int y,const struct rectangle *clip,int player)
+void draw_crosshair(mame_bitmap *bitmap,int x,int y,const rectangle *clip,int player)
 {
-	unsigned short black,white;
+	unsigned short white;
 	int i;
 
 	if (!crosshair_enable)
 		return;
 
-	black = Machine->uifont->colortable[0];
-	white = Machine->uifont->colortable[1];
+	white = get_white_pen();
 
 	for (i = 1;i < 6;i++)
 	{
@@ -5109,10 +5108,10 @@ DECLARE(blockmove_NtoN_blend_remap_flipx,(
 
 
 DECLARE(drawgfx_core,(
-		struct mame_bitmap *dest,const struct GfxElement *gfx,
+		mame_bitmap *dest,const gfx_element *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color,
-		struct mame_bitmap *pri_buffer,UINT32 pri_mask),
+		const rectangle *clip,int transparency,int transparent_color,
+		mame_bitmap *pri_buffer,UINT32 pri_mask),
 {
 	int ox;
 	int oy;
@@ -5324,18 +5323,18 @@ DECLARE(drawgfx_core,(
 
 			default:
 				if (pribuf)
-					usrintf_showmessage("pdrawgfx pen mode not supported");
+					ui_popup("pdrawgfx pen mode not supported");
 				else
-					usrintf_showmessage("drawgfx pen mode not supported");
+					ui_popup("drawgfx pen mode not supported");
 				break;
 		}
 	}
 })
 
 DECLARE(copybitmap_core,(
-		struct mame_bitmap *dest,struct mame_bitmap *src,
+		mame_bitmap *dest,mame_bitmap *src,
 		int flipx,int flipy,int sx,int sy,
-		const struct rectangle *clip,int transparency,int transparent_color),
+		const rectangle *clip,int transparency,int transparent_color),
 {
 	int ox;
 	int oy;
@@ -5411,15 +5410,15 @@ DECLARE(copybitmap_core,(
 				break;
 
 			default:
-				usrintf_showmessage("copybitmap pen mode not supported");
+				ui_popup("copybitmap pen mode not supported");
 				break;
 		}
 	}
 })
 
-DECLARE(copyrozbitmap_core,(struct mame_bitmap *bitmap,struct mame_bitmap *srcbitmap,
+DECLARE(copyrozbitmap_core,(mame_bitmap *bitmap,mame_bitmap *srcbitmap,
 		UINT32 startx,UINT32 starty,int incxx,int incxy,int incyx,int incyy,int wraparound,
-		const struct rectangle *clip,int transparency,int transparent_color,UINT32 priority),
+		const rectangle *clip,int transparency,int transparent_color,UINT32 priority),
 {
 	UINT32 cx;
 	UINT32 cy;
@@ -5697,7 +5696,7 @@ DECLARE(copyrozbitmap_core,(struct mame_bitmap *bitmap,struct mame_bitmap *srcbi
 })
 
 DECLAREG(draw_scanline, (
-		struct mame_bitmap *bitmap,int x,int y,int length,
+		mame_bitmap *bitmap,int x,int y,int length,
 		const DATA_TYPE *src,pen_t *pens,int transparent_pen),
 {
 	/* 8bpp destination */
@@ -5840,7 +5839,7 @@ DECLAREG(draw_scanline, (
 })
 
 DECLAREG(pdraw_scanline, (
-		struct mame_bitmap *bitmap,int x,int y,int length,
+		mame_bitmap *bitmap,int x,int y,int length,
 		const DATA_TYPE *src,pen_t *pens,int transparent_pen,int pri),
 {
 	/* 8bpp destination */
@@ -6026,7 +6025,7 @@ DECLAREG(pdraw_scanline, (
 )
 
 DECLAREG(extract_scanline, (
-		struct mame_bitmap *bitmap,int x,int y,int length,
+		mame_bitmap *bitmap,int x,int y,int length,
 		DATA_TYPE *dst),
 {
 	/* 8bpp destination */

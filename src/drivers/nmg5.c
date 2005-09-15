@@ -16,11 +16,11 @@
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
-static struct tilemap *fg_tilemap,*bg_tilemap;
-data16_t *nmg5_bitmap;
-static data16_t *fgvideoram,*bgvideoram,*scroll_ram,*sprite_pri;
-static data16_t gfx_bank = 0;
-static data16_t input_data;
+static tilemap *fg_tilemap,*bg_tilemap;
+UINT16 *nmg5_bitmap;
+static UINT16 *fgvideoram,*bgvideoram,*scroll_ram,*sprite_pri;
+static UINT16 gfx_bank = 0;
+static UINT16 input_data;
 
 static WRITE16_HANDLER( fgvideoram_w )
 {
@@ -142,7 +142,7 @@ static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 INPUT_PORTS_START( nmg5 )
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x0001, 0x0001, "Game Title" )
 	PORT_DIPSETTING(      0x0001, "Multi 5" )
 	PORT_DIPSETTING(      0x0000, "New Multi Game 5" )
@@ -166,23 +166,23 @@ INPUT_PORTS_START( nmg5 )
 	PORT_DIPSETTING(      0x00c0, DEF_STR( Normal ) )
 	PORT_DIPSETTING(      0x0040, DEF_STR( Easy ) )
 	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(      0x0200, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_NOTEQUALS,0x00)
-	PORT_DIPSETTING(      0x0300, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_NOTEQUALS,0x00)
-	PORT_DIPSETTING(      0x0000, DEF_STR( 2C_3C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_NOTEQUALS,0x00)
-	PORT_DIPSETTING(      0x0100, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_NOTEQUALS,0x00)
-	PORT_DIPSETTING(      0x0300, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(      0x0100, DEF_STR( 1C_3C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(      0x0200, DEF_STR( 1C_4C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_6C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(      0x0200, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(      0x0300, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(      0x0000, DEF_STR( 2C_3C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(      0x0100, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(      0x0300, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(      0x0100, DEF_STR( 1C_3C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(      0x0200, DEF_STR( 1C_4C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_6C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_EQUALS,0x00)
 	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(      0x0800, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_NOTEQUALS,0x00)
-	PORT_DIPSETTING(      0x0c00, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_NOTEQUALS,0x00)
-	PORT_DIPSETTING(      0x0000, DEF_STR( 2C_3C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_NOTEQUALS,0x00)
-	PORT_DIPSETTING(      0x0400, DEF_STR( 1C_2C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_NOTEQUALS,0x00)
-	PORT_DIPSETTING(      0x0000, DEF_STR( 4C_1C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(      0x0800, DEF_STR( 3C_1C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(      0x0400, DEF_STR( 2C_1C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_EQUALS,0x00)
-	PORT_DIPSETTING(      0x0c00, DEF_STR( 1C_1C ) )	PORT_DIPCONDITION(1,0x4000,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(      0x0800, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(      0x0c00, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(      0x0000, DEF_STR( 2C_3C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(      0x0400, DEF_STR( 1C_2C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(      0x0000, DEF_STR( 4C_1C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(      0x0800, DEF_STR( 3C_1C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(      0x0400, DEF_STR( 2C_1C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(      0x0c00, DEF_STR( 1C_1C ) )	PORT_CONDITION("DSW",0x4000,PORTCOND_EQUALS,0x00)
 	PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Flip_Screen ) ) /* doesn't work */
 	PORT_DIPSETTING(      0x1000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -358,7 +358,7 @@ INPUT_PORTS_START( pclubys )
 INPUT_PORTS_END
 
 
-INLINE void get_tile_info(int tile_index,data16_t *vram,int color)
+INLINE void get_tile_info(int tile_index,UINT16 *vram,int color)
 {
 	SET_TILE_INFO(0,vram[tile_index] | (gfx_bank << 16),color,0)
 }
@@ -380,7 +380,7 @@ VIDEO_START( nmg5 )
 	return 0;
 }
 
-static void draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect)
+static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -416,7 +416,7 @@ static void draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *clip
 	}
 }
 
-static void draw_bitmap(struct mame_bitmap *bitmap)
+static void draw_bitmap(mame_bitmap *bitmap)
 {
 	int yyy=256;
 	int xxx=512/4;
@@ -475,7 +475,7 @@ VIDEO_UPDATE( nmg5 )
 }
 
 
-static struct GfxLayout nmg5_layout_8x8x8 =
+static gfx_layout nmg5_layout_8x8x8 =
 {
 	8,8,
 	RGN_FRAC(1,8),
@@ -486,7 +486,7 @@ static struct GfxLayout nmg5_layout_8x8x8 =
 	8*8
 };
 
-static struct GfxLayout pclubys_layout_8x8x8 =
+static gfx_layout pclubys_layout_8x8x8 =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -497,7 +497,7 @@ static struct GfxLayout pclubys_layout_8x8x8 =
 	8*16
 };
 
-static struct GfxLayout layout_16x16x5 =
+static gfx_layout layout_16x16x5 =
 {
 	16,16,
 	RGN_FRAC(1,5),
@@ -508,14 +508,14 @@ static struct GfxLayout layout_16x16x5 =
 	32*8
 };
 
-static struct GfxDecodeInfo nmg5_gfxdecodeinfo[] =
+static gfx_decode nmg5_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &nmg5_layout_8x8x8, 0x000,  2 },
 	{ REGION_GFX2, 0, &layout_16x16x5,	  0x200, 16 },
 	{ -1 }
 };
 
-static struct GfxDecodeInfo pclubys_gfxdecodeinfo[] =
+static gfx_decode pclubys_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &pclubys_layout_8x8x8, 0x000,  2 },
 	{ REGION_GFX2, 0, &layout_16x16x5,		 0x200, 16 },

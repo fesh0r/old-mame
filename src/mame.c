@@ -19,6 +19,7 @@
             - calls mame_validitychecks() [mame.c] to perform validity checks on all compiled drivers
             - calls expand_machine_driver() [mame.c] to construct the machine driver
             - calls cpuintrf_init() [cpuintrf.c] to determine which CPUs are available
+            - calls config_init() [config.c] to initialize configuration callbacks
             - calls init_game_options() [mame.c] to compute parameters based on global options struct
             - initializes the savegame system
             - calls osd_init() [osdepend.h] to do platform-specific initialization
@@ -27,15 +28,14 @@
             - calls init_machine() [mame.c]
 
             init_machine() [mame.c]
+                - calls state_save_allow_registration() [state.c] to allow registrations
                 - calls uistring_init() [ui_text.c] to initialize the localized strings
                 - calls code_init() [input.c] to initialize the input system
-                - calls input_port_alloc() [inptport.c] to construct the game's input ports
+                - calls input_port_init() [inptport.c] to set up the input ports
                 - calls chd_set_interface() [chd.c] to initialize the hard disk system
                 - calls rom_load() [common.c] to load the game's ROMs
                 - calls timer_init() [timer.c] to reset the timer system
-                - calls cpu_init_refresh_timer() [cpuexec.c] to start the refresh timer
                 - calls cpu_init() [cpuexec.c] to initialize the CPUs
-                - calls load_input_port_settings() [input.c] to load the configuration file
                 - calls memory_init() [memory.c] to process the game's memory maps
                 - calls the driver's DRIVER_INIT callback
 
@@ -52,23 +52,23 @@
                     - allocates the scrbitmap
                     - sets the initial refresh rate and visible area
                     - calls init_buffered_spriteram() [mame.c] to set up buffered spriteram
-                    - calls builduifont() [usrintrf.c] to create the user interface font
                     - creates the debugger bitmap and font (old debugger only)
                     - calls palette_init() [palette.c] to finish palette initialization
                     - resets the performance tracking variables
 
                 - calls tilemap_init() [tilemap.c] to initialize the tilemap system
                 - calls the driver's VIDEO_START callback
-                - calls sound_start() [sndintrf.c] to start the audio system
+                - calls sound_init() [sndintrf.c] to start the audio system
                 - disposes of regions marked as disposable
                 - calls run_machine_core() [mame.c]
 
                 run_machine_core() [mame.c]
+                    - calls config_load_settings() [config.c] to load the configuration file
+                    - calls ui_init() [usrintrf.c] to initialize the user interface
                     - shows the copyright screen
                     - shows the game warnings
                     - shows the game info screen
-                    - calls init_user_interface() [usrintrf.c] to initialize the user interface
-                    - calls InitCheat() [cheat.c] to initialize the cheat system
+                    - calls cheat_init() [cheat.c] to initialize the cheat system
                     - calls the driver's NVRAM_HANDLER to load NVRAM
                     - calls cpu_run() [cpuexec.c]
 
@@ -100,12 +100,13 @@
                         - calls mame_debug_exit() [mamedbg.c] to shut down the debugger (old debugger only)
 
                     - calls the driver's NVRAM_HANDLER to save NVRAM
-                    - calls StopCheat() [cheat.c] to tear down the cheat system
-                    - calls save_input_port_settings() [inptport.c] to save the game's configuration
+                    - calls cheat_exit() [cheat.c] to tear down the cheat system
+                    - calls config_save_settings() [config.c] to save the game's configuration
+                    - calls ui_exit() [usrintrf.c] to free up UI resources
 
-                - calls sound_stop() [sndintrf.c] to stop the audio system
+                - calls sound_exit() [sndintrf.c] to stop the audio system
                 - calls the driver's VIDEO_STOP callback
-                - calls tilemap_close() [tilemap.c] to tear down the tilemap system
+                - calls tilemap_exit() [tilemap.c] to tear down the tilemap system
                 - calls vh_close() [mame.c]
 
                 vh_close() [mame.c]
@@ -117,11 +118,10 @@
 
             shutdown_machine() [mame.c]
                 - calls cpu_exit() [cpuexec.c] to tear down the CPU system
-                - calls memory_shutdown() [memory.c] to tear down the memory system
+                - calls memory_exit() [memory.c] to tear down the memory system
                 - frees all the memory regions
                 - calls chd_close_all() [chd.c] to tear down the hard disks
-                - calls code_close() [input.c] to tear down the input system
-                - calls state_save_reset() [state.c] to reset the saved state system
+                - calls code_exit() [input.c] to tear down the input system
                 - calls coin_counter_reset() [common.c] to reset coin counters
 
             - ends resource tracking (level 2), freeing all auto_mallocs and timers
@@ -144,6 +144,7 @@
 #include "vidhrdw/vector.h"
 #include "palette.h"
 #include "harddisk.h"
+#include "config.h"
 
 
 /***************************************************************************
@@ -169,18 +170,18 @@ int mame_debug; /* !0 when -debug option is specified */
 int bailing;	/* set to 1 if the startup is aborted to prevent multiple error messages */
 
 /* the active machine */
-static struct RunningMachine active_machine;
-struct RunningMachine *Machine = &active_machine;
+static running_machine active_machine;
+running_machine *Machine = &active_machine;
 
 /* the active game driver */
-static const struct GameDriver *gamedrv;
-static struct InternalMachineDriver internal_drv;
+static const game_driver *gamedrv;
+static machine_config internal_drv;
 
 /* various game options filled in by the OSD */
-struct GameOptions options;
+global_options options;
 
 /* the active video display */
-static struct mame_display current_display;
+static mame_display current_display;
 static UINT8 visible_area_changed;
 static UINT8 refresh_rate_changed;
 
@@ -193,15 +194,15 @@ static cycles_t last_fps_time;
 static int frames_since_last_fps;
 static int rendered_frames_since_last_fps;
 static int vfcount;
-static struct performance_info performance;
+static performance_info performance;
 
 /* misc other statics */
-static int settingsloaded;
 static int leds_status;
+static int mame_paused;
 
 /* artwork callbacks */
 #ifndef MESS
-static struct artwork_callbacks mame_artwork_callbacks =
+static artwork_callbacks mame_artwork_callbacks =
 {
 	NULL,
 	artwork_load_artwork_file
@@ -220,13 +221,13 @@ int skip_this_frame;
 
 ***************************************************************************/
 
-static struct chd_interface_file *mame_chd_open(const char *filename, const char *mode);
-static void mame_chd_close(struct chd_interface_file *file);
-static UINT32 mame_chd_read(struct chd_interface_file *file, UINT64 offset, UINT32 count, void *buffer);
-static UINT32 mame_chd_write(struct chd_interface_file *file, UINT64 offset, UINT32 count, const void *buffer);
-static UINT64 mame_chd_length(struct chd_interface_file *file);
+static chd_interface_file *mame_chd_open(const char *filename, const char *mode);
+static void mame_chd_close(chd_interface_file *file);
+static UINT32 mame_chd_read(chd_interface_file *file, UINT64 offset, UINT32 count, void *buffer);
+static UINT32 mame_chd_write(chd_interface_file *file, UINT64 offset, UINT32 count, const void *buffer);
+static UINT64 mame_chd_length(chd_interface_file *file);
 
-static struct chd_interface mame_chd_interface =
+static chd_interface mame_chd_interface =
 {
 	mame_chd_open,
 	mame_chd_close,
@@ -252,14 +253,14 @@ static void recompute_fps(int skipped_it);
 static int vh_open(void);
 static void vh_close(void);
 static int init_game_options(void);
-static int decode_graphics(const struct GfxDecodeInfo *gfxdecodeinfo);
-static void compute_aspect_ratio(const struct InternalMachineDriver *drv, int *aspect_x, int *aspect_y);
+static int decode_graphics(const gfx_decode *gfxdecodeinfo);
+static void compute_aspect_ratio(const machine_config *drv, int *aspect_x, int *aspect_y);
 static void scale_vectorgames(int gfx_width, int gfx_height, int *width, int *height);
 static int init_buffered_spriteram(void);
 
 #ifdef MESS
 #include "mesintrf.h"
-#define handle_user_interface	handle_mess_user_interface
+#define ui_update_and_render	handle_mess_user_interface
 #endif
 
 
@@ -322,6 +323,9 @@ int run_game(int game)
 	if (cpuintrf_init())
 		return 1;
 
+	/* initialize the configuration callbacks */
+	config_init();
+
 	/* initialize the game options */
 	if (init_game_options())
 		return 1;
@@ -349,7 +353,10 @@ int run_game(int game)
 
 		/* then finish setting up our local machine */
 		if (init_machine())
+		{
+			shutdown_machine();
 			bail_and_print("Unable to initialize machine emulation");
+		}
 		else
 		{
 			/* then run it */
@@ -382,6 +389,9 @@ int run_game(int game)
 
 static int init_machine(void)
 {
+	/* allow save state registrations starting here */
+	state_save_allow_registration(TRUE);
+
 	/* load the localization file */
 	if (uistring_init(options.language_file) != 0)
 	{
@@ -396,24 +406,11 @@ static int init_machine(void)
 		goto cant_init_input;
 	}
 
-	/* if we have inputs, process them now */
-	if (gamedrv->construct_ipt)
+	/* initialize the input ports for the game */
+	if (input_port_init(gamedrv->construct_ipt) != 0)
 	{
-		/* allocate input ports */
-		Machine->input_ports = input_port_allocate(gamedrv->construct_ipt);
-		if (!Machine->input_ports)
-		{
-			logerror("could not allocate Machine->input_ports\n");
-			goto cant_allocate_input_ports;
-		}
-
-		/* allocate default input ports */
-		Machine->input_ports_default = input_port_allocate(gamedrv->construct_ipt);
-		if (!Machine->input_ports_default)
-		{
-			logerror("could not allocate Machine->input_ports_default\n");
-			goto cant_allocate_input_ports_default;
-		}
+		logerror("input_port_init failed\n");
+		goto cant_allocate_input_ports;
 	}
 
 	/* init the hard drive interface now, before attempting to load */
@@ -429,7 +426,6 @@ static int init_machine(void)
 	/* first init the timers; some CPUs have built-in timers and will need */
 	/* to allocate them up front */
 	timer_init();
-	cpu_init_refresh_timer();
 
 	/* now set up all the CPUs */
 	cpu_init();
@@ -442,9 +438,6 @@ static int init_machine(void)
 		goto cant_load_roms;
 	}
 #endif
-
-	/* load input ports settings (keys, dip switches, and so on) */
-	settingsloaded = load_input_port_settings();
 
 	/* multi-session safety - set spriteram size to zero before memory map is set up */
 	spriteram_size = spriteram_2_size = 0;
@@ -476,11 +469,10 @@ static int init_machine(void)
 
 cant_init_memory:
 cant_load_roms:
-	Machine->input_ports_default = 0;
-cant_allocate_input_ports_default:
-	Machine->input_ports = 0;
 cant_allocate_input_ports:
-	code_close();
+	Machine->input_ports_default = 0;
+	Machine->input_ports = 0;
+	code_exit();
 cant_init_input:
 cant_load_language_file:
 	return 1;
@@ -513,7 +505,7 @@ static int run_machine(void)
 		else
 		{
 			/* start the audio system */
-			if (sound_start())
+			if (sound_init())
 				bail_and_print("Unable to start audio emulation");
 			else
 			{
@@ -532,12 +524,15 @@ static int run_machine(void)
 						Machine->memory_region[region].base = 0;
 					}
 
+				/* before doing anything else, update the video and audio system once */
+				update_video_and_audio();
+
 				/* now do the core execution */
 				run_machine_core();
 				res = 0;
 
 				/* store the sound system */
-				sound_stop();
+				sound_exit();
 			}
 
 			/* shut down the driver's video and kill and artwork */
@@ -546,7 +541,7 @@ static int run_machine(void)
 		}
 
 		/* close down the tilemap and video systems */
-		tilemap_close();
+		tilemap_exit();
 		vh_close();
 	}
 
@@ -561,20 +556,26 @@ static int run_machine(void)
 
 void run_machine_core(void)
 {
+	int settingsloaded;
+
 	/* disable artwork for the start */
 	artwork_enable(0);
 
+	/* load the configuration settings now */
+	settingsloaded = config_load_settings();
+
+	/* we need to initialize the user interface before displaying anything */
+	ui_init();
+
 	/* if we didn't find a settings file, show the disclaimer */
-	if (settingsloaded || options.skip_disclaimer || showcopyright(artwork_get_ui_bitmap()) == 0)
+	if (settingsloaded || options.skip_disclaimer || ui_display_copyright(artwork_get_ui_bitmap()) == 0)
 	{
 		/* show info about incorrect behaviour (wrong colors etc.) */
-		if (options.skip_warnings || showgamewarnings(artwork_get_ui_bitmap()) == 0)
+		if (options.skip_warnings || ui_display_game_warnings(artwork_get_ui_bitmap()) == 0)
 		{
 			/* show info about the game */
-			if (options.skip_gameinfo || showgameinfo(artwork_get_ui_bitmap()) == 0)
+			if (options.skip_gameinfo || ui_display_game_info(artwork_get_ui_bitmap()) == 0)
 			{
-				init_user_interface();
-
 				/* enable artwork now */
 				artwork_enable(1);
 
@@ -584,7 +585,7 @@ void run_machine_core(void)
 
 				/* start the cheat engine */
 				if (options.cheat)
-					InitCheat();
+					cheat_init();
 
 				/* load the NVRAM now */
 				if (Machine->drv->nvram_handler)
@@ -611,13 +612,16 @@ void run_machine_core(void)
 
 				/* stop the cheat engine */
 				if (options.cheat)
-					StopCheat();
+					cheat_exit();
 
 				/* save input ports settings */
-				save_input_port_settings();
+				config_save_settings();
 			}
 		}
 	}
+
+	/* free UI resources */
+	ui_exit();
 }
 
 
@@ -640,7 +644,7 @@ static void shutdown_machine(void)
 	cpu_exit();
 
 	/* release any allocated memory */
-	memory_shutdown();
+	memory_exit();
 
 	/* free the memory allocated for various regions */
 	for (i = 0; i < MAX_MEMORY_REGIONS; i++)
@@ -650,10 +654,7 @@ static void shutdown_machine(void)
 	chd_close_all();
 
 	/* close down the input system */
-	code_close();
-
-	/* reset the saved states */
-	state_save_reset();
+	code_exit();
 
 	/* reset coin counters */
 	coin_counter_reset();
@@ -667,10 +668,18 @@ static void shutdown_machine(void)
 
 void mame_pause(int pause)
 {
+	mame_paused = pause;
+	cpu_pause(pause);
 	osd_pause(pause);
 	osd_sound_enable(!pause);
 	palette_set_global_brightness_adjust(pause ? options.pause_bright : 1.00);
 	schedule_full_refresh();
+}
+
+
+int mame_is_paused(void)
+{
+	return mame_paused;
 }
 
 
@@ -680,7 +689,7 @@ void mame_pause(int pause)
     driver from the macroized state
 -------------------------------------------------*/
 
-void expand_machine_driver(void (*constructor)(struct InternalMachineDriver *), struct InternalMachineDriver *output)
+void expand_machine_driver(void (*constructor)(machine_config *), machine_config *output)
 {
 	/* keeping this function allows us to pre-init the driver before constructing it */
 	memset(output, 0, sizeof(*output));
@@ -695,8 +704,8 @@ void expand_machine_driver(void (*constructor)(struct InternalMachineDriver *), 
 
 static int vh_open(void)
 {
-	struct osd_create_params params;
-	struct artwork_callbacks *artcallbacks;
+	osd_create_params params;
+	artwork_callbacks *artcallbacks;
 	int bmwidth = Machine->drv->screen_width;
 	int bmheight = Machine->drv->screen_height;
 
@@ -768,15 +777,6 @@ static int vh_open(void)
 		if (init_buffered_spriteram())
 			goto cant_init_buffered_spriteram;
 
-	/* build our private user interface font */
-	/* This must be done AFTER osd_create_display() so the function knows the */
-	/* resolution we are running at and can pick a different font depending on it. */
-	/* It must be done BEFORE palette_init() because that will also initialize */
-	/* (through osd_allocate_colors()) the uifont colortable. */
-	Machine->uifont = builduifont();
-	if (Machine->uifont == NULL)
-		goto cant_build_uifont;
-
 #if defined(MAME_DEBUG) && !defined(NEW_DEBUGGER)
 	/* if the debugger is enabled, initialize its bitmap and font */
 	if (mame_debug)
@@ -822,7 +822,6 @@ cant_build_debugger_font:
 cant_create_debug_bitmap:
 #endif
 
-cant_build_uifont:
 cant_init_buffered_spriteram:
 cant_create_scrbitmap:
 cant_create_display:
@@ -850,16 +849,6 @@ static void vh_close(void)
 	}
 
 	/* free the font elements */
-	if (Machine->uifont)
-	{
-		freegfx(Machine->uifont);
-		Machine->uifont = NULL;
-	}
-	if (Machine->uirotfont)
-	{
-		freegfx(Machine->uirotfont);
-		Machine->uirotfont = NULL;
-	}
 	if (Machine->debugger_font)
 	{
 		freegfx(Machine->debugger_font);
@@ -877,7 +866,7 @@ static void vh_close(void)
     ratio encoded in the video attributes
 -------------------------------------------------*/
 
-static void compute_aspect_ratio(const struct InternalMachineDriver *drv, int *aspect_x, int *aspect_y)
+static void compute_aspect_ratio(const machine_config *drv, int *aspect_x, int *aspect_y)
 {
 	/* if it's explicitly specified, use it */
 	if (drv->aspect_x && drv->aspect_y)
@@ -943,7 +932,7 @@ static int init_game_options(void)
     decode_graphics - decode the graphics
 -------------------------------------------------*/
 
-static int decode_graphics(const struct GfxDecodeInfo *gfxdecodeinfo)
+static int decode_graphics(const gfx_decode *gfxdecodeinfo)
 {
 	int i;
 
@@ -952,7 +941,7 @@ static int decode_graphics(const struct GfxDecodeInfo *gfxdecodeinfo)
 	{
 		int region_length = 8 * memory_region_length(gfxdecodeinfo[i].memory_region);
 		UINT8 *region_base = memory_region(gfxdecodeinfo[i].memory_region);
-		struct GfxLayout glcopy;
+		gfx_layout glcopy;
 		int j;
 
 		/* make a copy of the layout */
@@ -1081,10 +1070,10 @@ static int init_buffered_spriteram(void)
 	}
 
 	/* make 16-bit and 32-bit pointer variants */
-	buffered_spriteram16 = (data16_t *)buffered_spriteram;
-	buffered_spriteram32 = (data32_t *)buffered_spriteram;
-	buffered_spriteram16_2 = (data16_t *)buffered_spriteram_2;
-	buffered_spriteram32_2 = (data32_t *)buffered_spriteram_2;
+	buffered_spriteram16 = (UINT16 *)buffered_spriteram;
+	buffered_spriteram32 = (UINT32 *)buffered_spriteram;
+	buffered_spriteram16_2 = (UINT16 *)buffered_spriteram_2;
+	buffered_spriteram32_2 = (UINT32 *)buffered_spriteram_2;
 	return 0;
 }
 
@@ -1193,7 +1182,7 @@ void reset_partial_updates(void)
 
 void force_partial_update(int scanline)
 {
-	struct rectangle clip = Machine->visible_area;
+	rectangle clip = Machine->visible_area;
 
 	/* if skipping this frame, bail */
 	if (osd_skip_this_frame())
@@ -1294,7 +1283,7 @@ void update_video_and_audio(void)
 
 	/* set the vector dirty list */
 	if (Machine->drv->video_attributes & VIDEO_TYPE_VECTOR)
-		if (!full_refresh_pending && !ui_dirty && !skipped_it)
+		if (!full_refresh_pending && !ui_is_dirty() && !skipped_it)
 		{
 			current_display.vector_dirty_pixels = vector_dirty_list;
 			current_display.changed_flags |= VECTOR_PIXELS_CHANGED;
@@ -1334,7 +1323,6 @@ void update_video_and_audio(void)
 	/* reset dirty flags */
 	visible_area_changed = 0;
 	refresh_rate_changed = 0;
-	if (ui_dirty) ui_dirty--;
 }
 
 
@@ -1405,9 +1393,16 @@ int updatescreen(void)
 	/* the user interface must be called between vh_update() and osd_update_video_and_audio(), */
 	/* to allow it to overlay things on the game display. We must call it even */
 	/* if the frame is skipped, to keep a consistent timing. */
-	if (handle_user_interface(artwork_get_ui_bitmap()))
+	if (ui_update_and_render(artwork_get_ui_bitmap()))
+	{
 		/* quit if the user asked to */
+		record_movie_stop();
 		return 1;
+	}
+
+	/* update our movie recording state */
+	if (!mame_is_paused())
+		record_movie_frame(Machine->scrbitmap);
 
 	/* blit to the screen */
 	update_video_and_audio();
@@ -1470,7 +1465,7 @@ void set_led_status(int num, int on)
     info
 -------------------------------------------------*/
 
-const struct performance_info *mame_get_performance_info(void)
+const performance_info *mame_get_performance_info(void)
 {
 	return &performance;
 }
@@ -1500,7 +1495,7 @@ int mame_find_cpu_index(const char *tag)
     driver expansion
 -------------------------------------------------*/
 
-struct MachineCPU *machine_add_cpu(struct InternalMachineDriver *machine, const char *tag, int type, int cpuclock)
+cpu_config *machine_add_cpu(machine_config *machine, const char *tag, int type, int cpuclock)
 {
 	int cpunum;
 
@@ -1524,7 +1519,7 @@ struct MachineCPU *machine_add_cpu(struct InternalMachineDriver *machine, const 
     machine driver expansion
 -------------------------------------------------*/
 
-struct MachineCPU *machine_find_cpu(struct InternalMachineDriver *machine, const char *tag)
+cpu_config *machine_find_cpu(machine_config *machine, const char *tag)
 {
 	int cpunum;
 
@@ -1543,7 +1538,7 @@ struct MachineCPU *machine_find_cpu(struct InternalMachineDriver *machine, const
     during machine driver expansion
 -------------------------------------------------*/
 
-void machine_remove_cpu(struct InternalMachineDriver *machine, const char *tag)
+void machine_remove_cpu(machine_config *machine, const char *tag)
 {
 	int cpunum;
 
@@ -1565,7 +1560,7 @@ void machine_remove_cpu(struct InternalMachineDriver *machine, const char *tag)
     machine driver expansion
 -------------------------------------------------*/
 
-struct MachineSpeaker *machine_add_speaker(struct InternalMachineDriver *machine, const char *tag, float x, float y, float z)
+speaker_config *machine_add_speaker(machine_config *machine, const char *tag, float x, float y, float z)
 {
 	int speakernum;
 
@@ -1590,7 +1585,7 @@ struct MachineSpeaker *machine_add_speaker(struct InternalMachineDriver *machine
     system during machine driver expansion
 -------------------------------------------------*/
 
-struct MachineSpeaker *machine_find_speaker(struct InternalMachineDriver *machine, const char *tag)
+speaker_config *machine_find_speaker(machine_config *machine, const char *tag)
 {
 	int speakernum;
 
@@ -1609,7 +1604,7 @@ struct MachineSpeaker *machine_find_speaker(struct InternalMachineDriver *machin
     system during machine driver expansion
 -------------------------------------------------*/
 
-void machine_remove_speaker(struct InternalMachineDriver *machine, const char *tag)
+void machine_remove_speaker(machine_config *machine, const char *tag)
 {
 	int speakernum;
 
@@ -1631,7 +1626,7 @@ void machine_remove_speaker(struct InternalMachineDriver *machine, const char *t
     machine driver expansion
 -------------------------------------------------*/
 
-struct MachineSound *machine_add_sound(struct InternalMachineDriver *machine, const char *tag, int type, int clock)
+sound_config *machine_add_sound(machine_config *machine, const char *tag, int type, int clock)
 {
 	int soundnum;
 
@@ -1658,7 +1653,7 @@ struct MachineSound *machine_add_sound(struct InternalMachineDriver *machine, co
     system during machine driver expansion
 -------------------------------------------------*/
 
-struct MachineSound *machine_find_sound(struct InternalMachineDriver *machine, const char *tag)
+sound_config *machine_find_sound(machine_config *machine, const char *tag)
 {
 	int soundnum;
 
@@ -1677,7 +1672,7 @@ struct MachineSound *machine_find_sound(struct InternalMachineDriver *machine, c
     system during machine driver expansion
 -------------------------------------------------*/
 
-void machine_remove_sound(struct InternalMachineDriver *machine, const char *tag)
+void machine_remove_sound(machine_config *machine, const char *tag)
 {
 	int soundnum;
 
@@ -1699,12 +1694,12 @@ void machine_remove_sound(struct InternalMachineDriver *machine, const char *tag
     a hard disk image
 -------------------------------------------------*/
 
-struct chd_interface_file *mame_chd_open(const char *filename, const char *mode)
+chd_interface_file *mame_chd_open(const char *filename, const char *mode)
 {
 	/* look for read-only drives first in the ROM path */
 	if (mode[0] == 'r' && !strchr(mode, '+'))
 	{
-		const struct GameDriver *drv;
+		const game_driver *drv;
 
 		/* attempt reading up the chain through the parents */
 		for (drv = Machine->gamedrv; drv != NULL; drv = drv->clone_of)
@@ -1719,7 +1714,7 @@ struct chd_interface_file *mame_chd_open(const char *filename, const char *mode)
 	}
 
 	/* look for read/write drives in the diff area */
-	return (struct chd_interface_file *)mame_fopen(NULL, filename, FILETYPE_IMAGE_DIFF, 1);
+	return (chd_interface_file *)mame_fopen(NULL, filename, FILETYPE_IMAGE_DIFF, 1);
 }
 
 
@@ -1729,7 +1724,7 @@ struct chd_interface_file *mame_chd_open(const char *filename, const char *mode)
     a hard disk image
 -------------------------------------------------*/
 
-void mame_chd_close(struct chd_interface_file *file)
+void mame_chd_close(chd_interface_file *file)
 {
 	mame_fclose((mame_file *)file);
 }
@@ -1741,7 +1736,7 @@ void mame_chd_close(struct chd_interface_file *file)
     from a hard disk image
 -------------------------------------------------*/
 
-UINT32 mame_chd_read(struct chd_interface_file *file, UINT64 offset, UINT32 count, void *buffer)
+UINT32 mame_chd_read(chd_interface_file *file, UINT64 offset, UINT32 count, void *buffer)
 {
 	mame_fseek((mame_file *)file, offset, SEEK_SET);
 	return mame_fread((mame_file *)file, buffer, count);
@@ -1754,7 +1749,7 @@ UINT32 mame_chd_read(struct chd_interface_file *file, UINT64 offset, UINT32 coun
     to a hard disk image
 -------------------------------------------------*/
 
-UINT32 mame_chd_write(struct chd_interface_file *file, UINT64 offset, UINT32 count, const void *buffer)
+UINT32 mame_chd_write(chd_interface_file *file, UINT64 offset, UINT32 count, const void *buffer)
 {
 	mame_fseek((mame_file *)file, offset, SEEK_SET);
 	return mame_fwrite((mame_file *)file, buffer, count);
@@ -1766,7 +1761,7 @@ UINT32 mame_chd_write(struct chd_interface_file *file, UINT64 offset, UINT32 cou
     the length a hard disk image
 -------------------------------------------------*/
 
-UINT64 mame_chd_length(struct chd_interface_file *file)
+UINT64 mame_chd_length(chd_interface_file *file)
 {
 	return mame_fsize((mame_file *)file);
 }
@@ -1784,7 +1779,7 @@ int mame_validitychecks(void)
 	int i,j,cpu;
 	UINT8 a,b;
 	int error = 0;
-	const struct InputPort *inp;
+	const input_port_entry *inp;
 	const char *s;
 
 
@@ -1803,8 +1798,8 @@ int mame_validitychecks(void)
 
 	for (i = 0;drivers[i];i++)
 	{
-		struct InternalMachineDriver drv;
-		const struct RomModule *romp;
+		machine_config drv;
+		const rom_entry *romp;
 
 		expand_machine_driver(drivers[i]->drv, &drv);
 
@@ -1974,7 +1969,7 @@ int mame_validitychecks(void)
 					{
 #ifdef MESS
 						/* check to make sure that this CPU core has the necessities filled out */
-						const struct cpu_interface *cpuintrf;
+						const cpu_interface *cpuintrf;
 						union cpuinfo info;
 						const UINT8 *reg;
 						int incomplete_cpu_core = 0;
@@ -2035,12 +2030,12 @@ int mame_validitychecks(void)
 
 							if (drv.cpu[cpu].construct_map[space][mapnum])
 							{
-								struct address_map_t address_map[MAX_ADDRESS_MAP_SIZE];
-								const struct address_map_t *map = address_map;
+								address_map addrmap[MAX_ADDRESS_MAP_SIZE];
+								const address_map *map = addrmap;
 								UINT32 flags, val;
 
-								memset(address_map, 0, sizeof(address_map));
-								(*drv.cpu[cpu].construct_map[space][mapnum])(address_map);
+								memset(addrmap, 0, sizeof(addrmap));
+								(*drv.cpu[cpu].construct_map[space][mapnum])(addrmap);
 
 								if (IS_AMENTRY_END(map))
 									continue;
@@ -2149,8 +2144,8 @@ int mame_validitychecks(void)
 					/* check for strings that should be DEF_STR */
 					for (j = 0;j < STR_TOTAL;j++)
 					{
-						if (inp->name == inptport_default_strings[j]) break;
-						else if (!my_stricmp(inp->name,inptport_default_strings[j]))
+						if (inp->name == input_port_default_strings[j]) break;
+						else if (!my_stricmp(inp->name,input_port_default_strings[j]))
 						{
 							printf("%s: %s must use DEF_STR( %s )\n",drivers[i]->source_file,drivers[i]->name,inp->name);
 							error = 1;
@@ -2205,7 +2200,7 @@ int mame_validitychecks(void)
 					/* check for unsorted coinage */
 					if (inp->name >= DEF_STR( 9C_1C ) && inp->name <= DEF_STR( Free_Play )
 							&& (inp+1)->name >= DEF_STR( 9C_1C ) && (inp+1)->name <= DEF_STR( Free_Play )
-							&& inp->name >= (inp+1)->name && !memcmp(&inp->dipsetting, &(inp+1)->dipsetting, sizeof(inp->dipsetting)))
+							&& inp->name >= (inp+1)->name && !memcmp(&inp->condition, &(inp+1)->condition, sizeof(inp->condition)))
 					{
 						printf("%s: %s has unsorted coinage %s > %s\n",drivers[i]->source_file,drivers[i]->name,inp->name,(inp+1)->name);
 						error = 1;

@@ -34,7 +34,7 @@ TODO:
 #include "sound/msm5205.h"
 
 static int gfxbank;
-static struct tilemap *bg_tilemap;
+static tilemap *bg_tilemap;
 
 WRITE8_HANDLER( rmhaihai_videoram_w )
 {
@@ -165,7 +165,7 @@ static WRITE8_HANDLER( ctrl_w )
 
 static WRITE8_HANDLER( themj_rombank_w )
 {
-	data8_t *rom = memory_region(REGION_CPU1) + 0x10000;
+	UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
 	int bank = data & 0x03;
 logerror("banksw %d\n",bank);
 	memory_set_bankptr(1, rom + bank*0x4000);
@@ -484,7 +484,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -495,13 +495,13 @@ static struct GfxLayout charlayout =
 	16*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo1[] =
+static gfx_decode gfxdecodeinfo1[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 32 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo2[] =
+static gfx_decode gfxdecodeinfo2[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 64 },
 	{ -1 } /* end of array */
@@ -730,7 +730,7 @@ ROM_END
 
 static DRIVER_INIT( rmhaihai )
 {
-	data8_t *rom = memory_region(REGION_GFX1);
+	UINT8 *rom = memory_region(REGION_GFX1);
 	int size = memory_region_length(REGION_GFX1);
 	int a,b;
 

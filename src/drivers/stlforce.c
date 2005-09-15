@@ -71,10 +71,10 @@ TO DO :
 #include "machine/eeprom.h"
 #include "sound/okim6295.h"
 
-data16_t *stlforce_bg_videoram, *stlforce_mlow_videoram, *stlforce_mhigh_videoram, *stlforce_tx_videoram;
-data16_t *stlforce_bg_scrollram, *stlforce_mlow_scrollram, *stlforce_mhigh_scrollram, *stlforce_vidattrram;
-data16_t *stlforce_spriteram;
-data8_t  *default_eeprom;
+UINT16 *stlforce_bg_videoram, *stlforce_mlow_videoram, *stlforce_mhigh_videoram, *stlforce_tx_videoram;
+UINT16 *stlforce_bg_scrollram, *stlforce_mlow_scrollram, *stlforce_mhigh_scrollram, *stlforce_vidattrram;
+UINT16 *stlforce_spriteram;
+UINT8  *default_eeprom;
 extern int stlforce_sprxoffs;
 
 VIDEO_START( stlforce );
@@ -158,7 +158,7 @@ INPUT_PORTS_START( stlforce )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-static struct GfxLayout stlforce_bglayout =
+static gfx_layout stlforce_bglayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -169,7 +169,7 @@ static struct GfxLayout stlforce_bglayout =
 	32*32
 };
 
-static struct GfxLayout stlforce_txlayout =
+static gfx_layout stlforce_txlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -180,7 +180,7 @@ static struct GfxLayout stlforce_txlayout =
 	8*32
 };
 
-static struct GfxLayout stlforce_splayout =
+static gfx_layout stlforce_splayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -191,7 +191,7 @@ static struct GfxLayout stlforce_splayout =
 	32*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &stlforce_bglayout, 0, 256  },
 	{ REGION_GFX1, 0, &stlforce_txlayout, 0, 256  },
@@ -199,7 +199,7 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static data8_t stlforce_default_eeprom[128] = {
+static UINT8 stlforce_default_eeprom[128] = {
 	0x7e, 0x01, 0x00, 0x00, 0x01, 0x03, 0x05, 0x01, 0x01, 0x00, 0x4e, 0x20, 0x00, 0x00, 0x4a, 0x4d,
 	0x42, 0x00, 0x02, 0x01, 0x4e, 0x20, 0x00, 0x00, 0x4d, 0x41, 0x43, 0x00, 0x02, 0x01, 0x00, 0x64,
 	0x00, 0x00, 0x41, 0x41, 0x41, 0x00, 0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x41, 0x41, 0x41, 0x00,
@@ -210,7 +210,7 @@ static data8_t stlforce_default_eeprom[128] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 };
 
-static data8_t twinbrat_default_eeprom[128] = {
+static UINT8 twinbrat_default_eeprom[128] = {
 	0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x03,
 	0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1b,

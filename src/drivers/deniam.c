@@ -37,7 +37,7 @@ Notes:
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
-extern data16_t *deniam_videoram,*deniam_textram;
+extern UINT16 *deniam_videoram,*deniam_textram;
 
 DRIVER_INIT( logicpro );
 DRIVER_INIT( karianx );
@@ -289,7 +289,7 @@ INPUT_PORTS_END
 
 
 
-static struct GfxLayout charlayout =
+static gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -301,7 +301,7 @@ static struct GfxLayout charlayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 128 },	/* colors 0-1023 */
 												/* sprites use colors 1024-2047 */

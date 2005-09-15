@@ -39,10 +39,10 @@
 
 UINT8 atarigt_is_primrage;
 
-static data32_t *	mo_command;
+static UINT32 *	mo_command;
 
-static void (*protection_w)(offs_t offset, data16_t data);
-static void (*protection_r)(offs_t offset, data16_t *data);
+static void (*protection_w)(offs_t offset, UINT16 data);
+static void (*protection_r)(offs_t offset, UINT16 *data);
 
 static void cage_irq_callback(int reason);
 
@@ -243,7 +243,7 @@ static WRITE32_HANDLER( led_w )
 
 static READ32_HANDLER( sound_data_r )
 {
-	data32_t result = 0;
+	UINT32 result = 0;
 
 	if (ACCESSING_LSW32)
 		result |= cage_control_r();
@@ -307,7 +307,7 @@ static void tmek_protection_w(offs_t offset, UINT16 data)
 	}
 }
 
-static void tmek_protection_r(offs_t offset, data16_t *data)
+static void tmek_protection_r(offs_t offset, UINT16 *data)
 {
 #if LOG_PROTECTION
 	logerror("%06X:Protection R@%06X\n", activecpu_get_previouspc(), offset);
@@ -375,7 +375,7 @@ static void primage_update_mode(offs_t offset)
 
 
 
-static void primrage_protection_w(offs_t offset, data16_t data)
+static void primrage_protection_w(offs_t offset, UINT16 data)
 {
 #if LOG_PROTECTION
 {
@@ -446,7 +446,7 @@ static void primrage_protection_w(offs_t offset, data16_t data)
 
 
 
-static void primrage_protection_r(offs_t offset, data16_t *data)
+static void primrage_protection_r(offs_t offset, UINT16 *data)
 {
 	/* track accesses */
 	primage_update_mode(offset);
@@ -564,8 +564,8 @@ static void primrage_protection_r(offs_t offset, data16_t *data)
 static READ32_HANDLER( colorram_protection_r )
 {
 	offs_t address = 0xd80000 + offset * 4;
-	data32_t result32 = 0;
-	data16_t result;
+	UINT32 result32 = 0;
+	UINT16 result;
 
 	if ((mem_mask & 0xffff0000) != 0xffff0000)
 	{
@@ -615,14 +615,14 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xc00000, 0xc00003) AM_READWRITE(sound_data_r, sound_data_w)
 	AM_RANGE(0xd00014, 0xd00017) AM_READ(analog_port0_r)
 	AM_RANGE(0xd0001c, 0xd0001f) AM_READ(analog_port1_r)
-	AM_RANGE(0xd20000, 0xd20fff) AM_READWRITE(atarigen_eeprom_upper32_r, atarigen_eeprom32_w) AM_BASE((data32_t **)&atarigen_eeprom) AM_SIZE(&atarigen_eeprom_size)
+	AM_RANGE(0xd20000, 0xd20fff) AM_READWRITE(atarigen_eeprom_upper32_r, atarigen_eeprom32_w) AM_BASE((UINT32 **)&atarigen_eeprom) AM_SIZE(&atarigen_eeprom_size)
 	AM_RANGE(0xd40000, 0xd4ffff) AM_WRITE(atarigen_eeprom_enable32_w)
 	AM_RANGE(0xd72000, 0xd75fff) AM_WRITE(atarigen_playfield32_w) AM_BASE(&atarigen_playfield32)
 	AM_RANGE(0xd76000, 0xd76fff) AM_WRITE(atarigen_alpha32_w) AM_BASE(&atarigen_alpha32)
 	AM_RANGE(0xd78000, 0xd78fff) AM_WRITE(atarirle_0_spriteram32_w) AM_BASE(&atarirle_0_spriteram32)
 	AM_RANGE(0xd7a200, 0xd7a203) AM_WRITE(mo_command_w) AM_BASE(&mo_command)
 	AM_RANGE(0xd70000, 0xd7ffff) AM_RAM
-	AM_RANGE(0xd80000, 0xdfffff) AM_READWRITE(colorram_protection_r, colorram_protection_w) AM_BASE((data32_t **)&atarigt_colorram)
+	AM_RANGE(0xd80000, 0xdfffff) AM_READWRITE(colorram_protection_r, colorram_protection_w) AM_BASE((UINT32 **)&atarigt_colorram)
 	AM_RANGE(0xe04000, 0xe04003) AM_WRITE(led_w)
 	AM_RANGE(0xe08000, 0xe08003) AM_WRITE(latch_w)
 	AM_RANGE(0xe0a000, 0xe0a003) AM_WRITE(atarigen_scanline_int_ack32_w)
@@ -751,7 +751,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct GfxLayout pflayout =
+static gfx_layout pflayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -763,7 +763,7 @@ static struct GfxLayout pflayout =
 };
 
 
-static struct GfxLayout pftoplayout =
+static gfx_layout pftoplayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -775,7 +775,7 @@ static struct GfxLayout pftoplayout =
 };
 
 
-static struct GfxLayout anlayout =
+static gfx_layout anlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -787,7 +787,7 @@ static struct GfxLayout anlayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &pflayout, 0x000, 64 },
 	{ REGION_GFX2, 0, &anlayout, 0x000, 16 },

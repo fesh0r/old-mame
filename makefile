@@ -118,7 +118,7 @@ ifdef SYMBOLS
 CFLAGS += -O0 -Wall -Wno-unused -g
 else
 CFLAGS += -DNDEBUG \
-	$(ARCH) -O3 -fomit-frame-pointer -fno-strict-aliasing \
+	$(ARCH) -O3 -fno-strict-aliasing \
 	-Werror -Wall \
 	-Wno-sign-compare \
 	-Wno-unused-functions \
@@ -198,7 +198,7 @@ endif
 
 emulator: maketree $(EMULATOR)
 
-extra:	$(TOOLS) $(TEXTS)
+extra:	$(TOOLS)
 
 # combine the various definitions to one
 CDEFS = $(DEFS) $(COREDEFS) $(CPUDEFS) $(SOUNDDEFS) $(ASMDEFS) $(DBGDEFS)

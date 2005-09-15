@@ -344,7 +344,7 @@ Boards:
 
 MACHINE_INIT( mschamp )
 {
-	data8_t *rom = memory_region(REGION_CPU1) + 0x10000;
+	UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
 	int bankaddr = ((readinputportbytag("GAME") & 1) * 0x8000);
 
 	memory_set_bankptr(1,&rom[bankaddr]);
@@ -698,7 +698,7 @@ static READ8_HANDLER( porky_port1_r )
  *
  ************************************/
 
-static data8_t *rocktrv2_prot_data, rocktrv2_question_bank = 0;
+static UINT8 *rocktrv2_prot_data, rocktrv2_question_bank = 0;
 
 static READ8_HANDLER( rocktrv2_prot1_data_r )
 {
@@ -2722,7 +2722,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct GfxLayout tilelayout =
+static gfx_layout tilelayout =
 {
 	8,8,	/* 8*8 characters */
     RGN_FRAC(1,2),    /* 256 characters */
@@ -2734,7 +2734,7 @@ static struct GfxLayout tilelayout =
 };
 
 
-static struct GfxLayout spritelayout =
+static gfx_layout spritelayout =
 {
 	16,16,	/* 16*16 sprites */
 	RGN_FRAC(1,2),	/* 64 sprites */
@@ -2748,7 +2748,7 @@ static struct GfxLayout spritelayout =
 };
 
 
-static struct GfxLayout crush4_tilelayout =
+static gfx_layout crush4_tilelayout =
 {
 	8,8, /* 8*8 characters */
     RGN_FRAC(1,4),
@@ -2759,7 +2759,7 @@ static struct GfxLayout crush4_tilelayout =
     16*8    /* every char takes 16 bytes */
 };
 
-static struct GfxLayout crush4_spritelayout =
+static gfx_layout crush4_spritelayout =
 {
 	16,16, /* 16*16 sprites */
 	RGN_FRAC(1,4),
@@ -2773,7 +2773,7 @@ static struct GfxLayout crush4_spritelayout =
 };
 
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &tilelayout,   0, 128 },
 	{ REGION_GFX1, 0x1000, &spritelayout, 0, 128 },
@@ -2781,14 +2781,14 @@ static struct GfxDecodeInfo gfxdecodeinfo[] =
 };
 
 
-static struct GfxDecodeInfo s2650games_gfxdecodeinfo[] =
+static gfx_decode s2650games_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &tilelayout,   0, 128 },
 	{ REGION_GFX1, 0x4000, &spritelayout, 0, 128 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo crush4_gfxdecodeinfo[] =
+static gfx_decode crush4_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &crush4_tilelayout,   0, 128 },
 	{ REGION_GFX1, 0x1000, &crush4_spritelayout, 0, 128 },
@@ -4563,11 +4563,8 @@ ROM_START( 8bpm )
 	ROM_CONTINUE(             0x7000, 0x1000 )
 
 	ROM_REGION( 0x0120, REGION_PROMS, 0 )
-	ROM_LOAD( "8bpm.pr1", 0x0000, 0x0020, NO_DUMP )
-	ROM_LOAD( "8bpm.pr2", 0x0020, 0x0100, NO_DUMP )
-	/* used only to display something until we have the dumps */
-	ROM_LOAD( "drivforc.pr1", 0x0000, 0x0020, CRC(045aa47f) SHA1(ea9034f441937df43a7c0bdb502165fb27d06635) )
-	ROM_LOAD( "drivforc.pr2", 0x0020, 0x0100, CRC(9e6d2f1d) SHA1(7bcbcd4c0a40264c3b0667fc6a39ed4f2a86cafe) )
+	ROM_LOAD( "8bpm.7f",      0x0000, 0x0020, CRC(4cf54241) SHA1(8d1db311941b8f821f949119d5ed2998a2fee80f) )
+	ROM_LOAD( "8bpm.4a",      0x0020, 0x0100, CRC(618505a0) SHA1(6f7d4d54706b49d58427a60c2e2a48bd26d160d4) )
 ROM_END
 
 
@@ -4906,7 +4903,7 @@ GAME( 1983, theglobp, suprglob, theglobp, theglobp, 0,        ROT90,  "Epos Corp
 GAME( 1983, sprglobp, suprglob, theglobp, theglobp, 0,        ROT90,  "Epos Corporation", "Super Glob (Pac-Man hardware)" )
 GAME( 1984, beastf,   suprglob, theglobp, theglobp, 0,        ROT90,  "Epos Corporation", "Beastie Feastie" )
 GAME( 1984, drivfrcp, 0,        drivfrcp, drivfrcp, 0,        ROT90,  "Shinkai Inc. (Magic Eletronics Inc. licence)", "Driving Force (Pac-Man conversion)" )
-GAMEX(1985, 8bpm,     8ballact, 8bpm,     8bpm,     8bpm,     ROT90,  "Seatongrove Ltd (Magic Eletronics USA licence)", "Eight Ball Action (Pac-Man conversion)", GAME_WRONG_COLORS )
+GAME( 1985, 8bpm,     8ballact, 8bpm,     8bpm,     8bpm,     ROT90,  "Seatongrove Ltd (Magic Eletronics USA licence)", "Eight Ball Action (Pac-Man conversion)" )
 GAMEX(1985, porky,    0,        porky,    porky,    porky,    ROT90,  "Shinkai Inc. (Magic Eletronics Inc. licence)", "Porky", GAME_NO_SOUND )
 GAME( 1986, rocktrv2, 0,        rocktrv2, rocktrv2, rocktrv2, ROT90,  "Triumph Software Inc.", "MTV Rock-N-Roll Trivia (Part 2)" )
 GAME( 1986, bigbucks, 0,        bigbucks, bigbucks, 0,        ROT90,  "Dynasoft Inc.", "Big Bucks" )

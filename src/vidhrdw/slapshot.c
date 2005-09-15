@@ -21,10 +21,10 @@ static struct tempsprite *spritelist;
 
 static int sprites_disabled,sprites_active_area,sprites_master_scrollx,sprites_master_scrolly;
 static int sprites_flipscreen = 0;
-static data16_t *spriteram_buffered,*spriteram_delayed;
+static UINT16 *spriteram_buffered,*spriteram_delayed;
 
 int taito_sprite_type = 0;
-data16_t *taito_sprite_ext;
+UINT16 *taito_sprite_ext;
 size_t taito_spriteext_size;
 static UINT16 spritebank[8];
 
@@ -87,7 +87,7 @@ VIDEO_START( slapshot )
             SPRITE DRAW ROUTINES
 ************************************************************/
 
-static void slapshot_draw_sprites(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int *primasks,int y_offset)
+static void slapshot_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect,int *primasks,int y_offset)
 {
 	/*
         Sprite format:
@@ -199,7 +199,7 @@ static void slapshot_draw_sprites(struct mame_bitmap *bitmap,const struct rectan
 			continue;
 		}
 
-//usrintf_showmessage("%04x",area);
+//ui_popup("%04x",area);
 
 		/* check for extra scroll offset */
 		if ((spriteram_buffered[(offs+4)/2] & 0xf000) == 0xa000)
@@ -540,31 +540,31 @@ VIDEO_UPDATE( slapshot )
 	if (code_pressed_memory (KEYCODE_Z))
 	{
 		dislayer[0] ^= 1;
-		usrintf_showmessage("bg0: %01x",dislayer[0]);
+		ui_popup("bg0: %01x",dislayer[0]);
 	}
 
 	if (code_pressed_memory (KEYCODE_X))
 	{
 		dislayer[1] ^= 1;
-		usrintf_showmessage("bg1: %01x",dislayer[1]);
+		ui_popup("bg1: %01x",dislayer[1]);
 	}
 
 	if (code_pressed_memory (KEYCODE_C))
 	{
 		dislayer[2] ^= 1;
-		usrintf_showmessage("bg2: %01x",dislayer[2]);
+		ui_popup("bg2: %01x",dislayer[2]);
 	}
 
 	if (code_pressed_memory (KEYCODE_V))
 	{
 		dislayer[3] ^= 1;
-		usrintf_showmessage("bg3: %01x",dislayer[3]);
+		ui_popup("bg3: %01x",dislayer[3]);
 	}
 
 	if (code_pressed_memory (KEYCODE_B))
 	{
 		dislayer[4] ^= 1;
-		usrintf_showmessage("text: %01x",dislayer[4]);
+		ui_popup("text: %01x",dislayer[4]);
 	}
 #endif
 

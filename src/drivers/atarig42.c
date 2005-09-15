@@ -33,13 +33,13 @@
  *************************************/
 
 static UINT8 analog_data;
-static data16_t *mo_command;
+static UINT16 *mo_command;
 
 static int sloop_bank;
 static int sloop_next_bank;
 static int sloop_offset;
 static int sloop_state;
-static data16_t *sloop_base;
+static UINT16 *sloop_base;
 
 
 
@@ -454,7 +454,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct GfxLayout pflayout =
+static gfx_layout pflayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -465,7 +465,7 @@ static struct GfxLayout pflayout =
 	16*8
 };
 
-static struct GfxLayout pftoplayout =
+static gfx_layout pftoplayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -476,7 +476,7 @@ static struct GfxLayout pftoplayout =
 	16*8
 };
 
-static struct GfxLayout anlayout =
+static gfx_layout anlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -487,7 +487,7 @@ static struct GfxLayout anlayout =
 	32*8
 };
 
-static struct GfxDecodeInfo gfxdecodeinfo[] =
+static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &pflayout, 0x000, 64 },
 	{ REGION_GFX2, 0, &anlayout, 0x000, 16 },
@@ -716,7 +716,7 @@ static DRIVER_INIT( guardian )
 
 	/* it looks like they jsr to $80000 as some kind of protection */
 	/* put an RTS there so we don't die */
-	*(data16_t *)&memory_region(REGION_CPU1)[0x80000] = 0x4E75;
+	*(UINT16 *)&memory_region(REGION_CPU1)[0x80000] = 0x4E75;
 
 	sloop_base = memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, guardians_sloop_data_r);
 	sloop_base = memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, guardians_sloop_data_w);

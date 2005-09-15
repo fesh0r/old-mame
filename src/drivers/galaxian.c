@@ -3442,7 +3442,37 @@ INPUT_PORTS_START( trvchlng )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 INPUT_PORTS_END
 
-static struct GfxLayout galaxian_charlayout =
+INPUT_PORTS_START( luctoday )
+   PORT_START_TAG("IN0") //These inputs are clearly wrong, they need a full test
+   PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
+   PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+   PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )PORT_2WAY PORT_NAME("Add Credit to Bet")
+   PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )PORT_2WAY PORT_NAME("Remove Credit from Bet")
+   PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
+   PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+   PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+   PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SERVICE1 )//Input connected, but causes a very weird bug with the credit counter, is it the service mode switch?
+
+   PORT_START_TAG("IN1")
+   PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
+   PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNUSED )
+   PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED )
+   PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
+   PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNUSED )
+   PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNUSED )
+   PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
+   PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
+
+   PORT_START_TAG("DSW0")
+   PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+   PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+   PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+   PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+   PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_UNUSED )
+INPUT_PORTS_END
+
+
+static gfx_layout galaxian_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -3452,7 +3482,7 @@ static struct GfxLayout galaxian_charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8
 };
-static struct GfxLayout galaxian_spritelayout =
+static gfx_layout galaxian_spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -3465,7 +3495,7 @@ static struct GfxLayout galaxian_spritelayout =
 	32*8
 };
 
-static struct GfxLayout pacmanbl_charlayout =
+static gfx_layout pacmanbl_charlayout =
 {
 	8,8,
 	256,
@@ -3475,7 +3505,7 @@ static struct GfxLayout pacmanbl_charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8
 };
-static struct GfxLayout pacmanbl_spritelayout =
+static gfx_layout pacmanbl_spritelayout =
 {
 	16,16,
 	64,
@@ -3488,7 +3518,7 @@ static struct GfxLayout pacmanbl_spritelayout =
 	32*8
 };
 
-static struct GfxLayout bagmanmc_charlayout =
+static gfx_layout bagmanmc_charlayout =
 {
 	8,8,
 	512,
@@ -3499,7 +3529,7 @@ static struct GfxLayout bagmanmc_charlayout =
 	8*8
 };
 
-static struct GfxLayout _4in1_charlayout =
+static gfx_layout _4in1_charlayout =
 {
 	8,8,
 	1024,
@@ -3509,7 +3539,7 @@ static struct GfxLayout _4in1_charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8
 };
-static struct GfxLayout _4in1_spritelayout =
+static gfx_layout _4in1_spritelayout =
 {
 	16,16,
 	256,
@@ -3522,7 +3552,7 @@ static struct GfxLayout _4in1_spritelayout =
 	32*8
 };
 
-static struct GfxLayout rockclim_charlayout =
+static gfx_layout rockclim_charlayout =
 {
 	8,8,
 	256,
@@ -3533,7 +3563,7 @@ static struct GfxLayout rockclim_charlayout =
 	8*8*2
 };
 
-static struct GfxDecodeInfo rockclim_gfxdecodeinfo[] =
+static gfx_decode rockclim_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &galaxian_charlayout,   32, 8 },
 	{ REGION_GFX1, 0x0000, &galaxian_spritelayout, 32, 8 },
@@ -3544,14 +3574,14 @@ static struct GfxDecodeInfo rockclim_gfxdecodeinfo[] =
 
 
 
-struct GfxDecodeInfo galaxian_gfxdecodeinfo[] =
+gfx_decode galaxian_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &galaxian_charlayout,   0, 8 },
 	{ REGION_GFX1, 0x0000, &galaxian_spritelayout, 0, 8 },
 	{ -1 } /* end of array */
 };
 
-struct GfxDecodeInfo gmgalax_gfxdecodeinfo[] =
+gfx_decode gmgalax_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &galaxian_charlayout,   0, 16 },
 	{ REGION_GFX1, 0x0000, &galaxian_spritelayout, 0, 16 },
@@ -3559,21 +3589,21 @@ struct GfxDecodeInfo gmgalax_gfxdecodeinfo[] =
 };
 
 /* separate character and sprite ROMs */
-static struct GfxDecodeInfo pacmanbl_gfxdecodeinfo[] =
+static gfx_decode pacmanbl_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &pacmanbl_charlayout,   0, 8 },
 	{ REGION_GFX1, 0x1000, &pacmanbl_spritelayout, 0, 8 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo bagmanmc_gfxdecodeinfo[] =
+static gfx_decode bagmanmc_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &bagmanmc_charlayout,    0, 8 },
 	{ REGION_GFX1, 0x2000, &pacmanbl_spritelayout, 0, 8 },
 	{ -1 } /* end of array */
 };
 
-static struct GfxDecodeInfo _4in1_gfxdecodeinfo[] =
+static gfx_decode _4in1_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &_4in1_charlayout,      0, 8 },
 	{ REGION_GFX1, 0x4000, &_4in1_spritelayout,    0, 8 },
@@ -3938,6 +3968,19 @@ static MACHINE_DRIVER_START( scorpnmc )
 MACHINE_DRIVER_END
 
 
+static MACHINE_DRIVER_START( frogg )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(galaxian)
+
+	/* video hardware */
+	MDRV_PALETTE_LENGTH(32+64+2+1)  /* 32 for characters, 64 for stars, 2 for bullets, 1 for background */
+
+	MDRV_PALETTE_INIT(frogger)
+	MDRV_VIDEO_START(froggers)
+MACHINE_DRIVER_END
+
+
 static MACHINE_DRIVER_START( 4in1 )
 
 	/* basic machine hardware */
@@ -3999,7 +4042,7 @@ static MACHINE_DRIVER_START( froggrmc )
 	MDRV_PALETTE_LENGTH(32+64+2+1)  /* 32 for characters, 64 for stars, 2 for bullets, 1 for background */
 
 	MDRV_PALETTE_INIT(frogger)
-	MDRV_VIDEO_START(froggrmc)
+	MDRV_VIDEO_START(froggers)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD(AY8910, 14318000/8)
@@ -4015,7 +4058,7 @@ static MACHINE_DRIVER_START( rockclim )
 	MDRV_GFXDECODE(rockclim_gfxdecodeinfo)
 	/* video hardware */
 	MDRV_VIDEO_START(rockclim)
-	MDRV_PALETTE_LENGTH(64)
+	MDRV_PALETTE_LENGTH(64+64+2)	/* 64 colors only, but still uses bullets so we need to keep the palette big */
 	MDRV_COLORTABLE_LENGTH(64)
 	MDRV_PALETTE_INIT(rockclim)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
@@ -4463,6 +4506,22 @@ ROM_START( piscesb )
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
 //  ROM_LOAD( "6331-1j.86",   0x0000, 0x0020, CRC(24652bc4) SHA1(d89575f3749c75dc963317fe451ffeffd9856e4d) ) /* very close to Galaxian */
 	ROM_LOAD( "colour.bin",   0x0000, 0x0020, CRC(57a45057) SHA1(d4ec6a54f72640e5b485aa59e206c090e67ff640) )	// same as checkman.clr
+ROM_END
+
+ROM_START( omni )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+	ROM_LOAD( "omni1.7f",     0x0000, 0x1000, CRC(a9b7acc6) SHA1(0c6319957b760fea3cfa6c29b37c25f5a89a6d77) )
+	ROM_LOAD( "omni2.7j",     0x1000, 0x1000, CRC(6ade29b7) SHA1(64f1ce82c761db11d26c385299a7063f5971c99a) )
+	ROM_LOAD( "omni3.7f",     0x2000, 0x1000, CRC(9e37bb24) SHA1(d90b2ff0297d87687561e1e9b29510b6c051760b) )
+
+	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "omni5b.l1",    0x0000, 0x0800, CRC(9503a23a) SHA1(23848de56841dd1de9ef74d5a9c981c784098175) )
+	ROM_LOAD( "omni6c.j22",   0x0800, 0x0800, CRC(0adfc3fe) SHA1(a4da488632d9906066db45ae62747caf5ffbf2d8) )
+	ROM_LOAD( "omni4a.j1",    0x1000, 0x0800, CRC(3e61f849) SHA1(efa0059bc843af0c3bb94f4bc0a8286ca5069179) )
+	ROM_LOAD( "omni7d.l2",    0x1800, 0x0800, CRC(7130e9eb) SHA1(e6bb7a9b4f2fc001296e1060d0671b7a88599c8b) )
+
+	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_LOAD( "colour.bin",   0x0000, 0x0020, CRC(57a45057) SHA1(d4ec6a54f72640e5b485aa59e206c090e67ff640) )
 ROM_END
 
 ROM_START( uniwars )
@@ -5550,7 +5609,7 @@ ROM_START( frogg )
 	ROM_LOAD( "h.bin",        0x0800, 0x0800, CRC(658745f8) SHA1(e4e5c3e011c8a7233a36d29e10e08905873500aa) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
-	ROM_LOAD( "l06_prom.bin", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
+	ROM_LOAD( "pr-91.6l",     0x0000, 0x0020, CRC(413703bf) SHA1(66648b2b28d3dcbda5bdb2605d1977428939dd3c) )
 ROM_END
 
 ROM_START( 4in1 )
@@ -5932,6 +5991,34 @@ ROM_START( trvchlng )
 	ROM_LOAD( "senko1.bin",   0x0000, 0x0020, CRC(1434c7ff) SHA1(0ee5f5351dd84fbf8d3d8eaafbdbe86dd29960f8) )
 ROM_END
 
+ROM_START( luctoday )
+   ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64k for code */
+   ROM_LOAD( "ltprog1.bin", 0x0000, 0x0800, CRC(59c389b9) SHA1(1e158ced3b56db2c51e422fb4c0b8893565f1956))
+   ROM_LOAD( "ltprog2.bin", 0x2000, 0x0800, CRC(ac3893b1) SHA1(f6b9cd8111b367ff7030cba52fe965959d92568f))
+
+   ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+   ROM_LOAD( "ltchar2.bin", 0x0000, 0x0800, CRC(8cd73bdc) SHA1(6174f7347d2c96f9c5074bc0da5a370c9b07461b))
+   ROM_LOAD( "ltchar1.bin", 0x0800, 0x0800, CRC(b5ba9946) SHA1(7222cbe8c41ca74b214f4dd5439bf69d90f4644e))
+
+   ROM_REGION( 0x0020, REGION_PROMS, 0 )//This may not be the correct prom
+   ROM_LOAD( "luctoday.bpr", 0x0000, 0x0020, BAD_DUMP CRC(d5546262) SHA1(9b8e043af9d937616954fdfb80f6094cf85e5a5b))
+ROM_END
+
+/* is it bad, or protected? it just resets.. code is very close to luctoday, maybe its just a bad copy of it with
+   modified title? */
+ROM_START( chewing )
+   ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64k for code */
+   ROM_LOAD( "1.bin", 0x0000, 0x1000, CRC(404385a9) SHA1(4da4da3c50105d310307ce49ec0a887ed833bf8e) )
+   ROM_LOAD( "7l.bin", 0x2000, 0x0800, CRC(78ebed36) SHA1(e80185737c8ac448901cf0e60ca50d967c323b34) )
+
+   ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+   ROM_LOAD( "2.bin", 0x0000, 0x0800, CRC(88c605f3) SHA1(938a9fadfa0994a1d2fc9b3266ec4ccdb5ec6d3a) )
+   ROM_LOAD( "3.bin", 0x0800, 0x0800, CRC(77ac016a) SHA1(fa5b1e79603ca8d2ee7b3d0a78f12d9ffeec3fd4) )
+
+   ROM_REGION( 0x0020, REGION_PROMS, 0 )
+   ROM_LOAD( "74s288.ch", 0x0000, 0x0020, CRC(24652bc4) SHA1(d89575f3749c75dc963317fe451ffeffd9856e4d) )
+ROM_END
+
 GAME( 1979, galaxian, 0,        galaxian, galaxian, 0,        ROT90,  "Namco", "Galaxian (Namco set 1)" )
 GAME( 1979, galaxiaj, galaxian, galaxian, superg,   0,        ROT90,  "Namco", "Galaxian (Namco set 2)" )
 GAME( 1979, galmidw,  galaxian, galaxian, galaxian, 0,        ROT90,  "[Namco] (Midway license)", "Galaxian (Midway)" )
@@ -5948,6 +6035,7 @@ GAME( 19??, tst_galx, galaxian, galaxian, galaxian, 0,        ROT90,  "Test ROM"
 GAME( 1981, gmgalax,  0,        gmgalax,  gmgalax,  gmgalax,  ROT90,  "bootleg", "Ghostmuncher Galaxian (bootleg)" )
 GAME( 19??, pisces,   0,        pisces,   pisces,   pisces,	  ROT90,  "Subelectro", "Pisces" )
 GAME( 19??, piscesb,  pisces,   pisces,   piscesb,  pisces,   ROT90,  "bootleg", "Pisces (bootleg)" )
+GAME( 19??, omni,     pisces,   pisces,   piscesb,  pisces,   ROT90,  "bootleg", "Omni" )
 GAME( 1980, uniwars,  0,        pisces,   superg,   pisces,   ROT90,  "Irem", "UniWar S" )
 GAME( 1980, gteikoku, uniwars,  pisces,   superg,   pisces,   ROT90,  "Irem", "Gingateikoku No Gyakushu" )
 GAME( 1980, gteikokb, uniwars,  pisces,   gteikokb, pisces,   ROT270, "bootleg", "Gingateikoku No Gyakushu (bootleg set 1)" )
@@ -5999,7 +6087,7 @@ GAME( 19??, omega,    theend,   galaxian, omega,    0,        ROT270, "bootleg?"
 GAME( 1980, kingball, 0,        kingball, kingball, kingball, ROT90,  "Namco", "King & Balloon (US)" )
 GAME( 1980, kingbalj, kingball, kingball, kingball, kingball, ROT90,  "Namco", "King & Balloon (Japan)" )
 GAME( 19??, scorpnmc, scorpion, scorpnmc, scorpnmc, 0,        ROT90,  "Dorneer", "Scorpion (Moon Cresta hardware)" )
-GAME( 1981, frogg,    frogger,  galaxian, frogg,    0,        ROT90,  "bootleg", "Frog (Galaxian hardware)" )
+GAME( 1981, frogg,    frogger,  frogg,    frogg,    0,        ROT90,  "bootleg", "Frog (Galaxian hardware)" )
 GAMEX(1981, 4in1,     0,        4in1,     4in1,     4in1,     ROT90,  "Armenia / Food and Fun", "4 Fun in 1", GAME_IMPERFECT_SOUND )
 GAMEX(1982, bagmanmc, bagman,   bagmanmc, bagmanmc, 0,        ROT90,  "bootleg", "Bagman (Moon Cresta hardware)", GAME_WRONG_COLORS  )
 GAMEX(1982, dkongjrm, dkongjr,  dkongjrm, dkongjrm, 0,        ROT90,  "bootleg", "Donkey Kong Jr. (Moon Cresta hardware)", GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
@@ -6017,3 +6105,5 @@ GAME( 1982, tazzmang, tazmania,	tazzmang, tazzmang, 0,        ROT90,  "bootleg",
 GAME( 1986, racknrol, 0,        racknrol, racknrol, 0,	      ROT0,   "Status (Shinkai License)", "Rack + Roll" )
 GAME( 1986, hexpool,  racknrol, racknrol, racknrol, 0,	      ROT90,  "Shinkai", "Hex Pool" )
 GAMEX(1985, trvchlng, 0,        racknrol, trvchlng, 0,	      ROT90,  "Joyland (Senko License)", "Trivia Challenge", GAME_NOT_WORKING )
+GAMEX(1980, luctoday, 0,        galaxian, luctoday, 0,        ROT270, "Sigma", "Lucky Today",GAME_WRONG_COLORS )
+GAMEX(19??, chewing,  0,        galaxian, luctoday, 0,        ROT90,  "unknown", "Chewing Gum",GAME_NOT_WORKING )
