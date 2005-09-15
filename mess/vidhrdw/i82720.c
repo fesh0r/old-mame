@@ -126,7 +126,7 @@ typedef struct
 	UINT16	vramsize;		/* Size in words   */
 	UINT8	mode;			/* Resolution mode */
 	UINT8   dirty;
-	struct mame_bitmap *tmpbmp;
+	mame_bitmap *tmpbmp;
 } TYP_GDC_MESS;
 
 static TYP_GDC_MESS gdc_mess;
@@ -1468,7 +1468,7 @@ VIDEO_START ( compis_gdc )
 	return compis_gdc_start(&sIntf);
 }
 
-void mdrv_compisgdc(struct InternalMachineDriver *machine,
+void mdrv_compisgdc(machine_config *machine,
                     const compis_gdc_interface *intf)
 
 {

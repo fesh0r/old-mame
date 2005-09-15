@@ -54,7 +54,7 @@ int mbee_frame_counter;
 UINT8 *pcgram;
 
 /* from mess/systems/microbee.c */
-extern struct GfxLayout mbee_charlayout;
+extern gfx_layout mbee_charlayout;
 
 
 WRITE8_HANDLER ( mbee_pcg_color_latch_w )
@@ -517,12 +517,7 @@ VIDEO_UPDATE( mbee )
 			full_refresh = 1;
 		else
 		{
-			/* I know this is ugly, but it happens only once
-			 * after a new message is sprintf()ed into the string :)
-			 */
-            while( strlen(mbee_frame_message) < 128 )
-				strcat(mbee_frame_message, " ");
-			ui_text(bitmap, mbee_frame_message, 0, Machine->uiheight - 10);
+			ui_popup("%s", mbee_frame_message);
 		}
     }
 

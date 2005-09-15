@@ -27,6 +27,7 @@
 #include "tapedlg.h"
 #include "artworkx.h"
 #include "debugcpu.h"
+#include "inptport.h"
 #include "devices/cassette.h"
 
 #ifdef UNDER_CE
@@ -127,15 +128,15 @@ static int add_filter_entry(char *dest, size_t dest_len, const char *description
 static void customize_input(const char *title, int cust_type, int player, int inputclass, const char *section)
 {
 	dialog_box *dlg;
-	struct InputPort *in;
-	struct png_info png;
+	input_port_entry *in;
+	png_info png;
 	struct inputform_customization customizations[128];
 	RECT *pr;
 	int this_inputclass, this_player, portslot_count, i;
 
 	struct
 	{
-		struct InputPort *in;
+		input_port_entry *in;
 		const RECT *pr;
 	} portslots[256];
 
@@ -282,7 +283,7 @@ static void customize_categorizedinput(const char *section, int category)
 
 static void storeval_inputport(void *param, int val)
 {
-	struct InputPort *in = (struct InputPort *) param;
+	input_port_entry *in = (input_port_entry *) param;
 	in->default_value = (UINT16) val;
 }
 
@@ -295,7 +296,7 @@ static void storeval_inputport(void *param, int val)
 static void customize_switches(int title_string_num, UINT32 ipt_name, UINT32 ipt_setting)
 {
 	dialog_box *dlg;
-	struct InputPort *in;
+	input_port_entry *in;
 	const char *switch_name = NULL;
 	UINT32 type;
 	
@@ -370,28 +371,28 @@ static void customize_configuration(void)
 
 static void store_delta(void *param, int val)
 {
-	((struct InputPort *) param)->analog.delta = val;
+	((input_port_entry *) param)->analog.delta = val;
 }
 
 
 
 static void store_centerdelta(void *param, int val)
 {
-	((struct InputPort *) param)->analog.centerdelta = val;
+	((input_port_entry *) param)->analog.centerdelta = val;
 }
 
 
 
 static void store_reverse(void *param, int val)
 {
-	((struct InputPort *) param)->analog.reverse = val;
+	((input_port_entry *) param)->analog.reverse = val;
 }
 
 
 
 static void store_sensitivity(void *param, int val)
 {
-	((struct InputPort *) param)->analog.sensitivity = val;
+	((input_port_entry *) param)->analog.sensitivity = val;
 }
 
 
@@ -399,7 +400,7 @@ static void store_sensitivity(void *param, int val)
 static void customize_analogcontrols(void)
 {
 	dialog_box *dlg;
-	struct InputPort *in;
+	input_port_entry *in;
 	const char *name;
 	char buf[255];
 	static const struct dialog_layout layout = { 120, 52 };
@@ -1068,8 +1069,8 @@ static void setup_joystick_menu(void)
 	HMENU joystick_menu;
 	int i, j;
 	HMENU submenu = NULL;
-	const struct InputPort *in;
-	const struct InputPort *in_setting;
+	const input_port_entry *in;
+	const input_port_entry *in_setting;
 	char buf[256];
 	int child_count = 0;
 
@@ -1157,7 +1158,7 @@ static void prepare_menus(void)
 	UINT flags_for_writing;
 	mess_image *img;
 	int has_config, has_dipswitch, has_keyboard, has_analog, has_misc;
-	const struct InputPort *in;
+	const input_port_entry *in;
 	UINT16 in_cat_value = 0;
 
 	if (!win_menu_bar)
@@ -1195,9 +1196,9 @@ static void prepare_menus(void)
 #if HAS_TOGGLEFULLSCREEN
 	set_command_state(win_menu_bar, ID_OPTIONS_FULLSCREEN,		!win_window_mode							? MFS_CHECKED : MFS_ENABLED);
 #endif // HAS_TOGGLEFULLSCREEN
-	set_command_state(win_menu_bar, ID_OPTIONS_TOGGLEFPS,		ui_show_fps_get()							? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_OPTIONS_TOGGLEFPS,		ui_get_show_fps()							? MFS_CHECKED : MFS_ENABLED);
 #if HAS_PROFILER
-	set_command_state(win_menu_bar, ID_OPTIONS_PROFILER,		ui_show_profiler_get()						? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(win_menu_bar, ID_OPTIONS_PROFILER,		ui_get_show_profiler()						? MFS_CHECKED : MFS_ENABLED);
 #endif
 
 	set_command_state(win_menu_bar, ID_KEYBOARD_EMULATED,		(has_keyboard) ?
@@ -1490,7 +1491,7 @@ static int invoke_command(UINT command)
 	mess_image *img;
 	int port_count;
 	UINT16 setting, category;
-	struct InputPort *in;
+	input_port_entry *in;
 	const char *section;
 
 	switch(command) {
@@ -1544,7 +1545,7 @@ static int invoke_command(UINT command)
 
 #if HAS_PROFILER
 	case ID_OPTIONS_PROFILER:
-		ui_show_profiler_set(!ui_show_profiler_get());
+		ui_set_show_profiler(!ui_get_show_profiler());
 		break;
 #endif // HAS_PROFILER
 
@@ -1584,7 +1585,7 @@ static int invoke_command(UINT command)
 #endif
 
 	case ID_OPTIONS_TOGGLEFPS:
-		ui_show_fps_set(!ui_show_fps_get());
+		ui_set_show_fps(!ui_get_show_fps());
 		break;
 
 	case ID_OPTIONS_USEMOUSE:
@@ -1733,7 +1734,7 @@ int win_setup_menus(HMODULE module, HMENU menu_bar)
 
 	// remove the profiler menu item if it doesn't exist
 #if HAS_PROFILER
-	ui_show_profiler_set(0);
+	ui_set_show_profiler(0);
 #else
 	DeleteMenu(menu_bar, ID_OPTIONS_PROFILER, MF_BYCOMMAND);
 #endif

@@ -40,6 +40,7 @@
 #include "vidhrdw/generic.h"
 #include "machine/6522via.h"
 #include "machine/sonydriv.h"
+#include "devices/harddriv.h"
 #include "includes/mac.h"
 #include "videomap.h"
 
@@ -262,6 +263,13 @@ ROM_START( macplus )
 	ROM_LOAD16_WORD( "macplus.rom",  0x00000, 0x20000, CRC(b2102e8e) SHA1(7d2f808a045aa3a1b242764f0e2c7d13e288bf1f))
 ROM_END
 
+
+ROM_START( macse )
+	ROM_REGION16_BE(0x40000, REGION_USER1, 0)
+	ROM_LOAD16_WORD( "macse.rom",  0x00000, 0x40000, CRC(0f7ff80c) SHA1(58532b7d0d49659fd5228ac334a1b094f0241968))
+ROM_END
+
+
 static void mac128512_floppy_getinfo(struct IODevice *dev)
 {
 	/* floppy */
@@ -272,6 +280,20 @@ static void mac_floppy_getinfo(struct IODevice *dev)
 {
 	/* floppy */
 	sonydriv_device_getinfo(dev, SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K);
+}
+
+static void mac_harddisk_getinfo(struct IODevice *dev)
+{
+	/* harddisk */
+	dev->type = IO_HARDDISK;
+	dev->count = 2;
+	dev->file_extensions = "chd\0";
+	dev->readable = 1;
+	dev->writeable = 1;
+	dev->creatable = 0;
+	dev->init = device_init_mess_hd;
+	dev->load = device_load_mess_hd;
+	dev->unload = device_unload_mess_hd;
 }
 
 SYSTEM_CONFIG_START(mac128k)
@@ -286,7 +308,17 @@ SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(macplus)
 	CONFIG_DEVICE(mac_floppy_getinfo)
+	CONFIG_DEVICE(mac_harddisk_getinfo)
 	CONFIG_RAM			(0x080000)
+	CONFIG_RAM_DEFAULT	(0x100000)
+	CONFIG_RAM			(0x200000)
+	CONFIG_RAM			(0x280000)
+	CONFIG_RAM			(0x400000)
+SYSTEM_CONFIG_END
+
+SYSTEM_CONFIG_START(macse)
+	CONFIG_DEVICE(mac_floppy_getinfo)
+	CONFIG_DEVICE(mac_harddisk_getinfo)
 	CONFIG_RAM_DEFAULT	(0x100000)
 	CONFIG_RAM			(0x200000)
 	CONFIG_RAM			(0x280000)
@@ -301,6 +333,7 @@ SYSTEM_CONFIG_END
 COMPX( 1984,	mac512k,  mac128k,	0,		mac128k,  macplus,  mac128k512k,	macplus,	"Apple Computer",	"Macintosh 512k",  0 )*/
 COMPX( 1986,	mac512ke, macplus,  0,		mac512ke, macplus,  mac512ke,		mac512k,	"Apple Computer",	"Macintosh 512ke", 0 )
 COMPX( 1986,	macplus,  0,		0,		macplus,  macplus,  macplus,		macplus,	"Apple Computer",	"Macintosh Plus",  0 )
+COMPX( 1987,	macse,    0,		0,		macplus,  macplus,  macse,		    macse,		"Apple Computer",	"Macintosh SE",  GAME_NOT_WORKING )
 
 
 

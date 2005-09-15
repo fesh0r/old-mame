@@ -62,7 +62,6 @@ extern int devices_inited;
 /***************************************************************************/
 
 void showmessinfo(void);
-int filemanager(struct mame_bitmap *bitmap, int selected);
 
 UINT32 hash_data_extract_crc32(const char *d);
 
@@ -70,20 +69,20 @@ UINT32 hash_data_extract_crc32(const char *d);
 
 /***************************************************************************/
 
-data32_t read32le_with_read8_handler(read8_handler handler, offs_t offset, data32_t mem_mask);
-void write32le_with_write8_handler(write8_handler handler, offs_t offset, data32_t data, data32_t mem_mask);
-data64_t read64be_with_read8_handler(read8_handler handler, offs_t offset, data64_t mem_mask);
-void write64be_with_write8_handler(write8_handler handler, offs_t offset, data64_t data, data64_t mem_mask);
+UINT32 read32le_with_read8_handler(read8_handler handler, offs_t offset, UINT32 mem_mask);
+void write32le_with_write8_handler(write8_handler handler, offs_t offset, UINT32 data, UINT32 mem_mask);
+UINT64 read64be_with_read8_handler(read8_handler handler, offs_t offset, UINT64 mem_mask);
+void write64be_with_write8_handler(write8_handler handler, offs_t offset, UINT64 data, UINT64 mem_mask);
 
-data64_t read64le_with_32le_handler(read32_handler handler, offs_t offset, data64_t mem_mask);
-void write64le_with_32le_handler(write32_handler handler, offs_t offset, data64_t data, data64_t mem_mask);
-data64_t read64be_with_32le_handler(read32_handler handler, offs_t offset, data64_t mem_mask);
-void write64be_with_32le_handler(write32_handler handler, offs_t offset, data64_t data, data64_t mem_mask);
+UINT64 read64le_with_32le_handler(read32_handler handler, offs_t offset, UINT64 mem_mask);
+void write64le_with_32le_handler(write32_handler handler, offs_t offset, UINT64 data, UINT64 mem_mask);
+UINT64 read64be_with_32le_handler(read32_handler handler, offs_t offset, UINT64 mem_mask);
+void write64be_with_32le_handler(write32_handler handler, offs_t offset, UINT64 data, UINT64 mem_mask);
 
 /***************************************************************************/
 
 #if HAS_WAVE
-int tapecontrol(struct mame_bitmap *bitmap, int selected);
+int tapecontrol(int selected);
 void tapecontrol_gettime(char *timepos, size_t timepos_size, mess_image *img, int *curpos, int *endpos);
 #endif
 
@@ -98,8 +97,8 @@ void tapecontrol_gettime(char *timepos, size_t timepos_size, mess_image *img, in
 int mess_validitychecks(void);
 
 /* these are called from mame.c*/
-int devices_init(const struct GameDriver *gamedrv);
-int devices_initialload(const struct GameDriver *gamedrv, int ispreload);
+int devices_init(const game_driver *gamedrv);
+int devices_initialload(const game_driver *gamedrv, int ispreload);
 void devices_exit(void);
 
 char *auto_strlistdup(char *strlist);
@@ -119,28 +118,28 @@ enum
 /* This call is used to return the next compatible driver with respect to
  * software images.  It is usable both internally and from front ends
  */
-const struct GameDriver *mess_next_compatible_driver(const struct GameDriver *drv);
-int mess_count_compatible_drivers(const struct GameDriver *drv);
+const game_driver *mess_next_compatible_driver(const game_driver *drv);
+int mess_count_compatible_drivers(const game_driver *drv);
 
 /* --------------------------------------------------------------------------------------------- */
 
 /* RAM configuration calls */
 extern UINT32 mess_ram_size;
-extern data8_t *mess_ram;
-extern data8_t mess_ram_default_value;
+extern UINT8 *mess_ram;
+extern UINT8 mess_ram_default_value;
 
 /* RAM parsing options */
 #define RAM_STRING_BUFLEN 16
-UINT32		ram_option(const struct GameDriver *gamedrv, unsigned int i);
-int			ram_option_count(const struct GameDriver *gamedrv);
-int			ram_is_valid_option(const struct GameDriver *gamedrv, UINT32 ram);
-UINT32		ram_default(const struct GameDriver *gamedrv);
+UINT32		ram_option(const game_driver *gamedrv, unsigned int i);
+int			ram_option_count(const game_driver *gamedrv);
+int			ram_is_valid_option(const game_driver *gamedrv, UINT32 ram);
+UINT32		ram_default(const game_driver *gamedrv);
 UINT32		ram_parse_string(const char *s);
 const char *ram_string(char *buffer, UINT32 ram);
 int			ram_validate_option(void);
 void		ram_dump(const char *filename);
 
-data8_t *memory_install_ram8_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t ram_offset, int bank);
+UINT8 *memory_install_ram8_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t ram_offset, int bank);
 
 /* --------------------------------------------------------------------------------------------- */
 
@@ -153,7 +152,5 @@ data8_t *memory_install_ram8_handler(int cpunum, int spacenum, offs_t start, off
 extern const char *mess_path;
 
 void machine_hard_reset(void);
-
-void mess_config_save_xml(int type, mame_file *file);
 
 #endif

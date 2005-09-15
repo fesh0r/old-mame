@@ -12,7 +12,7 @@ enum
 	asr733_chr_region_len	= 128*asr733_single_char_len
 };
 
-extern struct GfxDecodeInfo asr733_gfxdecodeinfo[];
+extern gfx_decode asr733_gfxdecodeinfo[];
 
 extern unsigned char asr733_palette[];
 extern unsigned short asr733_colortable[];
@@ -36,7 +36,7 @@ void asr733_cru_w(int offset, int data, int unit);
  READ8_HANDLER(asr733_0_cru_r);
 WRITE8_HANDLER(asr733_0_cru_w);
 
-void asr733_refresh(struct mame_bitmap *bitmap, int unit, int x, int y);
+void asr733_refresh(mame_bitmap *bitmap, int unit, int x, int y);
 
 void asr733_keyboard(int unit);
 

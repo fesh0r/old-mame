@@ -185,7 +185,7 @@ static struct {
 
 	int chargenaddr, videoaddr;
 
-	struct mame_bitmap *bitmap;
+	mame_bitmap *bitmap;
 	int x_begin, x_end;
 	int y_begin, y_end;
 
@@ -1331,7 +1331,6 @@ INTERRUPT_GEN( vic2_raster_irq )
 			/* lightpen timer starten */
 			timer_set (tme, 1, vic2_timer_timeout);
 		}
-		//statetext_display(vic2.bitmap);
 	}
 	if (vic2.rasterline == C64_2_RASTERLINE (RASTERLINE))
 	{
@@ -1343,8 +1342,8 @@ INTERRUPT_GEN( vic2_raster_irq )
 
 VIDEO_UPDATE( vic2 )
 {
-	copybitmap(bitmap, vic2.bitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
-	statetext_display(bitmap);
+	if (vic2.on)
+		copybitmap(bitmap, vic2.bitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
 }
 
 static PALETTE_INIT( vic2 )

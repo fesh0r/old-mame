@@ -1,14 +1,18 @@
+/*********************************************************************
+
+  filemngr.c
+
+  MESS's clunky built-in file manager
+
+*********************************************************************/
+
 #include "driver.h"
 #include "utils.h"
 #include "image.h"
 #include "ui_text.h"
 
-#ifndef MIN
-#define MIN(x,y) ((x)<(y)?(x):(y))
-#endif
-#ifndef MAX
-#define MAX(x,y) ((x)>(y)?(x):(y))
-#endif
+#define SEL_BITS	12
+#define SEL_MASK	((1<<SEL_BITS)-1)
 
 static int count_chars_entered;
 static char *enter_string;
@@ -27,7 +31,7 @@ static void start_enter_string(char *string_buffer, int max_string_size, int fil
 
 
 /* code, lower case (w/o shift), upper case (with shift), control */
-static int code_to_char_table[] =
+static const int code_to_char_table[] =
 {
 	KEYCODE_0, '0', ')', 0,
 	KEYCODE_1, '1', '!', 0,
@@ -85,7 +89,7 @@ static int code_to_char_table[] =
  * Maybe change this for different platforms?
  * Put it to osd_cpu? Make it an osd_... function?
  */
-static char valid_filename_char[256] =
+static const char valid_filename_char[256] =
 {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 	/* 00-0f */
 	0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 	/* 10-1f */
@@ -105,7 +109,7 @@ static char valid_filename_char[256] =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0		/* f0-ff */
 };
 
-static char code_to_ascii(input_code_t code)
+static char code_to_ascii(input_code code)
 {
 	int i;
 
@@ -129,7 +133,7 @@ static char code_to_ascii(input_code_t code)
 
 static char *update_entered_string(void)
 {
-	input_code_t code;
+	input_code code;
 	int ascii_char;
 
 	/* get key */
@@ -194,9 +198,7 @@ const char fs_device[] = "[DRIVE]";
 const char fs_file[] = "[FILE]";
 /*const char fs_archive[] = "[ARCHIVE]"; */
 
-static const char **fs_item;
-static const char **fs_subitem;
-static char *fs_flags;
+static ui_menu_item *fs_item;
 static int *fs_types;
 static int *fs_order;
 static int fs_chunk;
@@ -216,22 +218,12 @@ enum {
 static char *fs_dupe(const char *src, int len)
 {
 	char *dst;
-	int display_length;
-	int display_width;
-
-	display_width = (Machine->uiwidth / Machine->uifontwidth);
-	display_length = len;
-
-	if (display_length>display_width)
-		display_length = display_width;
 
 	/* malloc space for string + NULL char + extra char.*/
 	dst = malloc(len+2);
 	if (dst)
 	{
 		strcpy(dst, src);
-		/* copy old char to end of string */
-		dst[len+1]=dst[display_length];
 		/* put in NULL to cut string. */
 		dst[len+1]='\0';
 	}
@@ -251,14 +243,12 @@ static void fs_free(void)
 			switch(fs_types[i]) {
 			case FILESELECT_FILE:
 			case FILESELECT_DIRECTORY:
-				if (fs_item[i] != ui_getstring(UI_emptyslot))
-					free((char *)fs_item[i]);
+				if (fs_item[i].text != ui_getstring(UI_emptyslot))
+					free((char *) fs_item[i].text);
 				break;
 			}
 		}
 		free(fs_item);
-		free(fs_subitem);
-		free(fs_flags);
 		free(fs_types);
 		free(fs_order);
 		fs_chunk = 0;
@@ -268,63 +258,55 @@ static void fs_free(void)
 
 static int fs_alloc(void)
 {
-	if (fs_total < fs_chunk)
+	if (fs_total >= fs_chunk)
 	{
-		fs_order[fs_total] = fs_total;
-		return (fs_total += 1) - 1;
-	}
-	if (fs_chunk)
-	{
-		fs_chunk += 256;
-		logerror("fs_alloc() next chunk (total %d)\n", fs_chunk);
-		fs_item = realloc(fs_item, fs_chunk * sizeof(char **));
-		fs_subitem = realloc(fs_subitem, fs_chunk * sizeof(char **));
-		fs_flags = realloc(fs_flags, fs_chunk * sizeof(char *));
-		fs_types = realloc(fs_types, fs_chunk * sizeof(int));
-		fs_order = realloc(fs_order, fs_chunk * sizeof(int));
-	}
-	else
-	{
-		fs_chunk = 512;
-		logerror("fs_alloc() first chunk %d\n", fs_chunk);
-		fs_item = malloc(fs_chunk * sizeof(char **));
-		fs_subitem = malloc(fs_chunk * sizeof(char **));
-		fs_flags = malloc(fs_chunk * sizeof(char *));
-		fs_types = malloc(fs_chunk * sizeof(int));
-		fs_order = malloc(fs_chunk * sizeof(int));
-	}
+		if (fs_chunk)
+		{
+			fs_chunk += 256;
+			logerror("fs_alloc() next chunk (total %d)\n", fs_chunk);
+			fs_item = realloc(fs_item, fs_chunk * sizeof(*fs_item));
+			fs_types = realloc(fs_types, fs_chunk * sizeof(int));
+			fs_order = realloc(fs_order, fs_chunk * sizeof(int));
+		}
+		else
+		{
+			fs_chunk = 512;
+			logerror("fs_alloc() first chunk %d\n", fs_chunk);
+			fs_item = malloc(fs_chunk * sizeof(char **));
+			fs_types = malloc(fs_chunk * sizeof(int));
+			fs_order = malloc(fs_chunk * sizeof(int));
+		}
 
-	/* what do we do if reallocation fails? raise(SIGABRT) seems a way outa here */
-	if (!fs_item || !fs_subitem || !fs_flags || !fs_types || !fs_order)
-	{
-		logerror("failed to allocate fileselect buffers!\n");
-		exit(-1);
+		/* what do we do if reallocation fails? raise(SIGABRT) seems a way outa here */
+		if (!fs_item || !fs_types || !fs_order)
+		{
+			logerror("failed to allocate fileselect buffers!\n");
+			exit(-1);
+		}
 	}
-
+	
+	memset(&fs_item[fs_total], 0, sizeof(fs_item[fs_total]));
 	fs_order[fs_total] = fs_total;
-	return (fs_total += 1) - 1;
+	return fs_total++;
 }
 
 static int DECL_SPEC fs_compare(const void *p1, const void *p2)
 {
-	const int i1 = *(int *)p1;
-	const int i2 = *(int *)p2;
+	int i1 = *(int *)p1;
+	int i2 = *(int *)p2;
 
 	if (fs_types[i1] != fs_types[i2])
 		return fs_types[i1] - fs_types[i2];
-	return strcmp(fs_item[i1], fs_item[i2]);
-
+	return strcmp(fs_item[i1].text, fs_item[i2].text);
 }
 
-#define MAX_ENTRIES_IN_MENU (SEL_MASK-1)
+#define MAX_ENTRIES_IN_MENU ((1<<12)-2)
 
 static void fs_generate_filelist(void)
 {
 	void *dir;
 	int qsort_start, count, i, n;
-	const char **tmp_menu_item;
-	const char **tmp_menu_subitem;
-	char *tmp_flags;
+	ui_menu_item *tmp_menu_item;
 	int *tmp_types;
 
 	/* just to be safe */
@@ -332,53 +314,40 @@ static void fs_generate_filelist(void)
 
 	/* quit back to main menu option at top */
 	n = fs_alloc();
-	fs_item[n] = ui_getstring(UI_quitfileselector);
-	fs_subitem[n] = 0;
+	fs_item[n].text = ui_getstring(UI_quitfileselector);
 	fs_types[n] = FILESELECT_QUIT;
-	fs_flags[n] = 0;
 
 	/* insert blank line */
 	n = fs_alloc();
-	fs_item[n] = "-";
-	fs_subitem[n] = 0;
+	fs_item[n].text = "-";
 	fs_types[n] = FILESELECT_NONE;
-	fs_flags[n] = 0;
 
 	/* current directory */
 	n = fs_alloc();
-	fs_item[n] = osd_get_cwd();
-	fs_subitem[n] = 0;
+	fs_item[n].text = osd_get_cwd();
 	fs_types[n] = FILESELECT_NONE;
-	fs_flags[n] = 0;
 
 	/* blank line */
 	n = fs_alloc();
-	fs_item[n] = "-";
-	fs_subitem[n] = 0;
+	fs_item[n].text = "-";
 	fs_types[n] = FILESELECT_NONE;
-	fs_flags[n] = 0;
-
 
 	/* file specification */
 	n = fs_alloc();
-	fs_item[n] = ui_getstring(UI_filespecification);
-	fs_subitem[n] = current_filespecification;
+	fs_item[n].text = ui_getstring(UI_filespecification);
+	fs_item[n].subtext = current_filespecification;
 	fs_types[n] = FILESELECT_FILESPEC;
-	fs_flags[n] = 0;
 
 	/* insert blank line */
 	n = fs_alloc();
-	fs_item[n] = "-";
-	fs_subitem[n] = 0;
+	fs_item[n].text = "-";
 	fs_types[n] = FILESELECT_NONE;
-	fs_flags[n] = 0;
 
 	/* insert empty specifier */
 	n = fs_alloc();
-	fs_item[n] = ui_getstring(UI_emptyslot);
-	fs_subitem[n] = "";
+	fs_item[n].text = ui_getstring(UI_emptyslot);
+	fs_item[n].subtext = "";
 	fs_types[n] = FILESELECT_FILE;
-	fs_flags[n] = 0;
 
 	qsort_start = fs_total;
 
@@ -392,10 +361,9 @@ static void fs_generate_filelist(void)
 			if (fs_total >= MAX_ENTRIES_IN_MENU)
 				break;
 			n = fs_alloc();
-			fs_item[n] = osd_get_device_name(i);
-			fs_subitem[n] = fs_device;
+			fs_item[n].text = osd_get_device_name(i);
+			fs_item[n].subtext = fs_device;
 			fs_types[n] = FILESELECT_DEVICE;
-			fs_flags[n] = 0;
 		}
 	}
 
@@ -411,59 +379,44 @@ static void fs_generate_filelist(void)
 			if (fs_total >= MAX_ENTRIES_IN_MENU)
 				break;
 			n = fs_alloc();
-			fs_item[n] = fs_dupe(filename,len);
+			fs_item[n].text = fs_dupe(filename,len);
 			if (filetype)
 			{
 				fs_types[n] = FILESELECT_DIRECTORY;
-				fs_subitem[n] = fs_directory;
+				fs_item[n].subtext = fs_directory;
 			}
 			else
 			{
 				fs_types[n] = FILESELECT_FILE;
-				fs_subitem[n] = fs_file;
+				fs_item[n].subtext = fs_file;
 			}
-			fs_flags[n] = 0;
 			len = osd_dir_get_entry(dir, filename, sizeof(filename), &filetype);
 		}
 		osd_dir_close(dir);
 	}
 
-	n = fs_alloc();
-	fs_item[n] = 0; 		 /* terminate array */
-	fs_subitem[n] = 0;
-	fs_types[n] = FILESELECT_NONE;
-	fs_flags[n] = 0;
-
 	logerror("fs_generate_filelist: sorting %d entries\n", n - qsort_start);
 	qsort(&fs_order[qsort_start], n - qsort_start, sizeof(int), fs_compare);
 
-	tmp_menu_item = malloc(n * sizeof(char *));
-	tmp_menu_subitem = malloc(n * sizeof(char *));
-	tmp_flags = malloc(n * sizeof(char));
+	tmp_menu_item = malloc(n * sizeof(*tmp_menu_item));
 	tmp_types = malloc(n * sizeof(int));
 
 	/* no space to sort? have to leave now... */
-	if (!tmp_menu_item || !tmp_menu_subitem || !tmp_flags || !tmp_types )
+	if (!tmp_menu_item || !tmp_types )
 		return;
 
 	/* copy items in original order */
-	memcpy(tmp_menu_item, fs_item, n * sizeof(char *));
-	memcpy(tmp_menu_subitem, fs_subitem, n * sizeof(char *));
-	memcpy(tmp_flags, fs_flags, n * sizeof(char));
+	memcpy(tmp_menu_item, fs_item, n * sizeof(*tmp_menu_item));
 	memcpy(tmp_types, fs_types, n * sizeof(int));
 
 	for (i = qsort_start; i < n; i++)
 	{
 		int j = fs_order[i];
 		fs_item[i] = tmp_menu_item[j];
-		fs_subitem[i] = tmp_menu_subitem[j];
-		fs_flags[i] = tmp_flags[j];
 		fs_types[i] = tmp_types[j];
 	}
 
 	free(tmp_menu_item);
-	free(tmp_menu_subitem);
-	free(tmp_flags);
 	free(tmp_types);
 }
 
@@ -472,7 +425,7 @@ static void fs_generate_filelist(void)
 /* and mask to get bits */
 #define SEL_BITS_MASK			(~SEL_MASK)
 
-static int fileselect(struct mame_bitmap *bitmap, int selected, const char *default_selection)
+static int fileselect(int selected, const char *default_selection)
 {
 	int sel, total, arrowize;
 	int visible;
@@ -539,10 +492,10 @@ static int fileselect(struct mame_bitmap *bitmap, int selected, const char *defa
 			char *name;
 
 			/* change menu item to show this filename */
-			fs_subitem[sel & SEL_MASK] = current_filespecification;
+			fs_item[sel & SEL_MASK].subtext = current_filespecification;
 
 			/* display the menu */
-			ui_displaymenu(bitmap, fs_item, fs_subitem, fs_flags, sel & SEL_MASK, 3);
+			ui_draw_menu(fs_item, fs_total, sel & SEL_MASK);
 
 			/* update string with any keys that are pressed */
 			name = update_entered_string();
@@ -566,10 +519,10 @@ static int fileselect(struct mame_bitmap *bitmap, int selected, const char *defa
 		}
 
 
-		ui_displaymenu(bitmap, fs_item, fs_subitem, fs_flags, sel, arrowize);
+		ui_draw_menu(fs_item, fs_total, sel);
 
 		/* borrowed from usrintrf.c */
-		visible = Machine->uiheight / (3 * Machine->uifontheight /2) -1;
+		visible = 0; //Machine->uiheight / (3 * Machine->uifontheight /2) -1;
 
 		if (input_ui_pressed_repeat(IPT_UI_DOWN, 8))
 		{
@@ -631,14 +584,14 @@ static int fileselect(struct mame_bitmap *bitmap, int selected, const char *defa
 
 				case FILESELECT_FILE:
 					/* copy filename */
-					if (fs_item[sel] == ui_getstring(UI_emptyslot))
+					if (fs_item[sel].text == ui_getstring(UI_emptyslot))
 					{
 						entered_filename[0] = '\0';
 					}
 					else
 					{
 						strncpyz(entered_filename, osd_get_cwd(), sizeof(entered_filename) / sizeof(entered_filename[0]));
-						strncatz(entered_filename, fs_item[sel], sizeof(entered_filename) / sizeof(entered_filename[0]));
+						strncatz(entered_filename, fs_item[sel].text, sizeof(entered_filename) / sizeof(entered_filename[0]));
 					}
 
 					fs_free();
@@ -647,7 +600,7 @@ static int fileselect(struct mame_bitmap *bitmap, int selected, const char *defa
 
 				case FILESELECT_DIRECTORY:
 					/*	fs_chdir(fs_item[sel]); */
-					osd_change_directory(fs_item[sel]);
+					osd_change_directory(fs_item[sel].text);
 					fs_free();
 
 					schedule_full_refresh();
@@ -655,7 +608,7 @@ static int fileselect(struct mame_bitmap *bitmap, int selected, const char *defa
 
 				case FILESELECT_DEVICE:
 					/*	 fs_chdir("/"); */
-					osd_change_device(fs_item[sel]);
+					osd_change_device(fs_item[sel].text);
 					fs_free();
 					schedule_full_refresh();
 					break;
@@ -689,15 +642,13 @@ static int fileselect(struct mame_bitmap *bitmap, int selected, const char *defa
 	return sel + 1;
 }
 
-int filemanager(struct mame_bitmap *bitmap, int selected)
+int filemanager(int selected)
 {
 	static int previous_sel;
 	const char *name;
-	const char *menu_item[40];
-	const char *menu_subitem[40];
+	ui_menu_item menu_items[40];
 	const struct IODevice *devices[40];
 	int ids[40];
-	char flag[40];
 	char names[40][64];
 	int sel, total, arrowize, id;
 	const struct IODevice *dev;
@@ -713,11 +664,12 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 		{
 			img = image_from_device_and_index(dev, id);
 			strcpy( names[total], image_typename_id(img) );
-			menu_item[total] = (names[total]) ? names[total] : "---";
 			name = image_filename(img);
-			menu_subitem[total] = (name) ? name : "---";
 
-			flag[total] = 0;
+			memset(&menu_items[total], 0, sizeof(menu_items[total]));
+			menu_items[total].text = (names[total]) ? names[total] : "---";
+			menu_items[total].subtext = (name) ? name : "---";
+
 			devices[total] = dev;
 			ids[total] = id;
 
@@ -730,7 +682,7 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 	if (sel & (2 << SEL_BITS))
 	{
 		img = image_from_device_and_index(devices[previous_sel & SEL_MASK], ids[previous_sel & SEL_MASK]);
-		sel = fileselect(bitmap, selected & ~(2 << SEL_BITS), image_filename(img));
+		sel = fileselect(selected & ~(2 << SEL_BITS), image_filename(img));
 		if (sel != 0 && sel != -1 && sel!=-2)
 			return sel | (2 << SEL_BITS);
 
@@ -749,17 +701,12 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 		sel = previous_sel;
 
 		/* change menu item to show this filename */
-		menu_subitem[sel & SEL_MASK] = entered_filename;
-
+		menu_items[sel & SEL_MASK].subtext = entered_filename;
 	}
 
-	menu_item[total] = ui_getstring(UI_returntomain);
-	menu_subitem[total] = 0;
-	flag[total] = 0;
+	memset(&menu_items[total], 0, sizeof(menu_items[total]));
+	menu_items[total].text = ui_getstring(UI_returntomain);
 	total++;
-	menu_item[total] = 0;			   /* terminate array */
-	menu_subitem[total] = 0;
-	flag[total] = 0;
 
 	arrowize = 0;
 	if (sel < total - 1)
@@ -768,10 +715,10 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 	if (sel & (1 << SEL_BITS))	/* are we waiting for a new key? */
 	{
 		/* change menu item to show this filename */
-		menu_subitem[sel & SEL_MASK] = entered_filename;
+		menu_items[sel & SEL_MASK].subtext = entered_filename;
 
 		/* display the menu */
-		ui_displaymenu(bitmap, menu_item, menu_subitem, flag, sel & SEL_MASK, 3);
+		ui_draw_menu(menu_items, total, sel & SEL_MASK);
 
 		/* update string with any keys that are pressed */
 		name = update_entered_string();
@@ -789,7 +736,7 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 		return sel + 1;
 	}
 
-	ui_displaymenu(bitmap, menu_item, menu_subitem, flag, sel, arrowize);
+	ui_draw_menu(menu_items, total, sel);
 
 	if (input_ui_pressed_repeat(IPT_UI_DOWN, 8))
 		sel = (sel + 1) % total;
@@ -835,10 +782,10 @@ int filemanager(struct mame_bitmap *bitmap, int selected)
 		else
 		{
 			{
-				if (strcmp(menu_subitem[sel], "---") == 0)
+				if (strcmp(menu_items[sel].text, "---") == 0)
 					entered_filename[0] = '\0';
 				else
-					strcpy(entered_filename, menu_subitem[sel]);
+					strcpy(entered_filename, menu_items[sel].text);
 				start_enter_string(entered_filename, (sizeof(entered_filename) / sizeof(entered_filename[0])) - 1, 1);
 
 				/* flush keyboard buffer */

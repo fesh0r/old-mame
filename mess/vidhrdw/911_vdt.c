@@ -19,7 +19,7 @@ TODO:
 
 #define MAX_VDT 1
 
-static struct GfxLayout fontlayout_7bit =
+static gfx_layout fontlayout_7bit =
 {
 	7, 10,			/* 7*10 characters */
 	128,			/* 128 characters */
@@ -30,7 +30,7 @@ static struct GfxLayout fontlayout_7bit =
 	10*8 			/* every char takes 10 consecutive bytes */
 };
 
-static struct GfxLayout fontlayout_8bit =
+static gfx_layout fontlayout_8bit =
 {
 	7, 10,			/* 7*10 characters */
 	128,			/* 128 characters */
@@ -41,7 +41,7 @@ static struct GfxLayout fontlayout_8bit =
 	10*8 			/* every char takes 10 consecutive bytes */
 };
 
-struct GfxDecodeInfo vdt911_gfxdecodeinfo[] =
+gfx_decode vdt911_gfxdecodeinfo[] =
 {	/* array must use same order as vdt911_model_t!!! */
 	/* US */
 	{ vdt911_chr_region, vdt911_US_chr_offset, &fontlayout_7bit, 0, 4 },
@@ -466,9 +466,9 @@ WRITE8_HANDLER(vdt911_0_cru_w)
 /*
 	Video refresh
 */
-void vdt911_refresh(struct mame_bitmap *bitmap, int unit, int x, int y)
+void vdt911_refresh(mame_bitmap *bitmap, int unit, int x, int y)
 {
-	const struct GfxElement *gfx = Machine->gfx[vdt[unit].model];
+	const gfx_element *gfx = Machine->gfx[vdt[unit].model];
 	int height = (vdt[unit].screen_size == char_960) ? 12 : /*25*/24;
 	int use_8bit_charcodes = USES_8BIT_CHARCODES(unit);
 	int address = 0;
@@ -481,7 +481,7 @@ void vdt911_refresh(struct mame_bitmap *bitmap, int unit, int x, int y)
 
 	if (! vdt[unit].display_enable)
 	{
-		struct rectangle my_rect;
+		rectangle my_rect;
 
 		my_rect.min_x = x;
 		my_rect.max_x = x + 80*7 - 1;

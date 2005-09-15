@@ -87,8 +87,6 @@ VIDEO_UPDATE( pet )
 			}
 		}
 	}
-
-	statetext_display(bitmap);
 }
 
 //  commodore pet crtc video circuit for 40 columns display (standard crtc6845)
@@ -114,8 +112,6 @@ VIDEO_UPDATE( pet40 )
 			}
 		}
 	}
-
-	statetext_display(bitmap);
 }
 
 // special hardware to allow crtc programmed for pet 40 column mode! to generate
@@ -123,7 +119,7 @@ VIDEO_UPDATE( pet40 )
 VIDEO_UPDATE( pet80 )
 {
 	int x, y, i;
-	struct rectangle rect;
+	rectangle rect;
 	int w=crtc6845_get_char_columns(crtc6845);
 	int h=crtc6845_get_char_lines(crtc6845);
 	int height=crtc6845_get_char_height(crtc6845);
@@ -152,6 +148,5 @@ VIDEO_UPDATE( pet80 )
 			}
 		}
 	}
-	statetext_display(bitmap);
 }
 

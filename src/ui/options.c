@@ -348,7 +348,6 @@ static const REG_OPTION regGameOpts[] =
 	{ "autorol",                RO_BOOL,    offsetof(options_type, auto_rol),                        "0" },
 	{ "flipx",                  RO_BOOL,    offsetof(options_type, flipx),                           "0" },
 	{ "flipy",                  RO_BOOL,    offsetof(options_type, flipy),                           "0" },
-	{ "debug_resolution",       RO_STRING,  offsetof(options_type, debugres),                        "auto" },
 	{ "gamma",                  RO_DOUBLE,  offsetof(options_type, f_gamma_correct),                 "1.0" },
 
 	// vector
@@ -361,7 +360,6 @@ static const REG_OPTION regGameOpts[] =
 	// sound
 	{ "samplerate",             RO_INT,     offsetof(options_type, samplerate),                      "44100" },
 	{ "samples",                RO_BOOL,    offsetof(options_type, use_samples),                     "1" },
-	{ "resamplefilter",         RO_BOOL,    offsetof(options_type, use_filter),                      "1" },
 	{ "sound",                  RO_BOOL,    offsetof(options_type, enable_sound),                    "1" },
 	{ "volume",                 RO_INT,     offsetof(options_type, attenuation),                     "0" },
 	{ "audio_latency",          RO_INT,     offsetof(options_type, audio_latency),                   "1" },
@@ -383,10 +381,11 @@ static const REG_OPTION regGameOpts[] =
 	{ "leds",                   RO_BOOL,    offsetof(options_type, leds),                            "0" },
 	{ "led_mode",               RO_STRING,  offsetof(options_type, ledmode),                         "ps/2" },
 	{ "high_priority",          RO_BOOL,    offsetof(options_type, high_priority),                   "0" },
-	{ "skip_disclaimer",        RO_BOOL,    offsetof(options_type, skip_disclaimer),                 "0" },
 	{ "skip_gameinfo",          RO_BOOL,    offsetof(options_type, skip_gameinfo),                   "0" },
+#ifdef MESS
+	{ "skip_warnings",          RO_BOOL,    offsetof(options_type, skip_warnings),     "0" },
+#endif
 	{ "skip_validitychecks",    RO_BOOL,    offsetof(options_type, skip_validitychecks),             "1" },
-	{ "crconly",                RO_BOOL,    offsetof(options_type, crc_only),                        "0" },
 	{ "bios",                   RO_INT,     offsetof(options_type, bios),                            "0" },
 
 #ifdef MESS
@@ -428,8 +427,10 @@ static const REG_OPTION regGameOpts[] =
 // options in mame32.ini that we'll never override with with game-specific options
 static const REG_OPTION global_game_options[] =
 {
-	{"skip_disclaimer",         RO_BOOL,    offsetof(settings_type, skip_disclaimer),   "0" },
 	{"skip_gameinfo",           RO_BOOL,    offsetof(settings_type, skip_gameinfo),     "0" },
+#ifdef MESS
+	{"skip_warnings",           RO_BOOL,    offsetof(settings_type, skip_warnings),     "0" },
+#endif
 	{"skip_validitychecks",     RO_BOOL,    offsetof(settings_type, skip_validitychecks),     "0" },
 	{"high_priority",           RO_BOOL,    offsetof(settings_type, high_priority),     "0" },
 
@@ -453,13 +454,6 @@ static const REG_OPTION global_game_options[] =
 	{ "snapshot_directory",     RO_STRING,  offsetof(settings_type, imgdir),           "snap" },
 	{ "diff_directory",         RO_STRING,  offsetof(settings_type, diffdir),          "diff" },
 	{ "cheat_file",             RO_STRING,  offsetof(settings_type, cheat_filename),   "cheat.dat" },
-#ifdef MESS
-	{ "sysinfo_file",           RO_STRING,  offsetof(settings_type, history_filename), "sysinfo.dat" },
-	{ "messinfo_file",          RO_STRING,  offsetof(settings_type, mameinfo_filename),"messinfo.dat" },
-#else
-	{ "history_file",           RO_STRING,  offsetof(settings_type, history_filename), "history.dat" },
-	{ "mameinfo_file",          RO_STRING,  offsetof(settings_type, mameinfo_filename),"mameinfo.dat" },
-#endif
 	{ "ctrlr_directory",        RO_STRING,  offsetof(settings_type, ctrlrdir),         "ctrlr" },
 	{ "" }
 
@@ -2011,134 +2005,134 @@ void GetTextPlayTime(int driver_index,char *buf)
 }
 
 
-input_seq_t* Get_ui_key_up(void)
+input_seq* Get_ui_key_up(void)
 {
 	return &settings.ui_key_up.is;
 }
-input_seq_t* Get_ui_key_down(void)
+input_seq* Get_ui_key_down(void)
 {
 	return &settings.ui_key_down.is;
 }
-input_seq_t* Get_ui_key_left(void)
+input_seq* Get_ui_key_left(void)
 {
 	return &settings.ui_key_left.is;
 }
-input_seq_t* Get_ui_key_right(void)
+input_seq* Get_ui_key_right(void)
 {
 	return &settings.ui_key_right.is;
 }
-input_seq_t* Get_ui_key_start(void)
+input_seq* Get_ui_key_start(void)
 {
 	return &settings.ui_key_start.is;
 }
-input_seq_t* Get_ui_key_pgup(void)
+input_seq* Get_ui_key_pgup(void)
 {
 	return &settings.ui_key_pgup.is;
 }
-input_seq_t* Get_ui_key_pgdwn(void)
+input_seq* Get_ui_key_pgdwn(void)
 {
 	return &settings.ui_key_pgdwn.is;
 }
-input_seq_t* Get_ui_key_home(void)
+input_seq* Get_ui_key_home(void)
 {
 	return &settings.ui_key_home.is;
 }
-input_seq_t* Get_ui_key_end(void)
+input_seq* Get_ui_key_end(void)
 {
 	return &settings.ui_key_end.is;
 }
-input_seq_t* Get_ui_key_ss_change(void)
+input_seq* Get_ui_key_ss_change(void)
 {
 	return &settings.ui_key_ss_change.is;
 }
-input_seq_t* Get_ui_key_history_up(void)
+input_seq* Get_ui_key_history_up(void)
 {
 	return &settings.ui_key_history_up.is;
 }
-input_seq_t* Get_ui_key_history_down(void)
+input_seq* Get_ui_key_history_down(void)
 {
 	return &settings.ui_key_history_down.is;
 }
 
 
-input_seq_t* Get_ui_key_context_filters(void)
+input_seq* Get_ui_key_context_filters(void)
 {
 	return &settings.ui_key_context_filters.is;
 }
-input_seq_t* Get_ui_key_select_random(void)
+input_seq* Get_ui_key_select_random(void)
 {
 	return &settings.ui_key_select_random.is;
 }
-input_seq_t* Get_ui_key_game_audit(void)
+input_seq* Get_ui_key_game_audit(void)
 {
 	return &settings.ui_key_game_audit.is;
 }
-input_seq_t* Get_ui_key_game_properties(void)
+input_seq* Get_ui_key_game_properties(void)
 {
 	return &settings.ui_key_game_properties.is;
 }
-input_seq_t* Get_ui_key_help_contents(void)
+input_seq* Get_ui_key_help_contents(void)
 {
 	return &settings.ui_key_help_contents.is;
 }
-input_seq_t* Get_ui_key_update_gamelist(void)
+input_seq* Get_ui_key_update_gamelist(void)
 {
 	return &settings.ui_key_update_gamelist.is;
 }
-input_seq_t* Get_ui_key_view_folders(void)
+input_seq* Get_ui_key_view_folders(void)
 {
 	return &settings.ui_key_view_folders.is;
 }
-input_seq_t* Get_ui_key_view_fullscreen(void)
+input_seq* Get_ui_key_view_fullscreen(void)
 {
 	return &settings.ui_key_view_fullscreen.is;
 }
-input_seq_t* Get_ui_key_view_pagetab(void)
+input_seq* Get_ui_key_view_pagetab(void)
 {
 	return &settings.ui_key_view_pagetab.is;
 }
-input_seq_t* Get_ui_key_view_picture_area(void)
+input_seq* Get_ui_key_view_picture_area(void)
 {
 	return &settings.ui_key_view_picture_area.is;
 }
-input_seq_t* Get_ui_key_view_status(void)
+input_seq* Get_ui_key_view_status(void)
 {
 	return &settings.ui_key_view_status.is;
 }
-input_seq_t* Get_ui_key_view_toolbars(void)
+input_seq* Get_ui_key_view_toolbars(void)
 {
 	return &settings.ui_key_view_toolbars.is;
 }
 
-input_seq_t* Get_ui_key_view_tab_cabinet(void)
+input_seq* Get_ui_key_view_tab_cabinet(void)
 {
 	return &settings.ui_key_view_tab_cabinet.is;
 }
-input_seq_t* Get_ui_key_view_tab_cpanel(void)
+input_seq* Get_ui_key_view_tab_cpanel(void)
 {
 	return &settings.ui_key_view_tab_cpanel.is;
 }
-input_seq_t* Get_ui_key_view_tab_flyer(void)
+input_seq* Get_ui_key_view_tab_flyer(void)
 {
 	return &settings.ui_key_view_tab_flyer.is;
 }
-input_seq_t* Get_ui_key_view_tab_history(void)
+input_seq* Get_ui_key_view_tab_history(void)
 {
 	return &settings.ui_key_view_tab_history.is;
 }
-input_seq_t* Get_ui_key_view_tab_marquee(void)
+input_seq* Get_ui_key_view_tab_marquee(void)
 {
 	return &settings.ui_key_view_tab_marquee.is;
 }
-input_seq_t* Get_ui_key_view_tab_screenshot(void)
+input_seq* Get_ui_key_view_tab_screenshot(void)
 {
 	return &settings.ui_key_view_tab_screenshot.is;
 }
-input_seq_t* Get_ui_key_view_tab_title(void)
+input_seq* Get_ui_key_view_tab_title(void)
 {
 	return &settings.ui_key_view_tab_title.is;
 }
-input_seq_t* Get_ui_key_quit(void)
+input_seq* Get_ui_key_quit(void)
 {
 	return &settings.ui_key_quit.is;
 }
@@ -2478,7 +2472,7 @@ static void KeySeqEncodeString(void *data, char* str)
 static void KeySeqDecodeString(const char *str, void* data)
 {
 	KeySeq *ks = (KeySeq*)data;
-	input_seq_t *is = &(ks->is);
+	input_seq *is = &(ks->is);
 
 	FreeIfAllocated(&ks->seq_string);
 	ks->seq_string = strdup(str);

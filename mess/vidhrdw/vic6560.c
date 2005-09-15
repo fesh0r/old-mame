@@ -89,7 +89,7 @@ UINT8 vic6560[16];
 
 bool vic6560_pal;
 
-static struct mame_bitmap *vic6560_bitmap;
+static mame_bitmap *vic6560_bitmap;
 static int rasterline = 0, lastline = 0;
 static void vic6560_drawlines (int start, int last);
 
@@ -111,7 +111,7 @@ static UINT16 mono[2], monoinverted[2], multi[4], multiinverted[4];
 /* transparent, white, black */
 static UINT32 pointercolortable[3] =
 {0};
-static struct GfxLayout pointerlayout =
+static gfx_layout pointerlayout =
 {
 	8, 8,
 	1,
@@ -128,7 +128,7 @@ static UINT8 pointermask[] =
 	0xf0, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00	/* whitemask */
 };
 
-static struct GfxElement *pointerelement;
+static gfx_element *pointerelement;
 
 static void vic656x_init (void)
 {
@@ -282,7 +282,7 @@ WRITE8_HANDLER ( vic6560_port_w )
 	return val;
 }
 
-static int DOCLIP (struct rectangle *r1, const struct rectangle *r2)
+static int DOCLIP (rectangle *r1, const rectangle *r2)
 {
 	if (r1->min_x > r2->max_x)
 		return 0;
@@ -344,8 +344,8 @@ static void vic6560_draw_character_multi (int ybegin, int yend,
 
 
 #ifndef GFX
-INLINE void vic6560_draw_pointer (struct mame_bitmap *bitmap,
-								  struct rectangle *visible, int xoff, int yoff)
+INLINE void vic6560_draw_pointer (mame_bitmap *bitmap,
+								  rectangle *visible, int xoff, int yoff)
 {
 	/* this is a a static graphical object */
 	/* should be easy to convert to gfx_element!? */
@@ -463,37 +463,9 @@ static void vic6560_drawlines (int first, int last)
 	}
 }
 
-static void vic6560_draw_text (struct mame_bitmap *bitmap, char *text, int *y)
-{
-	int x, x0, y1v, width = (Machine->visible_area.max_x -
-							 Machine->visible_area.min_x) / Machine->uifont->width;
-
-	if (text[0] != 0)
-	{
-		x = strlen (text);
-		*y -= Machine->uifont->height * ((x + width - 1) / width);
-		y1v = *y + Machine->uifont->height;
-		x = 0;
-		while (text[x])
-		{
-			for (x0 = Machine->visible_area.min_x;
-				 text[x] && (x0 < Machine->visible_area.max_x -
-							 Machine->uifont->width);
-				 x++, x0 += Machine->uifont->width)
-			{
-				drawgfx (bitmap, Machine->uifont, text[x], 0, 0, 0, x0, y1v, 0,
-						 TRANSPARENCY_NONE, 0);
-			}
-			y1v += Machine->uifont->height;
-		}
-	}
-}
-
 INTERRUPT_GEN( vic656x_raster_interrupt )
 {
-	struct rectangle r;
-	int y;
-	char text[50];
+	rectangle r;
 
 	rasterline++;
 	if (rasterline >= vic656x_lines)
@@ -522,19 +494,6 @@ INTERRUPT_GEN( vic656x_raster_interrupt )
 #endif
 			}
 		}
-		y = Machine->visible_area.max_y + 1 - Machine->uifont->height;
-
-		vc20_tape_status (text, sizeof (text));
-		vic6560_draw_text (vic6560_bitmap, text, &y);
-#ifdef VC1541
-		vc1541_drive_status (text, sizeof (text));
-#else
-		cbm_drive_0_status (text, sizeof (text));
-#endif
-		vic6560_draw_text (vic6560_bitmap, text, &y);
-
-		cbm_drive_1_status (text, sizeof (text));
-		vic6560_draw_text (vic6560_bitmap, text, &y);
 	}
 }
 

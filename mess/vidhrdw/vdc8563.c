@@ -410,10 +410,10 @@ static void vdc8563_time(void)
 	}
 }
 
-static void vdc8563_monotext_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
+static void vdc8563_monotext_screenrefresh (mame_bitmap *bitmap, int full_refresh)
 {
 	int x, y, i;
-	struct rectangle rect;
+	rectangle rect;
 	int w=CRTC6845_CHAR_COLUMNS;
 	int h=CRTC6845_CHAR_LINES;
 	int height=CRTC6845_CHAR_HEIGHT;
@@ -450,10 +450,10 @@ static void vdc8563_monotext_screenrefresh (struct mame_bitmap *bitmap, int full
 	}
 }
 
-static void vdc8563_text_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
+static void vdc8563_text_screenrefresh (mame_bitmap *bitmap, int full_refresh)
 {
 	int x, y, i, j;
-	struct rectangle rect;
+	rectangle rect;
 	int w=CRTC6845_CHAR_COLUMNS;
 	int h=CRTC6845_CHAR_LINES;
 	int height=CRTC6845_CHAR_HEIGHT;
@@ -494,10 +494,10 @@ static void vdc8563_text_screenrefresh (struct mame_bitmap *bitmap, int full_ref
 	}
 }
 
-static void vdc8563_graphic_screenrefresh (struct mame_bitmap *bitmap, int full_refresh)
+static void vdc8563_graphic_screenrefresh (mame_bitmap *bitmap, int full_refresh)
 {
 	int x, y, i, j, k;
-	struct rectangle rect;
+	rectangle rect;
 	int w=CRTC6845_CHAR_COLUMNS;
 	int h=CRTC6845_CHAR_LINES;
 	int height=CRTC6845_CHAR_HEIGHT;
@@ -566,20 +566,4 @@ VIDEO_UPDATE( vdc8563 )
 	}
 
 	vdc.changed=0;
-
-	statetext_display(bitmap);
-}
-
-extern void vdc8563_state (void)
-{
-#if VERBOSE_DBG
-	char text[50]="";
-#if 1
-	snprintf (text, sizeof (text), "vdc %.2x", vdc.reg[0x1b]);
-#else
-	snprintf (text, sizeof (text), "enable:%.2x occured:%.2x",
-			  vdc.reg[0x1a], vdc.reg[0x19]);
-#endif
-	statetext_display_text (text);
-#endif
 }

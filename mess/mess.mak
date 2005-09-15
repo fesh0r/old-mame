@@ -151,7 +151,7 @@ SOUNDS+=CUSTOM@
 SOUNDS+=SAMPLES@
 SOUNDS+=DAC@
 #SOUNDS+=DMADAC@
-#SOUNDS+=DISCRETE@
+SOUNDS+=DISCRETE@
 SOUNDS+=AY8910@
 SOUNDS+=YM2203@
 # enable only one of the following two
@@ -500,7 +500,8 @@ $(OBJ)/apple.a:   \
 	$(OBJ)/mess/systems/apple1.o		\
 	$(OBJ)/mess/vidhrdw/apple3.o		\
 	$(OBJ)/mess/machine/apple3.o		\
-	$(OBJ)/mess/systems/apple3.o
+	$(OBJ)/mess/systems/apple3.o		\
+	$(OBJ)/mess/machine/ncr5380.o
 
 
 $(OBJ)/avigo.a: \
@@ -601,9 +602,10 @@ $(OBJ)/p2000.a:    \
 	$(OBJ)/mess/systems/p2000t.o	 \
 	$(OBJ)/mess/machine/p2000t.o	 \
 	$(OBJ)/mess/machine/mc6850.o	 \
-	$(OBJ)/mess/vidhrdw/uk101.o	 \
-	$(OBJ)/mess/systems/uk101.o	\
-	$(OBJ)/mess/machine/uk101.o	 \
+	$(OBJ)/mess/vidhrdw/osi.o	 \
+	$(OBJ)/mess/sndhrdw/osi.o	 \
+	$(OBJ)/mess/systems/osi.o	\
+	$(OBJ)/mess/machine/osi.o	 \
 
 $(OBJ)/amstrad.a:  \
 	$(OBJ)/mess/systems/amstrad.o  \
@@ -854,7 +856,8 @@ $(OBJ)/dai.a:     \
 
 $(OBJ)/concept.a:  \
 	$(OBJ)/mess/systems/concept.o   \
-	$(OBJ)/mess/machine/concept.o
+	$(OBJ)/mess/machine/concept.o	\
+	$(OBJ)/mess/machine/corvushd.o
 
 $(OBJ)/bandai.a:     \
 	$(OBJ)/mess/systems/wswan.o   \
@@ -935,8 +938,8 @@ COREOBJS +=							\
 	$(OBJ)/mess/artworkx.o			\
 	$(OBJ)/mess/mesintrf.o			\
 	$(OBJ)/mess/filemngr.o			\
-	$(OBJ)/mess/compcfg.o			\
 	$(OBJ)/mess/tapectrl.o			\
+	$(OBJ)/mess/compcfg.o			\
 	$(OBJ)/mess/utils.o				\
 	$(OBJ)/mess/eventlst.o			\
 	$(OBJ)/mess/videomap.o			\

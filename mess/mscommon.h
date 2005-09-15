@@ -28,7 +28,7 @@ struct terminal *terminal_create(
 	int (*getcursorcode)(int original_code),
 	int num_cols, int num_rows);
 
-void terminal_draw(struct mame_bitmap *dest, const struct rectangle *cliprect,
+void terminal_draw(mame_bitmap *dest, const rectangle *cliprect,
 	struct terminal *terminal);
 void terminal_putchar(struct terminal *terminal, int x, int y, int ch);
 int terminal_getchar(struct terminal *terminal, int x, int y);
@@ -52,7 +52,7 @@ void terminal_clear(struct terminal *terminal);
  * the value of 'valueorcolor' is a mask when lowercase letters are in the led
  * string or is a color when '1' characters are in the led string
  */
-void draw_led(struct mame_bitmap *bitmap, const char *led, int valueorcolor, int x, int y);
+void draw_led(mame_bitmap *bitmap, const char *led, int valueorcolor, int x, int y);
 
 /* a radius two led:
  *
@@ -84,21 +84,6 @@ int	gregorian_is_leap_year(int year);
 
 /* months are one counted */
 int gregorian_days_in_month(int month, int year);
-
-/***************************************************************************
-
-	PeT's state text code
-
-***************************************************************************/
-
-/* call this at init time to add your state functions */
-void statetext_add_function(void (*function)(void));
-
-/* call this in your state function to output text */
-void statetext_display_text(const char *text);
-
-/* call this at last after updating your frame */
-void statetext_display(struct mame_bitmap *bitmap);
 
 /**************************************************************************/
 

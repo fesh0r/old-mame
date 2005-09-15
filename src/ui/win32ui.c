@@ -298,7 +298,7 @@ static BOOL             CommonFileDialog(common_file_dialog_proc cfd,char *filen
 static void             MamePlayGame(void);
 static void             MamePlayGameWithOptions(int nGame);
 static INT_PTR CALLBACK LoadProgressDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam);
-static int UpdateLoadProgress(const char* name, const struct rom_load_data *romdata);
+static int UpdateLoadProgress(const char* name, const rom_load_data *romdata);
 static BOOL GameCheck(void);
 static BOOL FolderCheck(void);
 
@@ -511,7 +511,7 @@ static PDIRWATCHER s_pWatcher;
 static struct OSDJoystick* g_pJoyGUI = NULL;
 
 /* store current keyboard state (in internal codes) here */
-static input_code_t keyboard_state[ __code_max ]; /* __code_max #defines the number of internal key_codes */
+static input_code keyboard_state[ __code_max ]; /* __code_max #defines the number of internal key_codes */
 
 /* table copied from windows/inputs.c */
 // table entry indices
@@ -523,9 +523,9 @@ static input_code_t keyboard_state[ __code_max ]; /* __code_max #defines the num
 typedef struct
 {
 	char		name[40];	    // functionality name (optional)
-	input_seq_t	is;				// the input sequence (the keys pressed)
+	input_seq	is;				// the input sequence (the keys pressed)
 	UINT		func_id;        // the identifier
-	input_seq_t* (*getiniptr)(void);// pointer to function to get the value from .ini file
+	input_seq* (*getiniptr)(void);// pointer to function to get the value from .ini file
 } GUISequence;
 
 static GUISequence GUISequenceControl[]=
@@ -738,7 +738,7 @@ const char* column_names[COLUMN_MAX] =
 
 /* a tiny compile is without Neogeo games */
 #if (defined(NEOFREE) || defined(TINY_COMPILE)) && !defined(NEOMAME)
-struct GameDriver driver_neogeo =
+game_driver driver_neogeo =
 {
 	__FILE__,
 	0,
@@ -758,7 +758,7 @@ struct GameDriver driver_neogeo =
 	NOT_A_DRIVER,
 };
 #else
-extern struct GameDriver driver_neogeo;
+extern game_driver driver_neogeo;
 #endif
 
 /***************************************************************************
@@ -826,17 +826,10 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -hiscore_directory \"%s\"",  GetHiDir());
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -state_directory \"%s\"",    GetStateDir());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -artwork_directory \"%s\"",  GetArtDir());
+	sprintf(&pCmdLine[strlen(pCmdLine)], " -artwork_directory \"%s\"",	GetArtDir());
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -snapshot_directory \"%s\"", GetImgDir());
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -diff_directory \"%s\"",     GetDiffDir());
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -cheat_file \"%s\"",         GetCheatFileName());
-#ifdef MESS
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -sysinfo_file \"%s\"",       GetHistoryFileName());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -messinfo_file \"%s\"",      GetMAMEInfoFileName());
-#else
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -history_file \"%s\"",       GetHistoryFileName());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -mameinfo_file \"%s\"",      GetMAMEInfoFileName());
-#endif
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -ctrlr_directory \"%s\"",    GetCtrlrDir());
 
 	/* video */
@@ -931,8 +924,6 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -%sflipx",pOpts->flipx ? "" : "no");
 	if (pOpts->flipy)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -%sflipy",pOpts->flipy ? "" : "no");
-	if (strcmp(pOpts->debugres,"auto") != 0)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -dr %s",       pOpts->debugres); 
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -gamma %f",                  pOpts->f_gamma_correct);
 	if (strlen(pOpts->screen) > 0)
 	{
@@ -951,7 +942,6 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	/* sound */
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -sr %d",                     pOpts->samplerate);
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%ssamples",                 pOpts->use_samples     ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sresamplefilter",          pOpts->use_filter      ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%ssound",                   pOpts->enable_sound    ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -vol %d",                    pOpts->attenuation);
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -audio_latency %i",          pOpts->audio_latency);
@@ -985,12 +975,12 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	if (pOpts->old_timing)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -rdtsc");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sleds",                    pOpts->leds            ? "" : "no");
-	if (pOpts->crc_only)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -crconly");		
-	if (pOpts->skip_disclaimer)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -skip_disclaimer");
 	if (pOpts->skip_gameinfo)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -skip_gameinfo");
+#ifdef MESS
+	if (pOpts->skip_warnings)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -skip_warnings");
+#endif
 	if (pOpts->skip_validitychecks)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -skip_validitychecks");
 	if (pOpts->high_priority)
@@ -1714,7 +1704,7 @@ int GetMinimumScreenShotWindowWidth(void)
 }
 
 
-int GetDriverIndex(const struct GameDriver *driver)
+int GetDriverIndex(const game_driver *driver)
 {
 	return GetGameNameIndex(driver->name);
 }
@@ -2120,8 +2110,8 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 
 	for (i = 0; i < NUM_GUI_SEQUENCES; i++)
 	{
-		input_seq_t *is1;
-		input_seq_t *is2;
+		input_seq *is1;
+		input_seq *is2;
 		is1 = &(GUISequenceControl[i].is);
 		is2 = GUISequenceControl[i].getiniptr();
 		seq_copy(is1, is2);
@@ -2581,7 +2571,7 @@ static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lPa
 			char szFileName[32];
 			char *s;
 			int nGameIndex;
-			const struct GameDriver *drv;
+			const game_driver *drv;
 			int (*pfnGetAuditResults)(int driver_index) = NULL;
 			void (*pfnSetAuditResults)(int driver_index, int audit_results) = NULL;
 
@@ -3563,7 +3553,7 @@ char* ConvertAmpersandString(const char *s)
 	return buf;
 }
 
-static int GUI_seq_pressed(input_code_t* code)
+static int GUI_seq_pressed(input_code* code)
 {
 	int j;
 	int res = 1;
@@ -3605,7 +3595,7 @@ static void check_for_GUI_action(void)
 
 	for (i = 0; i < NUM_GUI_SEQUENCES; i++)
 	{
-		input_seq_t *is = &(GUISequenceControl[i].is);
+		input_seq *is = &(GUISequenceControl[i].is);
 
 		if (GUI_seq_pressed(is->code))
 		{
@@ -3640,7 +3630,7 @@ static void KeyboardStateClear(void)
 static void KeyboardKeyDown(int syskey, int vk_code, int special)
 {
 	int i, found = 0;
-	input_code_t icode = 0;
+	input_code icode = 0;
 	int special_code = (special >> 24) & 1;
 	int scancode = (special>>16) & 0xff;
 
@@ -3710,7 +3700,7 @@ static void KeyboardKeyDown(int syskey, int vk_code, int special)
 static void KeyboardKeyUp(int syskey, int vk_code, int special)
 {
 	int i, found = 0;
-	input_code_t icode = 0;
+	input_code icode = 0;
 	int special_code = (special >> 24) & 1;
 	int scancode = (special>>16) & 0xff;
 
@@ -4844,7 +4834,7 @@ const TCHAR *GamePicker_GetItemString(HWND hwndPicker, int nItem, int nColumn,
 
 		case COLUMN_TYPE:
         {
-            struct InternalMachineDriver drv;
+            machine_config drv;
             expand_machine_driver(drivers[nItem]->drv,&drv);
 
 			/* Vector/Raster */
@@ -5265,7 +5255,7 @@ static int GamePicker_Compare(HWND hwndPicker, int index1, int index2, int sort_
 
 	case COLUMN_TYPE:
     {
-        struct InternalMachineDriver drv1,drv2;
+        machine_config drv1,drv2;
         expand_machine_driver(drivers[index1]->drv,&drv1);
         expand_machine_driver(drivers[index2]->drv,&drv2);
 
@@ -5553,7 +5543,7 @@ void SetStatusBarTextF(int part_index, const char *fmt, ...)
 	SetStatusBarText(part_index, buf);
 }
 
-static void MameMessageBox(const char *fmt, ...)
+static void CLIB_DECL MameMessageBox(const char *fmt, ...)
 {
 	char buf[2048];
 	va_list va;
@@ -5604,19 +5594,19 @@ static void MamePlayBackGame()
 		// check for game name embedded in .inp header
 		if (pPlayBack)
 		{
-			INP_HEADER inp_header;
+			inp_header input_header;
 
 			// read playback header
-			mame_fread(pPlayBack, &inp_header, sizeof(INP_HEADER));
+			mame_fread(pPlayBack, &input_header, sizeof(inp_header));
 
-			if (!isalnum(inp_header.name[0])) // If first byte is not alpha-numeric
+			if (!isalnum(input_header.name[0])) // If first byte is not alpha-numeric
 				mame_fseek(pPlayBack, 0, SEEK_SET); // old .inp file - no header
 			else
 			{
 				int i;
 				for (i = 0; drivers[i] != 0; i++) // find game and play it
 				{
-					if (strcmp(drivers[i]->name, inp_header.name) == 0)
+					if (strcmp(drivers[i]->name, input_header.name) == 0)
 					{
 						nGame = i;
 						break;
@@ -5701,7 +5691,7 @@ static void MameLoadState()
 		}
 
 		// call the MAME core function to check the save state file
-		rc = state_save_check_file(pSaveState, selected_filename, MameMessageBox);
+		rc = state_save_check_file(pSaveState, selected_filename, TRUE, MameMessageBox);
 		mame_fclose(pSaveState);
 		if (rc)
 			return;
@@ -6463,7 +6453,7 @@ static LRESULT CALLBACK PictureWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 }
 
 // replaces function in src/windows/fileio.c:
-int osd_display_loading_rom_message(const char *name,struct rom_load_data *romdata)
+int osd_display_loading_rom_message(const char *name, rom_load_data *romdata)
 {
 	int retval;
 
@@ -6525,7 +6515,7 @@ static INT_PTR CALLBACK LoadProgressDialogProc(HWND hDlg, UINT Msg, WPARAM wPara
 	return 0;
 }
 
-int UpdateLoadProgress(const char* name, const struct rom_load_data *romdata)
+int UpdateLoadProgress(const char* name, const rom_load_data *romdata)
 {
 	static HWND hWndLoad = 0;
 	MSG Msg;
@@ -6558,7 +6548,7 @@ int UpdateLoadProgress(const char* name, const struct rom_load_data *romdata)
 	{
 		// final call to us
 		SetWindowText(GetDlgItem(hWndLoad, IDC_LOAD_ROMNAME), "");
-		if (romdata->errors > 0 || romdata->warnings > 0)
+		if (romdata->errors > 0 )
 		{
 			
 			/*
@@ -6575,15 +6565,12 @@ int UpdateLoadProgress(const char* name, const struct rom_load_data *romdata)
 			if (romdata->errors)
 				SetWindowText(GetDlgItem(hWndLoad,IDC_ERROR_TEXT),
 							  "ERROR: required files are missing, the game cannot be run.");
-			else
-				SetWindowText(GetDlgItem(hWndLoad,IDC_ERROR_TEXT),
-							  "WARNING: the game might not run correctly.");
 		}
 	}
 	else
 		SetWindowText(GetDlgItem(hWndLoad, IDC_LOAD_ROMNAME), name);
 
-	if (name == NULL && (romdata->errors > 0 || romdata->warnings > 0))
+	if (name == NULL && (romdata->errors > 0 ))
 	{
 		while (GetMessage(&Msg, NULL, 0, 0))
 		{

@@ -20,7 +20,7 @@ enum
 	vdt911_chr_region_len	= vdt911_japanese_chr_offset+256*vdt911_single_char_len
 };
 
-extern struct GfxDecodeInfo vdt911_gfxdecodeinfo[];
+extern gfx_decode vdt911_gfxdecodeinfo[];
 
 extern unsigned char vdt911_palette[];
 extern unsigned short vdt911_colortable[];
@@ -65,7 +65,7 @@ void vdt911_cru_w(int offset, int data, int unit);
  READ8_HANDLER(vdt911_0_cru_r);
 WRITE8_HANDLER(vdt911_0_cru_w);
 
-void vdt911_refresh(struct mame_bitmap *bitmap, int unit, int x, int y);
+void vdt911_refresh(mame_bitmap *bitmap, int unit, int x, int y);
 
 void vdt911_keyboard(int unit);
 

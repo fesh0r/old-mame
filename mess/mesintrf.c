@@ -11,7 +11,7 @@ int mess_ui_active(void)
 	return ui_active;
 }
 
-int handle_mess_user_interface(struct mame_bitmap *bitmap)
+int handle_mess_user_interface(mame_bitmap *bitmap)
 {
 	static int ui_toggle_key = 0;
 	static int ui_display_count = 30;
@@ -27,9 +27,14 @@ int handle_mess_user_interface(struct mame_bitmap *bitmap)
 		if (options.disable_normal_ui)
 		{
 			/* we are using the new UI; just do the minimal stuff here */
-			if (ui_show_profiler_get())
-				profiler_show(bitmap);
-			ui_display_fps(bitmap);
+			if (ui_get_show_profiler())
+			{
+				int ui_width, ui_height;
+				ui_get_bounds(&ui_width, &ui_height);
+				ui_draw_text_full(profiler_get_text(), 0, 0, ui_width, JUSTIFY_LEFT,
+					WRAP_WORD, DRAW_OPAQUE, RGB_WHITE, RGB_BLACK, NULL, NULL);
+			}
+			ui_display_fps();
 		}
 		else
 		{
@@ -68,7 +73,7 @@ int handle_mess_user_interface(struct mame_bitmap *bitmap)
 							strcat(buf,"\n");
 							strcat(buf,ui_getstring (UI_keyb7));
 							strcat(buf,"\n");
-							ui_displaymessagewindow(bitmap, buf);
+							ui_draw_message_window(buf);
 
 						if( --ui_display_count == 0 )
 							schedule_full_refresh();
@@ -91,7 +96,7 @@ int handle_mess_user_interface(struct mame_bitmap *bitmap)
 							strcat(buf,"\n");
 							strcat(buf,ui_getstring (UI_keyb7));
 							strcat(buf,"\n");
-							ui_displaymessagewindow(bitmap, buf);
+							ui_draw_message_window(buf);
 
 						if( --ui_display_count == 0 )
 							schedule_full_refresh();
@@ -99,7 +104,7 @@ int handle_mess_user_interface(struct mame_bitmap *bitmap)
 				}
 			}
 			if (((Machine->gamedrv->flags & GAME_COMPUTER) == 0) || ui_active)
-				trying_to_quit = handle_user_interface(bitmap);
+				trying_to_quit = ui_update_and_render(bitmap);
 		}
 
 		/* run display routine for device */
@@ -121,11 +126,19 @@ int handle_mess_user_interface(struct mame_bitmap *bitmap)
 	return trying_to_quit;
 }
 
-int displayimageinfo(struct mame_bitmap *bitmap, int selected)
+
+
+/*************************************
+ *
+ *  Image info
+ *
+ *************************************/
+
+int ui_sprintf_image_info(char *buf)
 {
-	char buf[2048], *dst = buf;
+	char *dst = buf;
 	const struct IODevice *dev;
-	int id, sel = selected - 1;
+	int id;
 
 	dst += sprintf(dst, "%s\n\n", Machine->gamedrv->description);
 
@@ -174,11 +187,6 @@ int displayimageinfo(struct mame_bitmap *bitmap, int selected)
 				if (info)
 					dst += sprintf(dst,"%s\n", info);
 
-// why is extrainfo printed? only MSX and NES use it that i know of ... Cowering
-//				info = device_extrainfo(type,id);
-//				if( info )
-//					dst += sprintf(dst,"%s\n", info);
-
 				if (base_filename_noextension)
 					free(base_filename_noextension);
 			}
@@ -188,47 +196,27 @@ int displayimageinfo(struct mame_bitmap *bitmap, int selected)
 			}
 		}
 	}
+	return dst - buf;
+}
 
-	if (sel == -1)
-	{
-		/* startup info, print MAME version and ask for any key */
 
-		strcat(buf,"\n\t");
-		strcat(buf,ui_getstring(UI_anykey));
-		ui_drawbox(bitmap,0,0,Machine->uiwidth,Machine->uiheight);
-		ui_displaymessagewindow(bitmap, buf);
 
-		sel = 0;
-		if (code_read_async() != CODE_NONE)
-			sel = -1;
-	}
-	else
-	{
-		/* menu system, use the normal menu keys */
-		strcat(buf,"\n\t");
-		strcat(buf,ui_getstring(UI_lefthilight));
-		strcat(buf," ");
-		strcat(buf,ui_getstring(UI_returntomain));
-		strcat(buf," ");
-		strcat(buf,ui_getstring(UI_righthilight));
+UINT32 ui_menu_image_info(UINT32 state)
+{
+	char buf[2048];
+	char *bufptr = buf;
+	int selected = 0;
 
-		ui_displaymessagewindow(bitmap,buf);
+	/* add the game info */
+	bufptr += ui_sprintf_image_info(bufptr);
 
-		if (input_ui_pressed(IPT_UI_SELECT))
-			sel = -1;
+	/* make it look like a menu */
+	bufptr += sprintf(bufptr, "\n\t%s %s %s", ui_getstring(UI_lefthilight), ui_getstring(UI_returntomain), ui_getstring(UI_righthilight));
 
-		if (input_ui_pressed(IPT_UI_CANCEL))
-			sel = -1;
+	/* draw the text */
+	ui_draw_message_window(buf);
 
-		if (input_ui_pressed(IPT_UI_CONFIGURE))
-			sel = -2;
-	}
-
-	if (sel == -1 || sel == -2)
-	{
-		/* tell updatescreen() to clean after us */
-		schedule_full_refresh();
-	}
-
-	return sel + 1;
+	/* handle the keys */
+	ui_menu_generic_keys(&selected, 1);
+	return selected;
 }

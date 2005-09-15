@@ -37,7 +37,7 @@ enum
 	asr_scroll_step = 8
 };
 
-static const struct rectangle asr_scroll_clear_window =
+static const rectangle asr_scroll_clear_window =
 {
 	asr_window_offset_x,									/* min_x */
 	asr_window_offset_x+asr_window_width-1,					/* max_x */
@@ -63,7 +63,7 @@ struct
 
 	void (*int_callback)(int state);
 
-	struct mame_bitmap *bitmap;
+	mame_bitmap *bitmap;
 } asr[MAX_ASR];
 
 enum
@@ -94,7 +94,7 @@ enum
 	asrfontdata_size = 96/*128*/*8
 };
 
-static struct GfxLayout fontlayout =
+static gfx_layout fontlayout =
 {
 	6, 8,			/* 6*8 characters */
 	/*96*/128,				/* 96 characters */
@@ -105,7 +105,7 @@ static struct GfxLayout fontlayout =
 	8*8 /* every char takes 8 consecutive bytes */
 };
 
-struct GfxDecodeInfo asr733_gfxdecodeinfo[] =
+gfx_decode asr733_gfxdecodeinfo[] =
 {
 	{ asr733_chr_region, 0, &fontlayout, 0, 1 },
 	{ -1 }	/* end of array */
@@ -430,7 +430,7 @@ WRITE8_HANDLER(asr733_0_cru_w)
 /*
 	Video refresh
 */
-void asr733_refresh(struct mame_bitmap *bitmap, int unit, int x, int y)
+void asr733_refresh(mame_bitmap *bitmap, int unit, int x, int y)
 {
 	copybitmap(bitmap, asr[unit].bitmap, 0, 0, x, y, &Machine->visible_area, TRANSPARENCY_NONE, 0);
 }

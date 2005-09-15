@@ -78,7 +78,7 @@ void artwork_use_device_art(mess_image *img, const char *defaultartfile)
 
 
 
-static int mess_activate_artwork(struct osd_create_params *params)
+static int mess_activate_artwork(osd_create_params *params)
 {
 	if ((params->width < options.min_width) && (params->height < options.min_height))
 	{
@@ -90,7 +90,7 @@ static int mess_activate_artwork(struct osd_create_params *params)
 
 
 
-static mame_file *mess_load_artwork_file(const struct GameDriver **driver)
+static mame_file *mess_load_artwork_file(const game_driver **driver)
 {
 	char filename[2048];
 	mame_file *artfile = NULL;
@@ -119,7 +119,7 @@ static mame_file *mess_load_artwork_file(const struct GameDriver **driver)
 
 
 
-struct artwork_callbacks mess_artwork_callbacks =
+artwork_callbacks mess_artwork_callbacks =
 {
 	mess_activate_artwork,
 	mess_load_artwork_file
@@ -127,7 +127,7 @@ struct artwork_callbacks mess_artwork_callbacks =
 
 /********************************************************************/
 
-int artwork_get_inputscreen_customizations(struct png_info *png, int cust_type,
+int artwork_get_inputscreen_customizations(png_info *png, int cust_type,
 	const char *section,
 	struct inputform_customization *customizations,
 	int customizations_length)

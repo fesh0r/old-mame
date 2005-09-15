@@ -100,12 +100,12 @@ struct _dialog_box
 	void *notify_param;
 };
 
-// this is the structure that gets associated with each input_seq_t edit box
+// this is the structure that gets associated with each input_seq edit box
 struct seqselect_stuff
 {
 	WNDPROC oldwndproc;
-	input_seq_t *code;		// pointer to the input_seq_t
-	input_seq_t newcode;	// the new input_seq_t; committed to *code when we are done
+	input_seq *code;		// pointer to the input_seq
+	input_seq newcode;	// the new input_seq; committed to *code when we are done
 	UINT_PTR timer;
 	WORD pos;
 	BOOL is_analog;
@@ -1219,10 +1219,10 @@ static LRESULT seqselect_apply(dialog_box *dialog, HWND editwnd, UINT message, W
 //============================================================
 
 static int dialog_add_single_seqselect(struct _dialog_box *di, short x, short y,
-	short cx, short cy, struct InputPort *port, int is_analog, int seq)
+	short cx, short cy, input_port_entry *port, int is_analog, int seq)
 {
 	struct seqselect_stuff *stuff;
-	input_seq_t *code;
+	input_seq *code;
 
 	code = input_port_seq(port, seq);
 
@@ -1250,7 +1250,7 @@ static int dialog_add_single_seqselect(struct _dialog_box *di, short x, short y,
 //	win_dialog_add_seqselect
 //============================================================
 
-int win_dialog_add_portselect(dialog_box *dialog, struct InputPort *port, const RECT *r)
+int win_dialog_add_portselect(dialog_box *dialog, input_port_entry *port, const RECT *r)
 {
 	dialog_box *di = dialog;
 	short x;
@@ -1400,7 +1400,7 @@ int win_dialog_add_standard_buttons(dialog_box *dialog)
 //	create_png_bitmap
 //============================================================
 
-static HBITMAP create_png_bitmap(const struct png_info *png)
+static HBITMAP create_png_bitmap(const png_info *png)
 {
 	HBITMAP bitmap;
 	BITMAPINFOHEADER bitmap_header;
@@ -1462,7 +1462,7 @@ static HBITMAP create_png_bitmap(const struct png_info *png)
 //	win_dialog_add_image
 //============================================================
 
-int win_dialog_add_image(dialog_box *dialog, const struct png_info *png)
+int win_dialog_add_image(dialog_box *dialog, const png_info *png)
 {
 	WORD id;
 	HBITMAP bitmap;

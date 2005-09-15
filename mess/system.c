@@ -18,7 +18,7 @@
 #ifndef DRIVER_RECURSIVE
 
 /* The "root" driver, defined so we can have &driver_##NAME in macros. */
-struct GameDriver driver_0 =
+game_driver driver_0 =
 {
 	__FILE__,
 	0,
@@ -39,15 +39,15 @@ struct GameDriver driver_0 =
 #endif
 
 #ifdef TINY_COMPILE
-extern const struct GameDriver TINY_NAME;
+extern const game_driver TINY_NAME;
 
-const struct GameDriver * drivers[] =
+const game_driver * drivers[] =
 {
   TINY_POINTER,
   0             /* end of array */
 };
 
-const struct GameDriver *test_drivers[] =
+const game_driver *test_drivers[] =
 {
 	0	/* end of array */
 };
@@ -59,9 +59,9 @@ const struct GameDriver *test_drivers[] =
 #define DRIVER_RECURSIVE
 
 /* step 1: declare all external references */
-#define DRIVER(NAME) extern const struct GameDriver driver_##NAME;
-#define TESTDRIVER(NAME) extern const struct GameDriver driver_##NAME;
-#define NOBODY(NAME) extern const struct GameDriver driver_##NAME;
+#define DRIVER(NAME) extern const game_driver driver_##NAME;
+#define TESTDRIVER(NAME) extern const game_driver driver_##NAME;
+#define NOBODY(NAME) extern const game_driver driver_##NAME;
 #include "system.c"
 
 /* step 2: define the drivers[] array */
@@ -76,7 +76,7 @@ const struct GameDriver *test_drivers[] =
 #define TESTDRIVER(NAME)
 #define NOBODY(NAME)
 #endif
-const struct GameDriver *drivers[] =
+const game_driver *drivers[] =
 {
 #include "system.c"
   0             /* end of array */
@@ -87,7 +87,7 @@ const struct GameDriver *drivers[] =
 #undef TESTDRIVER
 #define DRIVER(NAME)
 #define TESTDRIVER(NAME) &driver_##NAME,
-const struct GameDriver *test_drivers[] =
+const game_driver *test_drivers[] =
 {
 #include "system.c"
 	0	/* end of array */
@@ -277,6 +277,7 @@ TESTDRIVER( las3000 )   /* 1983 Laser 3000									*/
  */
 	DRIVER( mac512ke )  /* 1986 Apple Macintosh 512ke						*/
 	DRIVER( macplus )	/* 1986 Apple Macintosh Plus						*/
+	DRIVER( macse )	    /* 1987 Apple Macintosh SE   						*/
 
 	/* ATARI */
 /*
@@ -624,7 +625,7 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 			*/
 	DRIVER( uk101 ) 	/* 1979 UK101										*/
 
 	/* OHIO SCIENTIFIC */
-	DRIVER( superbrd )	/* 1979 Superboard II								*/
+	DRIVER( sb2m600b )	/* 1979 Superboard II								*/
 
 	/* ASCII & MICROSOFT */
 	DRIVER( msx )		/* 1983 MSX 										*/

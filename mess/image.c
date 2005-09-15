@@ -570,7 +570,7 @@ static int run_hash(mame_file *file,
 
 static int image_checkhash(mess_image *image)
 {
-	const struct GameDriver *drv;
+	const game_driver *drv;
 	const struct IODevice *dev;
 	mame_file *file;
 	char hash_string[HASH_BUF_SIZE];
@@ -1067,8 +1067,8 @@ int image_index_in_device(mess_image *img)
 char *mess_try_image_file_as_zip(int pathindex, const char *path,
 	const struct IODevice *dev)
 {
-	ZIP *zip = NULL;
-	struct zipent *zipentry = NULL;
+	zip_file *zip = NULL;
+	zip_entry *zipentry = NULL;
 	char *name;
 	const char *ext;
 	int is_zip;
@@ -1116,7 +1116,7 @@ static mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_
 {
 	const char *sysname;
 	char *lpExt;
-	const struct GameDriver *gamedrv = Machine->gamedrv;
+	const game_driver *gamedrv = Machine->gamedrv;
 
 	assert(img);
 
@@ -1143,8 +1143,8 @@ static mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_
 			{
 				int pathindex;
 				int pathcount = osd_get_path_count(filetype);
-				ZIP *zipfile;
-				struct zipent *zipentry;
+				zip_file *zipfile;
+				zip_entry *zipentry;
 				char *newname;
 				char *name;
 				char *zipname;

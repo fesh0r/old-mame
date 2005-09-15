@@ -44,7 +44,7 @@ static struct
 	int dbl_h_phase[40];
 } vdp;
 
-static struct mame_bitmap *tmpbitmap;
+static mame_bitmap *tmpbitmap;
 
 #define TOP_BORDER 1
 #define BOTTOM_BORDER 1
@@ -198,7 +198,7 @@ WRITE8_HANDLER(tms3556_reg_w)
 
 	machine struct initialization helper
 */
-void mdrv_tms3556(struct InternalMachineDriver *machine)
+void mdrv_tms3556(machine_config *machine)
 {
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_TYPE_RASTER)
@@ -539,7 +539,7 @@ static void tms3556_draw_line_mixed(UINT16 *ln)
 
 	draw a line.  If non-interlaced mode, duplicate the line.
 */
-static void tms3556_draw_line(struct mame_bitmap *bmp, int line)
+static void tms3556_draw_line(mame_bitmap *bmp, int line)
 {
 	int double_lines;
 	UINT16 *ln, *ln2 = NULL;

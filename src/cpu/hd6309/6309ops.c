@@ -2790,7 +2790,7 @@ INLINE void divq_im( void )
 
 	q.w.h = D;
 	q.w.l = W;
-	
+
 	if( t.w.l != 0 )
 	{
 		oldQ = q;

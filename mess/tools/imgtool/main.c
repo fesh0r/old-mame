@@ -36,7 +36,8 @@ static void writeusage(FILE *f, int write_word_usage, struct command *c, char *a
 
 /* ----------------------------------------------------------------------- */
 
-static int parse_options(int argc, char *argv[], int minunnamed, int maxunnamed, option_resolution *resolution, FILTERMODULE *filter)
+static int parse_options(int argc, char *argv[], int minunnamed, int maxunnamed,
+	option_resolution *resolution, filter_getinfoproc *filter, const char **fork)
 {
 	int i;
 	int lastunnamed = 0;
@@ -44,9 +45,12 @@ static int parse_options(int argc, char *argv[], int minunnamed, int maxunnamed,
 	char *name = NULL;
 	char *value = NULL;
 	optreserr_t oerr;
+	static char buf[256];
 
 	if (filter)
 		*filter = NULL;
+	if (fork)
+		*fork = NULL;
 
 	for (i = 0; i < argc; i++)
 	{
@@ -67,17 +71,29 @@ static int parse_options(int argc, char *argv[], int minunnamed, int maxunnamed,
 				goto error;
 			*s = 0;
 			value = s + 1;
+
 			if (!strcmp(name, "filter"))
 			{
-				/* Filter option */
+				/* filter option */
 				if (!filter)
-					goto error; /* This command doesn't use filters */
+					goto error; /* this command doesn't use filters */
 				if (*filter)
-					goto filteralreadyspecified;
+					goto optionalreadyspecified;
 				*filter = filter_lookup(value);
 				if (!(*filter))
 					goto filternotfound;
 
+			}
+			else if (!strcmp(name, "fork"))
+			{
+				/* fork option */
+				if (!fork)
+					goto error; /* this command doesn't use filters */
+				if (*fork)
+					goto optionalreadyspecified;
+
+				snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%s", value);
+				*fork = buf;
 			}
 			else
 			{
@@ -97,8 +113,8 @@ filternotfound:
 	fprintf(stderr, "%s: Unknown filter type\n", value);
 	return -1;
 
-filteralreadyspecified:
-	fprintf(stderr, "Cannot specify multiple filters\n");
+optionalreadyspecified:
+	fprintf(stderr, "Cannot specify multiple %ss\n", name);
 	return -1;
 
 opterror:
@@ -214,22 +230,23 @@ done:
 static int cmd_get(const struct command *c, int argc, char *argv[])
 {
 	imgtoolerr_t err;
-	imgtool_image *img;
+	imgtool_image *image;
 	char *newfname;
 	int unnamedargs;
-	FILTERMODULE filter;
+	filter_getinfoproc filter;
+	const char *fork;
 
-	err = img_open_byname(library, argv[0], argv[1], OSD_FOPEN_READ, &img);
+	err = img_open_byname(library, argv[0], argv[1], OSD_FOPEN_READ, &image);
 	if (err)
 		goto error;
 
-	unnamedargs = parse_options(argc, argv, 3, 4, NULL, &filter);
+	unnamedargs = parse_options(argc, argv, 3, 4, NULL, &filter, &fork);
 	if (unnamedargs < 0)
 		return -1;
 	newfname = (unnamedargs == 4) ? argv[3] : NULL;
 
-	err = img_getfile(img, argv[2], newfname, filter);
-	img_close(img);
+	err = img_getfile(image, argv[2], fork, newfname, filter);
+	img_close(image);
 	if (err)
 		goto error;
 
@@ -249,9 +266,10 @@ static int cmd_put(const struct command *c, int argc, char *argv[])
 	imgtool_image *img;
 	const char *filename = NULL;
 	int unnamedargs;
-	FILTERMODULE filter;
+	filter_getinfoproc filter;
 	const struct ImageModule *module;
 	option_resolution *resolution = NULL;
+	const char *fork;
 
 	module = imgtool_library_findmodule(library, argv[0]);
 	if (!module)
@@ -271,7 +289,7 @@ static int cmd_put(const struct command *c, int argc, char *argv[])
 	}
 
 
-	unnamedargs = parse_options(argc, argv, 3, 0xffff, resolution, &filter);
+	unnamedargs = parse_options(argc, argv, 3, 0xffff, resolution, &filter, &fork);
 	if (unnamedargs < 0)
 		return -1;
 
@@ -283,7 +301,7 @@ static int cmd_put(const struct command *c, int argc, char *argv[])
 	{
 		filename = argv[i];
 		printf("Putting file '%s'...\n", filename);
-		err = img_putfile(img, NULL, filename, resolution, filter);
+		err = img_putfile(img, NULL, fork, filename, resolution, filter);
 		if (err)
 			goto error;
 	}
@@ -310,7 +328,7 @@ static int cmd_getall(const struct command *c, int argc, char *argv[])
 	imgtool_image *img = NULL;
 	imgtool_imageenum *imgenum;
 	imgtool_dirent ent;
-	FILTERMODULE filter;
+	filter_getinfoproc filter;
 	int unnamedargs;
 	const char *path = NULL;
 	int arg;
@@ -325,7 +343,7 @@ static int cmd_getall(const struct command *c, int argc, char *argv[])
 		path = argv[arg++];
 	}
 
-	unnamedargs = parse_options(argc, argv, arg, arg, NULL, &filter);
+	unnamedargs = parse_options(argc, argv, arg, arg, NULL, &filter, NULL);
 	if (unnamedargs < 0)
 		goto done;
 
@@ -339,7 +357,7 @@ static int cmd_getall(const struct command *c, int argc, char *argv[])
 	{
 		fprintf(stdout, "Retrieving %s (%u bytes)\n", ent.filename, (unsigned int) ent.filesize);
 
-		err = img_getfile(img, ent.filename, NULL, filter);
+		err = img_getfile(img, ent.filename, NULL, NULL, filter);
 		if (err)
 			goto done;
 	}
@@ -473,7 +491,7 @@ static int cmd_create(const struct command *c, int argc, char *argv[])
 		}
 	}
 
-	unnamedargs = parse_options(argc, argv, 2, 3, resolution, NULL);
+	unnamedargs = parse_options(argc, argv, 2, 3, resolution, NULL, NULL);
 	if (unnamedargs < 0)
 		return -1;
 
@@ -619,13 +637,15 @@ static int cmd_listformats(const struct command *c, int argc, char *argv[])
 
 static int cmd_listfilters(const struct command *c, int argc, char *argv[])
 {
-	FILTERMODULE *f = filters;
+	int i;
 
 	fprintf(stdout, "Filters supported by imgtool:\n\n");
 
-	while(*f) {
-		fprintf(stdout, "  %-10s%s\n", (*f)->name, (*f)->humanname);
-		f++;
+	for (i = 0; filters[i]; i++)
+	{
+		fprintf(stdout, "  %-10s%s\n",
+			filter_get_info_string(filters[i], FILTINFO_STR_NAME),
+			filter_get_info_string(filters[i], FILTINFO_STR_NAME));
 	}
 
 	return 0;
@@ -755,45 +775,12 @@ error:
 
 /* ----------------------------------------------------------------------- */
 
-#ifdef MAME_DEBUG
-static int cmd_test(const struct command *c, int argc, char *argv[])
-{
-	imgtoolerr_t err;
-	const char *module_name;
-
-	module_name = (argc > 0) ? argv[0] : NULL;
-
-	if (module_name)
-		fprintf(stdout, "Running test suite for module '%s':\n\n", module_name);
-	else
-		fprintf(stdout, "Running test suite for all modules\n\n");
-
-	err = imgtool_test_byname(library, module_name);
-	if (err)
-		goto error;
-
-	fprintf(stdout, "...Test succeeded!\n");
-	return 0;
-
-error:
-	reporterror(err, c, argv[0], NULL, NULL, NULL, NULL);
-	return -1;
-}
-#endif
-
-
-
-/* ----------------------------------------------------------------------- */
-
 static struct command cmds[] =
 {
-#ifdef MAME_DEBUG
-	{ "test",				cmd_test,				"<format>", 0, 1, 0 },
-#endif
 	{ "create",				cmd_create,				"<format> <imagename>", 2, 8, 0},
 	{ "dir",				cmd_dir,				"<format> <imagename> [path]", 2, 3, 0 },
-	{ "get",				cmd_get,				"<format> <imagename> <filename> [newname] [--filter=filter]", 3, 4, 0 },
-	{ "put",				cmd_put,				"<format> <imagename> <filename>...[--(fileoption)==value] [--filter=filter]", 3, 0xffff, 0 },
+	{ "get",				cmd_get,				"<format> <imagename> <filename> [newname] [--filter=filter] [--fork=fork]", 3, 4, 0 },
+	{ "put",				cmd_put,				"<format> <imagename> <filename>...[--(fileoption)==value] [--filter=filter] [--fork=fork]", 3, 0xffff, 0 },
 	{ "getall",				cmd_getall,				"<format> <imagename> [path] [--filter=filter]", 2, 3, 0 },
 	{ "del",				cmd_del,				"<format> <imagename> <filename>...", 3, 3, 1 },
 	{ "mkdir",				cmd_mkdir,				"<format> <imagename> <dirname>", 3, 3, 0 },

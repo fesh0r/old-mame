@@ -216,6 +216,26 @@ done:
 
 
 
+static imgtoolerr_t cannonicalize_fork(imgtool_image *image, const char **fork)
+{
+	/* does this module support forks? */
+	if (image->module->list_forks)
+	{
+		/* this module supports forks; make sure that fork is non-NULL */
+		if (!*fork)
+			*fork = "";
+	}
+	else
+	{
+		/* this module does not support forks; make sure that fork is NULL */
+		if (*fork)
+			return IMGTOOLERR_NOFORKS;
+	}
+	return IMGTOOLERR_SUCCESS;
+}
+
+
+
 imgtoolerr_t img_beginenum(imgtool_image *img, const char *path, imgtool_imageenum **outenum)
 {
 	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
@@ -419,6 +439,144 @@ done:
 
 
 
+imgtoolerr_t img_getattrs(imgtool_image *image, const char *path, const UINT32 *attrs, imgtool_attribute *values)
+{
+	imgtoolerr_t err;
+	char *alloc_path = NULL;
+
+	if (!image->module->get_attrs)
+	{
+		err = IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
+		goto done;
+	}
+
+	/* cannonicalize path */
+	if (image->module->path_separator)
+	{
+		if (path)
+		{
+			err = cannonicalize_path(image, FALSE, &path, &alloc_path);
+			if (err)
+				goto done;
+		}
+	}
+
+	err = image->module->get_attrs(image, path, attrs, values);
+	if (err)
+		goto done;
+
+done:
+	if (alloc_path)
+		free(alloc_path);
+	return err;
+}
+
+
+
+imgtoolerr_t img_setattrs(imgtool_image *image, const char *path, const UINT32 *attrs, const imgtool_attribute *values)
+{
+	imgtoolerr_t err;
+	char *alloc_path = NULL;
+
+	if (!image->module->set_attrs)
+	{
+		err = IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
+		goto done;
+	}
+
+	/* cannonicalize path */
+	if (image->module->path_separator)
+	{
+		if (path)
+		{
+			err = cannonicalize_path(image, FALSE, &path, &alloc_path);
+			if (err)
+				goto done;
+		}
+	}
+
+	err = image->module->set_attrs(image, path, attrs, values);
+	if (err)
+		goto done;
+
+done:
+	if (alloc_path)
+		free(alloc_path);
+	return err;
+}
+
+
+
+imgtoolerr_t img_getattr(imgtool_image *image, const char *path, UINT32 attr, imgtool_attribute *value)
+{
+	UINT32 attrs[2];
+	attrs[0] = attr;
+	attrs[1] = 0;
+	return img_getattrs(image, path, attrs, value);
+}
+
+
+
+imgtoolerr_t img_setattr(imgtool_image *image, const char *path, UINT32 attr, imgtool_attribute value)
+{
+	UINT32 attrs[2];
+	attrs[0] = attr;
+	attrs[1] = 0;
+	return img_setattrs(image, path, attrs, &value);
+}
+
+
+
+imgtoolerr_t img_suggesttransfer(imgtool_image *image, const char *path, imgtool_transfer_suggestion *suggestions, size_t suggestions_length)
+{
+	imgtoolerr_t err;
+	int i;
+	char *alloc_path = NULL;
+
+	/* clear out buffer */
+	memset(suggestions, 0, sizeof(*suggestions) * suggestions_length);
+
+	if (!image->module->suggest_transfer)
+	{
+		err = IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
+		goto done;
+	}
+
+	/* cannonicalize path */
+	if (image->module->path_separator)
+	{
+		if (path)
+		{
+			err = cannonicalize_path(image, FALSE, &path, &alloc_path);
+			if (err)
+				goto done;
+		}
+	}
+
+	err = image->module->suggest_transfer(image, path, suggestions, suggestions_length);
+	if (err)
+		goto done;
+
+	/* fill in any missing descriptions */
+	for (i = 0; suggestions[i].viability; i++)
+	{
+		if (!suggestions[i].description)
+		{
+			if (suggestions[i].filter)
+				suggestions[i].description = filter_get_info_string(suggestions[i].filter, FILTINFO_STR_HUMANNAME);
+			else
+				suggestions[i].description = "Raw";
+		}
+	}
+
+done:
+	if (alloc_path)
+		free(alloc_path);
+	return err;
+}
+
+
+
 imgtoolerr_t img_getchain(imgtool_image *img, const char *path, imgtool_chainent *chain, size_t chain_size)
 {
 	size_t i;
@@ -524,57 +682,57 @@ imgtoolerr_t img_freespace(imgtool_image *img, UINT64 *sz)
 
 
 
-static imgtoolerr_t process_filter(imgtool_stream **mainstream, imgtool_stream **newstream, const struct ImageModule *imgmod, FILTERMODULE filter, int purpose)
-{
-	imgtool_filter *f;
-
-	if (filter)
-	{
-		f = filter_init(filter, imgmod, purpose);
-		if (!f)
-			return IMGTOOLERR_OUTOFMEMORY;
-
-		*newstream = stream_open_filter(*mainstream, f);
-		if (!(*newstream))
-			return IMGTOOLERR_OUTOFMEMORY;
-
-		*mainstream = *newstream;
-	}
-	return IMGTOOLERR_SUCCESS;
-}
-
-
-
-imgtoolerr_t img_readfile(imgtool_image *img, const char *fname, imgtool_stream *destf, FILTERMODULE filter)
+imgtoolerr_t img_readfile(imgtool_image *image, const char *filename, const char *fork, imgtool_stream *destf, filter_getinfoproc filter)
 {
 	imgtoolerr_t err;
 	imgtool_stream *newstream = NULL;
 	char *alloc_path = NULL;
+	union filterinfo u;
 
-	if (!img->module->read_file)
+	if (!image->module->read_file)
 	{
 		err = IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
 		goto done;
 	}
 
-	/* custom filter? */
-	err = process_filter(&destf, &newstream, img->module, filter, PURPOSE_READ);
-	if (err)
-		goto done;
-
 	/* cannonicalize path */
-	if (img->module->path_separator)
+	if (image->module->path_separator)
 	{
-		err = cannonicalize_path(img, FALSE, &fname, &alloc_path);
+		err = cannonicalize_path(image, FALSE, &filename, &alloc_path);
 		if (err)
 			goto done;
 	}
 
-	err = img->module->read_file(img, fname, destf);
+	err = cannonicalize_fork(image, &fork);
 	if (err)
-	{
-		err = markerrorsource(err);
 		goto done;
+
+	if (filter)
+	{
+		/* use a filter */
+		filter(FILTINFO_PTR_READFILE, &u);
+		if (!u.read_file)
+		{
+			err = IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
+			goto done;
+		}
+
+		err = u.read_file(image, filename, fork, destf);
+		if (err)
+		{
+			err = markerrorsource(err);
+			goto done;
+		}
+	}
+	else
+	{
+		/* invoke the actual module */
+		err = image->module->read_file(image, filename, fork, destf);
+		if (err)
+		{
+			err = markerrorsource(err);
+			goto done;
+		}
 	}
 
 done:
@@ -587,7 +745,7 @@ done:
 
 
 
-imgtoolerr_t img_writefile(imgtool_image *img, const char *fname, imgtool_stream *sourcef, option_resolution *opts, FILTERMODULE filter)
+imgtoolerr_t img_writefile(imgtool_image *image, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *opts, filter_getinfoproc filter)
 {
 	imgtoolerr_t err;
 	char *buf = NULL;
@@ -597,45 +755,45 @@ imgtoolerr_t img_writefile(imgtool_image *img, const char *fname, imgtool_stream
 	char *alloc_path = NULL;
 	UINT64 free_space;
 	UINT64 file_size;
+	union filterinfo u;
 
-	if (!img->module->write_file)
+	if (!image->module->write_file)
 	{
 		err = IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
 		goto done;
 	}
 
 	/* Does this image module prefer upper case file names? */
-	if (img->module->prefer_ucase)
+	if (image->module->prefer_ucase)
 	{
-		buf = malloc(strlen(fname) + 1);
+		buf = malloc(strlen(filename) + 1);
 		if (!buf)
 		{
 			err = IMGTOOLERR_OUTOFMEMORY;
 			goto done;
 		}
-		strcpy(buf, fname);
+		strcpy(buf, filename);
 		for (s = buf; *s; s++)
 			*s = toupper(*s);
-		fname = buf;
+		filename = buf;
 	}
 
-	/* custom filter? */
-	err = process_filter(&sourcef, &newstream, img->module, filter, PURPOSE_WRITE);
-	if (err)
-		goto done;
-
 	/* cannonicalize path */
-	if (img->module->path_separator)
+	if (image->module->path_separator)
 	{
-		err = cannonicalize_path(img, FALSE, &fname, &alloc_path);
+		err = cannonicalize_path(image, FALSE, &filename, &alloc_path);
 		if (err)
 			goto done;
 	}
 
+	err = cannonicalize_fork(image, &fork);
+	if (err)
+		goto done;
+
 	/* allocate dummy options if necessary */
-	if (!opts && img->module->writefile_optguide)
+	if (!opts && image->module->writefile_optguide)
 	{
-		alloc_resolution = option_resolution_create(img->module->writefile_optguide, img->module->writefile_optspec);
+		alloc_resolution = option_resolution_create(image->module->writefile_optguide, image->module->writefile_optspec);
 		if (!alloc_resolution)
 		{
 			err = IMGTOOLERR_OUTOFMEMORY;
@@ -647,9 +805,9 @@ imgtoolerr_t img_writefile(imgtool_image *img, const char *fname, imgtool_stream
 		option_resolution_finish(opts);
 
 	/* if free_space is implemented; do a quick check to see if space is available */
-	if (img->module->free_space)
+	if (image->module->free_space)
 	{
-		err = img->module->free_space(img, &free_space);
+		err = image->module->free_space(image, &free_space);
 		if (err)
 		{
 			err = markerrorsource(err);
@@ -665,12 +823,32 @@ imgtoolerr_t img_writefile(imgtool_image *img, const char *fname, imgtool_stream
 		}
 	}
 
-	/* actually invoke the write file handler */
-	err = img->module->write_file(img, fname, sourcef, opts);
-	if (err)
+	if (filter)
 	{
-		err = markerrorsource(err);
-		goto done;
+		/* use a filter */
+		filter(FILTINFO_PTR_WRITEFILE, &u);
+		if (!u.write_file)
+		{
+			err = IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
+			goto done;
+		}
+
+		err = u.write_file(image, filename, fork, sourcef, opts);
+		if (err)
+		{
+			err = markerrorsource(err);
+			goto done;
+		}
+	}
+	else
+	{
+		/* actually invoke the write file handler */
+		err = image->module->write_file(image, filename, fork, sourcef, opts);
+		if (err)
+		{
+			err = markerrorsource(err);
+			goto done;
+		}
 	}
 
 done:
@@ -687,13 +865,33 @@ done:
 
 
 
-imgtoolerr_t img_getfile(imgtool_image *img, const char *fname, const char *dest, FILTERMODULE filter)
+imgtoolerr_t img_getfile(imgtool_image *image, const char *filename, const char *fork,
+	const char *dest, filter_getinfoproc filter)
 {
 	imgtoolerr_t err;
 	imgtool_stream *f;
+	char *alloc_dest = NULL;
+	const char *filter_extension = NULL;
 
 	if (!dest)
-		dest = fname;
+	{
+		if (filter)
+			filter_extension = filter_get_info_string(filter, FILTINFO_STR_EXTENSION);
+
+		if (filter_extension)
+		{
+			alloc_dest = malloc(strlen(filename) + 1 + strlen(filter_extension) + 1);
+			if (!alloc_dest)
+				return IMGTOOLERR_OUTOFMEMORY;
+
+			sprintf(alloc_dest, "%s.%s", filename, filter_extension);
+			dest = alloc_dest;
+		}
+		else
+		{
+			dest = filename;
+		}
+	}
 
 	f = stream_open(dest, OSD_FOPEN_WRITE);
 	if (!f)
@@ -702,19 +900,22 @@ imgtoolerr_t img_getfile(imgtool_image *img, const char *fname, const char *dest
 		goto done;
 	}
 
-	err = img_readfile(img, fname, f, filter);
+	err = img_readfile(image, filename, fork, f, filter);
 	if (err)
 		goto done;
 
 done:
 	if (f)
 		stream_close(f);
+	if (alloc_dest)
+		free(alloc_dest);
 	return err;
 }
 
 
 
-imgtoolerr_t img_putfile(imgtool_image *img, const char *newfname, const char *source, option_resolution *opts, FILTERMODULE filter)
+imgtoolerr_t img_putfile(imgtool_image *image, const char *newfname, const char *fork,
+	const char *source, option_resolution *opts, filter_getinfoproc filter)
 {
 	imgtoolerr_t err;
 	imgtool_stream *f;
@@ -726,7 +927,7 @@ imgtoolerr_t img_putfile(imgtool_image *img, const char *newfname, const char *s
 	if (!f)
 		return IMGTOOLERR_FILENOTFOUND | IMGTOOLERR_SRC_NATIVEFILE;
 
-	err = img_writefile(img, newfname, f, opts, filter);
+	err = img_writefile(image, newfname, fork, f, opts, filter);
 	stream_close(f);
 	return err;
 }
@@ -758,6 +959,37 @@ imgtoolerr_t img_deletefile(imgtool_image *img, const char *fname)
 		err = markerrorsource(err);
 		goto done;
 	}
+
+done:
+	if (alloc_path)
+		free(alloc_path);
+	return err;
+}
+
+
+
+imgtoolerr_t img_listforks(imgtool_image *image, const char *path, imgtool_forkent *ents, size_t len)
+{
+	imgtoolerr_t err;
+	char *alloc_path = NULL;
+
+	if (!image->module->list_forks)
+	{
+		err = IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
+		goto done;
+	}
+
+	/* cannonicalize path */
+	if (image->module->path_separator)
+	{
+		err = cannonicalize_path(image, FALSE, &path, &alloc_path);
+		if (err)
+			goto done;
+	}
+
+	err = image->module->list_forks(image, path, ents, len);
+	if (err)
+		goto done;
 
 done:
 	if (alloc_path)

@@ -283,7 +283,7 @@ INLINE void odyssey2_draw_sprite(UINT8 bg[][320], UINT8 code, int x, int y, int 
     }
 }
 
-INLINE void odyssey2_draw_char(struct mame_bitmap *bitmap, UINT8 bg[][320], int x, int y, int ptr, int color)
+INLINE void odyssey2_draw_char(mame_bitmap *bitmap, UINT8 bg[][320], int x, int y, int ptr, int color)
 {
     int n, i;
     int offset=ptr|((color&1)<<8);
@@ -413,23 +413,6 @@ VIDEO_UPDATE( odyssey2 )
 			}
 		}
 	}
-
-#if 0
-	char str[0x40];
-	for (i=0; i<4; i++)
-	{
-		snprintf(str, sizeof(str), "%.2x:%.2x %.2x",
-				o2_vdc.s.sprites[i].x,
-				o2_vdc.s.sprites[i].y,
-				o2_vdc.s.sprites[i].color);
-		ui_text(bitmap, str, 160, i*8);
-	}
-	snprintf(str, sizeof(str), "%.2x %.2x",
-			o2_vdc.s.collision,
-			collision);
-	ui_text(bitmap, str, 160, i*8);
-#endif
-    return;
 }
 
 void odyssey2_sh_update( void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length )

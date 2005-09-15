@@ -39,7 +39,7 @@
     function prototypes
 ***************************************************************************/
 
-static BOOL     AllocatePNG(struct png_info *p, HGLOBAL *phDIB, HPALETTE* pPal);
+static BOOL     AllocatePNG(png_info *p, HGLOBAL *phDIB, HPALETTE* pPal);
 
 static int png_read_bitmap(LPVOID mfile, HGLOBAL *phDIB, HPALETTE *pPAL);
 /***************************************************************************
@@ -72,7 +72,7 @@ BOOL ScreenShotLoaded(void)
 }
 
 #ifdef MESS
-static BOOL LoadSoftwareScreenShot(const struct GameDriver *drv, LPCSTR lpSoftwareName, int nType)
+static BOOL LoadSoftwareScreenShot(const game_driver *drv, LPCSTR lpSoftwareName, int nType)
 {
 	char *s = alloca(strlen(drv->name) + 1 + strlen(lpSoftwareName) + 5);
 	sprintf(s, "%s/%s.png", drv->name, lpSoftwareName);
@@ -289,7 +289,7 @@ static void store_pixels(UINT8 *buf, int len)
 	}
 }
 
-BOOL AllocatePNG(struct png_info *p, HGLOBAL *phDIB, HPALETTE *pPal)
+BOOL AllocatePNG(png_info *p, HGLOBAL *phDIB, HPALETTE *pPal)
 {
 	int 				dibSize;
 	HGLOBAL 			hDIB;
@@ -395,7 +395,7 @@ BOOL AllocatePNG(struct png_info *p, HGLOBAL *phDIB, HPALETTE *pPal)
 /* Copied and modified from png.c */
 static int png_read_bitmap(LPVOID mfile, HGLOBAL *phDIB, HPALETTE *pPAL)
 {
-	struct png_info p;
+	png_info p;
 	UINT32 i;
 	int bytespp;
 	

@@ -36,7 +36,7 @@
 
 ***************************************************************************/
 
-extern struct artwork_callbacks mess_artwork_callbacks;
+extern artwork_callbacks mess_artwork_callbacks;
 
 
 
@@ -63,7 +63,7 @@ struct inputform_customization
 
 void artwork_use_device_art(mess_image *img, const char *defaultartfile);
 
-int artwork_get_inputscreen_customizations(struct png_info *png, int cust_type,
+int artwork_get_inputscreen_customizations(png_info *png, int cust_type,
 	const char *section,
 	struct inputform_customization *customizations,
 	int customizations_length);

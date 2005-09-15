@@ -19,8 +19,9 @@ DEVICE_UNLOAD( mess_hd );
 
 const struct IODevice *mess_hd_device_specify(struct IODevice *iodev, int count);
 
-struct hard_disk_file *mess_hd_get_hard_disk_file(mess_image *image);
-struct chd_file *mess_hd_get_chd_file(mess_image *image);
+hard_disk_file *mess_hd_get_hard_disk_file(mess_image *image);
+hard_disk_file *mess_hd_get_hard_disk_file_by_number(int drivenum);
+chd_file *mess_hd_get_chd_file(mess_image *image);
 
 void harddisk_device_getinfo(struct IODevice *iodev);
 

@@ -55,10 +55,10 @@ int win_dialog_add_slider(dialog_box *dialog, const char *item_label, int defaul
 	int min_value, int max_value,
 	dialog_itemstoreval storeval, void *storeval_param);
 
-int win_dialog_add_portselect(dialog_box *dialog, struct InputPort *port, const RECT *r);
+int win_dialog_add_portselect(dialog_box *dialog, input_port_entry *port, const RECT *r);
 
 int win_dialog_add_standard_buttons(dialog_box *dialog);
-int win_dialog_add_image(dialog_box *dialog, const struct png_info *png);
+int win_dialog_add_image(dialog_box *dialog, const png_info *png);
 int win_dialog_add_separator(dialog_box *dialog);
 int win_dialog_add_notification(dialog_box *dialog, UINT notification,
 	dialog_notification callback, void *param);

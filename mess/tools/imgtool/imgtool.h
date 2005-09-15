@@ -16,53 +16,12 @@
 #include "formats/flopimg.h"
 #include "opresolv.h"
 #include "library.h"
+#include "filter.h"
 
-/* -----------------------------------------------------------------------
- * Filters
- * ----------------------------------------------------------------------- */
-
-struct filter_info
-{
-	int (*sendproc)(struct filter_info *fi, void *buf, int buflen);
-	void *filterstate;
-	void *filterparam;
-	void *internalparam;
-};
 
 typedef struct ImageModule ImageModule;
 typedef const struct ImageModule *ImageModuleConstPtr;
 
-struct filter_module
-{
-	const char *name;
-	const char *humanname;
-	void *(*calcreadparam)(const struct ImageModule *imgmod);
-	void *(*calcwriteparam)(const struct ImageModule *imgmod);
-	int (*filterreadproc)(struct filter_info *fi, void *buf, int buflen);
-	int (*filterwriteproc)(struct filter_info *fi, void *buf, int buflen);
-	int statesize;
-};
-
-typedef struct _imgtool_filter imgtool_filter;
-
-typedef const struct filter_module *FILTERMODULE;
-
-enum {
-	PURPOSE_READ,
-	PURPOSE_WRITE
-};
-
-imgtool_filter *filter_init(FILTERMODULE filter, const struct ImageModule *imgmod, int purpose);
-void filter_term(imgtool_filter *f);
-int filter_writetostream(imgtool_filter *f, imgtool_stream *s, const void *buf, int buflen);
-int filter_readfromstream(imgtool_filter *f, imgtool_stream *s, void *buf, int buflen);
-int filter_readintobuffer(imgtool_filter *f, imgtool_stream *s);
-
-extern FILTERMODULE filters[];
-
-FILTERMODULE filter_lookup(const char *name);
-
-imgtool_stream *stream_open_filter(imgtool_stream *s, imgtool_filter *f);
 
 /* ----------------------------------------------------------------------- */
 
@@ -220,13 +179,14 @@ imgtoolerr_t img_freespace(imgtool_image *img, UINT64 *sz);
  *		Start reading from a file on an image with a stream
  *
  * Parameters:
- *		img:				The image to read from
- *		fname:				The filename on the image
+ *		image:				The image to read from
+ *		filename:			The filename on the image
+ *		fork:				The fork on the file
  *		destf:				Place to receive the stream
  *      filter:             Filter to use, or NULL if none
  */
-imgtoolerr_t img_readfile(imgtool_image *img, const char *fname, imgtool_stream *destf,
-	FILTERMODULE filter);
+imgtoolerr_t img_readfile(imgtool_image *image, const char *filename, const char *fork,
+	imgtool_stream *destf, filter_getinfoproc filter);
 
 /* img_writefile
  *
@@ -234,14 +194,15 @@ imgtoolerr_t img_readfile(imgtool_image *img, const char *fname, imgtool_stream 
  *		Start writing to a new file on an image with a stream
  *
  * Parameters:
- *		img:				The image to read from
- *		fname:				The filename on the image
+ *		image:				The image to read from
+ *		filename:			The filename on the image
+ *		fork:				The fork on the file
  *		destf:				Place to receive the stream
  *		options/ropts:		Options to specify on the new file
  *      filter:             Filter to use, or NULL if none
  */
-imgtoolerr_t img_writefile(imgtool_image *img, const char *fname, imgtool_stream *sourcef,
-	option_resolution *resolution, FILTERMODULE filter);
+imgtoolerr_t img_writefile(imgtool_image *image, const char *filename, const char *fork,
+	imgtool_stream *sourcef, option_resolution *resolution, filter_getinfoproc filter);
 
 /* img_getfile
  *
@@ -249,13 +210,14 @@ imgtoolerr_t img_writefile(imgtool_image *img, const char *fname, imgtool_stream
  *		Read a file from an image, storing it into a native file
  *
  * Parameters:
- *		img:				The image to read from
- *		fname:				The filename on the image
+ *		image:				The image to read from
+ *		filename:			The filename on the image
+ *		fork:				The fork on the file
  *		dest:				Filename for native file to write to
  *      filter:             Filter to use, or NULL if none
  */
-imgtoolerr_t img_getfile(imgtool_image *img, const char *fname, const char *dest,
-	FILTERMODULE filter);
+imgtoolerr_t img_getfile(imgtool_image *img, const char *filename, const char *fork,
+	const char *dest, filter_getinfoproc filter);
 
 /* img_putfile
  *
@@ -263,15 +225,16 @@ imgtoolerr_t img_getfile(imgtool_image *img, const char *fname, const char *dest
  *		Read a native file and store it on an image
  *
  * Parameters:
- *		img:				The image to read from
+ *		image:				The image to read from
  *		newfname:			The filename on the image to store (if NULL, then
  *							the file will be named basename(source)
+ *		fork:				The fork on the file
  *		source:				Native filename for source
  *		opts:				Options to specify on the new file
  *      filter:             Filter to use, or NULL if none
  */
-imgtoolerr_t img_putfile(imgtool_image *img, const char *newfname, const char *source,
-	option_resolution *opts, FILTERMODULE filter);
+imgtoolerr_t img_putfile(imgtool_image *img, const char *newfname, const char *fork,
+	const char *source, option_resolution *opts, filter_getinfoproc filter);
 
 /* img_deletefile
  *
@@ -283,6 +246,17 @@ imgtoolerr_t img_putfile(imgtool_image *img, const char *newfname, const char *s
  *		fname:				The filename on the image
  */
 imgtoolerr_t img_deletefile(imgtool_image *img, const char *fname);
+
+/* img_listforks
+ *
+ * Description:
+ *		Lists all forks on an image
+ *
+ * Parameters:
+ *		image:				The image to read from
+ *		path:				The filename on the image
+ */
+imgtoolerr_t img_listforks(imgtool_image *image, const char *path, imgtool_forkent *ents, size_t len);
 
 /* img_createdir
  *
@@ -305,6 +279,36 @@ imgtoolerr_t img_createdir(imgtool_image *img, const char *path);
  *		path:				The path to the directory to delete
  */
 imgtoolerr_t img_deletedir(imgtool_image *img, const char *path);
+
+/* img_getattrs
+ * img_setattrs
+ * img_getattrs
+ * img_setattr
+ *
+ * Description:
+ *		Gets or sets attributes on a file
+ *
+ * Parameters:
+ *		img:				The image to read from
+ *		path:				The path to the directory to delete
+ *		attrs:				The list of attributes on the file
+ *		values:				Values to get or store
+ */
+imgtoolerr_t img_getattrs(imgtool_image *image, const char *path, const UINT32 *attrs, imgtool_attribute *values);
+imgtoolerr_t img_setattrs(imgtool_image *image, const char *path, const UINT32 *attrs, const imgtool_attribute *values);
+imgtoolerr_t img_getattr(imgtool_image *image, const char *path, UINT32 attr, imgtool_attribute *value);
+imgtoolerr_t img_setattr(imgtool_image *image, const char *path, UINT32 attr, imgtool_attribute value);
+
+/* img_suggesttransfer
+ *
+ * Description:
+ *		Suggest a list of filters appropriate for a file
+ *
+ * Parameters:
+ *		image:				The image to read from
+ *		path:				The path to the directory to delete
+ */
+imgtoolerr_t img_suggesttransfer(imgtool_image *image, const char *path, imgtool_transfer_suggestion *suggestions, size_t suggestions_length);
 
 /* img_getchain
  * img_getchain_string
@@ -396,24 +400,11 @@ struct imgtool_module_features
 	unsigned int supports_lastmodified_time : 1;
 	unsigned int supports_readsector : 1;
 	unsigned int supports_writesector : 1;
+	unsigned int supports_forks : 1;
+	unsigned int is_read_only : 1;
 };
 
 struct imgtool_module_features img_get_module_features(const struct ImageModule *module);
-
-/* imgtool_test
- * imgtool_test_byname
- *
- * Description:
- *		(Only present when MAME_DEBUG is on)
- *		These functions run a test suite on the module
- *
- * Parameters:
- *		module/modulename:	The module for this image format.  If NULL, tests are run on all modules
- */
-#ifdef MAME_DEBUG
-imgtoolerr_t imgtool_test(imgtool_library *library, const struct ImageModule *module);
-imgtoolerr_t imgtool_test_byname(imgtool_library *library, const char *modulename);
-#endif /* MAME_DEBUG */
 
 /* imgtool_validitychecks
  *

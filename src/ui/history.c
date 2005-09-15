@@ -25,9 +25,9 @@
 #include <driver.h>
 #include "m32util.h"
 
+#include "datafile.h"
 #include "history.h"
 
-extern int load_driver_history(const struct GameDriver *drv, char *buffer, int bufsize);
 
 /**************************************************************
  * functions

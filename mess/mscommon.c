@@ -19,7 +19,7 @@ typedef short termchar_t;
 
 struct terminal
 {
-	struct tilemap *tm;
+	tilemap *tm;
 	int gfx;
 	int blank_char;
 	int char_bits;
@@ -85,7 +85,7 @@ struct terminal *terminal_create(
 	return term;
 }
 
-void terminal_draw(struct mame_bitmap *dest, const struct rectangle *cliprect, struct terminal *terminal)
+void terminal_draw(mame_bitmap *dest, const rectangle *cliprect, struct terminal *terminal)
 {
 	current_terminal = terminal;
 	tilemap_draw(dest, cliprect, terminal->tm, 0, 0);
@@ -178,7 +178,7 @@ void terminal_clear(struct terminal *terminal)
 
 ***************************************************************************/
 
-void draw_led(struct mame_bitmap *bitmap, const char *led, int valueorcolor, int x, int y)
+void draw_led(mame_bitmap *bitmap, const char *led, int valueorcolor, int x, int y)
 {
 	char c;
 	int i, xi, yi, mask, color;
@@ -265,64 +265,4 @@ int gregorian_days_in_month(int month, int year)
 		return days_in_month[month-1];
 	else
 		return 29;
-}
-
-/***************************************************************************
-
-	PeT's state text code
-
-***************************************************************************/
-
-typedef void (*STATE_FUNCTION)(void);
-
-static struct
-{
-	int count;
-	STATE_FUNCTION functions[10];
-	struct mame_bitmap *bitmap;
-	int y;
-} state= {0};
-
-/* call this at init time to add your state functions */
-void statetext_add_function(void (*function)(void))
-{
-	state.functions[state.count++] = function;
-}
-
-/* call this in your state function to output text */
-void statetext_display_text(const char *text)
-{
-	int x, x0, y2, width = Machine->uiwidth / Machine->uifont->width;
-
-	if (text[0] != 0)
-	{
-		x = strlen (text);
-		state.y -= Machine->uifont->height * ((x + width - 1) / width);
-		y2 = state.y + Machine->uifont->height;
-		x = 0;
-		while (text[x])
-		{
-			for (x0 = Machine->uiymin;
-				 text[x] && (x0 < Machine->uiymin + Machine->uiwidth-Machine->uifont->width);
-				 x++, x0 += Machine->uifont->width)
-			{
-				drawgfx (state.bitmap, Machine->uifont,
-						 text[x], 0, 0, 0, x0, y2, 0,
-						 TRANSPARENCY_NONE, 0);
-			}
-			y2 += Machine->uifont->height;
-		}
-	}
-}
-
-/* call this at last after updating your frame */
-void statetext_display(struct mame_bitmap *bitmap)
-{
-	int i;
-
-	state.bitmap = bitmap;
-	state.y = Machine->uiymin + Machine->uiheight - Machine->uifont->height;
-
-	for (i=0; i<state.count; i++)
-		state.functions[i]();
 }

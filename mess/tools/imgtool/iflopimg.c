@@ -316,8 +316,12 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 			module->read_file					= floppy_callbacks.read_file;
 			module->write_file					= floppy_callbacks.write_file;
 			module->delete_file					= floppy_callbacks.delete_file;
+			module->list_forks					= floppy_callbacks.list_forks;
 			module->create_dir					= floppy_callbacks.create_dir;
 			module->delete_dir					= floppy_callbacks.delete_dir;
+			module->get_attrs					= floppy_callbacks.get_attrs;
+			module->set_attrs					= floppy_callbacks.set_attrs;
+			module->suggest_transfer			= floppy_callbacks.suggest_transfer;
 			module->get_chain					= floppy_callbacks.get_chain;
 			module->writefile_optguide			= floppy_callbacks.writefile_optguide;
 			module->writefile_optspec			= floppy_callbacks.writefile_optspec;

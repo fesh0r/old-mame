@@ -48,8 +48,6 @@ struct rsdos_direnum
 #define MAX_DIRENTS		((18-2)*(256/32))
 static floperr_t get_rsdos_dirent(imgtool_image *f, int index_loc, struct rsdos_dirent *ent)
 {
-	if (index_loc >= MAX_DIRENTS)
-		return IMGTOOLERR_FILENOTFOUND;
 	return floppy_read_sector(imgtool_floppy(f), 0, 17, 3, index_loc * 32, (void *) ent, sizeof(*ent));
 }
 
@@ -285,6 +283,9 @@ static imgtoolerr_t rsdos_diskimage_nextenum(imgtool_imageenum *enumeration, img
 
 	do
 	{
+		if (rsenum->index >= MAX_DIRENTS)
+			goto eof;
+
 		ferr = get_rsdos_dirent(image, rsenum->index++, &rsent);
 		if (ferr)
 			return imgtool_floppy_error(ferr);
@@ -386,7 +387,7 @@ static imgtoolerr_t delete_entry(imgtool_image *img, struct rsdos_dirent *ent, i
 
 
 
-static imgtoolerr_t rsdos_diskimage_readfile(imgtool_image *img, const char *fname, imgtool_stream *destf)
+static imgtoolerr_t rsdos_diskimage_readfile(imgtool_image *img, const char *fname, const char *fork, imgtool_stream *destf)
 {
 	imgtoolerr_t err;
 	struct rsdos_dirent ent;
@@ -408,7 +409,7 @@ static imgtoolerr_t rsdos_diskimage_readfile(imgtool_image *img, const char *fna
 
 
 
-static imgtoolerr_t rsdos_diskimage_writefile(imgtool_image *img, const char *fname, imgtool_stream *sourcef, option_resolution *writeoptions)
+static imgtoolerr_t rsdos_diskimage_writefile(imgtool_image *img, const char *fname, const char *fork, imgtool_stream *sourcef, option_resolution *writeoptions)
 {
 	floperr_t ferr;
 	imgtoolerr_t err;
@@ -527,6 +528,48 @@ static imgtoolerr_t rsdos_diskimage_deletefile(imgtool_image *img, const char *f
 
 
 
+static imgtoolerr_t rsdos_diskimage_suggesttransfer(imgtool_image *image, const char *fname, imgtool_transfer_suggestion *suggestions, size_t suggestions_length)
+{
+	imgtoolerr_t err;
+	struct rsdos_dirent ent;
+	int pos;
+
+	if (fname)
+	{
+		err = lookup_rsdos_file(image, fname, &ent, &pos);
+		if (err)
+			return err;
+
+		if (ent.asciiflag == (char) 0xFF)
+		{
+			/* ASCII file */
+			suggestions[0].viability = SUGGESTION_RECOMMENDED;
+			suggestions[0].filter = filter_eoln_getinfo;
+			suggestions[1].viability = SUGGESTION_POSSIBLE;
+			suggestions[1].filter = NULL;
+		}
+		else if (ent.ftype == 0)
+		{
+			/* tokenized BASIC file */
+			suggestions[0].viability = SUGGESTION_RECOMMENDED;
+			suggestions[0].filter = NULL;
+			suggestions[1].viability = SUGGESTION_POSSIBLE;
+			suggestions[1].filter = filter_cocobas_getinfo;
+		}
+	}
+	else
+	{
+		suggestions[0].viability = SUGGESTION_RECOMMENDED;
+		suggestions[0].filter = NULL;
+		suggestions[1].viability = SUGGESTION_POSSIBLE;
+		suggestions[1].filter = filter_eoln_getinfo;
+	}
+
+	return IMGTOOLERR_SUCCESS;
+}
+
+
+
 /*********************************************************************
 	Imgtool module declaration
 *********************************************************************/
@@ -556,6 +599,7 @@ static imgtoolerr_t coco_rsdos_module_populate(imgtool_library *library, struct 
 	module->read_file				= rsdos_diskimage_readfile;
 	module->write_file				= rsdos_diskimage_writefile;
 	module->delete_file				= rsdos_diskimage_deletefile;
+	module->suggest_transfer		= rsdos_diskimage_suggesttransfer;
 	module->writefile_optguide		= coco_rsdos_writefile_optionguide;
 	module->writefile_optspec		= "T0-[2]-3;M0-[1]";
 	return IMGTOOLERR_SUCCESS;

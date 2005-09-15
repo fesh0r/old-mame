@@ -527,7 +527,6 @@ static imgtoolerr_t setup_openfilename_struct(OPENFILENAME *ofn, memory_pool *po
 	if (info->image)
 		default_module = img_module(info->image);
 
-	memset(ofn, 0, sizeof(*ofn));
 	pile_init(&pile);
 
 	if (!creating_file)
@@ -596,6 +595,7 @@ static imgtoolerr_t setup_openfilename_struct(OPENFILENAME *ofn, memory_pool *po
 	}
 	memcpy(filter, pile_getptr(&pile), pile_size(&pile));
 
+	memset(ofn, 0, sizeof(*ofn));
 	ofn->lStructSize = sizeof(*ofn);
 	ofn->Flags = OFN_EXPLORER;
 	ofn->hwndOwner = window;
@@ -671,7 +671,7 @@ static imgtoolerr_t get_recursive_directory(imgtool_image *image, const char *pa
 			if (entry.directory)
 				err = get_recursive_directory(image, subpath, local_subpath);
 			else
-				err = img_getfile(image, subpath, T2A(local_subpath), NULL);
+				err = img_getfile(image, subpath, NULL, T2A(local_subpath), NULL);
 			if (err)
 				goto done;
 		}
@@ -717,7 +717,7 @@ static imgtoolerr_t put_recursive_directory(imgtool_image *image, LPCTSTR local_
 				if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 					err = put_recursive_directory(image, local_subpath, subpath);
 				else
-					err = img_putfile(image, subpath, T2A(local_subpath), NULL, NULL);
+					err = img_putfile(image, subpath, NULL, T2A(local_subpath), NULL, NULL);
 				if (err)
 					goto done;
 			}
@@ -756,7 +756,7 @@ imgtoolerr_t wimgtool_open_image(HWND window, const struct ImageModule *module,
 	if (read_or_write != OSD_FOPEN_READ)
 	{
 		features = img_get_module_features(module);
-		if (!features.supports_writing && !features.supports_createdir && !features.supports_deletefile && !features.supports_deletedir)
+		if (features.is_read_only)
 			read_or_write = OSD_FOPEN_READ;
 	}
 
@@ -916,6 +916,10 @@ static void menu_insert(HWND window)
 	option_resolution *opts = NULL;
 	BOOL cancel;
 	const struct ImageModule *module;
+	const char *fork = NULL;
+	struct transfer_suggestion_info suggestion_info;
+	int use_suggestion_info;
+	filter_getinfoproc filter = NULL;
 
 	info = get_wimgtool_info(window);
 
@@ -930,14 +934,27 @@ static void menu_insert(HWND window)
 	}
 
 	module = img_module(info->image);
-	if (module->writefile_optguide && module->writefile_optspec)
+
+	img_suggesttransfer(info->image, NULL, suggestion_info.suggestions,
+		sizeof(suggestion_info.suggestions) / sizeof(suggestion_info.suggestions[0]));
+
+	/* do we need to show an option dialog? */
+	if (suggestion_info.suggestions[0].viability || (module->writefile_optguide && module->writefile_optspec))
 	{
-		err = win_show_option_dialog(window, module->writefile_optguide,
-			module->writefile_optspec, &opts, &cancel);
+		use_suggestion_info = (suggestion_info.suggestions[0].viability != SUGGESTION_END);
+		err = win_show_option_dialog(window, use_suggestion_info ? &suggestion_info : NULL,
+			module->writefile_optguide, module->writefile_optspec, &opts, &cancel);
 		if (err || cancel)
 			goto done;
+
+		if (use_suggestion_info)
+		{
+			fork = suggestion_info.suggestions[suggestion_info.selected].fork;
+			filter = suggestion_info.suggestions[suggestion_info.selected].filter;
+		}
 	}
 
+	/* figure out the image filename */
 	s1 = _tcsrchr(ofn.lpstrFile, '\\');
 	s1 = s1 ? s1 + 1 : ofn.lpstrFile;
 	image_filename = T2U(s1);
@@ -950,7 +967,7 @@ static void menu_insert(HWND window)
 		image_filename = s2;
 	}
 
-	err = img_putfile(info->image, image_filename, ofn.lpstrFile, opts, NULL);
+	err = img_putfile(info->image, image_filename, fork, ofn.lpstrFile, opts, filter);
 	if (err)
 		goto done;
 
@@ -967,6 +984,53 @@ done:
 
 
 
+static UINT_PTR CALLBACK extract_dialog_hook(HWND dlgwnd, UINT message,
+	WPARAM wparam, LPARAM lparam)
+{
+	UINT_PTR rc = 0;
+	int i;
+	HWND filter_combo;
+	struct transfer_suggestion_info *info;
+	OPENFILENAME *ofi;
+	LONG_PTR l;
+
+	filter_combo = GetDlgItem(dlgwnd, IDC_FILTERCOMBO);
+
+	switch(message)
+	{
+		case WM_INITDIALOG:
+			ofi = (OPENFILENAME *) lparam;
+			info = (struct transfer_suggestion_info *) ofi->lCustData;
+			SetWindowLongPtr(dlgwnd, GWLP_USERDATA, (LONG_PTR) info);
+			
+			for (i = 0; info->suggestions[i].viability; i++)
+			{
+				SendMessage(filter_combo, CB_ADDSTRING, 0, (LPARAM) info->suggestions[i].description);
+			}
+			SendMessage(filter_combo, CB_SETCURSEL, info->selected, 0);
+
+			rc = TRUE;
+			break;
+
+		case WM_COMMAND:
+			switch(HIWORD(wparam))
+			{
+				case CBN_SELCHANGE:
+					if (LOWORD(wparam) == IDC_FILTERCOMBO)
+					{
+						l = GetWindowLongPtr(dlgwnd, GWLP_USERDATA);
+						info = (struct transfer_suggestion_info *) l;
+						info->selected = SendMessage(filter_combo, CB_GETCURSEL, 0, 0);
+					}
+					break;
+			}
+			break;
+	}
+	return rc;
+}
+
+
+
 static imgtoolerr_t menu_extract_proc(HWND window, const imgtool_dirent *entry, void *param)
 {
 	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
@@ -975,26 +1039,64 @@ static imgtoolerr_t menu_extract_proc(HWND window, const imgtool_dirent *entry, 
 	struct wimgtool_info *info;
 	const char *filename;
 	const char *image_basename;
+	const char *fork;
+	struct transfer_suggestion_info suggestion_info;
 	int i;
+	filter_getinfoproc filter;
 
 	info = get_wimgtool_info(window);
 
 	filename = entry->filename;
 
+	// figure out a suggested host filename
 	image_basename = entry->filename;
 	for (i = 0; entry->filename[i]; i++)
 	{
 		if (entry->filename[i] == img_module(info->image)->path_separator)
 			image_basename = &entry->filename[i + 1];
 	}
-
 	_tcscpy(host_filename, U2T(image_basename));
 
+
+	// try suggesting some filters (only if doing a single file)
+	if (!entry->directory)
+	{
+		img_suggesttransfer(info->image, filename, suggestion_info.suggestions,
+			sizeof(suggestion_info.suggestions) / sizeof(suggestion_info.suggestions[0]));
+
+		suggestion_info.selected = 0;
+		for (i = 0; i < sizeof(suggestion_info.suggestions) / sizeof(suggestion_info.suggestions[0]); i++)
+		{
+			if (suggestion_info.suggestions[i].viability == SUGGESTION_RECOMMENDED)
+			{
+				suggestion_info.selected = i;
+				break;
+			}
+		}
+	}
+	else
+	{
+		memset(&suggestion_info, 0, sizeof(suggestion_info));
+		suggestion_info.selected = -1;
+	}
+
+	// set up the OPENFILENAME struct
 	memset(&ofn, 0, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
+	ofn.Flags = OFN_EXPLORER;
 	ofn.lpstrFile = host_filename;
 	ofn.lpstrFilter = TEXT("All files (*.*)\0*.*\0");
 	ofn.nMaxFile = sizeof(host_filename) / sizeof(host_filename[0]);
+
+	if (suggestion_info.suggestions[0].viability)
+	{
+		ofn.Flags |= OFN_ENABLEHOOK | OFN_ENABLESIZING | OFN_ENABLETEMPLATE;
+		ofn.lpfnHook = extract_dialog_hook;
+		ofn.hInstance = GetModuleHandle(NULL);
+		ofn.lpTemplateName = MAKEINTRESOURCE(IDD_EXTRACTOPTIONS);
+		ofn.lCustData = (LPARAM) &suggestion_info;
+	}
+
 	if (!GetSaveFileName(&ofn))
 		goto done;
 
@@ -1006,7 +1108,18 @@ static imgtoolerr_t menu_extract_proc(HWND window, const imgtool_dirent *entry, 
 	}
 	else
 	{
-		err = img_getfile(info->image, filename, ofn.lpstrFile, NULL);
+		if (suggestion_info.selected >= 0)
+		{
+			fork = suggestion_info.suggestions[suggestion_info.selected].fork;
+			filter = suggestion_info.suggestions[suggestion_info.selected].filter;
+		}
+		else
+		{
+			fork = NULL;
+			filter = NULL;
+		}
+
+		err = img_getfile(info->image, filename, fork, ofn.lpstrFile, filter);
 		if (err)
 			goto done;
 	}
@@ -1267,7 +1380,7 @@ static void drop_files(HWND window, HDROP drop)
 		if (GetFileAttributes(buffer) & FILE_ATTRIBUTE_DIRECTORY)
 			err = put_recursive_directory(info->image, buffer, subpath);
 		else
-			err = img_putfile(info->image, subpath, T2A(buffer), NULL, NULL);
+			err = img_putfile(info->image, subpath, NULL, T2A(buffer), NULL, NULL);
 		if (err)
 			goto done;
 	}

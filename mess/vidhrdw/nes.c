@@ -40,7 +40,7 @@ PALETTE_INIT( nes )
 	ppu2c03b_init_palette(0);
 }
 
-static void draw_sight(struct mame_bitmap *bitmap, int playerNum, int x_center, int y_center)
+static void draw_sight(mame_bitmap *bitmap, int playerNum, int x_center, int y_center)
 {
 	int x,y;
 	UINT16 color;
@@ -102,11 +102,11 @@ VIDEO_UPDATE( nes )
 
 			if (nes_fds.current_side == 0)
 			{
-				usrintf_showmessage ("No disk inserted.");
+				ui_popup("No disk inserted.");
 			}
 			else
 			{
-				usrintf_showmessage ("Disk set to side %d", nes_fds.current_side);
+				ui_popup("Disk set to side %d", nes_fds.current_side);
 			}
 		}
 	}

@@ -354,6 +354,7 @@ BOOL GameFiltered(int nGame, DWORD dwMask)
 	/*Filter Text is already global*/
 
 	if (MyStrStrI(drivers[nGame]->description,GetFilterText()) == NULL &&
+		MyStrStrI(drivers[nGame]->name,GetFilterText()) == NULL && 
 		MyStrStrI(drivers[nGame]->source_file,GetFilterText()) == NULL && 
 		MyStrStrI(drivers[nGame]->manufacturer,GetFilterText()) == NULL)
 	{
@@ -847,7 +848,7 @@ void CreateCPUFolders(int parent_index)
 	for (jj = 0; jj < nGames; jj++)
 	{
 		int n;
-		struct InternalMachineDriver drv;
+		machine_config drv;
 		expand_machine_driver(drivers[jj]->drv,&drv);
 		for (n = 0; n < MAX_CPU; n++)
 			if (drv.cpu[n].cpu_type != CPU_DUMMY)
@@ -899,7 +900,7 @@ void CreateSoundFolders(int parent_index)
 	for (jj = 0; jj < nGames; jj++)
 	{
 		int n;
-		struct InternalMachineDriver drv;
+		machine_config drv;
 		expand_machine_driver(drivers[jj]->drv,&drv);
 		
 		for (n = 0; n < MAX_SOUND; n++)
@@ -1102,9 +1103,9 @@ void CreateDumpingFolders(int parent_index)
 	BOOL bNoDump = FALSE;
 	int nGames = GetNumGames();
 	LPTREEFOLDER lpFolder = treeFolders[parent_index];
-	const struct RomModule *region, *rom;
+	const rom_entry *region, *rom;
 	const char *name;
-	const struct GameDriver *gamedrv;
+	const game_driver *gamedrv;
 
 	// create our two subfolders
 	LPTREEFOLDER lpBad, lpNo;

@@ -13,7 +13,7 @@
 
 static int horizontal_pos = 0x0b;
 
-struct GfxLayout galaxy_charlayout =
+gfx_layout galaxy_charlayout =
 {
 	8, 13,				/* 8x8 characters */
 	128,				/* 128 characters */
@@ -51,7 +51,7 @@ VIDEO_START( galaxy )
 VIDEO_UPDATE( galaxy )
 {
 	int offs;
-	struct rectangle black_area = {0,0,0,16*13};
+	rectangle black_area = {0,0,0,16*13};
 	static int fast_mode = FALSE;
 	int full_refresh = 1;
 
