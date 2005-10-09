@@ -14,6 +14,7 @@
 
 #include "driver.h"
 #include "tms5220.h"
+#include "state.h"
 
 
 /* Pull in the ROM tables */
@@ -73,28 +74,28 @@ struct tms5220
 	/* these contain data describing the current and previous voice frames */
 	UINT16 old_energy;
 	UINT16 old_pitch;
-	int old_k[10];
+	INT32 old_k[10];
 
 	UINT16 new_energy;
 	UINT16 new_pitch;
-	int new_k[10];
+	INT32 new_k[10];
 
 
 	/* these are all used to contain the current state of the sound generation */
 	UINT16 current_energy;
 	UINT16 current_pitch;
-	int current_k[10];
+	INT32 current_k[10];
 
 	UINT16 target_energy;
 	UINT16 target_pitch;
-	int target_k[10];
+	INT32 target_k[10];
 
 	UINT8 interp_count;		/* number of interp periods (0-7) */
 	UINT8 sample_count;		/* sample number within interp (0-24) */
-	int pitch_count;
+	UINT16 pitch_count;
 
-	int u[11];
-	int x[10];
+	INT32 u[11];
+	INT32 x[10];
 
 	INT8 randbit;
 
@@ -103,11 +104,11 @@ struct tms5220
 	int (*read_callback)(int count);
 	void (*load_address_callback)(int data);
 	void (*read_and_branch_callback)(void);
-	int schedule_dummy_read;			/* set after each load address, so that next read operation
+	UINT8 schedule_dummy_read;			/* set after each load address, so that next read operation
                                               is preceded by a dummy read */
 
 	UINT8 data_register;				/* data register, used by read command */
-	int RDB_flag;					/* whether we should read data register or status register */
+	UINT8 RDB_flag;					/* whether we should read data register or status register */
 
 	/* flag for tms0285 emulation */
 	/* The tms0285 is an early variant of the tms5220 used in the ti-99/4(a)
@@ -128,12 +129,57 @@ static void set_interrupt_state(struct tms5220 *tms, int state);
 #define DEBUG_5220	0
 
 
-void *tms5220_create(void)
+void *tms5220_create(int index)
 {
 	struct tms5220 *tms;
 
 	tms = malloc(sizeof(*tms));
 	memset(tms, 0, sizeof(*tms));
+
+	state_save_register_item_array("tms5220", index, tms->fifo);
+	state_save_register_item("tms5220", index, tms->fifo_head);
+	state_save_register_item("tms5220", index, tms->fifo_tail);
+	state_save_register_item("tms5220", index, tms->fifo_count);
+	state_save_register_item("tms5220", index, tms->fifo_bits_taken);
+
+	state_save_register_item("tms5220", index, tms->tms5220_speaking);
+	state_save_register_item("tms5220", index, tms->speak_external);
+	state_save_register_item("tms5220", index, tms->talk_status);
+	state_save_register_item("tms5220", index, tms->first_frame);
+	state_save_register_item("tms5220", index, tms->last_frame);
+	state_save_register_item("tms5220", index, tms->buffer_low);
+	state_save_register_item("tms5220", index, tms->buffer_empty);
+	state_save_register_item("tms5220", index, tms->irq_pin);
+
+	state_save_register_item("tms5220", index, tms->old_energy);
+	state_save_register_item("tms5220", index, tms->old_pitch);
+	state_save_register_item_array("tms5220", index, tms->old_k);
+
+	state_save_register_item("tms5220", index, tms->new_energy);
+	state_save_register_item("tms5220", index, tms->new_pitch);
+	state_save_register_item_array("tms5220", index, tms->new_k);
+
+	state_save_register_item("tms5220", index, tms->current_energy);
+	state_save_register_item("tms5220", index, tms->current_pitch);
+	state_save_register_item_array("tms5220", index, tms->current_k);
+
+	state_save_register_item("tms5220", index, tms->target_energy);
+	state_save_register_item("tms5220", index, tms->target_pitch);
+	state_save_register_item_array("tms5220", index, tms->target_k);
+
+	state_save_register_item("tms5220", index, tms->interp_count);
+	state_save_register_item("tms5220", index, tms->sample_count);
+	state_save_register_item("tms5220", index, tms->pitch_count);
+
+	state_save_register_item_array("tms5220", index, tms->u);
+	state_save_register_item_array("tms5220", index, tms->x);
+
+	state_save_register_item("tms5220", index, tms->randbit);
+
+	state_save_register_item("tms5220", index, tms->schedule_dummy_read);
+	state_save_register_item("tms5220", index, tms->data_register);
+	state_save_register_item("tms5220", index, tms->RDB_flag);
+
 	return tms;
 }
 

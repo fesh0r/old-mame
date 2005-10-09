@@ -493,6 +493,7 @@ $(OBJ)/capcom.a: \
 	$(OBJ)/vidhrdw/mitchell.o $(OBJ)/drivers/mitchell.o \
 	$(OBJ)/vidhrdw/cbasebal.o $(OBJ)/drivers/cbasebal.o \
 	$(OBJ)/vidhrdw/cps1.o $(OBJ)/drivers/cps1.o $(OBJ)/drivers/cps2.o \
+	$(OBJ)/drivers/fcrash.o \
 	$(OBJ)/drivers/cps3.o \
 	$(OBJ)/machine/znsec.o $(OBJ)/machine/at28c16.o $(OBJ)/machine/mb3773.o $(OBJ)/drivers/zn.o \
 
@@ -545,7 +546,12 @@ $(OBJ)/sega.a: \
 	$(OBJ)/drivers/model2.o \
 	$(OBJ)/vidhrdw/model3.o $(OBJ)/machine/model3.o $(OBJ)/drivers/model3.o \
 	$(OBJ)/machine/53c810.o \
-	$(OBJ)/vidhrdw/segac2.o $(OBJ)/drivers/segac2.o \
+	$(OBJ)/vidhrdw/genesis.o $(OBJ)/drivers/genesis.o \
+	$(OBJ)/drivers/segac2.o \
+	$(OBJ)/drivers/megatech.o \
+	$(OBJ)/drivers/megaplay.o \
+	$(OBJ)/drivers/puckpkmn.o \
+	$(OBJ)/drivers/topshoot.o \
 	$(OBJ)/drivers/coolridr.o \
 	$(OBJ)/drivers/stv.o $(OBJ)/drivers/stvhacks.o $(OBJ)/machine/stvcd.o \
 	$(OBJ)/machine/scudsp.o \
@@ -877,6 +883,7 @@ $(OBJ)/gameplan.a: \
 $(OBJ)/zaccaria.a: \
 	$(OBJ)/vidhrdw/zac2650.o $(OBJ)/drivers/zac2650.o \
 	$(OBJ)/vidhrdw/zaccaria.o $(OBJ)/drivers/zaccaria.o \
+	$(OBJ)/drivers/laserbat.o
 
 $(OBJ)/upl.a: \
 	$(OBJ)/vidhrdw/mouser.o $(OBJ)/drivers/mouser.o \
@@ -1217,6 +1224,8 @@ $(OBJ)/other68k.a: \
 	$(OBJ)/vidhrdw/afega.o $(OBJ)/drivers/afega.o \
 	$(OBJ)/drivers/pkscram.o \
 	$(OBJ)/drivers/jackpool.o \
+	$(OBJ)/drivers/egghunt.o \
+	$(OBJ)/drivers/magic10.o \
 
 $(OBJ)/otherz80.a: \
 	$(OBJ)/vidhrdw/astinvad.o $(OBJ)/sndhrdw/astinvad.o $(OBJ)/drivers/astinvad.o \
@@ -1261,6 +1270,7 @@ $(OBJ)/otherz80.a: \
 	$(OBJ)/drivers/pipeline.o \
 	$(OBJ)/drivers/wink.o \
 	$(OBJ)/drivers/fortecar.o \
+	$(OBJ)/drivers/coinmstr.o \
 
 $(OBJ)/other.a: \
 	$(OBJ)/vidhrdw/redalert.o $(OBJ)/sndhrdw/redalert.o $(OBJ)/drivers/redalert.o \

@@ -107,7 +107,6 @@ WRITE8_HANDLER( rtype2_port02_w );
 WRITE8_HANDLER( majtitle_gfx_ctrl_w );
 VIDEO_UPDATE( m72 );
 VIDEO_UPDATE( majtitle );
-VIDEO_EOF( m72 );
 
 
 static unsigned char *protection_ram;
@@ -2029,7 +2028,6 @@ static MACHINE_DRIVER_START( rtype )
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_START(m72)
-	MDRV_VIDEO_EOF(m72)
 	MDRV_VIDEO_UPDATE(m72)
 
 	/* sound hardware */
@@ -2069,7 +2067,6 @@ static MACHINE_DRIVER_START( m72 )
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_START(m72)
-	MDRV_VIDEO_EOF(m72)
 	MDRV_VIDEO_UPDATE(m72)
 
 	/* sound hardware */
@@ -2113,7 +2110,6 @@ static MACHINE_DRIVER_START( dkgenm72 )
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_START(m72)
-	MDRV_VIDEO_EOF(m72)
 	MDRV_VIDEO_UPDATE(m72)
 
 	/* sound hardware */
@@ -2157,7 +2153,6 @@ static MACHINE_DRIVER_START( xmultipl )
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_START(m72)
-	MDRV_VIDEO_EOF(m72)
 	MDRV_VIDEO_UPDATE(m72)
 
 	/* sound hardware */
@@ -2200,7 +2195,6 @@ static MACHINE_DRIVER_START( dbreed )
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_START(m72)
-	MDRV_VIDEO_EOF(m72)
 	MDRV_VIDEO_UPDATE(m72)
 
 	/* sound hardware */
@@ -2244,7 +2238,6 @@ static MACHINE_DRIVER_START( rtype2 )
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_START(rtype2)
-	MDRV_VIDEO_EOF(m72)
 	MDRV_VIDEO_UPDATE(m72)
 
 	/* sound hardware */
@@ -2287,7 +2280,6 @@ static MACHINE_DRIVER_START( majtitle )
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_START(majtitle)
-	MDRV_VIDEO_EOF(m72)
 	MDRV_VIDEO_UPDATE(majtitle)
 
 	/* sound hardware */
@@ -2330,7 +2322,6 @@ static MACHINE_DRIVER_START( hharry )
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_START(hharry)
-	MDRV_VIDEO_EOF(m72)
 	MDRV_VIDEO_UPDATE(m72)
 
 	/* sound hardware */
@@ -2374,7 +2365,6 @@ static MACHINE_DRIVER_START( hharryu )
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_START(rtype2)
-	MDRV_VIDEO_EOF(m72)
 	MDRV_VIDEO_UPDATE(m72)
 
 	/* sound hardware */
@@ -2417,7 +2407,6 @@ static MACHINE_DRIVER_START( poundfor )
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_START(poundfor)
-	MDRV_VIDEO_EOF(m72)
 	MDRV_VIDEO_UPDATE(m72)
 
 	/* sound hardware */
@@ -2460,7 +2449,6 @@ static MACHINE_DRIVER_START( kengo )
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_START(poundfor)
-	MDRV_VIDEO_EOF(m72)
 	MDRV_VIDEO_UPDATE(m72)
 
 	/* sound hardware */
@@ -3283,27 +3271,27 @@ static DRIVER_INIT( kengo )
 
 
 
-GAMEX( 1987, rtype,    0,        rtype,    rtype,    0,        ROT0,   "Irem", "R-Type (Japan)", GAME_NO_COCKTAIL )
-GAMEX( 1987, rtypepj,  rtype,    rtype,    rtypep,   0,        ROT0,   "Irem", "R-Type (Japan prototype)", GAME_NO_COCKTAIL )
-GAMEX( 1987, rtypeu,   rtype,    rtype,    rtype,    0,        ROT0,   "Irem (Nintendo of America license)", "R-Type (US)", GAME_NO_COCKTAIL )
-GAMEX( 1987, bchopper, 0,        m72,      bchopper, bchopper, ROT0,   "Irem", "Battle Chopper", GAME_NO_COCKTAIL )
-GAMEX( 1987, mrheli,   bchopper, m72,      bchopper, mrheli,   ROT0,   "Irem", "Mr. HELI no Dai-Bouken", GAME_NO_COCKTAIL )
-GAMEX( 1988, nspirit,  0,        m72,      nspirit,  nspirit,  ROT0,   "Irem", "Ninja Spirit", GAME_NO_COCKTAIL )
-GAMEX( 1988, nspiritj, nspirit,  m72,      nspirit,  nspiritj, ROT0,   "Irem", "Saigo no Nindou (Japan)", GAME_NO_COCKTAIL )
-GAME( 1988, imgfight, 0,        m72,      imgfight, imgfight, ROT270, "Irem", "Image Fight (Japan)" )
-GAMEX( 1989, loht,     0,        m72,      loht,     loht,     ROT0,   "Irem", "Legend of Hero Tonma", GAME_NO_COCKTAIL )
-GAMEX( 1989, xmultipl, 0,        xmultipl, xmultipl, xmultipl, ROT0,   "Irem", "X Multiply (Japan)", GAME_NO_COCKTAIL )
-GAMEX( 1989, dbreed,   0,        dbreed,   dbreed,   dbreed,   ROT0,   "Irem", "Dragon Breed", GAME_NO_COCKTAIL )
-GAMEX( 1989, rtype2,   0,        rtype2,   rtype2,   0,        ROT0,   "Irem", "R-Type II", GAME_NO_COCKTAIL )
-GAMEX( 1989, rtype2j,  rtype2,   rtype2,   rtype2,   0,        ROT0,   "Irem", "R-Type II (Japan)", GAME_NO_COCKTAIL )
-GAMEX( 1990, majtitle, 0,        majtitle, rtype2,   0,        ROT0,   "Irem", "Major Title (Japan)", GAME_NO_COCKTAIL )
-GAMEX( 1990, hharry,   0,        hharry,   hharry,   0,        ROT0,   "Irem", "Hammerin' Harry (World)", GAME_NO_COCKTAIL )
-GAMEX( 1990, hharryu,  hharry,   hharryu,  hharry,   0,        ROT0,   "Irem America", "Hammerin' Harry (US)", GAME_NO_COCKTAIL )
-GAMEX( 1990, dkgensan, hharry,   hharryu,  hharry,   0,        ROT0,   "Irem", "Daiku no Gensan (Japan)", GAME_NO_COCKTAIL )
-GAMEX( 1990, dkgenm72, hharry,   dkgenm72, hharry,   dkgenm72, ROT0,   "Irem", "Daiku no Gensan (Japan, M72)", GAME_NO_COCKTAIL )
-GAMEX( 1990, poundfor, 0,        poundfor, poundfor, 0,        ROT270, "Irem", "Pound for Pound (World)", GAME_NO_COCKTAIL )
-GAMEX( 1990, poundfou, poundfor, poundfor, poundfor, 0,        ROT270, "Irem America", "Pound for Pound (US)", GAME_NO_COCKTAIL )
-GAME( 1990, airduel,  0,        m72,      airduel,  airduel,  ROT270, "Irem", "Air Duel (Japan)" )
-GAMEX( 1991, cosmccop, 0,        kengo,    gallop,   0,        ROT0,   "Irem", "Cosmic Cop (World)", GAME_NO_COCKTAIL )
-GAMEX( 1991, gallop,   cosmccop, m72,      gallop,   gallop,   ROT0,   "Irem", "Gallop - Armed police Unit (Japan)", GAME_NO_COCKTAIL )
-GAMEX( 1991, kengo,    0,        kengo,    kengo,    kengo,    ROT0,   "Irem", "Ken-Go", GAME_NO_COCKTAIL )
+GAME( 1987, rtype,    0,        rtype,    rtype,    0,        ROT0,   "Irem", "R-Type (Japan)", GAME_NO_COCKTAIL )
+GAME( 1987, rtypepj,  rtype,    rtype,    rtypep,   0,        ROT0,   "Irem", "R-Type (Japan prototype)", GAME_NO_COCKTAIL )
+GAME( 1987, rtypeu,   rtype,    rtype,    rtype,    0,        ROT0,   "Irem (Nintendo of America license)", "R-Type (US)", GAME_NO_COCKTAIL )
+GAME( 1987, bchopper, 0,        m72,      bchopper, bchopper, ROT0,   "Irem", "Battle Chopper", GAME_NO_COCKTAIL )
+GAME( 1987, mrheli,   bchopper, m72,      bchopper, mrheli,   ROT0,   "Irem", "Mr. HELI no Dai-Bouken", GAME_NO_COCKTAIL )
+GAME( 1988, nspirit,  0,        m72,      nspirit,  nspirit,  ROT0,   "Irem", "Ninja Spirit", GAME_NO_COCKTAIL )
+GAME( 1988, nspiritj, nspirit,  m72,      nspirit,  nspiritj, ROT0,   "Irem", "Saigo no Nindou (Japan)", GAME_NO_COCKTAIL )
+GAME( 1988, imgfight, 0,        m72,      imgfight, imgfight, ROT270, "Irem", "Image Fight (Japan)", 0 )
+GAME( 1989, loht,     0,        m72,      loht,     loht,     ROT0,   "Irem", "Legend of Hero Tonma", GAME_NO_COCKTAIL )
+GAME( 1989, xmultipl, 0,        xmultipl, xmultipl, xmultipl, ROT0,   "Irem", "X Multiply (Japan)", GAME_NO_COCKTAIL )
+GAME( 1989, dbreed,   0,        dbreed,   dbreed,   dbreed,   ROT0,   "Irem", "Dragon Breed", GAME_NO_COCKTAIL )
+GAME( 1989, rtype2,   0,        rtype2,   rtype2,   0,        ROT0,   "Irem", "R-Type II", GAME_NO_COCKTAIL )
+GAME( 1989, rtype2j,  rtype2,   rtype2,   rtype2,   0,        ROT0,   "Irem", "R-Type II (Japan)", GAME_NO_COCKTAIL )
+GAME( 1990, majtitle, 0,        majtitle, rtype2,   0,        ROT0,   "Irem", "Major Title (Japan)", GAME_NO_COCKTAIL )
+GAME( 1990, hharry,   0,        hharry,   hharry,   0,        ROT0,   "Irem", "Hammerin' Harry (World)", GAME_NO_COCKTAIL )
+GAME( 1990, hharryu,  hharry,   hharryu,  hharry,   0,        ROT0,   "Irem America", "Hammerin' Harry (US)", GAME_NO_COCKTAIL )
+GAME( 1990, dkgensan, hharry,   hharryu,  hharry,   0,        ROT0,   "Irem", "Daiku no Gensan (Japan)", GAME_NO_COCKTAIL )
+GAME( 1990, dkgenm72, hharry,   dkgenm72, hharry,   dkgenm72, ROT0,   "Irem", "Daiku no Gensan (Japan, M72)", GAME_NO_COCKTAIL )
+GAME( 1990, poundfor, 0,        poundfor, poundfor, 0,        ROT270, "Irem", "Pound for Pound (World)", GAME_NO_COCKTAIL )
+GAME( 1990, poundfou, poundfor, poundfor, poundfor, 0,        ROT270, "Irem America", "Pound for Pound (US)", GAME_NO_COCKTAIL )
+GAME( 1990, airduel,  0,        m72,      airduel,  airduel,  ROT270, "Irem", "Air Duel (Japan)", 0 )
+GAME( 1991, cosmccop, 0,        kengo,    gallop,   0,        ROT0,   "Irem", "Cosmic Cop (World)", GAME_NO_COCKTAIL )
+GAME( 1991, gallop,   cosmccop, m72,      gallop,   gallop,   ROT0,   "Irem", "Gallop - Armed police Unit (Japan)", GAME_NO_COCKTAIL )
+GAME( 1991, kengo,    0,        kengo,    kengo,    kengo,    ROT0,   "Irem", "Ken-Go", GAME_NO_COCKTAIL )

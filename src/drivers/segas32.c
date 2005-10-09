@@ -220,6 +220,8 @@ static UINT8 analog_bank;
 static UINT8 analog_value[4];
 static UINT8 sonic_last[6];
 
+static void (*system32_prot_vblank)(void);
+
 
 
 /*************************************
@@ -413,6 +415,8 @@ static INTERRUPT_GEN( start_of_vblank_int )
 	signal_v60_irq(MAIN_IRQ_VBSTART);
 	system32_set_vblank(1);
 	timer_set(cpu_getscanlinetime(0), 0, end_of_vblank_int);
+	if (system32_prot_vblank)
+		(*system32_prot_vblank)();
 }
 
 
@@ -2445,18 +2449,18 @@ ROM_START( dbzvrvs )
 	ROM_LOAD( "16538",    0x400000, 0x100000, CRC(4d402c31) SHA1(2df160fd7e70f3d7b52fef2a2082e68966fd1535) )
 
 	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
-	ROM_LOAD16_BYTE( "16544", 0x000000, 0x100000, CRC(f6c93dfc) SHA1(a006cedb7d0151ccc8d22e6588b1c39e099da182) )
-	ROM_LOAD16_BYTE( "16545", 0x000001, 0x100000, CRC(51748bac) SHA1(b1cae16b62a8d29117c0adb140eb09c1092f6c37) )
+	ROM_LOAD16_BYTE( "16545", 0x000000, 0x100000, CRC(51748bac) SHA1(b1cae16b62a8d29117c0adb140eb09c1092f6c37) )
+	ROM_LOAD16_BYTE( "16544", 0x000001, 0x100000, CRC(f6c93dfc) SHA1(a006cedb7d0151ccc8d22e6588b1c39e099da182) )
 
 	ROM_REGION32_BE( 0x1000000, REGION_GFX2, 0 ) /* sprites */
 	ROMX_LOAD( "16546", 0x000000, 0x200000, CRC(96f4be31) SHA1(ce3281630180d91de7850e9b1062382817fe0b1d) , ROM_SKIP(6)|ROM_GROUPWORD )
 	ROMX_LOAD( "16548", 0x000002, 0x200000, CRC(00377f59) SHA1(cf0f808d7730f334c5ac80d3171fa457be9ac88e) , ROM_SKIP(6)|ROM_GROUPWORD )
 	ROMX_LOAD( "16550", 0x000004, 0x200000, CRC(168e8966) SHA1(a18ec30f1358b09bcde6d8d2dbe0a82bea3bdae9) , ROM_SKIP(6)|ROM_GROUPWORD )
-	ROMX_LOAD( "16553", 0x000006, 0x200000, CRC(c0a43009) SHA1(e4f73768de512046b3e25c4238da811dcc2dde0b) , ROM_SKIP(6)|ROM_GROUPWORD )
+	ROMX_LOAD( "16552", 0x000006, 0x200000, CRC(a31dae31) SHA1(2da2c391f29b5fdb87e3f95d9dabd50370fafa5a) , ROM_SKIP(6)|ROM_GROUPWORD )
 	ROMX_LOAD( "16547", 0x800000, 0x200000, CRC(50d328ed) SHA1(c4795299f5d7c9f3a847d684d8cde7012d4486f0) , ROM_SKIP(6)|ROM_GROUPWORD )
 	ROMX_LOAD( "16549", 0x800002, 0x200000, CRC(a5802e9f) SHA1(4cec3ed85a21aaf99b73013795721f212019e619) , ROM_SKIP(6)|ROM_GROUPWORD )
 	ROMX_LOAD( "16551", 0x800004, 0x200000, CRC(dede05fc) SHA1(51e092579e2b81fb68a9cc54165f80026fe71796) , ROM_SKIP(6)|ROM_GROUPWORD )
-	ROMX_LOAD( "16552", 0x800006, 0x200000, CRC(a31dae31) SHA1(2da2c391f29b5fdb87e3f95d9dabd50370fafa5a) , ROM_SKIP(6)|ROM_GROUPWORD )
+	ROMX_LOAD( "16553", 0x800006, 0x200000, CRC(c0a43009) SHA1(e4f73768de512046b3e25c4238da811dcc2dde0b) , ROM_SKIP(6)|ROM_GROUPWORD )
 ROM_END
 
 
@@ -3357,6 +3361,7 @@ static void common_init(read16_handler custom_r, write16_handler custom_w, const
 	custom_io_r[0] = custom_r;
 	custom_io_w[0] = custom_w;
 	system32_default_eeprom = default_eeprom;
+	system32_prot_vblank = NULL;
 }
 
 
@@ -3533,8 +3538,8 @@ static DRIVER_INIT( darkedge )
 	/* install protection handlers */
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa00000, 0xa7ffff, 0, 0, darkedge_protection_r);
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa00000, 0xa7ffff, 0, 0, darkedge_protection_w);
+	system32_prot_vblank = darkedge_fd1149_vblank;
 }
-
 
 static DRIVER_INIT( dbzvrvs )
 {
@@ -3699,38 +3704,38 @@ static DRIVER_INIT( titlef )
  *
  *************************************/
 
-GAMEX(1992, arescue,  0,        system32,     arescue,  arescue,  ROT0, "Sega",   "Air Rescue", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1993, alien3,   0,        system32,     alien3,   alien3,   ROT0, "Sega",   "Alien3: The Gun", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, arabfgt,  0,        system32,     arabfgt,  arabfgt,  ROT0, "Sega",   "Arabian Fight (US)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, arabfgtj, arabfgt,  system32,     arabfgt,  arabfgt,  ROT0, "Sega",   "Arabian Fight (Japan)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, brival,   0,        system32,     brival,   brival,   ROT0, "Sega",   "Burning Rival (World)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, brivalj,  brival,   system32,     brival,   brival,   ROT0, "Sega",   "Burning Rival (Japan)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, darkedge, 0,        system32,     darkedge, darkedge, ROT0, "Sega",   "Dark Edge (World)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION )
-GAMEX(1992, darkedgj, darkedge, system32,     darkedge, darkedge, ROT0, "Sega",   "Dark Edge (Japan)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION )
-GAMEX(1994, dbzvrvs,  0,        system32,     dbzvrvs,  dbzvrvs,  ROT0, "Sega / Banpresto", "Dragon Ball Z V.R.V.S.", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION)
-GAMEX(1991, f1en,     0,        system32,     f1en,     f1en,     ROT0, "Sega",   "F1 Exhaust Note", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1993, f1lap,    0,        system32,     f1lap,    f1lap,    ROT0, "Sega",   "F1 Super Lap", GAME_NOT_WORKING )
-GAMEX(1992, ga2,      0,        system32_v20, ga2,      ga2,      ROT0, "Sega",   "Golden Axe: The Revenge of Death Adder (World)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, ga2u,     ga2,      system32_v20, ga2u,     ga2,      ROT0, "Sega",   "Golden Axe: The Revenge of Death Adder (US)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, ga2j,     ga2,      system32_v20, ga2,      ga2,      ROT0, "Sega",   "Golden Axe: The Revenge of Death Adder (Japan)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, holo,     0,        system32,     holo,     holo,     ORIENTATION_FLIP_Y, "Sega",   "Holosseum (US)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1994, jpark,    0,        system32,     jpark,    jpark,    ROT0, "Sega",   "Jurassic Park", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1991, radm,     0,        system32,     radm,     radm,     ROT0, "Sega",   "Rad Mobile (World)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1991, radmu,    radm,     system32,     radm,     radm,     ROT0, "Sega",   "Rad Mobile (US)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1991, radr,     0,        system32,     radr,     radr,     ROT0, "Sega",   "Rad Rally (World)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1991, radru,    radr,     system32,     radr,     radr,     ROT0, "Sega",   "Rad Rally (US)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1995, slipstrm, 0,        system32,     slipstrm, slipstrm, ROT0, "Capcom", "Slipstream", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, sonic,    0,        system32,     sonic,    sonic,    ROT0, "Sega",   "SegaSonic The Hedgehog (Japan, rev. C)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION )
-GAMEX(1992, sonicp,   sonic,    system32,     sonic,    sonicp,   ROT0, "Sega",   "SegaSonic The Hedgehog (Japan, prototype)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1991, spidman,  0,        system32,     spidman,  spidman,  ROT0, "Sega",   "Spider-Man: The Videogame (World)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1991, spidmanu, spidman,  system32,     spidmanu, spidman,  ROT0, "Sega",   "Spider-Man: The Videogame (US)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1994, svf,      0,        system32,     svf,      svf,      ROT0, "Sega",   "Super Visual Football: European Sega Cup", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1994, svs,	  svf,		system32,     svf,	    svf,      ROT0, "Sega",   "Super Visual Soccer: Sega Cup (US)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1994, jleague,  svf,      system32,     svf,      svf,      ROT0, "Sega",   "The J.League 1994 (Japan)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION )
+GAME( 1992, arescue,  0,        system32,     arescue,  arescue,  ROT0, "Sega",   "Air Rescue", GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, alien3,   0,        system32,     alien3,   alien3,   ROT0, "Sega",   "Alien3: The Gun", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, arabfgt,  0,        system32,     arabfgt,  arabfgt,  ROT0, "Sega",   "Arabian Fight (US)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, arabfgtj, arabfgt,  system32,     arabfgt,  arabfgt,  ROT0, "Sega",   "Arabian Fight (Japan)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, brival,   0,        system32,     brival,   brival,   ROT0, "Sega",   "Burning Rival (World)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, brivalj,  brival,   system32,     brival,   brival,   ROT0, "Sega",   "Burning Rival (Japan)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, darkedge, 0,        system32,     darkedge, darkedge, ROT0, "Sega",   "Dark Edge (World)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, darkedgj, darkedge, system32,     darkedge, darkedge, ROT0, "Sega",   "Dark Edge (Japan)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, dbzvrvs,  0,        system32,     dbzvrvs,  dbzvrvs,  ROT0, "Sega / Banpresto", "Dragon Ball Z V.R.V.S.", GAME_IMPERFECT_GRAPHICS)
+GAME( 1991, f1en,     0,        system32,     f1en,     f1en,     ROT0, "Sega",   "F1 Exhaust Note", GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, f1lap,    0,        system32,     f1lap,    f1lap,    ROT0, "Sega",   "F1 Super Lap", GAME_NOT_WORKING )
+GAME( 1992, ga2,      0,        system32_v20, ga2,      ga2,      ROT0, "Sega",   "Golden Axe: The Revenge of Death Adder (World)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, ga2u,     ga2,      system32_v20, ga2u,     ga2,      ROT0, "Sega",   "Golden Axe: The Revenge of Death Adder (US)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, ga2j,     ga2,      system32_v20, ga2,      ga2,      ROT0, "Sega",   "Golden Axe: The Revenge of Death Adder (Japan)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, holo,     0,        system32,     holo,     holo,     ORIENTATION_FLIP_Y, "Sega",   "Holosseum (US)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, jpark,    0,        system32,     jpark,    jpark,    ROT0, "Sega",   "Jurassic Park", GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, radm,     0,        system32,     radm,     radm,     ROT0, "Sega",   "Rad Mobile (World)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, radmu,    radm,     system32,     radm,     radm,     ROT0, "Sega",   "Rad Mobile (US)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, radr,     0,        system32,     radr,     radr,     ROT0, "Sega",   "Rad Rally (World)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, radru,    radr,     system32,     radr,     radr,     ROT0, "Sega",   "Rad Rally (US)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1995, slipstrm, 0,        system32,     slipstrm, slipstrm, ROT0, "Capcom", "Slipstream", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, sonic,    0,        system32,     sonic,    sonic,    ROT0, "Sega",   "SegaSonic The Hedgehog (Japan, rev. C)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION )
+GAME( 1992, sonicp,   sonic,    system32,     sonic,    sonicp,   ROT0, "Sega",   "SegaSonic The Hedgehog (Japan, prototype)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, spidman,  0,        system32,     spidman,  spidman,  ROT0, "Sega",   "Spider-Man: The Videogame (World)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, spidmanu, spidman,  system32,     spidmanu, spidman,  ROT0, "Sega",   "Spider-Man: The Videogame (US)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, svf,      0,        system32,     svf,      svf,      ROT0, "Sega",   "Super Visual Football: European Sega Cup", GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, svs,	  svf,		system32,     svf,	    svf,      ROT0, "Sega",   "Super Visual Soccer: Sega Cup (US)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, jleague,  svf,      system32,     svf,      svf,      ROT0, "Sega",   "The J.League 1994 (Japan)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION )
 
-GAMEX(1994, harddunk, 0,        multi32,      harddunk, harddunk, ROT0, "Sega",   "Hard Dunk (World)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1994, harddunj, harddunk, multi32,      harddunk, harddunk, ROT0, "Sega",   "Hard Dunk (Japan)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, orunners, 0,        multi32,      orunners, orunners, ROT0, "Sega",   "OutRunners (US)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, scross,   0,        multi32,      scross,   scross,   ROT0, "Sega",   "Stadium Cross (World)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, titlef,   0,        multi32,      titlef,   titlef,   ROT0, "Sega",   "Title Fight (World)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1992, titlefu,  titlef,   multi32,      titlef,   titlef,   ROT0, "Sega",   "Title Fight (US)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, harddunk, 0,        multi32,      harddunk, harddunk, ROT0, "Sega",   "Hard Dunk (World)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, harddunj, harddunk, multi32,      harddunk, harddunk, ROT0, "Sega",   "Hard Dunk (Japan)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, orunners, 0,        multi32,      orunners, orunners, ROT0, "Sega",   "OutRunners (US)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, scross,   0,        multi32,      scross,   scross,   ROT0, "Sega",   "Stadium Cross (World)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, titlef,   0,        multi32,      titlef,   titlef,   ROT0, "Sega",   "Title Fight (World)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, titlefu,  titlef,   multi32,      titlef,   titlef,   ROT0, "Sega",   "Title Fight (US)", GAME_IMPERFECT_GRAPHICS )

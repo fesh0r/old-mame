@@ -1134,6 +1134,15 @@ static DRIVER_INIT(sspirits)
 
 }
 
+static DRIVER_INIT(sspiritj)
+{
+	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
+	mlatch_table = 0;
+	track_size = 0x2f00;
+	s24_fd1094_driver_init();
+
+}
+
 static DRIVER_INIT(dcclubfd)
 {
 	system24temp_sys16_io_set_callbacks(dcclub_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
@@ -1160,6 +1169,7 @@ static DRIVER_INIT(qsww)
 	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = 0;
 	track_size = 0x2d00;
+	s24_fd1094_driver_init();
 }
 
 static DRIVER_INIT(gground)
@@ -1177,6 +1187,15 @@ static DRIVER_INIT(crkdown)
 	track_size = 0x2d00;
 	s24_fd1094_driver_init();
 }
+
+static DRIVER_INIT(roughrac)
+{
+	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
+	mlatch_table = 0;
+	track_size = 0x2d00;
+	s24_fd1094_driver_init();
+}
+
 
 static NVRAM_HANDLER(system24)
 {
@@ -1467,6 +1486,72 @@ INPUT_PORTS_START( crkdown )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+INPUT_PORTS_END
+
+INPUT_PORTS_START( roughrac )
+	PORT_START
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+ 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE2 ) PORT_NAME("P1 Service")   //enabled with "Separate"
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
+
+	PORT_START
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE3 ) PORT_NAME("P2 Service")   //enabled with "Separate"
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
+
+	PORT_START
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("All Service")
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	SYS16_COINAGE
+
+	PORT_START
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, "Coin Chute" )
+	PORT_DIPSETTING(    0x40, "Common" )
+	PORT_DIPSETTING(    0x00, "Separate" )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Flip_Screen ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_START
+	PORT_BIT( 0xfff, 0x000, IPT_DIAL ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
+
+	PORT_START
+	PORT_BIT( 0xfff, 0x000, IPT_DIAL ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( sspirits )
@@ -1852,8 +1937,8 @@ INPUT_PORTS_END
 
 ROM_START( hotrod )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr11339.bin", 0x000000, 0x20000, CRC(75130e73) SHA1(e079739f4a3da3807aac570442c5afef1a7d7b0e) )
-	ROM_LOAD16_BYTE( "epr11338.bin", 0x000001, 0x20000, CRC(7d4a7ff3) SHA1(3d3af04d990d232ba0a8fe155de59bc632a0a461) )
+	ROM_LOAD16_BYTE( "epr-11339.ic2", 0x000000, 0x20000, CRC(75130e73) SHA1(e079739f4a3da3807aac570442c5afef1a7d7b0e) )
+	ROM_LOAD16_BYTE( "epr-11338.ic1", 0x000001, 0x20000, CRC(7d4a7ff3) SHA1(3d3af04d990d232ba0a8fe155de59bc632a0a461) )
 
 	ROM_REGION( 0x1d6000, REGION_USER2, 0)
 	ROM_LOAD( "ds3-5000-01d_3p_turbo.bin", 0x000000, 0x1d6000, CRC(627e8053) SHA1(d1a95f99078f5a29cccacfb1b30c3c9ead7b605c) )
@@ -1861,8 +1946,8 @@ ROM_END
 
 ROM_START( hotroda )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr11339.bin", 0x000000, 0x20000, CRC(75130e73) SHA1(e079739f4a3da3807aac570442c5afef1a7d7b0e) )
-	ROM_LOAD16_BYTE( "epr11338.bin", 0x000001, 0x20000, CRC(7d4a7ff3) SHA1(3d3af04d990d232ba0a8fe155de59bc632a0a461) )
+	ROM_LOAD16_BYTE( "epr-11339.ic2", 0x000000, 0x20000, CRC(75130e73) SHA1(e079739f4a3da3807aac570442c5afef1a7d7b0e) )
+	ROM_LOAD16_BYTE( "epr-11338.ic1", 0x000001, 0x20000, CRC(7d4a7ff3) SHA1(3d3af04d990d232ba0a8fe155de59bc632a0a461) )
 
 	ROM_REGION( 0x1d6000, REGION_USER2, 0)
 	ROM_LOAD( "ds3-5000-01d.bin", 0x000000, 0x1d6000, CRC(abf67b02) SHA1(f397435eaad691ff5a38d6d1d27840ed95a62df3) ) // World? 3 Playe TURBO
@@ -1870,8 +1955,8 @@ ROM_END
 
 ROM_START( hotrodj )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr11339.bin", 0x000000, 0x20000, CRC(75130e73) SHA1(e079739f4a3da3807aac570442c5afef1a7d7b0e) )
-	ROM_LOAD16_BYTE( "epr11338.bin", 0x000001, 0x20000, CRC(7d4a7ff3) SHA1(3d3af04d990d232ba0a8fe155de59bc632a0a461) )
+	ROM_LOAD16_BYTE( "epr-11339.ic2", 0x000000, 0x20000, CRC(75130e73) SHA1(e079739f4a3da3807aac570442c5afef1a7d7b0e) )
+	ROM_LOAD16_BYTE( "epr-11338.ic1", 0x000001, 0x20000, CRC(7d4a7ff3) SHA1(3d3af04d990d232ba0a8fe155de59bc632a0a461) )
 
 	ROM_REGION( 0x1d6000, REGION_USER2, 0)
 	ROM_LOAD( "ds3-5000-01a-revb.bin", 0x000000, 0x1d6000, CRC(a39a0c2d) SHA1(ea8104c2266c48f480837aa7679c0a6f0c5e5452) ) // Japanese 4 Player
@@ -1937,19 +2022,36 @@ ROM_END
 
 ROM_START( bnzabros )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
-	ROM_LOAD16_BYTE( "epr12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
 	ROM_REGION16_BE( 0x200000, REGION_USER1, 0)
-	ROM_LOAD16_BYTE( "mpr13188.h2",  0x000000, 0x80000, CRC(d3802294) SHA1(7608e71e8ef398ac24dbf851994253bca5ace625) )
-	ROM_LOAD16_BYTE( "mpr13187.h1",  0x000001, 0x80000, CRC(e3d8c5f7) SHA1(5b1e8646debee2f2ef272ddd3320b0a17192fbbe) )
-	ROM_LOAD16_BYTE( "mpr13190.4",   0x100000, 0x40000, CRC(0b4df388) SHA1(340478bba82069ab745d6d8703e6801411fd2fc4) )
+	ROM_LOAD16_BYTE( "mpr-13188-h.2",  0x000000, 0x80000, CRC(d3802294) SHA1(7608e71e8ef398ac24dbf851994253bca5ace625) )
+	ROM_LOAD16_BYTE( "mpr-13187-h.1",  0x000001, 0x80000, CRC(e3d8c5f7) SHA1(5b1e8646debee2f2ef272ddd3320b0a17192fbbe) )
+	ROM_LOAD16_BYTE( "mpr-13190.4",    0x100000, 0x40000, CRC(0b4df388) SHA1(340478bba82069ab745d6d8703e6801411fd2fc4) )
 	ROM_RELOAD ( 0x180000, 0x40000)
-	ROM_LOAD16_BYTE( "mpr13189.3",   0x100001, 0x40000, CRC(5ea5a2f3) SHA1(514b5446303c50aeb1d6d10d0a3f210da2577e16) )
+	ROM_LOAD16_BYTE( "mpr-13189.3",    0x100001, 0x40000, CRC(5ea5a2f3) SHA1(514b5446303c50aeb1d6d10d0a3f210da2577e16) )
 	ROM_RELOAD ( 0x180001, 0x40000)
 
 	ROM_REGION( 0x1c2000, REGION_USER2, 0)
 	ROM_LOAD( "bb-disk.bin",        0x000000, 0x1c2000, CRC(ea7a3302) SHA1(5f92efb2e1135c1f3eeca38ba5789739a22dbd11) )
+ROM_END
+
+ROM_START( bnzabrsj )
+	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+
+	ROM_REGION16_BE( 0x200000, REGION_USER1, 0)
+	ROM_LOAD16_BYTE( "mpr-13188-h.2",  0x000000, 0x80000, CRC(d3802294) SHA1(7608e71e8ef398ac24dbf851994253bca5ace625) )
+	ROM_LOAD16_BYTE( "mpr-13187-h.1",  0x000001, 0x80000, CRC(e3d8c5f7) SHA1(5b1e8646debee2f2ef272ddd3320b0a17192fbbe) )
+	ROM_LOAD16_BYTE( "mpr-13190.4",    0x100000, 0x40000, CRC(0b4df388) SHA1(340478bba82069ab745d6d8703e6801411fd2fc4) )
+	ROM_RELOAD ( 0x180000, 0x40000)
+	ROM_LOAD16_BYTE( "mpr-13189.3",    0x100001, 0x40000, CRC(5ea5a2f3) SHA1(514b5446303c50aeb1d6d10d0a3f210da2577e16) )
+	ROM_RELOAD ( 0x180001, 0x40000)
+
+	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_LOAD( "ds3-5000-07b.img",        0x000000, 0x1c2000, CRC(efa7f2a7) SHA1(eb905bff88fa40324fb92b91ac8a5878648c26e5) )
 ROM_END
 
 ROM_START( quizmeku ) // Quiz Mekuromeku Story
@@ -1968,19 +2070,27 @@ ROM_END
 
 ROM_START( sspirits )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
-	ROM_LOAD16_BYTE( "epr12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
 	ROM_REGION( 0x1c2000, REGION_USER2, 0)
 	/* this image was repaired using other images, a dump of a known good disk would be preferable */
 	ROM_LOAD( "ss-repaired.bin",         0x000000, 0x1c2000, BAD_DUMP CRC(cefbda69) SHA1(5b47ae0f1584ce1eb697246273ba761bd9e981c1)  )
 ROM_END
 
+ROM_START( sspiritj )
+	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_LOAD16_BYTE( "epr-11339.ic2", 0x000000, 0x20000, CRC(75130e73) SHA1(e079739f4a3da3807aac570442c5afef1a7d7b0e) )
+	ROM_LOAD16_BYTE( "epr-11338.ic1", 0x000001, 0x20000, CRC(7d4a7ff3) SHA1(3d3af04d990d232ba0a8fe155de59bc632a0a461) )
+
+	ROM_REGION( 0x1d6000, REGION_USER2, 0)
+	ROM_LOAD( "ds3-5000-02-rev-a.img",         0x000000, 0x1d6000, CRC(0385470f) SHA1(62c1bfe3a88b2dee44629809e08b4b8a5770eaab)  )
+ROM_END
 
 ROM_START( sspirtfc )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
-	ROM_LOAD16_BYTE( "epr12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
 	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-02c.key", 0x0000, 0x2000,  CRC(ebae170e) SHA1(b6d1e1b6943a35b96e98e426ecb39bb5a42fb643) )
@@ -1991,8 +2101,8 @@ ROM_END
 
 ROM_START( sgmast )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
-	ROM_LOAD16_BYTE( "epr12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
 	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
 //  ROM_LOAD( "317-0058-05d.key", 0x0000, 0x2000, CRC(1) SHA1(1) )
@@ -2007,8 +2117,8 @@ ROM_END
 
 ROM_START( sgmastc )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
-	ROM_LOAD16_BYTE( "epr12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
 	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-05c.key", 0x0000, 0x2000, CRC(ae0eabe5) SHA1(692d7565bf9c5b32cc80bb4bd88c9193aa04cbb0) )
@@ -2019,8 +2129,11 @@ ROM_END
 
 ROM_START( qsww )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
-	ROM_LOAD16_BYTE( "epr12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+
+	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_LOAD( "317-0058-08b.key", 0x0000, 0x2000,  CRC(fe0a336a) SHA1(f7a5b2c1a057d0bb8c1ae0453c58aa8f5fb731b9) )
 
 	ROM_REGION( 0x1c2000, REGION_USER2, 0)
 	ROM_LOAD( "ds3-5000-08b.bin",    0x000000, 0x1c2000, CRC(5a886d38) SHA1(2e974a9ffe3534da4fb117c579b8b0e61a63542c) )
@@ -2028,8 +2141,8 @@ ROM_END
 
 ROM_START( gground )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
-	ROM_LOAD16_BYTE( "epr12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
 	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
 	ROM_LOAD( "317-0058.03", 0x0000, 0x2000,  CRC(e1785bbd) SHA1(b4bebb2829299f1c0815d6a5f317a2526b322f63) )
@@ -2040,14 +2153,26 @@ ROM_END
 
 ROM_START( crkdown )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
-	ROM_LOAD16_BYTE( "epr12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
 	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-04d.key", 0x0000, 0x2000,  CRC(934ac358) SHA1(73418e22c9d201bc3fec5c63284858958c010e05) )
 
 	ROM_REGION( 0x1c2000, REGION_USER2, 0)
 	ROM_LOAD( "ds3-5000-04d.bin",    0x000000, 0x1c2000, CRC(8679032c) SHA1(887b245a70652897fbda736b60e81a123866ec12) )
+ROM_END
+
+ROM_START( crkdownj )
+	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+
+	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_LOAD( "317-0058-04b.key", 0x0000, 0x2000,  CRC(4a99a202) SHA1(d7375f09e7246ecd60ba0e48f049e9e252af92a8) )
+
+	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_LOAD( "ds3-5000-04b.img",    0x000000, 0x1c2000, CRC(5daa1a9a) SHA1(ce2f07b83b607bbbdb70f1ae344c1d897d601809) )
 ROM_END
 
 ROM_START( dcclub )
@@ -2064,8 +2189,8 @@ ROM_END
 
 ROM_START( dcclubfd )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
-	ROM_LOAD16_BYTE( "epr12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
 	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-09d.key", 0x0000, 0x2000, CRC(a91ebffb) SHA1(70b8b4272ca456491f254d115b434bb4ce73f049) )
@@ -2076,14 +2201,14 @@ ROM_END
 
 ROM_START( roughrac )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* FD1094 code */
-	ROM_LOAD16_BYTE( "epr12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
-	ROM_LOAD16_BYTE( "epr12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
+	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
+	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
 	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
-	ROM_LOAD( "317-0058-06d.key", 0x0000, 0x2000,  NO_DUMP )
+	ROM_LOAD( "317-0058-06b.key",    0x000000, 0x2000, CRC(6a5bf536) SHA1(3fc3e93ce8a47d7ee86da889efad2e7eca6e2ee9) )
 
 	ROM_REGION( 0x1c2000, REGION_USER2, 0)
-	ROM_LOAD( "ds3-5000-06d.bin",    0x000000, 0x1c2000, CRC(23d6da35) SHA1(1450a3b838ffa40bf32e59e745529843da534179) )
+	ROM_LOAD( "ds3-5000-06b.img",    0x000000, 0x1c2000, CRC(a7fb2149) SHA1(c04266ae31700b085ab45606aed83019a563de70) )
 ROM_END
 
 
@@ -2127,26 +2252,34 @@ static MACHINE_DRIVER_START( system24 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END
 
-GAME (1988, hotrod,   0,        system24, hotrod,   hotrod,   ROT0,   "Sega", "Hot Rod (World, 3 Players, Turbo set 1)")
-GAMEX(1988, hotroda,  hotrod,   system24, hotrod,   hotrod,   ROT0,   "Sega", "Hot Rod (World, 3 Players, Turbo set 2)", GAME_NO_SOUND)
-GAMEX(1988, hotrodj,  hotrod,   system24, hotrodj,  hotrod,   ROT0,   "Sega", "Hot Rod (Japan, 4 Players)", GAME_NO_SOUND)
-GAME (1990, bnzabros, 0,        system24, bnzabros, bnzabros, ROT0,   "Sega", "Bonanza Bros")
-GAME (1991, dcclub,   0,        system24, dcclub,   dcclub,   ROT0,   "Sega", "Dynamic Country Club")
-GAME (1991, dcclubfd, 0,        system24, dcclub,   dcclubfd, ROT0,   "Sega", "Dynamic Country Club (Floppy DS3-5000-09d, FD1094 317-0058-09d)")
-GAME (1992, mahmajn,  0,        system24, mahmajn,  mahmajn,  ROT0,   "Sega", "Tokoro San no MahMahjan")
-GAME (1994, qgh,      0,        system24, qgh,      qgh,      ROT0,   "Sega", "Quiz Ghost Hunter")
-GAME (1994, quizmeku, 0,        system24, quizmeku, quizmeku, ROT0,   "Sega", "Quiz Mekurumeku Story")
-GAME (1994, qrouka,   0,        system24, qgh,      qrouka,   ROT0,   "Sega", "Quiz Rouka Ni Tattenasai")
-GAME (1994, mahmajn2, 0,        system24, mahmajn,  mahmajn2, ROT0,   "Sega", "Tokoro San no MahMahjan 2")
-GAME (1988, sspirits, 0,        system24, sspirits, sspirits, ROT270, "Sega", "Scramble Spirits" )
-GAMEX(1989, sgmastc,  sgmast,   system24, bnzabros, sgmast,   ROT0,   "Sega", "Jumbo Ozaki Super Masters Golf (FD1094 317-0058-05c)", GAME_NOT_WORKING) // decrypted
-GAME (1988, gground,  0,        system24, gground,  gground,  ROT270, "Sega", "Gain Ground (FD1094 317-0058-03?)") // decrypted
-GAMEX(1989, crkdown,  0,        system24, crkdown,  crkdown,  ROT0,   "Sega", "Crack Down (US, FD1094 317-0058-04d)", GAME_IMPERFECT_GRAPHICS)
+/* I think the letter after the disk code is the region
+           'b' = Japan
+           'c' = europe?
+           'd' = US
+*/
 
-/* Encrypted */
-GAMEX(????, sgmast,   0,        system24, bnzabros, sgmast,   ROT0,	  "Sega", "Super Masters Golf (FD1094 317-0058-05d?)", GAME_NOT_WORKING|GAME_UNEMULATED_PROTECTION)
-GAMEX(????, qsww,     0,        system24, bnzabros, qsww,     ROT0,   "Sega", "Quiz Syukudai wo Wasuremashita", GAME_NOT_WORKING|GAME_UNEMULATED_PROTECTION)
-GAMEX(19??, roughrac, 0,        system24, bnzabros, crkdown,  ROT0,   "Sega", "Rough Racer (FD1094 317-0058-06d)", GAME_NOT_WORKING)
+/* Disk Based Games */
+/* 01 */GAME( 1988, hotrod,   0,        system24, hotrod,   hotrod,   ROT0,   "Sega", "Hot Rod (World, 3 Players, Turbo set 1)", 0 )
+/* 01 */GAME( 1988, hotroda,  hotrod,   system24, hotrod,   hotrod,   ROT0,   "Sega", "Hot Rod (World, 3 Players, Turbo set 2)", GAME_NO_SOUND )
+/* 01 */GAME( 1988, hotrodj,  hotrod,   system24, hotrodj,  hotrod,   ROT0,   "Sega", "Hot Rod (Japan, 4 Players)", GAME_NO_SOUND )
+/* 02 */GAME( 1988, sspirits, 0,        system24, sspirits, sspirits, ROT270, "Sega", "Scramble Spirits", 0 )
+/* 02 */GAME( 1988, sspiritj, sspirits, system24, sspirits, sspiritj, ROT270, "Sega", "Scramble Spirits (Japan, Floppy DS3-5000-02-REV-A)", 0 )
+/* 02 */GAME( 1988, sspirtfc, sspirits, system24, sspirits, sspirits, ROT270, "Sega", "Scramble Spirits (FD1094 317-0058-02c)",GAME_NOT_WORKING ) /* MISSING disk image */
+/* 03 */GAME( 1988, gground,  0,        system24, gground,  gground,  ROT270, "Sega", "Gain Ground (FD1094 317-0058-03?)", 0 )
+/* 04 */GAME( 1989, crkdown,  0,        system24, crkdown,  crkdown,  ROT0,   "Sega", "Crack Down (US, FD1094 317-0058-04d)", GAME_IMPERFECT_GRAPHICS )
+/* 04 */GAME( 1989, crkdownj, crkdown,  system24, crkdown,  crkdown,  ROT0,   "Sega", "Crack Down (Japan, FD1094 317-0058-04b)", GAME_IMPERFECT_GRAPHICS )
+/* 05 */GAME( 1989, sgmast,   0,        system24, bnzabros, sgmast,   ROT0,	  "Sega", "Super Masters Golf (FD1094 317-0058-05d?)", GAME_NOT_WORKING|GAME_UNEMULATED_PROTECTION ) // NOT decrypted
+/* 05 */GAME( 1989, sgmastc,  sgmast,   system24, bnzabros, sgmast,   ROT0,   "Sega", "Jumbo Ozaki Super Masters Golf (FD1094 317-0058-05c)", GAME_NOT_WORKING )
+/* 06 */GAME( 1990, roughrac, 0,        system24, roughrac, roughrac, ROT0,   "Sega", "Rough Racer (Japan, FD1094 317-0058-06b)", 0 )
+/* 07 */GAME( 1990, bnzabros, 0,        system24, bnzabros, bnzabros, ROT0,   "Sega", "Bonanza Bros (US, Floppy DS3-5000-07d?)", 0 )
+/* 07 */GAME( 1990, bnzabrsj, bnzabros, system24, bnzabros, bnzabros, ROT0,   "Sega", "Bonanza Bros (Japan, Floppy DS3-5000-07b)", 0 )
+/* 08 */GAME( 1991, qsww,     0,        system24, bnzabros, qsww,     ROT0,   "Sega", "Quiz Syukudai wo Wasuremashita", GAME_IMPERFECT_GRAPHICS ) // wrong bg colour on title
+/* 09 */GAME( 1991, dcclubfd, 0,        system24, dcclub,   dcclubfd, ROT0,   "Sega", "Dynamic Country Club (Floppy DS3-5000-09d, FD1094 317-0058-09d)", 0 )
 
-/* decrypted but missing disk images */
-GAMEX(1988, sspirtfc, sspirits, system24, sspirits, sspirits, ROT270, "Sega", "Scramble Spirits (FD1094 317-0058-02c)",GAME_NOT_WORKING )
+/* ROM Based */
+GAME( 1991, dcclub,   0,        system24, dcclub,   dcclub,   ROT0,   "Sega", "Dynamic Country Club", 0 )
+GAME( 1992, mahmajn,  0,        system24, mahmajn,  mahmajn,  ROT0,   "Sega", "Tokoro San no MahMahjan", 0 )
+GAME( 1994, qgh,      0,        system24, qgh,      qgh,      ROT0,   "Sega", "Quiz Ghost Hunter", 0 )
+GAME( 1994, quizmeku, 0,        system24, quizmeku, quizmeku, ROT0,   "Sega", "Quiz Mekurumeku Story", 0 )
+GAME( 1994, qrouka,   0,        system24, qgh,      qrouka,   ROT0,   "Sega", "Quiz Rouka Ni Tattenasai", 0 )
+GAME( 1994, mahmajn2, 0,        system24, mahmajn,  mahmajn2, ROT0,   "Sega", "Tokoro San no MahMahjan 2", 0 )

@@ -21,6 +21,7 @@
 #include "cinemat.h"
 #include "sound/samples.h"
 #include "sound/ay8910.h"
+#include "state.h"
 
 
 /*************************************
@@ -114,6 +115,18 @@ static void generic_init(void (*callback)(UINT8, UINT8))
 
 	/* reset Star Castle pitch */
     current_pitch = 0x20000;
+
+    /* register for save states */
+    state_save_register_global(sound_control);
+    state_save_register_global(current_shift);
+    state_save_register_global(last_shift);
+    state_save_register_global(last_shift2);
+    state_save_register_global(current_pitch);
+    state_save_register_global(last_frame);
+    state_save_register_global_array(sound_fifo);
+    state_save_register_global(sound_fifo_in);
+    state_save_register_global(sound_fifo_out);
+    state_save_register_global(last_portb_write);
 }
 
 

@@ -1129,7 +1129,7 @@ INPUT_PORTS_START( galaga )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1263,6 +1263,22 @@ INPUT_PORTS_START( galagamw )
 	PORT_DIPSETTING(    0x80, "3" )
 	PORT_DIPSETTING(    0x40, "4" )
 	PORT_DIPSETTING(    0xc0, "5" )
+INPUT_PORTS_END
+
+
+/* the same as galaga but with vertical movement */
+INPUT_PORTS_START( gatsbee )
+	PORT_INCLUDE( galaga )
+
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_COCKTAIL
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_COCKTAIL
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_COCKTAIL
 INPUT_PORTS_END
 
 
@@ -3084,29 +3100,29 @@ static DRIVER_INIT( battles )
 
 
 
-GAMEX(1981, bosco,    0,       bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (new version)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1981, boscoo,   bosco,   bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (old version)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1981, boscoo2,  bosco,   bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (older version)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1981, boscomd,  bosco,   bosco,   boscomd,  0,       ROT0,  "[Namco] (Midway license)", "Bosconian (Midway, new version)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1981, boscomdo, bosco,   bosco,   boscomd,  0,       ROT0,  "[Namco] (Midway license)", "Bosconian (Midway, old version)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, bosco,    0,       bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (new version)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, boscoo,   bosco,   bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (old version)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, boscoo2,  bosco,   bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (older version)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, boscomd,  bosco,   bosco,   boscomd,  0,       ROT0,  "[Namco] (Midway license)", "Bosconian (Midway, new version)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, boscomdo, bosco,   bosco,   boscomd,  0,       ROT0,  "[Namco] (Midway license)", "Bosconian (Midway, old version)", GAME_IMPERFECT_GRAPHICS )
 
-GAMEX(1981, galaga,   0,       galaga,  galaga,   galaga,  ROT90, "Namco", "Galaga (Namco rev. B)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1981, galagao,  galaga,  galaga,  galaga,   galaga,  ROT90, "Namco", "Galaga (Namco)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1981, galagamw, galaga,  galaga,  galagamw, galaga,  ROT90, "[Namco] (Midway license)", "Galaga (Midway set 1)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1981, galagamk, galaga,  galaga,  galaga,   galaga,  ROT90, "[Namco] (Midway license)", "Galaga (Midway set 2)", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1981, gallag,   galaga,  galagab, galaga,   galaga,  ROT90, "bootleg", "Gallag", GAME_IMPERFECT_GRAPHICS )
-GAMEX(1984, gatsbee,  galaga,  galagab, galaga,   gatsbee, ROT90, "hack", "Gatsbee", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, galaga,   0,       galaga,  galaga,   galaga,  ROT90, "Namco", "Galaga (Namco rev. B)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, galagao,  galaga,  galaga,  galaga,   galaga,  ROT90, "Namco", "Galaga (Namco)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, galagamw, galaga,  galaga,  galagamw, galaga,  ROT90, "[Namco] (Midway license)", "Galaga (Midway set 1)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, galagamk, galaga,  galaga,  galaga,   galaga,  ROT90, "[Namco] (Midway license)", "Galaga (Midway set 2)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, gallag,   galaga,  galagab, galaga,   galaga,  ROT90, "bootleg", "Gallag", GAME_IMPERFECT_GRAPHICS )
+GAME( 1984, gatsbee,  galaga,  galagab, gatsbee,  gatsbee, ROT90, "hack", "Gatsbee", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1982, xevious,  0,       xevious, xevious,  xevious, ROT90, "Namco", "Xevious (Namco)" )
-GAME( 1982, xeviousa, xevious, xevious, xeviousa, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 1)" )
-GAME( 1982, xeviousb, xevious, xevious, xeviousb, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 2)" )
-GAME( 1982, xeviousc, xevious, xevious, xeviousa, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 3)" )
-GAME( 1982, xevios,   xevious, xevious, xevious,  xevios,  ROT90, "bootleg", "Xevios" )
-GAME( 1982, battles,  xevious, battles, xevious,  battles, ROT90, "bootleg", "Battles" )
-GAME( 1984, sxevious, xevious, xevious, sxevious, xevious, ROT90, "Namco", "Super Xevious" )
+GAME( 1982, xevious,  0,       xevious, xevious,  xevious, ROT90, "Namco", "Xevious (Namco)", 0 )
+GAME( 1982, xeviousa, xevious, xevious, xeviousa, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 1)", 0 )
+GAME( 1982, xeviousb, xevious, xevious, xeviousb, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 2)", 0 )
+GAME( 1982, xeviousc, xevious, xevious, xeviousa, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 3)", 0 )
+GAME( 1982, xevios,   xevious, xevious, xevious,  xevios,  ROT90, "bootleg", "Xevios", 0 )
+GAME( 1982, battles,  xevious, battles, xevious,  battles, ROT90, "bootleg", "Battles", 0 )
+GAME( 1984, sxevious, xevious, xevious, sxevious, xevious, ROT90, "Namco", "Super Xevious", 0 )
 
-GAME( 1982, digdug,   0,       digdug,  digdug,   0,       ROT90, "Namco", "Dig Dug (rev 2)" )
-GAME( 1982, digdugb,  digdug,  digdug,  digdug,   0,       ROT90, "Namco", "Dig Dug (rev 1)" )
-GAME( 1982, digdugat, digdug,  digdug,  digdug,   0,       ROT90, "[Namco] (Atari license)", "Dig Dug (Atari, rev 2)" )
-GAME( 1982, digduga1, digdug,  digdug,  digdug,   0,       ROT90, "[Namco] (Atari license)", "Dig Dug (Atari, rev 1)" )
-GAME( 1982, dzigzag,  digdug,  dzigzag, digdug,   0,       ROT90, "bootleg", "Zig Zag (Dig Dug hardware)" )
+GAME( 1982, digdug,   0,       digdug,  digdug,   0,       ROT90, "Namco", "Dig Dug (rev 2)", 0 )
+GAME( 1982, digdugb,  digdug,  digdug,  digdug,   0,       ROT90, "Namco", "Dig Dug (rev 1)", 0 )
+GAME( 1982, digdugat, digdug,  digdug,  digdug,   0,       ROT90, "[Namco] (Atari license)", "Dig Dug (Atari, rev 2)", 0 )
+GAME( 1982, digduga1, digdug,  digdug,  digdug,   0,       ROT90, "[Namco] (Atari license)", "Dig Dug (Atari, rev 1)", 0 )
+GAME( 1982, dzigzag,  digdug,  dzigzag, digdug,   0,       ROT90, "bootleg", "Zig Zag (Dig Dug hardware)", 0 )
