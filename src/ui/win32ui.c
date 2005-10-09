@@ -981,8 +981,6 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	if (pOpts->skip_warnings)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -skip_warnings");
 #endif
-	if (pOpts->skip_validitychecks)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -skip_validitychecks");
 	if (pOpts->high_priority)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -high_priority");
 
@@ -2194,7 +2192,7 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	}
 
 #ifdef MAME_DEBUG
-	if (mame_validitychecks())
+	if (mame_validitychecks(-1))
 	{
 		MessageBox(hMain, MAMENAME " has failed its validity checks.  The GUI will "
 			"still work, but emulations will fail to execute", MAMENAME, MB_OK);

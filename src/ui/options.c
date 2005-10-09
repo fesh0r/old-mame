@@ -268,6 +268,13 @@ static const REG_OPTION regSettings[] =
 	{ "background_directory",       RO_STRING,  offsetof(settings_type, bgdir),            "bkground" },
 	{ "folder_directory",           RO_STRING,  offsetof(settings_type, folderdir),        "folders" },
 	{ "icons_directory",            RO_STRING,  offsetof(settings_type, iconsdir),         "icons" },
+#ifdef MESS
+	{ "sysinfo_file",				RO_STRING,  offsetof(settings_type, history_filename), "sysinfo.dat" },
+	{ "messinfo_file",				RO_STRING,  offsetof(settings_type, mameinfo_filename),"messinfo.dat" },
+#else
+	{ "history_file",				RO_STRING,  offsetof(settings_type, history_filename), "history.dat" },
+	{ "mameinfo_file",				RO_STRING,  offsetof(settings_type, mameinfo_filename),"mameinfo.dat" },
+#endif
 
 #ifdef MESS
 	{ "mess_column_widths",         RO_ENCODE,  offsetof(settings_type, mess.mess_column_width), "186, 230, 88, 84, 84, 68, 248, 248",	NULL, MessColumnEncodeString, MessColumnDecodeWidths},
@@ -385,7 +392,6 @@ static const REG_OPTION regGameOpts[] =
 #ifdef MESS
 	{ "skip_warnings",          RO_BOOL,    offsetof(options_type, skip_warnings),     "0" },
 #endif
-	{ "skip_validitychecks",    RO_BOOL,    offsetof(options_type, skip_validitychecks),             "1" },
 	{ "bios",                   RO_INT,     offsetof(options_type, bios),                            "0" },
 
 #ifdef MESS
@@ -431,7 +437,6 @@ static const REG_OPTION global_game_options[] =
 #ifdef MESS
 	{"skip_warnings",           RO_BOOL,    offsetof(settings_type, skip_warnings),     "0" },
 #endif
-	{"skip_validitychecks",     RO_BOOL,    offsetof(settings_type, skip_validitychecks),     "0" },
 	{"high_priority",           RO_BOOL,    offsetof(settings_type, high_priority),     "0" },
 
 

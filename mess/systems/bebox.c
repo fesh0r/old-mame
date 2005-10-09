@@ -20,6 +20,7 @@
 #include "machine/pit8253.h"
 #include "devices/mflopimg.h"
 #include "devices/chd_cd.h"
+#include "devices/harddriv.h"
 #include "formats/pc_dsk.h"
 #include "vidhrdw/cirrus.h"
 
@@ -69,23 +70,28 @@ static ADDRESS_MAP_START( bebox_mem, ADDRESS_SPACE_PROGRAM, 64 )
 ADDRESS_MAP_END
 
 
-
 static ppc_config bebox_ppc_config =
 {
-	PPC_MODEL_603,
-	0x10,
+	PPC_MODEL_603,	/* 603 "Wart"					*/
+	0x10,		/* Multiplier 1.0, Bus = 66MHz, Core = 66MHz	*/
+	BUS_FREQUENCY_66MHZ
+};
+
+static ppc_config bebox2_ppc_config =
+{
+	PPC_MODEL_603E,	/* 603E "Stretch", version 1.3			*/
+	0x19,		/* Multiplier 2.0, Bus = 66MHz, Core = 133MHz	*/
 	BUS_FREQUENCY_66MHZ
 };
 
 
-
 static MACHINE_DRIVER_START( bebox )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC603, 66000000)        /* 66 Mhz */
+	MDRV_CPU_ADD_TAG("ppc1", PPC603, 66000000)	/* 66 MHz */
 	MDRV_CPU_CONFIG(bebox_ppc_config)
 	MDRV_CPU_PROGRAM_MAP(bebox_mem, 0)
 
-	MDRV_CPU_ADD(PPC603, 66000000)        /* 66 Mhz */
+	MDRV_CPU_ADD_TAG("ppc2", PPC603, 66000000)	/* 66 MHz */
 	MDRV_CPU_CONFIG(bebox_ppc_config)
 	MDRV_CPU_PROGRAM_MAP(bebox_mem, 0)
 
@@ -104,11 +110,27 @@ static MACHINE_DRIVER_START( bebox )
 	MDRV_NVRAM_HANDLER( bebox )
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( bebox2 )
+	MDRV_IMPORT_FROM( bebox )
+	MDRV_CPU_REPLACE("ppc1", PPC603, 133000000)	/* 133 MHz */
+	MDRV_CPU_CONFIG(bebox2_ppc_config)
+
+	MDRV_CPU_REPLACE("ppc2", PPC603, 133000000)	/* 133 MHz */
+	MDRV_CPU_CONFIG(bebox2_ppc_config)
+MACHINE_DRIVER_END
+
 static INPUT_PORTS_START( bebox )
 	PORT_INCLUDE( at_keyboard )
 INPUT_PORTS_END
 
 ROM_START(bebox)
+    ROM_REGION(0x00200000, REGION_USER1, ROMREGION_64BIT | ROMREGION_BE)
+	ROM_LOAD( "bootmain.rom", 0x000000, 0x20000, CRC(df2d19e0) SHA1(da86a7d23998dc953dd96a2ac5684faaa315c701) )
+    ROM_REGION(0x4000, REGION_USER2, ROMREGION_64BIT | ROMREGION_BE)
+	ROM_LOAD( "bootnub.rom", 0x000000, 0x4000, CRC(5348d09a) SHA1(1b637a3d7a2b072aa128dd5c037bbb440d525c1a) )
+ROM_END
+
+ROM_START(bebox2)
     ROM_REGION(0x00200000, REGION_USER1, ROMREGION_64BIT | ROMREGION_BE)
 	ROM_LOAD( "bootmain.rom", 0x000000, 0x20000, CRC(df2d19e0) SHA1(da86a7d23998dc953dd96a2ac5684faaa315c701) )
     ROM_REGION(0x4000, REGION_USER2, ROMREGION_64BIT | ROMREGION_BE)
@@ -129,14 +151,23 @@ static void bebox_cdrom_getinfo(struct IODevice *dev)
 	dev->count = 1;
 }
 
+static void bebox_harddisk_getinfo(struct IODevice *dev)
+{
+	/* harddisk */
+	harddisk_device_getinfo(dev);
+	dev->count = 1;
+}
+
 SYSTEM_CONFIG_START(bebox)
 	CONFIG_RAM(8 * 1024 * 1024)
 	CONFIG_RAM(16 * 1024 * 1024)
 	CONFIG_RAM_DEFAULT(32 * 1024 * 1024)
 	CONFIG_DEVICE(bebox_floppy_getinfo)
 	CONFIG_DEVICE(bebox_cdrom_getinfo)
+	CONFIG_DEVICE(bebox_harddisk_getinfo)
 SYSTEM_CONFIG_END
 
 
-/*     YEAR     NAME        PARENT  COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY             FULLNAME */
-COMPX( 1996,	bebox,		0,		0,		bebox,    bebox,	bebox,  bebox,	"Be Incorporated",	"BeBox", GAME_NOT_WORKING )
+/*     YEAR   NAME      PARENT  COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY             FULLNAME */
+COMPX( 1995,  bebox,    0,      0,      bebox,    bebox,    bebox,  bebox,  "Be Incorporated",  "BeBox Dual603-66", GAME_NOT_WORKING )
+COMPX( 1996,  bebox2,   bebox,  0,      bebox2,   bebox,    bebox,  bebox,  "Be Incorporated",  "BeBox Dual603-133", GAME_NOT_WORKING )

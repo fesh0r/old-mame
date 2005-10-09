@@ -112,11 +112,8 @@ int main(int argc, char *argv[])
 		/* this is for XMESS */
 		extern const char *cheatfile;
 		extern const char *db_filename;
-		extern const char *history_filename;
-		extern const char *mameinfo_filename;
 
-		cheatfile = db_filename = history_filename = mameinfo_filename
-			= NULL;
+		cheatfile = db_filename = NULL;
 	}
 #endif /* WIN32 */
 
@@ -129,7 +126,7 @@ int main(int argc, char *argv[])
 	sndintrf_init();
 	
 	/* run MAME's validity checks; if these fail cop out now */
-	if (mame_validitychecks())
+	if (mame_validitychecks(-1))
 		goto done;
 	/* run Imgtool's validity checks; if these fail cop out now */
 	if (imgtool_validitychecks())

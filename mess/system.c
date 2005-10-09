@@ -161,7 +161,8 @@ TESTDRIVER( studio2 )	/* Studio II										*/
 	/* COLECO */
 	DRIVER( coleco )	/* ColecoVision (Original BIOS)						*/
 	DRIVER( colecoa )	/* ColecoVision (Thick Characters)					*/
-	DRIVER( adam )		/* Coleco Adam										*/
+	DRIVER( colecob )	/* Spectravideo SVI-603 Coleco Game Adapter				*/
+	DRIVER( adam )		/* Coleco Adam								*/
 	DRIVER( fnvision )  /* Coleco FunVision                                 */
 
 	/* NEC */
@@ -406,6 +407,7 @@ TESTDRIVER( i8530286 )	/* 1988 IBM PS2 Model 30 286 (VGA)					*/
 	DRIVER( atvga ) 	/* 19?? AT VGA										*/
 TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 	DRIVER( at386 )		/* 19?? IBM AT 386									*/
+	DRIVER( at486 )		/* 19?? IBM AT 486									*/
 
 	/* SINCLAIR */
 	DRIVER( zx80 )		/* Sinclair ZX-80						*/
@@ -764,9 +766,11 @@ TESTDRIVER( hp48s ) 	/* HP48 S/SX										*/
 TESTDRIVER( hp48g ) 	/* HP48 G/GX										*/
 
 	/* SpectraVideo */
-	DRIVER( svi318 ) 	/* SVI-318											*/
-	DRIVER( svi328 ) 	/* SVI-328											*/
-	DRIVER( svi328a ) 	/* SVI-328	(BASIC 1.11)							*/
+	DRIVER( svi318 ) 	/* SVI-318 (SV BASIC v1.0)							*/
+	DRIVER( svi328 ) 	/* SVI-328 (SV BASIC v1.1)							*/
+	DRIVER( svi328a ) 	/* SVI-328 (SV BASIC v1.11)							*/
+TESTDRIVER( svi328b ) 	/* SVI-328 + 80 column card							*/
+TESTDRIVER( svi328c ) 	/* SVI-328 + 80 column card (Swedish)						*/
 
 	/* Andrew Donald Booth (this is the name of the designer, not a company) */
 	DRIVER( apexc )		/* 1951(?) APEXC: All-Purpose Electronic X-ray Computer */
@@ -814,7 +818,8 @@ TESTDRIVER( hp48g ) 	/* HP48 G/GX										*/
 	DRIVER( abc806 )
 
 	/* Be Incorporated */
-	DRIVER( bebox )
+	DRIVER( bebox )		/* BeBox Dual603-66	*/
+	DRIVER( bebox2 )	/* BeBox Dual603-133	*/
 
 /****************Games*******************************************************/
 	/* Computer Electronic */

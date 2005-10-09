@@ -286,10 +286,8 @@ WRITE8_HANDLER(at_page8_w)
 {
 	at_pages[offset % 0x10] = data;
 
-#if LOG_PORT80
-	if (offset == 0)
-		logerror(" at_page8_w(): Port 80h <== 0x%02x (PC=0x%08x)\n", data, activecpu_get_reg(REG_PC));
-#endif /* LOG_PORT80 */
+	if (LOG_PORT80 && (offset == 0))	
+		logerror(" at_page8_w(): Port 80h <== 0x%02x (PC=0x%08x)\n", data, (unsigned) activecpu_get_reg(REG_PC));
 
 	switch(offset % 8) {
 	case 1:
@@ -427,8 +425,6 @@ void init_pc_common(UINT32 flags)
 	pc_lpt_set_device(2, &CENTRONICS_PRINTER_DEVICE);
 
 	/* serial mouse */
-	pc_mouse_set_protocol(TYPE_MICROSOFT_MOUSE);
-	pc_mouse_set_input_base(12);
 	pc_mouse_set_serial_port(0);
 	pc_mouse_initialise();
 
