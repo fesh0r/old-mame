@@ -400,42 +400,23 @@ static ADDRESS_MAP_START( c128_z80_writeio , ADDRESS_SPACE_IO, 8)
 	/*{ 0xdf00, 0xdfff, dma_port_w }, */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( c128_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0001) AM_READ( c64_m6510_port_r)
-	AM_RANGE(0x0002, 0x00ff) AM_READ( MRA8_BANK1)
-	AM_RANGE(0x0100, 0x01ff) AM_READ( MRA8_BANK2)
-	AM_RANGE(0x0200, 0x03ff) AM_READ( MRA8_BANK3)
-	AM_RANGE(0x0400, 0x0fff) AM_READ( MRA8_BANK4)
-	AM_RANGE(0x1000, 0x1fff) AM_READ( MRA8_BANK5)
-	AM_RANGE(0x2000, 0x3fff) AM_READ( MRA8_BANK6)
+static ADDRESS_MAP_START( c128_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x00ff) AM_RAMBANK(1)
+	AM_RANGE(0x0100, 0x01ff) AM_RAMBANK(2)
+	AM_RANGE(0x0200, 0x03ff) AM_RAMBANK(3)
+	AM_RANGE(0x0400, 0x0fff) AM_RAMBANK(4)
+	AM_RANGE(0x1000, 0x1fff) AM_RAMBANK(5)
+	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK(6)
 
-	AM_RANGE(0x4000, 0x7fff) AM_READ( MRA8_BANK7)
-	AM_RANGE(0x8000, 0x9fff) AM_READ( MRA8_BANK8)
-	AM_RANGE(0xa000, 0xbfff) AM_READ( MRA8_BANK9)
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE( MRA8_BANK7, c128_write_4000 )
+	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( MRA8_BANK8, c128_write_8000 )
+	AM_RANGE(0xa000, 0xbfff) AM_READWRITE( MRA8_BANK9, c128_write_a000 )
 
-	AM_RANGE(0xc000, 0xcfff) AM_READ( MRA8_BANK12)
-	AM_RANGE(0xd000, 0xdfff) AM_READ( MRA8_BANK13)
-	AM_RANGE(0xe000, 0xfeff) AM_READ( MRA8_BANK14)
-	AM_RANGE(0xff00, 0xff04) AM_READ( MRA8_BANK15)	   /* mmu c128 modus */
-	AM_RANGE(0xff05, 0xffff) AM_READ( MRA8_BANK16)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( c128_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0001) AM_WRITE( c64_m6510_port_w)
-	AM_RANGE(0x0002, 0x00ff) AM_WRITE( MWA8_BANK1)
-	AM_RANGE(0x0100, 0x01ff) AM_WRITE( MWA8_BANK2)
-	AM_RANGE(0x0200, 0x03ff) AM_WRITE( MWA8_BANK3)
-	AM_RANGE(0x0400, 0x0fff) AM_WRITE( MWA8_BANK4)
-	AM_RANGE(0x1000, 0x1fff) AM_WRITE( MWA8_BANK5)
-	AM_RANGE(0x2000, 0x3fff) AM_WRITE( MWA8_BANK6)
-
-	AM_RANGE(0x4000, 0x7fff) AM_WRITE( c128_write_4000)
-	AM_RANGE(0x8000, 0x9fff) AM_WRITE( c128_write_8000)
-	AM_RANGE(0xa000, 0xcfff) AM_WRITE( c128_write_a000)
-	AM_RANGE(0xd000, 0xdfff) AM_WRITE( c128_write_d000)
-	AM_RANGE(0xe000, 0xfeff) AM_WRITE( c128_write_e000)
-	AM_RANGE(0xff00, 0xff04) AM_WRITE( c128_write_ff00)
-	AM_RANGE(0xff05, 0xffff) AM_WRITE( c128_write_ff05)
+	AM_RANGE(0xc000, 0xcfff) AM_READWRITE( MRA8_BANK12, c128_write_c000 )
+	AM_RANGE(0xd000, 0xdfff) AM_READWRITE( MRA8_BANK13, c128_write_d000 )
+	AM_RANGE(0xe000, 0xfeff) AM_READWRITE( MRA8_BANK14, c128_write_e000 )
+	AM_RANGE(0xff00, 0xff04) AM_READWRITE( MRA8_BANK15, c128_write_ff00 )	   /* mmu c128 modus */
+	AM_RANGE(0xff05, 0xffff) AM_READWRITE( MRA8_BANK16, c128_write_ff05 )
 ADDRESS_MAP_END
 
 #define DIPS_HELPER(bit, name, keycode) \
@@ -1063,9 +1044,10 @@ static gfx_layout c128graphic_charlayout =
 	8
 };
 
-static gfx_decode c128_gfxdecodeinfo[] = {
-	{ 1, 0x0000, &c128_charlayout, 0, 0x100 },
-	{ 2, 0x0000, &c128graphic_charlayout, 0, 0x100 },
+static gfx_decode c128_gfxdecodeinfo[] =
+{
+	{ REGION_GFX1, 0x0000, &c128_charlayout, 0, 0x100 },
+	{ REGION_GFX2, 0x0000, &c128graphic_charlayout, 0, 0x100 },
     { -1 } /* end of array */
 };
 
@@ -1155,7 +1137,8 @@ ROM_START (c128)
 	ROM_LOAD ("318020.05", 0x10c000, 0x4000, CRC(ba456b8e) SHA1(ceb6e1a1bf7e08eb9cbc651afa29e26adccf38ab))
 	ROM_LOAD ("390059.01", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f))
 	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x100, REGION_GFX1, 0)
+	ROM_REGION (0x2000, REGION_GFX1, 0)
+	ROM_REGION (0x100, REGION_GFX2, 0)
 ROM_END
 
 ROM_START (c128d)
@@ -1165,7 +1148,8 @@ ROM_START (c128d)
 	ROM_LOAD ("390059.01", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f))
 	ROM_REGION (0x10000, REGION_CPU2, 0)
 	C1571_ROM(REGION_CPU3)
-	ROM_REGION (0x100, REGION_GFX1, 0)
+	ROM_REGION (0x2000, REGION_GFX1, 0)
+	ROM_REGION (0x100, REGION_GFX2, 0)
 ROM_END
 
 // submitted as cost reduced set!
@@ -1187,7 +1171,8 @@ ROM_START (c128dita)
 	ROM_REGION (0x10000, REGION_CPU2, 0)
     // not included in submission
 //	C1571_ROM(REGION_CPU3)
-	ROM_REGION (0x100, REGION_GFX1, 0)
+	ROM_REGION (0x2000, REGION_GFX1, 0)
+	ROM_REGION (0x100, REGION_GFX2, 0)
 ROM_END
 
 ROM_START (c128ger)
@@ -1197,7 +1182,8 @@ ROM_START (c128ger)
 	ROM_LOAD ("318077.01", 0x108000, 0x8000, CRC(eb6e2c8f) SHA1(6b3d891fedabb5335f388a5d2a71378472ea60f4))
 	ROM_LOAD ("315079.01", 0x120000, 0x2000, CRC(fe5a2db1) SHA1(638f8aff51c2ac4f99a55b12c4f8c985ef4bebd3))
 	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x100, REGION_GFX1, 0)
+	ROM_REGION (0x2000, REGION_GFX1, 0)
+	ROM_REGION (0x100, REGION_GFX2, 0)
 ROM_END
 
 ROM_START (c128fra)
@@ -1214,7 +1200,8 @@ ROM_START (c128fra)
 #endif
 	ROM_LOAD ("325167.01", 0x120000, 0x2000, CRC(bad36b88) SHA1(9119b27a1bf885fa4c76fff5d858c74c194dd2b8))
 	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x100, REGION_GFX1, 0)
+	ROM_REGION (0x2000, REGION_GFX1, 0)
+	ROM_REGION (0x100, REGION_GFX2, 0)
 ROM_END
 
 ROM_START (c128ita)
@@ -1226,7 +1213,8 @@ ROM_START (c128ita)
 	ROM_LOAD ("italian.bin", 0x10c000, 0x4000, CRC(74d6b084) SHA1(592a626eb2b5372596ac374d3505c3ce78dd040f))
 	ROM_LOAD ("325167.01", 0x120000, 0x2000, CRC(bad36b88) SHA1(9119b27a1bf885fa4c76fff5d858c74c194dd2b8))
 	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x100, REGION_GFX1, 0)
+	ROM_REGION (0x2000, REGION_GFX1, 0)
+	ROM_REGION (0x100, REGION_GFX2, 0)
 ROM_END
 
 ROM_START (c128swe)
@@ -1235,7 +1223,8 @@ ROM_START (c128swe)
 	ROM_LOAD ("318034.01", 0x108000, 0x8000, CRC(cb4e1719) SHA1(9b0a0cef56d00035c611e07170f051ee5e63aa3a))
 	ROM_LOAD ("325181.01", 0x120000, 0x2000, CRC(7a70d9b8) SHA1(aca3f7321ee7e6152f1f0afad646ae41964de4fb))
 	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x100, REGION_GFX1, 0)
+	ROM_REGION (0x2000, REGION_GFX1, 0)
+	ROM_REGION (0x100, REGION_GFX2, 0)
 ROM_END
 
 ROM_START (c128nor)
@@ -1247,7 +1236,8 @@ ROM_START (c128nor)
 	/* standard c64, vic20 based norwegian */
 	ROM_LOAD ("char.nor", 0x120000, 0x2000, BAD_DUMP CRC(ba95c625))
 	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x100, REGION_GFX1, 0)
+	ROM_REGION (0x2000, REGION_GFX1, 0)
+	ROM_REGION (0x100, REGION_GFX2, 0)
 ROM_END
 
 static SID6581_interface c128_sound_interface =
@@ -1266,7 +1256,7 @@ static MACHINE_DRIVER_START( c128 )
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, TIME_IN_HZ(VIC2_HRETRACERATE))
 
 	MDRV_CPU_ADD_TAG("m8502", M8502, VIC6567_CLOCK)
-	MDRV_CPU_PROGRAM_MAP( c128_readmem, c128_writemem )
+	MDRV_CPU_PROGRAM_MAP( c128_mem, 0 )
 	MDRV_CPU_VBLANK_INT(c64_frame_interrupt, 1)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, TIME_IN_HZ(VIC2_HRETRACERATE))
 
@@ -1316,9 +1306,6 @@ static MACHINE_DRIVER_START( c128pal )
 	MDRV_SOUND_CONFIG(c128_sound_interface)
 MACHINE_DRIVER_END
 
-#define init_c128 c128_driver_init
-#define init_c128pal c128pal_driver_init
-
 static void c128_cbmcartslot_getinfo(struct IODevice *dev)
 {
 	cbmcartslot_device_getinfo(dev);
@@ -1346,14 +1333,14 @@ SYSTEM_CONFIG_START(c128d)
 SYSTEM_CONFIG_END
 
 /*	  YEAR	NAME		PARENT	COMPAT	MACHINE 	INPUT		INIT		CONFIG  COMPANY   FULLNAME */
-COMP (1985, c128,		0,		0,		c128,		c128,		c128,		c128,	"Commodore Business Machines Co.","Commodore 128 NTSC")
-COMP (1985, c128ger,	c128,	0,		c128pal,	c128ger,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 German (PAL)")
-COMP (1985, c128fra,	c128,	0,		c128pal,	c128fra,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 French (PAL)")
-COMP (1985, c128ita,	c128,	0,		c128pal,	c128ita,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 Italian (PAL)")
-COMP (1985, c128swe,	c128,	0,		c128pal,	c128swe,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 Swedish (PAL)")
+COMP (1985, c128,		0,		0,		c128,		c128,		c128,		c128,	"Commodore Business Machines Co.","Commodore 128 NTSC", 0)
+COMP (1985, c128ger,	c128,	0,		c128pal,	c128ger,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 German (PAL)", 0)
+COMP (1985, c128fra,	c128,	0,		c128pal,	c128fra,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 French (PAL)", 0)
+COMP (1985, c128ita,	c128,	0,		c128pal,	c128ita,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 Italian (PAL)", 0)
+COMP (1985, c128swe,	c128,	0,		c128pal,	c128swe,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 Swedish (PAL)", 0)
 /* other countries spanish, belgium, norwegian */
 /* please leave the following as testdriver */
-COMPX (1985, c128nor,	c128,	0,		c128pal,	c128ita,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 Norwegian (PAL)", GAME_NOT_WORKING)
-COMPX (1985, c128d,		c128,	0,		c128d,		c128,		c128,		c128d,	"Commodore Business Machines Co.","Commodore 128D NTSC", GAME_NOT_WORKING)
-//COMPX(1985,c128dita,	c128,	0,		c128d,		c128,		c128,		c128d,	"Commodore Business Machines Co.","Commodore 128D Italian (PAL)", GAME_NOT_WORKING)
-COMPX (1985, c128dita,	c128,	0,		c128pal,	c128ita,	c128pal,	c128d,	"Commodore Business Machines Co.","Commodore 128D Italian (PAL)", GAME_NOT_WORKING)
+COMP (1985, c128nor,	c128,	0,		c128pal,	c128ita,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 Norwegian (PAL)", GAME_NOT_WORKING)
+COMP (1985, c128d,		c128,	0,		c128d,		c128,		c128,		c128d,	"Commodore Business Machines Co.","Commodore 128D NTSC", GAME_NOT_WORKING)
+//COMP(1985,c128dita,	c128,	0,		c128d,		c128,		c128,		c128d,	"Commodore Business Machines Co.","Commodore 128D Italian (PAL)", GAME_NOT_WORKING)
+COMP (1985, c128dita,	c128,	0,		c128pal,	c128ita,	c128pal,	c128d,	"Commodore Business Machines Co.","Commodore 128D Italian (PAL)", GAME_NOT_WORKING)

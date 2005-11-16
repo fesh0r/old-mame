@@ -16,15 +16,15 @@
 #include "pool.h"
 #include "sound/wavwrite.h"
 
-enum messtest_running_state
+typedef enum
 {
 	STATE_READY,
 	STATE_INCOMMAND,
 	STATE_ABORTED,
 	STATE_DONE
-};
+} messtest_running_state_t;
 
-enum messtest_command_type
+typedef enum
 {
 	MESSTEST_COMMAND_END,
 	MESSTEST_COMMAND_WAIT,
@@ -32,17 +32,18 @@ enum messtest_command_type
 	MESSTEST_COMMAND_RAWINPUT,
 	MESSTEST_COMMAND_SWITCH,
 	MESSTEST_COMMAND_SCREENSHOT,
+	MESSTEST_COMMAND_CHECKBLANK,
 	MESSTEST_COMMAND_IMAGE_CREATE,
 	MESSTEST_COMMAND_IMAGE_LOAD,
 	MESSTEST_COMMAND_IMAGE_PRECREATE,
 	MESSTEST_COMMAND_IMAGE_PRELOAD,
 	MESSTEST_COMMAND_VERIFY_MEMORY,
 	MESSTEST_COMMAND_VERIFY_IMAGE
-};
+} messtest_command_type_t;
 
 struct messtest_command
 {
-	enum messtest_command_type command_type;
+	messtest_command_type_t command_type;
 	union
 	{
 		double wait_time;
@@ -67,6 +68,7 @@ struct messtest_command
 			const char *format;
 			iodevice_t device_type;
 			int device_slot;
+			const char *device_tag;
 		} image_args;
 		struct
 		{
@@ -95,16 +97,16 @@ struct messtest_specific_state
 	struct messtest_command current_command;
 };
 
-enum messtest_result
+typedef enum
 {
 	MESSTEST_RESULT_SUCCESS,
 	MESSTEST_RESULT_STARTFAILURE,
 	MESSTEST_RESULT_RUNTIMEFAILURE
-};
+} messtest_result_t;
 
 struct messtest_results
 {
-	enum messtest_result rc;
+	messtest_result_t rc;
 	UINT64 runtime_hash;	/* A value that is a hash taken from certain runtime parameters; used to detect different execution paths */
 };
 
@@ -113,7 +115,8 @@ struct messtest_results
 #define MESSTEST_ALWAYS_DUMP_SCREENSHOT		1
 
 
-static enum messtest_running_state state;
+static messtest_running_state_t state;
+static int had_failure;
 static double wait_target;
 static double final_time;
 static const struct messtest_command *current_command;
@@ -135,7 +138,7 @@ static struct messtest_testcase current_testcase;
 
 
 
-static void dump_screenshot(void)
+static void dump_screenshot(int write_file)
 {
 	mame_file *fp;
 	char buf[128];
@@ -145,22 +148,26 @@ static void dump_screenshot(void)
 
 	bitmap = artwork_get_ui_bitmap();
 
-	/* dump a screenshot */
-	snprintf(buf, sizeof(buf) / sizeof(buf[0]),
-		(screenshot_num >= 0) ? "_%s_%d.png" : "_%s.png",
-		current_testcase.name, screenshot_num);
-	fp = mame_fopen(Machine->gamedrv->name, buf, FILETYPE_SCREENSHOT, 1);
-	if (fp)
+	if (write_file)
 	{
-		save_screen_snapshot_as(fp, bitmap);
-		mame_fclose(fp);
-		report_message(MSG_INFO, "Saved screenshot as %s", buf);
+		/* dump a screenshot */
+		snprintf(buf, sizeof(buf) / sizeof(buf[0]),
+			(screenshot_num >= 0) ? "_%s_%d.png" : "_%s.png",
+			current_testcase.name, screenshot_num);
+		fp = mame_fopen(Machine->gamedrv->name, buf, FILETYPE_SCREENSHOT, 1);
+		if (fp)
+		{
+			save_screen_snapshot_as(fp, bitmap);
+			mame_fclose(fp);
+			report_message(MSG_INFO, "Saved screenshot as %s", buf);
+		}
+
+		if (screenshot_num >= 0)
+			screenshot_num++;
 	}
 
-	if (screenshot_num >= 0)
-		screenshot_num++;
-
 	/* check to see if bitmap is blank */
+	bitmap = Machine->scrbitmap;
 	is_blank = 1;
 	color = bitmap->read(bitmap, 0, 0);
 	for (y = 0; is_blank && (y < bitmap->height); y++)
@@ -172,7 +179,10 @@ static void dump_screenshot(void)
 		}
 	}
 	if (is_blank)
+	{
+		had_failure = TRUE;
 		report_message(MSG_FAILURE, "Screenshot is blank");
+	}
 }
 
 
@@ -201,17 +211,17 @@ void CLIB_DECL osd_die(const char *text,...)
 
 
 
-static enum messtest_result run_test(int flags, struct messtest_results *results)
+static messtest_result_t run_test(int flags, struct messtest_results *results)
 {
 	int driver_num;
-	enum messtest_result rc;
+	messtest_result_t rc;
 	clock_t begin_time;
 	double real_run_time;
 
 	/* lookup driver */
 	for (driver_num = 0; drivers[driver_num]; driver_num++)
 	{
-		if (!strcmpi(current_testcase.driver, drivers[driver_num]->name))
+		if (!mame_stricmp(current_testcase.driver, drivers[driver_num]->name))
 			break;
 	}
 
@@ -228,6 +238,7 @@ static enum messtest_result run_test(int flags, struct messtest_results *results
 	test_flags = flags;
 	screenshot_num = 0;
 	runtime_hash = 0;
+	had_failure = FALSE;
 
 	/* set up options */
 	memset(&options, 0, sizeof(options));
@@ -265,9 +276,18 @@ static enum messtest_result run_test(int flags, struct messtest_results *results
 			break;
 
 		case STATE_DONE:
-			report_message(MSG_INFO, "Test succeeded (real time %.2f; emu time %.2f [%i%%])",
-				real_run_time, final_time, (int) ((final_time / real_run_time) * 100));
-			rc = MESSTEST_RESULT_SUCCESS;
+			if (had_failure)
+			{
+				report_message(MSG_FAILURE, "Test failed (real time %.2f; emu time %.2f [%i%%])",
+					real_run_time, final_time, (int) ((final_time / real_run_time) * 100));
+				rc = MESSTEST_RESULT_RUNTIMEFAILURE;
+			}
+			else
+			{
+				report_message(MSG_INFO, "Test succeeded (real time %.2f; emu time %.2f [%i%%])",
+					real_run_time, final_time, (int) ((final_time / real_run_time) * 100));
+				rc = MESSTEST_RESULT_SUCCESS;
+			}
 			break;
 
 		default:
@@ -347,7 +367,7 @@ static void find_switch(const char *switch_name, const char *switch_setting,
 	while(in->type != IPT_END)
 	{
 		if (in->type == switch_type && input_port_active(in)
-			&& input_port_name(in) && !stricmp(input_port_name(in), switch_name))
+			&& input_port_name(in) && !mame_stricmp(input_port_name(in), switch_name))
 			break;
 		in++;
 	}
@@ -359,7 +379,7 @@ static void find_switch(const char *switch_name, const char *switch_setting,
 	in++;
 	while(in->type == switch_setting_type)
 	{
-		if (input_port_active(in) && input_port_name(in) && !stricmp(input_port_name(in), switch_setting))
+		if (input_port_active(in) && input_port_name(in) && !mame_stricmp(input_port_name(in), switch_setting))
 			break;
 		in++;
 	}
@@ -470,7 +490,14 @@ static void command_rawinput(void)
 
 static void command_screenshot(void)
 {
-	dump_screenshot();
+	dump_screenshot(TRUE);
+}
+
+
+
+static void command_checkblank(void)
+{
+	dump_screenshot(FALSE);
 }
 
 
@@ -520,6 +547,7 @@ static void command_image_loadcreate(void)
 	mess_image *image;
 	int device_type;
 	int device_slot;
+	const char *device_tag;
 	int i, format_index = 0;
 	const char *filename;
 	const char *format;
@@ -529,9 +557,13 @@ static void command_image_loadcreate(void)
 
 	device_slot = current_command->u.image_args.device_slot;
 	device_type = current_command->u.image_args.device_type;
+	device_tag = current_command->u.image_args.device_tag;
 
 	/* look up the image slot */
-	image = image_from_devtype_and_index(device_type, device_slot);
+	if (device_tag)
+		image = image_from_devtag_and_index(device_tag, device_slot);
+	else
+		image = image_from_devtype_and_index(device_type, device_slot);
 	if (!image)
 	{
 		state = STATE_ABORTED;
@@ -749,7 +781,7 @@ static void command_end(void)
 
 struct command_procmap_entry
 {
-	enum messtest_command_type command_type;
+	messtest_command_type_t command_type;
 	void (*proc)(void);
 };
 
@@ -759,6 +791,7 @@ static const struct command_procmap_entry commands[] =
 	{ MESSTEST_COMMAND_INPUT,			command_input },
 	{ MESSTEST_COMMAND_RAWINPUT,		command_rawinput },
 	{ MESSTEST_COMMAND_SCREENSHOT,		command_screenshot },
+	{ MESSTEST_COMMAND_CHECKBLANK,		command_checkblank },
 	{ MESSTEST_COMMAND_SWITCH,			command_switch },
 	{ MESSTEST_COMMAND_IMAGE_PRELOAD,	command_image_preload },
 	{ MESSTEST_COMMAND_IMAGE_LOAD,		command_image_loadcreate },
@@ -826,7 +859,7 @@ void osd_update_video_and_audio(mame_display *display)
 			(current_command[0].command_type != MESSTEST_COMMAND_SCREENSHOT) &&
 			(current_command[1].command_type == MESSTEST_COMMAND_END))
 		{
-			dump_screenshot();
+			dump_screenshot(TRUE);
 		}
 
 		current_command++;
@@ -1036,13 +1069,25 @@ static void node_screenshot(xml_data_node *node)
 
 
 
-static void node_image(xml_data_node *node, enum messtest_command_type command)
+static void node_checkblank(xml_data_node *node)
+{
+	/* <checkblank> - checks to see if the screen is blank */
+	memset(&new_command, 0, sizeof(new_command));
+	new_command.command_type = MESSTEST_COMMAND_CHECKBLANK;
+
+	if (!append_command())
+	{
+		error_outofmemory();
+		return;
+	}
+}
+
+
+
+static void node_image(xml_data_node *node, messtest_command_type_t command)
 {
 	xml_attribute_node *attr_node;
-	const char *s1;
 	const char *s2;
-	const char *s3;
-	const char *s4;
 	int preload, device_type;
 
 	memset(&new_command, 0, sizeof(new_command));
@@ -1056,7 +1101,7 @@ static void node_image(xml_data_node *node, enum messtest_command_type command)
 
 	/* 'filename' attribute */
 	attr_node = xml_get_attribute(node, "filename");
-	s1 = attr_node ? attr_node->value : NULL;
+	new_command.u.image_args.filename = attr_node ? attr_node->value : NULL;
 
 	/* 'type' attribute */
 	attr_node = xml_get_attribute(node, "type");
@@ -1073,20 +1118,20 @@ static void node_image(xml_data_node *node, enum messtest_command_type command)
 		error_baddevicetype(s2);
 		return;
 	}
+	new_command.u.image_args.device_type = device_type;
 	
 	/* 'slot' attribute */
 	attr_node = xml_get_attribute(node, "slot");
-	s3 = attr_node ? attr_node->value : NULL;
+	new_command.u.image_args.device_slot = attr_node ? atoi(attr_node->value) : 0;
 
 	/* 'format' attribute */
 	format_index = 0;
 	attr_node = xml_get_attribute(node, "format");
-	s4 = attr_node ? attr_node->value : NULL;
+	new_command.u.image_args.format = attr_node ? attr_node->value : NULL;
 
-	new_command.u.image_args.filename = s1;
-	new_command.u.image_args.device_type = device_type;
-	new_command.u.image_args.device_slot = s3 ? atoi(s3) : 0;
-	new_command.u.image_args.format = s4;
+	/* 'tag' attribute */
+	attr_node = xml_get_attribute(node, "tag");
+	new_command.u.image_args.device_tag = attr_node ? attr_node->value : NULL;
 
 	if (!append_command())
 	{
@@ -1285,6 +1330,8 @@ void node_testmess(xml_data_node *node)
 			node_switch(child_node);
 		else if (!strcmp(child_node->name, "screenshot"))
 			node_screenshot(child_node);
+		else if (!strcmp(child_node->name, "checkblank"))
+			node_checkblank(child_node);
 		else if (!strcmp(child_node->name, "imagecreate"))
 			node_imagecreate(child_node);
 		else if (!strcmp(child_node->name, "imageload"))

@@ -44,11 +44,10 @@ static mame_file *rom_fp[2] = {0};
  * 7 ack input edge ready for next datum
  */
 
-static UINT8 port6529, port7501, ddr7501;
+static UINT8 port6529;
 
 static int lowrom = 0, highrom = 0;
 
-UINT8 *c16_memory;
 static UINT8 *c16_memory_10000;
 static UINT8 *c16_memory_14000;
 static UINT8 *c16_memory_18000;
@@ -83,21 +82,10 @@ static int c16_rom_load(mess_image *img);
   p6 serial clock in
   p7 serial data in, serial bus 5
  */
-WRITE8_HANDLER(c16_m7501_port_w)
+void c16_m7501_port_write(UINT8 data)
 {
 	int dat, atn, clk;
 
-	if (offset)
-	{
-		if (port7501 != data)
-			port7501 = data;
-	}
-	else
-	{
-		if (ddr7501 != data)
-			ddr7501 = data;
-	}
-	data = (port7501 & ddr7501) | (ddr7501 ^ 0xff);
 	/* bit zero then output 0 */
 	cbm_serial_atn_write (atn = !(data & 4));
 	cbm_serial_clock_write (clk = !(data & 2));
@@ -106,66 +94,63 @@ WRITE8_HANDLER(c16_m7501_port_w)
 	vc20_tape_motor (data & 8);
 }
 
- READ8_HANDLER(c16_m7501_port_r)
+UINT8 c16_m7501_port_read(void)
 {
-	if (offset)
-	{
-		int data = (ddr7501 & port7501) | (ddr7501 ^ 0xff);
+	UINT8 data = 0xFF;
+	UINT8 c16_port7501 = (UINT8) cpunum_get_info_int(0, CPUINFO_INT_M6510_PORT);
 
-		if (!(ddr7501 & 0x80)
-			&& (((ddr7501 & 1) && (port7501 & 1)) || !cbm_serial_data_read ()))
-			data &= ~0x80;
-		if (!(ddr7501 & 0x40)
-			&& (((ddr7501 & 2) && (port7501 & 2)) || !cbm_serial_clock_read ()))
-			data &= ~0x40;
-		if (!(ddr7501 & 0x10) && !vc20_tape_read ())
-			data &= ~0x10;
-/*      data&=~0x20; //port bit not in pinout */
-		return data;
-	}
-	else
-	{
-		return ddr7501;
-	}
+	if ((c16_port7501 & 0x01) || !cbm_serial_data_read())
+		data &= ~0x80;
+
+	if ((c16_port7501 & 0x02) || !cbm_serial_clock_read())
+		data &= ~0x40;
+
+	if (!vc20_tape_read())
+		data &= ~0x10;
+
+/*	data &= ~0x20; //port bit not in pinout */
+	return data;
 }
 
 static void c16_bankswitch (void)
 {
+	memory_set_bankptr(9, mess_ram);
+
 	switch (lowrom)
 	{
 	case 0:
-		memory_set_bankptr (2, c16_memory + 0x10000);
+		memory_set_bankptr (2, memory_region(REGION_CPU1) + 0x10000);
 		break;
 	case 1:
-		memory_set_bankptr (2, c16_memory + 0x18000);
+		memory_set_bankptr (2, memory_region(REGION_CPU1) + 0x18000);
 		break;
 	case 2:
-		memory_set_bankptr (2, c16_memory + 0x20000);
+		memory_set_bankptr (2, memory_region(REGION_CPU1) + 0x20000);
 		break;
 	case 3:
-		memory_set_bankptr (2, c16_memory + 0x28000);
+		memory_set_bankptr (2, memory_region(REGION_CPU1) + 0x28000);
 		break;
 	}
 	switch (highrom)
 	{
 	case 0:
-		memory_set_bankptr (3, c16_memory + 0x14000);
-		memory_set_bankptr (8, c16_memory + 0x17f20);
+		memory_set_bankptr (3, memory_region(REGION_CPU1) + 0x14000);
+		memory_set_bankptr (8, memory_region(REGION_CPU1) + 0x17f20);
 		break;
 	case 1:
-		memory_set_bankptr (3, c16_memory + 0x1c000);
-		memory_set_bankptr (8, c16_memory + 0x1ff20);
+		memory_set_bankptr (3, memory_region(REGION_CPU1) + 0x1c000);
+		memory_set_bankptr (8, memory_region(REGION_CPU1) + 0x1ff20);
 		break;
 	case 2:
-		memory_set_bankptr (3, c16_memory + 0x24000);
-		memory_set_bankptr (8, c16_memory + 0x27f20);
+		memory_set_bankptr (3, memory_region(REGION_CPU1) + 0x24000);
+		memory_set_bankptr (8, memory_region(REGION_CPU1) + 0x27f20);
 		break;
 	case 3:
-		memory_set_bankptr (3, c16_memory + 0x2c000);
-		memory_set_bankptr (8, c16_memory + 0x2ff20);
+		memory_set_bankptr (3, memory_region(REGION_CPU1) + 0x2c000);
+		memory_set_bankptr (8, memory_region(REGION_CPU1) + 0x2ff20);
 		break;
 	}
-	memory_set_bankptr (4, c16_memory + 0x17c00);
+	memory_set_bankptr (4, memory_region(REGION_CPU1) + 0x17c00);
 }
 
 WRITE8_HANDLER(c16_switch_to_rom)
@@ -198,36 +183,10 @@ WRITE8_HANDLER(c16_select_roms)
 WRITE8_HANDLER(c16_switch_to_ram)
 {
 	ted7360_rom = 0;
-	switch (DIPMEMORY)
-	{
-	case MEMORY64K:
-		memory_set_bankptr (2, c16_memory + 0x8000);
-		memory_set_bankptr (3, c16_memory + 0xc000);
-		memory_set_bankptr (4, c16_memory + 0xfc00);
-		memory_set_bankptr (8, c16_memory + 0xff20);
-		break;
-	case MEMORY32K:
-		memory_set_bankptr (2, c16_memory);
-		memory_set_bankptr (3, c16_memory + 0x4000);
-		memory_set_bankptr (4, c16_memory + 0x7c00);
-		memory_set_bankptr (8, c16_memory + 0x7f20);
-		break;
-	case MEMORY16K:
-		memory_set_bankptr (2, c16_memory);
-		memory_set_bankptr (3, c16_memory);
-		memory_set_bankptr (4, c16_memory + 0x3c00);
-		memory_set_bankptr (8, c16_memory + 0x3f20);
-		break;
-	}
-}
-
-WRITE8_HANDLER(plus4_switch_to_ram)
-{
-	ted7360_rom = 0;
-	memory_set_bankptr (2, c16_memory + 0x8000);
-	memory_set_bankptr (3, c16_memory + 0xc000);
-	memory_set_bankptr (4, c16_memory + 0xfc00);
-	memory_set_bankptr (8, c16_memory + 0xff20);
+	memory_set_bankptr (2, mess_ram + (0x8000 % mess_ram_size));
+	memory_set_bankptr (3, mess_ram + (0xc000 % mess_ram_size));
+	memory_set_bankptr (4, mess_ram + (0xfc00 % mess_ram_size));
+	memory_set_bankptr (8, mess_ram + (0xff20 % mess_ram_size));
 }
 
 int c16_read_keyboard (int databus)
@@ -369,39 +328,9 @@ WRITE8_HANDLER(c16_6551_port_w)
 	return data;
 }
 
-static WRITE8_HANDLER(c16_write_3f20)
+static READ8_HANDLER(ted7360_dma_read)
 {
-	c16_memory[0x3f20 + offset] = data;
-}
-
-static WRITE8_HANDLER(c16_write_3f40)
-{
-	c16_memory[0x3f40 + offset] = data;
-}
-
-static WRITE8_HANDLER(c16_write_7f20)
-{
-	c16_memory[0x7f20 + offset] = data;
-}
-
-static WRITE8_HANDLER(c16_write_7f40)
-{
-	c16_memory[0x7f40 + offset] = data;
-}
-
-static  READ8_HANDLER(ted7360_dma_read_16k)
-{
-	return c16_memory[offset & 0x3fff];
-}
-
-static  READ8_HANDLER(ted7360_dma_read_32k)
-{
-	return c16_memory[offset & 0x7fff];
-}
-
-static  READ8_HANDLER(ted7360_dma_read)
-{
-	return c16_memory[offset];
+	return mess_ram[offset % mess_ram_size];
 }
 
 static  READ8_HANDLER(ted7360_dma_read_rom)
@@ -437,16 +366,8 @@ static  READ8_HANDLER(ted7360_dma_read_rom)
 			return c16_memory_28000[offset & 0x7fff];
 		}
 	}
-	switch (DIPMEMORY)
-	{
-	case MEMORY16K:
-		return c16_memory[offset & 0x3fff];
-	case MEMORY32K:
-		return c16_memory[offset & 0x7fff];
-	case MEMORY64K:
-		return c16_memory[offset];
-	}
-	exit (0);
+
+	return mess_ram[offset % mess_ram_size];
 }
 
 void c16_interrupt (int level)
@@ -467,6 +388,10 @@ static void c16_common_driver_init (void)
 	VC1541_CONFIG vc1541= { 1, 8 };
 #endif
 	C1551_CONFIG config= { 1 };
+
+	/* configure the M7501 port */
+	cpunum_set_info_fct(0, CPUINFO_PTR_M6510_PORTREAD, (genf *) c16_m7501_port_read);
+	cpunum_set_info_fct(0, CPUINFO_PTR_M6510_PORTWRITE, (genf *) c16_m7501_port_write);
 
 	c16_select_roms (0, 0);
 	c16_switch_to_rom (0, 0);
@@ -491,21 +416,20 @@ static void c16_common_driver_init (void)
 	tpi6525[3].c.read=c1551_1_read_handshake;
 	tpi6525[3].c.output=c1551_1_write_handshake;
 
-	c16_memory_10000 = c16_memory + 0x10000;
-	c16_memory_14000 = c16_memory + 0x14000;
-	c16_memory_18000 = c16_memory + 0x18000;
-	c16_memory_1c000 = c16_memory + 0x1c000;
-	c16_memory_20000 = c16_memory + 0x20000;
-	c16_memory_24000 = c16_memory + 0x24000;
-	c16_memory_28000 = c16_memory + 0x28000;
-	c16_memory_2c000 = c16_memory + 0x2c000;
+	c16_memory_10000 = memory_region(REGION_CPU1) + 0x10000;
+	c16_memory_14000 = memory_region(REGION_CPU1) + 0x14000;
+	c16_memory_18000 = memory_region(REGION_CPU1) + 0x18000;
+	c16_memory_1c000 = memory_region(REGION_CPU1) + 0x1c000;
+	c16_memory_20000 = memory_region(REGION_CPU1) + 0x20000;
+	c16_memory_24000 = memory_region(REGION_CPU1) + 0x24000;
+	c16_memory_28000 = memory_region(REGION_CPU1) + 0x28000;
+	c16_memory_2c000 = memory_region(REGION_CPU1) + 0x2c000;
 
-	/*    memset(c16_memory, 0, 0xfd00); */
 	/* need to recognice non available tia6523's (iec8/9) */
-	memset (c16_memory + 0xfdc0, 0xff, 0x40);
+	memset(mess_ram + 0xfdc0, 0xff, 0x40);
 
 
-	memset (c16_memory + 0xfd40, 0xff, 0x20);
+	memset(mess_ram + 0xfd40, 0xff, 0x20);
 
 	c16_tape_open ();
 
@@ -532,23 +456,23 @@ void c16_driver_shutdown (void)
 
 static WRITE8_HANDLER(c16_sidcart_16k)
 {
-	c16_memory[0x1400+offset]=data;
-	c16_memory[0x5400+offset]=data;
-	c16_memory[0x9400+offset]=data;
-	c16_memory[0xd400+offset]=data;
+	mess_ram[0x1400 + offset]=data;
+	mess_ram[0x5400 + offset]=data;
+	mess_ram[0x9400 + offset]=data;
+	mess_ram[0xd400 + offset]=data;
 	sid6581_0_port_w(offset,data);
 }
 
 static WRITE8_HANDLER(c16_sidcart_32k)
 {
-	c16_memory[0x5400+offset]=data;
-	c16_memory[0xd400+offset]=data;
+	mess_ram[0x5400 + offset]=data;
+	mess_ram[0xd400 + offset]=data;
 	sid6581_0_port_w(offset,data);
 }
 
 static WRITE8_HANDLER(c16_sidcart_64k)
 {
-	c16_memory[0xd400+offset]=data;
+	mess_ram[0xd400 + offset]=data;
 	sid6581_0_port_w(offset,data);
 }
 
@@ -583,86 +507,52 @@ MACHINE_INIT( c16 )
 #endif
 	if (TYPE_C16)
 	{
-		memory_set_bankptr (1, (DIPMEMORY == MEMORY16K) ? c16_memory : c16_memory + 0x4000);
-		switch (DIPMEMORY)
-		{
-		case MEMORY16K:
-			memory_set_bankptr (5, c16_memory);
-			memory_set_bankptr (6, c16_memory);
-			memory_set_bankptr (7, c16_memory);
-#ifdef NEW_BANKHANDLER
-			/* causes problems to do this */
-			/* seeable with c16 and 32k ram extension */
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x8000, 0xbfff, 0, 0, MWA8_BANK6);
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x4000, 0x7fff, 0, 0, MWA8_BANK5);
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xc000, 0xfcff, 0, 0, MWA8_BANK7);
-#endif
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff20, 0xff3d, 0, 0, c16_write_3f20);
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff40, 0xffff, 0, 0, c16_write_3f40);
-			if (SIDCARD_HACK) {
-				memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_16k);
-			}
-			ted7360_set_dma (ted7360_dma_read_16k, ted7360_dma_read_rom);
-			break;
-		case MEMORY32K:
-#ifdef NEW_BANKHANDLER
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x4000, 0x7fff, 0, 0, MWA8_RAM);
-			memory_set_bankptr (5, c16_memory);
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x8000, 0xfcff, 0, 0, MWA8_BANK5);
-			memory_set_bankptr (6, (c16_memory + 0x7f20));
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff20, 0xff3d, 0, 0, MWA8_BANK6);
-			memory_set_bankptr (7, (c16_memory + 0x7f40));
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff40, 0xffff, 0, 0, MWA8_BANK7);
-#else
-			memory_set_bankptr (5, c16_memory + 0x4000);
-			memory_set_bankptr (6, c16_memory);
-			memory_set_bankptr (7, c16_memory + 0x4000);
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff20, 0xff3d, 0, 0, c16_write_7f20);
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff40, 0xffff, 0, 0, c16_write_7f40);
-#endif
-			ted7360_set_dma (ted7360_dma_read_32k, ted7360_dma_read_rom);
-			if (SIDCARD_HACK) {
-				memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_32k);
-			}
-			break;
-		case MEMORY64K:
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x4000, 0xfcff, 0, 0, MWA8_RAM);
-			if (SIDCARD_HACK) {
-				memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_64k);
-			}
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff20, 0xff3d, 0, 0, MWA8_RAM);
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xff40, 0xffff, 0, 0, MWA8_RAM);
-			ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
-			break;
-		}
-	}
-	else
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0x4000, 0xfcff, 0, 0, MWA8_RAM);
-		if (SIDCARD_HACK) {
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_64k);
-		}
+		memory_set_bankptr(1, mess_ram + (0x4000 % mess_ram_size));
+
+		memory_set_bankptr(5, mess_ram + (0x4000 % mess_ram_size));
+		memory_set_bankptr(6, mess_ram + (0x8000 % mess_ram_size));
+		memory_set_bankptr(7, mess_ram + (0xc000 % mess_ram_size));
+
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0xff20, 0xff3d, 0, 0, MWA8_BANK10);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0xff40, 0xffff, 0, 0, MWA8_BANK11);
+		memory_set_bankptr(10, mess_ram + (0xff20 % mess_ram_size)); 
+		memory_set_bankptr(11, mess_ram + (0xff40 % mess_ram_size)); 
+
+		if (SIDCARD_HACK)
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_16k);
+
 		ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
 	}
-	if (IEC8ON||REAL_C1551)
+	else
 	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, tpi6525_2_port_w);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, tpi6525_2_port_r);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x4000, 0xfcff, 0, 0, MWA8_BANK10);
+		memory_set_bankptr(10, mess_ram + 0x4000);
+
+		if (SIDCARD_HACK)
+			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_64k);
+
+		ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
+	}
+
+	if (IEC8ON || REAL_C1551)
+	{
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, tpi6525_2_port_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, tpi6525_2_port_r);
 	}
 	else
 	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, MWA8_NOP);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, MRA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, MWA8_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, MRA8_NOP);
 	}
 	if (IEC9ON)
 	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, tpi6525_3_port_w);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, tpi6525_3_port_r);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, tpi6525_3_port_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, tpi6525_3_port_r);
 	}
 	else
 	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, MWA8_NOP);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, MRA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, MWA8_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, MRA8_NOP);
 	}
 
 	if (SERIAL8ON)
@@ -715,9 +605,9 @@ static int c16_rom_id(mess_image *img, mame_file *romfile)
 	}
 	else if ((cp = strrchr (name, '.')) != NULL)
 	{
-		if ((stricmp (cp + 1, "rom") == 0) || (stricmp (cp + 1, "prg") == 0)
-			|| (stricmp (cp + 1, "bin") == 0)
-			|| (stricmp (cp + 1, "lo") == 0) || (stricmp (cp + 1, "hi") == 0))
+		if ((mame_stricmp (cp + 1, "rom") == 0) || (mame_stricmp (cp + 1, "prg") == 0)
+			|| (mame_stricmp (cp + 1, "bin") == 0)
+			|| (mame_stricmp (cp + 1, "lo") == 0) || (mame_stricmp (cp + 1, "hi") == 0))
 			retval = 1;
 	}
 
@@ -757,7 +647,7 @@ static int c16_rom_load(mess_image *img)
 	size = mame_fsize (fp);
 
 	filetype = image_filetype(img);	
-	if (filetype && !stricmp (filetype, "prg"))
+	if (filetype && !mame_stricmp (filetype, "prg"))
 	{
 		unsigned short in;
 

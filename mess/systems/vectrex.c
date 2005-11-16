@@ -109,6 +109,7 @@ static MACHINE_DRIVER_START( vectrex )
 	MDRV_SCREEN_SIZE(300, 400)
 	MDRV_VISIBLE_AREA(0, 500, 0, 600)
 	MDRV_PALETTE_LENGTH(256 + 32768)
+	MDRV_ASPECT_RATIO(3, 4)
 
 	MDRV_VIDEO_START( vectrex )	
 	MDRV_VIDEO_UPDATE( vectrex )
@@ -226,5 +227,5 @@ ROM_END
 ***************************************************************************/
 
 /*	  YEAR	NAME	  PARENT	COMPAT	MACHINE   INPUT 	INIT		CONFIG		COMPANY	FULLNAME */
-CONS( 1982, vectrex,  0, 		0,		vectrex,  vectrex,	vectrex,	vectrex,	"General Consumer Electronics",   "Vectrex" )
-CONS( 1984, raaspec,  vectrex,	0,		raaspec,  raaspec,	0,			NULL,		"Roy Abel & Associates",   "Spectrum I+" )
+CONS( 1982, vectrex,  0, 		0,		vectrex,  vectrex,	vectrex,	vectrex,	"General Consumer Electronics",   "Vectrex" , 0)
+CONS( 1984, raaspec,  vectrex,	0,		raaspec,  raaspec,	0,			NULL,		"Roy Abel & Associates",   "Spectrum I+" , 0)

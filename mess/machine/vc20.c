@@ -439,7 +439,7 @@ int vic6560_dma_read_color (int offset)
 int vic6560_dma_read (int offset)
 {
 	/* should read real system bus between 0x9000 and 0xa000 */
-	return vc20_memory[VIC6560ADDR2VC20ADDR (offset)];
+	return program_read_byte(VIC6560ADDR2VC20ADDR (offset));
 }
 
 static void vc20_memory_init(void)
@@ -507,19 +507,24 @@ void vc20_driver_shutdown (void)
 	vc20_tape_close ();
 }
 
-void vc20_driver_init (void)
+DRIVER_INIT( vc20 )
 {
 	vc20_common_driver_init ();
 	vic6561_init (vic6560_dma_read, vic6560_dma_read_color);
 }
 
-void vic20_driver_init (void)
+DRIVER_INIT( vic20 )
 {
 	vc20_common_driver_init ();
 	vic6560_init (vic6560_dma_read, vic6560_dma_read_color);
 }
 
-extern void vic20ieee_driver_init (void)
+DRIVER_INIT( vic1001 )
+{
+	init_vic20();
+}
+
+DRIVER_INIT( vic20i )
 {
 	ieee=1;
 	vc20_common_driver_init ();
@@ -623,13 +628,13 @@ static int vc20_rom_id(mess_image *img, mame_file *romfile)
 	cp = image_filetype(img);
 	if (cp)
 	{
-		if ((stricmp (cp, "a0") == 0)
-			|| (stricmp (cp, "20") == 0)
-			|| (stricmp (cp, "40") == 0)
-			|| (stricmp (cp, "60") == 0)
-			|| (stricmp (cp, "bin") == 0)
-			|| (stricmp (cp, "rom") == 0)
-			|| (stricmp (cp, "prg") == 0))
+		if ((mame_stricmp (cp, "a0") == 0)
+			|| (mame_stricmp (cp, "20") == 0)
+			|| (mame_stricmp (cp, "40") == 0)
+			|| (mame_stricmp (cp, "60") == 0)
+			|| (mame_stricmp (cp, "bin") == 0)
+			|| (mame_stricmp (cp, "rom") == 0)
+			|| (mame_stricmp (cp, "prg") == 0))
 			retval = 1;
 	}
 
@@ -683,7 +688,7 @@ DEVICE_LOAD(vc20_rom)
 		}
 		else
 		{
-			if (stricmp (cp, "prg") == 0)
+			if (mame_stricmp (cp, "prg") == 0)
 			{
 				unsigned short in;
 

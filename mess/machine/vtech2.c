@@ -21,13 +21,13 @@
 #include "sound/speaker.h"
 
 /* public */
-int laser_latch = -1;
+int laser_latch;
 
 /* static */
-static UINT8 *mem = NULL;
-static int laser_bank_mask = 0x0000;	/* up to 16 4K banks supported */
-static int laser_bank[4] = {-1,-1,-1,-1};
-static int laser_video_bank = 0;
+static UINT8 *mem;
+static int laser_bank_mask;	/* up to 16 4K banks supported */
+static int laser_bank[4];
+static int laser_video_bank;
 
 #define TRKSIZE_VZ	0x9a0	/* arbitrary (actually from analyzing format) */
 #define TRKSIZE_FM	3172	/* size of a standard FM mode track */
@@ -99,42 +99,52 @@ static write8_handler mwa_bank_hard[4] =
     MWA8_BANK4   /* mapped in c000-ffff */
 };
 
-void init_laser(void)
+DRIVER_INIT(laser)
 {
     UINT8 *gfx = memory_region(REGION_GFX2);
     int i;
-    for (i = 0; i < 256; i++)
+
+	for (i = 0; i < 256; i++)
         gfx[i] = i;
+
+	laser_latch = -1;
+    mem = memory_region(REGION_CPU1);
+
+	for (i = 0; i < sizeof(laser_bank) / sizeof(laser_bank[0]); i++)
+		laser_bank[i] = -1;
+}
+
+
+
+static void laser_machine_init(int bank_mask, int video_mask)
+{
+    int i;
+
+	laser_bank_mask = bank_mask;
+    laser_video_bank = video_mask;
+	videoram = mem + laser_video_bank * 0x04000;
+	logerror("laser_machine_init(): bank mask $%04X, video %d [$%05X]\n", laser_bank_mask, laser_video_bank, laser_video_bank * 0x04000);
+
+	for (i = 0; i < sizeof(laser_bank) / sizeof(laser_bank[0]); i++)
+		laser_bank_select_w(i, 0);
 }
 
 MACHINE_INIT( laser350 )
 {
-    mem = memory_region(REGION_CPU1);
 	/* banks 0 to 3 only, optional ROM extension */
-	laser_bank_mask = 0xf00f;
-    laser_video_bank = 3;
-	videoram = mem + laser_video_bank * 0x04000;
-	logerror("laser350 init machine: bank mask $%04X, video %d [$%05X]\n", laser_bank_mask, laser_video_bank, laser_video_bank * 0x04000);
+	laser_machine_init(0xf00f, 3);
 }
 
 MACHINE_INIT( laser500 )
 {
-    mem = memory_region(REGION_CPU1);
 	/* banks 0 to 2, and 4-7 only , optional ROM extension */
-	laser_bank_mask = 0xf0f7;
-    laser_video_bank = 7;
-    videoram = mem + laser_video_bank * 0x04000;
-	logerror("laser500 init machine: bank mask $%04X, video %d [$%05X]\n", laser_bank_mask, laser_video_bank, laser_video_bank * 0x04000);
+	laser_machine_init(0xf0f7, 7);
 }
 
 MACHINE_INIT( laser700 )
 {
-    mem = memory_region(REGION_CPU1);
 	/* all banks except #3 */
-	laser_bank_mask = 0xfff7;
-    laser_video_bank = 7;
-    videoram = mem + laser_video_bank * 0x04000;
-	logerror("laser700 init machine: bank mask $%04X, video %d [$%05X]\n", laser_bank_mask, laser_video_bank, laser_video_bank * 0x04000);
+	laser_machine_init(0xfff7, 7);
 }
 
 

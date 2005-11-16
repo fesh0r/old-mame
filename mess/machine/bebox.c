@@ -103,6 +103,7 @@
 #include "machine/intelfsh.h"
 #include "machine/8042kbdc.h"
 #include "machine/53c810.h"
+#include "memconv.h"
 
 #define LOG_CPUIMASK	1
 #define LOG_UART		1
@@ -401,15 +402,30 @@ READ64_HANDLER( bebox_interrupt_ack_r )
 {
 	int result;
 	result = pic8259_acknowledge(0);
+	if (result == 2)
+		result = pic8259_acknowledge(1);
 	bebox_set_irq_bit(5, 0);	/* HACK */
 	return ((UINT64) result) << 56;
 }
 
 
-static void bebox_pic_set_int_line(int interrupt)
+
+static void bebox_pic_set_int_line(int which, int interrupt)
 {
-	bebox_set_irq_bit(5, interrupt);
+	switch(which)
+	{
+		case 0:
+			/* Master */
+			bebox_set_irq_bit(5, interrupt);
+			break;
+
+		case 1:
+			/* Slave */
+			pic8259_set_irq_line(0, 2, interrupt);
+			break;
+	}
 }
+
 
 
 /*************************************
@@ -459,7 +475,7 @@ WRITE64_HANDLER( bebox_800003F0_w )
 static void bebox_ide_interrupt(int state)
 {
 	bebox_set_irq_bit(7, state);
-	pic8259_set_irq_line(0, 14, state);
+	pic8259_set_irq_line(1, 6, state);
 }
 
 
@@ -854,7 +870,7 @@ static void scsi53c810_dma_callback(UINT32 src, UINT32 dst, int length, int byte
 }
 
 
-static UINT32 scsi53c810_pci_read(int function, int offset)
+static UINT32 scsi53c810_pci_read(int function, int offset, UINT32 mem_mask)
 {
 	UINT32 result = 0;
 
@@ -879,7 +895,7 @@ static UINT32 scsi53c810_pci_read(int function, int offset)
 }
 
 
-static void scsi53c810_pci_write(int function, int offset, UINT32 data)
+static void scsi53c810_pci_write(int function, int offset, UINT32 data, UINT32 mem_mask)
 {
 	offs_t addr;
 
@@ -954,6 +970,7 @@ MACHINE_INIT( bebox )
 {
 	cpunum_set_input_line(0, INPUT_LINE_RESET, CLEAR_LINE);
 	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+	ide_controller_reset(0);
 }
 
 DRIVER_INIT( bebox )

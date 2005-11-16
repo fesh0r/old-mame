@@ -32,13 +32,14 @@
 #include "machine/8042kbdc.h"
 #include "includes/ps2.h"
 
-#include "includes/pcshare.h"
+#include "machine/pcshare.h"
 
 #include "devices/mflopimg.h"
 #include "devices/harddriv.h"
 #include "formats/pc_dsk.h"
 
 #include "machine/8237dma.h"
+#include "memconv.h"
 
 /* window resizing with dirtybuffering traping in xmess window */
 
@@ -378,8 +379,8 @@ static struct YM3812interface ym3812_interface =
 
 #define MDRV_CPU_ATPC(mem, port, type, clock, vblankfunc)	\
 	MDRV_CPU_ADD_TAG("main", type, clock)					\
-	MDRV_CPU_PROGRAM_MAP(mem##_map, mem##_map)				\
-	MDRV_CPU_IO_MAP(port##_io, port##_io)					\
+	MDRV_CPU_PROGRAM_MAP(mem##_map, 0)				\
+	MDRV_CPU_IO_MAP(port##_io, 0)					\
 	MDRV_CPU_VBLANK_INT(vblankfunc, 4)						\
 	MDRV_CPU_CONFIG(i286_address_mask)
 
@@ -660,10 +661,10 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*	   YEAR		NAME		PARENT	COMPAT	MACHINE     INPUT	    INIT	    CONFIG   COMPANY	 FULLNAME */
-COMPX ( 1985,	ibmat,		0,		ibmpc,	atcga,		atcga,		atcga,	    ibmat,   "International Business Machines",  "IBM PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMPX ( 1988,	i8530286,	ibmat,	0,		ps2m30286,	atvga,		ps2m30286,	ibmat,   "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
-COMPX ( 1987,	at,			ibmat,	0,		atcga,      atcga,		atcga,	    ibmat,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMPX ( 1989,	neat,		ibmat,	0,		atcga,      atcga,		atcga,	    ibmat,   "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMPX ( 1988,	at386,		ibmat,	0,		at386,      atcga,		at386,	    ibmat,   "MITAC INC",  "PC/AT 386(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMPX ( 1990,	at486,		ibmat,	0,		at486,      atcga,		at386,	    ibmat,   "",  "PC/AT 486(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP  ( 1987,	atvga,		0,		0,		atvga,      atvga,		at_vga,     ibmat,   "",  "PC/AT (VGA, MF2 Keyboard)" )
+COMP ( 1985,	ibmat,		0,		ibmpc,	atcga,		atcga,		atcga,	    ibmat,   "International Business Machines",  "IBM PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1988,	i8530286,	ibmat,	0,		ps2m30286,	atvga,		ps2m30286,	ibmat,   "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
+COMP ( 1987,	at,			ibmat,	0,		atcga,      atcga,		atcga,	    ibmat,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1989,	neat,		ibmat,	0,		atcga,      atcga,		atcga,	    ibmat,   "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1988,	at386,		ibmat,	0,		at386,      atcga,		at386,	    ibmat,   "MITAC INC",  "PC/AT 386(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1990,	at486,		ibmat,	0,		at486,      atcga,		at386,	    ibmat,   "",  "PC/AT 486(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP  ( 1987,	atvga,		0,		0,		atvga,      atvga,		at_vga,     ibmat,   "",  "PC/AT (VGA, MF2 Keyboard)" , 0)

@@ -101,12 +101,20 @@ enum
 };
 
 
-static void machine_init_tutor(void)
+static DRIVER_INIT(tutor)
+{
+	tape_interrupt_timer = timer_alloc(tape_interrupt_handler);
+
+	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + basic_base, 0);
+	memory_configure_bank(1, 1, 1, memory_region(REGION_CPU1) + cartridge_base, 0);
+	memory_set_bank(1, 0);
+}
+
+static MACHINE_INIT(tutor)
 {
 	cartridge_enable = 0;
 
 	tape_interrupt_enable = 0;
-	tape_interrupt_timer = timer_alloc(tape_interrupt_handler);
 
 	printer_data = 0;
 	printer_strobe = 0;
@@ -194,13 +202,13 @@ static WRITE8_HANDLER(tutor_mapper_w)
 	case 0x08:
 		/* disable cartridge ROM, enable BASIC ROM at base >8000 */
 		cartridge_enable = 0;
-		memory_set_bankptr(1, memory_region(REGION_CPU1) + basic_base);
+		memory_set_bank(1, 0);
 		break;
 
 	case 0x0c:
 		/* enable cartridge ROM, disable BASIC ROM at base >8000 */
 		cartridge_enable = 1;
-		memory_set_bankptr(1, memory_region(REGION_CPU1) + cartridge_base);
+		memory_set_bank(1, 1);
 		break;
 
 	default:
@@ -390,9 +398,9 @@ static WRITE8_HANDLER(tutor_printer_w)
 
 static ADDRESS_MAP_START(tutor_memmap, ADDRESS_SPACE_PROGRAM, 8)
 
-	AM_RANGE(0x0000, 0x7fff) AM_READWRITE(MRA8_ROM, MWA8_ROM)	/*system ROM*/
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK1, MWA8_ROM)	/*BASIC ROM & cartridge ROM*/
-	AM_RANGE(0xc000, 0xdfff) AM_READWRITE(MRA8_NOP, MWA8_NOP)	/*free for expansion, or cartridge ROM?*/
+	AM_RANGE(0x0000, 0x7fff) AM_ROM	/*system ROM*/
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)	/*BASIC ROM & cartridge ROM*/
+	AM_RANGE(0xc000, 0xdfff) AM_NOP	/*free for expansion, or cartridge ROM?*/
 
 	AM_RANGE(0xe000, 0xe000) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)	/*VDP data*/
 	AM_RANGE(0xe002, 0xe002) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)/*VDP status*/
@@ -401,7 +409,7 @@ static ADDRESS_MAP_START(tutor_memmap, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe800, 0xe8ff) AM_READWRITE(tutor_printer_r, tutor_printer_w)	/*printer*/
 	AM_RANGE(0xee00, 0xeeff) AM_READWRITE(MRA8_NOP, tutor_cassette_w)		/*cassette interface*/
 
-	AM_RANGE(0xf000, 0xffff) AM_READWRITE(MRA8_NOP, MWA8_NOP)	/*free for expansion (and internal processor RAM)*/
+	AM_RANGE(0xf000, 0xffff) AM_NOP	/*free for expansion (and internal processor RAM)*/
 
 ADDRESS_MAP_END
 
@@ -635,4 +643,4 @@ SYSTEM_CONFIG_START(tutor)
 SYSTEM_CONFIG_END
 
 /*		YEAR	NAME	PARENT		COMPAT	MACHINE		INPUT	INIT	CONFIG		COMPANY		FULLNAME */
-COMP(	1983?,	tutor,	0,			0,		tutor,		tutor,	NULL,	tutor,		"Tomy",		"Tomy Tutor" )
+COMP(	1983?,	tutor,	0,			0,		tutor,		tutor,	tutor,	tutor,		"Tomy",		"Tomy Tutor" , 0)

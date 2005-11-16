@@ -194,12 +194,6 @@ extern int pet_font;
 
 #define BUSINESS_KEYBOARD (input_port_5_word_r(0,0)&0x200)
 
-#define MEMORY (input_port_5_word_r(0,0)&0x180)
-#define MEMORY_4 0
-#define MEMORY_8 0x80
-#define MEMORY_16 0x100
-#define MEMORY_32 0x180
-
 #define CBM8096_MEMORY (input_port_5_r(0)&8)
 #define M6809_SELECT (input_port_5_r(0)&4)
 #define IEEE8ON (input_port_5_r(0)&2)
@@ -210,16 +204,16 @@ extern UINT8 *pet_videoram;
 extern UINT8 *superpet_memory;
 
 WRITE8_HANDLER(cbm8096_w);
-extern  READ8_HANDLER(superpet_r);
+extern READ8_HANDLER(superpet_r);
 extern WRITE8_HANDLER(superpet_w);
 
-extern void pet_driver_init (void);
-extern void pet_basic1_driver_init (void);
-extern void pet40_driver_init (void);
-extern void cbm80_driver_init (void);
-extern void superpet_driver_init(void);
-extern MACHINE_INIT( pet );
-extern INTERRUPT_GEN( pet_frame_interrupt );
+DRIVER_INIT( pet );
+DRIVER_INIT( pet1 );
+DRIVER_INIT( pet40 );
+DRIVER_INIT( cbm80 );
+DRIVER_INIT( superpet );
+MACHINE_INIT( pet );
+INTERRUPT_GEN( pet_frame_interrupt );
 
 void pet_rom_load(void);
 

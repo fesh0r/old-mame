@@ -153,7 +153,7 @@ CPUS+=TX0@
 SOUNDS+=CUSTOM@
 SOUNDS+=SAMPLES@
 SOUNDS+=DAC@
-#SOUNDS+=DMADAC@
+SOUNDS+=DMADAC@
 SOUNDS+=DISCRETE@
 SOUNDS+=AY8910@
 SOUNDS+=YM2203@
@@ -569,13 +569,13 @@ $(OBJ)/bally.a:    \
 	$(OBJ)/mess/systems/astrocde.o
 
 $(OBJ)/pcshare.a:					\
-	$(OBJ)/mess/machine/8237dma.o	\
-	$(OBJ)/mess/machine/pic8259.o	\
+	$(OBJ)/machine/8237dma.o	\
+	$(OBJ)/machine/pic8259.o	\
+	$(OBJ)/machine/pcshare.o	\
 	$(OBJ)/mess/sndhrdw/pc.o		\
 	$(OBJ)/mess/sndhrdw/sblaster.o	\
 	$(OBJ)/mess/machine/pc_fdc.o	\
 	$(OBJ)/mess/machine/pc_hdc.o	\
-	$(OBJ)/mess/machine/pcshare.o	\
 	$(OBJ)/mess/vidhrdw/pc_video.o	\
 	$(OBJ)/mess/vidhrdw/pc_mda.o	\
 	$(OBJ)/mess/vidhrdw/pc_cga.o	\
@@ -593,8 +593,8 @@ $(OBJ)/pc.a:	   \
 	$(OBJ)/mess/vidhrdw/pc_t1t.o	 
 
 $(OBJ)/at.a:	   \
+	$(OBJ)/machine/8042kbdc.o    \
 	$(OBJ)/mess/machine/pc_ide.o   \
-	$(OBJ)/mess/machine/8042kbdc.o    \
 	$(OBJ)/mess/machine/ps2.o	 \
 	$(OBJ)/mess/machine/at.o       \
 	$(OBJ)/mess/systems/at.o
@@ -912,7 +912,7 @@ $(OBJ)/primo.a:				\
 $(OBJ)/be.a:						\
 	$(OBJ)/mess/systems/bebox.o		\
 	$(OBJ)/mess/machine/bebox.o		\
-	$(OBJ)/mess/machine/pci.o		\
+	$(OBJ)/machine/pci.o		\
 	$(OBJ)/mess/machine/mpc105.o	\
 	$(OBJ)/mess/vidhrdw/cirrus.o	\
 	$(OBJ)/machine/intelfsh.o		\
@@ -951,6 +951,7 @@ COREOBJS +=							\
 	$(OBJ)/mess/cheatms.o			\
 	$(OBJ)/mess/opresolv.o			\
 	$(OBJ)/mess/mui_text.o			\
+	$(OBJ)/mess/infomess.o			\
 	$(OBJ)/mess/formats/ioprocs.o	\
 	$(OBJ)/mess/formats/flopimg.o	\
 	$(OBJ)/mess/formats/cassimg.o	\
@@ -981,13 +982,13 @@ COREOBJS +=							\
 	$(OBJ)/mess/machine/am29f080.o \
 	$(OBJ)/mess/machine/rriot.o    \
 	$(OBJ)/mess/machine/riot6532.o \
-	$(OBJ)/mess/machine/pit8253.o  \
-	$(OBJ)/mess/machine/mc146818.o \
+	$(OBJ)/machine/pit8253.o  \
+	$(OBJ)/machine/mc146818.o \
 	$(OBJ)/mess/machine/uart8250.o \
 	$(OBJ)/mess/machine/pc_mouse.o \
 	$(OBJ)/mess/machine/pclpt.o    \
 	$(OBJ)/mess/machine/centroni.o \
-	$(OBJ)/mess/machine/pckeybrd.o \
+	$(OBJ)/machine/pckeybrd.o \
 	$(OBJ)/mess/machine/d88.o      \
 	$(OBJ)/mess/machine/nec765.o   \
 	$(OBJ)/mess/machine/wd179x.o   \

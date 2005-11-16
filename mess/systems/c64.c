@@ -202,69 +202,35 @@ when problems start with -log and look into error.log file
 
 #include "includes/c64.h"
 
-static ADDRESS_MAP_START( ultimax_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0001) AM_READ( c64_m6510_port_r)
-	AM_RANGE(0x0002, 0x0fff) AM_READ( MRA8_RAM)
-	AM_RANGE(0x8000, 0x9fff) AM_READ( MRA8_ROM)
-	AM_RANGE(0xd000, 0xd3ff) AM_READ( vic2_port_r)
-	AM_RANGE(0xd400, 0xd7ff) AM_READ( sid6581_0_port_r)
-	AM_RANGE(0xd800, 0xdbff) AM_READ( MRA8_RAM)		   /* colorram  */
-	AM_RANGE(0xdc00, 0xdcff) AM_READ( cia6526_0_port_r)
-	AM_RANGE(0xe000, 0xffff) AM_READ( MRA8_ROM)		   /* ram or kernel rom */
+static ADDRESS_MAP_START(ultimax_mem , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_BASE(&c64_memory)
+	AM_RANGE(0x8000, 0x9fff) AM_ROM AM_BASE(&c64_roml)
+	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(vic2_port_r, vic2_port_w)
+	AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(sid6581_0_port_r, sid6581_0_port_w)
+	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(MRA8_RAM, c64_colorram_write) AM_BASE(&c64_colorram) /* colorram  */
+	AM_RANGE(0xdc00, 0xdcff) AM_READWRITE(cia6526_0_port_r, cia6526_0_port_w)
+	AM_RANGE(0xe000, 0xffff) AM_ROM AM_BASE( &c64_romh)	   /* ram or kernel rom */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( ultimax_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0001) AM_WRITE( c64_m6510_port_w) AM_BASE( &c64_memory)
-	AM_RANGE(0x0002, 0x0fff) AM_WRITE( MWA8_RAM)
-	AM_RANGE(0x8000, 0x9fff) AM_WRITE( MWA8_ROM) AM_BASE( &c64_roml)
-	AM_RANGE(0xd000, 0xd3ff) AM_WRITE( vic2_port_w)
-	AM_RANGE(0xd400, 0xd7ff) AM_WRITE( sid6581_0_port_w)
-	AM_RANGE(0xd800, 0xdbff) AM_WRITE( c64_colorram_write) AM_BASE( &c64_colorram)
-	AM_RANGE(0xdc00, 0xdcff) AM_WRITE( cia6526_0_port_w)
-	AM_RANGE(0xe000, 0xffff) AM_WRITE( MWA8_ROM) AM_BASE( &c64_romh)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( c64_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0001) AM_READ( c64_m6510_port_r)
-	AM_RANGE(0x0002, 0x7fff) AM_READ( MRA8_RAM)
-	AM_RANGE(0x8000, 0x9fff) AM_READ( MRA8_BANK1)	   /* ram or external roml */
-	AM_RANGE(0xa000, 0xbfff) AM_READ( MRA8_BANK3)	   /* ram or basic rom or external romh */
-	AM_RANGE(0xc000, 0xcfff) AM_READ( MRA8_RAM)
+static ADDRESS_MAP_START(c64_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_BASE(&c64_memory)
+	AM_RANGE(0x8000, 0x9fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK2)	   /* ram or external roml */
+	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(MRA8_BANK3, MWA8_RAM)	   /* ram or basic rom or external romh */
+	AM_RANGE(0xc000, 0xcfff) AM_RAM
 #if 1
-	AM_RANGE(0xd000, 0xdfff) AM_READ( MRA8_BANK5)
+	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(MRA8_BANK5, MWA8_BANK6)
 #else
 /* dram */
 /* or character rom */
-	AM_RANGE(0xd000, 0xd3ff) AM_READ( MRA8_BANK9)
-	AM_RANGE(0xd400, 0xd7ff) AM_READ( MRA8_BANK10)
-	AM_RANGE(0xd800, 0xdbff) AM_READ( MRA8_BANK11)		   /* colorram  */
-	AM_RANGE(0xdc00, 0xdcff) AM_READ( MRA8_BANK12)
-	AM_RANGE(0xdd00, 0xddff) AM_READ( MRA8_BANK13)
-	AM_RANGE(0xde00, 0xdeff) AM_READ( MRA8_BANK14)		   /* csline expansion port */
-	AM_RANGE(0xdf00, 0xdfff) AM_READ( MRA8_BANK15)		   /* csline expansion port */
+	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(MRA8_BANK9, vic2_port_w)
+	AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(MRA8_BANK10, sid6581_0_port_w)
+	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(MRA8_BANK11, c64_colorram_write)		   /* colorram  */
+	AM_RANGE(0xdc00, 0xdcff) AM_READWRITE(MRA8_BANK12, cia6526_0_port_w)
+	AM_RANGE(0xdd00, 0xddff) AM_READWRITE(MRA8_BANK13, cia6526_1_port_w)
+	AM_RANGE(0xde00, 0xdeff) AM_READ(MRA8_BANK14)		   /* csline expansion port */
+	AM_RANGE(0xdf00, 0xdfff) AM_READ(MRA8_BANK15)		   /* csline expansion port */
 #endif
-	AM_RANGE(0xe000, 0xffff) AM_READ( MRA8_BANK7)	   /* ram or kernel rom or external romh */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( c64_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0001) AM_WRITE( c64_m6510_port_w) AM_BASE( &c64_memory)
-	AM_RANGE(0x0002, 0x7fff) AM_WRITE( MWA8_RAM)
-	AM_RANGE(0x8000, 0x9fff) AM_WRITE( MWA8_BANK2)
-	AM_RANGE(0xa000, 0xcfff) AM_WRITE( MWA8_RAM)
-//	{0xa000, 0xcfff, MWA8_BANK16},
-#if 1
-	AM_RANGE(0xd000, 0xdfff) AM_WRITE( MWA8_BANK6)
-#else
-	/* or dram memory */
-	AM_RANGE(0xd000, 0xd3ff) AM_WRITE( vic2_port_w)
-	AM_RANGE(0xd400, 0xd7ff) AM_WRITE( sid6581_0_port_w)
-	AM_RANGE(0xd800, 0xdbff) AM_WRITE( c64_colorram_write)
-	AM_RANGE(0xdc00, 0xdcff) AM_WRITE( cia6526_0_port_w)
-	AM_RANGE(0xdd00, 0xddff) AM_WRITE( cia6526_1_port_w)
-	AM_RANGE(0xde00, 0xdeff) AM_WRITE( MWA8_NOP)		   /* csline expansion port */
-	AM_RANGE(0xdf00, 0xdfff) AM_WRITE( MWA8_NOP)		   /* csline expansion port */
-#endif
-	AM_RANGE(0xe000, 0xffff) AM_WRITE( MWA8_BANK8)
+	AM_RANGE(0xe000, 0xffff) AM_READWRITE(MRA8_BANK7, MWA8_BANK8)	   /* ram or kernel rom or external romh */
 ADDRESS_MAP_END
 
 #define DIPS_HELPER(bit, name, keycode) \
@@ -764,7 +730,7 @@ static SID6581_interface c64_sound_interface =
 static MACHINE_DRIVER_START( c64 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6510, VIC6567_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(c64_readmem, c64_writemem)
+	MDRV_CPU_PROGRAM_MAP(c64_mem, 0)
 	MDRV_CPU_VBLANK_INT(c64_frame_interrupt, 1)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, TIME_IN_HZ(VIC2_HRETRACERATE))
 	MDRV_FRAMES_PER_SECOND(VIC6567_VRETRACERATE)
@@ -790,7 +756,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( ultimax )
 	MDRV_IMPORT_FROM( c64 )
 	MDRV_CPU_REPLACE( "main", M6510, 1000000)
-	MDRV_CPU_PROGRAM_MAP( ultimax_readmem, ultimax_writemem )
+	MDRV_CPU_PROGRAM_MAP( ultimax_mem, 0 )
 
 	MDRV_SOUND_REPLACE("sid", SID6581, 1000000)
 	MDRV_SOUND_CONFIG(c64_sound_interface)
@@ -890,18 +856,18 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*   YEAR  NAME		PARENT	COMPAT	MACHINE 		INPUT	INIT	CONFIG		COMPANY 						   FULLNAME */
-COMP(1982, max,		0,		0,		ultimax,		ultimax,ultimax,ultimax,	"Commodore Business Machines Co.", "Commodore Max (Ultimax/VC10)")
-COMP(1982, c64,		0,		0,		c64,			c64,	c64,	c64,		"Commodore Business Machines Co.", "Commodore 64 (NTSC)")
-COMP(1982, cbm4064,	c64,	0,		pet64,			c64,	c64,	c64,		"Commodore Business Machines Co.", "CBM4064/PET64/Educator64 (NTSC)")
-COMP(1982, c64pal, 	c64,	0,		c64pal, 		c64,	c64pal, c64,		"Commodore Business Machines Co.", "Commodore 64/VC64/VIC64 (PAL)")
-COMP(1982, vic64s, 	c64,	0,		c64pal, 		vic64s,	c64pal, c64,		"Commodore Business Machines Co.", "Commodore 64 Swedish (PAL)")
-CONS(1987, c64gs,	c64,	0,		c64gs,			c64gs,	c64gs,	c64gs,		"Commodore Business Machines Co.", "C64GS (PAL)")
+COMP(1982, max,		0,		0,		ultimax,		ultimax,ultimax,ultimax,	"Commodore Business Machines Co.", "Commodore Max (Ultimax/VC10)", 0)
+COMP(1982, c64,		0,		0,		c64,			c64,	c64,	c64,		"Commodore Business Machines Co.", "Commodore 64 (NTSC)", 0)
+COMP(1982, cbm4064,	c64,	0,		pet64,			c64,	c64,	c64,		"Commodore Business Machines Co.", "CBM4064/PET64/Educator64 (NTSC)", 0)
+COMP(1982, c64pal, 	c64,	0,		c64pal, 		c64,	c64pal, c64,		"Commodore Business Machines Co.", "Commodore 64/VC64/VIC64 (PAL)", 0)
+COMP(1982, vic64s, 	c64,	0,		c64pal, 		vic64s,	c64pal, c64,		"Commodore Business Machines Co.", "Commodore 64 Swedish (PAL)", 0)
+CONS(1987, c64gs,	c64,	0,		c64gs,			c64gs,	c64gs,	c64gs,		"Commodore Business Machines Co.", "C64GS (PAL)", 0)
 
 /* testdrivers */
-COMPX(1983, sx64,	c64,	0,		sx64,			sx64,	sx64,	sx64,		"Commodore Business Machines Co.", "SX64 (PAL)",                      GAME_NOT_WORKING)
-COMPX(1983, vip64,	c64,	0,		sx64,			vip64,	sx64,	sx64,		"Commodore Business Machines Co.", "VIP64 (SX64 PAL), Swedish Expansion Kit", GAME_NOT_WORKING)
+COMP(1983, sx64,	c64,	0,		sx64,			sx64,	sx64,	sx64,		"Commodore Business Machines Co.", "SX64 (PAL)",                      GAME_NOT_WORKING)
+COMP(1983, vip64,	c64,	0,		sx64,			vip64,	sx64,	sx64,		"Commodore Business Machines Co.", "VIP64 (SX64 PAL), Swedish Expansion Kit", GAME_NOT_WORKING)
 // sx64 with second disk drive
-COMPX(198?, dx64,	c64,	0,		sx64,			sx64,	sx64,	sx64,		"Commodore Business Machines Co.", "DX64 (Prototype, PAL)",                      GAME_NOT_WORKING)
+COMP(198?, dx64,	c64,	0,		sx64,			sx64,	sx64,	sx64,		"Commodore Business Machines Co.", "DX64 (Prototype, PAL)",                      GAME_NOT_WORKING)
 /*c64 II (cbm named it still c64) */
 /*c64c (bios in 1 chip) */
 /*c64g late 8500/8580 based c64, sold at aldi/germany */

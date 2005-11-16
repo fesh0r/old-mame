@@ -55,6 +55,7 @@
 #include "vidhrdw/pc_cga.h"
 #include "vidhrdw/pc_video.h"
 #include "mscommon.h"
+#include "memconv.h"
 
 #define VERBOSE_CGA 0		/* CGA (Color Graphics Adapter) */
 
@@ -150,26 +151,26 @@ unsigned short cga_colortable[] =
 gfx_layout CGA_charlayout =
 {
 	8,16,					/* 8 x 16 characters */
-    256,                    /* 256 characters */
-    1,                      /* 1 bits per pixel */
-    { 0 },                  /* no bitplanes; 1 bit per pixel */
-    /* x offsets */
-    { 0,1,2,3,4,5,6,7 },
-    /* y offsets */
+	256,                    /* 256 characters */
+	1,                      /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes; 1 bit per pixel */
+	/* x offsets */
+	{ 0,1,2,3,4,5,6,7 },
+	/* y offsets */
 	{ 0*8,1*8,2*8,3*8,
-	  4*8,5*8,6*8,7*8,
-	  0*8,1*8,2*8,3*8,
-	  4*8,5*8,6*8,7*8 },
-    8*8                     /* every char takes 8 bytes */
+		4*8,5*8,6*8,7*8,
+		0*8,1*8,2*8,3*8,
+		4*8,5*8,6*8,7*8 },
+	8*8                     /* every char takes 8 bytes */
 };
 
 static gfx_decode CGA_gfxdecodeinfo[] =
 {
 /* Support up to four CGA fonts */
-	{ 1, 0x0000, &CGA_charlayout,              0, 256 },   /* Font 0 */
-	{ 1, 0x0800, &CGA_charlayout,              0, 256 },   /* Font 1 */
-	{ 1, 0x1000, &CGA_charlayout,              0, 256 },   /* Font 2 */
-	{ 1, 0x1800, &CGA_charlayout,              0, 256 },   /* Font 3*/
+	{ REGION_GFX1, 0x0000, &CGA_charlayout,              0, 256 },   /* Font 0 */
+	{ REGION_GFX1, 0x0800, &CGA_charlayout,              0, 256 },   /* Font 1 */
+	{ REGION_GFX1, 0x1000, &CGA_charlayout,              0, 256 },   /* Font 2 */
+	{ REGION_GFX1, 0x1800, &CGA_charlayout,              0, 256 },   /* Font 3*/
     { -1 } /* end of array */
 };
 
@@ -291,28 +292,31 @@ static VIDEO_START( pc_cga )
 	 * TODO: Cards which don't support Plantronics should repeat at 
 	 * BC000h */
 	buswidth = cputype_databus_width(Machine->drv->cpu[0].cpu_type, ADDRESS_SPACE_PROGRAM);
-	switch(buswidth) {
-	case 8:
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, MRA8_RAM );
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, pc_video_videoram_w );
-		memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga8_r );
-		memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga8_w );
-		break;
+	switch(buswidth)
+	{
+		case 8:
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, MRA8_BANK11 );
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, pc_video_videoram_w );
+			memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga8_r );
+			memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga8_w );
+			break;
 
-	case 32:
-		memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, MRA32_RAM );
-		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, pc_video_videoram32_w );
-		memory_install_read32_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga32_r );
-		memory_install_write32_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga32_w );
-		break;
+		case 32:
+			memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, MRA32_BANK11 );
+			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, pc_video_videoram32_w );
+			memory_install_read32_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga32_r );
+			memory_install_write32_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga32_w );
+			break;
 
-	default:
-		osd_die("CGA:  Bus width %d not supported\n", buswidth);
-		break;
+		default:
+			osd_die("CGA:  Bus width %d not supported\n", buswidth);
+			break;
 	}
 
-	videoram = memory_region(REGION_CPU1)+0xb8000;
 	videoram_size = 0x4000;
+	videoram = auto_malloc(videoram_size);
+	memory_set_bankptr(11, videoram);
+
 	return internal_pc_cga_video_start(M6845_PERSONALITY_GENUINE);
 }
 

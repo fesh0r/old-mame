@@ -23,6 +23,7 @@
 #include "devices/harddriv.h"
 #include "formats/pc_dsk.h"
 #include "vidhrdw/cirrus.h"
+#include "memconv.h"
 
 
 static READ8_HANDLER(at_dma8237_1_r)  { return dma8237_1_r(offset / 2); }
@@ -169,5 +170,5 @@ SYSTEM_CONFIG_END
 
 
 /*     YEAR   NAME      PARENT  COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY             FULLNAME */
-COMPX( 1995,  bebox,    0,      0,      bebox,    bebox,    bebox,  bebox,  "Be Incorporated",  "BeBox Dual603-66", GAME_NOT_WORKING )
-COMPX( 1996,  bebox2,   bebox,  0,      bebox2,   bebox,    bebox,  bebox,  "Be Incorporated",  "BeBox Dual603-133", GAME_NOT_WORKING )
+COMP( 1995,  bebox,    0,      0,      bebox,    bebox,    bebox,  bebox,  "Be Incorporated",  "BeBox Dual603-66", GAME_NOT_WORKING )
+COMP( 1996,  bebox2,   bebox,  0,      bebox2,   bebox,    bebox,  bebox,  "Be Incorporated",  "BeBox Dual603-133", GAME_NOT_WORKING )

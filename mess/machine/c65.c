@@ -35,36 +35,22 @@ UINT8 *c65_interface;
 /* processor has only 1 mega address space !? */
 /* and system 8 megabyte */
 /* dma controller and bankswitch hardware ?*/
-static  READ8_HANDLER(c65_read_mem)
+static READ8_HANDLER(c65_read_mem)
 {
-	int data=0;
-
-	if (offset<0x800000)
-		data=c64_memory[offset];
-
-#if 0
-	if (offset<0x100000)
-	else data=c64_memory[offset];
-#endif
-
-	return data;
+	UINT8 result;
+	if (offset <= 0x0FFFF)
+		result = c64_memory[offset];
+	else
+		result = program_read_byte(offset);
+	return result;
 }
 
 static WRITE8_HANDLER(c65_write_mem)
 {
-	if (offset<0x20000)
-		c64_memory[offset]=data;
-	else if (offset<0x80000) ;
-	else if (offset<0x100000) {
-		if (C65_MAIN_MEMORY==C65_512KB) c64_memory[offset]=data;
-	} else if (offset<0x400000) ;
-	else if (offset<0x800000) {
-		if (C65_MAIN_MEMORY==C65_4096KB) c64_memory[offset]=data;
-	}
-#if 0
-	if (offset<0x100000) program_write_byte_8(offset,data);
-	else c64_memory[offset]=data;
-#endif
+	if (offset <= 0x0FFFF)
+		c64_memory[offset] = data;
+	else
+		program_write_byte(offset, data);
 }
 
 static struct {
@@ -438,28 +424,36 @@ static int c65_fdc_r(int offset)
 */
 static struct {
 	UINT8 reg;
-} expansion_ram= {0};
-static  READ8_HANDLER(c65_ram_expansion_r)
+} expansion_ram = {0};
+
+static READ8_HANDLER(c65_ram_expansion_r)
 {
-	int data=0xff;
-	if (C65_MAIN_MEMORY==C65_4096KB)
-		data=expansion_ram.reg;
-	DBG_LOG (1, "expansion read", ("%.5x %.2x %.2x\n", activecpu_get_pc(),offset,data));
+	UINT8 data = 0xff;
+	if (mess_ram_size > (128 * 1024))
+		data = expansion_ram.reg;
 	return data;
 }
 
 static WRITE8_HANDLER(c65_ram_expansion_w)
 {
-	DBG_LOG (1, "expansion write", ("%.5x %.2x %.2x\n", activecpu_get_pc(), offset, data));
-	expansion_ram.reg=data;
+	offs_t expansion_ram_begin;
+	offs_t expansion_ram_end;
 
-#if 0
-	if ( (data==0)&&(C65_MAIN_MEMORY==C65_512KB) ) {
-		memory_set_bankhandler_w (16, 0, MWA8_BANK16);
-	} else {
-		memory_set_bankhandler_w (16, 0, MWA8_NOP);
+	if (mess_ram_size > (128 * 1024))
+	{
+		expansion_ram.reg = data;
+
+		expansion_ram_begin = 0x80000;
+		expansion_ram_end = 0x80000 + (mess_ram_size - 128*1024) - 1;
+
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, expansion_ram_begin, expansion_ram_end,
+			0, 0, (data == 0x00) ? MRA8_BANK16 : MRA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, expansion_ram_begin, expansion_ram_end,
+			0, 0, (data == 0x00) ? MWA8_BANK16 : MWA8_NOP);
+
+		if (data == 0x00)
+			memory_set_bankptr(16, mess_ram + 128*1024);
 	}
-#endif
 }
 
 static WRITE8_HANDLER ( c65_write_io )
@@ -514,7 +508,7 @@ static WRITE8_HANDLER ( c65_write_io_dc00 )
 	}
 }
 
-static  READ8_HANDLER ( c65_read_io )
+static READ8_HANDLER ( c65_read_io )
 {
 	switch(offset&0xf00) {
 	case 0x000:
@@ -549,7 +543,7 @@ static  READ8_HANDLER ( c65_read_io )
 	return 0xff;
 }
 
-static  READ8_HANDLER ( c65_read_io_dc00 )
+static READ8_HANDLER ( c65_read_io_dc00 )
 {
 	switch(offset&0x300) {
 	case 0x000:
@@ -629,7 +623,7 @@ void c65_bankswitch (void)
 	read8_handler rh4, rh8;
 	write8_handler wh5, wh9;
 
-	data = ((c64_port6510 & c64_ddr6510) | (c64_ddr6510 ^ 0xff)) & 7;
+	data = (UINT8) cpunum_get_info_int(0, CPUINFO_INT_M6510_PORT);
 	if (data == old)
 		return;
 
@@ -769,8 +763,15 @@ static int c65_dma_read_color (int offset)
 
 static void c65_common_driver_init (void)
 {
-	c65=1;
-	c64_tape_on=0;
+	c64_memory = auto_malloc(0x10000);
+	memory_set_bankptr(11, c64_memory + 0x00000);
+	memory_set_bankptr(12, c64_memory + 0x08000);
+	memory_set_bankptr(13, c64_memory + 0x0a000);
+	memory_set_bankptr(14, c64_memory + 0x0c000);
+	memory_set_bankptr(15, c64_memory + 0x0e000);
+
+	c65 = 1;
+	c64_tape_on = 0;
 	/*memset(c64_memory+0x40000, 0, 0x800000-0x40000); */
 
 	cia6526_init();
@@ -804,7 +805,8 @@ void c65pal_driver_init (void)
 
 MACHINE_INIT( c65 )
 {
-	memset(c64_memory+0x40000, 0xff, 0xc0000);
+	/* clear upper memory */
+	memset(mess_ram + 128*1024, 0xff, mess_ram_size -  128*1024);
 
 	sndti_reset(SOUND_SID8580, 0);
 	sndti_reset(SOUND_SID8580, 1);
@@ -815,8 +817,6 @@ MACHINE_INIT( c65 )
 	cia6526_reset ();
 	c64_vicaddr = c64_memory;
 
-	c64_port6510 = 0xff;
-	c64_ddr6510 = 0;
 	c64mode = 0;
 
 	c64_rom_recognition ();

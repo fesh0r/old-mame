@@ -2,6 +2,7 @@
 
 <test name="vic20_000" driver="vic20">
 	<wait time="5"/>
+	<checkblank/>
 </test>
 
 </tests>

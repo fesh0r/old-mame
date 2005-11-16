@@ -20,49 +20,34 @@
 
 #include "includes/c65.h"
 
-static ADDRESS_MAP_START( c65_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0x00001) AM_READ( c64_m6510_port_r)
-	AM_RANGE(0x00002, 0x07fff) AM_READ( MRA8_RAM)
-	AM_RANGE(0x08000, 0x09fff) AM_READ( MRA8_BANK1)
-	AM_RANGE(0x0a000, 0x0bfff) AM_READ( MRA8_BANK2)
-	AM_RANGE(0x0c000, 0x0cfff) AM_READ( MRA8_BANK3)
-	AM_RANGE(0x0d000, 0x0d7ff) AM_READ( MRA8_BANK4)
-	AM_RANGE(0x0d800, 0x0dbff) AM_READ( MRA8_BANK6)
-	AM_RANGE(0x0dc00, 0x0dfff) AM_READ( MRA8_BANK8)
-	AM_RANGE(0x0e000, 0x0ffff) AM_READ( MRA8_BANK10)
-	AM_RANGE(0x10000, 0x1ffff) AM_READ( MRA8_RAM)
-	AM_RANGE(0x20000, 0x3ffff) AM_READ( MRA8_ROM)
-	AM_RANGE(0x40000, 0x7ffff) AM_READ( MRA8_NOP)
-	AM_RANGE(0x80000, 0xfffff) AM_READ( MRA8_RAM)
-	/* 8 megabyte full address space! */
-ADDRESS_MAP_END
+static ADDRESS_MAP_START( c65_mem , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x00000, 0x07fff) AM_RAMBANK(11)
+	AM_RANGE(0x08000, 0x09fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK12)
+	AM_RANGE(0x0a000, 0x0bfff) AM_READWRITE(MRA8_BANK2, MWA8_BANK13)
+	AM_RANGE(0x0c000, 0x0cfff) AM_READWRITE(MRA8_BANK3, MWA8_BANK14)
+	AM_RANGE(0x0d000, 0x0d7ff) AM_READWRITE(MRA8_BANK4, MWA8_BANK5)
+	AM_RANGE(0x0d800, 0x0dbff) AM_READWRITE(MRA8_BANK6, MWA8_BANK7)
+	AM_RANGE(0x0dc00, 0x0dfff) AM_READWRITE(MRA8_BANK8, MWA8_BANK9)
+	AM_RANGE(0x0e000, 0x0ffff) AM_READWRITE(MRA8_BANK10, MWA8_BANK15)
+	AM_RANGE(0x10000, 0x1f7ff) AM_RAM
+	AM_RANGE(0x1f800, 0x1ffff) AM_RAM AM_BASE( &c64_colorram)
 
-static ADDRESS_MAP_START( c65_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0x00001) AM_WRITE( c64_m6510_port_w) AM_BASE( &c64_memory)
-	AM_RANGE(0x00002, 0x07fff) AM_WRITE( MWA8_RAM)
-	AM_RANGE(0x08000, 0x09fff) AM_WRITE( MWA8_RAM)
-	AM_RANGE(0x0a000, 0x0cfff) AM_WRITE( MWA8_RAM)
-	AM_RANGE(0x0d000, 0x0d7ff) AM_WRITE( MWA8_BANK5)
-	AM_RANGE(0x0d800, 0x0dbff) AM_WRITE( MWA8_BANK7)
-	AM_RANGE(0x0dc00, 0x0dfff) AM_WRITE( MWA8_BANK9)
-	AM_RANGE(0x0e000, 0x0ffff) AM_WRITE( MWA8_RAM)
-	AM_RANGE(0x10000, 0x1f7ff) AM_WRITE( MWA8_RAM)
-	AM_RANGE(0x1f800, 0x1ffff) AM_WRITE( MWA8_RAM) AM_BASE( &c64_colorram)
-	AM_RANGE(0x20000, 0x23fff) AM_WRITE( MWA8_ROM) /* &c65_dos,	   maps to 0x8000    */
-	AM_RANGE(0x24000, 0x28fff) AM_WRITE( MWA8_ROM) /* reserved */
-	AM_RANGE(0x29000, 0x29fff) AM_WRITE( MWA8_ROM) AM_BASE( &c65_chargen)
-	AM_RANGE(0x2a000, 0x2bfff) AM_WRITE( MWA8_ROM) AM_BASE( &c64_basic)
-	AM_RANGE(0x2c000, 0x2cfff) AM_WRITE( MWA8_ROM) AM_BASE( &c65_interface)
-	AM_RANGE(0x2d000, 0x2dfff) AM_WRITE( MWA8_ROM) AM_BASE( &c64_chargen)
-	AM_RANGE(0x2e000, 0x2ffff) AM_WRITE( MWA8_ROM) AM_BASE( &c64_kernal)
-	AM_RANGE(0x30000, 0x31fff) AM_WRITE( MWA8_ROM) /*&c65_monitor,	  monitor maps to 0x6000    */
-	AM_RANGE(0x32000, 0x37fff) AM_WRITE( MWA8_ROM) /*&c65_basic, */
-	AM_RANGE(0x38000, 0x3bfff) AM_WRITE( MWA8_ROM) /*&c65_graphics, */
-	AM_RANGE(0x3c000, 0x3dfff) AM_WRITE( MWA8_ROM) /* reserved */
-	AM_RANGE(0x3e000, 0x3ffff) AM_WRITE( MWA8_ROM) /* &c65_kernal, */
-	AM_RANGE(0x40000, 0x7ffff) AM_WRITE( MWA8_NOP)
-	AM_RANGE(0x80000, 0xfffff) AM_WRITE( MWA8_RAM)
-/*	{0x80000, 0xfffff, MWA8_BANK16}, */
+	AM_RANGE(0x20000, 0x23fff) AM_ROM /* &c65_dos,	   maps to 0x8000    */
+	AM_RANGE(0x24000, 0x28fff) AM_ROM /* reserved */
+	AM_RANGE(0x29000, 0x29fff) AM_ROM AM_BASE( &c65_chargen)
+	AM_RANGE(0x2a000, 0x2bfff) AM_ROM AM_BASE( &c64_basic)
+	AM_RANGE(0x2c000, 0x2cfff) AM_ROM AM_BASE( &c65_interface)
+	AM_RANGE(0x2d000, 0x2dfff) AM_ROM AM_BASE( &c64_chargen)
+	AM_RANGE(0x2e000, 0x2ffff) AM_ROM AM_BASE( &c64_kernal)
+
+	AM_RANGE(0x30000, 0x31fff) AM_ROM /*&c65_monitor,	  monitor maps to 0x6000    */
+	AM_RANGE(0x32000, 0x37fff) AM_ROM /*&c65_basic, */
+	AM_RANGE(0x38000, 0x3bfff) AM_ROM /*&c65_graphics, */
+	AM_RANGE(0x3c000, 0x3dfff) AM_ROM /* reserved */
+	AM_RANGE(0x3e000, 0x3ffff) AM_ROM /* &c65_kernal, */
+
+	AM_RANGE(0x40000, 0x7ffff) AM_NOP
+	/* 8 megabyte full address space! */
 ADDRESS_MAP_END
 
 #define DIPS_HELPER(bit, name, keycode) \
@@ -72,10 +57,6 @@ ADDRESS_MAP_END
      PORT_START \
 	 DIPS_HELPER( 0x8000, "Quickload", KEYCODE_SLASH_PAD)\
 	 PORT_BIT (0x7c00, 0x0, IPT_UNUSED) /* no tape */\
-     PORT_DIPNAME (0x300, 0x0, "Memory Expansion")\
-	 PORT_DIPSETTING (0, DEF_STR( None ))\
-	 PORT_DIPSETTING (0x100, "512 KByte")\
-	 PORT_DIPSETTING (0x200, "4 MByte")\
 	PORT_DIPNAME   ( 0x80, 0x80, "Sid Chip Type")\
 	PORT_DIPSETTING(  0, "MOS6581" )\
 	PORT_DIPSETTING(0x80, "MOS8580" )\
@@ -310,38 +291,32 @@ static PALETTE_INIT( c65 )
 #endif
 
 ROM_START (c65)
-	ROM_REGION (0x800000, REGION_CPU1, 0)
-/*	ROM_REGION (0x100000, REGION_CPU1, 0) */
+	ROM_REGION (0x400000, REGION_CPU1, 0)
 	ROM_LOAD ("911001.bin", 0x20000, 0x20000, CRC(0888b50f) SHA1(129b9a2611edaebaa028ac3e3f444927c8b1fc5d))
 ROM_END
 
 ROM_START (c65e)
-	ROM_REGION (0x800000, REGION_CPU1, 0)
-/*	ROM_REGION (0x100000, REGION_CPU1, 0) */
+	ROM_REGION (0x400000, REGION_CPU1, 0)
 	ROM_LOAD ("910828.bin", 0x20000, 0x20000, CRC(3ee40b06) SHA1(b63d970727a2b8da72a0a8e234f3c30a20cbcb26))
 ROM_END
 
 ROM_START (c65d)
-	ROM_REGION (0x800000, REGION_CPU1, 0)
-/*	ROM_REGION (0x100000, REGION_CPU1, 0) */
+	ROM_REGION (0x400000, REGION_CPU1, 0)
 	ROM_LOAD ("910626.bin", 0x20000, 0x20000, CRC(12527742) SHA1(07c185b3bc58410183422f7ac13a37ddd330881b))
 ROM_END
 
 ROM_START (c65c)
-	ROM_REGION (0x800000, REGION_CPU1, 0)
-/*	ROM_REGION (0x100000, REGION_CPU1, 0) */
+	ROM_REGION (0x400000, REGION_CPU1, 0)
 	ROM_LOAD ("910523.bin", 0x20000, 0x20000, CRC(e8235dd4) SHA1(e453a8e7e5b95de65a70952e9d48012191e1b3e7))
 ROM_END
 
 ROM_START (c65ger)
-	ROM_REGION (0x800000, REGION_CPU1, 0)
-/*	ROM_REGION (0x100000, REGION_CPU1, 0) */
+	ROM_REGION (0x400000, REGION_CPU1, 0)
 	ROM_LOAD ("910429.bin", 0x20000, 0x20000, CRC(b025805c) SHA1(c3b05665684f74adbe33052a2d10170a1063ee7d))
 ROM_END
 
 ROM_START (c65a)
-	ROM_REGION (0x800000, REGION_CPU1, 0)
-/*	ROM_REGION (0x100000, REGION_CPU1, 0) */
+	ROM_REGION (0x400000, REGION_CPU1, 0)
 	ROM_LOAD ("910111.bin", 0x20000, 0x20000, CRC(c5d8d32e) SHA1(71c05f098eff29d306b0170e2c1cdeadb1a5f206))
 ROM_END
 
@@ -354,7 +329,7 @@ static SID6581_interface c65_sound_interface =
 static MACHINE_DRIVER_START( c65 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M4510, 3500000)  /* or VIC6567_CLOCK, */
-	MDRV_CPU_PROGRAM_MAP(c65_readmem, c65_writemem)
+	MDRV_CPU_PROGRAM_MAP(c65_mem, 0)
 	MDRV_CPU_VBLANK_INT(c64_frame_interrupt, 1)
 	MDRV_CPU_PERIODIC_INT(vic3_raster_irq, TIME_IN_HZ(VIC2_HRETRACERATE))
 	MDRV_FRAMES_PER_SECOND(VIC6567_VRETRACERATE)
@@ -403,12 +378,15 @@ static void c65_quickload_getinfo(struct IODevice *dev)
 SYSTEM_CONFIG_START(c65)
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 	CONFIG_DEVICE(c65_quickload_getinfo)
+	CONFIG_RAM_DEFAULT(128 * 1024)
+	CONFIG_RAM((128 + 512) * 1024)
+	CONFIG_RAM((128 + 4096) * 1024)
 SYSTEM_CONFIG_END
 
 /*		YEAR	NAME	PARENT	COMPAT	MACHINE INPUT	INIT		CONFIG  COMPANY 							FULLNAME */
-COMPX ( 1991,	c65,	0,		0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 911001)",        GAME_NOT_WORKING)
-COMPX ( 1991,	c65e,	c65,	0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910828)",        GAME_NOT_WORKING)
-COMPX ( 1991,	c65d,	c65,	0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910626)",        GAME_NOT_WORKING)
-COMPX ( 1991,	c65c,	c65,	0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910523)",        GAME_NOT_WORKING)
-COMPX ( 1991,	c65ger, c65,	0,		c65pal, c65ger, c65pal, 	c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, German PAL, 910429)",  GAME_NOT_WORKING)
-COMPX ( 1991,	c65a,	c65,	0,		c65,	c65,	c65_alpha1, c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910111)",        GAME_NOT_WORKING)
+COMP ( 1991,	c65,	0,		0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 911001)",        GAME_NOT_WORKING)
+COMP ( 1991,	c65e,	c65,	0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910828)",        GAME_NOT_WORKING)
+COMP ( 1991,	c65d,	c65,	0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910626)",        GAME_NOT_WORKING)
+COMP ( 1991,	c65c,	c65,	0,		c65,	c65,	c65,		c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910523)",        GAME_NOT_WORKING)
+COMP ( 1991,	c65ger, c65,	0,		c65pal, c65ger, c65pal, 	c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, German PAL, 910429)",  GAME_NOT_WORKING)
+COMP ( 1991,	c65a,	c65,	0,		c65,	c65,	c65_alpha1, c65,	"Commodore Business Machines Co.",  "C65 / C64DX (Prototype, NTSC, 910111)",        GAME_NOT_WORKING)
