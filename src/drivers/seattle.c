@@ -391,6 +391,7 @@ static UINT32 *asic_reset;
 static UINT8 pending_analog_read;
 static UINT8 status_leds;
 
+static int speedup_index;
 static UINT32 *generic_speedup;
 static UINT32 *generic_speedup2;
 
@@ -423,6 +424,19 @@ static MACHINE_INIT( seattle )
 {
 	/* set the fastest DRC options, but strict verification */
 	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_DRC_OPTIONS, MIPS3DRC_FASTEST_OPTIONS + MIPS3DRC_STRICT_VERIFY);
+
+	/* configure fast RAM regions for DRC */
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_START, 0x00000000);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_END, 0x007fffff);
+	cpunum_set_info_ptr(0, CPUINFO_PTR_MIPS3_FASTRAM_BASE, rambase);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_READONLY, 0);
+
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_START, 0x1fc00000);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_END, 0x1fc7ffff);
+	cpunum_set_info_ptr(0, CPUINFO_PTR_MIPS3_FASTRAM_BASE, rombase);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_READONLY, 1);
 
 	/* allocate timers for the galileo */
 	galileo.timer[0].timer = timer_alloc(galileo_timer_callback);
@@ -1518,28 +1532,28 @@ static READ32_HANDLER( generic_speedup2_r )
 
 static ADDRESS_MAP_START( seattle_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
-	AM_RANGE(0x00000000, 0x007fffff) AM_MIRROR(0xa0000000) AM_RAM AM_BASE(&rambase)	// wg3dh only has 4MB; sfrush, blitz99 8MB
-	AM_RANGE(0x88000000, 0x883fffff) AM_MIRROR(0x20000000) AM_READWRITE(voodoo_regs_r, voodoo_regs_w)
-	AM_RANGE(0x88400000, 0x887fffff) AM_MIRROR(0x20000000) AM_READWRITE(voodoo_framebuf_r, voodoo_framebuf_w)
-	AM_RANGE(0x88800000, 0x88ffffff) AM_MIRROR(0x20000000) AM_WRITE(voodoo_textureram_w)
-	AM_RANGE(0xaa000000, 0xaa0003ff) AM_READWRITE(ide_controller32_0_r, ide_controller32_0_w)
-	AM_RANGE(0xaa00040c, 0xaa00040f) AM_NOP						// IDE-related, but annoying
-	AM_RANGE(0xaa000f00, 0xaa000f07) AM_READWRITE(ide_bus_master32_0_r, ide_bus_master32_0_w)
-	AM_RANGE(0xac000000, 0xac000fff) AM_READWRITE(galileo_r, galileo_w)
-	AM_RANGE(0xb3000000, 0xb3000003) AM_WRITE(asic_fifo_w)
-	AM_RANGE(0xb6000000, 0xb600003f) AM_READWRITE(midway_ioasic_r, midway_ioasic_w)
-	AM_RANGE(0xb6100000, 0xb611ffff) AM_READWRITE(cmos_r, cmos_w) AM_BASE(&generic_nvram32) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0xb7000000, 0xb7000003) AM_READWRITE(cmos_protect_r, cmos_protect_w)
-	AM_RANGE(0xb7100000, 0xb7100003) AM_WRITE(seattle_watchdog_w)
-	AM_RANGE(0xb7300000, 0xb7300003) AM_READWRITE(MRA32_RAM, seattle_interrupt_enable_w) AM_BASE(&interrupt_enable)
-	AM_RANGE(0xb7400000, 0xb7400003) AM_READWRITE(MRA32_RAM, interrupt_config_w) AM_BASE(&interrupt_config)
-	AM_RANGE(0xb7500000, 0xb7500003) AM_READ(interrupt_state_r)
-	AM_RANGE(0xb7600000, 0xb7600003) AM_READ(interrupt_state2_r)
-	AM_RANGE(0xb7700000, 0xb7700003) AM_WRITE(vblank_clear_w)
-	AM_RANGE(0xb7800000, 0xb7800003) AM_NOP
-	AM_RANGE(0xb7900000, 0xb7900003) AM_READWRITE(status_leds_r, status_leds_w)
-	AM_RANGE(0xb7f00000, 0xb7f00003) AM_READWRITE(MRA32_RAM, asic_reset_w) AM_BASE(&asic_reset)
-	AM_RANGE(0xbfc00000, 0xbfc7ffff) AM_MIRROR(0x20000000) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&rombase)
+	AM_RANGE(0x00000000, 0x007fffff) AM_RAM AM_BASE(&rambase)	// wg3dh only has 4MB; sfrush, blitz99 8MB
+	AM_RANGE(0x08000000, 0x083fffff) AM_READWRITE(voodoo_regs_r, voodoo_regs_w)
+	AM_RANGE(0x08400000, 0x087fffff) AM_READWRITE(voodoo_framebuf_r, voodoo_framebuf_w)
+	AM_RANGE(0x08800000, 0x08ffffff) AM_WRITE(voodoo_textureram_w)
+	AM_RANGE(0x0a000000, 0x0a0003ff) AM_READWRITE(ide_controller32_0_r, ide_controller32_0_w)
+	AM_RANGE(0x0a00040c, 0x0a00040f) AM_NOP						// IDE-related, but annoying
+	AM_RANGE(0x0a000f00, 0x0a000f07) AM_READWRITE(ide_bus_master32_0_r, ide_bus_master32_0_w)
+	AM_RANGE(0x0c000000, 0x0c000fff) AM_READWRITE(galileo_r, galileo_w)
+	AM_RANGE(0x13000000, 0x13000003) AM_WRITE(asic_fifo_w)
+	AM_RANGE(0x16000000, 0x1600003f) AM_READWRITE(midway_ioasic_r, midway_ioasic_w)
+	AM_RANGE(0x16100000, 0x1611ffff) AM_READWRITE(cmos_r, cmos_w) AM_BASE(&generic_nvram32) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x17000000, 0x17000003) AM_READWRITE(cmos_protect_r, cmos_protect_w)
+	AM_RANGE(0x17100000, 0x17100003) AM_WRITE(seattle_watchdog_w)
+	AM_RANGE(0x17300000, 0x17300003) AM_READWRITE(MRA32_RAM, seattle_interrupt_enable_w) AM_BASE(&interrupt_enable)
+	AM_RANGE(0x17400000, 0x17400003) AM_READWRITE(MRA32_RAM, interrupt_config_w) AM_BASE(&interrupt_config)
+	AM_RANGE(0x17500000, 0x17500003) AM_READ(interrupt_state_r)
+	AM_RANGE(0x17600000, 0x17600003) AM_READ(interrupt_state2_r)
+	AM_RANGE(0x17700000, 0x17700003) AM_WRITE(vblank_clear_w)
+	AM_RANGE(0x17800000, 0x17800003) AM_NOP
+	AM_RANGE(0x17900000, 0x17900003) AM_READWRITE(status_leds_r, status_leds_w)
+	AM_RANGE(0x17f00000, 0x17f00003) AM_READWRITE(MRA32_RAM, asic_reset_w) AM_BASE(&asic_reset)
+	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&rombase)
 ADDRESS_MAP_END
 
 
@@ -2779,7 +2793,7 @@ MACHINE_DRIVER_START( seattle_common )
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_RGB_DIRECT)
 	MDRV_SCREEN_SIZE(512, 400)
 	MDRV_VISIBLE_AREA(0, 511, 0, 399)
 	MDRV_PALETTE_LENGTH(65536)
@@ -2954,6 +2968,18 @@ ROM_START( blitz )
 ROM_END
 
 
+ROM_START( blitz11 )
+	ROM_REGION16_LE( 0x410000, REGION_SOUND1, 0 )	/* ADSP-2115 data Version 1.02 */
+	ROM_LOAD16_BYTE( "sound102.u95", 0x000000, 0x8000, CRC(bec7d3ae) SHA1(db80aa4a645804a4574b07b9f34dec6b6b64190d) )
+
+	ROM_REGION32_LE( 0x80000, REGION_USER1, 0 )	/* Boot Code Version 1.1 */
+	ROM_LOAD( "blitz1_1.u32", 0x000000, 0x80000, CRC(8163ce02) SHA1(89b432d8879052f6c5534ee49599f667f50a010f) )
+
+	DISK_REGION( REGION_DISKS )	/* Hard Drive Version 1.21 */
+	DISK_IMAGE( "blitz", 0, MD5(9cec59456c4d239ba05c7802082489e4) SHA1(0f001488b3709d40cee5e278603df2bbae1116b8) )
+ROM_END
+
+
 ROM_START( blitz99 )
 	ROM_REGION16_LE( 0x410000, REGION_SOUND1, 0 )	/* ADSP-2115 data Version 1.02 */
 	ROM_LOAD16_BYTE( "sound102.u95", 0x000000, 0x8000, CRC(bec7d3ae) SHA1(db80aa4a645804a4574b07b9f34dec6b6b64190d) )
@@ -3024,28 +3050,39 @@ static void init_common(int ioasic, int serialnum, int yearoffs, int config)
 	{
 		case PHOENIX_CONFIG:
 			/* original Phoenix board only has 4MB of RAM */
-			memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x00400000, 0x007fffff, 0, 0xa0000000, MRA32_NOP);
-			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00400000, 0x007fffff, 0, 0xa0000000, MWA32_NOP);
+			memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x00400000, 0x007fffff, 0, 0, MRA32_NOP);
+			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00400000, 0x007fffff, 0, 0, MWA32_NOP);
 			break;
 
 		case SEATTLE_WIDGET_CONFIG:
 			/* set up the widget board */
-			memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0xb6c00000, 0xb6c0001f, 0, 0, widget_r);
-			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xb6c00000, 0xb6c0001f, 0, 0, widget_w);
+			memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x16c00000, 0x16c0001f, 0, 0, widget_r);
+			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x16c00000, 0x16c0001f, 0, 0, widget_w);
 			smc91c94_init(&ethernet_intf);
 			break;
 
 		case FLAGSTAFF_CONFIG:
 			/* set up the analog inputs */
-			memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0xb4000000, 0xb4000003, 0, 0, analog_port_r);
-			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xb4000000, 0xb4000003, 0, 0, analog_port_w);
+			memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x14000000, 0x14000003, 0, 0, analog_port_r);
+			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x14000000, 0x14000003, 0, 0, analog_port_w);
 
 			/* set up the ethernet controller */
-			memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0xb6c00000, 0xb6c0003f, 0, 0, ethernet_r);
-			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xb6c00000, 0xb6c0003f, 0, 0, ethernet_w);
+			memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x16c00000, 0x16c0003f, 0, 0, ethernet_r);
+			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x16c00000, 0x16c0003f, 0, 0, ethernet_w);
 			smc91c94_init(&ethernet_intf);
 			break;
 	}
+
+	/* reset speedups */
+	speedup_index = 0;
+}
+
+static void add_speedup(offs_t pc, UINT32 op)
+{
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_SELECT, speedup_index++);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_PC, pc);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_OPCODE, op);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_CYCLES, 1000);
 }
 
 
@@ -3055,8 +3092,8 @@ static DRIVER_INIT( wg3dh )
 	init_common(MIDWAY_IOASIC_STANDARD, 310/* others? */, 80, PHOENIX_CONFIG);
 
 	/* speedups */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x80115e00, 0x80115e03, 0, 0, generic_speedup_r);
-	generic_speedup = &rambase[0x115e00/4];
+	add_speedup(0x80044178, 0x0230102b);
+	add_speedup(0x8009494c, 0x94820000);
 }
 
 
@@ -3065,7 +3102,8 @@ static DRIVER_INIT( mace )
 	dcs2_init(0x3839);
 	init_common(MIDWAY_IOASIC_MACE, 319/* others? */, 80, SEATTLE_CONFIG);
 
-	/* no obvious speedups */
+	/* speedups */
+	add_speedup(0x800108f8, 0x8c420000);
 }
 
 
@@ -3075,9 +3113,9 @@ static DRIVER_INIT( sfrush )
 	init_common(MIDWAY_IOASIC_STANDARD, 315/* no alternates */, 100, FLAGSTAFF_CONFIG);
 
 	/* speedups */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x8012498c, 0x8012498f, 0, 0, generic_speedup_r);
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0012498c, 0x0012498f, 0, 0, generic_speedup_r);
 	generic_speedup = &rambase[0x12498c/4];
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x80120000, 0x80120003, 0, 0, generic_speedup2_r);
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00120000, 0x00120003, 0, 0, generic_speedup2_r);
 	generic_speedup2 = &rambase[0x120000/4];
 }
 
@@ -3088,9 +3126,9 @@ static DRIVER_INIT( sfrushrk )
 	init_common(MIDWAY_IOASIC_SFRUSHRK, 331/* unknown */, 100, FLAGSTAFF_CONFIG);
 
 	/* speedups */
-//  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x8012498c, 0x8012498f, 0, 0, generic_speedup_r);
+//  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0012498c, 0x0012498f, 0, 0, generic_speedup_r);
 //  generic_speedup = &rambase[0x12498c/4];
-//  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x80120000, 0x80120003, 0, 0, generic_speedup2_r);
+//  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00120000, 0x00120003, 0, 0, generic_speedup2_r);
 //  generic_speedup2 = &rambase[0x120000/4];
 }
 
@@ -3102,7 +3140,7 @@ static DRIVER_INIT( calspeed )
 	midway_ioasic_set_auto_ack(1);
 
 	/* speedups */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x802e6480, 0x802e6483, 0, 0, generic_speedup_r);
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x002e6480, 0x002e6483, 0, 0, generic_speedup_r);
 	generic_speedup = &rambase[0x2e6480/4];
 }
 
@@ -3122,7 +3160,7 @@ static DRIVER_INIT( biofreak )
 	init_common(MIDWAY_IOASIC_STANDARD, 231/* no alternates */, 80, SEATTLE_CONFIG);
 
 	/* speedups */
-//  memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x802502bc, 0x802502bf, 0, 0, generic_speedup_w);
+//  memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x002502bc, 0x002502bf, 0, 0, generic_speedup_w);
 //  generic_speedup = &rambase[0x2502bc/4];
 }
 
@@ -3135,8 +3173,11 @@ static DRIVER_INIT( blitz )
 	/* for some reason, the code in the ROM appears buggy; this is a small patch to fix it */
 	rombase[0x934/4] += 4;
 
-	/* speedups */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x80243d58, 0x80243d5b, 0, 0, generic_speedup_w);
+	/* main CPU speedups */
+	add_speedup(0x8013ddbc, 0x1452fff8);
+	add_speedup(0x80135520, 0x0043102a);
+
+	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00243d58, 0x00243d5b, 0, 0, generic_speedup_w);
 	generic_speedup = &rambase[0x243d58/4];
 }
 
@@ -3147,7 +3188,7 @@ static DRIVER_INIT( blitz99 )
 	init_common(MIDWAY_IOASIC_BLITZ99, 481/* or 484 or 520 */, 80, SEATTLE_CONFIG);
 
 	/* speedups */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x802502bc, 0x802502bf, 0, 0, generic_speedup_w);
+	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x002502bc, 0x002502bf, 0, 0, generic_speedup_w);
 	generic_speedup = &rambase[0x2502bc/4];
 }
 
@@ -3158,7 +3199,7 @@ static DRIVER_INIT( blitz2k )
 	init_common(MIDWAY_IOASIC_BLITZ99, 494/* or 498 */, 80, SEATTLE_CONFIG);
 
 	/* speedups */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x8024e8d8, 0x8024e8db, 0, 0, generic_speedup_w);
+	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0024e8d8, 0x0024e8db, 0, 0, generic_speedup_w);
 	generic_speedup = &rambase[0x24e8d8/4];
 }
 
@@ -3169,12 +3210,11 @@ static DRIVER_INIT( carnevil )
 	init_common(MIDWAY_IOASIC_CARNEVIL, 469/* 469 or 486 or 528 */, 80, SEATTLE_CONFIG);
 
 	/* set up the gun */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xb6800000, 0xb680001f, 0, 0, carnevil_gun_r);
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xb6800000, 0xb680001f, 0, 0, carnevil_gun_w);
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x16800000, 0x1680001f, 0, 0, carnevil_gun_r);
+	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x16800000, 0x1680001f, 0, 0, carnevil_gun_w);
 
 	/* speedups */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x801a2bac, 0x801a2baf, 0, 0, generic_speedup_w);
-	generic_speedup = &rambase[0x1a2bac/4];
+	add_speedup(0x80151780, 0xac232bac);
 }
 
 
@@ -3184,6 +3224,8 @@ static DRIVER_INIT( hyprdriv )
 	init_common(MIDWAY_IOASIC_HYPRDRIV, 469/* unknown */, 80, SEATTLE_WIDGET_CONFIG);
 
 	/* speedups */
+	add_speedup(0x80164424, 0x080590ef);
+	add_speedup(0x801646fc, 0xc7bfff38);
 }
 
 
@@ -3205,7 +3247,8 @@ GAME( 1998, vaportrp, vaportrx, seattle200, vaportrx, vaportrx, ROT0, "Atari Gam
 
 /* Midway */
 GAME( 1997, biofreak, 0,        seattle150, biofreak, biofreak, ROT0, "Midway Games", "BioFreaks (prototype)", 0 )
-GAME( 1997, blitz,    0,        seattle150, blitz,    blitz,    ROT0, "Midway Games", "NFL Blitz", 0 )
+GAME( 1997, blitz,    0,        seattle150, blitz,    blitz,    ROT0, "Midway Games", "NFL Blitz (boot ROM 1.2)", 0 )
+GAME( 1997, blitz11,  blitz,    seattle150, blitz,    blitz,    ROT0, "Midway Games", "NFL Blitz (boot ROM 1.1)", 0 )
 GAME( 1998, blitz99,  0,        seattle150, blitz99,  blitz99,  ROT0, "Midway Games", "NFL Blitz '99", 0 )
 GAME( 1999, blitz2k,  0,        seattle150, blitz99,  blitz2k,  ROT0, "Midway Games", "NFL Blitz 2000 Gold Edition", 0 )
 GAME( 1998, carnevil, 0,        carnevil,   carnevil, carnevil, ROT0, "Midway Games", "CarnEvil", 0 )

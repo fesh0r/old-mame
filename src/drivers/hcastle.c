@@ -47,23 +47,6 @@ static WRITE8_HANDLER( hcastle_coin_w )
 	coin_counter_w(1,data & 0x80);
 }
 
-static READ8_HANDLER( speedup_r )
-{
-	unsigned char *RAM = memory_region(REGION_CPU1);
-
-	int data = ( RAM[0x18dc] << 8 ) | RAM[0x18dd];
-
-	if ( data < memory_region_length(REGION_CPU1) )
-	{
-		data = ( RAM[data] << 8 ) | RAM[data + 1];
-
-		if ( data == 0xffff )
-			cpu_spinuntil_int();
-	}
-
-	return RAM[0x18dc];
-}
-
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -77,7 +60,6 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0415, 0x0415) AM_READ(input_port_3_r) /* Dip 1 */
 	AM_RANGE(0x0418, 0x0418) AM_READ(hcastle_gfxbank_r)
 	AM_RANGE(0x0600, 0x06ff) AM_READ(paletteram_r)
-	AM_RANGE(0x18dc, 0x18dc) AM_READ(speedup_r)
 	AM_RANGE(0x0700, 0x5fff) AM_READ(MRA8_RAM)
 	AM_RANGE(0x6000, 0x7fff) AM_READ(MRA8_BANK1)
 	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
@@ -242,7 +224,7 @@ INPUT_PORTS_END
 
 /*****************************************************************************/
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,
 	32768,
@@ -253,7 +235,7 @@ static gfx_layout charlayout =
 	32*8
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,       0, 8*16 },	/* 007121 #0 */
 	{ REGION_GFX2, 0, &charlayout, 8*16*16, 8*16 },	/* 007121 #1 */

@@ -501,7 +501,7 @@ ADDRESS_MAP_END
 
 /* I8751 memory handlers */
 static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_RAM	// AM_ROM
+	AM_RANGE(0x0000, 0x0fff) AM_RAM	AM_REGION(REGION_CPU2, 0) // AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mcu_io_map, ADDRESS_SPACE_IO, 8 )
@@ -746,7 +746,7 @@ INPUT_PORTS_END
 
 
 
-static gfx_layout pbillian_charlayout =
+static const gfx_layout pbillian_charlayout =
 {
 	8,8,
 	0x800,	/* doesn't use the whole ROM space */
@@ -757,7 +757,7 @@ static gfx_layout pbillian_charlayout =
 	32*8
 };
 
-static gfx_layout sqix_charlayout =
+static const gfx_layout sqix_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -768,7 +768,7 @@ static gfx_layout sqix_charlayout =
 	32*8
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -782,14 +782,14 @@ static gfx_layout spritelayout =
 };
 
 
-static gfx_decode pbillian_gfxdecodeinfo[] =
+static const gfx_decode pbillian_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &pbillian_charlayout, 16*16, 16 },
 	{ REGION_GFX1, 0, &spritelayout,            0, 16 },
 	{ -1 }
 };
 
-static gfx_decode sqix_gfxdecodeinfo[] =
+static const gfx_decode sqix_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &sqix_charlayout,   0, 16 },	/* Chars */
 	{ REGION_GFX2, 0x00000, &sqix_charlayout,   0, 16 },	/* Background tiles */

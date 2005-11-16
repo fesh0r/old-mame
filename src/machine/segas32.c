@@ -41,7 +41,7 @@ void nec_v25_cpu_decrypt(void)
 	UINT8* temp = malloc(0x100000);
 
 	// set CPU3 opcode base
-	memory_set_opcode_base(2,decrypted);
+	memory_set_decrypted_region(2, 0x00000, 0xfffff, decrypted);
 
 	// make copy of ROM so original can be overwritten
 	memcpy(temp, rom, 0x10000);
@@ -314,3 +314,31 @@ READ16_HANDLER(arf_wakeup_protection_r)
 		"wake up! ARF!                                   ";
 	return prot[offset];
 }
+
+/******************************************************************************
+ ******************************************************************************
+  The J.League 1994 (Japan)
+ ******************************************************************************
+ ******************************************************************************/
+WRITE16_HANDLER( jleague_protection_w )
+		{
+	COMBINE_DATA( &system32_workram[0xf700/2 + offset ] );
+
+	switch( offset )
+	{
+		// Map team browser selection to opponent browser selection
+		// using same lookup table that V60 uses for sound sample mapping.
+		case 0:
+			program_write_byte( 0x20f708, program_read_word( 0x7bbc0 + data*2 ) );
+			break;
+
+		// move on to team browser
+		case 4/2:
+			program_write_byte( 0x200016, data & 0xff );
+			break;
+
+		default:
+			break;
+	}
+}
+

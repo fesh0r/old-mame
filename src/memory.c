@@ -141,7 +141,6 @@
 /* helper macros */
 #define HANDLER_IS_RAM(h)		((FPTR)(h) == STATIC_RAM)
 #define HANDLER_IS_ROM(h)		((FPTR)(h) == STATIC_ROM)
-#define HANDLER_IS_RAMROM(h)	((FPTR)(h) == STATIC_RAMROM)
 #define HANDLER_IS_NOP(h)		((FPTR)(h) == STATIC_NOP)
 #define HANDLER_IS_BANK(h)		((FPTR)(h) >= STATIC_BANK1 && (FPTR)(h) <= STATIC_BANKMAX)
 #define HANDLER_IS_STATIC(h)	((FPTR)(h) < STATIC_COUNT)
@@ -156,9 +155,11 @@
 #define SUBTABLE_PTR(tabledata, entry) (&(tabledata)->table[(1 << LEVEL1_BITS) + (((entry) - SUBTABLE_BASE) << LEVEL2_BITS)])
 
 #if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
-#define CHECK_WATCHPOINTS(a,b,c,d,e,f) if (*watchpoint_count > 0) debug_check_watchpoints(a, b, c, d, e, f)
+#define DEBUG_HOOK_READ(a,b,c) if (debug_hook_read) (*debug_hook_read)(a, b, c)
+#define DEBUG_HOOK_WRITE(a,b,c,d) if (debug_hook_write) (*debug_hook_write)(a, b, c, d)
 #else
-#define CHECK_WATCHPOINTS(a,b,c,d,e,f)
+#define DEBUG_HOOK_READ(a,b,c)
+#define DEBUG_HOOK_WRITE(a,b,c,d)
 #endif
 
 
@@ -182,9 +183,13 @@ struct _bank_data
 	UINT8 					dynamic;				/* is this bank allocated dynamically? */
 	UINT8 					cpunum;					/* the CPU it is used for */
 	UINT8 					spacenum;				/* the address space it is used for */
+	UINT8 					read;					/* is this bank used for reads? */
+	UINT8 					write;					/* is this bank used for writes? */
 	offs_t 					base;					/* the base offset */
+	offs_t 					end;					/* the end offset */
 	UINT8					curentry;				/* current entry */
 	void *					entry[MAX_BANK_ENTRIES];/* array of entries for this bank */
+	void *					entryd[MAX_BANK_ENTRIES];/* array of decrypted entries for this bank */
 };
 typedef struct _bank_data bank_data;
 
@@ -202,6 +207,7 @@ struct _handler_data
 	offs_t					offset;					/* base offset for handler */
 	offs_t					top;					/* maximum offset for handler */
 	offs_t					mask;					/* mask against the final address */
+	const char *			name;					/* name of the handler */
 };
 /* In memory.h: typedef struct _handler_data handler_data */
 
@@ -242,8 +248,6 @@ typedef struct _addrspace_data addrspace_data;
 
 struct _cpu_data
 {
-	void *					rambase;				/* RAM base pointer */
-	size_t					ramlength;				/* RAM length pointer */
 	opbase_handler 			opbase;					/* opcode base handler */
 
 	void *					op_ram;					/* dynamic RAM base pointer */
@@ -273,6 +277,7 @@ UINT8		 				opcode_entry;					/* opcode readmem entry */
 address_space				active_address_space[ADDRESS_SPACES];/* address space data */
 
 static UINT8 *				bank_ptr[STATIC_COUNT];			/* array of bank pointers */
+static UINT8 *				bankd_ptr[STATIC_COUNT];		/* array of decrypted bank pointers */
 static void *				shared_ptr[MAX_SHARED_POINTERS];/* array of shared pointers */
 
 static memory_block 		memory_block_list[MAX_MEMORY_BLOCKS];/* array of memory blocks we are tracking */
@@ -288,7 +293,8 @@ static cpu_data				cpudata[MAX_CPU];				/* data gathered for each CPU */
 static bank_data 			bankdata[STATIC_COUNT];			/* data gathered for each bank */
 
 #if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
-static const int *			watchpoint_count;				/* pointer to the count of watchpoints */
+static debug_hook_read_ptr	debug_hook_read;				/* pointer to debugger callback for memory reads */
+static debug_hook_write_ptr	debug_hook_write;				/* pointer to debugger callback for memory writes */
 #endif
 
 static data_accessors memory_accessors[ADDRESS_SPACES][4][2] =
@@ -364,9 +370,9 @@ static int init_cpudata(void);
 static int init_addrspace(UINT8 cpunum, UINT8 spacenum);
 static int preflight_memory(void);
 static int populate_memory(void);
-static void install_mem_handler(addrspace_data *space, int iswrite, int databits, int ismatchmask, offs_t start, offs_t end, offs_t mask, offs_t mirror, genf *handler, int isfixed);
-static genf *assign_dynamic_bank(int cpunum, int spacenum, offs_t start, offs_t mirror, int isfixed, int ismasked);
-static UINT8 get_handler_index(handler_data *table, genf *handler, offs_t start, offs_t end, offs_t mask);
+static void install_mem_handler(addrspace_data *space, int iswrite, int databits, int ismatchmask, offs_t start, offs_t end, offs_t mask, offs_t mirror, genf *handler, int isfixed, const char *handler_name);
+static genf *assign_dynamic_bank(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mirror, int isfixed, int ismasked);
+static UINT8 get_handler_index(handler_data *table, genf *handler, const char *handler_name, offs_t start, offs_t end, offs_t mask);
 static void populate_table_range(addrspace_data *space, int iswrite, offs_t start, offs_t stop, UINT8 handler);
 static void populate_table_match(addrspace_data *space, int iswrite, offs_t matchval, offs_t matchmask, UINT8 handler);
 static UINT8 allocate_subtable(table_data *tabledata);
@@ -412,6 +418,7 @@ int memory_init(void)
 	/* reset the shared pointers and bank pointers */
 	memset(shared_ptr, 0, sizeof(shared_ptr));
 	memset(bank_ptr, 0, sizeof(bank_ptr));
+	memset(bankd_ptr, 0, sizeof(bankd_ptr));
 
 	/* reset our hardcoded and allocated pointer tracking */
 	memset(memory_block_list, 0, sizeof(memory_block_list));
@@ -481,7 +488,6 @@ void memory_set_context(int activecpu)
 	}
 	cur_context = activecpu;
 
-	bank_ptr[STATIC_RAM] = cpudata[activecpu].rambase;
 	opcode_arg_base = cpudata[activecpu].op_ram;
 	opcode_base = cpudata[activecpu].op_rom;
 	opcode_mask = cpudata[activecpu].op_mask;
@@ -522,7 +528,13 @@ void memory_set_context(int activecpu)
 	opbasefunc = cpudata[activecpu].opbase;
 
 #if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
-	watchpoint_count = debug_watchpoint_count_ptr(activecpu);
+	if (activecpu != -1)
+		debug_get_memory_hooks(activecpu, &debug_hook_read, &debug_hook_write);
+	else
+	{
+		debug_hook_read = NULL;
+		debug_hook_write = NULL;
+	}
 #endif
 }
 
@@ -559,7 +571,10 @@ opbase_handler memory_set_opbase_handler(int cpunum, opbase_handler function)
 
 void memory_set_opbase(offs_t pc)
 {
-	UINT8 *base;
+	address_space *space = &active_address_space[ADDRESS_SPACE_PROGRAM];
+
+	UINT8 *base = NULL, *based = NULL;
+	handler_data *handlers;
 	UINT8 entry;
 
 	/* allow overrides */
@@ -571,58 +586,80 @@ void memory_set_opbase(offs_t pc)
 	}
 
 	/* perform the lookup */
-	pc &= active_address_space[ADDRESS_SPACE_PROGRAM].addrmask;
-	entry = active_address_space[ADDRESS_SPACE_PROGRAM].readlookup[LEVEL1_INDEX(pc)];
+	pc &= space->addrmask;
+	entry = space->readlookup[LEVEL1_INDEX(pc)];
 	if (entry >= SUBTABLE_BASE)
-		entry = active_address_space[ADDRESS_SPACE_PROGRAM].readlookup[LEVEL2_INDEX(entry,pc)];
+		entry = space->readlookup[LEVEL2_INDEX(entry,pc)];
 	opcode_entry = entry;
 
-	/* RAM/ROM/RAMROM */
-	if (entry >= STATIC_RAM && entry <= STATIC_RAMROM)
-		base = bank_ptr[STATIC_RAM];
-
-	/* banked memory */
-	else if (entry >= STATIC_BANK1 && entry <= STATIC_RAM)
-		base = bank_ptr[entry];
-
-	/* other memory -- could be very slow! */
-	else
+	/* if we don't map to a bank, see if there are any banks we can map to */
+	if (entry < STATIC_BANK1 || entry >= STATIC_RAM)
 	{
-		logerror("cpu #%d (PC=%08X): warning - op-code execute on mapped I/O\n",
-					cpu_getactivecpu(), activecpu_get_pc());
-		return;
+		/* loop over banks and find a match */
+		for (entry = 1; entry < STATIC_COUNT; entry++)
+		{
+			bank_data *bdata = &bankdata[entry];
+			if (bdata->used && bdata->cpunum == cur_context && bdata->spacenum == ADDRESS_SPACE_PROGRAM &&
+				bdata->base < pc && bdata->end > pc)
+				break;
+		}
+
+		/* if nothing was found, leave everything alone */
+		if (entry == STATIC_COUNT)
+		{
+			logerror("cpu #%d (PC=%08X): warning - op-code execute on mapped I/O\n",
+						cpu_getactivecpu(), activecpu_get_pc());
+			return;
+		}
 	}
 
+	/* if no decrypted opcodes, point to the same base */
+	base = bank_ptr[entry];
+	based = bankd_ptr[entry];
+	if (!based)
+		based = base;
+
 	/* compute the adjusted base */
-	opcode_mask = active_address_space[ADDRESS_SPACE_PROGRAM].readhandlers[entry].mask;
-	opcode_base = base - (active_address_space[ADDRESS_SPACE_PROGRAM].readhandlers[entry].offset & opcode_mask) + (opcode_base - opcode_arg_base);
-	opcode_arg_base = base - (active_address_space[ADDRESS_SPACE_PROGRAM].readhandlers[entry].offset & opcode_mask);
-	opcode_memory_min = active_address_space[ADDRESS_SPACE_PROGRAM].readhandlers[entry].offset;
-	opcode_memory_max = (entry >= STATIC_RAM && entry <= STATIC_RAMROM)
-		? cpudata[cpu_getactivecpu()].ramlength - 1
-		: active_address_space[ADDRESS_SPACE_PROGRAM].readhandlers[entry].top;
+	handlers = &active_address_space[ADDRESS_SPACE_PROGRAM].readhandlers[entry];
+	opcode_mask = handlers->mask;
+	opcode_arg_base = base - (handlers->offset & opcode_mask);
+	opcode_base = based - (handlers->offset & opcode_mask);
+	opcode_memory_min = handlers->offset;
+	opcode_memory_max = handlers->top;
 }
 
 
 /*-------------------------------------------------
-    memory_set_opcode_base - set the base of
-    ROM
+    memory_set_decrypted_region - sets the
+    decrypted region for the given CPU
 -------------------------------------------------*/
 
-void memory_set_opcode_base(int cpunum, void *base)
+void memory_set_decrypted_region(int cpunum, offs_t start, offs_t end, void *base)
 {
-	if (cur_context == cpunum)
+	int banknum, found = FALSE;
+
+	/* loop over banks looking for a match */
+	for (banknum = 0; banknum < STATIC_COUNT; banknum++)
 	{
-		opcode_base = base;
-		opcode_memory_min = (offs_t) 0x00000000;
-		opcode_memory_max = (offs_t) 0x7fffffff;
+		bank_data *bdata = &bankdata[banknum];
+		if (bdata->used && bdata->cpunum == cpunum && bdata->spacenum == ADDRESS_SPACE_PROGRAM && bdata->read)
+		{
+			if (bdata->base >= start && bdata->end <= end)
+			{
+				bankd_ptr[banknum] = (UINT8 *)base + bdata->base - start;
+				found = TRUE;
+
+				/* if this is live, adjust now */
+				if (cpunum == cur_context && opcode_entry == banknum)
+					memory_set_opbase(activecpu_get_physical_pc_byte());
+			}
+			else if (bdata->base < end && bdata->end > start)
+				osd_die("memory_set_decrypted_region found straddled region %08X-%08X for CPU %d\n", start, end, cpunum);
+		}
 	}
-	else
-	{
-		cpudata[cpunum].op_rom = base;
-		cpudata[cpunum].op_mem_min = (offs_t) 0x00000000;
-		cpudata[cpunum].op_mem_max = (offs_t) 0x7fffffff;
-	}
+
+	if (!found)
+		osd_die("memory_set_decrypted_region unable to find matching region %08X-%08X for CPU %d\n", start, end, cpunum);
 }
 
 
@@ -643,8 +680,8 @@ void *memory_get_read_ptr(int cpunum, int spacenum, offs_t offset)
 	if (entry >= SUBTABLE_BASE)
 		entry = space->read.table[LEVEL2_INDEX(entry, offset)];
 
-	/* 8-bit case: RAM/ROM/RAMROM */
-	if (entry > STATIC_RAM)
+	/* 8-bit case: RAM/ROM */
+	if (entry >= STATIC_RAM)
 		return NULL;
 	offset = (offset - space->read.handlers[entry].offset) & space->read.handlers[entry].mask;
 	return &bank_ptr[entry][offset];
@@ -668,8 +705,8 @@ void *memory_get_write_ptr(int cpunum, int spacenum, offs_t offset)
 	if (entry >= SUBTABLE_BASE)
 		entry = space->write.table[LEVEL2_INDEX(entry, offset)];
 
-	/* 8-bit case: RAM/ROM/RAMROM */
-	if (entry > STATIC_RAM)
+	/* 8-bit case: RAM/ROM */
+	if (entry >= STATIC_RAM)
 		return NULL;
 	offset = (offset - space->write.handlers[entry].offset) & space->write.handlers[entry].mask;
 	return &bank_ptr[entry][offset];
@@ -726,7 +763,6 @@ void *memory_get_op_ptr(int cpunum, offs_t offset)
 }
 
 
-
 /*-------------------------------------------------
     memory_configure_bank - configure the
     addresses for a bank
@@ -752,6 +788,30 @@ void memory_configure_bank(int banknum, int startentry, int numentries, void *ba
 
 
 /*-------------------------------------------------
+    memory_configure_bank_decrypted - configure
+    the decrypted addresses for a bank
+-------------------------------------------------*/
+
+void memory_configure_bank_decrypted(int banknum, int startentry, int numentries, void *base, offs_t stride)
+{
+	int entrynum;
+
+	/* validation checks */
+	if (banknum < STATIC_BANK1 || banknum > MAX_EXPLICIT_BANKS || !bankdata[banknum].used)
+		osd_die("memory_configure_bank called with invalid bank %d\n", banknum);
+	if (bankdata[banknum].dynamic)
+		osd_die("memory_configure_bank called with dynamic bank %d\n", banknum);
+	if (startentry < 0 || startentry + numentries > MAX_BANK_ENTRIES)
+		osd_die("memory_configure_bank called with out-of-range entries %d-%d\n", startentry, startentry + numentries - 1);
+
+	/* fill in the requested bank entries */
+	for (entrynum = startentry; entrynum < startentry + numentries; entrynum++)
+		bankdata[banknum].entryd[entrynum] = (UINT8 *)base + (entrynum - startentry) * stride;
+}
+
+
+
+/*-------------------------------------------------
     memory_set_bank - set the base of a bank
 -------------------------------------------------*/
 
@@ -770,12 +830,13 @@ void memory_set_bank(int banknum, int entrynum)
 	/* set the base */
 	bankdata[banknum].curentry = entrynum;
 	bank_ptr[banknum] = bankdata[banknum].entry[entrynum];
+	bankd_ptr[banknum] = bankdata[banknum].entryd[entrynum];
 
 	/* if we're executing out of this bank, adjust the opbase pointer */
 	if (opcode_entry == banknum && cpu_getactivecpu() >= 0)
 	{
 		opcode_entry = 0xff;
-		memory_set_opbase(activecpu_get_pc_byte());
+		memory_set_opbase(activecpu_get_physical_pc_byte());
 	}
 }
 
@@ -800,7 +861,7 @@ void memory_set_bankptr(int banknum, void *base)
 	if (opcode_entry == banknum && cpu_getactivecpu() >= 0)
 	{
 		opcode_entry = 0xff;
-		memory_set_opbase(activecpu_get_pc_byte());
+		memory_set_opbase(activecpu_get_physical_pc_byte());
 	}
 }
 
@@ -820,34 +881,34 @@ void memory_set_debugger_access(int debugger)
     read handler for X-bit case
 -------------------------------------------------*/
 
-UINT8 *memory_install_read8_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read8_handler handler)
+UINT8 *_memory_install_read8_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read8_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 0, 8, 0, start, end, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 0, 8, 0, start, end, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 0, SPACE_SHIFT(space, start));
 }
 
-UINT16 *memory_install_read16_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read16_handler handler)
+UINT16 *_memory_install_read16_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read16_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 0, 16, 0, start, end, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 0, 16, 0, start, end, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 0, SPACE_SHIFT(space, start));
 }
 
-UINT32 *memory_install_read32_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read32_handler handler)
+UINT32 *_memory_install_read32_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read32_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 0, 32, 0, start, end, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 0, 32, 0, start, end, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 0, SPACE_SHIFT(space, start));
 }
 
-UINT64 *memory_install_read64_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read64_handler handler)
+UINT64 *_memory_install_read64_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read64_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 0, 64, 0, start, end, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 0, 64, 0, start, end, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 0, SPACE_SHIFT(space, start));
 }
@@ -858,34 +919,34 @@ UINT64 *memory_install_read64_handler(int cpunum, int spacenum, offs_t start, of
     write handler for X-bit case
 -------------------------------------------------*/
 
-UINT8 *memory_install_write8_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write8_handler handler)
+UINT8 *_memory_install_write8_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write8_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 1, 8, 0, start, end, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 1, 8, 0, start, end, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 1, SPACE_SHIFT(space, start));
 }
 
-UINT16 *memory_install_write16_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write16_handler handler)
+UINT16 *_memory_install_write16_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write16_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 1, 16, 0, start, end, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 1, 16, 0, start, end, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 1, SPACE_SHIFT(space, start));
 }
 
-UINT32 *memory_install_write32_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write32_handler handler)
+UINT32 *_memory_install_write32_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write32_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 1, 32, 0, start, end, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 1, 32, 0, start, end, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 1, SPACE_SHIFT(space, start));
 }
 
-UINT64 *memory_install_write64_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write64_handler handler)
+UINT64 *_memory_install_write64_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write64_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 1, 64, 0, start, end, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 1, 64, 0, start, end, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 1, SPACE_SHIFT(space, start));
 }
@@ -897,34 +958,34 @@ UINT64 *memory_install_write64_handler(int cpunum, int spacenum, offs_t start, o
     X-bit case
 -------------------------------------------------*/
 
-UINT8 *memory_install_read8_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read8_handler handler)
+UINT8 *_memory_install_read8_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read8_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 0, 8, 1, matchval, maskval, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 0, 8, 1, matchval, maskval, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 0, SPACE_SHIFT(space, matchval));
 }
 
-UINT16 *memory_install_read16_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read16_handler handler)
+UINT16 *_memory_install_read16_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read16_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 0, 16, 1, matchval, maskval, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 0, 16, 1, matchval, maskval, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 0, SPACE_SHIFT(space, matchval));
 }
 
-UINT32 *memory_install_read32_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read32_handler handler)
+UINT32 *_memory_install_read32_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read32_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 0, 32, 1, matchval, maskval, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 0, 32, 1, matchval, maskval, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 0, SPACE_SHIFT(space, matchval));
 }
 
-UINT64 *memory_install_read64_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read64_handler handler)
+UINT64 *_memory_install_read64_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read64_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 0, 64, 1, matchval, maskval, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 0, 64, 1, matchval, maskval, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 0, SPACE_SHIFT(space, matchval));
 }
@@ -936,34 +997,34 @@ UINT64 *memory_install_read64_matchmask_handler(int cpunum, int spacenum, offs_t
     X-bit case
 -------------------------------------------------*/
 
-UINT8 *memory_install_write8_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, write8_handler handler)
+UINT8 *_memory_install_write8_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, write8_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 1, 8, 1, matchval, maskval, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 1, 8, 1, matchval, maskval, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 1, SPACE_SHIFT(space, matchval));
 }
 
-UINT16 *memory_install_write16_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, write16_handler handler)
+UINT16 *_memory_install_write16_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, write16_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 1, 16, 1, matchval, maskval, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 1, 16, 1, matchval, maskval, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 1, SPACE_SHIFT(space, matchval));
 }
 
-UINT32 *memory_install_write32_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, write32_handler handler)
+UINT32 *_memory_install_write32_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, write32_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 1, 32, 1, matchval, maskval, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 1, 32, 1, matchval, maskval, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 1, SPACE_SHIFT(space, matchval));
 }
 
-UINT64 *memory_install_write64_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, write64_handler handler)
+UINT64 *_memory_install_write64_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, write64_handler handler, const char *handler_name)
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
-	install_mem_handler(space, 1, 64, 1, matchval, maskval, mask, mirror, (genf *)handler, 0);
+	install_mem_handler(space, 1, 64, 1, matchval, maskval, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 1, SPACE_SHIFT(space, matchval));
 }
@@ -996,10 +1057,10 @@ static int init_cpudata(void)
 	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
 	{
 		/* set the RAM/ROM base */
-		cpudata[cpunum].rambase = cpudata[cpunum].op_ram = cpudata[cpunum].op_rom = memory_region(REGION_CPU1 + cpunum);
-		cpudata[cpunum].op_mem_max = cpudata[cpunum].ramlength = memory_region_length(REGION_CPU1 + cpunum);
+		cpudata[cpunum].op_ram = cpudata[cpunum].op_rom = memory_region(REGION_CPU1 + cpunum);
+		cpudata[cpunum].op_mem_max = memory_region_length(REGION_CPU1 + cpunum);
 		cpudata[cpunum].op_mem_min = 0;
-		cpudata[cpunum].opcode_entry = STATIC_ROM;
+		cpudata[cpunum].opcode_entry = STATIC_UNMAP;
 		cpudata[cpunum].opbase = NULL;
 
 		/* TODO: make this dynamic */
@@ -1089,11 +1150,39 @@ static int init_addrspace(UINT8 cpunum, UINT8 spacenum)
 		if (Machine->drv->cpu[cpunum].construct_map[spacenum][1])
 			map = (*Machine->drv->cpu[cpunum].construct_map[spacenum][1])(map);
 
+		/* convert implicit ROM entries to map to the memory region */
+		if (spacenum == ADDRESS_SPACE_PROGRAM && memory_region(REGION_CPU1 + cpunum))
+			for (map = space->map; !IS_AMENTRY_END(map); map++)
+				if (!IS_AMENTRY_EXTENDED(map) && HANDLER_IS_ROM(map->read.handler) && !map->region)
+				{
+					map->region = REGION_CPU1 + cpunum;
+					map->region_offs = SPACE_SHIFT(space, map->start);
+				}
+
+		/* convert region-relative entries to their memory pointers */
+		for (map = space->map; !IS_AMENTRY_END(map); map++)
+			if (map->region)
+				map->memory = memory_region(map->region) + map->region_offs;
+
 		/* make the adjusted map */
 		memcpy(space->adjmap, space->map, sizeof(space->map[0]) * MAX_ADDRESS_MAP_SIZE * 2);
 		for (map = space->adjmap; !IS_AMENTRY_END(map); map++)
 			if (!IS_AMENTRY_EXTENDED(map))
 				adjust_addresses(space, IS_AMENTRY_MATCH_MASK(map), &map->start, &map->end, &map->mask, &map->mirror);
+
+		/* validate adjusted addresses against implicit regions */
+		for (map = space->adjmap; !IS_AMENTRY_END(map); map++)
+			if (map->region && map->share == 0 && !map->base)
+			{
+				UINT8 *base = memory_region(map->region);
+				offs_t length = memory_region_length(map->region);
+
+				/* validate the region */
+				if (!base)
+					osd_die("Error: CPU %d space %d memory map entry %X-%X references non-existant region %d", cpunum, spacenum, map->start, map->end, map->region);
+				if (map->region_offs + (map->end - map->start + 1) > length)
+					osd_die("Error: CPU %d space %d memory map entry %X-%X extends beyond region %d size (%X)", cpunum, spacenum, map->start, map->end, map->region, length);
+			}
 	}
 
 	/* init the static handlers */
@@ -1111,15 +1200,9 @@ static int init_addrspace(UINT8 cpunum, UINT8 spacenum)
 	space->read.table = malloc(1 << LEVEL1_BITS);
 	space->write.table = malloc(1 << LEVEL1_BITS);
 	if (!space->read.table)
-	{
 		osd_die("cpu #%d couldn't allocate read table\n", cpunum);
-		return -1;
-	}
 	if (!space->write.table)
-	{
 		osd_die("cpu #%d couldn't allocate write table\n", cpunum);
-		return -1;
-	}
 
 	/* initialize everything to unmapped */
 	memset(space->read.table, STATIC_UNMAP, 1 << LEVEL1_BITS);
@@ -1212,11 +1295,16 @@ static int preflight_memory(void)
 							if (!bdata->used)
 								state_save_register_UINT8("memory", bank, "bank.entry", &bdata->curentry, 1);
 
-							bdata->used = 1;
-							bdata->dynamic = 0;
+							bdata->used = TRUE;
+							bdata->dynamic = FALSE;
 							bdata->cpunum = cpunum;
 							bdata->spacenum = spacenum;
+							if (bank == HANDLER_TO_BANK(map->read.handler))
+								bdata->read = TRUE;
+							if (bank == HANDLER_TO_BANK(map->write.handler))
+								bdata->write = TRUE;
 							bdata->base = map->start;
+							bdata->end = map->end;
 							bdata->curentry = MAX_BANK_ENTRIES;
 						}
 					}
@@ -1264,9 +1352,9 @@ static int populate_memory(void)
 							int ismatchmask = ((map->flags & AM_FLAGS_MATCH_MASK) != 0);
 							int isfixed = (map->memory != NULL) || (map->share != 0);
 							if (map->read.handler)
-								install_mem_handler(space, 0, space->dbits, ismatchmask, map->start, map->end, map->mask, map->mirror, map->read.handler, isfixed);
+								install_mem_handler(space, 0, space->dbits, ismatchmask, map->start, map->end, map->mask, map->mirror, map->read.handler, isfixed, map->read_name);
 							if (map->write.handler)
-								install_mem_handler(space, 1, space->dbits, ismatchmask, map->start, map->end, map->mask, map->mirror, map->write.handler, isfixed);
+								install_mem_handler(space, 1, space->dbits, ismatchmask, map->start, map->end, map->mask, map->mirror, map->write.handler, isfixed, map->write_name);
 						}
 				}
 			}
@@ -1280,7 +1368,7 @@ static int populate_memory(void)
     memory operations
 -------------------------------------------------*/
 
-static void install_mem_handler(addrspace_data *space, int iswrite, int databits, int ismatchmask, offs_t start, offs_t end, offs_t mask, offs_t mirror, genf *handler, int isfixed)
+static void install_mem_handler(addrspace_data *space, int iswrite, int databits, int ismatchmask, offs_t start, offs_t end, offs_t mask, offs_t mirror, genf *handler, int isfixed, const char *handler_name)
 {
 	offs_t lmirrorbit[LEVEL1_BITS], lmirrorbits, hmirrorbit[LEVEL2_BITS], hmirrorbits, lmirrorcount, hmirrorcount;
 	table_data *tabledata = iswrite ? &space->write : &space->read;
@@ -1294,44 +1382,54 @@ static void install_mem_handler(addrspace_data *space, int iswrite, int databits
 		osd_die("fatal: install_mem_handler called with a %d-bit handler for a %d-bit address space\n", databits, space->dbits);
 
 	/* if we're installing a new bank, make sure we mark it */
-	if (HANDLER_IS_BANK(handler) && !bankdata[HANDLER_TO_BANK(handler)].used)
+	if (HANDLER_IS_BANK(handler))
 	{
 		bank_data *bdata = &bankdata[HANDLER_TO_BANK(handler)];
-		bdata->used = 1;
-		bdata->dynamic = 0;
-		bdata->cpunum = space->cpunum;
-		bdata->spacenum = space->spacenum;
-		bdata->base = start;
-		bdata->curentry = MAX_BANK_ENTRIES;
 
-		/* if we're allowed to, wire up state saving for the entry */
-		if (state_save_registration_allowed())
-			state_save_register_UINT8("memory", HANDLER_TO_BANK(handler), "bank.entry", &bdata->curentry, 1);
+		/* if this is the first time we've seen this bank, create a new entry */
+		if (!bdata->used)
+		{
+			bdata->used = TRUE;
+			bdata->dynamic = FALSE;
+			bdata->cpunum = space->cpunum;
+			bdata->spacenum = space->spacenum;
+			bdata->base = start;
+			bdata->end = end;
+			bdata->curentry = MAX_BANK_ENTRIES;
+
+			/* if we're allowed to, wire up state saving for the entry */
+			if (state_save_registration_allowed())
+				state_save_register_UINT8("memory", HANDLER_TO_BANK(handler), "bank.entry", &bdata->curentry, 1);
+
+			VPRINTF(("Allocated new bank %d\n", HANDLER_TO_BANK(handler)));
+		}
 	}
 
 	/* adjust the incoming addresses */
 	adjust_addresses(space, ismatchmask, &start, &end, &mask, &mirror);
 
-	/* translate ROM and RAMROM to RAM here for read cases */
-	if (!iswrite)
-	{
-		if (HANDLER_IS_ROM(handler) || HANDLER_IS_RAMROM(handler))
-			handler = (genf *)MRA8_RAM;
-	}
-
-	/* also translate ROM to UNMAP for write cases */
-	else
-	{
-		if (HANDLER_IS_ROM(handler))
-			handler = (genf *)STATIC_UNMAP;
-	}
+	/* translate ROM to RAM/UNMAP here */
+	if (HANDLER_IS_ROM(handler))
+		handler = iswrite ? (genf *)STATIC_UNMAP : (genf *)MRA8_RAM;
 
 	/* assign banks for RAM/ROM areas */
-	if (HANDLER_IS_RAM(handler) || HANDLER_IS_ROM(handler))
+	if (HANDLER_IS_RAM(handler))
 	{
-		handler = (genf *)assign_dynamic_bank(space->cpunum, space->spacenum, start, mirror, isfixed, original_mask != 0);
+		handler = (genf *)assign_dynamic_bank(space->cpunum, space->spacenum, start, end, mirror, isfixed, original_mask != 0);
 		if (!bank_ptr[HANDLER_TO_BANK(handler)])
 			bank_ptr[HANDLER_TO_BANK(handler)] = memory_find_base(space->cpunum, space->spacenum, iswrite, start);
+	}
+
+	/* if this ended up a bank handler, tag it for reads or writes */
+	if (HANDLER_IS_BANK(handler))
+	{
+		bank_data *bdata = &bankdata[HANDLER_TO_BANK(handler)];
+
+		/* track whether reads or writes are going here */
+		if (!iswrite)
+			bdata->read = TRUE;
+		else
+			bdata->write = TRUE;
 	}
 
 	/* determine the mirror bits */
@@ -1344,7 +1442,7 @@ static void install_mem_handler(addrspace_data *space, int iswrite, int databits
 			hmirrorbit[hmirrorbits++] = 1 << i;
 
 	/* get the final handler index */
-	idx = get_handler_index(tabledata->handlers, handler, start, end, mask);
+	idx = get_handler_index(tabledata->handlers, handler, handler_name, start, end, mask);
 
 	/* loop over mirrors in the level 2 table */
 	for (hmirrorcount = 0; hmirrorcount < (1 << hmirrorbits); hmirrorcount++)
@@ -1409,30 +1507,20 @@ static void install_mem_handler(addrspace_data *space, int iswrite, int databits
     matching bank
 -------------------------------------------------*/
 
-static genf *assign_dynamic_bank(int cpunum, int spacenum, offs_t start, offs_t mirror, int isfixed, int ismasked)
+static genf *assign_dynamic_bank(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mirror, int isfixed, int ismasked)
 {
 	int bank;
-
-	/* special case: never assign a dynamic bank to an offset that */
-	/* intersects the CPU's region; always use RAM for that */
-	if (spacenum == ADDRESS_SPACE_PROGRAM && start < memory_region_length(REGION_CPU1 + cpunum))
-	{
-		/* ...unless it's mirrored, in which case, we need to use a bank anyway */
-		/* ...or unless we have a fixed pointer, in which case, we also need to use a bank */
-		/* ...or unless we have an explicit mask, in which case, we are effectively mirrored */
-		if (mirror == 0 && !isfixed && !ismasked)
-			return (genf *)STATIC_RAM;
-	}
 
 	/* loop over banks, searching for an exact match or an empty */
 	for (bank = MAX_BANKS; bank >= 1; bank--)
 		if (!bankdata[bank].used || (bankdata[bank].dynamic && bankdata[bank].cpunum == cpunum && bankdata[bank].spacenum == spacenum && bankdata[bank].base == start))
 		{
-			bankdata[bank].used = 1;
-			bankdata[bank].dynamic = 1;
+			bankdata[bank].used = TRUE;
+			bankdata[bank].dynamic = TRUE;
 			bankdata[bank].cpunum = cpunum;
 			bankdata[bank].spacenum = spacenum;
 			bankdata[bank].base = start;
+			bankdata[bank].end = end;
 			VPRINTF(("Assigned bank %d to %d,%d,%08X\n", bank, cpunum, spacenum, start));
 			return BANK_TO_HANDLER(bank);
 		}
@@ -1448,7 +1536,7 @@ static genf *assign_dynamic_bank(int cpunum, int spacenum, offs_t start, offs_t 
     handler, or allocates a new one as necessary
 -------------------------------------------------*/
 
-static UINT8 get_handler_index(handler_data *table, genf *handler, offs_t start, offs_t end, offs_t mask)
+static UINT8 get_handler_index(handler_data *table, genf *handler, const char *handler_name, offs_t start, offs_t end, offs_t mask)
 {
 	int i;
 
@@ -1463,6 +1551,7 @@ static UINT8 get_handler_index(handler_data *table, genf *handler, offs_t start,
 			table[i].offset = start;
 			table[i].top = end;
 			table[i].mask = mask;
+			table[i].name = handler_name;
 		}
 		return i;
 	}
@@ -1476,6 +1565,7 @@ static UINT8 get_handler_index(handler_data *table, genf *handler, offs_t start,
 			table[i].offset = start;
 			table[i].top = end;
 			table[i].mask = mask;
+			table[i].name = handler_name;
 			return i;
 		}
 		if (table[i].handler.generic == handler && table[i].offset == start && table[i].mask == mask)
@@ -1839,10 +1929,6 @@ static int allocate_memory(void)
 {
 	int cpunum, spacenum;
 
-	/* don't do it for drivers that don't have ROM (MESS needs this) */
-	if (Machine->gamedrv->rom == 0)
-		return 1;
-
 	/* loop over all CPUs and memory spaces */
 	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
 		for (spacenum = 0; spacenum < ADDRESS_SPACES; spacenum++)
@@ -1863,10 +1949,6 @@ static int allocate_memory(void)
 						else
 							allocate_memory_block(cpunum, spacenum, map->start, map->start + map->mask, map->memory);
 					}
-
-				/* if this is a program space, we also throw in the memory_region for the CPU */
-				if (spacenum == ADDRESS_SPACE_PROGRAM && memory_region(REGION_CPU1 + cpunum))
-					allocate_memory_block(cpunum, spacenum, 0, memory_region_length(REGION_CPU1 + cpunum) - 1, memory_region(REGION_CPU1 + cpunum));
 
 				/* loop over all blocks just allocated and assign pointers from them */
 				for (i = start_count; i < memory_block_count; i++)
@@ -2205,11 +2287,11 @@ UINT8 name(offs_t address)																\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~0);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_READ, address, 1, 0);			\
+	DEBUG_HOOK_READ(spacenum, 1, address);												\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].readhandlers[entry].offset) & active_address_space[spacenum].readhandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM) 															\
 		MEMREADEND(bank_ptr[entry][address]);											\
 																						\
 	/* fall back to the handler */														\
@@ -2224,11 +2306,11 @@ UINT8 name(offs_t address)																\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~0);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_READ, address, 1, 0);			\
+	DEBUG_HOOK_READ(spacenum, 1, address);												\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].readhandlers[entry].offset) & active_address_space[spacenum].readhandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMREADEND(bank_ptr[entry][xormacro(address)]);									\
 																						\
 	/* fall back to the handler */														\
@@ -2259,11 +2341,11 @@ UINT16 name(offs_t address)																\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~1);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_READ, address, 2, 0);			\
+	DEBUG_HOOK_READ(spacenum, 2, address);												\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].readhandlers[entry].offset) & active_address_space[spacenum].readhandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMREADEND(*(UINT16 *)&bank_ptr[entry][address]);								\
 																						\
 	/* fall back to the handler */														\
@@ -2278,11 +2360,11 @@ UINT16 name(offs_t address)																\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~1);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_READ, address, 2, 0);			\
+	DEBUG_HOOK_READ(spacenum, 2, address);												\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].readhandlers[entry].offset) & active_address_space[spacenum].readhandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMREADEND(*(UINT16 *)&bank_ptr[entry][xormacro(address)]);						\
 																						\
 	/* fall back to the handler */														\
@@ -2311,11 +2393,11 @@ UINT32 name(offs_t address)																\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~3);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_READ, address, 4, 0);			\
+	DEBUG_HOOK_READ(spacenum, 4, address);												\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].readhandlers[entry].offset) & active_address_space[spacenum].readhandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMREADEND(*(UINT32 *)&bank_ptr[entry][address]);								\
 																						\
 	/* fall back to the handler */														\
@@ -2330,11 +2412,11 @@ UINT32 name(offs_t address)																\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~3);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_READ, address, 4, 0);			\
+	DEBUG_HOOK_READ(spacenum, 4, address);												\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].readhandlers[entry].offset) & active_address_space[spacenum].readhandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMREADEND(*(UINT32 *)&bank_ptr[entry][xormacro(address)]);						\
 																						\
 	/* fall back to the handler */														\
@@ -2361,11 +2443,11 @@ UINT64 name(offs_t address)																\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~7);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_READ, address, 8, 0);			\
+	DEBUG_HOOK_READ(spacenum, 8, address);												\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].readhandlers[entry].offset) & active_address_space[spacenum].readhandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMREADEND(*(UINT64 *)&bank_ptr[entry][address]);								\
 																						\
 	/* fall back to the handler */														\
@@ -2385,11 +2467,11 @@ void name(offs_t address, UINT8 data)													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~0);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_WRITE, address, 1, data);		\
+	DEBUG_HOOK_WRITE(spacenum, 1, address, data);										\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].writehandlers[entry].offset) & active_address_space[spacenum].writehandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMWRITEEND(bank_ptr[entry][address] = data);									\
 																						\
 	/* fall back to the handler */														\
@@ -2403,11 +2485,11 @@ void name(offs_t address, UINT8 data)													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~0);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_WRITE, address, 1, data);		\
+	DEBUG_HOOK_WRITE(spacenum, 1, address, data);										\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].writehandlers[entry].offset) & active_address_space[spacenum].writehandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMWRITEEND(bank_ptr[entry][xormacro(address)] = data);							\
 																						\
 	/* fall back to the handler */														\
@@ -2437,11 +2519,11 @@ void name(offs_t address, UINT16 data)													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~1);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_WRITE, address, 2, data);		\
+	DEBUG_HOOK_WRITE(spacenum, 2, address, data);										\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].writehandlers[entry].offset) & active_address_space[spacenum].writehandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMWRITEEND(*(UINT16 *)&bank_ptr[entry][address] = data);						\
 																						\
 	/* fall back to the handler */														\
@@ -2455,11 +2537,11 @@ void name(offs_t address, UINT16 data)													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~1);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_WRITE, address, 2, data);		\
+	DEBUG_HOOK_WRITE(spacenum, 2, address, data);										\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].writehandlers[entry].offset) & active_address_space[spacenum].writehandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMWRITEEND(*(UINT16 *)&bank_ptr[entry][xormacro(address)] = data);				\
 																						\
 	/* fall back to the handler */														\
@@ -2487,11 +2569,11 @@ void name(offs_t address, UINT32 data)													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~3);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_WRITE, address, 4, data);		\
+	DEBUG_HOOK_WRITE(spacenum, 4, address, data);										\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].writehandlers[entry].offset) & active_address_space[spacenum].writehandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMWRITEEND(*(UINT32 *)&bank_ptr[entry][address] = data);						\
 																						\
 	/* fall back to the handler */														\
@@ -2505,11 +2587,11 @@ void name(offs_t address, UINT32 data)													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~3);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_WRITE, address, 4, data);		\
+	DEBUG_HOOK_WRITE(spacenum, 4, address, data);										\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].writehandlers[entry].offset) & active_address_space[spacenum].writehandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMWRITEEND(*(UINT32 *)&bank_ptr[entry][xormacro(address)] = data);				\
 																						\
 	/* fall back to the handler */														\
@@ -2535,11 +2617,11 @@ void name(offs_t address, UINT64 data)													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~7);						\
-	CHECK_WATCHPOINTS(cur_context, spacenum, WATCHPOINT_WRITE, address, 8, data);		\
+	DEBUG_HOOK_WRITE(spacenum, 8, address, data);										\
 																						\
 	/* handle banks inline */															\
 	address = (address - active_address_space[spacenum].writehandlers[entry].offset) & active_address_space[spacenum].writehandlers[entry].mask;\
-	if (entry <= STATIC_RAM)															\
+	if (entry < STATIC_RAM)																\
 		MEMWRITEEND(*(UINT64 *)&bank_ptr[entry][address] = data);						\
 																						\
 	/* fall back to the handler */														\
@@ -2896,16 +2978,6 @@ static WRITE64_HANDLER( mwh64_nop )        {  }
 
 
 /*-------------------------------------------------
-    other static handlers
--------------------------------------------------*/
-
-static WRITE8_HANDLER( mwh8_ramrom )   { bank_ptr[STATIC_RAM][offset] = bank_ptr[STATIC_RAM][offset + (opcode_base - opcode_arg_base)] = data; }
-static WRITE16_HANDLER( mwh16_ramrom ) { COMBINE_DATA(&bank_ptr[STATIC_RAM][offset*2]); COMBINE_DATA(&bank_ptr[0][offset*2 + (opcode_base - opcode_arg_base)]); }
-static WRITE32_HANDLER( mwh32_ramrom ) { COMBINE_DATA(&bank_ptr[STATIC_RAM][offset*4]); COMBINE_DATA(&bank_ptr[0][offset*4 + (opcode_base - opcode_arg_base)]); }
-static WRITE64_HANDLER( mwh64_ramrom ) { COMBINE_DATA(&bank_ptr[STATIC_RAM][offset*8]); COMBINE_DATA(&bank_ptr[0][offset*8 + (opcode_base - opcode_arg_base)]); }
-
-
-/*-------------------------------------------------
     get_static_handler - returns points to static
     memory handlers
 -------------------------------------------------*/
@@ -2927,7 +2999,6 @@ static genf *get_static_handler(int databits, int readorwrite, int spacenum, int
 		{  8, STATIC_NOP,    ADDRESS_SPACE_PROGRAM, (genf *)mrh8_nop_program,   (genf *)mwh8_nop },
 		{  8, STATIC_NOP,    ADDRESS_SPACE_DATA,    (genf *)mrh8_nop_data,      (genf *)mwh8_nop },
 		{  8, STATIC_NOP,    ADDRESS_SPACE_IO,      (genf *)mrh8_nop_io,        (genf *)mwh8_nop },
-		{  8, STATIC_RAMROM, ADDRESS_SPACE_PROGRAM, NULL,                       (genf *)mwh8_ramrom },
 
 		{ 16, STATIC_UNMAP,  ADDRESS_SPACE_PROGRAM, (genf *)mrh16_unmap_program,(genf *)mwh16_unmap_program },
 		{ 16, STATIC_UNMAP,  ADDRESS_SPACE_DATA,    (genf *)mrh16_unmap_data,   (genf *)mwh16_unmap_data },
@@ -2935,7 +3006,6 @@ static genf *get_static_handler(int databits, int readorwrite, int spacenum, int
 		{ 16, STATIC_NOP,    ADDRESS_SPACE_PROGRAM, (genf *)mrh16_nop_program,  (genf *)mwh16_nop },
 		{ 16, STATIC_NOP,    ADDRESS_SPACE_DATA,    (genf *)mrh16_nop_data,     (genf *)mwh16_nop },
 		{ 16, STATIC_NOP,    ADDRESS_SPACE_IO,      (genf *)mrh16_nop_io,       (genf *)mwh16_nop },
-		{ 16, STATIC_RAMROM, ADDRESS_SPACE_PROGRAM, NULL,                       (genf *)mwh16_ramrom },
 
 		{ 32, STATIC_UNMAP,  ADDRESS_SPACE_PROGRAM, (genf *)mrh32_unmap_program,(genf *)mwh32_unmap_program },
 		{ 32, STATIC_UNMAP,  ADDRESS_SPACE_DATA,    (genf *)mrh32_unmap_data,   (genf *)mwh32_unmap_data },
@@ -2943,7 +3013,6 @@ static genf *get_static_handler(int databits, int readorwrite, int spacenum, int
 		{ 32, STATIC_NOP,    ADDRESS_SPACE_PROGRAM, (genf *)mrh32_nop_program,  (genf *)mwh32_nop },
 		{ 32, STATIC_NOP,    ADDRESS_SPACE_DATA,    (genf *)mrh32_nop_data,     (genf *)mwh32_nop },
 		{ 32, STATIC_NOP,    ADDRESS_SPACE_IO,      (genf *)mrh32_nop_io,       (genf *)mwh32_nop },
-		{ 32, STATIC_RAMROM, ADDRESS_SPACE_PROGRAM, NULL,                       (genf *)mwh32_ramrom },
 
 		{ 64, STATIC_UNMAP,  ADDRESS_SPACE_PROGRAM, (genf *)mrh64_unmap_program,(genf *)mwh64_unmap_program },
 		{ 64, STATIC_UNMAP,  ADDRESS_SPACE_DATA,    (genf *)mrh64_unmap_data,   (genf *)mwh64_unmap_data },
@@ -2951,7 +3020,6 @@ static genf *get_static_handler(int databits, int readorwrite, int spacenum, int
 		{ 64, STATIC_NOP,    ADDRESS_SPACE_PROGRAM, (genf *)mrh64_nop_program,  (genf *)mwh64_nop },
 		{ 64, STATIC_NOP,    ADDRESS_SPACE_DATA,    (genf *)mrh64_nop_data,     (genf *)mwh64_nop },
 		{ 64, STATIC_NOP,    ADDRESS_SPACE_IO,      (genf *)mrh64_nop_io,       (genf *)mwh64_nop },
-		{ 64, STATIC_RAMROM, ADDRESS_SPACE_PROGRAM, NULL,                       (genf *)mwh64_ramrom }
 	};
 	int tablenum;
 
@@ -2988,8 +3056,8 @@ static void dump_map(FILE *file, const addrspace_data *space, const table_data *
 		"bank 52",		"bank 53",		"bank 54",		"bank 55",
 		"bank 56",		"bank 57",		"bank 58",		"bank 59",
 		"bank 60",		"bank 61",		"bank 62",		"bank 63",
-		"bank 64",		"bank 65",		"bank 66",		"RAM",
-		"ROM",			"RAMROM",		"nop",			"unmapped"
+		"bank 64",		"bank 65",		"bank 66",		"bank 67",
+		"RAM",			"ROM",			"nop",			"unmapped"
 	};
 
 	int l1count = 1 << LEVEL1_BITS;

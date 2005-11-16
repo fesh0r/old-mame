@@ -2482,7 +2482,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( sci )
 	PORT_START /* DSW A */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x01, "Cockpit" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unused ) ) /* Manual states "MUST REMAIN OFF" */
@@ -2549,7 +2549,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( sciu )
 	PORT_START /* DSW A */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x01, "Cockpit" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unused ) ) /* Manual states "MUST REMAIN OFF" */
@@ -2616,7 +2616,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( nightstr )
 	PORT_START /* DSW A */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x01, "Cockpit" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unused ) ) /* Shown only as "OFF" in the manual */
@@ -2684,7 +2684,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( aquajack )
 	PORT_START /* DSW A */
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x80, "Cockpit" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
@@ -2754,7 +2754,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( aquajckj )
 	PORT_START /* DSW A */
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x80, "Cockpit" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
@@ -3033,7 +3033,7 @@ INPUT_PORTS_END
                        GFX DECODING
 ***********************************************************/
 
-static gfx_layout tile16x8_layout =
+static const gfx_layout tile16x8_layout =
 {
 	16,8,	/* 16*8 sprites */
 	RGN_FRAC(1,1),
@@ -3044,7 +3044,7 @@ static gfx_layout tile16x8_layout =
 	64*8	/* every sprite takes 64 consecutive bytes */
 };
 
-static gfx_layout tile16x16_layout =
+static const gfx_layout tile16x16_layout =
 {
 	16,16,	/* 16*16 sprites */
 	RGN_FRAC(1,1),
@@ -3056,7 +3056,7 @@ static gfx_layout tile16x16_layout =
 	64*16	/* every sprite takes 128 consecutive bytes */
 };
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	RGN_FRAC(1,1),
@@ -3067,7 +3067,7 @@ static gfx_layout charlayout =
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
 
-static gfx_layout dblaxle_charlayout =
+static const gfx_layout dblaxle_charlayout =
 {
 	16,16,    /* 16*16 characters */
 	RGN_FRAC(1,1),
@@ -3078,7 +3078,7 @@ static gfx_layout dblaxle_charlayout =
 	128*8     /* every sprite takes 128 consecutive bytes */
 };
 
-static gfx_decode taitoz_gfxdecodeinfo[] =
+static const gfx_decode taitoz_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0x0, &tile16x8_layout,  0, 256 },	/* sprite parts */
 	{ REGION_GFX1, 0x0, &charlayout,  0, 256 },		/* sprites & playfield */
@@ -3088,7 +3088,7 @@ static gfx_decode taitoz_gfxdecodeinfo[] =
 /* taitoic.c TC0100SCN routines expect scr stuff to be in second gfx
    slot, so 2nd batch of obj must be placed third */
 
-static gfx_decode chasehq_gfxdecodeinfo[] =
+static const gfx_decode chasehq_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0x0, &tile16x16_layout,  0, 256 },	/* sprite parts */
 	{ REGION_GFX1, 0x0, &charlayout,  0, 256 },		/* sprites & playfield */
@@ -3096,7 +3096,7 @@ static gfx_decode chasehq_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static gfx_decode dblaxle_gfxdecodeinfo[] =
+static const gfx_decode dblaxle_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0x0, &tile16x8_layout,  0, 256 },	/* sprite parts */
 	{ REGION_GFX1, 0x0, &dblaxle_charlayout,  0, 256 },	/* sprites & playfield */

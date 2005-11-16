@@ -122,7 +122,7 @@ e000-e001   YM2203
 #include "sound/2203intf.h"
 #include "sound/upd7759.h"
 
-extern unsigned char* banked_area;
+extern UINT8* banked_area;
 
 /* from vidhrdw/combasc.c */
 PALETTE_INIT( combasc );
@@ -590,7 +590,7 @@ INPUT_PORTS_END
 
 
 
-static gfx_layout gfxlayout =
+static const gfx_layout gfxlayout =
 {
 	8,8,
 	0x4000,
@@ -601,7 +601,7 @@ static gfx_layout gfxlayout =
 	32*8
 };
 
-static gfx_layout tile_layout =
+static const gfx_layout tile_layout =
 {
 	8,8,
 	0x2000, /* number of tiles */
@@ -612,7 +612,7 @@ static gfx_layout tile_layout =
 	8*8
 };
 
-static gfx_layout sprite_layout =
+static const gfx_layout sprite_layout =
 {
 	16,16,
 	0x800,	/* number of sprites */
@@ -629,14 +629,14 @@ static gfx_layout sprite_layout =
 	8*8*4
 };
 
-static gfx_decode combasc_gfxdecodeinfo[] =
+static const gfx_decode combasc_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &gfxlayout, 0, 8*16 },
 	{ REGION_GFX2, 0x00000, &gfxlayout, 0, 8*16 },
 	{ -1 }
 };
 
-static gfx_decode combascb_gfxdecodeinfo[] =
+static const gfx_decode combascb_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &tile_layout,   0, 8*16 },
 	{ REGION_GFX1, 0x40000, &tile_layout,   0, 8*16 },

@@ -174,7 +174,7 @@ INPUT_PORTS_END
 
 /* Graphics Layouts */
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,		/* 8*8 characters */
 	1024,
@@ -185,7 +185,7 @@ static gfx_layout charlayout =
 	128
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
   16,16,	/* 16*16 tiles */
   0x4000,
@@ -203,7 +203,7 @@ static gfx_layout spritelayout =
   1024
 };
 
-static gfx_layout bg_layout =
+static const gfx_layout bg_layout =
 {
 	16,16,
 	0x2000,
@@ -220,7 +220,7 @@ static gfx_layout bg_layout =
 	512
 };
 
-static gfx_layout fg_layout =
+static const gfx_layout fg_layout =
 {
 	16,16,
 	0x2000,
@@ -239,7 +239,7 @@ static gfx_layout fg_layout =
 
 /* Graphics Decode Information */
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   1280, 16 },
 	{ REGION_GFX2, 0, &bg_layout,    2048, 32 }, // Really 0
@@ -355,7 +355,7 @@ ROM_START( dbldyn )
 	ROM_LOAD16_BYTE("5.8p",  0x0e0000, 0x10000, CRC(ea56d719) SHA1(6cade731316c280ef4e809aa700fdbaaabff41d0) )
 	ROM_LOAD16_BYTE("6.7p",  0x0e0001, 0x10000, CRC(9ffa0ecd) SHA1(a22c46312ab247cd824dadf840cf1f2b0305bb29) )
 
-	ROM_REGION( 0x20000*2, REGION_CPU3, 0 ) /* sound Z80 */
+	ROM_REGION( 0x20000, REGION_CPU3, 0 ) /* sound Z80 */
 	ROM_LOAD( "8.8w",         0x000000, 0x08000, CRC(f4066081) SHA1(0e5246f4f5513be11e6ed3ea26aada7e0a17a448) )
 	ROM_CONTINUE(             0x010000, 0x08000 )
 	ROM_COPY( REGION_CPU3, 0, 0x018000, 0x08000 )

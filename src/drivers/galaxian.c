@@ -3451,7 +3451,7 @@ INPUT_PORTS_START( luctoday )
    PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
    PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
    PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-   PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SERVICE1 )//Input connected, but causes a very weird bug with the credit counter, is it the service mode switch?
+   PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_NAME("Bill 1 (10 credits)")
 
    PORT_START_TAG("IN1")
    PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
@@ -3472,7 +3472,7 @@ INPUT_PORTS_START( luctoday )
 INPUT_PORTS_END
 
 
-static gfx_layout galaxian_charlayout =
+static const gfx_layout galaxian_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -3482,7 +3482,7 @@ static gfx_layout galaxian_charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8
 };
-static gfx_layout galaxian_spritelayout =
+static const gfx_layout galaxian_spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -3495,7 +3495,7 @@ static gfx_layout galaxian_spritelayout =
 	32*8
 };
 
-static gfx_layout pacmanbl_charlayout =
+static const gfx_layout pacmanbl_charlayout =
 {
 	8,8,
 	256,
@@ -3505,7 +3505,7 @@ static gfx_layout pacmanbl_charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8
 };
-static gfx_layout pacmanbl_spritelayout =
+static const gfx_layout pacmanbl_spritelayout =
 {
 	16,16,
 	64,
@@ -3518,7 +3518,7 @@ static gfx_layout pacmanbl_spritelayout =
 	32*8
 };
 
-static gfx_layout bagmanmc_charlayout =
+static const gfx_layout bagmanmc_charlayout =
 {
 	8,8,
 	512,
@@ -3529,7 +3529,7 @@ static gfx_layout bagmanmc_charlayout =
 	8*8
 };
 
-static gfx_layout _4in1_charlayout =
+static const gfx_layout _4in1_charlayout =
 {
 	8,8,
 	1024,
@@ -3539,7 +3539,7 @@ static gfx_layout _4in1_charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8
 };
-static gfx_layout _4in1_spritelayout =
+static const gfx_layout _4in1_spritelayout =
 {
 	16,16,
 	256,
@@ -3552,7 +3552,7 @@ static gfx_layout _4in1_spritelayout =
 	32*8
 };
 
-static gfx_layout rockclim_charlayout =
+static const gfx_layout rockclim_charlayout =
 {
 	8,8,
 	256,
@@ -3563,7 +3563,7 @@ static gfx_layout rockclim_charlayout =
 	8*8*2
 };
 
-static gfx_decode rockclim_gfxdecodeinfo[] =
+static const gfx_decode rockclim_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &galaxian_charlayout,   32, 8 },
 	{ REGION_GFX1, 0x0000, &galaxian_spritelayout, 32, 8 },
@@ -3589,21 +3589,21 @@ gfx_decode gmgalax_gfxdecodeinfo[] =
 };
 
 /* separate character and sprite ROMs */
-static gfx_decode pacmanbl_gfxdecodeinfo[] =
+static const gfx_decode pacmanbl_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &pacmanbl_charlayout,   0, 8 },
 	{ REGION_GFX1, 0x1000, &pacmanbl_spritelayout, 0, 8 },
 	{ -1 } /* end of array */
 };
 
-static gfx_decode bagmanmc_gfxdecodeinfo[] =
+static const gfx_decode bagmanmc_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &bagmanmc_charlayout,    0, 8 },
 	{ REGION_GFX1, 0x2000, &pacmanbl_spritelayout, 0, 8 },
 	{ -1 } /* end of array */
 };
 
-static gfx_decode _4in1_gfxdecodeinfo[] =
+static const gfx_decode _4in1_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &_4in1_charlayout,      0, 8 },
 	{ REGION_GFX1, 0x4000, &_4in1_spritelayout,    0, 8 },
@@ -5373,7 +5373,7 @@ ROM_START( skybase )
 ROM_END
 
 ROM_START( moonqsr )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* 64k for code + 64k for decrypted opcodes */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
 	ROM_LOAD( "mq1",          0x0000, 0x0800, CRC(132c13ec) SHA1(d95166b025442f184e44a70312fb3b4f6366f324) )
 	ROM_LOAD( "mq2",          0x0800, 0x0800, CRC(c8eb74f1) SHA1(4efa85c40349852da47a0f725ae06873efe4ce1c) )
 	ROM_LOAD( "mq3",          0x1000, 0x0800, CRC(33965a89) SHA1(92912cea76a472d9b709c664d9818844a07fcc32) )
@@ -6001,14 +6001,12 @@ ROM_START( luctoday )
    ROM_LOAD( "ltchar1.bin", 0x0800, 0x0800, CRC(b5ba9946) SHA1(7222cbe8c41ca74b214f4dd5439bf69d90f4644e))
 
    ROM_REGION( 0x0020, REGION_PROMS, 0 )//This may not be the correct prom
-   ROM_LOAD( "luctoday.bpr", 0x0000, 0x0020, BAD_DUMP CRC(d5546262) SHA1(9b8e043af9d937616954fdfb80f6094cf85e5a5b))
+   ROM_LOAD( "74s288.ch", 0x0000, 0x0020, BAD_DUMP CRC(24652bc4) SHA1(d89575f3749c75dc963317fe451ffeffd9856e4d))
 ROM_END
 
-/* is it bad, or protected? it just resets.. code is very close to luctoday, maybe its just a bad copy of it with
-   modified title? */
 ROM_START( chewing )
    ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64k for code */
-   ROM_LOAD( "1.bin", 0x0000, 0x1000, CRC(404385a9) SHA1(4da4da3c50105d310307ce49ec0a887ed833bf8e) )
+   ROM_LOAD( "1.bin", 0x0000, 0x1000, CRC(7470b347) SHA1(315d2631b50a6e469b9538318d95452e8d2e1f69) )
    ROM_LOAD( "7l.bin", 0x2000, 0x0800, CRC(78ebed36) SHA1(e80185737c8ac448901cf0e60ca50d967c323b34) )
 
    ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
@@ -6106,4 +6104,4 @@ GAME( 1986, racknrol, 0,        racknrol, racknrol, 0,	      ROT0,   "Status (Sh
 GAME( 1986, hexpool,  racknrol, racknrol, racknrol, 0,	      ROT90,  "Shinkai", "Hex Pool", GAME_SUPPORTS_SAVE )
 GAME( 1985, trvchlng, 0,        racknrol, trvchlng, 0,	      ROT90,  "Joyland (Senko License)", "Trivia Challenge", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
 GAME( 1980, luctoday, 0,        galaxian, luctoday, 0,        ROT270, "Sigma", "Lucky Today",GAME_WRONG_COLORS | GAME_SUPPORTS_SAVE )
-GAME( 19??, chewing,  0,        galaxian, luctoday, 0,        ROT90,  "unknown", "Chewing Gum",GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+GAME( 19??, chewing,  0,        galaxian, luctoday, 0,        ROT90,  "unknown", "Chewing Gum", GAME_SUPPORTS_SAVE )

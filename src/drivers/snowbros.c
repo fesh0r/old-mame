@@ -952,7 +952,7 @@ INPUT_PORTS_END
 
 /* SnowBros */
 
-static gfx_layout tilelayout =
+static const gfx_layout tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -963,7 +963,7 @@ static gfx_layout tilelayout =
 	32*32
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,  0, 16 },
 	{ -1 } /* end of array */
@@ -971,7 +971,7 @@ static gfx_decode gfxdecodeinfo[] =
 
 /* Winter Bobble */
 
-static gfx_layout tilelayout_wb =
+static const gfx_layout tilelayout_wb =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -982,7 +982,7 @@ static gfx_layout tilelayout_wb =
 	16*64
 };
 
-static gfx_decode gfxdecodeinfo_wb[] =
+static const gfx_decode gfxdecodeinfo_wb[] =
 {
 	{ REGION_GFX1, 0, &tilelayout_wb,  0, 16 },
 	{ -1 }
@@ -990,7 +990,7 @@ static gfx_decode gfxdecodeinfo_wb[] =
 
 /* SemiCom */
 
-static gfx_layout hyperpac_tilelayout =
+static const gfx_layout hyperpac_tilelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1004,7 +1004,7 @@ static gfx_layout hyperpac_tilelayout =
 };
 
 
-static gfx_layout sb3_tilebglayout =
+static const gfx_layout sb3_tilebglayout =
 {
  	16,16,
  	RGN_FRAC(1,1),
@@ -1018,14 +1018,14 @@ static gfx_layout sb3_tilebglayout =
 };
 
 
-static gfx_decode sb3_gfxdecodeinfo[] =
+static const gfx_decode sb3_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,  0, 16 },
 	{ REGION_GFX2, 0, &sb3_tilebglayout,  0, 2 },
 	{ -1 } /* end of array */
 };
 
-static gfx_decode hyperpac_gfxdecodeinfo[] =
+static const gfx_decode hyperpac_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &hyperpac_tilelayout,  0, 16 },
 	{ -1 } /* end of array */
@@ -1133,7 +1133,7 @@ static MACHINE_DRIVER_START( semicom )
 	MDRV_SOUND_ROUTE(0, "mono", 0.10)
 	MDRV_SOUND_ROUTE(1, "mono", 0.10)
 
-	MDRV_SOUND_ADD(OKIM6295, 7575)
+	MDRV_SOUND_ADD_TAG("oki", OKIM6295, 7575)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -1170,6 +1170,15 @@ static MACHINE_DRIVER_START( finalttr )
 	MDRV_CPU_REPLACE("sound", Z80, 3578545)
 
 	MDRV_MACHINE_INIT ( finalttr )
+
+	MDRV_SOUND_REPLACE("3812", YM2151, 4000000)
+	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ROUTE(0, "mono", 0.20)
+	MDRV_SOUND_ROUTE(1, "mono", 0.20)
+
+	MDRV_SOUND_REPLACE("oki", OKIM6295, 7575)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 MACHINE_DRIVER_END
 
 
@@ -1441,7 +1450,7 @@ ROM_START( 3in1semi )
 ROM_END
 
 ROM_START( cookbib2 )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "cookbib2.02",  0x00001, 0x40000, CRC(b2909460) SHA1(2438638af870cfc105631d2b5e5a27a64ab5394d) )
 	ROM_LOAD16_BYTE( "cookbib2.01",  0x00000, 0x40000, CRC(65aafde2) SHA1(01f9f261527c35182f0445d641d987aa86ad750f) )
 
@@ -1466,7 +1475,7 @@ ROM_START( cookbib2 )
 ROM_END
 
 ROM_START( cookbib3 )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "u52.bin",  0x00001, 0x40000, CRC(65134893) SHA1(b1f26794d1a85893aedf55adb2195ad244f90132) )
 	ROM_LOAD16_BYTE( "u74.bin",  0x00000, 0x40000, CRC(c4ab8435) SHA1(7f97d3deafb3eb5412a44308ef20d3317405e94c) )
 
@@ -1539,7 +1548,7 @@ year : 1993.08.24
 */
 
 ROM_START( finalttr )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "10.7o",    0x00000, 0x20000, CRC(eecc83e5) SHA1(48088a2fae8852a73a325a9659c24b241515eac3) )
 	ROM_LOAD16_BYTE( "9.5o",     0x00001, 0x20000, CRC(58d3640e) SHA1(361bc64174a6c7b15a13e0d1f048c7ea270182ca) )
 

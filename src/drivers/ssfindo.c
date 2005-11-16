@@ -1,5 +1,6 @@
 /************************************************************************
  See See Find Out [Icarus 1999]
+ Pang Pang Car [Icarus 1999]
 
  driver by
   Tomasz Slanina  analog[at]op.pl
@@ -7,13 +8,14 @@
 TODO:
  - move PS7500 stuff to machine/ps7500.c
  - 24c01 eeprom (IOLINES)
- - fix strange gfx freezes in game (GAME_NOT WORKING)
- - get rid of "Exceeded pending input line event queue on CPU 0!"
  - timing
  - unknown reads/writes
  - sound
 
-**************************************************************************
+*************************************************************************************************************
+
+See See Find Out
+Icarus, 1999
 
 PCB Layout
 ----------
@@ -56,6 +58,63 @@ Notes:
                  E: ST M27C512 64K x8 EPROM (DIP28)
            1008S-1: HWASS 1008S-1 Wavetable Audio Samples chip, 1M x8 MaskROM (SOP32)
          DU2, DU3,: Samsung KM29W32000AT 32MBit NAND Flash 3.3V Serial EEPROM (TSOP44)
+         DU5, DU6   These ROMs are mounted on a small plug-in daughterboard. There are additional
+                    mounting pads for 4 more of these ROMs but they're not populated.
+
+
+**************************************************************************************************************
+
+Pong Pong Car
+Icarus, 1999
+
+This game runs on hardware that is similar to that used on 'See See Find Out'
+The game is a rip-off of RallyX
+
+PCB Layout
+----------
+
+|--------------------------------------|
+|    KM416C1204                        |
+|    KM416C1204    U24  U25  U26*  U27*|
+|  DA1311A                             |
+|  DA1311A        |---------|54MHz     |
+|  4558           |CL-PS7500| LED      |
+|J                |         | |--------|
+|A                |         | |DU2  DU3|
+|M                |         | |        |
+|M EL2386       @ |---------| |DU5  DU6|
+|A       &                    |--------|
+|                                      |
+|  7660             |------|           |
+|                   |PRIME |14.31818MHz|
+|                   |------|           |
+| NASN9289  XILINX                     |
+| QS1000    XCS10    MAX232    DIPSW(8)|
+|  24MHz     #   7705                  |
+|--------------------|DB9|-------------|
+                     |---|
+Notes:
+      Chips:
+         QS1000: QDSP QS1000 AdMOS 9638R, Wavetable Audio chip, clock input of 24.000MHz (QFP100)
+                 see http://www.hwass.co.kr/product.htm for more info on QS100x chips.
+          PRIME: LGS Prime 3C 9849R, clock input of 14.31818MHz (QFP100)
+   XILINX XCS10: Xilinx Spartan XCS10 FPGA (QFP144)
+      CL-PS7500: Cirrus Logic CL-PS7500FE-56QC-A 84877-951BD ARM 9843J
+                 clock input of 54.000MHz, ARM710C; ARM7-core CPU (QFP240)
+     KM416C1204: Samsung KM416C1204CJ-5 2M x8 DRAM (SOJ42)
+           7705: Reset/Watchdog IC (SOIC8)
+           7660: DC-DC Voltage Convertor (SOIC8)
+         EL2386: Elantec Semiconductor 250MHz Triple Current Feedback Op Amp with Disable (SOIC16)
+              *: Unpopulated DIP32 sockets
+              &: Unpopulated location for QFP100 IC
+              #: Unpopulated location for SOJ42 RAM
+              @: Unpopulated location for OSC1
+
+      ROMs:
+          U24, U25: AMD 29F040B 512k x8 FlashROM (DIP32)
+          NASN9289: Re-badged SOP32 ROM. Should be compatible with existing QS100x Wavetable Audio Sample ROMs,
+                    Dumped as 1M x8 SOP32 MaskROM
+         DU2, DU3,: Samsung KM29N32000TS 32MBit NAND Flash 3.3V Serial EEPROM (TSOP44)
          DU5, DU6   These ROMs are mounted on a small plug-in daughterboard. There are additional
                     mounting pads for 4 more of these ROMs but they're not populated.
 
@@ -154,10 +213,14 @@ enum
 UINT32 PS7500_IO[MAXIO];
 UINT32 PS7500_FIFO[256];
 static UINT32 *vram;
-static UINT32 flashAdr,flashOffset,adrLatch;
+static UINT32 flashAdr,flashOffset,adrLatch,flashType,flashN;
 
 static void PS7500_startTimer0(void);
 static void PS7500_startTimer1(void);
+
+static void *PS7500timer0;
+static void *PS7500timer1;
+
 
 VIDEO_UPDATE(ssfindo)
 {
@@ -191,35 +254,41 @@ static WRITE32_HANDLER(FIFO_w)
 		PS7500_FIFO[1]++; //autoinc
 	}
 }
-
-static void PS7500_Timer0(int val)
+static void PS7500_Timer0_callback(int val)
 {
 	PS7500_IO[IRQSTA]|=0x20;
 	if(PS7500_IO[IRQMSKA]&0x20)
 	{
 		cpunum_set_input_line(0, ARM7_IRQ_LINE, PULSE_LINE);
 	}
-	PS7500_startTimer0();
 }
 
 static void PS7500_startTimer0(void)
 {
-	timer_set(TIME_IN_USEC( ((PS7500_IO[T0low]&0xff)|((PS7500_IO[T0high]&0xff)<<8))>>1), 0, PS7500_Timer0);
+	int val=((PS7500_IO[T0low]&0xff)|((PS7500_IO[T0high]&0xff)<<8))>>1;
+
+	if(val==0)
+		timer_adjust(PS7500timer0, TIME_NEVER, 0, 0);
+	else
+		timer_adjust(PS7500timer0, TIME_IN_USEC(val ), 0, TIME_IN_USEC(val ));
 }
 
-static void PS7500_Timer1(int val)
+static void PS7500_Timer1_callback(int val)
 {
 	PS7500_IO[IRQSTA]|=0x40;
 	if(PS7500_IO[IRQMSKA]&0x40)
 	{
 		cpunum_set_input_line(0, ARM7_IRQ_LINE, PULSE_LINE);
 	}
-	PS7500_startTimer1();
 }
 
 static void PS7500_startTimer1(void)
 {
-	timer_set(TIME_IN_USEC( ((PS7500_IO[T1low]&0xff)|((PS7500_IO[T1high]&0xff)<<8))>>1), 0, PS7500_Timer1);
+	int val=((PS7500_IO[T1low]&0xff)|((PS7500_IO[T1high]&0xff)<<8))>>1;
+	if(val==0)
+		timer_adjust(PS7500timer1, TIME_NEVER, 0, 0);
+	else
+		timer_adjust(PS7500timer1, TIME_IN_USEC(val ), 0, TIME_IN_USEC(val ));
 }
 
 static INTERRUPT_GEN( ssfindo_interrupt )
@@ -235,20 +304,29 @@ static void PS7500_reset(void)
 {
 		PS7500_IO[IOCR]			=	0x3f;
 		PS7500_IO[VIDCR]		=	0;
-}
 
+		timer_adjust( PS7500timer0, TIME_NEVER, 0, 0 );
+		timer_adjust( PS7500timer1, TIME_NEVER, 0, 0 );
+}
 
 static READ32_HANDLER(PS7500_IO_r)
 {
 
 	switch(offset)
 	{
+		case MSECR:
+			return mame_rand();
+		break;
 
 		case IOLINES: //TODO: eeprom  24c01
 #if 0
 		printf("IOLINESR %i @%x\n",offset,activecpu_get_pc());
 #endif
-		return rand();
+
+		if(flashType==1)
+			return 0;
+		else
+			return mame_rand();
 
 		case IRQSTA:
 			return (PS7500_IO[offset]&(~2))|0x80;
@@ -270,12 +348,13 @@ static READ32_HANDLER(PS7500_IO_r)
 		case VIDEND:
 		case VIDSTART:
 		case VIDINITA: //TODO: bits 29 ("equal") and 30 (last bit)  p.105
+
 			return PS7500_IO[offset];
 
-		default:
-			printf("ior %i @%x\n",offset,activecpu_get_pc());
+		//default:
+			//printf("ior %i @%x\n",offset,activecpu_get_pc());
 	}
-	return PS7500_IO[offset];
+	return mame_rand();//PS7500_IO[offset];
 }
 
 static WRITE32_HANDLER(PS7500_IO_w)
@@ -288,11 +367,16 @@ static WRITE32_HANDLER(PS7500_IO_w)
 	{
 		case IOLINES: //TODO: eeprom  24c01
 			PS7500_IO[offset]=data;
-
-			if((data&0xf8) == 0xe8 )
+				if(data&0xc0)
 					adrLatch=0;
+
+			if(activecpu_get_pc() == 0xbac0 && flashType == 1)
+			{
+				flashN=data&1;
+			}
+
 #if 0
-				printf("IOLINESW %i = %x  @%x\n",offset,data,activecpu_get_pc());
+				logerror("IOLINESW %i = %x  @%x\n",offset,data,activecpu_get_pc());
 #endif
 			break;
 
@@ -305,8 +389,8 @@ static WRITE32_HANDLER(PS7500_IO_w)
 		break;
 
 		case T1GO:
-			PS7500_startTimer1();
-		break;
+				PS7500_startTimer1();
+			break;
 
 		case T0GO:
 			PS7500_startTimer0();
@@ -331,21 +415,30 @@ static WRITE32_HANDLER(PS7500_IO_w)
 		case T0high:
 		case VIDCR:
 		case VIDINITA: //TODO: bit 30 (last bit) p.105
-			COMBINE_DATA(&PS7500_IO[offset]);
+					COMBINE_DATA(&PS7500_IO[offset]);
 		break;
 
-		default:
-			printf("iow %i = %x\n",offset,data);
 	}
 }
 
 static READ32_HANDLER(io_r)
 {
 	UINT16 *FLASH = (UINT16 *)memory_region(REGION_USER2); //16 bit - WORD access
+
 	int adr=flashAdr*0x200+(flashOffset);
 
-	if(PS7500_IO[IOLINES]&1) //bit 0 of IOLINES  = flash select ( 5/6 or 3/2 )
-		adr+=0x400000;
+
+	switch(flashType)
+	{
+		case 0:
+			if(PS7500_IO[IOLINES]&1) //bit 0 of IOLINES  = flash select ( 5/6 or 3/2 )
+				adr+=0x400000;
+		break;
+
+		case 1:
+			adr+=0x400000*flashN;
+		break;
+	}
 
 	if(adr<0x400000*2)
 	{
@@ -361,7 +454,7 @@ static WRITE32_HANDLER(io_w)
 	COMBINE_DATA(&temp);
 
 #if 0
-	printf("[3242000W] = %x @%x [latch=%x]\n",data,activecpu_get_pc(),adrLatch);
+	logerror("[io_w] = %x @%x [latch=%x]\n",data,activecpu_get_pc(),adrLatch);
 #endif
 
 	if(adrLatch==1)
@@ -391,6 +484,11 @@ static READ32_HANDLER(SIMPLEIO_r)
 	return mame_rand()&1;
 }
 
+static READ32_HANDLER(random_r)
+{
+	return mame_rand();
+}
+
 static ADDRESS_MAP_START( ssfindo_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x000fffff) AM_ROM AM_REGION(REGION_USER1, 0)
 	AM_RANGE(0x03200000, 0x032001ff) AM_READWRITE(PS7500_IO_r,PS7500_IO_w)
@@ -409,6 +507,22 @@ static ADDRESS_MAP_START( ssfindo_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x10000000, 0x11ffffff) AM_RAM AM_BASE (&vram)
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( ppcar_map, ADDRESS_SPACE_PROGRAM, 32 )
+	AM_RANGE(0x00000000, 0x000fffff) AM_ROM AM_REGION(REGION_USER1, 0)
+	AM_RANGE(0x03200000, 0x032001ff) AM_READWRITE(PS7500_IO_r,PS7500_IO_w)
+	AM_RANGE(0x03012b00, 0x03012bff) AM_READ(random_r) AM_WRITENOP
+	AM_RANGE(0x03012e60, 0x03012e67) AM_WRITENOP
+	AM_RANGE(0x03012ff8	,0x03012ffb) AM_WRITENOP AM_READ(input_port_1_dword_r)
+	AM_RANGE(0x032c0000, 0x032c0003) AM_WRITENOP AM_READ(input_port_2_dword_r)
+	AM_RANGE(0x03340000, 0x03340007) AM_WRITENOP
+	AM_RANGE(0x03341000, 0x0334101f) AM_WRITENOP
+	AM_RANGE(0x033c0000, 0x033c0003) AM_READ(io_r) AM_WRITE(io_w)
+	AM_RANGE(0x03400000, 0x03400003) AM_WRITE(FIFO_w)
+	AM_RANGE(0x08000000, 0x08ffffff) AM_RAM
+	AM_RANGE(0x10000000, 0x10ffffff) AM_RAM AM_BASE (&vram)
+ADDRESS_MAP_END
+
+
 static MACHINE_INIT( ssfindo )
 {
 	PS7500_reset();
@@ -420,7 +534,6 @@ INPUT_PORTS_START( ssfindo )
 
 	PORT_START_TAG("IN 0")
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START2	)//?
-
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON1	) PORT_PLAYER(1)
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT	) PORT_8WAY PORT_PLAYER(1)
@@ -475,6 +588,25 @@ INPUT_PORTS_START( ssfindo )
 INPUT_PORTS_END
 
 
+INPUT_PORTS_START( ppcar )
+	PORT_START_TAG("PS7500")
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
+
+	PORT_START_TAG("IN 0")
+		PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_COIN1	)
+
+	PORT_START_TAG("IN 1")
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2	) PORT_PLAYER(1)
+		PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON1	) PORT_PLAYER(1)
+		PORT_BIT( 0x008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_8WAY PORT_PLAYER(1)
+		PORT_BIT( 0x010, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT	) PORT_8WAY PORT_PLAYER(1)
+		PORT_BIT( 0x020, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	) PORT_8WAY PORT_PLAYER(1)
+		PORT_BIT( 0x040, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	) PORT_8WAY PORT_PLAYER(1)
+		PORT_BIT( 0x080, IP_ACTIVE_LOW, IPT_START1	)
+
+INPUT_PORTS_END
+
+
 static MACHINE_DRIVER_START( ssfindo )
 
 	/* basic machine hardware */
@@ -496,6 +628,28 @@ static MACHINE_DRIVER_START( ssfindo )
 	MDRV_VIDEO_UPDATE(ssfindo)
 
 MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( ppcar )
+
+	/* basic machine hardware */
+	MDRV_CPU_ADD(ARM7, 54000000) // guess...
+	MDRV_CPU_PROGRAM_MAP(ppcar_map,0)
+
+	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+
+	MDRV_CPU_VBLANK_INT(ssfindo_interrupt,1)
+	MDRV_MACHINE_INIT(ssfindo)
+
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(320, 256)
+	MDRV_VISIBLE_AREA(0, 319, 0, 239)
+	MDRV_PALETTE_LENGTH(256)
+
+	MDRV_VIDEO_START(generic_bitmapped)
+	MDRV_VIDEO_UPDATE(ssfindo)
+MACHINE_DRIVER_END
+
 
 ROM_START( ssfindo )
 	ROM_REGION(0x100000, REGION_USER1, 0 ) /* ARM 32 bit code */
@@ -524,5 +678,44 @@ ROM_START( ssfindo )
 
 ROM_END
 
-GAME( 1999, ssfindo, 0,        ssfindo,  ssfindo,  0, ROT0, "Icarus", "See See Find Out", GAME_NO_SOUND|GAME_NOT_WORKING )
+ROM_START( ppcar )
+	ROM_REGION(0x100000, REGION_USER1, 0 ) /* ARM 32 bit code */
+	ROM_LOAD16_BYTE( "0.u24",	0x000000, 0x80000, CRC(1940a483) SHA1(9456361fd25bf037b53bd2d04764a33b299d96dd) )
+	ROM_LOAD16_BYTE( "1.u25",	0x000001, 0x80000, CRC(75ad8679) SHA1(392288e56350e3cc49aaca82edf26f2a9e346f21) )
+
+	ROM_REGION(0x1000000, REGION_USER2, 0 ) /* flash roms */
+	ROM_LOAD16_BYTE( "du5",		0x000000, 0x400000, CRC(d4b7374a) SHA1(54c93a4235f495ba3794aea511b19db821a8acb1) )
+	ROM_LOAD16_BYTE( "du6",		0x000001, 0x400000, CRC(e95a3a62) SHA1(2b1c889d208a749e3d7e4c75588c9c1f979e88d9) )
+
+	ROM_LOAD16_BYTE( "du3",		0x800000, 0x400000, CRC(73882474) SHA1(191b64e662542b5322160c99af8e00079420d473) )
+	ROM_LOAD16_BYTE( "du2",		0x800001, 0x400000, CRC(9250124a) SHA1(650f4b89c92fe4fb63fc89d4e08c4c4c611bebbc) )
+
+	ROM_REGION(0x10000, REGION_USER4, 0 ) /* qdsp code */
+	/* none */
+
+	ROM_REGION(0x100000, REGION_USER5, 0 ) /* HWASS 1008S-1  qdsp samples */
+	ROM_LOAD( "nasn9289.u9",	0x000000, 0x100000, CRC(9aef9545) SHA1(f23ef72c3e3667923768dfdd0c5b4951b23dcbcf) )
+
+	ROM_REGION(0x100000, REGION_USER6, 0 ) /* samples - same internal structure as qdsp samples  */
+	/* none */
+ROM_END
+
+
+static DRIVER_INIT(ssfindo)
+{
+	flashType=0;
+	PS7500timer0 = timer_alloc(PS7500_Timer0_callback);
+	PS7500timer1 = timer_alloc(PS7500_Timer1_callback);
+}
+
+static DRIVER_INIT(ppcar)
+{
+	flashType=1;
+	PS7500timer0 = timer_alloc(PS7500_Timer0_callback);
+	PS7500timer1 = timer_alloc(PS7500_Timer1_callback);
+}
+
+GAME( 1999, ssfindo, 0,        ssfindo,  ssfindo,  ssfindo, ROT0, "Icarus", "See See Find Out", GAME_NO_SOUND )
+GAME( 1999, ppcar,   0,        ppcar,    ppcar,    ppcar, ROT0, "Icarus", "Pang Pang Car", GAME_NO_SOUND )
+
 

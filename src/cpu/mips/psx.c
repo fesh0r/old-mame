@@ -1042,16 +1042,16 @@ static void mips_init( void )
 {
 	int cpu = cpu_getactivecpu();
 
-	state_save_register_UINT32( "psxcpu", cpu, "op", &mipscpu.op, 1 );
-	state_save_register_UINT32( "psxcpu", cpu, "pc", &mipscpu.pc, 1 );
-	state_save_register_UINT32( "psxcpu", cpu, "delayv", &mipscpu.delayv, 1 );
-	state_save_register_UINT32( "psxcpu", cpu, "delayr", &mipscpu.delayr, 1 );
-	state_save_register_UINT32( "psxcpu", cpu, "hi", &mipscpu.hi, 1 );
-	state_save_register_UINT32( "psxcpu", cpu, "lo", &mipscpu.lo, 1 );
-	state_save_register_UINT32( "psxcpu", cpu, "r", &mipscpu.r[ 0 ], 32 );
-	state_save_register_UINT32( "psxcpu", cpu, "cp0r", &mipscpu.cp0r[ 0 ], 32 );
-	state_save_register_UINT32( "psxcpu", cpu, "cp2cr", &mipscpu.cp2cr[ 0 ].d, 32 );
-	state_save_register_UINT32( "psxcpu", cpu, "cp2dr", &mipscpu.cp2dr[ 0 ].d, 32 );
+	state_save_register_item( "psxcpu", cpu, mipscpu.op );
+	state_save_register_item( "psxcpu", cpu, mipscpu.pc );
+	state_save_register_item( "psxcpu", cpu, mipscpu.delayv );
+	state_save_register_item( "psxcpu", cpu, mipscpu.delayr );
+	state_save_register_item( "psxcpu", cpu, mipscpu.hi );
+	state_save_register_item( "psxcpu", cpu, mipscpu.lo );
+	state_save_register_item_array( "psxcpu", cpu, mipscpu.r );
+	state_save_register_item_array( "psxcpu", cpu, mipscpu.cp0r );
+	state_save_register_item_array( "psxcpu", cpu, mipscpu.cp2cr );
+	state_save_register_item_array( "psxcpu", cpu, mipscpu.cp2dr );
 }
 
 static void mips_reset( void *param )
@@ -2351,18 +2351,14 @@ static void set_irq_line( int irqline, int state )
  * Return a formatted string for a register
  ****************************************************************************/
 
-static offs_t mips_dasm( char *buffer, offs_t pc )
+static offs_t mips_dasm(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes)
 {
-	offs_t ret;
-	change_pc( pc );
 #ifdef MAME_DEBUG
-	ret = DasmMIPS( buffer, pc );
+	return DasmMIPS( buffer, pc, opram );
 #else
-	sprintf( buffer, "$%08x", cpu_readop32( pc ) );
-	ret = 4;
+	sprintf( buffer, "$%02X%02X%02X%02X", opram[ 3 ], opram[ 2 ], opram[ 1 ], opram[ 0 ] );
+	return 4;
 #endif
-	change_pc( mipscpu.pc );
-	return ret;
 }
 
 /* preliminary gte code */
@@ -2562,21 +2558,21 @@ INLINE INT64 BOUNDS( INT64 n_value, INT64 n_max, int n_maxflag, INT64 n_min, int
 {
 	if( n_value > n_max )
 	{
-		FLAG |= n_maxflag;
+		FLAG |= 1 << n_maxflag;
 	}
 	else if( n_value < n_min )
 	{
-		FLAG |= n_minflag;
+		FLAG |= 1 << n_minflag;
 	}
 	return n_value;
 }
 
-#define A1( a ) BOUNDS( ( a ), 0x7fffffff, 30, -(INT64)0x80000000, ( 1 << 27 ) )
-#define A2( a ) BOUNDS( ( a ), 0x7fffffff, 29, -(INT64)0x80000000, ( 1 << 26 ) )
-#define A3( a ) BOUNDS( ( a ), 0x7fffffff, 28, -(INT64)0x80000000, ( 1 << 25 ) )
+#define A1( a ) BOUNDS( ( a ), 0x7fffffff, 30, -(INT64)0x80000000, 27 )
+#define A2( a ) BOUNDS( ( a ), 0x7fffffff, 29, -(INT64)0x80000000, 26 )
+#define A3( a ) BOUNDS( ( a ), 0x7fffffff, 28, -(INT64)0x80000000, 25 )
 #define Lm_B1( a, l ) LIM( ( a ), 0x7fff, -0x8000 * !l, ( 1 << 31 ) | ( 1 << 24 ) )
 #define Lm_B2( a, l ) LIM( ( a ), 0x7fff, -0x8000 * !l, ( 1 << 31 ) | ( 1 << 23 ) )
-#define Lm_B3( a, l ) LIM( ( a ), 0x7fff, -0x8000 * !l, ( 1 << 22 ) )
+#define Lm_B3( a, l ) LIM( ( a ), 0x7fff, -0x8000 * !l, ( 1 << 31 ) | ( 1 << 22 ) )
 #define Lm_C1( a ) LIM( ( a ), 0x00ff, 0x0000, ( 1 << 21 ) )
 #define Lm_C2( a ) LIM( ( a ), 0x00ff, 0x0000, ( 1 << 20 ) )
 #define Lm_C3( a ) LIM( ( a ), 0x00ff, 0x0000, ( 1 << 19 ) )
@@ -3574,7 +3570,7 @@ static void mips_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = mips_exit;					break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = mips_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = mips_dasm;			break;
+		case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = mips_dasm;		break;
 		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = mipscpu.irq_callback; break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &mips_ICount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = mips_reg_layout;				break;
@@ -3583,9 +3579,9 @@ static void mips_get_info(UINT32 state, union cpuinfo *info)
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "PSX CPU"); break;
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s = cpuintrf_temp_str(), "mipscpu"); break;
-		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s = cpuintrf_temp_str(), "1.4"); break;
+		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s = cpuintrf_temp_str(), "1.5"); break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s = cpuintrf_temp_str(), __FILE__); break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s = cpuintrf_temp_str(), "Copyright 2003 smf"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s = cpuintrf_temp_str(), "Copyright 2005 smf"); break;
 
 		case CPUINFO_STR_FLAGS:							strcpy(info->s = cpuintrf_temp_str(), " "); break;
 

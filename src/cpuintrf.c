@@ -890,15 +890,49 @@ int cpuintrf_init(void)
 		intf->get_info = cpuintrf_map[mapindex].get_info;
 
 		/* bootstrap the rest of the function pointers */
-		(*intf->get_info)(CPUINFO_PTR_SET_INFO,    &info);	intf->set_info = info.setinfo;
-		(*intf->get_info)(CPUINFO_PTR_GET_CONTEXT, &info);	intf->get_context = info.getcontext;
-		(*intf->get_info)(CPUINFO_PTR_SET_CONTEXT, &info);	intf->set_context = info.setcontext;
-		(*intf->get_info)(CPUINFO_PTR_INIT,        &info);	intf->init = info.init;
-		(*intf->get_info)(CPUINFO_PTR_RESET,       &info);	intf->reset = info.reset;
-		(*intf->get_info)(CPUINFO_PTR_EXIT,        &info);	intf->exit = info.exit;
-		(*intf->get_info)(CPUINFO_PTR_EXECUTE,     &info);	intf->execute = info.execute;
-		(*intf->get_info)(CPUINFO_PTR_BURN,        &info);	intf->burn = info.burn;
-		(*intf->get_info)(CPUINFO_PTR_DISASSEMBLE, &info);	intf->disassemble = info.disassemble;
+		info.setinfo = NULL;
+		(*intf->get_info)(CPUINFO_PTR_SET_INFO, &info);
+		intf->set_info = info.setinfo;
+
+		info.getcontext = NULL;
+		(*intf->get_info)(CPUINFO_PTR_GET_CONTEXT, &info);
+		intf->get_context = info.getcontext;
+
+		info.setcontext = NULL;
+		(*intf->get_info)(CPUINFO_PTR_SET_CONTEXT, &info);
+		intf->set_context = info.setcontext;
+
+		info.init = NULL;
+		(*intf->get_info)(CPUINFO_PTR_INIT, &info);
+		intf->init = info.init;
+
+		info.reset = NULL;
+		(*intf->get_info)(CPUINFO_PTR_RESET, &info);
+		intf->reset = info.reset;
+
+		info.exit = NULL;
+		(*intf->get_info)(CPUINFO_PTR_EXIT, &info);
+		intf->exit = info.exit;
+
+		info.execute = NULL;
+		(*intf->get_info)(CPUINFO_PTR_EXECUTE, &info);
+		intf->execute = info.execute;
+
+		info.burn = NULL;
+		(*intf->get_info)(CPUINFO_PTR_BURN, &info);
+		intf->burn = info.burn;
+
+		info.disassemble = NULL;
+		(*intf->get_info)(CPUINFO_PTR_DISASSEMBLE, &info);
+		intf->disassemble = info.disassemble;
+
+		info.disassemble_new = NULL;
+		(*intf->get_info)(CPUINFO_PTR_DISASSEMBLE_NEW, &info);
+		intf->disassemble_new = info.disassemble_new;
+
+		info.translate = NULL;
+		(*intf->get_info)(CPUINFO_PTR_TRANSLATE, &info);
+		intf->translate = info.translate;
 
 		/* get the instruction count pointer */
 		(*intf->get_info)(CPUINFO_PTR_INSTRUCTION_COUNTER, &info);	intf->icount = info.icount;
@@ -1130,7 +1164,7 @@ int activecpu_get_icount(void)
 void activecpu_reset_banking(void)
 {
 	VERIFY_ACTIVECPU_VOID(activecpu_reset_banking);
-	memory_set_opbase(activecpu_get_pc_byte());
+	memory_set_opbase(activecpu_get_physical_pc_byte());
 }
 
 
@@ -1154,15 +1188,21 @@ void activecpu_set_input_line(int irqline, int state)
     Get/set PC
 --------------------------*/
 
-offs_t activecpu_get_pc_byte(void)
+offs_t activecpu_get_physical_pc_byte(void)
 {
 	offs_t pc;
 	int shift;
 
-	VERIFY_ACTIVECPU(0, activecpu_get_pc_byte);
+	VERIFY_ACTIVECPU(0, activecpu_get_physical_pc_byte);
 	shift = cpu[activecpu].intf.address_shift;
 	pc = activecpu_get_reg(REG_PC);
-	return ((shift < 0) ? (pc << -shift) : (pc >> shift));
+	if (shift < 0)
+		pc <<= -shift;
+	else
+		pc >>= shift;
+	if (cpu[activecpu].intf.translate)
+		(*cpu[activecpu].intf.translate)(ADDRESS_SPACE_PROGRAM, &pc);
+	return pc;
 }
 
 
@@ -1177,25 +1217,73 @@ void activecpu_set_opbase(unsigned val)
     Disassembly
 --------------------------*/
 
-static unsigned internal_dasm(int cpunum, char *buffer, unsigned pc)
+offs_t activecpu_dasm(char *buffer, offs_t pc)
 {
-	unsigned result;
+	VERIFY_ACTIVECPU(1, activecpu_dasm);
+
+	/* allow overrides */
 	if (cpu_dasm_override)
 	{
-		result = cpu_dasm_override(cpunum, buffer, pc);
+		offs_t result = cpu_dasm_override(activecpu, buffer, pc);
 		if (result)
 			return result;
 	}
-	return (*cpu[cpunum].intf.disassemble)(buffer, pc);
+
+	/* if there's no old-style assembler, do some work to make this call work with the new one */
+	if (!cpu[activecpu].intf.disassemble)
+	{
+		int dbwidth = activecpu_databus_width(ADDRESS_SPACE_PROGRAM);
+		int maxbytes = activecpu_max_instruction_bytes();
+		int endianness = activecpu_endianness();
+		UINT8 opbuf[64], argbuf[64];
+		int xorval = 0;
+		int numbytes;
+
+		/* determine the XOR to get the bytes in order */
+		switch (dbwidth)
+		{
+			case 8:		xorval = 0;																break;
+			case 16:	xorval = (endianness == CPU_IS_LE) ? BYTE_XOR_LE(0) : BYTE_XOR_BE(0);	break;
+			case 32:	xorval = (endianness == CPU_IS_LE) ? BYTE4_XOR_LE(0) : BYTE4_XOR_BE(0);	break;
+			case 64:	xorval = (endianness == CPU_IS_LE) ? BYTE8_XOR_LE(0) : BYTE8_XOR_BE(0);	break;
+		}
+
+		/* fetch the bytes up to the maximum */
+		memset(opbuf, 0xff, sizeof(opbuf));
+		memset(argbuf, 0xff, sizeof(argbuf));
+		for (numbytes = 0; numbytes < maxbytes; numbytes++)
+		{
+			offs_t physpc = pc + numbytes;
+			const UINT8 *ptr;
+
+			/* translate the address, set the opcode base, and apply the byte xor */
+			if (!cpu[activecpu].intf.translate || (*cpu[activecpu].intf.translate)(ADDRESS_SPACE_PROGRAM, &physpc))
+			{
+				memory_set_opbase(physpc);
+				physpc ^= xorval;
+
+				/* get pointer to data */
+				ptr = memory_get_op_ptr(cpu_getactivecpu(), physpc);
+				if (ptr)
+				{
+					opbuf[numbytes] = *ptr;
+					argbuf[numbytes] = *(ptr + (opcode_arg_base - opcode_base));
+				}
+			}
+		}
+
+		return (*cpu[activecpu].intf.disassemble_new)(buffer, pc, opbuf, argbuf, maxbytes);
+	}
+	return (*cpu[activecpu].intf.disassemble)(buffer, pc);
 }
 
 
-
-unsigned activecpu_dasm(char *buffer, unsigned pc)
+unsigned activecpu_dasm_new(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes)
 {
-	VERIFY_ACTIVECPU(1, activecpu_dasm);
-	return internal_dasm(activecpu, buffer, pc);
+	VERIFY_ACTIVECPU(1, activecpu_dasm_new);
+	return (*cpu[activecpu].intf.disassemble_new)(buffer, pc, oprom, opram, bytes);
 }
+
 
 
 /*--------------------------
@@ -1352,7 +1440,7 @@ int cpunum_execute(int cpunum, int cycles)
 	VERIFY_CPUNUM(0, cpunum_execute);
 	cpuintrf_push_context(cpunum);
 	executingcpu = cpunum;
-	memory_set_opbase(activecpu_get_pc_byte());
+	memory_set_opbase(activecpu_get_physical_pc_byte());
 	ran = (*cpu[cpunum].intf.execute)(cycles);
 	executingcpu = -1;
 	cpuintrf_pop_context();
@@ -1419,17 +1507,23 @@ void *cpunum_get_context_ptr(int cpunum)
     Get/set PC
 --------------------------*/
 
-offs_t cpunum_get_pc_byte(int cpunum)
+offs_t cpunum_get_physical_pc_byte(int cpunum)
 {
 	offs_t pc;
 	int shift;
 
-	VERIFY_CPUNUM(0, cpunum_get_pc_byte);
+	VERIFY_CPUNUM(0, cpunum_get_physical_pc_byte);
 	shift = cpu[cpunum].intf.address_shift;
 	cpuintrf_push_context(cpunum);
 	pc = activecpu_get_info_int(CPUINFO_INT_PC);
+	if (shift < 0)
+		pc <<= -shift;
+	else
+		pc >>= shift;
+	if (cpu[activecpu].intf.translate)
+		(*cpu[activecpu].intf.translate)(ADDRESS_SPACE_PROGRAM, &pc);
 	cpuintrf_pop_context();
-	return ((shift < 0) ? (pc << -shift) : (pc >> shift));
+	return pc;
 }
 
 
@@ -1446,15 +1540,27 @@ void cpunum_set_opbase(int cpunum, unsigned val)
     Disassembly
 --------------------------*/
 
-unsigned cpunum_dasm(int cpunum, char *buffer, unsigned pc)
+offs_t cpunum_dasm(int cpunum, char *buffer, unsigned pc)
 {
 	unsigned result;
 	VERIFY_CPUNUM(1, cpunum_dasm);
 	cpuintrf_push_context(cpunum);
-	result = internal_dasm(cpunum, buffer, pc);
+	result = activecpu_dasm(buffer, pc);
 	cpuintrf_pop_context();
 	return result;
 }
+
+
+offs_t cpunum_dasm_new(int cpunum, char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes)
+{
+	unsigned result;
+	VERIFY_CPUNUM(1, cpunum_dasm_new);
+	cpuintrf_push_context(cpunum);
+	result = activecpu_dasm_new(buffer, pc, oprom, opram, bytes);
+	cpuintrf_pop_context();
+	return result;
+}
+
 
 
 /*--------------------------

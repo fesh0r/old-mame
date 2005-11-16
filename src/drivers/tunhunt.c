@@ -53,6 +53,8 @@
 #include "sound/pokey.h"
 
 
+UINT8 *tunhunt_ram;
+
 extern WRITE8_HANDLER( tunhunt_videoram_w );
 extern WRITE8_HANDLER( tunhunt_mott_w );
 
@@ -155,7 +157,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_WRITE(MWA8_RAM) /* Work RAM */
+	AM_RANGE(0x0000, 0x03ff) AM_WRITE(MWA8_RAM) AM_BASE(&tunhunt_ram) /* Work RAM */
 	AM_RANGE(0x1080, 0x10ff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x1200, 0x12ff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x1400, 0x14ff) AM_WRITE(MWA8_RAM)
@@ -247,7 +249,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static gfx_layout alpha_layout =
+static const gfx_layout alpha_layout =
 {
 	8,8,
 	0x40,
@@ -259,7 +261,7 @@ static gfx_layout alpha_layout =
 };
 
 
-static gfx_layout obj_layout =
+static const gfx_layout obj_layout =
 {
 	16,16,
 	8, /* number of objects */
@@ -281,7 +283,7 @@ static gfx_layout obj_layout =
 };
 
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x000, &alpha_layout, 0, 4 },
 	{ REGION_GFX2, 0x200, &obj_layout,	 8, 1 },

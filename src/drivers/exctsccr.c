@@ -77,7 +77,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7c00, 0x7fff) AM_WRITE(MWA8_RAM) /* work ram */
 	AM_RANGE(0x8000, 0x83ff) AM_WRITE(exctsccr_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x8400, 0x87ff) AM_WRITE(exctsccr_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0x8800, 0x8bff) AM_WRITE(MWA8_RAM) /* ??? */
+	AM_RANGE(0x8800, 0x8bff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2) /* ??? */
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(MWA8_NOP) /* ??? */
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(MWA8_NOP) /* ??? */
 	AM_RANGE(0xa002, 0xa002) AM_WRITE(exctsccr_gfx_bank_w)
@@ -133,7 +133,7 @@ static ADDRESS_MAP_START( bl_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7001, 0x7001) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x8000, 0x83ff) AM_WRITE(exctsccr_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x8400, 0x87ff) AM_WRITE(exctsccr_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0x8800, 0x8fff) AM_WRITE(MWA8_RAM) /* ??? */
+	AM_RANGE(0x8800, 0x8fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2) /* ??? */
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(MWA8_NOP) /* ??? */
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(MWA8_NOP) /* ??? */
 	AM_RANGE(0xa002, 0xa002) AM_WRITE(exctsccr_gfx_bank_w) /* ??? */
@@ -225,7 +225,7 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static gfx_layout charlayout1 =
+static const gfx_layout charlayout1 =
 {
 	8,8,	/* 8*8 characters */
 	256,	/* 256 characters */
@@ -236,7 +236,7 @@ static gfx_layout charlayout1 =
 	16*8	/* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout charlayout2 =
+static const gfx_layout charlayout2 =
 {
 	8,8,	/* 8*8 characters */
 	256,	/* 256 characters */
@@ -247,7 +247,7 @@ static gfx_layout charlayout2 =
 	16*8	/* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout spritelayout1 =
+static const gfx_layout spritelayout1 =
 {
 	16,16,	    /* 16*16 sprites */
 	64,	        /* 64 sprites */
@@ -260,7 +260,7 @@ static gfx_layout spritelayout1 =
 	64*8	/* every sprite takes 64 bytes */
 };
 
-static gfx_layout spritelayout2 =
+static const gfx_layout spritelayout2 =
 {
 	16,16,	    /* 16*16 sprites */
 	64,         /* 64 sprites */
@@ -273,7 +273,7 @@ static gfx_layout spritelayout2 =
 	64*8	/* every sprite takes 64 bytes */
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	16,16,		/* 16*16 sprites */
 	64,	    	/* 64 sprites */
@@ -286,7 +286,7 @@ static gfx_layout spritelayout =
 	64*8	/* every sprite takes 64 bytes */
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &charlayout1,      0, 32 }, /* chars */
 	{ REGION_GFX1, 0x2000, &charlayout2,      0, 32 }, /* chars */

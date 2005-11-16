@@ -2354,6 +2354,7 @@ INPUT_PORTS_START( tekipaki )
 	PORT_DIPSETTING(	0x02, DEF_STR( Europe ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( USA ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( Japan ) )
+	PORT_DIPSETTING(	0x0f, "Japan (Distributed by Tecmo)" )
 	PORT_DIPSETTING(	0x03, "Hong Kong" )
 	PORT_DIPSETTING(	0x05, "Taiwan" )
 	PORT_DIPSETTING(	0x04, "Korea" )
@@ -3880,7 +3881,7 @@ INPUT_PORTS_END
 
 
 
-static gfx_layout tilelayout =
+static const gfx_layout tilelayout =
 {
 	16,16,	/* 16x16 */
 	RGN_FRAC(1,2),	/* Number of tiles */
@@ -3893,7 +3894,7 @@ static gfx_layout tilelayout =
 	8*4*16
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	8,8,	/* 8x8 */
 	RGN_FRAC(1,2),	/* Number of 8x8 sprites */
@@ -3904,7 +3905,7 @@ static gfx_layout spritelayout =
 	8*16
 };
 
-static gfx_layout raizing_textlayout =
+static const gfx_layout raizing_textlayout =
 {
 	8,8,	/* 8x8 characters */
 	1024,	/* 1024 characters */
@@ -3916,7 +3917,7 @@ static gfx_layout raizing_textlayout =
 };
 
 #ifdef LSB_FIRST
-static gfx_layout truxton2_tx_tilelayout =
+static const gfx_layout truxton2_tx_tilelayout =
 {
 	8,8,	/* 8x8 characters */
 	1024,	/* 1024 characters */
@@ -3927,7 +3928,7 @@ static gfx_layout truxton2_tx_tilelayout =
 	8*64
 };
 #else
-static gfx_layout truxton2_tx_tilelayout =
+static const gfx_layout truxton2_tx_tilelayout =
 {
 	8,8,	/* 8x8 characters */
 	1024,	/* 1024 characters */
@@ -3940,7 +3941,7 @@ static gfx_layout truxton2_tx_tilelayout =
 #endif
 
 #ifdef LSB_FIRST
-static gfx_layout batrider_tx_tilelayout =
+static const gfx_layout batrider_tx_tilelayout =
 {
 	8,8,	/* 8x8 characters */
 	1024,	/* 1024 characters */
@@ -3951,7 +3952,7 @@ static gfx_layout batrider_tx_tilelayout =
 	8*32
 };
 #else
-static gfx_layout batrider_tx_tilelayout =
+static const gfx_layout batrider_tx_tilelayout =
 {
 	8,8,	/* 8x8 characters */
 	1024,	/* 1024 characters */
@@ -3964,7 +3965,7 @@ static gfx_layout batrider_tx_tilelayout =
 #endif
 
 
-static gfx_layout fixeighblayout =
+static const gfx_layout fixeighblayout =
 {
    8,8,
    RGN_FRAC(1,1),
@@ -3975,14 +3976,14 @@ static gfx_layout fixeighblayout =
    8*8*4
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,   0, 128 },
 	{ REGION_GFX1, 0, &spritelayout, 0,  64 },
 	{ -1 } /* end of array */
 };
 
-static gfx_decode gfxdecodeinfo_2[] =
+static const gfx_decode gfxdecodeinfo_2[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,   0, 128 },
 	{ REGION_GFX1, 0, &spritelayout, 0,  64 },
@@ -3991,7 +3992,7 @@ static gfx_decode gfxdecodeinfo_2[] =
 	{ -1 } /* end of array */
 };
 
-static gfx_decode truxton2_gfxdecodeinfo[] =
+static const gfx_decode truxton2_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0,       &tilelayout            , 0, 128 },
 	{ REGION_GFX1, 0,       &spritelayout          , 0,  64 },
@@ -4001,7 +4002,7 @@ static gfx_decode truxton2_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static gfx_decode raizing_gfxdecodeinfo[] =
+static const gfx_decode raizing_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,         0, 128 },
 	{ REGION_GFX1, 0, &spritelayout,       0,  64 },
@@ -4010,7 +4011,7 @@ static gfx_decode raizing_gfxdecodeinfo[] =
 };
 
 /* This is wrong a bit. Text layer is dynamically changed. */
-static gfx_decode batrider_gfxdecodeinfo[] =
+static const gfx_decode batrider_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,             0, 128 },
 	{ REGION_GFX1, 0, &spritelayout,           0,  64 },
@@ -4018,7 +4019,7 @@ static gfx_decode batrider_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static gfx_decode fixeighb_gfxdecodeinfo[] =
+static const gfx_decode fixeighb_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout     , 0, 128 },
 	{ REGION_GFX1, 0, &spritelayout   , 0,  64 },
@@ -4759,7 +4760,7 @@ MACHINE_DRIVER_END
 
 /* -------------------------- Toaplan games ------------------------- */
 ROM_START( tekipaki )
-	ROM_REGION( 0x020000, REGION_CPU1, 0 )			/* Main 68K code */
+	ROM_REGION( 0x040000, REGION_CPU1, 0 )			/* Main 68K code */
 	ROM_LOAD16_BYTE( "tp020-1.bin", 0x000000, 0x010000, CRC(d8420bd5) SHA1(30c1ad9e053cd7e79adb42aa428ebee28e144755) )
 	ROM_LOAD16_BYTE( "tp020-2.bin", 0x000001, 0x010000, CRC(7222de8e) SHA1(8352ae23efc24a2e20cc24b6d37cb8fc6b1a730c) )
 
@@ -4991,6 +4992,31 @@ ROM_END
 ROM_START( batsugun )
 	ROM_REGION( 0x080000, REGION_CPU1, 0 )			/* Main 68K code */
 	ROM_LOAD16_WORD_SWAP( "tp030_01.bin", 0x000000, 0x080000, CRC(3873d7dd) SHA1(baf6187d7d554cfcf4a86b63f07fc30df7ef84c9) )
+
+	/* Secondary CPU is a Toaplan marked chip, (TS-007-Spy  TOA PLAN) */
+	/* Its likely to be a NEC V25+ (PLCC94). */
+#if V25
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )			/* Sound CPU code */
+//  ROM_LOAD( "tp030.mcu", 0x8000, 0x8000, NO_DUMP )
+#endif
+
+	ROM_REGION( 0x400000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "tp030_3l.bin", 0x000000, 0x100000, CRC(3024b793) SHA1(e161db940f069279356fca2c5bf2753f07773705) )
+	ROM_LOAD( "tp030_3h.bin", 0x100000, 0x100000, CRC(ed75730b) SHA1(341f0f728144a049486d996c9bb14078578c6879) )
+	ROM_LOAD( "tp030_4l.bin", 0x200000, 0x100000, CRC(fedb9861) SHA1(4b0917056bd359b21935358c6bcc729262be6417) )
+	ROM_LOAD( "tp030_4h.bin", 0x300000, 0x100000, CRC(d482948b) SHA1(31be7dc5cff072403b783bf203b9805ffcad7284) )
+
+	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "tp030_5.bin",  0x000000, 0x100000, CRC(bcf5ba05) SHA1(40f98888a29cdd30cda5dfb60fdc667c69b0fdb0) )
+	ROM_LOAD( "tp030_6.bin",  0x100000, 0x100000, CRC(0666fecd) SHA1(aa8f921fc51590b5b05bbe0b0ad0cce5ff359c64) )
+
+	ROM_REGION( 0x40000, REGION_SOUND1, 0 )			/* ADPCM Samples */
+	ROM_LOAD( "tp030_2.bin", 0x00000, 0x40000, CRC(276146f5) SHA1(bf11d1f6782cefcad77d52af4f7e6054a8f93440) )
+ROM_END
+
+ROM_START( batsugna )
+	ROM_REGION( 0x080000, REGION_CPU1, 0 )			/* Main 68K code */
+	ROM_LOAD16_WORD_SWAP( "tp030_1a.bin", 0x000000, 0x080000,  CRC(cb1d4554) SHA1(ef31f24d77e1c13bdf5558a04a6253e2e3e6a790) )
 
 	/* Secondary CPU is a Toaplan marked chip, (TS-007-Spy  TOA PLAN) */
 	/* Its likely to be a NEC V25+ (PLCC94). */
@@ -5376,7 +5402,8 @@ GAME( 1992, fixeighb, fixeight, fixeighb, fixeighb, fixeighb, ROT270, "bootleg",
 GAME( 1992, grindstm, vfive,    vfive,    grindstm, T2_V25,   ROT270, "Toaplan", "Grind Stormer", GAME_NO_SOUND )
 GAME( 1992, grindsta, vfive,    vfive,    grindstm, T2_V25,   ROT270, "Toaplan", "Grind Stormer (older set)", GAME_NO_SOUND )
 GAME( 1993, vfive,    0,        vfive,    vfive,    T2_V25,   ROT270, "Toaplan", "V-Five (Japan)", GAME_NO_SOUND )
-GAME( 1993, batsugun, 0,        batsugun, batsugun, T2_V25,   ROT270, "Toaplan", "Batsugun", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, batsugun, 0,        batsugun, batsugun, T2_V25,   ROT270, "Toaplan", "Batsugun (set 1)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, batsugna, batsugun, batsugun, batsugun, T2_V25,   ROT270, "Toaplan", "Batsugun (set 2)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
 GAME( 1993, batugnsp, batsugun, batsugun, batsugun, T2_V25,   ROT270, "Toaplan", "Batsugun (Special Ver.)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
 GAME( 1994, snowbro2, 0,        snowbro2, snowbro2, T2_noZ80, ROT0,   "[Toaplan] Hanafram", "Snow Bros. 2 - With New Elves / Otenki Paradise", 0 )
 GAME( 1993, mahoudai, 0,        mahoudai, mahoudai, T2_Z80,   ROT270, "Raizing (Able license)", "Mahou Daisakusen (Japan)", 0 )

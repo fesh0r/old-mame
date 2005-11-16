@@ -587,7 +587,7 @@ static struct K054539interface k054539_interface =
 
 /**********************************************************************************/
 
-static gfx_layout bglayout =
+static const gfx_layout bglayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -600,7 +600,7 @@ static gfx_layout bglayout =
 	128*8
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &bglayout,     0x0000, 64 },
 	{ -1 } /* end of array */
@@ -717,7 +717,7 @@ ROM_START( plygonet )
 	ROM_LOAD32_BYTE( "305a04.bin", 0x000000, 512*1024, CRC(d8394e72) SHA1(eb6bcf8aedb9ba5843204ab8aacb735cbaafb74d) )
 
 	/* Z80 sound program */
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )
+	ROM_REGION( 0x30000, REGION_CPU3, 0 )
 	ROM_LOAD("305b05.bin", 0x000000, 0x20000, CRC(2d3d9654) SHA1(784a409df47cee877e507b8bbd3610d161d63753) )
 	ROM_RELOAD( 0x10000, 0x20000)
 

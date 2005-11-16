@@ -6027,7 +6027,7 @@ or 6 planes deep and are stored in a wealth of formats.
 
 
 /* The bitplanes are packed togheter */
-static gfx_layout layout_packed =
+static const gfx_layout layout_packed =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -6042,7 +6042,7 @@ static gfx_layout layout_packed =
 
 
 /* The bitplanes are separated (but there are 2 per rom) */
-static gfx_layout layout_planes_2roms =
+static const gfx_layout layout_planes_2roms =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -6058,7 +6058,7 @@ static gfx_layout layout_planes_2roms =
 /* The bitplanes are separated (but there are 2 per rom).
    Each 8x8 tile is additionally split in 2 vertical halves four bits wide,
    stored one after the other */
-static gfx_layout layout_planes_2roms_split =
+static const gfx_layout layout_planes_2roms_split =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -6078,7 +6078,7 @@ static gfx_layout layout_planes_2roms_split =
 
 
 /* The bitplanes are packed together: 3 roms with 2 bits in each */
-static gfx_layout layout_packed_6bits_3roms =
+static const gfx_layout layout_packed_6bits_3roms =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -6097,7 +6097,7 @@ static gfx_layout layout_packed_6bits_3roms =
    ROM_LOAD16_BYTE. This way we can think of it as a 4 planes rom, with the
    upper 2 planes unused.    */
 
-static gfx_layout layout_packed_6bits_2roms =
+static const gfx_layout layout_packed_6bits_2roms =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -6116,7 +6116,7 @@ static gfx_layout layout_packed_6bits_2roms =
                                 Blandia
 ***************************************************************************/
 
-static gfx_decode blandia_gfxdecodeinfo[] =
+static const gfx_decode blandia_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,       0,           32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed_6bits_3roms, 16*32+64*32, 32 }, // [1] Layer 1
@@ -6128,7 +6128,7 @@ static gfx_decode blandia_gfxdecodeinfo[] =
                                 DownTown
 ***************************************************************************/
 
-static gfx_decode downtown_gfxdecodeinfo[] =
+static const gfx_decode downtown_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,       512*0, 32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_planes_2roms_split, 512*0, 32 }, // [1] Layer 1
@@ -6139,7 +6139,7 @@ static gfx_decode downtown_gfxdecodeinfo[] =
                                 J.J.Squawkers
 ***************************************************************************/
 
-static gfx_decode jjsquawk_gfxdecodeinfo[] =
+static const gfx_decode jjsquawk_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,       0,             32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed_6bits_2roms, 512 + 64*32*0, 32 }, // [1] Layer 1
@@ -6151,7 +6151,7 @@ static gfx_decode jjsquawk_gfxdecodeinfo[] =
                             Mobile Suit Gundam
 ***************************************************************************/
 
-static gfx_decode msgundam_gfxdecodeinfo[] =
+static const gfx_decode msgundam_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms, 512*0, 32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed,       512*2, 32 }, // [1] Layer 1
@@ -6163,7 +6163,7 @@ static gfx_decode msgundam_gfxdecodeinfo[] =
                                 Quiz Kokology 2
 ***************************************************************************/
 
-static gfx_decode qzkklgy2_gfxdecodeinfo[] =
+static const gfx_decode qzkklgy2_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,	512*0, 32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed, 		512*0, 32 }, // [1] Layer 1
@@ -6174,7 +6174,7 @@ static gfx_decode qzkklgy2_gfxdecodeinfo[] =
                                 Thundercade
 ***************************************************************************/
 
-static gfx_decode tndrcade_gfxdecodeinfo[] =
+static const gfx_decode tndrcade_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms, 512*0, 32 }, // [0] Sprites
 	{ -1 }
@@ -6184,7 +6184,7 @@ static gfx_decode tndrcade_gfxdecodeinfo[] =
                                 Wiggie Waggle
 ****************************************************************************/
 
-static gfx_layout wiggie_layout =
+static const gfx_layout wiggie_layout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -6200,7 +6200,7 @@ static gfx_layout wiggie_layout =
 };
 
 
-static gfx_decode wiggie_gfxdecodeinfo[] =
+static const gfx_decode wiggie_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &wiggie_layout,   0x0, 32  }, /* bg tiles */
 	{ -1 } /* end of array */
@@ -6211,7 +6211,7 @@ static gfx_decode wiggie_gfxdecodeinfo[] =
                                 U.S. Classic
 ***************************************************************************/
 
-static gfx_decode usclssic_gfxdecodeinfo[] =
+static const gfx_decode usclssic_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,       0, 32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed_6bits_3roms, 512, 32 }, // [1] Layer 1
@@ -6223,7 +6223,7 @@ static gfx_decode usclssic_gfxdecodeinfo[] =
                                 Zing Zing Zip
 ***************************************************************************/
 
-static gfx_decode zingzip_gfxdecodeinfo[] =
+static const gfx_decode zingzip_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &layout_planes_2roms,       512*0, 32 }, // [0] Sprites
 	{ REGION_GFX2, 0, &layout_packed_6bits_2roms, 512*2, 32 }, // [1] Layer 1
@@ -7651,7 +7651,7 @@ ROM_START( tndrcadj )
 ROM_END
 
 ROM_START( twineagl )
-	ROM_REGION( 0x080000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_REGION( 0x0a0000, REGION_CPU1, 0 )		/* 68000 Code */
 	ROM_LOAD16_WORD( "ua2-1", 0x000000, 0x080000, CRC(5c3fe531) SHA1(e484dad25cda906fb1b0606fb10ae50056c64e6a) )
 
 	ROM_REGION( 0x010000, REGION_CPU2, 0 )		/* 65c02 Code */
@@ -7679,6 +7679,31 @@ ROM_START( twineagl )
 ROM_END
 
 ROM_START( downtown )
+	ROM_REGION( 0x0a0000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_LOAD16_BYTE( "ud2001.000", 0x000000, 0x040000, CRC(f1965260) SHA1(c0560342238d75f9b81ae9f3408cacfbcd331529) )
+	ROM_LOAD16_BYTE( "ud2001.003", 0x000001, 0x040000, CRC(e7d5fa5f) SHA1(48612514598711aa73bf75243c842f0aca72f3d0) )
+	ROM_LOAD16_BYTE( "ud2001.002", 0x080000, 0x010000, CRC(a300e3ac) SHA1(958cb121787444cdc6938fc5aad1e92238e39c13) )
+	ROM_LOAD16_BYTE( "ud2001.001", 0x080001, 0x010000, CRC(d2918094) SHA1(c135939ad12e3cf0688db148c49f99e757ad7b0d) )
+
+	ROM_REGION( 0x04c000, REGION_CPU2, 0 )		/* 65c02 Code */
+	ROM_LOAD( "ud2002.004", 0x004000, 0x040000, CRC(bbd538b1) SHA1(de4c43bfc4004a14f9f66b5e8ff192b00c45c003) )
+	ROM_RELOAD(             0x00c000, 0x040000             )
+
+	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
+	ROM_LOAD16_BYTE( "ud2005.t01", 0x000000, 0x080000, CRC(77e6d249) SHA1(cdf67211cd447858293188511e826640fe24078b) )
+	ROM_LOAD16_BYTE( "ud2006.t02", 0x000001, 0x080000, CRC(6e381bf2) SHA1(ba46e019d2991dec539444ef7376fe0e9a6a8b75) )
+	ROM_LOAD16_BYTE( "ud2007.t03", 0x100000, 0x080000, CRC(737b4971) SHA1(2a034011b0ac03d532a89b544f4eec497ac7ee80) )
+	ROM_LOAD16_BYTE( "ud2008.t04", 0x100001, 0x080000, CRC(99b9d757) SHA1(c3a763993305110ec2a0b231d75fbef4c385d21b) )
+
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )	/* Layer 1 */
+	ROM_LOAD( "ud2009.t05", 0x000000, 0x080000, CRC(aee6c581) SHA1(5b2150a308ca12eea8148d0bbff663b3baf0c831) )
+	ROM_LOAD( "ud2010.t06", 0x080000, 0x080000, CRC(3d399d54) SHA1(7d9036e73fbf0e9c3b976336e3e4786b17b2f4fc) )
+
+	ROM_REGION( 0x080000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_LOAD( "ud2011.t07", 0x000000, 0x080000, CRC(9c9ff69f) SHA1(3840b654f4f709bc4c03dfe4ee79369d5c70dd62) )
+ROM_END
+
+ROM_START( downtow2 )
 	ROM_REGION( 0x0a0000, REGION_CPU1, 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "ud2001.000", 0x000000, 0x040000, CRC(f1965260) SHA1(c0560342238d75f9b81ae9f3408cacfbcd331529) )
 	ROM_LOAD16_BYTE( "ud2001.003", 0x000001, 0x040000, CRC(e7d5fa5f) SHA1(48612514598711aa73bf75243c842f0aca72f3d0) )
@@ -7796,7 +7821,7 @@ ROM_START( calibr50 )
 ROM_END
 
 ROM_START( arbalest )
-	ROM_REGION( 0x080000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_REGION( 0x0a0000, REGION_CPU1, 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "uk001.03",  0x000000, 0x040000, CRC(ee878a2c) SHA1(f7d5817015382ce6af317c02746b473ec798bb4f) )
 	ROM_LOAD16_BYTE( "uk001.04",  0x000001, 0x040000, CRC(902bb4e3) SHA1(e37a361a7c03aee2d6ac8c96c2dd6c1e411b46fb) )
 
@@ -7857,7 +7882,7 @@ ROM_END
 
 
 ROM_START( drgnunit )
-	ROM_REGION( 0x040000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_REGION( 0x080000, REGION_CPU1, 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "prg-e.bin", 0x000000, 0x020000, CRC(728447df) SHA1(8bdc52a4cc5f36794a47f963545bdaa26c9acd6b) )
 	ROM_LOAD16_BYTE( "prg-o.bin", 0x000001, 0x020000, CRC(b2f58ecf) SHA1(5198e75b22bab630b458797988f2e443c601351f) )
 
@@ -8141,7 +8166,7 @@ ROM_START( umanclub )
 ROM_END
 
 ROM_START( zingzip )
-	ROM_REGION( 0x080000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_REGION( 0x200000, REGION_CPU1, 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "uy001001.3",	0x000000, 0x040000, CRC(1a1687ec) SHA1(c840752dd87d8c1c30e6b31452173148e20538b1) )
 	ROM_LOAD16_BYTE( "uy001002.4",	0x000001, 0x040000, CRC(62e3b0c4) SHA1(51a27fbf68a142dd132157bed1dc22acda3fa044) )
 
@@ -8296,7 +8321,7 @@ ROM_START( qzkklgy2 )
 ROM_END
 
 ROM_START( wrofaero )
-	ROM_REGION( 0x080000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_REGION( 0x200000, REGION_CPU1, 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "u3.bin",  0x000000, 0x040000, CRC(9b896a97) SHA1(f4e768911705e6def5dc4a43cfc4146c48c80caf) )
 	ROM_LOAD16_BYTE( "u4.bin",  0x000001, 0x040000, CRC(dda84846) SHA1(50142692e13190900bc752908b105b65c48ea911) )
 
@@ -8316,7 +8341,7 @@ ROM_START( wrofaero )
 ROM_END
 
 ROM_START( jjsquawk )
-	ROM_REGION( 0x180000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_REGION( 0x200000, REGION_CPU1, 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "jj-rom1.040", 0x000000, 0x040000, CRC(7b9af960) SHA1(1718d54b0c12ae148de44f9ccccf90c0182f7b4f) )
 	ROM_CONTINUE   (                0x100000, 0x040000             )
 	ROM_LOAD16_BYTE( "jj-rom2.040", 0x000001, 0x040000, CRC(47dd71a3) SHA1(e219d984a1cac484ce1e570b7849562a88e0903e) )
@@ -8365,7 +8390,7 @@ ROM_START( kamenrid )
 ROM_END
 
 ROM_START( eightfrc )
-	ROM_REGION( 0x080000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_REGION( 0x200000, REGION_CPU1, 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "uy2-u4.u3",  0x000000, 0x040000, CRC(f1f249c5) SHA1(5277b7a15934e60e0ca305c318fb02d0ffb99d42) )
 	ROM_LOAD16_BYTE( "uy2-u3.u4",  0x000001, 0x040000, CRC(6f2d8618) SHA1(ea243e6064b76bc5d6e831362ac9611a48ac94a7) )
 
@@ -8819,7 +8844,8 @@ static DRIVER_INIT(wiggie)
 GAME( 1987, tndrcade, 0,        tndrcade, tndrcade, 0,        ROT270, "[Seta] (Taito license)", "Thundercade / Twin Formation" , 0) // Title/License: DSW
 GAME( 1987, tndrcadj, tndrcade, tndrcade, tndrcadj, 0,        ROT270, "[Seta] (Taito license)", "Tokusyu Butai U.A.G. (Japan)" , 0) // License: DSW
 GAME( 1988, twineagl, 0,        twineagl, twineagl, twineagl, ROT270, "Seta (Taito license)",   "Twin Eagle - Revenge Joe's Brother" , 0) // Country/License: DSW
-GAME( 1989, downtown, 0,        downtown, downtown, downtown, ROT270, "Seta",                   "DownTown" , 0) // Country/License: DSW
+GAME( 1989, downtown, 0,        downtown, downtown, downtown, ROT270, "Seta",                   "DownTown (Set 1)" , 0) // Country/License: DSW
+GAME( 1989, downtow2, downtown, downtown, downtown, downtown, ROT270, "Seta",                   "DownTown (Set 2)" , 0) // Country/License: DSW
 GAME( 1989, downtowp, downtown, downtown, downtown, downtown, ROT270, "Seta",                   "DownTown (prototype)" , 0) // Country/License: DSW
 GAME( 1989, usclssic, 0,        usclssic, usclssic, 0,        ROT270, "Seta",                   "U.S. Classic" , 0) // Country/License: DSW
 GAME( 1989, calibr50, 0,        calibr50, calibr50, 0,        ROT270, "Athena / Seta",          "Caliber 50" , 0) // Country/License: DSW

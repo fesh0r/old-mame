@@ -7,7 +7,7 @@
     Bomberman World / New Atomic Punk / New Dyna Blaster    1992 M99 A
     Quiz F-1 1,2finish                                      1992 M97
     Risky Challenge / Gussun Oyoyo                          1993 M97
-    Shisensho II / Match It II                              1993 M97
+    Match It II / Shisensho II                              1993 M97-A
 
 
     Uses M72 sound hardware.
@@ -35,7 +35,7 @@ Notes:
 
 static int bankaddress;
 
-extern unsigned char *m90_video_data;
+extern UINT8 *m90_video_data;
 
 VIDEO_UPDATE( m90 );
 VIDEO_UPDATE( m90_bootleg );
@@ -233,7 +233,7 @@ INPUT_PORTS_START( dynablst )
 	IREM_JOYSTICK_1_2(2)
 	IREM_COINS
 
-	PORT_START	/* Dip switch bank 1 */
+	PORT_START_TAG("DSWA")	/* Dip switch bank 1 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x02, "2" )
 	PORT_DIPSETTING(    0x03, "3" )
@@ -255,7 +255,7 @@ INPUT_PORTS_START( dynablst )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
+	PORT_START_TAG("DSWB")	/* Dip switch bank 2 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -274,6 +274,15 @@ INPUT_PORTS_START( dynablst )
 
 	IREM_JOYSTICK_3_4(3)
 	IREM_JOYSTICK_3_4(4)
+INPUT_PORTS_END
+
+INPUT_PORTS_START( atompunk )
+	PORT_INCLUDE(dynablst)
+
+	PORT_MODIFY("DSWA")
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )	/* Manual says "NOT USE" */
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
 INPUT_PORTS_START( bombrman ) /* Does not appear to support 4 players or cocktail mode */
@@ -322,60 +331,12 @@ INPUT_PORTS_START( bombrman ) /* Does not appear to support 4 players or cocktai
 //  IREM_COIN_MODE_2
 INPUT_PORTS_END
 
-INPUT_PORTS_START( atompunk )
-	IREM_JOYSTICK_1_2(1)
-	IREM_JOYSTICK_1_2(2)
-	IREM_COINS
-
-	PORT_START	/* Dip switch bank 1 */
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x02, "2" )
-	PORT_DIPSETTING(    0x03, "3" )
-	PORT_DIPSETTING(    0x01, "4" )
-	PORT_DIPSETTING(    0x00, "5" )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x0c, DEF_STR( Medium ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )	/* Manual says "NOT USE" */
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Allow_Continue ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
-
-	PORT_START	/* Dip switch bank 2 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x04, "2 Player Upright" )
-	PORT_DIPSETTING(    0x06, "4 Player Upright A" ) /* Seperate Coin Slots */
-	PORT_DIPSETTING(    0x02, "4 Player Upright B" ) /* Shared Coin Slots */
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )  /* This setting shows screen with offset, no cocktail support :-( */
-	PORT_DIPNAME( 0x08, 0x08, "Coin Mode" )
-	PORT_DIPSETTING(    0x08, "1" )
-	PORT_DIPSETTING(    0x00, "2" )
-	/* Coin Mode 1 */
-	IREM_COIN_MODE_1_NEW
-	/* Coin Mode 2, not supported yet */
-//  IREM_COIN_MODE_2
-
-	IREM_JOYSTICK_3_4(3)
-	IREM_JOYSTICK_3_4(4)
-INPUT_PORTS_END
-
 INPUT_PORTS_START( bbmanw )
 	IREM_JOYSTICK_1_2(1)
 	IREM_JOYSTICK_1_2(2)
 	IREM_COINS
 
-	PORT_START	/* Dip switch bank 1 */
+	PORT_START_TAG("DSWA")	/* Dip switch bank 1 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x02, "2" )
 	PORT_DIPSETTING(    0x03, "3" )
@@ -397,7 +358,7 @@ INPUT_PORTS_START( bbmanw )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 2 */
+	PORT_START_TAG("DSWB")	/* Dip switch bank 2 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -419,51 +380,12 @@ INPUT_PORTS_START( bbmanw )
 INPUT_PORTS_END
 
 INPUT_PORTS_START( bbmanwj )
-	IREM_JOYSTICK_1_2(1)
-	IREM_JOYSTICK_1_2(2)
-	IREM_COINS
+	PORT_INCLUDE(bbmanw)
 
-	PORT_START	/* Dip switch bank 1 */
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x02, "2" )
-	PORT_DIPSETTING(    0x03, "3" )
-	PORT_DIPSETTING(    0x01, "4" )
-	PORT_DIPSETTING(    0x00, "5" )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x0c, DEF_STR( Medium ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_MODIFY("DSWA")
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )	/* Manual says "NOT USE" */
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Allow_Continue ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
-
-	PORT_START	/* Dip switch bank 2 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x04, "2 Player" )
-	PORT_DIPSETTING(    0x06, "4 Player Seprate Coins" )		/* Each player has a seperate Coin Slot */
-	PORT_DIPSETTING(    0x02, "4 Player Shared Coins" )		/* All 4 players Share coin 1&2 */
-	PORT_DIPSETTING(    0x00, "4 Player 1&2 3&4 Share Coins" )	/* Players 1&2 share coin 1&2, Players 3&4 share coin 3&4 */
-	PORT_DIPNAME( 0x08, 0x08, "Coin Mode" )
-	PORT_DIPSETTING(    0x08, "1" )
-	PORT_DIPSETTING(    0x00, "2" )
-	/* Coin Mode 1 */
-	IREM_COIN_MODE_1_NEW
-	/* Coin Mode 2, not supported yet */
-//  IREM_COIN_MODE_2
-
-	IREM_JOYSTICK_3_4(3)
-	IREM_JOYSTICK_3_4(4)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( quizf1 )
@@ -529,6 +451,76 @@ INPUT_PORTS_START( quizf1 )
 //  IREM_COIN_MODE_2
 INPUT_PORTS_END
 
+INPUT_PORTS_START( matchit2 )
+	PORT_START
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+
+	PORT_START
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+
+	PORT_START
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START	/* Dip switch bank 1 */
+	PORT_DIPNAME( 0x01, 0x01, "Girls Mode" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, "China Tiles" )
+	PORT_DIPSETTING(    0x02, "Mahjong" )
+	PORT_DIPSETTING(    0x00, "Alpha-Numeric" )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Hard ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
+	PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
+	PORT_DIPNAME( 0x30, 0x30, "Timer Speed" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Hard ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Hard ) )
+	PORT_DIPSETTING(    0x30, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Easy )  )
+	PORT_DIPNAME( 0x40, 0x40, "Title Screen" )
+	PORT_DIPSETTING(    0x40, "Match It II" )
+	PORT_DIPSETTING(    0x00, "Shisensho II" )
+	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
+
+	PORT_START	/* Dip switch bank 2 */
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Language ) )
+	PORT_DIPSETTING(    0x06, DEF_STR( English ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( German ) )
+	PORT_DIPSETTING(    0x02, "Korean" )
+	PORT_DIPNAME( 0x08, 0x08, "Coin Mode" )
+	PORT_DIPSETTING(    0x08, "1" )
+	PORT_DIPSETTING(    0x00, "2" )
+	/* Coin Mode 1 */
+	IREM_COIN_MODE_1_NEW
+	/* Coin Mode 2, not supported yet */
+//  IREM_COIN_MODE_2
+INPUT_PORTS_END
+
 INPUT_PORTS_START( shisen2 )
 	PORT_START
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
@@ -561,10 +553,10 @@ INPUT_PORTS_START( shisen2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	/* Dip switch bank 1 */
-	PORT_DIPNAME( 0x01, 0x01, "Gal Mode" )
+	PORT_DIPNAME( 0x01, 0x01, "Girls Mode" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )	/* For the "Match It II" version this is "Mahjong Tiles" */
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
@@ -651,7 +643,7 @@ INPUT_PORTS_END
 
 /*****************************************************************************/
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,4),
@@ -662,7 +654,7 @@ static gfx_layout charlayout =
 	8*8
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -675,7 +667,7 @@ static gfx_layout spritelayout =
 	32*8
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,     0, 16 },
 	{ REGION_GFX1, 0, &spritelayout, 256, 16 },
@@ -884,7 +876,7 @@ MACHINE_DRIVER_END
 #define CODE_SIZE 0x100000
 
 ROM_START( hasamu )
-	ROM_REGION( CODE_SIZE * 2, REGION_CPU1, 0 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "hasc-p1.bin",  0x00001, 0x20000, CRC(53df9834) SHA1(2e7e38157a497e3def69c4abcae5803f71a098da) )
 	ROM_LOAD16_BYTE( "hasc-p0.bin",  0x00000, 0x20000, CRC(dff0ba6e) SHA1(83e20b3ae10b57c1e58d3d44bfca2ffd5f142056) )
 	ROM_COPY( REGION_CPU1, 0x3fff0,  0xffff0, 0x10 )	/* start vector */
@@ -903,7 +895,7 @@ ROM_START( hasamu )
 ROM_END
 
 ROM_START( dynablst )
-	ROM_REGION( CODE_SIZE * 2, REGION_CPU1, 0 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "bbm-cp1e.62",   0x00001, 0x20000, CRC(27667681) SHA1(7d5f762026ea01817a65ea13b4b5793640e3e8fd) )
 	ROM_LOAD16_BYTE( "bbm-cp0e.65",   0x00000, 0x20000, CRC(95db7a67) SHA1(1a224d73615a60530cbcc54fdbb526e8d5a6c555) )
 	ROM_COPY( REGION_CPU1, 0x3fff0,  0xffff0, 0x10 )	/* start vector */
@@ -922,7 +914,7 @@ ROM_START( dynablst )
 ROM_END
 
 ROM_START( bombrman )
-	ROM_REGION( CODE_SIZE * 2, REGION_CPU1, 0 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "bbm-p1.62",   0x00001, 0x20000, CRC(982bd166) SHA1(ed67393ec319127616bff5fa3b7f84e8ac8e1d93) )
 	ROM_LOAD16_BYTE( "bbm-p0.65",   0x00000, 0x20000, CRC(0a20afcc) SHA1(a42b7458938300b0c84c820c1ea627aed9080f1b) )
 	ROM_COPY( REGION_CPU1, 0x3fff0,  0xffff0, 0x10 )	/* start vector */
@@ -941,7 +933,7 @@ ROM_START( bombrman )
 ROM_END
 
 ROM_START( atompunk )
-	ROM_REGION( CODE_SIZE * 2, REGION_CPU1, 0 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "bbm-cp0d.65",   0x00001, 0x20000, CRC(860c0479) SHA1(7556d62955d0d7a7100fbd9d9cb7356b96a4df78) )
 	ROM_LOAD16_BYTE( "bbm-cp1d.62",   0x00000, 0x20000, CRC(be57bf74) SHA1(cd3f887f7ec8a5721551477ec2d4a7336f422c6f) )
 	ROM_COPY( REGION_CPU1, 0x3fff0,  0xffff0, 0x10 )	/* start vector */
@@ -979,7 +971,7 @@ ROM_START( dynablsb )
 ROM_END
 
 ROM_START( bbmanw )
-	ROM_REGION( CODE_SIZE * 2, REGION_CPU1, 0 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "bbm2-h0-b.77",  0x00001, 0x40000, CRC(567d3709) SHA1(1447fc68798589a8757ee2d133d053b80f052113) )
 	ROM_LOAD16_BYTE( "bbm2-l0-b.79",  0x00000, 0x40000, CRC(e762c22b) SHA1(b389a65adf1348e6529a992d9b68178d7503238e) )
 	ROM_COPY( REGION_CPU1, 0x7fff0,  0xffff0, 0x10 )	/* start vector */
@@ -998,7 +990,7 @@ ROM_START( bbmanw )
 ROM_END
 
 ROM_START( bbmanwj )
-	ROM_REGION( CODE_SIZE * 2, REGION_CPU1, 0 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "bbm2-h0.77",  0x00001, 0x40000, CRC(e1407b91) SHA1(6c94afc6b1d2a469295890ee5dd9d9d5a02ae5c4) )
 	ROM_LOAD16_BYTE( "bbm2-l0.79",  0x00000, 0x40000, CRC(20873b49) SHA1(30ae595f7961cd56f2506608ae76973b2d0e73ca) )
 	ROM_COPY( REGION_CPU1, 0x7fff0,  0xffff0, 0x10 )	/* start vector */
@@ -1017,7 +1009,7 @@ ROM_START( bbmanwj )
 ROM_END
 
 ROM_START( newapunk )
-	ROM_REGION( CODE_SIZE * 2, REGION_CPU1, 0 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "bbm2-h0-a.77",  0x00001, 0x40000, CRC(7d858682) SHA1(03580e2903becb69766023585c6ecffbb8e0b9c5) )
 	ROM_LOAD16_BYTE( "bbm2-l0-a.79",  0x00000, 0x40000, CRC(c7568031) SHA1(ff4d0809260a088f530098a0173eec16fa6396f1) )
 	ROM_COPY( REGION_CPU1, 0x7fff0,  0xffff0, 0x10 )	/* start vector */
@@ -1055,7 +1047,7 @@ ROM_START( bomblord )
 ROM_END
 
 ROM_START( quizf1 )
-	ROM_REGION( CODE_SIZE * 2, REGION_CPU1, 0 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "qf1-h0-.77",   0x000001, 0x40000, CRC(280e3049) SHA1(3b1f303d803f844fd260ed93e4d12a72876e4dbe) )
 	ROM_LOAD16_BYTE( "qf1-l0-.79",   0x000000, 0x40000, CRC(94588a6f) SHA1(ee912739c7719fc2b099da0c63f7473eedcfc718) )
 	ROM_COPY( REGION_CPU1, 0x7fff0,  0xffff0, 0x10 )	/* start vector */
@@ -1078,7 +1070,7 @@ ROM_START( quizf1 )
 ROM_END
 
 ROM_START( riskchal )
-	ROM_REGION( CODE_SIZE * 2, REGION_CPU1, 0 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "rc_h0.rom",    0x00001, 0x40000, CRC(4c9b5344) SHA1(61e26950a672c6404e2386acdd098536b61b9933) )
 	ROM_LOAD16_BYTE( "rc_l0.rom",    0x00000, 0x40000, CRC(0455895a) SHA1(1072b8d280f7ccc48cd8fbd81323e1f8c8d0db95) )
 	ROM_COPY( REGION_CPU1, 0x7fff0,  0xffff0, 0x10 )	/* start vector */
@@ -1097,7 +1089,7 @@ ROM_START( riskchal )
 ROM_END
 
 ROM_START( gussun )
-	ROM_REGION( CODE_SIZE * 2, REGION_CPU1, 0 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "l4_h0.rom",    0x00001, 0x40000, CRC(9d585e61) SHA1(e108a9dc2dc1b75c1439271a2391f943c3a53fe1) )
 	ROM_LOAD16_BYTE( "l4_l0.rom",    0x00000, 0x40000, CRC(c7b4c519) SHA1(44887ccf54f5e507d2db4f09a7c2b7b9ea217058) )
 	ROM_COPY( REGION_CPU1, 0x7fff0,  0xffff0, 0x10 )	/* start vector */
@@ -1115,10 +1107,29 @@ ROM_START( gussun )
 	ROM_LOAD( "rc_v0.rom",    0x0000, 0x40000, CRC(cddac360) SHA1(a3b18325991473c6d54b778a02bed86180aad37c) )
 ROM_END
 
-ROM_START( shisen2 )
+ROM_START( matchit2 )
 	ROM_REGION( CODE_SIZE * 2, REGION_CPU1, 0 )
-	ROM_LOAD16_BYTE( "sis2-ho-.rom", 0x00001, 0x40000, CRC(6fae0aea) SHA1(7ebecbfdb17e15b8c0ebd293cd42a618c596782e) )
-	ROM_LOAD16_BYTE( "sis2-lo-.rom", 0x00000, 0x40000, CRC(2af25182) SHA1(ec6dcc3913e1b7e7a3958b78610e83f51c404e07) )
+	ROM_LOAD16_BYTE( "sis2-h0b.bin", 0x00001, 0x40000, CRC(9a2556ac) SHA1(3e4d5ac2869c703c5d5b769c2a09e501b5e6462e) ) /* Actually labeled as "SIS2-H0-B" */
+	ROM_LOAD16_BYTE( "sis2-l0b.bin", 0x00000, 0x40000, CRC(d35d948a) SHA1(e4f119fa00fd8ede2533323e14d94ad4d5fabbc5) ) /* Actually labeled as "SIS2-L0-B" */
+	ROM_COPY( REGION_CPU1, 0x7fff0,  0xffff0, 0x10 )	/* start vector */
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the audio CPU */
+	ROM_LOAD( "sis2-sp-.rom", 0x0000, 0x10000, CRC(6fc0ff3a) SHA1(2b8c648c1fb5d516552fc260b8f18ffd56bbe062) )
+
+	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "ic81.rom",     0x000000, 0x80000, CRC(5a7cb88f) SHA1(ce3befcd956b803655b261c2ece911f444aa3a13) )
+	ROM_LOAD( "ic82.rom",     0x080000, 0x80000, CRC(54a7852c) SHA1(887e7543f09d00323ce1986e72c5613dde1dc6cc) )
+	ROM_LOAD( "ic83.rom",     0x100000, 0x80000, CRC(2bd65dc6) SHA1(b50dec707ea5a71972df0a8dc47141d75e8f874e) )
+	ROM_LOAD( "ic84.rom",     0x180000, 0x80000, CRC(876d5fdb) SHA1(723c58268be60f4973e914df238b264708d3f1e3) )
+
+	ROM_REGION( 0x20000, REGION_SOUND1, 0 )	/* samples */
+	/* Does this have a sample rom? */
+ROM_END
+
+ROM_START( shisen2 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )
+	ROM_LOAD16_BYTE( "sis2-h0-.rom", 0x00001, 0x40000, CRC(6fae0aea) SHA1(7ebecbfdb17e15b8c0ebd293cd42a618c596782e) )
+	ROM_LOAD16_BYTE( "sis2-l0-.rom", 0x00000, 0x40000, CRC(2af25182) SHA1(ec6dcc3913e1b7e7a3958b78610e83f51c404e07) )
 	ROM_COPY( REGION_CPU1, 0x7fff0,  0xffff0, 0x10 )	/* start vector */
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the audio CPU */
@@ -1147,18 +1158,26 @@ static DRIVER_INIT( bombrman )
 }
 
 /* Bomberman World executes encrypted code from RAM! */
-static WRITE8_HANDLER (bbmanw_ram_write)
+static UINT8 *bbmanw_ram_base;
+extern UINT8 *irem_cpu_decrypted;
+
+static WRITE8_HANDLER( bbmanw_ram_write )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	RAM[0x0a0c00+offset]=data;
-	RAM[0x1a0c00+offset]=dynablaster_decryption_table[data];
+	bbmanw_ram_base[offset]=data;
+	irem_cpu_decrypted[0xa0c00+offset]=dynablaster_decryption_table[data];
+}
+
+static READ8_HANDLER( bbmanw_ram_read )
+{
+	return bbmanw_ram_base[offset];
 }
 
 static DRIVER_INIT( bbmanw )
 {
 	irem_cpu_decrypt(0,dynablaster_decryption_table);
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0c00, 0xa0cff, 0, 0, bbmanw_ram_write);
+	bbmanw_ram_base = memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0c00, 0xa0cff, 0, 0, bbmanw_ram_write);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0c00, 0xa0cff, 0, 0, bbmanw_ram_read);
 }
 
 static DRIVER_INIT( quizf1 )
@@ -1177,14 +1196,14 @@ static DRIVER_INIT( riskchal )
 	irem_cpu_decrypt(0,gussun_decryption_table);
 }
 
-static DRIVER_INIT( shisen2 )
+static DRIVER_INIT( matchit2 )
 {
-	irem_cpu_decrypt(0,shisen2_decryption_table);
+	irem_cpu_decrypt(0,matchit2_decryption_table);
 }
 
 static DRIVER_INIT( bomblord )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
 	int i;
 	for (i=0; i<0x100000; i+=8)
@@ -1214,4 +1233,5 @@ GAME( 1992, bomblord, bbmanw,   bomblord, bbmanw,   bomblord, ROT0, "bootleg", "
 GAME( 1992, quizf1,   0,        quizf1,   quizf1,   quizf1,   ROT0, "Irem", "Quiz F-1 1,2finish", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
 GAME( 1993, riskchal, 0,        m90,      riskchal, riskchal, ROT0, "Irem", "Risky Challenge", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
 GAME( 1993, gussun,   riskchal, m90,      riskchal, riskchal, ROT0, "Irem", "Gussun Oyoyo (Japan)", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
-GAME( 1993, shisen2,  0,        quizf1,   shisen2,  shisen2,  ROT0, "Tamtex", "Shisensho II", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
+GAME( 1993, matchit2, 0,        quizf1,   matchit2, matchit2, ROT0, "Tamtex", "Match It II", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
+GAME( 1993, shisen2,  matchit2, quizf1,   shisen2,  matchit2, ROT0, "Tamtex", "Shisensho II", GAME_NOT_WORKING | GAME_NO_COCKTAIL )

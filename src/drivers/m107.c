@@ -390,7 +390,7 @@ INPUT_PORTS_END
 
 /***************************************************************************/
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -401,7 +401,7 @@ static gfx_layout charlayout =
 	32*8
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -414,7 +414,7 @@ static gfx_layout spritelayout =
 	32*8
 };
 
-static gfx_layout spritelayout2 =
+static const gfx_layout spritelayout2 =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -426,14 +426,14 @@ static gfx_layout spritelayout2 =
 	32*8
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0, 128 },
 	{ REGION_GFX2, 0, &spritelayout, 0, 128 },
 	{ -1 } /* end of array */
 };
 
-static gfx_decode firebarr_gfxdecodeinfo[] =
+static const gfx_decode firebarr_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0, 128 },
 	{ REGION_GFX2, 0, &spritelayout2,0, 128 },
@@ -593,7 +593,7 @@ ROM_START( firebarr )
 	ROM_LOAD16_BYTE( "f4-h1",  0x080001, 0x20000, CRC(bb7f6968) SHA1(366747672aac939454d9915cda5277b0438f063b) )
 	ROM_LOAD16_BYTE( "f4-l1",  0x080000, 0x20000, CRC(9d57edd6) SHA1(16122829b61aa3aee88aeb6634831e8cf95eaee0) )
 
-	ROM_REGION( 0x100000 * 2, REGION_CPU2, 0 )
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "f4-sh0", 0x000001, 0x10000, CRC(30a8e232) SHA1(d4695aed35a1aa796b2872e58a6014e8b28bc154) )
 	ROM_LOAD16_BYTE( "f4-sl0", 0x000000, 0x10000, CRC(204b5f1f) SHA1(f0386500773cd7cca93f0e8e740db29182320c70) )
 
@@ -617,7 +617,7 @@ ROM_START( firebarr )
 	ROM_LOAD16_BYTE( "f4-drh", 0x000001, 0x20000, CRC(12001372) SHA1(a5346d8a741cd1a93aa289562bb56d2fc40c1bbb) )
 	ROM_LOAD16_BYTE( "f4-drl", 0x000000, 0x20000, CRC(08cb7533) SHA1(9e0d8f8498bddfa1c6135abbab4465e9eeb033fe) )
 
-	ROM_REGION( 0x80000, REGION_SOUND1, ROMREGION_SOUNDONLY )	/* ADPCM samples */
+	ROM_REGION( 0x80000, REGION_SOUND1, 0 )	/* ADPCM samples */
 	ROM_LOAD( "f4-da0",          0x000000, 0x80000, CRC(7a493e2e) SHA1(f6a8bacbe25760c86bdd8e8bb6d052ff15718eef) )
 ROM_END
 
@@ -628,7 +628,7 @@ ROM_START( dsoccr94 )
 	ROM_LOAD16_BYTE( "ds_h1-c.rom",  0x100001, 0x040000, CRC(6109041b) SHA1(063898a88f8a6a9f1510aa55e53a39f037b02903) )
 	ROM_LOAD16_BYTE( "ds_l1-c.rom",  0x100000, 0x040000, CRC(97a01f6b) SHA1(e188e28f880f5f3f4d7b49eca639d643989b1468) )
 
-	ROM_REGION( 0x100000 * 2, REGION_CPU2, 0 )
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "ds_sh0.rom",   0x000001, 0x010000, CRC(23fe6ffc) SHA1(896377961cafc19e44d9d889f9fbfdbaedd556da) )
 	ROM_LOAD16_BYTE( "ds_sl0.rom",   0x000000, 0x010000, CRC(768132e5) SHA1(1bb64516eb58d3b246f08e1c07f091e78085689f) )
 
@@ -644,7 +644,7 @@ ROM_START( dsoccr94 )
 	ROM_LOAD( "ds_020.rom",   0x200000, 0x100000, CRC(5a310f7f) SHA1(21969e4247c8328d27118d00604096deaf6700af) )
 	ROM_LOAD( "ds_030.rom",   0x300000, 0x100000, CRC(328b1f45) SHA1(4cbbd4d9be4fc151d426175bdbd35d8481bf2966) )
 
-	ROM_REGION( 0x100000, REGION_SOUND1, ROMREGION_SOUNDONLY )	 /* ADPCM samples */
+	ROM_REGION( 0x100000, REGION_SOUND1, 0 )	 /* ADPCM samples */
 	ROM_LOAD( "ds_da0.rom" ,  0x000000, 0x100000, CRC(67fc52fd) SHA1(5771e948115af8fe4a6d3f448c03a2a9b42b6f20) )
 ROM_END
 
@@ -653,7 +653,7 @@ ROM_START( wpksoc )
 	ROM_LOAD16_BYTE( "pkeurd.h0",    0x000001, 0x040000, CRC(b4917788) SHA1(673294c518eaf28354fa6a3058f9325c6d9ddde6) )
 	ROM_LOAD16_BYTE( "pkeurd.l0",    0x000000, 0x040000, CRC(03816bae) SHA1(832e2ec722b41d41626fec583fc11e9ff62cdaa0) )
 
-	ROM_REGION( 0x100000 * 2, REGION_CPU2, 0 )
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "pkos.sh0",     0x000001, 0x010000, CRC(1145998c) SHA1(cdb2a428e0f35302b81696dab02d3dd2c433f6e5) )
 	ROM_LOAD16_BYTE( "pkos.sl0",     0x000000, 0x010000, CRC(542ee1c7) SHA1(b934adeecbba17cf96b06a2b1dc1ceaebdf9ad10) )
 
@@ -673,7 +673,7 @@ ROM_START( wpksoc )
 	ROM_LOAD16_BYTE( "pk.o30", 0x300000, 0x80000, CRC(3390621c) SHA1(4138c690666f78b1c5cf83d815ed6b37239a94b4) )
 	ROM_LOAD16_BYTE( "pk.o31", 0x300001, 0x80000, CRC(4d322804) SHA1(b5e2b40e3ce83b6f97b2b57edaa79df6968d0997) )
 
-	ROM_REGION( 0x100000, REGION_SOUND1, ROMREGION_SOUNDONLY )	 /* ADPCM samples */
+	ROM_REGION( 0x100000, REGION_SOUND1, 0 )	 /* ADPCM samples */
 	ROM_LOAD( "pk.da0",       0x000000, 0x80000, CRC(26a34cf4) SHA1(a8a7cd91cdc6d644ee02ca16e7fdc8debf8f3a5f) )
 ROM_END
 

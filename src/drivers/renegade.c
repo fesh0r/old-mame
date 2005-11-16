@@ -548,7 +548,8 @@ static ADDRESS_MAP_START( main_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3805, 0x3805) AM_WRITE(bankswitch_w)
 	AM_RANGE(0x3806, 0x3806) AM_WRITE(MWA8_NOP) // ?? watchdog
 	AM_RANGE(0x3807, 0x3807) AM_WRITE(renegade_coin_counter_w)
-	AM_RANGE(0x4000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x4000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -632,7 +633,7 @@ INPUT_PORTS_END
 
 
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8, /* 8x8 characters */
 	1024, /* 1024 characters */
@@ -643,7 +644,7 @@ static gfx_layout charlayout =
 	32*8 /* offset to next character */
 };
 
-static gfx_layout tileslayout1 =
+static const gfx_layout tileslayout1 =
 {
 	16,16, /* tile size */
 	256, /* number of tiles */
@@ -663,7 +664,7 @@ static gfx_layout tileslayout1 =
 	64*8 /* offset to next tile */
 };
 
-static gfx_layout tileslayout2 =
+static const gfx_layout tileslayout2 =
 {
 	16,16, /* tile size */
 	256, /* number of tiles */
@@ -683,7 +684,7 @@ static gfx_layout tileslayout2 =
 	64*8 /* offset to next tile */
 };
 
-static gfx_layout tileslayout3 =
+static const gfx_layout tileslayout3 =
 {
 	16,16, /* tile size */
 	256, /* number of tiles */
@@ -703,7 +704,7 @@ static gfx_layout tileslayout3 =
 	64*8 /* offset to next tile */
 };
 
-static gfx_layout tileslayout4 =
+static const gfx_layout tileslayout4 =
 {
 	16,16, /* tile size */
 	256, /* number of tiles */
@@ -723,7 +724,7 @@ static gfx_layout tileslayout4 =
 	64*8 /* offset to next tile */
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	/* 8x8 text, 8 colors */
 	{ REGION_GFX1, 0x00000, &charlayout,	 0, 4 },	/* colors   0- 32 */
@@ -781,6 +782,12 @@ static struct CustomSound_interface adpcm_interface =
 };
 
 
+static MACHINE_INIT( renegade )
+{
+	bank = 0;
+	setbank();
+}
+
 
 static MACHINE_DRIVER_START( renegade )
 
@@ -795,6 +802,7 @@ static MACHINE_DRIVER_START( renegade )
 								/* IRQs are caused by the main CPU */
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION*2)
+	MDRV_MACHINE_INIT(renegade)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

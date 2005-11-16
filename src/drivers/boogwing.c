@@ -210,7 +210,7 @@ INPUT_PORTS_END
 
 /**********************************************************************************/
 
-static gfx_layout tile_8x8_layout =
+static const gfx_layout tile_8x8_layout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -221,7 +221,7 @@ static gfx_layout tile_8x8_layout =
 	8*16
 };
 
-static gfx_layout tile_16x16_layout_5bpp =
+static const gfx_layout tile_16x16_layout_5bpp =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -232,7 +232,7 @@ static gfx_layout tile_16x16_layout_5bpp =
 	32*16
 };
 
-static gfx_layout tile_16x16_layout =
+static const gfx_layout tile_16x16_layout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -243,7 +243,7 @@ static gfx_layout tile_16x16_layout =
 	32*16
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -256,7 +256,7 @@ static gfx_layout spritelayout =
 };
 
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tile_8x8_layout,            0, 16 },	/* Tiles (8x8) */
 	{ REGION_GFX2, 0, &tile_16x16_layout_5bpp, 0x100, 16 },	/* Tiles (16x16) */
@@ -314,18 +314,18 @@ static MACHINE_DRIVER_START( boogwing )
 
 	MDRV_SOUND_ADD(YM2151, 32220000/9)
 	MDRV_SOUND_CONFIG(ym2151_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.45)
-	MDRV_SOUND_ROUTE(1, "right", 0.45)
+	MDRV_SOUND_ROUTE(0, "left", 0.80)
+	MDRV_SOUND_ROUTE(1, "right", 0.80)
 
 	MDRV_SOUND_ADD(OKIM6295, 32220000/32/132)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.75)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.75)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.40)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.40)
 
 	MDRV_SOUND_ADD(OKIM6295, 32220000/16/132)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.60)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.60)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.30)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
 MACHINE_DRIVER_END
 
 /**********************************************************************************/

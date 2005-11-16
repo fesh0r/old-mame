@@ -77,7 +77,7 @@ static void print_game_switch(FILE* out, const game_driver* game)
 
 	begin_resource_tracking();
 
-	input = input_port_allocate(game->construct_ipt);
+	input = input_port_allocate(game->construct_ipt, NULL);
 
 	while (input->type != IPT_END)
 	{
@@ -125,7 +125,7 @@ static void print_game_input(FILE* out, const game_driver* game)
 
 	begin_resource_tracking();
 
-	input = input_port_allocate(game->construct_ipt);
+	input = input_port_allocate(game->construct_ipt, NULL);
 
 	while (input->type != IPT_END)
 	{
@@ -470,8 +470,6 @@ static void print_game_rom(FILE* out, const game_driver* game)
 		{
 			if (ROMREGION_GETFLAGS(region) & ROMREGION_DISPOSE)
 				fprintf(out, " dispose=\"yes\"");
-			if (ROMREGION_GETFLAGS(region) & ROMREGION_SOUNDONLY)
-				fprintf(out, " soundonly=\"yes\"");
 
 			fprintf(out, " offset=\"%x\"", offset);
 			fprintf(out, "/>\n");
@@ -941,6 +939,7 @@ void print_mame_xml(FILE* out, const game_driver* games[])
 		"<?xml version=\"1.0\"?>\n"
 		"<!DOCTYPE " XML_ROOT " [\n"
 		"<!ELEMENT " XML_ROOT " (" XML_TOP "+)>\n"
+		"\t<!ATTLIST " XML_ROOT " build CDATA #IMPLIED>\n"
 #ifdef MESS
 		"\t<!ELEMENT " XML_TOP " (description, year?, manufacturer, history?, biosset*, rom*, disk*, sample*, chip*, video?, sound?, input?, dipswitch*, driver?, device*)>\n"
 #else
@@ -972,7 +971,6 @@ void print_mame_xml(FILE* out, const game_driver* games[])
 		"\t\t\t<!ATTLIST rom offset CDATA #IMPLIED>\n"
 		"\t\t\t<!ATTLIST rom status (baddump|nodump|good) \"good\">\n"
 		"\t\t\t<!ATTLIST rom dispose (yes|no) \"no\">\n"
-		"\t\t\t<!ATTLIST rom soundonly (yes|no) \"no\">\n"
 		"\t\t<!ELEMENT disk EMPTY>\n"
 		"\t\t\t<!ATTLIST disk name CDATA #REQUIRED>\n"
 		"\t\t\t<!ATTLIST disk md5 CDATA #IMPLIED>\n"
@@ -986,7 +984,6 @@ void print_mame_xml(FILE* out, const game_driver* games[])
 		"\t\t<!ELEMENT chip EMPTY>\n"
 		"\t\t\t<!ATTLIST chip name CDATA #REQUIRED>\n"
 		"\t\t\t<!ATTLIST chip type (cpu|audio) #REQUIRED>\n"
-		"\t\t\t<!ATTLIST chip soundonly (yes|no) \"no\">\n"
 		"\t\t\t<!ATTLIST chip clock CDATA #IMPLIED>\n"
 		"\t\t<!ELEMENT video EMPTY>\n"
 		"\t\t\t<!ATTLIST video screen (raster|vector) #REQUIRED>\n"
@@ -1018,7 +1015,8 @@ void print_mame_xml(FILE* out, const game_driver* games[])
 		"\t\t\t<!ATTLIST driver graphic (good|imperfect|preliminary) #REQUIRED>\n"
 		"\t\t\t<!ATTLIST driver cocktail (good|imperfect|preliminary) #IMPLIED>\n"
 		"\t\t\t<!ATTLIST driver protection (good|imperfect|preliminary) #IMPLIED>\n"
-		"\t\t\t<!ATTLIST driver palettesize CDATA #REQUIRED>\n"
+		"\t\t\t<!ATTLIST driver savestate (supported|unsupported) #REQUIRED>\n"
+ 		"\t\t\t<!ATTLIST driver palettesize CDATA #REQUIRED>\n"
 #ifdef MESS
 		"\t\t<!ELEMENT device (extension*)>\n"
 		"\t\t\t<!ATTLIST device name CDATA #REQUIRED>\n"
@@ -1026,7 +1024,8 @@ void print_mame_xml(FILE* out, const game_driver* games[])
 		"\t\t\t\t<!ATTLIST extension name CDATA #REQUIRED>\n"
 #endif
 		"]>\n\n"
-		"<" XML_ROOT ">\n"
+		"<" XML_ROOT " build=\"%s\">\n",
+		normalize_string(build_version)
 	);
 
 	print_mame_data(out, games);

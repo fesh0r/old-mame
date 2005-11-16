@@ -321,7 +321,7 @@ GYRUSS_COMMON
 INPUT_PORTS_END
 
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	512,	/* 512 characters */
@@ -331,7 +331,7 @@ static gfx_layout charlayout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	16*8	/* every char takes 16 consecutive bytes */
 };
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	8,16,	/* 8*16 sprites */
 	256,	/* 256 sprites */
@@ -345,7 +345,7 @@ static gfx_layout spritelayout =
 
 
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &charlayout,      0, 16 },
 	{ REGION_GFX2, 0x0000, &spritelayout, 16*4, 16 },	/* upper half */
@@ -472,7 +472,7 @@ ROM_START( gyruss )
 	ROM_LOAD( "gyrussk.3",    0x4000, 0x2000, CRC(27454a98) SHA1(030c7df225652ee20d5ef64d005eb011dc89a27d) )
 	/* the diagnostics ROM would go here */
 
-	ROM_REGION( 2*0x10000, REGION_CPU2, 0 )	/* 64k for code + 64k for the decrypted opcodes */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for code */
 	ROM_LOAD( "gyrussk.9",    0xe000, 0x2000, CRC(822bf27e) SHA1(36d5bea2392a7d3476dd797dc05602705cfa23ef) )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64k for the audio CPU */
@@ -505,7 +505,7 @@ ROM_START( gyrussce )
 	ROM_LOAD( "gya-3.bin",    0x4000, 0x2000, CRC(f6dbb33b) SHA1(19cab8e7f2f2358b6271ab402f132654e8be95d4) )
 	/* the diagnostics ROM would go here */
 
-	ROM_REGION( 2*0x10000, REGION_CPU2, 0 )	/* 64k for code + 64k for the decrypted opcodes */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for code */
 	ROM_LOAD( "gyrussk.9",    0xe000, 0x2000, CRC(822bf27e) SHA1(36d5bea2392a7d3476dd797dc05602705cfa23ef) )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64k for the audio CPU */
@@ -538,7 +538,7 @@ ROM_START( venus )
 	ROM_LOAD( "r3",           0x4000, 0x2000, CRC(db246fcd) SHA1(c0228b35591c9e1c778370a2abd3739c441f14aa) )
 	/* the diagnostics ROM would go here */
 
-	ROM_REGION( 2*0x10000, REGION_CPU2, 0 )	/* 64k for code + 64k for the decrypted opcodes */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for code */
 	ROM_LOAD( "gyrussk.9",    0xe000, 0x2000, CRC(822bf27e) SHA1(36d5bea2392a7d3476dd797dc05602705cfa23ef) )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64k for the audio CPU */

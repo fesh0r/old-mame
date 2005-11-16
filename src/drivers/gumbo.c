@@ -280,7 +280,7 @@ INPUT_PORTS_START( dblpoint )
 	PORT_SERVICE( 0x8000, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
-static gfx_layout gumbo_layout =
+static const gfx_layout gumbo_layout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -291,7 +291,7 @@ static gfx_layout gumbo_layout =
 	8*32
 };
 
-static gfx_layout gumbo2_layout =
+static const gfx_layout gumbo2_layout =
 {
 	4,4,
 	RGN_FRAC(1,2),
@@ -302,7 +302,7 @@ static gfx_layout gumbo2_layout =
 	4*16
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &gumbo_layout,   0x0, 2  }, /* bg tiles */
 	{ REGION_GFX2, 0, &gumbo2_layout,  0x0, 2  }, /* fg tiles */
@@ -402,7 +402,7 @@ ROM_START( mspuzzle )
 ROM_END
 
 ROM_START( dblpoint )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "d12.bin", 0x00001, 0x20000, CRC(44bc1bd9) SHA1(8b72909c53b09b9287bf90bcd8970bdf9c1b8798) )
 	ROM_LOAD16_BYTE( "d13.bin", 0x00000, 0x20000, CRC(625a311b) SHA1(38fa0d240b253fcc8dc89438582a9c446410b636) )
 

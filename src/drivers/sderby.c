@@ -156,7 +156,7 @@ INPUT_PORTS_START( sderby )
 INPUT_PORTS_END
 
 
-static gfx_layout tiles8x8_layout =
+static const gfx_layout tiles8x8_layout =
 {
 	8,8,
 	RGN_FRAC(1,5),
@@ -168,7 +168,7 @@ static gfx_layout tiles8x8_layout =
 };
 
 
-static gfx_layout tiles16x16_layout =
+static const gfx_layout tiles16x16_layout =
 {
 	16,16,
 	RGN_FRAC(1,5),
@@ -187,7 +187,7 @@ static gfx_layout tiles16x16_layout =
 
 
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tiles8x8_layout,   0x000, 256  }, /* sprites */
 	{ REGION_GFX1, 0, &tiles16x16_layout,   0x000, 256  }, /* sprites */
@@ -259,7 +259,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( sderby )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "22.bin", 0x00000, 0x20000, CRC(a319f1e0) SHA1(d932cc7e990aa87308dcd9ffa5af2aaea333aa9a) )
 	ROM_LOAD16_BYTE( "23.bin", 0x00001, 0x20000, CRC(1d6e2321) SHA1(3bb32021cc9ee6bd6d1fd79a89159fef70f34f41) )
 

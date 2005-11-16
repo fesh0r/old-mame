@@ -240,7 +240,7 @@ static WRITE8_HANDLER( port40_w )
 //  Bits 1-3 are all set high upon death, until the game continues
 //  Bit 6 is used only in Malzak II, and is set high after checking
 //        the selected version
-//  logerror("S2650 [0x%04x]: port 0x40 write: 0x%02x\n",cpunum_get_pc_byte(0),data);
+//  logerror("S2650 [0x%04x]: port 0x40 write: 0x%02x\n",cpunum_get_physical_pc_byte(0),data);
 	if(data & 0x40)
 		malzak_bank1 = 1;
 	else
@@ -335,7 +335,7 @@ INPUT_PORTS_START( malzak2 )
 INPUT_PORTS_END
 
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -349,7 +349,7 @@ static gfx_layout charlayout =
 //  8*8
 };
 
-static gfx_layout s2636_character10 =
+static const gfx_layout s2636_character10 =
 {
 	8,10,
 	5,
@@ -360,7 +360,7 @@ static gfx_layout s2636_character10 =
 	8*16
 };
 
-static gfx_layout saa5050_charlayout =
+static const gfx_layout saa5050_charlayout =
 {
 	6, 10,
 	256,
@@ -372,7 +372,7 @@ static gfx_layout saa5050_charlayout =
 	8 * 10
 };
 
-static gfx_layout saa5050_hilayout =
+static const gfx_layout saa5050_hilayout =
 {
 	6, 10,
 	256,
@@ -384,7 +384,7 @@ static gfx_layout saa5050_hilayout =
 	8 * 10
 };
 
-static gfx_layout saa5050_lolayout =
+static const gfx_layout saa5050_lolayout =
 {
 	6, 10,
 	256,
@@ -422,7 +422,7 @@ static	unsigned	short	saa5050_colortable[64 * 2] =
 };
 
 //add s2636 decodes here (i.e. from zac2650) and maybe re-arrange them
-static gfx_decode malzak_gfxdecodeinfo[] =
+static const gfx_decode malzak_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,  0, 16 },
   	{ REGION_CPU1, 0x0000, &s2636_character10, 0, 8 },	/* s2636 #1  */

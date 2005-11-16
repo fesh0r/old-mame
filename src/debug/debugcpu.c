@@ -51,6 +51,8 @@ int debug_key_pressed;
 FILE *debug_source_file;
 struct symbol_table *global_symtable;
 
+static const char *address_space_name[] = { "program", "data", "I/O" };
+
 static UINT64 wpdata;
 static UINT64 wpaddr;
 
@@ -70,6 +72,7 @@ static int break_on_interrupt;
 static int break_on_interrupt_cpunum;
 static int break_on_interrupt_irqline;
 static int memory_modified;
+static int memory_hook_cpunum;
 
 static struct debug_cpu_info debug_cpuinfo[MAX_CPU];
 
@@ -92,6 +95,8 @@ static UINT64 get_tempvar(UINT32 ref);
 static void set_tempvar(UINT32 ref, UINT64 value);
 static UINT64 get_cpu_reg(UINT32 ref);
 static void set_cpu_reg(UINT32 ref, UINT64 value);
+static void check_watchpoints(int cpunum, int spacenum, int type, offs_t address, offs_t size, UINT64 value_to_write);
+static void check_hotspots(int cpunum, int spacenum, offs_t address);
 
 
 
@@ -280,6 +285,7 @@ void debug_cpu_init(void)
 		debug_cpuinfo[cpunum].temp_breakpoint_pc = ~0;
 
 		/* fetch the memory accessors */
+		debug_cpuinfo[cpunum].translate = (int (*)(int, offs_t *))cpunum_get_info_fct(cpunum, CPUINFO_PTR_TRANSLATE);
 		debug_cpuinfo[cpunum].read = (int (*)(int, UINT32, int, UINT64 *))cpunum_get_info_fct(cpunum, CPUINFO_PTR_READ);
 		debug_cpuinfo[cpunum].write = (int (*)(int, UINT32, int, UINT64))cpunum_get_info_fct(cpunum, CPUINFO_PTR_WRITE);
 		debug_cpuinfo[cpunum].readop = (int (*)(UINT32, int, UINT64 *))cpunum_get_info_fct(cpunum, CPUINFO_PTR_READOP);
@@ -316,10 +322,15 @@ void debug_cpu_init(void)
 		for (spacenum = 0; spacenum < ADDRESS_SPACES; spacenum++)
 		{
 			int datawidth = cpunum_databus_width(cpunum, spacenum);
-			int addrwidth = cpunum_addrbus_width(cpunum, spacenum);
+			int logwidth = cpunum_logaddr_width(cpunum, spacenum);
 			int addrshift = cpunum_addrbus_shift(cpunum, spacenum);
+			int pageshift = cpunum_page_shift(cpunum, spacenum);
+			int addrwidth = logwidth;
 
+			if (addrwidth == 0)
+				addrwidth = cpunum_addrbus_width(cpunum, spacenum);
 			debug_cpuinfo[cpunum].space[spacenum].databytes = datawidth / 8;
+			debug_cpuinfo[cpunum].space[spacenum].pageshift = pageshift;
 			debug_cpuinfo[cpunum].space[spacenum].addr2byte_lshift = (addrshift < 0) ? -addrshift : 0;
 			debug_cpuinfo[cpunum].space[spacenum].addr2byte_rshift = (addrshift > 0) ?  addrshift : 0;
 			debug_cpuinfo[cpunum].space[spacenum].addrchars = (addrwidth + 3) / 4;
@@ -745,7 +756,7 @@ void MAME_Debug(void)
 				/* if we hit 0, stop; otherwise, we might want to update everything */
 				if (steps_until_stop == 0)
 					execution_state = EXECUTION_STATE_STOPPED;
-				else if (execution_state != EXECUTION_STATE_STEP_OUT)
+				else if (execution_state != EXECUTION_STATE_STEP_OUT && (steps_until_stop < 200 || steps_until_stop % 100 == 0))
 				{
 					debug_view_update_all();
 					debug_refresh_display();
@@ -818,6 +829,29 @@ void MAME_Debug(void)
     data for a given instruction
 -------------------------------------------------*/
 
+static UINT32 dasm_wrapped(char *buffer, offs_t pc)
+{
+	if (activecpu_get_info_fct(CPUINFO_PTR_DISASSEMBLE_NEW) != NULL)
+	{
+		const struct debug_cpu_info *cpuinfo = debug_get_cpu_info(cpu_getactivecpu());
+		int maxbytes = activecpu_max_instruction_bytes();
+		UINT8 opbuf[64], argbuf[64];
+		offs_t pcbyte;
+		int numbytes;
+
+		/* fetch the bytes up to the maximum */
+		pcbyte = ADDR2BYTE(pc, cpuinfo, ADDRESS_SPACE_PROGRAM);
+		for (numbytes = 0; numbytes < maxbytes; numbytes++)
+		{
+			opbuf[numbytes] = debug_read_opcode(pcbyte + numbytes, 1, FALSE);
+			argbuf[numbytes] = debug_read_opcode(pcbyte + numbytes, 1, TRUE);
+		}
+
+		return activecpu_dasm_new(buffer, pc, opbuf, argbuf, maxbytes);
+	}
+	return activecpu_dasm(buffer, pc);
+}
+
 static void perform_trace(struct debug_cpu_info *info)
 {
 	offs_t pc = activecpu_get_pc();
@@ -854,7 +888,7 @@ static void perform_trace(struct debug_cpu_info *info)
 		offset = sprintf(buffer, "%0*X: ", info->space[ADDRESS_SPACE_PROGRAM].addrchars, pc);
 
 		/* print the disassembly */
-		dasmresult = activecpu_dasm(&buffer[offset], pc);
+		dasmresult = dasm_wrapped(&buffer[offset], pc);
 
 		/* output the result */
 		fprintf(info->trace.file, "%s\n", buffer);
@@ -868,7 +902,7 @@ static void perform_trace(struct debug_cpu_info *info)
 
 			/* if we need to skip additional instructions, advance as requested */
 			while (extraskip-- > 0)
-				trace_over_target += activecpu_dasm(buffer, trace_over_target) & DASMFLAG_LENGTHMASK;
+				trace_over_target += dasm_wrapped(buffer, trace_over_target) & DASMFLAG_LENGTHMASK;
 
 			info->trace.trace_over_target = trace_over_target;
 		}
@@ -896,7 +930,7 @@ static void prepare_for_step_overout(void)
 	offs_t dasmresult;
 
 	/* disassemble the current instruction and get the flags */
-	dasmresult = activecpu_dasm(dasmbuffer, pc);
+	dasmresult = dasm_wrapped(dasmbuffer, pc);
 
 	/* if flags are supported and it's a call-style opcode, set a temp breakpoint after that instruction */
 	if ((dasmresult & DASMFLAG_SUPPORTED) && (dasmresult & DASMFLAG_STEP_OVER))
@@ -906,7 +940,7 @@ static void prepare_for_step_overout(void)
 
 		/* if we need to skip additional instructions, advance as requested */
 		while (extraskip-- > 0)
-			pc += activecpu_dasm(dasmbuffer, pc) & DASMFLAG_LENGTHMASK;
+			pc += dasm_wrapped(dasmbuffer, pc) & DASMFLAG_LENGTHMASK;
 		step_overout_breakpoint = pc;
 	}
 
@@ -986,6 +1020,59 @@ void debug_interrupt_hook(int cpunum, int irqline)
 		break_on_interrupt = 2;
 		break_on_interrupt_irqline = irqline;
 	}
+}
+
+
+/*-------------------------------------------------
+    standard_debug_hook_read - standard read hook
+-------------------------------------------------*/
+
+static void standard_debug_hook_read(int spacenum, int size, offs_t address)
+{
+	struct debug_cpu_info *info = &debug_cpuinfo[memory_hook_cpunum];
+
+	/* check watchpoints */
+	if (info->read_watchpoints)
+		check_watchpoints(memory_hook_cpunum, spacenum, WATCHPOINT_READ, address, size, 0);
+
+	/* check hotspots */
+	if (info->hotspots)
+		check_hotspots(memory_hook_cpunum, spacenum, address);
+}
+
+
+/*-------------------------------------------------
+    standard_debug_hook_write - standard write hook
+-------------------------------------------------*/
+
+static void standard_debug_hook_write(int spacenum, int size, offs_t address, UINT64 data)
+{
+	struct debug_cpu_info *info = &debug_cpuinfo[memory_hook_cpunum];
+
+	/* check watchpoints */
+	if (info->write_watchpoints)
+		check_watchpoints(memory_hook_cpunum, spacenum, WATCHPOINT_WRITE, address, size, data);
+}
+
+
+/*-------------------------------------------------
+    debug_get_memory_hooks - get memory hooks
+    for the specified CPU
+-------------------------------------------------*/
+
+void debug_get_memory_hooks(int cpunum, debug_hook_read_ptr *read, debug_hook_write_ptr *write)
+{
+	memory_hook_cpunum = cpunum;
+
+	if (debug_cpuinfo[cpunum].read_watchpoints || debug_cpuinfo[cpunum].hotspots)
+		*read = standard_debug_hook_read;
+	else
+		*read = NULL;
+
+	if (debug_cpuinfo[cpunum].write_watchpoints)
+		*write = standard_debug_hook_write;
+	else
+		*write = NULL;
 }
 
 
@@ -1148,11 +1235,11 @@ int debug_breakpoint_enable(int bpnum, int enable)
 **#################################################################################################*/
 
 /*-------------------------------------------------
-    debug_check_watchpoints - check the
+    check_watchpoints - check the
     breakpoints for a given CPU and address space
 -------------------------------------------------*/
 
-void debug_check_watchpoints(int cpunum, int spacenum, int type, offs_t address, offs_t size, UINT64 value_to_write)
+static void check_watchpoints(int cpunum, int spacenum, int type, offs_t address, offs_t size, UINT64 value_to_write)
 {
 	struct watchpoint *wp;
 	UINT64 result;
@@ -1160,6 +1247,8 @@ void debug_check_watchpoints(int cpunum, int spacenum, int type, offs_t address,
 	/* if we're within debugger code, don't stop */
 	if (within_debugger_code)
 		return;
+
+	within_debugger_code = 1;
 
 	/* if we are a write watchpoint, stash the value that will be written */
 	wpaddr = address;
@@ -1203,6 +1292,8 @@ void debug_check_watchpoints(int cpunum, int spacenum, int type, offs_t address,
 				}
 				break;
 			}
+
+	within_debugger_code = 0;
 }
 
 
@@ -1268,7 +1359,10 @@ int debug_watchpoint_set(int cpunum, int spacenum, int type, offs_t address, off
 	/* hook us in */
 	wp->next = debug_cpuinfo[cpunum].space[spacenum].first_wp;
 	debug_cpuinfo[cpunum].space[spacenum].first_wp = wp;
-	debug_cpuinfo[cpunum].total_watchpoints++;
+	if (wp->type & WATCHPOINT_READ)
+		debug_cpuinfo[cpunum].read_watchpoints++;
+	if (wp->type & WATCHPOINT_WRITE)
+		debug_cpuinfo[cpunum].write_watchpoints++;
 	return wp->index;
 }
 
@@ -1299,8 +1393,11 @@ int debug_watchpoint_clear(int wpnum)
 						expression_free(wp->condition);
 					if (wp->action)
 						free(wp->action);
+					if (wp->type & WATCHPOINT_READ)
+						debug_cpuinfo[cpunum].read_watchpoints--;
+					if (wp->type & WATCHPOINT_WRITE)
+						debug_cpuinfo[cpunum].write_watchpoints--;
 					free(wp);
-					debug_cpuinfo[cpunum].total_watchpoints--;
 					return 1;
 				}
 
@@ -1328,17 +1425,87 @@ int debug_watchpoint_enable(int wpnum, int enable)
 }
 
 
+
+/*###################################################################################################
+**  HOTSPOTS
+**#################################################################################################*/
+
 /*-------------------------------------------------
-    debug_watchpoint_count_ptr - return a pointer
-    to the count of live watchpoints
+    debug_hotspot_track - enable/disable tracking
+    of hotspots
 -------------------------------------------------*/
 
-const int *debug_watchpoint_count_ptr(int cpunum)
+int debug_hotspot_track(int cpunum, int numspots, int threshhold)
 {
-	return &debug_cpuinfo[cpunum].total_watchpoints;
+	struct debug_cpu_info *info = &debug_cpuinfo[cpunum];
+
+	/* if we already have tracking info, kill it */
+	if (info->hotspots)
+		free(info->hotspots);
+	info->hotspots = NULL;
+
+	/* only start tracking if we have a non-zero count */
+	if (numspots > 0)
+	{
+		/* allocate memory for hotspots */
+		info->hotspots = malloc(sizeof(*info->hotspots) * numspots);
+		if (!info->hotspots)
+			osd_die("Out of memory allocating hotspot info");
+		memset(info->hotspots, 0xff, sizeof(*info->hotspots) * numspots);
+
+		/* fill in the info */
+		info->hotspot_count = numspots;
+		info->hotspot_threshhold = threshhold;
+	}
+
+	return 1;
 }
 
 
+/*-------------------------------------------------
+    check_hotspots - check for
+    hotspots on a memory read access
+-------------------------------------------------*/
+
+static void check_hotspots(int cpunum, int spacenum, offs_t address)
+{
+	struct debug_cpu_info *info = &debug_cpuinfo[cpunum];
+	offs_t pc = activecpu_get_pc();
+	int hotindex;
+
+	/* see if we have a match in our list */
+	for (hotindex = 0; hotindex < info->hotspot_count; hotindex++)
+		if (info->hotspots[hotindex].access == address && info->hotspots[hotindex].pc == pc && info->hotspots[hotindex].spacenum == spacenum)
+			break;
+
+	/* if we didn't find any, make a new entry */
+	if (hotindex == info->hotspot_count)
+	{
+		/* if the bottom of the list is over the threshhold, print it */
+		debug_hotspot_entry *spot = &info->hotspots[info->hotspot_count - 1];
+		if (spot->count > info->hotspot_threshhold)
+			debug_console_printf("Hotspot @ %s %08X (PC=%08X) hit %d times (fell off bottom)\n", address_space_name[spot->spacenum], spot->access, spot->pc, spot->count);
+
+		/* move everything else down and insert this one at the top */
+		memmove(&info->hotspots[1], &info->hotspots[0], sizeof(info->hotspots[0]) * (info->hotspot_count - 1));
+		info->hotspots[0].access = address;
+		info->hotspots[0].pc = pc;
+		info->hotspots[0].spacenum = spacenum;
+		info->hotspots[0].count = 1;
+	}
+
+	/* if we did find one, increase the count and move it to the top */
+	else
+	{
+		info->hotspots[hotindex].count++;
+		if (hotindex != 0)
+		{
+			debug_hotspot_entry temp = info->hotspots[hotindex];
+			memmove(&info->hotspots[1], &info->hotspots[0], sizeof(info->hotspots[0]) * hotindex);
+			info->hotspots[0] = temp;
+		}
+	}
+}
 
 
 /*###################################################################################################
@@ -1357,7 +1524,9 @@ UINT8 debug_read_byte(int spacenum, offs_t address)
 	UINT64 custom;
 
 	memory_set_debugger_access(1);
-	if (info->read && (*info->read)(spacenum, address, 1, &custom))
+	if (info->translate && !(*info->translate)(spacenum, &address))
+		result = 0xff;
+	else if (info->read && (*info->read)(spacenum, address, 1, &custom))
 		result = custom;
 	else
 		result = (*active_address_space[spacenum].accessors->read_byte)(address);
@@ -1389,7 +1558,10 @@ UINT16 debug_read_word(int spacenum, offs_t address)
 	if (active_address_space[spacenum].accessors->read_word && !(address & 1))
 	{
 		memory_set_debugger_access(1);
-		result = (*active_address_space[spacenum].accessors->read_word)(address);
+		if (info->translate && !(*info->translate)(spacenum, &address))
+			result = 0xffff;
+		else
+			result = (*active_address_space[spacenum].accessors->read_word)(address);
 		memory_set_debugger_access(0);
 	}
 	else
@@ -1428,7 +1600,10 @@ UINT32 debug_read_dword(int spacenum, offs_t address)
 	if (active_address_space[spacenum].accessors->read_dword && !(address & 3))
 	{
 		memory_set_debugger_access(1);
-		result = (*active_address_space[spacenum].accessors->read_dword)(address);
+		if (info->translate && !(*info->translate)(spacenum, &address))
+			result = 0xffffffff;
+		else
+			result = (*active_address_space[spacenum].accessors->read_dword)(address);
 		memory_set_debugger_access(0);
 	}
 	else
@@ -1467,7 +1642,10 @@ UINT64 debug_read_qword(int spacenum, offs_t address)
 	if (active_address_space[spacenum].accessors->read_qword && !(address & 7))
 	{
 		memory_set_debugger_access(1);
-		result = (*active_address_space[spacenum].accessors->read_qword)(address);
+		if (info->translate && !(*info->translate)(spacenum, &address))
+			result = ~(UINT64)0;
+		else
+			result = (*active_address_space[spacenum].accessors->read_qword)(address);
 		memory_set_debugger_access(0);
 	}
 	else
@@ -1496,7 +1674,10 @@ void debug_write_byte(int spacenum, offs_t address, UINT8 data)
 	if (info->write && (*info->write)(spacenum, address, 1, data))
 		;
 	else
-		(*active_address_space[spacenum].accessors->write_byte)(address, data);
+	{
+		if (!info->translate || (*info->translate)(spacenum, &address))
+			(*active_address_space[spacenum].accessors->write_byte)(address, data);
+	}
 	memory_set_debugger_access(0);
 }
 
@@ -1522,7 +1703,8 @@ void debug_write_word(int spacenum, offs_t address, UINT16 data)
 	if (active_address_space[spacenum].accessors->write_word && !(address & 1))
 	{
 		memory_set_debugger_access(1);
-		(*active_address_space[spacenum].accessors->write_word)(address, data);
+		if (!info->translate || (*info->translate)(spacenum, &address))
+			(*active_address_space[spacenum].accessors->write_word)(address, data);
 		memory_set_debugger_access(0);
 	}
 	else if (debug_cpuinfo[cpu_getactivecpu()].endianness == CPU_IS_LE)
@@ -1559,7 +1741,8 @@ void debug_write_dword(int spacenum, offs_t address, UINT32 data)
 	if (active_address_space[spacenum].accessors->write_dword && !(address & 3))
 	{
 		memory_set_debugger_access(1);
-		(*active_address_space[spacenum].accessors->write_dword)(address, data);
+		if (!info->translate || (*info->translate)(spacenum, &address))
+			(*active_address_space[spacenum].accessors->write_dword)(address, data);
 		memory_set_debugger_access(0);
 	}
 	else if (debug_cpuinfo[cpu_getactivecpu()].endianness == CPU_IS_LE)
@@ -1596,7 +1779,8 @@ void debug_write_qword(int spacenum, offs_t address, UINT64 data)
 	if (active_address_space[spacenum].accessors->write_qword && !(address & 7))
 	{
 		memory_set_debugger_access(1);
-		(*active_address_space[spacenum].accessors->write_qword)(address, data);
+		if (!info->translate || (*info->translate)(spacenum, &address))
+			(*active_address_space[spacenum].accessors->write_qword)(address, data);
 		memory_set_debugger_access(0);
 	}
 	else if (debug_cpuinfo[cpu_getactivecpu()].endianness == CPU_IS_LE)
@@ -1617,22 +1801,25 @@ void debug_write_qword(int spacenum, offs_t address, UINT64 data)
     the given offset from opcode space
 -------------------------------------------------*/
 
-UINT64 debug_read_opcode(UINT32 offset, int size)
+UINT64 debug_read_opcode(offs_t address, int size, int arg)
 {
 	const struct debug_cpu_info *info = &debug_cpuinfo[cpu_getactivecpu()];
-	static const UINT64 dummy_data = ~0;
 	const void *ptr;
-
-	/* adjust the offset */
-	memory_set_opbase(offset);
 
 	/* shortcut if we have a custom routine */
 	if (info->readop)
 	{
 		UINT64 result;
-		if ((*info->readop)(offset, size, &result))
+		if ((*info->readop)(address, size, &result))
 			return result;
 	}
+
+	/* translate to physical first */
+	if (info->translate && !(*info->translate)(ADDRESS_SPACE_PROGRAM, &address))
+		return ~(UINT64)0;
+
+	/* adjust the address */
+	memory_set_opbase(address);
 
 	switch (info->space[ADDRESS_SPACE_PROGRAM].databytes * 10 + size)
 	{
@@ -1642,7 +1829,7 @@ UINT64 debug_read_opcode(UINT32 offset, int size)
 
 		/* dump opcodes in bytes from a word-sized bus */
 		case 21:
-			offset ^= (info->endianness == CPU_IS_LE) ? BYTE_XOR_LE(0) : BYTE_XOR_BE(0);
+			address ^= (info->endianness == CPU_IS_LE) ? BYTE_XOR_LE(0) : BYTE_XOR_BE(0);
 			break;
 
 		/* dump opcodes in words from a word-sized bus */
@@ -1651,12 +1838,12 @@ UINT64 debug_read_opcode(UINT32 offset, int size)
 
 		/* dump opcodes in bytes from a dword-sized bus */
 		case 41:
-			offset ^= (info->endianness == CPU_IS_LE) ? BYTE4_XOR_LE(0) : BYTE4_XOR_BE(0);
+			address ^= (info->endianness == CPU_IS_LE) ? BYTE4_XOR_LE(0) : BYTE4_XOR_BE(0);
 			break;
 
 		/* dump opcodes in words from a dword-sized bus */
 		case 42:
-			offset ^= (info->endianness == CPU_IS_LE) ? WORD_XOR_LE(0) : WORD_XOR_BE(0);
+			address ^= (info->endianness == CPU_IS_LE) ? WORD_XOR_LE(0) : WORD_XOR_BE(0);
 			break;
 
 		/* dump opcodes in dwords from a dword-sized bus */
@@ -1665,17 +1852,17 @@ UINT64 debug_read_opcode(UINT32 offset, int size)
 
 		/* dump opcodes in bytes from a qword-sized bus */
 		case 81:
-			offset ^= (info->endianness == CPU_IS_LE) ? BYTE8_XOR_LE(0) : BYTE8_XOR_BE(0);
+			address ^= (info->endianness == CPU_IS_LE) ? BYTE8_XOR_LE(0) : BYTE8_XOR_BE(0);
 			break;
 
 		/* dump opcodes in words from a qword-sized bus */
 		case 82:
-			offset ^= (info->endianness == CPU_IS_LE) ? WORD2_XOR_LE(0) : WORD2_XOR_BE(0);
+			address ^= (info->endianness == CPU_IS_LE) ? WORD2_XOR_LE(0) : WORD2_XOR_BE(0);
 			break;
 
 		/* dump opcodes in dwords from a qword-sized bus */
 		case 84:
-			offset ^= (info->endianness == CPU_IS_LE) ? DWORD_XOR_LE(0) : DWORD_XOR_BE(0);
+			address ^= (info->endianness == CPU_IS_LE) ? DWORD_XOR_LE(0) : DWORD_XOR_BE(0);
 			break;
 
 		/* dump opcodes in qwords from a qword-sized bus */
@@ -1688,18 +1875,25 @@ UINT64 debug_read_opcode(UINT32 offset, int size)
 	}
 
 	/* get pointer to data */
-	ptr = memory_get_op_ptr(cpu_getactivecpu(), offset);
+	ptr = memory_get_op_ptr(cpu_getactivecpu(), address);
 	if (!ptr)
-		ptr = &dummy_data;	/* if we're not mapped, just return all F's */
-	else if (osd_is_bad_read_ptr(ptr, size))
-		osd_die("debug_read_opcode: offset %x mapped to invalid memory %p\n", offset, ptr);
+		return ~(UINT64)0;
 
-	switch(size)
+	/* adjust if argument */
+	if (arg)
+		ptr = (UINT8 *)ptr + (opcode_arg_base - opcode_base);
+
+	/* gross! */
+	if (osd_is_bad_read_ptr(ptr, size))
+		osd_die("debug_read_opcode: address %x mapped to invalid memory %p\n", address, ptr);
+
+	/* return based on the size */
+	switch (size)
 	{
-		case 1:	return *((UINT8 *) ptr);
-		case 2:	return *((UINT16 *) ptr);
-		case 4:	return *((UINT32 *) ptr);
-		case 8:	return *((UINT64 *) ptr);
+		case 1:	return *(UINT8 *) ptr;
+		case 2:	return *(UINT16 *)ptr;
+		case 4:	return *(UINT32 *)ptr;
+		case 8:	return *(UINT64 *)ptr;
 	}
 
 	return 0;	/* appease compiler */

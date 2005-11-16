@@ -751,7 +751,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static gfx_layout pflayout =
+static const gfx_layout pflayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -763,7 +763,7 @@ static gfx_layout pflayout =
 };
 
 
-static gfx_layout pftoplayout =
+static const gfx_layout pftoplayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -775,7 +775,7 @@ static gfx_layout pftoplayout =
 };
 
 
-static gfx_layout anlayout =
+static const gfx_layout anlayout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -787,7 +787,7 @@ static gfx_layout anlayout =
 };
 
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &pflayout, 0x000, 64 },
 	{ REGION_GFX2, 0, &anlayout, 0x000, 16 },
@@ -841,7 +841,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( tmek )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )	/* 8*64k for 68000 code */
+	ROM_REGION( 0x200000, REGION_CPU1, 0 )	/* 8*64k for 68000 code */
 	ROM_LOAD32_BYTE( "0044d", 0x00000, 0x20000, CRC(1cd62725) SHA1(7685794d9fbe3fe7a9978d12e489447b4fba5282) )
 	ROM_LOAD32_BYTE( "0043d", 0x00001, 0x20000, CRC(82185051) SHA1(a21aad4f6ec948d9cd47efb89e7811c5c2e4850b) )
 	ROM_LOAD32_BYTE( "0042d", 0x00002, 0x20000, CRC(ef9feda4) SHA1(9fb6e91d4c22e28ced61d0d1f28f5e43191c8762) )
@@ -898,7 +898,7 @@ ROM_END
 
 
 ROM_START( tmekprot )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )	/* 8*64k for 68000 code */
+	ROM_REGION( 0x200000, REGION_CPU1, 0 )	/* 8*64k for 68000 code */
 	ROM_LOAD32_BYTE( "pgm0", 0x00000, 0x20000, CRC(f5f7f7be) SHA1(66be472e7c0ef26e2ce2b45488a8e4cfc1b0f80a) )
 	ROM_LOAD32_BYTE( "pgm1", 0x00001, 0x20000, CRC(284f7971) SHA1(5327f6368abd2ab9740a5150a8660c420f750476) )
 	ROM_LOAD32_BYTE( "pgm2", 0x00002, 0x20000, CRC(ce9a77d4) SHA1(025143b59d85180286086940b05c8e5ea0b4a7fe) )

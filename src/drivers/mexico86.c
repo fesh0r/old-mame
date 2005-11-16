@@ -388,7 +388,7 @@ INPUT_PORTS_END
 
 
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,
 	4*2048,
@@ -399,7 +399,7 @@ static gfx_layout charlayout =
 	16*8
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0, 16 },
 	{ -1 } /* end of array */
@@ -429,7 +429,7 @@ static MACHINE_DRIVER_START( mexico86 )
 	MDRV_CPU_PROGRAM_MAP(m68705_readmem,m68705_writemem)
 	MDRV_CPU_VBLANK_INT(mexico86_m68705_interrupt,2)
 
-	MDRV_CPU_ADD(Z80, 6000000)      /* 6 MHz??? */
+	MDRV_CPU_ADD_TAG("sub", Z80, 6000000)      /* 6 MHz??? */
 	MDRV_CPU_PROGRAM_MAP(sub_cpu_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
@@ -461,6 +461,7 @@ static MACHINE_DRIVER_START( kikikai )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mexico86)
+	MDRV_CPU_REMOVE("sub")
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(kikikai)

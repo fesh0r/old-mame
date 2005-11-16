@@ -384,6 +384,8 @@ DRIVER_INIT( zigzag )
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	memory_configure_bank(1, 0, 2, &RAM[0x2000], 0x1000);
 	memory_configure_bank(2, 0, 2, &RAM[0x2000], 0x1000);
+	memory_set_bank(1, 0);
+	memory_set_bank(2, 1);
 }
 
 
@@ -765,13 +767,12 @@ DRIVER_INIT( moonqsr )
 {
 	offs_t i;
 	UINT8 *rom = memory_region(REGION_CPU1);
-	offs_t diff = memory_region_length(REGION_CPU1) / 2;
+	UINT8 *decrypt = auto_malloc(0x8000);
 
+	memory_set_decrypted_region(0, 0x0000, 0x7fff, decrypt);
 
-	memory_set_opcode_base(0,rom+diff);
-
-	for (i = 0;i < diff;i++)
-		rom[i + diff] = decode_mooncrst(rom[i],i);
+	for (i = 0;i < 0x8000;i++)
+		decrypt[i] = decode_mooncrst(rom[i],i);
 }
 
 DRIVER_INIT( checkman )
@@ -973,8 +974,9 @@ DRIVER_INIT( mariner )
 	init_scramble_ppi();
 
 	/* extra ROM */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5800, 0x67ff, 0, 0, MRA8_ROM);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5800, 0x67ff, 0, 0, MRA8_BANK1);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5800, 0x67ff, 0, 0, MWA8_ROM);
+	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x5800);
 
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x9008, 0x9008, 0, 0, mariner_protection_2_r);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb401, 0xb401, 0, 0, mariner_protection_1_r);
@@ -1506,8 +1508,8 @@ DRIVER_INIT( scorpion )
 	ppi8255_set_portCread(1, scorpion_prot_r);
 
 	/* extra ROM */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5800, 0x67ff, 0, 0, MRA8_ROM);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5800, 0x67ff, 0, 0, MWA8_ROM);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5800, 0x67ff, 0, 0, MRA8_BANK1);
+	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x5800);
 
 	/* no background related */
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6803, 0x6803, 0, 0, MWA8_NOP);

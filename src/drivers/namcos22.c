@@ -1387,7 +1387,7 @@ static NVRAM_HANDLER( namcos22 )
  * Sprites are rendered as part of the polygon draw list, based on a per-sprite Z attribute.
  * Each sprite has explicit placement/color/zoom controls.
  */
-static gfx_layout sprite_layout =
+static const gfx_layout sprite_layout =
 {
 	32,32,
 	RGN_FRAC(1,1),
@@ -1406,7 +1406,7 @@ static gfx_layout sprite_layout =
 	32*32*8
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &sprite_layout,  0, 0x80 },
 	{ -1 },
@@ -1716,6 +1716,9 @@ static READ32_HANDLER( namcos22_keycus_r )
 	case NAMCOS22_CYBER_CYCLES:
 		return 0x0387;
 
+	case NAMCOS22_ALPINE_SURFER:
+		return 0x01a9;
+
 	default:
 		/* unknown/unused */
 		return 0;
@@ -1859,33 +1862,33 @@ static READ32_HANDLER( namcos22_gun_r )
 /* Namco Super System 22 */
 
 static ADDRESS_MAP_START( namcos22s_am, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x3fffff) AM_READ(MRA32_ROM) AM_WRITE(MWA32_ROM)
+	AM_RANGE(0x000000, 0x3fffff) AM_ROM
 	AM_RANGE(0x400000, 0x40001f) AM_READ(namcos22_keycus_r) AM_WRITE(MWA32_NOP)
-	AM_RANGE(0x410000, 0x413fff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) /* C139 SCI buffer */
+	AM_RANGE(0x410000, 0x413fff) AM_RAM /* C139 SCI buffer */
 	AM_RANGE(0x420000, 0x42000f) AM_READ(MRA32_NOP) AM_WRITE(MWA32_NOP) /* C139 SCI registers */
 	AM_RANGE(0x430000, 0x43000f) AM_READ(namcos22_gun_r) AM_WRITE(MWA32_NOP)
 	AM_RANGE(0x440000, 0x440003) AM_READ(namcos22_dipswitch_r)
 	AM_RANGE(0x450008, 0x45000b) AM_READ(namcos22_portbit_r) AM_WRITE(namcos22_portbit_w)
-	AM_RANGE(0x460000, 0x463fff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) AM_BASE(&namcos22_nvmem) AM_SIZE(&namcos22_nvmem_size)
+	AM_RANGE(0x460000, 0x463fff) AM_RAM AM_BASE(&namcos22_nvmem) AM_SIZE(&namcos22_nvmem_size)
 	AM_RANGE(0x700000, 0x70001f) AM_READ(namcos22_system_controller_r) AM_WRITE(namcos22_system_controller_w) AM_BASE(&namcos22_system_controller)
-	AM_RANGE(0x800000, 0x800003) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM)
-	AM_RANGE(0x810000, 0x81000f) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) /* ? */
-	AM_RANGE(0x810200, 0x8103ff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) /* CZ RAM */
+	AM_RANGE(0x800000, 0x800003) AM_RAM
+	AM_RANGE(0x810000, 0x81000f) AM_RAM /* ? */
+	AM_RANGE(0x810200, 0x8103ff) AM_RAM /* CZ RAM */
 		/* depth cueing; fog density, near to far */
-	AM_RANGE(0x810400, 0x810403) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) /* ? air combat22 */
-	AM_RANGE(0x820000, 0x8202ff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM)
+	AM_RANGE(0x810400, 0x810403) AM_RAM /* ? air combat22 */
+	AM_RANGE(0x820000, 0x8202ff) AM_RAM
 	AM_RANGE(0x824000, 0x8243ff) AM_READ(namcos22_gamma_r) AM_WRITE(namcos22_gamma_w) AM_BASE(&namcos22_gamma)
 	AM_RANGE(0x828000, 0x83ffff) AM_READ(namcos22_paletteram_r) AM_WRITE(namcos22_paletteram_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x860000, 0x860007) AM_READ(spotram_r) AM_WRITE(spotram_w)
 	AM_RANGE(0x880000, 0x89dfff) AM_READ(namcos22_cgram_r) AM_WRITE(namcos22_cgram_w) AM_BASE(&namcos22_cgram)
 	AM_RANGE(0x89e000, 0x89ffff) AM_READ(namcos22_textram_r) AM_WRITE(namcos22_textram_w) AM_BASE(&namcos22_textram)
-	AM_RANGE(0x8a0000, 0x8a000f) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) /* tilemap attributes */
+	AM_RANGE(0x8a0000, 0x8a000f) AM_RAM /* tilemap attributes */
 		/* +0x0000          BG Position X
          * +0x0002          BG Position Y
          */
-	AM_RANGE(0x900000, 0x90ffff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) AM_BASE(&namcos22_vics_data) /* VICS */
-	AM_RANGE(0x940000, 0x94007f) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) AM_BASE(&namcos22_vics_control)
-	AM_RANGE(0x980000, 0x9affff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) AM_BASE(&spriteram32) /* C374 */
+	AM_RANGE(0x900000, 0x90ffff) AM_RAM AM_BASE(&namcos22_vics_data) /* VICS */
+	AM_RANGE(0x940000, 0x94007f) AM_RAM AM_BASE(&namcos22_vics_control)
+	AM_RANGE(0x980000, 0x9affff) AM_RAM AM_BASE(&spriteram32) /* C374 */
 		/* 980000: SPRITE RAM
          * 9a0000: ATTRIBUTE RAM
          */
@@ -1893,12 +1896,32 @@ static ADDRESS_MAP_START( namcos22s_am, ADDRESS_SPACE_PROGRAM, 32 )
 		/* 0xa0bd2f: 0x02 Prop Cycle: MOTOR ON */
 		/* 0xa0bd2f: 0x04 Prop Cycle: LAMP ON */
 	AM_RANGE(0xc00000, 0xc1ffff) AM_READ(namcos22_dspram_r) AM_WRITE(namcos22_dspram_w) AM_BASE(&namcos22_polygonram)
-	AM_RANGE(0xc20000, 0xc3ffff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) /* extra ram used by Air Combat22 */
+	AM_RANGE(0xc20000, 0xc3ffff) AM_RAM /* extra ram used by Air Combat22 */
 
-	AM_RANGE(0xe00000, 0xe3ffff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM)
+	AM_RANGE(0xe00000, 0xe3ffff) AM_RAM
 ADDRESS_MAP_END
 
 static int mFrameCount;
+
+static INTERRUPT_GEN( namcos22s_as_interrupt )
+{
+	switch( cpu_getiloops() )
+	{
+	case 0:
+		cpunum_set_input_line(0, 3, HOLD_LINE);
+		mFrameCount++;
+		break;
+	case 1:
+		cpunum_set_input_line(0, 2, HOLD_LINE);
+		break;
+	case 2:
+		cpunum_set_input_line(0, 1, HOLD_LINE);
+		break;
+	case 3:
+		cpunum_set_input_line(0, 0, HOLD_LINE);
+		break;
+	}
+}
 
 static INTERRUPT_GEN( namcos22s_interrupt )
 {
@@ -1985,7 +2008,7 @@ static int p4;
 static READ8_HANDLER( mcu_port5_r )
 {
 	// hack for motor status
-	if ((namcos22_gametype == NAMCOS22_ALPINE_RACER) || (namcos22_gametype == NAMCOS22_ALPINE_RACER_2))
+	if ((namcos22_gametype == NAMCOS22_ALPINE_RACER) || (namcos22_gametype == NAMCOS22_ALPINE_RACER_2) || (namcos22_gametype == NAMCOS22_ALPINE_SURFER))
 	{
 		if (p4 & 8)
 		{
@@ -2234,7 +2257,7 @@ static struct C352interface c352_interface =
 };
 
 static MACHINE_DRIVER_START( namcos22s )
-	MDRV_CPU_ADD(M68EC020,SS22_MASTER_CLOCK/2)
+	MDRV_CPU_ADD_TAG("main", M68EC020,SS22_MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(namcos22s_am,0)
 	MDRV_CPU_VBLANK_INT(namcos22s_interrupt,2)
 
@@ -2277,6 +2300,13 @@ static MACHINE_DRIVER_START( namcos22s )
 	MDRV_SOUND_ROUTE(3, "left", 0.60)
 MACHINE_DRIVER_END
 
+/* Alpine Surfer has IRQs 0-3 looking valid, 4-7 go to nothing */
+static MACHINE_DRIVER_START( namcos22s_as )
+	MDRV_IMPORT_FROM( namcos22s )
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_VBLANK_INT(namcos22s_as_interrupt,4)
+MACHINE_DRIVER_END
+
 /*********************************************************************************/
 
 /* Namco System 22 */
@@ -2287,20 +2317,20 @@ static ADDRESS_MAP_START( namcos22_am, ADDRESS_SPACE_PROGRAM, 32 )
      * Mounted position: LLB: CPU 4D, LMB: CPU 2D, UMB: CPU 8D, UUB: CPU 6D
      * Known ROM chip type: TI TMS27C040-10, ST M27C4001-10, M27C4001-12Z
      */
-	AM_RANGE(0x00000000, 0x001fffff) AM_READ(MRA32_ROM) AM_WRITE(MWA32_ROM)
+	AM_RANGE(0x00000000, 0x001fffff) AM_ROM
 
 	/**
      * Main RAM (128K bytes)
      * Mounted position: CPU 3D, 5D, 7D, 9D
      * Known DRAM chip type: TC55328P-25, N3441256P-15
      */
-	AM_RANGE(0x10000000, 0x1001ffff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM)
+	AM_RANGE(0x10000000, 0x1001ffff) AM_RAM
 
 	/**
      * Main RAM (Mirror or Another Bank)
      * Mounted position: unknown
      */
-	AM_RANGE(0x18000000, 0x1801ffff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM)
+	AM_RANGE(0x18000000, 0x1801ffff) AM_RAM
 
 	/**
      * KEYCUS
@@ -2323,7 +2353,7 @@ static ADDRESS_MAP_START( namcos22_am, ADDRESS_SPACE_PROGRAM, 32 )
      *     20010000 - 20011fff  TX Buffer
      *     20012000 - 20013fff  RX FIFO Buffer (also used for TX Buffer)
      */
-	AM_RANGE(0x20010000, 0x20013fff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM)
+	AM_RANGE(0x20010000, 0x20013fff) AM_RAM
 
 	/**
      * C139 SCI Register
@@ -2415,7 +2445,7 @@ static ADDRESS_MAP_START( namcos22_am, ADDRESS_SPACE_PROGRAM, 32 )
      * Mounted position: CPU 9E
      * Known chip type: HN58C65P-25 (8k x 8bit EEPROM)
      */
-	AM_RANGE(0x58000000, 0x58001fff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) AM_BASE(&namcos22_nvmem) AM_SIZE(&namcos22_nvmem_size)
+	AM_RANGE(0x58000000, 0x58001fff) AM_RAM AM_BASE(&namcos22_nvmem) AM_SIZE(&namcos22_nvmem_size)
 
 	/**
      * C74 (Mitsubishi M37702 MCU) Shared RAM (0x60004000 - 0x6000bfff)
@@ -2479,7 +2509,7 @@ static ADDRESS_MAP_START( namcos22_am, ADDRESS_SPACE_PROGRAM, 32 )
      * Mounted position: VIDEO 8P
      * Known chip type: TC55328P-25
      */
-	AM_RANGE(0x90010000, 0x90017fff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) /* depth-cueing */
+	AM_RANGE(0x90010000, 0x90017fff) AM_RAM /* depth-cueing */
 
 	/**
      * C305 (Display Controller)
@@ -2499,7 +2529,7 @@ static ADDRESS_MAP_START( namcos22_am, ADDRESS_SPACE_PROGRAM, 32 )
      *
      * Notes: Boot time check: 0x90020100 - 0x9002027f
      */
-	AM_RANGE(0x90020000, 0x90027fff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM)
+	AM_RANGE(0x90020000, 0x90027fff) AM_RAM
 
 	/**
      * 0x90028000 - 0x9002ffff  Palette (R)
@@ -2515,7 +2545,7 @@ static ADDRESS_MAP_START( namcos22_am, ADDRESS_SPACE_PROGRAM, 32 )
      * unknown (option)
      * Note: This device may be optional. This may relate to device at 0x40000000
      */
-	AM_RANGE(0x90040000, 0x9007ffff) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM) /* diagnostic ROM? */
+	AM_RANGE(0x90040000, 0x9007ffff) AM_RAM /* diagnostic ROM? */
 
 	/**
      * Tilemap PCG Memory
@@ -2536,7 +2566,7 @@ static ADDRESS_MAP_START( namcos22_am, ADDRESS_SPACE_PROGRAM, 32 )
      * +0x0000 Position X
      * +0x0002 Position Y
      */
-	AM_RANGE(0x900a0000, 0x900a000f) AM_READ(MRA32_RAM) AM_WRITE(MWA32_RAM)
+	AM_RANGE(0x900a0000, 0x900a000f) AM_RAM
 ADDRESS_MAP_END
 
 static INTERRUPT_GEN( namcos22_interrupt )
@@ -3002,6 +3032,47 @@ ROM_START( alpinr2b )
         ROM_LOAD( "ars2waveb.1l", 0x800000, 0x400000, CRC(deab4ad1) SHA1(580ad88d516280baaf6cc92b2e07cdc0cfc486f3) )
 ROM_END
 
+ROM_START( alpinesa )
+	ROM_REGION( 0x800000, REGION_CPU1, 0 ) /* main program */
+        ROM_LOAD32_BYTE( "af2ver-a_ll.ic2", 0x000003, 0x200000, CRC(e776159d) SHA1(5110364afb7ec606074d58a1d216d7d687b9df62) )
+        ROM_LOAD32_BYTE( "af2ver-a_lm.ic3", 0x000002, 0x200000, CRC(c5333d38) SHA1(9486cead964f95f8e56dac2f88486f3b98561aa6) )
+        ROM_LOAD32_BYTE( "af2ver-a_um.ic4", 0x000001, 0x200000, CRC(5977fc6e) SHA1(19b8041789f8987934fa461972976a3570b1b87b) )
+        ROM_LOAD32_BYTE( "af2ver-a_uu.ic5", 0x000000, 0x200000, CRC(54ee33a1) SHA1(0eaa8707ab13a0a66551f61a08986c98f5c9e446) )
+
+	ROM_REGION( 0x20000, REGION_CPU2, 0 ) /* Master DSP */
+
+	ROM_REGION( 0x20000, REGION_CPU3, 0 ) /* Slave DSP */
+
+	ROM_REGION( 0x080000, REGION_CPU4, 0 ) /* S22-BIOS ver1.41 */
+
+	ROM_REGION16_LE( 0x080000, REGION_USER4, 0 ) /* MCU BIOS */
+        ROM_LOAD( "af1data.8k",   0x000000, 0x080000, CRC(ef13ebe8) SHA1(5d3f697994d4b5b19ee7fea1e2aef8e39449b68e) )
+
+	ROM_REGION( 0x200000*2, REGION_GFX1, ROMREGION_DISPOSE ) /* 32x32x8bpp sprite tiles */
+        ROM_LOAD( "af1scg0b.12f", 0x000000, 0x200000, CRC(46a6222a) SHA1(5322ef60690625b9b8dbe1cfe0c49dcd9c8b1a4c) )
+
+	ROM_REGION( 0xa00000, REGION_GFX2, 0 ) /* 16x16x8bpp texture tiles */
+        ROM_LOAD( "af1cg0.8d",    0x000000, 0x200000, CRC(7423f3ff) SHA1(6a2fd44823ef46111deb57d328b1b75cc355d413) )
+        ROM_LOAD( "af1cg1.10d",   0x200000, 0x200000, CRC(ea76689a) SHA1(73dd3af737a3e9903abe5ed9c9ae7eded51d8350) )
+        ROM_LOAD( "af1cg2.12d",   0x400000, 0x200000, CRC(2a38943a) SHA1(15d737996f49bf6374ef6191bbfbe0298d398378) )
+        ROM_LOAD( "af1cg3.13d",   0x600000, 0x200000, CRC(7f5a3e0f) SHA1(241f9995323b28df23d20a75e1f43ce6e05434cd) )
+        ROM_LOAD( "af1cg4.14d",   0x800000, 0x200000, CRC(a5ee13e2) SHA1(48fd3c912690f21cbbc2a39bed0a82be41a0d011) )
+
+	ROM_REGION16_LE( 0x280000, REGION_GFX3, 0 ) /* texture tilemap */
+        ROM_LOAD( "af1ccrl.3d",   0x000000, 0x200000, CRC(6c054698) SHA1(8537607646b183883c5aa4060fb0af640da4af87) )
+        ROM_LOAD( "af1ccrh.1d",   0x200000, 0x080000, CRC(95a02a27) SHA1(32ee87b76ae9fcec6d825e3cf4d5cbb97db39544) )
+
+	ROM_REGION( 0x80000*8, REGION_GFX4, 0 ) /* 3d model data */
+        ROM_LOAD( "af1ptrl0.18k", 0x000000, 0x080000, CRC(31ce46d3) SHA1(568fb9ee9ac14e613a4fd7668cb38315c10be62b) )
+        ROM_LOAD( "af1ptrl1.16k", 0x080000, 0x080000, CRC(e869bf00) SHA1(b3c3026891ae3958d1774c905e97c3b57a414ea7) )
+        ROM_LOAD( "af1ptrm0.18j", 0x100000, 0x080000, CRC(ef7f4d8a) SHA1(02f77c68004b7dccc99b61126e7d07960eb15028) )
+        ROM_LOAD( "af1ptrm1.16j", 0x180000, 0x080000, CRC(7dd01d52) SHA1(adc1087435d31ed6163ad046466955f01517450f) )
+        ROM_LOAD( "af1ptru0.18f", 0x200000, 0x080000, CRC(177f1591) SHA1(3969e780e5603eca0a65f65c1ad14d1cef918b39) )
+        ROM_LOAD( "af1ptru1.16f", 0x280000, 0x080000, CRC(7521d18e) SHA1(dc03ef369db16f59c138ff4e22260d1c04782d1f) )
+
+	ROM_REGION( 0x1000000, REGION_SOUND1, 0 ) /* sound samples */
+        ROM_LOAD( "af1wavea.2l",  0x000000, 0x400000, CRC(28cca494) SHA1(4ff87ab85fd17bf8dbee5b03d99cc5c31dd6349a) )
+ROM_END
 
 ROM_START( cybrcomm )
 	ROM_REGION( 0x200000, REGION_CPU1, 0 ) /* main program */
@@ -4373,8 +4444,8 @@ INPUT_PORTS_END /* Rave Racer */
 // MCU speed cheats (every bit helps with these games)
 static UINT16 su_82;
 
-// for MCU BIOS v1.31
-static READ16_HANDLER( mcu131_speedup_r )
+// for MCU BIOS v1.41
+static READ16_HANDLER( mcu141_speedup_r )
 {
 	if ((activecpu_get_pc() == 0xc12d) && (!(su_82 & 0xff00)))
 	{
@@ -4426,6 +4497,19 @@ DRIVER_INIT( alpiner2 )
 	memory_install_write16_handler(3, ADDRESS_SPACE_PROGRAM, 0x82, 0x83, 0, 0, mcu_speedup_w);
 }
 
+DRIVER_INIT( alpinesa )
+{
+	namcos22_gametype = NAMCOS22_ALPINE_SURFER;
+	namcos22_usec7x = 0;
+	InitDSP(1);
+
+	memory_install_read8_handler(3, ADDRESS_SPACE_IO, M37710_ADC0_L, M37710_ADC7_H, 0, 0, alpineracer_mcu_adc_r);
+
+	// install speedup cheat for 1.41 MCU BIOS
+	memory_install_read16_handler(3, ADDRESS_SPACE_PROGRAM, 0x82, 0x83, 0, 0, mcu141_speedup_r);
+	memory_install_write16_handler(3, ADDRESS_SPACE_PROGRAM, 0x82, 0x83, 0, 0, mcu_speedup_w);
+}
+
 DRIVER_INIT( airco22 )
 { /* patch DSP RAM test */
 	UINT32 *pROM = (UINT32 *)memory_region(REGION_CPU1);
@@ -4473,7 +4557,7 @@ DRIVER_INIT( propcycl )
 	memory_install_read8_handler(3, ADDRESS_SPACE_IO, M37710_ADC0_L, M37710_ADC7_H, 0, 0, propcycle_mcu_adc_r);
 
 	// install speedup cheat for 1.31 MCU BIOS
-	memory_install_read16_handler(3, ADDRESS_SPACE_PROGRAM, 0x82, 0x83, 0, 0, mcu131_speedup_r);
+	memory_install_read16_handler(3, ADDRESS_SPACE_PROGRAM, 0x82, 0x83, 0, 0, mcu141_speedup_r);
 	memory_install_write16_handler(3, ADDRESS_SPACE_PROGRAM, 0x82, 0x83, 0, 0, mcu_speedup_w);
 }
 
@@ -4601,7 +4685,8 @@ GAME( 1995, cybrcycc, 0,        namcos22s, cybrcycc, cybrcyc,  ROT0, "Namco", "C
 //GAME( 1995, dirtdshx, "Dirt Dash")
 GAME( 1995, timecris, 0,        namcos22s, timecris, timecris, ROT0, "Namco", "Time Crisis (Rev. TS2 Ver.B)"              , GAME_IMPERFECT_SOUND|GAME_NOT_WORKING ) /* locks up */
 GAME( 1995, timecrsa, timecris, namcos22s, timecris, timecris, ROT0, "Namco", "Time Crisis (Rev. TS2 Ver.A)"              , GAME_IMPERFECT_SOUND|GAME_IMPERFECT_GRAPHICS )
-GAME( 1996, alpinr2b, 0,        namcos22s, alpiner,  alpiner2, ROT0, "Namco", "Alpine Racer 2 (Ver. 97/01/10 17:10:59)"   , GAME_IMPERFECT_SOUND|GAME_IMPERFECT_GRAPHICS )
+GAME( 1996, alpinr2b, 0,        namcos22s, alpiner,  alpiner2, ROT0, "Namco", "Alpine Racer 2 (Rev. ARS2 Ver.B)"   , GAME_IMPERFECT_SOUND|GAME_IMPERFECT_GRAPHICS )
+GAME( 1996, alpinesa, 0,        namcos22s_as, alpiner,  alpinesa, ROT0, "Namco", "Alpine Surfer (Rev. AF2 Ver.A)"        , GAME_NOT_WORKING|GAME_IMPERFECT_SOUND|GAME_IMPERFECT_GRAPHICS )
 GAME( 1996, propcycl, 0,        namcos22s, propcycl, propcycl, ROT0, "Namco", "Prop Cycle (Rev PR2 Ver.A)"                , GAME_IMPERFECT_SOUND|GAME_IMPERFECT_GRAPHICS )
 //GAME( 1996, tokyowrx, "Tokyo Wars")
 //GAME( 1996, aquajetx, "Aqua Jet")

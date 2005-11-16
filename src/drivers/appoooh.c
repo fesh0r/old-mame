@@ -87,7 +87,8 @@ static WRITE8_HANDLER( appoooh_adpcm_w )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x9fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x8000, 0x9fff) AM_READ(MRA8_ROM)
 	AM_RANGE(0xa000, 0xdfff) AM_READ(MRA8_BANK1)
 	AM_RANGE(0xe000, 0xe7ff) AM_READ(MRA8_RAM)
 	AM_RANGE(0xe800, 0xefff) AM_READ(MRA8_RAM) /* RAM ? */
@@ -95,7 +96,8 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xdfff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xdfff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xe800, 0xefff) AM_WRITE(MWA8_RAM) /* RAM ? */
 	AM_RANGE(0xf000, 0xf01f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)
@@ -181,7 +183,7 @@ INPUT_PORTS_END
 
 
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 	2048,	/* 2048 characters */
@@ -192,7 +194,7 @@ static gfx_layout charlayout =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	16,16,	/* 8*8 characters */
 	512,	/* 512 characters */
@@ -205,7 +207,7 @@ static gfx_layout spritelayout =
 	32*8	/* every char takes 8 consecutive bytes */
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,        0, 32 },
 	{ REGION_GFX2, 0, &charlayout,     32*8, 32 },
@@ -436,7 +438,7 @@ INPUT_PORTS_START( robowres )
 	PORT_DIPSETTING(    0x80, DEF_STR( English ) )
 INPUT_PORTS_END
 
-static gfx_layout robowres_charlayout =
+static const gfx_layout robowres_charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -447,7 +449,7 @@ static gfx_layout robowres_charlayout =
 	8*8
 };
 
-static gfx_layout robowres_spritelayout =
+static const gfx_layout robowres_spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,3),
@@ -461,7 +463,7 @@ static gfx_layout robowres_spritelayout =
 };
 
 
-static gfx_decode robowres_gfxdecodeinfo[] =
+static const gfx_decode robowres_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &robowres_charlayout,        0, 32 },
 	{ REGION_GFX2, 0, &robowres_charlayout,     	 0, 32 },
@@ -552,7 +554,7 @@ ROM_START( appoooh )
 ROM_END
 
 ROM_START( robowres )
-	ROM_REGION( 0x1c000*2, REGION_CPU1, 0 )	/* 64k for code + 16k bank */
+	ROM_REGION( 0x1c000, REGION_CPU1, 0 )	/* 64k for code + 16k bank */
 	ROM_LOAD( "epr-7540.13d", 0x00000, 0x8000, CRC(a2a54237) SHA1(06c80fe6725582d19aa957728977e871e79e79e1) )
 	ROM_LOAD( "epr-7541.14d", 0x08000, 0x6000, CRC(cbf7d1a8) SHA1(5eb6d2130d4e5401a332df6db5cad07f3131e8e4) )
 	ROM_CONTINUE(             0x10000, 0x2000 )
@@ -579,15 +581,13 @@ ROM_START( robowres )
 ROM_END
 
 ROM_START( robowrb )
-	ROM_REGION( 0x1c000*2, REGION_CPU1, 0 )	/* 64k for code + 16k bank */
+	ROM_REGION( 0x1c000+0x8000, REGION_CPU1, 0 )	/* 64k for code + 16k bank */
 	ROM_LOAD( "dg4.e13",      0x00000, 0x8000, CRC(f7585d4f) SHA1(718879f8262681b6b66968eb49a0fb04fda5160b) )
 	ROM_LOAD( "epr-7541.14d", 0x08000, 0x6000, CRC(cbf7d1a8) SHA1(5eb6d2130d4e5401a332df6db5cad07f3131e8e4) )
 	ROM_CONTINUE(             0x10000, 0x2000 )
 	ROM_LOAD( "epr-7542.15d", 0x14000, 0x8000, CRC(3475fbd4) SHA1(96b28d6492d2e6e8ca9c57abdc5ad4df3777894b) )
 	ROM_COPY( REGION_CPU1, 0x16000, 0x10000, 0x4000 )
-
 	ROM_LOAD( "dg1.f13",      0x1c000, 0x8000, CRC(b724968d) SHA1(36618fb81da919d578c2aa1c62d964871903c49f) )
-	ROM_COPY( REGION_CPU1,    0x08000, 0x24000, 0x14000 )
 
 	ROM_REGION( 0x18000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "epr-7544.7h", 0x000000, 0x8000, CRC(07b846ce) SHA1(6d214fbb43003d2ab35340d5b9fece5f637cadc6) )
@@ -615,9 +615,7 @@ static DRIVER_INIT(robowres){
 }
 
 static DRIVER_INIT(robowrb){
-	unsigned char *rom = memory_region(REGION_CPU1);
-	int diff = memory_region_length(REGION_CPU1) / 2;
-	memory_set_opcode_base(0,rom+diff);
+	memory_set_decrypted_region(0, 0x0000, 0x7fff, memory_region(REGION_CPU1) + 0x1c000);
 }
 
 

@@ -33,7 +33,7 @@ int st0016_game;
 static UINT8 st0016_vregs[0xc0];
 static int st0016_ramgfx;
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,
 	0x10000,
@@ -359,6 +359,9 @@ static void drawsprites( mame_bitmap *bitmap, const rectangle *cliprect)
 									pixdata = srcgfx[gfxoffs];
 
 									if (!flipx) { drawxpos = xpos+xloop; } else { drawxpos = (xpos+8-1)-xloop; }
+
+									if (drawxpos > cliprect->max_x)
+										drawxpos -= 512; // wrap around
 
 									if ((drawxpos >= cliprect->min_x) && (drawxpos <= cliprect->max_x) && (drawypos >= cliprect->min_y) && (drawypos <= cliprect->max_y) )
 									{

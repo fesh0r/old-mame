@@ -666,7 +666,7 @@ INPUT_PORTS_START( getstar )
 INPUT_PORTS_END
 
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,			/* 8*8 characters */
 	RGN_FRAC(1,2),	/* 1024 characters */
@@ -677,7 +677,7 @@ static gfx_layout charlayout =
 	8*8     /* every char takes 8 consecutive bytes */
 };
 
-static gfx_layout tilelayout =
+static const gfx_layout tilelayout =
 {
 	8,8,			/* 8*8 tiles */
 	RGN_FRAC(1,4),	/* 2048/4096 tiles */
@@ -688,7 +688,7 @@ static gfx_layout tilelayout =
 	8*8    /* every tile takes 8 consecutive bytes */
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	16,16,			/* 16*16 sprites */
 	RGN_FRAC(1,4),	/* 512/1024 sprites */
@@ -701,7 +701,7 @@ static gfx_layout spritelayout =
 	32*8    /* every sprite takes 64 consecutive bytes */
 };
 
-static gfx_layout perfrman_charlayout =
+static const gfx_layout perfrman_charlayout =
 {
 	8,8,			/* 8*8 characters */
 	RGN_FRAC(1,3),	/* 1024 characters */
@@ -712,7 +712,7 @@ static gfx_layout perfrman_charlayout =
 	8*8     /* every char takes 8 consecutive bytes */
 };
 
-static gfx_layout perfrman_spritelayout =
+static const gfx_layout perfrman_spritelayout =
 {
 	16,16,			/* 16*16 sprites */
 	RGN_FRAC(1,3),	/* 256 sprites */
@@ -726,14 +726,14 @@ static gfx_layout perfrman_spritelayout =
 };
 
 
-static gfx_decode perfrman_gfxdecodeinfo[] =
+static const gfx_decode perfrman_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &perfrman_charlayout,     0, 16 },
 	{ REGION_GFX2, 0, &perfrman_spritelayout, 128, 16 },
 	{ -1 } /* end of array */
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0,  64 },
 	{ REGION_GFX2, 0, &tilelayout,   0,  16 },
@@ -1413,7 +1413,7 @@ GAME( 1985, tigerhb2, tigerh, 	 tigerhb,  tigerh,   0,      ROT270, "bootleg",  
 GAME( 1986, slapfigh, 0,        slapfigh, slapfigh, 0,      ROT270, "Taito",    "Slap Fight", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
 GAME( 1986, slapbtjp, slapfigh, slapfigh, slapfigh, 0,      ROT270, "bootleg",  "Slap Fight (Japan bootleg)", GAME_NO_COCKTAIL )
 GAME( 1986, slapbtuk, slapfigh, slapbtuk, slapfigh, 0,      ROT270, "bootleg",  "Slap Fight (English bootleg)", GAME_NO_COCKTAIL )
-GAME( 1986, alcon,    slapfigh, slapfigh, slapfigh, 0,      ROT270, "<unknown>","Alcon", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
+GAME( 1986, alcon,    slapfigh, slapfigh, slapfigh, 0,      ROT270, "Taito America Corp.","Alcon", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
 GAME( 1986, getstar,  0,        slapfigh, getstar,  0,      ROT0,   "Taito",  "Guardian", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
 GAME( 1986, getstarj, getstar,  slapfigh, getstar,  0,      ROT0,   "Taito",  "Get Star (Japan)", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
 GAME( 1986, getstarb, getstar,  slapfigh, getstar,  0,      ROT0,   "bootleg","Get Star (bootleg)", GAME_NO_COCKTAIL )

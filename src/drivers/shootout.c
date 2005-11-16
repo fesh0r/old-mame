@@ -56,13 +56,7 @@ extern VIDEO_UPDATE( shootouj );
 
 static WRITE8_HANDLER( shootout_bankswitch_w )
 {
-	int bankaddress;
-	UINT8 *RAM;
-
-	RAM = memory_region(REGION_CPU1);
-	bankaddress = 0x10000 + ( 0x4000 * (data & 0x0f) );
-
-	memory_set_bankptr(1,&RAM[bankaddress]);
+	memory_set_bank(1, data & 0x0f);
 }
 
 static WRITE8_HANDLER( sound_cpu_command_w )
@@ -232,7 +226,7 @@ INPUT_PORTS_START( shootouj )
 INPUT_PORTS_END
 
 
-static gfx_layout char_layout =
+static const gfx_layout char_layout =
 {
 	8,8,	/* 8*8 characters */
 	0x400,	/* 1024 characters */
@@ -242,7 +236,7 @@ static gfx_layout char_layout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8 /* every char takes 8 consecutive bytes */
 };
-static gfx_layout sprite_layout =
+static const gfx_layout sprite_layout =
 {
 	16,16,	/* 16*16 sprites */
 	0x800,	/* 2048 sprites */
@@ -252,7 +246,7 @@ static gfx_layout sprite_layout =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
 	32*8	/* every char takes 32 consecutive bytes */
 };
-static gfx_layout tile_layout =
+static const gfx_layout tile_layout =
 {
 	8,8,	/* 8*8 characters */
 	0x800,	/* 2048 characters */
@@ -263,7 +257,7 @@ static gfx_layout tile_layout =
 	8*8 /* every char takes 8 consecutive bytes */
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &char_layout,   16*4+8*8, 16 }, /* characters */
 	{ REGION_GFX2, 0, &sprite_layout, 16*4, 	 8 }, /* sprites */
@@ -458,14 +452,18 @@ ROM_END
 
 static DRIVER_INIT( shootout )
 {
+	int length = memory_region_length(REGION_CPU1);
+	UINT8 *decrypt = auto_malloc(length - 0x8000);
 	UINT8 *rom = memory_region(REGION_CPU1);
-	int diff = memory_region_length(REGION_CPU1) / 2;
 	int A;
 
-	memory_set_opcode_base(0,rom+diff);
+	memory_set_decrypted_region(0, 0x8000, 0xffff, decrypt);
 
-	for (A = 0;A < diff;A++)
-		rom[A+diff] = (rom[A] & 0x9f) | ((rom[A] & 0x40) >> 1) | ((rom[A] & 0x20) << 1);
+	for (A = 0x8000;A < length;A++)
+		decrypt[A-0x8000] = (rom[A] & 0x9f) | ((rom[A] & 0x40) >> 1) | ((rom[A] & 0x20) << 1);
+
+	memory_configure_bank(1, 0, 16, memory_region(REGION_CPU1) + 0x10000, 0x4000);
+	memory_configure_bank_decrypted(1, 0, 16, decrypt + 0x8000, 0x4000);
 }
 
 

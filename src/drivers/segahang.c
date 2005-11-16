@@ -775,7 +775,7 @@ static struct SEGAPCMinterface segapcm_interface =
  *
  *************************************/
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -787,7 +787,7 @@ static gfx_layout charlayout =
 };
 
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,	0, 1024 },
 	{ -1 }
@@ -1499,10 +1499,10 @@ static DRIVER_INIT( enduror )
 static DRIVER_INIT( endurobl )
 {
 	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
-	UINT16 *decrypt = (UINT16 *)auto_malloc(0x50000);
+	UINT16 *decrypt = (UINT16 *)auto_malloc(0x40000);
 
 	hangon_generic_init();
-	memory_set_opcode_base(0, decrypt);
+	memory_set_decrypted_region(0, 0x000000, 0x03ffff, decrypt);
 
 	memcpy(decrypt + 0x00000/2, rom + 0x30000/2, 0x10000);
 	memcpy(decrypt + 0x10000/2, rom + 0x10000/2, 0x20000);
@@ -1512,10 +1512,10 @@ static DRIVER_INIT( endurobl )
 static DRIVER_INIT( endurob2 )
 {
 	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
-	UINT16 *decrypt = (UINT16 *)auto_malloc(0x50000);
+	UINT16 *decrypt = (UINT16 *)auto_malloc(0x40000);
 
 	hangon_generic_init();
-	memory_set_opcode_base(0, decrypt);
+	memory_set_decrypted_region(0, 0x000000, 0x03ffff, decrypt);
 
 	memcpy(decrypt, rom, 0x30000);
 	/* missing data ROM */

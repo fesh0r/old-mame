@@ -164,7 +164,7 @@ INPUT_PORTS_END
 
 
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,     /* 8*8 characters */
 	1024,    /* 1024 characters */
@@ -176,7 +176,7 @@ static gfx_layout charlayout =
 };
 
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	16,16,   /* 16*16 characters */
 	64,      /* 64 sprites (2 banks) */
@@ -190,7 +190,7 @@ static gfx_layout spritelayout =
 };
 
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &charlayout,       0, 16 },
 	{ REGION_GFX1, 0x1000, &spritelayout,     0, 16 },
@@ -291,14 +291,14 @@ DRIVER_INIT( mouser )
 
 	offs_t i;
 	UINT8 *rom = memory_region(REGION_CPU1);
-	offs_t diff = memory_region_length(REGION_CPU1) / 2;
+	UINT8 *decrypted = auto_malloc(0x6000);
 	UINT8 *table = memory_region(REGION_USER1);
 
-	memory_set_opcode_base(0,rom+diff);
+	memory_set_decrypted_region(0, 0x0000, 0x5fff, decrypted);
 
-	for (i = 0;i < diff;i++)
+	for (i = 0;i < 0x6000;i++)
 	{
-		rom[i + diff] = table[rom[i]];
+		decrypted[i] = table[rom[i]];
 	}
 }
 

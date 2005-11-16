@@ -90,7 +90,8 @@ READ8_HANDLER ( mustache_coin_hack_r )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_ROM)
 	AM_RANGE(0xc000, 0xcfff) AM_READ(videoram_r)		/* videoram */
 	AM_RANGE(0xd001, 0xd001) AM_READ(MRA8_RAM) /* T5182 ? */
 	AM_RANGE(0xd400, 0xd4ff) AM_READ(MRA8_RAM) /* shared with T5182 ?*/
@@ -188,7 +189,7 @@ INPUT_PORTS_START( mustache )
 INPUT_PORTS_END
 
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,
 	RGN_FRAC(1,3),
@@ -198,7 +199,7 @@ static gfx_layout charlayout =
 	{STEP8(0,8)},
 	8*8
 };
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -209,7 +210,7 @@ static gfx_layout spritelayout =
 	16*16
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0x00, 16 },
 	{ REGION_GFX2, 0, &spritelayout, 0x80, 8 },

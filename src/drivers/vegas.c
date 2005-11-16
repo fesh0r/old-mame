@@ -239,6 +239,7 @@
  *
  *************************************/
 
+static UINT32 *rambase, *rombase;
 static size_t ramsize;
 
 static UINT32 *nile_regs;
@@ -305,6 +306,19 @@ static MACHINE_INIT( vegas )
 {
 	/* set the fastest DRC options, but strict verification */
 	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_DRC_OPTIONS, MIPS3DRC_FASTEST_OPTIONS + MIPS3DRC_STRICT_VERIFY + MIPS3DRC_FLUSH_PC);
+
+	/* configure fast RAM regions for DRC */
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_START, 0x00000000);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_END, ramsize - 1);
+	cpunum_set_info_ptr(0, CPUINFO_PTR_MIPS3_FASTRAM_BASE, rambase);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_READONLY, 0);
+
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_START, 0x1fc00000);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_END, 0x1fc7ffff);
+	cpunum_set_info_ptr(0, CPUINFO_PTR_MIPS3_FASTRAM_BASE, rombase);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_READONLY, 1);
 
 	/* allocate timers for the NILE */
 	timer[0] = timer_alloc(NULL);
@@ -1281,8 +1295,8 @@ static void remap_dynamic_addresses(void)
 	/* unmap everything we know about */
 	for (addr = 0; addr < dynamic_count; addr++)
 	{
-		memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0xa0000000, MRA32_NOP);
-		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0xa0000000, MWA32_NOP);
+		memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0, MRA32_NOP);
+		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0, MWA32_NOP);
 	}
 
 	/* the build the list of stuff */
@@ -1405,9 +1419,9 @@ static void remap_dynamic_addresses(void)
 	{
 		if (LOG_DYNAMIC) logerror("  installing: %08X-%08X %s,%s\n", 0xa0000000+dynamic[addr].start, 0xa0000000+dynamic[addr].end, dynamic[addr].rdname, dynamic[addr].wrname);
 		if (dynamic[addr].read)
-			memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0xa0000000, dynamic[addr].read);
+			memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0, dynamic[addr].read);
 		if (dynamic[addr].write)
-			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0xa0000000, dynamic[addr].write);
+			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0, dynamic[addr].write);
 	}
 
 	if (LOG_DYNAMIC)
@@ -1428,17 +1442,17 @@ static void remap_dynamic_addresses(void)
 
 static ADDRESS_MAP_START( vegas_map_8mb, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
-	AM_RANGE(0x00000000, 0x007fffff) AM_MIRROR(0xa0000000) AM_RAM AM_SIZE(&ramsize)
-	AM_RANGE(0xbfa00000, 0xbfa00fff) AM_READWRITE(nile_r, nile_w) AM_BASE(&nile_regs)
-	AM_RANGE(0xbfc00000, 0xbfc7ffff) AM_MIRROR(0x20000000) AM_ROM AM_REGION(REGION_USER1, 0)
+	AM_RANGE(0x00000000, 0x007fffff) AM_RAM AM_BASE(&rambase) AM_SIZE(&ramsize)
+	AM_RANGE(0x1fa00000, 0x1fa00fff) AM_READWRITE(nile_r, nile_w) AM_BASE(&nile_regs)
+	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&rombase)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( vegas_map_32mb, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
-	AM_RANGE(0x00000000, 0x01ffffff) AM_MIRROR(0xa0000000) AM_RAM AM_SIZE(&ramsize)
-	AM_RANGE(0xbfa00000, 0xbfa00fff) AM_READWRITE(nile_r, nile_w) AM_BASE(&nile_regs)
-	AM_RANGE(0xbfc00000, 0xbfc7ffff) AM_MIRROR(0x20000000) AM_ROM AM_REGION(REGION_USER1, 0)
+	AM_RANGE(0x00000000, 0x01ffffff) AM_RAM AM_BASE(&rambase) AM_SIZE(&ramsize)
+	AM_RANGE(0x1fa00000, 0x1fa00fff) AM_READWRITE(nile_r, nile_w) AM_BASE(&nile_regs)
+	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&rombase)
 ADDRESS_MAP_END
 
 
@@ -2143,7 +2157,7 @@ MACHINE_DRIVER_START( vegascore )
 	MDRV_NVRAM_HANDLER(timekeeper_save)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_RGB_DIRECT)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_VISIBLE_AREA(0, 639, 0, 479)
 	MDRV_PALETTE_LENGTH(65536)
@@ -2349,6 +2363,17 @@ static DRIVER_INIT( gauntleg )
 {
 	dcs2_init(0);
 	init_common(MIDWAY_IOASIC_CALSPEED, 340/* 322, others? */);
+
+	/* speedups */
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_PC, 0x80015438);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_OPCODE, 0x1462fffd);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_CYCLES, 1000);
+
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_PC, 0x80015478);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_OPCODE, 0x1440fffa);
+	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_HOTSPOT_CYCLES, 1000);
 }
 
 

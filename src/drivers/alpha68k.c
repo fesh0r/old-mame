@@ -712,32 +712,23 @@ static ADDRESS_MAP_START( alpha68k_I_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x380000, 0x380001) AM_WRITE(paddlema_soundlatch_w) // LSB: sound latch write and RST38 trigger
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( alpha68k_II_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x040000, 0x040fff) AM_READ(MRA16_RAM)
+static ADDRESS_MAP_START( alpha68k_II_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x03ffff) AM_ROM
+	AM_RANGE(0x040000, 0x040fff) AM_RAM AM_BASE(&shared_ram)
 	AM_RANGE(0x080000, 0x080001) AM_READ(control_1_r) /* Joysticks */
+	AM_RANGE(0x080000, 0x080001) AM_WRITE(alpha68k_II_sound_w)
 	AM_RANGE(0x0c0000, 0x0c0001) AM_READ(control_2_r) /* CN1 & Dip 1 */
+	AM_RANGE(0x0c0000, 0x0c00ff) AM_WRITE(alpha68k_II_video_bank_w)
 	AM_RANGE(0x0c8000, 0x0c8001) AM_READ(control_3_r) /* Bottom of CN2 */
 	AM_RANGE(0x0d0000, 0x0d0001) AM_READ(control_4_r) /* Top of CN1 & CN2 */
 	AM_RANGE(0x0d8000, 0x0d8001) AM_READ(MRA16_NOP) /* IRQ ack? */
 	AM_RANGE(0x0e0000, 0x0e0001) AM_READ(MRA16_NOP) /* IRQ ack? */
 	AM_RANGE(0x0e8000, 0x0e8001) AM_READ(MRA16_NOP) /* watchdog? */
-	AM_RANGE(0x100000, 0x100fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x200000, 0x207fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x300000, 0x3001ff) AM_READ(alpha_II_trigger_r)
-	AM_RANGE(0x400000, 0x400fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x800000, 0x83ffff) AM_READ(MRA16_BANK8) /* Extra code bank */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( alpha68k_II_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x040000, 0x040fff) AM_WRITE(MWA16_RAM) AM_BASE(&shared_ram)
-	AM_RANGE(0x080000, 0x080001) AM_WRITE(alpha68k_II_sound_w)
-	AM_RANGE(0x0c0000, 0x0c00ff) AM_WRITE(alpha68k_II_video_bank_w)
-	AM_RANGE(0x100000, 0x100fff) AM_WRITE(alpha68k_videoram_w) AM_BASE(&videoram16)
-	AM_RANGE(0x200000, 0x207fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16)
-	AM_RANGE(0x300000, 0x3001ff) AM_WRITE(alpha_microcontroller_w)
-	AM_RANGE(0x400000, 0x400fff) AM_WRITE(alpha68k_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(MRA16_RAM, alpha68k_videoram_w) AM_BASE(&videoram16)
+	AM_RANGE(0x200000, 0x207fff) AM_RAM AM_BASE(&spriteram16)
+	AM_RANGE(0x300000, 0x3001ff) AM_READWRITE(alpha_II_trigger_r, alpha_microcontroller_w)
+	AM_RANGE(0x400000, 0x400fff) AM_READWRITE(MRA16_RAM, alpha68k_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x800000, 0x83ffff) AM_ROMBANK(8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( alpha68k_V_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1796,7 +1787,7 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,    /* 8*8 chars */
 	2048,
@@ -1808,7 +1799,7 @@ static gfx_layout charlayout =
 };
 
 /* You wouldn't believe how long it took me to figure this one out.. */
-static gfx_layout charlayout_V =
+static const gfx_layout charlayout_V =
 {
 	8,8,
 	2048,
@@ -1819,7 +1810,7 @@ static gfx_layout charlayout_V =
 	32*8    /* every sprite takes 16 consecutive bytes */
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	16,16,  /* 16*16 sprites */
 	4096*4,
@@ -1832,7 +1823,7 @@ static gfx_layout spritelayout =
 	8*32    /* every sprite takes 32 consecutive bytes */
 };
 
-static gfx_layout spritelayout_V =
+static const gfx_layout spritelayout_V =
 {
 	16,16,  /* 16*16 sprites */
 	0x5000,
@@ -1845,7 +1836,7 @@ static gfx_layout spritelayout_V =
 	8*32    /* every sprite takes 32 consecutive bytes */
 };
 
-static gfx_layout tnexspce_layout =
+static const gfx_layout tnexspce_layout =
 {
 	8,8,    /* 8x8 */
 	RGN_FRAC(1,1),  /* Number of tiles */
@@ -1856,7 +1847,7 @@ static gfx_layout tnexspce_layout =
 	32*8 /* every char takes 32 consecutive bytes */
 };
 
-static gfx_layout paddle_layout =
+static const gfx_layout paddle_layout =
 {
 	8,8,    /* 8*8 chars */
 	0x4000,
@@ -1867,7 +1858,7 @@ static gfx_layout paddle_layout =
 	16*8    /* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout sting_layout1 =
+static const gfx_layout sting_layout1 =
 {
 	8,8,    /* 8*8 chars */
 	1024,
@@ -1878,7 +1869,7 @@ static gfx_layout sting_layout1 =
 	16*8    /* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout sting_layout2 =
+static const gfx_layout sting_layout2 =
 {
 	8,8,    /* 8*8 chars */
 	1024,
@@ -1889,7 +1880,7 @@ static gfx_layout sting_layout2 =
 	16*8    /* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout sting_layout3 =
+static const gfx_layout sting_layout3 =
 {
 	8,8,    /* 8*8 chars */
 	1024,
@@ -1900,7 +1891,7 @@ static gfx_layout sting_layout3 =
 	16*8    /* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout kyros_char_layout1 =
+static const gfx_layout kyros_char_layout1 =
 {
 	8,8,    /* 8*8 chars */
 	0x8000/16,
@@ -1911,7 +1902,7 @@ static gfx_layout kyros_char_layout1 =
 	16*8    /* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout kyros_char_layout2 =
+static const gfx_layout kyros_char_layout2 =
 {
 	8,8,    /* 8*8 chars */
 	0x8000/16,
@@ -1922,7 +1913,7 @@ static gfx_layout kyros_char_layout2 =
 	16*8    /* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout jongbou_layout1 =
+static const gfx_layout jongbou_layout1 =
 {
 	8,8,    /* 8*8 chars */
 	1024,
@@ -1933,7 +1924,7 @@ static gfx_layout jongbou_layout1 =
 	16*8    /* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout jongbou_layout2 =
+static const gfx_layout jongbou_layout2 =
 {
 	8,8,    /* 8*8 chars */
 	1024,
@@ -1944,7 +1935,7 @@ static gfx_layout jongbou_layout2 =
 	16*8    /* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout jongbou_layout3 =
+static const gfx_layout jongbou_layout3 =
 {
 	8,8,    /* 8*8 chars */
 	1024,
@@ -1955,7 +1946,7 @@ static gfx_layout jongbou_layout3 =
 	16*8    /* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout jongbou_layout4 =
+static const gfx_layout jongbou_layout4 =
 {
 	8,8,    /* 8*8 chars */
 	1024,
@@ -1966,7 +1957,7 @@ static gfx_layout jongbou_layout4 =
 	16*8    /* every char takes 16 consecutive bytes */
 };
 
-static gfx_layout jongbou_layout5 =
+static const gfx_layout jongbou_layout5 =
 {
 	8,8,    /* 8*8 chars */
 	1024,
@@ -1979,33 +1970,33 @@ static gfx_layout jongbou_layout5 =
 
 /******************************************************************************/
 
-static gfx_decode alpha68k_II_gfxdecodeinfo[] =
+static const gfx_decode alpha68k_II_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0,  16 },
 	{ REGION_GFX2, 0, &spritelayout, 0, 128 },
 	{ -1 } /* end of array */
 };
 
-static gfx_decode alpha68k_V_gfxdecodeinfo[] =
+static const gfx_decode alpha68k_V_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout_V,    0,  16 },
 	{ REGION_GFX2, 0, &spritelayout_V,  0, 256 },
 	{ -1 } /* end of array */
 };
 
-static gfx_decode paddle_gfxdecodeinfo[] =
+static const gfx_decode paddle_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &paddle_layout,  0, 64 },
 	{ -1 } /* end of array */
 };
 
-static gfx_decode tnexspce_gfxdecodeinfo[] =
+static const gfx_decode tnexspce_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tnexspce_layout,  0, 64 },
 	{ -1 } /* end of array */
 };
 
-static gfx_decode sstingry_gfxdecodeinfo[] =
+static const gfx_decode sstingry_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &sting_layout1,  0, 32 },
 	{ REGION_GFX1, 0x00000, &sting_layout2,  0, 32 },
@@ -2014,7 +2005,7 @@ static gfx_decode sstingry_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static gfx_decode kyros_gfxdecodeinfo[] =
+static const gfx_decode kyros_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &kyros_char_layout1,  0, 32 },
 	{ REGION_GFX1, 0x00000, &kyros_char_layout2,  0, 32 },
@@ -2027,7 +2018,7 @@ static gfx_decode kyros_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static gfx_decode jongbou_gfxdecodeinfo[] =
+static const gfx_decode jongbou_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &jongbou_layout1,  0, 32 },
 	{ REGION_GFX1, 0, &jongbou_layout2,  0, 32 },
@@ -2245,7 +2236,7 @@ static MACHINE_DRIVER_START( alpha68k_II )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 8000000) /* Correct */
-	MDRV_CPU_PROGRAM_MAP(alpha68k_II_readmem,alpha68k_II_writemem)
+	MDRV_CPU_PROGRAM_MAP(alpha68k_II_map,0)
 	MDRV_CPU_VBLANK_INT(irq3_line_hold,1)/* VBL */
 
 	MDRV_CPU_ADD(Z80, /*3579545*/3579545*2) /* Unlikely but needed to stop nested NMI's */
@@ -2294,7 +2285,7 @@ static MACHINE_DRIVER_START( alpha68k_II_gm )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(alpha68k_II_readmem, alpha68k_II_writemem)
+	MDRV_CPU_PROGRAM_MAP(alpha68k_II_map, 0)
 	MDRV_CPU_VBLANK_INT(alpha68k_interrupt, 4)
 
 	MDRV_CPU_ADD(Z80, 4000000*2)
@@ -2457,7 +2448,7 @@ MACHINE_DRIVER_END
 /******************************************************************************/
 
 ROM_START( sstingry )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 68000 code */
+	ROM_REGION( 0x20000, REGION_CPU1, 0 )     /* 68000 code */
 	ROM_LOAD16_BYTE( "ss_05.rom",  0x0000,  0x4000, CRC(bfb28d53) SHA1(64a1b8627529ed13074bb949cb104077eb3eac1f) )
 	ROM_LOAD16_BYTE( "ss_07.rom",  0x0001,  0x4000, CRC(eb1b65c5) SHA1(cffc4df82b7950358dd28f6a492e0aefaff73048) )
 	ROM_LOAD16_BYTE( "ss_04.rom",  0x8000,  0x4000, CRC(2e477a79) SHA1(0af9238979c8a740ba49776cd65ffbc024339621) )

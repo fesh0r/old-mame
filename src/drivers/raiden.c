@@ -226,7 +226,7 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static gfx_layout raiden_charlayout =
+static const gfx_layout raiden_charlayout =
 {
 	8,8,		/* 8*8 characters */
 	2048,		/* 512 characters */
@@ -237,7 +237,7 @@ static gfx_layout raiden_charlayout =
 	128
 };
 
-static gfx_layout raiden_spritelayout =
+static const gfx_layout raiden_spritelayout =
 {
   16,16,	/* 16*16 tiles */
   4096,		/* 2048*4 tiles */
@@ -255,7 +255,7 @@ static gfx_layout raiden_spritelayout =
   1024
 };
 
-static gfx_decode raiden_gfxdecodeinfo[] =
+static const gfx_decode raiden_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &raiden_charlayout,   768, 16 },
 	{ REGION_GFX2, 0, &raiden_spritelayout,   0, 16 },
@@ -394,7 +394,7 @@ ROM_START( raidena )
 	ROM_LOAD16_BYTE( "raiden05.rom",   0x0c0000, 0x20000, CRC(ed03562e) SHA1(bf6b44fb53fa2321cd52c00fcb43b8ceb6ceffff) )
 	ROM_LOAD16_BYTE( "raiden06.rom",   0x0c0001, 0x20000, CRC(a19d5b5d) SHA1(aa5e5be60b737913e5677f88ebc218302245e5af) )
 
-	ROM_REGION( 0x20000*2, REGION_CPU3, 0 ) /* 64k code for sound Z80 */
+	ROM_REGION( 0x20000, REGION_CPU3, 0 ) /* 64k code for sound Z80 */
 	ROM_LOAD( "raiden08.rom", 0x000000, 0x08000, CRC(731adb43) SHA1(d460ffc5dbec25482c695e6c4ac7b66655a67304) )
 	ROM_CONTINUE(             0x010000, 0x08000 )
 	ROM_COPY( REGION_CPU3, 0, 0x018000, 0x08000 )
@@ -460,7 +460,7 @@ ROM_START( raident )
 	ROM_LOAD16_BYTE( "raiden05.rom",   0x0c0000, 0x20000, CRC(ed03562e) SHA1(bf6b44fb53fa2321cd52c00fcb43b8ceb6ceffff) )
 	ROM_LOAD16_BYTE( "raiden06.rom",   0x0c0001, 0x20000, CRC(a19d5b5d) SHA1(aa5e5be60b737913e5677f88ebc218302245e5af) )
 
-	ROM_REGION( 0x20000*2, REGION_CPU3, 0 ) /* 64k code for sound Z80 */
+	ROM_REGION( 0x20000, REGION_CPU3, 0 ) /* 64k code for sound Z80 */
 	ROM_LOAD( "raid08.212",   0x000000, 0x08000, CRC(cbe055c7) SHA1(34a06a541d059c621d87fdf41546c9d052a61963) )
 	ROM_CONTINUE(             0x010000, 0x08000 )
 	ROM_COPY( REGION_CPU3, 0, 0x018000, 0x08000 )

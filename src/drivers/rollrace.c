@@ -3,7 +3,6 @@
 Issues:
 -sound effects missing
 -cpu speeds are guessed
--colours might be wrong in the night stage
 ***************************************************************************/
 
 #include "driver.h"
@@ -181,7 +180,7 @@ INPUT_PORTS_START( rollrace )
 	PORT_DIPSETTING( 0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
 		256,	/* 256 characters */
@@ -193,7 +192,7 @@ static gfx_layout charlayout =
 
 	8*8	/* every char takes 8 consecutive bytes */
 };
-static gfx_layout charlayout2 =
+static const gfx_layout charlayout2 =
 {
 	8,8,	/* 8*8 characters */
 		1024,	/* 1024 characters */
@@ -207,7 +206,7 @@ static gfx_layout charlayout2 =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 		32,32,  /* 32*32 sprites */
 		64,	/* 64 sprites */
@@ -223,7 +222,7 @@ static gfx_layout spritelayout =
 		32*32	 /* every sprite takes 128 consecutive bytes */
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 		{ REGION_GFX1, 0x0000, &charlayout,	0,	32 }, /* foreground */
 		{ REGION_GFX1, 0x0800, &charlayout,	0,	32 },
@@ -434,6 +433,6 @@ ROM_START( rollace2 )
 	ROM_LOAD( "8.6f", 0x0000, 0x1000, CRC(6ec3c545) SHA1(1a2477b9e1563734195b0743f5dbbb005e06022e) )
 ROM_END
 
-GAME( 1983, fightrol, 0,        rollrace, rollrace, 0, ROT270, "[Kaneko] (Taito license)", "Fighting Roller", GAME_IMPERFECT_SOUND|GAME_IMPERFECT_COLORS )
-GAME( 1983, rollace,  fightrol, rollrace, rollrace, 0, ROT270, "[Kaneko] (Williams license)", "Roller Aces (set 1)", GAME_IMPERFECT_SOUND|GAME_IMPERFECT_COLORS )
-GAME( 1983, rollace2, fightrol, rollace2, rollrace, 0, ROT90,  "[Kaneko] (Williams license)", "Roller Aces (set 2)", GAME_IMPERFECT_SOUND|GAME_IMPERFECT_COLORS )
+GAME( 1983, fightrol, 0,        rollrace, rollrace, 0, ROT270, "[Kaneko] (Taito license)", "Fighting Roller", GAME_IMPERFECT_SOUND )
+GAME( 1983, rollace,  fightrol, rollrace, rollrace, 0, ROT270, "[Kaneko] (Williams license)", "Roller Aces (set 1)", GAME_IMPERFECT_SOUND )
+GAME( 1983, rollace2, fightrol, rollace2, rollrace, 0, ROT90,  "[Kaneko] (Williams license)", "Roller Aces (set 2)", GAME_IMPERFECT_SOUND )

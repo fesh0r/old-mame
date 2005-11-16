@@ -64,7 +64,8 @@ static UINT8 *work_ram;
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM)
 	AM_RANGE(0xe000, 0xe07f) AM_READ(MRA8_RAM)
 	AM_RANGE(0xe400, 0xe5ff) AM_READ(MRA8_RAM)
@@ -77,7 +78,8 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM) AM_BASE(&work_ram)
 	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(pbaction_videoram2_w) AM_BASE(&pbaction_videoram2)
 	AM_RANGE(0xd400, 0xd7ff) AM_WRITE(pbaction_colorram2_w) AM_BASE(&pbaction_colorram2)
@@ -196,7 +198,7 @@ INPUT_PORTS_END
 
 
 
-static gfx_layout charlayout1 =
+static const gfx_layout charlayout1 =
 {
 	8,8,	/* 8*8 characters */
 	1024,	/* 1024 characters */
@@ -206,7 +208,7 @@ static gfx_layout charlayout1 =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8	/* every char takes 8 consecutive bytes */
 };
-static gfx_layout charlayout2 =
+static const gfx_layout charlayout2 =
 {
 	8,8,	/* 8*8 characters */
 	2048,	/* 2048 characters */
@@ -216,7 +218,7 @@ static gfx_layout charlayout2 =
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8	/* every char takes 8 consecutive bytes */
 };
-static gfx_layout spritelayout1 =
+static const gfx_layout spritelayout1 =
 {
 	16,16,	/* 16*16 sprites */
 	128,	/* 128 sprites */
@@ -228,7 +230,7 @@ static gfx_layout spritelayout1 =
 			16*8, 17*8, 18*8, 19*8, 20*8, 21*8, 22*8, 23*8 },
 	32*8	/* every sprite takes 32 consecutive bytes */
 };
-static gfx_layout spritelayout2 =
+static const gfx_layout spritelayout2 =
 {
 	32,32,	/* 32*32 sprites */
 	32,	/* 32 sprites */
@@ -247,7 +249,7 @@ static gfx_layout spritelayout2 =
 
 
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &charlayout1,    0, 16 },	/*   0-127 characters */
 	{ REGION_GFX2, 0x00000, &charlayout2,  128,  8 },	/* 128-255 background */

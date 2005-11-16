@@ -590,7 +590,7 @@ INPUT_PORTS_END
 
 
 
-static gfx_layout charlayout =
+static const gfx_layout charlayout =
 {
 	8,8,			/* 8*8 characters */
 	RGN_FRAC(1,3),	/* 2048 characters */
@@ -601,7 +601,7 @@ static gfx_layout charlayout =
 	8*8				/* every char takes 8 consecutive bytes */
 };
 
-static gfx_layout tilelayout =
+static const gfx_layout tilelayout =
 {
 	8,8,			/* 8*8 tiles */
 	RGN_FRAC(1,4),	/* 4096/8192 tiles */
@@ -612,7 +612,7 @@ static gfx_layout tilelayout =
 	8*8				/* every tile takes 8 consecutive bytes */
 };
 
-static gfx_layout spritelayout =
+static const gfx_layout spritelayout =
 {
 	16,16,			/* 16*16 sprites */
 	RGN_FRAC(1,4),	/* 2048 sprites */
@@ -624,7 +624,7 @@ static gfx_layout spritelayout =
 	32*8			/* every sprite takes 32 consecutive bytes */
 };
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &charlayout,	1536, 32 },	/* colors 1536-1791 */
 	{ REGION_GFX2, 0x00000, &tilelayout,	1280, 16 },	/* colors 1280-1535 */
@@ -838,7 +838,7 @@ ROM_START( ktiger )
 ROM_END
 
 ROM_START( fshark )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* Main 68K code */
+	ROM_REGION( 0x30000, REGION_CPU1, 0 )	/* Main 68K code */
 	ROM_LOAD16_BYTE( "b02_18-1.rom",	0x00000, 0x10000, CRC(04739e02) SHA1(8a14284adb0f0f33adf9affdec081c90de85d594) )
 	ROM_LOAD16_BYTE( "b02_17-1.rom",	0x00001, 0x10000, CRC(fd6ef7a8) SHA1(ddbc05ce694ab4d929f5f621d95800b612bc5f66) )
 
@@ -887,7 +887,7 @@ ROM_START( fshark )
 ROM_END
 
 ROM_START( skyshark )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* Main 68K code */
+	ROM_REGION( 0x30000, REGION_CPU1, 0 )	/* Main 68K code */
 	ROM_LOAD16_BYTE( "18-2",		0x00000, 0x10000, CRC(888e90f3) SHA1(3a40d7e7653cc929af8186e48f272989fb332e14) )
 	ROM_LOAD16_BYTE( "17-2",		0x00001, 0x10000, CRC(066d67be) SHA1(a66be35b956da2c2ddf97cae66d79c0efd228621) )
 
@@ -936,7 +936,7 @@ ROM_START( skyshark )
 ROM_END
 
 ROM_START( hishouza )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* Main 68K code */
+	ROM_REGION( 0x30000, REGION_CPU1, 0 )	/* Main 68K code */
 	ROM_LOAD16_BYTE( "b02-18.rom",	0x00000, 0x10000, CRC(4444bb94) SHA1(5ff955a5190d1b356187de105cfb8ea181fc1282) )
 	ROM_LOAD16_BYTE( "b02-17.rom",	0x00001, 0x10000, CRC(cdac7228) SHA1(6b0d67e4b0661a858653d2eabb8936af9148167e) )
 
@@ -985,7 +985,7 @@ ROM_START( hishouza )
 ROM_END
 
 ROM_START( fsharkbt )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* Main 68K code */
+	ROM_REGION( 0x30000, REGION_CPU1, 0 )	/* Main 68K code */
 	ROM_LOAD16_BYTE( "r18",		0x00000, 0x10000, CRC(ef30f563) SHA1(755d6ce4c1e631d7c11d3fab99dae300b6a3452e) )
 	ROM_LOAD16_BYTE( "r17",		0x00001, 0x10000, CRC(0e18d25f) SHA1(82fc94830b3087c826d07cff699af9a3638e8087) )
 

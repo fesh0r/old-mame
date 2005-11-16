@@ -458,14 +458,13 @@ static void write_version_info( void )
 	int i;
 	for( i=0; i<8; i++ )
 	{
-		namcona1_workram[i] = source[i];
+		namcona1_workram[0x1000/2+i] = source[i];
 	}
 } /* write_version_info */
 
 static WRITE16_HANDLER( mcu_command_w )
 {
-	UINT16 *pMem = (UINT16 *)memory_region( REGION_CPU1 );
-	UINT16 cmd = pMem[0xf72/2]>>8;
+	UINT16 cmd = mcu_ram[0xf72/2]>>8;
 
 	switch( cmd ){
 	case 0x03:
@@ -632,7 +631,7 @@ transfer_dword( UINT32 dest, UINT32 source )
 	}
 	else if( source<0x80000 && source>=0x1000 )
 	{
-		data = namcona1_workram[(source-0x001000)/2];
+		data = namcona1_workram[source/2];
 	}
 	else
 	{
@@ -872,11 +871,10 @@ static READ16_HANDLER( bogus_r )
 }
 
 static ADDRESS_MAP_START( namcona1_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x000fff) AM_READ(namcona1_mcu_r)
-	AM_RANGE(0x001000, 0x07ffff) AM_READ(MRA16_RAM)		/* work RAM */
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_RAM)		/* work RAM */
 	AM_RANGE(0x080000, 0x3fffff) AM_READ(bogus_r)
-	AM_RANGE(0x400000, 0xbfffff) AM_READ(MRA16_BANK2)	/* data */
-	AM_RANGE(0xc00000, 0xdfffff) AM_READ(MRA16_BANK1)	/* code */
+	AM_RANGE(0x400000, 0xbfffff) AM_ROM AM_REGION(REGION_CPU1, 0x280000)	/* data */
+	AM_RANGE(0xc00000, 0xdfffff) AM_ROM AM_REGION(REGION_CPU1, 0x080000)	/* code */
 	AM_RANGE(0xe00000, 0xe00fff) AM_READ(namcona1_nvram_r)
 	AM_RANGE(0xe40000, 0xe4000f) AM_READ(custom_key_r)
 	AM_RANGE(0xe40010, 0xeffeff) AM_READ(bogus_r)
@@ -893,7 +891,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( namcona1_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x000fff) AM_WRITE(namcona1_mcu_w) AM_BASE(&mcu_ram)
-	AM_RANGE(0x001000, 0x07ffff) AM_WRITE(MWA16_RAM) AM_BASE(&namcona1_workram)
+	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_RAM) AM_BASE(&namcona1_workram)
 	AM_RANGE(0x080000, 0x3f8007) AM_WRITE(bogus_w)
 	AM_RANGE(0x3f8008, 0x3f8009) AM_WRITE(mcu_command_w)
 	AM_RANGE(0x3f800a, 0x3fffff) AM_WRITE(bogus_w)
@@ -931,7 +929,7 @@ INTERRUPT_GEN( namcona1_interrupt )
 
 static struct NAMCONAinterface NAMCONA_interface =
 {
-	REGION_CPU1,
+	NULL,
 	0x70000/2
 };
 
@@ -980,21 +978,20 @@ MACHINE_DRIVER_END
 static void
 init_namcona1( int gametype )
 {
-	UINT16 *pMem = (UINT16 *)memory_region( REGION_CPU1 );
-	pMem[0] = 0x0007; pMem[1] = 0xfffc; /* (?) stack */
-	pMem[2] = 0x00c0; pMem[3] = 0x0000; /* reset vector */
+    UINT16 *pMem = (UINT16 *)memory_region( REGION_CPU1 );
+
+	namcona1_workram[0] = 0x0007; namcona1_workram[1] = 0xfffc; /* (?) stack */
+	namcona1_workram[2] = 0x00c0; namcona1_workram[3] = 0x0000; /* reset vector */
 
 	namcona1_gametype = gametype;
-	mpBank0 = &pMem[0x80000/2];
-	mpBank1 = mpBank0 +  0x200000/2;
-
-	memory_set_bankptr( 1, mpBank0 ); /* code */
-	memory_set_bankptr( 2, mpBank1 ); /* data */
+    mpBank0 = &pMem[0x80000/2];
+    mpBank1 = mpBank0 +  0x200000/2;
 
 	mCoinCount[0] = mCoinCount[1] = mCoinCount[2] = mCoinCount[3] = 0;
 	mCoinState = 0;
 	mEnableInterrupts = 0;
 
+	NAMCONA_interface.memory_base = namcona1_workram;
 	if (namcona1_gametype == NAMCO_KNCKHEAD)
 		NAMCONA_interface.metadata_offset = 0x10000/2;
 	else
@@ -1027,19 +1024,19 @@ ROM_START( bkrtmaq )
 ROM_END
 
 ROM_START( cgangpzl )
-	ROM_REGION( 0x180000, REGION_CPU1, 0 )
+	ROM_REGION( 0xa80000, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "cp2-ep0l.bin", 0x080001, 0x80000, CRC(8f5cdcc5) SHA1(925db3f3f16224bc28f97a57aba0ab2b51c5067c) ) /* 0xc00000 */
 	ROM_LOAD16_BYTE( "cp2-ep0u.bin", 0x080000, 0x80000, CRC(3a816140) SHA1(613c367e08a0a20ec62e1938faab0128743b26f8) )
 ROM_END
 
 ROM_START( cgangpzj )
-	ROM_REGION( 0x180000, REGION_CPU1, 0 )
+	ROM_REGION( 0xa80000, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "cp1-ep0l.bin", 0x080001, 0x80000, CRC(2825f7ba) SHA1(5f6f8df6bdf0f45656904411cdbb31fdcf8f3be0) ) /* 0xc00000 */
 	ROM_LOAD16_BYTE( "cp1-ep0u.bin", 0x080000, 0x80000, CRC(94d7d6fc) SHA1(2460741e0dbb2ccff28f4fbc419a7507382467d2) )
 ROM_END
 
 ROM_START( emeralda )
-	ROM_REGION( 0x280000, REGION_CPU1, 0 )
+	ROM_REGION( 0xa80000, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "ep0lb.bin",    0x080001, 0x080000, CRC(fcd55293) SHA1(fdabf9d5f528c37196ac1e031b097618b4c887b5) ) /* 0xc00000 */
 	ROM_LOAD16_BYTE( "ep0ub.bin",    0x080000, 0x080000, CRC(a52f00d5) SHA1(85f95d2a69a2df2e9195f55583645c064b0b6fe6) )
 	ROM_LOAD16_BYTE( "em1-ep1l.bin", 0x180001, 0x080000, CRC(373c1c59) SHA1(385cb3bc056b798878de890dbff97a8bdd48fe4e) )
@@ -1047,7 +1044,7 @@ ROM_START( emeralda )
 ROM_END
 
 ROM_START( emerldaa )
-	ROM_REGION( 0x280000, REGION_CPU1, 0 )
+	ROM_REGION( 0xa80000, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "em1-ep0l.bin", 0x080001, 0x080000, CRC(443f3fce) SHA1(35b6c834e5716c1e9b55f1e39f4e7336dbbe2d9b) ) /* 0xc00000 */
 	ROM_LOAD16_BYTE( "em1-ep0u.bin", 0x080000, 0x080000, CRC(484a2a81) SHA1(1b60c18dfb2aebfd4aa8b2a85a1e90883a1f8e61) )
 	ROM_LOAD16_BYTE( "em1-ep1l.bin", 0x180001, 0x080000, CRC(373c1c59) SHA1(385cb3bc056b798878de890dbff97a8bdd48fe4e) )

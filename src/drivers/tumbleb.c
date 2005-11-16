@@ -1306,7 +1306,7 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static gfx_layout tcharlayout =
+static const gfx_layout tcharlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -1317,7 +1317,7 @@ static gfx_layout tcharlayout =
 	16*8
 };
 
-static gfx_layout jumppop_tcharlayout =
+static const gfx_layout jumppop_tcharlayout =
 {
 	8,8,
 	RGN_FRAC(1,2),
@@ -1328,7 +1328,7 @@ static gfx_layout jumppop_tcharlayout =
 	32*8
 };
 
-static gfx_layout tlayout =
+static const gfx_layout tlayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -1341,7 +1341,7 @@ static gfx_layout tlayout =
 	64*8
 };
 
-static gfx_layout suprtrio_tlayout =
+static const gfx_layout suprtrio_tlayout =
 {
 	16,16,
 	RGN_FRAC(1,4),
@@ -1355,7 +1355,7 @@ static gfx_layout suprtrio_tlayout =
 };
 
 
-static gfx_layout jumpop_tlayout =
+static const gfx_layout jumpop_tlayout =
 {
 	16,16,
 	RGN_FRAC(1,2),
@@ -1372,7 +1372,7 @@ static gfx_layout jumpop_tlayout =
 
 
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tcharlayout, 256, 16 },	/* Characters 8x8 */
 	{ REGION_GFX1, 0, &tlayout,     512, 16 },	/* Tiles 16x16 */
@@ -1381,7 +1381,7 @@ static gfx_decode gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static gfx_decode suprtrio_gfxdecodeinfo[] =
+static const gfx_decode suprtrio_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tcharlayout, 256, 16 },	/* Characters 8x8 */
 	{ REGION_GFX1, 0, &suprtrio_tlayout,     512, 16 },	/* Tiles 16x16 */
@@ -1390,7 +1390,7 @@ static gfx_decode suprtrio_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static gfx_decode fncywld_gfxdecodeinfo[] =
+static const gfx_decode fncywld_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tcharlayout, 0x400, 0x40 },	/* Characters 8x8 */
 	{ REGION_GFX1, 0, &tlayout,     0x400, 0x40 },	/* Tiles 16x16 */
@@ -1399,7 +1399,7 @@ static gfx_decode fncywld_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static gfx_decode jumppop_gfxdecodeinfo[] =
+static const gfx_decode jumppop_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &jumppop_tcharlayout, 0x100, 0x40 },	/* Characters 8x8 */
 	{ REGION_GFX1, 0, &jumpop_tlayout,     0x100, 0x40 },	/* Tiles 16x16 */
@@ -1556,7 +1556,7 @@ static MACHINE_DRIVER_START( htchctch )
 	/* sound hardware - same as hyperpac */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3427190)
+	MDRV_SOUND_ADD_TAG("ym2151", YM2151, 3427190)
 	MDRV_SOUND_CONFIG(semicom_ym2151_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.10)
 	MDRV_SOUND_ROUTE(1, "right", 0.10)
@@ -1575,8 +1575,21 @@ MACHINE_DRIVER_END
 MACHINE_DRIVER_START( bcstory )
 	MDRV_IMPORT_FROM(htchctch)
 	MDRV_VIDEO_UPDATE( bcstory )
+
+	MDRV_SOUND_REPLACE("ym2151", YM2151, 3427190)
+	MDRV_SOUND_CONFIG(semicom_ym2151_interface)
+	MDRV_SOUND_ROUTE(0, "left", 0.30)
+	MDRV_SOUND_ROUTE(1, "right", 0.30)
 MACHINE_DRIVER_END
 
+MACHINE_DRIVER_START( metlsavr )
+	MDRV_IMPORT_FROM(cookbib)
+
+	MDRV_SOUND_REPLACE("ym2151", YM2151, 3427190)
+	MDRV_SOUND_CONFIG(semicom_ym2151_interface)
+	MDRV_SOUND_ROUTE(0, "left", 0.80)
+	MDRV_SOUND_ROUTE(1, "right", 0.80)
+MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( jumppop )
 	/* basic machine hardware */
@@ -2513,7 +2526,7 @@ GAME( 1996, fncywld,  0,       fncywld,   fncywld,  fncywld,  ROT0, "Unico", "Fa
 GAME( 1995, htchctch, 0,       htchctch,  htchctch, htchctch, ROT0, "SemiCom", "Hatch Catch" , 0 ) // not 100% sure about gfx offsets
 GAME( 1995, cookbib,  0,       cookbib,   cookbib,  htchctch, ROT0, "SemiCom", "Cookie & Bibi" , 0 ) // not 100% sure about gfx offsets
 GAME( 1995, chokchok, 0,       cookbib,   chokchok, chokchok, ROT0, "SemiCom", "Choky! Choky!", GAME_IMPERFECT_GRAPHICS ) // corruption during attract mode (tmap disable?)
-GAME( 1994, metlsavr, 0,       cookbib,   metlsavr, chokchok, ROT0, "First Amusement", "Metal Saver", 0 )
+GAME( 1994, metlsavr, 0,       metlsavr,  metlsavr, chokchok, ROT0, "First Amusement", "Metal Saver", 0 )
 GAME( 1997, bcstry,   0,       bcstory,   bcstory,  bcstory,  ROT0, "SemiCom", "B.C. Story (set 1)", GAME_IMPERFECT_GRAPHICS) // gfx offsets?
 GAME( 1997, bcstrya,  bcstry,  bcstory,   bcstory,  bcstory,  ROT0, "SemiCom", "B.C. Story (set 2)", GAME_IMPERFECT_GRAPHICS) // gfx offsets?
 GAME( 2001, jumppop,  0,       jumppop,   jumppop,  0, ORIENTATION_FLIP_X, "ESD", "Jumping Pop", 0 )

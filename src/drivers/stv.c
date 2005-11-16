@@ -3806,7 +3806,7 @@ static ADDRESS_MAP_START( stv_mem, ADDRESS_SPACE_PROGRAM, 32 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_mem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_RAM AM_BASE(&sound_ram)
+	AM_RANGE(0x000000, 0x07ffff) AM_RAM AM_REGION(REGION_CPU3, 0) AM_BASE(&sound_ram)
 	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(SCSP_0_r, SCSP_0_w)
 ADDRESS_MAP_END
 
@@ -4267,7 +4267,7 @@ MACHINE_INIT( stv )
 	cpunum_set_clock(2, MASTER_CLOCK_320/5);
 }
 
-static gfx_layout tiles8x8x4_layout =
+static const gfx_layout tiles8x8x4_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -4278,7 +4278,7 @@ static gfx_layout tiles8x8x4_layout =
 	32*8
 };
 
-static gfx_layout tiles16x16x4_layout =
+static const gfx_layout tiles16x16x4_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -4295,7 +4295,7 @@ static gfx_layout tiles16x16x4_layout =
 	32*32
 };
 
-static gfx_layout tiles8x8x8_layout =
+static const gfx_layout tiles8x8x8_layout =
 {
 	8,8,
 	RGN_FRAC(1,1),
@@ -4306,7 +4306,7 @@ static gfx_layout tiles8x8x8_layout =
 	64*8
 };
 
-static gfx_layout tiles16x16x8_layout =
+static const gfx_layout tiles16x16x8_layout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -4325,7 +4325,7 @@ static gfx_layout tiles16x16x8_layout =
 
 
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tiles8x8x4_layout,   0x00, (0x80*(2+1))  },
 	{ REGION_GFX1, 0, &tiles16x16x4_layout, 0x00, (0x80*(2+1))  },

@@ -32,6 +32,9 @@ X86_MIPS3_DRC = 1
 # uncomment next line to use DRC PowerPC engine
 X86_PPC_DRC = 1
 
+# uncomment next line to use DRC Voodoo rasterizers
+# X86_VOODOO_DRC = 1
+
 # uncomment next line to use cygwin compiler
 # COMPILESYSTEM_CYGWIN	= 1
 
@@ -117,6 +120,9 @@ DEFS = -DX86_ASM -DLSB_FIRST -DINLINE="static __inline__" -Dasm=__asm__ -DCRLF=3
 ifdef NEW_DEBUGGER
 DEFS += -DNEW_DEBUGGER
 endif
+ifdef X86_VOODOO_DRC
+DEFS += -DVOODOO_DRC
+endif
 
 CFLAGS = -std=gnu89 -Isrc -Isrc/includes -Isrc/debug -Isrc/$(MAMEOS) -I$(OBJ)/cpu/m68000 -Isrc/cpu/m68000
 
@@ -194,7 +200,6 @@ ifdef DEBUG
 DBGDEFS = -DMAME_DEBUG
 else
 DBGDEFS =
-DBGOBJS =
 endif
 
 ifdef COMPILESYSTEM_CYGWIN
@@ -242,6 +247,10 @@ $(OBJ)/$(MAMEOS)/%.o: src/$(MAMEOS)/%.c
 $(OBJ)/%.o: src/%.c
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -c $< -o $@
+
+$(OBJ)/%.pp: src/%.c
+	@echo Compiling $<...
+	$(CC) $(CDEFS) $(CFLAGS) -E $< -o $@
 
 # compile generated C files for the 68000 emulator
 $(M68000_GENERATED_OBJS): $(OBJ)/cpu/m68000/m68kmake$(EXE)

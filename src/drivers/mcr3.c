@@ -88,6 +88,7 @@
 #include "vidhrdw/generic.h"
 #include "artwork.h"
 #include "mcr.h"
+#include "state.h"
 
 
 
@@ -988,7 +989,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static gfx_layout spyhunt_charlayout =
+static const gfx_layout spyhunt_charlayout =
 {
 	64,32,
 	RGN_FRAC(1,2),
@@ -1006,7 +1007,7 @@ static gfx_layout spyhunt_charlayout =
 };
 
 
-static gfx_layout spyhunt_alphalayout =
+static const gfx_layout spyhunt_alphalayout =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -1018,7 +1019,7 @@ static gfx_layout spyhunt_alphalayout =
 };
 
 
-static gfx_decode gfxdecodeinfo[] =
+static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &mcr_bg_layout,     0, 4 },
 	{ REGION_GFX2, 0, &mcr_sprite_layout, 0, 4 },
@@ -1026,7 +1027,7 @@ static gfx_decode gfxdecodeinfo[] =
 };
 
 
-static gfx_decode spyhunt_gfxdecodeinfo[] =
+static const gfx_decode spyhunt_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &spyhunt_charlayout,  1*16, 1 },
 	{ REGION_GFX2, 0, &mcr_sprite_layout,   0*16, 4 },
@@ -1223,7 +1224,7 @@ ROM_START( rampage )
 	ROM_LOAD( "pro1rev3.5b",  0x08000, 0x8000, CRC(d89bd9a4) SHA1(3531464ffe49dfaf2755d9e2dc1aea23819b3a5d) )
 	ROM_FILL(                 0x0e000, 0x2000, 0xff )	/* upper 8k is not mapped on monoboard */
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 )  /* 128k for the Sounds Good board */
+	ROM_REGION( 0x40000, REGION_CPU2, 0 )  /* 256k for the Sounds Good board */
 	ROM_LOAD16_BYTE( "ramp_u7.snd",  0x00000, 0x8000, CRC(cffd7fa5) SHA1(7c5cecce1d428f847fea37d53eb09c6f62055c6f) )	/* these are Revision 2 sound ROMs */
 	ROM_LOAD16_BYTE( "ramp_u17.snd", 0x00001, 0x8000, CRC(e92c596b) SHA1(4e2d87398f2e7b637cbad6cb16d832dfa8f8288c) )
 	ROM_LOAD16_BYTE( "ramp_u8.snd",  0x10000, 0x8000, CRC(11f787e4) SHA1(1fa195bf9169608099d17be5801738a4e17bec3d) )
@@ -1247,7 +1248,7 @@ ROM_START( rampage2 )
 	ROM_LOAD( "pro1rev2.5b",  0x08000, 0x8000, CRC(58523d75) SHA1(5cd512864568ec7793bda0164f21e7d72a7ea817) )
 	ROM_FILL(                 0x0e000, 0x2000, 0xff )	/* upper 8k is not mapped on monoboard */
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 )  /* 128k for the Sounds Good board */
+	ROM_REGION( 0x40000, REGION_CPU2, 0 )  /* 256k for the Sounds Good board */
 	ROM_LOAD16_BYTE( "ramp_u7.snd",  0x00000, 0x8000, CRC(cffd7fa5) SHA1(7c5cecce1d428f847fea37d53eb09c6f62055c6f) )    /* these are Revision 2 sound ROMs */
 	ROM_LOAD16_BYTE( "ramp_u17.snd", 0x00001, 0x8000, CRC(e92c596b) SHA1(4e2d87398f2e7b637cbad6cb16d832dfa8f8288c) )
 	ROM_LOAD16_BYTE( "ramp_u8.snd",  0x10000, 0x8000, CRC(11f787e4) SHA1(1fa195bf9169608099d17be5801738a4e17bec3d) )
@@ -1271,7 +1272,7 @@ ROM_START( powerdrv )
 	ROM_LOAD( "pdrv5b.bin",   0x08000, 0x8000, CRC(fa0544ad) SHA1(55a9cf8c8648761443e4a5a3b214f4d6236cbaff) )
 	ROM_FILL(                 0x0e000, 0x2000, 0xff )	/* upper 8k is not mapped on monoboard */
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 )  /* 128k for the Sounds Good board */
+	ROM_REGION( 0x40000, REGION_CPU2, 0 )  /* 256k for the Sounds Good board */
 	ROM_LOAD16_BYTE( "pdsndu7.bin",  0x00000, 0x8000, CRC(78713e78) SHA1(11382c024536f743e051ba208ae02d0f5e07cf5e) )
 	ROM_LOAD16_BYTE( "pdsndu17.bin", 0x00001, 0x8000, CRC(c41de6e4) SHA1(0391afd96ee80dd1d4a34e661e5df1e01fbbd57a) )
 	ROM_LOAD16_BYTE( "pdsndu8.bin",  0x10000, 0x8000, CRC(15714036) SHA1(77ca5f703eb7f146e13d9c01f4427f6aaa31df39) )
@@ -1295,7 +1296,7 @@ ROM_START( stargrds )
 	ROM_LOAD( "pro-1.5b",  0x08000, 0x8000, CRC(dba428b0) SHA1(72efa2f02e95f05a5503ced136fbdf3fcdf57554) )
 	ROM_FILL(              0x0e000, 0x2000, 0xff )	/* upper 8k is not mapped on monoboard */
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 )  /* 128k for the Sounds Good board */
+	ROM_REGION( 0x40000, REGION_CPU2, 0 )  /* 256k for the Sounds Good board */
 	ROM_LOAD16_BYTE( "snd0.u7",      0x00000, 0x8000, CRC(7755a493) SHA1(a888fba45a2a31de5b3082bfc5ccef94dafc4d16) )
 	ROM_LOAD16_BYTE( "snd1.u17",     0x00001, 0x8000, CRC(d98d14ae) SHA1(51dbb97655ab8a389ca67f0e796ab57894f5bb32) )
 
@@ -1441,9 +1442,19 @@ ROM_END
  *
  *************************************/
 
+static void common_init(int sound_board)
+{
+	mcr_sound_init(sound_board);
+
+	state_save_register_global(input_mux);
+	state_save_register_global(latched_input);
+	state_save_register_global(last_op4);
+}
+
+
 static DRIVER_INIT( demoderm )
 {
-	mcr_sound_init(MCR_TURBO_CHIP_SQUEAK);
+	common_init(MCR_TURBO_CHIP_SQUEAK);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x01, 0x01, 0, 0, demoderm_ip1_r);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x02, 0x02, 0, 0, demoderm_ip2_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, demoderm_op6_w);
@@ -1452,24 +1463,30 @@ static DRIVER_INIT( demoderm )
 
 static DRIVER_INIT( sarge )
 {
-	mcr_sound_init(MCR_TURBO_CHIP_SQUEAK);
+	common_init(MCR_TURBO_CHIP_SQUEAK);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, turbocs_data_w);
 }
 
 
 static DRIVER_INIT( maxrpm )
 {
-	mcr_sound_init(MCR_TURBO_CHIP_SQUEAK);
+	common_init(MCR_TURBO_CHIP_SQUEAK);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x01, 0x01, 0, 0, maxrpm_ip1_r);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x02, 0x02, 0, 0, maxrpm_ip2_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, maxrpm_op5_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, maxrpm_op6_w);
+
+	state_save_register_global(maxrpm_adc_control);
+	state_save_register_global(maxrpm_adc_select);
+	state_save_register_global(maxrpm_last_shift);
+	state_save_register_global(maxrpm_p1_shift);
+	state_save_register_global(maxrpm_p2_shift);
 }
 
 
 static DRIVER_INIT( rampage )
 {
-	mcr_sound_init(MCR_SOUNDS_GOOD);
+	common_init(MCR_SOUNDS_GOOD);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x04, 0x04, 0, 0, rampage_ip4_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, rampage_op6_w);
 }
@@ -1477,7 +1494,7 @@ static DRIVER_INIT( rampage )
 
 static DRIVER_INIT( powerdrv )
 {
-	mcr_sound_init(MCR_SOUNDS_GOOD);
+	common_init(MCR_SOUNDS_GOOD);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x02, 0x02, 0, 0, powerdrv_ip2_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, powerdrv_op5_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, powerdrv_op6_w);
@@ -1486,7 +1503,7 @@ static DRIVER_INIT( powerdrv )
 
 static DRIVER_INIT( stargrds )
 {
-	mcr_sound_init(MCR_SOUNDS_GOOD);
+	common_init(MCR_SOUNDS_GOOD);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x00, 0x00, 0, 0, stargrds_ip0_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, stargrds_op5_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, stargrds_op6_w);
@@ -1495,7 +1512,7 @@ static DRIVER_INIT( stargrds )
 
 static DRIVER_INIT( spyhunt )
 {
-	mcr_sound_init(MCR_SSIO | MCR_CHIP_SQUEAK_DELUXE);
+	common_init(MCR_SSIO | MCR_CHIP_SQUEAK_DELUXE);
 	ssio_set_custom_input(1, 0x60, spyhunt_ip1_r);
 	ssio_set_custom_input(2, 0xff, spyhunt_ip2_r);
 	ssio_set_custom_output(4, 0xff, spyhunt_op4_w);
@@ -1507,7 +1524,7 @@ static DRIVER_INIT( spyhunt )
 
 static DRIVER_INIT( crater )
 {
-	mcr_sound_init(MCR_SSIO);
+	common_init(MCR_SSIO);
 
 	spyhunt_sprite_color_mask = 0x03;
 	spyhunt_scroll_offset = 96;
@@ -1516,7 +1533,7 @@ static DRIVER_INIT( crater )
 
 static DRIVER_INIT( turbotag )
 {
-	mcr_sound_init(MCR_SSIO | MCR_CHIP_SQUEAK_DELUXE);
+	common_init(MCR_SSIO | MCR_CHIP_SQUEAK_DELUXE);
 	ssio_set_custom_input(1, 0x60, spyhunt_ip1_r);
 	ssio_set_custom_input(2, 0xff, turbotag_ip2_r);
 	ssio_set_custom_output(4, 0xff, spyhunt_op4_w);
@@ -1540,15 +1557,15 @@ static DRIVER_INIT( turbotag )
  *************************************/
 
 /* MCR monoboard games */
-GAME( 1984, demoderm, demoderb, mono_tcs,  demoderm, demoderm, ROT0,  "Bally Midway", "Demolition Derby (2-Player Mono Board Version)", 0 )
-GAME( 1985, sarge,    0,        mono_tcs,  sarge,    sarge,    ROT0,  "Bally Midway", "Sarge", 0 )
-GAME( 1986, maxrpm,   0,        mono_tcs,  maxrpm,   maxrpm,   ROT0,  "Bally Midway", "Max RPM", 0 )
-GAME( 1986, rampage,  0,        mono_sg,   rampage,  rampage,  ROT0,  "Bally Midway", "Rampage (revision 3)", 0 )
-GAME( 1986, rampage2, rampage,  mono_sg,   rampage,  rampage,  ROT0,  "Bally Midway", "Rampage (revision 2)", 0 )
-GAME( 1986, powerdrv, 0,        mono_sg,   powerdrv, powerdrv, ROT0,  "Bally Midway", "Power Drive", 0 )
-GAME( 1987, stargrds, 0,        mono_sg,   stargrds, stargrds, ROT0,  "Bally Midway", "Star Guards", 0 )
+GAME( 1984, demoderm, demoderb, mono_tcs,  demoderm, demoderm, ROT0,  "Bally Midway", "Demolition Derby (2-Player Mono Board Version)", GAME_SUPPORTS_SAVE )
+GAME( 1985, sarge,    0,        mono_tcs,  sarge,    sarge,    ROT0,  "Bally Midway", "Sarge", GAME_SUPPORTS_SAVE )
+GAME( 1986, maxrpm,   0,        mono_tcs,  maxrpm,   maxrpm,   ROT0,  "Bally Midway", "Max RPM", GAME_SUPPORTS_SAVE )
+GAME( 1986, rampage,  0,        mono_sg,   rampage,  rampage,  ROT0,  "Bally Midway", "Rampage (revision 3)", GAME_SUPPORTS_SAVE )
+GAME( 1986, rampage2, rampage,  mono_sg,   rampage,  rampage,  ROT0,  "Bally Midway", "Rampage (revision 2)", GAME_SUPPORTS_SAVE )
+GAME( 1986, powerdrv, 0,        mono_sg,   powerdrv, powerdrv, ROT0,  "Bally Midway", "Power Drive", GAME_SUPPORTS_SAVE )
+GAME( 1987, stargrds, 0,        mono_sg,   stargrds, stargrds, ROT0,  "Bally Midway", "Star Guards", GAME_SUPPORTS_SAVE )
 
 /* MCR scrolling games */
-GAME( 1983, spyhunt,  0,        mcrsc_csd, spyhunt,  spyhunt,  ROT90, "Bally Midway", "Spy Hunter", 0 )
-GAME( 1984, crater,   0,        mcrscroll, crater,   crater,   ORIENTATION_FLIP_X, "Bally Midway", "Crater Raider", 0 )
-GAME( 1985, turbotag, 0,        mcrsc_csd, turbotag, turbotag, ROT90, "Bally Midway", "Turbo Tag (prototype)", 0 )
+GAME( 1983, spyhunt,  0,        mcrsc_csd, spyhunt,  spyhunt,  ROT90, "Bally Midway", "Spy Hunter", GAME_SUPPORTS_SAVE )
+GAME( 1984, crater,   0,        mcrscroll, crater,   crater,   ORIENTATION_FLIP_X, "Bally Midway", "Crater Raider", GAME_SUPPORTS_SAVE )
+GAME( 1985, turbotag, 0,        mcrsc_csd, turbotag, turbotag, ROT90, "Bally Midway", "Turbo Tag (prototype)", GAME_SUPPORTS_SAVE )
