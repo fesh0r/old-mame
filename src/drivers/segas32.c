@@ -1321,10 +1321,6 @@ INPUT_PORTS_START( arabfgt )
 	PORT_MODIFY("P2")
 	PORT_BIT( 0x0c, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("SERVICE12")
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN4 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN3 )
-
 	PORT_START_TAG("EXTRA1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
@@ -1346,11 +1342,20 @@ INPUT_PORTS_START( arabfgt )
 	PORT_START_TAG("EXTRA3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START3 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START4 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
+INPUT_PORTS_START( arabfgtu )
+	PORT_INCLUDE( arabfgt )
+
+	PORT_MODIFY("SERVICE12")
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN4 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN3 )
+
+	PORT_MODIFY("EXTRA3")
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
+INPUT_PORTS_END
 
 INPUT_PORTS_START( brival )
 	PORT_INCLUDE( system32_generic )
@@ -1980,7 +1985,35 @@ static const struct MultiPCM_interface multi32_pcm_interface =
 	REGION_SOUND1
 };
 
+/*************************************
+ *
+ *  Dual PCB shared memory comms
+ *
+ *************************************/
 
+// Both arescue and f1en appear to use an identical shared RAM system.
+
+static UINT16* dual_pcb_comms;
+
+static WRITE16_HANDLER( dual_pcb_comms_w )
+{
+	COMBINE_DATA(&dual_pcb_comms[offset]);
+}
+
+static READ16_HANDLER( dual_pcb_comms_r )
+{
+	return dual_pcb_comms[offset];
+}
+
+
+/* There must be something on the comms board for this?
+   Probably not a dip/solder link/trace cut, but maybe
+   just whichever way the cables are plugged in?
+   Both f1en and arescue master units try to set bit 1... */
+static READ16_HANDLER( dual_pcb_masterslave )
+{
+	return 0; // 0/1 master/slave
+}
 
 /*************************************
  *
@@ -2234,7 +2267,39 @@ ROM_END
     Arabian Fight
     protected via a custom V20 with encrypted code
 */
+
 ROM_START( arabfgt )
+	ROM_REGION( 0x200000, REGION_CPU1, 0 ) /* v60 code + data */
+	ROM_LOAD_x8( "epr14609.8",         0x000000, 0x020000, CRC(6a43c7fb) SHA1(70e9f9fa5f867f0455d62ff2690ad19055d79363) )
+	ROM_LOAD16_BYTE_x2( "epr14592.18", 0x100000, 0x040000, CRC(f7dff316) SHA1(338690a1404dde6e7e66067f23605a247c7d0f5b) )
+	ROM_LOAD16_BYTE_x2( "epr14591.9",  0x100001, 0x040000, CRC(bbd940fb) SHA1(99c17aba890935eaf7ea468492da03103288eb1b) )
+
+	ROM_REGION( 0x500000, REGION_CPU2, 0 ) /* sound CPU + banks */
+	ROM_LOAD_x8( "epr14596.36", 0x100000, 0x020000, CRC(bd01faec) SHA1(c909dcb8ef2672c4b0060d911d295e445ca311eb) )
+	ROM_LOAD( "mpr14595f.35",   0x200000, 0x100000, CRC(5173d1af) SHA1(dccda644488d0c561c8ff7fa9619bd9504d8d9c6) )
+	ROM_LOAD( "mpr14594f.34",   0x300000, 0x100000, CRC(01777645) SHA1(7bcbe7687bd80b94bd3b2b3099cdd036bf7e0cd3) )
+	ROM_LOAD( "mpr14593f.24",   0x400000, 0x100000, CRC(aa037047) SHA1(5cb1cfb235bbbf875d2b07ac4a9130ba13d47e57) )
+
+	ROM_REGION( 0x100000, REGION_CPU3, 0 ) /* Protection CPU (simulated, not emulated) */
+	ROM_LOAD( "14468-01.3", 0x00000, 0x10000, CRC(c3c591e4) SHA1(53e48066e85b61d0c456618d14334a509b354cb3) )
+	ROM_RELOAD(             0xf0000, 0x10000             )
+
+	ROM_REGION( 0x400000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
+	ROM_LOAD16_BYTE( "mpr14599f.14", 0x000000, 0x200000, CRC(94f1cf10) SHA1(34ec86487bcb6726c025149c319f00a854eb7a1d) )
+	ROM_LOAD16_BYTE( "mpr14598f.5",  0x000001, 0x200000, CRC(010656f3) SHA1(31619c022cba4f250ce174f186d3e34444f60faf) )
+
+	ROM_REGION32_BE( 0x1000000, REGION_GFX2, 0 ) /* sprites */
+	ROMX_LOAD( "mpr14600f.32", 0x000000, 0x200000, CRC(e860988a) SHA1(328581877c0890519c854f75f0976b0e9c4560f8) , ROM_SKIP(6)|ROM_GROUPWORD )
+	ROMX_LOAD( "mpr14602.30",  0x000002, 0x200000, CRC(64524e4d) SHA1(86246185ab5ab638a73991c9e3aeb07c6d51be4f) , ROM_SKIP(6)|ROM_GROUPWORD )
+	ROMX_LOAD( "mpr14604.28",  0x000004, 0x200000, CRC(5f8d5167) SHA1(1b08495e5a4cc2530c2895e47abd0e0b75496c68) , ROM_SKIP(6)|ROM_GROUPWORD )
+	ROMX_LOAD( "mpr14606.26",  0x000006, 0x200000, CRC(7047f437) SHA1(e806a1cd73c96b33e8edc64e41d99bf7798103e0) , ROM_SKIP(6)|ROM_GROUPWORD )
+	ROMX_LOAD( "mpr14601f.31", 0x800000, 0x200000, CRC(a2f3bb32) SHA1(1a60975dead5faf08ad4e9a96a00f98664d5e5ec) , ROM_SKIP(6)|ROM_GROUPWORD )
+	ROMX_LOAD( "mpr14603.29",  0x800002, 0x200000, CRC(f6ce494b) SHA1(b3117e34913e855c035ebe37fbfbe0f7466f94f0) , ROM_SKIP(6)|ROM_GROUPWORD )
+	ROMX_LOAD( "mpr14605.27",  0x800004, 0x200000, CRC(aaf52697) SHA1(b502a37ae68fc08b60cdf0e2b744898b3474d3b9) , ROM_SKIP(6)|ROM_GROUPWORD )
+	ROMX_LOAD( "mpr14607.25",  0x800006, 0x200000, CRC(b70b0735) SHA1(9ef2da6f710bc5c2c7ee30dc144409a61dbe6646) , ROM_SKIP(6)|ROM_GROUPWORD )
+ROM_END
+
+ROM_START( arabfgtu )
 	ROM_REGION( 0x200000, REGION_CPU1, 0 ) /* v60 code + data */
 	ROM_LOAD_x8( "mpr14608.8",         0x000000, 0x020000, CRC(cd5efba9) SHA1(a7daf8e95d31359753c984c447e93d40f43a179d) )
 	ROM_LOAD16_BYTE_x2( "epr14592.18", 0x100000, 0x040000, CRC(f7dff316) SHA1(338690a1404dde6e7e66067f23605a247c7d0f5b) )
@@ -3395,116 +3460,24 @@ static READ16_HANDLER( arescue_handshake_r )
 	return 0;
 }
 
-static READ16_HANDLER( arescue_818000_r )
+static READ16_HANDLER( arescue_slavebusy_r )
 {
-	return 0; // 0/1 master/slave
-}
-
-static READ16_HANDLER( arescue_81000f_r )
-{
-	return 1; // 0/1 2player/1player
-}
-
-/*
-    protection
-    a00000 - a00002 dsp i/o
-    a00004 - dsp int/ack
-
-    dsp uses its p0/p1 for address select
-    dsp.sr = ???0 read a00000 into dsp.a
-    dsp.sr = ???1 read a00002 into dsp.b
-    dsp.sr = ???2 write dsp.b in a00000
-    dsp.sr = ???3 write dsp.a in a00002
-
-    Use of p0/p1 means there's no other way for dsp to communicate with V60, unless it shares RAM.
-    99.99% of the dsp code is unused because the V60 ROM is hardcoded as part of a twin set,
-    maybe the standalone board was for dev only? nop the 3 bytes at 0x06023A for standalone. (centred intro text)
-
-    Must be a jumper for this? You'd always want the LHS machine on the LHS.
-    818000 - left hand machine(master) = 0, right hand machine(slave) = 1
-           - master reads game state from dsp, and writes to 810000,
-           - In 2player modeslave reads game state from 810000,
-             however in 1player mode, the slave generates its own game sequence without using the dsp!
-
-    communications
-    810000 - game stage master write, slave read
-    810001 - handshake/watchdog
-    810004 - ???
-    810005 - ???
-    810006 - synch signal master write, slave clear
-    81000a - synch signal slave write, master clear
-    81000f - 1player/2player game
-    810010 - intro cutscene select
-             (this doesn't seem to ever change, set to 1 during intro for
-             a very nice FMV cutscene instead of the scroller.)
-    810014 - dsp timeout
-    810020 - paired with 810040 master writes
-    81002D - ???
-    81003E - used in 2player only ???
-    810040 - paired with 810020 slave writes
-    81004D - ???
-    81005e - used in 2player only ???
-*/
-static UINT16 arescue_dsp_io[6] = {0,0,0,0,0,0};
-static READ16_HANDLER( arescue_dsp_r )
-{
-	if( offset == 4/2 )
-	{
-		switch( arescue_dsp_io[0] )
-		{
-			case 0:
-			case 1:
-			case 2:
-				break;
-
-			case 3:
-				arescue_dsp_io[0] = 0x8000;
-				arescue_dsp_io[2/2] = 0x0001;
-				break;
-
-			case 6:
-				arescue_dsp_io[0] = 4 * arescue_dsp_io[2/2];
-				break;
-
-			default:
-				logerror("Unhandled DSP cmd %04x (%04x).\n", arescue_dsp_io[0], arescue_dsp_io[1] );
-				break;
-		}
-	}
-
-	return arescue_dsp_io[offset];
-}
-
-static WRITE16_HANDLER( arescue_dsp_w )
-{
-	COMBINE_DATA(&arescue_dsp_io[offset]);
-}
-
-static UINT16* arescue_comms;
-static WRITE16_HANDLER( arescue_comms_w )
-{
-	COMBINE_DATA(&arescue_comms[offset]);
-}
-
-static READ16_HANDLER( arescue_comms_r )
-{
-	return arescue_comms[offset];
+	return 1; // prevents master trying to synch to slave.
 }
 
 static DRIVER_INIT( arescue )
 {
-	arescue_comms = auto_malloc(0x2000);
 	common_init(analog_custom_io_r, analog_custom_io_w, NULL);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa00000, 0xa00006, 0, 0, arescue_dsp_r);  		// protection
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa00000, 0xa00006, 0, 0, arescue_dsp_r);
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa00000, 0xa00006, 0, 0, arescue_dsp_w);
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x818000, 0x818003, 0, 0, arescue_818000_r);	// master/slave
+	dual_pcb_comms = auto_malloc(0x1000);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810000, 0x810fff, 0, 0, dual_pcb_comms_r);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810000, 0x810fff, 0, 0, dual_pcb_comms_w);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x818000, 0x818003, 0, 0, dual_pcb_masterslave);
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810000, 0x810fff, 0, 0, arescue_comms_r);		// comms space
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810000, 0x810fff, 0, 0, arescue_comms_w);
-
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810001, 0x810001, 0, 0, arescue_handshake_r); //  handshake
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x81000f, 0x81000f, 0, 0, arescue_81000f_r);	//  1player game
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810001, 0x810001, 0, 0, arescue_handshake_r);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x81000f, 0x81000f, 0, 0, arescue_slavebusy_r);
 
 }
 
@@ -3550,26 +3523,28 @@ static DRIVER_INIT( dbzvrvs )
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa00000, 0xa7ffff, 0, 0, dbzvrvs_protection_w);
 }
 
-
-static READ16_HANDLER( f1en_unknown_read )
+static WRITE16_HANDLER( f1en_comms_echo_w )
 {
-	/* ??? */
-	return 0;
+	// pretend that slave is following master op, enables attract mode video with sound
+	program_write_byte( 0x810049, data );
 }
 
 static DRIVER_INIT( f1en )
 {
 	common_init(analog_custom_io_r, analog_custom_io_w, NULL);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810000, 0x810003, 0, 0, f1en_unknown_read);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x818000, 0x818003, 0, 0, f1en_unknown_read);
+
+	dual_pcb_comms = auto_malloc(0x1000);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810000, 0x810fff, 0, 0, dual_pcb_comms_r);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810000, 0x810fff, 0, 0, dual_pcb_comms_w);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x818000, 0x818003, 0, 0, dual_pcb_masterslave);
+
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810048, 0x810048, 0, 0, f1en_comms_echo_w);
 }
 
 
 static DRIVER_INIT( f1lap )
 {
 	common_init(analog_custom_io_r, analog_custom_io_w, NULL);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x810000, 0x810003, 0, 0, f1en_unknown_read);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x818000, 0x818003, 0, 0, f1en_unknown_read);
 }
 
 
@@ -3713,7 +3688,8 @@ static DRIVER_INIT( titlef )
 
 GAME( 1992, arescue,  0,        system32,     arescue,  arescue,  ROT0, "Sega",   "Air Rescue", GAME_IMPERFECT_GRAPHICS )
 GAME( 1993, alien3,   0,        system32,     alien3,   alien3,   ROT0, "Sega",   "Alien3: The Gun", GAME_IMPERFECT_GRAPHICS )
-GAME( 1992, arabfgt,  0,        system32,     arabfgt,  arabfgt,  ROT0, "Sega",   "Arabian Fight (US)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, arabfgt,  0,        system32,     arabfgt,  arabfgt,  ROT0, "Sega",   "Arabian Fight (World)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, arabfgtu, arabfgt,  system32,     arabfgtu, arabfgt,  ROT0, "Sega",   "Arabian Fight (US)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1992, arabfgtj, arabfgt,  system32,     arabfgt,  arabfgt,  ROT0, "Sega",   "Arabian Fight (Japan)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1992, brival,   0,        system32,     brival,   brival,   ROT0, "Sega",   "Burning Rival (World)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1992, brivalj,  brival,   system32,     brival,   brival,   ROT0, "Sega",   "Burning Rival (Japan)", GAME_IMPERFECT_GRAPHICS )

@@ -17,6 +17,7 @@
 #define VISIBLE_SCREEN_HEIGHT	(30*8)	/* Visible screen height */
 #define VIDEORAM_SIZE			0x4000	/* videoram size */
 #define SPRITERAM_SIZE			0x100	/* spriteram size */
+#define SPRITERAM_MASK			(0x100-1)	/* spriteram size */
 #define CHARGEN_NUM_CHARS		512		/* max number of characters handled by the chargen */
 
 /* default monochromatic colortable */
@@ -42,9 +43,9 @@ typedef struct {
 	int						chars_are_dirty;		/* master flag to check if theres any dirty character */
 	void 					*scanline_timer;		/* scanline timer */
 	int						scanline;				/* scanline count */
-	ppu2c03b_scanline_cb	scanline_callback_proc;	/* optinal scanline callback */
-	ppu2c03b_vidaccess_cb	vidaccess_callback_proc;/* optinal video access callback */
-	int						has_videorom;			/* wether we access a video rom or not */
+	ppu2c03b_scanline_cb	scanline_callback_proc;	/* optional scanline callback */
+	ppu2c03b_vidaccess_cb	vidaccess_callback_proc;/* optional video access callback */
+	int						has_videorom;			/* whether we access a video rom or not */
 	int						videorom_banks;			/* number of banks in the videorom (if available) */
 	int						regs[PPU_MAX_REG];		/* registers */
 	int						refresh_data;			/* refresh-related */
@@ -81,10 +82,6 @@ void (*ppu_latch)( offs_t offset );
  *
  *************************************/
 void ppu2c03b_init_palette( int first_entry ) {
-
-#ifndef M_PI
-#define M_PI 			(3.14159265358979323846L)
-#endif
 
 	/* This routine builds a palette using a transformation from */
 	/* the YUV (Y, B-Y, R-Y) to the RGB color space */
@@ -301,6 +298,8 @@ static void draw_background( const int num, UINT8 *line_priority )
 	const pen_t *paldata;
 	const UINT8 *sd;
 
+	int tilecount=0;
+
 	/* setup the color mask and colortable to use */
 	if ( ppu_regs[PPU_CONTROL1] & PPU_CONTROL1_DISPLAY_MONO )
 	{
@@ -331,7 +330,7 @@ static void draw_background( const int num, UINT8 *line_priority )
 	dest = ((UINT16 *) bitmap->base) + (bitmap->rowpixels * scanline) + start_x;
 
 	/* draw the 32 or 33 tiles that make up a line */
-	while ( start_x < VISIBLE_SCREEN_WIDTH )
+	while ( tilecount <34)
 	{
 		int color_byte;
 		int color_bits;
@@ -362,48 +361,53 @@ static void draw_background( const int num, UINT8 *line_priority )
 			(*ppu_latch)(( tile_page << 10 ) | ( page2 << 4 ));
 		}
 
-		paldata = &color_table[ 4 * ( ( ( color_byte >> color_bits ) & 0x03 ) ) ];
-		start = ( index2 % total_elements ) * char_modulo + scroll_y_fine * line_modulo;
-		sd = &gfx_data[start];
-
-		/* render the pixel */
-		for( i = 0; i < 8; i++ )
+		if(start_x < VISIBLE_SCREEN_WIDTH )
 		{
-			if ( ( start_x+i ) >= 0 && ( start_x+i ) < VISIBLE_SCREEN_WIDTH )
+			paldata = &color_table[ 4 * ( ( ( color_byte >> color_bits ) & 0x03 ) ) ];
+			start = ( index2 % total_elements ) * char_modulo + scroll_y_fine * line_modulo;
+			sd = &gfx_data[start];
+
+			/* render the pixel */
+			for( i = 0; i < 8; i++ )
 			{
-				if ( sd[i] )
+				if ( ( start_x+i ) >= 0 && ( start_x+i ) < VISIBLE_SCREEN_WIDTH )
 				{
-					pen = paldata[sd[i]];
-					line_priority[ start_x+i ] |= 0x02;
+					if ( sd[i] )
+					{
+						pen = paldata[sd[i]];
+						line_priority[ start_x+i ] |= 0x02;
+					}
+					else
+					{
+						pen = back_pen;
+					}
+					*dest = pen;
 				}
-				else
-				{
-					pen = back_pen;
-				}
-				*dest = pen;
+				dest++;
 			}
-			dest++;
-		}
 
-		start_x += 8;
+			start_x += 8;
 
-		/* move to next tile over and toggle the horizontal name table if necessary */
-		x++;
-		if ( x > 31 )
-		{
-			x = 0;
-			tile_index ^= 0x400;
+			/* move to next tile over and toggle the horizontal name table if necessary */
+			x++;
+			if ( x > 31 )
+			{
+				x = 0;
+				tile_index ^= 0x400;
+			}
 		}
+		tilecount++;
 	}
-
 	/* if the left 8 pixels for the background are off, blank 'em */
 	if ( !( ppu_regs[PPU_CONTROL1] & PPU_CONTROL1_BACKGROUND_L8 ) )
 	{
 		dest = ((UINT16 *) bitmap->base) + (bitmap->rowpixels * scanline);
 		for( i = 0; i < 8; i++ )
+		{
 			*(dest++) = back_pen;
+			line_priority[ i ] ^= 0x02;
+		}
 	}
-
 	/* done updating, whew */
 }
 
@@ -433,11 +437,15 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 	int drawn;
 	int start;
 
+	int first_pixel;
+
 	const pen_t *paldata;
 	const UINT8 *sd;
 
 	/* determine if the sprites are 8x8 or 8x16 */
 	size = ( ppu_regs[PPU_CONTROL0] & PPU_CONTROL0_SPRITE_SIZE ) ? 16 : 8;
+
+	first_pixel= (ppu_regs[PPU_CONTROL1] & PPU_CONTROL1_SPRITES_L8)? 0: 8;
 
 	for( i = 0; i < SPRITERAM_SIZE; i += 4 ) {
 		y = sprites[i] + 1;
@@ -495,7 +503,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 				for ( j = 0; j < 8; j++ )
 				{
 					/* is this pixel non-transparent? */
-					if ( sd[7-j] )
+					if ( sd[7-j] && ((x+j)>= first_pixel))
 					{
 						/* has the background (or another sprite) already been drawn here? */
 						if ( !line_priority[ x + j ] )
@@ -510,7 +518,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 							line_priority[ x + j ] |= 0x01;
 
 						/* set the "sprite 0 hit" flag if appropriate */
-						if ( i == 0 )
+						if ( i == 0 && ((x+j)<255) && ( line_priority[ x + j ] & 0x02 ))
 							ppu_regs[PPU_STATUS] |= PPU_STATUS_SPRITE0_HIT;
 					}
 				}
@@ -520,7 +528,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 				for ( j = 0; j < 8; j++ )
 				{
 					/* is this pixel non-transparent? */
-					if ( sd[j] )
+					if ( sd[j] && ((x+j)>= first_pixel))
 					{
 						/* has the background (or another sprite) already been drawn here? */
 						if ( !line_priority[ x + j ] )
@@ -535,7 +543,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 							line_priority[ x + j ] |= 0x01;
 
 						/* set the "sprite 0 hit" flag if appropriate */
-						if ( i == 0 )
+						if ( i == 0 && ((x+j)<255) && ( line_priority[ x + j ] & 0x02 ))
 							ppu_regs[PPU_STATUS] |= PPU_STATUS_SPRITE0_HIT;
 					}
 				}
@@ -551,7 +559,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 				for ( j = 0; j < 8; j++ )
 				{
 					/* is this pixel non-transparent? */
-					if ( sd[7-j] )
+					if ( sd[7-j] && ((x+j)>= first_pixel))
 					{
 						/* has another sprite been drawn here? */
 						if ( !( line_priority[ x + j ] & 0x01 ) )
@@ -566,7 +574,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 						}
 
 						/* set the "sprite 0 hit" flag if appropriate */
-						if ( ( i == 0 ) && ( line_priority[ x + j ] & 0x02 ) )
+						if ( ( i == 0 ) && ((x+j)<255) && ( line_priority[ x + j ] & 0x02 ) )
 							ppu_regs[PPU_STATUS] |= PPU_STATUS_SPRITE0_HIT;
 					}
 				}
@@ -576,7 +584,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 				for ( j = 0; j < 8; j++ )
 				{
 					/* is this pixel non-transparent? */
-					if ( sd[j] )
+					if ( sd[j] && ((x+j)>= first_pixel))
 					{
 						/* has another sprite been drawn here? */
 						if ( !( line_priority[ x + j ] & 0x01 ) )
@@ -591,7 +599,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 						}
 
 						/* set the "sprite 0 hit" flag if appropriate */
-						if ( ( i == 0 ) && ( line_priority[ x + j ] & 0x02 ) )
+						if ( ( i == 0 ) && ((x+j)<255) && ( line_priority[ x + j ] & 0x02 ) )
 							ppu_regs[PPU_STATUS] |= PPU_STATUS_SPRITE0_HIT;
 					}
 				}
@@ -623,7 +631,7 @@ static void render_scanline( int num )
 {
 	UINT8	line_priority[VISIBLE_SCREEN_WIDTH];
 	int		*ppu_regs = &chips[num].regs[0];
-	int 	i;
+//  int     i;
 	int		refresh_data = chips[num].refresh_data;
 
 	/* lets see how long it takes */
@@ -638,13 +646,6 @@ static void render_scanline( int num )
 	/* see if we need to render the background */
 	if ( ppu_regs[PPU_CONTROL1] & PPU_CONTROL1_BACKGROUND )
 		draw_background( num, line_priority );
-
-	/* if sprites are hidden in the leftmost column, fake a priority flag to mask them */
-	if ( !( ppu_regs[PPU_CONTROL1] & PPU_CONTROL1_SPRITES_L8 ) )
-	{
-		for ( i = 0; i < 8; i++ )
-			line_priority[i] |= 0x01;
-	}
 
 	/* if sprites are on, draw them */
 	if ( ppu_regs[PPU_CONTROL1] & PPU_CONTROL1_SPRITES )
@@ -873,7 +874,7 @@ int ppu2c03b_r( int num, int offset )
 	}
 
 	/* now, see wich register to read */
-	switch( offset )
+	switch( offset & 7 )
 	{
 		case PPU_STATUS:
 			ret = chips[num].regs[PPU_STATUS];
@@ -889,13 +890,16 @@ int ppu2c03b_r( int num, int offset )
 		break;
 
 		case PPU_DATA:
-			ret = chips[num].videoram_data_latch;
+			if (  chips[num].videoram_addr >= 0x3f00  )
+				ret = chips[num].videoram[chips[num].videoram_addr&0x3F1F];
+			else ret = chips[num].videoram_data_latch;
 
 			//27/12/2002
 			if ( ppu_latch )
 				(*ppu_latch)( chips[num].videoram_addr & 0x3fff );
 
-			if ( ( chips[num].videoram_addr >= 0x2000 ) && ( chips[num].videoram_addr <= 0x3fef ) )
+			//was 3fef, but if it's trying palette ram compensation, it should have been 3eff, and the actual filling of the latch would be wrong...?
+			if ( ( chips[num].videoram_addr >= 0x2000 ) && ( chips[num].videoram_addr <= 0x3fff ) )
 				chips[num].videoram_data_latch = chips[num].ppu_page[ ( chips[num].videoram_addr & 0xc00) >> 10][ chips[num].videoram_addr & 0x3ff ];
 			else
 				chips[num].videoram_data_latch = chips[num].videoram[ chips[num].videoram_addr & 0x3fff ];
@@ -935,7 +939,7 @@ void ppu2c03b_w( int num, int offset, int data )
 /*      return; */
 	}
 
-	switch( offset )
+	switch( offset & 7 )
 	{
 		case PPU_CONTROL0:
 			chips[num].regs[PPU_CONTROL0] = data;
@@ -1066,7 +1070,13 @@ void ppu2c03b_w( int num, int offset, int data )
 					int color_base = intf->color_base[num];
 
 					/* store the data */
-					chips[num].videoram[tempAddr] = data;
+					if(tempAddr&0x3)
+						chips[num].videoram[tempAddr&0x3F1F] = data;
+					else
+					{
+						chips[num].videoram[0x3F10+(tempAddr&0xF)] = data;
+						chips[num].videoram[0x3F00+(tempAddr&0xF)] = data;
+					}
 
 					data &= 0x3f;
 
@@ -1122,16 +1132,18 @@ void ppu2c03b_w( int num, int offset, int data )
  *  Sprite DMA
  *
  *************************************/
-void ppu2c03b_spriteram_dma( int num, const UINT8 *source )
+void ppu2c03b_spriteram_dma(const UINT8 page )
 {
-	/* check bounds */
-	if ( num >= intf->num )
-	{
-		logerror( "PPU(render): Attempting to access an unmapped chip\n" );
-		return;
-	}
+	int i;
+	int address=page<<8;
+	//should last 513 CPU cycles.
 
-	memcpy( chips[num].spriteram, source, SPRITERAM_SIZE );
+	for(i=0;i<SPRITERAM_SIZE;i++)
+	{
+		UINT8 t=program_read_byte_8(address+i);
+		program_write_byte_8(0x2000+PPU_SPRITE_DATA, t);
+	}
+	activecpu_adjust_icount(-513);
 }
 
 /*************************************

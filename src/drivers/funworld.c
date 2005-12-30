@@ -275,6 +275,19 @@ Any fixes for this driver should be forwarded to the AGEMAME forum at (http://ww
     1x 8 dipswitches
     1x trimmer (volume)
 
+
+    *** Extra Notes by Roberto Fresca ***
+
+    - Added Cuore Uno, Elephant Family and Royal Card.
+    - Added some clones.
+    - Cleaned up and renamed all sets. Made parent-clone relationship.
+    - Corrected CPU freq (2 MHz) in cuoreuno and elephfam (both have R65c02P2).
+      (I suspect more games must have their CPU running at 2 MHz).
+    - Corrected videoram and colorram offset in cuoreuno and elephfam.
+    - To initialize the NVRAM in cuoreuno and elephfam:
+      Start game, press and hold Service1 & Service2, press reset (F3),
+      release Service1 & Service2 and press reset (F3) again.
+
 */
 
 #include "driver.h"
@@ -430,6 +443,19 @@ static ADDRESS_MAP_START( magiccrd_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x4fff) AM_RAM AM_WRITE(funworld_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x5000, 0x5fff) AM_RAM	AM_WRITE(funworld_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x6000, 0xffff) AM_ROM
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( cuoreuno_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x0800, 0x0803) AM_READWRITE(pia_0_r, pia_0_w)
+	AM_RANGE(0x0a00, 0x0a03) AM_READWRITE(pia_1_r, pia_1_w)
+	AM_RANGE(0x0c00, 0x0c00) AM_READWRITE(AY8910_read_port_0_r, AY8910_control_port_0_w)
+	AM_RANGE(0x0c01, 0x0c01) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0x0e00, 0x0e00) AM_WRITE(crtc6845_address_w)
+	AM_RANGE(0x0e01, 0x0e01) AM_READWRITE(crtc6845_register_r, crtc6845_register_w)
+	AM_RANGE(0x6000, 0x6fff) AM_RAM AM_WRITE(funworld_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x7000, 0x7fff) AM_RAM	AM_WRITE(funworld_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -679,6 +705,19 @@ static MACHINE_DRIVER_START( magiccrd )
 	MDRV_VIDEO_START(magiccrd)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( cuoreuno )
+	MDRV_IMPORT_FROM(funworld)
+
+	MDRV_CPU_REPLACE("main", M65C02, 2000000) // original cpu = R65C02P2 (2mhz)
+	MDRV_CPU_PROGRAM_MAP(cuoreuno_map, 0)
+
+	MDRV_GFXDECODE(magiccrd_gfxdecodeinfo)
+//  MDRV_VIDEO_START(jollypkr)
+	MDRV_VIDEO_START(funworld)
+	MDRV_VIDEO_UPDATE(funworld)
+
+MACHINE_DRIVER_END
+
 /* ROMs */
 
 ROM_START( jollycrd )
@@ -690,7 +729,7 @@ ROM_START( jollycrd )
 	ROM_LOAD( "jolycard.ch2", 0x8000, 0x8000, CRC(c512b103) SHA1(1f4e78e97855afaf0332fb75e1b5571aafd01c29) )
 ROM_END
 
-ROM_START( jollycdb )
+ROM_START( jolycdcr )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "jollypkr.003", 0x8000, 0x8000, CRC(ea7340b4) SHA1(7dd468f28a488a4781521809d06db1d7917048ad) )
 
@@ -699,7 +738,7 @@ ROM_START( jollycdb )
 	ROM_LOAD( "jolycard.ch2", 0x8000, 0x8000, CRC(c512b103) SHA1(1f4e78e97855afaf0332fb75e1b5571aafd01c29) )
 ROM_END
 
-ROM_START( jollycdc )
+ROM_START( jolycdit )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "jn.bin", 0x8000, 0x8000, CRC(6ae00ed0) SHA1(5921c2882aeb5eadd0e04a477fa505ad35e9d98c) )
 
@@ -708,7 +747,7 @@ ROM_START( jollycdc )
 	ROM_LOAD( "2.bin", 0x8000, 0x8000, CRC(46805150) SHA1(63687ac44f6ace6d8924b2629536bcc7d3979ed2) )
 ROM_END
 
-ROM_START( jollycdd )
+ROM_START( jolycdat )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "bonucard.cpu", 0x4000, 0x4000, CRC(da342100) SHA1(451fa6074aad19e9efd148c3d18115a20a3d344a) )
 	ROM_CONTINUE(			  0xc000, 0x4000 )
@@ -719,7 +758,7 @@ ROM_START( jollycdd )
 	ROM_LOAD( "jolycard.ch2", 0x8000, 0x8000, CRC(c512b103) SHA1(1f4e78e97855afaf0332fb75e1b5571aafd01c29) )
 ROM_END
 
-ROM_START( jollycde )
+ROM_START( jolycdab )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "ig1poker.run", 0x8000, 0x8000, CRC(c96e6542) SHA1(ed6c0cf9fe8597dba9149b2225320d8d9c39219a) )
 	ROM_RELOAD(				  0x4000, 0x4000 )
@@ -810,15 +849,15 @@ static DRIVER_INIT( funworld )
 /* Game Drivers */
 
 //    YEAR  NAME      PARENT    MACHINE   INPUT     INIT            COMPANY        FULLNAME
-GAME( 1985, jollycrd, 0, 		funworld, funworld, funworld, ROT0, "TAB-Austria", "Jolly Card (Austria)", GAME_WRONG_COLORS )
-GAME( 1993, jollycdb, jollycrd,	jollypkr, funworld, funworld, ROT0, "Soft Design", "Jolly Card (Croatia)", GAME_WRONG_COLORS )
-GAME( 199?, jollycdc, jollycrd,	funworld, funworld, funworld, ROT0, "bootleg?",    "Jolly Card (Italia, bad dump?)", GAME_WRONG_COLORS | GAME_NOT_WORKING )
-GAME( 1986, jollycdd, jollycrd,	bonuscrd, funworld, funworld, ROT0, "Fun World",   "Jolly Card (Austria, Fun World)", GAME_WRONG_COLORS )
-GAME( 1990, jollycde, jollycrd, funworld, funworld, funworld, ROT0, "Inter Games", "Jolly Card (Austria, Fun World, bootleg)", GAME_WRONG_COLORS | GAME_NOT_WORKING )
-GAME( 1986, bigdeal,  0,		bonuscrd, funworld, funworld, ROT0, "Fun World",   "Big Deal (Hungary, set 1)", GAME_WRONG_COLORS )
-GAME( 1986, bigdealb, bigdeal,	bonuscrd, funworld, funworld, ROT0, "Fun World",   "Big Deal (Hungary, set 2)", GAME_WRONG_COLORS )
-GAME( 1997, cuoreuno, 0, 		funworld, funworld, funworld, ROT0, "bootleg?",    "Cuore Uno (Italia)", GAME_WRONG_COLORS | GAME_NOT_WORKING )
-GAME( 1997, elephfam, 0, 		funworld, funworld, funworld, ROT0, "bootleg?",    "Elephant Family (Italia)", GAME_WRONG_COLORS | GAME_NOT_WORKING )
-GAME( 1991, royalcrd, 0, 		funworld, funworld, funworld, ROT0, "TAB-Austria", "Royal Card (Austria, set 1)", GAME_WRONG_COLORS | GAME_NOT_WORKING )
+GAME( 1985, jollycrd, 0,        funworld, funworld, funworld, ROT0, "TAB-Austria", "Jolly Card (Austria)", GAME_WRONG_COLORS )
+GAME( 1993, jolycdcr, jollycrd, jollypkr, funworld, funworld, ROT0, "Soft Design", "Jolly Card (Croatia)", GAME_WRONG_COLORS )
+GAME( 199?, jolycdit, jollycrd, funworld, funworld, funworld, ROT0, "bootleg?",    "Jolly Card (Italia, bad dump?)", GAME_WRONG_COLORS | GAME_NOT_WORKING )
+GAME( 1986, jolycdat, jollycrd, bonuscrd, funworld, funworld, ROT0, "Fun World",   "Jolly Card (Austria, Fun World)", GAME_WRONG_COLORS )
+GAME( 1990, jolycdab, jollycrd, funworld, funworld, funworld, ROT0, "Inter Games", "Jolly Card (Austria, Fun World, bootleg)", GAME_WRONG_COLORS | GAME_NOT_WORKING )
+GAME( 1986, bigdeal,  0,        bonuscrd, funworld, funworld, ROT0, "Fun World",   "Big Deal (Hungary, set 1)", GAME_WRONG_COLORS )
+GAME( 1986, bigdealb, bigdeal,  bonuscrd, funworld, funworld, ROT0, "Fun World",   "Big Deal (Hungary, set 2)", GAME_WRONG_COLORS )
+GAME( 1997, cuoreuno, 0,        cuoreuno, funworld, funworld, ROT0, "bootleg?",    "Cuore Uno (Italia)", GAME_WRONG_COLORS | GAME_NOT_WORKING )
+GAME( 1997, elephfam, 0,        cuoreuno, funworld, funworld, ROT0, "bootleg?",    "Elephant Family (Italia)", GAME_WRONG_COLORS | GAME_NOT_WORKING )
+GAME( 1991, royalcrd, 0,        funworld, funworld, funworld, ROT0, "TAB-Austria", "Royal Card (Austria, set 1)", GAME_WRONG_COLORS | GAME_NOT_WORKING )
 GAME( 1991, royalcdb, royalcrd, funworld, funworld, funworld, ROT0, "TAB-Austria", "Royal Card (Austria, set 2)", GAME_WRONG_COLORS | GAME_NOT_WORKING )
-GAME( 1996, magiccrd, 0, 		magiccrd, magiccrd, funworld, ROT0, "Impera", 	   "Magic Card II (Bulgaria)", GAME_WRONG_COLORS )
+GAME( 1996, magiccrd, 0,        magiccrd, magiccrd, funworld, ROT0, "Impera",      "Magic Card II (Bulgaria)", GAME_WRONG_COLORS )

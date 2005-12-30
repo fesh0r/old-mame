@@ -1727,11 +1727,7 @@ endif
 SOUND=$(strip $(findstring NES@,$(SOUNDS)))
 ifneq ($(SOUND),)
 SOUNDDEFS += -DHAS_NES=1
-ifndef MESS
 SOUNDOBJS += $(OBJ)/sound/nes_apu.o
-else
-SOUNDOBJS += $(OBJ)/mess/sound/nes_apu2.o $(OBJ)/mess/sound/nesintf.o
-endif
 else
 SOUNDDEFS += -DHAS_NES=0
 endif
@@ -2126,5 +2122,13 @@ SOUNDDEFS += -DHAS_ES8712=1
 SOUNDOBJS += $(OBJ)/sound/es8712.o
 else
 SOUNDDEFS += -DHAS_ES8712=0
+endif
+
+SOUND=$(strip $(findstring RF5C400@,$(SOUNDS)))
+ifneq ($(SOUND),)
+SOUNDDEFS += -DHAS_RF5C400=1
+SOUNDOBJS += $(OBJ)/sound/rf5c400.o
+else
+SOUNDDEFS += -DHAS_RF5C400=0
 endif
 

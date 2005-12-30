@@ -143,6 +143,13 @@ typedef union
 #endif
 
 
+/* this is not part of the C/C++ standards and is not present on */
+/* strict ANSI compilers or when compiling under GCC with -ansi */
+#ifndef M_PI
+#define M_PI    3.14159265358979323846
+#endif
+
+
 
 /***************************************************************************
 
@@ -161,6 +168,11 @@ typedef union
 
 /* Highly useful macro for compile-time knowledge of an array size */
 #define ARRAY_LENGTH(x) (sizeof(x) / sizeof(x[0]))
+
+
+/* macros to convert radians to degrees and degrees to radians */
+#define RADIAN_TO_DEGREE(x)   ((180.0 / M_PI) * (x))
+#define DEGREE_TO_RADIAN(x)   ((M_PI / 180.0) * (x))
 
 
 /* U64 and S64 are used to wrap long integer constants. */
@@ -373,6 +385,48 @@ INLINE UINT64 d2u(double d)
 	u.dd = d;
 	return u.vv;
 }
+
+
+
+/***************************************************************************
+
+    Inline math helpers
+
+***************************************************************************/
+
+/* If the OSD layer wants to override these in osd_cpu.h, they can by #defining */
+/* the function name to itself or to point to something else */
+
+
+/* return the number of leading zero bits in a 32-bt value */
+#ifndef count_leading_zeros
+INLINE UINT32 count_leading_zeros(UINT32 val)
+{
+	UINT32 count;
+	for (count = 0; (INT32)val >= 0; count++) val <<= 1;
+	return count;
+}
+#endif
+
+
+/* return the number of leading one bits in a 32-bt value */
+#ifndef count_leading_ones
+INLINE UINT32 count_leading_ones(UINT32 val)
+{
+	UINT32 count;
+	for (count = 0; (INT32)val < 0; count++) val <<= 1;
+	return count;
+}
+#endif
+
+
+/* perform a 32x32 multiply to 64-bit precision and then shift */
+#ifndef fixed_mul_shift
+INLINE INT32 fixed_mul_shift(INT32 val1, INT32 val2, UINT8 shift)
+{
+	return (INT32)(((INT64)val1 * (INT64)val2) >> shift);
+}
+#endif
 
 
 

@@ -9,6 +9,7 @@
 #include "sound/ay8910.h"
 
 /* machine/chaknpop.c */
+extern UINT8 *chaknpop_ram;
 DRIVER_INIT( chaknpop );
 MACHINE_INIT( chaknpop );
 READ8_HANDLER( chaknpop_mcu_portA_r );
@@ -88,7 +89,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM) AM_BASE(&chaknpop_ram)
 	AM_RANGE(0x8800, 0x8800) AM_WRITE(chaknpop_mcu_portA_w)
 	AM_RANGE(0x8801, 0x8801) AM_WRITE(chaknpop_mcu_portB_w)
 	AM_RANGE(0x8802, 0x8802) AM_WRITE(chaknpop_mcu_portC_w)
@@ -287,7 +288,8 @@ static MACHINE_DRIVER_START( chaknpop )
 	/* basic machine hardware */
 	/* the real board is 3.072MHz, but it is faster for MAME */
 	//MDRV_CPU_ADD(Z80, 18432000 / 6)   /* 3.072 MHz */
-	MDRV_CPU_ADD(Z80, 2860000)
+	MDRV_CPU_ADD(Z80, 2350000)
+	//MDRV_CPU_ADD(Z80, 2760000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 

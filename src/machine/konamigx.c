@@ -1289,7 +1289,7 @@ void konamigx_mixer(mame_bitmap *bitmap, const rectangle *cliprect,
 	int xa,ya,ox,oy,zw,zh,flipx,flipy,mirrorx,mirrory,zoomx,zoomy,scalex,scaley,nozoom;
 	int screenwidth, flipscreenx, flipscreeny, offx, offy;
 	int nobj, i, j, k, l, temp, temp1, temp2, temp3, temp4, count;
-	int order, offs, code, color, zcode, pri, spri, spri_min, shdprisel, shadow, alpha, drawmode;
+	int order, offs, code, color, zcode, pri = 0, spri, spri_min, shdprisel, shadow, alpha, drawmode;
 
 
 	// abort if object database failed to initialize
@@ -1981,7 +1981,7 @@ WRITE16_HANDLER( K055550_word_w )
 				{
 					if (dy)
 					{
-						angle = (atan((double)dy / dx) * 128.0) / 3.1415926535897932384626433832795;
+						angle = (atan((double)dy / dx) * 128.0) / M_PI;
 						if (dx < 0) angle += 128;
 						i = (angle - 0x40) & 0xff;
 					}

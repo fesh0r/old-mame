@@ -280,7 +280,7 @@ static void finish_enqueue(int param)
 	update_stats();
 
 	/* loopback? */
-	if (ethernet.reg[EREG_TCR] & 0x2000)
+	if (ethernet.reg[EREG_TCR] & 0x2002)
 		if (ethernet.fifo_count < ETHER_RX_BUFFERS)
 		{
 			int buffer_len = ((ethernet.tx[3] << 8) | ethernet.tx[2]) & 0x7ff;
