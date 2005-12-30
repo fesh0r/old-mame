@@ -1,7 +1,12 @@
 #include <stdlib.h>
 #include "mame.h"
+
 #ifdef WIN32
 #include <windows.h>
+#endif
+
+#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#include "debug/debugcpu.h"
 #endif
 
 int osd_init(void)
@@ -149,9 +154,10 @@ void osd_image_load_status_changed(mess_image *img, int is_final_unload)
 {
 }
 
-#ifdef NEW_DEBUGGER
+#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
 void osd_wait_for_debugger(void)
 {
+	debug_cpu_go(~0);
 }
 #endif
 

@@ -70,7 +70,6 @@ UINT8 gb_ie;
 
 void (*refresh_scanline)(void);
 
-#define CheckCRC 1
 #ifdef MAME_DEBUG
 /* #define V_GENERAL*/		/* Display general debug information */
 /* #define V_BANK*/			/* Display bank switching debug information */
@@ -160,6 +159,7 @@ static void gb_init(void)
 			break;
 	}
 
+	gb_vid_regs[0x01] = 0x80;
 	gb_sound_w( 0x16, 0x00 );       /* Initialize sound hardware */
 }
 
@@ -213,7 +213,7 @@ MACHINE_INIT( gbpocket )
 
 	gb_init_regs();
 
-	/* Enable BIOS rom */
+	/* Enable BIOS rom if we have one */
 	memory_set_bankptr(5, ROMMap[0] ? ROMMap[0] : memory_region(REGION_CPU1) );
 	memory_set_bankptr(10, ROMMap[0] ? ROMMap[0] + 0x0100 : memory_region(REGION_CPU1) + 0x0100);
 
@@ -347,10 +347,11 @@ WRITE8_HANDLER( gb_rom_bank_select_mbc3 )
 {
 	if( ROMMask )
 	{
-		data &= ROMMask;
 		/* Selecting bank 0 == selecting bank 1 */
 		if( data == 0 )
 			data = 1;
+
+		data &= ROMMask;
 
 		ROMBank = data;
 		/* Switch banks */
@@ -1225,6 +1226,7 @@ DEVICE_LOAD(gb_cart)
 	};
 
 	int Checksum, I, J, filesize;
+	UINT16 reported_rom_banks;
 	int rambanks[5] = {0, 1, 1, 4, 16};
 
 	for (I = 0; I < 256; I++)
@@ -1361,10 +1363,28 @@ DEVICE_LOAD(gb_cart)
 		return INIT_FAIL;
 	}
 
-        ROMBanks = 2 << gb_cart[0x0148];
-	if ( ( ROMBanks * 0x4000 ) != filesize ) {
-		logerror( "Error loading cartridge: Filesize and reported ROM banks don't match.\n" );
-		return INIT_FAIL;
+	ROMBanks = filesize / 0x4000;
+	switch( gb_cart[0x0148] ) {
+	case 0x52:
+		reported_rom_banks = 72;
+		break;
+	case 0x53:
+		reported_rom_banks = 80;
+		break;
+	case 0x54:
+		reported_rom_banks = 96;
+		break;
+	case 0x00: case 0x01: case 0x02: case 0x03:
+	case 0x04: case 0x05: case 0x06: case 0x07:
+		reported_rom_banks = 2 << gb_cart[0x0148];
+		break;
+	default:
+		logerror( "Warning loading cartridge: Unknown ROM size in header.\n" );
+		reported_rom_banks = 256;
+		break;
+	}
+	if ( ROMBanks != reported_rom_banks ) {
+		logerror( "Warning loading cartridge: Filesize and reported ROM banks don't match.\n" );
 	}
 
         RAMBanks = rambanks[gb_cart[0x0149] & 3];
@@ -1376,10 +1396,9 @@ DEVICE_LOAD(gb_cart)
         {
                 Checksum -= gb_cart[I];
         }
-        if (CheckCRC && (Checksum & 0xFFFF))
+        if (Checksum & 0xFFFF)
         {
-                logerror("Error loading cartridge: Checksum is wrong.");
-                return INIT_FAIL;
+                logerror("Warning loading cartridge: Checksum is wrong.");
         }
 
 	/* Initialize ROMMap pointers */
@@ -1450,7 +1469,7 @@ DEVICE_LOAD(gb_cart)
 	}
 
 	/* Build rom bank Mask */
-	if (ROMBanks < 3)
+	if ( ! reported_rom_banks )
 		ROMMask = 0;
 	else
 	{
@@ -1484,16 +1503,6 @@ void gb_scanline_interrupt (void)
 	/* The rest only makes sense if the display is enabled */
 	if (LCDCONT & 0x80)
 	{
-		if (CURLINE == CMPLINE)
-		{
-			LCDSTAT |= 0x04;
-			/* Generate lcd interrupt if requested */
-			if( LCDSTAT & 0x40 )
-				cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
-		}
-		else
-			LCDSTAT &= 0xFB;
-
 		if (CURLINE < 144)
 		{
 			/* Set Mode 2 lcdstate */
@@ -1522,6 +1531,16 @@ void gb_scanline_interrupt (void)
 			}
 		}
 		CURLINE = (CURLINE + 1) % 154;
+
+		if ( CURLINE == CMPLINE )
+		{
+			LCDSTAT |= 0x04;
+			/* Generate lcd interrupt if requested */
+			if ( LCDSTAT & 0x40 )
+				cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
+		}
+		else
+			LCDSTAT &= 0xFB;
 	}
 
 	/* Generate serial IO interrupt */
@@ -1538,21 +1557,29 @@ void gb_scanline_interrupt (void)
 
 void gb_scanline_interrupt_set_mode0 (int param)
 {
-	/* Set Mode 0 lcdstate */
-	LCDSTAT &= 0xFC;
-	/* Generate lcd interrupt if requested */
-	if( LCDSTAT & 0x08 )
-		cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
+	/* only perform mode changes when LCD controller is still on */
+	if (LCDCONT & 0x80)
+	{
+		/* Set Mode 0 lcdstate */
+		LCDSTAT &= 0xFC;
+		/* Generate lcd interrupt if requested */
+		if( LCDSTAT & 0x08 )
+			cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
 
-	/* Check for HBLANK DMA */
-	if( gbc_hdma_enabled && (CURLINE < 144) )
-		gbc_hdma(0x10);
+		/* Check for HBLANK DMA */
+		if( gbc_hdma_enabled && (CURLINE < 144) )
+			gbc_hdma(0x10);
+	}
 }
 
 void gb_scanline_interrupt_set_mode3 (int param)
 {
-	/* Set Mode 3 lcdstate */
-	LCDSTAT = (LCDSTAT & 0xFC) | 0x03;
+	/* only perform mode changes when LCD controller is still on */
+	if (LCDCONT & 0x80)
+	{
+		/* Set Mode 3 lcdstate */
+		LCDSTAT = (LCDSTAT & 0xFC) | 0x03;
+	}
 }
 
 void gbc_hdma(UINT16 length)
@@ -1584,6 +1611,9 @@ READ8_HANDLER( gb_video_r )
 	switch( offset ) {
 	case 0x06:
 		return 0xFF;
+	case 0x36:
+	case 0x37:
+		return 0;
 	default:
 		return gb_vid_regs[offset];
 	}
@@ -1598,6 +1628,10 @@ WRITE8_HANDLER ( gb_video_w )
 		gb_tile_no_mod = (data & 0x10) ? 0x00 : 0x80;
 		gb_bgdtab = gb_vram + ((data & 0x08) ? 0x1C00 : 0x1800 );
 		gb_wndtab = gb_vram + ((data * 0x40) ? 0x1C00 : 0x1800 );
+		/* if LCD controller is switched off, set STAT to 00 */
+		if ( ! ( data & 0x80 ) ) {
+			LCDSTAT &= ~0x03;
+		}
 		break;
 	case 0x01:						/* STAT - LCD Status */
 		data = (data & 0xF8) | (LCDSTAT & 0x07);
@@ -1650,6 +1684,10 @@ WRITE8_HANDLER ( gbc_video_w )
 			gbc_bgdtab = GBC_VRAMMap[1] + ((data & 0x08) ? 0x1C00 : 0x1800);
 			gb_wndtab = GBC_VRAMMap[0] + ((data & 0x40) ? 0x1C00 : 0x1800);
 			gbc_wndtab = GBC_VRAMMap[1] + ((data & 0x40) ? 0x1C00 : 0x1800);
+			/* if LCD controller is switched off, set STAT to 00 */
+			if ( ! ( data & 0x80 ) ) {
+				LCDSTAT &= ~0x03;
+			}
 			break;
 		case 0x07:	/* BGP - GB background palette */
 			if( gbc_mode == GBC_MODE_MONO ) /* Some GBC games are lazy and still call this */
@@ -1760,10 +1798,21 @@ WRITE8_HANDLER ( gbc_video_w )
 			break;
 		/* Undocumented registers */
 		case 0x2C:
+			/* bit 0 can be read/written */
+			logerror( "Write to undoco'ed register: %X = %X\n", offset, data );
+			data = 0xfe | (data & 0x01);
+			break;
 		case 0x32:
 		case 0x33:
 		case 0x34:
+			/* whole byte can be read/written */
+			logerror( "Write to undoco'ed register: %X = %X\n", offset, data );
+			break;
 		case 0x35:
+			/* bit 4-6 can be read/written */
+			logerror( "Write to undoco'ed register: %X = %X\n", offset, data );
+			data = 0x8f | (data & 0x70);
+			break;
 		case 0x36:
 		case 0x37:
 			logerror( "Write to undoco'ed register: %X = %X\n", offset, data );

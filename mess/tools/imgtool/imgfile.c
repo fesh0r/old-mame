@@ -40,6 +40,15 @@ static imgtoolerr_t markerrorsource(imgtoolerr_t err)
 
 
 
+static void internal_error(const struct ImageModule *module, const char *message)
+{
+#ifdef MAME_DEBUG
+	logerror("%s: %s\n", module->name, message);
+#endif
+}
+
+
+
 static imgtoolerr_t internal_open(const struct ImageModule *module, const char *fname,
 	int read_or_write, option_resolution *createopts, imgtool_image **outimg)
 {
@@ -153,7 +162,11 @@ imgtoolerr_t img_info(imgtool_image *img, char *string, size_t len)
 
 
 
-static imgtoolerr_t cannonicalize_path(imgtool_image *image, int mandate_dir_path,
+#define PATH_MUSTBEDIR		0x00000001
+#define PATH_LEAVENULLALONE	0x00000002
+#define PATH_CANBEBOOTBLOCK	0x00000004
+
+static imgtoolerr_t cannonicalize_path(imgtool_image *image, UINT32 flags,
 	const char **path, char **alloc_path)
 {
 	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
@@ -165,15 +178,32 @@ static imgtoolerr_t cannonicalize_path(imgtool_image *image, int mandate_dir_pat
 	path_separator = image->module->path_separator;
 	alt_path_separator = image->module->alternate_path_separator;
 
+	/* is this path NULL?  if so, is that ignored? */
+	if (!*path && (flags & PATH_LEAVENULLALONE))
+		goto done;
+
+	/* is this the special filename for bootblocks? */
+	if (*path == FILENAME_BOOTBLOCK)
+	{
+		if (!(flags & PATH_CANBEBOOTBLOCK))
+			err = IMGTOOLERR_UNEXPECTED;
+		else if (!image->module->supports_bootblock)
+			err = IMGTOOLERR_FILENOTFOUND;
+		goto done;
+	}
+
 	if (path_separator == '\0')
 	{
-		/* do we specify a path when paths are not supported? */
-		if (mandate_dir_path && *path && **path)
+		if (flags & PATH_MUSTBEDIR)
 		{
-			err = IMGTOOLERR_CANNOTUSEPATH | IMGTOOLERR_SRC_FUNCTIONALITY;
-			goto done;
+			/* do we specify a path when paths are not supported? */
+			if (*path && **path)
+			{
+				err = IMGTOOLERR_CANNOTUSEPATH | IMGTOOLERR_SRC_FUNCTIONALITY;
+				goto done;
+			}
+			*path = NULL;	/* normalize empty path */
 		}
-		*path = NULL;
 	}
 	else
 	{
@@ -254,7 +284,7 @@ imgtoolerr_t img_beginenum(imgtool_image *img, const char *path, imgtool_imageen
 		goto done;
 	}
 
-	err = cannonicalize_path(img, TRUE, &path, &alloc_path);
+	err = cannonicalize_path(img, PATH_MUSTBEDIR, &path, &alloc_path);
 	if (err)
 		goto done;
 
@@ -307,12 +337,20 @@ imgtoolerr_t img_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent)
 
 	/* don't trust the module! */
 	if (!module->supports_creation_time && (ent->creation_time != 0))
+	{
+		internal_error(module, "next_enum() specified creation_time, which is marked as unsupported by this module");
 		return IMGTOOLERR_UNEXPECTED;
+	}
 	if (!module->supports_lastmodified_time && (ent->lastmodified_time != 0))
+	{
+		internal_error(module, "next_enum() specified lastmodified_time, which is marked as unsupported by this module");
 		return IMGTOOLERR_UNEXPECTED;
+	}
 	if (!module->path_separator && ent->directory)
+	{
+		internal_error(module, "next_enum() returned a directory, which is marked as unsupported by this module");
 		return IMGTOOLERR_UNEXPECTED;
-
+	}
 	return IMGTOOLERR_SUCCESS;
 }
 
@@ -451,15 +489,9 @@ imgtoolerr_t img_getattrs(imgtool_image *image, const char *path, const UINT32 *
 	}
 
 	/* cannonicalize path */
-	if (image->module->path_separator)
-	{
-		if (path)
-		{
-			err = cannonicalize_path(image, FALSE, &path, &alloc_path);
-			if (err)
-				goto done;
-		}
-	}
+	err = cannonicalize_path(image, PATH_LEAVENULLALONE, &path, &alloc_path);
+	if (err)
+		goto done;
 
 	err = image->module->get_attrs(image, path, attrs, values);
 	if (err)
@@ -485,15 +517,9 @@ imgtoolerr_t img_setattrs(imgtool_image *image, const char *path, const UINT32 *
 	}
 
 	/* cannonicalize path */
-	if (image->module->path_separator)
-	{
-		if (path)
-		{
-			err = cannonicalize_path(image, FALSE, &path, &alloc_path);
-			if (err)
-				goto done;
-		}
-	}
+	err = cannonicalize_path(image, PATH_LEAVENULLALONE, &path, &alloc_path);
+	if (err)
+		goto done;
 
 	err = image->module->set_attrs(image, path, attrs, values);
 	if (err)
@@ -527,11 +553,44 @@ imgtoolerr_t img_setattr(imgtool_image *image, const char *path, UINT32 attr, im
 
 
 
-imgtoolerr_t img_suggesttransfer(imgtool_image *image, const char *path, imgtool_transfer_suggestion *suggestions, size_t suggestions_length)
+imgtoolerr_t img_geticoninfo(imgtool_image *image, const char *path, imgtool_iconinfo *iconinfo)
 {
 	imgtoolerr_t err;
-	int i;
 	char *alloc_path = NULL;
+
+
+	if (!image->module->get_iconinfo)
+	{
+		err = IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
+		goto done;
+	}
+
+	/* cannonicalize path */
+	err = cannonicalize_path(image, 0, &path, &alloc_path);
+	if (err)
+		goto done;
+
+	memset(iconinfo, 0, sizeof(*iconinfo));
+	err = image->module->get_iconinfo(image, path, iconinfo);
+	if (err)
+		goto done;
+
+done:
+	if (alloc_path)
+		free(alloc_path);
+	return err;
+}
+
+
+
+imgtoolerr_t img_suggesttransfer(imgtool_image *image, const char *path,
+	imgtool_stream *stream, imgtool_transfer_suggestion *suggestions, size_t suggestions_length)
+{
+	imgtoolerr_t err;
+	int i, j;
+	char *alloc_path = NULL;
+	imgtoolerr_t (*check_stream)(imgtool_stream *stream, imgtool_suggestion_viability_t *viability);
+	size_t position;
 
 	/* clear out buffer */
 	memset(suggestions, 0, sizeof(*suggestions) * suggestions_length);
@@ -543,31 +602,56 @@ imgtoolerr_t img_suggesttransfer(imgtool_image *image, const char *path, imgtool
 	}
 
 	/* cannonicalize path */
-	if (image->module->path_separator)
-	{
-		if (path)
-		{
-			err = cannonicalize_path(image, FALSE, &path, &alloc_path);
-			if (err)
-				goto done;
-		}
-	}
+	err = cannonicalize_path(image, PATH_LEAVENULLALONE, &path, &alloc_path);
+	if (err)
+		goto done;
 
+	/* invoke the module's suggest call */
 	err = image->module->suggest_transfer(image, path, suggestions, suggestions_length);
 	if (err)
 		goto done;
 
-	/* fill in any missing descriptions */
-	for (i = 0; suggestions[i].viability; i++)
+	/* Loop on resulting suggestions, and do the following:
+	 * 1.  Call check_stream if present, and remove disqualified streams
+	 * 2.  Fill in missing descriptions
+	 */
+	i = j = 0;
+	while(suggestions[i].viability)
 	{
-		if (!suggestions[i].description)
+		if (stream && suggestions[i].filter)
 		{
-			if (suggestions[i].filter)
-				suggestions[i].description = filter_get_info_string(suggestions[i].filter, FILTINFO_STR_HUMANNAME);
-			else
-				suggestions[i].description = "Raw";
+			check_stream = (imgtoolerr_t (*)(imgtool_stream *, imgtool_suggestion_viability_t *)) filter_get_info_fct(suggestions[i].filter, FILTINFO_PTR_CHECKSTREAM);
+			if (check_stream)
+			{
+				position = stream_tell(stream);
+				err = check_stream(stream, &suggestions[i].viability);
+				stream_seek(stream, position, SEEK_SET);
+				if (err)
+					goto done;
+			}
 		}
+
+		/* the check_stream proc can remove the option by clearing out the viability */
+		if (suggestions[i].viability)
+		{
+			/* we may have to move this suggestion, if one was removed */
+			if (i != j)
+				memcpy(&suggestions[j], &suggestions[i], sizeof(*suggestions));
+
+			/* if the description is missing, fill it in */
+			if (!suggestions[j].description)
+			{
+				if (suggestions[j].filter)
+					suggestions[j].description = filter_get_info_string(suggestions[i].filter, FILTINFO_STR_HUMANNAME);
+				else
+					suggestions[j].description = "Raw";
+			}
+
+			j++;
+		}
+		i++;
 	}
+	suggestions[j].viability = 0;
 
 done:
 	if (alloc_path)
@@ -696,12 +780,9 @@ imgtoolerr_t img_readfile(imgtool_image *image, const char *filename, const char
 	}
 
 	/* cannonicalize path */
-	if (image->module->path_separator)
-	{
-		err = cannonicalize_path(image, FALSE, &filename, &alloc_path);
-		if (err)
-			goto done;
-	}
+	err = cannonicalize_path(image, PATH_CANBEBOOTBLOCK, &filename, &alloc_path);
+	if (err)
+		goto done;
 
 	err = cannonicalize_fork(image, &fork);
 	if (err)
@@ -779,12 +860,9 @@ imgtoolerr_t img_writefile(imgtool_image *image, const char *filename, const cha
 	}
 
 	/* cannonicalize path */
-	if (image->module->path_separator)
-	{
-		err = cannonicalize_path(image, FALSE, &filename, &alloc_path);
-		if (err)
-			goto done;
-	}
+	err = cannonicalize_path(image, PATH_CANBEBOOTBLOCK, &filename, &alloc_path);
+	if (err)
+		goto done;
 
 	err = cannonicalize_fork(image, &fork);
 	if (err)
@@ -889,7 +967,10 @@ imgtoolerr_t img_getfile(imgtool_image *image, const char *filename, const char 
 		}
 		else
 		{
-			dest = filename;
+			if (filename == FILENAME_BOOTBLOCK)
+				dest = "boot.bin";
+			else
+				dest = filename;
 		}
 	}
 
@@ -946,12 +1027,9 @@ imgtoolerr_t img_deletefile(imgtool_image *img, const char *fname)
 	}
 
 	/* cannonicalize path */
-	if (img->module->path_separator)
-	{
-		err = cannonicalize_path(img, FALSE, &fname, &alloc_path);
-		if (err)
-			goto done;
-	}
+	err = cannonicalize_path(img, 0, &fname, &alloc_path);
+	if (err)
+		goto done;
 
 	err = img->module->delete_file(img, fname);
 	if (err)
@@ -980,12 +1058,9 @@ imgtoolerr_t img_listforks(imgtool_image *image, const char *path, imgtool_forke
 	}
 
 	/* cannonicalize path */
-	if (image->module->path_separator)
-	{
-		err = cannonicalize_path(image, FALSE, &path, &alloc_path);
-		if (err)
-			goto done;
-	}
+	err = cannonicalize_path(image, 0, &path, &alloc_path);
+	if (err)
+		goto done;
 
 	err = image->module->list_forks(image, path, ents, len);
 	if (err)
@@ -1012,7 +1087,7 @@ imgtoolerr_t img_createdir(imgtool_image *img, const char *path)
 	}
 
 	/* cannonicalize path */
-	err = cannonicalize_path(img, TRUE, &path, &alloc_path);
+	err = cannonicalize_path(img, PATH_MUSTBEDIR, &path, &alloc_path);
 	if (err)
 		goto done;
 
@@ -1041,7 +1116,7 @@ imgtoolerr_t img_deletedir(imgtool_image *img, const char *path)
 	}
 
 	/* cannonicalize path */
-	err = cannonicalize_path(img, TRUE, &path, &alloc_path);
+	err = cannonicalize_path(img, PATH_MUSTBEDIR, &path, &alloc_path);
 	if (err)
 		goto done;
 

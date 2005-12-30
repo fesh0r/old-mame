@@ -163,6 +163,17 @@ void reporterror(imgtoolerr_t err, const struct command *c, const char *format, 
 
 
 
+static const char *interpret_filename(const char *filename)
+{
+	if (!strcmp(filename, "??BOOT??")
+			|| !strcmp(filename, "\'??BOOT??\'")
+			|| !strcmp(filename, "\"??BOOT??\""))
+		filename = FILENAME_BOOTBLOCK;
+	return filename;
+}
+
+
+
 /* ----------------------------------------------------------------------- */
 
 static int cmd_dir(const struct command *c, int argc, char *argv[])
@@ -230,31 +241,37 @@ done:
 static int cmd_get(const struct command *c, int argc, char *argv[])
 {
 	imgtoolerr_t err;
-	imgtool_image *image;
-	char *newfname;
-	int unnamedargs;
+	imgtool_image *image = NULL;
+	const char *filename;
+	char *new_filename;
+	int unnamedargs = 0;
 	filter_getinfoproc filter;
 	const char *fork;
 
 	err = img_open_byname(library, argv[0], argv[1], OSD_FOPEN_READ, &image);
 	if (err)
-		goto error;
+		goto done;
+
+	filename = interpret_filename(argv[2]);
 
 	unnamedargs = parse_options(argc, argv, 3, 4, NULL, &filter, &fork);
 	if (unnamedargs < 0)
-		return -1;
-	newfname = (unnamedargs == 4) ? argv[3] : NULL;
+		goto done;
 
-	err = img_getfile(image, argv[2], fork, newfname, filter);
-	img_close(image);
+	new_filename = (unnamedargs == 4) ? argv[3] : NULL;
+
+	err = img_getfile(image, filename, fork, new_filename, filter);
 	if (err)
-		goto error;
+		goto done;
 
-	return 0;
+	err = IMGTOOLERR_SUCCESS;
 
-error:
-	reporterror(err, c, argv[0], argv[1], argv[2], argv[3], NULL);
-	return -1;
+done:
+	if (err)
+		reporterror(err, c, argv[0], argv[1], argv[2], argv[3], NULL);
+	if (image)
+		img_close(image);
+	return (err || (unnamedargs < 0)) ? -1 : 0;
 }
 
 
@@ -270,6 +287,9 @@ static int cmd_put(const struct command *c, int argc, char *argv[])
 	const struct ImageModule *module;
 	option_resolution *resolution = NULL;
 	const char *fork;
+	const char *new_filename;
+	char **filename_list;
+	int filename_count;
 
 	module = imgtool_library_findmodule(library, argv[0]);
 	if (!module)
@@ -288,20 +308,26 @@ static int cmd_put(const struct command *c, int argc, char *argv[])
 		}
 	}
 
-
-	unnamedargs = parse_options(argc, argv, 3, 0xffff, resolution, &filter, &fork);
+	unnamedargs = parse_options(argc, argv, 4, 0xffff, resolution, &filter, &fork);
 	if (unnamedargs < 0)
 		return -1;
 
+	/* pick out which args are filenames, and which one is the destination */
+	new_filename = interpret_filename(argv[unnamedargs - 1]);
+	filename_list = &argv[2];
+	filename_count = unnamedargs - 3;
+
+	/* open up the image */
 	err = img_open(module, argv[1], OSD_FOPEN_RW, &img);
 	if (err)
 		goto error;
 
-	for (i = 2; i < unnamedargs; i++)
+	/* loop through the filenames, and put them */
+	for (i = 0; i < filename_count; i++)
 	{
-		filename = argv[i];
+		filename = filename_list[i];
 		printf("Putting file '%s'...\n", filename);
-		err = img_putfile(img, NULL, fork, filename, resolution, filter);
+		err = img_putfile(img, new_filename, fork, filename, resolution, filter);
 		if (err)
 			goto error;
 	}
@@ -780,7 +806,7 @@ static struct command cmds[] =
 	{ "create",				cmd_create,				"<format> <imagename>", 2, 8, 0},
 	{ "dir",				cmd_dir,				"<format> <imagename> [path]", 2, 3, 0 },
 	{ "get",				cmd_get,				"<format> <imagename> <filename> [newname] [--filter=filter] [--fork=fork]", 3, 4, 0 },
-	{ "put",				cmd_put,				"<format> <imagename> <filename>...[--(fileoption)==value] [--filter=filter] [--fork=fork]", 3, 0xffff, 0 },
+	{ "put",				cmd_put,				"<format> <imagename> <filename>... <destname> [--(fileoption)==value] [--filter=filter] [--fork=fork]", 3, 0xffff, 0 },
 	{ "getall",				cmd_getall,				"<format> <imagename> [path] [--filter=filter]", 2, 3, 0 },
 	{ "del",				cmd_del,				"<format> <imagename> <filename>...", 3, 3, 1 },
 	{ "mkdir",				cmd_mkdir,				"<format> <imagename> <dirname>", 3, 3, 0 },

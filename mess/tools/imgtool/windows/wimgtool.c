@@ -176,6 +176,110 @@ void wimgtool_report_error(HWND window, imgtoolerr_t err, const char *imagename,
 
 
 
+static HICON create_icon(int width, int height, const UINT32 *icondata)
+{
+	HDC dc = NULL;
+	HICON icon = NULL;
+	BYTE *color_bits, *mask_bits;
+	HBITMAP color_bitmap = NULL, mask_bitmap = NULL;
+	ICONINFO iconinfo;
+	UINT32 pixel;
+	UINT8 mask;
+	int x, y;
+	BITMAPINFO bmi;
+
+	// we need a device context
+	dc = CreateCompatibleDC(NULL);
+	if (!dc)
+		goto done;
+
+	// create foreground bitmap
+	memset(&bmi, 0, sizeof(bmi));
+	bmi.bmiHeader.biWidth = width;
+	bmi.bmiHeader.biHeight = height;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 24;
+	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+	color_bitmap = CreateDIBSection(dc, &bmi, DIB_RGB_COLORS, (void **) &color_bits, NULL, 0);
+	if (!color_bitmap)
+		goto done;
+
+	// create mask bitmap
+	memset(&bmi, 0, sizeof(bmi));
+	bmi.bmiHeader.biWidth = width;
+	bmi.bmiHeader.biHeight = height;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 1;
+	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+	mask_bitmap = CreateDIBSection(dc, &bmi, DIB_RGB_COLORS, (void **) &mask_bits, NULL, 0);
+	if (!color_bitmap)
+		goto done;
+
+	// transfer data from our structure to the bitmaps
+	for (y = 0; y < height; y++)
+	{
+		for (x = 0; x < width; x++)
+		{
+			mask = 1 << (7 - (x % 8));
+			pixel = icondata[y * width + x];
+
+			// foreground icon
+			color_bits[((height - y - 1) * width + x) * 3 + 2] = (pixel >> 16);
+			color_bits[((height - y - 1) * width + x) * 3 + 1] = (pixel >>  8);
+			color_bits[((height - y - 1) * width + x) * 3 + 0] = (pixel >>  0);
+
+			// mask
+			if (pixel & 0x80000000)
+				mask_bits[((height - y - 1) * width + x) / 8] &= ~mask;
+			else
+				mask_bits[((height - y - 1) * width + x) / 8] |= mask;
+		}
+	}
+
+	// actually create the icon
+	memset(&iconinfo, 0, sizeof(iconinfo));
+	iconinfo.fIcon = TRUE;
+	iconinfo.hbmColor = color_bitmap;
+	iconinfo.hbmMask = mask_bitmap;
+	icon = CreateIconIndirect(&iconinfo);
+
+done:
+	if (color_bitmap)
+		DeleteObject(color_bitmap);
+	if (mask_bitmap)
+		DeleteObject(mask_bitmap);
+	if (dc)
+		DeleteDC(dc);
+	return icon;
+}
+
+
+
+static imgtoolerr_t hicons_from_imgtool_icon(const imgtool_iconinfo *iconinfo,
+    HICON *icon16x16, HICON *icon32x32)
+{
+	*icon16x16 = NULL;
+	*icon32x32 = NULL;
+
+	if (iconinfo->icon16x16_specified)
+	{
+	    *icon16x16 = create_icon(16, 16, (const UINT32 *) iconinfo->icon16x16);
+		if (!*icon16x16)
+	        return IMGTOOLERR_OUTOFMEMORY;
+	}
+
+	if (iconinfo->icon32x32_specified)
+	{
+	    *icon32x32 = create_icon(32, 32, (const UINT32 *) iconinfo->icon32x32);
+		if (!*icon32x32)
+	        return IMGTOOLERR_OUTOFMEMORY;
+	}
+
+    return IMGTOOLERR_SUCCESS;
+}
+
+
+
 #define FOLDER_ICON	((const char *) ~0)
 
 static int append_associated_icon(HWND window, const char *extension)
@@ -229,9 +333,10 @@ static imgtoolerr_t append_dirent(HWND window, int index, const imgtool_dirent *
 	int new_index, column_index;
 	struct wimgtool_info *info;
 	TCHAR buffer[32];
-	int icon_index;
+	int icon_index = -1;
 	const char *extension;
 	const char *ptr;
+	const char *s;
 	size_t size, i;
 	struct imgtool_module_features features;
 	struct tm *local_time;
@@ -239,35 +344,64 @@ static imgtoolerr_t append_dirent(HWND window, int index, const imgtool_dirent *
 	info = get_wimgtool_info(window);
 	features = img_get_module_features(img_module(info->image));
 
-	if (entry->directory)
+	/* try to get a custom icon */
+	if (features.supports_geticoninfo)
 	{
-		icon_index = info->directory_icon_index;
-	}
-	else
-	{
-		extension = strrchr(entry->filename, '.');
-		if (!extension)
-			extension = ".bin";
+		char buf[256];
+		HICON icon16x16, icon32x32;
+		imgtool_iconinfo iconinfo;
 
-		ptr = pile_getptr(&info->iconlist_extensions);
-		size = pile_size(&info->iconlist_extensions);
-		icon_index = 2;
-		for (i = 0; i < size; i += strlen(&ptr[i]) + 1)
+		sprintf(buf, "%s%s", info->current_directory, entry->filename);
+		img_geticoninfo(info->image, buf, &iconinfo);
+
+		hicons_from_imgtool_icon(&iconinfo, &icon16x16, &icon32x32);
+		if (icon16x16 || icon32x32)
 		{
-			if (!mame_stricmp(&ptr[i], extension))
-				break;
-			icon_index++;
+			icon_index = ImageList_AddIcon(info->iconlist_normal, icon32x32);
+			ImageList_AddIcon(info->iconlist_small, icon32x32);
 		}
+	}
 
-		if (i >= size)
+	if (icon_index < 0)
+	{
+		if (entry->directory)
 		{
-			icon_index = append_associated_icon(window, extension);
-			if (icon_index < 0)
-				return IMGTOOLERR_UNEXPECTED;
-			if (pile_puts(&info->iconlist_extensions, extension))
-				return IMGTOOLERR_OUTOFMEMORY;
-			if (pile_putc(&info->iconlist_extensions, '\0'))
-				return IMGTOOLERR_OUTOFMEMORY;
+			icon_index = info->directory_icon_index;
+		}
+		else
+		{
+			extension = strrchr(entry->filename, '.');
+			if (!extension)
+				extension = ".bin";
+
+			ptr = pile_getptr(&info->iconlist_extensions);
+			size = pile_size(&info->iconlist_extensions);
+			icon_index = -1;
+
+			i = 0;
+			while(i < size)
+			{
+				s = &ptr[i];
+				i += strlen(&ptr[i]) + 1;
+				memcpy(&icon_index, &ptr[i], sizeof(icon_index));
+				i += sizeof(icon_index);
+
+				if (!mame_stricmp(s, extension))
+					break;
+			}
+
+			if (i >= size)
+			{
+				icon_index = append_associated_icon(window, extension);
+				if (icon_index < 0)
+					return IMGTOOLERR_UNEXPECTED;
+				if (pile_puts(&info->iconlist_extensions, extension))
+					return IMGTOOLERR_OUTOFMEMORY;
+				if (pile_putc(&info->iconlist_extensions, '\0'))
+					return IMGTOOLERR_OUTOFMEMORY;
+				if (pile_write(&info->iconlist_extensions, &icon_index, sizeof(icon_index)))
+					return IMGTOOLERR_OUTOFMEMORY;
+			}
 		}
 	}
 
@@ -415,7 +549,10 @@ static imgtoolerr_t full_refresh_image(HWND window)
 	int column_index = 0;
 	int i;
 	char buf[256];
-	TCHAR file_title[MAX_PATH];
+	char imageinfo_buf[256];
+	const char *imageinfo = NULL;
+	TCHAR file_title_buf[MAX_PATH];
+	LPCTSTR file_title;
 	const char *statusbar_text[2];
 	struct imgtool_module_features features;
 
@@ -430,11 +567,42 @@ static imgtoolerr_t full_refresh_image(HWND window)
 
 	if (info->filename)
 	{
-		GetFileTitle(U2T(info->filename), file_title, sizeof(file_title) / sizeof(file_title[0]));
+		// get file title from Windows
+		GetFileTitle(U2T(info->filename), file_title_buf, sizeof(file_title_buf)
+			/ sizeof(file_title_buf[0]));
+		file_title = T2U(file_title_buf);
 
-		snprintf(buf, sizeof(buf) / sizeof(buf[0]),
-			(info->current_directory && info->current_directory[0]) ? "%s - %s" : "%s",
-			T2U(file_title), info->current_directory);
+		// get info from image
+		if (info->image && (img_info(info->image, imageinfo_buf, sizeof(imageinfo_buf)
+			/ sizeof(imageinfo_buf[0])) == IMGTOOLERR_SUCCESS))
+		{
+			if (imageinfo_buf[0])
+				imageinfo = imageinfo_buf;
+		}
+
+		// combine all of this into a title bar
+		if (info->current_directory && info->current_directory[0])
+		{
+			// has a current directory
+			if (imageinfo)
+			{
+				snprintf(buf, sizeof(buf) / sizeof(buf[0]),
+					"%s (\"%s\") - %s", file_title, imageinfo, info->current_directory);
+			}
+			else
+			{
+				snprintf(buf, sizeof(buf) / sizeof(buf[0]),
+					"%s - %s", file_title, info->current_directory);
+			}
+		}
+		else
+		{
+			// no current directory
+			snprintf(buf, sizeof(buf) / sizeof(buf[0]),
+				imageinfo ? "%s (\"%s\")" : "%s",
+				file_title, imageinfo);
+		}
+
 		statusbar_text[0] = osd_basename((char *) info->filename);
 		statusbar_text[1] = module->description;
 	}
@@ -919,23 +1087,35 @@ static void menu_insert(HWND window)
 	const char *fork = NULL;
 	struct transfer_suggestion_info suggestion_info;
 	int use_suggestion_info;
+	imgtool_stream *stream = NULL;
 	filter_getinfoproc filter = NULL;
 
 	info = get_wimgtool_info(window);
 
 	memset(&ofn, 0, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = window;
 	ofn.lpstrFile = host_filename;
 	ofn.nMaxFile = sizeof(host_filename) / sizeof(host_filename[0]);
+	ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
 	if (!GetOpenFileName(&ofn))
 	{
 		err = 0;
 		goto done;
 	}
 
+	/* we need to open the stream at this point, so that we can suggest the transfer */
+	stream = stream_open(T2U(ofn.lpstrFile), OSD_FOPEN_READ);
+	if (!stream)
+	{
+		err = IMGTOOLERR_FILENOTFOUND;
+		goto done;
+	}
+
 	module = img_module(info->image);
 
-	img_suggesttransfer(info->image, NULL, suggestion_info.suggestions,
+	/* figure out which filters are appropriate for this file */
+	img_suggesttransfer(info->image, NULL, stream, suggestion_info.suggestions,
 		sizeof(suggestion_info.suggestions) / sizeof(suggestion_info.suggestions[0]));
 
 	/* do we need to show an option dialog? */
@@ -967,7 +1147,7 @@ static void menu_insert(HWND window)
 		image_filename = s2;
 	}
 
-	err = img_putfile(info->image, image_filename, fork, ofn.lpstrFile, opts, filter);
+	err = img_writefile(info->image, image_filename, fork, stream, opts, filter);
 	if (err)
 		goto done;
 
@@ -1061,7 +1241,7 @@ static imgtoolerr_t menu_extract_proc(HWND window, const imgtool_dirent *entry, 
 	// try suggesting some filters (only if doing a single file)
 	if (!entry->directory)
 	{
-		img_suggesttransfer(info->image, filename, suggestion_info.suggestions,
+		img_suggesttransfer(info->image, filename, NULL, suggestion_info.suggestions,
 			sizeof(suggestion_info.suggestions) / sizeof(suggestion_info.suggestions[0]));
 
 		suggestion_info.selected = 0;
@@ -1083,6 +1263,7 @@ static imgtoolerr_t menu_extract_proc(HWND window, const imgtool_dirent *entry, 
 	// set up the OPENFILENAME struct
 	memset(&ofn, 0, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = window;
 	ofn.Flags = OFN_EXPLORER;
 	ofn.lpstrFile = host_filename;
 	ofn.lpstrFilter = TEXT("All files (*.*)\0*.*\0");

@@ -309,6 +309,8 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 			module->tracks_are_called_cylinders	= floppy_callbacks.tracks_are_called_cylinders;
 			module->writing_untested			= floppy_callbacks.writing_untested;
 			module->creation_untested			= floppy_callbacks.creation_untested;
+			module->supports_bootblock			= floppy_callbacks.supports_bootblock;
+			module->info						= floppy_callbacks.info;
 			module->begin_enum					= floppy_callbacks.begin_enum;
 			module->next_enum					= floppy_callbacks.next_enum;
 			module->close_enum					= floppy_callbacks.close_enum;
@@ -321,6 +323,7 @@ imgtoolerr_t imgtool_floppy_createmodule(imgtool_library *library, const char *f
 			module->delete_dir					= floppy_callbacks.delete_dir;
 			module->get_attrs					= floppy_callbacks.get_attrs;
 			module->set_attrs					= floppy_callbacks.set_attrs;
+			module->get_iconinfo				= floppy_callbacks.get_iconinfo;
 			module->suggest_transfer			= floppy_callbacks.suggest_transfer;
 			module->get_chain					= floppy_callbacks.get_chain;
 			module->writefile_optguide			= floppy_callbacks.writefile_optguide;

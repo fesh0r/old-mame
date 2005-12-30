@@ -5,8 +5,8 @@
 #include "includes/pce.h"
 #include "image.h"
 
-/* the largest possible cartridge image, excluding special games */
-#define PCE_ROM_MAXSIZE  (0x2000 * 256 + 512)
+/* the largest possible cartridge image (street fighter 2 - 2.5MB) */
+#define PCE_ROM_MAXSIZE  (0x280000)
 
 /* system RAM */
 unsigned char *pce_user_ram;    /* scratch RAM at F8 */
@@ -22,26 +22,74 @@ static int joystick_data_select;        /* which nibble of joystick data we want
 DEVICE_LOAD(pce_cart)
 {
 	int size;
+	int split_rom = 0;
 	unsigned char *ROM;
-	logerror("*** pce_load_rom : %s\n", image_filename(image));
+	logerror("*** DEVICE_LOAD(pce_cart) : %s\n", image_filename(image));
 
-    /* open file to get size */
+	/* open file to get size */
 	if( new_memory_region(REGION_CPU1,PCE_ROM_MAXSIZE,0) )
 		return 1;
 	ROM = memory_region(REGION_CPU1);
-    size = mame_fread(file, ROM, PCE_ROM_MAXSIZE);
 
-    /* position back at start of file */
-    mame_fseek(file, 0, SEEK_SET);
+	size = image_length( image );
 
-    /* handle header accordingly */
-    if((size/512)&1)
-    {
-        logerror("*** pce_load_rom : Header present\n");
-        size -= 512;
-        mame_fseek(file, 512, SEEK_SET);
-    }
-    size = mame_fread(file, ROM, size);
+	/* handle header accordingly */
+	if((size/512)&1)
+	{
+		logerror("*** DEVICE_LOAD(pce_cart) : Header present\n");
+		size -= 512;
+		mame_fseek(file, 512, SEEK_SET);
+	}
+	if ( size > PCE_ROM_MAXSIZE ) {
+		size = PCE_ROM_MAXSIZE;
+	}
+
+	mame_fread(file, ROM, size);
+
+	if ( ROM[0x1FFF] < 0xE0 ) {
+		int i;
+		UINT8 decrypted[256];
+
+		logerror( "*** DEVICE_LOAD(pce_cart) : ROM image seems encrypted, decrypting...\n" );
+
+		/* Initialize decryption table */
+		for( i = 0; i < 256; i++ ) {
+			decrypted[i] = ( ( i & 0x01 ) << 7 ) | ( ( i & 0x02 ) << 5 ) | ( ( i & 0x04 ) << 3 ) | ( ( i & 0x08 ) << 1 ) | ( ( i & 0x10 ) >> 1 ) | ( ( i & 0x20 ) >> 3 ) | ( ( i & 0x40 ) >> 5 ) | ( ( i & 0x80 ) >> 7 );
+		}
+
+		/* Decrypt ROM image */
+		for( i = 0; i < size; i++ ) {
+			ROM[i] = decrypted[ROM[i]];
+		}
+	}
+
+	/* check if we're dealing with a split rom image */
+	/* TODO: Add support for checking for 512KB split roms */
+	if ( size == 384 * 1024 ) {
+		split_rom = 1;
+	}
+
+	/* set up the memory for a split rom image */
+	if ( split_rom ) {
+		/* Set up ROM address space as follows:          */
+		/* 000000 - 03FFFF : ROM data 000000 - 03FFFF    */
+		/* 040000 - 07FFFF : ROM data 000000 - 03FFFF    */
+		/* 080000 - 0BFFFF : ROM data 040000 - 07FFFF    */
+		/* 0C0000 - 0FFFFF : ROM data 040000 - 07FFFF    */
+		memcpy( ROM + 0x080000, ROM + 0x040000, 0x040000 );	/* Set up 080000 - 0BFFFF region */
+		memcpy( ROM + 0x0C0000, ROM + 0x040000, 0x040000 );	/* Set up 0C0000 - 0FFFFF region */
+		memcpy( ROM + 0x040000, ROM, 0x040000 );		/* Set up 040000 - 07FFFF region */
+	} else {
+		/* mirror 256KB rom data */
+		if ( size <= 0x040000 ) {
+			memcpy( ROM + 0x040000, ROM, 0x040000 );
+		}
+		/* mirror 512KB rom data */
+		if ( size <= 0x080000 ) {
+			memcpy( ROM + 0x080000, ROM, 0x080000 );
+		}
+	}
+
 	return 0;
 }
 
@@ -85,7 +133,9 @@ WRITE8_HANDLER ( pce_joystick_w )
 
  READ8_HANDLER ( pce_joystick_r )
 {
-    int data = readinputport(0);
-    if(joystick_data_select) data >>= 4;
-    return (data);
+	int data = readinputport(0);
+	if(joystick_data_select) data >>= 4;
+	/* Bit 6 is reset in US consoles?? */
+	data &= ~0x40;
+	return (data);
 }

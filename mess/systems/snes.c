@@ -33,7 +33,7 @@ static ADDRESS_MAP_START( snes_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x000000, 0x2fffff) AM_READWRITE(snes_r_bank1, snes_w_bank1)	/* I/O and ROM (repeats for each bank) */
 	AM_RANGE(0x300000, 0x3fffff) AM_READWRITE(snes_r_bank2, snes_w_bank2)	/* I/O and ROM (repeats for each bank) */
 	AM_RANGE(0x400000, 0x5fffff) AM_READWRITE(snes_r_bank3, MWA8_ROM)	/* ROM (and reserved in Mode 20) */
-	AM_RANGE(0x600000, 0x6fffff) AM_NOP					/* Reserved */
+	AM_RANGE(0x600000, 0x6fffff) AM_READWRITE(snes_r_bank6, snes_w_bank6)	/* used by Mode 20 DSP-1 */
 	AM_RANGE(0x700000, 0x77ffff) AM_READWRITE(snes_r_sram, snes_w_sram)	/* 256KB Mode 20 save ram + reserved from 0x8000 - 0xffff */
 	AM_RANGE(0x780000, 0x7dffff) AM_NOP					/* Reserved */
 	AM_RANGE(0x7e0000, 0x7fffff) AM_RAM					/* 8KB Low RAM, 24KB High RAM, 96KB Expanded RAM */
@@ -226,16 +226,16 @@ static void snes_save_sram(void)
 	{
 		for( ii = 0; ii < 8; ii++ )
 		{
-			memcpy( ptr, &snes_ram[0x700000 + (ii * 0x010000)], 0x7fff );
-			ptr += 0x7fff;
+			memcpy( ptr, &snes_ram[0x700000 + (ii * 0x010000)], 0x8000 );
+			ptr += 0x8000;
 		}
 	}
 	else
 	{
 		for( ii = 0; ii < 16; ii++ )
 		{
-			memcpy( ptr, &snes_ram[0x306000 + (ii * 0x010000)], 0x1fff );
-			ptr += 0x1fff;
+			memcpy( ptr, &snes_ram[0x306000 + (ii * 0x010000)], 0x2000 );
+			ptr += 0x2000;
 		}
 	}
 
@@ -299,7 +299,7 @@ static DEVICE_LOAD(snes_cart)
 		"Italy (PAL)",
 		"Hong Kong & China (PAL)",
 		"Indonesia (PAL)",
-		"Korea (PAL)",
+		"South Korea (NTSC)",
 		"UNKNOWN"
 	};
 
@@ -385,7 +385,7 @@ static DEVICE_LOAD(snes_cart)
 	{
 		/* In mode 21, all blocks are 64kb. There are upto 96 blocks, giving a
 		 * total of 48mbit(6mb) of ROM.
-		 * The first 64 blocks are located in banks 0xc0 to 0xff. The MSB of
+		 * The first 64 blocks are located in banks 0xc0 to 0xff. The top 32k of
 		 * each bank is mirrored in banks 0x00 to 0x3f.
 		 * The final 32 blocks are located in banks 0x40 to 0x5f.
 		 */
@@ -464,16 +464,14 @@ static DEVICE_LOAD(snes_cart)
 
 static MACHINE_DRIVER_START( snes )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", G65816, 2680000)	/* 2.68Mhz, also 3.58Mhz */
+	MDRV_CPU_ADD_TAG("main", G65816, 3580000)	/* 2.68Mhz, also 3.58Mhz */
 	MDRV_CPU_PROGRAM_MAP(snes_map, 0)
-	MDRV_CPU_VBLANK_INT(snes_scanline_interrupt, SNES_MAX_LINES_NTSC)
 
 	MDRV_CPU_ADD_TAG("sound", SPC700, 1024000)	/* 1.024 Mhz */
 	MDRV_CPU_PROGRAM_MAP(spc_map, 0)
-	MDRV_CPU_VBLANK_INT(NULL, 0)
 
 	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_VBLANK_DURATION((int)(((262. - 240.) / 262.) * 1000000. / 60.))
 	MDRV_INTERLEAVE(800)
 
 	MDRV_MACHINE_INIT( snes )
@@ -496,13 +494,13 @@ static MACHINE_DRIVER_START( snes )
 	MDRV_SOUND_ADD(CUSTOM, 0)
 	MDRV_SOUND_CONFIG(snes_sound_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.00)
-	MDRV_SOUND_ROUTE(0, "right", 1.00)
+	MDRV_SOUND_ROUTE(1, "right", 1.00)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( snespal )
 	MDRV_IMPORT_FROM(snes)
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_VBLANK_INT(snes_scanline_interrupt, SNES_MAX_LINES_PAL)
+//	MDRV_CPU_VBLANK_INT(snes_scanline_interrupt, SNES_MAX_LINES_PAL)
 	MDRV_FRAMES_PER_SECOND(50)
 MACHINE_DRIVER_END
 
@@ -533,7 +531,9 @@ ROM_START(snes)
 	ROM_REGION(SNES_OAM_SIZE,   REGION_USER2, 0)		/* OAM */
 	ROM_REGION(0x10000,         REGION_CPU2,  0)		/* SPC700 */
 	ROM_REGION(0x100,           REGION_USER5, 0)		/* IPL ROM */
-	ROM_LOAD("spc700.rom", 0, 0x40, CRC(44bb3a40))	/* boot rom */
+	ROM_LOAD("spc700.rom", 0, 0x40, CRC(44bb3a40) SHA1(97e352553e94242ae823547cd853eecda55c20f0))	/* boot rom */
+	ROM_REGION(0x800,           REGION_USER6, 0)		/* add-on chip ROMs (DSP, SFX, etc) */
+        ROM_LOAD("dsp1data.bin", 0x000000, 0x000800, CRC(4b02d66d) SHA1(1534f4403d2a0f68ba6e35186fe7595d33de34b1))
 ROM_END
 
 ROM_START(snespal)
@@ -543,7 +543,9 @@ ROM_START(snespal)
 	ROM_REGION(SNES_OAM_SIZE,   REGION_USER2, 0)		/* OAM */
 	ROM_REGION(0x10000,         REGION_CPU2,  0)		/* SPC700 */
 	ROM_REGION(0x100,           REGION_USER5, 0)		/* IPL ROM */
-	ROM_LOAD("spc700.rom", 0, 0x40, CRC(44bb3a40))	/* boot rom */
+	ROM_LOAD("spc700.rom", 0, 0x40, CRC(44bb3a40) SHA1(97e352553e94242ae823547cd853eecda55c20f0))	/* boot rom */
+	ROM_REGION(0x800,           REGION_USER6, 0)		/* add-on chip ROMs (DSP, SFX, etc) */
+        ROM_LOAD("dsp1data.bin", 0x000000, 0x000800, CRC(4b02d66d) SHA1(1534f4403d2a0f68ba6e35186fe7595d33de34b1))
 ROM_END
 
 /*     YEAR  NAME     PARENT  COMPAT  MACHINE  INPUT  INIT  CONFIG  COMPANY     FULLNAME                                      FLAGS */

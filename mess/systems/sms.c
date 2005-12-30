@@ -11,9 +11,7 @@
 
  - PSG control for Game Gear (needs custom SN76489 with stereo output for each channel)
  - SIO interface for Game Gear (needs netplay, I guess)
- - TMS9928A support for 'f16ffight.sms'
  - SMS lightgun support
- - SMS Pause key - certainly there's an effective way to handle this
  - LCD persistence emulation for GG
  - SMS 3D glass support
 
@@ -33,6 +31,7 @@
 	Jun 12, 02 - Added PAL & NTSC systems (ML)
 	Jun 25, 02 - Added border emulation (ML)
 	Jun 27, 02 - Version bits for Game Gear (bits 6 of port 00) (ML)
+	Nov-Dec, 05 - Numerous cleanups, fixes, updates (WP)
 
  ******************************************************************************/
 
@@ -151,7 +150,7 @@ static MACHINE_DRIVER_START(sms)
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT)
 	MDRV_SCREEN_SIZE(NTSC_X_PIXELS, NTSC_Y_PIXELS)
-	MDRV_VISIBLE_AREA(29 - 1, NTSC_X_PIXELS - 29 - 1, 10 - 1, NTSC_Y_PIXELS - 9 - 1)
+	MDRV_VISIBLE_AREA( LBORDER_X_PIXELS, LBORDER_X_PIXELS + 255, TBORDER_Y_PIXELS, TBORDER_Y_PIXELS + 239 )
 	MDRV_PALETTE_LENGTH(32)
 	MDRV_COLORTABLE_LENGTH(0)
 	/*MDRV_PALETTE_INIT(sms)*/
@@ -166,24 +165,45 @@ static MACHINE_DRIVER_START(sms)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(smspal)
-	MDRV_IMPORT_FROM(sms)
+	/* basic machine hardware */
+	MDRV_CPU_ADD_TAG("main", Z80, 3597545)
+	MDRV_CPU_PROGRAM_MAP(sms_mem, 0)
+	MDRV_CPU_IO_MAP(sms_io, 0)
 	MDRV_CPU_VBLANK_INT(sms, PAL_Y_PIXELS)
 
 	MDRV_FRAMES_PER_SECOND(50)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(1)
+        
+	MDRV_MACHINE_INIT(sms)
+	MDRV_NVRAM_HANDLER(sms)
 
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT)
 	MDRV_SCREEN_SIZE(PAL_X_PIXELS, PAL_Y_PIXELS)
-	MDRV_VISIBLE_AREA(29 - 1, PAL_X_PIXELS - 29 - 1, 10 - 1, PAL_Y_PIXELS - 9 - 1)
+	MDRV_VISIBLE_AREA( LBORDER_X_PIXELS, LBORDER_X_PIXELS + 255, TBORDER_Y_PIXELS, TBORDER_Y_PIXELS + 239 )
+	MDRV_PALETTE_LENGTH(32)
+	MDRV_COLORTABLE_LENGTH(0)
+	/*MDRV_PALETTE_INIT(sms)*/
+ 
+	MDRV_VIDEO_START(sms)
+	MDRV_VIDEO_UPDATE(sms)
+ 
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD(SN76496, 4194304)	/* 4.194304 MHz */
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(smsj21)
-	MDRV_IMPORT_FROM(smspal)
+	MDRV_IMPORT_FROM(sms)
 
 	MDRV_SOUND_ADD(YM2413, 8000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(smsm3)
-	MDRV_IMPORT_FROM(smspal)
+	MDRV_IMPORT_FROM(sms)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(gamegear)
@@ -365,24 +385,24 @@ SYSTEM_CONFIG_END
 
 /*		YEAR	NAME		PARENT		COMPATIBLE	MACHINE		INPUT	INIT	CONFIG		COMPANY			FULLNAME */
 CONS(	1987,	sms,		0,			0,			sms,		sms,	0,		sms,		"Sega",			"Master System - (NTSC)" , 0)
-CONS(	1986,	smsu13,		sms,		0,			sms,		sms,	0,		smso,		"Sega",			"Master System - (NTSC) US/European BIOS v1.3" , 0)
-CONS(	1986,	smse13,		sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Master System - (PAL) US/European BIOS v1.3" , 0)
-//CONS(	1986,	smsumd3d,	sms,		0,			sms,		sms,	0,		smso,		"Sega",			"Super Master System - (NTSC) US/European Missile Defense 3D BIOS" , 0)
-//CONS(	1986,	smsemd3d,	sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Super Master System - (PAL) US/European Missile Defense 3D BIOS" , 0)
-CONS(	1990,	smsuam,		sms,		0,			sms,		sms,	0,		smso,		"Sega",			"Master System II - (NTSC) US/European BIOS with Alex Kidd in Miracle World" , 0)
-CONS(	1990,	smseam,		sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Master System II - (PAL) US/European BIOS with Alex Kidd in Miracle World" , 0)
-CONS(	1990,	smsesh,		sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Master System II - (PAL) European BIOS with Sonic The Hedgehog" , 0)
-CONS(	1990,	smsbsh,		sms,		0,			smsm3,		sms,	0,		smso,		"Tec Toy",		"Master System III Compact (Brazil) - (PAL) European BIOS with Sonic The Hedgehog" , 0)
-CONS(	1988,	smsuhs24,	sms,		0,			sms,		sms,	0,		smso,		"Sega",			"Master System Plus - (NTSC) US/European BIOS v2.4 with Hang On and Safari Hunt" , 0)
-CONS(	1988,	smsehs24,	sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Master System Plus - (PAL) US/European BIOS v2.4 with Hang On and Safari Hunt" , 0)
-CONS(	1988,	smsuh34,	sms,		0,			sms,		sms,	0,		smso,		"Sega",			"Master System - (NTSC) US/European BIOS v3.4 with Hang On" , 0)
-CONS(	1988,	smseh34,	sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Master System - (PAL) US/European BIOS v3.4 with Hang On" , 0)
+CONS(	1986,	smsu13,		sms,		0,			sms,		sms,	0,		smso,		"Sega",			"Master System - (NTSC) US/European BIOS v1.3" , FLAG_BIOS_2000 )
+CONS(	1986,	smse13,		sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Master System - (PAL) US/European BIOS v1.3" , FLAG_BIOS_2000 )
+//CONS(	1986,	smsumd3d,	sms,		0,			sms,		sms,	0,		smso,		"Sega",			"Super Master System - (NTSC) US/European Missile Defense 3D BIOS" , FLAG_BIOS_FULL )
+//CONS(	1986,	smsemd3d,	sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Super Master System - (PAL) US/European Missile Defense 3D BIOS" , FLAG_BIOS_FULL )
+CONS(	1990,	smsuam,		sms,		0,			sms,		sms,	0,		smso,		"Sega",			"Master System II - (NTSC) US/European BIOS with Alex Kidd in Miracle World" , FLAG_BIOS_FULL )
+CONS(	1990,	smseam,		sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Master System II - (PAL) US/European BIOS with Alex Kidd in Miracle World" , FLAG_BIOS_FULL )
+CONS(	1990,	smsesh,		sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Master System II - (PAL) European BIOS with Sonic The Hedgehog" , FLAG_BIOS_FULL )
+CONS(	1990,	smsbsh,		sms,		0,			smsm3,		sms,	0,		smso,		"Tec Toy",		"Master System III Compact (Brazil) - (PAL) European BIOS with Sonic The Hedgehog" , FLAG_BIOS_FULL )
+CONS(	1988,	smsuhs24,	sms,		0,			sms,		sms,	0,		smso,		"Sega",			"Master System Plus - (NTSC) US/European BIOS v2.4 with Hang On and Safari Hunt" , FLAG_BIOS_FULL )
+CONS(	1988,	smsehs24,	sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Master System Plus - (PAL) US/European BIOS v2.4 with Hang On and Safari Hunt" , FLAG_BIOS_FULL )
+CONS(	1988,	smsuh34,	sms,		0,			sms,		sms,	0,		smso,		"Sega",			"Master System - (NTSC) US/European BIOS v3.4 with Hang On" , FLAG_BIOS_FULL )
+CONS(	1988,	smseh34,	sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Master System - (PAL) US/European BIOS v3.4 with Hang On" , FLAG_BIOS_FULL )
 CONS(	1985,	smspal,		sms,		0,			smspal,		sms,	0,		sms,		"Sega",			"Master System - (PAL)" , 0)
-CONS(	1985,	smsj21,		sms,		0,			smsj21,		sms,	0,		smso,		"Sega",			"Master System - (PAL) Japanese SMS BIOS v2.1" , 0)
-CONS(	1984,	smsm3,		sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Mark III - (PAL) Japanese SMS BIOS v2.1" , 0)
-CONS(	198?,	smsss,		sms,		0,			smsj21,		sms,	0,		smso,		"Samsung",		"Gamboy - (PAL) Japanese SMS BIOS v2.1" , 0)
-CONS(	1990,	gamegear,	0,			sms,		gamegear,	sms,	0,		gamegear,	"Sega",			"Game Gear - European/American" , 0)
-CONS(	1990,	gamegj,		gamegear,	0,			gamegear,	sms,	0,		gamegear,	"Sega",			"Game Gear - Japanese" , 0)
-CONS(	1990,	gamg,		gamegear,	0,			gamegear,	sms,	0,		gamegearo,	"Majesco",		"Game Gear - European/American Majesco Game Gear BIOS" , 0)
-CONS(	1990,	gamgj,		gamegear,	0,			gamegear,	sms,	0,		gamegearo,	"Majesco",		"Game Gear - Japanese Majesco Game Gear BIOS" , 0)
+CONS(	1985,	smsj21,		sms,		0,			smsj21,		sms,	0,		smso,		"Sega",			"Master System - (PAL) Japanese SMS BIOS v2.1" , FLAG_REGION_JAPAN | FLAG_BIOS_2000 | FLAG_FM )
+CONS(	1984,	smsm3,		sms,		0,			smsm3,		sms,	0,		smso,		"Sega",			"Mark III - (PAL) Japanese SMS BIOS v2.1" , FLAG_REGION_JAPAN | FLAG_BIOS_2000 )
+CONS(	198?,	smsss,		sms,		0,			smsj21,		sms,	0,		smso,		"Samsung",		"Gamboy - (PAL) Japanese SMS BIOS v2.1" , FLAG_REGION_JAPAN | FLAG_BIOS_2000 | FLAG_FM )
+CONS(	1990,	gamegear,	0,			sms,		gamegear,	sms,	0,		gamegear,	"Sega",			"Game Gear - European/American" , FLAG_GAMEGEAR )
+CONS(	1990,	gamegj,		gamegear,	0,			gamegear,	sms,	0,		gamegear,	"Sega",			"Game Gear - Japanese" , FLAG_REGION_JAPAN | FLAG_GAMEGEAR )
+CONS(	1990,	gamg,		gamegear,	0,			gamegear,	sms,	0,		gamegearo,	"Majesco",		"Game Gear - European/American Majesco Game Gear BIOS" , FLAG_GAMEGEAR | FLAG_BIOS_0400 )
+CONS(	1990,	gamgj,		gamegear,	0,			gamegear,	sms,	0,		gamegearo,	"Majesco",		"Game Gear - Japanese Majesco Game Gear BIOS" , FLAG_REGION_JAPAN | FLAG_GAMEGEAR | FLAG_BIOS_0400 )
 
