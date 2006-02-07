@@ -1,3 +1,14 @@
+/***************************************************************************
+
+    streams.h
+
+    Handle general purpose audio streams
+
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
+***************************************************************************/
+
 #ifndef STREAMS_H
 #define STREAMS_H
 
@@ -22,5 +33,6 @@ int stream_get_inputs(sound_stream *stream);
 int stream_get_outputs(sound_stream *stream);
 void stream_set_input_gain(sound_stream *stream, int input, float gain);
 void stream_set_output_gain(sound_stream *stream, int output, float gain);
+void stream_set_sample_rate(sound_stream *stream, int sample_rate);
 
 #endif

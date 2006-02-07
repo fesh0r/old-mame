@@ -65,8 +65,7 @@ VIDEO_START( f1gp )
 
 	tilemap_set_transparent_pen(fg_tilemap,0xff);
 
-	if (!(dirtychar = auto_malloc(TOTAL_CHARS)))
-		return 1;
+	dirtychar = auto_malloc(TOTAL_CHARS);
 	memset(dirtychar,1,TOTAL_CHARS);
 
 	zoomdata = (UINT16 *)memory_region(REGION_GFX4);
@@ -91,8 +90,7 @@ VIDEO_START( f1gp2 )
 	tilemap_set_scrolldx(fg_tilemap,-80,0);
 	tilemap_set_scrolldy(fg_tilemap,-26,0);
 
-	if (!(dirtychar = auto_malloc(TOTAL_CHARS)))
-		return 1;
+	dirtychar = auto_malloc(TOTAL_CHARS);
 	memset(dirtychar,1,TOTAL_CHARS);
 
 	zoomdata = (UINT16 *)memory_region(REGION_GFX4);
@@ -205,7 +203,7 @@ static void f1gp_drawsprites(mame_bitmap *bitmap,const rectangle *cliprect,int c
 		int ox,oy,x,y,xsize,ysize,zoomx,zoomy,flipx,flipy,color,pri;
 		/* table hand made by looking at the ship explosion in attract mode */
 		/* it's almost a logarithmic scale but not exactly */
-		int zoomtable[16] = { 0,7,14,20,25,30,34,38,42,46,49,52,54,57,59,61 };
+		static const int zoomtable[16] = { 0,7,14,20,25,30,34,38,42,46,49,52,54,57,59,61 };
 
 		if (!(spram[attr_start + 2] & 0x0080)) continue;
 

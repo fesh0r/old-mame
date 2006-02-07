@@ -1,9 +1,12 @@
 /*********************************************************************
 
-  ui_text.c
+    ui_text.c
 
-  Functions used to retrieve text used by MAME, to aid in
-  translation.
+    Functions used to retrieve text used by MAME, to aid in
+    translation.
+
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
 
@@ -194,6 +197,7 @@ static const char *mame_default_text[] =
 
 	/* refresh rate */
 	"Refresh rate",
+	"Decoding Graphics",
 
 	NULL
 };
@@ -240,8 +244,6 @@ int uistring_init (mame_file *langfile)
 
 	/* allocate the translated text array, and set defaults */
 	trans_text = auto_malloc(sizeof(const char *) * string_count);
-	if (!trans_text)
-		return 1;
 
 	/* copy in references to all of the strings */
 	str = 0;

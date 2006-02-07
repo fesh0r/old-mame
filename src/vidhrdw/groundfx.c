@@ -24,8 +24,6 @@ static rectangle hack_cliprect;
 VIDEO_START( groundfx )
 {
 	spritelist = auto_malloc(0x4000 * sizeof(*spritelist));
-	if (!spritelist)
-		return 1;
 
 	if (TC0100SCN_vh_start(1,TC0100SCN_GFX_NUM,50,8,0,0,0,0,0))
 		return 1;
@@ -98,7 +96,7 @@ static void groundfx_draw_sprites_16x16(mame_bitmap *bitmap,const rectangle *cli
 	int zoomx, zoomy, zx, zy;
 	int sprite_chunk,map_offset,code,j,k,px,py;
 	int dimension,total_chunks,bad_chunks;
-	int primasks[4] = {0xffff, 0xfffc, 0xfff0, 0xff00 };
+	static const int primasks[4] = {0xffff, 0xfffc, 0xfff0, 0xff00 };
 
 	/* pdrawgfx() needs us to draw sprites front to back, so we have to build a list
        while processing sprite ram and then draw them all at the end */

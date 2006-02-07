@@ -4,6 +4,9 @@
 
     Handle input ports and mappings.
 
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
 ***************************************************************************/
 
 #pragma once
@@ -211,6 +214,7 @@ enum
 	/* the following are special codes for user interface handling - not to be used by drivers! */
 	IPT_UI_CONFIGURE,
 	IPT_UI_ON_SCREEN_DISPLAY,
+	IPT_UI_DEBUG_BREAK,
 	IPT_UI_PAUSE,
 	IPT_UI_RESET_MACHINE,
 	IPT_UI_SHOW_GFX,

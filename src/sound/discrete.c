@@ -26,11 +26,11 @@
  * Core software takes care of traversing the netlist in the correct
  * order
  *
- * discrete_sh_start()       - Read Node list, initialise & reset
- * discrete_sh_stop()        - Shutdown discrete sound system
- * discrete_sh_reset()       - Put sound system back to time 0
- * discrete_sh_update()      - Update streams to current time
- * discrete_stream_update()  - This does the real update to the sim
+ * discrete_start()         - Read Node list, initialise & reset
+ * discrete_stop()          - Shutdown discrete sound system
+ * discrete_reset()         - Put sound system back to time 0
+ * discrete_update()        - Update streams to current time
+ * discrete_stream_update() - This does the real update to the sim
  *
  ************************************************************************/
 
@@ -48,7 +48,6 @@
  *
  *************************************/
 
-#define DISCRETE_WAVELOG			(0)
 #define DISCRETE_DEBUGLOG			(0)
 
 
@@ -61,29 +60,44 @@
 
 struct discrete_info
 {
+	/* emulation info */
+	int		sndindex;
+	int		sample_rate;
+	double	sample_time;
+
 	/* internal node tracking */
 	int node_count;
 	struct node_description **running_order;
 	struct node_description **indexed_node;
 	struct node_description *node_list;
 
-	/* output node tracking */
-	int discrete_outputs;
-	struct node_description *output_node[DISCRETE_MAX_OUTPUTS];
-
 	/* the input streams */
 	int discrete_input_streams;
 	stream_sample_t *input_stream_data[DISCRETE_MAX_OUTPUTS];
 
+	/* output node tracking */
+	int discrete_outputs;
+	struct node_description *output_node[DISCRETE_MAX_OUTPUTS];
+
 	/* the output stream */
 	sound_stream *discrete_stream;
+
+	/* debugging statics */
+	FILE *disclogfile;
+
+	/* csvlog tracking */
+	int num_csvlogs;
+	FILE *disc_csv_file[DISCRETE_MAX_CSVLOGS];
+	struct node_description *csvlog_node[DISCRETE_MAX_CSVLOGS];
+	INT64 sample_num;
+
+	/* wavelog tracking */
+	int num_wavelogs;
+	wav_file *disc_wav_file[DISCRETE_MAX_WAVELOGS];
+	struct node_description *wavelog_node[DISCRETE_MAX_WAVELOGS];
 };
 
 static struct discrete_info *discrete_current_context;
-
-/* debugging statics */
-static wav_file *disc_wav_file[DISCRETE_MAX_OUTPUTS];
-FILE *disclogfile = NULL;
 
 
 
@@ -96,6 +110,7 @@ FILE *disclogfile = NULL;
 static void init_nodes(struct discrete_info *info, struct discrete_sound_block *block_list);
 static void find_input_nodes(struct discrete_info *info, struct discrete_sound_block *block_list);
 static void setup_output_nodes(struct discrete_info *info);
+static void setup_disc_logs(struct discrete_info *info);
 static void discrete_reset(void *chip);
 
 
@@ -113,10 +128,10 @@ void CLIB_DECL discrete_log(const char *text, ...)
 		va_list arg;
 		va_start(arg, text);
 
-		if(disclogfile)
+		if(discrete_current_context->disclogfile)
 		{
-			vfprintf(disclogfile, text, arg);
-			fprintf(disclogfile, "\n");
+			vfprintf(discrete_current_context->disclogfile, text, arg);
+			fprintf(discrete_current_context->disclogfile, "\n");
 		}
 
 		va_end(arg);
@@ -148,14 +163,16 @@ void CLIB_DECL discrete_log(const char *text, ...)
 struct discrete_module module_list[] =
 {
 	{ DSO_OUTPUT      ,"DSO_OUTPUT"      ,0                                      ,NULL                  ,NULL                 },
+	{ DSO_CSVLOG      ,"DSO_CSVLOG"      ,0                                      ,NULL                  ,NULL                 },
+	{ DSO_WAVELOG     ,"DSO_WAVELOG"     ,0                                      ,NULL                  ,NULL                 },
 
 	/* from disc_inp.c */
 	{ DSS_ADJUSTMENT  ,"DSS_ADJUSTMENT"  ,sizeof(struct dss_adjustment_context)  ,dss_adjustment_reset  ,dss_adjustment_step  },
 	{ DSS_CONSTANT    ,"DSS_CONSTANT"    ,0                                      ,NULL                  ,dss_constant_step    },
-	{ DSS_INPUT_DATA  ,"DSS_INPUT_DATA"  ,sizeof(UINT8)                        ,dss_input_reset       ,dss_input_step       },
-	{ DSS_INPUT_LOGIC ,"DSS_INPUT_LOGIC" ,sizeof(UINT8)                        ,dss_input_reset       ,dss_input_step       },
-	{ DSS_INPUT_NOT   ,"DSS_INPUT_NOT"   ,sizeof(UINT8)                        ,dss_input_reset       ,dss_input_step       },
-	{ DSS_INPUT_PULSE ,"DSS_INPUT_PULSE" ,sizeof(UINT8)                        ,dss_input_reset       ,dss_input_pulse_step },
+	{ DSS_INPUT_DATA  ,"DSS_INPUT_DATA"  ,sizeof(UINT8)                          ,dss_input_reset       ,dss_input_step       },
+	{ DSS_INPUT_LOGIC ,"DSS_INPUT_LOGIC" ,sizeof(UINT8)                          ,dss_input_reset       ,dss_input_step       },
+	{ DSS_INPUT_NOT   ,"DSS_INPUT_NOT"   ,sizeof(UINT8)                          ,dss_input_reset       ,dss_input_step       },
+	{ DSS_INPUT_PULSE ,"DSS_INPUT_PULSE" ,sizeof(UINT8)                          ,dss_input_reset       ,dss_input_pulse_step },
 	{ DSS_INPUT_STREAM,"DSS_INPUT_STREAM",sizeof(stream_sample_t)                ,dss_input_stream_reset,dss_input_stream_step},
 
 	/* from disc_wav.c */
@@ -231,6 +248,7 @@ struct discrete_module module_list[] =
 	{ DSD_555_ASTBL   ,"DSD_555_ASTBL"   ,sizeof(struct dsd_555_astbl_context)   ,dsd_555_astbl_reset   ,dsd_555_astbl_step   },
 	{ DSD_555_MSTBL   ,"DSD_555_MSTBL"   ,sizeof(struct dsd_555_mstbl_context)   ,dsd_555_mstbl_reset   ,dsd_555_mstbl_step   },
 	{ DSD_555_CC      ,"DSD_555_CC"      ,sizeof(struct dsd_555_cc_context)      ,dsd_555_cc_reset      ,dsd_555_cc_step      },
+	{ DSD_555_VCO1    ,"DSD_555_VCO1"    ,0                                      ,dsd_555_vco1_reset    ,dsd_555_vco1_step      },
 	{ DSD_566         ,"DSD_566"         ,sizeof(struct dsd_566_context)         ,dsd_566_reset         ,dsd_566_step         },
 
 	/* must be the last one */
@@ -264,6 +282,7 @@ static void *discrete_start(int sndindex, int clock, const void *config)
 {
 	struct discrete_sound_block *intf = (struct discrete_sound_block *)config;
 	struct discrete_info *info;
+	char name[32];
 
 	info = auto_malloc(sizeof(*info));
 	memset(info, 0, sizeof(*info));
@@ -272,45 +291,49 @@ static void *discrete_start(int sndindex, int clock, const void *config)
 	if (!Machine->sample_rate)
 		return info;
 
+	info->sndindex = sndindex;
+
+	/* If a clock is specified we will use it, otherwise run at the audio sample rate. */
+	if (clock)
+		info->sample_rate = clock;
+	else
+		info->sample_rate = Machine->sample_rate;
+	info->sample_time = 1.0 / info->sample_rate;
+
 	/* create the logfile */
-	if (DISCRETE_DEBUGLOG && !disclogfile)
-		disclogfile = fopen("discrete.log", "w");
+	sprintf(name, "discrete%d.log", info->sndindex);
+	if (DISCRETE_DEBUGLOG && !discrete_current_context->disclogfile)
+		discrete_current_context->disclogfile = fopen(name, "w");
 
 	/* first pass through the nodes: sanity check, fill in the indexed_nodes, and make a total count */
-	discrete_log("discrete_sh_start() - Doing node list sanity check");
+	discrete_log("discrete_start() - Doing node list sanity check");
 	for (info->node_count = 0; intf[info->node_count].type != DSS_NULL; info->node_count++)
 	{
 		/* make sure we don't have too many nodes overall */
 		if (info->node_count > DISCRETE_MAX_NODES)
-			osd_die("discrete_sh_start() - Upper limit of %d nodes exceeded, have you terminated the interface block.", DISCRETE_MAX_NODES);
+			osd_die("discrete_start() - Upper limit of %d nodes exceeded, have you terminated the interface block.", DISCRETE_MAX_NODES);
 
 		/* make sure the node number is in range */
 		if (intf[info->node_count].node < NODE_START || intf[info->node_count].node > NODE_END)
-			osd_die("discrete_sh_start() - Invalid node number on node %02d descriptor\n", info->node_count);
+			osd_die("discrete_start() - Invalid node number on node %02d descriptor\n", info->node_count);
 
 		/* make sure the node type is valid */
 		if (intf[info->node_count].type > DSO_OUTPUT)
-			osd_die("discrete_sh_start() - Invalid function type on NODE_%02d\n", intf[info->node_count].node - NODE_START);
+			osd_die("discrete_start() - Invalid function type on NODE_%02d\n", intf[info->node_count].node - NODE_START);
 	}
 	info->node_count++;
-	discrete_log("discrete_sh_start() - Sanity check counted %d nodes", info->node_count);
+	discrete_log("discrete_start() - Sanity check counted %d nodes", info->node_count);
 
 	/* allocate memory for the array of actual nodes */
 	info->node_list = auto_malloc(info->node_count * sizeof(info->node_list[0]));
-	if (!info->node_list)
-		osd_die("discrete_sh_start() - Out of memory allocating info->node_list\n");
 	memset(info->node_list, 0, info->node_count * sizeof(info->node_list[0]));
 
 	/* allocate memory for the node execution order array */
 	info->running_order = auto_malloc(info->node_count * sizeof(info->running_order[0]));
-	if (!info->running_order)
-		osd_die("discrete_sh_start() - Out of memory allocating info->running_order\n");
 	memset(info->running_order, 0, info->node_count * sizeof(info->running_order[0]));
 
 	/* allocate memory to hold pointers to nodes by index */
 	info->indexed_node = auto_malloc(DISCRETE_MAX_NODES * sizeof(info->indexed_node[0]));
-	if (!info->indexed_node)
-		osd_die("discrete_sh_start() - Out of memory allocating indexed_node\n");
 	memset(info->indexed_node, 0, DISCRETE_MAX_NODES * sizeof(info->indexed_node[0]));
 
 	/* initialize the node data */
@@ -321,6 +344,8 @@ static void *discrete_start(int sndindex, int clock, const void *config)
 
 	/* then set up the output nodes */
 	setup_output_nodes(info);
+
+	setup_disc_logs(info);
 
 	/* reset the system, which in turn resets all the nodes and steps them forward one */
 	discrete_reset(info);
@@ -338,22 +363,24 @@ static void *discrete_start(int sndindex, int clock, const void *config)
 static void discrete_stop(void *chip)
 {
 	struct discrete_info *info = chip;
-	if (DISCRETE_WAVELOG)
-	{
-		int outputnum;
+	int log_num;
 
-		/* close any wave files */
-		for (outputnum = 0; outputnum < info->discrete_outputs; outputnum++)
-			if (disc_wav_file[outputnum])
-				wav_close(disc_wav_file[outputnum]);
-	}
+	/* close any csv files */
+	for (log_num = 0; log_num < info->num_csvlogs; log_num++)
+		if (info->disc_csv_file[log_num])
+			fclose(info->disc_csv_file[log_num]);
+
+	/* close any wave files */
+	for (log_num = 0; log_num < info->num_wavelogs; log_num++)
+		if (info->disc_wav_file[log_num])
+			wav_close(info->disc_wav_file[log_num]);
 
 	if (DISCRETE_DEBUGLOG)
 	{
 		/* close the debug log */
-	    if (disclogfile)
-	    	fclose(disclogfile);
-		disclogfile = NULL;
+	    if (discrete_current_context->disclogfile)
+	    	fclose(discrete_current_context->disclogfile);
+		discrete_current_context->disclogfile = NULL;
 	}
 }
 
@@ -401,6 +428,8 @@ static void discrete_stream_update(void *param, stream_sample_t **inputs, stream
 {
 	struct discrete_info *info = param;
 	int samplenum, nodenum, outputnum;
+	double val;
+	INT16 wave_data_l, wave_data_r;
 
 	discrete_current_context = info;
 
@@ -423,26 +452,50 @@ static void discrete_stream_update(void *param, stream_sample_t **inputs, stream
 				(*node->module.step)(node);
 		}
 
-		/* Now put the output into the buffers */
+		/* Add gain to the output and put into the buffers */
+		/* Clipping will be handled by the main sound system */
 		for (outputnum = 0; outputnum < info->discrete_outputs; outputnum++)
 		{
-			double val = *info->output_node[outputnum]->input[0];
-			buffer[outputnum][samplenum] = (val < -32768) ? -32768 : (val > 32767) ? 32767 : val;
+			val = (*info->output_node[outputnum]->input[0]) * (*info->output_node[outputnum]->input[1]);
+			buffer[outputnum][samplenum] = val;
+		}
+
+		/* Dump any csv logs */
+		for (outputnum = 0; outputnum < info->num_csvlogs; outputnum++)
+		{
+			fprintf(info->disc_csv_file[outputnum], "%lld", ++info->sample_num);
+			for (nodenum = 0; nodenum < info->csvlog_node[outputnum]->active_inputs; nodenum++)
+			{
+				fprintf(info->disc_csv_file[outputnum], ", %f", *info->csvlog_node[outputnum]->input[nodenum]);
+			}
+			fprintf(info->disc_csv_file[outputnum], "\n");
+		}
+
+		/* Dump any wave logs */
+		for (outputnum = 0; outputnum < info->num_wavelogs; outputnum++)
+		{
+			/* get nodes to be logged and apply gain, then clip to 16 bit */
+			val = (*info->wavelog_node[outputnum]->input[0]) * (*info->wavelog_node[outputnum]->input[1]);
+			val = (val < -32768) ? -32768 : (val > 32767) ? 32767 : val;
+			wave_data_l = (INT16)val;
+			if (info->wavelog_node[outputnum]->active_inputs == 2)
+			{
+				/* DISCRETE_WAVELOG1 */
+				wav_add_data_16(info->disc_wav_file[outputnum], &wave_data_l, 1);
+			}
+			else
+			{
+				/* DISCRETE_WAVELOG2 */
+				val = (*info->wavelog_node[outputnum]->input[2]) * (*info->wavelog_node[outputnum]->input[3]);
+				val = (val < -32768) ? -32768 : (val > 32767) ? 32767 : val;
+				wave_data_r = (INT16)val;
+
+				wav_add_data_16lr(info->disc_wav_file[outputnum], &wave_data_l, &wave_data_r, 1);
+			}
 		}
 	}
 
 	discrete_current_context = NULL;
-
-	/* add each stream to the logging wavfile */
-	if (DISCRETE_WAVELOG)
-	{
-		if (sizeof(stream_sample_t) == 2)
-			for (outputnum = 0; outputnum < info->discrete_outputs; outputnum++)
-				wav_add_data_16(disc_wav_file[outputnum], (INT16 *)buffer[outputnum], length);
-		else
-			for (outputnum = 0; outputnum < info->discrete_outputs; outputnum++)
-				wav_add_data_32(disc_wav_file[outputnum], (INT32 *)buffer[outputnum], length, 0);
-	}
 }
 
 
@@ -471,12 +524,35 @@ static void init_nodes(struct discrete_info *info, struct discrete_sound_block *
 		/* our running order just follows the order specified */
 		info->running_order[nodenum] = node;
 
-		/* if we are an output node, track that */
-		if (block->node == NODE_OP)
+		/* keep track of special nodes */
+		if (block->node == NODE_SPECIAL)
 		{
-			if (info->discrete_outputs == DISCRETE_MAX_OUTPUTS)
-				osd_die("init_nodes() - There can not be more then %d output nodes", DISCRETE_MAX_OUTPUTS);
-			info->output_node[info->discrete_outputs++] = node;
+			switch(block->type)
+			{
+				/* Output Node */
+				case DSO_OUTPUT:
+					if (info->discrete_outputs == DISCRETE_MAX_OUTPUTS)
+						osd_die("init_nodes() - There can not be more then %d output nodes", DISCRETE_MAX_OUTPUTS);
+					info->output_node[info->discrete_outputs++] = node;
+					break;
+
+				/* CSVlog Node for debugging */
+				case DSO_CSVLOG:
+					if (info->num_csvlogs == DISCRETE_MAX_CSVLOGS)
+						osd_die("init_nodes() - There can not be more then %d discrete CSV logs.", DISCRETE_MAX_WAVELOGS);
+					info->csvlog_node[info->num_csvlogs++] = node;
+					break;
+
+				/* Wavelog Node for debugging */
+				case DSO_WAVELOG:
+					if (info->num_wavelogs == DISCRETE_MAX_WAVELOGS)
+						osd_die("init_nodes() - There can not be more then %d discrete wave logs.", DISCRETE_MAX_WAVELOGS);
+					info->wavelog_node[info->num_wavelogs++] = node;
+					break;
+
+				default:
+					osd_die("init_nodes() - Failed, trying to create unknown special discrete node.");
+			}
 		}
 
 		/* otherwise, make sure we are not a duplicate, and put ourselves into the indexed list */
@@ -498,6 +574,7 @@ static void init_nodes(struct discrete_info *info, struct discrete_sound_block *
 		node->node = block->node;
 		node->module = module_list[modulenum];
 		node->output = 0.0;
+		node->block = block;
 
 		node->active_inputs = block->active_inputs;
 		for (inputnum = 0; inputnum < DISCRETE_MAX_INPUTS; inputnum++)
@@ -513,8 +590,6 @@ static void init_nodes(struct discrete_info *info, struct discrete_sound_block *
 		if (node->module.contextsize)
 		{
 			node->context = auto_malloc(node->module.contextsize);
-			if (!node->context)
-				osd_die("init_nodes() - Out of memory allocating memory for NODE_%02d\n", node->node - NODE_START);
 			memset(node->context, 0, node->module.contextsize);
 		}
 
@@ -560,7 +635,7 @@ static void find_input_nodes(struct discrete_info *info, struct discrete_sound_b
 			{
 				struct node_description *node_ref = info->indexed_node[inputnode - NODE_START];
 				if (!node_ref)
-					osd_die("discrete_sh_start - Node NODE_%02d referenced a non existent node NODE_%02d\n", node->node - NODE_START, inputnode - NODE_START);
+					osd_die("discrete_start - Node NODE_%02d referenced a non existent node NODE_%02d\n", node->node - NODE_START, inputnode - NODE_START);
 
 				node->input[inputnum] = &(node_ref->output);	// Link referenced node out to input
 				node->input_is_node |= 1 << inputnum;			// Bit flag if input is node
@@ -579,22 +654,45 @@ static void find_input_nodes(struct discrete_info *info, struct discrete_sound_b
 
 static void setup_output_nodes(struct discrete_info *info)
 {
-	int outputnum;
+	/* initialize the stream(s) */
+	info->discrete_stream = stream_create(info->discrete_input_streams, info->discrete_outputs, info->sample_rate, info, discrete_stream_update);
+}
 
-	/* loop over output nodes */
-	for (outputnum = 0; outputnum < info->discrete_outputs; outputnum++)
+
+
+/*************************************
+ *
+ *  Set up the logs
+ *
+ *************************************/
+
+static void setup_disc_logs(struct discrete_info *info)
+{
+	int log_num, node_num;
+	char name[32];
+
+	for (log_num = 0; log_num < info->num_csvlogs; log_num++)
 	{
-		/* create a logging file */
-		if (DISCRETE_WAVELOG)
+		sprintf(name, "discrete%d_%d.csv", info->sndindex, log_num);
+		info->disc_csv_file[log_num] = fopen(name, "w");;
+		/* Output some header info */
+		fprintf(info->disc_csv_file[log_num], "\"MAME Discrete System Node Log\"\n");
+		fprintf(info->disc_csv_file[log_num], "\"Log Version\", 1.0\n");
+		fprintf(info->disc_csv_file[log_num], "\"Sample Rate\", %d\n", info->sample_rate);
+		fprintf(info->disc_csv_file[log_num], "\n");
+		fprintf(info->disc_csv_file[log_num], "\"Sample\"");
+		for (node_num = 0; node_num < info->csvlog_node[log_num]->active_inputs; node_num++)
 		{
-			char name[32];
-			sprintf(name, "discrete%d.wav", outputnum);
-			disc_wav_file[outputnum] = wav_open(name, Machine->sample_rate, 1);
+			fprintf(info->disc_csv_file[log_num], ", \"NODE_%2d\"", info->csvlog_node[log_num]->block->input_node[node_num] - NODE_START);
 		}
+		fprintf(info->disc_csv_file[log_num], "\n");
 	}
 
-	/* initialize the stream(s) */
-	info->discrete_stream = stream_create(info->discrete_input_streams, info->discrete_outputs, Machine->sample_rate, info, discrete_stream_update);
+	for (log_num = 0; log_num < info->num_wavelogs; log_num++)
+	{
+		sprintf(name, "discrete%d_%d.wav", info->sndindex, log_num);
+		info->disc_wav_file[log_num] = wav_open(name, info->sample_rate, info->wavelog_node[log_num]->active_inputs/2);
+	}
 }
 
 

@@ -1,134 +1,79 @@
 /*********************************************************************
 
-	mc146818.c
+    mc146818.c
 
-	Implementation of the MC146818 chip
+    Implementation of the MC146818 chip
 
-	Real time clock chip with battery buffered ram (or CMOS)
-	Used in IBM PC/AT, several PC clones, Amstrad NC200
+    Real time clock chip with battery buffered ram (or CMOS)
+    Used in IBM PC/AT, several PC clones, Amstrad NC200
 
-	Nathan Woods  (npwoods@mess.org)
-	Peter Trauner (peter.trauner@jk.uni-linz.ac.at)
+    Nathan Woods  (npwoods@mess.org)
+    Peter Trauner (peter.trauner@jk.uni-linz.ac.at)
 
-	PC CMOS info (based on info from Padgett Peterson):
+    PC CMOS info (based on info from Padgett Peterson):
 
-	Clock Related:
-		0x00 Seconds       (BCD 00-59, Hex 00-3B) Note: Bit 7 is read only
-		0x01 Second Alarm  (BCD 00-59, Hex 00-3B; "don't care" if C0-FF)
-		0x02 Minutes       (BCD 00-59, Hex 00-3B)
-		0x03 Minute Alarm  (BCD 00-59, Hex 00-3B; "don't care" if C0-FF))
-		0x04 Hours         (BCD 00-23, Hex 00-17 if 24 hr mode)
-						(BCD 01-12, Hex 01-0C if 12 hr am)
-						(BCD 81-92. Hex 81-8C if 12 hr pm)
-		0x05 Hour Alarm    (same as hours; "don't care" if C0-FF))
-		0x06 Day of Week   (01-07 Sunday=1)
-		0x07 Date of Month (BCD 01-31, Hex 01-1F)
-		0x08 Month         (BCD 01-12, Hex 01-0C)
-		0x09 Year          (BCD 00-99, Hex 00-63)
-		0x0B Status Register B (read/write)
-			Bit 7 - 1 enables cycle update, 0 disables
-			Bit 6 - 1 enables periodic interrupt
-			Bit 5 - 1 enables alarm interrupt
-			Bit 4 - 1 enables update-ended interrupt
-			Bit 3 - 1 enables square wave output
-			Bit 2 - Data Mode - 0: BCD, 1: Binary
-			Bit 1 - 24/12 hour selection - 1 enables 24 hour mode
-			Bit 0 - Daylight Savings Enable - 1 enables
-		0x0C Status Register C (Read only)
-			Bit 7 - Interrupt request flag - 1 when any or all of bits 6-4 are
-						1 and appropriate enables (Register B) are set to 1. Generates
-						IRQ 8 when triggered.
-			Bit 6 - Periodic Interrupt flag
-			Bit 5 - Alarm Interrupt flag
-			Bit 4 - Update-Ended Interrupt Flag
-			Bit 3-0 ???
-		0x0D Status Register D (read only)
-			Bit 7 - Valid RAM - 1 indicates batery power good, 0 if dead or
-						disconnected.
-			Bit 6-0 ???
+    Clock Related:
+        0x00 Seconds       (BCD 00-59, Hex 00-3B) Note: Bit 7 is read only
+        0x01 Second Alarm  (BCD 00-59, Hex 00-3B; "don't care" if C0-FF)
+        0x02 Minutes       (BCD 00-59, Hex 00-3B)
+        0x03 Minute Alarm  (BCD 00-59, Hex 00-3B; "don't care" if C0-FF))
+        0x04 Hours         (BCD 00-23, Hex 00-17 if 24 hr mode)
+                        (BCD 01-12, Hex 01-0C if 12 hr am)
+                        (BCD 81-92. Hex 81-8C if 12 hr pm)
+        0x05 Hour Alarm    (same as hours; "don't care" if C0-FF))
+        0x06 Day of Week   (01-07 Sunday=1)
+        0x07 Date of Month (BCD 01-31, Hex 01-1F)
+        0x08 Month         (BCD 01-12, Hex 01-0C)
+        0x09 Year          (BCD 00-99, Hex 00-63)
+        0x0B Status Register B (read/write)
+            Bit 7 - 1 enables cycle update, 0 disables
+            Bit 6 - 1 enables periodic interrupt
+            Bit 5 - 1 enables alarm interrupt
+            Bit 4 - 1 enables update-ended interrupt
+            Bit 3 - 1 enables square wave output
+            Bit 2 - Data Mode - 0: BCD, 1: Binary
+            Bit 1 - 24/12 hour selection - 1 enables 24 hour mode
+            Bit 0 - Daylight Savings Enable - 1 enables
+        0x0C Status Register C (Read only)
+            Bit 7 - Interrupt request flag - 1 when any or all of bits 6-4 are
+                        1 and appropriate enables (Register B) are set to 1. Generates
+                        IRQ 8 when triggered.
+            Bit 6 - Periodic Interrupt flag
+            Bit 5 - Alarm Interrupt flag
+            Bit 4 - Update-Ended Interrupt Flag
+            Bit 3-0 ???
+        0x0D Status Register D (read only)
+            Bit 7 - Valid RAM - 1 indicates batery power good, 0 if dead or
+                        disconnected.
+            Bit 6-0 ???
 
-	Non-clock related:
-		0x0E (PS/2) Diagnostic Status Byte
-			Bit 7 - When set (1) indicates clock has lost power
-			Bit 6 - (1) indicates incorrect checksum
-			Bit 5 - (1) indicates that equipment configuration is incorrect
-							power-on check requires that atleast one floppy be installed
-			Bit 4 - (1) indicates error in memory size
-			Bit 3 - (1) indicates that controller or disk drive failed initialization
-			Bit 2 - (1) indicates that time is invalid
-			Bit 1 - (1) indicates installed adaptors do not match configuration
-			Bit 0 - (1) indicates a time-out while reading adaptor ID
-		0x0E (AMSTRAD) 6  BYTEs time and date machine last used
-		0x0F Reset Code (IBM PS/2 "Shutdown Status Byte")
-			0x00-0x03	perform power-on reset
-			0x04		INT 19h reboot
-			0x05		flush keyboard and jump via 0040:0067
-			0x06-0x07	reserved
-			0x08		used by POST during protected-mode RAM test
-			0x09		used for INT 15/87h (block move) support
-			0x0A		jump via 0040:0067
-			0x0B-0xFF	perform power-on reset
+    Non-clock related:
+        0x0E (PS/2) Diagnostic Status Byte
+            Bit 7 - When set (1) indicates clock has lost power
+            Bit 6 - (1) indicates incorrect checksum
+            Bit 5 - (1) indicates that equipment configuration is incorrect
+                            power-on check requires that atleast one floppy be installed
+            Bit 4 - (1) indicates error in memory size
+            Bit 3 - (1) indicates that controller or disk drive failed initialization
+            Bit 2 - (1) indicates that time is invalid
+            Bit 1 - (1) indicates installed adaptors do not match configuration
+            Bit 0 - (1) indicates a time-out while reading adaptor ID
+        0x0E (AMSTRAD) 6  BYTEs time and date machine last used
+        0x0F Reset Code (IBM PS/2 "Shutdown Status Byte")
+            0x00-0x03   perform power-on reset
+            0x04        INT 19h reboot
+            0x05        flush keyboard and jump via 0040:0067
+            0x06-0x07   reserved
+            0x08        used by POST during protected-mode RAM test
+            0x09        used for INT 15/87h (block move) support
+            0x0A        jump via 0040:0067
+            0x0B-0xFF   perform power-on reset
 
 *********************************************************************/
 
 #include "machine/mc146818.h"
 #include "memconv.h"
 
-#ifdef MESS
-#include "mscommon.h"
-#else
-/***************************************************************************
-
-    Binary coded decimal
-
-***************************************************************************/
-
-int bcd_adjust(int value)
-{
-	if ((value & 0xf) >= 0xa)
-		value = value + 0x10 - 0xa;
-	if ((value & 0xf0) >= 0xa0)
-		value = value - 0xa0 + 0x100;
-	return value;
-}
-
-int dec_2_bcd(int a)
-{
-	return (a % 10) | ((a / 10) << 4);
-}
-
-int bcd_2_dec(int a)
-{
-	return (a & 0xf) + (a >> 4) * 10;
-}
-
-/***************************************************************************
-
-    Gregorian calendar code
-
-***************************************************************************/
-
-int	gregorian_is_leap_year(int year)
-{
-	return ((year & 4) == 0)
-		&& ((year % 100 != 0) || (year % 400 == 0));
-}
-
-/* months are one counted */
-int gregorian_days_in_month(int month, int year)
-{
-	static int days_in_month[] =
-	{
-		31, 28, 31, 30, 31, 30,
-		31, 31, 30, 31, 30, 31
-	};
-
-	if ((month != 2) || !gregorian_is_leap_year(year))
-		return days_in_month[month-1];
-	else
-		return 29;
-}
-#endif
 
 
 #define LOG_MC146818		0
@@ -250,9 +195,6 @@ static void mc146818_timer(int param)
 void mc146818_init(MC146818_TYPE type)
 {
 	mc146818 = auto_malloc(sizeof(*mc146818));
-	if (!mc146818)
-		return;
-
 	memset(mc146818, 0, sizeof(*mc146818));
 	mc146818->type = type;
 	mc146818->last_refresh = timer_get_time();

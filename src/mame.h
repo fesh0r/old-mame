@@ -4,6 +4,9 @@
 
     Controls execution of the core MAME system.
 
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
 ***************************************************************************/
 
 #ifndef __MAME_H__
@@ -17,6 +20,7 @@
 #include "fileio.h"
 #include "drawgfx.h"
 #include "palette.h"
+#include "inptport.h"
 
 #ifdef MESS
 #include "device.h"
@@ -94,11 +98,11 @@ struct _running_machine
 	gfx_element *			gfx[MAX_GFX_ELEMENTS];
 
 	/* main bitmap to render to (but don't do it directly!) */
-	mame_bitmap *	scrbitmap;
+	mame_bitmap *			scrbitmap;
 
 	/* current visible area, and a prerotated one adjusted for orientation */
-	rectangle 		visible_area;
-	rectangle		absolute_visible_area;
+	rectangle 				visible_area;
+	rectangle				absolute_visible_area;
 
 	/* current video refresh rate */
 	float					refresh_rate;
@@ -142,7 +146,7 @@ struct _running_machine
 	/* ----- debugger-related information ----- */
 
 	/* bitmap where the debugger is rendered */
-	mame_bitmap *	debug_bitmap;
+	mame_bitmap *			debug_bitmap;
 
 	/* pen array for the debugger, analagous to the pens above */
 	pen_t *					debug_pens;

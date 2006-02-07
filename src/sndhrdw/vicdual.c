@@ -9,6 +9,12 @@
 #include "sound/discrete.h"
 #include "sound/samples.h"
 
+
+/************************************************************************
+ * frogs Sound System Analog emulation
+ * Oct 2004, Derrick Renaud
+ ************************************************************************/
+
 /* Discrete Sound Input Nodes */
 #define FROGS_FLY_EN		NODE_01
 #define FROGS_JUMP_EN		NODE_03
@@ -16,12 +22,6 @@
 #define FROGS_TONGUE_EN		NODE_05
 #define FROGS_CAPTURE_EN	NODE_06
 #define FROGS_SPLASH_EN		NODE_08
-
-
-/************************************************************************
- * frogs Sound System Analog emulation
- * Oct 2004, Derrick Renaud
- ************************************************************************/
 
 /* Nodes - Sounds */
 #define FROGS_BUZZZ_SND		NODE_11
@@ -94,7 +94,7 @@ DISCRETE_SOUND_START(frogs_discrete_interface)
 
 	DISCRETE_MIXER2(NODE_90, 1, NODE_32, 0, &frogsMixer)
 
-	DISCRETE_OUTPUT(NODE_90, 100)
+	DISCRETE_OUTPUT(NODE_90, 1)
 
 DISCRETE_SOUND_END
 

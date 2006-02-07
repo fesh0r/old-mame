@@ -8,6 +8,30 @@ Toffy / Super Toffy added by David Haywood
 Thanks to Bryan McPhail for spotting the Toffy program rom encryption
 Toffy / Super Toffy sound hooked up by R. Belmont.
 
+BM, 8/1/2006:
+
+Double Dragon has a crash which sometimes occurs at the very end of the game
+(right before the final animation sequence).  It occurs because of a jump look up
+table:
+
+    BAD3: LDY   #$BADD
+    BAD7: JSR   [A,Y]
+
+At the point of the crash A is 0x3e which causes a jump to 0x3401 (background tile
+ram) which obviously doesn't contain proper code and causes a crash.  The jump
+table has 32 entries, and only the last contains an invalid jump vector.  A is set
+to 0x3e as a result of code at 0x625f - it reads from the shared spriteram (0x2049
+in main cpu memory space), copies the value to 0x523 (main ram) where it is later
+fetched and shifted to make 0x3e.
+
+So..  it's not clear where the error is - the 0x1f value is actually written to
+shared RAM by the main CPU - perhaps the MCU should modify it before the main CPU
+reads it back?  Perhaps 0x1f should never be written at all?  If you want to trace
+this further please submit a proper fix!  In the meantime I have patched the error
+by making sure the invalid jump is never taken - this fixes the crash (see
+ddragon_spriteram_r).
+
+
 
 Modifications by Bryan McPhail, June-November 2003:
 
@@ -41,6 +65,7 @@ conversion kit which could be applied to a bootleg double dragon :-p?
 ***************************************************************************/
 
 #include "driver.h"
+#include "state.h"
 #include "cpu/m6800/m6800.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/z80/z80.h"
@@ -66,8 +91,9 @@ extern int technos_video_hw;
 static int dd_sub_cpu_busy;
 static int sprite_irq, sound_irq, ym_irq, snd_cpu;
 static int adpcm_pos[2],adpcm_end[2],adpcm_idle[2];
-static UINT8* darktowr_mcu_ports;
+static UINT8* darktowr_mcu_ports, *darktowr_ram;
 static int VBLK;
+static int bank_data;
 /* end of private globals */
 
 static MACHINE_INIT( ddragon )
@@ -131,6 +157,8 @@ static WRITE8_HANDLER( ddragon_bankswitch_w )
 		cpunum_set_input_line( 1, sprite_irq, (sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
 
 	memory_set_bankptr( 1,&RAM[ 0x10000 + ( 0x4000 * ( ( data & 0xe0) >> 5 ) ) ] );
+
+	bank_data=data;
 }
 
 static WRITE8_HANDLER( toffy_bankswitch_w )
@@ -177,7 +205,24 @@ static READ8_HANDLER( darktowr_bank_r )
 
 	/* MCU is mapped into main cpu memory as a bank */
 	if (darktowr_bank==4) {
-		logerror("BankRead %05x %08x\n",activecpu_get_pc(),offset);
+		// logerror("BankRead %05x %08x\n",activecpu_get_pc(),offset);
+
+		/* Horrible hack - the alternate TStrike set is mismatched against the MCU,
+        so just hack around the protection here.  (The hacks are 'right' as I have
+        the original source code & notes to this version of TStrike to examine).
+        */
+		if(!strcmp(Machine->gamedrv->name, "tstrike"))
+		{
+			/* Static protection checks at boot-up */
+			if (activecpu_get_pc()==0x9ace)
+				return 0;
+			if (activecpu_get_pc()==0x9ae4)
+				return 0x63;
+
+			/* Just return whatever the code is expecting */
+			return darktowr_ram[0xbe1];
+		}
+
 		if (offset==0x1401 || offset==1) {
 			return darktowr_mcu_ports[0];
 		}
@@ -282,6 +327,10 @@ static READ8_HANDLER( port4_r )
 
 static READ8_HANDLER( ddragon_spriteram_r )
 {
+	/* Double Dragon crash fix - see notes above */
+	if (offset==0x49 && activecpu_get_pc()==0x6261 && ddragon_spriteram[offset]==0x1f)
+		return 0x1;
+
 	return ddragon_spriteram[offset];
 }
 
@@ -401,7 +450,7 @@ static ADDRESS_MAP_START( darktowr_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darktowr_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_RAM) AM_BASE(&darktowr_ram)
 	AM_RANGE(0x1000, 0x11ff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split1_w) AM_BASE(&paletteram)
 	AM_RANGE(0x1200, 0x13ff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split2_w) AM_BASE(&paletteram_2)
 	AM_RANGE(0x1400, 0x17ff) AM_WRITE(MWA8_RAM)
@@ -659,6 +708,40 @@ INPUT_PORTS_START( darktowr )
 	COMMON_PORT4
 INPUT_PORTS_END
 
+INPUT_PORTS_START( tstrike )
+	COMMON_INPUT_PORTS
+
+	COMMON_INPUT_DIP1
+
+	PORT_START_TAG("DSW1")
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	COMMON_PORT4
+INPUT_PORTS_END
+
 INPUT_PORTS_START( ddragon )
 	COMMON_INPUT_PORTS
 
@@ -873,8 +956,6 @@ static INTERRUPT_GEN( ddragon_interrupt )
 {
 	int scanline=271 - cpu_getiloops();
 
-
-
 	/* VBLK is lowered on scanline 0 */
 	if (scanline==0) {
 		VBLK=0;
@@ -882,17 +963,17 @@ static INTERRUPT_GEN( ddragon_interrupt )
 
 	/* VBLK is raised on scanline 240 and NMI line is pulled high */
 	if (scanline==240) {
+		force_partial_update(scanline);
 		cpunum_set_input_line(0, INPUT_LINE_NMI, ASSERT_LINE);
 		VBLK=0x8;
 	}
 
 	/* IMS is triggered every time VPOS line 3 is raised, as VPOS counter starts at 16, effectively every 16 scanlines */
-	if ((scanline%16)==0)
+	if ((scanline%16)==7)
 	{
+		force_partial_update(scanline);
 		cpunum_set_input_line(0,M6809_FIRQ_LINE,ASSERT_LINE);
-		force_partial_update(scanline /*cpu_getscanline()*/);
 	}
-
 }
 
 static MACHINE_DRIVER_START( ddragon )
@@ -968,7 +1049,7 @@ static MACHINE_DRIVER_START( darktowr )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	MDRV_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(512)
 
@@ -1479,7 +1560,7 @@ ROM_START( darktowr )
 	ROM_LOAD( "21j-l-0",      0x0100, 0x0200, CRC(46339529) SHA1(64f4c42a826d67b7cbaa8a23a45ebc4eb6248891) )	/* unknown */ /* from ddragon */
 ROM_END
 
-ROM_START( tstrike )
+ROM_START( tstrikea )
 	ROM_REGION( 0x28000, REGION_CPU1, 0 )	/* 64k for code + bankswitched memory */
 	ROM_LOAD( "tstrike.26",      0x08000, 0x08000, CRC(871b10bc) SHA1(c824775cf72c039612fda76c4a518cd89e4c8657) )
 	ROM_LOAD( "tstrike.25",      0x10000, 0x08000, CRC(b6a0c2f3) SHA1(3434689ca217f5af268058ad34c277db672d389c) ) /* banked at 0x4000-0x8000 */
@@ -1523,10 +1604,65 @@ ROM_START( tstrike )
 	ROM_LOAD( "21j-l-0",      0x0100, 0x0200, CRC(46339529) SHA1(64f4c42a826d67b7cbaa8a23a45ebc4eb6248891) )	/* unknown */
 ROM_END
 
+ROM_START( tstrike )
+	ROM_REGION( 0x28000, REGION_CPU1, 0 )	/* 64k for code + bankswitched memory */
+	ROM_LOAD( "prog.rom",        0x08000, 0x08000, CRC(bf011a00) SHA1(09a55042a219dd37cb9e7feeab092ebfb903ddde) )
+	ROM_LOAD( "tstrike.25",      0x10000, 0x08000, CRC(b6a0c2f3) SHA1(3434689ca217f5af268058ad34c277db672d389c) ) /* banked at 0x4000-0x8000 */
+	ROM_LOAD( "tstrike.24",      0x18000, 0x08000, CRC(363816fa) SHA1(65c1ccbb950e09230196b49dc7312a13a34f3f79) ) /* banked at 0x4000-0x8000 */
+	/* IC23 is replaced with a daughterboard containing a 68705 MCU */
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* sprite cpu */
+	ROM_LOAD( "63701.bin",    0xc000, 0x4000, CRC(f5232d03) SHA1(e2a194e38633592fd6587690b3cb2669d93985c7) )
+
+	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* audio cpu */
+	ROM_LOAD( "tstrike.30",      0x08000, 0x08000, CRC(3f3f04a1) SHA1(45d2b4542ec783c1c4122616606be6c160f76c06) )
+
+	ROM_REGION( 0x0800, REGION_CPU4, 0 )	/* 8k for the microcontroller */
+	ROM_LOAD( "68705prt.mcu",   0x00000, 0x0800, CRC(34cbb2d3) SHA1(8e0c3b13c636012d88753d547c639b1a8af85680) )
+
+	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "alpha.rom",        0x00000, 0x08000, CRC(3a7c3185) SHA1(1ccaa6a1f46d66feda49fdea337b8eb32f14c7b5) )	/* chars */
+
+	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE ) 	/* sprites */
+	ROM_LOAD( "tstrike.117",  0x00000, 0x10000, CRC(f7122c0d) SHA1(2b6b359585d9df966c1fc0041fb972aac9b1ab93) )
+	ROM_LOAD( "21j-b",        0x10000, 0x10000, CRC(40507a76) SHA1(74581a4b6f48100bddf20f319903af2fe36f39fa) ) /* from ddragon (116) */
+	ROM_LOAD( "tstrike.115",  0x20000, 0x10000, CRC(a13c7b62) SHA1(d929d8db7eb2b949cd3bd77238611ecc54b2e885) )
+	ROM_LOAD( "21j-d",        0x30000, 0x10000, CRC(cb4f231b) SHA1(9f2270f9ceedfe51c5e9a9bbb00d6f43dbc4a3ea) ) /* from ddragon (114) */
+	ROM_LOAD( "tstrike.113",  0x40000, 0x10000, CRC(5ad60938) SHA1(a0af9b227157d87fa6d4ea88b34227a97baff20e) )
+	ROM_LOAD( "21j-f",        0x50000, 0x10000, CRC(6ba152f6) SHA1(a301ff809be0e1471f4ff8305b30c2fa4aa57fae) ) /* from ddragon (112) */
+	ROM_LOAD( "tstrike.111",  0x60000, 0x10000, CRC(7b9c87ad) SHA1(429049f84b2084bb074e380dca63b75150e7e69f) )
+	ROM_LOAD( "21j-h",        0x70000, 0x10000, CRC(65c7517d) SHA1(f177ba9c1c7cc75ff04d5591b9865ee364788f94) ) /* from ddragon (110) */
+
+	ROM_REGION( 0x40000, REGION_GFX3, ROMREGION_DISPOSE ) 	/* tiles */
+	ROM_LOAD( "tstrike.78",   0x00000, 0x10000, CRC(88284aec) SHA1(f07bc5f84f2b2f976c911541c8f1ff2558f569ca) )
+	ROM_LOAD( "21j-9",        0x10000, 0x10000, CRC(c6640aed) SHA1(f156c337f48dfe4f7e9caee9a72c7ea3d53e3098) ) /* from ddragon (77) */
+	ROM_LOAD( "tstrike.109",  0x20000, 0x10000, CRC(8c2cd0bb) SHA1(364a708484c7750f38162d463104216bbd555b86) )
+	ROM_LOAD( "21j-j",        0x30000, 0x10000, CRC(5fb42e7c) SHA1(7953316712c56c6f8ca6bba127319e24b618b646) ) /* from ddragon (108) */
+
+	ROM_REGION( 0x20000, REGION_SOUND1, 0 ) /* adpcm samples */
+	ROM_LOAD( "tstrike.94",        0x00000, 0x10000, CRC(8a2c09fc) SHA1(f59a43c3fa814b169a51744f9604d36ae63c190f) ) /* first+second half identical */
+	ROM_LOAD( "tstrike.95",        0x10000, 0x08000, CRC(1812eecb) SHA1(9b7d526f30a86682cdf088600b25ea5a56b112ef) )
+
+	ROM_REGION( 0x0300, REGION_PROMS, 0 )
+	ROM_LOAD( "21j-k-0",      0x0000, 0x0100, CRC(fdb130a9) SHA1(4c4f214229b9fab2b5d69c745ec5428787b89e1f) )	/* unknown */
+	ROM_LOAD( "21j-l-0",      0x0100, 0x0200, CRC(46339529) SHA1(64f4c42a826d67b7cbaa8a23a45ebc4eb6248891) )	/* unknown */
+ROM_END
+
 /** INITS **
 toffy / stoffy are 'encrytped
 
 */
+
+static void ddragon_restore_state(int dummy)
+{
+	ddragon_bankswitch_w(0, bank_data);
+}
+
+static DRIVER_INIT( ddragon )
+{
+	state_save_register_int("ddragon", 0, "bank", &bank_data);
+	state_save_register_func_postload_int(ddragon_restore_state, 0);
+}
 
 static DRIVER_INIT( toffy )
 {
@@ -1562,17 +1698,18 @@ static DRIVER_INIT( toffy )
 
 }
 
-GAME( 1987, ddragon,  0,        ddragon,  ddragon,  0, ROT0, "Technos", "Double Dragon (Japan)", 0 )
-GAME( 1987, ddragonw, ddragon,  ddragon,  ddragon,  0, ROT0, "[Technos] (Taito license)", "Double Dragon (World)", 0 )
-GAME( 1987, ddragonu, ddragon,  ddragon,  ddragon,  0, ROT0, "[Technos] (Taito America license)", "Double Dragon (US)", 0 )
-GAME( 1987, ddragonb, ddragon,  ddragonb, ddragon,  0, ROT0, "bootleg", "Double Dragon (bootleg)", 0 )
+GAME( 1987, ddragon,  0,        ddragon,  ddragon,  ddragon, ROT0, "Technos", "Double Dragon (Japan)", 0 )
+GAME( 1987, ddragonw, ddragon,  ddragon,  ddragon,  ddragon, ROT0, "[Technos] (Taito license)", "Double Dragon (World)", 0 )
+GAME( 1987, ddragonu, ddragon,  ddragon,  ddragon,  ddragon, ROT0, "[Technos] (Taito America license)", "Double Dragon (US)", 0 )
+GAME( 1987, ddragonb, ddragon,  ddragonb, ddragon,  ddragon, ROT0, "bootleg", "Double Dragon (bootleg)", 0 )
 GAME( 1988, ddragon2, 0,        ddragon2, ddragon2, 0, ROT0, "Technos", "Double Dragon II - The Revenge (World)", 0 )
 GAME( 1988, ddragn2u, ddragon2, ddragon2, ddragon2, 0, ROT0, "Technos", "Double Dragon II - The Revenge (US)", 0 )
 
 /* these were conversions of double dragon */
+GAME( 1991, tstrike,   0,        darktowr,  tstrike,   0, ROT0, "East Coast Coin Company (Melbourne)", "Thunder Strike (Newer)", 0 )
+GAME( 1991, tstrikea,  tstrike,  darktowr,  tstrike,   0, ROT0, "East Coast Coin Company (Melbourne)", "Thunder Strike (Older)", 0 )
 GAME( 1992, ddungeon,  0,        darktowr,  ddungeon,  0, ROT0, "East Coast Coin Company (Melbourne)", "Dangerous Dungeons", 0 )
 GAME( 1992, darktowr,  0,        darktowr,  darktowr,  0, ROT0, "Game Room", "Dark Tower", 0 )
-GAME( 19??, tstrike,   0,        darktowr,  darktowr,  0, ROT0, "Game Room", "Thunder Strike", GAME_NOT_WORKING )
 
 /* these run on their own board, but are basically the same game. Toffy even has 'dangerous dungeons' text in it */
 GAME( 1993, toffy,  0, toffy, toffy, toffy, ROT0, "Midas",                 "Toffy", 0 )

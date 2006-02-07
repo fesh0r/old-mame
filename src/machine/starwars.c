@@ -10,6 +10,7 @@
 #include "driver.h"
 #include "cpuintrf.h"
 #include "starwars.h"
+#include "random.h"
 #include "vidhrdw/avgdvg.h"
 
 
@@ -33,17 +34,17 @@
 #define MATHDEBUG	0
 
 
-/* Local variables */
 UINT8 *starwars_mathram;
+UINT8 *starwars_ram_overlay;
 
+/* Local variables */
 static UINT8 control_num = kPitch;
 
 static int MPA; /* PROM address counter */
 static int BIC; /* Block index counter  */
-static int PRN; /* Pseudo-random number */
 
-static int div_result;
-static int divisor, dividend;
+static UINT16 dvd_shift, quotient_shift; /* Divider shift registers */
+static UINT16 divisor, dividend;         /* Divider latches */
 
 /* Store decoded PROM elements */
 static UINT8 *PROM_STR; /* Storage for instruction strobe only */
@@ -58,13 +59,24 @@ static void run_mbox(void);
 
 /*************************************
  *
+ *  X2212 nvram store
+ *
+ *************************************/
+
+WRITE8_HANDLER( starwars_nstore_w )
+{
+	memcpy (generic_nvram, starwars_ram_overlay, generic_nvram_size);
+}
+
+/*************************************
+ *
  *  Output latch
  *
  *************************************/
 
 WRITE8_HANDLER( starwars_out_w )
 {
-	switch (offset)
+	switch (offset & 7)
 	{
 		case 0:		/* Coin counter 1 */
 			coin_counter_w(0, data);
@@ -87,17 +99,15 @@ WRITE8_HANDLER( starwars_out_w )
 			if (starwars_is_esb)
 				memory_set_bank(2, (data >> 7) & 1);
 			break;
-
 		case 5:		/* reset PRNG */
-			PRN = 0;
 			break;
 
 		case 6:		/* LED 1 */
 			set_led_status(0, ~data & 0x80);
 			break;
 
-		case 7:
-			logerror("recall\n"); /* what's that? */
+		case 7:		/* NVRAM array recall */
+			memcpy (starwars_ram_overlay, generic_nvram, generic_nvram_size);
 			break;
 	}
 }
@@ -200,7 +210,6 @@ void swmathbox_init(void)
 void swmathbox_reset(void)
 {
 	MPA = BIC = 0;
-	PRN = 0;
 }
 
 
@@ -213,7 +222,8 @@ void swmathbox_reset(void)
 
 void run_mbox(void)
 {
-	static short ACC, A, B, C;
+	static INT16 A, B, C;
+	static INT32 ACC;
 
 	int RAMWORD = 0;
 	int MA_byte;
@@ -250,7 +260,7 @@ void run_mbox(void)
 		MA_byte = MA << 1;
 		RAMWORD = (starwars_mathram[MA_byte + 1] & 0x00ff) | ((starwars_mathram[MA_byte] & 0x00ff) << 8);
 
-		logerror("MATH ADDR: %x, CPU ADDR: %x, RAMWORD: %x\n", MA, MA_byte, RAMWORD);
+//      logerror("MATH ADDR: %x, CPU ADDR: %x, RAMWORD: %x\n", MA, MA_byte, RAMWORD);
 
 		/*
          * RAMWORD is the sixteen bit Math RAM value for the selected address
@@ -260,15 +270,28 @@ void run_mbox(void)
          * IP15_8 provide the instruction strobes
          */
 
-		/* 0x01 - LAC */
+
+		/* The accumulator is built from two ls299 (msb) and two ls164
+         * (lsb). You can only read/write the 16 msb. The lsb are
+         * used while adding up multiplication results giving better
+         * accuracy.
+         */
+
+		/* 0x10 - CLEAR_ACC */
+		if (IP15_8 & CLEAR_ACC)
+		{
+			ACC = 0;
+		}
+
+		/* 0x01 - LAC (also clears lsb)*/
 		if (IP15_8 & LAC)
-			ACC = RAMWORD;
+			ACC = (RAMWORD << 16);
 
 		/* 0x02 - READ_ACC */
 		if (IP15_8 & READ_ACC)
 		{
-			starwars_mathram[MA_byte+1] = (ACC & 0x00ff);
-			starwars_mathram[MA_byte  ] = (ACC & 0xff00) >> 8;
+			starwars_mathram[MA_byte+1] = ((ACC >> 16) & 0xff);
+			starwars_mathram[MA_byte  ] = ((ACC >> 24) & 0xff);
 		}
 
 		/* 0x04 - M_HALT */
@@ -279,18 +302,47 @@ void run_mbox(void)
 		if (IP15_8 & INC_BIC)
 			BIC = (BIC + 1) & 0x1ff; /* Restrict to 9 bits */
 
-		/* 0x10 - CLEAR_ACC */
-		if (IP15_8 & CLEAR_ACC)
-			ACC = 0;
-
-		/* 0x20 - LDC */
+		/* 0x20 - LDC*/
 		if (IP15_8 & LDC)
 		{
 			C = RAMWORD;
-			/* TODO: this next line is accurate to the schematics, but doesn't seem to work right */
-			/* ACC=ACC+(  ( (long)((A-B)*C) )>>14  ); */
-			/* round the result - this fixes bad trench vectors in Star Wars */
-			ACC += ((((long)((A - B) * C)) >> 13) + 1) >> 1;
+
+			/* This is a serial subtractor - multiplier (74ls384) -
+             * accumulator. For the full calculation 33 GMCLK pulses
+             * are generated. The calculation performed is:
+             *
+             * ACC = ACC + (A - B) * C
+             *
+             * 1. pulse: Bit 0 of A and B are subtracted. Bit 0 of the
+             * multiplication between multiplicand C and 0 is
+             * calculated (bit 0 of A-B is not yet at the multiplier
+             * input). Bit 0 of ACC is added to 0 (again, 'real' results
+             * from the previous operations are no yet there).
+             *
+             * 2. pulse: Bit 1 of A-B is calculated. Bit 1 of
+             * mutliplication is calculated based on bit 0 of A-B and
+             * bit 1 of C. Bit 1 of ACC is added to the multiplication
+             * result from first pulse.
+             *
+             * 3. pulse: Bit 2 of A-B is calculated. Bit 2 of
+             * mutliplication is calculated based on bit 1 of A-B and
+             * bit 2 of C. Bit 2 of ACC is added to the multiplication
+             * between bit 1 of C and bit 0 of A-B.
+             *
+             * etc.
+             *
+             * This pipeline causes the shifts between A-B, C and ACC.
+             * The 32 bit ACC and one bit adder form a ring so it
+             * takes 33 clock pulses to do a full rotation.
+             */
+
+			ACC += (((INT32)(A - B) << 1) * C) << 1;
+
+			/* A and B are sign extended (requred by the ls384). After
+             * multiplication they just contain the sign.
+             */
+			A = (A & 0x8000)? 0xffff: 0;
+			B = (B & 0x8000)? 0xffff: 0;
 		}
 
 		/* 0x40 - LDB */
@@ -324,8 +376,20 @@ void run_mbox(void)
 
 READ8_HANDLER( swmathbx_prng_r )
 {
-	PRN = (int)((PRN + 0x2364) ^ 2); /* This is a total bodge for now, but it works!*/
-	return PRN;
+	/*
+     * The PRNG is a modified 23 bit LFSR. Taps are at 4 and 22 so the
+     * resulting LFSR polynomial is,
+     *
+     * x^5 + x^{23} + 1
+     *
+     * which is prime. It has a loop length of 8388607. The feedback
+     * bit is inverted so the PRNG can start with 0. Only 8 bits from
+     * bit 8 to 15 can be read by the CPU. The PRNG runs constantly at
+     * a clock speed of 3 MHz.
+     */
+
+	/* Use MAME's PRNG for now */
+	return mame_rand();
 }
 
 
@@ -338,18 +402,20 @@ READ8_HANDLER( swmathbx_prng_r )
 
 READ8_HANDLER( swmathbx_reh_r )
 {
-	return (div_result & 0xff00) >> 8;
+	return (quotient_shift & 0xff00) >> 8;
 }
 
 
 READ8_HANDLER( swmathbx_rel_r )
 {
-	return div_result & 0x00ff;
+	return quotient_shift & 0x00ff;
 }
 
 
 WRITE8_HANDLER( swmathbx_w )
 {
+	int i;
+
 	data &= 0xff;	/* ASG 971002 -- make sure we only get bytes here */
 	switch (offset)
 	{
@@ -368,6 +434,8 @@ WRITE8_HANDLER( swmathbx_w )
 
 		case 4: /* dvsrh */
 			divisor = (divisor & 0x00ff) | (data << 8);
+			dvd_shift = dividend;
+			quotient_shift = 0;
 			break;
 
 		case 5: /* dvsrl */
@@ -379,10 +447,25 @@ WRITE8_HANDLER( swmathbx_w )
 
 			divisor = (divisor & 0xff00) | data;
 
-			if (dividend >= 2 * divisor)
-				div_result = 0x7fff;
-			else
-				div_result = (int)(((long)dividend << 14) / (long)divisor);
+			/*
+             * Simple restoring division as shown in the
+             * schematics. The algorithm produces the same "wrong"
+             * results as the hardware if divisor < 2*dividend or
+             * divisor > 0x8000.
+             */
+			for (i = 1; i < 16; i++)
+			{
+				quotient_shift <<= 1;
+				if (((INT32)dvd_shift + (divisor ^ 0xffff) + 1) & 0x10000)
+				{
+					quotient_shift |= 1;
+					dvd_shift = (dvd_shift + (divisor ^ 0xffff) + 1) << 1;
+				}
+				else
+				{
+					dvd_shift <<= 1;
+				}
+			}
 			break;
 
 		case 6: /* dvddh */

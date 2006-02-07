@@ -167,7 +167,7 @@ static UINT8 *dirty_palette;
 static int deco16_pf1_bank,deco16_pf2_bank,deco16_pf3_bank,deco16_pf4_bank;
 static int deco16_pf12_16x16_gfx_bank,deco16_pf34_16x16_gfx_bank,deco16_pf12_8x8_gfx_bank;
 static int deco16_pf1_colourmask,deco16_pf2_colourmask,deco16_pf3_colourmask,deco16_pf4_colourmask;
-static int deco16_pf1_colour_bank,deco16_pf2_colour_bank,deco16_pf3_colour_bank,deco16_pf4_colour_bank;
+int deco16_pf1_colour_bank,deco16_pf2_colour_bank,deco16_pf3_colour_bank,deco16_pf4_colour_bank;
 static int deco16_pf1_trans_mask,deco16_pf2_trans_mask,deco16_pf3_trans_mask,deco16_pf4_trans_mask;
 static int (*deco16_bank_callback_1)(const int bank);
 static int (*deco16_bank_callback_2)(const int bank);
@@ -536,7 +536,7 @@ int deco16_1_video_init(void) /* 1 times playfield generator chip */
 	dirty_palette = auto_malloc(4096);
 	deco16_raster_display_list=auto_malloc(20 * 256);
 
-	if (!dirty_palette || !pf1_tilemap_8x8 || !pf2_tilemap_8x8 || !pf1_tilemap_16x16 || !pf2_tilemap_16x16 || !deco16_raster_display_list || !sprite_priority_bitmap)
+	if (!pf1_tilemap_8x8 || !pf2_tilemap_8x8 || !pf1_tilemap_16x16 || !pf2_tilemap_16x16 || !sprite_priority_bitmap)
 		return 1;
 
 	memset(dirty_palette,0,4096);
@@ -588,7 +588,7 @@ int deco16_2_video_init(int split) /* 2 times playfield generator chips */
 	dirty_palette = auto_malloc(4096);
 	deco16_raster_display_list=auto_malloc(20 * 256);
 
-	if (!dirty_palette || !pf1_tilemap_8x8 || !pf2_tilemap_8x8 || !pf1_tilemap_16x16 || !pf2_tilemap_16x16 || !pf3_tilemap_16x16 || !pf4_tilemap_16x16 || !deco16_raster_display_list || !sprite_priority_bitmap)
+	if (!pf1_tilemap_8x8 || !pf2_tilemap_8x8 || !pf1_tilemap_16x16 || !pf2_tilemap_16x16 || !pf3_tilemap_16x16 || !pf4_tilemap_16x16 || !sprite_priority_bitmap)
 		return 1;
 
 	memset(dirty_palette,0,4096);

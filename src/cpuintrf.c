@@ -4,9 +4,8 @@
 
     Core CPU interface functions and definitions.
 
-    Cleanup phase 1: split into two pieces
-    Cleanup phase 2: simplify CPU core interfaces
-    Cleanup phase 3: phase out old interrupt system
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
 
@@ -1267,11 +1266,15 @@ offs_t activecpu_dasm(char *buffer, offs_t pc)
 				physpc ^= xorval;
 
 				/* get pointer to data */
-				ptr = memory_get_op_ptr(cpu_getactivecpu(), physpc);
+				ptr = memory_get_op_ptr(cpu_getactivecpu(), physpc, 0);
 				if (ptr)
 				{
 					opbuf[numbytes] = *ptr;
-					argbuf[numbytes] = *(ptr + (opcode_arg_base - opcode_base));
+					ptr = memory_get_op_ptr(cpu_getactivecpu(), physpc, 1);
+					if (ptr)
+						argbuf[numbytes] = *ptr;
+					else
+						argbuf[numbytes] = opbuf[numbytes];
 				}
 			}
 		}

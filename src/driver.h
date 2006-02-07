@@ -4,6 +4,9 @@
 
     Include this with all MAME files. Includes all the core system pieces.
 
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
 ***************************************************************************/
 
 #ifndef __DRIVER_H__
@@ -55,6 +58,7 @@
 ***************************************************************************/
 
 #include "mamecore.h"
+#include "osdepend.h"
 #include "memory.h"
 #include "mamedbg.h"
 #include "mame.h"

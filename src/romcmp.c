@@ -1,3 +1,14 @@
+/***************************************************************************
+
+    romcmp.c
+
+    ROM comparison utility program.
+
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
+***************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,7 +49,7 @@ void CLIB_DECL logerror(const char *text,...)
 {
 }
 
-osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const char *mode)
+osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const char *mode, osd_file_error *error)
 {
 	return (osd_file *)fopen(filename, mode);
 }

@@ -170,8 +170,6 @@ static void system18_generic_init(int _rom_board)
 	segaic16_tileram_0   = auto_malloc(0x10000);
 	segaic16_textram_0   = auto_malloc(0x01000);
 	workram              = auto_malloc(0x04000);
-	if (!segaic16_spriteram_0 || !paletteram16 || !segaic16_tileram_0 || !segaic16_textram_0 || !workram)
-		osd_die("Out of memory allocating RAM space\n");
 
 	/* init the memory mapper */
 	segaic16_memory_mapper_init(0, region_info_list[rom_board], sound_w, sound_r);
@@ -1137,7 +1135,7 @@ static INPUT_PORTS_START( mwalk )
 	PORT_DIPNAME( 0x10, 0x00, "Play Mode" )
 	PORT_DIPSETTING(    0x10, "2 Players" )
 	PORT_DIPSETTING(    0x00, "3 Players" )
-	PORT_DIPNAME( 0x20, 0x20, "Coin Chute" )
+	PORT_DIPNAME( 0x20, 0x00, "Coin Chute" )
 	PORT_DIPSETTING(    0x20, "Common" )
 	PORT_DIPSETTING(    0x00, "Individual" )
 	PORT_DIPNAME( 0xc0, 0x40, DEF_STR( Difficulty ) )
@@ -1154,7 +1152,7 @@ static INPUT_PORTS_START( mwalka )
 	PORT_DIPNAME( 0x10, 0x10, "Play Mode" )
 	PORT_DIPSETTING(    0x00, "2 Players" )
 	PORT_DIPSETTING(    0x10, "3 Players" )
-	PORT_DIPNAME( 0x20, 0x00, "Coin Chute" )
+	PORT_DIPNAME( 0x20, 0x20, "Coin Chute" )
 	PORT_DIPSETTING(    0x00, "Common" )
 	PORT_DIPSETTING(    0x20, "Individual" )
 INPUT_PORTS_END

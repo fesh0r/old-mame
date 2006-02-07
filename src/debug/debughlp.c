@@ -1,12 +1,13 @@
-/*###################################################################################################
-**
-**
-**      debugcmd.c
-**      Debugger help engine.
-**      Written by Aaron Giles
-**
-**
-**#################################################################################################*/
+/*********************************************************************
+
+    debughlp.c
+
+    Debugger help engine.
+
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
+*********************************************************************/
 
 #include "driver.h"
 
@@ -529,6 +530,20 @@ static struct help_item static_help_list[] =
 		"\n"
 	},
 	{
+		"gtime",
+		"\n"
+		"  gt[ime] <milliseconds>\n"
+		"\n"
+		"The gtime command resumes execution of the current code. Control will not be returned to the\n"
+		"debugger until	a specified delay has elapsed. The delay is in milliseconds.\n"
+		"\n"
+		"Example:\n"
+		"\n"
+		"gtime #10000\n"
+		"  Resume execution for ten seconds\n"
+		"\n"
+	},
+	{
 		"next",
 		"\n"
 		"  n[ext]\n"
@@ -658,6 +673,13 @@ static struct help_item static_help_list[] =
 		"  Begin tracing the execution of CPU #0, logging output to asteroid.tr. Before each line,\n"
 		"  output A=<aval> to the tracelog.\n"
 		"\n"
+	},
+	{
+		"traceflush",
+		"\n"
+		"  traceflush\n"
+		"\n"
+		"Flushes all open trace files.\n"
 	},
 	{
 		"bpset",

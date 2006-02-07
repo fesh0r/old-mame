@@ -1,6 +1,5 @@
 #include "driver.h"
 #include "sound/samples.h"
-#include "sound/streams.h"
 #include "state.h"
 #include <math.h>
 
@@ -458,7 +457,7 @@ WRITE8_HANDLER( galaxian_lfo_freq_w )
 {
 #if NEW_LFO
 	/* R18 1M,R17 470K,R16 220K,R15 100K */
-	const int rv[4] = { 1000000,470000,220000,100000};
+	static const int rv[4] = { 1000000,470000,220000,100000};
 	double r1,r2,Re,td;
 	int i;
 

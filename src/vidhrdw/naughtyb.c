@@ -77,7 +77,7 @@ PALETTE_INIT( naughtyb )
 	#define COLOR(gfxn,offs) (colortable[Machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
 
 	/* note: there is no resistor on second PROM so we define second resistance as 0 */
-	const int resistances[2] = { 270, 0 };
+	static const int resistances[2] = { 270, 0 };
 	double weights_r[2], weights_g[2], weights_b[2];
 
 
@@ -157,8 +157,7 @@ VIDEO_START( naughtyb )
 	videoreg = palreg = bankreg = 0;
 
 	/* Naughty Boy has a virtual screen twice as large as the visible screen */
-	if ((dirtybuffer = auto_malloc(videoram_size)) == 0)
-		return 1;
+	dirtybuffer = auto_malloc(videoram_size);
 	memset(dirtybuffer, 1, videoram_size);
 
 	if ((tmpbitmap = auto_bitmap_alloc(68*8,28*8)) == 0)

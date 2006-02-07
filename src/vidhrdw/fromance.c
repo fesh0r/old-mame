@@ -85,7 +85,7 @@ VIDEO_START( fromance )
 	local_paletteram = auto_malloc(0x800 * 2);
 
 	/* handle failure */
-	if (!bg_tilemap || !fg_tilemap || !local_videoram[0] || !local_videoram[1] || !local_paletteram)
+	if (!bg_tilemap || !fg_tilemap)
 		return 1;
 
 	/* configure tilemaps */
@@ -110,7 +110,7 @@ VIDEO_START( nekkyoku )
 	local_paletteram = auto_malloc(0x800 * 2);
 
 	/* handle failure */
-	if (!bg_tilemap || !fg_tilemap || !local_videoram[0] || !local_videoram[1] || !local_paletteram)
+	if (!bg_tilemap || !fg_tilemap)
 		return 1;
 
 	/* configure tilemaps */
@@ -300,7 +300,7 @@ WRITE8_HANDLER( fromance_crtc_register_w )
 
 static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int draw_priority)
 {
-	UINT8 zoomtable[16] = { 0,7,14,20,25,30,34,38,42,46,49,52,54,57,59,61 };
+	static const UINT8 zoomtable[16] = { 0,7,14,20,25,30,34,38,42,46,49,52,54,57,59,61 };
 	int offs;
 
 	/* draw the sprites */

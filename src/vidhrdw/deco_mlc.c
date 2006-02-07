@@ -4,20 +4,68 @@
     in RAM or ROM.  Each tile in a block may be specified explicitly via a display list in ROM or
     calculated as part of a block offset.
 
-    Blocks can be scaled and subpositioned, and are usually 4bpp but blocks can be combined
-    into 8bpp with a flag.
+    Blocks can be scaled and subpositioned, and are usually 4-6bpp but two 4bpp blocks can be
+    combined into 8bpp with a flag.
 */
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
 
-UINT32 *avengrgs_vram;
+extern int mlc_raster_table[9][256];
+extern UINT32 mlc_clipper[32];
+static mame_bitmap *temp_bitmap;
+static UINT32 colour_mask, *mlc_buffered_spriteram;
+UINT32 *mlc_vram, *mlc_clip_ram;
 
 /******************************************************************************/
 
-VIDEO_START( avengrgs )
+VIDEO_START( mlc )
 {
+	alpha_set_level(0x80);
+
+	if (Machine->gfx[0]->color_granularity==16)
+		colour_mask=0x7f;
+	else if (Machine->gfx[0]->color_granularity==32)
+		colour_mask=0x3f;
+	else
+		colour_mask=0x1f;
+
+	temp_bitmap = auto_bitmap_alloc_depth( 512, 512, -32 );
+	mlc_buffered_spriteram = auto_malloc(0x3000);
+
+	if (!temp_bitmap)
+		return 1;
+
 	return 0;
+}
+
+static void blitRaster(mame_bitmap *bitmap, int rasterMode)
+{
+#if 0
+	int x,y;
+	for (y=0; y<256; y++) //todo
+	{
+		UINT32* src=(UINT32 *)temp_bitmap->line[y&0x1ff];
+		UINT32* dst=(UINT32 *)bitmap->line[y];
+		UINT32 xptr=(mlc_raster_table[0][y]<<13);
+
+		if (code_pressed(KEYCODE_X))
+			xptr=0;
+
+		for (x=0; x<320; x++)
+		{
+			if (src[x])
+				dst[x]=src[(xptr>>16)&0x1ff];
+
+			//if (code_pressed(KEYCODE_X))
+			//  xptr+=0x10000;
+			//else if(rasterHackTest[0][y]<0)
+				xptr+=0x10000 - ((mlc_raster_table[2][y]&0x3ff)<<5);
+			//else
+			//  xptr+=0x10000 + (mlc_raster_table[0][y]<<5);
+		}
+	}
+#endif
 }
 
 static void mlc_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
@@ -139,6 +187,7 @@ static void mlc_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 								UINT32 *dest = (UINT32 *)dest_bmp->line[y];
 
 								int x, x_index = x_index_base;
+
 								for( x=sx; x<ex; x++ )
 								{
 									int c = source1[x_index>>16];
@@ -146,6 +195,7 @@ static void mlc_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 										c=(c<<4)|source2[x_index>>16];
 
 									if( c != transparent_color ) dest[x] = pal[c];
+
 									x_index += dx;
 								}
 
@@ -167,7 +217,7 @@ static void mlc_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 								for( x=sx; x<ex; x++ )
 								{
 									int c = source[x_index>>16];
-									if( c != transparent_color ) dest[x] = alpha_blend32(dest[x], pal[c]);
+									if( c != transparent_color ) dest[x] = alpha_blend32(dest[x], 0); //pal[c]);
 									x_index += dx;
 								}
 
@@ -183,134 +233,270 @@ static void mlc_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 
 static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 {
-	UINT32 *index_ptr;
-	int offs,fx=0,fy=0,x,y,color,sprite,indx,h,w,bx,by;
+	UINT32 *index_ptr=0;
+	int offs,fx=0,fy=0,x,y,color,colorOffset,sprite,indx,h,w,bx,by,fx1,fy1;
 	int xmult,ymult,xoffs,yoffs;
-	UINT8 *rom = memory_region(REGION_GFX4) + 0x20000, *index_ptr8;
-	UINT8 *rawrom = memory_region(REGION_GFX4); //fix above
+	UINT8 *rom = memory_region(REGION_GFX2) + 0x20000, *index_ptr8;
+	UINT8 *rawrom = memory_region(REGION_GFX2);
 	int blockIsTilemapIndex=0;
 	int sprite2=0,indx2=0,use8bppMode=0;
 	int yscale,xscale;
 	int ybase,yinc;
+	int trans;
+	int useIndicesInRom=0;
+	int hibits=0;
+	int tileFormat=0;
+	int rasterMode=0;
+	int lastRasterMode=0;
+	int rasterDirty=0;
+	int clipper=0;
+	rectangle user_clip;
+	UINT32* mlc_spriteram=mlc_buffered_spriteram; // spriteram32
 
-//  for (offs = 0; offs<0x3000/4; offs+=8)
-	for (offs = (0x3000/4)-8; offs>=0x100; offs-=8) // TEST - REMOVE TOP ENTRIES!
+	for (offs = (0x3000/4)-8; offs>=0; offs-=8)
 	{
-		if ((spriteram32[offs+0]&0x8000)==0) {
-			//memset((UINT8*)spriteram32,0,8*4);
-			continue; //check
-		}
+		if ((mlc_spriteram[offs+0]&0x8000)==0)
+			continue;
+		if ((mlc_spriteram[offs+1]&0x2000) && (cpu_getcurrentframe() & 1))
+			continue;
 
-		y = spriteram32[offs+2]&0x7ff;
-		x = spriteram32[offs+3]&0x7ff; /* Bit 0100 0000 sometimes set?? sh2 bug? */
+		/*
+            Spriteram (1) format (16 bit):
+
+            Word 0: 0x8000 - Sprite enable
+                    0x4000 - Use ROM or RAM for spriteram 2 (really top bit of index)
+                    0x3fff - Index into spriteram 2
+            Word 1: 0x8000 - X flip
+                    0x4000 - Y flip
+                    0x2000 - Auto-flicker (display sprite only every other frame)
+                    0x1000 - If set combine this 4bpp sprite & next one, into 8bpp sprite
+                    0x0800 - ?  (Not seen used anywhere)
+                    0x0400 - Use raster IRQ lookup table when drawing object
+                    0x0300 - Selects clipping window to use
+                    0x00ff - Colour/alpha shadow enable
+            Word 2: 0x07ff - Y position
+            Word 3: 0x07ff - X position
+            Word 4: 0x03ff - X scale
+            Word 5: 0x03ff - Y scale
+
+            Spriteram (2) format (16 bit):
+
+            Word 0: 0xe000 - ? (Always 0x2000?)
+                    0x1000 - X flip
+                    0x0f00 - Width in tiles (0==16)
+                    0x00ff - X position offset
+            Word 1: 0xe000 - ? (Always 0x2000?)
+                    0x1000 - Y flip
+                    0x0f00 - Height in tiles (0==16)
+                    0x00ff - Y position offset
+            Word 2: 0xff00 - ? (Always 0?)
+                    0x00c0 - If set use tile index as pointer into tile index array, else use as tile index directly
+                    0x0080 - If set tile index array format is 12 bit tile, 4 bit colour
+                    0x0040 - If set tile index array is 16 bit tile, 0 bit colour
+                    0x003c - Hi-bits of tile index after array lookup
+                    0x0003 - Hi-bits of tile index, selects ROM or RAM for array
+            Word 3: 0xffff - Low-bits of tile index
+        */
+
+		y = mlc_spriteram[offs+2]&0x7ff;
+		x = mlc_spriteram[offs+3]&0x7ff;
 
 		if (x&0x400) x=-(0x400-(x&0x3ff));
 		if (y&0x400) y=-(0x400-(y&0x3ff));
 
-		fx = spriteram32[offs+1]&0x8000;
-		fy = spriteram32[offs+1]&0x4000;
-//      fx = spriteram32[offs+2]&0x01000000; // Alpha blend??
-//      fy = spriteram32[offs+3]&0x01000000; // Alpha blend??
-		color = spriteram32[offs+1]&0x7f;
-		indx = spriteram32[offs+0]&0x3fff;
-		yscale = spriteram32[offs+4]&0x1ff;
-		xscale = spriteram32[offs+5]&0x1ff;
+		fx = mlc_spriteram[offs+1]&0x8000;
+		fy = mlc_spriteram[offs+1]&0x4000;
+		color = mlc_spriteram[offs+1]&0xff;
+		rasterMode = (mlc_spriteram[offs+1]>>10)&0x1;
+		clipper = (mlc_spriteram[offs+1]>>8)&0x3;
+		indx = mlc_spriteram[offs+0]&0x3fff;
+		yscale = mlc_spriteram[offs+4]&0x3ff;
+		xscale = mlc_spriteram[offs+5]&0x3ff;
+		colorOffset = 0;
+
+		/* Clip windows - this mapping seems odd, but is correct for Skull Fang and StadHr96,
+        however there are space for 8 clipping windows, where is the high bit? (Or is it ~0x400?) */
+		clipper=((clipper&2)>>1)|((clipper&1)<<1); // Swap low two bits
+
+		user_clip.min_y=mlc_clip_ram[(clipper*4)+0];
+		user_clip.max_y=mlc_clip_ram[(clipper*4)+1];
+		user_clip.min_x=mlc_clip_ram[(clipper*4)+2];
+		user_clip.max_x=mlc_clip_ram[(clipper*4)+3];
+
+		if (user_clip.min_y < cliprect->min_y) user_clip.min_y=cliprect->min_y;
+		if (user_clip.max_y > cliprect->max_y) user_clip.max_y=cliprect->max_y;
+		if (user_clip.min_x < cliprect->min_x) user_clip.min_x=cliprect->min_x;
+		if (user_clip.max_x > cliprect->max_x) user_clip.max_x=cliprect->max_x;
+
+		/* Any colours out of range (for the bpp value) trigger 'shadow' mode */
+		if (color & (colour_mask+1))
+			trans=TRANSPARENCY_ALPHA;
+		else
+			trans=TRANSPARENCY_PEN;
+		color&=colour_mask;
 
 		/* If this bit is set, combine this block with the next one */
-		if (spriteram32[offs+1]&0x1000) {
+		if (mlc_spriteram[offs+1]&0x1000) {
 			use8bppMode=1;
 			/* In 8bpp the palette base is stored in the next block */
 			if (offs-8>=0) {
-				color = (spriteram32[offs+1-8]&0x7f);// | 0x80;
-				indx2 = spriteram32[offs+0-8]&0x3fff;
+				color = (mlc_spriteram[offs+1-8]&0x7f);
+				indx2 = mlc_spriteram[offs+0-8]&0x3fff;
 			}
 		} else
 			use8bppMode=0;
 
 		/* Lookup tiles/size in sprite index ram OR in the lookup rom */
-		if (spriteram32[offs+0]&0x4000) {
+		if (mlc_spriteram[offs+0]&0x4000) {
 			index_ptr8=rom + indx*8; /* Byte ptr */
 			h=(index_ptr8[1]>>0)&0xf;
 			w=(index_ptr8[3]>>0)&0xf;
 
 			if (!h) h=16;
-			if (!w) w=16; //test above in sprites too
+			if (!w) w=16;
 
 			sprite = (index_ptr8[7]<<8)|index_ptr8[6];
-//          bank = index_ptr8[4]&3;
 			sprite |= (index_ptr8[4]&3)<<16;
 
 			if (use8bppMode) {
 				UINT8* index_ptr28=rom + indx2*8;
 				sprite2=(index_ptr28[7]<<8)|index_ptr28[6];
-			//  fx=spriteram32[offs+1]&0x10;
 			}
 			//unused byte 5
 			yoffs=index_ptr8[0]&0xff;
 			xoffs=index_ptr8[2]&0xff;
-			if (index_ptr8[4]&0x40)
+
+			fy1=(index_ptr8[1]&0xf0)>>4;
+			fx1=(index_ptr8[3]&0xf0)>>4;
+
+			tileFormat=index_ptr8[4]&0x80;
+
+			if (index_ptr8[4]&0xc0)
 				blockIsTilemapIndex=1;
 			else
 				blockIsTilemapIndex=0;
+
+			useIndicesInRom=0;
+
 		} else {
 			indx&=0x1fff;
-			index_ptr=avengrgs_vram + indx*4;
+			index_ptr=mlc_vram + indx*4;
 			h=(index_ptr[0]>>8)&0xf;
 			w=(index_ptr[1]>>8)&0xf;
 
 			if (!h) h=16;
-			if (!w) w=16; //test above in sprites too
+			if (!w) w=16;
 
 			if (use8bppMode) {
-				UINT32* index_ptr2=avengrgs_vram + indx2*4;
+				UINT32* index_ptr2=mlc_vram + indx2*4;
 				sprite2=((index_ptr2[2]&0x3)<<16) | (index_ptr2[3]&0xffff);
 			}
 
 			sprite = ((index_ptr[2]&0x3)<<16) | (index_ptr[3]&0xffff);
-			if (index_ptr[2]&0x40)
+			if (index_ptr[2]&0xc0)
 				blockIsTilemapIndex=1;
 			else
 				blockIsTilemapIndex=0;
 
+			tileFormat=index_ptr[2]&0x80;
+
+			hibits=(index_ptr[2]&0x3c)<<10;
+			useIndicesInRom=index_ptr[2]&3;
+
 			yoffs=index_ptr[0]&0xff;
 			xoffs=index_ptr[1]&0xff;
+
+			fy1=(index_ptr[0]&0xf000)>>12;
+			fx1=(index_ptr[1]&0xf000)>>12;
 		}
 
-		if (fx) x+=xoffs-16; else x-=xoffs; //check for signed offsets...
-		if (fy) y+=yoffs-16; else y-=yoffs; //check for signed offsets...
+		if(fx1&1) fx^=0x8000;
+		if(fy1&1) fy^=0x4000;
 
 		if (fx) xmult=-1; else xmult=1;
 		if (fy) ymult=-1; else ymult=1;
 
 		ybase=y<<16;
+		if (fy)
+			ybase+=(yoffs-15) * (yscale<<8);
+		else
+			ybase-=yoffs * (yscale<<8);
+
 		yinc=(yscale<<8)*16;
+
+		if (fy) yinc=-yinc;
 
 		for (by=0; by<h; by++) {
 			int xbase=x<<16;
 			int xinc=(xscale<<8)*16;
+
+			if (fx)
+				xbase+=(xoffs-15) * (xscale<<8);
+			else
+				xbase-=xoffs * (xscale<<8);
 
 			if (fx) xinc=-xinc;
 
 			for (bx=0; bx<w; bx++) {
 				int tile=sprite;
 				int tile2=sprite2;
-				int bank=sprite>>16;
 
 				if (blockIsTilemapIndex) {
-					const UINT8* ptr=rawrom+(sprite*2);
-					tile=(*ptr) + ((*(ptr+1))<<8);
-					bank=0;
+					if (useIndicesInRom)
+					{
+						const UINT8* ptr=rawrom+(sprite*2);
+						tile=(*ptr) + ((*(ptr+1))<<8);
 
-					if (use8bppMode) {
-						const UINT8* ptr2=rawrom+(sprite2*2);
-						tile2=(*ptr2) + ((*(ptr2+1))<<8);
+						if (use8bppMode) {
+							const UINT8* ptr2=rawrom+(sprite2*2);
+							tile2=(*ptr2) + ((*(ptr2+1))<<8);
+						}
+						else
+						{
+							tile2=0;
+						}
+
+						if (tileFormat)
+						{
+							colorOffset=(tile&0xf000)>>12;
+							tile=(tile&0x0fff)|hibits;
+							tile2=(tile2&0x0fff)|hibits;
+						}
+						else
+						{
+							colorOffset=0;
+							tile=(tile&0xffff)|(hibits<<2);
+							tile2=(tile2&0xffff)|(hibits<<2);
+						}
+					}
+					else
+					{
+						const UINT32* ptr=mlc_vram + ((sprite)&0x7fff);
+						tile=(*ptr)&0xffff;
+
+						if (tileFormat)
+						{
+							colorOffset=(tile&0xf000)>>12;
+							tile=(tile&0x0fff)|hibits;
+						}
+						else
+						{
+							colorOffset=0;
+							tile=(tile&0xffff)|(hibits<<2);
+						}
+
+						tile2=0;
 					}
 				}
 
-				mlc_drawgfxzoom(bitmap,Machine->gfx[bank],
-							tile,tile2,
-							color,fx,fy,xbase,ybase,
-							cliprect,TRANSPARENCY_PEN,0,use8bppMode,(xscale<<8),(yscale<<8));
+				if (rasterMode)
+					rasterDirty=1;
+
+				mlc_drawgfxzoom(/*rasterMode ? temp_bitmap : */bitmap,Machine->gfx[0],
+								tile,tile2,
+								color + colorOffset,fx,fy,xbase,ybase,
+								&user_clip,trans,0,
+								use8bppMode,(xscale<<8),(yscale<<8));
 
 				sprite++;
 				sprite2++;
@@ -320,104 +506,32 @@ static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 			ybase+=yinc;
 		}
 
+		if (lastRasterMode!=0 && rasterDirty)
+		{
+	//      blitRaster(bitmap, rasterMode);
+//          fillbitmap(temp_bitmap,0,cliprect);
+			rasterDirty=0;
+		}
+		lastRasterMode=rasterMode;
+
 		if (use8bppMode)
 			offs-=8;
 	}
 }
 
-
-/*
-
-    0100 0000 bug...
-
-  4964 - calls function
-    6a6c - which sets 3c@SP
-
-    6bf8 - uses 3c@SP
-
-    SHLR8 at 6a4e creates 0100 0000
-
-
-    other:
-
-    6a90 - unaligned sp access??  72@sp
-    6a92 - puts $30 into r0 for sp access and calculates flip
-
-
-    6b18 - alters r13 - ORs in flip information - uses 30@sp
-    6b66 - sets up r13 (palette)
-    6d14 - extu r13 into r5, then call function below
-    463a - moves R5 into spriteram (contains flip X part for CA)
-
-*/
-
-VIDEO_UPDATE( avengrgs )
+VIDEO_EOF( mlc )
 {
-	int mx,my;
-	UINT32 *vram_ptr=avengrgs_vram + (0x1dc00/4);
-
-#if 0
-//  UINT8 *rom = memory_region(REGION_GFX4);
-
-//  static int bank=0;
-//  static int base=0x40000;
-//  int o=0;
-
-//  if (code_pressed_memory(KEYCODE_X))
-//      base+=0x200;
-//  if (code_pressed_memory(KEYCODE_Z))
-//      base-=0x200;
-
-// 22a65c0 == linescroll
-
-	ui_popup("%08x",base);
-
-	for (my=0; my<16; my++) {
-		for (mx=0; mx<16; mx++) {
-			int t=rom[base+o]|(rom[base+1+o]<<8);
-			drawgfx(bitmap,Machine->gfx[bank],t,5,0,0,mx*16,my*16,0,TRANSPARENCY_PEN,0);
-			o+=2;
-		}
-	}
-#endif
-
-	fillbitmap(bitmap,get_black_pen(),cliprect);
-	draw_sprites(bitmap,cliprect);
-
-	for (my=0; my<32; my++) {
-		for (mx=0; mx<64; mx++) {
-			int indx=0;
-
-			if (mx<16)
-				indx=mx + (my&0x1f)*0x10;
-			else if (mx<32)
-				indx=(mx-16) + (my&0x1f)*0x10 + 0x200;
-			else
-				indx=(mx-32) + (my&0x1f)*0x10 + 0x400;
-
-			if ((vram_ptr[indx])&0xff)
-				drawgfx(bitmap,Machine->gfx[3],(vram_ptr[indx])&0xff,15-((vram_ptr[indx]>>12)&0xf),0,0,mx*8,my*8,0,TRANSPARENCY_PEN,0);
-		}
-	}
+	/* Spriteram is definitely double buffered, as the vram lookup tables
+    are often updated a frame after spriteram is setup to point to a new
+    lookup table.  Without buffering incorrect one frame glitches are seen
+    in several places, especially in Hoops.
+    */
+	memcpy(mlc_buffered_spriteram, spriteram32, 0x3000);
 }
 
-VIDEO_STOP(avengrgs)
+VIDEO_UPDATE( mlc )
 {
-#if 0
-	FILE *fp;
-	int i;
-	char a[4];
-
-	fp=fopen("vram.dmp","wb");
-	for (i=0; i<0x20000/4; i++) {
-		a[0]=avengrgs_vram[i]&0xff;
-		a[1]=avengrgs_vram[i]>>8;
-		fwrite(a,0x2,1,fp);
-	}
-	fclose(fp);
-
-	fp=fopen("vram2.dmp","wb");
-	fwrite(avengrgs_ram2,0x4000,1,fp);
-	fclose(fp);
-#endif
+//  fillbitmap(temp_bitmap,0,cliprect);
+	fillbitmap(bitmap,Machine->pens[0],cliprect); /* Pen 0 fill colour confirmed from Skull Fang level 2 */
+	draw_sprites(bitmap,cliprect);
 }

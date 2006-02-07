@@ -4,6 +4,9 @@
 
     Generic functions, mostly ROM and graphics related.
 
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
 *********************************************************************/
 
 #include "driver.h"
@@ -31,22 +34,6 @@
 // routines don't clip at boundaries of the bitmap.
 #define BITMAP_SAFETY			16
 
-#define MAX_MALLOCS				8192
-
-
-
-/***************************************************************************
-
-    Type definitions
-
-***************************************************************************/
-
-struct _malloc_info
-{
-	int tag;
-	void *ptr;
-};
-typedef struct _malloc_info malloc_info;
 
 
 
@@ -63,8 +50,9 @@ unsigned int coinlockedout[COIN_COUNTERS];
 static unsigned int lastcoin[COIN_COUNTERS];
 
 /* malloc tracking */
-static malloc_info malloc_list[MAX_MALLOCS];
+static void** malloc_list = NULL;
 static int malloc_list_index = 0;
+static int malloc_list_size = 0;
 
 /* resource tracking */
 int resource_tracking_tag = 0;
@@ -562,13 +550,49 @@ void bitmap_free(mame_bitmap *bitmap)
 ***************************************************************************/
 
 /*-------------------------------------------------
+    auto_malloc_add - add pointer to malloc list
+-------------------------------------------------*/
+
+INLINE void auto_malloc_add(void *result)
+{
+	/* make sure we have tracking space */
+	if (malloc_list_index == malloc_list_size)
+	{
+		void **list;
+
+		/* if this is the first time, allocate 256 entries, otherwise double the slots */
+		if (malloc_list_size == 0)
+			malloc_list_size = 256;
+		else
+			malloc_list_size *= 2;
+
+		/* realloc the list */
+		list = realloc(malloc_list, malloc_list_size * sizeof(list[0]));
+		if (list == NULL)
+			osd_die("Unable to extend malloc tracking array to %d slots", malloc_list_size);
+		malloc_list = list;
+	}
+	malloc_list[malloc_list_index++] = result;
+}
+
+
+/*-------------------------------------------------
+    auto_start - prepare frames
+-------------------------------------------------*/
+
+void auto_start(void)
+{
+	auto_malloc_add(NULL);
+}
+
+
+/*-------------------------------------------------
     auto_malloc - allocate auto-freeing memory
 -------------------------------------------------*/
 
 void *auto_malloc(size_t size)
 {
 	void *result;
-	malloc_info *info;
 
 	/* malloc-ing zero bytes is inherently unportable; hence this check */
 	if (size == 0)
@@ -580,21 +604,10 @@ void *auto_malloc(size_t size)
 	if (!result)
 		osd_die("Out of memory attempting to allocate %d bytes\n", (int)size);
 
-	/* make sure we have space */
-	if (malloc_list_index >= MAX_MALLOCS)
-	{
-		fprintf(stderr, "Out of malloc tracking slots!\n");
-		return result;
-	}
-
-	/* fill in the current entry */
-	info = &malloc_list[malloc_list_index++];
-	info->tag = get_resource_tag();
-	info->ptr = result;
+	auto_malloc_add(result);
 
 	return result;
 }
-
 
 
 /*-------------------------------------------------
@@ -603,29 +616,26 @@ void *auto_malloc(size_t size)
 
 char *auto_strdup(const char *str)
 {
-	char *new_str = auto_malloc(strlen(str) + 1);
-	if (!new_str)
-		return NULL;
-	strcpy(new_str, str);
-	return new_str;
+	return strcpy(auto_malloc(strlen(str) + 1), str);
 }
 
 
-
 /*-------------------------------------------------
-    end_resource_tracking - stop tracking
-    resources
+    auto_free - release auto_malloc'd memory
 -------------------------------------------------*/
 
 void auto_free(void)
 {
-	int tag = get_resource_tag();
+	/* start at the end and free everything till you reach the sentinel */
+	while (malloc_list_index > 0 && malloc_list[--malloc_list_index] != NULL)
+		free(malloc_list[malloc_list_index]);
 
-	/* start at the end and free everything on the current tag */
-	while (malloc_list_index > 0 && malloc_list[malloc_list_index - 1].tag >= tag)
+	/* if we free everything, free the list */
+	if (malloc_list_index == 0)
 	{
-		malloc_info *info = &malloc_list[--malloc_list_index];
-		free(info->ptr);
+		free(malloc_list);
+		malloc_list = NULL;
+		malloc_list_size = 0;
 	}
 }
 
@@ -659,6 +669,8 @@ mame_bitmap *auto_bitmap_alloc_depth(int width,int height,int depth)
 
 void begin_resource_tracking(void)
 {
+	auto_start();
+
 	/* increment the tag counter */
 	resource_tracking_tag++;
 }
@@ -836,7 +848,7 @@ static mame_file *mame_fopen_next(int filetype)
 }
 
 
- /*-------------------------------------------------
+/*-------------------------------------------------
     save_screen_snapshot - save a snapshot.
 -------------------------------------------------*/
 
@@ -851,7 +863,8 @@ void save_screen_snapshot(mame_bitmap *bitmap)
 	}
 }
 
- /*-------------------------------------------------
+
+/*-------------------------------------------------
     record_movie - start, stop and update the
     recording of a MNG movie
 -------------------------------------------------*/

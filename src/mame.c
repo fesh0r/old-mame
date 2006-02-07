@@ -4,6 +4,9 @@
 
     Controls execution of the core MAME system.
 
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
 ****************************************************************************
 
     Since there has been confusion in the past over the order of
@@ -46,14 +49,15 @@
 
                 vh_open() [mame.c]
                     - calls palette_start() [palette.c] to allocate the palette
-                    - calls decode_graphics() [mame.c] to decode the graphics
                     - computes game resolution and aspect ratio
                     - calls artwork_create_display() [artwork.c] to set up the artwork and init the display
                     - allocates the scrbitmap
                     - sets the initial refresh rate and visible area
                     - calls init_buffered_spriteram() [mame.c] to set up buffered spriteram
                     - creates the debugger bitmap and font (old debugger only)
+                    - calls allocate_graphics() [mame.c] to allocate memory for the decoded graphics
                     - calls palette_init() [palette.c] to finish palette initialization
+                    - calls decode_graphics() [mame.c] to decode the graphics
                     - resets the performance tracking variables
 
                 - calls tilemap_init() [tilemap.c] to initialize the tilemap system
@@ -149,9 +153,7 @@
 
 
 /***************************************************************************
-
-    Constants
-
+    CONSTANTS
 ***************************************************************************/
 
 #define FRAMES_PER_FPS_UPDATE		12
@@ -159,9 +161,7 @@
 
 
 /***************************************************************************
-
-    Global variables
-
+    TYPE DEFINITIONS
 ***************************************************************************/
 
 /* handy globals for other parts of the system */
@@ -169,6 +169,7 @@ void *record;	/* for -record */
 void *playback; /* for -playback */
 int mame_debug; /* !0 when -debug option is specified */
 int bailing;	/* set to 1 if the startup is aborted to prevent multiple error messages */
+int vector_updates = 0;
 
 /* the active machine */
 static running_machine active_machine;
@@ -198,8 +199,8 @@ static int vfcount;
 static performance_info performance;
 
 /* misc other statics */
-static int leds_status;
-static int mame_paused;
+static UINT32 leds_status;
+static UINT8 mame_paused;
 
 /* artwork callbacks */
 #ifndef MESS
@@ -215,34 +216,8 @@ int skip_this_frame;
 #endif
 
 
-
 /***************************************************************************
-
-    Hard disk interface prototype
-
-***************************************************************************/
-
-static chd_interface_file *mame_chd_open(const char *filename, const char *mode);
-static void mame_chd_close(chd_interface_file *file);
-static UINT32 mame_chd_read(chd_interface_file *file, UINT64 offset, UINT32 count, void *buffer);
-static UINT32 mame_chd_write(chd_interface_file *file, UINT64 offset, UINT32 count, const void *buffer);
-static UINT64 mame_chd_length(chd_interface_file *file);
-
-static chd_interface mame_chd_interface =
-{
-	mame_chd_open,
-	mame_chd_close,
-	mame_chd_read,
-	mame_chd_write,
-	mame_chd_length
-};
-
-
-
-/***************************************************************************
-
-    Other function prototypes
-
+    PROTOTYPES
 ***************************************************************************/
 
 static int init_machine(void);
@@ -254,7 +229,8 @@ static void recompute_fps(int skipped_it);
 static int vh_open(void);
 static void vh_close(void);
 static int init_game_options(void);
-static int decode_graphics(const gfx_decode *gfxdecodeinfo);
+static int allocate_graphics(const gfx_decode *gfxdecodeinfo);
+static void decode_graphics(const gfx_decode *gfxdecodeinfo);
 static void compute_aspect_ratio(const machine_config *drv, int *aspect_x, int *aspect_y);
 static void scale_vectorgames(int gfx_width, int gfx_height, int *width, int *height);
 static int init_buffered_spriteram(void);
@@ -263,10 +239,9 @@ static int input_is_coin(const char *name);
 static void input_is_coin_free(void);
 
 
+
 /***************************************************************************
-
-    Inline functions
-
+    INLINES
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -713,12 +688,6 @@ static int vh_open(void)
 	if (palette_start())
 		goto cant_start_palette;
 
-	/* convert the gfx ROMs into character sets. This is done BEFORE calling the driver's */
-	/* palette_init() routine because it might need to check the Machine->gfx[] data */
-	if (Machine->drv->gfxdecodeinfo)
-		if (decode_graphics(Machine->drv->gfxdecodeinfo))
-			goto cant_decode_graphics;
-
 	/* if we're a vector game, override the screen width and height */
 	if (Machine->drv->video_attributes & VIDEO_TYPE_VECTOR)
 		scale_vectorgames(options.vector_width, options.vector_height, &bmwidth, &bmheight);
@@ -795,12 +764,22 @@ static int vh_open(void)
 	}
 #endif
 
+	/* convert the gfx ROMs into character sets. This is done BEFORE calling the driver's */
+	/* palette_init() routine because it might need to check the Machine->gfx[] data */
+	if (Machine->drv->gfxdecodeinfo)
+		if (allocate_graphics(Machine->drv->gfxdecodeinfo))
+			goto cant_allocate_graphics;
+
 	/* initialize the palette - must be done after osd_create_display() */
 	if (palette_init())
 		goto cant_init_palette;
 
 	/* force the first update to be full */
 	set_vh_global_attribute(NULL, 0);
+
+	/* actually decode the graphics */
+	if (Machine->drv->gfxdecodeinfo)
+		decode_graphics(Machine->drv->gfxdecodeinfo);
 
 	/* reset performance data */
 	last_fps_time = osd_cycles();
@@ -825,7 +804,7 @@ cant_create_debug_bitmap:
 cant_init_buffered_spriteram:
 cant_create_scrbitmap:
 cant_create_display:
-cant_decode_graphics:
+cant_allocate_graphics:
 cant_start_palette:
 	vh_close();
 	return 1;
@@ -929,10 +908,11 @@ static int init_game_options(void)
 
 
 /*-------------------------------------------------
-    decode_graphics - decode the graphics
+    allocate_graphics - allocate memory for the
+    graphics
 -------------------------------------------------*/
 
-static int decode_graphics(const gfx_decode *gfxdecodeinfo)
+static int allocate_graphics(const gfx_decode *gfxdecodeinfo)
 {
 	int i;
 
@@ -940,7 +920,6 @@ static int decode_graphics(const gfx_decode *gfxdecodeinfo)
 	for (i = 0; i < MAX_GFX_ELEMENTS && gfxdecodeinfo[i].memory_region != -1; i++)
 	{
 		int region_length = 8 * memory_region_length(gfxdecodeinfo[i].memory_region);
-		UINT8 *region_base = memory_region(gfxdecodeinfo[i].memory_region);
 		gfx_layout glcopy;
 		int j;
 
@@ -990,13 +969,8 @@ static int decode_graphics(const gfx_decode *gfxdecodeinfo)
 			}
 		}
 
-		/* now decode the actual graphics */
-		if ((Machine->gfx[i] = decodegfx(region_base + gfxdecodeinfo[i].start, &glcopy)) == 0)
-		{
-			bailing = 1;
-			printf("Out of memory decoding gfx\n");
-			return 1;
-		}
+		/* allocate the graphics */
+		Machine->gfx[i] = allocgfx(&glcopy);
 
 		/* if we have a remapped colortable, point our local colortable to it */
 		if (Machine->remapped_colortable)
@@ -1004,6 +978,41 @@ static int decode_graphics(const gfx_decode *gfxdecodeinfo)
 		Machine->gfx[i]->total_colors = gfxdecodeinfo[i].total_color_codes;
 	}
 	return 0;
+}
+
+
+
+/*-------------------------------------------------
+    decode_graphics - decode the graphics
+-------------------------------------------------*/
+
+static void decode_graphics(const gfx_decode *gfxdecodeinfo)
+{
+	int totalgfx = 0, curgfx = 0;
+	int i;
+
+	/* count total graphics elements */
+	for (i = 0; i < MAX_GFX_ELEMENTS; i++)
+		if (Machine->gfx[i])
+			totalgfx += Machine->gfx[i]->total_elements;
+
+	/* loop over all elements */
+	for (i = 0; i < MAX_GFX_ELEMENTS; i++)
+		if (Machine->gfx[i])
+		{
+			UINT8 *region_base = memory_region(gfxdecodeinfo[i].memory_region);
+			gfx_element *gfx = Machine->gfx[i];
+			int j;
+
+			/* now decode the actual graphics */
+			for (j = 0; j < gfx->total_elements; j += 1024)
+			{
+				int num_to_decode = (j + 1024 < gfx->total_elements) ? 1024 : (gfx->total_elements - j);
+				decodegfx(gfx, region_base + gfxdecodeinfo[i].start, j, num_to_decode);
+				curgfx += num_to_decode;
+	/*          ui_display_decoding(artwork_get_ui_bitmap(), curgfx * 100 / totalgfx);*/
+			}
+		}
 }
 
 
@@ -1051,8 +1060,6 @@ static int init_buffered_spriteram(void)
 
 	/* allocate memory for the back buffer */
 	buffered_spriteram = auto_malloc(spriteram_size);
-	if (!buffered_spriteram)
-		return 1;
 
 	/* register for saving it */
 	state_save_register_UINT8("generic_video", 0, "buffered_spriteram", buffered_spriteram, spriteram_size);
@@ -1062,8 +1069,6 @@ static int init_buffered_spriteram(void)
 	{
 		/* allocate memory */
 		buffered_spriteram_2 = auto_malloc(spriteram_2_size);
-		if (!buffered_spriteram_2)
-			return 1;
 
 		/* register for saving it */
 		state_save_register_UINT8("generic_video", 0, "buffered_spriteram_2", buffered_spriteram_2, spriteram_2_size);
@@ -1331,8 +1336,6 @@ void update_video_and_audio(void)
     recompute_fps - recompute the frame rate
 -------------------------------------------------*/
 
-int vector_updates = 0;
-
 static void recompute_fps(int skipped_it)
 {
 	/* increment the frame counters */
@@ -1383,7 +1386,7 @@ int updatescreen(void)
 	sound_frame_update();
 
 	/* if we're not skipping this frame, draw the screen */
-	if (osd_skip_this_frame() == 0)
+	if (!osd_skip_this_frame())
 	{
 		profiler_mark(PROFILER_VIDEO);
 		draw_screen();
@@ -1685,83 +1688,4 @@ void machine_remove_sound(machine_config *machine, const char *tag)
 		}
 
 	logerror("Can't find sound '%s'!\n", tag);
-}
-
-
-
-/*-------------------------------------------------
-    mame_chd_open - interface for opening
-    a hard disk image
--------------------------------------------------*/
-
-chd_interface_file *mame_chd_open(const char *filename, const char *mode)
-{
-	/* look for read-only drives first in the ROM path */
-	if (mode[0] == 'r' && !strchr(mode, '+'))
-	{
-		const game_driver *drv;
-
-		/* attempt reading up the chain through the parents */
-		for (drv = Machine->gamedrv; drv != NULL; drv = drv->clone_of)
-		{
-			void* file = mame_fopen(drv->name, filename, FILETYPE_IMAGE, 0);
-
-			if (file != NULL)
-				return file;
-		}
-
-		return NULL;
-	}
-
-	/* look for read/write drives in the diff area */
-	return (chd_interface_file *)mame_fopen(NULL, filename, FILETYPE_IMAGE_DIFF, 1);
-}
-
-
-
-/*-------------------------------------------------
-    mame_chd_close - interface for closing
-    a hard disk image
--------------------------------------------------*/
-
-void mame_chd_close(chd_interface_file *file)
-{
-	mame_fclose((mame_file *)file);
-}
-
-
-
-/*-------------------------------------------------
-    mame_chd_read - interface for reading
-    from a hard disk image
--------------------------------------------------*/
-
-UINT32 mame_chd_read(chd_interface_file *file, UINT64 offset, UINT32 count, void *buffer)
-{
-	mame_fseek((mame_file *)file, offset, SEEK_SET);
-	return mame_fread((mame_file *)file, buffer, count);
-}
-
-
-
-/*-------------------------------------------------
-    mame_chd_write - interface for writing
-    to a hard disk image
--------------------------------------------------*/
-
-UINT32 mame_chd_write(chd_interface_file *file, UINT64 offset, UINT32 count, const void *buffer)
-{
-	mame_fseek((mame_file *)file, offset, SEEK_SET);
-	return mame_fwrite((mame_file *)file, buffer, count);
-}
-
-
-/*-------------------------------------------------
-    mame_chd_length - interface for getting
-    the length a hard disk image
--------------------------------------------------*/
-
-UINT64 mame_chd_length(chd_interface_file *file)
-{
-	return mame_fsize((mame_file *)file);
 }

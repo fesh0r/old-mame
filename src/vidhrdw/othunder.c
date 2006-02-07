@@ -31,8 +31,6 @@ static VIDEO_START( othunder_core )
        which are what actually get put in the structure. */
 
 	spritelist = auto_malloc(0x2000 * sizeof(*spritelist));
-	if (!spritelist)
-		return 1;
 
 	if (TC0100SCN_vh_start(1,TC0100SCN_GFX_NUM,taito_hide_pixels,0,0,0,0,0,0))
 		return 1;
@@ -104,7 +102,7 @@ spriteram is being tested, take no notice of that.]
 ********************************************************/
 
 
-static void othunder_draw_sprites_16x8(mame_bitmap *bitmap,const rectangle *cliprect,int *primasks,int y_offs)
+static void othunder_draw_sprites_16x8(mame_bitmap *bitmap,const rectangle *cliprect,const int *primasks,int y_offs)
 {
 	UINT16 *spritemap = (UINT16 *)memory_region(REGION_USER1);
 	UINT16 tile_mask = (Machine->gfx[0]->total_elements) - 1;
@@ -261,7 +259,7 @@ VIDEO_UPDATE( othunder )
 
 	/* Sprites can be under/over the layer below text layer */
 	{
-		int primasks[2] = {0xf0,0xfc};
+		static const int primasks[2] = {0xf0,0xfc};
 		othunder_draw_sprites_16x8(bitmap,cliprect,primasks,3);
 	}
 

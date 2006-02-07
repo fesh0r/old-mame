@@ -61,6 +61,9 @@
 #define PCW h6280.pc.w.l
 #define PCD h6280.pc.d
 
+#define CLEAR_T  \
+	P &= ~_fT;
+
 #define DO_INTERRUPT(vector)									\
 {																\
 	h6280.extra_cycles += 7;	/* 7 cycles for an int */		\
@@ -77,6 +80,12 @@
 #define CHECK_IRQ_LINES 										\
 	if( !(P & _fI) )											\
 	{															\
+        if ( h6280.irq_state[2] != CLEAR_LINE &&                \
+			 !(h6280.irq_mask & 0x4) )							\
+		{														\
+ 			DO_INTERRUPT(H6280_TIMER_VEC);						\
+       }                                                       	\
+		else													\
 		if ( h6280.irq_state[0] != CLEAR_LINE &&				\
 			 !(h6280.irq_mask & 0x2) )							\
 		{														\
@@ -90,13 +99,6 @@
 			DO_INTERRUPT(H6280_IRQ2_VEC);						\
 			(*h6280.irq_callback)(1);							\
         }                                                       \
-		else													\
-        if ( h6280.irq_state[2] != CLEAR_LINE &&                \
-			 !(h6280.irq_mask & 0x4) )							\
-		{														\
-			h6280.irq_state[2] = CLEAR_LINE;					\
- 			DO_INTERRUPT(H6280_TIMER_VEC);						\
-       }                                                       	\
     }
 
 /***************************************************************
@@ -167,6 +169,7 @@
  *  BRA  branch relative
  ***************************************************************/
 #define BRA(cond)												\
+	CLEAR_T;													\
 	if (cond)													\
 	{															\
 		h6280_ICount -= 4;										\
@@ -194,6 +197,13 @@
 #define EA_ZPG													\
 	ZPL = RDOPARG();											\
 	PCW++;														\
+	EAD = ZPD
+
+/***************************************************************
+ *  EA = zero page address - T flag
+ ***************************************************************/
+#define EA_TFLG													\
+	ZPL = X;													\
 	EAD = ZPD
 
 /***************************************************************
@@ -294,6 +304,7 @@
 #define RD_ZPI	EA_ZPI; tmp = RDMEM(EAD)
 #define RD_IDX	EA_IDX; tmp = RDMEM(EAD)
 #define RD_IDY	EA_IDY; tmp = RDMEM(EAD)
+#define RD_TFL  EA_TFLG; tflagtemp = RDMEMZ(EAD)
 
 /* write a value from tmp */
 #define WR_ZPG	EA_ZPG; WRMEMZ(EAD, tmp)
@@ -310,6 +321,7 @@
 #define WB_ACC	A = (UINT8)tmp;
 #define WB_EA	WRMEM(EAD, tmp)
 #define WB_EAZ	WRMEMZ(EAD, tmp)
+#define WB_TFL  WRMEMZ(EAD, tflagtemp)
 
 /***************************************************************
  *
@@ -340,50 +352,105 @@
 /* 6280 ********************************************************
  *  ADC Add with carry
  ***************************************************************/
-#define ADC 													\
-	if (P & _fD)												\
+#define TADC 													\
 	{															\
-	int c = (P & _fC);											\
-	int lo = (A & 0x0f) + (tmp & 0x0f) + c; 					\
-	int hi = (A & 0xf0) + (tmp & 0xf0); 						\
-		P &= ~(_fV | _fC);										\
-		if (lo > 0x09)											\
+		int tflagtemp;											\
+		CLEAR_T;												\
+		RD_TFL;													\
+		if (P & _fD)											\
 		{														\
-			hi += 0x10; 										\
-			lo += 0x06; 										\
+		int c = (P & _fC);										\
+		int lo = (tflagtemp & 0x0f) + (tmp & 0x0f) + c; 		\
+		int hi = (tflagtemp & 0xf0) + (tmp & 0xf0); 			\
+			P &= ~_fC;											\
+			if (lo > 0x09)										\
+			{													\
+				hi += 0x10; 									\
+				lo += 0x06; 									\
+			}													\
+			if (hi > 0x90)										\
+				hi += 0x60; 									\
+			if (hi & 0xff00)									\
+				P |= _fC;										\
+			tflagtemp = (lo & 0x0f) + (hi & 0xf0);				\
 		}														\
-		if (~(A^tmp) & (A^hi) & _fN)							\
-			P |= _fV;											\
-		if (hi > 0x90)											\
-			hi += 0x60; 										\
-		if (hi & 0xff00)										\
-			P |= _fC;											\
-		A = (lo & 0x0f) + (hi & 0xf0);							\
-	}															\
-	else														\
-	{															\
-	int c = (P & _fC);											\
-	int sum = A + tmp + c;										\
-		P &= ~(_fV | _fC);										\
-		if (~(A^tmp) & (A^sum) & _fN)							\
-			P |= _fV;											\
-		if (sum & 0xff00)										\
-			P |= _fC;											\
-		A = (UINT8) sum;										\
-	}															\
-	SET_NZ(A)
+		else													\
+		{														\
+		int c = (P & _fC);										\
+		int sum = tflagtemp + tmp + c;							\
+			P &= ~(_fV | _fC);									\
+			if (~(tflagtemp^tmp) & (tflagtemp^sum) & _fN)		\
+				P |= _fV;										\
+			if (sum & 0xff00)									\
+				P |= _fC;										\
+			tflagtemp = (UINT8) sum;							\
+		}														\
+		SET_NZ(A);												\
+		WB_TFL;													\
+	}
+
+
+#define ADC 													\
+	if(P & _fT)													\
+		TADC													\
+	else {														\
+		if (P & _fD)											\
+		{														\
+			int c = (P & _fC);									\
+			int lo = (A & 0x0f) + (tmp & 0x0f) + c; 			\
+			int hi = (A & 0xf0) + (tmp & 0xf0); 				\
+			P &= ~_fC;											\
+			if (lo > 0x09)										\
+			{													\
+				hi += 0x10; 									\
+				lo += 0x06; 									\
+			}													\
+			if (hi > 0x90)										\
+				hi += 0x60; 									\
+			if (hi & 0xff00)									\
+				P |= _fC;										\
+			A = (lo & 0x0f) + (hi & 0xf0);						\
+		}														\
+		else													\
+		{														\
+			int c = (P & _fC);									\
+			int sum = A + tmp + c;								\
+			P &= ~(_fV | _fC);									\
+			if (~(A^tmp) & (A^sum) & _fN)						\
+				P |= _fV;										\
+			if (sum & 0xff00)									\
+				P |= _fC;										\
+			A = (UINT8) sum;									\
+		}														\
+		SET_NZ(A);												\
+	}
 
 /* 6280 ********************************************************
  *  AND Logical and
  ***************************************************************/
+#define TAND 													\
+	{															\
+		int tflagtemp;											\
+		CLEAR_T;												\
+		RD_TFL;													\
+		tflagtemp = (UINT8)(tflagtemp & tmp);					\
+		WB_TFL;													\
+		SET_NZ(tflagtemp);										\
+	}
+
 #define AND 													\
-	A = (UINT8)(A & tmp);										\
-	SET_NZ(A)
+	if(P & _fT)													\
+		TAND													\
+	else {														\
+		A = (UINT8)(A & tmp);									\
+		SET_NZ(A);												\
+	}
 
 /* 6280 ********************************************************
  *  ASL Arithmetic shift left
  ***************************************************************/
 #define ASL 													\
+	CLEAR_T;													\
 	P = (P & ~_fC) | ((tmp >> 7) & _fC);						\
 	tmp = (UINT8)(tmp << 1);									\
 	SET_NZ(tmp)
@@ -463,10 +530,11 @@
  ***************************************************************/
 #define BRK 													\
 	logerror("BRK %04x\n",activecpu_get_pc());	\
+	CLEAR_T;													\
 	PCW++;														\
 	PUSH(PCH);													\
 	PUSH(PCL);													\
-	PUSH(P | _fB);												\
+	PUSH(P);												\
 	P = (P & ~_fD) | _fI;										\
 	PCL = RDMEM(H6280_IRQ2_VEC); 								\
 	PCH = RDMEM(H6280_IRQ2_VEC+1);								\
@@ -495,24 +563,28 @@
  *  CLA Clear accumulator
  ***************************************************************/
 #define CLA                                                     \
-    A = 0
+    CLEAR_T;													\
+	A = 0
 
 /* 6280 ********************************************************
  *  CLC Clear carry flag
  ***************************************************************/
 #define CLC 													\
+	CLEAR_T;													\
 	P &= ~_fC
 
 /* 6280 ********************************************************
  *  CLD Clear decimal flag
  ***************************************************************/
 #define CLD 													\
+	CLEAR_T;													\
 	P &= ~_fD
 
 /* 6280 ********************************************************
  *  CLI Clear interrupt flag
  ***************************************************************/
 #define CLI 													\
+	CLEAR_T;													\
 	if( P & _fI )												\
 	{															\
 		P &= ~_fI;												\
@@ -524,24 +596,28 @@
  *  CLV Clear overflow flag
  ***************************************************************/
 #define CLV 													\
+	CLEAR_T;													\
 	P &= ~_fV
 
 /* 6280 ********************************************************
  *  CLX Clear index X
  ***************************************************************/
 #define CLX                                                     \
+	CLEAR_T;													\
     X = 0
 
 /* 6280 ********************************************************
  *  CLY Clear index Y
  ***************************************************************/
 #define CLY                                                     \
+	CLEAR_T;													\
     Y = 0
 
 /* 6280 ********************************************************
  *  CMP Compare accumulator
  ***************************************************************/
 #define CMP 													\
+	CLEAR_T;													\
 	P &= ~_fC;													\
 	if (A >= tmp)												\
 		P |= _fC;												\
@@ -551,6 +627,7 @@
  *  CPX Compare index X
  ***************************************************************/
 #define CPX 													\
+	CLEAR_T;													\
 	P &= ~_fC;													\
 	if (X >= tmp)												\
 		P |= _fC;												\
@@ -560,6 +637,7 @@
  *  CPY Compare index Y
  ***************************************************************/
 #define CPY 													\
+	CLEAR_T;													\
 	P &= ~_fC;													\
 	if (Y >= tmp)												\
 		P |= _fC;												\
@@ -569,6 +647,7 @@
  *  DEA Decrement accumulator
  ***************************************************************/
 #define DEA                                                     \
+	CLEAR_T;													\
 	A = (UINT8)--A; 											\
     SET_NZ(A)
 
@@ -576,6 +655,7 @@
  *  DEC Decrement memory
  ***************************************************************/
 #define DEC 													\
+	CLEAR_T;													\
 	tmp = (UINT8)(tmp-1); 										\
 	SET_NZ(tmp)
 
@@ -583,6 +663,7 @@
  *  DEX Decrement index X
  ***************************************************************/
 #define DEX 													\
+	CLEAR_T;													\
 	X = (UINT8)--X; 											\
 	SET_NZ(X)
 
@@ -590,20 +671,37 @@
  *  DEY Decrement index Y
  ***************************************************************/
 #define DEY 													\
+	CLEAR_T;													\
 	Y = (UINT8)--Y; 											\
 	SET_NZ(Y)
 
 /* 6280 ********************************************************
  *  EOR Logical exclusive or
  ***************************************************************/
+
+#define TEOR 													\
+	{															\
+		int tflagtemp;											\
+		CLEAR_T;												\
+		RD_TFL;													\
+		tflagtemp = (UINT8)(tflagtemp ^ tmp);					\
+		WB_TFL;													\
+		SET_NZ(tflagtemp);										\
+	}
+
 #define EOR 													\
-	A = (UINT8)(A ^ tmp);										\
-	SET_NZ(A)
+	if(P & _fT)													\
+		TEOR													\
+	else {														\
+		A = (UINT8)(A ^ tmp);									\
+		SET_NZ(A);												\
+	}
 
 /* 6280 ********************************************************
  *  ILL Illegal opcode
  ***************************************************************/
 #define ILL 													\
+	CLEAR_T;													\
 	h6280_ICount -= 2; /* (assumed) */							\
 	logerror("%04x: WARNING - h6280 illegal opcode\n",activecpu_get_pc())
 
@@ -611,6 +709,7 @@
  *  INA Increment accumulator
  ***************************************************************/
 #define INA                                                     \
+	CLEAR_T;													\
 	A = (UINT8)++A; 											\
     SET_NZ(A)
 
@@ -618,6 +717,7 @@
  *  INC Increment memory
  ***************************************************************/
 #define INC 													\
+	CLEAR_T;													\
 	tmp = (UINT8)(tmp+1); 										\
 	SET_NZ(tmp)
 
@@ -625,6 +725,7 @@
  *  INX Increment index X
  ***************************************************************/
 #define INX 													\
+	CLEAR_T;													\
 	X = (UINT8)++X; 											\
 	SET_NZ(X)
 
@@ -632,6 +733,7 @@
  *  INY Increment index Y
  ***************************************************************/
 #define INY 													\
+	CLEAR_T;													\
 	Y = (UINT8)++Y; 											\
 	SET_NZ(Y)
 
@@ -640,6 +742,7 @@
  *  set PC to the effective address
  ***************************************************************/
 #define JMP 													\
+	CLEAR_T;													\
 	PCD = EAD;													\
 	CHANGE_PC
 
@@ -649,6 +752,7 @@
  *  PC to the effective address
  ***************************************************************/
 #define JSR 													\
+	CLEAR_T;													\
 	PCW--;														\
 	PUSH(PCH);													\
 	PUSH(PCL);													\
@@ -659,6 +763,7 @@
  *  LDA Load accumulator
  ***************************************************************/
 #define LDA 													\
+	CLEAR_T;													\
 	A = (UINT8)tmp; 											\
 	SET_NZ(A)
 
@@ -666,6 +771,7 @@
  *  LDX Load index X
  ***************************************************************/
 #define LDX 													\
+	CLEAR_T;													\
 	X = (UINT8)tmp; 											\
 	SET_NZ(X)
 
@@ -673,6 +779,7 @@
  *  LDY Load index Y
  ***************************************************************/
 #define LDY 													\
+	CLEAR_T;													\
 	Y = (UINT8)tmp; 											\
 	SET_NZ(Y)
 
@@ -681,6 +788,7 @@
  *  0 -> [7][6][5][4][3][2][1][0] -> C
  ***************************************************************/
 #define LSR 													\
+	CLEAR_T;													\
 	P = (P & ~_fC) | (tmp & _fC);								\
 	tmp = (UINT8)tmp >> 1;										\
 	SET_NZ(tmp)
@@ -688,25 +796,42 @@
 /* 6280 ********************************************************
  *  NOP No operation
  ***************************************************************/
-#define NOP
+#define NOP CLEAR_T;
 
 /* 6280 ********************************************************
  *  ORA Logical inclusive or
  ***************************************************************/
+
+#define TORA 													\
+	{															\
+		int tflagtemp;											\
+		CLEAR_T;												\
+		RD_TFL;													\
+		tflagtemp = (UINT8)(tflagtemp | tmp);					\
+		WB_TFL;													\
+		SET_NZ(tflagtemp);										\
+	}
+
 #define ORA 													\
-	A = (UINT8)(A | tmp);										\
-	SET_NZ(A)
+	if(P & _fT)													\
+		TORA													\
+	else {														\
+		A = (UINT8)(A | tmp);									\
+		SET_NZ(A);												\
+	}
 
 /* 6280 ********************************************************
  *  PHA Push accumulator
  ***************************************************************/
 #define PHA 													\
+	CLEAR_T;													\
 	PUSH(A)
 
 /* 6280 ********************************************************
  *  PHP Push processor status (flags)
  ***************************************************************/
 #define PHP 													\
+	CLEAR_T;													\
 	COMPOSE_P(0,0); 											\
 	PUSH(P)
 
@@ -714,18 +839,21 @@
  *  PHX Push index X
  ***************************************************************/
 #define PHX                                                     \
+	CLEAR_T;													\
     PUSH(X)
 
 /* 6280 ********************************************************
  *  PHY Push index Y
  ***************************************************************/
 #define PHY                                                     \
+	CLEAR_T;													\
     PUSH(Y)
 
 /* 6280 ********************************************************
  *  PLA Pull accumulator
  ***************************************************************/
 #define PLA 													\
+	CLEAR_T;													\
 	PULL(A);													\
 	SET_NZ(A)
 
@@ -736,6 +864,7 @@
 
 #define PLP 													\
 	PULL(P);													\
+	P |= _fB;													\
 	NZ = ((P & _fN) << 8) | 									\
 		 ((P & _fZ) ^ _fZ); 									\
 	CHECK_IRQ_LINES
@@ -744,6 +873,7 @@
 
 #define PLP 													\
 	PULL(P); 													\
+	P |= _fB;													\
 	CHECK_IRQ_LINES
 #endif
 
@@ -751,18 +881,23 @@
  *  PLX Pull index X
  ***************************************************************/
 #define PLX                                                     \
-    PULL(X)
+	CLEAR_T;													\
+    PULL(X);													\
+	SET_NZ(X)
 
 /* 6280 ********************************************************
  *  PLY Pull index Y
  ***************************************************************/
 #define PLY                                                     \
-    PULL(Y)
+	CLEAR_T;													\
+    PULL(Y);													\
+	SET_NZ(Y)
 
 /* 6280 ********************************************************
  *  RMB Reset memory bit
  ***************************************************************/
 #define RMB(bit)                                                \
+	CLEAR_T;													\
     tmp &= ~(1<<bit)
 
 /* 6280 ********************************************************
@@ -770,6 +905,7 @@
  *  new C <- [7][6][5][4][3][2][1][0] <- C
  ***************************************************************/
 #define ROL 													\
+	CLEAR_T;													\
 	tmp = (tmp << 1) | (P & _fC);								\
 	P = (P & ~_fC) | ((tmp >> 8) & _fC);						\
 	tmp = (UINT8)tmp;											\
@@ -780,6 +916,7 @@
  *  C -> [7][6][5][4][3][2][1][0] -> new C
  ***************************************************************/
 #define ROR 													\
+	CLEAR_T;													\
 	tmp |= (P & _fC) << 8;										\
 	P = (P & ~_fC) | (tmp & _fC);								\
 	tmp = (UINT8)(tmp >> 1);									\
@@ -793,6 +930,7 @@
 
 #define RTI 													\
 	PULL(P);													\
+	P |= _fB;													\
 	NZ = ((P & _fN) << 8) | 									\
 		 ((P & _fZ) ^ _fZ); 									\
 	PULL(PCL);													\
@@ -803,6 +941,7 @@
 
 #define RTI 													\
 	PULL(P);													\
+	P |= _fB;													\
 	PULL(PCL);													\
 	PULL(PCH);													\
 	CHANGE_PC;													\
@@ -814,6 +953,7 @@
  *  pull PC lo, PC hi and increment PC
  ***************************************************************/
 #define RTS 													\
+	CLEAR_T;													\
 	PULL(PCL);													\
 	PULL(PCH);													\
 	PCW++;														\
@@ -823,6 +963,7 @@
  *  SAX Swap accumulator and index X
  ***************************************************************/
 #define SAX                                                     \
+	CLEAR_T;													\
     tmp = X;                                                    \
     X = A;                                                      \
     A = tmp
@@ -831,6 +972,7 @@
  *  SAY Swap accumulator and index Y
  ***************************************************************/
 #define SAY                                                     \
+	CLEAR_T;													\
     tmp = Y;                                                    \
     Y = A;                                                      \
     A = tmp
@@ -839,15 +981,14 @@
  *  SBC Subtract with carry
  ***************************************************************/
 #define SBC 													\
+	CLEAR_T;													\
 	if (P & _fD)												\
 	{															\
 	int c = (P & _fC) ^ _fC;									\
 	int sum = A - tmp - c;										\
 	int lo = (A & 0x0f) - (tmp & 0x0f) - c; 					\
 	int hi = (A & 0xf0) - (tmp & 0xf0); 						\
-		P &= ~(_fV | _fC);										\
-		if ((A^tmp) & (A^sum) & _fN)							\
-			P |= _fV;											\
+		P &= ~_fC;												\
 		if (lo & 0xf0)											\
 			lo -= 6;											\
 		if (lo & 0x80)											\
@@ -875,18 +1016,21 @@
  *  SEC Set carry flag
  ***************************************************************/
 #define SEC 													\
+	CLEAR_T;													\
 	P |= _fC
 
 /* 6280 ********************************************************
  *  SED Set decimal flag
  ***************************************************************/
 #define SED 													\
+	CLEAR_T;													\
 	P |= _fD
 
 /* 6280 ********************************************************
  *  SEI Set interrupt flag
  ***************************************************************/
 #define SEI 													\
+	CLEAR_T;													\
 	P |= _fI
 
 /* 6280 ********************************************************
@@ -900,62 +1044,72 @@
  *  SMB Set memory bit
  ***************************************************************/
 #define SMB(bit)                                                \
+	CLEAR_T;													\
     tmp |= (1<<bit)
 
 /* 6280 ********************************************************
  *  ST0 Store at hardware address 0
  ***************************************************************/
 #define ST0                                                     \
+	CLEAR_T;													\
     io_write_byte_8(0x0000,tmp)
 
 /* 6280 ********************************************************
  *  ST1 Store at hardware address 2
  ***************************************************************/
 #define ST1                                                     \
+	CLEAR_T;													\
     io_write_byte_8(0x0002,tmp)
 
 /* 6280 ********************************************************
  *  ST2 Store at hardware address 3
  ***************************************************************/
 #define ST2                                                     \
+	CLEAR_T;													\
     io_write_byte_8(0x0003,tmp)
 
 /* 6280 ********************************************************
  *  STA Store accumulator
  ***************************************************************/
 #define STA 													\
+	CLEAR_T;													\
 	tmp = A
 
 /* 6280 ********************************************************
  *  STX Store index X
  ***************************************************************/
 #define STX 													\
+	CLEAR_T;													\
 	tmp = X
 
 /* 6280 ********************************************************
  *  STY Store index Y
  ***************************************************************/
 #define STY 													\
+	CLEAR_T;													\
 	tmp = Y
 
 /* 6280 ********************************************************
  * STZ  Store zero
  ***************************************************************/
 #define STZ                                                     \
+	CLEAR_T;													\
     tmp = 0
 
 /* H6280 *******************************************************
  *  SXY Swap index X and index Y
  ***************************************************************/
 #define SXY                                                    \
+	CLEAR_T;													\
     tmp = X;                                                   \
     X = Y;                                                     \
     Y = tmp
 
 /* H6280 *******************************************************
- *  TAI
+ *  TAI Transfer Alternate Increment
  ***************************************************************/
 #define TAI 													\
+	CLEAR_T;													\
 	from=RDMEMW(PCW);											\
 	to  =RDMEMW(PCW+2);											\
 	length=RDMEMW(PCW+4);										\
@@ -972,6 +1126,7 @@
  *  TAM Transfer accumulator to memory mapper register(s)
  ***************************************************************/
 #define TAM                                                     \
+	CLEAR_T;													\
     if (tmp&0x01) h6280.mmr[0] = A;                             \
     if (tmp&0x02) h6280.mmr[1] = A;                             \
     if (tmp&0x04) h6280.mmr[2] = A;                             \
@@ -986,6 +1141,7 @@
  *  TAX Transfer accumulator to index X
  ***************************************************************/
 #define TAX 													\
+	CLEAR_T;													\
 	X = A;														\
 	SET_NZ(X)
 
@@ -993,13 +1149,15 @@
  *  TAY Transfer accumulator to index Y
  ***************************************************************/
 #define TAY 													\
+	CLEAR_T;													\
 	Y = A;														\
 	SET_NZ(Y)
 
 /* 6280 ********************************************************
- *  TDD
+ *  TDD Transfer Decrement Decrement
  ***************************************************************/
 #define TDD 													\
+	CLEAR_T;													\
 	from=RDMEMW(PCW);											\
 	to  =RDMEMW(PCW+2);											\
 	length=RDMEMW(PCW+4);										\
@@ -1012,9 +1170,10 @@
 	h6280_ICount-=(6 * length) + 17;
 
 /* 6280 ********************************************************
- *  TIA
+ *  TIA Transfer Increment Alternate
  ***************************************************************/
 #define TIA 													\
+	CLEAR_T;													\
 	from=RDMEMW(PCW);											\
 	to  =RDMEMW(PCW+2);											\
 	length=RDMEMW(PCW+4);										\
@@ -1028,9 +1187,10 @@
 	h6280_ICount-=(6 * length) + 17;
 
 /* 6280 ********************************************************
- *  TII
+ *  TII Transfer Increment Increment
  ***************************************************************/
 #define TII 													\
+	CLEAR_T;													\
 	from=RDMEMW(PCW);											\
 	to  =RDMEMW(PCW+2);											\
 	length=RDMEMW(PCW+4);										\
@@ -1046,6 +1206,7 @@
  *  TIN Transfer block, source increments every loop
  ***************************************************************/
 #define TIN 													\
+	CLEAR_T;													\
 	from=RDMEMW(PCW);											\
 	to  =RDMEMW(PCW+2);											\
 	length=RDMEMW(PCW+4);										\
@@ -1061,6 +1222,7 @@
  *  the highest bit set in tmp is the one that counts
  ***************************************************************/
 #define TMA                                                     \
+	CLEAR_T;													\
     if (tmp&0x01) A = h6280.mmr[0];                             \
     if (tmp&0x02) A = h6280.mmr[1];                             \
     if (tmp&0x04) A = h6280.mmr[2];                             \
@@ -1074,6 +1236,7 @@
  * TRB  Test and reset bits
  ***************************************************************/
 #define TRB                                                   	\
+	CLEAR_T;													\
 	P = (P & ~(_fN|_fV|_fT|_fZ))								\
 		| ((tmp&0x80) ? _fN:0)									\
 		| ((tmp&0x40) ? _fV:0)									\
@@ -1084,6 +1247,7 @@
  * TSB  Test and set bits
  ***************************************************************/
 #define TSB                                                     \
+	CLEAR_T;													\
 	P = (P & ~(_fN|_fV|_fT|_fZ))								\
 		| ((tmp&0x80) ? _fN:0)									\
 		| ((tmp&0x40) ? _fV:0)									\
@@ -1094,6 +1258,7 @@
  *  TSX Transfer stack LSB to index X
  ***************************************************************/
 #define TSX 													\
+	CLEAR_T;													\
 	X = S;														\
 	SET_NZ(X)
 
@@ -1110,6 +1275,7 @@
  *  TXA Transfer index X to accumulator
  ***************************************************************/
 #define TXA 													\
+	CLEAR_T;													\
 	A = X;														\
 	SET_NZ(A)
 
@@ -1118,11 +1284,13 @@
  *  no flags changed (sic!)
  ***************************************************************/
 #define TXS 													\
+	CLEAR_T;													\
 	S = X
 
 /* 6280 ********************************************************
  *  TYA Transfer index Y to accumulator
  ***************************************************************/
 #define TYA 													\
+	CLEAR_T;													\
 	A = Y;														\
 	SET_NZ(A)

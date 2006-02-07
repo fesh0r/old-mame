@@ -319,7 +319,6 @@ static void alloc_empty_tiles(void)
 	int code,i;
 
 	empty_tiles = auto_malloc(16*16*16);
-	if (!empty_tiles) return;
 
 	for (code = 0;code < 0x10;code++)
 		for (i = 0;i < 16*16;i++)
@@ -335,7 +334,7 @@ VIDEO_START( hyprduel_14220 )
 	bg_tilemap[1] = tilemap_create(get_tile_info_1_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,WIN_NX,WIN_NY);
 	bg_tilemap[2] = tilemap_create(get_tile_info_2_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,WIN_NX,WIN_NY);
 
-	if (!bg_tilemap[0] || !bg_tilemap[1] || !bg_tilemap[2] || !empty_tiles || !hypr_tiletable_old)
+	if (!bg_tilemap[0] || !bg_tilemap[1] || !bg_tilemap[2])
 		return 1;
 
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
@@ -424,7 +423,7 @@ static void hypr_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 	int color_start			=	((hyprduel_videoregs[0x08/2] & 0xf) << 4 ) + 0x100;
 
 	int i, pri;
-	int primask[4] = { 0x0000, 0xff00, 0xff00|0xf0f0, 0xff00|0xf0f0|0xcccc };
+	static const int primask[4] = { 0x0000, 0xff00, 0xff00|0xf0f0, 0xff00|0xf0f0|0xcccc };
 
 	for (i=0; i<0x20; i++)
 	{
@@ -437,7 +436,7 @@ static void hypr_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 			unsigned char *gfxdata;
 
 			/* Exponential zoom table extracted from daitoride */
-			const int zoomtable[0x40] =
+			static const int zoomtable[0x40] =
 			{	0xAAC,0x800,0x668,0x554,0x494,0x400,0x390,0x334,
 				0x2E8,0x2AC,0x278,0x248,0x224,0x200,0x1E0,0x1C8,
 				0x1B0,0x198,0x188,0x174,0x164,0x154,0x148,0x13C,

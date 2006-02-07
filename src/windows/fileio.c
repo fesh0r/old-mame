@@ -2,6 +2,9 @@
 //
 //  fileio.c - Win32 file access functions
 //
+//  Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+//  Visit http://mamedev.org for licensing and usage restrictions.
+//
 //============================================================
 
 // standard windows headers
@@ -438,6 +441,46 @@ static void compose_path(TCHAR *output, int pathtype, int pathindex, const char 
 
 
 //============================================================
+//  get_last_fileerror
+//============================================================
+
+static osd_file_error get_last_fileerror(void)
+{
+	osd_file_error error;
+
+	switch(GetLastError())
+	{
+		case ERROR_SUCCESS:
+			error = FILEERR_SUCCESS;
+			break;
+
+		case ERROR_OUTOFMEMORY:
+			error = FILEERR_OUT_OF_MEMORY;
+			break;
+
+		case ERROR_FILE_NOT_FOUND:
+		case ERROR_PATH_NOT_FOUND:
+			error = FILEERR_NOT_FOUND;
+			break;
+
+		case ERROR_ACCESS_DENIED:
+			error = FILEERR_ACCESS_DENIED;
+			break;
+
+		case ERROR_SHARING_VIOLATION:
+			error = FILEERR_ALREADY_OPEN;
+			break;
+
+		default:
+			error = FILEERR_FAILURE;
+			break;
+	}
+	return error;
+}
+
+
+
+//============================================================
 //  osd_get_path_count
 //============================================================
 
@@ -480,8 +523,9 @@ int osd_get_path_info(int pathtype, int pathindex, const char *filename)
 //  osd_fopen
 //============================================================
 
-osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const char *mode)
+osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const char *mode, osd_file_error *error)
 {
+	osd_file_error err = 0;
 	DWORD disposition = 0, access = 0, sharemode = 0, flags = 0;
 	TCHAR fullpath[1024];
 	DWORD upperPos = 0;
@@ -498,7 +542,10 @@ osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const cha
 		if (openfile[i].handle == NULL || openfile[i].handle == INVALID_HANDLE_VALUE)
 			break;
 	if (i == MAX_OPEN_FILES)
+	{
+		err = FILEERR_TOO_MANY_FILES;
 		goto error;
+	}
 
 	/* zap the file record */
 	file = &openfile[i];
@@ -556,9 +603,13 @@ osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const cha
 	/* get the file size */
 	file->end = GetFileSize(file->handle, &upperPos);
 	file->end |= (UINT64)upperPos << 32;
+	*error = FILEERR_SUCCESS;
 	return file;
 
 error:
+	if (!err)
+		err = get_last_fileerror();
+	*error = err;
 	if (temp_file[0])
 		DeleteFile(temp_file);
 	return NULL;

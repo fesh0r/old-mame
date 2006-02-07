@@ -18,8 +18,6 @@ static struct tempsprite *spritelist;
 VIDEO_START( superchs )
 {
 	spritelist = auto_malloc(0x4000 * sizeof(*spritelist));
-	if (!spritelist)
-		return 1;
 
 	if (TC0480SCP_vh_start(TC0480SCP_GFX_NUM,0,0x20,0x08,-1,0,0,0,0))
 		return 1;
@@ -73,7 +71,7 @@ Heavy use is made of sprite zooming.
 
 ********************************************************/
 
-static void superchs_draw_sprites_16x16(mame_bitmap *bitmap,const rectangle *cliprect,int *primasks,int x_offs,int y_offs)
+static void superchs_draw_sprites_16x16(mame_bitmap *bitmap,const rectangle *cliprect,const int *primasks,int x_offs,int y_offs)
 {
 	UINT16 *spritemap = (UINT16 *)memory_region(REGION_USER1);
 	int offs, data, tilenum, color, flipx, flipy;
@@ -222,7 +220,7 @@ VIDEO_UPDATE( superchs )
 {
 	UINT8 layer[5];
 	UINT16 priority;
-	int primasks[4] = {0xfffc, 0xfff0, 0xff00, 0x0};
+	static const int primasks[4] = {0xfffc, 0xfff0, 0xff00, 0x0};
 
 	TC0480SCP_tilemap_update();
 

@@ -64,10 +64,12 @@ void mslug5_decrypt_68k(void);
 void svcchaos_px_decrypt(void);
 void svcchaos_gfx_decrypt(void);
 void svcchaos_s1data_decrypt(void);
+void decode_kf2k3pcb_croms(void);
 void samsho5_decrypt_68k(void);
 void kof2003_decrypt_68k(void);
 void kof2003_decrypt_s1data(void);
 void kof2003a_px_decrypt(void);
+void kof2003biosdecode(void);
 void samsh5p_decrypt_68k(void);
 
 void neo_pcm2_snk_1999(int value);
@@ -79,8 +81,6 @@ extern int neogeo_rng;
 
 void install_sram_protection(void);
 void fatfury2_install_protection(void);
-void fatfury3_install_protection(void);
-void ssideki_install_protection(void);
 void mslugx_install_protection(void);
 void kof99_install_protection(void);
 void garou_install_protection(void);
@@ -92,13 +92,13 @@ void install_pvc_protection(void);
 
 /* machine/neoboot.c */
 void kog_px_decrypt(void);
-void kog_sx_decrypt(void);
-void kog_cx_decrypt(void);
+void neogeo_bootleg_cx_decrypt(void);
 void install_kof10th_protection(void);
 void decrypt_kof10th(void);
 void decrypt_kf10thep(void);
 void decrypt_kf2k5uni(void);
 void neogeo_bootleg_sx_decrypt(int value);
+void kf2k2mp_decrypt(void);
 void kof2km2_px_decrypt(void);
 void decrypt_cthd2003(void);
 void patch_cthd2003(void);
@@ -106,8 +106,21 @@ void decrypt_ct2k3sp(void);
 void decrypt_kof2k4se_68k(void);
 void lans2004_decrypt_68k(void);
 void lans2004_vx_decrypt(void);
-void lans2004_sx_decrypt(void);
-void lans2004_cx_decrypt(void);
+void install_ms5plus_protection(void);
+void svcboot_px_decrypt( void );
+void svcboot_cx_decrypt( void );
+void svcplus_px_decrypt( void );
+void svcplus_px_hack( void );
+void svcplusa_px_decrypt( void );
+void svcsplus_px_decrypt( void );
+void svcsplus_px_hack( void );
+void kof2003b_px_decrypt( void );
+void kof2003b_install_protection(void);
+void kof2k3pl_px_decrypt( void );
+void kof2k3up_px_decrypt( void );
+void kof2k3up_install_protection(void);
+void kf2k3pl_install_protection(void);
+void samsh5bl_px_decrypt( void );
 
 /* vidhrdw/neogeo.c */
 
