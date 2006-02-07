@@ -11,6 +11,8 @@
 /* system RAM */
 unsigned char *pce_user_ram;    /* scratch RAM at F8 */
 
+struct pce_struct pce;
+
 /* joystick related data*/
 
 #define JOY_CLOCK   0x01
@@ -23,6 +25,7 @@ DEVICE_LOAD(pce_cart)
 {
 	int size;
 	int split_rom = 0;
+	const char *extrainfo;
 	unsigned char *ROM;
 	logerror("*** DEVICE_LOAD(pce_cart) : %s\n", image_filename(image));
 
@@ -46,6 +49,14 @@ DEVICE_LOAD(pce_cart)
 
 	mame_fread(file, ROM, size);
 
+	extrainfo = image_extrainfo( image );
+	if ( extrainfo ) {
+		logerror( "extrainfo: %s\n", extrainfo );
+		if ( strstr( extrainfo, "ROM_SPLIT" ) ) {
+			split_rom = 1;
+		}
+	}
+
 	if ( ROM[0x1FFF] < 0xE0 ) {
 		int i;
 		UINT8 decrypted[256];
@@ -64,13 +75,15 @@ DEVICE_LOAD(pce_cart)
 	}
 
 	/* check if we're dealing with a split rom image */
-	/* TODO: Add support for checking for 512KB split roms */
 	if ( size == 384 * 1024 ) {
 		split_rom = 1;
+		/* Mirror the upper 128KB part of the image */
+		memcpy( ROM + 0x060000, ROM + 0x040000, 0x020000 );	/* Set up 060000 - 07FFFF mirror */
 	}
 
 	/* set up the memory for a split rom image */
 	if ( split_rom ) {
+		logerror( "Split rom detected, setting up memory accordingly\n" );
 		/* Set up ROM address space as follows:          */
 		/* 000000 - 03FFFF : ROM data 000000 - 03FFFF    */
 		/* 040000 - 07FFFF : ROM data 000000 - 03FFFF    */
@@ -110,11 +123,20 @@ NVRAM_HANDLER( pce )
 	}
 }
 
+DRIVER_INIT( pce )
+{
+	pce.io_port_options = NO_CD_SIG | PCE_JOY_SIG | CONST_SIG;
+}
+
+DRIVER_INIT( tg16 )
+{
+	pce.io_port_options = NO_CD_SIG | TG_16_JOY_SIG | CONST_SIG;
+}
 
 /* todo: how many input ports does the PCE have? */
 WRITE8_HANDLER ( pce_joystick_w )
 {
-
+	set_h6280io_buffer(data);
     /* bump counter on a low-to-high transition of bit 1 */
     if((!joystick_data_select) && (data & JOY_CLOCK))
     {
@@ -133,9 +155,12 @@ WRITE8_HANDLER ( pce_joystick_w )
 
  READ8_HANDLER ( pce_joystick_r )
 {
+	UINT8 ret;
 	int data = readinputport(0);
 	if(joystick_data_select) data >>= 4;
-	/* Bit 6 is reset in US consoles?? */
-	data &= ~0x40;
-	return (data);
+	ret = (data & 0x0F) | pce.io_port_options;
+#ifdef UNIFIED_PCE
+	ret &= ~0x40;
+#endif
+	return (ret);
 }

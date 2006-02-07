@@ -1,10 +1,20 @@
+/***************************************************************************
+
+	imgfile.c
+
+	Core code for Imgtool functions on files
+
+***************************************************************************/
+
 #include <ctype.h>
 #include "imgtool.h"
 #include "opresolv.h"
+#include "pool.h"
 
 struct _imgtool_image
 {
 	const struct ImageModule *module;
+	memory_pool pool;
 };
 
 struct _imgtool_imageenum
@@ -84,6 +94,7 @@ static imgtoolerr_t internal_open(const struct ImageModule *module, const char *
 		goto done;
 	}
 	memset(image, '\0', size);
+	pool_init(&image->pool);
 	image->module = module;
 	
 	/* actually call create or open */
@@ -143,6 +154,7 @@ void img_close(imgtool_image *img)
 {
 	if (img->module->close)
 		img->module->close(img);
+	pool_exit(&img->pool);
 	free(img);
 }
 
@@ -472,6 +484,36 @@ imgtoolerr_t img_filesize(imgtool_image *img, const char *fname, UINT64 *filesiz
 done:
 	if (imgenum)
 		img_closeenum(imgenum);
+	return err;
+}
+
+
+
+imgtoolerr_t img_listattrs(imgtool_image *image, const char *path, UINT32 *attrs, size_t len)
+{
+	imgtoolerr_t err;
+	char *alloc_path = NULL;
+
+	memset(attrs, 0, sizeof(*attrs) * len);
+
+	if (!image->module->list_attrs)
+	{
+		err = IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
+		goto done;
+	}
+
+	/* cannonicalize path */
+	err = cannonicalize_path(image, PATH_LEAVENULLALONE, &path, &alloc_path);
+	if (err)
+		goto done;
+
+	err = image->module->list_attrs(image, path, attrs, len);
+	if (err)
+		goto done;
+
+done:
+	if (alloc_path)
+		free(alloc_path);
 	return err;
 }
 
@@ -1210,6 +1252,13 @@ imgtoolerr_t img_writesector(imgtool_image *image, UINT32 track, UINT32 head,
 		return IMGTOOLERR_UNIMPLEMENTED | IMGTOOLERR_SRC_FUNCTIONALITY;
 
 	return image->module->write_sector(image, track, head, sector, buffer, len);
+}
+
+
+
+void *img_malloc(imgtool_image *image, size_t size)
+{
+	return pool_malloc(&image->pool, size);
 }
 
 

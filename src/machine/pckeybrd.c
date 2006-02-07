@@ -9,15 +9,19 @@
 
 **********************************************************************/
 
-/* Todo: (added by KT 22-Jun-2000 
-	1. Check scancodes I have added are the actual scancodes for set 2 or 3.
-	2. Check how codes are changed based on Shift/Control states for those sets
-	   that require it - info in Help PC! 
+/* Todo: (added by KT 22-Jun-2000
+    1. Check scancodes I have added are the actual scancodes for set 2 or 3.
+    2. Check how codes are changed based on Shift/Control states for those sets
+       that require it - info in Help PC!
 
 */
 
 #include "driver.h"
 #include "machine/pckeybrd.h"
+
+#ifdef MESS
+#include "inputx.h"
+#endif /* MESS */
 
 /* AT keyboard documentation comes from www.beyondlogic.org and HelpPC documentation */
 
@@ -26,22 +30,22 @@
 
 
 /*
-	The PS/2 models have three make/break scan code sets.  The first
-	  set matches the PC & XT make/break scan code set and is the one
-	  listed here.	Scan code sets are selected by writing the value F0
-	  to the keyboard via the ~8042~ (port 60h).  The following is a brief
-	  description of the scan code sets (see the PS/2 Technical Reference
-	  manuals for more information on scan code sets 2 and 3):
+    The PS/2 models have three make/break scan code sets.  The first
+      set matches the PC & XT make/break scan code set and is the one
+      listed here.  Scan code sets are selected by writing the value F0
+      to the keyboard via the ~8042~ (port 60h).  The following is a brief
+      description of the scan code sets (see the PS/2 Technical Reference
+      manuals for more information on scan code sets 2 and 3):
 
     *  set 1, each key has a base scan code.  Some keys generate
-	   extra scan codes to generate artificial shift states.  This
-	   is similar to the standard scan code set used on the PC and XT.
+       extra scan codes to generate artificial shift states.  This
+       is similar to the standard scan code set used on the PC and XT.
     *  set 2, each key sends one make scan code and two break scan
-	   codes bytes (F0 followed by the make code).	This scan code
-	   set is available on the IBM AT also.
+       codes bytes (F0 followed by the make code).  This scan code
+       set is available on the IBM AT also.
     *  set 3, each key sends one make scan code and two break scan
-	   codes bytes (F0 followed by the make code) and no keys are
-	   altered by Shift/Alt/Ctrl keys.
+       codes bytes (F0 followed by the make code) and no keys are
+       altered by Shift/Alt/Ctrl keys.
     *  typematic scan codes are the same as the make scan code
 
 */
@@ -168,7 +172,7 @@ static int at_keyboard_scancode_set_2_3[]=
 #define AT_KEYBOARD_QUEUE_MAXSIZE	256
 
 typedef struct at_keyboard
-{	
+{
 	AT_KEYBOARD_TYPE type;
 	int on;
 	UINT8 delay;   /* 240/60 -> 0,25s */
@@ -177,7 +181,7 @@ typedef struct at_keyboard
 	UINT8 queue[AT_KEYBOARD_QUEUE_MAXSIZE];
 	UINT8 head;
 	UINT8 tail;
-	UINT8 make[128];	
+	UINT8 make[128];
 
 	int input_state;
 	int scan_code_set;
@@ -195,7 +199,7 @@ typedef struct extended_keyboard_code
 } extended_keyboard_code;
 
 
-static extended_keyboard_code keyboard_mf2_code[0x10][2/*numlock off, on*/]={ 
+static extended_keyboard_code keyboard_mf2_code[0x10][2/*numlock off, on*/]={
 	{	{ "\xe0\x1c", "\xe0\x9c" } }, // keypad enter
 	{	{ "\xe0\x1d", "\xe0\x9d" } }, // right control
 	{	{ "\xe0\x35", "\xe0\xb5" } },
@@ -299,11 +303,17 @@ static extended_keyboard_code at_keyboard_extended_codes_set_2_3[]=
 		"\xe1\x14\x77\xe1\xf0\x14\xf0\x77",
 		0, /*?? I don't know the break sequence */
 	}
-	
+
 };
 
 static void at_keyboard_queue_insert(UINT8 data);
 static int at_keyboard_queue_size(void);
+
+#ifdef MESS
+static int at_keyboard_queue_chars(const unicode_char_t *text, size_t text_len);
+static int at_keyboard_accept_char(unicode_char_t ch);
+static int at_keyboard_charqueue_empty(void);
+#endif
 
 
 
@@ -334,6 +344,12 @@ void at_keyboard_init(AT_KEYBOARD_TYPE type)
 		sprintf(buf, "pc_keyboard_%d", i);
 		keyboard.ports[i] = port_tag_to_index(buf);
 	}
+
+#ifdef MESS
+	inputx_setup_natural_keyboard(at_keyboard_queue_chars,
+		at_keyboard_accept_char,
+		at_keyboard_charqueue_empty);
+#endif
 }
 
 
@@ -353,7 +369,7 @@ void at_keyboard_reset(void)
 }
 
 /* set initial scan set */
-void	at_keyboard_set_scan_code_set(int set)
+void at_keyboard_set_scan_code_set(int set)
 {
 	keyboard.scan_code_set = set;
 }
@@ -403,9 +419,9 @@ static void at_keyboard_standard_scancode_insert(int our_code, int pressed)
 		case 1:
 		{
 			/* the original code was designed for this set, and there is
-			a 1:1 correspondance for the scancodes */
+            a 1:1 correspondance for the scancodes */
 			scancode = our_code;
-		
+
 			if (!pressed)
 			{
 				/* adjust code for break code */
@@ -485,7 +501,7 @@ static void at_keyboard_extended_scancode_insert(int code, int pressed)
 
 
 /**************************************************************************
- *	scan keys and stuff make/break codes
+ *  scan keys and stuff make/break codes
  **************************************************************************/
 
 static UINT32 at_keyboard_readport(int port)
@@ -520,7 +536,7 @@ void at_keyboard_polling(void)
 				else
 				{
 					keyboard.make[i] += 1;
-					
+
 					if( keyboard.make[i] == keyboard.delay )
 					{
 						at_keyboard_standard_scancode_insert(i, 1);
@@ -554,9 +570,9 @@ void at_keyboard_polling(void)
 					if( keyboard.make[i] == 0 )
 					{
 						keyboard.make[i] = 1;
-						
+
 						at_keyboard_extended_scancode_insert(i,1);
-						
+
 					}
 					else
 					{
@@ -570,7 +586,7 @@ void at_keyboard_polling(void)
 							if( keyboard.make[i] == keyboard.delay + keyboard.repeat )
 							{
 								keyboard.make[i]=keyboard.delay;
-								
+
 								at_keyboard_extended_scancode_insert(i, 1);
 							}
 						}
@@ -581,7 +597,7 @@ void at_keyboard_polling(void)
 					if( keyboard.make[i] )
 					{
 						keyboard.make[i] = 0;
-						
+
 						at_keyboard_extended_scancode_insert(i,0);
 					}
 				}
@@ -615,47 +631,47 @@ static void at_clear_buffer_and_acknowledge(void)
 /* From Ralf Browns Interrupt list:
 
 Values for keyboard commands (data also goes to PORT 0060h):
-Value	Count	Description
- EDh	double	set/reset mode indicators Caps Num Scrl
-		bit 2 = CapsLk, bit 1 = NumLk, bit 0 = ScrlLk
-		all other bits must be zero.
- EEh	sngl	diagnostic echo. returns EEh.
- EFh	sngl	NOP (No OPeration). reserved for future use
- EF+26h	double	[Cherry MF2 G80-1501HAD] read 256 bytes of chipcard data
-		keyboard must be disabled before this and has to
-		be enabled after finished.
- F0h	double	get/set scan code set
-		00h get current set
-		01h scancode set 1 (PCs and PS/2 mod 30, except Type 2 ctrlr)
+Value   Count   Description
+ EDh    double  set/reset mode indicators Caps Num Scrl
+        bit 2 = CapsLk, bit 1 = NumLk, bit 0 = ScrlLk
+        all other bits must be zero.
+ EEh    sngl    diagnostic echo. returns EEh.
+ EFh    sngl    NOP (No OPeration). reserved for future use
+ EF+26h double  [Cherry MF2 G80-1501HAD] read 256 bytes of chipcard data
+        keyboard must be disabled before this and has to
+        be enabled after finished.
+ F0h    double  get/set scan code set
+        00h get current set
+        01h scancode set 1 (PCs and PS/2 mod 30, except Type 2 ctrlr)
 
-		02h scancode set 2 (ATs, PS/2, default)
-		03h scancode set 3
- F2h	sngl	read keyboard ID (read two ID bytes)
-		AT keyboards returns FA (ACK)
-		MF2 returns AB 41 (translation) or
-			    AB 83 (pass through)
- F3h	double	set typematic rate/delay
-		format of the second byte:
-		bit7=0 : reserved
-		bit6-5 : typemativ delay
-			 00b=250ms     10b= 750ms
-			 01b=500ms     11b=1000ms
-		bit4-0 : typematic rate (see #P050)
- F4h	sngl	enable keyboard
- F5h	sngl	disable keyboard. set default parameters (no keyboard scanning)
- F6h	sngl	set default parameters
- F7h	sngl	[MCA] set all keys to typematic (scancode set 3)
+        02h scancode set 2 (ATs, PS/2, default)
+        03h scancode set 3
+ F2h    sngl    read keyboard ID (read two ID bytes)
+        AT keyboards returns FA (ACK)
+        MF2 returns AB 41 (translation) or
+                AB 83 (pass through)
+ F3h    double  set typematic rate/delay
+        format of the second byte:
+        bit7=0 : reserved
+        bit6-5 : typemativ delay
+             00b=250ms     10b= 750ms
+             01b=500ms     11b=1000ms
+        bit4-0 : typematic rate (see #P050)
+ F4h    sngl    enable keyboard
+ F5h    sngl    disable keyboard. set default parameters (no keyboard scanning)
+ F6h    sngl    set default parameters
+ F7h    sngl    [MCA] set all keys to typematic (scancode set 3)
 
- F8h	sngl	[MCA] set all keys to make/release
- F9h	sngl	[MCA] set all keys to make only
- FAh	sngl	[MCA] set all keys to typematic/make/release
- FBh	sngl	[MCA] set al keys to typematic
- FCh	double	[MCA] set specific key to make/release
- FDh	double	[MCA] set specific key to make only
- FEh	sngl	resend last scancode
- FFh	sngl	perform internal power-on reset function
-Note:	each command is acknowledged by FAh (ACK), if not mentioned otherwise.
-	  See PORT 0060h-R for details.
+ F8h    sngl    [MCA] set all keys to make/release
+ F9h    sngl    [MCA] set all keys to make only
+ FAh    sngl    [MCA] set all keys to typematic/make/release
+ FBh    sngl    [MCA] set al keys to typematic
+ FCh    double  [MCA] set specific key to make/release
+ FDh    double  [MCA] set specific key to make only
+ FEh    sngl    resend last scancode
+ FFh    sngl    perform internal power-on reset function
+Note:   each command is acknowledged by FAh (ACK), if not mentioned otherwise.
+      See PORT 0060h-R for details.
 SeeAlso: #P046
 */
 
@@ -724,24 +740,24 @@ void at_keyboard_write(UINT8 data)
 				keyboard.on=1;
 				break;
 			case 0xfe: // resend
-				// should not happen, for now send 0 
+				// should not happen, for now send 0
 				at_keyboard_queue_insert(0);	//keyboard.last_code);
 				break;
 			case 0xff: // reset
 				/* it doesn't state this in the docs I have read, but I assume
-				that the keyboard input buffer is cleared. The PCW16 sends &ff,
-				and requires that 0x0fa is the first byte to be read */
-					
+                that the keyboard input buffer is cleared. The PCW16 sends &ff,
+                and requires that 0x0fa is the first byte to be read */
+
 				at_clear_buffer_and_acknowledge();
 
-	//			/* acknowledge */
-	//			at_keyboard_queue_insert(0xfa);
+	//          /* acknowledge */
+	//          at_keyboard_queue_insert(0xfa);
 				/* BAT completion code */
 				at_keyboard_queue_insert(0xaa);
 				break;
 			}
 			break;
-		case 1: 
+		case 1:
 			/* code received */
 			keyboard.input_state=0;
 
@@ -755,10 +771,10 @@ void at_keyboard_write(UINT8 data)
 			{
 				/* send acknowledge */
 				at_keyboard_queue_insert(0x0fa);
-			
+
 				/* led  bits */
 				/* bits: 0 scroll lock, 1 num lock, 2 capslock */
-				
+
 				/* led's in same order as my keyboard leds. */
 				/* num lock, caps lock, scroll lock */
 				set_led_status(2, (data & 0x01));
@@ -779,10 +795,10 @@ void at_keyboard_write(UINT8 data)
 			else
 			{
 				/* 00  return byte indicating scan code set in use
-				01  select scan code set 1  (used on PC & XT)
-				02  select scan code set 2
-				03  select scan code set 3
-				*/
+                01  select scan code set 1  (used on PC & XT)
+                02  select scan code set 2
+                03  select scan code set 3
+                */
 
 				if (data == 0x00)
 				{
@@ -793,12 +809,12 @@ void at_keyboard_write(UINT8 data)
 					keyboard.scan_code_set = data;
 				}
 			}
-		
+
 			break;
 		case 3:
 			/* 6,5: 250ms, 500ms, 750ms, 1s */
 			/* 4..0: 30 26.7 .... 2 chars/s*/
-		
+
 			/* command? */
 			keyboard.input_state=0;
 			if (data & 0x080)
@@ -824,144 +840,145 @@ void at_keyboard_write(UINT8 data)
 static UINT8 unicode_char_to_at_keycode(unicode_char_t ch)
 {
 	UINT8 b;
-	switch(ch) {
-	case '\032':					b = 1;		break;
-	case '1':						b = 2;		break;
-	case '2':						b = 3;		break;
-	case '3':						b = 4;		break;
-	case '4':						b = 5;		break;
-	case '5':						b = 6;		break;
-	case '6':						b = 7;		break;
-	case '7':						b = 8;		break;
-	case '8':						b = 9;		break;
-	case '9':						b = 10;		break;
-	case '0':						b = 11;		break;
-	case '-':						b = 12;		break;
-	case '=':						b = 13;		break;
-	case '\010':					b = 14;		break;
-	case '\t':						b = 15;		break;
-	case 'q':						b = 16;		break;
-	case 'w':						b = 17;		break;
-	case 'e':						b = 18;		break;
-	case 'r':						b = 19;		break;
-	case 't':						b = 20;		break;
-	case 'y':						b = 21;		break;
-	case 'u':						b = 22;		break;
-	case 'i':						b = 23;		break;
-	case 'o':						b = 24;		break;
-	case 'p':						b = 25;		break;
-	case '[':						b = 26;		break;
-	case ']':						b = 27;		break;
-	case '\r':						b = 28;		break;
-	case UCHAR_MAMEKEY(CAPSLOCK):	b = 29;		break;
-	case 'a':						b = 30;		break;
-	case 's':						b = 31;		break;
-	case 'd':						b = 32;		break;
-	case 'f':						b = 33;		break;
-	case 'g':						b = 34;		break;
-	case 'h':						b = 35;		break;
-	case 'j':						b = 36;		break;
-	case 'k':						b = 37;		break;
-	case 'l':						b = 38;		break;
-	case ';':						b = 39;		break;
-	case '\'':						b = 40;		break;
-	case '`':						b = 41;		break;
-	case '\\':						b = 43;		break;
-	case 'z':						b = 44;		break;
-	case 'x':						b = 45;		break;
-	case 'c':						b = 46;		break;
-	case 'v':						b = 47;		break;
-	case 'b':						b = 48;		break;
-	case 'n':						b = 49;		break;
-	case 'm':						b = 50;		break;
-	case ',':						b = 51;		break;
-	case '.':						b = 52;		break;
-	case '/':						b = 53;		break;
-	case ' ':						b = 0x39;	break;
-	case UCHAR_MAMEKEY(F1):			b = 0x3b;	break;
-	case UCHAR_MAMEKEY(F2):			b = 0x3c;	break;
-	case UCHAR_MAMEKEY(F3):			b = 0x3d;	break;
-	case UCHAR_MAMEKEY(F4):			b = 0x3e;	break;
-	case UCHAR_MAMEKEY(F5):			b = 0x3f;	break;
-	case UCHAR_MAMEKEY(F6):			b = 0x40;	break;
-	case UCHAR_MAMEKEY(F7):			b = 0x41;	break;
-	case UCHAR_MAMEKEY(F8):			b = 0x42;	break;
-	case UCHAR_MAMEKEY(F9):			b = 0x43;	break;
-	case UCHAR_MAMEKEY(F10):		b = 0x44;	break;
-	case UCHAR_MAMEKEY(NUMLOCK):	b = 0x45;	break;
-	case UCHAR_MAMEKEY(SCRLOCK):	b = 0x46;	break;
-	case UCHAR_MAMEKEY(7_PAD):		b = 0x47;	break;
-	case UCHAR_MAMEKEY(8_PAD):		b = 0x48;	break;
-	case UCHAR_MAMEKEY(9_PAD):		b = 0x49;	break;
-	case UCHAR_MAMEKEY(MINUS_PAD):	b = 0x4a;	break;
-	case UCHAR_MAMEKEY(4_PAD):		b = 0x4b;	break;
-	case UCHAR_MAMEKEY(5_PAD):		b = 0x4c;	break;
-	case UCHAR_MAMEKEY(6_PAD):		b = 0x4d;	break;
-	case UCHAR_MAMEKEY(PLUS_PAD):	b = 0x4e;	break;
-	case UCHAR_MAMEKEY(1_PAD):		b = 0x4f;	break;
-	case UCHAR_MAMEKEY(2_PAD):		b = 0x50;	break;
-	case UCHAR_MAMEKEY(3_PAD):		b = 0x51;	break;
-	case UCHAR_MAMEKEY(0_PAD):		b = 0x52;	break;
-	case UCHAR_MAMEKEY(DEL_PAD):	b = 0x53;	break;
-	case UCHAR_MAMEKEY(F11):		b = 0x57;	break;
-	case UCHAR_MAMEKEY(F12):		b = 0x58;	break;
-	case '~':						b = 0x81;	break;
-	case '!':						b = 0x82;	break;
-	case '@':						b = 0x83;	break;
-	case '#':						b = 0x84;	break;
-	case '$':						b = 0x85;	break;
-	case '%':						b = 0x86;	break;
-	case '^':						b = 0x87;	break;
-	case '&':						b = 0x88;	break;
-	case '*':						b = 0x89;	break;
-	case '(':						b = 0x8a;	break;
-	case ')':						b = 0x8b;	break;
-	case '_':						b = 0x8c;	break;
-	case '+':						b = 0x8d;	break;
-	case 'Q':						b = 0x90;	break;
-	case 'W':						b = 0x91;	break;
-	case 'E':						b = 0x92;	break;
-	case 'R':						b = 0x93;	break;
-	case 'T':						b = 0x94;	break;
-	case 'Y':						b = 0x95;	break;
-	case 'U':						b = 0x96;	break;
-	case 'I':						b = 0x97;	break;
-	case 'O':						b = 0x98;	break;
-	case 'P':						b = 0x99;	break;
-	case '{':						b = 0x9a;	break;
-	case '}':						b = 0x9b;	break;
-	case 'A':						b = 0x9e;	break;
-	case 'S':						b = 0x9f;	break;
-	case 'D':						b = 0xa0;	break;
-	case 'F':						b = 0xa1;	break;
-	case 'G':						b = 0xa2;	break;
-	case 'H':						b = 0xa3;	break;
-	case 'J':						b = 0xa4;	break;
-	case 'K':						b = 0xa5;	break;
-	case 'L':						b = 0xa6;	break;
-	case ':':						b = 0xa7;	break;
-	case '\"':						b = 0xa8;	break;
-	case '|':						b = 0xab;	break;
-	case 'Z':						b = 0xac;	break;
-	case 'X':						b = 0xad;	break;
-	case 'C':						b = 0xae;	break;
-	case 'V':						b = 0xaf;	break;
-	case 'B':						b = 0xb0;	break;
-	case 'N':						b = 0xb1;	break;
-	case 'M':						b = 0xb2;	break;
-	case '<':						b = 0xb3;	break;
-	case '>':						b = 0xb4;	break;
-	case '?':						b = 0xb5;	break;
-	default:						b = 0;		break;
+	switch(ch)
+	{
+		case '\033':					b = 1;		break;
+		case '1':						b = 2;		break;
+		case '2':						b = 3;		break;
+		case '3':						b = 4;		break;
+		case '4':						b = 5;		break;
+		case '5':						b = 6;		break;
+		case '6':						b = 7;		break;
+		case '7':						b = 8;		break;
+		case '8':						b = 9;		break;
+		case '9':						b = 10;		break;
+		case '0':						b = 11;		break;
+		case '-':						b = 12;		break;
+		case '=':						b = 13;		break;
+		case '\010':					b = 14;		break;
+		case '\t':						b = 15;		break;
+		case 'q':						b = 16;		break;
+		case 'w':						b = 17;		break;
+		case 'e':						b = 18;		break;
+		case 'r':						b = 19;		break;
+		case 't':						b = 20;		break;
+		case 'y':						b = 21;		break;
+		case 'u':						b = 22;		break;
+		case 'i':						b = 23;		break;
+		case 'o':						b = 24;		break;
+		case 'p':						b = 25;		break;
+		case '[':						b = 26;		break;
+		case ']':						b = 27;		break;
+		case '\r':						b = 28;		break;
+		case UCHAR_MAMEKEY(CAPSLOCK):	b = 29;		break;
+		case 'a':						b = 30;		break;
+		case 's':						b = 31;		break;
+		case 'd':						b = 32;		break;
+		case 'f':						b = 33;		break;
+		case 'g':						b = 34;		break;
+		case 'h':						b = 35;		break;
+		case 'j':						b = 36;		break;
+		case 'k':						b = 37;		break;
+		case 'l':						b = 38;		break;
+		case ';':						b = 39;		break;
+		case '\'':						b = 40;		break;
+		case '`':						b = 41;		break;
+		case '\\':						b = 43;		break;
+		case 'z':						b = 44;		break;
+		case 'x':						b = 45;		break;
+		case 'c':						b = 46;		break;
+		case 'v':						b = 47;		break;
+		case 'b':						b = 48;		break;
+		case 'n':						b = 49;		break;
+		case 'm':						b = 50;		break;
+		case ',':						b = 51;		break;
+		case '.':						b = 52;		break;
+		case '/':						b = 53;		break;
+		case ' ':						b = 0x39;	break;
+		case UCHAR_MAMEKEY(F1):			b = 0x3b;	break;
+		case UCHAR_MAMEKEY(F2):			b = 0x3c;	break;
+		case UCHAR_MAMEKEY(F3):			b = 0x3d;	break;
+		case UCHAR_MAMEKEY(F4):			b = 0x3e;	break;
+		case UCHAR_MAMEKEY(F5):			b = 0x3f;	break;
+		case UCHAR_MAMEKEY(F6):			b = 0x40;	break;
+		case UCHAR_MAMEKEY(F7):			b = 0x41;	break;
+		case UCHAR_MAMEKEY(F8):			b = 0x42;	break;
+		case UCHAR_MAMEKEY(F9):			b = 0x43;	break;
+		case UCHAR_MAMEKEY(F10):		b = 0x44;	break;
+		case UCHAR_MAMEKEY(NUMLOCK):	b = 0x45;	break;
+		case UCHAR_MAMEKEY(SCRLOCK):	b = 0x46;	break;
+		case UCHAR_MAMEKEY(7_PAD):		b = 0x47;	break;
+		case UCHAR_MAMEKEY(8_PAD):		b = 0x48;	break;
+		case UCHAR_MAMEKEY(9_PAD):		b = 0x49;	break;
+		case UCHAR_MAMEKEY(MINUS_PAD):	b = 0x4a;	break;
+		case UCHAR_MAMEKEY(4_PAD):		b = 0x4b;	break;
+		case UCHAR_MAMEKEY(5_PAD):		b = 0x4c;	break;
+		case UCHAR_MAMEKEY(6_PAD):		b = 0x4d;	break;
+		case UCHAR_MAMEKEY(PLUS_PAD):	b = 0x4e;	break;
+		case UCHAR_MAMEKEY(1_PAD):		b = 0x4f;	break;
+		case UCHAR_MAMEKEY(2_PAD):		b = 0x50;	break;
+		case UCHAR_MAMEKEY(3_PAD):		b = 0x51;	break;
+		case UCHAR_MAMEKEY(0_PAD):		b = 0x52;	break;
+		case UCHAR_MAMEKEY(DEL_PAD):	b = 0x53;	break;
+		case UCHAR_MAMEKEY(F11):		b = 0x57;	break;
+		case UCHAR_MAMEKEY(F12):		b = 0x58;	break;
+		case '~':						b = 0x81;	break;
+		case '!':						b = 0x82;	break;
+		case '@':						b = 0x83;	break;
+		case '#':						b = 0x84;	break;
+		case '$':						b = 0x85;	break;
+		case '%':						b = 0x86;	break;
+		case '^':						b = 0x87;	break;
+		case '&':						b = 0x88;	break;
+		case '*':						b = 0x89;	break;
+		case '(':						b = 0x8a;	break;
+		case ')':						b = 0x8b;	break;
+		case '_':						b = 0x8c;	break;
+		case '+':						b = 0x8d;	break;
+		case 'Q':						b = 0x90;	break;
+		case 'W':						b = 0x91;	break;
+		case 'E':						b = 0x92;	break;
+		case 'R':						b = 0x93;	break;
+		case 'T':						b = 0x94;	break;
+		case 'Y':						b = 0x95;	break;
+		case 'U':						b = 0x96;	break;
+		case 'I':						b = 0x97;	break;
+		case 'O':						b = 0x98;	break;
+		case 'P':						b = 0x99;	break;
+		case '{':						b = 0x9a;	break;
+		case '}':						b = 0x9b;	break;
+		case 'A':						b = 0x9e;	break;
+		case 'S':						b = 0x9f;	break;
+		case 'D':						b = 0xa0;	break;
+		case 'F':						b = 0xa1;	break;
+		case 'G':						b = 0xa2;	break;
+		case 'H':						b = 0xa3;	break;
+		case 'J':						b = 0xa4;	break;
+		case 'K':						b = 0xa5;	break;
+		case 'L':						b = 0xa6;	break;
+		case ':':						b = 0xa7;	break;
+		case '\"':						b = 0xa8;	break;
+		case '|':						b = 0xab;	break;
+		case 'Z':						b = 0xac;	break;
+		case 'X':						b = 0xad;	break;
+		case 'C':						b = 0xae;	break;
+		case 'V':						b = 0xaf;	break;
+		case 'B':						b = 0xb0;	break;
+		case 'N':						b = 0xb1;	break;
+		case 'M':						b = 0xb2;	break;
+		case '<':						b = 0xb3;	break;
+		case '>':						b = 0xb4;	break;
+		case '?':						b = 0xb5;	break;
+		default:						b = 0;		break;
 	}
 	return b;
 }
 
 /***************************************************************************
-  QUEUE_CHARS( at_keyboard )
+  at_keyboard_queue_chars
 ***************************************************************************/
 
-QUEUE_CHARS( at_keyboard )
+static int at_keyboard_queue_chars(const unicode_char_t *text, size_t text_len)
 {
 	int i;
 	UINT8 b;
@@ -994,9 +1011,9 @@ QUEUE_CHARS( at_keyboard )
 	PORT_BIT( bit, 0x0000, IPT_KEYBOARD) PORT_NAME(text) PORT_CODE(key1) PORT_CODE(key2)
 
 INPUT_PORTS_START( pc_keyboard )
-    PORT_START  /* IN4 */
+	PORT_START_TAG("pc_keyboard_0")
 	PORT_BIT ( 0x0001, 0x0000, IPT_UNUSED ) 	/* unused scancode 0 */
-	PORT_BIT( 0x0002, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_ESC) PORT_CHAR(26)			/* Esc                         01  81 */
+	PORT_BIT( 0x0002, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_ESC) PORT_CHAR(27)			/* Esc                         01  81 */
 	PORT_BIT( 0x0004, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')	/* 1                           02  82 */
 	PORT_BIT( 0x0008, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('@')	/* 2                           03  83 */
 	PORT_BIT( 0x0010, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('#')	/* 3                           04  84 */
@@ -1012,7 +1029,7 @@ INPUT_PORTS_START( pc_keyboard )
 	PORT_BIT( 0x4000, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)			/* Backspace                   0E  8E */
 	PORT_BIT( 0x8000, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_TAB) PORT_CHAR(9)			/* Tab                         0F  8F */
 		
-	PORT_START	/* IN5 */
+	PORT_START_TAG("pc_keyboard_1")
 	PORT_BIT( 0x0001, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q) PORT_CHAR('Q') /* Q                           10  90 */
 	PORT_BIT( 0x0002, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_W) PORT_CHAR('W') /* W                           11  91 */
 	PORT_BIT( 0x0004, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_E) PORT_CHAR('E') /* E                           12  92 */
@@ -1030,7 +1047,7 @@ INPUT_PORTS_START( pc_keyboard )
 	PORT_BIT( 0x4000, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_A) PORT_CHAR('A') /* A                           1E  9E */
 	PORT_BIT( 0x8000, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_S) PORT_CHAR('S') /* S                           1F  9F */
 		
-	PORT_START	/* IN6 */
+	PORT_START_TAG("pc_keyboard_2")
 	PORT_BIT( 0x0001, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_D) PORT_CHAR('D') /* D                           20  A0 */
 	PORT_BIT( 0x0002, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_F) PORT_CHAR('F') /* F                           21  A1 */
 	PORT_BIT( 0x0004, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_G) PORT_CHAR('G') /* G                           22  A2 */
@@ -1048,7 +1065,7 @@ INPUT_PORTS_START( pc_keyboard )
 	PORT_BIT( 0x4000, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_C) PORT_CHAR('C') /* C                           2E  AE */
 	PORT_BIT( 0x8000, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_V) PORT_CHAR('V') /* V                           2F  AF */
 		
-	PORT_START	/* IN7 */
+	PORT_START_TAG("pc_keyboard_3")
 	PORT_BIT( 0x0001, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_B) PORT_CHAR('B') /* B                           30  B0 */
 	PORT_BIT( 0x0002, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_N) PORT_CHAR('N') /* N                           31  B1 */
 	PORT_BIT( 0x0004, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_M) PORT_CHAR('M') /* M                           32  B2 */
@@ -1066,7 +1083,7 @@ INPUT_PORTS_START( pc_keyboard )
 	PORT_BIT( 0x4000, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_F4) PORT_CHAR(UCHAR_MAMEKEY(F4))			/* F4                          3E  BE */
 	PORT_BIT( 0x8000, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_F5) PORT_CHAR(UCHAR_MAMEKEY(F5))			/* F5                          3F  BF */
 		
-	PORT_START	/* IN8 */
+	PORT_START_TAG("pc_keyboard_4")
 	PORT_BIT( 0x0001, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_F6) PORT_CHAR(UCHAR_MAMEKEY(F6))			 /* F6                          40  C0 */
 	PORT_BIT( 0x0002, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_F7) PORT_CHAR(UCHAR_MAMEKEY(F7))			 /* F7                          41  C1 */
 	PORT_BIT( 0x0004, 0x0000, IPT_KEYBOARD) PORT_CODE(KEYCODE_F8) PORT_CHAR(UCHAR_MAMEKEY(F8))			 /* F8                          42  C2 */
@@ -1084,7 +1101,7 @@ INPUT_PORTS_START( pc_keyboard )
 	PC_KEYB_HELPER( 0x4000, "KP +",         KEYCODE_PLUS_PAD,   CODE_NONE )     /* Keypad +                    4E  CE */
 	PC_KEYB_HELPER( 0x8000, "KP 1 (End)",   KEYCODE_1_PAD,      KEYCODE_END )   /* Keypad 1  (End)             4F  CF */
 		
-	PORT_START	/* IN9 */
+	PORT_START_TAG("pc_keyboard_5")
 	PC_KEYB_HELPER( 0x0001, "KP 2 (Down)",  KEYCODE_2_PAD,      KEYCODE_DOWN )   /* Keypad 2  (Down arrow)      50  D0 */
 	PC_KEYB_HELPER( 0x0002, "KP 3 (PgDn)",  KEYCODE_3_PAD,      KEYCODE_PGDN )   /* Keypad 3  (PgDn)            51  D1 */
 	PC_KEYB_HELPER( 0x0004, "KP 0 (Ins)",   KEYCODE_0_PAD,      KEYCODE_INSERT ) /* Keypad 0  (Ins)             52  D2 */
@@ -1093,10 +1110,10 @@ INPUT_PORTS_START( pc_keyboard )
 	PC_KEYB_HELPER( 0x0040, "(84/102)\\",   KEYCODE_BACKSLASH2, CODE_NONE )      /* Backslash 2                 56  D6 */
 	PORT_BIT ( 0xff80, 0x0000, IPT_UNUSED )
 		
-	PORT_START	/* IN10 */
+	PORT_START_TAG("pc_keyboard_6")
 	PORT_BIT ( 0xffff, 0x0000, IPT_UNUSED )
 		
-	PORT_START	/* IN11 */
+	PORT_START_TAG("pc_keyboard_7")
 	PORT_BIT ( 0xffff, 0x0000, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -1106,7 +1123,7 @@ INPUT_PORTS_END
 	PORT_BIT( bit, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(text) PORT_CODE(key1)
 
 INPUT_PORTS_START( at_keyboard )
-	PORT_START	/* IN4 */
+	PORT_START_TAG("pc_keyboard_0")
 	PORT_BIT ( 0x0001, 0x0000, IPT_UNUSED ) 	/* unused scancode 0 */
 	AT_KEYB_HELPER( 0x0002, "Esc",          KEYCODE_ESC         ) /* Esc                         01  81 */
 	AT_KEYB_HELPER( 0x0004, "1 !",          KEYCODE_1           ) /* 1                           02  82 */
@@ -1124,7 +1141,7 @@ INPUT_PORTS_START( at_keyboard )
 	AT_KEYB_HELPER( 0x4000, "<--",          KEYCODE_BACKSPACE   ) /* Backspace                   0E  8E */
 	AT_KEYB_HELPER( 0x8000, "Tab",          KEYCODE_TAB         ) /* Tab                         0F  8F */
 		
-	PORT_START	/* IN5 */
+	PORT_START_TAG("pc_keyboard_1")
 	AT_KEYB_HELPER( 0x0001, "Q",            KEYCODE_Q           ) /* Q                           10  90 */
 	AT_KEYB_HELPER( 0x0002, "W",            KEYCODE_W           ) /* W                           11  91 */
 	AT_KEYB_HELPER( 0x0004, "E",            KEYCODE_E           ) /* E                           12  92 */
@@ -1142,7 +1159,7 @@ INPUT_PORTS_START( at_keyboard )
 	AT_KEYB_HELPER( 0x4000, "A",            KEYCODE_A           ) /* A                           1E  9E */
 	AT_KEYB_HELPER( 0x8000, "S",            KEYCODE_S           ) /* S                           1F  9F */
 		
-	PORT_START	/* IN6 */
+	PORT_START_TAG("pc_keyboard_2")
 	AT_KEYB_HELPER( 0x0001, "D",            KEYCODE_D           ) /* D                           20  A0 */
 	AT_KEYB_HELPER( 0x0002, "F",            KEYCODE_F           ) /* F                           21  A1 */
 	AT_KEYB_HELPER( 0x0004, "G",            KEYCODE_G           ) /* G                           22  A2 */
@@ -1160,7 +1177,7 @@ INPUT_PORTS_START( at_keyboard )
 	AT_KEYB_HELPER( 0x4000, "C",            KEYCODE_C           ) /* C                           2E  AE */
 	AT_KEYB_HELPER( 0x8000, "V",            KEYCODE_V           ) /* V                           2F  AF */
 		
-	PORT_START	/* IN7 */
+	PORT_START_TAG("pc_keyboard_3")
 	AT_KEYB_HELPER( 0x0001, "B",            KEYCODE_B           ) /* B                           30  B0 */
 	AT_KEYB_HELPER( 0x0002, "N",            KEYCODE_N           ) /* N                           31  B1 */
 	AT_KEYB_HELPER( 0x0004, "M",            KEYCODE_M           ) /* M                           32  B2 */
@@ -1178,7 +1195,7 @@ INPUT_PORTS_START( at_keyboard )
 	AT_KEYB_HELPER( 0x4000, "F4",           KEYCODE_F4          ) /* F4                          3E  BE */
 	AT_KEYB_HELPER( 0x8000, "F5",           KEYCODE_F5          ) /* F5                          3F  BF */
 		
-	PORT_START	/* IN8 */
+	PORT_START_TAG("pc_keyboard_4")
 	AT_KEYB_HELPER( 0x0001, "F6",           KEYCODE_F6          ) /* F6                          40  C0 */
 	AT_KEYB_HELPER( 0x0002, "F7",           KEYCODE_F7          ) /* F7                          41  C1 */
 	AT_KEYB_HELPER( 0x0004, "F8",           KEYCODE_F8          ) /* F8                          42  C2 */
@@ -1196,7 +1213,7 @@ INPUT_PORTS_START( at_keyboard )
 	AT_KEYB_HELPER( 0x4000, "KP +",         KEYCODE_PLUS_PAD    ) /* Keypad +                    4E  CE */
 	AT_KEYB_HELPER( 0x8000, "KP 1 (End)",   KEYCODE_1_PAD       ) /* Keypad 1  (End)             4F  CF */
 		
-	PORT_START	/* IN9 */
+	PORT_START_TAG("pc_keyboard_5")
 	AT_KEYB_HELPER( 0x0001, "KP 2 (Down)",  KEYCODE_2_PAD       ) /* Keypad 2  (Down arrow)      50  D0 */
 	AT_KEYB_HELPER( 0x0002, "KP 3 (PgDn)",  KEYCODE_3_PAD       ) /* Keypad 3  (PgDn)            51  D1 */
 	AT_KEYB_HELPER( 0x0004, "KP 0 (Ins)",   KEYCODE_0_PAD       ) /* Keypad 0  (Ins)             52  D2 */
@@ -1207,7 +1224,7 @@ INPUT_PORTS_START( at_keyboard )
 	AT_KEYB_HELPER( 0x0100, "(MF2)F12",		KEYCODE_F12         ) /* F12                         58  D8 */
 	PORT_BIT ( 0xfe00, 0x0000, IPT_UNUSED )
 		
-	PORT_START	/* IN10 */
+	PORT_START_TAG("pc_keyboard_6")
 	AT_KEYB_HELPER( 0x0001, "(MF2)KP Enter",		KEYCODE_ENTER_PAD   ) /* PAD Enter                   60  e0 */
 	AT_KEYB_HELPER( 0x0002, "(MF2)Right Control",	KEYCODE_RCONTROL    ) /* Right Control               61  e1 */
 	AT_KEYB_HELPER( 0x0004, "(MF2)KP /",			KEYCODE_SLASH_PAD   ) /* PAD Slash                   62  e2 */
@@ -1224,7 +1241,8 @@ INPUT_PORTS_START( at_keyboard )
 	AT_KEYB_HELPER( 0x2000, "(MF2)Insert",			KEYCODE_INSERT      ) /* Insert                      6e  ee */
 	AT_KEYB_HELPER( 0x4000, "(MF2)Delete",			KEYCODE_DEL         ) /* Delete                      6f  ef */
 	AT_KEYB_HELPER( 0x8000, "(MF2)Pause",			KEYCODE_PAUSE       ) /* Pause                       65  e5 */
-	PORT_START	/* IN11 */
+
+	PORT_START_TAG("pc_keyboard_7")
 	AT_KEYB_HELPER( 0x0001, "Print Screen", KEYCODE_PRTSCR           ) /* Print Screen alternate      77  f7 */
 	PORT_BIT ( 0xfffe, 0x0000, IPT_UNUSED )
 INPUT_PORTS_END
@@ -1235,14 +1253,14 @@ INPUT_PORTS_END
   Inputx stuff
 ***************************************************************************/
 
-ACCEPT_CHAR( at_keyboard )
+static int at_keyboard_accept_char(unicode_char_t ch)
 {
 	return unicode_char_to_at_keycode(ch) != 0;
 }
 
 
 
-CHARQUEUE_EMPTY( at_keyboard )
+static int at_keyboard_charqueue_empty(void)
 {
 	return at_keyboard_queue_size() == 0;
 }

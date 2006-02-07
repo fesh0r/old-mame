@@ -136,14 +136,14 @@ static void mc146818_timer(int param)
 					{
 						DAY=1;
 						MONTH=bcd_adjust(MONTH+1);
-						if (MONTH>0x12) 
+						if (MONTH>0x12)
 						{
 							MONTH=1;
 							YEAR=year=bcd_adjust(YEAR+1);
 							if (mc146818->type!=MC146818_IGNORE_CENTURY)
 							{
 								if (year>=0x100)
-								{ 
+								{
 									CENTURY=bcd_adjust(CENTURY+1);
 								}
 							}
@@ -155,7 +155,7 @@ static void mc146818_timer(int param)
 	}
 	else
 	{
-		mc146818->data[0] = mc146818->data[0]+1;
+		mc146818->data[0]=mc146818->data[0]+1;
 		if (mc146818->data[0]>=60)
 		{
 			mc146818->data[0]=0;
@@ -187,7 +187,7 @@ static void mc146818_timer(int param)
 		}
 	}
 
-	mc146818->last_refresh = timer_get_time();	
+	mc146818->last_refresh = timer_get_time();
 }
 
 
@@ -221,7 +221,7 @@ void mc146818_load_stream(mame_file *file)
 {
 	mame_fread(file, mc146818->data, sizeof(mc146818->data));
 }
- 
+
 
 
 void mc146818_set_gmtime(struct tm *tmtime)
@@ -234,7 +234,7 @@ void mc146818_set_gmtime(struct tm *tmtime)
 			mc146818->data[4]=dec_2_bcd(tmtime->tm_hour);
 		else
 			mc146818->data[4]=dec_2_bcd(tmtime->tm_hour-12)|0x80;
-		
+
 		if (mc146818->type!=MC146818_IGNORE_CENTURY)
 			CENTURY=dec_2_bcd((tmtime->tm_year+1900)/100);
 	}
@@ -244,7 +244,7 @@ void mc146818_set_gmtime(struct tm *tmtime)
 			mc146818->data[4]=tmtime->tm_hour;
 		else
 			mc146818->data[4]=(tmtime->tm_hour-12)|0x80;
-		
+
 		if (mc146818->type!=MC146818_IGNORE_CENTURY)
 			CENTURY=(tmtime->tm_year+1900)/100;
 	}
@@ -275,10 +275,10 @@ void mc146818_set_time(void)
 	time_t t;
 	struct tm *tmtime;
 
-	t = time(NULL);
-	if (t == -1) return;
+	t=time(NULL);
+	if (t==-1) return;
 
-	tmtime = gmtime(&t);
+	tmtime=gmtime(&t);
 
 	mc146818_set_gmtime(tmtime);
 	// freeing of gmtime??
@@ -289,7 +289,7 @@ void mc146818_set_time(void)
 void mc146818_save(void)
 {
 	mame_file *file;
-	
+
 	file = mame_fopen(Machine->gamedrv->name, 0, FILETYPE_NVRAM, 1);
 	if (file)
 	{
@@ -311,7 +311,7 @@ NVRAM_HANDLER( mc146818 )
 {
 	if (file==NULL) {
 		mc146818_set_time();
-		// init only 
+		// init only
 	} else if (read_or_write) {
 		mc146818_save_stream(file);
 	} else {
@@ -341,7 +341,7 @@ READ8_HANDLER(mc146818_port_r)
 #endif
 			break;
 
-		case 0xd: 
+		case 0xd:
 			/* battery ok */
 			data = mc146818->data[mc146818->index % MC146818_DATA_SIZE] | 0x80;
 			break;

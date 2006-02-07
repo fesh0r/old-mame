@@ -87,6 +87,13 @@ void inputx_init(void);
 void inputx_update(void);
 void inputx_handle_mess_extensions(input_port_entry *ipt);
 
+/* called by drivers to setup natural keyboard support */
+void inputx_setup_natural_keyboard(
+	int (*queue_chars)(const unicode_char_t *text, size_t text_len),
+	int (*accept_char)(unicode_char_t ch),
+	int (*charqueue_empty)(void));
+
+/* run the validity checks */
 int inputx_validitycheck(const game_driver *gamedrv, input_port_entry **memory);
 
 /* these can be called from FEs */
@@ -110,6 +117,10 @@ void inputx_post_utf8(const char *text);
 void inputx_post_utf8_rate(const char *text, mame_time rate);
 void inputx_postn_utf8(const char *text, size_t text_len);
 void inputx_postn_utf8_rate(const char *text, size_t text_len, mame_time rate);
+void inputx_post_coded(const char *text);
+void inputx_post_coded_rate(const char *text, mame_time rate);
+void inputx_postn_coded(const char *text, size_t text_len);
+void inputx_postn_coded_rate(const char *text, size_t text_len, mame_time rate);
 
 /* miscellaneous functions */
 int input_classify_port(const input_port_entry *in);

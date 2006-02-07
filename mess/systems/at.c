@@ -76,23 +76,18 @@ static ADDRESS_MAP_START( at_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0c8000, 0x0cffff) AM_ROM
 	AM_RANGE(0x0d0000, 0x0effff) AM_ROM
 	AM_RANGE(0x0f0000, 0x0fffff) AM_ROM
-	AM_RANGE(0x100000, 0x1fffff) AM_RAM
-	AM_RANGE(0x200000, 0xfeffff) AM_NOP
-	AM_RANGE(0xff0000, 0xffffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( at386_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(24) )
-	AM_RANGE(0x000000, 0x09ffff) AM_MIRROR(0xff000000) AM_RAMBANK(10)
-	AM_RANGE(0x0a0000, 0x0b7fff) AM_MIRROR(0xff000000) AM_NOP
-	AM_RANGE(0x0b8000, 0x0bffff) AM_MIRROR(0xff000000) AM_READWRITE(MRA32_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x0c0000, 0x0c7fff) AM_MIRROR(0xff000000) AM_ROM
-	AM_RANGE(0x0c8000, 0x0cffff) AM_MIRROR(0xff000000) AM_ROM
-	AM_RANGE(0x0d0000, 0x0effff) AM_MIRROR(0xff000000) AM_ROM
-	AM_RANGE(0x0f0000, 0x0fffff) AM_MIRROR(0xff000000) AM_ROM
-	AM_RANGE(0x100000, 0x19ffff) AM_MIRROR(0xff000000) AM_RAMBANK(20)
-	AM_RANGE(0x200000, 0xfeffff) AM_MIRROR(0xff000000) AM_NOP
-	AM_RANGE(0xff0000, 0xffffff) AM_MIRROR(0xff000000) AM_ROM
+	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK(10)
+	AM_RANGE(0x000a0000, 0x000b7fff) AM_NOP
+	AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(MRA32_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x000c0000, 0x000c7fff) AM_ROM
+	AM_RANGE(0x000c8000, 0x000cffff) AM_ROM
+	AM_RANGE(0x000d0000, 0x000effff) AM_ROM
+	AM_RANGE(0x000f0000, 0x000fffff) AM_ROM AM_REGION(REGION_CPU1, 0x0f0000)
+	AM_RANGE(0x00ff0000, 0x00ffffff) AM_ROM AM_REGION(REGION_CPU1, 0x0f0000)
 ADDRESS_MAP_END
 
 
@@ -624,25 +619,43 @@ ROM_START( at486 )
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
 
-static void ibmat_printer_getinfo(struct IODevice *dev)
+static void ibmat_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
-	printer_device_getinfo(dev);
-	dev->count = 3;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 3; break;
+
+		default:										printer_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void ibmat_floppy_getinfo(struct IODevice *dev)
+static void ibmat_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	floppy_device_getinfo(dev, floppyoptions_pc);
-	dev->count = 2;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
+
+		default:										floppy_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void ibmat_harddisk_getinfo(struct IODevice *dev)
+static void ibmat_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
-	harddisk_device_getinfo(dev);
-	dev->count = 4;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		default:										harddisk_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(ibmat)
@@ -650,8 +663,6 @@ SYSTEM_CONFIG_START(ibmat)
 	CONFIG_DEVICE(ibmat_printer_getinfo)
 	CONFIG_DEVICE(ibmat_floppy_getinfo)
 	CONFIG_DEVICE(ibmat_harddisk_getinfo)
-	CONFIG_QUEUE_CHARS( at_keyboard )
-	CONFIG_ACCEPT_CHAR( at_keyboard )
 SYSTEM_CONFIG_END
 
 /***************************************************************************

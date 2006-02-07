@@ -375,7 +375,6 @@ static BOOL SoftwarePicker_AddFileEntry(HWND hwndPicker, LPCTSTR pszFilename,
 	{
 		pszExtension++;
 
-		begin_resource_tracking();
 		pDevice = devices_allocate(pPickerInfo->pDriver);
 
 		while(pDevice->type < IO_COUNT)
@@ -390,7 +389,6 @@ static BOOL SoftwarePicker_AddFileEntry(HWND hwndPicker, LPCTSTR pszFilename,
 			}
 			pDevice++;
 		}
-		end_resource_tracking();
 	}
 
 	// no device?  cop out unless bForce is on
@@ -486,7 +484,7 @@ static BOOL SoftwarePicker_InternalAddFile(HWND hwndPicker, LPCTSTR pszFilename,
 	zip_entry *pZipEnt;
 
 	s = _tcsrchr(pszFilename, '.');
-	if (s && (!_tcscmp(s, TEXT(".zip"))))
+	if (s && (!_tcsicmp(s, TEXT(".zip"))))
 	{
 		pZip = OpenZipFile(pszFilename);
 		if (pZip)

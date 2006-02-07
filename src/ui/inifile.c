@@ -250,7 +250,7 @@ BOOL LoadSettingsFileEx(DWORD nSettingsFile, const struct SettingsHandler *handl
 					break;
 
 				case SH_MANUAL:
-					success = handlers[i].u.manual.parse(key, value_str);
+					success = handlers[i].u.manual.parse(nSettingsFile, key, value_str);
 					break;
 
 				default:
@@ -261,7 +261,7 @@ BOOL LoadSettingsFileEx(DWORD nSettingsFile, const struct SettingsHandler *handl
 		
 		if (!success)
 		{
-			dprintf("load game options found unknown option %s",key);
+			dprintf("load game options found unknown option %s\n", key);
 		}
 	}
 
@@ -276,24 +276,24 @@ BOOL LoadSettingsFileEx(DWORD nSettingsFile, const struct SettingsHandler *handl
 static void WriteStringOptionToFile(FILE *fptr,const char *key,const char *value)
 {
 	if (value[0] && !strchr(value,' '))
-		fprintf(fptr,"%s %s\n",key,value);
+		fprintf(fptr,"%-21s   %s\n",key,value);
 	else
-		fprintf(fptr,"%s \"%s\"\n",key,value);
+		fprintf(fptr,"%-21s   \"%s\"\n",key,value);
 }
 
 static void WriteIntOptionToFile(FILE *fptr,const char *key,int value)
 {
-	fprintf(fptr,"%s %i\n",key,value);
+	fprintf(fptr,"%-21s   %i\n",key,value);
 }
 
 static void WriteBoolOptionToFile(FILE *fptr,const char *key,BOOL value)
 {
-	fprintf(fptr,"%s %i\n",key,value ? 1 : 0);
+	fprintf(fptr,"%-21s   %i\n",key,value ? 1 : 0);
 }
 
 static void WriteColorOptionToFile(FILE *fptr,const char *key,COLORREF value)
 {
-	fprintf(fptr,"%s %i,%i,%i\n",key,(int)(value & 0xff),(int)((value >> 8) & 0xff),
+	fprintf(fptr,"%-21s   %i,%i,%i\n",key,(int)(value & 0xff),(int)((value >> 8) & 0xff),
 			(int)((value >> 16) & 0xff));
 }
 
@@ -449,7 +449,7 @@ BOOL SaveSettingsFileEx(DWORD nSettingsFile, const struct SettingsHandler *handl
 				break;
 
 			case SH_MANUAL:
-				handlers[i].u.manual.emit(EmitCallback, (void *) fptr);
+				handlers[i].u.manual.emit(nSettingsFile, EmitCallback, (void *) fptr);
 				break;
 
 			default:

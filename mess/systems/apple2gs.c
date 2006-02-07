@@ -20,8 +20,8 @@
 #include "devices/mflopimg.h"
 #include "formats/ap2_dsk.h"
 #include "includes/apple2gs.h"
-#include "machine/sonydriv.h"
-#include "machine/appldriv.h"
+#include "devices/sonydriv.h"
+#include "devices/appldriv.h"
 #include "sound/es5503.h"
 
 static gfx_layout apple2gs_text_layout =
@@ -179,40 +179,48 @@ ROM_END
  * Floppy disk devices
  * ----------------------------------------------------------------------- */
 
-static const char *apple2gs_floppy35_getname(const struct IODevice *dev,
-	int id, char *buf, size_t bufsize)
-{
-	snprintf(buf, bufsize, "Slot 5 Disk #%d", id + 1);
-	return buf;
-}
-
-
-
-
-static const char *apple2gs_floppy525_getname(const struct IODevice *dev,
-	int id, char *buf, size_t bufsize)
-{
-	snprintf(buf, bufsize, "Slot 6 Disk #%d", id + 1);
-	return buf;
-}
-
-
-
-static void apple2gs_floppy35_getinfo(struct IODevice *dev)
+static void apple2gs_floppy35_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* 3.5" floppy */
-	sonydriv_device_getinfo(dev, SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K | SONY_FLOPPY_SUPPORT2IMG);
-	dev->name = apple2gs_floppy35_getname;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES:		info->i = SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K | SONY_FLOPPY_SUPPORT2IMG; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "slot5disk1"); break;
+		case DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "slot5disk2"); break;
+		case DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "s5d1"); break;
+		case DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "s5d2"); break;
+		case DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Slot 5 Disk #1"); break;
+		case DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Slot 5 Disk #2"); break;
+
+		default:										sonydriv_device_getinfo(devclass, state, info); break;
+	}
 }
 
 
 
-static void apple2gs_floppy525_getinfo(struct IODevice *dev)
+static void apple2gs_floppy525_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* 5.25" floppy */
-	apple525_device_getinfo(dev, 15, 16);
-	dev->name = apple2gs_floppy525_getname;
-//	dev->not_working = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_NOT_WORKING:					/* info->i = 1; */ break;
+		case DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND:	info->i = 15; break;
+		case DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR:	info->i = 16; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "slot6disk1"); break;
+		case DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "slot6disk2"); break;
+		case DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "s6d1"); break;
+		case DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "s6d2"); break;
+		case DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #1"); break;
+		case DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #2"); break;
+
+		default:										apple525_device_getinfo(devclass, state, info); break;
+	}
 }
 
 
@@ -223,8 +231,6 @@ SYSTEM_CONFIG_START(apple2gs)
 	CONFIG_DEVICE(apple2gs_floppy35_getinfo)
 	CONFIG_DEVICE(apple2gs_floppy525_getinfo)
 
-	CONFIG_QUEUE_CHARS			( AY3600 )
-	CONFIG_ACCEPT_CHAR			( AY3600 )
 	CONFIG_RAM_DEFAULT			(2 * 1024 * 1024)
 SYSTEM_CONFIG_END
 

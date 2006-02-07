@@ -164,7 +164,8 @@ TESTDRIVER( studio2 )	/* Studio II										*/
 	DRIVER( fnvision )  /* Coleco FunVision                                 */
 
 	/* NEC */
-	DRIVER( pce )		/* PC/Engine - Turbo Graphics-16  NEC 1989-1993		*/
+	DRIVER( pce )		/* PC/Engine NEC 1987-1993		*/
+	DRIVER( tg16 )		/* Turbo Grafix-16  NEC 1989-1993		*/
 
 	DRIVER( arcadia )	/* Emerson Arcadia 2001								*/
 TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
@@ -188,7 +189,7 @@ TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
 	DRIVER( odyssey2 )	/* Magnavox Odyssey 2 - 1978-1983					*/
 
 	/* WATARA */
-	DRIVER( svision )	/* Super Vision	Handheld							*/
+	DRIVER( svision )	/* Supervision	Handheld							*/
 
 	/* INTERTON */
 	DRIVER( vc4000 )	/* Interton vc4000									*/
@@ -207,6 +208,7 @@ TESTDRIVER( wscolor )	/* Bandai WonderSwan Color Handheld					*/
 	DRIVER( bbcbp )     /* 198? BBC Micro Model B+ 64K						*/
 	DRIVER( bbcbp128 )  /* 198? BBC Micro Model B+ 128K						*/
 	DRIVER( bbcm)		/* 198? BBC Master									*/
+	DRIVER( electron )	/* 1983 Acorn Electron							*/
 TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
 
 	/* CAMBRIDGE COMPUTERS */
@@ -724,6 +726,7 @@ TESTDRIVER( mekd2 )		/* 1977 Motorola Evaluation Kit						*/
 
 	/*EXIDY INC */
 	DRIVER( exidy )		/* Sorcerer											*/
+	DRIVER( exidyd )	/* Sorcerer (diskless)								*/
 
 	/* GALAKSIJA */
 	DRIVER( galaxy )
@@ -775,7 +778,9 @@ TESTDRIVER( svi328c ) 	/* SVI-328 + 80 column card (Swedish)						*/
 
 	/* Sony */
 	DRIVER( psx )
+	DRIVER( psxj11 )
 	DRIVER( psxe20 )
+	DRIVER( psxj21 )
 	DRIVER( psxa22 )
 	DRIVER( psxe22 )
 	DRIVER( psxj22 )

@@ -10,6 +10,16 @@
 #############################################################################
 
 
+###########################################################################
+#################   BEGIN USER-CONFIGURABLE OPTIONS   #####################
+###########################################################################
+
+
+#-------------------------------------------------
+# specify core target: mess, tiny, etc.
+# build rules will be included from $(TARGET).mak
+#-------------------------------------------------
+
 # set this to mame, mess or the destination you want to build
 # TARGET = mame
 TARGET = mess
@@ -20,23 +30,41 @@ TARGET = mess
 # build with browser information for debugging
 BSCMAKE = @-bscmake.exe
 
+
+
+#-------------------------------------------------
+# specify operating system: windows, msdos, etc.
+# build rules will be includes from $(MAMEOS)/$(MAMEOS).mak
+#-------------------------------------------------
+
+MAMEOS = windows
+
+
+
+#-------------------------------------------------
+# specify program options; see each option below 
+# for details
+#-------------------------------------------------
+
 # uncomment next line to include the debugger
 # DEBUG = 1
 
 # uncomment next line to use the new multiwindow debugger
 NEW_DEBUGGER = 1
 
-# uncomment next line to use Assembler 68000 engine
-# X86_ASM_68000 = 1
-
-# uncomment next line to use Assembler 68020 engine
-# X86_ASM_68020 = 1
+# uncomment next line to use the new rendering system
+# NEW_RENDER = 1
 
 # uncomment next line to use DRC MIPS3 engine
-# X86_MIPS3_DRC = 1
+X86_MIPS3_DRC = 1
 
 # uncomment next line to use DRC PowerPC engine
-# X86_PPC_DRC = 1
+X86_PPC_DRC = 1
+
+# uncomment next line to use DRC Voodoo rasterizers
+# X86_VOODOO_DRC = 1
+
+
 
 # uncomment next line to use cygwin compiler
 # COMPILESYSTEM_CYGWIN	= 1
@@ -48,12 +76,17 @@ BUILD_EXPAT = 1
 BUILD_ZLIB = 1
 
 
-# set this the operating system you're building for
-MAMEOS = windows
-
 # uncomment next line to generate help files
 # HELP = 1
 
+###########################################################################
+##################   END USER-CONFIGURABLE OPTIONS   ######################
+###########################################################################
+
+
+#-------------------------------------------------
+# platform-specific definitions
+#-------------------------------------------------
 
 # extension for executables
 EXE = .exe
@@ -234,6 +267,23 @@ ifdef GX_PATH
 LDFLAGS += -LIBPATH:$(subst \,\\,$(GX_PATH))\\$(WCEPLAT)
 endif
 
+
+
+#-------------------------------------------------
+# define standard libarires for CPU and sounds
+#-------------------------------------------------
+
+CPULIB = $(OBJ)/libcpu.a
+
+SOUNDLIB = $(OBJ)/libsound.a
+
+
+
+#-------------------------------------------------
+# either build or link against the included 
+# libraries
+#-------------------------------------------------
+
 ifdef BUILD_EXPAT
 OBJDIRS += $(OBJ)/expat
 EXPAT = $(OBJ)/libexpat.a
@@ -314,10 +364,19 @@ PLATFORM_TOOL_OBJS =				\
 	$(OBJ)/windows/fileio.o
 	
 #####################################################################
+#-------------------------------------------------
+# 'all' target needs to go here, before the 
+# include files which define additional targets
+#-------------------------------------------------
+
+
 
 all:	maketree $(EMULATORCLI) $(EMULATORGUI) messtest$(EXE) messdocs$(EXE) chdman$(EXE) imgtool$(EXE) wimgtool$(EXE)
 
+#-------------------------------------------------
 # include the various .mak files
+#-------------------------------------------------
+
 include src/core.mak
 ifdef MESS
 include mess/$(TARGET).mak
@@ -325,14 +384,16 @@ include mess/tools/imgtool/windows/wimgtool.mak
 else
 include src/$(TARGET).mak
 endif
-include src/rules.mak
+include src/cpu/cpu.mak
+include src/sound/sound.mak
 ifeq ($(MAMEOS),windows)
 include mess/$(MAMEOS)/$(MAMEOS).mak
 else
 include src/$(MAMEOS)/$(MAMEOS).mak
 endif
 ifdef MESS
-include mess/rules_ms.mak
+include mess/cpu/cpu.mak
+include mess/sound/sound.mak
 endif
 
 ifdef DEBUG
@@ -347,11 +408,17 @@ DIRENTOBJS = $(OBJ)/mess/ui/dirent.o
 # combine the various definitions to one
 CDEFS = $(DEFS) $(COREDEFS) $(CPUDEFS) $(SOUNDDEFS) $(ASMDEFS) $(DBGDEFS) $(BSCDEFS)
 
-$(EMULATORDLL): $(OBJS) $(COREOBJS) $(OSOBJS) $(DIRENTOBJS) $(DRVLIBS) $(OSDBGOBJS) $(RESFILE)
+
+
+#-------------------------------------------------
+# executable targets and dependencies
+#-------------------------------------------------
+
+$(EMULATORDLL): $(OBJS) $(COREOBJS) $(OSOBJS) $(DIRENTOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS) $(OSDBGOBJS) $(RESFILE)
 # always recompile the version string
 	$(CC) $(CDEFS) $(CFLAGS) -Fr$(OBJ)/version.sbr -Fo$(OBJ)/version.o -c src/version.c
 	@echo Linking $@...
-	$(LD) -dll -base:0x10040000 $(LDFLAGS) -out:$@ $(LIBS) $(COREOBJS) $(OBJS) $(OSOBJS) $(DIRENTOBJS) $(DRVLIBS) $(OSDBGOBJS) $(RESFILE)
+	$(LD) -dll -base:0x10040000 $(LDFLAGS) -out:$@ $(LIBS) $(COREOBJS) $(OBJS) $(OSOBJS) $(DIRENTOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS) $(OSDBGOBJS) $(RESFILE)
 ifdef BSCMAKE
 	$(BSCMAKE) -nologo -o$(@:%.exe=%.bsc) $(OBJS:%.o=%.sbr) $(COREOBJS:%.o=%.sbr)
 endif
@@ -414,7 +481,7 @@ wimgtool$(EXE): \
 	@echo Compiling $@...
 	$(LD) $(LDFLAGS) $(LIBS) $(WINDOWS_PROGRAM) shlwapi.lib $^ $(ZLIB) -out:$@
 
-messtest$(EXE):	$(OBJS) $(COREOBJS) $(DRVLIBS) $(MESSTEST_OBJS) \
+messtest$(EXE):	$(OBJS) $(COREOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS) $(MESSTEST_OBJS) \
 		$(OBJ)/windows/asmtile.o				\
 		$(OBJ)/windows/ticker.o					\
 		$(OBJ)/windows/fileio.o					\
@@ -430,7 +497,18 @@ messtest$(EXE):	$(OBJS) $(COREOBJS) $(DRVLIBS) $(MESSTEST_OBJS) \
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $(CONSOLE_PROGRAM) $^ $(ZLIB) winmm.lib user32.lib -out:$@
 
-# secondary libraries
+#-------------------------------------------------
+# library targets and dependencies
+#-------------------------------------------------
+
+$(CPULIB): $(CPUOBJS)
+
+ifdef DEBUG
+$(CPULIB): $(DBGOBJS)
+endif
+
+$(SOUNDLIB): $(SOUNDOBJS)
+
 $(OBJ)/libexpat.a: $(OBJ)/expat/xmlparse.o $(OBJ)/expat/xmlrole.o $(OBJ)/expat/xmltok.o
 	$(AR) -nologo -out:$@ $^
 
@@ -494,6 +572,11 @@ $(OBJ)/mess/ui/%.res: mess/ui/%.rc
 $(OBJ)/mess/%.res: mess/%.rc
 	@echo Compiling resources $<...
 	$(RC) $(RCDEFS) $(RCFLAGS) -Fo$@ $<
+
+#-------------------------------------------------
+# special rules
+#-------------------------------------------------
+
 
 # compile generated C files for the 68000 emulator
 $(M68000_GENERATED_OBJS): $(OBJ)/cpu/m68000/m68kmake$(EXE)

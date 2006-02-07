@@ -296,11 +296,14 @@ imgtoolerr_t img_deletedir(imgtool_image *img, const char *path);
  *		attrs:				The list of attributes on the file
  *		values:				Values to get or store
  */
+imgtoolerr_t img_listattrs(imgtool_image *image, const char *path, UINT32 *attrs, size_t len);
 imgtoolerr_t img_getattrs(imgtool_image *image, const char *path, const UINT32 *attrs, imgtool_attribute *values);
 imgtoolerr_t img_setattrs(imgtool_image *image, const char *path, const UINT32 *attrs, const imgtool_attribute *values);
 imgtoolerr_t img_getattr(imgtool_image *image, const char *path, UINT32 attr, imgtool_attribute *value);
 imgtoolerr_t img_setattr(imgtool_image *image, const char *path, UINT32 attr, imgtool_attribute value);
 
+void img_attrname(const struct ImageModule *module, UINT32 attribute, const imgtool_attribute *attr_value,
+	char *buffer, size_t buffer_len);
 
 /* img_geticoninfo
  *
@@ -371,6 +374,13 @@ imgtoolerr_t img_readsector(imgtool_image *image, UINT32 track, UINT32 head,
 	UINT32 sector, void *buffer, size_t len);
 imgtoolerr_t img_writesector(imgtool_image *image, UINT32 track, UINT32 head,
 	UINT32 sector, const void *buffer, size_t len);
+
+/* img_malloc
+ *
+ * Description:
+ *		Allocates memory off of an image
+ */
+void *img_malloc(imgtool_image *image, size_t size);
 
 /* img_module
  * img_enum_module

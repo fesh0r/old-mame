@@ -11,7 +11,6 @@
 ****************************************************************************/
 
 #include "osd_cpu.h"
-#include "sound/streams.h"
 #include "machine/pcshare.h"
 
 #include "machine/pit8253.h"

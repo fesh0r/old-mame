@@ -108,7 +108,7 @@
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
 #include "machine/applefdc.h"
-#include "machine/sonydriv.h"
+#include "devices/sonydriv.h"
 #include "machine/8530scc.h"
 #include "devices/flopdrv.h"
 #include "cpu/g65816/g65816.h"
@@ -631,7 +631,7 @@ static void adb_write_datareg(UINT8 data)
 			{
 				adb_state = ADBSTATE_INCOMMAND;
 				if (LOG_ADB)
-					logerror("adb_write_datareg(): in command length %d\n", adb_command_length);
+					logerror("adb_write_datareg(): in command length %u\n", (unsigned) adb_command_length);
 			}
 			break;
 

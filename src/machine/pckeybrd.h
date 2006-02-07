@@ -1,20 +1,16 @@
 /**********************************************************************
 
-	pckeybrd.h
+    pckeybrd.h
 
-	PC-style keyboard emulation
+    PC-style keyboard emulation
 
-	This emulation is decoupled from the AT 8042 emulation used in the
-	IBM ATs and above
+    This emulation is decoupled from the AT 8042 emulation used in the
+    IBM ATs and above
 
 **********************************************************************/
 
 #ifndef PCKEYBRD_H
 #define PCKEYBRD_H
-
-#ifdef MESS
-#include "inputx.h"
-#endif /* MESS */
 
 typedef enum
 {

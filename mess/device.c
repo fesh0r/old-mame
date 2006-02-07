@@ -75,6 +75,50 @@ int device_typeid(const char *name)
 
 
 
+static const char *internal_device_instancename(const device_class *devclass, int id,
+	UINT32 base, const char *(*get_dev_typename)(iodevice_t))
+{
+	iodevice_t type;
+	int count;
+	const char *result;
+	char *s;
+
+	/* retrieve info about the device instance */
+	result = device_get_info_string(devclass, base + id);
+	if (!result)
+	{
+		/* not specified? default to device names based on the device type */
+		type = (iodevice_t) (int) device_get_info_int(devclass, DEVINFO_INT_TYPE);
+		count = (int) device_get_info_int(devclass, DEVINFO_INT_COUNT);
+		result = get_dev_typename(type);
+
+		/* need to number if there is more than one device */
+		if (count > 1)
+		{
+			s = device_temp_str();
+			sprintf(s, "%s%d", result, id + 1);
+			result = s;
+		}
+	}
+	return result;
+}
+
+
+
+const char *device_instancename(const device_class *devclass, int id)
+{
+	return internal_device_instancename(devclass, id, DEVINFO_STR_NAME, device_typename);
+}
+
+
+
+const char *device_briefinstancename(const device_class *devclass, int id)
+{
+	return internal_device_instancename(devclass, id, DEVINFO_STR_SHORT_NAME, device_brieftypename);
+}
+
+
+
 /*************************************
  *
  *	Device structure construction and destruction
@@ -85,6 +129,14 @@ static const char *default_device_name(const struct IODevice *dev, int id,
 	char *buf, size_t bufsize)
 {
 	const char *name;
+
+	/* use the cool new device string technique */
+	name = device_get_info_string(&dev->devclass, DEVINFO_STR_DESCRIPTION+id);
+	if (name)
+	{
+		snprintf(buf, bufsize, "%s", name);
+		return buf;
+	}
 
 	name = ui_getstring((UI_cartridge - IO_CARTSLOT) + dev->type);
 	if (dev->count > 1)
@@ -113,11 +165,10 @@ struct IODevice *devices_allocate(const game_driver *gamedrv)
 	struct SystemConfigurationParamBlock params;
 	device_getinfo_handler handlers[64];
 	int count_overrides[sizeof(handlers) / sizeof(handlers[0])];
-	int count, i;
+	int createimage_optcount, count, i, j, position;
+	const char *file_extensions, *info_string;
+	char *converted_file_extensions;
 	struct IODevice *devices = NULL;
-	extern const game_driver *cartslot_gamedriver_hack;
-
-	cartslot_gamedriver_hack = gamedrv;
 
 	memset(handlers, 0, sizeof(handlers));
 	memset(count_overrides, 0, sizeof(count_overrides));
@@ -136,10 +187,12 @@ struct IODevice *devices_allocate(const game_driver *gamedrv)
 		;
 	count++; /* for our purposes, include the tailing empty device */
 
-	devices = (struct IODevice *) malloc(count * sizeof(struct IODevice));
+	devices = (struct IODevice *) auto_malloc(count * sizeof(struct IODevice));
 	if (!devices)
 		goto error;
 	memset(devices, 0, count * sizeof(struct IODevice));
+
+	position = 0;
 
 	for (i = 0; i < count; i++)
 	{
@@ -147,8 +200,77 @@ struct IODevice *devices_allocate(const game_driver *gamedrv)
 
 		if (handlers[i])
 		{
-			handlers[i](&devices[i]);
+			devices[i].devclass.get_info = handlers[i];
+			devices[i].devclass.gamedrv = gamedrv;
 			
+			/* convert file extensions from comma delimited to null delimited */
+			converted_file_extensions = NULL;
+			file_extensions = device_get_info_string(&devices[i].devclass, DEVINFO_STR_FILE_EXTENSIONS);
+			if (file_extensions)
+			{
+				converted_file_extensions = auto_malloc(strlen(file_extensions) + 2);
+				for (j = 0; file_extensions[j]; j++)
+					converted_file_extensions[j] = (file_extensions[j] != ',') ? file_extensions[j] : '\0';
+				converted_file_extensions[j + 0] = '\0';
+				converted_file_extensions[j + 1] = '\0';
+			}
+			
+			info_string = device_get_info_string(&devices[i].devclass, DEVINFO_STR_DEV_TAG);
+			devices[i].tag					= info_string ? auto_strdup(info_string) : NULL;
+			devices[i].type					= device_get_info_int(&devices[i].devclass, DEVINFO_INT_TYPE);
+			devices[i].count				= device_get_info_int(&devices[i].devclass, DEVINFO_INT_COUNT);
+			devices[i].position				= position;
+			devices[i].file_extensions		= converted_file_extensions;
+
+			devices[i].readable				= device_get_info_int(&devices[i].devclass, DEVINFO_INT_READABLE) ? 1 : 0;
+			devices[i].writeable			= device_get_info_int(&devices[i].devclass, DEVINFO_INT_WRITEABLE) ? 1 : 0;
+			devices[i].creatable			= device_get_info_int(&devices[i].devclass, DEVINFO_INT_CREATABLE) ? 1 : 0;
+			devices[i].reset_on_load		= device_get_info_int(&devices[i].devclass, DEVINFO_INT_RESET_ON_LOAD) ? 1 : 0;
+			devices[i].must_be_loaded		= device_get_info_int(&devices[i].devclass, DEVINFO_INT_MUST_BE_LOADED) ? 1 : 0;
+			devices[i].load_at_init			= device_get_info_int(&devices[i].devclass, DEVINFO_INT_LOAD_AT_INIT) ? 1 : 0;
+			devices[i].not_working			= device_get_info_int(&devices[i].devclass, DEVINFO_INT_NOT_WORKING) ? 1 : 0;
+
+			devices[i].init					= (device_init_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_INIT);
+			devices[i].exit					= (device_exit_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_EXIT);
+			devices[i].load					= (device_load_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_LOAD);
+			devices[i].create				= (device_create_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_CREATE);
+			devices[i].unload				= (device_unload_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_UNLOAD);
+			devices[i].imgverify			= (device_verify_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_VERIFY);
+			devices[i].partialhash			= (device_partialhash_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_PARTIAL_HASH);
+			devices[i].getdispositions		= (device_getdispositions_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_GET_DISPOSITIONS);
+
+			devices[i].display				= (device_display_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_DISPLAY);
+			devices[i].name					= (device_getname_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_GET_NAME);
+
+			devices[i].createimage_optguide	= (const struct OptionGuide *) device_get_info_ptr(&devices[i].devclass, DEVINFO_PTR_CREATE_OPTGUIDE);
+			
+			createimage_optcount = (int) device_get_info_int(&devices[i].devclass, DEVINFO_INT_CREATE_OPTCOUNT);
+			if (createimage_optcount > 0)
+			{
+				if (createimage_optcount > DEVINFO_CREATE_OPTMAX)
+					osd_die("DEVINFO_INT_CREATE_OPTCOUNT: Too many options");
+
+				devices[i].createimage_options = auto_malloc((createimage_optcount + 1) *
+					sizeof(*devices[i].createimage_options));
+
+				for (j = 0; j < createimage_optcount; j++)
+				{
+					info_string = device_get_info_string(&devices[i].devclass, DEVINFO_STR_CREATE_OPTNAME + j);
+					devices[i].createimage_options[j].name			= info_string ? auto_strdup(info_string) : NULL;
+					info_string = device_get_info_string(&devices[i].devclass, DEVINFO_STR_CREATE_OPTDESC + j);
+					devices[i].createimage_options[j].description	= info_string ? auto_strdup(info_string) : NULL;
+					info_string = device_get_info_string(&devices[i].devclass, DEVINFO_STR_CREATE_OPTEXTS + j);
+					devices[i].createimage_options[j].extensions	= info_string ? auto_strdup(info_string) : NULL;
+					devices[i].createimage_options[j].optspec		= device_get_info_ptr(&devices[i].devclass, DEVINFO_PTR_CREATE_OPTSPEC + j);
+				}
+
+				/* terminate the list */
+				memset(&devices[i].createimage_options[createimage_optcount], 0,
+					sizeof(devices[i].createimage_options[createimage_optcount]));
+			}
+
+			position += devices[i].count;
+
 			/* overriding the count? */
 			if (count_overrides[i])
 				devices[i].count = count_overrides[i];
@@ -157,8 +279,6 @@ struct IODevice *devices_allocate(const game_driver *gamedrv)
 			if ((devices[i].type < 0) || (devices[i].type >= IO_COUNT))
 				goto error;
 			if ((devices[i].count < 0) || (devices[i].count > MAX_DEV_INSTANCES))
-				goto error;
-			if (devices[i].error)
 				goto error;
 
 			/* fill in defaults */
@@ -169,13 +289,9 @@ struct IODevice *devices_allocate(const game_driver *gamedrv)
 		}
 	}
 
-	cartslot_gamedriver_hack = NULL;
 	return devices;
 
 error:
-	if (devices)
-		free(devices);
-	cartslot_gamedriver_hack = NULL;
 	return NULL;
 }
 

@@ -1,3 +1,11 @@
+/*********************************************************************
+
+	inputx.h
+
+	Secondary input related functions for MESS specific functionality
+
+*********************************************************************/
+
 #include <ctype.h>
 #include <assert.h>
 #include <wctype.h>
@@ -5,14 +13,13 @@
 #include "inptport.h"
 #include "mame.h"
 
+#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#include "debug/debugcon.h"
+#endif
+
 #define NUM_CODES		128
 #define NUM_SIMUL_KEYS	(UCHAR_SHIFT_END - UCHAR_SHIFT_BEGIN + 1)
-
-#ifdef MAME_DEBUG
-#define LOG_INPUTX	0
-#else
-#define LOG_INPUTX	0
-#endif
+#define LOG_INPUTX		0
 
 struct InputCode
 {
@@ -551,51 +558,65 @@ static mame_time current_rate;
 
 static void inputx_timerproc(int dummy);
 
+
+
+#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+static void execute_input(int ref, int params, const char *param[])
+{
+	inputx_post_coded(param[0]);
+}
+#endif
+
+
+
+static void setup_keybuffer(void)
+{
+	inputx_timer = mame_timer_alloc(inputx_timerproc);
+	keybuffer = auto_malloc(sizeof(struct KeyBuffer));
+	memset(keybuffer, 0, sizeof(*keybuffer));
+}
+
+
+
 void inputx_init(void)
 {
-	struct SystemConfigurationParamBlock params;
-
 	codes = NULL;
 	inputx_timer = NULL;
 	queue_chars = NULL;
 	accept_char = NULL;
 	charqueue_empty = NULL;
+	keybuffer = NULL;
+
+#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+	debug_console_register_command("input", CMDFLAG_NONE, 0, 1, 1, execute_input);
+#endif /* defined(MAME_DEBUG) && defined(NEW_DEBUGGER) */
 
 	/* posting keys directly only makes sense for a computer */
 	if (Machine->gamedrv->flags & GAME_COMPUTER)
 	{
-		/* check driver for QUEUE_CHARS and/or ACCEPT_CHAR callbacks */
-		memset(&params, 0, sizeof(params));
-		if (Machine->gamedrv->sysconfig_ctor)
-			Machine->gamedrv->sysconfig_ctor(&params);
-		queue_chars = params.queue_chars;
-		accept_char = params.accept_char;
-		charqueue_empty = params.charqueue_empty;
-
-		keybuffer = auto_malloc(sizeof(struct KeyBuffer));
-		if (!keybuffer)
+		codes = (struct InputCode *) auto_malloc(CODE_BUFFER_SIZE);
+		if (!codes)
 			goto error;
-		memset(keybuffer, 0, sizeof(*keybuffer));
+		if (!build_codes(Machine->input_ports, codes, TRUE))
+			goto error;
 
-		if (!queue_chars)
-		{
-			/* only need to compute codes if QUEUE_CHARS not present */
-			codes = (struct InputCode *) auto_malloc(CODE_BUFFER_SIZE);
-			if (!codes)
-				goto error;
-			if (!build_codes(Machine->input_ports, codes, TRUE))
-				goto error;
-		}
-
-		inputx_timer = mame_timer_alloc(inputx_timerproc);
+		setup_keybuffer();
 	}
 	return;
 
 error:
 	codes = NULL;
-	keybuffer = NULL;
-	queue_chars = NULL;
-	accept_char = NULL;
+}
+
+void inputx_setup_natural_keyboard(
+	int (*queue_chars_)(const unicode_char_t *text, size_t text_len),
+	int (*accept_char_)(unicode_char_t ch),
+	int (*charqueue_empty_)(void))
+{
+	setup_keybuffer();
+	queue_chars = queue_chars_;
+	accept_char = accept_char_;
+	charqueue_empty = charqueue_empty_;
 }
 
 int inputx_can_post(void)
@@ -922,6 +943,82 @@ int inputx_is_posting(void)
 
 /***************************************************************************
 
+	Coded input
+
+***************************************************************************/
+
+void inputx_postn_coded_rate(const char *text, size_t text_len, mame_time rate)
+{
+	size_t i, j, key_len, increment;
+	unicode_char_t ch;
+
+	static const struct
+	{
+		const char *key;
+		unicode_char_t code;
+	} codes[] =
+	{
+		{ "BACKSPACE",	8 },
+		{ "BS",			8 },
+		{ "BKSP",		8 },
+		{ "DEL",		UCHAR_MAMEKEY(DEL) },
+		{ "DELETE",		UCHAR_MAMEKEY(DEL) },
+		{ "END",		UCHAR_MAMEKEY(END) },
+		{ "ENTER",		13 },
+		{ "ESC",		'\033' },
+		{ "HOME",		UCHAR_MAMEKEY(HOME) },
+		{ "INS",		UCHAR_MAMEKEY(INSERT) },
+		{ "INSERT",		UCHAR_MAMEKEY(INSERT) },
+		{ "PGDN",		UCHAR_MAMEKEY(PGDN) },
+		{ "PGUP",		UCHAR_MAMEKEY(PGUP) },
+		{ "SPACE",		32 },
+		{ "TAB",		9 },
+		{ "F1",			UCHAR_MAMEKEY(F1) },
+		{ "F2",			UCHAR_MAMEKEY(F2) },
+		{ "F3",			UCHAR_MAMEKEY(F3) },
+		{ "F4",			UCHAR_MAMEKEY(F4) },
+		{ "F5",			UCHAR_MAMEKEY(F5) },
+		{ "F6",			UCHAR_MAMEKEY(F6) },
+		{ "F7",			UCHAR_MAMEKEY(F7) },
+		{ "F8",			UCHAR_MAMEKEY(F8) },
+		{ "F9",			UCHAR_MAMEKEY(F9) },
+		{ "F10",		UCHAR_MAMEKEY(F10) },
+		{ "F11",		UCHAR_MAMEKEY(F11) },
+		{ "F12",		UCHAR_MAMEKEY(F12) }
+	};
+
+	i = 0;
+	while(i < text_len)
+	{
+		ch = text[i];
+		increment = 1;
+
+		if (ch == '{')
+		{
+			for (j = 0; j < sizeof(codes) / sizeof(codes[0]); j++)
+			{
+				key_len = strlen(codes[j].key);
+				if (i + key_len + 2 <= text_len)
+				{
+					if (!memcmp(codes[j].key, &text[i + 1], key_len) && (text[i + key_len + 1] == '}'))
+					{
+						ch = codes[j].code;
+						increment = key_len + 2;
+					}
+				}
+			}
+		}
+
+		if (ch)
+			inputx_postc_rate(ch, rate);
+		i += increment;
+	}
+}
+
+
+
+/***************************************************************************
+
 	Alternative calls
 
 ***************************************************************************/
@@ -1090,6 +1187,27 @@ void inputx_post_utf8_rate(const char *text, mame_time rate)
 void inputx_post_utf8(const char *text)
 {
 	inputx_post_utf8_rate(text, make_mame_time(0, 0));
+}
+
+
+
+void inputx_post_coded(const char *text)
+{
+	inputx_postn_coded(text, strlen(text));
+}
+
+
+
+void inputx_post_coded_rate(const char *text, mame_time rate)
+{
+	inputx_postn_coded_rate(text, strlen(text), rate);
+}
+
+
+
+void inputx_postn_coded(const char *text, size_t text_len)
+{
+	inputx_postn_coded_rate(text, text_len, make_mame_time(0, 0));
 }
 
 
