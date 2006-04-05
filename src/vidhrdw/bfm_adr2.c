@@ -94,8 +94,6 @@ E000-FFFF  | R | D D D D D D D D | 8K ROM
 #include "vidhrdw/bfm_adr2.h"
 #include "bfm_sc2.h"
 
-extern int Scorpion2_GetSwitchState(int strobe, int data);
-
 int adder2_show_alpha_display;	  // flag, set if alpha display need to be displayed
 
 //#define LOG_CTRL // show UART information
@@ -112,7 +110,6 @@ int adder2_show_alpha_display;	  // flag, set if alpha display need to be displa
 
 
 
-static int adder2_selected_rom_bank;	  //
 static int adder2_screen_page_reg;		  // access/display select
 static int adder2_c101;
 static int adder2_rx;
@@ -124,12 +121,6 @@ static UINT8 adder_screen_ram[2][0x1180];	// paged  display RAM
 
 static tilemap *tilemap0;  // tilemap screen0
 static tilemap *tilemap1;  // timemap screen1
-
-static int adder2_rompages[] =
-{
-	0x00000,0x08000,0x10000,0x18000,
-};
-
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -205,6 +196,26 @@ static void get_tile1_info(int tile_index)
 
 // video initialisation ///////////////////////////////////////////////////
 
+VIDEO_RESET( adder2 )
+{
+	adder2_screen_page_reg   = 0;
+	adder2_c101              = 0;
+	adder2_rx                = 0;
+	adder_vbl_triggered      = 0;
+	adder_acia_triggered     = 0;
+	adder2_data_from_sc2     = 0;
+	sc2_data_from_adder      = 0;
+
+	{
+		UINT8 *rom = memory_region(REGION_CPU2);
+
+		memory_configure_bank(2, 0, 4, &rom[0x00000], 0x08000);
+
+		memory_set_bank(2,0&0x03);
+
+	}
+}
+
 VIDEO_START( adder2 )
 {
 	tilemap0 = tilemap_create(get_tile0_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 50, 35);
@@ -230,7 +241,7 @@ VIDEO_UPDATE( adder2 )
 	#ifdef FAKE_VIDEO
 
 	if ( adder2_show_alpha_display )
-		ui_draw_text(vfd_get_string(0), 10, 284);
+			draw_16seg(bitmap,10, 280,0,3,1);
 
 	if ( sc2_show_door )
 	{
@@ -267,29 +278,7 @@ PALETTE_INIT( adder2 )
 
 ///////////////////////////////////////////////////////////////////////////
 
-static void on_adder2_reset(void)
-{
-	adder2_selected_rom_bank = 0;
-	adder2_screen_page_reg   = 0;
-	adder2_c101              = 0;
-	adder2_rx                = 0;
-	adder_vbl_triggered      = 0;
-	adder_acia_triggered     = 0;
-	adder2_data_from_sc2     = 0;
-	sc2_data_from_adder      = 0;
-
-	{
-		UINT8 *rom = memory_region(REGION_CPU2);
-
-		adder2_selected_rom_bank = 0;
-
-		memory_set_bankptr(2,&rom[ adder2_rompages[ adder2_selected_rom_bank & 0x03]  ]);
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////
-
-MACHINE_INIT( adder2_init_vid )
+MACHINE_RESET( adder2_init_vid )
 {
 	// setup the standard bellfruit BD1 display /////////////////////////////
 
@@ -298,7 +287,6 @@ MACHINE_INIT( adder2_init_vid )
 	// reset the board //////////////////////////////////////////////////////
 
 	on_scorpion2_reset();
-	on_adder2_reset();
 
 }
 
@@ -368,14 +356,9 @@ static WRITE8_HANDLER( normal_ram_w )
 
 ///////////////////////////////////////////////////////////////////////////
 
-
 static WRITE8_HANDLER( adder2_rom_page_w )
 {
-	UINT8 *rom = memory_region(REGION_CPU2);
-
-	adder2_selected_rom_bank = data;
-
-	memory_set_bankptr(2,&rom[ adder2_rompages[ adder2_selected_rom_bank & 0x03]  ]);
+	memory_set_bank(2,data&0x03);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -424,7 +407,7 @@ static WRITE8_HANDLER( adder2_uart_ctrl_w )
 	adder2_data_from_sc2 = 0;	// data available for adder from sc2
 	adder2_sc2data       = 0;	// data
 	sc2_data_from_adder  = 0;	// data available for sc2 from adder
-	sc2_adderdata		   = 0;	// data
+	sc2_adderdata		 = 0;	// data
 
 	#ifdef LOG_CTRL
 	logerror("adder2 uart ctrl:%02X\n", data);
@@ -514,29 +497,29 @@ void adder2_decode_char_roms(void)
 
 ADDRESS_MAP_START( adder2_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 
-	AM_RANGE(0x0000, 0x7FFF) AM_READ(MRA8_BANK2)			  // 8k  paged ROM (4 pages)
-	AM_RANGE(0xE000, 0xFFFF) AM_READ(MRA8_ROM)			  // 8k  ROM
+	AM_RANGE(0x0000, 0x7FFF) AM_READ(MRA8_BANK2)				// 8k  paged ROM (4 pages)
+	AM_RANGE(0xE000, 0xFFFF) AM_READ(MRA8_ROM)					// 8k  ROM
 
-	AM_RANGE(0x0000, 0x0000) AM_WRITE(adder2_screen_page_w) // screen access/display select
+	AM_RANGE(0x0000, 0x0000) AM_WRITE(adder2_screen_page_w)		// screen access/display select
 
-	AM_RANGE(0x8000, 0x917F) AM_WRITE(screen_ram_w)		  // screen RAM writes
-	AM_RANGE(0x8000, 0x917F) AM_READ( screen_ram_r)		  // screen RAM reads
+	AM_RANGE(0x8000, 0x917F) AM_WRITE(screen_ram_w)
+	AM_RANGE(0x8000, 0x917F) AM_READ( screen_ram_r)
 
-	AM_RANGE(0x9180, 0x9FFF) AM_WRITE(normal_ram_w)		  // normal RAM writes
-	AM_RANGE(0x9180, 0x9FFF) AM_READ( normal_ram_r)		  // normal RAM reads
+	AM_RANGE(0x9180, 0x9FFF) AM_WRITE(normal_ram_w)
+	AM_RANGE(0x9180, 0x9FFF) AM_READ( normal_ram_r)
 
-	AM_RANGE(0xC000, 0xC000) AM_WRITE( adder2_rom_page_w )  // ROM page select
-	AM_RANGE(0xC001, 0xC001) AM_WRITE( adder2_c001_w )	  // ??
+	AM_RANGE(0xC000, 0xC000) AM_WRITE( adder2_rom_page_w )		// ROM page select
+	AM_RANGE(0xC001, 0xC001) AM_WRITE( adder2_c001_w )			// ??
 
-	AM_RANGE(0xC101, 0xC101) AM_WRITE( adder2_vbl_ctrl_w )  //
-	AM_RANGE(0xC101, 0xC101) AM_READ(  adder2_vbl_ctrl_r )  //
-	AM_RANGE(0xC103, 0xC103) AM_READ(  adder2_irq_r );	  // IRQ latch read
+	AM_RANGE(0xC101, 0xC101) AM_WRITE( adder2_vbl_ctrl_w )
+	AM_RANGE(0xC101, 0xC101) AM_READ(  adder2_vbl_ctrl_r )
+	AM_RANGE(0xC103, 0xC103) AM_READ(  adder2_irq_r );			// IRQ latch read
 
   // MC6850 compatible uart connected to main (scorpion2) board /////////////////////////////////////
 
-	AM_RANGE(0xC200, 0xC200) AM_READ(  adder2_uart_ctrl_r );// 6850 compatible uart control reg read
-	AM_RANGE(0xC200, 0xC200) AM_WRITE( adder2_uart_ctrl_w );// 6850 compatible uart control reg write
-	AM_RANGE(0xC201, 0xC201) AM_READ(  adder2_uart_rx_r );  // 6850 compatible uart read  data
-	AM_RANGE(0xC201, 0xC201) AM_WRITE( adder2_uart_tx_w );  // 6850 compatible uart write data
+	AM_RANGE(0xC200, 0xC200) AM_READ(  adder2_uart_ctrl_r );	// 6850 compatible uart control reg read
+	AM_RANGE(0xC200, 0xC200) AM_WRITE( adder2_uart_ctrl_w );	// 6850 compatible uart control reg write
+	AM_RANGE(0xC201, 0xC201) AM_READ(  adder2_uart_rx_r );  	// 6850 compatible uart read  data
+	AM_RANGE(0xC201, 0xC201) AM_WRITE( adder2_uart_tx_w );  	// 6850 compatible uart write data
 
 ADDRESS_MAP_END

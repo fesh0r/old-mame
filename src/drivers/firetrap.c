@@ -57,7 +57,6 @@ write:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/3812intf.h"
 #include "sound/msm5205.h"
@@ -107,7 +106,7 @@ static READ8_HANDLER( firetrap_8751_bootleg_r )
 
 static int i8751_return,i8751_current_command;
 
-static MACHINE_INIT( firetrap )
+static MACHINE_RESET( firetrap )
 {
 	i8751_current_command=0;
 }
@@ -587,7 +586,7 @@ static MACHINE_DRIVER_START( firetrap )
 							/* NMIs are caused by the main CPU */
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(firetrap)
+	MDRV_MACHINE_RESET(firetrap)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

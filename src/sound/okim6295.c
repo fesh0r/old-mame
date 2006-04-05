@@ -21,12 +21,10 @@
  **********************************************************************************************/
 
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 
-#include "driver.h"
-#include "state.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "okim6295.h"
 
 #define MAX_SAMPLE_CHUNK	10000
@@ -287,13 +285,13 @@ static void adpcm_state_save_register(struct ADPCMVoice *voice, int i)
 
 	sprintf(buf,"ADPCM");
 
-	state_save_register_UINT8  (buf, i, "playing", &voice->playing, 1);
-	state_save_register_UINT32 (buf, i, "sample" , &voice->sample,  1);
-	state_save_register_UINT32 (buf, i, "count"  , &voice->count,   1);
-	state_save_register_INT32  (buf, i, "signal" , &voice->adpcm.signal,  1);
-	state_save_register_INT32  (buf, i, "step"   , &voice->adpcm.step,    1);
-	state_save_register_UINT32 (buf, i, "volume" , &voice->volume,  1);
-	state_save_register_UINT32 (buf, i, "base_offset" , &voice->base_offset,  1);
+	state_save_register_item(buf, i, voice->playing);
+	state_save_register_item(buf, i, voice->sample);
+	state_save_register_item(buf, i, voice->count);
+	state_save_register_item(buf, i, voice->adpcm.signal);
+	state_save_register_item(buf, i, voice->adpcm.step);
+	state_save_register_item(buf, i, voice->volume);
+	state_save_register_item(buf, i, voice->base_offset);
 }
 
 static void okim6295_state_save_register(struct okim6295 *info, int sndindex)
@@ -303,8 +301,8 @@ static void okim6295_state_save_register(struct okim6295 *info, int sndindex)
 
 	sprintf(buf,"OKIM6295");
 
-	state_save_register_INT32  (buf, sndindex, "command", &info->command, 1);
-	state_save_register_INT32  (buf, sndindex, "bank_offset", &info->bank_offset, 1);
+	state_save_register_item(buf, sndindex, info->command);
+	state_save_register_item(buf, sndindex, info->bank_offset);
 	for (j = 0; j < OKIM6295_VOICES; j++)
 		adpcm_state_save_register(&info->voice[j], sndindex * 4 + j);
 }
@@ -451,8 +449,6 @@ static void OKIM6295_data_w(int num, int data)
 			if (temp & 1)
 			{
 				struct ADPCMVoice *voice = &info->voice[i];
-
-				if (Machine->sample_rate == 0) return;
 
 				/* determine the start/stop positions */
 				base = &info->region_base[info->bank_offset + info->command * 8];
@@ -638,7 +634,7 @@ WRITE16_HANDLER( OKIM6295_data_2_msb_w )
  * Generic get_info
  **************************************************************************/
 
-static void okim6295_set_info(void *token, UINT32 state, union sndinfo *info)
+static void okim6295_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -647,7 +643,7 @@ static void okim6295_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void okim6295_get_info(void *token, UINT32 state, union sndinfo *info)
+void okim6295_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

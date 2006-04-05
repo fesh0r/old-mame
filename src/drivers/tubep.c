@@ -103,7 +103,6 @@ TP-S.1 TP-S.2 TP-S.3 TP-B.1  8212 TP-B.2 TP-B.3          TP-B.4
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/msm5205.h"
@@ -147,17 +146,12 @@ static WRITE8_HANDLER( tubep_LS259_w )
 }
 
 
-static WRITE8_HANDLER( tubep_backgroundram_w )
-{
-	tubep_backgroundram[offset] = data;
-}
-
 static ADDRESS_MAP_START( tubep_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xa000, 0xa7ff) AM_RAM
 	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(tubep_textram_w) AM_BASE(&tubep_textram)	/* RAM on GFX PCB @B13 */
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(MWA8_RAM) AM_SHARE(1)
-	AM_RANGE(0xe800, 0xebff) AM_WRITE(tubep_backgroundram_w)				/* row of 8 x 2147 RAMs on main PCB */
+	AM_RANGE(0xe800, 0xebff) AM_WRITE(MWA8_RAM) AM_SHARE(4)				/* row of 8 x 2147 RAMs on main PCB */
 ADDRESS_MAP_END
 
 
@@ -198,7 +192,7 @@ static ADDRESS_MAP_START( tubep_g_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(tubep_background_a000_w)
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(tubep_background_c000_w)
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM AM_SHARE(1) 								/* 6116 #1 */
-	AM_RANGE(0xe800, 0xebff) AM_WRITE(MWA8_RAM) AM_BASE(&tubep_backgroundram)	/* row of 8 x 2147 RAMs on main PCB */
+	AM_RANGE(0xe800, 0xebff) AM_WRITE(MWA8_RAM) AM_SHARE(4) AM_BASE(&tubep_backgroundram)	/* row of 8 x 2147 RAMs on main PCB */
 	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(MWA8_RAM) AM_SHARE(3)						/* sprites color lookup table */
 	AM_RANGE(0xf800, 0xffff) AM_RAM AM_SHARE(2)									/* program copies here part of shared ram ?? */
 ADDRESS_MAP_END
@@ -259,7 +253,7 @@ static void scanline_callback(int scanline)
 	timer_set( cpu_getscanlinetime( scanline ), scanline, scanline_callback );
 }
 
-static MACHINE_INIT( tubep )
+static MACHINE_RESET( tubep )
 {
 	timer_set(cpu_getscanlinetime( 64 ), 64, scanline_callback );
 }
@@ -738,9 +732,10 @@ static MACHINE_DRIVER_START( tubep )
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
 
 	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(100)
 
-	MDRV_MACHINE_INIT(tubep)
+	MDRV_MACHINE_RESET(tubep)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN)
@@ -760,15 +755,15 @@ static MACHINE_DRIVER_START( tubep )
 
 	MDRV_SOUND_ADD(AY8910, 19968000 / 8 / 2)
 	MDRV_SOUND_CONFIG(ay8910_interface_1)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 	MDRV_SOUND_ADD(AY8910, 19968000 / 8 / 2)
 	MDRV_SOUND_CONFIG(ay8910_interface_2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 	MDRV_SOUND_ADD(AY8910, 19968000 / 8 / 2)
 	MDRV_SOUND_CONFIG(ay8910_interface_3)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 MACHINE_DRIVER_END
 
 
@@ -797,6 +792,7 @@ static MACHINE_DRIVER_START( rjammer )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -816,15 +812,15 @@ static MACHINE_DRIVER_START( rjammer )
 
 	MDRV_SOUND_ADD(AY8910, 19968000 / 8 / 2)
 	MDRV_SOUND_CONFIG(ay8910_interface_1)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 	MDRV_SOUND_ADD(AY8910, 19968000 / 8 / 2)
 	MDRV_SOUND_CONFIG(ay8910_interface_2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 	MDRV_SOUND_ADD(AY8910, 19968000 / 8 / 2)
 	MDRV_SOUND_CONFIG(ay8910_interface_3)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 	MDRV_SOUND_ADD(MSM5205, 384000)
 	MDRV_SOUND_CONFIG(msm5205_interface)

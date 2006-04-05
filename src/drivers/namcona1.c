@@ -168,11 +168,9 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "namcona1.h"
 #include "sound/c140.h"
 #include "sound/namcona.h"
-#include "machine/random.h"
 #include "cpu/m37710/m37710.h"
 
 static UINT16 *mpBank0, *mpBank1;
@@ -1073,13 +1071,11 @@ static WRITE16_HANDLER( namcona1_vreg_w )
 
 static WRITE16_HANDLER( bogus_w )
 {
-//  extern int debug_key_pressed;
-//  debug_key_pressed = 1;
+//  DEBUGGER_BREAK;
 }
 static READ16_HANDLER( bogus_r )
 {
-//  extern int debug_key_pressed;
-//  debug_key_pressed = 1;
+//  DEBUGGER_BREAK;
 	return 0;
 }
 
@@ -1213,8 +1209,7 @@ static WRITE8_HANDLER( port4_w )
 		logerror("launching 68k, PC=%x\n", activecpu_get_pc());
 
 		// reset and launch the 68k
-		cpunum_reset(0, NULL, NULL);
-		cpunum_resume(0, SUSPEND_REASON_HALT);
+		cpunum_set_input_line(0, INPUT_LINE_RESET, CLEAR_LINE);
 	}
 
 	mcu_port4 = data;
@@ -1285,9 +1280,9 @@ static WRITE8_HANDLER( port8_w )
 }
 
 // for games with the MCU emulated, the MCU boots the 68000.  don't allow it before that.
-static MACHINE_INIT( namcona1_mcu )
+static MACHINE_RESET( namcona1_mcu )
 {
-	cpunum_suspend(0, SUSPEND_REASON_HALT, 1);
+	cpunum_set_input_line(0, INPUT_LINE_RESET, ASSERT_LINE);
 
 	mcu_port5 = 1;
 }
@@ -1371,7 +1366,7 @@ static MACHINE_DRIVER_START( namcona1 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(namcosna1)
-	MDRV_MACHINE_INIT(namcona1_mcu)
+	MDRV_MACHINE_RESET(namcona1_mcu)
 	MDRV_INTERLEAVE(40)
 
 	/* video hardware */

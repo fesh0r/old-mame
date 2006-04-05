@@ -166,7 +166,6 @@ Notes:  pzlbowl PCB with extra parts:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/tmp68301.h"
 #include "machine/eeprom.h"
 #include "sound/x1_010.h"
@@ -182,7 +181,7 @@ Notes:  pzlbowl PCB with extra parts:
 
 WRITE16_HANDLER( seta2_sound_bank_w )
 {
-	if (ACCESSING_LSB && Machine->sample_rate)
+	if (ACCESSING_LSB)
 	{
 		UINT8 *ROM = memory_region( REGION_SOUND1 );
 		int banks = (memory_region_length( REGION_SOUND1 ) - 0x100000) / 0x20000;
@@ -1390,7 +1389,7 @@ static MACHINE_DRIVER_START( mj4simai )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT( tmp68301 )
+	MDRV_MACHINE_RESET( tmp68301 )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

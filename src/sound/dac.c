@@ -1,7 +1,11 @@
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "dac.h"
 #include <math.h>
-#include "state.h"
+
+
+/* default to 4x oversampling */
+#define DEFAULT_DAC_SAMPLE_RATE (44100 * 4)
 
 
 struct dac_info
@@ -24,7 +28,7 @@ static void DAC_update(void *param,stream_sample_t **inputs, stream_sample_t **_
 }
 
 
-void DAC_data_w(int num,int data)
+void DAC_data_w(int num,UINT8 data)
 {
 	struct dac_info *info = sndti_token(SOUND_DAC, num);
 	int out = info->UnsignedVolTable[data];
@@ -38,7 +42,7 @@ void DAC_data_w(int num,int data)
 }
 
 
-void DAC_signed_data_w(int num,int data)
+void DAC_signed_data_w(int num,UINT8 data)
 {
 	struct dac_info *info = sndti_token(SOUND_DAC, num);
 	int out = info->SignedVolTable[data];
@@ -52,7 +56,7 @@ void DAC_signed_data_w(int num,int data)
 }
 
 
-void DAC_data_16_w(int num,int data)
+void DAC_data_16_w(int num,UINT16 data)
 {
 	struct dac_info *info = sndti_token(SOUND_DAC, num);
 	int out = data >> 1;		/* range      0..32767 */
@@ -66,7 +70,7 @@ void DAC_data_16_w(int num,int data)
 }
 
 
-void DAC_signed_data_16_w(int num,int data)
+void DAC_signed_data_16_w(int num,UINT16 data)
 {
 	struct dac_info *info = sndti_token(SOUND_DAC, num);
 	int out = data - 0x8000;	/* range -32768..32767 */
@@ -103,7 +107,7 @@ static void *dac_start(int sndindex, int clock, const void *config)
 
 	DAC_build_voltable(info);
 
-	info->channel = stream_create(0,1,Machine->sample_rate,info,DAC_update);
+	info->channel = stream_create(0,1,clock ? clock : DEFAULT_DAC_SAMPLE_RATE,info,DAC_update);
 	info->output = 0;
 
 	state_save_register_item("dac", sndindex, info->output);
@@ -140,7 +144,7 @@ WRITE8_HANDLER( DAC_1_signed_data_w )
  * Generic get_info
  **************************************************************************/
 
-static void dac_set_info(void *token, UINT32 state, union sndinfo *info)
+static void dac_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -149,7 +153,7 @@ static void dac_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void dac_get_info(void *token, UINT32 state, union sndinfo *info)
+void dac_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

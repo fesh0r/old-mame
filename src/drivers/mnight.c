@@ -9,7 +9,6 @@ TODO:
 
 ***************************************************************************/
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2203intf.h"
 
 WRITE8_HANDLER( mnight_bgvideoram_w );
@@ -30,7 +29,7 @@ extern size_t mnight_foregroundram_size;
 
 static int mnight_bank_latch = 255, main_cpu_num;
 
-MACHINE_INIT( mnight )
+MACHINE_RESET( mnight )
 {
 	main_cpu_num = 0;
 }
@@ -85,7 +84,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xda00, 0xdfff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(mnight_bgvideoram_w) AM_BASE(&mnight_background_videoram) AM_SIZE(&mnight_backgroundram_size) // VFY
 	AM_RANGE(0xe800, 0xefff) AM_WRITE(mnight_fgvideoram_w) AM_BASE(&mnight_foreground_videoram) AM_SIZE(&mnight_foregroundram_size) //VFY
-	AM_RANGE(0xf000, 0xf5ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_swap_w) AM_BASE(&paletteram)
+	AM_RANGE(0xf000, 0xf5ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram)
 	AM_RANGE(0xf600, 0xf7ff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xfa00, 0xfa00) AM_WRITE(soundlatch_w)
 	AM_RANGE(0xfa01, 0xfa01) AM_WRITE(MWA8_RAM)		   // unknown but used
@@ -357,7 +356,7 @@ static MACHINE_DRIVER_START( mnight )
 	MDRV_VBLANK_DURATION(10000)
 	MDRV_INTERLEAVE(10)
 
-	MDRV_MACHINE_INIT(mnight)
+	MDRV_MACHINE_RESET(mnight)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

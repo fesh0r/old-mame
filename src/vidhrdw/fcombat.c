@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 int fcombat_sh;
 int fcombat_sv;
@@ -20,7 +19,7 @@ int fcombat_sv;
 #define VISIBLE_Y_MAX			(30*8)
 
 
-tilemap *bgmap;
+static tilemap *bgmap;
 
 static void get_bg_tile_info(int tile_index)
 {

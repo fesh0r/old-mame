@@ -9,7 +9,6 @@ XX Mission (c) 1986 UPL
 *****************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2203intf.h"
 
 VIDEO_UPDATE( xxmissio );
@@ -33,12 +32,12 @@ WRITE8_HANDLER( xxmissio_fgram_w );
 
 WRITE8_HANDLER( xxmissio_paletteram_w );
 
-WRITE8_HANDLER( shared_workram_w )
+static WRITE8_HANDLER( shared_workram_w )
 {
 	shared_workram[offset ^ 0x1000] = data;
 }
 
-READ8_HANDLER( shared_workram_r )
+static READ8_HANDLER( shared_workram_r )
 {
 	return shared_workram[offset ^ 0x1000];
 }

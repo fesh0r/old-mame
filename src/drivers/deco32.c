@@ -220,7 +220,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/arm/arm.h"
 #include "cpu/h6280/h6280.h"
 #include "cpu/m6809/m6809.h"
@@ -1882,7 +1881,7 @@ static NVRAM_HANDLER(tattass)
 
 /**********************************************************************************/
 
-static MACHINE_INIT( deco32 )
+static MACHINE_RESET( deco32 )
 {
 	raster_irq_timer = timer_alloc(interrupt_gen);
 }
@@ -1908,7 +1907,7 @@ static MACHINE_DRIVER_START( captaven )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_MACHINE_INIT(deco32)
+	MDRV_MACHINE_RESET(deco32)
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(529)
 
@@ -2041,7 +2040,7 @@ static MACHINE_DRIVER_START( dragngun )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_MACHINE_INIT(deco32)
+	MDRV_MACHINE_RESET(deco32)
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(529)
 	MDRV_NVRAM_HANDLER(93C46)
@@ -2092,7 +2091,7 @@ static MACHINE_DRIVER_START( lockload )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_MACHINE_INIT(deco32)
+	MDRV_MACHINE_RESET(deco32)
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(529)
 	MDRV_NVRAM_HANDLER(93C46)

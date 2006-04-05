@@ -3,7 +3,6 @@
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/eeprom.h"
 #include "system16.h"
 #include "vidhrdw/segaic24.h"
@@ -102,7 +101,7 @@ static int irq_callback(int irqline)
 static void irq_init(void)
 {
 	cpunum_set_input_line(0, 0, CLEAR_LINE);
-	cpu_set_irq_callback(0, irq_callback);
+	cpunum_set_irq_callback(0, irq_callback);
 }
 
 extern void tgp_tick(void);
@@ -125,7 +124,7 @@ static INTERRUPT_GEN(model1_interrupt)
 	}
 }
 
-static MACHINE_INIT(model1)
+static MACHINE_RESET(model1)
 {
 	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x1000000);
 	irq_init();
@@ -841,7 +840,7 @@ static MACHINE_DRIVER_START( model1 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(model1)
+	MDRV_MACHINE_RESET(model1)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK | VIDEO_RGB_DIRECT)

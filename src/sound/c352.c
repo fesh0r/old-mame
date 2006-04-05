@@ -13,12 +13,9 @@
     Output sample rate is the input clock / 384.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <math.h>
-#include "driver.h"
-#include "cpuintrf.h"
-#include "state.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "c352.h"
 
 #define VERBOSE (0)
@@ -588,21 +585,21 @@ static void c352_init(struct c352_info *info, int sndindex)
 
 		sprintf(cname, "C352 v %02d", i);
 
-		state_save_register_UINT8(cname, sndindex, "voll1", &info->c352_ch[i].vol_l, 1);
-		state_save_register_UINT8(cname, sndindex, "volr1", &info->c352_ch[i].vol_r, 1);
-		state_save_register_UINT8(cname, sndindex, "voll2", &info->c352_ch[i].vol_l2, 1);
-		state_save_register_UINT8(cname, sndindex, "volr2", &info->c352_ch[i].vol_r2, 1);
-		state_save_register_UINT8(cname, sndindex, "unk9", &info->c352_ch[i].unk9, 1);
-		state_save_register_UINT8(cname, sndindex, "bank", &info->c352_ch[i].bank, 1);
-		state_save_register_INT16(cname, sndindex, "noise", &info->c352_ch[i].noise, 1);
-		state_save_register_UINT16(cname, sndindex, "pitch", &info->c352_ch[i].pitch, 1);
-		state_save_register_UINT16(cname, sndindex, "startaddr", &info->c352_ch[i].start_addr, 1);
-		state_save_register_UINT16(cname, sndindex, "endaddr", &info->c352_ch[i].end_addr, 1);
-		state_save_register_UINT32(cname, sndindex, "flag", &info->c352_ch[i].flag, 1);
-		state_save_register_UINT32(cname, sndindex, "curaddr", &info->c352_ch[i].current_addr, 1);
-		state_save_register_UINT32(cname, sndindex, "stopaddr", &info->c352_ch[i].stop_addr, 1);
-		state_save_register_UINT32(cname, sndindex, "loopaddr", &info->c352_ch[i].loop_addr, 1);
-		state_save_register_UINT32(cname, sndindex, "pos", &info->c352_ch[i].pos, 1);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].vol_l);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].vol_r);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].vol_l2);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].vol_r2);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].unk9);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].bank);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].noise);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].pitch);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].start_addr);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].end_addr);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].flag);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].current_addr);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].stop_addr);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].loop_addr);
+		state_save_register_item(cname, sndindex, info->c352_ch[i].pos);
 	}
 
 	for (i = 0; i < 256; i++)
@@ -663,7 +660,7 @@ WRITE16_HANDLER( c352_0_w )
  * Generic get_info
  **************************************************************************/
 
-static void c352_set_info(void *token, UINT32 state, union sndinfo *info)
+static void c352_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -672,7 +669,7 @@ static void c352_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void c352_get_info(void *token, UINT32 state, union sndinfo *info)
+void c352_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

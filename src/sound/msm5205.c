@@ -14,13 +14,11 @@
  *  separate MSM5205 emulator form adpcm.c and some fix
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "msm5205.h"
-#include "state.h"
 
 /*
  *
@@ -154,10 +152,6 @@ static void msm5205_reset(void *chip)
 {
 	struct MSM5205Voice *voice = chip;
 
-	/* bail if we're not emulating sound */
-	if (Machine->sample_rate == 0)
-		return;
-
 	/* initialize work */
 	voice->data    = 0;
 	voice->vclk    = 0;
@@ -178,7 +172,7 @@ static void *msm5205_start(int sndindex, int clock, const void *config)
 
 	voice = auto_malloc(sizeof(*voice));
 	memset(voice, 0, sizeof(*voice));
-	sound_register_token(voice);
+	sndintrf_register_token(voice);
 
 	/* save a global pointer to our interface */
 	voice->intf = config;
@@ -304,7 +298,7 @@ void MSM5205_set_volume(int num,int volume)
  * Generic get_info
  **************************************************************************/
 
-static void msm5205_set_info(void *token, UINT32 state, union sndinfo *info)
+static void msm5205_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -313,7 +307,7 @@ static void msm5205_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void msm5205_get_info(void *token, UINT32 state, union sndinfo *info)
+void msm5205_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

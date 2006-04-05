@@ -59,7 +59,6 @@ SOFT  PSG & VOICE  BY M.C & S.H
 
 */
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/res_net.h"
 #include "sound/ay8910.h"
 
@@ -221,8 +220,8 @@ VIDEO_START(meijinsn)
 PALETTE_INIT( meijinsn )
 {
 	int i;
-	const int resistances_b[2]  = { 470, 220 };
-	const int resistances_rg[3] = { 1000, 470, 220 };
+	static const int resistances_b[2]  = { 470, 220 };
+	static const int resistances_rg[3] = { 1000, 470, 220 };
 	double weights_r[3], weights_g[3], weights_b[2];
 
 
@@ -294,7 +293,7 @@ static struct AY8910interface ay8910_interface =
 	soundlatch_r
 };
 
-MACHINE_INIT( meijinsn )
+MACHINE_RESET( meijinsn )
 {
 	deposits1 = 0;
 	deposits2 = 0;
@@ -315,7 +314,7 @@ static MACHINE_DRIVER_START( meijinsn )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(meijinsn)
+	MDRV_MACHINE_RESET(meijinsn)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

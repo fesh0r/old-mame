@@ -78,10 +78,7 @@ void g65816_branching(unsigned int new_pc);
 /* ======================================================================== */
 
 #include "cpuintrf.h"
-#include "memory.h"
-#include "driver.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 
 enum
 {

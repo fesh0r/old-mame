@@ -19,7 +19,6 @@ for now. Even at 12 this slowdown still happens a little.
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sndhrdw/seibu.h"
 #include "sound/3812intf.h"
@@ -461,7 +460,7 @@ static MACHINE_DRIVER_START( toki ) /* KOYO 20.000MHz near the cpu */
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(seibu_sound_1)
+	MDRV_MACHINE_RESET(seibu_sound_1)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)

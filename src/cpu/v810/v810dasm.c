@@ -4,10 +4,7 @@
 *******************************************/
 
 #include <math.h>
-#include <stdio.h>
-#include <string.h>
-#include "cpuintrf.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "v810.h"
 
 const static char *dRegs[]={

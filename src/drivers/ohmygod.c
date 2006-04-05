@@ -12,7 +12,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/okim6295.h"
 
 
@@ -30,13 +29,9 @@ static int adpcm_bank_shift;
 static int sndbank;
 static int nosound_kludge_step;
 
-static MACHINE_INIT( ohmygod )
+static MACHINE_RESET( ohmygod )
 {
 	unsigned char *rom = memory_region(REGION_SOUND1);
-
-	/* the game requires the watchdog to fire during boot, so we have
-       to initialize it */
-	watchdog_reset_r(0);
 
 	sndbank = 0;
 	memcpy(rom + 0x20000,rom + 0x40000 + 0x20000 * sndbank,0x20000);
@@ -64,32 +59,6 @@ WRITE16_HANDLER( ohmygod_ctrl_w )
 	}
 }
 
-READ16_HANDLER( ohmygod_sound_status_r )
-{
-	if(Machine->sample_rate == 0)
-	{
-		/* strobe 'sample playing' flags of the OKIM6295 to make it start up */
-
-		int	data = 0x00F0;
-
-		if(nosound_kludge_step < 4)
-		{
-			data |= 1 << nosound_kludge_step;
-		}
-
-		nosound_kludge_step++;
-
-		if(nosound_kludge_step >= 5)
-		{
-			nosound_kludge_step = 0;
-		}
-
-		return data;
-	}
-
-	return OKIM6295_status_0_lsb_r(offset, mem_mask);
-}
-
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)
 	AM_RANGE(0x300000, 0x303fff) AM_READ(MRA16_RAM)
@@ -103,7 +72,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800002, 0x800003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0xa00000, 0xa00001) AM_READ(input_port_2_word_r)
 	AM_RANGE(0xa00002, 0xa00003) AM_READ(input_port_3_word_r)
-	AM_RANGE(0xb00000, 0xb00001) AM_READ(ohmygod_sound_status_r)
+	AM_RANGE(0xb00000, 0xb00001) AM_READ(OKIM6295_status_0_lsb_r)
 	AM_RANGE(0xc00000, 0xc00001) AM_READ(watchdog_reset16_r)
 ADDRESS_MAP_END
 
@@ -370,7 +339,8 @@ static MACHINE_DRIVER_START( ohmygod )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(ohmygod)
+	MDRV_MACHINE_RESET(ohmygod)
+	MDRV_WATCHDOG_VBLANK_INIT(DEFAULT_60HZ_3S_VBLANK_WATCHDOG)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

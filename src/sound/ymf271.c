@@ -13,8 +13,8 @@
 */
 
 #include <math.h>
-#include "driver.h"
-#include "cpuintrf.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "ymf271.h"
 
 #define VERBOSE		(1)
@@ -72,7 +72,7 @@ typedef struct
 
 	// envelope generator
 	INT32 volume;
-	int env_state;
+	INT32 env_state;
 	INT32 env_attack_step;		// volume increase step in attack state
 	INT32 env_decay1_step;
 	INT32 env_decay2_step;
@@ -81,8 +81,8 @@ typedef struct
 	INT64 feedback_modulation0;
 	INT64 feedback_modulation1;
 
-	int lfo_phase, lfo_step;
-	int lfo_amplitude;
+	INT32 lfo_phase, lfo_step;
+	INT32 lfo_amplitude;
 	double lfo_phasemod;
 } YMF271Slot;
 
@@ -102,7 +102,7 @@ typedef struct
 	INT8  status;
 	INT8  enable;
 
-	void *timA, *timB;
+	mame_timer *timA, *timB;
 
 	INT8  reg0, reg1, reg2, reg3, pcmreg, timerreg;
 	UINT32 ext_address;
@@ -342,7 +342,7 @@ INLINE void calculate_step(YMF271Slot *slot)
 	}
 }
 
-void update_envelope(YMF271Slot *slot)
+static void update_envelope(YMF271Slot *slot)
 {
 	switch (slot->env_state)
 	{
@@ -502,7 +502,7 @@ static void update_pcm(YMF271Chip *chip, int slotnum, INT32 *mixp, int length)
 
 	if (slot->waveform != 7)
 	{
-		osd_die("Waveform %d in update_pcm !!!\n", slot->waveform);
+		fatalerror("Waveform %d in update_pcm !!!", slot->waveform);
 	}
 
 	for (i = 0; i < length; i++)
@@ -1636,6 +1636,84 @@ static void init_tables(void)
 	}
 }
 
+static void init_state(YMF271Chip *chip)
+{
+	int i, instance;
+
+	for (i = 0; i < sizeof(chip->slots) / sizeof(chip->slots[0]); i++)
+	{
+		instance = chip->index * (sizeof(chip->slots) / sizeof(chip->slots[0])) + i;
+
+		state_save_register_item("ymf271", instance, chip->slots[i].extout);
+		state_save_register_item("ymf271", instance, chip->slots[i].lfoFreq);
+		state_save_register_item("ymf271", instance, chip->slots[i].pms);
+		state_save_register_item("ymf271", instance, chip->slots[i].ams);
+		state_save_register_item("ymf271", instance, chip->slots[i].detune);
+		state_save_register_item("ymf271", instance, chip->slots[i].multiple);
+		state_save_register_item("ymf271", instance, chip->slots[i].tl);
+		state_save_register_item("ymf271", instance, chip->slots[i].keyscale);
+		state_save_register_item("ymf271", instance, chip->slots[i].ar);
+		state_save_register_item("ymf271", instance, chip->slots[i].decay1rate);
+		state_save_register_item("ymf271", instance, chip->slots[i].decay2rate);
+		state_save_register_item("ymf271", instance, chip->slots[i].decay1lvl);
+		state_save_register_item("ymf271", instance, chip->slots[i].relrate);
+		state_save_register_item("ymf271", instance, chip->slots[i].fns);
+		state_save_register_item("ymf271", instance, chip->slots[i].block);
+		state_save_register_item("ymf271", instance, chip->slots[i].feedback);
+		state_save_register_item("ymf271", instance, chip->slots[i].waveform);
+		state_save_register_item("ymf271", instance, chip->slots[i].accon);
+		state_save_register_item("ymf271", instance, chip->slots[i].algorithm);
+		state_save_register_item("ymf271", instance, chip->slots[i].ch0_level);
+		state_save_register_item("ymf271", instance, chip->slots[i].ch1_level);
+		state_save_register_item("ymf271", instance, chip->slots[i].ch2_level);
+		state_save_register_item("ymf271", instance, chip->slots[i].ch3_level);
+		state_save_register_item("ymf271", instance, chip->slots[i].startaddr);
+		state_save_register_item("ymf271", instance, chip->slots[i].loopaddr);
+		state_save_register_item("ymf271", instance, chip->slots[i].endaddr);
+		state_save_register_item("ymf271", instance, chip->slots[i].fs);
+		state_save_register_item("ymf271", instance, chip->slots[i].srcnote);
+		state_save_register_item("ymf271", instance, chip->slots[i].srcb);
+		state_save_register_item("ymf271", instance, chip->slots[i].step);
+		state_save_register_item("ymf271", instance, chip->slots[i].stepptr);
+		state_save_register_item("ymf271", instance, chip->slots[i].active);
+		state_save_register_item("ymf271", instance, chip->slots[i].bits);
+		state_save_register_item("ymf271", instance, chip->slots[i].volume);
+		state_save_register_item("ymf271", instance, chip->slots[i].env_state);
+		state_save_register_item("ymf271", instance, chip->slots[i].env_attack_step);
+		state_save_register_item("ymf271", instance, chip->slots[i].env_decay1_step);
+		state_save_register_item("ymf271", instance, chip->slots[i].env_decay2_step);
+		state_save_register_item("ymf271", instance, chip->slots[i].env_release_step);
+		state_save_register_item("ymf271", instance, chip->slots[i].feedback_modulation0);
+		state_save_register_item("ymf271", instance, chip->slots[i].feedback_modulation1);
+		state_save_register_item("ymf271", instance, chip->slots[i].lfo_phase);
+		state_save_register_item("ymf271", instance, chip->slots[i].lfo_step);
+		state_save_register_item("ymf271", instance, chip->slots[i].lfo_amplitude);
+	}
+
+	for (i = 0; i < sizeof(chip->groups) / sizeof(chip->groups[0]); i++)
+	{
+		instance = chip->index * (sizeof(chip->groups) / sizeof(chip->groups[0])) + i;
+		state_save_register_item("ymf271", instance, chip->groups[i].sync);
+		state_save_register_item("ymf271", instance, chip->groups[i].pfm);
+	}
+
+	state_save_register_item("ymf271", chip->index, chip->timerA);
+	state_save_register_item("ymf271", chip->index, chip->timerB);
+	state_save_register_item("ymf271", chip->index, chip->timerAVal);
+	state_save_register_item("ymf271", chip->index, chip->timerBVal);
+	state_save_register_item("ymf271", chip->index, chip->irqstate);
+	state_save_register_item("ymf271", chip->index, chip->status);
+	state_save_register_item("ymf271", chip->index, chip->enable);
+	state_save_register_item("ymf271", chip->index, chip->reg0);
+	state_save_register_item("ymf271", chip->index, chip->reg1);
+	state_save_register_item("ymf271", chip->index, chip->reg2);
+	state_save_register_item("ymf271", chip->index, chip->reg3);
+	state_save_register_item("ymf271", chip->index, chip->pcmreg);
+	state_save_register_item("ymf271", chip->index, chip->timerreg);
+	state_save_register_item("ymf271", chip->index, chip->ext_address);
+	state_save_register_item("ymf271", chip->index, chip->ext_read);
+}
+
 static void ymf271_init(YMF271Chip *chip, UINT8 *rom, void (*cb)(int), read8_handler ext_read, write8_handler ext_write)
 {
 	chip->timA = timer_alloc_ptr(ymf271_timer_a_tick, chip);
@@ -1648,6 +1726,7 @@ static void ymf271_init(YMF271Chip *chip, UINT8 *rom, void (*cb)(int), read8_han
 	chip->ext_mem_write = ext_write;
 
 	init_tables();
+	init_state(chip);
 }
 
 static void *ymf271_start(int sndindex, int clock, const void *config)
@@ -1719,7 +1798,7 @@ static void ymf271_reset(void *token)
  * Generic get_info
  **************************************************************************/
 
-static void ymf271_set_info(void *token, UINT32 state, union sndinfo *info)
+static void ymf271_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -1728,7 +1807,7 @@ static void ymf271_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void ymf271_get_info(void *token, UINT32 state, union sndinfo *info)
+void ymf271_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

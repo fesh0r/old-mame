@@ -40,7 +40,6 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/tmp68301.h"
 #include "realbrk.h"
 #include "sound/2413intf.h"
@@ -664,7 +663,7 @@ static MACHINE_DRIVER_START( realbrk )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT( tmp68301 )
+	MDRV_MACHINE_RESET( tmp68301 )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

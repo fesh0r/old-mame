@@ -53,13 +53,12 @@
 #endif
 
 UINT16 *micro3d_sprite_vram;
-UINT16 *m68681_base;
-UINT16 *m68901_base;
+static UINT16 *m68681_base;
+static UINT16 *m68901_base;
 UINT16 dpyadr;
 int dpyadrscan;
 
-    struct {
-
+static struct {
     UINT16 MR1A;
     UINT16 MR2A;
     UINT16 SRA;
@@ -89,13 +88,11 @@ int dpyadrscan;
 
     int MRA_ptr;
     int MRB_ptr;
+} M68681;
 
-    }M68681;
-
-UINT8 ti_uart[8];
-int ti_uart_mode_cycle=0;
-int ti_uart_sync_cycle=0;
-UINT8 tmra_cnt,tmrb_cnt,tmrc_cnt,tmrd_cnt;
+static UINT8 ti_uart[8];
+static int ti_uart_mode_cycle=0;
+static int ti_uart_sync_cycle=0;
 
 void m68901_int_gen(int source);
 
@@ -159,7 +156,7 @@ INTERRUPT_GEN( micro3d_tms_vblank )
 }
 
 
-static MACHINE_INIT( micro3d )
+static MACHINE_RESET( micro3d )
 {
         i8051_set_serial_tx_callback(data_from_i8031);
         i8051_set_serial_rx_callback(data_to_i8031);
@@ -856,7 +853,7 @@ static MACHINE_DRIVER_START( micro3d )
 
 	MDRV_FRAMES_PER_SECOND(57)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(micro3d)
+	MDRV_MACHINE_RESET(micro3d)
 	MDRV_INTERLEAVE(50)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

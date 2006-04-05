@@ -83,11 +83,7 @@
 
 *****************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "cpuintrf.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "hd6309.h"
 
 #define VERBOSE 0
@@ -112,11 +108,7 @@ extern offs_t hd6309_dasm(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, i
 
 /*#define BIG_SWITCH*/
 
-#ifdef MAME_DEBUG
-extern int debug_key_pressed;
-#endif
-
-void CHECK_IRQ_LINES( void );
+static void CHECK_IRQ_LINES( void );
 static void IIError(void);
 static void DZError(void);
 
@@ -394,8 +386,7 @@ INLINE void WM32( UINT32 mAddr, PAIR *p )
 	WM( (mAddr+3)&0xffff, p->b.l );
 }
 
-void UpdateState( void );
-void UpdateState( void )
+static void UpdateState( void )
 {
 	if ( hd6309.md & MD_EM )
 	{
@@ -413,7 +404,7 @@ void UpdateState( void )
 	}
 }
 
-void CHECK_IRQ_LINES( void )
+static void CHECK_IRQ_LINES( void )
 {
 	if( hd6309.irq_state[HD6309_IRQ_LINE] != CLEAR_LINE ||
 		hd6309.irq_state[HD6309_FIRQ_LINE] != CLEAR_LINE )
@@ -520,29 +511,30 @@ static void hd6309_set_context(void *src)
 }
 
 
-static void hd6309_init(void)
+static void hd6309_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
-	state_save_register_UINT16("hd6309", cpu, "PC", &PC, 1);
-	state_save_register_UINT16("hd6309", cpu, "U", &U, 1);
-	state_save_register_UINT16("hd6309", cpu, "S", &S, 1);
-	state_save_register_UINT16("hd6309", cpu, "X", &X, 1);
-	state_save_register_UINT16("hd6309", cpu, "Y", &Y, 1);
-	state_save_register_UINT16("hd6309", cpu, "V", &V, 1);
-	state_save_register_UINT8("hd6309", cpu, "DP", &DP, 1);
-	state_save_register_UINT8("hd6309", cpu, "CC", &CC, 1);
-	state_save_register_UINT8("hd6309", cpu, "MD", &MD, 1);
+	hd6309.irq_callback = irqcallback;
+
+	state_save_register_item("hd6309", index, PC);
+	state_save_register_item("hd6309", index, U);
+	state_save_register_item("hd6309", index, S);
+	state_save_register_item("hd6309", index, X);
+	state_save_register_item("hd6309", index, Y);
+	state_save_register_item("hd6309", index, V);
+	state_save_register_item("hd6309", index, DP);
+	state_save_register_item("hd6309", index, CC);
+	state_save_register_item("hd6309", index, MD);
 	state_save_register_func_postload( UpdateState );
-	state_save_register_UINT8("hd6309", cpu, "INT", &hd6309.int_state, 1);
-	state_save_register_UINT8("hd6309", cpu, "NMI", &hd6309.nmi_state, 1);
-	state_save_register_UINT8("hd6309", cpu, "IRQ", &hd6309.irq_state[0], 1);
-	state_save_register_UINT8("hd6309", cpu, "FIRQ", &hd6309.irq_state[1], 1);
+	state_save_register_item("hd6309", index, hd6309.int_state);
+	state_save_register_item("hd6309", index, hd6309.nmi_state);
+	state_save_register_item("hd6309", index, hd6309.irq_state[0]);
+	state_save_register_item("hd6309", index, hd6309.irq_state[1]);
 }
 
 /****************************************************************************/
 /* Reset registers to their initial values                                  */
 /****************************************************************************/
-static void hd6309_reset(void *param)
+static void hd6309_reset(void)
 {
 	hd6309.int_state = 0;
 	hd6309.nmi_state = CLEAR_LINE;
@@ -1232,9 +1224,6 @@ static void hd6309_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + HD6309_Y: 		Y = info->i;								break;
 		case CPUINFO_INT_REGISTER + HD6309_V: 		V = info->i;								break;
 		case CPUINFO_INT_REGISTER + HD6309_DP: 		DP = info->i;								break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:				hd6309.irq_callback = info->irqcallback;	break;
 	}
 }
 
@@ -1303,7 +1292,6 @@ void hd6309_get_info(UINT32 state, union cpuinfo *info)
 #ifdef MAME_DEBUG
 		case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = hd6309_dasm;		break;
 #endif /* MAME_DEBUG */
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = hd6309.irq_callback; break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &hd6309_ICount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = hd6309_reg_layout;			break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = hd6309_win_layout;			break;

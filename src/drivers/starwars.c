@@ -23,7 +23,6 @@
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
 //#include "machine/atari_vg.h"
-//#include "vidhrdw/generic.h"
 #include "vidhrdw/vector.h"
 #include "vidhrdw/avgdvg.h"
 #include "sound/5220intf.h"
@@ -46,7 +45,7 @@ UINT8 starwars_is_esb;
  *
  *************************************/
 
-MACHINE_INIT( starwars )
+MACHINE_RESET( starwars )
 {
 	/* ESB-specific */
 	if (starwars_is_esb)
@@ -385,7 +384,7 @@ static MACHINE_DRIVER_START( starwars )
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	MDRV_FRAMES_PER_SECOND(30)
-	MDRV_MACHINE_INIT(starwars)
+	MDRV_MACHINE_RESET(starwars)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */

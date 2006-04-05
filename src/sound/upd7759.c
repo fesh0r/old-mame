@@ -97,13 +97,11 @@
 
 *************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 
-#include "driver.h"
-#include "upd7759.h"
+#include "sndintrf.h"
 #include "streams.h"
+#include "upd7759.h"
 
 
 #define DEBUG_STATES	(0)
@@ -592,8 +590,7 @@ static void *upd7759_start(int sndindex, int clock, const void *config)
 	chip->channel = stream_create(0, 1, Machine->sample_rate, chip, upd7759_update);
 
 	/* compute the stepping rate based on the chip's clock speed */
-	if (Machine->sample_rate != 0)
-		chip->step = ((INT64)clock * (INT64)FRAC_ONE) / Machine->sample_rate;
+	chip->step = ((INT64)clock * (INT64)FRAC_ONE) / Machine->sample_rate;
 
 	/* compute the clock period */
 	chip->clock_period = TIME_IN_HZ(clock);
@@ -728,7 +725,7 @@ READ8_HANDLER(upd7759_0_busy_r)
  * Generic get_info
  **************************************************************************/
 
-static void upd7759_set_info(void *token, UINT32 state, union sndinfo *info)
+static void upd7759_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -737,7 +734,7 @@ static void upd7759_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void upd7759_get_info(void *token, UINT32 state, union sndinfo *info)
+void upd7759_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

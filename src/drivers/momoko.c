@@ -17,7 +17,6 @@ Flipped screen looks wrong, but it is correct.
 *****************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2203intf.h"
 
 extern UINT8 *momoko_bg_scrollx;
@@ -73,7 +72,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd404, 0xd404) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0xd406, 0xd406) AM_WRITE(soundlatch_w)
 
-	AM_RANGE(0xd800, 0xdbff) AM_WRITE(paletteram_xxxxRRRRGGGGBBBB_swap_w) AM_BASE(&paletteram)
+	AM_RANGE(0xd800, 0xdbff) AM_WRITE(paletteram_xxxxRRRRGGGGBBBB_be_w) AM_BASE(&paletteram)
 
 	AM_RANGE(0xdc00, 0xdc00) AM_WRITE(momoko_fg_scrolly_w)
 	AM_RANGE(0xdc01, 0xdc01) AM_WRITE(momoko_fg_scrollx_w)

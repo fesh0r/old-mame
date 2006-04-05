@@ -1,28 +1,21 @@
-/*###################################################################################################
-**
-**
-**      mips3drc.c
-**      x86 Dynamic recompiler for MIPS III/IV emulator.
-**      Written by Aaron Giles
-**
-**
-**      Philosophy: this is intended to be a very basic implementation of a dynamic compiler in
-**      order to keep things simple. There are certainly more optimizations that could be added
-**      but for now, we keep it strictly to NOP stripping and LUI optimizations.
-**
-**
-**#################################################################################################*/
+/***************************************************************************
 
-#include <stdio.h>
+    mips3drc.c
+    x86 Dynamic recompiler for MIPS III/IV emulator.
+    Written by Aaron Giles
+
+    Philosophy: this is intended to be a very basic implementation of a
+    dynamic compiler in order to keep things simple. There are certainly
+    more optimizations that could be added but for now, we keep it
+    strictly to NOP stripping and LUI optimizations.
+
+***************************************************************************/
+
 #include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
 #include "driver.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "mips3.h"
 #include "x86drc.h"
-#include "debugcpu.h"
 
 
 //In GCC, ECX/EDX are volatile
@@ -30,9 +23,9 @@
 
 
 
-/*###################################################################################################
-**  CONFIGURATION
-**#################################################################################################*/
+/***************************************************************************
+    CONFIGURATION
+***************************************************************************/
 
 #define LOG_CODE			(0)
 #define PRINTF_TLB			(0)
@@ -42,9 +35,9 @@
 
 
 
-/*###################################################################################################
-**  CONSTANTS
-**#################################################################################################*/
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
 
 /* COP0 registers */
 #define COP0_Index			0
@@ -114,9 +107,9 @@
 
 
 
-/*###################################################################################################
-**  HELPER MACROS
-**#################################################################################################*/
+/***************************************************************************
+    HELPER MACROS
+***************************************************************************/
 
 #define RSREG		((op >> 21) & 31)
 #define RTREG		((op >> 16) & 31)
@@ -142,9 +135,9 @@
 
 
 
-/*###################################################################################################
-**  STRUCTURES & TYPEDEFS
-**#################################################################################################*/
+/***************************************************************************
+    STRUCTURES & TYPEDEFS
+***************************************************************************/
 
 /* memory access function table */
 typedef struct
@@ -191,6 +184,8 @@ typedef struct
 	void *		compare_int_timer;
 	UINT8		is_mips4;
 	UINT8		flush_pending;
+	UINT32		system_clock;
+	UINT32		cpu_clock;
 
 	/* memory accesses */
 	UINT8		bigendian;
@@ -257,9 +252,9 @@ typedef struct
 
 
 
-/*###################################################################################################
-**  PROTOTYPES
-**#################################################################################################*/
+/***************************************************************************
+    PROTOTYPES
+***************************************************************************/
 
 static void mips3drc_init(void);
 static void mips3drc_reset(drc_core *drc);
@@ -273,17 +268,17 @@ static offs_t mips3_dasm(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, in
 
 
 
-/*###################################################################################################
-**  PUBLIC GLOBAL VARIABLES
-**#################################################################################################*/
+/***************************************************************************
+    PUBLIC GLOBAL VARIABLES
+***************************************************************************/
 
 static int	mips3_icount;
 
 
 
-/*###################################################################################################
-**  PRIVATE GLOBAL VARIABLES
-**#################################################################################################*/
+/***************************************************************************
+    PRIVATE GLOBAL VARIABLES
+***************************************************************************/
 
 static mips3_regs mips3;
 
@@ -302,9 +297,9 @@ static const memory_handlers le_memory =
 
 
 
-/*###################################################################################################
-**  IRQ HANDLING
-**#################################################################################################*/
+/***************************************************************************
+    IRQ HANDLING
+***************************************************************************/
 
 static void set_irq_line(int irqline, int state)
 {
@@ -316,9 +311,9 @@ static void set_irq_line(int irqline, int state)
 
 
 
-/*###################################################################################################
-**  CONTEXT SWITCHING
-**#################################################################################################*/
+/***************************************************************************
+    CONTEXT SWITCHING
+***************************************************************************/
 
 static void mips3_get_context(void *dst)
 {
@@ -337,9 +332,9 @@ static void mips3_set_context(void *src)
 
 
 
-/*###################################################################################################
-**  INITIALIZATION AND SHUTDOWN
-**#################################################################################################*/
+/***************************************************************************
+    INITIALIZATION AND SHUTDOWN
+***************************************************************************/
 
 static void compare_int_callback(int cpu)
 {
@@ -347,25 +342,31 @@ static void compare_int_callback(int cpu)
 }
 
 
-static void mips3_init(void)
+static void mips3_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
+	const struct mips3_config *config = _config;
 	mips3drc_init();
+
 	mips3.compare_int_timer = timer_alloc(compare_int_callback);
+	mips3.irq_callback = irqcallback;
+
+	/* allocate memory */
+	mips3.icache = auto_malloc(config->icache);
+	mips3.dcache = auto_malloc(config->dcache);
+	mips3.tlb_table = auto_malloc(sizeof(mips3.tlb_table[0]) * (1 << (32 - 12)));
+
+	/* initialize the rest of the config */
+	mips3.icache_size = config->icache;
+	mips3.dcache_size = config->dcache;
+	mips3.system_clock = config->system_clock;
+	mips3.cpu_clock = clock;
 }
 
 
-static void mips3_reset(void *param, int bigendian, int mips4, UINT32 prid)
+static void mips3_reset(int bigendian, int mips4, UINT32 prid)
 {
-	struct mips3_config *config = param;
 	UINT32 configreg;
 	int divisor;
-
-	/* allocate memory */
-	mips3.icache = malloc(config->icache);
-	mips3.dcache = malloc(config->dcache);
-	mips3.tlb_table = malloc(sizeof(mips3.tlb_table[0]) * (1 << (32 - 12)));
-	if (!mips3.icache || !mips3.dcache || !mips3.tlb_table)
-		osd_die("error: couldn't allocate cache for mips3!\n");
 
 	/* set up the endianness */
 	mips3.bigendian = bigendian;
@@ -373,10 +374,6 @@ static void mips3_reset(void *param, int bigendian, int mips4, UINT32 prid)
 		mips3.memory = be_memory;
 	else
 		mips3.memory = le_memory;
-
-	/* initialize the rest of the config */
-	mips3.icache_size = config->icache;
-	mips3.dcache_size = config->dcache;
 
 	/* initialize the state */
 	mips3.pc = 0xbfc00000;
@@ -393,37 +390,37 @@ static void mips3_reset(void *param, int bigendian, int mips4, UINT32 prid)
 	configreg = 0x00026030;
 
 	/* config register: set the data cache size */
-	     if (config->icache <= 0x01000) configreg |= 0 << 6;
-	else if (config->icache <= 0x02000) configreg |= 1 << 6;
-	else if (config->icache <= 0x04000) configreg |= 2 << 6;
-	else if (config->icache <= 0x08000) configreg |= 3 << 6;
-	else if (config->icache <= 0x10000) configreg |= 4 << 6;
-	else if (config->icache <= 0x20000) configreg |= 5 << 6;
-	else if (config->icache <= 0x40000) configreg |= 6 << 6;
-	else                                configreg |= 7 << 6;
+	     if (mips3.icache_size <= 0x01000) configreg |= 0 << 6;
+	else if (mips3.icache_size <= 0x02000) configreg |= 1 << 6;
+	else if (mips3.icache_size <= 0x04000) configreg |= 2 << 6;
+	else if (mips3.icache_size <= 0x08000) configreg |= 3 << 6;
+	else if (mips3.icache_size <= 0x10000) configreg |= 4 << 6;
+	else if (mips3.icache_size <= 0x20000) configreg |= 5 << 6;
+	else if (mips3.icache_size <= 0x40000) configreg |= 6 << 6;
+	else                                   configreg |= 7 << 6;
 
 	/* config register: set the instruction cache size */
-	     if (config->icache <= 0x01000) configreg |= 0 << 9;
-	else if (config->icache <= 0x02000) configreg |= 1 << 9;
-	else if (config->icache <= 0x04000) configreg |= 2 << 9;
-	else if (config->icache <= 0x08000) configreg |= 3 << 9;
-	else if (config->icache <= 0x10000) configreg |= 4 << 9;
-	else if (config->icache <= 0x20000) configreg |= 5 << 9;
-	else if (config->icache <= 0x40000) configreg |= 6 << 9;
-	else                                configreg |= 7 << 9;
+	     if (mips3.icache_size <= 0x01000) configreg |= 0 << 9;
+	else if (mips3.icache_size <= 0x02000) configreg |= 1 << 9;
+	else if (mips3.icache_size <= 0x04000) configreg |= 2 << 9;
+	else if (mips3.icache_size <= 0x08000) configreg |= 3 << 9;
+	else if (mips3.icache_size <= 0x10000) configreg |= 4 << 9;
+	else if (mips3.icache_size <= 0x20000) configreg |= 5 << 9;
+	else if (mips3.icache_size <= 0x40000) configreg |= 6 << 9;
+	else                                   configreg |= 7 << 9;
 
 	/* config register: set the endianness bit */
 	if (bigendian) configreg |= 0x00008000;
 
 	/* config register: set the system clock divider */
 	divisor = 2;
-	if (config->system_clock != 0)
+	if (mips3.system_clock != 0)
 	{
-		divisor = Machine->drv->cpu[cpu_getactivecpu()].cpu_clock / config->system_clock;
-		if (config->system_clock * divisor != Machine->drv->cpu[cpu_getactivecpu()].cpu_clock)
+		divisor = mips3.cpu_clock / mips3.system_clock;
+		if (mips3.system_clock * divisor != mips3.cpu_clock)
 		{
 			configreg |= 0x80000000;
-			divisor = Machine->drv->cpu[cpu_getactivecpu()].cpu_clock * 2 / config->system_clock;
+			divisor = mips3.cpu_clock * 2 / mips3.system_clock;
 		}
 	}
 	configreg |= (((divisor < 2) ? 2 : (divisor > 8) ? 8 : divisor) - 2) << 28;
@@ -454,85 +451,72 @@ static void mips3_reset(void *param, int bigendian, int mips4, UINT32 prid)
 */
 
 #if (HAS_R4600)
-static void r4600be_reset(void *param)
+static void r4600be_reset(void)
 {
-	mips3_reset(param, 1, 0, 0x2000);
+	mips3_reset(1, 0, 0x2000);
 }
 
-static void r4600le_reset(void *param)
+static void r4600le_reset(void)
 {
-	mips3_reset(param, 0, 0, 0x2000);
+	mips3_reset(0, 0, 0x2000);
 }
 #endif
 
 
 #if (HAS_R4700)
-static void r4700be_reset(void *param)
+static void r4700be_reset(void)
 {
-	mips3_reset(param, 1, 0, 0x2100);
+	mips3_reset(1, 0, 0x2100);
 }
 
-static void r4700le_reset(void *param)
+static void r4700le_reset(void)
 {
-	mips3_reset(param, 0, 0, 0x2100);
+	mips3_reset(0, 0, 0x2100);
 }
 #endif
 
 
 #if (HAS_R5000)
-static void r5000be_reset(void *param)
+static void r5000be_reset(void)
 {
-	mips3_reset(param, 1, 1, 0x2300);
+	mips3_reset(1, 1, 0x2300);
 }
 
-static void r5000le_reset(void *param)
+static void r5000le_reset(void)
 {
-	mips3_reset(param, 0, 1, 0x2300);
+	mips3_reset(0, 1, 0x2300);
 }
 #endif
 
 
 #if (HAS_QED5271)
-static void qed5271be_reset(void *param)
+static void qed5271be_reset(void)
 {
-	mips3_reset(param, 1, 1, 0x2300);
+	mips3_reset(1, 1, 0x2300);
 }
 
-static void qed5271le_reset(void *param)
+static void qed5271le_reset(void)
 {
-	mips3_reset(param, 1, 0, 0x2300);
+	mips3_reset(1, 0, 0x2300);
 }
 #endif
 
 
 #if (HAS_RM7000)
-static void rm7000be_reset(void *param)
+static void rm7000be_reset(void)
 {
-	mips3_reset(param, 1, 1, 0x2700);
+	mips3_reset(1, 1, 0x2700);
 }
 
-static void rm7000le_reset(void *param)
+static void rm7000le_reset(void)
 {
-	mips3_reset(param, 0, 1, 0x2700);
+	mips3_reset(0, 1, 0x2700);
 }
 #endif
 
 
 static void mips3_exit(void)
 {
-	/* free cache memory */
-	if (mips3.icache)
-		free(mips3.icache);
-	mips3.icache = NULL;
-
-	if (mips3.dcache)
-		free(mips3.dcache);
-	mips3.dcache = NULL;
-
-	if (mips3.tlb_table)
-		free(mips3.tlb_table);
-	mips3.tlb_table = NULL;
-
 	drc_exit(mips3.drc);
 }
 
@@ -550,9 +534,9 @@ static int mips3_execute(int cycles)
 
 
 
-/*###################################################################################################
-**  TLB HANDLING
-**#################################################################################################*/
+/***************************************************************************
+    TLB HANDLING
+***************************************************************************/
 
 static void map_tlb_entries(void)
 {
@@ -737,7 +721,7 @@ static void tlbp(void)
 	UINT32 index;
 	UINT64 vpn;
 
-//  debug_halt_on_next_instruction();
+//  DEBUGGER_BREAK;
 	for (index = 0; index < 48; index++)
 	{
 		UINT64 mask = ~(mips3.tlb[index].page_mask & U64(0x0000000001ffe000)) & ~U64(0x1fff);
@@ -761,7 +745,7 @@ printf("Mask = %08X%08X  TLB = %08X%08X  MATCH = %08X%08X\n",
 		{
 #if PRINTF_TLB
 			printf("TLBP: Should have not found an entry\n");
-//          debug_halt_on_next_instruction();
+//          DEBUGGER_BREAK;
 #endif
 		}
 		mips3.cpr[0][COP0_Index] = index;
@@ -772,7 +756,7 @@ printf("Mask = %08X%08X  TLB = %08X%08X  MATCH = %08X%08X\n",
 		{
 #if PRINTF_TLB
 			printf("TLBP: Should havefound an entry\n");
-//          debug_halt_on_next_instruction();
+//          DEBUGGER_BREAK;
 #endif
 		}
 		mips3.cpr[0][COP0_Index] = 0x80000000;
@@ -781,9 +765,9 @@ printf("Mask = %08X%08X  TLB = %08X%08X  MATCH = %08X%08X\n",
 
 
 
-/*###################################################################################################
-**  RECOMPILER CALLBACKS
-**#################################################################################################*/
+/***************************************************************************
+    RECOMPILER CALLBACKS
+***************************************************************************/
 
 /*------------------------------------------------------------------
     update_cycle_counting
@@ -810,9 +794,9 @@ static void update_cycle_counting(void)
 
 
 
-/*###################################################################################################
-**  CODE LOGGING
-**#################################################################################################*/
+/***************************************************************************
+    CODE LOGGING
+***************************************************************************/
 
 #if LOG_CODE
 
@@ -891,9 +875,9 @@ static void code_log(drc_core *drc, const char *label, void *start)
 
 
 
-/*###################################################################################################
-**  RECOMPILER CORE
-**#################################################################################################*/
+/***************************************************************************
+    RECOMPILER CORE
+***************************************************************************/
 
 
 #include "mdrcold.c"
@@ -901,9 +885,9 @@ static void code_log(drc_core *drc, const char *label, void *start)
 
 
 
-/*###################################################################################################
-**  DEBUGGER DEFINITIONS
-**#################################################################################################*/
+/***************************************************************************
+    DEBUGGER DEFINITIONS
+***************************************************************************/
 
 static UINT8 mips3_reg_layout[] =
 {
@@ -940,9 +924,9 @@ static UINT8 mips3_win_layout[] =
 
 
 
-/*###################################################################################################
-**  DISASSEMBLY HOOK
-**#################################################################################################*/
+/***************************************************************************
+    DISASSEMBLY HOOK
+***************************************************************************/
 
 static offs_t mips3_dasm(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes)
 {
@@ -1042,8 +1026,6 @@ static void mips3_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_MIPS3_HOTSPOT_CYCLES:			mips3.hotspot[mips3.hotspot_select].cycles = info->i; break;
 
 		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					mips3.irq_callback = info->irqcallback;	break;
-
 		case CPUINFO_PTR_MIPS3_FASTRAM_BASE:			mips3.fastram[mips3.fastram_select].base = info->p;	break;
 	}
 }
@@ -1146,7 +1128,6 @@ void mips3_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = mips3_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = mips3_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = mips3.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &mips3_icount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = mips3_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = mips3_win_layout;				break;
@@ -1259,6 +1240,50 @@ void r4600le_get_info(UINT32 state, union cpuinfo *info)
 }
 #endif
 
+#if (HAS_R4650)
+/**************************************************************************
+ * CPU-specific set_info
+ **************************************************************************/
+
+void r4650be_get_info(UINT32 state, union cpuinfo *info)
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case CPUINFO_PTR_RESET:							info->reset = r4600be_reset;			break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "IDT R4650 (big)"); break;
+
+		default:
+			mips3_get_info(state, info);
+			break;
+	}
+}
+
+
+void r4650le_get_info(UINT32 state, union cpuinfo *info)
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case CPUINFO_PTR_RESET:							info->reset = r4600le_reset;			break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "IDT R4650 (little)"); break;
+
+		default:
+			mips3_get_info(state, info);
+			break;
+	}
+}
+#endif
 
 #if (HAS_R4700)
 /**************************************************************************

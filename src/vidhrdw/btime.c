@@ -9,7 +9,6 @@ This file is also used by scregg.c
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 
 unsigned char *lnc_charbank;
@@ -123,7 +122,7 @@ PALETTE_INIT( lnc )
 }
 
 
-MACHINE_INIT( lnc )
+MACHINE_RESET( lnc )
 {
     *lnc_charbank = 1;
 }

@@ -328,7 +328,6 @@ Boards:
 ****************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "pacman.h"
 #include "cpu/s2650/s2650.h"
 #include "sound/namco.h"
@@ -342,7 +341,7 @@ Boards:
  *
  *************************************/
 
-MACHINE_INIT( mschamp )
+MACHINE_RESET( mschamp )
 {
 	UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
 	int whichbank = readinputportbytag("GAME") & 1;
@@ -361,6 +360,13 @@ MACHINE_INIT( mschamp )
  *  Interrupts
  *
  *************************************/
+
+static WRITE8_HANDLER( pacman_interrupt_vector_w )
+{
+	cpunum_set_input_line_vector(0, 0, data);
+	cpunum_set_input_line(0, 0, CLEAR_LINE);
+}
+
 
 static INTERRUPT_GEN( pacman_interrupt )
 {
@@ -960,8 +966,8 @@ static ADDRESS_MAP_START( s2650games_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1000, 0x13ff) AM_MIRROR(0xe000) AM_WRITE(s2650games_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x1400, 0x141f) AM_MIRROR(0xe000) AM_WRITE(s2650games_scroll_w)
 	AM_RANGE(0x1420, 0x148f) AM_MIRROR(0xe000) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1490, 0x149f) AM_MIRROR(0xe000) AM_WRITE(MWA8_RAM) AM_BASE(&sprite_bank)
-	AM_RANGE(0x14a0, 0x14bf) AM_MIRROR(0xe000) AM_WRITE(s2650games_tilesbank_w) AM_BASE(&tiles_bankram)
+	AM_RANGE(0x1490, 0x149f) AM_MIRROR(0xe000) AM_WRITE(MWA8_RAM) AM_BASE(&s2650games_spriteram)
+	AM_RANGE(0x14a0, 0x14bf) AM_MIRROR(0xe000) AM_WRITE(s2650games_tilesbank_w) AM_BASE(&s2650games_tileram)
 	AM_RANGE(0x14c0, 0x14ff) AM_MIRROR(0xe000) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x1500, 0x1502) AM_MIRROR(0xe000) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0x1503, 0x1503) AM_MIRROR(0xe000) AM_WRITE(pacman_flipscreen_w)
@@ -1068,7 +1074,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x00) AM_WRITE(interrupt_vector_w)	/* Pac-Man only */
+	AM_RANGE(0x00, 0x00) AM_WRITE(pacman_interrupt_vector_w)	/* Pac-Man only */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( vanvan_writeport, ADDRESS_SPACE_IO, 8 )
@@ -2926,7 +2932,7 @@ static MACHINE_DRIVER_START( mspacman )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(mspacman_map,0)
 
-	MDRV_MACHINE_INIT(mspacman)
+	MDRV_MACHINE_RESET(mspacman)
 MACHINE_DRIVER_END
 
 
@@ -2977,7 +2983,7 @@ static MACHINE_DRIVER_START( theglobp )
 	MDRV_CPU_PROGRAM_MAP(epos_map,0)
 	MDRV_CPU_IO_MAP(theglobp_readport,writeport)
 
-	MDRV_MACHINE_INIT(theglobp)
+	MDRV_MACHINE_RESET(theglobp)
 MACHINE_DRIVER_END
 
 
@@ -2990,7 +2996,7 @@ static MACHINE_DRIVER_START( acitya )
 	MDRV_CPU_PROGRAM_MAP(epos_map,0)
 	MDRV_CPU_IO_MAP(acitya_readport,writeport)
 
-	MDRV_MACHINE_INIT(acitya)
+	MDRV_MACHINE_RESET(acitya)
 MACHINE_DRIVER_END
 
 
@@ -3109,7 +3115,7 @@ static MACHINE_DRIVER_START( mschamp )
 	MDRV_CPU_IO_MAP(mschamp_readport,writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_MACHINE_INIT(mschamp)
+	MDRV_MACHINE_RESET(mschamp)
 MACHINE_DRIVER_END
 
 
@@ -4030,6 +4036,38 @@ ROM_START( eyes2 )
 	ROM_LOAD( "82s126.3m",    0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )	/* timing - not used */
 ROM_END
 
+/* It's just a decrypted version of Eyes with the copyright changes...
+ roms marked with a comment were in the set but we're not using them
+
+ This is only supported because it's by Zaccaria, a known manufacturer of original games
+ */
+ROM_START( eyeszac )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+/**/ROM_LOAD( "11.bin",          0x0000, 0x0800, CRC(69c1602a) SHA1(47b0935406b7ee2f414de58da1d4e81c6277a0c2) ) // "no diagnostics, bad custom??" (unused)
+	ROM_LOAD( "1.bin",           0x0000, 0x0800, CRC(a4a9d7a0) SHA1(f0b807d2fa347e50df52971aa7539a88f342bad6) )
+	ROM_LOAD( "5.bin",           0x0800, 0x0800, CRC(c32b3f73) SHA1(80d2e987f0318b984e5c7c4d0b5faa262eebeca4) )
+	ROM_LOAD( "2.bin",           0x1000, 0x0800, CRC(195b9473) SHA1(62eb16af38cc9004787dc55433ed3db11af44a4b) )
+	ROM_LOAD( "6.bin",           0x1800, 0x0800, CRC(292886cb) SHA1(e77c3724c7cd8cd95014194ba4bb2f7e04afb0dd) )
+//  ROM_LOAD( "33.bin",          0x2000, 0x0800, CRC(df983e1d) SHA1(7c06fc69b7d0424f7b9348649d5587ff4d6dfc2d) ) // alt rom with copyright removed (unused)
+	ROM_LOAD( "3.bin",           0x2000, 0x0800, CRC(ff94b015) SHA1(6d8f43db3c98cadb35f70e3bff788e653dc132cd) )
+	ROM_LOAD( "7.bin",           0x2800, 0x0800, CRC(9271c58c) SHA1(e6b8f1807c5852ae4e822d80719a4e8f8b036c31) )
+	ROM_LOAD( "4.bin",           0x3000, 0x0800, CRC(965cf32b) SHA1(68cc573a24c74f2ab417d0330fc9523e77fda961) )
+	ROM_LOAD( "8.bin",           0x3800, 0x0800, CRC(c254e92e) SHA1(023b45403ebc69c29516d77950dc69f05a1a130c) )
+
+	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "x.bin",           0x0000, 0x0800, CRC(59dce22e) SHA1(81eaef3e4d8299b5133b62d04460abfa519696f5) )
+	ROM_LOAD( "c.bin",           0x0800, 0x0800, CRC(aaa7a537) SHA1(571d981ed2aad62d7c7f2798e9084228d45523d4) )
+	ROM_LOAD( "b.bin",           0x1000, 0x0800, CRC(1969792b) SHA1(7c3e2ace75402ad227e6437785b7cfec4db88db8) )
+	ROM_LOAD( "p.bin",           0x1800, 0x0800, CRC(99af4b30) SHA1(6a0939ff2fa7ae39a960dd4d9f9b7c01f57647c5) )
+
+	ROM_REGION( 0x0120, REGION_PROMS, 0 )
+	ROM_LOAD( "82s123.7f",    0x0000, 0x0020, CRC(2fc650bd) SHA1(8d0268dee78e47c712202b0ec4f1f51109b1f2a5) )
+	ROM_LOAD( "82s129.4a",    0x0020, 0x0100, CRC(d8d78829) SHA1(19820d1651423210083a087fb70ebea73ad34951) )
+
+	ROM_REGION( 0x0200, REGION_SOUND1, 0 )	/* sound PROMs */
+	ROM_LOAD( "82s126.1m",    0x0000, 0x0100, CRC(a9cc86bf) SHA1(bbcec0570aeceb582ff8238a4bc8546a23430081) )
+	ROM_LOAD( "82s126.3m",    0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )	/* timing - not used */
+ROM_END
 
 ROM_START( mrtnt )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
@@ -4164,6 +4202,27 @@ ROM_START( sprglobp )
 	ROM_REGION( 0x0200, REGION_SOUND1, 0 )	/* sound PROMs */
 	ROM_LOAD( "82s126.1m",    0x0000, 0x0100, CRC(a9cc86bf) SHA1(bbcec0570aeceb582ff8238a4bc8546a23430081) )
 	ROM_LOAD( "82s126.3m"  ,  0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )	/* timing - not used */
+ROM_END
+
+/* This set is from a modified Pengo board.  Pengo and Pacman are functionally the same.
+   The bad sound is probably correct as the sound data is part of the protection. */
+ROM_START( sprglbpg )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+	ROM_LOAD( "ic8.1",      0x0000, 0x1000, CRC(a2df2073) SHA1(14c55186053b080de06cc3691111ede8b2ead231) )
+	ROM_LOAD( "ic7.2",      0x1000, 0x1000, CRC(3d2c22d9) SHA1(2f1d27e49850f904d1f2256bfcf00557ed88bb16) )
+	ROM_LOAD( "ic15.3",      0x2000, 0x1000, CRC(a252047f) SHA1(9fadbb098b86ee98e1a81da938316b833fc26912) )
+	ROM_LOAD( "ic14.4",      0x3000, 0x1000, CRC(7efa81f1) SHA1(583999280623f02dcc318a6c7af5ee6fc46144b8) )
+
+	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "ic92.5",  0x0000, 0x2000, CRC(E54F484D) SHA1(4FEB9EC917C2467A5AC531283CB00FE308BE7775) )
+
+	ROM_REGION( 0x0120, REGION_PROMS, 0 )
+	ROM_LOAD( "ic78.prm",      0x0000, 0x0020, CRC(1f617527) SHA1(448845cab63800a05fcb106897503d994377f78f) )
+	ROM_LOAD( "ic88.prm",      0x0020, 0x0100, CRC(28faa769) SHA1(7588889f3102d4e0ca7918f536556209b2490ea1) )
+
+	ROM_REGION( 0x0200, REGION_SOUND1, 0 )	/* sound PROMs */
+	ROM_LOAD( "ic51.prm",    0x0000, 0x0100, CRC(c29dea27) SHA1(563c9770028fe39188e62630711589d6ed242a66) )
+	ROM_LOAD( "ic70.prm"  ,  0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )	/* timing - not used */
 ROM_END
 
 
@@ -4919,6 +4978,7 @@ GAME( 1982, joyman,   puckman,  pacman,   pacman,   0,        ROT90,  "hack", "J
 GAME( 1982, ctrpllrp, puckman,  pacman,   pacman,   0,        ROT90,  "hack", "Caterpillar Pacman Hack", GAME_SUPPORTS_SAVE )
 GAME( 1982, eyes,     0,        pacman,   eyes,     eyes,     ROT90,  "Digitrex Techstar (Rock-ola license)", "Eyes (Digitrex Techstar)", GAME_SUPPORTS_SAVE )
 GAME( 1982, eyes2,    eyes,     pacman,   eyes,     eyes,     ROT90,  "Techstar (Rock-ola license)", "Eyes (Techstar)", GAME_SUPPORTS_SAVE )
+GAME( 1982, eyeszac,  eyes,     pacman,   eyes,     0,        ROT90,  "Zaccaria / bootleg", "Eyes (Zaccaria)", GAME_SUPPORTS_SAVE )
 GAME( 1983, mrtnt,    0,        pacman,   mrtnt,    eyes,     ROT90,  "Telko", "Mr. TNT", GAME_SUPPORTS_SAVE )
 GAME( 1983, gorkans,  mrtnt,    pacman,   mrtnt,    0,        ROT90,  "Techstar", "Gorkans", GAME_SUPPORTS_SAVE )
 GAME( 1983, eggor,    0,        pacman,   mrtnt,    eyes,     ROT90,  "Telko", "Eggor", GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
@@ -4949,6 +5009,7 @@ GAME( 1983, bwcasino, 0,        acitya,   bwcasino, 0,        ROT90,  "Epos Corp
 GAME( 1983, acitya,   bwcasino, acitya,   acitya,   0,        ROT90,  "Epos Corporation", "Atlantic City Action", GAME_SUPPORTS_SAVE )
 GAME( 1983, theglobp, suprglob, theglobp, theglobp, 0,        ROT90,  "Epos Corporation", "The Glob (Pac-Man hardware)", GAME_SUPPORTS_SAVE )
 GAME( 1983, sprglobp, suprglob, theglobp, theglobp, 0,        ROT90,  "Epos Corporation", "Super Glob (Pac-Man hardware)", GAME_SUPPORTS_SAVE )
+GAME( 1983, sprglbpg, suprglob, pacman,   theglobp, 0,        ROT90,  "Bootleg", "Super Glob (Pac-Man hardware) German", GAME_SUPPORTS_SAVE )
 GAME( 1984, beastf,   suprglob, theglobp, theglobp, 0,        ROT90,  "Epos Corporation", "Beastie Feastie", GAME_SUPPORTS_SAVE )
 GAME( 1984, drivfrcp, 0,        drivfrcp, drivfrcp, 0,        ROT90,  "Shinkai Inc. (Magic Eletronics Inc. licence)", "Driving Force (Pac-Man conversion)", GAME_SUPPORTS_SAVE )
 GAME( 1985, 8bpm,     8ballact, 8bpm,     8bpm,     8bpm,     ROT90,  "Seatongrove Ltd (Magic Eletronics USA licence)", "Eight Ball Action (Pac-Man conversion)", GAME_SUPPORTS_SAVE )

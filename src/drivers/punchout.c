@@ -95,7 +95,6 @@ write:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/vlm5030.h"
 #include "sound/nes_apu.h"
@@ -789,7 +788,7 @@ static MACHINE_DRIVER_START( punchout )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_DUAL_MONITOR)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_ASPECT_RATIO(4,6)
 	MDRV_SCREEN_SIZE(32*8, 28*8*2)
 	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8*2-1)

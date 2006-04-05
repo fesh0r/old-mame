@@ -13,7 +13,6 @@
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/s2636.h"
 
 extern unsigned char* s2636_1_ram;
@@ -48,12 +47,13 @@ unsigned char* saa5050_vidram;  /* Video RAM for SAA 5050 */
 
 static mame_bitmap* collision_bitmap;
 
-int temp_x,temp_y;
+int malzak_x;
+int malzak_y;
 
-struct playfield
+static struct playfield
 {
-	int x;
-	int y;
+	//int x;
+	//int y;
 	int code;
 } field[256];
 
@@ -62,8 +62,6 @@ extern unsigned char s2636_2_dirty[4];
 
 VIDEO_START( malzak )
 {
-	video_start_generic();
-
 	if ((collision_bitmap = auto_bitmap_alloc_depth(Machine->drv->screen_width,Machine->drv->screen_height,8)) == 0)
 		return 1;
 
@@ -211,8 +209,8 @@ VIDEO_UPDATE( malzak )
 	for(x = 0;x < 16;x++)
 		for(y = 0; y < 16;y++)
 		{
-			sx = ((x*16-48) - temp_x);
-			sy = ((y*16) - temp_y);
+			sx = ((x*16-48) - malzak_x);
+			sy = ((y*16) - malzak_y);
 
 			if(sx < -271)
 				sx+=512;
@@ -234,10 +232,10 @@ VIDEO_UPDATE( malzak )
 
 WRITE8_HANDLER( playfield_w )
 {
-	int tile = ((temp_x / 16) * 16) + (offset / 16);
+	int tile = ((malzak_x / 16) * 16) + (offset / 16);
 
-//  field[tile].x = temp_x / 16;
-//  field[tile].y = temp_y;
+//  field[tile].x = malzak_x / 16;
+//  field[tile].y = malzak_y;
 	field[tile].code = (data & 0x1f);
 	logerror("GFX: 0x16%02x write 0x%02x\n",offset,data);
 }

@@ -342,7 +342,6 @@ C - uses sub board with support for player 3 and 4 controls
 ***********************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/m6800/m6800.h"
 #include "sound/2151intf.h"
@@ -365,7 +364,7 @@ WRITE8_HANDLER( namcos1_sound_bankswitch_w );
 WRITE8_HANDLER( namcos1_mcu_bankswitch_w );
 WRITE8_HANDLER( namcos1_mcu_patch_w );
 
-MACHINE_INIT( namcos1 );
+MACHINE_RESET( namcos1 );
 
 DRIVER_INIT( shadowld );
 DRIVER_INIT( dspirit );
@@ -1011,7 +1010,7 @@ static MACHINE_DRIVER_START( ns1 )
 	// heavy sync required to prevent CPUs from fighting for video RAM access and going into deadlocks
 	MDRV_INTERLEAVE(640)
 
-	MDRV_MACHINE_INIT(namcos1)
+	MDRV_MACHINE_RESET(namcos1)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */

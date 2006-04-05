@@ -23,6 +23,7 @@
 #include "window.h"
 #include "input.h"
 #include "config.h"
+#include "video.h"
 
 #ifdef MESS
 #include "messwin.h"
@@ -38,7 +39,9 @@
 
 #define MAX_SYMBOLS		65536
 
-struct map_entry
+typedef struct _map_entry map_entry;
+
+struct _map_entry
 {
 	UINT32 start;
 	UINT32 end;
@@ -67,7 +70,7 @@ static char mapfile_name[MAX_PATH];
 static LPTOP_LEVEL_EXCEPTION_FILTER pass_thru_filter;
 
 #if ENABLE_PROFILER
-static struct map_entry symbol_map[MAX_SYMBOLS];
+static map_entry symbol_map[MAX_SYMBOLS];
 static int map_entries;
 static HANDLE profiler_thread;
 static DWORD profiler_thread_id;
@@ -86,6 +89,8 @@ static const char helpfile[] = "mess.chm";
 //  PROTOTYPES
 //============================================================
 
+static int check_for_double_click_start(int argc);
+static void osd_exit(void);
 static LONG CALLBACK exception_filter(struct _EXCEPTION_POINTERS *info);
 static const char *lookup_symbol(UINT32 address);
 static int get_code_base_size(UINT32 *base, UINT32 *size);
@@ -120,66 +125,13 @@ int main(int argc, char **argv)
 	int res = 0;
 	extern void free_pathlists(void);
 
-#if 1
- #ifndef WINUI
-	STARTUPINFO startup_info = { sizeof(STARTUPINFO) };
-	GetStartupInfo(&startup_info);
+	// set up exception handling
+	pass_thru_filter = SetUnhandledExceptionFilter(exception_filter);
 
-	// try to determine if MAME was simply double-clicked
-	if (argc <= 1 &&
-		startup_info.dwFlags &&
-		!(startup_info.dwFlags & STARTF_USESTDHANDLES))
-	{
-		char message_text[1024] = "";
-		int button;
-		FILE* fp;
-
-  #ifndef MESS
-		sprintf(message_text, APPLONGNAME " v%s - Multiple Arcade Machine Emulator\n"
-							  "Copyright (C) 1997-2005 by Nicola Salmoria and the MAME Team\n"
-							  "\n"
-							  APPLONGNAME " is a console application, you should launch it from a command prompt.\n"
-							  "\n"
-							  "Usage:\tMAME gamename [options]\n"
-							  "\n"
-							  "\tMAME -showusage\t\tfor a brief list of options\n"
-							  "\tMAME -showconfig\t\tfor a list of configuration options\n"
-							  "\tMAME -createconfig\tto create a mame.ini\n"
-							  "\n"
-							  "Please consult the documentation for more information.\n"
-							  "\n"
-							  "Would you like to open the documentation now?"
-							  , build_version);
-  #else
-		sprintf(message_text, APPLONGNAME " is a console application, you should launch it from a command prompt.\n"
-							  "\n"
-							  "Please consult the documentation for more information.\n"
-							  "\n"
-							  "Would you like to open the documentation now?");
-  #endif
-
-		// pop up a messagebox with some information
-		button = MessageBox(NULL, message_text, APPLONGNAME " usage information...", MB_YESNO | MB_ICONASTERISK);
-
-		if (button == IDYES)
-		{
-			// check if windows.txt exists
-			fp = fopen(helpfile, "r");
-			if (fp) {
-				fclose(fp);
-
-				// if so, open it with the default application
-				ShellExecute(NULL, "open", helpfile, NULL, NULL, SW_SHOWNORMAL);
-			}
-			else
-			{
-				// if not, inform the user
-				MessageBox(NULL, "Couldn't find the documentation.", "Error...", MB_OK | MB_ICONERROR);
-			}
-		}
+#ifndef WINUI
+	// check for double-clicky starts
+	if (check_for_double_click_start(argc) != 0)
 		return 1;
-	}
- #endif
 #endif
 
 	// parse the map file, if present
@@ -192,9 +144,6 @@ int main(int argc, char **argv)
 #if ENABLE_PROFILER
 	parse_map_file();
 #endif
-
-	// set up exception handling
-	pass_thru_filter = SetUnhandledExceptionFilter(exception_filter);
 
 	// parse config and cmdline options
 	game_index = cli_frontend_init(argc, argv);
@@ -243,17 +192,27 @@ int main(int argc, char **argv)
 #endif
 	free_pathlists();
 
-#ifdef MAME_DEBUG
-#ifndef MESS
+#ifdef MALLOC_DEBUG
 	{
 		void check_unfreed_mem(void);
-
 		check_unfreed_mem();
 	}
 #endif
-#endif
 
 	return res;
+}
+
+
+
+//============================================================
+//  output_oslog
+//============================================================
+
+static void output_oslog(const char *buffer)
+{
+	extern int win_erroroslog;
+	if (win_erroroslog)
+		OutputDebugString(buffer);
 }
 
 
@@ -265,16 +224,19 @@ int main(int argc, char **argv)
 int osd_init(void)
 {
 	extern int win_init_input(void);
+	extern int win_erroroslog;
 	int result;
 
 	result = win_init_window();
 	if (result == 0)
 		result = win_init_input();
 
-#ifdef MESS
-	if (result == 0)
-		result = win_parallel_init();
-#endif
+	add_pause_callback(win_pause);
+	add_exit_callback(osd_exit);
+
+	if (win_erroroslog)
+		add_logerror_callback(output_oslog);
+
 	return result;
 }
 
@@ -284,7 +246,7 @@ int osd_init(void)
 //  osd_exit
 //============================================================
 
-void osd_exit(void)
+static void osd_exit(void)
 {
 	extern void win_shutdown_input(void);
 
@@ -329,6 +291,73 @@ int osd_is_bad_read_ptr(const void *ptr, size_t size)
 	return IsBadReadPtr(ptr, size);
 }
 
+
+
+//============================================================
+//  check_for_double_click_start
+//============================================================
+
+static int check_for_double_click_start(int argc)
+{
+	STARTUPINFO startup_info = { sizeof(STARTUPINFO) };
+
+	// determine our startup information
+	GetStartupInfo(&startup_info);
+
+	// try to determine if MAME was simply double-clicked
+	if (argc <= 1 && startup_info.dwFlags && !(startup_info.dwFlags & STARTF_USESTDHANDLES))
+	{
+		char message_text[1024] = "";
+		int button;
+
+#ifndef MESS
+		sprintf(message_text, APPLONGNAME " v%s - Multiple Arcade Machine Emulator\n"
+							  "Copyright (C) 1997-2006 by Nicola Salmoria and the MAME Team\n"
+							  "\n"
+							  APPLONGNAME " is a console application, you should launch it from a command prompt.\n"
+							  "\n"
+							  "Usage:\tMAME gamename [options]\n"
+							  "\n"
+							  "\tMAME -showusage\t\tfor a brief list of options\n"
+							  "\tMAME -showconfig\t\tfor a list of configuration options\n"
+							  "\tMAME -createconfig\tto create a mame.ini\n"
+							  "\n"
+							  "Please consult the documentation for more information.\n"
+							  "\n"
+							  "Would you like to open the documentation now?"
+							  , build_version);
+#else
+		sprintf(message_text, APPLONGNAME " is a console application, you should launch it from a command prompt.\n"
+							  "\n"
+							  "Please consult the documentation for more information.\n"
+							  "\n"
+							  "Would you like to open the documentation now?");
+#endif
+
+		// pop up a messagebox with some information
+		button = MessageBox(NULL, message_text, APPLONGNAME " usage information...", MB_YESNO | MB_ICONASTERISK);
+
+		if (button == IDYES)
+		{
+			// check if windows.txt exists
+			FILE *fp = fopen(helpfile, "r");
+			if (fp)
+			{
+				fclose(fp);
+
+				// if so, open it with the default application
+				ShellExecute(NULL, "open", helpfile, NULL, NULL, SW_SHOWNORMAL);
+			}
+			else
+			{
+				// if not, inform the user
+				MessageBox(NULL, "Couldn't find the documentation.", "Error...", MB_OK | MB_ICONERROR);
+			}
+		}
+		return 1;
+	}
+	return 0;
+}
 
 
 //============================================================
@@ -539,14 +568,14 @@ static int get_code_base_size(UINT32 *base, UINT32 *size)
 
 static int CLIB_DECL compare_start(const void *item1, const void *item2)
 {
-	return ((const struct map_entry *)item1)->start - ((const struct map_entry *)item2)->start;
+	return ((const map_entry *)item1)->start - ((const map_entry *)item2)->start;
 }
 
 
 #if ENABLE_PROFILER
 static int compare_hits(const void *item1, const void *item2)
 {
-	return ((const struct map_entry *)item2)->hits - ((const struct map_entry *)item1)->hits;
+	return ((const map_entry *)item2)->hits - ((const map_entry *)item1)->hits;
 }
 
 
@@ -638,7 +667,7 @@ static void free_symbol_map(void)
 
 static void output_symbol_list(FILE *f)
 {
-	struct map_entry *entry;
+	map_entry *entry;
 	int i;
 
 	/* sort by hits */
@@ -707,20 +736,18 @@ static DWORD WINAPI profiler_thread_entry(LPVOID lpParameter)
 static void start_profiler(void)
 {
 	HANDLE currentThread;
+	BOOL result;
 
 	/* do the dance to get a handle to ourself */
-	if (!DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &currentThread,
-			THREAD_GET_CONTEXT | THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION, FALSE, 0))
-	{
-		osd_die("Failed to get thread handle for main thread\n");
-	}
+	result = DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &currentThread,
+			THREAD_GET_CONTEXT | THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION, FALSE, 0);
+	assert_always(result, "Failed to get thread handle for main thread");
 
 	profiler_thread_exit = 0;
 
 	/* start the thread */
 	profiler_thread = CreateThread(NULL, 0, profiler_thread_entry, (LPVOID)currentThread, 0, &profiler_thread_id);
-	if (!profiler_thread)
-		fprintf(stderr, "Failed to create profiler thread\n");
+	assert_always(profiler_thread, "Failed to create profiler thread\n");
 
 	/* max out the priority */
 	SetThreadPriority(profiler_thread, THREAD_PRIORITY_TIME_CRITICAL);

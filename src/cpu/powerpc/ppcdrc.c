@@ -4,9 +4,8 @@
     Written by Ville Linde
 */
 
-#include "driver.h"
 #include "ppc.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "x86drc.h"
 
 
@@ -18,25 +17,25 @@
 
 
 #if (HAS_PPC603)
-static void ppcdrc603_init(void);
+static void ppcdrc603_init(int index, int clock, const void *_config, int (*irqcallback)(int));
 static void ppcdrc603_exit(void);
-static void ppcdrc603_reset(void *param);
+static void ppcdrc603_reset(void);
 static int ppcdrc603_execute(int cycles);
 static void ppcdrc603_set_irq_line(int irqline, int state);
 #endif
 #if (HAS_PPC602)
-static void ppcdrc602_init(void);
+static void ppcdrc602_init(int index, int clock, const void *_config, int (*irqcallback)(int));
 static void ppcdrc602_exit(void);
-static void ppcdrc602_reset(void *param);
+static void ppcdrc602_reset(void);
 static int ppcdrc602_execute(int cycles);
 static void ppcdrc602_set_irq_line(int irqline, int state);
 #endif
 #if (HAS_PPC403)
 UINT8 ppc403_spu_r(UINT32 a);
 void ppc403_spu_w(UINT32 a, UINT8 d);
-static void ppcdrc403_init(void);
+static void ppcdrc403_init(int index, int clock, const void *_config, int (*irqcallback)(int));
 static void ppcdrc403_exit(void);
-static void ppcdrc403_reset(void *param);
+static void ppcdrc403_reset(void);
 static int ppcdrc403_execute(int cycles);
 static void ppcdrc403_set_irq_line(int irqline, int state);
 #endif
@@ -467,7 +466,7 @@ INLINE void ppc_exception(int exception_type)
 			exception_code = ppc.generate_isi_exception;
 			break;
 		default:
-			osd_die("Unknown exception %d\n", exception_type);
+			fatalerror("Unknown exception %d", exception_type);
 			break;
 	}
 
@@ -611,7 +610,7 @@ INLINE void ppc_set_spr(int spr, UINT32 value)
 	}
 #endif
 
-	osd_die("ppc: set_spr: unknown spr %d (%03X) !\n", spr, spr);
+	fatalerror("ppc: set_spr: unknown spr %d (%03X) !", spr, spr);
 }
 
 INLINE UINT32 ppc_get_spr(int spr)
@@ -675,11 +674,11 @@ INLINE UINT32 ppc_get_spr(int spr)
 		switch (spr)
 		{
 			case SPR603E_TBL_R:
-				osd_die("ppc: get_spr: TBL_R \n");
+				fatalerror("ppc: get_spr: TBL_R ");
 				break;
 
 			case SPR603E_TBU_R:
-				osd_die("ppc: get_spr: TBU_R \n");
+				fatalerror("ppc: get_spr: TBU_R ");
 				break;
 
 			case SPR603E_TBL_W:		return (UINT32)(ppc_read_timebase());
@@ -711,7 +710,7 @@ INLINE UINT32 ppc_get_spr(int spr)
 	}
 #endif
 
-	osd_die("ppc: get_spr: unknown spr %d (%03X) !\n", spr, spr);
+	fatalerror("ppc: get_spr: unknown spr %d (%03X) !", spr, spr);
 	return 0;
 }
 
@@ -727,7 +726,7 @@ static void ppc_write64_translated(offs_t address, UINT64 data);
 INLINE void ppc_set_msr(UINT32 value)
 {
 	if( value & (MSR_ILE | MSR_LE) )
-		osd_die("ppc: set_msr: little_endian mode not supported !\n");
+		fatalerror("ppc: set_msr: little_endian mode not supported !");
 
 	MSR = value;
 
@@ -864,8 +863,10 @@ void ppc_init(void)
 }
 
 #if (HAS_PPC403)
-static void ppcdrc403_init(void)
+static void ppcdrc403_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
+	const ppc_config *config = _config;
+
 	ppc_init();
 	ppcdrc_init();
 
@@ -897,6 +898,10 @@ static void ppcdrc403_init(void)
 	ppc.read32_unaligned = ppc403_read32_unaligned;
 	ppc.write16_unaligned = ppc403_write16_unaligned;
 	ppc.write32_unaligned = ppc403_write32_unaligned;
+
+	ppc.irq_callback = irqcallback;
+
+	ppc.pvr = config->pvr;
 }
 
 static void ppcdrc403_exit(void)
@@ -907,11 +912,9 @@ static void ppcdrc403_exit(void)
 	drc_exit(ppc.drc);
 }
 
-static void ppcdrc403_reset(void *param)
+static void ppcdrc403_reset(void)
 {
-	ppc_config *config = param;
 	ppc.pc = ppc.npc = 0xfffffffc;
-	ppc.pvr = config->pvr;
 
 	ppc_set_msr(0);
 	change_pc(ppc.pc);
@@ -978,15 +981,19 @@ static void ppcdrc403_set_irq_line(int irqline, int state)
 	}
 	else
 	{
-		osd_die("PPC: Unknown IRQ line %d\n", irqline);
+		fatalerror("PPC: Unknown IRQ line %d", irqline);
 	}
 }
 #endif
 
 #if (HAS_PPC603)
-static void ppcdrc603_init(void)
+static void ppcdrc603_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
+	int pll_config = 0;
+	float multiplier;
+	const ppc_config *config = _config;
 	int i;
+
 	ppc_init();
 	ppcdrc_init();
 
@@ -1091,22 +1098,9 @@ static void ppcdrc603_init(void)
 	ppc.write16_unaligned = ppc_write16_unaligned;
 	ppc.write32_unaligned = ppc_write32_unaligned;
 	ppc.write64_unaligned = ppc_write64_unaligned;
-}
 
-static void ppcdrc603_exit(void)
-{
-#if LOG_CODE
-	//if (symfile) fclose(symfile);
-#endif
-	drc_exit(ppc.drc);
-}
+	ppc.irq_callback = irqcallback;
 
-static void ppcdrc603_reset(void *param)
-{
-	int pll_config = 0;
-	float multiplier;
-	ppc_config *config = param;
-	ppc.pc = ppc.npc = 0xfff00100;
 	ppc.pvr = config->pvr;
 
 	multiplier = (float)((config->bus_frequency_multiplier >> 4) & 0xf) +
@@ -1123,10 +1117,23 @@ static void ppcdrc603_reset(void *param)
 
 	if (pll_config == -1)
 	{
-		osd_die("PPC: Invalid bus/multiplier combination (bus frequency = %d, multiplier = %1.1f)", config->bus_frequency, multiplier);
+		fatalerror("PPC: Invalid bus/multiplier combination (bus frequency = %d, multiplier = %1.1f)", config->bus_frequency, multiplier);
 	}
 
 	ppc.hid1 = pll_config << 28;
+}
+
+static void ppcdrc603_exit(void)
+{
+#if LOG_CODE
+	//if (symfile) fclose(symfile);
+#endif
+	drc_exit(ppc.drc);
+}
+
+static void ppcdrc603_reset(void)
+{
+	ppc.pc = ppc.npc = 0xfff00100;
 
 	ppc_set_msr(0x40);
 	change_pc(ppc.pc);
@@ -1178,9 +1185,12 @@ static void ppcdrc603_set_irq_line(int irqline, int state)
 #endif
 
 #if (HAS_PPC602)
-static void ppcdrc602_init(void)
+static void ppcdrc602_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
+	float multiplier;
+	const ppc_config *config = _config;
 	int i;
+
 	ppc_init();
 	ppcdrc_init();
 
@@ -1286,6 +1296,14 @@ static void ppcdrc602_init(void)
 	ppc.write16_unaligned = ppc_write16_unaligned;
 	ppc.write32_unaligned = ppc_write32_unaligned;
 	ppc.write64_unaligned = ppc_write64_unaligned;
+
+	ppc.irq_callback = irqcallback;
+
+	ppc.pvr = config->pvr;
+
+	multiplier = (float)((config->bus_frequency_multiplier >> 4) & 0xf) +
+				 (float)(config->bus_frequency_multiplier & 0xf) / 10.0f;
+	bus_freq_multiplier = (int)(multiplier * 2);
 }
 
 static void ppcdrc602_exit(void)
@@ -1296,18 +1314,11 @@ static void ppcdrc602_exit(void)
 	drc_exit(ppc.drc);
 }
 
-static void ppcdrc602_reset(void *param)
+static void ppcdrc602_reset(void)
 {
-	float multiplier;
-	ppc_config *config = param;
 	ppc.pc = ppc.npc = 0xfff00100;
-	ppc.pvr = config->pvr;
 
-	multiplier = (float)((config->bus_frequency_multiplier >> 4) & 0xf) +
-				 (float)(config->bus_frequency_multiplier & 0xf) / 10.0f;
-	bus_freq_multiplier = (int)(multiplier * 2);
-
-	ppc_set_msr(0);
+	ppc_set_msr(0x40);
 	change_pc(ppc.pc);
 
 	ppc.hid0 = 1;
@@ -1486,9 +1497,6 @@ static void ppc_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + PPC_R29:			ppc.r[29] = info->i;					break;
 		case CPUINFO_INT_REGISTER + PPC_R30:			ppc.r[30] = info->i;					break;
 		case CPUINFO_INT_REGISTER + PPC_R31:			ppc.r[31] = info->i;					break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					ppc.irq_callback = info->irqcallback;	break;
 	}
 }
 
@@ -1571,7 +1579,6 @@ void ppc_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_SET_CONTEXT:					info->setcontext = ppc_set_context;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = ppc_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = ppc.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &ppc_icount;				break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = ppc_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = ppc_win_layout;				break;
@@ -1745,6 +1752,8 @@ void ppc602_get_info(UINT32 state, union cpuinfo *info)
 
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 64;					break;
 		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_PROGRAM: info->i = 32;					break;
+		case CPUINFO_INT_LOGADDR_WIDTH + ADDRESS_SPACE_PROGRAM: info->i = 32;					break;
+		case CPUINFO_INT_PAGE_SHIFT + ADDRESS_SPACE_PROGRAM: 	info->i = 17;					break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_SET_INFO:					info->setinfo = ppc602_set_info;		break;
@@ -1755,6 +1764,8 @@ void ppc602_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_READ:							info->read = ppc_read;					break;
 		case CPUINFO_PTR_WRITE:							info->write = ppc_write;				break;
 		case CPUINFO_PTR_READOP:						info->readop = ppc_readop;				break;
+		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = ppc603_reg_layout;				break;
+		case CPUINFO_PTR_TRANSLATE:						info->translate = ppc_translate_address_cb;	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "PPC602"); break;

@@ -217,7 +217,6 @@ Custom: GX61A01
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/upd7810/upd7810.h"
 #include "homedata.h"
@@ -389,7 +388,7 @@ static WRITE8_HANDLER( reikaids_upd7807_portc_w )
 	upd7807_portc = data;
 }
 
-static MACHINE_INIT( reikaids_upd7807 )
+static MACHINE_RESET( reikaids_upd7807 )
 {
 	/* on reset, ports are set as input (high impedance), therefore 0xff output */
 	reikaids_which=homedata_priority;
@@ -534,7 +533,7 @@ static WRITE8_HANDLER( pteacher_upd7807_portc_w )
 	upd7807_portc = data;
 }
 
-static MACHINE_INIT( pteacher_upd7807 )
+static MACHINE_RESET( pteacher_upd7807 )
 {
 	/* on reset, ports are set as input (high impedance), therefore 0xff output */
 	pteacher_upd7807_portc_w(0,0xff);
@@ -1330,7 +1329,7 @@ static MACHINE_DRIVER_START( reikaids )
 	MDRV_FRAMES_PER_SECOND(59)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(reikaids_upd7807)
+	MDRV_MACHINE_RESET(reikaids_upd7807)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1379,7 +1378,7 @@ static MACHINE_DRIVER_START( pteacher )
 	MDRV_FRAMES_PER_SECOND(59)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(pteacher_upd7807)
+	MDRV_MACHINE_RESET(pteacher_upd7807)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

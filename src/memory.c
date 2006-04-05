@@ -92,10 +92,10 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "osd_cpu.h"
-#include "state.h"
-#include "debugcpu.h"
-
+#include "profiler.h"
+#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#include "debug/debugcpu.h"
+#endif
 #include <stdarg.h>
 
 
@@ -291,6 +291,7 @@ static int					cur_context;					/* current CPU context */
 static opbase_handler		opbasefunc;						/* opcode base override */
 
 static int					debugger_access;				/* treat accesses as coming from the debugger */
+static int					log_unmap[ADDRESS_SPACES];		/* log unmapped memory accesses */
 
 static cpu_data				cpudata[MAX_CPU];				/* data gathered for each CPU */
 static bank_data 			bankdata[STATIC_COUNT];			/* data gathered for each bank */
@@ -415,6 +416,11 @@ static void mem_dump(void)
 
 int memory_init(void)
 {
+	int i;
+
+	for (i = 0; i < ADDRESS_SPACES; i++)
+		log_unmap[i] = 1;
+
 	/* no current context to start */
 	cur_context = -1;
 
@@ -429,27 +435,28 @@ int memory_init(void)
 
 	/* init the CPUs */
 	if (!init_cpudata())
-		return 0;
+		return 1;
+	add_exit_callback(memory_exit);
 
 	/* preflight the memory handlers and check banks */
 	if (!preflight_memory())
-		return 0;
+		return 1;
 
 	/* then fill in the tables */
 	if (!populate_memory())
-		return 0;
+		return 1;
 
 	/* allocate any necessary memory */
 	if (!allocate_memory())
-		return 0;
+		return 1;
 
 	/* find all the allocated pointers */
 	if (!find_memory())
-		return 0;
+		return 1;
 
 	/* dump the final memory configuration */
 	mem_dump();
-	return 1;
+	return 0;
 }
 
 
@@ -653,16 +660,16 @@ void memory_set_decrypted_region(int cpunum, offs_t start, offs_t end, void *bas
 				found = TRUE;
 
 				/* if this is live, adjust now */
-				if (cpunum == cur_context && opcode_entry == banknum)
+				if (cpu_getactivecpu() >= 0 && cpunum == cur_context && opcode_entry == banknum)
 					memory_set_opbase(activecpu_get_physical_pc_byte());
 			}
 			else if (bdata->base < end && bdata->end > start)
-				osd_die("memory_set_decrypted_region found straddled region %08X-%08X for CPU %d\n", start, end, cpunum);
+				fatalerror("memory_set_decrypted_region found straddled region %08X-%08X for CPU %d", start, end, cpunum);
 		}
 	}
 
 	if (!found)
-		osd_die("memory_set_decrypted_region unable to find matching region %08X-%08X for CPU %d\n", start, end, cpunum);
+		fatalerror("memory_set_decrypted_region unable to find matching region %08X-%08X for CPU %d", start, end, cpunum);
 }
 
 
@@ -790,11 +797,11 @@ void memory_configure_bank(int banknum, int startentry, int numentries, void *ba
 
 	/* validation checks */
 	if (banknum < STATIC_BANK1 || banknum > MAX_EXPLICIT_BANKS || !bankdata[banknum].used)
-		osd_die("memory_configure_bank called with invalid bank %d\n", banknum);
+		fatalerror("memory_configure_bank called with invalid bank %d", banknum);
 	if (bankdata[banknum].dynamic)
-		osd_die("memory_configure_bank called with dynamic bank %d\n", banknum);
+		fatalerror("memory_configure_bank called with dynamic bank %d", banknum);
 	if (startentry < 0 || startentry + numentries > MAX_BANK_ENTRIES)
-		osd_die("memory_configure_bank called with out-of-range entries %d-%d\n", startentry, startentry + numentries - 1);
+		fatalerror("memory_configure_bank called with out-of-range entries %d-%d", startentry, startentry + numentries - 1);
 
 	/* fill in the requested bank entries */
 	for (entrynum = startentry; entrynum < startentry + numentries; entrynum++)
@@ -814,11 +821,11 @@ void memory_configure_bank_decrypted(int banknum, int startentry, int numentries
 
 	/* validation checks */
 	if (banknum < STATIC_BANK1 || banknum > MAX_EXPLICIT_BANKS || !bankdata[banknum].used)
-		osd_die("memory_configure_bank called with invalid bank %d\n", banknum);
+		fatalerror("memory_configure_bank called with invalid bank %d", banknum);
 	if (bankdata[banknum].dynamic)
-		osd_die("memory_configure_bank called with dynamic bank %d\n", banknum);
+		fatalerror("memory_configure_bank called with dynamic bank %d", banknum);
 	if (startentry < 0 || startentry + numentries > MAX_BANK_ENTRIES)
-		osd_die("memory_configure_bank called with out-of-range entries %d-%d\n", startentry, startentry + numentries - 1);
+		fatalerror("memory_configure_bank called with out-of-range entries %d-%d", startentry, startentry + numentries - 1);
 
 	/* fill in the requested bank entries */
 	for (entrynum = startentry; entrynum < startentry + numentries; entrynum++)
@@ -835,13 +842,13 @@ void memory_set_bank(int banknum, int entrynum)
 {
 	/* validation checks */
 	if (banknum < STATIC_BANK1 || banknum > MAX_EXPLICIT_BANKS || !bankdata[banknum].used)
-		osd_die("memory_set_bank called with invalid bank %d\n", banknum);
+		fatalerror("memory_set_bank called with invalid bank %d", banknum);
 	if (bankdata[banknum].dynamic)
-		osd_die("memory_set_bank called with dynamic bank %d\n", banknum);
+		fatalerror("memory_set_bank called with dynamic bank %d", banknum);
 	if (entrynum < 0 || entrynum > MAX_BANK_ENTRIES)
-		osd_die("memory_set_bank called with out-of-range entry %d\n", entrynum);
+		fatalerror("memory_set_bank called with out-of-range entry %d", entrynum);
 	if (!bankdata[banknum].entry[entrynum])
-		osd_die("memory_set_bank called for bank %d with invalid bank entry %d\n", banknum, entrynum);
+		fatalerror("memory_set_bank called for bank %d with invalid bank entry %d", banknum, entrynum);
 
 	/* set the base */
 	bankdata[banknum].curentry = entrynum;
@@ -866,9 +873,9 @@ void memory_set_bankptr(int banknum, void *base)
 {
 	/* validation checks */
 	if (banknum < STATIC_BANK1 || banknum > MAX_EXPLICIT_BANKS || !bankdata[banknum].used)
-		osd_die("memory_set_bankptr called with invalid bank %d\n", banknum);
+		fatalerror("memory_set_bankptr called with invalid bank %d", banknum);
 	if (bankdata[banknum].dynamic)
-		osd_die("memory_set_bankptr called with dynamic bank %d\n", banknum);
+		fatalerror("memory_set_bankptr called with dynamic bank %d", banknum);
 
 	/* set the base */
 	bank_ptr[banknum] = base;
@@ -883,12 +890,34 @@ void memory_set_bankptr(int banknum, void *base)
 
 
 /*-------------------------------------------------
-    memory_set_bankptr - set the base of a bank
+    memory_set_debugger_access - set debugger access
 -------------------------------------------------*/
 
 void memory_set_debugger_access(int debugger)
 {
 	debugger_access = debugger;
+}
+
+
+/*-------------------------------------------------
+    memory_set_log_unmap - sets whether unmapped
+    memory accesses should be logged or not
+-------------------------------------------------*/
+
+void memory_set_log_unmap(int spacenum, int log)
+{
+	log_unmap[spacenum] = log;
+}
+
+
+/*-------------------------------------------------
+    memory_get_log_unmap - gets whether unmapped
+    memory accesses should be logged or not
+-------------------------------------------------*/
+
+int memory_get_log_unmap(int spacenum)
+{
+	return log_unmap[spacenum];
 }
 
 
@@ -901,7 +930,7 @@ void *_memory_install_read_handler(int cpunum, int spacenum, offs_t start, offs_
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if ((handler < 0) || (handler >= STATIC_COUNT))
-		osd_die("fatal: can only use static banks with memory_install_read_handler()\n");
+		fatalerror("fatal: can only use static banks with memory_install_read_handler()");
 	install_mem_handler(space, 0, space->dbits, 0, start, end, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 0, SPACE_SHIFT(space, start));
@@ -949,7 +978,7 @@ void *_memory_install_write_handler(int cpunum, int spacenum, offs_t start, offs
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if ((handler < 0) || (handler >= STATIC_COUNT))
-		osd_die("fatal: can only use static banks with memory_install_write_handler()\n");
+		fatalerror("fatal: can only use static banks with memory_install_write_handler()");
 	install_mem_handler(space, 1, space->dbits, 0, start, end, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 1, SPACE_SHIFT(space, start));
@@ -998,7 +1027,7 @@ void *_memory_install_read_matchmask_handler(int cpunum, int spacenum, offs_t ma
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if ((handler < 0) || (handler >= STATIC_COUNT))
-		osd_die("fatal: can only use static banks with memory_install_read_matchmask_handler()\n");
+		fatalerror("fatal: can only use static banks with memory_install_read_matchmask_handler()");
 	install_mem_handler(space, 0, space->dbits, 1, matchval, maskval, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 0, SPACE_SHIFT(space, matchval));
@@ -1047,7 +1076,7 @@ void *_memory_install_write_matchmask_handler(int cpunum, int spacenum, offs_t m
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if ((handler < 0) || (handler >= STATIC_COUNT))
-		osd_die("fatal: can only use static banks with memory_install_write_matchmask_handler()\n");
+		fatalerror("fatal: can only use static banks with memory_install_write_matchmask_handler()");
 	install_mem_handler(space, 1, space->dbits, 1, matchval, maskval, mask, mirror, (genf *)handler, 0, handler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, 1, SPACE_SHIFT(space, matchval));
@@ -1110,7 +1139,7 @@ static int init_cpudata(void)
 	memset(&cpudata, 0, sizeof(cpudata));
 
 	/* loop over CPUs */
-	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+	for (cpunum = 0; cpunum < MAX_CPU && Machine->drv->cpu[cpunum].cpu_type != CPU_DUMMY; cpunum++)
 	{
 		/* set the RAM/ROM base */
 		cpudata[cpunum].op_ram = cpudata[cpunum].op_rom = memory_region(REGION_CPU1 + cpunum);
@@ -1235,9 +1264,9 @@ static int init_addrspace(UINT8 cpunum, UINT8 spacenum)
 
 				/* validate the region */
 				if (!base)
-					osd_die("Error: CPU %d space %d memory map entry %X-%X references non-existant region %d", cpunum, spacenum, map->start, map->end, map->region);
+					fatalerror("Error: CPU %d space %d memory map entry %X-%X references non-existant region %d", cpunum, spacenum, map->start, map->end, map->region);
 				if (map->region_offs + (map->end - map->start + 1) > length)
-					osd_die("Error: CPU %d space %d memory map entry %X-%X extends beyond region %d size (%X)", cpunum, spacenum, map->start, map->end, map->region, length);
+					fatalerror("Error: CPU %d space %d memory map entry %X-%X extends beyond region %d size (%X)", cpunum, spacenum, map->start, map->end, map->region, length);
 			}
 	}
 
@@ -1253,12 +1282,8 @@ static int init_addrspace(UINT8 cpunum, UINT8 spacenum)
 	}
 
 	/* allocate memory */
-	space->read.table = malloc(1 << LEVEL1_BITS);
-	space->write.table = malloc(1 << LEVEL1_BITS);
-	if (!space->read.table)
-		osd_die("cpu #%d couldn't allocate read table\n", cpunum);
-	if (!space->write.table)
-		osd_die("cpu #%d couldn't allocate write table\n", cpunum);
+	space->read.table = malloc_or_die(1 << LEVEL1_BITS);
+	space->write.table = malloc_or_die(1 << LEVEL1_BITS);
 
 	/* initialize everything to unmapped */
 	memset(space->read.table, STATIC_UNMAP, 1 << LEVEL1_BITS);
@@ -1280,7 +1305,7 @@ static int preflight_memory(void)
 	memset(&bankdata, 0, sizeof(bankdata));
 
 	/* loop over CPUs */
-	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+	for (cpunum = 0; cpunum < MAX_CPU && Machine->drv->cpu[cpunum].cpu_type != CPU_DUMMY; cpunum++)
 		for (spacenum = 0; spacenum < ADDRESS_SPACES; spacenum++)
 			if (cpudata[cpunum].spacemask & (1 << spacenum))
 			{
@@ -1302,7 +1327,7 @@ static int preflight_memory(void)
 							val = (flags & AMEF_SPACE_MASK) >> AMEF_SPACE_SHIFT;
 							if (val != spacenum)
 							{
-								osd_die("cpu #%d has address space %d handlers in place of address space %d handlers!\n", cpunum, val, spacenum);
+								fatalerror("cpu #%d has address space %d handlers in place of address space %d handlers!", cpunum, val, spacenum);
 								return -1;
 							}
 						}
@@ -1314,7 +1339,7 @@ static int preflight_memory(void)
 							val = (val + 1) * 8;
 							if (val != space->dbits)
 							{
-								osd_die("cpu #%d uses wrong %d-bit handlers for address space %d (should be %d-bit)!\n", cpunum, val, spacenum, space->dbits);
+								fatalerror("cpu #%d uses wrong %d-bit handlers for address space %d (should be %d-bit)!", cpunum, val, spacenum, space->dbits);
 								return -1;
 							}
 						}
@@ -1349,7 +1374,7 @@ static int preflight_memory(void)
 
 							/* wire up state saving for the entry the first time we see it */
 							if (!bdata->used)
-								state_save_register_UINT8("memory", bank, "bank.entry", &bdata->curentry, 1);
+								state_save_register_item("memory", bank, bdata->curentry);
 
 							bdata->used = TRUE;
 							bdata->dynamic = FALSE;
@@ -1388,7 +1413,7 @@ static int populate_memory(void)
 	int cpunum, spacenum;
 
 	/* loop over CPUs and address spaces */
-	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+	for (cpunum = 0; cpunum < MAX_CPU && Machine->drv->cpu[cpunum].cpu_type != CPU_DUMMY; cpunum++)
 		for (spacenum = 0; spacenum < ADDRESS_SPACES; spacenum++)
 			if (cpudata[cpunum].spacemask & (1 << spacenum))
 			{
@@ -1435,9 +1460,9 @@ static void install_mem_handler(addrspace_data *space, int iswrite, int databits
 
 	/* sanity check */
 	if (space->dbits != databits)
-		osd_die("fatal: install_mem_handler called with a %d-bit handler for a %d-bit address space\n", databits, space->dbits);
+		fatalerror("fatal: install_mem_handler called with a %d-bit handler for a %d-bit address space", databits, space->dbits);
 	if (start > end)
-		osd_die("fatal: install_mem_handler called with start greater than end\n");
+		fatalerror("fatal: install_mem_handler called with start greater than end");
 
 	/* if we're installing a new bank, make sure we mark it */
 	if (HANDLER_IS_BANK(handler))
@@ -1457,7 +1482,7 @@ static void install_mem_handler(addrspace_data *space, int iswrite, int databits
 
 			/* if we're allowed to, wire up state saving for the entry */
 			if (state_save_registration_allowed())
-				state_save_register_UINT8("memory", HANDLER_TO_BANK(handler), "bank.entry", &bdata->curentry, 1);
+				state_save_register_item("memory", HANDLER_TO_BANK(handler), bdata->curentry);
 
 			VPRINTF(("Allocated new bank %d\n", HANDLER_TO_BANK(handler)));
 		}
@@ -1584,7 +1609,7 @@ static genf *assign_dynamic_bank(int cpunum, int spacenum, offs_t start, offs_t 
 		}
 
 	/* if we got here, we failed */
-	osd_die("cpu #%d: ran out of banks for RAM/ROM regions!\n", cpunum);
+	fatalerror("cpu #%d: ran out of banks for RAM/ROM regions!", cpunum);
 	return NULL;
 }
 
@@ -1775,7 +1800,7 @@ static UINT8 allocate_subtable(table_data *tabledata)
 					tabledata->subtable_alloc += SUBTABLE_ALLOC;
 					tabledata->table = realloc(tabledata->table, (1 << LEVEL1_BITS) + (tabledata->subtable_alloc << LEVEL2_BITS));
 					if (!tabledata->table)
-						osd_die("error: ran out of memory allocating memory subtable\n");
+						fatalerror("error: ran out of memory allocating memory subtable");
 				}
 
 				/* bump the usecount and return */
@@ -1785,7 +1810,7 @@ static UINT8 allocate_subtable(table_data *tabledata)
 
 		/* merge any subtables we can */
 		if (!merge_subtables(tabledata))
-			osd_die("Ran out of subtables!\n");
+			fatalerror("Ran out of subtables!");
 	}
 
 	/* hopefully this never happens */
@@ -1804,7 +1829,7 @@ static void reallocate_subtable(table_data *tabledata, UINT8 subentry)
 
 	/* sanity check */
 	if (tabledata->subtable[subindex].usecount <= 0)
-		osd_die("Called reallocate_subtable on a table with a usecount of 0\n");
+		fatalerror("Called reallocate_subtable on a table with a usecount of 0");
 
 	/* increment the usecount */
 	tabledata->subtable[subindex].usecount++;
@@ -1882,7 +1907,7 @@ static void release_subtable(table_data *tabledata, UINT8 subentry)
 
 	/* sanity check */
 	if (tabledata->subtable[subindex].usecount <= 0)
-		osd_die("Called release_subtable on a table with a usecount of 0\n");
+		fatalerror("Called release_subtable on a table with a usecount of 0");
 
 	/* decrement the usecount and clear the checksum if we're at 0 */
 	tabledata->subtable[subindex].usecount--;
@@ -1988,7 +2013,7 @@ static int allocate_memory(void)
 	int cpunum, spacenum;
 
 	/* loop over all CPUs and memory spaces */
-	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+	for (cpunum = 0; cpunum < MAX_CPU && Machine->drv->cpu[cpunum].cpu_type != CPU_DUMMY; cpunum++)
 		for (spacenum = 0; spacenum < ADDRESS_SPACES; spacenum++)
 			if (cpudata[cpunum].spacemask & (1 << spacenum))
 			{
@@ -2114,24 +2139,11 @@ static void *allocate_memory_block(int cpunum, int spacenum, offs_t start, offs_
 
 static void register_for_save(int cpunum, int spacenum, offs_t start, void *base, size_t numbytes)
 {
+	int bytes_per_element = cpudata[cpunum].space[spacenum].dbits/8;
 	char name[256];
 
 	sprintf(name, "%d.%08x-%08x", spacenum, start, (int)(start + numbytes - 1));
-	switch (cpudata[cpunum].space[spacenum].dbits)
-	{
-		case 8:
-			state_save_register_UINT8 ("memory", cpunum, name, base, numbytes);
-			break;
-		case 16:
-			state_save_register_UINT16("memory", cpunum, name, base, numbytes/2);
-			break;
-		case 32:
-			state_save_register_UINT32("memory", cpunum, name, base, numbytes/4);
-			break;
-		case 64:
-			state_save_register_UINT64("memory", cpunum, name, base, numbytes/8);
-			break;
-	}
+	state_save_register_memory("memory", cpunum, name, base, bytes_per_element, numbytes / bytes_per_element);
 }
 
 
@@ -2222,7 +2234,7 @@ static int find_memory(void)
 	int cpunum, spacenum, banknum;
 
 	/* loop over CPUs and address spaces */
-	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+	for (cpunum = 0; cpunum < MAX_CPU && Machine->drv->cpu[cpunum].cpu_type != CPU_DUMMY; cpunum++)
 		for (spacenum = 0; spacenum < ADDRESS_SPACES; spacenum++)
 			if (cpudata[cpunum].spacemask & (1 << spacenum))
 			{
@@ -2897,116 +2909,116 @@ UINT64 cpu_readop_arg64_safe(offs_t offset)
 
 static READ8_HANDLER( mrh8_unmap_program )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory byte read from %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset));
+	if (log_unmap[ADDRESS_SPACE_PROGRAM] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory byte read from %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset));
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM].unmap;
 }
 static READ16_HANDLER( mrh16_unmap_program )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory word read from %08X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*2), mem_mask ^ 0xffff);
+	if (log_unmap[ADDRESS_SPACE_PROGRAM] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory word read from %08X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*2), mem_mask ^ 0xffff);
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM].unmap;
 }
 static READ32_HANDLER( mrh32_unmap_program )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory dword read from %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*4), mem_mask ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_PROGRAM] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory dword read from %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*4), mem_mask ^ 0xffffffff);
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM].unmap;
 }
 static READ64_HANDLER( mrh64_unmap_program )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory qword read from %08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*8), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_PROGRAM] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory qword read from %08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*8), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM].unmap;
 }
 
 static WRITE8_HANDLER( mwh8_unmap_program )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory byte write to %08X = %02X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset), data);
+	if (log_unmap[ADDRESS_SPACE_PROGRAM] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory byte write to %08X = %02X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset), data);
 }
 static WRITE16_HANDLER( mwh16_unmap_program )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory word write to %08X = %04X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*2), data, mem_mask ^ 0xffff);
+	if (log_unmap[ADDRESS_SPACE_PROGRAM] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory word write to %08X = %04X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*2), data, mem_mask ^ 0xffff);
 }
 static WRITE32_HANDLER( mwh32_unmap_program )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory dword write to %08X = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*4), data, mem_mask ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_PROGRAM] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory dword write to %08X = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*4), data, mem_mask ^ 0xffffffff);
 }
 static WRITE64_HANDLER( mwh64_unmap_program )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory qword write to %08X = %08X%08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*8), (int)(data >> 32), (int)(data & 0xffffffff), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_PROGRAM] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped program memory qword write to %08X = %08X%08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_PROGRAM], offset*8), (int)(data >> 32), (int)(data & 0xffffffff), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
 }
 
 static READ8_HANDLER( mrh8_unmap_data )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory byte read from %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset));
+	if (log_unmap[ADDRESS_SPACE_DATA] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory byte read from %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset));
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA].unmap;
 }
 static READ16_HANDLER( mrh16_unmap_data )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory word read from %08X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*2), mem_mask ^ 0xffff);
+	if (log_unmap[ADDRESS_SPACE_DATA] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory word read from %08X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*2), mem_mask ^ 0xffff);
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA].unmap;
 }
 static READ32_HANDLER( mrh32_unmap_data )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory dword read from %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*4), mem_mask ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_DATA] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory dword read from %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*4), mem_mask ^ 0xffffffff);
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA].unmap;
 }
 static READ64_HANDLER( mrh64_unmap_data )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory qword read from %08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*8), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_DATA] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory qword read from %08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*8), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA].unmap;
 }
 
 static WRITE8_HANDLER( mwh8_unmap_data )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory byte write to %08X = %02X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset), data);
+	if (log_unmap[ADDRESS_SPACE_DATA] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory byte write to %08X = %02X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset), data);
 }
 static WRITE16_HANDLER( mwh16_unmap_data )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory word write to %08X = %04X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*2), data, mem_mask ^ 0xffff);
+	if (log_unmap[ADDRESS_SPACE_DATA] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory word write to %08X = %04X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*2), data, mem_mask ^ 0xffff);
 }
 static WRITE32_HANDLER( mwh32_unmap_data )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory dword write to %08X = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*4), data, mem_mask ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_DATA] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory dword write to %08X = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*4), data, mem_mask ^ 0xffffffff);
 }
 static WRITE64_HANDLER( mwh64_unmap_data )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory qword write to %08X = %08X%08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*8), (int)(data >> 32), (int)(data & 0xffffffff), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_DATA] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped data memory qword write to %08X = %08X%08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_DATA], offset*8), (int)(data >> 32), (int)(data & 0xffffffff), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
 }
 
 static READ8_HANDLER( mrh8_unmap_io )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O byte read from %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset));
+	if (log_unmap[ADDRESS_SPACE_IO] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O byte read from %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset));
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO].unmap;
 }
 static READ16_HANDLER( mrh16_unmap_io )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O word read from %08X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*2), mem_mask ^ 0xffff);
+	if (log_unmap[ADDRESS_SPACE_IO] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O word read from %08X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*2), mem_mask ^ 0xffff);
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO].unmap;
 }
 static READ32_HANDLER( mrh32_unmap_io )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O dword read from %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*4), mem_mask ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_IO] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O dword read from %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*4), mem_mask ^ 0xffffffff);
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO].unmap;
 }
 static READ64_HANDLER( mrh64_unmap_io )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O qword read from %08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*8), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_IO] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O qword read from %08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*8), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
 	return cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO].unmap;
 }
 
 static WRITE8_HANDLER( mwh8_unmap_io )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O byte write to %08X = %02X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset), data);
+	if (log_unmap[ADDRESS_SPACE_IO] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O byte write to %08X = %02X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset), data);
 }
 static WRITE16_HANDLER( mwh16_unmap_io )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O word write to %08X = %04X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*2), data, mem_mask ^ 0xffff);
+	if (log_unmap[ADDRESS_SPACE_IO] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O word write to %08X = %04X & %04X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*2), data, mem_mask ^ 0xffff);
 }
 static WRITE32_HANDLER( mwh32_unmap_io )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O dword write to %08X = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*4), data, mem_mask ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_IO] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O dword write to %08X = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*4), data, mem_mask ^ 0xffffffff);
 }
 static WRITE64_HANDLER( mwh64_unmap_io )
 {
-	if (!debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O qword write to %08X = %08X%08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*8), (int)(data >> 32), (int)(data & 0xffffffff), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
+	if (log_unmap[ADDRESS_SPACE_IO] && !debugger_access) logerror("cpu #%d (PC=%08X): unmapped I/O qword write to %08X = %08X%08X & %08X%08X\n", cpu_getactivecpu(), activecpu_get_pc(), INV_SPACE_SHIFT(&cpudata[cpu_getactivecpu()].space[ADDRESS_SPACE_IO], offset*8), (int)(data >> 32), (int)(data & 0xffffffff), (int)(mem_mask >> 32) ^ 0xffffffff, (int)(mem_mask & 0xffffffff) ^ 0xffffffff);
 }
 
 
@@ -3229,7 +3241,7 @@ void memory_dump(FILE *file)
 		return;
 
 	/* loop over CPUs */
-	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+	for (cpunum = 0; cpunum < MAX_CPU && Machine->drv->cpu[cpunum].cpu_type != CPU_DUMMY; cpunum++)
 		for (spacenum = 0; spacenum < ADDRESS_SPACES; spacenum++)
 			if (cpudata[cpunum].space[spacenum].abits)
 			{

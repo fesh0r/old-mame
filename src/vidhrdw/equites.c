@@ -12,7 +12,6 @@ drivers by Acho A. Tang
 // Directives
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 #define BMPAD 8
 #define BMW_l2 9
@@ -269,7 +268,7 @@ VIDEO_START( splndrbt )
 	return (0);
 }
 
-MACHINE_INIT( splndrbt )
+MACHINE_RESET( splndrbt )
 {
 	splndrbt_video_reset();
 }

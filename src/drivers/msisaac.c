@@ -9,7 +9,6 @@
 #include <math.h>
 #include "driver.h"
 #include "cpu/z80/z80.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 #include "sound/msm5232.h"
 
@@ -236,7 +235,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xdfff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(MWA8_RAM)
 
-	AM_RANGE(0xe800, 0xefff) AM_WRITE(paletteram_xxxxRRRRGGGGBBBB_w) AM_BASE(&paletteram)
+	AM_RANGE(0xe800, 0xefff) AM_WRITE(paletteram_xxxxRRRRGGGGBBBB_le_w) AM_BASE(&paletteram)
 
 //AM_RANGE(0xf400, 0xf43f) AM_WRITE(msisaac_fg_colorram_w) AM_BASE(&colorram)
 
@@ -280,7 +279,7 @@ ADDRESS_MAP_END
 
 static int vol_ctrl[16];
 
-static MACHINE_INIT( ta7630 )
+static MACHINE_RESET( ta7630 )
 {
 	int i;
 
@@ -547,7 +546,7 @@ static MACHINE_DRIVER_START( msisaac )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(ta7630)
+	MDRV_MACHINE_RESET(ta7630)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

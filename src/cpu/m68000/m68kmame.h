@@ -6,9 +6,7 @@
 /* ======================================================================== */
 
 #include "driver.h"
-#include "cpuintrf.h"
-#include "memory.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "m68000.h"
 
 /* Configuration switches (see m68kconf.h for explanation) */

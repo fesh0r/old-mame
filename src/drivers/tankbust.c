@@ -17,7 +17,6 @@ To do:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 
 
@@ -383,7 +382,7 @@ static MACHINE_DRIVER_START( tankbust )
 
 	MDRV_INTERLEAVE(100)
 
-//MDRV_MACHINE_INIT( ... )
+//MDRV_MACHINE_RESET( ... )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )

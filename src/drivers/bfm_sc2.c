@@ -2,6 +2,7 @@
 
   Bellfruit scorpion2/3 driver, (under heavy construction !!!)
 
+  07-03-2006: El Condor: Recoded to more accurately represent the hardware setup.
   18-01-2006: Cleaned up for MAME inclusion
   19-08-2005: Re-Animator
 
@@ -165,7 +166,7 @@ static void e2ram_reset(void);
 
 // global vars ////////////////////////////////////////////////////////////
 
-int sc2gui_update_mmtr;	// bit pattern which mechanical meter needs updating
+static int sc2gui_update_mmtr;	// bit pattern which mechanical meter needs updating
 
 // local vars /////////////////////////////////////////////////////////////
 
@@ -174,11 +175,6 @@ static size_t		  nvram_size; // size of NV ram
 static UINT8 key[16];	// security device on gamecard (video games only)
 
 static UINT8 e2ram[1024]; // x24C08 e2ram
-
-static long const rombank_address[] =
-{
-	0x10000, 0x02000, 0x04000, 0x06000
-};
 
 static int mmtr_latch;		  // mechanical meter latch
 static int triac_latch;		  // payslide triac latch
@@ -196,7 +192,6 @@ static int irq_timer_stat;
 static int expansion_latch;
 static int global_volume;	  // 0-31
 static int volume_override;	  // 0 / 1
-static int selected_rom_bank; // selected ROM bank (0-3)
 
 int adder2_data_from_sc2;	// data available for adder from sc2
 int adder2_sc2data;			// data
@@ -228,7 +223,7 @@ static int watchdog_kicked;
 // user interface stuff ///////////////////////////////////////////////////
 
 static UINT8 Lamps[256];		  // 256 multiplexed lamps
-UINT8 sc2_Inputs[64];			  // ??  multiplexed inputs,
+static UINT8 sc2_Inputs[64];			  // ??  multiplexed inputs,
 								  // need to be hooked to buttons
 
 static UINT8 input_override[64];  // bit pattern, bit set means this input is overriden and cannot be changed with switches
@@ -252,7 +247,7 @@ static UINT8 input_override[64];  // bit pattern, bit set means this input is ov
 */
 ///////////////////////////////////////////////////////////////////////////
 
-void send_to_adder(int data)
+static void send_to_adder(int data)
 {
 	adder2_data_from_sc2 = 1;		// set flag, data from scorpion2 board available
 	adder2_sc2data       = data;	// store data
@@ -282,7 +277,7 @@ int read_from_sc2(void)
 
 ///////////////////////////////////////////////////////////////////////////
 
-int  receive_from_adder(void)
+static int receive_from_adder(void)
 {
 	int data = sc2_adderdata;
 
@@ -344,7 +339,6 @@ void on_scorpion2_reset(void)
 	irq_status        = 0;
 	timer_enabled     = 1;
 	coin_inhibits     = 0;
-	selected_rom_bank = 0;
 	irq_timer_stat    = 0;
 	expansion_latch   = 0;
 	global_volume     = 0;
@@ -404,14 +398,16 @@ void on_scorpion2_reset(void)
 	{
 		UINT8 *rom = memory_region(REGION_CPU1);
 
-		selected_rom_bank = 3;
-		memory_set_bankptr(1,&rom[ rombank_address[ selected_rom_bank  ] ]);
+		memory_configure_bank(1, 0, 1, &rom[0x10000], 0);
+		memory_configure_bank(1, 1, 3, &rom[0x02000], 0x02000);
+
+		memory_set_bank(1,3);
 	}
 }
 
 ///////////////////////////////////////////////////////////////////////////
 
-void Scorpion2_SetSwitchState(int strobe, int data, int state)
+static void Scorpion2_SetSwitchState(int strobe, int data, int state)
 {
 	//logerror("setstate(%0x:%0x, %d) ", strobe, data, state);
 	if ( strobe < 11 && data < 8 )
@@ -536,11 +532,7 @@ static WRITE8_HANDLER( watchdog_w )
 
 static WRITE8_HANDLER( bankswitch_w )
 {
-	UINT8 *rom = memory_region(REGION_CPU1);
-
-	selected_rom_bank = data;
-
-	memory_set_bankptr(1,&rom[ rombank_address[ data & 0x03 ] ]);
+	memory_set_bank(1,data & 0x03);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -562,7 +554,7 @@ static INTERRUPT_GEN( timer_irq )
 		watchdog_cnt++;
 		if ( watchdog_cnt > 2 )	// this is a hack, i don't know what the watchdog timeout is, 3 IRQ's works fine
 		{  // reset board
-			machine_reset();		// reset entire machine. CPU 0 should be enough, but that doesn't seem to work !!
+			mame_schedule_soft_reset();		// reset entire machine. CPU 0 should be enough, but that doesn't seem to work !!
 			on_scorpion2_reset();
 			return;
 		}
@@ -871,9 +863,9 @@ static WRITE8_HANDLER( nec_latch_w )
 	//logerror("start sound %d bank %d\n", data, bank);
 	upd7759_set_bank_base(0, bank*0x20000);
 
-	upd7759_port_w(0, data&0x3F);	  // setup sample
+	upd7759_port_w(0, data&0x3F);	// setup sample
 	upd7759_start_w(0, 0);
-	upd7759_start_w(0, 1);	  // start
+	upd7759_start_w(0, 1);			// start
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1574,7 +1566,6 @@ static const UINT8 DataDecode[]=
 static UINT8 codec_data[256];
 
 ///////////////////////////////////////////////////////////////////////////
-
 static void decode_mainrom(int rom_region)
 {
 	UINT8 *tmp, *rom;
@@ -1630,7 +1621,7 @@ static void decode_mainrom(int rom_region)
 
 // machine init (called only once) ////////////////////////////////////////
 
-static MACHINE_INIT( init )
+static MACHINE_RESET( init )
 {
 	// reset the board //////////////////////////////////////////////////////
 
@@ -2636,15 +2627,15 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( scorpion2_vid )
 
-  MDRV_MACHINE_INIT( adder2_init_vid )				  // main scorpion2 board initialisation
+  MDRV_MACHINE_RESET( adder2_init_vid )					// main scorpion2 board initialisation
 
-  MDRV_INTERLEAVE(16)						  // needed for serial communication !!
+  MDRV_INTERLEAVE(16)									// needed for serial communication !!
 
-  MDRV_CPU_ADD_TAG("main", M6809, 2000000L )  // 6809 CPU at 2 Mhz
+  MDRV_CPU_ADD_TAG("main", M6809, 2000000 )				// 6809 CPU at 2 Mhz
 
-  MDRV_CPU_PROGRAM_MAP(memmap_vid,0)		  // setup scorpion2 board memorymap
+  MDRV_CPU_PROGRAM_MAP(memmap_vid,0)					// setup scorpion2 board memorymap
 
-  MDRV_CPU_PERIODIC_INT(timer_irq, TIME_IN_HZ(1000) )	  // generate 1000 IRQ's per second
+  MDRV_CPU_PERIODIC_INT(timer_irq, TIME_IN_HZ(1000) )	// generate 1000 IRQ's per second
 
   MDRV_NVRAM_HANDLER(nvram)
 
@@ -2653,6 +2644,7 @@ static MACHINE_DRIVER_START( scorpion2_vid )
   MDRV_VISIBLE_AREA(  0, 400-1, 0, 300-1)
   MDRV_FRAMES_PER_SECOND(50)
   MDRV_VIDEO_START( adder2)
+  MDRV_VIDEO_RESET( adder2)
   MDRV_VIDEO_UPDATE(adder2)
 
   MDRV_PALETTE_LENGTH(16)
@@ -2660,9 +2652,9 @@ static MACHINE_DRIVER_START( scorpion2_vid )
   MDRV_PALETTE_INIT(adder2)
   MDRV_GFXDECODE(adder2_gfxdecodeinfo)
 
-  MDRV_CPU_ADD_TAG("adder2", M6809, 2000000L )  // adder2 board 6809 CPU at 2 Mhz
-  MDRV_CPU_PROGRAM_MAP(adder2_memmap,0)			// setup adder2 board memorymap
-  MDRV_CPU_VBLANK_INT(adder2_vbl, 1);			// board has a VBL IRQ
+  MDRV_CPU_ADD_TAG("adder2", M6809, 2000000 )			// adder2 board 6809 CPU at 2 Mhz
+  MDRV_CPU_PROGRAM_MAP(adder2_memmap,0)					// setup adder2 board memorymap
+  MDRV_CPU_VBLANK_INT(adder2_vbl, 1);					// board has a VBL IRQ
 
   MDRV_SPEAKER_STANDARD_MONO("mono")
   MDRV_SOUND_ADD(UPD7759, UPD7759_STANDARD_CLOCK)
@@ -3136,7 +3128,7 @@ GAME ( 1995, paradice, 0,		  scorpion2_vid, paradice,  pokio,      0,       "BFM
 GAME ( 1996, pyramid,  0,		  scorpion2_vid, pyramid,   pyramid,    0,       "BFM/ELAM", "Pyramid (Dutch, Game Card 95-750-898)",0)
 
 GAME ( 1996, sltblgtk, 0,		  scorpion2_vid, sltblgtk,  sltsbelg,   0,       "BFM/ELAM", "Slots (Belgian Token, Game Card 95-750-943)",0)
-GAME ( 1996, sltblgpo, 0, 		  scorpion2_vid, sltblgpo,  sltsbelg,   0,       "BFM/ELAM", "Slots (Belgian Cash, Game Card 95-770-938)",0)
+GAME ( 1996, sltblgpo, 0, 		  scorpion2_vid, sltblgpo,  sltsbelg,   0,       "BFM/ELAM", "Slots (Belgian Cash, Game Card 95-750-938)",0)
 GAME ( 1996, sltblgp1, sltblgpo,  scorpion2_vid, sltblgpo,  sltsbelg,   0,       "BFM/ELAM", "Slots (Belgian Cash, Game Card 95-752-008)",0)
 GAME ( 1997, gldncrwn, 0,		  scorpion2_vid, gldncrwn,  gldncrwn,   0,       "BFM/ELAM", "Golden Crown (Dutch, Game Card 95-752-011)",0)
 

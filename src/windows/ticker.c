@@ -13,6 +13,7 @@
 #include <mmsystem.h>
 
 // MAME headers
+#include "osdepend.h"
 #include "driver.h"
 #include "x86drc.h"
 
@@ -39,7 +40,7 @@ cycles_t		(*cycle_counter)(void) = init_cycle_counter;
 cycles_t		(*ticks_counter)(void) = init_cycle_counter;
 cycles_t		cycles_per_sec;
 int				win_force_rdtsc;
-int				win_high_priority;
+int				win_priority;
 
 
 
@@ -52,18 +53,6 @@ static cycles_t suspend_time;
 
 
 //============================================================
-//  has_rdtsc
-//============================================================
-
-static int has_rdtsc(void)
-{
-	return (drc_x86_get_features() & CPUID_FEATURES_TSC) ? TRUE : FALSE;
-}
-
-
-
-
-//============================================================
 //  init_cycle_counter
 //============================================================
 
@@ -71,7 +60,7 @@ static cycles_t init_cycle_counter(void)
 {
 	cycles_t start, end;
 	DWORD a, b;
-	int priority;
+	int priority = GetThreadPriority(GetCurrentThread());
 	LARGE_INTEGER frequency;
 
 	suspend_adjustment = 0;
@@ -81,37 +70,20 @@ static cycles_t init_cycle_counter(void)
 	{
 		// use performance counter if available as it is constant
 		cycle_counter = performance_cycle_counter;
+		ticks_counter = rdtsc_cycle_counter;
 		logerror("using performance counter for timing ... ");
-		cycles_per_sec = frequency.QuadPart;
 
-		if (has_rdtsc())
-		{
-			ticks_counter = rdtsc_cycle_counter;
-		}
-		else
-		{
-			ticks_counter = nop_cycle_counter;
-		}
+		cycles_per_sec = frequency.QuadPart;
 	}
 	else
 	{
-		if (has_rdtsc())
-		{
-			// if the RDTSC instruction is available use it because
-			// it is more precise and has less overhead than timeGetTime()
-			cycle_counter = rdtsc_cycle_counter;
-			ticks_counter = rdtsc_cycle_counter;
-			logerror("using RDTSC for timing ... ");
-		}
-		else
-		{
-			cycle_counter = time_cycle_counter;
-			ticks_counter = nop_cycle_counter;
-			logerror("using timeGetTime for timing ... ");
-		}
+		// if the RDTSC instruction is available use it because
+		// it is more precise and has less overhead than timeGetTime()
+		cycle_counter = rdtsc_cycle_counter;
+		ticks_counter = rdtsc_cycle_counter;
+		logerror("using RDTSC for timing ... ");
 
 		// temporarily set our priority higher
-		priority = GetThreadPriority(GetCurrentThread());
 		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
 
 		// wait for an edge on the timeGetTime call
@@ -135,16 +107,17 @@ static cycles_t init_cycle_counter(void)
 
 		// compute ticks_per_sec
 		cycles_per_sec = (end - start) * 4;
-
-		// restore our priority
-		// raise it if the config option is set and the debugger is not active
-		if (win_high_priority && !options.mame_debug && priority == THREAD_PRIORITY_NORMAL)
-			priority = THREAD_PRIORITY_ABOVE_NORMAL;
-		SetThreadPriority(GetCurrentThread(), priority);
 	}
+
+	// restore our priority
+	// raise it if the config option is set and the debugger is not active
+	if (win_priority < priority || !options.mame_debug )
+		priority = win_priority;
+	SetThreadPriority(GetCurrentThread(), priority);
 
 	// log the results
 	logerror("cycles/second = %u\n", (int)cycles_per_sec);
+	logerror("thread priority = %d\n", priority );
 
 	// return the current cycle count
 	return (*cycle_counter)();

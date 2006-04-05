@@ -332,13 +332,11 @@ Notes:
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m68000/m68k.h"
 #include "system24.h"
 #include "system16.h"
 #include "vidhrdw/segaic24.h"
 #include "sound/ym2151.h"
-#include "debug/debugcpu.h"
 #include "sound/dac.h"
 #include "sound/2151intf.h"
 
@@ -697,7 +695,7 @@ static void reset_reset(void)
 			cpunum_set_input_line(1, INPUT_LINE_HALT, CLEAR_LINE);
 			cpunum_set_input_line(1, INPUT_LINE_RESET, PULSE_LINE);
 //          printf("enable 2nd cpu!\n");
-//          debug_halt_on_next_instruction();
+//          DEBUGGER_BREAK;
 			s24_fd1094_machine_init();
 
 		} else
@@ -889,7 +887,6 @@ static void gground_generate_kludge_irq(int param)
 }
 
 
-#include "machine/random.h"
 static READ16_HANDLER(irq_r)
 {
 	/* These hacks are for Gain Ground */
@@ -1008,15 +1005,15 @@ static ADDRESS_MAP_START( system24_cpu1_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xcc0006, 0xcc0007) AM_READWRITE(mlatch_r, mlatch_w)
 AM_RANGE(0xd00300, 0xd00301) AM_WRITE(MWA16_NOP)
 	AM_RANGE(0xf00000, 0xf3ffff) AM_RAM AM_SHARE(3)
-	AM_RANGE(0xf40000, 0xf7ffff) AM_ROM AM_SHARE(1)
+	AM_RANGE(0xf40000, 0xf7ffff) AM_READ(MRA16_RAM) AM_SHARE(1)
 	AM_RANGE(0xf80000, 0xffffff) AM_RAM AM_SHARE(2)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( system24_cpu2_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_RAM AM_SHARE(3) AM_BASE(&s24_mainram1)			// RAM here overrides the ROM mirror
-	AM_RANGE(0x040000, 0x07ffff) AM_ROM AM_SHARE(1)
+	AM_RANGE(0x040000, 0x07ffff) AM_READ(MRA16_RAM) AM_SHARE(1)
 	AM_RANGE(0x080000, 0x0fffff) AM_RAM AM_SHARE(2)
-	AM_RANGE(0x100000, 0x13ffff) AM_MIRROR(0x040000) AM_ROM AM_SHARE(1)
+	AM_RANGE(0x100000, 0x13ffff) AM_MIRROR(0x040000) AM_READ(MRA16_RAM) AM_SHARE(1)
 	AM_RANGE(0x200000, 0x20ffff) AM_READWRITE(sys24_tile_r, sys24_tile_w)
 	AM_RANGE(0x220000, 0x220001) AM_WRITENOP		// Unknown, always 0
 	AM_RANGE(0x240000, 0x240001) AM_WRITENOP		// Horizontal synchronization register
@@ -1041,7 +1038,7 @@ static ADDRESS_MAP_START( system24_cpu2_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xcc0006, 0xcc0007) AM_READWRITE(mlatch_r, mlatch_w)
 AM_RANGE(0xd00300, 0xd00301) AM_WRITE(MWA16_NOP)
 	AM_RANGE(0xf00000, 0xf3ffff) AM_RAM AM_SHARE(3)
-	AM_RANGE(0xf40000, 0xf7ffff) AM_ROM AM_SHARE(1)
+	AM_RANGE(0xf40000, 0xf7ffff) AM_READ(MRA16_RAM) AM_SHARE(1)
 	AM_RANGE(0xf80000, 0xffffff) AM_RAM AM_SHARE(2)
 ADDRESS_MAP_END
 
@@ -1207,7 +1204,7 @@ static NVRAM_HANDLER(system24)
 		mame_fread(file, memory_region(REGION_USER2), 2*track_size);
 }
 
-static MACHINE_INIT(system24)
+static MACHINE_RESET(system24)
 {
 	cpunum_set_input_line(1, INPUT_LINE_HALT, ASSERT_LINE);
 	prev_resetcontrol = resetcontrol = 0x06;
@@ -2241,7 +2238,7 @@ static MACHINE_DRIVER_START( system24 )
 	MDRV_VBLANK_DURATION(100)
 	MDRV_INTERLEAVE(4)
 
-	MDRV_MACHINE_INIT(system24)
+	MDRV_MACHINE_RESET(system24)
 	MDRV_NVRAM_HANDLER(system24)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)

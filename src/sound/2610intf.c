@@ -11,8 +11,8 @@
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "state.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "ay8910.h"
 #include "2610intf.h"
 #include "fm.h"
@@ -449,7 +449,7 @@ WRITE16_HANDLER( YM2610_data_port_1_B_lsb_w ){
  * Generic get_info
  **************************************************************************/
 
-static void ym2610_set_info(void *token, UINT32 state, union sndinfo *info)
+static void ym2610_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -458,7 +458,7 @@ static void ym2610_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void ym2610_get_info(void *token, UINT32 state, union sndinfo *info)
+void ym2610_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -484,7 +484,7 @@ void ym2610_get_info(void *token, UINT32 state, union sndinfo *info)
  * Generic get_info
  **************************************************************************/
 
-static void ym2610b_set_info(void *token, UINT32 state, union sndinfo *info)
+static void ym2610b_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -493,7 +493,7 @@ static void ym2610b_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void ym2610b_get_info(void *token, UINT32 state, union sndinfo *info)
+void ym2610b_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

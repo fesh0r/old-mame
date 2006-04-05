@@ -11,8 +11,8 @@
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "state.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "sound/fm.h"
 #include "sound/2612intf.h"
 
@@ -356,7 +356,7 @@ WRITE8_HANDLER( YM3438_data_port_1_B_w ){
  * Generic get_info
  **************************************************************************/
 
-static void ym2612_set_info(void *token, UINT32 state, union sndinfo *info)
+static void ym2612_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -365,7 +365,7 @@ static void ym2612_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void ym2612_get_info(void *token, UINT32 state, union sndinfo *info)
+void ym2612_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -390,7 +390,7 @@ void ym2612_get_info(void *token, UINT32 state, union sndinfo *info)
  * Generic get_info
  **************************************************************************/
 
-static void ym3438_set_info(void *token, UINT32 state, union sndinfo *info)
+static void ym3438_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -399,7 +399,7 @@ static void ym3438_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void ym3438_get_info(void *token, UINT32 state, union sndinfo *info)
+void ym3438_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

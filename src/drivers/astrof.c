@@ -42,8 +42,6 @@ Also....
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
-#include "machine/random.h"
 #include "sound/samples.h"
 
 extern unsigned char *astrof_color;
@@ -141,7 +139,7 @@ static INTERRUPT_GEN( astrof_interrupt )
 		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static MACHINE_INIT( abattle )
+static MACHINE_RESET( abattle )
 {
 	abattle_count = 0;
 }
@@ -332,7 +330,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( abattle )
 	MDRV_IMPORT_FROM(astrof)
-	MDRV_MACHINE_INIT(abattle)
+	MDRV_MACHINE_RESET(abattle)
 MACHINE_DRIVER_END
 
 

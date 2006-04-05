@@ -1,9 +1,8 @@
 /* IBM/Motorola PowerPC 4xx/6xx Emulator */
 
 #include <setjmp.h>
-#include "driver.h"
 #include "ppc.h"
-#include "mamedbg.h"
+#include "debugger.h"
 
 #if (HAS_PPC603)
 void ppc603_exception(int exception);
@@ -180,12 +179,21 @@ typedef struct {
 	UINT32 srr3;
 	UINT32 hid0;
 	UINT32 hid1;
+	UINT32 hid2;
 	UINT32 sdr1;
 	UINT32 sprg[4];
 
 	UINT32 dsisr;
 	UINT32 dar;
 	UINT32 ear;
+	UINT32 dmiss;
+	UINT32 dcmp;
+	UINT32 hash1;
+	UINT32 hash2;
+	UINT32 imiss;
+	UINT32 icmp;
+	UINT32 rpa;
+
 
 	BATENT ibat[4];
 	BATENT dbat[4];
@@ -494,13 +502,20 @@ INLINE void ppc_set_spr(int spr, UINT32 value)
 				ppc_write_timebase_h(value);
 				return;
 
-			case SPR603E_HID0:
-				ppc.hid0 = value;
-				return;
+			case SPR603E_HID0:			ppc.hid0 = value; return;
+			case SPR603E_HID1:			ppc.hid1 = value; return;
+			case SPR603E_HID2:			ppc.hid2 = value; return;
 
-			case SPR603E_HID1:
-				ppc.hid1 = value;
-				return;
+			case SPR603E_DSISR:			ppc.dsisr = value; return;
+			case SPR603E_DAR:			ppc.dar = value; return;
+			case SPR603E_EAR:			ppc.ear = value; return;
+			case SPR603E_DMISS:			ppc.dmiss = value; return;
+			case SPR603E_DCMP:			ppc.dcmp = value; return;
+			case SPR603E_HASH1:			ppc.hash1 = value; return;
+			case SPR603E_HASH2:			ppc.hash2 = value; return;
+			case SPR603E_IMISS:			ppc.imiss = value; return;
+			case SPR603E_ICMP:			ppc.icmp = value; return;
+			case SPR603E_RPA:			ppc.rpa = value; return;
 
 			case SPR603E_IBAT0L:		ppc.ibat[0].l = value; return;
 			case SPR603E_IBAT0U:		ppc.ibat[0].u = value; return;
@@ -588,7 +603,7 @@ INLINE void ppc_set_spr(int spr, UINT32 value)
 	}
 #endif
 
-	osd_die("ppc: set_spr: unknown spr %d (%03X) !\n", spr, spr);
+	fatalerror("ppc: set_spr: unknown spr %d (%03X) !", spr, spr);
 }
 
 INLINE UINT32 ppc_get_spr(int spr)
@@ -652,22 +667,30 @@ INLINE UINT32 ppc_get_spr(int spr)
 		switch (spr)
 		{
 			case SPR603E_TBL_R:
-				osd_die("ppc: get_spr: TBL_R \n");
+				fatalerror("ppc: get_spr: TBL_R ");
 				break;
 
 			case SPR603E_TBU_R:
-				osd_die("ppc: get_spr: TBU_R \n");
+				fatalerror("ppc: get_spr: TBU_R ");
 				break;
 
 			case SPR603E_TBL_W:		return (UINT32)(ppc_read_timebase());
 			case SPR603E_TBU_W:		return (UINT32)(ppc_read_timebase() >> 32);
 			case SPR603E_HID0:		return ppc.hid0;
 			case SPR603E_HID1:		return ppc.hid1;
+			case SPR603E_HID2:		return ppc.hid2;
 			case SPR603E_DEC:		return read_decrementer();
 			case SPR603E_SDR1:		return ppc.sdr1;
 			case SPR603E_DSISR:		return ppc.dsisr;
 			case SPR603E_DAR:		return ppc.dar;
 			case SPR603E_EAR:		return ppc.ear;
+			case SPR603E_DMISS:		return ppc.dmiss;
+			case SPR603E_DCMP:		return ppc.dcmp;
+			case SPR603E_HASH1:		return ppc.hash1;
+			case SPR603E_HASH2:		return ppc.hash2;
+			case SPR603E_IMISS:		return ppc.imiss;
+			case SPR603E_ICMP:		return ppc.icmp;
+			case SPR603E_RPA:		return ppc.rpa;
 			case SPR603E_IBAT0L:	return ppc.ibat[0].l;
 			case SPR603E_IBAT0U:	return ppc.ibat[0].u;
 			case SPR603E_IBAT1L:	return ppc.ibat[1].l;
@@ -688,7 +711,7 @@ INLINE UINT32 ppc_get_spr(int spr)
 	}
 #endif
 
-	osd_die("ppc: get_spr: unknown spr %d (%03X) !\n", spr, spr);
+	fatalerror("ppc: get_spr: unknown spr %d (%03X) !", spr, spr);
 	return 0;
 }
 
@@ -704,7 +727,7 @@ static void ppc_write64_translated(offs_t address, UINT64 data);
 INLINE void ppc_set_msr(UINT32 value)
 {
 	if( value & (MSR_ILE | MSR_LE) )
-		osd_die("ppc: set_msr: little_endian mode not supported !\n");
+		fatalerror("ppc: set_msr: little_endian mode not supported !");
 
 	MSR = value;
 
@@ -848,8 +871,10 @@ void ppc_init(void)
 
 // !!! probably should move this stuff elsewhere !!!
 #if HAS_PPC403
-static void ppc403_init(void)
+static void ppc403_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
+	const ppc_config *config = _config;
+
 	ppc_init();
 
 	/* PPC403 specific opcodes */
@@ -879,6 +904,10 @@ static void ppc403_init(void)
 	ppc.read32_unaligned = ppc403_read32_unaligned;
 	ppc.write16_unaligned = ppc403_write16_unaligned;
 	ppc.write32_unaligned = ppc403_write32_unaligned;
+
+	ppc.irq_callback = irqcallback;
+
+	ppc.pvr = config->pvr;
 }
 
 static void ppc403_exit(void)
@@ -889,8 +918,11 @@ static void ppc403_exit(void)
 
 
 #if (HAS_PPC603)
-static void ppc603_init(void)
+static void ppc603_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
+	const ppc_config *config = _config;
+	int pll_config = 0;
+	float multiplier;
 	int i ;
 
 	ppc_init() ;
@@ -996,6 +1028,29 @@ static void ppc603_init(void)
 	ppc.write16_unaligned = ppc_write16_unaligned;
 	ppc.write32_unaligned = ppc_write32_unaligned;
 	ppc.write64_unaligned = ppc_write64_unaligned;
+
+	ppc.irq_callback = irqcallback;
+
+	ppc.pvr = config->pvr;
+
+	multiplier = (float)((config->bus_frequency_multiplier >> 4) & 0xf) +
+				 (float)(config->bus_frequency_multiplier & 0xf) / 10.0f;
+	bus_freq_multiplier = (int)(multiplier * 2);
+
+	switch(config->pvr)
+	{
+		case PPC_MODEL_603E:	pll_config = mpc603e_pll_config[bus_freq_multiplier-1][config->bus_frequency]; break;
+		case PPC_MODEL_603EV:	pll_config = mpc603ev_pll_config[bus_freq_multiplier-1][config->bus_frequency]; break;
+		case PPC_MODEL_603R:	pll_config = mpc603r_pll_config[bus_freq_multiplier-1][config->bus_frequency]; break;
+		default: break;
+	}
+
+	if (pll_config == -1)
+	{
+		fatalerror("PPC: Invalid bus/multiplier combination (bus frequency = %d, multiplier = %1.1f)", config->bus_frequency, multiplier);
+	}
+
+	ppc.hid1 = pll_config << 28;
 }
 
 static void ppc603_exit(void)
@@ -1005,8 +1060,11 @@ static void ppc603_exit(void)
 #endif
 
 #if (HAS_PPC602)
-static void ppc602_init(void)
+static void ppc602_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
+	float multiplier;
+	const ppc_config *config = _config;
+
 	int i ;
 
 	ppc_init() ;
@@ -1112,6 +1170,14 @@ static void ppc602_init(void)
 	ppc.write16_unaligned = ppc_write16_unaligned;
 	ppc.write32_unaligned = ppc_write32_unaligned;
 	ppc.write64_unaligned = ppc_write64_unaligned;
+
+	ppc.irq_callback = irqcallback;
+
+	ppc.pvr = config->pvr;
+
+	multiplier = (float)((config->bus_frequency_multiplier >> 4) & 0xf) +
+				 (float)(config->bus_frequency_multiplier & 0xf) / 10.0f;
+	bus_freq_multiplier = (int)(multiplier * 2);
 }
 
 static void ppc602_exit(void)
@@ -1249,9 +1315,6 @@ static void ppc_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + PPC_R29:			ppc.r[29] = info->i;					break;
 		case CPUINFO_INT_REGISTER + PPC_R30:			ppc.r[30] = info->i;					break;
 		case CPUINFO_INT_REGISTER + PPC_R31:			ppc.r[31] = info->i;					break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					ppc.irq_callback = info->irqcallback;	break;
 	}
 }
 
@@ -1366,7 +1429,6 @@ void ppc_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_SET_CONTEXT:					info->setcontext = ppc_set_context;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = ppc_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = ppc.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &ppc_icount;				break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = ppc_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = ppc_win_layout;				break;

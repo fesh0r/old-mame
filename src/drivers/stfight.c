@@ -229,14 +229,13 @@ DONE? (check on real board)
 *****************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2203intf.h"
 #include "sound/msm5205.h"
 
 // machine
 DRIVER_INIT( empcity );
 DRIVER_INIT( stfight );
-MACHINE_INIT( stfight );
+MACHINE_RESET( stfight );
 INTERRUPT_GEN( stfight_vb_interrupt );
 INTERRUPT_GEN( stfight_interrupt_1 );
 READ8_HANDLER( stfight_dsw_r );
@@ -502,7 +501,7 @@ static MACHINE_DRIVER_START( stfight )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
-	MDRV_MACHINE_INIT(stfight)
+	MDRV_MACHINE_RESET(stfight)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

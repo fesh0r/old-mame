@@ -45,7 +45,8 @@ Jan 12, 2005.  The 555 is probably an external playback frequency.
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "filter.h"
 #include "namco52.h"
 
@@ -54,16 +55,16 @@ struct namco_52xx
 {
 	const struct namco_52xx_interface *intf;	/* pointer to our config data */
 	UINT8 *rom;			/* pointer to sample ROM */
-	int rom_len;
+	UINT32 rom_len;
 	sound_stream * stream;			/* the output stream */
 	double n52_pb_cycle;	/* playback clock time based on machine sample rate */
 	double n52_step;		/* playback clock step based on machine sample rate */
 	/* n52_pb_cycle is incremented by n52_step every machine-sample.
      * At every integer value of n52_pb_cycle the next 4bit value is used. */
-	int n52_start;		/* current effect start position in the ROM */
-	int n52_end;			/* current effect end position in the ROM */
-	int n52_length;		/* # of 4bit samples in current effect */
-	int n52_pos;			/* current 4bit sample of effect */
+	INT32 n52_start;		/* current effect start position in the ROM */
+	INT32 n52_end;			/* current effect end position in the ROM */
+	INT32 n52_length;		/* # of 4bit samples in current effect */
+	INT32 n52_pos;			/* current 4bit sample of effect */
 	struct filter2_context n52_hp_filter;
 	struct filter2_context n52_lp_filter;
 };
@@ -139,9 +140,6 @@ static void *namco_52xx_start(int sndindex, int clock, const void *config)
 	chip->rom     = memory_region(chip->intf->region);
 	chip->rom_len = memory_region_length(chip->intf->region);
 
-	if (Machine->sample_rate == 0)
-		return chip;
-
 	if (chip->intf->play_rate == 0)
 	{
 		/* If play clock is 0 (grounded) then default to internal clock */
@@ -158,6 +156,13 @@ static void *namco_52xx_start(int sndindex, int clock, const void *config)
 	chip->stream = stream_create(0, 1, Machine->sample_rate, chip, namco_52xx_stream_update_one);
 
 	namco_52xx_reset(chip);
+
+	state_save_register_item("namco52xx", sndindex, chip->n52_pb_cycle);
+	state_save_register_item("namco52xx", sndindex, chip->n52_step);
+	state_save_register_item("namco52xx", sndindex, chip->n52_start);
+	state_save_register_item("namco52xx", sndindex, chip->n52_end);
+	state_save_register_item("namco52xx", sndindex, chip->n52_length);
+	state_save_register_item("namco52xx", sndindex, chip->n52_pos);
 
 	return chip;
 }
@@ -190,7 +195,7 @@ void namcoio_52XX_write(int data)
  * Generic get_info
  **************************************************************************/
 
-static void namco_52xx_set_info(void *token, UINT32 state, union sndinfo *info)
+static void namco_52xx_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -199,7 +204,7 @@ static void namco_52xx_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void namco_52xx_get_info(void *token, UINT32 state, union sndinfo *info)
+void namco_52xx_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

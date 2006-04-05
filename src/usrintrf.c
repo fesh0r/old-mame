@@ -13,13 +13,16 @@ To do:
 
 *********************************************************************/
 
+#include "osdepend.h"
 #include "driver.h"
 #include "info.h"
 #include "vidhrdw/vector.h"
+#include "ui_text.h"
+#include "profiler.h"
+#include "cheat.h"
+#include <ctype.h>
 #include <stdarg.h>
 #include <math.h>
-#include "ui_text.h"
-#include "state.h"
 
 #ifdef MESS
 #include "mess.h"
@@ -56,6 +59,29 @@ enum
 	ANALOG_ITEM_COUNT
 };
 
+enum
+{
+	LOADSAVE_NONE,
+	LOADSAVE_LOAD,
+	LOADSAVE_SAVE
+};
+
+
+
+/*************************************
+ *
+ *  Type definitions
+ *
+ *************************************/
+
+typedef struct _input_item_data input_item_data;
+struct _input_item_data
+{
+	input_seq *		seq;
+	UINT16 			sortorder;
+	UINT8 			digital;
+};
+
 
 
 /*************************************
@@ -66,16 +92,6 @@ enum
 
 #define UI_BOX_LR_BORDER		(ui_get_char_width(' ') / 2)
 #define UI_BOX_TB_BORDER		(ui_get_char_width(' ') / 2)
-
-
-
-/*************************************
- *
- *  Global variables (yuck, remove)
- *
- *************************************/
-
-memcard_interface memcard_intf;
 
 
 
@@ -314,7 +330,7 @@ static void draw_multiline_text_box(const char *text, int justify, float xpos, f
 static void create_font(void);
 static void onscrd_init(void);
 
-static int handle_keys(mame_bitmap *bitmap);
+static void handle_keys(mame_bitmap *bitmap);
 static void ui_display_profiler(void);
 static void ui_display_popup(void);
 static int setup_menu(int selected);
@@ -363,8 +379,12 @@ static void render_ui(mame_bitmap *dest);
  *
  *************************************/
 
-int ui_init(void)
+int ui_init(int show_disclaimer, int show_warnings, int show_gameinfo)
 {
+	/* load the localization file */
+	if (uistring_init(options.language_file) != 0)
+		fatalerror("uistring_init failed");
+
 	/* build up the font */
 	create_font();
 
@@ -381,6 +401,30 @@ int ui_init(void)
 	/* reset globals */
 	single_step = FALSE;
 	load_save_state = LOADSAVE_NONE;
+
+	add_exit_callback(ui_exit);
+
+	/* disable artwork for the start */
+	artwork_enable(FALSE);
+
+	/* before doing anything else, update the video and audio system once */
+	update_video_and_audio();
+
+	/* if we didn't find a settings file, show the disclaimer */
+	if (show_disclaimer && ui_display_copyright(artwork_get_ui_bitmap()) != 0)
+		return 1;
+
+	/* show info about incorrect behaviour (wrong colors etc.) */
+	if (show_warnings && ui_display_game_warnings(artwork_get_ui_bitmap()) != 0)
+		return 1;
+
+	/* show info about the game */
+	if (show_gameinfo && ui_display_game_info(artwork_get_ui_bitmap()) != 0)
+		return 1;
+
+	/* enable artwork now */
+	artwork_enable(TRUE);
+
 	return 0;
 }
 
@@ -437,7 +481,7 @@ void ui_set_visible_area(int xmin, int ymin, int xmax, int ymax)
  *
  *************************************/
 
-int ui_update_and_render(mame_bitmap *bitmap)
+void ui_update_and_render(mame_bitmap *bitmap)
 {
 	/* if we're single-stepping, pause now */
 	if (single_step)
@@ -468,8 +512,7 @@ int ui_update_and_render(mame_bitmap *bitmap)
 	{
 		if (therm_state)
 			therm_state = on_screen_display(therm_state);
-		if (handle_keys(bitmap))
-			return 1;
+		handle_keys(bitmap);
 	}
 
 	/* then let the cheat engine display its stuff */
@@ -490,8 +533,6 @@ int ui_update_and_render(mame_bitmap *bitmap)
 	/* decrement the dirty count */
 	if (ui_dirty)
 		ui_dirty--;
-
-	return 0;
 }
 
 
@@ -1008,7 +1049,7 @@ void ui_menu_stack_reset(void)
 UINT32 ui_menu_stack_push(ui_menu_handler new_handler, UINT32 new_state)
 {
 	if (menu_stack_index >= MENU_STACK_DEPTH)
-		osd_die("Menu stack overflow!");
+		fatalerror("Menu stack overflow!");
 
 	/* save the old state/handler */
 	menu_stack_handler[menu_stack_index] = menu_handler;
@@ -1028,7 +1069,7 @@ UINT32 ui_menu_stack_push(ui_menu_handler new_handler, UINT32 new_state)
 UINT32 ui_menu_stack_pop(void)
 {
 	if (menu_stack_index <= 0)
-		osd_die("Menu stack underflow!");
+		fatalerror("Menu stack underflow!");
 
 	/* restore the old state/handler */
 	menu_stack_index--;
@@ -1189,7 +1230,7 @@ static void create_font(void)
 	/* decode rotated font */
 	uirotfont = allocgfx(&layout);
 	if (!uirotfont)
-		osd_die("Fatal error: could not allocate memory for UI font!");
+		fatalerror("Fatal error: could not allocate memory for UI font!");
 	decodegfx(uirotfont, uifontdata, 0, uirotfont->total_elements);
 
 	/* set the raw and rotated character width/height */
@@ -1213,18 +1254,16 @@ static void create_font(void)
  *
  *************************************/
 
-static int handle_keys(mame_bitmap *bitmap)
+static void handle_keys(mame_bitmap *bitmap)
 {
 #ifdef MESS
-	if (osd_trying_to_quit())
-		return 1;
 	if (options.disable_normal_ui || ((Machine->gamedrv->flags & GAME_COMPUTER) && !mess_ui_active()))
-		return 0;
+		return;
 #endif
 
 	/* if the user pressed ESC, stop the emulation as long as menus aren't up */
 	if (menu_handler == NULL && input_ui_pressed(IPT_UI_CANCEL))
-		return 1;
+		mame_schedule_exit();
 
 	/* if menus aren't up and the user has toggled them, turn them on */
 	if (menu_handler == NULL && input_ui_pressed(IPT_UI_CONFIGURE))
@@ -1243,14 +1282,16 @@ static int handle_keys(mame_bitmap *bitmap)
 
 	/* if the on-screen display isn't up and the user has toggled it, turn it on */
 #ifdef MAME_DEBUG
-	if (!mame_debug)
+	if (!Machine->debug_mode)
 #endif
 		if (therm_state == 0 && input_ui_pressed(IPT_UI_ON_SCREEN_DISPLAY))
 			therm_state = -1;
 
 	/* handle a reset request */
 	if (input_ui_pressed(IPT_UI_RESET_MACHINE))
-		machine_reset();
+		mame_schedule_hard_reset();
+	if (input_ui_pressed(IPT_UI_SOFT_RESET))
+		mame_schedule_soft_reset();
 
 	/* handle a request to display graphics/palette (note that this loops internally) */
 	if (input_ui_pressed(IPT_UI_SHOW_GFX))
@@ -1303,8 +1344,6 @@ static int handle_keys(mame_bitmap *bitmap)
 	/* toggle crosshair display */
 	if (input_ui_pressed(IPT_UI_TOGGLE_CROSSHAIR))
 		drawgfx_toggle_crosshair();
-
-	return 0;
 }
 
 
@@ -1405,7 +1444,7 @@ do { \
 		ADD_MENU(UI_cheat, menu_cheat, 1);
 
 	/* add memory card menu */
-	if (memcard_intf.create != NULL && memcard_intf.load != NULL && memcard_intf.save != NULL && memcard_intf.eject != NULL)
+	if (Machine->drv->memcard_handler != NULL)
 		ADD_MENU(UI_memorycard, menu_memory_card, 0);
 
 	/* add reset and exit menus */
@@ -1660,7 +1699,7 @@ static UINT32 menu_default_input(UINT32 state)
  *
  *************************************/
 
-INLINE void game_input_menu_add_item(ui_menu_item *item, const char *format, input_port_entry *in, int which)
+INLINE void game_input_menu_add_item(ui_menu_item *item, const char *format, input_port_entry *in, void *ref, int which)
 {
 	/* set the item text using the formatting string provided */
 	item->text = &menu_string_pool[menu_string_pool_offset];
@@ -1674,6 +1713,27 @@ INLINE void game_input_menu_add_item(ui_menu_item *item, const char *format, inp
 	/* invert if different from the default */
 	if (seq_cmp(input_port_seq(in, which), input_port_default_seq(in->type, in->player, which)))
 		item->flags |= MENU_FLAG_INVERT;
+
+	/* keep the sequence pointer as a ref and OR in our extra flags */
+	item->ref = ref;
+}
+
+
+INLINE UINT16 compute_port_sort_order(const input_port_entry *in)
+{
+	if (in->type >= IPT_START1 && in->type <= __ipt_analog_end)
+		return (in->type << 2) | (in->player << 12);
+	return in->type | 0xf000;
+}
+
+
+static int compare_game_inputs(const void *i1, const void *i2)
+{
+	const ui_menu_item *item1 = i1;
+	const ui_menu_item *item2 = i2;
+	const input_item_data *data1 = item1->ref;
+	const input_item_data *data2 = item2->ref;
+	return (data1->sortorder < data2->sortorder) ? -1 : (data1->sortorder > data2->sortorder) ? 1 : 0;
 }
 
 
@@ -1681,9 +1741,9 @@ static UINT32 menu_game_input(UINT32 state)
 {
 	static const input_seq default_seq = SEQ_DEF_1(CODE_DEFAULT);
 
-	ui_menu_item item_list[MAX_INPUT_PORTS * MAX_BITS_PER_PORT];
-	input_seq *selected_seq = NULL;
-	UINT8 selected_is_analog = FALSE;
+	ui_menu_item item_list[MAX_INPUT_PORTS * MAX_BITS_PER_PORT / 2];
+	input_item_data item_data[MAX_INPUT_PORTS * MAX_BITS_PER_PORT / 2];
+	input_item_data *selected_item_data;
 	int selected = state & 0x3fff;
 	int record_next = (state >> 14) & 1;
 	int polling = (state >> 15) & 1;
@@ -1707,30 +1767,38 @@ static UINT32 menu_game_input(UINT32 state)
 			/* if not analog, just add a standard entry for this item */
 			if (!port_type_is_analog(in->type))
 			{
-				if (menu_items == selected)
-					selected_seq = &in->seq;
-				game_input_menu_add_item(&item_list[menu_items++], "%s", in, SEQ_TYPE_STANDARD);
+				item_data[menu_items].seq = &in->seq;
+				item_data[menu_items].sortorder = compute_port_sort_order(in);
+				item_data[menu_items].digital = TRUE;
+				game_input_menu_add_item(&item_list[menu_items], "%s", in, &item_data[menu_items], SEQ_TYPE_STANDARD);
+				menu_items++;
 			}
 
 			/* if we are analog, add three items */
 			else
 			{
-				if (menu_items == selected)
-				{
-					selected_seq = &in->seq;
-					selected_is_analog = TRUE;
-				}
-				game_input_menu_add_item(&item_list[menu_items++], "%s Analog", in, SEQ_TYPE_STANDARD);
+				item_data[menu_items].seq = &in->seq;
+				item_data[menu_items].sortorder = compute_port_sort_order(in);
+				item_data[menu_items].digital = FALSE;
+				game_input_menu_add_item(&item_list[menu_items], "%s Analog", in, &item_data[menu_items], SEQ_TYPE_STANDARD);
+				menu_items++;
 
-				if (menu_items == selected)
-					selected_seq = &in->analog.decseq;
-				game_input_menu_add_item(&item_list[menu_items++], "%s Dec", in, SEQ_TYPE_DECREMENT);
+				item_data[menu_items].seq = &in->analog.decseq;
+				item_data[menu_items].sortorder = compute_port_sort_order(in) | 1;
+				item_data[menu_items].digital = TRUE;
+				game_input_menu_add_item(&item_list[menu_items], "%s Dec", in, &item_data[menu_items], SEQ_TYPE_DECREMENT);
+				menu_items++;
 
-				if (menu_items == selected)
-					selected_seq = &in->analog.incseq;
-				game_input_menu_add_item(&item_list[menu_items++], "%s Inc", in, SEQ_TYPE_INCREMENT);
+				item_data[menu_items].seq = &in->analog.incseq;
+				item_data[menu_items].sortorder = compute_port_sort_order(in) | 2;
+				item_data[menu_items].digital = TRUE;
+				game_input_menu_add_item(&item_list[menu_items], "%s Inc", in, &item_data[menu_items], SEQ_TYPE_INCREMENT);
+				menu_items++;
 			}
 		}
+
+	/* sort the list canonically */
+	qsort(item_list, menu_items, sizeof(item_list[0]), compare_game_inputs);
 
 	/* if we're polling, just put an empty entry and arrows for the subitem */
 	if (polling)
@@ -1746,10 +1814,11 @@ static UINT32 menu_game_input(UINT32 state)
 	ui_draw_menu(item_list, menu_items, selected);
 
 	/* if we're polling, read the sequence */
+	selected_item_data = item_list[selected].ref;
 	if (polling)
 	{
-		if (input_menu_update_polling(selected_seq, &record_next, &polling))
-			input_menu_toggle_none_default(selected_seq, &starting_seq, &default_seq);
+		if (input_menu_update_polling(selected_item_data->seq, &record_next, &polling))
+			input_menu_toggle_none_default(selected_item_data->seq, &starting_seq, &default_seq);
 	}
 
 	/* otherwise, handle the keys */
@@ -1764,15 +1833,15 @@ static UINT32 menu_game_input(UINT32 state)
 		/* if an item was selected, start polling on it */
 		if (input_ui_pressed(IPT_UI_SELECT))
 		{
-			seq_read_async_start(selected_is_analog);
-			seq_copy(&starting_seq, selected_seq);
+			seq_read_async_start(!selected_item_data->digital);
+			seq_copy(&starting_seq, selected_item_data->seq);
 			polling = TRUE;
 		}
 
 		/* if the clear key was pressed, reset the selected item */
 		if (input_ui_pressed(IPT_UI_CLEAR))
 		{
-			input_menu_toggle_none_default(selected_seq, selected_seq, &default_seq);
+			input_menu_toggle_none_default(selected_item_data->seq, selected_item_data->seq, &default_seq);
 			record_next = FALSE;
 		}
 
@@ -1793,7 +1862,7 @@ static UINT32 menu_game_input(UINT32 state)
  *
  *************************************/
 
-INLINE void switch_menu_add_item(ui_menu_item *item, const input_port_entry *in, int switch_entry)
+INLINE void switch_menu_add_item(ui_menu_item *item, const input_port_entry *in, int switch_entry, void *ref)
 {
 	const input_port_entry *tin;
 
@@ -1821,6 +1890,9 @@ INLINE void switch_menu_add_item(ui_menu_item *item, const input_port_entry *in,
 	/* if no matches, we're invalid */
 	if (!item->subtext)
 		item->subtext = ui_getstring(UI_INVALID);
+
+	/* stash our reference */
+	item->ref = ref;
 }
 
 
@@ -1870,9 +1942,21 @@ static void switch_menu_pick_next(input_port_entry *in, int switch_entry)
 }
 
 
+/*
+static int compare_switch_inputs(const void *i1, const void *i2)
+{
+    const ui_menu_item *item1 = i1;
+    const ui_menu_item *item2 = i2;
+    const input_port_entry *data1 = item1->ref;
+    const input_port_entry *data2 = item2->ref;
+    return strcmp(input_port_name(data1), input_port_name(data2));
+}
+*/
+
+
 static UINT32 menu_switches(UINT32 state)
 {
-	ui_menu_item item_list[MAX_INPUT_PORTS * MAX_BITS_PER_PORT];
+	ui_menu_item item_list[MAX_INPUT_PORTS * MAX_BITS_PER_PORT / 2];
 	int switch_entry = (state >> 24) & 0xff;
 	int switch_name = (state >> 16) & 0xff;
 	int selected = state & 0xffff;
@@ -1887,11 +1971,11 @@ static UINT32 menu_switches(UINT32 state)
 	/* loop over input ports and set up the current values */
 	for (in = Machine->input_ports; in->type != IPT_END; in++)
 		if (in->type == switch_name && input_port_active(in) && input_port_condition(in))
-		{
-			if (menu_items == selected)
-				selected_in = in;
-			switch_menu_add_item(&item_list[menu_items++], in, switch_entry);
-		}
+			switch_menu_add_item(&item_list[menu_items++], in, switch_entry, in);
+
+	/* sort the list */
+//  qsort(item_list, menu_items, sizeof(item_list[0]), compare_switch_inputs);
+	selected_in = item_list[selected].ref;
 
 	/* add an item to return */
 	item_list[menu_items++].text = ui_getstring(UI_returntomain);
@@ -2214,6 +2298,7 @@ static UINT32 menu_memory_card(UINT32 state)
 	int menu_items = 0;
 	int cardnum = state >> 16;
 	int selected = state & 0xffff;
+	int insertindex = -1, ejectindex = -1, createindex = -1;
 
 	/* reset the menu and string pool */
 	memset(item_list, 0, sizeof(item_list));
@@ -2230,9 +2315,10 @@ static UINT32 menu_memory_card(UINT32 state)
 	menu_items++;
 
 	/* add the remaining items */
-	item_list[menu_items++].text = ui_getstring(UI_loadcard);
-	item_list[menu_items++].text = ui_getstring(UI_ejectcard);
-	item_list[menu_items++].text = ui_getstring(UI_createcard);
+	item_list[insertindex = menu_items++].text = ui_getstring(UI_loadcard);
+	if (memcard_present() != -1)
+		item_list[ejectindex = menu_items++].text = ui_getstring(UI_ejectcard);
+	item_list[createindex = menu_items++].text = ui_getstring(UI_createcard);
 
 	/* add an item for the return */
 	item_list[menu_items++].text = ui_getstring(UI_returntomain);
@@ -2250,35 +2336,36 @@ static UINT32 menu_memory_card(UINT32 state)
 
 	/* handle actions */
 	if (input_ui_pressed(IPT_UI_SELECT))
-		switch (selected)
+	{
+		/* handle load */
+		if (selected == insertindex)
 		{
-			/* handle load */
-			case 1:
-				memcard_intf.eject();
-				if (memcard_intf.load(cardnum))
-				{
-					ui_popup("%s", ui_getstring(UI_loadok));
-					ui_menu_stack_reset();
-					return 0;
-				}
-				else
-					ui_popup("%s", ui_getstring(UI_loadfailed));
-				break;
-
-			/* handle eject */
-			case 2:
-				memcard_intf.eject();
-				ui_popup("%s", ui_getstring(UI_cardejected));
-				break;
-
-			/* handle create */
-			case 3:
-				if (memcard_intf.create(cardnum))
-					ui_popup("%s", ui_getstring(UI_cardcreated));
-				else
-					ui_popup("%s\n%s", ui_getstring(UI_cardcreatedfailed), ui_getstring(UI_cardcreatedfailed2));
-				break;
+			if (memcard_insert(cardnum) == 0)
+			{
+				ui_popup("%s", ui_getstring(UI_loadok));
+				ui_menu_stack_reset();
+				return 0;
+			}
+			else
+				ui_popup("%s", ui_getstring(UI_loadfailed));
 		}
+
+		/* handle eject */
+		else if (selected == ejectindex)
+		{
+			memcard_eject();
+			ui_popup("%s", ui_getstring(UI_cardejected));
+		}
+
+		/* handle create */
+		else if (selected == createindex)
+		{
+			if (memcard_create(cardnum, FALSE) == 0)
+				ui_popup("%s", ui_getstring(UI_cardcreated));
+			else
+				ui_popup("%s\n%s", ui_getstring(UI_cardcreatedfailed), ui_getstring(UI_cardcreatedfailed2));
+		}
+	}
 
 	return selected | (cardnum << 16);
 }
@@ -2294,7 +2381,7 @@ static UINT32 menu_memory_card(UINT32 state)
 static UINT32 menu_reset_game(UINT32 state)
 {
 	/* request a reset */
-	machine_reset();
+	mame_schedule_soft_reset();
 
 	/* reset the menu stack */
 	ui_menu_stack_reset();
@@ -3025,14 +3112,14 @@ static void showcharset(mame_bitmap *bitmap)
 			save_screen_snapshot(bitmap);
 
 	} while (!input_ui_pressed(IPT_UI_SHOW_GFX) &&
-			!input_ui_pressed(IPT_UI_CANCEL));
+			!input_ui_pressed(IPT_UI_CANCEL) &&
+			!mame_is_scheduled_event_pending());
 
 	schedule_full_refresh();
 
 	/* mark all the tilemaps dirty on exit so they are updated correctly on the next frame */
 	tilemap_mark_all_tiles_dirty(NULL);
 }
-
 
 
 int ui_display_decoding(mame_bitmap *bitmap, int percent)
@@ -3083,7 +3170,7 @@ int ui_display_copyright(mame_bitmap *bitmap)
 			done = 1;
 		if (done == 1 && (code_pressed_memory(KEYCODE_K) || input_ui_pressed(IPT_UI_RIGHT)))
 			done = 2;
-	} while (done < 2);
+	} while (done < 2 && !mame_is_scheduled_event_pending());
 
 	menu_state = 0;
 	erase_screen(bitmap);
@@ -3106,11 +3193,11 @@ int ui_display_game_warnings(mame_bitmap *bitmap)
 	char buf[2048];
 	char *bufptr = buf;
 
-	if (Machine->rom_load_warnings > 0 || (Machine->gamedrv->flags & WARNING_FLAGS))
+	if (rom_load_warnings() > 0 || (Machine->gamedrv->flags & WARNING_FLAGS))
 	{
 		int done;
 
-		if (Machine->rom_load_warnings > 0)
+		if (rom_load_warnings() > 0)
 		{
 			bufptr += sprintf(bufptr, "%s\n", ui_getstring(UI_incorrectroms));
 			if (Machine->gamedrv->flags & WARNING_FLAGS)
@@ -3194,7 +3281,7 @@ int ui_display_game_warnings(mame_bitmap *bitmap)
 				done = 1;
 			if (done == 1 && (code_pressed_memory(KEYCODE_K) || input_ui_pressed(IPT_UI_RIGHT)))
 				done = 2;
-		} while (done < 2);
+		} while (done < 2 && !mame_is_scheduled_event_pending());
 	}
 
 	erase_screen(bitmap);
@@ -3212,7 +3299,7 @@ int ui_display_game_info(mame_bitmap *bitmap)
 	/* clear the input memory */
 	while (code_read_async() != CODE_NONE) ;
 
-	while (code_read_async() == CODE_NONE)
+	while (code_read_async() == CODE_NONE && !mame_is_scheduled_event_pending())
 	{
 		char *bufptr = buf;
 
@@ -3232,6 +3319,10 @@ int ui_display_game_info(mame_bitmap *bitmap)
 		/* render and update */
 		render_ui(bitmap);
 		update_video_and_audio();
+
+		/* allow cancelling */
+		if (input_ui_pressed(IPT_UI_CANCEL))
+			return 1;
 	}
 
 #ifdef MESS
@@ -3242,7 +3333,7 @@ int ui_display_game_info(mame_bitmap *bitmap)
 	update_video_and_audio();
 	update_video_and_audio();
 
-	while (code_read_async() == CODE_NONE)
+	while (code_read_async() == CODE_NONE && !mame_is_scheduled_event_pending())
 	{
 		char *bufptr = buf;
 
@@ -3259,6 +3350,10 @@ int ui_display_game_info(mame_bitmap *bitmap)
 		/* render and update */
 		render_ui(bitmap);
 		update_video_and_audio();
+
+		/* allow cancelling */
+		if (input_ui_pressed(IPT_UI_CANCEL))
+			return 1;
 	}
 #endif
 
@@ -3623,7 +3718,6 @@ static void onscrd_init(void)
 
 	item = 0;
 
-	if (Machine->sample_rate)
 	{
 		int num_vals = sound_get_user_gain_count();
 		onscrd_fnc[item] = onscrd_volume;
@@ -3730,6 +3824,7 @@ static void initiate_load_save(int type)
 
 static int update_load_save(void)
 {
+	char filename[20];
 	input_code code;
 	char file = 0;
 
@@ -3774,11 +3869,17 @@ static int update_load_save(void)
 		return 1;
 
 	/* display a popup indicating that the save will proceed */
+	sprintf(filename, "%s-%c", Machine->gamedrv->name, file);
 	if (load_save_state == LOADSAVE_SAVE)
+	{
 		ui_popup("Save to position %c", file);
+		mame_schedule_save(filename);
+	}
 	else
+	{
 		ui_popup("Load from position %c", file);
-	cpu_loadsave_schedule(load_save_state, file);
+		mame_schedule_load(filename);
+	}
 
 	/* remove the pause and reset the state */
 	load_save_state = LOADSAVE_NONE;

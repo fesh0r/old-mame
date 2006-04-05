@@ -406,12 +406,12 @@ static int irq_callback(int irqline)
 	return r;
 }
 
-static MACHINE_INIT(taitowlf)
+static MACHINE_RESET(taitowlf)
 {
 	memory_set_bankptr(1, memory_region(REGION_USER1) + 0x30000);
 
 	dma8237_reset();
-	cpu_set_irq_callback(0, irq_callback);
+	cpunum_set_irq_callback(0, irq_callback);
 }
 
 static MACHINE_DRIVER_START(taitowlf)
@@ -424,7 +424,7 @@ static MACHINE_DRIVER_START(taitowlf)
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(0)
 
-	MDRV_MACHINE_INIT(taitowlf)
+	MDRV_MACHINE_RESET(taitowlf)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
 

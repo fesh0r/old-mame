@@ -6,7 +6,6 @@ driver by Nicola Salmoria
 
 ***************************************************************************/
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sndhrdw/m72.h"
 #include "sound/dac.h"
 #include "sound/2151intf.h"
@@ -251,7 +250,7 @@ static MACHINE_DRIVER_START( shisen )
 	MDRV_FRAMES_PER_SECOND(55)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(m72_sound)
+	MDRV_MACHINE_RESET(m72_sound)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER|VIDEO_PIXEL_ASPECT_RATIO_1_2)

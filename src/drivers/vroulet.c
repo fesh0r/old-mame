@@ -37,7 +37,6 @@ Tomasz Slanina 20050225
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/8255ppi.h"
 #include "sound/ay8910.h"
 
@@ -49,7 +48,7 @@ static tilemap *bg_tilemap;
 static WRITE8_HANDLER(vroulet_paletteram_w)
 {
 	/*
-     paletteram_xxxxBBBBGGGGRRRR_swap_w
+     paletteram_xxxxBBBBGGGGRRRR_be_w
      but... each palette has 8 colors only, not 16 as expected...
     */
 
@@ -260,7 +259,7 @@ static ppi8255_interface ppi8255_intf =
 
 /* Machine Initialization */
 
-static MACHINE_INIT( vroulet )
+static MACHINE_RESET( vroulet )
 {
 	ppi8255_init(&ppi8255_intf);
 }
@@ -276,7 +275,7 @@ static MACHINE_DRIVER_START( vroulet )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(vroulet)
+	MDRV_MACHINE_RESET(vroulet)
 
 	MDRV_NVRAM_HANDLER(generic_1fill)
 

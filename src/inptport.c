@@ -91,25 +91,16 @@
 
 ***************************************************************************/
 
-#include <math.h>
+#include "osdepend.h"
 #include "driver.h"
 #include "config.h"
 #include "xmlfile.h"
+#include "profiler.h"
+#include <math.h>
 
 #ifdef MESS
 #include "inputx.h"
 #endif
-
-
-/*************************************
- *
- *  Externals (ick)
- *
- *************************************/
-
-extern void *record;
-extern void *playback;
-
 
 
 /*************************************
@@ -139,9 +130,10 @@ extern void *playback;
  *
  *************************************/
 
+typedef struct _analog_port_info analog_port_info;
 struct _analog_port_info
 {
-	struct _analog_port_info *next;	/* linked list */
+	analog_port_info *	next;		/* linked list */
 	input_port_entry *	port;		/* pointer to the input port referenced */
 	INT32				accum;		/* accumulated value (including relative adjustments) */
 	INT32				previous;	/* previous adjusted value */
@@ -158,18 +150,37 @@ struct _analog_port_info
 	UINT8				interpolate;/* should we do linear interpolation for mid-frame reads? */
 	UINT8				lastdigital;/* was the last modification caused by a digital form? */
 };
-typedef struct _analog_port_info analog_port_info;
 
 
+typedef struct _custom_port_info custom_port_info;
+struct _custom_port_info
+{
+	custom_port_info *	next;		/* linked list */
+	input_port_entry *	port;		/* pointer to the input port referenced */
+	UINT8				shift;		/* left shift to apply to the final result */
+};
+
+
+typedef struct _input_bit_info input_bit_info;
 struct _input_bit_info
 {
 	input_port_entry *	port;		/* port for this input */
 	UINT8				impulse;	/* counter for impulse controls */
 	UINT8				last;		/* were we pressed last time? */
 };
-typedef struct _input_bit_info input_bit_info;
 
 
+typedef struct _changed_callback_info changed_callback_info;
+struct _changed_callback_info
+{
+	changed_callback_info *next;	/* linked list */
+	UINT32				mask;		/* mask we care about */
+	void				(*callback)(void *, UINT32, UINT32); /* callback */
+	void *				param;		/* parameter */
+};
+
+
+typedef struct _input_port_info input_port_info;
 struct _input_port_info
 {
 	const char *		tag;		/* tag for this port */
@@ -179,12 +190,16 @@ struct _input_port_info
 	UINT32				digital;	/* value from digital inputs */
 	UINT32				vblank;		/* value of all IPT_VBLANK bits */
 	UINT32				playback;	/* current playback override */
+	UINT8				has_custom;	/* do we have any custom ports? */
 	input_bit_info 		bit[MAX_BITS_PER_PORT]; /* info about each bit in the port */
 	analog_port_info *	analoginfo;	/* pointer to linked list of analog port info */
+	custom_port_info *	custominfo;	/* pointer to linked list of custom port info */
+	changed_callback_info *change_notify;/* list of people to notify if things change */
+	UINT32				changed_last_value;
 };
-typedef struct _input_port_info input_port_info;
 
 
+typedef struct _digital_joystick_info digital_joystick_info;
 struct _digital_joystick_info
 {
 	input_port_entry *	port[4];	/* port for up,down,left,right respectively */
@@ -193,7 +208,6 @@ struct _digital_joystick_info
 	UINT8				current4way;/* current 4-way value */
 	UINT8				previous;	/* previous value */
 };
-typedef struct _digital_joystick_info digital_joystick_info;
 
 
 struct _input_port_init_params
@@ -238,6 +252,9 @@ static UINT8 ui_memory[__ipt_max];
 
 /* XML attributes for the different types */
 static const char *seqtypestrings[] = { "standard", "decrement", "increment" };
+
+/* original input_ports without modifications */
+input_port_entry *input_ports_default;
 
 
 
@@ -859,7 +876,8 @@ static const input_port_default_entry default_ports_builtin[] =
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_DEBUG_BREAK,		"Break in Debugger",	SEQ_DEF_1(KEYCODE_TILDE) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_CONFIGURE,		"Config Menu",			SEQ_DEF_1(KEYCODE_TAB) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_PAUSE,			"Pause",				SEQ_DEF_1(KEYCODE_P) )
-	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_RESET_MACHINE,	"Reset Game",			SEQ_DEF_1(KEYCODE_F3) )
+	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_RESET_MACHINE,	"Reset Game",			SEQ_DEF_2(KEYCODE_F3, KEYCODE_LSHIFT) )
+	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_SOFT_RESET,		"Soft Reset",			SEQ_DEF_3(KEYCODE_F3, CODE_NOT, KEYCODE_LSHIFT) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_SHOW_GFX,		"Show Gfx",				SEQ_DEF_1(KEYCODE_F4) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_FRAMESKIP_DEC,	"Frameskip Dec",		SEQ_DEF_1(KEYCODE_F8) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_FRAMESKIP_INC,	"Frameskip Inc",		SEQ_DEF_1(KEYCODE_F9) )
@@ -933,6 +951,8 @@ static int default_ports_lookup[__ipt_max][MAX_PLAYERS];
  *
  *************************************/
 
+static void input_port_load(int config_type, xml_data_node *parentnode);
+static void input_port_save(int config_type, xml_data_node *parentnode);
 static void update_digital_joysticks(void);
 static void update_analog_port(int port);
 static void interpolate_analog_port(int port);
@@ -978,8 +998,8 @@ int input_port_init(void (*construct_ipt)(input_port_init_params *))
 			return 1;
 
 		/* allocate default input ports */
-		Machine->input_ports_default = input_port_allocate(construct_ipt, NULL);
-		if (!Machine->input_ports_default)
+		input_ports_default = input_port_allocate(construct_ipt, NULL);
+		if (!input_ports_default)
 			return 1;
 
 		/* identify all the tagged ports up front so the memory system can access them */
@@ -994,10 +1014,14 @@ int input_port_init(void (*construct_ipt)(input_port_init_params *))
 			{
 				int tag = port_tag_to_index(port->condition.tag);
 				if (tag == -1)
-					osd_die("Conditional port references invalid tag '%s'", port->condition.tag);
+					fatalerror("Conditional port references invalid tag '%s'", port->condition.tag);
 				port->condition.portnum = tag;
 			}
 	}
+
+	/* register callbacks for when we load configurations */
+	config_register("input", input_port_load, input_port_save);
+
 	return 0;
 }
 
@@ -1035,19 +1059,38 @@ static void input_port_postload(void)
 		{
 			/* fatal error if we didn't hit an IPT_PORT */
 			if (portnum < 0)
-				osd_die("Error in InputPort definition: expecting PORT_START\n");
+				fatalerror("Error in InputPort definition: expecting PORT_START");
 
 			/* fatal error if too many bits */
 			if (bitnum >= MAX_BITS_PER_PORT)
-				osd_die("Error in InputPort definition: too many bits for a port (%d max)\n", MAX_BITS_PER_PORT);
+				fatalerror("Error in InputPort definition: too many bits for a port (%d max)", MAX_BITS_PER_PORT);
 
 			/* fill in the bit info */
 			port_info[portnum].bit[bitnum].port = port;
 			port_info[portnum].bit[bitnum].impulse = 0;
 			port_info[portnum].bit[bitnum++].last = 0;
 
+			/* if this is a custom input, add it to the list */
+			if (port->custom != NULL)
+			{
+				custom_port_info *info;
+
+				/* allocate memory */
+				info = auto_malloc(sizeof(*info));
+				memset(info, 0, sizeof(*info));
+
+				/* fill in the data */
+				info->port = port;
+				for (mask = port->mask; !(mask & 1); mask >>= 1)
+					info->shift++;
+
+				/* hook in the list */
+				info->next = port_info[portnum].custominfo;
+				port_info[portnum].custominfo = info;
+			}
+
 			/* if this is an analog port, create an info struct for it */
-			if (IS_ANALOG(port))
+			else if (IS_ANALOG(port))
 			{
 				analog_port_info *info;
 
@@ -1115,7 +1158,7 @@ static void input_port_postload(void)
 						break;
 
 					default:
-						osd_die("Unknown analog port type -- don't know if it is absolute or not\n");
+						fatalerror("Unknown analog port type -- don't know if it is absolute or not");
 						break;
 				}
 
@@ -1285,7 +1328,7 @@ static int apply_config_to_current(xml_data_node *portnode, int type, int player
 	defvalue = xml_get_attribute_int(portnode, "defvalue", 0);
 
 	/* find the indexed port; we scan the array to make sure we don't read past the end */
-	for (updateport = Machine->input_ports_default; updateport->type != IPT_END; updateport++)
+	for (updateport = input_ports_default; updateport->type != IPT_END; updateport++)
 		if (index-- == 0)
 			break;
 
@@ -1296,7 +1339,7 @@ static int apply_config_to_current(xml_data_node *portnode, int type, int player
 		const char *revstring;
 
 		/* point to the real port */
-		updateport = Machine->input_ports + (updateport - Machine->input_ports_default);
+		updateport = Machine->input_ports + (updateport - input_ports_default);
 
 		/* fill in the data from the attributes */
 		updateport->default_value = xml_get_attribute_int(portnode, "value", updateport->default_value);
@@ -1320,7 +1363,7 @@ static int apply_config_to_current(xml_data_node *portnode, int type, int player
 }
 
 
-void input_port_load(int config_type, xml_data_node *parentnode)
+static void input_port_load(int config_type, xml_data_node *parentnode)
 {
 	xml_data_node *portnode;
 	int seqnum;
@@ -1461,9 +1504,9 @@ static void save_game_inputs(xml_data_node *parentnode)
 	int portnum;
 
 	/* iterate over ports */
-	for (portnum = 0; Machine->input_ports_default[portnum].type != IPT_END; portnum++)
+	for (portnum = 0; input_ports_default[portnum].type != IPT_END; portnum++)
 	{
-		input_port_entry *defport = &Machine->input_ports_default[portnum];
+		input_port_entry *defport = &input_ports_default[portnum];
 		input_port_entry *curport = &Machine->input_ports[portnum];
 
 		/* only save if something has changed and this port is a type we save */
@@ -1517,7 +1560,7 @@ static void save_game_inputs(xml_data_node *parentnode)
 }
 
 
-void input_port_save(int config_type, xml_data_node *parentnode)
+static void input_port_save(int config_type, xml_data_node *parentnode)
 {
 	if (parentnode)
 	{
@@ -1553,7 +1596,7 @@ input_port_entry *input_port_initialize(input_port_init_params *iip, UINT32 type
 			if (iip->ports[portnum].type == IPT_PORT && iip->ports[portnum].start.tag != NULL && !strcmp(iip->ports[portnum].start.tag, tag))
 				break;
 		if (portnum >= iip->current_port)
-			osd_die("Could not find port to modify: '%s'", tag);
+			fatalerror("Could not find port to modify: '%s'", tag);
 
 		/* nuke any matching masks */
 		for (portnum++, deleting = 0; portnum < iip->current_port && iip->ports[portnum].type != IPT_PORT; portnum++)
@@ -1569,7 +1612,7 @@ input_port_entry *input_port_initialize(input_port_init_params *iip, UINT32 type
 
 		/* allocate space for a new port at the end of this entry */
 		if (iip->current_port >= iip->max_ports)
-			osd_die("Too many input ports");
+			fatalerror("Too many input ports");
 		if (portnum < iip->current_port)
 		{
 			memmove(&iip->ports[portnum + 1], &iip->ports[portnum], (iip->current_port - portnum) * sizeof(iip->ports[0]));
@@ -1584,7 +1627,7 @@ input_port_entry *input_port_initialize(input_port_init_params *iip, UINT32 type
 	else
 	{
 		if (iip->current_port >= iip->max_ports)
-			osd_die("Too many input ports");
+			fatalerror("Too many input ports");
 		port = &iip->ports[iip->current_port++];
 	}
 
@@ -1643,6 +1686,69 @@ input_port_entry *input_port_allocate(void (*construct_ipt)(input_port_init_para
 #endif
 
 	return iip.ports;
+}
+
+
+void input_port_parse_diplocation(input_port_entry *in, const char *location)
+{
+	char *curname = NULL, tempbuf[100];
+	const char *entry;
+	int index, val, bits;
+	UINT32 temp;
+
+	/* if nothing present, bail */
+	if (!location)
+		return;
+	memset(in->diploc, 0, sizeof(in->diploc));
+
+	/* parse the string */
+	for (index = 0, entry = location; *entry && index < ARRAY_LENGTH(in->diploc); index++)
+	{
+		const char *comma, *colon, *number;
+
+		/* find the end of this entry */
+		comma = strchr(entry, ',');
+		if (comma == NULL)
+			comma = entry + strlen(entry);
+
+		/* extract it to tempbuf */
+		strncpy(tempbuf, entry, comma - entry);
+		tempbuf[comma - entry] = 0;
+
+		/* first extract the switch name if present */
+		number = tempbuf;
+		colon = strchr(tempbuf, ':');
+		if (colon != NULL)
+		{
+			curname = auto_malloc(colon - tempbuf + 1);
+			strncpy(curname, tempbuf, colon - tempbuf);
+			tempbuf[colon - tempbuf] = 0;
+			number = colon + 1;
+		}
+
+		/* if we don't have a name by now, we're screwed */
+		if (curname == NULL)
+			fatalerror("Switch location '%s' missing switch name!", location);
+
+		/* now scan the switch number */
+		if (sscanf(number, "%d", &val) != 1)
+			fatalerror("Switch location '%s' has invalid format!", location);
+
+		/* fill the entry and bump the index */
+		in->diploc[index].swname = curname;
+		in->diploc[index].swnum = val;
+
+		/* advance to the next item */
+		entry = comma;
+		if (*entry)
+			entry++;
+	}
+
+	/* then verify the number of bits in the mask matches */
+	for (bits = 0, temp = in->mask; temp && bits < 32; bits++)
+		temp &= temp - 1;
+	if (bits != index)
+		fatalerror("Switch location '%s' does not describe enough bits for mask %X\n", location, in->mask);
 }
 
 
@@ -1977,36 +2083,36 @@ profiler_mark(PROFILER_END);
 static void update_playback_record(int portnum, UINT32 portvalue)
 {
 	/* handle playback */
-	if (playback != NULL)
+	if (Machine->playback_file != NULL)
 	{
 		UINT32 result;
 
 		/* a successful read goes into the playback field which overrides everything else */
-		if (mame_fread(playback, &result, sizeof(result)) == sizeof(result))
+		if (mame_fread(Machine->playback_file, &result, sizeof(result)) == sizeof(result))
 			portvalue = port_info[portnum].playback = BIG_ENDIANIZE_INT32(result);
 
 		/* a failure causes us to close the playback file and stop playback */
 		else
 		{
-			mame_fclose(playback);
-			playback = NULL;
+			mame_fclose(Machine->playback_file);
+			Machine->playback_file = NULL;
 		}
 	}
 
 	/* handle recording */
-	if (record != NULL)
+	if (Machine->record_file != NULL)
 	{
 		UINT32 result = BIG_ENDIANIZE_INT32(portvalue);
 
 		/* a successful write just works */
-		if (mame_fwrite(record, &result, sizeof(result)) == sizeof(result))
+		if (mame_fwrite(Machine->record_file, &result, sizeof(result)) == sizeof(result))
 			;
 
 		/* a failure causes us to close the record file and stop recording */
 		else
 		{
-			mame_fclose(record);
-			record = NULL;
+			mame_fclose(Machine->record_file);
+			Machine->record_file = NULL;
 		}
 	}
 }
@@ -2150,6 +2256,23 @@ profiler_mark(PROFILER_INPUT);
 	/* less MESS to MESSy things */
 	inputx_update();
 #endif
+
+	/* call changed handlers */
+	for (portnum = 0; portnum < MAX_INPUT_PORTS; portnum++)
+		if (port_info[portnum].change_notify != NULL)
+		{
+			changed_callback_info *cbinfo;
+			UINT32 newvalue = readinputport(portnum);
+			UINT32 oldvalue = port_info[portnum].changed_last_value;
+			UINT32 delta = newvalue ^ oldvalue;
+
+			/* call all the callbacks whose mask matches the requested mask */
+			for (cbinfo = port_info[portnum].change_notify; cbinfo; cbinfo = cbinfo->next)
+				if (delta & cbinfo->mask)
+					(*cbinfo->callback)(cbinfo->param, oldvalue & cbinfo->mask, newvalue & cbinfo->mask);
+
+			port_info[portnum].changed_last_value = newvalue;
+		}
 
 	/* handle playback/record */
 	for (portnum = 0; portnum < MAX_INPUT_PORTS; portnum++)
@@ -2471,10 +2594,21 @@ profiler_mark(PROFILER_END);
 UINT32 readinputport(int port)
 {
 	input_port_info *portinfo = &port_info[port];
+	custom_port_info *custom;
 	UINT32 result;
 
 	/* interpolate analog values */
 	interpolate_analog_port(port);
+
+	/* update custom values */
+	for (custom = portinfo->custominfo; custom; custom = custom->next)
+		if (input_port_condition(custom->port))
+		{
+			/* replace the bits with bits from the custom routine */
+			input_port_entry *port = custom->port;
+			portinfo->digital &= ~port->mask;
+			portinfo->digital |= ((*port->custom)(port->custom_param) << custom->shift) & port->mask;
+		}
 
 	/* compute the current result: default value XOR the digital, merged with the analog */
 	result = ((portinfo->defvalue ^ portinfo->digital) & ~portinfo->analogmask) | portinfo->analog;
@@ -2484,7 +2618,7 @@ UINT32 readinputport(int port)
 		update_playback_record(port, result);
 
 	/* if we're playing back, use the recorded value for inputs instead */
-	if (playback != NULL)
+	if (Machine->playback_file != NULL)
 		result = portinfo->playback;
 
 	/* handle VBLANK bits after inputs */
@@ -2508,7 +2642,7 @@ UINT32 readinputportbytag(const char *tag)
 		return readinputport(port);
 
 	/* otherwise fail horribly */
-	osd_die("Unable to locate input port '%s'", tag);
+	fatalerror("Unable to locate input port '%s'", tag);
 	return -1;
 }
 
@@ -2540,100 +2674,23 @@ void input_port_set_digital_value(int portnum, UINT32 value, UINT32 mask)
 
 /*************************************
  *
- *  Port reading helpers
+ *  Input port callbacks
  *
  *************************************/
 
-READ8_HANDLER( input_port_0_r ) { return readinputport(0); }
-READ8_HANDLER( input_port_1_r ) { return readinputport(1); }
-READ8_HANDLER( input_port_2_r ) { return readinputport(2); }
-READ8_HANDLER( input_port_3_r ) { return readinputport(3); }
-READ8_HANDLER( input_port_4_r ) { return readinputport(4); }
-READ8_HANDLER( input_port_5_r ) { return readinputport(5); }
-READ8_HANDLER( input_port_6_r ) { return readinputport(6); }
-READ8_HANDLER( input_port_7_r ) { return readinputport(7); }
-READ8_HANDLER( input_port_8_r ) { return readinputport(8); }
-READ8_HANDLER( input_port_9_r ) { return readinputport(9); }
-READ8_HANDLER( input_port_10_r ) { return readinputport(10); }
-READ8_HANDLER( input_port_11_r ) { return readinputport(11); }
-READ8_HANDLER( input_port_12_r ) { return readinputport(12); }
-READ8_HANDLER( input_port_13_r ) { return readinputport(13); }
-READ8_HANDLER( input_port_14_r ) { return readinputport(14); }
-READ8_HANDLER( input_port_15_r ) { return readinputport(15); }
-READ8_HANDLER( input_port_16_r ) { return readinputport(16); }
-READ8_HANDLER( input_port_17_r ) { return readinputport(17); }
-READ8_HANDLER( input_port_18_r ) { return readinputport(18); }
-READ8_HANDLER( input_port_19_r ) { return readinputport(19); }
-READ8_HANDLER( input_port_20_r ) { return readinputport(20); }
-READ8_HANDLER( input_port_21_r ) { return readinputport(21); }
-READ8_HANDLER( input_port_22_r ) { return readinputport(22); }
-READ8_HANDLER( input_port_23_r ) { return readinputport(23); }
-READ8_HANDLER( input_port_24_r ) { return readinputport(24); }
-READ8_HANDLER( input_port_25_r ) { return readinputport(25); }
-READ8_HANDLER( input_port_26_r ) { return readinputport(26); }
-READ8_HANDLER( input_port_27_r ) { return readinputport(27); }
-READ8_HANDLER( input_port_28_r ) { return readinputport(28); }
-READ8_HANDLER( input_port_29_r ) { return readinputport(29); }
+void input_port_set_changed_callback(int port, UINT32 mask, void (*callback)(void *, UINT32, UINT32), void *param)
+{
+	input_port_info *portinfo = &port_info[port];
+	changed_callback_info *cbinfo;
 
-READ16_HANDLER( input_port_0_word_r ) { return readinputport(0); }
-READ16_HANDLER( input_port_1_word_r ) { return readinputport(1); }
-READ16_HANDLER( input_port_2_word_r ) { return readinputport(2); }
-READ16_HANDLER( input_port_3_word_r ) { return readinputport(3); }
-READ16_HANDLER( input_port_4_word_r ) { return readinputport(4); }
-READ16_HANDLER( input_port_5_word_r ) { return readinputport(5); }
-READ16_HANDLER( input_port_6_word_r ) { return readinputport(6); }
-READ16_HANDLER( input_port_7_word_r ) { return readinputport(7); }
-READ16_HANDLER( input_port_8_word_r ) { return readinputport(8); }
-READ16_HANDLER( input_port_9_word_r ) { return readinputport(9); }
-READ16_HANDLER( input_port_10_word_r ) { return readinputport(10); }
-READ16_HANDLER( input_port_11_word_r ) { return readinputport(11); }
-READ16_HANDLER( input_port_12_word_r ) { return readinputport(12); }
-READ16_HANDLER( input_port_13_word_r ) { return readinputport(13); }
-READ16_HANDLER( input_port_14_word_r ) { return readinputport(14); }
-READ16_HANDLER( input_port_15_word_r ) { return readinputport(15); }
-READ16_HANDLER( input_port_16_word_r ) { return readinputport(16); }
-READ16_HANDLER( input_port_17_word_r ) { return readinputport(17); }
-READ16_HANDLER( input_port_18_word_r ) { return readinputport(18); }
-READ16_HANDLER( input_port_19_word_r ) { return readinputport(19); }
-READ16_HANDLER( input_port_20_word_r ) { return readinputport(20); }
-READ16_HANDLER( input_port_21_word_r ) { return readinputport(21); }
-READ16_HANDLER( input_port_22_word_r ) { return readinputport(22); }
-READ16_HANDLER( input_port_23_word_r ) { return readinputport(23); }
-READ16_HANDLER( input_port_24_word_r ) { return readinputport(24); }
-READ16_HANDLER( input_port_25_word_r ) { return readinputport(25); }
-READ16_HANDLER( input_port_26_word_r ) { return readinputport(26); }
-READ16_HANDLER( input_port_27_word_r ) { return readinputport(27); }
-READ16_HANDLER( input_port_28_word_r ) { return readinputport(28); }
-READ16_HANDLER( input_port_29_word_r ) { return readinputport(29); }
+	assert_always(mame_get_phase() == MAME_PHASE_INIT, "Can only call input_port_set_changed_callback() at init time!");
+	assert_always((port >= 0) && (port < MAX_INPUT_PORTS), "Invalid port number passed to input_port_set_changed_callback()!");
 
-READ32_HANDLER( input_port_0_dword_r ) { return readinputport(0); }
-READ32_HANDLER( input_port_1_dword_r ) { return readinputport(1); }
-READ32_HANDLER( input_port_2_dword_r ) { return readinputport(2); }
-READ32_HANDLER( input_port_3_dword_r ) { return readinputport(3); }
-READ32_HANDLER( input_port_4_dword_r ) { return readinputport(4); }
-READ32_HANDLER( input_port_5_dword_r ) { return readinputport(5); }
-READ32_HANDLER( input_port_6_dword_r ) { return readinputport(6); }
-READ32_HANDLER( input_port_7_dword_r ) { return readinputport(7); }
-READ32_HANDLER( input_port_8_dword_r ) { return readinputport(8); }
-READ32_HANDLER( input_port_9_dword_r ) { return readinputport(9); }
-READ32_HANDLER( input_port_10_dword_r ) { return readinputport(10); }
-READ32_HANDLER( input_port_11_dword_r ) { return readinputport(11); }
-READ32_HANDLER( input_port_12_dword_r ) { return readinputport(12); }
-READ32_HANDLER( input_port_13_dword_r ) { return readinputport(13); }
-READ32_HANDLER( input_port_14_dword_r ) { return readinputport(14); }
-READ32_HANDLER( input_port_15_dword_r ) { return readinputport(15); }
-READ32_HANDLER( input_port_16_dword_r ) { return readinputport(16); }
-READ32_HANDLER( input_port_17_dword_r ) { return readinputport(17); }
-READ32_HANDLER( input_port_18_dword_r ) { return readinputport(18); }
-READ32_HANDLER( input_port_19_dword_r ) { return readinputport(19); }
-READ32_HANDLER( input_port_20_dword_r ) { return readinputport(20); }
-READ32_HANDLER( input_port_21_dword_r ) { return readinputport(21); }
-READ32_HANDLER( input_port_22_dword_r ) { return readinputport(22); }
-READ32_HANDLER( input_port_23_dword_r ) { return readinputport(23); }
-READ32_HANDLER( input_port_24_dword_r ) { return readinputport(24); }
-READ32_HANDLER( input_port_25_dword_r ) { return readinputport(25); }
-READ32_HANDLER( input_port_26_dword_r ) { return readinputport(26); }
-READ32_HANDLER( input_port_27_dword_r ) { return readinputport(27); }
-READ32_HANDLER( input_port_28_dword_r ) { return readinputport(28); }
-READ32_HANDLER( input_port_29_dword_r ) { return readinputport(29); }
+	cbinfo = auto_malloc(sizeof(*cbinfo));
+	cbinfo->next = portinfo->change_notify;
+	cbinfo->mask = mask;
+	cbinfo->callback = callback;
+	cbinfo->param = param;
 
+	portinfo->change_notify = cbinfo;
+}

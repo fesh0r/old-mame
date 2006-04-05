@@ -1151,7 +1151,6 @@ Registers (word-wise):
 ***************************************************************************/
 
 #include "driver.h"
-#include "state.h"
 #include "vidhrdw/konamiic.h"
 
 /*
@@ -1166,7 +1165,7 @@ static void shuffle(UINT16 *buf,int len)
 
 	if (len == 2) return;
 
-	if (len % 4) osd_die("shuffle() - not modulo 4\n");   /* must not happen */
+	if (len % 4) fatalerror("shuffle() - not modulo 4");   /* must not happen */
 
 	len /= 2;
 
@@ -1888,11 +1887,11 @@ static unsigned char *K052109_videoram_F,*K052109_videoram2_F,*K052109_colorram_
 static unsigned char *K052109_videoram_A,*K052109_videoram2_A,*K052109_colorram_A;
 static unsigned char *K052109_videoram_B,*K052109_videoram2_B,*K052109_colorram_B;
 static unsigned char K052109_charrombank[4];
-static int has_extra_video_ram;
-static int K052109_RMRD_line;
+static UINT8 has_extra_video_ram;
+static INT32 K052109_RMRD_line;
 static int K052109_tileflip_enable;
-static int K052109_irq_enabled;
-static int K052109_dx[3], K052109_dy[3];
+static UINT8 K052109_irq_enabled;
+static INT32 K052109_dx[3], K052109_dy[3];
 static unsigned char K052109_romsubbank,K052109_scrollctrl;
 tilemap *K052109_tilemap[3];
 
@@ -2045,15 +2044,15 @@ int K052109_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int 
 		K052109_dx[i] = K052109_dy[i] = 0;
 	}
 
-	state_save_register_UINT8("k052109", 0, "ram",        K052109_ram, 0x6000);
-	state_save_register_int  ("k052109", 0, "rmrd",       &K052109_RMRD_line);
-	state_save_register_UINT8("k052109", 0, "romsubbank", &K052109_romsubbank, 1);
-	state_save_register_UINT8("k052109", 0, "scrollctrl", &K052109_scrollctrl, 1);
-	state_save_register_int  ("k052109", 0, "irqen",      &K052109_irq_enabled);
-	state_save_register_UINT8("k052109", 0, "charbank",   K052109_charrombank, 4);
-	state_save_register_INT32("k052109", 0, "dx",         &K052109_dx[0], 3);
-	state_save_register_INT32("k052109", 0, "dy",         &K052109_dy[0], 3);
-	state_save_register_int  ("k052109", 0, "extra",      &has_extra_video_ram);
+	state_save_register_global_pointer(K052109_ram, 0x6000);
+	state_save_register_global(K052109_RMRD_line);
+	state_save_register_global(K052109_romsubbank);
+	state_save_register_global(K052109_scrollctrl);
+	state_save_register_global(K052109_irq_enabled);
+	state_save_register_global_array(K052109_charrombank);
+	state_save_register_global_array(K052109_dx);
+	state_save_register_global_array(K052109_dy);
+	state_save_register_global(has_extra_video_ram);
 
 	state_save_register_func_postload(K052109_tileflip_reset);
 	return 0;
@@ -3651,7 +3650,7 @@ static UINT16 K053247_regs[16];
 UINT16 *K053247_ram=0;
 static gfx_element *K053247_gfx;
 static void (*K053247_callback)(int *code,int *color,int *priority);
-static int K053246_OBJCHA_line;
+static UINT8 K053246_OBJCHA_line;
 
 void K053247_export_config(UINT16 **ram, gfx_element **gfx, void (**callback)(int *, int *, int *), int *dx, int *dy)
 {
@@ -3764,10 +3763,10 @@ int K053247_vh_start(int gfx_memory_region, int dx, int dy, int plane0,int plane
 	memset(K053246_regs, 0, 8);
 	memset(K053247_regs, 0, 32);
 
-	state_save_register_UINT16("K053246", 0, "memory",    K053247_ram,  0x800);
-	state_save_register_UINT8 ("K053246", 0, "registers", K053246_regs, 8);
-	state_save_register_UINT16("K053246", 0, "registers2",K053247_regs, 16);
-	state_save_register_int   ("K053246", 0, "objcha",    &K053246_OBJCHA_line);
+	state_save_register_global_pointer(K053247_ram, 0x800);
+	state_save_register_global_array(K053246_regs);
+	state_save_register_global_array(K053247_regs);
+	state_save_register_global(K053246_OBJCHA_line);
 
 	return 0;
 }
@@ -3923,10 +3922,10 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 	memset(K053246_regs, 0, 8);
 	memset(K053247_regs, 0, 32);
 
-	state_save_register_UINT16("K053246", 0, "memory",    K053247_ram,  0x800);
-	state_save_register_UINT8 ("K053246", 0, "registers", K053246_regs, 8);
-	state_save_register_UINT16("K053246", 0, "registers2",K053247_regs, 16);
-	state_save_register_int   ("K053246", 0, "objcha",    &K053246_OBJCHA_line);
+	state_save_register_global_pointer(K053247_ram, 0x800);
+	state_save_register_global_array(K053246_regs);
+	state_save_register_global_array(K053247_regs);
+	state_save_register_global(K053246_OBJCHA_line);
 
 	return 0;
 }
@@ -5059,7 +5058,7 @@ int K053251_vh_start(void)
 {
 	K053251_set_tilemaps(NULL,NULL,NULL,NULL,NULL);
 
-	state_save_register_UINT8("K053251", 0, "registers", K053251_ram, 16);
+	state_save_register_global_array(K053251_ram);
 	state_save_register_func_postload(K053251_reset_indexes);
 
 	return 0;
@@ -5305,524 +5304,9 @@ READ8_HANDLER( K051733_r )
 	}
 }
 
-
-
 /***************************************************************************/
 /*                                                                         */
-/*                                 054157                                  */
-/*                                                                         */
-/***************************************************************************/
-
-static tilemap *K054157_tilemap[4], *K054157_cur_tilemap;
-static tilemap *K054157_tilemapb[4], *K054157_tilemaps[4];
-
-static UINT16 K054157_regs[0x20], K054157_regsb[4];
-static void (*K054157_linescroll_updater[4])(int layer);
-
-static int K054157_cur_rombank, K054157_romnbbanks;
-static int K054157_uses_tile_banks, K054157_cur_tile_bank;
-static int K054157_gfxnum, K054157_memory_region;
-static int K054157_cur_offset;
-static UINT16 *K054157_rambase, *K054157_cur_spbase, *K054157_cur_rambase;
-static UINT8 *K054157_rombase;
-static UINT16 *K054157_rambasel[8];
-static int K054157_tilemapl[8], K054157_offsetl[8];
-
-static void (*K054157_callback)(int, int *, int *);
-
-INLINE void K054157_get_tile_info(int tile_index,int layer)
-{
-	UINT16 *addr;
-	int attr, code;
-	UINT16 *lbase = K054157_rambase + 0x2000*layer;
-	if(tile_index < 64*32)
-		addr = lbase + (tile_index<<1);
-	else
-		addr = lbase + (tile_index<<1) + 0x1000 - 64*32*2;
-
-	attr = addr[0];
-	code = addr[1];
-	tile_info.flags = 0;
-
-	(*K054157_callback)(layer, &code, &attr);
-	SET_TILE_INFO(K054157_gfxnum,
-			code,
-			attr,
-			tile_info.flags)
-}
-
-static void K054157_get_tile_info0(int tile_index) { K054157_get_tile_info(tile_index,0); }
-static void K054157_get_tile_info1(int tile_index) { K054157_get_tile_info(tile_index,1); }
-static void K054157_get_tile_info2(int tile_index) { K054157_get_tile_info(tile_index,2); }
-static void K054157_get_tile_info3(int tile_index) { K054157_get_tile_info(tile_index,3); }
-
-
-static void K054157_lsu_1_256(int layer)
-{
-	int y;
-	int basey = K054157_regs[0x10|layer];
-
-	UINT16 *baseram = K054157_cur_spbase + layer*0x400;
-	for(y=0; y<256; y++) {
-		int offset = (((basey + y) & 0x1ff) << 1) | 1;
-		tilemap_set_scrollx(K054157_tilemap[layer], y, baseram[offset]);
-	}
-}
-
-static void K054157_lsu_1_512(int layer)
-{
-	int y;
-	int basey = K054157_regs[0x10|layer];
-
-	UINT16 *baseram = K054157_cur_spbase + layer*0x400;
-	for(y=0; y<512; y++) {
-		int offset = (((basey + y) & 0x1ff) << 1) | 1;
-		tilemap_set_scrollx(K054157_tilemap[layer], y, baseram[offset]);
-	}
-}
-
-static void K054157_lsu_8_256(int layer)
-{
-	int y;
-	int basey = K054157_regs[0x10|layer];
-
-	UINT16 *baseram = K054157_cur_spbase + layer*0x400;
-	for(y=0; y<256; y++) {
-		int offset = (((basey + y) & 0x1f8) << 1) | 1;
-		tilemap_set_scrollx(K054157_tilemap[layer], y, baseram[offset]);
-	}
-}
-
-static void K054157_lsu_8_512(int layer)
-{
-	int y;
-	int basey = K054157_regs[0x10|layer];
-
-	UINT16 *baseram = K054157_cur_spbase + layer*0x400;
-	for(y=0; y<512; y++) {
-		int offset = (((basey + y) & 0x1f8) << 1) | 1;
-		tilemap_set_scrollx(K054157_tilemap[layer], y, baseram[offset]);
-	}
-}
-
-static void K054157_lsu_full(int layer)
-{
-	tilemap_set_scrollx(K054157_tilemap[layer], 0, K054157_regs[0x14|layer]);
-}
-
-static void K054157_reset_linescroll(void)
-{
-	int layer;
-	int mode = K054157_regs[5];
-	for(layer=0; layer < 4; layer++) {
-		int lmode = (mode >> (layer << 1)) & 3;
-		switch(lmode) {
-		case 0:
-			if(K054157_tilemap[layer] == K054157_tilemaps[layer]) {
-				K054157_linescroll_updater[layer] = K054157_lsu_1_256;
-				tilemap_set_scroll_rows(K054157_tilemap[layer], 256);
-			} else {
-				K054157_linescroll_updater[layer] = K054157_lsu_1_512;
-				tilemap_set_scroll_rows(K054157_tilemap[layer], 512);
-			}
-			break;
-		case 1:
-//          logerror("LS mode layer %d unknown (%d)\n", layer, lmode);
-			goto rhaaa_lovely;
-		case 2:
-			if(K054157_tilemap[layer] == K054157_tilemaps[layer]) {
-				K054157_linescroll_updater[layer] = K054157_lsu_8_256;
-				tilemap_set_scroll_rows(K054157_tilemap[layer], 256);
-			} else {
-				K054157_linescroll_updater[layer] = K054157_lsu_8_512;
-				tilemap_set_scroll_rows(K054157_tilemap[layer], 512);
-			}
-			break;
-		case 3:
-		rhaaa_lovely:
-			K054157_linescroll_updater[layer] = K054157_lsu_full;
-			tilemap_set_scroll_rows(K054157_tilemap[layer], 1);
-			break;
-		}
-	}
-}
-
-static void K054157_change_tilemap(int layer)
-{
-	int flip = 0;
-	if(K054157_regs[8|layer] & 1) {
-		tilemap_set_enable(K054157_tilemapb[layer], 1);
-		tilemap_set_enable(K054157_tilemaps[layer], 0);
-		K054157_tilemap[layer] = K054157_tilemapb[layer];
-	} else {
-		tilemap_set_enable(K054157_tilemapb[layer], 0);
-		tilemap_set_enable(K054157_tilemaps[layer], 1);
-		K054157_tilemap[layer] = K054157_tilemaps[layer];
-	}
-	tilemap_mark_all_tiles_dirty(K054157_tilemap[layer]);
-
-	if(K054157_regs[0] & 0x20)
-		flip |= TILEMAP_FLIPY;
-	if(K054157_regs[0] & 0x10)
-		flip |= TILEMAP_FLIPX;
-
-	tilemap_set_flip(K054157_tilemap[layer], flip);
-
-	K054157_reset_linescroll();
-}
-
-static void K054157_reset_tilemaps(void)
-{
-	int i;
-	// To avoid crashes in K054157_reset_linescroll()
-	for(i=0; i<4; i++)
-		K054157_tilemap[i] = K054157_tilemaps[i];
-	for(i=0; i<4; i++)
-		K054157_change_tilemap(i);
-}
-
-static void K054157_change_flip(void)
-{
-	int flip = 0;
-
-	if(K054157_regs[0] & 0x20)
-		flip |= TILEMAP_FLIPY;
-	if(K054157_regs[0] & 0x10)
-		flip |= TILEMAP_FLIPX;
-	tilemap_set_flip(K054157_tilemap[0], flip);
-	tilemap_set_flip(K054157_tilemap[1], flip);
-	tilemap_set_flip(K054157_tilemap[2], flip);
-	tilemap_set_flip(K054157_tilemap[3], flip);
-}
-
-static void K054157_change_rambank(void)
-{
-	int bank = ((K054157_regs[0x19]>>2) & 6) | (K054157_regs[0x19] & 1);
-
-	K054157_cur_rambase = K054157_rambasel[bank];
-	K054157_cur_tilemap = K054157_tilemap[K054157_tilemapl[bank]];
-	K054157_cur_offset  = K054157_offsetl[bank];
-}
-
-int K054157_get_current_rambank(void)
-{
-	return ((K054157_regs[0x19]>>2) & 6) | (K054157_regs[0x19] & 1);
-}
-
-static void K054157_change_splayer(void)
-{
-	int bank = ((K054157_regs[0x18]>>2) & 6) | (K054157_regs[0x18] & 1);
-	K054157_cur_spbase = K054157_rambasel[bank];
-}
-
-static void K054157_change_rombank(void)
-{
-	int bank;
-
-	if (K054157_uses_tile_banks)	/* asterix */
-		bank = (K054157_regs[0x1a] >> 8) | (K054157_regs[0x1b] << 4) | (K054157_cur_tile_bank << 6);
-	else	/* everything else */
-		bank = K054157_regs[0x1a] | (K054157_regs[0x1b] << 16);
-
-	K054157_cur_rombank = bank % K054157_romnbbanks;
-//ui_popup("%04x: %04x %04x %04x",activecpu_get_pc(),K054157_regs[0x1a],K054157_regs[0x1b],K054157_cur_rombank);
-}
-
-int K054157_vh_start(int gfx_memory_region, int big, int (*scrolld)[4][2], int plane0,int plane1,int plane2,int plane3, void (*callback)(int, int *, int *))
-{
-	int gfx_index;
-	int i;
-	static gfx_layout charlayout =
-	{
-		8, 8,
-		0,				/* filled in later */
-		4,
-		{ 0, 0, 0, 0 },	/* filled in later */
-		{ 2*4, 3*4, 0*4, 1*4, 6*4, 7*4, 4*4, 5*4 },
-		{ 0*8*4, 1*8*4, 2*8*4, 3*8*4, 4*8*4, 5*8*4, 6*8*4, 7*8*4 },
-		8*8*4
-	};
-
-	/* find first empty slot to decode gfx */
-	for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
-		if (Machine->gfx[gfx_index] == 0)
-			break;
-	if (gfx_index == MAX_GFX_ELEMENTS)
-		return 1;
-
-	/* tweak the structure for the number of tiles we have */
-	charlayout.total = memory_region_length(gfx_memory_region) / (8*4);
-	charlayout.planeoffset[0] = plane0;
-	charlayout.planeoffset[1] = plane1;
-	charlayout.planeoffset[2] = plane2;
-	charlayout.planeoffset[3] = plane3;
-
-	/* decode the graphics */
-	Machine->gfx[gfx_index] = allocgfx(&charlayout);
-	decodegfx(Machine->gfx[gfx_index], memory_region(gfx_memory_region), 0, Machine->gfx[gfx_index]->total_elements);
-	if (!Machine->gfx[gfx_index])
-		return 1;
-
-	/* set the color information */
-	if (Machine->drv->color_table_len)
-	{
-		Machine->gfx[gfx_index]->colortable = Machine->remapped_colortable;
-		Machine->gfx[gfx_index]->total_colors = Machine->drv->color_table_len / 16;
-	}
-	else
-	{
-		Machine->gfx[gfx_index]->colortable = Machine->pens;
-		Machine->gfx[gfx_index]->total_colors = Machine->drv->total_colors / 16;
-	}
-
-	K054157_memory_region = gfx_memory_region;
-	K054157_gfxnum = gfx_index;
-	K054157_callback = callback;
-
-	K054157_rombase = memory_region(gfx_memory_region);
-	K054157_romnbbanks = memory_region_length(gfx_memory_region)/0x2000;
-	K054157_cur_rombank = 0;
-	K054157_uses_tile_banks = 0;
-
-	K054157_tilemapb[0] = tilemap_create(K054157_get_tile_info0, tilemap_scan_rows,
-										 TILEMAP_TRANSPARENT, 8, 8, 64, 64);
-	K054157_tilemapb[1] = tilemap_create(K054157_get_tile_info1, tilemap_scan_rows,
-										 TILEMAP_TRANSPARENT, 8, 8, 64, 64);
-	K054157_tilemapb[2] = tilemap_create(K054157_get_tile_info2, tilemap_scan_rows,
-										 TILEMAP_TRANSPARENT, 8, 8, 64, 64);
-	K054157_tilemapb[3] = tilemap_create(K054157_get_tile_info3, tilemap_scan_rows,
-										 TILEMAP_TRANSPARENT, 8, 8, 64, 64);
-	K054157_tilemaps[0] = tilemap_create(K054157_get_tile_info0, tilemap_scan_rows,
-										 TILEMAP_TRANSPARENT, 8, 8, 64, 32);
-	K054157_tilemaps[1] = tilemap_create(K054157_get_tile_info1, tilemap_scan_rows,
-										 TILEMAP_TRANSPARENT, 8, 8, 64, 32);
-	K054157_tilemaps[2] = tilemap_create(K054157_get_tile_info2, tilemap_scan_rows,
-										 TILEMAP_TRANSPARENT, 8, 8, 64, 32);
-	K054157_tilemaps[3] = tilemap_create(K054157_get_tile_info3, tilemap_scan_rows,
-										 TILEMAP_TRANSPARENT, 8, 8, 64, 32);
-
-	K054157_rambase = auto_malloc(0x14000);
-
-	if(   !K054157_tilemapb[0] || !K054157_tilemapb[1] || !K054157_tilemapb[2] || !K054157_tilemapb[3]
-	   || !K054157_tilemaps[0] || !K054157_tilemaps[1] || !K054157_tilemaps[2] || !K054157_tilemaps[3])
-		return 1;
-
-	if(big) {
-		K054157_rambasel[0] = K054157_rambase + 0x2000;
-		K054157_rambasel[1] = K054157_rambase + 0x6000;
-		K054157_rambasel[2] = K054157_rambase + 0x3000;
-		K054157_rambasel[3] = K054157_rambase + 0x7000;
-		K054157_rambasel[4] = K054157_rambase + 0x4000;
-		K054157_rambasel[5] = K054157_rambase + 0x0000;
-		K054157_rambasel[6] = K054157_rambase + 0x5000;
-		K054157_rambasel[7] = K054157_rambase + 0x1000;
-	} else {
-		K054157_rambasel[0] = K054157_rambase + 0x0000;
-		K054157_rambasel[1] = K054157_rambase + 0x2000;
-		K054157_rambasel[2] = K054157_rambase + 0x4000;
-		K054157_rambasel[3] = K054157_rambase + 0x6000;
-		K054157_rambasel[4] = 0;
-		K054157_rambasel[5] = 0;
-		K054157_rambasel[6] = 0;
-		K054157_rambasel[7] = 0;
-	}
-
-	for(i=0; i<8; i++) {
-		if(K054157_rambasel[i]) {
-			int delta = K054157_rambasel[i] - K054157_rambase;
-			K054157_tilemapl[i] = delta >> 13;
-			K054157_offsetl [i] = (delta & 0x1000) ? 64*32 : 0;
-		} else {
-			K054157_tilemapl[i] = 0;
-			K054157_offsetl [i] = 0;
-		}
-	}
-
-	memset(K054157_rambase, 0, 0x10000);
-	memset(K054157_regs, 0, 0x40);
-	memset(K054157_regsb, 0, 8);
-
-	for(i=0; i<4; i++) {
-		tilemap_set_transparent_pen(K054157_tilemapb[i],0);
-		tilemap_set_scrolldx(K054157_tilemapb[i], -scrolld[0][i][0], -scrolld[1][i][0]);
-		tilemap_set_scrolldy(K054157_tilemapb[i], -scrolld[0][i][1], -scrolld[1][i][1]);
-
-		tilemap_set_transparent_pen(K054157_tilemaps[i],0);
-		tilemap_set_scrolldx(K054157_tilemaps[i], -scrolld[0][i][0], -scrolld[1][i][0]);
-		tilemap_set_scrolldy(K054157_tilemaps[i], -scrolld[0][i][1], -scrolld[1][i][1]);
-	}
-
-	K054157_reset_tilemaps();
-	K054157_change_rambank();
-	K054157_change_rombank();
-	K054157_change_splayer();
-
-	state_save_register_UINT16("K054157", 0, "memory",      K054157_rambase, 0x8000);
-	state_save_register_UINT16("K054157", 0, "registers",   K054157_regs,    0x20);
-	state_save_register_UINT16("K054157", 0, "registers b", K054157_regsb,   0x4);
-
-	state_save_register_func_postload(K054157_reset_tilemaps);
-	state_save_register_func_postload(K054157_change_rambank);
-	state_save_register_func_postload(K054157_change_rombank);
-
-	return 0;
-}
-
-
-READ16_HANDLER( K054157_ram_word_r )
-{
-	return K054157_cur_rambase[offset];
-}
-
-READ16_HANDLER( K054157_ram_half_word_r )
-{
-	return K054157_cur_rambase[((offset << 1) & 0xffe) | ((offset >> 11) ^ 1)];
-}
-
-READ16_HANDLER( K054157_rom_word_r )
-{
-	int addr = 0x2000*K054157_cur_rombank + 2*offset;
-
-//  ui_popup("%04x: addr %06x",activecpu_get_pc(),addr);
-
-	return K054157_rombase[addr+1] | (K054157_rombase[addr] << 8);
-}
-
-READ16_HANDLER( K054157_rom_word_8000_r )
-{
-	int addr = 0x8000*K054157_cur_rombank + 2*offset;
-
-//  ui_popup("%04x: addr %06x",activecpu_get_pc(),addr);
-
-	return K054157_rombase[addr+1] | (K054157_rombase[addr] << 8);
-}
-
-WRITE16_HANDLER( K054157_ram_word_w )
-{
-	UINT16 *adr = K054157_cur_rambase + offset;
-	UINT16 old = *adr;
-
-	COMBINE_DATA(adr);
-	if(*adr != old && K054157_cur_tilemap)
-		tilemap_mark_tile_dirty(K054157_cur_tilemap, offset/2 + K054157_cur_offset);
-}
-
-WRITE16_HANDLER( K054157_ram_half_word_w )
-{
-	UINT16 *adr = K054157_cur_rambase + (((offset << 1) & 0xffe) | 1);
-	UINT16 old = *adr;
-
-	COMBINE_DATA(adr);
-	if(*adr != old)
-		tilemap_mark_tile_dirty(K054157_cur_tilemap, (offset & 0x7ff) + K054157_cur_offset);
-}
-
-WRITE16_HANDLER( K054157_word_w )
-{
-	UINT16 old = K054157_regs[offset];
-	COMBINE_DATA (K054157_regs + offset);
-
-	if(K054157_regs[offset] != old)
-	{
-		switch(offset) {
-		case 0x00:
-			if((K054157_regs[0] & 0x30) != (old & 0x30))
-				K054157_change_flip();
-			break;
-		case 0x05:
-			K054157_reset_linescroll();
-			break;
-		case 0x08:
-		case 0x09:
-		case 0x0a:
-		case 0x0b:
-			if((K054157_regs[offset] & 1) ^ (K054157_tilemap[offset & 3] == K054157_tilemapb[offset & 3]))
-				K054157_change_tilemap(offset & 3);
-			break;
-		case 0x18:
-			K054157_change_splayer();
-			break;
-		case 0x19:
-			K054157_change_rambank();
-			break;
-		case 0x1a:
-		case 0x1b:
-			K054157_change_rombank();
-			break;
-		case 0x1c:
-			tilemap_mark_all_tiles_dirty(K054157_tilemapb[0]);
-			tilemap_mark_all_tiles_dirty(K054157_tilemapb[1]);
-			tilemap_mark_all_tiles_dirty(K054157_tilemapb[2]);
-			tilemap_mark_all_tiles_dirty(K054157_tilemapb[3]);
-			tilemap_mark_all_tiles_dirty(K054157_tilemaps[0]);
-			tilemap_mark_all_tiles_dirty(K054157_tilemaps[1]);
-			tilemap_mark_all_tiles_dirty(K054157_tilemaps[2]);
-			tilemap_mark_all_tiles_dirty(K054157_tilemaps[3]);
-			break;
-		}
-	}
-}
-
-WRITE16_HANDLER( K054157_b_word_w )
-{
-	COMBINE_DATA (K054157_regsb + offset);
-}
-
-void K054157_tilemap_update(void)
-{
-	int layer;
-
-	for(layer=0; layer<4; layer++)
-	{
-		K054157_linescroll_updater[layer](layer);
-		tilemap_set_scrolly(K054157_tilemap[layer], 0, K054157_regs[0x10|layer]);
-	}
-}
-
-void K054157_tilemap_draw(mame_bitmap *bitmap, const rectangle *cliprect, int num, int flags, UINT32 priority)
-{
-	tilemap_draw(bitmap,cliprect, K054157_tilemap[num], flags, priority);
-}
-
-int K054157_is_IRQ_enabled(void)
-{
-	return K054157_regs[3] & 1;
-}
-
-int K054157_get_lookup(int bits)
-{
-	int res;
-
-	res = (K054157_regs[0x1c] >> (bits << 2)) & 0x0f;
-
-	if (K054157_uses_tile_banks)	/* Asterix */
-		res |= K054157_cur_tile_bank << 4;
-
-	return res;
-}
-
-void K054157_set_tile_bank(int bank)
-{
-	K054157_uses_tile_banks = 1;
-
-	if (K054157_cur_tile_bank != bank)
-	{
-		K054157_cur_tile_bank = bank;
-
-		tilemap_mark_all_tiles_dirty(K054157_tilemap[0]);
-		tilemap_mark_all_tiles_dirty(K054157_tilemap[1]);
-		tilemap_mark_all_tiles_dirty(K054157_tilemap[2]);
-		tilemap_mark_all_tiles_dirty(K054157_tilemap[3]);
-	}
-
-	K054157_change_rombank();
-}
-
-
-
-/***************************************************************************/
-/*                                                                         */
-/*                                 056832                                  */
+/*                                 054157 / 056832                         */
 /*                                                                         */
 /***************************************************************************/
 
@@ -5855,12 +5339,12 @@ static int K056832_rom_half;
 static int K056832_LayerAssociatedWithPage[K056832_PAGE_COUNT];
 static int K056832_LayerOffset[4][2];
 static int K056832_LSRAMPage[4][2];
-static int K056832_X[4];	// 0..3 left
-static int K056832_Y[4];	// 0..3 top
-static int K056832_W[4];	// 0..3 width  -> 1..4 pages
-static int K056832_H[4];	// 0..3 height -> 1..4 pages
-static int K056832_dx[4];	// scroll
-static int K056832_dy[4];	// scroll
+static INT32 K056832_X[4];	// 0..3 left
+static INT32 K056832_Y[4];	// 0..3 top
+static INT32 K056832_W[4];	// 0..3 width  -> 1..4 pages
+static INT32 K056832_H[4];	// 0..3 height -> 1..4 pages
+static INT32 K056832_dx[4];	// scroll
+static INT32 K056832_dy[4];	// scroll
 static UINT32 K056832_LineDirty[K056832_PAGE_COUNT][8];
 static UINT8 K056832_AllLinesDirty[K056832_PAGE_COUNT];
 static UINT8 K056832_PageTileMode[K056832_PAGE_COUNT];
@@ -6061,6 +5545,9 @@ static void K056832_change_rambank(void)
 		K056832_SelectedPage = ((bank>>1)&0xc)|(bank&3);
 	}
 	K056832_SelectedPagex4096 = K056832_SelectedPage << 12;
+
+	// refresh associated tilemaps
+	K056832_MarkAllTilemapsDirty();
 }
 
 int K056832_get_current_rambank(void)
@@ -6330,16 +5817,16 @@ int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][
 	K056832_change_rambank();
 	K056832_change_rombank();
 
-	state_save_register_UINT16("K056832", 0, "memory",      K056832_videoram, 0x10000);
-	state_save_register_UINT16("K056832", 0, "registers",   K056832_regs,     0x20);
-	state_save_register_UINT16("K056832", 0, "registers b", K056832_regsb,    0x4);
-	state_save_register_INT32 ("K056832", 0, "layerstat1",  K056832_X,        0x4);
-	state_save_register_INT32 ("K056832", 0, "layerstat2",  K056832_Y,        0x4);
-	state_save_register_INT32 ("K056832", 0, "layerstat3",  K056832_W,        0x4);
-	state_save_register_INT32 ("K056832", 0, "layerstat4",  K056832_H,        0x4);
-	state_save_register_INT32 ("K056832", 0, "layerstat5",  K056832_dx,       0x4);
-	state_save_register_INT32 ("K056832", 0, "layerstat6",  K056832_dy,       0x4);
-	state_save_register_UINT8 ("K056832", 0, "layerstat7",  K056832_LayerTileMode, 4);
+	state_save_register_global_pointer(K056832_videoram, 0x10000);
+	state_save_register_global_array(K056832_regs);
+	state_save_register_global_array(K056832_regsb);
+	state_save_register_global_array(K056832_X);
+	state_save_register_global_array(K056832_Y);
+	state_save_register_global_array(K056832_W);
+	state_save_register_global_array(K056832_H);
+	state_save_register_global_array(K056832_dx);
+	state_save_register_global_array(K056832_dy);
+	state_save_register_global_array(K056832_LayerTileMode);
 
 	state_save_register_func_postload(K056832_UpdatePageLayout);
 	state_save_register_func_postload(K056832_change_rambank);
@@ -6564,6 +6051,18 @@ READ16_HANDLER( K056832_mw_rom_word_r )
 READ16_HANDLER( K056832_bishi_rom_word_r )
 {
 	int addr = 0x4000*K056832_CurGfxBank+offset;
+
+	if (!K056832_rombase)
+	{
+		K056832_rombase = memory_region(K056832_memory_region);
+	}
+
+	return K056832_rombase[addr+2] | (K056832_rombase[addr] << 8);
+}
+
+READ16_HANDLER( K056832_rom_word_8000_r )
+{
+	int addr = 0x8000*K056832_CurGfxBank + 2*offset;
 
 	if (!K056832_rombase)
 	{
@@ -7648,7 +7147,7 @@ static UINT8 k55555_regs[128];
 
 void K055555_vh_start(void)
 {
-	state_save_register_UINT8("K055555", 0, "registers", k55555_regs, 64);
+	state_save_register_global_array(k55555_regs);
 
 	memset(k55555_regs, 0, 64*sizeof(UINT8));
 }
@@ -7745,7 +7244,7 @@ int K054338_vh_start(void)
 	memset(K054338_shdRGB, 0, sizeof(int)*9);
 	K054338_alphainverted = 1;
 
-	state_save_register_UINT16("K054338", 0, "registers", k54338_regs, 32);
+	state_save_register_global_array(k54338_regs);
 
 	return 0;
 }
@@ -8034,8 +7533,8 @@ int K053250_vh_start(int chips, int *region)
 		K053250_info.chip[chip].offsy = K053250_info.chip[chip].offsx = 0;
 		K053250_info.chip[chip].frame = -1;
 
-		state_save_register_UINT16("K053250", chip, "memory",    K053250_info.chip[chip].ram,  0x800);
-		state_save_register_UINT8 ("K053250", chip, "registers", K053250_info.chip[chip].regs, 8);
+		state_save_register_item_pointer("K053250", chip, K053250_info.chip[chip].ram,  0x800);
+		state_save_register_item_array("K053250", chip, K053250_info.chip[chip].regs);
 	}
 
 	return 0;
@@ -8990,7 +8489,6 @@ WRITE32_HANDLER( K053252_long_w )
 
 
 // debug handlers
-READ16_HANDLER( K054157_word_r ) { return(K054157_regs[offset]); }		// VACSET (legacy)
 READ16_HANDLER( K056832_word_r ) { return(K056832_regs[offset]); }		// VACSET
 READ16_HANDLER( K056832_b_word_r ) { return(K056832_regsb[offset]); }	// VSCCS (board dependent)
 READ16_HANDLER( K053246_reg_word_r ) { return(K053246_regs[offset*2]<<8|K053246_regs[offset*2+1]); }	// OBJSET1

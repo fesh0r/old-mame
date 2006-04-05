@@ -19,7 +19,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 
 extern UINT8 *zodiack_videoram2;
@@ -38,22 +37,24 @@ extern VIDEO_UPDATE( zodiack );
 
 int percuss_hardware;
 
-extern MACHINE_INIT( espial );
+extern MACHINE_RESET( espial );
 extern WRITE8_HANDLER( zodiac_master_interrupt_enable_w );
 extern INTERRUPT_GEN( zodiac_master_interrupt );
 extern WRITE8_HANDLER( zodiac_master_soundlatch_w );
+extern WRITE8_HANDLER( espial_sound_nmi_enable_w );
+extern INTERRUPT_GEN( espial_sound_nmi_gen );
 
 
-static MACHINE_INIT( zodiack )
+static MACHINE_RESET( zodiack )
 {
 	percuss_hardware = 0;
-	machine_init_espial();
+	machine_reset_espial();
 }
 
-static MACHINE_INIT( percuss )
+static MACHINE_RESET( percuss )
 {
 	percuss_hardware = 1;
-	machine_init_espial();
+	machine_reset_espial();
 }
 
 
@@ -108,7 +109,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0x2000, 0x23ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(interrupt_enable_w)
+	AM_RANGE(0x4000, 0x4000) AM_WRITE(espial_sound_nmi_enable_w)
 	AM_RANGE(0x6000, 0x6000) AM_WRITE(soundlatch_w)
 ADDRESS_MAP_END
 
@@ -501,12 +502,12 @@ static MACHINE_DRIVER_START( zodiack )
 	MDRV_CPU_ADD(Z80, 14318000/8)	/* 1.78975 MHz??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(0,sound_writeport)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,8)	/* IRQs are triggered by the main CPU */
+	MDRV_CPU_VBLANK_INT(espial_sound_nmi_gen,8)	/* IRQs are triggered by the main CPU */
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)  /* frames per second, vblank duration */
 
-	MDRV_MACHINE_INIT(zodiack)
+	MDRV_MACHINE_RESET(zodiack)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -529,7 +530,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( percuss )
 	MDRV_IMPORT_FROM(zodiack)
-	MDRV_MACHINE_INIT(percuss)
+	MDRV_MACHINE_RESET(percuss)
 MACHINE_DRIVER_END
 
 

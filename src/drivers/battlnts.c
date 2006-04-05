@@ -9,7 +9,6 @@ Preliminary driver by:
 
 #include "driver.h"
 #include "cpu/hd6309/hd6309.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "vidhrdw/konamiic.h"
 #include "sound/3812intf.h"
@@ -64,7 +63,7 @@ static ADDRESS_MAP_START( battlnts_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_WRITE(K007342_w)				/* Color RAM + Video RAM */
 	AM_RANGE(0x2000, 0x21ff) AM_WRITE(K007420_w)				/* Sprite RAM */
 	AM_RANGE(0x2200, 0x23ff) AM_WRITE(K007342_scroll_w)		/* Scroll RAM */
-	AM_RANGE(0x2400, 0x24ff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_swap_w) AM_BASE(&paletteram)/* palette */
+	AM_RANGE(0x2400, 0x24ff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_be_w) AM_BASE(&paletteram)/* palette */
 	AM_RANGE(0x2600, 0x2607) AM_WRITE(K007342_vreg_w) 		/* Video Registers */
 	AM_RANGE(0x2e08, 0x2e08) AM_WRITE(battlnts_bankswitch_w)	/* bankswitch control */
 	AM_RANGE(0x2e0c, 0x2e0c) AM_WRITE(battlnts_spritebank_w)	/* sprite bank select */
@@ -459,7 +458,7 @@ static void shuffle(UINT8 *buf,int len)
 
 	if (len == 2) return;
 
-	if (len % 4) osd_die("shuffle() - not modulo 4\n");	/* must not happen */
+	if (len % 4) fatalerror("shuffle() - not modulo 4");	/* must not happen */
 
 	len /= 2;
 

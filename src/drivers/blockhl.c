@@ -20,13 +20,12 @@ found it.
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "vidhrdw/konamiic.h"
 #include "sound/2151intf.h"
 
 /* prototypes */
-static MACHINE_INIT( blockhl );
+static MACHINE_RESET( blockhl );
 static void blockhl_banking( int lines );
 
 
@@ -54,7 +53,7 @@ static READ8_HANDLER( bankedram_r )
 static WRITE8_HANDLER( bankedram_w )
 {
 	if (palette_selected)
-		paletteram_xBBBBBGGGGGRRRRR_swap_w(offset,data);
+		paletteram_xBBBBBGGGGGRRRRR_be_w(offset,data);
 	else
 		ram[offset] = data;
 }
@@ -230,7 +229,7 @@ static MACHINE_DRIVER_START( blockhl )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(blockhl)
+	MDRV_MACHINE_RESET(blockhl)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
@@ -338,7 +337,7 @@ static void blockhl_banking( int lines )
 	if ((lines & 0x84) != 0x80) logerror("%04x: setlines %02x\n",activecpu_get_pc(),lines);
 }
 
-static MACHINE_INIT( blockhl )
+static MACHINE_RESET( blockhl )
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
 

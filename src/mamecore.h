@@ -17,8 +17,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <ctype.h>
-#include <assert.h>
 #include "osd_cpu.h"
 
 
@@ -51,14 +49,30 @@ typedef struct _machine_config machine_config;
 typedef struct _rom_load_data rom_load_data;
 typedef struct _xml_data_node xml_data_node;
 typedef struct _performance_info performance_info;
-typedef struct _osd_file osd_file;
+typedef struct _osd_create_params osd_create_params;
+typedef struct _gfx_element gfx_element;
+typedef struct _input_port_entry input_port_entry;
+typedef struct _input_port_default_entry input_port_default_entry;
+typedef struct _mame_file mame_file;
+typedef struct _chd_file chd_file;
+typedef enum _osd_file_error osd_file_error;
 
 
 /* pen_t is used to represent pixel values in mame_bitmaps */
 typedef UINT32 pen_t;
 
+/* rgb_t is used to represent 32-bit (A)RGB values */
+typedef UINT32 rgb_t;
+
+/* stream_sample_t is used to represent a single sample in a sound stream */
+typedef INT32 stream_sample_t;
+
+/* input code is used to represent an abstracted input type */
+typedef UINT32 input_code;
+
 
 /* mame_bitmaps are used throughout the code */
+typedef struct _mame_bitmap mame_bitmap;
 struct _mame_bitmap
 {
 	int width,height;	/* width and height of the bitmap */
@@ -75,16 +89,15 @@ struct _mame_bitmap
 	pen_t (*read)(struct _mame_bitmap *bitmap,int x,int y);
 	void (*plot_box)(struct _mame_bitmap *bitmap,int x,int y,int width,int height,pen_t pen);
 };
-typedef struct _mame_bitmap mame_bitmap;
 
 
 /* rectangles are used throughout the code */
+typedef struct _rectangle rectangle;
 struct _rectangle
 {
 	int min_x,max_x;
 	int min_y,max_y;
 };
-typedef struct _rectangle rectangle;
 
 
 
@@ -161,13 +174,18 @@ typedef union
 
 ***************************************************************************/
 
-/* Standard MAME assertion macro */
+/* Standard MAME assertion macros */
 #undef assert
+#undef assert_always
+
 #ifdef MAME_DEBUG
-#define assert(x)	do { if (!(x)) osd_die("assert: %s:%d: %s", __FILE__, __LINE__, #x); } while (0)
+#define assert(x)	do { if (!(x)) fatalerror("assert: %s:%d: %s", __FILE__, __LINE__, #x); } while (0)
+#define assert_always(x, msg) do { if (!(x)) fatalerror("Fatal error: %s\nCaused by assert: %s:%d: %s", msg, __FILE__, __LINE__, #x); } while (0)
 #else
 #define assert(x)
+#define assert_always(x, msg) do { if (!(x)) fatalerror("Fatal error: %s (%s:%d)", msg, __FILE__, __LINE__); } while (0)
 #endif
+
 
 
 /* Standard MIN/MAX macros */
@@ -331,21 +349,27 @@ typedef union
 ***************************************************************************/
 
 /* since stricmp is not part of the standard, we use this instead */
-INLINE int mame_stricmp(const char *s1, const char *s2)
-{
-	for (;;)
- 	{
-		int c1 = tolower(*s1++);
-		int c2 = tolower(*s2++);
-		if (c1 == 0 || c1 != c2)
-			return c1 - c2;
- 	}
-}
-
+int mame_stricmp(const char *s1, const char *s2);
 
 /* this macro prevents people from using stricmp directly */
 #undef stricmp
 #define stricmp !MUST_USE_MAME_STRICMP_INSTEAD!
+
+
+/* since strnicmp is not part of the standard, we use this instead */
+int mame_strnicmp(const char *s1, const char *s2, size_t n);
+
+/* this macro prevents people from using strnicmp directly */
+#undef strnicmp
+#define strnicmp !MUST_USE_MAME_STRNICMP_INSTEAD!
+
+
+/* since strdup is not part of the standard, we use this instead */
+char *mame_strdup(const char *str);
+
+/* this macro prevents people from using strdup directly */
+#undef strdup
+#define strdup !MUST_USE_MAME_STRDUP_INSTEAD!
 
 
 /* compute the intersection of two rectangles */
@@ -383,7 +407,7 @@ INLINE UINT32 f2u(float f)
 
 
 /* convert a series of 64 bits into a double */
-INLINE float u2d(UINT64 v)
+INLINE double u2d(UINT64 v)
 {
 	union {
 		double dd;
@@ -518,13 +542,14 @@ INLINE int gregorian_days_in_month(int month, int year)
 
 /* Some optimizations/warnings cleanups for GCC */
 #if defined(__GNUC__) && (__GNUC__ >= 3)
-#define ATTR_UNUSED			__attribute__((__unused__))
-#define ATTR_NORETURN		__attribute__((noreturn))
-#define ATTR_PRINTF(x,y)	__attribute__((format(printf, x, y)))
-#define ATTR_MALLOC			__attribute__((malloc))
-#define ATTR_PURE			__attribute__((pure))
-#define ATTR_CONST			__attribute__((const))
-#define UNEXPECTED(exp)		__builtin_expect((exp), 0)
+#define ATTR_UNUSED				__attribute__((__unused__))
+#define ATTR_NORETURN			__attribute__((noreturn))
+#define ATTR_PRINTF(x,y)		__attribute__((format(printf, x, y)))
+#define ATTR_MALLOC				__attribute__((malloc))
+#define ATTR_PURE				__attribute__((pure))
+#define ATTR_CONST				__attribute__((const))
+#define UNEXPECTED(exp)			__builtin_expect((exp), 0)
+#define TYPES_COMPATIBLE(a,b)	__builtin_types_compatible_p((a), (b))
 #else
 #define ATTR_UNUSED
 #define ATTR_NORETURN
@@ -532,19 +557,29 @@ INLINE int gregorian_days_in_month(int month, int year)
 #define ATTR_MALLOC
 #define ATTR_PURE
 #define ATTR_CONST
-#define UNEXPECTED(exp)		(exp)
+#define UNEXPECTED(exp)			(exp)
+#define TYPES_COMPATIBLE(a,b)	0
 #endif
 
 
 
 /* And some MSVC optimizations/warnings */
 #if defined(_MSC_VER) && (_MSC_VER >= 1200)
-#define DECL_NORETURN		__declspec(noreturn)
+#define DECL_NORETURN			__declspec(noreturn)
 #else
 #define DECL_NORETURN
 #endif
 
 
+
+/***************************************************************************
+
+    Function prototypes
+
+***************************************************************************/
+
+/* Used by assert(), so definition here instead of mame.h */
+DECL_NORETURN void CLIB_DECL fatalerror(const char *text,...) ATTR_PRINTF(1,2) ATTR_NORETURN;
 
 
 #endif	/* __MAMECORE_H__ */

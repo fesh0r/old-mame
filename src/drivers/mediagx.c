@@ -564,11 +564,11 @@ static void ad1847_reg_write(int reg, UINT8 data)
 
 			if (data & 0x20)
 			{
-				osd_die("AD1847: Companded data not supported\n");
+				fatalerror("AD1847: Companded data not supported");
 			}
 			if ((data & 0x40) == 0)
 			{
-				osd_die("AD1847: 8-bit data not supported\n");
+				fatalerror("AD1847: 8-bit data not supported");
 			}
 			break;
 		}
@@ -697,12 +697,12 @@ static int irq_callback(int irqline)
 	return r;
 }
 
-static MACHINE_INIT(mediagx)
+static MACHINE_RESET(mediagx)
 {
 	UINT8 *rom = memory_region(REGION_USER1);
 
 	dma8237_reset();
-	cpu_set_irq_callback(0, irq_callback);
+	cpunum_set_irq_callback(0, irq_callback);
 
 	memcpy(bios_ram, rom, 0x40000);
 
@@ -720,7 +720,7 @@ static MACHINE_DRIVER_START(mediagx)
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(0)
 
-	MDRV_MACHINE_INIT(mediagx)
+	MDRV_MACHINE_RESET(mediagx)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
 

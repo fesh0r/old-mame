@@ -445,7 +445,6 @@ or fatal fury for example)
 #define MASTER_CLOCK	50000000
 #include "driver.h"
 #include "cpu/mips/mips3.h"
-#include "machine/random.h"
 
 static UINT32 *rombase;
 static UINT32 *hng_mainram;
@@ -469,7 +468,7 @@ VIDEO_UPDATE( hng64 ) ;
 static UINT32 activeBuffer ;
 
 
-UINT32 no_machine_error_code;
+static UINT32 no_machine_error_code;
 static int hng64_interrupt_level_request;
 WRITE32_HANDLER( hng64_videoram_w );
 
@@ -711,7 +710,7 @@ READ32_HANDLER( hng64_cart_r )
 	return hng_cart[offset];
 }
 
-READ32_HANDLER( no_machine_error )
+static READ32_HANDLER( no_machine_error )
 {
 	return no_machine_error_code;
 }
@@ -751,7 +750,7 @@ WRITE32_HANDLER( hng64_3d_1_w )
 	COMBINE_DATA (&hng64_3d_1[offset]) ;
 	COMBINE_DATA (&hng64_3d_2[offset]) ;
 
-	osd_die("WRITE32_HANDLER( hng64_3d_1_w )\n");
+	fatalerror("WRITE32_HANDLER( hng64_3d_1_w )");
 }
 
 WRITE32_HANDLER( hng64_3d_2_w )
@@ -776,7 +775,7 @@ READ32_HANDLER( hng64_3d_2_r )
 
 // These are for the 3d 'display list'
 
-WRITE32_HANDLER( dl_w )
+static WRITE32_HANDLER( dl_w )
 {
 	COMBINE_DATA (&hng64_dl[offset]) ;
 
@@ -808,7 +807,7 @@ WRITE32_HANDLER( dl_w )
 //  printf("dl W (%08x) : %.8x %.8x\n", activecpu_get_pc(), offset, hng64_dl[offset]) ;
 }
 
-READ32_HANDLER( dl_r )
+static READ32_HANDLER( dl_r )
 {
 	// A read of 0x86 ONLY happens if there are more display lists than what are readily available...
 	// See above for more compelling detail...  (PC = 8006fe1c)
@@ -1337,7 +1336,7 @@ static INTERRUPT_GEN( irq_start )
 
 
 
-MACHINE_INIT(hyperneo)
+MACHINE_RESET(hyperneo)
 {
 	int i ;
 
@@ -1410,7 +1409,7 @@ MACHINE_DRIVER_START( hng64 )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
-	MDRV_MACHINE_INIT(hyperneo)
+	MDRV_MACHINE_RESET(hyperneo)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT | VIDEO_NEEDS_6BITS_PER_GUN)
 	MDRV_SCREEN_SIZE(1024, 1024)

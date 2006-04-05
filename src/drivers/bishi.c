@@ -11,8 +11,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/m68000/m68000.h"
 #include "sound/ymz280b.h"
@@ -21,6 +19,14 @@ VIDEO_START(bishi);
 VIDEO_UPDATE(bishi);
 
 static UINT16 cur_control, cur_control2;
+
+static MACHINE_START( bishi )
+{
+	state_save_register_global(cur_control);
+	state_save_register_global(cur_control2);
+	return 0;
+}
+
 
 static READ16_HANDLER( control_r )
 {
@@ -138,7 +144,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x870000, 0x8700ff) AM_WRITE(K055555_word_w)		// PCU2
 	AM_RANGE(0x880000, 0x880003) AM_WRITE(bishi_sound_w)
 	AM_RANGE(0xa00000, 0xa01fff) AM_WRITE(K056832_ram_word_w)	/* Graphic planes */
-	AM_RANGE(0xb00000, 0xb03fff) AM_WRITE(paletteram16_xbgr_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xb00000, 0xb03fff) AM_WRITE(paletteram16_xbgr_word_be_w) AM_BASE(&paletteram16)
 ADDRESS_MAP_END
 
 INPUT_PORTS_START( bishi )
@@ -239,7 +245,7 @@ INPUT_PORTS_START( bishi )
 	PORT_DIPSETTING(    0x00, "7 Kinds")
 INPUT_PORTS_END
 
-static MACHINE_INIT( bishi )
+static MACHINE_RESET( bishi )
 {
 }
 
@@ -267,7 +273,8 @@ static MACHINE_DRIVER_START( bishi )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(1200)
 
-	MDRV_MACHINE_INIT(bishi)
+	MDRV_MACHINE_START(bishi)
+	MDRV_MACHINE_RESET(bishi)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_RGB_DIRECT | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
@@ -333,11 +340,6 @@ ROM_START( sbishi )
 	ROM_LOAD( "675jaa04.9f", 0x180000, 0x080000, CRC(1d1de34e) SHA1(1671216545cc0842cf8c128eaa0c612e6d91875c) )
 ROM_END
 
-static DRIVER_INIT( bishi )
-{
-	state_save_register_UINT16("bishi", 0, "control", &cur_control, 1);
-	state_save_register_UINT16("bishi", 0, "control2", &cur_control2, 1);
-}
 
-GAME( 1996, bishi,     0,       bishi,     bishi,     bishi,      ROT0, "Konami", "Bishi Bashi Championship Mini Game Senshuken (ver JAA)", GAME_IMPERFECT_GRAPHICS)
-GAME( 1998, sbishi,    0,       bishi,     bishi,     bishi,      ROT0, "Konami", "Super Bishi Bashi Championship (ver JAA)", GAME_IMPERFECT_GRAPHICS)
+GAME( 1996, bishi,     0,       bishi,     bishi,     0,      ROT0, "Konami", "Bishi Bashi Championship Mini Game Senshuken (ver JAA)", GAME_IMPERFECT_GRAPHICS)
+GAME( 1998, sbishi,    0,       bishi,     bishi,     0,      ROT0, "Konami", "Super Bishi Bashi Championship (ver JAA)", GAME_IMPERFECT_GRAPHICS)

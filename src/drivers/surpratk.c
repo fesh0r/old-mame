@@ -9,13 +9,12 @@ driver by Nicola Salmoria
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "vidhrdw/konamiic.h"
 #include "sound/2151intf.h"
 
 /* prototypes */
-static MACHINE_INIT( surpratk );
+static MACHINE_RESET( surpratk );
 static void surpratk_banking( int lines );
 VIDEO_START( surpratk );
 VIDEO_UPDATE( surpratk );
@@ -49,9 +48,9 @@ static WRITE8_HANDLER( bankedram_w )
 	if (videobank & 0x02)
 	{
 		if (videobank & 0x04)
-			paletteram_xBBBBBGGGGGRRRRR_swap_w(offset + 0x0800,data);
+			paletteram_xBBBBBGGGGGRRRRR_be_w(offset + 0x0800,data);
 		else
-			paletteram_xBBBBBGGGGGRRRRR_swap_w(offset,data);
+			paletteram_xBBBBBGGGGGRRRRR_be_w(offset,data);
 	}
 	else if (videobank & 0x01)
 		K053245_w(offset,data);
@@ -244,7 +243,7 @@ static MACHINE_DRIVER_START( surpratk )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(surpratk)
+	MDRV_MACHINE_RESET(surpratk)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
@@ -334,7 +333,7 @@ logerror("%04x: setlines %02x\n",activecpu_get_pc(),lines);
 	memory_set_bankptr(1,&RAM[offs]);
 }
 
-static MACHINE_INIT( surpratk )
+static MACHINE_RESET( surpratk )
 {
 	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)surpratk_banking);
 

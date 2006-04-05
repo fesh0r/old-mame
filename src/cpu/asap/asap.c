@@ -1,28 +1,21 @@
-/*###################################################################################################
-**
-**
-**      asap.c
-**      Core implementation for the portable ASAP emulator.
-**      ASAP = Atari Simplified Architecture Processor
-**
-**      Written by Aaron Giles
-**      Special thanks to Mike Albaugh for clarification on a couple of fine points.
-**
-**
-**#################################################################################################*/
+/***************************************************************************
 
-#include <stdio.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-#include "cpuintrf.h"
-#include "mamedbg.h"
+    asap.c
+    Core implementation for the portable ASAP emulator.
+    ASAP = Atari Simplified Architecture Processor
+
+    Written by Aaron Giles
+    Special thanks to Mike Albaugh for clarification on a couple of fine points.
+
+***************************************************************************/
+
+#include "debugger.h"
 #include "asap.h"
 
 
-/*###################################################################################################
-**  CONSTANTS
-**#################################################################################################*/
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
 
 #define PS_CFLAG			0x00000001
 #define PS_VFLAG			0x00000002
@@ -67,9 +60,9 @@
 							} while (0);
 
 
-/*###################################################################################################
-**  STRUCTURES & TYPEDEFS
-**#################################################################################################*/
+/***************************************************************************
+    STRUCTURES & TYPEDEFS
+***************************************************************************/
 
 /* ASAP Registers */
 typedef struct
@@ -96,9 +89,9 @@ typedef struct
 
 
 
-/*###################################################################################################
-**  PRIVATE GLOBAL VARIABLES
-**#################################################################################################*/
+/***************************************************************************
+    PRIVATE GLOBAL VARIABLES
+***************************************************************************/
 
 static asap_regs asap;
 
@@ -109,9 +102,9 @@ static int asap_icount;
 
 
 
-/*###################################################################################################
-**  OPCODE TABLE
-**#################################################################################################*/
+/***************************************************************************
+    OPCODE TABLE
+***************************************************************************/
 
 static void noop(void);
 static void trap0(void);
@@ -268,9 +261,9 @@ static void (*conditiontable[16])(void) =
 
 
 
-/*###################################################################################################
-**  MEMORY ACCESSORS
-**#################################################################################################*/
+/***************************************************************************
+    MEMORY ACCESSORS
+***************************************************************************/
 
 #define ROPCODE(pc)		cpu_readop32(pc)
 #define UPDATEPC()		change_pc(asap.pc)
@@ -354,9 +347,9 @@ INLINE void WRITELONG(offs_t address, UINT32 data)
 
 
 
-/*###################################################################################################
-**  EXCEPTION HANDLING
-**#################################################################################################*/
+/***************************************************************************
+    EXCEPTION HANDLING
+***************************************************************************/
 
 INLINE void generate_exception(int exception)
 {
@@ -375,9 +368,9 @@ INLINE void generate_exception(int exception)
 
 
 
-/*###################################################################################################
-**  IRQ HANDLING
-**#################################################################################################*/
+/***************************************************************************
+    IRQ HANDLING
+***************************************************************************/
 
 INLINE void check_irqs(void)
 {
@@ -398,9 +391,9 @@ static void set_irq_line(int irqline, int state)
 
 
 
-/*###################################################################################################
-**  CONTEXT SWITCHING
-**#################################################################################################*/
+/***************************************************************************
+    CONTEXT SWITCHING
+***************************************************************************/
 
 static void asap_get_context(void *dst)
 {
@@ -431,15 +424,15 @@ static void asap_set_context(void *src)
 
 
 
-/*###################################################################################################
-**  INITIALIZATION AND SHUTDOWN
-**#################################################################################################*/
+/***************************************************************************
+    INITIALIZATION AND SHUTDOWN
+***************************************************************************/
 
 static void init_tables(void)
 {
 	/* allocate opcode table */
 	if (!opcode)
-		opcode = malloc(32 * 32 * 2 * sizeof(void *));
+		opcode = auto_malloc(32 * 32 * 2 * sizeof(void *));
 
 	/* fill opcode table */
 	if (opcode)
@@ -463,7 +456,7 @@ static void init_tables(void)
 
 	/* allocate src2 table */
 	if (!src2val)
-		src2val = malloc(65536 * sizeof(UINT32));
+		src2val = auto_malloc(65536 * sizeof(UINT32));
 
 	/* fill scr2 table */
 	if (src2val)
@@ -476,12 +469,13 @@ static void init_tables(void)
 	}
 }
 
-static void asap_init(void)
+static void asap_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	init_tables();
+	asap.irq_callback = irqcallback;
 }
 
-static void asap_reset(void *param)
+static void asap_reset(void)
 {
 	/* initialize the state */
 	src2val[REGBASE + 0] = 0;
@@ -500,13 +494,15 @@ static void asap_reset(void *param)
 
 static void asap_exit(void)
 {
+	opcode = NULL;
+	src2val = NULL;
 }
 
 
 
-/*###################################################################################################
-**  CORE EXECUTION LOOP
-**#################################################################################################*/
+/***************************************************************************
+    CORE EXECUTION LOOP
+***************************************************************************/
 
 INLINE void fetch_instruction(void)
 {
@@ -564,9 +560,9 @@ static int asap_execute(int cycles)
 
 
 
-/*###################################################################################################
-**  DEBUGGER DEFINITIONS
-**#################################################################################################*/
+/***************************************************************************
+    DEBUGGER DEFINITIONS
+***************************************************************************/
 
 static UINT8 asap_reg_layout[] =
 {
@@ -600,9 +596,9 @@ static UINT8 asap_win_layout[] =
 
 
 
-/*###################################################################################################
-**  DISASSEMBLY HOOK
-**#################################################################################################*/
+/***************************************************************************
+    DISASSEMBLY HOOK
+***************************************************************************/
 
 static offs_t asap_dasm(char *buffer, offs_t pc)
 {
@@ -617,9 +613,9 @@ static offs_t asap_dasm(char *buffer, offs_t pc)
 
 
 
-/*###################################################################################################
-**  HELPER MACROS
-**#################################################################################################*/
+/***************************************************************************
+    HELPER MACROS
+***************************************************************************/
 
 #define OPCODE		(asap.op.d >> 27)
 #define DSTREG		((asap.op.d >> 22) & 31)
@@ -630,9 +626,9 @@ static offs_t asap_dasm(char *buffer, offs_t pc)
 
 
 
-/*###################################################################################################
-**  OPCODES
-**#################################################################################################*/
+/***************************************************************************
+    OPCODES
+***************************************************************************/
 
 static void noop(void)
 {
@@ -1768,9 +1764,6 @@ static void asap_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + ASAP_R30:	src2val[REGBASE + 30] = info->i;				break;
 		case CPUINFO_INT_SP:
 		case CPUINFO_INT_REGISTER + ASAP_R31:	src2val[REGBASE + 31] = info->i;				break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:			asap.irq_callback = info->irqcallback;			break;
 	}
 }
 
@@ -1856,7 +1849,6 @@ void asap_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = asap_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = asap_dasm;			break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = asap.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &asap_icount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = asap_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = asap_win_layout;				break;

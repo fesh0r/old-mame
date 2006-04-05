@@ -13,7 +13,7 @@
 #ifndef _H6280_H
 #define _H6280_H
 
-#include "osd_cpu.h"
+#include "cpuintrf.h"
 
 enum {
 	H6280_PC=1, H6280_S, H6280_P, H6280_A, H6280_X, H6280_Y,
@@ -44,8 +44,8 @@ READ8_HANDLER( H6280_timer_r );
 WRITE8_HANDLER( H6280_timer_w );
 
 /* functions for use by the PSG and joypad port only! */
-UINT8 get_h6280io_buffer(void);
-void set_h6280io_buffer(UINT8);
+UINT8 h6280io_get_buffer(void);
+void h6280io_set_buffer(UINT8);
 
 #ifdef MAME_DEBUG
 extern int Dasm6280(char *buffer, int pc);

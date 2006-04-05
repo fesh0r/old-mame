@@ -180,7 +180,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sndhrdw/timeplt.h"
 #include "sound/namco.h"
 #include "sound/samples.h"
@@ -199,6 +198,13 @@ DRIVER_INIT( jungler );
 DRIVER_INIT( tactcian );
 DRIVER_INIT( locomotn );
 DRIVER_INIT( commsega );
+
+
+static WRITE8_HANDLER( rallyx_interrupt_vector_w )
+{
+	cpunum_set_input_line_vector(0, 0, data);
+	cpunum_set_input_line(0, 0, CLEAR_LINE);
+}
 
 
 
@@ -316,7 +322,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0, 0) AM_WRITE(interrupt_vector_w)
+	AM_RANGE(0, 0) AM_WRITE(rallyx_interrupt_vector_w)
 ADDRESS_MAP_END
 
 

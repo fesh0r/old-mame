@@ -80,6 +80,7 @@ In other words,the first three types uses the offset and not the color allocated
 */
 
 #include "driver.h"
+#include "profiler.h"
 
 UINT32* stv_vdp2_regs;
 UINT32* stv_vdp2_vram;
@@ -3749,7 +3750,7 @@ static void stv_vdp2_draw_basic_tilemap(mame_bitmap *bitmap, const rectangle *cl
 	}
 	if ( stv2_current_tilemap.layer_name & 0x80 )
 	{
-		int shifttable[4] = {0,1,2,2};
+		static const int shifttable[4] = {0,1,2,2};
 		int uppermask, uppermaskshift;
 		int mapsize;
 		uppermaskshift = (1-stv2_current_tilemap.pattern_data_size) | ((1-stv2_current_tilemap.tile_size)<<1);

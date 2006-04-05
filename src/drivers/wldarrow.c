@@ -18,12 +18,11 @@ Probably missing sound board.
 
 **********************************/
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 
-UINT8 *vram1;
-UINT8 *vram2;
-UINT8 *vram3;
+static UINT8 *vram1;
+static UINT8 *vram2;
+static UINT8 *vram3;
 
 static void putpixel(int offset)
 {

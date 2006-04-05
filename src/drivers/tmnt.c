@@ -64,13 +64,12 @@ Updates:
 
 ***************************************************************************/
 
+#include <math.h>
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "machine/eeprom.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
-#include "math.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 #include "sound/samples.h"
@@ -231,24 +230,21 @@ static READ16_HANDLER( punkshot_sound_r )
 {
 	/* If the sound CPU is running, read the status, otherwise
        just make it pass the test */
-	if (Machine->sample_rate != 0) 	return K053260_0_r(2 + offset);
-	else return 0x80;
+	return K053260_0_r(2 + offset);
 }
 
 static READ16_HANDLER( detatwin_sound_r )
 {
 	/* If the sound CPU is running, read the status, otherwise
        just make it pass the test */
-	if (Machine->sample_rate != 0) 	return K053260_0_r(2 + offset);
-	else return offset ? 0xfe : 0x00;
+	return K053260_0_r(2 + offset);
 }
 
 static READ16_HANDLER( glfgreat_sound_r )
 {
 	/* If the sound CPU is running, read the status, otherwise
        just make it pass the test */
-	if (Machine->sample_rate != 0) 	return K053260_0_r(2 + offset) << 8;
-	else return 0;
+	return K053260_0_r(2 + offset) << 8;
 }
 
 static WRITE16_HANDLER( glfgreat_sound_w )
@@ -272,15 +268,6 @@ static WRITE16_HANDLER( prmrsocr_sound_cmd_w )
 		data &= 0xff;
 		if (offset == 0) soundlatch_w(0,data);
 		else soundlatch2_w(0,data);
-
-		/* If the sound CPU is not running, make the tests pass anyway */
-		if (offset == 0 && !Machine->sample_rate)
-		{
-			if (data == 0xfe)	/* ROM & RAM test */
-				soundlatch3_w(0,0x0f);
-			if (data == 0xfc)	/* sample ROM test */
-				soundlatch3_w(0,0x10);
-		}
 	}
 }
 
@@ -299,10 +286,7 @@ static WRITE8_HANDLER( prmrsocr_s_bankswitch_w )
 
 static READ16_HANDLER( tmnt2_sound_r )
 {
-	/* If the sound CPU is running, read the status, otherwise
-       just make it pass the test */
-	if (Machine->sample_rate != 0) 	return K053260_0_r(2 + offset);
-	else return offset ? 0x00 : 0x80;
+	return K053260_0_r(2 + offset);
 }
 
 READ8_HANDLER( tmnt_sres_r )
@@ -2508,7 +2492,7 @@ static MACHINE_DRIVER_START( tmnt )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_VISIBLE_AREA(13*8, (64-13)*8-1, 2*8, 30*8-1 )
 	MDRV_PALETTE_LENGTH(1024)
@@ -4131,7 +4115,7 @@ static void shuffle(UINT8 *buf,int len)
 
 	if (len == 2) return;
 
-	if (len % 4) osd_die("shuffle() - not modulo 4\n");	/* must not happen */
+	if (len % 4) fatalerror("shuffle() - not modulo 4");	/* must not happen */
 
 	len /= 2;
 

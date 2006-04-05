@@ -101,15 +101,13 @@ OSC:    12.000MHz
 *******************************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m68000/m68000.h"
-#include "machine/random.h"
 #include "sound/okim6295.h"
 
 static tilemap *sc3_tilemap, *sc0_tilemap,*sc1_tilemap,*sc2_tilemap;
-UINT16 *sc3_vram, *sc0_vram,*sc1_vram,*sc2_vram;
-UINT16 *jm_regs,*jm_ram,*jm_mcu_code;
-UINT16 *jm_scrollram,*jm_vregs;
+static UINT16 *sc3_vram, *sc0_vram,*sc1_vram,*sc2_vram;
+static UINT16 *jm_regs,*jm_ram,*jm_mcu_code;
+static UINT16 *jm_scrollram,*jm_vregs;
 static UINT16 sc0bank,pri;
 /*
 MCU program number,different for each game(n.b. the numbering scheme is *mine*,do not
@@ -419,7 +417,7 @@ VIDEO_UPDATE( jalmah )
 }
 
 
-WRITE16_HANDLER( sc0_vram_w )
+static WRITE16_HANDLER( sc0_vram_w )
 {
 	int oldword = sc0_vram[offset];
 	int newword = oldword;
@@ -432,7 +430,7 @@ WRITE16_HANDLER( sc0_vram_w )
 	}
 }
 
-WRITE16_HANDLER( sc1_vram_w )
+static WRITE16_HANDLER( sc1_vram_w )
 {
 	int oldword = sc1_vram[offset];
 	int newword = oldword;
@@ -445,7 +443,7 @@ WRITE16_HANDLER( sc1_vram_w )
 	}
 }
 
-WRITE16_HANDLER( sc3_vram_w )
+static WRITE16_HANDLER( sc3_vram_w )
 {
 	int oldword = sc3_vram[offset];
 	int newword = oldword;
@@ -458,7 +456,7 @@ WRITE16_HANDLER( sc3_vram_w )
 	}
 }
 
-WRITE16_HANDLER( sc2_vram_w )
+static WRITE16_HANDLER( sc2_vram_w )
 {
 	int oldword = sc2_vram[offset];
 	int newword = oldword;
@@ -904,7 +902,7 @@ static const gfx_decode jalmah_gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static MACHINE_INIT (daireika)
+static MACHINE_RESET (daireika)
 {
 	respcount = 0;
 }
@@ -923,7 +921,7 @@ static MACHINE_DRIVER_START( jalmah )
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_PALETTE_LENGTH(0x400)
-	MDRV_MACHINE_INIT(daireika)
+	MDRV_MACHINE_RESET(daireika)
 
 	MDRV_VIDEO_START(jalmah)
 	MDRV_VIDEO_UPDATE(jalmah)

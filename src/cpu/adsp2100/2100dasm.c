@@ -1,6 +1,3 @@
-#include <stdio.h>
-
-#include "driver.h"
 #include "adsp2100.h"
 
 static const char *flag_change[] = { "", "TOGGLE %s ", "RESET %s ", "SET %s " };
@@ -182,7 +179,7 @@ static const char *constants[] =
 
 
 
-int alumac(char *buffer, int dest, int op)
+static int alumac(char *buffer, int dest, int op)
 {
 	int opindex = (op >> 13) & 31;
 	const char *xop, *yop, *dst, *opstring;
@@ -207,7 +204,7 @@ int alumac(char *buffer, int dest, int op)
 }
 
 
-int aluconst(char *buffer, int dest, int op)
+static int aluconst(char *buffer, int dest, int op)
 {
 	int opindex = (op >> 13) & 31;
 	const char *xop, *dst, *cval, *opstring;

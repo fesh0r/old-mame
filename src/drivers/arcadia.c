@@ -54,7 +54,6 @@ discarded, this looks like game bug
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "includes/amiga.h"
 
 /**************************************************************************
@@ -200,7 +199,7 @@ static MACHINE_DRIVER_START( arcadia )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( amiga )
+	MDRV_MACHINE_RESET( amiga )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 

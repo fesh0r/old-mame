@@ -63,12 +63,7 @@
  *
  *****************************************************************************/
 
-#include <stdio.h>
-#include "cpuintrf.h"
-#include "memory.h"
-#include "driver.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "i8051.h"
 
 #define VERBOSE 1
@@ -498,52 +493,56 @@ static UINT8 i8051_cycles[] = {
 /* Include Opcode functions */
 #include "i8051ops.c"
 
-void i8051_init(void)
+void i8051_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
+	i8051_set_irq_callback(irqcallback);
 
 	//Internal stuff
-	state_save_register_UINT16("i8051", cpu, "PPC",       &i8051.ppc,    1);
-	state_save_register_UINT16("i8051", cpu, "PC",        &i8051.pc,     1);
-	state_save_register_UINT16("i8051", cpu, "SUBTYPE",   &i8051.subtype,1);
-	state_save_register_UINT8 ("i8051", cpu, "RWM",       &i8051.rwm ,1);
-	state_save_register_UINT8 ("i8051", cpu, "CUR_IRQ",   &i8051.cur_irq ,1);
+	state_save_register_item("i8051", index, i8051.ppc);
+	state_save_register_item("i8051", index, i8051.pc);
+	state_save_register_item("i8051", index, i8051.subtype);
+	state_save_register_item("i8051", index, i8051.rwm );
+	state_save_register_item("i8051", index, i8051.cur_irq );
 	//SFR Registers
-	state_save_register_UINT8 ("i8051", cpu, "PO",        &i8051.po,     1);
-	state_save_register_UINT8 ("i8051", cpu, "SP",        &i8051.sp,     1);
-	state_save_register_UINT8 ("i8051", cpu, "DPL",       &i8051.dpl,    1);
-	state_save_register_UINT8 ("i8051", cpu, "DPH",       &i8051.dph,    1);
-	state_save_register_UINT8 ("i8051", cpu, "PCON",	  &i8051.pcon,   1);
-	state_save_register_UINT8 ("i8051", cpu, "TCON",	  &i8051.tcon,   1);
-	state_save_register_UINT8 ("i8051", cpu, "TMOD",      &i8051.tmod,   1);
-	state_save_register_UINT8 ("i8051", cpu, "TL0",       &i8051.tl0,    1);
-	state_save_register_UINT8 ("i8051", cpu, "TL1",       &i8051.tl1,    1);
-	state_save_register_UINT8 ("i8051", cpu, "TH0",       &i8051.th0,    1);
-	state_save_register_UINT8 ("i8051", cpu, "TH1",       &i8051.th1,    1);
-	state_save_register_UINT8 ("i8051", cpu, "P1",        &i8051.p1,     1);
-	state_save_register_UINT8 ("i8051", cpu, "SCON",      &i8051.scon,   1);
-	state_save_register_UINT8 ("i8051", cpu, "SBUF",      &i8051.sbuf,   1);
-	state_save_register_UINT8 ("i8051", cpu, "P2",        &i8051.p2,     1);
-	state_save_register_UINT8 ("i8051", cpu, "IE",        &i8051.ie,     1);
-	state_save_register_UINT8 ("i8051", cpu, "P3",        &i8051.p3,     1);
-	state_save_register_UINT8 ("i8051", cpu, "IP",        &i8051.ip,     1);
+	state_save_register_item("i8051", index, i8051.po);
+	state_save_register_item("i8051", index, i8051.sp);
+	state_save_register_item("i8051", index, i8051.dpl);
+	state_save_register_item("i8051", index, i8051.dph);
+	state_save_register_item("i8051", index, i8051.pcon);
+	state_save_register_item("i8051", index, i8051.tcon);
+	state_save_register_item("i8051", index, i8051.tmod);
+	state_save_register_item("i8051", index, i8051.tl0);
+	state_save_register_item("i8051", index, i8051.tl1);
+	state_save_register_item("i8051", index, i8051.th0);
+	state_save_register_item("i8051", index, i8051.th1);
+	state_save_register_item("i8051", index, i8051.p1);
+	state_save_register_item("i8051", index, i8051.scon);
+	state_save_register_item("i8051", index, i8051.sbuf);
+	state_save_register_item("i8051", index, i8051.p2);
+	state_save_register_item("i8051", index, i8051.ie);
+	state_save_register_item("i8051", index, i8051.p3);
+	state_save_register_item("i8051", index, i8051.ip);
 	//8052 Only registers
 	#if (HAS_I8052 || HAS_I8752)
-		state_save_register_UINT8 ("i8051", cpu, "T2CON", &i8051.tcon,   1);
-		state_save_register_UINT8 ("i8051", cpu, "RCAP2L",&i8051.rcap2l, 1);
-		state_save_register_UINT8 ("i8051", cpu, "RCAP2H",&i8051.rcap2h, 1);
-		state_save_register_UINT8 ("i8051", cpu, "TL2",   &i8051.tl2,    1);
-		state_save_register_UINT8 ("i8051", cpu, "TH2",   &i8051.th2,    1);
+		state_save_register_item("i8051", index, i8051.rcap2l);
+		state_save_register_item("i8051", index, i8051.rcap2h);
+		state_save_register_item("i8051", index, i8051.tl2);
+		state_save_register_item("i8051", index, i8051.th2);
 	#endif
-	state_save_register_UINT8 ("i8051", cpu, "PSW",       &i8051.psw,    1);
-	state_save_register_UINT8 ("i8051", cpu, "ACC",       &i8051.acc,    1);
-	state_save_register_UINT8 ("i8051", cpu, "B",         &i8051.b,      1);
+	state_save_register_item("i8051", index, i8051.psw);
+	state_save_register_item("i8051", index, i8051.acc);
+	state_save_register_item("i8051", index, i8051.b);
 }
 
 /* Reset registers to the initial values */
-void i8051_reset(void *param)
+void i8051_reset(void)
 {
+	int (*save_irqcallback)(int);
+
+	save_irqcallback = i8051.irq_callback;
 	memset(&i8051, 0, sizeof(I8051));
+	i8051.irq_callback = save_irqcallback;
+
 	memset(&uart, 0, sizeof(I8051_UART));
 	i8051.subtype = 8051;
 
@@ -2236,8 +2235,8 @@ INLINE void	update_serial(int cyc)
  * 8752 Section
  ****************************************************************************/
 #if (HAS_I8752)
-void i8752_init (void)										{ i8051_init(); }
-void i8752_reset (void *param)
+void i8752_init (int index, int clock, const void *config, int (*irqcallback)(int))	{ i8051_init(index, clock, config, irqcallback); }
+void i8752_reset (void)
 {
 	memset(&i8051, 0, sizeof(I8051));
 	memset(&uart, 0, sizeof(I8051_UART));
@@ -2415,9 +2414,6 @@ static void i8051_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + I8051_R6: 			i8051.IntRam[6+(8*((i8051.psw & 0x18)>>3))] = info->i; break;
 		case CPUINFO_INT_REGISTER + I8051_R7: 			i8051.IntRam[7+(8*((i8051.psw & 0x18)>>3))] = info->i; break;
 		case CPUINFO_INT_REGISTER + I8051_RB: 			i8051.IntRam[8+(8*((i8051.psw & 0x18)>>3))] = info->i; break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:				 i8051_set_irq_callback(info->irqcallback); break;
 	}
 }
 
@@ -2484,7 +2480,6 @@ void i8051_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:					info->execute = i8051_execute;		break;
 		case CPUINFO_PTR_BURN:						info->burn = NULL;			break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = i8051_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = i8051.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:				info->icount = &i8051_icount;		break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = i8051_reg_layout;		break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = i8051_win_layout;		break;

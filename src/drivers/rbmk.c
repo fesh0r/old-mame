@@ -57,13 +57,12 @@ PIC16F84
 
 #include "driver.h"
 #include "sound/okim6295.h"
-#include "machine/random.h"
 #include "machine/eeprom.h"
 
 static UINT16 *gms_vidram;
 static UINT16 *gms_vidram2;
 
-UINT16 tilebank=0;
+static UINT16 tilebank=0;
 
 static READ16_HANDLER( gms_read )
 {

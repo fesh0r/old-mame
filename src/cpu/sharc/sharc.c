@@ -6,9 +6,8 @@
    Portions based on ElSemi's SHARC emulator
 */
 
-#include "driver.h"
 #include "sharc.h"
-#include "mamedbg.h"
+#include "debugger.h"
 
 static void sharc_dma_exec(int channel);
 
@@ -123,6 +122,8 @@ typedef struct {
 	int idle;
 	int irq_active;
 	int irq_active_num;
+
+	SHARC_BOOT_MODE boot_mode;
 } SHARC_REGS;
 
 static SHARC_REGS sharc;
@@ -189,7 +190,7 @@ static void iop_latency_op(void)
 			break;
 		}
 
-		default:	osd_die("SHARC: add_iop_latency_op: unknown IOP register %02X\n", iop_latency_reg);
+		default:	fatalerror("SHARC: add_iop_latency_op: unknown IOP register %02X", iop_latency_reg);
 	}
 }
 
@@ -210,7 +211,7 @@ static UINT32 sharc_iop_r(UINT32 address)
 			}
 			return r;
 		}
-		default:		osd_die("sharc_iop_r: Unimplemented IOP reg %02X\n", address);
+		default:		fatalerror("sharc_iop_r: Unimplemented IOP reg %02X", address);
 	}
 	return 0;
 }
@@ -246,7 +247,7 @@ static void sharc_iop_w(UINT32 address, UINT32 data)
 		case 0x4e: sharc.dma[7].ext_modifier = data; return;
 		case 0x4f: sharc.dma[7].ext_count = data; return;
 
-		default:		osd_die("sharc_iop_w: Unimplemented IOP reg %02X, %08X\n", address, data);
+		default:		fatalerror("sharc_iop_w: Unimplemented IOP reg %02X, %08X", address, data);
 	}
 }
 
@@ -276,7 +277,7 @@ static UINT32 pm_read32(UINT32 address)
 					   (sharc.internal_ram_block1[((address-0x38000) * 3) + 1]);
 	}
 	else {
-		osd_die("SHARC: PM Bus Read %08X at %08X\n", address, sharc.pc);
+		fatalerror("SHARC: PM Bus Read %08X at %08X", address, sharc.pc);
 	}
 }
 
@@ -307,7 +308,7 @@ static void pm_write32(UINT32 address, UINT32 data)
 		return;
 	}
 	else {
-		osd_die("SHARC: PM Bus Write %08X, %08X at %08X\n", address, data, sharc.pc);
+		fatalerror("SHARC: PM Bus Write %08X, %08X at %08X", address, data, sharc.pc);
 	}
 }
 
@@ -338,7 +339,7 @@ static UINT64 pm_read48(UINT32 address)
 			   ((UINT64)(sharc.internal_ram_block1[((address-0x38000) * 3) + 2]) << 0);
 	}
 	else {
-		osd_die("SHARC: PM Bus Read %08X at %08X\n", address, sharc.pc);
+		fatalerror("SHARC: PM Bus Read %08X at %08X", address, sharc.pc);
 	}
 
 	return 0;
@@ -375,7 +376,7 @@ static void pm_write48(UINT32 address, UINT64 data)
 		return;
 	}
 	else {
-		osd_die("SHARC: PM Bus Write %08X, %04X%08X at %08X\n", address, (UINT16)(data >> 32),(UINT32)data, sharc.pc);
+		fatalerror("SHARC: PM Bus Write %08X, %04X%08X at %08X", address, (UINT16)(data >> 32),(UINT32)data, sharc.pc);
 	}
 }
 
@@ -537,7 +538,7 @@ static void schedule_chained_dma_op(int channel, UINT32 dma_chain_ptr, int chain
 
 	if (dmaop_cycles > 0)
 	{
-		osd_die("schedule_chained_dma_op: DMA operation already scheduled at %08X!\n", sharc.pc);
+		fatalerror("schedule_chained_dma_op: DMA operation already scheduled at %08X!", sharc.pc);
 	}
 
 	if (chained_direction)		// Transmit to external
@@ -570,7 +571,7 @@ static void schedule_dma_op(int channel, UINT32 src, UINT32 dst, int src_modifie
 {
 	if (dmaop_cycles > 0)
 	{
-		osd_die("schedule_dma_op: DMA operation already scheduled at %08X!\n", sharc.pc);
+		fatalerror("schedule_dma_op: DMA operation already scheduled at %08X!", sharc.pc);
 	}
 
 	dmaop_channel = channel;
@@ -649,9 +650,9 @@ static void sharc_dma_exec(int channel)
 	flsh = (sharc.dma[channel].control >> 13) & 0x1;
 
 	if (ishake)
-		osd_die("SHARC: dma_exec: handshake not supported\n");
+		fatalerror("SHARC: dma_exec: handshake not supported");
 	if (intio)
-		osd_die("SHARC: dma_exec: single-word interrupt enable not supported\n");
+		fatalerror("SHARC: dma_exec: single-word interrupt enable not supported");
 
 
 
@@ -729,7 +730,7 @@ static void sharc_set_flag_input(int flag_num, int state)
 		}
 		else
 		{
-			osd_die("sharc_set_flag_input: flag %d is set output!", flag_num);
+			fatalerror("sharc_set_flag_input: flag %d is set output!", flag_num);
 		}
 	}
 }
@@ -789,7 +790,7 @@ static void sharc_set_irq_line(int irqline, int state)
 
 static void check_interrupts(void)
 {
-	if (sharc.imask & (1 << sharc.irq_active_num) && sharc.mode1 & 0x1000)
+	if ((sharc.imask & (1 << sharc.irq_active_num)) && (sharc.mode1 & 0x1000))
 	{
 		PUSH_PC(sharc.npc);
 
@@ -808,8 +809,13 @@ static void check_interrupts(void)
 	}
 }
 
-static void sharc_init(void)
+static void sharc_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
+	const sharc_config *config = _config;
+	sharc.boot_mode = config->boot_mode;
+
+	sharc.irq_callback = irqcallback;
+
 	sharc.opcode_table = sharc_op;
 
 	sharc.internal_ram = auto_malloc(2 * 0x20000);
@@ -817,14 +823,14 @@ static void sharc_init(void)
 	sharc.internal_ram_block1 = &sharc.internal_ram[0x20000/2];
 }
 
-static void sharc_reset(void *param)
+static void sharc_reset(void)
 {
-	sharc_config *config = param;
 	sharc.pc = 0x20004;
 	sharc.npc = sharc.pc + 1;
 	sharc.idle = 0;
+	sharc.stky = 0x5400000;
 
-	switch(config->boot_mode)
+	switch(sharc.boot_mode)
 	{
 		case BOOT_MODE_EPROM:
 		{
@@ -846,7 +852,7 @@ static void sharc_reset(void *param)
 			break;
 
 		default:
-			osd_die("SHARC: Unimplemented boot mode %d\n", config->boot_mode);
+			fatalerror("SHARC: Unimplemented boot mode %d", sharc.boot_mode);
 	}
 }
 
@@ -870,7 +876,51 @@ static int sharc_execute(int num_cycles)
 		sharc.npc++;
 
 		CALL_MAME_DEBUG;
-		DECODE_AND_EXEC_OPCODE();
+
+		/* handle looping */
+		if(sharc.pc == (sharc.laddr & 0xffffff))
+		{
+			int cond = (sharc.laddr >> 24) & 0x1f;
+
+			/* loop type */
+			switch((sharc.laddr >> 30) & 0x3)
+			{
+				case 0:		/* arithmetic condition-based */
+					if(DO_CONDITION_CODE(cond))
+					{
+						DECODE_AND_EXEC_OPCODE();
+						POP_LOOP();
+						POP_PC();
+					}
+					else
+					{
+						DECODE_AND_EXEC_OPCODE();
+						sharc.npc = TOP_PC();
+					}
+					break;
+				case 1:		/* counter-based, length 1 */
+				case 2:		/* counter-based, length 2 */
+				case 3:		/* counter-based, length >2 */
+					sharc.lcstack[sharc.lstkp]--;
+					sharc.curlcntr--;
+					if(sharc.curlcntr == 0)
+					{
+						DECODE_AND_EXEC_OPCODE();
+						POP_LOOP();
+						POP_PC();
+					}
+					else
+					{
+						DECODE_AND_EXEC_OPCODE();
+						sharc.npc = TOP_PC();
+					}
+					break;
+			}
+		}
+		else
+		{
+			DECODE_AND_EXEC_OPCODE();
+		}
 
 		systemreg_latency_op();
 		IOP_LATENCY_OP();
@@ -884,36 +934,6 @@ static int sharc_execute(int num_cycles)
 				{
 					schedule_chained_dma_op(dmaop_channel, dmaop_chain_ptr, dmaop_chained_direction);
 				}
-			}
-		}
-
-		/* handle looping */
-		if(sharc.pc == (sharc.laddr & 0xffffff)) {
-			int cond = (sharc.laddr >> 24) & 0x1f;
-
-			/* loop type */
-			switch((sharc.laddr >> 30) & 0x3)
-			{
-				case 0:		/* arithmetic condition-based */
-					if(DO_CONDITION_CODE(cond)) {
-						POP_LOOP();
-						POP_PC();
-					} else {
-						sharc.npc = TOP_PC();
-					}
-					break;
-				case 1:		/* counter-based, length 1 */
-				case 2:		/* counter-based, length 2 */
-				case 3:		/* counter-based, length >2 */
-					sharc.lcstack[sharc.lstkp]--;
-					sharc.curlcntr--;
-					if(sharc.curlcntr == 0) {
-						POP_LOOP();
-						POP_PC();
-					} else {
-						sharc.npc = TOP_PC();
-					}
-					break;
 			}
 		}
 
@@ -1019,9 +1039,6 @@ static void sharc_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + SHARC_M13:			sharc.dag2.m[5] = info->i;					break;
 		case CPUINFO_INT_REGISTER + SHARC_M14:			sharc.dag2.m[6] = info->i;					break;
 		case CPUINFO_INT_REGISTER + SHARC_M15:			sharc.dag2.m[7] = info->i;					break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					sharc.irq_callback = info->irqcallback;	break;
 	}
 }
 
@@ -1195,7 +1212,6 @@ void sharc_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = sharc_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = sharc_dasm;			break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = sharc.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &sharc_icount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = sharc_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = sharc_win_layout;				break;

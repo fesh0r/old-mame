@@ -1396,7 +1396,7 @@ void dcs_reset_w(int state)
 	/* going high halts the CPU */
 	if (state)
 	{
-		logerror("%08x: DCS reset = %d\n", activecpu_get_pc(), state);
+		logerror("%08x: DCS reset = %d\n", safe_activecpu_get_pc(), state);
 
 		/* just run through the init code again */
 		timer_set(TIME_NOW, 0, dcs_reset);
@@ -1613,7 +1613,7 @@ static void update_timer_count(void)
 
 static void internal_timer_callback(int param)
 {
-	UINT64 target_cycles;
+	INT64 target_cycles;
 
 	/* compute the absolute cycle when the next one should fire */
 	/* we do this to avoid drifting */

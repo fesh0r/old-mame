@@ -203,7 +203,6 @@ Notes:
 #include "cpu/m68000/m68000.h"
 #include "machine/6522via.h"
 #include "machine/ticket.h"
-#include "vidhrdw/generic.h"
 #include "itech32.h"
 #include "sound/es5506.h"
 #include "machine/timekpr.h"
@@ -311,7 +310,7 @@ static WRITE16_HANDLER( int1_ack_w )
  *
  *************************************/
 
-static MACHINE_INIT( itech32 )
+static MACHINE_RESET( itech32 )
 {
 	vint_state = xint_state = qint_state = 0;
 	sound_data = 0;
@@ -326,9 +325,9 @@ static MACHINE_INIT( itech32 )
 }
 
 
-static MACHINE_INIT( drivedge )
+static MACHINE_RESET( drivedge )
 {
-	machine_init_itech32();
+	machine_reset_itech32();
 
 	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
 	cpunum_set_input_line(3, INPUT_LINE_RESET, ASSERT_LINE);
@@ -1511,7 +1510,7 @@ static MACHINE_DRIVER_START( timekill )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION((int)(((263. - 240.) / 263.) * 1000000. / 60.))
 
-	MDRV_MACHINE_INIT(itech32)
+	MDRV_MACHINE_RESET(itech32)
 	MDRV_NVRAM_HANDLER(itech32)
 
 	/* video hardware */
@@ -1572,7 +1571,7 @@ static MACHINE_DRIVER_START( drivedge )
 
 //  MDRV_CPU_ADD(M6803, 8000000/4) -- network CPU
 
-	MDRV_MACHINE_INIT(drivedge)
+	MDRV_MACHINE_RESET(drivedge)
 	MDRV_INTERLEAVE(100)
 MACHINE_DRIVER_END
 

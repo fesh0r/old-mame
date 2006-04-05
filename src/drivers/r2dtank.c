@@ -37,7 +37,6 @@ Should be very similar to Sigma's Spiders hardware.
 ********************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/6821pia.h"
 #include "vidhrdw/crtc6845.h"
 #include "cpu/m6800/m6800.h"
@@ -320,7 +319,7 @@ static struct pia6821_interface pia_1_intf =
 	/*irqs   : A/B             */ 0, 0
 };
 
-MACHINE_INIT( r2dtank )
+MACHINE_RESET( r2dtank )
 {
 	pia_unconfig();
 	pia_config(0, PIA_STANDARD_ORDERING, &pia_0_intf);
@@ -346,7 +345,7 @@ static MACHINE_DRIVER_START( r2dtank )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(r2dtank)
+	MDRV_MACHINE_RESET(r2dtank)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */

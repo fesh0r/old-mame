@@ -69,8 +69,8 @@ I/O read/write
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
-#include "machine/z80fmly.h"
+#include "machine/z80ctc.h"
+#include "machine/z80pio.h"
 #include "sound/sn76496.h"
 #include "sound/samples.h"
 #include "cpu/z80/z80daisy.h"
@@ -116,7 +116,7 @@ WRITE8_HANDLER( senjyo_volume_w );
 
 static int int_delay_kludge;
 
-MACHINE_INIT( senjyo )
+MACHINE_RESET( senjyo )
 {
 	/* we must avoid generating interrupts for the first few frames otherwise */
 	/* Senjyo locks up. There must be an interrupt enable port somewhere, */
@@ -134,6 +134,30 @@ INTERRUPT_GEN( senjyo_interrupt )
 static WRITE8_HANDLER( flip_screen_w )
 {
 	flip_screen_set(data);
+}
+
+static WRITE8_HANDLER( paletteram_IIBBGGRR_w )
+{
+	int r,g,b,i;
+
+
+	paletteram[offset] = data;
+
+	i = (data >> 6) & 0x03;
+	/* red component */
+	r = (data << 2) & 0x0c;
+	if (r) r |= i;
+	r *= 0x11;
+	/* green component */
+	g = (data >> 0) & 0x0c;
+	if (g) g |= i;
+	g *= 0x11;
+	/* blue component */
+	b = (data >> 2) & 0x0c;
+	if (b) b |= i;
+	b *= 0x11;
+
+	palette_set_color(offset,r,g,b);
 }
 
 
@@ -203,15 +227,28 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 #endif
 ADDRESS_MAP_END
 
+static WRITE8_HANDLER( pio_w )
+{
+	if (offset & 1)
+		z80pio_c_w(0, (offset >> 1) & 1, data);
+	else
+		z80pio_d_w(0, (offset >> 1) & 1, data);
+}
+
+static READ8_HANDLER( pio_r )
+{
+	return (offset & 1) ? z80pio_c_r(0, (offset >> 1) & 1) : z80pio_d_r(0, (offset >> 1) & 1);
+}
+
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x03) AM_READ(z80pio_0_r)
+	AM_RANGE(0x00, 0x03) AM_READ(pio_r)
 	AM_RANGE(0x08, 0x0b) AM_READ(z80ctc_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x03) AM_WRITE(z80pio_0_w)
+	AM_RANGE(0x00, 0x03) AM_WRITE(pio_w)
 	AM_RANGE(0x08, 0x0b) AM_WRITE(z80ctc_0_w)
 ADDRESS_MAP_END
 
@@ -575,7 +612,7 @@ static MACHINE_DRIVER_START( senjyo )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(senjyo)
+	MDRV_MACHINE_RESET(senjyo)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

@@ -88,7 +88,6 @@ VBlank = 58Hz
   *********************************************************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/z80/z80.h"
 #include "sound/2151intf.h"
@@ -142,7 +141,7 @@ static WRITE8_HANDLER( vb_bankswitch_w )
 /* The sound system comes all but verbatim from Double Dragon */
 
 
-WRITE8_HANDLER( cpu_sound_command_w ) {
+static WRITE8_HANDLER( cpu_sound_command_w ) {
 	soundlatch_w( offset, data );
 	cpunum_set_input_line( 1, INPUT_LINE_NMI, PULSE_LINE );
 }
@@ -157,7 +156,7 @@ WRITE8_HANDLER( cpu_sound_command_w ) {
    bit 6 = sp prom bank
    bit 7 = sp prom bank
 */
-WRITE8_HANDLER( vb_scrollx_hi_w )
+static WRITE8_HANDLER( vb_scrollx_hi_w )
 {
 	flip_screen_set(~data&1);
 	vb_scrollx_hi = (data & 0x02) << 7;

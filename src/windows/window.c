@@ -7,6 +7,10 @@
 //
 //============================================================
 
+// Needed for RAW Input
+#define _WIN32_WINNT 0x501
+#define WM_INPUT 0x00FF
+
 // standard windows headers
 #define WIN32_LEAN_AND_MEAN
 #ifndef WINVER
@@ -39,14 +43,19 @@
 // standard C headers
 #include <math.h>
 
+// Windows 95/NT multimonitor stubs
+#ifdef WIN95_MULTIMON
+#include "multidef.h"
+#endif
+
 // MAME headers
+#include "osdepend.h"
 #include "driver.h"
 #include "window.h"
 #include "winddraw.h"
 #include "wind3d.h"
 #include "video.h"
 #include "blit.h"
-#include "mamedbg.h"
 #include "input.h"
 #include "../debug/window.h"
 
@@ -67,10 +76,9 @@
 // from input.c
 extern void win_pause_input(int pause);
 extern int win_is_mouse_captured(void);
-extern UINT8 win_trying_to_quit;
 
 // from video.c
-HMONITOR monitor;
+extern HMONITOR monitor;
 
 // from wind3dfx.c
 int win_d3d_effects_in_use(void);
@@ -112,8 +120,6 @@ int	win_triple_buffer;
 int	win_use_ddraw;
 int	win_use_d3d;
 int	win_dd_hw_stretch;
-int	win_d3d_use_filter;
-int win_d3d_tex_manage;
 int win_force_int_stretch;
 int	win_gfx_width;
 int	win_gfx_height;
@@ -162,6 +168,9 @@ int win_color32_bdst_shift = 0;
 int win_physical_width;
 int win_physical_height;
 
+// raw mouse support
+int win_use_raw_mouse = 0;
+
 
 
 //============================================================
@@ -205,7 +214,7 @@ static BITMAPINFO *debug_dib_info = (BITMAPINFO *)debug_dib_info_data;
 #endif
 
 // effects table
-static const struct win_effect_data effect_table[] =
+static const win_effect_data effect_table[] =
 {
 	{ "none",    EFFECT_NONE,        1, 1, 3, 4 },
 	{ "scan25",  EFFECT_SCANLINE_25, 1, 2, 3, 4 },
@@ -457,9 +466,13 @@ INLINE void get_work_area(RECT *maximum)
 
 int win_init_window(void)
 {
-	static int classes_created = 0;
+	static int classes_created = FALSE;
 	TCHAR title[256];
 	HMENU menu = NULL;
+
+	// if we already have a window, just leave it alone
+	if (win_video_window)
+		return 0;
 
 #ifdef MAME_DEBUG
 	// if we are in debug mode, never go full screen
@@ -495,6 +508,7 @@ int win_init_window(void)
 		// register the class; fail if we can't
 		if (!RegisterClass(&wc))
 			return 1;
+		classes_created = TRUE;
 	}
 
 	// make the window title
@@ -537,7 +551,6 @@ int win_create_window(int width, int height, int depth, int attributes, double a
 	// clear the initial state
 	last_bitmap = NULL;
 	visible_area_set = 0;
-	win_trying_to_quit = 0;
 
 	// extract useful parameters from the attributes
 	pixel_aspect_ratio	= (attributes & VIDEO_PIXEL_ASPECT_RATIO_MASK);
@@ -695,10 +708,48 @@ void win_destroy_window(void)
 
 void win_update_cursor_state(void)
 {
+	static POINT last_cursor_pos = {-1,-1};
+	RECT bounds;	// actual screen area of game video
+	POINT video_ul;	// client area upper left corner
+	POINT video_lr;	// client area lower right corner
+
+	// store the cursor if just initialized
+	if (win_use_raw_mouse && last_cursor_pos.x == -1 && last_cursor_pos.y == -1) GetCursorPos(&last_cursor_pos);
+
 	if ((win_window_mode || win_has_menu()) && !win_is_mouse_captured())
+	{
+		// show cursor
 		while (ShowCursor(TRUE) < 0) ;
+
+		if (win_use_raw_mouse)
+		{
+			// allow cursor to move freely
+			ClipCursor(NULL);
+			// restore cursor to last position
+			SetCursorPos(last_cursor_pos.x, last_cursor_pos.y);
+		}
+	}
 	else
+	{
+		// hide cursor
 		while (ShowCursor(FALSE) >= 0) ;
+
+		if (win_use_raw_mouse)
+		{
+			// store the cursor position
+			GetCursorPos(&last_cursor_pos);
+			// clip cursor to game video window
+			GetClientRect(win_video_window, &bounds);
+			video_ul.x = bounds.left;
+			video_ul.y = bounds.top;
+			video_lr.x = bounds.right;
+			video_lr.y = bounds.bottom;
+			ClientToScreen(win_video_window, &video_ul);
+			ClientToScreen(win_video_window, &video_lr);
+			SetRect(&bounds, video_ul.x, video_ul.y, video_lr.x, video_lr.y);
+			ClipCursor(&bounds);
+		}
+	}
 }
 
 
@@ -808,6 +859,27 @@ LRESULT CALLBACK win_video_window_proc(HWND wnd, UINT message, WPARAM wparam, LP
 	// handle a few messages
 	switch (message)
 	{
+		// input: handle the raw mouse input
+		case WM_INPUT:
+		{
+			if (win_use_raw_mouse)
+				win_raw_mouse_update((HRAWINPUT)lparam);
+			break;
+		}
+
+		// paint: redraw the last bitmap
+		case WM_PAINT:
+		{
+			PAINTSTRUCT pstruct;
+			HDC hdc = BeginPaint(wnd, &pstruct);
+ 			if (win_video_window)
+  				draw_video_contents(hdc, NULL, NULL, NULL, 1);
+ 			if (win_has_menu())
+ 				DrawMenuBar(win_video_window);
+			EndPaint(wnd, &pstruct);
+			break;
+		}
+
 #if !HAS_WINDOW_MENU
 		// non-client paint: punt if full screen
 		case WM_NCPAINT:
@@ -829,19 +901,6 @@ LRESULT CALLBACK win_video_window_proc(HWND wnd, UINT message, WPARAM wparam, LP
 			osd_sound_enable(1);
 			win_timer_enable(1);
 			break;
-
-		// paint: redraw the last bitmap
-		case WM_PAINT:
-		{
-			PAINTSTRUCT pstruct;
-			HDC hdc = BeginPaint(wnd, &pstruct);
- 			if (win_video_window)
-  				draw_video_contents(hdc, NULL, NULL, NULL, 1);
- 			if (win_has_menu())
- 				DrawMenuBar(win_video_window);
-			EndPaint(wnd, &pstruct);
-			break;
-		}
 
 		// get min/max info: set the minimum window size
 		case WM_GETMINMAXINFO:
@@ -883,6 +942,11 @@ LRESULT CALLBACK win_video_window_proc(HWND wnd, UINT message, WPARAM wparam, LP
 			return DefWindowProc(wnd, message, wparam, lparam);
 		}
 
+		// close: handle clicks on the close box
+		case WM_CLOSE:
+			mame_schedule_exit();
+			break;
+
 		// destroy: close down the app
 		case WM_DESTROY:
 			if (win_use_directx)
@@ -896,7 +960,6 @@ LRESULT CALLBACK win_video_window_proc(HWND wnd, UINT message, WPARAM wparam, LP
 					win_ddraw_kill();
 				}
 			}
-			win_trying_to_quit = 1;
 			win_video_window = 0;
 			break;
 
@@ -1126,7 +1189,7 @@ void win_adjust_window_for_visible(int min_x, int max_x, int min_y, int max_y)
 
  		GetWindowRect(win_video_window, &r);
  		r.right += (win_visible_width - old_visible_width) * xmult;
- 		r.left += (win_visible_height - old_visible_height) * ymult;
+ 		r.bottom += (win_visible_height - old_visible_height) * ymult;
  		set_aligned_window_pos(win_video_window, NULL, r.left, r.top,
  				r.right - r.left,
  				r.bottom - r.top,
@@ -1561,32 +1624,10 @@ int win_process_events(int ingame)
 
 
 //============================================================
-//  wait_for_vsync
-//============================================================
-
-void win_wait_for_vsync(void)
-{
-	// if we have DirectDraw, we can use that
-	if (win_use_directx)
-	{
-		if (win_use_directx == USE_D3D)
-		{
-			win_d3d_wait_vsync();
-		}
-		else
-		{
-			win_ddraw_wait_vsync();
-		}
-	}
-}
-
-
-
-//============================================================
 //  win_prepare_palette
 //============================================================
 
-UINT32 *win_prepare_palette(struct win_blit_params *params)
+UINT32 *win_prepare_palette(win_blit_params *params)
 {
 	// 16bpp source only needs a palette if RGB direct or modifiable
 	if (params->srcdepth == 15 || params->srcdepth == 16)
@@ -1605,7 +1646,7 @@ UINT32 *win_prepare_palette(struct win_blit_params *params)
 static void dib_draw_window(HDC dc, mame_bitmap *bitmap, const rectangle *bounds, void *vector_dirty_pixels, int update)
 {
 	int depth = (bitmap->depth == 15) ? 16 : bitmap->depth;
-	struct win_blit_params params;
+	win_blit_params params;
 	int xmult, ymult;
 	RECT client;
 	int cx, cy;
@@ -1710,7 +1751,7 @@ int win_lookup_effect(const char *arg)
 //  win_determine_effect
 //============================================================
 
-int win_determine_effect(const struct win_blit_params *params)
+int win_determine_effect(const win_blit_params *params)
 {
 	// default to what was selected
 	int result = effect_table[win_blit_effect].effect;

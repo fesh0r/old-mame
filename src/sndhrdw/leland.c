@@ -78,6 +78,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "streams.h"
 #include "cpu/i86/i186intf.h"
 #include "cpu/z80/z80.h"
 #include "leland.h"
@@ -134,10 +135,6 @@ void *leland_sh_start(int clock, const struct CustomSound_interface *config)
 	dac_buffer[0] = dac_buffer[1] = NULL;
 	dac_bufin[0]  = dac_bufin[1]  = 0;
 	dac_bufout[0] = dac_bufout[1] = 0;
-
-	/* skip if no sound */
-	if (Machine->sample_rate == 0)
-		return auto_malloc(1);
 
 	/* allocate the stream */
 	dac_stream = stream_create(0, 1, 256*60, NULL, leland_update);
@@ -505,10 +502,6 @@ static void dma_timer_callback(int which);
 void *leland_i186_sh_start(int clock, const struct CustomSound_interface *config)
 {
 	int i;
-
-	/* bail if nothing to play */
-	if (Machine->sample_rate == 0)
-		return auto_malloc(1);
 
 	/* determine which sound hardware is installed */
 	has_ym2151 = 0;
@@ -1438,7 +1431,7 @@ static WRITE8_HANDLER( i186_internal_port_w )
 			/* we need to do this at a time when the I86 context is swapped in */
 			/* this register is generally set once at startup and never again, so it's a good */
 			/* time to set it up */
-			activecpu_set_info_fct(CPUINFO_PTR_IRQ_CALLBACK, (genf *)int_callback);
+			cpunum_set_irq_callback(cpu_getactivecpu(), int_callback);
 			break;
 
 		case 0xc0:
@@ -1790,15 +1783,9 @@ READ8_HANDLER( leland_i86_response_r )
 {
 	if (LOG_COMM) logerror("%04X:Read sound response latch = %02X\n", activecpu_get_previouspc(), sound_response);
 
-	/* if sound is disabled, toggle between FF and 00 */
-	if (Machine->sample_rate == 0)
-		return sound_response ^= 0xff;
-	else
-	{
-		/* synchronize the response */
-		timer_set(TIME_NOW, activecpu_get_previouspc() + 2, delayed_response_r);
-		return sound_response;
-	}
+	/* synchronize the response */
+	timer_set(TIME_NOW, activecpu_get_previouspc() + 2, delayed_response_r);
+	return sound_response;
 }
 
 

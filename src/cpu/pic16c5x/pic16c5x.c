@@ -53,13 +53,7 @@
 
 
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include "driver.h"
-#include "cpuintrf.h"
-#include "mamedbg.h"
-#include "state.h"
+#include "debugger.h"
 #include "pic16c5x.h"
 
 
@@ -695,37 +689,35 @@ static opcode_fn opcode_000_other[16]=
  *  Inits CPU emulation
  ****************************************************************************/
 
-static void pic16C5x_init(void)
+static void pic16C5x_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
-
-	state_save_register_INT8("pic16C5x", cpu, "Old_Data", &old_data, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "W", &R.W, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "ALU", &R.ALU, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "Option", &R.OPTION, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "TMR0", &R.TMR0, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "PCL", &R.PCL, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "STR", &R.STATUS, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "FSR", &R.FSR, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "PORTA", &R.PORTA, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "PORTB", &R.PORTB, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "PORTC", &R.PORTC, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "TRISA", &R.TRISA, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "TRISB", &R.TRISB, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "TRISC", &R.TRISC, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "Old_T0", &old_T0, 1);
-	state_save_register_UINT8("pic16C5x", cpu, "RAM_mask", &picRAMmask, 1);
-	state_save_register_UINT16("pic16C5x", cpu, "WDT", &R.WDT, 1);
-	state_save_register_UINT16("pic16C5x", cpu, "Prescaler", &R.prescaler, 1);
-	state_save_register_UINT16("pic16C5x", cpu, "Stack0", &R.STACK[0], 1);
-	state_save_register_UINT16("pic16C5x", cpu, "Stack1", &R.STACK[1], 1);
-	state_save_register_UINT16("pic16C5x", cpu, "PC", &R.PC, 1);
-	state_save_register_UINT16("pic16C5x", cpu, "PrevPC", &R.PREVPC, 1);
-	state_save_register_UINT16("pic16C5x", cpu, "Config", &R.CONFIG, 1);
-	state_save_register_UINT32("pic16C5x", cpu, "Opcode", &R.opcode.d, 1);
-	state_save_register_INT32("pic16C5x", cpu, "Delay_Timer", &delay_timer, 1);
-	state_save_register_INT32("pic16C5x", cpu, "PIC_model", &picmodel, 1);
-	state_save_register_INT32("pic16C5x", cpu, "Reset_Vector", &pic16C5x_reset_vector, 1);
+	state_save_register_item("pic16C5x", index, old_data);
+	state_save_register_item("pic16C5x", index, R.W);
+	state_save_register_item("pic16C5x", index, R.ALU);
+	state_save_register_item("pic16C5x", index, R.OPTION);
+	state_save_register_item("pic16C5x", index, R.TMR0);
+	state_save_register_item("pic16C5x", index, R.PCL);
+	state_save_register_item("pic16C5x", index, R.STATUS);
+	state_save_register_item("pic16C5x", index, R.FSR);
+	state_save_register_item("pic16C5x", index, R.PORTA);
+	state_save_register_item("pic16C5x", index, R.PORTB);
+	state_save_register_item("pic16C5x", index, R.PORTC);
+	state_save_register_item("pic16C5x", index, R.TRISA);
+	state_save_register_item("pic16C5x", index, R.TRISB);
+	state_save_register_item("pic16C5x", index, R.TRISC);
+	state_save_register_item("pic16C5x", index, old_T0);
+	state_save_register_item("pic16C5x", index, picRAMmask);
+	state_save_register_item("pic16C5x", index, R.WDT);
+	state_save_register_item("pic16C5x", index, R.prescaler);
+	state_save_register_item("pic16C5x", index, R.STACK[0]);
+	state_save_register_item("pic16C5x", index, R.STACK[1]);
+	state_save_register_item("pic16C5x", index, R.PC);
+	state_save_register_item("pic16C5x", index, R.PREVPC);
+	state_save_register_item("pic16C5x", index, R.CONFIG);
+	state_save_register_item("pic16C5x", index, R.opcode.d);
+	state_save_register_item("pic16C5x", index, delay_timer);
+	state_save_register_item("pic16C5x", index, picmodel);
+	state_save_register_item("pic16C5x", index, pic16C5x_reset_vector);
 }
 
 
@@ -1126,7 +1118,7 @@ ADDRESS_MAP_END
  *  PIC16C54 Reset
  ****************************************************************************/
 
-void pic16C54_reset(void *param)
+void pic16C54_reset(void)
 {
 	picmodel = 0x16C54;
 	picRAMmask = 0x1f;
@@ -1181,7 +1173,7 @@ ADDRESS_MAP_END
  *  PIC16C55 Reset
  ****************************************************************************/
 
-void pic16C55_reset(void *param)
+void pic16C55_reset(void)
 {
 	picmodel = 0x16C55;
 	picRAMmask = 0x1f;
@@ -1236,7 +1228,7 @@ ADDRESS_MAP_END
  *  PIC16C56 Reset
  ****************************************************************************/
 
-void pic16C56_reset(void *param)
+void pic16C56_reset(void)
 {
 	picmodel = 0x16C56;
 	picRAMmask = 0x1f;
@@ -1296,7 +1288,7 @@ ADDRESS_MAP_END
  *  PIC16C57 Reset
  ****************************************************************************/
 
-void pic16C57_reset(void *param)
+void pic16C57_reset(void)
 {
 	picmodel = 0x16C57;
 	picRAMmask = 0x7f;
@@ -1357,7 +1349,7 @@ ADDRESS_MAP_END
  *  PIC16C58 Reset
  ****************************************************************************/
 
-void pic16C58_reset(void *param)
+void pic16C58_reset(void)
 {
 	picmodel = 0x16C58;
 	picRAMmask = 0x7f;

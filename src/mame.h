@@ -12,35 +12,35 @@
 #ifndef __MAME_H__
 #define __MAME_H__
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
-
-#include "fileio.h"
-#include "drawgfx.h"
-#include "palette.h"
-#include "inptport.h"
+#include "mamecore.h"
 
 #ifdef MESS
 #include "device.h"
 #endif /* MESS */
 
-extern char build_version[];
-
 
 
 /***************************************************************************
-
-    Parameters
-
+    CONSTANTS
 ***************************************************************************/
 
-#define MAX_GFX_ELEMENTS 32
-#define MAX_MEMORY_REGIONS 32
+/* program phases */
+#define MAME_PHASE_PREINIT		0
+#define MAME_PHASE_INIT			1
+#define MAME_PHASE_RESET		2
+#define MAME_PHASE_RUNNING		3
+#define MAME_PHASE_EXIT			4
 
+
+/* maxima */
+#define MAX_GFX_ELEMENTS		32
+#define MAX_MEMORY_REGIONS		32
+
+
+/* MESS vs. MAME abstractions */
 #ifndef MESS
 #define APPNAME					"MAME"
+#define CONFIGNAME				"mame"
 #define APPLONGNAME				"M.A.M.E."
 #define CAPGAMENOUN				"GAME"
 #define CAPSTARTGAMENOUN		"Game"
@@ -49,6 +49,7 @@ extern char build_version[];
 #define HISTORYNAME				"History"
 #else
 #define APPNAME					"MESS"
+#define CONFIGNAME				"mess"
 #define APPLONGNAME				"M.E.S.S."
 #define CAPGAMENOUN				"SYSTEM"
 #define CAPSTARTGAMENOUN		"System"
@@ -58,110 +59,104 @@ extern char build_version[];
 #endif
 
 
+/* memory region types */
+enum
+{
+	REGION_INVALID = 0x80,
+	REGION_CPU1,
+	REGION_CPU2,
+	REGION_CPU3,
+	REGION_CPU4,
+	REGION_CPU5,
+	REGION_CPU6,
+	REGION_CPU7,
+	REGION_CPU8,
+	REGION_GFX1,
+	REGION_GFX2,
+	REGION_GFX3,
+	REGION_GFX4,
+	REGION_GFX5,
+	REGION_GFX6,
+	REGION_GFX7,
+	REGION_GFX8,
+	REGION_PROMS,
+	REGION_SOUND1,
+	REGION_SOUND2,
+	REGION_SOUND3,
+	REGION_SOUND4,
+	REGION_SOUND5,
+	REGION_SOUND6,
+	REGION_SOUND7,
+	REGION_SOUND8,
+	REGION_USER1,
+	REGION_USER2,
+	REGION_USER3,
+	REGION_USER4,
+	REGION_USER5,
+	REGION_USER6,
+	REGION_USER7,
+	REGION_USER8,
+	REGION_DISKS,
+	REGION_MAX
+};
+
+
+/* artwork options */
+#define ARTWORK_USE_ALL			(~0)
+#define ARTWORK_USE_NONE		(0)
+#define ARTWORK_USE_BACKDROPS	0x01
+#define ARTWORK_USE_OVERLAYS	0x02
+#define ARTWORK_USE_BEZELS		0x04
+
+
 
 /***************************************************************************
-
-    Core description of the currently-running machine
-
+    TYPE DEFINITIONS
 ***************************************************************************/
 
-struct _region_info
-{
-	UINT8 *		base;
-	size_t		length;
-	UINT32		type;
-	UINT32		flags;
-};
-typedef struct _region_info region_info;
-
-
+/* description of the currently-running machine */
+typedef struct _running_machine running_machine;
 struct _running_machine
 {
-	/* ----- game-related information ----- */
+	/* game-related information */
+	const game_driver *		gamedrv;			/* points to the definition of the game machine */
+	const machine_config *	drv;				/* points to the constructed machine_config */
 
-	/* points to the definition of the game machine */
-	const game_driver *		gamedrv;
-
-	/* points to the constructed MachineDriver */
-	const machine_config *	drv;
-
-	/* array of memory regions */
-	region_info				memory_region[MAX_MEMORY_REGIONS];
-
-	/* number of bad ROMs encountered */
-	int						rom_load_warnings;
-
-
-	/* ----- video-related information ----- */
-
-	/* array of pointers to graphic sets (chars, sprites) */
-	gfx_element *			gfx[MAX_GFX_ELEMENTS];
-
-	/* main bitmap to render to (but don't do it directly!) */
-	mame_bitmap *			scrbitmap;
-
-	/* current visible area, and a prerotated one adjusted for orientation */
-	rectangle 				visible_area;
+	/* video-related information */
+	gfx_element *			gfx[MAX_GFX_ELEMENTS];/* array of pointers to graphic sets (chars, sprites) */
+	rectangle 				visible_area;		/* current visible area, and a prerotated one adjusted for orientation */
 	rectangle				absolute_visible_area;
+	float					refresh_rate;		/* current video refresh rate */
+	pen_t *					pens;				/* remapped palette pen numbers */
+	UINT16 *				game_colortable;	/* lookup table used to map gfx pen numbers to color numbers */
+	pen_t *					remapped_colortable;/* the above, already remapped through Machine->pens */
+	int						color_depth;		/* video color depth: 16, 15 or 32 */
 
-	/* current video refresh rate */
-	float					refresh_rate;
+	/* audio-related information */
+	int						sample_rate;		/* the digital audio sample rate */
 
-	/* remapped palette pen numbers. When you write directly to a bitmap in a
-       non-paletteized mode, use this array to look up the pen number. For example,
-       if you want to use color #6 in the palette, use pens[6] instead of just 6. */
-	pen_t *					pens;
+	/* input-related information */
+	input_port_entry *		input_ports;		/* the input ports definition from the driver is copied here and modified */
+	mame_file *				record_file;		/* recording file (NULL if not recording) */
+	mame_file *				playback_file;		/* playback file (NULL if not recording) */
 
-	/* lookup table used to map gfx pen numbers to color numbers */
-	UINT16 *				game_colortable;
+	/* ui-related information */
+	int 					ui_orientation;		/* user interface orientation */
 
-	/* the above, already remapped through Machine->pens */
-	pen_t *					remapped_colortable;
+	/* debugger-related information */
+	int						debug_mode;			/* was debug mode enabled? */
+#if defined(MAME_DEBUG) && !defined(NEW_DEBUGGER)
+	mame_bitmap *			debug_bitmap;		/* bitmap where the debugger is rendered */
+	pen_t *					debug_pens;			/* pen array for the debugger, analagous to the pens above */
+	pen_t *					debug_remapped_colortable;/* colortable mapped through the pens, as for the game */
+	gfx_element *			debugger_font;		/* font used by the debugger */
+#endif
 
-	/* video color depth: 16, 15 or 32 */
-	int						color_depth;
-
-
-	/* ----- audio-related information ----- */
-
-	/* the digital audio sample rate; 0 if sound is disabled. */
-	int						sample_rate;
-
-
-	/* ----- input-related information ----- */
-
-	/* the input ports definition from the driver is copied here and modified */
-	input_port_entry *		input_ports;
-
-	/* original input_ports without modifications */
-	input_port_entry *		input_ports_default;
-
-
-	/* ----- user interface-related information ----- */
-
-	/* user interface orientation */
-	int 					ui_orientation;
-
-
-	/* ----- debugger-related information ----- */
-
-	/* bitmap where the debugger is rendered */
-	mame_bitmap *			debug_bitmap;
-
-	/* pen array for the debugger, analagous to the pens above */
-	pen_t *					debug_pens;
-
-	/* colortable mapped through the pens, as for the game */
-	pen_t *					debug_remapped_colortable;
-
-	/* font used by the debugger */
-	gfx_element *			debugger_font;
-
+	/* MESS-specific information */
 #ifdef MESS
-	struct IODevice *devices;
+	struct IODevice *		devices;
 #endif /* MESS */
 };
-typedef struct _running_machine running_machine;
 
 
 
@@ -171,13 +166,6 @@ typedef struct _running_machine running_machine;
 
 ***************************************************************************/
 
-#define ARTWORK_USE_ALL			(~0)
-#define ARTWORK_USE_NONE		(0)
-#define ARTWORK_USE_BACKDROPS	0x01
-#define ARTWORK_USE_OVERLAYS	0x02
-#define ARTWORK_USE_BEZELS		0x04
-
-
 #ifdef MESS
 /*
  * This is a filename and it's associated peripheral type
@@ -186,17 +174,22 @@ typedef struct _running_machine running_machine;
 struct ImageFile
 {
 	const char *name;
-	iodevice_t type;
+	iodevice_t device_type;
+	const char *device_tag;
+	int device_index;
 };
 #endif /* MESS */
 
+
 /* The host platform should fill these fields with the preferences specified in the GUI */
 /* or on the commandline. */
+typedef struct _global_options global_options;
 struct _global_options
 {
 	mame_file *	record;			/* handle to file to record input to */
 	mame_file *	playback;		/* handle to file to playback input from */
 	mame_file *	language_file;	/* handle to file for localization */
+	mame_file *	logfile;		/* handle to file for debug logging */
 
 	int		mame_debug;		/* 1 to enable debugging */
 	int		cheat;			/* 1 to enable cheating */
@@ -236,86 +229,14 @@ struct _global_options
 	const char *controller;	/* controller-specific cfg to load */
 
 #ifdef MESS
-	UINT32 ram;
+	UINT32	ram;
 	struct ImageFile image_files[32];
 	int		image_count;
-	int disable_normal_ui;
-
+	int		disable_normal_ui;
 	int		min_width;		/* minimum width for the display */
 	int		min_height;		/* minimum height for the display */
 #endif /* MESS */
 };
-typedef struct _global_options global_options;
-
-
-
-/***************************************************************************
-
-    Display state passed to the OSD layer for rendering
-
-***************************************************************************/
-
-/* these flags are set in the mame_display struct to indicate that */
-/* a particular piece of state has changed since the last call to */
-/* osd_update_video_and_audio() */
-#define GAME_BITMAP_CHANGED			0x00000001
-#define GAME_PALETTE_CHANGED		0x00000002
-#define GAME_VISIBLE_AREA_CHANGED	0x00000004
-#define VECTOR_PIXELS_CHANGED		0x00000008
-#define DEBUG_BITMAP_CHANGED		0x00000010
-#define DEBUG_PALETTE_CHANGED		0x00000020
-#define DEBUG_FOCUS_CHANGED			0x00000040
-#define LED_STATE_CHANGED			0x00000080
-#define GAME_REFRESH_RATE_CHANGED	0x00000100
-#ifdef MESS
-#define GAME_OPTIONAL_FRAMESKIP     0x00000200
-#endif
-
-
-/* the main mame_display structure, containing the current state of the */
-/* video display */
-struct _mame_display
-{
-	/* bitfield indicating which states have changed */
-	UINT32					changed_flags;
-
-	/* game bitmap and display information */
-	mame_bitmap *	game_bitmap;			/* points to game's bitmap */
-	rectangle		game_bitmap_update;		/* bounds that need to be updated */
-	const rgb_t *			game_palette;			/* points to game's adjusted palette */
-	UINT32					game_palette_entries;	/* number of palette entries in game's palette */
-	UINT32 *				game_palette_dirty;		/* points to game's dirty palette bitfield */
-	rectangle 		game_visible_area;		/* the game's visible area */
-	float					game_refresh_rate;		/* refresh rate */
-	void *					vector_dirty_pixels;	/* points to X,Y pairs of dirty vector pixels */
-
-	/* debugger bitmap and display information */
-	mame_bitmap *	debug_bitmap;			/* points to debugger's bitmap */
-	const rgb_t *			debug_palette;			/* points to debugger's palette */
-	UINT32					debug_palette_entries;	/* number of palette entries in debugger's palette */
-	UINT8					debug_focus;			/* set to 1 if debugger has focus */
-
-	/* other misc information */
-	UINT8					led_state;				/* bitfield of current LED states */
-};
-/* in mamecore.h: typedef struct _mame_display mame_display; */
-
-
-
-/***************************************************************************
-
-    Performance data
-
-***************************************************************************/
-
-struct _performance_info
-{
-	double					game_speed_percent;		/* % of full speed */
-	double					frames_per_second;		/* actual rendered fps */
-	int						vector_updates_last_second; /* # of vector updates last second */
-	int						partial_updates_this_frame; /* # of partial updates last frame */
-};
-/* In mamecore.h: typedef struct _performance_info performance_info; */
 
 
 
@@ -327,22 +248,56 @@ struct _performance_info
 
 extern global_options options;
 extern running_machine *Machine;
+extern const char *mame_disclaimer;
+extern char giant_string_buffer[];
+
+extern char build_version[];
 
 
 
 /***************************************************************************
-
-    Function prototypes
-
+    FUNCTION PROTOTYPES
 ***************************************************************************/
+
 
 /* ----- core system management ----- */
 
 /* execute a given game by index in the drivers[] array */
 int run_game(int game);
 
-/* construct a machine driver */
-void expand_machine_driver(void (*constructor)(machine_config *), machine_config *output);
+/* return the current phase */
+int mame_get_phase(void);
+
+/* request callback on termination */
+void add_exit_callback(void (*callback)(void));
+
+/* request callback on reset */
+void add_reset_callback(void (*callback)(void));
+
+/* request callback on pause */
+void add_pause_callback(void (*callback)(int));
+
+
+
+/* ----- global system states ----- */
+
+/* schedule an exit */
+void mame_schedule_exit(void);
+
+/* schedule a hard reset */
+void mame_schedule_hard_reset(void);
+
+/* schedule a soft reset */
+void mame_schedule_soft_reset(void);
+
+/* schedule a save */
+void mame_schedule_save(const char *filename);
+
+/* schedule a load */
+void mame_schedule_load(const char *filename);
+
+/* is a scheduled event pending? */
+int mame_is_scheduled_event_pending(void);
 
 /* pause the system */
 void mame_pause(int pause);
@@ -352,51 +307,71 @@ int mame_is_paused(void);
 
 
 
-/* ----- screen rendering and management ----- */
+/* ----- memory region management ----- */
 
-/* set the current visible area of the screen bitmap */
-void set_visible_area(int min_x, int max_x, int min_y, int max_y);
+/* allocate a new memory region */
+int new_memory_region(int type, size_t length, UINT32 flags);
 
-/* set the current refresh rate of the video mode */
-void set_refresh_rate(float fps);
+/* free an allocated memory region */
+void free_memory_region(int num);
 
-/* force an erase and a complete redraw of the video next frame */
-void schedule_full_refresh(void);
+/* return a pointer to a specified memory region */
+UINT8 *memory_region(int num);
 
-/* called by cpuexec.c to reset updates at the end of VBLANK */
-void reset_partial_updates(void);
+/* return the size (in bytes) of a specified memory region */
+size_t memory_region_length(int num);
 
-/* force a partial update of the screen up to and including the requested scanline */
-void force_partial_update(int scanline);
+/* return the type of a specified memory region */
+UINT32 memory_region_type(int num);
 
-/* finish updating the screen for this frame */
-void draw_screen(void);
+/* return the flags (defined in romload.h) for a specified memory region */
+UINT32 memory_region_flags(int num);
 
-/* update the video by calling down to the OSD layer */
-void update_video_and_audio(void);
 
-/* update the screen, handling frame skipping and rendering */
-/* (this calls draw_screen and update_video_and_audio) */
-int updatescreen(void);
+
+/* ----- resource management ----- */
+
+/* begin tracking resources */
+void begin_resource_tracking(void);
+
+/* stop tracking resources and free everything since the last begin */
+void end_resource_tracking(void);
+
+/* return the current resource tag */
+INLINE int get_resource_tag(void)
+{
+	extern int resource_tracking_tag;
+	return resource_tracking_tag;
+}
+
+/* allocate memory and fatalerror if there's a problem */
+#define malloc_or_die(s)	_malloc_or_die(s, __FILE__, __LINE__)
+void *_malloc_or_die(size_t size, const char *file, int line) ATTR_MALLOC;
+
+/* allocate memory that will be freed at the next end_resource_tracking */
+#define auto_malloc(s)		_auto_malloc(s, __FILE__, __LINE__)
+void *_auto_malloc(size_t size, const char *file, int line) ATTR_MALLOC;
+
+/* allocate memory and duplicate a string that will be freed at the next end_resource_tracking */
+char *auto_strdup(const char *str) ATTR_MALLOC;
 
 
 
 /* ----- miscellaneous bits & pieces ----- */
 
-/* mame_fopen() must use this to know if high score files can be used */
-int mame_highscore_enabled(void);
+/* log to the standard error.log file */
+void CLIB_DECL logerror(const char *text,...) ATTR_PRINTF(1,2);
 
-/* set the state of a given LED */
-void set_led_status(int num, int on);
+/* adds a callback to be called on logerror() */
+void add_logerror_callback(void (*callback)(const char *));
 
-/* return current performance data */
-const performance_info *mame_get_performance_info(void);
+/* standardized random number generator */
+UINT32 mame_rand(void);
 
 /* return the index of the given CPU, or -1 if not found */
 int mame_find_cpu_index(const char *tag);
 
-/* runs validity checks, -1 for all */
-int mame_validitychecks(void);
+
 
 #ifdef MESS
 #include "mess.h"

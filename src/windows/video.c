@@ -16,9 +16,12 @@
 #include <math.h>
 
 // MAME headers
+#include "osdepend.h"
 #include "driver.h"
-#include "mamedbg.h"
+#include "profiler.h"
 #include "vidhrdw/vector.h"
+
+// MAMEOS headers
 #include "blit.h"
 #include "video.h"
 #include "window.h"
@@ -40,7 +43,6 @@
 // from input.c
 extern void win_poll_input(void);
 extern void win_pause_input(int pause);
-extern UINT8 win_trying_to_quit;
 extern int verbose;
 
 // from sound.c
@@ -69,8 +71,8 @@ HMONITOR monitor;
 GUID *screen_guid_ptr;
 
 // current frameskip/autoframeskip settings
-int frameskip;
-int autoframeskip;
+static int frameskip;
+static int autoframeskip;
 
 // speed throttling
 int throttle = 1;
@@ -191,6 +193,7 @@ static char *cleanstretch;
 static char *resolution;
 static char *effect;
 static char *aspect;
+static char *mngwrite;
 
 // options struct
 struct rc_option video_opts[] =
@@ -221,13 +224,14 @@ struct rc_option video_opts[] =
 	{ "frames_to_run", "ftr", rc_int, &frames_to_display, "0", 0, 0, decode_ftr, "sets the number of frames to run within the game" },
 	{ "effect", NULL, rc_string, &effect, "none", 0, 0, decode_effect, "specify the blitting effect" },
 	{ "screen_aspect", NULL, rc_string, &aspect, "4:3", 0, 0, decode_aspect, "specify an alternate monitor aspect ratio" },
+	{ "mngwrite", NULL, rc_string, &mngwrite, NULL, 0, 0, NULL, "save video in specified mng file" },
 
 	{ NULL, NULL, rc_link, win_d3d_opts, NULL, 0, 0, NULL, NULL },
 
 	{ "Windows misc options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
 	{ "sleep", NULL, rc_bool, &allow_sleep, "1", 0, 0, NULL, "allow " APPNAME " to give back time to the system when it's not needed" },
 	{ "rdtsc", NULL, rc_bool, &win_force_rdtsc, "0", 0, 0, NULL, "prefer RDTSC over QueryPerformanceCounter for timing" },
-	{ "high_priority", NULL, rc_bool, &win_high_priority, "0", 0, 0, NULL, "increase thread priority" },
+	{ "priority", NULL, rc_int, &win_priority, "0", -15, 1, NULL, "thread priority" },
 
 	{ NULL,	NULL, rc_end, NULL, NULL, 0, 0,	NULL, NULL }
 };
@@ -452,6 +456,7 @@ void win_disorient_rect(rectangle *rect)
 //============================================================
 //  devices_enum_callback
 //============================================================
+
 static BOOL WINAPI devices_enum_callback(GUID *lpGUID, LPSTR lpDriverDescription,
 										 LPSTR lpDriverName, LPVOID lpContext, HMONITOR hm)
 {
@@ -578,6 +583,11 @@ int osd_create_display(const osd_create_params *params, UINT32 *rgb_components)
 
 	// indicate for later that we're just beginning
 	warming_up = 1;
+
+	// start recording movie
+	if (mngwrite != NULL)
+		record_movie_start(mngwrite);
+
     return 0;
 }
 
@@ -952,7 +962,7 @@ static void render_frame(mame_bitmap *bitmap, const rectangle *bounds, void *vec
 				save_screen_snapshot_as(fp, artwork_get_ui_bitmap());
 				mame_fclose(fp);
 			}
-			win_trying_to_quit = 1;
+			mame_schedule_exit();
 		}
 		end_time = curr;
 	}
@@ -1142,10 +1152,10 @@ mame_bitmap *osd_override_snapshot(mame_bitmap *bitmap, rectangle *bounds)
 
 
 //============================================================
-//  osd_pause
+//  win_pause
 //============================================================
 
-void osd_pause(int paused)
+void win_pause(int paused)
 {
 	// note that we were paused during this autoframeskip cycle
 	game_is_paused = paused;
@@ -1155,3 +1165,35 @@ void osd_pause(int paused)
 	// tell the input system
 	win_pause_input(paused);
 }
+
+
+
+//============================================================
+//  win_set_frameskip
+//============================================================
+
+void win_set_frameskip(int value)
+{
+	if (value >= 0)
+	{
+		frameskip = value;
+		autoframeskip = 0;
+	}
+	else
+	{
+		frameskip = 0;
+		autoframeskip = 1;
+	}
+}
+
+
+
+//============================================================
+//  win_get_frameskip
+//============================================================
+
+int win_get_frameskip(void)
+{
+	return autoframeskip ? -1 : frameskip;
+}
+

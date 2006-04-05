@@ -148,7 +148,6 @@ VBlank duration: 1/VSYNC * (16/256) = 1017.6 us
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 #include "sound/samples.h"
@@ -188,7 +187,7 @@ extern WRITE8_HANDLER( gottlieb_cause_dac_nmi_w );
 
 static UINT8 *audiobuffer_region;
 
-MACHINE_INIT( gottlieb )
+MACHINE_RESET( gottlieb )
 {
 	audiobuffer_region = memory_region(REGION_USER1);
 }
@@ -1562,7 +1561,7 @@ static MACHINE_DRIVER_START( gottlieb )
 	MDRV_FRAMES_PER_SECOND(61)
 	MDRV_VBLANK_DURATION(1018)	/* frames per second, vblank duration */
 
-	MDRV_MACHINE_INIT(gottlieb)
+	MDRV_MACHINE_RESET(gottlieb)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
@@ -1642,7 +1641,7 @@ static MACHINE_DRIVER_START( gottlieb2 )
 	MDRV_FRAMES_PER_SECOND(61)
 	MDRV_VBLANK_DURATION(1018)	/* frames per second, vblank duration */
 
-	MDRV_MACHINE_INIT(gottlieb)
+	MDRV_MACHINE_RESET(gottlieb)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */

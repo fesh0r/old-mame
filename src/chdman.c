@@ -7,10 +7,7 @@
 
 ***************************************************************************/
 
-#include "osd_cpu.h"
-#include "driver.h"
-#include "harddisk.h"
-#include "cdrom.h"
+#include "osd_tool.h"
 #include "chdcd.h"
 #include "md5.h"
 #include "sha1.h"
@@ -18,45 +15,6 @@
 #include <stdio.h>
 #include <time.h>
 #include <ctype.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#include <winioctl.h>
-
-/* Older versions of Platform SDK don't define these */
-#ifndef INVALID_FILE_ATTRIBUTES
-#define INVALID_FILE_ATTRIBUTES 0xffffffff
-#endif
-
-#ifndef INVALID_SET_FILE_POINTER
-#define INVALID_SET_FILE_POINTER 0xffffffff
-#endif
-
-#else
-
-#ifdef HAVE_UNISTD_H
-#include <sys/types.h>
-#include <unistd.h>
-#endif
-
-#ifdef _POSIX_VERSION
-#define OFF_T off_t
-#define FSEEK fseeko
-#define FTELL ftello
-#else
-#define OFF_T long
-#define FSEEK fseek
-#define FTELL ftell
-#endif
-
-typedef struct
-{
-	FILE	*file;
-	char	*buf;
-	OFF_T	size;
-} iso_file_t;
-
-#endif
 
 
 /***************************************************************************
@@ -78,7 +36,6 @@ static void chdman_close(chd_interface_file *file);
 static UINT32 chdman_read(chd_interface_file *file, UINT64 offset, UINT32 count, void *buffer);
 static UINT32 chdman_write(chd_interface_file *file, UINT64 offset, UINT32 count, const void *buffer);
 static UINT64 chdman_length(chd_interface_file *file);
-static UINT64 get_file_size(const char *file);
 
 
 
@@ -149,6 +106,7 @@ INLINE void put_bigendian_uint32(UINT8 *base, UINT32 value)
 	base[3] = value;
 }
 
+
 /*-------------------------------------------------
     print_big_int - 64-bit int printing with commas
 -------------------------------------------------*/
@@ -170,7 +128,6 @@ void print_big_int(UINT64 intvalue, char *output)
 }
 
 
-
 /*-------------------------------------------------
     big_int_string - return a string for a big int
 -------------------------------------------------*/
@@ -182,7 +139,6 @@ char *big_int_string(UINT64 intvalue)
 	print_big_int(intvalue, buffer);
 	return buffer;
 }
-
 
 
 /*-------------------------------------------------
@@ -201,7 +157,6 @@ static void progress(const char *fmt, ...)
 }
 
 
-
 /*-------------------------------------------------
     error_string - return an error sting
 -------------------------------------------------*/
@@ -216,7 +171,6 @@ static const char *error_string(int err)
 	sprintf(temp_buffer, "unknown error %d", err);
 	return temp_buffer;
 }
-
 
 
 /*-------------------------------------------------
@@ -243,12 +197,11 @@ static void error(void)
 }
 
 
-
 /*-------------------------------------------------
-    osd_die - error hook for assertions
+    fatalerror - error hook for assertions
 -------------------------------------------------*/
 
-void CLIB_DECL osd_die(const char *text,...)
+void CLIB_DECL fatalerror(const char *text,...)
 {
 	va_list arg;
 
@@ -259,7 +212,6 @@ void CLIB_DECL osd_die(const char *text,...)
 
 	exit(-1);
 }
-
 
 
 /*-------------------------------------------------
@@ -280,7 +232,6 @@ static void special_chd_init(chd_file *chd, UINT64 logicalbytes)
 	MD5Init(&special_md5);
 	sha1_init(&special_sha1);
 }
-
 
 
 /*-------------------------------------------------
@@ -357,57 +308,16 @@ static void special_chd_finished(void)
 
 
 /*-------------------------------------------------
-    is_physical_drive - clue to Win32 code that
-    we're reading a physical drive directly
--------------------------------------------------*/
-
-#ifdef _WIN32
-static int is_physical_drive(const char *file)
-{
-	return !_strnicmp(file, "\\\\.\\physicaldrive", 17);
-}
-#endif
-
-
-
-/*-------------------------------------------------
     guess_chs - given a file and an offset,
     compute a best guess CHS value set
 -------------------------------------------------*/
 
 static void guess_chs(const char *filename, int offset, int sectorsize, UINT32 *cylinders, UINT32 *heads, UINT32 *sectors, UINT32 *bps)
 {
-#ifdef _WIN32
 	/* if this is a direct physical drive read, handle it specially */
-	if (is_physical_drive(filename))
-	{
-		HANDLE file = CreateFile(filename, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, NULL);
-		if (file != INVALID_HANDLE_VALUE)
-		{
-			DISK_GEOMETRY dg;
-			DWORD bytesRead;
-		  	if (DeviceIoControl(file, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &dg, sizeof(dg), &bytesRead, NULL))
+	if (!osd_get_physical_drive_geometry(filename, cylinders, heads, sectors, bps))
 		  	{
-		  		*cylinders = (UINT32)dg.Cylinders.QuadPart;
-		  		*heads = dg.TracksPerCylinder;
-		  		*sectors = dg.SectorsPerTrack;
-		  		*bps = dg.BytesPerSector;
-
-		  		/* normalize */
-		  		while (*heads > 16 && !(*heads & 1))
-		  		{
-		  			*heads /= 2;
-		  			*cylinders *= 2;
-		  		}
-			  	CloseHandle(file);
-		  		return;
-		  	}
-		  	CloseHandle(file);
-		}
-	}
-#endif
-	{
-		UINT64 filesize = get_file_size(filename) - offset;
+		UINT64 filesize = osd_get_file_size(filename) - offset;
 		UINT32 totalsecs, hds, secs;
 
 		/* validate the file */
@@ -473,7 +383,7 @@ static void do_createhd(int argc, char *argv[])
 	if (argc >= 5)
 		offset = atoi(argv[4]);
 	else
-		offset = get_file_size(inputfile) % 512;
+		offset = osd_get_file_size(inputfile) % 512;
 	if (argc >= 8)
 	{
 		cylinders = atoi(argv[5]);
@@ -1045,12 +955,25 @@ static void do_extract(int argc, char *argv[])
 			goto error;
 		}
 
-		/* write the hunk to the file */
-		byteswritten = (*chdman_interface.write)(outfile, (UINT64)hunknum * (UINT64)header.hunkbytes, header.hunkbytes, hunk);
-		if (byteswritten != header.hunkbytes)
+		if ( (((UINT64)hunknum+1) * (UINT64)header.hunkbytes) < header.logicalbytes )
 		{
-			printf("Error writing hunk %d to output file: %s\n", hunknum, error_string(chd_get_last_error()));
-			goto error;
+			/* write the hunk to the file */
+			byteswritten = (*chdman_interface.write)(outfile, (UINT64)hunknum * (UINT64)header.hunkbytes, header.hunkbytes, hunk);
+			if (byteswritten != header.hunkbytes)
+			{
+				printf("Error writing hunk %d to output file: %s\n", hunknum, error_string(chd_get_last_error()));
+				goto error;
+			}
+		}
+		else
+		{
+			/* write partial hunk to ensure the correct size raw image is written */
+			byteswritten = (*chdman_interface.write)(outfile, (UINT64)hunknum * (UINT64)header.hunkbytes,  header.logicalbytes - ((UINT64)hunknum * (UINT64)header.hunkbytes), hunk);
+			if (byteswritten != (header.logicalbytes - ((UINT64)hunknum * (UINT64)header.hunkbytes)) )
+			{
+				printf("Error writing hunk %d to output file: %s\n", hunknum, error_string(chd_get_last_error()));
+				goto error;
+			}
 		}
 	}
 	progress("Extraction complete!                    \n");
@@ -1086,8 +1009,8 @@ static void do_extractcd(int argc, char *argv[])
 	FILE *outfile = NULL, *outfile2 = NULL;
 	int track, m, s, f, frame;
 	long trkoffs, trklen;
-	const char *typenames[8] = { "MODE1", "MODE1_RAW", "MODE2", "MODE2_FORM1", "MODE2_FORM2", "MODE2_FORM_MIX", "MODE2_RAW", "AUDIO" };
-	const char *subnames[2] = { "RW", "RW_RAW" };
+	static const char *typenames[8] = { "MODE1", "MODE1_RAW", "MODE2", "MODE2_FORM1", "MODE2_FORM2", "MODE2_FORM_MIX", "MODE2_RAW", "AUDIO" };
+	static const char *subnames[2] = { "RW", "RW_RAW" };
 	UINT8 sector[CD_MAX_SECTOR_DATA + CD_MAX_SUBCODE_DATA];
 
 	/* require 5 args total */
@@ -1470,7 +1393,7 @@ static int handle_custom_chomp(const char *name, chd_file *chd, UINT32 *maxhunk)
 		return CHDERR_OUT_OF_MEMORY;
 
 	/* check for midway */
-	if (!mame_stricmp(name, "midway"))
+	if (!strcmp(name, "midway"))
 	{
 		UINT32 maxsector = 0;
 		UINT32 numparts;
@@ -1501,7 +1424,7 @@ static int handle_custom_chomp(const char *name, chd_file *chd, UINT32 *maxhunk)
 	}
 
 	/* check for atari */
-	if (!mame_stricmp(name, "atari"))
+	if (!strcmp(name, "atari"))
 	{
 		UINT32 sectors[4];
 		UINT8 *data;
@@ -1884,52 +1807,6 @@ cleanup:
 
 
 /*-------------------------------------------------
-    get_file_size - returns the 64-bit file size
-    for a file
--------------------------------------------------*/
-
-static UINT64 get_file_size(const char *file)
-{
-#ifdef _WIN32
-	DWORD highSize = 0, lowSize;
-	HANDLE handle;
-	UINT64 filesize;
-
-	/* attempt to open the file */
-	handle = CreateFile(file, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-	if (handle == INVALID_HANDLE_VALUE)
-		return 0;
-
-	/* get the file size */
-	lowSize = GetFileSize(handle, &highSize);
-	filesize = lowSize | ((UINT64)highSize << 32);
-	if (lowSize == INVALID_FILE_SIZE && GetLastError() != NO_ERROR)
-		filesize = 0;
-
-	/* close the file and return */
-	CloseHandle(handle);
-	return filesize;
-#else
-	OFF_T filesize;
-	FILE *f;
-
-	/* attempt to open the file */
-	f = fopen(file, "rb");
-	if (!f)
-		return 0;
-
-	/* get the size */
-	FSEEK(f, 0, SEEK_END);
-	filesize = FTELL(f);
-	fclose(f);
-
-	return filesize;
-#endif
-}
-
-
-
-/*-------------------------------------------------
     chdman_open - open file
 -------------------------------------------------*/
 
@@ -1941,65 +1818,7 @@ static chd_interface_file *chdman_open(const char *filename, const char *mode)
 
 	/* otherwise, open normally */
 	else
-	{
-#ifdef _WIN32
-		DWORD disposition, access, share = 0;
-		HANDLE handle;
-
-		/* convert the mode into disposition and access */
-		if (!strcmp(mode, "rb"))
-			disposition = OPEN_EXISTING, access = GENERIC_READ, share = FILE_SHARE_READ;
-		else if (!strcmp(mode, "rb+"))
-			disposition = OPEN_EXISTING, access = GENERIC_READ | GENERIC_WRITE;
-		else if (!strcmp(mode, "wb"))
-			disposition = CREATE_ALWAYS, access = GENERIC_WRITE;
-		else
-			return NULL;
-
-		/* if this is a physical drive, we have to share */
-		if (is_physical_drive(filename))
-		{
-			disposition = OPEN_EXISTING;
-			share = FILE_SHARE_READ | FILE_SHARE_WRITE;
-		}
-
-		/* attempt to open the file */
-		handle = CreateFile(filename, access, share, NULL, disposition, 0, NULL);
-		if (handle == INVALID_HANDLE_VALUE)
-			return NULL;
-		return (chd_interface_file *)handle;
-#else
-		iso_file_t *iso_file = NULL;
-		FILE *file = fopen(filename, mode);
-		if (file)
-		{
-			OFF_T size;
-			char *buf = (char *)malloc(BUFSIZ);
-			if (buf)
-			{
-				/*
-                 * Calling setbuf makes -createhd and -merge run 5 - 10x faster
-                 * on * Linux with the GNU C Library, and it shouldn't hurt
-                 * performance on other platforms (verified on Mac OS X).
-                 */
-				setbuf(file, buf);
-			}
-
-			FSEEK(file, 0, SEEK_END);
-			size = FTELL(file);
-			rewind(file);
-
-			iso_file = (iso_file_t *)malloc(sizeof(iso_file_t));
-			if (iso_file)
-			{
-				iso_file->file = file;
-				iso_file->buf = buf;
-				iso_file->size = size;
-			}
-		}
-		return (chd_interface_file *)iso_file;
-#endif
-	}
+		return (chd_interface_file *) osd_tool_fopen(filename, mode);
 }
 
 
@@ -2014,13 +1833,7 @@ static void chdman_close(chd_interface_file *file)
 	if (file == (chd_interface_file *)special_chd)
 		return;
 
-#ifdef _WIN32
-	CloseHandle((HANDLE)file);
-#else
-	fclose(((iso_file_t *)file)->file);
-	free(((iso_file_t *)file)->buf);
-	free(file);
-#endif
+	osd_tool_fclose((osd_tool_file *) file);
 }
 
 
@@ -2087,27 +1900,7 @@ static UINT32 chdman_read(chd_interface_file *file, UINT64 offset, UINT32 count,
 	/* otherwise, do it normally */
 	else
 	{
-#ifdef _WIN32
-		LONG upperPos = offset >> 32;
-		DWORD result;
-
-		/* attempt to seek to the new location */
-		result = SetFilePointer((HANDLE)file, (UINT32)offset, &upperPos, FILE_BEGIN);
-		if (result == INVALID_SET_FILE_POINTER && GetLastError() != NO_ERROR)
-			return 0;
-
-		/* do the read */
-		if (ReadFile((HANDLE)file, buffer, count, &result, NULL))
-			return result;
-		else
-			return 0;
-#else
-		iso_file_t *iso_file = (iso_file_t *)file;
-		if (FSEEK(iso_file->file, offset, SEEK_SET) == 0)
-			return fread(buffer, 1, count, iso_file->file);
-		else
-			return 0;
-#endif
+		return osd_tool_fread((osd_tool_file *) file, offset, count, buffer);
 	}
 }
 
@@ -2129,31 +1922,7 @@ static UINT32 chdman_write(chd_interface_file *file, UINT64 offset, UINT32 count
 	/* otherwise, do it normally */
 	else
 	{
-#ifdef _WIN32
-		LONG upperPos = offset >> 32;
-		DWORD result;
-
-		/* attempt to seek to the new location */
-		result = SetFilePointer((HANDLE)file, (UINT32)offset, &upperPos, FILE_BEGIN);
-		if (result == INVALID_SET_FILE_POINTER && GetLastError() != NO_ERROR)
-			return 0;
-
-		/* do the read */
-		if (WriteFile((HANDLE)file, buffer, count, &result, NULL))
-			return result;
-		else
-			return 0;
-#else
-		size_t bytes_written = 0;
-		iso_file_t *iso_file = (iso_file_t *)file;
-		if (FSEEK(iso_file->file, offset, SEEK_SET) == 0)
-		{
-			bytes_written = fwrite(buffer, 1, count, iso_file->file);
-			if (offset + bytes_written > iso_file->size)
-				iso_file->size = offset + bytes_written;
-		}
-		return bytes_written;
-#endif
+		return osd_tool_fwrite((osd_tool_file *) file, offset, count, buffer);
 	}
 }
 
@@ -2172,19 +1941,7 @@ static UINT64 chdman_length(chd_interface_file *file)
 	/* otherwise, do it normally */
 	else
 	{
-#ifdef _WIN32
-		DWORD highSize = 0, lowSize;
-		UINT64 filesize;
-
-		/* get the file size */
-		lowSize = GetFileSize((HANDLE)file, &highSize);
-		filesize = lowSize | ((UINT64)highSize << 32);
-		if (lowSize == INVALID_FILE_SIZE && GetLastError() != NO_ERROR)
-			filesize = 0;
-		return filesize;
-#else
-		return ((iso_file_t *)file)->size;
-#endif
+		return osd_tool_flength((osd_tool_file *) file);
 	}
 }
 
@@ -2207,33 +1964,33 @@ int main(int argc, char **argv)
 	chd_set_interface(&chdman_interface);
 
 	/* handle the appropriate command */
-	if (!mame_stricmp(argv[1], "-createhd"))
+	if (!strcmp(argv[1], "-createhd"))
 		do_createhd(argc, argv);
-	else if (!mame_stricmp(argv[1], "-createblankhd"))
+	else if (!strcmp(argv[1], "-createblankhd"))
 		do_createblankhd(argc, argv);
-	else if (!mame_stricmp(argv[1], "-copydata"))
+	else if (!strcmp(argv[1], "-copydata"))
 		do_copydata(argc, argv);
-	else if (!mame_stricmp(argv[1], "-createcd"))
+	else if (!strcmp(argv[1], "-createcd"))
 		do_createcd(argc, argv);
-	else if (!mame_stricmp(argv[1], "-extract"))
+	else if (!strcmp(argv[1], "-extract"))
 		do_extract(argc, argv);
-	else if (!mame_stricmp(argv[1], "-extractcd"))
+	else if (!strcmp(argv[1], "-extractcd"))
 		do_extractcd(argc, argv);
-	else if (!mame_stricmp(argv[1], "-verify"))
+	else if (!strcmp(argv[1], "-verify"))
 		do_verify(argc, argv, 0);
-	else if (!mame_stricmp(argv[1], "-verifyfix"))
+	else if (!strcmp(argv[1], "-verifyfix"))
 		do_verify(argc, argv, 1);
-	else if (!mame_stricmp(argv[1], "-update"))
+	else if (!strcmp(argv[1], "-update"))
 		do_merge_update_chomp(argc, argv, OPERATION_UPDATE);
-	else if (!mame_stricmp(argv[1], "-chomp"))
+	else if (!strcmp(argv[1], "-chomp"))
 		do_merge_update_chomp(argc, argv, OPERATION_CHOMP);
-	else if (!mame_stricmp(argv[1], "-info"))
+	else if (!strcmp(argv[1], "-info"))
 		do_info(argc, argv);
-	else if (!mame_stricmp(argv[1], "-merge"))
+	else if (!strcmp(argv[1], "-merge"))
 		do_merge_update_chomp(argc, argv, OPERATION_MERGE);
-	else if (!mame_stricmp(argv[1], "-diff"))
+	else if (!strcmp(argv[1], "-diff"))
 		do_diff(argc, argv);
-	else if (!mame_stricmp(argv[1], "-setchs"))
+	else if (!strcmp(argv[1], "-setchs"))
 		do_setchs(argc, argv);
 	else
 		error();

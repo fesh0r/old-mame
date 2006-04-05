@@ -38,7 +38,6 @@ Year + Game             Main CPU    Sound CPU    Sound            Video
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2151intf.h"
 #include "sound/dac.h"
 #include "sound/msm5205.h"
@@ -86,7 +85,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fantland_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x00000, 0x07fff) AM_WRITE(MWA8_RAM					)
-	AM_RANGE(0xa2000, 0xa21ff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram	)
+	AM_RANGE(0xa2000, 0xa21ff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_le_w) AM_BASE(&paletteram	)
 	AM_RANGE(0xa3000, 0xa3000) AM_WRITE(fantland_nmi_enable_w	)
 	AM_RANGE(0xa3002, 0xa3002) AM_WRITE(fantland_soundlatch_w	)
 	AM_RANGE(0xa4000, 0xa67ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram		)
@@ -114,7 +113,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( galaxygn_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x00000, 0x07fff) AM_WRITE(MWA8_RAM					)
-	AM_RANGE(0x52000, 0x521ff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram	)
+	AM_RANGE(0x52000, 0x521ff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_le_w) AM_BASE(&paletteram	)
 	AM_RANGE(0x53000, 0x53000) AM_WRITE(fantland_nmi_enable_w	)
 	AM_RANGE(0x53002, 0x53002) AM_WRITE(fantland_soundlatch_w	)
 	AM_RANGE(0x54000, 0x567ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram	)
@@ -201,7 +200,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( borntofi_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x00000, 0x07fff) AM_WRITE( MWA8_RAM						)
-	AM_RANGE(0x52000, 0x521ff) AM_WRITE( paletteram_xRRRRRGGGGGBBBBB_w	) AM_BASE(&paletteram	)
+	AM_RANGE(0x52000, 0x521ff) AM_WRITE( paletteram_xRRRRRGGGGGBBBBB_le_w	) AM_BASE(&paletteram	)
 	AM_RANGE(0x53000, 0x53000) AM_WRITE( borntofi_nmi_enable_w			)
 	AM_RANGE(0x53002, 0x53002) AM_WRITE( fantland_soundlatch_w			)
 	AM_RANGE(0x54000, 0x567ff) AM_WRITE( MWA8_RAM						) AM_BASE(&spriteram	)
@@ -661,7 +660,7 @@ static const gfx_decode fantland_gfxdecodeinfo[] =
 
 ***************************************************************************/
 
-static MACHINE_INIT( fantland )
+static MACHINE_RESET( fantland )
 {
 	fantland_nmi_enable = 0;
 }
@@ -693,7 +692,7 @@ static MACHINE_DRIVER_START( fantland )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(fantland)
+	MDRV_MACHINE_RESET(fantland)
 
 	MDRV_INTERLEAVE(8000/60)	// sound irq must feed the DAC at 8kHz
 
@@ -743,7 +742,7 @@ static MACHINE_DRIVER_START( galaxygn )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(fantland)
+	MDRV_MACHINE_RESET(fantland)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -771,11 +770,11 @@ static struct MSM5205interface msm5205_interface =
 	MSM5205_S48_4B		/* 8 kHz, 4 Bits  */
 };
 
-static MACHINE_INIT( borntofi )
+static MACHINE_RESET( borntofi )
 {
 	int voice;
 
-	machine_init_fantland();
+	machine_reset_fantland();
 
 	for (voice = 0; voice < 4; voice++)
 		borntofi_adpcm_stop(voice);
@@ -794,7 +793,7 @@ static MACHINE_DRIVER_START( borntofi )
 	MDRV_FRAMES_PER_SECOND(54)	// 54 Hz
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(borntofi)
+	MDRV_MACHINE_RESET(borntofi)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

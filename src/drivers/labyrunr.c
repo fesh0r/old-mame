@@ -10,7 +10,6 @@ Driver by Nicola Salmoria
 
 #include "driver.h"
 #include "cpu/hd6309/hd6309.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "sound/2203intf.h"
 
@@ -80,7 +79,7 @@ static ADDRESS_MAP_START( labyrunr_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0c00, 0x0c00) AM_WRITE(labyrunr_bankswitch_w)
 	AM_RANGE(0x0d00, 0x0d1f) AM_WRITE(K051733_w)				/* 051733 (protection) */
 	AM_RANGE(0x0e00, 0x0e00) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x1000, 0x10ff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_swap_w) AM_BASE(&paletteram)
+	AM_RANGE(0x1000, 0x10ff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_be_w) AM_BASE(&paletteram)
 	AM_RANGE(0x1800, 0x1fff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x2000, 0x2fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)	/* Sprite RAM */
 	AM_RANGE(0x3000, 0x37ff) AM_WRITE(labyrunr_vram1_w) AM_BASE(&labyrunr_videoram1)

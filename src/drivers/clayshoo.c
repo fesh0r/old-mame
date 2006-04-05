@@ -13,7 +13,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/8255ppi.h"
 #include "clayshoo.h"
 
@@ -125,7 +124,7 @@ static MACHINE_DRIVER_START( clayshoo )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(clayshoo)
+	MDRV_MACHINE_RESET(clayshoo)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

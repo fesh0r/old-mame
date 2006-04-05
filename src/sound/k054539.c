@@ -20,8 +20,8 @@ CHANNEL_DEBUG enables the following keys:
 
 *********************************************************/
 
-#include "driver.h"
-#include "state.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "k054539.h"
 #include <math.h>
 
@@ -71,7 +71,7 @@ struct k054539_info {
 	unsigned char *ram;
 	int reverb_pos;
 
-	int cur_ptr;
+	INT32 cur_ptr;
 	int cur_limit;
 	unsigned char *cur_zone;
 	unsigned char *rom;
@@ -478,9 +478,9 @@ static void K054539_init_chip(struct k054539_info *info, int sndindex)
 
 	info->stream = stream_create(0, 2, Machine->sample_rate, info, K054539_update);
 
-	state_save_register_UINT8("K054539", sndindex, "registers", info->regs, 0x230);
-	state_save_register_UINT8("K054539", sndindex, "ram",       info->ram,  0x4000);
-	state_save_register_int  ("K054539", sndindex, "cur_ptr",  &info->cur_ptr);
+	state_save_register_item_array("K054539", sndindex, info->regs);
+	state_save_register_item_pointer("K054539", sndindex, info->ram,  0x4000);
+	state_save_register_item("K054539", sndindex, info->cur_ptr);
 }
 
 static void K054539_w(int chip, offs_t offset, UINT8 data) //*
@@ -655,10 +655,7 @@ static void *k054539_start(int sndindex, int clock, const void *config)
 
 	info->intf = config;
 
-	if(Machine->sample_rate)
-		info->freq_ratio = (double)(clock) / (double)(Machine->sample_rate);
-	else
-		info->freq_ratio = 1.0;
+	info->freq_ratio = (double)(clock) / (double)(Machine->sample_rate);
 
 	/*
         I've tried various equations on volume control but none worked consistently.
@@ -715,7 +712,7 @@ READ8_HANDLER( K054539_1_r )
  * Generic get_info
  **************************************************************************/
 
-static void k054539_set_info(void *token, UINT32 state, union sndinfo *info)
+static void k054539_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -724,7 +721,7 @@ static void k054539_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void k054539_get_info(void *token, UINT32 state, union sndinfo *info)
+void k054539_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

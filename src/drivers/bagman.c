@@ -57,14 +57,13 @@ I/O C  ;AY-3-8910 Data Read Reg.
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 #include "sound/5110intf.h"
 #include "sound/tms5110.h"
 
 
 extern READ8_HANDLER( bagman_pal16r6_r );
-extern MACHINE_INIT( bagman );
+extern MACHINE_RESET( bagman );
 extern WRITE8_HANDLER( bagman_pal16r6_w );
 
 
@@ -528,7 +527,7 @@ static MACHINE_DRIVER_START( bagman )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(bagman)
+	MDRV_MACHINE_RESET(bagman)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -564,7 +563,7 @@ static MACHINE_DRIVER_START( pickin )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(bagman)
+	MDRV_MACHINE_RESET(bagman)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -614,7 +613,7 @@ static MACHINE_DRIVER_START( botanic )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(bagman)
+	MDRV_MACHINE_RESET(bagman)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

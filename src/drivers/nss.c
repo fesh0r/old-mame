@@ -293,7 +293,6 @@ Contra III   CONTRA_III_1   TC574000   CONTRA_III_0   TC574000    GAME1_NSSU    
 
 ***************************************************************************/
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "includes/snes.h"
 
 extern DRIVER_INIT( snes );
@@ -483,7 +482,7 @@ static MACHINE_DRIVER_START( snes )
 	MDRV_VBLANK_DURATION((int)(((262. - 240.) / 262.) * 1000000. / 60.))
 	MDRV_INTERLEAVE(400)
 
-	MDRV_MACHINE_INIT( snes )
+	MDRV_MACHINE_RESET( snes )
 
 	/* video hardware */
 	MDRV_VIDEO_START( generic_bitmapped )

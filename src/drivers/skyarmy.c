@@ -21,7 +21,6 @@
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 
 UINT8 *skyarmy_videoram;
@@ -150,7 +149,7 @@ static INTERRUPT_GEN( skyarmy_nmi_source )
 }
 
 
-WRITE8_HANDLER( nmi_enable_w )
+static WRITE8_HANDLER( nmi_enable_w )
 {
         skyarmy_nmi=data&1;
 }

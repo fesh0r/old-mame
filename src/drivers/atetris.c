@@ -49,7 +49,6 @@
 
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
-#include "vidhrdw/generic.h"
 #include "slapstic.h"
 #include "atetris.h"
 #include "sound/sn76496.h"
@@ -100,7 +99,7 @@ static WRITE8_HANDLER( irq_ack_w )
  *
  *************************************/
 
-static MACHINE_INIT( atetris )
+static MACHINE_RESET( atetris )
 {
 	/* reset the slapstic */
 	slapstic_reset();
@@ -337,7 +336,7 @@ static MACHINE_DRIVER_START( atetris )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(atetris)
+	MDRV_MACHINE_RESET(atetris)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
@@ -372,7 +371,7 @@ static MACHINE_DRIVER_START( atetrsb2 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(atetris)
+	MDRV_MACHINE_RESET(atetris)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */

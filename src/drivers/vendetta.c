@@ -87,7 +87,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "machine/eeprom.h"
@@ -95,7 +94,7 @@ Notes:
 #include "sound/k053260.h"
 
 /* prototypes */
-static MACHINE_INIT( vendetta );
+static MACHINE_RESET( vendetta );
 static void vendetta_banking( int lines );
 static void vendetta_video_banking( int select );
 
@@ -206,7 +205,7 @@ static void vendetta_video_banking( int select )
 	if ( select & 1 )
 	{
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, video_banking_base + 0x2000, video_banking_base + 0x2fff, 0, 0, paletteram_r );
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, video_banking_base + 0x2000, video_banking_base + 0x2fff, 0, 0, paletteram_xBBBBBGGGGGRRRRR_swap_w );
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, video_banking_base + 0x2000, video_banking_base + 0x2fff, 0, 0, paletteram_xBBBBBGGGGGRRRRR_be_w );
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, video_banking_base + 0x0000, video_banking_base + 0x0fff, 0, 0, K053247_r );
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, video_banking_base + 0x0000, video_banking_base + 0x0fff, 0, 0, K053247_w );
 	}
@@ -261,16 +260,7 @@ READ8_HANDLER( vendetta_sound_interrupt_r )
 
 READ8_HANDLER( vendetta_sound_r )
 {
-	/* If the sound CPU is running, read the status, otherwise
-       just make it pass the test */
-	if (Machine->sample_rate != 0) 	return K053260_0_r(2 + offset);
-	else
-	{
-		static int res = 0x00;
-
-		res = ((res + 1) & 0x07);
-		return offset ? res : 0x00;
-	}
+	return K053260_0_r(2 + offset);
 }
 
 /********************************************/
@@ -602,7 +592,7 @@ static MACHINE_DRIVER_START( vendetta )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(vendetta)
+	MDRV_MACHINE_RESET(vendetta)
 	MDRV_NVRAM_HANDLER(vendetta)
 
 	/* video hardware */
@@ -846,7 +836,7 @@ static void vendetta_banking( int lines )
 		memory_set_bankptr( 1, &RAM[ 0x10000 + ( lines * 0x2000 ) ] );
 }
 
-static MACHINE_INIT( vendetta )
+static MACHINE_RESET( vendetta )
 {
 	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)vendetta_banking);
 

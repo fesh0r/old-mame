@@ -1,8 +1,5 @@
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "sound/ym2151.h"
-#include "machine/random.h"
 #include "sound/namco.h"
 
 #define NAMCOS1_MAX_BANK 0x400
@@ -834,7 +831,7 @@ static void namcos1_build_banks(read8_handler key_r,write8_handler key_w)
 	}
 }
 
-MACHINE_INIT( namcos1 )
+MACHINE_RESET( namcos1 )
 {
 	static bankhandler unknown_handler = { unknown_r, unknown_w, 0, NULL };
 	int bank;
@@ -974,9 +971,9 @@ static void namcos1_driver_init(const struct namcos1_specific *specific )
 	namcos1_paletteram = auto_malloc(0x8000);
 
 	/* Register volatile user memory for save state */
-	state_save_register_UINT8 ("memory", cpu_gettotalcpu(), "s1ram", s1ram, 0x8000);
-	state_save_register_UINT8 ("memory", cpu_gettotalcpu(), "triram", namcos1_triram, 0x800);
-	state_save_register_UINT8 ("memory", cpu_gettotalcpu(), "paletteram", namcos1_paletteram, 0x8000);
+	state_save_register_global_pointer(s1ram, 0x8000);
+	state_save_register_global_pointer(namcos1_triram, 0x800);
+	state_save_register_global_pointer(namcos1_paletteram, 0x8000);
 
 	/* Point mcu & sound shared RAM to destination */
 	memory_set_bankptr( 18, namcos1_triram );

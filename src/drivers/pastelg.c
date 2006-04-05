@@ -21,7 +21,6 @@ Memo:
 ******************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "nb1413m3.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
@@ -213,7 +212,7 @@ static MACHINE_DRIVER_START( pastelg )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nb1413m3)
+	MDRV_MACHINE_RESET(nb1413m3)
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
 	/* video hardware */

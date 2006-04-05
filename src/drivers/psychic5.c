@@ -310,7 +310,6 @@ The first sprite data is located at f20b,then f21b and so on.
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2203intf.h"
 
 
@@ -321,7 +320,7 @@ extern WRITE8_HANDLER( psychic5_title_screen_w );
 extern READ8_HANDLER( psychic5_paged_ram_r );
 extern READ8_HANDLER( psychic5_vram_page_select_r );
 
-extern MACHINE_INIT( psychic5 );
+extern MACHINE_RESET( psychic5 );
 
 extern VIDEO_START( psychic5 );
 extern VIDEO_UPDATE( psychic5 );
@@ -563,10 +562,10 @@ static MACHINE_DRIVER_START( psychic5 )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	/* frames per second hand tuned to match game and music speed */
 	MDRV_INTERLEAVE(10)      /* Allow time for 2nd cpu to interleave*/
-	MDRV_MACHINE_INIT(psychic5)
+	MDRV_MACHINE_RESET(psychic5)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_RGB_DIRECT)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)

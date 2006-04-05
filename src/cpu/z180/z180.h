@@ -2,7 +2,6 @@
 #define Z180_H
 
 #include "cpuintrf.h"
-#include "osd_cpu.h"
 
 enum {
 	Z180_PC=1,
@@ -122,9 +121,9 @@ enum
 #define Z180_INT_ASCI1	9			/* Internal ASCI channel 1 */
 
 /* MMU mapped memory lookup */
-extern UINT8 cpu_readmemz180(offs_t offset);
-extern void cpu_writememz180(offs_t offset, UINT8 data);
-extern void cpu_setOPbasez180(int pc);
+extern UINT8 z180_readmem(offs_t offset);
+extern void z180_writemem(offs_t offset, UINT8 data);
+extern void z180_setOPbase(int pc);
 
 extern void z180_get_info(UINT32 state, union cpuinfo *info);
 

@@ -37,7 +37,6 @@ TODO:
 ******************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/es5506.h"
 
 /*** README INFO **************************************************************
@@ -269,8 +268,6 @@ static READ32_HANDLER ( macrossp_soundstatus_r )
 	/* bit 0 unknown - it is expected to toggle, vblank? */
 
 	toggle ^= 1;
-
-	if (Machine->sample_rate == 0) return (rand()&2) | toggle;
 
 	return (sndpending << 1) | toggle;
 }

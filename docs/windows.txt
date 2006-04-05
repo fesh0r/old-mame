@@ -61,6 +61,12 @@ Configuration options
 	information. It can be very helpful in tracking down problems. The
 	default is off (-noverbose)
 
+-validate / -valid
+
+	Performs internal validation on every driver in the system. Run this
+	before submitting changes to ensure that you haven't violated any of
+	the core system "rules".
+
 
 Windows path and directory options
 ----------------------------------
@@ -175,8 +181,10 @@ Windows video options
 	is not noticeable on all games, and some people hate it more than
 	others. However, if you turn this option on, you will waste more of
 	your CPU cycles waiting for the proper time to draw, so you will see a
-	performance hit. The default is OFF (-nowaitvsync). This option
-	requires -ddraw.
+	performance hit. You should only need to turn this on in windowed mode.
+	In full screen mode, it is only needed if -triplebuffer does not
+	remove the tearing.  In which case you should use -notb -waitvsync.
+	The default is OFF (-nowaitvsync). This option requires -ddraw.
 
 -[no]triplebuffer / -[no]tb
 
@@ -187,8 +195,9 @@ Windows video options
 	buffer is currently displayed, the second buffer is waiting to be
 	displayed, and the third buffer is being drawn to. Unfortunately, due
 	to some DirectDraw issues, this doesn't always work out as well as it
-	should. This is still being investigated. The default is OFF
-	(-notriplebuffer). This option required -ddraw and -nowindow.
+	should. This is still being investigated. -triplebuffer will override
+	-waitvsync, if the buffer is sucessfully created. The default is OFF.
+	(-notriplebuffer). This option requires -ddraw and -nowindow.
 
 -[no]window
 
@@ -380,6 +389,11 @@ Windows video options
 	on computer monitors, 5:4 for the 1280x1024 resolution or 3:4 for
 	turnable LCD's in the turned position. The default is 4:3.
 
+-mngwrite <filename>
+
+	Writes each video frame to a MNG file, producing an animation of the
+	game.
+
 
 Windows video options (Direct3D)
 --------------------------------
@@ -518,10 +532,11 @@ Windows misc options
 	operate smoothly (and you are sure you have enough CPU power for
 	the emulation), try toggling this.
 
--[no]high_priority
+-priority <priority>
 
-	Increases the thread priority so MAME runs better. The default is OFF
-	(-nohigh_priority).
+	Sets the thread priority for the main MAME thread. Default is -15, which
+	is IDLE priority, guaranteeing proper cooperation with other apps. The
+	valid range is -15 to 1, with 1 being the highest priority.
 
 
 Windows sound options
@@ -553,6 +568,9 @@ Input device options
 	you will need to pause the game, or quit. The default is OFF
 	(-nomouse).
 
+	WinXP: -mouse is also used to enable lightguns.  This allows for multiple
+	independently tracking lightguns.
+
 -[no]joystick / -[no]joy
 
 	Controls whether or not MAME looks for joystick/gamepad controllers.
@@ -566,18 +584,28 @@ Input device options
 	-mouse together may produce strange results. The default is OFF
 	(-nolightgun).
 
+	WinXP: -lightgun is ignored.  Use -mouse instead.
+
 -[no]dual_lightgun / -[no]dual
 
 	Controls whether or not MAME attempts to track two lightguns connected
 	at the same time. This option requires -lightgun. The default is OFF
 	(-nodual_lightgun).
 
+	WinXP: -dual_lightgun is ignored.  Using -mouse will enable 2 or more
+	lightguns.
+
 -[no]offscreen_reload / -[no]reload
 
 	Controls whether or not MAME treats a second button input from a
 	lightgun as a reload signal. In this case, MAME will report the gun's
 	position as (0,0) with the trigger held, which is equivalent to an
-	offscreen reload. The default is OFF (-nooffscreen_reload).
+	offscreen reload. This is not needed for all lightgun games. Only
+	games that required you to shoot off screen need this.  And then only
+	if your gun does not support off screen reloads.
+	The default is OFF (-nooffscreen_reload).
+
+	WinXP: -offscreen_reload is valid to use.
 
 -[no]steadykey / -[no]steady
 

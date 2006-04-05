@@ -16,8 +16,8 @@ extern int mjsister_flip_screen;
 extern int mjsister_video_enable;
 extern int mjsister_screen_redraw;
 
-extern int vrambank;
-extern int colorbank;
+extern int mjsister_vrambank;
+extern int mjsister_colorbank;
 
 VIDEO_START( mjsister );
 VIDEO_UPDATE( mjsister );
@@ -60,7 +60,7 @@ static WRITE8_HANDLER( mjsister_dac_adr_e_w )
 	dac_busy = 1;
 }
 
-static MACHINE_INIT( mjsister )
+static MACHINE_RESET( mjsister )
 {
 	dac_busy = 0;
 }
@@ -68,7 +68,7 @@ static MACHINE_INIT( mjsister )
 static WRITE8_HANDLER( mjsister_banksel1_w )
 {
 	UINT8 *BANKROM = memory_region(REGION_CPU1);
-	int tmp = colorbank;
+	int tmp = mjsister_colorbank;
 
 	switch (data)
 	{
@@ -78,24 +78,24 @@ static WRITE8_HANDLER( mjsister_banksel1_w )
 		case 0x2: mjsister_flip_screen = 0 ; break;
 		case 0x3: mjsister_flip_screen = 1 ; break;
 
-		case 0x4: colorbank &=0xfe; break;
-		case 0x5: colorbank |=0x01; break;
-		case 0x6: colorbank &=0xfd; break;
-		case 0x7: colorbank |=0x02; break;
-		case 0x8: colorbank &=0xfb; break;
-		case 0x9: colorbank |=0x04; break;
+		case 0x4: mjsister_colorbank &=0xfe; break;
+		case 0x5: mjsister_colorbank |=0x01; break;
+		case 0x6: mjsister_colorbank &=0xfd; break;
+		case 0x7: mjsister_colorbank |=0x02; break;
+		case 0x8: mjsister_colorbank &=0xfb; break;
+		case 0x9: mjsister_colorbank |=0x04; break;
 
 		case 0xa: mjsister_video_enable = 0 ; break;
 		case 0xb: mjsister_video_enable = 1 ; break;
 
-		case 0xe: vrambank = 0 ; break;
-		case 0xf: vrambank = 1 ; break;
+		case 0xe: mjsister_vrambank = 0 ; break;
+		case 0xf: mjsister_vrambank = 1 ; break;
 
 		default:
 			logerror("%04x p30_w:%02x\n",activecpu_get_pc(),data);
 	}
 
-	if (tmp != colorbank)
+	if (tmp != mjsister_colorbank)
 		mjsister_screen_redraw = 1;
 
 	memory_set_bankptr(1,&BANKROM[rombank0*0x10000+rombank1*0x8000]+0x10000);
@@ -312,7 +312,7 @@ static MACHINE_DRIVER_START( mjsister )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(mjsister)
+	MDRV_MACHINE_RESET(mjsister)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

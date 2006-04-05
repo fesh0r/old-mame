@@ -171,7 +171,6 @@ after adding the mechanized attack u.s. roms i suspect that there is more than j
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2608intf.h"
 #include "sound/2610intf.h"
 
@@ -193,7 +192,7 @@ WRITE16_HANDLER( bbuster_video_w );
 /******************************************************************************/
 
 #if BBUSTERS_HACK
-static MACHINE_INIT( bbusters )
+static MACHINE_RESET( bbusters )
 {
 	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 	int data = readinputportbytag("FAKE1") & 0x03;
@@ -212,7 +211,7 @@ static MACHINE_INIT( bbusters )
 #endif
 
 #if MECHATT_HACK
-static MACHINE_INIT( mechatt )
+static MACHINE_RESET( mechatt )
 {
 	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 	int data = readinputportbytag("FAKE1") & 0x03;
@@ -721,7 +720,7 @@ static MACHINE_DRIVER_START( bbusters )
 	MDRV_FRAMES_PER_SECOND(60)
 
 #if BBUSTERS_HACK
-	MDRV_MACHINE_INIT(bbusters)
+	MDRV_MACHINE_RESET(bbusters)
 #endif
 
 	MDRV_NVRAM_HANDLER(bbusters)
@@ -763,7 +762,7 @@ static MACHINE_DRIVER_START( mechatt )
 	MDRV_FRAMES_PER_SECOND(60)
 
 #if MECHATT_HACK
-	MDRV_MACHINE_INIT(mechatt)
+	MDRV_MACHINE_RESET(mechatt)
 #endif
 
 	/* video hardware */

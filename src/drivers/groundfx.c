@@ -64,7 +64,6 @@
 
 #include "driver.h"
 #include "cpu/m68000/m68000.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 #include "machine/eeprom.h"
 #include "sound/es5506.h"
@@ -430,7 +429,7 @@ static const gfx_decode groundfx_gfxdecodeinfo[] =
                  MACHINE DRIVERS
 ***********************************************************/
 
-static MACHINE_INIT( groundfx )
+static MACHINE_RESET( groundfx )
 {
 	/* Sound cpu program loads to 0xc00000 so we use a bank */
 	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU2);
@@ -470,7 +469,7 @@ static MACHINE_DRIVER_START( groundfx )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(groundfx)
+	MDRV_MACHINE_RESET(groundfx)
 	MDRV_NVRAM_HANDLER(groundfx)
 
 	/* video hardware */

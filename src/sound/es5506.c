@@ -6,11 +6,11 @@
  **********************************************************************************************/
 
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
+#include "cpuintrf.h"
 #include "es5506.h"
 
 
@@ -2136,7 +2136,7 @@ void ES5505_voice_bank_1_w(int voice, int bank)
  * Generic get_info
  **************************************************************************/
 
-static void es5505_set_info(void *token, UINT32 state, union sndinfo *info)
+static void es5505_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -2145,7 +2145,7 @@ static void es5505_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void es5505_get_info(void *token, UINT32 state, union sndinfo *info)
+void es5505_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -2171,7 +2171,7 @@ void es5505_get_info(void *token, UINT32 state, union sndinfo *info)
  * Generic get_info
  **************************************************************************/
 
-static void es5506_set_info(void *token, UINT32 state, union sndinfo *info)
+static void es5506_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -2180,7 +2180,7 @@ static void es5506_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void es5506_get_info(void *token, UINT32 state, union sndinfo *info)
+void es5506_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

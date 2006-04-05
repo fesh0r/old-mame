@@ -48,8 +48,6 @@
 */
 
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "machine/eeprom.h"
 #include "vidhrdw/segaic24.h"
 #include "cpu/i960/i960.h"
@@ -80,7 +78,7 @@ static UINT32 copro_fifoin_pop(void)
 	UINT32 r;
 	if (copro_fifoin_wpos == copro_fifoin_rpos)
 	{
-		//osd_die("Copro FIFOIN underflow (at %08X)\n", activecpu_get_pc());
+		//fatalerror("Copro FIFOIN underflow (at %08X)", activecpu_get_pc());
 		return 0;
 	}
 	r = copro_fifoin_data[copro_fifoin_rpos++];
@@ -112,7 +110,7 @@ static void copro_fifoin_push(UINT32 data)
 	}
 	if (copro_fifoin_wpos == copro_fifoin_rpos)
 	{
-		//osd_die("Copro FIFOIN overflow (at %08X)\n", activecpu_get_pc());
+		//fatalerror("Copro FIFOIN overflow (at %08X)", activecpu_get_pc());
 		return;
 	}
 
@@ -132,7 +130,7 @@ static UINT32 copro_fifoout_pop(void)
 	UINT32 r;
 	if (copro_fifoout_wpos == copro_fifoout_rpos)
 	{
-		//osd_die("Copro FIFOOUT underflow (at %08X)\n", activecpu_get_pc());
+		//fatalerror("Copro FIFOOUT underflow (at %08X)", activecpu_get_pc());
 		return 0;
 	}
 	r = copro_fifoout_data[copro_fifoout_rpos++];
@@ -173,7 +171,7 @@ static void copro_fifoout_push(UINT32 data)
 	}
 	if (copro_fifoout_wpos == copro_fifoout_rpos)
 	{
-		//osd_die("Copro FIFOOUT overflow (at %08X)\n", activecpu_get_pc());
+		//fatalerror("Copro FIFOOUT overflow (at %08X)", activecpu_get_pc());
 		return;
 	}
 	copro_fifoout_num++;
@@ -200,14 +198,16 @@ static NVRAM_HANDLER( model2 )
 	if (read_or_write)
 	{
 		mame_fwrite(file, model2_backup1, 0x3fff);
-		mame_fwrite(file, model2_backup2, 0xff);
+		if (model2_backup2)
+			mame_fwrite(file, model2_backup2, 0xff);
 	}
 	else
 	{
 		if (file)
 		{
 			mame_fread(file, model2_backup1, 0x3fff);
-			mame_fread(file, model2_backup2, 0xff);
+			if (model2_backup2)
+				mame_fread(file, model2_backup2, 0xff);
 		}
 	}
 }
@@ -267,7 +267,7 @@ static void model2_timer_1_cb(int num) { model2_timer_exp(1, 3); }
 static void model2_timer_2_cb(int num) { model2_timer_exp(2, 4); }
 static void model2_timer_3_cb(int num) { model2_timer_exp(3, 5); }
 
-static MACHINE_INIT(model2o)
+static MACHINE_RESET(model2o)
 {
 	model2_intreq = 0;
 	model2_intena = 0;
@@ -295,9 +295,9 @@ static MACHINE_INIT(model2o)
 	timer_adjust(model2_timers[3], TIME_NEVER, 0, 0);
 }
 
-static MACHINE_INIT(model2)
+static MACHINE_RESET(model2)
 {
-	machine_init_model2o();
+	machine_reset_model2o();
 
 	memory_set_bankptr(4, memory_region(REGION_SOUND1) + 0x200000);
 	memory_set_bankptr(5, memory_region(REGION_SOUND1) + 0x600000);
@@ -306,9 +306,9 @@ static MACHINE_INIT(model2)
 	memcpy(memory_region(REGION_CPU2), memory_region(REGION_CPU2)+0x80000, 16);
 }
 
-static MACHINE_INIT(model2b)
+static MACHINE_RESET(model2b)
 {
-	machine_init_model2();
+	machine_reset_model2();
 
 	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
 	cpunum_set_input_line(3, INPUT_LINE_RESET, ASSERT_LINE);
@@ -1418,7 +1418,7 @@ static MACHINE_DRIVER_START( model2o )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(model2o)
+	MDRV_MACHINE_RESET(model2o)
 	MDRV_NVRAM_HANDLER( model2 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK | VIDEO_RGB_DIRECT)
@@ -1458,7 +1458,7 @@ static MACHINE_DRIVER_START( model2a )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(model2)
+	MDRV_MACHINE_RESET(model2)
 	MDRV_NVRAM_HANDLER( model2 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK | VIDEO_RGB_DIRECT)
@@ -1503,7 +1503,7 @@ static MACHINE_DRIVER_START( model2b )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(model2b)
+	MDRV_MACHINE_RESET(model2b)
 	MDRV_NVRAM_HANDLER( model2 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK | VIDEO_RGB_DIRECT)
@@ -1534,7 +1534,7 @@ static MACHINE_DRIVER_START( model2c )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(model2)
+	MDRV_MACHINE_RESET(model2)
 	MDRV_NVRAM_HANDLER( model2 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK | VIDEO_RGB_DIRECT)

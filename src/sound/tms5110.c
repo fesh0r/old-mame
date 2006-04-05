@@ -8,13 +8,8 @@
 
 ***********************************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-
-#include "driver.h"
+#include "sndintrf.h"
 #include "tms5110.h"
-#include "state.h"
 
 
 /* Pull in the ROM tables */

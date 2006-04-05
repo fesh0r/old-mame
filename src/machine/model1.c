@@ -3,9 +3,8 @@
 */
 
 #include "driver.h"
-#include "state.h"
-#include "machine/random.h"
 #include <math.h>
+
 
 enum {FIFO_SIZE = 256};
 enum {MAT_STACK_SIZE = 32};
@@ -19,13 +18,13 @@ static int model1_swa;
 static int fifoin_cbcount;
 static void (*fifoin_cb)(void);
 
-static int fifoout_rpos, fifoout_wpos;
+static INT32 fifoout_rpos, fifoout_wpos;
 static UINT32 fifoout_data[FIFO_SIZE];
 
 static UINT32 list_length;
 
 static float cmat[12], mat_stack[MAT_STACK_SIZE][12], mat_vector[21][12];
-static int mat_stack_pos;
+static INT32 mat_stack_pos;
 static float acc;
 
 static float tgp_vf_xmin, tgp_vf_xmax, tgp_vf_zmin, tgp_vf_zmax, tgp_vf_ygnd, tgp_vf_yflr, tgp_vf_yjmp;
@@ -38,7 +37,7 @@ static UINT32 fifoout_pop(void)
 {
 	UINT32 v;
 	if(fifoout_wpos == fifoout_rpos) {
-		osd_die("TGP FIFOOUT underflow (%x)\n", activecpu_get_pc());
+		fatalerror("TGP FIFOOUT underflow (%x)", activecpu_get_pc());
 	}
 	v = fifoout_data[fifoout_rpos++];
 	if(fifoout_rpos == FIFO_SIZE)
@@ -284,6 +283,15 @@ static void f11(void)
 	float g = fifoin_pop_f();
 	float h = fifoin_pop_f();
 	float i = fifoin_pop_f();
+	(void)a;
+	(void)b;
+	(void)c;
+	(void)d;
+	(void)e;
+	(void)f;
+	(void)g;
+	(void)h;
+	(void)i;
 	logerror("TGP f11 %f, %f, %f, %f, %f, %f, %f, %f, %f (%x)\n", a, b, c, d, e, f, g, h, i, activecpu_get_pc());
 	fifoout_push_f(0);
 	fifoout_push_f(0);
@@ -328,6 +336,10 @@ static void f14(void)
 	float c = fifoin_pop_f();
 	float d = fifoin_pop_f();
 	int r = 0;
+	(void)a;
+	(void)b;
+	(void)c;
+	(void)d;
 	logerror("TGP f14 %f, %f, %f, %f (%x)\n", a, b, c, d, activecpu_get_pc());
 	//  fprintf(stderr, "TGP f14 %f, %f, %f, %f (%x)\n", a, b, c, d, activecpu_get_pc());
 
@@ -510,6 +522,7 @@ static void matrix_rotz(void)
 static void f24(void)
 {
 	UINT32 a = fifoin_pop();
+	(void)a;
 	logerror("TGP f24 %d (%x)\n", a, activecpu_get_pc());
 	fifoout_push_f(1);
 	fifoout_push_f(0);
@@ -535,6 +548,13 @@ static void f24_swa(void)
 	float e = fifoin_pop_f();
 	float f = fifoin_pop_f();
 	UINT32 g = fifoin_pop();
+	(void)a;
+	(void)b;
+	(void)c;
+	(void)d;
+	(void)e;
+	(void)f;
+	(void)g;
 	logerror("TGP f24_swa %f, %f, %f, %f, %f, %f, %x (%x)\n", a, b, c, d, e, f, g, activecpu_get_pc());
 	fifoout_push_f(0);
 	next_fn();
@@ -671,6 +691,9 @@ static void f42(void)
 	float a = fifoin_pop_f();
 	float b = fifoin_pop_f();
 	float c = fifoin_pop_f();
+	(void)a;
+	(void)b;
+	(void)c;
 	logerror("TGP f42 %f, %f, %f (%x)\n", a, b, c, activecpu_get_pc());
 	//  fifoout_push_f((mame_rand() % 1000) - 500);
 	fifoout_push_f(0);
@@ -691,6 +714,9 @@ static void xyz2rqf(void)
 	float b = fifoin_pop_f();
 	float c = fifoin_pop_f();
 	float norm;
+	(void)a;
+	(void)b;
+	(void)c;
 	logerror("TGP xyz2rqf %f, %f, %f (%x)\n", a, b, c, activecpu_get_pc());
 	fifoout_push_f(sqrt(a*a+b*b+c*c));
 	norm = sqrt(a*a+c*c);
@@ -728,6 +754,12 @@ static void f43(void)
 	float d = fifoin_pop_f();
 	float e = fifoin_pop_f();
 	float f = fifoin_pop_f();
+	(void)a;
+	(void)b;
+	(void)c;
+	(void)d;
+	(void)e;
+	(void)f;
 	logerror("TGP f43 %f, %f, %f, %f, %f, %f (%x)\n", a, b, c, d, e, f, activecpu_get_pc());
 	fifoout_push_f(0);
 	fifoout_push_f(0);
@@ -741,6 +773,9 @@ static void f43_swa(void)
 	float a = fifoin_pop_f();
 	int b = fifoin_pop();
 	int c = fifoin_pop();
+	(void)a;
+	(void)b;
+	(void)c;
 	logerror("TGP f43_swa %f, %d, %d (%x)\n", a, b, c, activecpu_get_pc());
 	fifoout_push_f(0);
 	fifoout_push_f(0);
@@ -751,6 +786,7 @@ static void f43_swa(void)
 static void f44(void)
 {
 	float a = fifoin_pop_f();
+	(void)a;
 	logerror("TGP f44 %f (%x)\n", a, activecpu_get_pc());
 	fifoout_push_f(0);
 	fifoout_push_f(0);
@@ -811,6 +847,7 @@ static void matrix_sdir(void)
 static void f45(void)
 {
 	float a = fifoin_pop_f();
+	(void)a;
 	logerror("TGP f45 %f (%x)\n", a, activecpu_get_pc());
 	fifoout_push_f(0);
 	next_fn();
@@ -880,6 +917,9 @@ static void colbox_test(void)
 	float a = fifoin_pop_f();
 	float b = fifoin_pop_f();
 	float c = fifoin_pop_f();
+	(void)a;
+	(void)b;
+	(void)c;
 	logerror("TGP colbox_test %f, %f, %f (%x)\n", a, b, c, activecpu_get_pc());
 
 	// #### Wrong, need to check with the tgp_vr_cbox coordinates
@@ -896,6 +936,12 @@ static void f49_swa(void)
 	float d = fifoin_pop_f();
 	float e = fifoin_pop_f();
 	float f = fifoin_pop_f();
+	(void)a;
+	(void)b;
+	(void)c;
+	(void)d;
+	(void)e;
+	(void)f;
 	logerror("TGP f49_swa %f, %f, %f, %f, %f, %f (%x)\n", a, b, c, d, e, f, activecpu_get_pc());
 	next_fn();
 }
@@ -906,6 +952,10 @@ static void f50_swa(void)
 	float b = fifoin_pop_f();
 	float c = fifoin_pop_f();
 	float d = fifoin_pop_f();
+	(void)a;
+	(void)b;
+	(void)c;
+	(void)d;
 	logerror("TGP f50_swa %f, %f, %f, %f (%x)\n", a, b, c, d, activecpu_get_pc());
 	fifoout_push_f(d);
 	next_fn();
@@ -924,6 +974,7 @@ static void matrix_rdir(void)
 	float c = fifoin_pop_f();
 	float norm = sqrt(a*a+c*c);
 	float t1, t2;
+	(void)b;
 
 	logerror("TGP matrix_rdir %f, %f, %f (%x)\n", a, b, c, activecpu_get_pc());
 
@@ -1016,6 +1067,13 @@ static void f56(void)
 	float e = fifoin_pop_f();
 	float f = fifoin_pop_f();
 	UINT32 g = fifoin_pop();
+	(void)a;
+	(void)b;
+	(void)c;
+	(void)d;
+	(void)e;
+	(void)f;
+	(void)g;
 
 	logerror("TGP f56 %f, %f, %f, %f, %f, %f, %d (%x)\n", a, b, c, d, e, f, g, activecpu_get_pc());
 	fifoout_push(0);
@@ -1352,6 +1410,9 @@ static void f89(void)
 	UINT32 b = fifoin_pop();
     UINT32 c = fifoin_pop();
 	UINT32 d = fifoin_pop();
+	(void)a;
+	(void)b;
+	(void)c;
 	logerror("TGP list set base 0x%x, 0x%x, %d, length=%d (%x)\n", a, b, c, d, activecpu_get_pc());
 	list_length = d;
 	next_fn();
@@ -1363,6 +1424,10 @@ static void f92(void)
 	float b = fifoin_pop_f();
 	float c = fifoin_pop_f();
 	float d = fifoin_pop_f();
+	(void)a;
+	(void)b;
+	(void)c;
+	(void)d;
 	logerror("TGP f92 %f, %f, %f, %f (%x)\n", a, b, c, d, activecpu_get_pc());
 	next_fn();
 }
@@ -1370,6 +1435,7 @@ static void f92(void)
 static void f93(void)
 {
 	float a = fifoin_pop_f();
+	(void)a;
 	logerror("TGP f93 %f (%x)\n", a, activecpu_get_pc());
 	next_fn();
 }
@@ -1377,6 +1443,7 @@ static void f93(void)
 static void f94(void)
 {
 	UINT32 a = fifoin_pop();
+	(void)a;
 	logerror("TGP f94 %d (%x)\n", a, activecpu_get_pc());
 	next_fn();
 }
@@ -1432,6 +1499,7 @@ static void f98_load(void)
 	int i;
 	for(i=0; i<list_length; i++) {
 		float f = fifoin_pop_f();
+		(void)f;
 		logerror("TGP load list (%2d/%2d) %f (%x)\n", i, list_length, f, activecpu_get_pc());
 	}
 	next_fn();
@@ -1440,6 +1508,7 @@ static void f98_load(void)
 static void f98(void)
 {
     UINT32 a = fifoin_pop();
+	(void)a;
 	logerror("TGP load list start %d (%x)\n", a, activecpu_get_pc());
 	fifoin_cbcount = list_length;
 	fifoin_cb = f98_load;
@@ -1816,20 +1885,20 @@ void model1_tgp_reset(int swa)
 	model1_swa = swa;
 	next_fn();
 
-	state_save_register_UINT32("tgp", 0, "ram_data",       ram_data, 0x10000);
-	state_save_register_UINT16("tgp", 0, "ram_adr",       &ram_adr, 1);
-	state_save_register_UINT16("tgp", 0, "ram_scanadr",   &ram_scanadr, 1);
-	state_save_register_UINT16("tgp", 0, "ram_latch",      ram_latch, 2);
-	state_save_register_int   ("tgp", 0, "fifoout_rpos",  &fifoout_rpos);
-	state_save_register_int   ("tgp", 0, "fifoout_wpos",  &fifoout_wpos);
-	state_save_register_UINT32("tgp", 0, "fifoout_data",   fifoout_data, FIFO_SIZE);
-	state_save_register_int   ("tgp", 0, "fifoin_rpos",   &fifoin_rpos);
-	state_save_register_int   ("tgp", 0, "fifoin_wpos",   &fifoin_wpos);
-	state_save_register_UINT32("tgp", 0, "fifoin_data",    fifoin_data, FIFO_SIZE);
-	state_save_register_float ("tgp", 0, "cmat",           cmat, 12);
-	state_save_register_float ("tgp", 0, "mat_stack",     &mat_stack[0][0],  12*MAT_STACK_SIZE);
-	state_save_register_float ("tgp", 0, "mat_vector",    &mat_vector[0][0], 12*21);
-	state_save_register_int   ("tgp", 0, "mat_stack_pos", &mat_stack_pos);
-	state_save_register_float ("tgp", 0, "acc",           &acc, 1);
-	state_save_register_UINT32("tgp", 0, "list_length",   &list_length, 1);
+	state_save_register_global_pointer(ram_data, 0x10000);
+	state_save_register_global(ram_adr);
+	state_save_register_global(ram_scanadr);
+	state_save_register_global_array(ram_latch);
+	state_save_register_global(fifoout_rpos);
+	state_save_register_global(fifoout_wpos);
+	state_save_register_global_array(fifoout_data);
+	state_save_register_global(fifoin_rpos);
+	state_save_register_global(fifoin_wpos);
+	state_save_register_global_array(fifoin_data);
+	state_save_register_global_array(cmat);
+	state_save_register_global_2d_array(mat_stack);
+	state_save_register_global_2d_array(mat_vector);
+	state_save_register_global(mat_stack_pos);
+	state_save_register_global(acc);
+	state_save_register_global(list_length);
 }

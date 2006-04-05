@@ -16,9 +16,17 @@
 /* Perform basic machine initialisation */
 
 UINT8 namcond1_h8_irq5_enabled;
-int namcond1_gfxbank;
+UINT8 namcond1_gfxbank;
 
-MACHINE_INIT( namcond1 )
+MACHINE_START( namcond1 )
+{
+	state_save_register_global(namcond1_h8_irq5_enabled);
+	state_save_register_global(namcond1_gfxbank);
+
+	return 0;
+}
+
+MACHINE_RESET( namcond1 )
 {
 #ifdef MAME_DEBUG
     /*unsigned char   *ROM = memory_region(REGION_CPU1);*/
@@ -42,7 +50,7 @@ MACHINE_INIT( namcond1 )
     namcond1_h8_irq5_enabled = 0;
 
     // halt the MCU
-    cpunum_set_input_line(1,INPUT_LINE_HALT,ASSERT_LINE);
+    cpunum_set_input_line(1,INPUT_LINE_RESET,ASSERT_LINE);
 }
 
 // instance of the shared ram pointer
@@ -91,8 +99,7 @@ WRITE16_HANDLER( namcond1_cuskey_w )
             // this is a kludge until we emulate the h8
 	    if ((namcond1_h8_irq5_enabled == 0) && (data != 0x0000))
 	    {
-		cpunum_resume(1, SUSPEND_REASON_HALT);
-		cpunum_reset(1,NULL,NULL); /* immediate */
+	    	cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
 	    }
             namcond1_h8_irq5_enabled = ( data != 0x0000 );
             break;

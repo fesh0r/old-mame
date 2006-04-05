@@ -1,4 +1,5 @@
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "cpuintrf.h"
 #include "vrender0.h"
 
@@ -12,12 +13,6 @@ envelopes
 reverb
 interrupts
 *************/
-
-UINT16 ENDIANCORRECT16(UINT16 v)
-{
-	return (((v>>0)&0xff)<<8)|(((v>>8)&0xff)<<0);
-}
-//#define ENDIANCORRECT16(v) (((v>>0)&0xff)<<8)|(((v>>8)&0xff)<<0)
 
 struct _VR0Chip
 {
@@ -247,7 +242,7 @@ static void VR0_RenderAudio(struct _VR0Chip *VR0, int nsamples,stream_sample_t *
  * Generic get_info
  **************************************************************************/
 
-static void vrender0_set_info(void *token, UINT32 state, union sndinfo *info)
+static void vrender0_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -256,7 +251,7 @@ static void vrender0_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void vrender0_get_info(void *token, UINT32 state, union sndinfo *info)
+void vrender0_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

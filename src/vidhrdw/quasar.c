@@ -14,7 +14,7 @@
 
 ***************************************************************************/
 
-#include "vidhrdw/generic.h"
+#include "driver.h"
 #include "vidhrdw/s2636.h"
 #include "cpu/s2650/s2650.h"
 
@@ -48,7 +48,6 @@ extern mame_bitmap *s2636_2_bitmap;
 extern mame_bitmap *s2636_3_bitmap;
 extern mame_bitmap *collision_bitmap;
 extern mame_bitmap *collision_background;
-extern mame_bitmap *scrolled_background;
 
 extern unsigned char s2636_1_dirty[4];
 extern unsigned char s2636_2_dirty[4];

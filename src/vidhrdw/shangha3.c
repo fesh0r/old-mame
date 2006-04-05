@@ -59,7 +59,7 @@ Word | Bit(s)           | Use
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "profiler.h"
 
 
 UINT16 *shangha3_ram;

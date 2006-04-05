@@ -44,7 +44,7 @@ Note:   if MAME_DEBUG is defined, pressing:
 
 **************************************************************************/
 
-#include "vidhrdw/generic.h"
+#include "driver.h"
 #include "cave.h"
 
 /* Variables that driver has access to: */
@@ -109,7 +109,7 @@ static struct {
 static int num_sprites;
 static struct sprite_cave *sprite_cave;
 static struct sprite_cave *sprite_table[MAX_PRIORITY][MAX_SPRITE_NUM+1];
-mame_bitmap *sprite_zbuf;
+static mame_bitmap *sprite_zbuf;
 static UINT16 sprite_zbuf_baseval = 0x10000-MAX_SPRITE_NUM;
 
 static void (*get_sprite_info)(void);
@@ -1544,7 +1544,7 @@ void cave_get_sprite_info(void)
 {
 	if(cave_kludge == 3)	/* mazinger metmqstr */
 	{
-		if (osd_skip_this_frame() == 0)
+		if (skip_this_frame() == 0)
 		{
 			spriteram_bank = spriteram_bank_delay;
 			(*get_sprite_info)();
@@ -1553,7 +1553,7 @@ void cave_get_sprite_info(void)
 	}
 	else
 	{
-		if (osd_skip_this_frame() == 0)
+		if (skip_this_frame() == 0)
 		{
 			spriteram_bank = cave_videoregs[ 4 ] & 1;
 			(*get_sprite_info)();

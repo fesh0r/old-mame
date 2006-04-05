@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "deco16ic.h"
 
 static UINT16 * rohga_spriteram;
@@ -59,7 +58,7 @@ VIDEO_START( wizdfire )
 
 VIDEO_START( nitrobal )
 {
-	if (deco16_2_video_init(0))
+	if (deco16_2_video_init_half_width())
 		return 1;
 
 	deco16_set_tilemap_bank_callback(0,wizdfire_bank_callback);

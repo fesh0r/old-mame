@@ -190,7 +190,12 @@ static void system18_generic_init(int _rom_board)
  *
  *************************************/
 
-MACHINE_INIT( system18 )
+static void boost_interleave(int param)
+{
+	cpu_boost_interleave(0, TIME_IN_MSEC(10));
+}
+
+MACHINE_RESET( system18 )
 {
 	segaic16_memory_mapper_reset();
 	segaic16_tilemap_reset(0);
@@ -198,7 +203,7 @@ MACHINE_INIT( system18 )
 
 	/* if we are running with a real live 8751, we need to boost the interleave at startup */
 	if (Machine->drv->cpu[2].cpu_type == CPU_I8751)
-		cpu_boost_interleave(0, TIME_IN_MSEC(10));
+		timer_set(TIME_NOW, 0, boost_interleave);
 }
 
 
@@ -1273,7 +1278,7 @@ static MACHINE_DRIVER_START( system18 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(1000000 * (262 - 224) / (262 * 60))
 
-	MDRV_MACHINE_INIT(system18)
+	MDRV_MACHINE_RESET(system18)
 	MDRV_NVRAM_HANDLER(system18)
 
 	/* video hardware */

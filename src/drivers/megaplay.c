@@ -39,27 +39,25 @@ Only a handful of games were released for this system.
 #define MP_ROM  0x10
 #define MP_GAME 0
 
-unsigned int bios_bank; // ROM bank selection
-unsigned short game_banksel;  // Game bank selection
-unsigned int bios_game; // Game info selection
-unsigned int bios_mode = MP_ROM;  // determines whether ROM banks or Game data
+static unsigned int bios_bank; // ROM bank selection
+static unsigned short game_banksel;  // Game bank selection
+static unsigned int bios_mode = MP_ROM;  // determines whether ROM banks or Game data
                                   // is to read from 0x8000-0xffff
-unsigned int bios_width;  // determines the way the game info ROM is read
+static unsigned int bios_width;  // determines the way the game info ROM is read
 unsigned char bios_ctrl[6];
-unsigned char bios_6600;
+static unsigned char bios_6600;
 unsigned char bios_6204;
-unsigned char bios_6402;
-unsigned char bios_6403;
-unsigned char bios_6404;
+static unsigned char bios_6403;
+static unsigned char bios_6404;
 static unsigned char* ic3_ram;
 //static unsigned char ic36_ram[0x4000];
 static unsigned char ic37_ram[0x8000];
 UINT16 *ic36_ram;
 
-unsigned int readpos = 1;  // serial bank selection position (9-bit)
+static unsigned int readpos = 1;  // serial bank selection position (9-bit)
 
 
-static MACHINE_INIT( megaplay )
+static MACHINE_RESET( megaplay )
 {
 //  unsigned char* ram = memory_region(REGION_CPU3);
 
@@ -68,7 +66,7 @@ static MACHINE_INIT( megaplay )
 	memory_set_bankptr(2, &ic36_ram[0]);
 	memory_set_bankptr(3, &genesis_68k_ram[0]);
 
-	machine_init_genesis();
+	machine_reset_genesis();
 }
 
 
@@ -660,7 +658,7 @@ static MACHINE_DRIVER_START( megaplay )
 
 	MDRV_VIDEO_START(megaplay)
 	MDRV_VIDEO_UPDATE(megaplay)
-	MDRV_MACHINE_INIT(megaplay)
+	MDRV_MACHINE_RESET(megaplay)
 
 	MDRV_CPU_ADD_TAG("megaplay_bios", Z80, MASTER_CLOCK / 15) /* ?? */
 	MDRV_CPU_PROGRAM_MAP(megaplay_bios_readmem, megaplay_bios_writemem)
@@ -839,8 +837,6 @@ static DRIVER_INIT (megaplay)
 	UINT8 *instruction_rom = memory_region(REGION_USER1);
 	UINT8 *game_rom = memory_region(REGION_CPU1);
 	int offs;
-
-	init_genesis();
 
 	memmove(src+0x10000,src+0x8000,0x18000); // move bios..
 

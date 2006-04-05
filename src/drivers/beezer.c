@@ -7,13 +7,11 @@
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/6522via.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/dac.h"
 
 /* from vidhrdw/beezer.c */
-extern UINT8 *videoram;
 INTERRUPT_GEN( beezer_interrupt );
 VIDEO_UPDATE( beezer );
 WRITE8_HANDLER( beezer_ram_w );

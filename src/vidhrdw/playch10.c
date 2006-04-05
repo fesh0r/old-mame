@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/ppu2c03b.h"
 
 /* from machine */
@@ -79,7 +78,7 @@ static void ppu_irq( int num, int *ppu_regs )
 /* things like mirroring and wether to use vrom or vram         */
 /* can be set by calling 'ppu2c03b_override_hardware_options'   */
 
-static struct ppu2c03b_interface ppu_interface =
+static const ppu2c03b_interface ppu_interface =
 {
 	1,						/* num */
 	{ REGION_GFX2 },		/* vrom gfx region */
@@ -106,8 +105,7 @@ VIDEO_START( playch10 )
 	if ( !bg_tilemap )
 		return 1;
 
-	if ( ppu2c03b_init( &ppu_interface ) )
-		return 1;
+	ppu2c03b_init( &ppu_interface );
 
 	return 0;
 }

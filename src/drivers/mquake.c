@@ -9,7 +9,6 @@
 
 #include "driver.h"
 #include "includes/amiga.h"
-#include "vidhrdw/generic.h"
 
 UINT16 *qchip_ram;
 
@@ -90,7 +89,7 @@ static MACHINE_DRIVER_START( mquake )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( amiga )
+	MDRV_MACHINE_RESET( amiga )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 

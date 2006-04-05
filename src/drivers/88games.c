@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/konami/konami.h"
 #include "cpu/z80/z80.h"
 #include "vidhrdw/konamiic.h"
@@ -13,7 +12,7 @@
 #include "sound/upd7759.h"
 
 
-static MACHINE_INIT( 88games );
+static MACHINE_RESET( 88games );
 static void k88games_banking( int lines );
 
 static unsigned char *ram;
@@ -137,7 +136,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_RAM)	/* banked ROM */
-	AM_RANGE(0x1000, 0x1fff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_swap_w) AM_BASE(&paletteram_1000)	/* banked ROM + palette RAM */
+	AM_RANGE(0x1000, 0x1fff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_be_w) AM_BASE(&paletteram_1000)	/* banked ROM + palette RAM */
 	AM_RANGE(0x2000, 0x2fff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x3000, 0x37ff) AM_WRITE(MWA8_RAM) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x3800, 0x3fff) AM_WRITE(bankedram_w) AM_BASE(&ram)
@@ -303,7 +302,7 @@ static MACHINE_DRIVER_START( 88games )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(88games)
+	MDRV_MACHINE_RESET(88games)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
@@ -543,7 +542,7 @@ logerror("%04x: bank select %02x\n",activecpu_get_pc(),lines);
 	k88games_priority = lines & 0x80;
 }
 
-static MACHINE_INIT( 88games )
+static MACHINE_RESET( 88games )
 {
 	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)k88games_banking);
 	paletteram = &memory_region(REGION_CPU1)[0x20000];

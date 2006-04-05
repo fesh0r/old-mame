@@ -552,8 +552,6 @@ RFJ-09 - PRG3   27C040
 */
 
 #include "driver.h"
-#include "cpuintrf.h"
-#include "vidhrdw/generic.h"
 #include "machine/ds2404.h"
 #include "machine/eeprom.h"
 #include "machine/intelfsh.h"
@@ -591,7 +589,7 @@ WRITE32_HANDLER( video_dma_length_w );
 WRITE32_HANDLER( video_dma_address_w );
 WRITE32_HANDLER( sprite_dma_start_w );
 
-extern UINT32 *scroll_ram;
+extern UINT32 *spi_scrollram;
 UINT32 *spimainram;
 
 static UINT8 *z80_rom;
@@ -639,7 +637,7 @@ static void z80_fifoout_push(UINT8 data)
 	}
 	if(fifoout_wpos == fifoout_rpos)
 	{
-		osd_die("Sound FIFOOUT overflow at %08X\n", activecpu_get_pc());
+		fatalerror("Sound FIFOOUT overflow at %08X", activecpu_get_pc());
 	}
 
 	fifoout_read_request = 1;
@@ -650,7 +648,7 @@ static UINT8 z80_fifoin_pop(void)
 	UINT8 r;
 	if (fifoin_wpos == fifoin_rpos)
 	{
-		osd_die("Sound FIFOIN underflow at %08X\n", activecpu_get_pc());
+		fatalerror("Sound FIFOIN underflow at %08X", activecpu_get_pc());
 	}
 	r = fifoin_data[fifoin_rpos++];
 	if(fifoin_rpos == FIFO_SIZE)
@@ -675,7 +673,7 @@ static void z80_fifoin_push(UINT8 data)
 	}
 	if(fifoin_wpos == fifoin_rpos)
 	{
-		osd_die("Sound FIFOIN overflow at %08X\n", activecpu_get_pc());
+		fatalerror("Sound FIFOIN overflow at %08X", activecpu_get_pc());
 	}
 
 	fifoin_read_request = 1;
@@ -893,7 +891,7 @@ static READ32_HANDLER( soundrom_r )
 	}
 
 
-	osd_die("soundrom_r: %08X, %08X\n", offset, mem_mask);
+	fatalerror("soundrom_r: %08X, %08X", offset, mem_mask);
 }
 
 /********************************************************************/
@@ -903,7 +901,7 @@ static ADDRESS_MAP_START( spi_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000418, 0x0000041b) AM_READWRITE(spi_layer_bank_r, spi_layer_bank_w)
 	AM_RANGE(0x0000041c, 0x0000041f) AM_READNOP
 	AM_RANGE(0x0000041c, 0x0000041f) AM_WRITE(spi_layer_enable_w)
-	AM_RANGE(0x00000420, 0x0000042b) AM_RAM AM_BASE(&scroll_ram)
+	AM_RANGE(0x00000420, 0x0000042b) AM_RAM AM_BASE(&spi_scrollram)
 	AM_RANGE(0x00000480, 0x00000483) AM_WRITE(tilemap_dma_start_w)
 	AM_RANGE(0x00000484, 0x00000487) AM_WRITE(palette_dma_start_w)
 	AM_RANGE(0x00000490, 0x00000493) AM_WRITE(video_dma_length_w)
@@ -995,7 +993,7 @@ static ADDRESS_MAP_START( seibu386_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000418, 0x0000041b) AM_READWRITE(spi_layer_bank_r, spi_layer_bank_w)
 	AM_RANGE(0x0000041c, 0x0000041f) AM_READNOP
 	AM_RANGE(0x0000041c, 0x0000041f) AM_WRITE(spi_layer_enable_w)
-	AM_RANGE(0x00000420, 0x0000042b) AM_RAM AM_BASE(&scroll_ram)
+	AM_RANGE(0x00000420, 0x0000042b) AM_RAM AM_BASE(&spi_scrollram)
 	AM_RANGE(0x00000480, 0x00000483) AM_WRITE(tilemap_dma_start_w)
 	AM_RANGE(0x00000484, 0x00000487) AM_WRITE(palette_dma_start_w)
 	AM_RANGE(0x00000490, 0x00000493) AM_WRITE(video_dma_length_w)
@@ -1606,7 +1604,7 @@ static int spi_irq_callback(int irq)
 
 /* SPI */
 
-static MACHINE_INIT( spi )
+static MACHINE_RESET( spi )
 {
 	int i;
 	UINT8 *sound = memory_region(REGION_SOUND1);
@@ -1615,7 +1613,7 @@ static MACHINE_INIT( spi )
 	UINT8 flash_data = rombase[0x1ffffc];
 
 	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE );
-	cpu_set_irq_callback(0, spi_irq_callback);
+	cpunum_set_irq_callback(0, spi_irq_callback);
 
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00000680, 0x00000683, 0, 0, sound_fifo_r);
 	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00000688, 0x0000068b, 0, 0, z80_prg_fifo_w);
@@ -1658,7 +1656,7 @@ static MACHINE_DRIVER_START( spi )
 	MDRV_VBLANK_DURATION(0)
 	MDRV_INTERLEAVE(200)
 
-	MDRV_MACHINE_INIT(spi)
+	MDRV_MACHINE_RESET(spi)
 	MDRV_NVRAM_HANDLER(spi)
 
  	/* video hardware */
@@ -1679,7 +1677,7 @@ static MACHINE_DRIVER_START( spi )
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
-static MACHINE_INIT( sxx2f )
+static MACHINE_RESET( sxx2f )
 {
 	UINT8 *rom = memory_region(REGION_CPU2);
 
@@ -1690,13 +1688,13 @@ static MACHINE_INIT( sxx2f )
 	memcpy(z80_rom, rom, 0x40000);
 
 	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000068c, 0x0000068f, 0, 0, eeprom_w);
-	cpu_set_irq_callback(0, spi_irq_callback);
+	cpunum_set_irq_callback(0, spi_irq_callback);
 }
 
 static MACHINE_DRIVER_START( sxx2f )
 
 	MDRV_IMPORT_FROM(spi)
-	MDRV_MACHINE_INIT(sxx2f)
+	MDRV_MACHINE_RESET(sxx2f)
 	MDRV_NVRAM_HANDLER(sxx2f)
 
 MACHINE_DRIVER_END
@@ -1918,9 +1916,9 @@ static DRIVER_INIT( rdft22kc )
 	init_rf2();
 }
 
-static MACHINE_INIT( seibu386 )
+static MACHINE_RESET( seibu386 )
 {
-	cpu_set_irq_callback(0, spi_irq_callback);
+	cpunum_set_irq_callback(0, spi_irq_callback);
 }
 
 static MACHINE_DRIVER_START( seibu386 )
@@ -1934,7 +1932,7 @@ static MACHINE_DRIVER_START( seibu386 )
 	MDRV_VBLANK_DURATION(0)
 
 	MDRV_NVRAM_HANDLER(sxx2f)
-	MDRV_MACHINE_INIT(seibu386)
+	MDRV_MACHINE_RESET(seibu386)
 
  	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT)

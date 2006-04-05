@@ -48,12 +48,11 @@ The 6809 NMI is used for sound timing.
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/sn76496.h"
 #include "sound/vlm5030.h"
 
-extern int nmi_enable;
+extern int yiear_nmi_enable;
 
 extern WRITE8_HANDLER( yiear_videoram_w );
 extern WRITE8_HANDLER( yiear_control_w );
@@ -83,7 +82,7 @@ static WRITE8_HANDLER( yiear_VLM5030_control_w )
 INTERRUPT_GEN( yiear_nmi_interrupt )
 {
 	/* can't use nmi_line_pulse() because interrupt_enable_w() effects it */
-	if (nmi_enable) cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+	if (yiear_nmi_enable) cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -134,7 +133,7 @@ INPUT_PORTS_START( yiear )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	/* IN2 */
@@ -144,7 +143,7 @@ INPUT_PORTS_START( yiear )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_COCKTAIL
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	/* DSW0 */

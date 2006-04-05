@@ -35,7 +35,6 @@ Caveman Ninja Issues:
 
 #include "driver.h"
 #include "cninja.h"
-#include "vidhrdw/generic.h"
 #include "cpu/h6280/h6280.h"
 #include "deco16ic.h"
 #include "decocrpt.h"
@@ -828,7 +827,7 @@ static const gfx_decode gfxdecodeinfo_mutantf[] =
 
 /**********************************************************************************/
 
-static MACHINE_INIT( cninja )
+static MACHINE_RESET( cninja )
 {
 	raster_irq_timer = timer_alloc(interrupt_gen);
 	cninja_scanline=0;
@@ -875,7 +874,7 @@ static MACHINE_DRIVER_START( cninja )
 	/* audio CPU */	/* Accurate */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_MACHINE_INIT(cninja)
+	MDRV_MACHINE_RESET(cninja)
 	MDRV_FRAMES_PER_SECOND(58)
 	MDRV_VBLANK_DURATION(529)
 
@@ -921,7 +920,7 @@ static MACHINE_DRIVER_START( stoneage )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(stoneage_s_readmem,stoneage_s_writemem)
 
-	MDRV_MACHINE_INIT(cninja)
+	MDRV_MACHINE_RESET(cninja)
 	MDRV_FRAMES_PER_SECOND(58)
 	MDRV_VBLANK_DURATION(529)
 
@@ -964,7 +963,7 @@ static MACHINE_DRIVER_START( edrandy )
 	/* audio CPU */	/* Accurate */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_MACHINE_INIT(cninja)
+	MDRV_MACHINE_RESET(cninja)
 	MDRV_FRAMES_PER_SECOND(58)
 	MDRV_VBLANK_DURATION(529)
 
@@ -1010,7 +1009,7 @@ static MACHINE_DRIVER_START( robocop2 )
 	/* audio CPU */	/* Accurate */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_MACHINE_INIT(cninja)
+	MDRV_MACHINE_RESET(cninja)
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(529)
 

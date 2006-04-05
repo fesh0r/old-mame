@@ -115,9 +115,8 @@ BG0 palette intensity ( $C47F, $C4FF )
 ***************************************************************************/
 
 #include "driver.h"
-#include "tilemap.h"
-#include "vidhrdw/generic.h"
 
+#include "jalblend.c"
 
 #define BUTASAN_TEXT_RAMSIZE		0x0800
 #define BUTASAN_BG0_RAMSIZE			0x0800
@@ -313,6 +312,9 @@ VIDEO_START( argus )
 	tilemap_set_transparent_pen( bg1_tilemap, 15 );
 	tilemap_set_transparent_pen( tx_tilemap,  15 );
 
+	jal_blend_table = auto_malloc(0xc00);
+	memset(jal_blend_table,0,0xc00) ;
+
 	return 0;
 }
 
@@ -327,6 +329,10 @@ VIDEO_START( valtric )
 
 	tilemap_set_transparent_pen( bg1_tilemap, 15 );
 	tilemap_set_transparent_pen( tx_tilemap,  15 );
+
+	jal_blend_table = auto_malloc(0xc00);
+	memset(jal_blend_table,0,0xc00) ;
+
 	return 0;
 }
 
@@ -351,6 +357,9 @@ VIDEO_START( butasan )
 	memset( butasan_bg0backram, 0x00, BUTASAN_BG0BACK_RAMSIZE );
 
 	tilemap_set_transparent_pen( tx_tilemap,  15 );
+
+	jal_blend_table = auto_malloc(0xc00);
+	memset(jal_blend_table,0,0xc00) ;
 
 	return 0;
 }
@@ -387,15 +396,19 @@ static void argus_write_dummy_rams( int dramoffs, int vromoffs )
 
 static void argus_change_palette(int color, int data)
 {
-	int r, g, b;
+	int r, g, b, a;
 
 	r = (data >> 12) & 0x0f;
 	g = (data >>  8) & 0x0f;
 	b = (data >>  4) & 0x0f;
+	a = (data      ) & 0x0f;
 
 	r = (r << 4) | r;
 	g = (g << 4) | g;
 	b = (b << 4) | b;
+	a = (a << 4) | a;
+
+	jal_blend_table[color] = a ;
 
 	palette_set_color(color, r, g, b);
 }
@@ -1011,7 +1024,7 @@ static void argus_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, i
 			}
 
 			if (priority != pri)
-				drawgfx(bitmap,Machine->gfx[0],
+				jal_blend_drawgfx(bitmap,Machine->gfx[0],
 							tile,
 							color,
 							flipx, flipy,
@@ -1065,7 +1078,7 @@ static void valtric_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 				flipy ^= 0x20;
 			}
 
-			drawgfx(bitmap,Machine->gfx[0],
+			jal_blend_drawgfx(bitmap,Machine->gfx[0],
 						tile,
 						color,
 						flipx, flipy,
@@ -1100,7 +1113,7 @@ void butasan_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 		{
 			if ( (offs >= 0x100 && offs < 0x300) || (offs >= 0x400 && offs < 0x580) )
 			{
-				drawgfx(bitmap,Machine->gfx[0],
+				jal_blend_drawgfx(bitmap,Machine->gfx[0],
 							tile,
 							color,
 							flipx, flipy,
@@ -1118,7 +1131,7 @@ void butasan_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 
 					td = (flipx) ? (1 - i) : i;
 
-					drawgfx(bitmap,Machine->gfx[0],
+					jal_blend_drawgfx(bitmap,Machine->gfx[0],
 								tile + td,
 								color,
 								flipx, flipy,
@@ -1142,7 +1155,7 @@ void butasan_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 						else
 							td = (flipx) ? ( (1 - i) * 2 ) + 1 - j : (1 - i) * 2 + j;
 
-						drawgfx(bitmap,Machine->gfx[0],
+						jal_blend_drawgfx(bitmap,Machine->gfx[0],
 									tile + td,
 									color,
 									flipx, flipy,
@@ -1167,7 +1180,7 @@ void butasan_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 						else
 							td = (flipx) ? ( (3 - i) * 4 ) + 3 - j : (3 - i) * 4 + j;
 
-						drawgfx(bitmap,Machine->gfx[0],
+						jal_blend_drawgfx(bitmap,Machine->gfx[0],
 									tile + td,
 									color,
 									flipx, flipy,
@@ -1187,7 +1200,7 @@ void butasan_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 
 			if ( (offs >= 0x100 && offs < 0x300) || (offs >= 0x400 && offs < 0x580) )
 			{
-				drawgfx(bitmap,Machine->gfx[0],
+				jal_blend_drawgfx(bitmap,Machine->gfx[0],
 							tile,
 							color,
 							flipx, flipy,
@@ -1205,7 +1218,7 @@ void butasan_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 
 					td = (flipx) ? i : (1 - i);
 
-					drawgfx(bitmap,Machine->gfx[0],
+					jal_blend_drawgfx(bitmap,Machine->gfx[0],
 								tile + td,
 								color,
 								flipx, flipy,
@@ -1229,7 +1242,7 @@ void butasan_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 						else
 							td = (flipx) ? i * 2 + j : (i * 2) + 1 - j;
 
-						drawgfx(bitmap,Machine->gfx[0],
+						jal_blend_drawgfx(bitmap,Machine->gfx[0],
 									tile + td,
 									color,
 									flipx, flipy,
@@ -1254,7 +1267,7 @@ void butasan_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 						else
 							td = (flipx) ? i * 4 + j : (i * 4) + 3 - j;
 
-						drawgfx(bitmap,Machine->gfx[0],
+						jal_blend_drawgfx(bitmap,Machine->gfx[0],
 									tile + td,
 									color,
 									flipx, flipy,

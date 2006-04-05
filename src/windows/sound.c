@@ -14,17 +14,18 @@
 
 // undef WINNT for dsound.h to prevent duplicate definition
 #undef WINNT
-#define LPCWAVEFORMATEX _LPCWAVEFORMATEX
+//#define LPCWAVEFORMATEX _LPCWAVEFORMATEX
 #include <dsound.h>
-#undef LPWAVEFORMATEX
+//#undef LPWAVEFORMATEX
 
 // MAME headers
 #include "driver.h"
 #include "osdepend.h"
+#include "sound/wavwrite.h"
+
 #include "window.h"
 #include "video.h"
 #include "rc.h"
-#include "sound/wavwrite.h"
 
 
 //============================================================
@@ -170,16 +171,12 @@ int osd_start_audio_stream(int stereo)
 	sound_log = fopen("sound.log", "w");
 #endif
 
-	// skip if sound disabled
-	if (Machine->sample_rate != 0)
-	{
-		// attempt to initialize directsound
-		if (dsound_init())
-			return 1;
+	// attempt to initialize directsound
+	if (dsound_init())
+		return 1;
 
-		// set the startup volume
-		osd_set_mastervolume(attenuation);
-	}
+	// set the startup volume
+	osd_set_mastervolume(attenuation);
 
 	// determine the number of samples per frame
 	samples_per_frame = (double)Machine->sample_rate / (double)Machine->refresh_rate;
@@ -222,10 +219,6 @@ void sound_update_refresh_rate(float newrate)
 
 void osd_stop_audio_stream(void)
 {
-	// if nothing to do, don't do it
-	if (Machine->sample_rate == 0)
-		return;
-
 	if( wavptr != NULL )
 	{
 		wav_close( wavptr );
@@ -377,7 +370,7 @@ static void copy_sample_data(INT16 *data, int bytes_to_copy)
 int osd_update_audio_stream(INT16 *buffer)
 {
 	// if nothing to do, don't do it
-	if (Machine->sample_rate != 0 && stream_buffer)
+	if (stream_buffer)
 	{
 		int original_bytes = bytes_in_stream_buffer();
 		int input_bytes = samples_this_frame * stream_format.nBlockAlign;
@@ -395,7 +388,7 @@ int osd_update_audio_stream(INT16 *buffer)
 			buffer_overflows++;
 	}
 
-	if( Machine->sample_rate != 0 && wavptr != NULL )
+	if( wavptr != NULL )
 		wav_add_data_16( wavptr, buffer, samples_this_frame * 2 );
 
 	// reset underflow/overflow tracking

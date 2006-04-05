@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/i8039/i8039.h"
 #include "sound/sn76477.h"
 #include "sound/dac.h"
@@ -441,7 +440,7 @@ static void helifire_dac_volume_timer(int dummy)
 }
 
 
-static MACHINE_INIT( spacefev_sound )
+static MACHINE_RESET( spacefev_sound )
 {
 	n8080_hardware = 1;
 
@@ -467,7 +466,7 @@ static MACHINE_INIT( spacefev_sound )
 }
 
 
-static MACHINE_INIT( sheriff_sound )
+static MACHINE_RESET( sheriff_sound )
 {
 	n8080_hardware = 2;
 
@@ -489,7 +488,7 @@ static MACHINE_INIT( sheriff_sound )
 }
 
 
-static MACHINE_INIT( helifire_sound )
+static MACHINE_RESET( helifire_sound )
 {
 	n8080_hardware = 3;
 
@@ -540,7 +539,7 @@ MACHINE_DRIVER_START( spacefev_sound )
 	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
 	MDRV_CPU_IO_MAP(n8080_sound_io_map, 0)
 
-	MDRV_MACHINE_INIT(spacefev_sound)
+	MDRV_MACHINE_RESET(spacefev_sound)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -562,7 +561,7 @@ MACHINE_DRIVER_START( sheriff_sound )
 	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
 	MDRV_CPU_IO_MAP(n8080_sound_io_map, 0)
 
-	MDRV_MACHINE_INIT(sheriff_sound)
+	MDRV_MACHINE_RESET(sheriff_sound)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -584,7 +583,7 @@ MACHINE_DRIVER_START( helifire_sound )
 	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
 	MDRV_CPU_IO_MAP(helifire_sound_io_map, 0)
 
-	MDRV_MACHINE_INIT(helifire_sound)
+	MDRV_MACHINE_RESET(helifire_sound)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

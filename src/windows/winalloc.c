@@ -12,10 +12,7 @@
 #include <windows.h>
 
 // MAME headers
-#include "driver.h"
-#include "window.h"
-#include "video.h"
-#include "blit.h"
+#include "mamecore.h"
 
 // undefine any redefines we have in the prefix
 #undef malloc
@@ -29,8 +26,10 @@
 //============================================================
 
 #define PAGE_SIZE		4096
-#define MAX_ALLOCS		65536
 #define COOKIE_VAL		0x11335577
+
+// set this to 0 to not use guard pages
+#define USE_GUARD_PAGES	1
 
 // set this to 1 to align memory blocks to the start of a page;
 // otherwise, they are aligned to the end, thus catching array
@@ -41,19 +40,22 @@
 #define LOG_CALLS		0
 
 
+
 //============================================================
 //  TYPEDEFS
 //============================================================
 
-typedef struct
+typedef struct _memory_entry memory_entry;
+struct _memory_entry
 {
+	memory_entry *	next;
+	memory_entry *	prev;
 	UINT32			size;
 	void *			base;
-	void *			vbase;
-	int				id;
 	const char *	file;
 	int				line;
-} memory_entry;
+	int				id;
+};
 
 
 
@@ -61,8 +63,10 @@ typedef struct
 //  LOCAL VARIABLES
 //============================================================
 
-static memory_entry memory_list[MAX_ALLOCS];
+static memory_entry *alloc_list;
+static memory_entry *free_list;
 static int current_id;
+
 
 
 //============================================================
@@ -71,46 +75,71 @@ static int current_id;
 
 INLINE memory_entry *allocate_entry(void)
 {
-	int i;
+	memory_entry *entry;
 
-	// find an empty entry
-	for (i = 0; i < MAX_ALLOCS; i++)
+	// if we're out of entries, allocate some more
+	if (free_list == NULL)
 	{
-		if (memory_list[i].vbase == NULL)
+		int entries_per_page = PAGE_SIZE / sizeof(memory_entry);
+
+		// allocate a new pages' worth of entry
+		entry = (memory_entry *)VirtualAlloc(NULL, PAGE_SIZE, MEM_COMMIT, PAGE_READWRITE);
+		if (entry == NULL)
 		{
-			memory_list[i].id = current_id++;
-			return &memory_list[i];
+			fprintf(stderr, "Out of memory for malloc tracking!\n");
+			exit(1);
+		}
+
+		// add all the entries to the list
+		while (entries_per_page--)
+		{
+			entry->next = free_list;
+			free_list = entry;
+			entry++;
 		}
 	}
 
-	// if none, error out in a fatal way
-	fprintf(stderr, "Out of allocation blocks!\n");
-	exit(1);
+	// grab a free list entry
+	entry = free_list;
+	free_list = free_list->next;
+
+	// add ourselves to the alloc list
+	entry->next = alloc_list;
+	if (entry->next)
+		entry->next->prev = entry;
+	entry->prev = NULL;
+	alloc_list = entry;
+
+	return entry;
 }
 
 
 INLINE memory_entry *find_entry(void *pointer)
 {
-	int i;
+	memory_entry *entry;
 
+	// scan the list looking for a matching base
 	if (pointer)
-	{
-		// find a matching entry
-		for (i = 0; i < MAX_ALLOCS; i++)
-			if (memory_list[i].base == pointer)
-				return &memory_list[i];
-	}
+		for (entry = alloc_list; entry; entry = entry->next)
+			if (entry->base == pointer)
+				return entry;
 	return NULL;
 }
 
 
 INLINE void free_entry(memory_entry *entry)
 {
-	entry->size = 0;
-	entry->base = NULL;
-	entry->vbase = NULL;
-	entry->file = NULL;
-	entry->line = 0;
+	// remove ourselves from the alloc list
+	if (entry->prev)
+		entry->prev->next = entry->next;
+	else
+		alloc_list = entry->next;
+	if (entry->next)
+		entry->next->prev = entry->prev;
+
+	// add ourself to the free list
+	entry->next = free_list;
+	free_list = entry;
 }
 
 
@@ -119,55 +148,65 @@ INLINE void free_entry(memory_entry *entry)
 //  IMPLEMENTATION
 //============================================================
 
-void* malloc_file_line(size_t size, const char *file, int line)
+void *malloc_file_line(size_t size, const char *file, int line)
 {
-	memory_entry *entry = allocate_entry();
 	UINT8 *page_base, *block_base;
 	size_t rounded_size;
+	memory_entry *entry;
 
-	// round the size up to a page boundary
-	rounded_size = ((size + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE;
+	if (USE_GUARD_PAGES)
+	{
+		// round the size up to a page boundary
+		rounded_size = ((size + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE;
 
-	// reserve that much memory, plus two guard pages
-	page_base = VirtualAlloc(NULL, rounded_size + 2 * PAGE_SIZE, MEM_RESERVE, PAGE_NOACCESS);
-	if (page_base == NULL)
-		return NULL;
+		// reserve that much memory, plus two guard pages
+		page_base = VirtualAlloc(NULL, rounded_size + 2 * PAGE_SIZE, MEM_RESERVE, PAGE_NOACCESS);
+		if (page_base == NULL)
+			return NULL;
 
-	// now allow access to everything but the first and last pages
-	page_base = VirtualAlloc(page_base + PAGE_SIZE, rounded_size, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-	if (page_base == NULL)
-		return NULL;
+		// now allow access to everything but the first and last pages
+		page_base = VirtualAlloc(page_base + PAGE_SIZE, rounded_size, MEM_COMMIT, PAGE_READWRITE);
+		if (page_base == NULL)
+			return NULL;
 
-	// work backwards from the page base to get to the block base
-#if ALIGN_START
-	block_base = page_base;
-#else
-	block_base = page_base + rounded_size - size;
-#endif
+		// work backwards from the page base to get to the block base
+		if (ALIGN_START)
+			block_base = page_base;
+		else
+			block_base = page_base + rounded_size - size;
+	}
+	else
+	{
+		block_base = (UINT8 *)GlobalAlloc(GMEM_FIXED, size);
+	}
 
 	// fill in the entry
+	entry = allocate_entry();
 	entry->size = size;
 	entry->base = block_base;
-	entry->vbase = page_base - PAGE_SIZE;
 	entry->file = file;
 	entry->line = line;
+	entry->id = current_id++;
+
 #if LOG_CALLS
+	// logging
 	if (entry->file)
-		logerror("malloc #%06d size = %d (%s:%d)\n",entry->id,entry->size,entry->file,entry->line);
+		logerror("malloc #%06d size = %d (%s:%d)\n", entry->size, entry->file, entry->line);
 	else
-		logerror("malloc #%06d size = %d\n",entry->id,entry->size);
+		logerror("malloc #%06d size = %d\n", entry->id, entry->size);
 #endif
+
 	return block_base;
 }
 
 
-void* CLIB_DECL malloc(size_t size)
+void *CLIB_DECL malloc(size_t size)
 {
 	return malloc_file_line(size, NULL, 0);
 }
 
 
-void* calloc_file_line(size_t size, size_t count, const char *file, int line)
+void *calloc_file_line(size_t size, size_t count, const char *file, int line)
 {
 	// first allocate the memory
 	void *memory = malloc_file_line(size * count, file, line);
@@ -180,13 +219,13 @@ void* calloc_file_line(size_t size, size_t count, const char *file, int line)
 }
 
 
-void* CLIB_DECL calloc(size_t size, size_t count)
+void *CLIB_DECL calloc(size_t size, size_t count)
 {
 	return calloc_file_line(size, count, NULL, 0);
 }
 
 
-void * realloc_file_line(void *memory, size_t size, const char *file, int line)
+void *realloc_file_line(void *memory, size_t size, const char *file, int line)
 {
 	void *newmemory = NULL;
 
@@ -202,10 +241,10 @@ void * realloc_file_line(void *memory, size_t size, const char *file, int line)
 		if (memory != NULL)
 		{
 			memory_entry *entry = find_entry(memory);
-			if (entry != NULL)
-				memcpy(newmemory, memory, (size < entry->size) ? size : entry->size);
-			else
+			if (entry == NULL)
 				fprintf(stderr, "Error: realloc a non-existant block\n");
+			else
+				memcpy(newmemory, memory, (size < entry->size) ? size : entry->size);
 		}
 	}
 
@@ -217,7 +256,7 @@ void * realloc_file_line(void *memory, size_t size, const char *file, int line)
 }
 
 
-void * CLIB_DECL realloc(void *memory, size_t size)
+void *CLIB_DECL realloc(void *memory, size_t size)
 {
 	return realloc_file_line(memory, size, NULL, 0);
 }
@@ -225,32 +264,36 @@ void * CLIB_DECL realloc(void *memory, size_t size)
 
 void CLIB_DECL free(void *memory)
 {
-	memory_entry *entry = find_entry(memory);
+	memory_entry *entry;
 
 	// allow NULL frees
 	if (memory == NULL)
 		return;
 
 	// error if no entry found
+	entry = find_entry(memory);
 	if (entry == NULL)
 	{
 		fprintf(stderr, "Error: free a non-existant block\n");
 		return;
 	}
+	free_entry(entry);
 
 	// free the memory
-	VirtualFree(entry->vbase, 0, MEM_RELEASE);
+	if (USE_GUARD_PAGES)
+		VirtualFree((UINT8 *)memory - ((UINT32)memory & (PAGE_SIZE-1)) - PAGE_SIZE, 0, MEM_RELEASE);
+	else
+		GlobalFree(memory);
+
 #if LOG_CALLS
-	logerror("free #%06d size = %d\n",entry->id,entry->size);
+	logerror("free #%06d size = %d\n", entry->id, entry->size);
 #endif
-	free_entry(entry);
 }
+
 
 size_t CLIB_DECL _msize(void *memory)
 {
 	memory_entry *entry = find_entry(memory);
-
-	// error if no entry found
 	if (entry == NULL)
 	{
 		fprintf(stderr, "Error: msize a non-existant block\n");
@@ -262,23 +305,19 @@ size_t CLIB_DECL _msize(void *memory)
 
 void check_unfreed_mem(void)
 {
-	int i,total = 0;
+	memory_entry *entry;
+	int total = 0;
 
 	// check for leaked memory
-	for (i = 0; i < MAX_ALLOCS; i++)
-	{
-		if (memory_list[i].base != NULL)
+	for (entry = alloc_list; entry; entry = entry->next)
+		if (entry->file != NULL)
 		{
 			if (total == 0)
 				printf("--- memory leak warning ---\n");
-			total += memory_list[i].size;
-			if (memory_list[i].file)
-				printf("allocation #%06d, %d bytes (%s:%d)\n",memory_list[i].id,memory_list[i].size,memory_list[i].file,memory_list[i].line);
-			else
-				printf("allocation #%06d, %d bytes\n",memory_list[i].id,memory_list[i].size);
+			total += entry->size;
+			printf("allocation #%06d, %d bytes (%s:%d)\n", entry->id, entry->size, entry->file, entry->line);
 		}
-	}
 
 	if (total > 0)
-		printf("a total of %d bytes were not free()'d\n",total);
+		printf("a total of %d bytes were not free()'d\n", total);
 }

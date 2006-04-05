@@ -36,9 +36,7 @@
 */
 
 #include "driver.h"
-#include "state.h"
 
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
@@ -47,7 +45,7 @@
 
 VIDEO_START( rng );
 VIDEO_UPDATE( rng );
-MACHINE_INIT( rng );
+MACHINE_RESET( rng );
 READ16_HANDLER( ttl_ram_r );
 WRITE16_HANDLER( ttl_ram_w );
 WRITE16_HANDLER( rng_936_videoram_w );
@@ -347,7 +345,7 @@ static MACHINE_DRIVER_START( rng )
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
 
-	MDRV_MACHINE_INIT(rng)
+	MDRV_MACHINE_RESET(rng)
 	MDRV_NVRAM_HANDLER(rungun)
 
 	/* video hardware */
@@ -645,7 +643,7 @@ static DRIVER_INIT( rng )
 {
 }
 
-MACHINE_INIT( rng )
+MACHINE_RESET( rng )
 {
 	K054539_init_flags(0, K054539_REVERSE_STEREO);
 

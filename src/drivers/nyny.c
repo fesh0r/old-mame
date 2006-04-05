@@ -34,7 +34,6 @@ fedcba98
 ****/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/6821pia.h"
 #include "vidhrdw/crtc6845.h"
 #include "cpu/m6800/m6800.h"
@@ -84,7 +83,7 @@ INTERRUPT_GEN( nyny_interrupt )
     6821 PIA handlers
 ***************************************************************************/
 
-void cpu0_irq(int state)
+static void cpu0_irq(int state)
 {
 	cpunum_set_input_line(0,M6809_IRQ_LINE,state ? ASSERT_LINE : CLEAR_LINE);
 }
@@ -125,7 +124,7 @@ static struct pia6821_interface pia1_intf =
 	/*irqs   : A/B             */ 0, 0
 };
 
-MACHINE_INIT( nyny )
+MACHINE_RESET( nyny )
 {
 	pia_unconfig();
 	pia_config(0, PIA_STANDARD_ORDERING, &pia0_intf);
@@ -151,7 +150,7 @@ WRITE8_HANDLER( ay8910_portb_w )
 	DAC_1_data_w( 0, dac_enable * dac_volume ) ;
 }
 
-WRITE8_HANDLER( shared_w_irq )
+static WRITE8_HANDLER( shared_w_irq )
 {
 	soundlatch_w(0,data);
 	cpunum_set_input_line(1,M6802_IRQ_LINE,HOLD_LINE);
@@ -160,12 +159,12 @@ WRITE8_HANDLER( shared_w_irq )
 
 static unsigned char snd_w = 0;
 
-READ8_HANDLER( snd_answer_r )
+static READ8_HANDLER( snd_answer_r )
 {
 	return snd_w;
 }
 
-WRITE8_HANDLER( snd_answer_w )
+static WRITE8_HANDLER( snd_answer_w )
 {
 	snd_w = data;
 }
@@ -353,7 +352,7 @@ static MACHINE_DRIVER_START( nyny )
 	MDRV_FRAMES_PER_SECOND(50)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nyny)
+	MDRV_MACHINE_RESET(nyny)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */

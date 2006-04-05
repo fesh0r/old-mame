@@ -38,7 +38,6 @@
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/2203intf.h"
 
@@ -468,5 +467,5 @@ static DRIVER_INIT( shootout )
 
 
 GAME( 1985, shootout, 0,        shootout, shootout, shootout, ROT0, "Data East USA", "Shoot Out (US)", 0)
-GAME( 1985, shootouj, shootout, shootouj, shootouj, 0,        ROT0, "Data East USA", "Shoot Out (Japan)", 0 )
+GAME( 1985, shootouj, shootout, shootouj, shootouj, shootout, ROT0, "Data East USA", "Shoot Out (Japan)", 0 )
 GAME( 1985, shootoub, shootout, shootouj, shootout, shootout, ROT0, "bootleg", "Shoot Out (Korean Bootleg)", 0 )

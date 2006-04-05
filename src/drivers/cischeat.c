@@ -208,11 +208,11 @@ VIDEO_UPDATE( scudhamm );
 
 **************************************************************************/
 
-READ16_HANDLER( sharedram1_r )  {return sharedram1[offset];}
-READ16_HANDLER( sharedram2_r )  {return sharedram2[offset];}
+static READ16_HANDLER( sharedram1_r )  {return sharedram1[offset];}
+static READ16_HANDLER( sharedram2_r )  {return sharedram2[offset];}
 
-WRITE16_HANDLER( sharedram1_w ) {COMBINE_DATA(&sharedram1[offset]);}
-WRITE16_HANDLER( sharedram2_w ) {COMBINE_DATA(&sharedram2[offset]);}
+static WRITE16_HANDLER( sharedram1_w ) {COMBINE_DATA(&sharedram1[offset]);}
+static WRITE16_HANDLER( sharedram2_w ) {COMBINE_DATA(&sharedram2[offset]);}
 
 static READ16_HANDLER( rom_1_r ) {return rom_1[offset];}
 static READ16_HANDLER( rom_2_r ) {return rom_2[offset];}
@@ -1536,7 +1536,7 @@ INPUT_PORTS_START( armchmp2 )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON3  ) // elbow (it always complains though)
 
 	PORT_START_TAG("IN1")	// A/D
-	PORT_BIT( 0x00ff, 0x0000, IPT_DIAL ) PORT_MINMAX(0x0000,0x00ff) PORT_SENSITIVITY(100) PORT_KEYDELTA(0)
+	PORT_BIT( 0x00ff, 0x0000, IPT_DIAL ) PORT_MINMAX(0x0000,0x00ff) PORT_SENSITIVITY(100) PORT_KEYDELTA(10)
 
 	PORT_START_TAG("IN2")	// DSW
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Difficulty ) )

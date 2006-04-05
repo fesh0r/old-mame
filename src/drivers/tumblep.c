@@ -40,7 +40,6 @@ Stephh's notes (based on the games M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/h6280/h6280.h"
 #include "decocrpt.h"
 #include "sound/2151intf.h"
@@ -331,7 +330,7 @@ static MACHINE_DRIVER_START( tumblep )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8-1, 40*8-2, 1*8, 31*8-1) // hmm
+	MDRV_VISIBLE_AREA(0*8, 40*8-2, 1*8, 31*8-1) // hmm
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(1024)
 

@@ -40,7 +40,6 @@ Graphics hardware is the same used in gameplan.c
 
 #include "driver.h"
 #include "machine/6522via.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 
 static int cmd,portA;
@@ -246,7 +245,7 @@ static PALETTE_INIT( trvquest )
 	palette_set_color(7,0xff,0xff,0xff); /* 7 WHITE   */
 }
 
-static MACHINE_INIT( trvquest )
+static MACHINE_RESET( trvquest )
 {
 	via_config(0, &via_0_interface);
 	via_config(1, &via_1_interface);
@@ -269,7 +268,7 @@ static MACHINE_DRIVER_START( trvquest )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(generic_1fill)
-	MDRV_MACHINE_INIT(trvquest)
+	MDRV_MACHINE_RESET(trvquest)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

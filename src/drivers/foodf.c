@@ -75,7 +75,6 @@
 
 #include "driver.h"
 #include "machine/atarigen.h"
-#include "vidhrdw/generic.h"
 #include "sound/pokey.h"
 #include "foodf.h"
 
@@ -134,7 +133,7 @@ static void scanline_update(int scanline)
 }
 
 
-static MACHINE_INIT( foodf )
+static MACHINE_RESET( foodf )
 {
 	atarigen_interrupt_reset(update_interrupts);
 	atarigen_scanline_timer_reset(scanline_update, 32);
@@ -353,7 +352,7 @@ static MACHINE_DRIVER_START( foodf )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(foodf)
+	MDRV_MACHINE_RESET(foodf)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */

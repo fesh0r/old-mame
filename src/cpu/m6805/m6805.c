@@ -31,12 +31,7 @@
 *****************************************************************************/
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "driver.h"
-#include "cpuintrf.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "m6805.h"
 
 #define IRQ_LEVEL_DETECT 0
@@ -440,26 +435,28 @@ static void Interrupt(void)
 	}
 }
 
-static void state_register(const char *type)
+static void state_register(const char *type, int index)
 {
-	int cpu = cpu_getactivecpu();
-	state_save_register_UINT8(type, cpu, "A", &A, 1);
-	state_save_register_UINT16(type, cpu, "PC", &PC, 1);
-	state_save_register_UINT16(type, cpu, "S", &S, 1);
-	state_save_register_UINT8(type, cpu, "X", &X, 1);
-	state_save_register_UINT8(type, cpu, "CC", &CC, 1);
-	state_save_register_UINT16(type, cpu, "PENDING", &m6805.pending_interrupts, 1);
-	state_save_register_INT32(type, cpu, "IRQ_STATE", &m6805.irq_state[0], 1);
+	state_save_register_item(type, index, A);
+	state_save_register_item(type, index, PC);
+	state_save_register_item(type, index, S);
+	state_save_register_item(type, index, X);
+	state_save_register_item(type, index, CC);
+	state_save_register_item(type, index, m6805.pending_interrupts);
+	state_save_register_item_array(type, index, m6805.irq_state);
 }
 
-static void m6805_init(void)
+static void m6805_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	state_register("m6805");
+	state_register("m6805", index);
+	m6805.irq_callback = irqcallback;
 }
 
-static void m6805_reset(void *param)
+static void m6805_reset(void)
 {
+	int (*save_irqcallback)(int) = m6805.irq_callback;
 	memset(&m6805, 0, sizeof(m6805));
+	m6805.irq_callback = save_irqcallback;
 	/* Force CPU sub-type and relevant masks */
 	m6805.subtype	= SUBTYPE_M6805;
 	SP_MASK = 0x07f;
@@ -515,7 +512,7 @@ static void set_irq_line(int irqline, int state)
 
 
 /* execute instructions on this CPU until icount expires */
-int m6805_execute(int cycles)
+static int m6805_execute(int cycles)
 {
 	UINT8 ireg;
 	m6805_ICount = cycles;
@@ -823,20 +820,21 @@ static offs_t m6805_dasm(char *buffer, offs_t pc)
  * M68705 section
  ****************************************************************************/
 #if (HAS_M68705)
-void m68705_init(void)
+static void m68705_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	state_register("m68705");
+	state_register("m68705", index);
+	m6805.irq_callback = irqcallback;
 }
 
-void m68705_reset(void *param)
+static void m68705_reset(void)
 {
-	m6805_reset(param);
+	m6805_reset();
 	/* Overide default 6805 type */
 	m6805.subtype = SUBTYPE_M68705;
 	RM16( 0xfffe, &m6805.pc );
 }
 
-void m68705_set_irq_line(int irqline, int state)
+static void m68705_set_irq_line(int irqline, int state)
 {
 	if (m6805.irq_state[irqline] == state ) return;
 	m6805.irq_state[irqline] = state;
@@ -849,23 +847,15 @@ void m68705_set_irq_line(int irqline, int state)
  * HD63705 section
  ****************************************************************************/
 #if (HAS_HD63705)
-void hd63705_init(void)
+static void hd63705_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
-	state_register("hd63705");
-	state_save_register_INT32("hd63705",cpu,"IRQ1_STATE", &m6805.irq_state[0], 1);
-	state_save_register_INT32("hd63705",cpu,"IRQ2_STATE", &m6805.irq_state[1], 1);
-	state_save_register_INT32("hd63705",cpu,"TIMER1_STATE", &m6805.irq_state[2], 1);
-	state_save_register_INT32("hd63705",cpu,"TIMER2_STATE", &m6805.irq_state[3], 1);
-	state_save_register_INT32("hd63705",cpu,"TIMER3_STATE", &m6805.irq_state[4], 1);
-	state_save_register_INT32("hd63705",cpu,"PCI_STATE", &m6805.irq_state[5], 1);
-	state_save_register_INT32("hd63705",cpu,"SCI_STATE", &m6805.irq_state[6], 1);
-	state_save_register_INT32("hd63705",cpu,"ADCONV_STATE", &m6805.irq_state[7], 1);
+	state_register("hd63705", index);
+	m6805.irq_callback = irqcallback;
 }
 
-void hd63705_reset(void *param)
+static void hd63705_reset(void)
 {
-	m6805_reset(param);
+	m6805_reset();
 
 	/* Overide default 6805 types */
 	m6805.subtype	= SUBTYPE_HD63705;
@@ -875,7 +865,7 @@ void hd63705_reset(void *param)
 	S = 0x17f;
 }
 
-void hd63705_set_irq_line(int irqline, int state)
+static void hd63705_set_irq_line(int irqline, int state)
 {
 	if (irqline == INPUT_LINE_NMI)
 	{
@@ -914,9 +904,6 @@ static void m6805_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + M6805_S:			S = SP_ADJUST(info->i);					break;
 		case CPUINFO_INT_REGISTER + M6805_X:			X = info->i;							break;
 		case CPUINFO_INT_REGISTER + M6805_CC:			CC = info->i;							break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					m6805.irq_callback = info->irqcallback;	break;
 	}
 }
 
@@ -973,7 +960,6 @@ void m6805_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = m6805_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m6805_dasm;			break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = m6805.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &m6805_ICount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = m6805_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = m6805_win_layout;				break;

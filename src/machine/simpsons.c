@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/konami/konami.h"
 #include "machine/eeprom.h"
@@ -108,16 +107,7 @@ READ8_HANDLER( simpsons_sound_interrupt_r )
 
 READ8_HANDLER( simpsons_sound_r )
 {
-	/* If the sound CPU is running, read the status, otherwise
-       just make it pass the test */
-	if (Machine->sample_rate != 0) 	return K053260_0_r(2 + offset);
-	else
-	{
-		static int res = 0x80;
-
-		res = (res & 0xfc) | ((res + 1) & 0x03);
-		return offset ? res : 0x00;
-	}
+	return K053260_0_r(2 + offset);
 }
 
 
@@ -132,7 +122,7 @@ static void simpsons_banking( int lines )
 	memory_set_bank(1, lines & 0x3f);
 }
 
-MACHINE_INIT( simpsons )
+MACHINE_RESET( simpsons )
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
 

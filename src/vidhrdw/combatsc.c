@@ -8,16 +8,14 @@
 
 #include "driver.h"
 #include "vidhrdw/konamiic.h"
-#include "vidhrdw/generic.h"
 
 static tilemap *bg_tilemap[2];
 static tilemap *textlayer;
 static UINT8 *private_spriteram[2];
 static int priority;
 
-UINT8 *combasc_io_ram;
+static UINT8 *combasc_io_ram;
 static int combasc_vreg;
-UINT8* banked_area;
 
 static int combasc_bank_select; /* 0x00..0x1f */
 static int combasc_video_circuit; /* 0 or 1 */
@@ -410,7 +408,7 @@ WRITE8_HANDLER( combascb_bankselect_w )
 	}
 }
 
-MACHINE_INIT( combasc )
+MACHINE_RESET( combasc )
 {
 	UINT8 *MEM = memory_region(REGION_CPU1) + 0x38000;
 

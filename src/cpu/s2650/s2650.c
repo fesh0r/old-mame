@@ -12,11 +12,7 @@
  *
  *************************************************************************/
 
-#include <stdio.h>
-#include <string.h>
-#include "driver.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "s2650.h"
 #include "s2650cpu.h"
 
@@ -24,7 +20,6 @@
 #define VERBOSE 0
 
 #if VERBOSE
-#include <stdio.h>
 #define LOG(x) logerror x
 #else
 #define LOG(x)
@@ -783,26 +778,29 @@ static void ABS_EA(void) _ABS_EA()
 static void BRA_EA(void) _BRA_EA()
 #endif
 
-static void s2650_init(void)
+static void s2650_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
-	state_save_register_UINT16("s2650", cpu, "PPC",  &S.ppc, 1);
-	state_save_register_UINT16("s2650", cpu, "PAGE", &S.page, 1);
-	state_save_register_UINT16("s2650", cpu, "IAR",  &S.iar, 1);
-	state_save_register_UINT16("s2650", cpu, "EA",   &S.ea, 1);
-	state_save_register_UINT8 ("s2650", cpu, "PSL",  &S.psl, 1);
-	state_save_register_UINT8 ("s2650", cpu, "PSU",  &S.psu, 1);
-	state_save_register_UINT8 ("s2650", cpu, "R",    &S.r, 1);
-	state_save_register_UINT8 ("s2650", cpu, "REG",  S.reg, 7);
-	state_save_register_UINT8 ("s2650", cpu, "HALT", &S.halt, 1);
-	state_save_register_UINT8 ("s2650", cpu, "IR",   &S.ir, 1);
-	state_save_register_UINT16("s2650", cpu, "RAS",  S.ras, 8);
-	state_save_register_UINT8 ("s2650", cpu, "IRQ_STATE",&S.irq_state, 1);
+	S.irq_callback = irqcallback;
+
+	state_save_register_item("s2650", index, S.ppc);
+	state_save_register_item("s2650", index, S.page);
+	state_save_register_item("s2650", index, S.iar);
+	state_save_register_item("s2650", index, S.ea);
+	state_save_register_item("s2650", index, S.psl);
+	state_save_register_item("s2650", index, S.psu);
+	state_save_register_item("s2650", index, S.r);
+	state_save_register_item_array("s2650", index, S.reg);
+	state_save_register_item("s2650", index, S.halt);
+	state_save_register_item("s2650", index, S.ir);
+	state_save_register_item_array("s2650", index, S.ras);
+	state_save_register_item("s2650", index, S.irq_state);
 }
 
-static void s2650_reset(void *param)
+static void s2650_reset(void)
 {
+	int (*save_irqcallback)(int) = S.irq_callback;
 	memset(&S, 0, sizeof(S));
+	S.irq_callback = save_irqcallback;
 	S.psl = COM | WC;
 	S.psu = 0;
 }
@@ -1526,9 +1524,6 @@ static void s2650_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + S2650_HALT:			S.halt = info->i;						break;
 		case CPUINFO_INT_REGISTER + S2650_SI:			s2650_set_sense(info->i);				break;
 		case CPUINFO_INT_REGISTER + S2650_FO:			s2650_set_flag(info->i);				break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					S.irq_callback = info->irqcallback;		break;
 	}
 }
 
@@ -1680,9 +1675,6 @@ void s2650_get_info(UINT32 state, union cpuinfo *info)
 				break;
 		case CPUINFO_PTR_DISASSEMBLE:
 				info->disassemble = s2650_dasm;
-				break;
-		case CPUINFO_PTR_IRQ_CALLBACK:
-				info->irqcallback = S.irq_callback;
 				break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:
 				info->icount = &s2650_ICount;

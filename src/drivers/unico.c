@@ -23,7 +23,6 @@ Year + Game         PCB             Notes
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/eeprom.h"
 #include "unico.h"
 #include "sound/2151intf.h"
@@ -644,7 +643,7 @@ static const gfx_decode unico_gfxdecodeinfo[] =
 
 ***************************************************************************/
 
-MACHINE_INIT( unico )
+MACHINE_RESET( unico )
 {
 	unico_has_lightgun = 0;
 }
@@ -689,7 +688,7 @@ static MACHINE_DRIVER_START( burglarx )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(unico)
+	MDRV_MACHINE_RESET(unico)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -720,9 +719,9 @@ MACHINE_DRIVER_END
                                 Zero Point
 ***************************************************************************/
 
-MACHINE_INIT( zeropt )
+MACHINE_RESET( zeropt )
 {
-	machine_init_unico();
+	machine_reset_unico();
 	unico_has_lightgun = 1;
 }
 
@@ -736,7 +735,7 @@ static MACHINE_DRIVER_START( zeropnt )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(zeropt)
+	MDRV_MACHINE_RESET(zeropt)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -777,7 +776,7 @@ static MACHINE_DRIVER_START( zeropnt2 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(zeropt)
+	MDRV_MACHINE_RESET(zeropt)
 
 	MDRV_NVRAM_HANDLER(zeropnt2)
 

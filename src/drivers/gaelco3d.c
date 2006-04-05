@@ -208,14 +208,14 @@ static void init_machine_common(void)
 }
 
 
-static MACHINE_INIT( gaelco3d )
+static MACHINE_RESET( gaelco3d )
 {
 	init_machine_common();
 	tms_offset_xor = 0;
 }
 
 
-static MACHINE_INIT( gaelco3d2 )
+static MACHINE_RESET( gaelco3d2 )
 {
 	init_machine_common();
 	tms_offset_xor = BYTE_XOR_BE(0);
@@ -930,7 +930,7 @@ MACHINE_DRIVER_START( gaelco3d )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(gaelco3d)
+	MDRV_MACHINE_RESET(gaelco3d)
 	MDRV_NVRAM_HANDLER(gaelco3d)
 
 	MDRV_INTERLEAVE(100)
@@ -970,7 +970,7 @@ MACHINE_DRIVER_START( gaelco3d2 )
 
 	MDRV_CPU_REPLACE("tms", TMS32031, 50000000)
 
-	MDRV_MACHINE_INIT(gaelco3d2)
+	MDRV_MACHINE_RESET(gaelco3d2)
 MACHINE_DRIVER_END
 
 
@@ -1101,7 +1101,7 @@ static DRIVER_INIT( gaelco3d )
 	gaelco3d_mask_offset = memory_region_length(REGION_USER4);
 	gaelco3d_mask_size = memory_region_length(REGION_USER5) * 8;
 	if (memory_region_length(REGION_USER3) < gaelco3d_mask_offset + gaelco3d_mask_size)
-		osd_die("REGION_USER3 must be 0x%08X bytes or greater!\n", gaelco3d_mask_offset + gaelco3d_mask_size);
+		fatalerror("REGION_USER3 must be 0x%08X bytes or greater!", gaelco3d_mask_offset + gaelco3d_mask_size);
 
 	/* first expand the pixel data */
 	src = memory_region(REGION_USER4);

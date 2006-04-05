@@ -62,8 +62,7 @@
 **
 */
 
-#include "driver.h"
-#include "state.h"
+#include "sndintrf.h"
 #include "ymdeltat.h"
 
 #define YM_DELTAT_DELTA_MAX (24576)
@@ -77,13 +76,13 @@
 
 /* Forecast to next Forecast (rate = *8) */
 /* 1/8 , 3/8 , 5/8 , 7/8 , 9/8 , 11/8 , 13/8 , 15/8 */
-const INT32 ym_deltat_decode_tableB1[16] = {
+static const INT32 ym_deltat_decode_tableB1[16] = {
   1,   3,   5,   7,   9,  11,  13,  15,
   -1,  -3,  -5,  -7,  -9, -11, -13, -15,
 };
 /* delta to next delta (rate= *64) */
 /* 0.9 , 0.9 , 0.9 , 0.9 , 1.2 , 1.6 , 2.0 , 2.4 */
-const INT32 ym_deltat_decode_tableB2[16] = {
+static const INT32 ym_deltat_decode_tableB2[16] = {
   57,  57,  57,  57, 77, 102, 128, 153,
   57,  57,  57,  57, 77, 102, 128, 153
 };
@@ -457,13 +456,13 @@ void YM_DELTAT_postload(YM_DELTAT *DELTAT,UINT8 *regs)
 void YM_DELTAT_savestate(const char *statename,int num,YM_DELTAT *DELTAT)
 {
 #ifdef __STATE_H__
-	state_save_register_UINT8 (statename, num, "DeltaT.portstate", &DELTAT->portstate, 1);
-	state_save_register_UINT32(statename, num, "DeltaT.address"  , &DELTAT->now_addr , 1);
-	state_save_register_UINT32(statename, num, "DeltaT.step"     , &DELTAT->now_step , 1);
-	state_save_register_INT32 (statename, num, "DeltaT.acc"      , &DELTAT->acc      , 1);
-	state_save_register_INT32 (statename, num, "DeltaT.prev_acc" , &DELTAT->prev_acc , 1);
-	state_save_register_INT32 (statename, num, "DeltaT.adpcmd"   , &DELTAT->adpcmd   , 1);
-	state_save_register_INT32 (statename, num, "DeltaT.adpcml"   , &DELTAT->adpcml   , 1);
+	state_save_register_item(statename, num, DELTAT->portstate);
+	state_save_register_item(statename, num, DELTAT->now_addr);
+	state_save_register_item(statename, num, DELTAT->now_step);
+	state_save_register_item(statename, num, DELTAT->acc);
+	state_save_register_item(statename, num, DELTAT->prev_acc);
+	state_save_register_item(statename, num, DELTAT->adpcmd);
+	state_save_register_item(statename, num, DELTAT->adpcml);
 #endif
 }
 

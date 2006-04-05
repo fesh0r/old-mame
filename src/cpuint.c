@@ -11,14 +11,10 @@
 
 #include <signal.h>
 #include "driver.h"
-#include "timer.h"
-#include "state.h"
-#include "mamedbg.h"
-#include "hiscore.h"
-#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
-#include "debugcpu.h"
-#endif
 
+#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#include "debug/debugcpu.h"
+#endif
 
 
 /*************************************
@@ -45,19 +41,11 @@
 
 #define VERIFY_ACTIVECPU(retval, name)						\
 	int activecpu = cpu_getactivecpu();						\
-	if (activecpu < 0)										\
-	{														\
-		logerror(#name "() called with no active cpu!\n");	\
-		return retval;										\
-	}
+	assert_always(activecpu >= 0, #name "() called with no active cpu!")
 
 #define VERIFY_ACTIVECPU_VOID(name)							\
 	int activecpu = cpu_getactivecpu();						\
-	if (activecpu < 0)										\
-	{														\
-		logerror(#name "() called with no active cpu!\n");	\
-		return;												\
-	}
+	assert_always(activecpu >= 0, #name "() called with no active cpu!")
 
 
 
@@ -68,7 +56,6 @@
  *************************************/
 
 /* current states for each CPU */
-static UINT8 interrupt_enable[MAX_CPU];
 static INT32 interrupt_vector[MAX_CPU][MAX_INPUT_LINES];
 
 /* deferred states written in callbacks */
@@ -130,6 +117,11 @@ int cpuint_init(void)
 
 	/* loop over all CPUs and input lines */
 	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+	{
+		/* reset any driver hooks into the IRQ acknowledge callbacks */
+		drv_irq_callbacks[cpunum] = NULL;
+
+		/* clear out all the CPU states */
 		for (line = 0; line < MAX_INPUT_LINES; line++)
 		{
 			input_line_state[cpunum][line] = CLEAR_LINE;
@@ -137,13 +129,13 @@ int cpuint_init(void)
 			input_line_vector[cpunum][line] = cputype_default_irq_vector(Machine->drv->cpu[cpunum].cpu_type);
 			input_event_index[cpunum][line] = 0;
 		}
+	}
 
 	/* set up some stuff to save */
 	state_save_push_tag(0);
-	state_save_register_UINT8("cpu", 0, "irq enable",  interrupt_enable,  cpu_gettotalcpu());
-	state_save_register_INT32("cpu", 0, "irq vector",  &interrupt_vector[0][0],cpu_gettotalcpu() * MAX_INPUT_LINES);
-	state_save_register_UINT8("cpu", 0, "line state",  &input_line_state[0][0],  cpu_gettotalcpu() * MAX_INPUT_LINES);
-	state_save_register_INT32("cpu", 0, "line vector", &input_line_vector[0][0], cpu_gettotalcpu() * MAX_INPUT_LINES);
+	state_save_register_item_2d_array("cpu", 0, interrupt_vector);
+	state_save_register_item_2d_array("cpu", 0, input_line_state);
+	state_save_register_item_2d_array("cpu", 0, input_line_vector);
 	state_save_pop_tag();
 
 	return 0;
@@ -157,21 +149,17 @@ int cpuint_init(void)
  *
  *************************************/
 
-void cpuint_reset_cpu(int cpunum)
+void cpuint_reset(void)
 {
-	int line;
+	int cpunum, line;
 
-	/* start with interrupts enabled, so the generic routine will work even if */
-	/* the machine doesn't have an interrupt enable port */
-	interrupt_enable[cpunum] = 1;
-	for (line = 0; line < MAX_INPUT_LINES; line++)
-	{
-		interrupt_vector[cpunum][line] = cpunum_default_irq_vector(cpunum);
-		input_event_index[cpunum][line] = 0;
-	}
-
-	/* reset any driver hooks into the IRQ acknowledge callbacks */
-	drv_irq_callbacks[cpunum] = NULL;
+	/* loop over CPUs */
+	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+		for (line = 0; line < MAX_INPUT_LINES; line++)
+		{
+			interrupt_vector[cpunum][line] = cpunum_default_irq_vector(cpunum);
+			input_event_index[cpunum][line] = 0;
+		}
 }
 
 
@@ -222,7 +210,7 @@ static void cpunum_empty_event_queue(int cpu_and_inputline)
 				/* if we're clearing the line that was previously asserted, or if we're just */
 				/* pulsing the line, reset the CPU */
 				if ((state == CLEAR_LINE && cpunum_is_suspended(cpunum, SUSPEND_REASON_RESET)) || state == PULSE_LINE)
-					cpunum_reset(cpunum, Machine->drv->cpu[cpunum].reset_param, cpu_irq_callbacks[cpunum]);
+					cpunum_reset(cpunum);
 
 				/* if we're clearing the line, make sure the CPU is not halted */
 				cpunum_resume(cpunum, SUSPEND_REASON_RESET);
@@ -350,7 +338,7 @@ void cpunum_set_input_line_and_vector(int cpunum, int line, int state, int vecto
  *
  *************************************/
 
-void cpu_set_irq_callback(int cpunum, int (*callback)(int))
+void cpunum_set_irq_callback(int cpunum, int (*callback)(int))
 {
 	drv_irq_callbacks[cpunum] = callback;
 }
@@ -401,168 +389,3 @@ static int cpu_7_irq_callback(int line) { return cpu_irq_callback(7, line); }
 
 
 
-/*************************************
- *
- *  NMI interrupt generation
- *
- *************************************/
-
-INTERRUPT_GEN( nmi_line_pulse )
-{
-	int cpunum = cpu_getactivecpu();
-	if (interrupt_enable[cpunum])
-		cpunum_set_input_line(cpunum, INPUT_LINE_NMI, PULSE_LINE);
-}
-
-INTERRUPT_GEN( nmi_line_assert )
-{
-	int cpunum = cpu_getactivecpu();
-	if (interrupt_enable[cpunum])
-		cpunum_set_input_line(cpunum, INPUT_LINE_NMI, ASSERT_LINE);
-}
-
-
-
-/*************************************
- *
- *  IRQ n interrupt generation
- *
- *************************************/
-
-INLINE void irqn_line_hold(int line)
-{
-	int cpunum = cpu_getactivecpu();
-	if (interrupt_enable[cpunum])
-	{
-		int vector = (line >= 0 && line < MAX_INPUT_LINES) ? interrupt_vector[cpunum][line] : 0xff;
-		cpunum_set_input_line_and_vector(cpunum, line, HOLD_LINE, vector);
-	}
-}
-
-INLINE void irqn_line_pulse(int line)
-{
-	int cpunum = cpu_getactivecpu();
-	if (interrupt_enable[cpunum])
-	{
-		int vector = (line >= 0 && line < MAX_INPUT_LINES) ? interrupt_vector[cpunum][line] : 0xff;
-		cpunum_set_input_line_and_vector(cpunum, line, PULSE_LINE, vector);
-	}
-}
-
-INLINE void irqn_line_assert(int line)
-{
-	int cpunum = cpu_getactivecpu();
-	if (interrupt_enable[cpunum])
-	{
-		int vector = (line >= 0 && line < MAX_INPUT_LINES) ? interrupt_vector[cpunum][line] : 0xff;
-		cpunum_set_input_line_and_vector(cpunum, line, ASSERT_LINE, vector);
-	}
-}
-
-
-
-/*************************************
- *
- *  IRQ interrupt generation
- *
- *************************************/
-
-INTERRUPT_GEN( irq0_line_hold )		{ irqn_line_hold(0); }
-INTERRUPT_GEN( irq0_line_pulse )	{ irqn_line_pulse(0); }
-INTERRUPT_GEN( irq0_line_assert )	{ irqn_line_assert(0); }
-
-INTERRUPT_GEN( irq1_line_hold )		{ irqn_line_hold(1); }
-INTERRUPT_GEN( irq1_line_pulse )	{ irqn_line_pulse(1); }
-INTERRUPT_GEN( irq1_line_assert )	{ irqn_line_assert(1); }
-
-INTERRUPT_GEN( irq2_line_hold )		{ irqn_line_hold(2); }
-INTERRUPT_GEN( irq2_line_pulse )	{ irqn_line_pulse(2); }
-INTERRUPT_GEN( irq2_line_assert )	{ irqn_line_assert(2); }
-
-INTERRUPT_GEN( irq3_line_hold )		{ irqn_line_hold(3); }
-INTERRUPT_GEN( irq3_line_pulse )	{ irqn_line_pulse(3); }
-INTERRUPT_GEN( irq3_line_assert )	{ irqn_line_assert(3); }
-
-INTERRUPT_GEN( irq4_line_hold )		{ irqn_line_hold(4); }
-INTERRUPT_GEN( irq4_line_pulse )	{ irqn_line_pulse(4); }
-INTERRUPT_GEN( irq4_line_assert )	{ irqn_line_assert(4); }
-
-INTERRUPT_GEN( irq5_line_hold )		{ irqn_line_hold(5); }
-INTERRUPT_GEN( irq5_line_pulse )	{ irqn_line_pulse(5); }
-INTERRUPT_GEN( irq5_line_assert )	{ irqn_line_assert(5); }
-
-INTERRUPT_GEN( irq6_line_hold )		{ irqn_line_hold(6); }
-INTERRUPT_GEN( irq6_line_pulse )	{ irqn_line_pulse(6); }
-INTERRUPT_GEN( irq6_line_assert )	{ irqn_line_assert(6); }
-
-INTERRUPT_GEN( irq7_line_hold )		{ irqn_line_hold(7); }
-INTERRUPT_GEN( irq7_line_pulse )	{ irqn_line_pulse(7); }
-INTERRUPT_GEN( irq7_line_assert )	{ irqn_line_assert(7); }
-
-
-
-#if 0
-#pragma mark -
-#pragma mark OBSOLETE INTERRUPT HANDLING
-#endif
-
-/*************************************
- *
- *  Interrupt enabling
- *
- *************************************/
-
-static void cpu_clearintcallback(int cpunum)
-{
-	int inputcount = cpunum_input_lines(cpunum);
-	int line;
-
-	cpuintrf_push_context(cpunum);
-
-	/* clear NMI and all inputs */
-	activecpu_set_input_line(INPUT_LINE_NMI, INTERNAL_CLEAR_LINE);
-	for (line = 0; line < inputcount; line++)
-		activecpu_set_input_line(line, INTERNAL_CLEAR_LINE);
-
-	cpuintrf_pop_context();
-}
-
-
-void cpu_interrupt_enable(int cpunum,int enabled)
-{
-	interrupt_enable[cpunum] = enabled;
-
-LOG(("CPU#%d interrupt_enable=%d\n", cpunum, enabled));
-
-	/* make sure there are no queued interrupts */
-	if (enabled == 0)
-		mame_timer_set(time_zero, cpunum, cpu_clearintcallback);
-}
-
-
-WRITE8_HANDLER( interrupt_enable_w )
-{
-	VERIFY_ACTIVECPU_VOID(interrupt_enable_w);
-	cpu_interrupt_enable(activecpu, data);
-}
-
-
-READ8_HANDLER( interrupt_enable_r )
-{
-	VERIFY_ACTIVECPU(1, interrupt_enable_r);
-	return interrupt_enable[activecpu];
-}
-
-
-WRITE8_HANDLER( interrupt_vector_w )
-{
-	VERIFY_ACTIVECPU_VOID(interrupt_vector_w);
-	if (interrupt_vector[activecpu][0] != data)
-	{
-		LOG(("CPU#%d interrupt_vector_w $%02x\n", activecpu, data));
-		interrupt_vector[activecpu][0] = data;
-
-		/* make sure there are no queued interrupts */
-		mame_timer_set(time_zero, activecpu, cpu_clearintcallback);
-	}
-}

@@ -124,7 +124,6 @@ out:
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/crtc6845.h"
 #include "cpu/tms32010/tms32010.h"
 #include "twincobr.h"
@@ -184,7 +183,7 @@ static ADDRESS_MAP_START( main_program_map, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x8000, 0x8fff) AM_WRITE(wardner_sprite_w) AM_BASE((void *)&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x9000, 0x9fff) AM_ROM
-	AM_RANGE(0xa000, 0xadff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_w) AM_BASE(&paletteram)
+	AM_RANGE(0xa000, 0xadff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0xae00, 0xafff) AM_RAM
 	AM_RANGE(0xb000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM AM_SHARE(1)	/* Shared RAM with Sound Z80 */
@@ -480,7 +479,7 @@ static MACHINE_DRIVER_START( wardner )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)					/* 100 CPU slices per frame */
 
-	MDRV_MACHINE_INIT(wardner)
+	MDRV_MACHINE_RESET(wardner)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM)

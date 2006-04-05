@@ -10,7 +10,6 @@ press F1+F3 to see ROM/RAM tests and the final animation
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/z80/z80.h"
 #include "sound/2608intf.h"
@@ -26,7 +25,7 @@ VIDEO_START( tail2nos );
 VIDEO_UPDATE( tail2nos );
 
 
-static MACHINE_INIT( tail2nos )
+static MACHINE_RESET( tail2nos )
 {
 	/* point to the extra ROMs */
 	memory_set_bankptr(1,memory_region(REGION_USER1));
@@ -279,7 +278,7 @@ static MACHINE_DRIVER_START( tail2nos )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(tail2nos)
+	MDRV_MACHINE_RESET(tail2nos)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

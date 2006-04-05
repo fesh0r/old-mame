@@ -106,7 +106,6 @@
 
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
-#include "vidhrdw/generic.h"
 #include "sound/2151intf.h"
 #include "sound/upd7759.h"
 #include <math.h>
@@ -151,7 +150,7 @@ static void ym2151_irq_gen(int state)
 }
 
 
-MACHINE_INIT( rpunch )
+MACHINE_RESET( rpunch )
 {
 	memcpy(memory_region(REGION_SOUND1), memory_region(REGION_SOUND1) + 0x20000, 0x20000);
 }
@@ -164,7 +163,7 @@ MACHINE_INIT( rpunch )
  *
  *************************************/
 
-READ16_HANDLER( common_port_r )
+static READ16_HANDLER( common_port_r )
 {
 	return readinputport(offset) | readinputport(2);
 }
@@ -177,7 +176,7 @@ READ16_HANDLER( common_port_r )
  *
  *************************************/
 
-void sound_command_w_callback(int data)
+static void sound_command_w_callback(int data)
 {
 	sound_busy = 1;
 	sound_data = data;
@@ -213,7 +212,7 @@ static READ16_HANDLER( sound_busy_r )
  *
  *************************************/
 
-WRITE8_HANDLER( upd_control_w )
+static WRITE8_HANDLER( upd_control_w )
 {
 	if ((data & 1) != upd_rom_bank)
 	{
@@ -224,7 +223,7 @@ WRITE8_HANDLER( upd_control_w )
 }
 
 
-WRITE8_HANDLER( upd_data_w )
+static WRITE8_HANDLER( upd_data_w )
 {
 	upd7759_port_w(0, data);
 	upd7759_start_w(0, 0);
@@ -628,7 +627,7 @@ static MACHINE_DRIVER_START( rpunch )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(rpunch)
+	MDRV_MACHINE_RESET(rpunch)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

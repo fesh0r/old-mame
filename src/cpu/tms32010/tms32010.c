@@ -50,14 +50,8 @@
 
 
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include "driver.h"
-#include "cpuintrf.h"
-#include "mamedbg.h"
-#include "state.h"
 #include "tms32010.h"
+#include "debugger.h"
 
 
 /* 1 cycle equals 4 clock ticks */
@@ -733,31 +727,29 @@ static opcode_fn opcode_7F_other[32]=
 /****************************************************************************
  *  Inits CPU emulation
  ****************************************************************************/
-static void tms32010_init (void)
+static void tms32010_init (int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
-
-	state_save_register_UINT16("tms32010", cpu, "PC", &R.PC, 1);
-	state_save_register_UINT16("tms32010", cpu, "PrevPC", &R.PREVPC, 1);
-	state_save_register_UINT16("tms32010", cpu, "STR", &R.STR, 1);
-	state_save_register_UINT32("tms32010", cpu, "ACC", &R.ACC.d, 1);
-	state_save_register_UINT32("tms32010", cpu, "ALU", &R.ALU.d, 1);
-	state_save_register_UINT32("tms32010", cpu, "Preg", &R.Preg.d, 1);
-	state_save_register_UINT16("tms32010", cpu, "Treg", &R.Treg, 1);
-	state_save_register_UINT16("tms32010", cpu, "AR0", &R.AR[0], 1);
-	state_save_register_UINT16("tms32010", cpu, "AR1", &R.AR[1], 1);
-	state_save_register_UINT16("tms32010", cpu, "Stack0", &R.STACK[0], 1);
-	state_save_register_UINT16("tms32010", cpu, "Stack1", &R.STACK[1], 1);
-	state_save_register_UINT16("tms32010", cpu, "Stack2", &R.STACK[2], 1);
-	state_save_register_UINT16("tms32010", cpu, "Stack3", &R.STACK[3], 1);
-	state_save_register_INT32("tms32010",  cpu, "IRQ_Flag", &R.INTF, 1);
-	state_save_register_UINT32("tms32010", cpu, "Opcode", &R.opcode.d, 1);
+	state_save_register_item("tms32010", index, R.PC);
+	state_save_register_item("tms32010", index, R.PREVPC);
+	state_save_register_item("tms32010", index, R.STR);
+	state_save_register_item("tms32010", index, R.ACC.d);
+	state_save_register_item("tms32010", index, R.ALU.d);
+	state_save_register_item("tms32010", index, R.Preg.d);
+	state_save_register_item("tms32010", index, R.Treg);
+	state_save_register_item("tms32010", index, R.AR[0]);
+	state_save_register_item("tms32010", index, R.AR[1]);
+	state_save_register_item("tms32010", index, R.STACK[0]);
+	state_save_register_item("tms32010", index, R.STACK[1]);
+	state_save_register_item("tms32010", index, R.STACK[2]);
+	state_save_register_item("tms32010", index, R.STACK[3]);
+	state_save_register_item("tms32010", index, R.INTF);
+	state_save_register_item("tms32010", index, R.opcode.d);
 }
 
 /****************************************************************************
  *  Reset registers to their initial values
  ****************************************************************************/
-static void tms32010_reset (void *param)
+static void tms32010_reset (void)
 {
 	R.PC    = 0;
 	R.STR   = 0xfefe;
@@ -906,9 +898,6 @@ static void tms32010_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + TMS32010_TREG:		R.Treg   = info->i;						break;
 		case CPUINFO_INT_REGISTER + TMS32010_AR0:		R.AR[0]  = info->i;						break;
 		case CPUINFO_INT_REGISTER + TMS32010_AR1:		R.AR[1]  = info->i;						break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					/* not supported */						break;
 	}
 }
 
@@ -969,7 +958,6 @@ void tms32010_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = tms32010_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = tms32010_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					/* not supported */						break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &tms32010_icount;		break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = tms32010_reg_layout;			break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = tms32010_win_layout;			break;

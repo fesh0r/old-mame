@@ -22,7 +22,8 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "k051649.h"
 
 #define FREQBASEBITS	16
@@ -222,7 +223,7 @@ WRITE8_HANDLER( K051649_keyonoff_w )
  * Generic get_info
  **************************************************************************/
 
-static void k051649_set_info(void *token, UINT32 state, union sndinfo *info)
+static void k051649_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -231,7 +232,7 @@ static void k051649_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void k051649_get_info(void *token, UINT32 state, union sndinfo *info)
+void k051649_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

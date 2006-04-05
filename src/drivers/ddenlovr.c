@@ -88,7 +88,7 @@ TODO:
 #include "sound/ay8910.h"
 #include "sound/okim6295.h"
 #include "sound/2413intf.h"
-#include "machine/random.h"
+#include "profiler.h"
 #include <time.h>
 
 static UINT8 *pixmap[8];
@@ -1375,9 +1375,6 @@ if (code_pressed(KEYCODE_Z))
 
 ***************************************************************************/
 
-extern void *record;
-extern void *playback;
-
 static WRITE8_HANDLER( rtc_w )
 {
 //  logerror("%04X: RTC reg %x = %02x\n", activecpu_get_pc(), offset, data);
@@ -1388,7 +1385,7 @@ static READ8_HANDLER( rtc_r )
 	struct tm *tm;
 	time_t tms;
 
-	if(record != 0 || playback != 0)
+	if (Machine->record_file != NULL || Machine->playback_file != NULL)
 		return 0;
 
 	time(&tms);
@@ -5767,7 +5764,7 @@ GAME( 1994, rongrong, 0,       rongrong, rongrong, rongrong, ROT0, "Nakanihon", 
 GAME( 1994, rongrngg, rongrong,rongrong, rongrong, rongrong, ROT0, "Nakanihon",                                   "Rong Rong (Germany)",                        GAME_NO_COCKTAIL | GAME_IMPERFECT_COLORS )
 GAME( 1995, mjdchuka, 0,       mjchuuka, mjchuuka, 0,        ROT0, "Dynax",                                       "Mahjong The Dai Chuuka Ken (China, v. D111)",GAME_NO_COCKTAIL )
 GAME( 1995, nettoqc,  0,       nettoqc,  nettoqc,  0,        ROT0, "Nakanihon",                                   "Nettoh Quiz Champion (Japan)",               GAME_NO_COCKTAIL | GAME_IMPERFECT_COLORS )
-GAME( 1996, ddenlovr, 0,       ddenlovr, ddenlovr, 0,        ROT0, "Dynax",                                       "Don Den Lover Vol. 1 (Hong Kong)",           GAME_NO_COCKTAIL | GAME_IMPERFECT_COLORS )
+GAME( 1996, ddenlovr, 0,       ddenlovr, ddenlovr, 0,        ROT0, "Dynax",                                       "Don Den Lover Vol. 1 (Hong Kong)",           GAME_NO_COCKTAIL )
 GAME( 1996, hanakanz, 0,       hanakanz, hanakanz, 0,        ROT0, "Dynax",                                       "Hana Kanzashi (Japan)",                      GAME_NO_COCKTAIL )
 GAME( 1997, hkagerou, 0,       hkagerou, hkagerou, 0,        ROT0, "Nakanihon + Dynax",                           "Hana Kagerou [BET] (Japan)",                 GAME_NO_COCKTAIL )
 GAME( 1998, mjchuuka, 0,       mjchuuka, mjchuuka, 0,        ROT0, "Dynax",                                       "Mahjong Chuukanejyo (China)",                GAME_NO_COCKTAIL )

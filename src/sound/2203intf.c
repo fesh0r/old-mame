@@ -1,6 +1,6 @@
 #include <math.h>
-#include "driver.h"
-#include "state.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "2203intf.h"
 #include "fm.h"
 
@@ -241,7 +241,7 @@ WRITE8_HANDLER( YM2203_word_1_w )
  * Generic get_info
  **************************************************************************/
 
-static void ym2203_set_info(void *token, UINT32 state, union sndinfo *info)
+static void ym2203_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -250,7 +250,7 @@ static void ym2203_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void ym2203_get_info(void *token, UINT32 state, union sndinfo *info)
+void ym2203_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

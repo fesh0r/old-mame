@@ -5,11 +5,12 @@
 
 
 
-/************* Driver stuff ******* drivers/wardner.c **************/
+/*----------- defined in drivers/wardner.c -----------*/
+
 extern void wardner_restore_bank(void);
 
+/*----------- defined in machine/twincobr.c -----------*/
 
-/************* Machine stuff ****** machine/twincobr.c *************/
 INTERRUPT_GEN( twincobr_interrupt );
 INTERRUPT_GEN( wardner_interrupt );
 
@@ -31,8 +32,8 @@ WRITE16_HANDLER( wardner_dsp_w );
 WRITE8_HANDLER(   wardner_control_w );
 WRITE8_HANDLER(   wardner_coin_dsp_w );
 
-MACHINE_INIT( twincobr_reset );
-MACHINE_INIT( wardner );
+MACHINE_RESET( twincobr_reset );
+MACHINE_RESET( wardner );
 
 extern void twincobr_driver_savestate(void);
 extern void wardner_driver_savestate(void);
@@ -44,7 +45,7 @@ extern int wardner_membank;
 extern UINT8 *twincobr_sharedram;
 
 
-/************* Video stuff ****** vidhrdw/twincobr.c *************/
+/*----------- defined in vidhrdw/twincobr.c -----------*/
 
 extern void twincobr_flipscreen(int flip);
 extern void twincobr_display(int enable);

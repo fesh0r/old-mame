@@ -18,7 +18,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "subs.h"
 #include "sound/discrete.h"
 
@@ -200,10 +199,10 @@ static MACHINE_DRIVER_START( subs )
 	MDRV_FRAMES_PER_SECOND(57)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(subs)
+	MDRV_MACHINE_RESET(subs)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_DUAL_MONITOR)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_ASPECT_RATIO(8,3)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_VISIBLE_AREA(0*8, 64*8-1, 0*8, 28*8-1)

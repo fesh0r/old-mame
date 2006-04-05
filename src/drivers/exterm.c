@@ -102,7 +102,7 @@ static void master_sound_nmi_callback(int param);
  *
  *************************************/
 
-static MACHINE_INIT( exterm )
+static MACHINE_RESET( exterm )
 {
 	sound_nmi_timer = timer_alloc(master_sound_nmi_callback);
 }
@@ -219,7 +219,7 @@ static void sound_delayed_w(int data)
 }
 
 
-WRITE16_HANDLER( sound_latch_w )
+static WRITE16_HANDLER( sound_latch_w )
 {
 	if (ACCESSING_LSB)
 		timer_set(TIME_NOW, data & 0xff, sound_delayed_w);
@@ -487,7 +487,7 @@ static MACHINE_DRIVER_START( exterm )
 	MDRV_VBLANK_DURATION((1000000 * (263 - 240)) / (60 * 263))
 	MDRV_INTERLEAVE(100)
 
-	MDRV_MACHINE_INIT(exterm)
+	MDRV_MACHINE_RESET(exterm)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */

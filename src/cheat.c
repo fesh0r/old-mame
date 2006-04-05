@@ -865,6 +865,8 @@ const char	* cheatfile = NULL;
 
 /**** Local Globals **********************************************************/
 
+static mame_timer			* periodic_timer;
+
 static CheatEntry			* cheatList = NULL;
 static INT32				cheatListLength = 0;
 
@@ -1102,14 +1104,14 @@ static const UINT32 kPrefillValueTable[] =
 	0x01
 };
 
-const char *	kWatchLabelStringList[] =
+static const char * kWatchLabelStringList[] =
 {
 	"None",
 	"Address",
 	"String"
 };
 
-const char *	kWatchDisplayTypeStringList[] =
+static const char * kWatchDisplayTypeStringList[] =
 {
 	"Hex",
 	"Decimal",
@@ -1118,6 +1120,9 @@ const char *	kWatchDisplayTypeStringList[] =
 };
 
 /**** Function Prototypes ****************************************************/
+
+static void 	cheat_periodic(int param);
+static void 	cheat_exit(void);
 
 static int		ShiftKeyPressed(void);
 static int		ControlKeyPressed(void);
@@ -1784,9 +1789,14 @@ void cheat_init(void)
 	AllocateSearchRegions(GetCurrentSearch());
 
 	InitStringTable();
+
+	periodic_timer = timer_alloc(cheat_periodic);
+	timer_adjust(periodic_timer, TIME_IN_HZ(Machine->refresh_rate), 0, TIME_IN_HZ(Machine->refresh_rate));
+
+	add_exit_callback(cheat_exit);
 }
 
-void cheat_exit(void)
+static void cheat_exit(void)
 {
 	int	i;
 
@@ -2076,7 +2086,7 @@ static void RebuildStringTables(void)
 		(!menuStrings.subStrings && menuStrings.numStrings) ||
 		(!menuStrings.buf && storageNeeded))
 	{
-		osd_die(	"cheat: memory allocation error\n"
+		fatalerror(	"cheat: memory allocation error\n"
 					"	length =			%.8X\n"
 					"	numStrings =		%.8X\n"
 					"	mainStringLength =	%.8X\n"
@@ -5569,6 +5579,8 @@ static int ViewSearchResults(int selection, int firstTime)
 
 	if(resultsPerPage <= 0)
 		resultsPerPage = 1;
+	else if(resultsPerPage > kMaxResultsPerPage)
+		resultsPerPage = kMaxResultsPerPage;
 
 	if(region->flags & kRegionFlag_Enabled)
 		numPages = (region->numResults / kSearchByteStep[search->bytes] + resultsPerPage - 1) / resultsPerPage;
@@ -6055,7 +6067,7 @@ static int EditWatch(WatchInfo * entry, int selection)
 		kMenu_Return
 	};
 
-	const char *	kWatchSizeStringList[] =
+	static const char * kWatchSizeStringList[] =
 	{
 		"8 Bit",
 		"16 Bit",
@@ -7057,7 +7069,7 @@ static int SelectOptions(int selection)
 	return sel + 1;
 }
 
-void cheat_periodic(void)
+void cheat_periodic(int param)
 {
 	int	i;
 
@@ -8254,7 +8266,7 @@ static int ConvertOldCode(int code, int cpu, int * data, int * extendData)
 		UINT8	customField;
 	};
 
-	struct ConversionTable	kConversionTable[] =
+	static struct ConversionTable kConversionTable[] =
 	{
 		{	0,		0x00000000,	kCustomField_None },
 		{	1,		0x00000001,	kCustomField_None },

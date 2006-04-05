@@ -13,7 +13,6 @@ Might be some priority glitches
 ***/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/3812intf.h"
 #include "sound/msm5205.h"
@@ -166,7 +165,7 @@ static ADDRESS_MAP_START( writemem_6206C, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0xc000, 0xd7ff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITE(MWA8_RAM) AM_BASE(&tbowl_spriteram)
-	AM_RANGE(0xe000, 0xefff) AM_WRITE(paletteram_xxxxBBBBRRRRGGGG_swap_w) AM_BASE(&paletteram) // 2x palettes, one for each monitor?
+	AM_RANGE(0xe000, 0xefff) AM_WRITE(paletteram_xxxxBBBBRRRRGGGG_be_w) AM_BASE(&paletteram) // 2x palettes, one for each monitor?
 	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(shared_w)
 	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(tbowlc_bankswitch_w)
@@ -607,7 +606,7 @@ static MACHINE_DRIVER_START( tbowl )
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_DUAL_MONITOR)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_ASPECT_RATIO(8,3)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_VISIBLE_AREA(0*8, 64*8-1, 2*8, 30*8-1)

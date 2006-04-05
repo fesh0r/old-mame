@@ -10,7 +10,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 
 extern UINT8 jackal_interrupt_enable;
@@ -20,7 +19,7 @@ UINT8 *jackal_rambank = 0;
 UINT8 *jackal_spritebank = 0;
 
 
-MACHINE_INIT( jackal )
+MACHINE_RESET( jackal )
 {
 	memory_set_bankptr(1,&((memory_region(REGION_CPU1))[0x4000]));
  	jackal_rambank = &((memory_region(REGION_CPU1))[0]);

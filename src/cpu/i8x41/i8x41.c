@@ -89,10 +89,7 @@
  *
  *****************************************************************************/
 
-#include <stdio.h>
-#include "driver.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "i8x41.h"
 
 typedef struct {
@@ -1325,24 +1322,25 @@ static UINT8 i8x41_cycles[] = {
  *  Inits CPU emulation
  ****************************************************************************/
 
-static void i8x41_init(void)
+static void i8x41_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
-	state_save_register_UINT16("i8x41", cpu, "PPC",       &i8x41.ppc,      1);
-	state_save_register_UINT16("i8x41", cpu, "PC",        &i8x41.pc,       1);
-	state_save_register_UINT8 ("i8x41", cpu, "TIMER",     &i8x41.timer,    1);
-	state_save_register_UINT8 ("i8x41", cpu, "PRESCALER", &i8x41.prescaler,1);
-	state_save_register_UINT16("i8x41", cpu, "SUBTYPE",   &i8x41.subtype,  1);
-	state_save_register_UINT8 ("i8x41", cpu, "A",         &i8x41.a,        1);
-	state_save_register_UINT8 ("i8x41", cpu, "PSW",       &i8x41.psw,      1);
-	state_save_register_UINT8 ("i8x41", cpu, "STATE",     &i8x41.state,    1);
-	state_save_register_UINT8 ("i8x41", cpu, "ENABLE",    &i8x41.enable,   1);
-	state_save_register_UINT8 ("i8x41", cpu, "CONTROL",   &i8x41.control,  1);
-	state_save_register_UINT8 ("i8x41", cpu, "DBBI",      &i8x41.dbbi,     1);
-	state_save_register_UINT8 ("i8x41", cpu, "DBBO",      &i8x41.dbbo,     1);
-	state_save_register_UINT8 ("i8x41", cpu, "P1",        &i8x41.p1,       1);
-	state_save_register_UINT8 ("i8x41", cpu, "P2",        &i8x41.p2,       1);
-	state_save_register_UINT8 ("i8x41", cpu, "P2_HS",     &i8x41.p2_hs,    1);
+	i8x41.irq_callback = irqcallback;
+
+	state_save_register_item("i8x41", index, i8x41.ppc);
+	state_save_register_item("i8x41", index, i8x41.pc);
+	state_save_register_item("i8x41", index, i8x41.timer);
+	state_save_register_item("i8x41", index, i8x41.prescaler);
+	state_save_register_item("i8x41", index, i8x41.subtype);
+	state_save_register_item("i8x41", index, i8x41.a);
+	state_save_register_item("i8x41", index, i8x41.psw);
+	state_save_register_item("i8x41", index, i8x41.state);
+	state_save_register_item("i8x41", index, i8x41.enable);
+	state_save_register_item("i8x41", index, i8x41.control);
+	state_save_register_item("i8x41", index, i8x41.dbbi);
+	state_save_register_item("i8x41", index, i8x41.dbbo);
+	state_save_register_item("i8x41", index, i8x41.p1);
+	state_save_register_item("i8x41", index, i8x41.p2);
+	state_save_register_item("i8x41", index, i8x41.p2_hs);
 }
 
 
@@ -1350,9 +1348,12 @@ static void i8x41_init(void)
  *  Reset registers to their initial values
  ****************************************************************************/
 
-static void i8x41_reset(void *param)
+static void i8x41_reset(void)
 {
+	int (*save_irqcallback)(int) = i8x41.irq_callback;
 	memset(&i8x41, 0, sizeof(I8X41));
+	i8x41.irq_callback = save_irqcallback;
+
 	/* default to 8041 behaviour for DBBI/DBBO and extended commands */
 	i8x41.subtype = 8041;
 	/* ugly hack.. excuse my lazyness */
@@ -2230,11 +2231,6 @@ static void i8x41_set_info(UINT32 state, union cpuinfo *info)
 			/* writing status.. hmm, should we issue interrupts here too? */
 			STATE = info->i;
 			break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:
-			i8x41.irq_callback = info->irqcallback;
-			break;
 	}
 }
 
@@ -2405,9 +2401,6 @@ void i8x41_get_info(UINT32 state, union cpuinfo *info)
 			break;
 		case CPUINFO_PTR_DISASSEMBLE:
 			info->disassemble = i8x41_dasm;
-			break;
-		case CPUINFO_PTR_IRQ_CALLBACK:
-			info->irqcallback = i8x41.irq_callback;
 			break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:
 			info->icount = &i8x41_ICount;

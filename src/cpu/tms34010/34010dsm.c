@@ -5,11 +5,7 @@
  *
  */
 
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include "osd_cpu.h"
-#include "driver.h"
+#include "cpuintrf.h"
 
 #ifdef STANDALONE
 #define PC __pc + (offset << 3)

@@ -1,29 +1,21 @@
-/*###################################################################################################
-**
-**
-**      jaguar.c
-**      Core implementation for the portable Jaguar DSP emulator.
-**      Written by Aaron Giles
-**
-**
-**#################################################################################################*/
+/***************************************************************************
 
-#include <stdio.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-#include "driver.h"
-#include "mamedbg.h"
-#include "state.h"
+    jaguar.c
+    Core implementation for the portable Jaguar DSP emulator.
+    Written by Aaron Giles
+
+***************************************************************************/
+
+#include "debugger.h"
 #include "jaguar.h"
 
 #define LOG_GPU_IO		0
 #define LOG_DSP_IO		0
 
 
-/*###################################################################################################
-**  CONSTANTS
-**#################################################################################################*/
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
 
 #define ZFLAG				0x00001
 #define CFLAG				0x00002
@@ -59,9 +51,9 @@
 
 
 
-/*###################################################################################################
-**  MACROS
-**#################################################################################################*/
+/***************************************************************************
+    MACROS
+***************************************************************************/
 
 #define PC				ctrl[G_PC]
 #define FLAGS			ctrl[G_FLAGS]
@@ -78,9 +70,9 @@
 
 
 
-/*###################################################################################################
-**  STRUCTURES & TYPEDEFS
-**#################################################################################################*/
+/***************************************************************************
+    STRUCTURES & TYPEDEFS
+***************************************************************************/
 
 /* Jaguar Registers */
 typedef struct
@@ -107,18 +99,18 @@ typedef struct
 
 
 
-/*###################################################################################################
-**  PUBLIC GLOBAL VARIABLES
-**#################################################################################################*/
+/***************************************************************************
+    PUBLIC GLOBAL VARIABLES
+***************************************************************************/
 
 static int	jaguar_icount;
 static int bankswitch_icount;
 
 
 
-/*###################################################################################################
-**  PRIVATE GLOBAL VARIABLES
-**#################################################################################################*/
+/***************************************************************************
+    PRIVATE GLOBAL VARIABLES
+***************************************************************************/
 
 static jaguar_regs	jaguar;
 static UINT16 *		mirror_table;
@@ -130,9 +122,9 @@ static const UINT32 convert_zero[32] =
 
 
 
-/*###################################################################################################
-**  FUNCTION TABLES
-**#################################################################################################*/
+/***************************************************************************
+    FUNCTION TABLES
+***************************************************************************/
 
 static void abs_rn(void);
 static void add_rn_rn(void);
@@ -247,17 +239,17 @@ static void (*dsp_op_table[64])(void) =
 
 
 
-/*###################################################################################################
-**  MEMORY ACCESSORS
-**#################################################################################################*/
+/***************************************************************************
+    MEMORY ACCESSORS
+***************************************************************************/
 
 #define ROPCODE(pc)		(cpu_readop16(WORD_XOR_BE((UINT32)(pc))))
 
 
 
-/*###################################################################################################
-**  INLINES
-**#################################################################################################*/
+/***************************************************************************
+    INLINES
+***************************************************************************/
 
 INLINE void update_register_banks(void)
 {
@@ -294,9 +286,9 @@ INLINE void update_register_banks(void)
 
 
 
-/*###################################################################################################
-**  IRQ HANDLING
-**#################################################################################################*/
+/***************************************************************************
+    IRQ HANDLING
+***************************************************************************/
 
 static void check_irqs(void)
 {
@@ -355,9 +347,9 @@ static void set_irq_line(int irqline, int state)
 
 
 
-/*###################################################################################################
-**  CONTEXT SWITCHING
-**#################################################################################################*/
+/***************************************************************************
+    CONTEXT SWITCHING
+***************************************************************************/
 
 static void jaguar_get_context(void *dst)
 {
@@ -378,9 +370,9 @@ static void jaguar_set_context(void *src)
 }
 
 
-/*###################################################################################################
-**  INITIALIZATION AND SHUTDOWN
-**#################################################################################################*/
+/***************************************************************************
+    INITIALIZATION AND SHUTDOWN
+***************************************************************************/
 
 static void init_tables(void)
 {
@@ -424,33 +416,45 @@ static void init_tables(void)
 			}
 }
 
-static void jaguar_state_register(const char *type)
+static void jaguar_state_register(int index, const char *type)
 {
-	int cpu = cpu_getactivecpu();
-	state_save_register_UINT32(type, cpu, "R",    jaguar.r, 32);
-	state_save_register_UINT32(type, cpu, "A",    jaguar.a, 32);
-	state_save_register_UINT32(type, cpu, "CTRL", jaguar.ctrl, G_CTRLMAX);
-	state_save_register_UINT32(type, cpu, "PPC",  &jaguar.ppc, 1);
+	state_save_register_item_array(type, index, jaguar.r);
+	state_save_register_item_array(type, index, jaguar.a);
+	state_save_register_item_array(type, index, jaguar.ctrl);
+	state_save_register_item(type, index, jaguar.ppc);
 	state_save_register_func_postload(update_register_banks);
 	state_save_register_func_postload(check_irqs);
 }
 
-static void jaguargpu_init(void)
+static void jaguargpu_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
-	jaguar_state_register("jaguargpu");
-}
+	const struct jaguar_config *config = _config;
 
-static void jaguardsp_init(void)
-{
-	jaguar_state_register("jaguardsp");
-}
+	memset(&jaguar, 0, sizeof(jaguar));
 
-INLINE void common_reset(struct jaguar_config *config)
-{
-	init_tables();
+	jaguar_state_register(index, "jaguargpu");
 
+	jaguar.irq_callback = irqcallback;
 	if (config)
 		jaguar.cpu_interrupt = config->cpu_int_callback;
+}
+
+static void jaguardsp_init(int index, int clock, const void *_config, int (*irqcallback)(int))
+{
+	const struct jaguar_config *config = _config;
+
+	memset(&jaguar, 0, sizeof(jaguar));
+
+	jaguar_state_register(index, "jaguardsp");
+
+	jaguar.irq_callback = irqcallback;
+	if (config)
+		jaguar.cpu_interrupt = config->cpu_int_callback;
+}
+
+INLINE void common_reset(void)
+{
+	init_tables();
 
 	jaguar.b0 = jaguar.r;
 	jaguar.b1 = jaguar.a;
@@ -458,16 +462,16 @@ INLINE void common_reset(struct jaguar_config *config)
 	change_pc(jaguar.PC);
 }
 
-static void jaguargpu_reset(void *param)
+static void jaguargpu_reset(void)
 {
-	common_reset(param);
+	common_reset();
 	jaguar.table = gpu_op_table;
 	jaguar.isdsp = 0;
 }
 
-static void jaguardsp_reset(void *param)
+static void jaguardsp_reset(void)
 {
-	common_reset(param);
+	common_reset();
 	jaguar.table = dsp_op_table;
 	jaguar.isdsp = 1;
 }
@@ -485,11 +489,11 @@ static void jaguar_exit(void)
 
 
 
-/*###################################################################################################
-**  CORE EXECUTION LOOP
-**#################################################################################################*/
+/***************************************************************************
+    CORE EXECUTION LOOP
+***************************************************************************/
 
-int jaguargpu_execute(int cycles)
+static int jaguargpu_execute(int cycles)
 {
 	/* if we're halted, we shouldn't be here */
 	if (!(jaguar.ctrl[G_CTRL] & 1))
@@ -512,7 +516,7 @@ int jaguargpu_execute(int cycles)
 	do
 	{
 		/* debugging */
-		//if (jaguar.PC < 0xf03000 || jaguar.PC > 0xf04000) { osd_die("GPU: jaguar.PC = %06X (ppc = %06X)\n", jaguar.PC, jaguar.ppc); }
+		//if (jaguar.PC < 0xf03000 || jaguar.PC > 0xf04000) { fatalerror("GPU: jaguar.PC = %06X (ppc = %06X)", jaguar.PC, jaguar.ppc); }
 		jaguar.ppc = jaguar.PC;
 		CALL_MAME_DEBUG;
 
@@ -535,7 +539,7 @@ int jaguargpu_execute(int cycles)
 	return cycles - jaguar_icount;
 }
 
-int jaguardsp_execute(int cycles)
+static int jaguardsp_execute(int cycles)
 {
 	/* if we're halted, we shouldn't be here */
 	if (!(jaguar.ctrl[G_CTRL] & 1))
@@ -558,7 +562,7 @@ int jaguardsp_execute(int cycles)
 	do
 	{
 		/* debugging */
-		//if (jaguar.PC < 0xf1b000 || jaguar.PC > 0xf1d000) { osd_die(stderr, "DSP: jaguar.PC = %06X\n", jaguar.PC); }
+		//if (jaguar.PC < 0xf1b000 || jaguar.PC > 0xf1d000) { fatalerror(stderr, "DSP: jaguar.PC = %06X", jaguar.PC); }
 		jaguar.ppc = jaguar.PC;
 		CALL_MAME_DEBUG;
 
@@ -583,9 +587,9 @@ int jaguardsp_execute(int cycles)
 
 
 
-/*###################################################################################################
-**  DEBUGGER DEFINITIONS
-**#################################################################################################*/
+/***************************************************************************
+    DEBUGGER DEFINITIONS
+***************************************************************************/
 
 static UINT8 jaguar_reg_layout[] =
 {
@@ -619,9 +623,9 @@ static UINT8 jaguar_win_layout[] =
 
 
 
-/*###################################################################################################
-**  DISASSEMBLY HOOK
-**#################################################################################################*/
+/***************************************************************************
+    DISASSEMBLY HOOK
+***************************************************************************/
 
 static offs_t jaguargpu_dasm(char *buffer, offs_t pc)
 {
@@ -647,9 +651,9 @@ static offs_t jaguardsp_dasm(char *buffer, offs_t pc)
 
 
 
-/*###################################################################################################
-**  OPCODES
-**#################################################################################################*/
+/***************************************************************************
+    OPCODES
+***************************************************************************/
 
 void abs_rn(void)
 {
@@ -1325,9 +1329,9 @@ void xor_rn_rn(void)
 
 
 
-/*###################################################################################################
-**  I/O HANDLING
-**#################################################################################################*/
+/***************************************************************************
+    I/O HANDLING
+***************************************************************************/
 
 UINT32 jaguargpu_ctrl_r(int cpunum, offs_t offset)
 {
@@ -1405,7 +1409,8 @@ void jaguargpu_ctrl_w(int cpunum, offs_t offset, UINT32 data, UINT32 mem_mask)
 			if ((oldval ^ newval) & 0x01)
 			{
 				cpunum_set_input_line(cpunum, INPUT_LINE_HALT, (newval & 1) ? CLEAR_LINE : ASSERT_LINE);
-				cpu_yield();
+				if (cpu_getexecutingcpu() >= 0)
+					cpu_yield();
 			}
 			if (newval & 0x02)
 			{
@@ -1437,9 +1442,9 @@ void jaguargpu_ctrl_w(int cpunum, offs_t offset, UINT32 data, UINT32 mem_mask)
 
 
 
-/*###################################################################################################
-**  I/O HANDLING
-**#################################################################################################*/
+/***************************************************************************
+    I/O HANDLING
+***************************************************************************/
 
 UINT32 jaguardsp_ctrl_r(int cpunum, offs_t offset)
 {
@@ -1519,7 +1524,8 @@ void jaguardsp_ctrl_w(int cpunum, offs_t offset, UINT32 data, UINT32 mem_mask)
 			if ((oldval ^ newval) & 0x01)
 			{
 				cpunum_set_input_line(cpunum, INPUT_LINE_HALT, (newval & 1) ? CLEAR_LINE : ASSERT_LINE);
-				cpu_yield();
+				if (cpu_getexecutingcpu() >= 0)
+					cpu_yield();
 			}
 			if (newval & 0x02)
 			{
@@ -1603,9 +1609,6 @@ static void jaguargpu_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + JAGUAR_R30:		jaguar.r[30] = info->i;						break;
 		case CPUINFO_INT_REGISTER + JAGUAR_R31:		jaguar.r[31] = info->i;						break;
 		case CPUINFO_INT_SP:						jaguar.b0[31] = info->i; 					break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:				jaguar.irq_callback = info->irqcallback;	break;
 	}
 }
 
@@ -1696,7 +1699,6 @@ void jaguargpu_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = jaguargpu_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = jaguargpu_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = jaguar.irq_callback; break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &jaguar_icount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = jaguar_reg_layout;			break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = jaguar_win_layout;			break;

@@ -1,14 +1,13 @@
-#include "cpuintrf.h"
-#include "osd_cpu.h"
-#include "mamedbg.h"
-#include "state.h"
+#include "debugger.h"
 #include "i960.h"
 #include "i960dis.h"
-
-#include <assert.h>
-#include <stdio.h>
-#include <stdarg.h>
 #include <math.h>
+
+#ifdef _MSC_VER
+/* logb prototype is different for MS Visual C */
+#include <float.h>
+#define logb _logb
+#endif
 
 
 // Warning, IP = Instruction Pointer, called PC outside of Intel
@@ -99,7 +98,7 @@ static void send_iac(UINT32 adr)
 		change_pc(i960.IP);
 		break;
 	default:
-		osd_die("I960: %x: IAC %08x %08x %08x %08x\n", i960.PIP, iac[0], iac[1], iac[2], iac[3]);
+		fatalerror("I960: %x: IAC %08x %08x %08x %08x", i960.PIP, iac[0], iac[1], iac[2], iac[3]);
 		break;
 	}
 }
@@ -147,7 +146,7 @@ static UINT32 get_ea(UINT32 opcode)
 			return ret;
 
 		default:
-			osd_die("I960: %x: unhandled MEMB mode %x\n", i960.PIP, mode);
+			fatalerror("I960: %x: unhandled MEMB mode %x", i960.PIP, mode);
 			return 0;
 		}
 	}
@@ -182,7 +181,7 @@ static void set_ri(UINT32 opcode, UINT32 val)
 	if(!(opcode & 0x00002000))
 		i960.r[(opcode>>19) & 0x1f] = val;
 	else {
-		osd_die("I960: %x: set_ri on literal?\n", i960.PIP);
+		fatalerror("I960: %x: set_ri on literal?", i960.PIP);
 	}
 }
 
@@ -194,7 +193,7 @@ static void set_ri2(UINT32 opcode, UINT32 val, UINT32 val2)
 		i960.r[((opcode>>19) & 0x1f)+1] = val2;
 	}
 	else {
-		osd_die("I960: %x: set_ri2 on literal?\n", i960.PIP);
+		fatalerror("I960: %x: set_ri2 on literal?", i960.PIP);
 	}
 }
 
@@ -204,7 +203,7 @@ static void set_ri64(UINT32 opcode, UINT64 val)
 		i960.r[(opcode>>19) & 0x1f] = val;
 		i960.r[((opcode>>19) & 0x1f)+1] = val >> 32;
 	} else
-		osd_die("I960: %x: set_ri64 on literal?\n", i960.PIP);
+		fatalerror("I960: %x: set_ri64 on literal?", i960.PIP);
 }
 
 static double get_1_rif(UINT32 opcode)
@@ -242,7 +241,7 @@ static void set_rif(UINT32 opcode, double val)
 	else if(!(opcode & 0x00e00000))
 		i960.fp[(opcode>>19) & 3] = val;
 	else
-		osd_die("I960: %x: set_rif on literal?\n", i960.PIP);
+		fatalerror("I960: %x: set_rif on literal?", i960.PIP);
 }
 
 static double get_1_rifl(UINT32 opcode)
@@ -286,7 +285,7 @@ static void set_rifl(UINT32 opcode, double val)
 	} else if(!(opcode & 0x00e00000))
 		i960.fp[(opcode>>19) & 3] = val;
 	else
-		osd_die("I960: %x: set_rifl on literal?\n", i960.PIP);
+		fatalerror("I960: %x: set_rifl on literal?", i960.PIP);
 }
 
 static UINT32 get_1_ci(UINT32 opcode)
@@ -447,7 +446,8 @@ static void check_irqs(void)
 	int cpu_pri = (i960.PC>>16)&0x1f;
 	int pending_pri;
 	int lvl, irq, take = -1;
-	int vword, lvlmask[4] = { 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000 };
+	int vword;
+	static const UINT32 lvlmask[4] = { 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000 };
 
 	pending_pri = program_read_dword_32le(int_tab);		// read pending priorities
 
@@ -602,7 +602,7 @@ static void do_ret(void)
 		break;
 
 	default:
-		osd_die("I960: %x: Unsupported return mode %d\n", i960.PIP, i960.r[I960_PFP] & 7);
+		fatalerror("I960: %x: Unsupported return mode %d", i960.PIP, i960.r[I960_PFP] & 7);
 	}
 }
 
@@ -956,7 +956,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 58.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 58.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1042,7 +1042,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 59.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 59.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1123,7 +1123,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 5a.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 5a.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1166,7 +1166,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 5b.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 5b.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1179,7 +1179,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 5c.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 5c.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1196,7 +1196,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 5d.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 5d.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1213,7 +1213,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 5e.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 5e.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1230,7 +1230,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 5f.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 5f.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1264,7 +1264,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 60.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 60.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1327,7 +1327,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 64.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 64.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1342,7 +1342,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 65.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 65.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1366,7 +1366,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 66.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 66.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1413,7 +1413,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 67.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 67.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1486,7 +1486,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 68.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 68.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1556,7 +1556,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 69.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 69.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1587,7 +1587,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 6c.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 6c.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1600,7 +1600,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 6d.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 6d.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1641,7 +1641,7 @@ static int i960_execute(int cycles)
 					set_rifl(opcode, -fabs(t1f));
 				break;
 			default:
-				osd_die("I960: %x: Unhandled 6e.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 6e.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1672,7 +1672,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 70.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 70.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1712,7 +1712,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 74.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 74.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1747,7 +1747,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 78.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 78.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1782,7 +1782,7 @@ static int i960_execute(int cycles)
 				break;
 
 			default:
-				osd_die("I960: %x: Unhandled 79.%x\n", i960.PIP, (opcode >> 7) & 0xf);
+				fatalerror("I960: %x: Unhandled 79.%x", i960.PIP, (opcode >> 7) & 0xf);
 			}
 			break;
 
@@ -1945,7 +1945,7 @@ static int i960_execute(int cycles)
 			break;
 
 		default:
-			osd_die("I960: %x: Unhandled %02x\n", i960.PIP, opcode >> 24);
+			fatalerror("I960: %x: Unhandled %02x", i960.PIP, opcode >> 24);
 		}
 	}
 	return cycles - i960_icount;
@@ -2044,33 +2044,31 @@ static void i960_set_info(UINT32 state, union cpuinfo *info)
 	switch(state) {
 		// Interfacing
 	case CPUINFO_INT_REGISTER+I960_IP: i960.IP = info->i; change_pc(i960.IP); 	break;
-	case CPUINFO_PTR_IRQ_CALLBACK:          i960.irq_cb = info->irqcallback;        break;
 	case CPUINFO_INT_INPUT_STATE + I960_IRQ0:set_irq_line(I960_IRQ0, info->i);		break;
 	case CPUINFO_INT_INPUT_STATE + I960_IRQ1:set_irq_line(I960_IRQ1, info->i);		break;
 	case CPUINFO_INT_INPUT_STATE + I960_IRQ2:set_irq_line(I960_IRQ2, info->i);		break;
 	case CPUINFO_INT_INPUT_STATE + I960_IRQ3:set_irq_line(I960_IRQ3, info->i);		break;
 
 	default:
-		osd_die("i960_set_info %x\n", state);
+		fatalerror("i960_set_info %x", state);
 	}
 }
 
-static void i960_init(void)
+static void i960_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
 	memset(&i960, 0, sizeof(i960));
-	i960.irq_cb = i960_default_irq_callback;
+	i960.irq_cb = irqcallback;
 
-	state_save_register_UINT32("i960", cpu, "ppc",       &i960.PIP, 1);
-	state_save_register_UINT32("i960", cpu, "sat",       &i960.SAT, 1);
-	state_save_register_UINT32("i960", cpu, "prcb",      &i960.PRCB, 1);
-	state_save_register_UINT32("i960", cpu, "pc",        &i960.PC, 1);
-	state_save_register_UINT32("i960", cpu, "ac",        &i960.AC, 1);
-	state_save_register_UINT32("i960", cpu, "icr",       &i960.ICR, 1);
-	state_save_register_UINT32("i960", cpu, "regs",      i960.r, 0x20);
- 	state_save_register_double("i960", cpu, "fpregs",    i960.fp, 4);
-	state_save_register_UINT32("i960", cpu, "rcache",    &i960.rcache[0][0], RCACHE_SIZE*0x10);
-	state_save_register_UINT32("i960", cpu, "rcache_fp", i960.rcache_frame_addr, RCACHE_SIZE);
+	state_save_register_item("i960", index, i960.PIP);
+	state_save_register_item("i960", index, i960.SAT);
+	state_save_register_item("i960", index, i960.PRCB);
+	state_save_register_item("i960", index, i960.PC);
+	state_save_register_item("i960", index, i960.AC);
+	state_save_register_item("i960", index, i960.ICR);
+	state_save_register_item_array("i960", index, i960.r);
+ 	state_save_register_item_array("i960", index, i960.fp);
+	state_save_register_item_2d_array("i960", index, i960.rcache);
+	state_save_register_item_array("i960", index, i960.rcache_frame_addr);
 }
 
 static offs_t i960_disasm(char *buffer, offs_t pc)
@@ -2089,7 +2087,7 @@ static offs_t i960_disasm(char *buffer, offs_t pc)
 #endif
 }
 
-static void i960_reset(void *param)
+static void i960_reset(void)
 {
 	i960.SAT        = program_read_dword_32le(0);
 	i960.PRCB       = program_read_dword_32le(4);
@@ -2157,13 +2155,12 @@ void i960_get_info(UINT32 state, union cpuinfo *info)
 	case CPUINFO_PTR_BURN:                info->burn        = 0;                  break;
 	case CPUINFO_PTR_DISASSEMBLE:         info->disassemble = i960_disasm;        break;
 	case CPUINFO_PTR_DISASSEMBLE_NEW:     info->disassemble_new = NULL;           break;
-	case CPUINFO_PTR_IRQ_CALLBACK:        info->irqcallback = i960.irq_cb;        break;
 	case CPUINFO_PTR_INSTRUCTION_COUNTER: info->icount      = &i960_icount;       break;
 	case CPUINFO_INT_CONTEXT_SIZE:        info->i           = sizeof(i960_state); break;
 	case CPUINFO_PTR_REGISTER_LAYOUT:     info->p = i960_reg_layout;			  break;
 	case CPUINFO_PTR_WINDOW_LAYOUT:	      info->p = i960_win_layout;			  break;
-	case CPUINFO_INT_MIN_INSTRUCTION_BYTES: info->i = 4;
-	case CPUINFO_INT_MAX_INSTRUCTION_BYTES: info->i = 8;
+	case CPUINFO_INT_MIN_INSTRUCTION_BYTES: info->i = 4;							break;
+	case CPUINFO_INT_MAX_INSTRUCTION_BYTES: info->i = 8;							break;
 
 		// Bus sizes
 	case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM: info->i = 32; break;
@@ -2194,7 +2191,7 @@ void i960_get_info(UINT32 state, union cpuinfo *info)
 
 		// CPU main state
 	case CPUINFO_INT_PC:                 info->i = i960.IP;                               break;
-	case CPUINFO_INT_SP:		     info->i = i960.r[I960_SP];                       break;
+	case CPUINFO_INT_SP:		     	info->i = i960.r[I960_SP];                       break;
 	case CPUINFO_INT_PREVIOUSPC:         info->i = i960.PIP;                              break;
 
 	case CPUINFO_INT_REGISTER + I960_SAT:  info->i = i960.SAT;                            break;
@@ -2247,7 +2244,7 @@ void i960_get_info(UINT32 state, union cpuinfo *info)
 	case CPUINFO_STR_REGISTER + I960_G15:	sprintf(info->s = cpuintrf_temp_str(), "fp   :%08x", i960.r[31]); break;
 
 //  default:
-//      osd_die("i960_get_info %x          \n", state);
+//      fatalerror("i960_get_info %x          ", state);
 	}
 }
 

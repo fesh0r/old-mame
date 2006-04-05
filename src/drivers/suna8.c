@@ -36,7 +36,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/2203intf.h"
@@ -542,7 +541,7 @@ static ADDRESS_MAP_START( hardhead_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM				)	// ROM
 	AM_RANGE(0x8000, 0xbfff) AM_WRITE(MWA8_ROM				)	// Banked ROM
 	AM_RANGE(0xc000, 0xd7ff) AM_WRITE(MWA8_RAM				)	// RAM
-	AM_RANGE(0xd800, 0xd9ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_swap_w) AM_BASE(&paletteram	)	// Palette
+	AM_RANGE(0xd800, 0xd9ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram	)	// Palette
 	AM_RANGE(0xda00, 0xda00) AM_WRITE(MWA8_RAM) AM_BASE(&hardhead_ip	)	// Input Port Select
 	AM_RANGE(0xda80, 0xda80) AM_WRITE(hardhead_bankswitch_w	)	// ROM Banking
 	AM_RANGE(0xdb00, 0xdb00) AM_WRITE(soundlatch_w			)	// To Sound CPU
@@ -624,7 +623,7 @@ static ADDRESS_MAP_START( rranger_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc002, 0xc002) AM_WRITE(rranger_bankswitch_w	)	// ROM Banking
 	AM_RANGE(0xc200, 0xc200) AM_WRITE(MWA8_NOP				)	// Protection?
 	AM_RANGE(0xc280, 0xc280) AM_WRITE(MWA8_NOP				)	// ? NMI Ack
-	AM_RANGE(0xc600, 0xc7ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_swap_w) AM_BASE(&paletteram	)	// Palette
+	AM_RANGE(0xc600, 0xc7ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram	)	// Palette
 	AM_RANGE(0xc800, 0xdfff) AM_WRITE(MWA8_RAM				)	// RAM
 	AM_RANGE(0xe000, 0xffff) AM_WRITE(suna8_spriteram_w) AM_BASE(&spriteram	)	// Sprites
 ADDRESS_MAP_END
@@ -847,7 +846,7 @@ static ADDRESS_MAP_START( hardhea2_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc533, 0xc533) AM_WRITE(hardhea2_rambank_0_w )
 	// Protection ***
 
-	AM_RANGE(0xc600, 0xc7ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_swap_w) AM_BASE(&paletteram	)	// Palette (Banked??)
+	AM_RANGE(0xc600, 0xc7ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram	)	// Palette (Banked??)
 	AM_RANGE(0xc800, 0xdfff) AM_WRITE(MWA8_BANK2					)	// RAM (Banked?)
 	AM_RANGE(0xe000, 0xffff) AM_WRITE(suna8_banked_spriteram_w	)	// Sprites (Banked)
 ADDRESS_MAP_END
@@ -890,7 +889,7 @@ static ADDRESS_MAP_START( starfigh_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc300, 0xc300) AM_WRITE(hardhea2_flipscreen_w			)	// Flip Screen
 	AM_RANGE(0xc400, 0xc400) AM_WRITE(hardhea2_leds_w				)	// Leds + Coin Counter
 	AM_RANGE(0xc500, 0xc500) AM_WRITE(soundlatch_w					)	// To Sound CPU
-	AM_RANGE(0xc600, 0xc7ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_swap_w) AM_BASE(&paletteram	)	// Palette (Banked??)
+	AM_RANGE(0xc600, 0xc7ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram	)	// Palette (Banked??)
 	AM_RANGE(0xc800, 0xdfff) AM_WRITE(MWA8_RAM						)	// RAM
 	AM_RANGE(0xe000, 0xffff) AM_WRITE(suna8_banked_spriteram_w		)	// Sprites (Banked)
 ADDRESS_MAP_END
@@ -986,7 +985,7 @@ static ADDRESS_MAP_START( sparkman_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc380, 0xc380) AM_WRITE(sparkman_nmi_w			)	// ? NMI related ?
 	AM_RANGE(0xc400, 0xc400) AM_WRITE(sparkman_leds_w			)	// Leds + Coin Counter
 	AM_RANGE(0xc500, 0xc500) AM_WRITE(soundlatch_w				)	// To Sound CPU
-	AM_RANGE(0xc600, 0xc7ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_swap_w) AM_BASE(&paletteram	)	// Palette (Banked??)
+	AM_RANGE(0xc600, 0xc7ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram	)	// Palette (Banked??)
 	AM_RANGE(0xc800, 0xdfff) AM_WRITE(MWA8_RAM					)	// RAM
 	AM_RANGE(0xe000, 0xffff) AM_WRITE(suna8_banked_spriteram_w	)	// Sprites (Banked)
 ADDRESS_MAP_END
@@ -1733,7 +1732,7 @@ INTERRUPT_GEN( hardhea2_interrupt )
 	else cpunum_set_input_line(0, 0, HOLD_LINE);
 }
 
-static MACHINE_INIT( hardhea2 )
+static MACHINE_RESET( hardhea2 )
 {
 	hardhea2_rambank_0_w(0,0);
 }
@@ -1745,7 +1744,7 @@ static MACHINE_DRIVER_START( hardhea2 )
 	MDRV_CPU_PROGRAM_MAP(hardhea2_readmem,hardhea2_writemem)
 	MDRV_CPU_VBLANK_INT(hardhea2_interrupt,2)	/* IRQ & NMI */
 
-	MDRV_MACHINE_INIT(hardhea2)
+	MDRV_MACHINE_RESET(hardhea2)
 	MDRV_PALETTE_LENGTH(256)
 MACHINE_DRIVER_END
 

@@ -85,7 +85,6 @@ Input port 2, mapped to memory address $9002:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 
 static tilemap *fg_tilemap, *bg_tilemap_l, *bg_tilemap_r;
@@ -473,7 +472,7 @@ WRITE8_HANDLER( madalien_shift_counter_w )
 	madalien_shift_counter = data & 0x07;
 }
 
-UINT8 reverse_bits( int x )	/* bit reversal by wiring in Mad Alien hardware */
+static UINT8 reverse_bits( int x )	/* bit reversal by wiring in Mad Alien hardware */
 {
 	int bit, n;
 	n = 0;
@@ -483,7 +482,7 @@ UINT8 reverse_bits( int x )	/* bit reversal by wiring in Mad Alien hardware */
 	return n;
 }
 
-UINT8 swap_bits( int x )	/* special bit swap by wiring in Mad Alien hardware */
+static UINT8 swap_bits( int x )	/* special bit swap by wiring in Mad Alien hardware */
 {
 	int n = 0;
 	if (x & 0x40) n |= 0x01;

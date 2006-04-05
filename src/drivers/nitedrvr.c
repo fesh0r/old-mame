@@ -35,7 +35,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/discrete.h"
 #include "nitedrvr.h"
 
@@ -46,6 +45,7 @@ extern WRITE8_HANDLER( nitedrvr_steering_reset_w );
 extern WRITE8_HANDLER( nitedrvr_out0_w );
 extern WRITE8_HANDLER( nitedrvr_out1_w );
 extern void nitedrvr_crash_toggle(int dummy);
+extern void nitedrvr_register_machine_vars(void);
 
 extern UINT8 *nitedrvr_hvc;
 
@@ -149,9 +149,10 @@ static const gfx_decode gfxdecodeinfo[] =
 
 /* Machine Initialization */
 
-static MACHINE_INIT( nitedrvr )
+static MACHINE_RESET( nitedrvr )
 {
 	timer_pulse(TIME_IN_SEC(0.693 * (180000 + (2 * 330)) * 1e-6), 0, nitedrvr_crash_toggle);
+	nitedrvr_register_machine_vars();
 }
 
 /* Machine Driver */
@@ -166,7 +167,7 @@ static MACHINE_DRIVER_START( nitedrvr )
 	MDRV_FRAMES_PER_SECOND(57) // how is this derived?
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nitedrvr)
+	MDRV_MACHINE_RESET(nitedrvr)
 
 	// video hardware
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -218,4 +219,4 @@ ROM_END
 
 /* Game Drivers */
 
-GAME( 1976, nitedrvr, 0, nitedrvr, nitedrvr, 0, ROT0, "Atari", "Night Driver", GAME_IMPERFECT_SOUND )
+GAME( 1976, nitedrvr, 0, nitedrvr, nitedrvr, 0, ROT0, "Atari", "Night Driver", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE)

@@ -5,6 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "debugger.h"
 #include "midwayic.h"
 #include "machine/idectrl.h"
 #include "sndhrdw/cage.h"
@@ -195,7 +196,7 @@ UINT8 midway_serial_pic_status_r(void)
 
 UINT8 midway_serial_pic_r(void)
 {
-	logerror("%08X:security R = %04X\n", activecpu_get_pc(), serial.buffer);
+	logerror("%08X:security R = %04X\n", safe_activecpu_get_pc(), serial.buffer);
 	serial.status = 1;
 	return serial.buffer;
 }
@@ -203,7 +204,7 @@ UINT8 midway_serial_pic_r(void)
 
 void midway_serial_pic_w(UINT8 data)
 {
-	logerror("%08X:security W = %04X\n", activecpu_get_pc(), data);
+	logerror("%08X:security W = %04X\n", safe_activecpu_get_pc(), data);
 
 	/* status seems to reflect the clock bit */
 	serial.status = (data >> 4) & 1;
@@ -279,7 +280,7 @@ UINT8 midway_serial_pic2_status_r(void)
 		result = 1;
 	}
 
-	logerror("%06X:PIC status %d\n", activecpu_get_pc(), result);
+	logerror("%06X:PIC status %d\n", safe_activecpu_get_pc(), result);
 	return result;
 }
 
@@ -289,7 +290,7 @@ UINT8 midway_serial_pic2_r(void)
 	UINT8 result = 0;
 
 	/* PIC data register */
-	logerror("%06X:PIC data read (index=%d total=%d latch=%03X) =", activecpu_get_pc(), pic.index, pic.total, pic.latch);
+	logerror("%06X:PIC data read (index=%d total=%d latch=%03X) =", safe_activecpu_get_pc(), pic.index, pic.total, pic.latch);
 
 	/* return the current result */
 	if (pic.latch & 0xf00)
@@ -312,9 +313,9 @@ void midway_serial_pic2_w(UINT8 data)
 
 	/* PIC command register */
 	if (pic.state == 0)
-		logerror("%06X:PIC command %02X\n", activecpu_get_pc(), data);
+		logerror("%06X:PIC command %02X\n", safe_activecpu_get_pc(), data);
 	else
-		logerror("%06X:PIC data %02X\n", activecpu_get_pc(), data);
+		logerror("%06X:PIC data %02X\n", safe_activecpu_get_pc(), data);
 
 	/* store in the latch, along with a bit to indicate we have data */
 	pic.latch = (data & 0x00f) | 0x480;
@@ -340,12 +341,7 @@ void midway_serial_pic2_w(UINT8 data)
 					memcpy(pic.buffer, serial.data, 16);
 					pic.total = 16;
 					pic.index = 0;
-#ifdef MAME_DEBUG
-{
-	extern int debug_key_pressed;
-	debug_key_pressed = 1;
-}
-#endif
+					DEBUGGER_BREAK;
 				}
 				break;
 
@@ -704,7 +700,7 @@ static UINT16 ioasic_fifo_r(void)
 		/* main CPU is handling the I/O ASIC interrupt */
 		if (ioasic.fifo_bytes == 0 && ioasic.has_dcs)
 		{
-			ioasic.fifo_force_buffer_empty_pc = activecpu_get_pc();
+			ioasic.fifo_force_buffer_empty_pc = safe_activecpu_get_pc();
 			if (LOG_FIFO)
 				logerror("fifo_r(%04X): FIFO empty, PC = %04X\n", result, ioasic.fifo_force_buffer_empty_pc);
 		}
@@ -734,7 +730,7 @@ static UINT16 ioasic_fifo_status_r(void)
 	/* sure the FIFO clear bit is set */
 	if (ioasic.fifo_force_buffer_empty_pc && cpu_getactivecpu() == ioasic.dcs_cpu)
 	{
-		offs_t currpc = activecpu_get_pc();
+		offs_t currpc = safe_activecpu_get_pc();
 		if (currpc >= ioasic.fifo_force_buffer_empty_pc && currpc < ioasic.fifo_force_buffer_empty_pc + 0x10)
 		{
 			ioasic.fifo_force_buffer_empty_pc = 0;
@@ -760,7 +756,7 @@ void midway_ioasic_fifo_reset_w(int state)
 		update_ioasic_irq();
 	}
 	if (LOG_FIFO)
-		logerror("%08X:fifo_reset(%d)\n", activecpu_get_pc(), state);
+		logerror("%08X:fifo_reset(%d)\n", safe_activecpu_get_pc(), state);
 }
 
 
@@ -892,7 +888,7 @@ READ32_HANDLER( midway_ioasic_r )
 	}
 
 	if (LOG_IOASIC && offset != IOASIC_SOUNDSTAT && offset != IOASIC_SOUNDIN)
-		logerror("%06X:ioasic_r(%d) = %08X\n", activecpu_get_pc(), offset, result);
+		logerror("%06X:ioasic_r(%d) = %08X\n", safe_activecpu_get_pc(), offset, result);
 
 	return result;
 }
@@ -917,7 +913,7 @@ WRITE32_HANDLER( midway_ioasic_w )
 	newreg = ioasic.reg[offset];
 
 	if (LOG_IOASIC && offset != IOASIC_SOUNDOUT)
-		logerror("%06X:ioasic_w(%d) = %08X\n", activecpu_get_pc(), offset, data);
+		logerror("%06X:ioasic_w(%d) = %08X\n", safe_activecpu_get_pc(), offset, data);
 
 	switch (offset)
 	{

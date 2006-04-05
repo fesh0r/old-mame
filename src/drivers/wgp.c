@@ -343,9 +343,7 @@ the differences are.
 ***************************************************************************/
 
 #include "driver.h"
-#include "state.h"
 #include "cpu/m68000/m68000.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 #include "sndhrdw/taitosnd.h"
 #include "sound/2610intf.h"
@@ -565,7 +563,7 @@ static WRITE16_HANDLER( wgp_adinput_w )
                           SOUND
 **********************************************************/
 
-static int banknum = -1;
+static INT32 banknum = -1;
 
 static void reset_sound_region(void)	/* assumes Z80 sandwiched between the 68Ks */
 {
@@ -1171,6 +1169,17 @@ However sync to vblank is lacking, which is causing the
 graphics glitches.
 ***********************************************************/
 
+static MACHINE_START( wgp )
+{
+	state_save_register_global(cpua_ctrl);
+	state_save_register_func_postload(parse_control);
+
+	state_save_register_global(banknum);
+	state_save_register_func_postload(reset_sound_region);
+
+	return 0;
+}
+
 static MACHINE_DRIVER_START( wgp )
 
 	/* basic machine hardware */
@@ -1185,6 +1194,8 @@ static MACHINE_DRIVER_START( wgp )
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(wgp_cpub_readmem,wgp_cpub_writemem)
 	MDRV_CPU_VBLANK_INT(wgp_cpub_interrupt,1)
+
+	MDRV_MACHINE_START(wgp)
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
@@ -1226,6 +1237,8 @@ static MACHINE_DRIVER_START( wgp2 )
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(wgp_cpub_readmem,wgp_cpub_writemem)
 	MDRV_CPU_VBLANK_INT(wgp_cpub_interrupt,1)
+
+	MDRV_MACHINE_START(wgp)
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
@@ -1469,12 +1482,6 @@ DRIVER_INIT( wgp )
 
 //  taitosnd_setz80_soundcpu( 2 );
 	cpua_ctrl = 0xff;
-
-	state_save_register_UINT16("main1", 0, "control", &cpua_ctrl, 1);
-	state_save_register_func_postload(parse_control);
-
-	state_save_register_int("sound1", 0, "sound region", &banknum);
-	state_save_register_func_postload(reset_sound_region);
 }
 
 DRIVER_INIT( wgp2 )

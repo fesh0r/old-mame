@@ -15,10 +15,8 @@
 
 */
 
-#include <stdio.h>
 #include "arm.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 
 #define READ8(addr)			cpu_read8(addr)
 #define WRITE8(addr,data)	cpu_write8(addr,data)
@@ -327,9 +325,11 @@ INLINE void SetRegister( int rIndex, UINT32 value )
 
 /***************************************************************************/
 
-static void arm_reset(void *param)
+static void arm_reset(void)
 {
+	int (*save_irqcallback)(int) = arm.irq_callback;
 	memset(&arm, 0, sizeof(arm));
+	arm.irq_callback = save_irqcallback;
 
 	/* start up in SVC mode with interrupts disabled. */
 	R15 = eARM_MODE_SVC|I_MASK|F_MASK;
@@ -349,10 +349,7 @@ static int arm_execute( int cycles )
 	do
 	{
 
-#ifdef MAME_DEBUG
-		if (mame_debug)
-			MAME_Debug();
-#endif
+		CALL_MAME_DEBUG;
 
 		/* load instruction */
 		pc = R15;
@@ -538,19 +535,14 @@ static offs_t arm_dasm(char *buffer, offs_t pc)
 #endif
 }
 
-static void arm_init(void)
+static void arm_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu(),i;
-	char buf[8];
+	arm.irq_callback = irqcallback;
 
-	for (i=0; i<kNumRegisters; i++) {
-		sprintf(buf,"R%d",i);
-		state_save_register_UINT32("arm", cpu, buf, &arm.sArmRegister[i], 4);
-	}
-	state_save_register_UINT8("arm", cpu, "IRQ", &arm.pendingIrq, 1);
-	state_save_register_UINT8("arm", cpu, "FIQ", &arm.pendingFiq, 1);
-
-	return;
+	state_save_register_item_array("arm", index, arm.sArmRegister);
+	state_save_register_item_array("arm", index, arm.coproRegister);
+	state_save_register_item("arm", index, arm.pendingIrq);
+	state_save_register_item("arm", index, arm.pendingFiq);
 }
 
 /***************************************************************************/
@@ -1343,7 +1335,7 @@ static void HandleCoPro( UINT32 insn)
 			}
 			else
 			{
-				ui_popup("Unknown bcd copro command %08x\n", arm.coproRegister[crn]);
+				logerror("Unknown bcd copro command %08x\n", arm.coproRegister[crn]);
 			}
 		}
 
@@ -1418,9 +1410,6 @@ static void arm_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_PC:
 		case CPUINFO_INT_REGISTER + ARM32_PC:	R15 = (R15&~ADDRESS_MASK)|info->i;				break;
 		case CPUINFO_INT_SP:					SetRegister(13,info->i);						break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:			arm.irq_callback = info->irqcallback;			break;
 	}
 }
 
@@ -1502,7 +1491,6 @@ void arm_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = arm_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = arm_dasm;			break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = arm.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &arm_icount;				break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = arm_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = arm_win_layout;				break;

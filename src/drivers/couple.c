@@ -34,7 +34,6 @@ Provided to you by Thierry (ShinobiZ) & Gerald (COY)
 *******************************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/8255ppi.h"
 #include "sound/ay8910.h"
 #include "vidhrdw/crtc6845.h"
@@ -162,7 +161,7 @@ static ADDRESS_MAP_START( merit_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xc10c, 0xc10c) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
 
-static MACHINE_INIT( couple )
+static MACHINE_RESET( couple )
 {
    ppi8255_init(&ppi8255_intf);
 }
@@ -442,7 +441,7 @@ static MACHINE_DRIVER_START( couple )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(couple)
+	MDRV_MACHINE_RESET(couple)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )

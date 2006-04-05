@@ -136,7 +136,6 @@ Stephh's notes (based on the games M68000 code and some tests) :
 ******************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2610intf.h"
 
 VIDEO_UPDATE( mcatadv );
@@ -491,11 +490,6 @@ struct YM2610interface mcatadv_ym2610_interface =
 	REGION_SOUND1	/* adpcm */
 };
 
-static MACHINE_INIT( mcatadv )
-{
-	watchdog_reset_r(0);
-}
-
 
 static MACHINE_DRIVER_START( mcatadv )
 
@@ -518,7 +512,7 @@ static MACHINE_DRIVER_START( mcatadv )
 	MDRV_GFXDECODE(mcatadv_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x2000/2)
 
-	MDRV_MACHINE_INIT(mcatadv)
+	MDRV_WATCHDOG_VBLANK_INIT(DEFAULT_60HZ_3S_VBLANK_WATCHDOG)
 
 	MDRV_VIDEO_START(mcatadv)
 	MDRV_VIDEO_EOF(mcatadv) // Buffer Spriteram

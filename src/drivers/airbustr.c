@@ -218,7 +218,6 @@ Code at 505: waits for bit 1 to go low, writes command, waits for bit
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
 #include "sound/okim6295.h"
@@ -576,7 +575,7 @@ static INTERRUPT_GEN( slave_interrupt )
 
 /* Machine Initialization */
 
-static MACHINE_INIT( airbustr )
+static MACHINE_RESET( airbustr )
 {
 	soundlatch_status = soundlatch2_status = 0;
 	master_bankswitch_w(0, 0x02);
@@ -607,7 +606,7 @@ static MACHINE_DRIVER_START( airbustr )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	// Palette RAM is filled by sub cpu with data supplied by main cpu
 							// Maybe a high value is safer in order to avoid glitches
-	MDRV_MACHINE_INIT(airbustr)
+	MDRV_MACHINE_RESET(airbustr)
 
 	// video hardware
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

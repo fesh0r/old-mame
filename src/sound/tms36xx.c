@@ -1,4 +1,5 @@
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "tms36xx.h"
 
 #define VERBOSE 1
@@ -501,7 +502,7 @@ static void *tms36xx_start(int sndindex, int clock, const void *config)
 	tms->intf = config;
 
    tms->channel = stream_create(0, 1, Machine->sample_rate, tms, tms36xx_sound_update);
-	tms->samplerate = Machine->sample_rate ? Machine->sample_rate : 1;
+	tms->samplerate = Machine->sample_rate;
 	tms->basefreq = clock;
 	enable = 0;
    for (j = 0; j < 6; j++)
@@ -532,7 +533,7 @@ static void *tms36xx_start(int sndindex, int clock, const void *config)
  * Generic get_info
  **************************************************************************/
 
-static void tms36xx_set_info(void *token, UINT32 state, union sndinfo *info)
+static void tms36xx_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -541,7 +542,7 @@ static void tms36xx_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void tms36xx_get_info(void *token, UINT32 state, union sndinfo *info)
+void tms36xx_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

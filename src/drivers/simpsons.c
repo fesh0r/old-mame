@@ -9,7 +9,6 @@ someone@secureshell.com
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "cpu/z80/z80.h"
 #include "vidhrdw/konamiic.h"
@@ -27,7 +26,7 @@ WRITE8_HANDLER( simpsons_eeprom_w );
 WRITE8_HANDLER( simpsons_coin_counter_w );
 READ8_HANDLER( simpsons_sound_interrupt_r );
 READ8_HANDLER( simpsons_sound_r );
-MACHINE_INIT( simpsons );
+MACHINE_RESET( simpsons );
 NVRAM_HANDLER( simpsons );
 extern int simpsons_firq_enabled;
 
@@ -288,7 +287,7 @@ static MACHINE_DRIVER_START( simpsons )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(simpsons)
+	MDRV_MACHINE_RESET(simpsons)
 	MDRV_NVRAM_HANDLER(simpsons)
 
 	/* video hardware */

@@ -16,7 +16,9 @@
 * NOTES
 *
 ******************************************************************************/
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
+#include "cpuintrf.h"
 #include "3812intf.h"
 #include "fm.h"
 #include "sound/fmopl.h"
@@ -158,7 +160,7 @@ READ8_HANDLER( YM3812_read_port_1_r ) {
  * Generic get_info
  **************************************************************************/
 
-static void ym3812_set_info(void *token, UINT32 state, union sndinfo *info)
+static void ym3812_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -167,7 +169,7 @@ static void ym3812_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void ym3812_get_info(void *token, UINT32 state, union sndinfo *info)
+void ym3812_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -328,7 +330,7 @@ READ8_HANDLER( YM3526_read_port_1_r ) {
  * Generic get_info
  **************************************************************************/
 
-static void ym3526_set_info(void *token, UINT32 state, union sndinfo *info)
+static void ym3526_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -337,7 +339,7 @@ static void ym3526_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void ym3526_get_info(void *token, UINT32 state, union sndinfo *info)
+void ym3526_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -536,7 +538,7 @@ READ8_HANDLER( Y8950_read_port_1_r ) {
  * Generic get_info
  **************************************************************************/
 
-static void y8950_set_info(void *token, UINT32 state, union sndinfo *info)
+static void y8950_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -545,7 +547,7 @@ static void y8950_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void y8950_get_info(void *token, UINT32 state, union sndinfo *info)
+void y8950_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

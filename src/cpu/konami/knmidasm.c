@@ -1,11 +1,4 @@
-#include <stdio.h>
-
-#ifdef MAME_DEBUG
-
-#include <string.h>
-#include "osd_cpu.h"
-#include "cpuintrf.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "konami.h"
 
 #ifndef TRUE
@@ -1879,5 +1872,3 @@ offs_t Dasmknmi(char *buffer, UINT32 pc, UINT8 *oprom, UINT8 *opram, int bytes)
 
 	return byte_count | flags | DASMFLAG_SUPPORTED;
 }
-
-#endif

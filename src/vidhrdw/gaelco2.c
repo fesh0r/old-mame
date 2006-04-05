@@ -77,8 +77,6 @@ Multi monitor notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "tilemap.h"
-#include "vidhrdw/generic.h"
 
 UINT16 *gaelco2_vregs;
 static UINT16 *gaelco2_videoram;

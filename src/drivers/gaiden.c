@@ -125,7 +125,6 @@ Notes:
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
@@ -314,7 +313,7 @@ static int jumppoints_other[0x100] =
 
 static int *raiga_jumppoints = jumppoints_00;
 
-static MACHINE_INIT ( raiga )
+static MACHINE_RESET ( raiga )
 {
 	raiga_jumppoints = jumppoints_00;
 }
@@ -978,7 +977,7 @@ static MACHINE_DRIVER_START( shadoww )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(raiga)
+	MDRV_MACHINE_RESET(raiga)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

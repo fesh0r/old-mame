@@ -40,7 +40,6 @@
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/eeprom.h"
 #include "cpu/z80/z80.h"
 #include "leland.h"
@@ -748,7 +747,7 @@ static MACHINE_DRIVER_START( leland )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION((1000000*16)/(256*60))
 
-	MDRV_MACHINE_INIT(leland)
+	MDRV_MACHINE_RESET(leland)
 	MDRV_NVRAM_HANDLER(leland)
 
 	/* video hardware */
@@ -2016,6 +2015,7 @@ static DRIVER_INIT( cerberus )
 	leland_update_master_bank = cerberus_bankswitch;
 	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x2000);
 	memory_set_bankptr(2, memory_region(REGION_CPU1) + 0xa000);
+	memory_set_bankptr(3, memory_region(REGION_CPU2) + 0x2000);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(0x40, 0x80);

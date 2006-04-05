@@ -20,6 +20,7 @@
  *  This work is based on:
  *  #1) 'Atmel Corporation ARM7TDMI (Thumb) Datasheet - January 1999'
  *  #2) Arm 2/3/6 emulator By Bryan McPhail (bmcphail@tendril.co.uk) and Phil Stroffolino (MAME CORE 0.76)
+ *  #3) Thumb support by Ryan Holtz
  *
  *****************************************************************************/
 
@@ -33,10 +34,8 @@
        See the notes in the arm7core.c file itself regarding issues/limitations of the arm7 core.
     **
 *****************************************************************************/
-#include <stdio.h>
 #include "arm7.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "arm7core.h"   //include arm7 core
 
 /* Example for showing how Co-Proc functions work */
@@ -50,9 +49,9 @@ static WRITE32_HANDLER(test_rt_w_callback);
 static void test_dt_r_callback (UINT32 insn, UINT32* prn, UINT32 (*read32)(int addr));
 static void test_dt_w_callback (UINT32 insn, UINT32* prn, void (*write32)(int addr, UINT32 data));
 #ifdef MAME_DEBUG
-char *Spec_RT( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0);
-char *Spec_DT( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0);
-char *Spec_DO( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0);
+static char *Spec_RT( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0);
+static char *Spec_DT( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0);
+static char *Spec_DO( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0);
 #endif
 #endif
 
@@ -88,10 +87,12 @@ static int ARM7_ICOUNT;
 /***************************************************************************
  * CPU SPECIFIC IMPLEMENTATIONS
  **************************************************************************/
-static void arm7_init(void)
+static void arm7_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
     //must call core
-    arm7_core_init("arm7");
+    arm7_core_init("arm7", index);
+
+	ARM7.irq_callback = irqcallback;
 
 #if TEST_COPROC_FUNCS
     //setup co-proc callbacks example
@@ -111,10 +112,10 @@ static void arm7_init(void)
     return;
 }
 
-static void arm7_reset(void *param)
+static void arm7_reset(void)
 {
     //must call core reset
-    arm7_core_reset(param);
+    arm7_core_reset();
 }
 
 static void arm7_exit(void)
@@ -266,9 +267,6 @@ static void arm7_set_info(UINT32 state, union cpuinfo *info)
         case CPUINFO_INT_REGISTER + ARM7_UR13:  ARM7REG(eR13_UND) = info->i;            break;
         case CPUINFO_INT_REGISTER + ARM7_UR14:  ARM7REG(eR14_UND) = info->i;            break;
         case CPUINFO_INT_REGISTER + ARM7_USPSR: ARM7REG(eSPSR_UND) = info->i;           break;
-
-        /* --- the following bits of info are set as pointers to data or functions --- */
-        case CPUINFO_PTR_IRQ_CALLBACK:          ARM7.irq_callback = info->irqcallback;  break;
     }
 }
 
@@ -375,7 +373,6 @@ void arm7_get_info(UINT32 state, union cpuinfo *info)
         case CPUINFO_PTR_EXECUTE:                       info->execute = arm7_execute;           break;
         case CPUINFO_PTR_BURN:                          info->burn = NULL;                      break;
         case CPUINFO_PTR_DISASSEMBLE:                   info->disassemble = arm7_dasm;          break;
-        case CPUINFO_PTR_IRQ_CALLBACK:                  info->irqcallback = ARM7.irq_callback;  break;
         case CPUINFO_PTR_INSTRUCTION_COUNTER:           info->icount = &ARM7_ICOUNT;            break;
         case CPUINFO_PTR_REGISTER_LAYOUT:               info->p = arm7_reg_layout;              break;
         case CPUINFO_PTR_WINDOW_LAYOUT:                 info->p = arm7_win_layout;              break;
@@ -383,9 +380,9 @@ void arm7_get_info(UINT32 state, union cpuinfo *info)
         /* --- the following bits of info are returned as NULL-terminated strings --- */
         case CPUINFO_STR_NAME:                          strcpy(info->s = cpuintrf_temp_str(), "ARM7"); break;
         case CPUINFO_STR_CORE_FAMILY:                   strcpy(info->s = cpuintrf_temp_str(), "Acorn Risc Machine"); break;
-        case CPUINFO_STR_CORE_VERSION:                  strcpy(info->s = cpuintrf_temp_str(), "1.2"); break;
+        case CPUINFO_STR_CORE_VERSION:                  strcpy(info->s = cpuintrf_temp_str(), "1.3"); break;
         case CPUINFO_STR_CORE_FILE:                     strcpy(info->s = cpuintrf_temp_str(), __FILE__); break;
-        case CPUINFO_STR_CORE_CREDITS:                  strcpy(info->s = cpuintrf_temp_str(), "Copyright 2004 Steve Ellenoff, sellenoff@hotmail.com"); break;
+        case CPUINFO_STR_CORE_CREDITS:                  strcpy(info->s = cpuintrf_temp_str(), "Copyright 2004-2006 Steve Ellenoff, sellenoff@hotmail.com"); break;
 
         case CPUINFO_STR_FLAGS:
             sprintf(info->s = cpuintrf_temp_str(), "%c%c%c%c%c%c%c %s",
@@ -478,17 +475,17 @@ static void test_dt_w_callback (UINT32 insn, UINT32* prn, void (*write32)(int ad
 
 /* Custom Co-proc DASM handlers */
 #ifdef MAME_DEBUG
-char *Spec_RT( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0)
+static char *Spec_RT( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0)
 {
     pBuf += sprintf( pBuf, "SPECRT");
     return pBuf;
 }
-char *Spec_DT( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0)
+static char *Spec_DT( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0)
 {
     pBuf += sprintf( pBuf, "SPECDT");
     return pBuf;
 }
-char *Spec_DO( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0)
+static char *Spec_DO( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0)
 {
     pBuf += sprintf( pBuf, "SPECDO");
     return pBuf;

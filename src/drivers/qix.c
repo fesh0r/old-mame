@@ -224,7 +224,6 @@ Interrupts:
 #include "driver.h"
 #include "qix.h"
 #include "machine/6821pia.h"
-#include "vidhrdw/generic.h"
 #include "sound/sn76496.h"
 #include "sound/discrete.h"
 
@@ -690,7 +689,7 @@ static MACHINE_DRIVER_START( qix )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(qix)
+	MDRV_MACHINE_RESET(qix)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
@@ -720,7 +719,7 @@ static MACHINE_DRIVER_START( mcu )
 	MDRV_CPU_ADD(M68705, COIN_CLOCK_OSC/4)	/* 1.00 MHz */
 	MDRV_CPU_PROGRAM_MAP(mcu_readmem,mcu_writemem)
 
-	MDRV_MACHINE_INIT(qixmcu)
+	MDRV_MACHINE_RESET(qixmcu)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( elecyoyo )
@@ -753,7 +752,7 @@ static MACHINE_DRIVER_START( slither )
 	MDRV_CPU_REPLACE("video", M6809, SLITHER_CLOCK_OSC/4/4)	/* 1.34 MHz */
 	MDRV_CPU_REMOVE("sound")
 
-	MDRV_MACHINE_INIT(slither)
+	MDRV_MACHINE_RESET(slither)
 
 	/* video hardware */
 	MDRV_VISIBLE_AREA(0, 255, 0, 255)

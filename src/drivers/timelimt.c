@@ -11,7 +11,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 
 /* from vidhrdw */
@@ -32,7 +31,7 @@ extern size_t timelimt_bg_videoram_size;
 
 static int nmi_enabled = 0;
 
-static MACHINE_INIT( timelimt )
+static MACHINE_RESET( timelimt )
 {
 	soundlatch_setclearedvalue( 0 );
 	nmi_enabled = 0;
@@ -274,7 +273,7 @@ static MACHINE_DRIVER_START( timelimt )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(50)
 
-	MDRV_MACHINE_INIT(timelimt)
+	MDRV_MACHINE_RESET(timelimt)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

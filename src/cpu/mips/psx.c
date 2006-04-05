@@ -13,13 +13,9 @@
  *
  */
 
-#include <stdio.h>
-#include "cpuintrf.h"
-#include "memory.h"
-#include "mamedbg.h"
-#include "psx.h"
-#include "state.h"
 #include "usrintrf.h"
+#include "debugger.h"
+#include "psx.h"
 
 #define LOG_BIOSCALL ( 0 )
 
@@ -236,18 +232,17 @@ static void setcp2cr( int n_reg, UINT32 n_value );
 static void docop2( int gteop );
 static void mips_exception( int exception );
 
-void mips_stop( void )
+static void mips_stop( void )
 {
 #ifdef MAME_DEBUG
-	extern int debug_key_pressed;
-	debug_key_pressed = 1;
+	DEBUGGER_BREAK;
 	CALL_MAME_DEBUG;
 #endif
 }
 
 #if LOG_BIOSCALL
 
-struct
+static const struct
 {
 	int address;
 	int operation;
@@ -1038,23 +1033,23 @@ static void mips_exception( int exception )
 	}
 }
 
-static void mips_init( void )
+static void mips_init( int index, int clock, const void *config, int (*irqcallback)(int) )
 {
-	int cpu = cpu_getactivecpu();
+	mipscpu.irq_callback = irqcallback;
 
-	state_save_register_item( "psxcpu", cpu, mipscpu.op );
-	state_save_register_item( "psxcpu", cpu, mipscpu.pc );
-	state_save_register_item( "psxcpu", cpu, mipscpu.delayv );
-	state_save_register_item( "psxcpu", cpu, mipscpu.delayr );
-	state_save_register_item( "psxcpu", cpu, mipscpu.hi );
-	state_save_register_item( "psxcpu", cpu, mipscpu.lo );
-	state_save_register_item_array( "psxcpu", cpu, mipscpu.r );
-	state_save_register_item_array( "psxcpu", cpu, mipscpu.cp0r );
-	state_save_register_item_array( "psxcpu", cpu, mipscpu.cp2cr );
-	state_save_register_item_array( "psxcpu", cpu, mipscpu.cp2dr );
+	state_save_register_item( "psxcpu", index, mipscpu.op );
+	state_save_register_item( "psxcpu", index, mipscpu.pc );
+	state_save_register_item( "psxcpu", index, mipscpu.delayv );
+	state_save_register_item( "psxcpu", index, mipscpu.delayr );
+	state_save_register_item( "psxcpu", index, mipscpu.hi );
+	state_save_register_item( "psxcpu", index, mipscpu.lo );
+	state_save_register_item_array( "psxcpu", index, mipscpu.r );
+	state_save_register_item_array( "psxcpu", index, mipscpu.cp0r );
+	state_save_register_item_array( "psxcpu", index, mipscpu.cp2cr );
+	state_save_register_item_array( "psxcpu", index, mipscpu.cp2dr );
 }
 
-static void mips_reset( void *param )
+static void mips_reset( void )
 {
 	mips_set_cp0r( CP0_SR, ( mipscpu.cp0r[ CP0_SR ] & ~( SR_TS | SR_SWC | SR_KUC | SR_IEC ) ) | SR_BEV );
 	mips_set_cp0r( CP0_RANDOM, 63 ); /* todo: */
@@ -3375,9 +3370,6 @@ static void mips_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + MIPS_CP2CR29:		mipscpu.cp2cr[ 29 ].d = info->i;		break;
 		case CPUINFO_INT_REGISTER + MIPS_CP2CR30:		mipscpu.cp2cr[ 30 ].d = info->i;		break;
 		case CPUINFO_INT_REGISTER + MIPS_CP2CR31:		mipscpu.cp2cr[ 31 ].d = info->i;		break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					mipscpu.irq_callback = info->irqcallback;			break;
 	}
 }
 
@@ -3571,7 +3563,6 @@ static void mips_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = mips_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = mips_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = mipscpu.irq_callback; break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &mips_ICount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = mips_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = mips_win_layout;				break;

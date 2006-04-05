@@ -48,7 +48,6 @@ register 08 could be screen height / 2 (vblank start?)
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/2610intf.h"
 #include "sound/3812intf.h"
@@ -138,7 +137,7 @@ static WRITE8_HANDLER( aerofgt_sh_bankswitch_w )
 	memory_set_bankptr(1,rom + (data & 0x03) * 0x8000);
 }
 
-static MACHINE_INIT( aerofgt )
+static MACHINE_RESET( aerofgt )
 {
 	aerofgt_sh_bankswitch_w(0,0);	/* needed by spinlbrk */
 }
@@ -1336,7 +1335,7 @@ static MACHINE_DRIVER_START( pspikes )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(aerofgt)
+	MDRV_MACHINE_RESET(aerofgt)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1402,7 +1401,7 @@ static MACHINE_DRIVER_START( karatblz )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(aerofgt)
+	MDRV_MACHINE_RESET(aerofgt)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1440,7 +1439,7 @@ static MACHINE_DRIVER_START( spinlbrk )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(aerofgt)
+	MDRV_MACHINE_RESET(aerofgt)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1478,7 +1477,7 @@ static MACHINE_DRIVER_START( turbofrc )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(aerofgt)
+	MDRV_MACHINE_RESET(aerofgt)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1517,7 +1516,7 @@ static MACHINE_DRIVER_START( aerofgtb )
 	MDRV_VBLANK_DURATION(500)
 				/* wrong but improves sprite-background synchronization */
 
-	MDRV_MACHINE_INIT(aerofgt)
+	MDRV_MACHINE_RESET(aerofgt)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1556,7 +1555,7 @@ static MACHINE_DRIVER_START( aerofgt )
 	MDRV_VBLANK_DURATION(400)
 				/* wrong but improves sprite-background synchronization */
 
-	MDRV_MACHINE_INIT(aerofgt)
+	MDRV_MACHINE_RESET(aerofgt)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

@@ -30,7 +30,6 @@ To do:
 #include "machine/eeprom.h"
 #include "sound/3812intf.h"
 #include "sound/okim6295.h"
-#include "vidhrdw/generic.h"
 
 // Variables defined in vidhrdw:
 
@@ -422,7 +421,7 @@ static ppi8255_interface ppi8255_intf =
 	{ fake2_w,				fake_w },				// Port C write
 };
 
-static MACHINE_INIT( lordgun )
+static MACHINE_RESET( lordgun )
 {
 	ppi8255_init(&ppi8255_intf);
 }
@@ -449,7 +448,7 @@ static MACHINE_DRIVER_START( lordgun )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(lordgun)
+	MDRV_MACHINE_RESET(lordgun)
 
 	MDRV_NVRAM_HANDLER(93C46)
 

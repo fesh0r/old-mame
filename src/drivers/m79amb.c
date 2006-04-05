@@ -1,7 +1,6 @@
 /* Ramtek M79 Ambush */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 /*
  * in
  * 8000 DIP SW
@@ -55,7 +54,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xC200, 0xC27f) AM_READ(MRA8_RAM)			/* ?? */
 ADDRESS_MAP_END
 
-WRITE8_HANDLER( sound_w )
+static WRITE8_HANDLER( sound_w )
 {
 }
 

@@ -41,7 +41,7 @@ COLORRAM (Colors)
 ******************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "streams.h"
 #include "cpu/z80/z80.h"
 #include "sndhrdw/seibu.h"
 #include "sound/2151intf.h"
@@ -56,7 +56,7 @@ WRITE16_HANDLER( cabal_text_videoram16_w );
 
 static int cabal_sound_command1, cabal_sound_command2;
 
-static MACHINE_INIT( cabalbl )
+static MACHINE_RESET( cabalbl )
 {
 	cabal_sound_command1 = cabal_sound_command2 = 0xff;
 }
@@ -558,7 +558,7 @@ static MACHINE_DRIVER_START( cabal )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(seibu_sound_1)
+	MDRV_MACHINE_RESET(seibu_sound_1)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -604,7 +604,7 @@ static MACHINE_DRIVER_START( cabalbl )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
-	MDRV_MACHINE_INIT(cabalbl)
+	MDRV_MACHINE_RESET(cabalbl)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

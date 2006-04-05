@@ -18,7 +18,7 @@
 extern void nvsram( offs_t offset, UINT16 data );
 
 /* MACHINE */
-extern int namcond1_gfxbank;
+extern UINT8 namcond1_gfxbank;
 
 extern UINT8 namcond1_h8_irq5_enabled;
 extern unsigned short int *namcond1_shared_ram;
@@ -28,7 +28,8 @@ extern READ16_HANDLER( namcond1_cuskey_r );
 extern WRITE16_HANDLER( namcond1_shared_ram_w );
 extern WRITE16_HANDLER( namcond1_cuskey_w );
 
-MACHINE_INIT( namcond1 );
+MACHINE_START( namcond1 );
+MACHINE_RESET( namcond1 );
 
 /* VIDHRDW */
 

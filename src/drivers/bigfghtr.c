@@ -109,17 +109,16 @@ Notes:
 
 **********************************************************************/
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/dac.h"
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
 static UINT16 vreg;
 
-UINT16 *text_videoram;
-UINT16 *bg_videoram;
-UINT16 *fg_videoram;
-UINT16 *sharedram16;
+static UINT16 *text_videoram;
+static UINT16 *bg_videoram;
+static UINT16 *fg_videoram;
+static UINT16 *sharedram16;
 static UINT16 fg_scrollx,fg_scrolly;
 
 

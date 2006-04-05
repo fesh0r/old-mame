@@ -21,7 +21,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2151intf.h"
@@ -158,7 +157,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(K052109_051960_w)
 	AM_RANGE(0x4000, 0x5dff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x5e00, 0x5fff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_swap_w) AM_BASE(&paletteram)
+	AM_RANGE(0x5e00, 0x5fff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_be_w) AM_BASE(&paletteram)
  	AM_RANGE(0x6000, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
@@ -188,7 +187,7 @@ static ADDRESS_MAP_START( dv_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(K052109_051960_w)
 	AM_RANGE(0x4000, 0x5dff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x5e00, 0x5fff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_swap_w) AM_BASE(&paletteram)
+	AM_RANGE(0x5e00, 0x5fff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_be_w) AM_BASE(&paletteram)
 	AM_RANGE(0x6000, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 

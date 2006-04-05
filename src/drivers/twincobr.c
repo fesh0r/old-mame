@@ -188,7 +188,6 @@ Shark   Zame
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/tms32010/tms32010.h"
 #include "twincobr.h"
@@ -668,7 +667,7 @@ static MACHINE_DRIVER_START( twincobr )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
-	MDRV_MACHINE_INIT(twincobr_reset)	/* Reset fshark bootleg 8741 MCU data */
+	MDRV_MACHINE_RESET(twincobr_reset)	/* Reset fshark bootleg 8741 MCU data */
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM)

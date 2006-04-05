@@ -16,7 +16,6 @@ Todo :
 
 #include "driver.h"
 #include "machine/8255ppi.h"
-#include "vidhrdw/generic.h"
 #include "sound/2203intf.h"
 
 extern int homerun_gc_up;
@@ -46,7 +45,7 @@ static ppi8255_interface ppi8255_intf =
 };
 
 
-MACHINE_INIT( homerun )
+MACHINE_RESET( homerun )
 {
 	ppi8255_init(&ppi8255_intf);
 }
@@ -173,7 +172,7 @@ static MACHINE_DRIVER_START( homerun )
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_MACHINE_INIT(homerun)
+	MDRV_MACHINE_RESET(homerun)
 
 	/* video hardware */
 	MDRV_FRAMES_PER_SECOND(60)

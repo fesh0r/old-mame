@@ -22,7 +22,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/2203intf.h"
@@ -126,7 +125,7 @@ static WRITE8_HANDLER( pushman_68000_w )
 	shared_ram[offset]=data;
 }
 
-MACHINE_INIT( bballs )
+MACHINE_RESET( bballs )
 {
 	latch=0x400;
 }
@@ -495,7 +494,7 @@ static MACHINE_DRIVER_START( bballs )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(60)
 
-	MDRV_MACHINE_INIT(bballs)
+	MDRV_MACHINE_RESET(bballs)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

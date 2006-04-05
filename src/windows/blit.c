@@ -12,12 +12,14 @@
 #include <windows.h>
 
 // MAME headers
+#include "osdepend.h"
 #include "driver.h"
+#include "vidhrdw/vector.h"
+
+// MAMEOS headers
 #include "blit.h"
 #include "video.h"
 #include "window.h"
-#include "osdepend.h"
-#include "vidhrdw/vector.h"
 
 
 
@@ -182,8 +184,8 @@ static UINT8 *				active_fast_blitter;
 static UINT8 *				active_update_blitter;
 
 // current parameters
-static struct win_blit_params	active_blitter_params;
-static struct win_blit_params	active_vector_params;
+static win_blit_params	active_blitter_params;
+static win_blit_params	active_vector_params;
 
 // coordinate transforms
 static int					xtrans[MAX_SCREEN_DIM];
@@ -319,9 +321,9 @@ static struct rgb_descriptor sharp_desc =
 //  PROTOTYPES
 //============================================================
 
-static int blit_vectors(const struct win_blit_params *blit);
-static void generate_blitter(const struct win_blit_params *blit);
-static void compute_source_fixups(const struct win_blit_params *blit, UINT32 valuefixups[]);
+static int blit_vectors(const win_blit_params *blit);
+static void generate_blitter(const win_blit_params *blit);
+static void compute_source_fixups(const win_blit_params *blit, UINT32 valuefixups[]);
 
 
 
@@ -463,7 +465,7 @@ static void (*blit16_core_rgb[4][4])(void) =
 //  win_perform_blit
 //============================================================
 
-int win_perform_blit(const struct win_blit_params *blit, int update)
+int win_perform_blit(const win_blit_params *blit, int update)
 {
 	int srcdepth = (blit->srcdepth + 7) / 8;
 	int dstdepth = (blit->dstdepth + 7) / 8;
@@ -534,7 +536,7 @@ int win_perform_blit(const struct win_blit_params *blit, int update)
 //  blit_vectors
 //============================================================
 
-static int blit_vectors(const struct win_blit_params *blit)
+static int blit_vectors(const win_blit_params *blit)
 {
 	int srcdepth = (blit->srcdepth + 7) / 8;
 	int dstdepth = (blit->dstdepth + 7) / 8;
@@ -734,7 +736,7 @@ static void emit_mov_edi_0(int reg, int offs, UINT8 **dest)
 //  emit_reduce_brightness
 //============================================================
 
-static void emit_reduce_brightness(int count, const UINT8 *reglist, const struct win_blit_params *blit, UINT8 **dest)
+static void emit_reduce_brightness(int count, const UINT8 *reglist, const win_blit_params *blit, UINT8 **dest)
 {
 	int regsize[4] = { 0 };
 	UINT32 mask;
@@ -858,7 +860,7 @@ static void emit_reduce_brightness(int count, const UINT8 *reglist, const struct
 //  emit_reduce_brightness_mmx
 //============================================================
 
-static void emit_reduce_brightness_mmx(int count, const UINT8 *reglist, const struct win_blit_params *blit, UINT8 **dest)
+static void emit_reduce_brightness_mmx(int count, const UINT8 *reglist, const win_blit_params *blit, UINT8 **dest)
 {
 	int freelist[16], tempfree[16];
 	int regsize[16] = { 0 };
@@ -1041,7 +1043,7 @@ static void emit_reduce_brightness_mmx(int count, const UINT8 *reglist, const st
 //  generate_rgb_masks
 //============================================================
 
-static void generate_rgb_masks(const struct rgb_descriptor *desc, const struct win_blit_params *blit)
+static void generate_rgb_masks(const struct rgb_descriptor *desc, const win_blit_params *blit)
 {
 	int i;
 
@@ -1085,7 +1087,7 @@ static void generate_rgb_masks(const struct rgb_descriptor *desc, const struct w
 //  emit_expansion
 //============================================================
 
-static void emit_expansion(int count, const UINT8 *reglist, const UINT32 *offslist, const struct win_blit_params *blit, UINT8 **dest, int update)
+static void emit_expansion(int count, const UINT8 *reglist, const UINT32 *offslist, const win_blit_params *blit, UINT8 **dest, int update)
 {
 	int row, i, rowoffs = 0;
 	int has_mmx = 0;
@@ -1162,7 +1164,7 @@ static void check_for_mmx(void)
 //  expand_blitter
 //============================================================
 
-static void expand_blitter(int which, const struct win_blit_params *blit, UINT8 **dest, int update)
+static void expand_blitter(int which, const win_blit_params *blit, UINT8 **dest, int update)
 {
 	int srcdepth_index = (blit->srcdepth + 7) / 8 - 1;
 	int dstdepth_index = (blit->dstdepth + 7) / 8 - 1;
@@ -1354,7 +1356,7 @@ static void fixup_values(UINT32 *fixups, UINT8 *start, UINT8 *end)
 //  compute_source_fixups
 //============================================================
 
-static void compute_source_fixups(const struct win_blit_params *blit, UINT32 valuefixups[])
+static void compute_source_fixups(const win_blit_params *blit, UINT32 valuefixups[])
 {
 	int srcxsize = (blit->srcdepth + 7) / 8;
 	int srcysize = blit->srcpitch;
@@ -1481,7 +1483,7 @@ static void compute_source_fixups(const struct win_blit_params *blit, UINT32 val
 	addrfixups[0][index] = fastptr; \
 	addrfixups[1][index] = updateptr;
 
-static void generate_blitter(const struct win_blit_params *blit)
+static void generate_blitter(const win_blit_params *blit)
 {
 	UINT8 *fastptr = active_fast_blitter;
 	UINT8 *updateptr = active_update_blitter;
@@ -1495,8 +1497,7 @@ static void generate_blitter(const struct win_blit_params *blit)
 		active_fast_blitter = osd_alloc_executable(MAX_BLITTER_SIZE);
 	if (!active_update_blitter)
 		active_update_blitter = osd_alloc_executable(MAX_BLITTER_SIZE);
-	if (!active_fast_blitter || !active_update_blitter)
-		osd_die("Out of memory for blitters!");
+	assert_always(active_fast_blitter != NULL && active_update_blitter != NULL, "Out of memory for blitters!");
 	fastptr = active_fast_blitter;
 	updateptr = active_update_blitter;
 

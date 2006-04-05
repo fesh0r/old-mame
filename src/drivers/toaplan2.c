@@ -265,7 +265,6 @@ To Do / Unknowns:
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
@@ -302,7 +301,7 @@ extern UINT16 *toaplan2_tx_gfxram16;
 size_t toaplan2_tx_vram_size;
 size_t toaplan2_tx_offs_vram_size;
 size_t toaplan2_tx_scroll_vram_size;
-size_t paletteram_size;
+size_t batrider_paletteram16_size;
 
 /********** Status related values **********/
 int toaplan2_sub_cpu = 0;
@@ -382,34 +381,34 @@ void batsugun_okisnd_w(int data);
 ***************************************************************************/
 
 
-static MACHINE_INIT( toaplan2 )		/* machine_init_toaplan2(); */
+static MACHINE_RESET( toaplan2 )		/* machine_reset_toaplan2(); */
 {
 	mcu_data = 0x00;
 }
 
-static MACHINE_INIT( ghox )
+static MACHINE_RESET( ghox )
 {
 	old_p1_paddle_h = 0;
 	old_p2_paddle_h = 0;
 
-	machine_init_toaplan2();
+	machine_reset_toaplan2();
 }
 
-static MACHINE_INIT( dogyuun )
+static MACHINE_RESET( dogyuun )
 {
 	mcu_data = 0xffaa;
 }
 
-static MACHINE_INIT( vfive )
+static MACHINE_RESET( vfive )
 {
 	mcu_data = 0xffaa;
 }
 
-static MACHINE_INIT( batrider )
+static MACHINE_RESET( batrider )
 {
 	current_bank = 2;
 
-	machine_init_toaplan2();
+	machine_reset_toaplan2();
 }
 
 static DRIVER_INIT( T2_Z80 )		/* init_t2_Z80(); */
@@ -1960,7 +1959,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( batrider_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA16_ROM)
 	AM_RANGE(0x200000, 0x201fff) AM_WRITE(toaplan2_txvideoram16_w) AM_BASE(&toaplan2_txvideoram16) AM_SIZE(&toaplan2_tx_vram_size)
-	AM_RANGE(0x202000, 0x202fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16) AM_SIZE(&paletteram_size)
+	AM_RANGE(0x202000, 0x202fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16) AM_SIZE(&batrider_paletteram16_size)
 	AM_RANGE(0x203000, 0x2031ff) AM_WRITE(toaplan2_txvideoram16_offs_w) AM_BASE(&toaplan2_txvideoram16_offs) AM_SIZE(&toaplan2_tx_offs_vram_size)
 	AM_RANGE(0x203200, 0x2033ff) AM_WRITE(toaplan2_txscrollram16_w) AM_BASE(&toaplan2_txscrollram16) AM_SIZE(&toaplan2_tx_scroll_vram_size)
 	AM_RANGE(0x203400, 0x207fff) AM_WRITE(raizing_tx_gfxram16_w)
@@ -1998,7 +1997,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( bbakraid_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA16_ROM)
 	AM_RANGE(0x200000, 0x201fff) AM_WRITE(toaplan2_txvideoram16_w) AM_BASE(&toaplan2_txvideoram16) AM_SIZE(&toaplan2_tx_vram_size)
-	AM_RANGE(0x202000, 0x202fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16) AM_SIZE(&paletteram_size)
+	AM_RANGE(0x202000, 0x202fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16) AM_SIZE(&batrider_paletteram16_size)
 	AM_RANGE(0x203000, 0x2031ff) AM_WRITE(toaplan2_txvideoram16_offs_w) AM_BASE(&toaplan2_txvideoram16_offs) AM_SIZE(&toaplan2_tx_offs_vram_size)
 	AM_RANGE(0x203200, 0x2033ff) AM_WRITE(toaplan2_txscrollram16_w) AM_BASE(&toaplan2_txscrollram16) AM_SIZE(&toaplan2_tx_scroll_vram_size)
 	AM_RANGE(0x203400, 0x207fff) AM_WRITE(raizing_tx_gfxram16_w)
@@ -4058,7 +4057,7 @@ static MACHINE_DRIVER_START( tekipaki )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4095,7 +4094,7 @@ static MACHINE_DRIVER_START( ghox )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(ghox)
+	MDRV_MACHINE_RESET(ghox)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4133,7 +4132,7 @@ static MACHINE_DRIVER_START( dogyuun )
 	MDRV_FRAMES_PER_SECOND( (27000000.0 / 4) / (432 * 263) )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(dogyuun)
+	MDRV_MACHINE_RESET(dogyuun)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4176,7 +4175,7 @@ static MACHINE_DRIVER_START( kbash )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4213,7 +4212,7 @@ static MACHINE_DRIVER_START( truxton2 )
 	MDRV_FRAMES_PER_SECOND( (27000000.0 / 4) / (432 * 263) )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4254,7 +4253,7 @@ static MACHINE_DRIVER_START( pipibibs )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4291,7 +4290,7 @@ static MACHINE_DRIVER_START( whoopee )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4327,7 +4326,7 @@ static MACHINE_DRIVER_START( pipibibi )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4365,7 +4364,7 @@ static MACHINE_DRIVER_START( fixeight )
 	MDRV_FRAMES_PER_SECOND( (27000000.0 / 4) / (432 * 263) )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 /// MDRV_NVRAM_HANDLER(fixeight)        /* See 37B6 code */
 
 	/* video hardware */
@@ -4402,7 +4401,7 @@ static MACHINE_DRIVER_START( fixeighb )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4442,7 +4441,7 @@ static MACHINE_DRIVER_START( vfive )
 	MDRV_FRAMES_PER_SECOND( (27000000.0 / 4) / (432 * 263) )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(vfive)
+	MDRV_MACHINE_RESET(vfive)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4480,7 +4479,7 @@ static MACHINE_DRIVER_START( batsugun )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4517,7 +4516,7 @@ static MACHINE_DRIVER_START( snowbro2 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4558,7 +4557,7 @@ static MACHINE_DRIVER_START( mahoudai )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4599,7 +4598,7 @@ static MACHINE_DRIVER_START( shippumd )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4640,7 +4639,7 @@ static MACHINE_DRIVER_START( battleg )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4682,7 +4681,7 @@ static MACHINE_DRIVER_START( batrider )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
-	MDRV_MACHINE_INIT(batrider)
+	MDRV_MACHINE_RESET(batrider)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -4728,7 +4727,7 @@ static MACHINE_DRIVER_START( bbakraid )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(262)
 
-	MDRV_MACHINE_INIT(toaplan2)
+	MDRV_MACHINE_RESET(toaplan2)
 	MDRV_NVRAM_HANDLER(bbakraid)
 
 	/* video hardware */

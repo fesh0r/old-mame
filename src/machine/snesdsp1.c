@@ -448,7 +448,7 @@ void DSP1_Polar(INT16 Az, INT16 Ay, INT16 Ax, INT16 X1, INT16 Y1, INT16 Z1, INT1
 // Input    byte(02H) integer(Fx) integer(Fy) integer(Fz) integer(Lfe) integer(Les) integer(Aas) integer(Azs)
 // Output   integer(Vof) integer(Vva) integer(Cx) integer(Cy)
 
-const INT16 MaxAZS_Exp[16] = {
+static const INT16 MaxAZS_Exp[16] = {
 	0x38b4, 0x38b7, 0x38ba, 0x38be, 0x38c0, 0x38c4, 0x38c7, 0x38ca,
 	0x38ce, 0x38d0, 0x38d4, 0x38d7, 0x38da, 0x38dd, 0x38e0, 0x38e4
 };
@@ -672,7 +672,7 @@ void DSP1_Target(INT16 H, INT16 V, INT16 *X, INT16 *Y)
 // Input    byte(01H) integer(M) integer(Az) integer(Ay) integer(Ax)
 // Output   None
 
-INT16 MatrixA[3][3];
+static INT16 MatrixA[3][3];
 
 void DSP1_Attitude_A(INT16 M, INT16 Az, INT16 Ay, INT16 Ax)
 {
@@ -702,7 +702,7 @@ void DSP1_Attitude_A(INT16 M, INT16 Az, INT16 Ay, INT16 Ax)
 // Input    byte(11H) integer(M) integer(Az) integer(Ay) integer(Ax)
 // Output   None
 
-INT16 MatrixB[3][3];
+static INT16 MatrixB[3][3];
 
 void DSP1_Attitude_B(INT16 M, INT16 Az, INT16 Ay, INT16 Ax)
 {
@@ -732,7 +732,7 @@ void DSP1_Attitude_B(INT16 M, INT16 Az, INT16 Ay, INT16 Ax)
 // Input    byte(21H) integer(M) integer(Az) integer(Ay) integer(Ax)
 // Output   None
 
-INT16 MatrixC[3][3];
+static INT16 MatrixC[3][3];
 
 void DSP1_Attitude_C(INT16 M, INT16 Az, INT16 Ay, INT16 Ax)
 {

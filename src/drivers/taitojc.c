@@ -340,7 +340,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "machine/random.h"
 #include "taito_f3.h"
 #include "sound/es5506.h"
 
@@ -559,7 +558,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-static MACHINE_INIT( jc )
+static MACHINE_RESET( jc )
 {
 	/* Sound cpu program loads to 0xc00000 so we use a bank */
 	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU2);
@@ -593,7 +592,7 @@ static MACHINE_DRIVER_START( taitojc )
 	MDRV_CPU_PROGRAM_MAP(taitojc_map, 0)
 //  MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
-	MDRV_MACHINE_INIT(jc)
+	MDRV_MACHINE_RESET(jc)
 
 	MDRV_CPU_ADD(M68000, 16000000)
 	/* audio CPU */

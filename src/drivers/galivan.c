@@ -29,7 +29,6 @@ Driver by Takahiro Nogi (nogi@kt.rim.or.jp) 1999/12/17 -
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/dac.h"
 #include "sound/3812intf.h"
 
@@ -50,7 +49,7 @@ VIDEO_UPDATE( ninjemak );
 
 
 
-static MACHINE_INIT( galivan )
+static MACHINE_RESET( galivan )
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
 
@@ -576,7 +575,7 @@ static MACHINE_DRIVER_START( galivan )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(galivan)
+	MDRV_MACHINE_RESET(galivan)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -620,7 +619,7 @@ static MACHINE_DRIVER_START( ninjemak )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(galivan)
+	MDRV_MACHINE_RESET(galivan)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

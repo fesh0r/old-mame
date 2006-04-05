@@ -38,7 +38,6 @@
 *******************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
 
@@ -681,7 +680,7 @@ static struct YM3526interface ym3526_interface =
 
 /******************************************************************************/
 
-static MACHINE_INIT( karnov )
+static MACHINE_RESET( karnov )
 {
 	memset(karnov_ram,0,0x4000/2); /* Chelnov likes ram clear on reset.. */
 }
@@ -699,7 +698,7 @@ static MACHINE_DRIVER_START( karnov )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(karnov)
+	MDRV_MACHINE_RESET(karnov)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -738,7 +737,7 @@ static MACHINE_DRIVER_START( wndrplnt )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(karnov)
+	MDRV_MACHINE_RESET(karnov)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)

@@ -23,7 +23,6 @@ Known issues:
 // Directives
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/ay8910.h"
@@ -385,7 +384,7 @@ static const gfx_decode gfxdecodeinfo[] =
 //****************************************************************************
 // Hardware Definitions
 
-MACHINE_INIT( bwing )
+MACHINE_RESET( bwing )
 {
 	bwp3_nmimask = 0;
 	fftail = ffhead = ffcount = 0;

@@ -37,7 +37,8 @@
 /*                                                                           */
 /*****************************************************************************/
 
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "tiaintf.h"
 #include "tiasound.h"
 

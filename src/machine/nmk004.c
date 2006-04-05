@@ -269,7 +269,7 @@ static void effects_update(int channel)
 							return;
 
 						default:
-							osd_die("effects channel %d unsupported token %02x\n",channel,token);
+							fatalerror("effects channel %d unsupported token %02x",channel,token);
 					}
 				}
 			} while (token == 0xef || (token & 0xf0) == 0xf0);
@@ -449,7 +449,7 @@ static void fm_update(int channel)
 							return;
 
 						default:
-							osd_die("fm channel %d unsupported token %02x\n",channel,token);
+							fatalerror("fm channel %d unsupported token %02x",channel,token);
 					}
 				}
 			} while (token == 0xef || (token & 0xf0) == 0xf0);
@@ -800,7 +800,7 @@ static void psg_update(int channel)
 			psg->note = token;
 			if ((psg->note & 0x0f) > NOTE_PAUSE)
 			{
-				osd_die("PSG channel %d invalid note %02x\n",channel,psg->note);
+				fatalerror("PSG channel %d invalid note %02x",channel,psg->note);
 			}
 
 			// optional note length (otherwise use the same length as the previous one)
@@ -964,7 +964,7 @@ static void get_command(void)
 						channel -= PSG_CHANNELS;
 						if (channel >= EFFECTS_CHANNELS)
 						{
-							osd_die("too many effects channels\n");
+							fatalerror("too many effects channels");
 						}
 						NMK004_state.effects_control[channel].current = table_start;
 						NMK004_state.effects_control[channel].return_address_depth = 0;
@@ -1016,7 +1016,7 @@ void NMK004_irq(int irq)
 }
 
 
-void NMK004_init(void)
+static void real_nmk004_init(int param)
 {
 	static UINT8 ym2203_init[] =
 	{
@@ -1044,6 +1044,12 @@ void NMK004_init(void)
 	oki_play_sample(0);
 
 	NMK004_state.protection_check = 0;
+}
+
+void NMK004_init(void)
+{
+	/* we have to do this via a timer because we get called before the sound reset */
+	timer_set(TIME_NOW, 0, real_nmk004_init);
 }
 
 

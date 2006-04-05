@@ -88,7 +88,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/ticket.h"
 #include "cpu/m6809/m6809.h"
 #include "capbowl.h"
@@ -132,7 +131,7 @@ static void capbowl_update(int scan)
 }
 
 
-static MACHINE_INIT( capbowl )
+static MACHINE_RESET( capbowl )
 {
 	timer_set(cpu_getscanlinetime(32), 32, capbowl_update);
 }
@@ -359,7 +358,7 @@ static MACHINE_DRIVER_START( capbowl )
 	MDRV_FRAMES_PER_SECOND(57)
 	MDRV_VBLANK_DURATION(5000)
 
-	MDRV_MACHINE_INIT(capbowl)
+	MDRV_MACHINE_RESET(capbowl)
 	MDRV_NVRAM_HANDLER(capbowl)
 
 	/* video hardware */

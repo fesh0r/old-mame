@@ -42,8 +42,6 @@ Bucky:
 ***************************************************************************/
 
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
@@ -221,28 +219,7 @@ static WRITE16_HANDLER( sound_irq_w )
 
 static READ16_HANDLER( sound_status_r )
 {
-	int latch = soundlatch3_r(0);
-
-	/* make test pass with sound off.
-       these games are trickier than your usual konami stuff, they expect to
-       read 0xff (meaning the z80 booted properly) then 0x80 (z80 busy) then
-       the self-test result */
-	if (!Machine->sample_rate) {
-		if (init_nosound_count < 10)
-		{
-			if (!init_nosound_count)
-				latch = 0xff;
-			else
-				latch = 0x80;
-			init_nosound_count++;
-		}
-		else
-		{
-			latch = 0x0f;
-		}
-	}
-
-	return latch;
+	return soundlatch3_r(0);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -374,7 +351,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x190000, 0x19ffff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16)
 	AM_RANGE(0x1a0000, 0x1a1fff) AM_WRITE(K056832_ram_word_w)	/* Graphic planes */
 	AM_RANGE(0x1a2000, 0x1a3fff) AM_WRITE(K056832_ram_word_w)	/* Graphic planes mirror */
-	AM_RANGE(0x1c0000, 0x1c1fff) AM_WRITE(paletteram16_xrgb_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x1c0000, 0x1c1fff) AM_WRITE(paletteram16_xrgb_word_be_w) AM_BASE(&paletteram16)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmembl, ADDRESS_SPACE_PROGRAM, 16 )
@@ -412,7 +389,7 @@ static ADDRESS_MAP_START( writemembl, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x190000, 0x19ffff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16)
 	AM_RANGE(0x1a0000, 0x1a1fff) AM_WRITE(K056832_ram_word_w)	/* Graphic planes */
 	AM_RANGE(0x1a2000, 0x1a3fff) AM_WRITE(K056832_ram_word_w)	/* Graphic planes mirror */
-	AM_RANGE(0x1c0000, 0x1c1fff) AM_WRITE(paletteram16_xrgb_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x1c0000, 0x1c1fff) AM_WRITE(paletteram16_xrgb_word_be_w) AM_BASE(&paletteram16)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( buckyreadmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -466,7 +443,7 @@ static ADDRESS_MAP_START( buckywritemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x180000, 0x181fff) AM_WRITE(K056832_ram_word_w)	/* Graphic planes */
 	AM_RANGE(0x182000, 0x183fff) AM_WRITE(K056832_ram_word_w)	/* Graphic planes mirror */
 	AM_RANGE(0x184000, 0x187fff) AM_WRITE(MWA16_RAM)			/* extra tile RAM? */
-	AM_RANGE(0x1b0000, 0x1b3fff) AM_WRITE(paletteram16_xrgb_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x1b0000, 0x1b3fff) AM_WRITE(paletteram16_xrgb_word_be_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x200000, 0x23ffff) AM_WRITE(MWA16_ROM)
 ADDRESS_MAP_END
 
@@ -634,7 +611,14 @@ static struct K054539interface k054539_interface =
 	REGION_SOUND1
 };
 
-static MACHINE_INIT( moo )
+static MACHINE_START( moo )
+{
+	state_save_register_global(cur_control2);
+	state_save_register_global_array(protram);
+	return 0;
+}
+
+static MACHINE_RESET( moo )
 {
 	init_nosound_count = 0;
 }
@@ -654,7 +638,8 @@ static MACHINE_DRIVER_START( moo )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(1200) // should give IRQ4 sufficient time to update scroll registers
 
-	MDRV_MACHINE_INIT(moo)
+	MDRV_MACHINE_START(moo)
+	MDRV_MACHINE_RESET(moo)
 
 	MDRV_NVRAM_HANDLER(moo)
 
@@ -691,7 +676,8 @@ static MACHINE_DRIVER_START( moobl )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(1200) // should give IRQ4 sufficient time to update scroll registers
 
-	MDRV_MACHINE_INIT(moo)
+	MDRV_MACHINE_START(moo)
+	MDRV_MACHINE_RESET(moo)
 	MDRV_NVRAM_HANDLER(moo)
 
 	/* video hardware */
@@ -725,7 +711,7 @@ MACHINE_DRIVER_END
 
 
 
-ROM_START( moo )
+ROM_START( moo ) /* Version EA - Euro Ver A */
 	ROM_REGION( 0x180000, REGION_CPU1, 0 )
 	/* main program */
 	ROM_LOAD16_BYTE( "151b01",    0x000000,  0x40000, CRC(fb2fa298) SHA1(f03b24681a2b329ba797fd2780ac9a3cf862ebcb) )
@@ -757,11 +743,43 @@ ROM_START( moo )
 	ROM_LOAD( "151a08", 0x000000, 0x200000, CRC(962251d7) SHA1(32dccf515d2ca8eeffb45cada3dcc60089991b77) )
 ROM_END
 
-ROM_START( mooua )
+ROM_START( mooua ) /* Version UA - USA Ver A */
 	ROM_REGION( 0x180000, REGION_CPU1, 0 )
 	/* main program */
-	ROM_LOAD16_BYTE( "151b01", 0x000000,  0x40000, CRC(fb2fa298) SHA1(f03b24681a2b329ba797fd2780ac9a3cf862ebcb) )
-	ROM_LOAD16_BYTE( "151b02", 0x000001,  0x40000, CRC(3d9f4d59) SHA1(db47044bd4935fce94ec659242c9819c30eb6d0f) )
+	ROM_LOAD16_BYTE( "151b01",    0x000000,  0x40000, CRC(fb2fa298) SHA1(f03b24681a2b329ba797fd2780ac9a3cf862ebcb) )
+	ROM_LOAD16_BYTE( "151b02.ua", 0x000001,  0x40000, CRC(3d9f4d59) SHA1(db47044bd4935fce94ec659242c9819c30eb6d0f) )
+
+	/* data */
+	ROM_LOAD16_BYTE( "151a03", 0x100000,  0x40000, CRC(c896d3ea) SHA1(ea83c63e2c3dbc4f1e1d49f1852a78ffc1f0ea4b) )
+	ROM_LOAD16_BYTE( "151a04", 0x100001,  0x40000, CRC(3b24706a) SHA1(c2a77944284e35ff57f0774fa7b67e53d3b63e1f) )
+
+	ROM_REGION( 0x050000, REGION_CPU2, 0 )
+	/* Z80 sound program */
+	ROM_LOAD( "151a07", 0x000000, 0x040000, CRC(cde247fc) SHA1(cdee0228db55d53ae43d7cd2d9001dadd20c2c61) )
+	ROM_RELOAD(         0x010000, 0x040000 )
+
+	ROM_REGION( 0x200000, REGION_GFX1, 0 )
+	/* tilemaps */
+	ROM_LOAD( "151a05", 0x000000, 0x100000, CRC(bc616249) SHA1(58c1f1a03ce9bead8f79d12ce4b2d342432b24b5) )
+	ROM_LOAD( "151a06", 0x100000, 0x100000, CRC(38dbcac1) SHA1(c357779733921695b20ac586db5b475f5b2b8f4c) )
+
+	ROM_REGION( 0x800000, REGION_GFX2, 0 )
+	/* sprites */
+	ROM_LOAD( "151a10", 0x000000, 0x200000, CRC(376c64f1) SHA1(eb69c5a27f9795e28f04a503955132f0a9e4de12) )
+	ROM_LOAD( "151a11", 0x200000, 0x200000, CRC(e7f49225) SHA1(1255b214f29b6507540dad5892c60a7ae2aafc5c) )
+	ROM_LOAD( "151a12", 0x400000, 0x200000, CRC(4978555f) SHA1(d9871f21d0c8a512b408e137e2e80e9392c2bf6f) )
+	ROM_LOAD( "151a13", 0x600000, 0x200000, CRC(4771f525) SHA1(218d86b6230919b5db0304dac00513eb6b27ba9a) )
+
+	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	/* K054539 samples */
+	ROM_LOAD( "151a08", 0x000000, 0x200000, CRC(962251d7) SHA1(32dccf515d2ca8eeffb45cada3dcc60089991b77) )
+ROM_END
+
+ROM_START( mooaa ) /* Version AA - Asia Ver A */
+	ROM_REGION( 0x180000, REGION_CPU1, 0 )
+	/* main program */
+	ROM_LOAD16_BYTE( "151b01",    0x000000,  0x40000, CRC(fb2fa298) SHA1(f03b24681a2b329ba797fd2780ac9a3cf862ebcb) )
+	ROM_LOAD16_BYTE( "151b02.aa", 0x000001,  0x40000, CRC(2162d593) SHA1(a6cfe4a57b3f22b2aa0f04f91acefe3b7bea9e76) )
 
 	/* data */
 	ROM_LOAD16_BYTE( "151a03", 0x100000,  0x40000, CRC(c896d3ea) SHA1(ea83c63e2c3dbc4f1e1d49f1852a78ffc1f0ea4b) )
@@ -861,9 +879,6 @@ static DRIVER_INIT( moo )
 	konami_rom_deinterleave_2(REGION_GFX1);
 	konami_rom_deinterleave_4(REGION_GFX2);
 
-	state_save_register_UINT16("Moo", 0, "control2", &cur_control2, 1);
-	state_save_register_UINT16("Moo", 0, "protram", protram, 16);
-
 	game_type = (!strcmp(Machine->gamedrv->name, "bucky") || !strcmp(Machine->gamedrv->name, "buckyua"));
 }
 
@@ -920,6 +935,7 @@ ROM_END
 
 GAME( 1992, moo,     0,       moo,     moo,     moo,      ROT0, "Konami", "Wild West C.O.W.-Boys of Moo Mesa (ver EA)", 0)
 GAME( 1992, mooua,   moo,     moo,     moo,     moo,      ROT0, "Konami", "Wild West C.O.W.-Boys of Moo Mesa (ver UA)", 0)
+GAME( 1992, mooaa,   moo,     moo,     moo,     moo,      ROT0, "Konami", "Wild West C.O.W.-Boys of Moo Mesa (ver AA)", 0)
 GAME( 1992, moobl,   moo,     moobl,   moo,     moo,      ROT0, "<unknown>", "Wild West C.O.W.-Boys of Moo Mesa (bootleg ver AA)", GAME_NOT_WORKING)
 GAME( 1992, bucky,   0,       bucky,   bucky,   moo,      ROT0, "Konami", "Bucky O'Hare (ver EA)", 0)
 GAME( 1992, buckyua, bucky,   bucky,   bucky,   moo,      ROT0, "Konami", "Bucky O'Hare (ver UA)", 0)

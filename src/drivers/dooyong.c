@@ -47,7 +47,6 @@ Flying Tiger
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2203intf.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
@@ -116,7 +115,7 @@ static ADDRESS_MAP_START( lastday_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc010, 0xc010) AM_WRITE(lastday_ctrl_w)	/* coin counter, flip screen */
 	AM_RANGE(0xc011, 0xc011) AM_WRITE(lastday_bankswitch_w)
 	AM_RANGE(0xc012, 0xc012) AM_WRITE(soundlatch_w)
-	AM_RANGE(0xc800, 0xcfff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_w) AM_BASE(&paletteram)
+	AM_RANGE(0xc800, 0xcfff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0xd000, 0xdfff) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_txvideoram)
 	AM_RANGE(0xe000, 0xefff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
@@ -144,7 +143,7 @@ static ADDRESS_MAP_START( pollux_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf010, 0xf010) AM_WRITE(soundlatch_w)
 	AM_RANGE(0xf018, 0xf01e) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_bgscroll)
 	AM_RANGE(0xf020, 0xf026) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_fgscroll)
-	AM_RANGE(0xf800, 0xffff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram)
+	AM_RANGE(0xf800, 0xffff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_le_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gulfstrm_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -178,7 +177,7 @@ static ADDRESS_MAP_START( bluehawk_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc018, 0xc01c) AM_WRITE(MWA8_RAM) AM_BASE(&bluehawk_fg2scroll)
 	AM_RANGE(0xc040, 0xc044) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_bgscroll)
 	AM_RANGE(0xc048, 0xc04c) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_fgscroll)
-	AM_RANGE(0xc800, 0xcfff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram)
+	AM_RANGE(0xc800, 0xcfff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0xd000, 0xdfff) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_txvideoram)
 	AM_RANGE(0xe000, 0xefff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_RAM)
@@ -208,7 +207,7 @@ static ADDRESS_MAP_START( flytiger_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe020, 0xe020) AM_WRITE(soundlatch_w)
 	AM_RANGE(0xe030, 0xe036) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_bgscroll)
 	AM_RANGE(0xe040, 0xe046) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_fgscroll)
-	AM_RANGE(0xe800, 0xefff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram)
+	AM_RANGE(0xe800, 0xefff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_txvideoram)
 ADDRESS_MAP_END
 
@@ -230,7 +229,7 @@ static ADDRESS_MAP_START( primella_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(MWA8_RAM)	/* what is this? looks like a palette? scratchpad RAM maybe? */
 	AM_RANGE(0xe000, 0xefff) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_txvideoram)
-	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram)
+	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0xf800, 0xf800) AM_WRITE(primella_ctrl_w)	/* bank switch, flip screen etc */
 	AM_RANGE(0xf810, 0xf810) AM_WRITE(soundlatch_w)
 	AM_RANGE(0xfc00, 0xfc04) AM_WRITE(MWA8_RAM) AM_BASE(&lastday_bgscroll)
@@ -854,7 +853,7 @@ static void irqhandler(int irq)
 	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-READ8_HANDLER( unk_r )
+static READ8_HANDLER( unk_r )
 {
 	return 0;
 }
@@ -1350,10 +1349,10 @@ ROM_START( pollux )
 	ROM_CONTINUE(             0x00000, 0x08000 )
 
 	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )	/* sprites */
-	ROM_LOAD16_WORD_SWAP( "polluxm2.bin", 0x00000, 0x80000, CRC(bdea6f7d) SHA1(b418710a6d12aa53037acf7bbec85a26dfac9ebe) )
+	ROM_LOAD16_WORD_SWAP( "dy-pl-m2_be023.bin", 0x00000, 0x80000, CRC(bdea6f7d) SHA1(b418710a6d12aa53037acf7bbec85a26dfac9ebe) )
 
 	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE )	/* tiles */
-	ROM_LOAD16_WORD_SWAP( "polluxm1.bin", 0x00000, 0x80000, CRC(1d2dedd2) SHA1(9bcb1c80f05eabbca2c0738e409d3cadfc14b0c8) )
+	ROM_LOAD16_WORD_SWAP( "dy-pl-m1_be015.bin", 0x00000, 0x80000, CRC(1d2dedd2) SHA1(9bcb1c80f05eabbca2c0738e409d3cadfc14b0c8) )
 
 	ROM_REGION( 0x80000, REGION_GFX4, ROMREGION_DISPOSE )	/* tiles */
 	ROM_LOAD16_BYTE( "pollux6.bin",  0x00000, 0x20000, CRC(b0391db5) SHA1(0c522c5074dc7c0a639ebfb7b9a9eddc90314081) )
@@ -1382,10 +1381,42 @@ ROM_START( polluxa )
 	ROM_CONTINUE(             0x00000, 0x08000 )
 
 	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )	/* sprites */
-	ROM_LOAD16_WORD_SWAP( "polluxm2.bin", 0x00000, 0x80000, CRC(bdea6f7d) SHA1(b418710a6d12aa53037acf7bbec85a26dfac9ebe) )
+	ROM_LOAD16_WORD_SWAP( "dy-pl-m2_be023.bin", 0x00000, 0x80000, CRC(bdea6f7d) SHA1(b418710a6d12aa53037acf7bbec85a26dfac9ebe) )
 
 	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE )	/* tiles */
-	ROM_LOAD16_WORD_SWAP( "polluxm1.bin", 0x00000, 0x80000, CRC(1d2dedd2) SHA1(9bcb1c80f05eabbca2c0738e409d3cadfc14b0c8) )
+	ROM_LOAD16_WORD_SWAP( "dy-pl-m1_be015.bin", 0x00000, 0x80000, CRC(1d2dedd2) SHA1(9bcb1c80f05eabbca2c0738e409d3cadfc14b0c8) )
+
+	ROM_REGION( 0x80000, REGION_GFX4, ROMREGION_DISPOSE )	/* tiles */
+	ROM_LOAD16_BYTE( "pollux6.bin",  0x00000, 0x20000, CRC(b0391db5) SHA1(0c522c5074dc7c0a639ebfb7b9a9eddc90314081) )
+	ROM_LOAD16_BYTE( "pollux7.bin",  0x00001, 0x20000, CRC(632f6e10) SHA1(a3605cbe7a9dc04cd8c1ab50110f72d93c78208b) )
+	ROM_FILL(                        0x40000, 0x40000, 0xff )
+
+	ROM_REGION( 0x20000, REGION_GFX5, 0 )	/* bg tilemaps */
+	ROM_LOAD16_BYTE( "pollux9.bin",  0x00000, 0x10000, CRC(378d8914) SHA1(ef95903971673bc26774fe2aff17e1581a7f0eb9) )
+	ROM_LOAD16_BYTE( "pollux8.bin",  0x00001, 0x10000, CRC(8859fa70) SHA1(7b1b9edde3f762c7ae1f0b847aa17e30140e9ffa) )
+
+	ROM_REGION( 0x20000, REGION_GFX6, 0 )	/* fg tilemaps */
+	ROM_LOAD16_BYTE( "pollux5.bin",  0x00000, 0x10000, CRC(ac090d34) SHA1(6b554450d8d46165e25fd6f12ab4c4b9b63dcd35) )
+	ROM_LOAD16_BYTE( "pollux4.bin",  0x00001, 0x10000, CRC(2c6bd3be) SHA1(6648264be83588a01f264e7ec72d84e29e0d4795) )
+ROM_END
+
+ROM_START( polluxa2 )
+	ROM_REGION( 0x30000, REGION_CPU1, 0 )	/* 64k for code + 128k for banks */
+	ROM_LOAD( "dooyong16_tms27c512.bin",  0x00000, 0x10000, CRC(dffe5173) SHA1(fec9b8198ae8a1b7c9b798b9317ed6d986c11e35) )
+	ROM_RELOAD(               0x10000, 0x10000 )	/* banked at 0x8000-0xbfff */
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* sound */
+	ROM_LOAD( "pollux3.bin",  0x00000, 0x10000, CRC(85a9dc98) SHA1(a349bfb05d870ba920469066ce5c007363aca348) )
+
+	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
+	ROM_LOAD( "dooyong1.bin",  0x08000, 0x08000, CRC(a7d820b2) SHA1(bbcc3690f91a4bd4f0cff5da25cbfeceb7a19437) )
+	ROM_CONTINUE(             0x00000, 0x08000 )
+
+	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )	/* sprites */
+	ROM_LOAD16_WORD_SWAP( "dy-pl-m2_be023.bin", 0x00000, 0x80000, CRC(bdea6f7d) SHA1(b418710a6d12aa53037acf7bbec85a26dfac9ebe) )
+
+	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE )	/* tiles */
+	ROM_LOAD16_WORD_SWAP( "dy-pl-m1_be015.bin", 0x00000, 0x80000, CRC(1d2dedd2) SHA1(9bcb1c80f05eabbca2c0738e409d3cadfc14b0c8) )
 
 	ROM_REGION( 0x80000, REGION_GFX4, ROMREGION_DISPOSE )	/* tiles */
 	ROM_LOAD16_BYTE( "pollux6.bin",  0x00000, 0x20000, CRC(b0391db5) SHA1(0c522c5074dc7c0a639ebfb7b9a9eddc90314081) )
@@ -1892,6 +1923,7 @@ GAME( 1991, gulfstrm, 0,        gulfstrm, gulfstrm, 0, ROT270, "Dooyong", "Gulf 
 GAME( 1991, gulfstr2, gulfstrm, gulfstrm, gulfstrm, 0, ROT270, "Dooyong (Media Shoji license)", "Gulf Storm (Media Shoji)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1991, pollux,   0,        pollux,   pollux,   0, ROT270, "Dooyong", "Pollux (set 1)", GAME_IMPERFECT_SOUND )
 GAME( 1991, polluxa,  pollux,   pollux,   pollux,   0, ROT270, "Dooyong", "Pollux (set 2)", GAME_IMPERFECT_SOUND )
+GAME( 1991, polluxa2, pollux,   pollux,   pollux,   0, ROT270, "Dooyong", "Pollux (set 3)", GAME_IMPERFECT_SOUND ) /* Original Dooyong Board distributed by TCH */
 GAME( 1992, flytiger, 0,        flytiger, flytiger, 0, ROT270, "Dooyong", "Flying Tiger", GAME_IMPERFECT_GRAPHICS | GAME_WRONG_COLORS )
 GAME( 1993, bluehawk, 0,        bluehawk, bluehawk, 0, ROT270, "Dooyong", "Blue Hawk", GAME_IMPERFECT_GRAPHICS )
 GAME( 1993, bluehawn, bluehawk, bluehawk, bluehawk, 0, ROT270, "[Dooyong] (NTC license)", "Blue Hawk (NTC)", GAME_IMPERFECT_GRAPHICS )

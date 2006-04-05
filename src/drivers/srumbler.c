@@ -9,7 +9,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2203intf.h"
 
@@ -50,7 +49,7 @@ static WRITE8_HANDLER( srumbler_bankswitch_w )
 	}
 }
 
-static MACHINE_INIT( srumbler )
+static MACHINE_RESET( srumbler )
 {
 	/* initialize banked ROM pointers */
 	srumbler_bankswitch_w(0,0);
@@ -110,7 +109,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x400e, 0x400e) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x5000, 0x5fff) AM_WRITE(srumbler_foreground_w) AM_BASE(&srumbler_foregroundram)
 	AM_RANGE(0x6000, 0x6fff) AM_WRITE(MWA8_RAM) /* Video RAM 2 ??? (not used) */
-	AM_RANGE(0x7000, 0x73ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_swap_w) AM_BASE(&paletteram)
+	AM_RANGE(0x7000, 0x73ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram)
 	AM_RANGE(0x7400, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
@@ -274,7 +273,7 @@ static MACHINE_DRIVER_START( srumbler )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(srumbler)
+	MDRV_MACHINE_RESET(srumbler)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)

@@ -16,12 +16,7 @@
 
 ********************************************/
 
-#include "cpuintrf.h"
-#include "osd_cpu.h"
-#include "mamedbg.h"
-#include "state.h"
-
-#include <assert.h>
+#include "debugger.h"
 #include "v810.h"
 
 #define clkIF 3
@@ -30,8 +25,8 @@
 typedef struct
 {
 	UINT32 reg[65];
-	int irq_line;
-	int nmi_line;
+	UINT8 irq_line;
+	UINT8 nmi_line;
 	int (*irq_cb)(int irqline);
 	UINT32 PPC;
 	UINT32 op;
@@ -111,13 +106,13 @@ int v810_ICount;
 
 
 
-void SETREG(UINT32 reg,UINT32 val)
+static void SETREG(UINT32 reg,UINT32 val)
 {
 	if(reg)
 		v810.reg[reg]=val;
 }
 
-UINT32 GETREG(UINT32 reg)
+static UINT32 GETREG(UINT32 reg)
 {
 	if(reg)
 		return v810.reg[reg];
@@ -951,21 +946,20 @@ static UINT32 (*OpCodeTable[64])(void) =
 	/* 0x3f */ opOUTW  	// out.w reg2, disp16[reg1]     6b
 };
 
-void v810_init(void)
+void v810_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
-
 	v810.irq_line = CLEAR_LINE;
 	v810.nmi_line = CLEAR_LINE;
+	v810.irq_cb = irqcallback;
 
-	state_save_register_UINT32("v810", cpu, "reg",       v810.reg, 65);
-	state_save_register_int   ("v810", cpu, "irq_line", &v810.irq_line);
-	state_save_register_int   ("v810", cpu, "nmi_line", &v810.nmi_line);
-	state_save_register_UINT32("v810", cpu, "ppc",      &PPC, 1);
+	state_save_register_item_array("v810", index, v810.reg);
+	state_save_register_item("v810", index, v810.irq_line);
+	state_save_register_item("v810", index, v810.nmi_line);
+	state_save_register_item("v810", index, PPC);
 
 }
 
-void v810_reset(void *param)
+void v810_reset(void)
 {
 	int i;
 	for(i=0;i<64;i++)	v810.reg[i]=0;
@@ -980,10 +974,7 @@ int v810_execute(int cycles)
 	while(v810_ICount>=0)
 	{
 		PPC=PC;
-#ifdef MAME_DEBUG
-	if (mame_debug)
-		MAME_Debug();
-#endif
+		CALL_MAME_DEBUG;
 		OP=R_OP(PC);
 		PC+=2;
 		v810_ICount-= OpCodeTable[OP>>10]();
@@ -1038,10 +1029,8 @@ unsigned v810_dasm(char *buffer, unsigned int pc)
 #endif
 }
 
-void 			set_irq_line(int irqline, int state)
+static void set_irq_line(int irqline, int state)
 {
-
-
 }
 
 /**************************************************************************
@@ -1120,9 +1109,6 @@ static void v810_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + V810_TKCW:		TKCW = info->i;							break;
 		case CPUINFO_INT_REGISTER + V810_CHCW:		CHCW = info->i;							break;
 		case CPUINFO_INT_REGISTER + V810_ADTRE:		ADTRE = info->i;						break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					v810.irq_cb = info->irqcallback;			break;
 	}
 }
 
@@ -1234,7 +1220,6 @@ void v810_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = v810_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = v810_dasm;			break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = v810.irq_cb;			break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &v810_ICount;				break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = v810_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = v810_win_layout;				break;

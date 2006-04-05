@@ -22,8 +22,8 @@
 */
 
 #include <math.h>
-#include <string.h>
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "cpuintrf.h"
 #include "scsp.h"
 
@@ -218,7 +218,7 @@ static stream_sample_t *bufferr;
 static int length;
 
 
-signed short *RBUFDST;	//this points to where the sample will be stored in the RingBuf
+static signed short *RBUFDST;	//this points to where the sample will be stored in the RingBuf
 
 static unsigned char DecodeSCI(struct _SCSP *SCSP,unsigned char irq)
 {
@@ -233,7 +233,7 @@ static unsigned char DecodeSCI(struct _SCSP *SCSP,unsigned char irq)
 	return SCI;
 }
 
-void CheckPendingIRQ(struct _SCSP *SCSP)
+static void CheckPendingIRQ(struct _SCSP *SCSP)
 {
 	UINT32 pend=SCSP->udata.data[0x20/2];
 	UINT32 en=SCSP->udata.data[0x1e/2];
@@ -290,7 +290,7 @@ static int Get_RR(struct _SCSP *SCSP,int base,int R)
 	return SCSP->ARTABLE[63-Rate];
 }
 
-void Compute_EG(struct _SCSP *SCSP,struct _SLOT *slot)
+static void Compute_EG(struct _SCSP *SCSP,struct _SLOT *slot)
 {
 	int octave=OCT(slot);
 	int rate;
@@ -675,18 +675,12 @@ static void SCSP_w16(struct _SCSP *SCSP,unsigned int addr,unsigned short val)
 		int slot=addr/0x20;
 		addr&=0x1f;
 		*((unsigned short *) (SCSP->Slots[slot].udata.datab+(addr))) = val;
-		if (Machine->sample_rate > 0)
-		{
-			SCSP_UpdateSlotReg(SCSP,slot,addr&0x1f);
-		}
+		SCSP_UpdateSlotReg(SCSP,slot,addr&0x1f);
 	}
 	else if(addr<0x600)
 	{
 		*((unsigned short *) (SCSP->udata.datab+((addr&0xff)))) = val;
-		if (Machine->sample_rate > 0)
-		{
-			SCSP_UpdateReg(SCSP, addr&0xff);
-		}
+		SCSP_UpdateReg(SCSP, addr&0xff);
 	}
 	else if(addr<0x700)
 		SCSP->RINGBUF[(addr-0x600)/2]=val;
@@ -700,18 +694,12 @@ static unsigned short SCSP_r16(struct _SCSP *SCSP, unsigned int addr)
 	{
 		int slot=addr/0x20;
 		addr&=0x1f;
-		if (Machine->sample_rate > 0)
-		{
-			SCSP_UpdateSlotRegR(SCSP, slot,addr&0x1f);
-		}
+		SCSP_UpdateSlotRegR(SCSP, slot,addr&0x1f);
 		v=*((unsigned short *) (SCSP->Slots[slot].udata.datab+(addr)));
 	}
 	else if(addr<0x600)
 	{
-		if (Machine->sample_rate > 0)
-		{
-			SCSP_UpdateRegR(SCSP, addr&0xff);
-		}
+		SCSP_UpdateRegR(SCSP, addr&0xff);
 		v= *((unsigned short *) (SCSP->udata.datab+((addr&0xff))));
 	}
 	else if(addr<0x700)
@@ -761,7 +749,7 @@ void SCSP_TimersAddTicks(struct _SCSP *SCSP, int ticks)
 	}
 }
 
-signed int *bufl1,*bufr1;
+static signed int *bufl1,*bufr1;
 #define SCSPNAME(_8bit,lfo,alfo,loop) \
 static void SCSP_Update##_8bit##lfo##alfo##loop(struct _SCSP *SCSP, struct _SLOT *slot,unsigned int Enc,unsigned int nsamples)
 
@@ -1183,7 +1171,7 @@ READ16_HANDLER( SCSP_MidiOutR )
  * Generic get_info
  **************************************************************************/
 
-static void scsp_set_info(void *token, UINT32 state, union sndinfo *info)
+static void scsp_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -1192,7 +1180,7 @@ static void scsp_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void scsp_get_info(void *token, UINT32 state, union sndinfo *info)
+void scsp_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

@@ -29,11 +29,11 @@
  - Land Breaker (pcb ver 3.03) (MCU internal flash dump is missing)
  - Land Breaker (pcb ver 3.02)
  - Raccoon World
+ - Fortress 2 Blue Arcade (v. 1.01 / pcb ver 3.05)
  - Fortress 2 Blue Arcade (v. 1.00 / pcb ver 3.05)
 
  Known games not dumped
  - Hidden Catch (pcb ver 3.02)
- - Fortress 2 Blue Arcade (v. 1.01)
  - Fortress 2 Blue Arcade (v. 1.02)
  - Ribbon (Step1. Mild Mind) (c) 1999
 
@@ -43,7 +43,6 @@
  *********************************************************************/
 
 #include "driver.h"
-#include "machine/random.h"
 #include "machine/eeprom.h"
 
 READ32_HANDLER(eolith_vram_r);
@@ -267,6 +266,9 @@ ROM_START( hidnctch )
 
 	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
 	ROM_LOAD( "hc_u97.bin", 0x00000, 0x80000, CRC(ebf9f77b) SHA1(5d472aeb84fc011e19b9e61d34aeddfe7d6ac216) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u97",  0x00000, 0x80000, NO_DUMP )
 ROM_END
 
 
@@ -320,6 +322,9 @@ ROM_START( raccoon )
 
 	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
 	ROM_LOAD( "racoon-u.97", 0x00000, 0x80000, CRC(fef828b1) SHA1(38352b67d18300db40113df9426c2aceec12a29b) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u97",  0x00000, 0x80000, NO_DUMP )
 ROM_END
 
 ROM_START( landbrk )
@@ -355,6 +360,9 @@ ROM_START( landbrk )
 
 	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
 	ROM_LOAD( "rom4.u97", 0x00000, 0x80000, CRC(5b34dff0) SHA1(1668763e977e272781ddcc74beba97b53477cc9d) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u97",  0x00000, 0x80000, NO_DUMP )
 ROM_END
 
 /*
@@ -405,12 +413,53 @@ ROM_START( landbrka )
 
 	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
 	ROM_LOAD( "lb_3.u97", 0x00000, 0x80000, CRC(5b34dff0) SHA1(1668763e977e272781ddcc74beba97b53477cc9d) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u97",  0x00000, 0x80000, NO_DUMP )
 ROM_END
 
 
 /* Fortress 2 Blue */
 
 ROM_START( fort2b )
+	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* Hyperstone CPU Code */
+	ROM_LOAD( "1.u43",        0x00000, 0x80000, CRC(b2279485) SHA1(022591b260be28820f04a1c1fdd61cb9b68d6703) )
+
+	ROM_REGION32_BE( 0x2000000, REGION_USER1, ROMREGION_ERASE00 ) /* Game Data - banked ROM, swapping necessary */
+	ROM_LOAD32_WORD_SWAP( "00.u5", 0x0000000, 0x200000, CRC(4437b595) SHA1(b87518110955947264d93b1f377289f1741ce5dc) )
+	ROM_LOAD32_WORD_SWAP( "01.u1", 0x0000002, 0x200000, CRC(2a410aed) SHA1(def822ead339180aa3e0ebb266b6a6eb1271a2ae) )
+	ROM_LOAD32_WORD_SWAP( "02.u6", 0x0400000, 0x200000, CRC(12f0e4c0) SHA1(fa1e1c3510af61b4058507f1aca801377cafffb4) )
+	ROM_LOAD32_WORD_SWAP( "03.u2", 0x0400002, 0x200000, CRC(aaa7c45a) SHA1(fa06932ab1d41eddd384785f1b2b4dc70046da0f) )
+	ROM_LOAD32_WORD_SWAP( "04.u7", 0x0800000, 0x200000, CRC(428070d2) SHA1(3e25c644be28fd64e8ea60a5b6c675ce2a84ec91) )
+	ROM_LOAD32_WORD_SWAP( "05.u3", 0x0800002, 0x200000, CRC(a66f9ba9) SHA1(3984c42358403b692b7e09b5849c2444578305f0) )
+	ROM_LOAD32_WORD_SWAP( "06.u8", 0x0c00000, 0x200000, CRC(899d318e) SHA1(3bd552eae9985928fe211186f1913c155cbde1a5) )
+	ROM_LOAD32_WORD_SWAP( "07.u4", 0x0c00002, 0x200000, CRC(c4644798) SHA1(3debeef3abc6ce4aea5eb0c6be9f99689a9f111c) )
+	ROM_LOAD32_WORD_SWAP( "08.u15", 0x1000000, 0x200000, CRC(ce0cccfc) SHA1(42cb6698e9168712699616d46ece5a6482825e87) )
+	ROM_LOAD32_WORD_SWAP( "09.u10", 0x1000002, 0x200000, CRC(5b7de0f1) SHA1(f0ee1c6d0766fec95d77d46a9c68b8c3b0d09dde) )
+	ROM_LOAD32_WORD_SWAP( "10.u16", 0x1400000, 0x200000, CRC(b47fc014) SHA1(e1094bc8a3edff635c4abe311a7902a714b9102c) )
+	ROM_LOAD32_WORD_SWAP( "11.u11", 0x1400002, 0x200000, CRC(7113d3f9) SHA1(5c34b2b21bb09c5dec075fabfd426c143a0a8dc2) )
+	ROM_LOAD32_WORD_SWAP( "12.u17", 0x1800000, 0x200000, CRC(8c4b63a6) SHA1(2493c9e9547cb06fbdc6240fb67b15047b66a5fd) )
+	ROM_LOAD32_WORD_SWAP( "13.u12", 0x1800002, 0x200000, CRC(1d9b9995) SHA1(e18b93c244d8e959053dff66e2e5e4341e2b8034) )
+	ROM_LOAD32_WORD_SWAP( "14.u18", 0x1c00000, 0x200000, CRC(450fa784) SHA1(d1244b94be6571f1f8930154778362af5cd4c334) )
+	ROM_LOAD32_WORD_SWAP( "15.u13", 0x1c00002, 0x200000, CRC(c1f02d5c) SHA1(73fe9e654c097cd57863b49545c6aa05996a7645) )
+
+	ROM_REGION( 0x008000, REGION_CPU2, 0 ) /* QDSP ('51) Code */
+	ROM_LOAD( "5.u107",       0x00000, 0x08000, CRC(afd5263d) SHA1(71ace1b749d8a6b84d08b97185e7e512d04e4b8d) )
+
+	ROM_REGION( 0x08000, REGION_CPU3, 0 ) /* Sound (80c301) CPU Code */
+	ROM_LOAD( "4.u111",       0x00000, 0x08000, CRC(79012474) SHA1(09a2d5705d7bc52cc2d1644c87c1e31ee44813ef) )
+
+	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* Music data */
+	ROM_LOAD( "3.u108",       0x00000, 0x80000, CRC(9b996b60) SHA1(c4e34601f754ae2908dd6d59ea9da0c5c6f56f2d) )
+
+	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
+	ROM_LOAD( "2.u97",        0x00000, 0x80000, CRC(8a431b14) SHA1(5a9824280f30ef2e7b7f16652b2f9f9559cb764f) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u97",  0x00000, 0x80000, NO_DUMP )
+ROM_END
+
+ROM_START( fort2ba )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* Hyperstone CPU Code */
 	ROM_LOAD( "ftii012.u43", 0x00000, 0x80000, CRC(6424e05f) SHA1(2f02f103de180561e372ce897f8410a11c4cb58d) )
 
@@ -428,13 +477,16 @@ ROM_START( fort2b )
 	ROM_LOAD( "ftii010.u107", 0x0000, 0x8000, CRC(afd5263d) SHA1(71ace1b749d8a6b84d08b97185e7e512d04e4b8d) )
 
 	ROM_REGION( 0x08000, REGION_CPU3, 0 ) /* Sound (80c301) CPU Code */
-	ROM_LOAD( "ftii008.u11", 0x0000, 0x8000, CRC(79012474) SHA1(09a2d5705d7bc52cc2d1644c87c1e31ee44813ef) )
+	ROM_LOAD( "ftii008.u111", 0x0000, 0x8000, CRC(79012474) SHA1(09a2d5705d7bc52cc2d1644c87c1e31ee44813ef) )
 
 	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* Music data */
 	ROM_LOAD( "ftii009.u108", 0x00000, 0x80000,  CRC(9b996b60) SHA1(c4e34601f754ae2908dd6d59ea9da0c5c6f56f2d) )
 
 	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
 	ROM_LOAD( "ftii011.u97", 0x00000, 0x80000, CRC(8a431b14) SHA1(5a9824280f30ef2e7b7f16652b2f9f9559cb764f) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u97",  0x00000, 0x80000, NO_DUMP )
 ROM_END
 
 
@@ -458,4 +510,5 @@ GAME( 1998, hidnctch, 0,       eolith, hidnctch, 0,        ROT0, "Eolith", "Hidd
 GAME( 1998, raccoon,  0,       eolith, raccoon,  0,        ROT0, "Eolith", "Raccoon World", GAME_NO_SOUND )
 GAME( 1999, landbrk,  0,       eolith, landbrk,  landbrk,  ROT0, "Eolith", "Land Breaker (World) / Miss Tang Ja Ru Gi (Korea) (pcb ver 3.02)",  GAME_NO_SOUND ) // or Miss Ttang Jjareugi
 GAME( 1999, landbrka, landbrk, eolith, landbrk,  landbrka, ROT0, "Eolith", "Land Breaker (World) / Miss Tang Ja Ru Gi (Korea) (pcb ver 3.03)",  GAME_NO_SOUND ) // or Miss Ttang Jjareugi
-GAME( 2001, fort2b,   0,       eolith, common,   0,        ROT0, "Eolith", "Fortress 2 Blue Arcade (ver 1.00 / pcb ver 3.05)",  GAME_NO_SOUND )
+GAME( 2001, fort2b,   0,       eolith, common,   0,        ROT0, "Eolith", "Fortress 2 Blue Arcade (ver 1.01 / pcb ver 3.05)",  GAME_NO_SOUND )
+GAME( 2001, fort2ba,  fort2b,  eolith, common,   0,        ROT0, "Eolith", "Fortress 2 Blue Arcade (ver 1.00 / pcb ver 3.05)",  GAME_NO_SOUND )

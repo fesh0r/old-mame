@@ -25,7 +25,6 @@ TODO:
 
 **********************************************************************/
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/arm/arm.h"
 
 static UINT32 *ertictac_mainram;
@@ -270,7 +269,7 @@ INPUT_PORTS_START( ertictac )
 
 INPUT_PORTS_END
 
-static MACHINE_INIT( ertictac )
+static MACHINE_RESET( ertictac )
 {
 	ertictac_mainram[0]=0xeae00007; //reset vector
 }
@@ -310,7 +309,7 @@ static MACHINE_DRIVER_START( ertictac )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(ertictac)
+	MDRV_MACHINE_RESET(ertictac)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(320, 256)

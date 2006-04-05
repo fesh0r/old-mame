@@ -218,7 +218,6 @@ Driver by Takahiro Nogi (nogi@kt.rim.or.jp) 1999/11/06
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/i8x41/i8x41.h"
 #include "sound/2203intf.h"
 #include "sound/dac.h"
@@ -238,7 +237,7 @@ DRIVER_INIT( kabukiz );
 DRIVER_INIT( insectx );
 DRIVER_INIT( kageki );
 READ8_HANDLER( arknoid2_sh_f000_r );
-MACHINE_INIT( tnzs );
+MACHINE_RESET( tnzs );
 INTERRUPT_GEN( arknoid2_interrupt );
 READ8_HANDLER( tnzs_port1_r );
 READ8_HANDLER( tnzs_port2_r );
@@ -398,7 +397,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	/* arknoid2, extrmatn, plumppop and drtoppel have PROMs instead of RAM */
 	/* drtoppel writes here anyway! (maybe leftover from tests during development) */
 	/* so the handler is patched out in init_drtopple() */
-	AM_RANGE(0xf800, 0xfbff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram)
+	AM_RANGE(0xf800, 0xfbff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_le_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cpu0_type2, ADDRESS_SPACE_PROGRAM, 8 )
@@ -481,7 +480,7 @@ static ADDRESS_MAP_START( tnzsb_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xefff) AM_READWRITE(tnzs_sharedram_r, tnzs_sharedram_w)
 	AM_RANGE(0xf000, 0xf003) AM_READ(MRA8_RAM)
-	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram)
+	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_le_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kabukiz_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -496,7 +495,7 @@ static ADDRESS_MAP_START( kabukiz_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc002, 0xc002) AM_READ(input_port_4_r)
 	AM_RANGE(0xd000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xefff) AM_READWRITE(tnzs_sharedram_r, tnzs_sharedram_w)
-	AM_RANGE(0xf800, 0xfbff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram)
+	AM_RANGE(0xf800, 0xfbff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_le_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tnzsb_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -1336,7 +1335,7 @@ static MACHINE_DRIVER_START( arknoid2 )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
-	MDRV_MACHINE_INIT(tnzs)
+	MDRV_MACHINE_RESET(tnzs)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1373,7 +1372,7 @@ static MACHINE_DRIVER_START( drtoppel )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
-	MDRV_MACHINE_INIT(tnzs)
+	MDRV_MACHINE_RESET(tnzs)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1414,7 +1413,7 @@ static MACHINE_DRIVER_START( tnzs )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
-	MDRV_MACHINE_INIT(tnzs)
+	MDRV_MACHINE_RESET(tnzs)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1450,7 +1449,7 @@ static MACHINE_DRIVER_START( insectx )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
-	MDRV_MACHINE_INIT(tnzs)
+	MDRV_MACHINE_RESET(tnzs)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1486,7 +1485,7 @@ static MACHINE_DRIVER_START( kageki )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
-	MDRV_MACHINE_INIT(tnzs)
+	MDRV_MACHINE_RESET(tnzs)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1533,7 +1532,7 @@ static MACHINE_DRIVER_START( tnzsb )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
-	MDRV_MACHINE_INIT(tnzs)
+	MDRV_MACHINE_RESET(tnzs)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

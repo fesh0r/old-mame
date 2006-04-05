@@ -71,7 +71,6 @@ World Cup 90 bootleg.
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
 #include "sound/msm5205.h"
@@ -197,7 +196,7 @@ static ADDRESS_MAP_START( wc90b_writemem2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xd000, 0xd7ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_swap_w) AM_BASE(&paletteram)
+	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_be_w) AM_BASE(&paletteram)
 	AM_RANGE(0xe800, 0xefff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(wc90b_shared_w)

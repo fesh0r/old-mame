@@ -1,7 +1,7 @@
 #ifndef V810_H
 #define V810_H
 
-#include "driver.h"
+#include "cpuintrf.h"
 
 extern int v810_ICount;
 

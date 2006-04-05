@@ -7,14 +7,13 @@ driver by Nicola Salmoria
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "vidhrdw/konamiic.h"
 #include "sound/2151intf.h"
 #include "sound/k053260.h"
 
 /* prototypes */
-static MACHINE_INIT( parodius );
+static MACHINE_RESET( parodius );
 static void parodius_banking( int lines );
 VIDEO_START( parodius );
 VIDEO_UPDATE( parodius );
@@ -45,9 +44,9 @@ static WRITE8_HANDLER( bankedram_w )
 	if (videobank & 0x01)
 	{
 		if (videobank & 0x04)
-			paletteram_xBBBBBGGGGGRRRRR_swap_w(offset + 0x0800,data);
+			paletteram_xBBBBBGGGGGRRRRR_be_w(offset + 0x0800,data);
 		else
-			paletteram_xBBBBBGGGGGRRRRR_swap_w(offset,data);
+			paletteram_xBBBBBGGGGGRRRRR_be_w(offset,data);
 	}
 	else
 		ram[offset] = data;
@@ -95,10 +94,7 @@ static WRITE8_HANDLER( parodius_3fc0_w )
 
 static READ8_HANDLER( parodius_sound_r )
 {
-	/* If the sound CPU is running, read the status, otherwise
-       just make it pass the test */
-	if (Machine->sample_rate != 0) 	return K053260_0_r(2 + offset);
-	else return offset ? 0x00 : 0x80;
+	return K053260_0_r(2 + offset);
 }
 
 static WRITE8_HANDLER( parodius_sh_irqtrigger_w )
@@ -311,7 +307,7 @@ static MACHINE_DRIVER_START( parodius )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(parodius)
+	MDRV_MACHINE_RESET(parodius)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
@@ -401,7 +397,7 @@ static void parodius_banking(int lines)
 	memory_set_bankptr( 1, &RAM[offs] );
 }
 
-static MACHINE_INIT( parodius )
+static MACHINE_RESET( parodius )
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
 

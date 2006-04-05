@@ -155,7 +155,6 @@ NMI causes a ROM/RAM test.
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/segacrpt.h"
 #include "sound/sn76496.h"
 #include "sound/samples.h"
@@ -1124,10 +1123,10 @@ static const char *congo_sample_names[] =
 {
 	"*congo",
 	"gorilla.wav",
-	"bass.wav",
-	"congaa.wav",
-	"congab.wav",
 	"rim.wav",
+	"congah.wav",
+	"congal.wav",
+	"bass.wav",
 	0
 };
 
@@ -1150,17 +1149,17 @@ static INTERRUPT_GEN( zaxxon_interrupt )
 
 /* Machine Initialization */
 
-MACHINE_INIT( zaxxon )
+MACHINE_RESET( zaxxon )
 {
 	zaxxon_vid_type = 0;
 }
 
-MACHINE_INIT( congo )
+MACHINE_RESET( congo )
 {
 	zaxxon_vid_type = 1;
 }
 
-MACHINE_INIT( futspy )
+MACHINE_RESET( futspy )
 {
 	zaxxon_vid_type = 2;
 }
@@ -1176,7 +1175,7 @@ static MACHINE_DRIVER_START( root )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(zaxxon)
+	MDRV_MACHINE_RESET(zaxxon)
 
 	// video hardware
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1232,7 +1231,7 @@ static MACHINE_DRIVER_START( congo )
 	MDRV_CPU_PROGRAM_MAP(congo_snd_readmem, congo_snd_writemem)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold, 4)
 
-	MDRV_MACHINE_INIT(congo)
+	MDRV_MACHINE_RESET(congo)
 
 	MDRV_GFXDECODE(congo_gfxdecodeinfo)
 
@@ -1244,7 +1243,7 @@ static MACHINE_DRIVER_START( congo )
 	MDRV_SOUND_ADD(SN76496, 4000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(SN76496, 4000000)
+	MDRV_SOUND_ADD(SN76496, 4000000/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	MDRV_SOUND_ADD(SAMPLES, 0)
@@ -1258,7 +1257,7 @@ static MACHINE_DRIVER_START( futspy )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(readmem, futspy_writemem)
 
-	MDRV_MACHINE_INIT(futspy)
+	MDRV_MACHINE_RESET(futspy)
 
 	MDRV_GFXDECODE(congo_gfxdecodeinfo)
 

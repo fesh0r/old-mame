@@ -29,7 +29,9 @@
 //  TYPE DEFINITIONS
 //============================================================
 
-struct win_effect_data
+typedef struct _win_effect_data win_effect_data;
+
+struct _win_effect_data
 {
 	const char *name;
 	int effect;
@@ -69,7 +71,7 @@ extern float		win_gfx_brightness;
 extern int			win_blit_effect;
 extern float		win_screen_aspect;
 extern int			win_force_rdtsc;
-extern int			win_high_priority;
+extern int			win_priority;
 
 // windows
 extern HWND			win_video_window;
@@ -96,6 +98,9 @@ extern int			win_color16_bdst_shift;
 extern int			win_color32_rdst_shift;
 extern int			win_color32_gdst_shift;
 extern int			win_color32_bdst_shift;
+
+// raw mouse support
+extern int			win_use_raw_mouse;
 
 
 
@@ -137,7 +142,6 @@ void win_adjust_window(void);
 
 void win_constrain_to_aspect_ratio(RECT *rect, int adjustment, int constraints, int coordinate_system);
 void win_adjust_window_for_visible(int min_x, int max_x, int min_y, int max_y);
-void win_wait_for_vsync(void);
 
 void win_update_video_window(mame_bitmap *bitmap, const rectangle *bounds, void *vector_dirty_pixels);
 
@@ -148,11 +152,13 @@ void win_process_events_periodic(void);
 void osd_set_leds(int state);
 int osd_get_leds(void);
 
-UINT32 *win_prepare_palette(struct win_blit_params *params);
+UINT32 *win_prepare_palette(win_blit_params *params);
 
 int win_lookup_effect(const char *arg);
-int win_determine_effect(const struct win_blit_params *params);
+int win_determine_effect(const win_blit_params *params);
 void win_compute_multipliers(const RECT *rect, int *xmult, int *ymult);
+
+BOOL win_raw_mouse_update(HANDLE in_device_handle);
 
 LRESULT CALLBACK win_video_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam);
 

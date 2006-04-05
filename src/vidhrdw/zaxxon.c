@@ -14,7 +14,6 @@
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 UINT8 *zaxxon_char_color_bank;
 UINT8 *zaxxon_background_position;
@@ -368,7 +367,7 @@ VIDEO_UPDATE( razmataz )
 static void congo_get_fg_tile_info(int tile_index)
 {
 	int code = videoram[tile_index];
-	int color = colorram[tile_index];
+	int color = colorram[tile_index] & 0x1f;
 
 	SET_TILE_INFO(0, code, color, 0)
 }

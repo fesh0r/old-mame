@@ -22,7 +22,6 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/eeprom.h"
 #include "kaneko16.h"
 #include "sound/okim6295.h"
@@ -70,9 +69,9 @@ WRITE16_HANDLER(galpani2_eeprom_w)
 
 static UINT16 *galpani2_ram, *galpani2_ram2;
 
-static MACHINE_INIT( galpani2 )
+static MACHINE_RESET( galpani2 )
 {
-	machine_init_kaneko16();
+	machine_reset_kaneko16();
 
 	kaneko16_sprite_type = 1;
 
@@ -204,7 +203,6 @@ WRITE16_HANDLER( galpani2_oki_0_bank_w )
 	{
 		UINT8 *ROM = memory_region(REGION_SOUND1);
 		logerror("CPU #0 PC %06X : OKI 0 bank %08X\n",activecpu_get_pc(),data);
-		if (Machine->sample_rate == 0)	return;
 		memcpy(ROM + 0x30000, ROM + 0x40000 + 0x10000 * (~data & 0xf), 0x10000);
 	}
 }
@@ -502,7 +500,7 @@ static MACHINE_DRIVER_START( galpani2 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(galpani2)
+	MDRV_MACHINE_RESET(galpani2)
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */

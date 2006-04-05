@@ -14,7 +14,6 @@
 #ifndef __CPUEXEC_H__
 #define __CPUEXEC_H__
 
-#include "osd_cpu.h"
 #include "memory.h"
 #include "timer.h"
 
@@ -26,6 +25,7 @@
  *
  *************************************/
 
+typedef struct _cpu_config cpu_config;
 struct _cpu_config
 {
 	int			cpu_type;					/* index for the CPU type */
@@ -39,7 +39,6 @@ struct _cpu_config
 	void *		reset_param;				/* parameter for cpu_reset */
 	const char *tag;
 };
-typedef struct _cpu_config cpu_config;
 
 
 
@@ -66,41 +65,10 @@ enum
  *************************************/
 
 /* Prepare CPUs for execution */
-int cpu_init(void);
+int cpuexec_init(void);
 
-/* Run CPUs until the user quits */
-void cpu_run(void);
-
-/* Clean up after quitting */
-void cpu_exit(void);
-
-/* Pause/resume all the CPUs */
-void cpu_pause(int pause);
-
-/* Force a reset after the current timeslice */
-void machine_reset(void);
-
-
-
-/*************************************
- *
- *  Save/restore
- *
- *************************************/
-
-/* Load or save the game state */
-enum
-{
-	LOADSAVE_NONE,
-	LOADSAVE_SAVE,
-	LOADSAVE_SAVE_AND_EXIT,
-	LOADSAVE_LOAD,
-	LOADSAVE_LOAD_POSTRESET
-};
-void cpu_loadsave_schedule(int type, char id);
-void cpu_loadsave_schedule_file(int type, const char *name);
-void cpu_loadsave_reset(void);
-void cpu_loadsave_warn(const char *msg);
+/* Execute for a single timeslice */
+void cpuexec_timeslice(void);
 
 
 
@@ -110,17 +78,8 @@ void cpu_loadsave_warn(const char *msg);
  *
  *************************************/
 
-/* 8-bit watchdog read/write handlers */
-WRITE8_HANDLER( watchdog_reset_w );
-READ8_HANDLER( watchdog_reset_r );
-
-/* 16-bit watchdog read/write handlers */
-WRITE16_HANDLER( watchdog_reset16_w );
-READ16_HANDLER( watchdog_reset16_r );
-
-/* 32-bit watchdog read/write handlers */
-WRITE32_HANDLER( watchdog_reset32_w );
-READ32_HANDLER( watchdog_reset32_r );
+/* bang on the watchdog */
+void watchdog_reset(void);
 
 /* watchdog enabled when TRUE */
 /* timer is set to reset state when going from disable to enable */
@@ -167,6 +126,7 @@ int cpunum_get_clock(int cpunum);
 
 /* Sets the current CPU's clock speed and then adjusts for scaling */
 void cpunum_set_clock(int cpunum, int clock);
+void cpunum_set_clock_period(int cpunum, subseconds_t clock_period);
 
 /* Returns the current scaling factor for a CPU's clock speed */
 double cpunum_get_clockscale(int cpunum);

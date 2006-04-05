@@ -10,21 +10,16 @@
         Cyrix MediaGX
 */
 
-#include "driver.h"
-#include "cpuintrf.h"
-#include "mamedbg.h"
-#include "osd_cpu.h"
+#include "debugger.h"
 #include "i386.h"
 #include "i386intf.h"
-#include "state.h"
 
 #if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
 #include "debug/debugcpu.h"
-#include "debug/express.h"
 #endif
 
-int parity_table[256];
-MODRM_TABLE MODRM_table[256];
+int i386_parity_table[256];
+MODRM_TABLE i386_MODRM_table[256];
 
 /*************************************************************************/
 
@@ -71,7 +66,7 @@ void i386_load_segment_descriptor( int segment )
 	}
 }
 
-UINT32 get_flags(void)
+static UINT32 get_flags(void)
 {
 	UINT32 f = 0x2;
 	f |= I.CF;
@@ -86,7 +81,7 @@ UINT32 get_flags(void)
 	return (I.eflags & 0xFFFF0000) | (f & 0xFFFF);
 }
 
-void set_flags( UINT32 f )
+static void set_flags( UINT32 f )
 {
 	I.CF = (f & 0x1) ? 1 : 0;
 	I.PF = (f & 0x4) ? 1 : 0;
@@ -157,7 +152,7 @@ static void modrm_to_EA(UINT8 mod_rm, UINT32* out_ea, UINT8* out_segment)
 	UINT8 segment;
 
 	if( mod_rm >= 0xc0 )
-		osd_die("i386: Called modrm_to_EA with modrm value %02X !\n",mod_rm);
+		fatalerror("i386: Called modrm_to_EA with modrm value %02X !",mod_rm);
 
 	if( I.address_size ) {
 		switch( rm )
@@ -272,7 +267,7 @@ static void i386_trap(int irq, int irq_gate)
 
 	/* Check if IRQ is out of IDTR's bounds */
 	if( entry > I.idtr.limit ) {
-		osd_die("I386 Interrupt: IRQ out of IDTR bounds (IRQ: %d, IDTR Limit: %d)\n", irq, I.idtr.limit);
+		fatalerror("I386 Interrupt: IRQ out of IDTR bounds (IRQ: %d, IDTR Limit: %d)", irq, I.idtr.limit);
 	}
 
 	if( !I.sreg[CS].d )
@@ -321,8 +316,8 @@ static void i386_check_irq_line(void)
 
 #include "cycles.h"
 
-UINT8 *cycle_table_rm[X86_NUM_CPUS];
-UINT8 *cycle_table_pm[X86_NUM_CPUS];
+static UINT8 *cycle_table_rm[X86_NUM_CPUS];
+static UINT8 *cycle_table_pm[X86_NUM_CPUS];
 
 #define CYCLES_NUM(x)	(I.cycles -= (x))
 
@@ -466,14 +461,13 @@ static void i386_postload(void)
 	CHANGE_PC(I.eip);
 }
 
-void i386_init(void)
+void i386_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	int i, j;
-	int regs8[8] = {AL,CL,DL,BL,AH,CH,DH,BH};
-	int regs16[8] = {AX,CX,DX,BX,SP,BP,SI,DI};
-	int regs32[8] = {EAX,ECX,EDX,EBX,ESP,EBP,ESI,EDI};
-	int cpu = cpu_getactivecpu();
-	const char *state_type = "I386";
+	static const int regs8[8] = {AL,CL,DL,BL,AH,CH,DH,BH};
+	static const int regs16[8] = {AX,CX,DX,BX,SP,BP,SI,DI};
+	static const int regs32[8] = {EAX,ECX,EDX,EBX,ESP,EBP,ESI,EDI};
+	static const char state_type[] = "I386";
 
 	build_cycle_table();
 
@@ -483,46 +477,48 @@ void i386_init(void)
 			if( i & (1 << j) )
 				c++;
 		}
-		parity_table[i] = ~(c & 0x1) & 0x1;
+		i386_parity_table[i] = ~(c & 0x1) & 0x1;
 	}
 
 	for( i=0; i < 256; i++ ) {
-		MODRM_table[i].reg.b = regs8[(i >> 3) & 0x7];
-		MODRM_table[i].reg.w = regs16[(i >> 3) & 0x7];
-		MODRM_table[i].reg.d = regs32[(i >> 3) & 0x7];
+		i386_MODRM_table[i].reg.b = regs8[(i >> 3) & 0x7];
+		i386_MODRM_table[i].reg.w = regs16[(i >> 3) & 0x7];
+		i386_MODRM_table[i].reg.d = regs32[(i >> 3) & 0x7];
 
-		MODRM_table[i].rm.b = regs8[i & 0x7];
-		MODRM_table[i].rm.w = regs16[i & 0x7];
-		MODRM_table[i].rm.d = regs32[i & 0x7];
+		i386_MODRM_table[i].rm.b = regs8[i & 0x7];
+		i386_MODRM_table[i].rm.w = regs16[i & 0x7];
+		i386_MODRM_table[i].rm.d = regs32[i & 0x7];
 	}
 
-	state_save_register_UINT32(state_type, cpu,	"REGS",			I.reg.d, 8);
-	state_save_register_UINT16(state_type, cpu,	"ES",			&I.sreg[ES].selector, 1);
-	state_save_register_UINT16(state_type, cpu,	"CS",			&I.sreg[CS].selector, 1);
-	state_save_register_UINT16(state_type, cpu,	"SS",			&I.sreg[SS].selector, 1);
-	state_save_register_UINT16(state_type, cpu,	"DS",			&I.sreg[DS].selector, 1);
-	state_save_register_UINT16(state_type, cpu,	"FS",			&I.sreg[FS].selector, 1);
-	state_save_register_UINT16(state_type, cpu,	"GS",			&I.sreg[GS].selector, 1);
-	state_save_register_UINT32(state_type, cpu,	"EIP",			&I.eip, 1);
-	state_save_register_UINT32(state_type, cpu,	"PREV_EIP",		&I.prev_eip, 1);
-	state_save_register_UINT8(state_type, cpu,	"CF",			&I.CF, 1);
-	state_save_register_UINT8(state_type, cpu,	"DF",			&I.DF, 1);
-	state_save_register_UINT8(state_type, cpu,	"SF",			&I.SF, 1);
-	state_save_register_UINT8(state_type, cpu,	"OF",			&I.OF, 1);
-	state_save_register_UINT8(state_type, cpu,	"ZF",			&I.ZF, 1);
-	state_save_register_UINT8(state_type, cpu,	"PF",			&I.PF, 1);
-	state_save_register_UINT8(state_type, cpu,	"AF",			&I.AF, 1);
-	state_save_register_UINT8(state_type, cpu,	"IF",			&I.IF, 1);
-	state_save_register_UINT8(state_type, cpu,	"TF",			&I.TF, 1);
-	state_save_register_UINT32(state_type, cpu,	"CR",			I.cr, 4);
-	state_save_register_UINT32(state_type, cpu,	"DR",			I.dr, 8);
-	state_save_register_UINT32(state_type, cpu,	"TR",			I.tr, 8);
-	state_save_register_UINT32(state_type, cpu,	"IDTR_BASE",	&I.idtr.base, 1);
-	state_save_register_UINT16(state_type, cpu,	"IDTR_LIMIT",	&I.idtr.limit, 1);
-	state_save_register_UINT32(state_type, cpu,	"GDTR_BASE",	&I.gdtr.base, 1);
-	state_save_register_UINT16(state_type, cpu,	"GDTR_LIMIT",	&I.gdtr.limit, 1);
-	state_save_register_int(state_type, cpu, "IRQ_LINE",		&I.irq_line);
-	state_save_register_UINT8(state_type, cpu,	"ISEGJMP",		&I.performed_intersegment_jump, 1);
+	I.irq_callback = irqcallback;
+
+	state_save_register_item_array(state_type, index,	I.reg.d);
+	state_save_register_item(state_type, index, I.sreg[ES].selector);
+	state_save_register_item(state_type, index, I.sreg[CS].selector);
+	state_save_register_item(state_type, index, I.sreg[SS].selector);
+	state_save_register_item(state_type, index, I.sreg[DS].selector);
+	state_save_register_item(state_type, index, I.sreg[FS].selector);
+	state_save_register_item(state_type, index, I.sreg[GS].selector);
+	state_save_register_item(state_type, index, I.eip);
+	state_save_register_item(state_type, index, I.prev_eip);
+	state_save_register_item(state_type, index, I.CF);
+	state_save_register_item(state_type, index, I.DF);
+	state_save_register_item(state_type, index, I.SF);
+	state_save_register_item(state_type, index, I.OF);
+	state_save_register_item(state_type, index, I.ZF);
+	state_save_register_item(state_type, index, I.PF);
+	state_save_register_item(state_type, index, I.AF);
+	state_save_register_item(state_type, index, I.IF);
+	state_save_register_item(state_type, index, I.TF);
+	state_save_register_item_array(state_type, index,	I.cr);
+	state_save_register_item_array(state_type, index,	I.dr);
+	state_save_register_item_array(state_type, index,	I.tr);
+	state_save_register_item(state_type, index, I.idtr.base);
+	state_save_register_item(state_type, index, I.idtr.limit);
+	state_save_register_item(state_type, index, I.gdtr.base);
+	state_save_register_item(state_type, index, I.gdtr.limit);
+	state_save_register_item(state_type, index,  I.irq_line);
+	state_save_register_item(state_type, index, I.performed_intersegment_jump);
 	state_save_register_func_postload(i386_postload);
 }
 
@@ -557,9 +553,13 @@ static void build_opcode_table(UINT32 features)
 	}
 }
 
-void i386_reset(void *param)
+void i386_reset(void)
 {
+	int (*save_irqcallback)(int);
+
+	save_irqcallback = I.irq_callback;
 	memset( &I, 0, sizeof(I386_REGS) );
+	I.irq_callback = save_irqcallback;
 
 	I.sreg[CS].selector = 0xf000;
 	I.sreg[CS].base		= 0xffff0000;
@@ -780,9 +780,6 @@ static void i386_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + I386_DR7:			I.dr[7] = info->i; break;
 		case CPUINFO_INT_REGISTER + I386_TR6:			I.tr[6] = info->i; break;
 		case CPUINFO_INT_REGISTER + I386_TR7:			I.tr[7] = info->i; break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					I.irq_callback = info->irqcallback; break;
 	}
 }
 
@@ -876,7 +873,6 @@ void i386_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:	      				info->execute = i386_execute;		break;
 		case CPUINFO_PTR_BURN:		      				info->burn = NULL;			break;
 		case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = i386_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = I.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER: 			info->icount = &I.cycles;		break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = i386_reg_layout;		break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = i386_win_layout;		break;
@@ -983,14 +979,18 @@ static UINT8 i486_win_layout[] =
 	 0,23,80, 1,	/* command line window (bottom rows) */
 };
 
-void i486_init(void)
+void i486_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	i386_init();
+	i386_init(index, clock, config, irqcallback);
 }
 
-static void i486_reset(void *param)
+static void i486_reset(void)
 {
+	int (*save_irqcallback)(int);
+
+	save_irqcallback = I.irq_callback;
 	memset( &I, 0, sizeof(I386_REGS) );
+	I.irq_callback = save_irqcallback;
 	I.sreg[CS].selector = 0xf000;
 	I.sreg[CS].base		= 0xffff0000;
 	I.sreg[CS].limit	= 0xffff;
@@ -1116,14 +1116,18 @@ static UINT8 pentium_win_layout[] =
 	 0,23,80, 1,	/* command line window (bottom rows) */
 };
 
-void pentium_init(void)
+void pentium_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	i386_init();
+	i386_init(index, clock, config, irqcallback);
 }
 
-static void pentium_reset(void *param)
+static void pentium_reset(void)
 {
+	int (*save_irqcallback)(int);
+
+	save_irqcallback = I.irq_callback;
 	memset( &I, 0, sizeof(I386_REGS) );
+	I.irq_callback = save_irqcallback;
 	I.sreg[CS].selector = 0xf000;
 	I.sreg[CS].base		= 0xffff0000;
 	I.sreg[CS].limit	= 0xffff;
@@ -1269,14 +1273,18 @@ static UINT8 mediagx_win_layout[] =
 	 0,23,80, 1,	/* command line window (bottom rows) */
 };
 
-void mediagx_init(void)
+void mediagx_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	i386_init();
+	i386_init(index, clock, config, irqcallback);
 }
 
-static void mediagx_reset(void *param)
+static void mediagx_reset(void)
 {
+	int (*save_irqcallback)(int);
+
+	save_irqcallback = I.irq_callback;
 	memset( &I, 0, sizeof(I386_REGS) );
+	I.irq_callback = save_irqcallback;
 	I.sreg[CS].selector = 0xf000;
 	I.sreg[CS].base		= 0xffff0000;
 	I.sreg[CS].limit	= 0xffff;

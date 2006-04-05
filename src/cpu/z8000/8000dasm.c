@@ -44,7 +44,6 @@
  *
  *****************************************************************************/
 
-#include <stdio.h>
 #include "z8000.h"
 #include "z8000cpu.h"
 #include "memory.h"
@@ -53,7 +52,7 @@ static int n[12];	/* opcode nibbles */
 static int b[6];	/* opcode bytes */
 static int w[3];	/* opcode words */
 
-void GET_OP(int i, unsigned pc)
+static void GET_OP(int i, unsigned pc)
 {
 	UINT16 opcode = cpu_readop16(pc);
 	w[i] = opcode;

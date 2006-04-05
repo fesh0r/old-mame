@@ -4,7 +4,8 @@
 ****************************************************************************/
 
 
-/************* Machine stuff ****** machine/toaplan1.c *************/
+/*----------- defined in machine/toaplan1.c -----------*/
+
 INTERRUPT_GEN( toaplan1_interrupt );
 WRITE16_HANDLER( toaplan1_intenable_w );
 READ16_HANDLER ( toaplan1_shared_r );
@@ -25,10 +26,10 @@ WRITE8_HANDLER( rallybik_coin_w );
 WRITE8_HANDLER( toaplan1_coin_w );
 WRITE16_HANDLER( samesame_coin_w );
 
-MACHINE_INIT( toaplan1 );
-MACHINE_INIT( demonwld );
-MACHINE_INIT( vimana );
-MACHINE_INIT( zerozone );	/* hack for ZeroWing/OutZone. See vidhrdw */
+MACHINE_RESET( toaplan1 );
+MACHINE_RESET( demonwld );
+MACHINE_RESET( vimana );
+MACHINE_RESET( zerozone );	/* hack for ZeroWing/OutZone. See vidhrdw */
 
 extern void toaplan1_driver_savestate(void);
 extern void demonwld_driver_savestate(void);
@@ -41,7 +42,7 @@ extern UINT8 *toaplan1_sharedram;
 
 
 
-/************* Video stuff ****** vidhrdw/toaplan1.c *************/
+/*----------- defined in vidhrdw/toaplan1.c -----------*/
 
 READ16_HANDLER ( toaplan1_frame_done_r );
 WRITE16_HANDLER( toaplan1_bcu_control_w );

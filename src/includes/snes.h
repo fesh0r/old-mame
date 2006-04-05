@@ -329,7 +329,7 @@
 #define DSP_FIR_C6		0x6F
 #define DSP_FIR_C7		0x7F
 
-extern MACHINE_INIT( snes );
+extern MACHINE_RESET( snes );
 
 extern READ8_HANDLER( snes_r_bank1 );
 extern READ8_HANDLER( snes_r_bank2 );
@@ -478,17 +478,6 @@ typedef struct                      /* Source directory entry       */
     unsigned short  vptr;           /* Ptr to start of sample data  */
     unsigned short  lptr;           /* Loop pointer in sample data  */
     } src_dir_type;
-
-/*========== CONSTANTS ==========*/
-
-extern const int    TS_CYC;
-
-/*========== VARIABLES ==========*/
-
-extern int          keyed_on;
-extern int          keys;           /* 8-bits for 8 voices          */
-extern voice_state_type
-                    voice_state[ 8 ];
 
 /*========== MACROS ==========*/
 

@@ -6,8 +6,7 @@
 
 ***************************************************************************/
 #include "driver.h"
-#include "vidhrdw/generic.h"
-#include "ctype.h"
+#include <ctype.h>
 
 
 

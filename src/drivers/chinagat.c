@@ -69,7 +69,6 @@ Input is unique but has a few similarities to DD2 (the coin inputs)
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/z80/z80.h"
 #include "cpu/i8039/i8039.h"
@@ -106,7 +105,7 @@ static int saiyugb1_m5205_clk;
 
 
 
-static MACHINE_INIT( chinagat )
+static MACHINE_RESET( chinagat )
 {
 	technos_video_hw = 1;
 	sprite_irq = M6809_IRQ_LINE;
@@ -550,7 +549,7 @@ static MACHINE_DRIVER_START( chinagat )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100) /* heavy interleaving to sync up sprite<->main cpu's */
 
-	MDRV_MACHINE_INIT(chinagat)
+	MDRV_MACHINE_RESET(chinagat)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -596,7 +595,7 @@ static MACHINE_DRIVER_START( saiyugb1 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* heavy interleaving to sync up sprite<->main cpu's */
 
-	MDRV_MACHINE_INIT(chinagat)
+	MDRV_MACHINE_RESET(chinagat)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -638,7 +637,7 @@ static MACHINE_DRIVER_START( saiyugb2 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100) /* heavy interleaving to sync up sprite<->main cpu's */
 
-	MDRV_MACHINE_INIT(chinagat)
+	MDRV_MACHINE_RESET(chinagat)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

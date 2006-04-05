@@ -13,6 +13,7 @@ Sound Chips  :  2 x AR17961 (OKI M6295) (only 1 in Torus)
 Year + Game          Board#
 ---------------------------------------------------------------------------
 94+ Paradise         YS-1600
+94+ Paradise Deluxe  YS-1604
 95  Target Ball      YS-2002
 96  Torus            ?
 98  Mad Ball         YS-0402
@@ -67,7 +68,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "paradise.h"
 #include "sound/okim6295.h"
 
@@ -652,14 +652,43 @@ MACHINE_DRIVER_END
 
 /***************************************************************************
 
-                                    Paradise
+                          Paradise / Paradise Deluxe
 
-(c) yun sung  year ??
-another porn qix alike game
-1 main cpu tpc1024afn-084c  ??
-1 sound z8400b ps
-2 ar17961  (oki?)
-1 12.000 oscillator cristal
+(c) Yun Sung  year unkown
+
+Another porn qix like game
+
+YS-1600 / YS-1604
+  CPU: Z8400B PS (Z80 6Mhz)
+Sound: 2 x AR17961 or AD-65 (OKI M6295)
+Video: TPC1020AFN-084C
+  OSC: 12.000MHz & 4.000MHz
+
+YS-1604
+|---------------------------------------------------------|
+|  AD-65  AD-65   Z80              4MHz       YUNSUNG.110 |
+| YUNSUNG.113   YUNSUNG.128                   YUNSUNG.111 |
+| YUNSUNG.85     6264                                     |
+|                                             YUNSUNG.92  |
+|                                             YUNSUNG.93  |
+|                                             YUNSUNG.94  |
+|                6116                                     |
+|                6116              6116                   |
+|J               6116                                     |
+|A                                                        |
+|M                                            6116        |
+|M                                            6116        |
+|A                            |-------|       6116        |
+|                             | TI    |                   |
+|                             |TPC1020|                   |
+|DSW1(8)                      | 084C  |                   |
+|         12MHz               |-------|                   |
+|                           4464                          |
+|                           4464     YUNSUNG.114          |
+|                           4464     YUNSUNG.115          |
+|DSW2(8)                    4464                          |
+|                                                         |
+|---------------------------------------------------------|
 
 The year is not shown but must be >= 1994, since the development system
 (cross compiler?) they used left a "1994.8-1989" in the rom
@@ -691,6 +720,33 @@ ROM_START( paradise )
 
 	ROM_REGION( 0x80000, REGION_SOUND2, 0 )	/* Samples (banked) */
 	ROM_LOAD( "u113", 0x00000, 0x80000, CRC(53de6025) SHA1(c94b3778b57ff7f46ce4cff661841019fb187d5d) )
+ROM_END
+
+ROM_START( paradlx )
+	ROM_REGION( 0x44000, REGION_CPU1, 0 )		/* Z80 Code */
+	ROM_LOAD( "8.u128", 0x00000, 0x0c000, CRC(3a45ac9e) SHA1(24e1b508ef582c8429e09929fea387f3a137f0e3) )
+	ROM_CONTINUE(     0x10000, 0x34000    )
+
+	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT)	/* 16x16x8 Sprites */
+	ROM_LOAD( "6.u114", 0x00000, 0x40000, CRC(d0341838) SHA1(fa400486968bd6b5a805fb79a970bb280ee24662) )
+	ROM_LOAD( "7.u115", 0x40000, 0x40000, CRC(a6231efd) SHA1(2f484ce2081c692b48dbfd98e152b7a74de9c414) )
+
+	ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE | ROMREGION_INVERT)	/* 8x8x4 Background */
+	ROM_LOAD( "5.u94", 0x00000, 0x40000, CRC(70560945) SHA1(f5f1f1779178cb3d1bb4789a135cd49a0d0fd99b) )
+
+	ROM_REGION( 0x100000, REGION_GFX3, ROMREGION_DISPOSE | ROMREGION_INVERT)	/* 8x8x8 Foreground */
+	ROM_LOAD( "3.u92", 0x00000, 0x80000, CRC(c61aa37b) SHA1(8f4235a6ff47209b5982aa1c143f3c877bfd1bae) )
+	ROM_LOAD( "4.u93", 0x80000, 0x80000, CRC(658f855d) SHA1(73a9377633b53869c47c443898914b70238b591a) )
+
+	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE | ROMREGION_INVERT)	/* 8x8x8 Midground */
+	ROM_LOAD( "1.u110", 0x00000, 0x20000, CRC(6b7f9bb9) SHA1(fd150c8e5a560bff49c993b0b703d84f775ea0b0) )
+	ROM_LOAD( "2.u111", 0x20000, 0x20000, CRC(eb291f96) SHA1(096f09894f4a319c30daa7a3051798902d4fd1eb) )
+
+	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_LOAD( "10.u85", 0x00000, 0x40000, CRC(ed20133e) SHA1(a6ab1ab3ca075a3b03fe96cd32a5c186ee26d095) )
+
+	ROM_REGION( 0x80000, REGION_SOUND2, 0 )	/* Samples (banked) */
+	ROM_LOAD( "9.u113", 0x00000, 0x80000, CRC(9c5337f0) SHA1(4d7a8069be4551aad9d7d32d835dcf91be079359) )
 ROM_END
 
 ROM_START( tgtball )
@@ -797,7 +853,7 @@ s.u28 ST M27C4001    - Sound (next to AD-65)
 5.u105 TI 27C040
 6.u106 TI 27C040
 
-All roms with manufacturer's IDs and routines
+All roms read with manufacturer's IDs and routines
 
 */
 
@@ -851,6 +907,7 @@ DRIVER_INIT (torus)
 ***************************************************************************/
 
 GAME( 1994+, paradise, 0,       paradise, paradise, paradise, ROT90, "Yun Sung", "Paradise", 0 )
+GAME( 1994+, paradlx,  0,       paradise, paradise, paradise, ROT90, "Yun Sung", "Paradise Deluxe", GAME_IMPERFECT_GRAPHICS )
 GAME( 1995,  tgtball,  0,       tgtball,  tgtball,  tgtball,  ROT0,  "Yun Sung", "Target Ball (Nude)", 0 )
 GAME( 1995,  tgtballa, tgtball, tgtball,  tgtball,  tgtball,  ROT0,  "Yun Sung", "Target Ball", 0 )
 GAME( 1996,  torus,    0,       torus,    torus,    torus,    ROT90, "Yun Sung", "Torus", 0 )

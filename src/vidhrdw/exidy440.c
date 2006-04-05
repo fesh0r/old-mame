@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "exidy440.h"
 
 #define SPRITE_COUNT		40
@@ -65,21 +64,16 @@ VIDEO_START( exidy440 )
 
 	/* allocate a buffer for VRAM */
 	local_videoram = auto_malloc(256 * 256 * 2);
-
-	/* clear it */
 	memset(local_videoram, 0, 256 * 256 * 2);
 
 	/* allocate a buffer for palette RAM */
 	local_paletteram = auto_malloc(512 * 2);
-
-	/* clear it */
 	memset(local_paletteram, 0, 512 * 2);
 
 	/* allocate a scanline dirty array */
 	scanline_dirty = auto_malloc(256);
-
-	/* mark everything dirty to start */
 	memset(scanline_dirty, 1, 256);
+
 	return 0;
 }
 

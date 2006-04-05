@@ -1,6 +1,6 @@
 #include "driver.h"
+#include "streams.h"
 #include "sound/samples.h"
-#include "state.h"
 #include <math.h>
 
 #define VERBOSE 0

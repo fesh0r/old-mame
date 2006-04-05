@@ -11,152 +11,88 @@
 
     Since there has been confusion in the past over the order of
     initialization and other such things, here it is, all spelled out
-    as of March, 2005:
+    as of February, 2006:
 
     main()
         - does platform-specific init
         - calls run_game() [mame.c]
 
         run_game() [mame.c]
+            - calls mame_validitychecks() [validity.c] to perform validity checks on all compiled drivers
+            - calls setjmp to prepare for deep error handling
             - begins resource tracking (level 1)
-            - calls mame_validitychecks() [mame.c] to perform validity checks on all compiled drivers
-            - calls expand_machine_driver() [mame.c] to construct the machine driver
-            - calls cpuintrf_init() [cpuintrf.c] to determine which CPUs are available
-            - calls config_init() [config.c] to initialize configuration callbacks
-            - calls init_game_options() [mame.c] to compute parameters based on global options struct
-            - initializes the savegame system
-            - calls osd_init() [osdepend.h] to do platform-specific initialization
-
-            - begins resource tracking (level 2)
+            - calls create_machine [mame.c] to initialize the Machine structure
             - calls init_machine() [mame.c]
 
             init_machine() [mame.c]
+                - calls cpuintrf_init() [cpuintrf.c] to determine which CPUs are available
+                - calls sndintrf_init() [sndintrf.c] to determine which sound chips are available
+                - calls fileio_init() [fileio.c] to initialize file I/O info
+                - calls config_init() [config.c] to initialize configuration system
+                - calls state_init() [state.c] to initialize save state system
                 - calls state_save_allow_registration() [state.c] to allow registrations
-                - calls uistring_init() [ui_text.c] to initialize the localized strings
+                - calls drawgfx_init() [drawgfx.c] to initialize rendering globals
+                - calls generic_machine_init() [machine/generic.c] to initialize generic machine structures
+                - calls generic_video_init() [vidhrdw/generic.c] to initialize generic video structures
+                - calls osd_init() [osdepend.h] to do platform-specific initialization
                 - calls code_init() [input.c] to initialize the input system
                 - calls input_port_init() [inptport.c] to set up the input ports
-                - calls chd_set_interface() [chd.c] to initialize the hard disk system
-                - calls rom_load() [common.c] to load the game's ROMs
+                - calls rom_init() [romload.c] to load the game's ROMs
                 - calls timer_init() [timer.c] to reset the timer system
-                - calls cpu_init() [cpuexec.c] to initialize the CPUs
                 - calls memory_init() [memory.c] to process the game's memory maps
+                - calls cpuexec_init() [cpuexec.c] to initialize the CPUs
+                - calls cpuint_init() [cpuint.c] to initialize the CPU interrupts
+                - calls hiscore_init() [hiscore.c] to initialize the hiscores
+                - calls saveload_init() [mame.c] to set up for save/load
                 - calls the driver's DRIVER_INIT callback
-
-            - calls run_machine() [mame.c]
-
-            run_machine() [mame.c]
-                - calls vh_open() [mame.c]
-
-                vh_open() [mame.c]
-                    - calls palette_start() [palette.c] to allocate the palette
-                    - computes game resolution and aspect ratio
-                    - calls artwork_create_display() [artwork.c] to set up the artwork and init the display
-                    - allocates the scrbitmap
-                    - sets the initial refresh rate and visible area
-                    - calls init_buffered_spriteram() [mame.c] to set up buffered spriteram
-                    - creates the debugger bitmap and font (old debugger only)
-                    - calls allocate_graphics() [mame.c] to allocate memory for the decoded graphics
-                    - calls palette_init() [palette.c] to finish palette initialization
-                    - calls decode_graphics() [mame.c] to decode the graphics
-                    - resets the performance tracking variables
-
-                - calls tilemap_init() [tilemap.c] to initialize the tilemap system
-                - calls the driver's VIDEO_START callback
-                - calls sound_init() [sndintrf.c] to start the audio system
+                - calls sound_init() [sound.c] to start the audio system
+                - calls video_init() [video.c] to start the video system
+                - calls cheat_init() [cheat.c] to initialize the cheat system
+                - calls the driver's MACHINE_START, SOUND_START, and VIDEO_START callbacks
                 - disposes of regions marked as disposable
-                - calls run_machine_core() [mame.c]
+                - calls mame_debug_init() [debugcpu.c] to set up the debugger
 
-                run_machine_core() [mame.c]
-                    - calls config_load_settings() [config.c] to load the configuration file
-                    - calls ui_init() [usrintrf.c] to initialize the user interface
-                    - shows the copyright screen
-                    - shows the game warnings
-                    - shows the game info screen
-                    - calls cheat_init() [cheat.c] to initialize the cheat system
-                    - calls the driver's NVRAM_HANDLER to load NVRAM
-                    - calls cpu_run() [cpuexec.c]
+            - calls config_load_settings() [config.c] to load the configuration file
+            - calls nvram_load [machine/generic.c] to load NVRAM
+            - calls ui_init() [usrintrf.c] to initialize the user interface
+            - begins resource tracking (level 2)
+            - calls soft_reset() [mame.c] to reset all systems
 
-                    cpu_run() [cpuexec.c]
-                        - calls mame_debug_init() [mamedbg.c] to init the debugger (old debugger only)
-                        - calls cpu_pre_run() [cpuexec.c]
+                -------------------( at this point, we're up and running )----------------------
 
-                        cpu_pre_run() [cpuexec.c]
-                            - begins resource tracking (level 3)
-                            - calls hs_open() and hs_init() [hiscore.c] to set up high score hacks
-                            - calls cpu_inittimers() [cpuexec.c] to set up basic system timers
-                            - calls watchdog_setup() [cpuexec.c] to set up watchdog timers
-                            - calls sound_reset() [sndintrf.c] to reset all the sound chips
-                            - loops over each CPU and initializes its internal state
-                            - calls the driver's MACHINE_INIT callback
-                            - loops over each CPU and calls cpunum_reset() [cpuintrf.c] to reset it
-                            - calls cpu_vblankreset() [cpuexec.c] to set up the first VBLANK callback
-
-                        --------------( at this point, we're up and running )---------------------------
-
-                        - calls cpu_post_run() [cpuexec.c]
-
-                        cpu_post_run() [cpuexec.c]
-                            - calls hs_close() [hiscore.c] to flush high score data
-                            - calls the driver's MACHINE_STOP callback
-                            - ends resource tracking (level 3), freeing all auto_mallocs and timers
-
-                        - if the machine is just being reset, loops back to the cpu_pre_run() step above
-                        - calls mame_debug_exit() [mamedbg.c] to shut down the debugger (old debugger only)
-
-                    - calls the driver's NVRAM_HANDLER to save NVRAM
-                    - calls cheat_exit() [cheat.c] to tear down the cheat system
-                    - calls config_save_settings() [config.c] to save the game's configuration
-                    - calls ui_exit() [usrintrf.c] to free up UI resources
-
-                - calls sound_exit() [sndintrf.c] to stop the audio system
-                - calls the driver's VIDEO_STOP callback
-                - calls tilemap_exit() [tilemap.c] to tear down the tilemap system
-                - calls vh_close() [mame.c]
-
-                vh_close() [mame.c]
-                    - frees the decoded graphics
-                    - frees the fonts
-                    - calls osd_close_display() [osdepend.h] to shut down the display
-
-            - calls shutdown_machine() [mame.c]
-
-            shutdown_machine() [mame.c]
-                - calls cpu_exit() [cpuexec.c] to tear down the CPU system
-                - calls memory_exit() [memory.c] to tear down the memory system
-                - frees all the memory regions
-                - calls chd_close_all() [chd.c] to tear down the hard disks
-                - calls code_exit() [input.c] to tear down the input system
-                - calls coin_counter_reset() [common.c] to reset coin counters
-
+            - calls cpuexec_timeslice() [cpuexec.c] over and over until we exit
             - ends resource tracking (level 2), freeing all auto_mallocs and timers
-            - calls osd_exit() [osdepend.h] to do platform-specific cleanup
+            - calls the nvram_save() [machine/generic.c] to save NVRAM
+            - calls config_save_settings() [config.c] to save the game's configuration
+            - calls all registered exit routines [mame.c]
             - ends resource tracking (level 1), freeing all auto_mallocs and timers
 
         - exits the program
 
 ***************************************************************************/
 
+#include "osdepend.h"
 #include "driver.h"
-#include <ctype.h>
-#include <stdarg.h>
-#include "ui_text.h"
-#include "mamedbg.h"
-#include "artwork.h"
-#include "state.h"
-#include "unzip.h"
-#include "vidhrdw/generic.h"
-#include "vidhrdw/vector.h"
-#include "palette.h"
-#include "harddisk.h"
 #include "config.h"
-#include "zlib.h"
+#include "cheat.h"
+#include "hiscore.h"
+#include "debugger.h"
+#include "profiler.h"
+
+#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#include "debug/debugcon.h"
+#endif
+
+#include <stdarg.h>
+#include <setjmp.h>
+
 
 
 /***************************************************************************
     CONSTANTS
 ***************************************************************************/
 
-#define FRAMES_PER_FPS_UPDATE		12
+#define MAX_MEMORY_REGIONS		32
 
 
 
@@ -164,56 +100,94 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-/* handy globals for other parts of the system */
-void *record;	/* for -record */
-void *playback; /* for -playback */
-int mame_debug; /* !0 when -debug option is specified */
-int bailing;	/* set to 1 if the startup is aborted to prevent multiple error messages */
-int vector_updates = 0;
+typedef struct _region_info region_info;
+struct _region_info
+{
+	UINT8 *			base;
+	size_t			length;
+	UINT32			type;
+	UINT32			flags;
+};
+
+
+typedef struct _callback_item callback_item;
+struct _callback_item
+{
+	callback_item *	next;
+	union
+	{
+		void		(*exit)(void);
+		void		(*reset)(void);
+		void		(*pause)(int);
+		void		(*log)(const char *);
+	} func;
+};
+
+
+
+/***************************************************************************
+    GLOBALS
+***************************************************************************/
 
 /* the active machine */
 static running_machine active_machine;
-running_machine *Machine = &active_machine;
+running_machine *Machine;
 
 /* the active game driver */
-static const game_driver *gamedrv;
 static machine_config internal_drv;
 
 /* various game options filled in by the OSD */
 global_options options;
 
-/* the active video display */
-static mame_display current_display;
-static UINT8 visible_area_changed;
-static UINT8 refresh_rate_changed;
-
-/* video updating */
-static UINT8 full_refresh_pending;
-static int last_partial_scanline;
-
-/* speed computation */
-static cycles_t last_fps_time;
-static int frames_since_last_fps;
-static int rendered_frames_since_last_fps;
-static int vfcount;
-static performance_info performance;
-
-/* misc other statics */
-static UINT32 leds_status;
+/* system state statics */
+static int current_phase;
 static UINT8 mame_paused;
+static UINT8 hard_reset_pending;
+static UINT8 exit_pending;
+static char *saveload_pending_file;
+static mame_timer *soft_reset_timer;
 
-/* artwork callbacks */
-#ifndef MESS
-static artwork_callbacks mame_artwork_callbacks =
-{
-	NULL,
-	artwork_load_artwork_file
-};
-#endif
+/* load/save statics */
+static void (*saveload_schedule_callback)(void);
+static mame_time saveload_schedule_time;
 
-#ifdef MESS
-int skip_this_frame;
-#endif
+/* error recovery and exiting */
+static callback_item *reset_callback_list;
+static callback_item *pause_callback_list;
+static callback_item *exit_callback_list;
+static jmp_buf fatal_error_jmpbuf;
+static int fatal_error_jmpbuf_valid;
+
+/* malloc tracking */
+static void **malloc_list = NULL;
+static int malloc_list_index = 0;
+static int malloc_list_size = 0;
+
+/* resource tracking */
+int resource_tracking_tag = 0;
+
+/* array of memory regions */
+static region_info mem_region[MAX_MEMORY_REGIONS];
+
+/* random number seed */
+static UINT32 rand_seed;
+
+/* logerror calback info */
+static callback_item *logerror_callback_list;
+
+/* a giant string buffer for temporary strings */
+char giant_string_buffer[65536];
+
+/* the "disclaimer" that should be printed when run with no parameters */
+const char *mame_disclaimer =
+	"MAME is an emulator: it reproduces, more or less faithfully, the behaviour of\n"
+	"several arcade machines. But hardware is useless without software, so an image\n"
+	"of the ROMs which run on that hardware is required. Such ROMs, like any other\n"
+	"commercial software, are copyrighted material and it is therefore illegal to\n"
+	"use them if you don't own the original arcade machine. Needless to say, ROMs\n"
+	"are not distributed together with MAME. Distribution of MAME together with ROM\n"
+	"images is a violation of copyright law and should be promptly reported to the\n"
+	"authors so that appropriate legal action can be taken.\n";
 
 
 
@@ -221,46 +195,20 @@ int skip_this_frame;
     PROTOTYPES
 ***************************************************************************/
 
-static int init_machine(void);
-static void shutdown_machine(void);
-static int run_machine(void);
-static void run_machine_core(void);
+extern int mame_validitychecks(int game);
 
-static void recompute_fps(int skipped_it);
-static int vh_open(void);
-static void vh_close(void);
-static int init_game_options(void);
-static int allocate_graphics(const gfx_decode *gfxdecodeinfo);
-static void decode_graphics(const gfx_decode *gfxdecodeinfo);
-static void compute_aspect_ratio(const machine_config *drv, int *aspect_x, int *aspect_y);
-static void scale_vectorgames(int gfx_width, int gfx_height, int *width, int *height);
-static int init_buffered_spriteram(void);
-static UINT32 mame_string_quark(const char *string);
-static int input_is_coin(const char *name);
-static void input_is_coin_free(void);
+static void create_machine(int game);
+static void destroy_machine(void);
+static void init_machine(void);
+static void soft_reset(int param);
+static void free_callback_list(callback_item **cb);
+
+static void saveload_init(void);
+static void handle_save(void);
+static void handle_load(void);
 
 
-
-/***************************************************************************
-    INLINES
-***************************************************************************/
-
-/*-------------------------------------------------
-    bail_and_print - set the bailing flag and
-    print a message if one hasn't already been
-    printed
--------------------------------------------------*/
-
-INLINE void bail_and_print(const char *message)
-{
-	if (!bailing)
-	{
-		bailing = 1;
-		printf("%s\n", message);
-	}
-}
-
-
+static void logfile_callback(const char *buffer);
 
 
 /***************************************************************************
@@ -275,367 +223,293 @@ INLINE void bail_and_print(const char *message)
 
 int run_game(int game)
 {
-	int err = 1;
+	callback_item *cb;
+	int error = 0;
 
-	begin_resource_tracking();
+	/* start in the "pre-init phase" */
+	current_phase = MAME_PHASE_PREINIT;
 
-	/* first give the machine a good cleaning */
-	memset(Machine, 0, sizeof(Machine));
-
-	/* initialize the driver-related variables in the Machine */
-	Machine->gamedrv = gamedrv = drivers[game];
-	expand_machine_driver(gamedrv->drv, &internal_drv);
-	Machine->drv = &internal_drv;
-	Machine->refresh_rate = Machine->drv->frames_per_second;
-
-	/* validity checks -- the default is to perform these in all builds now
-     * due to the number of incorrect submissions, however for non-debug only
-     * do them for same driver source file */
-	if (mame_validitychecks())
+	/* perform validity checks before anything else */
+	if (mame_validitychecks(game) != 0)
 		return 1;
 
-	/* initialize the CPU interfaces first */
-	if (cpuintrf_init())
-		return 1;
-
-	/* initialize the configuration callbacks */
-	config_init();
-
-	/* initialize the game options */
-	if (init_game_options())
-		return 1;
-
-	/* if we're coming in with a savegame request, process it now */
-	if (options.savegame)
+	/* loop across multiple hard resets */
+	exit_pending = FALSE;
+	while (error == 0 && !exit_pending)
 	{
-		if (strlen(options.savegame) == 1)
-			cpu_loadsave_schedule(LOADSAVE_LOAD, options.savegame[0]);
-		else
-			cpu_loadsave_schedule_file(LOADSAVE_LOAD, options.savegame);
-	}
-	else if (options.auto_save && (Machine->gamedrv->flags & GAME_SUPPORTS_SAVE))
-		cpu_loadsave_schedule_file(LOADSAVE_LOAD, Machine->gamedrv->name);
-	else
-		cpu_loadsave_reset();
-
-	/* here's the meat of it all */
-	bailing = 0;
-
-	/* let the OSD layer start up first */
-	if (osd_init())
-		bail_and_print("Unable to initialize system");
-	else
-	{
-		begin_resource_tracking();
-
-		/* then finish setting up our local machine */
-		if (init_machine())
+		/* use setjmp/longjmp for deep error recovery */
+		fatal_error_jmpbuf_valid = TRUE;
+		error = setjmp(fatal_error_jmpbuf);
+		if (error == 0)
 		{
-			bail_and_print("Unable to initialize machine emulation");
-		}
-		else
-		{
-			/* then run it */
-			if (run_machine())
-				bail_and_print("Unable to start machine emulation");
-			else
-				err = 0;
+			int settingsloaded;
 
-			/* shutdown the local machine */
-			shutdown_machine();
-		}
+			/* move to the init phase */
+			current_phase = MAME_PHASE_INIT;
 
-		/* clear the zip cache (I don't know what would be the bestplace to do this) */
-		unzip_cache_clear();
+			/* start tracking resources for real */
+			begin_resource_tracking();
 
-		/* stop tracking resources and exit the OSD layer */
-		end_resource_tracking();
-		osd_exit();
-	}
+			/* if we have a logfile, set up the callback */
+			logerror_callback_list = NULL;
+			if (options.logfile)
+				add_logerror_callback(logfile_callback);
 
-	end_resource_tracking();
-	return err;
-}
+			/* create the Machine structure and driver */
+			create_machine(game);
 
+			/* then finish setting up our local machine */
+			init_machine();
 
+			/* load the configuration settings and NVRAM */
+			settingsloaded = config_load_settings();
+			nvram_load();
 
-/*-------------------------------------------------
-    init_machine - initialize the emulated machine
--------------------------------------------------*/
+			/* initialize the UI and display the startup screens */
+			if (ui_init(!settingsloaded && !options.skip_disclaimer, !options.skip_warnings, !options.skip_gameinfo) != 0)
+				fatalerror("User cancelled");
 
-static int init_machine(void)
-{
-	/* allow save state registrations starting here */
-	state_save_allow_registration(TRUE);
+			/* ensure we don't show the opening screens on a reset */
+			options.skip_disclaimer = options.skip_warnings = options.skip_gameinfo = TRUE;
 
-	/* load the localization file */
-	if (uistring_init(options.language_file) != 0)
-	{
-		logerror("uistring_init failed\n");
-		goto cant_load_language_file;
-	}
+			/* start resource tracking; note that soft_reset assumes it can */
+			/* call end_resource_tracking followed by begin_resource_tracking */
+			/* to clear out resources allocated between resets */
+			begin_resource_tracking();
 
-	/* initialize the input system */
-	if (code_init() != 0)
-	{
-		logerror("code_init failed\n");
-		goto cant_init_input;
-	}
+			/* perform a soft reset -- this takes us to the running phase */
+			soft_reset(0);
 
-	/* initialize the input ports for the game */
-	if (input_port_init(gamedrv->construct_ipt) != 0)
-	{
-		logerror("input_port_init failed\n");
-		goto cant_allocate_input_ports;
-	}
-
-	/* init the hard drive interface now, before attempting to load */
-	chd_set_interface(&mame_chd_interface);
-
-	/* load the ROMs if we have some */
-	if (gamedrv->rom && rom_load(gamedrv->rom) != 0)
-	{
-		logerror("readroms failed\n");
-		goto cant_load_roms;
-	}
-
-	/* first init the timers; some CPUs have built-in timers and will need */
-	/* to allocate them up front */
-	timer_init();
-
-	/* now set up all the CPUs */
-	cpu_init();
-
-#ifdef MESS
-	/* initialize the devices */
-	if (devices_init(gamedrv) || devices_initialload(gamedrv, TRUE))
-	{
-		logerror("devices_init failed\n");
-		goto cant_load_roms;
-	}
-#endif
-
-	/* multi-session safety - set spriteram size to zero before memory map is set up */
-	spriteram_size = spriteram_2_size = 0;
-
-	/* initialize the memory system for this game */
-	if (!memory_init())
-	{
-		logerror("memory_init failed\n");
-		goto cant_init_memory;
-	}
-
-	/* clear out the memcard interface */
-	init_memcard();
-
-	/* call the game driver's init function */
-	if (gamedrv->driver_init)
-		(*gamedrv->driver_init)();
-
-#ifdef MESS
-	/* initialize the devices */
-	if (devices_initialload(gamedrv, FALSE))
-	{
-		logerror("devices_initialload failed\n");
-		goto cant_load_roms;
-	}
-#endif
-
-	return 0;
-
-cant_init_memory:
-cant_load_roms:
-cant_allocate_input_ports:
-	Machine->input_ports_default = 0;
-	Machine->input_ports = 0;
-	code_exit();
-cant_init_input:
-cant_load_language_file:
-	return 1;
-}
-
-
-
-/*-------------------------------------------------
-    run_machine - start the various subsystems
-    and the CPU emulation; returns non zero in
-    case of error
--------------------------------------------------*/
-
-static int run_machine(void)
-{
-	int res = 1;
-
-	/* start the video hardware */
-	if (vh_open())
-		bail_and_print("Unable to start video emulation");
-	else
-	{
-		/* initialize tilemaps */
-		tilemap_init();
-		flip_screen_set(0);
-
-		/* start up the driver's video */
-		if (Machine->drv->video_start && (*Machine->drv->video_start)())
-			bail_and_print("Unable to start video emulation");
-		else
-		{
-			/* start the audio system */
-			if (sound_init())
-				bail_and_print("Unable to start audio emulation");
-			else
+			/* run the CPUs until a reset or exit */
+			hard_reset_pending = FALSE;
+			while ((!hard_reset_pending && !exit_pending) || saveload_pending_file != NULL)
 			{
-				int region;
+				profiler_mark(PROFILER_EXTRA);
 
-				/* free memory regions allocated with REGIONFLAG_DISPOSE (typically gfx roms) */
-				for (region = 0; region < MAX_MEMORY_REGIONS; region++)
-					if (Machine->memory_region[region].flags & ROMREGION_DISPOSE)
-					{
-						int i;
+				/* execute CPUs if not paused */
+				if (!mame_paused)
+					cpuexec_timeslice();
 
-						/* invalidate contents to avoid subtle bugs */
-						for (i = 0; i < memory_region_length(region); i++)
-							memory_region(region)[i] = rand();
-						free(Machine->memory_region[region].base);
-						Machine->memory_region[region].base = 0;
-					}
-
-				/* before doing anything else, update the video and audio system once */
-				update_video_and_audio();
-
-				/* now do the core execution */
-				run_machine_core();
-				res = 0;
-
-				/* store the sound system */
-				sound_exit();
-			}
-
-			/* shut down the driver's video and kill and artwork */
-			if (Machine->drv->video_stop)
-				(*Machine->drv->video_stop)();
-		}
-
-		/* close down the tilemap and video systems */
-		tilemap_exit();
-		vh_close();
-	}
-
-	return res;
-}
-
-
-
-/*-------------------------------------------------
-    run_machine_core - core execution loop
--------------------------------------------------*/
-
-void run_machine_core(void)
-{
-	int settingsloaded;
-
-	/* disable artwork for the start */
-	artwork_enable(0);
-
-	/* load the configuration settings now */
-	settingsloaded = config_load_settings();
-
-	/* we need to initialize the user interface before displaying anything */
-	ui_init();
-
-	/* if we didn't find a settings file, show the disclaimer */
-	if (settingsloaded || options.skip_disclaimer || ui_display_copyright(artwork_get_ui_bitmap()) == 0)
-	{
-		/* show info about incorrect behaviour (wrong colors etc.) */
-		if (options.skip_warnings || ui_display_game_warnings(artwork_get_ui_bitmap()) == 0)
-		{
-			/* show info about the game */
-			if (options.skip_gameinfo || ui_display_game_info(artwork_get_ui_bitmap()) == 0)
-			{
-				/* enable artwork now */
-				artwork_enable(1);
-
-				/* disable cheat if no roms */
-				if (!gamedrv->rom)
-					options.cheat = 0;
-
-				/* start the cheat engine */
-				if (options.cheat)
-					cheat_init();
-
-				/* load the NVRAM now */
-				if (Machine->drv->nvram_handler)
+				/* otherwise, just pump video updates through */
+				else
 				{
-					mame_file *nvram_file = mame_fopen(Machine->gamedrv->name, 0, FILETYPE_NVRAM, 0);
-					(*Machine->drv->nvram_handler)(nvram_file, 0);
-					if (nvram_file)
-						mame_fclose(nvram_file);
+					updatescreen();
+					reset_partial_updates();
 				}
 
-				/* run the emulation! */
-				cpu_run();
+				/* handle save/load */
+				if (saveload_schedule_callback)
+					(*saveload_schedule_callback)();
 
-				/* save the NVRAM */
-				if (Machine->drv->nvram_handler)
-				{
-					mame_file *nvram_file = mame_fopen(Machine->gamedrv->name, 0, FILETYPE_NVRAM, 1);
-					if (nvram_file != NULL)
-					{
-						(*Machine->drv->nvram_handler)(nvram_file, 1);
-						mame_fclose(nvram_file);
-					}
-				}
-
-				/* stop the cheat engine */
-				if (options.cheat)
-					cheat_exit();
-
-				/* save input ports settings */
-				config_save_settings();
+				profiler_mark(PROFILER_END);
 			}
+
+			/* and out via the exit phase */
+			current_phase = MAME_PHASE_EXIT;
+
+			/* stop tracking resources at this level */
+			end_resource_tracking();
+
+			/* save the NVRAM and configuration */
+			nvram_save();
+			config_save_settings();
 		}
+		fatal_error_jmpbuf_valid = FALSE;
+
+		/* call all exit callbacks registered */
+		for (cb = exit_callback_list; cb; cb = cb->next)
+			(*cb->func.exit)();
+
+		/* close all inner resource tracking */
+		while (resource_tracking_tag != 0)
+			end_resource_tracking();
+
+		/* free our callback lists */
+		free_callback_list(&exit_callback_list);
+		free_callback_list(&reset_callback_list);
+		free_callback_list(&pause_callback_list);
 	}
 
-	/* free UI resources */
-	ui_exit();
+	/* return an error */
+	return error;
 }
-
 
 
 /*-------------------------------------------------
-    shutdown_machine - tear down the emulated
-    machine
+    mame_get_phase - return the current program
+    phase
 -------------------------------------------------*/
 
-static void shutdown_machine(void)
+int mame_get_phase(void)
 {
-	int i;
-
-#ifdef MESS
-	/* close down any devices */
-	devices_exit();
-#endif
-
-	/* reset the CPU system -- must be done before memory goes away */
-	cpu_exit();
-
-	/* release any allocated memory */
-	memory_exit();
-
-	/* free the memory allocated for various regions */
-	for (i = 0; i < MAX_MEMORY_REGIONS; i++)
-		free_memory_region(i);
-
-	/* close all hard drives */
-	chd_close_all();
-
-	/* close down the input system */
-	code_exit();
-
-	/* reset coin counters */
-	coin_counter_reset();
+	return current_phase;
 }
 
+
+/*-------------------------------------------------
+    add_exit_callback - request a callback on
+    termination
+-------------------------------------------------*/
+
+void add_exit_callback(void (*callback)(void))
+{
+	callback_item *cb;
+
+	assert_always(mame_get_phase() == MAME_PHASE_INIT, "Can only call add_exit_callback at init time!");
+
+	/* allocate memory */
+	cb = malloc_or_die(sizeof(*cb));
+
+	/* add us to the head of the list */
+	cb->func.exit = callback;
+	cb->next = exit_callback_list;
+	exit_callback_list = cb;
+}
+
+
+/*-------------------------------------------------
+    add_reset_callback - request a callback on
+    reset
+-------------------------------------------------*/
+
+void add_reset_callback(void (*callback)(void))
+{
+	callback_item *cb, **cur;
+
+	assert_always(mame_get_phase() == MAME_PHASE_INIT, "Can only call add_reset_callback at init time!");
+
+	/* allocate memory */
+	cb = malloc_or_die(sizeof(*cb));
+
+	/* add us to the end of the list */
+	cb->func.reset = callback;
+	cb->next = NULL;
+	for (cur = &reset_callback_list; *cur; cur = &(*cur)->next) ;
+	*cur = cb;
+}
+
+
+/*-------------------------------------------------
+    add_pause_callback - request a callback on
+    pause
+-------------------------------------------------*/
+
+void add_pause_callback(void (*callback)(int))
+{
+	callback_item *cb, **cur;
+
+	assert_always(mame_get_phase() == MAME_PHASE_INIT, "Can only call add_pause_callback at init time!");
+
+	/* allocate memory */
+	cb = malloc_or_die(sizeof(*cb));
+
+	/* add us to the end of the list */
+	cb->func.pause = callback;
+	cb->next = NULL;
+	for (cur = &pause_callback_list; *cur; cur = &(*cur)->next) ;
+	*cur = cb;
+}
+
+
+
+/***************************************************************************
+
+    Global System States
+
+***************************************************************************/
+
+/*-------------------------------------------------
+    mame_schedule_exit - schedule a clean exit
+-------------------------------------------------*/
+
+void mame_schedule_exit(void)
+{
+	exit_pending = TRUE;
+
+	/* if we're autosaving on exit, schedule a save as well */
+	if (options.auto_save && (Machine->gamedrv->flags & GAME_SUPPORTS_SAVE))
+		mame_schedule_save(Machine->gamedrv->name);
+}
+
+
+/*-------------------------------------------------
+    mame_schedule_hard_reset - schedule a hard-
+    reset of the system
+-------------------------------------------------*/
+
+void mame_schedule_hard_reset(void)
+{
+	hard_reset_pending = TRUE;
+}
+
+
+/*-------------------------------------------------
+    mame_schedule_soft_reset - schedule a soft-
+    reset of the system
+-------------------------------------------------*/
+
+void mame_schedule_soft_reset(void)
+{
+	mame_timer_adjust(soft_reset_timer, time_zero, 0, time_zero);
+
+	/* we can't be paused since the timer needs to fire */
+	mame_pause(FALSE);
+}
+
+
+/*-------------------------------------------------
+    mame_schedule_save - schedule a save to
+    occur as soon as possible
+-------------------------------------------------*/
+
+void mame_schedule_save(const char *filename)
+{
+	/* free any existing request and allocate a copy of the requested name */
+	if (saveload_pending_file != NULL)
+		free(saveload_pending_file);
+	saveload_pending_file = mame_strdup(filename);
+
+	/* note the start time and set a timer for the next timeslice to actually schedule it */
+	saveload_schedule_callback = handle_save;
+	saveload_schedule_time = mame_timer_get_time();
+
+	/* we can't be paused since we need to clear out anonymous timers */
+	mame_pause(FALSE);
+}
+
+
+/*-------------------------------------------------
+    mame_schedule_load - schedule a load to
+    occur as soon as possible
+-------------------------------------------------*/
+
+void mame_schedule_load(const char *filename)
+{
+	/* free any existing request and allocate a copy of the requested name */
+	if (saveload_pending_file != NULL)
+		free(saveload_pending_file);
+	saveload_pending_file = mame_strdup(filename);
+
+	/* note the start time and set a timer for the next timeslice to actually schedule it */
+	saveload_schedule_callback = handle_load;
+	saveload_schedule_time = mame_timer_get_time();
+
+	/* we can't be paused since we need to clear out anonymous timers */
+	mame_pause(FALSE);
+}
+
+
+/*-------------------------------------------------
+    mame_is_scheduled_event_pending - is a
+    scheduled event pending?
+-------------------------------------------------*/
+
+int mame_is_scheduled_event_pending(void)
+{
+	/* we can't check for saveload_pending_file here because it will bypass */
+	/* required UI screens if a state is queued from the command line */
+	return exit_pending || hard_reset_pending;
+}
 
 
 /*-------------------------------------------------
@@ -644,14 +518,22 @@ static void shutdown_machine(void)
 
 void mame_pause(int pause)
 {
+	callback_item *cb;
+
+	/* ignore if nothing has changed */
+	if (mame_paused == pause)
+		return;
 	mame_paused = pause;
-	cpu_pause(pause);
-	osd_pause(pause);
-	osd_sound_enable(!pause);
-	palette_set_global_brightness_adjust(pause ? options.pause_bright : 1.00);
-	schedule_full_refresh();
+
+	/* call all registered pause callbacks */
+	for (cb = pause_callback_list; cb; cb = cb->next)
+		(*cb->func.pause)(mame_paused);
 }
 
+
+/*-------------------------------------------------
+    mame_is_paused - the system paused?
+-------------------------------------------------*/
 
 int mame_is_paused(void)
 {
@@ -660,766 +542,241 @@ int mame_is_paused(void)
 
 
 
-/*-------------------------------------------------
-    expand_machine_driver - construct a machine
-    driver from the macroized state
--------------------------------------------------*/
+/***************************************************************************
 
-void expand_machine_driver(void (*constructor)(machine_config *), machine_config *output)
-{
-	/* keeping this function allows us to pre-init the driver before constructing it */
-	memset(output, 0, sizeof(*output));
-	(*constructor)(output);
-}
+    Memory region code
 
-
+***************************************************************************/
 
 /*-------------------------------------------------
-    vh_open - start up the video system
+    memory_region_to_index - returns an index
+    given either an index or a REGION_* identifier
 -------------------------------------------------*/
 
-static int vh_open(void)
-{
-	osd_create_params params;
-	artwork_callbacks *artcallbacks;
-	int bmwidth = Machine->drv->screen_width;
-	int bmheight = Machine->drv->screen_height;
-
-	/* first allocate the necessary palette structures */
-	if (palette_start())
-		goto cant_start_palette;
-
-	/* if we're a vector game, override the screen width and height */
-	if (Machine->drv->video_attributes & VIDEO_TYPE_VECTOR)
-		scale_vectorgames(options.vector_width, options.vector_height, &bmwidth, &bmheight);
-
-	/* compute the visible area for raster games */
-	if (!(Machine->drv->video_attributes & VIDEO_TYPE_VECTOR))
-	{
-		params.width = Machine->drv->default_visible_area.max_x - Machine->drv->default_visible_area.min_x + 1;
-		params.height = Machine->drv->default_visible_area.max_y - Machine->drv->default_visible_area.min_y + 1;
-	}
-	else
-	{
-		params.width = bmwidth;
-		params.height = bmheight;
-	}
-
-	/* fill in the rest of the display parameters */
-	compute_aspect_ratio(Machine->drv, &params.aspect_x, &params.aspect_y);
-	params.depth = Machine->color_depth;
-	params.colors = palette_get_total_colors_with_ui();
-	params.fps = Machine->drv->frames_per_second;
-	params.video_attributes = Machine->drv->video_attributes;
-
-#ifdef MESS
-	artcallbacks = &mess_artwork_callbacks;
-#else
-	artcallbacks = &mame_artwork_callbacks;
-#endif
-
-	/* initialize the display through the artwork (and eventually the OSD) layer */
-	if (artwork_create_display(&params, direct_rgb_components, artcallbacks))
-		goto cant_create_display;
-
-	/* the create display process may update the vector width/height, so recompute */
-	if (Machine->drv->video_attributes & VIDEO_TYPE_VECTOR)
-		scale_vectorgames(options.vector_width, options.vector_height, &bmwidth, &bmheight);
-
-	/* now allocate the screen bitmap */
-	Machine->scrbitmap = auto_bitmap_alloc_depth(bmwidth, bmheight, Machine->color_depth);
-	if (!Machine->scrbitmap)
-		goto cant_create_scrbitmap;
-
-	/* set the default refresh rate */
-	set_refresh_rate(Machine->drv->frames_per_second);
-
-	/* set the default visible area */
-	set_visible_area(0,1,0,1);	// make sure everything is recalculated on multiple runs
-	set_visible_area(
-			Machine->drv->default_visible_area.min_x,
-			Machine->drv->default_visible_area.max_x,
-			Machine->drv->default_visible_area.min_y,
-			Machine->drv->default_visible_area.max_y);
-
-	/* create spriteram buffers if necessary */
-	if (Machine->drv->video_attributes & VIDEO_BUFFERS_SPRITERAM)
-		if (init_buffered_spriteram())
-			goto cant_init_buffered_spriteram;
-
-#if defined(MAME_DEBUG) && !defined(NEW_DEBUGGER)
-	/* if the debugger is enabled, initialize its bitmap and font */
-	if (mame_debug)
-	{
-		int depth = options.debug_depth ? options.debug_depth : Machine->color_depth;
-
-		/* first allocate the debugger bitmap */
-		Machine->debug_bitmap = auto_bitmap_alloc_depth(options.debug_width, options.debug_height, depth);
-		if (!Machine->debug_bitmap)
-			goto cant_create_debug_bitmap;
-
-		/* then create the debugger font */
-		Machine->debugger_font = build_debugger_font();
-		if (Machine->debugger_font == NULL)
-			goto cant_build_debugger_font;
-	}
-#endif
-
-	/* convert the gfx ROMs into character sets. This is done BEFORE calling the driver's */
-	/* palette_init() routine because it might need to check the Machine->gfx[] data */
-	if (Machine->drv->gfxdecodeinfo)
-		if (allocate_graphics(Machine->drv->gfxdecodeinfo))
-			goto cant_allocate_graphics;
-
-	/* initialize the palette - must be done after osd_create_display() */
-	if (palette_init())
-		goto cant_init_palette;
-
-	/* force the first update to be full */
-	set_vh_global_attribute(NULL, 0);
-
-	/* actually decode the graphics */
-	if (Machine->drv->gfxdecodeinfo)
-		decode_graphics(Machine->drv->gfxdecodeinfo);
-
-	/* reset performance data */
-	last_fps_time = osd_cycles();
-	rendered_frames_since_last_fps = frames_since_last_fps = 0;
-	performance.game_speed_percent = 100;
-	performance.frames_per_second = Machine->refresh_rate;
-	performance.vector_updates_last_second = 0;
-
-	/* reset video statics and get out of here */
-	pdrawgfx_shadow_lowpri = 0;
-	leds_status = 0;
-
-	return 0;
-
-cant_init_palette:
-
-#if defined(MAME_DEBUG) && !defined(NEW_DEBUGGER)
-cant_build_debugger_font:
-cant_create_debug_bitmap:
-#endif
-
-cant_init_buffered_spriteram:
-cant_create_scrbitmap:
-cant_create_display:
-cant_allocate_graphics:
-cant_start_palette:
-	vh_close();
-	return 1;
-}
-
-
-
-/*-------------------------------------------------
-    vh_close - close down the video system
--------------------------------------------------*/
-
-static void vh_close(void)
+int memory_region_to_index(int num)
 {
 	int i;
 
-	/* free all the graphics elements */
-	for (i = 0; i < MAX_GFX_ELEMENTS; i++)
-	{
-		freegfx(Machine->gfx[i]);
-		Machine->gfx[i] = 0;
-	}
+	/* if we're already an index, stop there */
+	if (num < MAX_MEMORY_REGIONS)
+		return num;
 
-	/* free the font elements */
-	if (Machine->debugger_font)
-	{
-		freegfx(Machine->debugger_font);
-		Machine->debugger_font = NULL;
-	}
+	/* scan for a match */
+	for (i = 0; i < MAX_MEMORY_REGIONS; i++)
+		if (mem_region[i].type == num)
+			return i;
 
-	/* close down the OSD layer's display */
-	osd_close_display();
+	return -1;
 }
 
 
-
 /*-------------------------------------------------
-    compute_aspect_ratio - determine the aspect
-    ratio encoded in the video attributes
+    new_memory_region - allocates memory for a
+    region
 -------------------------------------------------*/
 
-static void compute_aspect_ratio(const machine_config *drv, int *aspect_x, int *aspect_y)
+int new_memory_region(int type, size_t length, UINT32 flags)
 {
-	/* if it's explicitly specified, use it */
-	if (drv->aspect_x && drv->aspect_y)
-	{
-		*aspect_x = drv->aspect_x;
-		*aspect_y = drv->aspect_y;
-	}
+    int num;
 
-	/* otherwise, attempt to deduce the result */
-	else if (!(drv->video_attributes & VIDEO_DUAL_MONITOR))
-	{
-		*aspect_x = 4;
-		*aspect_y = (drv->video_attributes & VIDEO_DUAL_MONITOR) ? 6 : 3;
-	}
+    assert(type >= MAX_MEMORY_REGIONS);
+
+    /* find a free slot */
+	for (num = 0; num < MAX_MEMORY_REGIONS; num++)
+		if (mem_region[num].base == NULL)
+			break;
+	if (num < 0)
+		return 1;
+
+    /* allocate the region */
+	mem_region[num].length = length;
+	mem_region[num].type = type;
+	mem_region[num].flags = flags;
+	mem_region[num].base = malloc(length);
+	return (mem_region[num].base == NULL) ? 1 : 0;
 }
 
 
-
 /*-------------------------------------------------
-    init_game_options - initialize the various
-    game options
+    free_memory_region - releases memory for a
+    region
 -------------------------------------------------*/
 
-static int init_game_options(void)
+void free_memory_region(int num)
 {
-	/* copy some settings into easier-to-handle variables */
-	record	   = options.record;
-	playback   = options.playback;
-	mame_debug = options.mame_debug;
+	/* convert to an index and bail if invalid */
+	num = memory_region_to_index(num);
+	if (num < 0)
+		return;
 
-	/* determine the color depth */
-	Machine->color_depth = 16;
-	alpha_active = 0;
-	if (Machine->drv->video_attributes & VIDEO_RGB_DIRECT)
-	{
-		/* pick a default */
-		if (Machine->drv->video_attributes & VIDEO_NEEDS_6BITS_PER_GUN)
-			Machine->color_depth = 32;
-		else
-			Machine->color_depth = 15;
-
-		/* enable alpha for direct video modes */
-		alpha_active = 1;
-		alpha_init();
-	}
-
-	/* update the vector width/height with defaults */
-	if (options.vector_width == 0) options.vector_width = 640;
-	if (options.vector_height == 0) options.vector_height = 480;
-
-	/* initialize the samplerate */
-	Machine->sample_rate = options.samplerate;
-
-	/* get orientation right */
-	Machine->ui_orientation = options.ui_orientation;
-
-	return 0;
+	/* free the region in question */
+	free(mem_region[num].base);
+	memset(&mem_region[num], 0, sizeof(mem_region[num]));
 }
 
 
-
 /*-------------------------------------------------
-    allocate_graphics - allocate memory for the
-    graphics
+    memory_region - returns pointer to a memory
+    region
 -------------------------------------------------*/
 
-static int allocate_graphics(const gfx_decode *gfxdecodeinfo)
+UINT8 *memory_region(int num)
 {
-	int i;
-
-	/* loop over all elements */
-	for (i = 0; i < MAX_GFX_ELEMENTS && gfxdecodeinfo[i].memory_region != -1; i++)
-	{
-		int region_length = 8 * memory_region_length(gfxdecodeinfo[i].memory_region);
-		gfx_layout glcopy;
-		int j;
-
-		/* make a copy of the layout */
-		glcopy = *gfxdecodeinfo[i].gfxlayout;
-
-		/* if the character count is a region fraction, compute the effective total */
-		if (IS_FRAC(glcopy.total))
-			glcopy.total = region_length / glcopy.charincrement * FRAC_NUM(glcopy.total) / FRAC_DEN(glcopy.total);
-
-		/* loop over all the planes, converting fractions */
-		for (j = 0; j < MAX_GFX_PLANES; j++)
-		{
-			int value = glcopy.planeoffset[j];
-			if (IS_FRAC(value))
-				glcopy.planeoffset[j] = FRAC_OFFSET(value) + region_length * FRAC_NUM(value) / FRAC_DEN(value);
-		}
-
-		/* loop over all the X/Y offsets, converting fractions */
-		for (j = 0; j < glcopy.width; j++)
-		{
-			int value = glcopy.xoffset[j];
-			if (IS_FRAC(value))
-				glcopy.xoffset[j] = FRAC_OFFSET(value) + region_length * FRAC_NUM(value) / FRAC_DEN(value);
-		}
-		for (j = 0; j < glcopy.height; j++)
-		{
-			int value = glcopy.yoffset[j];
-			if (IS_FRAC(value))
-				glcopy.yoffset[j] = FRAC_OFFSET(value) + region_length * FRAC_NUM(value) / FRAC_DEN(value);
-		}
-
-		/* some games increment on partial tile boundaries; to handle this without reading */
-		/* past the end of the region, we may need to truncate the count */
-		/* an example is the games in metro.c */
-		if (glcopy.planeoffset[0] == GFX_RAW)
-		{
-			int base = gfxdecodeinfo[i].start;
-			int end = region_length/8;
-			while (glcopy.total > 0)
-			{
-				int elementbase = base + (glcopy.total - 1) * glcopy.charincrement / 8;
-				int lastpixelbase = elementbase + glcopy.height * glcopy.yoffset[0] / 8 - 1;
-				if (lastpixelbase < end)
-					break;
-				glcopy.total--;
-			}
-		}
-
-		/* allocate the graphics */
-		Machine->gfx[i] = allocgfx(&glcopy);
-
-		/* if we have a remapped colortable, point our local colortable to it */
-		if (Machine->remapped_colortable)
-			Machine->gfx[i]->colortable = &Machine->remapped_colortable[gfxdecodeinfo[i].color_codes_start];
-		Machine->gfx[i]->total_colors = gfxdecodeinfo[i].total_color_codes;
-	}
-	return 0;
+	/* convert to an index and return the result */
+	num = memory_region_to_index(num);
+	return (num >= 0) ? mem_region[num].base : NULL;
 }
 
 
-
 /*-------------------------------------------------
-    decode_graphics - decode the graphics
+    memory_region_length - returns length of a
+    memory region
 -------------------------------------------------*/
 
-static void decode_graphics(const gfx_decode *gfxdecodeinfo)
+size_t memory_region_length(int num)
 {
-	int totalgfx = 0, curgfx = 0;
-	int i;
-
-	/* count total graphics elements */
-	for (i = 0; i < MAX_GFX_ELEMENTS; i++)
-		if (Machine->gfx[i])
-			totalgfx += Machine->gfx[i]->total_elements;
-
-	/* loop over all elements */
-	for (i = 0; i < MAX_GFX_ELEMENTS; i++)
-		if (Machine->gfx[i])
-		{
-			UINT8 *region_base = memory_region(gfxdecodeinfo[i].memory_region);
-			gfx_element *gfx = Machine->gfx[i];
-			int j;
-
-			/* now decode the actual graphics */
-			for (j = 0; j < gfx->total_elements; j += 1024)
-			{
-				int num_to_decode = (j + 1024 < gfx->total_elements) ? 1024 : (gfx->total_elements - j);
-				decodegfx(gfx, region_base + gfxdecodeinfo[i].start, j, num_to_decode);
-				curgfx += num_to_decode;
-	/*          ui_display_decoding(artwork_get_ui_bitmap(), curgfx * 100 / totalgfx);*/
-			}
-		}
+	/* convert to an index and return the result */
+	num = memory_region_to_index(num);
+	return (num >= 0) ? mem_region[num].length : 0;
 }
 
 
-
 /*-------------------------------------------------
-    scale_vectorgames - scale the vector games
-    to a given resolution
+    memory_region_type - returns the type of a
+    memory region
 -------------------------------------------------*/
 
-static void scale_vectorgames(int gfx_width, int gfx_height, int *width, int *height)
+UINT32 memory_region_type(int num)
 {
-	double x_scale, y_scale, scale;
-
-	/* compute the scale values */
-	x_scale = (double)gfx_width  / *width;
-	y_scale = (double)gfx_height / *height;
-
-	/* pick the smaller scale factor */
-	scale = (x_scale < y_scale) ? x_scale : y_scale;
-
-	/* compute the new size */
-	*width  = *width  * scale + 0.5;
-	*height = *height * scale + 0.5;
-
-	/* round to the nearest 4 pixel value */
-	*width  &= ~3;
-	*height &= ~3;
+	/* convert to an index and return the result */
+	num = memory_region_to_index(num);
+	return (num >= 0) ? mem_region[num].type : 0;
 }
 
 
-
 /*-------------------------------------------------
-    init_buffered_spriteram - initialize the
-    double-buffered spriteram
+    memory_region_flags - returns flags for a
+    memory region
 -------------------------------------------------*/
 
-static int init_buffered_spriteram(void)
+UINT32 memory_region_flags(int num)
 {
-	/* make sure we have a valid size */
-	if (spriteram_size == 0)
-	{
-		logerror("vh_open():  Video buffers spriteram but spriteram_size is 0\n");
-		return 0;
-	}
-
-	/* allocate memory for the back buffer */
-	buffered_spriteram = auto_malloc(spriteram_size);
-
-	/* register for saving it */
-	state_save_register_UINT8("generic_video", 0, "buffered_spriteram", buffered_spriteram, spriteram_size);
-
-	/* do the same for the secon back buffer, if present */
-	if (spriteram_2_size)
-	{
-		/* allocate memory */
-		buffered_spriteram_2 = auto_malloc(spriteram_2_size);
-
-		/* register for saving it */
-		state_save_register_UINT8("generic_video", 0, "buffered_spriteram_2", buffered_spriteram_2, spriteram_2_size);
-	}
-
-	/* make 16-bit and 32-bit pointer variants */
-	buffered_spriteram16 = (UINT16 *)buffered_spriteram;
-	buffered_spriteram32 = (UINT32 *)buffered_spriteram;
-	buffered_spriteram16_2 = (UINT16 *)buffered_spriteram_2;
-	buffered_spriteram32_2 = (UINT32 *)buffered_spriteram_2;
-	return 0;
+	/* convert to an index and return the result */
+	num = memory_region_to_index(num);
+	return (num >= 0) ? mem_region[num].flags : 0;
 }
 
 
 
 /***************************************************************************
 
-    Screen rendering and management.
+    Resource tracking code
 
 ***************************************************************************/
 
 /*-------------------------------------------------
-    set_visible_area - adjusts the visible portion
-    of the bitmap area dynamically
+    auto_malloc_add - add pointer to malloc list
 -------------------------------------------------*/
 
-void set_visible_area(int min_x, int max_x, int min_y, int max_y)
+INLINE void auto_malloc_add(void *result)
 {
-	if (       Machine->visible_area.min_x == min_x
-			&& Machine->visible_area.max_x == max_x
-			&& Machine->visible_area.min_y == min_y
-			&& Machine->visible_area.max_y == max_y)
-		return;
-
-	/* "dirty" the area for the next display update */
-	visible_area_changed = 1;
-
-	/* set the new values in the Machine struct */
-	Machine->visible_area.min_x = min_x;
-	Machine->visible_area.max_x = max_x;
-	Machine->visible_area.min_y = min_y;
-	Machine->visible_area.max_y = max_y;
-
-	/* vector games always use the whole bitmap */
-	if (Machine->drv->video_attributes & VIDEO_TYPE_VECTOR)
+	/* make sure we have tracking space */
+	if (malloc_list_index == malloc_list_size)
 	{
-		Machine->absolute_visible_area.min_x = 0;
-		Machine->absolute_visible_area.max_x = Machine->scrbitmap->width - 1;
-		Machine->absolute_visible_area.min_y = 0;
-		Machine->absolute_visible_area.max_y = Machine->scrbitmap->height - 1;
+		void **list;
+
+		/* if this is the first time, allocate 256 entries, otherwise double the slots */
+		if (malloc_list_size == 0)
+			malloc_list_size = 256;
+		else
+			malloc_list_size *= 2;
+
+		/* realloc the list */
+		list = realloc(malloc_list, malloc_list_size * sizeof(list[0]));
+		if (list == NULL)
+			fatalerror("Unable to extend malloc tracking array to %d slots", malloc_list_size);
+		malloc_list = list;
 	}
-
-	/* raster games need to use the visible area */
-	else
-		Machine->absolute_visible_area = Machine->visible_area;
-
-	/* recompute scanline timing */
-	cpu_compute_scanline_timing();
-}
-
-
-
-/*-------------------------------------------------
-    set_refresh_rate - adjusts the refresh rate
-    of the video mode dynamically
--------------------------------------------------*/
-
-void set_refresh_rate(float fps)
-{
-	/* bail if already equal */
-	if (Machine->refresh_rate == fps)
-		return;
-
-	/* "dirty" the rate for the next display update */
-	refresh_rate_changed = 1;
-
-	/* set the new values in the Machine struct */
-	Machine->refresh_rate = fps;
-
-	/* recompute scanline timing */
-	cpu_compute_scanline_timing();
-}
-
-
-
-/*-------------------------------------------------
-    schedule_full_refresh - force a full erase
-    and refresh the next frame
--------------------------------------------------*/
-
-void schedule_full_refresh(void)
-{
-	full_refresh_pending = 1;
-}
-
-
-
-/*-------------------------------------------------
-    reset_partial_updates - reset the partial
-    updating mechanism for a new frame
--------------------------------------------------*/
-
-void reset_partial_updates(void)
-{
-	last_partial_scanline = 0;
-	performance.partial_updates_this_frame = 0;
-}
-
-
-
-/*-------------------------------------------------
-    force_partial_update - perform a partial
-    update from the last scanline up to and
-    including the specified scanline
--------------------------------------------------*/
-
-void force_partial_update(int scanline)
-{
-	rectangle clip = Machine->visible_area;
-
-	/* if skipping this frame, bail */
-	if (osd_skip_this_frame())
-		return;
-
-	/* skip if less than the lowest so far */
-	if (scanline < last_partial_scanline)
-		return;
-
-	/* if there's a dirty bitmap and we didn't do any partial updates yet, handle it now */
-	if (full_refresh_pending && last_partial_scanline == 0)
-	{
-		fillbitmap(Machine->scrbitmap, get_black_pen(), NULL);
-		full_refresh_pending = 0;
-	}
-
-	/* set the start/end scanlines */
-	if (last_partial_scanline > clip.min_y)
-		clip.min_y = last_partial_scanline;
-	if (scanline < clip.max_y)
-		clip.max_y = scanline;
-
-	/* render if necessary */
-	if (clip.min_y <= clip.max_y)
-	{
-		profiler_mark(PROFILER_VIDEO);
-#ifdef MESS
-		{
-			int update_says_skip = 0;
-			(*Machine->drv->video_update)(0, Machine->scrbitmap, &clip, &update_says_skip);
-			if (!update_says_skip)
-				skip_this_frame = 0;
-			else if (skip_this_frame == -1)
-				skip_this_frame = 1;
-		}
-#else
-		(*Machine->drv->video_update)(0, Machine->scrbitmap, &clip);
-#endif
-		performance.partial_updates_this_frame++;
-		profiler_mark(PROFILER_END);
-	}
-
-	/* remember where we left off */
-	last_partial_scanline = scanline + 1;
-}
-
-
-
-/*-------------------------------------------------
-    draw_screen - render the final screen bitmap
-    and update any artwork
--------------------------------------------------*/
-
-void draw_screen(void)
-{
-	/* finish updating the screen */
-	force_partial_update(Machine->visible_area.max_y);
+	malloc_list[malloc_list_index++] = result;
 }
 
 
 /*-------------------------------------------------
-    update_video_and_audio - actually call the
-    OSD layer to perform an update
+    auto_malloc_free - release auto_malloc'd memory
 -------------------------------------------------*/
 
-void update_video_and_audio(void)
+static void auto_malloc_free(void)
 {
-	int skipped_it = osd_skip_this_frame();
+	/* start at the end and free everything till you reach the sentinel */
+	while (malloc_list_index > 0 && malloc_list[--malloc_list_index] != NULL)
+		free(malloc_list[malloc_list_index]);
 
-#if defined(MAME_DEBUG) && !defined(NEW_DEBUGGER)
-	debug_trace_delay = 0;
-#endif
-
-	/* fill in our portion of the display */
-	current_display.changed_flags = 0;
-
-#ifdef MESS
-	if (skip_this_frame == 1)
-		current_display.changed_flags |= GAME_OPTIONAL_FRAMESKIP;
-	skip_this_frame = -1;
-#endif
-	
-	/* set the main game bitmap */
-	current_display.game_bitmap = Machine->scrbitmap;
-	current_display.game_bitmap_update = Machine->absolute_visible_area;
-	if (!skipped_it)
-		current_display.changed_flags |= GAME_BITMAP_CHANGED;
-
-	/* set the visible area */
-	current_display.game_visible_area = Machine->absolute_visible_area;
-	if (visible_area_changed)
-		current_display.changed_flags |= GAME_VISIBLE_AREA_CHANGED;
-
-	/* set the refresh rate */
-	current_display.game_refresh_rate = Machine->refresh_rate;
-	if (refresh_rate_changed)
-		current_display.changed_flags |= GAME_REFRESH_RATE_CHANGED;
-
-	/* set the vector dirty list */
-	if (Machine->drv->video_attributes & VIDEO_TYPE_VECTOR)
-		if (!full_refresh_pending && !ui_is_dirty() && !skipped_it)
-		{
-			current_display.vector_dirty_pixels = vector_dirty_list;
-			current_display.changed_flags |= VECTOR_PIXELS_CHANGED;
-		}
-
-#if defined(MAME_DEBUG) && !defined(NEW_DEBUGGER)
-	/* set the debugger bitmap */
-	current_display.debug_bitmap = Machine->debug_bitmap;
-	if (debugger_bitmap_changed)
-		current_display.changed_flags |= DEBUG_BITMAP_CHANGED;
-	debugger_bitmap_changed = 0;
-
-	/* adjust the debugger focus */
-	if (debugger_focus != current_display.debug_focus)
+	/* if we free everything, free the list */
+	if (malloc_list_index == 0)
 	{
-		current_display.debug_focus = debugger_focus;
-		current_display.changed_flags |= DEBUG_FOCUS_CHANGED;
-	}
-#endif
-
-	/* set the LED status */
-	if (leds_status != current_display.led_state)
-	{
-		current_display.led_state = leds_status;
-		current_display.changed_flags |= LED_STATE_CHANGED;
-	}
-
-	/* update with data from other parts of the system */
-	palette_update_display(&current_display);
-
-	/* render */
-	artwork_update_video_and_audio(&current_display);
-
-	/* update FPS */
-	recompute_fps(skipped_it);
-
-	/* reset dirty flags */
-	visible_area_changed = 0;
-	refresh_rate_changed = 0;
-}
-
-
-
-/*-------------------------------------------------
-    recompute_fps - recompute the frame rate
--------------------------------------------------*/
-
-static void recompute_fps(int skipped_it)
-{
-	/* increment the frame counters */
-	frames_since_last_fps++;
-	if (!skipped_it)
-		rendered_frames_since_last_fps++;
-
-	/* if we didn't skip this frame, we may be able to compute a new FPS */
-	if (!skipped_it && frames_since_last_fps >= FRAMES_PER_FPS_UPDATE)
-	{
-		cycles_t cps = osd_cycles_per_second();
-		cycles_t curr = osd_cycles();
-		double seconds_elapsed = (double)(curr - last_fps_time) * (1.0 / (double)cps);
-		double frames_per_sec = (double)frames_since_last_fps / seconds_elapsed;
-
-		/* compute the performance data */
-		performance.game_speed_percent = 100.0 * frames_per_sec / Machine->refresh_rate;
-		performance.frames_per_second = (double)rendered_frames_since_last_fps / seconds_elapsed;
-
-		/* reset the info */
-		last_fps_time = curr;
-		frames_since_last_fps = 0;
-		rendered_frames_since_last_fps = 0;
-	}
-
-	/* for vector games, compute the vector update count once/second */
-	vfcount++;
-	if (vfcount >= (int)Machine->refresh_rate)
-	{
-		performance.vector_updates_last_second = vector_updates;
-		vector_updates = 0;
-
-		vfcount -= (int)Machine->refresh_rate;
+		free(malloc_list);
+		malloc_list = NULL;
+		malloc_list_size = 0;
 	}
 }
 
 
-
 /*-------------------------------------------------
-    updatescreen - handle frameskipping and UI,
-    plus updating the screen during normal
-    operations
+    begin_resource_tracking - start tracking
+    resources
 -------------------------------------------------*/
 
-int updatescreen(void)
+void begin_resource_tracking(void)
 {
-	/* update sound */
-	sound_frame_update();
+	/* add a NULL as a sentinel */
+	auto_malloc_add(NULL);
 
-	/* if we're not skipping this frame, draw the screen */
-	if (!osd_skip_this_frame())
-	{
-		profiler_mark(PROFILER_VIDEO);
-		draw_screen();
-		profiler_mark(PROFILER_END);
-	}
+	/* increment the tag counter */
+	resource_tracking_tag++;
+}
 
-	/* the user interface must be called between vh_update() and osd_update_video_and_audio(), */
-	/* to allow it to overlay things on the game display. We must call it even */
-	/* if the frame is skipped, to keep a consistent timing. */
-	if (ui_update_and_render(artwork_get_ui_bitmap()))
-	{
-		/* quit if the user asked to */
-		record_movie_stop();
-		return 1;
-	}
 
-	/* update our movie recording state */
-	if (!mame_is_paused())
-		record_movie_frame(Machine->scrbitmap);
+/*-------------------------------------------------
+    end_resource_tracking - stop tracking
+    resources
+-------------------------------------------------*/
 
-	/* blit to the screen */
-	update_video_and_audio();
+void end_resource_tracking(void)
+{
+	/* call everyone who tracks resources to let them know */
+	auto_malloc_free();
+	timer_free();
+	state_save_free();
 
-	/* call the end-of-frame callback */
-	if (Machine->drv->video_eof && !mame_is_paused())
-	{
-		profiler_mark(PROFILER_VIDEO);
-		(*Machine->drv->video_eof)();
-		profiler_mark(PROFILER_END);
-	}
+	/* decrement the tag counter */
+	resource_tracking_tag--;
+}
 
-	return 0;
+
+/*-------------------------------------------------
+    auto_malloc - allocate auto-freeing memory
+-------------------------------------------------*/
+
+void *_auto_malloc(size_t size, const char *file, int line)
+{
+	void *result;
+
+	/* fail horribly if it doesn't work */
+	result = _malloc_or_die(size, file, line);
+
+	/* track this item in our list */
+	auto_malloc_add(result);
+	return result;
+}
+
+
+/*-------------------------------------------------
+    auto_strdup - allocate auto-freeing string
+-------------------------------------------------*/
+
+char *auto_strdup(const char *str)
+{
+	return strcpy(auto_malloc(strlen(str) + 1), str);
 }
 
 
@@ -1431,49 +788,111 @@ int updatescreen(void)
 ***************************************************************************/
 
 /*-------------------------------------------------
-    mame_highscore_enabled - return 1 if high
-    scores are enabled
+    fatalerror - print a message and escape back
+    to the OSD layer
 -------------------------------------------------*/
 
-int mame_highscore_enabled(void)
+void CLIB_DECL fatalerror(const char *text, ...)
 {
-	/* disable high score when record/playback is on */
-	if (record != 0 || playback != 0)
-		return 0;
+	va_list arg;
 
-	/* disable high score when cheats are used */
-	if (he_did_cheat != 0)
-		return 0;
+	/* dump to the buffer; assume no one writes >2k lines this way */
+	va_start(arg, text);
+	vsnprintf(giant_string_buffer, sizeof(giant_string_buffer), text, arg);
+	va_end(arg);
 
-	return 1;
-}
-
-
-
-/*-------------------------------------------------
-    set_led_status - set the state of a given LED
--------------------------------------------------*/
-
-void set_led_status(int num, int on)
-{
-	if (on)
-		leds_status |=	(1 << num);
+	/* output and return */
+	printf("%s\n", giant_string_buffer);
+	if (fatal_error_jmpbuf_valid)
+  		longjmp(fatal_error_jmpbuf, 1);
 	else
-		leds_status &= ~(1 << num);
+		exit(-1);
 }
-
 
 
 /*-------------------------------------------------
-    mame_get_performance_info - return performance
-    info
+    logerror - log to the debugger and any other
+    OSD-defined output streams
 -------------------------------------------------*/
 
-const performance_info *mame_get_performance_info(void)
+void CLIB_DECL logerror(const char *text, ...)
 {
-	return &performance;
+	callback_item *cb;
+
+	/* process only if there is a target */
+	if (logerror_callback_list)
+	{
+		va_list arg;
+
+		profiler_mark(PROFILER_LOGERROR);
+
+		/* dump to the buffer */
+		va_start(arg, text);
+		vsnprintf(giant_string_buffer, sizeof(giant_string_buffer), text, arg);
+		va_end(arg);
+
+		/* log to all callbacks */
+		for (cb = logerror_callback_list; cb; cb = cb->next)
+			cb->func.log(giant_string_buffer);
+
+		profiler_mark(PROFILER_END);
+	}
 }
 
+
+/*-------------------------------------------------
+    add_logerror_callback - adds a callback to be
+    called on logerror()
+-------------------------------------------------*/
+
+void add_logerror_callback(void (*callback)(const char *))
+{
+	callback_item *cb, **cur;
+
+	assert_always(mame_get_phase() == MAME_PHASE_INIT, "Can only call add_logerror_callback at init time!");
+
+	cb = auto_malloc(sizeof(*cb));
+	cb->func.log = callback;
+	cb->next = NULL;
+
+	for (cur = &logerror_callback_list; *cur; cur = &(*cur)->next) ;
+	*cur = cb;
+}
+
+
+/*-------------------------------------------------
+    logfile_callback - callback for logging to
+    logfile
+-------------------------------------------------*/
+
+static void logfile_callback(const char *buffer)
+{
+	if (options.logfile)
+		mame_fputs(options.logfile, buffer);
+}
+
+
+/*-------------------------------------------------
+    _malloc_or_die - allocate memory or die
+    trying
+-------------------------------------------------*/
+
+void *_malloc_or_die(size_t size, const char *file, int line)
+{
+	void *result;
+
+	/* fail on attempted allocations of 0 */
+	if (size == 0)
+		fatalerror("Attempted to malloc zero bytes (%s:%d)", file, line);
+
+	/* allocate and return if we succeeded */
+	result = malloc(size);
+	if (result != NULL)
+		return result;
+
+	/* otherwise, die horribly */
+	fatalerror("Failed to allocate %d bytes (%s:%d)", size, file, line);
+}
 
 
 /*-------------------------------------------------
@@ -1493,200 +912,443 @@ int mame_find_cpu_index(const char *tag)
 }
 
 
-
 /*-------------------------------------------------
-    machine_add_cpu - add a CPU during machine
-    driver expansion
+    mame_rand - standardized random numbers
 -------------------------------------------------*/
 
-cpu_config *machine_add_cpu(machine_config *machine, const char *tag, int type, int cpuclock)
+UINT32 mame_rand(void)
 {
-	int cpunum;
+	rand_seed = 1664525 * rand_seed + 1013904223;
+	return rand_seed;
+}
 
-	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
-		if (machine->cpu[cpunum].cpu_type == 0)
+
+
+/***************************************************************************
+
+    Internal initialization logic
+
+***************************************************************************/
+
+/*-------------------------------------------------
+    create_machine - create the running machine
+    object and initialize it based on options
+-------------------------------------------------*/
+
+static void create_machine(int game)
+{
+	/* first give the machine a good cleaning */
+	Machine = &active_machine;
+	memset(Machine, 0, sizeof(*Machine));
+
+	/* initialize the driver-related variables in the Machine */
+	Machine->gamedrv = drivers[game];
+	Machine->drv = &internal_drv;
+	expand_machine_driver(Machine->gamedrv->drv, &internal_drv);
+	Machine->refresh_rate = Machine->drv->frames_per_second;
+
+	/* copy some settings into easier-to-handle variables */
+	Machine->record_file = options.record;
+	Machine->playback_file = options.playback;
+	Machine->debug_mode = options.mame_debug;
+
+	/* determine the color depth */
+	Machine->color_depth = 16;
+	if (Machine->drv->video_attributes & VIDEO_RGB_DIRECT)
+		Machine->color_depth = (Machine->drv->video_attributes & VIDEO_NEEDS_6BITS_PER_GUN) ? 32 : 15;
+
+	/* update the vector width/height with defaults */
+	if (options.vector_width == 0)
+		options.vector_width = 640;
+	if (options.vector_height == 0)
+		options.vector_height = 480;
+
+	/* initialize the samplerate */
+	Machine->sample_rate = options.samplerate;
+
+	/* get orientation right */
+	Machine->ui_orientation = options.ui_orientation;
+
+	/* add an exit callback to clear out the Machine on the way out */
+	add_exit_callback(destroy_machine);
+}
+
+
+/*-------------------------------------------------
+    destroy_machine - "destroy" the Machine by
+    NULLing it out
+-------------------------------------------------*/
+
+static void destroy_machine(void)
+{
+	Machine = NULL;
+}
+
+
+/*-------------------------------------------------
+    init_machine - initialize the emulated machine
+-------------------------------------------------*/
+
+static void init_machine(void)
+{
+	int num;
+
+	/* initialize basic can't-fail systems here */
+	cpuintrf_init();
+	sndintrf_init();
+	fileio_init();
+	config_init();
+	state_init();
+	state_save_allow_registration(TRUE);
+	drawgfx_init();
+	generic_machine_init();
+	generic_video_init();
+	rand_seed = 0x9d14abd7;
+
+	/* init the osd layer */
+	if (osd_init() != 0)
+		fatalerror("osd_init failed");
+
+	/* initialize the input system */
+	/* this must be done before the input ports are initialized */
+	if (code_init() != 0)
+		fatalerror("code_init failed");
+
+	/* initialize the input ports for the game */
+	/* this must be done before memory_init in order to allow specifying */
+	/* callbacks based on input port tags */
+	if (input_port_init(Machine->gamedrv->construct_ipt) != 0)
+		fatalerror("input_port_init failed");
+
+	/* load the ROMs if we have some */
+	/* this must be done before memory_init in order to allocate memory regions */
+	if (rom_init(Machine->gamedrv->rom) != 0)
+		fatalerror("rom_init failed");
+
+	/* initialize the timers and allocate a soft_reset timer */
+	/* this must be done before cpu_init so that CPU's can allocate timers */
+	timer_init();
+	soft_reset_timer = timer_alloc(soft_reset);
+
+	/* initialize the memory system for this game */
+	/* this must be done before cpu_init so that set_context can look up the opcode base */
+	if (memory_init() != 0)
+		fatalerror("memory_init failed");
+
+	/* now set up all the CPUs */
+	if (cpuexec_init() != 0)
+		fatalerror("cpuexec_init failed");
+	if (cpuint_init() != 0)
+		fatalerror("cpuint_init failed");
+
+#ifdef MESS
+	/* initialize the devices */
+	if (devices_init(Machine->gamedrv))
+		fatalerror("devices_init failed");
+#endif
+
+	/* start the hiscore system -- remove me */
+	hiscore_init(Machine->gamedrv->name);
+
+	/* start the save/load system */
+	saveload_init();
+
+	/* call the game driver's init function */
+	/* this is where decryption is done and memory maps are altered */
+	/* so this location in the init order is important */
+	if (Machine->gamedrv->driver_init != NULL)
+		(*Machine->gamedrv->driver_init)();
+
+	/* start the audio system */
+	if (sound_init() != 0)
+		fatalerror("sound_init failed");
+
+	/* start the video hardware */
+	if (video_init() != 0)
+		fatalerror("video_init failed");
+
+	/* start the cheat engine */
+	if (options.cheat)
+		cheat_init();
+
+	/* call the driver's _START callbacks */
+	if (Machine->drv->machine_start != NULL && (*Machine->drv->machine_start)() != 0)
+		fatalerror("Unable to start machine emulation");
+	if (Machine->drv->sound_start != NULL && (*Machine->drv->sound_start)() != 0)
+		fatalerror("Unable to start sound emulation");
+	if (Machine->drv->video_start != NULL && (*Machine->drv->video_start)() != 0)
+		fatalerror("Unable to start video emulation");
+
+	/* free memory regions allocated with REGIONFLAG_DISPOSE (typically gfx roms) */
+	for (num = 0; num < MAX_MEMORY_REGIONS; num++)
+		if (mem_region[num].flags & ROMREGION_DISPOSE)
+			free_memory_region(num);
+
+#ifdef MAME_DEBUG
+	/* initialize the debugger */
+	if (Machine->debug_mode)
+		mame_debug_init();
+#endif
+}
+
+
+/*-------------------------------------------------
+    soft_reset - actually perform a soft-reset
+    of the system
+-------------------------------------------------*/
+
+static void soft_reset(int param)
+{
+	callback_item *cb;
+
+	logerror("Soft reset\n");
+
+	/* temporarily in the reset phase */
+	current_phase = MAME_PHASE_RESET;
+
+	/* a bit gross -- back off of the resource tracking, and put it back at the end */
+	assert(resource_tracking_tag == 2);
+	end_resource_tracking();
+	begin_resource_tracking();
+
+	/* allow save state registrations during the reset */
+	state_save_allow_registration(TRUE);
+
+	/* unfortunately, we can't rely on callbacks to reset the interrupt */
+	/* structures, as these need to happen before we call the reset */
+	/* functions registered by the drivers */
+	cpuint_reset();
+
+	/* run the driver's reset callbacks */
+	if (Machine->drv->machine_reset != NULL)
+		(*Machine->drv->machine_reset)();
+	if (Machine->drv->sound_reset != NULL)
+		(*Machine->drv->sound_reset)();
+	if (Machine->drv->video_reset != NULL)
+		(*Machine->drv->video_reset)();
+
+	/* call all registered reset callbacks */
+	for (cb = reset_callback_list; cb; cb = cb->next)
+		(*cb->func.reset)();
+
+	/* disallow save state registrations starting here */
+	state_save_allow_registration(FALSE);
+
+	/* now we're running */
+	current_phase = MAME_PHASE_RUNNING;
+
+	/* set the global time to the current time */
+	/* this allows 0-time queued callbacks to run before any CPUs execute */
+	mame_timer_set_global_time(mame_timer_get_time());
+}
+
+
+/*-------------------------------------------------
+    free_callback_list - free a list of callbacks
+-------------------------------------------------*/
+
+static void free_callback_list(callback_item **cb)
+{
+	while (*cb)
+	{
+		callback_item *temp = *cb;
+		*cb = (*cb)->next;
+		free(temp);
+	}
+}
+
+
+
+/***************************************************************************
+
+    Save/restore
+
+***************************************************************************/
+
+/*-------------------------------------------------
+    saveload_init - initialize the save/load logic
+-------------------------------------------------*/
+
+static void saveload_init(void)
+{
+	/* if we're coming in with a savegame request, process it now */
+	if (options.savegame)
+	{
+		char name[20];
+
+		if (strlen(options.savegame) == 1)
 		{
-			machine->cpu[cpunum].tag = tag;
-			machine->cpu[cpunum].cpu_type = type;
-			machine->cpu[cpunum].cpu_clock = cpuclock;
-			return &machine->cpu[cpunum];
+			sprintf(name, "%s-%c", Machine->gamedrv->name, options.savegame[0]);
+			mame_schedule_load(name);
+		}
+		else
+			mame_schedule_load(options.savegame);
+	}
+
+	/* if we're in autosave mode, schedule a load */
+	else if (options.auto_save && (Machine->gamedrv->flags & GAME_SUPPORTS_SAVE))
+		mame_schedule_load(Machine->gamedrv->name);
+}
+
+
+/*-------------------------------------------------
+    handle_save - attempt to perform a save
+-------------------------------------------------*/
+
+static void handle_save(void)
+{
+	mame_file *file;
+
+	/* if no name, bail */
+	if (saveload_pending_file == NULL)
+	{
+		saveload_schedule_callback = NULL;
+		return;
+	}
+
+	/* if there are anonymous timers, we can't save just yet */
+	if (timer_count_anonymous() > 0)
+	{
+		/* if more than a second has passed, we're probably screwed */
+		if (sub_mame_times(mame_timer_get_time(), saveload_schedule_time).seconds > 0)
+		{
+			ui_popup("Unable to save due to pending anonymous timers. See error.log for details.");
+			goto cancel;
+		}
+		return;
+	}
+
+	/* open the file */
+	file = mame_fopen(Machine->gamedrv->name, saveload_pending_file, FILETYPE_STATE, 1);
+	if (file)
+	{
+		int cpunum;
+
+		/* write the save state */
+		if (state_save_save_begin(file) != 0)
+		{
+			ui_popup("Error: Unable to save state due to illegal registrations. See error.log for details.");
+			mame_fclose(file);
+			goto cancel;
 		}
 
-	logerror("Out of CPU's!\n");
-	return NULL;
-}
+		/* write the default tag */
+		state_save_push_tag(0);
+		state_save_save_continue();
+		state_save_pop_tag();
 
-
-
-/*-------------------------------------------------
-    machine_find_cpu - find a tagged CPU during
-    machine driver expansion
--------------------------------------------------*/
-
-cpu_config *machine_find_cpu(machine_config *machine, const char *tag)
-{
-	int cpunum;
-
-	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
-		if (machine->cpu[cpunum].tag && strcmp(machine->cpu[cpunum].tag, tag) == 0)
-			return &machine->cpu[cpunum];
-
-	logerror("Can't find CPU '%s'!\n", tag);
-	return NULL;
-}
-
-
-
-/*-------------------------------------------------
-    machine_remove_cpu - remove a tagged CPU
-    during machine driver expansion
--------------------------------------------------*/
-
-void machine_remove_cpu(machine_config *machine, const char *tag)
-{
-	int cpunum;
-
-	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
-		if (machine->cpu[cpunum].tag && strcmp(machine->cpu[cpunum].tag, tag) == 0)
+		/* loop over CPUs */
+		for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
 		{
-			memmove(&machine->cpu[cpunum], &machine->cpu[cpunum + 1], sizeof(machine->cpu[0]) * (MAX_CPU - cpunum - 1));
-			memset(&machine->cpu[MAX_CPU - 1], 0, sizeof(machine->cpu[0]));
-			return;
+			cpuintrf_push_context(cpunum);
+
+			/* make sure banking is set */
+			activecpu_reset_banking();
+
+			/* save the CPU data */
+			state_save_push_tag(cpunum + 1);
+			state_save_save_continue();
+			state_save_pop_tag();
+
+			cpuintrf_pop_context();
 		}
 
-	logerror("Can't find CPU '%s'!\n", tag);
+		/* finish and close */
+		state_save_save_finish();
+		mame_fclose(file);
+
+		/* pop a warning if the game doesn't support saves */
+		if (!(Machine->gamedrv->flags & GAME_SUPPORTS_SAVE))
+			ui_popup("State successfully saved.\nWarning: Save states are not officially supported for this game.");
+		else
+			ui_popup("State successfully saved.");
+	}
+	else
+		ui_popup("Error: Failed to save state");
+
+cancel:
+	/* unschedule the save */
+	free(saveload_pending_file);
+	saveload_pending_file = NULL;
+	saveload_schedule_callback = NULL;
 }
 
 
-
 /*-------------------------------------------------
-    machine_add_speaker - add a speaker during
-    machine driver expansion
+    handle_load - attempt to perform a load
 -------------------------------------------------*/
 
-speaker_config *machine_add_speaker(machine_config *machine, const char *tag, float x, float y, float z)
+static void handle_load(void)
 {
-	int speakernum;
+	mame_file *file;
 
-	for (speakernum = 0; speakernum < MAX_SPEAKER; speakernum++)
-		if (machine->speaker[speakernum].tag == NULL)
+	/* if no name, bail */
+	if (saveload_pending_file == NULL)
+	{
+		saveload_schedule_callback = NULL;
+		return;
+	}
+
+	/* if there are anonymous timers, we can't load just yet because the timers might */
+	/* overwrite data we have loaded */
+	if (timer_count_anonymous() > 0)
+	{
+		/* if more than a second has passed, we're probably screwed */
+		if (sub_mame_times(mame_timer_get_time(), saveload_schedule_time).seconds > 0)
 		{
-			machine->speaker[speakernum].tag = tag;
-			machine->speaker[speakernum].x = x;
-			machine->speaker[speakernum].y = y;
-			machine->speaker[speakernum].z = z;
-			return &machine->speaker[speakernum];
+			ui_popup("Unable to load due to pending anonymous timers. See error.log for details.");
+			goto cancel;
 		}
+		return;
+	}
 
-	logerror("Out of speakers!\n");
-	return NULL;
-}
-
-
-
-/*-------------------------------------------------
-    machine_find_speaker - find a tagged speaker
-    system during machine driver expansion
--------------------------------------------------*/
-
-speaker_config *machine_find_speaker(machine_config *machine, const char *tag)
-{
-	int speakernum;
-
-	for (speakernum = 0; speakernum < MAX_SPEAKER; speakernum++)
-		if (machine->speaker[speakernum].tag && strcmp(machine->speaker[speakernum].tag, tag) == 0)
-			return &machine->speaker[speakernum];
-
-	logerror("Can't find speaker '%s'!\n", tag);
-	return NULL;
-}
-
-
-
-/*-------------------------------------------------
-    machine_remove_speaker - remove a tagged speaker
-    system during machine driver expansion
--------------------------------------------------*/
-
-void machine_remove_speaker(machine_config *machine, const char *tag)
-{
-	int speakernum;
-
-	for (speakernum = 0; speakernum < MAX_SPEAKER; speakernum++)
-		if (machine->speaker[speakernum].tag && strcmp(machine->speaker[speakernum].tag, tag) == 0)
+	/* open the file */
+	file = mame_fopen(Machine->gamedrv->name, saveload_pending_file, FILETYPE_STATE, 0);
+	if (file)
+	{
+		/* start loading */
+		if (state_save_load_begin(file) == 0)
 		{
-			memmove(&machine->speaker[speakernum], &machine->speaker[speakernum + 1], sizeof(machine->speaker[0]) * (MAX_SPEAKER - speakernum - 1));
-			memset(&machine->speaker[MAX_SPEAKER - 1], 0, sizeof(machine->speaker[0]));
-			return;
+			int cpunum;
+
+			/* read tag 0 */
+			state_save_push_tag(0);
+			state_save_load_continue();
+			state_save_pop_tag();
+
+			/* loop over CPUs */
+			for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+			{
+				cpuintrf_push_context(cpunum);
+
+				/* make sure banking is set */
+				activecpu_reset_banking();
+
+				/* load the CPU data */
+				state_save_push_tag(cpunum + 1);
+				state_save_load_continue();
+				state_save_pop_tag();
+
+				/* make sure banking is set */
+				activecpu_reset_banking();
+
+				cpuintrf_pop_context();
+			}
+
+			/* finish and close */
+			state_save_load_finish();
+			ui_popup("State successfully loaded.");
 		}
+		else
+			ui_popup("Error: Failed to load state");
+		mame_fclose(file);
+	}
+	else
+		ui_popup("Error: Failed to load state");
 
-	logerror("Can't find speaker '%s'!\n", tag);
-}
-
-
-
-/*-------------------------------------------------
-    machine_add_sound - add a sound system during
-    machine driver expansion
--------------------------------------------------*/
-
-sound_config *machine_add_sound(machine_config *machine, const char *tag, int type, int clock)
-{
-	int soundnum;
-
-	for (soundnum = 0; soundnum < MAX_SOUND; soundnum++)
-		if (machine->sound[soundnum].sound_type == 0)
-		{
-			machine->sound[soundnum].tag = tag;
-			machine->sound[soundnum].sound_type = type;
-			machine->sound[soundnum].clock = clock;
-			machine->sound[soundnum].config = NULL;
-			machine->sound[soundnum].routes = 0;
-			return &machine->sound[soundnum];
-		}
-
-	logerror("Out of sounds!\n");
-	return NULL;
-
-}
-
-
-
-/*-------------------------------------------------
-    machine_find_sound - find a tagged sound
-    system during machine driver expansion
--------------------------------------------------*/
-
-sound_config *machine_find_sound(machine_config *machine, const char *tag)
-{
-	int soundnum;
-
-	for (soundnum = 0; soundnum < MAX_SOUND; soundnum++)
-		if (machine->sound[soundnum].tag && strcmp(machine->sound[soundnum].tag, tag) == 0)
-			return &machine->sound[soundnum];
-
-	logerror("Can't find sound '%s'!\n", tag);
-	return NULL;
-}
-
-
-
-/*-------------------------------------------------
-    machine_remove_sound - remove a tagged sound
-    system during machine driver expansion
--------------------------------------------------*/
-
-void machine_remove_sound(machine_config *machine, const char *tag)
-{
-	int soundnum;
-
-	for (soundnum = 0; soundnum < MAX_SOUND; soundnum++)
-		if (machine->sound[soundnum].tag && strcmp(machine->sound[soundnum].tag, tag) == 0)
-		{
-			memmove(&machine->sound[soundnum], &machine->sound[soundnum + 1], sizeof(machine->sound[0]) * (MAX_SOUND - soundnum - 1));
-			memset(&machine->sound[MAX_SOUND - 1], 0, sizeof(machine->sound[0]));
-			return;
-		}
-
-	logerror("Can't find sound '%s'!\n", tag);
+cancel:
+	/* unschedule the load */
+	free(saveload_pending_file);
+	saveload_pending_file = NULL;
+	saveload_schedule_callback = NULL;
 }

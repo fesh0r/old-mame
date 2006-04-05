@@ -9,7 +9,6 @@ driver by Nicola Salmoria
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "vidhrdw/konamiic.h"
 #include "sound/k007232.h"
@@ -59,7 +58,7 @@ static READ8_HANDLER( bottom9_bankedram2_r )
 static WRITE8_HANDLER( bottom9_bankedram2_w )
 {
 	if (K052109_selected) K052109_051960_w(offset + 0x2000,data);
-	else paletteram_xBBBBBGGGGGRRRRR_swap_w(offset,data);
+	else paletteram_xBBBBBGGGGGRRRRR_be_w(offset,data);
 }
 
 static WRITE8_HANDLER( bankswitch_w )

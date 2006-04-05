@@ -177,7 +177,6 @@ The games seem to use them to mark platforms, kill zones and no-go areas.
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m68000/m68kmame.h"
 #include "cps1.h"
 
@@ -283,6 +282,7 @@ static struct CPS1config cps1_config_table[]=
 	{"willowje",CPS_B_03, 0,1,0, 0x0000,0xffff,0x0000,0xffff },
 	{"ffight",  CPS_B_04, 0,0,0, 0x0001,0xffff,0x0001,0xffff },
 	{"ffightu", CPS_B_01, 0,0,0, 0x0001,0xffff,0x0001,0xffff },
+	{"ffightua",CPS_B_05, 0,0,0, 0x0001,0xffff,0x0001,0xffff }, // I think
 	{"ffightj", CPS_B_04, 0,0,0, 0x0001,0xffff,0x0001,0xffff },
 	{"ffightj1",CPS_B_02, 0,0,0, 0x0001,0xffff,0x0001,0xffff },
 	{"1941",    CPS_B_05, 0,0,0, 0x0000,0xffff,0x0400,0x07ff },
@@ -422,7 +422,7 @@ void cps_setversion(int v)
 }
 
 
-static MACHINE_INIT( cps )
+static MACHINE_RESET( cps )
 {
 	const char *gamename = Machine->gamedrv->name;
 	struct CPS1config *pCFG=&cps1_config_table[0];
@@ -618,8 +618,10 @@ static int cps1_stars_enabled[2];          /* Layer enabled [Y/N] */
 tilemap *cps1_bg_tilemap[3];
 
 
-int scroll1x, scroll1y, scroll2x, scroll2y, scroll3x, scroll3y;
-int stars1x, stars1y, stars2x, stars2y;
+int cps1_scroll1x, cps1_scroll1y;
+int cps1_scroll2x, cps1_scroll2y;
+int cps1_scroll3x, cps1_scroll3y;
+static int stars1x, stars1y, stars2x, stars2y;
 
 
 /* Output ports */
@@ -774,9 +776,6 @@ DRIVER_INIT( cps2 )
 }
 
 
-
-
-
 #if CPS1_DUMP_VIDEO
 void cps1_dump_video(void)
 {
@@ -898,12 +897,12 @@ void cps1_get_video_base(void )
 	cps1_other=cps1_base(CPS1_OTHER_BASE,cps1_other_size);
 
 	/* Get scroll values */
-	scroll1x=cps1_port(CPS1_SCROLL1_SCROLLX) + scroll1xoff;
-	scroll1y=cps1_port(CPS1_SCROLL1_SCROLLY);
-	scroll2x=cps1_port(CPS1_SCROLL2_SCROLLX) + scroll2xoff;
-	scroll2y=cps1_port(CPS1_SCROLL2_SCROLLY);
-	scroll3x=cps1_port(CPS1_SCROLL3_SCROLLX) + scroll3xoff;
-	scroll3y=cps1_port(CPS1_SCROLL3_SCROLLY);
+	cps1_scroll1x=cps1_port(CPS1_SCROLL1_SCROLLX) + scroll1xoff;
+	cps1_scroll1y=cps1_port(CPS1_SCROLL1_SCROLLY);
+	cps1_scroll2x=cps1_port(CPS1_SCROLL2_SCROLLX) + scroll2xoff;
+	cps1_scroll2y=cps1_port(CPS1_SCROLL2_SCROLLY);
+	cps1_scroll3x=cps1_port(CPS1_SCROLL3_SCROLLX) + scroll3xoff;
+	cps1_scroll3y=cps1_port(CPS1_SCROLL3_SCROLLY);
 	stars1x =cps1_port(CPS1_STARS1_SCROLLX);
 	stars1y =cps1_port(CPS1_STARS1_SCROLLY);
 	stars2x =cps1_port(CPS1_STARS2_SCROLLX);
@@ -1127,7 +1126,7 @@ VIDEO_START( cps )
 {
 	int i;
 
-    machine_init_cps();
+    machine_reset_cps();
 
 	cps1_bg_tilemap[0] = tilemap_create(get_tile0_info,tilemap0_scan,TILEMAP_SPLIT, 8, 8,64,64);
 	cps1_bg_tilemap[1] = tilemap_create(get_tile1_info,tilemap1_scan,TILEMAP_SPLIT,16,16,64,64);
@@ -1827,11 +1826,11 @@ VIDEO_UPDATE( cps1 )
 
 	cps1_update_transmasks();
 
-	tilemap_set_scrollx(cps1_bg_tilemap[0],0,scroll1x);
-	tilemap_set_scrolly(cps1_bg_tilemap[0],0,scroll1y);
+	tilemap_set_scrollx(cps1_bg_tilemap[0],0,cps1_scroll1x);
+	tilemap_set_scrolly(cps1_bg_tilemap[0],0,cps1_scroll1y);
 	if (videocontrol & 0x01)	/* linescroll enable */
 	{
-		int scrly=-scroll2y;
+		int scrly=-cps1_scroll2y;
 		int i;
 		int otheroffs;
 
@@ -1840,16 +1839,16 @@ VIDEO_UPDATE( cps1 )
 		otheroffs = cps1_port(CPS1_ROWSCROLL_OFFS);
 
 		for (i = 0;i < 256;i++)
-			tilemap_set_scrollx(cps1_bg_tilemap[1],(i - scrly) & 0x3ff,scroll2x + cps1_other[(i + otheroffs) & 0x3ff]);
+			tilemap_set_scrollx(cps1_bg_tilemap[1],(i - scrly) & 0x3ff,cps1_scroll2x + cps1_other[(i + otheroffs) & 0x3ff]);
 	}
 	else
 	{
 		tilemap_set_scroll_rows(cps1_bg_tilemap[1],1);
-		tilemap_set_scrollx(cps1_bg_tilemap[1],0,scroll2x);
+		tilemap_set_scrollx(cps1_bg_tilemap[1],0,cps1_scroll2x);
 	}
-	tilemap_set_scrolly(cps1_bg_tilemap[1],0,scroll2y);
-	tilemap_set_scrollx(cps1_bg_tilemap[2],0,scroll3x);
-	tilemap_set_scrolly(cps1_bg_tilemap[2],0,scroll3y);
+	tilemap_set_scrolly(cps1_bg_tilemap[1],0,cps1_scroll2y);
+	tilemap_set_scrollx(cps1_bg_tilemap[2],0,cps1_scroll3x);
+	tilemap_set_scrolly(cps1_bg_tilemap[2],0,cps1_scroll3y);
 
 
 	/* Blank screen */

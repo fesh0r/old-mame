@@ -15,7 +15,6 @@
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sndhrdw/seibu.h"
 #include "sound/2203intf.h"
 #include "sound/msm5205.h"
@@ -85,7 +84,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x06010, 0x07fff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x08000, 0x087ff) AM_WRITE(deadang_text_w) AM_BASE(&videoram)
 	AM_RANGE(0x08800, 0x0bfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x0c000, 0x0cfff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_w) AM_BASE(&paletteram)
+	AM_RANGE(0x0c000, 0x0cfff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0x0d000, 0x0dfff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x0e000, 0x0e0ff) AM_WRITE(MWA8_RAM) AM_BASE(&deadang_scroll_ram)
 	AM_RANGE(0x0e100, 0x0ffff) AM_WRITE(MWA8_RAM)
@@ -328,7 +327,7 @@ static MACHINE_DRIVER_START( deadang )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(200)
 
-	MDRV_MACHINE_INIT(seibu_sound_2)
+	MDRV_MACHINE_RESET(seibu_sound_2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)

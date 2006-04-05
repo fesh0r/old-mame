@@ -78,7 +78,6 @@ dcxx = /SPOSI (S36)
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/msm5232.h"
@@ -197,7 +196,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd610, 0xd610) AM_WRITE(sound_command_w)
 //  { 0xd613, 0xd613, reset sound cpu & sound chips
 	AM_RANGE(0xd618, 0xd618) AM_WRITE(MWA8_NOP)	/* accelerator clear */
-	AM_RANGE(0xd700, 0xd7ff) AM_WRITE(paletteram_xxxxRRRRGGGGBBBB_swap_w) AM_BASE(&paletteram)
+	AM_RANGE(0xd700, 0xd7ff) AM_WRITE(paletteram_xxxxRRRRGGGGBBBB_be_w) AM_BASE(&paletteram)
 	AM_RANGE(0xd840, 0xd85f) AM_WRITE(MWA8_RAM) AM_BASE(&buggychl_scrollv)
 	AM_RANGE(0xdb00, 0xdbff) AM_WRITE(MWA8_RAM) AM_BASE(&buggychl_scrollh)
 	AM_RANGE(0xdc04, 0xdc04) AM_WRITE(MWA8_RAM)	/* should be fg scroll */

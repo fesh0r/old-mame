@@ -49,8 +49,6 @@ register. So what is controlling priority.
 ***************************************************************************/
 
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 #include "sndhrdw/taitosnd.h"
 #include "sound/2151intf.h"
@@ -120,7 +118,7 @@ static READ8_HANDLER( z80_input2_r )
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
-	memory_set_bankptr( 10, memory_region(REGION_CPU2) + ((data-1) & 0x03) * 0x4000 + 0x10000 );
+	memory_set_bank(10, (data-1) & 0x03);
 }
 
 /***********************************************************
@@ -226,7 +224,7 @@ static ADDRESS_MAP_START( z80_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static int adpcm_pos[2],adpcm_end[2];
+static UINT32 adpcm_pos[2],adpcm_end[2];
 
 //static unsigned char adpcm_d[0x08];
 //0 - start ROM offset LSB
@@ -238,7 +236,17 @@ static int adpcm_pos[2],adpcm_end[2];
 //5 - different values
 //6 - different values
 
-static MACHINE_INIT( opwolf )
+static MACHINE_START( opwolf )
+{
+	state_save_register_global_array(adpcm_b);
+	state_save_register_global_array(adpcm_c);
+	state_save_register_global_array(adpcm_pos);
+	state_save_register_global_array(adpcm_end);
+
+	return 0;
+}
+
+static MACHINE_RESET( opwolf )
 {
 	MSM5205_reset_w(0, 1);
 	MSM5205_reset_w(1, 1);
@@ -525,7 +533,8 @@ static MACHINE_DRIVER_START( opwolf )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
-	MDRV_MACHINE_INIT(opwolf)
+	MDRV_MACHINE_START(opwolf)
+	MDRV_MACHINE_RESET(opwolf)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -574,6 +583,8 @@ static MACHINE_DRIVER_START( opwolfb )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
+
+	MDRV_MACHINE_START(opwolf)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -707,10 +718,9 @@ static DRIVER_INIT( opwolf )
 	opwolf_gun_xoffs = 0xec - (rom[0x1ffd8]&0xff);
 	opwolf_gun_yoffs = 0x1c - (rom[0x1ffd7]&0xff);
 
-	/* (there are other sound vars that may need saving too) */
-	state_save_register_UINT8("sound2", 0, "registers", adpcm_b, 8);
-	state_save_register_UINT8("sound3", 0, "registers", adpcm_c, 8);
+	memory_configure_bank(10, 0, 4, memory_region(REGION_CPU2) + 0x10000, 0x4000);
 }
+
 
 static DRIVER_INIT( opwolfb )
 {
@@ -718,14 +728,12 @@ static DRIVER_INIT( opwolfb )
 	opwolf_gun_xoffs = -2;
 	opwolf_gun_yoffs = 17;
 
-	/* (there are other sound vars that may need saving too) */
-	state_save_register_UINT8("sound2", 0, "registers", adpcm_b, 8);
-	state_save_register_UINT8("sound3", 0, "registers", adpcm_c, 8);
+	memory_configure_bank(10, 0, 4, memory_region(REGION_CPU2) + 0x10000, 0x4000);
 }
 
 
 
 /*    year  rom       parent    machine   inp       init */
-GAME( 1987, opwolf,   0,        opwolf,   opwolf,   opwolf,   ROT0, "Taito Corporation Japan", "Operation Wolf (World)", GAME_IMPERFECT_SOUND )
-GAME( 1987, opwolfu,  opwolf,   opwolf,   opwolf,   opwolf,   ROT0, "Taito America Corporation", "Operation Wolf (US)", GAME_IMPERFECT_SOUND )
-GAME( 1987, opwolfb,  opwolf,   opwolfb,  opwolf,   opwolfb,  ROT0, "bootleg", "Operation Bear", GAME_IMPERFECT_SOUND )
+GAME( 1987, opwolf,   0,        opwolf,   opwolf,   opwolf,   ROT0, "Taito Corporation Japan", "Operation Wolf (World)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1987, opwolfu,  opwolf,   opwolf,   opwolf,   opwolf,   ROT0, "Taito America Corporation", "Operation Wolf (US)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1987, opwolfb,  opwolf,   opwolfb,  opwolf,   opwolfb,  ROT0, "bootleg", "Operation Bear", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

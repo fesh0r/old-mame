@@ -27,7 +27,8 @@
 */
 
 #include <math.h>
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "cpuintrf.h"
 #include "ymf278b.h"
 
@@ -364,8 +365,6 @@ static void ymf278b_timer_b_reset(YMF278BChip *chip)
 
 static void ymf278b_A_w(YMF278BChip *chip, UINT8 reg, UINT8 data)
 {
-	if (!Machine->sample_rate) return;
-
 	switch(reg)
 	{
 		case 0x02:
@@ -398,15 +397,11 @@ static void ymf278b_A_w(YMF278BChip *chip, UINT8 reg, UINT8 data)
 
 static void ymf278b_B_w(YMF278BChip *chip, UINT8 reg, UINT8 data)
 {
-	if (!Machine->sample_rate) return;
-
 	logerror("YMF278B:  Port B write %02x, %02x\n", reg, data);
 }
 
 static void ymf278b_C_w(YMF278BChip *chip, UINT8 reg, UINT8 data)
 {
-	if (!Machine->sample_rate) return;
-
 	// Handle slot registers specifically
 	if (reg >= 0x08 && reg <= 0xf7)
 	{
@@ -767,7 +762,7 @@ WRITE8_HANDLER( YMF278B_data_port_1_C_w )
  * Generic get_info
  **************************************************************************/
 
-static void ymf278b_set_info(void *token, UINT32 state, union sndinfo *info)
+static void ymf278b_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -776,7 +771,7 @@ static void ymf278b_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void ymf278b_get_info(void *token, UINT32 state, union sndinfo *info)
+void ymf278b_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

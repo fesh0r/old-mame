@@ -9,8 +9,10 @@
 
 ***************************************************************************/
 
+#include "osdepend.h"
 #include "driver.h"
 #include "osinline.h"
+#include "profiler.h"
 
 
 /* in usrintf.c */
@@ -56,7 +58,7 @@ void profiler_stop(void)
 	use_profiler = 0;
 }
 
-void profiler__mark(int type)
+void profiler_mark(int type)
 {
 	cycles_t curr_cycles;
 
@@ -137,6 +139,8 @@ const char *profiler_get_text(void)
 		"Callbck",
 		"Hiscore",
 		"Input  ",
+		"Movie  ",
+		"Logerr ",
 		"Extra  ",
 		"User1  ",
 		"User2  ",

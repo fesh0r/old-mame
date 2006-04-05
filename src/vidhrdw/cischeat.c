@@ -55,7 +55,6 @@ Note:   if MAME_DEBUG is defined, pressing Z or X with:
 
 #include "driver.h"
 #include "megasys1.h"
-#include "vidhrdw/generic.h"
 
 /* Variables only used here: */
 
@@ -125,7 +124,7 @@ UINT16 *f1gpstr2_ioready;
 
 ***************************************************************************/
 
-void prepare_shadows(void)
+static void prepare_shadows(void)
 {
 	int i;
 	for (i = 0;i < 16;i++)

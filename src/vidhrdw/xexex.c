@@ -1,6 +1,4 @@
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 
 static int sprite_colorbase;

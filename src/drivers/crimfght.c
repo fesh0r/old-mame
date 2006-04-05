@@ -8,7 +8,6 @@ Preliminary driver by:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "vidhrdw/konamiic.h"
 #include "sound/2151intf.h"
@@ -16,7 +15,7 @@ Preliminary driver by:
 
 
 /* prototypes */
-static MACHINE_INIT( crimfght );
+static MACHINE_RESET( crimfght );
 static void crimfght_banking( int lines );
 
 VIDEO_START( crimfght );
@@ -376,7 +375,7 @@ static MACHINE_DRIVER_START( crimfght )
 	MDRV_FRAMES_PER_SECOND(54)	/* adjusted - compared with PCB speed */
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(crimfght)
+	MDRV_MACHINE_RESET(crimfght)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
@@ -492,7 +491,7 @@ static void crimfght_banking( int lines )
 	/* bit 5 = select work RAM or palette */
 	if (lines & 0x20){
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x03ff, 0, 0, paletteram_r);							/* palette */
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x03ff, 0, 0, paletteram_xBBBBBGGGGGRRRRR_swap_w);	/* palette */
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x03ff, 0, 0, paletteram_xBBBBBGGGGGRRRRR_be_w);	/* palette */
 	}
 	else{
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x03ff, 0, 0, MRA8_RAM);								/* RAM */
@@ -506,7 +505,7 @@ static void crimfght_banking( int lines )
 	memory_set_bankptr( 2, &RAM[offs] );
 }
 
-static MACHINE_INIT( crimfght )
+static MACHINE_RESET( crimfght )
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
 

@@ -49,7 +49,6 @@ Games by Nihon Game/Culture Brain:
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
@@ -156,7 +155,7 @@ READ8_HANDLER( shangkid_soundlatch_r )
 
 /***************************************************************************************/
 
-static MACHINE_INIT( chinhero )
+static MACHINE_RESET( chinhero )
 {
 	memory_configure_bank(1, 0, 2, memory_region(REGION_CPU1) + 0x8000, 0x8000);
 	memory_set_bank(1, 0);
@@ -327,7 +326,7 @@ static MACHINE_DRIVER_START( chinhero )
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 
-	MDRV_MACHINE_INIT(chinhero)
+	MDRV_MACHINE_RESET(chinhero)
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)

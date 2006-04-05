@@ -2,7 +2,8 @@
 /*    ricoh RF5C68(or clone) PCM controller              */
 /*********************************************************/
 
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "rf5c68.h"
 #include <math.h>
 
@@ -125,10 +126,7 @@ static void *rf5c68_start(int sndindex, int clock, const void *config)
 	/* allocate memory for the chip */
 	struct rf5c68pcm *chip = auto_malloc(sizeof(*chip));
 	memset(chip, 0, sizeof(*chip));
-
-	/* skip if no sound */
-	if (Machine->sample_rate == 0)
-		return 0;
+	memset(chip->data, 0xff, sizeof(chip->data));
 
 	/* allocate the stream */
 	chip->stream = stream_create(0, 2, clock / 384, chip, rf5c68_update);
@@ -229,7 +227,7 @@ WRITE8_HANDLER( RF5C68_w )
  * Generic get_info
  **************************************************************************/
 
-static void rf5c68_set_info(void *token, UINT32 state, union sndinfo *info)
+static void rf5c68_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -238,7 +236,7 @@ static void rf5c68_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void rf5c68_get_info(void *token, UINT32 state, union sndinfo *info)
+void rf5c68_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

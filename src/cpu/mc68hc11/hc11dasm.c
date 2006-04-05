@@ -4,7 +4,8 @@
    Written by Ville Linde
 */
 
-#include "driver.h"
+#include "cpuintrf.h"
+#include <stdarg.h>
 
 enum {
 	EA_IMM8 = 1,

@@ -1,30 +1,20 @@
-/*###################################################################################################
-**
-**
-**      ccpu.c
-**      Core implementation for the portable Cinematronics CPU emulator.
-**
-**      Written by Aaron Giles
-**      Special thanks to Zonn Moore for his detailed documentation.
-**
-**
-**#################################################################################################*/
+/***************************************************************************
 
+    ccpu.c
+    Core implementation for the portable Cinematronics CPU emulator.
 
-#include "driver.h"
-#include "state.h"
+    Written by Aaron Giles
+    Special thanks to Zonn Moore for his detailed documentation.
+
+***************************************************************************/
+
+#include "debugger.h"
 #include "ccpu.h"
 
 
-/*###################################################################################################
-**  CONSTANTS
-**#################################################################################################*/
-
-
-
-/*###################################################################################################
-**  STRUCTURES & TYPEDEFS
-**#################################################################################################*/
+/***************************************************************************
+    STRUCTURES & TYPEDEFS
+***************************************************************************/
 
 typedef struct
 {
@@ -49,9 +39,9 @@ typedef struct
 
 
 
-/*###################################################################################################
-**  PRIVATE GLOBAL VARIABLES
-**#################################################################################################*/
+/***************************************************************************
+    PRIVATE GLOBAL VARIABLES
+***************************************************************************/
 
 static ccpuRegs ccpu;
 static int ccpu_icount;
@@ -74,9 +64,9 @@ static UINT8 ccpu_win_layout[] =
 
 
 
-/*###################################################################################################
-**  MACROS
-**#################################################################################################*/
+/***************************************************************************
+    MACROS
+***************************************************************************/
 
 #define READOP(a) 			(cpu_readop(a))
 
@@ -114,9 +104,9 @@ do { \
 
 
 
-/*###################################################################################################
-**  CONTEXT SWITCHING
-**#################################################################################################*/
+/***************************************************************************
+    CONTEXT SWITCHING
+***************************************************************************/
 
 static void ccpu_get_context(void *dst)
 {
@@ -135,9 +125,9 @@ static void ccpu_set_context(void *src)
 
 
 
-/*###################################################################################################
-**  INITIALIZATION AND SHUTDOWN
-**#################################################################################################*/
+/***************************************************************************
+    INITIALIZATION AND SHUTDOWN
+***************************************************************************/
 
 static UINT8 read_jmi(void)
 {
@@ -147,31 +137,28 @@ static UINT8 read_jmi(void)
 }
 
 
-static void ccpu_init(void)
+static void ccpu_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
-	ccpu.external_input = read_jmi;
-
-	state_save_register_UINT16("ccpu", cpu, "PC", &ccpu.PC, 1);
-	state_save_register_UINT16("ccpu", cpu, "A", &ccpu.A, 1);
-	state_save_register_UINT16("ccpu", cpu, "B", &ccpu.B, 1);
-	state_save_register_UINT8("ccpu", cpu, "I", &ccpu.I, 1);
-	state_save_register_UINT16("ccpu", cpu, "J", &ccpu.J, 1);
-	state_save_register_UINT8("ccpu", cpu, "P", &ccpu.P, 1);
-	state_save_register_UINT16("ccpu", cpu, "X", &ccpu.X, 1);
-	state_save_register_UINT16("ccpu", cpu, "Y", &ccpu.Y, 1);
-	state_save_register_UINT16("ccpu", cpu, "T", &ccpu.T, 1);
-}
-
-
-static void ccpu_reset(void *param)
-{
-	struct CCPUConfig *config = param;
+	const struct CCPUConfig *config = _config;
 
 	/* copy input params */
 	ccpu.external_input = config->external_input ? config->external_input : read_jmi;
 	ccpu.vector_callback = config->vector_callback;
 
+	state_save_register_item("ccpu", clock, ccpu.PC);
+	state_save_register_item("ccpu", clock, ccpu.A);
+	state_save_register_item("ccpu", clock, ccpu.B);
+	state_save_register_item("ccpu", clock, ccpu.I);
+	state_save_register_item("ccpu", clock, ccpu.J);
+	state_save_register_item("ccpu", clock, ccpu.P);
+	state_save_register_item("ccpu", clock, ccpu.X);
+	state_save_register_item("ccpu", clock, ccpu.Y);
+	state_save_register_item("ccpu", clock, ccpu.T);
+}
+
+
+static void ccpu_reset(void)
+{
 	/* zero registers */
 	ccpu.PC = 0;
 	ccpu.A = 0;
@@ -195,9 +182,9 @@ static void ccpu_reset(void *param)
 
 
 
-/*###################################################################################################
-**  CORE EXECUTION LOOP
-**#################################################################################################*/
+/***************************************************************************
+    CORE EXECUTION LOOP
+***************************************************************************/
 
 static int ccpu_execute(int cycles)
 {
@@ -584,7 +571,7 @@ static int ccpu_execute(int cycles)
 
 			/* CST */
 			case 0xf7:
-				watchdog_reset_w(0,0);
+				watchdog_reset();
 			/* ADDP */
 			case 0xe7:
 				tempval = RDMEM(ccpu.I);
@@ -686,9 +673,9 @@ static int ccpu_execute(int cycles)
 
 
 
-/*###################################################################################################
-**  DISASSEMBLER INTERFACE
-**#################################################################################################*/
+/***************************************************************************
+    DISASSEMBLER INTERFACE
+***************************************************************************/
 
 static offs_t ccpu_dasm(char *buffer, offs_t pc)
 {
@@ -702,9 +689,9 @@ static offs_t ccpu_dasm(char *buffer, offs_t pc)
 
 
 
-/*###################################################################################################
-**  INFORMATION SETTERS
-**#################################################################################################*/
+/***************************************************************************
+    INFORMATION SETTERS
+***************************************************************************/
 
 static void ccpu_set_info(UINT32 state, union cpuinfo *info)
 {
@@ -735,9 +722,9 @@ static void ccpu_set_info(UINT32 state, union cpuinfo *info)
 
 
 
-/*###################################################################################################
-**  INFORMATION GETTERS
-**#################################################################################################*/
+/***************************************************************************
+    INFORMATION GETTERS
+***************************************************************************/
 
 void ccpu_get_info(UINT32 state, union cpuinfo *info)
 {

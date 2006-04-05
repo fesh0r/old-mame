@@ -1,14 +1,14 @@
 #include "driver.h"
+#include "streams.h"
 #include "samples.h"
-#include "state.h"
 
 
 struct sample_channel
 {
 	sound_stream *stream;
 	INT16 *		source;
-	int			source_length;
-	int			source_num;
+	INT32		source_length;
+	INT32		source_num;
 	UINT32		pos;
 	UINT32		frac;
 	UINT32		step;
@@ -221,7 +221,7 @@ void sample_start(int channel,int samplenum,int loop)
 	struct sample_channel *chan = &info->channel[channel];
 	struct loaded_sample *sample;
 
-	if (Machine->sample_rate == 0 || info->samples == NULL)
+	if (info->samples == NULL)
 		return;
 	if (channel >= info->numchannels)
 	{
@@ -253,8 +253,6 @@ void sample_start_raw(int channel,INT16 *sampledata,int samples,int frequency,in
 	struct samples_info *info = sndti_token(SOUND_SAMPLES, 0);
 	struct sample_channel *chan = &info->channel[channel];
 
-	if (Machine->sample_rate == 0)
-		return;
 	if (channel >= info->numchannels)
 	{
 		logerror("error: sample_start() called with channel = %d, but only %d channels allocated\n",channel,info->numchannels);
@@ -279,8 +277,6 @@ void sample_set_freq(int channel,int freq)
 	struct samples_info *info = sndti_token(SOUND_SAMPLES, 0);
 	struct sample_channel *chan = &info->channel[channel];
 
-	if (Machine->sample_rate == 0)
-		return;
 	if (channel >= info->numchannels)
 	{
 		logerror("error: sample_set_freq() called with channel = %d, but only %d channels allocated\n",channel,info->numchannels);
@@ -298,8 +294,6 @@ void sample_set_volume(int channel,float volume)
 	struct samples_info *info = sndti_token(SOUND_SAMPLES, 0);
 	struct sample_channel *chan = &info->channel[channel];
 
-	if (Machine->sample_rate == 0)
-		return;
 	if (channel >= info->numchannels)
 	{
 		logerror("error: sample_set_volume() called with channel = %d, but only %d channels allocated\n",channel,info->numchannels);
@@ -314,8 +308,6 @@ void sample_set_pause(int channel,int pause)
 	struct samples_info *info = sndti_token(SOUND_SAMPLES, 0);
 	struct sample_channel *chan = &info->channel[channel];
 
-	if (Machine->sample_rate == 0)
-		return;
 	if (channel >= info->numchannels)
 	{
 		logerror("error: sample_set_pause() called with channel = %d, but only %d channels allocated\n",channel,info->numchannels);
@@ -333,8 +325,6 @@ void sample_stop(int channel)
 	struct samples_info *info = sndti_token(SOUND_SAMPLES, 0);
 	struct sample_channel *chan = &info->channel[channel];
 
-	if (Machine->sample_rate == 0)
-		return;
 	if (channel >= info->numchannels)
 	{
 		logerror("error: sample_stop() called with channel = %d, but only %d channels allocated\n",channel,info->numchannels);
@@ -352,8 +342,6 @@ int sample_playing(int channel)
 	struct samples_info *info = sndti_token(SOUND_SAMPLES, 0);
 	struct sample_channel *chan = &info->channel[channel];
 
-	if (Machine->sample_rate == 0)
-		return 0;
 	if (channel >= info->numchannels)
 	{
 		logerror("error: sample_playing() called with channel = %d, but only %d channels allocated\n",channel,info->numchannels);
@@ -370,7 +358,7 @@ int sample_loaded(int samplenum)
 {
 	struct samples_info *info = sndti_token(SOUND_SAMPLES, 0);
 
-	if (Machine->sample_rate == 0 || info->samples == NULL)
+	if (info->samples == NULL)
 		return 0;
 	if (samplenum >= info->samples->total)
 	{
@@ -477,7 +465,7 @@ static void *samples_start(int sndindex, int clock, const void *config)
 
 	info = auto_malloc(sizeof(*info));
 	memset(info, 0, sizeof(*info));
-	sound_register_token(info);
+	sndintrf_register_token(info);
 
 	/* read audio samples */
 	if (intf->samplenames)
@@ -497,13 +485,13 @@ static void *samples_start(int sndindex, int clock, const void *config)
 		info->channel[i].paused = 0;
 
 		/* register with the save state system */
-		state_save_register_int   ("samples", i, "source_length", &info->channel[i].source_length);
-		state_save_register_int   ("samples", i, "source_num", &info->channel[i].source_num);
-		state_save_register_UINT32("samples", i, "pos", &info->channel[i].pos, 1);
-		state_save_register_UINT32("samples", i, "frac", &info->channel[i].frac, 1);
-		state_save_register_UINT32("samples", i, "step", &info->channel[i].step, 1);
-		state_save_register_UINT8 ("samples", i, "loop", &info->channel[i].loop, 1);
-		state_save_register_UINT8 ("samples", i, "paused", &info->channel[i].paused, 1);
+		state_save_register_item("samples", i, info->channel[i].source_length);
+		state_save_register_item("samples", i, info->channel[i].source_num);
+		state_save_register_item("samples", i, info->channel[i].pos);
+		state_save_register_item("samples", i, info->channel[i].frac);
+		state_save_register_item("samples", i, info->channel[i].step);
+		state_save_register_item("samples", i, info->channel[i].loop);
+		state_save_register_item("samples", i, info->channel[i].paused);
 	}
 	state_save_register_func_postload_ptr(samples_postload, info);
 
@@ -520,7 +508,7 @@ static void *samples_start(int sndindex, int clock, const void *config)
  * Generic get_info
  **************************************************************************/
 
-static void samples_set_info(void *token, UINT32 state, union sndinfo *info)
+static void samples_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -529,7 +517,7 @@ static void samples_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void samples_get_info(void *token, UINT32 state, union sndinfo *info)
+void samples_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

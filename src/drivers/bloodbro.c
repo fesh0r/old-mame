@@ -93,7 +93,6 @@ Stephh's notes (based on the games M68000 code and some tests) :
 **************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sndhrdw/seibu.h"
 #include "cpu/z80/z80.h"
 #include "sound/3812intf.h"
@@ -544,7 +543,7 @@ static MACHINE_DRIVER_START( bloodbro )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(seibu_sound_1)
+	MDRV_MACHINE_RESET(seibu_sound_1)
 
 	// video hardware
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

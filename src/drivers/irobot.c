@@ -75,7 +75,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/pokey.h"
 #include "irobot.h"
@@ -306,7 +305,7 @@ static MACHINE_DRIVER_START( irobot )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(irobot)
+	MDRV_MACHINE_RESET(irobot)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */

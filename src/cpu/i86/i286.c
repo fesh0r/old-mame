@@ -3,14 +3,8 @@
 *               (initial work based on David Hedley's pcemu)                *
 ****************************************************************************/
 
-#include <stdio.h>
-#include <string.h>
 #include "host.h"
-#include "cpuintrf.h"
-#include "memory.h"
-#include "mamedbg.h"
-#include "mame.h"
-#include "state.h"
+#include "debugger.h"
 
 
 /* All post-i286 CPUs have a 16MB address space */
@@ -87,7 +81,7 @@ typedef union
 typedef struct
 {
     i286basicregs regs;
-	int 	amask;			/* address mask */
+	UINT32 	amask;			/* address mask */
     UINT32  pc;
     UINT32  prevpc;
 	UINT16	flags;
@@ -107,14 +101,14 @@ typedef struct
 		UINT8 rights;
 	} ldtr, tr;
     int     (*irq_callback)(int irqline);
-    int     AuxVal, OverVal, SignVal, ZeroVal, CarryVal, DirVal; /* 0 or non-0 valued flags */
+    INT32     AuxVal, OverVal, SignVal, ZeroVal, CarryVal, DirVal; /* 0 or non-0 valued flags */
     UINT8	ParityVal;
 	UINT8	TF, IF; 	/* 0 or 1 valued flags */
 	UINT8	int_vector;
 	INT8	nmi_state;
 	INT8	irq_state;
 	INT8	test_state;		/* PJB 03/05 */
-	int 	extra_cycles;       /* extra cycles for interrupts */
+	INT32 	extra_cycles;       /* extra cycles for interrupts */
 } i286_Regs;
 
 int i286_ICount;
@@ -151,7 +145,7 @@ static struct i86_timing cycles;
 static void i286_urinit(void)
 {
 	unsigned int i,j,c;
-	BREGS reg_name[8]={ AL, CL, DL, BL, AH, CH, DH, BH };
+	static const BREGS reg_name[8]={ AL, CL, DL, BL, AH, CH, DH, BH };
 
 	for (i = 0;i < 256; i++)
 	{
@@ -179,24 +173,15 @@ static void i286_set_a20_line(int state)
 	I.amask = state ? 0x00ffffff : 0x000fffff;
 }
 
-static void i286_reset (void *param)
+static void i286_reset (void)
 {
 	static int urinit=1;
 
 	/* in my docu not all registers are initialized! */
-	//memset( &I, 0, sizeof(I) );
-
 	if (urinit) {
 		i286_urinit();
 		urinit=0;
 
-		/* this function seams to be called as a result of
-           cpu_set_reset_line */
-		/* If a reset parameter is given, take it as pointer to an address mask */
-		if( param )
-			I.amask = *(unsigned*)param;
-		else
-			I.amask = 0x00ffff;
 	}
 
 	I.sregs[CS] = 0xf000;
@@ -312,44 +297,51 @@ static offs_t i286_dasm(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int
 #endif
 }
 
-static void i286_init(void)
+static void i286_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
-	const char *type = "I286";
-	state_save_register_UINT16(type, cpu, "REGS",			I.regs.w, 8);
-	state_save_register_int(   type, cpu, "AMASK",			&I.amask);
-	state_save_register_UINT32(type, cpu, "PC",				&I.pc, 1);
-	state_save_register_UINT32(type, cpu, "PREVPC",			&I.prevpc, 1);
-	state_save_register_UINT16(type, cpu, "MSW",			&I.msw, 1);
-	state_save_register_UINT32(type, cpu, "BASE",			I.base, 4);
-	state_save_register_UINT16(type, cpu, "SREGS",			I.sregs, 4);
-	state_save_register_UINT16(type, cpu, "LIMIT",			I.limit, 4);
-	state_save_register_UINT8 (type, cpu, "RIGHTS",			I.rights, 4);
-	state_save_register_UINT32(type, cpu, "GDTR_BASE",		&I.gdtr.base, 1);
-	state_save_register_UINT16(type, cpu, "GDTR_LIMIT",		&I.gdtr.limit, 1);
-	state_save_register_UINT32(type, cpu, "IDTR_BASE",		&I.idtr.base, 1);
-	state_save_register_UINT16(type, cpu, "IDTR_LIMIT",		&I.idtr.limit, 1);
-	state_save_register_UINT16(type, cpu, "LDTR_SEL",		&I.ldtr.sel, 1);
-	state_save_register_UINT32(type, cpu, "LDTR_BASE",		&I.ldtr.base, 1);
-	state_save_register_UINT16(type, cpu, "LDTR_LIMIT",		&I.ldtr.limit, 1);
-	state_save_register_UINT8 (type, cpu, "LDTR_RIGHTS",	&I.ldtr.rights, 1);
-	state_save_register_UINT16(type, cpu, "TR_SEL",			&I.tr.sel, 1);
-	state_save_register_UINT32(type, cpu, "TR_BASE",		&I.tr.base, 1);
-	state_save_register_UINT16(type, cpu, "TR_LIMIT",		&I.tr.limit, 1);
-	state_save_register_UINT8 (type, cpu, "TR_RIGHTS",		&I.tr.rights, 1);
-	state_save_register_int(   type, cpu, "AUXVAL",			&I.AuxVal);
-	state_save_register_int(   type, cpu, "OVERVAL",		&I.OverVal);
-	state_save_register_int(   type, cpu, "SIGNVAL",		&I.SignVal);
-	state_save_register_int(   type, cpu, "ZEROVAL",		&I.ZeroVal);
-	state_save_register_int(   type, cpu, "CARRYVAL",		&I.CarryVal);
-	state_save_register_int(   type, cpu, "DIRVAL",			&I.DirVal);
-	state_save_register_UINT8( type, cpu, "PARITYVAL",		&I.ParityVal, 1);
-	state_save_register_UINT8( type, cpu, "TF",				&I.TF, 1);
-	state_save_register_UINT8( type, cpu, "IF",				&I.IF, 1);
-	state_save_register_UINT8( type, cpu, "INT_VECTOR",		&I.int_vector, 1);
-	state_save_register_INT8(  type, cpu, "NMI_STATE",		&I.nmi_state, 1);
-	state_save_register_INT8(  type, cpu, "IRQ_STATE",		&I.irq_state, 1);
-	state_save_register_int(   type, cpu, "EXTRA_CYCLES",	&I.extra_cycles);
+	static const char type[] = "I286";
+	state_save_register_item_array(type, index, I.regs.w);
+	state_save_register_item(type, index, I.amask);
+	state_save_register_item(type, index, I.pc);
+	state_save_register_item(type, index, I.prevpc);
+	state_save_register_item(type, index, I.msw);
+	state_save_register_item_array(type, index, I.base);
+	state_save_register_item_array(type, index, I.sregs);
+	state_save_register_item_array(type, index, I.limit);
+	state_save_register_item_array(type, index, I.rights);
+	state_save_register_item(type, index, I.gdtr.base);
+	state_save_register_item(type, index, I.gdtr.limit);
+	state_save_register_item(type, index, I.idtr.base);
+	state_save_register_item(type, index, I.idtr.limit);
+	state_save_register_item(type, index, I.ldtr.sel);
+	state_save_register_item(type, index, I.ldtr.base);
+	state_save_register_item(type, index, I.ldtr.limit);
+	state_save_register_item(type, index, I.ldtr.rights);
+	state_save_register_item(type, index, I.tr.sel);
+	state_save_register_item(type, index, I.tr.base);
+	state_save_register_item(type, index, I.tr.limit);
+	state_save_register_item(type, index, I.tr.rights);
+	state_save_register_item(type, index, I.AuxVal);
+	state_save_register_item(type, index, I.OverVal);
+	state_save_register_item(type, index, I.SignVal);
+	state_save_register_item(type, index, I.ZeroVal);
+	state_save_register_item(type, index, I.CarryVal);
+	state_save_register_item(type, index, I.DirVal);
+	state_save_register_item(type, index, I.ParityVal);
+	state_save_register_item(type, index, I.TF);
+	state_save_register_item(type, index, I.IF);
+	state_save_register_item(type, index, I.int_vector);
+	state_save_register_item(type, index, I.nmi_state);
+	state_save_register_item(type, index, I.irq_state);
+	state_save_register_item(type, index, I.extra_cycles);
+
+	I.irq_callback = irqcallback;
+
+	/* If a reset parameter is given, take it as pointer to an address mask */
+	if( config )
+		I.amask = *(unsigned*)config;
+	else
+		I.amask = 0x00ffff;
 }
 
 
@@ -422,9 +414,6 @@ static void i286_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + I286_SS:			I.sregs[SS] = info->i;	I.base[SS] = SegBase(SS); break;
 		case CPUINFO_INT_REGISTER + I286_DS:			I.sregs[DS] = info->i;	I.base[DS] = SegBase(DS); break;
 		case CPUINFO_INT_REGISTER + I286_VECTOR:		I.int_vector = info->i; 				break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					I.irq_callback = info->irqcallback;		break;
 	}
 }
 
@@ -502,7 +491,6 @@ void i286_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = i286_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = i286_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = I.irq_callback;		break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &i286_ICount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = i286_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = i286_win_layout;				break;

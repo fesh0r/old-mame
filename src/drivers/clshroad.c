@@ -18,7 +18,6 @@ XTAL        :   18.432 MHz
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/custom.h"
 
 UINT8 *clshroad_sharedram;
@@ -44,7 +43,7 @@ WRITE8_HANDLER( wiping_sound_w );
 
 
 
-MACHINE_INIT( clshroad )
+MACHINE_RESET( clshroad )
 {
 	flip_screen_set(0);
 }
@@ -321,7 +320,7 @@ static MACHINE_DRIVER_START( firebatl )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(clshroad)
+	MDRV_MACHINE_RESET(clshroad)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -358,7 +357,7 @@ static MACHINE_DRIVER_START( clshroad )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(clshroad)
+	MDRV_MACHINE_RESET(clshroad)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

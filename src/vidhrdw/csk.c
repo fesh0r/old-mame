@@ -16,9 +16,7 @@ unsigned char * cpk_palette;
 unsigned char * cpk_palette2;
 unsigned char * cpk_expram;
 
-static unsigned char * dirtybuffer;
 static unsigned char * dirtybuffer1;
-static mame_bitmap *tmpbitmap;
 static mame_bitmap *tmpbitmap2;
 
 static int hopperOK = 0;
@@ -156,7 +154,7 @@ static void init_csk234_internals(void)
 	sleepcountdown = 0xf98e;
 }
 
-MACHINE_INIT (cpk)
+MACHINE_RESET (cpk)
 {
 	static int initonce = 0;
 

@@ -15,10 +15,9 @@
 #define __OSDEPEND_H__
 
 #include "mamecore.h"
-#include "inptport.h"
+#include <stdarg.h>
 
 int osd_init(void);
-void osd_exit(void);
 
 #ifdef NEW_DEBUGGER
 void osd_wait_for_debugger(void);
@@ -32,6 +31,7 @@ void osd_wait_for_debugger(void);
 ******************************************************************************/
 
 /* these are the parameters passed into osd_create_display */
+/* In mamecore.h: typedef struct _osd_create_params osd_create_params; */
 struct _osd_create_params
 {
 	int width, height;			/* width and height */
@@ -41,7 +41,6 @@ struct _osd_create_params
 	float fps;					/* frame rate */
 	int video_attributes;		/* video flags from driver */
 };
-typedef struct _osd_create_params osd_create_params;
 
 
 
@@ -168,6 +167,16 @@ void osd_sound_enable(int enable);
 
 ******************************************************************************/
 
+typedef UINT32 os_code;
+
+typedef struct _os_code_info os_code_info;
+struct _os_code_info
+{
+	char *			name;			/* OS dependant name; 0 terminates the list */
+	os_code		oscode;			/* OS dependant code */
+	input_code	inputcode;		/* CODE_xxx equivalent from input.h, or one of CODE_OTHER_* if n/a */
+};
+
 /*
   return a list of all available inputs (see input.h)
 */
@@ -225,13 +234,13 @@ void osd_joystick_end_calibration(void);
 ******************************************************************************/
 
 /* inp header */
+typedef struct _inp_header inp_header;
 struct _inp_header
 {
 	char name[9];      /* 8 bytes for game->name + NUL */
 	char version[3];   /* byte[0] = 0, byte[1] = version byte[2] = beta_version */
 	char reserved[20]; /* for future use, possible store game options? */
 };
-typedef struct _inp_header inp_header;
 
 
 /* These values are returned by osd_get_path_info */
@@ -243,7 +252,7 @@ enum
 };
 
 /* These values are returned as error codes by osd_fopen() */
-typedef enum
+enum _osd_file_error
 {
 	FILEERR_SUCCESS,
 	FILEERR_FAILURE,
@@ -252,14 +261,18 @@ typedef enum
 	FILEERR_ACCESS_DENIED,
 	FILEERR_ALREADY_OPEN,
 	FILEERR_TOO_MANY_FILES
-} osd_file_error;
+};
 
+typedef struct _osd_file osd_file;
 
 /* Return the number of paths for a given type */
 int osd_get_path_count(int pathtype);
 
 /* Get information on the existence of a file */
 int osd_get_path_info(int pathtype, int pathindex, const char *filename);
+
+/* Create a directory if it doesn't already exist */
+int osd_create_directory(int pathtype, int pathindex, const char *dirname);
 
 /* Attempt to open a file with the given name and mode using the specified path type */
 osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const char *mode, osd_file_error *error);
@@ -320,17 +333,8 @@ void osd_free_executable(void *ptr);
 /* return non-zero to abort loading */
 int osd_display_loading_rom_message(const char *name,rom_load_data *romdata);
 
-/* called when the game is paused/unpaused, so the OS dependent code can do special */
-/* things like changing the title bar or darkening the display. */
-/* Note that the OS dependent code must NOT stop processing input, since the user */
-/* interface is still active while the game is paused. */
-void osd_pause(int paused);
-
 /* checks to see if a pointer is bad */
 int osd_is_bad_read_ptr(const void *ptr, size_t size);
-
-/* aborts the program in some unexpected fatal way */
-DECL_NORETURN void CLIB_DECL osd_die(const char *text,...) ATTR_PRINTF(1,2) ATTR_NORETURN;
 
 
 
@@ -338,7 +342,5 @@ DECL_NORETURN void CLIB_DECL osd_die(const char *text,...) ATTR_PRINTF(1,2) ATTR
 /* this is here to follow the current mame file hierarchy style */
 #include "osd_mess.h"
 #endif
-
-void CLIB_DECL logerror(const char *text,...) ATTR_PRINTF(1,2);
 
 #endif	/* __OSDEPEND_H__ */

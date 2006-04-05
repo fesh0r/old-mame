@@ -26,7 +26,6 @@
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/eeprom.h"
 #include "cpu/z80/z80.h"
 #include "leland.h"
@@ -345,7 +344,7 @@ static MACHINE_DRIVER_START( ataxx )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION((1000000*16)/(256*60))
 
-	MDRV_MACHINE_INIT(ataxx)
+	MDRV_MACHINE_RESET(ataxx)
 	MDRV_NVRAM_HANDLER(ataxx)
 
 	/* video hardware */

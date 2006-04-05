@@ -6,9 +6,7 @@
 
 #include "driver.h"
 #include "artwork.h"
-#include "vidhrdw/generic.h"
 #include "mcr.h"
-#include "state.h"
 
 
 

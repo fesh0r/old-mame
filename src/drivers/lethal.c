@@ -165,8 +165,6 @@ maybe some priority issues / sprite placement issues..
 ***************************************************************************/
 
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/hd6309/hd6309.h"
@@ -182,7 +180,7 @@ VIDEO_UPDATE(lethalen);
 WRITE8_HANDLER(le_palette_control);
 
 static int init_eeprom_count;
-static int cur_control2;
+static UINT8 cur_control2;
 
 /* Default Eeprom for the parent.. otherwise it will always complain first boot */
 /* its easy to init but this saves me a bit of time.. */
@@ -360,7 +358,7 @@ static WRITE8_HANDLER( le_4800_w )
 {
 	if (cur_control2 & 0x10)	// RAM enable
 	{
-		paletteram_xBBBBBGGGGGRRRRR_swap_w(offset,data);
+		paletteram_xBBBBBGGGGGRRRRR_be_w(offset,data);
 	}
 	else
 	{
@@ -445,7 +443,7 @@ static WRITE8_HANDLER( le_4800_w )
 // use one more palette entry for the BG color
 static WRITE8_HANDLER(le_bgcolor_w)
 {
-	paletteram_xBBBBBGGGGGRRRRR_swap_w(0x3800+offset, data);
+	paletteram_xBBBBBGGGGGRRRRR_be_w(0x3800+offset, data);
 }
 
 static READ8_HANDLER(guns_r)
@@ -549,19 +547,19 @@ INPUT_PORTS_START( lethalen )
 
 	/* IN 2 */
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	/* IN 3 */
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	/* IN 4 */
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
 	/* IN 5 */
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 static struct K054539interface k054539_interface =
@@ -571,7 +569,13 @@ static struct K054539interface k054539_interface =
 	sound_nmi
 };
 
-static MACHINE_INIT( lethalen )
+static MACHINE_START( lethalen )
+{
+	state_save_register_global(cur_control2);
+	return 0;
+}
+
+static MACHINE_RESET( lethalen )
 {
 	UINT8 *prgrom = (UINT8 *)memory_region(REGION_CPU1);
 
@@ -611,7 +615,8 @@ static MACHINE_DRIVER_START( lethalen )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(lethalen)
+	MDRV_MACHINE_START(lethalen)
+	MDRV_MACHINE_RESET(lethalen)
 
 	MDRV_NVRAM_HANDLER(lethalen)
 
@@ -716,8 +721,6 @@ static DRIVER_INIT( lethalen )
 	konami_rom_deinterleave_2_half(REGION_GFX2);
 	konami_rom_deinterleave_2(REGION_GFX3);
 	konami_rom_deinterleave_2(REGION_GFX4);
-
-	state_save_register_int("LE", 0, "control2", &cur_control2);
 }
 
 GAME( 1992, lethalen, 0,        lethalen, lethalen, lethalen, ORIENTATION_FLIP_Y, "Konami", "Lethal Enforcers (ver UAE)", GAME_IMPERFECT_GRAPHICS)

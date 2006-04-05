@@ -660,7 +660,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/atari_vg.h"
 #include "machine/namcoio.h"
 #include "includes/galaga.h"
@@ -769,7 +768,7 @@ static struct namcoio_interface intf1 =
 };
 
 
-static MACHINE_INIT( bosco )
+static MACHINE_RESET( bosco )
 {
 	int i;
 
@@ -790,7 +789,7 @@ static MACHINE_INIT( bosco )
 		NAMCOIO_NONE, NULL);
 }
 
-static MACHINE_INIT( galaga )
+static MACHINE_RESET( galaga )
 {
 	int i;
 
@@ -805,7 +804,7 @@ static MACHINE_INIT( galaga )
 		NAMCOIO_54XX, NULL);
 }
 
-static MACHINE_INIT( xevious )
+static MACHINE_RESET( xevious )
 {
 	int i;
 
@@ -820,7 +819,7 @@ static MACHINE_INIT( xevious )
 		NAMCOIO_54XX, NULL);
 }
 
-static MACHINE_INIT( battles )
+static MACHINE_RESET( battles )
 {
 	int i;
 
@@ -831,7 +830,7 @@ static MACHINE_INIT( battles )
 	battles_customio_init();
 }
 
-static MACHINE_INIT( digdug )
+static MACHINE_RESET( digdug )
 {
 	int i;
 
@@ -1883,7 +1882,7 @@ static MACHINE_DRIVER_START( bosco )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
-	MDRV_MACHINE_INIT(bosco)
+	MDRV_MACHINE_RESET(bosco)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1939,7 +1938,7 @@ static MACHINE_DRIVER_START( galaga )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
-	MDRV_MACHINE_INIT(galaga)
+	MDRV_MACHINE_RESET(galaga)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1996,7 +1995,7 @@ static MACHINE_DRIVER_START( xevious )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
-	MDRV_MACHINE_INIT(xevious)
+	MDRV_MACHINE_RESET(xevious)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2031,7 +2030,7 @@ static MACHINE_DRIVER_START( battles )
 	MDRV_CPU_PROGRAM_MAP(readmem4_battles,writemem4_battles)
 	MDRV_CPU_VBLANK_INT(battles_interrupt_4,1)
 
-	MDRV_MACHINE_INIT(battles)
+	MDRV_MACHINE_RESET(battles)
 
 	/* video hardware */
 	MDRV_PALETTE_INIT(battles)
@@ -2064,7 +2063,7 @@ static MACHINE_DRIVER_START( digdug )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
-	MDRV_MACHINE_INIT(digdug)
+	MDRV_MACHINE_RESET(digdug)
 	MDRV_NVRAM_HANDLER(atari_vg)
 
 	/* video hardware */
@@ -3100,29 +3099,29 @@ static DRIVER_INIT( battles )
 
 
 
-GAME( 1981, bosco,    0,       bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (new version)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1981, boscoo,   bosco,   bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (old version)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1981, boscoo2,  bosco,   bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (older version)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1981, boscomd,  bosco,   bosco,   boscomd,  0,       ROT0,  "[Namco] (Midway license)", "Bosconian (Midway, new version)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1981, boscomdo, bosco,   bosco,   boscomd,  0,       ROT0,  "[Namco] (Midway license)", "Bosconian (Midway, old version)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, bosco,    0,       bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (new version)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, boscoo,   bosco,   bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (old version)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, boscoo2,  bosco,   bosco,   bosco,    0,       ROT0,  "Namco", "Bosconian (older version)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, boscomd,  bosco,   bosco,   boscomd,  0,       ROT0,  "[Namco] (Midway license)", "Bosconian (Midway, new version)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, boscomdo, bosco,   bosco,   boscomd,  0,       ROT0,  "[Namco] (Midway license)", "Bosconian (Midway, old version)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1981, galaga,   0,       galaga,  galaga,   galaga,  ROT90, "Namco", "Galaga (Namco rev. B)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1981, galagao,  galaga,  galaga,  galaga,   galaga,  ROT90, "Namco", "Galaga (Namco)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1981, galagamw, galaga,  galaga,  galagamw, galaga,  ROT90, "[Namco] (Midway license)", "Galaga (Midway set 1)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1981, galagamk, galaga,  galaga,  galaga,   galaga,  ROT90, "[Namco] (Midway license)", "Galaga (Midway set 2)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1981, gallag,   galaga,  galagab, galaga,   galaga,  ROT90, "bootleg", "Gallag", GAME_IMPERFECT_GRAPHICS )
-GAME( 1984, gatsbee,  galaga,  galagab, gatsbee,  gatsbee, ROT90, "hack", "Gatsbee", GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, galaga,   0,       galaga,  galaga,   galaga,  ROT90, "Namco", "Galaga (Namco rev. B)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, galagao,  galaga,  galaga,  galaga,   galaga,  ROT90, "Namco", "Galaga (Namco)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, galagamw, galaga,  galaga,  galagamw, galaga,  ROT90, "[Namco] (Midway license)", "Galaga (Midway set 1)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, galagamk, galaga,  galaga,  galaga,   galaga,  ROT90, "[Namco] (Midway license)", "Galaga (Midway set 2)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, gallag,   galaga,  galagab, galaga,   galaga,  ROT90, "bootleg", "Gallag", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1984, gatsbee,  galaga,  galagab, gatsbee,  gatsbee, ROT90, "hack", "Gatsbee", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1982, xevious,  0,       xevious, xevious,  xevious, ROT90, "Namco", "Xevious (Namco)", 0 )
-GAME( 1982, xeviousa, xevious, xevious, xeviousa, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 1)", 0 )
-GAME( 1982, xeviousb, xevious, xevious, xeviousb, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 2)", 0 )
-GAME( 1982, xeviousc, xevious, xevious, xeviousa, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 3)", 0 )
-GAME( 1982, xevios,   xevious, xevious, xevious,  xevios,  ROT90, "bootleg", "Xevios", 0 )
-GAME( 1982, battles,  xevious, battles, xevious,  battles, ROT90, "bootleg", "Battles", 0 )
-GAME( 1984, sxevious, xevious, xevious, sxevious, xevious, ROT90, "Namco", "Super Xevious", 0 )
+GAME( 1982, xevious,  0,       xevious, xevious,  xevious, ROT90, "Namco", "Xevious (Namco)", GAME_SUPPORTS_SAVE )
+GAME( 1982, xeviousa, xevious, xevious, xeviousa, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 1)", GAME_SUPPORTS_SAVE )
+GAME( 1982, xeviousb, xevious, xevious, xeviousb, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 2)", GAME_SUPPORTS_SAVE )
+GAME( 1982, xeviousc, xevious, xevious, xeviousa, xevious, ROT90, "Namco (Atari license)", "Xevious (Atari set 3)", GAME_SUPPORTS_SAVE )
+GAME( 1982, xevios,   xevious, xevious, xevious,  xevios,  ROT90, "bootleg", "Xevios", GAME_SUPPORTS_SAVE )
+GAME( 1982, battles,  xevious, battles, xevious,  battles, ROT90, "bootleg", "Battles", GAME_SUPPORTS_SAVE )
+GAME( 1984, sxevious, xevious, xevious, sxevious, xevious, ROT90, "Namco", "Super Xevious", GAME_SUPPORTS_SAVE )
 
-GAME( 1982, digdug,   0,       digdug,  digdug,   0,       ROT90, "Namco", "Dig Dug (rev 2)", 0 )
-GAME( 1982, digdugb,  digdug,  digdug,  digdug,   0,       ROT90, "Namco", "Dig Dug (rev 1)", 0 )
-GAME( 1982, digdugat, digdug,  digdug,  digdug,   0,       ROT90, "[Namco] (Atari license)", "Dig Dug (Atari, rev 2)", 0 )
-GAME( 1982, digduga1, digdug,  digdug,  digdug,   0,       ROT90, "[Namco] (Atari license)", "Dig Dug (Atari, rev 1)", 0 )
-GAME( 1982, dzigzag,  digdug,  dzigzag, digdug,   0,       ROT90, "bootleg", "Zig Zag (Dig Dug hardware)", 0 )
+GAME( 1982, digdug,   0,       digdug,  digdug,   0,       ROT90, "Namco", "Dig Dug (rev 2)", GAME_SUPPORTS_SAVE )
+GAME( 1982, digdugb,  digdug,  digdug,  digdug,   0,       ROT90, "Namco", "Dig Dug (rev 1)", GAME_SUPPORTS_SAVE )
+GAME( 1982, digdugat, digdug,  digdug,  digdug,   0,       ROT90, "[Namco] (Atari license)", "Dig Dug (Atari, rev 2)", GAME_SUPPORTS_SAVE )
+GAME( 1982, digduga1, digdug,  digdug,  digdug,   0,       ROT90, "[Namco] (Atari license)", "Dig Dug (Atari, rev 1)", GAME_SUPPORTS_SAVE )
+GAME( 1982, dzigzag,  digdug,  dzigzag, digdug,   0,       ROT90, "bootleg", "Zig Zag (Dig Dug hardware)", GAME_SUPPORTS_SAVE )

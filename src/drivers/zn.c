@@ -8,6 +8,7 @@
 
 ***************************************************************************/
 
+#include <stdarg.h>
 #include "driver.h"
 #include "cpu/mips/psx.h"
 #include "cpu/z80/z80.h"
@@ -163,6 +164,7 @@ static struct
 	{ "psyfrcex", tt01, tt03 }, /* OK */
 	{ "raystorm", tt01, tt04 }, /* OK */
 	{ "raystorj", tt01, tt04 }, /* OK */
+	{ "ftimpact", tt01, tt05 }, /* stuck in test mode */
 	{ "ftimpcta", tt01, tt05 }, /* OK, geometry issues */
 	{ "mgcldate", tt01, tt06 }, /* stuck in test mode */
 	{ "mgcldtex", tt01, tt06 }, /* OK */
@@ -605,7 +607,7 @@ DRIVER_INIT( coh1000c )
 	}
 }
 
-MACHINE_INIT( coh1000c )
+MACHINE_RESET( coh1000c )
 {
 	memory_set_bankptr( 1, memory_region( REGION_USER2 ) ); /* fixed game rom */
 	memory_set_bankptr( 2, memory_region( REGION_USER2 ) + 0x400000 ); /* banked game rom */
@@ -654,7 +656,7 @@ static MACHINE_DRIVER_START( coh1000c )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1000c )
+	MDRV_MACHINE_RESET( coh1000c )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -696,7 +698,7 @@ static MACHINE_DRIVER_START( coh1002c )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1000c )
+	MDRV_MACHINE_RESET( coh1000c )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -881,7 +883,7 @@ DRIVER_INIT( coh3002c )
 	zn_driver_init();
 }
 
-MACHINE_INIT( coh3002c )
+MACHINE_RESET( coh3002c )
 {
 	memory_set_bankptr( 1, memory_region( REGION_USER2 ) ); /* fixed game rom */
 	memory_set_bankptr( 2, memory_region( REGION_USER2 ) + 0x400000 ); /* banked game rom */
@@ -904,7 +906,7 @@ static MACHINE_DRIVER_START( coh3002c )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh3002c )
+	MDRV_MACHINE_RESET( coh3002c )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -1207,6 +1209,13 @@ INTERRUPT_GEN( coh1000t_vblank )
 			psxwritebyte(0x0f8997, 1);
 		}
 	}
+	if(strcmp( Machine->gamedrv->name, "ftimpact" ) == 0 ) /* WRONG!!!- Copied from ftimpcta */
+	{
+		if (psxreadbyte(0x0f8997) == 0) /* WRONG!!!- Copied from ftimpcta */
+		{
+			psxwritebyte(0x0f8997, 1); /* WRONG!!!- Copied from ftimpcta */
+		}
+	}
 	psx_vblank();
 }
 
@@ -1247,7 +1256,7 @@ DRIVER_INIT( coh1000ta )
 	mb3773_init();
 }
 
-MACHINE_INIT( coh1000ta )
+MACHINE_RESET( coh1000ta )
 {
 	memory_set_bankptr( 1, memory_region( REGION_USER2 ) ); /* banked game rom */
 	memory_set_bankptr( 2, taitofx1_eeprom1 );
@@ -1335,7 +1344,7 @@ static MACHINE_DRIVER_START( coh1000ta )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1000ta )
+	MDRV_MACHINE_RESET( coh1000ta )
 	MDRV_NVRAM_HANDLER( coh1000ta )
 
 	/* video hardware */
@@ -1400,7 +1409,7 @@ DRIVER_INIT( coh1000tb )
 	mb3773_init();
 }
 
-MACHINE_INIT( coh1000tb )
+MACHINE_RESET( coh1000tb )
 {
 	memory_set_bankptr( 1, memory_region( REGION_USER2 ) ); /* banked game rom */
 	memory_set_bankptr( 2, taitofx1_eeprom1 );
@@ -1437,7 +1446,7 @@ static MACHINE_DRIVER_START( coh1000tb )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1000tb )
+	MDRV_MACHINE_RESET( coh1000tb )
 	MDRV_NVRAM_HANDLER( coh1000tb )
 
 	/* video hardware */
@@ -1611,7 +1620,7 @@ DRIVER_INIT( coh3002t )
 	zn_driver_init();
 }
 
-MACHINE_INIT( coh3002t )
+MACHINE_RESET( coh3002t )
 {
 	memory_set_bankptr( 1, memory_region( REGION_USER2 ) ); /* GNET boot rom */
 	zn_machine_init();
@@ -1626,7 +1635,7 @@ static MACHINE_DRIVER_START( coh3002t )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh3002t )
+	MDRV_MACHINE_RESET( coh3002t )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -1820,7 +1829,7 @@ DRIVER_INIT( coh1000w )
 	zn_driver_init();
 }
 
-MACHINE_INIT( coh1000w )
+MACHINE_RESET( coh1000w )
 {
 	memory_set_bankptr( 1, memory_region( REGION_USER2 ) ); /* fixed game rom */
 	zn_machine_init();
@@ -1839,7 +1848,7 @@ static MACHINE_DRIVER_START( coh1000w )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1000w )
+	MDRV_MACHINE_RESET( coh1000w )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -2036,7 +2045,7 @@ DRIVER_INIT( coh1002e )
 	zn_driver_init();
 }
 
-MACHINE_INIT( coh1002e )
+MACHINE_RESET( coh1002e )
 {
 	memory_set_bankptr( 1, memory_region( REGION_USER2 ) ); /* banked game rom */
 	zn_machine_init();
@@ -2084,7 +2093,7 @@ static MACHINE_DRIVER_START( coh1002e )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1002e )
+	MDRV_MACHINE_RESET( coh1002e )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -2404,7 +2413,7 @@ DRIVER_INIT( coh1000a )
 	zn_driver_init();
 }
 
-MACHINE_INIT( coh1000a )
+MACHINE_RESET( coh1000a )
 {
 	memory_set_bankptr( 1, memory_region( REGION_USER2 ) ); /* fixed game rom */
 	zn_machine_init();
@@ -2424,7 +2433,7 @@ static MACHINE_DRIVER_START( coh1000a )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1000a )
+	MDRV_MACHINE_RESET( coh1000a )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -2575,7 +2584,7 @@ DRIVER_INIT( coh1001l )
 	zn_driver_init();
 }
 
-MACHINE_INIT( coh1001l )
+MACHINE_RESET( coh1001l )
 {
 	memory_set_bankptr( 1, memory_region( REGION_USER2 ) ); /* banked rom */
 	zn_machine_init();
@@ -2594,7 +2603,7 @@ static MACHINE_DRIVER_START( coh1001l )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1001l )
+	MDRV_MACHINE_RESET( coh1001l )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -2645,7 +2654,7 @@ DRIVER_INIT( coh1002v )
 	zn_driver_init();
 }
 
-MACHINE_INIT( coh1002v )
+MACHINE_RESET( coh1002v )
 {
 	memory_set_bankptr( 1, memory_region( REGION_USER2 ) ); /* fixed game rom */
 	memory_set_bankptr( 2, memory_region( REGION_USER3 ) ); /* banked rom */
@@ -2678,7 +2687,7 @@ static MACHINE_DRIVER_START( coh1002v )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1002v )
+	MDRV_MACHINE_RESET( coh1002v )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -2891,7 +2900,7 @@ DRIVER_INIT( coh1002m )
 	zn_driver_init();
 }
 
-MACHINE_INIT( coh1002m )
+MACHINE_RESET( coh1002m )
 {
 	memory_set_bankptr( 1, memory_region( REGION_USER2 ) );
 	zn_machine_init();
@@ -2946,7 +2955,7 @@ static MACHINE_DRIVER_START( coh1002m )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1002m )
+	MDRV_MACHINE_RESET( coh1002m )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -2982,7 +2991,7 @@ static MACHINE_DRIVER_START( coh1002msnd )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1002m )
+	MDRV_MACHINE_RESET( coh1002m )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -3021,7 +3030,7 @@ static MACHINE_DRIVER_START( coh1002ml )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( coh1002m )
+	MDRV_MACHINE_RESET( coh1002m )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
@@ -4008,6 +4017,24 @@ ROM_START( taitofx1 )
 	TAITOFX1_BIOS
 ROM_END
 
+ROM_START( ftimpact )
+	TAITOFX1_BIOS
+
+	ROM_REGION32_LE( 0x01000000, REGION_USER2, 0 )
+	ROM_LOAD16_BYTE( "e25-09.4",     0x0000001, 0x080000, CRC(d457bfc7) SHA1(e974a9c3e7b0748ef89d78e76a7dbb763c42b6f7) )
+	ROM_LOAD16_BYTE( "e25-07.3",     0x0000000, 0x080000, CRC(829be1cc) SHA1(64b139d7c3696ab2f0b9a4842c19a38fe6a8cede) )
+	ROM_LOAD( "e25-01.1",            0x0400000, 0x400000, CRC(8cc4be0c) SHA1(9ca15558a83b7e332e50accf1f7852444a7ce730) )
+	ROM_LOAD( "e25-02.2",            0x0800000, 0x400000, CRC(8e8b4c82) SHA1(55c9d4d3a08fc3226a75ab3a674be433af83e289) )
+	ROM_LOAD( "e25-03.12",           0x0c00000, 0x400000, CRC(43b1c085) SHA1(6e53550e9be0d2f415fc6b4f3b8a71185c5370b2) )
+
+	ROM_REGION( 0x080000, REGION_CPU2, 0 )
+	ROM_LOAD( "e25-10.14",    0x0000000, 0x080000, CRC(2b2ad1b1) SHA1(6d064d0b6805d43ce42929ac8f5645b56384f53c) )
+
+	ROM_REGION( 0x600000, REGION_SOUND1, 0 )
+	ROM_LOAD( "e25-04.27",    0x0000000, 0x400000, CRC(09a66d35) SHA1(f0df24bc9bfc9eb0f5150dc035c19fc5b8a39bf9) )
+	ROM_LOAD( "e25-05.28",    0x0040000, 0x200000, CRC(3fb57636) SHA1(aa38bfac11ecf10fd55143cf4525a2a529be8bb6) )
+ROM_END
+
 ROM_START( ftimpcta )
 	TAITOFX1_BIOS
 
@@ -4310,8 +4337,8 @@ ROM_START( brvblade )
 	ROM_LOAD( "ra-bbl_rom1.028", 0x0800000, 0x400000, CRC(418535e0) SHA1(7c443e651704f2cd552565c35f4a93f2dc250558) )
 
 	ROM_REGION( 0x100000, REGION_CPU2, 0 )
-	ROM_LOAD16_BYTE( "spu0u049.bin", 0x0000000, 0x080000, CRC(c9df8ed9) SHA1(00a58522189091c48d781b6703e4378e04343c33) )
 	ROM_LOAD16_BYTE( "spu1u412.bin", 0x0000001, 0x080000, CRC(6408b5b2) SHA1(ba60aa1074df87e98fa260211e9ec99cea25023f) )
+	ROM_LOAD16_BYTE( "spu0u049.bin", 0x0000000, 0x080000, CRC(c9df8ed9) SHA1(00a58522189091c48d781b6703e4378e04343c33) )
 
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 )
 	ROM_LOAD( "ra-bbl_rom2.336", 0x000000, 0x400000, CRC(cd052c02) SHA1(d955a70a89b3b1a0b505a05c0887c399fe7a2c68) )
@@ -4331,8 +4358,8 @@ ROM_START( bldyror2 )
 	ROM_REGION32_LE( 0x0400000, REGION_USER3, 0 )
 
 	ROM_REGION( 0x100000, REGION_CPU2, 0 )
-	ROM_LOAD16_BYTE( "br2_u049.049",  0x000000, 0x080000, CRC(10dc855b) SHA1(4e6e3a71911c8976ae07c2b6cac5a36f98193def) )
 	ROM_LOAD16_BYTE( "br2_u0412.412", 0x000001, 0x080000, CRC(e254dd8a) SHA1(5b8fcafcf2176e0b55efcf37799d7c0d97e01bdc) )
+	ROM_LOAD16_BYTE( "br2_u049.049",  0x000000, 0x080000, CRC(10dc855b) SHA1(4e6e3a71911c8976ae07c2b6cac5a36f98193def) )
 
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 )
 	ROM_LOAD( "rom-3.336",       0x000000, 0x400000, CRC(b74cc4d1) SHA1(eb5485582a12959ae06927a2f1d8a7e63e0f956f) )
@@ -4392,7 +4419,7 @@ ROM_START( nbajamex )
 	ROM_LOAD16_BYTE( "nbax6o.u5",    0x1a00001, 0x200000, CRC(b1dfb42e) SHA1(fb9627e228bf2a744842eb44afbca4a6232cadb2) )
 	ROM_LOAD16_BYTE( "nbax6e.u19",   0x1a00000, 0x200000, CRC(6f17d8c1) SHA1(22cf263efb64cf62030e02b641c485debe75944d) )
 
-	ROM_REGION( 0x0a0000, REGION_CPU2, 0 ) /* 512k for the audio CPU (+banks) */
+	ROM_REGION( 0x0a0000, REGION_CPU2, 0 ) /* 512k for the audio CPU, ADSP-2181 (+banks) */
 	ROM_LOAD( "360snda1.u52", 0x000000, 0x08000, CRC(36d8a628) SHA1(944a01c9128f5e90c7dba3557a3ecb2c5ca90831) )
 	ROM_CONTINUE(             0x010000, 0x78000 )
 
@@ -4445,9 +4472,9 @@ ROM_START( hvnsgate )
 	ROM_LOAD( "athg-10.029",         0x0d00000, 0x400000, CRC(748f936e) SHA1(134e78ea71bb9646f36cc503c704496a2b622ee9) )
 	ROM_LOAD( "athg-11.215",         0x1100000, 0x200000, CRC(ac8e53bd) SHA1(002c4be1aa57d810c5d810c475631d9f14e1d2ab) )
 
-	ROM_REGION( 0x040000, REGION_CPU2, 0 )
-	ROM_LOAD( "athg-03.22",   0x000000, 0x020000, CRC(7eef7e68) SHA1(65b8ae18ef4ff636c548326a360b481aeb316869) )
-	ROM_LOAD( "athg-04.21",   0x020000, 0x020000, CRC(18523e85) SHA1(0ecc2116760f05fca8e5366b0a97dfe26fa9bc0c) )
+	ROM_REGION( 0x040000, REGION_CPU2, 0 ) /* 68000 code, 10.000MHz */
+	ROM_LOAD16_BYTE( "athg-04.21",   0x000001, 0x020000, CRC(18523e85) SHA1(0ecc2116760f05fca8e5366b0a97dfe26fa9bc0c) )
+	ROM_LOAD16_BYTE( "athg-03.22",   0x000000, 0x020000, CRC(7eef7e68) SHA1(65b8ae18ef4ff636c548326a360b481aeb316869) )
 
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* YMZ280B Sound Samples */
 	ROM_LOAD( "athg-05.4136", 0x000000, 0x200000, CRC(74469a15) SHA1(0faa883900d7fd2e5240f486db33b3d868f1f05f) )
@@ -4558,7 +4585,8 @@ GAME( 1995, psyfrcex, psyforce, coh1000ta,zn, coh1000ta, ROT0, "Taito", "Psychic
 GAME( 1996, mgcldate, mgcldtex, coh1000ta,zn, coh1000ta, ROT0, "Taito", "Magical Date / Magical Date - dokidoki kokuhaku daisakusen (Ver 2.02J)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 GAME( 1996, raystorm, taitofx1, coh1000tb,zn, coh1000tb, ROT0, "Taito", "Ray Storm (Ver 2.06A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1996, raystorj, raystorm, coh1000tb,zn, coh1000tb, ROT0, "Taito", "Ray Storm (Ver 2.05J)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1996, ftimpcta, taitofx1, coh1000tb,zn, coh1000tb, ROT0, "Taito", "Fighters' Impact A (Ver 2.00J)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
+GAME( 1996, ftimpact, taitofx1, coh1000tb,zn, coh1000tb, ROT0, "Taito", "Fighters' Impact (Ver 2.02O)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
+GAME( 1996, ftimpcta, ftimpact, coh1000tb,zn, coh1000tb, ROT0, "Taito", "Fighters' Impact A (Ver 2.00J)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 GAME( 1997, mgcldtex, taitofx1, coh1000ta,zn, coh1000ta, ROT0, "Taito", "Magical Date EX / Magical Date - sotsugyou kokuhaku daisakusen (Ver 2.01J)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1997, gdarius,  taitofx1, coh1000tb,zn, coh1000tb, ROT0, "Taito", "G-Darius (Ver 2.01J)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1997, gdariusb, gdarius,  coh1000tb,zn, coh1000tb, ROT0, "Taito", "G-Darius (Ver 2.02A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )

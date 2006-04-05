@@ -7,7 +7,6 @@ driver by Mirko Buffoni
 Is this a Konami board?
 ***************************************************************************/
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 #include "sound/okim6295.h"
 
@@ -43,13 +42,13 @@ static NVRAM_HANDLER( goldstar )
 
 
 
-WRITE8_HANDLER( protection_w )
+static WRITE8_HANDLER( protection_w )
 {
 	if (data == 0x2a)
 		dataoffset = 0;
 }
 
-READ8_HANDLER( protection_r )
+static READ8_HANDLER( protection_r )
 {
 	static int data[4] = { 0x47, 0x4f, 0x4c, 0x44 };
 

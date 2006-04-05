@@ -46,7 +46,6 @@
 */
 
 #include "driver.h"
-#include "state.h"
 #include "cpu/mips/psx.h"
 #include "includes/psx.h"
 #include "machine/konamigx.h"
@@ -399,19 +398,23 @@ static DRIVER_INIT( konamigq )
 	psx_driver_init();
 
 	m_p_n_pcmram = memory_region( REGION_SOUND1 ) + 0x80000;
+}
 
+static MACHINE_START( konamigq )
+{
 	/* init the scsi controller and hook up it's DMA */
 	am53cf96_init(&scsi_intf);
 	psx_dma_install_read_handler(5, scsi_dma_read);
 	psx_dma_install_write_handler(5, scsi_dma_write);
 
-	state_save_register_UINT8( "konamigq", 0, "PCM RAM", m_p_n_pcmram, 0x380000 );
-	state_save_register_UINT8( "konamigq", 0, "sndto000", sndto000, 16 );
-	state_save_register_UINT8( "konamigq", 0, "sndtor3k", sndtor3k, 16 );
-	state_save_register_UINT8( "konamigq", 0, "sector buffer", sector_buffer, 512);
+	state_save_register_global_pointer(m_p_n_pcmram, 0x380000);
+	state_save_register_global_array(sndto000);
+	state_save_register_global_array(sndtor3k);
+	state_save_register_global_array(sector_buffer);
+	return 0;
 }
 
-static MACHINE_INIT( konamigq )
+static MACHINE_RESET( konamigq )
 {
 	psx_machine_init();
 	tms57002_init();
@@ -431,7 +434,8 @@ static MACHINE_DRIVER_START( konamigq )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( konamigq )
+	MDRV_MACHINE_START( konamigq )
+	MDRV_MACHINE_RESET( konamigq )
 	MDRV_NVRAM_HANDLER( konamigq_93C46 )
 
 	/* video hardware */
@@ -528,27 +532,27 @@ INPUT_PORTS_START( konamigq )
 
 	/* IN 5 */
 	PORT_START /* mask default type                     sens delta min max */
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	/* IN 6 */
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	/* IN 7 */
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
 	/* IN 8 */
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
 	/* IN 9 */
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(3)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(3)
 
 	/* IN 10 */
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(3)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(3)
 INPUT_PORTS_END
 
 ROM_START( cryptklr )

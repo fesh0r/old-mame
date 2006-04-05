@@ -32,7 +32,7 @@
 #ifdef MAME_DEBUG					/* Compile interface to MAME */
 #include "memory.h"
 #include "tms32010.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #define READOP16(A)  (cpu_readop16(A))
 #define READARG16(A) (cpu_readop_arg16(A))
 #else								/* Compile interface for standalone */
@@ -214,13 +214,13 @@ static void InitDasm32010(void)
 				case 'w':
 					bit --;
 					break;
-				default: osd_die("Invalid instruction encoding '%s %s'\n",
+				default: fatalerror("Invalid instruction encoding '%s %s'",
 					ops[0],ops[1]);
 			}
 		}
 		if (bit != -1 )
 		{
-			osd_die("not enough bits in encoding '%s %s' %d\n",
+			fatalerror("not enough bits in encoding '%s %s' %d",
 				ops[0],ops[1],bit);
 		}
 		while (isspace(*p)) p++;
@@ -303,7 +303,7 @@ unsigned Dasm32010(char *str, unsigned pc)
 			case 'w': w <<=1; w |= ((code & (1<<bit)) ? 1 : 0); bit--; break;
 			case ' ': break;
 			case '1': case '0':  bit--; break;
-			case '\0': osd_die("premature end of parse string, opcode %x, bit = %d\n",code,bit);
+			case '\0': fatalerror("premature end of parse string, opcode %x, bit = %d",code,bit);
 		}
 		cp++;
 	}
@@ -329,7 +329,7 @@ unsigned Dasm32010(char *str, unsigned pc)
 				case 'S': sprintf(num,",%d",s); break;
 				case 'W': sprintf(num,"%04Xh",w); break;
 				default:
-					osd_die("illegal escape character in format '%s'\n",Op[op].fmt);
+					fatalerror("illegal escape character in format '%s'",Op[op].fmt);
 			}
 			q = num; while (*q) *str++ = *q++;
 			*str = '\0';

@@ -100,13 +100,9 @@
 
  *****************************************************************************/
 
-#include <stdio.h>
 #include <signal.h>
-#include "driver.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "sh2.h"
-#include "memory.h"
 
 /* speed up delay loops, bail out of tight loops */
 #define BUSY_LOOP_HACKS 	1
@@ -2309,35 +2305,36 @@ INLINE void op1111(UINT16 opcode)
  *  MAME CPU INTERFACE
  *****************************************************************************/
 
-static void sh2_reset(void *param)
+static void sh2_reset(void)
 {
 	void *tsave, *tsaved0, *tsaved1;
 	UINT32 *m;
+	int cpunum;
+	int save_is_slave;
 
-	struct sh2_config *conf = param;
 	void (*f)(UINT32 data);
+	int (*save_irqcallback)(int);
 
+	cpunum = sh2.cpu_number;
 	m = sh2.m;
 	tsave = sh2.timer;
 	tsaved0 = sh2.dma_timer[0];
 	tsaved1 = sh2.dma_timer[1];
 
 	f = sh2.ftcsr_read_callback;
+	save_irqcallback = sh2.irq_callback;
+	save_is_slave = sh2.is_slave;
 	memset(&sh2, 0, sizeof(SH2));
+	sh2.is_slave = save_is_slave;
 	sh2.ftcsr_read_callback = f;
+	sh2.irq_callback = save_irqcallback;
 
 	sh2.timer = tsave;
 	sh2.dma_timer[0] = tsaved0;
 	sh2.dma_timer[1] = tsaved1;
+	sh2.cpu_number = cpunum;
 	sh2.m = m;
 	memset(sh2.m, 0, 0x200);
-
-	if(conf)
-		sh2.is_slave = conf->is_slave;
-	else
-		sh2.is_slave = 0;
-
-	sh2.cpu_number = cpu_getactivecpu();
 
 	sh2.pc = RL(0);
 	sh2.r[15] = RL(4);
@@ -2962,9 +2959,9 @@ static offs_t sh2_dasm(char *buffer, offs_t pc)
 #endif
 }
 
-static void sh2_init(void)
+static void sh2_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
+	const struct sh2_config *conf = config;
 
 	sh2.timer = timer_alloc(sh2_timer_callback);
 	timer_adjust(sh2.timer, TIME_NEVER, 0, 0);
@@ -2982,31 +2979,38 @@ static void sh2_init(void)
 		raise( SIGABRT );
 	}
 
-	state_save_register_UINT32("sh2", cpu, "PC",  &sh2.pc, 1);
-	state_save_register_UINT32("sh2", cpu, "SP",  &sh2.r[15], 1);
-	state_save_register_UINT32("sh2", cpu, "SR",  &sh2.sr, 1);
-	state_save_register_UINT32("sh2", cpu, "PR",  &sh2.pr, 1);
-	state_save_register_UINT32("sh2", cpu, "GBR", &sh2.gbr, 1);
-	state_save_register_UINT32("sh2", cpu, "VBR", &sh2.vbr, 1);
-	state_save_register_UINT32("sh2", cpu, "MACH",&sh2.mach, 1);
-	state_save_register_UINT32("sh2", cpu, "MACL",&sh2.macl, 1);
-	state_save_register_UINT32("sh2", cpu, "R0",  &sh2.r[ 0], 1);
-	state_save_register_UINT32("sh2", cpu, "R1",  &sh2.r[ 1], 1);
-	state_save_register_UINT32("sh2", cpu, "R2",  &sh2.r[ 2], 1);
-	state_save_register_UINT32("sh2", cpu, "R3",  &sh2.r[ 3], 1);
-	state_save_register_UINT32("sh2", cpu, "R4",  &sh2.r[ 4], 1);
-	state_save_register_UINT32("sh2", cpu, "R5",  &sh2.r[ 5], 1);
-	state_save_register_UINT32("sh2", cpu, "R6",  &sh2.r[ 6], 1);
-	state_save_register_UINT32("sh2", cpu, "R7",  &sh2.r[ 7], 1);
-	state_save_register_UINT32("sh2", cpu, "R8",  &sh2.r[ 8], 1);
-	state_save_register_UINT32("sh2", cpu, "R9",  &sh2.r[ 9], 1);
-	state_save_register_UINT32("sh2", cpu, "R10", &sh2.r[10], 1);
-	state_save_register_UINT32("sh2", cpu, "R11", &sh2.r[11], 1);
-	state_save_register_UINT32("sh2", cpu, "R12", &sh2.r[12], 1);
-	state_save_register_UINT32("sh2", cpu, "R13", &sh2.r[13], 1);
-	state_save_register_UINT32("sh2", cpu, "R14", &sh2.r[14], 1);
-	state_save_register_UINT32("sh2", cpu, "EA", &sh2.ea, 1);
-	return;
+	if(conf)
+		sh2.is_slave = conf->is_slave;
+	else
+		sh2.is_slave = 0;
+
+	sh2.cpu_number = index;
+	sh2.irq_callback = irqcallback;
+
+	state_save_register_item("sh2", index, sh2.pc);
+	state_save_register_item("sh2", index, sh2.r[15]);
+	state_save_register_item("sh2", index, sh2.sr);
+	state_save_register_item("sh2", index, sh2.pr);
+	state_save_register_item("sh2", index, sh2.gbr);
+	state_save_register_item("sh2", index, sh2.vbr);
+	state_save_register_item("sh2", index, sh2.mach);
+	state_save_register_item("sh2", index, sh2.macl);
+	state_save_register_item("sh2", index, sh2.r[ 0]);
+	state_save_register_item("sh2", index, sh2.r[ 1]);
+	state_save_register_item("sh2", index, sh2.r[ 2]);
+	state_save_register_item("sh2", index, sh2.r[ 3]);
+	state_save_register_item("sh2", index, sh2.r[ 4]);
+	state_save_register_item("sh2", index, sh2.r[ 5]);
+	state_save_register_item("sh2", index, sh2.r[ 6]);
+	state_save_register_item("sh2", index, sh2.r[ 7]);
+	state_save_register_item("sh2", index, sh2.r[ 8]);
+	state_save_register_item("sh2", index, sh2.r[ 9]);
+	state_save_register_item("sh2", index, sh2.r[10]);
+	state_save_register_item("sh2", index, sh2.r[11]);
+	state_save_register_item("sh2", index, sh2.r[12]);
+	state_save_register_item("sh2", index, sh2.r[13]);
+	state_save_register_item("sh2", index, sh2.r[14]);
+	state_save_register_item("sh2", index, sh2.ea);
 }
 
 
@@ -3069,8 +3073,6 @@ static void sh2_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_SH2_FRT_INPUT:					sh2_set_frt_input(cpu_getactivecpu(), info->i); break;
 
 		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					sh2.irq_callback = info->irqcallback;	break;
-
 		case CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK:		sh2.ftcsr_read_callback = (void (*) (UINT32 ))info->f;		break;
 	}
 }
@@ -3164,7 +3166,6 @@ void sh2_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = sh2_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = sh2_dasm;			break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = sh2.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &sh2_icount;				break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = sh2_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = sh2_win_layout;				break;

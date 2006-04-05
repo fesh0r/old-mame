@@ -6,8 +6,8 @@
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "state.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "fm.h"
 #include "2151intf.h"
 #include "ym2151.h"
@@ -209,7 +209,7 @@ WRITE16_HANDLER( YM2151_data_port_2_lsb_w )
  * Generic get_info
  **************************************************************************/
 
-static void ym2151_set_info(void *token, UINT32 state, union sndinfo *info)
+static void ym2151_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -218,7 +218,7 @@ static void ym2151_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void ym2151_get_info(void *token, UINT32 state, union sndinfo *info)
+void ym2151_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

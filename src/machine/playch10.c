@@ -25,7 +25,7 @@ static int MMC2_bank[4], MMC2_bank_latch[2];
  *  Init machine
  *
  *************************************/
-MACHINE_INIT( pc10 )
+MACHINE_RESET( pc10 )
 {
 	/* initialize latches and flip-flops */
 	pc10_nmi_enable = pc10_dog_di = pc10_dispmask = pc10_sdcs = pc10_int_detect = 0;
@@ -271,7 +271,7 @@ DRIVER_INIT( playch10 )
 	/* initialize the security chip */
 	if ( RP5H01_init( &rp5h01_interface ) )
 	{
-		osd_die("rp5h01_interface initualization failed\n");
+		fatalerror("rp5h01_interface initualization failed");
 	}
 
 	/* set the controller to default */

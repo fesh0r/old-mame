@@ -7,19 +7,20 @@
 //
 //============================================================
 
+// standard windows headers
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <tchar.h>
+
+// MAME headers
 #include "driver.h"
+#include "hash.h"
 #include "info.h"
 #include "audit.h"
-#include "rc.h"
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unzip.h>
-#include <zlib.h>
-#include <tchar.h>
+#include "unzip.h"
 #include "sound/samples.h"
+
+#include "rc.h"
 
 #ifndef MESS
 enum { LIST_XML = 1, LIST_FULL, LIST_ROMS, LIST_SAMPLES,
@@ -28,12 +29,12 @@ enum { LIST_XML = 1, LIST_FULL, LIST_ROMS, LIST_SAMPLES,
 		LIST_CPU, LIST_CPUCLASS, LIST_SOURCEFILE,
 		 };
 #else
-#include "messwin.h"
+#include "infomess.h"
 enum { LIST_XML = 1, LIST_FULL, LIST_ROMS, LIST_SAMPLES,
 		LIST_CLONES,
 		LIST_CRC,
 		LIST_SOURCEFILE,
-		LIST_MESSTEXT, LIST_MESSDEVICES, LIST_MESSCREATEDIR };
+		LIST_MESSDEVICES };
 #endif
 
 #define VERIFY_ROMS		0x00000001
@@ -63,8 +64,6 @@ struct rc_option frontend_opts[] = {
 	{ "listcrc", NULL, rc_set_int, &list, NULL, LIST_CRC, 0, NULL, "CRC-32s" },
 #ifdef MESS
 	{ "listdevices", NULL, rc_set_int, &list, NULL, LIST_MESSDEVICES, 0, NULL, "list available devices" },
-	{ "listtext", NULL, rc_set_int, &list, NULL, LIST_MESSTEXT, 0, NULL, "list available file extensions" },
-	{ "createdir", NULL, rc_set_int, &list, NULL, LIST_MESSCREATEDIR, 0, NULL, NULL },
 #endif
 	{ "listroms", NULL, rc_set_int, &list, NULL, LIST_ROMS, 0, NULL, "list required roms for a driver" },
 	{ "listsamples", NULL, rc_set_int, &list, NULL, LIST_SAMPLES, 0, NULL, "list optional samples for a driver" },
@@ -436,7 +435,7 @@ int CLIB_DECL compare_driver_names(const void *elem1, const void *elem2)
 }
 
 
-int frontend_help (const char *gamename)
+int frontend_help (const char *gamename, const char *filename)
 {
 	machine_config drv;
 	int i, j;
@@ -453,7 +452,7 @@ int frontend_help (const char *gamename)
 		#ifndef MESS
 		printf("M.A.M.E. v%s - Multiple Arcade Machine Emulator\n"
 				"Copyright (C) 1997-2005 by Nicola Salmoria and the MAME Team\n\n",build_version);
-		showdisclaimer();
+		printf("%s\n", mame_disclaimer);
 		printf("Usage:  MAME gamename [options]\n\n"
 				"        MAME -showusage    for a brief list of options\n"
 				"        MAME -showconfig   for a list of configuration options\n"
@@ -475,29 +474,12 @@ int frontend_help (const char *gamename)
 
 	switch (list)  /* front-end utilities ;) */
 	{
-
         #ifdef MESS
-		case LIST_MESSTEXT: /* all mess specific calls here */
-		{
-			/* send the gamename and arg to mess.c */
-			list_mess_info(gamename, "-listtext", 1);
-			return 0;
-			break;
-		}
 		case LIST_MESSDEVICES:
-		{
-			/* send the gamename and arg to mess.c */
-			list_mess_info(gamename, "-listdevices", 1);
+			/* send the gamename to MESS */
+			print_mess_devices(gamename);
 			return 0;
 			break;
-		}
-		case LIST_MESSCREATEDIR:
-		{
-			/* send the gamename and arg to mess.c */
-			list_mess_info(gamename, "-createdir", 1);
-			return 0;
-			break;
-		}
 		#endif
 
 		case LIST_FULL: /* games list with descriptions */
@@ -759,7 +741,7 @@ nextloop:
 		else silentident = 0;
 
 		knownstatus = KNOWN_START;
-		romident(gamename,1);
+		romident(filename, 1);
 		if (ident == 2)
 		{
 			switch (knownstatus)

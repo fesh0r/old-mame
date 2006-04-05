@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 static UINT8 bg_color,  old_bg_color;
 #define mainsnk_offset 8
@@ -13,6 +12,8 @@ WRITE8_HANDLER(me_c600_w)
 {
 	bg_color = data&0xf;
 	me_gfx_ctrl=data;
+	tilemap_mark_all_tiles_dirty (me_bg_tilemap);
+	printf("canvas %04x\n",data&=0xf0);
 }
 
 static void get_me_fg_tile_info(int tile_index)
@@ -85,7 +86,7 @@ static void get_me_bg_tile_info(int tile_index)
 
 	SET_TILE_INFO(
 			0,
-			code  + ((me_gfx_ctrl<<4)&0x300),
+			code  + ((me_gfx_ctrl<<4)&0x700),
 			0x10,
 			0)
 }

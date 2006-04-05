@@ -9,7 +9,9 @@
 
 ***************************************************************************/
 
+#include "osdepend.h"
 #include "driver.h"
+#include "profiler.h"
 #include <time.h>
 #include <ctype.h>
 
@@ -34,6 +36,7 @@
  *
  *************************************/
 
+typedef struct _input_code_info input_code_info;
 struct _input_code_info
 {
 	UINT8						analogtype;				/* analog type */
@@ -42,7 +45,6 @@ struct _input_code_info
 	const os_code_info *		osinfo;					/* pointer to the OS code info */
 	char						token[MAX_TOKEN_LEN];	/* token string */
 };
-typedef struct _input_code_info input_code_info;
 
 
 
@@ -508,7 +510,7 @@ static input_code_info *code_map;
 static input_code code_count;
 
 /* Static information used in key/joy recording */
-static input_code record_seq[SEQ_MAX];		/* buffer for key recording */
+static input_code record_seq[SEQ_MAX];			/* buffer for key recording */
 static int record_count;						/* number of key/joy press recorded */
 static clock_t record_last;						/* time of last key/joy press */
 static UINT8 record_analog;						/* are we recording an analog sequence? */
@@ -538,9 +540,7 @@ int code_init(void)
 		}
 
 	/* allocate the table */
-	code_map = (input_code_info *)malloc((__code_max + extras) * sizeof(code_map[0]));
-	if (!code_map)
-		return -1;
+	code_map = (input_code_info *)auto_malloc((__code_max + extras) * sizeof(code_map[0]));
 	memset(code_map, 0, (__code_max + extras) * sizeof(code_map[0]));
 
 	/* now go through and match up the OS codes to the standard codes */
@@ -600,14 +600,6 @@ int code_init(void)
 		}
 	}
 	return 0;
-}
-
-
-void code_exit(void)
-{
-	code_count = 0;
-	free(code_map);
-	code_map = NULL;
 }
 
 
@@ -1329,7 +1321,8 @@ int seq_read_async(input_seq *seq, int first)
 		}
 	}
 
-	/* analog case: see if we have an analog change of sufficient amount (>25%) */
+	/* analog case: see if we have an analog change of sufficient amount */
+	/* Absolute > 25% --- Relative > 5% */
 	else
 	{
 		/* scan all the analog codes for change */
@@ -1342,7 +1335,7 @@ int seq_read_async(input_seq *seq, int first)
 					if (ANALOG_TYPE(newcode) == ANALOG_TYPE_ABSOLUTE)
 						diff = code_map[newcode].memory - diff;
 					if (diff < 0) diff = -diff;
-					if (diff > (ANALOG_VALUE_MAX - ANALOG_VALUE_MIN) / 4)
+					if (diff > (ANALOG_VALUE_MAX - ANALOG_VALUE_MIN) / ((ANALOG_TYPE(newcode) == ANALOG_TYPE_ABSOLUTE) ? 4 : 20))
 						break;
 				}
 			}

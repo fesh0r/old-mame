@@ -36,7 +36,6 @@ TO DO:
 ****************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 
 static UINT8 *cfb_ram;
@@ -1448,19 +1447,19 @@ INPUT_PORTS_END
 
 
 
-static MACHINE_INIT( mazerbla )
+static MACHINE_RESET( mazerbla )
 {
 	game_id = MAZERBLA;
 	zpu_int_vector = 0xff;
-	cpu_set_irq_callback(0, irq_callback);
+	cpunum_set_irq_callback(0, irq_callback);
 }
 
 
-static MACHINE_INIT( greatgun )
+static MACHINE_RESET( greatgun )
 {
 	game_id = GREATGUN;
 	zpu_int_vector = 0xff;
-	cpu_set_irq_callback(0, irq_callback);
+	cpunum_set_irq_callback(0, irq_callback);
 
 
 //patch VCU test
@@ -1514,7 +1513,7 @@ but handled differently for now
 
 	/* synchronization forced on the fly */
 
-	MDRV_MACHINE_INIT(mazerbla)
+	MDRV_MACHINE_RESET(mazerbla)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1555,7 +1554,7 @@ but handled differently for now
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(greatgun)
+	MDRV_MACHINE_RESET(greatgun)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

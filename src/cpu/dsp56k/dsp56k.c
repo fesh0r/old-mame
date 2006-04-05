@@ -1,37 +1,31 @@
-/*###################################################################################################
-**
-**
-**      dsp56k.c
-**      Core implementation for the portable DSP56k emulator.
-**      Written by Andrew Gardner
-**
-**
-**##################################################################################################
-**
-**
-**      Note:
-**
-**      This CPU emulator is very much a work-in-progress.  Thus far, it appears to be
-**      complete enough to run the memory tests for Polygonet Commanders.
-**
-**      Some particularly WIP-like features of this core are as follows :
-**        * I ask many questions about my code throughout the core
-**        * The BITS(bits,op) macro is fine for a disassembler, but VERY slow for the
-**            inner loops of an executing core.  This will go away someday
-**        *
-**
-**
-**#################################################################################################*/
+/***************************************************************************
 
-#include "cpuintrf.h"
-#include "mamedbg.h"
+    dsp56k.c
+    Core implementation for the portable DSP56k emulator.
+    Written by Andrew Gardner
+
+****************************************************************************
+
+    Note:
+
+    This CPU emulator is very much a work-in-progress.  Thus far, it appears to be
+    complete enough to run the memory tests for Polygonet Commanders.
+
+    Some particularly WIP-like features of this core are as follows :
+     * I ask many questions about my code throughout the core
+     * The BITS(bits,op) macro is fine for a disassembler, but VERY slow for the
+         inner loops of an executing core.  This will go away someday
+
+***************************************************************************/
+
+#include "debugger.h"
 #include "dsp56k.h"
 
 // #define PC_E000
 
-/*###################################################################################################
-**  MACROS
-**#################################################################################################*/
+/***************************************************************************
+    MACROS
+***************************************************************************/
 
 // ??? Are there namespace collision issues with just defining something "PC" ???
 //     ...doesn't seem like it, but one never knows...
@@ -203,9 +197,9 @@
 
 
 
-/*###################################################################################################
-**  STRUCTURES & TYPEDEFS
-**#################################################################################################*/
+/***************************************************************************
+    STRUCTURES & TYPEDEFS
+***************************************************************************/
 
 // DSP56156 Registers - sizes specific to chip
 typedef struct
@@ -242,6 +236,8 @@ typedef struct
 	UINT8           irq_modC ;					//  just modC :)
 	UINT8           irq_reset ;					//  Always level-sensitive
 
+	int		(*irq_callback)(int irqline) ;
+
 	// Host Interface (HI) port - page 94 of DSP56156UM
 
 
@@ -258,28 +254,28 @@ typedef struct
 	UINT16 dataRAM[2048] ;						// 2048 x 16-bit on-chip data RAM
 	UINT16 bootstrapROM[64] ;					// 64   x 16-bit bootstrap ROM
 
-
+	const void *	config;
 } dsp56k_regs;
 
-/*###################################################################################################
-**  PROTOTYPES
-**#################################################################################################*/
+/***************************************************************************
+    PROTOTYPES
+***************************************************************************/
 
-static void dsp56k_reset(void *param);
+static void dsp56k_reset(void);
 
 
 
-/*###################################################################################################
-**  PRIVATE GLOBAL VARIABLES
-**#################################################################################################*/
+/***************************************************************************
+    PRIVATE GLOBAL VARIABLES
+***************************************************************************/
 
 static dsp56k_regs dsp56k;
 static int dsp56k_icount;
 
 
-/*###################################################################################################
-**  IRQ HANDLING
-**#################################################################################################*/
+/***************************************************************************
+    IRQ HANDLING
+***************************************************************************/
 
 static void check_irqs(void)
 {
@@ -292,14 +288,23 @@ static void set_irq_line(int irqline, int state)
 	if (irqline == 3)
 	{
 		LINE_RESET = state ;
+
+		if(LINE_RESET != CLEAR_LINE)
+		{
+			int irq_vector = (*dsp56k.irq_callback)(3);
+
+			PC = irq_vector ;
+
+			LINE_RESET = CLEAR_LINE ;
+		}
 	}
 }
 
 
 
-/*###################################################################################################
-**  CONTEXT SWITCHING
-**#################################################################################################*/
+/***************************************************************************
+    CONTEXT SWITCHING
+***************************************************************************/
 
 static void dsp56k_get_context(void *dst)
 {
@@ -322,20 +327,23 @@ static void dsp56k_set_context(void *src)
 
 
 
-/*###################################################################################################
-**  INITIALIZATION AND SHUTDOWN
-**#################################################################################################*/
+/***************************************************************************
+    INITIALIZATION AND SHUTDOWN
+***************************************************************************/
 
-static void dsp56k_init(void)
+static void dsp56k_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
+	dsp56k.config = _config;
+	dsp56k.irq_callback = irqcallback;
 }
 
 // Page 101 (7-25) in the Family Manual
-static void dsp56k_reset(void *param)
+static void dsp56k_reset(void)
 {
-	if (param == NULL)
+	if (dsp56k.config == NULL)
 	{
-		LINE_RESET = 1 ;
+		LINE_RESET = 1 ;			/* hack - hold the CPU reset at startup */
+		memory_set_opbase(PC);
 
 		// Handle internal stuff
 		dsp56k.interrupt_cycles = 0 ;
@@ -408,7 +416,7 @@ static void dsp56k_reset(void *param)
 	}
 	else
 	{
-		PC = *((UINT16*)param) ;
+		PC = *((UINT16*)dsp56k.config) ;
 	}
 }
 
@@ -419,9 +427,9 @@ static void dsp56k_exit(void)
 
 
 
-/*###################################################################################################
-**  CORE INCLUDE
-**#################################################################################################*/
+/***************************************************************************
+    CORE INCLUDE
+***************************************************************************/
 
 #define ROPCODE(pc)   cpu_readop16(pc)
 
@@ -429,9 +437,9 @@ static void dsp56k_exit(void)
 
 
 
-/*###################################################################################################
-**  CORE EXECUTION LOOP
-**#################################################################################################*/
+/***************************************************************************
+    CORE EXECUTION LOOP
+***************************************************************************/
 
 static int dsp56k_execute(int cycles)
 {
@@ -454,9 +462,9 @@ static int dsp56k_execute(int cycles)
 
 
 
-/*###################################################################################################
-**  DEBUGGER DEFINITIONS
-**#################################################################################################*/
+/***************************************************************************
+    DEBUGGER DEFINITIONS
+***************************************************************************/
 
 static UINT8 dsp56k_reg_layout[] =
 {
@@ -474,9 +482,9 @@ static UINT8 dsp56k_win_layout[] =
 
 
 
-/*###################################################################################################
-**  DISASSEMBLY HOOK
-**#################################################################################################*/
+/***************************************************************************
+    DISASSEMBLY HOOK
+***************************************************************************/
 
 static offs_t dsp56k_dasm(char *buffer, offs_t pc)
 {
@@ -658,7 +666,6 @@ void dsp56k_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = dsp56k_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = dsp56k_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					break ;									// not implemented
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &dsp56k_icount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = dsp56k_reg_layout;			break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = dsp56k_win_layout;			break;

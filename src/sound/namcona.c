@@ -32,7 +32,8 @@
 */
 
 #include <math.h>
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "namcona.h"
 
 #define kTwelfthRootTwo 1.059463094
@@ -146,7 +147,7 @@ static const UINT16 VolCtrlSpeedTable[0x80] =
  * ---------x------ 1 if the main CPU has written a new sound command
  * ----------xxxxxx unknown/unused
  */
-UINT16 *
+static UINT16 *
 GetSequenceStatusAddr( struct namcona *chip, struct sequence *pSeq )
 {
 	int offs = pSeq - chip->mSequence;
@@ -1296,7 +1297,7 @@ namcona_stop( void *chip )
  * Generic get_info
  **************************************************************************/
 
-static void namcona_set_info(void *token, UINT32 state, union sndinfo *info)
+static void namcona_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -1305,7 +1306,7 @@ static void namcona_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void namcona_get_info(void *token, UINT32 state, union sndinfo *info)
+void namcona_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

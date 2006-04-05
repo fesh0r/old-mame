@@ -90,11 +90,11 @@ sol divide doesn't seem to make much use of tilemaps at all, it uses them to fad
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "profiler.h"
 #include "psikyosh.h"
 
 /* Needed for psikyosh_drawgfxzoom */
-mame_bitmap *zoom_bitmap, *z_bitmap;
+static mame_bitmap *zoom_bitmap, *z_bitmap;
 
 /* Psikyo PS6406B */
 /* --- BACKGROUNDS --- */
@@ -405,24 +405,8 @@ void psikyosh_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 
 	profiler_mark(PROFILER_DRAWGFX);
 
-	if (transparency != TRANSPARENCY_PEN &&
-		transparency != TRANSPARENCY_ALPHA &&
-		transparency != TRANSPARENCY_ALPHARANGE)
-	{
-		ui_popup("psikyosh_drawgfxzoom unsupported trans %02x",transparency);
-		return;
-	}
-
-	if (dest_bmp->depth != 32)
-	{
-		ui_popup("psikyosh_drawgfxzoom unsupported depth %d",dest_bmp->depth);
-		return;
-	}
-
-	if (!alpha_active && (transparency == TRANSPARENCY_ALPHA || transparency == TRANSPARENCY_ALPHARANGE))
-	{
-		transparency = TRANSPARENCY_PEN;
-	}
+	assert(transparency == TRANSPARENCY_PEN || transparency == TRANSPARENCY_ALPHA || transparency == TRANSPARENCY_ALPHARANGE);
+	assert(dest_bmp->depth == 32);
 
 	/* KW 991012 -- Added code to force clip to bitmap boundary */
 	if(clip)
@@ -1122,18 +1106,12 @@ static void psikyosh_prelineblend( mame_bitmap *bitmap, const rectangle *cliprec
 
 static void psikyosh_postlineblend( mame_bitmap *bitmap, const rectangle *cliprect )
 {
-	if (bitmap->depth != 32)
-	{
-		ui_popup("psikyosh_postlineblend needs 32-bit depth");
-		return;
-	}
-
-	if (alpha_active)
-	{
 	/* There are 224 values for post-lineblending. Using one for every row currently */
 	UINT32 *dstline;
 	UINT32 *lineblend = psikyosh_bgram+0x400/4; /* Per row */
 	int x,y;
+
+	assert(bitmap->depth == 32);
 
 	profiler_mark(PROFILER_USER2);
 	for (y = cliprect->min_y; y <= cliprect->max_y; y += 1) {
@@ -1152,7 +1130,6 @@ static void psikyosh_postlineblend( mame_bitmap *bitmap, const rectangle *clipre
 		}
 	}
 	profiler_mark(PROFILER_END);
-	}
 }
 
 VIDEO_UPDATE( psikyosh ) /* Note the z-buffer on each sprite to get correct priority */

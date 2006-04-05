@@ -318,7 +318,7 @@ if(stv_scu[42] & 1)//IRQ ACK
 
 /**************************************************************************************/
 
-int DectoBCD(int num)
+static int DectoBCD(int num)
 {
 	int i, cnt = 0, tmp, res = 0;
 
@@ -471,12 +471,12 @@ int DectoBCD(int num)
 7e
 7f -w EXLE2/1
 */
-UINT8 IOSEL1;
-UINT8 IOSEL2;
-UINT8 EXLE1;
-UINT8 EXLE2;
-UINT8 PDR1;
-UINT8 PDR2;
+static UINT8 IOSEL1;
+static UINT8 IOSEL2;
+static UINT8 EXLE1;
+static UINT8 EXLE2;
+static UINT8 PDR1;
+static UINT8 PDR2;
 
 #define SH2_DIRECT_MODE_PORT_1 IOSEL1 = 1
 #define SH2_DIRECT_MODE_PORT_2 IOSEL2 = 1
@@ -563,14 +563,13 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 		if(!(smpc_ram[0x77] & 0x10))
 		{
 			if(LOG_SMPC) logerror("SMPC: M68k on\n");
-			cpunum_set_input_line(2, INPUT_LINE_RESET, PULSE_LINE);
-			cpunum_set_input_line(2, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(2, INPUT_LINE_RESET, CLEAR_LINE);
 			en_68k = 1;
 		}
 		else
 		{
 			if(LOG_SMPC) logerror("SMPC: M68k off\n");
-			cpunum_set_input_line(2, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
 			en_68k = 0;
 		}
 		//if(LOG_SMPC) logerror("SMPC: ram [0x77] = %02x\n",smpc_ram[0x77]);
@@ -617,8 +616,7 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 				smpc_ram[0x5f]=0x02;
 				#if USE_SLAVE
 				stv_enable_slave_sh2 = 1;
-				cpunum_set_input_line(1, INPUT_LINE_RESET, PULSE_LINE);
-				cpunum_set_input_line(1, INPUT_LINE_HALT, CLEAR_LINE);
+				cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
 				#endif
 				break;
 			case 0x03:
@@ -626,14 +624,13 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 				smpc_ram[0x5f]=0x03;
 				stv_enable_slave_sh2 = 0;
 				cpu_trigger(1000);
-				cpunum_set_input_line(1, INPUT_LINE_HALT, ASSERT_LINE);
+				cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
 				break;
 			case 0x06:
 				if(LOG_SMPC) logerror ("SMPC: Sound ON\n");
 				/* wrong? */
 				smpc_ram[0x5f]=0x06;
-				cpunum_set_input_line(2, INPUT_LINE_RESET, PULSE_LINE);
-				cpunum_set_input_line(2, INPUT_LINE_HALT, CLEAR_LINE);
+				cpunum_set_input_line(2, INPUT_LINE_RESET, CLEAR_LINE);
 				break;
 			case 0x07:
 				if(LOG_SMPC) logerror ("SMPC: Sound OFF\n");
@@ -2888,14 +2885,14 @@ static void print_game_info(void)
 	print_file = NULL;
 }
 
-MACHINE_INIT( stv )
+MACHINE_RESET( stv )
 {
 	memory_set_bankptr(1,memory_region(REGION_USER1));
 
 	// don't let the slave cpu and the 68k go anywhere
-	cpunum_set_input_line(1, INPUT_LINE_HALT, ASSERT_LINE);
+	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
 	stv_enable_slave_sh2 = 0;
-	cpunum_set_input_line(2, INPUT_LINE_HALT, ASSERT_LINE);
+	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
 
 	timer_0 = 0;
 	timer_1 = 0;
@@ -3047,7 +3044,7 @@ static MACHINE_DRIVER_START( stv )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(192);	// guess, needed to force video update after V-Blank OUT interrupt
 
-	MDRV_MACHINE_INIT(stv)
+	MDRV_MACHINE_RESET(stv)
 	MDRV_NVRAM_HANDLER(stv) /* Actually 93c45 */
 
 	/* video hardware */
@@ -3085,7 +3082,9 @@ MACHINE_DRIVER_END
 	ROM_LOAD16_WORD_SWAP_BIOS( 4, "mp17953a.ic8",   0x000000, 0x080000, CRC(a4c47570) SHA1(9efc73717ec8a13417e65c54344ded9fc25bf5ef) ) /* taiwan */ \
 	ROM_LOAD16_WORD_SWAP_BIOS( 5, "mp17954a.s",     0x000000, 0x080000, CRC(f7722da3) SHA1(af79cff317e5b57d49e463af16a9f616ed1eee08) ) /* Europe */ \
 	ROM_LOAD16_WORD_SWAP_BIOS( 6, "stv110.bin",     0x000000, 0x080000, CRC(3dfeda92) SHA1(8eb33192a57df5f3a1dfb57263054867c6b2db6d) ) /* ?? */ \
-	/*ROM_LOAD16_WORD_SWAP_BIOS( 7, "saturn.bin",       0x000000, 0x080000, CRC(653ff2d8) SHA1(20994ae7ee177ddaf3a430b010c7620dca000fb4) )*/ /* Saturn Eu Bios */ \
+	ROM_LOAD16_WORD_SWAP_BIOS( 7, "stv1061.bin",    0x000000, 0x080000, CRC(728dbca3) SHA1(0ed2030177f0aa8285645c395ae9ad9f568ab1d6) ) /* ST-V Dev Bios (1.061) - Sega 1994, Noted "ST-V Ver 1.061 94/11/25" on EPROM sticker, Coming from a S-TV SG5001A dev board */ \
+	ROM_LOAD16_WORD_SWAP_BIOS( 8, "epr-17740.bin",  0x000000, 0x080000, CRC(5c5aa63d) SHA1(06860d96923b81afbc21e0ad32ee19487d8ff6e7) ) /* ST-V Bios (Japan early) - Sega 1995, Found on a early board dated 02/1995 */ \
+	/*ROM_LOAD16_WORD_SWAP_BIOS( 9, "saturn.bin",       0x000000, 0x080000, CRC(653ff2d8) SHA1(20994ae7ee177ddaf3a430b010c7620dca000fb4) )*/ /* Saturn Eu Bios */ \
 	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */ \
 	ROM_COPY( REGION_CPU1,0,0,0x080000) \
 	ROM_REGION( 0x100000, REGION_CPU3, 0 ) /* 68000 code */ \
@@ -3103,8 +3102,10 @@ SYSTEM_BIOS_START( stvbios )
 	SYSTEM_BIOS_ADD( 3, "japanb",      "Japan (bios 20091)" )
 	SYSTEM_BIOS_ADD( 4, "taiwan",      "Taiwan (bios mp17953a)" )
 	SYSTEM_BIOS_ADD( 5, "europe",      "Europe (bios mp17954a)" )
-	SYSTEM_BIOS_ADD( 6, "unknown",      "unknown (debug?)" )
-//  SYSTEM_BIOS_ADD( 7, "saturn",      "Saturn bios :)" )
+	SYSTEM_BIOS_ADD( 6, "unknown",     "Unknown (debug?)" )
+	SYSTEM_BIOS_ADD( 7, "dev1061",     "Development (bios 1.061)" )
+	SYSTEM_BIOS_ADD( 8, "japanc",      "Japan (bios epr17740)" )
+//  SYSTEM_BIOS_ADD( 9, "saturn",      "Saturn bios :)" )
 	/*Korea*/
 	/*Asia (Pal Area)*/
 	/*Brazil*/

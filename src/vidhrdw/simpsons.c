@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 
 static int bg_colorbase,sprite_colorbase,layer_colorbase[3];
@@ -109,7 +108,7 @@ void simpsons_video_banking(int bank)
 	if (bank & 1)
 	{
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, paletteram_r);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, paletteram_xBBBBBGGGGGRRRRR_swap_w);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, paletteram_xBBBBBGGGGGRRRRR_be_w);
 	}
 	else
 	{

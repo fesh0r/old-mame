@@ -46,7 +46,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 
@@ -89,7 +88,7 @@ READ16_HANDLER( afega_unknown_r )
 
 WRITE16_HANDLER( afega_soundlatch_w )
 {
-	if (ACCESSING_LSB && Machine->sample_rate)
+	if (ACCESSING_LSB)
 	{
 		soundlatch_w(0,data&0xff);
 		cpunum_set_input_line(1, 0, PULSE_LINE);

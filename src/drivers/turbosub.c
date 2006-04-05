@@ -46,7 +46,6 @@ and hardware.
 
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
-#include "vidhrdw/generic.h"
 
 /* Set to 1 to display test results and skip on errors */
 #define ROM_PATCHES 1
@@ -69,7 +68,7 @@ VIDEO_UPDATE( turbosub )
 }
 
 
-static MACHINE_INIT( turbosub )
+static MACHINE_RESET( turbosub )
 {
 #if ROM_PATCHES
 	UINT8 *rom = (UINT8 *)memory_region(REGION_CPU1);
@@ -349,7 +348,7 @@ static MACHINE_DRIVER_START( turbosub )
 	MDRV_SCREEN_SIZE(34*8, 34*8)
 	MDRV_VISIBLE_AREA(0*8, 34*8-1, 0, 34*8-1)
 	MDRV_PALETTE_LENGTH(512)
-        MDRV_MACHINE_INIT( turbosub )
+        MDRV_MACHINE_RESET( turbosub )
         MDRV_INTERLEAVE(100)
 
 	MDRV_VIDEO_START(turbosub)

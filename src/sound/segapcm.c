@@ -2,7 +2,8 @@
 /*    SEGA 16ch 8bit PCM                                 */
 /*********************************************************/
 
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "segapcm.h"
 
 struct segapcm
@@ -104,6 +105,9 @@ static void *segapcm_start(int sndindex, int clock, const void *config)
 
 	spcm->stream = stream_create(0, 2, clock / 128, spcm, SEGAPCM_update);
 
+	state_save_register_item_array("segapcm", sndindex, spcm->low);
+	state_save_register_item_pointer("segapcm", sndindex, spcm->ram, 0x800);
+
 	return spcm;
 }
 
@@ -128,7 +132,7 @@ READ8_HANDLER( SegaPCM_r )
  * Generic get_info
  **************************************************************************/
 
-static void segapcm_set_info(void *token, UINT32 state, union sndinfo *info)
+static void segapcm_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -137,7 +141,7 @@ static void segapcm_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void segapcm_get_info(void *token, UINT32 state, union sndinfo *info)
+void segapcm_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

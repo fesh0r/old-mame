@@ -1,4 +1,5 @@
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "tiaintf.h"
 #include "tiasound.h"
 
@@ -22,9 +23,6 @@ static void *tia_start(int sndindex, int clock, const void *config)
 
 	info = auto_malloc(sizeof(*info));
 	memset(info, 0, sizeof(*info));
-
-    if (Machine->sample_rate == 0)
-        return info;
 
 	info->channel = stream_create(0, 1, clock, info, tia_update);
 
@@ -50,7 +48,7 @@ WRITE8_HANDLER( tia_sound_w )
  * Generic get_info
  **************************************************************************/
 
-static void tia_set_info(void *token, UINT32 state, union sndinfo *info)
+static void tia_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -59,7 +57,7 @@ static void tia_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void tia_get_info(void *token, UINT32 state, union sndinfo *info)
+void tia_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

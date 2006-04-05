@@ -104,7 +104,6 @@ Main board:
 */
 
 #include "driver.h"
-#include "machine/random.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/6522via.h"
 #include "sound/ay8910.h"
@@ -113,7 +112,6 @@ Main board:
 UINT16 *bmcbowl_vid1;
 UINT16 *bmcbowl_vid2;
 
-static UINT8 *colorram;
 static UINT8 *stats_ram;
 static size_t	stats_ram_size;
 static int clr_offset=0;
@@ -483,7 +481,7 @@ static struct via6522_interface via_interface =
 	/*irq                  */ via_irq
 };
 
-static MACHINE_INIT( bmcbowl )
+static MACHINE_RESET( bmcbowl )
 {
 	via_reset();
 }
@@ -512,7 +510,7 @@ static MACHINE_DRIVER_START( bmcbowl )
 	MDRV_VIDEO_UPDATE(bmcbowl)
 
 	MDRV_NVRAM_HANDLER(bmc_nvram)
-	MDRV_MACHINE_INIT(bmcbowl)
+	MDRV_MACHINE_RESET(bmcbowl)
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 

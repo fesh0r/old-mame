@@ -174,7 +174,6 @@ note: CLUT and color remap PROMs missing
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
@@ -205,14 +204,15 @@ WRITE16_HANDLER( alpha68k_V_video_control_w );
 
 static UINT16 *shared_ram;
 static int invert_controls;
-int microcontroller_id, coin_id;
+int microcontroller_id;
+static int coin_id;
 
 static unsigned trigstate=0, deposits1=0, deposits2=0, credits=0;
 
 /******************************************************************************/
 
 /* resets the values related to the microcontroller */
-MACHINE_INIT( common )
+MACHINE_RESET( common )
 {
 	trigstate = 0;
 	deposits1 = 0;
@@ -220,7 +220,7 @@ MACHINE_INIT( common )
 	credits   = 0;
 }
 
-MACHINE_INIT( tnexspce )
+MACHINE_RESET( tnexspce )
 {
 	alpha68k_flipscreen_w(0);
 }
@@ -2080,7 +2080,7 @@ static MACHINE_DRIVER_START( sstingry )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(common)
+	MDRV_MACHINE_RESET(common)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2130,7 +2130,7 @@ static MACHINE_DRIVER_START( kyros )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(common)
+	MDRV_MACHINE_RESET(common)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2177,7 +2177,7 @@ static MACHINE_DRIVER_START( jongbou )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(common)
+	MDRV_MACHINE_RESET(common)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2248,7 +2248,7 @@ static MACHINE_DRIVER_START( alpha68k_II )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(common)
+	MDRV_MACHINE_RESET(common)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2297,7 +2297,7 @@ static MACHINE_DRIVER_START( alpha68k_II_gm )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(common)
+	MDRV_MACHINE_RESET(common)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2340,7 +2340,7 @@ static MACHINE_DRIVER_START( alpha68k_V )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(common)
+	MDRV_MACHINE_RESET(common)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2382,7 +2382,7 @@ static MACHINE_DRIVER_START( alpha68k_V_sb )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(common)
+	MDRV_MACHINE_RESET(common)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2423,7 +2423,7 @@ static MACHINE_DRIVER_START( tnexspce )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(tnexspce)
+	MDRV_MACHINE_RESET(tnexspce)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

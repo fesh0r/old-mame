@@ -9,8 +9,10 @@
 
 ***************************************************************************/
 
+#include "osdepend.h"
 #include "driver.h"
 #include "x86drc.h"
+#include "debugger.h"
 
 #define LOG_DISPATCHES		0
 
@@ -33,9 +35,9 @@ static void log_dispatch(drc_core *drc);
 #endif
 
 
-/*###################################################################################################
-**  EXTERNAL INTERFACES
-**#################################################################################################*/
+/***************************************************************************
+    EXTERNAL INTERFACES
+***************************************************************************/
 
 /*------------------------------------------------------------------
     drc_init
@@ -260,8 +262,7 @@ void drc_end_sequence(drc_core *drc)
 void drc_register_code_at_cache_top(drc_core *drc, UINT32 pc)
 {
 	pc_ptr_pair *pair = &drc->sequence_list[drc->sequence_count++];
-	if (drc->sequence_count > drc->sequence_count_max)
-		osd_die("drc_register_code_at_cache_top: too many instructions!\n");
+	assert_always(drc->sequence_count <= drc->sequence_count_max, "drc_register_code_at_cache_top: too many instructions!");
 
 	pair->target = drc->cache_top;
 	pair->pc = pc;
@@ -351,12 +352,12 @@ void drc_append_verify_code(drc_core *drc, void *code, UINT8 length)
 void drc_append_call_debugger(drc_core *drc)
 {
 #ifdef MAME_DEBUG
-	if (mame_debug)
+	if (Machine->debug_mode)
 	{
 		link_info link;
-		_cmp_m32abs_imm(&mame_debug, 0);								// cmp  [mame_debug],0
+		_cmp_m32abs_imm(&Machine->debug_mode, 0);						// cmp  [Machine->debug_mode],0
 		_jcc_short_link(COND_E, &link);									// je   skip
-		drc_append_save_call_restore(drc, (genf *)MAME_Debug, 0);		// save volatiles
+		drc_append_save_call_restore(drc, (genf *)mame_debug_hook, 0);	// save volatiles
 		_resolve_link(&link);
 	}
 #endif
@@ -474,8 +475,7 @@ void drc_append_fixed_dispatcher(drc_core *drc, UINT32 newpc)
 void drc_append_tentative_fixed_dispatcher(drc_core *drc, UINT32 newpc)
 {
 	pc_ptr_pair *pair = &drc->tentative_list[drc->tentative_count++];
-	if (drc->tentative_count > drc->tentative_count_max)
-		osd_die("drc_append_tentative_fixed_dispatcher: too many tentative branches!\n");
+	assert_always(drc->tentative_count <= drc->tentative_count_max, "drc_append_tentative_fixed_dispatcher: too many tentative branches!");
 
 	pair->target = drc->cache_top;
 	pair->pc = newpc;
@@ -594,9 +594,9 @@ void drc_dasm(FILE *f, unsigned pc, void *begin, void *end)
 
 
 
-/*###################################################################################################
-**  INTERNAL CODEGEN
-**#################################################################################################*/
+/***************************************************************************
+    INTERNAL CODEGEN
+***************************************************************************/
 
 /*------------------------------------------------------------------
     append_entry_point
@@ -697,15 +697,17 @@ UINT32 drc_x86_get_features(void)
 #else /* !_MSC_VER */
 	__asm__
 	(
+	        "pushl %%ebx         ; "
 		"movl $1,%%eax       ; "
 		"xorl %%ebx,%%ebx    ; "
 		"xorl %%ecx,%%ecx    ; "
 		"xorl %%edx,%%edx    ; "
 		"cpuid               ; "
 		"movl %%edx,%0       ; "
+                "popl %%ebx          ; "
 	: "=&a" (features)		/* result has to go in eax */
 	: 				/* no inputs */
-	: "%ebx", "%ecx", "%edx"	/* clobbers ebx, ecx and edx */
+	: "%ecx", "%edx"	/* clobbers ebx, ecx and edx */
 	);
 #endif /* MSC_VER */
 	return features;

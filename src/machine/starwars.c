@@ -8,9 +8,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "cpuintrf.h"
 #include "starwars.h"
-#include "random.h"
 #include "vidhrdw/avgdvg.h"
 
 

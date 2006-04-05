@@ -183,7 +183,6 @@
 **************************************************************************/
 
 #include "driver.h"
-#include "debugcpu.h"
 #include "cpu/adsp2100/adsp2100.h"
 #include "cpu/mips/mips3.h"
 #include "sndhrdw/dcs.h"
@@ -523,7 +522,7 @@ static VIDEO_UPDATE( seattle )
  *
  *************************************/
 
-static MACHINE_INIT( seattle )
+static MACHINE_RESET( seattle )
 {
 	/* set the fastest DRC options, but strict verification */
 	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_DRC_OPTIONS, MIPS3DRC_FASTEST_OPTIONS + MIPS3DRC_STRICT_VERIFY);
@@ -1007,7 +1006,7 @@ static void galileo_perform_dma(int which)
 		if (dstaddr >= 0x08000000 && dstaddr < 0x09000000)
 		{
 			if (bytesleft % 4 != 0)
-				osd_die("Galileo DMA to voodoo: bytesleft = %d\n", bytesleft);
+				fatalerror("Galileo DMA to voodoo: bytesleft = %d", bytesleft);
 			srcinc *= 4;
 			dstinc *= 4;
 
@@ -1311,7 +1310,7 @@ static WRITE32_HANDLER( seattle_voodoo_w )
 
 	/* shouldn't get here if the CPU is already stalled */
 	if (cpu_stalled_on_voodoo)
-		osd_die("seattle_voodoo_w while CPU is stalled\n");
+		fatalerror("seattle_voodoo_w while CPU is stalled");
 
 	/* remember all the info about this access for later */
 	cpu_stalled_on_voodoo = TRUE;
@@ -1320,7 +1319,7 @@ static WRITE32_HANDLER( seattle_voodoo_w )
 	cpu_stalled_mem_mask = mem_mask;
 
 	/* spin until we send the magic trigger */
-	cpu_spinuntil_trigger(45678);
+	cpunum_spinuntil_trigger(0, 45678);
 	if (LOG_DMA) logerror("%08X:Stalling CPU on voodoo (already stalled)\n", activecpu_get_pc());
 }
 
@@ -1341,7 +1340,7 @@ static void voodoo_stall(int stall)
 		else
 		{
 			if (LOG_DMA) logerror("%08X:Stalling CPU on voodoo\n", activecpu_get_pc());
-			cpu_spinuntil_trigger(45678);
+			cpunum_spinuntil_trigger(0, 45678);
 		}
 	}
 
@@ -2514,7 +2513,7 @@ MACHINE_DRIVER_START( seattle_common )
 	MDRV_FRAMES_PER_SECOND(57)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(seattle)
+	MDRV_MACHINE_RESET(seattle)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */

@@ -87,10 +87,7 @@
  *      http://www.msxnet.org/tech/z80-documented.pdf
  *****************************************************************************/
 
-#include "driver.h"
-#include "cpuintrf.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "z80.h"
 #include "z80daisy.h"
 
@@ -114,7 +111,7 @@
 #define BUSY_LOOP_HACKS		1
 
 /* check for delay loops counting down BC */
-#define TIME_LOOP_HACKS		1
+#define TIME_LOOP_HACKS		0
 
 #ifdef X86_ASM
 #undef	BIG_FLAGS_ARRAY
@@ -146,7 +143,7 @@ typedef struct
 	UINT8	r,r2,iff1,iff2,halt,im,i;
 	UINT8	nmi_state;			/* nmi line state */
 	UINT8	irq_state;			/* irq line state */
-	struct z80_irq_daisy_chain *daisy;
+	const struct z80_irq_daisy_chain *daisy;
 	int		(*irq_callback)(int irqline);
 	int		extra_cycles;		/* extra cycles for interrupts */
 }	Z80_Regs;
@@ -3736,9 +3733,8 @@ static void take_interrupt(void)
 /****************************************************************************
  * Processor initialization
  ****************************************************************************/
-static void z80_init(void)
+static void z80_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
 	int i, p;
 
 	/* setup cycle tables */
@@ -3759,7 +3755,7 @@ static void z80_init(void)
 		SZHVC_sub = (UINT8 *)malloc(2*256*256);
 		if( !SZHVC_add || !SZHVC_sub )
 		{
-			osd_die("Z80: failed to allocate 2 * 128K flags arrays!!!\n");
+			fatalerror("Z80: failed to allocate 2 * 128K flags arrays!!!");
 		}
 		padd = &SZHVC_add[	0*256];
 		padc = &SZHVC_add[256*256];
@@ -3832,31 +3828,33 @@ static void z80_init(void)
 		if( (i & 0x0f) == 0x0f ) SZHV_dec[i] |= HF;
 	}
 
-	state_save_register_UINT16("z80", cpu, "PPC", &Z80.prvpc.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "PC", &Z80.pc.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "SP", &Z80.sp.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "AF", &Z80.af.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "BC", &Z80.bc.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "DE", &Z80.de.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "HL", &Z80.hl.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "IX", &Z80.ix.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "IY", &Z80.iy.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "AF2", &Z80.af2.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "BC2", &Z80.bc2.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "DE2", &Z80.de2.w.l, 1);
-	state_save_register_UINT16("z80", cpu, "HL2", &Z80.hl2.w.l, 1);
-	state_save_register_UINT8("z80", cpu, "R", &Z80.r, 1);
-	state_save_register_UINT8("z80", cpu, "R2", &Z80.r2, 1);
-	state_save_register_UINT8("z80", cpu, "IFF1", &Z80.iff1, 1);
-	state_save_register_UINT8("z80", cpu, "IFF2", &Z80.iff2, 1);
-	state_save_register_UINT8("z80", cpu, "HALT", &Z80.halt, 1);
-	state_save_register_UINT8("z80", cpu, "IM", &Z80.im, 1);
-	state_save_register_UINT8("z80", cpu, "I", &Z80.i, 1);
-	state_save_register_UINT8("z80", cpu, "nmi_state", &Z80.nmi_state, 1);
-	state_save_register_UINT8("z80", cpu, "irq_state", &Z80.irq_state, 1);
+	state_save_register_item("z80", index, Z80.prvpc.w.l);
+	state_save_register_item("z80", index, Z80.pc.w.l);
+	state_save_register_item("z80", index, Z80.sp.w.l);
+	state_save_register_item("z80", index, Z80.af.w.l);
+	state_save_register_item("z80", index, Z80.bc.w.l);
+	state_save_register_item("z80", index, Z80.de.w.l);
+	state_save_register_item("z80", index, Z80.hl.w.l);
+	state_save_register_item("z80", index, Z80.ix.w.l);
+	state_save_register_item("z80", index, Z80.iy.w.l);
+	state_save_register_item("z80", index, Z80.af2.w.l);
+	state_save_register_item("z80", index, Z80.bc2.w.l);
+	state_save_register_item("z80", index, Z80.de2.w.l);
+	state_save_register_item("z80", index, Z80.hl2.w.l);
+	state_save_register_item("z80", index, Z80.r);
+	state_save_register_item("z80", index, Z80.r2);
+	state_save_register_item("z80", index, Z80.iff1);
+	state_save_register_item("z80", index, Z80.iff2);
+	state_save_register_item("z80", index, Z80.halt);
+	state_save_register_item("z80", index, Z80.im);
+	state_save_register_item("z80", index, Z80.i);
+	state_save_register_item("z80", index, Z80.nmi_state);
+	state_save_register_item("z80", index, Z80.irq_state);
 
 	/* Reset registers to their initial values */
 	memset(&Z80, 0, sizeof(Z80));
+	Z80.daisy = config;
+	Z80.irq_callback = irqcallback;
 	IX = IY = 0xffff; /* IX and IY are FFFF after a reset! */
 	F = ZF;			/* Zero flag is set */
 }
@@ -3864,7 +3862,7 @@ static void z80_init(void)
 /****************************************************************************
  * Do a reset
  ****************************************************************************/
-static void z80_reset(void *param)
+static void z80_reset(void)
 {
 	PC = 0x0000;
 	I = 0;
@@ -3872,7 +3870,6 @@ static void z80_reset(void *param)
 	R2 = 0;
 	Z80.nmi_state = CLEAR_LINE;
 	Z80.irq_state = CLEAR_LINE;
-	Z80.daisy = param;
 
 	if (Z80.daisy)
 		z80daisy_reset(Z80.daisy);
@@ -4085,9 +4082,6 @@ static void z80_set_info(UINT32 state, union cpuinfo *info)
 			break;
 
 		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:
-			Z80.irq_callback = info->irqcallback;
-			break;
 		case CPUINFO_PTR_Z80_CYCLE_TABLE + Z80_TABLE_op:
 			cc[Z80_TABLE_op] = info->p;
 			break;
@@ -4299,9 +4293,6 @@ void z80_get_info(UINT32 state, union cpuinfo *info)
 			info->disassemble_new = z80_dasm;
 			break;
 #endif
-		case CPUINFO_PTR_IRQ_CALLBACK:
-			info->irqcallback = Z80.irq_callback;
-			break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:
 			info->icount = &z80_ICount;
 			break;

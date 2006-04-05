@@ -5,14 +5,13 @@
 /*************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 UINT8 *s2636ram;
-mame_bitmap *spritebitmap;
+static mame_bitmap *spritebitmap;
 
-int dirtychar[16];
-int CollisionBackground;
-int CollisionSprite;
+static UINT8 dirtychar[256>>3];
+static int CollisionBackground;
+static int CollisionSprite;
 
 static tilemap *bg_tilemap;
 

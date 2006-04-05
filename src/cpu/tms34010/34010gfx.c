@@ -1,11 +1,11 @@
-/*###################################################################################################
-**
-**  TMS34010: Portable Texas Instruments TMS34010 emulator
-**
-**  Copyright (C) Alex Pasadyn/Zsolt Vasvari 1998
-**   Parts based on code by Aaron Giles
-**
-**#################################################################################################*/
+/***************************************************************************
+
+    TMS34010: Portable Texas Instruments TMS34010 emulator
+
+    Copyright (C) Alex Pasadyn/Zsolt Vasvari 1998
+    Parts based on code by Aaron Giles
+
+***************************************************************************/
 
 #ifndef RECURSIVE_INCLUDE
 
@@ -167,7 +167,7 @@ static int apply_window(const char *inst_name,int srcbpp, UINT32 *srcaddr, XY *d
 
 *******************************************************************/
 
-int compute_fill_cycles(int left_partials, int right_partials, int full_words, int op_timing)
+static int compute_fill_cycles(int left_partials, int right_partials, int full_words, int op_timing)
 {
 	int dstwords;
 
@@ -178,7 +178,7 @@ int compute_fill_cycles(int left_partials, int right_partials, int full_words, i
 	return (dstwords * op_timing);
 }
 
-int compute_pixblt_cycles(int left_partials, int right_partials, int full_words, int op_timing)
+static int compute_pixblt_cycles(int left_partials, int right_partials, int full_words, int op_timing)
 {
 	int srcwords, dstwords;
 
@@ -190,7 +190,7 @@ int compute_pixblt_cycles(int left_partials, int right_partials, int full_words,
 	return (dstwords * op_timing + srcwords * 2) + 2;
 }
 
-int compute_pixblt_b_cycles(int left_partials, int right_partials, int full_words, int rows, int op_timing, int bpp)
+static int compute_pixblt_b_cycles(int left_partials, int right_partials, int full_words, int rows, int op_timing, int bpp)
 {
 	int srcwords, dstwords;
 

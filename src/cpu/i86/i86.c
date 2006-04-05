@@ -4,14 +4,8 @@
 ****************************************************************************/
 /* 26.March 2000 PeT changed set_irq_line */
 
-#include <stdio.h>
-#include <string.h>
 #include "host.h"
-#include "cpuintrf.h"
-#include "memory.h"
-#include "mamedbg.h"
-#include "mame.h"
-#include "state.h"
+#include "debugger.h"
 
 #include "i86.h"
 #include "i86intf.h"
@@ -57,7 +51,7 @@ typedef struct
 	UINT16 sregs[4];
 	UINT16 flags;
 	int (*irq_callback) (int irqline);
-	int AuxVal, OverVal, SignVal, ZeroVal, CarryVal, DirVal;		/* 0 or non-0 valued flags */
+	INT32 AuxVal, OverVal, SignVal, ZeroVal, CarryVal, DirVal;		/* 0 or non-0 valued flags */
 	UINT8 ParityVal;
 	UINT8 TF, IF;				   /* 0 or 1 valued flags */
 	UINT8 MF;						   /* V30 mode flag */
@@ -65,7 +59,7 @@ typedef struct
 	INT8 nmi_state;
 	INT8 irq_state;
 	INT8 test_state;	/* PJB 03/05 */
-	int extra_cycles;       /* extra cycles for interrupts */
+	INT32 extra_cycles;       /* extra cycles for interrupts */
 }
 i86_Regs;
 
@@ -102,37 +96,36 @@ static struct i86_timing cycles;
 #undef I86
 
 /***************************************************************************/
-static void i86_state_register(void)
+static void i86_state_register(int index)
 {
-	int cpu = cpu_getactivecpu();
-	const char *type = "I86";
-	state_save_register_UINT16(type, cpu, "REGS",			I.regs.w, 8);
-	state_save_register_UINT32(type, cpu, "PC",				&I.pc, 1);
-	state_save_register_UINT32(type, cpu, "PREVPC",			&I.prevpc, 1);
-	state_save_register_UINT32(type, cpu, "BASE",			I.base, 4);
-	state_save_register_UINT16(type, cpu, "SREGS",			I.sregs, 4);
-	state_save_register_UINT16(type, cpu, "FLAGS",			&I.flags, 1);
-	state_save_register_int(   type, cpu, "AUXVAL",			&I.AuxVal);
-	state_save_register_int(   type, cpu, "OVERVAL",		&I.OverVal);
-	state_save_register_int(   type, cpu, "SIGNVAL",		&I.SignVal);
-	state_save_register_int(   type, cpu, "ZEROVAL",		&I.ZeroVal);
-	state_save_register_int(   type, cpu, "CARRYVAL",		&I.CarryVal);
-	state_save_register_int(   type, cpu, "DIRVAL",			&I.DirVal);
-	state_save_register_UINT8( type, cpu, "PARITYVAL",		&I.ParityVal, 1);
-	state_save_register_UINT8( type, cpu, "TF",				&I.TF, 1);
-	state_save_register_UINT8( type, cpu, "IF",				&I.IF, 1);
-	state_save_register_UINT8( type, cpu, "MF",				&I.MF, 1);
-	state_save_register_UINT8( type, cpu, "INT_VECTOR",		&I.int_vector, 1);
-	state_save_register_INT8(  type, cpu, "NMI_STATE",		&I.nmi_state, 1);
-	state_save_register_INT8(  type, cpu, "IRQ_STATE",		&I.irq_state, 1);
-	state_save_register_int(   type, cpu, "EXTRA_CYCLES",	&I.extra_cycles);
-	state_save_register_INT8(  type, cpu, "TEST_STATE",		&I.test_state, 1);	/* PJB 03/05 */
+	static const char type[] = "I86";
+	state_save_register_item_array(type, index, I.regs.w);
+	state_save_register_item(type, index, I.pc);
+	state_save_register_item(type, index, I.prevpc);
+	state_save_register_item_array(type, index, I.base);
+	state_save_register_item_array(type, index, I.sregs);
+	state_save_register_item(type, index, I.flags);
+	state_save_register_item(type, index, I.AuxVal);
+	state_save_register_item(type, index, I.OverVal);
+	state_save_register_item(type, index, I.SignVal);
+	state_save_register_item(type, index, I.ZeroVal);
+	state_save_register_item(type, index, I.CarryVal);
+	state_save_register_item(type, index, I.DirVal);
+	state_save_register_item(type, index, I.ParityVal);
+	state_save_register_item(type, index, I.TF);
+	state_save_register_item(type, index, I.IF);
+	state_save_register_item(type, index, I.MF);
+	state_save_register_item(type, index, I.int_vector);
+	state_save_register_item(type, index, I.nmi_state);
+	state_save_register_item(type, index, I.irq_state);
+	state_save_register_item(type, index, I.extra_cycles);
+	state_save_register_item(type, index, I.test_state);	/* PJB 03/05 */
 }
 
-static void i86_init(void)
+static void i86_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	unsigned int i, j, c;
-	BREGS reg_name[8] = {AL, CL, DL, BL, AH, CH, DH, BH};
+	static const BREGS reg_name[8] = {AL, CL, DL, BL, AH, CH, DH, BH};
 	for (i = 0; i < 256; i++)
 	{
 		for (j = i, c = 0; j > 0; j >>= 1)
@@ -154,12 +147,18 @@ static void i86_init(void)
 		Mod_RM.RM.b[i] = (BREGS) reg_name[i & 7];
 	}
 
-	i86_state_register();
+	I.irq_callback = irqcallback;
+
+	i86_state_register(index);
 }
 
-static void i86_reset(void *param)
+static void i86_reset(void)
 {
+	int (*save_irqcallback)(int);
+
+	save_irqcallback = I.irq_callback;
 	memset(&I, 0, sizeof (I));
+	I.irq_callback = save_irqcallback;
 
 	I.sregs[CS] = 0xf000;
 	I.base[CS] = SegBase(CS);
@@ -407,7 +406,7 @@ static void v30_trap(void)
 #include "instrv30.c"
 #undef V20
 
-static void v30_reset(void *param)
+static void v30_reset(void)
 {
 	i86_reset(param);
 	SetMD(1);
@@ -508,9 +507,6 @@ static void i86_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + I86_SS:				I.sregs[SS] = info->i;	I.base[SS] = SegBase(SS); break;
 		case CPUINFO_INT_REGISTER + I86_DS:				I.sregs[DS] = info->i;	I.base[DS] = SegBase(DS); break;
 		case CPUINFO_INT_REGISTER + I86_VECTOR:			I.int_vector = info->i; 				break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					I.irq_callback = info->irqcallback;		break;
 	}
 }
 
@@ -581,7 +577,6 @@ void i86_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = i86_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = i86_dasm;			break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = I.irq_callback;		break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &i86_ICount;				break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = i86_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = i86_win_layout;				break;

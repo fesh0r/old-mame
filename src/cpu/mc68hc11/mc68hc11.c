@@ -4,10 +4,7 @@
    Written by Ville Linde
  */
 
-#include "driver.h"
-#include "cpuintrf.h"
-#include "mamedbg.h"
-#include "osd_cpu.h"
+#include "debugger.h"
 #include "mc68hc11.h"
 
 enum {
@@ -119,7 +116,7 @@ static UINT8 hc11_regs_r(UINT32 address)
 			return 0;
 	}
 
-	osd_die("HC11: regs_r %02X\n", reg);
+	fatalerror("HC11: regs_r %02X", reg);
 	return 0; // Dummy
 }
 
@@ -206,7 +203,7 @@ static void hc11_regs_w(UINT32 address, UINT8 value)
 			return;
 
 	}
-	osd_die("HC11: regs_w %02X, %02X\n", reg, value);
+	fatalerror("HC11: regs_w %02X, %02X", reg, value);
 }
 
 /*****************************************************************************/
@@ -273,7 +270,7 @@ static void (*hc11_optable_page4[256])(void);
 #include "hc11ops.c"
 #include "hc11ops.h"
 
-static void hc11_init(void)
+static void hc11_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	int i;
 
@@ -309,9 +306,10 @@ static void hc11_init(void)
 
 	hc11.reg_position = 0;
 	hc11.ram_position = 0x100;
+	hc11.irq_callback = irqcallback;
 }
 
-static void hc11_reset(void *param)
+static void hc11_reset(void)
 {
 	hc11.pc = READ16(0xfffe);
 }
@@ -397,9 +395,6 @@ static void mc68hc11_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + HC11_B:				hc11.d.d8.b = info->i; break;
 		case CPUINFO_INT_REGISTER + HC11_IX:			hc11.ix = info->i; break;
 		case CPUINFO_INT_REGISTER + HC11_IY:			hc11.iy = info->i; break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					hc11.irq_callback = info->irqcallback; break;
 	}
 }
 
@@ -450,7 +445,6 @@ void mc68hc11_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = hc11_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = hc11_disasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = hc11.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &hc11.icount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = hc11_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = hc11_win_layout;				break;

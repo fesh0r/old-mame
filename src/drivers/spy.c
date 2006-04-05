@@ -18,7 +18,6 @@ Revisions:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "vidhrdw/konamiic.h"
 #include "sound/3812intf.h"
@@ -68,7 +67,7 @@ static WRITE8_HANDLER( spy_bankedram1_w )
 {
 	if (rambank & 1)
 	{
-		paletteram_xBBBBBGGGGGRRRRR_swap_w(offset,data);
+		paletteram_xBBBBBGGGGGRRRRR_be_w(offset,data);
 	}
 	else if (rambank & 2)
 	{

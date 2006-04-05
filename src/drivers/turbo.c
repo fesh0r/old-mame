@@ -145,7 +145,6 @@
 **************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/8255ppi.h"
 #include "turbo.h"
 #include "machine/segacrpt.h"
@@ -579,7 +578,7 @@ static MACHINE_DRIVER_START( turbo )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(turbo)
+	MDRV_MACHINE_RESET(turbo)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -610,7 +609,7 @@ static MACHINE_DRIVER_START( subroc3d )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(subroc3d)
+	MDRV_MACHINE_RESET(subroc3d)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
@@ -645,7 +644,7 @@ static MACHINE_DRIVER_START( buckrog )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
-	MDRV_MACHINE_INIT(buckrog)
+	MDRV_MACHINE_RESET(buckrog)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

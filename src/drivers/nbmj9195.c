@@ -20,8 +20,7 @@ Notes:
 ******************************************************************************/
 
 #include "driver.h"
-#include "machine/z80fmly.h"
-#include "vidhrdw/generic.h"
+#include "machine/z80ctc.h"
 #include "sound/3812intf.h"
 #include "sound/dac.h"
 #include "cpu/z80/z80daisy.h"
@@ -204,7 +203,7 @@ static int tmpz84c011_pio_r(int offset)
 						portdata = readinputport(7);
 						break;
 					default:
-						portdata = 0xff;
+						portdata = (readinputport(3) & readinputport(4) & readinputport(5) & readinputport(6) & readinputport(7));
 						break;
 				}
 				break;
@@ -228,7 +227,7 @@ static int tmpz84c011_pio_r(int offset)
 						portdata = readinputport(12);
 						break;
 					default:
-						portdata = 0xff;
+						portdata = (readinputport(8) & readinputport(9) & readinputport(10) & readinputport(11) & readinputport(12));
 						break;
 				}
 				break;
@@ -289,7 +288,7 @@ static int tmpz84c011_pio_r(int offset)
 						portdata = ((readinputport(7) & 0x7f) | (nbmj9195_dipsw_r() << 7));
 						break;
 					default:
-						portdata = 0xff;
+						portdata = (readinputport(3) & readinputport(4) & readinputport(5) & readinputport(6) & (readinputport(12) & 0x7f));
 						break;
 				}
 				break;
@@ -313,7 +312,7 @@ static int tmpz84c011_pio_r(int offset)
 						portdata = readinputport(12) & 0x7f;
 						break;
 					default:
-						portdata = 0xff;
+						portdata = (readinputport(8) & readinputport(9) & readinputport(10) & readinputport(11) & (readinputport(12) & 0x7f));
 						break;
 				}
 				break;
@@ -504,26 +503,36 @@ static INTERRUPT_GEN( ctc0_trg1 )
 	z80ctc_0_trg1_w(0, 0);
 }
 
-static z80ctc_interface ctc_intf =
+static z80ctc_interface ctc_intf_1 =
 {
-	2,									/* 2 chip */
-	{ 0, 1 },							/* clock */
-	{ 0, 0 },							/* timer disables */
-	{ ctc0_interrupt, ctc1_interrupt },	/* interrupt handler */
-	{ 0, z80ctc_1_trg3_w },				/* ZC/TO0 callback ctc1.zc0 -> ctc1.trg3 */
-	{ 0, 0 },							/* ZC/TO1 callback */
-	{ 0, 0 },							/* ZC/TO2 callback */
+	0,							/* clock */
+	0,							/* timer disables */
+	ctc0_interrupt,				/* interrupt handler */
+	0,							/* ZC/TO0 callback ctc1.zc0 -> ctc1.trg3 */
+	0,							/* ZC/TO1 callback */
+	0,							/* ZC/TO2 callback */
+};
+
+static z80ctc_interface ctc_intf_2 =
+{
+	1,							/* clock */
+	0,							/* timer disables */
+	ctc1_interrupt,				/* interrupt handler */
+	z80ctc_1_trg3_w,			/* ZC/TO0 callback ctc1.zc0 -> ctc1.trg3 */
+	0,							/* ZC/TO1 callback */
+	0							/* ZC/TO2 callback */
 };
 
 static void tmpz84c011_init(void)
 {
 	// initialize the CTC
-	ctc_intf.baseclock[0] = Machine->drv->cpu[0].cpu_clock;
-	ctc_intf.baseclock[1] = Machine->drv->cpu[1].cpu_clock;
-	z80ctc_init(&ctc_intf);
+	ctc_intf_1.baseclock = Machine->drv->cpu[0].cpu_clock;
+	ctc_intf_2.baseclock = Machine->drv->cpu[1].cpu_clock;
+	z80ctc_init(0, &ctc_intf_1);
+	z80ctc_init(1, &ctc_intf_2);
 }
 
-static MACHINE_INIT( sailorws )
+static MACHINE_RESET( sailorws )
 {
 	int i;
 
@@ -4170,7 +4179,7 @@ static MACHINE_DRIVER_START( NBMJDRV1 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(sailorws)
+	MDRV_MACHINE_RESET(sailorws)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK | VIDEO_PIXEL_ASPECT_RATIO_1_2)

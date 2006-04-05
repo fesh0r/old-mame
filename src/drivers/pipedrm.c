@@ -105,7 +105,6 @@
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
-#include "vidhrdw/generic.h"
 #include "fromance.h"
 #include "sound/2608intf.h"
 #include "sound/2610intf.h"
@@ -123,7 +122,7 @@ static UINT8 sound_command;
  *
  *************************************/
 
-MACHINE_INIT( pipedrm )
+MACHINE_RESET( pipedrm )
 {
 	/* initialize main Z80 bank */
 	memory_configure_bank(1, 0, 8, memory_region(REGION_CPU1) + 0x10000, 0x2000);
@@ -225,7 +224,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(1)
-	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(MRA8_RAM, paletteram_xRRRRRGGGGGBBBBB_w) AM_BASE(&paletteram)
+	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(MRA8_RAM, paletteram_xRRRRRGGGGGBBBBB_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0xd000, 0xffff) AM_READWRITE(fromance_videoram_r, fromance_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
@@ -568,7 +567,7 @@ static MACHINE_DRIVER_START( pipedrm )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(pipedrm)
+	MDRV_MACHINE_RESET(pipedrm)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -607,7 +606,7 @@ static MACHINE_DRIVER_START( hatris )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(pipedrm)
+	MDRV_MACHINE_RESET(pipedrm)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

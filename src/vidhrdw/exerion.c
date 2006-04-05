@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "exerion.h"
 
 //#define DEBUG_SPRITES
@@ -20,7 +19,6 @@
 
 
 #ifdef DEBUG_SPRITES
-#include <stdio.h>
 FILE	*sprite_log;
 #endif
 
@@ -253,7 +251,7 @@ READ8_HANDLER( exerion_video_timing_r )
  *
  *************************************/
 
-void draw_background(mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_background(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	UINT8 *latches = &background_latches[cliprect->min_y * 16];
 	int x, y;

@@ -4,20 +4,19 @@
 
 ***************************************************************************/
 
-#include <stdio.h>
-
 #include "driver.h"
-#include "machine/z80fmly.h"
+#include "machine/z80ctc.h"
+#include "machine/z80pio.h"
+#include "machine/z80sio.h"
 #include "sndhrdw/mcr.h"
 #include "cpu/m6800/m6800.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 #include "mcr.h"
-#include "state.h"
 
 
-#define LOG(x)
+#define LOG(x) logerror x
 
 
 /*************************************
@@ -66,8 +65,10 @@ static void (*v493_callback)(int param);
 
 static UINT8 zwackery_sound_data;
 
-static const double m6840_counter_periods[3] = { 1.0 / 30.0, 1000000.0, 1.0 / (512.0 * 30.0) };
+static const double m6840_counter_periods[3] = { 1.0 / 30.0, 1000.0, 1.0 / (512.0 * 30.0) };
 static double m6840_internal_counter_period;	/* 68000 CLK / 10 */
+
+static mame_timer *ipu_watchdog_timer;
 
 
 
@@ -89,6 +90,8 @@ static void zwackery_pia_irq(int state);
 
 static void reload_count(int counter);
 static void counter_fired_callback(int counter);
+static void ipu_watchdog_reset(int param);
+static WRITE8_HANDLER( ipu_break_changed );
 
 
 
@@ -205,11 +208,11 @@ struct z80_irq_daisy_chain mcr_daisy_chain[] =
 };
 
 
-struct z80_irq_daisy_chain ipu_daisy_chain[] =
+struct z80_irq_daisy_chain mcr_ipu_daisy_chain[] =
 {
 	{ z80ctc_reset, z80ctc_irq_state, z80ctc_irq_ack, z80ctc_irq_reti, 1 }, /* CTC number 1 */
 	{ z80pio_reset, z80pio_irq_state, z80pio_irq_ack, z80pio_irq_reti, 1 }, /* PIO number 1 */
-//  { z80sio_reset, z80sio_irq_state, z80sio_irq_ack, z80sio_irq_reti, 0 }, /* SIO number 0 */
+	{ z80sio_reset, z80sio_irq_state, z80sio_irq_ack, z80sio_irq_reti, 0 }, /* SIO number 0 */
 	{ z80pio_reset, z80pio_irq_state, z80pio_irq_ack, z80pio_irq_reti, 0 }, /* PIO number 0 */
 	{ 0, 0, 0, 0, -1 }		/* end mark */
 };
@@ -217,32 +220,42 @@ struct z80_irq_daisy_chain ipu_daisy_chain[] =
 
 static z80ctc_interface ctc_intf =
 {
-	1,                  /* 1 chip */
-	{ 0 },              /* clock (filled in from the CPU 0 clock) */
-	{ 0 },              /* timer disables */
-	{ ctc_interrupt },  /* interrupt handler */
-	{ z80ctc_0_trg1_w },/* ZC/TO0 callback */
-	{ 0 },              /* ZC/TO1 callback */
-	{ 0 }               /* ZC/TO2 callback */
+	0,              	/* clock (filled in from the CPU 0 clock) */
+	0,              	/* timer disables */
+	ctc_interrupt,  	/* interrupt handler */
+	z80ctc_0_trg1_w,	/* ZC/TO0 callback */
+	0,              	/* ZC/TO1 callback */
+	0               	/* ZC/TO2 callback */
 };
 
 
 static z80ctc_interface nflfoot_ctc_intf =
 {
-	2,                  /* 2 chips */
-	{ 0, 0 },           /* clock (filled in from the CPU 0 clock) */
-	{ 0, 0 },           /* timer disables */
-	{ ctc_interrupt, ipu_ctc_interrupt },  /* interrupt handler */
-	{ z80ctc_1_trg1_w },/* ZC/TO0 callback */
-	{ 0 },              /* ZC/TO1 callback */
-	{ 0 }               /* ZC/TO2 callback */
+	0,                  /* clock (filled in from the CPU 3 clock) */
+	0,                  /* timer disables */
+	ipu_ctc_interrupt,  /* interrupt handler */
+	0,					/* ZC/TO0 callback */
+	0,              	/* ZC/TO1 callback */
+	0               	/* ZC/TO2 callback */
 };
 
 
 static z80pio_interface nflfoot_pio_intf =
 {
-	2,					/* 2 chips */
-	{ ipu_ctc_interrupt, ipu_ctc_interrupt }  /* interrupt handler */
+	ipu_ctc_interrupt,
+	0,
+	0
+};
+
+
+static z80sio_interface nflfoot_sio_intf =
+{
+	0,                  /* clock (filled in from the CPU 3 clock) */
+	ipu_ctc_interrupt,	/* interrupt handler */
+	0,					/* DTR changed handler */
+	0,					/* RTS changed handler */
+	ipu_break_changed,	/* BREAK changed handler */
+	mcr_ipu_sio_transmit/* transmit handler */
 };
 
 
@@ -253,32 +266,42 @@ static z80pio_interface nflfoot_pio_intf =
  *
  *************************************/
 
-MACHINE_INIT( mcr )
+MACHINE_START( mcr )
 {
 	/* initialize the CTC */
-	ctc_intf.baseclock[0] = Machine->drv->cpu[0].cpu_clock;
-	z80ctc_init(&ctc_intf);
+	ctc_intf.baseclock = Machine->drv->cpu[0].cpu_clock;
+	z80ctc_init(0, &ctc_intf);
 
-	/* reset cocktail flip */
-	mcr_cocktail_flip = 0;
 	state_save_register_global(mcr_cocktail_flip);
-
-	/* initialize the sound */
-	mcr_sound_reset();
+	return 0;
 }
 
 
-MACHINE_INIT( nflfoot )
+MACHINE_START( nflfoot )
 {
 	/* initialize the CTC */
-	nflfoot_ctc_intf.baseclock[0] = Machine->drv->cpu[0].cpu_clock;
-	nflfoot_ctc_intf.baseclock[1] = Machine->drv->cpu[3].cpu_clock;
-	z80ctc_init(&nflfoot_ctc_intf);
-	z80pio_init(&nflfoot_pio_intf);
+	ctc_intf.baseclock = Machine->drv->cpu[0].cpu_clock;
+	z80ctc_init(0, &ctc_intf);
 
+	nflfoot_ctc_intf.baseclock = Machine->drv->cpu[3].cpu_clock;
+	z80ctc_init(1, &nflfoot_ctc_intf);
+
+	z80pio_init(0, &nflfoot_pio_intf);
+	z80pio_init(1, &nflfoot_pio_intf);
+
+	nflfoot_sio_intf.baseclock = Machine->drv->cpu[3].cpu_clock;
+	z80sio_init(0, &nflfoot_sio_intf);
+
+	/* allocate a timer for the IPU watchdog */
+	ipu_watchdog_timer = timer_alloc(ipu_watchdog_reset);
+	return 0;
+}
+
+
+MACHINE_RESET( mcr )
+{
 	/* reset cocktail flip */
 	mcr_cocktail_flip = 0;
-	state_save_register_global(mcr_cocktail_flip);
 
 	/* initialize the sound */
 	mcr_sound_reset();
@@ -291,6 +314,36 @@ MACHINE_INIT( nflfoot )
  *  Generic MCR/68k machine initialization
  *
  *************************************/
+
+MACHINE_START( mcr68 )
+{
+	int i;
+
+	for (i = 0; i < 3; i++)
+	{
+		struct counter_state *m6840 = &m6840_state[i];
+
+		m6840->timer = timer_alloc(counter_fired_callback);
+
+		state_save_register_item("m6840", i, m6840->control);
+		state_save_register_item("m6840", i, m6840->latch);
+		state_save_register_item("m6840", i, m6840->count);
+		state_save_register_item("m6840", i, m6840->timer_active);
+		state_save_register_item("m6840", i, m6840->period);
+	}
+
+	state_save_register_global(m6840_status);
+	state_save_register_global(m6840_status_read_since_int);
+	state_save_register_global(m6840_msb_buffer);
+	state_save_register_global(m6840_lsb_buffer);
+	state_save_register_global(m6840_irq_state);
+	state_save_register_global(v493_irq_state);
+	state_save_register_global(zwackery_sound_data);
+
+	state_save_register_global(mcr_cocktail_flip);
+	return 0;
+}
+
 
 static void mcr68_common_init(void)
 {
@@ -307,37 +360,23 @@ static void mcr68_common_init(void)
 		m6840->control = 0x00;
 		m6840->latch = 0xffff;
 		m6840->count = 0xffff;
-		m6840->timer = timer_alloc(counter_fired_callback);
+		timer_enable(m6840->timer, FALSE);
 		m6840->timer_active = 0;
 		m6840->period = m6840_counter_periods[i];
-
-		state_save_register_item("m6840", i, m6840->control);
-		state_save_register_item("m6840", i, m6840->latch);
-		state_save_register_item("m6840", i, m6840->count);
-		state_save_register_item("m6840", i, m6840->timer_active);
-		state_save_register_item("m6840", i, m6840->period);
 	}
-	state_save_register_global(m6840_status);
-	state_save_register_global(m6840_status_read_since_int);
-	state_save_register_global(m6840_msb_buffer);
-	state_save_register_global(m6840_lsb_buffer);
-	state_save_register_global(m6840_irq_state);
-	state_save_register_global(v493_irq_state);
-	state_save_register_global(zwackery_sound_data);
 
 	/* initialize the clock */
 	m6840_internal_counter_period = TIME_IN_HZ(Machine->drv->cpu[0].cpu_clock / 10);
 
 	/* reset cocktail flip */
 	mcr_cocktail_flip = 0;
-	state_save_register_global(mcr_cocktail_flip);
 
 	/* initialize the sound */
 	mcr_sound_reset();
 }
 
 
-MACHINE_INIT( mcr68 )
+MACHINE_RESET( mcr68 )
 {
 	/* for the most part all MCR/68k games are the same */
 	mcr68_common_init();
@@ -349,7 +388,7 @@ MACHINE_INIT( mcr68 )
 }
 
 
-MACHINE_INIT( zwackery )
+MACHINE_RESET( zwackery )
 {
 	/* for the most part all MCR/68k games are the same */
 	mcr68_common_init();
@@ -391,7 +430,7 @@ INTERRUPT_GEN( mcr_interrupt )
 }
 
 
-INTERRUPT_GEN( ipu_interrupt )
+INTERRUPT_GEN( mcr_ipu_interrupt )
 {
 	/* CTC line 3 is connected to 493, which is signalled once every */
 	/* frame at 30Hz */
@@ -702,6 +741,7 @@ static void reload_count(int counter)
 		count = count + 1;
 
 	/* set the timer */
+LOG(("reload_count(%d): period = %f  count = %d\n", counter, period, count));
 	timer_adjust(m6840_state[counter].timer, period * (double)count, (count << 2) + counter, 0);
 	m6840_state[counter].timer_active = 1;
 }
@@ -874,4 +914,105 @@ READ16_HANDLER( mcr68_6840_upper_r )
 READ16_HANDLER( mcr68_6840_lower_r )
 {
 	return mcr68_6840_r_common(offset,0) | 0xff00;
+}
+
+
+
+/*************************************
+ *
+ *  NFL Football IPU board
+ *
+ *************************************/
+
+static WRITE8_HANDLER( ipu_break_changed )
+{
+	/* channel B is connected to the CED player */
+	if (offset == 1)
+	{
+		logerror("DTR changed -> %d\n", data);
+		if (data == 1)
+			z80sio_receive_data(0, 1, 0);
+	}
+}
+
+
+READ8_HANDLER( mcr_ipu_pio_0_r )
+{
+	return (offset & 2) ? z80pio_c_r(0, offset & 1) : z80pio_d_r(0, offset & 1);
+}
+
+
+READ8_HANDLER( mcr_ipu_pio_1_r )
+{
+	return (offset & 2) ? z80pio_c_r(1, offset & 1) : z80pio_d_r(1, offset & 1);
+}
+
+
+READ8_HANDLER( mcr_ipu_sio_r )
+{
+	return (offset & 2) ? z80sio_c_r(0, offset & 1) : z80sio_d_r(0, offset & 1);
+}
+
+
+WRITE8_HANDLER( mcr_ipu_pio_0_w )
+{
+	if (offset & 2)
+		z80pio_c_w(0, offset & 1, data);
+	else
+		z80pio_d_w(0, offset & 1, data);
+}
+
+
+WRITE8_HANDLER( mcr_ipu_pio_1_w )
+{
+	if (offset & 2)
+		z80pio_c_w(1, offset & 1, data);
+	else
+		z80pio_d_w(1, offset & 1, data);
+}
+
+
+WRITE8_HANDLER( mcr_ipu_sio_w )
+{
+	if (offset & 2)
+		z80sio_c_w(0, offset & 1, data);
+	else
+		z80sio_d_w(0, offset & 1, data);
+}
+
+
+WRITE8_HANDLER( mcr_ipu_laserdisk_w )
+{
+	/* bit 3 enables (1) LD video regardless of PIX SW */
+	/* bit 2 enables (1) LD right channel audio */
+	/* bit 1 enables (1) LD left channel audio */
+	/* bit 0 enables (1) LD video if PIX SW == 1 */
+	if (data != 0)
+		logerror("%04X:mcr_ipu_laserdisk_w(%d) = %02X\n", activecpu_get_pc(), offset, data);
+}
+
+
+static void ipu_watchdog_reset(int param)
+{
+	logerror("ipu_watchdog_reset\n");
+	cpunum_set_input_line(3, INPUT_LINE_RESET, PULSE_LINE);
+	z80ctc_reset(1);
+	z80pio_reset(0);
+	z80pio_reset(1);
+	z80sio_reset(0);
+}
+
+
+READ8_HANDLER( mcr_ipu_watchdog_r )
+{
+	/* watchdog counter is clocked by 7.3728MHz crystal / 16 */
+	/* watchdog is tripped when 14-bit counter overflows => / 32768 = 14.0625Hz*/
+	timer_adjust(ipu_watchdog_timer, TIME_IN_HZ(7372800.0f / 16.0f / 32768.0f), 0, 0);
+	return 0xff;
+}
+
+
+WRITE8_HANDLER( mcr_ipu_watchdog_w )
+{
+	mcr_ipu_watchdog_r(0);
 }

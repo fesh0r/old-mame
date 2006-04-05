@@ -45,11 +45,8 @@
  *
  *****************************************************************************/
 
-#include <stdio.h>
-#include <string.h>
-#ifdef	MAME_DEBUG
-#include "driver.h"
-#include "mamedbg.h"
+#include "debugger.h"
+#include "debug/eainfo.h"
 #include "z180.h"
 
 enum e_mnemonics {
@@ -577,6 +574,8 @@ static int offs(INT8 offset)
 	return offset;
 }
 
+#define cpu_readmemz180 z180_readmem
+
 static unsigned z180_get_reg(int reg) { union cpuinfo info; z180_get_info(CPUINFO_INT_REGISTER + (reg), &info); return info.i; }
 
 /****************************************************************************
@@ -760,6 +759,3 @@ unsigned DasmZ180( char *buffer, unsigned pc )
 
 	return pc - PC;
 }
-
-#endif
-

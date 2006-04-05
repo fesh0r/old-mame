@@ -37,7 +37,6 @@ So this is the correct behavior of real hardware, not an emulation bug.
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/2151intf.h"
@@ -66,7 +65,7 @@ WRITE16_HANDLER( nemesis_characterram_word_w );
 VIDEO_UPDATE( nemesis );
 VIDEO_START( nemesis );
 VIDEO_UPDATE( salamand );
-MACHINE_INIT( nemesis );
+MACHINE_RESET( nemesis );
 
 WRITE16_HANDLER( nemesis_gfx_flipx_w );
 WRITE16_HANDLER( nemesis_gfx_flipy_w );
@@ -76,13 +75,13 @@ extern UINT16 *nemesis_yscroll1, *nemesis_yscroll2;
 
 WRITE16_HANDLER( nemesis_palette_word_w );
 
-int irq_on = 0;
-int irq1_on = 0;
-int irq2_on = 0;
-int irq4_on = 0;
+static int irq_on = 0;
+static int irq1_on = 0;
+static int irq2_on = 0;
+static int irq4_on = 0;
 
 
-MACHINE_INIT( nemesis )
+MACHINE_RESET( nemesis )
 {
 	irq_on = 0;
 	irq1_on = 0;
@@ -2156,7 +2155,7 @@ static MACHINE_DRIVER_START( nemesis )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* ??? */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2203,7 +2202,7 @@ static MACHINE_DRIVER_START( konamigt )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2246,7 +2245,7 @@ static MACHINE_DRIVER_START( salamand )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION((264-256)*62.5)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
@@ -2294,7 +2293,7 @@ static MACHINE_DRIVER_START( blkpnthr )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -2337,7 +2336,7 @@ static MACHINE_DRIVER_START( citybomb )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -2384,7 +2383,7 @@ static MACHINE_DRIVER_START( nyanpani )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -2431,7 +2430,7 @@ static MACHINE_DRIVER_START( gx400 )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2479,7 +2478,7 @@ static MACHINE_DRIVER_START( rf2_gx400 )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2525,7 +2524,7 @@ static MACHINE_DRIVER_START( hcrash )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

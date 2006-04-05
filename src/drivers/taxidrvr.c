@@ -5,7 +5,6 @@ Taxi Driver  (c) 1984 Graphic Techno
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/8255ppi.h"
 #include "taxidrvr.h"
 #include "sound/ay8910.h"
@@ -105,7 +104,7 @@ static ppi8255_interface ppi8255_intf =
 	{ p0c_w, p1c_w, p2c_w, p3c_w, p4c_w }	/* Port C write */
 };
 
-MACHINE_INIT( taxidrvr )
+MACHINE_RESET( taxidrvr )
 {
 	ppi8255_init(&ppi8255_intf);
 }
@@ -380,7 +379,7 @@ static MACHINE_DRIVER_START( taxidrvr )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
-	MDRV_MACHINE_INIT(taxidrvr)
+	MDRV_MACHINE_RESET(taxidrvr)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

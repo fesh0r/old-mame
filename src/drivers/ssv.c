@@ -161,9 +161,7 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/eeprom.h"
-#include "machine/random.h"
 #include "sound/es5506.h"
 #include "seta.h"
 
@@ -318,10 +316,10 @@ static WRITE16_HANDLER( ssv_lockout_inv_w )
 	}
 }
 
-MACHINE_INIT( ssv )
+MACHINE_RESET( ssv )
 {
 	requested_int = 0;
-	cpu_set_irq_callback(0, ssv_irq_callback);
+	cpunum_set_irq_callback(0, ssv_irq_callback);
 	memory_set_bankptr(1, memory_region(REGION_USER1));
 }
 
@@ -3377,7 +3375,7 @@ static MACHINE_DRIVER_START( ssv )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)	/* we use cpu_getvblank */
 
-	MDRV_MACHINE_INIT(ssv)
+	MDRV_MACHINE_RESET(ssv)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN)

@@ -20,9 +20,7 @@
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/i8051/i8051.h"
-#include "machine/random.h"
 
 static tilemap *bgtilemap  = NULL;
 static tilemap *fgtilemap  = NULL;

@@ -13,8 +13,6 @@ Namco System II
 #include "cpu/m6809/m6809.h"
 #include "cpu/m6805/m6805.h"
 #include "namcos2.h"
-#include "vidhrdw/generic.h"
-#include "machine/random.h"
 
 int namcos2_gametype;
 
@@ -22,8 +20,8 @@ static unsigned mFinalLapProtCount;
 
 READ16_HANDLER( namcos2_flap_prot_r )
 {
-	const UINT16 table0[8] = { 0x0000,0x0040,0x0440,0x2440,0x2480,0xa080,0x8081,0x8041 };
-	const UINT16 table1[8] = { 0x0040,0x0060,0x0060,0x0860,0x0864,0x08e4,0x08e5,0x08a5 };
+	static const UINT16 table0[8] = { 0x0000,0x0040,0x0440,0x2440,0x2480,0xa080,0x8081,0x8041 };
+	static const UINT16 table1[8] = { 0x0040,0x0060,0x0060,0x0860,0x0864,0x08e4,0x08e5,0x08a5 };
 	UINT16 data;
 
 	switch( offset )
@@ -68,7 +66,7 @@ READ16_HANDLER( namcos2_flap_prot_r )
 /* Perform basic machine initialisation                      */
 /*************************************************************/
 
-MACHINE_INIT( namcos2 ){
+MACHINE_RESET( namcos2 ){
 	int loop;
 
 	mFinalLapProtCount = 0;

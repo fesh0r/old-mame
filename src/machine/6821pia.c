@@ -7,11 +7,8 @@
 
 **********************************************************************/
 
-#include <string.h>
-#include <stdio.h>
 #include "driver.h"
 #include "6821pia.h"
-#include "state.h"
 
 #define VERBOSE 0
 
@@ -106,36 +103,36 @@ void pia_unconfig(void)
 void pia_config(int which, int addressing, const struct pia6821_interface *intf)
 {
 	if (which >= MAX_PIA)
-		osd_die("pia_config called on an invalid PIA!");
+		fatalerror("pia_config called on an invalid PIA!");
 	if (!intf)
-		osd_die("pia_config called with an invalid interface!");
+		fatalerror("pia_config called with an invalid interface!");
 
 	memset(&pia[which], 0, sizeof(pia[0]));
 
 	pia[which].intf = intf;
 	pia[which].addr = addressing;
 
-	state_save_register_UINT8("6821pia", which, "in_a",			&pia[which].in_a, 1);
-	state_save_register_UINT8("6821pia", which, "in_ca1",		&pia[which].in_ca1, 1);
-	state_save_register_UINT8("6821pia", which, "in_ca2",		&pia[which].in_ca2, 1);
-	state_save_register_UINT8("6821pia", which, "out_a",		&pia[which].out_a, 1);
-	state_save_register_UINT8("6821pia", which, "out_ca2",		&pia[which].out_ca2, 1);
-	state_save_register_UINT8("6821pia", which, "ddr_a",		&pia[which].ddr_a, 1);
-	state_save_register_UINT8("6821pia", which, "ctl_a",		&pia[which].ctl_a, 1);
-	state_save_register_UINT8("6821pia", which, "irq_a1",		&pia[which].irq_a1, 1);
-	state_save_register_UINT8("6821pia", which, "irq_a2",		&pia[which].irq_a2, 1);
-	state_save_register_UINT8("6821pia", which, "irq_a_state", 	&pia[which].irq_a_state, 1);
-	state_save_register_UINT8("6821pia", which, "in_b",			&pia[which].in_b, 1);
-	state_save_register_UINT8("6821pia", which, "in_cb1",		&pia[which].in_cb1, 1);
-	state_save_register_UINT8("6821pia", which, "in_cb2",		&pia[which].in_cb2, 1);
-	state_save_register_UINT8("6821pia", which, "out_b",		&pia[which].out_b, 1);
-	state_save_register_UINT8("6821pia", which, "out_cb2",		&pia[which].out_cb2, 1);
-	state_save_register_UINT8("6821pia", which, "ddr_b",		&pia[which].ddr_b, 1);
-	state_save_register_UINT8("6821pia", which, "ctl_b",		&pia[which].ctl_b, 1);
-	state_save_register_UINT8("6821pia", which, "irq_b1",		&pia[which].irq_b1, 1);
-	state_save_register_UINT8("6821pia", which, "irq_b2",		&pia[which].irq_b2, 1);
-	state_save_register_UINT8("6821pia", which, "irq_b_state",	&pia[which].irq_b_state, 1);
-	state_save_register_UINT8("6821pia", which, "in_set",		&pia[which].in_set, 1);
+	state_save_register_item("6821pia", which, pia[which].in_a);
+	state_save_register_item("6821pia", which, pia[which].in_ca1);
+	state_save_register_item("6821pia", which, pia[which].in_ca2);
+	state_save_register_item("6821pia", which, pia[which].out_a);
+	state_save_register_item("6821pia", which, pia[which].out_ca2);
+	state_save_register_item("6821pia", which, pia[which].ddr_a);
+	state_save_register_item("6821pia", which, pia[which].ctl_a);
+	state_save_register_item("6821pia", which, pia[which].irq_a1);
+	state_save_register_item("6821pia", which, pia[which].irq_a2);
+	state_save_register_item("6821pia", which, pia[which].irq_a_state);
+	state_save_register_item("6821pia", which, pia[which].in_b);
+	state_save_register_item("6821pia", which, pia[which].in_cb1);
+	state_save_register_item("6821pia", which, pia[which].in_cb2);
+	state_save_register_item("6821pia", which, pia[which].out_b);
+	state_save_register_item("6821pia", which, pia[which].out_cb2);
+	state_save_register_item("6821pia", which, pia[which].ddr_b);
+	state_save_register_item("6821pia", which, pia[which].ctl_b);
+	state_save_register_item("6821pia", which, pia[which].irq_b1);
+	state_save_register_item("6821pia", which, pia[which].irq_b2);
+	state_save_register_item("6821pia", which, pia[which].irq_b_state);
+	state_save_register_item("6821pia", which, pia[which].in_set);
 }
 
 
@@ -620,6 +617,16 @@ void pia_set_input_a(int which, int data)
 
 
 
+/******************* interface setting PIA port A input *******************/
+
+int pia_get_output_a(int which)
+{
+	struct pia6821 *p = pia + which;
+	return (p->out_a & p->ddr_a) + (p->in_a & ~p->ddr_a);
+}
+
+
+
 /******************* interface setting PIA port CA1 input *******************/
 
 void pia_set_input_ca1(int which, int data)
@@ -704,6 +711,16 @@ void pia_set_input_b(int which, int data)
 	/* set the input, what could be easier? */
 	p->in_b = data;
     p->in_set |= PIA_IN_SET_B;
+}
+
+
+
+/******************* interface setting PIA port A input *******************/
+
+int pia_get_output_b(int which)
+{
+	struct pia6821 *p = pia + which;
+	return (p->out_b & p->ddr_b) + (p->in_b & ~p->ddr_b);
 }
 
 

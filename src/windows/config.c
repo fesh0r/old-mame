@@ -30,18 +30,22 @@
   * - get rid of #ifdef MESS's by providing appropriate hooks
  */
 
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
 #include <stdarg.h>
 #include <ctype.h>
 #include <time.h>
-#include <windows.h>
+#include "osdepend.h"
 #include "driver.h"
+
 #include "rc.h"
 #include "misc.h"
 #include "video.h"
-#include "fileio.h"
 
 #ifdef NEW_DEBUGGER
 #include "debug/debugcpu.h"
+#include "debug/debugcon.h"
 #endif
 
 extern struct rc_option frontend_opts[];
@@ -54,20 +58,21 @@ extern struct rc_option video_opts[];
 #include "configms.h"
 #endif
 
-extern int frontend_help(char *gamename);
+extern int frontend_help (const char *gamename, const char *filename);
 static int config_handle_arg(char *arg);
 
-static FILE *logfile;
+int win_erroroslog;
+
 static int curlogsize;
 static int errorlog;
-static int erroroslog;
 static int showconfig;
 static int showusage;
 static int readconfig;
 static int createconfig;
+static int validate;
 extern int verbose;
 
-struct rc_struct *rc;
+static struct rc_struct *rc;
 
 /* fix me - need to have the core call osd_set_mastervolume with this value */
 /* instead of relying on the name of an osd variable */
@@ -76,6 +81,7 @@ extern int attenuation;
 static char *playbackname;
 static char *recordname;
 static char *gamename;
+static char *gamepath;
 static char *statename;
 static char *debugscript;
 
@@ -100,7 +106,9 @@ static int video_rol = 0;
 static int video_autoror = 0;
 static int video_autorol = 0;
 
+static int game_index;
 static int got_gamename;
+static int prompt_driver_name;
 
 static char *win_basename(char *filename);
 static char *win_dirname(char *filename);
@@ -139,14 +147,14 @@ static int video_set_intensity(struct rc_option *option, const char *arg, int pr
 static int init_errorlog(struct rc_option *option, const char *arg, int priority)
 {
 	/* provide errorlog from here on */
-	if (errorlog && !logfile)
+	if (errorlog)
 	{
-		logfile = fopen("error.log","w");
+		options.logfile = mame_fopen(NULL, "error.log", FILETYPE_DEBUGLOG, TRUE);
 		curlogsize = 0;
-		if (!logfile)
+		if (!options.logfile)
 		{
 			perror("unable to open log file\n");
-			exit (1);
+			exit(1);
 		}
 	}
 	option->priority = priority;
@@ -197,6 +205,7 @@ static struct rc_option opts[] = {
 
 	/* misc */
 	{ "Mame CORE misc options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
+	{ "validate", "valid", rc_bool, &validate, "0", 0, 0, NULL, "validate all game drivers" },
 	{ "artwork", "art", rc_bool, &use_artwork, "1", 0, 0, NULL, "use additional " GAMENOUN " artwork (sets default for specific options below)" },
 	{ "use_backdrops", "backdrop", rc_bool, &use_backdrops, "1", 0, 0, NULL, "use backdrop artwork" },
 	{ "use_overlays", "overlay", rc_bool, &use_overlays, "1", 0, 0, NULL, "use overlay artwork" },
@@ -209,7 +218,7 @@ static struct rc_option opts[] = {
 	{ "playback", "pb", rc_string, &playbackname, NULL, 0, 0, NULL, "playback an input file" },
 	{ "record", "rec", rc_string, &recordname, NULL, 0, 0, NULL, "record an input file" },
 	{ "log", NULL, rc_bool, &errorlog, "0", 0, 0, init_errorlog, "generate error.log" },
-	{ "oslog", NULL, rc_bool, &erroroslog, "0", 0, 0, NULL, "output error log to debugger" },
+	{ "oslog", NULL, rc_bool, &win_erroroslog, "0", 0, 0, NULL, "output error log to debugger" },
 	{ "skip_gameinfo", NULL, rc_bool, &options.skip_gameinfo, "0", 0, 0, NULL, "skip displaying the " GAMENOUN " info screen" },
 #ifdef MESS
 	{ "skip_warnings", NULL, rc_bool, &options.skip_warnings, "0", 0, 0, NULL, "skip displaying the warnings screen" },
@@ -388,47 +397,47 @@ struct rc_struct *cli_rc_create(void)
 	return result;
 }
 
+struct rc_struct *cli_rc_access(void)
+{
+	return rc;
+}
+
 int cli_frontend_init (int argc, char **argv)
 {
 	machine_config drv;
 	char buffer[128];
 	char *cmd_name;
-	int game_index;
-	int i;
+	int i, result;
 
 	gamename = NULL;
+	gamepath = NULL;
 	game_index = -1;
 
 	/* clear all core options */
-	memset(&options,0,sizeof(options));
+	memset(&options, 0, sizeof(options));
 
 	/* create the rc object */
 	rc = cli_rc_create();
-	if (!rc)
-	{
-		osd_die ("error on rc creation\n");
-	}
+	assert_always(rc != NULL, "Error on rc creation");
 
 	/* parse the commandline */
-	got_gamename = 0;
-	if (rc_parse_commandline(rc, argc, argv, 2, config_handle_arg))
-	{
-		osd_die ("error while parsing cmdline\n");
-	}
+	got_gamename = FALSE;
+	prompt_driver_name = FALSE;
+
+	result = rc_parse_commandline(rc, argc, argv, 2, config_handle_arg);
+	if (result != 0)
+		exit(1);
 
 	/* determine global configfile name */
 	cmd_name = win_strip_extension(win_basename(argv[0]));
-	if (!cmd_name)
-	{
-		osd_die ("who am I? cannot determine the name I was called with\n");
-	}
+	assert_always(cmd_name != NULL, "Who am I? cannot determine the name I was called with");
 
 	sprintf (buffer, "%s.ini", cmd_name);
 
 	/* parse mame.ini/mess.ini even if called with another name */
-	if (mame_stricmp(cmd_name, APPNAME) != 0)
+	if (mame_stricmp(cmd_name, CONFIGNAME) != 0)
 	{
-		if (parse_config (APPNAME".ini", NULL))
+		if (parse_config (CONFIGNAME".ini", NULL))
 			exit(1);
 	}
 
@@ -464,6 +473,14 @@ int cli_frontend_init (int argc, char **argv)
 		exit(0);
 	}
 
+	if (validate)
+	{
+		extern int mame_validitychecks(int game);
+		cpuintrf_init();
+		sndintrf_init();
+		exit(mame_validitychecks(-1));
+	}
+
 	/* no longer needed */
 	free(cmd_name);
 
@@ -471,10 +488,7 @@ int cli_frontend_init (int argc, char **argv)
 	if (playbackname != NULL)
 	{
         options.playback = mame_fopen(playbackname,0,FILETYPE_INPUTLOG,0);
-		if (!options.playback)
-		{
-			osd_die("failed to open %s for playback\n", playbackname);
-		}
+		assert_always(options.playback != NULL, "Failed to open file for playback");
 	}
 
 	/* check for game name embedded in .inp header */
@@ -505,43 +519,8 @@ int cli_frontend_init (int argc, char **argv)
 	}
 
 	/* check for frontend options, horrible 1234 hack */
-	if (frontend_help(gamename) != 1234)
+	if (frontend_help(gamename, gamepath) != 1234)
 		exit(0);
-
-	gamename = win_basename(gamename);
-	gamename = win_strip_extension(gamename);
-
-	/* if not given by .inp file yet */
-	if (game_index == -1)
-	{
-		/* do we have a driver for this? */
-		for (i = 0; drivers[i]; i++)
-			if (mame_stricmp(gamename,drivers[i]->name) == 0)
-			{
-				game_index = i;
-				break;
-			}
-	}
-
-#ifdef MAME_DEBUG
-	if (game_index == -1)
-	{
-		/* pick a random game */
-		if (strcmp(gamename,"random") == 0)
-		{
-			i = 0;
-			while (drivers[i]) i++;	/* count available drivers */
-
-			srand(time(0));
-			/* call rand() once to get away from the seed */
-			rand();
-			game_index = rand() % i;
-
-			fprintf(stderr, "running %s (%s) [press return]",drivers[game_index]->name,drivers[game_index]->description);
-			getchar();
-		}
-	}
-#endif
 
 	/* we give up. print a few approximate matches */
 	if (game_index == -1)
@@ -553,6 +532,11 @@ int cli_frontend_init (int argc, char **argv)
 	}
 
 	/* ok, got a gamename */
+	if (prompt_driver_name)
+	{
+		fprintf(stderr, "running %s (%s) [press return]",drivers[game_index]->name,drivers[game_index]->description);
+		getchar();
+	}
 
 	/* if this is a vector game, parse vector.ini first */
 	expand_machine_driver(drivers[game_index]->drv, &drv);
@@ -599,10 +583,7 @@ int cli_frontend_init (int argc, char **argv)
 	if (recordname)
 	{
 		options.record = mame_fopen(recordname,0,FILETYPE_INPUTLOG,1);
-		if (!options.record)
-		{
-			osd_die("failed to open %s for recording\n", recordname);
-		}
+		assert_always(options.record != NULL, "Failed to open file for recording");
 	}
 
 	if (options.record)
@@ -744,21 +725,29 @@ int cli_frontend_init (int argc, char **argv)
 void cli_frontend_exit(void)
 {
 #ifdef MESS
-	if (win_write_config)
+	if (win_write_config && Machine)
 		write_config(NULL, Machine->gamedrv);
 #endif /* MESS */
 
-	free(gamename);
-	gamename = NULL;
+	if (gamename)
+	{
+		free(gamename);
+		gamename = NULL;
+	}
+	if (gamepath)
+	{
+		free(gamepath);
+		gamepath = NULL;
+	}
 
 	rc_destroy(rc);
 	rc = NULL;
 
 	/* close open files */
-	if (logfile)
+	if (options.logfile)
 	{
-		fclose(logfile);
-		logfile = NULL;
+		mame_fclose(options.logfile);
+		options.logfile = NULL;
 	}
 
 	if (options.playback)
@@ -780,6 +769,7 @@ void cli_frontend_exit(void)
 
 static int config_handle_arg(char *arg)
 {
+	int i;
 
 	/* notice: for MESS game means system */
 	if (got_gamename)
@@ -788,87 +778,54 @@ static int config_handle_arg(char *arg)
 		return -1;
 	}
 
-	rompath_extra = win_dirname(arg);
-
-	if (rompath_extra && !strlen(rompath_extra))
+	if (!strcmp(arg, "random"))
 	{
-		free (rompath_extra);
-		rompath_extra = NULL;
+		/* special case: random driver */
+		i = 0;
+		while (drivers[i])
+			i++;	/* count available drivers */
+
+		srand(time(0));
+		/* call rand() once to get away from the seed */
+		rand();
+		game_index = rand() % i;
+
+		/* make sure that we prompt the driver name */
+		prompt_driver_name = TRUE;
+	}
+	else
+	{
+		rompath_extra = win_dirname(arg);
+
+		if (rompath_extra && !strlen(rompath_extra))
+		{
+			free (rompath_extra);
+			rompath_extra = NULL;
+		}
+
+		gamename = arg;
+		gamename = win_basename(gamename);
+		gamename = win_strip_extension(gamename);
+		gamepath = mame_strdup(arg);
+
+		/* do we have a driver for this? */
+		for (i = 0; drivers[i]; i++)
+		{
+			if (mame_stricmp(gamename, drivers[i]->name) == 0)
+			{
+				game_index = i;
+				break;
+			}
+		}
 	}
 
-	gamename = arg;
+#ifdef MESS
+	if (game_index >= 0)
+		win_add_mess_device_options(rc, drivers[game_index]);
+#endif /* MESS */
 
-	if (!gamename || !strlen(gamename))
-	{
-		fprintf(stderr,"error: no gamename given in %s\n", arg);
-		return -1;
-	}
-
-	got_gamename = 1;
+	got_gamename = TRUE;
 	return 0;
-}
-
-
-//============================================================
-//  vlogerror
-//============================================================
-
-static void vlogerror(const char *text, va_list arg)
-{
-	if (errorlog && logfile)
-		curlogsize += vfprintf(logfile, text, arg);
-
-	if (erroroslog)
-	{
-		//extern int vsnprintf(char *s, size_t maxlen, const char *fmt, va_list _arg);
-		char buffer[2048];
-		_vsnprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), text, arg);
-		OutputDebugString(buffer);
-	}
-}
-
-
-//============================================================
-//  logerror
-//============================================================
-
-void CLIB_DECL logerror(const char *text,...)
-{
-	va_list arg;
-
-	/* standard vfprintf stuff here */
-	va_start(arg, text);
-	vlogerror(text, arg);
-	va_end(arg);
-}
-
-
-//============================================================
-//  osd_die
-//============================================================
-
-void CLIB_DECL osd_die(const char *text,...)
-{
-	va_list arg;
-
-	/* standard vfprintf stuff here */
-	va_start(arg, text);
-	vlogerror(text, arg);
-	vprintf(text, arg);
-	va_end(arg);
-
-	exit(-1);
-}
-
-
-//============================================================
-//  win_flush_logfile
-//============================================================
-
-void win_flush_logfile(void)
-{
-	if (logfile)
-		fflush(logfile);
 }
 
 

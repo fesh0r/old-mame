@@ -43,7 +43,6 @@ This info came from http://www.ne.jp/asahi/cc-sakura/akkun/old/fryski.html
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 
@@ -79,7 +78,7 @@ static NVRAM_HANDLER( seicross )
 
 
 
-static MACHINE_INIT( friskyt )
+static MACHINE_RESET( friskyt )
 {
 	/* start with the protection mcu halted */
 	cpunum_set_input_line(1, INPUT_LINE_HALT, ASSERT_LINE);
@@ -98,7 +97,7 @@ static WRITE8_HANDLER( friskyt_portB_w )
 {
 //logerror("PC %04x: 8910 port B = %02x\n",activecpu_get_pc(),data);
 	/* bit 0 is IRQ enable */
-	interrupt_enable_w(0,data & 1);
+	cpu_interrupt_enable(0,data & 1);
 
 	/* bit 1 flips screen */
 
@@ -452,7 +451,7 @@ static MACHINE_DRIVER_START( nvram )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)	/* frames per second, vblank duration */
 	MDRV_INTERLEAVE(20)	/* 20 CPU slices per frame - an high value to ensure proper */
 						/* synchronization of the CPUs */
-	MDRV_MACHINE_INIT(friskyt)
+	MDRV_MACHINE_RESET(friskyt)
 	MDRV_NVRAM_HANDLER(seicross)
 
 	/* video hardware */

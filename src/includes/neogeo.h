@@ -4,7 +4,7 @@
 
 *************************************************************************/
 
-/* defined in drivers/neogeo.c */
+/*----------- defined in drivers/neogeo.c -----------*/
 
 extern unsigned int neogeo_frame_counter;
 extern unsigned int neogeo_frame_counter_speed;
@@ -14,20 +14,17 @@ void neogeo_set_cpu1_second_bank(UINT32 bankaddress);
 void neogeo_init_cpu2_setbank(void);
 void neogeo_register_main_savestate(void);
 
-/* defined in machine/neogeo.c */
+/*----------- defined in machine/neogeo.c -----------*/
 
 extern UINT16 *neogeo_ram16;
 extern UINT16 *neogeo_sram16;
 
-extern int mcd_action;
-extern int mcd_number;
-extern int memcard_status;
-extern int memcard_manager;
 extern UINT8 *neogeo_memcard;
 
 extern UINT8 *neogeo_game_vectors;
 
-MACHINE_INIT( neogeo );
+MACHINE_START( neogeo );
+MACHINE_RESET( neogeo );
 DRIVER_INIT( neogeo );
 
 WRITE16_HANDLER( neogeo_sram16_lock_w );
@@ -39,13 +36,10 @@ NVRAM_HANDLER( neogeo );
 
 READ16_HANDLER( neogeo_memcard16_r );
 WRITE16_HANDLER( neogeo_memcard16_w );
-int neogeo_memcard_load(int);
-void neogeo_memcard_save(void);
-void neogeo_memcard_eject(void);
-int neogeo_memcard_create(int);
+MEMCARD_HANDLER( neogeo );
 
 
-/* defined in machine/neocrypt.c*/
+/*----------- defined in machine/neocrypt.c -----------*/
 
 extern int neogeo_fix_bank_type;
 
@@ -62,22 +56,22 @@ void kof2002_decrypt_68k(void);
 void matrim_decrypt_68k(void);
 void mslug5_decrypt_68k(void);
 void svcchaos_px_decrypt(void);
-void svcchaos_gfx_decrypt(void);
-void svcchaos_s1data_decrypt(void);
-void decode_kf2k3pcb_croms(void);
+void svcpcb_gfx_decrypt(void);
+void svcpcb_s1data_decrypt(void);
 void samsho5_decrypt_68k(void);
+void kf2k3pcb_gfx_decrypt(void);
+void kf2k3pcb_decrypt_68k(void);
+void kf2k3pcb_decrypt_s1data(void);
 void kof2003_decrypt_68k(void);
-void kof2003_decrypt_s1data(void);
-void kof2003a_px_decrypt(void);
 void kof2003biosdecode(void);
 void samsh5p_decrypt_68k(void);
 
 void neo_pcm2_snk_1999(int value);
 void neo_pcm2_swap(int value);
 
-/* machine/neoprot.c */
+/*----------- defined in machine/neoprot.c -----------*/
 
-extern int neogeo_rng;
+extern INT32 neogeo_rng;
 
 void install_sram_protection(void);
 void fatfury2_install_protection(void);
@@ -90,7 +84,8 @@ void kof2000_install_protection(void);
 void install_kof98_protection(void);
 void install_pvc_protection(void);
 
-/* machine/neoboot.c */
+/*----------- defined in machine/neoboot.c -----------*/
+
 void kog_px_decrypt(void);
 void neogeo_bootleg_cx_decrypt(void);
 void install_kof10th_protection(void);
@@ -122,7 +117,7 @@ void kof2k3up_install_protection(void);
 void kf2k3pl_install_protection(void);
 void samsh5bl_px_decrypt( void );
 
-/* vidhrdw/neogeo.c */
+/*----------- defined in vidhrdw/neogeo.c -----------*/
 
 VIDEO_START( neogeo_mvs );
 

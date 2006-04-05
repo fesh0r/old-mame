@@ -6,8 +6,6 @@
 
 ***************************************************************************/
 
-#include <stdio.h>
-
 #include "driver.h"
 #include "sndhrdw/mcr.h"
 #include "sndhrdw/williams.h"
@@ -18,7 +16,6 @@
 #include "sound/dac.h"
 #include "includes/mcr.h"
 #include "sndhrdw/mcr.h"
-#include "state.h"
 
 
 

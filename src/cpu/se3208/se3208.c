@@ -1,10 +1,5 @@
-#include <stdio.h>
-#include <signal.h>
-#include "driver.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "se3208.h"
-#include "memory.h"
 
 /*
     SE3208 CPU Emulator by ElSemi
@@ -493,13 +488,13 @@ INST(STSP)
 	CLRFLAG(FLAG_E);
 }
 
-void PushVal(UINT32 Val)
+static void PushVal(UINT32 Val)
 {
 	Context.SP-=4;
 	SE3208_Write32(Context.SP,Val);
 }
 
-UINT32 PopVal(void)
+static UINT32 PopVal(void)
 {
 	UINT32 Val=SE3208_Read32(Context.SP);
 	Context.SP+=4;
@@ -1741,9 +1736,11 @@ static void BuildTable(void)
 		OpTable[i]=DecodeOp(i);
 }
 
-static void SE3208_Reset(void *param)
+static void SE3208_Reset(void)
 {
+	int (*save_irqcallback)(int) = Context.irq_callback;
 	memset(&Context,0,sizeof(_SE3208Context));
+	Context.irq_callback = save_irqcallback;
 	Context.PC=SE3208_Read32(0);
 	Context.SR=0;
 	Context.IRQ=CLEAR_LINE;
@@ -1809,9 +1806,11 @@ static int SE3208_Run(int cycles)
 	return cycles-SE3208_ICount;
 }
 
-static void SE3208_Init(void)
+static void SE3208_Init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	BuildTable();
+
+	Context.irq_callback = irqcallback;
 }
 
 static void SE3208_Exit(void)
@@ -1874,10 +1873,6 @@ static void SE3208_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + SE3208_R5:				Context.R[ 5] = info->i;					break;
 		case CPUINFO_INT_REGISTER + SE3208_R6:				Context.R[ 6] = info->i;					break;
 		case CPUINFO_INT_REGISTER + SE3208_R7:				Context.R[ 7] = info->i;					break;
-
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					Context.irq_callback = info->irqcallback;	break;
 	}
 }
 
@@ -1937,7 +1932,6 @@ void SE3208_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = SE3208_Run;				break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = SE3208_Dasm;			break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = Context.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &SE3208_ICount;				break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = SE3208_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = SE3208_win_layout;				break;

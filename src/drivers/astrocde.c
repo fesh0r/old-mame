@@ -69,12 +69,11 @@ OUT:
 ****************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "includes/astrocde.h"
 #include "sound/samples.h"
 #include "sound/astrocde.h"
 
-static int game_on = 0;
+static UINT8 game_on = 0;
 
 static WRITE8_HANDLER( seawolf2_lamps_w )
 {
@@ -127,7 +126,10 @@ static WRITE8_HANDLER( seawolf2_sound_2_w )  // Port 41
 	coin_counter_w(0, data & 0x40);    /* Coin Counter */
 }
 
-
+void astrocade_state_save_register_main(void)
+{
+	state_save_register_global(game_on);
+}
 
 /*************************************
  *
@@ -731,18 +733,6 @@ static struct Samplesinterface gorf_samples_interface =
 	gorf_sample_names
 };
 
-/* For speech */
-static struct CustomSound_interface gorf_custom_interface =
-{
-	gorf_sh_start
-};
-
-/* For speech */
-static struct CustomSound_interface wow_custom_interface =
-{
-	wow_sh_start
-};
-
 
 
 /*************************************
@@ -761,6 +751,8 @@ static MACHINE_DRIVER_START( seawolf2 )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+
+	MDRV_MACHINE_START(astrocde)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -791,6 +783,8 @@ static MACHINE_DRIVER_START( spacezap )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
+	MDRV_MACHINE_START(astrocde)
+
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(320, 204)
@@ -818,6 +812,8 @@ static MACHINE_DRIVER_START( ebases )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+
+	MDRV_MACHINE_START(astrocde)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -847,6 +843,8 @@ static MACHINE_DRIVER_START( wow )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
+	MDRV_MACHINE_START(astrocde)
+
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(320, 204)
@@ -858,9 +856,6 @@ static MACHINE_DRIVER_START( wow )
 	MDRV_VIDEO_UPDATE(astrocde)
 
 	/* sound hardware */
-/* For Gorf, Left is actually Upper Speaker, */
-/*          Right is actually Lower Speaker, */
-/*   and speech is mixed into Upper Speaker */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
 	MDRV_SOUND_ADD(ASTROCADE, 1789773)
@@ -873,9 +868,6 @@ static MACHINE_DRIVER_START( wow )
 	MDRV_SOUND_CONFIG(wow_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.25)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.25)
-
-	MDRV_SOUND_ADD(CUSTOM, 0)
-	MDRV_SOUND_CONFIG(wow_custom_interface)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( gorf )
@@ -888,6 +880,8 @@ static MACHINE_DRIVER_START( gorf )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+
+	MDRV_MACHINE_START(astrocde)
 
 	/* video hardware */
 	/* it may look like the right hand side of the screen needs clipping, but */
@@ -916,9 +910,6 @@ static MACHINE_DRIVER_START( gorf )
 	MDRV_SOUND_CONFIG(gorf_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "upper", 0.25)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lower", 0.25)
-
-	MDRV_SOUND_ADD(CUSTOM, 0)
-	MDRV_SOUND_CONFIG(gorf_custom_interface)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( robby )
@@ -931,6 +922,8 @@ static MACHINE_DRIVER_START( robby )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+
+	MDRV_MACHINE_START(astrocde)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
@@ -965,6 +958,8 @@ static MACHINE_DRIVER_START( demndrgn )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
+	MDRV_MACHINE_START(profpac)
+
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
@@ -988,6 +983,8 @@ static MACHINE_DRIVER_START( profpac )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+
+	MDRV_MACHINE_START(profpac)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
@@ -1248,12 +1245,12 @@ static DRIVER_INIT( profpac )
  *
  *************************************/
 
-GAME( 1978, seawolf2, 0,    seawolf2, seawolf2, seawolf2, ROT0,   "Midway", "Sea Wolf II", GAME_IMPERFECT_SOUND )
-GAME( 1980, spacezap, 0,    spacezap, spacezap, spacezap, ROT0,   "Midway", "Space Zap", 0 )
-GAME( 1980, ebases,   0,    ebases,   ebases,   ebases,   ROT0,   "Midway", "Extra Bases", 0 )
-GAME( 1980, wow,      0,    wow,      wow,      wow,      ROT0,   "Midway", "Wizard of Wor", 0 )
-GAME( 1981, gorf,     0,    gorf,     gorf,     gorf,     ROT270, "Midway", "Gorf", 0 )
-GAME( 1981, gorfpgm1, gorf, gorf,     gorf,     gorf,     ROT270, "Midway", "Gorf (Program 1)", 0 )
-GAME( 1981, robby,    0,    robby,    robby,    robby,    ROT0,   "Bally Midway", "Robby Roto", 0 )
-GAME( 1982, demndrgn, 0,    demndrgn, demndrgn, demndrgn, ROT0,   "Bally Midway", "Demons and Dragons (prototype)", GAME_NO_SOUND )
-GAME( 1983, profpac,  0,    profpac,  profpac,  profpac,  ROT0,   "Bally Midway", "Professor PacMan", 0 )
+GAME( 1978, seawolf2, 0,    seawolf2, seawolf2, seawolf2, ROT0,   "Midway", "Sea Wolf II", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1980, spacezap, 0,    spacezap, spacezap, spacezap, ROT0,   "Midway", "Space Zap", GAME_SUPPORTS_SAVE )
+GAME( 1980, ebases,   0,    ebases,   ebases,   ebases,   ROT0,   "Midway", "Extra Bases", GAME_SUPPORTS_SAVE )
+GAME( 1980, wow,      0,    wow,      wow,      wow,      ROT0,   "Midway", "Wizard of Wor", GAME_SUPPORTS_SAVE )
+GAME( 1981, gorf,     0,    gorf,     gorf,     gorf,     ROT270, "Midway", "Gorf", GAME_SUPPORTS_SAVE )
+GAME( 1981, gorfpgm1, gorf, gorf,     gorf,     gorf,     ROT270, "Midway", "Gorf (Program 1)", GAME_SUPPORTS_SAVE )
+GAME( 1981, robby,    0,    robby,    robby,    robby,    ROT0,   "Bally Midway", "Robby Roto", GAME_SUPPORTS_SAVE )
+GAME( 1982, demndrgn, 0,    demndrgn, demndrgn, demndrgn, ROT0,   "Bally Midway", "Demons and Dragons (prototype)", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1983, profpac,  0,    profpac,  profpac,  profpac,  ROT0,   "Bally Midway", "Professor PacMan", GAME_SUPPORTS_SAVE )

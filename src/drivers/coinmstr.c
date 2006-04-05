@@ -25,7 +25,6 @@
 #include "driver.h"
 #include "machine/6821pia.h"
 #include "vidhrdw/crtc6845.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 
 
@@ -500,7 +499,7 @@ static struct pia6821_interface trailblz_pia_2_intf =
 	/*irqs   : A/B             */ 0, 0
 };
 
-MACHINE_INIT( quizmstr )
+MACHINE_RESET( quizmstr )
 {
 	pia_unconfig();
 	pia_config(0, PIA_STANDARD_ORDERING, &quizmstr_pia_0_intf);
@@ -509,7 +508,7 @@ MACHINE_INIT( quizmstr )
 	pia_reset();
 }
 
-MACHINE_INIT( trailblz )
+MACHINE_RESET( trailblz )
 {
 	pia_unconfig();
 	pia_config(0, PIA_STANDARD_ORDERING, &trailblz_pia_0_intf);
@@ -554,7 +553,7 @@ static MACHINE_DRIVER_START( quizmstr )
 	MDRV_CPU_MODIFY("cpu")
 	MDRV_CPU_IO_MAP(quizmstr_io_map,0)
 
-	MDRV_MACHINE_INIT(quizmstr)
+	MDRV_MACHINE_RESET(quizmstr)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( trailblz )
@@ -562,7 +561,7 @@ static MACHINE_DRIVER_START( trailblz )
 	MDRV_CPU_MODIFY("cpu")
 	MDRV_CPU_IO_MAP(trailblz_io_map,0)
 
-	MDRV_MACHINE_INIT(trailblz)
+	MDRV_MACHINE_RESET(trailblz)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( supnudg2 )
@@ -570,7 +569,7 @@ static MACHINE_DRIVER_START( supnudg2 )
 	MDRV_CPU_MODIFY("cpu")
 	MDRV_CPU_IO_MAP(supnudg2_io_map,0)
 
-	MDRV_MACHINE_INIT(quizmstr)
+	MDRV_MACHINE_RESET(quizmstr)
 MACHINE_DRIVER_END
 
 /*

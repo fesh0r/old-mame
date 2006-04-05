@@ -14,6 +14,8 @@
 #ifndef __USRINTRF_H__
 #define __USRINTRF_H__
 
+#include "mamecore.h"
+
 
 /*************************************
  *
@@ -68,35 +70,14 @@ enum
 
 typedef UINT32 (*ui_menu_handler)(UINT32 state);
 
+typedef struct _ui_menu_item ui_menu_item;
 struct _ui_menu_item
 {
    const char *text;
    const char *subtext;
    UINT32 flags;
+   void *ref;
 };
-typedef struct _ui_menu_item ui_menu_item;
-
-
-struct _memcard_interface
-{
-	int (*create)(int);
-	int (*load)(int);
-	void (*save)(void);
-	void (*eject)(void);
-};
-typedef struct _memcard_interface memcard_interface;
-
-
-
-/*************************************
- *
- *  Global variables
- *
- *************************************/
-
-extern memcard_interface memcard_intf;
-
-#define init_memcard() memset(&memcard_intf, 0, sizeof(memcard_interface))
 
 
 
@@ -107,11 +88,11 @@ extern memcard_interface memcard_intf;
  *************************************/
 
 /* main init/exit routines */
-int ui_init(void);
+int ui_init(int show_disclaimer, int show_warnings, int show_gameinfo);
 void ui_exit(void);
 
 /* once-per-frame update and render */
-int ui_update_and_render(mame_bitmap *bitmap);
+void ui_update_and_render(mame_bitmap *bitmap);
 
 /* returns non-zero if the UI has been drawn recently */
 int ui_is_dirty(void);

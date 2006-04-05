@@ -293,7 +293,7 @@ renderscanline_uvi_full( mame_bitmap *bitmap, const rectangle *clip, const edge 
 				if( !fogDisable )
 				{
 					int cz = flags>>8;
-	            const int cztype_remap[4] = { 3,1,2,0 };
+					static const int cztype_remap[4] = { 3,1,2,0 };
 	            int cztype = flags&3;
 	            if( nthword(namcos22_czattr,4)&(0x4000>>(cztype*4)) )
 	            {
@@ -1280,7 +1280,7 @@ RenderSceneHelper( mame_bitmap *bitmap, struct SceneNode *node )
                break;
 
             default:
-               osd_die("invalid node->type\n");
+               fatalerror("invalid node->type");
                break;
             }
             FreeSceneNode( node );
@@ -2150,7 +2150,7 @@ BlitQuads( mame_bitmap *pBitmap, INT32 addr, float m[4][4], INT32 base )
 	int finish = addr + chunkLength;
 	if( chunkLength>0x100 )
 	{
-		osd_die( "bad packet length" );
+		fatalerror( "bad packet length" );
 	}
 
 	while( addr<finish )

@@ -360,7 +360,6 @@ ALL VROM ROMs are 16M MASK
 
 #include "driver.h"
 #include "cpu/powerpc/ppc.h"
-#include "vidhrdw/generic.h"
 #include "machine/eeprom.h"
 #include "machine/53c810.h"
 
@@ -423,7 +422,7 @@ static UINT32 pci_device_get_reg(int device, int reg)
 			{
 				case 0x14:	return 0;		/* ??? */
 				default:
-					osd_die("pci_device_get_reg: Device 11, unknown reg %02X", reg);
+					fatalerror("pci_device_get_reg: Device 11, unknown reg %02X", reg);
 					break;
 			}
 
@@ -432,7 +431,7 @@ static UINT32 pci_device_get_reg(int device, int reg)
 			{
 				case 0:		return real3d_device_id;	/* PCI Vendor ID & Device ID */
 				default:
-					osd_die("pci_device_get_reg: Real3D controller, unknown reg %02X", reg);
+					fatalerror("pci_device_get_reg: Real3D controller, unknown reg %02X", reg);
 					break;
 			}
 			break;
@@ -442,7 +441,7 @@ static UINT32 pci_device_get_reg(int device, int reg)
 			{
 				case 0:		return 0x00011000;		/* PCI Vendor ID (0x1000 = LSI Logic) */
 				default:
-					osd_die("pci_device_get_reg: SCSI Controller, unknown reg %02X", reg);
+					fatalerror("pci_device_get_reg: SCSI Controller, unknown reg %02X", reg);
 					break;
 			}
 			break;
@@ -451,13 +450,13 @@ static UINT32 pci_device_get_reg(int device, int reg)
 			{
 				case 0:		return 0x182711db;		/* PCI Vendor ID & Device ID, 315-6183 ??? */
 				default:
-					osd_die("pci_device_get_reg: Device 16, unknown reg %02X", reg);
+					fatalerror("pci_device_get_reg: Device 16, unknown reg %02X", reg);
 					break;
 			}
 			break;
 
 		default:
-			osd_die("pci_device_get_reg: Unknown device %d, reg %02X\n", device, reg);
+			fatalerror("pci_device_get_reg: Unknown device %d, reg %02X", device, reg);
 			break;
 	}
 
@@ -482,7 +481,7 @@ static void pci_device_set_reg(int device, int reg, UINT32 value)
 				case 0x14:		/* ??? */
 					break;
 				default:
-					osd_die("pci_device_set_reg: Unknown device (11), unknown reg %02X %08X", reg, value);
+					fatalerror("pci_device_set_reg: Unknown device (11), unknown reg %02X %08X", reg, value);
 					break;
 			}
 			break;
@@ -497,7 +496,7 @@ static void pci_device_set_reg(int device, int reg, UINT32 value)
 				case 0x04:		/* ??? */
 					break;
 				default:
-					osd_die("pci_device_set_reg: Real3D controller, unknown reg %02X %08X", reg, value);
+					fatalerror("pci_device_set_reg: Real3D controller, unknown reg %02X %08X", reg, value);
 					break;
 			}
 			break;
@@ -512,7 +511,7 @@ static void pci_device_set_reg(int device, int reg, UINT32 value)
 				case 0x14/4:	/* Base Address One (Memory) */
 					break;
 				default:
-					osd_die("pci_device_set_reg: SCSI Controller, unknown reg %02X, %08X", reg, value);
+					fatalerror("pci_device_set_reg: SCSI Controller, unknown reg %02X, %08X", reg, value);
 					break;
 			}
 			break;
@@ -523,13 +522,13 @@ static void pci_device_set_reg(int device, int reg, UINT32 value)
 				case 4:			/* Base address ? (set to 0xC3000000) */
 					break;
 				default:
-					osd_die("pci_device_set_reg: Device 16, unknown reg %02X, %08X", reg, value);
+					fatalerror("pci_device_set_reg: Device 16, unknown reg %02X, %08X", reg, value);
 					break;
 			}
 			break;
 
 		default:
-			osd_die("pci_device_set_reg: Unknown device %d, reg %02X, %08X\n", device, reg, value);
+			fatalerror("pci_device_set_reg: Unknown device %d, reg %02X, %08X", device, reg, value);
 			break;
 	}
 }
@@ -878,7 +877,7 @@ static WRITE64_HANDLER( real3d_dma_w )
 			return;
 			break;
 	}
-	osd_die("real3d_dma_w: %08X, %08X%08X, %08X%08X\n", offset, (UINT32)(data >> 32), (UINT32)(data), (UINT32)(mem_mask >> 32), (UINT32)(mem_mask));
+	fatalerror("real3d_dma_w: %08X, %08X%08X, %08X%08X", offset, (UINT32)(data >> 32), (UINT32)(data), (UINT32)(mem_mask >> 32), (UINT32)(mem_mask));
 }
 
 static void real3d_dma_callback(UINT32 src, UINT32 dst, int length, int byteswap)
@@ -906,7 +905,7 @@ static void real3d_dma_callback(UINT32 src, UINT32 dst, int length, int byteswap
 		case 0x9c:		/* Unknown */
 			break;
 		default:
-			osd_die("dma_callback: %08X, %08X, %d at %08X\n", src, dst, length, activecpu_get_pc());
+			fatalerror("dma_callback: %08X, %08X, %d at %08X", src, dst, length, activecpu_get_pc());
 			break;
 	}
 }
@@ -1007,10 +1006,10 @@ static void model3_init(int step)
 	}
 }
 
-static MACHINE_INIT(model3_10) { model3_init(0x10); }
-static MACHINE_INIT(model3_15) { model3_init(0x15); }
-static MACHINE_INIT(model3_20) { model3_init(0x20); }
-static MACHINE_INIT(model3_21) { model3_init(0x21); }
+static MACHINE_RESET(model3_10) { model3_init(0x10); }
+static MACHINE_RESET(model3_15) { model3_init(0x15); }
+static MACHINE_RESET(model3_20) { model3_init(0x20); }
+static MACHINE_RESET(model3_21) { model3_init(0x21); }
 
 static UINT32 eeprom_bit = 0;
 
@@ -1091,7 +1090,7 @@ static READ64_HANDLER( model3_ctrl_r )
 			break;
 	}
 
-	osd_die("ctrl_r: %02X, %08X%08X\n", offset, (UINT32)(mem_mask >> 32), (UINT32)(mem_mask));
+	fatalerror("ctrl_r: %02X, %08X%08X", offset, (UINT32)(mem_mask >> 32), (UINT32)(mem_mask));
 	return 0;
 }
 
@@ -1189,7 +1188,7 @@ static WRITE64_HANDLER( model3_ctrl_w )
 			return;
 	}
 
-	osd_die("ctrl_w: %02X, %08X%08X, %08X%08X\n", offset, (UINT32)(data >> 32), (UINT32)(data), (UINT32)(mem_mask >> 32), (UINT32)(mem_mask));
+	fatalerror("ctrl_w: %02X, %08X%08X, %08X%08X", offset, (UINT32)(data >> 32), (UINT32)(data), (UINT32)(mem_mask >> 32), (UINT32)(mem_mask));
 }
 
 static READ64_HANDLER( model3_sys_r )
@@ -3361,6 +3360,67 @@ ROM_START( srally2 )	/* Step 2.0 */
         ROM_LOAD( "mpr-20640.60", 0xc00000, 0x400000, CRC(9eea07b7) SHA1(bdcf136f29e1435c9d82718730ef209d8cfe74d8) )
 ROM_END
 
+ROM_START( sraly2dx )	/* Step 2.0 */
+	ROM_REGION64_BE( 0x4800000, REGION_USER1, 0 ) /* program + data ROMs */
+	// CROM
+        ROM_LOAD64_WORD_SWAP( "epr-20502.17",  0x000006, 0x200000, CRC(af16846d) SHA1(a0babc4dc3809ca1e71eaad4dc2f8c1597575e8b) )
+        ROM_LOAD64_WORD_SWAP( "epr-20503.18",  0x000004, 0x200000, CRC(6e238b3d) SHA1(78da9abf39a2371d74d6b72b00f2467dfe86c4d5) )
+        ROM_LOAD64_WORD_SWAP( "epr-20504.19",  0x000002, 0x200000, CRC(30bbc46d) SHA1(e6e2c76886cc740d009b4d7ac4412c0591caf34b) )
+        ROM_LOAD64_WORD_SWAP( "epr-20505.20",  0x000000, 0x200000, CRC(c24a5097) SHA1(93ba7bd98333c8e7f2dd067ac10d4a231a38fa84) )
+
+	// CROM0
+        ROM_LOAD64_WORD_SWAP( "mpr-20472.1",   0x800006, 0x400000, CRC(db8d6a00) SHA1(67b6206361edd5714aad9dc54c43d79d8e649c7e) )
+        ROM_LOAD64_WORD_SWAP( "mpr-20473.2",   0x800004, 0x400000, CRC(dd8e3131) SHA1(402d50fddfd2a5e7691bbccf309ce8522e3afea9) )
+        ROM_LOAD64_WORD_SWAP( "mpr-20474.3",   0x800002, 0x400000, CRC(66cb4c8e) SHA1(21b47691011643b7560a3bc55b38eb559f164376) )
+        ROM_LOAD64_WORD_SWAP( "mpr-20475.4",   0x800000, 0x400000, CRC(d0f059ee) SHA1(d6c15419f60306f11b0ff19ac0ee8c0052ac0b67) )
+
+	// CROM1
+        ROM_LOAD64_WORD_SWAP( "mpr-20476.5",  0x1800006, 0x400000, CRC(cc97d758) SHA1(3b9a83f1837a1b64ba70dfe4707edc738b489543) )
+        ROM_LOAD64_WORD_SWAP( "mpr-20477.6",  0x1800004, 0x400000, CRC(0b5ac3ad) SHA1(87a8a983b3d020388240634a4598a8eae9896d3a) )
+        ROM_LOAD64_WORD_SWAP( "mpr-20478.7",  0x1800002, 0x400000, CRC(5dfd59f7) SHA1(dd01fcac97cee9f2a7216f3f9b3135e60d8c4704) )
+        ROM_LOAD64_WORD_SWAP( "mpr-20479.8",  0x1800000, 0x400000, CRC(82ec5488) SHA1(b126aece3dc841bf09a9c1e450d1f49ce6337b71) )
+
+	// CROM2
+        ROM_LOAD64_WORD_SWAP( "mpr-20480.9",  0x2800006, 0x400000, CRC(1e486a2e) SHA1(1da0f035f78a8e06c38291b3073c0d98b4603e45) )
+        ROM_LOAD64_WORD_SWAP( "mpr-20481.10", 0x2800004, 0x400000, CRC(42acc4f9) SHA1(064b80116b24946cf638d1e3f3d608fe97a60815) )
+        ROM_LOAD64_WORD_SWAP( "mpr-20482.11", 0x2800002, 0x400000, CRC(d21668d1) SHA1(94113533607d388003c4dc43fde0fe4aea4d9589) )
+        ROM_LOAD64_WORD_SWAP( "mpr-20483.12", 0x2800000, 0x400000, CRC(7d487f3a) SHA1(0ef22b8ff6f05acf97cd8f792788467c47c4a2f9) )
+
+	ROM_REGION( 0x4000000, REGION_USER2, 0 )  /* Eventually Video ROMs */
+
+	ROM_REGION( 0x2000000, REGION_USER3, 0 )  /* Video ROMs Part 1 */
+        ROM_LOAD_VROM( "mpr-20486.26",  0x000002, 0x400000, CRC(dab1f70f) SHA1(37083dfd7a91618afccf3a70740de296e6b542cb) )
+        ROM_LOAD_VROM( "mpr-20487.27",  0x000000, 0x400000, CRC(ffb38774) SHA1(0b8cd5fa26e7b70bd8e2e93e3be702194d119e52) )
+        ROM_LOAD_VROM( "mpr-20488.28",  0x000006, 0x400000, CRC(0c25a1fb) SHA1(9ed754d8210aad3ac76416b5e7bd55d8e2f0a440) )
+        ROM_LOAD_VROM( "mpr-20489.29",  0x000004, 0x400000, CRC(6e8a911a) SHA1(1d9aa42c81eb18cfae64c6df91e6cffb1e8f52fd) )
+        ROM_LOAD_VROM( "mpr-20490.30",  0x00000a, 0x400000, CRC(93da0363) SHA1(1cf69103991dee4527dec490663ae8a2526fa12f) )
+        ROM_LOAD_VROM( "mpr-20491.31",  0x000008, 0x400000, CRC(c4808e7a) SHA1(aa6af8a2338aa716b04f9e84fb7ce14d55bdd3bd) )
+        ROM_LOAD_VROM( "mpr-20492.32",  0x00000e, 0x400000, CRC(d1b27b2b) SHA1(23c7b0c1c427ad420fbe208851d2ed14f5fbb723) )
+        ROM_LOAD_VROM( "mpr-20493.33",  0x00000c, 0x400000, CRC(e43cc6af) SHA1(26489c60c7fccf2145ca4489717a4e0b1243b5ce) )
+
+	ROM_REGION( 0x2000000, REGION_USER4, 0 )  /* Video ROMs Part 2 */
+        ROM_LOAD_VROM( "mpr-20494.34",  0x000002, 0x400000, CRC(b997b531) SHA1(eb4568701d9540aeb681a2355cbb1f3f4adfd651) )
+        ROM_LOAD_VROM( "mpr-20495.35",  0x000000, 0x400000, CRC(72480f09) SHA1(30466c8f57cf9109c1aebb6dc2fb1c580eca7a3c) )
+        ROM_LOAD_VROM( "mpr-20496.36",  0x000006, 0x400000, CRC(96f6d3a8) SHA1(8b18dbd20567e6fa6dd07487b36f6ebba74a04c5) )
+        ROM_LOAD_VROM( "mpr-20497.37",  0x000004, 0x400000, CRC(7dc700a3) SHA1(3bbc5517151067946c2ecefa03c8806249fbc7ff) )
+        ROM_LOAD_VROM( "mpr-20498.38",  0x00000a, 0x400000, CRC(4e844081) SHA1(1e3acf84b4c5a85ac26cb4e3f6d5a31433e4b1f7) )
+        ROM_LOAD_VROM( "mpr-20499.39",  0x000008, 0x400000, CRC(09d9c7d1) SHA1(78c81254eb0babdfbfc84612cae5037fce82b7fe) )
+        ROM_LOAD_VROM( "mpr-20500.40",  0x00000e, 0x400000, CRC(3766fd87) SHA1(941ff6d89dbc8e59cc7a9a677c329aadb9068e5d) )
+        ROM_LOAD_VROM( "mpr-20501.41",  0x00000c, 0x400000, CRC(741da4ac) SHA1(fa6e52b42b927bc659f139f4dd039204bda3b224) )
+
+	ROM_REGION( 0x80000, REGION_CPU2, 0 )	/* 68000 code */
+        ROM_LOAD16_WORD_SWAP( "epr-20506.21", 0x000000, 0x080000, CRC(855af67b) SHA1(a0359b8329c9c0746bc996b9272b7a1f2db07368) )
+
+	// Samples
+	ROM_REGION( 0x800000, REGION_SOUND1, 0 )	/* SCSP samples */
+        ROM_LOAD( "mpr-20484.22", 0x000000, 0x400000, CRC(8ac3fbc4) SHA1(8b7624506ff00256a745bb4b7393cf17a081faa4) )
+        ROM_LOAD( "mpr-20485.24", 0x400000, 0x400000, CRC(cfd8c19b) SHA1(3b8cc045cb02b93f9d35b81a48085d4d480d6bff) )
+
+	ROM_REGION( 0x20000, REGION_CPU3, 0 )	/* Z80 code */
+
+	ROM_REGION( 0x1000000, REGION_SOUND2, 0 )	/* DSB samples */
+ROM_END
+
 ROM_START( harley )	/* Step 2.0 */
 	ROM_REGION64_BE( 0x4800000, REGION_USER1, 0 ) /* program + data ROMs */
 	// CROM
@@ -3767,7 +3827,7 @@ static MACHINE_DRIVER_START( model3_10 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(model3_10)
+	MDRV_MACHINE_RESET(model3_10)
 	MDRV_NVRAM_HANDLER(model3)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT)
@@ -3788,7 +3848,7 @@ static MACHINE_DRIVER_START( model3_15 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(model3_15)
+	MDRV_MACHINE_RESET(model3_15)
 	MDRV_NVRAM_HANDLER(model3)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT)
@@ -3809,7 +3869,7 @@ static MACHINE_DRIVER_START( model3_20 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(model3_20)
+	MDRV_MACHINE_RESET(model3_20)
 	MDRV_NVRAM_HANDLER(model3)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT)
@@ -3830,7 +3890,7 @@ static MACHINE_DRIVER_START( model3_21 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(model3_21)
+	MDRV_MACHINE_RESET(model3_21)
 	MDRV_NVRAM_HANDLER(model3)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT)
@@ -4268,6 +4328,7 @@ GAME( 1998, vs29815,    vs298, model3_15, model3,    vs29815, ROT0, "Sega", "Vir
 GAME( 1997, vs2,            0, model3_20, model3,        vs2, ROT0, "Sega", "Virtua Striker 2 (Step 2.0)", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
 GAME( 1997, harley,         0, model3_20, harley,     harley, ROT0, "Sega", "Harley-Davidson and L.A. Riders", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
 GAME( 1998, srally2,        0, model3_20, scud,      srally2, ROT0, "Sega", "Sega Rally 2", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
+GAME( 1998, sraly2dx,       0, model3_20, scud,      srally2, ROT0, "Sega", "Sega Rally 2 DX", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
 GAME( 1998, von2,           0, model3_20, model3,       von2, ROT0, "Sega", "Virtual On 2: Oratorio Tangram", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
 GAME( 1998, von254g,     von2, model3_20, model3,  model3_20, ROT0, "Sega", "Virtual On 2: Oratorio Tangram (ver 5.4g)", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
 GAME( 1998, fvipers2,       0, model3_20, model3,  model3_20, ROT0, "Sega", "Fighting Vipers 2", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )

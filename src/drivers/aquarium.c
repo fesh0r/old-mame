@@ -50,7 +50,6 @@ Stephh's notes (based on the game M68000 code and some tests) :
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 
@@ -71,7 +70,7 @@ VIDEO_START(aquarium);
 VIDEO_UPDATE(aquarium);
 
 #if AQUARIUS_HACK
-static MACHINE_INIT( aquarium )
+static MACHINE_RESET( aquarium )
 {
 	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
 	int data = readinputportbytag("FAKE");
@@ -392,7 +391,7 @@ static MACHINE_DRIVER_START( aquarium )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
 #if AQUARIUS_HACK
-	MDRV_MACHINE_INIT(aquarium)
+	MDRV_MACHINE_RESET(aquarium)
 #endif
 
 	/* video hardware */

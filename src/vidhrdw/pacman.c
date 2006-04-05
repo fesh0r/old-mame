@@ -17,8 +17,6 @@
 **************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
-#include "state.h"
 
 static tilemap *bg_tilemap;
 static UINT8 charbank;
@@ -29,8 +27,8 @@ static UINT8 flipscreen;
 static UINT8 bgpriority;
 
 static int xoffsethack;
-UINT8 *sprite_bank;
-UINT8 *tiles_bankram;
+UINT8 *s2650games_spriteram;
+UINT8 *s2650games_tileram;
 
 static rectangle spritevisiblearea =
 {
@@ -362,7 +360,7 @@ static void s2650_get_tile_info(int tile_index)
 {
 	int colbank, code, attr;
 
-	colbank = tiles_bankram[tile_index & 0x1f] & 0x3;
+	colbank = s2650games_tileram[tile_index & 0x1f] & 0x3;
 
 	code = videoram[tile_index] + (colbank << 8);
 	attr = colorram[tile_index & 0x1f];
@@ -409,7 +407,7 @@ VIDEO_UPDATE( s2650games )
 
 		/* TODO: ?? */
 		drawgfx(bitmap,Machine->gfx[1],
-				(spriteram[offs] >> 2) | ((sprite_bank[offs] & 3) << 6),
+				(spriteram[offs] >> 2) | ((s2650games_spriteram[offs] & 3) << 6),
 				spriteram[offs + 1] & 0x1f,
 				spriteram[offs] & 1,spriteram[offs] & 2,
 				sx,sy,
@@ -427,7 +425,7 @@ VIDEO_UPDATE( s2650games )
 
 		/* TODO: ?? */
 		drawgfx(bitmap,Machine->gfx[1],
-				(spriteram[offs] >> 2) | ((sprite_bank[offs] & 3)<<6),
+				(spriteram[offs] >> 2) | ((s2650games_spriteram[offs] & 3)<<6),
 				spriteram[offs + 1] & 0x1f,
 				spriteram[offs] & 1,spriteram[offs] & 2,
 				sx,sy + xoffsethack,
@@ -456,7 +454,7 @@ WRITE8_HANDLER( s2650games_scroll_w )
 
 WRITE8_HANDLER( s2650games_tilesbank_w )
 {
-	tiles_bankram[offset] = data;
+	s2650games_tileram[offset] = data;
 	tilemap_mark_all_tiles_dirty(bg_tilemap);
 }
 

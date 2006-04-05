@@ -397,10 +397,7 @@ STOP            01001000  10111011          12  stop
 */
 
 
-#include <stdio.h>
-#include "driver.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "upd7810.h"
 
 static UPD7810 upd7810;
@@ -1519,82 +1516,90 @@ static void upd7810_timers(int cycles)
 	}
 }
 
-void upd7810_init(void)
+void upd7810_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu();
+	upd7810.config = *(const UPD7810_CONFIG*) config;
+	upd7810.irq_callback = irqcallback;
 
-	state_save_register_UINT16("upd7810", cpu, "ppc", &upd7810.ppc.w.l, 1);
-	state_save_register_UINT16("upd7810", cpu, "pc", &upd7810.pc.w.l, 1);
-	state_save_register_UINT16("upd7810", cpu, "sp", &upd7810.sp.w.l, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "psw", &upd7810.psw, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "op", &upd7810.op, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "op2", &upd7810.op2, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "iff", &upd7810.iff, 1);
-	state_save_register_UINT16("upd7810", cpu, "ea", &upd7810.ea.w.l, 1);
-	state_save_register_UINT16("upd7810", cpu, "va", &upd7810.va.w.l, 1);
-	state_save_register_UINT16("upd7810", cpu, "bc", &upd7810.bc.w.l, 1);
-	state_save_register_UINT16("upd7810", cpu, "de", &upd7810.de.w.l, 1);
-	state_save_register_UINT16("upd7810", cpu, "hl", &upd7810.hl.w.l, 1);
-	state_save_register_UINT16("upd7810", cpu, "ea2", &upd7810.ea2.w.l, 1);
-	state_save_register_UINT16("upd7810", cpu, "va2", &upd7810.va2.w.l, 1);
-	state_save_register_UINT16("upd7810", cpu, "bc2", &upd7810.bc2.w.l, 1);
-	state_save_register_UINT16("upd7810", cpu, "de2", &upd7810.de2.w.l, 1);
-	state_save_register_UINT16("upd7810", cpu, "hl2", &upd7810.hl2.w.l, 1);
-	state_save_register_UINT32("upd7810", cpu, "cnt", &upd7810.cnt.d, 1);
-	state_save_register_UINT32("upd7810", cpu, "tm", &upd7810.tm.d, 1);
-	state_save_register_UINT32("upd7810", cpu, "ecnt", &upd7810.ecnt.d, 1);
-	state_save_register_UINT32("upd7810", cpu, "etm", &upd7810.etm.d, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "ma", &upd7810.ma, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "mb", &upd7810.mb, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "mcc", &upd7810.mcc, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "mc", &upd7810.mc, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "mm", &upd7810.mm, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "mf", &upd7810.mf, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "tmm", &upd7810.tmm, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "etmm", &upd7810.etmm, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "eom", &upd7810.eom, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "sml", &upd7810.sml, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "smh", &upd7810.smh, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "anm", &upd7810.anm, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "mkl", &upd7810.mkl, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "mkh", &upd7810.mkh, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "zcm", &upd7810.zcm, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "pa_out", &upd7810.pa_out, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "pb_out", &upd7810.pb_out, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "pc_out", &upd7810.pc_out, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "pd_out", &upd7810.pd_out, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "pf_out", &upd7810.pf_out, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "cr0", &upd7810.cr0, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "cr1", &upd7810.cr1, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "cr2", &upd7810.cr2, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "cr3", &upd7810.cr3, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "txb", &upd7810.txb, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "rxb", &upd7810.rxb, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "txd", &upd7810.txd, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "rxd", &upd7810.rxd, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "sck", &upd7810.sck, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "ti", &upd7810.ti, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "to", &upd7810.to, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "ci", &upd7810.ci, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "co0", &upd7810.co0, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "co1", &upd7810.co1, 1);
-	state_save_register_UINT16("upd7810", cpu, "irr", &upd7810.irr, 1);
-	state_save_register_UINT16("upd7810", cpu, "itf", &upd7810.itf, 1);
-	state_save_register_INT32 ("upd7810", cpu, "ovc0", &upd7810.ovc0, 1);
-	state_save_register_INT32 ("upd7810", cpu, "ovc1", &upd7810.ovc1, 1);
-	state_save_register_INT32 ("upd7810", cpu, "ovcf", &upd7810.ovcf, 1);
-	state_save_register_INT32 ("upd7810", cpu, "ovcs", &upd7810.ovcs, 1);
-	state_save_register_UINT8 ("upd7810", cpu, "edges",&upd7810.edges,1);
+	state_save_register_item("upd7810", index, upd7810.ppc.w.l);
+	state_save_register_item("upd7810", index, upd7810.pc.w.l);
+	state_save_register_item("upd7810", index, upd7810.sp.w.l);
+	state_save_register_item("upd7810", index, upd7810.psw);
+	state_save_register_item("upd7810", index, upd7810.op);
+	state_save_register_item("upd7810", index, upd7810.op2);
+	state_save_register_item("upd7810", index, upd7810.iff);
+	state_save_register_item("upd7810", index, upd7810.ea.w.l);
+	state_save_register_item("upd7810", index, upd7810.va.w.l);
+	state_save_register_item("upd7810", index, upd7810.bc.w.l);
+	state_save_register_item("upd7810", index, upd7810.de.w.l);
+	state_save_register_item("upd7810", index, upd7810.hl.w.l);
+	state_save_register_item("upd7810", index, upd7810.ea2.w.l);
+	state_save_register_item("upd7810", index, upd7810.va2.w.l);
+	state_save_register_item("upd7810", index, upd7810.bc2.w.l);
+	state_save_register_item("upd7810", index, upd7810.de2.w.l);
+	state_save_register_item("upd7810", index, upd7810.hl2.w.l);
+	state_save_register_item("upd7810", index, upd7810.cnt.d);
+	state_save_register_item("upd7810", index, upd7810.tm.d);
+	state_save_register_item("upd7810", index, upd7810.ecnt.d);
+	state_save_register_item("upd7810", index, upd7810.etm.d);
+	state_save_register_item("upd7810", index, upd7810.ma);
+	state_save_register_item("upd7810", index, upd7810.mb);
+	state_save_register_item("upd7810", index, upd7810.mcc);
+	state_save_register_item("upd7810", index, upd7810.mc);
+	state_save_register_item("upd7810", index, upd7810.mm);
+	state_save_register_item("upd7810", index, upd7810.mf);
+	state_save_register_item("upd7810", index, upd7810.tmm);
+	state_save_register_item("upd7810", index, upd7810.etmm);
+	state_save_register_item("upd7810", index, upd7810.eom);
+	state_save_register_item("upd7810", index, upd7810.sml);
+	state_save_register_item("upd7810", index, upd7810.smh);
+	state_save_register_item("upd7810", index, upd7810.anm);
+	state_save_register_item("upd7810", index, upd7810.mkl);
+	state_save_register_item("upd7810", index, upd7810.mkh);
+	state_save_register_item("upd7810", index, upd7810.zcm);
+	state_save_register_item("upd7810", index, upd7810.pa_out);
+	state_save_register_item("upd7810", index, upd7810.pb_out);
+	state_save_register_item("upd7810", index, upd7810.pc_out);
+	state_save_register_item("upd7810", index, upd7810.pd_out);
+	state_save_register_item("upd7810", index, upd7810.pf_out);
+	state_save_register_item("upd7810", index, upd7810.cr0);
+	state_save_register_item("upd7810", index, upd7810.cr1);
+	state_save_register_item("upd7810", index, upd7810.cr2);
+	state_save_register_item("upd7810", index, upd7810.cr3);
+	state_save_register_item("upd7810", index, upd7810.txb);
+	state_save_register_item("upd7810", index, upd7810.rxb);
+	state_save_register_item("upd7810", index, upd7810.txd);
+	state_save_register_item("upd7810", index, upd7810.rxd);
+	state_save_register_item("upd7810", index, upd7810.sck);
+	state_save_register_item("upd7810", index, upd7810.ti);
+	state_save_register_item("upd7810", index, upd7810.to);
+	state_save_register_item("upd7810", index, upd7810.ci);
+	state_save_register_item("upd7810", index, upd7810.co0);
+	state_save_register_item("upd7810", index, upd7810.co1);
+	state_save_register_item("upd7810", index, upd7810.irr);
+	state_save_register_item("upd7810", index, upd7810.itf);
+	state_save_register_item("upd7810", index, upd7810.ovc0);
+	state_save_register_item("upd7810", index, upd7810.ovc1);
+	state_save_register_item("upd7810", index, upd7810.ovcf);
+	state_save_register_item("upd7810", index, upd7810.ovcs);
+	state_save_register_item("upd7810", index, upd7810.edges);
 }
 
 #include "7810tbl.c"
 #include "7810ops.c"
 
-static void upd7810_reset (void *param)
+static void upd7810_reset (void)
 {
+	UPD7810_CONFIG save_config;
+	int (*save_irqcallback)(int);
+
+	save_config = upd7810.config;
+	save_irqcallback = upd7810.irq_callback;
 	memset(&upd7810, 0, sizeof(upd7810));
+	upd7810.config = save_config;
+	upd7810.irq_callback = save_irqcallback;
+
 	upd7810.opXX = opXX_7810;
-	upd7810.config = *(UPD7810_CONFIG*) param;
 	ETMM = 0xff;
 	TMM = 0xff;
 	MA = 0xff;
@@ -1616,9 +1621,9 @@ static void upd7810_reset (void *param)
 	MKH = 0xff; //?
 }
 
-static void upd7807_reset (void *param)
+static void upd7807_reset (void)
 {
-	upd7810_reset(param);
+	upd7810_reset();
 	upd7810.opXX = opXX_7807;
 }
 
@@ -1690,7 +1695,7 @@ static int upd7810_execute (int cycles)
 					PC += op74[OP2].oplen - 2;
 					break;
 				default:
-					osd_die("uPD7810 internal error: check cycle counts for main\n");
+					fatalerror("uPD7810 internal error: check cycle counts for main");
 				}
 			}
 			PSW &= ~SK;
@@ -1854,9 +1859,6 @@ static void upd7810_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + UPD7810_CI:			CI	= info->i; 							break;
 		case CPUINFO_INT_REGISTER + UPD7810_CO0:		CO0 = info->i; 							break;
 		case CPUINFO_INT_REGISTER + UPD7810_CO1:		CO1 = info->i; 							break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					upd7810.irq_callback = info->irqcallback; break;
 	}
 }
 
@@ -1961,7 +1963,6 @@ void upd7810_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = upd7810_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = upd7810_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = upd7810.irq_callback; break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &upd7810_icount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = upd7810_reg_layout;			break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = upd7810_win_layout;			break;

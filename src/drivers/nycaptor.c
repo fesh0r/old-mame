@@ -148,7 +148,6 @@ Stephh's additional notes (based on the game Z80 code and some tests) :
 
 #include <math.h>
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/msm5232.h"
@@ -245,7 +244,7 @@ static WRITE8_HANDLER( sound_cpu_reset_w )
 
 static int vol_ctrl[16];
 
-static MACHINE_INIT( ta7630 )
+static MACHINE_RESET( ta7630 )
 {
 	int i;
 
@@ -821,7 +820,7 @@ static MACHINE_DRIVER_START( nycaptor )
 	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
 
 	/* synchronization of the CPUs */
-	MDRV_MACHINE_INIT(ta7630)
+	MDRV_MACHINE_RESET(ta7630)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -872,7 +871,7 @@ static MACHINE_DRIVER_START( cyclshtg )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
-	MDRV_MACHINE_INIT(ta7630)
+	MDRV_MACHINE_RESET(ta7630)
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
@@ -918,7 +917,7 @@ static MACHINE_DRIVER_START( bronx )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(2)
-	MDRV_MACHINE_INIT(ta7630)
+	MDRV_MACHINE_RESET(ta7630)
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)

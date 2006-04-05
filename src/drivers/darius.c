@@ -126,15 +126,9 @@ sounds.
 
 ***************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdarg.h>
 #include <math.h>
-
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 #include "cpu/z80/z80.h"
 #include "sndhrdw/taitosnd.h"
@@ -143,7 +137,8 @@ sounds.
 #include "sound/flt_vol.h"
 
 
-MACHINE_INIT( darius );
+MACHINE_START( darius );
+MACHINE_RESET( darius );
 
 VIDEO_START( darius );
 VIDEO_UPDATE( darius );
@@ -169,7 +164,7 @@ static WRITE16_HANDLER( sharedram_w )
 	COMBINE_DATA(&sharedram[offset]);
 }
 
-void parse_control( void )	/* assumes Z80 sandwiched between 68Ks */
+static void parse_control( void )	/* assumes Z80 sandwiched between 68Ks */
 {
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
@@ -320,9 +315,9 @@ ADDRESS_MAP_END
                         SOUND
 *****************************************************/
 
-static int banknum = -1;
-static int adpcm_command = 0;
-static int nmi_enable = 0;
+static INT32 banknum = -1;
+static UINT8 adpcm_command = 0;
+static UINT8 nmi_enable = 0;
 
 static void reset_sound_region(void)
 {
@@ -883,10 +878,11 @@ static MACHINE_DRIVER_START( darius )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame ? */
 
-	MDRV_MACHINE_INIT(darius)
+	MDRV_MACHINE_START(darius)
+	MDRV_MACHINE_RESET(darius)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_DUAL_MONITOR)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_ASPECT_RATIO(12,3)
 	MDRV_SCREEN_SIZE(108*8, 32*8)
 	MDRV_VISIBLE_AREA(0*8, 108*8-1, 1*8, 29*8-1)
@@ -1201,19 +1197,26 @@ static DRIVER_INIT( darius )
 //  taitosnd_setz80_soundcpu( 2 );
 
 	cpua_ctrl = 0xff;
-	state_save_register_UINT16("main1", 0, "control", &cpua_ctrl, 1);
-	state_save_register_func_postload(parse_control);
 
 	banknum = -1;
-	// (there are other sound vars that may need saving too) //
-	state_save_register_int("sound1", 0, "sound region", &banknum);
-	state_save_register_int("sound2", 0, "sound region", &adpcm_command);
-	state_save_register_int("sound3", 0, "sound region", &nmi_enable);
-	state_save_register_func_postload(reset_sound_region);
 }
 
 
-MACHINE_INIT( darius )
+MACHINE_START( darius )
+{
+	state_save_register_global(cpua_ctrl);
+	state_save_register_func_postload(parse_control);
+
+	// (there are other sound vars that may need saving too) //
+	state_save_register_global(banknum);
+	state_save_register_global(adpcm_command);
+	state_save_register_global(nmi_enable);
+	state_save_register_func_postload(reset_sound_region);
+	return 0;
+}
+
+
+MACHINE_RESET( darius )
 {
 	int  i;
 
