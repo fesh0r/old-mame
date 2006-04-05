@@ -5,7 +5,7 @@
 #include "driver.h"
 #include "cpu/z80/z80.h"
 #include "vidhrdw/generic.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "devices/snapquik.h"
 
 #define TRS80_FONT_W 6
@@ -23,27 +23,25 @@ VIDEO_UPDATE( trs80 );
 
 void trs80_sh_sound_init(const char * gamename);
 
-void init_trs80(void);
-MACHINE_INIT( trs80 );
-MACHINE_STOP( trs80 );
+MACHINE_START( trs80 );
 
 WRITE8_HANDLER ( trs80_port_ff_w );
- READ8_HANDLER ( trs80_port_ff_r );
- READ8_HANDLER ( trs80_port_xx_r );
+READ8_HANDLER ( trs80_port_ff_r );
+READ8_HANDLER ( trs80_port_xx_r );
 
 INTERRUPT_GEN( trs80_frame_interrupt );
 INTERRUPT_GEN( trs80_timer_interrupt );
 INTERRUPT_GEN( trs80_fdc_interrupt );
 
- READ8_HANDLER( trs80_irq_status_r );
+READ8_HANDLER( trs80_irq_status_r );
 WRITE8_HANDLER( trs80_irq_mask_w );
 
- READ8_HANDLER( trs80_printer_r );
+READ8_HANDLER( trs80_printer_r );
 WRITE8_HANDLER( trs80_printer_w );
 
 WRITE8_HANDLER( trs80_motor_w );
 
- READ8_HANDLER( trs80_keyboard_r );
+READ8_HANDLER( trs80_keyboard_r );
 
 WRITE8_HANDLER( trs80_videoram_w );
 

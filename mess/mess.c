@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <assert.h>
+
 #include "driver.h"
 #include "devices/flopdrv.h"
 #include "utils.h"
@@ -17,15 +18,17 @@
 #include "image.h"
 #include "inputx.h"
 #include "artwork.h"
+#include "hash.h"
 
 /* Globals */
 const char *mess_path;
-int devices_inited;
 
 UINT32 mess_ram_size;
 UINT8 *mess_ram;
 UINT8 mess_ram_default_value = 0xCD;
 
+static int devices_initialload(const game_driver *gamedrv);
+static void devices_exit(void);
 
 
 static int ram_init(const game_driver *gamedrv)
@@ -67,12 +70,10 @@ static int ram_init(const game_driver *gamedrv)
 	if (mess_ram_size > 0)
 	{
 		mess_ram = (UINT8 *) auto_malloc(mess_ram_size);
-		if (!mess_ram)
-			return 1;
 		memset(mess_ram, mess_ram_default_value, mess_ram_size);
 
-		state_save_register_UINT32("mess", 0, "ramsize", &mess_ram_size, 1);
-		state_save_register_UINT8("mess", 0, "ram", mess_ram, mess_ram_size);
+		state_save_register_item("mess", 0, mess_ram_size);
+		state_save_register_item_pointer("mess", 0, mess_ram, mess_ram_size);
 	}
 	else
 	{
@@ -92,6 +93,7 @@ static int ram_init(const game_driver *gamedrv)
 int devices_init(const game_driver *gamedrv)
 {
 	int i;
+	const struct IODevice *dev;
 
 	/* convienient place to call this */
 	{
@@ -100,8 +102,6 @@ int devices_init(const game_driver *gamedrv)
 
 		cwd = osd_get_cwd();
 		s = auto_malloc(strlen(cwd) + 1);
-		if (!s)
-			return 1;
 		strcpy(s, cwd);
 		mess_path = s;
 	}
@@ -117,9 +117,14 @@ int devices_init(const game_driver *gamedrv)
 	/* Check that the driver supports all devices requested (options struct)*/
 	for( i = 0; i < options.image_count; i++ )
 	{
-		if (!device_find(Machine->devices, options.image_files[i].type))
+		if (options.image_files[i].device_tag)
+			dev = device_find_tag(Machine->devices, options.image_files[i].device_tag);
+		else
+			dev = device_find(Machine->devices, options.image_files[i].device_type);
+
+		if (!dev)
 		{
-			printf(" ERROR: Device [%s] is not supported by this system\n",device_typename(options.image_files[i].type));
+			printf(" ERROR: Device [%s] is not supported by this system\n", device_typename(options.image_files[i].device_type));
 			return 1;
 		}
 	}
@@ -130,13 +135,13 @@ int devices_init(const game_driver *gamedrv)
 
 	/* init all devices */
 	image_init();
-	devices_inited = TRUE;
-	return 0;
+	add_exit_callback(devices_exit);
+	return devices_initialload(gamedrv);
 }
 
 
 
-int devices_initialload(const game_driver *gamedrv, int ispreload)
+static int devices_initialload(const game_driver *gamedrv)
 {
 	int i;
 	int id;
@@ -147,13 +152,8 @@ int devices_initialload(const game_driver *gamedrv, int ispreload)
 	const char *image_name;
 	mess_image *image;
 	iodevice_t devtype;
-
-	/* normalize ispreload */
-	ispreload = ispreload ? 1 : 0;
-
-	/* wrong time to preload? */
-	if (ispreload != devices_inited)
-		return 0;
+	const char *devtag;
+	int devindex;
 
 	/* count number of devices, and record a list of allocated slots */
 	devcount = 0;
@@ -177,7 +177,10 @@ int devices_initialload(const game_driver *gamedrv, int ispreload)
 		/* get the image type and filename */
 		image_name = options.image_files[i].name;
 		image_name = (image_name && image_name[0]) ? image_name : NULL;
-		devtype = options.image_files[i].type;
+		devtype = options.image_files[i].device_type;
+		devtag = options.image_files[i].device_tag;
+		devindex = options.image_files[i].device_index;
+
 		assert(devtype >= 0);
 		assert(devtype < IO_COUNT);
 
@@ -185,24 +188,17 @@ int devices_initialload(const game_driver *gamedrv, int ispreload)
 
 		for (dev = Machine->devices; dev->type < IO_COUNT; dev++)
 		{
-			if (dev->type == devtype)
+			if ((dev->type == devtype) && (!devtag || !strcmp(dev->tag, devtag)))
 			{
-				id = allocated_slots[dev - Machine->devices];
-				if (id < dev->count)
-				{
-					result = INIT_PASS;
-					if (image_name)
-					{
-						/* try to load this image */
-						image = image_from_device_and_index(dev, id);
-						result = image_load(image, image_name);
-					}
-					if (result == INIT_PASS)
-					{
-						allocated_slots[dev - Machine->devices]++;
-						break;
-					}
-				}
+				if (devindex >= 0)
+					id = devindex;
+				else
+					id = allocated_slots[dev - Machine->devices]++;
+
+				/* try to load this image */
+				image = image_from_device_and_index(dev, id);
+				result = image_load(image, image_name);
+				break;
 			}
 		}
 		if (dev->type >= IO_COUNT)
@@ -225,10 +221,17 @@ int devices_initialload(const game_driver *gamedrv, int ispreload)
 	/* make sure that any required devices have been allocated */
 	for (dev = Machine->devices; dev->type < IO_COUNT; dev++)
 	{
-		if (dev->must_be_loaded && (allocated_slots[dev - Machine->devices] != dev->count))
+		if (dev->must_be_loaded)
 		{
-			printf("Driver requires that device %s must have an image to load\n", device_typename(dev->type));
-			goto error;
+			for (id = 0; id < dev->count; id++)
+			{
+				image = image_from_device_and_index(dev, id);
+				if (!image_exists(image))
+				{
+					printf("Driver requires that device %s must have an image to load\n", device_typename(dev->type));
+					goto error;
+				}
+			}
 		}
 	}
 	free(allocated_slots);
@@ -246,7 +249,7 @@ error:
  * Call the exit() functions for all devices of a
  * driver for all images.
  */
-void devices_exit(void)
+static void devices_exit(void)
 {
 	/* unload all devices */
 	image_unload_all(FALSE);
@@ -254,36 +257,7 @@ void devices_exit(void)
 
 	/* exit all devices */
 	image_exit();
-	devices_inited = FALSE;
-}
-
-
-
-int register_device(iodevice_t type, const char *arg)
-{
-	/* Check the the device type is valid, otherwise this lookup will be bad*/
-	if (type < 0 || type >= IO_COUNT)
-	{
-		printf("register_device() failed! - device type [%d] is not valid\n",type);
-		return -1;
-	}
-
-	/* Next, check that we havent loaded too many images					*/
-	if (options.image_count >= sizeof(options.image_files) / sizeof(options.image_files[0]))
-	{
-		printf("Too many image names specified!\n");
-		return -1;
-	}
-
-	/* All seems ok to add device and argument to options{} struct			*/
-	logerror("Image [%s] Registered for Device [%s]\n", arg, device_typename(type));
-
-	/* the user specified a device type */
-	options.image_files[options.image_count].type = type;
-	options.image_files[options.image_count].name = strdup(arg);
-	options.image_count++;
-	return 0;
-
+	Machine->devices = NULL;
 }
 
 
@@ -344,27 +318,12 @@ void ram_dump(const char *filename)
 
 
 
-void machine_hard_reset(void)
+void mess_config_init(void)
 {
-	memset(mess_ram, mess_ram_default_value, mess_ram_size);
-	machine_reset();
-}
-
-
-
-char *auto_strlistdup(const char *strlist)
-{
-	int i;
-	char *s;
-
-	for (i = 2; strlist[i - 2] || strlist[i - 1]; i++)
-		;
-	s = auto_malloc(i * sizeof(*strlist));
-	if (!s)
-		return NULL;
-
-	memcpy(s, strlist, i * sizeof(*strlist));
-	return s;
+#ifdef WIN32
+	extern void win_mess_config_init(void);
+	win_mess_config_init();
+#endif
 }
 
 

@@ -15,6 +15,7 @@
 #include "devices/cartslot.h"
 #include "includes/lynx.h"
 #include "vidhrdw/generic.h"
+#include "hash.h"
 
 static int rotate=0;
 int lynx_rotate;
@@ -93,7 +94,7 @@ void lynx_draw_lines(int newline)
 	UINT8 byte;
 	UINT16 *line;
 
-	if (osd_skip_this_frame()) newline=-1;
+	if (skip_this_frame()) newline=-1;
 
 	if (newline==-1)
 		yend = 102;
@@ -221,7 +222,7 @@ static MACHINE_DRIVER_START( lynx )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( lynx )
+	MDRV_MACHINE_RESET( lynx )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

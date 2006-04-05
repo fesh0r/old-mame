@@ -186,7 +186,7 @@ static mame_file *rs232_fp;
 static UINT8 rs232_rts;
 static void *rs232_input_timer;
 
-static void machine_init_tm990_189(void)
+static MACHINE_RESET( tm990_189 )
 {
 	displayena_timer = timer_alloc(NULL);
 
@@ -201,7 +201,7 @@ static void machine_init_tm990_189(void)
 }
 
 
-static void machine_init_tm990_189_v(void)
+static MACHINE_RESET( tm990_189_v )
 {
 	displayena_timer = timer_alloc(NULL);
 
@@ -772,7 +772,7 @@ static MACHINE_DRIVER_START(tm990_189)
 	/*MDRV_CPU_VBLANK_INT(tm990_189_interrupt, 1)*/
 	/*MDRV_CPU_PERIODIC_INT(NULL, 0)*/
 
-	MDRV_MACHINE_INIT( tm990_189 )
+	MDRV_MACHINE_RESET( tm990_189 )
 	/*MDRV_NVRAM_HANDLER( NULL )*/
 
 	/* video hardware - we emulate a 8-segment LED display */
@@ -791,7 +791,6 @@ static MACHINE_DRIVER_START(tm990_189)
 
 	MDRV_PALETTE_INIT(tm990_189)
 	/*MDRV_VIDEO_START(tm990_189)*/
-	/*MDRV_VIDEO_STOP(tm990_189)*/
 	MDRV_VIDEO_EOF(tm990_189)
 	MDRV_VIDEO_UPDATE(tm990_189)
 
@@ -814,7 +813,7 @@ static MACHINE_DRIVER_START(tm990_189_v)
 	/*MDRV_CPU_VBLANK_INT(tm990_189_interrupt, 1)*/
 	/*MDRV_CPU_PERIODIC_INT(NULL, 0)*/
 
-	MDRV_MACHINE_INIT( tm990_189_v )
+	MDRV_MACHINE_RESET( tm990_189_v )
 	/*MDRV_NVRAM_HANDLER( NULL )*/
 
 	/* video hardware */
@@ -825,12 +824,15 @@ static MACHINE_DRIVER_START(tm990_189_v)
 	MDRV_TMS9928A(&tms9918_interface)
 	MDRV_VIDEO_EOF(tm990_189)
 	MDRV_VIDEO_UPDATE(tm990_189_v)
+
+	/* NPW 27-Feb-2006 - ewwww gross!!! maybe this can be fixed when 
+	 * multimonitor support is added?*/
 	LED_display_window_left = machine->default_visible_area.min_x;
 	LED_display_window_top = machine->default_visible_area.max_y;
 	LED_display_window_width = machine->default_visible_area.max_x - machine->default_visible_area.min_x;
 	LED_display_window_height = 32;
-
 	machine->default_visible_area.max_y += 32;
+	machine->screen_height += 32;
 
 	/* sound hardware */
 	/* one two-level buzzer */
@@ -851,10 +853,10 @@ ROM_START(990189)
 	ROM_REGION(0x4000, REGION_CPU1,0)
 
 	/* extra ROM */
-	ROM_LOAD("990-469.u32", 0x0800, 0x0800, CRC(08df7edb))
+	ROM_LOAD("990-469.u32", 0x0800, 0x0800, CRC(08df7edb) SHA1(fa9751fd2e3e5d7ae03819fc9c7099e2ddd9fb53))
 
 	/* boot ROM */
-	ROM_LOAD("990-469.u33", 0x3000, 0x1000, CRC(e9b4ac1b))		
+	ROM_LOAD("990-469.u33", 0x3000, 0x1000, CRC(e9b4ac1b) SHA1(96e88f4cb7a374033cdf3af0dc26ca5b1d55b9f9))
 	/*ROM_LOAD("unibasic.bin", 0x3000, 0x1000, CRC(de4d9744))*/	/* older, partial dump of university BASIC */
 
 ROM_END
@@ -864,16 +866,16 @@ ROM_START(990189v)
 	ROM_REGION(0x4000, REGION_CPU1,0)
 
 	/* extra ROM */
-	ROM_LOAD("990-469.u32", 0x0800, 0x0800, CRC(08df7edb))
+	ROM_LOAD("990-469.u32", 0x0800, 0x0800, CRC(08df7edb) SHA1(fa9751fd2e3e5d7ae03819fc9c7099e2ddd9fb53))
 
 	/* extension ROM */
-	ROM_LOAD_OPTIONAL("demo1000.u13", 0x1000, 0x0800, CRC(c0e16685))
+	ROM_LOAD_OPTIONAL("demo1000.u13", 0x1000, 0x0800, CRC(c0e16685) SHA1(d0d314134c42fa4682aafbace67f539f67f6ba65))
 
 	/* extension ROM */
-	ROM_LOAD_OPTIONAL("demo1800.u11", 0x1800, 0x0800, CRC(8737dc4b))
+	ROM_LOAD_OPTIONAL("demo1800.u11", 0x1800, 0x0800, CRC(8737dc4b) SHA1(b87da7aa4d3f909e70f885c4b36999cc1abf5764))
 
 	/* boot ROM */
-	ROM_LOAD("990-469.u33", 0x3000, 0x1000, CRC(e9b4ac1b))		
+	ROM_LOAD("990-469.u33", 0x3000, 0x1000, CRC(e9b4ac1b) SHA1(96e88f4cb7a374033cdf3af0dc26ca5b1d55b9f9))
 	/*ROM_LOAD("unibasic.bin", 0x3000, 0x1000, CRC(de4d9744))*/	/* older, partial dump of university BASIC */
 
 ROM_END

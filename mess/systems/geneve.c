@@ -199,6 +199,7 @@
 
 #include "driver.h"
 #include "inputx.h"
+#include "vidhrdw/generic.h"
 #include "vidhrdw/v9938.h"
 
 #include "includes/geneve.h"
@@ -212,6 +213,7 @@
 #include "devices/mflopimg.h"
 #include "machine/smartmed.h"
 #include "sound/5220intf.h"
+#include "devices/harddriv.h"
 
 /*
 	memory map
@@ -463,9 +465,7 @@ static MACHINE_DRIVER_START(geneve_60hz)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( geneve )
-	MDRV_MACHINE_STOP( geneve )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
+	MDRV_MACHINE_START( geneve )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -480,7 +480,7 @@ static MACHINE_DRIVER_START(geneve_60hz)
 	MDRV_PALETTE_INIT(v9938)
 	MDRV_VIDEO_START(geneve)
 	/*MDRV_VIDEO_EOF(name)*/
-	MDRV_VIDEO_UPDATE(v9938)
+	MDRV_VIDEO_UPDATE(generic_bitmapped)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(SN76496, 3579545)	/* 3.579545 MHz */
@@ -563,10 +563,10 @@ static void geneve_harddisk_getinfo(const device_class *devclass, UINT32 state, 
 		case DEVINFO_INT_READABLE:						info->i = 1; break;
 		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
 		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_ti99_hd; break;
+		case DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
 		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hd; break;
 		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hd; break;
 
@@ -642,6 +642,7 @@ static void geneve_memcard_getinfo(const device_class *devclass, UINT32 state, u
 SYSTEM_CONFIG_START(geneve)
 	CONFIG_DEVICE(geneve_floppy_getinfo)
 	CONFIG_DEVICE(geneve_harddisk_getinfo)
+	CONFIG_DEVICE(ti99_ide_harddisk_getinfo)
 	CONFIG_DEVICE(geneve_parallel_getinfo)
 	CONFIG_DEVICE(geneve_serial_getinfo)
 	CONFIG_DEVICE(geneve_memcard_getinfo)

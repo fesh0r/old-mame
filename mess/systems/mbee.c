@@ -35,9 +35,11 @@
 
 #include <math.h>
 #include "driver.h"
-#include "machine/z80fmly.h"
+#include "machine/z80ctc.h"
+#include "machine/z80pio.h"
+#include "machine/z80sio.h"
 #include "vidhrdw/generic.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "includes/mbee.h"
 #include "devices/basicdsk.h"
 #include "devices/cartslot.h"
@@ -257,7 +259,7 @@ static MACHINE_DRIVER_START( mbee )
 	MDRV_VBLANK_DURATION(2500)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( mbee )
+	MDRV_MACHINE_RESET( mbee )
 
 	MDRV_GFXDECODE(mbee_gfxdecodeinfo)
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

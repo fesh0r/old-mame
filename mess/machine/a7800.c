@@ -25,7 +25,7 @@
 #include "cpu/m6502/m6502.h"
 #include "sound/tiasound.h"
 #include "cpuintrf.h"
-#include "zlib.h"
+#include "hash.h"
 #include "image.h"
 #include "machine/6532riot.h"
 #include "sound/pokey.h"
@@ -100,7 +100,7 @@ DRIVER_INIT( a7800_pal )
 
 
 
-MACHINE_INIT( a7800 )
+MACHINE_RESET( a7800 )
 {
 	UINT8 *memory;
 

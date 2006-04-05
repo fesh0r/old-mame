@@ -354,7 +354,6 @@ Video part
 */
 #include <math.h>
 #include <stdio.h>
-#include "osd_cpu.h"
 #include "driver.h"
 #include "utils.h"
 #include "sound/custom.h"
@@ -931,6 +930,11 @@ WRITE8_HANDLER ( ted7360_port_w )
 	return val;
 }
 
+static void ted7360_video_stop(void)
+{
+	freegfx(cursorelement);
+}
+
 VIDEO_START( ted7360 )
 {
 	cursorelement = allocgfx(&cursorlayout);
@@ -939,12 +943,8 @@ VIDEO_START( ted7360 )
 	cursorcolortable[1] = Machine->pens[1];
 	cursorelement->total_colors = 2;
 	ted7360_bitmap = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height);
+	add_exit_callback(ted7360_video_stop);
 	return 0;
-}
-
-VIDEO_STOP( ted7360 )
-{
-	freegfx (cursorelement);
 }
 
 static void ted7360_draw_character (int ybegin, int yend, int ch, int yoff, int xoff,
@@ -1049,7 +1049,7 @@ static void ted7360_drawlines (int first, int last)
 
 	lastline = last;
 
-	if (osd_skip_this_frame ())
+	if (skip_this_frame ())
 		return;
 
 	/* top part of display not rastered */

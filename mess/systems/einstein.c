@@ -79,11 +79,13 @@
 /* 7e = 0, read from fe, 7e = 1, read from fe */
 
 #include "driver.h"
-#include "machine/z80fmly.h"
+#include "machine/z80ctc.h"
+#include "machine/z80pio.h"
+#include "machine/z80sio.h"
 #include "vidhrdw/tms9928a.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "includes/centroni.h"
 #include "includes/msm8251.h"
 #include "devices/dsk.h"
@@ -386,13 +388,12 @@ static WRITE8_HANDLER(einstein_serial_receive_clock)
 
 static z80ctc_interface	einstein_ctc_intf =
 {
-	1,
-	{EINSTEIN_SYSTEM_CLOCK},
-	{0},
-	{einstein_ctc_interrupt},
-	{einstein_serial_transmit_clock},
-	{einstein_serial_receive_clock},
-    {z80ctc_0_trg3_w}
+	EINSTEIN_SYSTEM_CLOCK,
+	0,
+	einstein_ctc_interrupt,
+	einstein_serial_transmit_clock,
+	einstein_serial_receive_clock,
+    z80ctc_0_trg3_w
 };
 
 static void einstein_pio_ardy(int data)
@@ -412,10 +413,9 @@ static void einstein_pio_ardy(int data)
 
 static z80pio_interface einstein_pio_intf = 
 {
-	1,
-	{einstein_pio_interrupt},
-	{einstein_pio_ardy},
-	{NULL}
+	einstein_pio_interrupt,
+	einstein_pio_ardy,
+	NULL
 };
 
 /* not required for this interrupt source */
@@ -742,17 +742,12 @@ static  READ8_HANDLER(einstein_psg_r)
 /* keyboard int->ctc/adc->pio */
 
 
-ADDRESS_MAP_START( readmem_einstein , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x01fff) AM_READ( MRA8_BANK1)
-	AM_RANGE(0x2000, 0x0ffff) AM_READ( MRA8_BANK2)
+ADDRESS_MAP_START( einstein_mem , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x01fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK3)
+	AM_RANGE(0x2000, 0x0ffff) AM_READWRITE(MRA8_BANK2, MWA8_BANK4)
 ADDRESS_MAP_END
 
 
-
-ADDRESS_MAP_START( writemem_einstein , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x01fff) AM_WRITE( MWA8_BANK3)
-	AM_RANGE(0x2000, 0x0ffff) AM_WRITE( MWA8_BANK4)
-ADDRESS_MAP_END
 
 static void einstein_page_rom(void)
 {
@@ -1274,21 +1269,14 @@ static WRITE8_HANDLER(einstein_port_w)
 }
 
 
-ADDRESS_MAP_START( readport_einstein2 , ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0000,0x0ffff) AM_READ( einstein2_port_r)
+ADDRESS_MAP_START( einstein2_io , ADDRESS_SPACE_IO, 8)
+	AM_RANGE(0x0000,0x0ffff) AM_READWRITE(einstein2_port_r, einstein2_port_w)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( writeport_einstein2 , ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0000,0x0ffff) AM_WRITE( einstein2_port_w)
+ADDRESS_MAP_START( einstein_io , ADDRESS_SPACE_IO, 8)
+	AM_RANGE(0x0000,0x0ffff) AM_READWRITE(einstein_port_r, einstein_port_w)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( readport_einstein , ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0000,0x0ffff) AM_READ( einstein_port_r)
-ADDRESS_MAP_END
-
-ADDRESS_MAP_START( writeport_einstein , ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0000,0x0ffff) AM_WRITE( einstein_port_w)
-ADDRESS_MAP_END
 #if 0
 ADDRESS_MAP_START( readport_einstein , ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x000, 0x007) AM_READ( einstein_psg_r)
@@ -1378,14 +1366,14 @@ static int einstein_cpu_acknowledge_int(int cpu)
 	return (vector<<1);
 }
 
-static MACHINE_INIT( einstein )
+static MACHINE_RESET( einstein )
 {
 	memory_set_bankptr(2, mess_ram+0x02000);
 	memory_set_bankptr(3, mess_ram);
 	memory_set_bankptr(4, mess_ram+0x02000);
 
-	z80ctc_init(&einstein_ctc_intf);
-	z80pio_init(&einstein_pio_intf);
+	z80ctc_init(0, &einstein_ctc_intf);
+	z80pio_init(0, &einstein_pio_intf);
 	msm8251_init(&einstein_msm8251_intf);
 
 	z80ctc_reset(0);
@@ -1406,7 +1394,7 @@ static MACHINE_INIT( einstein )
 	einstein_int_mask = 0;
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
 
-	cpu_set_irq_callback(0, einstein_cpu_acknowledge_int);
+	cpunum_set_irq_callback(0, einstein_cpu_acknowledge_int);
 
 	/* the einstein keyboard can generate a interrupt */
 	/* the int is actually clocked at the system clock 4Mhz, but this would be too fast for our
@@ -1423,9 +1411,9 @@ static MACHINE_INIT( einstein )
 
 }
 
-static MACHINE_INIT( einstein2 )
+static MACHINE_RESET( einstein2 )
 {
-	machine_init_einstein();
+	machine_reset_einstein();
 	einstein_80col_init();
 }
 
@@ -1687,14 +1675,14 @@ static const TMS9928a_interface tms9928a_interface =
 static MACHINE_DRIVER_START( einstein )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, EINSTEIN_SYSTEM_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(readmem_einstein,writemem_einstein)
-	MDRV_CPU_IO_MAP(readport_einstein,writeport_einstein)
+	MDRV_CPU_PROGRAM_MAP(einstein_mem, 0)
+	MDRV_CPU_IO_MAP(einstein_io, 0)
 	MDRV_CPU_CONFIG(einstein_daisy_chain)
 	MDRV_FRAMES_PER_SECOND(50)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( einstein )
+	MDRV_MACHINE_RESET( einstein )
 
     /* video hardware */
 	MDRV_TMS9928A( &tms9928a_interface )
@@ -1711,8 +1699,8 @@ static MACHINE_DRIVER_START( einstei2 )
 	MDRV_IMPORT_FROM( einstein )
 
 	MDRV_CPU_MODIFY( "main" )
-	MDRV_CPU_IO_MAP(readport_einstein2,writeport_einstein2)
-	MDRV_MACHINE_INIT( einstein2 )
+	MDRV_CPU_IO_MAP(einstein2_io, 0)
+	MDRV_MACHINE_RESET( einstein2 )
 
     /* video hardware */
 	MDRV_SCREEN_SIZE(640, 400)

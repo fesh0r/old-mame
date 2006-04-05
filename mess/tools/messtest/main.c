@@ -16,11 +16,11 @@
 #include <windows.h>
 #include "windows/rc.h"
 #include "windows/glob.h"
-#include "windows/parallel.h"
 #elif defined XMAME
 #include "sysdep/rc.h"
 #endif /* WIN32 */
 
+extern int mame_validitychecks(int game);
 extern struct rc_option fileio_opts[];
 
 static int dump_screenshots;
@@ -95,18 +95,9 @@ int main(int argc, char *argv[])
 
 	mess_ghost_images = 1;
 
-#if defined(_MSC_VER) && (_MSC_VER >= 1300)
-	if (IsDebuggerPresent())
-	{
-		_set_error_mode(_OUT_TO_MSGBOX);
-	}
-#endif
-
 #ifdef WIN32
 	/* expand wildcards so '*' can be used; this is not UNIX */
 	win_expand_wildcards(&argc, &argv);
-
-	win_parallel_init();
 #else
 	{
 		/* this is for XMESS */
@@ -126,7 +117,7 @@ int main(int argc, char *argv[])
 	sndintrf_init();
 	
 	/* run MAME's validity checks; if these fail cop out now */
-	if (mame_validitychecks())
+	if (mame_validitychecks(-1))
 		goto done;
 	/* run Imgtool's validity checks; if these fail cop out now */
 	if (imgtool_validitychecks())
@@ -172,9 +163,6 @@ int main(int argc, char *argv[])
 done:
 	if (rc)
 		rc_destroy(rc);
-#ifdef WIN32
-	win_parallel_exit();
-#endif /* WIN32 */
 	return result;
 }
 

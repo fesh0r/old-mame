@@ -94,8 +94,6 @@ int image_init(void)
 	if (count > 0)
 	{
 		images = auto_malloc(count * sizeof(*images));
-		if (!images)
-			return INIT_FAIL;
 		memset(images, 0, count * sizeof(*images));
 	}
 
@@ -217,7 +215,7 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 
 	/* do we need to reset the CPU? */
 	if ((timer_get_time() > 0) && dev->reset_on_load)
-		machine_reset();
+		mame_schedule_soft_reset();
 
 	/* prepare to open the file */
 	img->created = 0;
@@ -951,13 +949,13 @@ int image_battery_save(mess_image *img, const void *buffer, int length)
 		if (nvram_filename)
 		{
 			f = mame_fopen(Machine->gamedrv->name, nvram_filename, FILETYPE_NVRAM, 1);
+			free(nvram_filename);
 			if (f)
 			{
 				mame_fwrite(f, buffer, length);
 				mame_fclose(f);
 				return TRUE;
 			}
-			free(nvram_filename);
 		}
 	}
 	return FALSE;
@@ -999,6 +997,7 @@ mess_image *image_from_device_and_index(const struct IODevice *dev, int id)
 	mess_image *image = NULL;
 
 	assert(id < dev->count);
+	assert(images);
 
 	indx = 0;
 	for (i = 0; Machine->devices[i].type < IO_COUNT; i++)

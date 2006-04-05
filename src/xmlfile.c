@@ -320,11 +320,6 @@ static int setup_parser(xml_parse_info *parse_info, xml_parse_options *opts)
 		}
 	}
 
-	/* initialize error results */
-	parse_info->error_message = NULL;
-	parse_info->error_line = 0;
-	parse_info->error_column = 0;
-
 	/* create a root node */
 	parse_info->rootnode = xml_file_create();
 	if (!parse_info->rootnode)
@@ -373,8 +368,8 @@ xml_data_node *xml_file_read(mame_file *file, xml_parse_options *opts)
 		char tempbuf[TEMP_BUFFER_SIZE];
 
 		/* read as much as we can */
-		int bytes = parse_info->read(parse_info->param, tempbuf, sizeof(tempbuf));
-		done = parse_info->eof(parse_info->param);
+		int bytes = mame_fread(file, tempbuf, sizeof(tempbuf));
+		done = mame_feof(file);
 
 		/* parse the data */
 		if (XML_Parse(parse_info.parser, tempbuf, bytes, done) == XML_STATUS_ERROR)
@@ -437,33 +432,6 @@ xml_data_node *xml_string_read(const char *string, xml_parse_options *opts)
 
 	/* return the root node */
 	return parse_info.rootnode;
-}
-
-
-
-static size_t parse_read(void *param, void *buffer, size_t length)
-{
-	return mame_fread((mame_file *) param, buffer, length);
-}
-
-
-
-static int parse_eof(void *param)
-{
-	return mame_feof((mame_file *) param);
-}
-
-
-
-xml_data_node *xml_file_read(mame_file *file)
-{
-	xml_custom_parse parse;
-	parse.init = NULL;
-	parse.read = parse_read;
-	parse.eof = parse_eof;
-	parse.param = (void *) file;
-	parse.trim_whitespace = 1;
-	return xml_file_read_custom(&parse);
 }
 
 

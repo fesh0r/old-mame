@@ -244,7 +244,7 @@ char* MyStrStrI(const char* pFirst, const char* pSrch)
 		s1 = cp;
 		s2 = (char*)pSrch;
 		
-		while (*s1 && *s2 && !strnicmp(s1, s2, 1))
+		while (*s1 && *s2 && !mame_strnicmp(s1, s2, 1))
 			s1++, s2++;
 		
 		if (!*s2)
@@ -333,7 +333,9 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 					num_speakers++;
 
 			gameinfo->isStereo = (num_speakers > 1);
-			gameinfo->isMultiMon = ((drv.video_attributes & VIDEO_DUAL_MONITOR) != 0);
+			//gameinfo->isMultiMon = ((drv.video_attributes & VIDEO_DUAL_MONITOR) != 0);
+			// Was removed from Core
+			gameinfo->isMultiMon = 0;
 			gameinfo->isVector = ((drv.video_attributes & VIDEO_TYPE_VECTOR) != 0);
 			gameinfo->usesRoms = FALSE;
 			for (region = rom_first_region(gamedrv); region; region = rom_next_region(region))

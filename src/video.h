@@ -35,6 +35,9 @@
 #define DEBUG_FOCUS_CHANGED			0x00000040
 #define LED_STATE_CHANGED			0x00000080
 #define GAME_REFRESH_RATE_CHANGED	0x00000100
+#ifdef MESS
+#define GAME_OPTIONAL_FRAMESKIP     0x00000200
+#endif /* MESS */
 
 
 /* the main mame_display structure, containing the current state of the */

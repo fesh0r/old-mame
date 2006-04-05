@@ -20,7 +20,9 @@
 
 #include <math.h>
 #include "driver.h"
-#include "machine/z80fmly.h"
+#include "machine/z80ctc.h"
+#include "machine/z80pio.h"
+#include "machine/z80sio.h"
 #include "vidhrdw/generic.h"
 #include "cpu/z80/z80daisy.h"
 
@@ -31,16 +33,9 @@ static int charset;
 
 static z80pio_interface z80pio_intf =
 {
-	1,
-	{
-		pio_interrupt
-	},
-	{
-		NULL
-	},
-	{
-		NULL
-	}
+	pio_interrupt
+	NULL,
+	NULL
 };
 
 static void pio_interrupt(int state)
@@ -68,10 +63,10 @@ static void reset_timer_callback(int dummy)
 	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x0000);
 }
 
-static void machine_init_super80(void)
+static MACHINE_RESET( super8 )
 {
 	/* reset PIO */
-	z80pio_init(&z80pio_intf);
+	z80pio_init(0, &z80pio_intf);
 	z80pio_reset(0);
 	keyboard_scan();
 	/* enable ROM in base >0000, and re-enable RAM shortly thereafter */
@@ -163,6 +158,11 @@ static ADDRESS_MAP_START(super80_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xf000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
+static READ8_HANDLER( pio_0_r )
+{
+	return (offset & 2) ? z80pio_c_r(0, offset & 1) : z80pio_d_r(0, offset & 1);
+}
+
 static ADDRESS_MAP_START(super80_ports, ADDRESS_SPACE_IO, 8)
 	//AM_RANGE(0xdc, 0xdc) AM_READWRITE(super80_parallel_r, super80_parallel_w)
 	//AM_RANGE(0xdd, 0xdd) AM_READWRITE(super80_serial0_r, super80_serial0_w)
@@ -170,7 +170,7 @@ static ADDRESS_MAP_START(super80_ports, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(super80_gpo_w)
 	AM_RANGE(0xf1, 0xf1) AM_WRITE(super80_vidpg_w)
 	AM_RANGE(0xf2, 0xf2) AM_READ(super80_gpi_r)
-	AM_RANGE(0xf8, 0xfb) AM_READWRITE(z80pio_0_r, super80_z80pio_w)
+	AM_RANGE(0xf8, 0xfb) AM_READWRITE(pio_0_r, super80_z80pio_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( super80 )
@@ -320,7 +320,7 @@ static MACHINE_DRIVER_START( super80 )
 	//MDRV_VBLANK_DURATION(2500)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( super80 )
+	MDRV_MACHINE_RESET( super80 )
 
 	MDRV_GFXDECODE(super80_gfxdecodeinfo)
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

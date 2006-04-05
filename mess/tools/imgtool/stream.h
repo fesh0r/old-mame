@@ -21,7 +21,7 @@ void stream_close(imgtool_stream *stream);
 size_t stream_read(imgtool_stream *stream, void *buf, size_t sz);
 size_t stream_write(imgtool_stream *stream, const void *buf, size_t sz);
 UINT64 stream_size(imgtool_stream *stream);
-int stream_seek(imgtool_stream *stream, size_t pos, int where);
+int stream_seek(imgtool_stream *stream, INT64 pos, int where);
 size_t stream_tell(imgtool_stream *stream);
 void stream_clear(imgtool_stream *stream);
 void *stream_getptr(imgtool_stream *stream);
@@ -34,7 +34,7 @@ size_t stream_transfer(imgtool_stream *dest, imgtool_stream *source, size_t sz);
 size_t stream_transfer_all(imgtool_stream *dest, imgtool_stream *source);
 
 /* Fills sz bytes with b */
-size_t stream_fill(imgtool_stream *f, unsigned char b, size_t sz);
+size_t stream_fill(imgtool_stream *f, unsigned char b, UINT64 sz);
 
 /* Returns the CRC of a file */
 int stream_crc(imgtool_stream *f, unsigned long *result);

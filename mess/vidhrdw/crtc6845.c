@@ -134,9 +134,6 @@ struct crtc6845 *crtc6845_init(const struct crtc6845_config *config)
 	int idx;
 
 	crtc = auto_malloc(sizeof(struct crtc6845));
-	if (!crtc)
-		return NULL;
-
 	memset(crtc, 0, sizeof(*crtc));
 	crtc->cursor_time = timer_get_time();
 	crtc->config = *config;
@@ -151,8 +148,8 @@ struct crtc6845 *crtc6845_init(const struct crtc6845_config *config)
 		}
 	}
 
-	state_save_register_UINT8("crtc6845", 0, "REGS",	crtc->reg, sizeof(crtc->reg) / sizeof(crtc->reg[0]));
-	state_save_register_UINT8("crtc6845", 0, "IDX",		&crtc->idx, 1);
+	state_save_register_item_array("crtc6845", 0, crtc->reg);
+	state_save_register_item("crtc6845", 0, crtc->idx);
 	state_save_register_func_postload(crtc6845_state_postload);
 	return crtc;
 }

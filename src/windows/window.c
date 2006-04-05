@@ -13,16 +13,8 @@
 
 // standard windows headers
 #define WIN32_LEAN_AND_MEAN
-#ifndef WINVER
-#define WINVER 0x500
-#define COMPILE_MULTIMON_STUBS
 #include <windows.h>
 #include <windowsx.h>
-#include <multimon.h>
-#else
-#include <windows.h>
-#include <windowsx.h>
-#endif
 
 // missing stuff from the mingw headers
 #ifndef ENUM_CURRENT_SETTINGS
@@ -42,11 +34,6 @@
 
 // standard C headers
 #include <math.h>
-
-// Windows 95/NT multimonitor stubs
-#ifdef WIN95_MULTIMON
-#include "multidef.h"
-#endif
 
 // MAME headers
 #include "osdepend.h"
@@ -886,6 +873,13 @@ LRESULT CALLBACK win_video_window_proc(HWND wnd, UINT message, WPARAM wparam, LP
 			if (win_window_mode)
 				return DefWindowProc(wnd, message, wparam, lparam);
 			break;
+
+#else
+
+		case WM_SYSKEYUP:
+		case WM_SYSKEYDOWN:
+			break;
+
 #endif /* !HAS_WINDOW_MENU */
 
 		// suspend sound and timer if we are resizing or a menu is coming up

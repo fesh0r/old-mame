@@ -11,6 +11,7 @@
 #include "machine/pic8259.h"
 #include "machine/8237dma.h"
 #include "machine/mc146818.h"
+#include "machine/pc_turbo.h"
 
 #include "vidhrdw/pc_vga.h"
 #include "vidhrdw/pc_cga.h"
@@ -21,6 +22,7 @@
 #include "includes/at.h"
 #include "machine/pckeybrd.h"
 #include "includes/sblaster.h"
+#include "machine/i82439tx.h"
 
 static const SOUNDBLASTER_CONFIG soundblaster = { 1,5, {1,0} };
 
@@ -77,6 +79,14 @@ DRIVER_INIT( at386 )
 		KBDC8042_AT386, at_set_gate_a20, at_keyboard_interrupt
 	};
 	init_at_common(&at8042);
+}
+
+
+
+DRIVER_INIT( at586 )
+{
+	init_at386();
+	intel82439tx_init();
 }
 
 
@@ -146,17 +156,15 @@ static int at_irq_callback(int irqline)
 
 
 
-MACHINE_INIT( at )
+MACHINE_START( at )
 {
-	dma8237_reset();
-	cpu_set_irq_callback(0, at_irq_callback);
+	cpunum_set_irq_callback(0, at_irq_callback);
+	return 0;
 }
 
 
 
-MACHINE_INIT( at_vga )
+MACHINE_RESET( at )
 {
-	pc_vga_reset();
 	dma8237_reset();
-	cpu_set_irq_callback(0, at_irq_callback);
 }

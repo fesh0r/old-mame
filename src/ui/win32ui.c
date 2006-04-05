@@ -293,6 +293,7 @@ static BOOL             SelectLanguageFile(HWND hWnd, TCHAR* filename);
 static void             MamePlayRecordGame(void);
 static void             MamePlayBackGame(void);
 static void             MamePlayRecordWave(void);
+static void             MamePlayRecordMNG(void);
 static void				MameLoadState(void);
 static BOOL             CommonFileDialog(common_file_dialog_proc cfd,char *filename, int filetype);
 static void             MamePlayGame(void);
@@ -702,6 +703,7 @@ static char * g_pRecordName = NULL;
 static char * g_pPlayBkName = NULL;
 static char * g_pSaveStateName = NULL;
 static char * g_pRecordWaveName = NULL;
+static char * g_pRecordMNGName = NULL;
 static char * override_playback_directory = NULL;
 static char * override_savestate_directory = NULL;
 
@@ -968,6 +970,8 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -rec \"%s\"",            g_pRecordName);
 	if (g_pRecordWaveName != NULL)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -wavwrite \"%s\"",       g_pRecordWaveName);
+	if (g_pRecordMNGName != NULL)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -mngwrite \"%s\"",       g_pRecordMNGName);
 	if (g_pSaveStateName != NULL)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -state \"%s\"",          g_pSaveStateName);
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%slog",                     pOpts->errorlog        ? "" : "no");
@@ -977,12 +981,14 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sleds",                    pOpts->leds            ? "" : "no");
 	if (pOpts->skip_gameinfo)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -skip_gameinfo");
+	//WIP RS we need to determine the ThreadPriority of our App before starting the emulation and restore that after the emulation
+	sprintf(&pCmdLine[strlen(pCmdLine)], " -priority %i", pOpts->priority);
+	if (pOpts->autosave)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -autosave");
 #ifdef MESS
 	if (pOpts->skip_warnings)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -skip_warnings");
 #endif
-	if (pOpts->high_priority)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -high_priority");
 
 	if (DriverHasOptionalBIOS(nGameIndex))
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -bios %i",pOpts->bios);		
@@ -1053,6 +1059,11 @@ static DWORD RunMAME(int nGameIndex)
 		argv[argc++] = "-wavwrite";
 		argv[argc++] = g_pRecordWaveName;
 	}
+	if (g_pRecordMNGName != NULL)
+	{
+		argv[argc++] = "-mngwrite";
+		argv[argc++] = g_pRecordMNGName;
+	}
 	if (g_pSaveStateName != NULL)
 	{
 		argv[argc++] = "-state";
@@ -1101,6 +1112,8 @@ static DWORD RunMAME(int nGameIndex)
 	char pCmdLine[2048];
 	HWND hGameWnd = NULL;
 	long lGameWndStyle = 0;
+	int UIPriority = GetThreadPriority(GetCurrentThread());
+	//Save the Priority
 
 #ifdef MESS
 	SaveGameOptions(nGameIndex);
@@ -1159,6 +1172,8 @@ static DWORD RunMAME(int nGameIndex)
 		}
 
 		ShowWindow(hMain, SW_SHOW);
+		//Restore UI Thread Priority
+		SetThreadPriority(GetCurrentThread(),UIPriority);
 		// Close process and thread handles.
 		CloseHandle(pi.hProcess);
 		CloseHandle(pi.hThread);
@@ -1810,6 +1825,7 @@ void SetMainTitle(void)
 
 static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+	extern int mame_validitychecks(void);
 	WNDCLASS	wndclass;
 	RECT		rect;
 	int i, j = 0, nSplitterCount;
@@ -2007,8 +2023,8 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	hTreeView = GetDlgItem(hMain, IDC_TREE);
 	hwndList  = GetDlgItem(hMain, IDC_LIST);
 
-	history_filename = strdup(GetHistoryFileName());
-	mameinfo_filename = strdup(GetMAMEInfoFileName());
+	history_filename = mame_strdup(GetHistoryFileName());
+	mameinfo_filename = mame_strdup(GetMAMEInfoFileName());
 
 	if (!InitSplitters())
 		return FALSE;
@@ -4141,6 +4157,10 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 		MamePlayRecordWave();
 		return TRUE;
 
+	case ID_FILE_PLAY_RECORD_MNG:
+		MamePlayRecordMNG();
+		return TRUE;
+
 	case ID_FILE_LOADSTATE :
 		MameLoadState();
 		return TRUE;
@@ -5328,6 +5348,7 @@ enum
 	FILETYPE_INPUT_FILES = 1,
 	FILETYPE_SAVESTATE_FILES = 2,
 	FILETYPE_WAVE_FILES = 3,
+	FILETYPE_MNG_FILES = 4
 };
 static BOOL CommonFileDialog(common_file_dialog_proc cfd, char *filename, int filetype)
 {
@@ -5340,15 +5361,16 @@ static BOOL CommonFileDialog(common_file_dialog_proc cfd, char *filename, int fi
 	switch (filetype)
 	{
 	case FILETYPE_INPUT_FILES :
-	{
 		of.lpstrFilter   = MAMENAME " input files (*.inp,*.zip)\0*.inp;*.zip\0All files (*.*)\0*.*\0";
 		break;
-	}
 	case FILETYPE_SAVESTATE_FILES :
 		of.lpstrFilter   = MAMENAME " savestate files (*.sta)\0*.sta;\0All files (*.*)\0*.*\0";
 		break;
 	case FILETYPE_WAVE_FILES :
 		of.lpstrFilter   = "Sounds (*.wav)\0*.wav;\0All files (*.*)\0*.*\0";
+		break;
+	case FILETYPE_MNG_FILES :
+		of.lpstrFilter   = "videos (*.mng)\0*.mng;\0All files (*.*)\0*.*\0";
 		break;
 	}
 	of.lpstrCustomFilter = NULL;
@@ -5376,6 +5398,9 @@ static BOOL CommonFileDialog(common_file_dialog_proc cfd, char *filename, int fi
 		break;
 	case FILETYPE_WAVE_FILES :
 		of.lpstrDefExt       = "wav";
+		break;
+	case FILETYPE_MNG_FILES :
+		of.lpstrDefExt       = "mng";
 		break;
 	}
 	of.lCustData         = 0;
@@ -5738,6 +5763,23 @@ static void MamePlayRecordWave()
 		g_pRecordWaveName = filename;
 		MamePlayGameWithOptions(nGame);
 		g_pRecordWaveName = NULL;
+	}	
+}
+
+static void MamePlayRecordMNG()
+{
+	int  nGame;
+	char filename[MAX_PATH];
+	*filename = 0;
+
+	nGame = Picker_GetSelectedItem(hwndList);
+	strcpy(filename, drivers[nGame]->name);
+
+	if (CommonFileDialog(GetSaveFileName, filename, FILETYPE_MNG_FILES))
+	{
+		g_pRecordMNGName = filename;
+		MamePlayGameWithOptions(nGame);
+		g_pRecordMNGName = NULL;
 	}	
 }
 

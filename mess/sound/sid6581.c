@@ -15,18 +15,9 @@
 
 static SID6581 *get_sid(int indx)
 {
-	SID6581 *sid = NULL;
-
-#if HAS_SID6581
-	if (!sid)
-		sid = sndti_token(SOUND_SID6581, indx);
-#endif
-
-#if HAS_SID8580
-	if (!sid)
-		sid = sndti_token(SOUND_SID8580, indx);
-#endif
-	return sid;
+	int type = sndnum_to_sndti(indx, NULL);
+	assert((type == SOUND_SID6581) || (type == SOUND_SID8580));
+	return (SID6581 *) sndti_token(type, indx);
 }
 
 
@@ -108,7 +99,7 @@ WRITE8_HANDLER ( sid6581_1_port_w )
  * Generic get_info
  **************************************************************************/
 
-static void sid6581_set_info(void *token, UINT32 state, union sndinfo *info)
+static void sid6581_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -117,7 +108,7 @@ static void sid6581_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void sid6581_get_info(void *token, UINT32 state, union sndinfo *info)
+void sid6581_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -139,7 +130,7 @@ void sid6581_get_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void sid8580_get_info(void *token, UINT32 state, union sndinfo *info)
+void sid8580_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

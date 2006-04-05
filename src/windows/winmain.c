@@ -26,7 +26,6 @@
 #include "video.h"
 
 #ifdef MESS
-#include "messwin.h"
 #include "parallel.h"
 #endif
 
@@ -231,6 +230,10 @@ int osd_init(void)
 	if (result == 0)
 		result = win_init_input();
 
+#ifdef MESS
+	if (result == 0)
+		result = win_parallel_init();
+#endif
 	add_pause_callback(win_pause);
 	add_exit_callback(osd_exit);
 
@@ -252,10 +255,6 @@ static void osd_exit(void)
 
 	win_shutdown_input();
 	osd_set_leds(0);
-
-#ifdef MESS
-	win_parallel_exit();
-#endif
 }
 
 

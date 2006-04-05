@@ -12,7 +12,7 @@
 #include "cpu/z80/z80.h"
 #include "includes/coupe.h"
 #include "devices/basicdsk.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 
 UINT8 LMPR,HMPR,VMPR;	/* Bank Select Registers (Low Page p250, Hi Page p251, Video Page p252) */
 UINT8 CLUT[16]; 		/* 16 entries in a palette (no line affects supported yet!) */
@@ -117,7 +117,7 @@ void coupe_update_memory(void)
 		sam_screen = &mess_ram[((VMPR&0x1F) & PAGE_MASK) * 0x4000];
 }
 
-MACHINE_INIT( coupe )
+MACHINE_RESET( coupe )
 {
     LMPR = 0x0F;            /* ROM0 paged in, ROM1 paged out RAM Banks */
     HMPR = 0x01;

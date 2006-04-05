@@ -106,6 +106,7 @@ static void ResDepthSelectionChange(HWND hWnd, HWND hWndCtrl);
 static void RefreshSelectionChange(HWND hWnd, HWND hWndCtrl);
 static void VolumeSelectionChange(HWND hwnd);
 static void AudioLatencySelectionChange(HWND hwnd);
+static void ThreadPrioritySelectionChange(HWND hwnd);
 static void D3DScanlinesSelectionChange(HWND hwnd);
 static void D3DFeedbackSelectionChange(HWND hwnd);
 static void ZoomSelectionChange(HWND hwnd);
@@ -158,6 +159,7 @@ static BOOL g_bUseDefaults     = FALSE;
 static BOOL g_bReset           = FALSE;
 static int  g_nSampleRateIndex = 0;
 static int  g_nVolumeIndex     = 0;
+static int  g_nPriorityIndex     = 0;
 static int  g_nGammaIndex      = 0;
 static int  g_nBrightCorrectIndex = 0;
 static int  g_nPauseBrightIndex = 0;
@@ -522,13 +524,13 @@ void InitPropertyPageToPage(HINSTANCE hInst, HWND hWnd, int game_num, HICON hIco
 	g_nFolder = game_num;
 	if( source == SRC_GAME )
 	{
-            pGameOpts = GetGameOptions(game_num, folder_index);
-            g_bUseDefaults = GetGameUsesDefaults(game_num);
-            SetGameUsesDefaults(game_num, g_bUseDefaults);
-            /* Stash the result for comparing later */
-            CopyGameOptions(pGameOpts,&origGameOpts);
-            g_nFolderGame = game_num;
-            g_nPropertyMode = SOURCE_GAME;
+		pGameOpts = GetGameOptions(game_num, folder_index);
+		g_bUseDefaults = GetGameUsesDefaults(game_num);
+		SetGameUsesDefaults(game_num, g_bUseDefaults);
+		/* Stash the result for comparing later */
+		CopyGameOptions(pGameOpts,&origGameOpts);
+		g_nFolderGame = game_num;
+		g_nPropertyMode = SOURCE_GAME;
 	}
 	else
 	{
@@ -537,7 +539,7 @@ void InitPropertyPageToPage(HINSTANCE hInst, HWND hWnd, int game_num, HICON hIco
 		//so we take the selected game in the listview of a source file to check if it is a Vector game
 		//this implies that vector games are not mixed up in the source with non-vector games
 		//which I think is the case
-		if( DriverIsVector( folder_index ) && (game_num != FOLDER_VECTOR ) )
+		if (DriverIsVector( folder_index ) && (game_num != FOLDER_VECTOR ) )
 		{
 			GetFolderOptions(game_num, TRUE);
 			pGameOpts = GetSourceOptions( folder_index );
@@ -549,26 +551,12 @@ void InitPropertyPageToPage(HINSTANCE hInst, HWND hWnd, int game_num, HICON hIco
 		if( g_nFolder == FOLDER_VECTOR )
 		{
 			g_nPropertyMode = SOURCE_VECTOR;
-			if( GetVectorUsesDefaultsMem() )
-			{
-				g_bUseDefaults = FALSE;
-			}
-			else
-			{
-				g_bUseDefaults = TRUE;
-			}
+			g_bUseDefaults = GetVectorUsesDefaults() ? TRUE : FALSE;
 		}
 		else
 		{
 			g_nPropertyMode = SOURCE_FOLDER;
-			if( GetFolderUsesDefaultsMem(g_nFolder, g_nFolderGame) )
-			{
-				g_bUseDefaults = FALSE;
-			}
-			else
-			{
-				g_bUseDefaults = TRUE;
-			}
+			g_bUseDefaults = GetFolderUsesDefaults(g_nFolder, g_nFolderGame) ? TRUE : FALSE;
 		}
 		if( DriverIsVector( folder_index ) && (game_num != FOLDER_VECTOR ) )
 		{
@@ -1042,7 +1030,7 @@ INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 		//Well we need to check for that info here then
 		if( g_nGame >= 0)
 		{
-			if( GetGameUsesDefaultsMem(g_nGame) )
+			if( !GetGameUsesDefaults(g_nGame) )
 			{
 				SetGameUsesDefaults( g_nGame, FALSE);
 				g_bUseDefaults = FALSE;
@@ -1056,25 +1044,11 @@ INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 		{
 			if( g_nFolder == FOLDER_VECTOR )
 			{
-				if( GetVectorUsesDefaultsMem() )
-				{
-					g_bUseDefaults = FALSE;
-				}
-				else
-				{
-					g_bUseDefaults = TRUE;
-				}
+				g_bUseDefaults = GetVectorUsesDefaults() ? TRUE : FALSE;
 			}
 			else
 			{
-				if( GetFolderUsesDefaultsMem(g_nFolder, g_nFolderGame) )
-				{
-					g_bUseDefaults = FALSE;
-				}
-				else
-				{
-					g_bUseDefaults = TRUE;
-				}
+				g_bUseDefaults = GetFolderUsesDefaults(g_nFolder, g_nFolderGame) ? TRUE : FALSE;
 			}
 		}
 		SetPropEnabledControls(hDlg);
@@ -1235,7 +1209,6 @@ INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 					}
 					else
 					{
-						SetGameUsesDefaults(g_nGame,TRUE);
 						if( g_nFolder == FOLDER_VECTOR)
 							CopyGameOptions(GetDefaultOptions(GLOBAL_OPTIONS, TRUE), pGameOpts);
 						//Not Vector Folder, but Source Folder of Vector Games
@@ -1571,7 +1544,7 @@ static void PropToOptions(HWND hWnd, options_type *o)
 		if (strcmp(buffer,"0x0x0") == 0)
 			sprintf(buffer,"auto");
 		FreeIfAllocated(&o->resolution);
-		o->resolution = strdup(buffer);
+		o->resolution = mame_strdup(buffer);
 	}
 
 	/* refresh */
@@ -1606,7 +1579,7 @@ static void PropToOptions(HWND hWnd, options_type *o)
 
 		snprintf(buffer,sizeof(buffer),"%d:%d",n,d);
 		FreeIfAllocated(&o->aspect);
-		o->aspect = strdup(buffer);
+		o->aspect = mame_strdup(buffer);
 	}
 	/*analog axes*/
 	hCtrl = GetDlgItem(hWnd, IDC_ANALOG_AXES);	
@@ -1654,7 +1627,7 @@ static void PropToOptions(HWND hWnd, options_type *o)
 		{
 			// save the new setting
 			FreeIfAllocated(&o->digital);
-			o->digital = strdup(digital);
+			o->digital = mame_strdup(digital);
 		}
 	}
 #ifdef MESS
@@ -1975,6 +1948,7 @@ static void OptionsToProp(HWND hWnd, options_type* o)
 	}
 	AudioLatencySelectionChange(hWnd);
 
+	ThreadPrioritySelectionChange(hWnd);
 	// d3d
 	D3DScanlinesSelectionChange(hWnd);
 	D3DFeedbackSelectionChange(hWnd);
@@ -2181,6 +2155,11 @@ static void AssignVolume(HWND hWnd)
 	pGameOpts->attenuation = g_nVolumeIndex - 32;
 }
 
+static void AssignPriority(HWND hWnd)
+{
+	pGameOpts->priority = g_nPriorityIndex - 15;
+}
+
 static void AssignBrightCorrect(HWND hWnd)
 {
 	/* "1.0", 0.5, 2.0 */
@@ -2281,12 +2260,12 @@ static void AssignScreen(HWND hWnd)
 		//only copy if it is different from Display1, as for Display1 this is not necessary
 		if (strcmp(ptr,"\\\\.\\DISPLAY1") != 0)
 		{
-			pGameOpts->screen = strdup(ptr);
+			pGameOpts->screen = mame_strdup(ptr);
 		}
 		else
 		{
 			//keep it empty
-			pGameOpts->screen = strdup("");
+			pGameOpts->screen = mame_strdup("");
 		}
 	}
 }
@@ -2310,7 +2289,7 @@ static void AssignInput(HWND hWnd)
 	{
 		// we display Standard, but keep it blank internally
 		FreeIfAllocated(&pGameOpts->ctrlr);
-		pGameOpts->ctrlr = strdup("");
+		pGameOpts->ctrlr = mame_strdup("");
 	}
 
 }
@@ -2379,13 +2358,13 @@ static void AssignAnalogAxes(HWND hWnd)
 	{
 		//all axes on all joysticks are digital
 		FreeIfAllocated(&pGameOpts->digital);
-		pGameOpts->digital = strdup("all");
+		pGameOpts->digital = mame_strdup("all");
 	}
 	if( nCheckCounter == 0 )
 	{
 		// no axes are treated as digital, which is the default...
 		FreeIfAllocated(&pGameOpts->digital);
-		pGameOpts->digital = strdup("");
+		pGameOpts->digital = mame_strdup("");
 	}
 }
 
@@ -2395,7 +2374,7 @@ static void AssignEffect(HWND hWnd)
 
 	FreeIfAllocated(&pGameOpts->effect);
 	if (ptr != NULL)
-		pGameOpts->effect = strdup(ptr);
+		pGameOpts->effect = mame_strdup(ptr);
 }
 
 static void AssignLedmode(HWND hWnd)
@@ -2404,7 +2383,7 @@ static void AssignLedmode(HWND hWnd)
 
 	FreeIfAllocated(&pGameOpts->ledmode);
 	if (ptr != NULL)
-		pGameOpts->ledmode = strdup(ptr);
+		pGameOpts->ledmode = mame_strdup(ptr);
 }
 
 static void AssignPaddle(HWND hWnd)
@@ -2412,9 +2391,9 @@ static void AssignPaddle(HWND hWnd)
 	const char* ptr = (const char*)ComboBox_GetItemData(hWnd, g_nPaddleIndex);
 	FreeIfAllocated(&pGameOpts->paddle);
 	if (ptr != NULL && strlen(ptr)>0 && strcmp(ptr,"none") != 0 )
-		pGameOpts->paddle = strdup(ptr);
+		pGameOpts->paddle = mame_strdup(ptr);
 	else
-		pGameOpts->paddle = strdup("");
+		pGameOpts->paddle = mame_strdup("");
 
 }
 
@@ -2423,9 +2402,9 @@ static void AssignADStick(HWND hWnd)
 	const char* ptr = (const char*)ComboBox_GetItemData(hWnd, g_nADStickIndex);
 	FreeIfAllocated(&pGameOpts->adstick);
 	if (ptr != NULL && strlen(ptr)>0 && strcmp(ptr,"none") != 0 )
-		pGameOpts->adstick = strdup(ptr);
+		pGameOpts->adstick = mame_strdup(ptr);
 	else
-		pGameOpts->adstick = strdup("");
+		pGameOpts->adstick = mame_strdup("");
 }
 
 static void AssignPedal(HWND hWnd)
@@ -2433,9 +2412,9 @@ static void AssignPedal(HWND hWnd)
 	const char* ptr = (const char*)ComboBox_GetItemData(hWnd, g_nPedalIndex);
 	FreeIfAllocated(&pGameOpts->pedal);
 	if (ptr != NULL && strlen(ptr)>0 && strcmp(ptr,"none") != 0 )
-		pGameOpts->pedal = strdup(ptr);
+		pGameOpts->pedal = mame_strdup(ptr);
 	else
-		pGameOpts->pedal = strdup("");
+		pGameOpts->pedal = mame_strdup("");
 }
 
 static void AssignDial(HWND hWnd)
@@ -2443,9 +2422,9 @@ static void AssignDial(HWND hWnd)
 	const char* ptr = (const char*)ComboBox_GetItemData(hWnd, g_nDialIndex);
 	FreeIfAllocated(&pGameOpts->dial);
 	if (ptr != NULL && strlen(ptr)>0 && strcmp(ptr,"none") != 0 )
-		pGameOpts->dial = strdup(ptr);
+		pGameOpts->dial = mame_strdup(ptr);
 	else
-		pGameOpts->dial = strdup("");
+		pGameOpts->dial = mame_strdup("");
 }
 
 static void AssignTrackball(HWND hWnd)
@@ -2453,9 +2432,9 @@ static void AssignTrackball(HWND hWnd)
 	const char* ptr = (const char*)ComboBox_GetItemData(hWnd, g_nTrackballIndex);
 	FreeIfAllocated(&pGameOpts->trackball);
 	if (ptr != NULL && strlen(ptr)>0 && strcmp(ptr,"none") != 0 )
-		pGameOpts->trackball = strdup(ptr);
+		pGameOpts->trackball = mame_strdup(ptr);
 	else
-		pGameOpts->trackball = strdup("");
+		pGameOpts->trackball = mame_strdup("");
 }
 
 static void AssignLightgun(HWND hWnd)
@@ -2463,9 +2442,9 @@ static void AssignLightgun(HWND hWnd)
 	const char* ptr = (const char*)ComboBox_GetItemData(hWnd, g_nLightgunIndex);
 	FreeIfAllocated(&pGameOpts->lightgun_device);
 	if (ptr != NULL && strlen(ptr)>0 && strcmp(ptr,"none") != 0 )
-		pGameOpts->lightgun_device = strdup(ptr);
+		pGameOpts->lightgun_device = mame_strdup(ptr);
 	else
-		pGameOpts->lightgun_device = strdup("");
+		pGameOpts->lightgun_device = mame_strdup("");
 }
 
 
@@ -2518,12 +2497,12 @@ static void ResetDataMap(void)
 	if (pGameOpts->ctrlr == NULL || mame_stricmp(pGameOpts->ctrlr,"Standard") == 0)
 	{
 		FreeIfAllocated(&pGameOpts->ctrlr);
-		pGameOpts->ctrlr = strdup("");
+		pGameOpts->ctrlr = mame_strdup("");
 	}
 	if (pGameOpts->screen == NULL || mame_stricmp(pGameOpts->screen,"") == 0)
 	{
 		FreeIfAllocated(&pGameOpts->screen);
-		pGameOpts->screen = strdup("");
+		pGameOpts->screen = mame_strdup("");
 		g_nScreenIndex = 0;
 	}
 	else
@@ -2559,6 +2538,7 @@ static void ResetDataMap(void)
 		g_nRotateIndex = 5;
 
 	g_nVolumeIndex = pGameOpts->attenuation + 32;
+	g_nPriorityIndex = pGameOpts->priority + 15;
 	switch (pGameOpts->samplerate)
 	{
 		case 11025:  g_nSampleRateIndex = 0; break;
@@ -2738,12 +2718,12 @@ static void BuildDataMap(void)
 	DataMapAdd(IDC_OLD_TIMING,    DM_BOOL, CT_BUTTON,   &pGameOpts->old_timing,    DM_BOOL, &pGameOpts->old_timing,    0, 0, 0);
 	DataMapAdd(IDC_LEDS,          DM_BOOL, CT_BUTTON,   &pGameOpts->leds,          DM_BOOL, &pGameOpts->leds,          0, 0, 0);
 	DataMapAdd(IDC_LEDMODE,       DM_INT,  CT_COMBOBOX, &g_nLedmodeIndex,		   DM_STRING, &pGameOpts->ledmode,  0, 0, AssignLedmode);
-	DataMapAdd(IDC_HIGH_PRIORITY, DM_BOOL, CT_BUTTON,   &pGameOpts->high_priority, DM_BOOL, &pGameOpts->high_priority, 0, 0, 0);
+	DataMapAdd(IDC_HIGH_PRIORITY, DM_INT, CT_SLIDER,   &g_nPriorityIndex, DM_INT, &pGameOpts->priority, 0, 0, AssignPriority);
+	DataMapAdd(IDC_HIGH_PRIORITYTXT, DM_NONE,  CT_NONE,   NULL, DM_INT, &pGameOpts->priority, 0, 0, 0);
 	DataMapAdd(IDC_SKIP_GAME_INFO, DM_BOOL, CT_BUTTON,  &pGameOpts->skip_gameinfo, DM_BOOL, &pGameOpts->skip_gameinfo, 0, 0, 0);
 	DataMapAdd(IDC_BIOS,          DM_INT,  CT_COMBOBOX, &pGameOpts->bios,          DM_INT, &pGameOpts->bios,        0, 0, 0);
 	DataMapAdd(IDC_ENABLE_AUTOSAVE, DM_BOOL, CT_BUTTON,  &pGameOpts->autosave, DM_BOOL, &pGameOpts->autosave, 0, 0, 0);
 #ifdef MESS
-	DataMapAdd(IDC_SKIP_WARNINGS, DM_BOOL, CT_BUTTON,   &pGameOpts->skip_warnings, DM_BOOL, &pGameOpts->skip_warnings, 0, 0, 0);
 	DataMapAdd(IDC_USE_NEW_UI,    DM_BOOL, CT_BUTTON,   &pGameOpts->mess.use_new_ui,DM_BOOL, &pGameOpts->mess.use_new_ui, 0, 0, 0);
 #endif
 
@@ -2984,6 +2964,9 @@ static void InitializeMisc(HWND hDlg)
 	SendDlgItemMessage(hDlg, IDC_ZOOM, TBM_SETRANGE,
 				(WPARAM)FALSE,
 				(LPARAM)MAKELONG(1, 8)); // [1, 8]
+	SendDlgItemMessage(hDlg, IDC_HIGH_PRIORITY, TBM_SETRANGE,
+				(WPARAM)FALSE,
+				(LPARAM)MAKELONG(0, 16)); // [-15, 1]
 }
 
 static void OptOnHScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
@@ -3056,6 +3039,11 @@ static void OptOnHScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 	if (hwndCtl == GetDlgItem(hwnd, IDC_ZOOM))
 	{
 		ZoomSelectionChange(hwnd);
+	}
+	else
+	if (hwndCtl == GetDlgItem(hwnd, IDC_HIGH_PRIORITY))
+	{
+		ThreadPrioritySelectionChange(hwnd);
 	}
 
 }
@@ -3272,6 +3260,20 @@ static void AudioLatencySelectionChange(HWND hwnd)
 	/* Set the static display to the new value */
 	snprintf(buffer,sizeof(buffer),"%i/5",value);
 	Static_SetText(GetDlgItem(hwnd,IDC_AUDIO_LATENCY_DISP),buffer);
+
+}
+
+static void ThreadPrioritySelectionChange(HWND hwnd)
+{
+	char buffer[100];
+	int value;
+
+	// Get the current value of the control
+	value = SendDlgItemMessage(hwnd,IDC_HIGH_PRIORITY, TBM_GETPOS, 0, 0);
+
+	/* Set the static display to the new value */
+	snprintf(buffer,sizeof(buffer),"%i",value-15);
+	Static_SetText(GetDlgItem(hwnd,IDC_HIGH_PRIORITYTXT),buffer);
 
 }
 
@@ -3492,8 +3494,8 @@ static void InitializeScreenUI(HWND hwnd)
 		{
 			if( !(dd.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) )
 			{
-				ComboBox_InsertString(hCtrl, i, strdup(dd.DeviceName));
-				ComboBox_SetItemData( hCtrl, i, (const char*)strdup(dd.DeviceName));
+				ComboBox_InsertString(hCtrl, i, mame_strdup(dd.DeviceName));
+				ComboBox_SetItemData( hCtrl, i, (const char*)mame_strdup(dd.DeviceName));
 			}
 		}
 	}

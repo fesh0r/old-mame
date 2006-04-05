@@ -15,7 +15,6 @@
 #include "cpu/i8085/i8085.h"
 #include "includes/dai.h"
 #include "machine/pit8253.h"
-#include "machine/random.h"
 #include "machine/8255ppi.h"
 #include "machine/tms5501.h"
 
@@ -53,7 +52,7 @@ WRITE8_HANDLER( dai_stack_interrupt_circuit_w )
 
 static void dai_update_memory (int dai_rom_bank)
 {
-	memory_set_bankptr(2, memory_region(REGION_CPU1) + 0x010000 + dai_rom_bank*0x1000);
+	memory_set_bank(2, dai_rom_bank);
 }
 
 static void dai_bootstrap_callback (int param)
@@ -127,22 +126,19 @@ static struct pit8253_config dai_pit8253_intf =
 	}
 };
 
-DRIVER_INIT( dai )
-{
-	pit8253_init(1, &dai_pit8253_intf);
-}
-
-MACHINE_INIT( dai )
+MACHINE_START( dai )
 {
 	memory_set_opbase_handler(0, dai_opbaseoverride);
 
 	memory_set_bankptr(1, mess_ram);
-	memory_set_bankptr(2, memory_region(REGION_CPU1) + 0x010000);
+	memory_configure_bank(2, 0, 4, memory_region(REGION_CPU1) + 0x010000, 0x1000);
 
 	tms5501_init(0, &dai_tms5501_init_param);
 	ppi8255_init(&dai_ppi82555_intf);
+	pit8253_init(1, &dai_pit8253_intf);
 
 	timer_set(0, 0, dai_bootstrap_callback);
+	return 0;
 }
 
 /***************************************************************************

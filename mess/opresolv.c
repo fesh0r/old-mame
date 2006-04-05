@@ -10,17 +10,10 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "pool.h"
 #include "opresolv.h"
-#include "osdepend.h"
-
-#ifndef TRUE
-#define TRUE 1
-#endif
-
-#ifndef FALSE
-#define FALSE 0
-#endif
+#include "driver.h"
 
 enum resolution_entry_state
 {

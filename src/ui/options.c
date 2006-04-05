@@ -31,6 +31,7 @@
 #include <math.h>
 #include <direct.h>
 #include <driver.h>
+#include <stddef.h>
 
 #include "screenshot.h"
 #include "bitmask.h"
@@ -391,7 +392,7 @@ static const REG_OPTION regGameOpts[] =
 	{ "rdtsc",                  RO_BOOL,    offsetof(options_type, old_timing),                      "0" },
 	{ "leds",                   RO_BOOL,    offsetof(options_type, leds),                            "0" },
 	{ "led_mode",               RO_STRING,  offsetof(options_type, ledmode),                         "ps/2" },
-	{ "high_priority",          RO_BOOL,    offsetof(options_type, high_priority),                   "0" },
+	{ "priority",               RO_INT,     offsetof(options_type, priority),                        "0" },
 	{ "skip_gameinfo",          RO_BOOL,    offsetof(options_type, skip_gameinfo),                   "0" },
 #ifdef MESS
 	{ "skip_warnings",          RO_BOOL,    offsetof(options_type, skip_warnings),     "0" },
@@ -403,47 +404,17 @@ static const REG_OPTION regGameOpts[] =
 	/* mess options */
 	{ "newui",                  RO_BOOL,    offsetof(options_type, mess.use_new_ui),                 "1" },
 	{ "ramsize",                RO_INT,     offsetof(options_type, mess.ram_size),                   NULL, OnlyOnGame },
-
-	{ "cartridge",              RO_STRING,  offsetof(options_type, mess.software[IO_CARTSLOT]),      "", OnlyOnGame },
-	{ "floppydisk",             RO_STRING,  offsetof(options_type, mess.software[IO_FLOPPY]),        "", OnlyOnGame },
-	{ "harddisk",               RO_STRING,  offsetof(options_type, mess.software[IO_HARDDISK]),      "", OnlyOnGame },
-	{ "cylinder",               RO_STRING,  offsetof(options_type, mess.software[IO_CYLINDER]),      "", OnlyOnGame },
-	{ "cassette",               RO_STRING,  offsetof(options_type, mess.software[IO_CASSETTE]),      "", OnlyOnGame },
-	{ "punchcard",              RO_STRING,  offsetof(options_type, mess.software[IO_PUNCHCARD]),     "", OnlyOnGame },
-	{ "punchtape",              RO_STRING,  offsetof(options_type, mess.software[IO_PUNCHTAPE]),     "", OnlyOnGame },
-	{ "printer",                RO_STRING,  offsetof(options_type, mess.software[IO_PRINTER]),       "", OnlyOnGame },
-	{ "serial",                 RO_STRING,  offsetof(options_type, mess.software[IO_SERIAL]),        "", OnlyOnGame },
-	{ "parallel",               RO_STRING,  offsetof(options_type, mess.software[IO_PARALLEL]),      "", OnlyOnGame },
-	{ "snapshot",               RO_STRING,  offsetof(options_type, mess.software[IO_SNAPSHOT]),      "", OnlyOnGame },
-	{ "quickload",              RO_STRING,  offsetof(options_type, mess.software[IO_QUICKLOAD]),     "", OnlyOnGame },
-	{ "memcard",                RO_STRING,  offsetof(options_type, mess.software[IO_MEMCARD]),       "", OnlyOnGame },
-
-	{ "cartridge_dir",          RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_CARTSLOT]),  "", OnlyOnGame },
-	{ "floppydisk_dir",         RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_FLOPPY]),    "", OnlyOnGame },
-	{ "harddisk_dir",           RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_HARDDISK]),  "", OnlyOnGame },
-	{ "cylinder_dir",           RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_CYLINDER]),  "", OnlyOnGame },
-	{ "cassette_dir",           RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_CASSETTE]),  "", OnlyOnGame },
-	{ "punchcard_dir",          RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_PUNCHCARD]), "", OnlyOnGame },
-	{ "punchtape_dir",          RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_PUNCHTAPE]), "", OnlyOnGame },
-	{ "printer_dir",            RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_PRINTER]),   "", OnlyOnGame },
-	{ "serial_dir",             RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_SERIAL]),    "", OnlyOnGame },
-	{ "parallel_dir",           RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_PARALLEL]),  "", OnlyOnGame },
-	{ "snapshot_dir",           RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_SNAPSHOT]),  "", OnlyOnGame },
-	{ "quickload_dir",          RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_QUICKLOAD]), "", OnlyOnGame },
-	{ "memcard_dir",            RO_STRING,  offsetof(options_type, mess.softwaredirs[IO_MEMCARD]),   "", OnlyOnGame },
 #endif /* MESS */
+
 	{ "" }
 };
 
 // options in mame32.ini that we'll never override with with game-specific options
 static const REG_OPTION global_game_options[] =
 {
-	{"skip_gameinfo",           RO_BOOL,    offsetof(settings_type, skip_gameinfo),     "0" },
 #ifdef MESS
 	{"skip_warnings",           RO_BOOL,    offsetof(settings_type, skip_warnings),     "0" },
 #endif
-	{"high_priority",           RO_BOOL,    offsetof(settings_type, high_priority),     "0" },
-
 
 #ifdef MESS
 	{ "biospath",               RO_STRING,  offsetof(settings_type, romdirs),          "bios" },
@@ -465,6 +436,7 @@ static const REG_OPTION global_game_options[] =
 	{ "diff_directory",         RO_STRING,  offsetof(settings_type, diffdir),          "diff" },
 	{ "cheat_file",             RO_STRING,  offsetof(settings_type, cheat_filename),   "cheat.dat" },
 	{ "ctrlr_directory",        RO_STRING,  offsetof(settings_type, ctrlrdir),         "ctrlr" },
+	{ "comment_directory",      RO_STRING,  offsetof(settings_type, commentdir),       "comment" },
 	{ "" }
 
 };
@@ -728,10 +700,10 @@ BOOL OptionsInit()
 
 	// have our mame core (file code) know about our rom path
 	// this leaks a little, but the win32 file core writes to this string
-	set_pathlist(FILETYPE_ROM,strdup(settings.romdirs));
-	set_pathlist(FILETYPE_SAMPLE,strdup(settings.sampledirs));
+	set_pathlist(FILETYPE_ROM,mame_strdup(settings.romdirs));
+	set_pathlist(FILETYPE_SAMPLE,mame_strdup(settings.sampledirs));
 #ifdef MESS
-	set_pathlist(FILETYPE_HASH, strdup(settings.mess.hashdir));
+	set_pathlist(FILETYPE_HASH, mame_strdup(settings.mess.hashdir));
 #endif
 	return TRUE;
 
@@ -820,50 +792,49 @@ static DWORD GetFolderSettingsFileID(int folder_index)
 	int i, j;
 	const char *pParent;
 
-	for( i = 0; i<=folder_index; i++ )
+	if (folder_index < MAX_FOLDERS)
 	{
-		if( folder_index < MAX_FOLDERS)
+		for (i = 0; g_folderData[i].m_lpTitle; i++)
 		{
-			if( g_folderData[i].m_nFolderId == folder_index )
+			if (g_folderData[i].m_nFolderId == folder_index)
 			{
 				nSettingsFile = i | SETTINGS_FILE_FOLDER;				
 				break;
 			}
 		}
-		else if( folder_index < MAX_FOLDERS + numExtraFolders)
+	}
+	else if (folder_index < MAX_FOLDERS + numExtraFolders)
+	{
+		for (i = 0; i < MAX_EXTRA_FOLDERS * MAX_EXTRA_SUBFOLDERS; i++)
 		{
-			if( ExtraFolderData[i] )
+			if (ExtraFolderData[i])
 			{
-				if( ExtraFolderData[i]->m_nFolderId == folder_index )
-				{
-					nSettingsFile = i | SETTINGS_FILE_EXFOLDER;				
-					break;
-				}
+				nSettingsFile = i | SETTINGS_FILE_EXFOLDER;				
+				break;
 			}
 		}
-		else
+	}
+	else
+	{
+		//we jump to the corresponding folderData
+		if( ExtraFolderData[folder_index] )
 		{
-			//we jump to the corresponding folderData
-			if( ExtraFolderData[folder_index] )
+			//SubDirName is ParentFolderName
+			pParent = GetFolderNameByID(ExtraFolderData[folder_index]->m_nParent);
+			if( pParent )
 			{
-				//SubDirName is ParentFolderName
-				pParent = GetFolderNameByID(ExtraFolderData[folder_index]->m_nParent);
-				if( pParent )
-				{
-					nSettingsFile = folder_index | SETTINGS_FILE_EXFOLDERPARENT;
+				nSettingsFile = folder_index | SETTINGS_FILE_EXFOLDERPARENT;
 
-					if( ExtraFolderData[folder_index]->m_nParent == FOLDER_SOURCE )
+				if( ExtraFolderData[folder_index]->m_nParent == FOLDER_SOURCE )
+				{
+					for (j = 0; drivers[j]; j++)
 					{
-						for (j = 0; drivers[j]; j++)
+						if (!strcmp(GetDriverFilename(j), ExtraFolderData[folder_index]->m_szTitle))
 						{
-							if (!strcmp(drivers[j]->source_file, ExtraFolderData[folder_index]->m_szTitle))
-							{
-								nSettingsFile = j | SETTINGS_FILE_SOURCEFILE;
-								break;
-							}
+							nSettingsFile = j | SETTINGS_FILE_SOURCEFILE;
+							break;
 						}
 					}
-					break;
 				}
 			}
 		}
@@ -948,8 +919,6 @@ options_type * GetVectorOptions(void)
 
 options_type * GetSourceOptions(int driver_index )
 {
-	char buffer[512];
-	char title[512];
 	static options_type source_opts;
 
 	assert(0 <= driver_index && driver_index < num_games);
@@ -962,17 +931,17 @@ options_type * GetSourceOptions(int driver_index )
 		//If it is a Vector game sync in the Vector.ini settings
 		SyncInFolderOptions(&source_opts, FOLDER_VECTOR);
 	}
+
 	//If it has source folder settings sync in the source\sourcefile.ini settings
-	strcpy(title, GetDriverFilename(driver_index) );
-	title[strlen(title)-2] = '\0';
-	//Core expects it there
-	snprintf(buffer,sizeof(buffer),"%s\\drivers\\%s.ini",GetIniDir(), title );
+	LoadSettingsFile(driver_index | SETTINGS_FILE_SOURCEFILE, &source_opts, regGameOpts);
+
 	return &source_opts;
 }
 
 options_type * GetGameOptions(int driver_index, int folder_index )
 {
-	int parent_index;
+	int parent_index, setting;
+	struct SettingsHandler handlers[3];
 
 	assert(0 <= driver_index && driver_index < num_games);
 
@@ -995,21 +964,21 @@ options_type * GetGameOptions(int driver_index, int folder_index )
 	}
 
 	//last but not least, sync in game specific settings
-	LoadSettingsFile(driver_index | SETTINGS_FILE_GAME, &game_options[driver_index], regGameOpts);
+	memset(handlers, 0, sizeof(handlers));
+	setting = 0;
+	handlers[setting].type = SH_OPTIONSTRUCT;
+	handlers[setting].u.option_struct.option_struct = (void *) &game_options[driver_index];
+	handlers[setting].u.option_struct.option_array = regGameOpts;
+	setting++;
+#ifdef MESS
+	handlers[setting].type = SH_MANUAL;
+	handlers[setting].u.manual.parse = LoadDeviceOption;
+	setting++;
+#endif // MESS
+	handlers[setting].type = SH_END;
+	
+	LoadSettingsFileEx(driver_index | SETTINGS_FILE_GAME, handlers);
 	return &game_options[driver_index];
-}
-
-BOOL GetGameUsesDefaults(int driver_index)
-{
-	if (driver_index < 0)
-	{
-		dprintf("got getgameusesdefaults with driver index %i",driver_index);
-		return TRUE;
-	}
-	//This returns always true, because it is not saved in a file just initialized
-	//We use the in mem check for the moment
-	return ! GetGameUsesDefaultsMem(driver_index );
-	//return game_variables[driver_index].use_default;
 }
 
 void SetGameUsesDefaults(int driver_index,BOOL use_defaults)
@@ -1302,7 +1271,7 @@ void SetCurrentTab(const char *shortname)
 {
 	FreeIfAllocated(&settings.current_tab);
 	if (shortname != NULL)
-		settings.current_tab = strdup(shortname);
+		settings.current_tab = mame_strdup(shortname);
 }
 
 const char *GetCurrentTab(void)
@@ -1315,7 +1284,7 @@ void SetDefaultGame(const char *name)
 	FreeIfAllocated(&settings.default_game);
 
 	if (name != NULL)
-		settings.default_game = strdup(name);
+		settings.default_game = mame_strdup(name);
 }
 
 const char *GetDefaultGame(void)
@@ -1529,7 +1498,7 @@ void SetLanguage(const char* lang)
 	FreeIfAllocated(&settings.language);
 
 	if (lang != NULL)
-		settings.language = strdup(lang);
+		settings.language = mame_strdup(lang);
 }
 
 const char* GetRomDirs(void)
@@ -1543,11 +1512,11 @@ void SetRomDirs(const char* paths)
 
 	if (paths != NULL)
 	{
-		settings.romdirs = strdup(paths);
+		settings.romdirs = mame_strdup(paths);
 
 		// have our mame core (file code) know about it
 		// this leaks a little, but the win32 file core writes to this string
-		set_pathlist(FILETYPE_ROM,strdup(settings.romdirs));
+		set_pathlist(FILETYPE_ROM,mame_strdup(settings.romdirs));
 	}
 }
 
@@ -1562,11 +1531,11 @@ void SetSampleDirs(const char* paths)
 
 	if (paths != NULL)
 	{
-		settings.sampledirs = strdup(paths);
+		settings.sampledirs = mame_strdup(paths);
 		
 		// have our mame core (file code) know about it
 		// this leaks a little, but the win32 file core writes to this string
-		set_pathlist(FILETYPE_SAMPLE,strdup(settings.sampledirs));
+		set_pathlist(FILETYPE_SAMPLE,mame_strdup(settings.sampledirs));
 	}
 
 }
@@ -1581,7 +1550,7 @@ void SetIniDir(const char *path)
 	FreeIfAllocated(&settings.inidir);
 
 	if (path != NULL)
-		settings.inidir = strdup(path);
+		settings.inidir = mame_strdup(path);
 }
 
 const char* GetCtrlrDir(void)
@@ -1594,7 +1563,20 @@ void SetCtrlrDir(const char* path)
 	FreeIfAllocated(&settings.ctrlrdir);
 
 	if (path != NULL)
-		settings.ctrlrdir = strdup(path);
+		settings.ctrlrdir = mame_strdup(path);
+}
+
+const char* GetCommentDir(void)
+{
+	return settings.commentdir;
+}
+
+void SetCommentDir(const char* path)
+{
+	FreeIfAllocated(&settings.commentdir);
+
+	if (path != NULL)
+		settings.commentdir = mame_strdup(path);
 }
 
 const char* GetCfgDir(void)
@@ -1607,7 +1589,7 @@ void SetCfgDir(const char* path)
 	FreeIfAllocated(&settings.cfgdir);
 
 	if (path != NULL)
-		settings.cfgdir = strdup(path);
+		settings.cfgdir = mame_strdup(path);
 }
 
 const char* GetHiDir(void)
@@ -1620,7 +1602,7 @@ void SetHiDir(const char* path)
 	FreeIfAllocated(&settings.hidir);
 
 	if (path != NULL)
-		settings.hidir = strdup(path);
+		settings.hidir = mame_strdup(path);
 }
 
 const char* GetNvramDir(void)
@@ -1633,7 +1615,7 @@ void SetNvramDir(const char* path)
 	FreeIfAllocated(&settings.nvramdir);
 
 	if (path != NULL)
-		settings.nvramdir = strdup(path);
+		settings.nvramdir = mame_strdup(path);
 }
 
 const char* GetInpDir(void)
@@ -1646,7 +1628,7 @@ void SetInpDir(const char* path)
 	FreeIfAllocated(&settings.inpdir);
 
 	if (path != NULL)
-		settings.inpdir = strdup(path);
+		settings.inpdir = mame_strdup(path);
 }
 
 const char* GetImgDir(void)
@@ -1659,7 +1641,7 @@ void SetImgDir(const char* path)
 	FreeIfAllocated(&settings.imgdir);
 
 	if (path != NULL)
-		settings.imgdir = strdup(path);
+		settings.imgdir = mame_strdup(path);
 }
 
 const char* GetStateDir(void)
@@ -1672,7 +1654,7 @@ void SetStateDir(const char* path)
 	FreeIfAllocated(&settings.statedir);
 
 	if (path != NULL)
-		settings.statedir = strdup(path);
+		settings.statedir = mame_strdup(path);
 }
 
 const char* GetArtDir(void)
@@ -1685,7 +1667,7 @@ void SetArtDir(const char* path)
 	FreeIfAllocated(&settings.artdir);
 
 	if (path != NULL)
-		settings.artdir = strdup(path);
+		settings.artdir = mame_strdup(path);
 }
 
 const char* GetMemcardDir(void)
@@ -1698,7 +1680,7 @@ void SetMemcardDir(const char* path)
 	FreeIfAllocated(&settings.memcarddir);
 
 	if (path != NULL)
-		settings.memcarddir = strdup(path);
+		settings.memcarddir = mame_strdup(path);
 }
 
 const char* GetFlyerDir(void)
@@ -1711,7 +1693,7 @@ void SetFlyerDir(const char* path)
 	FreeIfAllocated(&settings.flyerdir);
 
 	if (path != NULL)
-		settings.flyerdir = strdup(path);
+		settings.flyerdir = mame_strdup(path);
 }
 
 const char* GetCabinetDir(void)
@@ -1724,7 +1706,7 @@ void SetCabinetDir(const char* path)
 	FreeIfAllocated(&settings.cabinetdir);
 
 	if (path != NULL)
-		settings.cabinetdir = strdup(path);
+		settings.cabinetdir = mame_strdup(path);
 }
 
 const char* GetMarqueeDir(void)
@@ -1737,7 +1719,7 @@ void SetMarqueeDir(const char* path)
 	FreeIfAllocated(&settings.marqueedir);
 
 	if (path != NULL)
-		settings.marqueedir = strdup(path);
+		settings.marqueedir = mame_strdup(path);
 }
 
 const char* GetTitlesDir(void)
@@ -1750,7 +1732,7 @@ void SetTitlesDir(const char* path)
 	FreeIfAllocated(&settings.titlesdir);
 
 	if (path != NULL)
-		settings.titlesdir = strdup(path);
+		settings.titlesdir = mame_strdup(path);
 }
 
 const char * GetControlPanelDir(void)
@@ -1762,7 +1744,7 @@ void SetControlPanelDir(const char *path)
 {
 	FreeIfAllocated(&settings.cpaneldir);
 	if (path != NULL)
-		settings.cpaneldir = strdup(path);
+		settings.cpaneldir = mame_strdup(path);
 }
 
 const char * GetDiffDir(void)
@@ -1775,7 +1757,7 @@ void SetDiffDir(const char* path)
 	FreeIfAllocated(&settings.diffdir);
 
 	if (path != NULL)
-		settings.diffdir = strdup(path);
+		settings.diffdir = mame_strdup(path);
 }
 
 const char* GetIconsDir(void)
@@ -1788,7 +1770,7 @@ void SetIconsDir(const char* path)
 	FreeIfAllocated(&settings.iconsdir);
 
 	if (path != NULL)
-		settings.iconsdir = strdup(path);
+		settings.iconsdir = mame_strdup(path);
 }
 
 const char* GetBgDir (void)
@@ -1801,7 +1783,7 @@ void SetBgDir (const char* path)
 	FreeIfAllocated(&settings.bgdir);
 
 	if (path != NULL)
-		settings.bgdir = strdup(path);
+		settings.bgdir = mame_strdup(path);
 }
 
 const char* GetFolderDir(void)
@@ -1814,7 +1796,7 @@ void SetFolderDir(const char* path)
 	FreeIfAllocated(&settings.folderdir);
 
 	if (path != NULL)
-		settings.folderdir = strdup(path);
+		settings.folderdir = mame_strdup(path);
 }
 
 const char* GetCheatFileName(void)
@@ -1827,7 +1809,7 @@ void SetCheatFileName(const char* path)
 	FreeIfAllocated(&settings.cheat_filename);
 
 	if (path != NULL)
-		settings.cheat_filename = strdup(path);
+		settings.cheat_filename = mame_strdup(path);
 }
 
 const char* GetHistoryFileName(void)
@@ -1840,7 +1822,7 @@ void SetHistoryFileName(const char* path)
 	FreeIfAllocated(&settings.history_filename);
 
 	if (path != NULL)
-		settings.history_filename = strdup(path);
+		settings.history_filename = mame_strdup(path);
 }
 
 
@@ -1854,7 +1836,7 @@ void SetMAMEInfoFileName(const char* path)
 	FreeIfAllocated(&settings.mameinfo_filename);
 
 	if (path != NULL)
-		settings.mameinfo_filename = strdup(path);
+		settings.mameinfo_filename = mame_strdup(path);
 }
 
 void ResetGameOptions(int driver_index)
@@ -2485,7 +2467,7 @@ static void KeySeqDecodeString(const char *str, void* data)
 	input_seq *is = &(ks->is);
 
 	FreeIfAllocated(&ks->seq_string);
-	ks->seq_string = strdup(str);
+	ks->seq_string = mame_strdup(str);
 
 	//get the new input sequence
 	string_to_seq(str,is);
@@ -2940,7 +2922,7 @@ void LoadFolderOptions(int folder_index )
 		return;
 
 	CopyGameOptions(&global, &folder_options[redirect_index]);
-	if (LoadSettingsFile(nSettingsFile, &folder_options[redirect_index], regGameOpts))
+	if (!LoadSettingsFile(nSettingsFile, &folder_options[redirect_index], regGameOpts))
 	{
 		// uses globals
 		CopyGameOptions(&global, &folder_options[redirect_index] );
@@ -3069,8 +3051,8 @@ void SaveOptions(void)
 	SaveSettingsFileEx(SETTINGS_FILE_UI, handlers);
 }
 
-//returns true if different
-BOOL GetVectorUsesDefaultsMem(void)
+//returns true if same
+BOOL GetVectorUsesDefaults(void)
 {
 	int redirect_index = 0;
 
@@ -3082,8 +3064,8 @@ BOOL GetVectorUsesDefaultsMem(void)
 	return AreOptionsEqual(regGameOpts, &folder_options[redirect_index], &global);
 }
 
-//returns true if different
-BOOL GetFolderUsesDefaultsMem(int folder_index, int driver_index)
+//returns true if same
+BOOL GetFolderUsesDefaults(int folder_index, int driver_index)
 {
 	const options_type *opts;
 	int redirect_index;
@@ -3101,11 +3083,17 @@ BOOL GetFolderUsesDefaultsMem(int folder_index, int driver_index)
 	return AreOptionsEqual(regGameOpts, &folder_options[redirect_index], opts);
 }
 
-//returns true if different
-BOOL GetGameUsesDefaultsMem(int driver_index)
+//returns true if same
+BOOL GetGameUsesDefaults(int driver_index)
 {
 	const options_type *opts;
 	int nParentIndex= -1;
+
+	if (driver_index < 0)
+	{
+		dprintf("got getgameusesdefaults with driver index %i",driver_index);
+		return TRUE;
+	}
 
 	if ((driver_index >= 0) && DriverIsClone(driver_index))
 	{
@@ -3127,6 +3115,8 @@ void SaveGameOptions(int driver_index)
 	BOOL options_different = TRUE;
 	options_type Opts;
 	int nParentIndex= -1;
+	struct SettingsHandler handlers[3];
+	int setting;
 
 	if( driver_index >= 0)
 	{
@@ -3150,11 +3140,44 @@ void SaveGameOptions(int driver_index)
 		options_different = !AreOptionsEqual(regGameOpts, &game_options[driver_index], &Opts);
 	}
 
-	if( options_different ) {
-		SaveSettingsFile(driver_index | SETTINGS_FILE_GAME,
-			&game_options[driver_index],
-			&Opts,
-			regGameOpts);
+#ifdef MESS
+	if (!options_different)
+	{
+		int i;
+		const options_type *o;
+
+		o = &game_options[driver_index];
+
+		for (i = 0; i < sizeof(o->mess.software) / sizeof(o->mess.software[0]); i++)
+		{
+			if (o->mess.software[i] && o->mess.software[i][0])
+			{
+				options_different = TRUE;
+				break;
+			}
+		}
+	}
+#endif // MESS
+
+	if (options_different)
+	{
+		memset(handlers, 0, sizeof(handlers));
+		setting = 0;
+		handlers[setting].type = SH_OPTIONSTRUCT;
+		handlers[setting].comment = "Options";
+		handlers[setting].u.option_struct.option_struct = (void *) &game_options[driver_index];
+		handlers[setting].u.option_struct.comparison_struct = &Opts;
+		handlers[setting].u.option_struct.option_array = regGameOpts;
+		setting++;
+#ifdef MESS
+		handlers[setting].type = SH_MANUAL;
+		handlers[setting].comment = "Devices";
+		handlers[setting].u.manual.emit = SaveDeviceOption;
+		setting++;
+#endif // MESS
+		handlers[setting].type = SH_END;
+
+		SaveSettingsFileEx(driver_index | SETTINGS_FILE_GAME, handlers);
 	}
 }
 
@@ -3177,13 +3200,9 @@ void SaveFolderOptions(int folder_index, int game_index)
 	if( redirect_index < 0)
 		return;
 
-	if( !AreOptionsEqual(regGameOpts, &folder_options[redirect_index], pOpts) ) 
-	{
-		//Find the Title
-		nSettingsFile = GetFolderSettingsFileID(folder_index);
-	
-		SaveSettingsFile(nSettingsFile, &folder_options[redirect_index], pOpts, regGameOpts);
-	}
+	//Save out the file
+	nSettingsFile = GetFolderSettingsFileID(folder_index);
+	SaveSettingsFile(nSettingsFile, &folder_options[redirect_index], pOpts, regGameOpts);
 }
 
 

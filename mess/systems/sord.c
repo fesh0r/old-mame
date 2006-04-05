@@ -25,7 +25,9 @@
 #include "cpu/z80/z80daisy.h"
 #include "includes/centroni.h"
 #include "devices/printer.h"
-#include "machine/z80fmly.h"
+#include "machine/z80ctc.h"
+#include "machine/z80pio.h"
+#include "machine/z80sio.h"
 #include "machine/8255ppi.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
@@ -49,20 +51,15 @@
 #include "devices/cassette.h"
 #include "image.h"
 
-static MACHINE_INIT( sord_m5 );
+static MACHINE_RESET( sord_m5 );
 
 static unsigned char fd5_databus;
 
-ADDRESS_MAP_START( readmem_sord_fd5 , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x03fff) AM_READ( MRA8_ROM)	/* internal rom */
-	AM_RANGE(0x4000, 0x0ffff) AM_READ( MRA8_RAM)
+ADDRESS_MAP_START( sord_fd5_mem , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x03fff) AM_ROM	/* internal rom */
+	AM_RANGE(0x4000, 0x0ffff) AM_RAM
 ADDRESS_MAP_END
 
-
-ADDRESS_MAP_START( writemem_sord_fd5 , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x03fff) AM_WRITE( MWA8_ROM) /* internal rom */
-	AM_RANGE(0x4000, 0x0ffff) AM_WRITE( MWA8_RAM)
-ADDRESS_MAP_END
 
 static int obfa,ibfa, intra;
 static int fd5_port_0x020_data;
@@ -193,12 +190,12 @@ static void sord_fd5_init(void)
 	nec765_init(&sord_fd5_nec765_interface,NEC765A);
 }
 
-static MACHINE_INIT( sord_m5_fd5 )
+static MACHINE_RESET( sord_m5_fd5 )
 {
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1), FLOPPY_DRIVE_SS_40);
 	sord_fd5_init();
-	machine_init_sord_m5();
+	machine_reset_sord_m5();
 	ppi8255_set_portC(0, 0x50);
 }
 
@@ -327,33 +324,26 @@ static void sord_m5_ctc_interrupt(int state)
 
 static z80ctc_interface	sord_m5_ctc_intf =
 {
-	1,
-	{3800000},
-	{0},
-	{sord_m5_ctc_interrupt},
-	{0},
-	{0},
-    {0}
+	3800000,
+	0,
+	sord_m5_ctc_interrupt,
+	0,
+	0,
+    0
 };
 
-static  READ8_HANDLER ( sord_keyboard_r )
+static READ8_HANDLER ( sord_keyboard_r )
 {
 	return readinputport(offset);
 }
 
-ADDRESS_MAP_START( readmem_sord_m5 , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x01fff) AM_READ( MRA8_ROM)	/* internal rom */
-	AM_RANGE(0x2000, 0x06fff) AM_READ( MRA8_BANK1)
-	AM_RANGE(0x7000, 0x0ffff) AM_READ( MRA8_RAM)
+ADDRESS_MAP_START( sord_m5_mem , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x01fff) AM_ROM	/* internal rom */
+	AM_RANGE(0x2000, 0x06fff) AM_ROMBANK(1)
+	AM_RANGE(0x7000, 0x0ffff) AM_RAM
 ADDRESS_MAP_END
 
 
-
-ADDRESS_MAP_START( writemem_sord_m5 , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x01fff) AM_WRITE( MWA8_ROM) /* internal rom */
-	AM_RANGE(0x02000, 0x06fff) AM_WRITE( MWA8_NOP)	
-	AM_RANGE(0x7000, 0x0ffff) AM_WRITE( MWA8_RAM)
-ADDRESS_MAP_END
 
 static READ8_HANDLER(sord_ctc_r)
 {
@@ -481,9 +471,9 @@ static void sordm5_video_interrupt_callback(int state)
 	}
 }
 
-static MACHINE_INIT( sord_m5 )
+static MACHINE_RESET( sord_m5 )
 {
-	z80ctc_init(&sord_m5_ctc_intf);
+	z80ctc_init(0, &sord_m5_ctc_intf);
 
 	/* PI-5 interface connected to Sord M5 */
 	ppi8255_init(&sord_ppi8255_interface);
@@ -644,7 +634,7 @@ static const TMS9928a_interface tms9928a_interface =
 static MACHINE_DRIVER_START( sord_m5 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, 3800000)
-	MDRV_CPU_PROGRAM_MAP(readmem_sord_m5,writemem_sord_m5)
+	MDRV_CPU_PROGRAM_MAP(sord_m5_mem, 0)
 	MDRV_CPU_IO_MAP(sord_m5_io, 0)
 	MDRV_CPU_VBLANK_INT(sord_interrupt, 1)
 	MDRV_CPU_CONFIG( sord_m5_daisy_chain )
@@ -652,7 +642,7 @@ static MACHINE_DRIVER_START( sord_m5 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( sord_m5 )
+	MDRV_MACHINE_RESET( sord_m5 )
 
 	/* video hardware */
 	MDRV_TMS9928A( &tms9928a_interface )
@@ -671,11 +661,11 @@ static MACHINE_DRIVER_START( sord_m5_fd5 )
 	MDRV_CPU_IO_MAP(srdm5fd5_io, 0)
 
 	MDRV_CPU_ADD(Z80, 3800000)
-	MDRV_CPU_PROGRAM_MAP(readmem_sord_fd5,writemem_sord_fd5)
+	MDRV_CPU_PROGRAM_MAP(sord_fd5_mem, 0)
 	MDRV_CPU_IO_MAP(readport_sord_fd5,writeport_sord_fd5)
 
 	MDRV_INTERLEAVE(20)
-	MDRV_MACHINE_INIT( sord_m5_fd5 )
+	MDRV_MACHINE_RESET( sord_m5_fd5 )
 MACHINE_DRIVER_END
 
 
@@ -687,7 +677,7 @@ MACHINE_DRIVER_END
 
 ROM_START(sordm5)
 	ROM_REGION(0x010000, REGION_CPU1, 0)
-	ROM_LOAD("sordint.rom",0x0000, 0x02000, CRC(78848d39))
+	ROM_LOAD("sordint.rom",0x0000, 0x02000, CRC(78848d39) SHA1(ac042c4ae8272ad6abe09ae83492ef9a0026d0b2))
 	ROM_REGION(0x5000, REGION_USER1, 0)
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x5000, ROM_NOMIRROR)
 ROM_END
@@ -695,7 +685,7 @@ ROM_END
 
 ROM_START(srdm5fd5)
 	ROM_REGION(0x10000, REGION_CPU1, 0)
-	ROM_LOAD("sordint.rom",0x0000, 0x02000, CRC(78848d39))
+	ROM_LOAD("sordint.rom",0x0000, 0x02000, CRC(78848d39) SHA1(ac042c4ae8272ad6abe09ae83492ef9a0026d0b2))
 	ROM_REGION(0x10000, REGION_CPU2, 0)
 	ROM_LOAD("sordfd5.rom",0x0000, 0x04000, NO_DUMP)
 	ROM_REGION(0x5000, REGION_USER1, 0)

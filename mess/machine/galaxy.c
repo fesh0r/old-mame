@@ -136,8 +136,6 @@ SNAPSHOT_LOAD( galaxy )
 		case GALAXY_SNAPSHOT_V1_SIZE:
 		case GALAXY_SNAPSHOT_V2_SIZE:
 			snapshot_data = auto_malloc(snapshot_size);
-			if (!snapshot_data)
-				return INIT_FAIL;
 			break;
 		default:
 			return INIT_FAIL;
@@ -172,13 +170,13 @@ DRIVER_INIT( galaxy )
   Machine Initialization
 ***************************************************************************/
 
-MACHINE_INIT( galaxy )
+MACHINE_RESET( galaxy )
 {
 	/* ROM 2 enable/disable */
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, readinputport(7) ? MRA8_ROM : MRA8_NOP);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, readinputport(7) ? MWA8_ROM : MWA8_NOP);
 
-	cpu_set_irq_callback(0, galaxy_irq_callback);
+	cpunum_set_irq_callback(0, galaxy_irq_callback);
 
 	galaxy_interrupts_enabled = TRUE;
 }

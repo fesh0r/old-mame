@@ -75,26 +75,6 @@ struct _xml_parse_options
 
 
 
-struct XML_ParserStruct;
-
-struct _xml_custom_parse
-{
-	void (*init)(struct XML_ParserStruct *parser);
-	size_t (*read)(void *param, void *buffer, size_t length);
-	int (*eof)(void *param);
-	void *param;
-	int trim_whitespace;
-
-	const char *error_message;
-	int error_line;
-	int error_column;
-
-	xml_data_node **curnode;
-};
-typedef struct _xml_custom_parse xml_custom_parse;
-
-
-
 /*************************************
  *
  *  Function prototypes

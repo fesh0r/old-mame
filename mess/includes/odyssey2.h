@@ -1,11 +1,12 @@
 #include "sound/custom.h"
+#include "streams.h"
 
 /* machine/odyssey2.c */
 extern int odyssey2_framestart;
 extern int odyssey2_videobank;
 
 DRIVER_INIT( odyssey2 );
-MACHINE_INIT( odyssey2 );
+MACHINE_RESET( odyssey2 );
 
 
 /* vidhrdw/odyssey2.c */

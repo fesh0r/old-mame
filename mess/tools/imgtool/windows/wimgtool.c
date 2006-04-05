@@ -8,6 +8,7 @@
 #include <windowsx.h>
 #include <commctrl.h>
 #include <tchar.h>
+#include <ctype.h>
 
 #include "wimgtool.h"
 #include "wimgres.h"
@@ -928,7 +929,7 @@ imgtoolerr_t wimgtool_open_image(HWND window, const struct ImageModule *module,
 			read_or_write = OSD_FOPEN_READ;
 	}
 
-	info->filename = strdup(filename);
+	info->filename = mame_strdup(filename);
 	if (!info->filename)
 	{
 		err = IMGTOOLERR_OUTOFMEMORY;
@@ -969,7 +970,7 @@ imgtoolerr_t wimgtool_open_image(HWND window, const struct ImageModule *module,
 		{
 			buf[0] = '\0';
 		}
-		info->current_directory = strdup(buf);
+		info->current_directory = mame_strdup(buf);
 		if (!info->current_directory)
 		{
 			err = IMGTOOLERR_OUTOFMEMORY;
@@ -1949,6 +1950,3 @@ BOOL wimgtool_registerclass(void)
 	wimgtool_wndclass.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_IMGTOOL));
 	return RegisterClass(&wimgtool_wndclass);
 }
-
-
-

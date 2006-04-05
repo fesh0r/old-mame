@@ -62,7 +62,6 @@ pc 8bit
 */
 
 #include "cpuintrf.h"
-#include "osd_cpu.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -89,8 +88,6 @@ extern void lh5801_set_reg(int regnum, unsigned val);
 extern void lh5801_set_nmi_line(int state);
 extern void lh5801_set_irq_line(int irqline, int state);
 extern void lh5801_set_irq_callback(int (*callback)(int irqline));
-extern void lh5801_state_save(void *file);
-extern void lh5801_state_load(void *file);
 extern const char *lh5801_info(void *context, int regnum);
 extern unsigned lh5801_dasm(char *buffer, unsigned pc);
 

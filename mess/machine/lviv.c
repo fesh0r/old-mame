@@ -45,7 +45,7 @@ static void lviv_update_memory (void)
 static OPBASE_HANDLER(lviv_opbaseoverride)
 {
 	if (readinputport(12)&0x01)
-		machine_reset();
+		mame_schedule_soft_reset();
 	return address;
 }
 
@@ -206,7 +206,7 @@ static ppi8255_interface lviv_ppi8255_interface =
 	{lviv_ppi_0_portc_w, lviv_ppi_1_portc_w}
 };
 
-MACHINE_INIT( lviv )
+MACHINE_RESET( lviv )
 {
 	memory_set_opbase_handler(0, lviv_opbaseoverride);
 

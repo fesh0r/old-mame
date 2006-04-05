@@ -342,16 +342,10 @@ ADDRESS_MAP_END
 /* functions and data used by spectrum 128, spectrum +2, spectrum +3 and scorpion */
 static unsigned char *spectrum_ram = NULL;
 
-static int spectrum_alloc_ram(int ram_size_in_k)
+static void spectrum_alloc_ram(int ram_size_in_k)
 {
 	spectrum_ram = (unsigned char *)auto_malloc(ram_size_in_k*1024);
-	if (spectrum_ram)
-	{
-		memset(spectrum_ram, 0, ram_size_in_k*1024);
-		return 1;
-	}
-
-	return 0;
+	memset(spectrum_ram, 0, ram_size_in_k*1024);
 }
 
 
@@ -512,26 +506,25 @@ static ADDRESS_MAP_START (spectrum_128_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0xc000, 0xffff) AM_READWRITE( MRA8_BANK4, MWA8_BANK8 )
 ADDRESS_MAP_END
 
-static MACHINE_INIT( spectrum_128 )
+static MACHINE_RESET( spectrum_128 )
 {
-	if (spectrum_alloc_ram(128)!=0)
-	{
-		/* 0x0000-0x3fff always holds ROM */
+	spectrum_alloc_ram(128);
 
-		/* Bank 5 is always in 0x4000 - 0x7fff */
-		memory_set_bankptr(2, spectrum_ram + (5<<14));
-		memory_set_bankptr(6, spectrum_ram + (5<<14));
+	/* 0x0000-0x3fff always holds ROM */
 
-		/* Bank 2 is always in 0x8000 - 0xbfff */
-		memory_set_bankptr(3, spectrum_ram + (2<<14));
-		memory_set_bankptr(7, spectrum_ram + (2<<14));
+	/* Bank 5 is always in 0x4000 - 0x7fff */
+	memory_set_bankptr(2, spectrum_ram + (5<<14));
+	memory_set_bankptr(6, spectrum_ram + (5<<14));
 
-		/* set initial ram config */
-		spectrum_128_port_7ffd_data = 0;
-		spectrum_128_update_memory();
+	/* Bank 2 is always in 0x8000 - 0xbfff */
+	memory_set_bankptr(3, spectrum_ram + (2<<14));
+	memory_set_bankptr(7, spectrum_ram + (2<<14));
 
-		machine_init_spectrum();
-	}
+	/* set initial ram config */
+	spectrum_128_port_7ffd_data = 0;
+	spectrum_128_update_memory();
+
+	machine_reset_spectrum();
 }
 
 /****************************************************************************************************/
@@ -826,22 +819,21 @@ static ADDRESS_MAP_START (spectrum_plus3_io, ADDRESS_SPACE_IO, 8)
 		AM_RANGE(0x0000, 0xffff) AM_READWRITE( spectrum_plus3_port_r, spectrum_plus3_port_w )
 ADDRESS_MAP_END
 
-static MACHINE_INIT( spectrum_plus3 )
+static MACHINE_RESET( spectrum_plus3 )
 {
-	if (spectrum_alloc_ram(128))
-	{
-		nec765_init(&spectrum_plus3_nec765_interface, NEC765A);
+	spectrum_alloc_ram(128);
 
-		floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
-		floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1), FLOPPY_DRIVE_SS_40);
+	nec765_init(&spectrum_plus3_nec765_interface, NEC765A);
 
-		/* Initial configuration */
-		spectrum_128_port_7ffd_data = 0;
-		spectrum_plus3_port_1ffd_data = 0;
-		spectrum_plus3_update_memory();
+	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
+	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1), FLOPPY_DRIVE_SS_40);
 
-		machine_init_spectrum();
-	}
+	/* Initial configuration */
+	spectrum_128_port_7ffd_data = 0;
+	spectrum_plus3_port_1ffd_data = 0;
+	spectrum_plus3_update_memory();
+
+	machine_reset_spectrum();
 }
 
 
@@ -1302,13 +1294,13 @@ static ADDRESS_MAP_START (ts2068_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 
-static MACHINE_INIT( ts2068 )
+static MACHINE_RESET( ts2068 )
 {
 	ts2068_port_ff_data = 0;
 	ts2068_port_f4_data = 0;
 	ts2068_update_memory();
 
-	machine_init_spectrum();
+	machine_reset_spectrum();
 }
 
 
@@ -1361,20 +1353,20 @@ static ADDRESS_MAP_START (tc2048_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x4000, 0xffff) AM_READWRITE( MRA8_BANK1, MWA8_BANK2 )
 ADDRESS_MAP_END
 
-static MACHINE_INIT( tc2048 )
+static MACHINE_RESET( tc2048 )
 {
 	memory_set_bankptr(1, mess_ram);
 	memory_set_bankptr(2, mess_ram);
 	ts2068_port_ff_data = 0;
 
-	machine_init_spectrum();
+	machine_reset_spectrum();
 }
 
 
 /****************************************************************************************************/
 /* BETADISK/TR-DOS disc controller emulation */
 /* microcontroller KR1818VG93 is a russian wd179x clone */
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 
 /*
 DRQ (D6) and INTRQ (D7).
@@ -1696,25 +1688,24 @@ static ADDRESS_MAP_START (scorpion_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0000, 0xffff) AM_READWRITE(scorpion_port_r, scorpion_port_w)
 ADDRESS_MAP_END
 
-static MACHINE_INIT( scorpion )
+static MACHINE_RESET( scorpion )
 {
-	if (spectrum_alloc_ram(256))
-	{
-		/* Bank 5 is always in 0x4000 - 0x7fff */
-		memory_set_bankptr(2, spectrum_ram + (5<<14));
-		memory_set_bankptr(6, spectrum_ram + (5<<14));
+	spectrum_alloc_ram(256);
 
-		/* Bank 2 is always in 0x8000 - 0xbfff */
-		memory_set_bankptr(3, spectrum_ram + (2<<14));
-		memory_set_bankptr(7, spectrum_ram + (2<<14));
+	/* Bank 5 is always in 0x4000 - 0x7fff */
+	memory_set_bankptr(2, spectrum_ram + (5<<14));
+	memory_set_bankptr(6, spectrum_ram + (5<<14));
 
-		spectrum_128_port_7ffd_data = 0;
-		scorpion_256_port_1ffd_data = 0;
+	/* Bank 2 is always in 0x8000 - 0xbfff */
+	memory_set_bankptr(3, spectrum_ram + (2<<14));
+	memory_set_bankptr(7, spectrum_ram + (2<<14));
 
-		scorpion_update_memory();
+	spectrum_128_port_7ffd_data = 0;
+	scorpion_256_port_1ffd_data = 0;
 
-		betadisk_init();
-	}
+	scorpion_update_memory();
+
+	betadisk_init();
 }
 
 /****************************************************************************************************/
@@ -1738,20 +1729,19 @@ static ADDRESS_MAP_START (pentagon_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0000, 0xffff) AM_READWRITE( pentagon_port_r, pentagon_port_w )
 ADDRESS_MAP_END
 
-static MACHINE_INIT( pentagon )
+static MACHINE_RESET( pentagon )
 {
-	if (spectrum_alloc_ram(128))
-	{
-		/* Bank 5 is always in 0x4000 - 0x7fff */
-		memory_set_bankptr(2, spectrum_ram + (5<<14));
-		memory_set_bankptr(6, spectrum_ram + (5<<14));
+	spectrum_alloc_ram(128);
 
-		/* Bank 2 is always in 0x8000 - 0xbfff */
-		memory_set_bankptr(3, spectrum_ram + (2<<14));
-		memory_set_bankptr(7, spectrum_ram + (2<<14));
+	/* Bank 5 is always in 0x4000 - 0x7fff */
+	memory_set_bankptr(2, spectrum_ram + (5<<14));
+	memory_set_bankptr(6, spectrum_ram + (5<<14));
 
-		betadisk_init();
-	}
+	/* Bank 2 is always in 0x8000 - 0xbfff */
+	memory_set_bankptr(3, spectrum_ram + (2<<14));
+	memory_set_bankptr(7, spectrum_ram + (2<<14));
+
+	betadisk_init();
 }
 
 /****************************************************************************************************/
@@ -1958,7 +1948,7 @@ static MACHINE_DRIVER_START( spectrum )
 	MDRV_VBLANK_DURATION(2500)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( spectrum )
+	MDRV_MACHINE_RESET( spectrum )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1990,7 +1980,7 @@ static MACHINE_DRIVER_START( spectrum_128 )
 	MDRV_CPU_IO_MAP(spectrum_128_io, 0)
 	MDRV_FRAMES_PER_SECOND(50.021)
 
-	MDRV_MACHINE_INIT( spectrum_128 )
+	MDRV_MACHINE_RESET( spectrum_128 )
 
     /* video hardware */
 	MDRV_VIDEO_START( spectrum_128 )
@@ -2009,7 +1999,7 @@ static MACHINE_DRIVER_START( spectrum_plus3 )
 	MDRV_CPU_IO_MAP(spectrum_plus3_io, 0)
 	MDRV_FRAMES_PER_SECOND(50.01)
 
-	MDRV_MACHINE_INIT( spectrum_plus3 )
+	MDRV_MACHINE_RESET( spectrum_plus3 )
 MACHINE_DRIVER_END
 
 
@@ -2020,7 +2010,7 @@ static MACHINE_DRIVER_START( ts2068 )
 	MDRV_CPU_IO_MAP(ts2068_io, 0)
 	MDRV_FRAMES_PER_SECOND(60)
 
-	MDRV_MACHINE_INIT( ts2068 )
+	MDRV_MACHINE_RESET( ts2068 )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2)
@@ -2045,7 +2035,7 @@ static MACHINE_DRIVER_START( tc2048 )
 	MDRV_CPU_IO_MAP(tc2048_io, 0)
 	MDRV_FRAMES_PER_SECOND(50)
 
-	MDRV_MACHINE_INIT( tc2048 )
+	MDRV_MACHINE_RESET( tc2048 )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2)
@@ -2061,7 +2051,7 @@ static MACHINE_DRIVER_START( scorpion )
 	MDRV_IMPORT_FROM( spectrum_128 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(scorpion_io, 0)
-	MDRV_MACHINE_INIT( scorpion )
+	MDRV_MACHINE_RESET( scorpion )
 MACHINE_DRIVER_END
 
 
@@ -2069,7 +2059,7 @@ static MACHINE_DRIVER_START( pentagon )
 	MDRV_IMPORT_FROM( spectrum_128 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(pentagon_io, 0)
-	MDRV_MACHINE_INIT( pentagon )
+	MDRV_MACHINE_RESET( pentagon )
 MACHINE_DRIVER_END
 
 
@@ -2081,155 +2071,155 @@ MACHINE_DRIVER_END
 
 ROM_START(spectrum)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("spectrum.rom", 0x0000, 0x4000, CRC(ddee531f))
+	ROM_LOAD("spectrum.rom", 0x0000, 0x4000, CRC(ddee531f) SHA1(5ea7c2b824672e914525d1d5c419d71b84a426a2))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specbusy)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("48-busy.rom", 0x0000, 0x4000, CRC(1511cddb))
+	ROM_LOAD("48-busy.rom", 0x0000, 0x4000, CRC(1511cddb) SHA1(ab3c36daad4325c1d3b907b6dc9a14af483d14ec))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specpsch)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("48-psych.rom", 0x0000, 0x4000, CRC(cd60b589))
+	ROM_LOAD("48-psych.rom", 0x0000, 0x4000, CRC(cd60b589) SHA1(0853e25857d51dd41b20a6dbc8e80f028c5befaa))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specgrot)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("48-groot.rom", 0x0000, 0x4000, CRC(abf18c45))
+	ROM_LOAD("48-groot.rom", 0x0000, 0x4000, CRC(abf18c45) SHA1(51165cde68e218512d3145467074bc7e786bf307))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specimc)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("48-imc.rom", 0x0000, 0x4000, CRC(d1be99ee))
+	ROM_LOAD("48-imc.rom", 0x0000, 0x4000, CRC(d1be99ee) SHA1(dee814271c4d51de257d88128acdb324fb1d1d0d))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(speclec)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("80-lec.rom", 0x0000, 0x4000, CRC(5b5c92b1))
+	ROM_LOAD("80-lec.rom", 0x0000, 0x4000, CRC(5b5c92b1) SHA1(bb7a77d66e95d2e28ebb610e543c065e0d428619))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(spec128)
 	ROM_REGION(0x18000,REGION_CPU1,0)
-	ROM_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2))
-	ROM_LOAD("zx128_1.rom",0x14000,0x4000, CRC(b96a36be))
+	ROM_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5))
+	ROM_LOAD("zx128_1.rom",0x14000,0x4000, CRC(b96a36be) SHA1(80080644289ed93d71a1103992a154cc9802b2fa))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(spec128s)
 	ROM_REGION(0x18000,REGION_CPU1,0)
-	ROM_LOAD("zx128s0.rom",0x10000,0x4000, CRC(453d86b2))
-	ROM_LOAD("zx128s1.rom",0x14000,0x4000, CRC(6010e796))
+	ROM_LOAD("zx128s0.rom",0x10000,0x4000, CRC(453d86b2) SHA1(968937b1c750f0ef6205f01c6db4148da4cca4e3))
+	ROM_LOAD("zx128s1.rom",0x14000,0x4000, CRC(6010e796) SHA1(bea3f397cc705eafee995ea629f4a82550562f90))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specpls2)
 	ROM_REGION(0x18000,REGION_CPU1,0)
-	ROM_LOAD("zxp2_0.rom",0x10000,0x4000, CRC(5d2e8c66))
-	ROM_LOAD("zxp2_1.rom",0x14000,0x4000, CRC(98b1320b))
+	ROM_LOAD("zxp2_0.rom",0x10000,0x4000, CRC(5d2e8c66) SHA1(72703f9a3e734f3c23ec34c0727aae4ccbef9a91))
+	ROM_LOAD("zxp2_1.rom",0x14000,0x4000, CRC(98b1320b) SHA1(de8b0d2d0379cfe7c39322a086ca6da68c7f23cb))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specpl2a)
 	ROM_REGION(0x20000,REGION_CPU1,0)
-	ROM_LOAD("p2a41_0.rom",0x10000,0x4000, CRC(30c9f490))
-	ROM_LOAD("p2a41_1.rom",0x14000,0x4000, CRC(a7916b3f))
-	ROM_LOAD("p2a41_2.rom",0x18000,0x4000, CRC(c9a0b748))
-	ROM_LOAD("p2a41_3.rom",0x1c000,0x4000, CRC(b88fd6e3))
+	ROM_LOAD("p2a41_0.rom",0x10000,0x4000, CRC(30c9f490) SHA1(62ec15a4af56cd1d206d0bd7011eac7c889a595d))
+	ROM_LOAD("p2a41_1.rom",0x14000,0x4000, CRC(a7916b3f) SHA1(1a7812c383a3701e90e88d1da086efb0c033ac72))
+	ROM_LOAD("p2a41_2.rom",0x18000,0x4000, CRC(c9a0b748) SHA1(8df145d10ff78f98138682ea15ebccb2874bf759))
+	ROM_LOAD("p2a41_3.rom",0x1c000,0x4000, CRC(b88fd6e3) SHA1(be365f331942ec7ec35456b641dac56a0dbfe1f0))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specpls3)
 	ROM_REGION(0x20000,REGION_CPU1,0)
-	ROM_LOAD("pl3-0.rom",0x10000,0x4000, CRC(17373da2))
-	ROM_LOAD("pl3-1.rom",0x14000,0x4000, CRC(f1d1d99e))
-	ROM_LOAD("pl3-2.rom",0x18000,0x4000, CRC(3dbf351d))
-	ROM_LOAD("pl3-3.rom",0x1c000,0x4000, CRC(04448eaa))
+	ROM_LOAD("pl3-0.rom",0x10000,0x4000, CRC(17373da2) SHA1(e319ed08b4d53a5e421a75ea00ea02039ba6555b))
+	ROM_LOAD("pl3-1.rom",0x14000,0x4000, CRC(f1d1d99e) SHA1(c9969fc36095a59787554026a9adc3b87678c794))
+	ROM_LOAD("pl3-2.rom",0x18000,0x4000, CRC(3dbf351d) SHA1(22e50c6ba4157a3f6a821bd9937cd26e292775c6))
+	ROM_LOAD("pl3-3.rom",0x1c000,0x4000, CRC(04448eaa) SHA1(65f031caa8148a5493afe42c41f4929deab26b4e))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specpls4)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("plus4.rom",0x0000,0x4000, CRC(7e0f47cb))
+	ROM_LOAD("plus4.rom",0x0000,0x4000, CRC(7e0f47cb) SHA1(c103e89ef58e6ade0c01cea0247b332623bd9a30))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(tk90x)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("tk90x.rom",0x0000,0x4000, CRC(3e785f6f))
+	ROM_LOAD("tk90x.rom",0x0000,0x4000, CRC(3e785f6f) SHA1(9a943a008be13194fb006bddffa7d22d2277813f))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(tk95)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("tk95.rom",0x0000,0x4000, CRC(17368e07))
+	ROM_LOAD("tk95.rom",0x0000,0x4000, CRC(17368e07) SHA1(94edc401d43b0e9a9cdc1d35de4b6462dc414ab3))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(inves)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("inves.rom",0x0000,0x4000, CRC(8ff7a4d1))
+	ROM_LOAD("inves.rom",0x0000,0x4000, CRC(8ff7a4d1) SHA1(d020440638aff4d39467128413ef795677be9c23))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(tc2048)
 	ROM_REGION(0x10000,REGION_CPU1,0)
-	ROM_LOAD("tc2048.rom",0x0000,0x4000, CRC(f1b5fa67))
+	ROM_LOAD("tc2048.rom",0x0000,0x4000, CRC(f1b5fa67) SHA1(febb2d495b6eda7cdcb4074935d6e9d9f328972d))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(ts2068)
 	ROM_REGION(0x16000,REGION_CPU1,0)
-	ROM_LOAD("ts2068_h.rom",0x10000,0x4000, CRC(bf44ec3f))
-	ROM_LOAD("ts2068_x.rom",0x14000,0x2000, CRC(ae16233a))
+	ROM_LOAD("ts2068_h.rom",0x10000,0x4000, CRC(bf44ec3f) SHA1(1446cb2780a9dedf640404a639fa3ae518b2d8aa))
+	ROM_LOAD("ts2068_x.rom",0x14000,0x2000, CRC(ae16233a) SHA1(7e265a2c1f621ed365ea23bdcafdedbc79c1299c))
 ROM_END
 
 ROM_START(uk2086)
 	ROM_REGION(0x16000,REGION_CPU1,0)
-	ROM_LOAD("uk2086_h.rom",0x10000,0x4000, CRC(5ddc0ca2))
-	ROM_LOAD("ts2068_x.rom",0x14000,0x2000, CRC(ae16233a))
+	ROM_LOAD("uk2086_h.rom",0x10000,0x4000, CRC(5ddc0ca2) SHA1(1d525fe5cdc82ab46767f665ad735eb5363f1f51))
+	ROM_LOAD("ts2068_x.rom",0x14000,0x2000, CRC(ae16233a) SHA1(7e265a2c1f621ed365ea23bdcafdedbc79c1299c))
 ROM_END
 
 ROM_START(specp2fr)
 	ROM_REGION(0x18000,REGION_CPU1,0)
-	ROM_LOAD("plus2fr0.rom",0x10000,0x4000, CRC(c684c535))
-	ROM_LOAD("plus2fr1.rom",0x14000,0x4000, CRC(f5e509c5))
+	ROM_LOAD("plus2fr0.rom",0x10000,0x4000, CRC(c684c535) SHA1(56684c4c85a616e726a50707483b9a42d8e724ed))
+	ROM_LOAD("plus2fr1.rom",0x14000,0x4000, CRC(f5e509c5) SHA1(7e398f62689c9d90a36d3a101351ec9987207308))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specp2sp)
 	ROM_REGION(0x18000,REGION_CPU1,0)
-	ROM_LOAD("plus2sp0.rom",0x10000,0x4000, CRC(e807d06e))
-	ROM_LOAD("plus2sp1.rom",0x14000,0x4000, CRC(41981d4b))
+	ROM_LOAD("plus2sp0.rom",0x10000,0x4000, CRC(e807d06e) SHA1(8259241b28ff85441f1bedc2bee53445767c51c5))
+	ROM_LOAD("plus2sp1.rom",0x14000,0x4000, CRC(41981d4b) SHA1(ec0d5a158842d20601b4fbeaefc6668db979d0e1))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specp3sp)
 	ROM_REGION(0x20000,REGION_CPU1,0)
-	ROM_LOAD("plus3sp0.rom",0x10000,0x4000, CRC(1f86147a))
-	ROM_LOAD("plus3sp1.rom",0x14000,0x4000, CRC(a8ac4966))
-	ROM_LOAD("plus3sp2.rom",0x18000,0x4000, CRC(f6bb0296))
-	ROM_LOAD("plus3sp3.rom",0x1c000,0x4000, CRC(f6d25389))
+	ROM_LOAD("plus3sp0.rom",0x10000,0x4000, CRC(1f86147a) SHA1(e9b0a60a1a8def511d59090b945d175bdc646346))
+	ROM_LOAD("plus3sp1.rom",0x14000,0x4000, CRC(a8ac4966) SHA1(4e48f196427596c7990c175d135c15a039c274a4))
+	ROM_LOAD("plus3sp2.rom",0x18000,0x4000, CRC(f6bb0296) SHA1(09fc005625589ef5992515957ce7a3167dec24b2))
+	ROM_LOAD("plus3sp3.rom",0x1c000,0x4000, CRC(f6d25389) SHA1(ec8f644a81e2e9bcb58ace974103ea960361bad2))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specpl3e)
 	ROM_REGION(0x20000,REGION_CPU1,0)
-	ROM_LOAD("roma-en.rom",0x10000,0x8000, CRC(2d533344))
-	ROM_LOAD("romb-en.rom",0x18000,0x8000, CRC(ef8d5d92))
+	ROM_LOAD("roma-en.rom",0x10000,0x8000, CRC(2d533344) SHA1(5ff2dae32eb745d87e0b54c595d1d20a866f316f))
+	ROM_LOAD("romb-en.rom",0x18000,0x8000, CRC(ef8d5d92) SHA1(983aa53aa76e25a3af123c896016bacf6829b72b))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specp3es)
 	ROM_REGION(0x20000,REGION_CPU1,0)
-	ROM_LOAD("roma-es.rom",0x10000,0x8000, CRC(ba694b4b))
-	ROM_LOAD("romb-es.rom",0x18000,0x8000, CRC(61ed94db))
+	ROM_LOAD("roma-es.rom",0x10000,0x8000, CRC(ba694b4b) SHA1(d15d9e43950483cffc79f1cfa89ecb114a88f6c2))
+	ROM_LOAD("romb-es.rom",0x18000,0x8000, CRC(61ed94db) SHA1(935b14c13db75d872de8ad0d591aade0adbbc355))
 	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 

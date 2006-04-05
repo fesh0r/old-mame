@@ -17,8 +17,7 @@
 #include "devices/snapquik.h"
 #include "includes/psx.h"
 #include "sound/psx.h"
-
-extern void mips_stop( void );
+#include "debugger.h"
 
 struct
 {
@@ -89,7 +88,10 @@ static OPBASE_HANDLER( psx_setopbase )
 		}
 
 		memory_set_opbase_handler( 0, NULL );
-		mips_stop();
+#ifdef MAME_DEBUG
+		DEBUGGER_BREAK;
+		CALL_MAME_DEBUG;
+#endif
 		return ~0;
 	}
 	return address;
@@ -710,7 +712,7 @@ static ADDRESS_MAP_START( psx_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xfffe0130, 0xfffe0133) AM_WRITENOP
 ADDRESS_MAP_END
 
-static MACHINE_INIT( psx )
+static MACHINE_RESET( psx )
 {
 	psx_machine_init();
 	psx_sio_install_handler( 0, psx_sio0 );
@@ -780,7 +782,7 @@ static MACHINE_DRIVER_START( psxntsc )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( psx )
+	MDRV_MACHINE_RESET( psx )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
@@ -809,7 +811,7 @@ static MACHINE_DRIVER_START( psxpal )
 	MDRV_FRAMES_PER_SECOND( 50 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( psx )
+	MDRV_MACHINE_RESET( psx )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )

@@ -27,7 +27,9 @@
 #include "cpuintrf.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
-#include "machine/z80fmly.h"
+#include "machine/z80ctc.h"
+#include "machine/z80pio.h"
+#include "machine/z80sio.h"
 #include "vidhrdw/generic.h"
 #include "vidhrdw/tms9928a.h"
 #include "sound/sn76496.h"
@@ -210,13 +212,12 @@ static WRITE8_HANDLER ( mtx_ctc_w )
 
 static z80ctc_interface	mtx_ctc_intf =
 {
-	1,
-	{MTX_SYSTEM_CLOCK},
-	{0},
-	{mtx_ctc_interrupt},
-	{0},
-	{0},
-	{0}
+	MTX_SYSTEM_CLOCK,
+	0,
+	mtx_ctc_interrupt,
+	0,
+	0,
+	0
 };
 
 static void mtx_tms9929A_interrupt (int data)
@@ -241,49 +242,64 @@ static void mtx_set_bank_offsets (unsigned int bank1, unsigned int bank2,
 
 	romimage = memory_region (REGION_CPU1);
 
-	if (mtx_relcpmh) {
+	if (mtx_relcpmh)
+	{
 		memory_set_bankptr (1, mess_ram + bank1);
 		// bank 9 is handled by the mtx_trap_write function
 		memory_set_bankptr (2, mess_ram + bank2);
 		memory_set_bankptr (10, mess_ram + bank2);
-	} else {
+	}
+	else
+	{
 		memory_set_bankptr (1, romimage + bank1);
 		// bank is 9 handled by the mtx_trap_write function
 		memory_set_bankptr (2, romimage + bank2);
 		memory_set_bankptr (10, mtx_null_mem);
 	}
 
-	if (bank3 < mess_ram_size) {
+	if (bank3 < mess_ram_size)
+	{
 		memory_set_bankptr (3, mess_ram + bank3);
 		memory_set_bankptr (11, mess_ram + bank3);
-        } else {
+	}
+	else
+	{
 		memory_set_bankptr (3, mtx_null_mem);
 		memory_set_bankptr (11, mtx_zero_mem);
-        }
+	}
 
-	if (bank4 < mess_ram_size) {
+	if (bank4 < mess_ram_size)
+	{
 		memory_set_bankptr (4, mess_ram + bank4);
 		memory_set_bankptr (12, mess_ram + bank4);
-        } else {
+	}
+	else
+	{
 		memory_set_bankptr (4, mtx_null_mem);
 		memory_set_bankptr (12, mtx_zero_mem);
-        }
+	}
 
-	if (bank5 < mess_ram_size) {
+	if (bank5 < mess_ram_size)
+	{
 		memory_set_bankptr (5, mess_ram + bank5);
 		memory_set_bankptr (13, mess_ram + bank5);
-        } else {
+	}
+	else
+	{
 		memory_set_bankptr (5, mtx_null_mem);
 		memory_set_bankptr (13, mtx_zero_mem);
-        }
+	}
 
-	if (bank6 < mess_ram_size) {
+	if (bank6 < mess_ram_size)
+	{
 		memory_set_bankptr (6, mess_ram + bank6);
 		memory_set_bankptr (14, mess_ram + bank6);
-        } else {
+	}
+	else
+	{
 		memory_set_bankptr (6, mtx_null_mem);
 		memory_set_bankptr (14, mtx_zero_mem);
-        }
+	}
 
 	memory_set_bankptr (7, mess_ram + bank7);
 	memory_set_bankptr (15, mess_ram + bank7);
@@ -301,14 +317,17 @@ static WRITE8_HANDLER ( mtx_bankswitch_w )
 	mtx_rampage = (data & 0x0f);
 	mtx_rompage = (data & 0x70) >> 4;
 
-	if (mtx_relcpmh) {
+	if (mtx_relcpmh)
+	{
 		bank1 = 0xe000 + mtx_rampage * 0xc000;
 		bank2 = 0xc000 + mtx_rampage * 0xc000;
 		bank3 = 0xa000 + mtx_rampage * 0xc000;
 		bank4 = 0x8000 + mtx_rampage * 0xc000;
 		bank5 = 0x6000 + mtx_rampage * 0xc000;
 		bank6 = 0x4000 + mtx_rampage * 0xc000;
-	} else {
+	}
+	else
+	{
 		bank1 = 0x0;
 		bank2 = 0x2000 + mtx_rompage * 0x2000;
 		bank3 = 0xa000 + mtx_rampage * 0x8000;
@@ -543,32 +562,24 @@ static void mtx_printer_getinfo(const device_class *devclass, UINT32 state, unio
 	}
 }
 
-static MACHINE_INIT( mtx512 )
+static MACHINE_START( mtx512 )
 {
 	unsigned char * romimage;
 
 	mtx_null_mem = (unsigned char *) auto_malloc (16384);
-	if (!mtx_null_mem)
-		return;
 
 	mtx_zero_mem = (unsigned char *) auto_malloc (16384);
-	if (!mtx_zero_mem)
-		return;
 
 	mtx_loadbuffer = (unsigned char *) auto_malloc (65536);
-	if (!mtx_loadbuffer)
-		return;
 
 	mtx_savebuffer = (unsigned char *) auto_malloc (65536);
-	if (!mtx_savebuffer)
-		return;
 
 	memset (mtx_null_mem, 0, 16384);
 	memset (mtx_zero_mem, 0, 16384);
 	memset (mtx_loadbuffer, 0, 65536);
 	memset (mtx_savebuffer, 0, 65536);
 
-	z80ctc_init (&mtx_ctc_intf);
+	z80ctc_init(0, &mtx_ctc_intf);
 
 	// Patch the Rom (Sneaky........ Who needs to trap opcodes?)
 	romimage = memory_region(REGION_CPU1);
@@ -586,6 +597,7 @@ static MACHINE_INIT( mtx512 )
 
 	mtx_loadsize = 0;
 	mtx_saveindex = 0;
+	return 0;
 }
 
 static INTERRUPT_GEN( mtx_interrupt )
@@ -754,7 +766,7 @@ static MACHINE_DRIVER_START( mtx512 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( mtx512 )
+	MDRV_MACHINE_START( mtx512 )
 
 	/* video hardware */
 	MDRV_TMS9928A( &tms9928a_interface )
@@ -766,7 +778,7 @@ static MACHINE_DRIVER_START( mtx512 )
 MACHINE_DRIVER_END
 
 ROM_START (mtx512)
-	ROM_REGION (0x6000, REGION_CPU1, 0)
+	ROM_REGION (0x12000, REGION_CPU1, 0)
 	ROM_LOAD ("osrom", 0x0, 0x2000, CRC(9ca858cc) SHA1(3804503a58f0bcdea96bb6488833782ebd03976d))
 	ROM_LOAD ("basicrom", 0x2000, 0x2000, CRC(87b4e59c) SHA1(c49782a82a7f068c1195cd967882ba9edd546eaf))
 	ROM_LOAD ("assemrom", 0x4000, 0x2000, CRC(9d7538c3) SHA1(d1882c4ea61a68b1715bd634ded5603e18a99c5f))

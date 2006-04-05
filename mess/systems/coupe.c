@@ -29,7 +29,7 @@ Changes:
 #include "cpu/z80/z80.h"
 #include "vidhrdw/generic.h"
 #include "includes/coupe.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "devices/basicdsk.h"
 #include "sound/saa1099.h"
 #include "sound/speaker.h"
@@ -415,7 +415,7 @@ static MACHINE_DRIVER_START( coupe )
 	MDRV_VBLANK_DURATION(0)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( coupe )
+	MDRV_MACHINE_RESET( coupe )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

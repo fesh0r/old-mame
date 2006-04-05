@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+
 #include "videomap.h"
 #include "mess.h"
 #include "vidhrdw/generic.h"
+#include "profiler.h"
 
 #define PROFILER_VIDEOMAP_DRAWBORDER	PROFILER_USER3
 #define PROFILER_VIDEOMAP_DRAWBODY		PROFILER_USER4
@@ -440,8 +442,10 @@ static void general_invalidate(UINT8 inval_flags_mask, int scanline)
 	mame_time current_delay;
 
 	/* sanity check the scanline */
-	assert(scanline >= 0);
-	assert(scanline <= Machine->drv->screen_height);
+	if (scanline < 0)
+		scanline = 0;
+	else if (scanline > Machine->drv->screen_height)
+		scanline = Machine->drv->screen_height;
 
 	/* figure out how soon our timer needs to go off */
 	delay = cpu_getscanlinetime_mt(scanline);
@@ -844,8 +848,6 @@ int videomap_init(const struct videomap_config *config)
 	callbacks = config->intf;
 	flags = FLAG_FULL_REFRESH;
 	border_scanline = (UINT16 *) auto_malloc(Machine->drv->screen_width * sizeof(UINT16));
-	if (!border_scanline)
-		return 1;
 
 	/* do we need to perform endian flipping? */
 	memory_flags = config->intf->flags & VIDEOMAP_FLAGS_MEMORY_MASK;

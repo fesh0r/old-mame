@@ -1239,7 +1239,7 @@ static void amstrad_common_init(void)
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_BANK15);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, MWA8_BANK16);
 
-	cpuint_reset_cpu(0);
+	cpunum_reset(0);
 	cpunum_set_input_line_vector(0, 0,0x0ff);
 
 	nec765_init(&amstrad_nec765_interface,NEC765A/*?*/);
@@ -1274,10 +1274,10 @@ The Gate-Array fetches two bytes for each address*/
 	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_ex, amstrad_cycle_table_ex);
 
 	/* Juergen is a cool dude! */
-	cpu_set_irq_callback(0, amstrad_cpu_acknowledge_int);
+	cpunum_set_irq_callback(0, amstrad_cpu_acknowledge_int);
 }
 
-static MACHINE_INIT( amstrad )
+static MACHINE_RESET( amstrad )
 {
 	int i;
 
@@ -1294,7 +1294,7 @@ static MACHINE_INIT( amstrad )
 	
 }
 
-static MACHINE_INIT( kccomp )
+static MACHINE_RESET( kccomp )
 {
 	int i;
 
@@ -1319,26 +1319,15 @@ static MACHINE_INIT( kccomp )
 /* Memory is banked in 16k blocks. However, the multiface
 pages the memory in 8k blocks! The ROM can
 be paged into bank 0 and bank 3. */
-static ADDRESS_MAP_START(readmem_amstrad, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0x01fff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0x02000, 0x03fff) AM_READ(MRA8_BANK2)
-	AM_RANGE(0x04000, 0x05fff) AM_READ(MRA8_BANK3)
-	AM_RANGE(0x06000, 0x07fff) AM_READ(MRA8_BANK4)
-	AM_RANGE(0x08000, 0x09fff) AM_READ(MRA8_BANK5)
-	AM_RANGE(0x0a000, 0x0bfff) AM_READ(MRA8_BANK6)
-	AM_RANGE(0x0c000, 0x0dfff) AM_READ(MRA8_BANK7)
-	AM_RANGE(0x0e000, 0x0ffff) AM_READ(MRA8_BANK8)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START(writemem_amstrad, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0x01fff) AM_WRITE(MWA8_BANK9)
-	AM_RANGE(0x02000, 0x03fff) AM_WRITE(MWA8_BANK10)
-	AM_RANGE(0x04000, 0x05fff) AM_WRITE(MWA8_BANK11)
-	AM_RANGE(0x06000, 0x07fff) AM_WRITE(MWA8_BANK12)
-	AM_RANGE(0x08000, 0x09fff) AM_WRITE(MWA8_BANK13)
-	AM_RANGE(0x0a000, 0x0bfff) AM_WRITE(MWA8_BANK14)
-	AM_RANGE(0x0c000, 0x0dfff) AM_WRITE(MWA8_BANK15)
-	AM_RANGE(0x0e000, 0x0ffff) AM_WRITE(MWA8_BANK16)
+static ADDRESS_MAP_START(amstrad_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x00000, 0x01fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK9)
+	AM_RANGE(0x02000, 0x03fff) AM_READWRITE(MRA8_BANK2, MWA8_BANK10)
+	AM_RANGE(0x04000, 0x05fff) AM_READWRITE(MRA8_BANK3, MWA8_BANK11)
+	AM_RANGE(0x06000, 0x07fff) AM_READWRITE(MRA8_BANK4, MWA8_BANK12)
+	AM_RANGE(0x08000, 0x09fff) AM_READWRITE(MRA8_BANK5, MWA8_BANK13)
+	AM_RANGE(0x0a000, 0x0bfff) AM_READWRITE(MRA8_BANK6, MWA8_BANK14)
+	AM_RANGE(0x0c000, 0x0dfff) AM_READWRITE(MRA8_BANK7, MWA8_BANK15)
+	AM_RANGE(0x0e000, 0x0ffff) AM_READWRITE(MRA8_BANK8, MWA8_BANK16)
 ADDRESS_MAP_END
 
 /* I've handled the I/O ports in this way, because the ports
@@ -1588,14 +1577,14 @@ speed of 3.8Mhz */
 static MACHINE_DRIVER_START( amstrad )
 	/* Machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(readmem_amstrad,writemem_amstrad)
+	MDRV_CPU_PROGRAM_MAP(amstrad_mem, 0)
 	MDRV_CPU_IO_MAP(amstrad_io, 0)
 
 	MDRV_FRAMES_PER_SECOND(AMSTRAD_FPS)
 	MDRV_INTERLEAVE(1)
 	MDRV_VBLANK_DURATION(19968)
 
-	MDRV_MACHINE_INIT( amstrad )
+	MDRV_MACHINE_RESET( amstrad )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2)
@@ -1623,7 +1612,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( kccomp )
 	MDRV_IMPORT_FROM( amstrad )
 	MDRV_FRAMES_PER_SECOND( AMSTRAD_FPS )
-	MDRV_MACHINE_INIT( kccomp )
+	MDRV_MACHINE_RESET( kccomp )
 	MDRV_SCREEN_SIZE(800, 312)
 	MDRV_PALETTE_INIT( kccomp )
 MACHINE_DRIVER_END

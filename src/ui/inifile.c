@@ -23,6 +23,7 @@
 #include <math.h>
 #include <direct.h>
 #include <driver.h>
+#include <ctype.h>
 
 #include "screenshot.h"
 #include "bitmask.h"
@@ -160,7 +161,12 @@ static BOOL SettingsFileName(DWORD nSettingsFile, char *buffer, size_t bufsize)
 			break;
 
 		case SETTINGS_FILE_FOLDER:
-			snprintf(buffer, bufsize, "%s\\%s.ini", GetIniDir(), g_folderData[arg].m_lpTitle);
+			// use lower case
+			snprintf(title, sizeof(title), "%s", g_folderData[arg].m_lpTitle);
+			for (i = 0; title[i]; i++)
+				title[i] = tolower(title[i]);
+
+			snprintf(buffer, bufsize, "%s\\%s.ini", GetIniDir(), title);
 			break;
 
 		case SETTINGS_FILE_EXFOLDER:
@@ -168,11 +174,13 @@ static BOOL SettingsFileName(DWORD nSettingsFile, char *buffer, size_t bufsize)
 			break;
 
 		case SETTINGS_FILE_SOURCEFILE:
-			//we have a source ini to create, so remove the ".c" at the end of the title
 			assert(arg >= 0);
 			assert(arg < GetNumGames());
-			strncpy(title, drivers[arg]->source_file, strlen(drivers[arg]->source_file)-2 );
-			title[strlen(drivers[arg]->source_file)-2] = '\0';
+
+			strcpy(title, GetDriverFilename(arg));
+
+			// we have a source ini to create, so remove the ".c" at the end of the title
+			title[strlen(title) - 2] = '\0';
 
 			//Core expects it there
 			snprintf(buffer, bufsize, "%s\\drivers\\%s.ini", GetIniDir(), title );
@@ -392,9 +400,14 @@ BOOL SaveSettingsFileEx(DWORD nSettingsFile, const struct SettingsHandler *handl
 		{
 			// We successfully obtained the Attributes, so File exists, and we can delete it
 			if (DeleteFile(buffer) == 0)
-			{
 				dprintf("error deleting %s; error %d\n",buffer, GetLastError());
-			}
+
+			// Try to delete extra directories
+			s = strrchr(buffer, '\\');
+			if (*s)
+				*s = '\0';
+			if (strchr(buffer, '\\'))
+				RemoveDirectory(buffer);
 		}
 		return TRUE;
 	}
@@ -404,7 +417,7 @@ BOOL SaveSettingsFileEx(DWORD nSettingsFile, const struct SettingsHandler *handl
 	while((s = strchr(s, '\\')) != NULL)
 	{
 		*s = '\0';
-		if (GetFileAttributes(buffer) != 0xFFFFFFFF)
+		if (GetFileAttributes(buffer) == 0xFFFFFFFF)
 			CreateDirectory(buffer, NULL);
 		*s = '\\';
 		s++;

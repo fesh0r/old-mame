@@ -303,8 +303,6 @@ int AY3600_init()
 {
 	/* Init the key remapping table */
 	ay3600_keys = auto_malloc(AY3600_KEYS_LENGTH * sizeof(*ay3600_keys));
-	if (!ay3600_keys)
-		return 1;
 	memset(ay3600_keys, 0, AY3600_KEYS_LENGTH * sizeof(*ay3600_keys));
 
 	/* We poll the keyboard periodically to scan the keys.  This is
@@ -386,10 +384,11 @@ static void AY3600_poll(int dummy)
 			}
 			return;
 	}
-	if (reset_flag) {
+	if (reset_flag)
+	{
 		reset_flag = 0;
 		cpunum_set_input_line(0, INPUT_LINE_RESET, CLEAR_LINE);
-		machine_reset();
+		mame_schedule_soft_reset();
 	}
 
 	/* run through real keys and see what's being pressed */

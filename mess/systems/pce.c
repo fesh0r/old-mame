@@ -41,6 +41,7 @@
 **********************************************************************/
 
 #include <assert.h>
+
 #include "driver.h"
 #include "vidhrdw/generic.h"
 #include "vidhrdw/vdc.h"
@@ -48,6 +49,8 @@
 #include "includes/pce.h"
 #include "devices/cartslot.h"
 #include "sound/c6280.h"
+#include "hash.h"
+
 static INTERRUPT_GEN( pce_interrupt )
 {
     int ret = 0;
@@ -354,7 +357,7 @@ SYSTEM_CONFIG_END
 #define rom_pce NULL
 #define rom_tg16 NULL
 
-/*	   YEAR  NAME	   PARENT	COMPAT	MACHINE	INPUT	 INIT	CONFIG  COMPANY	 FULLNAME */
-CONS( 1987, pce,	   0,		0,		pce,	pce, 	 pce,		pce,	"Nippon Electronic Company", "PC Engine", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-CONS( 1989, tg16,	   pce,		0,		pce,	pce, 	 tg16,		pce,	"Nippon Electronic Company", "TurboGrafx 16", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+/*	  YEAR  NAME    PARENT	COMPAT	MACHINE	INPUT	 INIT	CONFIG  COMPANY	 FULLNAME */
+CONS( 1987, pce,    0,      0,      pce,    pce,     pce,   pce,	"Nippon Electronic Company", "PC Engine", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+CONS( 1989, tg16,   pce,    0,      pce,    pce,     tg16,  pce,	"Nippon Electronic Company", "TurboGrafx 16", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 

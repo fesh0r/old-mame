@@ -117,7 +117,8 @@ const game_driver *test_drivers[] =
 	DRIVER( gbcolor )	/* Nintendo GameBoy Color Handheld					*/
 	DRIVER( snes )		/* Nintendo Super Nintendo NTSC						*/
 	DRIVER( snespal )	/* Nintendo Super Nintendo PAL						*/
-
+	DRIVER( n64 )		/* Nintendo N64										*/
+	
 	DRIVER( megaduck )	/* Megaduck											*/
 
 	/* SEGA */
@@ -150,8 +151,8 @@ TESTDRIVER( saturn )	/* Sega Saturn										*/
 	DRIVER( astrocdw )	/* Bally Astrocade (white case)						*/
 
 	/* RCA */
-TESTDRIVER( vip )		/* Cosmac VIP										*/
-TESTDRIVER( studio2 )	/* Studio II										*/
+	DRIVER( vip )		/* Cosmac VIP										*/
+	DRIVER( studio2 )	/* Studio II										*/
 
 	/* FAIRCHILD */
 	DRIVER( channelf )	/* Fairchild Channel F VES - 1976					*/
@@ -195,7 +196,7 @@ TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
 	DRIVER( vc4000 )	/* Interton vc4000									*/
 
 	/* BANDAI */
-TESTDRIVER( wswan )		/* Bandai WonderSwan Handheld						*/
+	DRIVER( wswan )		/* Bandai WonderSwan Handheld						*/
 TESTDRIVER( wscolor )	/* Bandai WonderSwan Color Handheld					*/
 
 
@@ -209,7 +210,7 @@ TESTDRIVER( wscolor )	/* Bandai WonderSwan Color Handheld					*/
 	DRIVER( bbcbp128 )  /* 198? BBC Micro Model B+ 128K						*/
 	DRIVER( bbcm)		/* 198? BBC Master									*/
 	DRIVER( electron )	/* 1983 Acorn Electron							*/
-TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
+//TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
 
 	/* CAMBRIDGE COMPUTERS */
 	DRIVER( z88 )		/*													*/
@@ -408,7 +409,8 @@ TESTDRIVER( i8530286 )	/* 1988 IBM PS2 Model 30 286 (VGA)					*/
 TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 	DRIVER( at386 )		/* 19?? IBM AT 386									*/
 	DRIVER( at486 )		/* 19?? IBM AT 486									*/
-
+	DRIVER( at586 )		/* 19?? AT 586                          			*/
+	
 	/* SINCLAIR */
 	DRIVER( zx80 )		/* Sinclair ZX-80						*/
 	DRIVER( zx81 )		/* Sinclair ZX-81						*/

@@ -222,7 +222,11 @@ struct _machine_config
 	int					(*video_start)(void);		/* one-time video start callback */
 	void				(*video_reset)(void);		/* video reset callback */
 	void				(*video_eof)(void);			/* end-of-frame video callback */
+#ifdef MESS
+	void				(*video_update)(int screen, mame_bitmap *bitmap, const rectangle *cliprect, int *do_skip);
+#else
 	void				(*video_update)(int screen, mame_bitmap *bitmap, const rectangle *cliprect); /* video update callback */
+#endif
 
 	sound_config		sound[MAX_SOUND];			/* array of sound chips in the system */
 	speaker_config		speaker[MAX_SPEAKER];		/* array of speakers in the system */

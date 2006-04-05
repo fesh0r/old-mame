@@ -410,7 +410,7 @@ static OPBASE_HANDLER( avigo_opbase_handler )
 	return address;
 }
 
-static MACHINE_INIT( avigo )
+static void avigo_machine_reset(void)
 {
 	int i;
 	unsigned char *addr;
@@ -472,10 +472,6 @@ static MACHINE_INIT( avigo )
 		previous_input_port_data[i] = readinputport(i);
 	}
 
-	/* a timer used to check status of pen */
-	/* an interrupt is generated when the pen is pressed to the screen */
-	timer_pulse(TIME_IN_HZ(50), 0, avigo_dummy_timer_callback);
-
 	avigo_irq = 0;
 	avigo_rom_bank_l = 0;
 	avigo_rom_bank_h = 0;
@@ -505,7 +501,7 @@ static MACHINE_INIT( avigo )
 	avigo_refresh_memory();
 }
 
-static MACHINE_STOP( avigo )
+static void avigo_machine_stop(void)
 {
 	/* store and free flash memory */
 	amd_flash_store(0, "avigof1.nv");
@@ -516,6 +512,17 @@ static MACHINE_STOP( avigo )
 
 	amd_flash_store(2, "avigof3.nv");
 	amd_flash_finish(2);
+}
+
+static MACHINE_START( avigo )
+{
+	/* a timer used to check status of pen */
+	/* an interrupt is generated when the pen is pressed to the screen */
+	timer_pulse(TIME_IN_HZ(50), 0, avigo_dummy_timer_callback);
+
+	add_reset_callback(avigo_machine_reset);
+	add_exit_callback(avigo_machine_stop);
+	return 0;
 }
 
 
@@ -862,38 +869,27 @@ static  READ8_HANDLER(avigo_04_r)
 
 
 
-ADDRESS_MAP_START( readport_avigo , ADDRESS_SPACE_IO, 8)
+ADDRESS_MAP_START( avigo_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x000, 0x000) AM_READ( avigo_unmapped_r)
-    AM_RANGE(0x001, 0x001) AM_READ( avigo_key_data_read_r)
+    AM_RANGE(0x001, 0x001) AM_READWRITE( avigo_key_data_read_r, avigo_set_key_line_w )
 	AM_RANGE(0x002, 0x002) AM_READ( avigo_unmapped_r)
-	AM_RANGE(0x003, 0x003) AM_READ( avigo_irq_r)
+	AM_RANGE(0x003, 0x003) AM_READWRITE( avigo_irq_r, avigo_irq_w )
 	AM_RANGE(0x004, 0x004) AM_READ( avigo_04_r)
-	AM_RANGE(0x005, 0x005) AM_READ( avigo_rom_bank_l_r)
-	AM_RANGE(0x006, 0x006) AM_READ( avigo_rom_bank_h_r)
-	AM_RANGE(0x007, 0x007) AM_READ( avigo_ram_bank_l_r)
-	AM_RANGE(0x008, 0x008) AM_READ( avigo_ram_bank_h_r)
-    AM_RANGE(0x009, 0x009) AM_READ( avigo_ad_control_status_r)
+	AM_RANGE(0x005, 0x005) AM_READWRITE( avigo_rom_bank_l_r, avigo_rom_bank_l_w )
+	AM_RANGE(0x006, 0x006) AM_READWRITE( avigo_rom_bank_h_r, avigo_rom_bank_h_w )
+	AM_RANGE(0x007, 0x007) AM_READWRITE( avigo_ram_bank_l_r, avigo_ram_bank_l_w )
+	AM_RANGE(0x008, 0x008) AM_READWRITE( avigo_ram_bank_h_r, avigo_ram_bank_h_w )
+    AM_RANGE(0x009, 0x009) AM_READWRITE( avigo_ad_control_status_r, avigo_ad_control_status_w )
 	AM_RANGE(0x00a, 0x00f) AM_READ( avigo_unmapped_r)
-	AM_RANGE(0x010, 0x01f) AM_READ( tc8521_r)
+	AM_RANGE(0x010, 0x01f) AM_READWRITE( tc8521_r, tc8521_w )
 	AM_RANGE(0x020, 0x02c) AM_READ( avigo_unmapped_r)
+	AM_RANGE(0x028, 0x028) AM_WRITE( avigo_speaker_w)
     AM_RANGE(0x02d, 0x02d) AM_READ( avigo_ad_data_r)
 	AM_RANGE(0x02e, 0x02f) AM_READ( avigo_unmapped_r)
-	AM_RANGE(0x030, 0x037) AM_READ( uart8250_0_r)
+	AM_RANGE(0x030, 0x037) AM_READWRITE( uart8250_0_r, uart8250_0_w )
 	AM_RANGE(0x038, 0x0ff) AM_READ( avigo_unmapped_r)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( writeport_avigo , ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x001, 0x001) AM_WRITE( avigo_set_key_line_w)
-	AM_RANGE(0x003, 0x003) AM_WRITE( avigo_irq_w)
-	AM_RANGE(0x005, 0x005) AM_WRITE( avigo_rom_bank_l_w)
-	AM_RANGE(0x006, 0x006) AM_WRITE( avigo_rom_bank_h_w)
-	AM_RANGE(0x007, 0x007) AM_WRITE( avigo_ram_bank_l_w)
-	AM_RANGE(0x008, 0x008) AM_WRITE( avigo_ram_bank_h_w)
-    AM_RANGE(0x009, 0x009) AM_WRITE( avigo_ad_control_status_w)
-   	AM_RANGE(0x010, 0x01f) AM_WRITE( tc8521_w)
-	AM_RANGE(0x028, 0x028) AM_WRITE( avigo_speaker_w)
-	AM_RANGE(0x030, 0x037) AM_WRITE( uart8250_0_w)
-ADDRESS_MAP_END
 
 
 INPUT_PORTS_START(avigo)
@@ -933,13 +929,12 @@ static MACHINE_DRIVER_START( avigo )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(avigo_mem, 0)
-	MDRV_CPU_IO_MAP(readport_avigo,writeport_avigo)
+	MDRV_CPU_IO_MAP(avigo_io, 0)
 	MDRV_FRAMES_PER_SECOND(50)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( avigo )
-	MDRV_MACHINE_STOP( avigo )
+	MDRV_MACHINE_START( avigo )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

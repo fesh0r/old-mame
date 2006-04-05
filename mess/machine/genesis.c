@@ -21,7 +21,6 @@ io bug? controls don't work in decap attack
 */
 
 #include "driver.h"
-#include "machine/random.h"
 #include "includes/genesis.h"
 #include "sound/2612intf.h"
 #include "sound/sn76496.h"
@@ -130,8 +129,9 @@ void genesis_vdp_draw_scanline (genvdp *current_vdp, int line)
 {
 	UINT32 *destline;
 	int i;
+	extern mame_bitmap *scrbitmap[8];
 
-	destline = (UINT32 *)(Machine->scrbitmap->line[line]);
+	destline = (UINT32 *)(scrbitmap[0]->line[line]);
 
 	for (i = 0; i < 320; i++)
 	{
@@ -2327,9 +2327,9 @@ INTERRUPT_GEN( genesis_interrupt )
 	/* nothing? */
 //}
 
-MACHINE_INIT ( genesis )
+MACHINE_RESET ( genesis )
 {
-//	logerror("MACHINE_INIT ( genesis )\n");
+//	logerror("MACHINE_RESET ( genesis )\n");
 	/* prevent the z80 from running (code must be uploaded by the 68k first) */
 	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
 	genesis_z80_is_reset = 1;

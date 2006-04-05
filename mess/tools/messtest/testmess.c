@@ -17,6 +17,10 @@
 #include "sound/wavwrite.h"
 #include "vidhrdw/generic.h"
 
+#ifdef WIN32
+#include "windows/parallel.h"
+#endif
+
 #if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
 #include "debug/debugcpu.h"
 #endif
@@ -132,7 +136,6 @@ static int format_index;
 static UINT64 runtime_hash;
 static void *wavptr;
 static UINT32 samples_this_frame;
-static jmp_buf die_jmpbuf;
 static int seen_first_update;
 
 /* command list */
@@ -152,6 +155,7 @@ static void dump_screenshot(int write_file)
 	mame_bitmap *bitmap;
 	int x, y, is_blank;
 	pen_t color;
+	extern mame_bitmap *scrbitmap[8];
 
 	bitmap = artwork_get_ui_bitmap();
 
@@ -174,7 +178,7 @@ static void dump_screenshot(int write_file)
 	}
 
 	/* check to see if bitmap is blank */
-	bitmap = Machine->scrbitmap;
+	bitmap = scrbitmap[0];
 	is_blank = 1;
 	color = bitmap->read(bitmap, 0, 0);
 	for (y = 0; is_blank && (y < bitmap->height); y++)
@@ -190,30 +194,6 @@ static void dump_screenshot(int write_file)
 		had_failure = TRUE;
 		report_message(MSG_FAILURE, "Screenshot is blank");
 	}
-}
-
-
-
-void CLIB_DECL osd_die(const char *text,...)
-{
-	va_list va;
-	char buf[256];
-	char *s;
-
-	/* format the die message */
-	va_start(va, text);
-	vsnprintf(buf, sizeof(buf) / sizeof(buf[0]), text, va);
-	va_end(va);
-
-	/* strip out \n */
-	s = strchr(buf, '\n');
-	if (s)
-		*s = '\0';
-
-	/* report the failure */
-	report_message(MSG_FAILURE, "Die: %s", buf);
-	state = STATE_ABORTED;
-	longjmp(die_jmpbuf, -1);
 }
 
 
@@ -267,7 +247,8 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 	while(current_command->command_type == MESSTEST_COMMAND_IMAGE_PRELOAD)
 	{
 		options.image_files[options.image_count].name = current_command->u.image_args.filename;
-		options.image_files[options.image_count].type = current_command->u.image_args.device_type;
+		options.image_files[options.image_count].device_type = current_command->u.image_args.device_type;
+		options.image_files[options.image_count].device_index = -1;
 		options.image_count++;
 		current_command++;
 	}
@@ -275,8 +256,7 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 	/* perform the test */
 	report_message(MSG_INFO, "Beginning test (driver '%s')", current_testcase.driver);
 	begin_time = clock();
-	if (setjmp(die_jmpbuf) == 0)
-		run_game(driver_num);
+	run_game(driver_num);
 	real_run_time = ((double) (clock() - begin_time)) / CLOCKS_PER_SEC;
 
 	/* what happened? */
@@ -315,13 +295,6 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 		results->runtime_hash = runtime_hash;
 	}
 	return rc;
-}
-
-
-
-int osd_trying_to_quit(void)
-{
-	return (state == STATE_ABORTED) || (state == STATE_DONE);
 }
 
 
@@ -814,6 +787,7 @@ static void command_end(void)
 	/* at the end of our test */
 	state = STATE_DONE;
 	final_time = timer_get_time();
+	mame_schedule_exit();
 }
 
 
@@ -926,8 +900,6 @@ const struct KeyboardInfo *osd_get_key_list(void)
 	if (!ki)
 	{
 		ki = auto_malloc((__code_key_last - __code_key_first + 1) * sizeof(struct KeyboardInfo));
-		if (!ki)
-			return NULL;
 
 		for (i = __code_key_first; i <= __code_key_last; i++)
 		{
@@ -946,8 +918,6 @@ const struct JoystickInfo *osd_get_joy_list(void)
 	if (!ji)
 	{
 		ji = auto_malloc((__code_joy_last - __code_joy_first + 1) * sizeof(struct JoystickInfo));
-		if (!ji)
-			return NULL;
 
 		for (i = __code_joy_first; i <= __code_joy_last; i++)
 		{

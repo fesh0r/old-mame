@@ -51,7 +51,7 @@ Vidhrdw:
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "cpu/m68000/m68k.h"
 #include "cpu/m68000/m68000.h"
 #include "devices/basicdsk.h"
@@ -1949,7 +1949,7 @@ static VIDEO_EOF( atarist )
 	}
 }
 
-static MACHINE_INIT( atarist )
+static MACHINE_RESET( atarist )
 {
 	unsigned char *RAM = memory_region(REGION_USER1);
 	unsigned char *RAM2 = memory_region(REGION_CPU1);
@@ -2076,7 +2076,7 @@ static MACHINE_DRIVER_START( ataris )
 	MDRV_VBLANK_DURATION(0)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( atarist )
+	MDRV_MACHINE_RESET( atarist )
 
 	/* video hardware, doubled to allow mode changes */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)

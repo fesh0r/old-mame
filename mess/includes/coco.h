@@ -1,6 +1,6 @@
 /*********************************************************************
 
-	dragon.h
+	coco.h
 
 	CoCo/Dragon code
 
@@ -22,10 +22,6 @@
 #define COCO_DIP_ARTIFACTING		12
 #define COCO3_DIP_MONITORTYPE		12
 #define COCO3_DIP_MONITORTYPE_MASK	0x08
-
-/* Port Tags for configuration of DOs enable/diable and cartrage autostart */
-
-#define DRAGON_COCO_CART_AUTOSTART	"Cartridge Autostart"
 
 /* ----------------------------------------------------------------------- *
  * Backdoors into mess/vidhrdw/m6847.c                                     *
@@ -92,15 +88,12 @@ int coco3_calculate_rows(int *bordertop, int *borderbottom);
  * from machine/dragon.c                                                   *
  * ----------------------------------------------------------------------- */
 
-DRIVER_INIT( coco );
-DRIVER_INIT( coco3 );
-MACHINE_INIT( dragon32 );
-MACHINE_INIT( dragon64 );
-MACHINE_INIT( dgnalpha );
-MACHINE_INIT( coco );
-MACHINE_INIT( coco2 );
-MACHINE_INIT( coco3 );
-MACHINE_STOP( coco );
+MACHINE_START( dragon32 );
+MACHINE_START( dragon64 );
+MACHINE_START( dgnalpha );
+MACHINE_START( coco );
+MACHINE_START( coco2 );
+MACHINE_START( coco3 );
 
 INTERRUPT_GEN( coco3_vh_interrupt );
 
@@ -111,9 +104,6 @@ DEVICE_UNLOAD(coco3_rom);
 
 SNAPSHOT_LOAD ( coco_pak );
 SNAPSHOT_LOAD ( coco3_pak );
-READ8_HANDLER ( dragon_mapped_irq_r );
-READ8_HANDLER ( dragon_alpha_mapped_irq_r );
-READ8_HANDLER ( coco3_mapped_irq_r );
 READ8_HANDLER ( coco3_mmu_r );
 WRITE8_HANDLER ( coco3_mmu_w );
 READ8_HANDLER ( coco3_gime_r );
@@ -132,7 +122,7 @@ int coco3_mmu_translate(int bank, int offset);
 int coco_bitbanger_init (int id);
 READ8_HANDLER( coco_pia_1_r );
 READ8_HANDLER( coco3_pia_1_r );
-void dragon_sound_update(void);
+READ8_HANDLER( dragon_alpha_mapped_irq_r );
 
 /* Dragon Alpha AY-8912 */
 READ8_HANDLER ( dgnalpha_psg_porta_read );

@@ -544,7 +544,7 @@ static ADDRESS_MAP_START( ip204415_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE( 0xbfc00000, 0xbfc7ffff ) AM_ROM AM_SHARE(2) /* BIOS Mirror */
 ADDRESS_MAP_END
 
-static MACHINE_INIT( ip204415 )
+static MACHINE_RESET( ip204415 )
 {
 	mc_init();
 
@@ -586,12 +586,6 @@ INPUT_PORTS_START( ip204415 )
 	PORT_BIT ( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
-static const char *ip20_cdrom_getname(const struct IODevice *dev, int id, char *buf, size_t bufsize)
-{
-	snprintf(buf, bufsize, "CD-ROM #%d", id + 1);
-	return buf;
-}
-
 static void ip20_chdcd_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* CHD CD-ROM */
@@ -599,9 +593,6 @@ static void ip20_chdcd_getinfo(const device_class *devclass, UINT32 state, union
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_GET_NAME:						info->name = ip20_cdrom_getname; break;
 
 		default: cdrom_device_getinfo(devclass, state, info);
 	}
@@ -622,7 +613,7 @@ MACHINE_DRIVER_START( ip204415 )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT( ip204415 )
+	MDRV_MACHINE_RESET( ip204415 )
 	MDRV_NVRAM_HANDLER(93C56)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

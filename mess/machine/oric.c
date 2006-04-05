@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include "driver.h"
 #include "includes/oric.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "machine/6522via.h"
 #include "machine/applefdc.h"
 #include "includes/6551.h"
@@ -1113,7 +1113,7 @@ static void oric_common_init_machine(void)
     via_set_input_ca1(0, 1);
 }
 
-MACHINE_INIT( oric )
+MACHINE_START( oric )
 {
 	int disc_interface_id;
 
@@ -1180,6 +1180,7 @@ MACHINE_INIT( oric )
 
 
 	wd179x_init(WD_TYPE_179X,oric_wd179x_callback);
+	return 0;
 }
 
 
@@ -1465,7 +1466,7 @@ static void telestrat_acia_callback(int irq_state)
 }
 #endif
 
-MACHINE_INIT( telestrat )
+MACHINE_START( telestrat )
 {
 	oric_common_init_machine();
 
@@ -1512,4 +1513,5 @@ MACHINE_INIT( telestrat )
 	via_set_clock(1,1000000);
 
 	wd179x_init(WD_TYPE_179X,oric_wd179x_callback);
+	return 0;
 }

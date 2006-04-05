@@ -20,6 +20,7 @@ Historical notes: TI made several last minute design changes.
 
 #include "driver.h"
 #include "inputx.h"
+#include "vidhrdw/generic.h"
 #include "vidhrdw/tms9928a.h"
 #include "vidhrdw/v9938.h"
 
@@ -34,6 +35,7 @@ Historical notes: TI made several last minute design changes.
 #include "devices/mflopimg.h"
 #include "devices/harddriv.h"
 #include "devices/cassette.h"
+#include "devices/harddriv.h"
 #include "machine/smartmed.h"
 #include "sound/5220intf.h"
 
@@ -545,9 +547,7 @@ static MACHINE_DRIVER_START(ti99_4_60hz)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( ti99 )
-	MDRV_MACHINE_STOP( ti99 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
+	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_TMS9928A( &tms9918_interface )
@@ -580,9 +580,7 @@ static MACHINE_DRIVER_START(ti99_4_50hz)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( ti99 )
-	MDRV_MACHINE_STOP( ti99 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
+	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_TMS9928A( &tms9929_interface )
@@ -614,9 +612,7 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( ti99 )
-	MDRV_MACHINE_STOP( ti99 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
+	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_TMS9928A( &tms9918a_interface )
@@ -648,9 +644,7 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( ti99 )
-	MDRV_MACHINE_STOP( ti99 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
+	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_TMS9928A( &tms9929a_interface )
@@ -672,34 +666,26 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	/* basic machine hardware */
 	/* TMS9900 CPU @ 3.0 MHz */
 	MDRV_CPU_ADD(TMS9900, 3000000)
-	/*MDRV_CPU_CONFIG(0)*/
 	MDRV_CPU_PROGRAM_MAP(memmap_4ev, 0)
 	MDRV_CPU_IO_MAP(readcru, writecru)
 	MDRV_CPU_VBLANK_INT(ti99_4ev_hblank_interrupt, 263)	/* 262.5 in 60Hz, 312.5 in 50Hz */
-	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
 
 	MDRV_FRAMES_PER_SECOND(60)	/* or 50Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( ti99 )
-	MDRV_MACHINE_STOP( ti99 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
+	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	/*MDRV_ASPECT_RATIO(num, den)*/
 	MDRV_SCREEN_SIZE(512+32, (212+28)*2)
 	MDRV_VISIBLE_AREA(0, 512+32 - 1, 0, (212+28)*2 - 1)
 
-	/*MDRV_GFXDECODE(NULL)*/
 	MDRV_PALETTE_LENGTH(512)
 	MDRV_COLORTABLE_LENGTH(512)
 
 	MDRV_PALETTE_INIT(v9938)
 	MDRV_VIDEO_START(ti99_4ev)
-	/*MDRV_VIDEO_EOF(name)*/
-	MDRV_VIDEO_UPDATE(v9938)
+	MDRV_VIDEO_UPDATE(generic_bitmapped)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -723,86 +709,86 @@ MACHINE_DRIVER_END
 ROM_START(ti99_4)
 	/*CPU memory space*/
 	ROM_REGION16_BE(region_cpu1_len, REGION_CPU1, 0)
-	ROM_LOAD16_BYTE("u610.bin", 0x0000, 0x1000, CRC(6fcf4b15)) /* CPU ROMs high */
-	ROM_LOAD16_BYTE("u611.bin", 0x0001, 0x1000, CRC(491c21d1)) /* CPU ROMs low */
+	ROM_LOAD16_BYTE("u610.bin", 0x0000, 0x1000, CRC(6fcf4b15) SHA1(d085213c64701d429ae535f9a4ac8a50427a8343)) /* CPU ROMs high */
+	ROM_LOAD16_BYTE("u611.bin", 0x0001, 0x1000, CRC(491c21d1) SHA1(7741ae9294c51a44a78033d1b77c01568a6bbfb9)) /* CPU ROMs low */
 
 	/*GROM memory space*/
 	ROM_REGION(0x10000, region_grom, 0)
-	ROM_LOAD("u500.bin", 0x0000, 0x1800, CRC(aa757e13)) /* system GROM 0 */
-	ROM_LOAD("u501.bin", 0x2000, 0x1800, CRC(c863e460)) /* system GROM 1 */
-	ROM_LOAD("u502.bin", 0x4000, 0x1800, CRC(b0eda548)) /* system GROM 1 */
+	ROM_LOAD("u500.bin", 0x0000, 0x1800, CRC(aa757e13) SHA1(4658d3d01c0131c283a30cebd12e76754d41a84a)) /* system GROM 0 */
+	ROM_LOAD("u501.bin", 0x2000, 0x1800, CRC(c863e460) SHA1(6d849a76011273a069a98ed0c3feaf13831c942f)) /* system GROM 1 */
+	ROM_LOAD("u502.bin", 0x4000, 0x1800, CRC(b0eda548) SHA1(725e3f26f8c819f356e4bb405b4102b5ae1e0e70)) /* system GROM 1 */
 
 	/*DSR ROM space*/
 	ROM_REGION(region_dsr_len, region_dsr, 0)
-	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f)) /* TI disk DSR ROM */
+	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f) SHA1(ed91d48c1eaa8ca37d5055bcf67127ea51c4cad5)) /* TI disk DSR ROM */
 #if HAS_99CCFDC
 	ROM_LOAD_OPTIONAL("ccfdc.bin", offset_ccfdc_dsr, 0x4000, BAD_DUMP CRC(f69cc69d)) /* CorComp disk DSR ROM */
 #endif
-	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89)) /* BwG disk DSR ROM */
-	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed)) /* HFDC disk DSR ROM */
-	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb)) /* TI rs232 DSR ROM */
+	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89) SHA1(6ad77033ed268f986d9a5439e65f7d391c4b7651)) /* BwG disk DSR ROM */
+	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed) SHA1(11df2ecef51de6f543e4eaf8b2529d3e65d0bd59)) /* HFDC disk DSR ROM */
+	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb) SHA1(ee609a18a21f1a3ddab334e8798d5f2a0fcefa91)) /* TI rs232 DSR ROM */
 
 	/* HSGPL memory space */
 	ROM_REGION(region_hsgpl_len, region_hsgpl, 0)
 
 	/*TMS5220 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
-	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7)) /* system speech ROM */
+	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7) SHA1(382292295c00dff348d7e17c5ce4da12a1d87763)) /* system speech ROM */
 ROM_END
 
 ROM_START(ti99_4a)
 	/*CPU memory space*/
 	ROM_REGION16_BE(region_cpu1_len, REGION_CPU1, 0)
-	ROM_LOAD16_WORD("994arom.bin", 0x0000, 0x2000, CRC(db8f33e5)) /* system ROMs */
+	ROM_LOAD16_WORD("994arom.bin", 0x0000, 0x2000, CRC(db8f33e5) SHA1(6541705116598ab462ea9403c00656d6353ceb85)) /* system ROMs */
 
 	/*GROM memory space*/
 	ROM_REGION(0x10000, region_grom, 0)
-	ROM_LOAD("994agrom.bin", 0x0000, 0x6000, CRC(af5c2449)) /* system GROMs */
+	ROM_LOAD("994agrom.bin", 0x0000, 0x6000, CRC(af5c2449) SHA1(0c5eaad0093ed89e9562a2c0ee6a370bdc9df439)) /* system GROMs */
 
 	/*DSR ROM space*/
 	ROM_REGION(region_dsr_len, region_dsr, 0)
-	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f)) /* TI disk DSR ROM */
+	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f) SHA1(ed91d48c1eaa8ca37d5055bcf67127ea51c4cad5)) /* TI disk DSR ROM */
 #if HAS_99CCFDC
 	ROM_LOAD_OPTIONAL("ccfdc.bin", offset_ccfdc_dsr, 0x4000, BAD_DUMP CRC(f69cc69d)) /* CorComp disk DSR ROM */
 #endif
-	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89)) /* BwG disk DSR ROM */
-	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed)) /* HFDC disk DSR ROM */
-	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb)) /* TI rs232 DSR ROM */
+	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89) SHA1(6ad77033ed268f986d9a5439e65f7d391c4b7651)) /* BwG disk DSR ROM */
+	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed) SHA1(11df2ecef51de6f543e4eaf8b2529d3e65d0bd59)) /* HFDC disk DSR ROM */
+	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb) SHA1(ee609a18a21f1a3ddab334e8798d5f2a0fcefa91)) /* TI rs232 DSR ROM */
 
 	/* HSGPL memory space */
 	ROM_REGION(region_hsgpl_len, region_hsgpl, 0)
 
 	/*TMS5220 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
-	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7)) /* system speech ROM */
+	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7) SHA1(382292295c00dff348d7e17c5ce4da12a1d87763)) /* system speech ROM */
 ROM_END
 
 ROM_START(ti99_4ev)
 	/*CPU memory space*/
 	ROM_REGION16_BE(region_cpu1_len, REGION_CPU1, 0)
-	ROM_LOAD16_WORD("994arom.bin", 0x0000, 0x2000, CRC(db8f33e5)) /* system ROMs */
+	ROM_LOAD16_WORD("994arom.bin", 0x0000, 0x2000, CRC(db8f33e5) SHA1(6541705116598ab462ea9403c00656d6353ceb85)) /* system ROMs */
 
 	/*GROM memory space*/
 	ROM_REGION(0x10000, region_grom, 0)
-	ROM_LOAD("994agr38.bin", 0x0000, 0x6000, CRC(bdd9f09b)) /* system GROMs */
+	ROM_LOAD("994agr38.bin", 0x0000, 0x6000, CRC(bdd9f09b) SHA1(9b058a55d2528d2a6a69d7081aa296911ed7c0de)) /* system GROMs */
 
 	/*DSR ROM space*/
 	ROM_REGION(region_dsr_len, region_dsr, 0)
-	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f)) /* TI disk DSR ROM */
+	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f) SHA1(ed91d48c1eaa8ca37d5055bcf67127ea51c4cad5)) /* TI disk DSR ROM */
 #if HAS_99CCFDC
 	ROM_LOAD_OPTIONAL("ccfdc.bin", offset_ccfdc_dsr, 0x4000, BAD_DUMP CRC(f69cc69d)) /* CorComp disk DSR ROM */
 #endif
-	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89)) /* BwG disk DSR ROM */
-	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed)) /* HFDC disk DSR ROM */
-	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb)) /* TI rs232 DSR ROM */
-	ROM_LOAD("evpcdsr.bin", offset_evpc_dsr, 0x10000, CRC(a062b75d)) /* evpc DSR ROM */
+	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89) SHA1(6ad77033ed268f986d9a5439e65f7d391c4b7651)) /* BwG disk DSR ROM */
+	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed) SHA1(11df2ecef51de6f543e4eaf8b2529d3e65d0bd59)) /* HFDC disk DSR ROM */
+	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb) SHA1(ee609a18a21f1a3ddab334e8798d5f2a0fcefa91)) /* TI rs232 DSR ROM */
+	ROM_LOAD("evpcdsr.bin", offset_evpc_dsr, 0x10000, CRC(a062b75d) SHA1(6e8060f86e3bb9c36f244d88825e3fe237bfe9a9)) /* evpc DSR ROM */
 
 	/* HSGPL memory space */
 	ROM_REGION(region_hsgpl_len, region_hsgpl, 0)
 
 	/*TMS5220 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
-	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7)) /* system speech ROM */
+	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7) SHA1(382292295c00dff348d7e17c5ce4da12a1d87763)) /* system speech ROM */
 ROM_END
 
 #define rom_ti99_4e rom_ti99_4
@@ -875,10 +861,10 @@ static void ti99_4_harddisk_getinfo(const device_class *devclass, UINT32 state, 
 		case DEVINFO_INT_READABLE:						info->i = 1; break;
 		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
 		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_ti99_hd; break;
+		case DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
 		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hd; break;
 		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hd; break;
 
@@ -977,6 +963,7 @@ SYSTEM_CONFIG_START(ti99_4)
 	CONFIG_DEVICE(ti99_4_cartslot_getinfo)
 	CONFIG_DEVICE(ti99_4_floppy_getinfo)
 	CONFIG_DEVICE(ti99_4_harddisk_getinfo)
+	CONFIG_DEVICE(ti99_ide_harddisk_getinfo)
 	CONFIG_DEVICE(ti99_4_parallel_getinfo)
 	CONFIG_DEVICE(ti99_4_serial_getinfo)
 	/*CONFIG_DEVICE(ti99_4_quickload_getinfo)*/

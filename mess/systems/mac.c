@@ -42,7 +42,6 @@
 #include "devices/sonydriv.h"
 #include "devices/harddriv.h"
 #include "includes/mac.h"
-#include "videomap.h"
 
 
 static ADDRESS_MAP_START(mac512ke_map, ADDRESS_SPACE_PROGRAM, 16)
@@ -78,7 +77,7 @@ static MACHINE_DRIVER_START( mac512ke )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( mac )
+	MDRV_MACHINE_RESET( mac )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -89,7 +88,7 @@ static MACHINE_DRIVER_START( mac512ke )
 	MDRV_PALETTE_INIT(mac)
 
 	MDRV_VIDEO_START(mac)
-	MDRV_VIDEO_UPDATE(videomap)
+	MDRV_VIDEO_UPDATE(mac)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -300,19 +299,9 @@ static void mac_harddisk_getinfo(const device_class *devclass, UINT32 state, uni
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
 		case DEVINFO_INT_COUNT:							info->i = 2; break;
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_mess_hd; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_mess_hd; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "chd"); break;
+		default: harddisk_device_getinfo(devclass, state, info); break;
 	}
 }
 
@@ -363,19 +352,11 @@ COMP( 1987,	macse,    0,		0,		macplus,  macplus,  macse,		    macse,		"Apple Com
 
 /* Early Mac2 driver - does not work at all, but enabled me to disassemble the ROMs */
 
-static ADDRESS_MAP_START (mac2_readmem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START (mac2_mem, ADDRESS_SPACE_PROGRAM, 16)
 
-	AM_RANGE( 0x00000000, 0x007fffff) AM_READ( MRA8_RAM )	/* ram */
-	AM_RANGE( 0x00800000, 0x008fffff) AM_READ( MRA8_ROM )	/* rom */
-	AM_RANGE( 0x00900000, 0x00ffffff) AM_READ( MRA8_NOP )
-
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START (mac2_writemem, ADDRESS_SPACE_PROGRAM, 16)
-
-	AM_RANGE( 0x00000000, 0x007fffff) AM_WRITE( MWA8_RAM )	/* ram */
-	AM_RANGE( 0x00800000, 0x008fffff) AM_WRITE( MWA8_ROM )	/* rom */
-	AM_RANGE( 0x00900000, 0x00ffffff) AM_WRITE( MWA8_NOP )
+	AM_RANGE( 0x00000000, 0x007fffff) AM_RAM
+	AM_RANGE( 0x00800000, 0x008fffff) AM_ROM
+	AM_RANGE( 0x00900000, 0x00ffffff) AM_NOP
 
 ADDRESS_MAP_END
 
@@ -392,7 +373,7 @@ static struct MachineDriver machine_driver_mac2 =
 		{
 			CPU_M68020,
 			16000000,			/* +/- 16 Mhz */
-			mac2_readmem,mac2_writemem,0,0,
+			mac2_mem,0,0,0,
 			0,0,
 		}
 	},

@@ -324,10 +324,13 @@ static void install_banks(int count, unsigned init)
 }
 
 
-static MACHINE_INIT( a2600 )
+static MACHINE_START( a2600 )
 {
-	int mode = readinputport(10);
-	int chip = readinputport(11);
+	/* NPW 6-Mar-2006 - The MAME core changed, and now I cannot use readinputport() here properly */
+	int mode = 0xFF; /* readinputport(10); */
+	int chip = 0xFF; /* readinputport(11); */
+
+	extra_RAM = auto_malloc(0x400);
 
 	r6532_init(0, &r6532_interface);
 
@@ -545,6 +548,7 @@ static MACHINE_INIT( a2600 )
 
 		memory_set_bankptr(9, extra_RAM);
 	}
+	return 0;
 }
 
 
@@ -634,12 +638,6 @@ INPUT_PORTS_START( a2600 )
 INPUT_PORTS_END
 
 
-static DRIVER_INIT( a2600 )
-{
-	extra_RAM = auto_malloc(0x400);
-}
-
-
 static MACHINE_DRIVER_START( a2600 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 3584160 / 3)	/* actually M6507 */
@@ -647,7 +645,7 @@ static MACHINE_DRIVER_START( a2600 )
 
 	MDRV_FRAMES_PER_SECOND(60)
 
-	MDRV_MACHINE_INIT(a2600)
+	MDRV_MACHINE_START(a2600)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -697,4 +695,4 @@ SYSTEM_CONFIG_END
 
 
 /*    YEAR	NAME	PARENT	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY		FULLNAME */
-CONS( 1977,	a2600,	0,		0,		a2600,	a2600,	a2600,	a2600,	"Atari",	"Atari 2600 (NTSC)" , 0)
+CONS( 1977,	a2600,	0,		0,		a2600,	a2600,	0,		a2600,	"Atari",	"Atari 2600 (NTSC)" , 0)

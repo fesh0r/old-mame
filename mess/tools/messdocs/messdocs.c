@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <ctype.h>
+
 #include "pool.h"
 #include "sys/stat.h"
 #include "utils.h"
@@ -600,7 +602,7 @@ void CLIB_DECL logerror(const char *text,...)
 {
 }
 
-void CLIB_DECL osd_die(const char *text,...)
+void CLIB_DECL fatalerror(const char *text,...)
 {
 	exit(-1);
 }

@@ -272,10 +272,10 @@ static int internal_pc_cga_video_start(int personality)
 	if (!pc_video_start(&config, pc_cga_choosevideomode, 0x8000))
 		return 1;
 
-	state_save_register_UINT8("pccga", 0, "mode_control",	&cga.mode_control, 1);
-	state_save_register_UINT8("pccga", 0, "color_select",	&cga.color_select, 1);
-	state_save_register_UINT8("pccga", 0, "status",			&cga.status, 1);
-	state_save_register_UINT8("pccga", 0, "plantronics",	&cga.plantronics, 1);
+	state_save_register_item("pccga", 0, cga.mode_control);
+	state_save_register_item("pccga", 0, cga.color_select);
+	state_save_register_item("pccga", 0, cga.status);
+	state_save_register_item("pccga", 0, cga.plantronics);
 
 	timer_pulse(TIME_IN_SEC(32.0/240.0), 0, cga_timerproc);
 	return 0;
@@ -309,12 +309,12 @@ static VIDEO_START( pc_cga )
 			break;
 
 		default:
-			osd_die("CGA:  Bus width %d not supported\n", buswidth);
+			fatalerror("CGA:  Bus width %d not supported\n", buswidth);
 			break;
 	}
 
 	if (videoram_size == 0)
-		videoram_size = 0x4000;
+		videoram_size = 0x8000;
 	if (!videoram)
 		videoram = auto_malloc(videoram_size);
 	memory_set_bankptr(11, videoram);
@@ -1420,9 +1420,6 @@ WRITE8_HANDLER ( pc1512_videoram_w )
 VIDEO_START( pc1512 )
 {
 	videoram = (UINT8*) auto_malloc(0x10000);
-	if (videoram == 0)
-		return 1;
-
 	videoram_size = 0x4000; //! used in cga this way, size of plain memory in 1 bank
 	memory_set_bankptr(1,videoram + videoram_offset[0]);
 	pc1512.write = 0xf;

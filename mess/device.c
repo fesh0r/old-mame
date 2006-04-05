@@ -7,8 +7,10 @@
 ***************************************************************************/
 
 #include <assert.h>
+
 #include "device.h"
 #include "ui_text.h"
+#include "driver.h"
 
 
 /*************************************
@@ -188,8 +190,6 @@ struct IODevice *devices_allocate(const game_driver *gamedrv)
 	count++; /* for our purposes, include the tailing empty device */
 
 	devices = (struct IODevice *) auto_malloc(count * sizeof(struct IODevice));
-	if (!devices)
-		goto error;
 	memset(devices, 0, count * sizeof(struct IODevice));
 
 	position = 0;
@@ -240,7 +240,7 @@ struct IODevice *devices_allocate(const game_driver *gamedrv)
 			devices[i].getdispositions		= (device_getdispositions_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_GET_DISPOSITIONS);
 
 			devices[i].display				= (device_display_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_DISPLAY);
-			devices[i].name					= (device_getname_handler) device_get_info_fct(&devices[i].devclass, DEVINFO_PTR_GET_NAME);
+			devices[i].name					= default_device_name;
 
 			devices[i].createimage_optguide	= (const struct OptionGuide *) device_get_info_ptr(&devices[i].devclass, DEVINFO_PTR_CREATE_OPTGUIDE);
 			
@@ -248,7 +248,7 @@ struct IODevice *devices_allocate(const game_driver *gamedrv)
 			if (createimage_optcount > 0)
 			{
 				if (createimage_optcount > DEVINFO_CREATE_OPTMAX)
-					osd_die("DEVINFO_INT_CREATE_OPTCOUNT: Too many options");
+					fatalerror("DEVINFO_INT_CREATE_OPTCOUNT: Too many options");
 
 				devices[i].createimage_options = auto_malloc((createimage_optcount + 1) *
 					sizeof(*devices[i].createimage_options));
@@ -282,9 +282,7 @@ struct IODevice *devices_allocate(const game_driver *gamedrv)
 				goto error;
 
 			/* fill in defaults */
-			if (!devices[i].name)
-				devices[i].name = default_device_name;
-			if (!devices[i].name)
+			if (!devices[i].getdispositions)
 				devices[i].getdispositions = default_device_getdispositions;
 		}
 	}

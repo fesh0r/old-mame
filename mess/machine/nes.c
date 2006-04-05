@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 #include "vidhrdw/generic.h"
@@ -7,8 +9,7 @@
 #include "sound/nes_apu.h"
 #include "zlib.h"
 #include "image.h"
-
-#include <math.h>
+#include "hash.h"
 
 
 /* Uncomment this to dump reams of ppu state info to the errorlog */
@@ -34,7 +35,8 @@ static UINT32 in_0_shift;
 static UINT32 in_1_shift;
 
 /* local prototypes */
-static void init_nes_core (void);
+static void init_nes_core(void);
+static void nes_machine_stop(void);
 
 static mess_image *cartslot_image(void)
 {
@@ -125,19 +127,7 @@ static void init_nes_core (void)
 	memcpy (battery_ram, battery_data, BATTERY_SIZE);
 }
 
-DRIVER_INIT( nes )
-{
-	ppu_scanlines_per_frame = ceil(NTSC_SCANLINES_PER_FRAME);
-	init_nes_core ();
-}
-
-DRIVER_INIT( nespal )
-{
-	ppu_scanlines_per_frame = ceil(PAL_SCANLINES_PER_FRAME);
-	init_nes_core ();
-}
-
-static int ppu_vidaccess( int num, int address, int data )
+int nes_ppu_vidaccess( int num, int address, int data )
 {
 	/* TODO: this is a bit of a hack, needed to get Argus, ASO, etc to work */
 	/* but, B-Wings, submath (j) seem to use this location differently... */
@@ -150,28 +140,8 @@ static int ppu_vidaccess( int num, int address, int data )
 	return data;
 }
 
-MACHINE_INIT( nes )
+static void nes_machine_reset(void)
 {
-	ppu2c03b_reset( 0, 1 );
-	ppu2c03b_set_vidaccess_callback(0, ppu_vidaccess);
-	ppu2c03b_set_scanlines_per_frame(0, ppu_scanlines_per_frame);
-
-	if (nes.four_screen_vram)
-	{
-		/* TODO: figure out what to do here */
-	}
-	else
-	{
-		switch(nes.hard_mirroring) {
-		case 0:
-			ppu2c03b_set_mirroring(0, PPU_MIRROR_HORZ);
-			break;
-		case 1:
-			ppu2c03b_set_mirroring(0, PPU_MIRROR_VERT);
-			break;
-		}
-	}
-
 	/* Some carts have extra RAM and require it on at startup, e.g. Metroid */
 	nes.mid_ram_enable = 1;
 
@@ -183,9 +153,24 @@ MACHINE_INIT( nes )
 	in_1_shift = 0;
 }
 
+MACHINE_START( nes )
+{
+	init_nes_core();
+	add_reset_callback(nes_machine_reset);
+	add_exit_callback(nes_machine_stop);
 
+	if (!image_exists(image_from_devtype_and_index(IO_CARTSLOT, 0)))
+	{
+		/* NPW 05-Mar-2006 - Hack to keep the Famicom from crashing */
+		static const UINT8 infinite_loop[] = { 0x4C, 0xF9, 0xFF, 0xF9, 0xFF }; /* JMP $FFF9, DC.W $FFF9 */
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xFFF9, 0xFFFD, 0, 0, MRA8_BANK11);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xFFF9, 0xFFFD, 0, 0, MWA8_BANK11);
+		memory_set_bankptr(11, (void *) infinite_loop);
+	}
+	return 0;
+}
 
-MACHINE_STOP( nes )
+static void nes_machine_stop(void)
 {
 	/* Write out the battery file if necessary */
 	if (nes.battery)
@@ -198,7 +183,9 @@ static int zapper_hit_pixel(const UINT32 *input)
 {
 	UINT16 pix;
 	UINT8 r, g, b;
-	pix = read_pixel(Machine->scrbitmap, input[1], input[2]);
+	extern mame_bitmap *scrbitmap[8];
+
+	pix = read_pixel(scrbitmap[0], input[1], input[2]);
 	palette_get_color(pix, &r, &g, &b);
 	return (((UINT16) r) + ((UINT16) g) + ((UINT16) b)) >= 240*3;
 }
@@ -605,10 +592,10 @@ DEVICE_UNLOAD(nes_disk)
 
 void ppu_mirror_custom (int page, int address)
 {
-	osd_die("Unimplemented");
+	fatalerror("Unimplemented");
 }
 
 void ppu_mirror_custom_vrom (int page, int address)
 {
-	osd_die("Unimplemented");
+	fatalerror("Unimplemented");
 }

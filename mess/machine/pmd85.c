@@ -762,14 +762,14 @@ static void pmd85_cassette_timer_callback(int dummy)
 static OPBASE_HANDLER(pmd85_opbaseoverride)
 {
 	if (readinputport(0x10)&0x01)
-		machine_reset();
+		mame_schedule_soft_reset();
 	return address;
 }
 
 static OPBASE_HANDLER(mato_opbaseoverride)
 {
 	if (readinputport(0x09)&0x01)
-		machine_reset();
+		mame_schedule_soft_reset();
 	return address;
 }
 
@@ -833,7 +833,7 @@ DRIVER_INIT ( mato )
 	memory_set_opbase_handler(0, mato_opbaseoverride);
 }
 
-MACHINE_INIT( pmd85 )
+MACHINE_RESET( pmd85 )
 {
 	/* checking for Rom Module */
 	switch (pmd85_model)

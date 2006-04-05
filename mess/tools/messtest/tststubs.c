@@ -14,10 +14,6 @@ int osd_init(void)
 	return 0;
 }
 
-void osd_exit(void)
-{
-}
-
 int osd_create_display(const osd_create_params *params, UINT32 *rgb_components)
 {
 	rgb_components[0] = 0xff0000;
@@ -128,11 +124,7 @@ int osd_display_loading_rom_message(const char *name, rom_load_data *romdata)
 	return 0;
 }
 
-void osd_pause(int paused)
-{
-}
-
-void CLIB_DECL logerror(const char *text,...)
+void osd_logerror(const char *text)
 {
 }
 

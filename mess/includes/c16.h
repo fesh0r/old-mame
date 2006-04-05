@@ -112,9 +112,6 @@
 #define IEC8ON ((input_port_8_r(0)&0x38)==8)
 #define IEC9ON ((input_port_8_r(0)&7)==1)
 
-#define SERIAL8ON ((input_port_8_r(0)&0x38)==0x18)
-#define SERIAL9ON ((input_port_8_r(0)&7)==3)
-
 #define SIDCARD ((input_port_9_r(0)&0x80))
 // a lot of c64 software has been converted to c16
 // these oftenly still produce the commands for the sid chip at 0xd400
@@ -166,7 +163,7 @@ extern void c16_interrupt (int);
 
 extern void c16_driver_init (void);
 extern void c16_driver_shutdown (void);
-extern MACHINE_INIT( c16 );
+extern MACHINE_RESET( c16 );
 extern INTERRUPT_GEN( c16_frame_interrupt );
 
 extern DEVICE_LOAD(c16_rom);

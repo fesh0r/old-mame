@@ -71,7 +71,7 @@ INLINE void verboselog( int n_level, const char *s_fmt, ... )
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%08x: %s", activecpu_get_pc(), buf );
+		logerror( "%08x: %s", safe_activecpu_get_pc(), buf );
 	}
 }
 
@@ -300,7 +300,7 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 		cChar = data & 0x000000ff;
 		if( cChar >= 0x20 || cChar == 0x0d || cChar == 0x0a )
 		{
-			printf( "%c", cChar );
+//			printf( "%c", cChar );
 		}
 		break;
 	case 0x034/4:
@@ -315,7 +315,7 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 		cChar = data & 0x000000ff;
 		if( cChar >= 0x20 || cChar == 0x0d || cChar == 0x0a )
 		{
-			printf( "%c", cChar );
+//			printf( "%c", cChar );
 		}
 		break;
 	case 0x40/4:
@@ -1225,7 +1225,7 @@ static void ip22_timer(int refcon)
 	timer_set(TIME_IN_MSEC(1), 0, ip22_timer);
 }
 
-static MACHINE_INIT( ip225015 )
+static MACHINE_RESET( ip225015 )
 {
 	mc_init();
 	nHPC3_enetr_nbdp = 0x80000000;
@@ -1532,12 +1532,6 @@ static struct mips3_config config =
 	32768	/* data cache size */
 };
 
-static const char *ip22_cdrom_getname(const struct IODevice *dev, int id, char *buf, size_t bufsize)
-{
-	snprintf(buf, bufsize, "CD-ROM #%d", id + 1);
-	return buf;
-}
-
 static void ip22_chdcd_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* CHD CD-ROM */
@@ -1546,10 +1540,7 @@ static void ip22_chdcd_getinfo(const device_class *devclass, UINT32 state, union
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_COUNT:							info->i = 4; break;
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_GET_NAME:						info->name = ip22_cdrom_getname; break;
-
-		default: cdrom_device_getinfo(devclass, state, info);
+		default: cdrom_device_getinfo(devclass, state, info); break;
 	}
 }
 
@@ -1559,19 +1550,9 @@ static void ip22_harddisk_getinfo(const device_class *devclass, UINT32 state, un
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
 		case DEVINFO_INT_COUNT:							info->i = 2; break;
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_mess_hd; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_mess_hd; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "chd"); break;
+		default: harddisk_device_getinfo(devclass, state, info); break;
 	}
 }
 
@@ -1584,7 +1565,7 @@ MACHINE_DRIVER_START( ip225015 )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT( ip225015 )
+	MDRV_MACHINE_RESET( ip225015 )
 	MDRV_NVRAM_HANDLER( ip22 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT)

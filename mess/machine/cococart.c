@@ -7,11 +7,11 @@
 ***************************************************************************/
   
 #include "includes/cococart.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "devices/coco_vhd.h"
 #include "ds1315.h"
 #include "m6242b.h"
-#include "includes/dragon.h"
+#include "includes/coco.h"
 #include "sound/dac.h"
 
 static const struct cartridge_callback *cartcallbacks;
@@ -79,7 +79,7 @@ enum {
 
 static void coco_fdc_init(const struct cartridge_callback *callbacks)
 {
-    wd179x_init(WD_TYPE_179X,coco_fdc_callback);
+    wd179x_init(WD_TYPE_1773, coco_fdc_callback);
 	dskreg = 0;
 	cartcallbacks = callbacks;
 	drq_state = ASSERT_LINE;

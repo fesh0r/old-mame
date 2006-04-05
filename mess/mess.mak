@@ -130,7 +130,7 @@ CPUS+=E116T
 #CPUS+=GMS30C2232
 CPUS+=I386
 CPUS+=I486
-#CPUS+=PENTIUM
+CPUS+=PENTIUM
 #CPUS+=MEDIAGX
 #CPUS+=I960
 #CPUS+=H83002
@@ -141,6 +141,9 @@ CPUS+=I486
 CPUS+=PPC603
 #CPUS+=SE3208
 #CPUS+=MC68HC11
+#CPUS += ADSP21062
+#CPUS += DSP56156
+CPUS += RSP
 CPUS+=Z80GB
 CPUS+=CDP1802
 CPUS+=SC61860
@@ -240,6 +243,7 @@ SOUNDS+=ES5503
 # Archive definitions
 DRVLIBS = \
 	$(OBJ)/coco.a     \
+	$(OBJ)/mc10.a     \
 	$(OBJ)/apple.a    \
 	$(OBJ)/apexc.a	  \
 	$(OBJ)/pdp1.a	  \
@@ -389,7 +393,9 @@ $(OBJ)/nintendo.a:					\
 	$(OBJ)/sndhrdw/snes.o			\
 	$(OBJ)/machine/snes.o			\
 	$(OBJ)/vidhrdw/snes.o			\
-	$(OBJ)/mess/systems/snes.o	 
+	$(OBJ)/mess/systems/snes.o	 	\
+	$(OBJ)/mess/systems/n64.o		\
+	$(OBJ)/vidhrdw/n64.o			\
 
 $(OBJ)/amiga.a: \
 	$(OBJ)/vidhrdw/amiga.o			\
@@ -437,20 +443,24 @@ $(OBJ)/coco.a:   \
 	$(OBJ)/mess/machine/cococart.o	\
 	$(OBJ)/mess/machine/ds1315.o	\
 	$(OBJ)/mess/machine/m6242b.o	\
-	$(OBJ)/mess/machine/dragon.o	\
-	$(OBJ)/mess/vidhrdw/dragon.o	\
-	$(OBJ)/mess/systems/dragon.o	\
+	$(OBJ)/mess/machine/coco.o		\
+	$(OBJ)/mess/vidhrdw/coco.o		\
+	$(OBJ)/mess/systems/coco.o		\
 	$(OBJ)/mess/formats/cocopak.o	\
 	$(OBJ)/mess/formats/coco_cas.o	\
 	$(OBJ)/mess/formats/coco_dsk.o	\
 	$(OBJ)/mess/devices/coco_vhd.o	\
+
+$(OBJ)/mc10.a:	\
 	$(OBJ)/mess/machine/mc10.o		\
 	$(OBJ)/mess/systems/mc10.o		\
+	$(OBJ)/mess/formats/coco_cas.o	\
 
 $(OBJ)/dgn_beta.a:	\
 	$(OBJ)/mess/machine/dgn_beta.o	\
 	$(OBJ)/mess/vidhrdw/dgn_beta.o	\
-	$(OBJ)/mess/systems/dgn_beta.o	
+	$(OBJ)/mess/systems/dgn_beta.o	\
+	$(OBJ)/mess/formats/coco_dsk.o	\
 
 $(OBJ)/trs80.a:    \
 	$(OBJ)/mess/machine/trs80.o	 \
@@ -583,10 +593,12 @@ $(OBJ)/pcshare.a:					\
 	$(OBJ)/machine/8237dma.o	\
 	$(OBJ)/machine/pic8259.o	\
 	$(OBJ)/machine/pcshare.o	\
+	$(OBJ)/mess/machine/pc_turbo.o	\
 	$(OBJ)/mess/sndhrdw/pc.o		\
 	$(OBJ)/mess/sndhrdw/sblaster.o	\
 	$(OBJ)/mess/machine/pc_fdc.o	\
 	$(OBJ)/mess/machine/pc_hdc.o	\
+	$(OBJ)/mess/machine/pc_joy.o	\
 	$(OBJ)/mess/vidhrdw/pc_video.o	\
 	$(OBJ)/mess/vidhrdw/pc_mda.o	\
 	$(OBJ)/mess/vidhrdw/pc_cga.o	\
@@ -608,7 +620,8 @@ $(OBJ)/at.a:	   \
 	$(OBJ)/mess/machine/pc_ide.o   \
 	$(OBJ)/mess/machine/ps2.o	 \
 	$(OBJ)/mess/machine/at.o       \
-	$(OBJ)/mess/systems/at.o
+	$(OBJ)/mess/systems/at.o	\
+	$(OBJ)/mess/machine/i82439tx.o
 
 $(OBJ)/p2000.a:    \
 	$(OBJ)/mess/vidhrdw/saa5050.o  \
@@ -699,6 +712,7 @@ $(OBJ)/vtech.a :   \
 	$(OBJ)/mess/machine/vtech2.o	\
 	$(OBJ)/mess/systems/vtech2.o	\
 	$(OBJ)/mess/formats/vt_cas.o	\
+	$(OBJ)/mess/formats/vt_dsk.o	\
 
 $(OBJ)/jupiter.a : \
 	$(OBJ)/mess/systems/jupiter.o	\
@@ -939,10 +953,11 @@ COREOBJS +=							\
 	$(ZLIB)							\
 	$(OBJ)/vidhrdw/tms9928a.o		\
 	$(OBJ)/machine/8255ppi.o		\
-	$(OBJ)/machine/random.o			\
 	$(OBJ)/machine/6522via.o		\
 	$(OBJ)/machine/6821pia.o		\
-	$(OBJ)/machine/z80fmly.o		\
+	$(OBJ)/machine/z80ctc.o			\
+	$(OBJ)/machine/z80pio.o			\
+	$(OBJ)/machine/z80sio.o			\
 	$(OBJ)/machine/idectrl.o		\
 	$(OBJ)/machine/6532riot.o		\
 	$(OBJ)/mess/mess.o				\
@@ -1006,7 +1021,7 @@ COREOBJS +=							\
 	$(OBJ)/machine/pckeybrd.o \
 	$(OBJ)/mess/machine/d88.o      \
 	$(OBJ)/mess/machine/nec765.o   \
-	$(OBJ)/mess/machine/wd179x.o   \
+	$(OBJ)/mess/machine/wd17xx.o   \
 	$(OBJ)/mess/machine/serial.o   \
 	$(OBJ)/mess/formats/wavfile.o
 
@@ -1018,11 +1033,14 @@ TOOLS = dat2html$(EXE) messtest$(EXE) chdman$(EXE) messdocs$(EXE) imgtool$(EXE)
 include mess/tools/imgtool/imgtool.mak
 
 DAT2HTML_OBJS =								\
+	$(OBJ)/mamecore.o						\
 	$(OBJ)/mess/tools/dat2html/dat2html.o	\
 	$(OBJ)/mess/tools/imgtool/stubs.o		\
-	$(OBJ)/mess/utils.o
+	$(OBJ)/mess/utils.o						\
+	$(OBJ)/mamecore.o
 
 MESSDOCS_OBJS =								\
+	$(OBJ)/mamecore.o						\
 	$(OBJ)/mess/tools/messdocs/messdocs.o	\
 	$(OBJ)/mess/utils.o						\
 	$(OBJ)/mess/pool.o						\

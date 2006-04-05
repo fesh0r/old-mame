@@ -10,12 +10,14 @@
 	Release 52, Last Change 20oct96
 
 ***************************************************************************/
+
 #include <assert.h>
 #include "driver.h"
 #include "machine/8255ppi.h"
 #include "machine/uart8250.h"
 #include "machine/mc146818.h"
 #include "machine/pic8259.h"
+#include "machine/pc_turbo.h"
 
 #include "vidhrdw/generic.h"
 #include "vidhrdw/pc_vga.h"
@@ -225,36 +227,35 @@ static int pc_irq_callback(int irqline)
 	return pic8259_acknowledge(0);
 }
 
-MACHINE_INIT( pc_mda )
+MACHINE_RESET( pc_mda )
 {
 	dma8237_reset();
-	cpu_set_irq_callback(0, pc_irq_callback);
+	cpunum_set_irq_callback(0, pc_irq_callback);
 }
 
-MACHINE_INIT( pc_cga )
+MACHINE_RESET( pc_cga )
 {
 	dma8237_reset();
-	cpu_set_irq_callback(0, pc_irq_callback);
+	cpunum_set_irq_callback(0, pc_irq_callback);
 }
 
-MACHINE_INIT( pc_t1t )
+MACHINE_RESET( pc_t1t )
 {
 	pc_t1t_reset();
 	dma8237_reset();
-	cpu_set_irq_callback(0, pc_irq_callback);
+	cpunum_set_irq_callback(0, pc_irq_callback);
 }
 
-MACHINE_INIT( pc_aga )
+MACHINE_RESET( pc_aga )
 {
 	dma8237_reset();
-	cpu_set_irq_callback(0, pc_irq_callback);
+	cpunum_set_irq_callback(0, pc_irq_callback);
 }
 
-MACHINE_INIT( pc_vga )
+MACHINE_RESET( pc_vga )
 {
-	pc_vga_reset();
 	dma8237_reset();
-	cpu_set_irq_callback(0, pc_irq_callback);
+	cpunum_set_irq_callback(0, pc_irq_callback);
 }
 
 /**************************************************************************

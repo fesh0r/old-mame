@@ -57,11 +57,11 @@
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
-#include "includes/dragon.h"
+#include "includes/coco.h"
 #include "includes/dgn_beta.h"
 #include "includes/6551.h"
 #include "image.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "includes/crtc6845.h"
 
 static UINT8 *system_rom;
@@ -984,7 +984,7 @@ INTERRUPT_GEN( dgn_beta_frame_interrupt )
 
 /********************************* Machine/Driver Initialization ****************************************/
 
-MACHINE_INIT( dgnbeta )
+MACHINE_RESET( dgnbeta )
 {
 	system_rom = memory_region(REGION_CPU1);
 
@@ -1018,10 +1018,6 @@ MACHINE_INIT( dgnbeta )
 	wd179x_reset();
 	wd179x_set_density(DEN_MFM_LO);
 	wd179x_set_drive(0);
-}
-
-MACHINE_STOP( dgnbeta )
-{
 }
 
 DRIVER_INIT( dgnbeta )

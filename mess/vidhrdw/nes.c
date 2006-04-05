@@ -10,6 +10,7 @@
 #include "vidhrdw/ppu2c03b.h"
 #include "vidhrdw/generic.h"
 #include "includes/nes.h"
+#include "machine/nes_mmc.h"
 
 int nes_vram_sprite[8]; /* Used only by mmc5 for now */
 
@@ -18,21 +19,56 @@ static void ppu_nmi(int num, int *ppu_regs)
 	cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
-VIDEO_START( nes )
+static void nes_vh_reset(void)
 {
-	static struct ppu2c03b_interface *ppu_interface;
+	ppu2c03b_reset( 0, 1 );
+}
 
-	ppu_interface = auto_malloc(sizeof(struct ppu2c03b_interface));
-	if (!ppu_interface)
-		return 1;
+static int nes_vh_start(int ppu_scanlines_per_frame)
+{
+	ppu2c03b_interface ppu_interface;
 
-	memset(ppu_interface, 0, sizeof(struct ppu2c03b_interface));
-	ppu_interface->num				= 1;
-	ppu_interface->vrom_region[0]	= nes.chr_chunks ? REGION_GFX1 : REGION_INVALID;
-	ppu_interface->mirroring[0]		= PPU_MIRROR_NONE;
-	ppu_interface->nmi_handler[0]	= ppu_nmi;
+	memset(&ppu_interface, 0, sizeof(ppu_interface));
+	ppu_interface.num				= 1;
+	ppu_interface.vrom_region[0]	= nes.chr_chunks ? REGION_GFX1 : REGION_INVALID;
+	ppu_interface.mirroring[0]		= PPU_MIRROR_NONE;
+	ppu_interface.nmi_handler[0]	= ppu_nmi;
 
-	return ppu2c03b_init(ppu_interface);
+	ppu2c03b_init(&ppu_interface);
+	ppu2c03b_set_vidaccess_callback(0, nes_ppu_vidaccess);
+	ppu2c03b_set_scanlines_per_frame(0, ppu_scanlines_per_frame);
+
+	if (nes.four_screen_vram)
+	{
+		/* TODO: figure out what to do here */
+	}
+	else
+	{
+		switch(nes.hard_mirroring) {
+		case 0:
+			ppu2c03b_set_mirroring(0, PPU_MIRROR_HORZ);
+			break;
+		case 1:
+			ppu2c03b_set_mirroring(0, PPU_MIRROR_VERT);
+			break;
+		}
+	}
+
+	add_reset_callback(nes_vh_reset);
+
+	/* Reset the mapper variables. Will also mark the char-gen ram as dirty */
+	mapper_reset (nes.mapper);
+	return 0;
+}
+
+VIDEO_START( nes_ntsc )
+{
+	return nes_vh_start(NTSC_SCANLINES_PER_FRAME);
+}
+
+VIDEO_START( nes_pal )
+{
+	return nes_vh_start(PAL_SCANLINES_PER_FRAME);
 }
 
 PALETTE_INIT( nes )

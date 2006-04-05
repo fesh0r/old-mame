@@ -33,6 +33,8 @@
 
 #include "includes/c64.h"
 
+static void c64_driver_shutdown (void);
+
 unsigned char c65_keyline = { 0xff };
 UINT8 c65_6511_port=0xff;
 
@@ -838,27 +840,28 @@ static void c64_common_driver_init (void)
 					  c64_vic_interrupt);
 	}
 	cia6526_reset ();
+	add_exit_callback(c64_driver_shutdown);
 }
 
-void c64_driver_init (void)
+DRIVER_INIT( c64 )
 {
 	c64_common_driver_init ();
 }
 
-void c64pal_driver_init (void)
+DRIVER_INIT( c64pal )
 {
 	c64_pal = 1;
 	c64_common_driver_init ();
 }
 
-void ultimax_driver_init (void)
+DRIVER_INIT( ultimax )
 {
 	ultimax = 1;
     c64_cia1_on = 0;
 	c64_common_driver_init ();
 }
 
-void c64gs_driver_init (void)
+DRIVER_INIT( c64gs )
 {
 	c64_pal = 1;
 	c64_tape_on = 0;
@@ -866,7 +869,7 @@ void c64gs_driver_init (void)
 	c64_common_driver_init ();
 }
 
-void sx64_driver_init (void)
+DRIVER_INIT( sx64 )
 {
 	VC1541_CONFIG vc1541 = { 1, 8 };
 	c64_tape_on = 0;
@@ -875,7 +878,7 @@ void sx64_driver_init (void)
 	vc1541_config (0, 0, &vc1541);
 }
 
-void c64_driver_shutdown (void)
+static void c64_driver_shutdown (void)
 {
 	if (c64_tape_on)
 		vc20_tape_close ();
@@ -886,20 +889,19 @@ void c64_common_init_machine (void)
 #ifdef VC1541
 	vc1541_reset ();
 #endif
-	sndti_reset(SOUND_SID6581, 0);
 
 	if (c64_cia1_on)
 	{
 		cbm_serial_reset_write (0);
-		cbm_drive_0_config (SERIAL8ON ? SERIAL : 0, is_c65() ? 10 : 8);
-		cbm_drive_1_config (SERIAL9ON ? SERIAL : 0, is_c65() ? 11 : 9);
+		cbm_drive_0_config (SERIAL, is_c65() ? 10 : 8);
+		cbm_drive_1_config (SERIAL, is_c65() ? 11 : 9);
 		serial_clock = serial_data = serial_atn = 1;
 	}
 	c64_vicaddr = c64_memory;
 	vicirq = cia0irq = 0;
 }
 
-MACHINE_INIT( c64 )
+MACHINE_START( c64 )
 {
 	c64_common_init_machine ();
 
@@ -910,6 +912,7 @@ MACHINE_INIT( c64 )
 		c128_bankswitch_64 (1);
 	if (!ultimax)
 		c64_bankswitch (1);
+	return 0;
 }
 
 

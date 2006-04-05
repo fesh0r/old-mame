@@ -17,7 +17,7 @@
 #include "vidhrdw/generic.h"
 #include "machine/8255ppi.h"
 #include "includes/tc8521.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "devices/basicdsk.h"
 #include "vidhrdw/tms9928a.h"
 #include "cpu/z80/z80.h"
@@ -30,10 +30,6 @@
 #include "sound/ay8910.h"
 #include "sound/2413intf.h"
 #include "sound/dac.h"
-
-#ifndef MAX
-#define MAX(x, y) ((x) < (y) ? (y) : (x) )
-#endif
 
 #define VERBOSE 0
 
@@ -235,8 +231,9 @@ DEVICE_LOAD (msx_cart)
 	}
 
 	/* allocate and set slot_state for this cartridge */
-	state = (slot_state*)auto_malloc (sizeof (slot_state));
-	if (!state) {
+	state = (slot_state*) image_malloc(image, sizeof (slot_state));
+	if (!state)
+	{
 		logerror ("cart #%d: error: cannot allocate memory for "
 				  "cartridge state\n", id);
 		return INIT_FAIL;
@@ -244,7 +241,7 @@ DEVICE_LOAD (msx_cart)
 	memset (state, 0, sizeof (slot_state));
 
 	state->type = type;
-	sramfile = image_malloc (image, strlen (image_filename (image) + 1));
+	sramfile = image_malloc(image, strlen (image_filename (image) + 1));
 
 	if (sramfile) {
 		char *ext;
@@ -275,7 +272,8 @@ DEVICE_UNLOAD (msx_cart)
 	int id;
 	
 	id = image_index_in_device (image);
-	if (msx_slot_list[msx1.cart_state[id]->type].savesram) {
+	if (msx_slot_list[msx1.cart_state[id]->type].savesram)
+	{
 		msx_slot_list[msx1.cart_state[id]->type].savesram (msx1.cart_state[id]);
 	}
 }
@@ -291,13 +289,13 @@ static void msx_ch_reset_core (void)
 	msx_memory_map_all ();
 }
 
-MACHINE_INIT( msx )
+MACHINE_RESET( msx )
 {
 	TMS9928A_reset ();
 	msx_ch_reset_core ();
 }
 
-MACHINE_INIT( msx2 )
+MACHINE_RESET( msx2 )
 {
 	v9938_reset ();
 	msx_ch_reset_core ();
@@ -307,7 +305,7 @@ static void msx_wd179x_int (int state);
 
 static WRITE8_HANDLER ( msx_ppi_port_a_w );
 static WRITE8_HANDLER ( msx_ppi_port_c_w );
-static  READ8_HANDLER (msx_ppi_port_b_r );
+static READ8_HANDLER (msx_ppi_port_b_r );
 
 static ppi8255_interface msx_ppi8255_interface =
 {
@@ -409,7 +407,7 @@ INTERRUPT_GEN( msx_interrupt )
 ** The I/O funtions
 */
 
- READ8_HANDLER ( msx_psg_r )
+READ8_HANDLER ( msx_psg_r )
 {
 	return AY8910_read_port_0_r (offset);
 }
@@ -492,14 +490,13 @@ READ8_HANDLER ( msx_psg_port_a_r )
 	return 0;
 }
 
- READ8_HANDLER ( msx_psg_port_b_r )
+READ8_HANDLER ( msx_psg_port_b_r )
 {
 	return msx1.psg_b;
 }
 
 WRITE8_HANDLER ( msx_psg_port_a_w )
 {
-
 }
 
 WRITE8_HANDLER ( msx_psg_port_b_w )
@@ -545,7 +542,7 @@ WRITE8_HANDLER ( msx_printer_w )
 	}
 }
 
- READ8_HANDLER ( msx_printer_r )
+READ8_HANDLER ( msx_printer_r )
 {
 	if (offset == 0 && ! (readinputport (8) & 0x80) &&
 			printer_status(printer_image(), 0) )
@@ -581,7 +578,7 @@ WRITE8_HANDLER (msx_rtc_reg_w)
 	tc8521_w (msx1.rtc_latch, data);
 }
 
- READ8_HANDLER (msx_rtc_reg_r)
+READ8_HANDLER (msx_rtc_reg_r)
 {
 	return tc8521_r (msx1.rtc_latch);
 }
@@ -677,9 +674,8 @@ DEVICE_LOAD( msx_floppy )
 static WRITE8_HANDLER ( msx_ppi_port_a_w )
 {
 	msx1.primary_slot = ppi8255_peek (0,0);
-#if VERBOSE
-	logerror ("write to primary slot select: %02x\n", msx1.primary_slot);
-#endif
+	if (VERBOSE)
+		logerror ("write to primary slot select: %02x\n", msx1.primary_slot);
 	msx_memory_map_all ();
 }
 
@@ -709,19 +705,20 @@ static WRITE8_HANDLER ( msx_ppi_port_c_w )
 	old_val = data;
 }
 
-static  READ8_HANDLER( msx_ppi_port_b_r )
+static READ8_HANDLER( msx_ppi_port_b_r )
 {
+	UINT8 result = 0xff;
 	int row, data;
 
 	row = ppi8255_0_r (2) & 0x0f;
-	if (row <= 10) {
+	if (row <= 10)
+	{
 		data = readinputport (row/2);
-		if (row & 1) data >>= 8;
-		return data & 0xff;
+		if (row & 1)
+			data >>= 8;
+		result = data & 0xff;
 	}
-	else {
-		return 0xff;
-	}
+	return result;
 }
 
 /************************************************************************
@@ -741,10 +738,6 @@ void msx_memory_init (void)
 	UINT8 *mem = NULL;
 
 	msx1.empty = (UINT8*)auto_malloc (0x4000);
-	if (!msx1.empty) {
-		logerror ("msx_memory_init: error: cannot allocate empty page\n");
-		return;
-	}
 	memset (msx1.empty, 0xff, 0x4000);
 
 	for (prim=0; prim<4; prim++) {
@@ -789,10 +782,11 @@ void msx_memory_init (void)
 			size = layout->size;
 			option = layout->option;
 
-#if VERBOSE
-			logerror ("slot %d/%d/%d-%d: type %s, size 0x%x\n",
+			if (VERBOSE)
+			{
+				logerror ("slot %d/%d/%d-%d: type %s, size 0x%x\n",
 					prim, sec, page, page + extent - 1, slot->name, size);
-#endif
+			}
 
 			st = (slot_state*)NULL;
 			if (layout->type == SLOT_CARTRIDGE1) {
@@ -805,10 +799,11 @@ void msx_memory_init (void)
 			if (layout->type == SLOT_CARTRIDGE2) {
 				st = msx1.cart_state[1];
 				if (!st) {
+					/* Check whether the optional FM-PAC rom is present */
 					option = 0x10000;
 					size = 0x10000;
 					mem = memory_region(REGION_CPU1) + option;
-					if (mem[0] == 'A' && mem[1] == 'B') {
+					if (memory_region_length(REGION_CPU1) > size && mem[0] == 'A' && mem[1] == 'B') {
 						slot = &msx_slot_list[SLOT_FMPAC];
 					}
 					else {
@@ -829,11 +824,6 @@ void msx_memory_init (void)
 					break;
 				}
 				st = (slot_state*)auto_malloc (sizeof (slot_state));
-				if (!st) {
-					logerror ("fatal error: cannot malloc %d\n", 
-								(int)sizeof (slot_state));
-					continue;
-				}
 				memset (st, 0, sizeof (slot_state));
 
 				if (slot->init (st, layout->slot_page, mem, size)) {
@@ -930,10 +920,12 @@ void msx_memory_map_page (int page)
 	slot = state ? &msx_slot_list[state->type] : &msx_slot_list[SLOT_EMPTY];
 	msx1.state[page] = state;
 	msx1.slot[page] = slot;
-#if VERBOSE
-	logerror ("mapping %s in %d/%d/%d\n", slot->name, slot_primary, 
+
+	if (VERBOSE)
+	{
+		logerror ("mapping %s in %d/%d/%d\n", slot->name, slot_primary, 
 			slot_secondary, page);
-#endif
+	}
 	slot->map (state, page);
 }
 
@@ -1004,10 +996,11 @@ WRITE8_HANDLER (msx_page3_w)
 WRITE8_HANDLER (msx_sec_slot_w)
 {
 	int slot = msx1.primary_slot >> 6;
-	if (msx1.slot_expanded[slot]) {
-#if VERBOSE
-		logerror ("write to secondary slot %d select: %02x\n", slot, data);
-#endif
+	if (msx1.slot_expanded[slot])
+	{
+		if (VERBOSE)
+			logerror ("write to secondary slot %d select: %02x\n", slot, data);
+
 		msx1.secondary_slot[slot] = data;
 		msx_memory_map_all ();
 	}
@@ -1016,15 +1009,17 @@ WRITE8_HANDLER (msx_sec_slot_w)
 	}
 }
 
- READ8_HANDLER (msx_sec_slot_r)
+READ8_HANDLER (msx_sec_slot_r)
 {
+	UINT8 result;
 	int slot = msx1.primary_slot >> 6;
-	if (msx1.slot_expanded[slot]) {
-		return ~msx1.secondary_slot[slot];
-	}
-	else {
-		return msx1.top_page[0x1fff];
-	}
+
+	if (msx1.slot_expanded[slot])
+		result = ~msx1.secondary_slot[slot];
+	else
+		result = msx1.top_page[0x1fff];
+
+	return result;
 }
 
 WRITE8_HANDLER (msx_ram_mapper_w)
@@ -1035,7 +1030,7 @@ WRITE8_HANDLER (msx_ram_mapper_w)
 	}
 }
 
- READ8_HANDLER (msx_ram_mapper_r)
+READ8_HANDLER (msx_ram_mapper_r)
 {
 	return msx1.ram_mapper[offset] | msx1.ramio_set_bits;
 }
@@ -1043,17 +1038,22 @@ WRITE8_HANDLER (msx_ram_mapper_w)
 WRITE8_HANDLER (msx_90in1_w)
 {
 	msx1.korean90in1_bank = data;
-	if (msx1.slot[1]->slot_type == SLOT_KOREAN_90IN1) {
+	if (msx1.slot[1]->slot_type == SLOT_KOREAN_90IN1)
+	{
 		msx1.slot[1]->map (msx1.state[1], 1);
 	}
-	if (msx1.slot[2]->slot_type == SLOT_KOREAN_90IN1) {
+	if (msx1.slot[2]->slot_type == SLOT_KOREAN_90IN1)
+	{
 		msx1.slot[2]->map (msx1.state[2], 2);
 	}
 }
 
- READ8_HANDLER (msx_kanji_r)
+READ8_HANDLER (msx_kanji_r)
 {
-	if (msx1.kanji_mem) {
+	UINT8 result = 0xff;
+
+	if (msx1.kanji_mem)
+	{
 		int latch;
 		UINT8 ret;
 		
@@ -1063,22 +1063,21 @@ WRITE8_HANDLER (msx_90in1_w)
 		msx1.kanji_latch &= ~0x1f;
 		msx1.kanji_latch |= latch & 0x1f;
 
-		return ret;
+		result = ret;
 	}
-	else {
-		return 0xff;
-	}
+	return result;
 }
 
 WRITE8_HANDLER (msx_kanji_w)
 {
-	if (offset) {
+	if (offset)
+	{
 		msx1.kanji_latch = 
 				(msx1.kanji_latch & 0x007E0) | ((data & 0x3f) << 11);
 	}
-	else {
+	else
+	{
 		msx1.kanji_latch = 
 				(msx1.kanji_latch & 0x1f800) | ((data & 0x3f) << 5);
 	}
 }
-

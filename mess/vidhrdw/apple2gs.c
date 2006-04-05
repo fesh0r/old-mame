@@ -7,7 +7,6 @@
 *********************************************************************/
 
 #include "mame.h"
-#include "common.h"
 #include "includes/apple2.h"
 #include "includes/apple2gs.h"
 
@@ -18,6 +17,8 @@ UINT16 apple2gs_bordercolor;
 
 VIDEO_START( apple2gs )
 {
+	apple2gs_bordercolor = 0;
+
 	if (apple2_video_start(apple2gs_slowmem, 0x20000, 0, 8))
 		return 1;
 

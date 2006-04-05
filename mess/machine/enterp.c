@@ -12,13 +12,13 @@
 #include "cpu/z80/z80.h"
 #include "includes/enterp.h"
 #include "devices/basicdsk.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "sndhrdw/dave.h"
 #include "image.h"
 
 void Enterprise_SetupPalette(void);
 
-MACHINE_INIT( enterprise )
+MACHINE_RESET( enterprise )
 {
 	/* initialise the hardware */
 	Enterprise_Initialise();

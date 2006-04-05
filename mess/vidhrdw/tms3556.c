@@ -253,9 +253,6 @@ int tms3556_init(int vram_size)
 
 	/* allocate VRAM */
 	vdp.vram = auto_malloc(0x10000);
-	if (!vdp.vram)
-		return 1;
-
 	memset (vdp.vram, 0, 0x10000);
 	if (vdp.vram_size < 0x10000)
 	{
@@ -643,7 +640,7 @@ void tms3556_interrupt(void)
 	/* render the current line */
 	if ((vdp.scanline >= 0) && (vdp.scanline < TOTAL_HEIGHT))
 	{
-		//if (!osd_skip_this_frame())
+		//if (!skip_this_frame())
 			tms3556_draw_line(tmpbitmap, vdp.scanline);
 	}
 

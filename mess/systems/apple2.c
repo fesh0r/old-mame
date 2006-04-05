@@ -629,12 +629,6 @@ PALETTE_INIT( apple2 )
 	memcpy(colortable, apple2_colortable, sizeof(apple2_colortable));
 }
 
-static const char *apple2_floppy_getname(const struct IODevice *dev, int id, char *buf, size_t bufsize)
-{
-	snprintf(buf, bufsize, "Slot 6 Disk #%d", id + 1);
-	return buf;
-}
-
 static struct AY8910interface ay8910_interface =
 {
 	NULL
@@ -649,7 +643,7 @@ static MACHINE_DRIVER_START( apple2_common )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( apple2 )
+	MDRV_MACHINE_START( apple2 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2)
 	MDRV_SCREEN_SIZE(280*2, 192)
@@ -855,12 +849,17 @@ static void apple2_floppy_getinfo(const device_class *devclass, UINT32 state, un
 	/* floppy */
 	switch(state)
 	{
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_GET_NAME:						info->name = apple2_floppy_getname; break;
-
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND:	info->i = 15; break;
 		case DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR:	info->i = 16; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "slot6disk1"); break;
+		case DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "slot6disk2"); break;
+		case DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "s6d1"); break;
+		case DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "s6d2"); break;
+		case DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #1"); break;
+		case DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #2"); break;
 
 		default:										apple525_device_getinfo(devclass, state, info); break;
 	}
@@ -904,17 +903,17 @@ SYSTEM_CONFIG_END
 
 
 
-/*     YEAR  NAME      PARENT    COMPAT		MACHINE   INPUT     INIT      CONFIG	COMPANY            FULLNAME */
-COMP ( 1977, apple2,   0,        0,			apple2,   apple2,   apple2,   apple2,	"Apple Computer", "Apple ][" , 0)
-COMP ( 1979, apple2p,  apple2,   0,			apple2p,  apple2p,  apple2,   apple2p,	"Apple Computer", "Apple ][+" , 0)
-COMP ( 1982, ace100,   apple2,   0,			apple2,	  apple2e,  apple2,   apple2,	"Franklin Computer", "Franklin Ace 100" , 0)
-COMP ( 1983, apple2e,  0,        apple2,	apple2e,  apple2e,  apple2,   apple2e,	"Apple Computer", "Apple //e" , 0)
-COMP ( 1985, apple2ee, apple2e,  0,			apple2ee, apple2e,  apple2,   apple2e,	"Apple Computer", "Apple //e (enhanced)" , 0)
-COMP ( 1987, apple2ep, apple2e,  0,			apple2ee, apple2ep, apple2,   apple2e,	"Apple Computer", "Apple //e (Platinum)" , 0)
-COMP ( 1984, apple2c,  0,        apple2,	apple2c,  apple2e,  apple2,   apple2e,	"Apple Computer", "Apple //c" , 0)
-COMP( 1983, las3000,  apple2,   0,			apple2p,  apple2p,  apple2,   apple2p,	"Video Technology", "Laser 3000",		GAME_NOT_WORKING )
-COMP( 1987, laser128, 0,        apple2c0,  apple2c,  apple2e,  apple2,   apple2e,	"Video Technology", "Laser 128 (rev 4)",		GAME_NOT_WORKING )
-COMP( 1987, las128ex, apple2c,  0,			apple2c,  apple2e,  apple2,   apple2e,	"Video Technology", "Laser 128ex (rev 4a)",		GAME_NOT_WORKING )
-COMP ( 1985, apple2c0, apple2c,  0,			apple2c,  apple2e,  apple2,   apple2e,	"Apple Computer", "Apple //c (UniDisk 3.5)" , 0)
-COMP ( 1986, apple2c3, apple2c,  0,			apple2c,  apple2e,  apple2,   apple2e,	"Apple Computer", "Apple //c (Original Memory Expansion)" , 0)
-COMP ( 1988, apple2cp, apple2c,  0,			apple2c,  apple2e,  apple2,   apple2e,	"Apple Computer", "Apple //c Plus" , 0)
+/*    YEAR  NAME      PARENT    COMPAT		MACHINE   INPUT     INIT CONFIG		COMPANY            FULLNAME */
+COMP( 1977, apple2,   0,        0,			apple2,   apple2,   0,   apple2,	"Apple Computer", "Apple ][" , 0)
+COMP( 1979, apple2p,  apple2,   0,			apple2p,  apple2p,  0,   apple2p,	"Apple Computer", "Apple ][+" , 0)
+COMP( 1982, ace100,   apple2,   0,			apple2,	  apple2e,  0,   apple2,	"Franklin Computer", "Franklin Ace 100" , 0)
+COMP( 1983, apple2e,  0,        apple2,		apple2e,  apple2e,  0,   apple2e,	"Apple Computer", "Apple //e" , 0)
+COMP( 1985, apple2ee, apple2e,  0,			apple2ee, apple2e,  0,   apple2e,	"Apple Computer", "Apple //e (enhanced)" , 0)
+COMP( 1987, apple2ep, apple2e,  0,			apple2ee, apple2ep, 0,   apple2e,	"Apple Computer", "Apple //e (Platinum)" , 0)
+COMP( 1984, apple2c,  0,        apple2,		apple2c,  apple2e,  0,   apple2e,	"Apple Computer", "Apple //c" , 0)
+COMP( 1983, las3000,  apple2,   0,			apple2p,  apple2p,  0,   apple2p,	"Video Technology", "Laser 3000",		GAME_NOT_WORKING )
+COMP( 1987, laser128, 0,        apple2c0,	apple2c,  apple2e,  0,   apple2e,	"Video Technology", "Laser 128 (rev 4)",		GAME_NOT_WORKING )
+COMP( 1987, las128ex, apple2c,  0,			apple2c,  apple2e,  0,   apple2e,	"Video Technology", "Laser 128ex (rev 4a)",		GAME_NOT_WORKING )
+COMP( 1985, apple2c0, apple2c,  0,			apple2c,  apple2e,  0,   apple2e,	"Apple Computer", "Apple //c (UniDisk 3.5)" , 0)
+COMP( 1986, apple2c3, apple2c,  0,			apple2c,  apple2e,  0,	 apple2e,	"Apple Computer", "Apple //c (Original Memory Expansion)" , 0)
+COMP( 1988, apple2cp, apple2c,  0,			apple2c,  apple2e,  0,	 apple2e,	"Apple Computer", "Apple //c Plus" , 0)

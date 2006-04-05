@@ -11,7 +11,6 @@
 
 ***************************************************************************/
 
-/* common.h included for the RomModule definition */
 #include "driver.h"
 #include "state.h"
 #include "vidhrdw/generic.h"
@@ -24,6 +23,7 @@
 #include "devices/flopdrv.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
+#include "profiler.h"
 
 #ifdef MAME_DEBUG
 #define LOG(x)	logerror x
@@ -45,7 +45,7 @@ static UINT32 a2_set;
 
 
 /* local */
-static struct apple2_config *a2_config;
+static apple2_config *a2_config;
 static void **a2_slot_tokens;
 static int a2_speaker_state;
 
@@ -85,8 +85,8 @@ static WRITE8_HANDLER ( apple2_c07x_w );
  * New Apple II memory manager
  * ----------------------------------------------------------------------- */
 
-static struct apple2_memmap_config apple2_mem_config;
-static struct apple2_meminfo *apple2_current_meminfo;
+static apple2_memmap_config apple2_mem_config;
+static apple2_meminfo *apple2_current_meminfo;
 
 
 static READ8_HANDLER(read_floatingbus)
@@ -96,7 +96,7 @@ static READ8_HANDLER(read_floatingbus)
 
 
 
-void apple2_setup_memory(const struct apple2_memmap_config *config)
+void apple2_setup_memory(const apple2_memmap_config *config)
 {
 	apple2_mem_config = *config;
 	apple2_current_meminfo = NULL;
@@ -109,7 +109,7 @@ void apple2_update_memory(void)
 {
 	int i, bank, rbank, wbank;
 	int full_update = 0;
-	struct apple2_meminfo meminfo;
+	apple2_meminfo meminfo;
 	read8_handler rh;
 	write8_handler wh;
 	offs_t begin, end_r, end_w;
@@ -367,19 +367,19 @@ WRITE8_HANDLER(apple2_c0xx_w)
 
 
 
-static void apple2_mem_0000(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_0000(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	meminfo->read_mem			= (a2 & VAR_ALTZP)	? 0x010000 : 0x000000;
 	meminfo->write_mem			= (a2 & VAR_ALTZP)	? 0x010000 : 0x000000;
 }
 
-static void apple2_mem_0200(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_0200(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	meminfo->read_mem			= (a2 & VAR_RAMRD)	? 0x010200 : 0x000200;
 	meminfo->write_mem			= (a2 & VAR_RAMWRT)	? 0x010200 : 0x000200;
 }
 
-static void apple2_mem_0400(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_0400(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	if (a2 & VAR_80STORE)
 	{
@@ -395,13 +395,13 @@ static void apple2_mem_0400(offs_t begin, offs_t end, struct apple2_meminfo *mem
 	}
 }
 
-static void apple2_mem_0800(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_0800(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	meminfo->read_mem			= (a2 & VAR_RAMRD)	? 0x010800 : 0x000800;
 	meminfo->write_mem			= (a2 & VAR_RAMWRT)	? 0x010800 : 0x000800;
 }
 
-static void apple2_mem_2000(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_2000(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	if ((a2 & (VAR_80STORE|VAR_HIRES)) == (VAR_80STORE|VAR_HIRES))
 	{
@@ -417,19 +417,19 @@ static void apple2_mem_2000(offs_t begin, offs_t end, struct apple2_meminfo *mem
 	}
 }
 
-static void apple2_mem_4000(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_4000(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	meminfo->read_mem			= (a2 & VAR_RAMRD)	? 0x014000 : 0x004000;
 	meminfo->write_mem			= (a2 & VAR_RAMWRT)	? 0x014000 : 0x004000;
 }
 
-static void apple2_mem_C000(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_C000(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	meminfo->read_handler = apple2_c0xx_r;
 	meminfo->write_handler = apple2_c0xx_w;
 }
 
-static void apple2_mem_Cx00(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_Cx00(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	if (a2 & VAR_INTCXROM)
 	{
@@ -443,7 +443,7 @@ static void apple2_mem_Cx00(offs_t begin, offs_t end, struct apple2_meminfo *mem
 	}
 }
 
-static void apple2_mem_C300(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_C300(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	if ((a2 & (VAR_INTCXROM|VAR_SLOTC3ROM)) != VAR_SLOTC3ROM)
 	{
@@ -457,13 +457,13 @@ static void apple2_mem_C300(offs_t begin, offs_t end, struct apple2_meminfo *mem
 	}
 }
 
-static void apple2_mem_C800(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_C800(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	meminfo->read_mem			= (begin & 0x0FFF) | (a2 & VAR_ROMSWITCH ? 0x4000 : 0x0000) | APPLE2_MEM_ROM;
 	meminfo->write_mem			= APPLE2_MEM_FLOATING;
 }
 
-static void apple2_mem_CE00(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_CE00(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	if ((a2 & VAR_ROMSWITCH) && !strcmp(Machine->gamedrv->name, "apple2cp"))
 	{
@@ -477,7 +477,7 @@ static void apple2_mem_CE00(offs_t begin, offs_t end, struct apple2_meminfo *mem
 	}
 }
 
-static void apple2_mem_D000(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_D000(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	if (a2 & VAR_LCRAM)
 	{
@@ -505,7 +505,7 @@ static void apple2_mem_D000(offs_t begin, offs_t end, struct apple2_meminfo *mem
 	}
 }
 
-static void apple2_mem_E000(offs_t begin, offs_t end, struct apple2_meminfo *meminfo)
+static void apple2_mem_E000(offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
 	if (a2 & VAR_LCRAM)
 	{
@@ -529,7 +529,7 @@ static void apple2_mem_E000(offs_t begin, offs_t end, struct apple2_meminfo *mem
 
 
 
-static const struct apple2_memmap_entry apple2_memmap_entries[] =
+static const apple2_memmap_entry apple2_memmap_entries[] =
 {
 	{ 0x0000, 0x01FF, apple2_mem_0000, A2MEM_MONO },
 	{ 0x0200, 0x03FF, apple2_mem_0200, A2MEM_DUAL },
@@ -552,7 +552,7 @@ static const struct apple2_memmap_entry apple2_memmap_entries[] =
 
 void apple2_setvar(UINT32 val, UINT32 mask)
 {
-	LOG(("apple2_setvar(): val=0x%06x mask=0x%06x pc=0x%04x\n", val, mask, activecpu_get_pc()));
+	LOG(("apple2_setvar(): val=0x%06x mask=0x%06x pc=0x%04x\n", val, mask, (unsigned int) cpunum_get_reg(0, REG_PC)));
 
 	assert((val & mask) == val);
 
@@ -719,7 +719,7 @@ UINT8 apple2_getfloatingbusvalue(void)
 
 
 /* -----------------------------------------------------------------------
- * Machine init
+ * Machine reset
  * ----------------------------------------------------------------------- */
 
 static int apple2_hasslots(void)
@@ -729,7 +729,7 @@ static int apple2_hasslots(void)
 
 
 
-MACHINE_INIT( apple2 )
+static void apple2_reset(void)
 {
 	int need_intcxrom, i;
 
@@ -738,8 +738,6 @@ MACHINE_INIT( apple2 )
 		|| !strcmp(Machine->gamedrv->name, "apple2c3")
 		|| !strcmp(Machine->gamedrv->name, "apple2cp");
 	apple2_setvar(need_intcxrom ? VAR_INTCXROM : 0, ~0);
-
-	AY3600_init();
 
 	a2_speaker_state = 0;
 
@@ -1154,7 +1152,7 @@ static void apple2_langcard_write(void *token, offs_t offset, UINT8 data)
 
 
 
-const struct apple2_slotdevice apple2_slot_langcard =
+const apple2_slotdevice apple2_slot_langcard =
 {
 	"langcard",
 	"Language Card",
@@ -1201,7 +1199,7 @@ static UINT8 apple2_mockingboard_read(void *token, offs_t offset)
 			return flip2;
 			break;
 		default:
-			LOG(("mockingboard_r unmapped, offset: %02x, pc: %04x\n", offset, activecpu_get_pc()));
+			LOG(("mockingboard_r unmapped, offset: %02x, pc: %04x\n", offset, (unsigned) cpunum_get_reg(0, REG_PC)));
 			break;
 	}
 	return 0x00;
@@ -1272,7 +1270,7 @@ static void apple2_mockingboard_write(void *token, offs_t offset, UINT8 data)
 
 
 
-const struct apple2_slotdevice apple2_slot_mockingboard =
+const apple2_slotdevice apple2_slot_mockingboard =
 {
 	"mockingboard",
 	"Mockingboard",
@@ -1487,7 +1485,7 @@ static void apple2_fdc_write(void *token, offs_t offset, UINT8 data)
 
 
 
-const struct apple2_slotdevice apple2_slot_floppy525 =
+const apple2_slotdevice apple2_slot_floppy525 =
 {
 	"floppy525",
 	"5.25\" Floppy Drive",
@@ -1499,7 +1497,7 @@ const struct apple2_slotdevice apple2_slot_floppy525 =
 
 
 
-const struct apple2_slotdevice apple2_slot_iwm =
+const apple2_slotdevice apple2_slot_iwm =
 {
 	"iwm",
 	"IWM",
@@ -1515,17 +1513,22 @@ const struct apple2_slotdevice apple2_slot_iwm =
  * Driver init
  * ----------------------------------------------------------------------- */
 
-void apple2_init_common(const struct apple2_config *config)
+void apple2_init_common(const apple2_config *config)
 {
 	int i;
 	void *token;
-	
+
+	a2 = 0;
+
+	AY3600_init();
+	add_reset_callback(apple2_reset);
+
 	/* copy configuration */
 	a2_config = auto_malloc(sizeof(*config));
 	memcpy(a2_config, config, sizeof(*config));
 
 	/* state save registers */
-	state_save_register_UINT32("apple2", 0, "softswitch", &a2, 1);
+	state_save_register_global(a2);
 	state_save_register_func_postload(apple2_update_memory);
 
 	/* apple2 behaves much better when the default memory is zero */
@@ -1563,10 +1566,10 @@ void apple2_init_common(const struct apple2_config *config)
 
 
 
-DRIVER_INIT( apple2 )
+MACHINE_START( apple2 )
 {
-	struct apple2_memmap_config mem_cfg;
-	struct apple2_config a2_cfg;
+	apple2_memmap_config mem_cfg;
+	apple2_config a2_cfg;
 	void *apple2cp_ce00_ram = NULL;
 	
 	memset(&a2_cfg, 0, sizeof(a2_cfg));
@@ -1595,10 +1598,15 @@ DRIVER_INIT( apple2 )
 
 	apple2_init_common(&a2_cfg);
 
+	/* setup memory */
 	memset(&mem_cfg, 0, sizeof(mem_cfg));
 	mem_cfg.first_bank = 1;
 	mem_cfg.memmap = apple2_memmap_entries;
 	mem_cfg.auxmem = apple2cp_ce00_ram;
 	apple2_setup_memory(&mem_cfg);
+
+	/* perform initial reset */
+	apple2_reset();
+	return 0;
 }
 

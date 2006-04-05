@@ -77,6 +77,10 @@ static artwork_callbacks mame_artwork_callbacks =
 };
 #endif
 
+#ifdef MESS
+int mess_skip_this_frame;
+#endif
+
 
 
 /***************************************************************************
@@ -611,7 +615,18 @@ void force_partial_update(int scanline)
 	if (clip.min_y <= clip.max_y)
 	{
 		profiler_mark(PROFILER_VIDEO);
+#ifdef MESS
+		{
+			int update_says_skip = 0;
+			(*Machine->drv->video_update)(0, scrbitmap[0], &clip, &update_says_skip);
+			if (!update_says_skip)
+				mess_skip_this_frame = 0;
+			else if (mess_skip_this_frame == -1)
+				mess_skip_this_frame = 1;
+		}
+#else
 		(*Machine->drv->video_update)(0, scrbitmap[0], &clip);
+#endif
 		performance.partial_updates_this_frame++;
 		profiler_mark(PROFILER_END);
 	}
@@ -648,6 +663,12 @@ void update_video_and_audio(void)
 
 	/* fill in our portion of the display */
 	current_display.changed_flags = 0;
+
+#ifdef MESS
+	if (mess_skip_this_frame == 1)
+		current_display.changed_flags |= GAME_OPTIONAL_FRAMESKIP;
+	mess_skip_this_frame = -1;
+#endif /* MESS */
 
 	/* set the main game bitmap */
 	current_display.game_bitmap = scrbitmap[0];

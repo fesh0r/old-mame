@@ -200,7 +200,7 @@ typedef struct
 	BOOL   old_timing;
 	BOOL   leds;
 	char   *ledmode;
-	BOOL   high_priority;
+	int    priority;
 	BOOL   skip_gameinfo;
 #ifdef MESS
 	BOOL   skip_warnings;
@@ -295,7 +295,7 @@ typedef struct
 #ifdef MESS
 	BOOL     skip_warnings;
 #endif
-    BOOL     high_priority;
+    int      priority;
     BOOL     autosave;
 
 	// Keyboard control of ui
@@ -381,6 +381,7 @@ typedef struct
     char*    mameinfo_filename;
     char*    ctrlrdir;
     char*    folderdir;
+    char*    commentdir;
 
 #ifdef MESS
     struct mess_specific_settings mess;
@@ -406,9 +407,9 @@ int GetRedirectValue(int index);
 options_type * GetVectorOptions(void);
 options_type * GetSourceOptions(int driver_index );
 options_type * GetGameOptions(int driver_index, int folder_index );
-BOOL GetVectorUsesDefaultsMem(void);
-BOOL GetFolderUsesDefaultsMem(int folder_index, int driver_index);
-BOOL GetGameUsesDefaultsMem(int driver_index);
+BOOL GetVectorUsesDefaults(void);
+BOOL GetFolderUsesDefaults(int folder_index, int driver_index);
+BOOL GetGameUsesDefaults(int driver_index);
 BOOL GetGameUsesDefaults(int driver_index);
 void SetGameUsesDefaults(int driver_index,BOOL use_defaults);
 void LoadGameOptions(int driver_index);
@@ -614,6 +615,9 @@ void SetBgDir(const char *path);
 
 const char* GetCtrlrDir(void);
 void SetCtrlrDir(const char* path);
+
+const char* GetCommentDir(void);
+void SetCommentDir(const char* path);
 
 const char* GetFolderDir(void);
 void SetFolderDir(const char* path);

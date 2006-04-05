@@ -98,14 +98,14 @@ static void flopimg_get_id_callback(mess_image *image, chrn_id *id, int id_index
 	if (!flopimg || !flopimg->floppy)
 		return;
 
-	floppy_get_indexed_sector_info(flopimg->floppy, side, flopimg->track, id_index, &cylinder, &sector, &sector_length);
+	floppy_get_indexed_sector_info(flopimg->floppy, side, flopimg->track, id_index, &cylinder, &side, &sector, &sector_length);
 
 	N = compute_log2(sector_length);
 
 	id->C = cylinder;
 	id->H = side;
 	id->R = sector;
-	id->data_id = sector;
+	id->data_id = id_index;
 	id->flags = 0;
 	id->N = ((N >= 7) && (N <= 10)) ? N - 7 : 0;
 }
@@ -131,7 +131,7 @@ static void flopimg_read_sector_data_into_buffer(mess_image *image, int side, in
 	if (!flopimg || !flopimg->floppy)
 		return;
 
-	floppy_read_sector(flopimg->floppy, side, flopimg->track, index1, 0, ptr, length);
+	floppy_read_indexed_sector(flopimg->floppy, side, flopimg->track, index1, 0, ptr, length);
 	
 	if (LOG_FLOPPY)
 		log_readwrite("sector_read", side, flopimg->track, index1, ptr, length);
@@ -150,7 +150,7 @@ static void flopimg_write_sector_data_from_buffer(mess_image *image, int side, i
 	if (LOG_FLOPPY)
 		log_readwrite("sector_write", side, flopimg->track, index1, ptr, length);
 
-	floppy_write_sector(flopimg->floppy, side, flopimg->track, index1, 0, ptr, length);
+	floppy_write_indexed_sector(flopimg->floppy, side, flopimg->track, index1, 0, ptr, length);
 }
 
 
@@ -445,11 +445,11 @@ void floppy_device_getinfo(const device_class *devclass, UINT32 state, union dev
 			{
 				info->s = (void *) floppy_options[state - DEVINFO_STR_CREATE_OPTNAME].name;
 			}
-			else if ((state >= DEVINFO_STR_CREATE_OPTDESC) && (state < DEVINFO_STR_CREATE_OPTNAME + DEVINFO_CREATE_OPTMAX))
+			else if ((state >= DEVINFO_STR_CREATE_OPTDESC) && (state < DEVINFO_STR_CREATE_OPTDESC + DEVINFO_CREATE_OPTMAX))
 			{
 				info->s = (void *) floppy_options[state - DEVINFO_STR_CREATE_OPTDESC].description;
 			}
-			else if ((state >= DEVINFO_STR_CREATE_OPTEXTS) && (state < DEVINFO_STR_CREATE_OPTNAME + DEVINFO_CREATE_OPTMAX))
+			else if ((state >= DEVINFO_STR_CREATE_OPTEXTS) && (state < DEVINFO_STR_CREATE_OPTEXTS + DEVINFO_CREATE_OPTMAX))
 			{
 				info->s = (void *) floppy_options[state - DEVINFO_STR_CREATE_OPTEXTS].extensions;
 			}

@@ -1,6 +1,6 @@
 /***************************************************************************
 
-	dragon.c
+	coco.c
 
 	TRS-80 Radio Shack Color Computer Family
 
@@ -14,8 +14,8 @@
 #include "inputx.h"
 #include "machine/6821pia.h"
 #include "vidhrdw/m6847.h"
-#include "includes/6883sam.h"
-#include "includes/dragon.h"
+#include "machine/6883sam.h"
+#include "includes/coco.h"
 #include "devices/basicdsk.h"
 #include "includes/6551.h"
 #include "formats/coco_dsk.h"
@@ -34,15 +34,15 @@
 #define JOYSTICK_SENSITIVITY	100
 
 static ADDRESS_MAP_START( coco_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff)	AM_READWRITE(MRA8_BANK1,			MWA8_BANK1)
-	AM_RANGE(0x8000, 0xfeff)	AM_READWRITE(MRA8_BANK2,			MWA8_BANK2)
-	AM_RANGE(0xff00, 0xff1f)	AM_READWRITE(pia_0_r,				pia_0_w)
-	AM_RANGE(0xff20, 0xff3f)	AM_READWRITE(coco_pia_1_r,			pia_1_w)
-	AM_RANGE(0xff40, 0xff8f)	AM_READWRITE(coco_cartridge_r,		coco_cartridge_w)
-	AM_RANGE(0xff90, 0xffbf)	AM_READWRITE(MRA8_NOP,				MWA8_NOP)
-	AM_RANGE(0xffc0, 0xffdf)	AM_READWRITE(MRA8_NOP,				sam_w)
-	AM_RANGE(0xffe0, 0xffef)	AM_READWRITE(MRA8_NOP,				MWA8_NOP)
-	AM_RANGE(0xfff0, 0xffff)	AM_READWRITE(dragon_mapped_irq_r,	MWA8_NOP)
+	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
+	AM_RANGE(0x8000, 0xfeff) AM_RAMBANK(2)
+	AM_RANGE(0xff00, 0xff1f) AM_READWRITE(pia_0_r,				pia_0_w)
+	AM_RANGE(0xff20, 0xff3f) AM_READWRITE(coco_pia_1_r,			pia_1_w)
+	AM_RANGE(0xff40, 0xff8f) AM_READWRITE(coco_cartridge_r,		coco_cartridge_w)
+	AM_RANGE(0xff90, 0xffbf) AM_NOP
+	AM_RANGE(0xffc0, 0xffdf) AM_WRITE(sam_w)
+	AM_RANGE(0xffe0, 0xffef) AM_NOP
+	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION(REGION_CPU1, 0x3ff0)
 ADDRESS_MAP_END
 
 
@@ -56,41 +56,41 @@ ADDRESS_MAP_END
  * which would make sense, but I'm not sure.
  */
 static ADDRESS_MAP_START( coco3_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff)	AM_READWRITE(MRA8_BANK1,			MWA8_BANK1)
-	AM_RANGE(0x2000, 0x3fff)	AM_READWRITE(MRA8_BANK2,			MWA8_BANK2)
-	AM_RANGE(0x4000, 0x5fff)	AM_READWRITE(MRA8_BANK3,			MWA8_BANK3)
-	AM_RANGE(0x6000, 0x7fff)	AM_READWRITE(MRA8_BANK4,			MWA8_BANK4)
-	AM_RANGE(0x8000, 0x9fff)	AM_READWRITE(MRA8_BANK5,			MWA8_BANK5)
-	AM_RANGE(0xa000, 0xbfff)	AM_READWRITE(MRA8_BANK6,			MWA8_BANK6)
-	AM_RANGE(0xc000, 0xdfff)	AM_READWRITE(MRA8_BANK7,			MWA8_BANK7)
-	AM_RANGE(0xe000, 0xfdff)	AM_READWRITE(MRA8_BANK8,			MWA8_BANK8)
-	AM_RANGE(0xfe00, 0xfeff)	AM_READWRITE(MRA8_BANK9,			MWA8_BANK9)
-	AM_RANGE(0xff00, 0xff1f)	AM_READWRITE(pia_0_r,				pia_0_w)
-	AM_RANGE(0xff20, 0xff3f)	AM_READWRITE(coco3_pia_1_r,			pia_1_w)
-	AM_RANGE(0xff40, 0xff8f)	AM_READWRITE(coco_cartridge_r,		coco_cartridge_w)
-	AM_RANGE(0xff90, 0xff97)	AM_READWRITE(coco3_gime_r,			coco3_gime_w)
-	AM_RANGE(0xff98, 0xff9f)	AM_READWRITE(coco3_gimevh_r,		coco3_gimevh_w)
-	AM_RANGE(0xffa0, 0xffaf)	AM_READWRITE(coco3_mmu_r,			coco3_mmu_w)
-	AM_RANGE(0xffb0, 0xffbf)	AM_READWRITE(paletteram_r,			coco3_palette_w)
-	AM_RANGE(0xffc0, 0xffdf)	AM_READWRITE(MRA8_NOP,				sam_w)
-	AM_RANGE(0xffe0, 0xffef)	AM_READWRITE(MRA8_NOP,				MWA8_NOP)
-	AM_RANGE(0xfff0, 0xffff)	AM_READWRITE(coco3_mapped_irq_r,	MWA8_NOP)
+	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK(1)
+	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK(2)
+	AM_RANGE(0x4000, 0x5fff) AM_RAMBANK(3)
+	AM_RANGE(0x6000, 0x7fff) AM_RAMBANK(4)
+	AM_RANGE(0x8000, 0x9fff) AM_RAMBANK(5)
+	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK(6)
+	AM_RANGE(0xc000, 0xdfff) AM_RAMBANK(7)
+	AM_RANGE(0xe000, 0xfdff) AM_RAMBANK(8)
+	AM_RANGE(0xfe00, 0xfeff) AM_RAMBANK(9)
+	AM_RANGE(0xff00, 0xff1f) AM_READWRITE(pia_0_r,				pia_0_w)
+	AM_RANGE(0xff20, 0xff3f) AM_READWRITE(coco3_pia_1_r,			pia_1_w)
+	AM_RANGE(0xff40, 0xff8f) AM_READWRITE(coco_cartridge_r,		coco_cartridge_w)
+	AM_RANGE(0xff90, 0xff97) AM_READWRITE(coco3_gime_r,			coco3_gime_w)
+	AM_RANGE(0xff98, 0xff9f) AM_READWRITE(coco3_gimevh_r,		coco3_gimevh_w)
+	AM_RANGE(0xffa0, 0xffaf) AM_READWRITE(coco3_mmu_r,			coco3_mmu_w)
+	AM_RANGE(0xffb0, 0xffbf) AM_READWRITE(paletteram_r,			coco3_palette_w)
+	AM_RANGE(0xffc0, 0xffdf) AM_WRITE(sam_w)
+	AM_RANGE(0xffe0, 0xffef) AM_NOP
+	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION(REGION_CPU1, 0x7ff0)
 ADDRESS_MAP_END
 
 
 
 static ADDRESS_MAP_START( d64_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff)	AM_READWRITE(MRA8_BANK1,			MWA8_BANK1)
-	AM_RANGE(0x8000, 0xbfff)	AM_READWRITE(MRA8_BANK2,			MWA8_BANK2)
-	AM_RANGE(0xc000, 0xfeff)	AM_READWRITE(MRA8_BANK3,			MWA8_BANK3)
-	AM_RANGE(0xff00, 0xff03)	AM_READWRITE(pia_0_r,				pia_0_w)		AM_MIRROR(0x0018)
-	AM_RANGE(0xff04, 0xff07)	AM_READWRITE(acia_6551_r,			acia_6551_w)	AM_MIRROR(0x0018)
-	AM_RANGE(0xff20, 0xff3f)	AM_READWRITE(coco_pia_1_r,			pia_1_w)
-	AM_RANGE(0xff40, 0xff8f)	AM_READWRITE(coco_cartridge_r,		coco_cartridge_w)
-	AM_RANGE(0xff90, 0xffbf)	AM_READWRITE(MRA8_NOP,				MWA8_NOP)
-	AM_RANGE(0xffc0, 0xffdf)	AM_READWRITE(MRA8_NOP,				sam_w)
-	AM_RANGE(0xffe0, 0xffef)	AM_READWRITE(MRA8_NOP,				MWA8_NOP)
-	AM_RANGE(0xfff0, 0xffff)	AM_READWRITE(dragon_mapped_irq_r,	MWA8_NOP)
+	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(2)
+	AM_RANGE(0xc000, 0xfeff) AM_RAMBANK(3)
+	AM_RANGE(0xff00, 0xff03) AM_READWRITE(pia_0_r,				pia_0_w)		AM_MIRROR(0x0018)
+	AM_RANGE(0xff04, 0xff07) AM_READWRITE(acia_6551_r,			acia_6551_w)	AM_MIRROR(0x0018)
+	AM_RANGE(0xff20, 0xff3f) AM_READWRITE(coco_pia_1_r,			pia_1_w)
+	AM_RANGE(0xff40, 0xff8f) AM_READWRITE(coco_cartridge_r,		coco_cartridge_w)
+	AM_RANGE(0xff90, 0xffbf) AM_NOP
+	AM_RANGE(0xffc0, 0xffdf) AM_WRITE(sam_w)
+	AM_RANGE(0xffe0, 0xffef) AM_NOP
+	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION(REGION_CPU1, 0x3ff0)
 ADDRESS_MAP_END
 
 
@@ -144,19 +144,19 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( dgnalpha_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff)	AM_READWRITE(MRA8_BANK1,			MWA8_BANK1)
-	AM_RANGE(0x8000, 0xbfff)	AM_READWRITE(MRA8_BANK2,			MWA8_BANK2)
-	AM_RANGE(0xc000, 0xfeff)	AM_READWRITE(MRA8_BANK3,			MWA8_BANK3)
-	AM_RANGE(0xff00, 0xff03)	AM_READWRITE(pia_0_r,				pia_0_w)	
-	AM_RANGE(0xff04, 0xff07)	AM_READWRITE(acia_6551_r,			acia_6551_w)	
-	AM_RANGE(0xff20, 0xff23)	AM_READWRITE(coco_pia_1_r,			pia_1_w)
-	AM_RANGE(0xff24, 0xff27)	AM_READWRITE(pia_2_r,			pia_2_w) 	/* Third PIA on Dragon Alpha */
-	AM_RANGE(0xff2c, 0xff2f)	AM_READWRITE(wd2797_r,				wd2797_w)	/* Alpha onboard disk interface */
-	AM_RANGE(0xff40, 0xff8f)	AM_READWRITE(coco_cartridge_r,		coco_cartridge_w)
-	AM_RANGE(0xff90, 0xffbf)	AM_READWRITE(MRA8_NOP,				MWA8_NOP)
-	AM_RANGE(0xffc0, 0xffdf)	AM_READWRITE(MRA8_NOP,				sam_w)
-	AM_RANGE(0xffe0, 0xffef)	AM_READWRITE(MRA8_NOP,				MWA8_NOP)
-	AM_RANGE(0xfff0, 0xffff)	AM_READWRITE(dragon_alpha_mapped_irq_r,	MWA8_NOP)
+	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(2)
+	AM_RANGE(0xc000, 0xfeff) AM_RAMBANK(3)
+	AM_RANGE(0xff00, 0xff03) AM_READWRITE(pia_0_r,			pia_0_w)	
+	AM_RANGE(0xff04, 0xff07) AM_READWRITE(acia_6551_r,		acia_6551_w)	
+	AM_RANGE(0xff20, 0xff23) AM_READWRITE(coco_pia_1_r,		pia_1_w)
+	AM_RANGE(0xff24, 0xff27) AM_READWRITE(pia_2_r,			pia_2_w) 	/* Third PIA on Dragon Alpha */
+	AM_RANGE(0xff2c, 0xff2f) AM_READWRITE(wd2797_r,			wd2797_w)	/* Alpha onboard disk interface */
+	AM_RANGE(0xff40, 0xff8f) AM_READWRITE(coco_cartridge_r,	coco_cartridge_w)
+	AM_RANGE(0xff90, 0xffbf) AM_NOP
+	AM_RANGE(0xffc0, 0xffdf) AM_WRITE(sam_w)
+	AM_RANGE(0xffe0, 0xffef) AM_NOP
+	AM_RANGE(0xfff0, 0xffff) AM_READ(dragon_alpha_mapped_irq_r)
 ADDRESS_MAP_END
 
 
@@ -258,11 +258,6 @@ INPUT_PORTS_START( dragon32 )
 	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
 	PORT_CONFSETTING(    0x01, DEF_STR( Standard ) )
 	PORT_CONFSETTING(    0x02, DEF_STR( Reverse ) )
-
-	PORT_START_TAG(DRAGON_COCO_CART_AUTOSTART) 
-	PORT_CONFNAME( 0x03, 0x01, "Cart Auto-Start" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
 
 INPUT_PORTS_END
 
@@ -369,11 +364,6 @@ INPUT_PORTS_START( coco )
 	PORT_CONFNAME( 0x03, 0x00, "Real Time Clock" )
 	PORT_CONFSETTING(    0x00, "Disto" )
 	PORT_CONFSETTING(    0x01, "Cloud-9" )
-
-	PORT_START_TAG(DRAGON_COCO_CART_AUTOSTART) 
-	PORT_CONFNAME( 0x03, 0x01, "Cart Auto-Start" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
 INPUT_PORTS_END
 
 /* CoCo 3 keyboard
@@ -497,11 +487,6 @@ INPUT_PORTS_START( coco3 )
 	PORT_BIT( 0x03, 0x00,  IPT_MOUSE_X) PORT_NAME("Rat Mouse X") PORT_SENSITIVITY(100) PORT_KEYDELTA(1) PORT_CODE_DEC(KEYCODE_LEFT) PORT_CODE_INC(KEYCODE_RIGHT) PORT_CODE_DEC(JOYCODE_1_LEFT) PORT_CODE_INC(JOYCODE_1_RIGHT) PORT_PLAYER(1)
 	PORT_START_TAG("rat_mouse_y")
 	PORT_BIT( 0x03, 0x00,  IPT_MOUSE_Y) PORT_NAME("Rat Mouse Y") PORT_SENSITIVITY(100) PORT_KEYDELTA(1) PORT_CODE_DEC(KEYCODE_UP) PORT_CODE_INC(KEYCODE_DOWN) PORT_CODE_DEC(JOYCODE_1_UP) PORT_CODE_INC(JOYCODE_1_DOWN) PORT_PLAYER(1)
-
-	PORT_START_TAG(DRAGON_COCO_CART_AUTOSTART) 
-	PORT_CONFNAME( 0x03, 0x01, "Cart Auto-Start" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
 INPUT_PORTS_END
 
 /* AY-8912 for Dragon Alpha, the AY-8912 simply an AY-8910 with only one io port. */
@@ -522,8 +507,7 @@ static MACHINE_DRIVER_START( dragon32 )
 	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
 	MDRV_VBLANK_DURATION(0)
 
-	MDRV_MACHINE_INIT( dragon32 )
-	MDRV_MACHINE_STOP( coco )
+	MDRV_MACHINE_START( dragon32 )
 
 	/* video hardware */
 	MDRV_M6847_PAL( dragon )
@@ -544,8 +528,7 @@ static MACHINE_DRIVER_START( dragon64 )
 	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
 	MDRV_VBLANK_DURATION(0)
 
-	MDRV_MACHINE_INIT( dragon64 )
-	MDRV_MACHINE_STOP( coco )
+	MDRV_MACHINE_START( dragon64 )
 
 	/* video hardware */
 	MDRV_M6847_PAL( dragon )
@@ -566,8 +549,7 @@ static MACHINE_DRIVER_START( dgnalpha )
 	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
 	MDRV_VBLANK_DURATION(0)
 
-	MDRV_MACHINE_INIT( dgnalpha )
-	MDRV_MACHINE_STOP( coco )
+	MDRV_MACHINE_START( dgnalpha )
 
 	/* video hardware */
 	MDRV_M6847_PAL( dragon )
@@ -591,8 +573,7 @@ static MACHINE_DRIVER_START( coco )
 	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
 	MDRV_VBLANK_DURATION(0)
 
-	MDRV_MACHINE_INIT( coco )
-	MDRV_MACHINE_STOP( coco )
+	MDRV_MACHINE_START( coco )
 
 	/* video hardware */
 	MDRV_M6847_NTSC( dragon )
@@ -613,8 +594,7 @@ static MACHINE_DRIVER_START( coco2 )
 	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
 	MDRV_VBLANK_DURATION(0)
 
-	MDRV_MACHINE_INIT( coco2 )
-	MDRV_MACHINE_STOP( coco )
+	MDRV_MACHINE_START( coco2 )
 
 	/* video hardware */
 	MDRV_M6847_PAL( dragon )
@@ -635,8 +615,7 @@ static MACHINE_DRIVER_START( coco2b )
 	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
 	MDRV_VBLANK_DURATION(0)
 
-	MDRV_MACHINE_INIT( coco2 )
-	MDRV_MACHINE_STOP( coco )
+	MDRV_MACHINE_START( coco2 )
 
 	/* video hardware */
 	MDRV_M6847_NTSC( coco2b )
@@ -657,8 +636,7 @@ static MACHINE_DRIVER_START( coco3 )
 	MDRV_FRAMES_PER_SECOND(COCO_FRAMES_PER_SECOND)
 	MDRV_VBLANK_DURATION(0)
 
-	MDRV_MACHINE_INIT( coco3 )
-	MDRV_MACHINE_STOP( coco )
+	MDRV_MACHINE_START( coco3 )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(M6847_VIDEO_TYPE | VIDEO_PIXEL_ASPECT_RATIO_1_2)
@@ -805,13 +783,6 @@ static const struct bitbanger_config coco_bitbanger_config =
 
 /* ----------------------------------------------------------------------- */
 
-static const char *coco_floppy_getname(const struct IODevice *dev, int id, char *buf, size_t bufsize)
-{
-	/* CoCo people like their floppy drives zero counted */
-	snprintf(buf, bufsize, "Floppy #%d", id);
-	return buf;
-}
-
 /*************************************
  *
  *	CoCo device getinfo functions
@@ -864,8 +835,21 @@ static void coco_floppy_getinfo(const device_class *devclass, UINT32 state, unio
 		case DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_GET_NAME:						info->name = coco_floppy_getname; break;
 		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_coco; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "floppydisk0"); break;
+		case DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "floppydisk1"); break;
+		case DEVINFO_STR_NAME+2:						strcpy(info->s = device_temp_str(), "floppydisk2"); break;
+		case DEVINFO_STR_NAME+3:						strcpy(info->s = device_temp_str(), "floppydisk3"); break;
+		case DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "flop0"); break;
+		case DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "flop1"); break;
+		case DEVINFO_STR_SHORT_NAME+2:					strcpy(info->s = device_temp_str(), "flop2"); break;
+		case DEVINFO_STR_SHORT_NAME+3:					strcpy(info->s = device_temp_str(), "flop3"); break;
+		case DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Floppy #0"); break;
+		case DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Floppy #1"); break;
+		case DEVINFO_STR_DESCRIPTION+2:					strcpy(info->s = device_temp_str(), "Floppy #2"); break;
+		case DEVINFO_STR_DESCRIPTION+3:					strcpy(info->s = device_temp_str(), "Floppy #3"); break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}
@@ -1036,14 +1020,14 @@ SYSTEM_CONFIG_START(dgnalpha)
 SYSTEM_CONFIG_END
 
 /*     YEAR		NAME		PARENT	COMPAT	MACHINE    INPUT		INIT     CONFIG	COMPANY					FULLNAME */
-COMP(  1980,	coco,		0,		0,		coco,		coco,		coco,	coco,		"Tandy Radio Shack",	"Color Computer" , 0)
-COMP(  1981,	cocoe,		coco,	0,		coco,		coco,		coco,	coco,		"Tandy Radio Shack",	"Color Computer (Extended BASIC 1.0)" , 0)
-COMP(  1983,	coco2,		coco,	0,		coco2,		coco,		coco,	coco2,		"Tandy Radio Shack",	"Color Computer 2" , 0)
-COMP(  1985?,	coco2b,		coco,	0,		coco2b,		coco,		coco,	coco2,		"Tandy Radio Shack",	"Color Computer 2B" , 0)
-COMP(  1986,	coco3,		coco,	0,	 	coco3,		coco3,		coco3,	coco3,		"Tandy Radio Shack",	"Color Computer 3 (NTSC)" , 0)
-COMP(  1986,	coco3p,		coco, 	0,		coco3,		coco3,		coco3,	coco3,		"Tandy Radio Shack",	"Color Computer 3 (PAL)" , 0)
-COMP(  19??,	coco3h,		coco,	0,		coco3h,		coco3,		coco3,	coco3,		"Tandy Radio Shack",	"Color Computer 3 (NTSC; HD6309)", GAME_COMPUTER_MODIFIED)
-COMP(  1982,	dragon32,	coco,	0,		dragon32,	dragon32,	coco,	dragon32,	"Dragon Data Ltd",    "Dragon 32" , 0)
-COMP(  1983,	dragon64,	coco,	0,		dragon64,	dragon32,	coco,	dragon64,	"Dragon Data Ltd",    "Dragon 64" , 0)
-COMP(  1984,	dgnalpha,	coco,	0,		dgnalpha,	dragon32,	coco,	dgnalpha,	"Dragon Data Ltd",    "Dragon Alpha Prototype" , 0)
-COMP(  1984,	cp400,		coco, 	0,		coco,		coco,		coco,	coco,		"Prologica",          "CP400" , 0)
+COMP(  1980,	coco,		0,		0,		coco,		coco,		0,		coco,		"Tandy Radio Shack",	"Color Computer" , 0)
+COMP(  1981,	cocoe,		coco,	0,		coco,		coco,		0,		coco,		"Tandy Radio Shack",	"Color Computer (Extended BASIC 1.0)" , 0)
+COMP(  1983,	coco2,		coco,	0,		coco2,		coco,		0,		coco2,		"Tandy Radio Shack",	"Color Computer 2" , 0)
+COMP(  1985?,	coco2b,		coco,	0,		coco2b,		coco,		0,		coco2,		"Tandy Radio Shack",	"Color Computer 2B" , 0)
+COMP(  1986,	coco3,		coco,	0,	 	coco3,		coco3,		0,		coco3,		"Tandy Radio Shack",	"Color Computer 3 (NTSC)" , 0)
+COMP(  1986,	coco3p,		coco, 	0,		coco3,		coco3,		0,		coco3,		"Tandy Radio Shack",	"Color Computer 3 (PAL)" , 0)
+COMP(  19??,	coco3h,		coco,	0,		coco3h,		coco3,		0,		coco3,		"Tandy Radio Shack",	"Color Computer 3 (NTSC; HD6309)", GAME_COMPUTER_MODIFIED)
+COMP(  1982,	dragon32,	coco,	0,		dragon32,	dragon32,	0,		dragon32,	"Dragon Data Ltd",    "Dragon 32" , 0)
+COMP(  1983,	dragon64,	coco,	0,		dragon64,	dragon32,	0,		dragon64,	"Dragon Data Ltd",    "Dragon 64" , 0)
+COMP(  1984,	dgnalpha,	coco,	0,		dgnalpha,	dragon32,	0,		dgnalpha,	"Dragon Data Ltd",    "Dragon Alpha Prototype" , 0)
+COMP(  1984,	cp400,		coco, 	0,		coco,		coco,		0,		coco,		"Prologica",          "CP400" , 0)

@@ -6,6 +6,7 @@
   By:
 
   Anthony Kruize
+  Wilbert Pol
 
   Based on the WStech documentation by Judge and Dox.
 
@@ -17,104 +18,65 @@
 #include "devices/cartslot.h"
 #include "sound/custom.h"
 
-static ADDRESS_MAP_START (wswan_readmem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x00000, 0x03fff) AM_READ( MRA8_RAM )		/* 16kb RAM + 16kb 4 colour tiles */
-	AM_RANGE( 0x04000, 0x0ffff) AM_READ( MRA8_NOP )		/* Not used */
-	AM_RANGE( 0x10000, 0x1ffff) AM_READ( MRA8_BANK1 )	/* SRAM bank */
-	AM_RANGE( 0x20000, 0x2ffff) AM_READ( MRA8_BANK2 )	/* ROM bank 1 */
-	AM_RANGE( 0x30000, 0x3ffff) AM_READ( MRA8_BANK3 )	/* ROM bank 2 */
-	AM_RANGE( 0x40000, 0x4ffff) AM_READ( MRA8_BANK4 )	/* ROM bank 3 */
-	AM_RANGE( 0x50000, 0x5ffff) AM_READ( MRA8_BANK5 )	/* ROM bank 4 */
-	AM_RANGE( 0x60000, 0x6ffff) AM_READ( MRA8_BANK6 )	/* ROM bank 5 */
-	AM_RANGE( 0x70000, 0x7ffff) AM_READ( MRA8_BANK7 )	/* ROM bank 6 */
-	AM_RANGE( 0x80000, 0x8ffff) AM_READ( MRA8_BANK8 )	/* ROM bank 7 */
-	AM_RANGE( 0x90000, 0x9ffff) AM_READ( MRA8_BANK9 )	/* ROM bank 8 */
-	AM_RANGE( 0xA0000, 0xAffff) AM_READ( MRA8_BANK10 )	/* ROM bank 9 */
-	AM_RANGE( 0xB0000, 0xBffff) AM_READ( MRA8_BANK11 )	/* ROM bank 10 */
-	AM_RANGE( 0xC0000, 0xCffff) AM_READ( MRA8_BANK12 )	/* ROM bank 11 */
-	AM_RANGE( 0xD0000, 0xDffff) AM_READ( MRA8_BANK13 )	/* ROM bank 12 */
-	AM_RANGE( 0xE0000, 0xEffff) AM_READ( MRA8_BANK14 )	/* ROM bank 13 */
-	AM_RANGE( 0xF0000, 0xFffff) AM_READ( MRA8_BANK15 )	/* ROM bank 14 */
+static ADDRESS_MAP_START (wswan_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x00000, 0x03fff) AM_RAM			/* 16kb RAM + 16kb 4 colour tiles */
+	AM_RANGE(0x04000, 0x0ffff) AM_NOP			/* Not used */
+	AM_RANGE(0x10000, 0x1ffff) AM_RAMBANK(1)	/* SRAM bank */
+	AM_RANGE(0x20000, 0x2ffff) AM_ROMBANK(2)	/* ROM bank 1 */
+	AM_RANGE(0x30000, 0x3ffff) AM_ROMBANK(3)	/* ROM bank 2 */
+	AM_RANGE(0x40000, 0x4ffff) AM_ROMBANK(4)	/* ROM bank 3 */
+	AM_RANGE(0x50000, 0x5ffff) AM_ROMBANK(5)	/* ROM bank 4 */
+	AM_RANGE(0x60000, 0x6ffff) AM_ROMBANK(6)	/* ROM bank 5 */
+	AM_RANGE(0x70000, 0x7ffff) AM_ROMBANK(7)	/* ROM bank 6 */
+	AM_RANGE(0x80000, 0x8ffff) AM_ROMBANK(8)	/* ROM bank 7 */
+	AM_RANGE(0x90000, 0x9ffff) AM_ROMBANK(9)	/* ROM bank 8 */
+	AM_RANGE(0xA0000, 0xAffff) AM_ROMBANK(10)	/* ROM bank 9 */
+	AM_RANGE(0xB0000, 0xBffff) AM_ROMBANK(11)	/* ROM bank 10 */
+	AM_RANGE(0xC0000, 0xCffff) AM_ROMBANK(12)	/* ROM bank 11 */
+	AM_RANGE(0xD0000, 0xDffff) AM_ROMBANK(13)	/* ROM bank 12 */
+	AM_RANGE(0xE0000, 0xEffff) AM_ROMBANK(14)	/* ROM bank 13 */
+	AM_RANGE(0xF0000, 0xFffff) AM_ROMBANK(15)	/* ROM bank 14 */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START (wswan_writemem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x00000, 0x03fff) AM_WRITE( MWA8_RAM )		/* 16kb RAM + 16kb 4 colour tiles */
-	AM_RANGE( 0x04000, 0x0ffff) AM_WRITE( MWA8_NOP )		/* Not used */
-	AM_RANGE( 0x10000, 0x1ffff) AM_WRITE( MWA8_BANK1 )	/* SRAM bank */
-	AM_RANGE( 0x20000, 0x2ffff) AM_WRITE( MWA8_BANK2 )	/* ROM bank 1 */
-	AM_RANGE( 0x30000, 0x3ffff) AM_WRITE( MWA8_BANK3 )	/* ROM bank 2 */
-	AM_RANGE( 0x40000, 0x4ffff) AM_WRITE( MWA8_BANK4 )	/* ROM bank 3 */
-	AM_RANGE( 0x50000, 0x5ffff) AM_WRITE( MWA8_BANK5 )	/* ROM bank 4 */
-	AM_RANGE( 0x60000, 0x6ffff) AM_WRITE( MWA8_BANK6 )	/* ROM bank 5 */
-	AM_RANGE( 0x70000, 0x7ffff) AM_WRITE( MWA8_BANK7 )	/* ROM bank 6 */
-	AM_RANGE( 0x80000, 0x8ffff) AM_WRITE( MWA8_BANK8 )	/* ROM bank 7 */
-	AM_RANGE( 0x90000, 0x9ffff) AM_WRITE( MWA8_BANK9 )	/* ROM bank 8 */
-	AM_RANGE( 0xA0000, 0xAffff) AM_WRITE( MWA8_BANK10 )	/* ROM bank 9 */
-	AM_RANGE( 0xB0000, 0xBffff) AM_WRITE( MWA8_BANK11 )	/* ROM bank 10 */
-	AM_RANGE( 0xC0000, 0xCffff) AM_WRITE( MWA8_BANK12 )	/* ROM bank 11 */
-	AM_RANGE( 0xD0000, 0xDffff) AM_WRITE( MWA8_BANK13 )	/* ROM bank 12 */
-	AM_RANGE( 0xE0000, 0xEffff) AM_WRITE( MWA8_BANK14 )	/* ROM bank 13 */
-	AM_RANGE( 0xF0000, 0xFffff) AM_WRITE( MWA8_BANK15 )	/* ROM bank 14 */
+static ADDRESS_MAP_START (wsc_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x00000, 0x03fff) AM_RAM			/* 16kb RAM + 16kb 4 colour tiles */
+	AM_RANGE(0x04000, 0x0ffff) AM_RAM			/* 16 colour tiles + palettes */
+	AM_RANGE(0x10000, 0x1ffff) AM_RAMBANK(1)	/* SRAM bank */
+	AM_RANGE(0x20000, 0x2ffff) AM_ROMBANK(2)	/* ROM bank 1 */
+	AM_RANGE(0x30000, 0x3ffff) AM_ROMBANK(3)	/* ROM bank 2 */
+	AM_RANGE(0x40000, 0x4ffff) AM_ROMBANK(4)	/* ROM bank 3 */
+	AM_RANGE(0x50000, 0x5ffff) AM_ROMBANK(5)	/* ROM bank 4 */
+	AM_RANGE(0x60000, 0x6ffff) AM_ROMBANK(6)	/* ROM bank 5 */
+	AM_RANGE(0x70000, 0x7ffff) AM_ROMBANK(7)	/* ROM bank 6 */
+	AM_RANGE(0x80000, 0x8ffff) AM_ROMBANK(8)	/* ROM bank 7 */
+	AM_RANGE(0x90000, 0x9ffff) AM_ROMBANK(9)	/* ROM bank 8 */
+	AM_RANGE(0xA0000, 0xAffff) AM_ROMBANK(10)	/* ROM bank 9 */
+	AM_RANGE(0xB0000, 0xBffff) AM_ROMBANK(11)	/* ROM bank 10 */
+	AM_RANGE(0xC0000, 0xCffff) AM_ROMBANK(12)	/* ROM bank 11 */
+	AM_RANGE(0xD0000, 0xDffff) AM_ROMBANK(13)	/* ROM bank 12 */
+	AM_RANGE(0xE0000, 0xEffff) AM_ROMBANK(14)	/* ROM bank 13 */
+	AM_RANGE(0xF0000, 0xFffff) AM_ROMBANK(15)	/* ROM bank 14 */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START (wsc_readmem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x00000, 0x03fff) AM_READ( MRA8_RAM )		/* 16kb RAM + 16kb 4 colour tiles */
-	AM_RANGE( 0x04000, 0x0ffff) AM_READ( MRA8_RAM )		/* 16 colour tiles + palettes */
-	AM_RANGE( 0x10000, 0x1ffff) AM_READ( MRA8_BANK1 )	/* SRAM bank */
-	AM_RANGE( 0x20000, 0x2ffff) AM_READ( MRA8_BANK2 )	/* ROM bank 1 */
-	AM_RANGE( 0x30000, 0x3ffff) AM_READ( MRA8_BANK3 )	/* ROM bank 2 */
-	AM_RANGE( 0x40000, 0x4ffff) AM_READ( MRA8_BANK4 )	/* ROM bank 3 */
-	AM_RANGE( 0x50000, 0x5ffff) AM_READ( MRA8_BANK5 )	/* ROM bank 4 */
-	AM_RANGE( 0x60000, 0x6ffff) AM_READ( MRA8_BANK6 )	/* ROM bank 5 */
-	AM_RANGE( 0x70000, 0x7ffff) AM_READ( MRA8_BANK7 )	/* ROM bank 6 */
-	AM_RANGE( 0x80000, 0x8ffff) AM_READ( MRA8_BANK8 )	/* ROM bank 7 */
-	AM_RANGE( 0x90000, 0x9ffff) AM_READ( MRA8_BANK9 )	/* ROM bank 8 */
-	AM_RANGE( 0xA0000, 0xAffff) AM_READ( MRA8_BANK10 )	/* ROM bank 9 */
-	AM_RANGE( 0xB0000, 0xBffff) AM_READ( MRA8_BANK11 )	/* ROM bank 10 */
-	AM_RANGE( 0xC0000, 0xCffff) AM_READ( MRA8_BANK12 )	/* ROM bank 11 */
-	AM_RANGE( 0xD0000, 0xDffff) AM_READ( MRA8_BANK13 )	/* ROM bank 12 */
-	AM_RANGE( 0xE0000, 0xEffff) AM_READ( MRA8_BANK14 )	/* ROM bank 13 */
-	AM_RANGE( 0xF0000, 0xFffff) AM_READ( MRA8_BANK15 )	/* ROM bank 14 */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START (wsc_writemem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x00000, 0x03fff) AM_WRITE( MWA8_RAM )		/* 16kb RAM + 16kb 4 colour tiles */
-	AM_RANGE( 0x04000, 0x0ffff) AM_WRITE( MWA8_RAM )		/* 16 colour tiles + palettes */
-	AM_RANGE( 0x10000, 0x1ffff) AM_WRITE( MWA8_BANK1 )	/* SRAM bank */
-	AM_RANGE( 0x20000, 0x2ffff) AM_WRITE( MWA8_BANK2 )	/* ROM bank 1 */
-	AM_RANGE( 0x30000, 0x3ffff) AM_WRITE( MWA8_BANK3 )	/* ROM bank 2 */
-	AM_RANGE( 0x40000, 0x4ffff) AM_WRITE( MWA8_BANK4 )	/* ROM bank 3 */
-	AM_RANGE( 0x50000, 0x5ffff) AM_WRITE( MWA8_BANK5 )	/* ROM bank 4 */
-	AM_RANGE( 0x60000, 0x6ffff) AM_WRITE( MWA8_BANK6 )	/* ROM bank 5 */
-	AM_RANGE( 0x70000, 0x7ffff) AM_WRITE( MWA8_BANK7 )	/* ROM bank 6 */
-	AM_RANGE( 0x80000, 0x8ffff) AM_WRITE( MWA8_BANK8 )	/* ROM bank 7 */
-	AM_RANGE( 0x90000, 0x9ffff) AM_WRITE( MWA8_BANK9 )	/* ROM bank 8 */
-	AM_RANGE( 0xA0000, 0xAffff) AM_WRITE( MWA8_BANK10 )	/* ROM bank 9 */
-	AM_RANGE( 0xB0000, 0xBffff) AM_WRITE( MWA8_BANK11 )	/* ROM bank 10 */
-	AM_RANGE( 0xC0000, 0xCffff) AM_WRITE( MWA8_BANK12 )	/* ROM bank 11 */
-	AM_RANGE( 0xD0000, 0xDffff) AM_WRITE( MWA8_BANK13 )	/* ROM bank 12 */
-	AM_RANGE( 0xE0000, 0xEffff) AM_WRITE( MWA8_BANK14 )	/* ROM bank 13 */
-	AM_RANGE( 0xF0000, 0xFffff) AM_WRITE( MWA8_BANK15 )	/* ROM bank 14 */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START (wswan_readport, ADDRESS_SPACE_IO, 8)
-	AM_RANGE( 0x00, 0xff) AM_READ( wswan_port_r )		/* I/O ports */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START (wswan_writeport, ADDRESS_SPACE_IO, 8)
-	AM_RANGE( 0x00, 0xff) AM_WRITE( wswan_port_w )		/* I/O ports */
+static ADDRESS_MAP_START (wswan_io, ADDRESS_SPACE_IO, 8)
+	AM_RANGE(0x00, 0xff) AM_READWRITE( wswan_port_r, wswan_port_w )	/* I/O ports */
 ADDRESS_MAP_END
 
 INPUT_PORTS_START( wswan )
-	PORT_START /* IN 0 : cursors */
-	PORT_BIT( 0x1, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP) PORT_NAME("Up") 
-	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN) PORT_NAME("Down") 
-	PORT_BIT( 0x8, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT) PORT_NAME("Left") 
-	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT) PORT_NAME("Right") 
+	PORT_START /* IN 0 : cursors (X1-X4) */
+	PORT_BIT( 0x1, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP) PORT_NAME("X1 - Up") 
+	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN) PORT_NAME("X3 - Down") 
+	PORT_BIT( 0x8, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT) PORT_NAME("X4 - Left") 
+	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT) PORT_NAME("X2 - Right") 
 	PORT_START /* IN 1 : Buttons */
 	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_START1) PORT_NAME("Start") 
 	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("Button A") 
 	PORT_BIT( 0x8, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_NAME("Button B") 
+	PORT_START /* IN 2 : cursors (Y1-Y4) */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Y1 - Up") PORT_CODE(KEYCODE_W)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Y3 - Down") PORT_CODE(KEYCODE_S)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Y4 - Left") PORT_CODE(KEYCODE_A)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Y2 - Right") PORT_CODE(KEYCODE_D)
 INPUT_PORTS_END
 
 static gfx_decode gfxdecodeinfo[] =
@@ -124,10 +86,10 @@ static gfx_decode gfxdecodeinfo[] =
 static PALETTE_INIT( wswan )
 {
 	int ii;
-	for( ii = 0; ii < 8; ii++ )
+	for( ii = 0; ii < 16; ii++ )
 	{
-		UINT8 shade = ii * (256 / 8);
-		palette_set_color( 7 - ii, shade, shade, shade );
+		UINT8 shade = ii * (256 / 16);
+		palette_set_color( 15 - ii, shade, shade, shade );
 	}
 }
 
@@ -139,16 +101,19 @@ static struct CustomSound_interface wswan_sound_interface =
 static MACHINE_DRIVER_START( wswan )
 	/* Basic machine hardware */
 	/* FIXME: CPU should be a V30MZ not a V30! */
-	MDRV_CPU_ADD_TAG("main", V30, 3072000)		/* 3.072 Mhz */
-	MDRV_CPU_PROGRAM_MAP(wswan_readmem, wswan_writemem)
-	MDRV_CPU_IO_MAP(wswan_readport, wswan_writeport)
-	MDRV_CPU_VBLANK_INT(wswan_scanline_interrupt, 158/*159?*/)	/* 1 int each scanline */
+	MDRV_CPU_ADD_TAG("main", V30, 4 * 3072000)		/* 3.072 Mhz, V30MZ is approx. 4 times faster than V30 */
+	MDRV_CPU_PROGRAM_MAP(wswan_mem, 0)
+	MDRV_CPU_IO_MAP(wswan_io, 0)
+	MDRV_CPU_VBLANK_INT(wswan_scanline_interrupt, 159/*159?*/)	/* 1 int each scanline */
 
-	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_FRAMES_PER_SECOND(75)
 	MDRV_VBLANK_DURATION(0)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( wswan )
+	MDRV_NVRAM_HANDLER( wswan )
+
+	MDRV_MACHINE_START( wswan )
+	MDRV_MACHINE_RESET( wswan )
 
 	MDRV_VIDEO_START( generic_bitmapped )
 	MDRV_VIDEO_UPDATE( generic_bitmapped )
@@ -157,7 +122,7 @@ static MACHINE_DRIVER_START( wswan )
 	MDRV_SCREEN_SIZE(28*8, 18*8)
 	MDRV_VISIBLE_AREA(0*8, 28*8-1, 0*8, 18*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(8)
+	MDRV_PALETTE_LENGTH(16)
 	MDRV_COLORTABLE_LENGTH(4*16)
 	MDRV_PALETTE_INIT(wswan)
 
@@ -172,7 +137,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( wscolor )
 	MDRV_IMPORT_FROM(wswan)
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_PROGRAM_MAP(wsc_readmem, wsc_writemem)
+	MDRV_CPU_PROGRAM_MAP(wsc_mem, 0)
 	MDRV_PALETTE_LENGTH(4096)
 MACHINE_DRIVER_END
 
@@ -182,16 +147,17 @@ static void wswan_cartslot_getinfo(const device_class *devclass, UINT32 state, u
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case DEVINFO_INT_COUNT:			info->i = 1; break;
+		case DEVINFO_INT_MUST_BE_LOADED:	info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_wswan_cart; break;
+		case DEVINFO_PTR_INIT:			info->init = device_init_wswan_cart; break;
+		case DEVINFO_PTR_LOAD:			info->load = device_load_wswan_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "ws,wsc"); break;
+		case DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "ws,wsc"); break;
 
-		default:										cartslot_device_getinfo(devclass, state, info); break;
+		default:				cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
@@ -207,10 +173,12 @@ SYSTEM_CONFIG_END
 
 ROM_START( wswan )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x40000, REGION_USER1, 0 )	/* SRAM/EEPROM area */
 ROM_END
 
 ROM_START( wscolor )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x40000, REGION_USER1, 0 )	/* SRAM/EEPROM area */
 ROM_END
 
 /*     YEAR  NAME     PARENT  COMPAT  MACHINE  INPUT  INIT  CONFIG  COMPANY   FULLNAME*/
