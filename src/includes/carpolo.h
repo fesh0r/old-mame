@@ -8,6 +8,7 @@
 
 /*----------- defined in machine/carpolo.c -----------*/
 
+MACHINE_START( carpolo );
 MACHINE_RESET( carpolo );
 
 READ8_HANDLER( carpolo_interrupt_cause_r );
@@ -42,7 +43,6 @@ extern UINT8 *carpolo_alpharam;
 extern UINT8 *carpolo_spriteram;
 
 PALETTE_INIT( carpolo );
-WRITE8_HANDLER( carpolo_videoram_w );
 VIDEO_START( carpolo );
 VIDEO_UPDATE( carpolo );
 VIDEO_EOF( carpolo );

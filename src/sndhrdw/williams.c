@@ -144,7 +144,7 @@ ADDRESS_MAP_END
 
 
 /* PIA structure */
-static struct pia6821_interface cvsd_pia_intf =
+static const pia6821_interface cvsd_pia_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ DAC_0_data_w, cvsd_talkback_w, 0, 0,
@@ -271,6 +271,7 @@ void williams_cvsd_init(int pianum)
 		offs_t offset = 0x8000 * ((bank >> 2) & 3) + 0x20000 * (bank & 3);
 		memory_configure_bank(5, bank, 1, &ROM[0x10000 + offset], 0);
 	}
+	memory_set_bank(5, 0);
 
 	/* reset the IRQ state */
 	pia_set_input_ca1(williams_pianum, 1);

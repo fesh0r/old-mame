@@ -1,5 +1,3 @@
-#include "driver.h"
-
 #define USE_NAMCOS22_SPEED_HACK
 
 #define REGION_CGRAM           REGION_GFX1
@@ -34,8 +32,13 @@ extern enum namcos22_gametype
 
 #define NAMCOS22_PALETTE_SIZE 0x8000
 
+/*----------- defined in drivers/namcos22.c -----------*/
+
 extern const gfx_layout namcos22_cg_layout;
 
+/*----------- defined in vidhrdw/namcos22.c -----------*/
+
+extern UINT32 *namcos22_cgram;
 extern UINT32 *namcos22_textram;
 extern UINT32 *namcos22_polygonram;
 extern UINT32 *namcos22_gamma;
@@ -75,7 +78,6 @@ VIDEO_UPDATE( namcos22 );
 VIDEO_START( namcos22s );
 VIDEO_UPDATE( namcos22s );
 
-void namcos22_WriteDataToRenderDevice( UINT32 data );
 void namcos22_draw_direct_poly( const UINT16 *pSource );
 extern UINT32 namcos22_point_rom_r( offs_t offs );
 extern void namcos22_enable_slave_simulation( void );

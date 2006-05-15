@@ -22,8 +22,8 @@ static FILE *exec_output;
 
 extern UINT32 sp_read_reg(UINT32 reg);
 extern void sp_write_reg(UINT32 reg, UINT32 data);
-extern READ32_HANDLER( dp_reg_r );
-extern WRITE32_HANDLER( dp_reg_w );
+extern READ32_HANDLER( n64_dp_reg_r );
+extern WRITE32_HANDLER( n64_dp_reg_w );
 extern void sp_set_status(UINT32 status);
 
 
@@ -130,7 +130,7 @@ typedef struct
 #define VREG_S(reg, offset)		rsp.v[(reg)].s[(7 - (offset))]
 #define VREG_L(reg, offset)		rsp.v[(reg)].l[(3 - (offset))]
 
-#define VEC_EL_1(x,z)		(7 - vector_elements_1[(x)][(z)])
+#define VEC_EL_1(x,z)		(vector_elements_1[(x)][(z)])
 #define VEC_EL_2(x,z)		(vector_elements_2[(x)][(z)])
 
 #define ACCUM(x)		rsp.accum[(7-(x))].q
@@ -207,7 +207,10 @@ INLINE void WRITE16(UINT32 address, UINT16 data)
 
 	if (address & 1)
 	{
-		fatalerror("RSP: WRITE16: unaligned %08X, %04X at %08X\n", address, data, rsp.ppc);
+		//fatalerror("RSP: WRITE16: unaligned %08X, %04X at %08X\n", address, data, rsp.ppc);
+		program_write_byte_32be(address + 0, (data >> 8) & 0xff);
+		program_write_byte_32be(address + 1, (data >> 0) & 0xff);
+		return;
 	}
 
 	program_write_word_32be(address, data);
@@ -240,7 +243,7 @@ static UINT32 get_cop0_reg(int reg)
 	}
 	else if (reg >= 8 && reg < 16)
 	{
-		return dp_reg_r(reg - 8, 0x00000000);
+		return n64_dp_reg_r(reg - 8, 0x00000000);
 	}
 	else
 	{
@@ -256,7 +259,7 @@ static void set_cop0_reg(int reg, UINT32 data)
 	}
 	else if (reg >= 8 && reg < 16)
 	{
-		dp_reg_w(reg - 8, data, 0x00000000);
+		n64_dp_reg_w(reg - 8, data, 0x00000000);
 	}
 	else
 	{
@@ -1487,6 +1490,7 @@ static void handle_vector_ops(UINT32 op)
 
 				if (r > 32767) r = 32767;
 				if (r < -32768) r = -32768;
+
 				VREG_S(VDREG, del) = (INT16)(r);
 			}
 			CLEAR_ZERO_FLAGS();

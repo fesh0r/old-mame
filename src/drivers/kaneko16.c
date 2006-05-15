@@ -67,11 +67,15 @@ To Do:
 
 #include "driver.h"
 #include "machine/eeprom.h"
-#include "machine/kaneko16.h"
-#include "kaneko16.h"
+#include "includes/kaneko16.h"
 #include "sound/2203intf.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
+
+extern void (*toybox_mcu_run)(void);	/* one of the following */
+void bloodwar_mcu_run(void);
+void bonkadv_mcu_run(void);
+void gtmr_mcu_run(void);
 
 /***************************************************************************
 
@@ -143,6 +147,7 @@ static MACHINE_RESET( bloodwar )
 
 	kaneko16_priority.VIEW2_2_pri = 1;
 
+	toybox_mcu_run = bloodwar_mcu_run;
 	toybox_mcu_init();
 }
 
@@ -157,6 +162,7 @@ static MACHINE_RESET( bonkadv )
 
 	kaneko16_priority.VIEW2_2_pri = 1;
 
+	toybox_mcu_run = bonkadv_mcu_run;
 	toybox_mcu_init();
 }
 
@@ -180,6 +186,7 @@ static MACHINE_RESET( gtmr )
 
 	kaneko16_priority.VIEW2_2_pri = 1;
 
+	toybox_mcu_run = gtmr_mcu_run;
 	toybox_mcu_init();
 }
 
@@ -3122,7 +3129,7 @@ ROM_START( gtmr )
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 )	/* Samples, plus room for expansion */
 	ROM_LOAD( "mm-100-401-e0.bin",  0x000000, 0x100000, CRC(b9cbfbee) SHA1(051d48a68477ef9c29bd5cc0bb7955d513a0ab94) )	// 16 x $10000
 
-	ROM_REGION( 0x100000, REGION_SOUND2, 0 )	/* Samples */
+	ROM_REGION( 0x100000, REGION_SOUND2, ROMREGION_ERASE00 )	/* Samples */
 	/* Not present on this board */
 ROM_END
 
@@ -3151,7 +3158,7 @@ ROM_START( gtmra )
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 )	/* Samples, plus room for expansion */
 	ROM_LOAD( "mm-100-401-e0.bin",  0x000000, 0x100000, CRC(b9cbfbee) SHA1(051d48a68477ef9c29bd5cc0bb7955d513a0ab94) )	// 16 x $10000
 
-	ROM_REGION( 0x100000, REGION_SOUND2, 0 )	/* Samples */
+	ROM_REGION( 0x100000, REGION_SOUND2, ROMREGION_ERASE00 )	/* Samples */
 	/* Not present on this board */
 ROM_END
 

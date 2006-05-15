@@ -28,14 +28,6 @@ static tilemap *bg_tilemap;
 static int laserbat_video_page = 0;
 static int laserbat_input_mux = 0;
 
-extern unsigned char *s2636_1_ram;
-extern unsigned char *s2636_2_ram;
-extern unsigned char *s2636_3_ram;
-
-extern unsigned char s2636_1_dirty[4];
-extern unsigned char s2636_2_dirty[4];
-extern unsigned char s2636_3_dirty[4];
-
 static mame_bitmap *collision_bitmap;
 
 /* information for the single 32x32 sprite displayed */
@@ -581,7 +573,7 @@ static WRITE8_HANDLER( zaccaria_port0b_w )
 	last = data;
 }
 
-static struct pia6821_interface pia_0_intf =
+static const pia6821_interface pia_0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ zaccaria_port0a_r, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ zaccaria_port0a_w, zaccaria_port0b_w, 0, 0,
@@ -596,10 +588,14 @@ static struct AY8910interface ay8910_interface =
 	0
 };
 
+static MACHINE_START( catnmous )
+{
+	pia_config(0, PIA_STANDARD_ORDERING, &pia_0_intf);
+	return 0;
+}
+
 static MACHINE_RESET( catnmous )
 {
-	pia_unconfig();
-	pia_config(0, PIA_STANDARD_ORDERING, &pia_0_intf);
 	pia_reset();
 }
 
@@ -670,6 +666,7 @@ static MACHINE_DRIVER_START( catnmous )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
+	MDRV_MACHINE_START(catnmous)
 	MDRV_MACHINE_RESET(catnmous)
 
 	/* video hardware */
@@ -746,8 +743,8 @@ ROM_START( laserbat )
 	ROM_REGION( 0x0800, REGION_GFX2, ROMREGION_DISPOSE )
 	ROM_LOAD( "lb02.14l",     0x0000, 0x0800, CRC(d29962d1) SHA1(5b6d0856c3ebbd5833b522f7c0240309cf3c9777) )
 
-	ROM_REGION( 0x8000, REGION_PROMS, 0 )
-	ROM_LOAD( "82s100_prom",  0x0000, 0x8000, NO_DUMP )
+	ROM_REGION( 0x0100, REGION_PLDS, 0 )
+	ROM_LOAD( "82s100_prom",  0x0000, 0x00f5, NO_DUMP )
 ROM_END
 
 ROM_START( lazarian )
@@ -783,8 +780,8 @@ ROM_START( lazarian )
 	ROM_REGION( 0x0800, REGION_GFX2, ROMREGION_DISPOSE )
 	ROM_LOAD( "laz.14l",      0x0000, 0x0800, CRC(d29962d1) SHA1(5b6d0856c3ebbd5833b522f7c0240309cf3c9777) )
 
-	ROM_REGION( 0xb89f, REGION_PROMS, 0 )
-	ROM_LOAD( "lz82s100.jed", 0x0000, 0xb89f, CRC(693fb55b) SHA1(2ef9ff9f911b8199f15cc7627f99e82164d5b9c6) )
+	ROM_REGION( 0x0100, REGION_PLDS, 0 )
+	ROM_LOAD( "lz82s100.bin", 0x0000, 0x00f5, CRC(c3eb562a) SHA1(65dff81b2e5321d530e5171dab9aa3809ab38b4d) )
 ROM_END
 
 ROM_START( catnmous )
@@ -825,8 +822,8 @@ ROM_START( catnmous )
 	ROM_REGION( 0x0800, REGION_GFX2, ROMREGION_DISPOSE )
 	ROM_LOAD( "type01.14l",   0x0000, 0x0800, CRC(af79179a) SHA1(de61af7d02c93be326a33ee51572e3da7a25dab0) )
 
-	ROM_REGION( 0x0a3e, REGION_PROMS, 0 )
-	ROM_LOAD( "82s100.13m.jed", 0x0000, 0x0a3e, CRC(34987305) SHA1(6e47cce6cca312d12a13a57c32ff05794c28517b) )
+	ROM_REGION( 0x0100, REGION_PLDS, 0 )
+	ROM_LOAD( "82s100.13m",   0x0000, 0x00f5, CRC(6b724cdb) SHA1(8a0ca3b171b103661a3b2fffbca3d7162089e243) )
 ROM_END
 
 ROM_START( catmousa )
@@ -866,8 +863,8 @@ ROM_START( catmousa )
 	ROM_REGION( 0x0800, REGION_GFX2, ROMREGION_DISPOSE )
 	ROM_LOAD( "catnmous.14l", 0x0000, 0x0800, CRC(af79179a) SHA1(de61af7d02c93be326a33ee51572e3da7a25dab0) )
 
-	ROM_REGION( 0x8000, REGION_PROMS, 0 )
-	ROM_LOAD( "82s100.13m", 0x0000, 0x8000, NO_DUMP )
+	ROM_REGION( 0x0100, REGION_PLDS, 0 )
+	ROM_LOAD( "82s100.13m", 0x0000, 0x00f5, NO_DUMP )
 ROM_END
 
 

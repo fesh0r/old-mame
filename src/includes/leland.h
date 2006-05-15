@@ -46,7 +46,9 @@ READ8_HANDLER( indyheat_wheel_r );
 READ8_HANDLER( indyheat_analog_r );
 WRITE8_HANDLER( indyheat_analog_w );
 
+MACHINE_START( leland );
 MACHINE_RESET( leland );
+MACHINE_START( ataxx );
 MACHINE_RESET( ataxx );
 
 INTERRUPT_GEN( leland_master_interrupt );
@@ -108,8 +110,6 @@ void leland_dac_update(int dacnum, UINT8 sample);
 void leland_i186_sound_init(void);
 
 READ8_HANDLER( leland_i86_response_r );
-
-void leland_i86_optimize_address(offs_t offset);
 
 WRITE8_HANDLER( leland_i86_control_w );
 WRITE8_HANDLER( leland_i86_command_lo_w );

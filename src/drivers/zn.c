@@ -128,6 +128,7 @@ static struct
 	{ "jgakuen",  cp10, cp06 }, /* OK */
 	{ "plsmaswd", cp10, cp07 }, /* OK */
 	{ "stargld2", cp10, cp07 }, /* OK */
+	{ "plsmswda", cp10, cp07 }, /* OK */
 	{ "sfex2",    cp10, cp08 }, /* OK ( random crashes on garuda ) */
 	{ "sfex2j",   cp10, cp08 }, /* OK ( random crashes on garuda ) */
 	{ "sfex2a",   cp10, cp08 }, /* OK ( random crashes on garuda ) */
@@ -3145,7 +3146,7 @@ ROM_START( glpracr )
     ROM_CONTINUE(        0x10000, 0x18000 )
     ROM_LOAD( "gra-03",  0x28000, 0x20000, NO_DUMP )
 */
-	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* Q Sound Samples */
+	ROM_REGION( 0x400000, REGION_SOUND1, ROMREGION_ERASE00 ) /* Q Sound Samples */
 /* or QSound sample roms either
     ROM_LOAD( "gra-01m", 0x0000000, 0x400000, NO_DUMP )
 */
@@ -3684,6 +3685,29 @@ ROM_START( stargld2 )
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* Q Sound Samples */
 	ROM_LOAD16_WORD_SWAP( "sg2-01m", 0x0000000, 0x400000, CRC(643ea27b) SHA1(40747432d5cfebac54d3824b6a6f26b5e7742fc1) )
 ROM_END
+
+ROM_START( plsmswda )
+	CPZN2_BIOS
+
+	ROM_REGION32_LE( 0x80000, REGION_USER3, 0 )
+	ROM_LOAD( "sg2a-04", 0x0000000, 0x080000, CRC(66e5dada) SHA1(f2e50ee963b8a6aadf25a17b3ff6dcb428b8bdb2) )
+
+	ROM_REGION32_LE( 0x3000000, REGION_USER2, 0 )
+	ROM_LOAD( "sg2-05m", 0x0000000, 0x800000, CRC(f1759236) SHA1(fbe3a820a8c571dfb186eae68346e6461168ed48) )
+	ROM_LOAD( "sg2-06m", 0x0800000, 0x800000, CRC(33de4f72) SHA1(ab32af76b5682e3d9f67dadbaed35abc043912b4) )
+	ROM_LOAD( "sg2-07m", 0x1000000, 0x800000, CRC(72f724ba) SHA1(e6658b495d308d1de6710f87b5b9d346008b0c5a) )
+	ROM_LOAD( "sg2-08m", 0x1800000, 0x800000, CRC(9e169eee) SHA1(6141b1a7863fdfb200ca35d2893979a34dcc3f6c) )
+	ROM_LOAD( "sg2-09m", 0x2000000, 0x400000, CRC(33f73d4c) SHA1(954695a43e77b58585409678bd87c76adac1d855) )
+
+	ROM_REGION( 0x50000, REGION_CPU2, 0 ) /* 64k for the audio CPU (+banks) */
+	ROM_LOAD( "sg2-02",  0x00000, 0x08000, CRC(415ee138) SHA1(626083c8705f012552691c450f95401ddc88065b) )
+	ROM_CONTINUE(        0x10000, 0x18000 )
+	ROM_LOAD( "sg2-03",  0x28000, 0x20000, CRC(43806735) SHA1(88d389bcc79cbd4fa1f4b62008e171a897e77652) )
+
+	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* Q Sound Samples */
+	ROM_LOAD16_WORD_SWAP( "sg2-01m", 0x0000000, 0x400000, CRC(643ea27b) SHA1(40747432d5cfebac54d3824b6a6f26b5e7742fc1) )
+ROM_END
+
 
 ROM_START( strider2 )
 	CPZN2_BIOS
@@ -4355,7 +4379,7 @@ ROM_START( bldyror2 )
 	ROM_LOAD( "rom-2a.026",      0x1000000, 0x400000, CRC(b71d955d) SHA1(49fce452c70ceafc8a149fa9ff073589b7261882) )
 	ROM_LOAD( "rom-2b.210",      0x1400000, 0x400000, CRC(89959dde) SHA1(99d54b9876f38f5e625334bbd1439618cdf01d56) )
 
-	ROM_REGION32_LE( 0x0400000, REGION_USER3, 0 )
+	ROM_REGION32_LE( 0x0400000, REGION_USER3, ROMREGION_ERASE00 )
 
 	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "br2_u0412.412", 0x000001, 0x080000, CRC(e254dd8a) SHA1(5b8fcafcf2176e0b55efcf37799d7c0d97e01bdc) )
@@ -4514,6 +4538,7 @@ GAME( 1998, sfex2j,   sfex2,    coh3002c, zn, coh3002c, ROT0, "Capcom/Arika", "S
 GAME( 1998, sfex2a,   sfex2,    coh3002c, zn, coh3002c, ROT0, "Capcom/Arika", "Street Fighter EX 2 (ASIA 980312)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1998, plsmaswd, cpzn2,    coh3002c, zn, coh3002c, ROT0, "Capcom", "Plasma Sword (USA 980316)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1998, stargld2, plsmaswd, coh3002c, zn, coh3002c, ROT0, "Capcom", "Star Gladiator 2 (JAPAN 980316)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1998, plsmswda, plsmaswd, coh3002c, zn, coh3002c, ROT0, "Capcom", "Plasma Sword (ASIA 980316)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1998, tgmj,     cpzn2,    coh3002c, zn, coh3002c, ROT0, "Capcom/Arika", "Tetris The Grand Master (JAPAN 980710)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1998, techromn, cpzn2,    coh3002c, zn, coh3002c, ROT0, "Capcom", "Tech Romancer (EURO 980914)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1998, techromu, techromn, coh3002c, zn, coh3002c, ROT0, "Capcom", "Tech Romancer (USA 980914)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
@@ -4595,7 +4620,7 @@ GAME( 1997, gdarius2, gdarius,  coh1000tb,zn, coh1000tb, ROT0, "Taito", "G-Dariu
 /* A dummy driver, so that the bios can be debugged, and to serve as */
 /* parent for the coh-3002t.353 file, so that we do not have to include */
 /* it in every zip file */
-GAME( 1997, taitogn,  0,        coh3002t, zn, coh3002t, ROT0, "Sony/Taito", "Taito GNET", NOT_A_DRIVER )
+GAME( 1997, taitogn,  0,        coh3002t, zn, coh3002t, ROT0, "Sony/Taito", "Taito GNET", 0 )
 
 /* Eighting/Raizing */
 

@@ -1,239 +1,345 @@
 /***************************************************************************
 
-Arcadia System - (c) 1988 Arcadia Systems
+    Arcadia System - (c) 1988 Arcadia Systems
 
-Driver by Ernesto Corvi and Mariusz Wojcieszek
+    Driver by Ernesto Corvi and Mariusz Wojcieszek
 
-Games supported:
-SportTime Bowling
-Leader Board
-Ninja Mission
-Road Wars
-Sidewinder
-Space Ranger
-SportTime Table Hockey
-Spot
-Magic Johnson's Fast Break
-World Darts
-Xenon
-World Trophy Soccer
+    Games supported:
 
-Other Arcadia games (not dumped):
-Aaargh!
-Blasta Ball
-N.Y. Warriors
-Pool
-Rockford
+        SportTime Bowling
+        Leader Board
+        Ninja Mission
+        Road Wars
+        Sidewinder
+        Space Ranger
+        SportTime Table Hockey
+        Spot
+        Magic Johnson's Fast Break
+        World Darts
+        Xenon
+        World Trophy Soccer
 
-Hardware description (from targets.mame.net):
-In the late 80s, Arcadia collaborated with Mastertronic to create their own
-ten-interchangeable-game arcade platform called the Arcadia Multi Select system,
-using the same hardware as the beloved Commodore Amiga computer.
-(In fact, the Multi Select's main PCB is an A500 motherboard, to which the ROM
-cage is attached through the external expansion port).
-Reportedly the system was also (or was originally) supposed to have been released
-in two five-game Super Select versions--"Arcade Action" and "Sports Simulation"
--- but no specimens of these have ever been seen.
+    Other Arcadia games (not dumped):
 
-NOTES and TODO:
-- To get into service mode, hold down F2 before pressing a button after
-the 'INITIALIZATION OK' message. Pressing F2 during game brings service mode also.
-- The coin input mechanism isnt well understood yet. There seems the be 2
-pins per coin slot attached to the system. Right now im using a kludge
-that doesnt work all the time.
-- No audio yet.
-- Driver uses Kickstart 1.3 atm, while actual pcb uses Kickstart 1.2
+        Aaargh!
+        Blasta Ball
+        N.Y. Warriors
+        Pool
+        Rockford
 
-Issues:
-- ar_fast is missing score and time display, this needs non-dma sprite emulation
-- ar_sdwr tries to write above chip mem, blitter accesses above chipmem are
-discarded, this looks like game bug
-- ar_dart has some sprite glitches on game screen
-- ar_sdwr has some gfx glitches on background
+    Hardware description (from targets.mame.net):
+
+        In the late 80s, Arcadia collaborated with Mastertronic to create their own
+        ten-interchangeable-game arcade platform called the Arcadia Multi Select system,
+        using the same hardware as the beloved Commodore Amiga computer.
+
+        (In fact, the Multi Select's main PCB is an A500 motherboard, to which the ROM
+        cage is attached through the external expansion port).
+
+        Reportedly the system was also (or was originally) supposed to have been released
+        in two five-game Super Select versions--"Arcade Action" and "Sports Simulation"
+        -- but no specimens of these have ever been seen.
+
+    NOTES and TODO:
+        - To get into service mode, hold down F2 before pressing a button after
+        the 'INITIALIZATION OK' message. Pressing F2 during game brings service
+        mode also.
 
 ***************************************************************************/
 
 #include "driver.h"
+#include "sound/custom.h"
 #include "includes/amiga.h"
 
-/**************************************************************************
-
-  Autoconfig support
-
-***************************************************************************/
 
 
-#define AUTOCONF_SIZE_2MEG		0x06
-#define AUTOCONF_ROM_VALID		0x10
-#define AUTOCONF_ZORRO_II		0xc0
-#define AUTOCONF_NO_SHUTUP		0x40
+/*************************************
+ *
+ *  Globals
+ *
+ *************************************/
 
-#ifdef LSB_FIRST
-#define WRITE_WORD(offs, data) \
-	*(offs) = ((UINT16)data & 0x00ff); \
-	*(offs + 1) = ((UINT16)data & 0xff00) >> 8;
-#else
-#define WRITE_WORD(offs, data) \
-	*(offs + 1) = ((UINT16)data & 0x00ff); \
-	*(offs) = ((UINT16)data & 0xff00) >> 8;
-#endif
+static UINT8 coin_counter[2];
 
-#define NORMAL( offs, data ) WRITE_WORD( offs, ( data & 0xf0 ) << 8 ); WRITE_WORD( offs+2, ( data & 0x0f ) << 12 );
-#define INV( offs, data ) WRITE_WORD( offs, ~( ( data & 0xf0 ) << 8 ) ); WRITE_WORD( offs+2, ~( ( data & 0x0f ) << 12 ) );
 
-static void autoconfig_init( UINT32 rom_boot_vector )
+
+/*************************************
+ *
+ *  Dynamic installation of ROM board
+ *
+ *************************************/
+
+WRITE16_HANDLER( arcadia_multibios_change_game )
 {
-
-	UINT8 *autoconf, *expansion;
-
-	autoconf = (UINT8*)amiga_autoconfig_mem;
-	expansion = (UINT8*)amiga_expansion_ram;
-
-	/* setup a dummy autoconfig device */
-	memset( autoconf, 0xff, 0x2000 );
-
-	/* type */
-	NORMAL( autoconf+0x00, ( AUTOCONF_ZORRO_II | AUTOCONF_SIZE_2MEG | AUTOCONF_ROM_VALID ) );
-	/* product number */
-	INV( autoconf+0x04, 0x01 )
-	/* flags */
-	INV( autoconf+0x08, AUTOCONF_NO_SHUTUP );
-	/* manufacturer id */
-	INV( autoconf+0x10, 0x07 )
-	INV( autoconf+0x14, 0x70 )
-	/* serial number */
-	INV( autoconf+0x18, 0x00 );
-	INV( autoconf+0x1c, 0x00 );
-	INV( autoconf+0x20, 0x00 );
-	INV( autoconf+0x24, 0x00 );
-	/* rom offset */
-	INV( autoconf+0x28, 0x10 );
-	INV( autoconf+0x2c, 0x00 );
-	/* status reg */
-	NORMAL( autoconf+0x40, 0x00 );
-
-	/* setup the diagnostics area */
-	WRITE_WORD( autoconf+0x1000, 0x9000 );
-	WRITE_WORD( autoconf+0x1002, 0x0106 );
-	WRITE_WORD( autoconf+0x1004, 0x0100 );
-
-	/* setup the rom entry points */
-	WRITE_WORD( autoconf+0x1100, 0x4ef9 ); /* JMP */
-	WRITE_WORD( autoconf+0x1102, (rom_boot_vector >> 16) & 0xffff);
-	WRITE_WORD( autoconf+0x1104, rom_boot_vector & 0xffff);
-
-	/* move it to what will be our remapped area */
-	memcpy( expansion, autoconf, 0x1110 );
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x97ffff, 0, 0, (data == 0) ? MRA16_BANK2 : MRA16_NOP);
 }
 
 
-static ADDRESS_MAP_START(readmem, ADDRESS_SPACE_PROGRAM, 16)
-	AM_RANGE( 0x000000, 0x07ffff) AM_READ( MRA16_BANK1 ) AM_REGION(REGION_CPU1, 0) /* Chip Ram - 512k or System ROM mirror*/
-	AM_RANGE( 0x200000, 0x201fff) AM_READ( MRA16_RAM ) AM_BASE(&amiga_expansion_ram)
-	AM_RANGE( 0x800000, 0x97ffff) AM_READ( MRA16_BANK2 )
-	AM_RANGE( 0x980000, 0x9fbfff) AM_READ( MRA16_ROM ) AM_REGION(REGION_USER2, 0)
-	AM_RANGE( 0x9fc000, 0x9fffff) AM_READ( MRA16_RAM ) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
-	AM_RANGE( 0xbfd000, 0xbfefff) AM_READ( amiga_cia_r )        /* 8510's CIA A and CIA B */
-	AM_RANGE( 0xe80000, 0xe8ffff) AM_READ( MRA16_RAM ) AM_BASE(&amiga_autoconfig_mem)
-	AM_RANGE( 0xdbf000, 0xdfffff) AM_READ( amiga_custom_r )     /* Custom Chips */
-	AM_RANGE( 0xf00000, 0xf7ffff) AM_NOP
-	AM_RANGE( 0xf80000, 0xffffff) AM_READ( MRA16_ROM ) AM_REGION(REGION_USER1, 0)  /* System ROM */
+
+/*************************************
+ *
+ *  Special port handlers
+ *
+ *************************************/
+
+static UINT32 arcadia_coin_counter_r(void *param)
+{
+	/* return coin counter values */
+	return *(UINT8 *)param & 3;
+}
+
+
+
+/*************************************
+ *
+ *  CIA-A port A access:
+ *
+ *  PA7 = game port 1, pin 6 (fire)
+ *  PA6 = game port 0, pin 6 (fire)
+ *  PA5 = /RDY (disk ready)
+ *  PA4 = /TK0 (disk track 00)
+ *  PA3 = /WPRO (disk write protect)
+ *  PA2 = /CHNG (disk change)
+ *  PA1 = /LED (LED, 0=bright / audio filter control)
+ *  PA0 = OVL (ROM/RAM overlay bit)
+ *
+ *************************************/
+
+static UINT8 arcadia_cia_0_porta_r(void)
+{
+	return readinputportbytag("CIA0PORTA");
+}
+
+static void arcadia_cia_0_porta_w(UINT8 data)
+{
+	/* switch banks as appropriate */
+	memory_set_bank(1, data & 1);
+
+	/* swap the write handlers between ROM and bank 1 based on the bit */
+	if ((data & 1) == 0)
+		/* overlay disabled, map RAM on 0x000000 */
+		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MWA16_BANK1);
+
+	else
+		/* overlay enabled, map Amiga system ROM on 0x000000 */
+		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MWA16_ROM);
+
+	/* bit 2 = Power Led on Amiga */
+	set_led_status(0, (data & 2) ? 0 : 1);
+}
+
+
+
+/*************************************
+ *
+ *  CIA-A port B access:
+ *
+ *  PB7 = parallel data 7
+ *  PB6 = parallel data 6
+ *  PB5 = parallel data 5
+ *  PB4 = parallel data 4
+ *  PB3 = parallel data 3
+ *  PB2 = parallel data 2
+ *  PB1 = parallel data 1
+ *  PB0 = parallel data 0
+ *
+ *************************************/
+
+static UINT8 arcadia_cia_0_portb_r(void)
+{
+	return readinputportbytag("CIA0PORTB");
+}
+
+static void arcadia_cia_0_portb_w(UINT8 data)
+{
+	/* writing a 0 in the low bit clears one of the coins */
+	if ((data & 1) == 0)
+	{
+		if (coin_counter[0] > 0)
+			coin_counter[0]--;
+		else if (coin_counter[1] > 0)
+			coin_counter[1]--;
+	}
+}
+
+
+
+/*************************************
+ *
+ *  Coin counters
+ *
+ *************************************/
+
+static void coin_changed_callback(void *param, UINT32 oldval, UINT32 newval)
+{
+	UINT8 *counter = param;
+
+	/* check for a 0 -> 1 transition */
+	if (!oldval && newval && *counter < 3)
+		*counter += 1;
+}
+
+
+static void arcadia_reset_coins(void)
+{
+	/* reset coin counters */
+	coin_counter[0] = coin_counter[1] = 0;
+}
+
+
+
+/*************************************
+ *
+ *  Memory map
+ *
+ *************************************/
+
+static ADDRESS_MAP_START( amiga_map, ADDRESS_SPACE_PROGRAM, 16 )
+	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	AM_RANGE(0x000000, 0x07ffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram) AM_SIZE(&amiga_chip_ram_size)
+	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE(amiga_cia_r, amiga_cia_w)
+	AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) AM_BASE(&amiga_custom_regs)
+	AM_RANGE(0xe80000, 0xe8ffff) AM_READWRITE(amiga_autoconfig_r, amiga_autoconfig_w)
+	AM_RANGE(0xf80000, 0xffffff) AM_ROM AM_REGION(REGION_USER1, 0)		/* Kickstart BIOS */
+
+	AM_RANGE(0x800000, 0x97ffff) AM_ROMBANK(2) AM_REGION(REGION_USER3, 0)
+	AM_RANGE(0x980000, 0x9fbfff) AM_ROM AM_REGION(REGION_USER2, 0)
+	AM_RANGE(0x9fc000, 0x9ffffd) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x9ffffe, 0x9fffff) AM_WRITE(arcadia_multibios_change_game)
+	AM_RANGE(0xf00000, 0xf7ffff) AM_ROM AM_REGION(REGION_USER2, 0)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(writemem, ADDRESS_SPACE_PROGRAM, 16)
-	AM_RANGE( 0x000000, 0x07ffff) AM_WRITE( MWA16_ROM ) /* Chip Ram - 512k or System ROM mirror*/
-	AM_RANGE( 0x200000, 0x201fff) AM_WRITE( MWA16_RAM ) AM_BASE(&amiga_expansion_ram)
-	AM_RANGE( 0x800000, 0x9fbfff) AM_WRITE( MWA16_ROM )	/* Game cartridge and bios*/
-	AM_RANGE( 0x9fc000, 0x9fffff) AM_WRITE( MWA16_RAM ) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
-	AM_RANGE( 0xbfd000, 0xbfefff) AM_WRITE( amiga_cia_w )        /* 8510's CIA A and CIA B */
-	AM_RANGE( 0xe80000, 0xe8ffff) AM_WRITE( MWA16_RAM ) AM_BASE(&amiga_autoconfig_mem)
-	AM_RANGE( 0xdbf000, 0xdfffff) AM_WRITE( amiga_custom_w )     /* Custom Chips */
-	AM_RANGE( 0xf80000, 0xffffff) AM_WRITE( MWA16_ROM )            /* System ROM */
-ADDRESS_MAP_END
 
-/**************************************************************************
-***************************************************************************/
+
+/*************************************
+ *
+ *  Input ports
+ *
+ *************************************/
 
 INPUT_PORTS_START( arcadia )
-	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_START_TAG("CIA0PORTA")
+	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_SPECIAL )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_COIN1 )  /* Fake coin 1 */
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_COIN2 )  /* Fake coin 2 */
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )  /* Unused */
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )  /* Unused */
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 
-	PORT_START				/* parallel port controls */
+	PORT_START_TAG("CIA0PORTB")
 	PORT_DIPNAME( 0x01, 0x01, "DSW1 1" )
 	PORT_DIPSETTING(    0x01, "Reset" )
 	PORT_DIPSETTING(    0x00, "Set" )
-	PORT_SERVICE_NO_TOGGLE(0x02, IP_ACTIVE_LOW)
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED ) /* coin counter read?, emulated in machine/arcadia.c */
+	PORT_BIT( 0x30, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(arcadia_coin_counter_r, &coin_counter[0])
+	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(arcadia_coin_counter_r, &coin_counter[1])
 
-	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) /* Joystick - Port 1 */
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_COCKTAIL /* Joystick - Port 2 */
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_COCKTAIL
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
+	PORT_START_TAG("JOY0DAT")
+	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(amiga_joystick_convert, "P1JOY")
+	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNUSED )
+
+	PORT_START_TAG("JOY1DAT")
+	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(amiga_joystick_convert, "P2JOY")
+	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNUSED )
+
+	PORT_START_TAG("POTGO")
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
+	PORT_BIT( 0xaaff, IP_ACTIVE_HIGH, IPT_UNUSED )
+
+	PORT_START_TAG("P1JOY")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+
+	PORT_START_TAG("P2JOY")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
+
+	PORT_START_TAG("COINS")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 INPUT_PORTS_END
 
-static const gfx_decode gfxdecodeinfo[] =
+
+
+/*************************************
+ *
+ *  Sound definitions
+ *
+ *************************************/
+
+static struct CustomSound_interface amiga_custom_interface =
 {
-	{ -1 } /* end of array */
+	amiga_sh_start
 };
 
-static MACHINE_DRIVER_START( arcadia )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( M68000, 7159090)        /* 7.15909 Mhz (NTSC) */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(amiga_irq, 262)
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_RESET( amiga )
+
+/*************************************
+ *
+ *  Machine driver
+ *
+ *************************************/
+
+static MACHINE_DRIVER_START( arcadia )
+
+	/* basic machine hardware */
+	MDRV_CPU_ADD(M68000, 7159090)        /* 7.15909 Mhz (NTSC) */
+	MDRV_CPU_PROGRAM_MAP(amiga_map,0)
+	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 262)
+
+	MDRV_FRAMES_PER_SECOND(59.997)
+	MDRV_VBLANK_DURATION(0)
+
+	MDRV_MACHINE_RESET(amiga)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-
-  /* video hardware */
+	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
-	MDRV_SCREEN_SIZE(456, 262)
-	MDRV_VISIBLE_AREA(120, 456-1, 32, 262-1)
-	MDRV_GFXDECODE( gfxdecodeinfo )
+	MDRV_SCREEN_SIZE(512*2, 262)
+	MDRV_VISIBLE_AREA((129-8)*2, (449+8-1)*2, 44-8, 244+8-1)
 	MDRV_PALETTE_LENGTH(4096)
-	MDRV_COLORTABLE_LENGTH(4096)
-	MDRV_PALETTE_INIT( amiga )
+	MDRV_PALETTE_INIT(amiga)
 
-	MDRV_VIDEO_START( amiga )
-	MDRV_VIDEO_UPDATE( generic_bitmapped )
+	MDRV_VIDEO_START(amiga)
+	MDRV_VIDEO_UPDATE(generic_bitmapped)
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+
+	MDRV_SOUND_ADD(CUSTOM, 3579545)
+	MDRV_SOUND_CONFIG(amiga_custom_interface)
+	MDRV_SOUND_ROUTE(0, "left", 0.50)
+	MDRV_SOUND_ROUTE(1, "right", 0.50)
+	MDRV_SOUND_ROUTE(2, "right", 0.50)
+	MDRV_SOUND_ROUTE(3, "left", 0.50)
 MACHINE_DRIVER_END
 
 
-/***************************************************************************
 
-ROMs definitions
+/*************************************
+ *
+ *  BIOS definition
+ *
+ *************************************/
 
-***************************************************************************/
 #define ROM_LOAD16_BYTE_BIOS(bios,name,offset,length,hash)     ROMX_LOAD(name, offset, length, hash, ROM_SKIP(1) | ROM_BIOS(bios+1))
 
 #define ARCADIA_BIOS \
-	ROM_REGION(0x80000, REGION_CPU1, 0) /* RAM */ \
 	ROM_REGION16_BE(0x80000, REGION_USER1, 0 ) \
-	ROM_LOAD16_WORD( "kick13.rom", 0x000000, 0x040000, CRC(c4f0f55f) SHA1(891e9a547772fe0c6c19b610baf8bc4ea7fcb785) ) \
+	ROM_LOAD16_WORD( "kick12.rom", 0x000000, 0x040000, CRC(a6ce1636) SHA1(11f9e62cf299f72184835b7b2a70a16333fc0d88) ) \
 	ROM_COPY( REGION_USER1, 0x000000, 0x040000, 0x040000 ) \
-	ROM_REGION16_BE(0x07c000, REGION_USER2, 0) \
-	ROM_LOAD16_BYTE_BIOS( 0, "scpa211h", 0x000000, 0x10000, CRC(be9dbdc5) SHA1(1554da09f051ec53937d65d4e451de51bc0c69e5) ) \
-	ROM_LOAD16_BYTE_BIOS( 0, "scpa211l", 0x000001, 0x10000, CRC(95b84504) SHA1(99999fc40909001b37aa1b543918118becc81800) ) \
-	ROM_LOAD16_BYTE_BIOS( 1, "scpav3_0.1h", 0x000000, 0x10000, CRC(2d8e1a06) SHA1(be187f34624aeda110017c4a09242f7c00ef56a4) ) \
-	ROM_LOAD16_BYTE_BIOS( 1, "scpav3_0.1l", 0x000001, 0x10000, CRC(e4f38fab) SHA1(01c2eb5965070893be6734eb1372576727716476) ) \
+	\
+	ROM_REGION16_BE( 0x80000, REGION_USER2, 0 ) \
+	ROM_LOAD16_BYTE_BIOS( 0, "scpav3_0.1h", 0x000000, 0x10000, CRC(2d8e1a06) SHA1(be187f34624aeda110017c4a09242f7c00ef56a4) ) \
+	ROM_LOAD16_BYTE_BIOS( 0, "scpav3_0.1l", 0x000001, 0x10000, CRC(e4f38fab) SHA1(01c2eb5965070893be6734eb1372576727716476) ) \
+	ROM_LOAD16_BYTE_BIOS( 1, "scpa211h", 0x000000, 0x10000, CRC(be9dbdc5) SHA1(1554da09f051ec53937d65d4e451de51bc0c69e5) ) \
+	ROM_LOAD16_BYTE_BIOS( 1, "scpa211l", 0x000001, 0x10000, CRC(95b84504) SHA1(99999fc40909001b37aa1b543918118becc81800) ) \
 	ROM_LOAD16_BYTE_BIOS( 2, "gcp-1-hi", 0x000000, 0x10000, CRC(67d44523) SHA1(f3e3699132cdf741518accb890c04d17374c4049) ) \
 	ROM_LOAD16_BYTE_BIOS( 2, "gcp-1-lo", 0x000001, 0x10000, CRC(65d9b9cf) SHA1(5c60a0dd4a0a7d9b938ce6b0446a6ad2ecaf07ec) ) \
 	ROM_LOAD16_BYTE_BIOS( 2, "gcp-2-hi", 0x020000, 0x10000, CRC(1d7594ae) SHA1(6173bbfecf18d7d9ee6bc2b6753ca9d42fabd781) ) \
@@ -248,41 +354,30 @@ ROM_START( ar_bios )
 ROM_END
 
 SYSTEM_BIOS_START( ar_bios )
-	SYSTEM_BIOS_ADD(0, "onep211", "OnePlay 2.11" )
-	SYSTEM_BIOS_ADD(1, "onep300", "OnePlay 3.00" )
+	SYSTEM_BIOS_ADD(0, "onep300", "OnePlay 3.00" )
+	SYSTEM_BIOS_ADD(1, "onep211", "OnePlay 2.11" )
 	SYSTEM_BIOS_ADD(2, "tenp211", "TenPlay 2.11" )
 SYSTEM_BIOS_END
-/*
-AIRH from Arcadia Multi Select
-------------------------------
 
-2 Roms
 
-1L and 1H
 
-There is also a PAL16L8 but I cannot read that.
-*/
+/*************************************
+ *
+ *  Specific games
+ *
+ *************************************/
 
+/* AIRH */
 ROM_START( ar_airh )
 	ARCADIA_BIOS
 
 	ROM_REGION16_BE(0x180000, REGION_USER3, 0)
 	ROM_LOAD16_BYTE( "airh_1h.bin", 0x00000, 0x10000, CRC(290e8e9e) SHA1(9215e36f02adf4064934aab99accefcb17ea6d3f) )
 	ROM_LOAD16_BYTE( "airh_1l.bin", 0x00001, 0x10000, CRC(155452b6) SHA1(aeaa67ea9cc543c9a43094545450159e4784fb5c) )
-
 ROM_END
 
-/*
-BOWL V 2.1 from Arcadia Multi Select
-------------------------------------
 
-6 Roms
-
-1,2 and 3 Lo and Hi
-
-There is also a PAL16L8 but I cannot read that.
-*/
-
+/* BOWL V 2.1 */
 ROM_START( ar_bowl )
 	ARCADIA_BIOS
 
@@ -295,23 +390,14 @@ ROM_START( ar_bowl )
 	ROM_LOAD16_BYTE( "bowl_3l.bin", 0x40001, 0x10000, CRC(5ce00809) SHA1(d7f336df28a033b38b5296537826d164aaf5e8c9) )
 ROM_END
 
-/*
-DART V 2.1 from Arcadia Multi Select
-------------------------------------
 
-12 Roms
-
-1,2,3,4,5 and 6 Lo and Hi
-
-There is also a PAL16L8 but I cannot read that.
-*/
-
+/* DART V 2.1 */
 ROM_START( ar_dart )
 	ARCADIA_BIOS
 
 	ROM_REGION16_BE(0x180000, REGION_USER3, 0)
 	ROM_LOAD16_BYTE( "dart_1h.bin", 0x00000, 0x10000, CRC(4d6a33e2) SHA1(1a227b5b0b4aca40d46af62e44deebca60582363) )
-	ROM_LOAD16_BYTE( "dart_1l.bin", 0x00001, 0x10000, CRC(0f7261df) SHA1(d4cf35aee0b3d385f1e94865b016166b1b60760a) )
+	ROM_LOAD16_BYTE( "dart_1l.bin", 0x00001, 0x10000, CRC(3fa66973) SHA1(66b59870f8ed1bb5b46b2887d99a6a71ff0514ba) )
 	ROM_LOAD16_BYTE( "dart_2h.bin", 0x20000, 0x10000, CRC(3a30426a) SHA1(bf9226d2bfd1fb2d70e55e30aa3dde953baf5792) )
 	ROM_LOAD16_BYTE( "dart_2l.bin", 0x20001, 0x10000, CRC(479c0b73) SHA1(2ad958f4f2d902635d030cf3f466097da3cc421c) )
 	ROM_LOAD16_BYTE( "dart_3h.bin", 0x40000, 0x10000, CRC(dd217562) SHA1(80e21112a87259785e5d172249dfe8058970fd4d) )
@@ -322,27 +408,23 @@ ROM_START( ar_dart )
 	ROM_LOAD16_BYTE( "dart_5l.bin", 0x80001, 0x10000, CRC(df4103cc) SHA1(c792cc52148afa7bde6458704d9de2550b6eb636) )
 	ROM_LOAD16_BYTE( "dart_6h.bin", 0xa0000, 0x10000, CRC(e21cc8be) SHA1(04280eef26f4a97c2280bdec19b1bc586fceffb0) )
 	ROM_LOAD16_BYTE( "dart_6l.bin", 0xa0001, 0x10000, CRC(21112d4e) SHA1(95e49aa2f23c6d005a0de3cf96a1c06adeacf2a9) )
-
 ROM_END
 
+
 /*
-Magic Johnson's Fast Break
-Arcadia Systems 1988
+    Magic Johnson's Fast Break
 
+    Piggyback 1.5mb rom board
 
-
-Piggyback 1.5mb rom board
-
-         3h       7h       x
-         2h       6h       x
-         1h       5h       x
-         scpa1h   4h       8h
-         3l       7l       x
-         2l       6l       x
- DS1220Y   1l       5l       x
- sec-scpa  scpa1l   4l       8l
+             3h       7h       x
+             2h       6h       x
+             1h       5h       x
+             scpa1h   4h       8h
+             3l       7l       x
+             2l       6l       x
+     DS1220Y   1l       5l       x
+     sec-scpa  scpa1l   4l       8l
 */
-
 ROM_START( ar_fast )
 	ARCADIA_BIOS
 
@@ -365,6 +447,8 @@ ROM_START( ar_fast )
 	ROM_LOAD16_BYTE( "fastv28.8l", 0x0e0001, 0x10000, CRC(82603f68) SHA1(8affe73e97b966b8e63bff2c7914fb5ead7b60ff) )
 ROM_END
 
+
+/* LDRB */
 ROM_START( ar_ldrb )
 	ARCADIA_BIOS
 
@@ -387,17 +471,8 @@ ROM_START( ar_ldrb )
 	ROM_LOAD16_BYTE( "lbg2408l", 0xe0001, 0x10000, CRC(1f1ea828) SHA1(4af463bc6d58d64d4f082971c71654a6bb0c26bc) )
 ROM_END
 
-/*
-LDRB V 2.5 from Arcadia Multi Select
-------------------------------------
 
-16 Roms
-
-1,2,3,4,5,6,7 and 8 Lo and Hi
-
-There is also a PAL16L8 but I cannot read that.
-*/
-
+/* LDRB V 2.5 */
 ROM_START( ar_ldrba )
 	ARCADIA_BIOS
 
@@ -420,17 +495,8 @@ ROM_START( ar_ldrba )
 	ROM_LOAD16_BYTE( "ldrb_8l.bin", 0xe0001, 0x10000, CRC(322f52eb) SHA1(3033eb753fb8b3bf56b152377bf567b06a0c8144) )
 ROM_END
 
-/*
-NINJ V 2.5 from Arcadia Multi Select
-------------------------------------
 
-12 Roms
-
-1,2,3,4,5 and 6 Lo and Hi
-
-There is also a PAL16L8 but I cannot read that.
-*/
-
+/* NINJ V 2.5 */
 ROM_START( ar_ninj )
 	ARCADIA_BIOS
 
@@ -449,17 +515,8 @@ ROM_START( ar_ninj )
 	ROM_LOAD16_BYTE( "ninj_6l.bin", 0xa0001, 0x10000, CRC(9e5407e3) SHA1(85a8383573f3cd120f323e867c7fa2b6badd5aad) )
 ROM_END
 
-/*
-RDWR V 2.3 from Arcadia Multi Select
-------------------------------------
 
-8 Roms
-
-1,2,3 and 4 Lo and Hi
-
-There is also a PAL16L8 but I cannot read that.
-*/
-
+/* RDWR V 2.3 */
 ROM_START( ar_rdwr )
 	ARCADIA_BIOS
 
@@ -474,17 +531,8 @@ ROM_START( ar_rdwr )
 	ROM_LOAD16_BYTE( "rdwr_4l.bin", 0x60001, 0x10000, CRC(fff39238) SHA1(05b4a70e1f808254e1fb20a15c460655d14d4216) )
 ROM_END
 
-/*
-SDWR V 2.1 from Arcadia Multi Select
-------------------------------------
 
-12 Roms
-
-1,2,3,4,5 and 6 Lo and Hi
-
-There is also a PAL16L8 but I cannot read that.
-*/
-
+/* SDWR V 2.1 */
 ROM_START( ar_sdwr )
 	ARCADIA_BIOS
 
@@ -503,6 +551,8 @@ ROM_START( ar_sdwr )
 	ROM_LOAD16_BYTE( "sdwr_6l.bin", 0xa0001, 0x10000, CRC(2544ccd7) SHA1(953aa00f2610ecd31db6e36964cbe7c2866050b9) )
 ROM_END
 
+
+/* SOCC */
 ROM_START( ar_socc )
 	ARCADIA_BIOS
 
@@ -521,6 +571,8 @@ ROM_START( ar_socc )
 	ROM_LOAD16_BYTE( "socc30.6lo", 0xa0001, 0x10000, CRC(b93e13ea) SHA1(0fac9cb54099f0d0ad61eb6f5bd3686c27a045b9) )
 ROM_END
 
+
+/* SPOT */
 ROM_START( ar_spot )
 	ARCADIA_BIOS
 
@@ -543,17 +595,8 @@ ROM_START( ar_spot )
 	ROM_LOAD16_BYTE( "spotv2.8l", 0xe0001, 0x10000, CRC(4d7f8f05) SHA1(04690717cec5912cd12ccb7135614842f5597898) )
 ROM_END
 
-/*
-SPRG from Arcadia Multi Select
-------------------------------
 
-8 Roms
-
-1,2,3 and 4 Lo and Hi
-
-There is also a PAL16L8 but I cannot read that.
-*/
-
+/* SPRG */
 ROM_START( ar_sprg )
 	ARCADIA_BIOS
 
@@ -568,17 +611,8 @@ ROM_START( ar_sprg )
 	ROM_LOAD16_BYTE( "sprg_4l.bin", 0x60001, 0x10000, CRC(13ba011f) SHA1(75da2fbbfe2e957992b2a73609737d777fe9a151) )
 ROM_END
 
-/*
-XEON V 2.3 from Arcadia Multi Select
-------------------------------------
 
-8 Roms
-
-1,2,3 and 4 Lo and Hi
-
-There is also a PAL16L8 but I cannot read that.
-*/
-
+/* XEON V 2.3 */
 ROM_START( ar_xeon )
 	ARCADIA_BIOS
 
@@ -593,423 +627,106 @@ ROM_START( ar_xeon )
 	ROM_LOAD16_BYTE( "xeon_4l.bin", 0x60001, 0x10000, CRC(47b60bf5) SHA1(10d8addc090ad3fa2663c40e22f736ac3522b177) )
 ROM_END
 
-/***************************************************************************
 
-  Decryption routines
 
-***************************************************************************/
+/*************************************
+ *
+ *  Low byte ROM decoding
+ *
+ *************************************/
 
-/* decryption of bios rom: scpa211l, spotv3.0l, scpav3_0.1l */
-static void arcadia_decode(void)
+INLINE void generic_decode(int region, int bit7, int bit6, int bit5, int bit4, int bit3, int bit2, int bit1, int bit0)
 {
-	UINT16* rom = (UINT16 *)memory_region(REGION_USER2);
+	UINT16 *rom = (UINT16 *)memory_region(region);
 	int i;
 
-	for ( i = 0; i < 0x20000; i += 2 )
+	/* only the low byte of ROMs are encrypted in these games */
+	for (i = 0; i < 0x20000/2; i++)
+		rom[i] = BITSWAP16(rom[i], 15,14,13,12,11,10,9,8, bit7,bit6,bit5,bit4,bit3,bit2,bit1,bit0);
+}
+
+
+
+/*************************************
+ *
+ *  Generic driver init
+ *
+ *************************************/
+
+DRIVER_INIT( arcadia )
+{
+	static const amiga_machine_interface arcadia_intf =
 	{
-		*rom = BITSWAP16(*rom, 15,14,13,12,11,10,9,8, 6, 1, 0, 2, 3, 4, 5, 7 );
-		rom ++;
-	}
+		ANGUS_CHIP_RAM_MASK,
+		arcadia_cia_0_porta_r, arcadia_cia_0_portb_r,
+		arcadia_cia_0_porta_w, arcadia_cia_0_portb_w,
+		NULL, NULL,
+		NULL, NULL,
+		NULL, NULL,
+		NULL, NULL,
+		NULL,  arcadia_reset_coins
+	};
+	UINT16 *biosrom;
 
-}
-
-/* decryption of game roms */
-
-/* ar_airh: airh_1l.bin */
-static void airh_decode(void)
-{
-	UINT16* rom = (UINT16 *)memory_region(REGION_USER3);
-	int i;
-
-	for ( i = 0; i < 0x20000; i += 2 )
-	{
-		*rom = BITSWAP16(*rom, 15,14,13,12,11,10,9,8, 5, 0, 2, 4, 7, 6, 1, 3 );
-		rom ++;
-	}
-}
-
-/* ar_bowl: bowl_1l.bin */
-static void bowl_decode(void)
-{
-	UINT16* rom = (UINT16 *)memory_region(REGION_USER3);
-	int i;
-
-	for ( i = 0; i < 0x20000; i += 2 )
-	{
-		*rom = BITSWAP16(*rom, 15,14,13,12,11,10,9,8, 7, 6, 0, 1, 2, 3, 4, 5 );
-		rom ++;
-	}
-}
-
-/* ar_dart: dart_1l.bin */
-static void dart_decode(void)
-{
-	UINT16* rom = (UINT16 *)memory_region(REGION_USER3);
-	int i;
-
-	for ( i = 0; i < 0x20000; i += 2 )
-	{
-		*rom = BITSWAP16(*rom, 15,14,13,12,11,10,9,8, 4, 0, 7, 6, 3, 1, 2, 5 );
-		rom ++;
-	}
-
-	/* patch needed for Arcadia bios to recognize game properly */
-	/* maybe dart_1l.bin is a bad dump? */
-	rom = (UINT16 *)memory_region(REGION_USER3);
-	*rom = 0x4afc;
-}
-
-/* ar_ldrba: ldrb_1l.bin */
-static void ldrba_decode(void)
-{
-	UINT16* rom = (UINT16 *)memory_region(REGION_USER3);
-	int i;
-
-	for ( i = 0; i < 0x20000; i += 2 )
-	{
-		*rom = BITSWAP16(*rom, 15,14,13,12,11,10,9,8, 2, 3, 4, 1, 0, 7, 5, 6 );
-		rom ++;
-	}
-}
-
-  /* ar_ninj: ninj_1l.bin */
-static void ninj_decode(void)
-{
-	UINT16* rom = (UINT16 *)memory_region(REGION_USER3);
-	int i;
-
-	for ( i = 0; i < 0x20000; i += 2 )
-	{
-		*rom = BITSWAP16(*rom, 15,14,13,12,11,10,9,8, 1, 6, 5, 7, 4, 2, 0, 3 );
-		rom ++;
-	}
-}
-
-/* ar_rdwr: rdwr_1l.bin */
-static void rdwr_decode(void)
-{
-	UINT16* rom = (UINT16 *)memory_region(REGION_USER3);
-	int i;
-
-	for ( i = 0; i < 0x20000; i += 2 )
-	{
-		*rom = BITSWAP16(*rom, 15,14,13,12,11,10,9,8, 3, 1, 6, 4, 0, 5, 2, 7 );
-		rom ++;
-	}
-}
-
-/* ar_sdwr: sdwr_1l.bin */
-static void sdwr_decode(void)
-{
-	UINT16* rom = (UINT16 *)memory_region(REGION_USER3);
-	int i;
-
-	for ( i = 0; i < 0x20000; i += 2 )
-	{
-		*rom = BITSWAP16(*rom, 15,14,13,12,11,10,9,8, 6, 3, 4, 5, 2, 1, 0, 7 );
-		rom ++;
-	}
-}
-
-/* ar_socc: socc30.1lo */
-static void socc_decode(void)
-{
-	UINT16* rom = (UINT16 *)memory_region(REGION_USER3);
-	int i;
-
-	for ( i = 0; i < 0x20000; i += 2 )
-	{
-		*rom = BITSWAP16(*rom, 15,14,13,12,11,10,9,8, 0, 7, 1, 6, 5, 4, 3, 2 );
-		rom ++;
-	}
-}
-
-/* ar_sprg: sprg_1l.bin */
-static void sprg_decode(void)
-{
-	UINT16* rom = (UINT16 *)memory_region(REGION_USER3);
-	int i;
-
-	for ( i = 0; i < 0x20000; i += 2 )
-	{
-		*rom = BITSWAP16(*rom, 15,14,13,12,11,10,9,8, 4, 7, 3, 0, 6, 5, 2, 1 );
-		rom ++;
-	}
-}
-
-/* ar_xeon: xeon_1l.bin */
-static void xeon_decode(void)
-{
-	UINT16* rom = (UINT16 *)memory_region(REGION_USER3);
-	int i;
-
-	for ( i = 0; i < 0x20000; i += 2 )
-	{
-		*rom = BITSWAP16(*rom, 15,14,13,12,11,10,9,8, 3, 1, 2, 4, 0, 5, 6, 7 );
-		rom ++;
-	}
-}
-
-/***************************************************************************
-
-                  Arcadia machine interface
-
-***************************************************************************/
-
-static unsigned char coin_counter[2];
-
-static int arcadia_cia_0_portA_r( void )
-{
-	int ret = readinputport( 0 ) & 0xc0;
-	ret |= 0x3f;
-	return ret; /* Gameport 1 and 0 buttons */
-}
-
-static int arcadia_cia_0_portB_r( void )
-{
-	/* parallel port */
-	int ret = 0;
-	ret = readinputport( 1 ) & 0x0f;
-
-	ret |= ( coin_counter[0] & 3 ) << 4;
-	ret |= ( coin_counter[1] & 3 ) << 6;
-
-	logerror( "Coin counter read at PC=%06x\n", activecpu_get_pc() );
-	return ret;
-}
-
-static void arcadia_cia_0_portA_w( int data )
-{
-	if ( (data & 1) == 1)
-	{
-		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MRA16_BANK1 );
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MWA16_ROM );
-	}
-	else if ( ((data & 1) == 0))
-	{
-		/* overlay disabled, map RAM on 0x000000 */
-		memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MRA16_RAM );
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MWA16_RAM );
-	}
-
-	set_led_status( 0, ( data & 2 ) ? 0 : 1 ); /* bit 2 = Power Led on Amiga*/
-}
-
-static void arcadia_cia_0_portB_w( int data )
-{
-	/* parallel port */
-	/* bit 0 = coin counter reset? */
-	if ( (data & 1) == 1 ) {
-		if (coin_counter[0] > 0 )
-			coin_counter[0]--;
-		if (coin_counter[1] > 0 )
-			coin_counter[1]--;
-	}
-}
-
-static void arcadia_update_coins(void)
-{
-	/* update coin counters */
-
-	/* check for a 0 -> 1 transition */
-	if ( readinputport( 0 ) & 0x20 ) {
-		if ( ( coin_counter[0] & 0x80 ) == 0 ) {
-			if ( coin_counter[0] < 3 )
-				coin_counter[0]++;
-			coin_counter[0] |= 0x80;
-		}
-	} else
-		coin_counter[0] = 0;
-
-	/* check for a 0 -> 1 transition */
-	if ( readinputport( 0 ) & 0x10 ) {
-		if ( ( coin_counter[1] & 0x80 ) == 0 ) {
-			if ( coin_counter[1] < 3 )
-				coin_counter[1]++;
-			coin_counter[1] |= 0x80;
-		}
-	} else
-		coin_counter[1] = 0;
-}
-
-static void arcadia_reset_coins(void)
-{
-	/* reset coin counters */
-	coin_counter[0] = coin_counter[1] = 0;
-}
-
-static UINT16 arcadia_read_joy0dat(void)
-{
-	int input = ( readinputport( 2 ) >> 4 );
-	int	top,bot,lft,rgt;
-
-	top = ( input >> 3 ) & 1;
-	bot = ( input >> 2 ) & 1;
-	lft = ( input >> 1 ) & 1;
-	rgt = input & 1;
-
-	if ( lft ) top ^= 1;
-	if ( rgt ) bot ^= 1;
-
-	return ( bot | ( rgt << 1 ) | ( top << 8 ) | ( lft << 9 ) );
-}
-
-static UINT16 arcadia_read_joy1dat(void)
-{
-	int input = ( readinputport( 2 ) & 0x0f );
-	int	top,bot,lft,rgt;
-
-	top = ( input >> 3 ) & 1;
-	bot = ( input >> 2 ) & 1;
-	lft = ( input >> 1 ) & 1;
-	rgt = input & 1;
-
-	if ( lft ) top ^= 1;
-	if ( rgt ) bot ^= 1;
-
-	return ( bot | ( rgt << 1 ) | ( top << 8 ) | ( lft << 9 ) );
-}
-
-/***************************************************************************
-
-                  Driver init
-
-***************************************************************************/
-
-static const struct amiga_machine_interface arcadia_intf =
-{
-	arcadia_cia_0_portA_r,
-	arcadia_cia_0_portB_r,
-	arcadia_cia_0_portA_w,
-	arcadia_cia_0_portB_w,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	arcadia_read_joy0dat,
-	arcadia_read_joy1dat,
-	NULL,
-	NULL,
-	arcadia_update_coins,
-	arcadia_reset_coins
-};
-
-static struct
-{
-	const char*	name;
-	void (*decodefun)(void);
-} arcadia_config_table[] =
-{
-	{ "ar_airh",	airh_decode },
-	{ "ar_bowl",	bowl_decode },
-	{ "ar_dart",	dart_decode },
-	{ "ar_ldrba",	ldrba_decode },
-	{ "ar_ninj",	ninj_decode },
-	{ "ar_rdwr",	rdwr_decode },
-	{ "ar_sdwr",	sdwr_decode },
-	{ "ar_socc",	socc_decode },
-	{ "ar_sprg",	sprg_decode },
-	{ "ar_xeon",	xeon_decode },
-	{ NULL,			NULL }
-};
-
-WRITE16_HANDLER(arcadia_multibios_change_game)
-{
-	if (data == 0)
-	{
-		memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x97ffff, 0, 0, MRA16_BANK2 );
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x97ffff, 0, 0, MWA16_NOP );
-	}
-	else
-	{
-		memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x97ffff, 0, 0, MRA16_NOP );
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x97ffff, 0, 0, MWA16_NOP );
-	}
-}
-
-DRIVER_INIT(arcadia)
-{
-	UINT32 boot_vector;
-	UINT16* RAM;
-	UINT8 is_multi_game_bios;
-	int	  i;
-
+	/* configure our Amiga setup */
 	amiga_machine_config(&arcadia_intf);
 
 	/* set up memory */
-	memory_set_bankptr(1, memory_region(REGION_USER1));
-	memory_set_bankptr(2, memory_region(REGION_USER3));
-
-	RAM = (UINT16*)memory_region(REGION_USER2);
+	memory_configure_bank(1, 0, 1, amiga_chip_ram, 0);
+	memory_configure_bank(1, 1, 1, memory_region(REGION_USER1), 0);
 
 	/* OnePlay bios is encrypted, TenPlay is not */
-	if ( RAM[0] != 0x4afc )
-	{
-		is_multi_game_bios = 0;
-		arcadia_decode();
-	}
-	else
-	{
-		is_multi_game_bios = 1;
-	}
+	biosrom = (UINT16 *)memory_region(REGION_USER2);
+	if (biosrom[0] != 0x4afc)
+		generic_decode(REGION_USER2, 6, 1, 0, 2, 3, 4, 5, 7);
 
-	/* determine boot vector */
-	boot_vector = (RAM[0x16/2] << 16) | RAM[0x18/2];
-
-	/* set up autoconfig */
-	autoconfig_init( boot_vector );
-
-	/* install game switch handler for TenPlay */
-	if ( is_multi_game_bios )
-	{
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x009ffffe, 0x009fffff, 0, 0, arcadia_multibios_change_game );
-	}
-
-	/* decrypt game */
-	for ( i = 0; arcadia_config_table[i].name != NULL; i++ )
-	{
-		if ( strcmp( Machine->gamedrv->name, arcadia_config_table[i].name ) == 0 )
-		{
-			arcadia_config_table[i].decodefun();
-		}
-	}
+	/* request notifications when the coins change */
+	input_port_set_changed_callback(port_tag_to_index("COINS"), 0x01, coin_changed_callback, &coin_counter[0]);
+	input_port_set_changed_callback(port_tag_to_index("COINS"), 0x02, coin_changed_callback, &coin_counter[1]);
 }
 
 
-/* This kludge should be gone after sound and sound irqs are emulated */
-READ16_HANDLER( dart_kludge2 )
-{
-	return 0;
-}
 
-READ16_HANDLER( dart_kludge1 )
-{
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x02a804, 0x02a805, 0, 0, dart_kludge2 );
-	return ((UINT16*)generic_nvram16)[0];
-}
+/*************************************
+ *
+ *  Per-game decryption
+ *
+ *************************************/
 
-DRIVER_INIT( ar_dart )
-{
-	init_arcadia();
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9fc000, 0x9fc001, 0, 0, dart_kludge1 );
-}
+DRIVER_INIT( none )  {                                                       init_arcadia(); }
+DRIVER_INIT( airh )  { generic_decode(REGION_USER3, 5, 0, 2, 4, 7, 6, 1, 3); init_arcadia(); }
+DRIVER_INIT( bowl )  { generic_decode(REGION_USER3, 7, 6, 0, 1, 2, 3, 4, 5); init_arcadia(); }
+DRIVER_INIT( dart )  { generic_decode(REGION_USER3, 4, 0, 7, 6, 3, 1, 2, 5); init_arcadia(); }
+DRIVER_INIT( ldrba ) { generic_decode(REGION_USER3, 2, 3, 4, 1, 0, 7, 5, 6); init_arcadia(); }
+DRIVER_INIT( ninj )  { generic_decode(REGION_USER3, 1, 6, 5, 7, 4, 2, 0, 3); init_arcadia(); }
+DRIVER_INIT( rdwr )  { generic_decode(REGION_USER3, 3, 1, 6, 4, 0, 5, 2, 7); init_arcadia(); }
+DRIVER_INIT( sdwr )  { generic_decode(REGION_USER3, 6, 3, 4, 5, 2, 1, 0, 7); init_arcadia(); }
+DRIVER_INIT( socc )  { generic_decode(REGION_USER3, 0, 7, 1, 6, 5, 4, 3, 2); init_arcadia(); }
+DRIVER_INIT( sprg )  { generic_decode(REGION_USER3, 4, 7, 3, 0, 6, 5, 2, 1); init_arcadia(); }
+DRIVER_INIT( xeon )  { generic_decode(REGION_USER3, 3, 1, 2, 4, 0, 5, 6, 7); init_arcadia(); }
 
+
+
+/*************************************
+ *
+ *  Game drivers
+ *
+ *************************************/
 
 /* BIOS */
-GAMEB( 1988, ar_bios,	0,		 ar_bios, arcadia, arcadia, 0,		 0, "Arcadia Systems", "Arcadia System BIOS", NOT_A_DRIVER )
+GAMEB( 1988, ar_bios,	0,		 ar_bios, arcadia, arcadia, 0,	   ROT0, "Arcadia Systems", "Arcadia System BIOS", NOT_A_DRIVER )
 
 /* working */
-GAMEB( 1988, ar_airh,	ar_bios, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "SportTime Table Hockey (Arcadia, V 2.1)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
-GAMEB( 1988, ar_bowl,	ar_bios, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "SportTime Bowling (Arcadia, V 2.1)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
-GAMEB( 1987, ar_dart,	ar_bios, ar_bios, arcadia, arcadia, ar_dart, 0, "Arcadia Systems", "World Darts (Arcadia, V 2.1)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
-GAMEB( 1988, ar_fast,	ar_bios, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "Magic Johnson's Fast Break (Arcadia, V 2.8)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
-GAMEB( 1988, ar_ldrb,	ar_bios, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "Leader Board (Arcadia, V 2.4?)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
-GAMEB( 1988, ar_ldrba,	ar_ldrb, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "Leader Board (Arcadia, V 2.5)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
-GAMEB( 1987, ar_ninj,	ar_bios, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "Ninja Mission (Arcadia, V 2.5)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
-GAMEB( 1988, ar_rdwr,	ar_bios, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "RoadWars (Arcadia, V 2.3)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND  )
-GAMEB( 1988, ar_sdwr,	ar_bios, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "Sidewinder (Arcadia, V 2.1)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
-GAMEB( 1989, ar_socc,	ar_bios, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "World Trophy Soccer (Arcadia, V 3.0)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
-GAMEB( 1990, ar_spot,	ar_bios, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "Spot (Arcadia)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
-GAMEB( 1987, ar_sprg,	ar_bios, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "Space Ranger (Arcadia, V 2.0)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
-GAMEB( 1988, ar_xeon,	ar_bios, ar_bios, arcadia, arcadia, arcadia, 0, "Arcadia Systems", "Xenon (Arcadia, V 2.3)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND )
+GAMEB( 1988, ar_airh,	ar_bios, ar_bios, arcadia, arcadia, airh,  ROT0, "Arcadia Systems", "SportTime Table Hockey (Arcadia, V 2.1)", 0 )
+GAMEB( 1988, ar_bowl,	ar_bios, ar_bios, arcadia, arcadia, bowl,  ROT0, "Arcadia Systems", "SportTime Bowling (Arcadia, V 2.1)", 0 )
+GAMEB( 1987, ar_dart,	ar_bios, ar_bios, arcadia, arcadia, dart,  ROT0, "Arcadia Systems", "World Darts (Arcadia, V 2.1)", 0 )
+GAMEB( 1988, ar_fast,	ar_bios, ar_bios, arcadia, arcadia, none,  ROT0, "Arcadia Systems", "Magic Johnson's Fast Break (Arcadia, V 2.8)", 0 )
+GAMEB( 1988, ar_ldrb,	ar_bios, ar_bios, arcadia, arcadia, none,  ROT0, "Arcadia Systems", "Leader Board (Arcadia, V 2.4?)", 0 )
+GAMEB( 1988, ar_ldrba,	ar_ldrb, ar_bios, arcadia, arcadia, ldrba, ROT0, "Arcadia Systems", "Leader Board (Arcadia, V 2.5)", 0 )
+GAMEB( 1987, ar_ninj,	ar_bios, ar_bios, arcadia, arcadia, ninj,  ROT0, "Arcadia Systems", "Ninja Mission (Arcadia, V 2.5)", 0 )
+GAMEB( 1988, ar_rdwr,	ar_bios, ar_bios, arcadia, arcadia, rdwr,  ROT0, "Arcadia Systems", "RoadWars (Arcadia, V 2.3)", 0  )
+GAMEB( 1988, ar_sdwr,	ar_bios, ar_bios, arcadia, arcadia, sdwr,  ROT0, "Arcadia Systems", "Sidewinder (Arcadia, V 2.1)", 0 )
+GAMEB( 1989, ar_socc,	ar_bios, ar_bios, arcadia, arcadia, socc,  ROT0, "Arcadia Systems", "World Trophy Soccer (Arcadia, V 3.0)", 0 )
+GAMEB( 1990, ar_spot,	ar_bios, ar_bios, arcadia, arcadia, none,  ROT0, "Arcadia Systems", "Spot (Arcadia)", 0 )
+GAMEB( 1987, ar_sprg,	ar_bios, ar_bios, arcadia, arcadia, sprg,  ROT0, "Arcadia Systems", "Space Ranger (Arcadia, V 2.0)", 0 )
+GAMEB( 1988, ar_xeon,	ar_bios, ar_bios, arcadia, arcadia, xeon,  ROT0, "Arcadia Systems", "Xenon (Arcadia, V 2.3)", 0 )

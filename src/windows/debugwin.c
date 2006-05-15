@@ -51,7 +51,7 @@
 #define DEBUG_VIEW_STYLE_EX		0
 
 // edit box styles
-#define EDIT_BOX_STYLE			WS_CHILD | WS_VISIBLE
+#define EDIT_BOX_STYLE			WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL
 #define EDIT_BOX_STYLE_EX		0
 
 // combo box styles
@@ -88,6 +88,8 @@ enum
 	ID_2_BYTE_CHUNKS,
 	ID_4_BYTE_CHUNKS,
 	ID_REVERSE_VIEW,
+	ID_INCREASE_MEM_WIDTH,
+	ID_DECREASE_MEM_WIDTH,
 
 	ID_SHOW_RAW,
 	ID_SHOW_ENCRYPTED,
@@ -186,47 +188,6 @@ static UINT32 hscroll_height;
 static UINT32 vscroll_width;
 
 static int temporarily_fake_that_we_are_not_visible;
-
-static const char *address_space_name[ADDRESS_SPACES] = { "program", "data", "I/O" };
-
-static const char *memory_region_names[] =
-{
-	"REGION_INVALID",
-	"REGION_CPU1",
-	"REGION_CPU2",
-	"REGION_CPU3",
-	"REGION_CPU4",
-	"REGION_CPU5",
-	"REGION_CPU6",
-	"REGION_CPU7",
-	"REGION_CPU8",
-	"REGION_GFX1",
-	"REGION_GFX2",
-	"REGION_GFX3",
-	"REGION_GFX4",
-	"REGION_GFX5",
-	"REGION_GFX6",
-	"REGION_GFX7",
-	"REGION_GFX8",
-	"REGION_PROMS",
-	"REGION_SOUND1",
-	"REGION_SOUND2",
-	"REGION_SOUND3",
-	"REGION_SOUND4",
-	"REGION_SOUND5",
-	"REGION_SOUND6",
-	"REGION_SOUND7",
-	"REGION_SOUND8",
-	"REGION_USER1",
-	"REGION_USER2",
-	"REGION_USER3",
-	"REGION_USER4",
-	"REGION_USER5",
-	"REGION_USER6",
-	"REGION_USER7",
-	"REGION_USER8",
-	"REGION_DISKS"
-};
 
 
 
@@ -932,7 +893,6 @@ static void debug_view_draw_contents(debugview_info *view, HDC windc)
 				// if the attribute changed, adjust the colors
 				if (viewdata[col].attrib != last_attrib)
 				{
-//                  COLORREF oldfg = fgcolor;
 					COLORREF oldbg = bgcolor;
 
 					// reset to standard colors
@@ -1713,7 +1673,7 @@ static void memory_determine_combo_items(void)
 					ci->cpunum = cpunum;
 					ci->spacenum = spacenum;
 					ci->prefsize = MIN(cpuinfo->space[spacenum].databytes, 4);
-					sprintf(ci->name, "CPU #%d (%s) %s memory", cpunum, cpunum_name(cpunum), address_space_name[spacenum]);
+					sprintf(ci->name, "CPU #%d (%s) %s memory", cpunum, cpunum_name(cpunum), address_space_names[spacenum]);
 					*tail = ci;
 					tail = &ci->next;
 				}
@@ -1825,6 +1785,9 @@ static void memory_create_window(void)
 	AppendMenu(optionsmenu, MF_ENABLED, ID_4_BYTE_CHUNKS, "4-byte chunks\tCtrl+4");
 	AppendMenu(optionsmenu, MF_DISABLED | MF_SEPARATOR, 0, "");
 	AppendMenu(optionsmenu, MF_ENABLED, ID_REVERSE_VIEW, "Reverse View\tCtrl+R");
+	AppendMenu(optionsmenu, MF_DISABLED | MF_SEPARATOR, 0, "");
+	AppendMenu(optionsmenu, MF_ENABLED, ID_INCREASE_MEM_WIDTH, "Increase bytes per line\tCtrl+P");
+	AppendMenu(optionsmenu, MF_ENABLED, ID_DECREASE_MEM_WIDTH, "Decrease bytes per line\tCtrl+O");
 	AppendMenu(GetMenu(info->wnd), MF_ENABLED | MF_POPUP, (UINT_PTR)optionsmenu, "Options");
 	memory_update_checkmarks(info);
 
@@ -2034,6 +1997,18 @@ static int memory_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 					debug_view_end_update(info->view[0].view);
 					memory_update_checkmarks(info);
 					return 1;
+
+				case ID_INCREASE_MEM_WIDTH:
+					debug_view_begin_update(info->view[0].view);
+					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_WIDTH, debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_WIDTH) + 1);
+					debug_view_end_update(info->view[0].view);
+					return 1;
+
+				case ID_DECREASE_MEM_WIDTH:
+					debug_view_begin_update(info->view[0].view);
+					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_WIDTH, debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_WIDTH) - 1);
+					debug_view_end_update(info->view[0].view);
+					return 1;
 			}
 			break;
 	}
@@ -2066,6 +2041,14 @@ static int memory_handle_key(debugwin_info *info, WPARAM wparam, LPARAM lparam)
 
 			case 'R':
 				SendMessage(info->wnd, WM_COMMAND, ID_REVERSE_VIEW, 0);
+				return 1;
+
+			case 'P':
+				SendMessage(info->wnd, WM_COMMAND, ID_INCREASE_MEM_WIDTH, 0);
+				return 1;
+
+			case 'O':
+				SendMessage(info->wnd, WM_COMMAND, ID_DECREASE_MEM_WIDTH, 0);
 				return 1;
 		}
 	}

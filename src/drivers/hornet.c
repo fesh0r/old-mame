@@ -621,10 +621,11 @@ static WRITE32_HANDLER( comm1_w )
 static WRITE32_HANDLER( comm_rombank_w )
 {
 	int bank = data >> 24;
-	if( bank != comm_rombank ) {
-		comm_rombank = bank & 0x7f;
-		memory_set_bankptr(1, memory_region(REGION_USER3) + (comm_rombank * 0x10000));
-	}
+	if (memory_region(REGION_USER3))
+		if( bank != comm_rombank ) {
+			comm_rombank = bank & 0x7f;
+			memory_set_bankptr(1, memory_region(REGION_USER3) + (comm_rombank * 0x10000));
+		}
 }
 
 static READ32_HANDLER( comm0_unk_r )
@@ -892,10 +893,12 @@ static INTERRUPT_GEN( hornet_vblank )
 
 static MACHINE_RESET( hornet )
 {
-	memory_set_bankptr(1, memory_region(REGION_USER3));
+	if (memory_region(REGION_USER3))
+		memory_set_bankptr(1, memory_region(REGION_USER3));
 	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
 
-	memory_set_bankptr(5, memory_region(REGION_USER5));
+	if (memory_region(REGION_USER5))
+		memory_set_bankptr(5, memory_region(REGION_USER5));
 }
 
 static MACHINE_DRIVER_START( hornet )
@@ -955,11 +958,13 @@ static INTERRUPT_GEN( hornet_2board_vblank )
 
 static MACHINE_RESET( hornet_2board )
 {
-	memory_set_bankptr(1, memory_region(REGION_USER3));
+	if (memory_region(REGION_USER3))
+		memory_set_bankptr(1, memory_region(REGION_USER3));
 	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
 	cpunum_set_input_line(3, INPUT_LINE_RESET, ASSERT_LINE);
 
-	memory_set_bankptr(5, memory_region(REGION_USER5));
+	if (memory_region(REGION_USER5))
+		memory_set_bankptr(5, memory_region(REGION_USER5));
 }
 
 static MACHINE_DRIVER_START( hornet_2board )
@@ -1194,7 +1199,7 @@ ROM_START(sscope)
 	ROM_REGION32_BE(0x200000, REGION_USER1, 0)	/* PowerPC program */
 	ROM_LOAD16_WORD_SWAP("ss1-1.27p", 0x000000, 0x200000, CRC(3b6bb075) SHA1(babc134c3a20c7cdcaa735d5f1fd5cab38667a14))
 
-	ROM_REGION32_BE(0x800000, REGION_USER2, 0)	/* Data roms */
+	ROM_REGION32_BE(0x800000, REGION_USER2, ROMREGION_ERASE00)	/* Data roms */
 
 	ROM_REGION(0x80000, REGION_CPU2, 0)		/* 68K Program */
 	ROM_LOAD16_WORD_SWAP("ss1-1.7s", 0x000000, 0x80000, CRC(2805ea1d) SHA1(2556a51ee98cb8f59bf081e916c69a24532196f1))
@@ -1212,7 +1217,7 @@ ROM_START(sscopea)
 	ROM_REGION32_BE(0x200000, REGION_USER1, 0)	/* PowerPC program */
 	ROM_LOAD16_WORD_SWAP("830_a01.bin", 0x000000, 0x200000, CRC(39e353f1) SHA1(569b06969ae7a690f6d6e63cc3b5336061663a37))
 
-	ROM_REGION32_BE(0x800000, REGION_USER2, 0)	/* Data roms */
+	ROM_REGION32_BE(0x800000, REGION_USER2, ROMREGION_ERASE00)	/* Data roms */
 
 	ROM_REGION(0x80000, REGION_CPU2, 0)		/* 68K Program */
 	ROM_LOAD16_WORD_SWAP("ss1-1.7s", 0x000000, 0x80000, CRC(2805ea1d) SHA1(2556a51ee98cb8f59bf081e916c69a24532196f1))

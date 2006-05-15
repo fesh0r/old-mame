@@ -268,6 +268,7 @@ static void handle_missing_file(rom_load_data *romdata, const rom_entry *romp)
 	}
 }
 
+
 /*-------------------------------------------------
     dump_wrong_and_correct_checksums - dump an
     error message containing the wrong and the
@@ -475,7 +476,7 @@ static int open_rom_file(rom_load_data *romdata, const rom_entry *romp)
 	/* Attempt reading up the chain through the parents. It automatically also
        attempts any kind of load by checksum supported by the archives. */
 	romdata->file = NULL;
-	for (drv = Machine->gamedrv; !romdata->file && drv; drv = drv->clone_of)
+	for (drv = Machine->gamedrv; !romdata->file && drv; drv = driver_get_clone(drv))
 		if (drv->name && *drv->name)
 			romdata->file = mame_fopen_rom(drv->name, ROM_GETNAME(romp), ROM_GETHASHDATA(romp));
 
@@ -820,7 +821,6 @@ fatalerror:
 }
 
 
-
 /*-------------------------------------------------
     process_disk_entries - process all disk entries
     for a region
@@ -934,13 +934,12 @@ int rom_init(const rom_entry *romp)
 	static rom_load_data romdata;
 	int regnum;
 
-	/* reset the region list */
-	for (regnum = 0;regnum < REGION_MAX;regnum++)
-		regionlist[regnum] = NULL;
-
 	/* if no roms, bail */
 	if (romp == NULL)
 		return 0;
+
+	/* reset the region list */
+	memset((void *)regionlist, 0, sizeof(regionlist));
 
 	/* reset the romdata struct */
 	memset(&romdata, 0, sizeof(romdata));

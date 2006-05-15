@@ -113,6 +113,7 @@ static void update_irq_state(z80pio *pio, int ch)
 	int old_state = pio->int_state[ch];
 	int irq = 0;
 	int data;
+	if (pio->mode[ch] == 0x13) return;
 
 	/* only check if interrupts are enabled */
 	if (pio->enable[ch] & PIO_INT_ENABLE)
@@ -179,7 +180,7 @@ void z80pio_init(int which, z80pio_interface *intf)
 	pio->rdyr[1] = intf->rdyB;
 	z80pio_reset(which);
 
-    state_save_register_item("z80pio", which, pio->vector);
+    state_save_register_item_array("z80pio", which, pio->vector);
     state_save_register_item_array("z80pio", which, pio->mode);
     state_save_register_item_array("z80pio", which, pio->enable);
     state_save_register_item_array("z80pio", which, pio->mask);
@@ -247,7 +248,7 @@ void z80pio_c_w(int which, int ch, UINT8 data)
 			logerror("PIO-%c Mode %x\n", 'A' + ch, pio->mode[ch]);
 			if (pio->mode[ch] == 0x03)
 				pio->mode[ch] = 0x13;
-			break;
+			return;
 
 		case PIO_OP_INTC:		/* interrupt control */
 			pio->enable[ch] = data & 0xf0;

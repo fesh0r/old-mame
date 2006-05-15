@@ -176,7 +176,6 @@ static NVRAM_HANDLER( mitchell )
 static READ8_HANDLER( pang_port5_r )
 {
 	int bit;
-	extern const game_driver driver_mgakuen2;
 
 	bit = EEPROM_read_bit() << 7;
 
@@ -187,8 +186,23 @@ static READ8_HANDLER( pang_port5_r )
 	/* otherwise music doesn't work. */
 	if (cpu_getiloops() & 1) bit |= 0x01;
 	else bit |= 0x08;
-if (Machine->gamedrv == &driver_mgakuen2)	/* hack... music doesn't work otherwise */
-	bit ^= 0x08;
+
+	{
+		static const game_driver *mitchell_driver = NULL;
+		static int pang_port5_kludge = 0;
+
+		/* Only compute pang_port5_kludge when confronted with a new gamedrv */
+		if (mitchell_driver != Machine->gamedrv)
+		{
+			mitchell_driver = Machine->gamedrv;
+			if (strcmp(mitchell_driver->name, "mgakuen2") == 0)
+				pang_port5_kludge = 0;
+			else
+				pang_port5_kludge = 1;
+		}
+		if (pang_port5_kludge)	/* hack... music doesn't work otherwise */
+			bit ^= 0x08;
+	}
 
 	return (input_port_0_r(0) & 0x76) | bit;
 }
@@ -953,30 +967,28 @@ INPUT_PORTS_START( mstworld )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 
 	PORT_START	/* IN3 */  // coinage seems to be in here..
-	PORT_DIPNAME( 0x01, 0x00, "ds1" )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Coinage ) )
+	PORT_DIPSETTING(    0x03, "A 1Coin 4Credits / B 1Coin 4Credits" )
+	PORT_DIPSETTING(    0x02, "A 1Coin 3Credits / B 1Coin 3Credits" )
+	PORT_DIPSETTING(    0x01, "A 1Coin 2Credits / B 1Coin 2Credits" )
+	PORT_DIPSETTING(    0x00, "A 1Coin 1Credit / B 1Coin 4Credists" )
+	PORT_DIPSETTING(    0x04, "A 2Coins 1Credit / B 1Coin 2Credits" )
+	PORT_DIPSETTING(    0x05, "A 2Coins 1Credit / B 1Coin 3Credits" )
+	PORT_DIPSETTING(    0x06, "A 3Coins 1Credit / B 1Coin 2Credits" )
+	PORT_DIPSETTING(    0x07, "A 4Coins 1Credit / B 1Coin 1Credit" )
+	PORT_DIPNAME( 0x18, 0x00, DEF_STR( Lives ) )
+	PORT_DIPSETTING(    0x00, "1" )
+	PORT_DIPSETTING(    0x08, "2" )
+	PORT_DIPSETTING(    0x10, "3" )
+	PORT_DIPSETTING(    0x18, "4" )
+	PORT_DIPNAME( 0x60, 0x20, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Hard ) )
+	PORT_DIPSETTING(    0x60, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
 	PORT_START	/* IN3 */
 	PORT_DIPNAME( 0x01, 0x00, "ds2" )
@@ -1005,7 +1017,7 @@ INPUT_PORTS_START( mstworld )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START	/* IN3 */
-	PORT_DIPNAME( 0x01, 0x00, "ds2" )
+	PORT_DIPNAME( 0x01, 0x00, "ds3" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Unknown ) )
@@ -1667,9 +1679,6 @@ ROM_END
 /* seems to be the same basic hardware, but the memory map and io map are different at least.. */
 ROM_START( mstworld )
 	ROM_REGION( 0x50000*2, REGION_CPU1, 0 )	/* CPU1 code */
-	/* we descramble code to here */
-
-	ROM_REGION( 0x80000, REGION_USER1, ROMREGION_DISPOSE )	/* CPU1 code - scrambled */
 	ROM_LOAD( "mw-1.rom", 0x00000, 0x080000, CRC(c4e51fb4) SHA1(60ad4ff2cec3a4d13b4aa0319dfcdab941404b1a) ) /* fixed code */
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* CPU2 code */
@@ -2068,7 +2077,7 @@ static DRIVER_INIT( blockbl )
 static DRIVER_INIT( mstworld )
 {
 	/* descramble the program rom .. */
-	UINT8* source = memory_region(REGION_USER1) ;
+	UINT8* source = malloc_or_die(memory_region_length(REGION_CPU1));
 	UINT8* dst    = memory_region(REGION_CPU1) ;
 	int x;
 
@@ -2096,6 +2105,7 @@ static DRIVER_INIT( mstworld )
 		/* bank f     */12, 12,
 	};
 
+	memcpy(source, dst, memory_region_length(REGION_CPU1));
 	for (x=0;x<40;x+=2)
 	{
 		if (tablebank[x]!=-1)
@@ -2104,6 +2114,7 @@ static DRIVER_INIT( mstworld )
 			memcpy(&dst[((x/2)*0x4000)+0x50000],&source[tablebank[x+1]*0x4000],0x4000);
 		}
 	}
+	free(source);
 
 	bootleg_decode();
 	configure_banks();

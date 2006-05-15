@@ -12,6 +12,13 @@ Notes:
   "kung-fu master" on the introduction screen, the only original doing that is
   spartanx but the ROMs don't match after the copyright notice.
 
+Battle Bird (c) 1985 - Not Dumped
+ This game is on IREM's M64 platform which is a two tiered boardset.
+ Battle Bird is believed to have a limited release.
+ Two pictures of the PCB set appeared on the internet as well as showing two screen shots.
+ The picture of the board showed a genuine IREM License Seal PCB 1037 sticker and Serial # 353887
+     Top board: M64-S-A  Looks to contain Nec D780C, Yamaha YM2149 & YM2151 + 2 roms
+  Bottom board: M64-A-C  Mostly out of the picture, so no additional info.
 
 
 The following information is gathered from Kung Fu Master; the board was most
@@ -1173,11 +1180,11 @@ INPUT_PORTS_START( horizon )
 	PORT_DIPSETTING(    0x03, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
 	PORT_DIPSETTING(    0x02, "5" )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x00, "100 80000" )
-	PORT_DIPSETTING(    0x0c, "40000 120000" )
-	PORT_DIPSETTING(    0x08, "60000 140000" )
-	PORT_DIPSETTING(    0x04, "80000 160000" )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) ) // as per the service mode
+	PORT_DIPSETTING(    0x00, "100 and 80k" ) // this one is blank but verified manually
+	PORT_DIPSETTING(    0x0c, "40k and every 80k" )
+	PORT_DIPSETTING(    0x08, "60k and every 100k" )
+	PORT_DIPSETTING(    0x04, "80k and every 120k" )
 	COINAGE3_DSW
 
 	PORT_START_TAG("DSW2")

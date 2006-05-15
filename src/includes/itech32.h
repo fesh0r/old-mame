@@ -10,11 +10,6 @@
 void itech32_update_interrupts(int vint, int xint, int qint);
 
 
-/*----------- defined in drivers/drivedge.c -----------*/
-
-void drivedge_update_interrupts(int vint, int xint, int qint);
-
-
 /*----------- defined in vidhrdw/itech32.c -----------*/
 
 extern UINT16 *itech32_video;
@@ -23,7 +18,6 @@ extern UINT8 itech32_planes;
 extern UINT16 itech32_vram_height;
 
 VIDEO_START( itech32 );
-VIDEO_START( drivedge );
 
 WRITE16_HANDLER( timekill_colora_w );
 WRITE16_HANDLER( timekill_colorbc_w );

@@ -97,9 +97,11 @@ enum
 	REGION_USER7,
 	REGION_USER8,
 	REGION_DISKS,
+	REGION_PLDS,
 	REGION_MAX
 };
 
+extern const char *memory_region_names[REGION_MAX];
 
 /* artwork options */
 #define ARTWORK_USE_ALL			(~0)

@@ -96,6 +96,7 @@ CPUS += TMS32010
 CPUS += TMS32025
 CPUS += TMS32026
 CPUS += TMS32031
+CPUS += TMS32051
 CPUS += CCPU
 CPUS += ADSP2100
 CPUS += ADSP2101
@@ -219,6 +220,7 @@ SOUNDS += C140
 SOUNDS += QSOUND
 SOUNDS += SAA1099
 SOUNDS += IREMGA20
+SOUNDS += ES5503
 SOUNDS += ES5505
 SOUNDS += ES5506
 SOUNDS += BSMT2000
@@ -346,6 +348,7 @@ $(OBJ)/shared.a: \
 	$(OBJ)/machine/53c810.o \
 	$(OBJ)/machine/6532riot.o \
 	$(OBJ)/machine/6522via.o \
+	$(OBJ)/machine/6526cia.o \
 	$(OBJ)/machine/6821pia.o \
 	$(OBJ)/machine/6840ptm.o \
 	$(OBJ)/machine/6850acia.o \
@@ -413,8 +416,10 @@ $(OBJ)/alpha.a: \
 	$(OBJ)/drivers/talbot.o \
 
 $(OBJ)/amiga.a: \
-	$(OBJ)/drivers/arcadia.o $(OBJ)/machine/amiga.o $(OBJ)/vidhrdw/amiga.o \
+	$(OBJ)/machine/amiga.o $(OBJ)/sndhrdw/amiga.o $(OBJ)/vidhrdw/amiga.o \
+	$(OBJ)/drivers/arcadia.o \
 	$(OBJ)/drivers/mquake.o \
+	$(OBJ)/drivers/upscope.o \
 
 $(OBJ)/atari.a: \
  	$(OBJ)/drivers/atarigx2.o $(OBJ)/vidhrdw/atarigx2.o \
@@ -670,6 +675,7 @@ $(OBJ)/gaelco.a: \
 	$(OBJ)/drivers/gaelco2.o $(OBJ)/machine/gaelco2.o $(OBJ)/vidhrdw/gaelco2.o \
 	$(OBJ)/drivers/gaelco3d.o $(OBJ)/vidhrdw/gaelco3d.o \
 	$(OBJ)/drivers/glass.o $(OBJ)/vidhrdw/glass.o \
+	$(OBJ)/drivers/mastboy.o \
 	$(OBJ)/drivers/splash.o $(OBJ)/vidhrdw/splash.o \
 	$(OBJ)/drivers/targeth.o $(OBJ)/vidhrdw/targeth.o \
 	$(OBJ)/drivers/thoop2.o $(OBJ)/vidhrdw/thoop2.o \
@@ -1131,7 +1137,7 @@ $(OBJ)/seibu.a: \
 	$(OBJ)/sndhrdw/seibu.o \
 
 $(OBJ)/seta.a: \
-	$(OBJ)/drivers/aleck64.o $(OBJ)/vidhrdw/n64.o \
+	$(OBJ)/drivers/aleck64.o $(OBJ)/machine/n64.o $(OBJ)/vidhrdw/n64.o \
 	$(OBJ)/drivers/darkhors.o \
 	$(OBJ)/drivers/hanaawas.o $(OBJ)/vidhrdw/hanaawas.o \
 	$(OBJ)/drivers/macs.o \
@@ -1445,6 +1451,7 @@ $(OBJ)/misc.a: \
 	$(OBJ)/drivers/hexa.o $(OBJ)/vidhrdw/hexa.o \
 	$(OBJ)/drivers/homedata.o $(OBJ)/vidhrdw/homedata.o \
 	$(OBJ)/drivers/hotblock.o \
+	$(OBJ)/drivers/intrscti.o \
 	$(OBJ)/drivers/jackpool.o \
 	$(OBJ)/drivers/kyugo.o $(OBJ)/vidhrdw/kyugo.o \
 	$(OBJ)/drivers/ladyfrog.o $(OBJ)/vidhrdw/ladyfrog.o \
@@ -1476,6 +1483,7 @@ $(OBJ)/misc.a: \
 	$(OBJ)/drivers/rbmk.o \
 	$(OBJ)/drivers/shangkid.o $(OBJ)/vidhrdw/shangkid.o \
 	$(OBJ)/drivers/skyarmy.o \
+	$(OBJ)/drivers/sliver.o \
 	$(OBJ)/drivers/sprcros2.o $(OBJ)/vidhrdw/sprcros2.o \
 	$(OBJ)/drivers/ssfindo.o \
 	$(OBJ)/drivers/ssingles.o \

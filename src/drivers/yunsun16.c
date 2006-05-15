@@ -15,19 +15,19 @@ Sound Chips  :  OKI M6295 + YM3812 [Optional]
 Year + Game         Board#
 ---------------------------------------------------------------------------
 19?? Magic Bubble     YS-1302
-1997 Shocking         YS-0211?
+1997 Shocking
 1998 Bomb Kick        YS-0211
 ---------------------------------------------------------------------------
+
+- Screen flipping: not used!?
+
+Original bugs:
 
 - In shocking, service mode just shows the menu, with mangled graphics
   (sprites, but the charset they used is in the tiles ROMs!).
   In magicbub they used color 0 for tiles (all blacks, so you can't see
   most of it!). Again, color 0 for sprites would be ok. Some kind
   of sprites-tiles swapping, or unfinished leftovers?
-
-- Screen flipping: not used!?
-
-- Are priorities correct?
 
 ***************************************************************************/
 
@@ -253,6 +253,88 @@ INPUT_PORTS_START( magicbub )
 
 INPUT_PORTS_END
 
+/***************************************************************************
+                        Magic Bubble (Adult version)
+***************************************************************************/
+
+INPUT_PORTS_START( magicbua )
+
+	PORT_START	// IN0 - $800000.w
+	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
+	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
+	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
+	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START	// IN1 - $800019.b
+	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1   )
+	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_START1  )
+	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_START2  )
+	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START	// IN2 - $80001b.b
+	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0001, DEF_STR( 3C_2C ) )
+	PORT_DIPSETTING(      0x0007, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0003, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(      0x0006, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0005, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
+	PORT_DIPNAME( 0x0018, 0x0010, "Unknown 1-4&5" )
+	PORT_DIPSETTING(      0x0010, "0" )
+	PORT_DIPSETTING(      0x0018, "2" )
+	PORT_DIPSETTING(      0x0008, "4" )
+	PORT_DIPSETTING(      0x0000, "8" )
+	PORT_DIPNAME( 0x0020, 0x0020, "Unknown 1-5" )
+	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0040, 0x0000, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_SERVICE( 0x0080, IP_ACTIVE_LOW )
+
+	PORT_START	// IN3 - $80001d.b
+	PORT_DIPNAME( 0x0003, 0x0003, "Nudity" )
+	PORT_DIPSETTING(      0x0003, DEF_STR( Low ) )
+	PORT_DIPSETTING(      0x0001, DEF_STR( Medium ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( High ) )
+	PORT_DIPNAME( 0x000c, 0x000c, "Lives (Vs Mode)" )
+	PORT_DIPSETTING(      0x0008, "1" )
+	PORT_DIPSETTING(      0x000c, "2" )
+	PORT_DIPSETTING(      0x0004, "3" )
+	PORT_DIPSETTING(      0x0000, "4" )
+	PORT_DIPNAME( 0x0010, 0x0010, "Unknown 2-4*" )
+	PORT_DIPSETTING(      0x0000, "1" )
+	PORT_DIPSETTING(      0x0010, "2" )
+	PORT_DIPNAME( 0x0020, 0x0020, "Unknown 2-5" )
+	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0040, 0x0040, "Unknown 2-6" )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0080, 0x0080, "Unknown 2-7" )
+	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+
+INPUT_PORTS_END
 
 /***************************************************************************
                                 Shocking
@@ -552,7 +634,7 @@ static MACHINE_DRIVER_START( shocking )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(OKIM6295, 8000)
+	MDRV_SOUND_ADD(OKIM6295, 1000000 / 132)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
@@ -658,6 +740,35 @@ ROM_END
 /***************************************************************************
 
                                 Shocking
+Yunsung, 1997
+
+PCB Layout
+----------
+
+|-------------------------------------------------|
+|UPC1242  ROM.U131           ROM.U20     6116     |
+|     VOL M6295              ROM.U22     6116     |
+|  PAL 6264                  ROM.U21              |
+|      6264                  ROM.U23     6116     |
+|                                        6116     |
+|                  PAL                      PAL   |
+|J                 PAL                      PAL   |
+|A  DSW1                       PAL                |
+|M                                                |
+|M  DSW2                PAL   ACTEL         PAL   |
+|A        PAL           PAL   A1020B  6116  6116  |
+|         PAL  PAL      PAL           6116  6116  |
+|              PAL                    ROM.U70     |
+|                62256                ROM.U69     |
+|        68000   62256                ROM.U68     |
+|                ROM.U32              ROM.U67     |
+|16MHz           ROM.U33           62256  62256   |
+|-------------------------------------------------|
+Notes:
+      68000 clock - 16MHz
+      M6295 clock - 1.000MHz, sample rate 1000000Hz / 132
+      HSync - 14.84kHz
+      VSync - 60Hz
 
 ***************************************************************************/
 
@@ -734,6 +845,6 @@ ROM_END
 ***************************************************************************/
 
 GAME( 19??, magicbub, 0,        magicbub, magicbub, magicbub, ROT0, "Yun Sung", "Magic Bubble", GAME_NO_COCKTAIL )
-GAME( 19??, magicbua, magicbub, magicbub, magicbub, magicbub, ROT0, "Yun Sung", "Magic Bubble (Adult version)", GAME_NO_COCKTAIL )
+GAME( 19??, magicbua, magicbub, magicbub, magicbua, magicbub, ROT0, "Yun Sung", "Magic Bubble (Adult version)", GAME_NO_COCKTAIL )
 GAME( 1997, shocking, 0,        shocking, shocking, 0,        ROT0, "Yun Sung", "Shocking",     GAME_NO_COCKTAIL )
 GAME( 1998, bombkick, 0,        shocking, bombkick, 0,        ROT0, "Yun Sung", "Bomb Kick",    GAME_NO_COCKTAIL )

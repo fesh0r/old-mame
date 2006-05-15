@@ -690,6 +690,7 @@ address_map *construct_map_##_name(address_map *map)					\
 #define AM_READWRITE(_read,_write)			AM_READ(_read) AM_WRITE(_write)
 #define AM_ROM								AM_READ((_rh_t)STATIC_ROM)
 #define AM_RAM								AM_READWRITE((_rh_t)STATIC_RAM, (_wh_t)STATIC_RAM)
+#define AM_UNMAP							AM_READWRITE((_rh_t)STATIC_UNMAP, (_wh_t)STATIC_UNMAP)
 #define AM_ROMBANK(_bank)					AM_READ((_rh_t)(STATIC_BANK1 + (_bank) - 1))
 #define AM_RAMBANK(_bank)					AM_READWRITE((_rh_t)(STATIC_BANK1 + (_bank) - 1), (_wh_t)(STATIC_BANK1 + (_bank) - 1))
 #define AM_NOP								AM_READWRITE((_rh_t)STATIC_NOP, (_wh_t)STATIC_NOP)
@@ -726,6 +727,8 @@ address_map *construct_map_##_name(address_map *map)					\
 #define ADDRESS_SPACE_PROGRAM	0						/* program address space */
 #define ADDRESS_SPACE_DATA		1						/* data address space */
 #define ADDRESS_SPACE_IO		2						/* I/O address space */
+
+extern const char *address_space_names[ADDRESS_SPACES];
 
 /* ----- address map lookup table definitions ----- */
 #define SUBTABLE_COUNT			64						/* number of slots reserved for subtables */

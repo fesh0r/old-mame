@@ -3587,20 +3587,40 @@ INPUT_PORTS_START( rockmanj )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
+/*
+Previously only the Right Hand Side of each 16x16 tile was used to make the 8x8 tiles
+with the following comment
 
-static const gfx_layout layout8x8 =
+"fixes cawing which uses character 0x0002 as space, typo instead of 0x20?"
+
+A Final Fight board with mismatched USA and Japan GFX appears to prove this statement
+wrong as the columns of the tilemap alternate between sides of the 16x16 tile resulting
+in a corrupt WDUD screen (see ffightua)
+*/
+
+static const gfx_layout cps1_layout8x8 =
 {
 	8,8,
 	RGN_FRAC(1,1),
 	4,
-	{ GFX_RAW },
-	{ 4*8 },	/* org displacement - 8x8 tiles are taken from the RIGHT side of the 16x16 tile
-                   (fixes cawing which uses character 0x0002 as space, typo instead of 0x20?) */
-	{ 8*8 },	/* line modulo */
-	64*8		/* char modulo */
+	{ 0, 1, 2, 3 },
+	{ 1*4, 0*4, 3*4, 2*4, 5*4, 4*4, 7*4, 6*4 },
+	{ 0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64 },
+	64*8
 };
 
-static const gfx_layout layout16x16 =
+static const gfx_layout cps1_layout8x8_2 =
+{
+	8,8,
+	RGN_FRAC(1,1),
+	4,
+	{ 0, 1, 2, 3 },
+	{ 9*4, 8*4, 11*4, 10*4, 13*4, 12*4, 15*4, 14*4 },
+	{ 0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64 },
+	64*8
+};
+
+static const gfx_layout cps1_layout16x16 =
 {
 	16,16,
 	RGN_FRAC(1,1),
@@ -3611,7 +3631,7 @@ static const gfx_layout layout16x16 =
 	128*8		/* char modulo */
 };
 
-static const gfx_layout layout32x32 =
+static const gfx_layout cps1_layout32x32 =
 {
 	32,32,
 	RGN_FRAC(1,1),
@@ -3624,9 +3644,10 @@ static const gfx_layout layout32x32 =
 
 gfx_decode cps1_gfxdecodeinfo[] =
 {
-	{ REGION_GFX1, 0, &layout8x8,   0, 0x100 },
-	{ REGION_GFX1, 0, &layout16x16, 0, 0x100 },
-	{ REGION_GFX1, 0, &layout32x32, 0, 0x100 },
+	{ REGION_GFX1, 0, &cps1_layout8x8,   0, 0x100 },
+	{ REGION_GFX1, 0, &cps1_layout8x8_2, 0, 0x100 },
+	{ REGION_GFX1, 0, &cps1_layout16x16, 0, 0x100 },
+	{ REGION_GFX1, 0, &cps1_layout32x32, 0, 0x100 },
 	{ -1 }
 };
 
@@ -4353,14 +4374,21 @@ ROM_START( ffightua )
 	ROM_REGION( 0x200000, REGION_GFX1, 0 )
 	ROMX_LOAD( "ff05-05m.bin", 0x000000, 0x80000, CRC(9c284108) SHA1(7868f5801347340867720255f8380548ad1a65a7) , ROM_GROUPWORD | ROM_SKIP(6) )
 	ROMX_LOAD( "ff07-07m.bin", 0x000002, 0x80000, CRC(a7584dfb) SHA1(f7b00a3ca8cb85264ab293089f9f540a8292b49c) , ROM_GROUPWORD | ROM_SKIP(6) )
-	ROMX_LOAD( "20_44ee.010",     0x000004, 0x20000, CRC(a1ab607a) SHA1(56784c028b82d9e2affd9610f56fde57063e4c28) , ROM_SKIP(7) ) // == ff24.bin
-	ROMX_LOAD( "10_f4d8.010",     0x000005, 0x20000, CRC(2dc18cf4) SHA1(5e3bd895600cd30d561a75a2fcb6cc8bc84f4bd1) , ROM_SKIP(7) ) // == ff17.bin
-	ROMX_LOAD( "22_91be.010",     0x000006, 0x20000, CRC(6535a57f) SHA1(f4da9ec13cad7e3287e34dcceb0eb2d20107bad6) , ROM_SKIP(7) ) // == ff38.bin
-	ROMX_LOAD( "12_b59f.010",     0x000007, 0x20000, CRC(c8bc4a57) SHA1(3eaf2b4e910fe1f79154020122d786d23a2e594a) , ROM_SKIP(7) ) // == ff32.bin
-	ROMX_LOAD( "21_cc37.010",     0x100004, 0x20000, CRC(6e8181ea) SHA1(2c32bc0364650ee6ca0d24754a7a3401295ffcd5) , ROM_SKIP(7) ) // == ff25.bin
-	ROMX_LOAD( "11_2268.010",     0x100005, 0x20000, CRC(b19ede59) SHA1(7e79ad9f17b36e042d774bef3bbb44018332ca01) , ROM_SKIP(7) ) // == ff18.bin
-	ROMX_LOAD( "23_0b85.010",     0x100006, 0x20000, CRC(9416b477) SHA1(f2310dfcfe960e8b822c07849b594d54dfc2b2ca) , ROM_SKIP(7) ) // == ff39.bin
-	ROMX_LOAD( "13_3346.010",     0x100007, 0x20000, CRC(7369fa07) SHA1(3b2750fe33729395217c96909b4b6c5f3d6e9943) , ROM_SKIP(7) ) // == ff33.bin
+	ROMX_LOAD( "ff01-01m.bin", 0x000004, 0x80000, CRC(0b605e44) SHA1(5ce16af72858a57aefbf6efed820c2c51935882a) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ff03-03m.bin", 0x000006, 0x80000, CRC(52291cd2) SHA1(df5f3d3aa96a7a33ff22f2a31382942c4c4f1111) , ROM_GROUPWORD | ROM_SKIP(6) )
+
+	/* these roms (from the Japanese version) were on this PCB, but they don't belong here, they cause a corrupt
+       Winners Don't use Drugs logo, so I'm using the proper USA roms instead */
+	/*
+    ROMX_LOAD( "20_44ee.010",     0x000004, 0x20000, CRC(a1ab607a) SHA1(56784c028b82d9e2affd9610f56fde57063e4c28) , ROM_SKIP(7) ) // == ff24.bin
+    ROMX_LOAD( "10_f4d8.010",     0x000005, 0x20000, CRC(2dc18cf4) SHA1(5e3bd895600cd30d561a75a2fcb6cc8bc84f4bd1) , ROM_SKIP(7) ) // == ff17.bin
+    ROMX_LOAD( "22_91be.010",     0x000006, 0x20000, CRC(6535a57f) SHA1(f4da9ec13cad7e3287e34dcceb0eb2d20107bad6) , ROM_SKIP(7) ) // == ff38.bin
+    ROMX_LOAD( "12_b59f.010",     0x000007, 0x20000, CRC(c8bc4a57) SHA1(3eaf2b4e910fe1f79154020122d786d23a2e594a) , ROM_SKIP(7) ) // == ff32.bin
+    ROMX_LOAD( "21_cc37.010",     0x100004, 0x20000, CRC(6e8181ea) SHA1(2c32bc0364650ee6ca0d24754a7a3401295ffcd5) , ROM_SKIP(7) ) // == ff25.bin
+    ROMX_LOAD( "11_2268.010",     0x100005, 0x20000, CRC(b19ede59) SHA1(7e79ad9f17b36e042d774bef3bbb44018332ca01) , ROM_SKIP(7) ) // == ff18.bin
+    ROMX_LOAD( "23_0b85.010",     0x100006, 0x20000, CRC(9416b477) SHA1(f2310dfcfe960e8b822c07849b594d54dfc2b2ca) , ROM_SKIP(7) ) // == ff39.bin
+    ROMX_LOAD( "13_3346.010",     0x100007, 0x20000, CRC(7369fa07) SHA1(3b2750fe33729395217c96909b4b6c5f3d6e9943) , ROM_SKIP(7) ) // == ff33.bin
+    */
 
 	ROM_REGION( 0x8000, REGION_GFX2, 0 )
 	ROM_COPY( REGION_GFX1, 0x000000, 0x000000, 0x8000 )	/* stars */
@@ -4801,6 +4829,32 @@ ROM_START( cawing )
 	ROM_LOAD16_BYTE( "cae_35a.rom",  0x00001, 0x20000, CRC(3ef03083) SHA1(297dfc9ec1e0f07d6083bf5efaa0de8d0fb361fa) )
 	ROM_LOAD16_BYTE( "cae_31a.rom",  0x40000, 0x20000, CRC(e5b75caf) SHA1(4d04220c78620867b7598deea5685bbe88298ae6) )
 	ROM_LOAD16_BYTE( "cae_36a.rom",  0x40001, 0x20000, CRC(c73fd713) SHA1(fa202c252b2cc5972d42d634c466d89cf8b5d178) )
+	ROM_LOAD16_WORD_SWAP( "ca_32.rom", 0x80000, 0x80000, CRC(0c4837d4) SHA1(1c61958b43066b59d86eb4bae0b52c3109be4b07) )
+
+	ROM_REGION( 0x200000, REGION_GFX1, 0 )
+	ROMX_LOAD( "ca_gfx5.rom",  0x000000, 0x80000, CRC(66d4cc37) SHA1(d355ea64ff29d228dcbfeee72bcf11882bf1cd9d) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ca_gfx7.rom",  0x000002, 0x80000, CRC(b6f896f2) SHA1(bdb6820b81fbce77d7eacb01777af7c380490402) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ca_gfx1.rom",  0x000004, 0x80000, CRC(4d0620fd) SHA1(5f62cd551b6a230edefd81fa60c10c84186ca804) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ca_gfx3.rom",  0x000006, 0x80000, CRC(0b0341c3) SHA1(c31f0e78f49d94ea9dea20eb0cbd98a6c613bcbf) , ROM_GROUPWORD | ROM_SKIP(6) )
+
+	ROM_REGION( 0x8000, REGION_GFX2, 0 )
+	ROM_COPY( REGION_GFX1, 0x000000, 0x000000, 0x8000 )	/* stars */
+
+	ROM_REGION( 0x18000, REGION_CPU2, 0 ) /* 64k for the audio CPU (+banks) */
+	ROM_LOAD( "ca_9.rom",      0x00000, 0x08000, CRC(96fe7485) SHA1(10466889dfc6bc8afd3075385e241a16372efbeb) )
+	ROM_CONTINUE(              0x10000, 0x08000 )
+
+	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_LOAD( "ca_18.rom",    0x00000, 0x20000, CRC(4a613a2c) SHA1(06e10644fc60925b85d2ca0888c9fa057bfe996a) )
+	ROM_LOAD( "ca_19.rom",    0x20000, 0x20000, CRC(74584493) SHA1(5cfb15f1b9729323707972646313aee8ab3ac4eb) )
+ROM_END
+
+ROM_START( cawingr1 )
+	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )      /* 68000 code */
+	ROM_LOAD16_BYTE( "cae_30.11f",  0x00000, 0x20000, CRC(23305cd5) SHA1(59cbcb79c171b433f278e128c73cdd3635876370) )
+	ROM_LOAD16_BYTE( "cae_35.11h",  0x00001, 0x20000, CRC(69419113) SHA1(cfbb6dbbe224ffaf7747fd70b65a7dbd4f696fe9) )
+	ROM_LOAD16_BYTE( "cae_31.12f",  0x40000, 0x20000, CRC(9008dfb3) SHA1(81fdd21606caabe9e0df773fc33377c958ab80f6) )
+	ROM_LOAD16_BYTE( "cae_36.12h",  0x40001, 0x20000, CRC(4dbf6f8e) SHA1(a2da49dce72c2366381bd8bea8ce4eba0b70d78c) )
 	ROM_LOAD16_WORD_SWAP( "ca_32.rom", 0x80000, 0x80000, CRC(0c4837d4) SHA1(1c61958b43066b59d86eb4bae0b52c3109be4b07) )
 
 	ROM_REGION( 0x200000, REGION_GFX1, 0 )
@@ -6990,7 +7044,7 @@ ROM_START( slammast )
 	ROM_CONTINUE(               0x10000, 0x18000 )
 
 	ROM_REGION( 0x8000, REGION_USER1, 0 )
-	/* the encrypted Z80 ROM will be copied here, where the main CPU can read it. */
+	ROM_COPY( REGION_CPU2, 0x00000, 0x00000, 0x8000 )
 
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* QSound samples */
 	ROM_LOAD( "mb_q1.bin",      0x000000, 0x80000, CRC(0630c3ce) SHA1(520fc74c5c3638f611fa2f1b5efb08b91747e29b) )
@@ -7035,7 +7089,7 @@ ROM_START( slammasu )
 	ROM_CONTINUE(               0x10000, 0x18000 )
 
 	ROM_REGION( 0x8000, REGION_USER1, 0 )
-	/* the encrypted Z80 ROM will be copied here, where the main CPU can read it. */
+	ROM_COPY( REGION_CPU2, 0x00000, 0x00000, 0x8000 )
 
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* QSound samples */
 	ROM_LOAD( "mb_q1.bin",      0x000000, 0x80000, CRC(0630c3ce) SHA1(520fc74c5c3638f611fa2f1b5efb08b91747e29b) )
@@ -7080,7 +7134,7 @@ ROM_START( mbomberj )
 	ROM_CONTINUE(               0x10000, 0x18000 )
 
 	ROM_REGION( 0x8000, REGION_USER1, 0 )
-	/* the encrypted Z80 ROM will be copied here, where the main CPU can read it. */
+	ROM_COPY( REGION_CPU2, 0x00000, 0x00000, 0x8000 )
 
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* QSound samples */
 	ROM_LOAD( "mb_q1.bin",      0x000000, 0x80000, CRC(0630c3ce) SHA1(520fc74c5c3638f611fa2f1b5efb08b91747e29b) )
@@ -7504,6 +7558,7 @@ GAME( 1990, mswordr1, msword,   cps1,     msword,   cps1,     ROT0,   "Capcom", 
 GAME( 1990, mswordu,  msword,   cps1,     msword,   cps1,     ROT0,   "Capcom", "Magic Sword - Heroic Fantasy (US 900725)" , 0)			// 25.07.1990  "U.S.A."
 GAME( 1990, mswordj,  msword,   cps1,     msword,   cps1,     ROT0,   "Capcom", "Magic Sword (Japan 900623)" , 0)					// 23.06.1990  "Japan"
 GAME( 1990, cawing,   0,        cps1,     cawing,   cps1,     ROT0,   "Capcom", "Carrier Air Wing (World 901012)" , 0)				// "ETC"
+GAME( 1990, cawingr1, cawing,   cps1,     cawing,   cps1,     ROT0,   "Capcom", "Carrier Air Wing (World 901009)" , 0)				// "ETC"
 GAME( 1990, cawingu,  cawing,   cps1,     cawing,   cps1,     ROT0,   "Capcom", "Carrier Air Wing (US 901012)", 0 )
 GAME( 1990, cawingj,  cawing,   cps1,     cawing,   cps1,     ROT0,   "Capcom", "U.S. Navy (Japan 901012)", 0 )
 GAME( 1990, nemo,     0,        cps1,     nemo,     cps1,     ROT0,   "Capcom", "Nemo (World 901130)" , 0)						// "ETC"

@@ -17,18 +17,6 @@ To Do:
 #include "triplhnt.h"
 #include "sound/discrete.h"
 
-extern VIDEO_START( triplhnt );
-extern VIDEO_UPDATE( triplhnt );
-
-extern UINT8* triplhnt_playfield_ram;
-extern UINT8* triplhnt_vpos_ram;
-extern UINT8* triplhnt_hpos_ram;
-extern UINT8* triplhnt_code_ram;
-extern UINT8* triplhnt_orga_ram;
-
-extern int triplhnt_sprite_zoom;
-extern int triplhnt_sprite_bank;
-
 static UINT8 triplhnt_cmos[16];
 static UINT8 triplhnt_da_latch;
 static UINT8 triplhnt_misc_flags;
@@ -242,14 +230,8 @@ static const gfx_layout triplhnt_small_sprite_layout =
 };
 
 
-static const gfx_layout triplhnt_large_sprite_layout =
+static const UINT32 triplhnt_large_sprite_layout_xoffset[64] =
 {
-	64, 64,   /* width, height */
-	16,       /* total         */
-	2,        /* planes        */
-	          /* plane offsets */
-	{ 0x0000, 0x4000 },
-	{
 		0x00, 0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03,
 		0x04, 0x04, 0x05, 0x05, 0x06, 0x06, 0x07, 0x07,
 		0x08, 0x08, 0x09, 0x09, 0x0A, 0x0A, 0x0B, 0x0B,
@@ -258,8 +240,10 @@ static const gfx_layout triplhnt_large_sprite_layout =
 		0x14, 0x14, 0x15, 0x15, 0x16, 0x16, 0x17, 0x17,
 		0x18, 0x18, 0x19, 0x19, 0x1A, 0x1A, 0x1B, 0x1B,
 		0x1C, 0x1C, 0x1D, 0x1D, 0x1E, 0x1E, 0x1F, 0x1F
-	},
-	{
+};
+
+static const UINT32 triplhnt_large_sprite_layout_yoffset[64] =
+{
 		0x000, 0x000, 0x020, 0x020, 0x040, 0x040, 0x060, 0x060,
 		0x080, 0x080, 0x0A0, 0x0A0, 0x0C0, 0x0C0, 0x0E0, 0x0E0,
 		0x100, 0x100, 0x120, 0x120, 0x140, 0x140, 0x160, 0x160,
@@ -268,8 +252,19 @@ static const gfx_layout triplhnt_large_sprite_layout =
 		0x280, 0x280, 0x2A0, 0x2A0, 0x2C0, 0x2C0, 0x2E0, 0x2E0,
 		0x300, 0x300, 0x320, 0x320, 0x340, 0x340, 0x360, 0x360,
 		0x380, 0x380, 0x3A0, 0x3A0, 0x3C0, 0x3C0, 0x3E0, 0x3E0
-	},
-	0x400     /* increment */
+};
+
+static const gfx_layout triplhnt_large_sprite_layout =
+{
+	64, 64,   /* width, height */
+	16,       /* total         */
+	2,        /* planes        */
+	{ 0x0000, 0x4000 },
+	EXTENDED_XOFFS,
+	EXTENDED_YOFFS,
+	0x400,
+	triplhnt_large_sprite_layout_xoffset,
+	triplhnt_large_sprite_layout_yoffset
 };
 
 

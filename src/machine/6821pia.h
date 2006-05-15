@@ -31,7 +31,8 @@
 #endif
 
 
-struct pia6821_interface
+typedef struct _pia6821_interface pia6821_interface;
+struct _pia6821_interface
 {
 	read8_handler in_a_func;
 	read8_handler in_b_func;
@@ -47,8 +48,7 @@ struct pia6821_interface
 	void (*irq_b_func)(int state);
 };
 
-void pia_unconfig(void);
-void pia_config(int which, int addressing, const struct pia6821_interface *intf);
+void pia_config(int which, int addressing, const pia6821_interface *intf);
 void pia_reset(void);
 int pia_read(int which, int offset);
 void pia_write(int which, int offset, int data);
@@ -56,12 +56,16 @@ void pia_set_input_a(int which, int data);
 int pia_get_output_a(int which);
 void pia_set_input_ca1(int which, int data);
 void pia_set_input_ca2(int which, int data);
+int pia_get_output_ca2(int which);
 void pia_set_input_b(int which, int data);
 int pia_get_output_b(int which);
 void pia_set_input_cb1(int which, int data);
 void pia_set_input_cb2(int which, int data);
+int pia_get_output_cb2(int which);
 UINT8 pia_get_ddr_a(int which);
 UINT8 pia_get_ddr_b(int which);
+int pia_get_irq_a(int which);
+int pia_get_irq_b(int which);
 
 #define PIA_UNUSED_VAL(x) ((read8_handler)(x+1))
 /******************* Standard 8-bit CPU interfaces, D0-D7 *******************/
