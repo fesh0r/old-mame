@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  driver.c
+  messdriv.c
 
   The list of all available drivers. Drivers have to be included here to be
   recognized by the executable.
@@ -62,7 +62,7 @@ const game_driver *test_drivers[] =
 #define DRIVER(NAME) extern const game_driver driver_##NAME;
 #define TESTDRIVER(NAME) extern const game_driver driver_##NAME;
 #define NOBODY(NAME) extern const game_driver driver_##NAME;
-#include "system.c"
+#include "messdriv.c"
 
 /* step 2: define the drivers[] array */
 #undef DRIVER
@@ -76,9 +76,9 @@ const game_driver *test_drivers[] =
 #define TESTDRIVER(NAME)
 #define NOBODY(NAME)
 #endif
-const game_driver *drivers[] =
+const game_driver * const drivers[] =
 {
-#include "system.c"
+#include "messdriv.c"
   0             /* end of array */
 };
 
@@ -89,7 +89,7 @@ const game_driver *drivers[] =
 #define TESTDRIVER(NAME) &driver_##NAME,
 const game_driver *test_drivers[] =
 {
-#include "system.c"
+#include "messdriv.c"
 	0	/* end of array */
 };
 
@@ -100,6 +100,7 @@ const game_driver *test_drivers[] =
 	/* ATARI */
 	DRIVER( a2600 ) 	/* Atari 2600										*/
 	DRIVER( a5200 ) 	/* Atari 5200										*/
+	DRIVER( a5200a ) 	/* Atari 5200 alt									*/
 	DRIVER( a7800 ) 	/* Atari 7800 NTSC									*/
 	DRIVER( a7800p ) 	/* Atari 7800 PAL									*/
 	DRIVER( lynx )		/* Atari Lynx Handheld								*/
@@ -111,6 +112,7 @@ const game_driver *test_drivers[] =
 	DRIVER( nes )		/* Nintendo Entertainment System					*/
 	DRIVER( nespal )	/* Nintendo Entertainment System					*/
 	DRIVER( famicom )
+	DRIVER( famitwin )	/* Sharp Famicom Twin System					*/
 	DRIVER( gameboy )	/* Nintendo GameBoy Handheld						*/
 	DRIVER( supergb )	/* Nintendo Super GameBoy SNES Cartridge			*/
 	DRIVER( gbpocket )	/* Nintendo GameBoy Pocket Handheld					*/
@@ -123,24 +125,10 @@ const game_driver *test_drivers[] =
 
 	/* SEGA */
 	DRIVER( gamegear )	/* Sega GameGear									*/
-	DRIVER( gamegj )	/* Sega GameGear (Japanese)							*/
-	DRIVER( gamg )		/* Sega GameGear (European/American Majesco)		*/
-	DRIVER( gamgj )		/* Sega GameGear (Japanese Majesco)					*/
 	DRIVER( sms )		/* Sega Master System (NTSC)						*/
 	DRIVER( smspal )	/* Sega Master System (PAL)							*/
 	DRIVER( smsj21 )	/* Sega Master System (PAL Japanese SMS BIOS v2.1)	*/
 	DRIVER( smsm3 )		/* Sega Mark III (PAL) Japanese SMS BIOS v2.1		*/
-	DRIVER( smsss )		/* Sega Master System								*/
-	DRIVER( smsu13 )	/* Sega Master System								*/
-	DRIVER( smse13 )	/* Sega Master System								*/
-	DRIVER( smsuam )	/* Sega Master System								*/
-	DRIVER( smseam )	/* Sega Master System								*/
-	DRIVER( smsesh )	/* Sega Master System								*/
-	DRIVER( smsbsh )	/* Sega Master System								*/
-	DRIVER( smsuhs24 )	/* Sega Master System								*/
-	DRIVER( smsehs24 )	/* Sega Master System								*/
-	DRIVER( smsuh34 )	/* Sega Master System								*/
-	DRIVER( smseh34 )	/* Sega Master System								*/
 	DRIVER( gen_usa )	/* Sega Genesis/MegaDrive USA							*/
 	DRIVER( gen_eur )	/* Sega Genesis/MegaDrive Europe						*/
 	DRIVER( gen_jpn )	/* Sega Genesis/MegaDrive Japan						*/
@@ -197,7 +185,7 @@ TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
 
 	/* BANDAI */
 	DRIVER( wswan )		/* Bandai WonderSwan Handheld						*/
-TESTDRIVER( wscolor )	/* Bandai WonderSwan Color Handheld					*/
+	DRIVER( wscolor )	/* Bandai WonderSwan Color Handheld					*/
 
 
 /****************COMPUTERS***************************************************/
@@ -367,7 +355,7 @@ TESTDRIVER( c128d )		/* Commodore 128D - NTSC 							*/
 TESTDRIVER( c128dita )	/* Commodore 128D - PAL (italian) cost reduced set	*/
 
 	DRIVER( amiga ) 	/* Commodore Amiga									*/
-TESTDRIVER( cdtv )
+	DRIVER( cdtv )
 
 	DRIVER( c65 )		/* C65 / C64DX (Prototype, NTSC, 911001)			*/
 	DRIVER( c65e )		/* C65 / C64DX (Prototype, NTSC, 910828)			*/
@@ -825,6 +813,9 @@ TESTDRIVER( svi328c ) 	/* SVI-328 + 80 column card (Swedish)						*/
 	/* Be Incorporated */
 	DRIVER( bebox )		/* BeBox Dual603-66	*/
 	DRIVER( bebox2 )	/* BeBox Dual603-133	*/
+
+	/* Tiger Electronics */
+	DRIVER( gamecom )	/* Tiger Game.com	*/
 
 /****************Games*******************************************************/
 	/* Computer Electronic */

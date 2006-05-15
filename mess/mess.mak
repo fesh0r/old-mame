@@ -157,6 +157,8 @@ CPUS+=PDP1
 CPUS+=TMS7000_EXL
 CPUS+=TX0
 CPUS+=COP411
+CPUS+=SM8500
+CPUS+=V30MZ
 
 # SOUND cores used in MESS
 SOUNDS+=CUSTOM
@@ -324,6 +326,7 @@ DRVLIBS = \
 	$(OBJ)/primo.a		\
 	$(OBJ)/dgn_beta.a	\
 	$(OBJ)/be.a			\
+	$(OBJ)/tiger.a		\
 
 
 $(OBJ)/neocd.a:						\
@@ -395,17 +398,20 @@ $(OBJ)/nintendo.a:					\
 	$(OBJ)/vidhrdw/snes.o			\
 	$(OBJ)/mess/systems/snes.o	 	\
 	$(OBJ)/mess/systems/n64.o		\
+	$(OBJ)/machine/n64.o			\
 	$(OBJ)/vidhrdw/n64.o			\
 
 $(OBJ)/amiga.a: \
 	$(OBJ)/vidhrdw/amiga.o			\
 	$(OBJ)/machine/amiga.o			\
+	$(OBJ)/sndhrdw/amiga.o			\
+	$(OBJ)/machine/6526cia.o		\
 	$(OBJ)/mess/machine/amigafdc.o	\
 	$(OBJ)/mess/systems/amiga.o
 
 $(OBJ)/cbmshare.a: \
+	$(OBJ)/machine/6526cia.o		\
 	$(OBJ)/mess/machine/tpi6525.o	\
-	$(OBJ)/mess/machine/cia6526.o	\
 	$(OBJ)/mess/machine/cbm.o		\
 	$(OBJ)/mess/machine/cbmdrive.o	\
 	$(OBJ)/mess/machine/vc1541.o	 \
@@ -446,6 +452,7 @@ $(OBJ)/coco.a:   \
 	$(OBJ)/mess/machine/coco.o		\
 	$(OBJ)/mess/vidhrdw/coco.o		\
 	$(OBJ)/mess/systems/coco.o		\
+	$(OBJ)/mess/vidhrdw/coco3.o		\
 	$(OBJ)/mess/formats/cocopak.o	\
 	$(OBJ)/mess/formats/coco_cas.o	\
 	$(OBJ)/mess/formats/coco_dsk.o	\
@@ -745,6 +752,7 @@ $(OBJ)/mtx.a:	   \
 $(OBJ)/acorn.a:    \
 	$(OBJ)/mess/machine/i8271.o	 \
 	$(OBJ)/mess/machine/upd7002.o  \
+	$(OBJ)/mess/vidhrdw/saa505x.o	     \
 	$(OBJ)/mess/vidhrdw/bbc.o	     \
 	$(OBJ)/mess/machine/bbc.o	     \
 	$(OBJ)/mess/systems/bbc.o	     \
@@ -947,6 +955,11 @@ $(OBJ)/be.a:						\
 	$(OBJ)/machine/intelfsh.o		\
 	$(OBJ)/machine/53c810.o
 
+$(OBJ)/tiger.a:				\
+	$(OBJ)/mess/systems/gamecom.o	\
+	$(OBJ)/mess/machine/gamecom.o	\
+	$(OBJ)/mess/vidhrdw/gamecom.o
+
 # MESS specific core $(OBJ)s
 COREOBJS +=							\
 	$(EXPAT)						\
@@ -963,7 +976,7 @@ COREOBJS +=							\
 	$(OBJ)/mess/mess.o				\
 	$(OBJ)/mess/mesvalid.o			\
 	$(OBJ)/mess/image.o				\
-	$(OBJ)/mess/system.o			\
+	$(OBJ)/mess/messdriv.o			\
 	$(OBJ)/mess/device.o			\
 	$(OBJ)/mess/hashfile.o			\
 	$(OBJ)/mess/inputx.o			\
@@ -975,7 +988,6 @@ COREOBJS +=							\
 	$(OBJ)/mess/compcfg.o			\
 	$(OBJ)/mess/utils.o				\
 	$(OBJ)/mess/eventlst.o			\
-	$(OBJ)/mess/videomap.o			\
 	$(OBJ)/mess/mscommon.o			\
 	$(OBJ)/mess/pool.o				\
 	$(OBJ)/mess/cheatms.o			\
@@ -1037,7 +1049,6 @@ DAT2HTML_OBJS =								\
 	$(OBJ)/mess/tools/dat2html/dat2html.o	\
 	$(OBJ)/mess/tools/imgtool/stubs.o		\
 	$(OBJ)/mess/utils.o						\
-	$(OBJ)/mamecore.o
 
 MESSDOCS_OBJS =								\
 	$(OBJ)/mamecore.o						\

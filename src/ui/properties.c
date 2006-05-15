@@ -99,7 +99,7 @@ static void FlickerSelectionChange(HWND hwnd);
 static void GammaSelectionChange(HWND hwnd);
 static void BrightCorrectSelectionChange(HWND hwnd);
 static void PauseBrightSelectionChange(HWND hwnd);
-static void BrightnessSelectionChange(HWND hwnd);
+static void FullScreenGammaSelectionChange(HWND hwnd);
 static void IntensitySelectionChange(HWND hwnd);
 static void A2DSelectionChange(HWND hwnd);
 static void ResDepthSelectionChange(HWND hWnd, HWND hWndCtrl);
@@ -122,7 +122,6 @@ static void InitializeDefaultInputUI(HWND hWnd);
 static void InitializeAnalogAxesUI(HWND hWnd);
 static void InitializeEffectUI(HWND hWnd);
 static void InitializeArtresUI(HWND hWnd);
-static void InitializeD3DFilterUI(HWND hwnd);
 static void InitializeD3DEffectUI(HWND hwnd);
 static void InitializeD3DPrescaleUI(HWND hwnd);
 static void InitializeBIOSUI(HWND hwnd);
@@ -169,7 +168,7 @@ static int  g_nIntensityIndex  = 0;
 static int  g_nRotateIndex     = 0;
 static int  g_nScreenIndex     = 0;
 static int  g_nInputIndex      = 0;
-static int  g_nBrightnessIndex = 0;
+static int  g_nFullScreenGammaIndex = 0;
 static int  g_nEffectIndex     = 0;
 static int  g_nLedmodeIndex     = 0;
 static int  g_nA2DIndex		   = 0;
@@ -216,7 +215,7 @@ static DWORD dwHelpIDs[] =
 	IDC_BACKDROPS,			HIDC_BACKDROPS,
 	IDC_BEAM,               HIDC_BEAM,
 	IDC_BEZELS,				HIDC_BEZELS,
-	IDC_BRIGHTNESS,         HIDC_BRIGHTNESS,
+	IDC_FSGAMMA,		    HIDC_FSGAMMA,
 	IDC_BRIGHTCORRECT,      HIDC_BRIGHTCORRECT,
 	IDC_BROADCAST,			HIDC_BROADCAST,
 	IDC_RANDOM_BG,          HIDC_RANDOM_BG,
@@ -949,14 +948,16 @@ char *GameInfoTitle(UINT nIndex)
 static char *GameInfoCloneOf(UINT nIndex)
 {
 	static char buf[1024];
+	const game_driver *clone_of = NULL;
 
 	buf[0] = '\0';
 
 	if (DriverIsClone(nIndex))
 	{
-		sprintf(buf, "%s - \"%s\"",
-				ConvertAmpersandString(ModifyThe(drivers[nIndex]->clone_of->description)),
-				drivers[nIndex]->clone_of->name); 
+		if( ( clone_of = driver_get_clone(drivers[nIndex])) != NULL )
+			sprintf(buf, "%s - \"%s\"",
+				ConvertAmpersandString(ModifyThe(clone_of->description)),
+				clone_of->name); 
 	}
 
 	return buf;
@@ -1016,6 +1017,7 @@ INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 {
 	RECT rc;
 	int nParentIndex = -1;
+	const game_driver *clone_of = NULL;
 	switch (Msg)
 	{
 	case WM_INITDIALOG:
@@ -1157,7 +1159,6 @@ INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 				changed = ReadControl(hDlg, wID);
 				break;
 
-			case IDC_D3D_FILTER :
 			case IDC_D3D_EFFECT :
 			case IDC_D3D_PRESCALE :
 				if (wNotifyCode == CBN_SELCHANGE)
@@ -1195,7 +1196,8 @@ INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 						if( DriverIsClone(g_nGame) )
 						{
 							int nParentIndex = -1;
-							nParentIndex = GetGameNameIndex( drivers[g_nGame]->clone_of->name );
+							if( (clone_of = driver_get_clone(drivers[g_nGame]))!= NULL);
+							nParentIndex = GetGameNameIndex( clone_of->name );
 							if( nParentIndex >= 0)
 								CopyGameOptions(GetGameOptions(nParentIndex, g_nFolder), pGameOpts );
 							else
@@ -1386,7 +1388,8 @@ INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 		{
 			if( DriverIsClone(g_nGame) )
 			{
-				nParentIndex = GetGameNameIndex( drivers[g_nGame]->clone_of->name );
+				if( (clone_of = driver_get_clone(drivers[g_nGame])) != NULL );
+				nParentIndex = GetGameNameIndex( clone_of->name );
 			}
 		}
 		//Set the Coloring of the elements
@@ -1777,10 +1780,10 @@ static void OptionsToProp(HWND hWnd, options_type* o)
 	}
 
 	
-	hCtrl = GetDlgItem(hWnd, IDC_BRIGHTNESSDISP);
+	hCtrl = GetDlgItem(hWnd, IDC_FSGAMMADISP);
 	if (hCtrl)
 	{
-		snprintf(buf,sizeof(buf), "%03.2f", o->gfx_brightness);
+		snprintf(buf,sizeof(buf), "%03.2f", o->gfx_gamma);
 		Static_SetText(hCtrl, buf);
 	}
 	
@@ -2017,9 +2020,9 @@ static void SetPropEnabledControls(HWND hWnd)
 	EnableWindow(GetDlgItem(hWnd, IDC_SYNCREFRESH),     ddraw);
 	EnableWindow(GetDlgItem(hWnd, IDC_REFRESH),         !in_window && ddraw && DirectDraw_HasRefresh());
 	EnableWindow(GetDlgItem(hWnd, IDC_REFRESHTEXT),     !in_window && ddraw && DirectDraw_HasRefresh());
-	EnableWindow(GetDlgItem(hWnd, IDC_BRIGHTNESS),      ddraw);
-	EnableWindow(GetDlgItem(hWnd, IDC_BRIGHTNESSTEXT),  ddraw);
-	EnableWindow(GetDlgItem(hWnd, IDC_BRIGHTNESSDISP),  ddraw);
+	EnableWindow(GetDlgItem(hWnd, IDC_FSGAMMA),      ddraw);
+	EnableWindow(GetDlgItem(hWnd, IDC_FSGAMMATEXT),  ddraw);
+	EnableWindow(GetDlgItem(hWnd, IDC_FSGAMMADISP),  ddraw);
 	EnableWindow(GetDlgItem(hWnd, IDC_ASPECTRATIOTEXT), ddraw && DirectDraw_HasHWStretch() && Button_GetCheck(GetDlgItem(hWnd, IDC_HWSTRETCH)));
 	EnableWindow(GetDlgItem(hWnd, IDC_ASPECTRATION),    ddraw && DirectDraw_HasHWStretch() && Button_GetCheck(GetDlgItem(hWnd, IDC_HWSTRETCH)));
 	EnableWindow(GetDlgItem(hWnd, IDC_ASPECTRATIOD),    ddraw && DirectDraw_HasHWStretch() && Button_GetCheck(GetDlgItem(hWnd, IDC_HWSTRETCH)));
@@ -2082,11 +2085,39 @@ static void SetPropEnabledControls(HWND hWnd)
 
 	if (!in_window && (nIndex <= -1 || DriverUsesLightGun(nIndex)))
 	{
-		BOOL use_lightgun;
-		Button_Enable(GetDlgItem(hWnd,IDC_LIGHTGUN),TRUE);
-		use_lightgun = Button_GetCheck(GetDlgItem(hWnd,IDC_LIGHTGUN));
-		Button_Enable(GetDlgItem(hWnd,IDC_DUAL_LIGHTGUN),use_lightgun);
-		Button_Enable(GetDlgItem(hWnd,IDC_RELOAD),use_lightgun);
+		// on WinXP the Lightgun and Dual Lightgun switches are no longer supported use mouse instead
+		OSVERSIONINFOEX osvi;
+		BOOL bOsVersionInfoEx;
+		// Try calling GetVersionEx using the OSVERSIONINFOEX structure.
+		// If that fails, try using the OSVERSIONINFO structure.
+
+		ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+
+		if( !(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi)) )
+		{
+			osvi.dwOSVersionInfoSize = sizeof (OSVERSIONINFO);
+			bOsVersionInfoEx = GetVersionEx ( (OSVERSIONINFO *) &osvi);
+		}
+
+		if( bOsVersionInfoEx && (osvi.dwPlatformId == VER_PLATFORM_WIN32_NT) && (osvi.dwMajorVersion >= 5) )
+		{
+			BOOL use_lightgun;
+			//XP and above...
+			Button_Enable(GetDlgItem(hWnd,IDC_LIGHTGUN),FALSE);
+			use_lightgun = Button_GetCheck(GetDlgItem(hWnd,IDC_USE_MOUSE));
+			Button_Enable(GetDlgItem(hWnd,IDC_DUAL_LIGHTGUN),FALSE);
+			Button_Enable(GetDlgItem(hWnd,IDC_RELOAD),use_lightgun);
+		}
+		else
+		{
+			BOOL use_lightgun;
+			// Older than XP 
+			Button_Enable(GetDlgItem(hWnd,IDC_LIGHTGUN),TRUE);
+			use_lightgun = Button_GetCheck(GetDlgItem(hWnd,IDC_LIGHTGUN));
+			Button_Enable(GetDlgItem(hWnd,IDC_DUAL_LIGHTGUN),use_lightgun);
+			Button_Enable(GetDlgItem(hWnd,IDC_RELOAD),use_lightgun);
+		}
 	}
 	else
 	{
@@ -2179,9 +2210,9 @@ static void AssignGamma(HWND hWnd)
 	pGameOpts->f_gamma_correct = g_nGammaIndex / 20.0 + 0.5;
 }
 
-static void AssignBrightness(HWND hWnd)
+static void AssignFullScreenGamma(HWND hWnd)
 {
-	pGameOpts->gfx_brightness = g_nBrightnessIndex / 20.0 + 0.1;
+	pGameOpts->gfx_gamma = g_nFullScreenGammaIndex / 20.0 + 0.1;
 }
 
 static void AssignBeam(HWND hWnd)
@@ -2460,7 +2491,7 @@ static void ResetDataMap(void)
 	// add the 0.001 to make sure it truncates properly to the integer
 	// (we don't want 35.99999999 to be cut down to 35 because of floating point error)
 	g_nGammaIndex			= (int)((pGameOpts->f_gamma_correct  - 0.5) * 20.0 + 0.001);
-	g_nBrightnessIndex		= (int)((pGameOpts->gfx_brightness   - 0.1) * 20.0 + 0.001);
+	g_nFullScreenGammaIndex	= (int)((pGameOpts->gfx_gamma   - 0.1) * 20.0 + 0.001);
 	g_nBrightCorrectIndex	= (int)((pGameOpts->f_bright_correct - 0.5) * 20.0 + 0.001);
 	g_nPauseBrightIndex   	= (int)((pGameOpts->f_pause_bright   - 0.5) * 20.0 + 0.001);
 	g_nBeamIndex			= (int)((pGameOpts->f_beam           - 1.0) * 20.0 + 0.001);
@@ -2624,8 +2655,8 @@ static void BuildDataMap(void)
 	DataMapAdd(IDC_MATCHREFRESH,  DM_BOOL, CT_BUTTON,   &pGameOpts->matchrefresh,  DM_BOOL, &pGameOpts->matchrefresh,  0, 0, 0);
 	DataMapAdd(IDC_SYNCREFRESH,   DM_BOOL, CT_BUTTON,   &pGameOpts->syncrefresh,   DM_BOOL, &pGameOpts->syncrefresh,   0, 0, 0);
 	DataMapAdd(IDC_THROTTLE,      DM_BOOL, CT_BUTTON,   &pGameOpts->throttle,      DM_BOOL, &pGameOpts->throttle,      0, 0, 0);
-	DataMapAdd(IDC_BRIGHTNESS,    DM_INT,  CT_SLIDER,   &g_nBrightnessIndex,	   DM_DOUBLE, &pGameOpts->gfx_brightness, 0, 0, AssignBrightness);
-	DataMapAdd(IDC_BRIGHTNESSDISP,DM_NONE, CT_NONE,   NULL,  DM_DOUBLE, &pGameOpts->gfx_brightness, 0, 0, 0);
+	DataMapAdd(IDC_FSGAMMA,		  DM_INT,  CT_SLIDER,   &g_nFullScreenGammaIndex,  DM_DOUBLE, &pGameOpts->gfx_gamma,   0, 0, AssignFullScreenGamma);
+	DataMapAdd(IDC_FSGAMMADISP,	  DM_NONE, CT_NONE,     NULL,                      DM_DOUBLE, &pGameOpts->gfx_gamma,   0, 0, 0);
 	/* pGameOpts->frames_to_display */
 	DataMapAdd(IDC_EFFECT,        DM_INT,  CT_COMBOBOX, &g_nEffectIndex,           DM_STRING, &pGameOpts->effect,		   0, 0, AssignEffect);
 	DataMapAdd(IDC_ASPECTRATIOD,  DM_NONE, CT_NONE, &pGameOpts->aspect,    DM_STRING, &pGameOpts->aspect, 0, 0, 0);
@@ -2638,7 +2669,7 @@ static void BuildDataMap(void)
 
 	// direct3d
 	DataMapAdd(IDC_D3D,           DM_BOOL, CT_BUTTON,   &pGameOpts->use_d3d,       DM_BOOL, &pGameOpts->use_d3d,       0, 0, 0);
-	DataMapAdd(IDC_D3D_FILTER,    DM_INT,  CT_COMBOBOX, &pGameOpts->d3d_filter,    DM_INT, &pGameOpts->d3d_filter, 0, 0, 0);
+	DataMapAdd(IDC_D3D_FILTER,    DM_BOOL,  CT_BUTTON, &pGameOpts->d3d_filter,    DM_BOOL, &pGameOpts->d3d_filter, 0, 0, 0);
 	DataMapAdd(IDC_D3D_TEXTURE_MANAGEMENT,DM_BOOL,CT_BUTTON,&pGameOpts->d3d_texture_management,DM_BOOL,&pGameOpts->d3d_texture_management, 0, 0, 0);
 	DataMapAdd(IDC_D3D_EFFECT,    DM_INT,  CT_COMBOBOX, &pGameOpts->d3d_effect,    DM_INT, &pGameOpts->d3d_effect, 0, 0, 0);
 	DataMapAdd(IDC_D3D_PRESCALE,  DM_INT,  CT_COMBOBOX, &pGameOpts->d3d_prescale,  DM_INT, &pGameOpts->d3d_prescale,  0, 0, 0);
@@ -2724,6 +2755,7 @@ static void BuildDataMap(void)
 	DataMapAdd(IDC_BIOS,          DM_INT,  CT_COMBOBOX, &pGameOpts->bios,          DM_INT, &pGameOpts->bios,        0, 0, 0);
 	DataMapAdd(IDC_ENABLE_AUTOSAVE, DM_BOOL, CT_BUTTON,  &pGameOpts->autosave, DM_BOOL, &pGameOpts->autosave, 0, 0, 0);
 #ifdef MESS
+	DataMapAdd(IDC_SKIP_WARNINGS, DM_BOOL, CT_BUTTON,   &pGameOpts->skip_warnings, DM_BOOL, &pGameOpts->skip_warnings, 0, 0, 0);
 	DataMapAdd(IDC_USE_NEW_UI,    DM_BOOL, CT_BUTTON,   &pGameOpts->mess.use_new_ui,DM_BOOL, &pGameOpts->mess.use_new_ui, 0, 0, 0);
 #endif
 
@@ -2903,7 +2935,6 @@ static void InitializeOptions(HWND hDlg)
 	InitializeAnalogAxesUI(hDlg);
 	InitializeEffectUI(hDlg);
 	InitializeArtresUI(hDlg);
-	InitializeD3DFilterUI(hDlg);
 	InitializeD3DEffectUI(hDlg);
 	InitializeD3DPrescaleUI(hDlg);
 	InitializeBIOSUI(hDlg);
@@ -2929,7 +2960,7 @@ static void InitializeMisc(HWND hDlg)
 				(WPARAM)FALSE,
 				(LPARAM)MAKELONG(0, 30)); /* [0.50, 2.00] in .05 increments */
 
-	SendDlgItemMessage(hDlg, IDC_BRIGHTNESS, TBM_SETRANGE,
+	SendDlgItemMessage(hDlg, IDC_FSGAMMA, TBM_SETRANGE,
 				(WPARAM)FALSE,
 				(LPARAM)MAKELONG(0, 38)); /* [0.10, 2.00] in .05 increments */
 
@@ -2990,9 +3021,9 @@ static void OptOnHScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 		PauseBrightSelectionChange(hwnd);
 	}
 	else
-	if (hwndCtl == GetDlgItem(hwnd, IDC_BRIGHTNESS))
+	if (hwndCtl == GetDlgItem(hwnd, IDC_FSGAMMA))
 	{
-		BrightnessSelectionChange(hwnd);
+		FullScreenGammaSelectionChange(hwnd);
 	}
 	else
 	if (hwndCtl == GetDlgItem(hwnd, IDC_BEAM))
@@ -3132,21 +3163,21 @@ static void PauseBrightSelectionChange(HWND hwnd)
 	Static_SetText(GetDlgItem(hwnd, IDC_PAUSEBRIGHTDISP), buf);
 }
 
-/* Handle changes to the Brightness slider */
-static void BrightnessSelectionChange(HWND hwnd)
+/* Handle changes to the Fullscreen Gamma slider */
+static void FullScreenGammaSelectionChange(HWND hwnd)
 {
 	char   buf[100];
 	int    nValue;
-	double dBrightness;
+	double dGamma;
 
 	/* Get the current value of the control */
-	nValue = SendDlgItemMessage(hwnd, IDC_BRIGHTNESS, TBM_GETPOS, 0, 0);
+	nValue = SendDlgItemMessage(hwnd, IDC_FSGAMMA, TBM_GETPOS, 0, 0);
 
-	dBrightness = nValue / 20.0 + 0.1;
+	dGamma = nValue / 20.0 + 0.1;
 
 	/* Set the static display to the new value */
-	snprintf(buf,sizeof(buf),"%03.2f", dBrightness);
-	Static_SetText(GetDlgItem(hwnd, IDC_BRIGHTNESSDISP), buf);
+	snprintf(buf,sizeof(buf),"%03.2f", dGamma);
+	Static_SetText(GetDlgItem(hwnd, IDC_FSGAMMADISP), buf);
 }
 
 /* Handle changes to the Intensity slider */
@@ -3667,19 +3698,6 @@ static void InitializeArtresUI(HWND hwnd)
 		ComboBox_AddString(hCtrl, "Auto");		/* 0 */
 		ComboBox_AddString(hCtrl, "Standard");  /* 1 */
 		ComboBox_AddString(hCtrl, "High");		/* 2 */
-	}
-}
-
-static void InitializeD3DFilterUI(HWND hwnd)
-{
-	HWND hCtrl = GetDlgItem(hwnd,IDC_D3D_FILTER);
-
-	if (hCtrl)
-	{
-		int i;
-
-		for (i=0;i<MAX_D3D_FILTERS;i++)
-			ComboBox_AddString(hCtrl,GetD3DFilterLongName(i));
 	}
 }
 

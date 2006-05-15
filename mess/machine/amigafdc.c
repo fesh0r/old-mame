@@ -7,6 +7,7 @@
 #include "mame.h"
 #include "amiga.h"
 #include "amigafdc.h"
+#include "machine/6526cia.h"
 
 /* required prototype */
 static void setup_fdc_buffer( int drive );
@@ -35,8 +36,6 @@ static int fdc_step = 1;
 static int fdc_rdy = 1;
 
 static void fdc_rev_proc( int drive );
-
-extern custom_regs_def custom_regs;
 
 static DEVICE_INIT(amiga_fdc)
 {
@@ -84,7 +83,7 @@ static int fdc_get_curpos( int drive ) {
 	}
 
 	elapsed = timer_timeelapsed( fdc_status[drive].rev_timer );
-	speed = ( custom_regs.ADKCON & 0x100 ) ? 2 : 4;
+	speed = ( CUSTOM_REG(REG_ADKCON) & 0x100 ) ? 2 : 4;
 
 	bytes = elapsed / ( TIME_IN_USEC( speed * 8 ) );
 	pos = bytes % ( 544*2*11 );
@@ -97,8 +96,8 @@ unsigned short amiga_fdc_get_byte( void ) {
 	int i, drive = -1;
 	unsigned short ret;
 
-	ret = ( ( custom_regs.DSKLEN >> 1 ) & 0x4000 ) & ( ( custom_regs.DMACON << 10 ) & 0x4000 );
-	ret |= ( custom_regs.DSKLEN >> 1 ) & 0x2000;
+	ret = ( ( CUSTOM_REG(REG_DSKLEN) >> 1 ) & 0x4000 ) & ( ( CUSTOM_REG(REG_DMACON) << 10 ) & 0x4000 );
+	ret |= ( CUSTOM_REG(REG_DSKLEN) >> 1 ) & 0x2000;
 
 	for ( i = 0; i < 4; i++ ) {
 		if ( !( fdc_sel & ( 1 << i ) ) )
@@ -115,8 +114,8 @@ unsigned short amiga_fdc_get_byte( void ) {
 
 	pos = fdc_get_curpos( drive );
 
-	if ( fdc_status[drive].mfm[pos] == ( custom_regs.DSKSYNC >> 8 ) &&
-		 fdc_status[drive].mfm[pos+1] == ( custom_regs.DSKSYNC & 0xff ) )
+	if ( fdc_status[drive].mfm[pos] == ( CUSTOM_REG(REG_DSRSYNC) >> 8 ) &&
+		 fdc_status[drive].mfm[pos+1] == ( CUSTOM_REG(REG_DSRSYNC) & 0xff ) )
 			ret |= 0x1000;
 
 	if ( pos != fdc_status[drive].pos ) {
@@ -136,14 +135,18 @@ static void fdc_dma_proc( int drive ) {
 
 	setup_fdc_buffer( drive );
 
-	if ( custom_regs.DSKLEN & 0x4000 ) {
+	if ( CUSTOM_REG(REG_DSKLEN) & 0x4000 )
+	{
 		logerror("Write to disk unsupported yet\n" );
-	} else {
-		unsigned char *RAM = &memory_region(REGION_CPU1)[( custom_regs.DSKPTH << 16 ) | custom_regs.DSKPTL];
+	}
+	else
+	{
+		offs_t offset = CUSTOM_REG_LONG(REG_DSKPTH);
 		int cur_pos = fdc_status[drive].pos;
-		int len = custom_regs.DSKLEN & 0x3fff;
+		int len = CUSTOM_REG(REG_DSKLEN) & 0x3fff;
 
-		while ( len-- ) {
+		while ( len-- )
+		{
 			int dat = ( fdc_status[drive].mfm[cur_pos++] ) << 8;
 
 			cur_pos %= ( 544 * 2 * 11 );
@@ -152,9 +155,9 @@ static void fdc_dma_proc( int drive ) {
 
 			cur_pos %= ( 544 * 2 * 11 );
 
-			*((UINT16 *) RAM) = dat;
+			amiga_chip_ram_w(offset, dat);
 
-			RAM += 2;
+			offset += 2;
 		}
 	}
 
@@ -165,10 +168,10 @@ void amiga_fdc_setup_dma( void ) {
 	int i, cur_pos, drive = -1;
 	int time = 0;
 
-	if ( ( custom_regs.DSKLEN & 0x8000 ) == 0 )
+	if ( ( CUSTOM_REG(REG_DSKLEN) & 0x8000 ) == 0 )
 		return;
 
-	if ( ( custom_regs.DMACON & 0x0210 ) == 0 )
+	if ( ( CUSTOM_REG(REG_DMACON) & 0x0210 ) == 0 )
 		return;
 
 	for ( i = 0; i < 4; i++ ) {
@@ -188,15 +191,15 @@ void amiga_fdc_setup_dma( void ) {
 
 	fdc_status[drive].pos = cur_pos = fdc_get_curpos( drive );
 
-	if ( custom_regs.ADKCON & 0x0400 ) { /* Wait for sync */
-		if ( custom_regs.DSKSYNC != 0x4489 ) {
+	if ( CUSTOM_REG(REG_ADKCON) & 0x0400 ) { /* Wait for sync */
+		if ( CUSTOM_REG(REG_DSRSYNC) != 0x4489 ) {
 			logerror("Attempting to read a non-standard SYNC\n" );
 		}
 
 		i = cur_pos;
 		do {
-			if ( fdc_status[drive].mfm[i] == ( custom_regs.DSKSYNC >> 8 ) &&
-				 fdc_status[drive].mfm[i+1] == ( custom_regs.DSKSYNC & 0xff ) )
+			if ( fdc_status[drive].mfm[i] == ( CUSTOM_REG(REG_DSRSYNC) >> 8 ) &&
+				 fdc_status[drive].mfm[i+1] == ( CUSTOM_REG(REG_DSRSYNC) & 0xff ) )
 				 	break;
 
 			i++;
@@ -211,13 +214,13 @@ void amiga_fdc_setup_dma( void ) {
 			fdc_status[drive].pos = i + 2;
 		}
 
-		time += ( custom_regs.DSKLEN & 0x3fff ) * 2;
-		time *= ( custom_regs.ADKCON & 0x0100 ) ? 2 : 4;
+		time += ( CUSTOM_REG(REG_DSKLEN) & 0x3fff ) * 2;
+		time *= ( CUSTOM_REG(REG_ADKCON) & 0x0100 ) ? 2 : 4;
 		time *= 8;
 		timer_set( TIME_IN_USEC( time ), drive, fdc_dma_proc );
 	} else {
-		time = ( custom_regs.DSKLEN & 0x3fff ) * 2;
-		time *= ( custom_regs.ADKCON & 0x0100 ) ? 2 : 4;
+		time = ( CUSTOM_REG(REG_DSKLEN) & 0x3fff ) * 2;
+		time *= ( CUSTOM_REG(REG_ADKCON) & 0x0100 ) ? 2 : 4;
 		time *= 8;
 		timer_set( TIME_IN_USEC( time ), drive, fdc_dma_proc );
 	}
@@ -348,9 +351,10 @@ static void setup_fdc_buffer( int drive )
 static void fdc_rev_proc( int drive ) {
 	int time;
 
-	amiga_cia_issue_index();
+	/* Issue a index pulse when a disk revolution completes */
+	cia_issue_index(1);
 
-	time = ( custom_regs.ADKCON & 0x100 ) ? 2 : 4;
+	time = ( CUSTOM_REG(REG_ADKCON) & 0x100 ) ? 2 : 4;
 	time *= ( 544 * 2 * 11 );
 	time *= 8;
 	timer_adjust(fdc_status[drive].rev_timer, TIME_IN_USEC( time ), drive, 0);
@@ -365,7 +369,7 @@ static void start_rev_timer( int drive ) {
 		return;
 	}
 
-	time = ( custom_regs.ADKCON & 0x100 ) ? 2 : 4;
+	time = ( CUSTOM_REG(REG_ADKCON) & 0x100 ) ? 2 : 4;
 	time *= ( 544 * 2 * 11 );
 	time *= 8;
 
@@ -418,7 +422,7 @@ static void fdc_motor( int drive, int off ) {
 	fdc_status[drive].motor_on = on;
 }
 
-void amiga_fdc_control_w( int data ) {
+void amiga_fdc_control_w( UINT8 data ) {
 	int step_pulse;
 	int drive;
 

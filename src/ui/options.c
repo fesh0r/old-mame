@@ -315,7 +315,7 @@ static const REG_OPTION regGameOpts[] =
 	{ "matchrefresh",           RO_BOOL,    offsetof(options_type, matchrefresh),                    "0" },
 	{ "syncrefresh",            RO_BOOL,    offsetof(options_type, syncrefresh),                     "0" },
 	{ "throttle",               RO_BOOL,    offsetof(options_type, throttle),                        "1" },
-	{ "full_screen_brightness", RO_DOUBLE,  offsetof(options_type, gfx_brightness),                  "1.0" },
+	{ "full_screen_gamma",		RO_DOUBLE,  offsetof(options_type, gfx_gamma),		                 "1.0" },
 	{ "frames_to_run",          RO_INT,     offsetof(options_type, frames_to_display),               "0" },
 	{ "effect",                 RO_STRING,  offsetof(options_type, effect),                          "none" },
 	{ "screen_aspect",          RO_STRING,  offsetof(options_type, aspect),                          "4:3" },
@@ -326,7 +326,7 @@ static const REG_OPTION regGameOpts[] =
 	// d3d
 	{ "d3d",                    RO_BOOL,    offsetof(options_type, use_d3d),                         "0" },
 	{ "d3dtexmanage",           RO_BOOL,    offsetof(options_type, d3d_texture_management),          "1" },
-	{ "d3dfilter",              RO_INT,     offsetof(options_type, d3d_filter),                      "1" },
+	{ "d3dfilter",              RO_BOOL,    offsetof(options_type, d3d_filter),                      "1" },
 	{ "d3deffect",              RO_ENCODE,  offsetof(options_type, d3d_effect),                      "auto", NULL, D3DEffectEncodeString,   D3DEffectDecodeString },
 	{ "d3dprescale",            RO_ENCODE,  offsetof(options_type, d3d_prescale),                    "auto", NULL, D3DPrescaleEncodeString, D3DPrescaleDecodeString },
 	{ "d3deffectrotate",        RO_BOOL,    offsetof(options_type, d3d_rotate_effects),              "1" },
@@ -547,15 +547,6 @@ const char * d3d_prescale_short_name[MAX_D3D_PRESCALE] =
 	"6",
 	"7",
 	"8",
-};
-
-const char * d3d_filter_long_name[MAX_D3D_FILTERS] =
-{
-	"None",
-	"Bilinear",
-	"Cubic (flat kernel)",
-	"Cubic (gaussian kernel)",
-	"Anisotropic",
 };
 
 const char * clean_stretch_long_name[MAX_CLEAN_STRETCH] =
@@ -941,6 +932,7 @@ options_type * GetSourceOptions(int driver_index )
 options_type * GetGameOptions(int driver_index, int folder_index )
 {
 	int parent_index, setting;
+	const game_driver *clone_of = NULL;
 	struct SettingsHandler handlers[3];
 
 	assert(0 <= driver_index && driver_index < num_games);
@@ -959,8 +951,11 @@ options_type * GetGameOptions(int driver_index, int folder_index )
 	//Sync in parent settings if it has one
 	if( DriverIsClone(driver_index))
 	{
-		parent_index = GetDriverIndex(drivers[driver_index]->clone_of);
-		LoadSettingsFile(parent_index | SETTINGS_FILE_GAME, &game_options[driver_index], regGameOpts);
+		if( ( clone_of = driver_get_clone(drivers[driver_index])) != NULL )
+		{
+			parent_index = GetDriverIndex(clone_of);
+			LoadSettingsFile(parent_index | SETTINGS_FILE_GAME, &game_options[driver_index], regGameOpts);
+		}
 	}
 
 	//last but not least, sync in game specific settings
@@ -1040,11 +1035,6 @@ const char * GetD3DPrescaleLongName(int d3d_prescale)
 const char * GetD3DPrescaleShortName(int d3d_prescale)
 {
 	return d3d_prescale_short_name[d3d_prescale];
-}
-
-const char * GetD3DFilterLongName(int d3d_filter)
-{
-	return d3d_filter_long_name[d3d_filter];
 }
 
 const char * GetCleanStretchLongName(int clean_stretch)
@@ -3086,7 +3076,8 @@ BOOL GetFolderUsesDefaults(int folder_index, int driver_index)
 //returns true if same
 BOOL GetGameUsesDefaults(int driver_index)
 {
-	const options_type *opts;
+	const options_type *opts = NULL;
+	const game_driver *clone_of = NULL;
 	int nParentIndex= -1;
 
 	if (driver_index < 0)
@@ -3097,7 +3088,8 @@ BOOL GetGameUsesDefaults(int driver_index)
 
 	if ((driver_index >= 0) && DriverIsClone(driver_index))
 	{
-		nParentIndex = GetGameNameIndex( drivers[driver_index]->clone_of->name );
+		if( ( clone_of = driver_get_clone(drivers[driver_index])) != NULL )
+			nParentIndex = GetGameNameIndex( clone_of->name );
 		if( nParentIndex >= 0)
 			opts = GetGameOptions(nParentIndex, FALSE);
 		else
@@ -3112,17 +3104,21 @@ BOOL GetGameUsesDefaults(int driver_index)
 
 void SaveGameOptions(int driver_index)
 {
-	BOOL options_different = TRUE;
 	options_type Opts;
+	const game_driver *clone_of = NULL;
 	int nParentIndex= -1;
 	struct SettingsHandler handlers[3];
 	int setting;
+#ifdef MESS
+	BOOL has_software = FALSE;
+#endif /* MESS */
 
 	if( driver_index >= 0)
 	{
 		if( DriverIsClone(driver_index) )
 		{
-			nParentIndex = GetGameNameIndex( drivers[driver_index]->clone_of->name );
+			if( ( clone_of = driver_get_clone(drivers[driver_index])) != NULL )
+				nParentIndex = GetGameNameIndex( clone_of->name );
 			if( nParentIndex >= 0)
 				CopyGameOptions(GetGameOptions(nParentIndex, FALSE), &Opts );
 			else
@@ -3135,13 +3131,7 @@ void SaveGameOptions(int driver_index)
 	else
 		CopyGameOptions( GetSourceOptions(driver_index), &Opts );
 
-	if (game_variables[driver_index].use_default == FALSE)
-	{
-		options_different = !AreOptionsEqual(regGameOpts, &game_options[driver_index], &Opts);
-	}
-
 #ifdef MESS
-	if (!options_different)
 	{
 		int i;
 		const options_type *o;
@@ -3152,33 +3142,33 @@ void SaveGameOptions(int driver_index)
 		{
 			if (o->mess.software[i] && o->mess.software[i][0])
 			{
-				options_different = TRUE;
+				has_software = TRUE;
 				break;
 			}
 		}
 	}
 #endif // MESS
 
-	if (options_different)
-	{
-		memset(handlers, 0, sizeof(handlers));
-		setting = 0;
-		handlers[setting].type = SH_OPTIONSTRUCT;
-		handlers[setting].comment = "Options";
-		handlers[setting].u.option_struct.option_struct = (void *) &game_options[driver_index];
-		handlers[setting].u.option_struct.comparison_struct = &Opts;
-		handlers[setting].u.option_struct.option_array = regGameOpts;
-		setting++;
+	memset(handlers, 0, sizeof(handlers));
+	setting = 0;
+	handlers[setting].type = SH_OPTIONSTRUCT;
+	handlers[setting].comment = "Options";
+	handlers[setting].u.option_struct.option_struct = (void *) &game_options[driver_index];
+	handlers[setting].u.option_struct.comparison_struct = &Opts;
+	handlers[setting].u.option_struct.option_array = regGameOpts;
+	setting++;
 #ifdef MESS
+	if (has_software)
+	{
 		handlers[setting].type = SH_MANUAL;
 		handlers[setting].comment = "Devices";
 		handlers[setting].u.manual.emit = SaveDeviceOption;
 		setting++;
-#endif // MESS
-		handlers[setting].type = SH_END;
-
-		SaveSettingsFileEx(driver_index | SETTINGS_FILE_GAME, handlers);
 	}
+#endif // MESS
+	handlers[setting].type = SH_END;
+
+	SaveSettingsFileEx(driver_index | SETTINGS_FILE_GAME, handlers);
 }
 
 void SaveFolderOptions(int folder_index, int game_index)

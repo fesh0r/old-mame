@@ -171,9 +171,9 @@
 #define IDC_TRANSLUCENCY                1081
 #define IDC_VERSION                     1082
 #define IDC_ARTWORK                     1083
-#define IDC_BRIGHTNESS                  1084
+#define IDC_FSGAMMA		                1084
 #define IDC_GAMMADISP                   1085
-#define IDC_BRIGHTNESSDISP              1086
+#define IDC_FSGAMMADISP                 1086
 #define IDC_BRIGHTCORRECTDISP           1087
 #define IDC_FLICKERDISP                 1088
 #define IDC_INTENSITYDISP               1089
@@ -234,7 +234,7 @@
 #define IDC_REFRESH                     1148
 #define IDC_REFRESHTEXT                 1149
 #define IDC_EFFECT                      1150
-#define IDC_BRIGHTNESSTEXT              1151
+#define IDC_FSGAMMATEXT                 1151
 #define IDC_STEADYKEY                   1152
 #define IDC_ASPECTRATIO                 1153
 #define IDC_ASPECTRATION                1154
@@ -398,6 +398,8 @@
 #define ID_UI_HISTORY_UP                40093
 #define ID_UI_HISTORY_DOWN              40094
 #define ID_FILE_LOADSTATE               40095
+#define ID_FOLDER_SOURCEPROPERTIES      40096
+#define ID_FOLDER_VECTORPROPERTIES      40097
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -407,7 +409,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        187
-#define _APS_NEXT_COMMAND_VALUE         40097
+#define _APS_NEXT_COMMAND_VALUE         40098
 #define _APS_NEXT_CONTROL_VALUE         1245
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

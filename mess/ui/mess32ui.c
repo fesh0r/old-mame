@@ -84,6 +84,7 @@ static void MessTestsBegin(void);
 
 static int s_nGame;
 static TCHAR s_szSelectedItem[MAX_PATH];
+static BOOL s_bIgnoreSoftwarePickerNotifies;
 
 #include "ui/win32ui.c"
 
@@ -266,7 +267,7 @@ static int GetMessIcon(int nGame, int nSoftwareType)
         nIconPos = mess_icon_index[the_index];
         if (nIconPos >= 0)
 		{
-			for (drv = drivers[nGame]; drv; drv = drv->clone_of)
+			for (drv = drivers[nGame]; drv; drv = driver_get_clone(drv))
 			{
 				_snprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), "%s/%s", drv->name, iconname);
 				hIcon = LoadIconFromFile(buffer);
@@ -492,6 +493,8 @@ static void MessSpecifyImage(int nGame, const device_class *devclass, int nID, L
 
 	if (nID >= 0)
 		InternalSetSelectedSoftware(nGame, dev->position + nID, pszFilename);
+	else if (LOG_SOFTWARE)
+		dprintf("MessSpecifyImage(): Failed to place image '%s'\n", pszFilename);
 
 	end_resource_tracking();
 }
@@ -523,7 +526,7 @@ static void MessRemoveImage(int nGame, device_class devclass, LPCTSTR pszFilenam
 			{
 				if (!_tcsicmp(pszFilename, GetSelectedSoftware(nGame, nPos + i)))
 				{
-					MessSpecifyImage(nGame, &devclass, nPos + i, NULL);
+					MessSpecifyImage(nGame, &devclass, i, NULL);
 					break;
 				}
 			}
@@ -545,6 +548,10 @@ static void MessReadMountedSoftware(int nGame)
 	const struct IODevice *pDevice;
 	LPCTSTR pszSoftware;
 
+	// First read stuff into device view
+	DevView_Refresh(GetDlgItem(hMain, IDC_SWDEVVIEW));
+
+	// Now read stuff into picker
 	begin_resource_tracking();
 
 	hwndSoftware = GetDlgItem(hMain, IDC_SWLIST);
@@ -552,6 +559,8 @@ static void MessReadMountedSoftware(int nGame)
 	pDeviceList = devices_allocate(pDriver);
 	if (!pDeviceList)
 		goto done;
+
+	s_bIgnoreSoftwarePickerNotifies = TRUE;
 
 	// Now clear everything out; this may call back into us but it should not
 	// be problematic
@@ -588,6 +597,7 @@ static void MessReadMountedSoftware(int nGame)
 
 done:
 	end_resource_tracking();
+	s_bIgnoreSoftwarePickerNotifies = FALSE;
 }
 
 
@@ -629,6 +639,8 @@ static void MessCreateCommandLine(char *pCmdLine, options_type *pOpts, const gam
 {
 	if ((pOpts->mess.ram_size != 0) && ram_is_valid_option(pDriver, pOpts->mess.ram_size))
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -ramsize %d", pOpts->mess.ram_size);
+	if (pOpts->skip_warnings)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -skip_warnings");
 
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%snewui", pOpts->mess.use_new_ui ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -writeconfig");
@@ -855,7 +867,6 @@ static void DevView_SetSelectedSoftware(HWND hwndDevView, int nGame,
 	const struct IODevice *dev, int nID, LPCTSTR pszFilename)
 {
 	MessSpecifyImage(nGame, &dev->devclass, nID, pszFilename);
-	MessReadMountedSoftware(nGame);
 }
 
 
@@ -937,11 +948,14 @@ static void SoftwarePicker_LeavingItem(HWND hwndSoftwarePicker, int nItem)
 	device_class devclass;
 	LPCTSTR pszFullName;
 
-	nGame = Picker_GetSelectedItem(hwndList);
-	devclass = SoftwarePicker_LookupDevice(hwndSoftwarePicker, nItem);
-	pszFullName = SoftwarePicker_LookupFilename(hwndSoftwarePicker, nItem);
+	if (!s_bIgnoreSoftwarePickerNotifies)
+	{
+		nGame = Picker_GetSelectedItem(hwndList);
+		devclass = SoftwarePicker_LookupDevice(hwndSoftwarePicker, nItem);
+		pszFullName = SoftwarePicker_LookupFilename(hwndSoftwarePicker, nItem);
 
-	MessRemoveImage(nGame, devclass, pszFullName);
+		MessRemoveImage(nGame, devclass, pszFullName);
+	}
 }
 
 
@@ -954,26 +968,29 @@ static void SoftwarePicker_EnteringItem(HWND hwndSoftwarePicker, int nItem)
 	int nGame;
 	device_class devclass;
 
-	nGame = Picker_GetSelectedItem(hwndList);
+	if (!s_bIgnoreSoftwarePickerNotifies)
+	{
+		nGame = Picker_GetSelectedItem(hwndList);
 
-	// Get the fullname and partialname for this file
-	pszFullName = SoftwarePicker_LookupFilename(hwndSoftwarePicker, nItem);
-	s = strrchr(pszFullName, '\\');
-	pszName = s ? s + 1 : pszFullName;
+		// Get the fullname and partialname for this file
+		pszFullName = SoftwarePicker_LookupFilename(hwndSoftwarePicker, nItem);
+		s = strrchr(pszFullName, '\\');
+		pszName = s ? s + 1 : pszFullName;
 
-	// Do the dirty work
-	devclass = SoftwarePicker_LookupDevice(hwndSoftwarePicker, nItem);
-	if (!devclass.gamedrv)
-		return;
-	MessSpecifyImage(nGame, &devclass, -1, pszFullName);
+		// Do the dirty work
+		devclass = SoftwarePicker_LookupDevice(hwndSoftwarePicker, nItem);
+		if (!devclass.gamedrv)
+			return;
+		MessSpecifyImage(nGame, &devclass, -1, pszFullName);
 
-	// Set up s_szSelecteItem, for the benefit of UpdateScreenShot()
-	strncpyz(s_szSelectedItem, pszName, sizeof(s_szSelectedItem) / sizeof(s_szSelectedItem[0]));
-	s = strrchr(s_szSelectedItem, '.');
-	if (s)
-		*s = '\0';
+		// Set up s_szSelecteItem, for the benefit of UpdateScreenShot()
+		strncpyz(s_szSelectedItem, pszName, sizeof(s_szSelectedItem) / sizeof(s_szSelectedItem[0]));
+		s = strrchr(s_szSelectedItem, '.');
+		if (s)
+			*s = '\0';
 
-	UpdateScreenShot();
+		UpdateScreenShot();
+	}
 }
 
 

@@ -688,6 +688,8 @@ static imgtoolerr_t setup_openfilename_struct(OPENFILENAME *ofn, memory_pool *po
 	const char *s;
 	TCHAR *filename;
 	TCHAR *filter;
+	TCHAR *initial_dir = NULL;
+	TCHAR *dir_char;
 	struct imgtool_module_features features;
 	DWORD filter_index = 0, current_index = 0;
 	const struct wimgtool_info *info;
@@ -764,6 +766,19 @@ static imgtoolerr_t setup_openfilename_struct(OPENFILENAME *ofn, memory_pool *po
 	}
 	memcpy(filter, pile_getptr(&pile), pile_size(&pile));
 
+	// can we specify an initial directory?
+	if (info->filename)
+	{
+		initial_dir = alloca((_tcslen(info->filename) + 1) * sizeof(*info->filename));
+		_tcscpy(initial_dir, info->filename);
+		dir_char = _tcsrchr(initial_dir, '\\');
+		if (dir_char)
+			dir_char[1] = '\0';
+		else
+			initial_dir = NULL;
+	}
+
+	// populate the actual OPENFILENAME structure
 	memset(ofn, 0, sizeof(*ofn));
 	ofn->lStructSize = sizeof(*ofn);
 	ofn->Flags = OFN_EXPLORER;
@@ -772,6 +787,7 @@ static imgtoolerr_t setup_openfilename_struct(OPENFILENAME *ofn, memory_pool *po
 	ofn->nMaxFile = MAX_PATH;
 	ofn->lpstrFilter = filter;
 	ofn->nFilterIndex = filter_index;
+	ofn->lpstrInitialDir = initial_dir;
 
 done:
 	pile_delete(&pile);
@@ -808,7 +824,7 @@ const struct ImageModule *find_filter_module(int filter_index,
 static imgtoolerr_t get_recursive_directory(imgtool_image *image, const char *path, LPCTSTR local_path)
 {
 	imgtoolerr_t err;
-	imgtool_imageenum *imageenum;
+	imgtool_imageenum *imageenum = NULL;
 	imgtool_dirent entry;
 	char subpath[1024];
 	TCHAR local_subpath[MAX_PATH];
@@ -908,7 +924,7 @@ imgtoolerr_t wimgtool_open_image(HWND window, const struct ImageModule *module,
 	imgtoolerr_t err;
 	imgtool_image *image;
 	struct wimgtool_info *info;
-	struct imgtool_module_features features;
+	struct imgtool_module_features features = { 0, };
 	char buf[2];
 
 	info = get_wimgtool_info(window);

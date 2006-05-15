@@ -32,34 +32,86 @@ Video hardware:
 #include "includes/vtech1.h"
 #include "vidhrdw/m6847.h"
 
-/*
-bit 3 of cassette/speaker/vdp control latch defines if the mode is text or
-graphics
-*/
 
-static void vtech1_charproc(UINT8 c)
+/******************************************************************************
+ Palette Initialisation
+******************************************************************************/
+
+UINT32 vtech1_palette_mono[16];
+UINT32 vtech1_palette_color[16];
+
+/* note - Juergen's colors do not match the colors in the m6847 code */
+static UINT8 vtech1_palette[] =
 {
-	/* bit 7 defines if semigraphics/text used */
-	/* bit 6 defines if chars should be inverted */
+      0, 224,   0,    /* green */
+    208, 255,   0,    /* yellow (greenish) */
+      0,   0, 255,    /* blue */
+    255,   0,   0,    /* red */
+    224, 224, 144,    /* buff */
+      0, 255, 160,    /* cyan (greenish) */
+    255,   0, 255,    /* magenta */
+    240, 112,   0,    /* orange */
+      0,   0,   0,    /* black (block graphics) */
+      0, 224,   0,    /* green */
+      0,   0,   0,    /* black (block graphics) */
+    224, 224, 144,    /* buff */
+      0,  64,   0,    /* dark green (alphanumeric characters) */
+      0, 224,  24,    /* bright green (alphanumeric characters) */
+     64,  16,   0,    /* dark orange (alphanumeric characters) */
+    255, 196,  24,    /* bright orange (alphanumeric characters) */
+};
 
-	m6847_inv_w(0,      (c & 0x40));
-	m6847_as_w(0,		(c & 0x80));
-	/* it appears this is fixed */
-	m6847_intext_w(0,	0);
+
+static ATTR_CONST UINT8 vtech1_get_attributes(UINT8 c)
+{
+	UINT8 result = 0x00;
+	if (c & 0x40)				result |= M6847_INV;
+	if (c & 0x80)				result |= M6847_AS;
+	if (vtech1_latch & 0x10)	result |= M6847_CSS;
+	if (vtech1_latch & 0x08)	result |= M6847_AG | M6847_GM1;
+	return result;
 }
+
+
+static const UINT8 *vtech1_get_video_ram(int scanline)
+{
+	return videoram + (scanline / (vtech1_latch & 0x08 ? 3 : 12)) * 0x20;
+}
+
+
+VIDEO_START( vtech1m )
+{
+	m6847_config cfg;
+	int i;
+
+	/* TODO: Monochrome should be moved into M6847 code */
+	for (i = 0; i < sizeof(vtech1_palette_mono); i++)
+	{
+        int mono;
+        mono  = (int)(vtech1_palette[i*3+0] * 0.299);  /* red */
+        mono += (int)(vtech1_palette[i*3+1] * 0.587);  /* green */
+        mono += (int)(vtech1_palette[i*3+2] * 0.114);  /* blue */
+        vtech1_palette_mono[i] = (mono << 16) + (mono << 8) + mono;
+	}
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.type = M6847_VERSION_ORIGINAL_PAL;
+	cfg.get_attributes = vtech1_get_attributes;
+	cfg.get_video_ram = vtech1_get_video_ram;
+	cfg.custom_palette = vtech1_palette_mono;
+	m6847_init(&cfg);
+	return 0;
+}
+
 
 VIDEO_START( vtech1 )
 {
-	struct m6847_init_params p;
+	m6847_config cfg;
 
-	m6847_vh_normalparams(&p);
-	p.version = M6847_VERSION_ORIGINAL_PAL;
-	p.ram = videoram;
-	p.ramsize = videoram_size;
-	p.charproc = vtech1_charproc;
-
-	if (video_start_m6847(&p))
-		return 1;
-
-	return (0);
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.type = M6847_VERSION_ORIGINAL_PAL;
+	cfg.get_attributes = vtech1_get_attributes;
+	cfg.get_video_ram = vtech1_get_video_ram;
+	m6847_init(&cfg);
+	return 0;
 }
