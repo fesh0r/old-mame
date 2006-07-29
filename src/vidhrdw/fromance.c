@@ -262,7 +262,7 @@ static void crtc_interrupt_gen(int param)
 {
 	cpunum_set_input_line(1, 0, HOLD_LINE);
 	if (param != 0)
-		timer_adjust(crtc_timer, TIME_IN_HZ(Machine->drv->frames_per_second * param), 0, TIME_IN_HZ(Machine->drv->frames_per_second * param));
+		timer_adjust(crtc_timer, TIME_IN_HZ(Machine->refresh_rate[0] * param), 0, TIME_IN_HZ(Machine->refresh_rate[0] * param));
 }
 
 
@@ -274,7 +274,7 @@ WRITE8_HANDLER( fromance_crtc_data_w )
 	{
 		/* only register we know about.... */
 		case 0x0b:
-			timer_adjust(crtc_timer, cpu_getscanlinetime(Machine->visible_area.max_y + 1), (data > 0x80) ? 2 : 1, 0);
+			timer_adjust(crtc_timer, cpu_getscanlinetime(Machine->visible_area[0].max_y + 1), (data > 0x80) ? 2 : 1, 0);
 			break;
 
 		default:
@@ -332,8 +332,8 @@ static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int dra
 			yzoom = 16 - zoomtable[yzoom] / 8;
 
 			/* wrap around */
-			if (x > Machine->visible_area.max_x) x -= 0x200;
-			if (y > Machine->visible_area.max_y) y -= 0x200;
+			if (x > Machine->visible_area[0].max_x) x -= 0x200;
+			if (y > Machine->visible_area[0].max_y) y -= 0x200;
 
 			/* normal case */
 			if (!xflip && !yflip)
@@ -411,6 +411,7 @@ VIDEO_UPDATE( fromance )
 
 	tilemap_draw(bitmap,cliprect, bg_tilemap, 0, 0);
 	tilemap_draw(bitmap,cliprect, fg_tilemap, 0, 0);
+	return 0;
 }
 
 
@@ -425,4 +426,5 @@ VIDEO_UPDATE( pipedrm )
 
 	draw_sprites(bitmap,cliprect, 0);
 	draw_sprites(bitmap,cliprect, 1);
+	return 0;
 }

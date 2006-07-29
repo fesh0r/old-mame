@@ -17,7 +17,6 @@
 #-------------------------------------------------
 
 COREOBJS = \
-	$(OBJ)/artwork.o \
 	$(OBJ)/audit.o \
 	$(OBJ)/cdrom.o \
 	$(OBJ)/chd.o \
@@ -40,8 +39,10 @@ COREOBJS = \
 	$(OBJ)/mamecore.o \
 	$(OBJ)/md5.o \
 	$(OBJ)/memory.o \
+	$(OBJ)/options.o \
 	$(OBJ)/palette.o \
 	$(OBJ)/png.o \
+	$(OBJ)/restrack.o \
 	$(OBJ)/romload.o \
 	$(OBJ)/sha1.o \
 	$(OBJ)/sound.o \
@@ -67,6 +68,13 @@ COREOBJS = \
 	$(OBJ)/vidhrdw/generic.o \
 	$(OBJ)/vidhrdw/vector.o \
 
+ifdef NEW_RENDER
+COREOBJS += $(OBJ)/render.o \
+			$(OBJ)/rendfont.o
+else
+COREOBJS += $(OBJ)/artwork.o
+endif
+
 ifdef X86_MIPS3_DRC
 COREOBJS += $(OBJ)/x86drc.o
 else
@@ -74,6 +82,27 @@ ifdef X86_PPC_DRC
 COREOBJS += $(OBJ)/x86drc.o
 endif
 endif
+
+
+
+#-------------------------------------------------
+# core layouts
+#-------------------------------------------------
+
+$(OBJ)/render.o:	$(OBJ)/layout/dualhovu.lh \
+					$(OBJ)/layout/dualhsxs.lh \
+					$(OBJ)/layout/dualhuov.lh \
+					$(OBJ)/layout/horizont.lh \
+					$(OBJ)/layout/triphsxs.lh \
+					$(OBJ)/layout/vertical.lh \
+					$(OBJ)/layout/ho20ffff.lh \
+					$(OBJ)/layout/ho2eff2e.lh \
+					$(OBJ)/layout/ho88ffff.lh \
+					$(OBJ)/layout/hoa0a0ff.lh \
+					$(OBJ)/layout/hoffe457.lh \
+					$(OBJ)/layout/hoffff20.lh \
+					$(OBJ)/layout/voffff20.lh \
+
 
 
 #-------------------------------------------------
@@ -107,4 +136,4 @@ endif
 # set of tool targets
 #-------------------------------------------------
 
-TOOLS = romcmp$(EXE) chdman$(EXE) xml2info$(EXE) jedutil$(EXE)
+TOOLS = romcmp$(EXE) chdman$(EXE) jedutil$(EXE)

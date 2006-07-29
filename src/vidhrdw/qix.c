@@ -52,7 +52,7 @@ VIDEO_START( qix )
 void qix_scanline_callback(int scanline)
 {
 	/* force a partial update */
-	force_partial_update(scanline - 1);
+	force_partial_update(0, scanline - 1);
 
 	/* set a timer for the next increment */
 	scanline += SCANLINE_INCREMENT;
@@ -216,7 +216,7 @@ WRITE8_HANDLER( qix_palettebank_w )
 	/* set the bank value */
 	if (qix_palettebank != (data & 3))
 	{
-		force_partial_update(cpu_getscanline() - 1);
+		force_partial_update(0, cpu_getscanline() - 1);
 		qix_palettebank = data & 3;
 	}
 
@@ -264,4 +264,5 @@ VIDEO_UPDATE( qix )
 	// note the confusing bit order!
 	ui_popup("self test leds: %d%d %d%d%d%d",BIT(leds,7),BIT(leds,5),BIT(leds,6),BIT(leds,4),BIT(leds,2),BIT(leds,3));
 #endif
+	return 0;
 }

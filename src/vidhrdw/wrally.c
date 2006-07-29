@@ -148,7 +148,7 @@ static void gaelco_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 				drawgfx(bitmap,gfx,number + x_offset[ex] + y_offset[ey],
 						0x20 + color,xflip,yflip,
 						sx-0x0f+x*16,sy+y*16,
-						&Machine->visible_area,TRANSPARENCY_PEN,0);
+						&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 			}
 		}
 	}
@@ -173,4 +173,5 @@ VIDEO_UPDATE( wrally )
 	tilemap_draw(bitmap,cliprect,pant[1],0,0);
 	tilemap_draw(bitmap,cliprect,pant[0],0,0);
 	gaelco_draw_sprites(bitmap,cliprect);
+	return 0;
 }

@@ -34,6 +34,13 @@
 #include "cpu/ccpu/ccpu.h"
 #include "cinemat.h"
 
+#ifdef NEW_RENDER
+#include "render.h"
+#endif
+
+#include "starcas.lh"
+#include "solarq.lh"
+
 
 static UINT16 *rambase;
 
@@ -276,38 +283,6 @@ static WRITE8_HANDLER( qb3_ram_bank_w )
 {
 	memory_set_bank(1, cpunum_get_reg(0, CCPU_P) & 3);
 }
-
-
-
-/*************************************
- *
- *  Video overlays
- *
- *************************************/
-
-OVERLAY_START( sundance_overlay )
-	OVERLAY_RECT( 0.0, 0.0, 1.0, 1.0, MAKE_ARGB(0x04,0xff,0xff,0x20) )
-OVERLAY_END
-
-
-OVERLAY_START( tailg_overlay )
-	OVERLAY_RECT( 0.0, 0.0, 1.0, 1.0, MAKE_ARGB(0x04,0x20,0xff,0xff) )
-OVERLAY_END
-
-
-OVERLAY_START( starcas_overlay )
-	OVERLAY_RECT( 0.0, 0.0, 1.0, 1.0,       MAKE_ARGB(0x24,0x00,0x3c,0xff) )
-	OVERLAY_DISK_NOBLEND( 0.5, 0.5, 0.1225, MAKE_ARGB(0x24,0xff,0x20,0x20) )
-	OVERLAY_DISK_NOBLEND( 0.5, 0.5, 0.0950, MAKE_ARGB(0x24,0xff,0x80,0x10) )
-	OVERLAY_DISK_NOBLEND( 0.5, 0.5, 0.0725, MAKE_ARGB(0x24,0xff,0xff,0x20) )
-OVERLAY_END
-
-
-OVERLAY_START( solarq_overlay )
-	OVERLAY_RECT( 0.0, 0.9, 1.0, 1.0, MAKE_ARGB(0x04,0xff,0x20,0x20) )
-	OVERLAY_RECT( 0.0, 0.0, 1.0, 0.9, MAKE_ARGB(0x04,0x20,0x20,0xff) )
-	OVERLAY_DISK_NOBLEND( 0.5, 0.5, 0.03, MAKE_ARGB(0x04,0xff,0xff,0x20) )
-OVERLAY_END
 
 
 
@@ -1023,7 +998,7 @@ static MACHINE_DRIVER_START( cinemat_nojmi_4k )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR | VIDEO_RGB_DIRECT)
 	MDRV_SCREEN_SIZE(400, 300)
-	MDRV_VISIBLE_AREA(0, 1024, 0, 768)
+	MDRV_VISIBLE_AREA(0, 1023, 0, 767)
 	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(cinemat_bilevel)
@@ -1370,10 +1345,10 @@ ROM_END
 
 ROM_START( spaceftr )
 	ROM_REGION( 0x2000, REGION_CPU1, 0 )	/* 8k for code */
-	ROM_LOAD16_BYTE( "2716.t7",      0x0000, 0x0800, CRC(65d0a225) SHA1(e1fbee5ff42dd040ab2e90bbe2189fcb76d6167e) )
-	ROM_LOAD16_BYTE( "2716.p7",      0x0001, 0x0800, CRC(1a32aed6) SHA1(89c16a33288265e06e6fbd8426ba4ee9d81c221f) )
-	ROM_LOAD16_BYTE( "2716.u7",      0x1000, 0x0800, CRC(13b0287c) SHA1(366a23fd10684975bd5ee190e5227e47a0298ad5) )
-	ROM_LOAD16_BYTE( "2716.r7",      0x1001, 0x0800, CRC(a2c1ed52) SHA1(ed9743f44ee98c9e7c2a6819ec681af7c7a97fc9) )
+	ROM_LOAD16_BYTE( "fortrest7.7t",      0x0000, 0x0800, CRC(65d0a225) SHA1(e1fbee5ff42dd040ab2e90bbe2189fcb76d6167e) )
+	ROM_LOAD16_BYTE( "fortresp7.7p",      0x0001, 0x0800, CRC(1a32aed6) SHA1(89c16a33288265e06e6fbd8426ba4ee9d81c221f) )
+	ROM_LOAD16_BYTE( "fortresu7.7u",      0x1000, 0x0800, CRC(13b0287c) SHA1(366a23fd10684975bd5ee190e5227e47a0298ad5) )
+	ROM_LOAD16_BYTE( "fortresr7.7r",      0x1001, 0x0800, CRC(a2c1ed52) SHA1(ed9743f44ee98c9e7c2a6819ec681af7c7a97fc9) )
 
 	CCPU_PROMS
 ROM_END
@@ -1471,27 +1446,13 @@ static DRIVER_INIT( speedfrk )
 
 static DRIVER_INIT( sundance )
 {
-	artwork_set_overlay(sundance_overlay);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x00, 0x0f, 0, 0, sundance_inputs_r);
 }
 
 
 static DRIVER_INIT( tailg )
 {
-	artwork_set_overlay(tailg_overlay);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x07, 0x07, 0, 0, mux_select_w);
-}
-
-
-static DRIVER_INIT( starcas )
-{
-	artwork_set_overlay(starcas_overlay);
-}
-
-
-static DRIVER_INIT( solarq )
-{
-	artwork_set_overlay(solarq_overlay);
 }
 
 
@@ -1522,20 +1483,20 @@ GAME( 1977, spacewar, 0,       spacewar, spacewar, 0,        ORIENTATION_FLIP_Y,
 GAME( 1979, barrier,  0,       barrier,  barrier,  0,        ORIENTATION_FLIP_X ^ ROT270, "Vectorbeam", "Barrier", GAME_SUPPORTS_SAVE )
 GAME( 1979, speedfrk, 0,       speedfrk, speedfrk, speedfrk, ORIENTATION_FLIP_Y,   "Vectorbeam", "Speed Freak", GAME_NO_SOUND )
 GAME( 1979, starhawk, 0,       starhawk, starhawk, 0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Star Hawk", GAME_SUPPORTS_SAVE )
-GAME( 1979, sundance, 0,       sundance, sundance, sundance, ORIENTATION_FLIP_X ^ ROT270, "Cinematronics", "Sundance", GAME_SUPPORTS_SAVE )
-GAME( 1979, tailg,    0,       tailg,    tailg,    tailg,    ORIENTATION_FLIP_Y,   "Cinematronics", "Tailgunner", GAME_SUPPORTS_SAVE )
+GAMEL(1979, sundance, 0,       sundance, sundance, sundance, ORIENTATION_FLIP_X ^ ROT270, "Cinematronics", "Sundance", GAME_SUPPORTS_SAVE, layout_voffff20 )
+GAMEL(1979, tailg,    0,       tailg,    tailg,    tailg,    ORIENTATION_FLIP_Y,   "Cinematronics", "Tailgunner", GAME_SUPPORTS_SAVE, layout_ho20ffff )
 GAME( 1979, warrior,  0,       warrior,  warrior,  0,        ORIENTATION_FLIP_Y,   "Vectorbeam", "Warrior", GAME_SUPPORTS_SAVE )
 GAME( 1980, armora,   0,       armora,   armora,   0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Armor Attack", GAME_SUPPORTS_SAVE )
 GAME( 1980, armorap,  armora,  armora,   armora,   0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Armor Attack (prototype)", GAME_SUPPORTS_SAVE )
 GAME( 1980, armorar,  armora,  armora,   armora,   0,        ORIENTATION_FLIP_Y,   "Cinematronics (Rock-ola license)", "Armor Attack (Rock-ola)", GAME_SUPPORTS_SAVE )
 GAME( 1980, ripoff,   0,       ripoff,   ripoff,   0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Rip Off", GAME_SUPPORTS_SAVE )
-GAME( 1980, starcas,  0,       starcas,  starcas,  starcas,  ORIENTATION_FLIP_Y,   "Cinematronics", "Star Castle (version 3)", GAME_SUPPORTS_SAVE )
-GAME( 1980, starcas1, starcas, starcas,  starcas,  starcas,  ORIENTATION_FLIP_Y,   "Cinematronics", "Star Castle (older)", GAME_SUPPORTS_SAVE )
-GAME( 1980, starcasp, starcas, starcas,  starcas,  starcas,  ORIENTATION_FLIP_Y,   "Cinematronics", "Star Castle (prototype)", GAME_SUPPORTS_SAVE )
-GAME( 1980, starcase, starcas, starcas,  starcas,  starcas,  ORIENTATION_FLIP_Y,   "Cinematronics (Mottoeis license)", "Star Castle (Mottoeis)", GAME_SUPPORTS_SAVE )
-GAME( 1980, stellcas, starcas, starcas,  starcas,  starcas,  ORIENTATION_FLIP_Y,   "bootleg", "Stellar Castle (Elettronolo)", GAME_SUPPORTS_SAVE )
-GAME( 1981, spaceftr, starcas, starcas,  starcas,  starcas,  ORIENTATION_FLIP_Y,   "Zaccaria", "Space Fortress (Zaccaria)", GAME_SUPPORTS_SAVE )
-GAME( 1981, solarq,   0,       solarq,   solarq,   solarq,   ORIENTATION_FLIP_Y ^ ORIENTATION_FLIP_X, "Cinematronics", "Solar Quest", GAME_SUPPORTS_SAVE )
+GAMEL(1980, starcas,  0,       starcas,  starcas,  0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Star Castle (version 3)", GAME_SUPPORTS_SAVE, layout_starcas )
+GAMEL(1980, starcas1, starcas, starcas,  starcas,  0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Star Castle (older)", GAME_SUPPORTS_SAVE, layout_starcas )
+GAMEL(1980, starcasp, starcas, starcas,  starcas,  0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Star Castle (prototype)", GAME_SUPPORTS_SAVE, layout_starcas )
+GAMEL(1980, starcase, starcas, starcas,  starcas,  0,        ORIENTATION_FLIP_Y,   "Cinematronics (Mottoeis license)", "Star Castle (Mottoeis)", GAME_SUPPORTS_SAVE, layout_starcas )
+GAMEL(1980, stellcas, starcas, starcas,  starcas,  0,        ORIENTATION_FLIP_Y,   "bootleg", "Stellar Castle (Elettronolo)", GAME_SUPPORTS_SAVE, layout_starcas )
+GAMEL(1981, spaceftr, starcas, starcas,  starcas,  0,        ORIENTATION_FLIP_Y,   "Zaccaria", "Space Fortress (Zaccaria)", GAME_SUPPORTS_SAVE, layout_starcas )
+GAMEL(1981, solarq,   0,       solarq,   solarq,   0,        ORIENTATION_FLIP_Y ^ ORIENTATION_FLIP_X, "Cinematronics", "Solar Quest", GAME_SUPPORTS_SAVE, layout_solarq )
 GAME( 1981, boxingb,  0,       boxingb,  boxingb,  boxingb,  ORIENTATION_FLIP_Y,   "Cinematronics", "Boxing Bugs", GAME_SUPPORTS_SAVE )
 GAME( 1981, wotw,     0,       wotw,     wotw,     0,        ORIENTATION_FLIP_Y,   "Cinematronics", "War of the Worlds", GAME_SUPPORTS_SAVE )
 GAME( 1981, wotwc,    wotw,    wotwc,    wotw,     0,        ORIENTATION_FLIP_Y,   "Cinematronics", "War of the Worlds (color)", GAME_SUPPORTS_SAVE )

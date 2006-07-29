@@ -1742,7 +1742,7 @@ INPUT_PORTS_START( csilver )
 	PORT_DIPSETTING(    0x04, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) ) /* Listed as "Unused" in the manual */
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )
@@ -1769,13 +1769,13 @@ INPUT_PORTS_START( csilver )
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Allow_Continue ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unused ) ) /* Manual states dips 6-8 are "Unused" */
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
@@ -2754,6 +2754,11 @@ ROM_START( makyosen )
 
 	ROM_REGION( 1024, REGION_PROMS, 0 )
 	ROM_LOAD( "mb7122e.10b", 0x00000,  0x400,  CRC(dcbfec4e) SHA1(a375caef4575746870e285d90ba991ea7daefad6) )	/* Priority (Not yet used) */
+
+	ROM_REGION( 0x0600, REGION_PLDS, 0 )
+	ROM_LOAD( "pal16r4nc.10u", 0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16r4nc.11g", 0x0200, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16r4nc.1s",  0x0400, 0x0104, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 ROM_START( oscar )

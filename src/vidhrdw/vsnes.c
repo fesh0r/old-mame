@@ -71,16 +71,17 @@ VIDEO_UPDATE( vsnes )
 			int x_center = readinputport( 4 );
 			int y_center = readinputport( 5 );
 
-			draw_crosshair(bitmap,x_center,y_center,&Machine->visible_area,0);
+			draw_crosshair(bitmap,x_center,y_center,&Machine->visible_area[0],0);
 
 		}
 
-	}
+	return 0;
+}
 
 
 VIDEO_UPDATE( vsdual )
 {
 	/* render the ppu's */
-	ppu2c03b_render( 0, bitmap, 0, 0, 0, 0 );
-	ppu2c03b_render( 1, bitmap, 0, 0, 32*8, 0 );
+	ppu2c03b_render( screen, bitmap, 0, 0, 0, 0 );
+	return 0;
 }

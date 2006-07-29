@@ -139,6 +139,8 @@ VIDEO_START( 1942 )
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
+	state_save_register_global(c1942_palette_bank);
+
 	return 0;
 }
 
@@ -247,4 +249,5 @@ VIDEO_UPDATE( 1942 )
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	draw_sprites(bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
+	return 0;
 }

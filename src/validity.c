@@ -592,7 +592,7 @@ static int validate_display(int drivnum, const machine_config *drv)
 	}
 
 	/* sanity check dimensions */
-	if ((drv->screen_width <= 0) || (drv->screen_height <= 0))
+	if ((drv->screen[0].maxwidth <= 0) || (drv->screen[0].maxheight <= 0))
 	{
 		printf("%s: %s has invalid display dimensions\n", driver->source_file, driver->name);
 		error = TRUE;
@@ -601,10 +601,10 @@ static int validate_display(int drivnum, const machine_config *drv)
 	/* sanity check display area */
 	if (!(drv->video_attributes & VIDEO_TYPE_VECTOR))
 	{
-		if ((drv->default_visible_area.max_x < drv->default_visible_area.min_x)
-			|| (drv->default_visible_area.max_y < drv->default_visible_area.min_y)
-			|| (drv->default_visible_area.max_x >= drv->screen_width)
-			|| (drv->default_visible_area.max_y >= drv->screen_height))
+		if ((drv->screen[0].default_visible_area.max_x < drv->screen[0].default_visible_area.min_x)
+			|| (drv->screen[0].default_visible_area.max_y < drv->screen[0].default_visible_area.min_y)
+			|| (drv->screen[0].default_visible_area.max_x >= drv->screen[0].maxwidth)
+			|| (drv->screen[0].default_visible_area.max_y >= drv->screen[0].maxheight))
 		{
 			printf("%s: %s has an invalid display area\n", driver->source_file, driver->name);
 			error = TRUE;
@@ -962,6 +962,11 @@ int mame_validitychecks(int game)
 	if (sizeof(INT64)  != 8)	{ printf("INT64 must be 64 bits\n"); error = TRUE; }
 	if (sizeof(UINT64) != 8)	{ printf("UINT64 must be 64 bits\n"); error = TRUE; }
 
+	/* make sure the CPU and sound interfaces are up and running */
+	cpuintrf_init();
+	sndintrf_init();
+
+	init_resource_tracking();
 	begin_resource_tracking();
 	osd_profiling_ticks();
 
@@ -1052,6 +1057,7 @@ int mame_validitychecks(int game)
 #endif
 
 	end_resource_tracking();
+	exit_resource_tracking();
 
 	return error;
 }

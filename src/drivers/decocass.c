@@ -477,6 +477,14 @@ static MACHINE_DRIVER_START( ctsttape )
 MACHINE_DRIVER_END
 
 
+static MACHINE_DRIVER_START( chwy )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(decocass)
+	MDRV_MACHINE_RESET(chwy)
+MACHINE_DRIVER_END
+
+
 static MACHINE_DRIVER_START( clocknch )
 
 	/* basic machine hardware */
@@ -742,6 +750,17 @@ ROM_START( ctsttape )
 	ROM_LOAD( "testtape.cas", 0x0000, 0x2000, CRC(4f9d8efb) SHA1(5b77747dad1033e5703f06c0870441b54b4256c5) )
 ROM_END
 
+ROM_START( chwy )
+	DECOCASS_COMMON_ROMS
+
+	ROM_REGION( 0x00020, REGION_USER1, 0 )	  /* dongle data */
+	/* The dongle data is reverse engineered from manual decryption */
+	ROM_LOAD( "chwy.pro",   0x0000, 0x0020, BAD_DUMP CRC(2fae678e) SHA1(4a7de851442d4c1d690de03262f0e136a52fca35) )
+
+	ROM_REGION( 0x10000, REGION_USER2, 0 )	  /* (max) 64k for cassette image */
+	ROM_LOAD( "chwy.cas",   0x0000, 0x8000, CRC(68a48064) SHA1(7e389737972fd0c54f398d296159c561f5ec3a93) )
+ROM_END
+
 ROM_START( clocknch )
 	DECOCASS_COMMON_ROMS
 
@@ -844,7 +863,8 @@ ROM_START( cexplore )
 	DECOCASS_COMMON_ROMS
 
 	ROM_REGION( 0x00020, REGION_USER1, 0 )	  /* dongle data */
-	ROM_LOAD( "de-0061.pro", 0x0000, 0x0020, CRC(e09ae5de) SHA1(7dec067d0739a6dad2607132641b66880a5b7751) )
+	/* The dongle data is reverse engineered by table analysis */
+	ROM_LOAD( "cexplore.pro", 0x0000, 0x0020, BAD_DUMP CRC(c7a9ac8f) SHA1(b0a566d948f71a4eddcde0dd5e9e69ca96f71c36) )
 
 	ROM_REGION( 0x10000, REGION_USER2, 0 )	  /* (max) 64k for cassette image */
 	ROM_LOAD( "cexplore.cas", 0x0000, 0x8000, CRC(fae49c66) SHA1(4ae69e2f706fdf30204f0aa1277619395cacc21b) )
@@ -1119,15 +1139,6 @@ ROM_END
 /* The Following have unknown Dongles
     (dongle data not read)       */
 
-ROM_START( chwy )
-	DECOCASS_COMMON_ROMS
-
-	/* no dumped dongle data, type1? its an early game if its highway chase */
-
-	ROM_REGION( 0x10000, REGION_USER2, 0 )	  /* (max) 64k for cassette image */
-	ROM_LOAD( "chwy.cas",   0x0000, 0x8000, CRC(68a48064) SHA1(7e389737972fd0c54f398d296159c561f5ec3a93) )
-ROM_END
-
 ROM_START( czeroize )
 	DECOCASS_COMMON_ROMS
 
@@ -1190,6 +1201,7 @@ static DRIVER_INIT( decocrom )
 
 GAMEB( 1981, decocass, 0,        decocass, decocass, decocass, decocass, ROT270, "Data East Corporation", "Cassette System", NOT_A_DRIVER )
 GAMEB( 1981, ctsttape, decocass, decocass, ctsttape, decocass, decocass, ROT270, "Data East Corporation", "Test Tape (Cassette)", 0 )
+GAMEB( 1980, chwy,     decocass, decocass, chwy,     decocass, decocass, ROT270, "Data East Corporation", "Highway Chase (Cassette)", 0 )
 GAMEB( 1981, clocknch, decocass, decocass, clocknch, decocass, decocass, ROT270, "Data East Corporation", "Lock'n'Chase (Cassette)", 0 )
 GAMEB( 1981, ctisland, decocass, decocass, ctisland, decocass, decocrom, ROT270, "Data East Corporation", "Treasure Island (Cassette, set 1)", 0 )
 GAMEB( 1981, ctislnd2, ctisland, decocass, ctisland, decocass, decocrom, ROT270, "Data East Corporation", "Treasure Island (Cassette, set 2)", 0 )
@@ -1225,6 +1237,3 @@ GAMEB( 1984, cscrtry,  decocass, decocass, cscrtry,  decocass, decocass, ROT270,
 GAMEB( 1984, cscrtry2, cscrtry,  decocass, cscrtry,  decocass, decocass, ROT270, "Data East Corporation", "Scrum Try (Cassette, set 2)", 0 )
 GAMEB( 1985, cflyball, decocass, decocass, cflyball, decocass, decocass, ROT270, "Data East Corporation", "Flying Ball (Cassette)", GAME_NO_SOUND )
 GAMEB( 1985, cbdash,   decocass, decocass, cbdash,   decocass, decocass, ROT270, "Data East Corporation", "Boulder Dash (Cassette)", 0 )
-
-/* The following may be missing dongle data if they're not Type 1 */
-GAMEB( 1985, chwy,     decocass, decocass, decocass, decocass, decocass, ROT270, "Data East Corporation", "Highway Chase? (Cassette)", GAME_NOT_WORKING )

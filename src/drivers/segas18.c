@@ -489,9 +489,10 @@ static VIDEO_UPDATE( lghost )
 	int x3 = readinputportbytag("GUNX3");
 	int y3 = readinputportbytag("GUNY3");
 	video_update_system18(screen, bitmap, cliprect);
-	draw_crosshair(bitmap, x1 * (Machine->drv->screen_width - 1) / 255, y1 * (Machine->drv->screen_height - 1) / 255, cliprect, 0);
-	draw_crosshair(bitmap, x2 * (Machine->drv->screen_width - 1) / 255, y2 * (Machine->drv->screen_height - 1) / 255, cliprect, 1);
-	draw_crosshair(bitmap, x3 * (Machine->drv->screen_width - 1) / 255, y3 * (Machine->drv->screen_height - 1) / 255, cliprect, 2);
+	draw_crosshair(bitmap, x1 * (Machine->drv->screen[0].maxwidth - 1) / 255, y1 * (Machine->drv->screen[0].maxheight - 1) / 255, cliprect, 0);
+	draw_crosshair(bitmap, x2 * (Machine->drv->screen[0].maxwidth - 1) / 255, y2 * (Machine->drv->screen[0].maxheight - 1) / 255, cliprect, 1);
+	draw_crosshair(bitmap, x3 * (Machine->drv->screen[0].maxwidth - 1) / 255, y3 * (Machine->drv->screen[0].maxheight - 1) / 255, cliprect, 2);
+	return 0;
 }
 
 
@@ -1346,7 +1347,7 @@ ROM_START( astorm )
 	ROM_LOAD16_BYTE( "epr13181.bin", 0x000001, 0x40000, CRC(78cd3b26) SHA1(a81b807c5da625d8e4648ae80c41e4ca3870c0fa) )
 
 	ROM_REGION( 0x2000, REGION_USER1, 0 )	/* decryption key */
-	ROM_LOAD( "317-????.key", 0x0000, 0x2000, NO_DUMP )
+	ROM_LOAD( "317-xxxx.key", 0x0000, 0x2000, NO_DUMP )
 
 	ROM_REGION( 0xc0000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
 	ROM_LOAD( "epr13073.bin", 0x00000, 0x40000, CRC(df5d0a61) SHA1(79ad71de348f280bad847566c507b7a31f022292) )

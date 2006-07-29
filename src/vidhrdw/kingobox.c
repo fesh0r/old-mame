@@ -266,9 +266,10 @@ static void kingofb_draw_sprites( mame_bitmap *bitmap )
 VIDEO_UPDATE( kingofb )
 {
 	tilemap_set_scrolly(bg_tilemap, 0, -(*kingofb_scroll_y));
-	tilemap_draw(bitmap, &Machine->visible_area, bg_tilemap, 0, 0);
+	tilemap_draw(bitmap, &Machine->visible_area[0], bg_tilemap, 0, 0);
 	kingofb_draw_sprites(bitmap);
-	tilemap_draw(bitmap, &Machine->visible_area, fg_tilemap, 0, 0);
+	tilemap_draw(bitmap, &Machine->visible_area[0], fg_tilemap, 0, 0);
+	return 0;
 }
 
 /* Ring King */
@@ -333,7 +334,8 @@ static void ringking_draw_sprites( mame_bitmap *bitmap )
 VIDEO_UPDATE( ringking )
 {
 	tilemap_set_scrolly(bg_tilemap, 0, -(*kingofb_scroll_y));
-	tilemap_draw(bitmap, &Machine->visible_area, bg_tilemap, 0, 0);
+	tilemap_draw(bitmap, &Machine->visible_area[0], bg_tilemap, 0, 0);
 	ringking_draw_sprites(bitmap);
-	tilemap_draw(bitmap, &Machine->visible_area, fg_tilemap, 0, 0);
+	tilemap_draw(bitmap, &Machine->visible_area[0], fg_tilemap, 0, 0);
+	return 0;
 }

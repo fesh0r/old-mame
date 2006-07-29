@@ -38,7 +38,7 @@ static void draw_sprites( mame_bitmap *bitmap ){
 	const gfx_element *gfx = Machine->gfx[0];
 	const UINT8 *source = spriteram;
 	const UINT8 *finish = source+0x100;
-	rectangle clip = Machine->visible_area;
+	rectangle clip = Machine->visible_area[0];
 	clip.max_x -= 24;
 	clip.min_x += 16;
 	while( source<finish ){
@@ -92,4 +92,5 @@ VIDEO_UPDATE( mrflea )
 {
 	draw_background( bitmap );
 	draw_sprites( bitmap );
+	return 0;
 }

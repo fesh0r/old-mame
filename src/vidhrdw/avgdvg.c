@@ -106,8 +106,6 @@ extern int vector_updates; /* avgdvg_go_w()'s per Mame frame, should be 1 */
 #define NUM_BANKS (2)
 static unsigned char *vectorbank[NUM_BANKS];
 
-static rgb_t sparkle_callback(void);
-
 
 
 /*************************************
@@ -184,7 +182,7 @@ INLINE int effective_z(int z, int statz)
 	/* STATZ of 128 should give highest intensity */
 	if (vector_engine == USE_AVG_SWARS)
 	{
-		z = (z * statz) / (translucency ? 12 : 8);
+		z = (z * statz) / 8;
 		if (z > 0xff)
 			z = 0xff;
 	}
@@ -203,7 +201,7 @@ INLINE int effective_z(int z, int statz)
 		else if (z == 2)
 			z = statz;
 
-		z *= (translucency) ? BRIGHTNESS : 16;
+		z *= BRIGHTNESS;
 	}
 
 	return z;
@@ -482,12 +480,6 @@ void avg_add_point(int x, int y, rgb_t color, int intensity)
 	vector_add_point(x, y, color, intensity);
 }
 
-void avg_add_point_callback(int x, int y, rgb_t (*color_callback)(void), int intensity)
-{
-	avg_apply_flipping_and_swapping(&x, &y);
-	vector_add_point_callback(x, y, color_callback, intensity);
-}
-
 /*************************************
  *
  *  AVG vector generator
@@ -654,7 +646,7 @@ static int avg_generate_vector_list(void)
 
 				/* add the new point */
 				if (sparkle)
-					avg_add_point_callback(currentx, currenty, sparkle_callback, z);
+					avg_add_point(currentx, currenty, vcolorram[16 + ((rand() >> 8) & 15)], z);
 				else
 					avg_add_point(currentx, currenty, vcolorram[color], z);
 				VGLOG(("VCTR x:%d y:%d z:%d statz:%d", x, y, z, statz));
@@ -687,7 +679,7 @@ static int avg_generate_vector_list(void)
 
 				/* add the new point */
 				if (sparkle)
-					avg_add_point_callback(currentx, currenty, sparkle_callback, z);
+					avg_add_point(currentx, currenty, vcolorram[16 + ((rand() >> 8) & 15)], z);
 				else
 					avg_add_point(currentx, currenty, vcolorram[color], z);
 				VGLOG(("SVEC x:%d y:%d z:%d statz:%d", x, y, z, statz));
@@ -993,10 +985,10 @@ int avgdvg_init(int vector_type)
 	busy = 0;
 
 	/* compute the min/max values */
-	xmin = Machine->visible_area.min_x;
-	ymin = Machine->visible_area.min_y;
-	xmax = Machine->visible_area.max_x;
-	ymax = Machine->visible_area.max_y;
+	xmin = Machine->visible_area[0].min_x;
+	ymin = Machine->visible_area[0].min_y;
+	xmax = Machine->visible_area[0].max_x;
+	ymax = Machine->visible_area[0].max_y;
 	width = xmax - xmin;
 	height = ymax - ymin;
 
@@ -1153,10 +1145,4 @@ WRITE16_HANDLER( quantum_colorram_w )
 
 		vcolorram[offset & 0x0f] = MAKE_RGB(r, g, b);
 	}
-}
-
-
-static rgb_t sparkle_callback(void)
-{
-	return vcolorram[16 + ((rand() >> 8) & 15)];
 }

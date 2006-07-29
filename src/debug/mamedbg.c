@@ -624,9 +624,7 @@ static int readkey(void)
 	{
 		if ((cursor_flash++ & 15) == 0)
 			toggle_cursor(Machine->debug_bitmap, Machine->debugger_font);
-		reset_partial_updates();
-		draw_screen();	/* so we can change stuff in RAM and see the effect on screen */
-		update_video_and_audio();
+		video_frame_update();
 
 		k = CODE_NONE;
 		if (code_pressed_memory_repeat(KEYCODE_A,dbg_key_repeat)) k = KEYCODE_A;
@@ -4978,7 +4976,7 @@ static void cmd_set_key_repeat( void )
 
 	dbg_key_repeat = dtou( &cmd, NULL );
 	if( dbg_key_repeat == 0 )
-		dbg_key_repeat = Machine->refresh_rate / 15;
+		dbg_key_repeat = Machine->refresh_rate[0] / 15;
 
 	edit_cmds_reset();
 	dbg_update = 1;
@@ -5101,7 +5099,6 @@ void CLIB_DECL mame_debug_trace_write (int cpunum, const char *fmt, ...)
  *  mame_debug_init
  *  This function is called from cpu_run to startup the debugger
  **************************************************************************/
-#ifndef NEW_DEBUGGER
 void mame_debug_exit(void);
 
 void mame_debug_init(void)
@@ -5140,7 +5137,7 @@ void mame_debug_init(void)
 	}
 
 	/* set keyboard repeat rate based on the game's frame rate */
-	dbg_key_repeat = Machine->refresh_rate / 15;
+	dbg_key_repeat = Machine->refresh_rate[0] / 15;
 
 	/* create windows for the active CPU */
 	dbg_open_windows();
@@ -5222,6 +5219,12 @@ void mame_debug_break(void)
 {
 	debug_key_pressed = 1;
 }
+
+int mame_debug_is_active(void)
+{
+	return dbg_active;
+}
+
 
 /**************************************************************************
  **************************************************************************
@@ -5399,4 +5402,3 @@ void mame_debug_hook(void)
 				DBGREGS.newval, DBGREGS.count * sizeof(UINT32) );
 	}
 }
-#endif /* NEW_DEBUGGER */

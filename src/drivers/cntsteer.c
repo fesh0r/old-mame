@@ -143,14 +143,14 @@ static void drawsprites(mame_bitmap *bitmap, int pri)
 				color,
 				fx,fy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
         if (multi)
     		drawgfx(bitmap,Machine->gfx[1],
 				code2,
 				color,
 				fx,fy,
 				sx,sy2,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
 }
 
@@ -266,7 +266,7 @@ ui_draw_text(buf,50,8*6);
 }
 #endif
 
-
+	return 0;
 }
 
 
@@ -883,6 +883,11 @@ ROM_START( zerotrgt )
 	ROM_REGION( 0x200, REGION_PROMS, 0 )
 	ROM_LOAD( "mb7118h.7k",  0x0000, 0x100, CRC(4a7c187a) SHA1(2463ed582b77252a798b946cc831c4edd6e6b31f) )
 	ROM_LOAD( "mb7052.6k",   0x0100, 0x100, CRC(cc9c7d43) SHA1(707fcc9579bae4233903142efa7dfee7d463ae9a) )
+
+	ROM_REGION( 0x0300, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal10h8.12f", 0x0000, 0x002c, CRC(173f9798) SHA1(8b0b0314d25a70e098df5d93191669738d3e57af) )
+	ROM_LOAD( "pal10h8.14e", 0x0100, 0x002c, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal12l6.17f", 0x0200, 0x0034, CRC(29b7e869) SHA1(85bdb6872d148c393c4cd98872b4920444394620) )
 ROM_END
 
 ROM_START( gekitsui )
@@ -921,6 +926,11 @@ ROM_START( gekitsui )
 	ROM_REGION( 0x200, REGION_PROMS, 0 )
 	ROM_LOAD( "mb7118h.7k",  0x0000, 0x100, CRC(4a7c187a) SHA1(2463ed582b77252a798b946cc831c4edd6e6b31f) )
 	ROM_LOAD( "mb7052.6k",   0x0100, 0x100, CRC(cc9c7d43) SHA1(707fcc9579bae4233903142efa7dfee7d463ae9a) )
+
+	ROM_REGION( 0x0300, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal10h8.12f", 0x0000, 0x002c, CRC(173f9798) SHA1(8b0b0314d25a70e098df5d93191669738d3e57af) )
+	ROM_LOAD( "pal10h8.14e", 0x0100, 0x002c, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal12l6.17f", 0x0200, 0x0034, CRC(29b7e869) SHA1(85bdb6872d148c393c4cd98872b4920444394620) )
 ROM_END
 
 /***************************************************************************/

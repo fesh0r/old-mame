@@ -892,13 +892,16 @@ static const input_port_default_entry default_ports_builtin[] =
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_RIGHT,			"UI Right",				SEQ_DEF_3(KEYCODE_RIGHT, CODE_OR, JOYCODE_1_RIGHT) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_HOME,			"UI Home",				SEQ_DEF_1(KEYCODE_HOME) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_END,				"UI End",				SEQ_DEF_1(KEYCODE_END) )
+	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_PAGE_UP,			"UI Page Up",			SEQ_DEF_1(KEYCODE_PGUP) )
+	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_PAGE_DOWN,		"UI Page Down",			SEQ_DEF_1(KEYCODE_PGDN) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_SELECT,			"UI Select",			SEQ_DEF_3(KEYCODE_ENTER, CODE_OR, JOYCODE_1_BUTTON1) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_CANCEL,			"UI Cancel",			SEQ_DEF_1(KEYCODE_ESC) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_CLEAR,			"UI Clear",				SEQ_DEF_1(KEYCODE_DEL) )
-	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_PAN_UP,			"Pan Up",				SEQ_DEF_3(KEYCODE_PGUP, CODE_NOT, KEYCODE_LSHIFT) )
-	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_PAN_DOWN,		"Pan Down",				SEQ_DEF_3(KEYCODE_PGDN, CODE_NOT, KEYCODE_LSHIFT) )
-	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_PAN_LEFT,		"Pan Left",				SEQ_DEF_2(KEYCODE_PGUP, KEYCODE_LSHIFT) )
-	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_PAN_RIGHT,		"Pan Right",			SEQ_DEF_2(KEYCODE_PGDN, KEYCODE_LSHIFT) )
+	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_ZOOM_IN,			"UI Zoom In",			SEQ_DEF_1(KEYCODE_EQUALS) )
+	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_ZOOM_OUT,		"UI Zoom Out",			SEQ_DEF_1(KEYCODE_MINUS) )
+	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_PREV_GROUP,		"UI Previous Group",	SEQ_DEF_1(KEYCODE_OPENBRACE) )
+	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_NEXT_GROUP,		"UI Next Group",		SEQ_DEF_1(KEYCODE_CLOSEBRACE) )
+	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_ROTATE,			"UI Rotate",			SEQ_DEF_1(KEYCODE_R) )
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_SHOW_PROFILER,	"Show Profiler",		SEQ_DEF_2(KEYCODE_F11, KEYCODE_LSHIFT) )
 #ifdef MESS
 	INPUT_PORT_DIGITAL_DEF( 0, IPG_UI,      UI_TOGGLE_UI,		"UI Toggle",			SEQ_DEF_1(KEYCODE_SCRLOCK) )
@@ -2052,7 +2055,7 @@ profiler_mark(PROFILER_INPUT);
 		}
 
 		/* if this is an autorepeat case, set a 1x delay and leave pressed = 1 */
-		else if (++counter > keydelay * speed * Machine->refresh_rate / 60)
+		else if (++counter > keydelay * speed * Machine->refresh_rate[0] / 60)
 		{
 			keydelay = 1;
 			counter = 0;
@@ -2177,8 +2180,8 @@ profiler_mark(PROFILER_INPUT);
 			if (info->port->type == IPT_VBLANK)
 			{
 				portinfo->vblank ^= info->port->mask;
-				if (Machine->drv->vblank_duration == 0)
-					logerror("Warning: you are using IPT_VBLANK with vblank_duration = 0. You need to increase vblank_duration for IPT_VBLANK to work.\n");
+				if (Machine->drv->screen[0].vblank_time == 0)
+					logerror("Warning: you are using IPT_VBLANK with vblank_time = 0. You need to increase vblank_time for IPT_VBLANK to work.\n");
 			}
 
 		/* now loop back and modify based on the inputs */

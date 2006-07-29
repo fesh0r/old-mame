@@ -5,7 +5,6 @@
 *************************************************************************/
 
 #include "driver.h"
-#include "artwork.h"
 #include "includes/sbrkout.h"
 
 UINT8 *sbrkout_horiz_ram;
@@ -54,13 +53,14 @@ static void sbrkout_draw_balls( mame_bitmap *bitmap )
 			code, 0,
 			0, 0,
 			sx, sy,
-			&Machine->visible_area,
+			&Machine->visible_area[0],
 			TRANSPARENCY_PEN, 0);
 	}
 }
 
 VIDEO_UPDATE( sbrkout )
 {
-	tilemap_draw(bitmap, &Machine->visible_area, bg_tilemap, 0, 0);
+	tilemap_draw(bitmap, &Machine->visible_area[0], bg_tilemap, 0, 0);
 	sbrkout_draw_balls(bitmap);
+	return 0;
 }

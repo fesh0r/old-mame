@@ -147,12 +147,12 @@ VIDEO_START( contra )
 	if (!bg_tilemap || !fg_tilemap || !tx_tilemap)
 		return 1;
 
-	bg_clip = Machine->visible_area;
+	bg_clip = Machine->visible_area[0];
 	bg_clip.min_x += 40;
 
 	fg_clip = bg_clip;
 
-	tx_clip = Machine->visible_area;
+	tx_clip = Machine->visible_area[0];
 	tx_clip.max_x = 39;
 	tx_clip.min_x = 0;
 
@@ -299,4 +299,5 @@ VIDEO_UPDATE( contra )
 	draw_sprites( bitmap,cliprect, 0 );
 	draw_sprites( bitmap,cliprect, 1 );
 	tilemap_draw( bitmap,&tx_finalclip, tx_tilemap, 0 ,0);
+	return 0;
 }

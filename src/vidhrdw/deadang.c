@@ -121,7 +121,7 @@ static void draw_sprites(mame_bitmap *bitmap)
 		pdrawgfx(bitmap,Machine->gfx[1],
 				sprite,
 				color,fx,fy,x,y,
-				&Machine->visible_area,TRANSPARENCY_PEN,15,pri);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,15,pri);
 	}
 }
 
@@ -157,4 +157,5 @@ VIDEO_UPDATE( deadang )
 	tilemap_draw(bitmap,cliprect,pf2_layer,0,4);
 	if (!(deadang_scroll_ram[0x68]&0x10)) draw_sprites(bitmap);
 	tilemap_draw(bitmap,cliprect,text_layer,0,0);
+	return 0;
 }

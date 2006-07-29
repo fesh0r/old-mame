@@ -21,6 +21,7 @@
 #define MV		0x80		/* Multiplier overflow */
 #define MU		0x100		/* Multiplier underflow */
 #define MI		0x200		/* Multiplier floating-point invalid operation */
+#define AF		0x400
 #define SV		0x800		/* Shifter overflow */
 #define SZ		0x1000		/* Shifter result zero */
 #define SS		0x2000		/* Shifter input sign */
@@ -70,6 +71,37 @@
 
 #define REG(x)		(sharc.r[x].r)
 #define FREG(x)		(sharc.r[x].f)
+
+#define UPDATE_CIRCULAR_BUFFER_PM(x)						\
+	{														\
+		if (PM_REG_L(x) != 0)								\
+		{													\
+			if (PM_REG_I(x) > PM_REG_B(x)+PM_REG_L(x))		\
+			{												\
+				PM_REG_I(x) -= PM_REG_L(x);					\
+			}												\
+			else if (PM_REG_I(x) < PM_REG_B(x))				\
+			{												\
+				PM_REG_I(x) += PM_REG_L(x);					\
+			}												\
+		}													\
+	}
+
+#define UPDATE_CIRCULAR_BUFFER_DM(x)						\
+	{														\
+		if (DM_REG_L(x) != 0)								\
+		{													\
+			if (DM_REG_I(x) > DM_REG_B(x)+DM_REG_L(x))		\
+			{												\
+				DM_REG_I(x) -= DM_REG_L(x);					\
+			}												\
+			else if (DM_REG_I(x) < DM_REG_B(x))				\
+			{												\
+				DM_REG_I(x) += DM_REG_L(x);					\
+			}												\
+		}													\
+	}
+
 
 /*****************************************************************************/
 
@@ -332,7 +364,16 @@ static UINT32 GET_UREG(int ureg)
 					case 0x9:	return sharc.irptl;			/* IRPTL */
 					case 0xa:	return sharc.mode2;			/* MODE2 */
 					case 0xb:	return sharc.mode1;			/* MODE1 */
-					case 0xc:	return sharc.astat;			/* ASTAT */
+					case 0xc:								/* ASTAT */
+					{
+						UINT32 r = sharc.astat;
+						r &= ~0x00780000;
+						r |= (sharc.flag[0] << 19);
+						r |= (sharc.flag[1] << 20);
+						r |= (sharc.flag[2] << 21);
+						r |= (sharc.flag[3] << 22);
+						return r;
+					}
 					case 0xd:	return sharc.imask;			/* IMASK */
 					case 0xe:	return sharc.stky;			/* STKY */
 					default:	fatalerror("SHARC: GET_UREG: unknown register %08X at %08X", ureg, sharc.pc);
@@ -401,13 +442,16 @@ static void SET_UREG(int ureg, UINT32 data)
 			break;
 
 		case 0x4:
+			// Note: loading B also loads the same value in I
 			if (reg & 0x8)		/* B8 - B15 */
 			{
 				sharc.dag2.b[reg & 0x7] = data;
+				sharc.dag2.i[reg & 0x7] = data;
 			}
 			else				/* B0 - B7 */
 			{
 				sharc.dag1.b[reg & 0x7] = data;
+				sharc.dag1.i[reg & 0x7] = data;
 			}
 			break;
 
@@ -415,6 +459,7 @@ static void SET_UREG(int ureg, UINT32 data)
 			switch (reg)
 			{
 				case 0x5:	sharc.pcstkp = data; break;		/* PCSTKP */
+				case 0x8:	sharc.lcntr = data; break;		/* LCNTR */
 				default:	fatalerror("SHARC: SET_UREG: unknown register %08X at %08X", ureg, sharc.pc);
 			}
 			break;
@@ -474,6 +519,24 @@ static void SHIFT_OPERATION_IMM(int shiftop, int data, int rn, int rx)
 				REG(rn) = (shift > -32 ) ? (REG(rx) >> -shift) : 0;
 			} else {
 				REG(rn) = (shift < 32) ? (REG(rx) << shift) : 0;
+				if (shift > 0)
+				{
+					sharc.astat |= SV;
+				}
+			}
+			SET_FLAG_SZ(REG(rn));
+			break;
+		}
+
+		case 0x01:		/* ASHIFT Rx BY <data8> */
+		{
+			if (shift < 0)
+			{
+				REG(rn) = (shift > -32) ? ((INT32)REG(rx) >> -shift) : ((REG(rx) & 0x80000000) ? 0xffffffff : 0);
+			}
+			else
+			{
+				REG(rn) = (shift < 32) ? ((INT32)REG(rx) << shift) : 0;
 				if (shift > 0)
 				{
 					sharc.astat |= SV;
@@ -753,6 +816,7 @@ static void COMPUTE(UINT32 opcode)
 					case 0x40:		compute_and(rn, rx, ry); break;
 					case 0x41:		compute_or(rn, rx, ry); break;
 					case 0x42:		compute_xor(rn, rx, ry); break;
+					case 0x43:		compute_not(rn, rx); break;
 					case 0x62:		compute_max(rn, rx, ry); break;
 					case 0x81:		compute_fadd(rn, rx, ry); break;
 					case 0x82:		compute_fsub(rn, rx, ry); break;
@@ -760,6 +824,7 @@ static void COMPUTE(UINT32 opcode)
 					case 0x91:		compute_fabs_plus(rn, rx, ry); break;
 					case 0xa1:		compute_fpass(rn, rx); break;
 					case 0xa2:		compute_fneg(rn, rx); break;
+					case 0xb0:		compute_fabs(rn, rx); break;
 					case 0xbd:		compute_scalb(rn, rx, ry); break;
 					case 0xc1:		compute_logb(rn, rx); break;
 					case 0xc4:		compute_recips(rn, rx); break;
@@ -770,6 +835,7 @@ static void COMPUTE(UINT32 opcode)
 					case 0xda:		compute_float_scaled(rn, rx, ry); break;
 					case 0xe1:		compute_fmin(rn, rx, ry); break;
 					case 0xe2:		compute_fmax(rn, rx, ry); break;
+					case 0xe3:		compute_fclip(rn, rx, ry); break;
 
 					case 0x70: case 0x71: case 0x72: case 0x73: case 0x74: case 0x75: case 0x76: case 0x77:
 					case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c: case 0x7d: case 0x7e: case 0x7f:
@@ -1143,10 +1209,10 @@ INLINE int IF_CONDITION_CODE(int cond)
 		case 0x06:	return (sharc.astat & MN);		/* MS */
 		case 0x07:	return (sharc.astat & SV);		/* SV */
 		case 0x08:	return (sharc.astat & SZ);		/* SZ */
-		case 0x09:	return (sharc.astat & FLG0);	/* FLAG0 */
-		case 0x0a:	return (sharc.astat & FLG1);	/* FLAG1 */
-		case 0x0b:	return (sharc.astat & FLG2);	/* FLAG2 */
-		case 0x0c:	return (sharc.astat & FLG3);	/* FLAG3 */
+		case 0x09:	return (sharc.flag[0] != 0);	/* FLAG0 */
+		case 0x0a:	return (sharc.flag[1] != 0);	/* FLAG1 */
+		case 0x0b:	return (sharc.flag[2] != 0);	/* FLAG2 */
+		case 0x0c:	return (sharc.flag[3] != 0);	/* FLAG3 */
 		case 0x0d:	return (sharc.astat & BTF);		/* TF */
 		case 0x0e:	return 0;						/* BM */
 		case 0x0f:	return (sharc.curlcntr!=1);		/* NOT LCE */
@@ -1159,10 +1225,10 @@ INLINE int IF_CONDITION_CODE(int cond)
 		case 0x16:	return !(sharc.astat & MN);		/* NOT MS */
 		case 0x17:	return !(sharc.astat & SV);		/* NOT SV */
 		case 0x18:	return !(sharc.astat & SZ);		/* NOT SZ */
-		case 0x19:	return !(sharc.astat & FLG0);	/* NOT FLAG0 */
-		case 0x1a:	return !(sharc.astat & FLG1);	/* NOT FLAG1 */
-		case 0x1b:	return !(sharc.astat & FLG2);	/* NOT FLAG2 */
-		case 0x1c:	return !(sharc.astat & FLG3);	/* NOT FLAG3 */
+		case 0x19:	return (sharc.flag[0] == 0);	/* NOT FLAG0 */
+		case 0x1a:	return (sharc.flag[1] == 0);	/* NOT FLAG1 */
+		case 0x1b:	return (sharc.flag[2] == 0);	/* NOT FLAG2 */
+		case 0x1c:	return (sharc.flag[3] == 0);	/* NOT FLAG3 */
 		case 0x1d:	return !(sharc.astat & BTF);	/* NOT TF */
 		case 0x1e:	return 1;						/* NOT BM */
 		case 0x1f:	return 1;						/* TRUE */
@@ -1184,10 +1250,10 @@ INLINE int DO_CONDITION_CODE(int cond)
 		case 0x06:	return (sharc.astat & MN);		/* MS */
 		case 0x07:	return (sharc.astat & SV);		/* SV */
 		case 0x08:	return (sharc.astat & SZ);		/* SZ */
-		case 0x09:	return (sharc.astat & FLG0);	/* FLAG0 */
-		case 0x0a:	return (sharc.astat & FLG1);	/* FLAG1 */
-		case 0x0b:	return (sharc.astat & FLG2);	/* FLAG2 */
-		case 0x0c:	return (sharc.astat & FLG3);	/* FLAG3 */
+		case 0x09:	return (sharc.flag[0] != 0);	/* FLAG0 */
+		case 0x0a:	return (sharc.flag[1] != 0);	/* FLAG1 */
+		case 0x0b:	return (sharc.flag[2] != 0);	/* FLAG2 */
+		case 0x0c:	return (sharc.flag[3] != 0);	/* FLAG3 */
 		case 0x0d:	return (sharc.astat & BTF);		/* TF */
 		case 0x0e:	return 0;						/* BM */
 		case 0x0f:	return (sharc.curlcntr==1);		/* LCE */
@@ -1200,10 +1266,10 @@ INLINE int DO_CONDITION_CODE(int cond)
 		case 0x16:	return !(sharc.astat & MN);		/* NOT MS */
 		case 0x17:	return !(sharc.astat & SV);		/* NOT SV */
 		case 0x18:	return !(sharc.astat & SZ);		/* NOT SZ */
-		case 0x19:	return !(sharc.astat & FLG0);	/* NOT FLAG0 */
-		case 0x1a:	return !(sharc.astat & FLG1);	/* NOT FLAG1 */
-		case 0x1b:	return !(sharc.astat & FLG2);	/* NOT FLAG2 */
-		case 0x1c:	return !(sharc.astat & FLG3);	/* NOT FLAG3 */
+		case 0x19:	return (sharc.flag[0] == 0);	/* NOT FLAG0 */
+		case 0x1a:	return (sharc.flag[1] == 0);	/* NOT FLAG1 */
+		case 0x1b:	return (sharc.flag[2] == 0);	/* NOT FLAG2 */
+		case 0x1c:	return (sharc.flag[3] == 0);	/* NOT FLAG3 */
 		case 0x1d:	return !(sharc.astat & BTF);	/* NOT TF */
 		case 0x1e:	return 1;						/* NOT BM */
 		case 0x1f:	return 0;						/* FALSE (FOREVER) */
@@ -1273,10 +1339,12 @@ static void sharcop_modify(void)
 	if (g)		// PM
 	{
 		PM_REG_I(i) += data;
+		UPDATE_CIRCULAR_BUFFER_PM(i);
 	}
 	else		// DM
 	{
 		DM_REG_I(i) += data;
+		UPDATE_CIRCULAR_BUFFER_DM(i);
 	}
 }
 
@@ -1315,11 +1383,66 @@ static void sharcop_compute_modify(void)
 		if (g)		/* Modify PM */
 		{
 			PM_REG_I(i) += PM_REG_M(m);
+			UPDATE_CIRCULAR_BUFFER_PM(i);
 		}
 		else		/* Modify DM */
 		{
 			DM_REG_I(i) += DM_REG_M(m);
+			UPDATE_CIRCULAR_BUFFER_DM(i);
 		}
+	}
+}
+
+/*****************************************************************************/
+/* | 001 | */
+
+/* compute / dreg <-> DM / dreg <-> PM */
+static void sharcop_compute_dreg_dm_dreg_pm(void)
+{
+	int pm_dreg = (sharc.opcode >> 23) & 0xf;
+	int pmm = (sharc.opcode >> 27) & 0x7;
+	int pmi = (sharc.opcode >> 30) & 0x7;
+	int dm_dreg = (sharc.opcode >> 33) & 0xf;
+	int dmm = (sharc.opcode >> 38) & 0x7;
+	int dmi = (sharc.opcode >> 41) & 0x7;
+	int pmd = (sharc.opcode >> 37) & 0x1;
+	int dmd = (sharc.opcode >> 44) & 0x1;
+	int compute = sharc.opcode & 0x7fffff;
+
+	/* due to parallelity issues, source DREGs must be saved */
+	/* because the compute operation may change them */
+	UINT32 parallel_pm_dreg = REG(pm_dreg);
+	UINT32 parallel_dm_dreg = REG(dm_dreg);
+
+	if (compute)
+	{
+		COMPUTE(compute);
+	}
+
+	if (pmd)		// dreg -> PM
+	{
+		pm_write32(PM_REG_I(pmi), parallel_pm_dreg);
+		PM_REG_I(pmi) += PM_REG_M(pmm);
+		UPDATE_CIRCULAR_BUFFER_PM(pmi);
+	}
+	else			// PM -> dreg
+	{
+		REG(pm_dreg) = pm_read32(PM_REG_I(pmi));
+		PM_REG_I(pmi) += PM_REG_M(pmm);
+		UPDATE_CIRCULAR_BUFFER_PM(pmi);
+	}
+
+	if (dmd)		// dreg -> DM
+	{
+		dm_write32(DM_REG_I(dmi), parallel_dm_dreg);
+		DM_REG_I(dmi) += DM_REG_M(dmm);
+		UPDATE_CIRCULAR_BUFFER_DM(dmi);
+	}
+	else			// DM -> dreg
+	{
+		REG(dm_dreg) = dm_read32(DM_REG_I(dmi));
+		DM_REG_I(dmi) += DM_REG_M(dmm);
+		UPDATE_CIRCULAR_BUFFER_DM(dmi);
 	}
 }
 
@@ -1365,6 +1488,7 @@ static void sharcop_compute_dm_to_dreg_immmod(void)
 	if(u) {		/* post-modify with update */
 		REG(dreg) = dm_read32(DM_REG_I(i));
 		DM_REG_I(i)+=mod;
+		UPDATE_CIRCULAR_BUFFER_DM(i);
 	} else {	/* pre-modify, no update */
 		REG(dreg) = dm_read32(DM_REG_I(i)+mod);
 	}
@@ -1391,6 +1515,7 @@ static void sharcop_compute_dreg_to_dm_immmod(void)
 	if(u) {		/* post-modify with update */
 		dm_write32(DM_REG_I(i), parallel_dreg);
 		DM_REG_I(i)+=mod;
+		UPDATE_CIRCULAR_BUFFER_DM(i);
 	} else {	/* pre-modify, no update */
 		dm_write32(DM_REG_I(i)+mod, parallel_dreg);
 	}
@@ -1413,6 +1538,7 @@ static void sharcop_compute_pm_to_dreg_immmod(void)
 	if(u) {		/* post-modify with update */
 		REG(dreg) = pm_read32(PM_REG_I(i));
 		PM_REG_I(i)+=mod;
+		UPDATE_CIRCULAR_BUFFER_PM(i);
 	} else {	/* pre-modify, no update */
 		REG(dreg) = pm_read32(PM_REG_I(i)+mod);
 	}
@@ -1439,6 +1565,7 @@ static void sharcop_compute_dreg_to_pm_immmod(void)
 	if(u) {		/* post-modify with update */
 		pm_write32(PM_REG_I(i), parallel_dreg);
 		PM_REG_I(i)+=mod;
+		UPDATE_CIRCULAR_BUFFER_PM(i);
 	} else {	/* pre-modify, no update */
 		pm_write32(PM_REG_I(i)+mod, parallel_dreg);
 	}
@@ -1526,6 +1653,7 @@ static void sharcop_compute_ureg_dmpm_postmod(void)
 					pm_write32(PM_REG_I(i), parallel_ureg);
 				}
 				PM_REG_I(i)+=PM_REG_M(m);
+				UPDATE_CIRCULAR_BUFFER_PM(i);
 			} else {	/* PM <- ureg */
 				if (ureg == 0xdb)		/* PX register access is always 48-bit */
 				{
@@ -1536,14 +1664,17 @@ static void sharcop_compute_ureg_dmpm_postmod(void)
 					SET_UREG(ureg, pm_read32(PM_REG_I(i)));
 				}
 				PM_REG_I(i)+=PM_REG_M(m);
+				UPDATE_CIRCULAR_BUFFER_PM(i);
 			}
 		} else {	/* DM */
 			if(d) {		/* ureg -> DM */
 				dm_write32(DM_REG_I(i), parallel_ureg);
 				DM_REG_I(i)+=DM_REG_M(m);
+				UPDATE_CIRCULAR_BUFFER_DM(i);
 			} else {	/* DM <- ureg */
 				SET_UREG(ureg, dm_read32(DM_REG_I(i)));
 				DM_REG_I(i)+=DM_REG_M(m);
+				UPDATE_CIRCULAR_BUFFER_DM(i);
 			}
 		}
 	}
@@ -1672,10 +1803,12 @@ static void sharcop_immdata_to_dmpm(void)
 		/* program memory (PM) */
 		pm_write32(PM_REG_I(i), data);
 		PM_REG_I(i)+=PM_REG_M(m);
+		UPDATE_CIRCULAR_BUFFER_PM(i);
 	} else {
 		/* data memory (DM) */
 		dm_write32(DM_REG_I(i), data);
 		DM_REG_I(i)+=DM_REG_M(m);
+		UPDATE_CIRCULAR_BUFFER_DM(i);
 	}
 }
 
@@ -1731,17 +1864,21 @@ static void sharcop_imm_shift_dreg_dmpm(void)
 			if(d) {		/* dreg -> PM */
 				pm_write32(PM_REG_I(i), parallel_dreg);
 				PM_REG_I(i)+=PM_REG_M(m);
+				UPDATE_CIRCULAR_BUFFER_PM(i);
 			} else {	/* PM <- dreg */
 				REG(dreg) = pm_read32(PM_REG_I(i));
 				PM_REG_I(i)+=PM_REG_M(m);
+				UPDATE_CIRCULAR_BUFFER_PM(i);
 			}
 		} else {	/* DM */
 			if(d) {		/* dreg -> DM */
 				dm_write32(DM_REG_I(i), parallel_dreg);
 				DM_REG_I(i)+=DM_REG_M(m);
+				UPDATE_CIRCULAR_BUFFER_DM(i);
 			} else {	/* DM <- dreg */
 				REG(dreg) = dm_read32(DM_REG_I(i));
 				DM_REG_I(i)+=DM_REG_M(m);
+				UPDATE_CIRCULAR_BUFFER_DM(i);
 			}
 		}
 	}
@@ -1758,10 +1895,10 @@ static void sharcop_call_direct_abs(void)
 
 	if(IF_CONDITION_CODE(cond)) {
 		if(j) {
-			PUSH_PC(sharc.pc+3);	/* 1 instruction + 2 delayed instructions */
+			PUSH_PC(sharc.npc+2);	/* 1 instruction + 2 delayed instructions */
 			DELAY_SLOT();
 		} else {
-			PUSH_PC(sharc.pc+1);
+			PUSH_PC(sharc.npc);
 		}
 		sharc.npc = address;
 	}
@@ -1809,14 +1946,16 @@ static void sharcop_call_direct_rel(void)
 	int cond = (sharc.opcode >> 33) & 0x1f;
 	UINT32 address = sharc.opcode & 0xffffff;
 
-	if(IF_CONDITION_CODE(cond)) {
+	if(IF_CONDITION_CODE(cond))
+	{
+		UINT32 npc = sharc.npc;
 		sharc.npc = sharc.pc + SIGN_EXTEND24(address);
 
 		if(j) {
-			PUSH_PC(sharc.pc+3);	/* 1 instruction + 2 delayed instructions */
+			PUSH_PC(npc+2);	/* 1 instruction + 2 delayed instructions */
 			DELAY_SLOT();
 		} else {
-			PUSH_PC(sharc.pc+1);
+			PUSH_PC(npc);
 		}
 	}
 }
@@ -1830,7 +1969,8 @@ static void sharcop_jump_direct_rel(void)
 	int cond = (sharc.opcode >> 33) & 0x1f;
 	UINT32 address = sharc.opcode & 0xffffff;
 
-	if(IF_CONDITION_CODE(cond)) {
+	if(IF_CONDITION_CODE(cond))
+	{
 		sharc.npc = sharc.pc + SIGN_EXTEND24(address);
 
 		// Clear Interrupt
@@ -1924,30 +2064,34 @@ static void sharcop_call_indirect(void)
 	int compute = sharc.opcode & 0x7fffff;
 
 	if(e) {		/* IF...ELSE */
-		if(IF_CONDITION_CODE(cond)) {
+		if(IF_CONDITION_CODE(cond))
+		{
+			UINT32 npc = sharc.npc;
 			sharc.npc = PM_REG_I(pmi) + PM_REG_M(pmm);
 
 			if(j) {
-				PUSH_PC(sharc.pc+3);	/* 1 instruction + 2 delayed instructions */
+				PUSH_PC(npc+2);	/* 1 instruction + 2 delayed instructions */
 				DELAY_SLOT();
 			} else {
-				PUSH_PC(sharc.pc+1);
+				PUSH_PC(npc);
 			}
 		} else {
 			if(compute != 0)
 				COMPUTE(compute);
 		}
 	} else {	/* IF */
-		if(IF_CONDITION_CODE(cond)) {
+		if(IF_CONDITION_CODE(cond))
+		{
+			UINT32 npc = sharc.npc;
 			sharc.npc = PM_REG_I(pmi) + PM_REG_M(pmm);
 
 			if(compute != 0)
 				COMPUTE(compute);
 			if(j) {
-				PUSH_PC(sharc.pc+3);	/* 1 instruction + 2 delayed instructions */
+				PUSH_PC(npc+2);	/* 1 instruction + 2 delayed instructions */
 				DELAY_SLOT();
 			} else {
-				PUSH_PC(sharc.pc+1);
+				PUSH_PC(npc);
 			}
 		}
 	}
@@ -1979,7 +2123,8 @@ static void sharcop_jump_indirect_rel(void)
 	}
 
 	if(e) {		/* IF...ELSE */
-		if(IF_CONDITION_CODE(cond)) {
+		if(IF_CONDITION_CODE(cond))
+		{
 			sharc.npc = sharc.pc + SIGN_EXTEND6((sharc.opcode >> 27) & 0x3f);
 
 			if(j)
@@ -1993,7 +2138,8 @@ static void sharcop_jump_indirect_rel(void)
 				COMPUTE(compute);
 		}
 	} else {	/* IF */
-		if(IF_CONDITION_CODE(cond)) {
+		if(IF_CONDITION_CODE(cond))
+		{
 			sharc.npc = sharc.pc + SIGN_EXTEND6((sharc.opcode >> 27) & 0x3f);
 
 			if(compute != 0)
@@ -2018,30 +2164,34 @@ static void sharcop_call_indirect_rel(void)
 	int compute = sharc.opcode & 0x7fffff;
 
 	if(e) {		/* IF...ELSE */
-		if(IF_CONDITION_CODE(cond)) {
+		if(IF_CONDITION_CODE(cond))
+		{
+			UINT32 npc = sharc.npc;
 			sharc.npc = sharc.pc + SIGN_EXTEND6((sharc.opcode >> 27) & 0x3f);
 
 			if(j) {
-				PUSH_PC(sharc.pc+3);	/* 1 instruction + 2 delayed instructions */
+				PUSH_PC(npc+2);	/* 1 instruction + 2 delayed instructions */
 				DELAY_SLOT();
 			} else {
-				PUSH_PC(sharc.pc+1);
+				PUSH_PC(npc);
 			}
 		} else {
 			if(compute != 0)
 				COMPUTE(compute);
 		}
 	} else {	/* IF */
-		if(IF_CONDITION_CODE(cond)) {
+		if(IF_CONDITION_CODE(cond))
+		{
+			UINT32 npc = sharc.npc;
 			sharc.npc = sharc.pc + SIGN_EXTEND6((sharc.opcode >> 27) & 0x3f);
 
 			if(compute != 0)
 				COMPUTE(compute);
 			if(j) {
-				PUSH_PC(sharc.pc+3);	/* 1 instruction + 2 delayed instructions */
+				PUSH_PC(npc+2);	/* 1 instruction + 2 delayed instructions */
 				DELAY_SLOT();
 			} else {
-				PUSH_PC(sharc.pc+1);
+				PUSH_PC(npc);
 			}
 		}
 	}
@@ -2077,9 +2227,11 @@ static void sharcop_jump_indirect_dreg_dm(void)
 		if (d) {	/* dreg -> DM */
 			dm_write32(DM_REG_I(dmi), parallel_dreg);
 			DM_REG_I(dmi) += DM_REG_M(dmm);
+			UPDATE_CIRCULAR_BUFFER_DM(dmi);
 		} else {	/* DM <- dreg */
 			REG(dreg) = dm_read32(DM_REG_I(dmi));
 			DM_REG_I(dmi) += DM_REG_M(dmm);
+			UPDATE_CIRCULAR_BUFFER_DM(dmi);
 		}
 	}
 }
@@ -2112,9 +2264,11 @@ static void sharcop_jump_rel_dreg_dm(void)
 		if (d) {	/* dreg -> DM */
 			dm_write32(DM_REG_I(dmi), parallel_dreg);
 			DM_REG_I(dmi) += DM_REG_M(dmm);
+			UPDATE_CIRCULAR_BUFFER_DM(dmi);
 		} else {	/* DM <- dreg */
 			REG(dreg) = dm_read32(DM_REG_I(dmi));
 			DM_REG_I(dmi) += DM_REG_M(dmm);
+			UPDATE_CIRCULAR_BUFFER_DM(dmi);
 		}
 	}
 }

@@ -116,7 +116,7 @@ static void draw_chars(mame_bitmap *_tmpbitmap, mame_bitmap *bitmap,
 			for (;offs < 32;offs++)
 				scroll[offs] = 0;
 		}
-		copyscrollbitmap(bitmap,tmpbitmap,0,0,32,scroll,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		copyscrollbitmap(bitmap,tmpbitmap,0,0,32,scroll,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 	}
 }
 
@@ -184,8 +184,9 @@ VIDEO_UPDATE( marineb )
 				col,
 				flipx,flipy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
+	return 0;
 }
 
 
@@ -228,7 +229,7 @@ VIDEO_UPDATE( changes )
 				col,
 				flipx,flipy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
 
 	/* draw the big sprite */
@@ -258,7 +259,7 @@ VIDEO_UPDATE( changes )
 			col,
 			flipx,flipy,
 			sx,sy,
-			&Machine->visible_area,TRANSPARENCY_PEN,0);
+			&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 
 	/* draw again for wrap around */
 
@@ -267,7 +268,8 @@ VIDEO_UPDATE( changes )
 			col,
 			flipx,flipy,
 			sx-256,sy,
-			&Machine->visible_area,TRANSPARENCY_PEN,0);
+			&Machine->visible_area[0],TRANSPARENCY_PEN,0);
+	return 0;
 }
 
 
@@ -328,8 +330,9 @@ VIDEO_UPDATE( springer )
 				col,
 				flipx,flipy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
+	return 0;
 }
 
 
@@ -374,8 +377,9 @@ VIDEO_UPDATE( hoccer )
 				col,
 				flipx,flipy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
+	return 0;
 }
 
 
@@ -435,6 +439,7 @@ VIDEO_UPDATE( hopprobo )
 				col,
 				flipx,flipy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
+	return 0;
 }

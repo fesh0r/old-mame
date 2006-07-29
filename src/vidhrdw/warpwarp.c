@@ -7,8 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "artwork.h"
-
+#include "render.h"
 
 
 UINT8 *geebee_videoram,*warpwarp_videoram;
@@ -271,12 +270,15 @@ static void draw_ball(mame_bitmap *bitmap, const rectangle *cliprect,int color)
 VIDEO_UPDATE( geebee )
 {
 	/* use an overlay only in upright mode */
+#ifdef NEW_RENDER
 	if (geebee_handleoverlay)
-		artwork_show(OVERLAY_TAG, (readinputport(2) & 0x01) == 0);
+		render_view_item_set_state("overlay", (readinputport(2) & 0x01) == 0);
+#endif
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 
 	draw_ball(bitmap,cliprect,1);
+	return 0;
 }
 
 
@@ -286,4 +288,5 @@ VIDEO_UPDATE( warpwarp )
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 
 	draw_ball(bitmap,cliprect,0xf6);
+	return 0;
 }

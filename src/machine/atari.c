@@ -1,45 +1,26 @@
-/******************************************************************************
+/***************************************************************************
+
     Atari 400/800
 
     Machine driver
 
     Juergen Buchmueller, June 1998
-******************************************************************************/
 
-#include <ctype.h>
+***************************************************************************/
+
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 #include "includes/atari.h"
 #include "sound/pokey.h"
-#ifdef MESS
-#include "image.h"
-#endif
+#include "machine/6821pia.h"
+#include "sound/dac.h"
+#include "vidhrdw/gtia.h"
 
 #define VERBOSE_POKEY	0
 #define VERBOSE_SERIAL	0
 #define VERBOSE_TIMERS	0
-#define VERBOSE_CHKSUM	0
 
 //#define LOG(x) if (errorlog) fprintf x
-
-ATARI_PIA atari_pia;
-ATARI_FDC atari_fdc;
-
-typedef struct {
-	UINT8 *image;		/* malloc'd image */
-	int type;			/* type of image (XFD, ATR, DSK) */
-	int mode;			/* 0 read only, != 0 read/write */
-	int density;		/* 0 SD, 1 MD, 2 DD */
-	int header_skip;	/* number of bytes in format header */
-	int tracks; 		/* number of tracks (35,40,77,80) */
-	int heads;			/* number of heads (1,2) */
-	int spt;			/* sectors per track (18,26) */
-	int seclen; 		/* sector length (128,256) */
-	int bseclen;		/* boot sector length (sectors 1..3) */
-	int sectors;		/* total sectors, ie. tracks x heads x spt */
-}	DRIVE;
-
-static DRIVE drv[4] = {{0}, };
 
 static int atari = 0;
 #define ATARI_5200	0
@@ -53,894 +34,15 @@ static int a800_cart_loaded = 0;
 static int a800_cart_is_16k = 0;
 #endif
 
-static void a800xl_mmu(UINT8 old_mmu, UINT8 new_mmu);
-static void a600xl_mmu(UINT8 old_mmu, UINT8 new_mmu);
+static void a800xl_mmu(UINT8 new_mmu);
+static void a600xl_mmu(UINT8 new_mmu);
 
 static void pokey_reset(void);
-static void atari_pia_reset(void);
 
 static void make_chksum(UINT8 * chksum, UINT8 data);
 static void clr_serout(int expect_data);
 static void clr_serin(int ser_delay);
 static void add_serin(UINT8 data, int with_checksum);
-
-#ifdef MESS
-static void a800_setbank(int n)
-{
-	void *read_addr;
-	void *write_addr;
-	UINT8 *mem = memory_region(REGION_CPU1);
-
-	switch (n)
-	{
-		case 1:
-			read_addr = &mem[0x10000];
-			write_addr = NULL;
-			break;
-		default:
-			if( atari <= ATARI_400 )
-			{
-				/* Atari 400 has no RAM here, so install the NOP handler */
-				read_addr = NULL;
-				write_addr = NULL;
-			}
-			else
-			{
-				read_addr = &mess_ram[0x08000];
-				write_addr = &mess_ram[0x08000];
-			}
-			break;
-	}
-
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0,
-		read_addr ? MRA8_BANK1 : MRA8_NOP);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0,
-		write_addr ? MWA8_BANK1 : MWA8_NOP);
-	if (read_addr)
-		memory_set_bankptr(1, read_addr);
-	if (write_addr)
-		memory_set_bankptr(1, write_addr);
-}
-#endif
-
-static void machine_reset_atari_generic(int machine_type, int has_cart, int has_pia)
-{
-	atari = machine_type;
-
-	gtia_reset();
-	pokey_reset();
-	if (has_pia)
-		atari_pia_reset();
-	antic_reset();
-
-#ifdef MESS
-	if (has_cart && a800_cart_loaded)
-		a800_setbank(1);
-#endif
-}
-
-MACHINE_RESET( a400 )
-{
-	machine_reset_atari_generic(ATARI_400, TRUE, TRUE);
-}
-
-MACHINE_RESET( a800 )
-{
-	machine_reset_atari_generic(ATARI_800, TRUE, TRUE);
-}
-
-#ifdef MESS
-DEVICE_LOAD( a800_cart )
-{
-	UINT8 *mem = memory_region(REGION_CPU1);
-	int size;
-
-	/* load an optional (dual) cartridge (e.g. basic.rom) */
-	if( image_index_in_device(image) > 0 )
-	{
-		size = mame_fread(file, &mem[0x12000], 0x2000);
-		a800_cart_is_16k = (size == 0x2000);
-		logerror("%s loaded right cartridge '%s' size 16K\n", Machine->gamedrv->name, image_filename(image) );
-	}
-	else
-	{
-		size = mame_fread(file, &mem[0x10000], 0x2000);
-		a800_cart_loaded = size > 0x0000;
-		size = mame_fread(file, &mem[0x12000], 0x2000);
-		a800_cart_is_16k = size > 0x2000;
-		logerror("%s loaded left cartridge '%s' size %s\n", Machine->gamedrv->name, image_filename(image) , (a800_cart_is_16k) ? "16K":"8K");
-	}
-	return INIT_PASS;
-}
-
-DEVICE_UNLOAD( a800_cart )
-{
-	if( image_index_in_device(image) > 0 )
-	{
-		a800_cart_is_16k = 0;
-		a800_setbank(1);
-    }
-	else
-	{
-		a800_cart_loaded = 0;
-		a800_setbank(0);
-    }
-}
-#endif
-
-/**************************************************************
- *
- * Atari 600XL (for MAME only)
- *
- **************************************************************/
-MACHINE_RESET(a600xl)
-{
-	machine_reset_atari_generic(ATARI_600XL, FALSE, TRUE);
-	a600xl_mmu(atari_pia.w.pbout, atari_pia.w.pbout);
-}
-
-/**************************************************************
- *
- * Atari 800-XL
- *
- **************************************************************/
-
-MACHINE_RESET( a800xl)
-{
-	machine_reset_atari_generic(ATARI_800XL, FALSE, TRUE);
-	a800xl_mmu(atari_pia.w.pbout, atari_pia.w.pbout);
-}
-
-#ifdef MESS
-DEVICE_LOAD( a800xl_cart )
-{
-	UINT8 *mem = memory_region(REGION_CPU1);
-	const char *filename;
-	mame_file *basic_fp;
-	unsigned size;
-
-	filename = "basic.rom";
-	basic_fp = mame_fopen(Machine->gamedrv->name, filename, FILETYPE_ROM, 0);
-	if (basic_fp)
-	{
-		size = mame_fread(basic_fp, &mem[0x14000], 0x2000);
-		if( size < 0x2000 )
-		{
-			logerror("%s image '%s' load failed (less than 8K)\n", Machine->gamedrv->name, filename);
-			return 2;
-		}
-	}
-
-	/* load an optional (dual) cartidge (e.g. basic.rom) */
-	if (file)
-	{
-		{
-			size = mame_fread(file, &mem[0x14000], 0x2000);
-			a800_cart_loaded = size / 0x2000;
-			size = mame_fread(file, &mem[0x16000], 0x2000);
-			a800_cart_is_16k = size / 0x2000;
-			logerror("%s loaded cartridge '%s' size %s\n",
-					Machine->gamedrv->name, image_filename(image), (a800_cart_is_16k) ? "16K":"8K");
-		}
-	}
-
-	return INIT_PASS;
-}
-#endif
-/**************************************************************
- *
- * Atari 5200 console
- *
- **************************************************************/
-
-MACHINE_RESET( a5200 )
-{
-	machine_reset_atari_generic(ATARI_5200, FALSE, FALSE);
-}
-
-#ifdef MESS
-DEVICE_LOAD( a5200_cart )
-{
-	UINT8 *mem = memory_region(REGION_CPU1);
-	int size;
-
-	/* load an optional (dual) cartidge */
-	size = mame_fread(file, &mem[0x4000], 0x8000);
-	if (size<0x8000) memmove(mem+0x4000+0x8000-size, mem+0x4000, size);
-	// mirroring of smaller cartridges
-	if (size <= 0x1000) memcpy(mem+0xa000, mem+0xb000, 0x1000);
-	if (size <= 0x2000) memcpy(mem+0x8000, mem+0xa000, 0x2000);
-	if (size <= 0x4000)
-	{
-		const char *info;
-		memcpy(&mem[0x4000], &mem[0x8000], 0x4000);
-		info = image_extrainfo(image);
-		if (info!=NULL && strcmp(info, "A13MIRRORING")==0)
-		{
-			memcpy(&mem[0x8000], &mem[0xa000], 0x2000);
-			memcpy(&mem[0x6000], &mem[0x4000], 0x2000);
-		}
-	}
-	logerror("%s loaded cartridge '%s' size %dK\n",
-		Machine->gamedrv->name, image_filename(image) , size/1024);
-	return INIT_PASS;
-}
-
-DEVICE_UNLOAD( a5200_cart )
-{
-	UINT8 *mem = memory_region(REGION_CPU1);
-    /* zap the cartridge memory (again) */
-	memset(&mem[0x4000], 0x00, 0x8000);
-}
-#endif
-
-static void pokey_reset(void)
-{
-	pokey1_w(15,0);
-}
-
-#ifdef MESS
-
-#define FORMAT_XFD	0
-#define FORMAT_ATR	1
-#define FORMAT_DSK	2
-
-/*****************************************************************************
- * This is the structure I used in my own Atari 800 emulator some years ago
- * Though it's a bit overloaded, I used it as it is the maximum of all
- * supported formats:
- * XFD no header at all
- * ATR 16 bytes header
- * DSK this struct
- * It is used to determine the format of a XFD image by it's size only
- *****************************************************************************/
-
-typedef struct {
-	UINT8 density;
-	UINT8 tracks;
-	UINT8 door;
-	UINT8 sta1;
-	UINT8 spt;
-	UINT8 doublesided;
-	UINT8 highdensity;
-	UINT8 seclen_hi;
-	UINT8 seclen_lo;
-	UINT8 status;
-	UINT8 sta2;
-	UINT8 sta3;
-	UINT8 sta4;
-	UINT8 cr;
-	UINT8 info[65+1];
-}	dsk_format;
-
-/* combined with the size the image should have */
-typedef struct	{
-	int size;
-	dsk_format dsk;
-}	xfd_format;
-
-/* here's a table of known xfd formats */
-static	xfd_format xfd_formats[] = {
-	{35 * 18 * 1 * 128, 				{0,35,1,0,18,0,0,0,128,255,0,0,0,13,"35 SS/SD"}},
-	{35 * 26 * 1 * 128, 				{1,35,1,0,26,0,4,0,128,255,0,0,0,13,"35 SS/MD"}},
-	{(35 * 18 * 1 - 3) * 256 + 3 * 128, {2,35,1,0,18,0,4,1,  0,255,0,0,0,13,"35 SS/DD"}},
-	{40 * 18 * 1 * 128, 				{0,40,1,0,18,0,0,0,128,255,0,0,0,13,"40 SS/SD"}},
-	{40 * 26 * 1 * 128, 				{1,40,1,0,26,0,4,0,128,255,0,0,0,13,"40 SS/MD"}},
-	{(40 * 18 * 1 - 3) * 256 + 3 * 128, {2,40,1,0,18,0,4,1,  0,255,0,0,0,13,"40 SS/DD"}},
-	{40 * 18 * 2 * 128, 				{0,40,1,0,18,1,0,0,128,255,0,0,0,13,"40 DS/SD"}},
-	{40 * 26 * 2 * 128, 				{1,40,1,0,26,1,4,0,128,255,0,0,0,13,"40 DS/MD"}},
-	{(40 * 18 * 2 - 3) * 256 + 3 * 128, {2,40,1,0,18,1,4,1,  0,255,0,0,0,13,"40 DS/DD"}},
-	{77 * 18 * 1 * 128, 				{0,77,1,0,18,0,0,0,128,255,0,0,0,13,"77 SS/SD"}},
-	{77 * 26 * 1 * 128, 				{1,77,1,0,26,0,4,0,128,255,0,0,0,13,"77 SS/MD"}},
-	{(77 * 18 * 1 - 3) * 256 + 3 * 128, {2,77,1,0,18,0,4,1,  0,255,0,0,0,13,"77 SS/DD"}},
-	{77 * 18 * 2 * 128, 				{0,77,1,0,18,1,0,0,128,255,0,0,0,13,"77 DS/SD"}},
-	{77 * 26 * 2 * 128, 				{1,77,1,0,26,1,4,0,128,255,0,0,0,13,"77 DS/MD"}},
-	{(77 * 18 * 2 - 3) * 256 + 3 * 128, {2,77,1,0,18,1,4,1,  0,255,0,0,0,13,"77 DS/DD"}},
-	{80 * 18 * 2 * 128, 				{0,80,1,0,18,1,0,0,128,255,0,0,0,13,"80 DS/SD"}},
-	{80 * 26 * 2 * 128, 				{1,80,1,0,26,1,4,0,128,255,0,0,0,13,"80 DS/MD"}},
-	{(80 * 18 * 2 - 3) * 256 + 3 * 128, {2,80,1,0,18,1,4,1,  0,255,0,0,0,13,"80 DS/DD"}},
-	{0, {0,}}
-};
-#endif
-
-/*****************************************************************************
- *
- * Open a floppy image for drive 'drive' if it is not yet openend
- * and a name was given. Determine the image geometry depending on the
- * type of image and store the results into the global drv[] structure
- *
- *****************************************************************************/
-#define MAXSIZE 5760 * 256 + 80
-#ifdef MESS
-DEVICE_LOAD( a800_floppy )
-{
-	int size, i;
-	const char *ext;
-	int id = image_index_in_device(image);
-
-	drv[id].image = image_malloc(image, MAXSIZE);
-	if (!drv[id].image)
-		return INIT_FAIL;
-
-	/* tell whether the image is writable */
-	drv[id].mode = image_is_writable(image);
-	/* set up image if it has been created */
-	if (image_has_been_created(image))
-	{
-		int sector;
-		char buff[256];
-		memset(buff, 0, 256);
-		/* default to 720 sectors */
-		for( sector = 0; sector < 720; sector++ )
-			mame_fwrite(file, buff, 256);
-		mame_fseek(file, 0, SEEK_SET);
-	}
-
-	size = mame_fread(file, drv[id].image, MAXSIZE);
-	if( size <= 0 )
-	{
-		drv[id].image = NULL;
-		return INIT_FAIL;
-	}
-	/* re allocate the buffer; we don't want to be too lazy ;) */
-    drv[id].image = image_realloc(image, drv[id].image, size);
-
-	ext = image_filetype(image);
-    /* no extension: assume XFD format (no header) */
-    if (!ext)
-    {
-        drv[id].type = FORMAT_XFD;
-        drv[id].header_skip = 0;
-    }
-    else
-    /* XFD extension */
-    if( toupper(ext[0])=='X' && toupper(ext[1])=='F' && toupper(ext[2])=='D' )
-    {
-        drv[id].type = FORMAT_XFD;
-        drv[id].header_skip = 0;
-    }
-    else
-    /* ATR extension */
-    if( toupper(ext[0])=='A' && toupper(ext[1])=='T' && toupper(ext[2])=='R' )
-    {
-        drv[id].type = FORMAT_ATR;
-        drv[id].header_skip = 16;
-    }
-    else
-    /* DSK extension */
-    if( toupper(ext[0])=='D' && toupper(ext[1])=='S' && toupper(ext[2])=='K' )
-    {
-        drv[id].type = FORMAT_DSK;
-        drv[id].header_skip = sizeof(dsk_format);
-    }
-    else
-    {
-		drv[id].type = FORMAT_XFD;
-        drv[id].header_skip = 0;
-    }
-
-	if( drv[id].type == FORMAT_ATR &&
-		(drv[id].image[0] != 0x96 || drv[id].image[1] != 0x02) )
-	{
-		drv[id].type = FORMAT_XFD;
-		drv[id].header_skip = 0;
-	}
-
-	switch (drv[id].type)
-	{
-	/* XFD or unknown format: find a matching size from the table */
-	case FORMAT_XFD:
-		for( i = 0; xfd_formats[i].size; i++ )
-		{
-			if( size == xfd_formats[i].size )
-			{
-				drv[id].density = xfd_formats[i].dsk.density;
-				drv[id].tracks = xfd_formats[i].dsk.tracks;
-				drv[id].spt = xfd_formats[i].dsk.spt;
-				drv[id].heads = (xfd_formats[i].dsk.doublesided) ? 2 : 1;
-				drv[id].bseclen = 128;
-				drv[id].seclen = 256 * xfd_formats[i].dsk.seclen_hi + xfd_formats[i].dsk.seclen_lo;
-				drv[id].sectors = drv[id].tracks * drv[id].heads * drv[id].spt;
-				break;
-			}
-		}
-		break;
-	/* ATR format: find a size including the 16 bytes header */
-	case FORMAT_ATR:
-		{
-			int s;
-
-			drv[id].bseclen = 128;
-			/* get sectors from ATR header */
-			s = (size - 16) / 128;
-			/* 3 + odd number of sectors ? */
-			if ( drv[id].image[4] == 128 || (s % 18) == 0 || (s % 26) == 0 || ((s - 3) % 1) != 0 )
-			{
-				drv[id].sectors = s;
-				drv[id].seclen = 128;
-				/* sector size 128 or count not evenly dividable by 26 ? */
-				if( drv[id].seclen == 128 || (s % 26) != 0 )
-				{
-					/* yup! single density */
-					drv[id].density = 0;
-					drv[id].spt = 18;
-					drv[id].heads = 1;
-					drv[id].tracks = s / 18;
-					if( s % 18 != 0 )
-						drv[id].tracks += 1;
-					if( drv[id].tracks % 2 == 0 && drv[id].tracks > 80 )
-					{
-						drv[id].heads = 2;
-						drv[id].tracks /= 2;
-					}
-				}
-				else
-				{
-					/* yes: medium density */
-					drv[id].density = 0;
-					drv[id].spt = 26;
-					drv[id].heads = 1;
-					drv[id].tracks = s / 26;
-					if( s % 26 != 0 )
-						drv[id].tracks += 1;
-					if( drv[id].tracks % 2 == 0 && drv[id].tracks > 80 )
-					{
-						drv[id].heads = 2;
-						drv[id].tracks /= 2;
-					}
-				}
-			}
-			else
-			{
-				/* it's double density */
-				s = (s - 3) / 2 + 3;
-				drv[id].sectors = s;
-				drv[id].density = 2;
-				drv[id].seclen = 256;
-				drv[id].spt = 18;
-				drv[id].heads = 1;
-				drv[id].tracks = s / 18;
-				if( s % 18 != 0 )
-					drv[id].tracks += 1;
-				if( drv[id].tracks % 2 == 0 && drv[id].tracks > 80 )
-				{
-					drv[id].heads = 2;
-					drv[id].tracks /= 2;
-				}
-			}
-		}
-		break;
-	/* DSK format: it's all in the header */
-	case FORMAT_DSK:
-		{
-			dsk_format *dsk = (dsk_format *) drv[id].image;
-
-			drv[id].tracks = dsk->tracks;
-			drv[id].spt = dsk->spt;
-			drv[id].heads = (dsk->doublesided) ? 2 : 1;
-			drv[id].seclen = 256 * dsk->seclen_hi + dsk->seclen_lo;
-			drv[id].bseclen = drv[id].seclen;
-			drv[id].sectors = drv[id].tracks * drv[id].heads * drv[id].spt;
-		}
-		break;
-	}
-	logerror("atari opened floppy '%s', %d sectors (%d %s%s) %d bytes/sector\n",
-			image_filename(image),
-			drv[id].sectors,
-			drv[id].tracks,
-			(drv[id].heads == 1) ? "SS" : "DS",
-			(drv[id].density == 0) ? "SD" : (drv[id].density == 1) ? "MD" : "DD",
-			drv[id].seclen);
-	return INIT_PASS;
-}
-#endif
-
-static	void make_chksum(UINT8 * chksum, UINT8 data)
-{
-	UINT8 new;
-	new = *chksum + data;
-	if (new < *chksum)
-		new++;
-#if VERBOSE_CHKSUM
-	logerror("atari chksum old $%02x + data $%02x -> new $%02x\n", *chksum, data, new);
-#endif
-	*chksum = new;
-}
-
-static	void clr_serout(int expect_data)
-{
-	atari_fdc.serout_chksum = 0;
-	atari_fdc.serout_offs = 0;
-	atari_fdc.serout_count = expect_data + 1;
-}
-
-static	void add_serout(int expect_data)
-{
-	atari_fdc.serout_chksum = 0;
-	atari_fdc.serout_count = expect_data + 1;
-}
-
-static	void clr_serin(int ser_delay)
-{
-	atari_fdc.serin_chksum = 0;
-	atari_fdc.serin_offs = 0;
-	atari_fdc.serin_count = 0;
-	pokey1_serin_ready(ser_delay * 40);
-}
-
-static	void add_serin(UINT8 data, int with_checksum)
-{
-	atari_fdc.serin_buff[atari_fdc.serin_count++] = data;
-	if (with_checksum)
-		make_chksum(&atari_fdc.serin_chksum, data);
-}
-
-/*****************************************************************************
- *
- * This is a description of the data flow between Atari (A) and the
- * Floppy (F) for the supported commands.
- *
- * A->F     DEV  CMD  AUX1 AUX2 CKS
- *          '1'  'S'  00   00                 get status
- * F->A     ACK  CPL  04   FF   E0   00   CKS
- *                     ^    ^
- *                     |    |
- *                     |    bit 7 : door closed
- *                     |
- *                     bit7  : MD 128 bytes/sector, 26 sectors/track
- *                     bit5  : DD 256 bytes/sector, 18 sectors/track
- *                     else  : SD 128 bytes/sector, 18 sectors/track
- *
- * A->F     DEV  CMD  AUX1 AUX2 CKS
- *          '1'  'R'  SECL SECH               read sector
- * F->A     ACK                               command acknowledge
- *               ***                          now read the sector
- * F->A              CPL                      complete: sector read
- * F->A                  128/256 byte CKS
- *
- * A->F     DEV  CMD  AUX1 AUX2 CKS
- *          '1'  'W'  SECL SECH               write with verify
- * F->A     ACK                               command acknowledge
- * A->F          128/256 data CKS
- * F->A                            CPL        complete: CKS okay
- *          execute writing the sector
- * F->A                                 CPL   complete: sector written
- *
- * A->F     DEV  CMD  AUX1 AUX2 CKS
- *          '1'  'P'  SECL SECH               put sector
- * F->A     ACK                               command acknowledge
- * A->F          128/256 data CKS
- * F->A                            CPL        complete: CKS okay
- *          execute writing the sector
- * F->A                                 CPL   complete: sector written
- *
- * A->F     DEV  CMD  AUX1 AUX2 CKS
- *           '1' '!'  xx   xx                 single density format
- * F->A     ACK                               command acknowledge
- *          execute formatting
- * F->A               CPL                     complete: format
- * F->A                    128/256 byte CKS   bad sector table
- *
- *
- * A->F     DEV  CMD  AUX1 AUX2 CKS
- *          '1'  '"'  xx   xx                 double density format
- * F->A     ACK                               command acknowledge
- *          execute formatting
- * F->A               CPL                     complete: format
- * F->A                    128/256 byte CKS   bad sector table
- *
- *****************************************************************************/
-
-void a800_serial_command(void)
-{
-	int  i, drive, sector, offset;
-
-	if( !atari_fdc.serout_offs )
-	{
-#if VERBOSE_SERIAL
-	logerror("atari serout command offset = 0\n");
-#endif
-		return;
-	}
-	clr_serin(10);
-#if VERBOSE_SERIAL
-	logerror("atari serout command %d: %02X %02X %02X %02X %02X : %02X ",
-		atari_fdc.serout_offs,
-		atari_fdc.serout_buff[0], atari_fdc.serout_buff[1], atari_fdc.serout_buff[2],
-		atari_fdc.serout_buff[3], atari_fdc.serout_buff[4], atari_fdc.serout_chksum);
-#endif
-	if (atari_fdc.serout_chksum == 0)
-	{
-#if VERBOSE_SERIAL
-		logerror("OK\n");
-#endif
-		drive = atari_fdc.serout_buff[0] - '1';   /* drive # */
-		/* sector # */
-		if (drive < 0 || drive > 3) 			/* ignore unknown drives */
-		{
-			logerror("atari unsupported drive #%d\n", drive+1);
-			sprintf(atari_frame_message, "DRIVE #%d not supported", drive+1);
-			atari_frame_counter = Machine->drv->frames_per_second/2;
-			return;
-		}
-
-		/* extract sector number from the command buffer */
-		sector = atari_fdc.serout_buff[2] + 256 * atari_fdc.serout_buff[3];
-
-		switch (atari_fdc.serout_buff[1]) /* command ? */
-		{
-			case 'S':   /* status */
-				sprintf(atari_frame_message, "DRIVE #%d STATUS", drive+1);
-				atari_frame_counter = Machine->drv->frames_per_second/2;
-#if VERBOSE_SERIAL
-				logerror("atari status\n");
-#endif
-				add_serin('A',0);
-				add_serin('C',0);
-				if (!drv[drive].mode) /* read only mode ? */
-				{
-					if (drv[drive].spt == 26)
-						add_serin(0x80,1);	/* MD: 0x80 */
-					else
-					if (drv[drive].seclen == 128)
-						add_serin(0x00,1);	/* SD: 0x00 */
-					else
-						add_serin(0x20,1);	/* DD: 0x20 */
-				}
-				else
-				{
-					if (drv[drive].spt == 26)
-						add_serin(0x84,1);	/* MD: 0x84 */
-					else
-					if (drv[drive].seclen == 128)
-						add_serin(0x04,1);	/* SD: 0x04 */
-					else
-						add_serin(0x24,1);	/* DD: 0x24 */
-				}
-				if (drv[drive].image)
-					add_serin(0xff,1);	/* door closed: 0xff */
-				else
-					add_serin(0x7f,1);	/* door open: 0x7f */
-				add_serin(0xe0,1);	/* dunno */
-				add_serin(0x00,1);	/* dunno */
-				add_serin(atari_fdc.serin_chksum,0);
-				break;
-
-			case 'R':   /* read sector */
-#if VERBOSE_SERIAL
-				logerror("atari read sector #%d\n", sector);
-#endif
-				if( sector < 1 || sector > drv[drive].sectors )
-				{
-					sprintf(atari_frame_message, "DRIVE #%d READ SECTOR #%3d - ERR", drive+1, sector);
-					atari_frame_counter = Machine->drv->frames_per_second/2;
-#if VERBOSE_SERIAL
-					logerror("atari bad sector #\n");
-#endif
-					add_serin('E',0);
-					break;
-				}
-				add_serin('A',0);   /* acknowledge */
-				add_serin('C',0);   /* completed */
-				if (sector < 4) 	/* sector 1 .. 3 might be different length */
-				{
-					sprintf(atari_frame_message, "DRIVE #%d READ SECTOR #%3d - SD", drive+1, sector);
-                    atari_frame_counter = Machine->drv->frames_per_second/2;
-                    offset = (sector - 1) * drv[drive].bseclen + drv[drive].header_skip;
-					for (i = 0; i < 128; i++)
-						add_serin(drv[drive].image[offset++],1);
-				}
-				else
-				{
-					sprintf(atari_frame_message, "DRIVE #%d READ SECTOR #%3d - %cD", drive+1, sector, (drv[drive].seclen == 128) ? 'S' : 'D');
-                    atari_frame_counter = Machine->drv->frames_per_second/2;
-                    offset = (sector - 1) * drv[drive].seclen + drv[drive].header_skip;
-					for (i = 0; i < drv[drive].seclen; i++)
-						add_serin(drv[drive].image[offset++],1);
-				}
-				add_serin(atari_fdc.serin_chksum,0);
-				break;
-
-			case 'W':   /* write sector with verify */
-#if VERBOSE_SERIAL
-				logerror("atari write sector #%d\n", sector);
-#endif
-                add_serin('A',0);
-				if (sector < 4) 	/* sector 1 .. 3 might be different length */
-				{
-					add_serout(drv[drive].bseclen);
-					sprintf(atari_frame_message, "DRIVE #%d WRITE SECTOR #%3d - SD", drive+1, sector);
-					atari_frame_counter = Machine->drv->frames_per_second/2;
-                }
-				else
-				{
-					add_serout(drv[drive].seclen);
-					sprintf(atari_frame_message, "DRIVE #%d WRITE SECTOR #%3d - %cD", drive+1, sector, (drv[drive].seclen == 128) ? 'S' : 'D');
-                    atari_frame_counter = Machine->drv->frames_per_second/2;
-                }
-				break;
-
-			case 'P':   /* put sector (no verify) */
-#if VERBOSE_SERIAL
-				logerror("atari put sector #%d\n", sector);
-#endif
-				add_serin('A',0);
-				if (sector < 4) 	/* sector 1 .. 3 might be different length */
-				{
-					add_serout(drv[drive].bseclen);
-					sprintf(atari_frame_message, "DRIVE #%d PUT SECTOR #%3d - SD", drive+1, sector);
-                    atari_frame_counter = Machine->drv->frames_per_second/2;
-                }
-				else
-				{
-					add_serout(drv[drive].seclen);
-					sprintf(atari_frame_message, "DRIVE #%d PUT SECTOR #%3d - %cD", drive+1, sector, (drv[drive].seclen == 128) ? 'S' : 'D');
-                    atari_frame_counter = Machine->drv->frames_per_second/2;
-                }
-				break;
-
-			case '!':   /* SD format */
-#if VERBOSE_SERIAL
-				logerror("atari format SD drive #%d\n", drive+1);
-#endif
-				sprintf(atari_frame_message, "DRIVE #%d FORMAT SD", drive+1);
-				atari_frame_counter = Machine->drv->frames_per_second/2;
-                add_serin('A',0);   /* acknowledge */
-				add_serin('C',0);   /* completed */
-				for (i = 0; i < 128; i++)
-					add_serin(0,1);
-				add_serin(atari_fdc.serin_chksum,0);
-				break;
-
-			case '"':   /* DD format */
-#if VERBOSE_SERIAL
-				logerror("atari format DD drive #%d\n", drive+1);
-#endif
-				sprintf(atari_frame_message, "DRIVE #%d FORMAT DD", drive+1);
-                atari_frame_counter = Machine->drv->frames_per_second/2;
-                add_serin('A',0);   /* acknowledge */
-				add_serin('C',0);   /* completed */
-				for (i = 0; i < 256; i++)
-					add_serin(0,1);
-				add_serin(atari_fdc.serin_chksum,0);
-				break;
-
-			default:
-#if VERBOSE_SERIAL
-				logerror("atari unknown command #%c\n", atari_fdc.serout_buff[1]);
-#endif
-				sprintf(atari_frame_message, "DRIVE #%d UNKNOWN CMD '%c'", drive+1, atari_fdc.serout_buff[1]);
-                atari_frame_counter = Machine->drv->frames_per_second/2;
-                add_serin('N',0);   /* negative acknowledge */
-		}
-	}
-	else
-	{
-		sprintf(atari_frame_message, "serial cmd chksum error");
-		atari_frame_counter = Machine->drv->frames_per_second/2;
-#if VERBOSE_SERIAL
-		logerror("BAD\n");
-#endif
-		add_serin('E',0);
-	}
-#if VERBOSE_SERIAL
-	logerror("atari %d bytes to read\n", atari_fdc.serin_count);
-#endif
-}
-
-void a800_serial_write(void)
-{
-int i, drive, sector, offset;
-#if VERBOSE_SERIAL
-	logerror("atari serout %d bytes written : %02X ",
-		atari_fdc.serout_offs, atari_fdc.serout_chksum);
-#endif
-	clr_serin(80);
-	if (atari_fdc.serout_chksum == 0)
-	{
-#if VERBOSE_SERIAL
-		logerror("OK\n");
-#endif
-		add_serin('C',0);
-		/* write the sector */
-		drive = atari_fdc.serout_buff[0] - '1';   /* drive # */
-		/* not write protected and image available ? */
-		if (drv[drive].mode && drv[drive].image)
-		{
-			/* extract sector number from the command buffer */
-			sector = atari_fdc.serout_buff[2] + 256 * atari_fdc.serout_buff[3];
-			if (sector < 4) 	/* sector 1 .. 3 might be different length */
-			{
-				offset = (sector - 1) * drv[drive].bseclen + drv[drive].header_skip;
-#if VERBOSE_SERIAL
-				logerror("atari storing 128 byte sector %d at offset 0x%08X", sector, offset );
-#endif
-				for (i = 0; i < 128; i++)
-					drv[drive].image[offset++] = atari_fdc.serout_buff[5+i];
-				sprintf(atari_frame_message, "DRIVE #%d WROTE SECTOR #%3d - SD", drive+1, sector);
-				atari_frame_counter = Machine->drv->frames_per_second/2;
-            }
-			else
-			{
-				offset = (sector - 1) * drv[drive].seclen + drv[drive].header_skip;
-#if VERBOSE_SERIAL
-				logerror("atari storing %d byte sector %d at offset 0x%08X", drv[drive].seclen, sector, offset );
-#endif
-				for (i = 0; i < drv[drive].seclen; i++)
-					drv[drive].image[offset++] = atari_fdc.serout_buff[5+i];
-				sprintf(atari_frame_message, "DRIVE #%d WROTE SECTOR #%3d - %cD", drive+1, sector, (drv[drive].seclen == 128) ? 'S' : 'D');
-                atari_frame_counter = Machine->drv->frames_per_second/2;
-            }
-			add_serin('C',0);
-		}
-		else
-		{
-			add_serin('E',0);
-		}
-	}
-	else
-	{
-#if VERBOSE_SERIAL
-		logerror("BAD\n");
-#endif
-		add_serin('E',0);
-	}
-}
-
-READ8_HANDLER ( atari_serin_r )
-{
-	int data = 0x00;
-	int ser_delay = 0;
-
-	if (atari_fdc.serin_count)
-	{
-		data = atari_fdc.serin_buff[atari_fdc.serin_offs];
-		ser_delay = 2 * 40;
-		if (atari_fdc.serin_offs < 3)
-		{
-			ser_delay = 4 * 40;
-			if (atari_fdc.serin_offs < 2)
-				ser_delay = 200 * 40;
-		}
-		atari_fdc.serin_offs++;
-		if (--atari_fdc.serin_count == 0)
-			atari_fdc.serin_offs = 0;
-		else
-			pokey1_serin_ready(ser_delay);
-	}
-#if VERBOSE_SERIAL
-	logerror("atari serin[$%04x] -> $%02x; delay %d\n", atari_fdc.serin_offs, data, ser_delay);
-#endif
-	return data;
-}
-
-WRITE8_HANDLER ( atari_serout_w )
-{
-	/* ignore serial commands if no floppy image is specified */
-	if( !drv[0].image )
-		return;
-	if (atari_fdc.serout_count)
-	{
-		/* store data */
-		atari_fdc.serout_buff[atari_fdc.serout_offs] = data;
-#if VERBOSE_SERIAL
-		logerror("atari serout[$%04x] <- $%02x; count %d\n", atari_fdc.serout_offs, data, atari_fdc.serout_count));
-#endif
-		atari_fdc.serout_offs++;
-		if (--atari_fdc.serout_count == 0)
-		{
-			/* exclusive or written checksum with calculated */
-			atari_fdc.serout_chksum ^= data;
-			/* if the attention line is high, this should be data */
-			if (atari_pia.rw.pbctl & 0x08)
-				a800_serial_write();
-		}
-		else
-		{
-			make_chksum(&atari_fdc.serout_chksum, data);
-		}
-	}
-}
 
 void atari_interrupt_cb(int mask)
 {
@@ -973,227 +75,156 @@ void atari_interrupt_cb(int mask)
 
 /**************************************************************
  *
- * Read PIA hardware registers
+ * PIA interface
  *
  **************************************************************/
 
-READ8_HANDLER ( atari_pia_r )
+static READ8_HANDLER(atari_pia_pa_r)
 {
-	UINT8 result;
-	switch (offset & 3)
-	{
-		case 0: /* PIA port A */
-			atari_pia.r.painp = atari_readinputport(PORT_JOY_1_2);
-			result = (atari_pia.w.paout & atari_pia.h.pamsk) | (atari_pia.r.painp & ~atari_pia.h.pamsk);
-			break;
-
-		case 1: /* PIA port B */
-			atari_pia.r.pbinp = atari_readinputport(PORT_JOY_2_3);
-			result =  (atari_pia.w.pbout & atari_pia.h.pbmsk) | (atari_pia.r.pbinp & ~atari_pia.h.pbmsk);
-			break;
-
-		case 2: /* PIA port A control */
-			result = atari_pia.rw.pactl;
-			break;
-
-		case 3: /* PIA port B control */
-			result = atari_pia.rw.pbctl;
-			break;
-
-		default:
-			result = 0xFF;
-			break;
-	}
-	return result;
+	return atari_input_disabled() ? 0xFF : readinputportbytag_safe("djoy_0_1", 0);
 }
 
-/**************************************************************
- *
- * Write PIA hardware registers
- *
- **************************************************************/
-
-WRITE8_HANDLER ( atari_pia_w )
+static READ8_HANDLER(atari_pia_pb_r)
 {
-	switch (offset & 3)
-	{
-		case 0: /* PIA port A */
-			if (atari_pia.rw.pactl & 0x04)
-				atari_pia.w.paout = data;	/* output */
-			else
-				atari_pia.h.pamsk = data;	/* mask register */
-			break;
-		case 1: /* PIA port B */
-			if( atari_pia.rw.pbctl & 0x04 )
-			{
-				if( atari == ATARI_800XL )
-				{
-					a800xl_mmu(atari_pia.w.pbout, data);
-				}
-				else if ( atari == ATARI_600XL )
-				{
-					a600xl_mmu(atari_pia.w.pbout, data);
-				}
-				atari_pia.w.pbout = data;	/* output */
-			}
-			else
-			{
-				atari_pia.h.pbmsk = data;	/* 400/800 mode mask register */
-			}
-			break;
-		case 2: /* PIA port A control */
-			atari_pia.rw.pactl = data;
-			break;
-		case 3: /* PIA port B control */
-			if( (atari_pia.rw.pbctl ^ data) & 0x08 )  /* serial attention change ? */
-			{
-				if( atari_pia.rw.pbctl & 0x08 ) 	  /* serial attention before ? */
-				{
-					clr_serout(4);				/* expect 4 command bytes + checksum */
-				}
-				else
-				{
-					atari_fdc.serin_delay = 0;
-					a800_serial_command();
-				}
-			}
-			atari_pia.rw.pbctl = data;
-			break;
-	}
+	return atari_input_disabled() ? 0xFF : readinputportbytag_safe("djoy_2_3", 0);
 }
+
+static WRITE8_HANDLER(a600xl_pia_pb_w) { a600xl_mmu(data); }
+static WRITE8_HANDLER(a800xl_pia_pb_w) { a800xl_mmu(data); }
+
+#ifdef MESS
+extern WRITE8_HANDLER(atari_pia_cb2_w);
+#else
+#define atari_pia_cb2_w		(0)
+#endif
+
+static const pia6821_interface atari_pia_interface =
+{
+	/*inputs : A/B,CA/B1,CA/B2 */ atari_pia_pa_r, atari_pia_pb_r, 0, 0, 0, 0,
+	/*outputs: A/B,CA/B2       */ 0, 0, 0, atari_pia_cb2_w,
+	/*irqs   : A/B             */ 0, 0
+};
+
+static const pia6821_interface a600xl_pia_interface =
+{
+	/*inputs : A/B,CA/B1,CA/B2 */ atari_pia_pa_r, atari_pia_pb_r, 0, 0, 0, 0,
+	/*outputs: A/B,CA/B2       */ 0, a600xl_pia_pb_w, 0, atari_pia_cb2_w,
+	/*irqs   : A/B             */ 0, 0
+};
+
+static const pia6821_interface a800xl_pia_interface =
+{
+	/*inputs : A/B,CA/B1,CA/B2 */ atari_pia_pa_r, atari_pia_pb_r, 0, 0, 0, 0,
+	/*outputs: A/B,CA/B2       */ 0, a800xl_pia_pb_w, 0, atari_pia_cb2_w,
+	/*irqs   : A/B             */ 0, 0
+};
+
+
+
 
 /**************************************************************
  *
  * Reset hardware
  *
  **************************************************************/
-static void	atari_pia_reset(void)
-{
-	/* reset the PIA */
-	atari_pia_w(3,0);
-	atari_pia_w(2,0);
-	atari_pia_w(1,0);
-	atari_pia_w(0,0);
-}
 
-void a600xl_mmu(UINT8 old_mmu, UINT8 new_mmu)
+void a600xl_mmu(UINT8 new_mmu)
 {
-	UINT8 changes = new_mmu ^ old_mmu;
 	read8_handler rbank2;
 	write8_handler wbank2;
 
-	if( changes == 0 )
-		return;
-
-	logerror("%s MMU old:%02x new:%02x\n", Machine->gamedrv->name, old_mmu, new_mmu);
-
 	/* check if self-test ROM changed */
-	if( changes & 0x80 )
+	if ( new_mmu & 0x80 )
 	{
-		if ( new_mmu & 0x80 )
-		{
-			logerror("%s MMU SELFTEST RAM\n", Machine->gamedrv->name);
-			rbank2 = MRA8_NOP;
-			wbank2 = MWA8_NOP;
-		}
-		else
-		{
-			logerror("%s MMU SELFTEST ROM\n", Machine->gamedrv->name);
-			rbank2 = MRA8_BANK2;
-			wbank2 = MWA8_ROM;
-		}
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x57ff, 0, 0, rbank2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x57ff, 0, 0, wbank2);
-		if (rbank2 == MRA8_BANK2)
-			memory_set_bankptr(2, memory_region(REGION_CPU1)+0x5000);
+		logerror("%s MMU SELFTEST RAM\n", Machine->gamedrv->name);
+		rbank2 = MRA8_NOP;
+		wbank2 = MWA8_NOP;
 	}
+	else
+	{
+		logerror("%s MMU SELFTEST ROM\n", Machine->gamedrv->name);
+		rbank2 = MRA8_BANK2;
+		wbank2 = MWA8_ROM;
+	}
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x57ff, 0, 0, rbank2);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x57ff, 0, 0, wbank2);
+	if (rbank2 == MRA8_BANK2)
+		memory_set_bankptr(2, memory_region(REGION_CPU1)+0x5000);
 }
 
-void a800xl_mmu(UINT8 old_mmu, UINT8 new_mmu)
+void a800xl_mmu(UINT8 new_mmu)
 {
-	UINT8 changes = new_mmu ^ old_mmu;
 	read8_handler rbank1, rbank2, rbank3, rbank4;
 	write8_handler wbank1, wbank2, wbank3, wbank4;
 	UINT8 *base1, *base2, *base3, *base4;
 
-	if( changes == 0 )
-		return;
-
-	logerror("%s MMU old:%02x new:%02x\n", Machine->gamedrv->name, old_mmu, new_mmu);
-
 	/* check if memory C000-FFFF changed */
-	if( changes & 0x01 )
+	if( new_mmu & 0x01 )
 	{
-		if( new_mmu & 0x01 )
-		{
-			logerror("%s MMU BIOS ROM\n", Machine->gamedrv->name);
-			rbank3 = MRA8_BANK3;
-			wbank3 = MWA8_ROM;
-			base3 = memory_region(REGION_CPU1)+0x14000;  /* 8K lo BIOS */
-			rbank4 = MRA8_BANK4;
-			wbank4 = MWA8_ROM;
-			base4 = memory_region(REGION_CPU1)+0x15800;  /* 4K FP ROM + 8K hi BIOS */
-		}
-		else
-		{
-			logerror("%s MMU BIOS RAM\n", Machine->gamedrv->name);
-			rbank3 = MRA8_BANK3;
-			wbank3 = MWA8_BANK3;
-			base3 = memory_region(REGION_CPU1)+0x0c000;  /* 8K RAM */
-			rbank4 = MRA8_BANK4;
-			wbank4 = MWA8_BANK4;
-			base4 = memory_region(REGION_CPU1)+0x0d800;  /* 4K RAM + 8K RAM */
-		}
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, rbank3);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, wbank3);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd800, 0xffff, 0, 0, rbank4);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd800, 0xffff, 0, 0, wbank4);
-		memory_set_bankptr(3, base3);
-		memory_set_bankptr(4, base4);
+		logerror("%s MMU BIOS ROM\n", Machine->gamedrv->name);
+		rbank3 = MRA8_BANK3;
+		wbank3 = MWA8_ROM;
+		base3 = memory_region(REGION_CPU1)+0x14000;  /* 8K lo BIOS */
+		rbank4 = MRA8_BANK4;
+		wbank4 = MWA8_ROM;
+		base4 = memory_region(REGION_CPU1)+0x15800;  /* 4K FP ROM + 8K hi BIOS */
 	}
+	else
+	{
+		logerror("%s MMU BIOS RAM\n", Machine->gamedrv->name);
+		rbank3 = MRA8_BANK3;
+		wbank3 = MWA8_BANK3;
+		base3 = memory_region(REGION_CPU1)+0x0c000;  /* 8K RAM */
+		rbank4 = MRA8_BANK4;
+		wbank4 = MWA8_BANK4;
+		base4 = memory_region(REGION_CPU1)+0x0d800;  /* 4K RAM + 8K RAM */
+	}
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, rbank3);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, wbank3);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd800, 0xffff, 0, 0, rbank4);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd800, 0xffff, 0, 0, wbank4);
+	memory_set_bankptr(3, base3);
+	memory_set_bankptr(4, base4);
+
 	/* check if BASIC changed */
-	if( changes & 0x02 )
+	if( new_mmu & 0x02 )
 	{
-		if( new_mmu & 0x02 )
-		{
-			logerror("%s MMU BASIC RAM\n", Machine->gamedrv->name);
-			rbank1 = MRA8_BANK1;
-			wbank1 = MWA8_BANK1;
-			base1 = memory_region(REGION_CPU1)+0x0a000;  /* 8K RAM */
-		}
-		else
-		{
-			logerror("%s MMU BASIC ROM\n", Machine->gamedrv->name);
-			rbank1 = MRA8_BANK1;
-			wbank1 = MWA8_ROM;
-			base1 = memory_region(REGION_CPU1)+0x10000;  /* 8K BASIC */
-		}
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, rbank1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, wbank1);
-		memory_set_bankptr(1, base1);
+		logerror("%s MMU BASIC RAM\n", Machine->gamedrv->name);
+		rbank1 = MRA8_BANK1;
+		wbank1 = MWA8_BANK1;
+		base1 = memory_region(REGION_CPU1)+0x0a000;  /* 8K RAM */
 	}
+	else
+	{
+		logerror("%s MMU BASIC ROM\n", Machine->gamedrv->name);
+		rbank1 = MRA8_BANK1;
+		wbank1 = MWA8_ROM;
+		base1 = memory_region(REGION_CPU1)+0x10000;  /* 8K BASIC */
+	}
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, rbank1);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, wbank1);
+	memory_set_bankptr(1, base1);
+
 	/* check if self-test ROM changed */
-	if( changes & 0x80 )
+	if( new_mmu & 0x80 )
 	{
-		if( new_mmu & 0x80 )
-		{
-			logerror("%s MMU SELFTEST RAM\n", Machine->gamedrv->name);
-			rbank2 = MRA8_BANK2;
-			wbank2 = MWA8_BANK2;
-			base2 = memory_region(REGION_CPU1)+0x05000;  /* 0x0800 bytes */
-		}
-		else
-		{
-			logerror("%s MMU SELFTEST ROM\n", Machine->gamedrv->name);
-			rbank2 = MRA8_BANK2;
-			wbank2 = MWA8_ROM;
-			base2 = memory_region(REGION_CPU1)+0x15000;  /* 0x0800 bytes */
-		}
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x57ff, 0, 0, rbank2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x57ff, 0, 0, wbank2);
-		memory_set_bankptr(2, base2);
+		logerror("%s MMU SELFTEST RAM\n", Machine->gamedrv->name);
+		rbank2 = MRA8_BANK2;
+		wbank2 = MWA8_BANK2;
+		base2 = memory_region(REGION_CPU1)+0x05000;  /* 0x0800 bytes */
 	}
+	else
+	{
+		logerror("%s MMU SELFTEST ROM\n", Machine->gamedrv->name);
+		rbank2 = MRA8_BANK2;
+		wbank2 = MWA8_ROM;
+		base2 = memory_region(REGION_CPU1)+0x15000;  /* 0x0800 bytes */
+	}
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x57ff, 0, 0, rbank2);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x57ff, 0, 0, wbank2);
+	memory_set_bankptr(2, base2);
 }
+
 
 
 /**************************************************************
@@ -1423,7 +454,7 @@ void a800xl_mmu(UINT8 old_mmu, UINT8 new_mmu)
 #define ACSH_S			0xfe
 #define ACSH_A			0xff
 
-static UINT8 keys[64][4] = {
+static const UINT8 keys[64][4] = {
 {AKEY_NONE		 ,AKEY_NONE 	  ,AKEY_NONE	   ,AKEY_NONE		}, /* ""       CODE_NONE             */
 {AKEY_ESC		 ,ASHF_ESC		  ,ACTL_ESC 	   ,ACSH_ESC		}, /*"Escape" KEYCODE_ESC              */
 {AKEY_1 		 ,ASHF_EXCLAM	  ,ACTL_1		   ,ACSH_EXCLAM 	}, /* "1 !"    KEYCODE_1               */
@@ -1493,17 +524,9 @@ static UINT8 keys[64][4] = {
 
 void a800_handle_keyboard(void)
 {
-	static int atari_last = 0xff, joystick = 0xaa;
+	static int atari_last = 0xff;
 	int i, modifiers, atari_code;
-
-	if( joystick != (readinputport(PORT_CONFIGURATION) & 0x80) )
-	{
-		joystick = readinputport(PORT_CONFIGURATION) & 0x80;
-		if( joystick )
-			sprintf(atari_frame_message, "Cursor Keys JOYSTICK");
-		else
-			sprintf(atari_frame_message, "Cursor Keys KEYBOARD");
-	}
+	char tag[64];
 
     modifiers = 0;
 
@@ -1517,11 +540,9 @@ void a800_handle_keyboard(void)
 
 	for( i = 0; i < 64; i++ )
 	{
-		if( readinputport(PORT_KEYBOARD_BASE + i/16) & (1 << (i&15)) )
+		sprintf(tag, "keyboard_%d", i / 16);
+		if( readinputportbytag_safe(tag, 0) & (1 << (i&15)) )
 		{
-			/* joystick key and joystick mode enabled ? */
-			if( i >= 60 && joystick )
-				continue;
 			atari_code = keys[i][modifiers];
 			if( atari_code != AKEY_NONE )
 			{
@@ -1564,7 +585,7 @@ void a5200_handle_keypads(void)
 	/* check keypad */
 	for (i = 0; i < 16; i++)
 	{
-		if( readinputport(PORT_KEYBOARD_BASE) & (1 << i) )
+		if( readinputportbytag("keypad") & (1 << i) )
 		{
 			if( i == atari_last )
 				return;
@@ -1580,7 +601,7 @@ void a5200_handle_keypads(void)
 	}
 
 	/* check top button */
-	if ((readinputport(PORT_JOY_BUTTONS) & 0x10) == 0)
+	if ((readinputportbytag("djoy_b") & 0x10) == 0)
 	{
 		if (atari_last == 0xFE)
 			return;
@@ -1623,12 +644,334 @@ DRIVER_INIT( atari )
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,
 		0x0000, ram_top, 0, 0, MWA8_BANK2);
 	memory_set_bankptr(2, mess_ram);
+}
+#endif
+
+
+
+/*************************************
+ *
+ *  Generic Atari Code
+ *
+ *************************************/
+
+#ifdef MESS
+static void a800_setbank(int n)
+{
+	void *read_addr;
+	void *write_addr;
+	UINT8 *mem = memory_region(REGION_CPU1);
+
+	switch (n)
+	{
+		case 1:
+			read_addr = &mem[0x10000];
+			write_addr = NULL;
+			break;
+		default:
+			if( atari <= ATARI_400 )
+			{
+				/* Atari 400 has no RAM here, so install the NOP handler */
+				read_addr = NULL;
+				write_addr = NULL;
+			}
+			else
+			{
+				read_addr = &mess_ram[0x08000];
+				write_addr = &mess_ram[0x08000];
+			}
+			break;
+	}
+
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0,
+		read_addr ? MRA8_BANK1 : MRA8_NOP);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0,
+		write_addr ? MWA8_BANK1 : MWA8_NOP);
+	if (read_addr)
+		memory_set_bankptr(1, read_addr);
+	if (write_addr)
+		memory_set_bankptr(1, write_addr);
+}
+#endif
+
+
+
+static void pokey_reset(void)
+{
+	pokey1_w(15,0);
+}
+
+
+
+static void cart_reset(void)
+{
+#ifdef MESS
+	if (a800_cart_loaded)
+		a800_setbank(1);
+#endif /* MESS */
+}
+
+
+
+static UINT8 console_read(void)
+{
+	return readinputportbytag("console");
+}
+
+
+
+static void console_write(UINT8 data)
+{
+	if (data & 0x08)
+		DAC_data_w(0, -120);
+	else
+		DAC_data_w(0, +120);
+}
+
+
+
+static void atari_machine_start(int type, const pia6821_interface *pia_intf, int has_cart)
+{
+	gtia_interface gtia_intf;
+
+	atari = type;
+
+	/* GTIA */
+	memset(&gtia_intf, 0, sizeof(gtia_intf));
+	if (port_tag_to_index("console") >= 0)
+		gtia_intf.console_read = console_read;
+	if (sndti_exists(SOUND_DAC, 0))
+		gtia_intf.console_write = console_write;
+	gtia_init(&gtia_intf);
+
+	/* pokey */
+	add_reset_callback(pokey_reset);
+
+	/* PIA */
+	if (pia_intf)
+	{
+		pia_config(0, PIA_ALTERNATE_ORDERING, pia_intf);
+		add_reset_callback(pia_reset);
+	}
+
+	/* ANTIC */
+	add_reset_callback(antic_reset);
+
+	/* cartridge */
+	if (has_cart)
+		add_reset_callback(cart_reset);
+
+#ifdef MESS
+	{
+		offs_t ram_top;
+		offs_t ram_size;
+
+		if (!strcmp(Machine->gamedrv->name, "a400")
+			|| !strcmp(Machine->gamedrv->name, "a400pal")
+			|| !strcmp(Machine->gamedrv->name, "a800")
+			|| !strcmp(Machine->gamedrv->name, "a800pal")
+			|| !strcmp(Machine->gamedrv->name, "a800xl"))
+		{
+			ram_size = 0xA000;
+		}
+		else
+		{
+			ram_size = 0x8000;
+		}
+
+		/* install RAM */
+		ram_top = MIN(mess_ram_size, ram_size) - 1;
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,
+			0x0000, ram_top, 0, 0, MRA8_BANK2);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,
+			0x0000, ram_top, 0, 0, MWA8_BANK2);
+		memory_set_bankptr(2, mess_ram);
+	}
+#endif /* MESS */
 
 	/* save states */
 	state_save_register_global_pointer(((UINT8 *) &antic.r), sizeof(antic.r));
 	state_save_register_global_pointer(((UINT8 *) &antic.w), sizeof(antic.w));
-	state_save_register_global_pointer(((UINT8 *) &gtia.r), sizeof(gtia.r));
-	state_save_register_global_pointer(((UINT8 *) &gtia.w), sizeof(gtia.w));
+}
+
+
+
+/*************************************
+ *
+ *  Atari 400
+ *  Atari 600XL
+ *
+ *************************************/
+
+MACHINE_START( a400 )
+{
+	atari_machine_start(ATARI_400, &atari_pia_interface, TRUE);
+	return 0;
+}
+
+MACHINE_START( a600xl )
+{
+	atari_machine_start(ATARI_600XL, &a600xl_pia_interface, TRUE);
+	return 0;
+}
+
+
+
+/*************************************
+ *
+ *  Atari 800
+ *
+ *************************************/
+
+MACHINE_START( a800 )
+{
+	atari_machine_start(ATARI_800, &atari_pia_interface, TRUE);
+	return 0;
+}
+
+
+
+#ifdef MESS
+DEVICE_LOAD( a800_cart )
+{
+	UINT8 *mem = memory_region(REGION_CPU1);
+	int size;
+
+	/* load an optional (dual) cartridge (e.g. basic.rom) */
+	if( image_index_in_device(image) > 0 )
+	{
+		size = mame_fread(file, &mem[0x12000], 0x2000);
+		a800_cart_is_16k = (size == 0x2000);
+		logerror("%s loaded right cartridge '%s' size 16K\n", Machine->gamedrv->name, image_filename(image) );
+	}
+	else
+	{
+		size = mame_fread(file, &mem[0x10000], 0x2000);
+		a800_cart_loaded = size > 0x0000;
+		size = mame_fread(file, &mem[0x12000], 0x2000);
+		a800_cart_is_16k = size > 0x2000;
+		logerror("%s loaded left cartridge '%s' size %s\n", Machine->gamedrv->name, image_filename(image) , (a800_cart_is_16k) ? "16K":"8K");
+	}
+	return INIT_PASS;
+}
+
+DEVICE_UNLOAD( a800_cart )
+{
+	if( image_index_in_device(image) > 0 )
+	{
+		a800_cart_is_16k = 0;
+		a800_setbank(1);
+    }
+	else
+	{
+		a800_cart_loaded = 0;
+		a800_setbank(0);
+    }
+}
+#endif
+
+
+
+/*************************************
+ *
+ *  Atari 800XL
+ *
+ *************************************/
+
+MACHINE_START( a800xl )
+{
+	atari_machine_start(ATARI_800XL, &a800xl_pia_interface, TRUE);
+	return 0;
+}
+
+
+
+#ifdef MESS
+DEVICE_LOAD( a800xl_cart )
+{
+	UINT8 *mem = memory_region(REGION_CPU1);
+	const char *filename;
+	mame_file *basic_fp;
+	unsigned size;
+
+	filename = "basic.rom";
+	basic_fp = mame_fopen(Machine->gamedrv->name, filename, FILETYPE_ROM, 0);
+	if (basic_fp)
+	{
+		size = mame_fread(basic_fp, &mem[0x14000], 0x2000);
+		if( size < 0x2000 )
+		{
+			logerror("%s image '%s' load failed (less than 8K)\n", Machine->gamedrv->name, filename);
+			return 2;
+		}
+	}
+
+	/* load an optional (dual) cartidge (e.g. basic.rom) */
+	if (file)
+	{
+		{
+			size = mame_fread(file, &mem[0x14000], 0x2000);
+			a800_cart_loaded = size / 0x2000;
+			size = mame_fread(file, &mem[0x16000], 0x2000);
+			a800_cart_is_16k = size / 0x2000;
+			logerror("%s loaded cartridge '%s' size %s\n",
+					Machine->gamedrv->name, image_filename(image), (a800_cart_is_16k) ? "16K":"8K");
+		}
+	}
+
+	return INIT_PASS;
+}
+#endif
+
+
+
+/*************************************
+ *
+ *  Atari 5200 console
+ *
+ *************************************/
+
+MACHINE_START( a5200 )
+{
+	atari_machine_start(ATARI_800XL, NULL, FALSE);
+	return 0;
+}
+
+
+
+#ifdef MESS
+DEVICE_LOAD( a5200_cart )
+{
+	UINT8 *mem = memory_region(REGION_CPU1);
+	int size;
+
+	/* load an optional (dual) cartidge */
+	size = mame_fread(file, &mem[0x4000], 0x8000);
+	if (size<0x8000) memmove(mem+0x4000+0x8000-size, mem+0x4000, size);
+	// mirroring of smaller cartridges
+	if (size <= 0x1000) memcpy(mem+0xa000, mem+0xb000, 0x1000);
+	if (size <= 0x2000) memcpy(mem+0x8000, mem+0xa000, 0x2000);
+	if (size <= 0x4000)
+	{
+		const char *info;
+		memcpy(&mem[0x4000], &mem[0x8000], 0x4000);
+		info = image_extrainfo(image);
+		if (info!=NULL && strcmp(info, "A13MIRRORING")==0)
+		{
+			memcpy(&mem[0x8000], &mem[0xa000], 0x2000);
+			memcpy(&mem[0x6000], &mem[0x4000], 0x2000);
+		}
+	}
+	logerror("%s loaded cartridge '%s' size %dK\n",
+		Machine->gamedrv->name, image_filename(image) , size/1024);
+	return INIT_PASS;
+}
+
+DEVICE_UNLOAD( a5200_cart )
+{
+	UINT8 *mem = memory_region(REGION_CPU1);
+    /* zap the cartridge memory (again) */
+	memset(&mem[0x4000], 0x00, 0x8000);
 }
 #endif
 

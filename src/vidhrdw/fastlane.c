@@ -91,10 +91,10 @@ VIDEO_START( fastlane )
 	if (!layer0 || !layer1)
 		return 1;
 
-	clip0 = Machine->visible_area;
+	clip0 = Machine->visible_area[0];
 	clip0.min_x += 40;
 
-	clip1 = Machine->visible_area;
+	clip1 = Machine->visible_area[0];
 	clip1.max_x = 39;
 	clip1.min_x = 0;
 
@@ -151,4 +151,5 @@ VIDEO_UPDATE( fastlane )
 	tilemap_draw(bitmap,&finalclip0,layer0,0,0);
 	K007121_sprites_draw(0,bitmap,cliprect,spriteram,0,40,0,-1);
 	tilemap_draw(bitmap,&finalclip1,layer1,0,0);
+	return 0;
 }

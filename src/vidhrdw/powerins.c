@@ -282,8 +282,8 @@ static void powerins_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 	UINT16 *source = spriteram16 + 0x8000/2;
 	UINT16 *finish = spriteram16 + 0x9000/2;
 
-	int screen_w	=	Machine->drv->screen_width;
-	int screen_h	=	Machine->drv->screen_height;
+	int screen_w	=	Machine->drv->screen[0].maxwidth;
+	int screen_h	=	Machine->drv->screen[0].maxheight;
 
 	for ( ; source < finish; source += 16/2 )
 	{
@@ -380,4 +380,5 @@ if (code_pressed(KEYCODE_Z))
 	else					fillbitmap(bitmap,Machine->pens[0],cliprect);
 	if (layers_ctrl&8)		powerins_draw_sprites(bitmap,cliprect);
 	if (layers_ctrl&2)		tilemap_draw(bitmap,cliprect, tilemap_1, 0, 0);
+	return 0;
 }

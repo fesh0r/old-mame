@@ -24,6 +24,11 @@ To do:
 #include <stdarg.h>
 #include <math.h>
 
+#ifdef NEW_RENDER
+#include "render.h"
+#include "rendfont.h"
+#endif
+
 #ifdef MESS
 #include "mess.h"
 #include "mesintrf.h"
@@ -49,6 +54,19 @@ To do:
 #define MAX_PORT_ENTRIES		1000
 #define MAX_SETUPMENU_ITEMS		20
 #define MAX_OSD_ITEMS			50
+
+#define ARGB_WHITE				MAKE_ARGB(0xff,0xff,0xff,0xff)
+#define ARGB_BLACK				MAKE_ARGB(0xff,0x00,0x00,0x00)
+
+#ifdef NEW_RENDER
+#define MENU_TEXTCOLOR			MAKE_ARGB(0xff,0xff,0xff,0xff)
+#define MENU_SELECTCOLOR		MAKE_ARGB(0xff,0xff,0xff,0x00)
+#define MENU_BACKCOLOR			MAKE_ARGB(0xe0,0x10,0x10,0x30)
+#else
+#define MENU_TEXTCOLOR			MAKE_ARGB(0xff,0xff,0xff,0xff)
+#define MENU_SELECTCOLOR		MAKE_ARGB(0xff,0xff,0xff,0x00)
+#define MENU_BACKCOLOR			MAKE_ARGB(0x00,0x00,0x00,0x00)
+#endif
 
 enum
 {
@@ -90,8 +108,19 @@ struct _input_item_data
  *
  *************************************/
 
-#define UI_BOX_LR_BORDER		(ui_get_char_width(' ') / 2)
-#define UI_BOX_TB_BORDER		(ui_get_char_width(' ') / 2)
+#define UI_HANDLER_CANCEL		((UINT32)~0)
+
+#define UI_BOX_LR_BORDER		(ui_get_char_width('M') / 2)
+#define UI_BOX_TB_BORDER		(ui_get_char_width('M') / 2)
+
+#ifdef NEW_RENDER
+#define UI_FONT_NAME			NULL
+#define UI_FONT_HEIGHT			(1.0f / 25.0f)
+#define UI_LINE_WIDTH			(1.0f / 500.0f)
+#define UI_SCALE_FACTOR			10000.0f
+#define UI_SCALE_TO_INT(x)		((int)((float)(x) * UI_SCALE_FACTOR))
+#define UI_UNSCALE_TO_FLOAT(x)	((x) * (1.0f / UI_SCALE_FACTOR))
+#endif
 
 
 
@@ -101,6 +130,15 @@ struct _input_item_data
  *
  *************************************/
 
+#ifdef NEW_RENDER
+static render_font *ui_font;
+#endif
+
+/* current UI handler */
+static UINT32 (*ui_handler_callback)(UINT32);
+static UINT32 ui_handler_param;
+
+#ifndef NEW_RENDER
 /* raw coordinates, relative to the real scrbitmap */
 static rectangle uirawbounds;
 
@@ -108,10 +146,11 @@ static rectangle uirawbounds;
 static rectangle uirotbounds;
 static int uirotwidth, uirotheight;
 static int uirotcharwidth, uirotcharheight;
+static pen_t uirotfont_colortable[2*2];
+#endif
 
 /* UI states */
 static int therm_state;
-static int load_save_state;
 
 /* menu states */
 static UINT32 menu_state;
@@ -135,12 +174,12 @@ static int show_profiler;
 static UINT8 ui_dirty;
 
 static gfx_element *uirotfont;
-static pen_t uirotfont_colortable[2*2];
 
 static char popup_text[200];
 static int popup_text_counter;
 
 
+static UINT32 onscrd_state;
 static void (*onscrd_fnc[MAX_OSD_ITEMS])(int increment,int arg);
 static int onscrd_arg[MAX_OSD_ITEMS];
 static int onscrd_total_items;
@@ -149,7 +188,7 @@ static int onscrd_total_items;
 static input_seq starting_seq;
 
 
-
+#ifndef NEW_RENDER
 /* -- begin this stuff will go away with the new rendering system */
 #define MAX_RENDER_ELEMENTS	1000
 
@@ -165,6 +204,7 @@ typedef struct _render_element render_element;
 static render_element elemlist[MAX_RENDER_ELEMENTS];
 static int elemindex;
 /* -- end this stuff will go away with the new rendering system */
+#endif
 
 
 
@@ -173,6 +213,8 @@ static int elemindex;
  *  Font data
  *
  *************************************/
+
+#ifndef NEW_RENDER
 
 static const UINT8 uifontdata[] =
 {
@@ -318,6 +360,7 @@ static const gfx_layout uifontlayout =
 	8*8
 };
 
+#endif
 
 
 /*************************************
@@ -330,14 +373,17 @@ static void draw_multiline_text_box(const char *text, int justify, float xpos, f
 static void create_font(void);
 static void onscrd_init(void);
 
+#ifndef NEW_RENDER
 static void handle_keys(mame_bitmap *bitmap);
+#else
+static void handle_keys(void);
+#endif
 static void ui_display_profiler(void);
 static void ui_display_popup(void);
 static int setup_menu(int selected);
-static int on_screen_display(int selected);
 static void showcharset(mame_bitmap *bitmap);
 static void initiate_load_save(int type);
-static int update_load_save(void);
+static UINT32 update_load_save(UINT32 state);
 
 static UINT32 menu_main(UINT32 state);
 static UINT32 menu_default_input_groups(UINT32 state);
@@ -348,11 +394,12 @@ static UINT32 menu_analog(UINT32 state);
 static UINT32 menu_joystick_calibrate(UINT32 state);
 static UINT32 menu_cheat(UINT32 state);
 static UINT32 menu_memory_card(UINT32 state);
+static UINT32 menu_video(UINT32 state);
 static UINT32 menu_reset_game(UINT32 state);
+static UINT32 menu_game_info(UINT32 state);
 
 #ifndef MESS
 static UINT32 menu_bookkeeping(UINT32 state);
-static UINT32 menu_game_info(UINT32 state);
 #else
 static UINT32 menu_file_manager(UINT32 state);
 static UINT32 menu_tape_control(UINT32 state);
@@ -360,7 +407,17 @@ static UINT32 menu_tape_control(UINT32 state);
 
 static int sprintf_game_info(char *buf);
 
+static UINT32 ui_handler_startup(UINT32 state);
+static UINT32 ui_handler_menu(UINT32 state);
+static UINT32 ui_handler_osd(UINT32 state);
+static UINT32 ui_handler_disclaimer(UINT32 state);
+static UINT32 ui_handler_warnings(UINT32 state);
+static UINT32 ui_handler_gameinfo(UINT32 state);
+static UINT32 ui_handler_showgfx(UINT32 state);
 
+static void showgfx_exit(void);
+
+#ifndef NEW_RENDER
 /* -- begin this stuff will go away with the new rendering system */
 static void ui_raw2rot_rect(rectangle *rect);
 static void ui_rot2raw_rect(rectangle *rect);
@@ -368,8 +425,55 @@ static void add_line(int x1, int y1, int x2, int y2, rgb_t color);
 static void add_fill(int left, int top, int right, int bottom, rgb_t color);
 static void add_char(int x, int y, UINT16 ch, int color);
 static void add_filled_box(int x1, int y1, int x2, int y2);
+#define add_black_box add_filled_box
 static void render_ui(mame_bitmap *dest);
 /* -- end this stuff will go away with the new rendering system */
+#else
+#define add_line(x0,y0,x1,y1,color)	render_ui_add_line(UI_UNSCALE_TO_FLOAT(x0), UI_UNSCALE_TO_FLOAT(y0), UI_UNSCALE_TO_FLOAT(x1), UI_UNSCALE_TO_FLOAT(y1), UI_LINE_WIDTH, color, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA))
+#define add_fill(x0,y0,x1,y1,color) render_ui_add_rect(UI_UNSCALE_TO_FLOAT(x0), UI_UNSCALE_TO_FLOAT(y0), UI_UNSCALE_TO_FLOAT(x1), UI_UNSCALE_TO_FLOAT(y1), color, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA))
+#define add_char(x,y,ch,color)		render_ui_add_char(UI_UNSCALE_TO_FLOAT(x), UI_UNSCALE_TO_FLOAT(y), UI_FONT_HEIGHT, render_get_ui_aspect(), color, ui_font, ch)
+static void add_filled_box(int x1, int y1, int x2, int y2);
+
+INLINE void add_outlined_box_fp(float x0, float y0, float x1, float y1, rgb_t backcolor)
+{
+	float hw = UI_LINE_WIDTH * 0.5f;
+	render_ui_add_rect(x0, y0, x1, y1, backcolor, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+	render_ui_add_line(x0 + hw, y0 + hw, x1 - hw, y0 + hw, UI_LINE_WIDTH, ARGB_WHITE, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+	render_ui_add_line(x1 - hw, y0 + hw, x1 - hw, y1 - hw, UI_LINE_WIDTH, ARGB_WHITE, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+	render_ui_add_line(x1 - hw, y1 - hw, x0 + hw, y1 - hw, UI_LINE_WIDTH, ARGB_WHITE, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+	render_ui_add_line(x0 + hw, y1 - hw, x0 + hw, y0 + hw, UI_LINE_WIDTH, ARGB_WHITE, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+}
+
+
+#endif
+
+
+
+/*************************************
+ *
+ *  UI handler callbacks
+ *
+ *************************************/
+
+INLINE void ui_set_handler(UINT32 (*callback)(UINT32), int param)
+{
+	ui_handler_callback = callback;
+	ui_handler_param = param;
+}
+
+
+/*-------------------------------------------------
+    erase_screen - erase the screen
+-------------------------------------------------*/
+
+INLINE void erase_screen(mame_bitmap *bitmap)
+{
+#ifndef NEW_RENDER
+	fillbitmap(bitmap, get_black_pen(), NULL);
+	schedule_full_refresh();
+#endif
+}
+
 
 
 
@@ -379,52 +483,27 @@ static void render_ui(mame_bitmap *dest);
  *
  *************************************/
 
-int ui_init(int show_disclaimer, int show_warnings, int show_gameinfo)
+int ui_init(void)
 {
 	/* load the localization file */
 	if (uistring_init(options.language_file) != 0)
 		fatalerror("uistring_init failed");
 
+#ifndef NEW_RENDER
 	/* build up the font */
 	create_font();
-
-	/* clear the input memory */
-	while (code_read_async() != CODE_NONE) ;
+#else
+	ui_font = render_font_alloc("ui.bdf");
+#endif
 
 	/* initialize the menu state */
 	ui_menu_stack_reset();
 
-	/* initialize the on-screen display system */
-	onscrd_init();
-	therm_state = 0;
-
 	/* reset globals */
 	single_step = FALSE;
-	load_save_state = LOADSAVE_NONE;
+	ui_set_handler(ui_handler_startup, 0);
 
 	add_exit_callback(ui_exit);
-
-	/* disable artwork for the start */
-	artwork_enable(FALSE);
-
-	/* before doing anything else, update the video and audio system once */
-	update_video_and_audio();
-
-	/* if we didn't find a settings file, show the disclaimer */
-	if (show_disclaimer && ui_display_copyright(artwork_get_ui_bitmap()) != 0)
-		return 1;
-
-	/* show info about incorrect behaviour (wrong colors etc.) */
-	if (show_warnings && ui_display_game_warnings(artwork_get_ui_bitmap()) != 0)
-		return 1;
-
-	/* show info about the game */
-	if (show_gameinfo && ui_display_game_info(artwork_get_ui_bitmap()) != 0)
-		return 1;
-
-	/* enable artwork now */
-	artwork_enable(TRUE);
-
 	return 0;
 }
 
@@ -438,9 +517,106 @@ int ui_init(int show_disclaimer, int show_warnings, int show_gameinfo)
 
 void ui_exit(void)
 {
+	// free the showgfx stuff
+	showgfx_exit();
+
+#ifdef NEW_RENDER
+	if (ui_font)
+		render_font_free(ui_font);
+	ui_font = NULL;
+#endif
+
 	if (uirotfont)
 		freegfx(uirotfont);
 	uirotfont = NULL;
+}
+
+
+
+/*************************************
+ *
+ *  Startup screens
+ *
+ *************************************/
+
+int ui_display_startup_screens(int show_disclaimer, int show_warnings, int show_gameinfo)
+{
+#ifndef NEW_RENDER
+	mame_bitmap *bitmap = artwork_get_ui_bitmap();
+#endif
+	int state;
+
+	/* initialize the on-screen display system */
+	onscrd_init();
+	therm_state = 0;
+
+#ifndef NEW_RENDER
+	/* disable artwork for the start */
+	artwork_enable(FALSE);
+
+	/* before doing anything else, update the video and audio system once */
+	update_video_and_audio();
+#endif
+
+	/* loop over states */
+	ui_set_handler(NULL, 0);
+	for (state = 0; state < 3 && !mame_is_scheduled_event_pending(); state++)
+	{
+		/* pick the next state */
+		switch (state)
+		{
+			case 0:
+				if (show_disclaimer)
+					ui_set_handler(ui_handler_disclaimer, 0);
+				break;
+
+			case 1:
+				if (show_warnings)
+					ui_set_handler(ui_handler_warnings, 0);
+				break;
+
+			case 2:
+				if (show_gameinfo)
+					ui_set_handler(ui_handler_gameinfo, 0);
+				break;
+		}
+
+		/* clear the input memory */
+		while (code_read_async() != CODE_NONE) ;
+
+		/* clear the giant string buffer */
+		giant_string_buffer[0] = 0;
+
+		/* loop while we have a handler */
+		while (ui_handler_callback != NULL && !mame_is_scheduled_event_pending())
+		{
+			/* reset the contents of the screen */
+#ifndef NEW_RENDER
+			erase_screen(bitmap);
+#endif
+
+			/* render and update */
+#ifndef NEW_RENDER
+			render_ui(bitmap);
+#endif
+			video_frame_update();
+
+			/* call the handler */
+			if (ui_handler_param == 1000)
+				break;
+		}
+
+		/* clear the handler and force an update */
+		ui_set_handler(NULL, 0);
+		video_frame_update();
+	}
+
+#ifndef NEW_RENDER
+	/* enable artwork now */
+	artwork_enable(TRUE);
+#endif
+
+	return 0;
 }
 
 
@@ -455,6 +631,7 @@ void ui_exit(void)
 
 void ui_set_visible_area(int xmin, int ymin, int xmax, int ymax)
 {
+#ifndef NEW_RENDER
 	/* fill in the rect */
 	uirawbounds.min_x = xmin;
 	uirawbounds.min_y = ymin;
@@ -471,6 +648,7 @@ void ui_set_visible_area(int xmin, int ymin, int xmax, int ymax)
 
 	/* rebuild the font */
 	create_font();
+#endif
 }
 
 
@@ -481,58 +659,75 @@ void ui_set_visible_area(int xmin, int ymin, int xmax, int ymax)
  *
  *************************************/
 
+#ifndef NEW_RENDER
 void ui_update_and_render(mame_bitmap *bitmap)
+#else
+void ui_update_and_render(void)
+#endif
 {
-	/* if we're single-stepping, pause now */
-	if (single_step)
-	{
-		mame_pause(TRUE);
-		single_step = FALSE;
-	}
+#ifdef NEW_RENDER
+	render_container_empty(render_container_get_ui());
 
-	/* first display the FPS counter and profiler */
+	/* if we're paused, dim the whole screen */
+	if (mame_get_phase() >= MAME_PHASE_RESET && mame_is_paused())
+	{
+		int alpha = (1.0f - options.pause_bright) * 255.0f;
+		if (alpha > 255)
+			alpha = 255;
+		if (alpha >= 0)
+			render_ui_add_rect(0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(alpha,0x00,0x00,0x00), PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+	}
+#endif
+
+	/* first draw the FPS counter and profiler */
 	ui_display_fps();
 	ui_display_profiler();
 
-	/* if the load/save display is live, that has focus */
-	if (load_save_state != LOADSAVE_NONE)
-		update_load_save();
-
-	/* otherwise if menus are displayed, they have focus */
-	else if (menu_handler != NULL)
+	/* call the current UI handler */
+	if (ui_handler_callback != NULL)
 	{
-		if (input_ui_pressed(IPT_UI_CONFIGURE))
-			menu_state = ui_menu_stack_push(NULL, 0);
-		else
-			menu_state = (*menu_handler)(menu_state);
+		ui_handler_param = (*ui_handler_callback)(ui_handler_param);
+		if (ui_handler_param == UI_HANDLER_CANCEL)
+			ui_set_handler(NULL, 0);
 	}
 
 	/* otherwise, we handle non-menu cases */
 	else
 	{
-		if (therm_state)
-			therm_state = on_screen_display(therm_state);
+		/* if we're single-stepping, pause now */
+		if (single_step)
+		{
+			mame_pause(TRUE);
+			single_step = FALSE;
+		}
+
+#ifndef NEW_RENDER
 		handle_keys(bitmap);
+#else
+		handle_keys();
+#endif
 	}
 
 	/* then let the cheat engine display its stuff */
 	if (options.cheat)
 		cheat_display_watches();
 
+	/* finally, display any popup messages */
+	ui_display_popup();
+
 #ifdef MESS
 	/* let MESS display its stuff */
 	mess_ui_update();
 #endif
 
-	/* finally, display any popup messages */
-	ui_display_popup();
-
+#ifndef NEW_RENDER
 	/* flush the UI to the bitmap */
 	render_ui(bitmap);
 
 	/* decrement the dirty count */
 	if (ui_dirty)
 		ui_dirty--;
+#endif
 }
 
 
@@ -551,45 +746,13 @@ int ui_is_dirty(void)
 
 int ui_is_onscrd_active(void)
 {
-	return (therm_state != 0);
+	return (ui_handler_callback == ui_handler_osd);
 }
 
 
 int ui_is_setup_active(void)
 {
-	return (menu_handler != NULL);
-}
-
-
-
-/*************************************
- *
- *  Accessors for rendering
- *
- *************************************/
-
-void ui_get_bounds(int *width, int *height)
-{
-	*width = uirotwidth;
-	*height = uirotheight;
-}
-
-
-int ui_get_line_height(void)
-{
-	return uirotcharheight + 2;
-}
-
-
-int ui_get_char_width(UINT16 ch)
-{
-	return uirotcharwidth;
-}
-
-
-int ui_get_string_width(const char *s)
-{
-	return strlen(s) * uirotcharwidth;
+	return (ui_handler_callback == ui_handler_menu);
 }
 
 
@@ -603,7 +766,7 @@ int ui_get_string_width(const char *s)
 void ui_show_fps_temp(double seconds)
 {
 	if (!showfps)
-		showfpstemp = (int)(seconds * Machine->refresh_rate);
+		showfpstemp = (int)(seconds * Machine->refresh_rate[0]);
 }
 
 
@@ -669,7 +832,7 @@ void CLIB_DECL ui_popup(const char *text,...)
 	vsprintf(popup_text,text,arg);
 	va_end(arg);
 	seconds = strlen(popup_text) / 40 + 2;
-	popup_text_counter = seconds * Machine->refresh_rate;
+	popup_text_counter = seconds * Machine->refresh_rate[0];
 }
 
 
@@ -679,7 +842,7 @@ void CLIB_DECL ui_popup_time(int seconds, const char *text,...)
 	va_start(arg,text);
 	vsprintf(popup_text,text,arg);
 	va_end(arg);
-	popup_text_counter = seconds * Machine->refresh_rate;
+	popup_text_counter = seconds * Machine->refresh_rate[0];
 }
 
 
@@ -694,7 +857,7 @@ void ui_draw_text(const char *buf, int x, int y)
 {
 	int ui_width, ui_height;
 	ui_get_bounds(&ui_width, &ui_height);
-	ui_draw_text_full(buf, x, y, ui_width - x, JUSTIFY_LEFT, WRAP_WORD, DRAW_OPAQUE, RGB_WHITE, RGB_BLACK, NULL, NULL);
+	ui_draw_text_full(buf, x, y, ui_width - x, JUSTIFY_LEFT, WRAP_WORD, DRAW_OPAQUE, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
 }
 
 
@@ -705,9 +868,10 @@ void ui_draw_text(const char *buf, int x, int y)
  *
  *************************************/
 
-void ui_draw_text_full(const char *s, int x, int y, int wrapwidth, int justify, int wrap, int draw, rgb_t fgcolor, rgb_t bgcolor, int *totalwidth, int *totalheight)
+void ui_draw_text_full(const char *origs, int x, int y, int wrapwidth, int justify, int wrap, int draw, rgb_t fgcolor, rgb_t bgcolor, int *totalwidth, int *totalheight)
 {
-	const char *linestart;
+	const unsigned char *s = (const unsigned char *)origs;
+	const unsigned char *linestart;
 	int cury = y;
 	int maxwidth = 0;
 
@@ -866,8 +1030,9 @@ void ui_draw_menu(const ui_menu_item *items, int numitems, int selected)
 	int left_hilight_width = ui_get_string_width(left_hilight);
 	int right_hilight_width = ui_get_string_width(right_hilight);
 	int left_arrow_width = ui_get_string_width(left_arrow);
-	int space_width = ui_get_char_width(' ');
+	int right_arrow_width = ui_get_string_width(right_arrow);
 	int line_height = ui_get_line_height();
+	int gutter_width;
 
 	int effective_width, effective_left;
 	int visible_width, visible_height;
@@ -877,6 +1042,11 @@ void ui_draw_menu(const ui_menu_item *items, int numitems, int selected)
 	int visible_lines;
 	int top_line;
 	int itemnum, linenum;
+
+	/* the left/right gutters are the max of all stuff that might go in there */
+	gutter_width = MAX(left_hilight_width, right_hilight_width);
+	gutter_width = MAX(gutter_width, left_arrow_width);
+	gutter_width = MAX(gutter_width, right_arrow_width);
 
 	/* start with the bounds */
 	ui_get_bounds(&ui_width, &ui_height);
@@ -890,11 +1060,11 @@ void ui_draw_menu(const ui_menu_item *items, int numitems, int selected)
 		int total_width;
 
 		/* compute width of left hand side */
-		total_width = left_hilight_width + ui_get_string_width(item->text) + right_hilight_width;
+		total_width = gutter_width + ui_get_string_width(item->text) + gutter_width;
 
 		/* add in width of right hand side */
 		if (item->subtext)
-			total_width += 2 * space_width + ui_get_string_width(item->subtext);
+			total_width += 2 * gutter_width + ui_get_string_width(item->subtext);
 
 		/* track the maximum */
 		if (total_width > visible_width)
@@ -930,8 +1100,8 @@ void ui_draw_menu(const ui_menu_item *items, int numitems, int selected)
 		top_line = numitems - visible_lines;
 
 	/* determine effective positions taking into account the hilighting arrows */
-	effective_width = visible_width - left_hilight_width - right_hilight_width;
-	effective_left = visible_left + left_hilight_width;
+	effective_width = visible_width - 2 * gutter_width;
+	effective_left = visible_left + gutter_width;
 
 	/* loop over visible lines */
 	for (linenum = 0; linenum < visible_lines; linenum++)
@@ -939,21 +1109,26 @@ void ui_draw_menu(const ui_menu_item *items, int numitems, int selected)
 		int line_y = visible_top + linenum * line_height;
 		int itemnum = top_line + linenum;
 		const ui_menu_item *item = &items[itemnum];
+		rgb_t itemfg = MENU_TEXTCOLOR;
+
+		/* if we're selected, draw with a different background */
+		if (itemnum == selected)
+			itemfg = MENU_SELECTCOLOR;
 
 		/* if we're on the top line, display the up arrow */
 		if (linenum == 0 && top_line != 0)
 			ui_draw_text_full(up_arrow, effective_left, line_y, effective_width,
-						JUSTIFY_CENTER, WRAP_TRUNCATE, DRAW_NORMAL, RGB_WHITE, RGB_BLACK, NULL, NULL);
+						JUSTIFY_CENTER, WRAP_TRUNCATE, DRAW_NORMAL, itemfg, ARGB_BLACK, NULL, NULL);
 
 		/* if we're on the bottom line, display the down arrow */
 		else if (linenum == visible_lines - 1 && itemnum != numitems - 1)
 			ui_draw_text_full(down_arrow, effective_left, line_y, effective_width,
-						JUSTIFY_CENTER, WRAP_TRUNCATE, DRAW_NORMAL, RGB_WHITE, RGB_BLACK, NULL, NULL);
+						JUSTIFY_CENTER, WRAP_TRUNCATE, DRAW_NORMAL, itemfg, ARGB_BLACK, NULL, NULL);
 
 		/* if we don't have a subitem, just draw the string centered */
 		else if (!item->subtext)
 			ui_draw_text_full(item->text, effective_left, line_y, effective_width,
-						JUSTIFY_CENTER, WRAP_TRUNCATE, DRAW_NORMAL, RGB_WHITE, RGB_BLACK, NULL, NULL);
+						JUSTIFY_CENTER, WRAP_TRUNCATE, DRAW_NORMAL, itemfg, ARGB_BLACK, NULL, NULL);
 
 		/* otherwise, draw the item on the left and the subitem text on the right */
 		else
@@ -964,10 +1139,10 @@ void ui_draw_menu(const ui_menu_item *items, int numitems, int selected)
 
 			/* draw the left-side text */
 			ui_draw_text_full(item->text, effective_left, line_y, effective_width,
-						JUSTIFY_LEFT, WRAP_TRUNCATE, DRAW_NORMAL, RGB_WHITE, RGB_BLACK, &item_width, NULL);
+						JUSTIFY_LEFT, WRAP_TRUNCATE, DRAW_NORMAL, itemfg, ARGB_BLACK, &item_width, NULL);
 
 			/* give 2 spaces worth of padding */
-			item_width += 2 * space_width;
+			item_width += 2 * gutter_width;
 
 			/* if the subitem doesn't fit here, display dots */
 			if (ui_get_string_width(subitem_text) > effective_width - item_width)
@@ -979,25 +1154,25 @@ void ui_draw_menu(const ui_menu_item *items, int numitems, int selected)
 
 			/* draw the subitem right-justified */
 			ui_draw_text_full(subitem_text, effective_left + item_width, line_y, effective_width - item_width,
-						JUSTIFY_RIGHT, WRAP_TRUNCATE, DRAW_OPAQUE, subitem_invert ? RGB_BLACK : RGB_WHITE, subitem_invert ? RGB_WHITE : RGB_BLACK, &subitem_width, NULL);
+						JUSTIFY_RIGHT, WRAP_TRUNCATE, subitem_invert ? DRAW_OPAQUE : DRAW_NORMAL, subitem_invert ? ARGB_BLACK : itemfg, subitem_invert ? itemfg : ARGB_BLACK, &subitem_width, NULL);
 
 			/* apply arrows */
 			if (itemnum == selected && (item->flags & MENU_FLAG_LEFT_ARROW))
 				ui_draw_text_full(left_arrow, effective_left + effective_width - subitem_width - left_arrow_width, line_y, left_arrow_width,
-							JUSTIFY_LEFT, WRAP_NEVER, DRAW_NORMAL, RGB_WHITE, RGB_BLACK, NULL, NULL);
+							JUSTIFY_LEFT, WRAP_NEVER, DRAW_NORMAL, itemfg, ARGB_BLACK, NULL, NULL);
 			if (itemnum == selected && (item->flags & MENU_FLAG_RIGHT_ARROW))
 				ui_draw_text_full(right_arrow, visible_left, line_y, visible_width,
-							JUSTIFY_RIGHT, WRAP_TRUNCATE, DRAW_NORMAL, RGB_WHITE, RGB_BLACK, NULL, NULL);
+							JUSTIFY_RIGHT, WRAP_TRUNCATE, DRAW_NORMAL, itemfg, ARGB_BLACK, NULL, NULL);
 		}
 
 		/* draw the arrows for selected items */
 		if (itemnum == selected)
 		{
 			ui_draw_text_full(left_hilight, visible_left, line_y, visible_width,
-						JUSTIFY_LEFT, WRAP_TRUNCATE, DRAW_NORMAL, RGB_WHITE, RGB_BLACK, NULL, NULL);
+						JUSTIFY_LEFT, WRAP_TRUNCATE, DRAW_NORMAL, itemfg, ARGB_BLACK, NULL, NULL);
 			if (!(item->flags & (MENU_FLAG_LEFT_ARROW | MENU_FLAG_RIGHT_ARROW)))
 				ui_draw_text_full(right_hilight, visible_left, line_y, visible_width,
-							JUSTIFY_RIGHT, WRAP_TRUNCATE, DRAW_NORMAL, RGB_WHITE, RGB_BLACK, NULL, NULL);
+							JUSTIFY_RIGHT, WRAP_TRUNCATE, DRAW_NORMAL, itemfg, ARGB_BLACK, NULL, NULL);
 		}
 	}
 
@@ -1012,7 +1187,7 @@ void ui_draw_menu(const ui_menu_item *items, int numitems, int selected)
 
 		/* compute the multi-line target width/height */
 		ui_draw_text_full(item->subtext, 0, 0, visible_width * 3 / 4,
-					JUSTIFY_RIGHT, WRAP_WORD, DRAW_NONE, RGB_WHITE, RGB_BLACK, &target_width, &target_height);
+					JUSTIFY_RIGHT, WRAP_WORD, DRAW_NONE, ARGB_WHITE, ARGB_BLACK, &target_width, &target_height);
 
 		/* determine the target location */
 		target_x = visible_left + visible_width - target_width - UI_BOX_LR_BORDER;
@@ -1026,7 +1201,7 @@ void ui_draw_menu(const ui_menu_item *items, int numitems, int selected)
 						target_x + target_width - 1 + UI_BOX_LR_BORDER,
 						target_y + target_height - 1 + UI_BOX_TB_BORDER);
 		ui_draw_text_full(item->subtext, target_x, target_y, target_width,
-					JUSTIFY_RIGHT, WRAP_WORD, DRAW_NORMAL, RGB_WHITE, RGB_BLACK, NULL, NULL);
+					JUSTIFY_RIGHT, WRAP_WORD, DRAW_NORMAL, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
 	}
 }
 
@@ -1136,7 +1311,7 @@ static void draw_multiline_text_box(const char *text, int justify, float xpos, f
 
 	/* compute the multi-line target width/height */
 	ui_draw_text_full(text, 0, 0, ui_width - 2 * UI_BOX_LR_BORDER,
-				justify, WRAP_WORD, DRAW_NONE, RGB_WHITE, RGB_BLACK, &target_width, &target_height);
+				justify, WRAP_WORD, DRAW_NONE, ARGB_WHITE, ARGB_BLACK, &target_width, &target_height);
 	if (target_height > ui_height - 2 * UI_BOX_TB_BORDER)
 		target_height = ((ui_height - 2 * UI_BOX_TB_BORDER) / ui_get_line_height()) * ui_get_line_height();
 
@@ -1160,7 +1335,7 @@ static void draw_multiline_text_box(const char *text, int justify, float xpos, f
 					target_x + target_width - 1 + UI_BOX_LR_BORDER,
 					target_y + target_height - 1 + UI_BOX_TB_BORDER);
 	ui_draw_text_full(text, target_x, target_y, target_width,
-				justify, WRAP_WORD, DRAW_NORMAL, RGB_WHITE, RGB_BLACK, NULL, NULL);
+				justify, WRAP_WORD, DRAW_NORMAL, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
 }
 
 
@@ -1179,6 +1354,7 @@ void ui_draw_message_window(const char *text)
 
 static void create_font(void)
 {
+#ifndef NEW_RENDER
 	gfx_layout layout = uifontlayout;
 	int temp, i;
 
@@ -1244,6 +1420,7 @@ static void create_font(void)
 		uirotfont->colortable = uirotfont_colortable;
 		uirotfont->total_colors = 2;
 	}
+#endif
 }
 
 
@@ -1254,38 +1431,33 @@ static void create_font(void)
  *
  *************************************/
 
+#ifndef NEW_RENDER
 static void handle_keys(mame_bitmap *bitmap)
+#else
+static void handle_keys(void)
+#endif
 {
+	int is_paused = mame_is_paused();
+
 #ifdef MESS
 	if (options.disable_normal_ui || ((Machine->gamedrv->flags & GAME_COMPUTER) && !mess_ui_active()))
 		return;
 #endif
 
-	/* if the user pressed ESC, stop the emulation as long as menus aren't up */
-	if (menu_handler == NULL && input_ui_pressed(IPT_UI_CANCEL))
+	/* if the user pressed ESC, stop the emulation */
+	if (input_ui_pressed(IPT_UI_CANCEL))
 		mame_schedule_exit();
 
-	/* if menus aren't up and the user has toggled them, turn them on */
-	if (menu_handler == NULL && input_ui_pressed(IPT_UI_CONFIGURE))
-	{
-		/* if we have no menus stacked up, start with the main menu */
-		if (menu_stack_index == 0)
-			ui_menu_stack_push(menu_main, 0);
-
-		/* otherwise, pop the previous menu from the stack */
-		else
-			menu_state = ui_menu_stack_pop();
-
-		/* kill the thermometer view */
-		therm_state = 0;
-	}
+	/* turn on menus if requested */
+	if (input_ui_pressed(IPT_UI_CONFIGURE))
+		ui_set_handler(ui_handler_menu, 0);
 
 	/* if the on-screen display isn't up and the user has toggled it, turn it on */
 #ifdef MAME_DEBUG
 	if (!Machine->debug_mode)
 #endif
-		if (therm_state == 0 && input_ui_pressed(IPT_UI_ON_SCREEN_DISPLAY))
-			therm_state = -1;
+		if (input_ui_pressed(IPT_UI_ON_SCREEN_DISPLAY))
+			ui_set_handler(ui_handler_osd, 0);
 
 	/* handle a reset request */
 	if (input_ui_pressed(IPT_UI_RESET_MACHINE))
@@ -1293,13 +1465,22 @@ static void handle_keys(mame_bitmap *bitmap)
 	if (input_ui_pressed(IPT_UI_SOFT_RESET))
 		mame_schedule_soft_reset();
 
-	/* handle a request to display graphics/palette (note that this loops internally) */
+	/* handle a request to display graphics/palette */
+#ifndef NEW_RENDER
 	if (input_ui_pressed(IPT_UI_SHOW_GFX))
 	{
 		osd_sound_enable(0);
 		showcharset(bitmap);
 		osd_sound_enable(1);
 	}
+#else
+	if (input_ui_pressed(IPT_UI_SHOW_GFX))
+	{
+		if (!is_paused)
+			mame_pause(TRUE);
+		ui_set_handler(ui_handler_showgfx, is_paused);
+	}
+#endif
 
 	/* handle a save state request */
 	if (input_ui_pressed(IPT_UI_SAVE_STATE))
@@ -1311,19 +1492,16 @@ static void handle_keys(mame_bitmap *bitmap)
 
 	/* handle a save snapshot request */
 	if (input_ui_pressed(IPT_UI_SNAPSHOT))
-		save_screen_snapshot(bitmap);
+		snapshot_save_all_screens();
 
 	/* toggle pause */
 	if (input_ui_pressed(IPT_UI_PAUSE))
 	{
 		/* with a shift key, it is single step */
-		if (mame_is_paused() && (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT)))
+		if (is_paused && (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT)))
 		{
 			single_step = TRUE;
 			mame_pause(FALSE);
-
-			/* bit of a kludge to prevent flash */
-			palette_set_global_brightness_adjust(options.pause_bright);
 		}
 		else
 			mame_pause(!mame_is_paused());
@@ -1344,6 +1522,62 @@ static void handle_keys(mame_bitmap *bitmap)
 	/* toggle crosshair display */
 	if (input_ui_pressed(IPT_UI_TOGGLE_CROSSHAIR))
 		drawgfx_toggle_crosshair();
+}
+
+
+
+/*************************************
+ *
+ *  Initial startup handler
+ *
+ *************************************/
+
+static char startup_text[1024];
+
+void ui_set_startup_text(const char *text, int force)
+{
+	static cycles_t lastupdatetime = 0;
+	cycles_t curtime = osd_cycles();
+
+	strncpy(startup_text, text, sizeof(startup_text));
+
+	/* don't update more than 4 times/second */
+	if (force || (curtime - lastupdatetime) > osd_cycles_per_second() / 4)
+	{
+		lastupdatetime = curtime;
+		video_frame_update();
+	}
+}
+
+
+static UINT32 ui_handler_startup(UINT32 state)
+{
+	draw_multiline_text_box(startup_text, JUSTIFY_CENTER, 0.5, 0.5);
+	return 0;
+}
+
+
+
+/*************************************
+ *
+ *  Menu handler
+ *
+ *************************************/
+
+static UINT32 ui_handler_menu(UINT32 state)
+{
+	/* if we have no menus stacked up, start with the main menu */
+	if (menu_handler == NULL)
+		ui_menu_stack_push(menu_main, 0);
+
+	/* update the menu state */
+	menu_state = (*menu_handler)(menu_state);
+
+	/* if the menus are to be hidden, return a cancel here */
+	if (input_ui_pressed(IPT_UI_CONFIGURE) || menu_handler == NULL)
+		return UI_HANDLER_CANCEL;
+
+	return 0;
 }
 
 
@@ -1422,10 +1656,12 @@ do { \
 #ifndef MESS
   	/* add bookkeeping menu */
 	ADD_MENU(UI_bookkeeping, menu_bookkeeping, 0);
+#endif
 
 	/* add game info menu */
 	ADD_MENU(UI_gameinfo, menu_game_info, 0);
-#else /* MESS */
+
+#ifdef MESS
   	/* add image info menu */
 	ADD_MENU(UI_imageinfo, ui_menu_image_info, 0);
 
@@ -1437,7 +1673,12 @@ do { \
 	if (device_find(Machine->devices, IO_CASSETTE))
 		ADD_MENU(UI_tapecontrol, menu_tape_control, 1);
 #endif /* HAS_WAVE */
-#endif /* !MESS */
+#endif /* MESS */
+
+#ifdef NEW_RENDER
+	/* add video options menu */
+	ADD_MENU(UI_video, menu_video, 1000 << 16);
+#endif
 
 	/* add cheat menu */
 	if (options.cheat)
@@ -2246,7 +2487,6 @@ static UINT32 menu_bookkeeping(UINT32 state)
  *
  *************************************/
 
-#ifndef MESS
 static UINT32 menu_game_info(UINT32 state)
 {
 	char buf[2048];
@@ -2266,7 +2506,6 @@ static UINT32 menu_game_info(UINT32 state)
 	ui_menu_generic_keys(&selected, 1);
 	return selected;
 }
-#endif
 
 
 
@@ -2369,6 +2608,188 @@ static UINT32 menu_memory_card(UINT32 state)
 
 	return selected | (cardnum << 16);
 }
+
+
+
+/*************************************
+ *
+ *  Video menu
+ *
+ *************************************/
+
+#ifdef NEW_RENDER
+static UINT32 menu_video(UINT32 state)
+{
+	ui_menu_item item_list[100];
+	render_target *targetlist[16];
+	int curtarget = state >> 16;
+	int selected = state & 0xffff;
+	int menu_items = 0;
+	int targets;
+
+	/* reset the menu and string pool */
+	memset(item_list, 0, sizeof(item_list));
+	menu_string_pool_offset = 0;
+
+	/* find the targets */
+	for (targets = 0; targets < ARRAY_LENGTH(targetlist); targets++)
+	{
+		targetlist[targets] = render_target_get_indexed(targets);
+		if (targetlist[targets] == NULL)
+			break;
+	}
+
+	/* if we have a current target of 1000, we may need to select from multiple targets */
+	if (curtarget == 1000)
+	{
+		/* count up the targets, creating menu items for them */
+		for ( ; menu_items < targets; menu_items++)
+		{
+			/* create a string for the item */
+			item_list[menu_items].text = &menu_string_pool[menu_string_pool_offset];
+			menu_string_pool_offset += sprintf(&menu_string_pool[menu_string_pool_offset], "%s%d", ui_getstring(UI_screen), menu_items) + 1;
+		}
+
+		/* if we only ended up with one, auto-select it */
+		if (menu_items == 1)
+			return menu_video(0 << 16);
+
+		/* add an item for moving the UI */
+		item_list[menu_items++].text = "Move User Interface";
+
+		/* add an item to return */
+		item_list[menu_items++].text = ui_getstring(UI_returntomain);
+
+		/* draw the menu */
+		ui_draw_menu(item_list, menu_items, selected);
+
+		/* handle the keys */
+		if (ui_menu_generic_keys(&selected, menu_items))
+			return selected;
+
+		/* handle actions */
+		if (input_ui_pressed(IPT_UI_SELECT))
+		{
+			if (selected == menu_items - 2)
+			{
+				render_target *uitarget = render_get_ui_target();
+				int targnum;
+
+				for (targnum = 0; targnum < targets; targnum++)
+					if (targetlist[targnum] == uitarget)
+						break;
+				targnum = (targnum + 1) % targets;
+				render_set_ui_target(targetlist[targnum]);
+			}
+			else
+				return ui_menu_stack_push(menu_video, (selected << 16) | render_target_get_view(render_target_get_indexed(selected)));
+		}
+	}
+
+	/* otherwise, draw the list of layouts */
+	else
+	{
+		render_target *target = targetlist[curtarget];
+		int layermask;
+		assert(target != NULL);
+
+		/* add all the views */
+		for ( ; menu_items < ARRAY_LENGTH(item_list); menu_items++)
+		{
+			const char *name = render_target_get_view_name(target, menu_items);
+			if (name == NULL)
+				break;
+
+			/* create a string for the item */
+			item_list[menu_items].text = name;
+		}
+
+		/* add an item to rotate */
+		item_list[menu_items++].text = "Rotate View";
+
+		/* add an item to enable/disable backdrops */
+		layermask = render_target_get_layer_config(target);
+		if (layermask & LAYER_CONFIG_ENABLE_BACKDROP)
+			item_list[menu_items++].text = "Hide Backdrops";
+		else
+			item_list[menu_items++].text = "Show Backdrops";
+
+		/* add an item to enable/disable overlays */
+		if (layermask & LAYER_CONFIG_ENABLE_OVERLAY)
+			item_list[menu_items++].text = "Hide Overlays";
+		else
+			item_list[menu_items++].text = "Show Overlays";
+
+		/* add an item to enable/disable bezels */
+		if (layermask & LAYER_CONFIG_ENABLE_BEZEL)
+			item_list[menu_items++].text = "Hide Bezels";
+		else
+			item_list[menu_items++].text = "Show Bezels";
+
+		/* add an item to enable/disable cropping */
+		if (layermask & LAYER_CONFIG_ZOOM_TO_SCREEN)
+			item_list[menu_items++].text = "Show Full Artwork";
+		else
+			item_list[menu_items++].text = "Crop to Screen";
+
+		/* add an item to return */
+		item_list[menu_items++].text = ui_getstring(UI_returntoprior);
+
+		/* draw the menu */
+		ui_draw_menu(item_list, menu_items, selected);
+
+		/* handle the keys */
+		if (ui_menu_generic_keys(&selected, menu_items))
+			return selected;
+
+		/* handle actions */
+		if (input_ui_pressed(IPT_UI_SELECT))
+		{
+			/* rotate */
+			if (selected == menu_items - 6)
+			{
+				render_target_set_orientation(target, orientation_add(ROT90, render_target_get_orientation(target)));
+				if (target == render_get_ui_target())
+					render_container_set_orientation(render_container_get_ui(), orientation_add(ROT270, render_container_get_orientation(render_container_get_ui())));
+			}
+
+			/* show/hide backdrops */
+			else if (selected == menu_items - 5)
+			{
+				layermask ^= LAYER_CONFIG_ENABLE_BACKDROP;
+				render_target_set_layer_config(target, layermask);
+			}
+
+			/* show/hide overlays */
+			else if (selected == menu_items - 4)
+			{
+				layermask ^= LAYER_CONFIG_ENABLE_OVERLAY;
+				render_target_set_layer_config(target, layermask);
+			}
+
+			/* show/hide bezels */
+			else if (selected == menu_items - 3)
+			{
+				layermask ^= LAYER_CONFIG_ENABLE_BEZEL;
+				render_target_set_layer_config(target, layermask);
+			}
+
+			/* crop/uncrop artwork */
+			else if (selected == menu_items - 2)
+			{
+				layermask ^= LAYER_CONFIG_ZOOM_TO_SCREEN;
+				render_target_set_layer_config(target, layermask);
+			}
+
+			/* else just set the selected view */
+			else
+				render_target_set_view(target, selected);
+		}
+	}
+
+	return selected | (curtarget << 16);
+}
+#endif
 
 
 
@@ -2492,10 +2913,10 @@ static int sprintf_game_info(char *buf)
 	else
 		bufptr += sprintf(bufptr,"\n%s:\n%d x %d (%s) %f Hz\n",
 				ui_getstring(UI_screenres),
-				Machine->visible_area.max_x - Machine->visible_area.min_x + 1,
-				Machine->visible_area.max_y - Machine->visible_area.min_y + 1,
+				Machine->visible_area[0].max_x - Machine->visible_area[0].min_x + 1,
+				Machine->visible_area[0].max_y - Machine->visible_area[0].min_y + 1,
 				(Machine->gamedrv->flags & ORIENTATION_SWAP_XY) ? "V" : "H",
-				Machine->refresh_rate);
+				Machine->refresh_rate[0]);
 	return bufptr - buf;
 }
 
@@ -2504,202 +2925,932 @@ static int sprintf_game_info(char *buf)
 
 
 
+#ifdef NEW_RENDER
 
-
-/*-------------------------------------------------
-    erase_screen - erase the screen
--------------------------------------------------*/
-
-static void erase_screen(mame_bitmap *bitmap)
+typedef struct _showgfx_state showgfx_state;
+struct _showgfx_state
 {
-	fillbitmap(bitmap, get_black_pen(), NULL);
-	schedule_full_refresh();
+	UINT8		mode;				/* which mode are we in? */
+
+	/* intermediate bitmaps */
+	UINT8		bitmap_dirty;		/* is the bitmap dirty? */
+	mame_bitmap *bitmap;			/* bitmap for drawing gfx and tilemaps */
+	render_texture *texture;		/* texture for rendering the above bitmap */
+
+	/* palette-specific data */
+	struct
+	{
+		int		which;
+		int		offset;
+		int		count;
+	} palette;
+
+	struct
+	{
+		int		set;
+		int		offset[MAX_GFX_ELEMENTS];
+		int		color[MAX_GFX_ELEMENTS];
+		int		count[MAX_GFX_ELEMENTS];
+		UINT8	rotate[MAX_GFX_ELEMENTS];
+	} gfxset;
+
+	struct
+	{
+		int		which;
+		int		xoffs;
+		int		yoffs;
+		int		zoom;
+		UINT8	rotate;
+		UINT8	init;
+	} tilemap;
+};
+
+static showgfx_state showgfx;
+
+
+static void showgfx_exit(void)
+{
+	if (showgfx.texture != NULL)
+		render_texture_free(showgfx.texture);
+	showgfx.texture = NULL;
+
+	if (showgfx.bitmap != NULL)
+		bitmap_free(showgfx.bitmap);
+	showgfx.bitmap = NULL;
 }
 
 
-#if 0
-
-static int showgfx_mode;
-
-void showgfx_show(int visible)
+static void handle_palette_keys(showgfx_state *state)
 {
-	showgfx_enabled = visible;
+	int rowcount, screencount;
+	int total;
 
-	if (!showgfx_enabled)
+	/* handle zoom (minus,plus) */
+	if (input_ui_pressed(IPT_UI_ZOOM_OUT))
+		state->palette.count /= 2;
+	if (input_ui_pressed(IPT_UI_ZOOM_IN))
+		state->palette.count *= 2;
+
+	/* clamp within range */
+	if (state->palette.count <= 4)
+		state->palette.count = 4;
+	if (state->palette.count > 64)
+		state->palette.count = 64;
+
+	/* handle colormap selection (open bracket,close bracket) */
+	if (input_ui_pressed(IPT_UI_PREV_GROUP))
+		state->palette.which--;
+	if (input_ui_pressed(IPT_UI_NEXT_GROUP))
+		state->palette.which++;
+
+	/* clamp within range */
+	if (state->palette.which < 0)
+		state->palette.which = 1;
+	if (state->palette.which > (Machine->drv->color_table_len != 0))
+		state->palette.which = (Machine->drv->color_table_len != 0);
+
+	/* cache some info in locals */
+	total = state->palette.which ? Machine->drv->color_table_len : Machine->drv->total_colors;
+
+	/* determine number of entries per row and total */
+	rowcount = state->palette.count;
+	screencount = rowcount * rowcount;
+
+	/* handle keyboard navigation */
+	if (input_ui_pressed_repeat(IPT_UI_UP, 4))
+		state->palette.offset -= rowcount;
+	if (input_ui_pressed_repeat(IPT_UI_DOWN, 4))
+		state->palette.offset += rowcount;
+	if (input_ui_pressed_repeat(IPT_UI_PAGE_UP, 6))
+		state->palette.offset -= screencount;
+	if (input_ui_pressed_repeat(IPT_UI_PAGE_DOWN, 6))
+		state->palette.offset += screencount;
+	if (input_ui_pressed_repeat(IPT_UI_HOME, 4))
+		state->palette.offset = 0;
+	if (input_ui_pressed_repeat(IPT_UI_END, 4))
+		state->palette.offset = total;
+
+	/* clamp within range */
+	if (state->palette.offset + screencount > ((total + rowcount - 1) / rowcount) * rowcount)
+		state->palette.offset = ((total + rowcount - 1) / rowcount) * rowcount - screencount;
+	if (state->palette.offset < 0)
+		state->palette.offset = 0;
+}
+
+
+
+static void showgfx_palette_handler(showgfx_state *state)
+{
+	int total = state->palette.which ? Machine->drv->color_table_len : Machine->drv->total_colors;
+	UINT16 *pens = state->palette.which ? Machine->game_colortable : NULL;
+	const char *title = state->palette.which ? "COLORTABLE" : "PALETTE";
+	float cellwidth, cellheight;
+	float chwidth, chheight;
+	float titlewidth;
+	float x0, y0;
+	render_bounds cellboxbounds;
+	render_bounds boxbounds;
+	int x, y, skip;
+
+	/* lazy init */
+	if (state->palette.count == 0)
+		state->palette.count = 16;
+
+	/* add a half character padding for the box */
+	chheight = UI_FONT_HEIGHT;
+	chwidth = render_font_get_char_width(ui_font, chheight, render_get_ui_aspect(), '0');
+	boxbounds.x0 = 0.0f + 0.5f * chwidth;
+	boxbounds.x1 = 1.0f - 0.5f * chwidth;
+	boxbounds.y0 = 0.0f + 0.5f * chheight;
+	boxbounds.y1 = 1.0f - 0.5f * chheight;
+
+	/* the character cell box bounds starts a half character in from the box */
+	cellboxbounds = boxbounds;
+	cellboxbounds.x0 += 0.5f * chwidth;
+	cellboxbounds.x1 -= 0.5f * chwidth;
+	cellboxbounds.y0 += 0.5f * chheight;
+	cellboxbounds.y1 -= 0.5f * chheight;
+
+	/* add space on the left for 5 characters of text, plus a half character of padding */
+	cellboxbounds.x0 += 5.5f * chwidth;
+
+	/* add space on the top for a title, a half line of padding, a header, and another half line */
+	cellboxbounds.y0 += 3.0f * chheight;
+
+	/* figure out the title and expand the outer box to fit */
+	titlewidth = render_font_get_string_width(ui_font, chheight, render_get_ui_aspect(), title);
+	x0 = 0.0f;
+	if (boxbounds.x1 - boxbounds.x0 < titlewidth + chwidth)
+		x0 = boxbounds.x0 - (0.5f - 0.5f * (titlewidth + chwidth));
+
+	/* go ahead and draw the outer box now */
+	add_outlined_box_fp(boxbounds.x0 - x0, boxbounds.y0, boxbounds.x1 + x0, boxbounds.y1, MENU_BACKCOLOR);
+
+	/* draw the title */
+	x0 = 0.5f - 0.5f * titlewidth;
+	y0 = boxbounds.y0 + 0.5f * chheight;
+	for (x = 0; title[x] != 0; x++)
 	{
-		mame_pause(TRUE);
-		showgfx_mode = 0;
+		render_ui_add_char(x0, y0, chheight, render_get_ui_aspect(), ARGB_WHITE, ui_font, title[x]);
+		x0 += render_font_get_char_width(ui_font, chheight, render_get_ui_aspect(), title[x]);
 	}
-	else
+
+	/* compute the cell size */
+	cellwidth = (cellboxbounds.x1 - cellboxbounds.x0) / (float)state->palette.count;
+	cellheight = (cellboxbounds.y1 - cellboxbounds.y0) / (float)state->palette.count;
+
+	/* draw the top column headers */
+	skip = (int)(chwidth / cellwidth);
+	for (x = 0; x < state->palette.count; x += 1 + skip)
 	{
+		x0 = boxbounds.x0 + 6.0f * chwidth + (float)x * cellwidth;
+		y0 = boxbounds.y0 + 2.0f * chheight;
+		render_ui_add_char(x0 + 0.5f * (cellwidth - chwidth), y0, chheight, render_get_ui_aspect(), ARGB_WHITE, ui_font, "0123456789ABCDEF"[x & 0xf]);
+
+		/* if we're skipping, draw a point between the character and the box to indicate which */
+		/* one it's referring to */
+		if (skip != 0)
+			render_ui_add_point(x0 + 0.5f * cellwidth, 0.5f * (y0 + chheight + cellboxbounds.y0), UI_LINE_WIDTH, ARGB_WHITE, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+	}
+
+	/* draw the side column headers */
+	skip = (int)(chheight / cellheight);
+	for (y = 0; y < state->palette.count; y += 1 + skip)
+
+		/* only display if there is data to show */
+		if (state->palette.offset + y * state->palette.count < total)
+		{
+			char buffer[10];
+
+			/* if we're skipping, draw a point between the character and the box to indicate which */
+			/* one it's referring to */
+			x0 = boxbounds.x0 + 5.5f * chwidth;
+			y0 = boxbounds.y0 + 3.5f * chheight + (float)y * cellheight;
+			if (skip != 0)
+				render_ui_add_point(0.5f * (x0 + cellboxbounds.x0), y0 + 0.5f * cellheight, UI_LINE_WIDTH, ARGB_WHITE, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+
+			/* draw the row header */
+			sprintf(buffer, "%5X", state->palette.offset + y * state->palette.count);
+			for (x = 4; x >= 0; x--)
+			{
+				x0 -= render_font_get_char_width(ui_font, chheight, render_get_ui_aspect(), buffer[x]);
+				render_ui_add_char(x0, y0 + 0.5f * (cellheight - chheight), chheight, render_get_ui_aspect(), ARGB_WHITE, ui_font, buffer[x]);
+			}
+		}
+
+	/* now add the rectangles for the colors */
+	for (y = 0; y < state->palette.count; y++)
+		for (x = 0; x < state->palette.count; x++)
+		{
+			int index = state->palette.offset + y * state->palette.count + x;
+			if (index < total)
+			{
+				pen_t pen = (pens != NULL) ? pens[index] : index;
+				render_ui_add_rect(cellboxbounds.x0 + x * cellwidth, cellboxbounds.y0 + y * cellheight,
+									cellboxbounds.x0 + (x + 1) * cellwidth, cellboxbounds.y0 + (y + 1) * cellheight,
+									0xff000000 | game_palette[pen], PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+			}
+		}
+
+	/* handle keys */
+	handle_palette_keys(state);
+}
+
+
+static void handle_gfxset_keys(showgfx_state *state, int xcells, int ycells)
+{
+	showgfx_state oldstate = *state;
+	gfx_element *gfx;
+	int temp, set;
+
+	/* handle gfxset selection (open bracket,close bracket) */
+	if (input_ui_pressed(IPT_UI_PREV_GROUP))
+	{
+		for (temp = state->gfxset.set - 1; temp >= 0; temp--)
+			if (Machine->gfx[temp] != NULL)
+				break;
+		if (temp >= 0)
+			state->gfxset.set = temp;
+	}
+	if (input_ui_pressed(IPT_UI_NEXT_GROUP))
+	{
+		for (temp = state->gfxset.set + 1; temp < MAX_GFX_ELEMENTS; temp++)
+			if (Machine->gfx[temp] != NULL)
+				break;
+		if (temp < MAX_GFX_ELEMENTS)
+			state->gfxset.set = temp;
+	}
+
+	/* cache some info in locals */
+	set = state->gfxset.set;
+	gfx = Machine->gfx[set];
+
+	/* handle cells per line (minus,plus) */
+	if (input_ui_pressed(IPT_UI_ZOOM_OUT))
+		state->gfxset.count[set] = xcells - 1;
+	if (input_ui_pressed(IPT_UI_ZOOM_IN))
+		state->gfxset.count[set] = xcells + 1;
+
+	/* clamp within range */
+	if (state->gfxset.count[set] < 2)
+		state->gfxset.count[set] = 2;
+	if (state->gfxset.count[set] > 32)
+		state->gfxset.count[set] = 32;
+
+	/* handle rotation (R) */
+	if (input_ui_pressed(IPT_UI_ROTATE))
+		state->gfxset.rotate[set] = orientation_add(ROT90, state->gfxset.rotate[set]);
+
+	/* handle navigation within the cells (up,down,pgup,pgdown) */
+	if (input_ui_pressed_repeat(IPT_UI_UP, 4))
+		state->gfxset.offset[set] -= xcells;
+	if (input_ui_pressed_repeat(IPT_UI_DOWN, 4))
+		state->gfxset.offset[set] += xcells;
+	if (input_ui_pressed_repeat(IPT_UI_PAGE_UP, 6))
+		state->gfxset.offset[set] -= xcells * ycells;
+	if (input_ui_pressed_repeat(IPT_UI_PAGE_DOWN, 6))
+		state->gfxset.offset[set] += xcells * ycells;
+	if (input_ui_pressed_repeat(IPT_UI_HOME, 4))
+		state->gfxset.offset[set] = 0;
+	if (input_ui_pressed_repeat(IPT_UI_END, 4))
+		state->gfxset.offset[set] = gfx->total_elements;
+
+	/* clamp within range */
+	if (state->gfxset.offset[set] + xcells * ycells > ((gfx->total_elements + xcells - 1) / xcells) * xcells)
+		state->gfxset.offset[set] = ((gfx->total_elements + xcells - 1) / xcells) * xcells - xcells * ycells;
+	if (state->gfxset.offset[set] < 0)
+		state->gfxset.offset[set] = 0;
+
+	/* handle color selection (left,right) */
+	if (input_ui_pressed_repeat(IPT_UI_LEFT, 4))
+		state->gfxset.color[set] -= 1;
+	if (input_ui_pressed_repeat(IPT_UI_RIGHT, 4))
+		state->gfxset.color[set] += 1;
+
+	/* clamp within range */
+	if (state->gfxset.color[set] >= (int)gfx->total_colors)
+		state->gfxset.color[set] = gfx->total_colors - 1;
+	if (state->gfxset.color[set] < 0)
+		state->gfxset.color[set] = 0;
+
+	/* if something changed, we need to force an update to the bitmap */
+	if (state->gfxset.set != oldstate.gfxset.set ||
+		state->gfxset.offset[set] != oldstate.gfxset.offset[set] ||
+		state->gfxset.rotate[set] != oldstate.gfxset.rotate[set] ||
+		state->gfxset.color[set] != oldstate.gfxset.color[set] ||
+		state->gfxset.count[set] != oldstate.gfxset.count[set])
+	{
+		state->bitmap_dirty = TRUE;
+	}
+}
+
+
+static void draw_gfx_item(const gfx_element *gfx, int index, mame_bitmap *bitmap, int dstx, int dsty, int color, int rotate)
+{
+	int width = (rotate & ORIENTATION_SWAP_XY) ? gfx->height : gfx->width;
+	int height = (rotate & ORIENTATION_SWAP_XY) ? gfx->width : gfx->height;
+	UINT32 rowpixels = bitmap->rowpixels;
+	const pen_t *palette = game_palette;
+	const UINT16 *colortable = NULL;
+	int x, y;
+
+	/* select either the raw palette or the colortable */
+	if (Machine->game_colortable != NULL)
+		colortable = &Machine->game_colortable[(gfx->colortable - Machine->remapped_colortable) + color * gfx->color_granularity];
+	else
+		palette += color * gfx->color_granularity;
+
+	/* loop over rows in the cell */
+	for (y = 0; y < height; y++)
+	{
+		UINT32 *dest = (UINT32 *)bitmap->base + (dsty + y) * rowpixels + dstx;
+		UINT8 *src = gfx->gfxdata + index * gfx->char_modulo;
+
+		/* loop over columns in the cell */
+		for (x = 0; x < width; x++)
+		{
+			int effx = x, effy = y;
+			rgb_t pixel;
+			UINT8 *s;
+
+			/* compute effective x,y values after rotation */
+			if (rotate & ORIENTATION_FLIP_X)
+				effx = gfx->width - 1 - effx;
+			if (rotate & ORIENTATION_FLIP_Y)
+				effy = gfx->height - 1 - effy;
+			if (rotate & ORIENTATION_SWAP_XY)
+				{ int temp = effx; effx = effy; effy = temp; }
+
+			/* get a pointer to the start of this source row */
+			s = src + effy * gfx->line_modulo;
+
+			/* extract the pixel */
+			if (gfx->flags & GFX_PACKED)
+				pixel = (s[effx/2] >> ((effx & 1) * 4)) & 0xf;
+			else
+				pixel = s[effx];
+			if (colortable != NULL)
+				pixel = colortable[pixel];
+			*dest++ = 0xff000000 | palette[pixel];
+		}
+	}
+}
+
+
+static void update_gfxset_bitmap(showgfx_state *state, int xcells, int ycells, gfx_element *gfx)
+{
+	int set = state->gfxset.set;
+	int cellxpix, cellypix;
+	int x, y;
+
+	/* compute the number of source pixels in a cell */
+	cellxpix = 1 + ((state->gfxset.rotate[set] & ORIENTATION_SWAP_XY) ? gfx->height : gfx->width);
+	cellypix = 1 + ((state->gfxset.rotate[set] & ORIENTATION_SWAP_XY) ? gfx->width : gfx->height);
+
+	/* realloc the bitmap if it is too small */
+	if (state->bitmap == NULL || state->texture == NULL || state->bitmap->depth != 32 || state->bitmap->width != cellxpix * xcells || state->bitmap->height != cellypix * ycells)
+	{
+		/* free the old stuff */
+		if (state->bitmap != NULL)
+			bitmap_free(state->bitmap);
+		if (state->texture != NULL)
+			render_texture_free(state->texture);
+
+		/* allocate new stuff */
+		state->bitmap = bitmap_alloc_depth(cellxpix * xcells, cellypix * ycells, 32);
+		state->texture = render_texture_alloc(state->bitmap, NULL, NULL, TEXFORMAT_ARGB32, NULL, NULL);
+
+		/* force a redraw */
+		state->bitmap_dirty = TRUE;
+	}
+
+	/* handle the redraw */
+	if (state->bitmap_dirty)
+	{
+		/* loop over rows */
+		for (y = 0; y < ycells; y++)
+		{
+			rectangle cellbounds;
+
+			/* make a rect that covers this row */
+			cellbounds.min_x = 0;
+			cellbounds.max_x = state->bitmap->width - 1;
+			cellbounds.min_y = y * cellypix;
+			cellbounds.max_y = (y + 1) * cellypix - 1;
+
+			/* only display if there is data to show */
+			if (state->gfxset.offset[set] + y * xcells < gfx->total_elements)
+			{
+				/* draw the individual cells */
+				for (x = 0; x < xcells; x++)
+				{
+					int index = state->gfxset.offset[set] + y * xcells + x;
+
+					/* update the bounds for this cell */
+					cellbounds.min_x = x * cellxpix;
+					cellbounds.max_x = (x + 1) * cellxpix - 1;
+
+					/* only render if there is data */
+					if (index < gfx->total_elements)
+						draw_gfx_item(gfx, index, state->bitmap, cellbounds.min_x, cellbounds.min_y, state->gfxset.color[set], state->gfxset.rotate[set]);
+
+					/* otherwise, fill with transparency */
+					else
+						fillbitmap(state->bitmap, 0, &cellbounds);
+				}
+			}
+
+			/* otherwise, fill with transparency */
+			else
+				fillbitmap(state->bitmap, 0, &cellbounds);
+		}
+
+		/* reset the texture to force an update */
+		render_texture_set_bitmap(state->texture, state->bitmap, NULL, NULL, TEXFORMAT_ARGB32);
+		state->bitmap_dirty = FALSE;
+	}
+}
+
+
+static void showgfx_gfxset_handler(showgfx_state *state)
+{
+	int set = state->gfxset.set;
+	gfx_element *gfx = Machine->gfx[set];
+	float fullwidth, fullheight;
+	float cellwidth, cellheight;
+	float chwidth, chheight;
+	float titlewidth;
+	float cellaspect;
+	float x0, y0;
+	render_bounds cellboxbounds;
+	render_bounds boxbounds;
+	int cellboxwidth, cellboxheight;
+	int targwidth, targheight;
+	int cellxpix, cellypix;
+	int xcells, ycells;
+	int pixelscale = 0;
+	int x, y, skip;
+	char title[100];
+
+	/* lazy initialization */
+	if (state->gfxset.count[0] == 0)
+		for (x = 0; x < MAX_GFX_ELEMENTS; x++)
+		{
+			state->gfxset.rotate[x] = Machine->gamedrv->flags & ORIENTATION_MASK;
+			state->gfxset.count[x] = 16;
+		}
+
+	/* get the bounds of our target */
+	render_target_get_bounds(render_get_ui_target(), &targwidth, &targheight, NULL);
+
+	/* add a half character padding for the box */
+	chheight = UI_FONT_HEIGHT;
+	chwidth = render_font_get_char_width(ui_font, chheight, render_get_ui_aspect(), '0');
+	boxbounds.x0 = 0.0f + 0.5f * chwidth;
+	boxbounds.x1 = 1.0f - 0.5f * chwidth;
+	boxbounds.y0 = 0.0f + 0.5f * chheight;
+	boxbounds.y1 = 1.0f - 0.5f * chheight;
+
+	/* the character cell box bounds starts a half character in from the box */
+	cellboxbounds = boxbounds;
+	cellboxbounds.x0 += 0.5f * chwidth;
+	cellboxbounds.x1 -= 0.5f * chwidth;
+	cellboxbounds.y0 += 0.5f * chheight;
+	cellboxbounds.y1 -= 0.5f * chheight;
+
+	/* add space on the left for 5 characters of text, plus a half character of padding */
+	cellboxbounds.x0 += 5.5f * chwidth;
+
+	/* add space on the top for a title, a half line of padding, a header, and another half line */
+	cellboxbounds.y0 += 3.0f * chheight;
+
+	/* convert back to pixels */
+	cellboxwidth = (cellboxbounds.x1 - cellboxbounds.x0) * (float)targwidth;
+	cellboxheight = (cellboxbounds.y1 - cellboxbounds.y0) * (float)targheight;
+
+	/* compute the number of source pixels in a cell */
+	cellxpix = 1 + ((state->gfxset.rotate[state->gfxset.set] & ORIENTATION_SWAP_XY) ? gfx->height : gfx->width);
+	cellypix = 1 + ((state->gfxset.rotate[state->gfxset.set] & ORIENTATION_SWAP_XY) ? gfx->width : gfx->height);
+
+	/* compute the largest pixel scale factor that still fits */
+	xcells = state->gfxset.count[set];
+	while (xcells > 1)
+	{
+		pixelscale = (cellboxwidth / xcells) / cellxpix;
+		if (pixelscale != 0)
+			break;
+		xcells--;
+	}
+
+	/* worst case, we need a pixel scale of 1 */
+	pixelscale = MAX(1, pixelscale);
+
+	/* in the Y direction, we just display as many as we can */
+	ycells = cellboxheight / (pixelscale * cellypix);
+
+	/* now determine the actual cellbox size */
+	cellboxwidth = MIN(cellboxwidth, xcells * pixelscale * cellxpix);
+	cellboxheight = MIN(cellboxheight, ycells * pixelscale * cellypix);
+
+	/* compute the size of a single cell at this pixel scale factor, as well as the aspect ratio */
+	cellwidth = (cellboxwidth / (float)xcells) / (float)targwidth;
+	cellheight = (cellboxheight / (float)ycells) / (float)targheight;
+	cellaspect = cellwidth / cellheight;
+
+	/* working from the new width/height, recompute the boxbounds */
+	fullwidth = (float)cellboxwidth / (float)targwidth + 6.5f * chwidth;
+	fullheight = (float)cellboxheight / (float)targheight + 4.0f * chheight;
+
+	/* recompute boxbounds from this */
+	boxbounds.x0 = (1.0f - fullwidth) * 0.5f;
+	boxbounds.x1 = boxbounds.x0 + fullwidth;
+	boxbounds.y0 = (1.0f - fullheight) * 0.5f;
+	boxbounds.y1 = boxbounds.y0 + fullheight;
+
+	/* figure out the title and expand the outer box to fit */
+	for (x = 0; x < MAX_GFX_ELEMENTS && Machine->gfx[x] != NULL; x++) ;
+	sprintf(title, "GFX %d/%d %dx%d COLOR %X", state->gfxset.set, x - 1, gfx->width, gfx->height, state->gfxset.color[set]);
+	titlewidth = render_font_get_string_width(ui_font, chheight, render_get_ui_aspect(), title);
+	x0 = 0.0f;
+	if (boxbounds.x1 - boxbounds.x0 < titlewidth + chwidth)
+		x0 = boxbounds.x0 - (0.5f - 0.5f * (titlewidth + chwidth));
+
+	/* go ahead and draw the outer box now */
+	add_outlined_box_fp(boxbounds.x0 - x0, boxbounds.y0, boxbounds.x1 + x0, boxbounds.y1, MENU_BACKCOLOR);
+
+	/* draw the title */
+	x0 = 0.5f - 0.5f * titlewidth;
+	y0 = boxbounds.y0 + 0.5f * chheight;
+	for (x = 0; title[x] != 0; x++)
+	{
+		render_ui_add_char(x0, y0, chheight, render_get_ui_aspect(), ARGB_WHITE, ui_font, title[x]);
+		x0 += render_font_get_char_width(ui_font, chheight, render_get_ui_aspect(), title[x]);
+	}
+
+	/* draw the top column headers */
+	skip = (int)(chwidth / cellwidth);
+	for (x = 0; x < xcells; x += 1 + skip)
+	{
+		x0 = boxbounds.x0 + 6.0f * chwidth + (float)x * cellwidth;
+		y0 = boxbounds.y0 + 2.0f * chheight;
+		render_ui_add_char(x0 + 0.5f * (cellwidth - chwidth), y0, chheight, render_get_ui_aspect(), ARGB_WHITE, ui_font, "0123456789ABCDEF"[x & 0xf]);
+
+		/* if we're skipping, draw a point between the character and the box to indicate which */
+		/* one it's referring to */
+		if (skip != 0)
+			render_ui_add_point(x0 + 0.5f * cellwidth, 0.5f * (y0 + chheight + boxbounds.y0 + 3.5f * chheight), UI_LINE_WIDTH, ARGB_WHITE, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+	}
+
+	/* draw the side column headers */
+	skip = (int)(chheight / cellheight);
+	for (y = 0; y < ycells; y += 1 + skip)
+
+		/* only display if there is data to show */
+		if (state->gfxset.offset[set] + y * xcells < gfx->total_elements)
+		{
+			char buffer[10];
+
+			/* if we're skipping, draw a point between the character and the box to indicate which */
+			/* one it's referring to */
+			x0 = boxbounds.x0 + 5.5f * chwidth;
+			y0 = boxbounds.y0 + 3.5f * chheight + (float)y * cellheight;
+			if (skip != 0)
+				render_ui_add_point(0.5f * (x0 + boxbounds.x0 + 6.0f * chwidth), y0 + 0.5f * cellheight, UI_LINE_WIDTH, ARGB_WHITE, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+
+			/* draw the row header */
+			sprintf(buffer, "%5X", state->gfxset.offset[set] + y * xcells);
+			for (x = 4; x >= 0; x--)
+			{
+				x0 -= render_font_get_char_width(ui_font, chheight, render_get_ui_aspect(), buffer[x]);
+				render_ui_add_char(x0, y0 + 0.5f * (cellheight - chheight), chheight, render_get_ui_aspect(), ARGB_WHITE, ui_font, buffer[x]);
+			}
+		}
+
+	/* update the bitmap */
+	update_gfxset_bitmap(state, xcells, ycells, gfx);
+
+	/* add the final quad */
+	render_ui_add_quad(boxbounds.x0 + 6.0f * chwidth, boxbounds.y0 + 3.5f * chheight,
+						boxbounds.x0 + 6.0f * chwidth + (float)cellboxwidth / (float)targwidth,
+						boxbounds.y0 + 3.5f * chheight + (float)cellboxheight / (float)targheight,
+						ARGB_WHITE, state->texture, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+
+	/* handle keyboard navigation before drawing */
+	handle_gfxset_keys(state, xcells, ycells);
+}
+
+
+static void handle_tilemap_keys(showgfx_state *state, int viswidth, int visheight)
+{
+	showgfx_state oldstate = *state;
+	UINT32 mapwidth, mapheight;
+	int step;
+
+	/* handle tilemap selection (open bracket,close bracket) */
+	if (input_ui_pressed(IPT_UI_PREV_GROUP))
+		state->tilemap.which--;
+	if (input_ui_pressed(IPT_UI_NEXT_GROUP))
+		state->tilemap.which++;
+
+	/* clamp within range */
+	if (state->tilemap.which < 0)
+		state->tilemap.which = 0;
+	if (state->tilemap.which >= tilemap_count())
+		state->tilemap.which = tilemap_count() - 1;
+
+	/* cache some info in locals */
+	tilemap_nb_size(state->tilemap.which, &mapwidth, &mapheight);
+
+	/* handle zoom (minus,plus) */
+	if (input_ui_pressed(IPT_UI_ZOOM_OUT))
+		state->tilemap.zoom--;
+	if (input_ui_pressed(IPT_UI_ZOOM_IN))
+		state->tilemap.zoom++;
+
+	/* clamp within range */
+	if (state->tilemap.zoom < 0)
+		state->tilemap.zoom = 0;
+	if (state->tilemap.zoom > 8)
+		state->tilemap.zoom = 8;
+	if (state->tilemap.zoom != oldstate.tilemap.zoom)
+	{
+		if (state->tilemap.zoom != 0)
+			ui_popup("Zoom = %d", state->tilemap.zoom);
+		else
+			ui_popup("Zoom Auto");
+	}
+
+	/* handle rotation (R) */
+	if (input_ui_pressed(IPT_UI_ROTATE))
+		state->tilemap.rotate = orientation_add(ROT90, state->tilemap.rotate);
+
+	/* handle navigation (up,down,left,right) */
+	step = 8;
+	if (code_pressed(KEYCODE_LSHIFT)) step = 1;
+	if (code_pressed(KEYCODE_LCONTROL)) step = 64;
+	if (input_ui_pressed_repeat(IPT_UI_UP, 4))
+		state->tilemap.yoffs -= step;
+	if (input_ui_pressed_repeat(IPT_UI_DOWN, 4))
+		state->tilemap.yoffs += step;
+	if (input_ui_pressed_repeat(IPT_UI_LEFT, 6))
+		state->tilemap.xoffs -= step;
+	if (input_ui_pressed_repeat(IPT_UI_RIGHT, 6))
+		state->tilemap.xoffs += step;
+
+	/* clamp within range */
+	while (state->tilemap.xoffs < 0)
+		state->tilemap.xoffs += mapwidth;
+	while (state->tilemap.xoffs >= mapwidth)
+		state->tilemap.xoffs -= mapwidth;
+	while (state->tilemap.yoffs < 0)
+		state->tilemap.yoffs += mapheight;
+	while (state->tilemap.yoffs >= mapheight)
+		state->tilemap.yoffs -= mapheight;
+
+	/* if something changed, we need to force an update to the bitmap */
+	if (state->tilemap.which != oldstate.tilemap.which ||
+		state->tilemap.xoffs != oldstate.tilemap.xoffs ||
+		state->tilemap.yoffs != oldstate.tilemap.yoffs ||
+		state->tilemap.rotate != oldstate.tilemap.rotate)
+	{
+		state->bitmap_dirty = TRUE;
+	}
+}
+
+
+static void update_tilemap_bitmap(showgfx_state *state, int width, int height)
+{
+	int format;
+
+	/* swap the coordinates back if they were talking about a rotated surface */
+	if (state->tilemap.rotate & ORIENTATION_SWAP_XY)
+		{ UINT32 temp = width; width = height; height = temp; }
+
+	/* pick our texture format */
+	if (Machine->color_depth == 16)
+		format = TEXFORMAT_PALETTE16;
+	else if (Machine->color_depth == 15)
+		format = TEXFORMAT_RGB15;
+	else
+		format = TEXFORMAT_RGB32;
+
+	/* realloc the bitmap if it is too small */
+	if (state->bitmap == NULL || state->texture == NULL || state->bitmap->depth != Machine->color_depth || state->bitmap->width != width || state->bitmap->height != height)
+	{
+		/* free the old stuff */
+		if (state->bitmap != NULL)
+			bitmap_free(state->bitmap);
+		if (state->texture != NULL)
+			render_texture_free(state->texture);
+
+		/* allocate new stuff */
+		state->bitmap = bitmap_alloc_depth(width, height, Machine->color_depth);
+		state->texture = render_texture_alloc(state->bitmap, NULL, adjusted_palette, format, NULL, NULL);
+
+		/* force a redraw */
+		state->bitmap_dirty = TRUE;
+	}
+
+	/* handle the redraw */
+	if (state->bitmap_dirty)
+	{
+		tilemap_nb_draw(state->bitmap, state->tilemap.which, state->tilemap.xoffs, state->tilemap.yoffs);
+
+		/* reset the texture to force an update */
+		render_texture_set_bitmap(state->texture, state->bitmap, NULL, adjusted_palette, format);
+		state->bitmap_dirty = FALSE;
+	}
+}
+
+
+static void showgfx_tilemap_handler(showgfx_state *state)
+{
+	float chwidth, chheight;
+	render_bounds mapboxbounds;
+	render_bounds boxbounds;
+	int targwidth, targheight;
+	float titlewidth;
+	float x0, y0;
+	int mapboxwidth, mapboxheight;
+	int maxxscale, maxyscale;
+	UINT32 mapwidth, mapheight;
+	int x, pixelscale;
+	char title[100];
+
+	/* lazy initialization */
+	if (!state->tilemap.init)
+	{
+		state->tilemap.rotate = Machine->gamedrv->flags & ORIENTATION_MASK;
+		state->tilemap.init = TRUE;
+	}
+
+	/* get the bounds of our target */
+	render_target_get_bounds(render_get_ui_target(), &targwidth, &targheight, NULL);
+
+	/* get the size of the tilemap itself */
+	tilemap_nb_size(state->tilemap.which, &mapwidth, &mapheight);
+	if (state->tilemap.rotate & ORIENTATION_SWAP_XY)
+		{ UINT32 temp = mapwidth; mapwidth = mapheight; mapheight = temp; }
+
+	/* add a half character padding for the box */
+	chheight = UI_FONT_HEIGHT;
+	chwidth = render_font_get_char_width(ui_font, chheight, render_get_ui_aspect(), '0');
+	boxbounds.x0 = 0.0f + 0.5f * chwidth;
+	boxbounds.x1 = 1.0f - 0.5f * chwidth;
+	boxbounds.y0 = 0.0f + 0.5f * chheight;
+	boxbounds.y1 = 1.0f - 0.5f * chheight;
+
+	/* the tilemap box bounds starts a half character in from the box */
+	mapboxbounds = boxbounds;
+	mapboxbounds.x0 += 0.5f * chwidth;
+	mapboxbounds.x1 -= 0.5f * chwidth;
+	mapboxbounds.y0 += 0.5f * chheight;
+	mapboxbounds.y1 -= 0.5f * chheight;
+
+	/* add space on the top for a title and a half line of padding */
+	mapboxbounds.y0 += 1.5f * chheight;
+
+	/* convert back to pixels */
+	mapboxwidth = (mapboxbounds.x1 - mapboxbounds.x0) * (float)targwidth;
+	mapboxheight = (mapboxbounds.y1 - mapboxbounds.y0) * (float)targheight;
+
+	/* determine the maximum integral scaling factor */
+	pixelscale = state->tilemap.zoom;
+	if (pixelscale == 0)
+	{
+		for (maxxscale = 1; mapwidth * (maxxscale + 1) < mapboxwidth; maxxscale++) ;
+		for (maxyscale = 1; mapheight * (maxyscale + 1) < mapboxheight; maxyscale++) ;
+		pixelscale = MIN(maxxscale, maxyscale);
+	}
+
+	/* recompute the final box size */
+	mapboxwidth = MIN(mapboxwidth, mapwidth * pixelscale);
+	mapboxheight = MIN(mapboxheight, mapheight * pixelscale);
+
+	/* recompute the bounds, centered within the existing bounds */
+	mapboxbounds.x0 += 0.5f * ((mapboxbounds.x1 - mapboxbounds.x0) - (float)mapboxwidth / (float)targwidth);
+	mapboxbounds.x1 = mapboxbounds.x0 + (float)mapboxwidth / (float)targwidth;
+	mapboxbounds.y0 += 0.5f * ((mapboxbounds.y1 - mapboxbounds.y0) - (float)mapboxheight / (float)targheight);
+	mapboxbounds.y1 = mapboxbounds.y0 + (float)mapboxheight / (float)targheight;
+
+	/* now recompute the outer box against this new info */
+	boxbounds.x0 = mapboxbounds.x0 - 0.5f * chwidth;
+	boxbounds.x1 = mapboxbounds.x1 + 0.5f * chwidth;
+	boxbounds.y0 = mapboxbounds.y0 - 2.0f * chheight;
+	boxbounds.y1 = mapboxbounds.y1 + 0.5f * chheight;
+
+	/* figure out the title and expand the outer box to fit */
+	sprintf(title, "TMAP %d/%d %dx%d OFFS %d,%d", state->tilemap.which, tilemap_count() - 1, mapwidth, mapheight, state->tilemap.xoffs, state->tilemap.yoffs);
+	titlewidth = render_font_get_string_width(ui_font, chheight, render_get_ui_aspect(), title);
+	if (boxbounds.x1 - boxbounds.x0 < titlewidth + chwidth)
+	{
+		boxbounds.x0 = 0.5f - 0.5f * (titlewidth + chwidth);
+		boxbounds.x1 = boxbounds.x0 + titlewidth + chwidth;
+	}
+
+	/* go ahead and draw the outer box now */
+	add_outlined_box_fp(boxbounds.x0, boxbounds.y0, boxbounds.x1, boxbounds.y1, MENU_BACKCOLOR);
+
+	/* draw the title */
+	x0 = 0.5f - 0.5f * titlewidth;
+	y0 = boxbounds.y0 + 0.5f * chheight;
+	for (x = 0; title[x] != 0; x++)
+	{
+		render_ui_add_char(x0, y0, chheight, render_get_ui_aspect(), ARGB_WHITE, ui_font, title[x]);
+		x0 += render_font_get_char_width(ui_font, chheight, render_get_ui_aspect(), title[x]);
+	}
+
+	/* update the bitmap */
+	update_tilemap_bitmap(state, mapboxwidth / pixelscale, mapboxheight / pixelscale);
+
+	/* add the final quad */
+	render_ui_add_quad(mapboxbounds.x0, mapboxbounds.y0,
+						mapboxbounds.x1, mapboxbounds.y1,
+						ARGB_WHITE, state->texture,
+						PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA) | PRIMFLAG_TEXORIENT(state->tilemap.rotate));
+
+	/* handle keyboard input */
+	handle_tilemap_keys(state, mapboxwidth, mapboxheight);
+}
+
+
+static UINT32 ui_handler_showgfx(UINT32 uistate)
+{
+	showgfx_state *state = &showgfx;
+
+	/* if we have nothing, implicitly cancel */
+	if (Machine->drv->total_colors == 0 && Machine->drv->color_table_len == 0 && Machine->gfx[0] == NULL && tilemap_count() == 0)
+		goto cancel;
+
+	/* if we're not paused, mark the bitmap dirty */
+	if (!mame_is_paused())
+		state->bitmap_dirty = TRUE;
+
+	/* switch off the state to display something */
+again:
+	switch (state->mode)
+	{
+		case 0:
+			/* if we have a palette, display it */
+			if (Machine->drv->total_colors > 0)
+			{
+				showgfx_palette_handler(state);
+				break;
+			}
+
+			/* fall through...*/
+			state->mode++;
+
+		case 1:
+			/* if we have graphics sets, display them */
+			if (Machine->gfx[0] != NULL)
+			{
+				showgfx_gfxset_handler(state);
+				break;
+			}
+
+			/* fall through...*/
+			state->mode++;
+
+		case 2:
+			/* if we have tilemaps, display them */
+			if (tilemap_count() > 0)
+			{
+				showgfx_tilemap_handler(state);
+				break;
+			}
+
+			state->mode = 0;
+			goto again;
+	}
+
+	/* handle keys */
+	if (input_ui_pressed(IPT_UI_SELECT))
+	{
+		state->mode = (state->mode + 1) % 3;
+		state->bitmap_dirty = TRUE;
+	}
+
+	if (input_ui_pressed(IPT_UI_PAUSE))
+		mame_pause(!mame_is_paused());
+
+	if (input_ui_pressed(IPT_UI_CANCEL) || input_ui_pressed(IPT_UI_SHOW_GFX))
+		goto cancel;
+
+	return uistate;
+
+cancel:
+	if (!uistate)
 		mame_pause(FALSE);
-	}
-
-
-	schedule_full_refresh();
-
-	/* mark all the tilemaps dirty on exit so they are updated correctly on the next frame */
-	tilemap_mark_all_tiles_dirty(NULL);
+	state->bitmap_dirty = TRUE;
+	return UI_HANDLER_CANCEL;
 }
-
-
-void showgfx_render(mame_bitmap *bitmap)
-{
-	static const rectangle fullrect = { 0, 10000, 0, 10000 };
-	int num_tilemap = tilemap_count();
-	int num_gfx;
-
-	/* determine the number of gfx sets we have */
-
-
-	/* mark the whole thing dirty */
-	artwork_mark_ui_dirty(fullrect.min_x, fullrect.min_y, fullrect.max_x, fullrect.max_y);
-	ui_dirty = 5;
-
-	if (input_ui_pressed_repeat(IPT_UI_RIGHT,6))
-	{
-		go_to_next_mode;
-		showgfx_xscroll = 0;
-		showgfx_yscroll = 0;
-	}
-
-	if (input_ui_pressed_repeat(IPT_UI_LEFT,6))
-
-	if (input_ui_pressed(
-}
-
-
-static void show_colors(int submode)
-{
-	int boxheight = ui_get_line_height();
-	int boxwidth = ui_get_char_width('0');
-
-	int i;
-	char buf[80];
-	int mode,bank,color,firstdrawn;
-	int palpage;
-	int changed;
-	int total_colors = 0;
-	pen_t *colortable = NULL;
-	int cpx=0,cpy,skip_chars=0,skip_tmap=0;
-	int sx,sy,colors;
-	int column_heading_max;
-	struct bounds;
-
-
-	/* make the boxes square */
-	if (boxwidth < boxheight)
-		boxwidth = boxheight;
-	else
-		boxheight = boxwidth;
-
-	/* submode 0 is the palette */
-	if (submode == 0)
-	{
-		total_colors = Machine->drv->total_colors;
-		colortable = Machine->pens;
-		ui_draw_text(0, 0, "PALETTE");
-	}
-
-	/* submode 1 is the CLUT */
-	else if (submode == 1)
-	{
-		total_colors = Machine->drv->color_table_len;
-		colortable = Machine->remapped_colortable;
-		ui_draw_text(0, 0, "CLUT");
-	}
-
-	/* anything else is invalid */
-	else
-		return;
-
-	/* start with a blank slate */
-	fillbitmap(bitmap, get_black_pen(), NULL);
-
-	/* determine how many colors on this page */
-	colors = total_colors - showgfx_yscroll;
-	if (colors > 256)
-		colors = 256;
-
-	/* and the maximum number of colums we need to display */
-	if (colors < 16)
-		column_heading_max = (color < 16) ? colors : 16;
-
-	/* determine the grid top/left */
-	grid_top = 3 * ui_get_line_height();
-	grid_left = ui_get_string_width("0000");
-
-	/* display the column headings */
-	for (colnum = 0; colnum < column_heading_max; colnum++)
-	{
-		char tempstr[10];
-
-		/* draw a single hex digit over the center of each column */
-		sprintf(tempstr, "%X", colnum);
-		ui_draw_text(tempstr,  grid_left + colnum * boxwidth + (boxwidth - ui_get_string_width(tempstr)) / 2,
-					 grid_top - ui_get_line_height());
-	}
-
-	/* display the row headings */
-	for (rownum = 0; rownum < (colors + 15) / 16; rownum++)
-	{
-		char tempstr[10];
-
-		/* draw the palette index to the left of each row */
-		sprintf(tempstr, "%X", showgfx_yscroll + rownum * 16);
-		ui_draw_text(tempstr, grid_left - ui_get_string_width(tempstr),
-					 grid_top + rownum * boxheight + (boxheight - ui_get_line_height()) / 2);
-	}
-
-	/* now draw the pretty boxes */
-	for (colornum = 0; colornum < colors; colornum++)
-	{
-		rectangle bounds;
-
-		/* compute the bounds of the box */
-		bounds.min_x = grid_left + (colornum % 16) * boxwidth;
-		bounds.max_x = bounds.min_x + boxwidth - 1;
-		bounds.min_y = grid_top + (colornum / 16) * boxheight;
-		bounds.max_y = bounds.min_y + boxheight - 1;
-
-		bounds.min_x = uirotbounds.min_x + 3*uirotcharwidth + (uirotcharwidth*4/3)*(i % 16);
-		bounds.min_y = uirotbounds.min_y + 2*uirotcharheight + (uirotcharheight)*(i / 16) + uirotcharheight;
-		bounds.max_x = bounds.min_x + uirotcharwidth*4/3 - 1;
-		bounds.max_y = bounds.min_y + uirotcharheight - 1;
-		ui_rot2raw_rect(&bounds);
-		fillbitmap(bitmap, colortable[i + 256*palpage], &bounds);
-	}
-	}
-	else
-		ui_draw_text("N/A",3*uirotcharwidth,2*uirotcharheight);
-
-	ui_draw_text(buf,0,0);
-
-	render_ui(bitmap);
-	update_video_and_audio();
-
-	if (code_pressed_memory_repeat(KEYCODE_PGDN,4))
-	{
-		if (256 * (palpage + 1) < total_colors)
-		{
-			palpage++;
-			changed = 1;
-		}
-	}
-
-	if (code_pressed_memory_repeat(KEYCODE_PGUP,4))
-	{
-		if (palpage > 0)
-		{
-			palpage--;
-			changed = 1;
-		}
-	}
-}
-
 #endif
 
 
+
+
+#ifndef NEW_RENDER
 static void showcharset(mame_bitmap *bitmap)
 {
 	int i;
@@ -3120,66 +4271,50 @@ static void showcharset(mame_bitmap *bitmap)
 	/* mark all the tilemaps dirty on exit so they are updated correctly on the next frame */
 	tilemap_mark_all_tiles_dirty(NULL);
 }
+#endif
 
 
-int ui_display_decoding(mame_bitmap *bitmap, int percent)
+static UINT32 ui_handler_disclaimer(UINT32 state)
 {
-	char buf[1000];
-	char *bufptr = buf;
+	int ui_width, ui_height;
 
-	bufptr += sprintf(bufptr, "%s: %d%%", ui_getstring(UI_decoding_gfx), percent);
-
-	erase_screen(bitmap);
-
-	ui_draw_message_window(buf);
-	render_ui(bitmap);
-
-	update_video_and_audio();
-
-	return input_ui_pressed(IPT_UI_CANCEL);
-}
-
-
-int ui_display_copyright(mame_bitmap *bitmap)
-{
-	char buf[1000];
-	char *bufptr = buf;
-	int done;
-
-	bufptr += sprintf(bufptr, "%s\n\n", ui_getstring(UI_copyright1));
-	bufptr += sprintf(bufptr, ui_getstring(UI_copyright2), Machine->gamedrv->description);
-	bufptr += sprintf(bufptr, "\n\n%s", ui_getstring(UI_copyright3));
-
-	menu_state = -1;
-	done = 0;
-
-	do
+	if (giant_string_buffer[0] == 0)
 	{
-		erase_screen(bitmap);
+		char *bufptr = giant_string_buffer;
 
-		ui_draw_message_window(buf);
-		render_ui(bitmap);
+		bufptr += sprintf(bufptr, "%s\n\n", ui_getstring(UI_copyright1));
+		bufptr += sprintf(bufptr, ui_getstring(UI_copyright2), Machine->gamedrv->description);
+		bufptr += sprintf(bufptr, "\n\n%s", ui_getstring(UI_copyright3));
+	}
 
-		update_video_and_audio();
-		if (input_ui_pressed(IPT_UI_CANCEL))
-		{
-			menu_state = 0;
-			return 1;
-		}
-		if (code_pressed_memory(KEYCODE_O) || input_ui_pressed(IPT_UI_LEFT))
-			done = 1;
-		if (done == 1 && (code_pressed_memory(KEYCODE_K) || input_ui_pressed(IPT_UI_RIGHT)))
-			done = 2;
-	} while (done < 2 && !mame_is_scheduled_event_pending());
+	/* first draw a box around the whole screen */
+	ui_get_bounds(&ui_width, &ui_height);
+#ifndef NEW_RENDER
+	add_black_box(0, 0, ui_width - 1, ui_height - 1);
+#endif
 
-	menu_state = 0;
-	erase_screen(bitmap);
-	update_video_and_audio();
+	ui_draw_message_window(giant_string_buffer);
 
-	return 0;
+	/* an 'O' or left joystick kicks us to the next state */
+	if (code_pressed_memory(KEYCODE_O) || input_ui_pressed(IPT_UI_LEFT))
+		return 1;
+
+	/* a 'K' or right joystick exits the state */
+	if (state == 1 && (code_pressed_memory(KEYCODE_K) || input_ui_pressed(IPT_UI_RIGHT)))
+		return 1000;
+
+	/* if the user cancels, exit out completely */
+	if (input_ui_pressed(IPT_UI_CANCEL))
+	{
+		mame_schedule_exit();
+		return UI_HANDLER_CANCEL;
+	}
+
+	return state;
 }
 
-int ui_display_game_warnings(mame_bitmap *bitmap)
+
+static UINT32 ui_handler_warnings(UINT32 state)
 {
 #define WARNING_FLAGS (	GAME_NOT_WORKING | \
 						GAME_UNEMULATED_PROTECTION | \
@@ -3190,12 +4325,14 @@ int ui_display_game_warnings(mame_bitmap *bitmap)
 						GAME_IMPERFECT_GRAPHICS | \
 						GAME_NO_COCKTAIL)
 	int i;
-	char buf[2048];
-	char *bufptr = buf;
+	int ui_width, ui_height;
 
-	if (rom_load_warnings() > 0 || (Machine->gamedrv->flags & WARNING_FLAGS))
+	if (rom_load_warnings() == 0 && !(Machine->gamedrv->flags & WARNING_FLAGS))
+		return 1000;
+
+	if (giant_string_buffer[0] == 0)
 	{
-		int done;
+		char *bufptr = giant_string_buffer;
 
 		if (rom_load_warnings() > 0)
 		{
@@ -3263,110 +4400,93 @@ int ui_display_game_warnings(mame_bitmap *bitmap)
 		}
 
 		bufptr += sprintf(bufptr, "\n\n%s", ui_getstring(UI_typeok));
-
-		done = 0;
-		do
-		{
-			int ui_width, ui_height;
-
-			erase_screen(bitmap);
-
-			ui_get_bounds(&ui_width, &ui_height);
-			add_filled_box(0, 0, ui_width - 1, ui_height - 1);
-			ui_draw_message_window(buf);
-			render_ui(bitmap);
-
-			update_video_and_audio();
-			if (input_ui_pressed(IPT_UI_CANCEL))
-				return 1;
-			if (code_pressed_memory(KEYCODE_O) || input_ui_pressed(IPT_UI_LEFT))
-				done = 1;
-			if (done == 1 && (code_pressed_memory(KEYCODE_K) || input_ui_pressed(IPT_UI_RIGHT)))
-				done = 2;
-		} while (done < 2 && !mame_is_scheduled_event_pending());
 	}
 
-	erase_screen(bitmap);
-	update_video_and_audio();
+	/* first draw a box around the whole screen */
+	ui_get_bounds(&ui_width, &ui_height);
+#ifndef NEW_RENDER
+	add_black_box(0, 0, ui_width - 1, ui_height - 1);
+#endif
 
-	return 0;
+	ui_draw_message_window(giant_string_buffer);
+
+	/* an 'O' or left joystick kicks us to the next state */
+	if (code_pressed_memory(KEYCODE_O) || input_ui_pressed(IPT_UI_LEFT))
+		return 1;
+
+	/* a 'K' or right joystick exits the state */
+	if (state == 1 && (code_pressed_memory(KEYCODE_K) || input_ui_pressed(IPT_UI_RIGHT)))
+		return 1000;
+
+	/* if the user cancels, exit out completely */
+	if (input_ui_pressed(IPT_UI_CANCEL))
+	{
+		mame_schedule_exit();
+		return UI_HANDLER_CANCEL;
+	}
+
+	return state;
 }
 
 
-int ui_display_game_info(mame_bitmap *bitmap)
+static UINT32 ui_handler_gameinfo(UINT32 state)
 {
 	int ui_width, ui_height;
-	char buf[2048];
 
-	/* clear the input memory */
-	while (code_read_async() != CODE_NONE) ;
-
-	while (code_read_async() == CODE_NONE && !mame_is_scheduled_event_pending())
+	if (giant_string_buffer[0] == 0)
 	{
-		char *bufptr = buf;
+		char *bufptr = giant_string_buffer;
 
-		/* first draw a box around the whole screen */
-		ui_get_bounds(&ui_width, &ui_height);
-		add_filled_box(0, 0, ui_width - 1, ui_height - 1);
+		/* state 0 is the standard game info */
+		if (state == 0)
+		{
+			/* add the game info */
+			bufptr += sprintf_game_info(bufptr);
 
-		/* add the game info */
-		bufptr += sprintf_game_info(bufptr);
+			/* append MAME version and ask for any key */
+			bufptr += sprintf(bufptr, "\n\t%s %s\n\t%s", ui_getstring(UI_mame), build_version, ui_getstring(UI_anykey));
+		}
 
-		/* append MAME version and ask for any key */
-		bufptr += sprintf(bufptr, "\n\t%s %s\n\t%s", ui_getstring(UI_mame), build_version, ui_getstring(UI_anykey));
-
-		/* draw the window */
-		ui_draw_message_window(buf);
-
-		/* render and update */
-		render_ui(bitmap);
-		update_video_and_audio();
-
-		/* allow cancelling */
-		if (input_ui_pressed(IPT_UI_CANCEL))
-			return 1;
-	}
-
+		/* state 1 is the image info for MESS */
+		else
+		{
 #ifdef MESS
-	erase_screen(bitmap);
-	/* make sure that the screen is really cleared, in case autoframeskip kicked in */
-	update_video_and_audio();
-	update_video_and_audio();
-	update_video_and_audio();
-	update_video_and_audio();
-
-	while (code_read_async() == CODE_NONE && !mame_is_scheduled_event_pending())
-	{
-		char *bufptr = buf;
-
-		/* first draw a box around the whole screen */
-		ui_get_bounds(&ui_width, &ui_height);
-		add_filled_box(0, 0, ui_width - 1, ui_height - 1);
-
-		/* add the game info */
-		bufptr += ui_sprintf_image_info(bufptr);
-
-		/* draw the window */
-		ui_draw_message_window(buf);
-
-		/* render and update */
-		render_ui(bitmap);
-		update_video_and_audio();
-
-		/* allow cancelling */
-		if (input_ui_pressed(IPT_UI_CANCEL))
-			return 1;
+			/* add the game info */
+			bufptr += ui_sprintf_image_info(bufptr);
+#endif
+		}
 	}
+
+	/* first draw a box around the whole screen */
+	ui_get_bounds(&ui_width, &ui_height);
+#ifndef NEW_RENDER
+	add_black_box(0, 0, ui_width - 1, ui_height - 1);
 #endif
 
-	erase_screen(bitmap);
-	/* make sure that the screen is really cleared, in case autoframeskip kicked in */
-	update_video_and_audio();
-	update_video_and_audio();
-	update_video_and_audio();
-	update_video_and_audio();
+	/* draw the window */
+	ui_draw_message_window(giant_string_buffer);
 
-	return 0;
+	/* allow cancelling */
+	if (input_ui_pressed(IPT_UI_CANCEL))
+	{
+		mame_schedule_exit();
+		return UI_HANDLER_CANCEL;
+	}
+
+	/* advance to the next state */
+	if (code_read_async() != CODE_NONE)
+	{
+		state++;
+		giant_string_buffer[0] = 0;
+#ifdef MESS
+		if (state >= 2)
+#else
+		if (state >= 1)
+#endif
+			return 1000;
+	}
+
+	return state;
 }
 
 
@@ -3378,11 +4498,46 @@ int ui_display_game_info(mame_bitmap *bitmap)
 
 *********************************************************************/
 
+#define OSD_RESET_TO_DEFAULT	1000
+
+/*************************************
+ *
+ *  OSD handler
+ *
+ *************************************/
+
+static UINT32 ui_handler_osd(UINT32 state)
+{
+	int increment = 0;
+
+	if (input_ui_pressed_repeat(IPT_UI_LEFT,6))
+		increment = -1;
+	if (input_ui_pressed_repeat(IPT_UI_RIGHT,6))
+		increment = 1;
+	if (input_ui_pressed(IPT_UI_SELECT))
+		increment = OSD_RESET_TO_DEFAULT;
+
+	if (input_ui_pressed_repeat(IPT_UI_DOWN,6))
+		onscrd_state = (onscrd_state + 1) % onscrd_total_items;
+	if (input_ui_pressed_repeat(IPT_UI_UP,6))
+		onscrd_state = (onscrd_state + onscrd_total_items - 1) % onscrd_total_items;
+
+	(*onscrd_fnc[onscrd_state])(increment, onscrd_arg[onscrd_state]);
+
+	if (input_ui_pressed(IPT_UI_ON_SCREEN_DISPLAY) || input_ui_pressed(IPT_UI_CANCEL))
+		return UI_HANDLER_CANCEL;
+	if (input_ui_pressed(IPT_UI_CONFIGURE))
+		ui_set_handler(ui_handler_menu, 0);
+
+	return 0;
+}
+
+
 /*-------------------------------------------------
     drawbar - draw a thermometer bar
 -------------------------------------------------*/
 
-static void drawbar(int leftx, int topy, int width, int height, int percentage, int default_percentage)
+static void drawbar(int leftx, int topy, int width, int height, float percentage, float default_percentage)
 {
 	int current_x, default_x;
 	int bar_top, bar_bottom;
@@ -3390,25 +4545,27 @@ static void drawbar(int leftx, int topy, int width, int height, int percentage, 
 	/* compute positions */
 	bar_top = topy + (height + 7)/8;
 	bar_bottom = topy + (height - 1) - (height + 7)/8;
-	default_x = leftx + (width - 1) * default_percentage / 100;
-	current_x = leftx + (width - 1) * percentage / 100;
+	default_x = leftx + (width - 1) * default_percentage;
+	current_x = leftx + (width - 1) * percentage;
 
 	/* draw the top and bottom lines */
-	add_line(leftx, bar_top, leftx + width - 1, bar_top, RGB_WHITE);
-	add_line(leftx, bar_bottom, leftx + width - 1, bar_bottom, RGB_WHITE);
+	add_line(leftx, bar_top, leftx + width - 1, bar_top, ARGB_WHITE);
+	add_line(leftx, bar_bottom, leftx + width - 1, bar_bottom, ARGB_WHITE);
 
 	/* draw default marker */
-	add_line(default_x, topy, default_x, bar_top, RGB_WHITE);
-	add_line(default_x, bar_bottom, default_x, topy + height - 1, RGB_WHITE);
+	add_line(default_x, topy, default_x, bar_top, ARGB_WHITE);
+	add_line(default_x, bar_bottom, default_x, topy + height - 1, ARGB_WHITE);
 
 	/* fill in the percentage */
-	add_fill(leftx, bar_top + 1, current_x, bar_bottom - 1, RGB_WHITE);
+	add_fill(leftx, bar_top + 1, current_x, bar_bottom - 1, ARGB_WHITE);
 }
 
 
 
-static void displayosd(const char *text,int percentage,int default_percentage)
+static void displayosd(const char *text, int minval, int maxval, int defval, int curval)
 {
+	float percentage = (float)(curval - minval) / (float)(maxval - minval);
+	float default_percentage = (float)(defval - minval) / (float)(maxval - minval);
 	int space_width = ui_get_char_width(' ');
 	int line_height = ui_get_line_height();
 	int ui_width, ui_height;
@@ -3423,7 +4580,7 @@ static void displayosd(const char *text,int percentage,int default_percentage)
 
 	/* determine the text height */
 	ui_draw_text_full(text, 0, 0, ui_width - 2 * UI_BOX_LR_BORDER,
-				JUSTIFY_CENTER, WRAP_WORD, DRAW_NONE, RGB_WHITE, RGB_BLACK, NULL, &text_height);
+				JUSTIFY_CENTER, WRAP_WORD, DRAW_NONE, ARGB_WHITE, ARGB_BLACK, NULL, &text_height);
 
 	/* add a box around the whole area */
 	add_filled_box(	space_width,
@@ -3437,7 +4594,7 @@ static void displayosd(const char *text,int percentage,int default_percentage)
 
 	/* draw the actual text */
 	ui_draw_text_full(text, space_width + UI_BOX_LR_BORDER, line_height + ui_height - UI_BOX_TB_BORDER - text_height, ui_width - 2 * UI_BOX_LR_BORDER,
-				JUSTIFY_CENTER, WRAP_WORD, DRAW_NORMAL, RGB_WHITE, RGB_BLACK, NULL, &text_height);
+				JUSTIFY_CENTER, WRAP_WORD, DRAW_NORMAL, ARGB_WHITE, ARGB_BLACK, NULL, &text_height);
 }
 
 static void onscrd_adjuster(int increment,int arg)
@@ -3446,7 +4603,9 @@ static void onscrd_adjuster(int increment,int arg)
 	char buf[80];
 	int value;
 
-	if (increment)
+	if (increment == OSD_RESET_TO_DEFAULT)
+		in->default_value = (in->default_value & ~0xff) | (in->default_value >> 8);
+	else if (increment)
 	{
 		value = in->default_value & 0xff;
 		value += increment;
@@ -3458,7 +4617,7 @@ static void onscrd_adjuster(int increment,int arg)
 
 	sprintf(buf,"%s %d%%",in->name,value);
 
-	displayosd(buf,value,in->default_value >> 8);
+	displayosd(buf, 0, 100, in->default_value >> 8, value);
 }
 
 static void onscrd_volume(int increment,int arg)
@@ -3466,7 +4625,9 @@ static void onscrd_volume(int increment,int arg)
 	char buf[20];
 	int attenuation;
 
-	if (increment)
+	if (increment == OSD_RESET_TO_DEFAULT)
+		osd_set_mastervolume(0);
+	else if (increment)
 	{
 		attenuation = osd_get_mastervolume();
 		attenuation += increment;
@@ -3477,7 +4638,7 @@ static void onscrd_volume(int increment,int arg)
 	attenuation = osd_get_mastervolume();
 
 	sprintf(buf,"%s %3ddB", ui_getstring (UI_volume), attenuation);
-	displayosd(buf,100 * (attenuation + 32) / 32,100);
+	displayosd(buf, -32, 0, 0, attenuation);
 }
 
 static void onscrd_mixervol(int increment,int arg)
@@ -3492,13 +4653,25 @@ static void onscrd_mixervol(int increment,int arg)
 
 	if (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT))
 		doallchannels = 1;
-	if (!code_pressed(KEYCODE_LCONTROL) && !code_pressed(KEYCODE_RCONTROL))
-		increment *= 5;
 	if (code_pressed(KEYCODE_LALT) || code_pressed(KEYCODE_RALT))
 		proportional = 1;
 
-	if (increment)
+	if (increment == OSD_RESET_TO_DEFAULT)
 	{
+		if (doallchannels)
+		{
+			int num_vals = sound_get_user_gain_count();
+			for (ch = 0;ch < num_vals;ch++)
+				sound_set_user_gain(ch,sound_get_default_gain(ch));
+		}
+		else
+			sound_set_user_gain(arg,sound_get_default_gain(arg));
+	}
+	else if (increment)
+	{
+		if (!code_pressed(KEYCODE_LCONTROL) && !code_pressed(KEYCODE_RCONTROL))
+			increment *= 5;
+
 		if (proportional)
 		{
 			static float old_vol[100];
@@ -3560,48 +4733,182 @@ static void onscrd_mixervol(int increment,int arg)
 		sprintf(buf,"%s %s %4.2f", ui_getstring (UI_allchannels), ui_getstring (UI_volume), volume);
 	else
 		sprintf(buf,"%s %s %4.2f",sound_get_user_gain_name(arg), ui_getstring (UI_volume), volume);
-	displayosd(buf,volume*50,sound_get_default_gain(arg)*50);
+	displayosd(buf, 0, 200, sound_get_default_gain(arg) * 100, volume * 100);
 }
 
 static void onscrd_brightness(int increment,int arg)
 {
-	char buf[20];
-	double brightness;
+	render_container *container = render_container_get_screen(arg);
+	char buf[40];
+	int brightness;
 
-
-	if (increment)
+	if (increment == OSD_RESET_TO_DEFAULT)
+		render_container_set_brightness(container, 1.0f);
+	else if (increment)
 	{
-		brightness = palette_get_global_brightness();
-		brightness += 0.05 * increment;
-		if (brightness < 0.1) brightness = 0.1;
-		if (brightness > 1.0) brightness = 1.0;
-		palette_set_global_brightness(brightness);
+		brightness = floor(render_container_get_brightness(container) * 1000.0f + 0.5f);
+		brightness += 10 * increment;
+		if (brightness < 100) brightness = 100;
+		if (brightness > 2000) brightness = 2000;
+		render_container_set_brightness(container, (float)brightness / 1000.0f);
 	}
-	brightness = palette_get_global_brightness();
+	brightness = floor(render_container_get_brightness(container) * 1000.0f + 0.5f);
 
-	sprintf(buf,"%s %3d%%", ui_getstring (UI_brightness), (int)(brightness * 100));
-	displayosd(buf,brightness*100,100);
+	if (Machine->drv->screen[1].tag != NULL)
+		sprintf(buf,"Screen %d %s %3d%%", arg, ui_getstring (UI_brightness), brightness / 10);
+	else
+		sprintf(buf,"%s %3d%%", ui_getstring (UI_brightness), brightness / 10);
+	displayosd(buf, 100, 2000, 1000, brightness);
+}
+
+static void onscrd_contrast(int increment,int arg)
+{
+	render_container *container = render_container_get_screen(arg);
+	char buf[40];
+	int contrast;
+
+	if (increment == OSD_RESET_TO_DEFAULT)
+		render_container_set_contrast(container, 1.0f);
+	else if (increment)
+	{
+		contrast = floor(render_container_get_contrast(container) * 1000.0f + 0.5f);
+		contrast += 50 * increment;
+		if (contrast < 100) contrast = 100;
+		if (contrast > 2000) contrast = 2000;
+		render_container_set_contrast(container, (float)contrast / 1000.0f);
+	}
+	contrast = floor(render_container_get_contrast(container) * 1000.0f + 0.5f);
+
+	if (Machine->drv->screen[1].tag != NULL)
+		sprintf(buf,"Screen %d %s %3d%%", arg, ui_getstring (UI_contrast), contrast / 10);
+	else
+		sprintf(buf,"%s %3d%%", ui_getstring (UI_contrast), contrast / 10);
+	displayosd(buf, 100, 2000, 1000, contrast);
 }
 
 static void onscrd_gamma(int increment,int arg)
 {
-	char buf[20];
-	double gamma_correction;
+	render_container *container = render_container_get_screen(arg);
+	char buf[40];
+	int gamma;
 
-	if (increment)
+	if (increment == OSD_RESET_TO_DEFAULT)
+		render_container_set_gamma(container, 1.0f);
+	else if (increment)
 	{
-		gamma_correction = palette_get_global_gamma();
-
-		gamma_correction += 0.05 * increment;
-		if (gamma_correction < 0.5) gamma_correction = 0.5;
-		if (gamma_correction > 2.0) gamma_correction = 2.0;
-
-		palette_set_global_gamma(gamma_correction);
+		gamma = floor(render_container_get_gamma(container) * 1000.0f + 0.5f);
+		gamma += 50 * increment;
+		if (gamma < 100) gamma = 100;
+		if (gamma > 3000) gamma = 3000;
+		render_container_set_gamma(container, (float)gamma / 1000.0f);
 	}
-	gamma_correction = palette_get_global_gamma();
+	gamma = floor(render_container_get_gamma(container) * 1000.0f + 0.5f);
 
-	sprintf(buf,"%s %1.2f", ui_getstring (UI_gamma), gamma_correction);
-	displayosd(buf,100*(gamma_correction-0.5)/(2.0-0.5),100*(1.0-0.5)/(2.0-0.5));
+	if (Machine->drv->screen[1].tag != NULL)
+		sprintf(buf,"Screen %d %s %4.2f", arg, ui_getstring (UI_gamma), (double)gamma / 1000.0f);
+	else
+		sprintf(buf,"%s %4.2f", ui_getstring (UI_gamma), (double)gamma / 1000.0f);
+	displayosd(buf, 100, 3000, 1000, gamma);
+}
+
+static void onscrd_xscale(int increment,int arg)
+{
+	render_container *container = render_container_get_screen(arg);
+	char buf[40];
+	int xscale;
+
+	if (increment == OSD_RESET_TO_DEFAULT)
+		render_container_set_xscale(container, 1.0f);
+	else if (increment)
+	{
+		xscale = floor(render_container_get_xscale(container) * 1000.0f + 0.5f);
+		xscale += 2 * increment;
+		if (xscale < 800) xscale = 800;
+		if (xscale > 1200) xscale = 1200;
+		render_container_set_xscale(container, (float)xscale / 1000.0f);
+	}
+	xscale = floor(render_container_get_xscale(container) * 1000.0f + 0.5f);
+
+	if (Machine->drv->screen[1].tag != NULL)
+		sprintf(buf,"Screen %d %s %5.3f", arg, "Horiz stretch", (double)xscale / 1000.0f);
+	else
+		sprintf(buf,"%s %5.3f", "Horiz stretch", (double)xscale / 1000.0f);
+	displayosd(buf, 800, 1200, 1000, xscale);
+}
+
+static void onscrd_yscale(int increment,int arg)
+{
+	render_container *container = render_container_get_screen(arg);
+	char buf[40];
+	int yscale;
+
+	if (increment == OSD_RESET_TO_DEFAULT)
+		render_container_set_yscale(container, 1.0f);
+	else if (increment)
+	{
+		yscale = floor(render_container_get_yscale(container) * 1000.0f + 0.5f);
+		yscale += 2 * increment;
+		if (yscale < 800) yscale = 800;
+		if (yscale > 1200) yscale = 1200;
+		render_container_set_yscale(container, (float)yscale / 1000.0f);
+	}
+	yscale = floor(render_container_get_yscale(container) * 1000.0f + 0.5f);
+
+	if (Machine->drv->screen[1].tag != NULL)
+		sprintf(buf,"Screen %d %s %5.3f", arg, "Vert stretch", (double)yscale / 1000.0f);
+	else
+		sprintf(buf,"%s %5.3f", "Vert stretch", (double)yscale / 1000.0f);
+	displayosd(buf, 800, 1200, 1000, yscale);
+}
+
+static void onscrd_xoffset(int increment,int arg)
+{
+	render_container *container = render_container_get_screen(arg);
+	char buf[40];
+	int xoffset;
+
+	if (increment == OSD_RESET_TO_DEFAULT)
+		render_container_set_xoffset(container, 0.0f);
+	else if (increment)
+	{
+		xoffset = floor(render_container_get_xoffset(container) * 1000.0f + 0.5f);
+		xoffset += 2 * increment;
+		if (xoffset < -200) xoffset = -200;
+		if (xoffset > 200) xoffset = 200;
+		render_container_set_xoffset(container, (float)xoffset / 1000.0f);
+	}
+	xoffset = floor(render_container_get_xoffset(container) * 1000.0f + 0.5f);
+
+	if (Machine->drv->screen[1].tag != NULL)
+		sprintf(buf,"Screen %d %s %5.3f", arg, "Horiz position", (double)xoffset / 1000.0f);
+	else
+		sprintf(buf,"%s %5.3f", "Horiz position", (double)xoffset / 1000.0f);
+	displayosd(buf, -200, 200, 0, xoffset);
+}
+
+static void onscrd_yoffset(int increment,int arg)
+{
+	render_container *container = render_container_get_screen(arg);
+	char buf[40];
+	int yoffset;
+
+	if (increment == OSD_RESET_TO_DEFAULT)
+		render_container_set_yoffset(container, 0.0f);
+	else if (increment)
+	{
+		yoffset = floor(render_container_get_yoffset(container) * 1000.0f + 0.5f);
+		yoffset += 2 * increment;
+		if (yoffset < -200) yoffset = -200;
+		if (yoffset > 200) yoffset = 200;
+		render_container_set_yoffset(container, (float)yoffset / 1000.0f);
+	}
+	yoffset = floor(render_container_get_yoffset(container) * 1000.0f + 0.5f);
+
+	if (Machine->drv->screen[1].tag != NULL)
+		sprintf(buf,"Screen %d %s %5.3f", arg, "Vert position", (double)yoffset / 1000.0f);
+	else
+		sprintf(buf,"%s %5.3f", "Vert position", (double)yoffset / 1000.0f);
+	displayosd(buf, -200, 200, 0, yoffset);
 }
 
 static void onscrd_vector_flicker(int increment,int arg)
@@ -3609,11 +4916,13 @@ static void onscrd_vector_flicker(int increment,int arg)
 	char buf[1000];
 	float flicker_correction;
 
-	if (!code_pressed(KEYCODE_LCONTROL) && !code_pressed(KEYCODE_RCONTROL))
-		increment *= 5;
-
-	if (increment)
+	if (increment == OSD_RESET_TO_DEFAULT)
+		vector_set_flicker(0);
+	else if (increment)
 	{
+		if (!code_pressed(KEYCODE_LCONTROL) && !code_pressed(KEYCODE_RCONTROL))
+			increment *= 5;
+
 		flicker_correction = vector_get_flicker();
 
 		flicker_correction += increment;
@@ -3625,30 +4934,8 @@ static void onscrd_vector_flicker(int increment,int arg)
 	flicker_correction = vector_get_flicker();
 
 	sprintf(buf,"%s %1.2f", ui_getstring (UI_vectorflicker), flicker_correction);
-	displayosd(buf,flicker_correction,0);
+	displayosd(buf, 0, 100, 0, flicker_correction);
 }
-
-static void onscrd_vector_intensity(int increment,int arg)
-{
-	char buf[30];
-	float intensity_correction;
-
-	if (increment)
-	{
-		intensity_correction = vector_get_intensity();
-
-		intensity_correction += 0.05 * increment;
-		if (intensity_correction < 0.5) intensity_correction = 0.5;
-		if (intensity_correction > 3.0) intensity_correction = 3.0;
-
-		vector_set_intensity(intensity_correction);
-	}
-	intensity_correction = vector_get_intensity();
-
-	sprintf(buf,"%s %1.2f", ui_getstring (UI_vectorintensity), intensity_correction);
-	displayosd(buf,100*(intensity_correction-0.5)/(3.0-0.5),100*(1.5-0.5)/(3.0-0.5));
-}
-
 
 static void onscrd_overclock(int increment,int arg)
 {
@@ -3658,10 +4945,18 @@ static void onscrd_overclock(int increment,int arg)
 
 	if (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT))
 		doallcpus = 1;
-	if (!code_pressed(KEYCODE_LCONTROL) && !code_pressed(KEYCODE_RCONTROL))
-		increment *= 5;
-	if( increment )
+	if (increment == OSD_RESET_TO_DEFAULT)
 	{
+		if( doallcpus )
+			for( cpu = 0; cpu < cpu_gettotalcpu(); cpu++ )
+				cpunum_set_clockscale(cpu, 1.0);
+		else
+			cpunum_set_clockscale(arg, 1.0);
+	}
+	else if( increment )
+	{
+		if (!code_pressed(KEYCODE_LCONTROL) && !code_pressed(KEYCODE_RCONTROL))
+			increment *= 5;
 		overclock = cpunum_get_clockscale(arg);
 		overclock += 0.01 * increment;
 		if (overclock < 0.01) overclock = 0.01;
@@ -3679,44 +4974,50 @@ static void onscrd_overclock(int increment,int arg)
 		sprintf(buf,"%s %s %3d%%", ui_getstring (UI_allcpus), ui_getstring (UI_overclock), oc);
 	else
 		sprintf(buf,"%s %s%d %3d%%", ui_getstring (UI_overclock), ui_getstring (UI_cpu), arg, oc);
-	displayosd(buf,oc/2,100/2);
+	displayosd(buf, 1, 200, 100, oc);
 }
 
 static void onscrd_refresh(int increment,int arg)
 {
-	float delta = Machine->refresh_rate - Machine->drv->frames_per_second;
+	float delta = Machine->refresh_rate[0] - Machine->drv->screen[0].refresh_rate;
 	char buf[30];
 
-	increment *= 1000;
-	if (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT))
-		increment /= 10;
-	if (code_pressed(KEYCODE_LCONTROL) || code_pressed(KEYCODE_RCONTROL))
-		increment /= 100;
-	if (code_pressed(KEYCODE_LALT) || code_pressed(KEYCODE_LALT))
-		increment /= 1000;
-	if (increment)
+	if (increment == OSD_RESET_TO_DEFAULT)
+		set_refresh_rate(0, Machine->drv->screen[0].refresh_rate);
+	else
 	{
-		float newrate;
-		delta += 0.001 * increment;
-		if (delta > 10)
-			delta = 10;
-		if (delta < -10)
-			delta = -10;
+		increment *= 1000;
+		if (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT))
+			increment /= 10;
+		if (code_pressed(KEYCODE_LCONTROL) || code_pressed(KEYCODE_RCONTROL))
+			increment /= 100;
+		if (code_pressed(KEYCODE_LALT) || code_pressed(KEYCODE_LALT))
+			increment /= 1000;
+		if (increment)
+		{
+			float newrate;
+			delta += 0.001 * increment;
+			if (delta > 10)
+				delta = 10;
+			if (delta < -10)
+				delta = -10;
 
-		newrate = Machine->drv->frames_per_second;
-		if (delta != 0)
-			newrate = (floor(newrate * 1000) / 1000) + delta;
-		set_refresh_rate(newrate);
+			newrate = Machine->drv->screen[0].refresh_rate;
+			if (delta != 0)
+				newrate = (floor(newrate * 1000) / 1000) + delta;
+			set_refresh_rate(0, newrate);
+		}
 	}
 
-	sprintf(buf,"%s %.3f", ui_getstring (UI_refresh_rate), Machine->refresh_rate);
-	displayosd(buf,(10 + delta) * 5,100/2);
+	sprintf(buf,"%s %.3f", ui_getstring (UI_refresh_rate), Machine->refresh_rate[0]);
+	displayosd(buf, -10, 10, 0, delta);
 }
 
 static void onscrd_init(void)
 {
 	input_port_entry *in;
 	int item,ch;
+	int scrnum;
 
 	item = 0;
 
@@ -3755,21 +5056,41 @@ static void onscrd_init(void)
 		item++;
 	}
 
-	onscrd_fnc[item] = onscrd_brightness;
-	onscrd_arg[item] = 0;
-	item++;
+	for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
+		if (Machine->drv->screen[scrnum].tag != NULL)
+		{
+			onscrd_fnc[item] = onscrd_brightness;
+			onscrd_arg[item] = scrnum;
+			item++;
 
-	onscrd_fnc[item] = onscrd_gamma;
-	onscrd_arg[item] = 0;
-	item++;
+			onscrd_fnc[item] = onscrd_contrast;
+			onscrd_arg[item] = scrnum;
+			item++;
+
+			onscrd_fnc[item] = onscrd_gamma;
+			onscrd_arg[item] = scrnum;
+			item++;
+
+			onscrd_fnc[item] = onscrd_xscale;
+			onscrd_arg[item] = scrnum;
+			item++;
+
+			onscrd_fnc[item] = onscrd_yscale;
+			onscrd_arg[item] = scrnum;
+			item++;
+
+			onscrd_fnc[item] = onscrd_xoffset;
+			onscrd_arg[item] = scrnum;
+			item++;
+
+			onscrd_fnc[item] = onscrd_yoffset;
+			onscrd_arg[item] = scrnum;
+			item++;
+		}
 
 	if (Machine->drv->video_attributes & VIDEO_TYPE_VECTOR)
 	{
 		onscrd_fnc[item] = onscrd_vector_flicker;
-		onscrd_arg[item] = 0;
-		item++;
-
-		onscrd_fnc[item] = onscrd_vector_intensity;
 		onscrd_arg[item] = 0;
 		item++;
 	}
@@ -3777,39 +5098,6 @@ static void onscrd_init(void)
 	onscrd_total_items = item;
 }
 
-static int on_screen_display(int selected)
-{
-	int increment,sel;
-	static int lastselected = 0;
-
-
-	if (selected == -1)
-		sel = lastselected;
-	else sel = selected - 1;
-
-	increment = 0;
-	if (input_ui_pressed_repeat(IPT_UI_LEFT,6))
-		increment = -1;
-	if (input_ui_pressed_repeat(IPT_UI_RIGHT,6))
-		increment = 1;
-	if (input_ui_pressed_repeat(IPT_UI_DOWN,6))
-		sel = (sel + 1) % onscrd_total_items;
-	if (input_ui_pressed_repeat(IPT_UI_UP,6))
-		sel = (sel + onscrd_total_items - 1) % onscrd_total_items;
-
-	(*onscrd_fnc[sel])(increment,onscrd_arg[sel]);
-
-	lastselected = sel;
-
-	if (input_ui_pressed(IPT_UI_ON_SCREEN_DISPLAY))
-	{
-		sel = -1;
-
-		schedule_full_refresh();
-	}
-
-	return sel + 1;
-}
 
 /*********************************************************************
 
@@ -3819,23 +5107,23 @@ static int on_screen_display(int selected)
 
 static void initiate_load_save(int type)
 {
-	load_save_state = type;
+	ui_set_handler(update_load_save, type);
 	mame_pause(TRUE);
 }
 
 
-static int update_load_save(void)
+static UINT32 update_load_save(UINT32 state)
 {
 	char filename[20];
 	input_code code;
 	char file = 0;
 
 	/* if we're not in the middle of anything, skip */
-	if (load_save_state == LOADSAVE_NONE)
+	if (state == LOADSAVE_NONE)
 		return 0;
 
 	/* okay, we're waiting for a key to select a slot; display a message */
-	if (load_save_state == LOADSAVE_SAVE)
+	if (state == LOADSAVE_SAVE)
 		ui_draw_message_window("Select position to save to");
 	else
 		ui_draw_message_window("Select position to load from");
@@ -3844,21 +5132,20 @@ static int update_load_save(void)
 	if (input_ui_pressed(IPT_UI_CANCEL))
 	{
 		/* display a popup indicating things were cancelled */
-		if (load_save_state == LOADSAVE_SAVE)
+		if (state == LOADSAVE_SAVE)
 			ui_popup("Save cancelled");
 		else
 			ui_popup("Load cancelled");
 
 		/* reset the state */
-		load_save_state = 0;
 		mame_pause(FALSE);
-		return 0;
+		return UI_HANDLER_CANCEL;
 	}
 
 	/* fetch a code; if it's none, we're done */
 	code = code_read_async();
 	if (code == CODE_NONE)
-		return 1;
+		return state;
 
 	/* check for A-Z or 0-9 */
 	if (code >= KEYCODE_A && code <= KEYCODE_Z)
@@ -3868,11 +5155,11 @@ static int update_load_save(void)
 	if (code >= KEYCODE_0_PAD && code <= KEYCODE_9_PAD)
 		file = code - KEYCODE_0_PAD + '0';
 	if (!file)
-		return 1;
+		return state;
 
 	/* display a popup indicating that the save will proceed */
 	sprintf(filename, "%s-%c", Machine->gamedrv->name, file);
-	if (load_save_state == LOADSAVE_SAVE)
+	if (state == LOADSAVE_SAVE)
 	{
 		ui_popup("Save to position %c", file);
 		mame_schedule_save(filename);
@@ -3884,9 +5171,8 @@ static int update_load_save(void)
 	}
 
 	/* remove the pause and reset the state */
-	load_save_state = LOADSAVE_NONE;
 	mame_pause(FALSE);
-	return 0;
+	return UI_HANDLER_CANCEL;
 }
 
 
@@ -3902,7 +5188,7 @@ void ui_display_fps(void)
 
 	/* get the current FPS text */
 	ui_draw_text_full(osd_get_fps_text(mame_get_performance_info()), 0, 0, ui_width,
-				JUSTIFY_RIGHT, WRAP_WORD, DRAW_OPAQUE, RGB_WHITE, RGB_BLACK, NULL, NULL);
+				JUSTIFY_RIGHT, WRAP_WORD, DRAW_OPAQUE, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
 
 	/* update the temporary FPS display state */
 	if (showfpstemp)
@@ -3920,7 +5206,7 @@ static void ui_display_profiler(void)
 	if (show_profiler)
 	{
 		ui_get_bounds(&ui_width, &ui_height);
-		ui_draw_text_full(profiler_get_text(), 0, 0, ui_width, JUSTIFY_LEFT, WRAP_WORD, DRAW_OPAQUE, RGB_WHITE, RGB_BLACK, NULL, NULL);
+		ui_draw_text_full(profiler_get_text(), 0, 0, ui_width, JUSTIFY_LEFT, WRAP_WORD, DRAW_OPAQUE, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
 	}
 }
 
@@ -3946,6 +5232,33 @@ static void ui_display_popup(void)
  *  Temporary rendering system
  *
  *************************************/
+
+#ifndef NEW_RENDER
+
+void ui_get_bounds(int *width, int *height)
+{
+	*width = uirotwidth;
+	*height = uirotheight;
+}
+
+
+int ui_get_line_height(void)
+{
+	return uirotcharheight + 2;
+}
+
+
+int ui_get_char_width(UINT16 ch)
+{
+	return uirotcharwidth;
+}
+
+
+int ui_get_string_width(const char *s)
+{
+	return strlen(s) * uirotcharwidth;
+}
+
 
 static void ui_raw2rot_rect(rectangle *rect)
 {
@@ -4047,12 +5360,12 @@ static void add_char(int x, int y, UINT16 ch, int color)
 
 static void add_filled_box(int x1, int y1, int x2, int y2)
 {
-	add_fill(x1 + 1, y1 + 1, x2 - 1, y2 - 1, RGB_BLACK);
+	add_fill(x1 + 1, y1 + 1, x2 - 1, y2 - 1, ARGB_BLACK);
 
-	add_line(x1, y1, x2, y1, RGB_WHITE);
-	add_line(x2, y1, x2, y2, RGB_WHITE);
-	add_line(x2, y2, x1, y2, RGB_WHITE);
-	add_line(x1, y2, x1, y1, RGB_WHITE);
+	add_line(x1, y1, x2, y1, ARGB_WHITE);
+	add_line(x2, y1, x2, y2, ARGB_WHITE);
+	add_line(x2, y2, x1, y2, ARGB_WHITE);
+	add_line(x1, y2, x1, y1, ARGB_WHITE);
 }
 
 
@@ -4080,7 +5393,7 @@ static void render_ui(mame_bitmap *dest)
 				bounds.max_y = uirotbounds.min_y + elem->y2;
 				ui_rot2raw_rect(&bounds);
 				sect_rect(&bounds, &uirawbounds);
-				fillbitmap(dest, elem->color ? get_white_pen() : get_black_pen(), &bounds);
+				fillbitmap(dest, (elem->color & 0xffffff) ? get_white_pen() : get_black_pen(), &bounds);
 				artwork_mark_ui_dirty(bounds.min_x, bounds.min_y, bounds.max_x, bounds.max_y);
 				ui_dirty = 5;
 				break;
@@ -4091,10 +5404,48 @@ static void render_ui(mame_bitmap *dest)
 				bounds.max_x = bounds.min_x + uirotcharwidth - 1;
 				bounds.max_y = bounds.min_y + uirotcharheight - 1;
 				ui_rot2raw_rect(&bounds);
-				drawgfx(dest, uirotfont, elem->type, elem->color ? 0 : 1, 0, 0, bounds.min_x, bounds.min_y, &uirawbounds, TRANSPARENCY_PEN, 0);
+				drawgfx(dest, uirotfont, elem->type, (elem->color & 0xffffff) ? 0 : 1, 0, 0, bounds.min_x, bounds.min_y, &uirawbounds, TRANSPARENCY_PEN, 0);
 				break;
 		}
 	}
 
 	elemindex = 0;
 }
+
+#else
+
+void ui_get_bounds(int *width, int *height)
+{
+	*width = UI_SCALE_TO_INT(1.0f);
+	*height = UI_SCALE_TO_INT(1.0f);
+}
+
+
+int ui_get_line_height(void)
+{
+	return UI_SCALE_TO_INT(UI_FONT_HEIGHT);
+}
+
+
+int ui_get_char_width(UINT16 ch)
+{
+	return UI_SCALE_TO_INT(render_font_get_char_width(ui_font, UI_FONT_HEIGHT, render_get_ui_aspect(), ch));
+}
+
+
+int ui_get_string_width(const char *s)
+{
+	return UI_SCALE_TO_INT(render_font_get_string_width(ui_font, UI_FONT_HEIGHT, render_get_ui_aspect(), s));
+}
+
+static void add_filled_box(int x1, int y1, int x2, int y2)
+{
+	add_fill(x1 + 1, y1 + 1, x2 - 1, y2 - 1, MENU_BACKCOLOR);
+
+	add_line(x1, y1, x2, y1, ARGB_WHITE);
+	add_line(x2, y1, x2, y2, ARGB_WHITE);
+	add_line(x2, y2, x1, y2, ARGB_WHITE);
+	add_line(x1, y2, x1, y1, ARGB_WHITE);
+}
+
+#endif

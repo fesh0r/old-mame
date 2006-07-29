@@ -109,7 +109,7 @@ VIDEO_START( wolfpack )
 
 	LFSR = auto_malloc(0x8000);
 
-	if ((helper = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height)) == NULL)
+	if ((helper = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight)) == NULL)
 	{
 		return 1;
 	}
@@ -292,6 +292,7 @@ VIDEO_UPDATE( wolfpack )
 	draw_ship(bitmap, cliprect);
 	draw_torpedo(bitmap, cliprect);
 	draw_water(bitmap, cliprect);
+	return 0;
 }
 
 

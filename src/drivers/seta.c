@@ -1460,7 +1460,7 @@ void seta_coin_lockout_w(int data)
 {
 	static int seta_coin_lockout = 1;
 	static const game_driver *seta_driver = NULL;
-	static const char *seta_nolockout[4] = { "blandia", "gundhara", "kamenrid", "zingzip" };
+	static const char *seta_nolockout[8] = { "blandia", "gundhara", "kamenrid", "zingzip", "eightfrc", "extdwnhl", "sokonuke", "zombraid"};
 
 	/* Only compute seta_coin_lockout when confronted with a new gamedrv */
 	if (seta_driver != Machine->gamedrv)
@@ -2972,6 +2972,26 @@ static ADDRESS_MAP_START( utoukond_sound_writeport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x80, 0x80) AM_WRITE(MWA8_NOP) //?
 ADDRESS_MAP_END
 
+/* it has a series of tests on startup, if they don't pass it causes an address error */
+static UINT16 pairslove_protram[0x200];
+static UINT16 pairslove_protram_old[0x200];
+
+READ16_HANDLER( pairlove_prot_r )
+{
+	int retdata;
+	retdata = pairslove_protram[offset];
+	//printf("pairs love protection? read %06x %04x %04x\n",activecpu_get_pc(), offset,retdata);
+	pairslove_protram[offset]=pairslove_protram_old[offset];
+	return retdata;
+}
+
+WRITE16_HANDLER( pairlove_prot_w )
+{
+//  printf("pairs love protection? write %06x %04x %04x\n",activecpu_get_pc(), offset,data);
+	pairslove_protram_old[offset]=pairslove_protram[offset];
+	pairslove_protram[offset]=data;
+}
+
 /***************************************************************************
                                 Pairs Love
 ***************************************************************************/
@@ -2982,6 +3002,7 @@ static ADDRESS_MAP_START( pairlove_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x500000, 0x500001) AM_READ(input_port_0_word_r	)	// P1
 	AM_RANGE(0x500002, 0x500003) AM_READ(input_port_1_word_r	)	// P2
 	AM_RANGE(0x500004, 0x500005) AM_READ(input_port_2_word_r	)	// Coins
+	AM_RANGE(0x900000, 0x9001ff) AM_READ(pairlove_prot_r)
 	AM_RANGE(0xa00000, 0xa03fff) AM_READ(seta_sound_word_r		)	// Sound
 	AM_RANGE(0xb00000, 0xb00fff) AM_READ(MRA16_RAM				)	// Palette
 	AM_RANGE(0xc00000, 0xc03fff) AM_READ(MRA16_RAM				)	// Sprites Code + X + Attr
@@ -2995,6 +3016,7 @@ static ADDRESS_MAP_START( pairlove_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x100001) AM_WRITE(MWA16_NOP					)	// ? 1 (start of interrupts, main loop: watchdog?)
 	AM_RANGE(0x200000, 0x200001) AM_WRITE(MWA16_NOP					)	// ? 0/1 (IRQ acknowledge?)
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(seta_vregs_w) AM_BASE(&seta_vregs	)	// Coin Lockout + Sound Enable (bit 4?)
+	AM_RANGE(0x900000, 0x9001ff) AM_WRITE(pairlove_prot_w)
 	AM_RANGE(0xa00000, 0xa03fff) AM_WRITE(seta_sound_word_w			)	// Sound
 	AM_RANGE(0xb00000, 0xb00fff) AM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16	)	// Palette
 	AM_RANGE(0xc00000, 0xc03fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16_2	)	// Sprites Code + X + Attr
@@ -3142,9 +3164,9 @@ INPUT_PORTS_START( arbalest )
 	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_SERVICE( 0x0004, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x0008, 0x0008, "Unknown 2-4" )	// not used, according to manual
-	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0030, 0x0030, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0010, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(      0x0030, DEF_STR( 1C_1C ) )
@@ -3659,7 +3681,7 @@ INPUT_PORTS_START( downtown )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(5)
 
 	PORT_START_TAG("IN3")	//2 DSWs - $600001 & 3.b
-	PORT_DIPNAME( 0x0001, 0x0000, "Sales" )
+	PORT_DIPNAME( 0x0001, 0x0000, "Sales" )			/* Manual for USA version says "Always Off" */
 	PORT_DIPSETTING(      0x0001, "Japan Only" )
 	PORT_DIPSETTING(      0x0000, DEF_STR( World ) )
 	PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Flip_Screen ) )
@@ -3693,11 +3715,11 @@ INPUT_PORTS_START( downtown )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_6C ) )
 #endif
 
-	PORT_DIPNAME( 0x0300, 0x0300, "Unknown 2-0&1" )
-	PORT_DIPSETTING(      0x0200, "2" )
-	PORT_DIPSETTING(      0x0300, "3" )
-	PORT_DIPSETTING(      0x0100, "4" )
-	PORT_DIPSETTING(      0x0000, "5" )
+	PORT_DIPNAME( 0x0300, 0x0100, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(      0x0200, DEF_STR( Easy ) )
+	PORT_DIPSETTING(      0x0300, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x0100, DEF_STR( Hard ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
 	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(      0x0c00, "Never" )
 	PORT_DIPSETTING(      0x0800, "50K Only" )
@@ -3708,10 +3730,10 @@ INPUT_PORTS_START( downtown )
 	PORT_DIPSETTING(      0x3000, "3" )
 	PORT_DIPSETTING(      0x0000, "4" )
 	PORT_DIPSETTING(      0x2000, "5" )
-	PORT_DIPNAME( 0x4000, 0x0000, "World License" )
+	PORT_DIPNAME( 0x4000, 0x0000, "World License" ) /* Manual for USA version says "Unused" */
 	PORT_DIPSETTING(      0x4000, "Romstar" )
 	PORT_DIPSETTING(      0x0000, "Taito" )
-	PORT_DIPNAME( 0x8000, 0x8000, "Coinage Type" )	// not supported
+	PORT_DIPNAME( 0x8000, 0x8000, "Coinage Type" ) /* Manual for USA version says "Unused", but currently not implemented */
 	PORT_DIPSETTING(      0x8000, "1" )
 	PORT_DIPSETTING(      0x0000, "2" )
 
@@ -3933,9 +3955,9 @@ INPUT_PORTS_START( gundhara )
 	PORT_DIPSETTING(      0x0010, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(      0x0030, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(      0x0020, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x00c0, 0x00c0, "Country" )
-	PORT_DIPSETTING(      0x00c0, DEF_STR( Japan ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( World ) )
+	PORT_DIPNAME( 0x00c0, 0x00c0, DEF_STR( Language ) ) /* Yes, the shows it takes both switches */
+	PORT_DIPSETTING(      0x00c0, DEF_STR( Japanese ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( English ) )
 
 	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x0200, DEF_STR( Easy ) )
@@ -4168,9 +4190,9 @@ INPUT_PORTS_START( kamenrid )
 	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unused ) )		// masked at 0x001682
 	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )			// (unknown effect at 0x00606a, 0x0060de, 0x00650a)
-	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unused ) )		// check code at 0x001792
-	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0040, 0x0040, "Intro Music" )		// check code at 0x001792
+	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -4609,16 +4631,16 @@ INPUT_PORTS_START( oisipuzl )
 	PORT_DIPNAME( 0x0004, 0x0000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0008, 0x0008, "Unknown 1-3" )	// these seem unused
+	PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unused ) ) /* Manual States dips 4-7 are unused */
 	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0010, 0x0010, "Unknown 1-4" )
+	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020, 0x0020, "Unknown 1-5" )
+	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0040, 0x0040, "Unknown 1-6" )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_SERVICE( 0x0080, IP_ACTIVE_LOW )
@@ -4641,7 +4663,7 @@ INPUT_PORTS_START( oisipuzl )
 	PORT_DIPSETTING(      0x3000, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(      0x2800, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x2000, DEF_STR( 1C_4C ) )
-	PORT_DIPNAME( 0x8000, 0x8000, "Unknown 2-7" )		// this seems unused
+	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unused ) ) /* Manual States this dip is unused */
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
@@ -4795,7 +4817,7 @@ INPUT_PORTS_START( qzkklogy )
 	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 
 	PORT_START_TAG("IN3") //2 DSWs - $600001 & 3.b
-	PORT_DIPNAME( 0x0003, 0x0003, "Unknown 1-0&1*" )
+	PORT_DIPNAME( 0x0003, 0x0003, "Unknown 1-0&1*" ) /* Manual States dips 1-5 are unused */
 	PORT_DIPSETTING(      0x0000, "0" )
 	PORT_DIPSETTING(      0x0001, "1" )
 	PORT_DIPSETTING(      0x0002, "2" )
@@ -4826,7 +4848,7 @@ INPUT_PORTS_START( qzkklogy )
 	PORT_DIPSETTING(      0x0300, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(      0x0200, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x0800, 0x0800, "Unknown 2-3" )
+	PORT_DIPNAME( 0x0800, 0x0800, DEF_STR( Unused ) ) /* Manual States this dip is unused */
 	PORT_DIPSETTING(      0x0800, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x3000, 0x3000, DEF_STR( Difficulty ) )
@@ -4875,7 +4897,7 @@ INPUT_PORTS_START( qzkklgy2 )
 	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 
 	PORT_START_TAG("IN3") //2 DSWs - $600001 & 3.b
-	PORT_DIPNAME( 0x0003, 0x0003, "Unknown 1-0&1*" )
+	PORT_DIPNAME( 0x0003, 0x0003, "Unknown 1-0&1*" ) /* Manual States dips 1-5 are unused */
 	PORT_DIPSETTING(      0x0000, "0" )
 	PORT_DIPSETTING(      0x0001, "1" )
 	PORT_DIPSETTING(      0x0002, "2" )
@@ -5181,10 +5203,10 @@ INPUT_PORTS_START( stg )
 	PORT_DIPSETTING(      0x0003, DEF_STR( Normal )  ) // 4
 	PORT_DIPSETTING(      0x0001, DEF_STR( Hard )    ) // 8
 	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) ) // b
-	PORT_DIPNAME( 0x0004, 0x0004, "Unknown 1-2" )
+	PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0008, 0x0008, "Unknown 1-3" )
+	PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0030, 0x0030, DEF_STR( Lives ) )
@@ -5192,21 +5214,21 @@ INPUT_PORTS_START( stg )
 	PORT_DIPSETTING(      0x0000, "2" )
 	PORT_DIPSETTING(      0x0030, "3" )
 	PORT_DIPSETTING(      0x0020, "5" )
-	PORT_DIPNAME( 0x0040, 0x0040, "Unknown 1-6" )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x0080, "Unknown 1-7" )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_DIPNAME( 0x0100, 0x0100, "Unknown 2-0" )
+	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(      0x0200, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_SERVICE( 0x0400, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x0800, 0x0800, "Unknown 2-3" )
+	PORT_DIPNAME( 0x0800, 0x0800, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0800, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x3000, 0x3000, DEF_STR( Coin_A ) )
@@ -5217,7 +5239,7 @@ INPUT_PORTS_START( stg )
 	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x4000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x8000, 0x8000, "Unknown 2-7" )
+	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
@@ -5784,22 +5806,22 @@ INPUT_PORTS_START( wrofaero )
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0002, 0x0002, "Unknown 1-1*" )	// tested
-	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0004, 0x0004, "Unknown 1-2*" )	// tested
 	PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0008, 0x0008, "Stage & Weapon Select (Cheat)") // P2 Start Is Freeze Screen...
 	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0010, 0x0010, "Unknown 1-4" )
+	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unused ) ) /* Manual states dips 3-7 are "Unused" */
 	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020, 0x0020, "Unknown 1-5" )
+	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0040, 0x0040, "Unknown 1-6" )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_SERVICE( 0x0080, IP_ACTIVE_LOW )
@@ -5809,11 +5831,11 @@ INPUT_PORTS_START( wrofaero )
 	PORT_DIPSETTING(      0x0300, "3" )
 	PORT_DIPSETTING(      0x0100, "4" )
 	PORT_DIPSETTING(      0x0000, "5" )
-	PORT_DIPNAME( 0x0c00, 0x0c00, "Unknown 2-2&3" )
-	PORT_DIPSETTING(      0x0800, "0" )
-	PORT_DIPSETTING(      0x0c00, "1" )
-	PORT_DIPSETTING(      0x0400, "2" )
-	PORT_DIPSETTING(      0x0000, "3" )
+	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(      0x0800, DEF_STR( Easy ) )
+	PORT_DIPSETTING(      0x0c00, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x0400, DEF_STR( Hard ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
 	PORT_DIPNAME( 0xf000, 0xf000, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(      0xa000, DEF_STR( 6C_1C ) )
 	PORT_DIPSETTING(      0xb000, DEF_STR( 5C_1C ) )
@@ -5882,19 +5904,19 @@ INPUT_PORTS_START( wits )
 	PORT_DIPNAME( 0x0040, 0x0040, "Play Mode" )
 	PORT_DIPSETTING(      0x0040, "2 Players" )
 	PORT_DIPSETTING(      0x0000, "4 Players" )
-	PORT_DIPNAME( 0x0080, 0x0080, "Unknown 1-7*" )
-	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0080, 0x0080, "CPU Player During Multi-Player Game" )
+	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
+	PORT_DIPSETTING(      0x0080, DEF_STR( Yes ) )
 
-	PORT_DIPNAME( 0x0100, 0x0100, "Unknown 2-0" )
-	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(      0x0100, DEF_STR( Upright ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Cocktail ) )
 	PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(      0x0200, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0400, 0x0400, "Unknown 2-2*" )
-	PORT_DIPSETTING(      0x0400, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(      0x0400, "Every 3rd Loop" )
+	PORT_DIPSETTING(      0x0000, "Every 7th Loop" )
 	PORT_SERVICE( 0x0800, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x3000, 0x3000, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 4C_1C ) )
@@ -6006,55 +6028,58 @@ INPUT_PORTS_START( pairlove )
 	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_TILT     )
 
-	PORT_START_TAG("DSW")
-	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
+	PORT_START_TAG("DSW")    // 2 DIP switches
+	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x0002, 0x0000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Unknown )  )
+	PORT_SERVICE( 0x0080, IP_ACTIVE_LOW )
+
+	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Unused )  )
 	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0200, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0400, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0800, 0x0800, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0800, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x1000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x2000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(      0x0800, DEF_STR( Easy ) )
+	PORT_DIPSETTING(      0x0c00, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x0400, DEF_STR( Hard ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0xf000, 0xf000, DEF_STR( Coinage ) )
+	PORT_DIPSETTING(      0xa000, DEF_STR( 6C_1C ) )
+	PORT_DIPSETTING(      0xb000, DEF_STR( 5C_1C ) )
+	PORT_DIPSETTING(      0xc000, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0xd000, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x1000, DEF_STR( 8C_3C ) )
+	PORT_DIPSETTING(      0xe000, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x2000, DEF_STR( 5C_3C ) )
+	PORT_DIPSETTING(      0x3000, DEF_STR( 3C_2C ) )
+	PORT_DIPSETTING(      0xf000, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x4000, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(      0x9000, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x8000, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x7000, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x6000, DEF_STR( 1C_5C ) )
+	PORT_DIPSETTING(      0x5000, DEF_STR( 1C_6C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
 INPUT_PORTS_END
 
 

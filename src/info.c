@@ -126,13 +126,40 @@ static void print_game_switch(FILE* out, const game_driver* game)
 
 static void print_game_input(FILE* out, const game_driver* game)
 {
+enum {cjoy, cdoublejoy, cAD_stick, cdial, ctrackball, cpaddle, clightgun, cpedal, ENDCONTROLTYPES};
 	const input_port_entry* input;
 	int nplayer = 0;
-	const char* control = 0;
 	int nbutton = 0;
 	int ncoin = 0;
+	int controlsyes = 0;
+	int analogcontrol = 0;
+	int i;
 	const char* service = 0;
 	const char* tilt = 0;
+	const char* control_types[] = {"joy", "doublejoy", "stick", "dial", "trackball", "paddle", "lightgun", "pedal"};
+	static struct _input_info
+	{
+		const char *	type;			/* general type of input */
+		const char *	Xway;			/* 2, 4, or 8 way */
+		int				analog;
+		int				min;			/* analog minimum value */
+		int				max;			/* analog maximum value  */
+		int				sensitivity;	/* default analog sensitivity */
+		int				keydelta;		/* default analog keydelta */
+		int				reverse;		/* default analog reverse setting */
+	} control[ENDCONTROLTYPES];
+
+	for (i=0;i<ENDCONTROLTYPES;i++)
+	{
+		control[i].type = control_types[i];
+		control[i].Xway = 0;
+		control[i].analog = 0;
+		control[i].min = 0;
+		control[i].max = 0;
+		control[i].sensitivity = 0;
+		control[i].keydelta = 0;
+		control[i].reverse = 0;
+	}
 
 	begin_resource_tracking();
 
@@ -149,36 +176,38 @@ static void print_game_input(FILE* out, const game_driver* game)
 			case IPT_JOYSTICK_RIGHT:
 
 				/* if control not defined, start it off as horizontal 2-way */
-				if (!control)
-					control = "joy2way";
-				else if (strcmp(control,"joy2way") == 0)
+				if (!control[cjoy].Xway)
+					control[cjoy].Xway = "joy2way";
+				else if (strcmp(control[cjoy].Xway,"joy2way") == 0)
 					;
 				/* if already defined as vertical, make it 4 or 8 way */
-				else if (strcmp(control,"vjoy2way") == 0)
+				else if (strcmp(control[cjoy].Xway,"vjoy2way") == 0)
 				{
 					if (input->four_way)
-						control = "joy4way";
+						control[cjoy].Xway = "joy4way";
 					else
-						control = "joy8way";
+						control[cjoy].Xway = "joy8way";
 				}
+				controlsyes = 1;
 				break;
 
 			case IPT_JOYSTICK_UP:
 			case IPT_JOYSTICK_DOWN:
 
 				/* if control not defined, start it off as vertical 2-way */
-				if (!control)
-					control= "vjoy2way";
-				else if (strcmp(control,"vjoy2way") == 0)
+				if (!control[cjoy].Xway)
+					control[cjoy].Xway= "vjoy2way";
+				else if (strcmp(control[cjoy].Xway,"vjoy2way") == 0)
 					;
 				/* if already defined as horiz, make it 4 or 8way */
-				else if (strcmp(control,"joy2way")==0)
+				else if (strcmp(control[cjoy].Xway,"joy2way")==0)
 				{
 					if (input->four_way)
-						control = "joy4way";
+						control[cjoy].Xway = "joy4way";
 					else
-						control = "joy8way";
+						control[cjoy].Xway = "joy8way";
 				}
+				controlsyes = 1;
 				break;
 
 			case IPT_JOYSTICKRIGHT_UP:
@@ -187,18 +216,19 @@ static void print_game_input(FILE* out, const game_driver* game)
 			case IPT_JOYSTICKLEFT_DOWN:
 
 				/* if control not defined, start it off as vertical 2way */
-				if (!control)
-					control= "vdoublejoy2way";
-				else if (strcmp(control,"vdoublejoy2way") == 0)
+				if (!control[cdoublejoy].Xway)
+					control[cdoublejoy].Xway= "vdoublejoy2way";
+				else if (strcmp(control[cdoublejoy].Xway,"vdoublejoy2way") == 0)
 					;
 				/* if already defined as horiz, make it 4 or 8 way */
-				else if (strcmp(control,"doublejoy2way") == 0)
+				else if (strcmp(control[cdoublejoy].Xway,"doublejoy2way") == 0)
 				{
 					if (input->four_way)
-						control = "doublejoy4way";
+						control[cdoublejoy].Xway = "doublejoy4way";
 					else
-						control = "doublejoy8way";
+						control[cdoublejoy].Xway = "doublejoy8way";
 				}
+				controlsyes = 1;
 				break;
 
 			case IPT_JOYSTICKRIGHT_LEFT:
@@ -207,18 +237,44 @@ static void print_game_input(FILE* out, const game_driver* game)
 			case IPT_JOYSTICKLEFT_RIGHT:
 
 				/* if control not defined, start it off as horiz 2-way */
-				if (!control)
-					control="doublejoy2way";
-				else if (strcmp(control,"doublejoy2way") == 0)
+				if (!control[cdoublejoy].Xway)
+					control[cdoublejoy].Xway="doublejoy2way";
+				else if (strcmp(control[cdoublejoy].Xway,"doublejoy2way") == 0)
 					;
 				/* if already defined as vertical, make it 4 or 8 way */
-				else if (strcmp(control,"vdoublejoy2way") == 0)
+				else if (strcmp(control[cdoublejoy].Xway,"vdoublejoy2way") == 0)
 				{
 					if (input->four_way)
-						control = "doublejoy4way";
+						control[cdoublejoy].Xway = "doublejoy4way";
 					else
-						control = "doublejoy8way";
+						control[cdoublejoy].Xway = "doublejoy8way";
 				}
+				controlsyes = 1;
+				break;
+
+			/* mark as an analog input, and get analog stats after switch */
+			case IPT_PADDLE:
+				analogcontrol = cpaddle;
+				break;
+			case IPT_DIAL:
+				analogcontrol = cdial;
+				break;
+			case IPT_TRACKBALL_X:
+			case IPT_TRACKBALL_Y:
+				analogcontrol = ctrackball;
+				break;
+			case IPT_AD_STICK_X:
+			case IPT_AD_STICK_Y:
+				analogcontrol = cAD_stick;
+				break;
+			case IPT_LIGHTGUN_X:
+			case IPT_LIGHTGUN_Y:
+				analogcontrol = clightgun;
+				break;
+			case IPT_PEDAL:
+			case IPT_PEDAL2:
+			case IPT_PEDAL3:
+				analogcontrol = cpedal;
 				break;
 
 			case IPT_BUTTON1:
@@ -251,24 +307,7 @@ static void print_game_input(FILE* out, const game_driver* game)
 			case IPT_BUTTON10:
 				if (nbutton<10) nbutton = 10;
 				break;
-			case IPT_PADDLE:
-				control = "paddle";
-				break;
-			case IPT_DIAL:
-				control = "dial";
-				break;
-			case IPT_TRACKBALL_X:
-			case IPT_TRACKBALL_Y:
-				control = "trackball";
-				break;
-			case IPT_AD_STICK_X:
-			case IPT_AD_STICK_Y:
-				control = "stick";
-				break;
-			case IPT_LIGHTGUN_X:
-			case IPT_LIGHTGUN_Y:
-				control = "lightgun";
-				break;
+
 			case IPT_COIN1:
 				if (ncoin < 1) ncoin = 1;
 				break;
@@ -300,13 +339,32 @@ static void print_game_input(FILE* out, const game_driver* game)
 				tilt = "yes";
 				break;
 		}
+
+		/* get the analog stats */
+		if (analogcontrol)
+		{
+			controlsyes = 1;
+			control[analogcontrol].analog = 1;
+
+			if (input->analog.min)
+				control[analogcontrol].min = input->analog.min;
+			if (input->analog.max)
+				control[analogcontrol].max = input->analog.max;
+			if (input->analog.sensitivity)
+				control[analogcontrol].sensitivity = input->analog.sensitivity;
+			if (input->analog.delta)
+				control[analogcontrol].keydelta = input->analog.delta;
+			if (input->analog.reverse)
+				control[analogcontrol].reverse = 1;
+
+			analogcontrol = 0;
+		}
+
 		++input;
 	}
 
 	fprintf(out, "\t\t<input");
 	fprintf(out, " players=\"%d\"", nplayer );
-	if (control)
-		fprintf(out, " control=\"%s\"", normalize_string(control) );
 	if (nbutton)
 		fprintf(out, " buttons=\"%d\"", nbutton );
 	if (ncoin)
@@ -315,7 +373,31 @@ static void print_game_input(FILE* out, const game_driver* game)
 		fprintf(out, " service=\"%s\"", normalize_string(service) );
 	if (tilt)
 		fprintf(out, " tilt=\"%s\"", normalize_string(tilt) );
-	fprintf(out, "/>\n");
+	fprintf(out, ">\n");
+
+	for (i=0;i<ENDCONTROLTYPES;i++)
+	{
+		if (control[i].Xway)
+			fprintf(out, "\t\t\t<control type=\"%s\"/>\n", normalize_string(control[i].Xway) );
+		if (control[i].analog)
+		{
+			fprintf(out, "\t\t\t<control type=\"%s\"", normalize_string(control_types[i]) );
+			if (control[i].min || control[i].max)
+			{
+				fprintf(out, " minimum=\"%d\"", control[i].min);
+				fprintf(out, " maximum=\"%d\"", control[i].max);
+			}
+			if (control[i].sensitivity)
+				fprintf(out, " sensitivity=\"%d\"", control[i].sensitivity);
+			if (control[i].keydelta)
+				fprintf(out, " keydelta=\"%d\"", control[i].keydelta);
+			if (control[i].reverse)
+				fprintf(out, " reverse=\"yes\"");
+
+			fprintf(out, "/>\n");
+		}
+	}
+	fprintf(out, "\t\t</input>\n");
 
 	end_resource_tracking();
 }
@@ -352,145 +434,165 @@ static void print_game_rom(FILE* out, const game_driver* game)
 	const rom_entry *region, *rom, *chunk;
 	const rom_entry *pregion, *prom, *fprom=NULL;
 	const game_driver *clone_of;
+	int rom_type;
 
 	if (!game->rom)
 		return;
 
 	clone_of = driver_get_clone(game);
-	for (region = rom_first_region(game); region; region = rom_next_region(region))
-		for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
-		{
-			int offset, length, in_parent, is_disk, is_bios, found_bios, i;
-			char name[100], bios_name[100];
-
-			strcpy(name,ROM_GETNAME(rom));
-			offset = ROM_GETOFFSET(rom);
-			is_disk = ROMREGION_ISDISKDATA(region);
-			is_bios = ROM_GETBIOSFLAGS(rom);
-
-			in_parent = 0;
-			length = 0;
-			for (chunk = rom_first_chunk(rom); chunk; chunk = rom_next_chunk(chunk))
-				length += ROM_GETLENGTH(chunk);
-
-			if (!ROM_NOGOODDUMP(rom) && clone_of)
+	for (rom_type = 0; rom_type < 3; rom_type++)
+	{
+		for (region = rom_first_region(game); region; region = rom_next_region(region))
+			for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
 			{
-				fprom=NULL;
-				for (pregion = rom_first_region(clone_of); pregion; pregion = rom_next_region(pregion))
-					for (prom = rom_first_file(pregion); prom; prom = rom_next_file(prom))
-						if (hash_data_is_equal(ROM_GETHASHDATA(rom), ROM_GETHASHDATA(prom), 0))
+				int offset, length, in_parent, is_disk, is_bios, found_bios, i;
+				char name[100], bios_name[100];
+
+				strcpy(name,ROM_GETNAME(rom));
+				offset = ROM_GETOFFSET(rom);
+				is_disk = ROMREGION_ISDISKDATA(region);
+				is_bios = ROM_GETBIOSFLAGS(rom);
+
+				switch (rom_type)
+				{
+					case 0:		/* rom_type 0 = BIOS */
+						if (is_disk || !is_bios)
+							continue;
+						break;
+					case 1:		/* rom_type 1 = ROM */
+						if (is_disk || is_bios)
+							continue;
+						break;
+					case 2:		/* rom_type 1 = DISK */
+						if (!is_disk || is_bios)
+							continue;
+						break;
+				}
+
+				in_parent = 0;
+				length = 0;
+				for (chunk = rom_first_chunk(rom); chunk; chunk = rom_next_chunk(chunk))
+					length += ROM_GETLENGTH(chunk);
+
+				if (!ROM_NOGOODDUMP(rom) && clone_of)
+				{
+					fprom=NULL;
+					for (pregion = rom_first_region(clone_of); pregion; pregion = rom_next_region(pregion))
+						for (prom = rom_first_file(pregion); prom; prom = rom_next_file(prom))
+							if (hash_data_is_equal(ROM_GETHASHDATA(rom), ROM_GETHASHDATA(prom), 0))
+							{
+								if (!fprom || !strcmp(ROM_GETNAME(prom), name))
+									fprom=prom;
+								in_parent = 1;
+							}
+				}
+
+				found_bios = 0;
+				if(!is_disk && is_bios && game->bios)
+				{
+					const bios_entry *thisbios = game->bios;
+
+					/* Match against bios short names */
+					while(!found_bios && !BIOSENTRY_ISEND(thisbios) )
+					{
+						if((is_bios-1) == thisbios->value) /* Note '-1' */
 						{
-							if (!fprom || !strcmp(ROM_GETNAME(prom), name))
-								fprom=prom;
-							in_parent = 1;
+							strcpy(bios_name,thisbios->_name);
+							found_bios = 1;
 						}
-			}
 
-			found_bios = 0;
-			if(!is_disk && is_bios && game->bios)
-			{
-				const bios_entry *thisbios = game->bios;
-
-				/* Match against bios short names */
-				while(!found_bios && !BIOSENTRY_ISEND(thisbios) )
-				{
-					if((is_bios-1) == thisbios->value) /* Note '-1' */
-					{
-						strcpy(bios_name,thisbios->_name);
-						found_bios = 1;
+						thisbios++;
 					}
-
-					thisbios++;
 				}
+
+
+				if (!is_disk)
+					fprintf(out, "\t\t<rom");
+				else
+					fprintf(out, "\t\t<disk");
+
+				if (*name)
+					fprintf(out, " name=\"%s\"", normalize_string(name));
+				if (in_parent)
+					fprintf(out, " merge=\"%s\"", normalize_string(ROM_GETNAME(fprom)));
+				if (!is_disk && found_bios)
+					fprintf(out, " bios=\"%s\"", normalize_string(bios_name));
+				if (!is_disk)
+					fprintf(out, " size=\"%d\"", length);
+
+				/* dump checksum information only if there is a known dump */
+				if (!hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_NO_DUMP))
+				{
+					for (i=0;i<HASH_NUM_FUNCTIONS;i++)
+					{
+						int func = 1<<i;
+						const char* func_name = hash_function_name(func);
+						char checksum[1000];
+
+						if (hash_data_extract_printable_checksum(ROM_GETHASHDATA(rom), func, checksum))
+						{
+							fprintf(out, " %s=\"%s\"", func_name, checksum);
+						}
+					}
+				}
+
+				switch (ROMREGION_GETTYPE(region))
+				{
+					case REGION_CPU1: fprintf(out, " region=\"cpu1\""); break;
+					case REGION_CPU2: fprintf(out, " region=\"cpu2\""); break;
+					case REGION_CPU3: fprintf(out, " region=\"cpu3\""); break;
+					case REGION_CPU4: fprintf(out, " region=\"cpu4\""); break;
+					case REGION_CPU5: fprintf(out, " region=\"cpu5\""); break;
+					case REGION_CPU6: fprintf(out, " region=\"cpu6\""); break;
+					case REGION_CPU7: fprintf(out, " region=\"cpu7\""); break;
+					case REGION_CPU8: fprintf(out, " region=\"cpu8\""); break;
+					case REGION_GFX1: fprintf(out, " region=\"gfx1\""); break;
+					case REGION_GFX2: fprintf(out, " region=\"gfx2\""); break;
+					case REGION_GFX3: fprintf(out, " region=\"gfx3\""); break;
+					case REGION_GFX4: fprintf(out, " region=\"gfx4\""); break;
+					case REGION_GFX5: fprintf(out, " region=\"gfx5\""); break;
+					case REGION_GFX6: fprintf(out, " region=\"gfx6\""); break;
+					case REGION_GFX7: fprintf(out, " region=\"gfx7\""); break;
+					case REGION_GFX8: fprintf(out, " region=\"gfx8\""); break;
+					case REGION_PROMS: fprintf(out, " region=\"proms\""); break;
+					case REGION_SOUND1: fprintf(out, " region=\"sound1\""); break;
+					case REGION_SOUND2: fprintf(out, " region=\"sound2\""); break;
+					case REGION_SOUND3: fprintf(out, " region=\"sound3\""); break;
+					case REGION_SOUND4: fprintf(out, " region=\"sound4\""); break;
+					case REGION_SOUND5: fprintf(out, " region=\"sound5\""); break;
+					case REGION_SOUND6: fprintf(out, " region=\"sound6\""); break;
+					case REGION_SOUND7: fprintf(out, " region=\"sound7\""); break;
+					case REGION_SOUND8: fprintf(out, " region=\"sound8\""); break;
+					case REGION_USER1: fprintf(out, " region=\"user1\""); break;
+					case REGION_USER2: fprintf(out, " region=\"user2\""); break;
+					case REGION_USER3: fprintf(out, " region=\"user3\""); break;
+					case REGION_USER4: fprintf(out, " region=\"user4\""); break;
+					case REGION_USER5: fprintf(out, " region=\"user5\""); break;
+					case REGION_USER6: fprintf(out, " region=\"user6\""); break;
+					case REGION_USER7: fprintf(out, " region=\"user7\""); break;
+					case REGION_USER8: fprintf(out, " region=\"user8\""); break;
+					case REGION_DISKS: fprintf(out, " region=\"disks\""); break;
+					default: fprintf(out, " region=\"0x%x\"", ROMREGION_GETTYPE(region));
 			}
 
+			if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_NO_DUMP))
+				fprintf(out, " status=\"nodump\"");
+			if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_BAD_DUMP))
+				fprintf(out, " status=\"baddump\"");
 
 			if (!is_disk)
-				fprintf(out, "\t\t<rom");
+			{
+				if (ROMREGION_GETFLAGS(region) & ROMREGION_DISPOSE)
+					fprintf(out, " dispose=\"yes\"");
+
+				fprintf(out, " offset=\"%x\"", offset);
+				fprintf(out, "/>\n");
+			}
 			else
-				fprintf(out, "\t\t<disk");
-
-			if (*name)
-				fprintf(out, " name=\"%s\"", normalize_string(name));
-			if (in_parent)
-				fprintf(out, " merge=\"%s\"", normalize_string(ROM_GETNAME(fprom)));
-			if (!is_disk && found_bios)
-				fprintf(out, " bios=\"%s\"", normalize_string(bios_name));
-			if (!is_disk)
-				fprintf(out, " size=\"%d\"", length);
-
-			/* dump checksum information only if there is a known dump */
-			if (!hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_NO_DUMP))
 			{
-				for (i=0;i<HASH_NUM_FUNCTIONS;i++)
-				{
-					int func = 1<<i;
-					const char* func_name = hash_function_name(func);
-					char checksum[1000];
-
-					if (hash_data_extract_printable_checksum(ROM_GETHASHDATA(rom), func, checksum))
-					{
-						fprintf(out, " %s=\"%s\"", func_name, checksum);
-					}
-				}
+				fprintf(out, " index=\"%x\"", DISK_GETINDEX(rom));
+				fprintf(out, "/>\n");
 			}
-
-			switch (ROMREGION_GETTYPE(region))
-			{
-				case REGION_CPU1: fprintf(out, " region=\"cpu1\""); break;
-				case REGION_CPU2: fprintf(out, " region=\"cpu2\""); break;
-				case REGION_CPU3: fprintf(out, " region=\"cpu3\""); break;
-				case REGION_CPU4: fprintf(out, " region=\"cpu4\""); break;
-				case REGION_CPU5: fprintf(out, " region=\"cpu5\""); break;
-				case REGION_CPU6: fprintf(out, " region=\"cpu6\""); break;
-				case REGION_CPU7: fprintf(out, " region=\"cpu7\""); break;
-				case REGION_CPU8: fprintf(out, " region=\"cpu8\""); break;
-				case REGION_GFX1: fprintf(out, " region=\"gfx1\""); break;
-				case REGION_GFX2: fprintf(out, " region=\"gfx2\""); break;
-				case REGION_GFX3: fprintf(out, " region=\"gfx3\""); break;
-				case REGION_GFX4: fprintf(out, " region=\"gfx4\""); break;
-				case REGION_GFX5: fprintf(out, " region=\"gfx5\""); break;
-				case REGION_GFX6: fprintf(out, " region=\"gfx6\""); break;
-				case REGION_GFX7: fprintf(out, " region=\"gfx7\""); break;
-				case REGION_GFX8: fprintf(out, " region=\"gfx8\""); break;
-				case REGION_PROMS: fprintf(out, " region=\"proms\""); break;
-				case REGION_SOUND1: fprintf(out, " region=\"sound1\""); break;
-				case REGION_SOUND2: fprintf(out, " region=\"sound2\""); break;
-				case REGION_SOUND3: fprintf(out, " region=\"sound3\""); break;
-				case REGION_SOUND4: fprintf(out, " region=\"sound4\""); break;
-				case REGION_SOUND5: fprintf(out, " region=\"sound5\""); break;
-				case REGION_SOUND6: fprintf(out, " region=\"sound6\""); break;
-				case REGION_SOUND7: fprintf(out, " region=\"sound7\""); break;
-				case REGION_SOUND8: fprintf(out, " region=\"sound8\""); break;
-				case REGION_USER1: fprintf(out, " region=\"user1\""); break;
-				case REGION_USER2: fprintf(out, " region=\"user2\""); break;
-				case REGION_USER3: fprintf(out, " region=\"user3\""); break;
-				case REGION_USER4: fprintf(out, " region=\"user4\""); break;
-				case REGION_USER5: fprintf(out, " region=\"user5\""); break;
-				case REGION_USER6: fprintf(out, " region=\"user6\""); break;
-				case REGION_USER7: fprintf(out, " region=\"user7\""); break;
-				case REGION_USER8: fprintf(out, " region=\"user8\""); break;
-				case REGION_DISKS: fprintf(out, " region=\"disks\""); break;
-				default: fprintf(out, " region=\"0x%x\"", ROMREGION_GETTYPE(region));
-		}
-
-		if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_NO_DUMP))
-			fprintf(out, " status=\"nodump\"");
-		if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_BAD_DUMP))
-			fprintf(out, " status=\"baddump\"");
-
-		if (!is_disk)
-		{
-			if (ROMREGION_GETFLAGS(region) & ROMREGION_DISPOSE)
-				fprintf(out, " dispose=\"yes\"");
-
-			fprintf(out, " offset=\"%x\"", offset);
-			fprintf(out, "/>\n");
-		}
-		else
-		{
-			fprintf(out, " index=\"%x\"", DISK_GETINDEX(rom));
-			fprintf(out, "/>\n");
 		}
 	}
 }
@@ -597,68 +699,63 @@ static void print_game_micro(FILE* out, const game_driver* game)
 	}
 }
 
-static void print_game_video(FILE* out, const game_driver* game)
+static void print_game_display(FILE* out, const game_driver* game)
 {
 	machine_config driver;
 
 	int dx;
 	int dy;
-	int ax;
-	int ay;
-	int showxy;
-	int orientation;
+	int scrnum;
 
 	expand_machine_driver(game->drv, &driver);
 
-	fprintf(out, "\t\t<video");
-	if (driver.video_attributes & VIDEO_TYPE_VECTOR)
-	{
-		fprintf(out, " screen=\"vector\"");
-		showxy = 0;
-	}
-	else
-	{
-		fprintf(out, " screen=\"raster\"");
-		showxy = 1;
-	}
+	for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
+		if (driver.screen[scrnum].tag != NULL)
+		{
+			fprintf(out, "\t\t<display");
 
-	if (game->flags & ORIENTATION_SWAP_XY)
-	{
-		ax = driver.aspect_y;
-		ay = driver.aspect_x;
-		if (ax == 0 && ay == 0) {
-			ax = 3;
-			ay = 4;
+			fprintf(out, " type=\"%s\"", (driver.video_attributes & VIDEO_TYPE_VECTOR) ? "vector" : "raster" );
+
+			switch (game->flags & ORIENTATION_MASK) {
+				case ORIENTATION_FLIP_X:
+					fprintf(out, " rotate=\"0\" flipx=\"yes\"");
+					break;
+				case ORIENTATION_FLIP_Y:
+					fprintf(out, " rotate=\"180\" flipx=\"yes\"");
+					break;
+				case ORIENTATION_FLIP_X|ORIENTATION_FLIP_Y:
+					fprintf(out, " rotate=\"180\"");
+					break;
+				case ORIENTATION_SWAP_XY:
+					fprintf(out, " rotate=\"90\" flipx=\"yes\"");
+					break;
+				case ORIENTATION_SWAP_XY|ORIENTATION_FLIP_X:
+					fprintf(out, " rotate=\"90\"");
+					break;
+				case ORIENTATION_SWAP_XY|ORIENTATION_FLIP_Y:
+					fprintf(out, " rotate=\"270\"");
+					break;
+				case ORIENTATION_SWAP_XY|ORIENTATION_FLIP_X|ORIENTATION_FLIP_Y:
+					fprintf(out, " rotate=\"270\" flipx=\"yes\"");
+					break;
+				default:
+					fprintf(out, " rotate=\"0\"");
+					break;
+			}
+
+			/* output width and height only for games that are not vector */
+			if (! (driver.video_attributes & VIDEO_TYPE_VECTOR) )
+			{
+				dx = driver.screen[scrnum].default_visible_area.max_x - driver.screen[scrnum].default_visible_area.min_x + 1;
+				dy = driver.screen[scrnum].default_visible_area.max_y - driver.screen[scrnum].default_visible_area.min_y + 1;
+				fprintf(out, " width=\"%d\"", dx);
+				fprintf(out, " height=\"%d\"", dy);
+			}
+
+			fprintf(out, " refresh=\"%f\"", driver.screen[scrnum].refresh_rate);
+
+			fprintf(out, " />\n");
 		}
-		dx = driver.default_visible_area.max_y - driver.default_visible_area.min_y + 1;
-		dy = driver.default_visible_area.max_x - driver.default_visible_area.min_x + 1;
-		orientation = 1;
-	}
-	else
-	{
-		ax = driver.aspect_x;
-		ay = driver.aspect_y;
-		if (ax == 0 && ay == 0) {
-			ax = 4;
-			ay = 3;
-		}
-		dx = driver.default_visible_area.max_x - driver.default_visible_area.min_x + 1;
-		dy = driver.default_visible_area.max_y - driver.default_visible_area.min_y + 1;
-		orientation = 0;
-	}
-
-	fprintf(out, " orientation=\"%s\"", orientation ? "vertical" : "horizontal" );
-	if (showxy)
-	{
-		fprintf(out, " width=\"%d\"", dx);
-		fprintf(out, " height=\"%d\"", dy);
-	}
-
-	fprintf(out, " aspectx=\"%d\"", ax);
-	fprintf(out, " aspecty=\"%d\"", ay);
-
-	fprintf(out, " refresh=\"%f\"", driver.frames_per_second);
-	fprintf(out, "/>\n");
 }
 
 static void print_game_sound(FILE* out, const game_driver* game)
@@ -809,7 +906,7 @@ static void print_game_info(FILE* out, const game_driver* game)
 	print_game_rom(out, game);
 	print_game_sample(out, game);
 	print_game_micro(out, game);
-	print_game_video(out, game);
+	print_game_display(out, game);
 	print_game_sound(out, game);
 	print_game_input(out, game);
 	print_game_switch(out, game);
@@ -869,23 +966,25 @@ static void print_resource_info(FILE* out, const game_driver* game)
 }
 #endif
 
-static void print_mame_data(FILE* out, const game_driver* const games[])
+static void print_mame_data(FILE* out, const game_driver* const games[], const char *gamename)
 {
 	int j;
 
 	/* print games */
 	for(j=0;games[j];++j)
-		print_game_info(out, games[j]);
+		if (mame_strwildcmp(gamename, games[j]->name) == 0)
+			print_game_info(out, games[j]);
 
 #if !defined(MESS)
 	/* print resources */
  	for (j=0;games[j];++j)
- 		print_resource_info(out, games[j]);
+		if (mame_strwildcmp(gamename, games[j]->name) == 0)
+	 		print_resource_info(out, games[j]);
 #endif
 }
 
 /* Print the MAME database in XML format */
-void print_mame_xml(FILE* out, const game_driver* const games[])
+void print_mame_xml(FILE* out, const game_driver* const games[], const char *gamename)
 {
 	fprintf(out,
 		"<?xml version=\"1.0\"?>\n"
@@ -893,9 +992,9 @@ void print_mame_xml(FILE* out, const game_driver* const games[])
 		"<!ELEMENT " XML_ROOT " (" XML_TOP "+)>\n"
 		"\t<!ATTLIST " XML_ROOT " build CDATA #IMPLIED>\n"
 #ifdef MESS
-		"\t<!ELEMENT " XML_TOP " (description, year?, manufacturer, history?, biosset*, rom*, disk*, sample*, chip*, video?, sound?, input?, dipswitch*, driver?, device*, ramoption*)>\n"
+		"\t<!ELEMENT " XML_TOP " (description, year?, manufacturer, biosset*, rom*, disk*, sample*, chip*, display*, sound?, input?, dipswitch*, driver?, device*, ramoption*)>\n"
 #else
-		"\t<!ELEMENT " XML_TOP " (description, year?, manufacturer, history?, biosset*, rom*, disk*, sample*, chip*, video?, sound?, input?, dipswitch*, driver?)>\n"
+		"\t<!ELEMENT " XML_TOP " (description, year?, manufacturer, biosset*, rom*, disk*, sample*, chip*, display*, sound?, input?, dipswitch*, driver?)>\n"
 #endif
 		"\t\t<!ATTLIST " XML_TOP " name CDATA #REQUIRED>\n"
 		"\t\t<!ATTLIST " XML_TOP " sourcefile CDATA #IMPLIED>\n"
@@ -906,7 +1005,6 @@ void print_mame_xml(FILE* out, const game_driver* const games[])
 		"\t\t<!ELEMENT description (#PCDATA)>\n"
 		"\t\t<!ELEMENT year (#PCDATA)>\n"
 		"\t\t<!ELEMENT manufacturer (#PCDATA)>\n"
-		"\t\t<!ELEMENT history (#PCDATA)>\n"
 		"\t\t<!ELEMENT biosset EMPTY>\n"
 		"\t\t\t<!ATTLIST biosset name CDATA #REQUIRED>\n"
 		"\t\t\t<!ATTLIST biosset description CDATA #REQUIRED>\n"
@@ -937,23 +1035,28 @@ void print_mame_xml(FILE* out, const game_driver* const games[])
 		"\t\t\t<!ATTLIST chip name CDATA #REQUIRED>\n"
 		"\t\t\t<!ATTLIST chip type (cpu|audio) #REQUIRED>\n"
 		"\t\t\t<!ATTLIST chip clock CDATA #IMPLIED>\n"
-		"\t\t<!ELEMENT video EMPTY>\n"
-		"\t\t\t<!ATTLIST video screen (raster|vector) #REQUIRED>\n"
-		"\t\t\t<!ATTLIST video orientation (vertical|horizontal) #REQUIRED>\n"
-		"\t\t\t<!ATTLIST video width CDATA #IMPLIED>\n"
-		"\t\t\t<!ATTLIST video height CDATA #IMPLIED>\n"
-		"\t\t\t<!ATTLIST video aspectx CDATA #IMPLIED>\n"
-		"\t\t\t<!ATTLIST video aspecty CDATA #IMPLIED>\n"
-		"\t\t\t<!ATTLIST video refresh CDATA #REQUIRED>\n"
+		"\t\t<!ELEMENT display EMPTY>\n"
+		"\t\t\t<!ATTLIST display type (raster|vector) #REQUIRED>\n"
+		"\t\t\t<!ATTLIST display rotate (0|90|180|270) #REQUIRED>\n"
+		"\t\t\t<!ATTLIST display flipx (yes|no) \"no\">\n"
+		"\t\t\t<!ATTLIST display width CDATA #IMPLIED>\n"
+		"\t\t\t<!ATTLIST display height CDATA #IMPLIED>\n"
+		"\t\t\t<!ATTLIST display refresh CDATA #REQUIRED>\n"
 		"\t\t<!ELEMENT sound EMPTY>\n"
 		"\t\t\t<!ATTLIST sound channels CDATA #REQUIRED>\n"
-		"\t\t<!ELEMENT input EMPTY>\n"
+		"\t\t<!ELEMENT input (control*)>\n"
 		"\t\t\t<!ATTLIST input service (yes|no) \"no\">\n"
 		"\t\t\t<!ATTLIST input tilt (yes|no) \"no\">\n"
 		"\t\t\t<!ATTLIST input players CDATA #REQUIRED>\n"
-		"\t\t\t<!ATTLIST input control CDATA #IMPLIED>\n"
 		"\t\t\t<!ATTLIST input buttons CDATA #IMPLIED>\n"
 		"\t\t\t<!ATTLIST input coins CDATA #IMPLIED>\n"
+		"\t\t\t<!ELEMENT control EMPTY>\n"
+		"\t\t\t\t<!ATTLIST control type CDATA #REQUIRED>\n"
+		"\t\t\t\t<!ATTLIST control minimum CDATA #IMPLIED>\n"
+		"\t\t\t\t<!ATTLIST control maximum CDATA #IMPLIED>\n"
+		"\t\t\t\t<!ATTLIST control sensitivity CDATA #IMPLIED>\n"
+		"\t\t\t\t<!ATTLIST control keydelta CDATA #IMPLIED>\n"
+		"\t\t\t\t<!ATTLIST control reverse (yes|no) \"no\">\n"
 		"\t\t<!ELEMENT dipswitch (dipvalue*)>\n"
 		"\t\t\t<!ATTLIST dipswitch name CDATA #REQUIRED>\n"
 		"\t\t\t<!ELEMENT dipvalue EMPTY>\n"
@@ -986,7 +1089,7 @@ void print_mame_xml(FILE* out, const game_driver* const games[])
 		normalize_string(build_version)
 	);
 
-	print_mame_data(out, games);
+	print_mame_data(out, games, gamename);
 
 	fprintf(out, "</" XML_ROOT ">\n");
 }

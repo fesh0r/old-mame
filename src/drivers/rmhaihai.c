@@ -75,7 +75,8 @@ VIDEO_START( rmhaihai )
 
 VIDEO_UPDATE( rmhaihai )
 {
-	tilemap_draw(bitmap, &Machine->visible_area, bg_tilemap, 0, 0);
+	tilemap_draw(bitmap, &Machine->visible_area[0], bg_tilemap, 0, 0);
+	return 0;
 }
 
 
@@ -534,7 +535,7 @@ static MACHINE_DRIVER_START( rmhaihai )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER|VIDEO_PIXEL_ASPECT_RATIO_1_2)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_VISIBLE_AREA(4*8, 60*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo1)

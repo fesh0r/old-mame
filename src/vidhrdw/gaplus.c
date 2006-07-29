@@ -148,8 +148,8 @@ static void starfield_init( void )
 	int set = 0;
 	int width, height;
 
-	width = Machine->drv->screen_width;
-	height = Machine->drv->screen_height;
+	width = Machine->drv->screen[0].maxwidth;
+	height = Machine->drv->screen[0].maxheight;
 
 	total_stars = 0;
 
@@ -253,8 +253,8 @@ static void starfield_render( mame_bitmap *bitmap )
 	int i;
 	int width, height;
 
-	width = Machine->drv->screen_width;
-	height = Machine->drv->screen_height;
+	width = Machine->drv->screen[0].maxwidth;
+	height = Machine->drv->screen[0].maxheight;
 
 	/* check if we're running */
 	if ( ( gaplus_starfield_control[0] & 1 ) == 0 )
@@ -342,6 +342,7 @@ VIDEO_UPDATE( gaplus )
 	/* draw the high priority characters */
 	/* (I don't know if this feature is used by Gaplus, but it's shown in the schematics) */
 	tilemap_draw(bitmap,cliprect,bg_tilemap,1,0);
+	return 0;
 }
 
 
@@ -350,8 +351,8 @@ VIDEO_EOF( gaplus )	/* update starfields */
 	int i;
 	int width, height;
 
-	width = Machine->drv->screen_width;
-	height = Machine->drv->screen_height;
+	width = Machine->drv->screen[0].maxwidth;
+	height = Machine->drv->screen[0].maxheight;
 
 	/* check if we're running */
 	if ( ( gaplus_starfield_control[0] & 1 ) == 0 )

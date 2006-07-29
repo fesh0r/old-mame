@@ -614,7 +614,7 @@ VIDEO_UPDATE( taitob )
   if ((video_control & 0x20) == 0)
   {
     fillbitmap(bitmap,Machine->pens[0],cliprect);
-    return;
+    return 0;
   }
 
   /* Draw playfields */
@@ -636,6 +636,7 @@ VIDEO_UPDATE( taitob )
   draw_framebuffer(bitmap,cliprect,0);
 
   tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
+	return 0;
 }
 
 
@@ -643,11 +644,11 @@ VIDEO_UPDATE( taitob )
 VIDEO_EOF( taitob )
 {
   if (~video_control & 0x01)
-    fillbitmap(framebuffer[framebuffer_page],0,&Machine->visible_area);
+    fillbitmap(framebuffer[framebuffer_page],0,&Machine->visible_area[0]);
 
   if (~video_control & 0x80)
     framebuffer_page ^= 1;
 
-  taitob_draw_sprites(framebuffer[framebuffer_page],&Machine->visible_area);
+  taitob_draw_sprites(framebuffer[framebuffer_page],&Machine->visible_area[0]);
 }
 

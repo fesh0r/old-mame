@@ -111,7 +111,6 @@ static UINT32 atarigt_playfield_scan(UINT32 col, UINT32 row, UINT32 num_cols, UI
 
 VIDEO_START( atarigt )
 {
-	extern UINT32 direct_rgb_components[3];
 	static const struct atarirle_desc modesc =
 	{
 		REGION_GFX3,/* region where the GFX data lives */
@@ -133,7 +132,6 @@ VIDEO_START( atarigt )
 		{{ 0,0x8000,0,0,0,0,0,0 }}	/* mask for the VRAM target */
 	};
 	struct atarirle_desc adjusted_modesc = modesc;
-	UINT32 temp;
 	int i;
 
 	/* blend the playfields and free the temporary one */
@@ -154,8 +152,8 @@ VIDEO_START( atarigt )
 		return 1;
 
 	/* allocate temp bitmaps */
-	pf_bitmap = auto_bitmap_alloc_depth(Machine->drv->screen_width, Machine->drv->screen_height, 16);
-	an_bitmap = auto_bitmap_alloc_depth(Machine->drv->screen_width, Machine->drv->screen_height, 16);
+	pf_bitmap = auto_bitmap_alloc_depth(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight, 16);
+	an_bitmap = auto_bitmap_alloc_depth(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight, 16);
 	if (!pf_bitmap || !an_bitmap)
 		return 1;
 
@@ -167,10 +165,9 @@ VIDEO_START( atarigt )
 		Machine->pens[i] = i;
 
 	/* compute shift values */
-	rshift = gshift = bshift = 0;
-	for (temp = direct_rgb_components[0]; (temp & 1) == 0; temp >>= 1) rshift++;
-	for (temp = direct_rgb_components[1]; (temp & 1) == 0; temp >>= 1) gshift++;
-	for (temp = direct_rgb_components[2]; (temp & 1) == 0; temp >>= 1) bshift++;
+	rshift = 16;
+	gshift = 8;
+	bshift = 0;
 
 	/* reset statics */
 	playfield_tile_bank = 0;
@@ -248,13 +245,13 @@ void atarigt_scanline_update(int scanline)
 			int newbank = (word >> 16) & 0x1f;
 			if (newscroll != playfield_xscroll)
 			{
-				force_partial_update(scanline + i - 1);
+				force_partial_update(0, scanline + i - 1);
 				tilemap_set_scrollx(atarigen_playfield_tilemap, 0, newscroll);
 				playfield_xscroll = newscroll;
 			}
 			if (newbank != playfield_color_bank)
 			{
-				force_partial_update(scanline + i - 1);
+				force_partial_update(0, scanline + i - 1);
 				tilemap_set_palette_offset(atarigen_playfield_tilemap, (newbank & 0x1f) << 8);
 				playfield_color_bank = newbank;
 			}
@@ -266,13 +263,13 @@ void atarigt_scanline_update(int scanline)
 			int newbank = word & 15;
 			if (newscroll != playfield_yscroll)
 			{
-				force_partial_update(scanline + i - 1);
+				force_partial_update(0, scanline + i - 1);
 				tilemap_set_scrolly(atarigen_playfield_tilemap, 0, newscroll);
 				playfield_yscroll = newscroll;
 			}
 			if (newbank != playfield_tile_bank)
 			{
-				force_partial_update(scanline + i - 1);
+				force_partial_update(0, scanline + i - 1);
 				tilemap_mark_all_tiles_dirty(atarigen_playfield_tilemap);
 				playfield_tile_bank = newbank;
 			}
@@ -684,4 +681,5 @@ VIDEO_UPDATE( atarigt )
 			}
 		}
 	}
+	return 0;
 }

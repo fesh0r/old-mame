@@ -61,10 +61,10 @@ READ8_HANDLER( bigevglf_vidram_r )
 
 VIDEO_START( bigevglf )
 {
-	tmp_bitmap[0] = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height);
-	tmp_bitmap[1] = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height);
-	tmp_bitmap[2] = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height);
-	tmp_bitmap[3] = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height);
+	tmp_bitmap[0] = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth,Machine->drv->screen[0].maxheight);
+	tmp_bitmap[1] = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth,Machine->drv->screen[0].maxheight);
+	tmp_bitmap[2] = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth,Machine->drv->screen[0].maxheight);
+	tmp_bitmap[3] = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth,Machine->drv->screen[0].maxheight);
 	vidram = auto_malloc(0x100*0x100 * 4);
 	return 0;
 }
@@ -92,4 +92,5 @@ VIDEO_UPDATE( bigevglf )
 {
 	copybitmap(bitmap,tmp_bitmap[ plane_visible ],0,0,0,0,cliprect,TRANSPARENCY_NONE, 0);
 	beg_draw_sprites(bitmap,cliprect);
+	return 0;
 }

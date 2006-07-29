@@ -52,7 +52,7 @@ static void video_init_common(void)
 
 	// set defaults
 	maskwidth = 8;
-	maskheight = Machine->visible_area.max_y - Machine->visible_area.min_y + 1;
+	maskheight = Machine->visible_area[0].max_y - Machine->visible_area[0].min_y + 1;
 	maskcolor = get_black_pen();
 	scrollx = scrolly = 0;
 	for (i=0; i<4; i++) bgcolor[i] = 0;
@@ -234,7 +234,7 @@ VIDEO_START( splndrbt )
 
 	if (Machine->color_depth > 16) return(-1);
 
-	halfclip = Machine->visible_area;
+	halfclip = Machine->visible_area[0];
 	i = halfclip.max_y - halfclip.min_y + 1;
 	halfclip.max_y = halfclip.min_y + (i >> 1) - 1;
 
@@ -258,7 +258,7 @@ VIDEO_START( splndrbt )
 	memset(dirtybuf, 1, 0x800);
 
 	prestep = auto_malloc(i * sizeof(struct PRESTEP_TYPE));
-	splndrbt_prestep(prestep, &Machine->visible_area, BMW, 434, 96, 480);
+	splndrbt_prestep(prestep, &Machine->visible_area[0], BMW, 434, 96, 480);
 
 	defcharram = videoram16 + videoram_size / 2;
 
@@ -393,6 +393,7 @@ VIDEO_UPDATE( equites )
 	plot_box(bitmap, cliprect->min_x, cliprect->min_y, maskwidth, maskheight, maskcolor);
 	plot_box(bitmap, cliprect->max_x-maskwidth+1, cliprect->min_y, maskwidth, maskheight, maskcolor);
 	tilemap_draw(bitmap, cliprect, charmap0, 0, 0);
+	return 0;
 }
 
 // Splendor Blast Hardware
@@ -579,6 +580,7 @@ VIDEO_UPDATE( splndrbt )
 	tilemap_draw(bitmap, cliprect, charmap1, 0, 0);
 	splndrbt_draw_sprites(bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, charmap0, 0, 0);
+	return 0;
 }
 
 /******************************************************************************/

@@ -591,7 +591,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( asuka )
 	PORT_START_TAG("DSWA")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) ) /* Listed as "Unused" in the manual */
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
@@ -605,23 +605,16 @@ INPUT_PORTS_START( asuka )
 
 	PORT_START_TAG("DSWB")
 	TAITO_DIFFICULTY_8
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x0c, "500 Points" )
+	PORT_DIPSETTING(    0x08, "1500 Points" )
+	PORT_DIPSETTING(    0x04, "2000 Points" )
+	PORT_DIPSETTING(    0x00, "2500 Points" )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x10, "1" )
 	PORT_DIPSETTING(    0x20, "2" )
 	PORT_DIPSETTING(    0x30, "3" )
 	PORT_DIPSETTING(    0x00, "4" )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0xc0, 0x40, DEF_STR( Allow_Continue ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0xc0, "Up to Level 2" )
@@ -667,9 +660,9 @@ INPUT_PORTS_START( mofflott )
 	PORT_DIPNAME( 0x40, 0x40, "Invulnerability (Cheat)")
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, "Number of Keys" )
+	PORT_DIPSETTING(    0x00, "14" ) /* Hard */
+	PORT_DIPSETTING(    0x80, "16" ) /* Easy */
 
 	PORT_START_TAG("IN0")
 	ASUKA_PLAYERS_INPUT( 1 )
@@ -683,7 +676,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( cadash )
 	PORT_START_TAG("DSWA")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )	// Manual says leave it off
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )	/* Manual says leave it off */
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
@@ -731,7 +724,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( cadashj )
 	PORT_START_TAG("DSWA")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )	// Manual says leave it off
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )	/* Manual says leave it off */
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
@@ -773,7 +766,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( cadashu )
 	PORT_START_TAG("DSWA")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )	// Manual says leave it off
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )	/* Manual says leave it off */
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
@@ -815,7 +808,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( galmedes )
 	PORT_START_TAG("DSWA")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) ) /* Listed as "Unused" in the manual */
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
@@ -839,12 +832,12 @@ INPUT_PORTS_START( galmedes )
 	PORT_DIPSETTING(    0x10, "2" )
 	PORT_DIPSETTING(    0x30, "3" )
 	PORT_DIPSETTING(    0x00, "4" )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) ) /* Listed as "Unused" in the manual */
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, "Coin Mode" )
+	PORT_DIPSETTING(    0x80, "Mode A" ) /* Mode A is "TAITO_COINAGE_JAPAN_8" */
+	PORT_DIPSETTING(    0x00, "Mode B" ) /* Mode B is "TAITO_COINAGE_WORLD_8" */
 
 	PORT_START_TAG("IN0")
 	ASUKA_PLAYERS_INPUT( 1 )
@@ -858,7 +851,7 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( earthjkr )
 	PORT_START_TAG("DSWA")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) ) /* Listed as "Unused" in the manual */
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
@@ -872,21 +865,20 @@ INPUT_PORTS_START( earthjkr )
 
 	PORT_START_TAG("DSWB")
 	TAITO_DIFFICULTY_8
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x08, "100k Only" )
+	PORT_DIPSETTING(    0x00, "100k / 300k" )
+	PORT_DIPSETTING(    0x04, "200k Only" )
+	PORT_DIPSETTING(    0x0c, DEF_STR( None ) )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "1" )
 	PORT_DIPSETTING(    0x30, "2" )
 	PORT_DIPSETTING(    0x20, "3" )
 	PORT_DIPSETTING(    0x10, "4" )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) ) /* Listed as "Unused" in the manual */
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) ) /* Listed as "Unused" in the manual */
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
@@ -1407,11 +1399,11 @@ ROM_START( cadash )
 	ROM_REGION( 0x08000, REGION_USER1, 0 )	/* 2 machine interface mcu rom ? */
 	ROM_LOAD( "c21-07.57",   0x00000, 0x08000, CRC(f02292bd) SHA1(0a5c06a048ad67f90e0d766b504582e9eef035f7) )
 
-//  ROM_REGION( 0x01000, REGION_USER2, 0 )  /* pals ? */
-//  ROM_LOAD( "c21-09",   0x00000, 0x00ada, CRC(f02292bd) SHA1(0a5c06a048ad67f90e0d766b504582e9eef035f7) )
-//  ROM_LOAD( "c21-10",   0x00000, 0x00ada, CRC(f02292bd) SHA1(0a5c06a048ad67f90e0d766b504582e9eef035f7) )
-//  ROM_LOAD( "c21-11-1", 0x00000, 0x00ada, CRC(f02292bd) SHA1(0a5c06a048ad67f90e0d766b504582e9eef035f7) )
-//  ROM_LOAD( "c21-12",   0x00000, 0x00cd5, CRC(f02292bd) SHA1(0a5c06a048ad67f90e0d766b504582e9eef035f7) )
+	ROM_REGION( 0x0800, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16l8b-c21-09.ic34",   0x0000, 0x0104, CRC(4b296700) SHA1(79d6c8fb13e30795d9c1f49885ada658f9722b68) )
+	ROM_LOAD( "pal16l8b-c21-10.ic45",   0x0200, 0x0104, CRC(35642f00) SHA1(a04403536b0ef7e8e7251dfc47274a6c8772fd2d) )
+	ROM_LOAD( "pal16l8b-c21-11-1.ic46", 0x0400, 0x0104, CRC(f4791e24) SHA1(7e3bbffec7b8f9171e6e09706e5622fef3c99ca0) )
+	ROM_LOAD( "pal20l8b-c21-12.ic47",   0x0600, 0x0144, CRC(bbc2cc97) SHA1(d4a68f28e0d3f5a3b39ecc25640bc9197ad0260b) )
 ROM_END
 
 ROM_START( cadashj )

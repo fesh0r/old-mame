@@ -5,7 +5,6 @@
 /*************************************************************/
 
 #include "driver.h"
-#include "artwork.h"
 #include "vidhrdw/lazercmd.h"
 
 extern int marker_x, marker_y;
@@ -91,9 +90,6 @@ VIDEO_UPDATE( lazercmd )
 {
 	int i,x,y;
 
-	/* is overlay enabled? */
-	artwork_show(OVERLAY_TAG, (input_port_2_r(0) & 0x80) >> 7);
-
 	if (video_inverted != (input_port_2_r(0) & 0x20))
 	{
 		video_inverted = input_port_2_r(0) & 0x20;
@@ -122,12 +118,13 @@ VIDEO_UPDATE( lazercmd )
 					videoram[i], video_inverted ? 1 : 0,
 					0,0,
 					sx,sy,
-					&Machine->visible_area,TRANSPARENCY_NONE,0);
+					&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 		}
 	}
-	copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+	copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 
 	x = marker_x - 1;             /* normal video lags marker by 1 pixel */
 	y = vert_scale(marker_y) - VERT_CHR; /* first line used as scratch pad */
 	plot_pattern(bitmap,x,y);
+	return 0;
 }

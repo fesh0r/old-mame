@@ -22,7 +22,7 @@ static void mark_all_dirty(void)
 
 VIDEO_START( volfied )
 {
-	pixel_layer = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height);
+	pixel_layer = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight);
 	if (pixel_layer == NULL)
 		return 1;
 
@@ -125,11 +125,11 @@ static void refresh_pixel_layer(void)
 		p += 0x20000;
 	}
 
-	for (y = 0; y < Machine->drv->screen_height; y++)
+	for (y = 0; y < Machine->drv->screen[0].maxheight; y++)
 	{
 		if (line_dirty[y])
 		{
-			for (x = 1; x < Machine->drv->screen_width + 1; x++) // Hmm, 1 pixel offset is needed to align properly with sprites
+			for (x = 1; x < Machine->drv->screen[0].maxwidth + 1; x++) // Hmm, 1 pixel offset is needed to align properly with sprites
 			{
 				int color = (p[x] << 2) & 0x700;
 
@@ -166,4 +166,5 @@ VIDEO_UPDATE( volfied )
 	copybitmap(bitmap, pixel_layer, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
 
 	PC090OJ_draw_sprites(bitmap, cliprect, 0);
+	return 0;
 }

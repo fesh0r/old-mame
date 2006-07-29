@@ -2460,6 +2460,9 @@ ROM_START( spelunk2 )
 	                                                        /* sprites. Used at run time! */
 	ROM_LOAD( "sp2-r.8j",     0x0720, 0x0200, CRC(875cc442) SHA1(1117b6ae516c361b4cc4d0b7146ca98472ce2b21) )	/* unknown */
 	ROM_LOAD( "sp2-b.6f",     0x0920, 0x0100, CRC(34d88d3c) SHA1(727f4c5cfff33538886fa0a29fd119aa085d7008) )	/* video timing - common to the other games */
+
+	ROM_REGION( 0x0200, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "ampal16r4a-sp2-r-3h.bin", 0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 ROM_START( youjyudn )
@@ -2504,6 +2507,9 @@ ROM_START( youjyudn )
 	                                                        /* sprites. Used at run time! */
 	ROM_LOAD( "yju_p-8d.bpr", 0x0620, 0x0200, CRC(6cef0fbd) SHA1(0c5c63a203e7bd852a3574c18f212487caf529ca) )	/* unknown */
 	ROM_LOAD( "yju_b-6f.bpr", 0x0820, 0x0100, CRC(82c20d12) SHA1(268903f7d9be58a70d030b02bf31a2d6b5b6e249) )	/* video timing - same as kungfum */
+
+	ROM_REGION( 0x200, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "yju_b-pal16r4a-8m.pal", 0x0000, 0x0104, CRC(3ece8e61) SHA1(f7b04b80455068123e171a46e79d4b940bc4033d) )
 ROM_END
 
 ROM_START( horizon )

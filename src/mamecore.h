@@ -55,6 +55,18 @@ typedef struct _input_port_entry input_port_entry;
 typedef struct _input_port_default_entry input_port_default_entry;
 typedef struct _mame_file mame_file;
 typedef struct _chd_file chd_file;
+
+/* These values are returned as error codes by osd_fopen() */
+enum _osd_file_error
+{
+	FILEERR_SUCCESS,
+	FILEERR_FAILURE,
+	FILEERR_OUT_OF_MEMORY,
+	FILEERR_NOT_FOUND,
+	FILEERR_ACCESS_DENIED,
+	FILEERR_ALREADY_OPEN,
+	FILEERR_TOO_MANY_FILES
+};
 typedef enum _osd_file_error osd_file_error;
 
 
@@ -364,6 +376,10 @@ int mame_strnicmp(const char *s1, const char *s2, size_t n);
 #define strnicmp !MUST_USE_MAME_STRNICMP_INSTEAD!
 
 
+/* additional string compare helper */
+int mame_strwildcmp(const char *sp1, const char *sp2);
+
+
 /* since strdup is not part of the standard, we use this instead */
 char *mame_strdup(const char *str);
 
@@ -379,6 +395,16 @@ INLINE void sect_rect(rectangle *dst, const rectangle *src)
 	if (src->max_x < dst->max_x) dst->max_x = src->max_x;
 	if (src->min_y > dst->min_y) dst->min_y = src->min_y;
 	if (src->max_y < dst->max_y) dst->max_y = src->max_y;
+}
+
+
+/* compute the union of two rectangles */
+INLINE void union_rect(rectangle *dst, const rectangle *src)
+{
+	if (src->min_x < dst->min_x) dst->min_x = src->min_x;
+	if (src->max_x > dst->max_x) dst->max_x = src->max_x;
+	if (src->min_y < dst->min_y) dst->min_y = src->min_y;
+	if (src->max_y > dst->max_y) dst->max_y = src->max_y;
 }
 
 
@@ -428,6 +454,9 @@ INLINE UINT64 d2u(double d)
 	u.dd = d;
 	return u.vv;
 }
+
+
+#define GIANT_STRING_BUFFER_SIZE	65536
 
 
 

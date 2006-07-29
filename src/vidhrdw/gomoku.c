@@ -121,7 +121,7 @@ VIDEO_START( gomoku )
 	int bgdata;
 	int color;
 
-	gomoku_bg_bitmap = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height);
+	gomoku_bg_bitmap = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight);
 
 	gomoku_bg_dirty = auto_malloc(0x100);
 
@@ -244,4 +244,5 @@ VIDEO_UPDATE( gomoku )
 	}
 
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
+	return 0;
 }

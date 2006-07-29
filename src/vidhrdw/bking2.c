@@ -258,11 +258,11 @@ VIDEO_START( bking2 )
 	{
 		return 1;
 	}
-	if ((helper0 = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height)) == NULL)
+	if ((helper0 = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight)) == NULL)
 	{
 		return 1;
 	}
-	if ((helper1 = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height)) == NULL)
+	if ((helper1 = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight)) == NULL)
 	{
 		return 1;
 	}
@@ -299,6 +299,7 @@ VIDEO_UPDATE( bking2 )
 		crow_flip, crow_flip,
 		crow_flip ? xld3 - 16 : 256 - xld3, crow_flip ? yld3 - 16 : 256 - yld3,
 		cliprect, TRANSPARENCY_PEN, 0);
+	return 0;
 }
 
 

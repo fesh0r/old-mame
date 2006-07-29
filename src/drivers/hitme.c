@@ -110,12 +110,14 @@ static VIDEO_UPDATE(hitme)
 			}
 		}
 	}
+	return 0;
 }
 
 
 static VIDEO_UPDATE(barricad)
 {
 	tilemap_draw(bitmap,cliprect,hitme_tilemap,0,0);
+	return 0;
 }
 
 
@@ -138,7 +140,7 @@ static UINT8 read_port_and_t0(int port)
 static UINT8 read_port_and_t0_and_hblank(int port)
 {
 	UINT8 val = read_port_and_t0(port);
-	if (cpu_gethorzbeampos() < (Machine->drv->screen_width * 9 / 10))
+	if (cpu_gethorzbeampos() < (Machine->drv->screen[0].maxwidth * 9 / 10))
 		val ^= 0x04;
 	return val;
 }

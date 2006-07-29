@@ -451,7 +451,7 @@ VIDEO_START( laserbat )
 	videoram = (UINT8 *)auto_malloc(0x400);
 	colorram = (UINT8 *)auto_malloc(0x400);
 
-	collision_bitmap = auto_bitmap_alloc_depth(Machine->drv->screen_width,Machine->drv->screen_height,8);
+	collision_bitmap = auto_bitmap_alloc_depth(Machine->drv->screen[0].maxwidth,Machine->drv->screen[0].maxheight,8);
 
 	if (!bg_tilemap || !collision_bitmap)
 		return 1;
@@ -476,6 +476,7 @@ VIDEO_UPDATE( laserbat )
 				0,0,
 				sprite_info.x - 6,sprite_info.y,
 				cliprect,TRANSPARENCY_PEN,0);
+	return 0;
 }
 
 /* Laser Battle sound **********************************/

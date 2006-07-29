@@ -20,6 +20,7 @@
 
 
 #include "driver.h"
+#include "render.h"
 #include "machine/atarigen.h"
 #include "sndhrdw/atarijsa.h"
 #include "cyberbal.h"
@@ -323,13 +324,7 @@ INPUT_PORTS_START( cyberbal )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_VBLANK )
 
 	PORT_START		/* fake port for screen switching */
-#if (CYBERBALL_DUAL_MODE)
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
-#else
-	PORT_BIT(  0x0001, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("Select Left Screen") PORT_CODE(KEYCODE_9)
-	PORT_BIT(  0x0002, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("Select Right Screen") PORT_CODE(KEYCODE_0)
-	PORT_BIT( 0xfffc, IP_ACTIVE_LOW, IPT_UNUSED )
-#endif
 
 	PORT_START		/* audio board port */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -468,25 +463,27 @@ static MACHINE_DRIVER_START( cyberbal )
 	MDRV_CPU_PROGRAM_MAP(sound_68k_map,0)
 	MDRV_CPU_PERIODIC_INT(cyberbal_sound_68k_irq_gen,TIME_IN_HZ(10000))
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
 	MDRV_MACHINE_RESET(cyberbal)
 	MDRV_NVRAM_HANDLER(atarigen)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_PIXEL_ASPECT_RATIO_1_2 | VIDEO_UPDATE_BEFORE_VBLANK)
-#if (CYBERBALL_DUAL_MODE)
-	MDRV_SCREEN_SIZE(42*16*2, 30*8)
-	MDRV_VISIBLE_AREA(0*8, 42*16*2-1, 0*8, 30*8-1)
-	MDRV_ASPECT_RATIO(8,3)
-#else
-	MDRV_SCREEN_SIZE(42*16, 30*8)
-	MDRV_VISIBLE_AREA(0*8, 42*16-1, 0*8, 30*8-1)
-#endif
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_GFXDECODE(gfxdecodeinfo_interleaved)
 	MDRV_PALETTE_LENGTH(4096)
+
+	MDRV_SCREEN_ADD("left", 0x000)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(DEFAULT_REAL_60HZ_VBLANK_DURATION))
+	MDRV_SCREEN_MAXSIZE(42*16, 30*8)
+	MDRV_VISIBLE_AREA(0*8, 42*16-1, 0*8, 30*8-1)
+
+	MDRV_SCREEN_ADD("right", 0x000)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(DEFAULT_REAL_60HZ_VBLANK_DURATION))
+	MDRV_SCREEN_MAXSIZE(42*16, 30*8)
+	MDRV_VISIBLE_AREA(0*8, 42*16-1, 0*8, 30*8-1)
 
 	MDRV_VIDEO_START(cyberbal)
 	MDRV_VIDEO_UPDATE(cyberbal)
@@ -521,7 +518,7 @@ static MACHINE_DRIVER_START( cyberb2p )
 	MDRV_NVRAM_HANDLER(atarigen)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2 | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_SCREEN_SIZE(42*16, 30*8)
 	MDRV_VISIBLE_AREA(0*8, 42*16-1, 0*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
@@ -590,6 +587,13 @@ ROM_START( cyberbal )
 	ROM_REGION( 0x020000, REGION_GFX3, ROMREGION_DISPOSE )
 	ROM_LOAD( "136064-1121.15n", 0x000000, 0x010000, CRC(0ca1e3b3) SHA1(d934bc9a1def4404fb86175878404cbb18127a11) )
 	ROM_LOAD( "136064-1122.16n", 0x010000, 0x010000, CRC(882f4e1c) SHA1(f7517ff03502ff029fb375260a35e45414567433) )
+
+	ROM_REGION( 0x0a00, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "gal16v8-136064-1031.b21", 0x0000, 0x0117, CRC(e7e4ab09) SHA1(04f9413c77dca9f533d4cd796c3e416920b4dbbc) )
+	ROM_LOAD( "gal16v8-136064-1027.d52", 0x0200, 0x0117, CRC(fbd6afcd) SHA1(7a3981ce4b0141b9e0877962b7db07d07ca4129c) )
+	ROM_LOAD( "gal16v8-136064-1028.b56", 0x0400, 0x0117, CRC(12d1a257) SHA1(32914dffd58ce694913c2108a27b078422a9dc63) )
+	ROM_LOAD( "gal16v8-136064-1029.d58", 0x0600, 0x0117, CRC(fd39d238) SHA1(55c1b9a56c9b2bfa434eed54f7baea436ea141b8) )
+	ROM_LOAD( "gal16v8-136064-1030.d91", 0x0800, 0x0117, CRC(84102588) SHA1(b6bffb47e5975c96b056d07357eb020caf3f0a0a) )
 ROM_END
 
 
@@ -1030,15 +1034,15 @@ static DRIVER_INIT( cyberb2p )
  *
  *************************************/
 
-GAME( 1988, cyberbal, 0,        cyberbal, cyberbal, cyberbal, ROT0, "Atari Games", "Cyberball (rev 4)", 0 )
-GAME( 1988, cyberba2, cyberbal, cyberbal, cyberbal, cyberbal, ROT0, "Atari Games", "Cyberball (rev 2)", 0 )
-GAME( 1988, cyberbap, cyberbal, cyberbal, cyberbal, cyberbal, ROT0, "Atari Games", "Cyberball (prototype)", 0 )
+GAMEL( 1988, cyberbal, 0,        cyberbal, cyberbal, cyberbal, ROT0, "Atari Games", "Cyberball (rev 4)", 0, layout_dualhsxs )
+GAMEL( 1988, cyberba2, cyberbal, cyberbal, cyberbal, cyberbal, ROT0, "Atari Games", "Cyberball (rev 2)", 0, layout_dualhsxs )
+GAMEL( 1988, cyberbap, cyberbal, cyberbal, cyberbal, cyberbal, ROT0, "Atari Games", "Cyberball (prototype)", 0, layout_dualhsxs )
 
 GAME( 1989, cyberb2p, cyberbal, cyberb2p, cyberb2p, cyberb2p, ROT0, "Atari Games", "Cyberball 2072 (2 player, rev 4)", 0 )
 GAME( 1989, cyberb23, cyberbal, cyberb2p, cyberb2p, cyberb2p, ROT0, "Atari Games", "Cyberball 2072 (2 player, rev 3)", 0 )
 GAME( 1989, cyberb22, cyberbal, cyberb2p, cyberb2p, cyberb2p, ROT0, "Atari Games", "Cyberball 2072 (2 player, rev 2)", 0 )
 GAME( 1989, cyberb21, cyberbal, cyberb2p, cyberb2p, cyberb2p, ROT0, "Atari Games", "Cyberball 2072 (2 player, rev 1)", 0 )
 
-GAME( 1989, cyberbt,  cyberbal, cyberbal, cyberbal, cyberbt,  ROT0, "Atari Games", "Tournament Cyberball 2072 (rev 2)", 0 )
-GAME( 1989, cyberbt1, cyberbal, cyberbal, cyberbal, cyberbt,  ROT0, "Atari Games", "Tournament Cyberball 2072 (rev 1)", 0 )
+GAMEL( 1989, cyberbt,  cyberbal, cyberbal, cyberbal, cyberbt,  ROT0, "Atari Games", "Tournament Cyberball 2072 (rev 2)", 0, layout_dualhsxs )
+GAMEL( 1989, cyberbt1, cyberbal, cyberbal, cyberbal, cyberbt,  ROT0, "Atari Games", "Tournament Cyberball 2072 (rev 1)", 0, layout_dualhsxs )
 

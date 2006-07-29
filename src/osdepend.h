@@ -15,6 +15,7 @@
 #define __OSDEPEND_H__
 
 #include "mamecore.h"
+#include "timer.h"
 #include <stdarg.h>
 
 int osd_init(void);
@@ -29,6 +30,8 @@ void osd_wait_for_debugger(void);
     Display
 
 ******************************************************************************/
+
+#ifndef NEW_RENDER
 
 /* these are the parameters passed into osd_create_display */
 /* In mamecore.h: typedef struct _osd_create_params osd_create_params; */
@@ -53,8 +56,7 @@ struct _osd_create_params
   Attributes are the ones defined in driver.h, they can be used to perform
   optimizations, e.g. dirty rectangle handling if the game supports it, or faster
   blitting routines with fixed palette if the game doesn't change the palette at
-  run time. The VIDEO_PIXEL_ASPECT_RATIO flags should be honored to produce a
-  display of correct proportions.
+  run time.
   Orientation is the screen orientation (as defined in driver.h) which will be done
   by the core. This can be used to select thinner screen modes for vertical games
   (ORIENTATION_SWAP_XY set), or even to ask the user to rotate the monitor if it's
@@ -100,13 +102,12 @@ int osd_skip_this_frame(void);
 */
 void osd_update_video_and_audio(struct _mame_display *display);
 
+#else
 
-/*
-  Provides a hook to allow the OSD system to override processing of a
-  snapshot.  This function will either return a new bitmap, for which the
-  caller is responsible for freeing.
-*/
-mame_bitmap *osd_override_snapshot(mame_bitmap *bitmap, rectangle *bounds);
+int osd_update(mame_time emutime);
+
+#endif
+
 
 /*
   Returns a pointer to the text to display when the FPS display is toggled.
@@ -134,12 +135,12 @@ const char *osd_get_fps_text(const performance_info *performance);
 
   osd_start_audio_stream() and osd_update_audio_stream() must return the number
   of samples (or couples of samples, when using stereo) required for next frame.
-  This will be around Machine->sample_rate / Machine->drv->frames_per_second,
+  This will be around Machine->sample_rate / Machine->drv->screen[0].refresh_rate,
   the code may adjust it by SMALL AMOUNTS to keep timing accurate and to
   maintain audio and video in sync when using vsync. Note that sound emulation,
   especially when DACs are involved, greatly depends on the number of samples
   per frame to be roughly constant, so the returned value must always stay close
-  to the reference value of Machine->sample_rate / Machine->drv->frames_per_second.
+  to the reference value of Machine->sample_rate / Machine->drv->screen[0].refresh_rate.
   Of course that value is not necessarily an integer so at least a +/- 1
   adjustment is necessary to avoid drifting over time.
 */
@@ -251,18 +252,6 @@ enum
 	PATH_IS_DIRECTORY
 };
 
-/* These values are returned as error codes by osd_fopen() */
-enum _osd_file_error
-{
-	FILEERR_SUCCESS,
-	FILEERR_FAILURE,
-	FILEERR_OUT_OF_MEMORY,
-	FILEERR_NOT_FOUND,
-	FILEERR_ACCESS_DENIED,
-	FILEERR_ALREADY_OPEN,
-	FILEERR_TOO_MANY_FILES
-};
-
 typedef struct _osd_file osd_file;
 
 /* Return the number of paths for a given type */
@@ -326,7 +315,7 @@ cycles_t osd_profiling_ticks(void);
 
 /* called to allocate/free memory that can contain executable code */
 void *osd_alloc_executable(size_t size);
-void osd_free_executable(void *ptr);
+void osd_free_executable(void *ptr, size_t size);
 
 /* called while loading ROMs. It is called a last time with name == 0 to signal */
 /* that the ROM loading process is finished. */
@@ -336,6 +325,13 @@ int osd_display_loading_rom_message(const char *name,rom_load_data *romdata);
 /* checks to see if a pointer is bad */
 int osd_is_bad_read_ptr(const void *ptr, size_t size);
 
+/* multithreading locks; only need to implement if you use threads */
+typedef struct _osd_lock osd_lock;
+osd_lock *osd_lock_alloc(void);
+void osd_lock_acquire(osd_lock *lock);
+int osd_lock_try(osd_lock *lock);
+void osd_lock_release(osd_lock *lock);
+void osd_lock_free(osd_lock *lock);
 
 
 #ifdef MESS

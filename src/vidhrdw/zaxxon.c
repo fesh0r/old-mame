@@ -92,20 +92,14 @@ PALETTE_INIT( zaxxon )
 
 WRITE8_HANDLER( zaxxon_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( congo_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 
@@ -222,12 +216,12 @@ static void zaxxon_draw_background( mame_bitmap *bitmap, const rectangle *clipre
 				scroll = -(2*(zaxxon_background_position[0] + 256*(zaxxon_background_position[1]&7))) - 2;
 		}
 
-		skew = 72 - (255 - Machine->visible_area.max_y);
+		skew = 72 - (255 - Machine->visible_area[0].max_y);
 
-		clip.min_x = Machine->visible_area.min_x;
-		clip.max_x = Machine->visible_area.max_x;
+		clip.min_x = Machine->visible_area[0].min_x;
+		clip.max_x = Machine->visible_area[0].max_x;
 
-		for (i = Machine->visible_area.max_y;i >= Machine->visible_area.min_y;i-=2)
+		for (i = Machine->visible_area[0].max_y;i >= Machine->visible_area[0].min_y;i-=2)
 		{
 			clip.min_y = i-1;
 			clip.max_y = i;
@@ -281,6 +275,7 @@ VIDEO_UPDATE( zaxxon )
 	zaxxon_draw_background(bitmap, cliprect);
 	zaxxon_draw_sprites(bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
+	return 0;
 }
 
 /* Razzmatazz */
@@ -360,6 +355,7 @@ VIDEO_UPDATE( razmataz )
 	razmataz_draw_background(bitmap, cliprect);
 	zaxxon_draw_sprites(bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
+	return 0;
 }
 
 /* Congo Bongo */
@@ -392,7 +388,7 @@ static void congo_draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	int offs;
 	int i;
-	static unsigned int sprpri[0x100]; /* this really should not be more
+	unsigned int sprpri[0x100]; /* this really should not be more
                                     * than 0x1e, but I did not want to check
                                     * for 0xff which is set when sprite is off
                                     * -V-
@@ -436,6 +432,7 @@ VIDEO_UPDATE( congo )
 	zaxxon_draw_background(bitmap, cliprect);
 	congo_draw_sprites(bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
+	return 0;
 }
 
 /* Future Spy */
@@ -474,4 +471,5 @@ VIDEO_UPDATE( futspy )
 	zaxxon_draw_background(bitmap, cliprect);
 	futspy_draw_sprites(bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
+	return 0;
 }

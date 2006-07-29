@@ -130,7 +130,7 @@ static void targeth_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 		drawgfx(bitmap,gfx,number,
 				0x20 + color,xflip,yflip,
 				sx - 0x0f,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
 }
 
@@ -166,4 +166,5 @@ VIDEO_UPDATE( targeth )
 		posy = readinputport(3) & 0x0ff;
 		draw_crosshair(bitmap, posx - 0x17, posy + 1, cliprect, 1);
 	}
+	return 0;
 }

@@ -71,7 +71,7 @@ static void lemmings_drawsprites(mame_bitmap *bitmap, UINT16 *spritedata, int gf
 					colour,
 					fx,fy,
 					x,y + mult * multi,
-					&Machine->visible_area,TRANSPARENCY_PEN,0);
+					&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 
 			multi--;
 		}
@@ -184,7 +184,7 @@ VIDEO_UPDATE( lemmings )
 
 	/* Pixel layer can be windowed in hardware (two player mode) */
 	if ((lemmings_control_data[6]&2)==0) {
-		copyscrollbitmap(bitmap,bitmap0,1,&x1,1,&y,&Machine->visible_area,TRANSPARENCY_PEN,0x100);
+		copyscrollbitmap(bitmap,bitmap0,1,&x1,1,&y,&Machine->visible_area[0],TRANSPARENCY_PEN,0x100);
 	} else {
 		rect.max_x=159;
 		rect.min_x=0;
@@ -197,4 +197,5 @@ VIDEO_UPDATE( lemmings )
 	lemmings_drawsprites(bitmap,sprite_triple_buffer_1,1,0x2000);
 	tilemap_draw(bitmap,cliprect,vram_tilemap,0,0);
 	lemmings_drawsprites(bitmap,sprite_triple_buffer_0,0,0x2000);
+	return 0;
 }

@@ -450,9 +450,9 @@ $a00000 checks have been seen on the Final Lap boards.
 #include "namcos2.h"
 #include "cpu/m6809/m6809.h"
 #include "namcoic.h"
-#include "artwork.h"
 #include "sound/2151intf.h"
 #include "sound/c140.h"
+#include "render.h"
 
 
 /*************************************************************/
@@ -464,99 +464,67 @@ static UINT8 *namcos2_dpram;	/* 2Kx8 */
 static void
 GollyGhostUpdateLED_c4( int data )
 {
-	static char zip100[32];
-	static char zip10[32];
-	int i = 0;
-	for(;;)
-	{
-		artwork_show(zip100,i);
-		artwork_show(zip10,i);
-		if( i ) return;
-		sprintf( zip100, "zip100_%d",data>>4);
-		sprintf( zip10,  "zip10_%d", data&0xf);
-		i=1;
-	}
+#ifdef NEW_RENDER
+	render_view_item_set_state("zip100", data >> 4);
+	render_view_item_set_state("zip10", data & 0x0f);
+#endif
 }
 
 static void
 GollyGhostUpdateLED_c6( int data )
 {
-	static char zip1[32];
-	static char time10[32];
-	int i = 0;
-	for(;;)
-	{
-		artwork_show(zip1,i);
-		artwork_show(time10,i);
-		if( i ) return;
-		sprintf( zip1,   "zip1_%d",  data>>4);
-		sprintf( time10, "time10_%d",data&0xf);
-		i=1;
-	}
+#ifdef NEW_RENDER
+	render_view_item_set_state("zip1", data >> 4);
+	render_view_item_set_state("time10", data & 0x0f);
+#endif
 }
 
 static void
 GollyGhostUpdateLED_c8( int data )
 {
-	static char time1[32];
-	static char zap100[32];
-	int i = 0;
-	for(;;)
-	{
-		artwork_show(time1,i);
-		artwork_show(zap100,i);
-		if( i ) return;
-		sprintf( time1,  "time1_%d", data>>4);
-		sprintf( zap100, "zap100_%d",data&0xf);
-		i=1;
-	}
+#ifdef NEW_RENDER
+	render_view_item_set_state("time1", data >> 4);
+	render_view_item_set_state("zap100", data & 0x0f);
+#endif
 }
 
 static void
 GollyGhostUpdateLED_ca( int data )
 {
-	static char zap10[32];
-	static char zap1[32];
-	int i = 0;
-	for(;;)
-	{
-		artwork_show(zap10,i);
-		artwork_show(zap1,i);
-		if( i ) return;
-		sprintf( zap10,  "zap10_%d", data>>4);
-		sprintf( zap1,   "zap1_%d",  data&0xf);
-		i=1;
-	}
+#ifdef NEW_RENDER
+	render_view_item_set_state("zap10", data >> 4);
+	render_view_item_set_state("zap1", data & 0x0f);
+#endif
 }
 
 static void
 GollyGhostUpdateDiorama_c0( int data )
 {
+#ifdef NEW_RENDER
 	if( data&0x80 )
 	{
-		artwork_show("fulldark",0 );
-		artwork_show("dollhouse",1); /* diorama is lit up */
+		render_view_item_set_state("dollhouse", 1); /* diorama is lit up */
 
 		/* dollhouse controller; solenoids control physical components */
-		artwork_show("toybox",      data&0x01 );
-		artwork_show("bathroom",    data&0x02 );
-		artwork_show("bureau",      data&0x04 );
-		artwork_show("refrigerator",data&0x08 );
-		artwork_show("porch",       data&0x10 );
+		render_view_item_set_state("toybox",      (data >> 0) & 1);
+		render_view_item_set_state("bathroom",    (data >> 1) & 1);
+		render_view_item_set_state("bureau",      (data >> 2) & 1);
+		render_view_item_set_state("refrigerator",(data >> 3) & 1);
+		render_view_item_set_state("porch",       (data >> 4) & 1);
 		/* data&0x20 : player#1 (ZIP) force feedback
          * data&0x40 : player#2 (ZAP) force feedback
          */
 	}
 	else
 	{
-		artwork_show("fulldark",1 );
-		artwork_show("dollhouse",0);
-		artwork_show("toybox",0);
-		artwork_show("bathroom",0);
-		artwork_show("bureau",0);
-		artwork_show("refrigerator",0);
-		artwork_show("porch",0);
+		render_view_item_set_state("dollhouse",0);
+		render_view_item_set_state("toybox", 0);
+		render_view_item_set_state("bathroom", 0);
+		render_view_item_set_state("bureau", 0);
+		render_view_item_set_state("refrigerator", 0);
+		render_view_item_set_state("porch", 0);
 	}
+#endif
 }
 
 static READ16_HANDLER( namcos2_68k_dpram_word_r )
@@ -2383,6 +2351,11 @@ ROM_START( dsaber )
 	ROM_REGION( 0x100000, REGION_SOUND1, 0 ) /* Sound voices */
 	ROM_LOAD( "voi1.bin",  0x000000, 0x080000, CRC(dadf6a57) SHA1(caba21fc6b62d140f6d8231411ce82ae0ad2837a) )
 	ROM_LOAD( "voi2.bin",  0x080000, 0x080000, CRC(81078e01) SHA1(adc70506b21b9a12eadd2f3fd1e920c2eb27c36e) )
+
+	ROM_REGION( 0x0500, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16l8a.4g", 0x0000, 0x0104, CRC(660e1655) SHA1(ffb43238c5ffa3fa831975bc3cde72334c4c2540) )
+	ROM_LOAD( "pal16l8a.5f", 0x0200, 0x0104, CRC(18f43c22) SHA1(72849c5b842678bb9037541d26d4c99cdf879982) )
+	ROM_LOAD( "pal12l10.8d", 0x0400, 0x0040, CRC(e2379249) SHA1(ad4cdf2e0fd1304a135022eeafa2f61c5f5789cd) )
 ROM_END
 
 /* DRAGON SABER (JAPAN) */
@@ -3207,6 +3180,11 @@ ROM_START( metlhawk )
 
 	ROM_REGION( 0x2000, REGION_USER2, 0 ) /* sprite zoom lookup table */
 	ROM_LOAD( "mh5762.7p",    0x00000,  0x002000, CRC(90db1bf6) SHA1(dbb9e50a8efc3b4012fcf587cc87da9ef42a1b80) )
+
+	ROM_REGION( 0x0500, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "ampal16l8a-sys87b-1.4g", 0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "ampal16l8a-sys87b-2.5e", 0x0200, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal12l10-sys87b-3.8d",   0x0400, 0x0040, CRC(d3ae64a6) SHA1(8e56f447908246e84d5a79df1a1cd3d5c8a040fb) )
 ROM_END
 
 /* METAL HAWK (Japan) */
@@ -3270,6 +3248,11 @@ ROM_START( metlhwkj )
 
 	ROM_REGION( 0x2000, REGION_USER2, 0 ) /* sprite zoom lookup table */
 	ROM_LOAD( "mh5762.7p",    0x00000,  0x002000, CRC(90db1bf6) SHA1(dbb9e50a8efc3b4012fcf587cc87da9ef42a1b80) )
+
+	ROM_REGION( 0x0500, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "ampal16l8a-sys87b-1.4g", 0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "ampal16l8a-sys87b-2.5e", 0x0200, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal12l10-sys87b-3.8d",   0x0400, 0x0040, CRC(d3ae64a6) SHA1(8e56f447908246e84d5a79df1a1cd3d5c8a040fb) )
 ROM_END
 
 /* MIRAI NINJA */

@@ -170,7 +170,7 @@ VIDEO_START( marvins )
 		return 1;
 
 	{
-		tilemap_clip = Machine->visible_area;
+		tilemap_clip = Machine->visible_area[0];
 		if (snk_gamegroup != 1) // not Mad Crasher
 		{
 			tilemap_clip.max_x-=16;
@@ -373,6 +373,7 @@ VIDEO_UPDATE( marvins )
 		draw_status( bitmap,cliprect );
 	}
 	cpuintrf_pop_context();
+	return 0;
 }
 
 VIDEO_UPDATE( madcrash )
@@ -435,4 +436,5 @@ VIDEO_UPDATE( madcrash )
 		draw_status( bitmap,cliprect );
 	}
 	cpuintrf_pop_context();
+	return 0;
 }

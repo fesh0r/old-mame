@@ -7,7 +7,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "artwork.h"
 #include "8080bw.h"
 #include <math.h>
 
@@ -15,13 +14,15 @@ static int screen_red;
 static int screen_red_enabled;		/* 1 for games that can turn the screen red */
 static int color_map_select;
 static int background_color;
+static int schaser_sx10_done;
 static UINT8 cloud_pos;
 static UINT8 bowler_bonus_display;
 
 static write8_handler videoram_w_p;
-static void (*video_update_p)(int screen,mame_bitmap *bitmap,const rectangle *cliprect);
+static UINT32 (*video_update_p)(int screen,mame_bitmap *bitmap,const rectangle *cliprect);
 
 static WRITE8_HANDLER( bw_videoram_w );
+static WRITE8_HANDLER( rollingc_videoram_w );
 static WRITE8_HANDLER( schaser_videoram_w );
 static WRITE8_HANDLER( lupin3_videoram_w );
 static WRITE8_HANDLER( polaris_videoram_w );
@@ -40,22 +41,12 @@ static VIDEO_UPDATE( bowler );
 static void plot_pixel_8080(int x, int y, int col);
 
 /* smoothed colors, overlays are not so contrasted */
-#define OVERLAY_RED			MAKE_ARGB(0x08,0xff,0x20,0x20)
-#define OVERLAY_GREEN		MAKE_ARGB(0x08,0x20,0xff,0x20)
-#define OVERLAY_BLUE		MAKE_ARGB(0x08,0x20,0x20,0xff)
-#define OVERLAY_YELLOW		MAKE_ARGB(0x08,0xff,0xff,0x20)
-#define OVERLAY_CYAN		MAKE_ARGB(0x08,0x20,0xff,0xff)
-#define OVERLAY_LT_BLUE		MAKE_ARGB(0x08,0xa0,0xa0,0xff)
-
-
-OVERLAY_START( invaders_overlay )
-	OVERLAY_RECT(   8,   0,  64, 224, OVERLAY_GREEN )
-	OVERLAY_RECT(   0,  16,   8, 134, OVERLAY_GREEN )
-	OVERLAY_RECT( 184,   0, 216, 224, OVERLAY_RED )
-OVERLAY_END
-
 
 /*
+#define OVERLAY_RED         MAKE_ARGB(0x08,0xff,0x20,0x20)
+#define OVERLAY_GREEN       MAKE_ARGB(0x08,0x20,0xff,0x20)
+#define OVERLAY_YELLOW      MAKE_ARGB(0x08,0xff,0xff,0x20)
+
 OVERLAY_START( invdpt2m_overlay )
     OVERLAY_RECT(  16,   0,  72, 224, OVERLAY_GREEN )
     OVERLAY_RECT(   0,  16,  16, 134, OVERLAY_GREEN )
@@ -63,32 +54,6 @@ OVERLAY_START( invdpt2m_overlay )
     OVERLAY_RECT( 192,   0, 224, 224, OVERLAY_RED )
 OVERLAY_END
 */
-
-
-OVERLAY_START( invrvnge_overlay )
-	OVERLAY_RECT(   0,   0,  64, 224, OVERLAY_GREEN )
-	OVERLAY_RECT( 184,   0, 224, 224, OVERLAY_RED )
-OVERLAY_END
-
-
-OVERLAY_START( invad2ct_overlay )
-	OVERLAY_RECT(   0,   0,  48, 224, OVERLAY_YELLOW )
-	OVERLAY_RECT(  25,   0,  71, 224, OVERLAY_GREEN )
-	OVERLAY_RECT(  48,   0, 140, 224, OVERLAY_CYAN )
-	OVERLAY_RECT( 117,   0, 186, 224, OVERLAY_GREEN )
-	OVERLAY_RECT( 163,   0, 232, 224, OVERLAY_YELLOW )
-	OVERLAY_RECT( 209,   0, 256, 224, OVERLAY_RED )
-OVERLAY_END
-
-
-OVERLAY_START( phantom2_overlay )
-	OVERLAY_RECT(   0,   0, 240, 224, OVERLAY_LT_BLUE )
-OVERLAY_END
-
-
-OVERLAY_START( gunfight_overlay )
-	OVERLAY_RECT(   0,   0, 256, 224, OVERLAY_YELLOW )
-OVERLAY_END
 
 
 DRIVER_INIT( 8080bw )
@@ -101,28 +66,10 @@ DRIVER_INIT( 8080bw )
 	flip_screen_set(0);
 }
 
-DRIVER_INIT( invaders )
-{
-	init_8080bw();
-	artwork_set_overlay(invaders_overlay);
-}
-
 DRIVER_INIT( invaddlx )
 {
 	init_8080bw();
 /*  artwork_set_overlay(invdpt2m_overlay);*/
-}
-
-DRIVER_INIT( invrvnge )
-{
-	init_8080bw();
-	artwork_set_overlay(invrvnge_overlay);
-}
-
-DRIVER_INIT( invad2ct )
-{
-	init_8080bw();
-	artwork_set_overlay(invad2ct_overlay);
 }
 
 DRIVER_INIT( sstrngr2 )
@@ -134,17 +81,39 @@ DRIVER_INIT( sstrngr2 )
 
 DRIVER_INIT( schaser )
 {
+	int i;
+	UINT8* promm = memory_region( REGION_PROMS );
+
 	schaser_effect_555_timer = timer_alloc(schaser_effect_555_cb);
 
 	init_8080bw();
 	videoram_w_p = schaser_videoram_w;
+	// make background palette same as foreground one
+	for (i = 0; i < 0x80; i++) promm[i] = 0;
+
+	for (i = 0x80; i < 0x400; i++)
+	{
+		if (promm[i] == 0x0c) promm[i] = 4;
+		if (promm[i] == 0x03) promm[i] = 2;
+	}
+
+	memcpy(promm+0x400,promm,0x400);
+
+	for (i = 0x500; i < 0x800; i++)
+		if (promm[i] == 4) promm[i] = 2;
+}
+
+DRIVER_INIT( schasrcv )
+{
+	init_8080bw();
+	videoram_w_p = rollingc_videoram_w;
 	background_color = 2;	/* blue */
 }
 
 DRIVER_INIT( rollingc )
 {
 	init_8080bw();
-	videoram_w_p = schaser_videoram_w;
+	videoram_w_p = rollingc_videoram_w;
 	background_color = 0;	/* black */
 }
 
@@ -201,13 +170,6 @@ DRIVER_INIT( phantom2 )
 {
 	init_8080bw();
 	videoram_w_p = phantom2_videoram_w;
-	artwork_set_overlay(phantom2_overlay);
-}
-
-DRIVER_INIT( gunfight )
-{
-	init_8080bw();
-	artwork_set_overlay(gunfight_overlay);
 }
 
 DRIVER_INIT( indianbt )
@@ -322,7 +284,7 @@ static WRITE8_HANDLER( bw_videoram_w )
 	plot_byte(x, y, data, 1, 0);
 }
 
-static WRITE8_HANDLER( schaser_videoram_w )
+static WRITE8_HANDLER( rollingc_videoram_w )
 {
 	UINT8 x,y,col;
 
@@ -334,6 +296,39 @@ static WRITE8_HANDLER( schaser_videoram_w )
 	col = colorram[offset & 0x1f1f] & 0x07;
 
 	plot_byte(x, y, data, col, background_color);
+}
+
+static WRITE8_HANDLER( schaser_videoram_w )
+{
+	int x,y,z,proma,promb=0x400;	// promb = 0 for green band, promb = 400 for all blue
+	UINT8 col,chg=0;
+	UINT8* promm = memory_region( REGION_PROMS );
+	if (schaser_sx10 != schaser_sx10_done) chg++;
+	if (schaser_sx10) promb = 0;
+
+	if (chg)
+	{
+		for (y = 64; y < 224; y++)
+		{
+			for (x = 40; x < 200; x+=8)
+			{
+				z = y*32+x/8;
+				col = colorram[z & 0x1f1f] & 0x07;
+				proma = promb+((z%32)*32+y/8+93);
+				plot_byte(x, y, videoram[z], col, promm[proma&0x7ff]);
+			}
+		}
+		schaser_sx10_done = schaser_sx10;
+	}
+
+	videoram[offset] = data;
+
+	y = offset / 32;
+	x = 8 * (offset % 32);
+
+	col = colorram[offset & 0x1f1f] & 0x07;
+	proma = promb+((offset%32)*32+y/8+93);
+	plot_byte(x, y, data, col, promm[proma&0x7ff]);
 }
 
 static WRITE8_HANDLER( lupin3_videoram_w )
@@ -509,6 +504,7 @@ static WRITE8_HANDLER( shuttlei_videoram_w )
 VIDEO_UPDATE( 8080bw )
 {
 	video_update_p(screen, bitmap, cliprect);
+	return 0;
 }
 
 
@@ -523,6 +519,7 @@ static VIDEO_UPDATE( 8080bw_common )
 	}
 
 	copybitmap(bitmap,tmpbitmap,0,0,0,0,cliprect,TRANSPARENCY_NONE,0);
+	return 0;
 }
 
 
@@ -598,6 +595,7 @@ static VIDEO_UPDATE( seawolf )
 	video_update_8080bw_common(screen, bitmap, cliprect);
 
     draw_sight(bitmap,cliprect,((input_port_0_r(0) & 0x1f) * 8) + 4, 63);
+    return 0;
 }
 
 static VIDEO_UPDATE( blueshrk )
@@ -606,6 +604,7 @@ static VIDEO_UPDATE( blueshrk )
 	video_update_8080bw_common(screen, bitmap, cliprect);
 
     draw_sight(bitmap,cliprect,((input_port_0_r(0) & 0x7f) * 2) - 12, 63);
+    return 0;
 }
 
 static VIDEO_UPDATE( desertgu )
@@ -616,6 +615,7 @@ static VIDEO_UPDATE( desertgu )
 	draw_sight(bitmap,cliprect,
 			   ((input_port_0_r(0) & 0x7f) * 2) - 30,
 			   ((input_port_2_r(0) & 0x7f) * 2) + 2);
+    return 0;
 }
 
 
@@ -683,6 +683,7 @@ static VIDEO_UPDATE( bowler )
         y -= Machine->uifontwidth;
     }
 */
+    return 0;
 }
 
 

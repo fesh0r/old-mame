@@ -69,8 +69,8 @@ static void welltris_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 		yzoom = 16 - zoomtable[yzoom] / 8;
 
 		/* wrap around */
-		if (x > Machine->visible_area.max_x) x -= 0x200;
-		if (y > Machine->visible_area.max_y) y -= 0x200;
+		if (x > Machine->visible_area[0].max_x) x -= 0x200;
+		if (y > Machine->visible_area[0].max_y) y -= 0x200;
 
 		/* normal case */
 		if (!xflip && !yflip) {
@@ -249,4 +249,5 @@ VIDEO_UPDATE( welltris )
 	welltris_drawbackground(bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, char_tilemap, 0, 0);
 	welltris_draw_sprites(bitmap, cliprect);
+	return 0;
 }

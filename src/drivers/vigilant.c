@@ -761,6 +761,11 @@ ROM_START( vigilant )
 
 	ROM_REGION( 0x10000, REGION_SOUND1, 0 ) /* samples */
 	ROM_LOAD( "d04_c01.bin",  0x00000, 0x10000, CRC(9b85101d) SHA1(6b8a0f33b9b66bb968f7b61e49d19a6afad8db95) )
+
+	ROM_REGION( 0x0600, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16l8.8r", 0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8.4m", 0x0200, 0x0104, CRC(6c628a26) SHA1(65a45e762ce218e4552c30302c1ac4272c099fb5) )
+	ROM_LOAD( "pal16l8.1b", 0x0400, 0x0104, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 ROM_START( vigilntu )
@@ -793,6 +798,11 @@ ROM_START( vigilntu )
 
 	ROM_REGION( 0x10000, REGION_SOUND1, 0 ) /* samples */
 	ROM_LOAD( "d04_c01.bin",  0x00000, 0x10000, CRC(9b85101d) SHA1(6b8a0f33b9b66bb968f7b61e49d19a6afad8db95) )
+
+	ROM_REGION( 0x0600, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16l8.8r", 0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8.4m", 0x0200, 0x0104, CRC(6c628a26) SHA1(65a45e762ce218e4552c30302c1ac4272c099fb5) )
+	ROM_LOAD( "pal16l8.1b", 0x0400, 0x0104, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 ROM_START( vigilntj )
@@ -825,6 +835,11 @@ ROM_START( vigilntj )
 
 	ROM_REGION( 0x10000, REGION_SOUND1, 0 ) /* samples */
 	ROM_LOAD( "d04_c01.bin",  0x00000, 0x10000, CRC(9b85101d) SHA1(6b8a0f33b9b66bb968f7b61e49d19a6afad8db95) )
+
+	ROM_REGION( 0x0600, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16l8.8r", 0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8.4m", 0x0200, 0x0104, CRC(6c628a26) SHA1(65a45e762ce218e4552c30302c1ac4272c099fb5) )
+	ROM_LOAD( "pal16l8.1b", 0x0400, 0x0104, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 ROM_START( kikcubic )
@@ -918,6 +933,11 @@ ROM_START( buccanrs )
 	ROM_LOAD( "prom4.u79",  0x0100, 0x0100, CRC(e6506ef4) SHA1(079841da7640b14d94aaaeb572bf018932b58293) )
 	ROM_LOAD( "prom3.u88",  0x0200, 0x0100, CRC(b43d094f) SHA1(2bed4892d8a91d7faac5a07bf858d9294eb30606) )
 	ROM_LOAD( "prom2.u99",  0x0300, 0x0100, CRC(e0aa8869) SHA1(ac8bdfeba69420ba56ec561bf3d0f1229d02cea2) )
+
+	ROM_REGION( 0x0600, REGION_PLDS, 0 )
+	ROM_LOAD( "pal16l8.u103", 0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8.u156", 0x0200, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8.u42",  0x0400, 0x0104, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 ROM_START( buccanra )

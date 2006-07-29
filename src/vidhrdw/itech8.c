@@ -227,7 +227,7 @@ WRITE8_HANDLER( itech8_palette_w )
 
 WRITE8_HANDLER( itech8_page_w )
 {
-	force_partial_update(cpu_getscanline());
+	force_partial_update(0, cpu_getscanline());
 	logerror("%04x:display_page = %02X (%d)\n", activecpu_get_pc(), data, cpu_getscanline());
 	page_select = data;
 }
@@ -583,7 +583,7 @@ VIDEO_UPDATE( itech8_2layer )
 	if (tms_state.blanked)
 	{
 		fillbitmap(bitmap, get_black_pen(), cliprect);
-		return;
+		return 0;
 	}
 
 	/* there are two layers: */
@@ -602,6 +602,7 @@ VIDEO_UPDATE( itech8_2layer )
 			dest[x] = pix0 ? pix0 : base2[x];
 		}
 	}
+	return 0;
 }
 
 
@@ -617,7 +618,7 @@ VIDEO_UPDATE( itech8_2page )
 	if (tms_state.blanked)
 	{
 		fillbitmap(bitmap, get_black_pen(), cliprect);
-		return;
+		return 0;
 	}
 
 	/* there are two pages, each of which is a full 8bpp */
@@ -631,6 +632,7 @@ VIDEO_UPDATE( itech8_2page )
 		for (x = cliprect->min_x; x <= cliprect->max_x; x++)
 			dest[x] = base[x];
 	}
+	return 0;
 }
 
 
@@ -646,7 +648,7 @@ VIDEO_UPDATE( itech8_2page_large )
 	if (tms_state.blanked)
 	{
 		fillbitmap(bitmap, get_black_pen(), cliprect);
-		return;
+		return 0;
 	}
 
 	/* there are two pages, each of which is a full 8bpp */
@@ -666,4 +668,5 @@ VIDEO_UPDATE( itech8_2page_large )
 			dest[x + 1] = ((latch[x/2] << 4) & 0xf0) | (base[x/2] & 0x0f);
 		}
 	}
+	return 0;
 }

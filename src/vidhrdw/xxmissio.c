@@ -11,7 +11,6 @@ Video hardware driver by Uki
 #include "driver.h"
 
 UINT8 *xxmissio_fgram;
-size_t xxmissio_fgram_size;
 
 static UINT8 xxmissio_xscroll,xxmissio_yscroll;
 static UINT8 flipscreen;
@@ -36,15 +35,6 @@ WRITE8_HANDLER( xxmissio_flipscreen_w )
 	}
 }
 
-READ8_HANDLER( xxmissio_fgram_r )
-{
-	return xxmissio_fgram[offset];
-}
-WRITE8_HANDLER( xxmissio_fgram_w )
-{
-	xxmissio_fgram[offset] = data;
-}
-
 WRITE8_HANDLER( xxmissio_videoram_w )
 {
 	int offs = offset & 0x7e0;
@@ -65,13 +55,10 @@ READ8_HANDLER( xxmissio_videoram_r )
 
 WRITE8_HANDLER( xxmissio_paletteram_w )
 {
-	if (paletteram[offset] != data)
-	{
-		paletteram_BBGGRRII_w(offset,data);
+	paletteram_BBGGRRII_w(offset,data);
 
-		if (offset >= 0x200)
-			xxmissio_bg_redraw = 1;
-	}
+	if (offset >= 0x200)
+		xxmissio_bg_redraw = 1;
 }
 
 /****************************************************************************/
@@ -115,7 +102,7 @@ VIDEO_UPDATE( xxmissio )
 					col,
 					flipscreen,flipscreen,
 					px,py,
-					&Machine->visible_area,TRANSPARENCY_NONE,0);
+					&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 			}
 		}
 	}
@@ -131,7 +118,7 @@ VIDEO_UPDATE( xxmissio )
 		sy = xxmissio_yscroll;
 	}
 
-	copyscrollbitmap(bitmap,tmpbitmap,1,&sx,1,&sy,&Machine->visible_area,TRANSPARENCY_NONE,0);
+	copyscrollbitmap(bitmap,tmpbitmap,1,&sx,1,&sy,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 	xxmissio_bg_redraw = 0;
 
 /* draw sprites */
@@ -168,14 +155,14 @@ VIDEO_UPDATE( xxmissio )
 			col,
 			fx,fy,
 			px,py,
-			&Machine->visible_area,TRANSPARENCY_PEN,0);
+			&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 		if (px>0x1e0)
 			drawgfx(bitmap,Machine->gfx[1],
 				chr,
 				col,
 				fx,fy,
 				px-0x200,py,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 
 	}
 
@@ -206,8 +193,9 @@ VIDEO_UPDATE( xxmissio )
 				col,
 				flipscreen,flipscreen,
 				px,py,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 		}
 	}
 
+	return 0;
 }

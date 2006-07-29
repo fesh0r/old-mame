@@ -368,6 +368,7 @@ if (sy&1)
 		/* step1f: Adder to train and to RAM 13, CLOCK carry */
 		train[10] = RAM1[0x33] = ((add2) & 0x0f);
 		carry = ((add1+add2+carry) & 0x10) >> 4;
+	return 0;
 }
 else
 {
@@ -629,6 +630,7 @@ else
 #endif
 		}
 	}
+	return 0;
 }
 
 
@@ -1118,7 +1120,7 @@ INTERRUPT_GEN( chl_interrupt )
 {
 	int vector = cpu_getvblank() ? 0xdf : 0xcf; /* 4 irqs per frame: 3 times 0xcf, 1 time 0xdf */
 
-//    force_partial_update(cpu_getscanline());
+//    force_partial_update(0, cpu_getscanline());
 
 	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, vector);
 

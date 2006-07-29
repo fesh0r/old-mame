@@ -26,8 +26,14 @@
 
 // MAMEOS headers
 #include "debugwin.h"
+#ifndef NEW_RENDER
+#include "windold.h"
+#include "videoold.h"
+#else
 #include "window.h"
 #include "video.h"
+#define win_video_window		win_window_list->hwnd
+#endif
 #include "config.h"
 
 
@@ -773,9 +779,9 @@ static int debug_view_create(debugwin_info *info, int which, int type)
 
 	// create the scroll bars
 	view->hscroll = CreateWindowEx(HSCROLL_STYLE_EX, TEXT("SCROLLBAR"), NULL, HSCROLL_STYLE,
-			0, 0, 100, 100, view->wnd, NULL, GetModuleHandle(NULL), view);
+			0, 0, 100, CW_USEDEFAULT, view->wnd, NULL, GetModuleHandle(NULL), view);
 	view->vscroll = CreateWindowEx(VSCROLL_STYLE_EX, TEXT("SCROLLBAR"), NULL, VSCROLL_STYLE,
-			0, 0, 100, 100, view->wnd, NULL, GetModuleHandle(NULL), view);
+			0, 0, CW_USEDEFAULT, 100, view->wnd, NULL, GetModuleHandle(NULL), view);
 	if (!view->hscroll || !view->vscroll)
 		goto cleanup;
 

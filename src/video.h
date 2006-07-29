@@ -19,10 +19,39 @@
 
 /***************************************************************************
 
+    Screen configuration
+
+***************************************************************************/
+
+/* maximum number of screens for one game */
+#define MAX_SCREENS					8
+
+
+/*-------------------------------------------------
+    screen_config - configuration of a single
+    screen
+-------------------------------------------------*/
+
+typedef struct _screen_config screen_config;
+struct _screen_config
+{
+	const char *		tag;				/* nametag for the screen */
+	UINT32				palette_base;		/* base palette entry for this screen */
+	float				refresh_rate;		/* refresh rate */
+	double				vblank_time;		/* duration of a VBLANK */
+	int					maxwidth, maxheight;/* maximum width/height in pixels */
+	rectangle			default_visible_area;/* default visible area */
+};
+
+
+
+/***************************************************************************
+
     Display state passed to the OSD layer for rendering
 
 ***************************************************************************/
 
+#ifndef NEW_RENDER
 /* these flags are set in the mame_display struct to indicate that */
 /* a particular piece of state has changed since the last call to */
 /* osd_update_video_and_audio() */
@@ -42,6 +71,7 @@
 
 /* the main mame_display structure, containing the current state of the */
 /* video display */
+/* in mamecore.h: typedef struct _mame_display mame_display; */
 struct _mame_display
 {
 	/* bitfield indicating which states have changed */
@@ -66,7 +96,7 @@ struct _mame_display
 	/* other misc information */
 	UINT8			led_state;					/* bitfield of current LED states */
 };
-/* in mamecore.h: typedef struct _mame_display mame_display; */
+#endif
 
 
 
@@ -98,29 +128,25 @@ struct _performance_info
 int video_init(void);
 
 /* set the current visible area of the screen bitmap */
-void set_visible_area(int min_x, int max_x, int min_y, int max_y);
+void set_visible_area(int scrnum, int min_x, int max_x, int min_y, int max_y);
 
 /* set the current refresh rate of the video mode */
-void set_refresh_rate(float fps);
+void set_refresh_rate(int scrnum, float fps);
 
 /* force an erase and a complete redraw of the video next frame */
 void schedule_full_refresh(void);
 
-/* called by cpuexec.c to reset updates at the end of VBLANK */
-void reset_partial_updates(void);
-
 /* force a partial update of the screen up to and including the requested scanline */
-void force_partial_update(int scanline);
+void force_partial_update(int scrnum, int scanline);
 
-/* finish updating the screen for this frame */
-void draw_screen(void);
+/* reset the partial updating for a frame; generally only called by cpuexec.c */
+void reset_partial_updates(void);
 
 /* update the video by calling down to the OSD layer */
 void update_video_and_audio(void);
 
 /* update the screen, handling frame skipping and rendering */
-/* (this calls draw_screen and update_video_and_audio) */
-void updatescreen(void);
+void video_frame_update(void);
 
 /* can we skip this frame? */
 int skip_this_frame(void);
@@ -133,20 +159,20 @@ void add_full_refresh_callback(void (*callback)(void));
 
 /*
   Save a screen shot of the game display. It is suggested to use the core
-  function save_screen_snapshot() or save_screen_snapshot_as(), so the format
+  function snapshot_save_all_screens() or snapshot_save_screen_indexed(), so the format
   of the screen shots will be consistent across ports. This hook is provided
   only to allow the display of a file requester to let the user choose the
   file name. This isn't scrictly necessary, so you can just call
-  save_screen_snapshot() to let the core automatically pick a default name.
+  snapshot_save_all_screens() to let the core automatically pick a default name.
 */
-void save_screen_snapshot_as(mame_file *fp, mame_bitmap *bitmap);
-void save_screen_snapshot(mame_bitmap *bitmap);
+void snapshot_save_screen_indexed(mame_file *fp, int scrnum);
+void snapshot_save_all_screens(void);
 
 /* Movie recording */
 void record_movie_start(const char *name);
 void record_movie_stop(void);
 void record_movie_toggle(void);
-void record_movie_frame(mame_bitmap *bitmap);
+void record_movie_frame(int scrnum);
 
 /* bitmap allocation */
 #define bitmap_alloc(w,h) bitmap_alloc_depth(w, h, Machine->color_depth)

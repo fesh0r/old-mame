@@ -319,7 +319,7 @@ static void draw_sprites(mame_bitmap *bitmap, int color_mask, int extra_sprites)
 					    code, color,
 					    0, ~spriteram[offs] & 0x40,
 				    	256-spriteram[offs+2],spriteram[offs+1],
-				        &Machine->visible_area,TRANSPARENCY_PEN,0);
+				        &Machine->visible_area[0],TRANSPARENCY_PEN,0);
             }
             else
             {
@@ -329,7 +329,7 @@ static void draw_sprites(mame_bitmap *bitmap, int color_mask, int extra_sprites)
 					    code >> 2, color,
 					    0, ~spriteram[offs] & 0x40,
 				    	256-spriteram[offs+2],spriteram[offs+1],
-				        &Machine->visible_area,TRANSPARENCY_PEN,0);
+				        &Machine->visible_area[0],TRANSPARENCY_PEN,0);
             }
         }
 	}
@@ -605,6 +605,7 @@ VIDEO_UPDATE( cosmicg )
 	fillbitmap(bitmap, Machine->pens[0], cliprect);
 
 	draw_bitmap(bitmap);
+	return 0;
 }
 
 
@@ -615,6 +616,7 @@ VIDEO_UPDATE( panic )
 	draw_bitmap(bitmap);
 
 	draw_sprites(bitmap, 0x07, 1);
+	return 0;
 }
 
 
@@ -627,6 +629,7 @@ VIDEO_UPDATE( cosmica )
 	draw_bitmap(bitmap);
 
 	draw_sprites(bitmap, 0x0f, 0);
+	return 0;
 }
 
 
@@ -637,6 +640,7 @@ VIDEO_UPDATE( magspot2 )
 	draw_bitmap(bitmap);
 
 	draw_sprites(bitmap, 0x07, 0);
+	return 0;
 }
 
 
@@ -652,6 +656,7 @@ VIDEO_UPDATE( devzone )
 	draw_bitmap(bitmap);
 
 	draw_sprites(bitmap, 0x07, 0);
+	return 0;
 }
 
 
@@ -670,4 +675,5 @@ VIDEO_UPDATE( nomnlnd )
     {
     	nomnlnd_draw_background(bitmap);
 	}
+	return 0;
 }

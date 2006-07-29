@@ -97,7 +97,7 @@ static void jack_draw_sprites( mame_bitmap *bitmap )
 				color,
 				flipx,flipy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
 }
 
@@ -105,6 +105,7 @@ VIDEO_UPDATE( jack )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	jack_draw_sprites(bitmap);
+	return 0;
 }
 
 /*
@@ -182,7 +183,7 @@ static void joinem_draw_sprites( mame_bitmap *bitmap )
 				color,
 				flipx,flipy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
 }
 
@@ -190,4 +191,5 @@ VIDEO_UPDATE( joinem )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	joinem_draw_sprites(bitmap);
+	return 0;
 }

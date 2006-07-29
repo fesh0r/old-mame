@@ -149,7 +149,7 @@ VIDEO_START(ddenlovr)
 	for (i = 0; i < 8; i++)
 		pixmap[i] = auto_malloc(512*512);
 
-	if (!(framebuffer = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height))) return 1;
+	if (!(framebuffer = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth,Machine->drv->screen[0].maxheight))) return 1;
 
 	extra_layers = 0;
 
@@ -1256,6 +1256,7 @@ static void copylayer(mame_bitmap *bitmap,const rectangle *cliprect,int layer)
 VIDEO_UPDATE(ddenlovr)
 {
 	copybitmap(bitmap,framebuffer,0,0,0,0,cliprect,TRANSPARENCY_NONE,0);
+	return 0;
 }
 
 /*
@@ -1302,7 +1303,7 @@ if (code_pressed(KEYCODE_Z))
 	if (code_pressed_memory(KEYCODE_F)) { base++; while ((memory_region(REGION_GFX1)[base] & 0xf0) != 0x30) base++; }
 #endif
 
-	fillbitmap(framebuffer,dynax_bgcolor,&Machine->visible_area);
+	fillbitmap(framebuffer,dynax_bgcolor,&Machine->visible_area[0]);
 
 #ifdef MAME_DEBUG
 	if (code_pressed(KEYCODE_Z))
@@ -1342,10 +1343,10 @@ if (code_pressed(KEYCODE_Z))
 			pri = 0;
 		}
 
-		copylayer(framebuffer,&Machine->visible_area,order[pri][0]);
-		copylayer(framebuffer,&Machine->visible_area,order[pri][1]);
-		copylayer(framebuffer,&Machine->visible_area,order[pri][2]);
-		copylayer(framebuffer,&Machine->visible_area,order[pri][3]);
+		copylayer(framebuffer,&Machine->visible_area[0],order[pri][0]);
+		copylayer(framebuffer,&Machine->visible_area[0],order[pri][1]);
+		copylayer(framebuffer,&Machine->visible_area[0],order[pri][2]);
+		copylayer(framebuffer,&Machine->visible_area[0],order[pri][3]);
 
 	if (extra_layers)
 	{
@@ -1357,10 +1358,10 @@ if (code_pressed(KEYCODE_Z))
 			pri = 0;
 		}
 
-		copylayer(framebuffer,&Machine->visible_area,order[pri][0]+4);
-		copylayer(framebuffer,&Machine->visible_area,order[pri][1]+4);
-		copylayer(framebuffer,&Machine->visible_area,order[pri][2]+4);
-		copylayer(framebuffer,&Machine->visible_area,order[pri][3]+4);
+		copylayer(framebuffer,&Machine->visible_area[0],order[pri][0]+4);
+		copylayer(framebuffer,&Machine->visible_area[0],order[pri][1]+4);
+		copylayer(framebuffer,&Machine->visible_area[0],order[pri][2]+4);
+		copylayer(framebuffer,&Machine->visible_area[0],order[pri][3]+4);
 	}
 
 	dynax_layer_enable = enab;
@@ -5273,6 +5274,9 @@ ROM_START( rongrong )
 
 	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* Samples */
 	ROM_LOAD( "8001w.2f",     0x00000, 0x40000, CRC(8edc87a2) SHA1(87e8ad50be025263e682cbfb5623f3a35b17118f) )
+
+	ROM_REGION( 0x0200, REGION_PLDS, 0 )
+	ROM_LOAD( "gal16v8b.1e",   0x0000, 0x0117, CRC(cf1b6e1d) SHA1(f1db4cd0636f390d745be33026b2e9e0da599d22) )
 ROM_END
 
 ROM_START( rongrngg )

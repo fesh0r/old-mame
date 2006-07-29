@@ -148,7 +148,7 @@ static void rohga_drawsprites(mame_bitmap *bitmap, const UINT16 *spriteptr, int 
 					colour,
 					fx,fy,
 					x,y + mult * multi,
-					&Machine->visible_area,TRANSPARENCY_PEN,0,pri);
+					&Machine->visible_area[0],TRANSPARENCY_PEN,0,pri);
 
 			multi--;
 		}
@@ -245,7 +245,7 @@ static void wizdfire_drawsprites(mame_bitmap *bitmap, UINT16 *spriteptr, int mod
 					colour,
 					fx,fy,
 					x,y + mult * multi,
-					&Machine->visible_area,trans,0);
+					&Machine->visible_area[0],trans,0);
 
 			multi--;
 		}
@@ -434,7 +434,7 @@ sprite 2:
 						colour,
 						fx,fy,
 						sx + x_mult * (w-x),sy + y_mult * (h-y),
-						&Machine->visible_area,trans,0,tilemap_pri,sprite_pri,1);
+						&Machine->visible_area[0],trans,0,tilemap_pri,sprite_pri,1);
 			}
 		}
 
@@ -490,6 +490,7 @@ static void update_rohga(mame_bitmap *bitmap, const rectangle *cliprect, int is_
 VIDEO_UPDATE( rohga )
 {
 	update_rohga(bitmap, cliprect, 0);
+	return 0;
 }
 
 VIDEO_UPDATE( schmeisr )
@@ -497,6 +498,7 @@ VIDEO_UPDATE( schmeisr )
 	// The Schmeisr pcb has wire mods which seem to remap sprite palette indices.
 	// Otherwise video update is the same as Rohga.
 	update_rohga(bitmap, cliprect, 1);
+	return 0;
 }
 
 VIDEO_UPDATE( wizdfire )
@@ -507,7 +509,7 @@ VIDEO_UPDATE( wizdfire )
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
 	/* Draw playfields - Palette of 2nd playfield chip visible if playfields turned off */
-	fillbitmap(bitmap,Machine->pens[512],&Machine->visible_area);
+	fillbitmap(bitmap,Machine->pens[512],&Machine->visible_area[0]);
 
 	deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_IGNORE_TRANSPARENCY,0);
 	wizdfire_drawsprites(bitmap,buffered_spriteram16,4,3);
@@ -525,6 +527,7 @@ VIDEO_UPDATE( wizdfire )
 	wizdfire_drawsprites(bitmap,buffered_spriteram16_2,1,4);
 
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
+	return 0;
 }
 
 VIDEO_UPDATE( nitrobal )
@@ -535,7 +538,7 @@ VIDEO_UPDATE( nitrobal )
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
 	/* Draw playfields - Palette of 2nd playfield chip visible if playfields turned off */
-	fillbitmap(bitmap,Machine->pens[512],&Machine->visible_area);
+	fillbitmap(bitmap,Machine->pens[512],&Machine->visible_area[0]);
 	fillbitmap(priority_bitmap,0,NULL);
 	deco16_clear_sprite_priority_bitmap();
 
@@ -547,4 +550,5 @@ VIDEO_UPDATE( nitrobal )
 	nitrobal_drawsprites(bitmap,cliprect,buffered_spriteram16_2,4);
 
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
+	return 0;
 }

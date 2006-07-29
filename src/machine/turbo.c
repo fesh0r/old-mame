@@ -7,8 +7,8 @@
 #include "driver.h"
 #include "machine/8255ppi.h"
 #include "turbo.h"
-#include "artwork.h"
 #include "sound/samples.h"
+#include "render.h"
 
 /* globals */
 UINT8 turbo_opa, turbo_opb, turbo_opc;
@@ -290,19 +290,17 @@ void turbo_update_segments(void)
 
 	for (i = 0; i < 32; i++)
 	{
-		char buf_old[8];
-		char buf_new[8];
-
 		int v_old = old_segment_data[i];
 		int v_new = new_segment_data[i];
 
 		if (segment_init || v_old != v_new)
 		{
-			sprintf(buf_old, "LED%02d-%c", i, v_old >= 10 ? 'X' : '0' + v_old);
-			sprintf(buf_new, "LED%02d-%c", i, v_new >= 10 ? 'X' : '0' + v_new);
+#ifdef NEW_RENDER
+			char buf_new[8];
 
-			artwork_show(buf_old, 0);
-			artwork_show(buf_new, 1);
+			sprintf(buf_new, "led%02d", i);
+			render_view_item_set_state(buf_new, (v_new >= 10) ? 10 : v_new);
+#endif
 		}
 	}
 
@@ -349,17 +347,9 @@ WRITE8_HANDLER( turbo_coin_and_lamp_w )
 
 void turbo_update_tachometer(void)
 {
-	int i;
-
-	char buf[8] = "Speed00";
-
-	for (i = 0; i < 16; i++)
-	{
-		buf[5] = '0' + i / 10;
-		buf[6] = '0' + i % 10;
-
-		artwork_show(buf, i == turbo_speed);
-	}
+#ifdef NEW_RENDER
+	render_view_item_set_state("speed", turbo_speed);
+#endif
 }
 
 

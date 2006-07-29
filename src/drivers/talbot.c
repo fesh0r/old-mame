@@ -188,7 +188,7 @@ static void talbot_draw_sprites( mame_bitmap *bitmap )
 			code, color,
 			flipx, flipy,
 			sx, sy,
-			&Machine->visible_area,
+			&Machine->visible_area[0],
 			TRANSPARENCY_PEN, 0);
 	}
 }
@@ -197,6 +197,7 @@ VIDEO_UPDATE( talbot )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	talbot_draw_sprites(bitmap);
+	return 0;
 }
 
 PALETTE_INIT( talbot )

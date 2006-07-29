@@ -1566,6 +1566,58 @@ INPUT_PORTS_START( brain )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
+INPUT_PORTS_START( gardia )
+	PORT_START  /* IN1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
+
+	PORT_START  /* IN2 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
+
+	PORT_START  /* IN0 */
+	IN0_PORT
+
+	PORT_START	  /* DSW1 */
+	DSW1_PORT
+
+	PORT_START  /* DSW0 */
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Lives ) )
+	PORT_DIPSETTING(    0x0c, "3" )
+	PORT_DIPSETTING(    0x08, "4" )
+	PORT_DIPSETTING(    0x04, "5" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Infinite ) )
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x30, "5k, 20k and 30k" )
+	PORT_DIPSETTING(    0x20, "10k, 25k and 50k" )
+	PORT_DIPSETTING(    0x10, "15k, 30k and 60k" )
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Unknown ) ) /* Manual states "Always On" */
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+INPUT_PORTS_END
+
 INPUT_PORTS_START( raflesia )
 	PORT_START  /* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1610,7 +1662,7 @@ INPUT_PORTS_START( raflesia )
 	PORT_DIPSETTING(	0x20, "30k, 80k and 150k" )
 	PORT_DIPSETTING(	0x10, "50k, 100k and 200k" )
 	PORT_DIPSETTING(	0x00, DEF_STR( None ) )
-	PORT_DIPNAME( 0x40, 0x40, "Unused SW 0-6" )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) ) /* Manual lists this dip as "Unused" */
 	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	DSW0_BIT7
@@ -1667,6 +1719,59 @@ INPUT_PORTS_START( wboy )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+INPUT_PORTS_END
+
+INPUT_PORTS_START( wboysys2 )
+	PORT_START  /* IN1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* down - unused */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* up - unused */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
+
+	PORT_START  /* IN2 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* down - unused */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* up - unused */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_COCKTAIL
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_COCKTAIL
+
+	PORT_START  /* IN0 */
+	IN0_PORT
+
+	PORT_START  /* DSW0 */
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Lives ) )
+	PORT_DIPSETTING(	0x0c, "3" )
+	PORT_DIPSETTING(	0x08, "4" )
+	PORT_DIPSETTING(	0x04, "5" )
+	PORT_DIPSETTING(	0x00, DEF_STR( Infinite ) )
+	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(	0x10, "30k 100k 170k 240k" )
+	PORT_DIPSETTING(	0x00, "30k 120k 210k 300k" )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Allow_Continue ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( Yes ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( Easy ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Hard ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+
+	PORT_START	  /* DSW1 */
+	DSW1_PORT
 INPUT_PORTS_END
 
 /* same as wboy, additional Energy Consumption switch */
@@ -3283,6 +3388,10 @@ ROM_START( chplft )
 	ROM_LOAD( "pr7118.14",		0x0100, 0x0100, CRC(693e20c7) SHA1(9ebf4bd2c30ddd9648bc4b41c7739cfdf80100da) ) /* palette green component */
 	ROM_LOAD( "pr7117.8",		0x0200, 0x0100, CRC(4124307e) SHA1(cee28d891e6ce732c43a61acb5beeafd2200cf37) ) /* palette blue component */
 	ROM_LOAD( "pr5317.28",		0x0300, 0x0100, CRC(648350b8) SHA1(c7986aa9127ef5b50b845434cb4e81dff9861cd2) ) /* timing? (not used) */
+
+	ROM_REGION( 0x0400, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16r4a.ic9",  0x0000, 0x0104, CRC(dd223015) SHA1(8d70f91b118e8653dda1efee3eaea287ae63809f) )
+	ROM_LOAD( "pal16r4a.ic10", 0x0200, 0x0104, CRC(2c9229b4) SHA1(9755013afcf89f99d7a399c7e223e027761cf89a) )
 ROM_END
 
 ROM_START( chplftb )
@@ -3337,6 +3446,12 @@ ROM_START( chplftbl )
 	ROM_LOAD( "pr7118.14",		0x0100, 0x0100, CRC(693e20c7) SHA1(9ebf4bd2c30ddd9648bc4b41c7739cfdf80100da) ) /* palette green component */
 	ROM_LOAD( "pr7117.8",		0x0200, 0x0100, CRC(4124307e) SHA1(cee28d891e6ce732c43a61acb5beeafd2200cf37) ) /* palette blue component */
 	ROM_LOAD( "pr5317.28",		0x0300, 0x0100, CRC(648350b8) SHA1(c7986aa9127ef5b50b845434cb4e81dff9861cd2) ) /* timing? (not used) */
+
+	ROM_REGION( 0x0800, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16r4a.ic9",         0x0000, 0x0104, CRC(dd223015) SHA1(8d70f91b118e8653dda1efee3eaea287ae63809f) )
+	ROM_LOAD( "pal16r4a.ic10",        0x0200, 0x0104, CRC(2c9229b4) SHA1(9755013afcf89f99d7a399c7e223e027761cf89a) )
+	ROM_LOAD( "pal16r4a-chopbl1.bin", 0x0400, 0x0104, CRC(e1628a8e) SHA1(6b6df079cfadec71b38a53f107475f0dda428b00) )
+	ROM_LOAD( "pal16l8a-chopbl2.bin", 0x0600, 0x0104, CRC(afa7425d) SHA1(09d8607b69ecfc0b12c8610751d489500b63c7d6) )
 ROM_END
 
 ROM_START( 4dwarrio )
@@ -4009,32 +4124,43 @@ ROM_END
 
 ROM_START( ufosensb )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 256k for code */
-	ROM_LOAD( "k108.bin",     0x20000, 0x8000, CRC(6b1d0955) SHA1(dbda145d40eaecd30c1d55a9675c58a2967c20c4) )
-	ROM_CONTINUE(             0x00000, 0x8000 )             /* Now load the operands in RAM */
-	ROM_LOAD( "k109.bin",     0x30000, 0x8000, CRC(fc543b26) SHA1(b9e1d2ca6f9811bf341edf104fe209dbf56e4b2d) )
-	ROM_CONTINUE(             0x10000, 0x8000 )
-	ROM_LOAD( "k110.bin",     0x38000, 0x8000, CRC(6ba2dc77) SHA1(09a65f55988ae28e285d402af9a2a1f1dc05a82c) )
-	ROM_CONTINUE(             0x18000, 0x8000 )
+	ROM_LOAD( "k108.ic18.3-4s", 0x20000, 0x8000, CRC(6b1d0955) SHA1(dbda145d40eaecd30c1d55a9675c58a2967c20c4) )
+	ROM_CONTINUE(            	0x00000, 0x8000 )             /* Now load the operands in RAM */
+	ROM_LOAD( "k109.ic19.4s",   0x30000, 0x8000, CRC(fc543b26) SHA1(b9e1d2ca6f9811bf341edf104fe209dbf56e4b2d) )
+	ROM_CONTINUE(               0x10000, 0x8000 )
+	ROM_LOAD( "k110.ic20.4-5s", 0x38000, 0x8000, CRC(6ba2dc77) SHA1(09a65f55988ae28e285d402af9a2a1f1dc05a82c) )
+	ROM_CONTINUE(               0x18000, 0x8000 )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* 64k for sound cpu */
-	ROM_LOAD( "epr11667.126", 0x0000, 0x8000, CRC(110baba9) SHA1(e14cf5af11ac9691eca897bbae7c238665cd2a4d) )
+	ROM_LOAD( "epr11667.126", 0x0000, 0x8000, CRC(110baba9) SHA1(e14cf5af11ac9691eca897bbae7c238665cd2a4d) ) /* label on chip is "k111.ic168.10v" */
 
 	ROM_REGION( 0x18000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "epr11664.4",   0x00000, 0x8000, CRC(1b1bc3d5) SHA1(2a09e0dbe2d467c151dce705f249367df849eaeb) )
-	ROM_LOAD( "epr11665.5",   0x08000, 0x8000, CRC(3659174a) SHA1(176d2436abb45827a8d387241082854f55dc0314) )
-	ROM_LOAD( "epr11666.6",   0x10000, 0x8000, CRC(99dcc793) SHA1(ad1d0acb60e7c1a7016955e142ebca1cf07b4908) )
+	ROM_LOAD( "epr11664.4",   0x00000, 0x8000, CRC(1b1bc3d5) SHA1(2a09e0dbe2d467c151dce705f249367df849eaeb) ) /* label on chip is "k101.ic72.6d" */
+	ROM_LOAD( "epr11665.5",   0x08000, 0x8000, CRC(3659174a) SHA1(176d2436abb45827a8d387241082854f55dc0314) ) /* label on chip is "k102.ic73.6-7d" */
+	ROM_LOAD( "epr11666.6",   0x10000, 0x8000, CRC(99dcc793) SHA1(ad1d0acb60e7c1a7016955e142ebca1cf07b4908) ) /* label on chip is "k103.ic74.7d" */
 
 	ROM_REGION( 0x20000, REGION_GFX2, 0 ) /* 128k for sprites data */
-	ROM_LOAD( "epr11658.87",  0x00000, 0x8000, CRC(3b5a20f7) SHA1(03e0934b0913c3a2cadf1d28b8a700d70b80fbac) )
-	ROM_LOAD( "epr11657.86",  0x08000, 0x8000, CRC(010f81a9) SHA1(1b7ee05c80edfa403e32c216fa69387ca556895e) )
-	ROM_LOAD( "epr11660.89",  0x10000, 0x8000, CRC(e1e2e7c5) SHA1(434039a70049a6e74e2a2f48b60345f720e6b1af) )
-	ROM_LOAD( "epr11659.88",  0x18000, 0x8000, CRC(286c7286) SHA1(449a19ea9a9f9df47005e8dac1b8eacaebc515e7) )
+	ROM_LOAD( "epr11658.87",  0x00000, 0x8000, CRC(3b5a20f7) SHA1(03e0934b0913c3a2cadf1d28b8a700d70b80fbac) ) /* label on chip is "k105.ic15.1-2s" */
+	ROM_LOAD( "epr11657.86",  0x08000, 0x8000, CRC(010f81a9) SHA1(1b7ee05c80edfa403e32c216fa69387ca556895e) ) /* label on chip is "k104.ic14.1s" */
+	ROM_LOAD( "epr11660.89",  0x10000, 0x8000, CRC(e1e2e7c5) SHA1(434039a70049a6e74e2a2f48b60345f720e6b1af) ) /* label on chip is "k107.ic17.2-3s" */
+	ROM_LOAD( "epr11659.88",  0x18000, 0x8000, CRC(286c7286) SHA1(449a19ea9a9f9df47005e8dac1b8eacaebc515e7) ) /* label on chip is "k106.ic16.2s" */
 
 	ROM_REGION( 0x0400, REGION_PROMS, 0 )
-	ROM_LOAD( "pr11656.20",   0x0000, 0x0100, CRC(640740eb) SHA1(9a601a3665f612d00c70019d33c7abd3cca9434b) ) /* palette red component */
-	ROM_LOAD( "pr11655.14",   0x0100, 0x0100, CRC(a0c3fa77) SHA1(cdffa1de06d30ec421323145dfc3271803fc25d4) ) /* palette green component */
-	ROM_LOAD( "pr11654.8",    0x0200, 0x0100, CRC(ba624305) SHA1(eb1d0dde60f81ff510ac8c1212e0ed5703febaf3) ) /* palette blue component */
-	ROM_LOAD( "pr5317.28",    0x0300, 0x0100, CRC(648350b8) SHA1(c7986aa9127ef5b50b845434cb4e81dff9861cd2) ) /* timing? (not used) */
+	ROM_LOAD( "pr11656.20",   0x0000, 0x0100, CRC(640740eb) SHA1(9a601a3665f612d00c70019d33c7abd3cca9434b) ) /* palette red component - label on chip is "74s287.ic134.9f" */
+	ROM_LOAD( "pr11655.14",   0x0100, 0x0100, CRC(a0c3fa77) SHA1(cdffa1de06d30ec421323145dfc3271803fc25d4) ) /* palette green component - label on chip is "74s287.ic133.9e" */
+	ROM_LOAD( "pr11654.8",    0x0200, 0x0100, CRC(ba624305) SHA1(eb1d0dde60f81ff510ac8c1212e0ed5703febaf3) ) /* palette blue component - label on chip is "74s287.ic132.9d" */
+	ROM_LOAD( "pr5317.28",    0x0300, 0x0100, CRC(648350b8) SHA1(c7986aa9127ef5b50b845434cb4e81dff9861cd2) ) /* timing? (not used) - label on chip is "74s287.ic115.8j" */
+
+	ROM_REGION( 0x2000, REGION_PLDS, 0 )
+	ROM_LOAD( "pal6l8.ic3.1c",   0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal6l8.ic32.2c",  0x0200, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal6l8.ic33.2d",  0x0400, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal6l8.ic4.1d",   0x0600, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal6r4.1",        0x0800, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal6r4.2",        0x0A00, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal6r4.ic34.2f",  0x0C00, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal6r4.ic5.1f",   0x0E00, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal20r4.ic69.4c", 0x1000, 0x0144, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 ROM_START( noboranb )
@@ -4218,10 +4344,10 @@ GAME( 1986, wboy2,    wboy,     system1,  wboy,     wboy2,    ROT0,   "Sega (Esc
 GAME( 1986, wboy2u,   wboy,     system1,  wboy,     0,        ROT0,   "Sega (Escape license)", "Wonder Boy (set 2 not encrypted)", GAME_SUPPORTS_SAVE )
 GAME( 1986, wboy3,    wboy,     system1,  wboy,     hvymetal, ROT0,   "Sega (Escape license)", "Wonder Boy (set 3)", GAME_SUPPORTS_SAVE )
 GAME( 1986, wboyu,    wboy,     system1,  wboyu,    0,        ROT0,   "Sega (Escape license)", "Wonder Boy (not encrypted)", GAME_SUPPORTS_SAVE )
-GAME( 1986, wboysys2, wboy,     wbml,     wboy,     wboy,     ROT0,   "Sega (Escape license)", "Wonder Boy (system 2)", GAME_SUPPORTS_SAVE )
+GAME( 1986, wboysys2, wboy,     wbml,     wboysys2, wboy,     ROT0,   "Sega (Escape license)", "Wonder Boy (system 2)", GAME_SUPPORTS_SAVE )
 GAME( 1986, wbdeluxe, wboy,     system1,  wbdeluxe, 0,        ROT0,   "Sega (Escape license)", "Wonder Boy Deluxe", GAME_SUPPORTS_SAVE )
-GAME( 1986, gardia,   0,        brain,    brain,    gardia,   ROT270, "Sega / Coreland", 	   "Gardia", GAME_NO_COCKTAIL | GAME_SUPPORTS_SAVE)
-GAME( 1986, gardiab,  gardia,   brain,    brain,    gardiab,  ROT270, "bootleg", 		 	   "Gardia (bootleg)", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
+GAME( 1986, gardia,   0,        brain,    gardia,   gardia,   ROT270, "Sega / Coreland", 	   "Gardia", GAME_NO_COCKTAIL | GAME_SUPPORTS_SAVE)
+GAME( 1986, gardiab,  gardia,   brain,    gardia,   gardiab,  ROT270, "bootleg", 		 	   "Gardia (bootleg)", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
 GAME( 1986, noboranb, 0,        noboranb, noboranb, noboranb, ROT270, "bootleg", 		 	   "Noboranka (Japan)", GAME_SUPPORTS_SAVE )
 GAME( 1987, blockgal, 0,        blockgal, blockgal, 0,        ROT90,  "Sega / Vic Tokai",	   "Block Gal", GAME_NOT_WORKING | GAME_NO_COCKTAIL )
 GAME( 1987, blckgalb, blockgal, blockgal, blockgal, bootleg,  ROT90,  "bootleg", 		 	   "Block Gal (bootleg)", GAME_NO_COCKTAIL | GAME_SUPPORTS_SAVE )

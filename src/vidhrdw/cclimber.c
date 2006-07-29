@@ -421,7 +421,7 @@ VIDEO_UPDATE( cclimber )
 			}
 		}
 
-		copyscrollbitmap(bitmap,tmpbitmap,0,0,32,scroll,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		copyscrollbitmap(bitmap,tmpbitmap,0,0,32,scroll,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 	}
 
 
@@ -457,13 +457,14 @@ VIDEO_UPDATE( cclimber )
 				spriteram[offs + 1] & 0x0f,
 				flipx,flipy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
 
 
 	if ((cclimber_bigspriteram[0] & 1) == 0)
 		/* draw the "big sprite" over sprites */
 		drawbigsprite(bitmap);
+	return 0;
 }
 
 
@@ -537,7 +538,7 @@ VIDEO_UPDATE( swimmer )
 				scroll[offs] = -cclimber_column_scroll[offs];
 		}
 
-		copyscrollbitmap(bitmap,tmpbitmap,0,0,32,scroll,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		copyscrollbitmap(bitmap,tmpbitmap,0,0,32,scroll,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 	}
 
 
@@ -573,13 +574,14 @@ VIDEO_UPDATE( swimmer )
 				(spriteram[offs + 1] & 0x0f) + 0x10 * palettebank,
 				flipx,flipy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
 
 
 	if ((cclimber_bigspriteram[0] & 1) == 0)
 		/* draw the "big sprite" over sprites */
 		drawbigsprite(bitmap);
+	return 0;
 }
 
 VIDEO_UPDATE( yamato )
@@ -664,7 +666,7 @@ VIDEO_UPDATE( yamato )
 			}
 		}
 
-		copyscrollbitmap(bitmap,tmpbitmap,0,0,32,scroll,&Machine->visible_area,TRANSPARENCY_PEN,0);
+		copyscrollbitmap(bitmap,tmpbitmap,0,0,32,scroll,&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
 
 
@@ -700,13 +702,14 @@ VIDEO_UPDATE( yamato )
 				spriteram[offs + 1] & 0x0f,
 				flipx,flipy,
 				sx,sy,
-				&Machine->visible_area,TRANSPARENCY_PEN,0);
+				&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 	}
 
 
 	if ((cclimber_bigspriteram[0] & 1) == 0)
 		/* draw the "big sprite" over sprites */
 		drawbigsprite(bitmap);
+	return 0;
 }
 
 
@@ -869,6 +872,7 @@ VIDEO_UPDATE( toprollr )
 			drawgfx(bitmap, Machine->gfx[0], code+((attr&0xf0)<<4),palette, flipx, flipy, sx, sy, cliprect, TRANSPARENCY_PEN, 0);
 
 		}
+	return 0;
 }
 
 

@@ -192,7 +192,8 @@ static void pgm_drawsprites(int priority, mame_bitmap* bitmap)
        wwww wwwh hhhh hhhh
     */
 
-	const UINT16 *finish = pgm_spritebufferram+0xa00;
+
+	const UINT16 *finish = pgm_spritebufferram+(0xa00/2);
 
 	while( pgm_sprite_source<finish )
 	{
@@ -333,7 +334,7 @@ VIDEO_UPDATE( pgm )
 {
 	int y;
 
-	fillbitmap(bitmap,get_black_pen(),&Machine->visible_area);
+	fillbitmap(bitmap,get_black_pen(),&Machine->visible_area[0]);
 
 	pgm_sprite_source = pgm_spritebufferram;
 	pgm_drawsprites(1, bitmap);
@@ -350,6 +351,7 @@ VIDEO_UPDATE( pgm )
 	tilemap_set_scrolly(pgm_tx_tilemap,0, pgm_videoregs[0x5000/2]);
 	tilemap_set_scrollx(pgm_tx_tilemap,0, pgm_videoregs[0x6000/2]); // Check
 	tilemap_draw(bitmap,cliprect,pgm_tx_tilemap,0,0);
+	return 0;
 }
 
 VIDEO_EOF( pgm )

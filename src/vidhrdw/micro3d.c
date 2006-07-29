@@ -108,7 +108,6 @@ if(keyboard_pressed(KEYCODE_F1))
         InputCode code;
 
                   update_video_and_audio();
-                  reset_partial_updates();
 
         if (input_ui_pressed(IPT_UI_CANCEL))
             break;
@@ -147,6 +146,7 @@ if(keyboard_pressed(KEYCODE_F1))
       M68681.SRA|=0x100;
 
     mame_pause(0);
+    return 0;
 }
 */
 
@@ -154,7 +154,7 @@ if(keyboard_pressed(KEYCODE_F1))
 	if (tms34010_io_display_blanked(0))
 	{
 		fillbitmap(bitmap, Machine->pens[0], cliprect);
-		return;
+		return 0;
 	}
 
         /* fetch current scanline advance and column offset values */
@@ -202,4 +202,5 @@ if(keyboard_pressed(KEYCODE_F1))
 		/* Draw the scanline */
 		draw_scanline16(bitmap, cliprect->min_x, y, cliprect->max_x - cliprect->min_x, &scanline[cliprect->min_x], Machine->pens, -1);
 	}
+	return 0;
 }

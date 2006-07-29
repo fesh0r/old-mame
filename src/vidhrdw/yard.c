@@ -215,7 +215,7 @@ VIDEO_START( yard )
 	if ( !bg_tilemap )
 		return 1;
 
-	if ((scroll_panel_bitmap = auto_bitmap_alloc(SCROLL_PANEL_WIDTH, Machine->drv->screen_height)) == 0)
+	if ((scroll_panel_bitmap = auto_bitmap_alloc(SCROLL_PANEL_WIDTH, Machine->drv->screen[0].maxheight)) == 0)
 		return 1;
 
 	return 0;
@@ -287,4 +287,5 @@ VIDEO_UPDATE( yard )
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	yard_draw_sprites(bitmap, cliprect);
 	yard_draw_panel(bitmap, cliprect);
+	return 0;
 }

@@ -461,7 +461,7 @@ VIDEO_START( tceptor )
 		return 1;
 
 	/* allocate temp bitmaps */
-	temp_bitmap = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height);
+	temp_bitmap = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight);
 	if (!temp_bitmap)
 		return 1;
 
@@ -633,4 +633,5 @@ VIDEO_UPDATE( tceptor )
 	}
 
 	tilemap_draw(bitmap, cliprect, tx_tilemap, 0, 0);
+	return 0;
 }

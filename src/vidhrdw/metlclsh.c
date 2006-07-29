@@ -218,15 +218,15 @@ static void metlclsh_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 			if (sizey)
 			{
 				drawgfx(bitmap,gfx, code & ~1, color, flipx,flipy,
-						sx, sy + (flipy ? 0 : -16) + wrapy, &Machine->visible_area,TRANSPARENCY_PEN,0);
+						sx, sy + (flipy ? 0 : -16) + wrapy, &Machine->visible_area[0],TRANSPARENCY_PEN,0);
 
 				drawgfx(bitmap,gfx, code |  1, color, flipx,flipy,
-						sx,sy + (flipy ? -16 : 0) + wrapy, &Machine->visible_area,TRANSPARENCY_PEN,0);
+						sx,sy + (flipy ? -16 : 0) + wrapy, &Machine->visible_area[0],TRANSPARENCY_PEN,0);
 			}
 			else
 			{
 				drawgfx(bitmap,gfx, code, color, flipx,flipy,
-						sx,sy + wrapy, &Machine->visible_area,TRANSPARENCY_PEN,0);
+						sx,sy + wrapy, &Machine->visible_area[0],TRANSPARENCY_PEN,0);
 			}
 		}
 	}
@@ -262,5 +262,6 @@ VIDEO_UPDATE( metlclsh )
 	tilemap_draw(bitmap,cliprect,fg_tilemap,2,0);	// high priority tiles of foreground
 
 //  ui_popup("%02X",metlclsh_scrollx[0]);
+	return 0;
 }
 

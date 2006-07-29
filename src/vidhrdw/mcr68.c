@@ -216,7 +216,7 @@ WRITE16_HANDLER( zwackery_spriteram_w )
 
 static void mcr68_update_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int priority)
 {
-	rectangle sprite_clip = Machine->visible_area;
+	rectangle sprite_clip = Machine->visible_area[0];
 	int offs;
 
 	/* adjust for clipping */
@@ -343,6 +343,7 @@ VIDEO_UPDATE( mcr68 )
 
 	/* draw the high-priority sprites */
 	mcr68_update_sprites(bitmap, cliprect, 1);
+	return 0;
 }
 
 
@@ -359,4 +360,5 @@ VIDEO_UPDATE( zwackery )
 
 	/* draw the high-priority sprites */
 	zwackery_update_sprites(bitmap, cliprect, 1);
+	return 0;
 }

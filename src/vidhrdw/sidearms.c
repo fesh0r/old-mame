@@ -188,7 +188,7 @@ VIDEO_START( sidearms )
 void sidearms_draw_sprites_region( mame_bitmap *bitmap, int start_offset, int end_offset )
 {
 	const gfx_element *gfx = Machine->gfx[2];
-	rectangle *cliprect = &Machine->visible_area;
+	rectangle *cliprect = &Machine->visible_area[0];
 	int offs, attr, color, code, x, y, flipx, flipy;
 
 	flipy = flipx = flipon;
@@ -369,6 +369,7 @@ VIDEO_UPDATE( sidearms )
 
 	if (charon)
 		tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
+	return 0;
 }
 
 VIDEO_EOF( sidearms )

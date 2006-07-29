@@ -232,13 +232,16 @@ enum
 	IPT_UI_RIGHT,
 	IPT_UI_HOME,
 	IPT_UI_END,
+	IPT_UI_PAGE_UP,
+	IPT_UI_PAGE_DOWN,
 	IPT_UI_SELECT,
 	IPT_UI_CANCEL,
 	IPT_UI_CLEAR,
-	IPT_UI_PAN_UP,
-	IPT_UI_PAN_DOWN,
-	IPT_UI_PAN_LEFT,
-	IPT_UI_PAN_RIGHT,
+	IPT_UI_ZOOM_IN,
+	IPT_UI_ZOOM_OUT,
+	IPT_UI_PREV_GROUP,
+	IPT_UI_NEXT_GROUP,
+	IPT_UI_ROTATE,
 	IPT_UI_SHOW_PROFILER,
 	IPT_UI_TOGGLE_UI,
 	IPT_UI_TOGGLE_DEBUG,
@@ -633,6 +636,7 @@ struct _input_port_entry
 	PORT_BIT(0, default, IPT_DIPSWITCH_SETTING) PORT_NAME(name)		\
 
 /* physical location, of the form: name:sw,[name:]sw,... */
+/* note that these are specified LSB-first */
 #define PORT_DIPLOCATION(location_)									\
 	input_port_parse_diplocation(port, location_);					\
 

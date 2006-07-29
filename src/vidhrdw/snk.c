@@ -83,7 +83,7 @@ static void tnk3_draw_background( mame_bitmap *bitmap, int scrollx, int scrolly,
 					int x_size, int y_size, int bg_type )
 {
 	const gfx_element *gfx = Machine->gfx[1];
-	rectangle *clip = &Machine->visible_area;
+	rectangle *clip = &Machine->visible_area[0];
 
 	int tile_number, attributes, color, sx, sy;
 	int offs, x, y;
@@ -125,7 +125,7 @@ static void tnk3_draw_background( mame_bitmap *bitmap, int scrollx, int scrolly,
 void tnk3_draw_text( mame_bitmap *bitmap, int bank, UINT8 *source )
 {
 	const gfx_element *gfx = Machine->gfx[0];
-	rectangle *clip = &Machine->visible_area;
+	rectangle *clip = &Machine->visible_area[0];
 
 	int tile_number, color, sx, sy;
 	int x, y;
@@ -152,7 +152,7 @@ void tnk3_draw_text( mame_bitmap *bitmap, int bank, UINT8 *source )
 void tnk3_draw_status_main( mame_bitmap *bitmap, int bank, UINT8 *source, int start )
 {
 	const gfx_element *gfx = Machine->gfx[0];
-	rectangle *clip = &Machine->visible_area;
+	rectangle *clip = &Machine->visible_area[0];
 
 	int tile_number, color, sx, sy;
 	int x, y;
@@ -184,7 +184,7 @@ void tnk3_draw_status( mame_bitmap *bitmap, int bank, UINT8 *source )
 void tnk3_draw_sprites( mame_bitmap *bitmap, int xscroll, int yscroll )
 {
 	const gfx_element *gfx = Machine->gfx[2];
-	rectangle *clip = &Machine->visible_area;
+	rectangle *clip = &Machine->visible_area[0];
 
 	int tile_number, attributes, color, sx, sy;
 	int offs;
@@ -252,6 +252,7 @@ VIDEO_UPDATE( tnk3 )
 		tnk3_draw_text( bitmap, bank, &ram[0xf800] );
 		tnk3_draw_status( bitmap, bank, &ram[0xfc00] );
 	}
+	return 0;
 }
 
 /************************************************************************************/
@@ -269,7 +270,7 @@ VIDEO_START( sgladiat )
 static void sgladiat_draw_background( mame_bitmap *bitmap, int scrollx, int scrolly )
 {
 	const gfx_element *gfx = Machine->gfx[1];
-	rectangle *clip = &Machine->visible_area;
+	rectangle *clip = &Machine->visible_area[0];
 
 	int tile_number, color, sx, sy;
 	int offs, x, y;
@@ -313,6 +314,7 @@ VIDEO_UPDATE( sgladiat )
 	tnk3_draw_sprites( bitmap, scrollx, scrolly );
 
 	tnk3_draw_text( bitmap, 0, &pMem[0xf000] );
+	return 0;
 }
 
 /**************************************************************************************/
@@ -320,7 +322,7 @@ VIDEO_UPDATE( sgladiat )
 static void ikari_draw_sprites( mame_bitmap *bitmap, int start, int xscroll, int yscroll,
 				UINT8 *source, int mode )
 {
-	rectangle *clip = &Machine->visible_area;
+	rectangle *clip = &Machine->visible_area[0];
 	gfx_element *gfx = Machine->gfx[mode];
 	int tile_number, attributes, color, sx, sy;
 	int which, finish;
@@ -383,6 +385,7 @@ VIDEO_UPDATE( ikari )
 
 	tnk3_draw_text( bitmap, -1, &ram[0xf800] );
 	tnk3_draw_status( bitmap, -1, &ram[0xfc00] );
+	return 0;
 }
 
 /**************************************************************/
@@ -391,7 +394,7 @@ static void tdfever_draw_bg( mame_bitmap *bitmap, int xscroll, int yscroll )
 {
 	const UINT8 *source = snk_rambase + 0x000;
 	const gfx_element *gfx = Machine->gfx[1];
-	rectangle *clip = &Machine->visible_area;
+	rectangle *clip = &Machine->visible_area[0];
 
 	int tile_number, attributes, color, sx, sy;
 	int offs, x, y;
@@ -450,7 +453,7 @@ static void tdfever_draw_sp( mame_bitmap *bitmap, int xscroll, int yscroll, int 
 {
 	const UINT8 *source = snk_rambase + ((mode==2)?0x1800:0x1000);
 	const gfx_element *gfx = Machine->gfx[(mode==1)?3:2];
-	rectangle *clip = &Machine->visible_area;
+	rectangle *clip = &Machine->visible_area[0];
 	int tile_number, attributes, sx, sy, color, pen_mode;
 	int which, finish, sp_size;
 
@@ -505,7 +508,7 @@ static void tdfever_draw_tx( mame_bitmap *bitmap, int attributes, int dx, int dy
 {
 	const UINT8 *source = snk_rambase - 0xd000 + base;
 	const gfx_element *gfx = Machine->gfx[0];
-	rectangle *clip = &Machine->visible_area;
+	rectangle *clip = &Machine->visible_area[0];
 
 	int tile_high = (attributes & 0xf0) << 4;
 	int color = attributes & 0xf;
@@ -567,6 +570,7 @@ VIDEO_UPDATE( tdfever )
 	tdfever_draw_sp( bitmap, sp_scroll_x, sp_scroll_y, 0 );
 
 	tdfever_draw_tx( bitmap, tx_attributes, 0, 0, 0xf800 );
+	return 0;
 }
 
 VIDEO_UPDATE( gwar )
@@ -639,4 +643,5 @@ VIDEO_UPDATE( gwar )
 		UINT8 text_attribute = ram[gwar_sp_baseaddr+0x8c0];
 		tdfever_draw_tx( bitmap, text_attribute, 0, 0, gwar_tx_baseaddr );
 	}
+	return 0;
 }

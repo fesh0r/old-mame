@@ -13,6 +13,8 @@
 #define __MAME_H__
 
 #include "mamecore.h"
+#include "video.h"
+#include "restrack.h"
 
 #ifdef MESS
 #include "device.h"
@@ -103,6 +105,7 @@ enum
 
 extern const char *memory_region_names[REGION_MAX];
 
+
 /* artwork options */
 #define ARTWORK_USE_ALL			(~0)
 #define ARTWORK_USE_NONE		(0)
@@ -126,9 +129,8 @@ struct _running_machine
 
 	/* video-related information */
 	gfx_element *			gfx[MAX_GFX_ELEMENTS];/* array of pointers to graphic sets (chars, sprites) */
-	rectangle 				visible_area;		/* current visible area, and a prerotated one adjusted for orientation */
-	rectangle				absolute_visible_area;
-	float					refresh_rate;		/* current video refresh rate */
+	rectangle 				visible_area[MAX_SCREENS]; /* current visible area */
+	float					refresh_rate[MAX_SCREENS]; /* current video refresh rate */
 	pen_t *					pens;				/* remapped palette pen numbers */
 	UINT16 *				game_colortable;	/* lookup table used to map gfx pen numbers to color numbers */
 	pen_t *					remapped_colortable;/* the above, already remapped through Machine->pens */
@@ -142,8 +144,12 @@ struct _running_machine
 	mame_file *				record_file;		/* recording file (NULL if not recording) */
 	mame_file *				playback_file;		/* playback file (NULL if not recording) */
 
+#ifndef NEW_RENDER
+	rectangle				absolute_visible_area;
+
 	/* ui-related information */
 	int 					ui_orientation;		/* user interface orientation */
+#endif
 
 	/* debugger-related information */
 	int						debug_mode;			/* was debug mode enabled? */
@@ -203,22 +209,14 @@ struct _global_options
 	int		samplerate;		/* sound sample playback rate, in Hz */
 	int		use_samples;	/* 1 to enable external .wav samples */
 
-	float	brightness;		/* brightness of the display */
-	float	pause_bright;		/* additional brightness when in pause */
-	float	gamma;			/* gamma correction of the display */
-	int		vector_width;	/* requested width for vector games; 0 means default (640) */
-	int		vector_height;	/* requested height for vector games; 0 means default (480) */
-	int		ui_orientation;	/* orientation of the UI relative to the video */
+	float	brightness;		/* default brightness of the display */
+	float	contrast;		/* default brightness of the display */
+	float	gamma;			/* default gamma correction of the display */
+	float	pause_bright;	/* fractional brightness when in pause */
 
 	int		beam;			/* vector beam width */
 	float	vector_flicker;	/* vector beam flicker effect control */
-	float	vector_intensity;/* vector beam intensity */
-	int		translucency;	/* 1 to enable translucency on vectors */
 	int 	antialias;		/* 1 to enable antialiasing on vectors */
-
-	int		use_artwork;	/* bitfield indicating which artwork pieces to use */
-	int		artwork_res;	/* 1 for 1x game scaling, 2 for 2x */
-	int		artwork_crop;	/* 1 to crop artwork to the game screen */
 
 	const char * savegame;	/* string representing a savegame to load; if one length then interpreted as a character */
 	int		auto_save;		/* 1 to automatically save/restore at startup/quitting time */
@@ -229,6 +227,15 @@ struct _global_options
 	int		debug_depth;	/* requested depth of debugger bitmap */
 
 	const char *controller;	/* controller-specific cfg to load */
+
+#ifndef NEW_RENDER
+	int		vector_width;	/* requested width for vector games; 0 means default (640) */
+	int		vector_height;	/* requested height for vector games; 0 means default (480) */
+	int		ui_orientation;	/* orientation of the UI relative to the video */
+	int		artwork_res;	/* 1 for 1x game scaling, 2 for 2x */
+	int		use_artwork;	/* bitfield indicating which artwork pieces to use */
+	int		artwork_crop;	/* 1 to crop artwork to the game screen */
+#endif
 
 #ifdef MESS
 	UINT32	ram;
@@ -328,34 +335,6 @@ UINT32 memory_region_type(int num);
 
 /* return the flags (defined in romload.h) for a specified memory region */
 UINT32 memory_region_flags(int num);
-
-
-
-/* ----- resource management ----- */
-
-/* begin tracking resources */
-void begin_resource_tracking(void);
-
-/* stop tracking resources and free everything since the last begin */
-void end_resource_tracking(void);
-
-/* return the current resource tag */
-INLINE int get_resource_tag(void)
-{
-	extern int resource_tracking_tag;
-	return resource_tracking_tag;
-}
-
-/* allocate memory and fatalerror if there's a problem */
-#define malloc_or_die(s)	_malloc_or_die(s, __FILE__, __LINE__)
-void *_malloc_or_die(size_t size, const char *file, int line) ATTR_MALLOC;
-
-/* allocate memory that will be freed at the next end_resource_tracking */
-#define auto_malloc(s)		_auto_malloc(s, __FILE__, __LINE__)
-void *_auto_malloc(size_t size, const char *file, int line) ATTR_MALLOC;
-
-/* allocate memory and duplicate a string that will be freed at the next end_resource_tracking */
-char *auto_strdup(const char *str) ATTR_MALLOC;
 
 
 

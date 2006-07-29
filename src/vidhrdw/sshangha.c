@@ -115,7 +115,7 @@ static void sshangha_drawsprites(mame_bitmap *bitmap, UINT16 *spritesrc, UINT16 
 					colour,
 					fx,fy,
 					x,y + mult * multi,
-					&Machine->visible_area,TRANSPARENCY_PEN,0);
+					&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 
 			multi--;
 		}
@@ -264,4 +264,5 @@ VIDEO_UPDATE( sshangha )
 
 	sshangha_drawsprites(bitmap,spriteram16_2,0x0000,0x0000);
 	sshangha_drawsprites(bitmap,spriteram16,0x4000,0x0000);
+	return 0;
 }

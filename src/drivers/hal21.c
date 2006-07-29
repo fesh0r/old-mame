@@ -188,7 +188,7 @@ static void hal21_draw_background( mame_bitmap *bitmap, int scrollx, int scrolly
 	rectangle *cliprect;
 	int bankbase, c, x, y, offsx, offsy, dx, dy, sx, sy, offs, tile_number;
 
-	cliprect = &Machine->visible_area;
+	cliprect = &Machine->visible_area[0];
 	bankbase = attrs<<3 & 0x100;
 	c = attrs & 0x0f;
 	if (c > 11) { fillbitmap(bitmap,Machine->pens[(c<<4)+8], cliprect); return; }
@@ -228,7 +228,7 @@ static void hal21_draw_sprites( mame_bitmap *bitmap, int scrollx, int scrolly,
 	UINT8 *sprptr, *endptr;
 	int attrs, tile, x, y, color, fy;
 
-	cliprect = &Machine->visible_area;
+	cliprect = &Machine->visible_area[0];
 	sprptr = spriteram;
 	endptr = spriteram + 0x100;
 
@@ -259,7 +259,7 @@ static void aso_draw_background( mame_bitmap *bitmap, int scrollx, int scrolly, 
 	rectangle *cliprect;
 	int bankbase, c, x, y, offsx, offsy, dx, dy, sx, sy, offs, tile_number;
 
-	cliprect = &Machine->visible_area;
+	cliprect = &Machine->visible_area[0];
 	bankbase = attrs<<4 & 0x300;
 	c = attrs & 0x0f;
 	if (c == 7) c = 15;
@@ -292,7 +292,7 @@ static void aso_draw_sprites( mame_bitmap *bitmap, int scrollx, int scrolly,
 	UINT8 *sprptr, *endptr;
 	int attrs, tile, x, y, color;
 
-	cliprect = &Machine->visible_area;
+	cliprect = &Machine->visible_area[0];
 	sprptr = spriteram;
 	endptr = spriteram + 0x100;
 
@@ -346,6 +346,7 @@ VIDEO_UPDATE( aso )
 	bank = msbs>>6 & 1;
 	tnk3_draw_text(bitmap, bank, &textram[0]);
 	tnk3_draw_status(bitmap, bank, &textram[0x400]);
+	return 0;
 }
 
 
@@ -894,6 +895,11 @@ ROM_START( aso )
 	ROM_LOAD( "up02_f12.rom",  0x000, 0x00400, CRC(5b0a0059) SHA1(f61e17c8959f1cd6cc12b38f2fb7c6190ebd0e0c) )
 	ROM_LOAD( "up02_f13.rom",  0x400, 0x00400, CRC(37e28dd8) SHA1(681726e490872a574dd0295823a44d64ef3a7b45) )
 	ROM_LOAD( "up02_f14.rom",  0x800, 0x00400, CRC(c3fd1dd3) SHA1(c48030cc458f0bebea0ffccf3d3c43260da6a7fb) )
+
+	ROM_REGION( 0x0600, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16l8a-1.bin", 0x0000, 0x0104, CRC(4e3f9e0d) SHA1(de448d50c0d1cdef159a8c4028846142210eba0b) )
+	ROM_LOAD( "pal16l8a-2.bin", 0x0200, 0x0104, CRC(2a681f9e) SHA1(b26eb631d3e4fa6850a109a9a63d377cf86923bc) )
+	ROM_LOAD( "pal16r6a.bin",   0x0400, 0x0104, CRC(59c03681) SHA1(d21090b35596c28d44862782386e84dfc1feff0c) )
 ROM_END
 
 ROM_START( alphamis )
@@ -928,6 +934,11 @@ ROM_START( alphamis )
 	ROM_LOAD( "up02_f12.rom",  0x000, 0x00400, CRC(5b0a0059) SHA1(f61e17c8959f1cd6cc12b38f2fb7c6190ebd0e0c) )
 	ROM_LOAD( "up02_f13.rom",  0x400, 0x00400, CRC(37e28dd8) SHA1(681726e490872a574dd0295823a44d64ef3a7b45) )
 	ROM_LOAD( "up02_f14.rom",  0x800, 0x00400, CRC(c3fd1dd3) SHA1(c48030cc458f0bebea0ffccf3d3c43260da6a7fb) )
+
+	ROM_REGION( 0x0600, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16l8a-1.bin", 0x0000, 0x0104, CRC(4e3f9e0d) SHA1(de448d50c0d1cdef159a8c4028846142210eba0b) )
+	ROM_LOAD( "pal16l8a-2.bin", 0x0200, 0x0104, CRC(2a681f9e) SHA1(b26eb631d3e4fa6850a109a9a63d377cf86923bc) )
+	ROM_LOAD( "pal16r6a.bin",   0x0400, 0x0104, CRC(59c03681) SHA1(d21090b35596c28d44862782386e84dfc1feff0c) )
 ROM_END
 
 GAME( 1985, aso,      0,     aso,   aso,   aso,   ROT270, "SNK", "ASO - Armored Scrum Object", GAME_NO_COCKTAIL )

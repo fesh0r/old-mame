@@ -12,12 +12,80 @@
 
 
 //============================================================
-//  PARAMETERS
+//  CONSTANTS
 //============================================================
 
-// maximum video size
-#define MAX_VIDEO_WIDTH			1600
-#define MAX_VIDEO_HEIGHT		1200
+#define MAX_WINDOWS			4
+
+#define VIDEO_MODE_GDI		0
+#define VIDEO_MODE_DDRAW	1
+#define VIDEO_MODE_D3D		2
+
+
+
+//============================================================
+//  TYPE DEFINITIONS
+//============================================================
+
+typedef struct _win_monitor_info win_monitor_info;
+struct _win_monitor_info
+{
+	win_monitor_info  *	next;					// pointer to next monitor in list
+	HMONITOR			handle;					// handle to the monitor
+	MONITORINFOEX		info;					// most recently retrieved info
+	float				aspect;					// computed/configured aspect ratio of the physical device
+	int					reqwidth;				// requested width for this monitor
+	int					reqheight;				// requested height for this monitor
+};
+
+
+typedef struct _win_window_config win_window_config;
+struct _win_window_config
+{
+	float				aspect;						// decoded aspect ratio
+	int					width;						// decoded width
+	int					height;						// decoded height
+	int					depth;						// decoded depth
+	int					refresh;					// decoded refresh
+};
+
+
+typedef struct _win_video_config win_video_config;
+struct _win_video_config
+{
+	// performance options
+	int					fastforward;				// fast forward?
+	int					autoframeskip;				// autoframeskip?
+	int					frameskip;					// explicit frameskip
+	int					throttle;					// throttle speed?
+	int					sleep;						// allow sleeping?
+
+	// misc options
+	int					framestorun;				// number of frames to run
+
+	// global configuration
+	int					windowed;					// start windowed?
+	int					prescale;					// prescale factor
+	int					keepaspect;					// keep aspect ratio
+	int					numscreens;					// number of screens
+	int					layerconfig;				// default configuration of layers
+
+	// per-window configuration
+	win_window_config	window[MAX_WINDOWS];		// configuration data per-window
+
+	// hardware options
+	int					mode;						// output mode
+	int					waitvsync;					// spin until vsync
+	int					syncrefresh;				// sync only to refresh rate
+	int					triplebuf;					// triple buffer
+	int					switchres;					// switch resolutions
+
+	// ddraw options
+	int					hwstretch;					// stretch using the hardware
+
+	// d3d options
+	int					filter;						// enable filtering
+};
 
 
 
@@ -25,34 +93,25 @@
 //  GLOBAL VARIABLES
 //============================================================
 
-// screen info
-extern HMONITOR		monitor;
-extern char			*screen_name;
+extern win_monitor_info *win_monitor_list;
+
+extern int video_orientation;
 
 
-// speed throttling
-extern int			throttle;
-
-// palette lookups
-extern UINT8		palette_lookups_invalid;
-extern UINT32 		palette_16bit_lookup[];
-extern UINT32 		palette_32bit_lookup[];
-
-// rotation
-extern UINT8		blit_flipx;
-extern UINT8		blit_flipy;
-extern UINT8		blit_swapxy;
-
+extern win_video_config video_config;
 
 
 //============================================================
 //  PROTOTYPES
 //============================================================
 
-void win_pause(int pause);
-void win_orient_rect(rectangle *rect);
-void win_disorient_rect(rectangle *rect);
-void win_set_frameskip(int frameskip);		// <0 = auto
-int win_get_frameskip(void);				// <0 = auto
+int winvideo_init(void);
+
+void winvideo_monitor_refresh(win_monitor_info *monitor);
+float winvideo_monitor_get_aspect(win_monitor_info *monitor);
+win_monitor_info *winvideo_monitor_from_handle(HMONITOR monitor);
+
+void winvideo_set_frameskip(int frameskip);		// <0 = auto
+int winvideo_get_frameskip(void);				// <0 = auto
 
 #endif

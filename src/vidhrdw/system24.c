@@ -35,13 +35,13 @@ VIDEO_UPDATE(system24)
 
 	if(sys24_mixer_get_reg(13) & 1) {
 		fillbitmap(bitmap, get_black_pen(), 0);
-		return;
+		return 0;
 	}
 
 	sys24_tile_update();
 
 	fillbitmap(priority_bitmap, 0, 0);
-	fillbitmap(bitmap, Machine->pens[0], &Machine->visible_area);
+	fillbitmap(bitmap, Machine->pens[0], &Machine->visible_area[0]);
 
 	for(i=0; i<12; i++)
 		order[i] = i;
@@ -57,4 +57,5 @@ VIDEO_UPDATE(system24)
 		}
 
 	sys24_sprite_draw(bitmap, cliprect, spri);
+	return 0;
 }

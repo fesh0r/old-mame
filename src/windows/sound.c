@@ -23,17 +23,16 @@
 #include "osdepend.h"
 #include "sound/wavwrite.h"
 
+#include "winmain.h"
+#ifndef NEW_RENDER
+#include "windold.h"
+#include "videoold.h"
+extern int throttle;
+#else
 #include "window.h"
 #include "video.h"
-#include "rc.h"
-
-
-//============================================================
-//  IMPORTS
-//============================================================
-
-extern int verbose;
-
+#define win_video_window		win_window_list->hwnd
+#endif
 
 
 //============================================================
@@ -71,6 +70,8 @@ extern int verbose;
 // global parameters
 int							attenuation = 0;
 
+int							audio_latency;
+char *						wavwrite;
 
 
 //============================================================
@@ -105,7 +106,6 @@ static UINT32				samples_this_frame;
 
 // sample rate adjustments
 static int					current_adjustment = 0;
-static int					audio_latency;
 static int					lower_thresh;
 static int					upper_thresh;
 
@@ -117,19 +117,7 @@ static int					is_enabled = 1;
 static FILE *				sound_log;
 #endif
 
-static char *				wavwrite;
 static void *				wavptr;
-
-// sound options (none at this time)
-struct rc_option sound_opts[] =
-{
-	// name, shortname, type, dest, deflt, min, max, func, help
-	{ "Windows sound options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
-	{ "audio_latency", NULL, rc_int, &audio_latency, "1", 1, 4, NULL, "set audio latency (increase to reduce glitches)" },
-	{ "wavwrite", NULL, rc_string, &wavwrite, NULL, 0, 0, NULL, "save sound in wav file" },
-	{ NULL,	NULL, rc_end, NULL, NULL, 0, 0,	NULL, NULL }
-};
-
 
 
 //============================================================
@@ -179,7 +167,7 @@ int osd_start_audio_stream(int stereo)
 	osd_set_mastervolume(attenuation);
 
 	// determine the number of samples per frame
-	samples_per_frame = (double)Machine->sample_rate / (double)Machine->refresh_rate;
+	samples_per_frame = (double)Machine->sample_rate / (double)Machine->refresh_rate[0];
 
 	// compute how many samples to generate the first frame
 	samples_left_over = samples_per_frame;
@@ -208,7 +196,7 @@ int osd_start_audio_stream(int stereo)
 
 void sound_update_refresh_rate(float newrate)
 {
-	samples_per_frame = (double)Machine->sample_rate / (double)Machine->refresh_rate;
+	samples_per_frame = (double)Machine->sample_rate / (double)Machine->refresh_rate[0];
 }
 
 
@@ -230,8 +218,8 @@ void osd_stop_audio_stream(void)
 	dsound_kill();
 
 	// print out over/underflow stats
-	if (verbose && (buffer_overflows || buffer_underflows))
-		fprintf(stderr, "Sound buffer: overflows=%d underflows=%d\n", buffer_overflows, buffer_underflows);
+	if (buffer_overflows || buffer_underflows)
+		verbose_printf("Sound: buffer overflows=%d underflows=%d\n", buffer_overflows, buffer_underflows);
 
 #if LOG_SOUND
 	if (sound_log)
@@ -253,7 +241,11 @@ static void update_sample_adjustment(int buffered)
 	static int consecutive_highs = 0;
 
 	// if we're not throttled don't bother
+#ifndef NEW_RENDER
 	if (!throttle)
+#else
+	if (!video_config.throttle)
+#endif
 	{
 		consecutive_lows = 0;
 		consecutive_mids = 0;
@@ -520,7 +512,7 @@ static int dsound_init(void)
 	// compute the buffer sizes
 	stream_buffer_size = ((UINT64)MAX_BUFFER_SIZE * (UINT64)stream_format.nSamplesPerSec) / 44100;
 	stream_buffer_size = (stream_buffer_size * stream_format.nBlockAlign) / 4;
-	stream_buffer_size = (stream_buffer_size * 30) / Machine->refresh_rate;
+	stream_buffer_size = (stream_buffer_size * 30) / Machine->refresh_rate[0];
 	stream_buffer_size = (stream_buffer_size / 1024) * 1024;
 
 	// compute the upper/lower thresholds
@@ -614,8 +606,7 @@ static int dsound_create_buffers(void)
 		fprintf(stderr, "Error getting primary format: %08x\n", (UINT32)result);
 		goto cant_get_primary_format;
 	}
-	if (verbose)
-		fprintf(stderr, "Primary buffer: %d Hz, %d bits, %d channels\n",
+	verbose_printf("DirectSound: Primary buffer: %d Hz, %d bits, %d channels\n",
 				(int)primary_format.nSamplesPerSec, (int)primary_format.wBitsPerSample, (int)primary_format.nChannels);
 
 	// create a buffer desc for the stream buffer

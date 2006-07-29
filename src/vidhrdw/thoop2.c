@@ -197,7 +197,7 @@ static void gaelco_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, 
 				drawgfx(bitmap,gfx,number + x_offset[ex] + y_offset[ey],
 						color,xflip,yflip,
 						sx-0x0f+x*8,sy+y*8,
-						&Machine->visible_area,TRANSPARENCY_PEN,0);
+						&Machine->visible_area[0],TRANSPARENCY_PEN,0);
 			}
 		}
 	}
@@ -246,4 +246,5 @@ VIDEO_UPDATE( thoop2 )
 	tilemap_draw(bitmap,cliprect,pant[0],TILEMAP_FRONT | 0,0);
 
 	gaelco_draw_sprites(bitmap,cliprect,4);
+	return 0;
 }

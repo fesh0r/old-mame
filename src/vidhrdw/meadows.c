@@ -5,7 +5,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "artwork.h"
 #include "meadows.h"
 
 /* some constants to make life easier */
@@ -68,7 +67,7 @@ WRITE8_HANDLER( meadows_videoram_w )
 WRITE8_HANDLER( meadows_spriteram_w )
 {
 	if (spriteram[offset] != data)
-		force_partial_update(cpu_getscanline());
+		force_partial_update(0, cpu_getscanline());
 	spriteram[offset] = data;
 }
 
@@ -113,4 +112,5 @@ VIDEO_UPDATE( meadows )
 	/* draw the sprites */
 	if (Machine->gfx[1])
 		draw_sprites(bitmap, cliprect);
+	return 0;
 }

@@ -28,10 +28,6 @@ HgKairak: 86010000 1f201918 a0000000 Large Screen
 
 #include "driver.h"
 
-#define DUAL_SCREEN 1 /* Display both screens simultaneously if 1, change in driver too */
-
-static UINT32 screen; /* for PS4 games when DUAL_SCREEN=0 */
-
 /* defined in drivers/psikyo4.c */
 extern UINT32 *psikyo4_vidregs;
 
@@ -102,15 +98,11 @@ static void psikyo4_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect,
 
 			if((!scr && flipscreen1) || (scr && flipscreen2))
 			{
-				ypos = Machine->visible_area.max_y+1 - ypos - high*16; /* Screen Height depends on game */
+				ypos = Machine->visible_area[0].max_y+1 - ypos - high*16; /* Screen Height depends on game */
 				xpos = 40*8 - xpos - wide*16;
 				flipx = !flipx;
 				flipy = !flipy;
 			}
-
-#if DUAL_SCREEN /* if we are displaying both screens simultaneously */
-			if(scr) xpos += 40*8;
-#endif
 
 			if (flipx)	{ xstart = wide-1;  xend = -1;    xinc = -1; }
 			else		{ xstart = 0;       xend = wide;  xinc = +1; }
@@ -133,53 +125,21 @@ static void psikyo4_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect,
 
 VIDEO_UPDATE( psikyo4 )
 {
-#if DUAL_SCREEN
+	if (screen==0)
 	{
-		rectangle clip;
-
-		clip.min_x = 0;
-		clip.max_x = 40*8-1;
-		clip.min_y = Machine->visible_area.min_y;
-		clip.max_y = Machine->visible_area.max_y;
-
-		fillbitmap(bitmap, Machine->pens[0x1000], &clip);
-		psikyo4_drawsprites(bitmap, &clip, 0x0000);
-
-		clip.min_x = 40*8;
-		clip.max_x = 80*8-1;
-		clip.min_y = Machine->visible_area.min_y;
-		clip.max_y = Machine->visible_area.max_y;
-
-		fillbitmap(bitmap, Machine->pens[0x1001], &clip);
-		psikyo4_drawsprites(bitmap, &clip, 0x2000);
+		fillbitmap(bitmap, Machine->pens[0x1000], cliprect);
+		psikyo4_drawsprites(bitmap, cliprect, 0x0000);
 	}
-#else
+	else if (screen==1)
 	{
-		if (readinputport(9) & 1) screen = 0x0000; /* change screens from false dip, is this ok? */
-		else if (readinputport(9) & 2) screen = 0x2000;
-
-		fillbitmap(bitmap, Machine->pens[(screen==0x0000)?0x1000:0x1001], cliprect);
-		psikyo4_drawsprites(bitmap, cliprect, screen);
+		fillbitmap(bitmap, Machine->pens[0x1001], cliprect);
+		psikyo4_drawsprites(bitmap, cliprect, 0x2000);
 	}
-#endif
-
-
-#if 0
-#ifdef MAME_DEBUG
-	{
-		ui_popup	("Regs %08x %08x %08x",
-			psikyo4_vidregs[0], psikyo4_vidregs[1],
-			psikyo4_vidregs[2]);
-//      ui_popup ("Brightness %08x%08x",
-//          screen1_brt[0], screen2_brt[0]);
-	}
-#endif
-#endif
+	return 0;
 }
 
 VIDEO_START( psikyo4 )
 {
 	Machine->gfx[0]->color_granularity=32; /* 256 colour sprites with palette selectable on 32 colour boundaries */
-	screen = 0;
 	return 0;
 }

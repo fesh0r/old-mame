@@ -216,7 +216,7 @@ WRITE8_HANDLER( pacman_flipscreen_w )
 VIDEO_UPDATE( pacman )
 {
 	if (bgpriority != 0)
-		fillbitmap(bitmap,Machine->pens[0],&Machine->visible_area);
+		fillbitmap(bitmap,Machine->pens[0],&Machine->visible_area[0]);
 	else
 		tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_IGNORE_TRANSPARENCY,0);
 
@@ -279,6 +279,7 @@ VIDEO_UPDATE( pacman )
 
 	if (bgpriority != 0)
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
+	return 0;
 }
 
 
@@ -432,6 +433,7 @@ VIDEO_UPDATE( s2650games )
 				sx,sy + xoffsethack,
 				cliprect,TRANSPARENCY_COLOR,0);
 	}
+	return 0;
 }
 
 WRITE8_HANDLER( s2650games_videoram_w )

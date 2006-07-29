@@ -78,7 +78,7 @@ static void crtc_interrupt_gen(int param)
 {
 	cpunum_set_input_line(0, 1, HOLD_LINE);
 	if (param != 0)
-		timer_adjust(crtc_timer, TIME_IN_HZ(Machine->drv->frames_per_second * param), 0, TIME_IN_HZ(Machine->drv->frames_per_second * param));
+		timer_adjust(crtc_timer, TIME_IN_HZ(Machine->refresh_rate[0] * param), 0, TIME_IN_HZ(Machine->refresh_rate[0] * param));
 }
 
 
@@ -177,7 +177,7 @@ WRITE16_HANDLER( rpunch_crtc_data_w )
 		{
 			/* only register we know about.... */
 			case 0x0b:
-				timer_adjust(crtc_timer, cpu_getscanlinetime(Machine->visible_area.max_y + 1), (data == 0xc0) ? 2 : 1, 0);
+				timer_adjust(crtc_timer, cpu_getscanlinetime(Machine->visible_area[0].max_y + 1), (data == 0xc0) ? 2 : 1, 0);
 				break;
 
 			default:
@@ -300,4 +300,5 @@ VIDEO_UPDATE( rpunch )
 	draw_sprites(bitmap,cliprect, effbins, gins);
 	if (rpunch_bitmapram)
 		draw_bitmap(bitmap,cliprect);
+	return 0;
 }

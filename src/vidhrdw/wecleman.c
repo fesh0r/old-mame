@@ -789,7 +789,7 @@ void hotchase_draw_road(mame_bitmap *bitmap, const rectangle *cliprect)
 	int sx, sy;
 
 	/* Let's draw from the top to the bottom of the visible screen */
-	for (sy = Machine->visible_area.min_y;sy <= Machine->visible_area.max_y;sy++)
+	for (sy = Machine->visible_area[0].min_y;sy <= Machine->visible_area[0].max_y;sy++)
 	{
 		int code    = wecleman_roadram[sy*4/2+2/2] + (wecleman_roadram[sy*4/2+0/2] << 16);
 		int color   = ((code & 0x00f00000) >> 20) + 0x70;
@@ -1114,6 +1114,7 @@ VIDEO_UPDATE ( wecleman )
 
 	/* Draw the text layer */
 	if (video_on) tilemap_draw(bitmap,cliprect, txt_tilemap, 0, 0);
+	return 0;
 }
 
 /***************************************************************************
@@ -1143,4 +1144,5 @@ VIDEO_UPDATE( hotchase )
 
 	/* Draw the foreground (text) */
 	if (video_on) K051316_zoom_draw_1(bitmap,cliprect, 0, 0);
+	return 0;
 }

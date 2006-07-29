@@ -221,6 +221,8 @@
 #include "vidhrdw/avgdvg.h"
 #include "sound/ay8910.h"
 
+#include "render.h"
+
 
 
 /*************************************
@@ -322,18 +324,6 @@ WRITE8_HANDLER( omegrace_soundlatch_w )
 	soundlatch_w (offset, data);
 	cpunum_set_input_line(1, 0, HOLD_LINE);
 }
-
-
-
-/*************************************
- *
- *  Overlay
- *
- *************************************/
-
-OVERLAY_START( omegrace_overlay )
-	OVERLAY_RECT( 0.0, 0.0, 1.0, 1.0, MAKE_ARGB(0x04,0xff,0xe4,0x57) )
-OVERLAY_END
 
 
 
@@ -583,18 +573,6 @@ ROM_START( deltrace )
 ROM_END
 
 
-/*************************************
- *
- *  Driver initialization
- *
- *************************************/
-
-static DRIVER_INIT( omegrace )
-{
-	artwork_set_overlay(omegrace_overlay);
-}
-
-
 
 /*************************************
  *
@@ -602,5 +580,5 @@ static DRIVER_INIT( omegrace )
  *
  *************************************/
 
-GAME( 1981, omegrace, 0,        omegrace, omegrace, omegrace, ROT0, "Midway",         "Omega Race", GAME_NO_COCKTAIL )
-GAME( 1981, deltrace, omegrace, omegrace, omegrace, omegrace, ROT0, "Allied Leisure", "Delta Race", GAME_NO_COCKTAIL )
+GAMEL(1981, omegrace, 0,        omegrace, omegrace, 0, ROT0, "Midway",         "Omega Race", GAME_NO_COCKTAIL, layout_hoffe457 )
+GAMEL(1981, deltrace, omegrace, omegrace, omegrace, 0, ROT0, "Allied Leisure", "Delta Race", GAME_NO_COCKTAIL, layout_hoffe457 )

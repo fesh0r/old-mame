@@ -110,7 +110,11 @@
     GLOBAL VARIABLES
 ***************************************************************************/
 
+extern rgb_t *game_palette;
+extern rgb_t *adjusted_palette;
+#ifndef NEW_RENDER
 extern UINT32 direct_rgb_components[3];
+#endif
 extern UINT16 *palette_shadow_table;
 
 
@@ -119,8 +123,9 @@ extern UINT16 *palette_shadow_table;
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-int palette_start(void);
-int palette_init(void);
+void palette_init(void);
+void palette_config(void);
+void palette_add_notifier(void (*callback)(void *, int, rgb_t), void *param);
 int palette_get_total_colors_with_ui(void);
 
 void palette_update_display(mame_display *display);
@@ -158,13 +163,6 @@ void palette_set_highlight_factor32(double factor);
 void palette_set_shadow_dRGB32(int mode, int dr, int dg, int db, int noclip);
 void palette_set_highlight_method(int method); //0=default, 1=multiplication with flooding, 2=addition
 
-void palette_set_global_gamma(double _gamma);
-double palette_get_global_gamma(void);
-
-void palette_set_global_brightness(double brightness);
-void palette_set_global_brightness_adjust(double adjustment);
-double palette_get_global_brightness(void);
-
 pen_t get_black_pen(void);
 pen_t get_white_pen(void);
 
@@ -180,7 +178,7 @@ pen_t get_white_pen(void);
 
 INLINE UINT8 pal1bit(UINT8 bits)
 {
-	return bits ? 0xff : 0x00;
+	return (bits & 1) ? 0xff : 0x00;
 }
 
 

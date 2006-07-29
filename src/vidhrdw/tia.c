@@ -201,8 +201,8 @@ PALETTE_INIT( tia_PAL )
 
 VIDEO_START( tia )
 {
-	int cx = Machine->drv->screen_width;
-	int cy = Machine->drv->screen_height;
+	int cx = Machine->drv->screen[0].maxwidth;
+	int cy = Machine->drv->screen[0].maxheight;
 
 	helper[0] = auto_bitmap_alloc(cx, cy);
 	helper[1] = auto_bitmap_alloc(cx, cy);
@@ -220,6 +220,7 @@ VIDEO_UPDATE( tia )
 {
 	copybitmap(bitmap, helper[1 - current_bitmap], 0, 0, 0, 0,
 		cliprect, TRANSPARENCY_NONE, 0);
+	return 0;
 }
 
 
@@ -587,8 +588,8 @@ static WRITE8_HANDLER( VSYNC_w )
 		if (!(VSYNC & 2))
 		{
 			update_bitmap(
-				Machine->drv->screen_width,
-				Machine->drv->screen_height);
+				Machine->drv->screen[0].maxwidth,
+				Machine->drv->screen[0].maxheight);
 
 			current_bitmap ^= 1;
 

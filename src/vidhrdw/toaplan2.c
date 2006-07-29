@@ -1503,6 +1503,7 @@ VIDEO_UPDATE( toaplan2_0 )
 		if (sprite_priority[0][priority])
 			draw_sprites(bitmap,cliprect,0,priority,0);
 	}
+	return 0;
 }
 
 VIDEO_UPDATE( dogyuun_1 )
@@ -1537,6 +1538,7 @@ VIDEO_UPDATE( dogyuun_1 )
 		if (sprite_priority[0][priority])
 			draw_sprites(bitmap,cliprect,0,priority,0);
 	}
+	return 0;
 }
 
 VIDEO_UPDATE( batsugun_1 )
@@ -1573,12 +1575,14 @@ VIDEO_UPDATE( batsugun_1 )
 			draw_sprites(bitmap,cliprect,1,priority,0);
 	}
 
+	return 0;
 }
 
 VIDEO_UPDATE( truxton2_0 )
 {
 	video_update_toaplan2_0(screen,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
+	return 0;
 }
 
 VIDEO_UPDATE( batrider_0 )
@@ -1615,10 +1619,10 @@ VIDEO_UPDATE( batrider_0 )
 			draw_sprites(bitmap,cliprect,0,priority,1);	/* consider bank select */
 	}
 
-	clip.min_x = Machine->visible_area.min_x;
-	clip.max_x = Machine->visible_area.max_x;
-	clip.min_y = Machine->visible_area.min_y;
-	clip.max_y = Machine->visible_area.max_y;
+	clip.min_x = Machine->visible_area[0].min_x;
+	clip.max_x = Machine->visible_area[0].max_x;
+	clip.min_y = Machine->visible_area[0].min_y;
+	clip.max_y = Machine->visible_area[0].max_y;
 
 	/* used for 'for use in' and '8ing' screen on bbakraid, raizing on batrider */
 	for (line = 0; line < 256;line++)
@@ -1627,6 +1631,7 @@ VIDEO_UPDATE( batrider_0 )
 		tilemap_set_scrolly(tx_tilemap,0,toaplan2_txvideoram16_offs[line&0xff]-line);
 		tilemap_draw(bitmap,&clip,tx_tilemap,0,0);
 	}
+	return 0;
 }
 
 
@@ -1658,6 +1663,7 @@ VIDEO_UPDATE( mahoudai_0 )
 	if (sprite_priority[0][15])
 		draw_sprites(bitmap,cliprect,0,15,0);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
+	return 0;
 }
 
 

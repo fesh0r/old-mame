@@ -142,7 +142,7 @@ VIDEO_START( bnj )
     memset(dirtybuffer2,1,bnj_backgroundram_size);
 
     /* the background area is twice as wide as the screen */
-    if ((background_bitmap = auto_bitmap_alloc(2*Machine->drv->screen_width,Machine->drv->screen_height)) == 0)
+    if ((background_bitmap = auto_bitmap_alloc(2*Machine->drv->screen[0].maxwidth,Machine->drv->screen[0].maxheight)) == 0)
         return 1;
 
     bnj_scroll1 = 0;
@@ -386,7 +386,7 @@ static void drawchars(mame_bitmap *bitmap, int transparency, int color, int prio
                 color,
                 flip_screen,flip_screen,
                 8*sx,8*sy,
-                &Machine->visible_area,transparency,0);
+                &Machine->visible_area[0],transparency,0);
     }
 }
 
@@ -425,7 +425,7 @@ static void drawsprites(mame_bitmap *bitmap, int color,
                 color,
                 flipx,flipy,
                 sx,sy,
-                &Machine->visible_area,TRANSPARENCY_PEN,0);
+                &Machine->visible_area[0],TRANSPARENCY_PEN,0);
 
         sy += (flip_screen ? -256 : 256);
 
@@ -435,7 +435,7 @@ static void drawsprites(mame_bitmap *bitmap, int color,
                 color,
                 flipx,flipy,
                 sx,sy,
-                &Machine->visible_area,TRANSPARENCY_PEN,0);
+                &Machine->visible_area[0],TRANSPARENCY_PEN,0);
     }
 }
 
@@ -558,10 +558,11 @@ VIDEO_UPDATE( btime )
         drawchars(tmpbitmap, TRANSPARENCY_NONE, 0, -1);
 
         /* copy the temporary bitmap to the screen */
-        copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+        copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
     }
 
     drawsprites(bitmap, 0, 1, 0, videoram, 0x20);
+	return 0;
 }
 
 
@@ -573,9 +574,10 @@ VIDEO_UPDATE( eggs )
     drawchars(tmpbitmap, TRANSPARENCY_NONE, 0, -1);
 
     /* copy the temporary bitmap to the screen */
-    copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+    copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 
     drawsprites(bitmap, 0, 0, 0, videoram, 0x20);
+	return 0;
 }
 
 
@@ -587,9 +589,10 @@ VIDEO_UPDATE( lnc )
     drawchars(tmpbitmap, TRANSPARENCY_NONE, 0, -1);
 
     /* copy the temporary bitmap to the screen */
-    copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+    copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 
     drawsprites(bitmap, 0, 1, 2, videoram, 0x20);
+	return 0;
 }
 
 
@@ -609,12 +612,13 @@ VIDEO_UPDATE( zoar )
         drawchars(tmpbitmap, TRANSPARENCY_NONE, btime_palette + 1, -1);
 
         /* copy the temporary bitmap to the screen */
-        copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+        copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
     }
 
     /* The order is important for correct priorities */
     drawsprites(bitmap, btime_palette + 1, 1, 2, videoram + 0x1f, 0x20);
     drawsprites(bitmap, btime_palette + 1, 1, 2, videoram,        0x20);
+	return 0;
 }
 
 
@@ -664,7 +668,7 @@ VIDEO_UPDATE( bnj )
         scroll = (bnj_scroll1 & 0x02) * 128 + 511 - bnj_scroll2;
         if (!flip_screen)
             scroll = 767-scroll;
-        copyscrollbitmap (bitmap, background_bitmap, 1, &scroll, 0, 0, &Machine->visible_area,TRANSPARENCY_NONE, 0);
+        copyscrollbitmap (bitmap, background_bitmap, 1, &scroll, 0, 0, &Machine->visible_area[0],TRANSPARENCY_NONE, 0);
 
         /* copy the low priority characters followed by the sprites
            then the high priority characters */
@@ -677,10 +681,11 @@ VIDEO_UPDATE( bnj )
         drawchars(tmpbitmap, TRANSPARENCY_NONE, 0, -1);
 
         /* copy the temporary bitmap to the screen */
-        copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+        copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 
         drawsprites(bitmap, 0, 0, 0, videoram, 0x20);
     }
+	return 0;
 }
 
 
@@ -720,6 +725,7 @@ VIDEO_UPDATE( cookrace )
     drawchars(bitmap, TRANSPARENCY_PEN, 0, -1);
 
     drawsprites(bitmap, 0, 1, 0, videoram, 0x20);
+	return 0;
 }
 
 
@@ -733,7 +739,24 @@ VIDEO_UPDATE( disco )
     drawchars(tmpbitmap, TRANSPARENCY_NONE, btime_palette, -1);
 
     /* copy the temporary bitmap to the screen */
-    copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+    copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 
     drawsprites(bitmap, btime_palette, 0, 0, spriteram, 1);
+	return 0;
+}
+
+VIDEO_UPDATE( progolf )
+{
+	if (get_vh_global_attribute_changed())
+        memset(dirtybuffer,1,videoram_size);
+
+	decode_modified(spriteram, 1);
+
+	drawchars(tmpbitmap, TRANSPARENCY_NONE, /*btime_palette*/0, -1);
+
+	/* copy the temporary bitmap to the screen */
+    copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
+
+//  drawsprites(bitmap, 0/*btime_palette*/, 0, 0, spriteram, 1);
+	return 0;
 }

@@ -146,7 +146,7 @@ WRITE16_HANDLER( gauntlet_xscroll_w )
 	/* if something changed, force a partial update */
 	if (*atarigen_xscroll != oldxscroll)
 	{
-		force_partial_update(cpu_getscanline());
+		force_partial_update(0, cpu_getscanline());
 
 		/* adjust the scrolls */
 		tilemap_set_scrollx(atarigen_playfield_tilemap, 0, *atarigen_xscroll);
@@ -170,7 +170,7 @@ WRITE16_HANDLER( gauntlet_yscroll_w )
 	/* if something changed, force a partial update */
 	if (*atarigen_yscroll != oldyscroll)
 	{
-		force_partial_update(cpu_getscanline());
+		force_partial_update(0, cpu_getscanline());
 
 		/* if the bank changed, mark all tiles dirty */
 		if (playfield_tile_bank != (*atarigen_yscroll & 3))
@@ -232,4 +232,5 @@ VIDEO_UPDATE( gauntlet )
 
 	/* add the alpha on top */
 	tilemap_draw(bitmap, cliprect, atarigen_alpha_tilemap, 0, 0);
+	return 0;
 }

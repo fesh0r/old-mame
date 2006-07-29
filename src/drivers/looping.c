@@ -189,7 +189,7 @@ static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 				code, color,
 				flipx, flipy,
 				sx, sy,
-				&Machine->visible_area,
+				&Machine->visible_area[0],
 				TRANSPARENCY_PEN, 0 );
 
 		source += 4;
@@ -200,6 +200,7 @@ VIDEO_UPDATE( looping )
 {
 	tilemap_draw( bitmap,cliprect,bg_tilemap,0,0 );
 	draw_sprites( bitmap,cliprect );
+	return 0;
 }
 
 WRITE8_HANDLER( looping_intack )

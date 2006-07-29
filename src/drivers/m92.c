@@ -484,31 +484,8 @@ INPUT_PORTS_START( bmaster )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 3 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	IREM_PORT_UNUSED	/* Game manual specificly mentions dip switch bank 3 is unused */
 INPUT_PORTS_END
 
 INPUT_PORTS_START( gunforce )
@@ -575,28 +552,27 @@ INPUT_PORTS_START( lethalth )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
 	PORT_START	/* Dip switch bank 3 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x02, "500K & 1M" )
+	PORT_DIPSETTING(    0x03, "700K & 1.5M" )
+	PORT_DIPSETTING(    0x00, "700K, 1.5M, 3M & 4.5M" )
+	PORT_DIPSETTING(    0x01, "1M & 2M" )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unused ) ) /* Manual states the rest are "Unused" */
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
@@ -675,16 +651,16 @@ INPUT_PORTS_START( majtitl2 )
 	PORT_DIPSETTING(    0x06, "2 Points - 1 Ticket" )
 	PORT_DIPSETTING(    0x02, "5 Points - 1 Ticket" )
 	PORT_DIPSETTING(    0x00, "10 Points - 1 Ticket" )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unused ) ) /* Game manual states dips 4, 5, 6 & 7 are "Unused" */
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, "Deltronics Model" ) /* Ticket Despenser Model Type */
@@ -706,14 +682,14 @@ INPUT_PORTS_START( mysticri )
 	PORT_DIPSETTING(    0x03, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
 	PORT_DIPSETTING(    0x00, "5" )
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
-    PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
-    PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
-    PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x00, "15000 35000 60000" )
+	PORT_DIPSETTING(    0x10, "20000 50000 90000" )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Allow_Continue ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Yes ) )
@@ -722,31 +698,7 @@ INPUT_PORTS_START( mysticri )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Dip switch bank 3 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	IREM_PORT_UNUSED	/* Game manual specificly mentions dip switch bank 3 is unused */
 INPUT_PORTS_END
 
 INPUT_PORTS_START( uccops )
@@ -770,7 +722,7 @@ INPUT_PORTS_START( uccops )
 	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
 	/* There is ALLWAYS a Bonus Life at 300K */
 	/* It does not depends on the value of bit 0x10 */
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x20, "Any Button to Start" )
@@ -803,7 +755,7 @@ INPUT_PORTS_START( rtypeleo )
 	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) ) /* Buy in/coin mode?? */
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Allow_Continue ) )
@@ -864,11 +816,11 @@ INPUT_PORTS_START( nbbatman )
 	PORT_DIPSETTING(    0x03, "2" )
 	PORT_DIPSETTING(    0x02, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
-    PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
-    PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
-    PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) ) /* One of these is continue */
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1166,7 +1118,7 @@ static struct IremGA20_interface iremGA20_interface =
 
 static INTERRUPT_GEN( m92_interrupt )
 {
-	force_partial_update(249+128);
+	force_partial_update(0, 249+128);
 	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, M92_IRQ_0); /* VBL */
 }
 
@@ -1176,13 +1128,13 @@ static INTERRUPT_GEN( m92_raster_interrupt )
 
 	/* Raster interrupt */
 	if (m92_raster_enable && line==m92_raster_irq_position) {
-		force_partial_update(line+128);
+		force_partial_update(0, line+128);
 		cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, M92_IRQ_2);
 	}
 
 	/* Redraw screen, then set vblank and trigger the VBL interrupt */
 	else if (line==249) { /* 248 is last visible line */
-		force_partial_update(249+128);
+		force_partial_update(0, 249+128);
 		cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, M92_IRQ_0);
 	}
 }
@@ -1407,6 +1359,13 @@ ROM_START( skingame )
 
 	ROM_REGION( 0x4000, REGION_USER1, 0 )	/* EEPROM */
 	ROM_LOAD( "mt2eep",  0x000000, 0x800, CRC(208af971) SHA1(69384cac24b7af35a031f9b60e035131a8b10cb2) )
+
+	ROM_REGION( 0x0c00, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16l8-m92-a-3m.ic11", 0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-a-7j.ic41", 0x0200, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-a-9j.ic51", 0x0400, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-b-2l.ic7",  0x0600, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-b-7h.ic47", 0x0800, 0x0104, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 ROM_START( majtitl2 )
@@ -1437,6 +1396,13 @@ ROM_START( majtitl2 )
 
 	ROM_REGION( 0x4000, REGION_USER1, 0 )	/* EEPROM */
 	ROM_LOAD( "mt2eep",  0x000000, 0x800, CRC(208af971) SHA1(69384cac24b7af35a031f9b60e035131a8b10cb2) )
+
+	ROM_REGION( 0x0c00, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16l8-m92-a-3m.ic11", 0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-a-7j.ic41", 0x0200, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-a-9j.ic51", 0x0400, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-b-2l.ic7",  0x0600, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-b-7h.ic47", 0x0800, 0x0104, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 ROM_START( skingam2 )
@@ -1467,6 +1433,13 @@ ROM_START( skingam2 )
 
 	ROM_REGION( 0x4000, REGION_USER1, 0 )	/* EEPROM */
 	ROM_LOAD( "mt2eep",  0x000000, 0x800, CRC(208af971) SHA1(69384cac24b7af35a031f9b60e035131a8b10cb2) )
+
+	ROM_REGION( 0x0c00, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16l8-m92-a-3m.ic11", 0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-a-7j.ic41", 0x0200, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-a-9j.ic51", 0x0400, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-b-2l.ic7",  0x0600, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16l8-m92-b-7h.ic47", 0x0800, 0x0104, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 ROM_START( gunforce )

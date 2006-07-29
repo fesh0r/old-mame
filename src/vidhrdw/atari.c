@@ -8,6 +8,7 @@
 
 #include "driver.h"
 #include "includes/atari.h"
+#include "vidhrdw/gtia.h"
 
 #ifdef	LSB_FIRST
 #define BYTE_XOR(n) (n)
@@ -27,7 +28,7 @@ char atari_frame_message[64+1];
 int atari_frame_counter;
 
 /* flag for displaying television artifacts in ANTIC mode F (15) */
-static int tv_artifacts = 0;
+static UINT32 tv_artifacts = 0;
 
 /*************************************************************************
  * The priority tables tell which playfield, player or missile colors
@@ -721,7 +722,6 @@ VIDEO_START( atari )
 
 	LOG(("atari antic_vh_start\n"));
     memset(&antic, 0, sizeof(antic));
-	memset(&gtia, 0, sizeof(gtia));
 
 	antic.cclk_expand = auto_malloc(21 * 256 * sizeof(UINT32));
 
@@ -764,7 +764,7 @@ VIDEO_START( atari )
 	LOG(("atari prio_init\n"));
     prio_init();
 
-	for( i = 0; i < Machine->drv->screen_height; i++ )
+	for( i = 0; i < Machine->drv->screen[0].maxheight; i++ )
     {
 		antic.video[i] = auto_malloc(sizeof(VIDEO));
 		memset(antic.video[i], 0, sizeof(VIDEO));
@@ -780,15 +780,14 @@ VIDEO_START( atari )
  ************************************************************************/
 VIDEO_UPDATE( atari )
 {
-#ifdef MESS
-	video_update_generic_bitmapped(screen, bitmap, cliprect, do_skip);
-#else
-	video_update_generic_bitmapped(screen, bitmap, cliprect);
-#endif
+	UINT32 new_tv_artifacts;
 
-	if( tv_artifacts != (readinputport(0) & 0x40) )
+	video_update_generic_bitmapped(screen, bitmap, cliprect);
+
+	new_tv_artifacts = readinputportbytag_safe("artifacts", 0);
+	if( tv_artifacts != new_tv_artifacts )
 	{
-		tv_artifacts = readinputport(0) & 0x40;
+		tv_artifacts = new_tv_artifacts;
 		schedule_full_refresh();
 	}
 	if( atari_frame_counter > 0 )
@@ -800,6 +799,7 @@ VIDEO_UPDATE( atari )
 			ui_draw_text(atari_frame_message, 0, height - 10);
 		}
 	}
+	return 0;
 }
 
 static renderer_function antic_renderer = antic_mode_0_xx;
@@ -961,7 +961,7 @@ static void antic_linerefresh(void)
 	UINT32 scanline[4 + (HCHARS * 2) + 4];
 
 	/* increment the scanline */
-    if( ++antic.scanline == Machine->drv->screen_height )
+    if( ++antic.scanline == Machine->drv->screen[0].maxheight )
     {
         /* and return to the top if the frame was complete */
         antic.scanline = 0;
@@ -1064,7 +1064,7 @@ static void antic_linerefresh(void)
 #if VERBOSE
 static int cycle(void)
 {
-	return cpu_gethorzbeampos() * CYCLES_PER_LINE / Machine->drv->screen_width;
+	return cpu_gethorzbeampos() * CYCLES_PER_LINE / Machine->drv->screen[0].maxwidth;
 }
 #endif
 
@@ -1367,7 +1367,7 @@ static void antic_scanline_dma(int param)
                         /* produce empty scanlines until vblank start */
 						antic.modelines = VBL_START + 1 - antic.scanline;
 						if( antic.modelines < 0 )
-							antic.modelines = Machine->drv->screen_height - antic.scanline;
+							antic.modelines = Machine->drv->screen[0].maxheight - antic.scanline;
 						LOG(("           JVB $%04x\n", antic.dpage|antic.doffs));
 					}
 					else
@@ -1514,7 +1514,7 @@ static void generic_atari_interrupt(void (*handle_keyboard)(void), int button_co
 
     if( antic.scanline == VBL_START )
     {
-		button_port = atari_readinputport(PORT_JOY_BUTTONS);
+		button_port = readinputportbytag_safe("djoy_b", 0);
 
 		/* specify buttons relevant to this Atari variant */
 		for (i = 0; i < button_count; i++)
@@ -1531,7 +1531,7 @@ static void generic_atari_interrupt(void (*handle_keyboard)(void), int button_co
 		handle_keyboard();
 
 		/* do nothing new for the rest of the frame */
-		antic.modelines = Machine->drv->screen_height - VBL_START;
+		antic.modelines = Machine->drv->screen[0].maxheight - VBL_START;
 		antic_renderer = antic_mode_0_xx;
 
 		/* if the CPU want's to be interrupted at vertical blank... */

@@ -396,7 +396,6 @@ is selected
 
 #include "driver.h"
 #include "ui_text.h"
-#include "artwork.h"
 #include "machine/eeprom.h"
 #include <ctype.h>
 
@@ -1750,7 +1749,7 @@ void cheat_init(void)
 {
 	int	screenWidth, screenHeight;
 
-	artwork_get_screensize(&screenWidth, &screenHeight);
+	ui_get_bounds(&screenWidth, &screenHeight);
 
 	he_did_cheat =			0;
 
@@ -1791,7 +1790,7 @@ void cheat_init(void)
 	InitStringTable();
 
 	periodic_timer = timer_alloc(cheat_periodic);
-	timer_adjust(periodic_timer, TIME_IN_HZ(Machine->refresh_rate), 0, TIME_IN_HZ(Machine->refresh_rate));
+	timer_adjust(periodic_timer, TIME_IN_HZ(Machine->refresh_rate[0]), 0, TIME_IN_HZ(Machine->refresh_rate[0]));
 
 	add_exit_callback(cheat_exit);
 }
@@ -2007,8 +2006,8 @@ int cheat_menu(int selection)
 
 	if(input_ui_pressed(IPT_UI_CANCEL))
 		sel = -1;
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-		sel = -2;
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//      sel = -2;
 
 	if((sel == -1) || (sel == -2))
 	{
@@ -2297,11 +2296,11 @@ static INT32 UserSelectValueMenu(int selection, CheatEntry * entry)
 		sel = -1;
 	}
 
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-	{
-		firstTime = 1;
-		sel = -2;
-	}
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//  {
+//      firstTime = 1;
+//      sel = -2;
+//  }
 
 	// get a key
 	keyValue = ReadHexInput();
@@ -2396,10 +2395,10 @@ static INT32 CommentMenu(int selection, CheatEntry * entry)
 		sel = -1;
 	}
 
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-	{
-		sel = -2;
-	}
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//  {
+//      sel = -2;
+//  }
 
 	if (sel == -1 || sel == -2)
 	{
@@ -2609,7 +2608,7 @@ static int EnableDisableCheatMenu(int selection, int firstTime)
 		}
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_UP, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_UP, kVerticalKeyRepeatRate))
 	{
 		sel -= fullMenuPageHeight;
 
@@ -2619,7 +2618,7 @@ static int EnableDisableCheatMenu(int selection, int firstTime)
 		}
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_DOWN, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_DOWN, kVerticalKeyRepeatRate))
 	{
 		sel += fullMenuPageHeight;
 
@@ -2844,8 +2843,8 @@ static int EnableDisableCheatMenu(int selection, int firstTime)
 		sel = -1;
 
 	/* The UI key takes us all the way back out */
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-		sel = -2;
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//      sel = -2;
 
 	if(sel == -1 || sel == -2)
 	{
@@ -4350,7 +4349,7 @@ static int EditCheatMenu(CheatEntry * entry, int selection)
 		editActive = 0;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_UP, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_UP, kVerticalKeyRepeatRate))
 	{
 		sel -= fullMenuPageHeight;
 
@@ -4360,7 +4359,7 @@ static int EditCheatMenu(CheatEntry * entry, int selection)
 		editActive = 0;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_DOWN, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_DOWN, kVerticalKeyRepeatRate))
 	{
 		sel += fullMenuPageHeight;
 
@@ -4585,11 +4584,11 @@ static int EditCheatMenu(CheatEntry * entry, int selection)
 		editActive = 0;
 	}
 
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-	{
-		sel = -2;
-		editActive = 0;
-	}
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//  {
+//      sel = -2;
+//      editActive = 0;
+//  }
 
 	if(	(sel == -1) ||
 		(sel == -2))
@@ -4745,7 +4744,7 @@ static int DoSearchMenuClassic(int selection, int startNew)
 			sel = total - 1;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_UP, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_UP, kVerticalKeyRepeatRate))
 	{
 		sel -= fullMenuPageHeight;
 
@@ -4753,7 +4752,7 @@ static int DoSearchMenuClassic(int selection, int startNew)
 			sel = 0;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_DOWN, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_DOWN, kVerticalKeyRepeatRate))
 	{
 		sel += fullMenuPageHeight;
 
@@ -4938,8 +4937,8 @@ static int DoSearchMenuClassic(int selection, int startNew)
 
 	if(input_ui_pressed(IPT_UI_CANCEL))
 		sel = -1;
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-		sel = -2;
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//      sel = -2;
 
 	if(sel == kMenu_Value)
 	{
@@ -5136,7 +5135,7 @@ static int DoSearchMenu(int selection, int startNew)
 			sel = total - 1;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_UP, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_UP, kVerticalKeyRepeatRate))
 	{
 		sel -= fullMenuPageHeight;
 
@@ -5144,7 +5143,7 @@ static int DoSearchMenu(int selection, int startNew)
 			sel = 0;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_DOWN, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_DOWN, kVerticalKeyRepeatRate))
 	{
 		sel += fullMenuPageHeight;
 
@@ -5346,8 +5345,8 @@ static int DoSearchMenu(int selection, int startNew)
 
 	if(input_ui_pressed(IPT_UI_CANCEL))
 		sel = -1;
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-		sel = -2;
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//      sel = -2;
 
 	if(	(sel == -1) ||
 		(sel == -2))
@@ -5427,7 +5426,7 @@ static int AddEditCheatMenu(int selection)
 			sel = total - 1;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_UP, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_UP, kVerticalKeyRepeatRate))
 	{
 		sel -= fullMenuPageHeight;
 
@@ -5435,7 +5434,7 @@ static int AddEditCheatMenu(int selection)
 			sel = 0;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_DOWN, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_DOWN, kVerticalKeyRepeatRate))
 	{
 		sel += fullMenuPageHeight;
 
@@ -5503,8 +5502,8 @@ static int AddEditCheatMenu(int selection)
 
 	if(input_ui_pressed(IPT_UI_CANCEL))
 		sel = -1;
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-		sel = -2;
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//      sel = -2;
 
 	if(	(sel == -1) ||
 		(sel == -2))
@@ -5710,12 +5709,12 @@ static int ViewSearchResults(int selection, int firstTime)
 		}
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_UP, kHorizontalFastKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_UP, kHorizontalFastKeyRepeatRate))
 	{
 		goToPrevPage = 1;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_DOWN, kHorizontalFastKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_DOWN, kHorizontalFastKeyRepeatRate))
 	{
 		goToNextPage = 1;
 	}
@@ -5780,7 +5779,7 @@ static int ViewSearchResults(int selection, int firstTime)
 		}
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_LEFT, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PREV_GROUP, kVerticalKeyRepeatRate))
 	{
 		search->currentRegionIdx--;
 
@@ -5788,7 +5787,7 @@ static int ViewSearchResults(int selection, int firstTime)
 			search->currentRegionIdx = search->regionListLength - 1;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_RIGHT, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_NEXT_GROUP, kVerticalKeyRepeatRate))
 	{
 		search->currentRegionIdx++;
 
@@ -5844,8 +5843,8 @@ static int ViewSearchResults(int selection, int firstTime)
 
 	if(input_ui_pressed(IPT_UI_CANCEL))
 		sel = -1;
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-		sel = -2;
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//      sel = -2;
 
 	if(	(sel == -1) ||
 		(sel == -2))
@@ -5928,7 +5927,7 @@ static int ChooseWatch(int selection)
 			sel = total - 1;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_UP, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_UP, kVerticalKeyRepeatRate))
 	{
 		sel -= fullMenuPageHeight;
 
@@ -5936,7 +5935,7 @@ static int ChooseWatch(int selection)
 			sel = 0;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_DOWN, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_DOWN, kVerticalKeyRepeatRate))
 	{
 		sel += fullMenuPageHeight;
 
@@ -6034,8 +6033,8 @@ static int ChooseWatch(int selection)
 
 	if(input_ui_pressed(IPT_UI_CANCEL))
 		sel = -1;
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-		sel = -2;
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//      sel = -2;
 
 	if(	(sel == -1) ||
 		(sel == -2))
@@ -6417,7 +6416,7 @@ static int EditWatch(WatchInfo * entry, int selection)
 		editActive = 0;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_UP, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_UP, kVerticalKeyRepeatRate))
 	{
 		sel -= fullMenuPageHeight;
 
@@ -6427,7 +6426,7 @@ static int EditWatch(WatchInfo * entry, int selection)
 		editActive = 0;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_DOWN, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_DOWN, kVerticalKeyRepeatRate))
 	{
 		sel += fullMenuPageHeight;
 
@@ -6546,8 +6545,8 @@ static int EditWatch(WatchInfo * entry, int selection)
 
 	if(input_ui_pressed(IPT_UI_CANCEL))
 		sel = -1;
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-		sel = -2;
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//      sel = -2;
 
 	if(	(sel == -1) ||
 		(sel == -2))
@@ -6632,7 +6631,7 @@ static int SelectSearchRegions(int selection, SearchInfo * search)
 			sel = total - 1;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_UP, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_UP, kVerticalKeyRepeatRate))
 	{
 		sel -= fullMenuPageHeight;
 
@@ -6640,7 +6639,7 @@ static int SelectSearchRegions(int selection, SearchInfo * search)
 			sel = 0;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_DOWN, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_DOWN, kVerticalKeyRepeatRate))
 	{
 		sel += fullMenuPageHeight;
 
@@ -6713,8 +6712,8 @@ static int SelectSearchRegions(int selection, SearchInfo * search)
 
 	if(input_ui_pressed(IPT_UI_CANCEL))
 		sel = -1;
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-		sel = -2;
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//      sel = -2;
 
 	if((sel == -1) || (sel == -2))
 	{
@@ -6798,7 +6797,7 @@ static int SelectSearch(int selection)
 			sel = total - 1;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_UP, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_UP, kVerticalKeyRepeatRate))
 	{
 		sel -= fullMenuPageHeight;
 
@@ -6806,7 +6805,7 @@ static int SelectSearch(int selection)
 			sel = 0;
 	}
 
-	if(UIPressedRepeatThrottle(IPT_UI_PAN_DOWN, kVerticalKeyRepeatRate))
+	if(UIPressedRepeatThrottle(IPT_UI_PAGE_DOWN, kVerticalKeyRepeatRate))
 	{
 		sel += fullMenuPageHeight;
 
@@ -6850,8 +6849,8 @@ static int SelectSearch(int selection)
 
 	if(input_ui_pressed(IPT_UI_CANCEL))
 		sel = -1;
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-		sel = -2;
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//      sel = -2;
 
 	if((sel == -1) || (sel == -2))
 	{
@@ -6887,10 +6886,10 @@ static INT32 DisplayHelp(int selection)
 		sel = -1;
 	}
 
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-	{
-		sel = -2;
-	}
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//  {
+//      sel = -2;
+//  }
 
 	if (sel == -1 || sel == -2)
 	{
@@ -7058,8 +7057,8 @@ static int SelectOptions(int selection)
 
 	if(input_ui_pressed(IPT_UI_CANCEL))
 		sel = -1;
-	if(input_ui_pressed(IPT_UI_CONFIGURE))
-		sel = -2;
+//  if(input_ui_pressed(IPT_UI_CONFIGURE))
+//      sel = -2;
 
 	if((sel == -1) || (sel == -2))
 	{
@@ -8485,7 +8484,7 @@ static void HandleLocalCommandCheat(UINT32 type, UINT32 address, UINT32 data, UI
 
 					refresh /= 65536.0;
 
-					set_refresh_rate(refresh);
+					set_refresh_rate(0, refresh);
 				}
 				break;
 			}
@@ -10098,7 +10097,7 @@ static void cheat_periodicAction(CheatAction * action)
 	{
 		case kType_NormalOrDelay:
 		{
-			if(action->frameTimer >= (parameter * Machine->refresh_rate))
+			if(action->frameTimer >= (parameter * Machine->refresh_rate[0]))
 			{
 				action->frameTimer = 0;
 
@@ -10144,7 +10143,7 @@ static void cheat_periodicAction(CheatAction * action)
 
 				if(currentValue != action->lastValue)
 				{
-					action->frameTimer = parameter * Machine->refresh_rate;
+					action->frameTimer = parameter * Machine->refresh_rate[0];
 
 					action->flags |= kActionFlag_WasModified;
 				}

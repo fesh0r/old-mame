@@ -50,7 +50,7 @@ static UINT64 wpaddr;
 static int execution_state;
 static UINT32 execution_counter;
 static int next_index = 1;
-static int within_debugger_code = 0;
+static int within_debugger_code = FALSE;
 static int last_cpunum;
 static int last_stopped_cpunum;
 static int steps_until_stop;
@@ -129,6 +129,16 @@ void mame_debug_break(void)
 }
 
 
+/*-------------------------------------------------
+    mame_debug_is_active - true if the debugger
+    is currently live
+-------------------------------------------------*/
+
+int mame_debug_is_active(void)
+{
+	return within_debugger_code;
+}
+
 
 /***************************************************************************
     INITIALIZATION
@@ -147,7 +157,7 @@ void debug_cpu_init(void)
 	execution_state = EXECUTION_STATE_STOPPED;
 	execution_counter = 0;
 	next_index = 1;
-	within_debugger_code = 0;
+	within_debugger_code = FALSE;
 	last_cpunum = 0;
 	last_stopped_cpunum = 0;
 	steps_until_stop = 0;
@@ -515,9 +525,7 @@ void debug_halt_on_next_instruction(void)
 
 void debug_refresh_display(void)
 {
-	reset_partial_updates();
-	draw_screen();
-	update_video_and_audio();
+	video_frame_update();
 }
 
 
@@ -693,7 +701,7 @@ void mame_debug_hook(void)
 		return;
 
 	/* note that we are in the debugger code */
-	within_debugger_code = 1;
+	within_debugger_code = TRUE;
 
 	/* bump the counter */
 	execution_counter++;
@@ -822,7 +830,7 @@ void mame_debug_hook(void)
 		prepare_for_step_overout();
 
 	/* no longer in debugger code */
-	within_debugger_code = 0;
+	within_debugger_code = FALSE;
 }
 
 
@@ -1264,7 +1272,7 @@ static void check_watchpoints(int cpunum, int spacenum, int type, offs_t address
 	if (within_debugger_code)
 		return;
 
-	within_debugger_code = 1;
+	within_debugger_code = TRUE;
 
 	/* if we are a write watchpoint, stash the value that will be written */
 	wpaddr = address;
@@ -1309,7 +1317,7 @@ static void check_watchpoints(int cpunum, int spacenum, int type, offs_t address
 				break;
 			}
 
-	within_debugger_code = 0;
+	within_debugger_code = FALSE;
 }
 
 
@@ -2094,7 +2102,12 @@ void debug_source_script(const char *file)
 	{
 		debug_source_file = fopen(file, "r");
 		if (!debug_source_file)
-			debug_console_printf("Cannot open command file '%s'\n", file);
+		{
+			if (mame_get_phase() == MAME_PHASE_RUNNING)
+				debug_console_printf("Cannot open command file '%s'\n", file);
+			else
+				fatalerror("Cannot open command file '%s'", file);
+		}
 	}
 }
 

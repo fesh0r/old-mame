@@ -34,11 +34,7 @@
 
 #define PALETTE_INIT(name)		void palette_init_##name(UINT16 *colortable, const UINT8 *color_prom)
 #define VIDEO_EOF(name)			void video_eof_##name(void)
-#ifdef MESS
-#define VIDEO_UPDATE(name)		void video_update_##name(int screen, mame_bitmap *bitmap, const rectangle *cliprect, int *do_skip)
-#else
-#define VIDEO_UPDATE(name)		void video_update_##name(int screen, mame_bitmap *bitmap, const rectangle *cliprect)
-#endif
+#define VIDEO_UPDATE(name)		UINT32 video_update_##name(int screen, mame_bitmap *bitmap, const rectangle *cliprect)
 
 /* NULL versions */
 #define init_NULL				NULL
@@ -151,13 +147,6 @@
 /* Mish 181099:  See comments in vidhrdw/generic.c for details */
 #define VIDEO_BUFFERS_SPRITERAM			0x0040
 
-/* In most cases we assume pixels are square (1:1 aspect ratio) but some games need */
-/* different proportions, e.g. 1:2 for Blasteroids */
-#define VIDEO_PIXEL_ASPECT_RATIO_MASK	0x0300
-#define VIDEO_PIXEL_ASPECT_RATIO_1_1	0x0000
-#define VIDEO_PIXEL_ASPECT_RATIO_1_2	0x0100
-#define VIDEO_PIXEL_ASPECT_RATIO_2_1	0x0200
-
 
 
 /* ----- flags for game drivers ----- */
@@ -190,6 +179,11 @@
 
 
 
+/* ----- flags to return from video_update ----- */
+#define UPDATE_HAS_NOT_CHANGED			0x0001	/* the video has not changed */
+
+
+
 /***************************************************************************
     TYPE DEFINITIONS
 ***************************************************************************/
@@ -198,8 +192,6 @@
 struct _machine_config
 {
 	cpu_config			cpu[MAX_CPU];				/* array of CPUs in the system */
-	float				frames_per_second;			/* number of frames per second */
-	int					vblank_duration;			/* duration of a VBLANK, in msec/usec */
 	UINT32				cpu_slices_per_frame;		/* number of times to interleave execution per frame */
 	INT32				watchdog_vblank_count;		/* number of VBLANKs until the watchdog kills us */
 	double				watchdog_time;				/* length of time until the watchdog kills us */
@@ -211,22 +203,17 @@ struct _machine_config
 	void 				(*memcard_handler)(mame_file *file, int action); /* memory card save/load callback  */
 
 	UINT32				video_attributes;			/* flags describing the video system */
-	UINT32				aspect_x, aspect_y;			/* aspect ratio of the video screen */
-	int					screen_width, screen_height;/* size of the video screen (in pixels) */
-	rectangle			default_visible_area;		/* default visible area of the screen */
 	const gfx_decode *	gfxdecodeinfo;				/* pointer to graphics decoding information */
 	UINT32				total_colors;				/* total number of colors in the palette */
 	UINT32				color_table_len;			/* length of the color indirection table */
+	const char *		default_layout;				/* default layout for this machine */
+	screen_config		screen[MAX_SCREENS];		/* total number of screens */
 
 	void 				(*init_palette)(UINT16 *colortable, const UINT8 *color_prom); /* one-time palette init callback  */
 	int					(*video_start)(void);		/* one-time video start callback */
 	void				(*video_reset)(void);		/* video reset callback */
 	void				(*video_eof)(void);			/* end-of-frame video callback */
-#ifdef MESS
-	void				(*video_update)(int screen, mame_bitmap *bitmap, const rectangle *cliprect, int *do_skip);
-#else
-	void				(*video_update)(int screen, mame_bitmap *bitmap, const rectangle *cliprect); /* video update callback */
-#endif
+	UINT32				(*video_update)(int screen, mame_bitmap *bitmap, const rectangle *cliprect); /* video update callback */
 
 	sound_config		sound[MAX_SOUND];			/* array of sound chips in the system */
 	speaker_config		speaker[MAX_SPEAKER];		/* array of speakers in the system */
@@ -257,6 +244,7 @@ struct _game_driver
 #endif
 
 	UINT32				flags;						/* orientation and other flags; see defines below */
+	const char *		default_layout;				/* default internally defined layout */
 };
 
 
@@ -282,8 +270,10 @@ struct _game_driver
 	{																	\
 		cpu_config *cpu = NULL;											\
 		sound_config *sound = NULL;										\
+		screen_config *screen = &machine->screen[0];					\
 		(void)cpu;														\
 		(void)sound;													\
+		(void)screen;													\
 
 #define MACHINE_DRIVER_END 												\
 	}																	\
@@ -363,12 +353,6 @@ struct _game_driver
 
 
 /* core parameters */
-#define MDRV_FRAMES_PER_SECOND(rate)									\
-	machine->frames_per_second = (rate);								\
-
-#define MDRV_VBLANK_DURATION(duration)									\
-	machine->vblank_duration = (duration);								\
-
 #define MDRV_INTERLEAVE(interleave)										\
 	machine->cpu_slices_per_frame = (interleave);						\
 
@@ -397,20 +381,6 @@ struct _game_driver
 #define MDRV_VIDEO_ATTRIBUTES(flags)									\
 	machine->video_attributes = (flags);								\
 
-#define MDRV_ASPECT_RATIO(num, den)										\
-	machine->aspect_x = (num);											\
-	machine->aspect_y = (den);											\
-
-#define MDRV_SCREEN_SIZE(width, height)									\
-	machine->screen_width = (width);									\
-	machine->screen_height = (height);									\
-
-#define MDRV_VISIBLE_AREA(minx, maxx, miny, maxy)						\
-	machine->default_visible_area.min_x = (minx);						\
-	machine->default_visible_area.max_x = (maxx);						\
-	machine->default_visible_area.min_y = (miny);						\
-	machine->default_visible_area.max_y = (maxy);						\
-
 #define MDRV_GFXDECODE(gfx)												\
 	machine->gfxdecodeinfo = (gfx);										\
 
@@ -419,6 +389,9 @@ struct _game_driver
 
 #define MDRV_COLORTABLE_LENGTH(length)									\
 	machine->color_table_len = (length);								\
+
+#define MDRV_DEFAULT_LAYOUT(layout)										\
+	machine->default_layout = &(layout)[0];								\
 
 
 /* core video functions */
@@ -436,6 +409,47 @@ struct _game_driver
 
 #define MDRV_VIDEO_UPDATE(name)											\
 	machine->video_update = video_update_##name;						\
+
+
+/* add/remove screens */
+#define MDRV_SCREEN_ADD(tag, palbase)									\
+	screen = driver_add_screen(machine, (tag), (palbase));				\
+
+#define MDRV_SCREEN_REMOVE(tag)											\
+	driver_remove_screen(machine, tag);									\
+
+#define MDRV_SCREEN_MODIFY(tag)											\
+	screen = driver_find_screen(machine, tag);							\
+
+#define MDRV_SCREEN_REFRESH_RATE(rate)									\
+	screen->refresh_rate = (rate);										\
+
+#define MDRV_SCREEN_VBLANK_TIME(time)									\
+	screen->vblank_time = (time);										\
+
+#define MDRV_SCREEN_MAXSIZE(width, height)								\
+	screen->maxwidth = (width);											\
+	screen->maxheight = (height);										\
+
+#define MDRV_SCREEN_VISIBLE_AREA(minx, maxx, miny, maxy)				\
+	screen->default_visible_area.min_x = (minx);						\
+	screen->default_visible_area.max_x = (maxx);						\
+	screen->default_visible_area.min_y = (miny);						\
+	screen->default_visible_area.max_y = (maxy);						\
+
+
+/* video backwards compatibility */
+#define MDRV_FRAMES_PER_SECOND(rate)									\
+	MDRV_SCREEN_REFRESH_RATE(rate)										\
+
+#define MDRV_VBLANK_DURATION(duration)									\
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(duration))						\
+
+#define MDRV_SCREEN_SIZE(width, height)									\
+	MDRV_SCREEN_MAXSIZE(width, height)									\
+
+#define MDRV_VISIBLE_AREA(minx, maxx, miny, maxy)						\
+	MDRV_SCREEN_VISIBLE_AREA(minx, maxx, miny, maxy)					\
 
 
 /* add/remove speakers */
@@ -521,7 +535,8 @@ game_driver driver_##NAME =					\
 	construct_ipt_##INPUT,					\
 	init_##INIT,							\
 	rom_##NAME,								\
-	(MONITOR)|(FLAGS)						\
+	(MONITOR)|(FLAGS),						\
+	NULL									\
 };
 
 #define GAMEB(YEAR,NAME,PARENT,BIOS,MACHINE,INPUT,INIT,MONITOR,COMPANY,FULLNAME,FLAGS)	\
@@ -538,7 +553,26 @@ game_driver driver_##NAME =					\
 	construct_ipt_##INPUT,					\
 	init_##INIT,							\
 	rom_##NAME,								\
-	(MONITOR)|(FLAGS)						\
+	(MONITOR)|(FLAGS),						\
+	NULL									\
+};
+
+#define GAMEL(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,MONITOR,COMPANY,FULLNAME,FLAGS,LAYOUT)	\
+game_driver driver_##NAME =					\
+{											\
+	__FILE__,								\
+	#PARENT,								\
+	#NAME,									\
+	system_bios_0,							\
+	FULLNAME,								\
+	#YEAR,									\
+	COMPANY,								\
+	construct_##MACHINE,					\
+	construct_ipt_##INPUT,					\
+	init_##INIT,							\
+	rom_##NAME,								\
+	(MONITOR)|(FLAGS),						\
+	&LAYOUT[0]								\
 };
 
 /* this allows to leave the INIT field empty in the GAME() macro call */
@@ -575,7 +609,13 @@ sound_config *driver_add_sound(machine_config *machine, const char *tag, int typ
 sound_config *driver_find_sound(machine_config *machine, const char *tag);
 void driver_remove_sound(machine_config *machine, const char *tag);
 
+screen_config *driver_add_screen(machine_config *machine, const char *tag, int palbase);
+screen_config *driver_find_screen(machine_config *machine, const char *tag);
+void driver_remove_screen(machine_config *machine, const char *tag);
+
+int driver_get_index(const char *name);
 const game_driver *driver_get_clone(const game_driver *driver);
+void driver_get_approx_matches(const char *name, int matches, int *indexes);
 
 
 #endif	/* __DRIVER_H__ */

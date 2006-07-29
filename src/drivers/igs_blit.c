@@ -142,6 +142,7 @@ VIDEO_UPDATE(igs)
 				plot_pixel( bitmap, x,y, layer[l][scr_addr] | (l << 8) );
 		}
 	}
+	return 0;
 }
 
 static READ16_HANDLER( igs_layers_r )
@@ -216,7 +217,7 @@ static WRITE16_HANDLER( igs_blit_flags_w )
 	int gfx_size	=	memory_region_length(REGION_GFX1);
 	int gfx2_size	=	memory_region_length(REGION_GFX2);
 
-	rectangle clip	=	Machine->visible_area;
+	rectangle clip	=	Machine->visible_area[0];
 
 	COMBINE_DATA(&blitter.flags);
 

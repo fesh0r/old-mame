@@ -50,9 +50,9 @@ enum
 	UI_relative,
 	UI_allchannels,
 	UI_brightness,
+	UI_contrast,
 	UI_gamma,
 	UI_vectorflicker,
-	UI_vectorintensity,
 	UI_overclock,
 	UI_allcpus,
 	UI_historymissing,
@@ -194,6 +194,15 @@ enum
 	/* refresh rate */
 	UI_refresh_rate,
 	UI_decoding_gfx,
+
+#ifdef NEW_RENDER
+	UI_video,
+	UI_screen,
+	UI_rotate_clockwise,
+	UI_rotate_counterclockwise,
+	UI_flip_x,
+	UI_flip_y,
+#endif
 
 	UI_last_mame_entry
 };

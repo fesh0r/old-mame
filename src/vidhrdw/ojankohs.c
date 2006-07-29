@@ -316,7 +316,7 @@ VIDEO_START( ojankoy )
 
 VIDEO_START( ojankoc )
 {
-	ojankoc_tmpbitmap = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height);
+	ojankoc_tmpbitmap = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight);
 	ojankohs_videoram = auto_malloc(0x8000);
 	ojankohs_paletteram = auto_malloc(0x20);
 
@@ -338,6 +338,7 @@ VIDEO_UPDATE( ojankohs )
 	tilemap_set_scrolly(ojankohs_tilemap, 0, ojankohs_scrolly);
 
 	tilemap_draw(bitmap, cliprect, ojankohs_tilemap, 0, 0);
+	return 0;
 }
 
 VIDEO_UPDATE( ojankoc )
@@ -354,4 +355,5 @@ VIDEO_UPDATE( ojankoc )
 	}
 
 	copybitmap(bitmap, ojankoc_tmpbitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
+	return 0;
 }

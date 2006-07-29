@@ -188,7 +188,7 @@ static void draw_framebuffer(mame_bitmap *bitmap, const rectangle *cliprect)
 	{
 		frame_width = width;
 		frame_height = height;
-		set_visible_area(0, frame_width-1, 0, frame_height-1);
+		set_visible_area(0, 0, frame_width-1, 0, frame_height-1);
 	}
 
 	if (disp_ctrl_reg[DC_OUTPUT_CFG] & 0x1)		// 8-bit mode
@@ -286,6 +286,7 @@ static VIDEO_UPDATE(mediagx)
 	{
 		draw_cga(bitmap, cliprect);
 	}
+	return 0;
 }
 
 static READ32_HANDLER( disp_ctrl_r )

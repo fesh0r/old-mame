@@ -512,6 +512,7 @@ static VIDEO_START( flagstaff )
 static VIDEO_UPDATE( seattle )
 {
 	voodoo_update(0, bitmap, cliprect);
+	return 0;
 }
 
 
@@ -1411,8 +1412,8 @@ static WRITE32_HANDLER( analog_port_w )
 
 INLINE void get_crosshair_xy(int player, int *x, int *y)
 {
-	*x = (((readinputport(4 + player * 2) & 0xff) << 4) * Machine->visible_area.max_x) / 0xfff;
-	*y = (((readinputport(5 + player * 2) & 0xff) << 2) * Machine->visible_area.max_y) / 0x3ff;
+	*x = (((readinputport(4 + player * 2) & 0xff) << 4) * Machine->visible_area[0].max_x) / 0xfff;
+	*y = (((readinputport(5 + player * 2) & 0xff) << 2) * Machine->visible_area[0].max_y) / 0x3ff;
 }
 
 
@@ -1428,6 +1429,7 @@ static VIDEO_UPDATE( carnevil )
 	draw_crosshair(bitmap, beamx, beamy, cliprect, 0);
 	get_crosshair_xy(1, &beamx, &beamy);
 	draw_crosshair(bitmap, beamx, beamy, cliprect, 1);
+	return 0;
 }
 
 

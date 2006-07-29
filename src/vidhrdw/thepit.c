@@ -274,7 +274,7 @@ static void drawtiles(mame_bitmap *bitmap,int priority)
 			}
 		}
 
-		copyscrollbitmap(bitmap,tmpbitmap,0,0,32,scroll,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		copyscrollbitmap(bitmap,tmpbitmap,0,0,32,scroll,&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 	}
 }
 
@@ -348,4 +348,5 @@ VIDEO_UPDATE( thepit )
 
 	/* high priority sprites */
 	drawsprites(bitmap,1);
+	return 0;
 }

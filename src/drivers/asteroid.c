@@ -147,6 +147,10 @@
 #include "sound/discrete.h"
 #include "sound/pokey.h"
 
+#ifdef NEW_RENDER
+#include "render.h"
+#endif
+
 
 
 /*************************************
@@ -177,10 +181,12 @@ static WRITE8_HANDLER( llander_led_w )
     int i;
 
     for (i = 0; i < 5; i++)
+#ifndef NEW_RENDER
 		artwork_show(lampname[i], (data >> (4 - i)) & 1);
+#else
+		render_view_item_set_state(lampname[i], (data >> (4 - i)) & 1);
+#endif
 }
-
-
 
 
 /*************************************
@@ -819,16 +825,6 @@ static DRIVER_INIT( asterock )
 }
 
 
-static DRIVER_INIT( astdelux )
-{
-	OVERLAY_START( astdelux_overlay )
-		OVERLAY_RECT( 0.0, 0.0, 1.0, 1.0, MAKE_ARGB(0x04,0x88,0xff,0xff) )
-	OVERLAY_END
-
-	artwork_set_overlay(astdelux_overlay);
-}
-
-
 
 /*************************************
  *
@@ -841,7 +837,7 @@ GAME( 1979, asteroi1, asteroid, asteroid, asteroid, 0,        ROT0, "Atari", "As
 GAME( 1979, asteroib, asteroid, asteroid, asteroib, asteroib, ROT0, "bootleg", "Asteroids (bootleg on Lunar Lander hardware)", 0 )
 GAME( 1979, asterock, asteroid, asterock, asterock, asterock, ROT0, "Sidam", "Asterock", 0 )
 GAME( 1979, meteorts, asteroid, asteroid, asteroid, 0,        ROT0, "VGG",   "Meteorites", 0 )
-GAME( 1980, astdelux, 0,        astdelux, astdelux, astdelux, ROT0, "Atari", "Asteroids Deluxe (rev 2)", 0 )
-GAME( 1980, astdelu1, astdelux, astdelux, astdelux, astdelux, ROT0, "Atari", "Asteroids Deluxe (rev 1)", 0 )
+GAMEL(1980, astdelux, 0,        astdelux, astdelux, 0,        ROT0, "Atari", "Asteroids Deluxe (rev 2)", 0, layout_ho88ffff )
+GAMEL(1980, astdelu1, astdelux, astdelux, astdelux, 0,        ROT0, "Atari", "Asteroids Deluxe (rev 1)", 0, layout_ho88ffff )
 GAME( 1979, llander,  0,        llander,  llander,  0,        ROT0, "Atari", "Lunar Lander (rev 2)", 0 )
 GAME( 1979, llander1, llander,  llander,  llander1, 0,        ROT0, "Atari", "Lunar Lander (rev 1)", 0 )
